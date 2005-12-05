@@ -1,13 +1,13 @@
 BUILT_SOURCES = \
-    jabber-connection-manager-glue.h \
-    jabber-connection-manager-signals-marshal.h \
-    jabber-connection-manager-signals-marshal.c \
-    jabber-connection-glue.h \
-    jabber-connection-signals-marshal.h \
-    jabber-connection-signals-marshal.c \
-    jabber-im-channel-glue.h \
-    jabber-im-channel-signals-marshal.h \
-    jabber-im-channel-signals-marshal.c \
+    gabble-connection-manager-glue.h \
+    gabble-connection-manager-signals-marshal.h \
+    gabble-connection-manager-signals-marshal.c \
+    gabble-connection-glue.h \
+    gabble-connection-signals-marshal.h \
+    gabble-connection-signals-marshal.c \
+    gabble-im-channel-glue.h \
+    gabble-im-channel-signals-marshal.h \
+    gabble-im-channel-signals-marshal.c \
     telepathy-errors-enumtypes.h \
     telepathy-errors-enumtypes.c
 
@@ -17,9 +17,9 @@ CLEANFILES = $(BUILT_SOURCES)
 bin_PROGRAMS=telepathy-gabble
 
 CORE_SOURCES = \
-    jabber-connection-manager.c \
-    jabber-connection.c \
-    jabber-im-channel.c \
+    gabble-connection-manager.c \
+    gabble-connection.c \
+    gabble-im-channel.c \
     gintset.c \
     telepathy-errors.c \
     $(BUILT_SOURCES)
@@ -28,7 +28,7 @@ libgabble_convenience_la_SOURCES = \
     $(CORE_SOURCES)
 
 telepathy_gabble_SOURCES = \
-    main.c
+    gabble.c
 
 telepathy_gabble_LDADD = libgabble-convenience.la
 

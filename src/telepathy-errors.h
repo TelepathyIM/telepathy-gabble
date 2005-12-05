@@ -1,4 +1,4 @@
-/* 
+/*
  * telepathy-errors.h - Header for Telepathy error types
  * Copyright (C) 2005 Collabora Ltd.
  * Copyright (C) 2005 Nokia Corporation

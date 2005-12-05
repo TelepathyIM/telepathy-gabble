@@ -1,4 +1,4 @@
-/* 
+/*
  * gabble-im-channel.h - Header for GabbleIMChannel
  * Copyright (C) 2005 Collabora Ltd.
  * Copyright (C) 2005 Nokia Corporation

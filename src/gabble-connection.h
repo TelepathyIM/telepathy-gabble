@@ -1,4 +1,4 @@
-/* 
+/*
  * gabble-connection.h - Header for GabbleConnection
  * Copyright (C) 2005 Collabora Ltd.
  * Copyright (C) 2005 Nokia Corporation

@@ -2,7 +2,7 @@
  * Copyright (C) 2005 Collabora Ltd.
  * Copyright (C) 2005 Nokia Corporation
  *
- * jabber-connection.h- Header for JabberConnection
+ * jabber-connection.h - Header for JabberConnection
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public

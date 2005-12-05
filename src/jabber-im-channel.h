@@ -2,7 +2,7 @@
  * Copyright (C) 2005 Collabora Ltd.
  * Copyright (C) 2005 Nokia Corporation
  *
- * jabber-im-channel.h- Header for JabberIMChannel
+ * jabber-im-channel.h - Header for JabberIMChannel
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public

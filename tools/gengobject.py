@@ -118,7 +118,7 @@ def print_license(stream, filename, description):
  * Copyright (C) 2005 Collabora Ltd.
  * Copyright (C) 2005 Nokia Corporation
  *
- * %s- %s
+ * %s - %s
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public

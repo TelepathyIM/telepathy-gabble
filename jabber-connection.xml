@@ -55,9 +55,4 @@
       <arg type="u" name="reason" />
     </signal>
   </interface>
-  <interface name="org.freedesktop.DBus.Introspectable">
-    <method name="Introspect">
-      <arg direction="out" type="s" />
-    </method>
-  </interface>
 </node>

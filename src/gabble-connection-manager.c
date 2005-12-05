@@ -42,6 +42,7 @@ static guint signals[LAST_SIGNAL] = {0};
 static void
 gabble_connection_manager_init (GabbleConnectionManager *obj)
 {
+  /* allocate class private data structure */
 }
 
 static void gabble_connection_manager_dispose (GObject *object);
@@ -55,7 +56,6 @@ gabble_connection_manager_class_init (GabbleConnectionManagerClass *gabble_conne
   object_class->dispose = gabble_connection_manager_dispose;
   object_class->finalize = gabble_connection_manager_finalize;
 
-
   signals[NEW_CONNECTION] =
     g_signal_new ("new-connection",
                   G_OBJECT_CLASS_TYPE (gabble_connection_manager_class),
@@ -66,7 +66,6 @@ gabble_connection_manager_class_init (GabbleConnectionManagerClass *gabble_conne
                   G_TYPE_NONE, 3, G_TYPE_STRING, DBUS_TYPE_G_PROXY, G_TYPE_STRING);
 
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_connection_manager_class), &dbus_glib_gabble_connection_manager_object_info);
-
 }
 
 void

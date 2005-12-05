@@ -44,6 +44,7 @@ static guint signals[LAST_SIGNAL] = {0};
 static void
 gabble_im_channel_init (GabbleIMChannel *obj)
 {
+  /* allocate class private data structure */
 }
 
 static void gabble_im_channel_dispose (GObject *object);
@@ -56,7 +57,6 @@ gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
 
   object_class->dispose = gabble_im_channel_dispose;
   object_class->finalize = gabble_im_channel_finalize;
-
 
   signals[SENT] =
     g_signal_new ("sent",
@@ -86,7 +86,6 @@ gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
                   G_TYPE_NONE, 5, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING);
 
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_im_channel_class), &dbus_glib_gabble_im_channel_object_info);
-
 }
 
 void

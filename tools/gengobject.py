@@ -246,6 +246,7 @@ if __name__ == '__main__':
 static void
 %(prefix)s_init (%(classname)s *obj)
 {
+  /* allocate class private data structure */
 }
 
 static void %(prefix)s_dispose (GObject *object);
@@ -258,7 +259,6 @@ static void
 
   object_class->dispose = %(prefix)s_dispose;
   object_class->finalize = %(prefix)s_finalize;
-
 """ % {"prefix":prefix, "classname":classname})
 
     for signal in signals:
@@ -293,7 +293,6 @@ static void
     body.write(
 """
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (%(prefix)s_class), &dbus_glib_%(prefix)s_object_info);
-
 }
 
 void

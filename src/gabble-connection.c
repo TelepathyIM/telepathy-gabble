@@ -43,6 +43,7 @@ static guint signals[LAST_SIGNAL] = {0};
 static void
 gabble_connection_init (GabbleConnection *obj)
 {
+  /* allocate class private data structure */
 }
 
 static void gabble_connection_dispose (GObject *object);
@@ -55,7 +56,6 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
 
   object_class->dispose = gabble_connection_dispose;
   object_class->finalize = gabble_connection_finalize;
-
 
   signals[NEW_CHANNEL] =
     g_signal_new ("new-channel",
@@ -76,7 +76,6 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
                   G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_UINT);
 
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_connection_class), &dbus_glib_gabble_connection_object_info);
-
 }
 
 void

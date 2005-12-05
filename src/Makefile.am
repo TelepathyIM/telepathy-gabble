@@ -1,0 +1,74 @@
+BUILT_SOURCES = \
+    jabber-connection-manager-glue.h \
+    jabber-connection-manager-signals-marshal.h \
+    jabber-connection-manager-signals-marshal.c \
+    jabber-connection-glue.h \
+    jabber-connection-signals-marshal.h \
+    jabber-connection-signals-marshal.c \
+    jabber-im-channel-glue.h \
+    jabber-im-channel-signals-marshal.h \
+    jabber-im-channel-signals-marshal.c \
+    telepathy-errors-enumtypes.h \
+    telepathy-errors-enumtypes.c
+
+# correctly clean the generated source files
+CLEANFILES = $(BUILT_SOURCES)
+
+bin_PROGRAMS=telepathy-gabble
+
+CORE_SOURCES = \
+    jabber-connection-manager.c \
+    jabber-connection.c \
+    jabber-im-channel.c \
+    gintset.c \
+    telepathy-errors.c \
+    $(BUILT_SOURCES)
+
+libgabble_convenience_la_SOURCES = \
+    $(CORE_SOURCES)
+
+telepathy_gabble_SOURCES = \
+    main.c
+
+telepathy_gabble_LDADD = libgabble-convenience.la
+
+noinst_LTLIBRARIES = libgabble-convenience.la
+
+AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @LOUDMOUTH_CFLAGS@
+AM_LDFLAGS = @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@
+
+
+# rule to generate the binding headers
+%-glue.h: ../%.xml Makefile
+	dbus-binding-tool --mode=glib-server --output=$@ --prefix=$(subst -,_,$*) $<
+
+%-signals-marshal.h: %-signals-marshal.list Makefile
+	glib-genmarshal --header --prefix=$(subst -,_,$*)_marshal $< > $*-signals-marshal.h
+
+%-signals-marshal.c: %-signals-marshal.list Makefile
+	glib-genmarshal --body --prefix=$(subst -,_,$*)_marshal $< > $*-signals-marshal.c
+
+%-marshal.h: %-marshal.list Makefile
+	glib-genmarshal --header --prefix=$(subst -,_,$*)_marshal $< > $*-marshal.h
+
+%-marshal.c: %-marshal.list Makefile
+	glib-genmarshal --body --prefix=$(subst -,_,$*)_marshal $< > $*-marshal.c
+
+
+# rules for making the glib enum objects
+%-enumtypes.h: %.h Makefile
+	glib-mkenums \
+	--fhead "#ifndef __$(shell echo $* | tr [:lower:]- [:upper:]_)_ENUM_TYPES_H__\n#define __$(shell echo $* | tr [:lower:]- [:upper:]_)_ENUM_TYPES_H__\n\n#include <glib-object.h>\n\nG_BEGIN_DECLS\n" \
+	--fprod "/* enumerations from \"@filename@\" */\n" \
+	--vhead "GType @enum_name@_get_type (void);\n#define $(shell echo $* | tr [:lower:]- [:upper:]_ | sed 's/_.*//')_TYPE_@ENUMSHORT@ (@enum_name@_get_type())\n"         \
+	--ftail "G_END_DECLS\n\n#endif /* __$(shell echo $* | tr [:lower:]- [:upper:]_)_ENUM_TYPES_H__ */" \
+	$< > $@
+
+%-enumtypes.c: %.h Makefile
+	glib-mkenums \
+	--fhead "#include <$*.h>" \
+	--fprod "\n/* enumerations from \"@filename@\" */" \
+	--vhead "GType\n@enum_name@_get_type (void)\n{\n  static GType etype = 0;\n  if (etype == 0) {\n    static const G@Type@Value values[] = {"     \
+	--vprod "      { @VALUENAME@, \"@VALUENAME@\", \"@valuenick@\" }," \
+	--vtail "      { 0, NULL, NULL }\n    };\n    etype = g_@type@_register_static (\"@EnumName@\", values);\n  }\n  return etype;\n}\n" \
+	$< > $@

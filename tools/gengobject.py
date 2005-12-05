@@ -214,7 +214,9 @@ if __name__ == '__main__':
      
 
     signals = dom.getElementsByTagName("signal")
+    signals.sort()
     methods = dom.getElementsByTagName("method")
+    methods.sort()
 
     print_license(header, outname_header, "Header for " + classname)
     print_license(body, outname_body, "Source for " + classname)

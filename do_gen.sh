@@ -1,0 +1,13 @@
+top_srcdir=$PWD
+#export PYTHONPATH=$PYTHONPATH:$top_srcdir/tools
+#echo Using PYTHONPATH $PYTHONPATH
+cd src
+echo Generating JabberConnectionManager files ...
+$top_srcdir/tools/gengobject.py $top_srcdir/jabber-connection-manager.xml JabberConnectionManager
+echo Generating JabberConnection files ...
+$top_srcdir/tools/gengobject.py $top_srcdir/jabber-connection.xml JabberConnection
+echo Generating JabberIMChannel files ...
+$top_srcdir/tools/gengobject.py $top_srcdir/jabber-im-channel.xml JabberIMChannel
+echo Generating error enums ...
+$top_srcdir/tools/generrors.py
+

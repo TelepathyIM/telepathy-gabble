@@ -18,7 +18,6 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-
 #include <dbus/dbus-glib.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,7 +29,7 @@
 
 G_DEFINE_TYPE(GabbleConnection, gabble_connection, G_TYPE_OBJECT)
 
-/*signal enum*/
+/* signal enum */
 enum
 {
     NEW_CHANNEL,

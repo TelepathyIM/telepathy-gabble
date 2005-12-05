@@ -218,8 +218,7 @@ if __name__ == '__main__':
     print_simple_class_defn(header, prefix, classname)
 
     body.write(
-"""
-#include <dbus/dbus-glib.h>
+"""#include <dbus/dbus-glib.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -235,7 +234,7 @@ if __name__ == '__main__':
 
 """ % {'classname':classname, 'prefix':prefix})
 
-    body.write("/*signal enum*/\nenum\n{\n")
+    body.write("/* signal enum */\nenum\n{\n")
     for signal in signals:
         dbus_name = signal.getAttributeNode("name").nodeValue
         body.write("    %s,\n" % camelcase_to_upper(dbus_name) )

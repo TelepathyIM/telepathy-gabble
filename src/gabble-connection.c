@@ -1,5 +1,5 @@
 /* 
- * jabber-connection.c - Source for JabberConnection
+ * gabble-connection.c - Source for GabbleConnection
  * Copyright (C) 2005 Collabora Ltd.
  * Copyright (C) 2005 Nokia Corporation
  *
@@ -23,12 +23,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "jabber-connection.h"
-#include "jabber-connection-signals-marshal.h"
+#include "gabble-connection.h"
+#include "gabble-connection-signals-marshal.h"
 
-#include "jabber-connection-glue.h"
+#include "gabble-connection-glue.h"
 
-G_DEFINE_TYPE(JabberConnection, jabber_connection, G_TYPE_OBJECT)
+G_DEFINE_TYPE(GabbleConnection, gabble_connection, G_TYPE_OBJECT)
 
 /*signal enum*/
 enum
@@ -42,71 +42,71 @@ static guint signals[LAST_SIGNAL] = {0};
 
 
 static void
-jabber_connection_init (JabberConnection *obj)
+gabble_connection_init (GabbleConnection *obj)
 {
 }
 
-static void jabber_connection_dispose (GObject *object);
-static void jabber_connection_finalize (GObject *object);
+static void gabble_connection_dispose (GObject *object);
+static void gabble_connection_finalize (GObject *object);
 
 static void
-jabber_connection_class_init (JabberConnectionClass *jabber_connection_class)
+gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
 {
-  GObjectClass *object_class = G_OBJECT_CLASS (jabber_connection_class);
+  GObjectClass *object_class = G_OBJECT_CLASS (gabble_connection_class);
 
-  object_class->dispose = jabber_connection_dispose;
-  object_class->finalize = jabber_connection_finalize;
+  object_class->dispose = gabble_connection_dispose;
+  object_class->finalize = gabble_connection_finalize;
 
 
   signals[NEW_CHANNEL] = 
     g_signal_new ("new-channel",
-                  G_OBJECT_CLASS_TYPE (jabber_connection_class),
+                  G_OBJECT_CLASS_TYPE (gabble_connection_class),
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  jabber_connection_marshal_VOID__BOXED_STRING_INT_INT_BOOLEAN,
+                  gabble_connection_marshal_VOID__BOXED_STRING_INT_INT_BOOLEAN,
                   G_TYPE_NONE, 5, DBUS_TYPE_G_PROXY, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_BOOLEAN);
 
   signals[STATUS_CHANGED] = 
     g_signal_new ("status-changed",
-                  G_OBJECT_CLASS_TYPE (jabber_connection_class),
+                  G_OBJECT_CLASS_TYPE (gabble_connection_class),
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  jabber_connection_marshal_VOID__INT_INT,
+                  gabble_connection_marshal_VOID__INT_INT,
                   G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_UINT);
 
-  dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (jabber_connection_class), &dbus_glib_jabber_connection_object_info);
+  dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_connection_class), &dbus_glib_gabble_connection_object_info);
 
 }
 
 void
-jabber_connection_dispose (GObject *object)
+gabble_connection_dispose (GObject *object)
 {
-  JabberConnection *jabber_connection = JABBER_CONNECTION (object);
+  GabbleConnection *gabble_connection = GABBLE_CONNECTION (object);
  
   /*do your stuff here*/
     
-  if (G_OBJECT_CLASS (jabber_connection_parent_class)->dispose)
-    G_OBJECT_CLASS (jabber_connection_parent_class)->dispose (object);
+  if (G_OBJECT_CLASS (gabble_connection_parent_class)->dispose)
+    G_OBJECT_CLASS (gabble_connection_parent_class)->dispose (object);
 }
 
 void
-jabber_connection_finalize (GObject *object)
+gabble_connection_finalize (GObject *object)
 {
-  JabberConnection *jabber_connection = JABBER_CONNECTION (object);
+  GabbleConnection *gabble_connection = GABBLE_CONNECTION (object);
 
   /* free any data held directly by the object here*/
 
   /* Chain up to the parent class */
-  G_OBJECT_CLASS (jabber_connection_parent_class)->finalize (object); 
+  G_OBJECT_CLASS (gabble_connection_parent_class)->finalize (object); 
  
 }
 
 
 
 /**
- * jabber_connection_disconnect
+ * gabble_connection_disconnect
  * 
  * Implememts DBus method Disconnect 
  * on interface org.freedesktop.Telepathy.Connection
@@ -117,14 +117,14 @@ jabber_connection_finalize (GObject *object)
  * 
  * Returns: TRUE if sucessful, FALSE if an error was thrown
  */
-gboolean jabber_connection_disconnect (JabberConnection *obj, GError **error)
+gboolean gabble_connection_disconnect (GabbleConnection *obj, GError **error)
 {
   return TRUE;
 }
 
 
 /**
- * jabber_connection_inspect_handle
+ * gabble_connection_inspect_handle
  * 
  * Implememts DBus method InspectHandle 
  * on interface org.freedesktop.Telepathy.Connection
@@ -135,14 +135,14 @@ gboolean jabber_connection_disconnect (JabberConnection *obj, GError **error)
  * 
  * Returns: TRUE if sucessful, FALSE if an error was thrown
  */
-gboolean jabber_connection_inspect_handle (JabberConnection *obj, guint handle_type, guint handle, gchar ** ret, GError **error)
+gboolean gabble_connection_inspect_handle (GabbleConnection *obj, guint handle_type, guint handle, gchar ** ret, GError **error)
 {
   return TRUE;
 }
 
 
 /**
- * jabber_connection_release_handle
+ * gabble_connection_release_handle
  * 
  * Implememts DBus method ReleaseHandle 
  * on interface org.freedesktop.Telepathy.Connection
@@ -153,14 +153,14 @@ gboolean jabber_connection_inspect_handle (JabberConnection *obj, guint handle_t
  * 
  * Returns: TRUE if sucessful, FALSE if an error was thrown
  */
-gboolean jabber_connection_release_handle (JabberConnection *obj, guint handle_type, guint handle, GError **error)
+gboolean gabble_connection_release_handle (GabbleConnection *obj, guint handle_type, guint handle, GError **error)
 {
   return TRUE;
 }
 
 
 /**
- * jabber_connection_request_channel
+ * gabble_connection_request_channel
  * 
  * Implememts DBus method RequestChannel 
  * on interface org.freedesktop.Telepathy.Connection
@@ -171,14 +171,14 @@ gboolean jabber_connection_release_handle (JabberConnection *obj, guint handle_t
  * 
  * Returns: TRUE if sucessful, FALSE if an error was thrown
  */
-gboolean jabber_connection_request_channel (JabberConnection *obj, const gchar * type, guint handle_type, guint handle, gboolean supress_handler, gpointer* ret, GError **error)
+gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar * type, guint handle_type, guint handle, gboolean supress_handler, gpointer* ret, GError **error)
 {
   return TRUE;
 }
 
 
 /**
- * jabber_connection_request_handle
+ * gabble_connection_request_handle
  * 
  * Implememts DBus method RequestHandle 
  * on interface org.freedesktop.Telepathy.Connection
@@ -189,14 +189,14 @@ gboolean jabber_connection_request_channel (JabberConnection *obj, const gchar *
  * 
  * Returns: TRUE if sucessful, FALSE if an error was thrown
  */
-gboolean jabber_connection_request_handle (JabberConnection *obj, guint handle_type, const gchar * name, guint* ret, GError **error)
+gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_type, const gchar * name, guint* ret, GError **error)
 {
   return TRUE;
 }
 
 
 /**
- * jabber_connection_get_protocol
+ * gabble_connection_get_protocol
  * 
  * Implememts DBus method GetProtocol 
  * on interface org.freedesktop.Telepathy.Connection
@@ -207,14 +207,14 @@ gboolean jabber_connection_request_handle (JabberConnection *obj, guint handle_t
  * 
  * Returns: TRUE if sucessful, FALSE if an error was thrown
  */
-gboolean jabber_connection_get_protocol (JabberConnection *obj, gchar ** ret, GError **error)
+gboolean gabble_connection_get_protocol (GabbleConnection *obj, gchar ** ret, GError **error)
 {
   return TRUE;
 }
 
 
 /**
- * jabber_connection_get_status
+ * gabble_connection_get_status
  * 
  * Implememts DBus method GetStatus 
  * on interface org.freedesktop.Telepathy.Connection
@@ -225,14 +225,14 @@ gboolean jabber_connection_get_protocol (JabberConnection *obj, gchar ** ret, GE
  * 
  * Returns: TRUE if sucessful, FALSE if an error was thrown
  */
-gboolean jabber_connection_get_status (JabberConnection *obj, guint* ret, GError **error)
+gboolean gabble_connection_get_status (GabbleConnection *obj, guint* ret, GError **error)
 {
   return TRUE;
 }
 
 
 /**
- * jabber_connection_list_channels
+ * gabble_connection_list_channels
  * 
  * Implememts DBus method ListChannels 
  * on interface org.freedesktop.Telepathy.Connection
@@ -243,14 +243,14 @@ gboolean jabber_connection_get_status (JabberConnection *obj, guint* ret, GError
  * 
  * Returns: TRUE if sucessful, FALSE if an error was thrown
  */
-gboolean jabber_connection_list_channels (JabberConnection *obj, gpointer* ret, GError **error)
+gboolean gabble_connection_list_channels (GabbleConnection *obj, gpointer* ret, GError **error)
 {
   return TRUE;
 }
 
 
 /**
- * jabber_connection_hold_handle
+ * gabble_connection_hold_handle
  * 
  * Implememts DBus method HoldHandle 
  * on interface org.freedesktop.Telepathy.Connection
@@ -261,14 +261,14 @@ gboolean jabber_connection_list_channels (JabberConnection *obj, gpointer* ret, 
  * 
  * Returns: TRUE if sucessful, FALSE if an error was thrown
  */
-gboolean jabber_connection_hold_handle (JabberConnection *obj, guint handle_type, guint handle, GError **error)
+gboolean gabble_connection_hold_handle (GabbleConnection *obj, guint handle_type, guint handle, GError **error)
 {
   return TRUE;
 }
 
 
 /**
- * jabber_connection_get_self_handle
+ * gabble_connection_get_self_handle
  * 
  * Implememts DBus method GetSelfHandle 
  * on interface org.freedesktop.Telepathy.Connection
@@ -279,14 +279,14 @@ gboolean jabber_connection_hold_handle (JabberConnection *obj, guint handle_type
  * 
  * Returns: TRUE if sucessful, FALSE if an error was thrown
  */
-gboolean jabber_connection_get_self_handle (JabberConnection *obj, guint* ret, GError **error)
+gboolean gabble_connection_get_self_handle (GabbleConnection *obj, guint* ret, GError **error)
 {
   return TRUE;
 }
 
 
 /**
- * jabber_connection_get_interfaces
+ * gabble_connection_get_interfaces
  * 
  * Implememts DBus method GetInterfaces 
  * on interface org.freedesktop.Telepathy.Connection
@@ -297,7 +297,7 @@ gboolean jabber_connection_get_self_handle (JabberConnection *obj, guint* ret, G
  * 
  * Returns: TRUE if sucessful, FALSE if an error was thrown
  */
-gboolean jabber_connection_get_interfaces (JabberConnection *obj, gchar *** ret, GError **error)
+gboolean gabble_connection_get_interfaces (GabbleConnection *obj, gchar *** ret, GError **error)
 {
   return TRUE;
 }

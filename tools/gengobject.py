@@ -367,7 +367,7 @@ void
  *
  * Implements DBus method %(method)s
  * on interface %(interface)s
- * """ % {'c_method_name':c_method_name, 'method':dbus_method_name, 'interface':interface})
+ *""" % {'c_method_name':c_method_name, 'method':dbus_method_name, 'interface':interface})
         if async:
             body.write(
 """

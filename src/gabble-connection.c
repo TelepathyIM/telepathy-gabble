@@ -107,7 +107,7 @@ gabble_connection_finalize (GObject *object)
  *
  * Implements DBus method Disconnect
  * on interface org.freedesktop.Telepathy.Connection
- * 
+ *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this
  *         function returns false.
@@ -125,7 +125,7 @@ gboolean gabble_connection_disconnect (GabbleConnection *obj, GError **error)
  *
  * Implements DBus method InspectHandle
  * on interface org.freedesktop.Telepathy.Connection
- * 
+ *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this
  *         function returns false.
@@ -143,7 +143,7 @@ gboolean gabble_connection_inspect_handle (GabbleConnection *obj, guint handle_t
  *
  * Implements DBus method ReleaseHandle
  * on interface org.freedesktop.Telepathy.Connection
- * 
+ *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this
  *         function returns false.
@@ -161,7 +161,7 @@ gboolean gabble_connection_release_handle (GabbleConnection *obj, guint handle_t
  *
  * Implements DBus method RequestChannel
  * on interface org.freedesktop.Telepathy.Connection
- * 
+ *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this
  *         function returns false.
@@ -179,7 +179,7 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
  *
  * Implements DBus method RequestHandle
  * on interface org.freedesktop.Telepathy.Connection
- * 
+ *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this
  *         function returns false.
@@ -197,7 +197,7 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
  *
  * Implements DBus method GetProtocol
  * on interface org.freedesktop.Telepathy.Connection
- * 
+ *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this
  *         function returns false.
@@ -215,7 +215,7 @@ gboolean gabble_connection_get_protocol (GabbleConnection *obj, gchar ** ret, GE
  *
  * Implements DBus method GetStatus
  * on interface org.freedesktop.Telepathy.Connection
- * 
+ *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this
  *         function returns false.
@@ -233,7 +233,7 @@ gboolean gabble_connection_get_status (GabbleConnection *obj, guint* ret, GError
  *
  * Implements DBus method ListChannels
  * on interface org.freedesktop.Telepathy.Connection
- * 
+ *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this
  *         function returns false.
@@ -251,7 +251,7 @@ gboolean gabble_connection_list_channels (GabbleConnection *obj, gpointer* ret, 
  *
  * Implements DBus method HoldHandle
  * on interface org.freedesktop.Telepathy.Connection
- * 
+ *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this
  *         function returns false.
@@ -269,7 +269,7 @@ gboolean gabble_connection_hold_handle (GabbleConnection *obj, guint handle_type
  *
  * Implements DBus method GetSelfHandle
  * on interface org.freedesktop.Telepathy.Connection
- * 
+ *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this
  *         function returns false.
@@ -287,7 +287,7 @@ gboolean gabble_connection_get_self_handle (GabbleConnection *obj, guint* ret, G
  *
  * Implements DBus method GetInterfaces
  * on interface org.freedesktop.Telepathy.Connection
- * 
+ *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this
  *         function returns false.

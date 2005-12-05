@@ -97,7 +97,7 @@ gabble_connection_manager_finalize (GObject *object)
  *
  * Implements DBus method Connect
  * on interface org.freedesktop.Telepathy.ConnectionManager
- * 
+ *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this
  *         function returns false.
@@ -115,7 +115,7 @@ gboolean gabble_connection_manager_connect (GabbleConnectionManager *obj, const 
  *
  * Implements DBus method GetParameterDefaults
  * on interface org.freedesktop.Telepathy.ConnectionManager
- * 
+ *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this
  *         function returns false.
@@ -133,7 +133,7 @@ gboolean gabble_connection_manager_get_parameter_defaults (GabbleConnectionManag
  *
  * Implements DBus method GetOptionalParameters
  * on interface org.freedesktop.Telepathy.ConnectionManager
- * 
+ *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this
  *         function returns false.
@@ -151,7 +151,7 @@ gboolean gabble_connection_manager_get_optional_parameters (GabbleConnectionMana
  *
  * Implements DBus method GetMandatoryParameters
  * on interface org.freedesktop.Telepathy.ConnectionManager
- * 
+ *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this
  *         function returns false.
@@ -169,7 +169,7 @@ gboolean gabble_connection_manager_get_mandatory_parameters (GabbleConnectionMan
  *
  * Implements DBus method ListProtocols
  * on interface org.freedesktop.Telepathy.ConnectionManager
- * 
+ *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this
  *         function returns false.

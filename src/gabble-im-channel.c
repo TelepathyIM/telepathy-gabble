@@ -117,7 +117,7 @@ gabble_im_channel_finalize (GObject *object)
  *
  * Implements DBus method ListPendingMessages
  * on interface org.freedesktop.Telepathy.Channel.Type.Text
- * 
+ *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this
  *         function returns false.
@@ -135,7 +135,7 @@ gboolean gabble_im_channel_list_pending_messages (GabbleIMChannel *obj, gpointer
  *
  * Implements DBus method AcknowledgePendingMessage
  * on interface org.freedesktop.Telepathy.Channel.Type.Text
- * 
+ *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this
  *         function returns false.
@@ -153,7 +153,7 @@ gboolean gabble_im_channel_acknowledge_pending_message (GabbleIMChannel *obj, gu
  *
  * Implements DBus method Send
  * on interface org.freedesktop.Telepathy.Channel.Type.Text
- * 
+ *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this
  *         function returns false.
@@ -171,7 +171,7 @@ gboolean gabble_im_channel_send (GabbleIMChannel *obj, guint type, const gchar *
  *
  * Implements DBus method GetHandle
  * on interface org.freedesktop.Telepathy.Channel
- * 
+ *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this
  *         function returns false.
@@ -189,7 +189,7 @@ gboolean gabble_im_channel_get_handle (GabbleIMChannel *obj, guint* ret, guint* 
  *
  * Implements DBus method GetInterfaces
  * on interface org.freedesktop.Telepathy.Channel
- * 
+ *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this
  *         function returns false.
@@ -207,7 +207,7 @@ gboolean gabble_im_channel_get_interfaces (GabbleIMChannel *obj, gchar *** ret, 
  *
  * Implements DBus method GetChannelType
  * on interface org.freedesktop.Telepathy.Channel
- * 
+ *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this
  *         function returns false.
@@ -225,7 +225,7 @@ gboolean gabble_im_channel_get_channel_type (GabbleIMChannel *obj, gchar ** ret,
  *
  * Implements DBus method Close
  * on interface org.freedesktop.Telepathy.Channel
- * 
+ *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this
  *         function returns false.

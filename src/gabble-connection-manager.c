@@ -38,11 +38,18 @@ enum
 
 static guint signals[LAST_SIGNAL] = {0};
 
+/* private structure */
+struct _GabbleConnectionManagerPrivate
+{
+  gboolean dispose_has_run;
+  GHashTable *connections;
+};
 
 static void
 gabble_connection_manager_init (GabbleConnectionManager *obj)
 {
-  /* allocate class private data structure */
+  obj->priv = g_new0 (GabbleConnectionManagerPrivate, 1);
+  obj->priv->connections = g_hash_table_new (g_direct_hash, g_direct_equal);
 }
 
 static void gabble_connection_manager_dispose (GObject *object);
@@ -73,7 +80,10 @@ gabble_connection_manager_dispose (GObject *object)
 {
   GabbleConnectionManager *gabble_connection_manager = GABBLE_CONNECTION_MANAGER (object);
 
-  /* do your stuff here */
+  if (gabble_connection_manager->priv->dispose_has_run)
+    return;
+
+  gabble_connection_manager->priv->dispose_has_run = TRUE;
 
   if (G_OBJECT_CLASS (gabble_connection_manager_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_connection_manager_parent_class)->dispose (object);
@@ -84,7 +94,8 @@ gabble_connection_manager_finalize (GObject *object)
 {
   GabbleConnectionManager *gabble_connection_manager = GABBLE_CONNECTION_MANAGER (object);
 
-  /* free any data held directly by the object here */
+  g_hash_table_destroy (gabble_connection_manager->priv->connections);
+  g_free (gabble_connection_manager->priv);
 
   /* Chain up to the parent class */
   G_OBJECT_CLASS (gabble_connection_manager_parent_class)->finalize (object);
@@ -178,6 +189,10 @@ gboolean gabble_connection_manager_get_mandatory_parameters (GabbleConnectionMan
  */
 gboolean gabble_connection_manager_list_protocols (GabbleConnectionManager *obj, gchar *** ret, GError **error)
 {
+  static const char *protocols[] = {"jabber", "google-talk", NULL};
+
+  *ret = g_strdupv((gchar **)protocols);
+
   return TRUE;
 }
 

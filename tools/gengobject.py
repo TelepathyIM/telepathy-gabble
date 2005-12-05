@@ -115,7 +115,8 @@ def signal_to_gtype_list(signal):
 def print_license(stream, filename, description):
     stream.write(
 """/* 
- * Copyright (C) 2005 Collabora Ltd. and Nokia Corporation
+ * Copyright (C) 2005 Collabora Ltd.
+ * Copyright (C) 2005 Nokia Corporation
  *
  * %s- %s
  *
@@ -128,10 +129,11 @@ def print_license(stream, filename, description):
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * Lesser General Public License for more details.
+ *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the 
  * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
- * Boston, MA 02111-1307, USA. 
+ * Boston, MA 02111-1307, USA.
  */
 
 """ % (filename, description))

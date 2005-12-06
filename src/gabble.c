@@ -1,12 +1,14 @@
 #include <dbus/dbus-glib.h>
 
 #include "gabble-connection-manager.h"
+#include "telepathy-errors.h"
+#include "telepathy-errors-enumtypes.h"
 
 int main(int argc, char **argv) {
   DBusGConnection *bus;
   DBusGProxy *bus_proxy;
   GError *error = NULL;
-  JabberConnectionManager *manager;
+  GabbleConnectionManager *manager;
   GMainLoop *mainloop;
   guint request_name_result;
 
@@ -50,7 +52,9 @@ int main(int argc, char **argv) {
 
   dbus_g_connection_register_g_object (bus, "/org/freedesktop/Telepathy/ConnectionManager/gabble", G_OBJECT (manager));
 
-  g_debus("started");
+  g_debug("started");
+
+  g_main_loop_run (mainloop);
 
   return 0;
 }

@@ -38,18 +38,11 @@ enum
 
 static guint signals[LAST_SIGNAL] = {0};
 
-/* private structure */
-struct _GabbleConnectionManagerPrivate
-{
-  gboolean dispose_has_run;
-  GHashTable *connections;
-};
 
 static void
 gabble_connection_manager_init (GabbleConnectionManager *obj)
 {
-  obj->priv = g_new0 (GabbleConnectionManagerPrivate, 1);
-  obj->priv->connections = g_hash_table_new (g_direct_hash, g_direct_equal);
+  /* allocate class private data structure */
 }
 
 static void gabble_connection_manager_dispose (GObject *object);
@@ -80,10 +73,7 @@ gabble_connection_manager_dispose (GObject *object)
 {
   GabbleConnectionManager *gabble_connection_manager = GABBLE_CONNECTION_MANAGER (object);
 
-  if (gabble_connection_manager->priv->dispose_has_run)
-    return;
-
-  gabble_connection_manager->priv->dispose_has_run = TRUE;
+  /* do your stuff here */
 
   if (G_OBJECT_CLASS (gabble_connection_manager_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_connection_manager_parent_class)->dispose (object);
@@ -94,8 +84,7 @@ gabble_connection_manager_finalize (GObject *object)
 {
   GabbleConnectionManager *gabble_connection_manager = GABBLE_CONNECTION_MANAGER (object);
 
-  g_hash_table_destroy (gabble_connection_manager->priv->connections);
-  g_free (gabble_connection_manager->priv);
+  /* free any data held directly by the object here */
 
   /* Chain up to the parent class */
   G_OBJECT_CLASS (gabble_connection_manager_parent_class)->finalize (object);

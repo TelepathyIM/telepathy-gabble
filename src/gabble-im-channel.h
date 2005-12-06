@@ -35,6 +35,7 @@ struct _GabbleIMChannelClass {
 
 struct _GabbleIMChannel {
     GObject parent;
+    GabbleIMChannelPrivate *priv;
 };
 
 GType gabble_im_channel_get_type(void);

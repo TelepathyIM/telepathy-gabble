@@ -40,11 +40,16 @@ enum
 
 static guint signals[LAST_SIGNAL] = {0};
 
+/* private structure */
+struct _GabbleIMChannelPrivate
+{
+  gboolean dispose_has_run;
+};
 
 static void
 gabble_im_channel_init (GabbleIMChannel *obj)
 {
-  /* allocate class private data structure */
+  obj->priv = g_new0 (GabbleIMChannelPrivate, 1);
 }
 
 static void gabble_im_channel_dispose (GObject *object);
@@ -93,6 +98,11 @@ gabble_im_channel_dispose (GObject *object)
 {
   GabbleIMChannel *gabble_im_channel = GABBLE_IM_CHANNEL (object);
 
+  if (gabble_im_channel->priv->dispose_has_run)
+    return;
+
+  gabble_im_channel->priv->dispose_has_run = TRUE;
+
   /* do your stuff here */
 
   if (G_OBJECT_CLASS (gabble_im_channel_parent_class)->dispose)
@@ -105,6 +115,8 @@ gabble_im_channel_finalize (GObject *object)
   GabbleIMChannel *gabble_im_channel = GABBLE_IM_CHANNEL (object);
 
   /* free any data held directly by the object here */
+
+  g_free (gabble_im_channel->priv);
 
   /* Chain up to the parent class */
   G_OBJECT_CLASS (gabble_im_channel_parent_class)->finalize (object);

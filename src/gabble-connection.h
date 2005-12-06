@@ -35,6 +35,7 @@ struct _GabbleConnectionClass {
 
 struct _GabbleConnection {
     GObject parent;
+    GabbleConnectionPrivate *priv;
 };
 
 GType gabble_connection_get_type(void);

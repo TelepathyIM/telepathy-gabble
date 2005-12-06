@@ -39,11 +39,16 @@ enum
 
 static guint signals[LAST_SIGNAL] = {0};
 
+/* private structure */
+struct _GabbleConnectionPrivate
+{
+  gboolean dispose_has_run;
+};
 
 static void
 gabble_connection_init (GabbleConnection *obj)
 {
-  /* allocate class private data structure */
+  obj->priv = g_new0 (GabbleConnectionPrivate, 1);
 }
 
 static void gabble_connection_dispose (GObject *object);
@@ -83,6 +88,11 @@ gabble_connection_dispose (GObject *object)
 {
   GabbleConnection *gabble_connection = GABBLE_CONNECTION (object);
 
+  if (gabble_connection->priv->dispose_has_run)
+    return;
+
+  gabble_connection->priv->dispose_has_run = TRUE;
+
   /* do your stuff here */
 
   if (G_OBJECT_CLASS (gabble_connection_parent_class)->dispose)
@@ -95,6 +105,8 @@ gabble_connection_finalize (GObject *object)
   GabbleConnection *gabble_connection = GABBLE_CONNECTION (object);
 
   /* free any data held directly by the object here */
+
+  g_free (gabble_connection->priv);
 
   /* Chain up to the parent class */
   G_OBJECT_CLASS (gabble_connection_parent_class)->finalize (object);

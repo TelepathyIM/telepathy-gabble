@@ -157,6 +157,7 @@ def print_simple_class_defn(stream, prefix, classname):
 
     stream.write ("struct _%s {\n" % classname)
     stream.write ("    GObject parent;\n")
+    stream.write ("    %sPrivate *priv;\n" % classname)
     stream.write ("};\n")
 
     stream.write(
@@ -241,12 +242,19 @@ if __name__ == '__main__':
     body.write("    LAST_SIGNAL\n};\n\n")
     body.write("static guint signals[LAST_SIGNAL] = {0};\n\n")
 
+    body.write("""/* private structure */
+struct _%(classname)sPrivate
+{
+  gboolean dispose_has_run;
+};
+""" % {'classname':classname})
+
     body.write(
 """
 static void
 %(prefix)s_init (%(classname)s *obj)
 {
-  /* allocate class private data structure */
+  obj->priv = g_new0 (%(classname)sPrivate, 1);
 }
 
 static void %(prefix)s_dispose (GObject *object);
@@ -300,6 +308,11 @@ void
 {
   %(classname)s *%(prefix)s = %(uprefix)s (object);
 
+  if (%(prefix)s->priv->dispose_has_run)
+    return;
+
+  %(prefix)s->priv->dispose_has_run = TRUE;
+
   /* do your stuff here */
 
   if (G_OBJECT_CLASS (%(prefix)s_parent_class)->dispose)
@@ -312,6 +325,8 @@ void
   %(classname)s *%(prefix)s = %(uprefix)s (object);
 
   /* free any data held directly by the object here */
+
+  g_free (%(prefix)s->priv);
 
   /* Chain up to the parent class */
   G_OBJECT_CLASS (%(prefix)s_parent_class)->finalize (object);

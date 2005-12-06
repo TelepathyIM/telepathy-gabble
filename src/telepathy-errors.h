@@ -49,6 +49,8 @@ typedef enum
                      */
 } TelepathyErrors; 
 
+GQuark telepathy_errors_quark (void);
+#define TELEPATHY_ERRORS telepathy_errors_quark ()
 
 G_END_DECLS
 

@@ -19,8 +19,8 @@
  */
 
 #include <dbus/dbus-glib.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <loudmouth/loudmouth.h>
+#include <string.h>
 
 #include "gabble-connection.h"
 #include "gabble-connection-signals-marshal.h"
@@ -42,7 +42,9 @@ static guint signals[LAST_SIGNAL] = {0};
 /* properties */
 enum
 {
-    PROP_ACCOUNT = 1,
+    PROP_SERVER = 1,
+    PROP_PORT,
+    PROP_ACCOUNT,
     PROP_PASSWORD,
     LAST_PROPERTY
 };
@@ -52,6 +54,12 @@ typedef struct _GabbleConnectionPrivate GabbleConnectionPrivate;
 
 struct _GabbleConnectionPrivate
 {
+  LmConnection *conn;
+  char *server;
+  guint port;
+  char *account;
+  char *password;
+  char *resource;
   gboolean dispose_has_run;
 };
 
@@ -60,21 +68,33 @@ struct _GabbleConnectionPrivate
 static void
 gabble_connection_init (GabbleConnection *obj)
 {
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+  /* GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (obj); */
 
   /* allocate any data required by the object here */
 }
 
-static GObject*
+/* static GObject*
 gabble_connection_constructor (GType                  type,
                                guint                  n_construct_properties,
                                GObjectConstructParam *construct_properties)
 {
   GObject *object;
+  GabbleConnection *self;
+  GabbleConnectionPrivate *priv;
+  char *server;
 
-  {
+  object = G_OBJECT_CLASS (gabble_connection_parent_class)->constructor (type, n_construct_properties, construct_properties);
+  self = GABBLE_CONNECTION (object);
+  priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
-}
+  server = priv->account;
+  while (*server && *server != '@')
+    server++;
+  server++;
+  g_assert (*server != '\0');
+
+  priv->conn = lm_connection_new (server);
+} */
 
 static void
 gabble_connection_get_property (GObject    *object,
@@ -83,13 +103,20 @@ gabble_connection_get_property (GObject    *object,
                                 GParamSpec *pspec)
 {
   GabbleConnection *self = (GabbleConnection *) object;
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
   switch (property_id) {
+    case PROP_SERVER:
+      g_value_set_string (value, priv->server);
+      break;
+    case PROP_PORT:
+      g_value_set_uint (value, priv->port);
+      break;
     case PROP_ACCOUNT:
-      g_value_set_string (value, self->priv->account);
+      g_value_set_string (value, priv->account);
       break;
     case PROP_PASSWORD:
-      g_value_set_string (value, self->priv->password);
+      g_value_set_string (value, priv->password);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -103,20 +130,64 @@ gabble_connection_set_property (GObject      *object,
                                 const GValue *value,
                                 GParamSpec   *pspec)
 {
-  GabbleConnection *self = (GabbleConnection *) self;
+  GabbleConnection *self = (GabbleConnection *) object;
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
   switch (property_id) {
-    case PROP_ACCOUNT:
-      g_assert (g_value_get_string (value) != "");
-      g_assert (self->priv->account == NULL);
-      self->priv->account = g_strdup (g_value_get_string (value));
+    case PROP_SERVER:
+      /* an explicitly set server should override one from the account */
+      if (priv->server)
+        g_free (priv->server);
+
+      priv->server = g_value_dup_string (value);
       break;
+    case PROP_PORT:
+      g_assert (g_value_get_uint (value) != 0);
+      g_assert (priv->port == 0);
+      priv->port = g_value_get_uint (value);
+      break;
+    case PROP_ACCOUNT:
+      {
+        char *resource;
+
+        g_assert (priv->account == NULL);
+        g_assert (priv->resource == NULL);
+
+        priv->account = g_value_dup_string (value);
+
+        /* if the account contains a /, the resource follows it, but
+         * we null the / because we want the account without it */
+        resource = strchr(priv->account, '/');
+        if (resource)
+          {
+            *resource = '\0';
+            resource++;
+            priv->resource = g_strdup (resource);
+          }
+        else
+          priv->resource = g_strdup ("Telepathy");
+
+        /* if the account contains an @ the server follows it,
+         * unless server has already been set directly */
+        if (priv->server == NULL)
+          {
+            char *server = strchr(priv->account, '@');
+
+            if (server)
+              {
+                server++;
+                priv->server = g_strdup (server);
+              }
+          }
+
+        break;
+      }
     case PROP_PASSWORD:
-      g_assert (self->priv->password == NULL);
-      self->priv->password = g_strdup (g_value_get_string (value));
+      g_assert (priv->password == NULL);
+      priv->password = g_value_dup_string (value);
       break;
     default:
-      G_OBJECT_WARN_INVALID_PROPERTY_ID(object,property_id,pspec);
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
   }
 }
@@ -128,8 +199,10 @@ static void
 gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_connection_class);
+  GParamSpec *param_spec;
 
-  object_class->constructor = gabble_connection_constructor;
+  /* not required currently:
+  object_class->constructor = gabble_connection_constructor; */
 
   object_class->get_property = gabble_connection_get_property;
   object_class->set_property = gabble_connection_set_property;
@@ -138,6 +211,42 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
 
   object_class->dispose = gabble_connection_dispose;
   object_class->finalize = gabble_connection_finalize;
+
+  param_spec = g_param_spec_string ("server", "Jabber server name",
+                                    "The server used when establishing a connection, if one is not specified as part of the account.",
+                                    "",
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_CONSTRUCT_ONLY |
+                                    G_PARAM_STATIC_NAME |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_SERVER, param_spec);
+
+  param_spec = g_param_spec_uint ("port", "Jabber server port",
+                                  "The port used when establishing a connection.",
+                                  0, G_MAXUINT16, 5222,
+                                  G_PARAM_READWRITE |
+                                  G_PARAM_CONSTRUCT_ONLY |
+                                  G_PARAM_STATIC_NAME |
+                                  G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_PORT, param_spec);
+
+  param_spec = g_param_spec_string ("account", "Jabber account",
+                                    "The JID used when establishing a connection.",
+                                    "",
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_CONSTRUCT_ONLY |
+                                    G_PARAM_STATIC_NAME |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_ACCOUNT, param_spec);
+
+  param_spec = g_param_spec_string ("password", "Jabber password",
+                                    "The password used when establishing a connection.",
+                                    "",
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_CONSTRUCT_ONLY |
+                                    G_PARAM_STATIC_NAME |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_PASSWORD, param_spec);
 
   signals[NEW_CHANNEL] =
     g_signal_new ("new-channel",
@@ -180,8 +289,8 @@ gabble_connection_dispose (GObject *object)
 void
 gabble_connection_finalize (GObject *object)
 {
-  GabbleConnection *self = GABBLE_CONNECTION (object);
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
+  /* GabbleConnection *self = GABBLE_CONNECTION (object);
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self); */
 
   /* free any data held directly by the object here */
 

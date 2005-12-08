@@ -240,7 +240,7 @@ if __name__ == '__main__':
     body.write("    LAST_SIGNAL\n};\n\n")
     body.write("static guint signals[LAST_SIGNAL] = {0};\n\n")
 
-    gtypename = '_TYPE_'.join(prefix.upper().rsplit('_',1))
+    gtypename = '_TYPE_'.join(prefix.upper().split('_',1))
 
     body.write("""/* private structure */
 typedef struct _%(classname)sPrivate %(classname)sPrivate;
@@ -340,7 +340,7 @@ void
 }
 
 
-""" % {'classname':classname,'prefix':prefix, 'uprefix':prefix.upper(), 'gtypename':gtypename})
+""" % {'classname':classname,'prefix':prefix, 'uprefix':prefix.upper()})
 
     for method in methods:
         dbus_method_name = method.getAttributeNode("name").nodeValue

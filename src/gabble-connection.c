@@ -61,6 +61,8 @@ static void
 gabble_connection_init (GabbleConnection *obj)
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  /* allocate any data required by the object here */
 }
 
 static GObject*
@@ -169,7 +171,7 @@ gabble_connection_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  /* do your stuff here */
+  /* release any references held by the object here */
 
   if (G_OBJECT_CLASS (gabble_connection_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_connection_parent_class)->dispose (object);
@@ -183,7 +185,6 @@ gabble_connection_finalize (GObject *object)
 
   /* free any data held directly by the object here */
 
-  /* Chain up to the parent class */
   G_OBJECT_CLASS (gabble_connection_parent_class)->finalize (object);
 }
 

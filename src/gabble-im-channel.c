@@ -48,12 +48,14 @@ struct _GabbleIMChannelPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_IM_CHANNEL_GET_PRIVATE(o)     (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_IM_TYPE_CHANNEL, GabbleIMChannelPrivate))
+#define GABBLE_IM_CHANNEL_GET_PRIVATE(o)     (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_IM_CHANNEL, GabbleIMChannelPrivate))
 
 static void
 gabble_im_channel_init (GabbleIMChannel *obj)
 {
   GabbleIMChannelPrivate *priv = GABBLE_IM_CHANNEL_GET_PRIVATE (obj);
+
+  /* allocate any data required by the object here */
 }
 
 static void gabble_im_channel_dispose (GObject *object);
@@ -110,7 +112,7 @@ gabble_im_channel_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  /* do your stuff here */
+  /* release any references held by the object here */
 
   if (G_OBJECT_CLASS (gabble_im_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_im_channel_parent_class)->dispose (object);
@@ -124,7 +126,6 @@ gabble_im_channel_finalize (GObject *object)
 
   /* free any data held directly by the object here */
 
-  /* Chain up to the parent class */
   G_OBJECT_CLASS (gabble_im_channel_parent_class)->finalize (object);
 }
 

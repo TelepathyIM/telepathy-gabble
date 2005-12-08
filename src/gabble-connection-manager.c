@@ -38,13 +38,23 @@ enum
 
 static guint signals[LAST_SIGNAL] = {0};
 
+/* private structure */
+typedef struct _GabbleConnectionManagerPrivate GabbleConnectionManagerPrivate;
+
+struct _GabbleConnectionManagerPrivate
+{
+  gboolean dispose_has_run;
+  GHashTable *connections;
+};
 
 #define GABBLE_CONNECTION_MANAGER_GET_PRIVATE(o)     (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_CONNECTION_TYPE_MANAGER, GabbleConnectionManagerPrivate))
 
 static void
 gabble_connection_manager_init (GabbleConnectionManager *obj)
 {
-  /* allocate class private data structure */
+  GabbleConnectionManagerPrivate *priv = GABBLE_CONNECTION_MANAGER_GET_PRIVATE (obj);
+
+  priv->connections = g_hash_table_new (g_direct_hash, g_direct_equal);
 }
 
 static void gabble_connection_manager_dispose (GObject *object);
@@ -77,6 +87,11 @@ gabble_connection_manager_dispose (GObject *object)
 {
   GabbleConnectionManager *self = GABBLE_CONNECTION_MANAGER (object);
   GabbleConnectionManagerPrivate *priv = GABBLE_CONNECTION_MANAGER_GET_PRIVATE (self);
+
+  if (priv->dispose_has_run)
+    return;
+
+  priv->dispose_has_run = TRUE;
 
   /* do your stuff here */
 

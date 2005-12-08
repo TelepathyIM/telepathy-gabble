@@ -52,7 +52,9 @@ struct _GabbleConnectionManagerPrivate
 static void
 gabble_connection_manager_init (GabbleConnectionManager *obj)
 {
-  /* allocate class private data structure */
+  GabbleConnectionManagerPrivate *priv = GABBLE_CONNECTION_MANAGER_GET_PRIVATE (obj);
+
+  priv->connections = g_hash_table_new (g_direct_hash, g_direct_equal);
 }
 
 static void gabble_connection_manager_dispose (GObject *object);
@@ -91,7 +93,7 @@ gabble_connection_manager_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  /* do your stuff here */
+  /* release any references held by the object here */
 
   if (G_OBJECT_CLASS (gabble_connection_manager_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_connection_manager_parent_class)->dispose (object);
@@ -103,7 +105,7 @@ gabble_connection_manager_finalize (GObject *object)
   GabbleConnectionManager *self = GABBLE_CONNECTION_MANAGER (object);
   GabbleConnectionManagerPrivate *priv = GABBLE_CONNECTION_MANAGER_GET_PRIVATE (self);
 
-  /* free any data held directly by the object here */
+  g_hash_table_destroy(priv->connections);
 
   G_OBJECT_CLASS (gabble_connection_manager_parent_class)->finalize (object);
 }

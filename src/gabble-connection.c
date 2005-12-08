@@ -27,6 +27,8 @@
 
 #include "gabble-connection-glue.h"
 
+#include "telepathy-errors.h"
+
 G_DEFINE_TYPE(GabbleConnection, gabble_connection, G_TYPE_OBJECT)
 
 /* signal enum */
@@ -297,7 +299,129 @@ gabble_connection_finalize (GObject *object)
   G_OBJECT_CLASS (gabble_connection_parent_class)->finalize (object);
 }
 
+static void connection_open_cb(LmConnection*, gboolean, gpointer);
+static void connection_auth_cb(LmConnection*, gboolean, gpointer);
 
+/**
+ * _gabble_connection_connect
+ *
+ * Use the stored account, server & authentication details to commence
+ * the stages for connecting to the server and authenticating. Will
+ * re-use an existing LmConnection if it is present, or create it
+ * if necessary.
+ *
+ * Stage 1 is _gabble_connection_connect calling lm_connection_open
+ * Stage 2 is connection_open_cb calling lm_connection_auth
+ * Stage 3 is connection_auth_cb advertising initial presence and
+ *  setting the CONNECTED state
+ */
+gboolean
+_gabble_connection_connect (GabbleConnection *conn,
+                            GError          **error)
+{
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  GError *lmerror = NULL;
+
+  if (priv->conn == NULL)
+    {
+      priv->conn = lm_connection_new (priv->server);
+    }
+  else
+    {
+      g_assert (lm_connection_is_open (priv->conn) == FALSE);
+    }
+
+  if (!lm_connection_open (priv->conn, connection_open_cb,
+                           conn, NULL, &lmerror))
+    {
+      g_debug ("lm_connection_open failed: %s", lmerror->message);
+
+      *error = g_error_new(TELEPATHY_ERRORS, NetworkError,
+                           "lm_connection_open_failed: %s", lmerror->message);
+
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
+/**
+ * connection_open_cb
+ *
+ * Stage 2 of connecting, this function is called by loudmouth after the
+ * result of the non-blocking lm_connection_open call is known. It makes
+ * a request to authenticate the user with the server.
+ */
+static void
+connection_open_cb (LmConnection *lmconn,
+                    gboolean      success,
+                    gpointer      data)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (data);
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  GError *error = NULL;
+
+  g_assert(lmconn == priv->conn);
+
+  if (!success)
+    {
+      g_debug ("connection_open_cb failed");
+
+      /* TODO: emit signal, change status */
+
+      return;
+    }
+
+  if (!lm_connection_authenticate (lmconn, priv->account, priv->password,
+                                   priv->resource, connection_auth_cb,
+                                   conn, NULL, &error))
+    {
+      g_debug ("lm_connection_authenticate failed: %s", error->message);
+
+      /* TODO: disconnect, emit signal, change status */
+    }
+}
+
+/**
+ * connection_auth_cb
+ *
+ * Stage 3 of connecting, this function is called by loudmouth after the
+ * result of the non-blocking lm_connection_auth call is known. It sends
+ * the user's initial presence to the server, marking them as available.
+ */
+static void
+connection_auth_cb (LmConnection *lmconn,
+                    gboolean      success,
+                    gpointer      data)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (data);
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  LmMessage *message;
+  GError *error = NULL;
+
+  g_assert(lmconn == priv->conn);
+
+  if (!success)
+    {
+      g_debug ("connection_auth_cb failed");
+
+      /* TODO: disconnect, emit signal, change status */
+
+      return;
+    }
+
+  message = lm_message_new (NULL, LM_MESSAGE_TYPE_PRESENCE);
+
+  if (!lm_connection_send (lmconn, message, &error))
+    {
+      g_debug ("lm_connection_send of initial presence failed: %s",
+               error->message);
+
+      /* TODO: disconnect, emit signal, change status */
+    }
+
+  lm_message_unref (message);
+}
 
 /**
  * gabble_connection_disconnect

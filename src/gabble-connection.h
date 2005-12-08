@@ -52,6 +52,7 @@ GType gabble_connection_get_type(void);
 #define GABBLE_CONNECTION_GET_CLASS(obj) \
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_CONNECTION, GabbleConnectionClass))
 
+gboolean _gabble_connection_connect (GabbleConnection *conn, GError **error);
 
 gboolean gabble_connection_disconnect (GabbleConnection *obj, GError **error);
 gboolean gabble_connection_inspect_handle (GabbleConnection *obj, guint handle_type, guint handle, gchar ** ret, GError **error);

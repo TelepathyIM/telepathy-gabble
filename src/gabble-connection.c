@@ -40,15 +40,19 @@ enum
 static guint signals[LAST_SIGNAL] = {0};
 
 /* private structure */
+typedef struct _GabbleConnectionPrivate GabbleConnectionPrivate;
+
 struct _GabbleConnectionPrivate
 {
   gboolean dispose_has_run;
 };
 
+#define GABBLE_CONNECTION_GET_PRIVATE(o)     (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_CONNECTION, GabbleConnectionPrivate))
+
 static void
 gabble_connection_init (GabbleConnection *obj)
 {
-  obj->priv = g_new0 (GabbleConnectionPrivate, 1);
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
 }
 
 static void gabble_connection_dispose (GObject *object);
@@ -58,6 +62,8 @@ static void
 gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_connection_class);
+
+  g_type_class_add_private (gabble_connection_class, sizeof (GabbleConnectionPrivate));
 
   object_class->dispose = gabble_connection_dispose;
   object_class->finalize = gabble_connection_finalize;
@@ -86,12 +92,13 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
 void
 gabble_connection_dispose (GObject *object)
 {
-  GabbleConnection *gabble_connection = GABBLE_CONNECTION (object);
+  GabbleConnection *self = GABBLE_CONNECTION (object);
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
-  if (gabble_connection->priv->dispose_has_run)
+  if (priv->dispose_has_run)
     return;
 
-  gabble_connection->priv->dispose_has_run = TRUE;
+  priv->dispose_has_run = TRUE;
 
   /* do your stuff here */
 
@@ -102,11 +109,10 @@ gabble_connection_dispose (GObject *object)
 void
 gabble_connection_finalize (GObject *object)
 {
-  GabbleConnection *gabble_connection = GABBLE_CONNECTION (object);
+  GabbleConnection *self = GABBLE_CONNECTION (object);
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
   /* free any data held directly by the object here */
-
-  g_free (gabble_connection->priv);
 
   /* Chain up to the parent class */
   G_OBJECT_CLASS (gabble_connection_parent_class)->finalize (object);

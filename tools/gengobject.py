@@ -149,15 +149,13 @@ def print_header_end(stream, prefix):
 
 def print_simple_class_defn(stream, prefix, classname):
     stream.write ("typedef struct _%s %s;\n" % (classname,classname))
-    stream.write ("typedef struct _%sClass %sClass;\n" % (classname,classname))
-    stream.write ("typedef struct _%sPrivate %sPrivate;\n\n" % (classname,classname))
+    stream.write ("typedef struct _%sClass %sClass;\n\n" % (classname,classname))
     stream.write ("struct _%sClass {\n" % classname)
     stream.write ("    GObjectClass parent_class;\n")
     stream.write ("};\n\n")
 
     stream.write ("struct _%s {\n" % classname)
     stream.write ("    GObject parent;\n")
-    stream.write ("    %sPrivate *priv;\n" % classname)
     stream.write ("};\n")
 
     stream.write(
@@ -242,19 +240,28 @@ if __name__ == '__main__':
     body.write("    LAST_SIGNAL\n};\n\n")
     body.write("static guint signals[LAST_SIGNAL] = {0};\n\n")
 
+    gtypename = '_TYPE_'.join(prefix.upper().rsplit('_',1))
+
     body.write("""/* private structure */
+typedef struct _%(classname)sPrivate %(classname)sPrivate;
+
 struct _%(classname)sPrivate
 {
   gboolean dispose_has_run;
 };
-""" % {'classname':classname})
+
+#define %(uprefix)s_GET_PRIVATE(o) \
+    (G_TYPE_INSTANCE_GET_PRIVATE ((o), %(gtypename)s, %(classname)sPrivate))
+""" % {'classname':classname, 'uprefix':prefix.upper(), 'gtypename':gtypename})
 
     body.write(
 """
 static void
 %(prefix)s_init (%(classname)s *obj)
 {
-  obj->priv = g_new0 (%(classname)sPrivate, 1);
+  %(classname)sPrivate *priv = %(uprefix)s_GET_PRIVATE (obj);
+
+  /* allocate any data required by the object here */
 }
 
 static void %(prefix)s_dispose (GObject *object);
@@ -265,9 +272,11 @@ static void
 {
   GObjectClass *object_class = G_OBJECT_CLASS (%(prefix)s_class);
 
+  g_type_class_add_private (%(prefix)s_class, sizeof (%(classname)sPrivate));
+
   object_class->dispose = %(prefix)s_dispose;
   object_class->finalize = %(prefix)s_finalize;
-""" % {"prefix":prefix, "classname":classname})
+""" % {"prefix":prefix, "classname":classname, 'uprefix':prefix.upper()})
 
     for signal in signals:
         mtype = signal_to_marshal_type(signal)
@@ -297,7 +306,6 @@ static void
             prefix,
             signal_to_marshal_name(signal,prefix), ', '.join([str(len(gtypelist))] + gtypelist)))
 
-        gtypename = '_TYPE_'.join(prefix.upper().rsplit('_',1))
     body.write(
 """
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (%(prefix)s_class), &dbus_glib_%(prefix)s_object_info);
@@ -306,14 +314,15 @@ static void
 void
 %(prefix)s_dispose (GObject *object)
 {
-  %(classname)s *%(prefix)s = %(uprefix)s (object);
+  %(classname)s *self = %(uprefix)s (object);
+  %(classname)sPrivate *priv = %(uprefix)s_GET_PRIVATE (self);
 
-  if (%(prefix)s->priv->dispose_has_run)
+  if (priv->dispose_has_run)
     return;
 
-  %(prefix)s->priv->dispose_has_run = TRUE;
+  priv->dispose_has_run = TRUE;
 
-  /* do your stuff here */
+  /* release any references held by the object here */
 
   if (G_OBJECT_CLASS (%(prefix)s_parent_class)->dispose)
     G_OBJECT_CLASS (%(prefix)s_parent_class)->dispose (object);
@@ -322,13 +331,11 @@ void
 void
 %(prefix)s_finalize (GObject *object)
 {
-  %(classname)s *%(prefix)s = %(uprefix)s (object);
+  %(classname)s *self = %(uprefix)s (object);
+  %(classname)sPrivate *priv = %(uprefix)s_GET_PRIVATE (self);
 
   /* free any data held directly by the object here */
 
-  g_free (%(prefix)s->priv);
-
-  /* Chain up to the parent class */
   G_OBJECT_CLASS (%(prefix)s_parent_class)->finalize (object);
 }
 

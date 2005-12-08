@@ -27,7 +27,6 @@ G_BEGIN_DECLS
 
 typedef struct _GabbleConnectionManager GabbleConnectionManager;
 typedef struct _GabbleConnectionManagerClass GabbleConnectionManagerClass;
-typedef struct _GabbleConnectionManagerPrivate GabbleConnectionManagerPrivate;
 
 struct _GabbleConnectionManagerClass {
     GObjectClass parent_class;
@@ -35,7 +34,6 @@ struct _GabbleConnectionManagerClass {
 
 struct _GabbleConnectionManager {
     GObject parent;
-    GabbleConnectionManagerPrivate *priv;
 };
 
 GType gabble_connection_manager_get_type(void);

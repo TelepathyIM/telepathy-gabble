@@ -38,18 +38,13 @@ enum
 
 static guint signals[LAST_SIGNAL] = {0};
 
-/* private structure */
-struct _GabbleConnectionManagerPrivate
-{
-  gboolean dispose_has_run;
-  GHashTable *connections;
-};
+
+#define GABBLE_CONNECTION_MANAGER_GET_PRIVATE(o)     (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_CONNECTION_TYPE_MANAGER, GabbleConnectionManagerPrivate))
 
 static void
 gabble_connection_manager_init (GabbleConnectionManager *obj)
 {
-  obj->priv = g_new0 (GabbleConnectionManagerPrivate, 1);
-  obj->priv->connections = g_hash_table_new (g_direct_hash, g_direct_equal);
+  /* allocate class private data structure */
 }
 
 static void gabble_connection_manager_dispose (GObject *object);
@@ -59,6 +54,8 @@ static void
 gabble_connection_manager_class_init (GabbleConnectionManagerClass *gabble_connection_manager_class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_connection_manager_class);
+
+  g_type_class_add_private (gabble_connection_manager_class, sizeof (GabbleConnectionManagerPrivate));
 
   object_class->dispose = gabble_connection_manager_dispose;
   object_class->finalize = gabble_connection_manager_finalize;
@@ -78,12 +75,8 @@ gabble_connection_manager_class_init (GabbleConnectionManagerClass *gabble_conne
 void
 gabble_connection_manager_dispose (GObject *object)
 {
-  GabbleConnectionManager *gabble_connection_manager = GABBLE_CONNECTION_MANAGER (object);
-
-  if (gabble_connection_manager->priv->dispose_has_run)
-    return;
-
-  gabble_connection_manager->priv->dispose_has_run = TRUE;
+  GabbleConnectionManager *self = GABBLE_CONNECTION_MANAGER (object);
+  GabbleConnectionManagerPrivate *priv = GABBLE_CONNECTION_MANAGER_GET_PRIVATE (self);
 
   /* do your stuff here */
 
@@ -94,10 +87,10 @@ gabble_connection_manager_dispose (GObject *object)
 void
 gabble_connection_manager_finalize (GObject *object)
 {
-  GabbleConnectionManager *gabble_connection_manager = GABBLE_CONNECTION_MANAGER (object);
+  GabbleConnectionManager *self = GABBLE_CONNECTION_MANAGER (object);
+  GabbleConnectionManagerPrivate *priv = GABBLE_CONNECTION_MANAGER_GET_PRIVATE (self);
 
-  g_hash_table_destroy (gabble_connection_manager->priv->connections);
-  g_free (gabble_connection_manager->priv);
+  /* free any data held directly by the object here */
 
   /* Chain up to the parent class */
   G_OBJECT_CLASS (gabble_connection_manager_parent_class)->finalize (object);

@@ -53,7 +53,7 @@ struct _GabbleIMChannelPrivate
 static void
 gabble_im_channel_init (GabbleIMChannel *obj)
 {
-  GabbleIMChannelPrivate *priv = GABBLE_IM_CHANNEL_GET_PRIVATE (obj);
+  /* GabbleIMChannelPrivate *priv = GABBLE_IM_CHANNEL_GET_PRIVATE (obj); */
 
   /* allocate any data required by the object here */
 }
@@ -121,8 +121,8 @@ gabble_im_channel_dispose (GObject *object)
 void
 gabble_im_channel_finalize (GObject *object)
 {
-  GabbleIMChannel *self = GABBLE_IM_CHANNEL (object);
-  GabbleIMChannelPrivate *priv = GABBLE_IM_CHANNEL_GET_PRIVATE (self);
+  /* GabbleIMChannel *self = GABBLE_IM_CHANNEL (object);
+  GabbleIMChannelPrivate *priv = GABBLE_IM_CHANNEL_GET_PRIVATE (self); */
 
   /* free any data held directly by the object here */
 

@@ -27,6 +27,8 @@
 
 #include "gabble-connection-manager-glue.h"
 
+#include "gabble-connection.h"
+
 G_DEFINE_TYPE(GabbleConnectionManager, gabble_connection_manager, G_TYPE_OBJECT)
 
 /* signal enum */
@@ -126,6 +128,23 @@ gabble_connection_manager_finalize (GObject *object)
  */
 gboolean gabble_connection_manager_connect (GabbleConnectionManager *obj, const gchar * proto, const GHashTable * parameters, gchar ** ret, gpointer* ret1, GError **error)
 {
+  GabbleConnection *conn;
+  /* assert proto */
+
+  conn = g_object_new(GABBLE_TYPE_CONNECTION, "account", "test1@localhost", "password", "test1", NULL);
+  if (!_gabble_connection_connect (conn, error))
+    {
+      g_debug("_gabble_connection_connect failed: %s", (*error)->message);
+
+      return FALSE;
+    }
+
+  while (1)
+    g_main_context_iteration (g_main_context_default (), TRUE);
+
+  *ret = g_strdup ("service name");
+  *ret1 = conn;
+
   return TRUE;
 }
 

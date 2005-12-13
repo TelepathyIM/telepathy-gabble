@@ -22,6 +22,8 @@ int main(int argc, char **argv) {
     g_log_set_always_fatal (fatal_mask);
   }
 
+  g_set_prgname("telepathy-gabble");
+
   mainloop = g_main_loop_new (NULL, FALSE);
 
   dbus_g_error_domain_register (TELEPATHY_ERRORS, NULL, TELEPATHY_TYPE_ERRORS);

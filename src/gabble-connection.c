@@ -138,6 +138,9 @@ gabble_connection_set_property (GObject      *object,
   switch (property_id) {
     case PROP_SERVER:
       /* an explicitly set server should override one from the account */
+      if (g_value_get_string (value) == NULL);
+        break;
+
       if (priv->server)
         g_free (priv->server);
 
@@ -177,6 +180,7 @@ gabble_connection_set_property (GObject      *object,
 
             if (server)
               {
+                *server = '\0';
                 server++;
                 priv->server = g_strdup (server);
               }
@@ -216,7 +220,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
 
   param_spec = g_param_spec_string ("server", "Jabber server name",
                                     "The server used when establishing a connection, if one is not specified as part of the account.",
-                                    "",
+                                    NULL,
                                     G_PARAM_READWRITE |
                                     G_PARAM_CONSTRUCT_ONLY |
                                     G_PARAM_STATIC_NAME |
@@ -234,7 +238,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
 
   param_spec = g_param_spec_string ("account", "Jabber account",
                                     "The JID used when establishing a connection.",
-                                    "",
+                                    NULL,
                                     G_PARAM_READWRITE |
                                     G_PARAM_CONSTRUCT_ONLY |
                                     G_PARAM_STATIC_NAME |
@@ -243,7 +247,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
 
   param_spec = g_param_spec_string ("password", "Jabber password",
                                     "The password used when establishing a connection.",
-                                    "",
+                                    NULL,
                                     G_PARAM_READWRITE |
                                     G_PARAM_CONSTRUCT_ONLY |
                                     G_PARAM_STATIC_NAME |
@@ -322,6 +326,11 @@ _gabble_connection_connect (GabbleConnection *conn,
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   GError *lmerror = NULL;
 
+  /* TODO: GErrors? */
+  g_assert (priv->server != NULL);
+  g_assert (priv->account != NULL);
+  g_assert (priv->password != NULL);
+
   if (priv->conn == NULL)
     {
       priv->conn = lm_connection_new (priv->server);
@@ -361,7 +370,8 @@ connection_open_cb (LmConnection *lmconn,
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   GError *error = NULL;
 
-  g_assert(lmconn == priv->conn);
+  g_assert (priv);
+  g_assert (lmconn == priv->conn);
 
   if (!success)
     {
@@ -371,6 +381,9 @@ connection_open_cb (LmConnection *lmconn,
 
       return;
     }
+
+  g_debug ("authenticating with account: %s, password: %s, resource: %s",
+           priv->account, priv->password, priv->resource);
 
   if (!lm_connection_authenticate (lmconn, priv->account, priv->password,
                                    priv->resource, connection_auth_cb,
@@ -399,7 +412,8 @@ connection_auth_cb (LmConnection *lmconn,
   LmMessage *message;
   GError *error = NULL;
 
-  g_assert(lmconn == priv->conn);
+  g_assert (priv);
+  g_assert (lmconn == priv->conn);
 
   if (!success)
     {

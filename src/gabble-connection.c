@@ -46,8 +46,10 @@ enum
 {
     PROP_SERVER = 1,
     PROP_PORT,
-    PROP_ACCOUNT,
+    PROP_OLD_SSL,
+    PROP_USERNAME,
     PROP_PASSWORD,
+    PROP_RESOURCE,
     LAST_PROPERTY
 };
 
@@ -57,11 +59,17 @@ typedef struct _GabbleConnectionPrivate GabbleConnectionPrivate;
 struct _GabbleConnectionPrivate
 {
   LmConnection *conn;
+
+  /* connection properties */
   char *server;
   guint port;
-  char *account;
+  gboolean old_ssl;
+
+  /* authentication properties */
+  char *username;
   char *password;
   char *resource;
+
   gboolean dispose_has_run;
 };
 
@@ -70,9 +78,10 @@ struct _GabbleConnectionPrivate
 static void
 gabble_connection_init (GabbleConnection *obj)
 {
-  /* GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (obj); */
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
 
-  /* allocate any data required by the object here */
+  priv->port = 5222;
+  priv->resource = g_strdup ("Telepathy");
 }
 
 /* static GObject*
@@ -114,11 +123,17 @@ gabble_connection_get_property (GObject    *object,
     case PROP_PORT:
       g_value_set_uint (value, priv->port);
       break;
-    case PROP_ACCOUNT:
-      g_value_set_string (value, priv->account);
+    case PROP_OLD_SSL:
+      g_value_set_boolean (value, priv->old_ssl);
+      break;
+    case PROP_USERNAME:
+      g_value_set_string (value, priv->username);
       break;
     case PROP_PASSWORD:
       g_value_set_string (value, priv->password);
+      break;
+    case PROP_RESOURCE:
+      g_value_set_string (value, priv->resource);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -137,61 +152,34 @@ gabble_connection_set_property (GObject      *object,
 
   switch (property_id) {
     case PROP_SERVER:
-      /* an explicitly set server should override one from the account */
-      if (g_value_get_string (value) == NULL);
-        break;
-
       if (priv->server)
         g_free (priv->server);
 
       priv->server = g_value_dup_string (value);
       break;
     case PROP_PORT:
-      g_assert (g_value_get_uint (value) != 0);
-      g_assert (priv->port == 0);
       priv->port = g_value_get_uint (value);
       break;
-    case PROP_ACCOUNT:
-      {
-        char *resource;
+    case PROP_OLD_SSL:
+      priv->old_ssl = g_value_get_boolean (value);
+      break;
+    case PROP_USERNAME:
+      if (priv->username);
+        g_free (priv->username);
 
-        g_assert (priv->account == NULL);
-        g_assert (priv->resource == NULL);
-
-        priv->account = g_value_dup_string (value);
-
-        /* if the account contains a /, the resource follows it, but
-         * we null the / because we want the account without it */
-        resource = strchr(priv->account, '/');
-        if (resource)
-          {
-            *resource = '\0';
-            resource++;
-            priv->resource = g_strdup (resource);
-          }
-        else
-          priv->resource = g_strdup ("Telepathy");
-
-        /* if the account contains an @ the server follows it,
-         * unless server has already been set directly */
-        if (priv->server == NULL)
-          {
-            char *server = strchr(priv->account, '@');
-
-            if (server)
-              {
-                *server = '\0';
-                server++;
-                priv->server = g_strdup (server);
-              }
-          }
-
-        break;
-      }
+      priv->username = g_value_dup_string (value);
+      break;
     case PROP_PASSWORD:
-      g_assert (priv->password == NULL);
+      if (priv->password)
+        g_free (priv->password);
+
       priv->password = g_value_dup_string (value);
       break;
+    case PROP_RESOURCE:
+      if (priv->resource)
+        g_free (priv->resource);
+
+      priv->resource = g_value_dup_string (value);
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -219,10 +207,9 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
   object_class->finalize = gabble_connection_finalize;
 
   param_spec = g_param_spec_string ("server", "Jabber server name",
-                                    "The server used when establishing a connection, if one is not specified as part of the account.",
+                                    "The server used when establishing a connection.",
                                     NULL,
                                     G_PARAM_READWRITE |
-                                    G_PARAM_CONSTRUCT_ONLY |
                                     G_PARAM_STATIC_NAME |
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_SERVER, param_spec);
@@ -231,28 +218,43 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
                                   "The port used when establishing a connection.",
                                   0, G_MAXUINT16, 5222,
                                   G_PARAM_READWRITE |
-                                  G_PARAM_CONSTRUCT_ONLY |
                                   G_PARAM_STATIC_NAME |
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_PORT, param_spec);
 
-  param_spec = g_param_spec_string ("account", "Jabber account",
-                                    "The JID used when establishing a connection.",
+  param_spec = g_param_spec_boolean ("old-ssl", "Old-style SSL tunneled connection",
+                                     "Establish the entire connection to the server "
+                                     "within an SSL-encrypted tunnel. Note that this "
+                                     "is not the same as connecting with TLS, which "
+                                     "is not yet supported.", FALSE,
+                                     G_PARAM_READWRITE |
+                                     G_PARAM_STATIC_NAME |
+                                     G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_OLD_SSL, param_spec);
+
+  param_spec = g_param_spec_string ("username", "Jabber username",
+                                    "The username used when authenticating.",
                                     NULL,
                                     G_PARAM_READWRITE |
-                                    G_PARAM_CONSTRUCT_ONLY |
                                     G_PARAM_STATIC_NAME |
                                     G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_ACCOUNT, param_spec);
+  g_object_class_install_property (object_class, PROP_USERNAME, param_spec);
 
   param_spec = g_param_spec_string ("password", "Jabber password",
-                                    "The password used when establishing a connection.",
+                                    "The password used when authenticating.",
                                     NULL,
                                     G_PARAM_READWRITE |
-                                    G_PARAM_CONSTRUCT_ONLY |
                                     G_PARAM_STATIC_NAME |
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_PASSWORD, param_spec);
+
+  param_spec = g_param_spec_string ("resource", "Jabber resource",
+                                    "The Jabber resource used when authenticating.",
+                                    "Telepathy",
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_STATIC_NAME |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_RESOURCE, param_spec);
 
   signals[NEW_CHANNEL] =
     g_signal_new ("new-channel",
@@ -295,21 +297,91 @@ gabble_connection_dispose (GObject *object)
 void
 gabble_connection_finalize (GObject *object)
 {
-  /* GabbleConnection *self = GABBLE_CONNECTION (object);
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self); */
+  GabbleConnection *self = GABBLE_CONNECTION (object);
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
-  /* free any data held directly by the object here */
+  if (priv->conn)
+    lm_connection_unref (priv->conn);
+
+  if (priv->server)
+    g_free (priv->server);
+
+  if (priv->username)
+    g_free (priv->username);
+
+  if (priv->password)
+    g_free (priv->password);
+
+  if (priv->resource)
+    g_free (priv->resource);
 
   G_OBJECT_CLASS (gabble_connection_parent_class)->finalize (object);
 }
 
-static void connection_open_cb(LmConnection*, gboolean, gpointer);
-static void connection_auth_cb(LmConnection*, gboolean, gpointer);
+/**
+ * _gabble_connection_set_properties_from_account
+ *
+ * Parses an account string which may be one of the following forms:
+ *  username
+ *  username/resource
+ *  username@server
+ *  username@server/resource
+ * And sets the properties for username, server and resource appropriately.
+ */
+void
+_gabble_connection_set_properties_from_account (GabbleConnection *conn,
+                                                const char       *account)
+{
+  char *username, *server, *resource;
+
+  g_assert (GABBLE_IS_CONNECTION (conn));
+  g_assert (account != NULL);
+  g_assert (*account != '\0');
+
+  username = g_strdup (account);
+
+  /* find an @ in username, truncate username to that length,
+   * and point 'server' to the byte afterwards */
+  server = strchr (username, '@');
+  if (server)
+    {
+      *server = '\0';
+      server++;
+    }
+
+  /* if we have a server, find a / in it, truncate it to that
+   * length, and point 'resource' to the byte afterwards. otherwise,
+   * do the same to username to find any resource there. */
+  resource = strchr (server ? server
+                            : username, '/');
+  if (resource)
+    {
+      *resource = '\0';
+      resource++;
+
+      /* we have a resource, store it */
+      g_object_set (G_OBJECT (conn), "resource", resource, NULL);
+    }
+
+  /* the server must be stored here in case we truncated a resource
+   * from it */
+  if (server)
+    g_object_set (G_OBJECT (conn), "server", server, NULL);
+
+  /* suitably truncated, we can now set the username too */
+  g_object_set (G_OBJECT (conn), "username", username, NULL);
+
+  g_free (username);
+}
+
+static LmSSLResponse connection_ssl_cb (LmSSL*, LmSSLStatus, gpointer);
+static void connection_open_cb (LmConnection*, gboolean, gpointer);
+static void connection_auth_cb (LmConnection*, gboolean, gpointer);
 
 /**
  * _gabble_connection_connect
  *
- * Use the stored account, server & authentication details to commence
+ * Use the stored server & authentication details to commence
  * the stages for connecting to the server and authenticating. Will
  * re-use an existing LmConnection if it is present, or create it
  * if necessary.
@@ -328,12 +400,22 @@ _gabble_connection_connect (GabbleConnection *conn,
 
   /* TODO: GErrors? */
   g_assert (priv->server != NULL);
-  g_assert (priv->account != NULL);
+  g_assert (priv->port > 0 && priv->port <= G_MAXUINT16);
+  g_assert (priv->username != NULL);
   g_assert (priv->password != NULL);
+  g_assert (priv->resource != NULL);
 
   if (priv->conn == NULL)
     {
       priv->conn = lm_connection_new (priv->server);
+      lm_connection_set_port (priv->conn, priv->port);
+
+      if (priv->old_ssl)
+        {
+          LmSSL *ssl = lm_ssl_new (NULL, connection_ssl_cb, priv->conn, NULL);
+          lm_connection_set_ssl (priv->conn, ssl);
+          lm_ssl_unref (ssl);
+        }
     }
   else
     {
@@ -352,6 +434,61 @@ _gabble_connection_connect (GabbleConnection *conn,
     }
 
   return TRUE;
+}
+
+/**
+ * connection_ssl_cb
+ *
+ * If we're doing old SSL, this function gets called if the certificate
+ * is dodgy.
+ */
+static LmSSLResponse
+connection_ssl_cb (LmSSL      *lmssl,
+                   LmSSLStatus status,
+                   gpointer    data)
+{
+  /* GabbleConnection *conn = GABBLE_CONNECTION (data); */
+  const char *reason;
+  LmSSLResponse response = LM_SSL_RESPONSE_STOP;
+
+  switch (status) {
+    case LM_SSL_STATUS_NO_CERT_FOUND:
+      reason = "The server doesn't provide a certificate.";
+      response = LM_SSL_RESPONSE_CONTINUE;
+      break;
+    case LM_SSL_STATUS_UNTRUSTED_CERT:
+      reason = "The certificate can not be trusted.";
+      response = LM_SSL_RESPONSE_CONTINUE;
+      break;
+    case LM_SSL_STATUS_CERT_EXPIRED:
+      reason = "The certificate has expired.";
+      break;
+    case LM_SSL_STATUS_CERT_NOT_ACTIVATED:
+      reason = "The certificate has not been activated.";
+      break;
+    case LM_SSL_STATUS_CERT_HOSTNAME_MISMATCH:
+      reason = "The server hostname doesn't match the one in the certificate.";
+      break;
+    case LM_SSL_STATUS_CERT_FINGERPRINT_MISMATCH:
+      reason = "The fingerprint doesn't match the expected value.";
+      break;
+    case LM_SSL_STATUS_GENERIC_ERROR:
+      reason = "An unknown SSL error occured.";
+      break;
+    default:
+      g_assert_not_reached();
+  }
+
+  g_debug ("connection_ssl_cb called: %s", reason);
+
+  if (response == LM_SSL_RESPONSE_CONTINUE)
+    g_debug ("proceeding anyway!");
+  else
+    {
+      /* TODO: disconnect, emit signal, change status */
+    }
+
+  return response;
 }
 
 /**
@@ -382,10 +519,10 @@ connection_open_cb (LmConnection *lmconn,
       return;
     }
 
-  g_debug ("authenticating with account: %s, password: %s, resource: %s",
-           priv->account, priv->password, priv->resource);
+  g_debug ("authenticating with username: %s, password: %s, resource: %s",
+           priv->username, priv->password, priv->resource);
 
-  if (!lm_connection_authenticate (lmconn, priv->account, priv->password,
+  if (!lm_connection_authenticate (lmconn, priv->username, priv->password,
                                    priv->resource, connection_auth_cb,
                                    conn, NULL, &error))
     {

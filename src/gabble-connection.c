@@ -44,9 +44,10 @@ static guint signals[LAST_SIGNAL] = {0};
 /* properties */
 enum
 {
-    PROP_SERVER = 1,
+    PROP_CONNECT_SERVER = 1,
     PROP_PORT,
     PROP_OLD_SSL,
+    PROP_STREAM_SERVER,
     PROP_USERNAME,
     PROP_PASSWORD,
     PROP_RESOURCE,
@@ -61,11 +62,12 @@ struct _GabbleConnectionPrivate
   LmConnection *conn;
 
   /* connection properties */
-  char *server;
+  char *connect_server;
   guint port;
   gboolean old_ssl;
 
   /* authentication properties */
+  char *stream_server;
   char *username;
   char *password;
   char *resource;
@@ -117,8 +119,11 @@ gabble_connection_get_property (GObject    *object,
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
   switch (property_id) {
-    case PROP_SERVER:
-      g_value_set_string (value, priv->server);
+    case PROP_CONNECT_SERVER:
+      g_value_set_string (value, priv->connect_server);
+      break;
+    case PROP_STREAM_SERVER:
+      g_value_set_string (value, priv->stream_server);
       break;
     case PROP_PORT:
       g_value_set_uint (value, priv->port);
@@ -151,11 +156,11 @@ gabble_connection_set_property (GObject      *object,
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
   switch (property_id) {
-    case PROP_SERVER:
-      if (priv->server)
-        g_free (priv->server);
+    case PROP_CONNECT_SERVER:
+      if (priv->connect_server)
+        g_free (priv->connect_server);
 
-      priv->server = g_value_dup_string (value);
+      priv->connect_server = g_value_dup_string (value);
       break;
     case PROP_PORT:
       priv->port = g_value_get_uint (value);
@@ -163,13 +168,19 @@ gabble_connection_set_property (GObject      *object,
     case PROP_OLD_SSL:
       priv->old_ssl = g_value_get_boolean (value);
       break;
+    case PROP_STREAM_SERVER:
+      if (priv->stream_server);
+        g_free (priv->stream_server);
+
+      priv->stream_server = g_value_dup_string (value);
+      break;
     case PROP_USERNAME:
       if (priv->username);
         g_free (priv->username);
 
       priv->username = g_value_dup_string (value);
       break;
-    case PROP_PASSWORD:
+   case PROP_PASSWORD:
       if (priv->password)
         g_free (priv->password);
 
@@ -206,13 +217,13 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
   object_class->dispose = gabble_connection_dispose;
   object_class->finalize = gabble_connection_finalize;
 
-  param_spec = g_param_spec_string ("server", "Jabber server name",
+  param_spec = g_param_spec_string ("connect-server", "Hostname or IP of Jabber server",
                                     "The server used when establishing a connection.",
                                     NULL,
                                     G_PARAM_READWRITE |
                                     G_PARAM_STATIC_NAME |
                                     G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_SERVER, param_spec);
+  g_object_class_install_property (object_class, PROP_CONNECT_SERVER, param_spec);
 
   param_spec = g_param_spec_uint ("port", "Jabber server port",
                                   "The port used when establishing a connection.",
@@ -231,6 +242,15 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
                                      G_PARAM_STATIC_NAME |
                                      G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_OLD_SSL, param_spec);
+
+  param_spec = g_param_spec_string ("stream-server", "The server name used to initialise the stream.",
+                                    "The server name used when initialising the stream, "
+                                    "which is usually the part after the @ in the user's JID.",
+                                    NULL,
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_STATIC_NAME |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_STREAM_SERVER, param_spec);
 
   param_spec = g_param_spec_string ("username", "Jabber username",
                                     "The username used when authenticating.",
@@ -303,8 +323,11 @@ gabble_connection_finalize (GObject *object)
   if (priv->conn)
     lm_connection_unref (priv->conn);
 
-  if (priv->server)
-    g_free (priv->server);
+  if (priv->connect_server)
+    g_free (priv->connect_server);
+
+  if (priv->stream_server)
+    g_free (priv->stream_server);
 
   if (priv->username)
     g_free (priv->username);
@@ -326,22 +349,26 @@ gabble_connection_finalize (GObject *object)
  *  username/resource
  *  username@server
  *  username@server/resource
- * And sets the properties for username, server and resource appropriately.
+ * and sets the properties for username, stream server and resource
+ * appropriately. Also sets the connect server to the stream server if one has
+ * not yet been specified.
  */
 void
 _gabble_connection_set_properties_from_account (GabbleConnection *conn,
                                                 const char       *account)
 {
+  GabbleConnectionPrivate *priv;
   char *username, *server, *resource;
 
   g_assert (GABBLE_IS_CONNECTION (conn));
   g_assert (account != NULL);
   g_assert (*account != '\0');
 
+  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   username = g_strdup (account);
 
-  /* find an @ in username, truncate username to that length,
-   * and point 'server' to the byte afterwards */
+  /* find an @ in username, truncate username to that length, and point
+   * 'server' to the byte afterwards */
   server = strchr (username, '@');
   if (server)
     {
@@ -349,9 +376,9 @@ _gabble_connection_set_properties_from_account (GabbleConnection *conn,
       server++;
     }
 
-  /* if we have a server, find a / in it, truncate it to that
-   * length, and point 'resource' to the byte afterwards. otherwise,
-   * do the same to username to find any resource there. */
+  /* if we have a server, find a / in it, truncate it to that length, and point
+   * 'resource' to the byte afterwards. otherwise, do the same to username to
+   * find any resource there. */
   resource = strchr (server ? server
                             : username, '/');
   if (resource)
@@ -363,10 +390,16 @@ _gabble_connection_set_properties_from_account (GabbleConnection *conn,
       g_object_set (G_OBJECT (conn), "resource", resource, NULL);
     }
 
-  /* the server must be stored here in case we truncated a resource
-   * from it */
+  /* the server must be stored after the resource, in case we truncated a
+   * resource from it */
   if (server)
-    g_object_set (G_OBJECT (conn), "server", server, NULL);
+    {
+      g_object_set (G_OBJECT (conn), "stream-server", server, NULL);
+
+      /* only set the connect server if one hasn't already been specified */
+      if (!priv->connect_server)
+        g_object_set (G_OBJECT (conn), "connect-server", server, NULL);
+    }
 
   /* suitably truncated, we can now set the username too */
   g_object_set (G_OBJECT (conn), "username", username, NULL);
@@ -399,16 +432,23 @@ _gabble_connection_connect (GabbleConnection *conn,
   GError *lmerror = NULL;
 
   /* TODO: GErrors? */
-  g_assert (priv->server != NULL);
+  g_assert (priv->connect_server != NULL);
   g_assert (priv->port > 0 && priv->port <= G_MAXUINT16);
+  g_assert (priv->stream_server != NULL);
   g_assert (priv->username != NULL);
   g_assert (priv->password != NULL);
   g_assert (priv->resource != NULL);
 
   if (priv->conn == NULL)
     {
-      priv->conn = lm_connection_new (priv->server);
+      char *jid;
+
+      priv->conn = lm_connection_new (priv->connect_server);
       lm_connection_set_port (priv->conn, priv->port);
+
+      jid = g_strdup_printf ("%s@%s", priv->username, priv->stream_server);
+      lm_connection_set_jid (priv->conn, jid);
+      g_free (jid);
 
       if (priv->old_ssl)
         {
@@ -427,8 +467,8 @@ _gabble_connection_connect (GabbleConnection *conn,
     {
       g_debug ("lm_connection_open failed: %s", lmerror->message);
 
-      *error = g_error_new(TELEPATHY_ERRORS, NetworkError,
-                           "lm_connection_open_failed: %s", lmerror->message);
+      *error = g_error_new (TELEPATHY_ERRORS, NetworkError,
+                            "lm_connection_open_failed: %s", lmerror->message);
 
       return FALSE;
     }

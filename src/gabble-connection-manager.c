@@ -19,15 +19,17 @@
  */
 
 #include <dbus/dbus-glib.h>
+#include <dbus/dbus-protocol.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-#include "gabble-connection-manager.h"
-#include "gabble-connection-manager-signals-marshal.h"
-
-#include "gabble-connection-manager-glue.h"
+#include <string.h>
 
 #include "gabble-connection.h"
+#include "telepathy-errors.h"
+
+#include "gabble-connection-manager.h"
+#include "gabble-connection-manager-glue.h"
+#include "gabble-connection-manager-signals-marshal.h"
 
 G_DEFINE_TYPE(GabbleConnectionManager, gabble_connection_manager, G_TYPE_OBJECT)
 
@@ -112,6 +114,79 @@ gabble_connection_manager_finalize (GObject *object)
   G_OBJECT_CLASS (gabble_connection_manager_parent_class)->finalize (object);
 }
 
+/* private data */
+
+typedef struct _GabbleParam GabbleParam;
+
+struct _GabbleParam {
+  const char *name;
+  const char *type;
+  gboolean mandatory;
+  const gpointer def;
+};
+
+static const GabbleParam google_talk_params[] = {
+  { "account", DBUS_TYPE_STRING_AS_STRING, TRUE, NULL },
+  { "password", DBUS_TYPE_STRING_AS_STRING, TRUE, NULL },
+  { "resource", DBUS_TYPE_STRING_AS_STRING, FALSE, "Telepathy" },
+  { "server", DBUS_TYPE_STRING_AS_STRING, FALSE, "talk.google.com" },
+  { "port", DBUS_TYPE_UINT16_AS_STRING, FALSE, GINT_TO_POINTER(5223) },
+  { "old-ssl", DBUS_TYPE_BOOLEAN_AS_STRING, FALSE, GINT_TO_POINTER(TRUE) },
+  { NULL, DBUS_TYPE_INVALID_AS_STRING, FALSE, NULL }
+};
+
+static const GabbleParam jabber_params[] = {
+  { "account", DBUS_TYPE_STRING_AS_STRING, TRUE, NULL },
+  { "password", DBUS_TYPE_STRING_AS_STRING, TRUE, NULL },
+  { "resource", DBUS_TYPE_STRING_AS_STRING, FALSE, "Telepathy" },
+  { "server", DBUS_TYPE_STRING_AS_STRING, FALSE, NULL },
+  { "port", DBUS_TYPE_UINT16_AS_STRING, FALSE, GINT_TO_POINTER(5222) },
+  { "old-ssl", DBUS_TYPE_BOOLEAN_AS_STRING, FALSE, GINT_TO_POINTER(FALSE) },
+  { NULL, DBUS_TYPE_INVALID_AS_STRING, FALSE, NULL }
+};
+
+/* private methods */
+
+static gboolean
+get_parameters (const char *proto, const GabbleParam **params, GError **error)
+{
+  if (!strcmp (proto, "jabber"))
+    {
+      *params = jabber_params;
+    }
+  else if (!strcmp (proto, "google-talk"))
+    {
+      *params = google_talk_params;
+    }
+  else
+    {
+      g_debug ("get_parameters: unknown protocol %s", proto);
+
+      *error = g_error_new (TELEPATHY_ERRORS, NotImplemented,
+                            "unknown protocol %s", proto);
+
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
+static gboolean
+list_parameters (const GabbleParam *params, gboolean mandatory, GHashTable **ret)
+{
+  int i;
+
+  *ret = g_hash_table_new(g_str_hash, g_str_equal);
+
+  for (i = 0; params[i].name; i++)
+    {
+      if (params[i].mandatory == mandatory)
+        g_hash_table_insert (*ret, (gpointer) params[i].name, (gpointer) params[i].type);
+    }
+
+  return TRUE;
+}
+
 
 
 /**
@@ -181,7 +256,12 @@ gboolean gabble_connection_manager_get_parameter_defaults (GabbleConnectionManag
  */
 gboolean gabble_connection_manager_get_optional_parameters (GabbleConnectionManager *obj, const gchar * proto, GHashTable ** ret, GError **error)
 {
-  return TRUE;
+  const GabbleParam *params = NULL;
+
+  if (! get_parameters (proto, &params, error))
+    return FALSE;
+
+  return list_parameters (params, FALSE, ret);
 }
 
 
@@ -199,7 +279,12 @@ gboolean gabble_connection_manager_get_optional_parameters (GabbleConnectionMana
  */
 gboolean gabble_connection_manager_get_mandatory_parameters (GabbleConnectionManager *obj, const gchar * proto, GHashTable ** ret, GError **error)
 {
-  return TRUE;
+  const GabbleParam *params = NULL;
+
+  if (! get_parameters (proto, &params, error))
+    return FALSE;
+
+  return list_parameters (params, TRUE, ret);
 }
 
 

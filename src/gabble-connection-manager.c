@@ -53,6 +53,8 @@ struct _GabbleConnectionManagerPrivate
 
 #define GABBLE_CONNECTION_MANAGER_GET_PRIVATE(o)     (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_CONNECTION_MANAGER, GabbleConnectionManagerPrivate))
 
+/* type definition stuff */
+
 static void
 gabble_connection_manager_init (GabbleConnectionManager *obj)
 {
@@ -116,39 +118,49 @@ gabble_connection_manager_finalize (GObject *object)
 
 /* private data */
 
-typedef struct _GabbleParam GabbleParam;
+typedef struct _GabbleParams GabbleParams;
 
-struct _GabbleParam {
+struct _GabbleParams {
+  char *account;
+  char *password;
+  char *server;
+  guint16 port;
+  gboolean old_ssl;
+};
+
+typedef struct _GabbleParamSpec GabbleParamSpec;
+
+struct _GabbleParamSpec {
   const char *name;
-  const char *type;
+  const char *dtype;
+  const GType gtype;
   gboolean mandatory;
   const gpointer def;
+  const gsize offset;
 };
 
-static const GabbleParam google_talk_params[] = {
-  { "account", DBUS_TYPE_STRING_AS_STRING, TRUE, NULL },
-  { "password", DBUS_TYPE_STRING_AS_STRING, TRUE, NULL },
-  { "resource", DBUS_TYPE_STRING_AS_STRING, FALSE, "Telepathy" },
-  { "server", DBUS_TYPE_STRING_AS_STRING, FALSE, "talk.google.com" },
-  { "port", DBUS_TYPE_UINT16_AS_STRING, FALSE, GINT_TO_POINTER(5223) },
-  { "old-ssl", DBUS_TYPE_BOOLEAN_AS_STRING, FALSE, GINT_TO_POINTER(TRUE) },
-  { NULL, DBUS_TYPE_INVALID_AS_STRING, FALSE, NULL }
+static const GabbleParamSpec google_talk_params[] = {
+  { "account", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, TRUE, NULL, G_STRUCT_OFFSET(GabbleParams, account) },
+  { "password", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, TRUE, NULL, G_STRUCT_OFFSET(GabbleParams, password) },
+  { "server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, FALSE, "talk.google.com", G_STRUCT_OFFSET(GabbleParams, server) },
+  { "port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT, FALSE, GINT_TO_POINTER(5223), G_STRUCT_OFFSET(GabbleParams, port) },
+  { "old-ssl", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN, FALSE, GINT_TO_POINTER(TRUE), G_STRUCT_OFFSET(GabbleParams, old_ssl) },
+  { NULL, NULL, 0, 0, NULL, 0 }
 };
 
-static const GabbleParam jabber_params[] = {
-  { "account", DBUS_TYPE_STRING_AS_STRING, TRUE, NULL },
-  { "password", DBUS_TYPE_STRING_AS_STRING, TRUE, NULL },
-  { "resource", DBUS_TYPE_STRING_AS_STRING, FALSE, "Telepathy" },
-  { "server", DBUS_TYPE_STRING_AS_STRING, FALSE, NULL },
-  { "port", DBUS_TYPE_UINT16_AS_STRING, FALSE, GINT_TO_POINTER(5222) },
-  { "old-ssl", DBUS_TYPE_BOOLEAN_AS_STRING, FALSE, GINT_TO_POINTER(FALSE) },
-  { NULL, DBUS_TYPE_INVALID_AS_STRING, FALSE, NULL }
+static const GabbleParamSpec jabber_params[] = {
+  { "account", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, TRUE, NULL, G_STRUCT_OFFSET(GabbleParams, account) },
+  { "password", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, TRUE, NULL, G_STRUCT_OFFSET(GabbleParams, password) },
+  { "server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, FALSE, NULL, G_STRUCT_OFFSET(GabbleParams, server) },
+  { "port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT, FALSE, GINT_TO_POINTER(5222), G_STRUCT_OFFSET(GabbleParams, port) },
+  { "old-ssl", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN, FALSE, GINT_TO_POINTER(FALSE), G_STRUCT_OFFSET(GabbleParams, old_ssl) },
+  { NULL, NULL, 0, 0, NULL, 0 }
 };
 
 /* private methods */
 
 static gboolean
-get_parameters (const char *proto, const GabbleParam **params, GError **error)
+get_parameters (const char *proto, const GabbleParamSpec **params, GError **error)
 {
   if (!strcmp (proto, "jabber"))
     {
@@ -172,7 +184,7 @@ get_parameters (const char *proto, const GabbleParam **params, GError **error)
 }
 
 static gboolean
-list_parameters (const GabbleParam *params, gboolean mandatory, GHashTable **ret)
+list_parameters (const GabbleParamSpec *params, gboolean mandatory, GHashTable **ret)
 {
   int i;
 
@@ -181,13 +193,189 @@ list_parameters (const GabbleParam *params, gboolean mandatory, GHashTable **ret
   for (i = 0; params[i].name; i++)
     {
       if (params[i].mandatory == mandatory)
-        g_hash_table_insert (*ret, (gpointer) params[i].name, (gpointer) params[i].type);
+        g_hash_table_insert (*ret, (gpointer) params[i].name, (gpointer) params[i].dtype);
     }
 
   return TRUE;
 }
 
+static gboolean
+parameter_defaults (const GabbleParamSpec *params, GHashTable **ret)
+{
+  int i;
 
+  *ret = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+
+  for (i = 0; params[i].name; i++)
+    {
+      GValue *value;
+
+      if (params[i].mandatory)
+        {
+          g_assert (params[i].def == NULL);
+          continue;
+        }
+
+      value = g_new0(GValue, 1);
+      g_value_init (value, params[i].gtype);
+
+      switch (params[i].dtype[0])
+        {
+          case DBUS_TYPE_STRING:
+            g_value_set_static_string (value, (const gchar*) params[i].def);
+            break;
+          case DBUS_TYPE_UINT16:
+            g_value_set_uint (value, GPOINTER_TO_INT (params[i].def));
+            break;
+          case DBUS_TYPE_BOOLEAN:
+            g_value_set_boolean (value, GPOINTER_TO_INT (params[i].def));
+            break;
+          default:
+            g_error ("parameter_defaults: encountered unknown type %s on argument %s",
+                     params[i].dtype, params[i].name);
+        }
+
+      g_hash_table_insert (*ret, (gpointer) params[i].name, value);
+    }
+
+  return TRUE;
+}
+
+static void
+set_default_param (const GabbleParamSpec *paramspec,
+                            GabbleParams *params)
+{
+  switch (paramspec->dtype[0])
+    {
+      case DBUS_TYPE_STRING:
+        *((char **) ((void *)params + paramspec->offset)) = g_strdup (paramspec->def);
+        break;
+      case DBUS_TYPE_UINT16:
+        *((guint16 *) ((void *)params + paramspec->offset)) = GPOINTER_TO_INT (paramspec->def);
+        break;
+      case DBUS_TYPE_BOOLEAN:
+        *((gboolean *) ((void *)params + paramspec->offset)) = GPOINTER_TO_INT (paramspec->def);
+        break;
+      default:
+        g_error ("set_default_param: encountered unknown type %s on argument %s",
+                 paramspec->dtype, paramspec->name);
+    }
+}
+
+static gboolean
+set_param_from_value (const GabbleParamSpec *paramspec,
+                                     GValue *value,
+                               GabbleParams *params,
+                                    GError **error)
+{
+  if (G_VALUE_TYPE (value) != paramspec->gtype)
+    {
+      g_debug ("set_param_from_value: expected type %s for parameter %s, got %s",
+               g_type_name (paramspec->gtype), paramspec->name,
+               G_VALUE_TYPE_NAME (value));
+      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+                            "expected type %s for account parameter %s, got %s",
+                            g_type_name (paramspec->gtype), paramspec->name,
+                            G_VALUE_TYPE_NAME (value));
+      return FALSE;
+    }
+
+  switch (paramspec->dtype[0])
+    {
+      case DBUS_TYPE_STRING:
+        *((char **) ((void *)params + paramspec->offset)) = g_value_dup_string (value);
+        break;
+      case DBUS_TYPE_UINT16:
+        *((guint16 *) ((void *)params + paramspec->offset)) = g_value_get_uint (value);
+        break;
+      case DBUS_TYPE_BOOLEAN:
+        *((gboolean *) ((void *)params + paramspec->offset)) = g_value_get_boolean (value);
+        break;
+      default:
+        g_error ("set_param_from_value: encountered unknown type %s on argument %s",
+                 paramspec->dtype, paramspec->name);
+    }
+
+  return TRUE;
+}
+
+static gboolean
+parse_parameters (const GabbleParamSpec *paramspec,
+                  GHashTable            *provided,
+                  GabbleParams          *params,
+                  GError               **error)
+{
+  int unhandled;
+  int i;
+
+  unhandled = g_hash_table_size (provided);
+
+  for (i = 0; paramspec[i].name; i++)
+    {
+      GValue *value;
+
+      value = g_hash_table_lookup (provided, paramspec[i].name);
+
+      if (value == NULL)
+        {
+          if (paramspec[i].mandatory)
+            {
+              g_debug ("parse_parameters: missing mandatory param %s",
+                       paramspec[i].name);
+              *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+                                    "missing mandatory account parameter %s",
+                                    paramspec[i].name);
+              return FALSE;
+            }
+          else
+            {
+              g_debug ("parse_parameters: using default value for param %s",
+                       paramspec[i].name);
+              set_default_param (&paramspec[i], params);
+            }
+        }
+      else
+        {
+          if (!set_param_from_value (&paramspec[i], value, params, error))
+            return FALSE;
+
+          unhandled--;
+          if (paramspec[i].gtype == G_TYPE_STRING)
+            g_debug ("parse_parameters: accepted value %s for param %s",
+                     *((char **) ((void *)params + paramspec[i].offset)), paramspec[i].name);
+          else
+            g_debug ("parse_parameters: accepted value %u for param %s",
+                     *((guint *) ((void *)params + paramspec[i].offset)), paramspec[i].name);
+        }
+    }
+
+  if (unhandled)
+    {
+      g_debug ("parse_parameters: unknown argument name provided");
+      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+                            "unknown argument name provided");
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
+void
+free_params (GabbleParams *params)
+{
+  if (params->account)
+    g_free (params->account);
+
+  if (params->password)
+    g_free (params->password);
+
+  if (params->server)
+    g_free (params->server);
+}
+
+/* public methods */
+
+/* dbus-exported methods */
 
 /**
  * gabble_connection_manager_connect
@@ -204,14 +392,35 @@ list_parameters (const GabbleParam *params, gboolean mandatory, GHashTable **ret
 gboolean gabble_connection_manager_connect (GabbleConnectionManager *obj, const gchar * proto, GHashTable * parameters, gchar ** ret, gpointer* ret1, GError **error)
 {
   GabbleConnection *conn;
-  /* assert proto */
+  const GabbleParamSpec *paramspec;
+  GabbleParams params = { NULL };
 
-  conn = g_object_new(GABBLE_TYPE_CONNECTION, "account", "test1@localhost", "password", "test1", NULL);
+  if (!get_parameters (proto, &paramspec, error))
+    return FALSE;
+
+  if (!parse_parameters (paramspec, parameters, &params, error))
+    {
+      free_params (&params);
+      return FALSE;
+    }
+
+  conn = g_object_new (GABBLE_TYPE_CONNECTION,
+                       "password",       params.password,
+                       "connect-server", params.server,
+                       "port",           params.port,
+                       "old-ssl",        params.old_ssl,
+                       NULL);
+
+  /* split up account into username, stream-server and resource */
+  _gabble_connection_set_properties_from_account (conn, params.account);
+
+  free_params(&params);
+
   if (!_gabble_connection_connect (conn, error))
     {
       g_debug("_gabble_connection_connect failed: %s", (*error)->message);
 
-      return FALSE;
+      goto ERROR;
     }
 
   while (1)
@@ -221,8 +430,13 @@ gboolean gabble_connection_manager_connect (GabbleConnectionManager *obj, const 
   *ret1 = conn;
 
   return TRUE;
-}
 
+ERROR:
+  if (conn)
+    g_object_unref (G_OBJECT (conn));
+
+  return FALSE;
+}
 
 /**
  * gabble_connection_manager_get_parameter_defaults
@@ -238,7 +452,12 @@ gboolean gabble_connection_manager_connect (GabbleConnectionManager *obj, const 
  */
 gboolean gabble_connection_manager_get_parameter_defaults (GabbleConnectionManager *obj, const gchar * proto, GHashTable ** ret, GError **error)
 {
-  return TRUE;
+  const GabbleParamSpec *params = NULL;
+
+  if (!get_parameters (proto, &params, error))
+    return FALSE;
+
+  return parameter_defaults (params, ret);
 }
 
 
@@ -256,9 +475,9 @@ gboolean gabble_connection_manager_get_parameter_defaults (GabbleConnectionManag
  */
 gboolean gabble_connection_manager_get_optional_parameters (GabbleConnectionManager *obj, const gchar * proto, GHashTable ** ret, GError **error)
 {
-  const GabbleParam *params = NULL;
+  const GabbleParamSpec *params = NULL;
 
-  if (! get_parameters (proto, &params, error))
+  if (!get_parameters (proto, &params, error))
     return FALSE;
 
   return list_parameters (params, FALSE, ret);
@@ -279,9 +498,9 @@ gboolean gabble_connection_manager_get_optional_parameters (GabbleConnectionMana
  */
 gboolean gabble_connection_manager_get_mandatory_parameters (GabbleConnectionManager *obj, const gchar * proto, GHashTable ** ret, GError **error)
 {
-  const GabbleParam *params = NULL;
+  const GabbleParamSpec *params = NULL;
 
-  if (! get_parameters (proto, &params, error))
+  if (!get_parameters (proto, &params, error))
     return FALSE;
 
   return list_parameters (params, TRUE, ret);

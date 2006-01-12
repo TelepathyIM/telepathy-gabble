@@ -24,12 +24,16 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "gabble.h"
 #include "gabble-connection.h"
 #include "telepathy-errors.h"
 
 #include "gabble-connection-manager.h"
 #include "gabble-connection-manager-glue.h"
 #include "gabble-connection-manager-signals-marshal.h"
+
+#define BUS_NAME        "org.freedesktop.Telepathy.ConnectionManager.gabble"
+#define OBJECT_PATH     "/org/freedesktop/Telepathy/ConnectionManager/gabble"
 
 G_DEFINE_TYPE(GabbleConnectionManager, gabble_connection_manager, G_TYPE_OBJECT)
 
@@ -374,6 +378,33 @@ free_params (GabbleParams *params)
 }
 
 /* public methods */
+
+void
+_gabble_connection_manager_register (GabbleConnectionManager *self)
+{
+  DBusGConnection *bus;
+  DBusGProxy *bus_proxy;
+  GError *error = NULL;
+  guint request_name_result;
+
+  g_assert (GABBLE_IS_CONNECTION_MANAGER (self));
+
+  bus = gabble_get_bus ();
+  bus_proxy = gabble_get_bus_proxy ();
+
+  if (!dbus_g_proxy_call (bus_proxy, "RequestName", &error,
+                          G_TYPE_STRING, BUS_NAME,
+                          G_TYPE_UINT, DBUS_NAME_FLAG_DO_NOT_QUEUE,
+                          G_TYPE_INVALID,
+                          G_TYPE_UINT, &request_name_result,
+                          G_TYPE_INVALID))
+    g_error ("Failed to request bus name: %s", error->message);
+
+  if (request_name_result == DBUS_REQUEST_NAME_REPLY_EXISTS)
+    g_error ("Failed to acquire bus name, connection manager already running?");
+
+  dbus_g_connection_register_g_object (bus, OBJECT_PATH, G_OBJECT (self));
+}
 
 /* dbus-exported methods */
 

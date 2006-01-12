@@ -52,6 +52,7 @@ GType gabble_connection_manager_get_type(void);
 #define GABBLE_CONNECTION_MANAGER_GET_CLASS(obj) \
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_CONNECTION_MANAGER, GabbleConnectionManagerClass))
 
+void _gabble_connection_manager_register (GabbleConnectionManager *self);
 
 gboolean gabble_connection_manager_connect (GabbleConnectionManager *obj, const gchar * proto, GHashTable * parameters, gchar ** ret, gpointer* ret1, GError **error);
 gboolean gabble_connection_manager_get_parameter_defaults (GabbleConnectionManager *obj, const gchar * proto, GHashTable ** ret, GError **error);

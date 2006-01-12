@@ -44,7 +44,8 @@ static guint signals[LAST_SIGNAL] = {0};
 /* properties */
 enum
 {
-    PROP_CONNECT_SERVER = 1,
+    PROP_PROTOCOL = 1,
+    PROP_CONNECT_SERVER,
     PROP_PORT,
     PROP_OLD_SSL,
     PROP_STREAM_SERVER,
@@ -60,6 +61,9 @@ typedef struct _GabbleConnectionPrivate GabbleConnectionPrivate;
 struct _GabbleConnectionPrivate
 {
   LmConnection *conn;
+
+  /* telepathy properties */
+  char *protocol;
 
   /* connection properties */
   char *connect_server;
@@ -119,6 +123,9 @@ gabble_connection_get_property (GObject    *object,
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
   switch (property_id) {
+    case PROP_PROTOCOL:
+      g_value_set_string (value, priv->protocol);
+      break;
     case PROP_CONNECT_SERVER:
       g_value_set_string (value, priv->connect_server);
       break;
@@ -156,6 +163,12 @@ gabble_connection_set_property (GObject      *object,
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
   switch (property_id) {
+    case PROP_PROTOCOL:
+      if (priv->protocol)
+        g_free (priv->protocol);
+
+      priv->protocol = g_value_dup_string (value);
+      break;
     case PROP_CONNECT_SERVER:
       if (priv->connect_server)
         g_free (priv->connect_server);
@@ -216,6 +229,15 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
 
   object_class->dispose = gabble_connection_dispose;
   object_class->finalize = gabble_connection_finalize;
+
+  param_spec = g_param_spec_string ("protocol", "Telepathy identifier for protocol",
+                                    "Identifier string used when the protocol "
+                                    "name is required. Unused internally.",
+                                    NULL,
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_STATIC_NAME |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_PROTOCOL, param_spec);
 
   param_spec = g_param_spec_string ("connect-server", "Hostname or IP of Jabber server",
                                     "The server used when establishing a connection.",
@@ -322,6 +344,9 @@ gabble_connection_finalize (GObject *object)
 
   if (priv->conn)
     lm_connection_unref (priv->conn);
+
+  if (priv->protocol)
+    g_free (priv->protocol);
 
   if (priv->connect_server)
     g_free (priv->connect_server);

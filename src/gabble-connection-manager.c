@@ -436,6 +436,7 @@ gboolean gabble_connection_manager_connect (GabbleConnectionManager *obj, const 
     }
 
   conn = g_object_new (GABBLE_TYPE_CONNECTION,
+                       "protocol",       proto,
                        "password",       params.password,
                        "connect-server", params.server,
                        "port",           params.port,

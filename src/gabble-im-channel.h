@@ -64,4 +64,4 @@ gboolean gabble_im_channel_close (GabbleIMChannel *obj, GError **error);
 
 G_END_DECLS
 
-#endif /* #ifndef __GABBLE_IM_CHANNEL)_H__*/
+#endif /* #ifndef __GABBLE_IM_CHANNEL_H__*/

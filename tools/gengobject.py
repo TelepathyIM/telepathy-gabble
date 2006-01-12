@@ -143,7 +143,7 @@ def print_header_begin(stream, prefix):
     stream.write ("G_BEGIN_DECLS\n\n")
 
 def print_header_end(stream, prefix):
-    guardname = '__'+prefix.upper()+')_H__'
+    guardname = '__'+prefix.upper()+'_H__'
     stream.write ("\nG_END_DECLS\n\n")
     stream.write ("#endif /* #ifndef "+guardname+"*/\n")
 

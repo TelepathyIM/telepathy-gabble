@@ -54,4 +54,4 @@ GQuark telepathy_errors_quark (void);
 
 G_END_DECLS
 
-#endif /* #ifndef __TELEPATHY_ERRORS)_H__*/
+#endif /* #ifndef __TELEPATHY_ERRORS_H__*/

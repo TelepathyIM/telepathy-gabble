@@ -70,4 +70,4 @@ gboolean gabble_connection_get_interfaces (GabbleConnection *obj, gchar *** ret,
 
 G_END_DECLS
 
-#endif /* #ifndef __GABBLE_CONNECTION)_H__*/
+#endif /* #ifndef __GABBLE_CONNECTION_H__*/

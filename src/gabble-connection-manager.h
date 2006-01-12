@@ -62,4 +62,4 @@ gboolean gabble_connection_manager_list_protocols (GabbleConnectionManager *obj,
 
 G_END_DECLS
 
-#endif /* #ifndef __GABBLE_CONNECTION_MANAGER)_H__*/
+#endif /* #ifndef __GABBLE_CONNECTION_MANAGER_H__*/

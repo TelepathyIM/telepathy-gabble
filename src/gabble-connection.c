@@ -26,6 +26,7 @@
 #include "gabble-connection.h"
 #include "gabble-connection-glue.h"
 #include "gabble-connection-signals-marshal.h"
+#include "telepathy-constants.h"
 #include "telepathy-errors.h"
 
 #define BUS_NAME        "org.freedesktop.Telepathy.Connection.gabble"

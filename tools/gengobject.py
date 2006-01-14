@@ -54,7 +54,7 @@ def type_to_gtype(s):
     if s == 's': #string
         return ("gchar *", "G_TYPE_STRING", "STRING", "g_free")
     if s == 'o': #object path
-        return ("gpointer", "DBUS_TYPE_G_PROXY", "BOXED", "g_object_unref")
+        return ("gchar *", "DBUS_TYPE_G_OBJECT_PATH", "STRING", "g_free")
     if s == 'as':  #array of strings
         return ("gchar **", "G_TYPE_STRV", "BOXED", "g_strfreev")
     if s == 'v':  #variant

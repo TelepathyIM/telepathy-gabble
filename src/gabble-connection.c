@@ -304,8 +304,8 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_connection_marshal_VOID__BOXED_STRING_INT_INT_BOOLEAN,
-                  G_TYPE_NONE, 5, DBUS_TYPE_G_PROXY, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_BOOLEAN);
+                  gabble_connection_marshal_VOID__STRING_STRING_INT_INT_BOOLEAN,
+                  G_TYPE_NONE, 5, DBUS_TYPE_G_OBJECT_PATH, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_BOOLEAN);
 
   signals[STATUS_CHANGED] =
     g_signal_new ("status-changed",
@@ -705,7 +705,7 @@ gboolean gabble_connection_release_handle (GabbleConnection *obj, guint handle_t
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar * type, guint handle_type, guint handle, gboolean supress_handler, gpointer* ret, GError **error)
+gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar * type, guint handle_type, guint handle, gboolean supress_handler, gchar ** ret, GError **error)
 {
   return TRUE;
 }

@@ -86,8 +86,8 @@ gabble_connection_manager_class_init (GabbleConnectionManagerClass *gabble_conne
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_connection_manager_marshal_VOID__STRING_BOXED_STRING,
-                  G_TYPE_NONE, 3, G_TYPE_STRING, DBUS_TYPE_G_PROXY, G_TYPE_STRING);
+                  gabble_connection_manager_marshal_VOID__STRING_STRING_STRING,
+                  G_TYPE_NONE, 3, G_TYPE_STRING, DBUS_TYPE_G_OBJECT_PATH, G_TYPE_STRING);
 
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_connection_manager_class), &dbus_glib_gabble_connection_manager_object_info);
 }
@@ -420,7 +420,7 @@ _gabble_connection_manager_register (GabbleConnectionManager *self)
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_connection_manager_connect (GabbleConnectionManager *obj, const gchar * proto, GHashTable * parameters, gchar ** ret, gpointer* ret1, GError **error)
+gboolean gabble_connection_manager_connect (GabbleConnectionManager *obj, const gchar * proto, const GHashTable * parameters, gchar ** ret, gpointer* ret1, GError **error)
 {
   GabbleConnection *conn;
   const GabbleParamSpec *paramspec;

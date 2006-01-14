@@ -79,10 +79,14 @@ struct _GabbleConnectionPrivate
   char *password;
   char *resource;
 
-  /* dbus properties */
+  /* dbus object location */
   char *bus_name;
   char *object_path;
 
+  /* connection status */
+  TpConnectionStatus status;
+
+  /* gobject housekeeping */
   gboolean dispose_has_run;
 };
 
@@ -556,7 +560,7 @@ _gabble_connection_connect (GabbleConnection *conn,
 
       if (priv->old_ssl)
         {
-          LmSSL *ssl = lm_ssl_new (NULL, connection_ssl_cb, priv->conn, NULL);
+          LmSSL *ssl = lm_ssl_new (NULL, connection_ssl_cb, conn, NULL);
           lm_connection_set_ssl (priv->conn, ssl);
           lm_ssl_unref (ssl);
         }
@@ -583,6 +587,30 @@ _gabble_connection_connect (GabbleConnection *conn,
 }
 
 /**
+ * connection_status_change
+ *
+ * Emit a signal for the status being changed, and update it in the
+ * object.
+ */
+static void
+connection_status_change (GabbleConnection        *conn,
+                          TpConnectionStatus       status,
+                          TpConnectionStatusReason reason)
+{
+  GabbleConnectionPrivate *priv;
+
+  g_assert (GABBLE_IS_CONNECTION (conn));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+
+  g_debug ("connection_status_change: status %u reason %u", status, reason);
+
+  priv->status = status;
+
+  g_signal_emit (conn, signals[STATUS_CHANGED], 0, status, reason);
+}
+
+/**
  * connection_ssl_cb
  *
  * If we're doing old SSL, this function gets called if the certificate
@@ -593,7 +621,7 @@ connection_ssl_cb (LmSSL      *lmssl,
                    LmSSLStatus status,
                    gpointer    data)
 {
-  /* GabbleConnection *conn = GABBLE_CONNECTION (data); */
+  GabbleConnection *conn = GABBLE_CONNECTION (data);
   const char *reason;
   LmSSLResponse response = LM_SSL_RESPONSE_STOP;
 
@@ -630,9 +658,8 @@ connection_ssl_cb (LmSSL      *lmssl,
   if (response == LM_SSL_RESPONSE_CONTINUE)
     g_debug ("proceeding anyway!");
   else
-    {
-      /* TODO: disconnect, emit signal, change status */
-    }
+    connection_status_change (conn, TP_CONNECTION_STATUS_DISCONNECTED,
+                              TP_CONNECTION_STATUS_REASON_ENCRYPTION_ERROR);
 
   return response;
 }
@@ -660,7 +687,8 @@ connection_open_cb (LmConnection *lmconn,
     {
       g_debug ("connection_open_cb failed");
 
-      /* TODO: emit signal, change status */
+      connection_status_change (conn, TP_CONNECTION_STATUS_DISCONNECTED,
+                                TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
 
       return;
     }
@@ -675,7 +703,10 @@ connection_open_cb (LmConnection *lmconn,
       g_debug ("lm_connection_authenticate failed: %s", error->message);
       g_error_free (error);
 
-      /* TODO: disconnect, emit signal, change status */
+      /* the reason this function can fail is through network errors,
+       * authentication failures are reported to our auth_cb */
+      connection_status_change (conn, TP_CONNECTION_STATUS_DISCONNECTED,
+                                TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
     }
 }
 
@@ -703,7 +734,8 @@ connection_auth_cb (LmConnection *lmconn,
     {
       g_debug ("connection_auth_cb failed");
 
-      /* TODO: disconnect, emit signal, change status */
+      connection_status_change (conn, TP_CONNECTION_STATUS_DISCONNECTED,
+                                TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED);
 
       return;
     }
@@ -716,7 +748,13 @@ connection_auth_cb (LmConnection *lmconn,
                error->message);
       g_error_free (error);
 
-      /* TODO: disconnect, emit signal, change status */
+      connection_status_change (conn, TP_CONNECTION_STATUS_DISCONNECTED,
+                                TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
+    }
+  else
+    {
+      connection_status_change (conn, TP_CONNECTION_STATUS_CONNECTED,
+                                TP_CONNECTION_STATUS_REASON_REQUESTED);
     }
 
   lm_message_unref (message);
@@ -736,6 +774,17 @@ connection_auth_cb (LmConnection *lmconn,
  */
 gboolean gabble_connection_disconnect (GabbleConnection *obj, GError **error)
 {
+  GabbleConnectionPrivate *priv;
+
+  g_assert (GABBLE_IS_CONNECTION (obj));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  connection_status_change (obj, TP_CONNECTION_STATUS_DISCONNECTED,
+                            TP_CONNECTION_STATUS_REASON_REQUESTED);
+
+  lm_connection_close (priv->conn, NULL);
+
   return TRUE;
 }
 
@@ -844,6 +893,14 @@ gboolean gabble_connection_get_protocol (GabbleConnection *obj, gchar ** ret, GE
  */
 gboolean gabble_connection_get_status (GabbleConnection *obj, guint* ret, GError **error)
 {
+  GabbleConnectionPrivate *priv;
+
+  g_assert (GABBLE_IS_CONNECTION (obj));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  *ret = priv->status;
+
   return TRUE;
 }
 

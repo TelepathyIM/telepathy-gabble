@@ -26,6 +26,7 @@
 
 #include "gabble.h"
 #include "gabble-connection.h"
+#include "telepathy-constants.h"
 #include "telepathy-errors.h"
 
 #include "gabble-connection-manager.h"
@@ -364,7 +365,7 @@ parse_parameters (const GabbleParamSpec *paramspec,
   return TRUE;
 }
 
-void
+static void
 free_params (GabbleParams *params)
 {
   if (params->account)
@@ -375,6 +376,39 @@ free_params (GabbleParams *params)
 
   if (params->server)
     g_free (params->server);
+}
+
+/**
+ * status_change_cb is called when the status of connection objects
+ * changes. When they become disconnected, we can unref and discard
+ * them, and they will disappear from the bus.
+ */
+static void
+status_changed_cb (GabbleConnection        *conn,
+                  TpConnectionStatus       status,
+                  TpConnectionStatusReason reason,
+                  gpointer                 data)
+{
+  GabbleConnectionManager *self = GABBLE_CONNECTION_MANAGER (data);
+  GabbleConnectionManagerPrivate *priv = GABBLE_CONNECTION_MANAGER_GET_PRIVATE (self);
+
+  g_debug ("status_change_cb called with status %u reason %u", status, reason);
+
+  if (status == TP_CONNECTION_STATUS_DISCONNECTED)
+    {
+      gulong signal = GPOINTER_TO_INT (g_hash_table_lookup (priv->connections,
+                                                            conn));
+
+      g_assert (signal != 0);
+
+      g_signal_handler_disconnect (conn, signal);
+
+      g_hash_table_remove (priv->connections, conn);
+
+      g_object_unref (conn);
+
+      g_debug ("dereferenced connection");
+    }
 }
 
 /* public methods */
@@ -420,11 +454,17 @@ _gabble_connection_manager_register (GabbleConnectionManager *self)
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_connection_manager_connect (GabbleConnectionManager *obj, const gchar * proto, GHashTable * parameters, gchar ** ret, gchar ** ret1, GError **error)
+gboolean gabble_connection_manager_connect (GabbleConnectionManager *obj, const gchar * proto, GHashTable * parameters, gchar ** bus_name, gchar ** object_path, GError **error)
 {
+  GabbleConnectionManagerPrivate *priv;
   GabbleConnection *conn;
   const GabbleParamSpec *paramspec;
   GabbleParams params = { NULL };
+  gulong signal;
+
+  g_assert (GABBLE_IS_CONNECTION_MANAGER (obj));
+
+  priv = GABBLE_CONNECTION_MANAGER_GET_PRIVATE (obj);
 
   if (!get_parameters (proto, &paramspec, error))
     return FALSE;
@@ -450,12 +490,20 @@ gboolean gabble_connection_manager_connect (GabbleConnectionManager *obj, const 
   free_params(&params);
 
   /* register on bus and save bus name and object path */
-  if (!_gabble_connection_register (conn, ret, ret1, error))
+  if (!_gabble_connection_register (conn, bus_name, object_path, error))
     {
       g_debug ("_gabble_connection_register failed: %s", (*error)->message);
 
       goto ERROR;
     }
+
+  /* bind to status change signals from the connection object */
+  signal = g_signal_connect (conn, "status-changed",
+                             G_CALLBACK (status_changed_cb),
+                             obj);
+
+  /* store the connection and the signal ID */
+  g_hash_table_insert (priv->connections, conn, GINT_TO_POINTER (signal));
 
   /* commence connecting */
   if (!_gabble_connection_connect (conn, error))
@@ -464,6 +512,9 @@ gboolean gabble_connection_manager_connect (GabbleConnectionManager *obj, const 
 
       goto ERROR;
     }
+
+  /* emit the new connection signal */
+  g_signal_emit (obj, signals[NEW_CONNECTION], 0, *bus_name, *object_path, proto);
 
   return TRUE;
 

@@ -1,5 +1,5 @@
 /*
- * gabble.h - Header for 
+ * gabble.h - entry point and utility functions for telepathy-gabble
  * Copyright (C) 2005 Collabora Ltd.
  * Copyright (C) 2005 Nokia Corporation
  *

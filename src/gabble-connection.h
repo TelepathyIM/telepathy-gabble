@@ -53,6 +53,7 @@ GType gabble_connection_get_type(void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_CONNECTION, GabbleConnectionClass))
 
 void _gabble_connection_set_properties_from_account (GabbleConnection *conn, const char *account);
+gboolean _gabble_connection_register (GabbleConnection *conn, char **bus_name, char **object_path, GError **error);
 gboolean _gabble_connection_connect (GabbleConnection *conn, GError **error);
 
 gboolean gabble_connection_disconnect (GabbleConnection *obj, GError **error);

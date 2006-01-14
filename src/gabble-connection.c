@@ -22,12 +22,14 @@
 #include <loudmouth/loudmouth.h>
 #include <string.h>
 
+#include "gabble.h"
 #include "gabble-connection.h"
-#include "gabble-connection-signals-marshal.h"
-
 #include "gabble-connection-glue.h"
-
+#include "gabble-connection-signals-marshal.h"
 #include "telepathy-errors.h"
+
+#define BUS_NAME        "org.freedesktop.Telepathy.Connection.gabble"
+#define OBJECT_PATH     "/org/freedesktop/Telepathy/Connection/gabble"
 
 G_DEFINE_TYPE(GabbleConnection, gabble_connection, G_TYPE_OBJECT)
 
@@ -75,6 +77,10 @@ struct _GabbleConnectionPrivate
   char *username;
   char *password;
   char *resource;
+
+  /* dbus properties */
+  char *bus_name;
+  char *object_path;
 
   gboolean dispose_has_run;
 };
@@ -363,6 +369,12 @@ gabble_connection_finalize (GObject *object)
   if (priv->resource)
     g_free (priv->resource);
 
+  if (priv->bus_name)
+    g_free (priv->bus_name);
+
+  if (priv->object_path)
+    g_free (priv->object_path);
+
   G_OBJECT_CLASS (gabble_connection_parent_class)->finalize (object);
 }
 
@@ -432,6 +444,73 @@ _gabble_connection_set_properties_from_account (GabbleConnection *conn,
   g_free (username);
 }
 
+/**
+ * _gabble_connection_register
+ *
+ * Make the connection object appear on the bus, returning the bus
+ * name and object path used.
+ */
+gboolean
+_gabble_connection_register (GabbleConnection *conn,
+                             gchar           **bus_name,
+                             gchar           **object_path,
+                             GError          **error)
+{
+  DBusGConnection *bus;
+  DBusGProxy *bus_proxy;
+  GabbleConnectionPrivate *priv;
+  const char *allowed_chars = "_1234567890"
+                              "abcdefghijklmnopqrstuvwxyz"
+                              "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  char *safe_proto;
+  char *unique_name;
+  guint request_name_result;
+
+  g_assert (GABBLE_IS_CONNECTION (conn));
+
+  bus = gabble_get_bus ();
+  bus_proxy = gabble_get_bus_proxy ();
+  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+
+  safe_proto = g_strdup (priv->protocol);
+  g_strcanon (safe_proto, allowed_chars, '_');
+
+  unique_name = g_strdup_printf ("%s_%s_%s",
+                                 priv->username,
+                                 priv->stream_server,
+                                 priv->resource);
+  g_strcanon (unique_name, allowed_chars, '_');
+
+  priv->bus_name = g_strdup_printf (BUS_NAME ".%s.%s",
+                                    safe_proto,
+                                    unique_name);
+  priv->object_path = g_strdup_printf (OBJECT_PATH "/%s/%s",
+                                       safe_proto,
+                                       unique_name);
+
+  g_free (safe_proto);
+  g_free (unique_name);
+
+  if (!dbus_g_proxy_call (bus_proxy, "RequestName", error,
+                          G_TYPE_STRING, priv->bus_name,
+                          G_TYPE_UINT, DBUS_NAME_FLAG_DO_NOT_QUEUE,
+                          G_TYPE_INVALID,
+                          G_TYPE_UINT, &request_name_result,
+                          G_TYPE_INVALID))
+    return FALSE;
+
+  if (request_name_result == DBUS_REQUEST_NAME_REPLY_EXISTS)
+    g_error ("Failed to acquire bus name, connection manager already running?");
+
+  dbus_g_connection_register_g_object (bus, priv->object_path, G_OBJECT (conn));
+
+  *bus_name = g_strdup (priv->bus_name);
+  *object_path = g_strdup (priv->object_path);
+
+  return TRUE;
+}
+
+
 static LmSSLResponse connection_ssl_cb (LmSSL*, LmSSLStatus, gpointer);
 static void connection_open_cb (LmConnection*, gboolean, gpointer);
 static void connection_auth_cb (LmConnection*, gboolean, gpointer);
@@ -456,7 +535,6 @@ _gabble_connection_connect (GabbleConnection *conn,
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   GError *lmerror = NULL;
 
-  /* TODO: GErrors? */
   g_assert (priv->connect_server != NULL);
   g_assert (priv->port > 0 && priv->port <= G_MAXUINT16);
   g_assert (priv->stream_server != NULL);

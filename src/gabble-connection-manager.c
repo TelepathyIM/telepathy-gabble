@@ -446,20 +446,24 @@ gboolean gabble_connection_manager_connect (GabbleConnectionManager *obj, const 
   /* split up account into username, stream-server and resource */
   _gabble_connection_set_properties_from_account (conn, params.account);
 
+  /* free memory allocated by param parser */
   free_params(&params);
 
-  if (!_gabble_connection_connect (conn, error))
+  /* register on bus and save bus name and object path */
+  if (!_gabble_connection_register (conn, ret, ret1, error))
     {
-      g_debug("_gabble_connection_connect failed: %s", (*error)->message);
+      g_debug ("_gabble_connection_register failed: %s", (*error)->message);
 
       goto ERROR;
     }
 
-  while (1)
-    g_main_context_iteration (g_main_context_default (), TRUE);
+  /* commence connecting */
+  if (!_gabble_connection_connect (conn, error))
+    {
+      g_debug ("_gabble_connection_connect failed: %s", (*error)->message);
 
-  *ret = g_strdup ("service name");
-  *ret1 = conn;
+      goto ERROR;
+    }
 
   return TRUE;
 

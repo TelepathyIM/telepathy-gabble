@@ -574,6 +574,8 @@ _gabble_connection_connect (GabbleConnection *conn,
       *error = g_error_new (TELEPATHY_ERRORS, NetworkError,
                             "lm_connection_open_failed: %s", lmerror->message);
 
+      g_error_free (lmerror);
+
       return FALSE;
     }
 
@@ -671,6 +673,7 @@ connection_open_cb (LmConnection *lmconn,
                                    conn, NULL, &error))
     {
       g_debug ("lm_connection_authenticate failed: %s", error->message);
+      g_error_free (error);
 
       /* TODO: disconnect, emit signal, change status */
     }
@@ -711,6 +714,7 @@ connection_auth_cb (LmConnection *lmconn,
     {
       g_debug ("lm_connection_send of initial presence failed: %s",
                error->message);
+      g_error_free (error);
 
       /* TODO: disconnect, emit signal, change status */
     }

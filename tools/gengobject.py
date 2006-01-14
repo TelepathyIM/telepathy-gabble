@@ -34,50 +34,50 @@ def camelcase_to_upper(s):
 
 def type_to_gtype(s):
     if s == 'y': #byte
-        return ("guchar", "G_TYPE_UCHAR","UCHAR","")
+        return ("guchar", "G_TYPE_UCHAR","UCHAR", False)
     if s == 'b': #boolean
-        return ("gboolean", "G_TYPE_BOOLEAN","BOOLEAN","")
+        return ("gboolean", "G_TYPE_BOOLEAN","BOOLEAN", False)
     if s == 'n': #int16
-        return ("gint", "G_TYPE_INT","INT","")
+        return ("gint", "G_TYPE_INT","INT", False)
     if s == 'q': #uint16
-        return ("guint", "G_TYPE_UINT","UINT","")
+        return ("guint", "G_TYPE_UINT","UINT", False)
     if s == 'i': #int32
-        return ("gint", "G_TYPE_INT","INT","")
+        return ("gint", "G_TYPE_INT","INT", False)
     if s == 'u': #uint32
-        return ("guint", "G_TYPE_UINT","INT","")
+        return ("guint", "G_TYPE_UINT","INT", False)
     if s == 'x': #int64
-        return ("gint", "G_TYPE_INT64","INT64","")
+        return ("gint", "G_TYPE_INT64","INT64", False)
     if s == 't': #uint32
-        return ("guint", "G_TYPE_UINT64","UINT64","")
+        return ("guint", "G_TYPE_UINT64","UINT64", False)
     if s == 'd': #double
-        return ("gdouble", "G_TYPE_DOUBLE","DOUBLE","")
+        return ("gdouble", "G_TYPE_DOUBLE","DOUBLE", False)
     if s == 's': #string
-        return ("gchar *", "G_TYPE_STRING", "STRING", "g_free")
+        return ("gchar *", "G_TYPE_STRING", "STRING", True)
     if s == 'o': #object path
-        return ("gchar *", "DBUS_TYPE_G_OBJECT_PATH", "STRING", "g_free")
+        return ("gchar *", "DBUS_TYPE_G_OBJECT_PATH", "STRING", True)
     if s == 'as':  #array of strings
-        return ("gchar **", "G_TYPE_STRV", "BOXED", "g_strfreev")
+        return ("gchar **", "G_TYPE_STRV", "BOXED", True)
     if s == 'v':  #variant
-        return ("GValue *", "G_TYPE_VALUE", "BOXED", "g_value_unref")
+        return ("GValue *", "G_TYPE_VALUE", "BOXED", True)
     if s[:3] == 'a{s':  # dict mapping of strings to any marshalable value
-        return ("GHashTable *", "DBUS_TYPE_G_STRING_HASHTABLE","BOXED", "g_hash_table_destroy")
+        return ("GHashTable *", "DBUS_TYPE_G_STRING_HASHTABLE", "BOXED", False)
     if s == 'ay': #byte array
-        return ("GArray *", "DBUS_TYPE_G_BYTE_ARRAY", "BOXED", "g_array_free")
+        return ("GArray *", "DBUS_TYPE_G_BYTE_ARRAY", "BOXED", True)
     if s == 'au': #uint array
-        return ("GArray *", "DBUS_TYPE_G_UINT_ARRAY", "BOXED", "g_array_free")
+        return ("GArray *", "DBUS_TYPE_G_UINT_ARRAY", "BOXED", True)
     if s == 'ai': #int array
-        return ("GArray *", "DBUS_TYPE_G_INT_ARRAY", "BOXED", "g_array_free")
+        return ("GArray *", "DBUS_TYPE_G_INT_ARRAY", "BOXED", True)
     if s == 'ax': #int64 array
-        return ("GArray *", "DBUS_TYPE_G_INT64_ARRAY", "BOXED", "g_array_free")
+        return ("GArray *", "DBUS_TYPE_G_INT64_ARRAY", "BOXED", True)
     if s == 'at': #uint64 array
-        return ("GArray *", "DBUS_TYPE_G_UINT64_ARRAY", "BOXED", "g_array_free")
+        return ("GArray *", "DBUS_TYPE_G_UINT64_ARRAY", "BOXED", True)
     if s == 'ad': #double array
-        return ("GArray *", "DBUS_TYPE_G_DOUBLE_ARRAY", "BOXED", "g_array_free")
+        return ("GArray *", "DBUS_TYPE_G_DOUBLE_ARRAY", "BOXED", True)
     if s == 'ab': #boolean array
-        return ("GArray *", "DBUS_TYPE_G_BOOLEAN_ARRAY", "BOXED", "g_array_free")
+        return ("GArray *", "DBUS_TYPE_G_BOOLEAN_ARRAY", "BOXED", True)
 
     # we just don't know ..
-    return ("gpointer", "G_TYPE_BOXED", "BOXED", "g_boxed_free")
+    return ("gpointer", "G_TYPE_BOXED", "BOXED", True)
 
 
 def signal_to_marshal_type(signal):
@@ -372,7 +372,7 @@ void
             if direction =="out":
                 gtype+='*'
             else:
-                if gtype[-1]=='*':
+                if type_to_gtype(type)[3]:
                     gtype="const "+gtype
             c_decl +=", "+gtype+" "+name
         if async:

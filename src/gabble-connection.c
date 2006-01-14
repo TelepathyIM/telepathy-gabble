@@ -550,7 +550,7 @@ _gabble_connection_connect (GabbleConnection *conn,
       priv->conn = lm_connection_new (priv->connect_server);
       lm_connection_set_port (priv->conn, priv->port);
 
-      jid = g_strdup_printf ("%s@%s", priv->username, priv->stream_server);
+      jid = g_strdup_printf ("@%s", priv->stream_server);
       lm_connection_set_jid (priv->conn, jid);
       g_free (jid);
 

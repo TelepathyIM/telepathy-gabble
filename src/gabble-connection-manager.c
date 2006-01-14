@@ -420,7 +420,7 @@ _gabble_connection_manager_register (GabbleConnectionManager *self)
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_connection_manager_connect (GabbleConnectionManager *obj, const gchar * proto, const GHashTable * parameters, gchar ** ret, gpointer* ret1, GError **error)
+gboolean gabble_connection_manager_connect (GabbleConnectionManager *obj, const gchar * proto, GHashTable * parameters, gchar ** ret, gchar ** ret1, GError **error)
 {
   GabbleConnection *conn;
   const GabbleParamSpec *paramspec;

@@ -876,6 +876,14 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
  */
 gboolean gabble_connection_get_protocol (GabbleConnection *obj, gchar ** ret, GError **error)
 {
+  GabbleConnectionPrivate *priv;
+
+  g_assert (GABBLE_IS_CONNECTION (obj));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  *ret = g_strdup (priv->protocol);
+
   return TRUE;
 }
 

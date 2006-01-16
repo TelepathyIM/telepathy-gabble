@@ -349,6 +349,9 @@ gabble_connection_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
+  if (lm_connection_is_open (priv->conn))
+    lm_connection_close (priv->conn, NULL);
+
   /* release any references held by the object here */
 
   if (G_OBJECT_CLASS (gabble_connection_parent_class)->dispose)

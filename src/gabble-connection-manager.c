@@ -526,9 +526,9 @@ ERROR:
 }
 
 /**
- * gabble_connection_manager_get_parameter_defaults
+ * gabble_connection_manager_get_mandatory_parameters
  *
- * Implements DBus method GetParameterDefaults
+ * Implements DBus method GetMandatoryParameters
  * on interface org.freedesktop.Telepathy.ConnectionManager
  *
  * @error: Used to return a pointer to a GError detailing any error
@@ -537,7 +537,7 @@ ERROR:
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_connection_manager_get_parameter_defaults (GabbleConnectionManager *obj, const gchar * proto, GHashTable ** ret, GError **error)
+gboolean gabble_connection_manager_get_mandatory_parameters (GabbleConnectionManager *obj, const gchar * proto, GHashTable ** ret, GError **error)
 {
   const GabbleParamSpec *params = NULL;
 
@@ -572,9 +572,9 @@ gboolean gabble_connection_manager_get_optional_parameters (GabbleConnectionMana
 
 
 /**
- * gabble_connection_manager_get_mandatory_parameters
+ * gabble_connection_manager_get_parameter_defaults
  *
- * Implements DBus method GetMandatoryParameters
+ * Implements DBus method GetParameterDefaults
  * on interface org.freedesktop.Telepathy.ConnectionManager
  *
  * @error: Used to return a pointer to a GError detailing any error
@@ -583,7 +583,7 @@ gboolean gabble_connection_manager_get_optional_parameters (GabbleConnectionMana
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_connection_manager_get_mandatory_parameters (GabbleConnectionManager *obj, const gchar * proto, GHashTable ** ret, GError **error)
+gboolean gabble_connection_manager_get_parameter_defaults (GabbleConnectionManager *obj, const gchar * proto, GHashTable ** ret, GError **error)
 {
   const GabbleParamSpec *params = NULL;
 

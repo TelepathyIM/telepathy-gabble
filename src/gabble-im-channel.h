@@ -53,13 +53,13 @@ GType gabble_im_channel_get_type(void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_IM_CHANNEL, GabbleIMChannelClass))
 
 
-gboolean gabble_im_channel_list_pending_messages (GabbleIMChannel *obj, gpointer* ret, GError **error);
 gboolean gabble_im_channel_acknowledge_pending_message (GabbleIMChannel *obj, guint id, GError **error);
-gboolean gabble_im_channel_send (GabbleIMChannel *obj, guint type, const gchar * text, GError **error);
+gboolean gabble_im_channel_close (GabbleIMChannel *obj, GError **error);
+gboolean gabble_im_channel_get_channel_type (GabbleIMChannel *obj, gchar ** ret, GError **error);
 gboolean gabble_im_channel_get_handle (GabbleIMChannel *obj, guint* ret, guint* ret1, GError **error);
 gboolean gabble_im_channel_get_interfaces (GabbleIMChannel *obj, gchar *** ret, GError **error);
-gboolean gabble_im_channel_get_channel_type (GabbleIMChannel *obj, gchar ** ret, GError **error);
-gboolean gabble_im_channel_close (GabbleIMChannel *obj, GError **error);
+gboolean gabble_im_channel_list_pending_messages (GabbleIMChannel *obj, gpointer* ret, GError **error);
+gboolean gabble_im_channel_send (GabbleIMChannel *obj, guint type, const gchar * text, GError **error);
 
 
 G_END_DECLS

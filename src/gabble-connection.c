@@ -783,9 +783,9 @@ gboolean gabble_connection_disconnect (GabbleConnection *obj, GError **error)
 
 
 /**
- * gabble_connection_inspect_handle
+ * gabble_connection_get_interfaces
  *
- * Implements DBus method InspectHandle
+ * Implements DBus method GetInterfaces
  * on interface org.freedesktop.Telepathy.Connection
  *
  * @error: Used to return a pointer to a GError detailing any error
@@ -794,7 +794,7 @@ gboolean gabble_connection_disconnect (GabbleConnection *obj, GError **error)
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_connection_inspect_handle (GabbleConnection *obj, guint handle_type, guint handle, gchar ** ret, GError **error)
+gboolean gabble_connection_get_interfaces (GabbleConnection *obj, gchar *** ret, GError **error)
 {
   GabbleConnectionPriv *priv;
   const char *tmp;
@@ -823,6 +823,130 @@ gboolean gabble_connection_inspect_handle (GabbleConnection *obj, guint handle_t
 
   *ret = g_strdup (tmp);
 
+  return TRUE;
+}
+
+
+/**
+ * gabble_connection_get_protocol
+ *
+ * Implements DBus method GetProtocol
+ * on interface org.freedesktop.Telepathy.Connection
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_connection_get_protocol (GabbleConnection *obj, gchar ** ret, GError **error)
+{
+  return TRUE;
+}
+
+
+/**
+ * gabble_connection_get_self_handle
+ *
+ * Implements DBus method GetSelfHandle
+ * on interface org.freedesktop.Telepathy.Connection
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_connection_get_self_handle (GabbleConnection *obj, guint* ret, GError **error)
+{
+  return TRUE;
+}
+
+
+/**
+ * gabble_connection_get_status
+ *
+ * Implements DBus method GetStatus
+ * on interface org.freedesktop.Telepathy.Connection
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_connection_get_status (GabbleConnection *obj, guint* ret, GError **error)
+{
+  return TRUE;
+}
+
+
+/**
+ * gabble_connection_hold_handle
+ *
+ * Implements DBus method HoldHandle
+ * on interface org.freedesktop.Telepathy.Connection
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_connection_hold_handle (GabbleConnection *obj, guint handle_type, guint handle, GError **error)
+{
+  GabbleConnectionPrivate *priv;
+
+  g_assert (GABBLE_IS_CONNECTION (obj));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  *ret = g_strdup (priv->protocol);
+
+  return TRUE;
+}
+
+
+/**
+ * gabble_connection_inspect_handle
+ *
+ * Implements DBus method InspectHandle
+ * on interface org.freedesktop.Telepathy.Connection
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_connection_inspect_handle (GabbleConnection *obj, guint handle_type, guint handle, gchar ** ret, GError **error)
+{
+  GabbleConnectionPrivate *priv;
+
+  g_assert (GABBLE_IS_CONNECTION (obj));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  *ret = priv->status;
+
+  return TRUE;
+}
+
+
+/**
+ * gabble_connection_list_channels
+ *
+ * Implements DBus method ListChannels
+ * on interface org.freedesktop.Telepathy.Connection
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_connection_list_channels (GabbleConnection *obj, gpointer* ret, GError **error)
+{
   return TRUE;
 }
 
@@ -876,130 +1000,6 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_type, const gchar * name, guint* ret, GError **error)
-{
-  return TRUE;
-}
-
-
-/**
- * gabble_connection_get_protocol
- *
- * Implements DBus method GetProtocol
- * on interface org.freedesktop.Telepathy.Connection
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean gabble_connection_get_protocol (GabbleConnection *obj, gchar ** ret, GError **error)
-{
-  GabbleConnectionPrivate *priv;
-
-  g_assert (GABBLE_IS_CONNECTION (obj));
-
-  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
-
-  *ret = g_strdup (priv->protocol);
-
-  return TRUE;
-}
-
-
-/**
- * gabble_connection_get_status
- *
- * Implements DBus method GetStatus
- * on interface org.freedesktop.Telepathy.Connection
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean gabble_connection_get_status (GabbleConnection *obj, guint* ret, GError **error)
-{
-  GabbleConnectionPrivate *priv;
-
-  g_assert (GABBLE_IS_CONNECTION (obj));
-
-  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
-
-  *ret = priv->status;
-
-  return TRUE;
-}
-
-
-/**
- * gabble_connection_list_channels
- *
- * Implements DBus method ListChannels
- * on interface org.freedesktop.Telepathy.Connection
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean gabble_connection_list_channels (GabbleConnection *obj, gpointer* ret, GError **error)
-{
-  return TRUE;
-}
-
-
-/**
- * gabble_connection_hold_handle
- *
- * Implements DBus method HoldHandle
- * on interface org.freedesktop.Telepathy.Connection
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean gabble_connection_hold_handle (GabbleConnection *obj, guint handle_type, guint handle, GError **error)
-{
-  return TRUE;
-}
-
-
-/**
- * gabble_connection_get_self_handle
- *
- * Implements DBus method GetSelfHandle
- * on interface org.freedesktop.Telepathy.Connection
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean gabble_connection_get_self_handle (GabbleConnection *obj, guint* ret, GError **error)
-{
-  return TRUE;
-}
-
-
-/**
- * gabble_connection_get_interfaces
- *
- * Implements DBus method GetInterfaces
- * on interface org.freedesktop.Telepathy.Connection
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean gabble_connection_get_interfaces (GabbleConnection *obj, gchar *** ret, GError **error)
 {
   const char *interfaces[] = { "org.freedesktop.Telepathy.Connection", NULL };
 

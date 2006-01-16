@@ -206,9 +206,9 @@ if __name__ == '__main__':
         cmdline_error()
 
     signals = dom.getElementsByTagName("signal")
-    signals.sort()
+    signals.sort(key=lambda n: n.getAttributeNode("name").nodeValue)
     methods = dom.getElementsByTagName("method")
-    methods.sort()
+    methods.sort(key=lambda n: n.getAttributeNode("name").nodeValue)
 
     print_license(header, outname_header, "Header for " + classname)
     print_license(body, outname_body, "Source for " + classname)

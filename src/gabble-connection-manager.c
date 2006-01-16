@@ -544,7 +544,7 @@ gboolean gabble_connection_manager_get_mandatory_parameters (GabbleConnectionMan
   if (!get_parameters (proto, &params, error))
     return FALSE;
 
-  return parameter_defaults (params, ret);
+  return list_parameters (params, TRUE, ret);
 }
 
 
@@ -590,7 +590,7 @@ gboolean gabble_connection_manager_get_parameter_defaults (GabbleConnectionManag
   if (!get_parameters (proto, &params, error))
     return FALSE;
 
-  return list_parameters (params, TRUE, ret);
+  return parameter_defaults (params, ret);
 }
 
 

@@ -796,32 +796,9 @@ gboolean gabble_connection_disconnect (GabbleConnection *obj, GError **error)
  */
 gboolean gabble_connection_get_interfaces (GabbleConnection *obj, gchar *** ret, GError **error)
 {
-  GabbleConnectionPriv *priv;
-  const char *tmp;
+  const char *interfaces[] = { "org.freedesktop.Telepathy.Connection", NULL };
 
-  g_assert (GABBLE_IS_CONNECTION (obj));
-
-  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
-
-  if (!gabble_handle_type_is_valid (handle_type))
-    {
-      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                            "invalid handle type %u", handle_type);
-
-      return FALSE;
-    }
-
-  tmp = gabble_handle_inspect (priv->handles, handle_type, handle);
-
-  if (tmp == NULL)
-    {
-      *error = g_error_new (TELEPATHY_ERRORS, InvalidHandle,
-                            "unknown handle %u", handle);
-
-      return FALSE;
-    }
-
-  *ret = g_strdup (tmp);
+  *ret = g_strdupv ((gchar **) interfaces);
 
   return TRUE;
 }
@@ -841,6 +818,14 @@ gboolean gabble_connection_get_interfaces (GabbleConnection *obj, gchar *** ret,
  */
 gboolean gabble_connection_get_protocol (GabbleConnection *obj, gchar ** ret, GError **error)
 {
+  GabbleConnectionPrivate *priv;
+
+  g_assert (GABBLE_IS_CONNECTION (obj));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  *ret = g_strdup (priv->protocol);
+
   return TRUE;
 }
 
@@ -877,6 +862,14 @@ gboolean gabble_connection_get_self_handle (GabbleConnection *obj, guint* ret, G
  */
 gboolean gabble_connection_get_status (GabbleConnection *obj, guint* ret, GError **error)
 {
+  GabbleConnectionPrivate *priv;
+
+  g_assert (GABBLE_IS_CONNECTION (obj));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  *ret = priv->status;
+
   return TRUE;
 }
 
@@ -895,14 +888,6 @@ gboolean gabble_connection_get_status (GabbleConnection *obj, guint* ret, GError
  */
 gboolean gabble_connection_hold_handle (GabbleConnection *obj, guint handle_type, guint handle, GError **error)
 {
-  GabbleConnectionPrivate *priv;
-
-  g_assert (GABBLE_IS_CONNECTION (obj));
-
-  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
-
-  *ret = g_strdup (priv->protocol);
-
   return TRUE;
 }
 
@@ -921,13 +906,32 @@ gboolean gabble_connection_hold_handle (GabbleConnection *obj, guint handle_type
  */
 gboolean gabble_connection_inspect_handle (GabbleConnection *obj, guint handle_type, guint handle, gchar ** ret, GError **error)
 {
-  GabbleConnectionPrivate *priv;
+  GabbleConnectionPriv *priv;
+  const char *tmp;
 
   g_assert (GABBLE_IS_CONNECTION (obj));
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
 
-  *ret = priv->status;
+  if (!gabble_handle_type_is_valid (handle_type))
+    {
+      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+                            "invalid handle type %u", handle_type);
+
+      return FALSE;
+    }
+
+  tmp = gabble_handle_inspect (priv->handles, handle_type, handle);
+
+  if (tmp == NULL)
+    {
+      *error = g_error_new (TELEPATHY_ERRORS, InvalidHandle,
+                            "unknown handle %u", handle);
+
+      return FALSE;
+    }
+
+  *ret = g_strdup (tmp);
 
   return TRUE;
 }
@@ -1001,10 +1005,5 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
  */
 gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_type, const gchar * name, guint* ret, GError **error)
 {
-  const char *interfaces[] = { "org.freedesktop.Telepathy.Connection", NULL };
-
-  *ret = g_strdupv ((gchar **) interfaces);
-
   return TRUE;
 }
-

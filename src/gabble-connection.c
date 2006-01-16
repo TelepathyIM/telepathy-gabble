@@ -88,6 +88,9 @@ struct _GabbleConnectionPrivate
   /* connection status */
   TpConnectionStatus status;
 
+  /* handles */
+  GabbleHandleRepo *handles;
+
   /* gobject housekeeping */
   gboolean dispose_has_run;
 };
@@ -101,6 +104,8 @@ gabble_connection_init (GabbleConnection *obj)
 
   priv->port = 5222;
   priv->resource = g_strdup ("Telepathy");
+
+  priv->handles = gabble_handle_repo_new();
 }
 
 /* static GObject*
@@ -382,6 +387,9 @@ gabble_connection_finalize (GObject *object)
 
   if (priv->object_path)
     g_free (priv->object_path);
+
+  if (priv->handles);
+    gabble_handle_repo_destroy (priv->handles);
 
   G_OBJECT_CLASS (gabble_connection_parent_class)->finalize (object);
 }
@@ -785,6 +793,33 @@ gboolean gabble_connection_disconnect (GabbleConnection *obj, GError **error)
  */
 gboolean gabble_connection_inspect_handle (GabbleConnection *obj, guint handle_type, guint handle, gchar ** ret, GError **error)
 {
+  GabbleConnectionPriv *priv;
+  const char *tmp;
+
+  g_assert (GABBLE_IS_CONNECTION (obj));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  if (!gabble_handle_type_is_valid (handle_type))
+    {
+      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+                            "invalid handle type %u", handle_type);
+
+      return FALSE;
+    }
+
+  tmp = gabble_handle_inspect (priv->handles, handle_type, handle);
+
+  if (tmp == NULL)
+    {
+      *error = g_error_new (TELEPATHY_ERRORS, InvalidHandle,
+                            "unknown handle %u", handle);
+
+      return FALSE;
+    }
+
+  *ret = g_strdup (tmp);
+
   return TRUE;
 }
 

@@ -32,15 +32,16 @@ typedef GQuark GabbleHandle;
 
 void gabble_handle_decode_jid (const char *jid, char **username, char **server, char **resource);
 
-GabbleHandleRepo *gabble_handle_repo_new();
-void gabble_handle_repo_destroy(GabbleHandleRepo *repo);
+GabbleHandleRepo *gabble_handle_repo_new ();
+void gabble_handle_repo_destroy (GabbleHandleRepo *repo);
 
-gboolean gabble_handle_ref(GabbleHandleRepo *repo, TpHandleType type, GabbleHandle handle);
-gboolean gabble_handle_unref(GabbleHandleRepo *repo, TpHandleType type, GabbleHandle handle);
+gboolean gabble_handle_ref (GabbleHandleRepo *repo, TpHandleType type, GabbleHandle handle);
+gboolean gabble_handle_unref (GabbleHandleRepo *repo, TpHandleType type, GabbleHandle handle);
+const char *gabble_handle_inspect (GabbleHandleRepo *repo, TpHandleType type, GabbleHandle handle);
 
-GabbleHandle gabble_handle_for_contact(GabbleHandleRepo *repo, char *jid, gboolean with_resource);
-GabbleHandle gabble_handle_for_list_publish(GabbleHandleRepo *repo);
-GabbleHandle gabble_handle_for_list_subscribe(GabbleHandleRepo *repo);
+GabbleHandle gabble_handle_for_contact (GabbleHandleRepo *repo, char *jid, gboolean with_resource);
+GabbleHandle gabble_handle_for_list_publish (GabbleHandleRepo *repo);
+GabbleHandle gabble_handle_for_list_subscribe (GabbleHandleRepo *repo);
 
 G_END_DECLS
 

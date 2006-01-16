@@ -64,6 +64,27 @@ handle_priv_free (GabbleHandlePriv *priv)
   g_free (priv);
 }
 
+GabbleHandlePriv *
+handle_priv_lookup (GabbleHandleRepo *repo,
+                    TpHandleType type,
+                    GabbleHandle handle)
+{
+  GabbleHandlePriv *priv;
+
+  g_assert (repo != NULL);
+  g_assert (handle != 0);
+
+  priv = g_hash_table_lookup (repo->handles, GINT_TO_POINTER (handle));
+
+  if (priv == NULL)
+    return NULL;
+
+  if (priv->type != type)
+    return NULL;
+
+  return priv;
+}
+
 /* public API */
 
 /**
@@ -145,6 +166,14 @@ gabble_handle_decode_jid (const char *jid,
   g_free (tmp_jid);
 }
 
+gboolean
+gabble_handle_type_is_valid (GabbleHandleType type)
+{
+  if (type > TP_HANDLE_TYPE_NONE && type <= TP_HANDLE_TYPE_LIST)
+    return TRUE;
+  else
+    return FALSE;
+}
 
 GabbleHandleRepo *
 gabble_handle_repo_new ()
@@ -179,16 +208,7 @@ gabble_handle_ref (GabbleHandleRepo *repo,
 {
   GabbleHandlePriv *priv;
 
-  g_assert (repo != NULL);
-  g_assert (handle != 0);
-
-  priv = g_hash_table_lookup (repo->handles, GINT_TO_POINTER (handle));
-
-  if (priv == NULL)
-    return FALSE;
-
-  if (priv->type != type)
-    return FALSE;
+  priv = handle_priv_lookup (repo, type, handle);
 
   priv->refcount++;
 
@@ -202,16 +222,7 @@ gabble_handle_unref (GabbleHandleRepo *repo,
 {
   GabbleHandlePriv *priv;
 
-  g_assert (repo != NULL);
-  g_assert (handle != 0);
-
-  priv = g_hash_table_lookup (repo->handles, GINT_TO_POINTER (handle));
-
-  if (priv == NULL)
-    return FALSE;
-
-  if (priv->type != type)
-    return FALSE;
+  priv = handle_priv_lookup (repo, type, handle);
 
   g_assert (priv->refcount > 0);
 
@@ -225,6 +236,21 @@ gabble_handle_unref (GabbleHandleRepo *repo,
     }
 
   return TRUE;
+}
+
+const char *
+gabble_handle_inspect (GabbleHandleRepo *repo,
+                       TpHandleType type,
+                       GabbleHandle handle)
+{
+  GabbleHandlePriv *priv;
+
+  priv = handle_priv_lookup (repo, type, handle);
+
+  if (priv == NULL)
+    return NULL;
+  else
+    return g_quark_to_string (handle);
 }
 
 GabbleHandle

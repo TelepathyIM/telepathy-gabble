@@ -47,8 +47,7 @@ handle_priv_new (TpHandleType type)
 {
   GabbleHandlePriv *priv;
 
-  g_assert (type > TP_HANDLE_TYPE_NONE);
-  g_assert (type <= TP_HANDLE_TYPE_LIST);
+  g_assert (gabble_handle_type_is_valid (type));
 
   priv = g_new0 (GabbleHandlePriv, 1);
   priv->type = type;

@@ -31,6 +31,7 @@ typedef struct _GabbleHandleRepo GabbleHandleRepo;
 typedef GQuark GabbleHandle;
 
 void gabble_handle_decode_jid (const char *jid, char **username, char **server, char **resource);
+gboolean gabble_handle_type_is_valid (GabbleHandleType type);
 
 GabbleHandleRepo *gabble_handle_repo_new ();
 void gabble_handle_repo_destroy (GabbleHandleRepo *repo);

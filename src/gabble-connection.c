@@ -963,6 +963,10 @@ gboolean gabble_connection_get_self_handle (GabbleConnection *obj, guint* ret, G
  */
 gboolean gabble_connection_get_interfaces (GabbleConnection *obj, gchar *** ret, GError **error)
 {
+  const char *interfaces[] = { "org.freedesktop.Telepathy.Connection", NULL };
+
+  *ret = g_strdupv ((gchar **) interfaces);
+
   return TRUE;
 }
 

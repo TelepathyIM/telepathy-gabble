@@ -23,6 +23,7 @@
 #include <string.h>
 
 #include "gabble.h"
+#include "handles.h"
 #include "telepathy-constants.h"
 #include "telepathy-errors.h"
 
@@ -216,6 +217,7 @@ gabble_connection_set_property (GObject      *object,
         g_free (priv->resource);
 
       priv->resource = g_value_dup_string (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -408,46 +410,25 @@ _gabble_connection_set_properties_from_account (GabbleConnection *conn,
   g_assert (*account != '\0');
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-  username = g_strdup (account);
 
-  /* find an @ in username, truncate username to that length, and point
-   * 'server' to the byte afterwards */
-  server = strchr (username, '@');
-  if (server)
-    {
-      *server = '\0';
-      server++;
-    }
+  gabble_handle_decode_jid (account, &username, &server, &resource);
 
-  /* if we have a server, find a / in it, truncate it to that length, and point
-   * 'resource' to the byte afterwards. otherwise, do the same to username to
-   * find any resource there. */
-  resource = strchr (server ? server
-                            : username, '/');
+  g_object_set (G_OBJECT (conn),
+                "username", username,
+                "stream-server", server,
+                NULL);
+
+  /* only override the default resource if we actually got one */
   if (resource)
-    {
-      *resource = '\0';
-      resource++;
+    g_object_set (G_OBJECT (conn), "resource", resource, NULL);
 
-      /* we have a resource, store it */
-      g_object_set (G_OBJECT (conn), "resource", resource, NULL);
-    }
-
-  /* the server must be stored after the resource, in case we truncated a
-   * resource from it */
-  if (server)
-    {
-      g_object_set (G_OBJECT (conn), "stream-server", server, NULL);
-
-      /* only set the connect server if one hasn't already been specified */
-      if (!priv->connect_server)
-        g_object_set (G_OBJECT (conn), "connect-server", server, NULL);
-    }
-
-  /* suitably truncated, we can now set the username too */
-  g_object_set (G_OBJECT (conn), "username", username, NULL);
+  /* only set the connect server if one hasn't already been specified */
+  if (!priv->connect_server)
+    g_object_set (G_OBJECT (conn), "connect-server", server, NULL);
 
   g_free (username);
+  g_free (server);
+  g_free (resource);
 }
 
 /**

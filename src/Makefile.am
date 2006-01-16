@@ -21,6 +21,7 @@ CORE_SOURCES = \
     gabble-connection.c \
     gabble-im-channel.c \
     gintset.c \
+    handles.c \
     telepathy-errors.c \
     $(BUILT_SOURCES)
 

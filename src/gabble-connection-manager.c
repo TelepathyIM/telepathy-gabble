@@ -608,9 +608,9 @@ gboolean gabble_connection_manager_get_mandatory_parameters (GabbleConnectionMan
  */
 gboolean gabble_connection_manager_list_protocols (GabbleConnectionManager *obj, gchar *** ret, GError **error)
 {
-  static const char *protocols[] = {"jabber", "google-talk", NULL};
+  const char *protocols[] = { "jabber", "google-talk", NULL };
 
-  *ret = g_strdupv((gchar **)protocols);
+  *ret = g_strdupv ((gchar **)protocols);
 
   return TRUE;
 }

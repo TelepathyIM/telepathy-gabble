@@ -166,7 +166,7 @@ gabble_handle_decode_jid (const char *jid,
 }
 
 gboolean
-gabble_handle_type_is_valid (GabbleHandleType type)
+gabble_handle_type_is_valid (TpHandleType type)
 {
   if (type > TP_HANDLE_TYPE_NONE && type <= TP_HANDLE_TYPE_LIST)
     return TRUE;
@@ -201,6 +201,12 @@ gabble_handle_repo_destroy (GabbleHandleRepo *repo)
 }
 
 gboolean
+gabble_handle_is_valid (GabbleHandleRepo *repo, TpHandleType type, GabbleHandle handle)
+{
+  return (handle_priv_lookup (repo, type, handle) != NULL);
+}
+
+gboolean
 gabble_handle_ref (GabbleHandleRepo *repo,
                    TpHandleType type,
                    GabbleHandle handle)
@@ -208,6 +214,9 @@ gabble_handle_ref (GabbleHandleRepo *repo,
   GabbleHandlePriv *priv;
 
   priv = handle_priv_lookup (repo, type, handle);
+
+  if (priv == NULL)
+    return FALSE;
 
   priv->refcount++;
 
@@ -222,6 +231,9 @@ gabble_handle_unref (GabbleHandleRepo *repo,
   GabbleHandlePriv *priv;
 
   priv = handle_priv_lookup (repo, type, handle);
+
+  if (priv == NULL)
+    return FALSE;
 
   g_assert (priv->refcount > 0);
 
@@ -254,7 +266,7 @@ gabble_handle_inspect (GabbleHandleRepo *repo,
 
 GabbleHandle
 gabble_handle_for_contact (GabbleHandleRepo *repo,
-                           char *jid,
+                           const char *jid,
                            gboolean with_resource)
 {
   char *username, *server, *resource, *clean_jid;
@@ -264,7 +276,10 @@ gabble_handle_for_contact (GabbleHandleRepo *repo,
   g_assert (jid != NULL);
   g_assert (*jid != '\0');
 
-  gabble_handle_decode_jid (jid, &username, &server, &resource);
+  username = server = resource = NULL;
+  gabble_handle_decode_jid (jid, &username, &server,
+                            with_resource ? &resource
+                                          : NULL);
 
   g_assert (username != NULL);
   g_assert (*username != '\0');
@@ -277,6 +292,7 @@ gabble_handle_for_contact (GabbleHandleRepo *repo,
     {
       clean_jid = g_strdup_printf ("%s@%s", username, server);
     }
+
 
   g_free (username);
   g_free (server);
@@ -298,8 +314,11 @@ gabble_handle_for_contact (GabbleHandleRepo *repo,
     }
   else
     {
+      g_assert (gabble_handle_is_valid (repo, TP_HANDLE_TYPE_CONTACT, handle));
+
       g_free (clean_jid);
     }
+
 
   return handle;
 }

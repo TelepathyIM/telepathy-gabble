@@ -90,6 +90,7 @@ struct _GabbleConnectionPrivate
 
   /* handles */
   GabbleHandleRepo *handles;
+  GabbleHandle self_handle;
 
   /* gobject housekeeping */
   gboolean dispose_has_run;
@@ -543,12 +544,21 @@ _gabble_connection_connect (GabbleConnection *conn,
   if (priv->conn == NULL)
     {
       char *jid;
+      gboolean valid;
 
       priv->conn = lm_connection_new (priv->connect_server);
       lm_connection_set_port (priv->conn, priv->port);
 
-      jid = g_strdup_printf ("@%s", priv->stream_server);
+      jid = g_strdup_printf ("%s@%s", priv->username, priv->stream_server);
       lm_connection_set_jid (priv->conn, jid);
+
+      priv->self_handle = gabble_handle_for_contact (priv->handles,
+                                                     jid, FALSE);
+      valid = gabble_handle_ref (priv->handles,
+                                 TP_HANDLE_TYPE_CONTACT,
+                                 priv->self_handle);
+      g_assert (valid);
+
       g_free (jid);
 
       if (priv->old_ssl)
@@ -844,6 +854,14 @@ gboolean gabble_connection_get_protocol (GabbleConnection *obj, gchar ** ret, GE
  */
 gboolean gabble_connection_get_self_handle (GabbleConnection *obj, guint* ret, GError **error)
 {
+  GabbleConnectionPrivate *priv;
+
+  g_assert (GABBLE_IS_CONNECTION (obj));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  *ret = priv->self_handle;
+
   return TRUE;
 }
 
@@ -888,6 +906,35 @@ gboolean gabble_connection_get_status (GabbleConnection *obj, guint* ret, GError
  */
 gboolean gabble_connection_hold_handle (GabbleConnection *obj, guint handle_type, guint handle, GError **error)
 {
+  GabbleConnectionPrivate *priv;
+  gboolean valid;
+
+  g_assert (GABBLE_IS_CONNECTION (obj));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  if (!gabble_handle_type_is_valid (handle_type))
+    {
+      g_debug ("hold_handle: invalid handle type %u", handle_type);
+
+      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+                            "invalid handle type %u", handle_type);
+
+      return FALSE;
+    }
+
+  valid = gabble_handle_ref (priv->handles, handle_type, handle);
+
+  if (!valid)
+    {
+      g_debug ("hold_handle: unknown handle %u", handle);
+
+      *error = g_error_new (TELEPATHY_ERRORS, InvalidHandle,
+                            "unknown handle %u", handle);
+
+      return FALSE;
+    }
+
   return TRUE;
 }
 
@@ -906,7 +953,7 @@ gboolean gabble_connection_hold_handle (GabbleConnection *obj, guint handle_type
  */
 gboolean gabble_connection_inspect_handle (GabbleConnection *obj, guint handle_type, guint handle, gchar ** ret, GError **error)
 {
-  GabbleConnectionPriv *priv;
+  GabbleConnectionPrivate *priv;
   const char *tmp;
 
   g_assert (GABBLE_IS_CONNECTION (obj));
@@ -915,6 +962,8 @@ gboolean gabble_connection_inspect_handle (GabbleConnection *obj, guint handle_t
 
   if (!gabble_handle_type_is_valid (handle_type))
     {
+      g_debug ("inspect_handle: invalid handle type %u", handle_type);
+
       *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
                             "invalid handle type %u", handle_type);
 
@@ -925,6 +974,8 @@ gboolean gabble_connection_inspect_handle (GabbleConnection *obj, guint handle_t
 
   if (tmp == NULL)
     {
+      g_debug ("inspect_handle: invalid handle %u", handle);
+
       *error = g_error_new (TELEPATHY_ERRORS, InvalidHandle,
                             "unknown handle %u", handle);
 
@@ -969,6 +1020,38 @@ gboolean gabble_connection_list_channels (GabbleConnection *obj, gpointer* ret, 
  */
 gboolean gabble_connection_release_handle (GabbleConnection *obj, guint handle_type, guint handle, GError **error)
 {
+  GabbleConnectionPrivate *priv;
+  gboolean valid;
+
+  g_assert (GABBLE_IS_CONNECTION (obj));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  if (!gabble_handle_type_is_valid (handle_type))
+    {
+      g_debug ("release_handle: invalid handle type %u", handle_type);
+
+      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+                            "invalid handle type %u", handle_type);
+
+      return FALSE;
+    }
+
+  valid = gabble_handle_is_valid (priv->handles, handle_type, handle);
+
+  if (!valid)
+    {
+      g_debug ("release_handle: invalid handle %u", handle);
+
+      *error = g_error_new (TELEPATHY_ERRORS, InvalidHandle,
+                            "unknown handle %u", handle);
+
+      return FALSE;
+    }
+
+  /* TODO: this method is currently a no-op!
+   * we need a per-client list of handles. */
+
   return TRUE;
 }
 
@@ -1005,5 +1088,57 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
  */
 gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_type, const gchar * name, guint* ret, GError **error)
 {
+  GabbleConnectionPrivate *priv;
+  GabbleHandle handle;
+  gboolean valid;
+
+  g_assert (GABBLE_IS_CONNECTION (obj));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  if (!gabble_handle_type_is_valid (handle_type))
+    {
+      g_debug ("request_handle: invalid handle type %u", handle_type);
+
+      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+                            "invalid handle type %u", handle_type);
+
+      return FALSE;
+    }
+
+  switch (handle_type)
+    {
+    case TP_HANDLE_TYPE_CONTACT:
+      if (!strchr (name, '@'))
+        {
+          g_debug ("request_handle: requested handle %s has no @ in", name);
+
+          *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                                "requested handle %s has no @ in", name);
+
+          return FALSE;
+        }
+      else
+        {
+          handle = gabble_handle_for_contact (priv->handles, name, FALSE);
+        }
+      break;
+      /* TODO: list handles */
+/*    case TP_HANDLE_TYPE_LIST:
+      g_assert_not_reached ();
+      break; */
+    default:
+      g_debug ("request_handle: unimplemented handle type %u", handle_type);
+
+      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                          "unimplemented handle type %u", handle_type);
+
+      return FALSE;
+    }
+
+  /* TODO: this should use a per-client list of handles */
+  valid = gabble_handle_ref (priv->handles, handle_type, handle);
+  g_assert (valid);
+
   return TRUE;
 }

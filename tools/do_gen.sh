@@ -1,0 +1,13 @@
+top_srcdir=$PWD
+#export PYTHONPATH=$PYTHONPATH:$top_srcdir/tools
+#echo Using PYTHONPATH $PYTHONPATH
+cd src
+echo Generating GabbleConnectionManager files ...
+$top_srcdir/tools/gengobject.py $top_srcdir/gabble-connection-manager.xml GabbleConnectionManager
+echo Generating GabbleConnection files ...
+$top_srcdir/tools/gengobject.py $top_srcdir/gabble-connection.xml GabbleConnection
+echo Generating GabbleIMChannel files ...
+$top_srcdir/tools/gengobject.py $top_srcdir/gabble-im-channel.xml GabbleIMChannel
+echo Generating error enums ...
+$top_srcdir/tools/generrors.py
+

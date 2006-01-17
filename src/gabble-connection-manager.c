@@ -24,10 +24,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "gabble.h"
 #include "gabble-connection.h"
 #include "telepathy-constants.h"
 #include "telepathy-errors.h"
+#include "telepathy-helpers.h"
 
 #include "gabble-connection-manager.h"
 #include "gabble-connection-manager-glue.h"
@@ -423,8 +423,8 @@ _gabble_connection_manager_register (GabbleConnectionManager *self)
 
   g_assert (GABBLE_IS_CONNECTION_MANAGER (self));
 
-  bus = gabble_get_bus ();
-  bus_proxy = gabble_get_bus_proxy ();
+  bus = tp_get_bus ();
+  bus_proxy = tp_get_bus_proxy ();
 
   if (!dbus_g_proxy_call (bus_proxy, "RequestName", &error,
                           G_TYPE_STRING, BUS_NAME,

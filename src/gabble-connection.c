@@ -22,10 +22,10 @@
 #include <loudmouth/loudmouth.h>
 #include <string.h>
 
-#include "gabble.h"
 #include "handles.h"
 #include "telepathy-constants.h"
 #include "telepathy-errors.h"
+#include "telepathy-helpers.h"
 
 #include "gabble-connection.h"
 #include "gabble-connection-glue.h"
@@ -467,8 +467,8 @@ _gabble_connection_register (GabbleConnection *conn,
 
   g_assert (GABBLE_IS_CONNECTION (conn));
 
-  bus = gabble_get_bus ();
-  bus_proxy = gabble_get_bus_proxy ();
+  bus = tp_get_bus ();
+  bus_proxy = tp_get_bus_proxy ();
   priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
   safe_proto = g_strdup (priv->protocol);

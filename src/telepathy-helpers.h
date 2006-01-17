@@ -1,5 +1,6 @@
 /*
- * gabble.h - entry point and utility functions for telepathy-gabble
+ * telepathy-helpers.h - Header for various helper functions 
+ * for telepathy implementation
  * Copyright (C) 2005 Collabora Ltd.
  * Copyright (C) 2005 Nokia Corporation
  *
@@ -18,14 +19,17 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef __GABBLE_H__
-#define __GABBLE_H__
+#ifndef __TELEPATHY_HELPERS_H__
+#define __TELEPATHY_HELPERS_H__
 
-#include <dbus/dbus-glib.h>
+#include <glib.h>
 
 G_BEGIN_DECLS
 
+DBusGConnection * tp_get_bus ();
+DBusGProxy * tp_get_bus_proxy ();
+
 G_END_DECLS
 
-#endif /* #ifndef __GABBLE_H__*/
+#endif /* __TELEPATHY_HELPERS_H__ */
 

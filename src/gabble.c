@@ -24,45 +24,6 @@
 #include "telepathy-errors.h"
 #include "telepathy-errors-enumtypes.h"
 
-DBusGConnection *
-gabble_get_bus ()
-{
-  static DBusGConnection *bus = NULL;
-
-  if (bus == NULL)
-    {
-      GError *error = NULL;
-
-      bus = dbus_g_bus_get (DBUS_BUS_STARTER, &error);
-
-      if (bus == NULL)
-        g_error ("Failed to connect to starter bus: %s", error->message);
-    }
-
-  return bus;
-}
-
-DBusGProxy *
-gabble_get_bus_proxy ()
-{
-  static DBusGProxy *bus_proxy = NULL;
-
-  if (bus_proxy == NULL)
-    {
-      DBusGConnection *bus = gabble_get_bus ();
-
-      bus_proxy = dbus_g_proxy_new_for_name (bus,
-                                            "org.freedesktop.DBus",
-                                            "/org/freedesktop/DBus",
-                                            "org.freedesktop.DBus");
-
-      if (bus_proxy == NULL)
-        g_error ("Failed to get proxy object for bus.");
-    }
-
-  return bus_proxy;
-}
-
 int main(int argc, char **argv) {
   GabbleConnectionManager *manager;
   GMainLoop *mainloop;

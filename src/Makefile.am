@@ -23,6 +23,7 @@ CORE_SOURCES = \
     gintset.c \
     handles.c \
     telepathy-errors.c \
+    telepathy-helpers.c \
     $(BUILT_SOURCES)
 
 libgabble_convenience_la_SOURCES = \

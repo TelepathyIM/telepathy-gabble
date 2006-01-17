@@ -22,10 +22,12 @@
 #include <loudmouth/loudmouth.h>
 #include <string.h>
 
+#include "gabble-im-channel.h"
 #include "handles.h"
 #include "telepathy-constants.h"
 #include "telepathy-errors.h"
 #include "telepathy-helpers.h"
+#include "telepathy-interfaces.h"
 
 #include "gabble-connection.h"
 #include "gabble-connection-glue.h"
@@ -92,6 +94,9 @@ struct _GabbleConnectionPrivate
   GabbleHandleRepo *handles;
   GabbleHandle self_handle;
 
+  /* channels */
+  GHashTable *im_channels;
+
   /* gobject housekeeping */
   gboolean dispose_has_run;
 };
@@ -106,7 +111,10 @@ gabble_connection_init (GabbleConnection *obj)
   priv->port = 5222;
   priv->resource = g_strdup ("Telepathy");
 
-  priv->handles = gabble_handle_repo_new();
+  priv->handles = gabble_handle_repo_new ();
+
+  priv->im_channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+                                             NULL, g_object_unref);
 }
 
 /* static GObject*
@@ -764,6 +772,40 @@ connection_auth_cb (LmConnection *lmconn,
 }
 
 /**
+ * new_im_channel
+ */
+static GabbleIMChannel *
+new_im_channel (GabbleConnection *conn, GabbleHandle handle, gboolean supress_handler)
+{
+  GabbleConnectionPrivate *priv;
+  GabbleIMChannel *chan;
+  char *object_path;
+
+  g_assert (GABBLE_IS_CONNECTION (conn));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+
+  object_path = g_strdup_printf ("%s/ImChannel%u", priv->object_path, handle);
+
+  chan = g_object_new (GABBLE_TYPE_IM_CHANNEL,
+                       "connection", conn,
+                       "object-path", object_path,
+                       "handle", handle,
+                       NULL);
+
+  g_hash_table_insert (priv->im_channels, GINT_TO_POINTER (handle), chan);
+
+  g_signal_emit (conn, signals[NEW_CHANNEL], 0,
+                 object_path, TP_IFACE_CHANNEL_TYPE_TEXT,
+                 TP_HANDLE_TYPE_CONTACT, handle,
+                 supress_handler);
+
+  g_free (object_path);
+
+  return chan;
+}
+
+/**
  * gabble_connection_disconnect
  *
  * Implements DBus method Disconnect
@@ -806,7 +848,7 @@ gboolean gabble_connection_disconnect (GabbleConnection *obj, GError **error)
  */
 gboolean gabble_connection_get_interfaces (GabbleConnection *obj, gchar *** ret, GError **error)
 {
-  const char *interfaces[] = { "org.freedesktop.Telepathy.Connection", NULL };
+  const char *interfaces[] = { TP_IFACE_CONN_INTERFACE, NULL };
 
   *ret = g_strdupv ((gchar **) interfaces);
 
@@ -1070,7 +1112,60 @@ gboolean gabble_connection_release_handle (GabbleConnection *obj, guint handle_t
  */
 gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar * type, guint handle_type, guint handle, gboolean supress_handler, gchar ** ret, GError **error)
 {
+  GabbleConnectionPrivate *priv;
+
+  g_assert (GABBLE_IS_CONNECTION (obj));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  if (!strcmp (type, TP_IFACE_CHANNEL_TYPE_TEXT))
+    {
+      GabbleIMChannel *chan;
+
+      if (handle_type != TP_HANDLE_TYPE_CONTACT)
+        goto NOT_AVAILABLE;
+
+      if (!gabble_handle_is_valid (priv->handles,
+                                   TP_HANDLE_TYPE_CONTACT,
+                                   handle))
+        goto INVALID_HANDLE;
+
+      chan = new_im_channel (obj, handle, supress_handler);
+
+      g_object_get (chan, "object-path", ret, NULL);
+    }
+  else
+    {
+      goto NOT_IMPLEMENTED;
+    }
+
   return TRUE;
+
+NOT_AVAILABLE:
+  g_debug ("request_channel: requested channel is unavailable with "
+           "handle type %u", handle_type);
+
+  *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                        "requested channel is not available with "
+                        "handle type %u", handle_type);
+
+  return FALSE;
+
+INVALID_HANDLE:
+  g_debug ("request_channel: handle %u (type %u) not valid", handle, handle_type);
+
+  *error = g_error_new (TELEPATHY_ERRORS, InvalidHandle,
+                        "handle %u (type %u) not valid", handle, handle_type);
+
+  return FALSE;
+
+NOT_IMPLEMENTED:
+  g_debug ("request_channel: unsupported channel type %s", type);
+
+  *error = g_error_new (TELEPATHY_ERRORS, NotImplemented,
+                        "unsupported channel type %s", type);
+
+  return FALSE;
 }
 
 
@@ -1139,6 +1234,8 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
   /* TODO: this should use a per-client list of handles */
   valid = gabble_handle_ref (priv->handles, handle_type, handle);
   g_assert (valid);
+
+  *ret = handle;
 
   return TRUE;
 }

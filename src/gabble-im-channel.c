@@ -22,10 +22,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "gabble-im-channel.h"
-#include "gabble-im-channel-signals-marshal.h"
+#include "gabble-connection.h"
+#include "handles.h"
+#include "telepathy-helpers.h"
+#include "telepathy-interfaces.h"
 
+#include "gabble-im-channel.h"
 #include "gabble-im-channel-glue.h"
+#include "gabble-im-channel-signals-marshal.h"
 
 G_DEFINE_TYPE(GabbleIMChannel, gabble_im_channel, G_TYPE_OBJECT)
 
@@ -40,11 +44,23 @@ enum
 
 static guint signals[LAST_SIGNAL] = {0};
 
+/* properties */
+enum
+{
+  PROP_CONNECTION = 1,
+  PROP_OBJECT_PATH,
+  PROP_HANDLE,
+  LAST_PROPERTY
+};
+
 /* private structure */
 typedef struct _GabbleIMChannelPrivate GabbleIMChannelPrivate;
 
 struct _GabbleIMChannelPrivate
 {
+  GabbleConnection *connection;
+  char *object_path;
+  GabbleHandle handle;
   gboolean dispose_has_run;
 };
 
@@ -58,6 +74,79 @@ gabble_im_channel_init (GabbleIMChannel *obj)
   /* allocate any data required by the object here */
 }
 
+static GObject *
+gabble_im_channel_constructor (GType type, guint n_props,
+                               GObjectConstructParam *props)
+{
+  GObject *obj;
+  GabbleIMChannelPrivate *priv;
+  DBusGConnection *bus;
+
+  obj = G_OBJECT_CLASS (gabble_im_channel_parent_class)->
+           constructor (type, n_props, props);
+  priv = GABBLE_IM_CHANNEL_GET_PRIVATE (GABBLE_IM_CHANNEL (obj));
+
+  bus = tp_get_bus ();
+
+  dbus_g_connection_register_g_object (bus, priv->object_path, obj);
+
+  return obj;
+}
+
+static void
+gabble_im_channel_get_property (GObject    *object,
+                                guint       property_id,
+                                GValue     *value,
+                                GParamSpec *pspec)
+{
+  GabbleIMChannel *chan = GABBLE_IM_CHANNEL (object);
+  GabbleIMChannelPrivate *priv = GABBLE_IM_CHANNEL_GET_PRIVATE (chan);
+
+  switch (property_id) {
+    case PROP_CONNECTION:
+      g_value_set_object (value, priv->connection);
+      break;
+    case PROP_OBJECT_PATH:
+      g_value_set_string (value, priv->object_path);
+      break;
+    case PROP_HANDLE:
+      g_value_set_uint (value, priv->handle);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+      break;
+  }
+}
+
+static void
+gabble_im_channel_set_property (GObject     *object,
+                                guint        property_id,
+                                const GValue *value,
+                                GParamSpec   *pspec)
+{
+  GabbleIMChannel *chan = GABBLE_IM_CHANNEL (object);
+  GabbleIMChannelPrivate *priv = GABBLE_IM_CHANNEL_GET_PRIVATE (chan);
+
+  switch (property_id) {
+    case PROP_CONNECTION:
+      priv->connection = g_value_get_object (value);
+      break;
+    case PROP_OBJECT_PATH:
+      if (priv->object_path)
+        g_free (priv->object_path);
+
+      priv->object_path = g_value_dup_string (value);
+      break;
+    case PROP_HANDLE:
+      priv->handle = g_value_get_uint (value);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+      break;
+  }
+}
+
+
 static void gabble_im_channel_dispose (GObject *object);
 static void gabble_im_channel_finalize (GObject *object);
 
@@ -65,11 +154,47 @@ static void
 gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_im_channel_class);
+  GParamSpec *param_spec;
 
   g_type_class_add_private (gabble_im_channel_class, sizeof (GabbleIMChannelPrivate));
 
+  object_class->constructor = gabble_im_channel_constructor;
+
+  object_class->get_property = gabble_im_channel_get_property;
+  object_class->set_property = gabble_im_channel_set_property;
+
   object_class->dispose = gabble_im_channel_dispose;
   object_class->finalize = gabble_im_channel_finalize;
+
+  param_spec = g_param_spec_object ("connection", "GabbleConnection object",
+                                    "Gabble connection object that owns this "
+                                    "IM channel object.",
+                                    GABBLE_TYPE_CONNECTION,
+                                    G_PARAM_CONSTRUCT_ONLY |
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_STATIC_NICK |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
+
+  param_spec = g_param_spec_string ("object-path", "D-Bus object path",
+                                    "The D-Bus object path used for this "
+                                    "object on the bus.",
+                                    NULL,
+                                    G_PARAM_CONSTRUCT_ONLY |
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_STATIC_NAME |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_OBJECT_PATH, param_spec);
+
+  param_spec = g_param_spec_uint ("handle", "Contact handle",
+                                  "The GabbleHandle representing the contact "
+                                  "with whom this channel communicates.",
+                                  0, G_MAXUINT32, 0,
+                                  G_PARAM_CONSTRUCT_ONLY |
+                                  G_PARAM_READWRITE |
+                                  G_PARAM_STATIC_NAME |
+                                  G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_HANDLE, param_spec);
 
   signals[CLOSED] =
     g_signal_new ("closed",
@@ -199,6 +324,14 @@ gboolean gabble_im_channel_get_channel_type (GabbleIMChannel *obj, gchar ** ret,
  */
 gboolean gabble_im_channel_get_handle (GabbleIMChannel *obj, guint* ret, guint* ret1, GError **error)
 {
+  GabbleIMChannelPrivate *priv;
+
+  g_assert (GABBLE_IS_IM_CHANNEL (obj));
+
+  priv = GABBLE_IM_CHANNEL_GET_PRIVATE (obj);
+
+  *ret = priv->handle;
+
   return TRUE;
 }
 
@@ -217,6 +350,15 @@ gboolean gabble_im_channel_get_handle (GabbleIMChannel *obj, guint* ret, guint* 
  */
 gboolean gabble_im_channel_get_interfaces (GabbleIMChannel *obj, gchar *** ret, GError **error)
 {
+  const char *interfaces[] =
+    {
+      TP_IFACE_CHANNEL_INTERFACE,
+      TP_IFACE_CHANNEL_TYPE_TEXT,
+      NULL
+    };
+
+  *ret = g_strdupv ((gchar **) interfaces);
+
   return TRUE;
 }
 

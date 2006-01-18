@@ -23,6 +23,8 @@
 
 #include <glib-object.h>
 
+#include "handles.h"
+
 G_BEGIN_DECLS
 
 typedef struct _GabbleConnection GabbleConnection;
@@ -55,6 +57,7 @@ GType gabble_connection_get_type(void);
 void _gabble_connection_set_properties_from_account (GabbleConnection *conn, const char *account);
 gboolean _gabble_connection_register (GabbleConnection *conn, char **bus_name, char **object_path, GError **error);
 gboolean _gabble_connection_connect (GabbleConnection *conn, GError **error);
+GabbleHandleRepo *_gabble_connection_get_handles (GabbleConnection *conn);
 
 gboolean gabble_connection_disconnect (GabbleConnection *obj, GError **error);
 gboolean gabble_connection_get_interfaces (GabbleConnection *obj, gchar *** ret, GError **error);

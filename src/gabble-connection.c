@@ -517,6 +517,23 @@ _gabble_connection_register (GabbleConnection *conn,
   return TRUE;
 }
 
+/**
+ * _gabble_connection_get_handles
+ *
+ * Return the handle repo for a connection.
+ */
+GabbleHandleRepo *
+_gabble_connection_get_handles (GabbleConnection *conn)
+{
+  GabbleConnectionPrivate *priv;
+
+  g_assert (GABBLE_IS_CONNECTION (conn));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+
+  return priv->handles;
+}
+
 
 static LmSSLResponse connection_ssl_cb (LmSSL*, LmSSLStatus, gpointer);
 static void connection_open_cb (LmConnection*, gboolean, gpointer);

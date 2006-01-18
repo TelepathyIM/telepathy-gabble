@@ -81,13 +81,18 @@ gabble_im_channel_constructor (GType type, guint n_props,
   GObject *obj;
   GabbleIMChannelPrivate *priv;
   DBusGConnection *bus;
+  GabbleHandleRepo *handles;
+  gboolean valid;
 
   obj = G_OBJECT_CLASS (gabble_im_channel_parent_class)->
            constructor (type, n_props, props);
   priv = GABBLE_IM_CHANNEL_GET_PRIVATE (GABBLE_IM_CHANNEL (obj));
 
-  bus = tp_get_bus ();
+  handles = _gabble_connection_get_handles (priv->connection);
+  valid = gabble_handle_ref (handles, TP_HANDLE_TYPE_CONTACT, priv->handle);
+  g_assert (valid);
 
+  bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
 
   return obj;
@@ -231,13 +236,15 @@ gabble_im_channel_dispose (GObject *object)
 {
   GabbleIMChannel *self = GABBLE_IM_CHANNEL (object);
   GabbleIMChannelPrivate *priv = GABBLE_IM_CHANNEL_GET_PRIVATE (self);
+  GabbleHandleRepo *handles;
 
   if (priv->dispose_has_run)
     return;
 
   priv->dispose_has_run = TRUE;
 
-  /* release any references held by the object here */
+  handles = _gabble_connection_get_handles (priv->connection);
+  gabble_handle_unref (handles, TP_HANDLE_TYPE_CONTACT, priv->handle);
 
   if (G_OBJECT_CLASS (gabble_im_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_im_channel_parent_class)->dispose (object);

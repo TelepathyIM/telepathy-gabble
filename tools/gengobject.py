@@ -55,12 +55,12 @@ def type_to_gtype(s):
         return ("gchar *", "G_TYPE_STRING", "STRING", True)
     if s == 'o': #object path
         return ("gchar *", "DBUS_TYPE_G_OBJECT_PATH", "STRING", True)
-    if s == 'as':  #array of strings
-        return ("gchar **", "G_TYPE_STRV", "BOXED", True)
     if s == 'v':  #variant
         return ("GValue *", "G_TYPE_VALUE", "BOXED", True)
-    if s[:3] == 'a{s':  # dict mapping of strings to any marshalable value
-        return ("GHashTable *", "DBUS_TYPE_G_STRING_HASHTABLE", "BOXED", False)
+    if s[:1] == '(': #struct
+        return ("GValueArray *", "G_VALUE_ARRAY", "BOXED", True)
+    if s == 'as':  #array of strings
+        return ("gchar **", "G_TYPE_STRV", "BOXED", True)
     if s == 'ay': #byte array
         return ("GArray *", "DBUS_TYPE_G_BYTE_ARRAY", "BOXED", True)
     if s == 'au': #uint array
@@ -75,9 +75,19 @@ def type_to_gtype(s):
         return ("GArray *", "DBUS_TYPE_G_DOUBLE_ARRAY", "BOXED", True)
     if s == 'ab': #boolean array
         return ("GArray *", "DBUS_TYPE_G_BOOLEAN_ARRAY", "BOXED", True)
+    if s[:2] == 'a(': #struct array
+        return ("GPtrArray *", "(dbus_g_type_get_collection (\"GPtrArray\", G_TYPE_VALUE_ARRAY))", "BOXED", True)
+    if s == 'a{ss}': #hash table of string to string
+        return ("GHashTable *", "DBUS_TYPE_G_STRING_STRING_HASHTABLE", "BOXED", False)
+    if s[:2] == 'a{':  #some arbitrary hash tables
+        if s[2] not in ('y', 'b', 'n', 'q', 'i', 'u', 's'):
+            raise Exception, "can't index a hashtable off non-basic type " + s
+        first = type_to_gtype(s[2])
+        second = type_to_gtype(s[3:-1])
+        return ("GHashTable *", "(dbus_g_type_get_map (\"GHashTable\", " + first[1] + ", " + second[1] + "))", "BOXED", False)
 
     # we just don't know ..
-    return ("gpointer", "G_TYPE_BOXED", "BOXED", True)
+    raise Exception, "don't know the GType for " + s
 
 
 def signal_to_marshal_type(signal):

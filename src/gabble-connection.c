@@ -1042,7 +1042,7 @@ gboolean gabble_connection_inspect_handle (GabbleConnection *obj, guint handle_t
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_connection_list_channels (GabbleConnection *obj, gpointer* ret, GError **error)
+gboolean gabble_connection_list_channels (GabbleConnection *obj, GPtrArray ** ret, GError **error)
 {
   return TRUE;
 }

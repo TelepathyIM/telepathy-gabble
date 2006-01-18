@@ -20,16 +20,21 @@
 
 #include <dbus/dbus-glib.h>
 #include <stdio.h>
-#include <stdlib.h>
+#include <string.h>
 
+#include "allocator.h"
 #include "gabble-connection.h"
 #include "handles.h"
+#include "telepathy-constants.h"
 #include "telepathy-helpers.h"
 #include "telepathy-interfaces.h"
 
 #include "gabble-im-channel.h"
 #include "gabble-im-channel-glue.h"
 #include "gabble-im-channel-signals-marshal.h"
+
+#define MAX_PENDING_MESSAGES 256
+#define MAX_MESSAGE_SIZE 8*1024 - 1
 
 G_DEFINE_TYPE(GabbleIMChannel, gabble_im_channel, G_TYPE_OBJECT)
 
@@ -61,7 +66,25 @@ struct _GabbleIMChannelPrivate
   GabbleConnection *connection;
   char *object_path;
   GabbleHandle handle;
+
+  guint recv_id;
+  guint send_id;
+
+  GQueue *pending_messages;
+
   gboolean dispose_has_run;
+};
+
+/* pending message */
+typedef struct _GabbleIMPendingMessage GabbleIMPendingMessage;
+
+struct _GabbleIMPendingMessage
+{
+  guint id;
+  time_t timestamp;
+  GabbleHandle sender;
+  TpChannelTextMessageType type;
+  char *text;
 };
 
 #define GABBLE_IM_CHANNEL_GET_PRIVATE(o)     (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_IM_CHANNEL, GabbleIMChannelPrivate))
@@ -69,9 +92,9 @@ struct _GabbleIMChannelPrivate
 static void
 gabble_im_channel_init (GabbleIMChannel *obj)
 {
-  /* GabbleIMChannelPrivate *priv = GABBLE_IM_CHANNEL_GET_PRIVATE (obj); */
+  GabbleIMChannelPrivate *priv = GABBLE_IM_CHANNEL_GET_PRIVATE (obj);
 
-  /* allocate any data required by the object here */
+  priv->pending_messages = g_queue_new ();
 }
 
 static GObject *
@@ -261,6 +284,114 @@ gabble_im_channel_finalize (GObject *object)
   G_OBJECT_CLASS (gabble_im_channel_parent_class)->finalize (object);
 }
 
+/**
+ * _gabble_im_pending_get_alloc
+ *
+ * Returns a GabbleAllocator for creating up to 256 pending messages, but no
+ * more.
+ */
+static GabbleAllocator *
+_gabble_im_pending_get_alloc ()
+{
+  static GabbleAllocator *alloc = NULL;
+
+  if (alloc == NULL)
+    alloc = gabble_allocator_new (sizeof(GabbleIMPendingMessage), MAX_PENDING_MESSAGES);
+
+  return alloc;
+}
+
+#define _gabble_im_pending_new() \
+  (ga_new (_gabble_im_pending_get_alloc (), GabbleIMPendingMessage))
+#define _gabble_im_pending_new0() \
+  (ga_new0 (_gabble_im_pending_get_alloc (), GabbleIMPendingMessage))
+
+/**
+ * _gabble_im_pending_free
+ *
+ * Free up a GabbleIMPendingMessage struct.
+ */
+static void _gabble_im_pending_free (GabbleIMPendingMessage *msg)
+{
+  if (msg->text)
+    g_free (msg->text);
+
+  gabble_allocator_free (_gabble_im_pending_get_alloc (), msg);
+}
+
+/**
+ * _gabble_im_channel_receive
+ *
+ */
+gboolean _gabble_im_channel_receive (GabbleIMChannel *chan,
+                                     TpChannelTextMessageType type,
+                                     GabbleHandle sender,
+                                     time_t timestamp,
+                                     const char *text)
+{
+  GabbleIMChannelPrivate *priv;
+  GabbleIMPendingMessage *msg;
+  gsize len;
+
+  g_assert (GABBLE_IS_IM_CHANNEL (chan));
+
+  priv = GABBLE_IM_CHANNEL_GET_PRIVATE (chan);
+
+  msg = _gabble_im_pending_new0 ();
+
+  if (msg == NULL)
+    {
+      g_debug ("_gabble_im_channel_receive: no more pending messages available, giving up");
+
+      /* TODO: something clever here */
+
+      return FALSE;
+    }
+
+  len = strlen (text);
+
+  if (len > MAX_MESSAGE_SIZE)
+    {
+      g_debug ("_gabble_im_channel_receive: message exceeds maximum size, truncating");
+
+      /* TODO: something clever here */
+
+      len = MAX_MESSAGE_SIZE;
+    }
+
+  msg->text = g_try_malloc (len + 1);
+
+  if (msg->text == NULL)
+    {
+      g_debug ("_gabble_im_channel_receive: unable to allocate message, giving up");
+
+      _gabble_im_pending_free (msg);
+
+      /* TODO: something clever here */
+
+      return FALSE;
+    }
+
+  g_strlcpy (msg->text, text, len + 1);
+
+  msg->id = priv->recv_id++;
+  msg->timestamp = timestamp;
+  msg->sender = sender;
+  msg->type = type;
+
+  g_queue_push_tail (priv->pending_messages, msg);
+
+  g_signal_emit (chan, signals[RECEIVED], 0,
+                 msg->id,
+                 msg->timestamp,
+                 msg->sender,
+                 msg->type,
+                 msg->text);
+
+  g_debug ("_gabble_im_channel_receive: queued message %u", msg->id);
+
+  return FALSE;
+}
 
 
 /**

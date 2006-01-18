@@ -17,6 +17,7 @@ CLEANFILES = $(BUILT_SOURCES)
 bin_PROGRAMS=telepathy-gabble
 
 CORE_SOURCES = \
+    allocator.c \
     gabble-connection-manager.c \
     gabble-connection.c \
     gabble-im-channel.c \

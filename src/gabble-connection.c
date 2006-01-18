@@ -21,6 +21,7 @@
 #include <dbus/dbus-glib.h>
 #include <loudmouth/loudmouth.h>
 #include <string.h>
+#include <time.h>
 
 #include "gabble-im-channel.h"
 #include "handles.h"
@@ -68,6 +69,7 @@ typedef struct _GabbleConnectionPrivate GabbleConnectionPrivate;
 struct _GabbleConnectionPrivate
 {
   LmConnection *conn;
+  LmMessageHandler *message_cb;
 
   /* telepathy properties */
   char *protocol;
@@ -358,10 +360,15 @@ gabble_connection_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  if (lm_connection_is_open (priv->conn))
-    lm_connection_close (priv->conn, NULL);
+  if (priv->conn)
+    {
+      if (lm_connection_is_open (priv->conn))
+        lm_connection_close (priv->conn, NULL);
 
-  /* release any references held by the object here */
+      lm_connection_unregister_message_handler (priv->conn, priv->message_cb,
+                                                LM_MESSAGE_TYPE_MESSAGE);
+      lm_message_handler_unref (priv->message_cb);
+    }
 
   if (G_OBJECT_CLASS (gabble_connection_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_connection_parent_class)->dispose (object);
@@ -535,9 +542,11 @@ _gabble_connection_get_handles (GabbleConnection *conn)
 }
 
 
+static LmHandlerResult connection_message_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmSSLResponse connection_ssl_cb (LmSSL*, LmSSLStatus, gpointer);
 static void connection_open_cb (LmConnection*, gboolean, gpointer);
 static void connection_auth_cb (LmConnection*, gboolean, gpointer);
+static GabbleIMChannel *new_im_channel (GabbleConnection *conn, GabbleHandle handle, gboolean supress_handler);
 
 /**
  * _gabble_connection_connect
@@ -592,6 +601,12 @@ _gabble_connection_connect (GabbleConnection *conn,
           lm_connection_set_ssl (priv->conn, ssl);
           lm_ssl_unref (ssl);
         }
+
+      priv->message_cb = lm_message_handler_new (connection_message_cb,
+                                                 conn, NULL);
+      lm_connection_register_message_handler (priv->conn, priv->message_cb,
+                                              LM_MESSAGE_TYPE_MESSAGE,
+                                              LM_HANDLER_PRIORITY_NORMAL);
     }
   else
     {
@@ -636,6 +651,67 @@ connection_status_change (GabbleConnection        *conn,
   priv->status = status;
 
   g_signal_emit (conn, signals[STATUS_CHANGED], 0, status, reason);
+}
+
+
+/**
+ * connection_message_cb
+ *
+ * Called by loudmouth when we get an incoming <message>.
+ */
+static LmHandlerResult
+connection_message_cb (LmMessageHandler *handler,
+                       LmConnection *connection,
+                       LmMessage *message,
+                       gpointer user_data)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  LmMessageNode *msg_node, *body_node;
+  const char *from, *body;
+  GabbleHandle handle;
+  GabbleIMChannel *chan;
+  time_t stamp;
+
+  g_assert (connection == priv->conn);
+
+  msg_node = lm_message_get_node (message);
+  from = lm_message_node_get_attribute (msg_node, "from");
+  body_node = lm_message_node_get_child (msg_node, "body");
+
+  if (from == NULL || body_node == NULL)
+    {
+      char *tmp = lm_message_node_to_string (msg_node);
+      g_debug ("connection_message_cb: got a message without a from and a body, ignoring:\n%s", tmp);
+      g_free (tmp);
+
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    }
+
+  body = lm_message_node_get_value (body_node);
+  handle = gabble_handle_for_contact (priv->handles, from, FALSE);
+
+  g_debug ("connection_message_cb: message from %s (handle %u), body:\n%s",
+           from, handle, body);
+
+  chan = g_hash_table_lookup (priv->im_channels, GINT_TO_POINTER (handle));
+
+  if (chan == NULL)
+    {
+      g_debug ("connection_message_cb: found no channel, creating one");
+
+      chan = new_im_channel (conn, handle, FALSE);
+    }
+
+  stamp = time (NULL);
+
+  /* TODO: correctly parse timestamp of delayed messages */
+
+  if (_gabble_im_channel_receive (chan, TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL,
+                                  handle, stamp, body))
+    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+
+  return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 }
 
 /**

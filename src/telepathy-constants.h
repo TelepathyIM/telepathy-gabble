@@ -45,4 +45,11 @@ typedef enum
     TP_CONNECTION_STATUS_REASON_ENCRYPTION_ERROR = 4
 } TpConnectionStatusReason;
 
+typedef enum {
+    TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL = 0,
+    TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION = 1,
+    TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE = 2
+} TpChannelTextMessageType;
+
+
 #endif /* #ifndef __TELEPATHY_CONSTANTS_H__ */

@@ -1,3 +1,7 @@
+# Telepathy manager file
+managerdir = $(datadir)/telepathy/managers
+manager_DATA = gabble.manager
+
 # Dbus service file
 servicedir = $(DBUS_SERVICES_DIR)
 service_in_files = org.freedesktop.Telepathy.ConnectionManager.gabble.service.in

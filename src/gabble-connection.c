@@ -1130,6 +1130,60 @@ gboolean gabble_connection_inspect_handle (GabbleConnection *obj, guint handle_t
 
 
 /**
+ * list_channel_hash_foreach
+ *
+ * Called by the exported ListChannels function, this should iterate over
+ * the handle/channel pairs in a hash, and to the GPtrArray in the
+ * ListChannelInfo struct, add a GValueArray containing the following:
+ *  a D-Bus object path for the channel object on this service
+ *  a D-Bus interface name representing the channel type
+ *  an integer representing the handle type this channel communicates with, or zero
+ *  an integer handle representing the contact, room or list this channel communicates with, or zero
+ */
+static void
+list_channel_hash_foreach (gpointer key,
+                           gpointer value,
+                           gpointer data)
+{
+  GObject *channel = G_OBJECT (value);
+  GPtrArray *channels = (GPtrArray *) data;
+  char *path, *type;
+  guint handle_type, handle;
+  GValueArray *vals;
+
+  g_object_get (channel, "object-path", &path,
+                         "channel-type", &type,
+                         "handle-type", &handle_type,
+                         "handle", &handle, NULL);
+
+  g_debug ("list_channels_foreach_hash: adding path %s, type %s, "
+           "handle type %u, handle %u", path, type, handle_type, handle);
+
+  vals = g_value_array_new (4);
+
+  g_value_array_append (vals, NULL);
+  g_value_init (g_value_array_get_nth (vals, 0), DBUS_TYPE_G_OBJECT_PATH);
+  g_value_set_boxed (g_value_array_get_nth (vals, 0), path);
+  g_free (path);
+
+  g_value_array_append (vals, NULL);
+  g_value_init (g_value_array_get_nth (vals, 1), G_TYPE_STRING);
+  g_value_set_string (g_value_array_get_nth (vals, 1), type);
+  g_free (type);
+
+  g_value_array_append (vals, NULL);
+  g_value_init (g_value_array_get_nth (vals, 2), G_TYPE_UINT);
+  g_value_set_uint (g_value_array_get_nth (vals, 2), handle_type);
+
+  g_value_array_append (vals, NULL);
+  g_value_init (g_value_array_get_nth (vals, 3), G_TYPE_UINT);
+  g_value_set_uint (g_value_array_get_nth (vals, 3), handle);
+
+  g_ptr_array_add (channels, vals);
+}
+
+
+/**
  * gabble_connection_list_channels
  *
  * Implements DBus method ListChannels
@@ -1143,6 +1197,21 @@ gboolean gabble_connection_inspect_handle (GabbleConnection *obj, guint handle_t
  */
 gboolean gabble_connection_list_channels (GabbleConnection *obj, GPtrArray ** ret, GError **error)
 {
+  GabbleConnectionPrivate *priv;
+  guint count;
+  GPtrArray *channels;
+
+  g_assert (GABBLE_IS_CONNECTION (obj));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  count = g_hash_table_size (priv->im_channels);
+  channels = g_ptr_array_sized_new (count);
+
+  g_hash_table_foreach (priv->im_channels, list_channel_hash_foreach, channels);
+
+  *ret = channels;
+
   return TRUE;
 }
 

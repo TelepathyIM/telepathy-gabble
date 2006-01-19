@@ -54,6 +54,8 @@ enum
 {
   PROP_CONNECTION = 1,
   PROP_OBJECT_PATH,
+  PROP_CHANNEL_TYPE,
+  PROP_HANDLE_TYPE,
   PROP_HANDLE,
   LAST_PROPERTY
 };
@@ -137,6 +139,12 @@ gabble_im_channel_get_property (GObject    *object,
     case PROP_OBJECT_PATH:
       g_value_set_string (value, priv->object_path);
       break;
+    case PROP_CHANNEL_TYPE:
+      g_value_set_string (value, TP_IFACE_CHANNEL_TYPE_TEXT);
+      break;
+    case PROP_HANDLE_TYPE:
+      g_value_set_uint (value, TP_HANDLE_TYPE_CONTACT);
+      break;
     case PROP_HANDLE:
       g_value_set_uint (value, priv->handle);
       break;
@@ -213,6 +221,24 @@ gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
                                     G_PARAM_STATIC_NAME |
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_OBJECT_PATH, param_spec);
+
+  param_spec = g_param_spec_string ("channel-type", "Telepathy channel type",
+                                    "The D-Bus interface representing the "
+                                    "type of this channel.",
+                                    NULL,
+                                    G_PARAM_READABLE |
+                                    G_PARAM_STATIC_NAME |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_CHANNEL_TYPE, param_spec);
+
+  param_spec = g_param_spec_uint ("handle-type", "Contact handle type",
+                                  "The TpHandleType representing a "
+                                  "contact handle.",
+                                  0, G_MAXUINT32, 0,
+                                  G_PARAM_READABLE |
+                                  G_PARAM_STATIC_NAME |
+                                  G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_HANDLE_TYPE, param_spec);
 
   param_spec = g_param_spec_uint ("handle", "Contact handle",
                                   "The GabbleHandle representing the contact "

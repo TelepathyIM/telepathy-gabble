@@ -19,8 +19,10 @@
  */
 
 #include <dbus/dbus-glib.h>
+#include <loudmouth/loudmouth.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 #include "allocator.h"
 #include "gabble-connection.h"
@@ -71,8 +73,6 @@ struct _GabbleIMChannelPrivate
   GabbleHandle handle;
 
   guint recv_id;
-  guint send_id;
-
   GQueue *pending_messages;
 
   gboolean dispose_has_run;
@@ -644,6 +644,51 @@ gboolean gabble_im_channel_list_pending_messages (GabbleIMChannel *obj, GPtrArra
  */
 gboolean gabble_im_channel_send (GabbleIMChannel *obj, guint type, const gchar * text, GError **error)
 {
+  GabbleIMChannelPrivate *priv;
+  LmMessage *msg;
+  const char *recipient;
+  gboolean result;
+  time_t timestamp;
+
+  g_assert (GABBLE_IS_IM_CHANNEL (obj));
+
+  priv = GABBLE_IM_CHANNEL_GET_PRIVATE (obj);
+
+  if (type > TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE)
+    {
+      g_debug ("gabble_im_channel_send: invalid message type %u", type);
+
+      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+                            "invalid message type: %u", type);
+
+      return FALSE;
+    }
+
+  /* TODO: send different message types */
+
+  recipient = gabble_handle_inspect (
+      _gabble_connection_get_handles (priv->connection),
+      TP_HANDLE_TYPE_CONTACT,
+      priv->handle);
+
+  msg = lm_message_new (recipient, LM_MESSAGE_TYPE_MESSAGE);
+  lm_message_node_add_child (msg->node, "body", text);
+
+  /* TODO: send with callback? */
+
+  result = _gabble_connection_send (priv->connection, msg, error);
+  lm_message_unref (msg);
+
+  if (!result)
+    return FALSE;
+
+  timestamp = time (NULL);
+
+  g_signal_emit (obj, signals[SENT], 0,
+                 timestamp,
+                 type,
+                 text);
+
   return TRUE;
 }
 

@@ -516,7 +516,11 @@ _gabble_connection_register (GabbleConnection *conn,
   if (request_name_result == DBUS_REQUEST_NAME_REPLY_EXISTS)
     g_error ("Failed to acquire bus name, connection manager already running?");
 
+  g_debug ("_gabble_connection_register: bus name %s", priv->bus_name);
+
   dbus_g_connection_register_g_object (bus, priv->object_path, G_OBJECT (conn));
+
+  g_debug ("_gabble_connection_register: object path %s", priv->object_path);
 
   *bus_name = g_strdup (priv->bus_name);
   *object_path = g_strdup (priv->object_path);
@@ -885,6 +889,8 @@ new_im_channel (GabbleConnection *conn, GabbleHandle handle, gboolean supress_ha
                        "object-path", object_path,
                        "handle", handle,
                        NULL);
+
+  g_debug ("new_im_channel: object path %s", object_path);
 
   g_hash_table_insert (priv->im_channels, GINT_TO_POINTER (handle), chan);
 

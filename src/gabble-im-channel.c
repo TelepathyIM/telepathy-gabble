@@ -26,6 +26,7 @@
 #include "gabble-connection.h"
 #include "handles.h"
 #include "telepathy-constants.h"
+#include "telepathy-errors.h"
 #include "telepathy-helpers.h"
 #include "telepathy-interfaces.h"
 
@@ -419,6 +420,15 @@ gboolean _gabble_im_channel_receive (GabbleIMChannel *chan,
   return FALSE;
 }
 
+static gint
+compare_pending_message (gconstpointer haystack,
+                         gconstpointer needle)
+{
+  GabbleIMPendingMessage *msg = (GabbleIMPendingMessage *) haystack;
+  guint id = GPOINTER_TO_INT (needle);
+
+  return (msg->id != id);
+}
 
 /**
  * gabble_im_channel_acknowledge_pending_message
@@ -434,6 +444,36 @@ gboolean _gabble_im_channel_receive (GabbleIMChannel *chan,
  */
 gboolean gabble_im_channel_acknowledge_pending_message (GabbleIMChannel *obj, guint id, GError **error)
 {
+  GabbleIMChannelPrivate *priv;
+  GList *node;
+  GabbleIMPendingMessage *msg;
+
+  g_assert (GABBLE_IS_IM_CHANNEL (obj));
+
+  priv = GABBLE_IM_CHANNEL_GET_PRIVATE (obj);
+
+  node = g_queue_find_custom (priv->pending_messages,
+                              GINT_TO_POINTER (id),
+                              compare_pending_message);
+
+  if (node == NULL)
+    {
+      g_debug ("acknowledge_pending_message: invalid message id %u", id);
+
+      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+                            "invalid message id %u", id);
+
+      return FALSE;
+    }
+
+  msg = (GabbleIMPendingMessage *) node->data;
+
+  g_debug ("acknowledge_pending_message: acknowleding message id %u", id);
+
+  g_queue_remove (priv->pending_messages, msg);
+
+  _gabble_im_pending_free (msg);
+
   return TRUE;
 }
 

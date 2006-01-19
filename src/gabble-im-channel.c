@@ -539,6 +539,53 @@ gboolean gabble_im_channel_get_interfaces (GabbleIMChannel *obj, gchar *** ret, 
  */
 gboolean gabble_im_channel_list_pending_messages (GabbleIMChannel *obj, GPtrArray ** ret, GError **error)
 {
+  GabbleIMChannelPrivate *priv;
+  guint count;
+  GPtrArray *messages;
+  GList *cur;
+
+  g_assert (GABBLE_IS_IM_CHANNEL (obj));
+
+  priv = GABBLE_IM_CHANNEL_GET_PRIVATE (obj);
+
+  count = g_queue_get_length (priv->pending_messages);
+  messages = g_ptr_array_sized_new (count);
+  dbus_g_collection_set_signature (messages, "(uuuus)");
+
+  for (cur = g_queue_peek_head_link(priv->pending_messages);
+       cur != NULL;
+       cur = cur->next)
+    {
+      GabbleIMPendingMessage *msg = (GabbleIMPendingMessage *) cur->data;
+      GValueArray *vals;
+
+      vals = g_value_array_new (5);
+
+      g_value_array_append (vals, NULL);
+      g_value_init (g_value_array_get_nth (vals, 0), G_TYPE_UINT);
+      g_value_set_uint (g_value_array_get_nth (vals, 0), msg->id);
+
+      g_value_array_append (vals, NULL);
+      g_value_init (g_value_array_get_nth (vals, 1), G_TYPE_UINT);
+      g_value_set_uint (g_value_array_get_nth (vals, 1), msg->timestamp);
+
+      g_value_array_append (vals, NULL);
+      g_value_init (g_value_array_get_nth (vals, 2), G_TYPE_UINT);
+      g_value_set_uint (g_value_array_get_nth (vals, 2), msg->sender);
+
+      g_value_array_append (vals, NULL);
+      g_value_init (g_value_array_get_nth (vals, 3), G_TYPE_UINT);
+      g_value_set_uint (g_value_array_get_nth (vals, 3), msg->type);
+
+      g_value_array_append (vals, NULL);
+      g_value_init (g_value_array_get_nth (vals, 4), G_TYPE_STRING);
+      g_value_set_string (g_value_array_get_nth (vals, 4), msg->text);
+
+      g_ptr_array_add (messages, vals);
+    }
+
+  *ret = messages;
+
   return TRUE;
 }
 

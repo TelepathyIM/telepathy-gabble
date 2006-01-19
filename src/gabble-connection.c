@@ -1207,6 +1207,7 @@ gboolean gabble_connection_list_channels (GabbleConnection *obj, GPtrArray ** re
 
   count = g_hash_table_size (priv->im_channels);
   channels = g_ptr_array_sized_new (count);
+  dbus_g_collection_set_signature (channels, "(osuu)");
 
   g_hash_table_foreach (priv->im_channels, list_channel_hash_foreach, channels);
 

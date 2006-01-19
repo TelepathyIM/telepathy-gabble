@@ -1,13 +1,14 @@
 ACLOCAL_AMFLAGS = -I m4
 
 SUBDIRS = \
-	src
+  src \
+  data
 
 DIST_SUBDIRS = \
-	m4 \
-	tools
+  m4 \
+  tools 
 
 EXTRA_DIST = \
-	jabber-connection-manager.xml \
-	jabber-connection.xml \
-	jabber-im-channel.xml
+  jabber-connection-manager.xml \
+  jabber-connection.xml \
+  jabber-im-channel.xml

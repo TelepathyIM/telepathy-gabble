@@ -51,14 +51,22 @@ PKG_CHECK_MODULES(DBUS, [dbus-1 >= 0.51, dbus-glib-1 >= 0.51])
 AC_SUBST(DBUS_CFLAGS)
 AC_SUBST(DBUS_LIBS)
 
+AS_AC_EXPAND(DATADIR, $datadir)
+DBUS_SERVICES_DIR="$DATADIR/dbus-1/services"
+AC_SUBST(DBUS_SERVICES_DIR)
+AC_DEFINE_UNQUOTED(DBUS_SERVICES_DIR, "$DBUS_SERVICES_DIR", [DBus services directory])
+
++
 dnl Check for Loudmouth
 PKG_CHECK_MODULES(LOUDMOUTH, loudmouth-1.0)
 
 AC_SUBST(LOUDMOUTH_CFLAGS)
 AC_SUBST(LOUDMOUTH_LIBS)
 
-AC_OUTPUT( Makefile \
-src/Makefile \
-m4/Makefile \
-tools/Makefile \
+AC_OUTPUT( Makefile
+           src/Makefile
+           m4/Makefile
+           tools/Makefile
+           data/Makefile
+           data/org.freedesktop.Telepathy.ConnectionManager.gabble
 )

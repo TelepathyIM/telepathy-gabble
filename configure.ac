@@ -63,10 +63,9 @@ PKG_CHECK_MODULES(LOUDMOUTH, loudmouth-1.0)
 AC_SUBST(LOUDMOUTH_CFLAGS)
 AC_SUBST(LOUDMOUTH_LIBS)
 
-AC_OUTPUT( Makefile
-           src/Makefile
-           m4/Makefile
-           tools/Makefile
+AC_OUTPUT( Makefile \
+           src/Makefile \
+           m4/Makefile \
+           tools/Makefile \
            data/Makefile
-           data/org.freedesktop.Telepathy.ConnectionManager.gabble
 )

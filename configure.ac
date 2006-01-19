@@ -56,7 +56,7 @@ DBUS_SERVICES_DIR="$DATADIR/dbus-1/services"
 AC_SUBST(DBUS_SERVICES_DIR)
 AC_DEFINE_UNQUOTED(DBUS_SERVICES_DIR, "$DBUS_SERVICES_DIR", [DBus services directory])
 
-+
+
 dnl Check for Loudmouth
 PKG_CHECK_MODULES(LOUDMOUTH, loudmouth-1.0)
 

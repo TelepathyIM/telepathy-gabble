@@ -22,6 +22,7 @@
 #define __GABBLE_CONNECTION_H__
 
 #include <glib-object.h>
+#include <loudmouth/loudmouth.h>
 
 #include "handles.h"
 
@@ -58,6 +59,7 @@ void _gabble_connection_set_properties_from_account (GabbleConnection *conn, con
 gboolean _gabble_connection_register (GabbleConnection *conn, char **bus_name, char **object_path, GError **error);
 gboolean _gabble_connection_connect (GabbleConnection *conn, GError **error);
 GabbleHandleRepo *_gabble_connection_get_handles (GabbleConnection *conn);
+gboolean _gabble_connection_send (GabbleConnection *conn, LmMessage *msg, GError **error);
 
 gboolean gabble_connection_disconnect (GabbleConnection *obj, GError **error);
 gboolean gabble_connection_get_interfaces (GabbleConnection *obj, gchar *** ret, GError **error);

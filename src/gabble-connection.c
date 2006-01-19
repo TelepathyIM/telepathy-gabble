@@ -545,6 +545,35 @@ _gabble_connection_get_handles (GabbleConnection *conn)
   return priv->handles;
 }
 
+/**
+ * _gabble_connection_send
+ *
+ * Send an LmMessage and trap network errors appropriately.
+ */
+gboolean
+_gabble_connection_send (GabbleConnection *conn, LmMessage *msg, GError **error)
+{
+  GabbleConnectionPrivate *priv;
+  GError *lmerror = NULL;
+
+  g_assert (GABBLE_IS_CONNECTION (conn));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+
+  if (!lm_connection_send (priv->conn, msg, &lmerror))
+    {
+      g_error ("_gabble_connection_send failed: %s", lmerror->message);
+
+      *error = g_error_new (TELEPATHY_ERRORS, NetworkError,
+                            "message send failed: %s", lmerror->message);
+
+      g_error_free (lmerror);
+
+      return FALSE;
+    }
+
+  return TRUE;
+}
 
 static LmHandlerResult connection_message_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmSSLResponse connection_ssl_cb (LmSSL*, LmSSLStatus, gpointer);

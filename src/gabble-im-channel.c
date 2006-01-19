@@ -470,6 +470,8 @@ gboolean gabble_im_channel_close (GabbleIMChannel *obj, GError **error)
  */
 gboolean gabble_im_channel_get_channel_type (GabbleIMChannel *obj, gchar ** ret, GError **error)
 {
+  *ret = g_strdup (TP_IFACE_CHANNEL_TYPE_TEXT);
+
   return TRUE;
 }
 
@@ -494,7 +496,8 @@ gboolean gabble_im_channel_get_handle (GabbleIMChannel *obj, guint* ret, guint* 
 
   priv = GABBLE_IM_CHANNEL_GET_PRIVATE (obj);
 
-  *ret = priv->handle;
+  *ret = TP_HANDLE_TYPE_CONTACT;
+  *ret1 = priv->handle;
 
   return TRUE;
 }
@@ -514,12 +517,7 @@ gboolean gabble_im_channel_get_handle (GabbleIMChannel *obj, guint* ret, guint* 
  */
 gboolean gabble_im_channel_get_interfaces (GabbleIMChannel *obj, gchar *** ret, GError **error)
 {
-  const char *interfaces[] =
-    {
-      TP_IFACE_CHANNEL_INTERFACE,
-      TP_IFACE_CHANNEL_TYPE_TEXT,
-      NULL
-    };
+  const char *interfaces[] = { NULL };
 
   *ret = g_strdupv ((gchar **) interfaces);
 

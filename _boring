@@ -59,4 +59,6 @@
 \-bindings.(c|h)$
 \-gen.h$
 \.pc$
-^data/org.freedesktop.Telepathy.ConnectionManager.gabble$
+^data/org.freedesktop.Telepathy.ConnectionManager.gabble.service$
+^src/telepathy-gabble$
+

@@ -22,23 +22,7 @@
 #include <string.h>
 
 #include "handles.h"
-
-/* private data types */
-
-struct _GabbleHandleRepo
-{
-  GHashTable *handles;
-  GabbleHandle list_publish;
-  GabbleHandle list_subscribe;
-};
-
-typedef struct _GabbleHandlePriv GabbleHandlePriv;
-
-struct _GabbleHandlePriv
-{
-  guint refcount;
-  TpHandleType type;
-};
+#include "handles-private.h"
 
 /* private functions */
 

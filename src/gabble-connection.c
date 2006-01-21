@@ -42,7 +42,9 @@ G_DEFINE_TYPE(GabbleConnection, gabble_connection, G_TYPE_OBJECT)
 /* signal enum */
 enum
 {
+    CAPABILITIES_CHANGED,
     NEW_CHANNEL,
+    PRESENCE_UPDATE,
     STATUS_CHANGED,
     LAST_SIGNAL
 };
@@ -328,6 +330,15 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_RESOURCE, param_spec);
 
+  signals[CAPABILITIES_CHANGED] =
+    g_signal_new ("capabilities-changed",
+                  G_OBJECT_CLASS_TYPE (gabble_connection_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_connection_marshal_VOID__INT_BOXED_BOXED,
+                  G_TYPE_NONE, 3, G_TYPE_UINT, (dbus_g_type_get_collection ("GPtrArray", G_TYPE_VALUE_ARRAY)), (dbus_g_type_get_collection ("GPtrArray", G_TYPE_VALUE_ARRAY)));
+
   signals[NEW_CHANNEL] =
     g_signal_new ("new-channel",
                   G_OBJECT_CLASS_TYPE (gabble_connection_class),
@@ -336,6 +347,15 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
                   NULL, NULL,
                   gabble_connection_marshal_VOID__STRING_STRING_INT_INT_BOOLEAN,
                   G_TYPE_NONE, 5, DBUS_TYPE_G_OBJECT_PATH, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_BOOLEAN);
+
+  signals[PRESENCE_UPDATE] =
+    g_signal_new ("presence-update",
+                  G_OBJECT_CLASS_TYPE (gabble_connection_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_connection_marshal_VOID__BOXED,
+                  G_TYPE_NONE, 1, (dbus_g_type_get_map ("GHashTable", G_TYPE_UINT, G_VALUE_ARRAY)));
 
   signals[STATUS_CHANGED] =
     g_signal_new ("status-changed",
@@ -934,6 +954,60 @@ new_im_channel (GabbleConnection *conn, GabbleHandle handle, gboolean supress_ha
 }
 
 /**
+ * gabble_connection_add_status
+ *
+ * Implements DBus method AddStatus
+ * on interface org.freedesktop.Telepathy.Connection.Interface.Presence
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_connection_add_status (GabbleConnection *obj, const gchar * status, GHashTable * parms, GError **error)
+{
+  return TRUE;
+}
+
+
+/**
+ * gabble_connection_advertise_capabilities
+ *
+ * Implements DBus method AdvertiseCapabilities
+ * on interface org.freedesktop.Telepathy.Connection.Interface.Capabilities
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_connection_advertise_capabilities (GabbleConnection *obj, const gchar ** add, const gchar ** remove, GError **error)
+{
+  return TRUE;
+}
+
+
+/**
+ * gabble_connection_clear_status
+ *
+ * Implements DBus method ClearStatus
+ * on interface org.freedesktop.Telepathy.Connection.Interface.Presence
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_connection_clear_status (GabbleConnection *obj, GError **error)
+{
+  return TRUE;
+}
+
+
+/**
  * gabble_connection_disconnect
  *
  * Implements DBus method Disconnect
@@ -958,6 +1032,24 @@ gboolean gabble_connection_disconnect (GabbleConnection *obj, GError **error)
 
   lm_connection_close (priv->conn, NULL);
 
+  return TRUE;
+}
+
+
+/**
+ * gabble_connection_get_capabilities
+ *
+ * Implements DBus method GetCapabilities
+ * on interface org.freedesktop.Telepathy.Connection.Interface.Capabilities
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_connection_get_capabilities (GabbleConnection *obj, guint handle, GPtrArray ** ret, GError **error)
+{
   return TRUE;
 }
 
@@ -1058,6 +1150,24 @@ gboolean gabble_connection_get_status (GabbleConnection *obj, guint* ret, GError
 
   *ret = priv->status;
 
+  return TRUE;
+}
+
+
+/**
+ * gabble_connection_get_statuses
+ *
+ * Implements DBus method GetStatuses
+ * on interface org.freedesktop.Telepathy.Connection.Interface.Presence
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_connection_get_statuses (GabbleConnection *obj, GHashTable ** ret, GError **error)
+{
   return TRUE;
 }
 
@@ -1297,6 +1407,24 @@ gboolean gabble_connection_release_handle (GabbleConnection *obj, guint handle_t
 
 
 /**
+ * gabble_connection_remove_status
+ *
+ * Implements DBus method RemoveStatus
+ * on interface org.freedesktop.Telepathy.Connection.Interface.Presence
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_connection_remove_status (GabbleConnection *obj, const gchar * status, GError **error)
+{
+  return TRUE;
+}
+
+
+/**
  * gabble_connection_request_channel
  *
  * Implements DBus method RequestChannel
@@ -1437,3 +1565,58 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
 
   return TRUE;
 }
+
+
+/**
+ * gabble_connection_request_presence
+ *
+ * Implements DBus method RequestPresence
+ * on interface org.freedesktop.Telepathy.Connection.Interface.Presence
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_connection_request_presence (GabbleConnection *obj, const GArray * contacts, GError **error)
+{
+  return TRUE;
+}
+
+
+/**
+ * gabble_connection_set_last_activity_time
+ *
+ * Implements DBus method SetLastActivityTime
+ * on interface org.freedesktop.Telepathy.Connection.Interface.Presence
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_connection_set_last_activity_time (GabbleConnection *obj, guint time, GError **error)
+{
+  return TRUE;
+}
+
+
+/**
+ * gabble_connection_set_status
+ *
+ * Implements DBus method SetStatus
+ * on interface org.freedesktop.Telepathy.Connection.Interface.Presence
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_connection_set_status (GabbleConnection *obj, GHashTable * statuses, GError **error)
+{
+  return TRUE;
+}
+

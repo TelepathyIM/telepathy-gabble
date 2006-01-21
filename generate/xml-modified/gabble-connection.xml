@@ -55,4 +55,45 @@
       <arg type="u" name="reason" />
     </signal>
   </interface>
+  <interface name="org.freedesktop.Telepathy.Connection.Interface.Capabilities">
+    <method name="GetCapabilities">
+      <arg direction="in"  type="u" name="handle" />
+      <arg direction="out" type="a(su)" />
+    </method>
+    <method name="AdvertiseCapabilities">
+      <arg direction="in"  type="as" name="add" />
+      <arg direction="in"  type="as" name="remove" />
+    </method>
+    <signal name="CapabilitiesChanged">
+      <arg type="u" name="handle" />
+      <arg type="a(su)" name="added" />
+      <arg type="a(su)" name="removed" />
+    </signal>
+  </interface>
+  <interface name="org.freedesktop.Telepathy.Connection.Interface.Presence">
+    <method name="RemoveStatus">
+      <arg direction="in"  type="s" name="status" />
+    </method>
+    <method name="ClearStatus">
+    </method>
+    <method name="SetLastActivityTime">
+      <arg direction="in"  type="u" name="time" />
+    </method>
+    <method name="AddStatus">
+      <arg direction="in"  type="s" name="status" />
+      <arg direction="in"  type="a{sv}" name="parms" />
+    </method>
+    <method name="RequestPresence">
+      <arg direction="in"  type="au" name="contacts" />
+    </method>
+    <method name="GetStatuses">
+      <arg direction="out" type="a{s(ubba{ss})}" />
+    </method>
+    <signal name="PresenceUpdate">
+      <arg type="a{u(ua{sa{sv}})}" name="presence" />
+    </signal>
+    <method name="SetStatus">
+      <arg direction="in"  type="a{sa{sv}}" name="statuses" />
+    </method>
+  </interface>
 </node>

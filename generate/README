@@ -12,3 +12,10 @@ and to remove the Introspect methods which are implemented automatically by the
 bindings, so the pristine XML is kept in generate/xml-pristine/ and changed
 applied by hand to generate/xml-modified/. To generate this pristine XML, run
 generate/do_xml.sh.
+
+In both cases, applying the changes to the generated XML or src can be as easy
+as:
+ darcs diff -u generate/src | patch -d src
+Patch does a much better job of applying generated changes to the modified code
+than darcs did when pulling patches from seperate trees (xml -> generate ->
+live).

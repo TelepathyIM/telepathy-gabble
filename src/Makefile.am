@@ -8,6 +8,9 @@ BUILT_SOURCES = \
     gabble-im-channel-glue.h \
     gabble-im-channel-signals-marshal.h \
     gabble-im-channel-signals-marshal.c \
+    gabble-roster-channel-glue.h \
+    gabble-roster-channel-signals-marshal.h \
+    gabble-roster-channel-signals-marshal.c \
     telepathy-errors-enumtypes.h \
     telepathy-errors-enumtypes.c
 
@@ -21,6 +24,7 @@ CORE_SOURCES = \
     gabble-connection-manager.c \
     gabble-connection.c \
     gabble-im-channel.c \
+    gabble-roster-channel.c \
     gintset.c \
     handles.c \
     handle-set.c \

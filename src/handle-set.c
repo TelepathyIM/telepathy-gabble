@@ -31,6 +31,7 @@ struct _GabbleHandleSet
 {
   GabbleHandleRepo *repo;
   GIntSet *intset;
+  TpHandleType type;
 };
 
 /**
@@ -42,20 +43,20 @@ struct _GabbleHandleSet
  * Returns: A new #GabbleHandleSet
  */
 GabbleHandleSet *
-handle_set_new (GabbleHandleRepo *repo)
+handle_set_new (GabbleHandleRepo *repo, TpHandleType type)
 {
   GabbleHandleSet *set = g_new(GabbleHandleSet, 1);
   set->intset = g_intset_new();
   set->repo = repo;
+  set->type = type;
 
   return set;
 }
 
 static void 
-freer(GabbleHandleSet *set, GabbleHandle handle, TpHandleType type,
-      gpointer userdata)
+freer(GabbleHandleSet *set, GabbleHandle handle, gpointer userdata)
 {
-  handle_set_remove (set, handle, type);
+  handle_set_remove (set, handle);
 }
 
 /**
@@ -76,25 +77,19 @@ handle_set_destroy (GabbleHandleSet *set)
  * handle_set_add:
  * @set: #GabbleHandleSet to add this handle to
  * @handle: handle to add
- * @type: type of handle
  *
  * Add a handle to a #GabbleHandleSet,and reference it in the attched
  * #GabbleHandleRepo
  *
- * Returns: FALSE if the (handle,type) pair was invalid
  */
-gboolean
-handle_set_add (GabbleHandleSet *set, GabbleHandle handle, TpHandleType type)
+void
+handle_set_add (GabbleHandleSet *set, GabbleHandle handle)
 {
-  if (gabble_handle_is_valid(set->repo, type, handle))
-    return FALSE;
-
   if (!g_intset_is_member(set->intset, handle))
     {
-      gabble_handle_ref (set->repo, type, handle);
+      gabble_handle_ref (set->repo, set->type, handle);
       g_intset_add (set->intset, handle);
     }
-  return TRUE;
 }
 
 /**
@@ -110,11 +105,11 @@ handle_set_add (GabbleHandleSet *set, GabbleHandle handle, TpHandleType type)
  */
 
 gboolean
-handle_set_remove (GabbleHandleSet *set, GabbleHandle handle, TpHandleType type)
+handle_set_remove (GabbleHandleSet *set, GabbleHandle handle)
 {
   if (g_intset_is_member(set->intset, handle))
     {
-      gabble_handle_unref (set->repo, type, handle);
+      gabble_handle_unref (set->repo, set->type, handle);
       g_intset_remove (set->intset, handle);
       return TRUE;
     }
@@ -133,10 +128,8 @@ handle_set_remove (GabbleHandleSet *set, GabbleHandle handle, TpHandleType type)
  *
  */
 gboolean 
-handle_set_is_member (GabbleHandleSet *set, GabbleHandle handle, TpHandleType type)
+handle_set_is_member (GabbleHandleSet *set, GabbleHandle handle)
 {
-  if (gabble_handle_is_valid(set->repo, type, handle))
-    return FALSE;
   return g_intset_is_member(set->intset, handle);
 }
 
@@ -151,12 +144,8 @@ static void
 foreach_helper(guint i, gpointer userdata)
 {
   _foreach_data *data = (_foreach_data*) userdata;
-  TpHandleType type;
-  GabbleHandlePriv *priv;
 
-  priv = g_hash_table_lookup (data->set->repo->handles, GINT_TO_POINTER (i));
-  type = priv->type;
-  data->func(data->set, i, type, data->userdata);
+  data->func(data->set, i, data->userdata);
 }
 void 
 handle_set_foreach (GabbleHandleSet *set, GabbleHandleFunc func, gpointer userdata)

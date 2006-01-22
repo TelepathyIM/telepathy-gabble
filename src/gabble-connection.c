@@ -1418,6 +1418,7 @@ gboolean gabble_connection_release_handle (GabbleConnection *obj, guint handle_t
 {
   GabbleConnectionPrivate *priv;
   gboolean valid;
+  char *client_name = "FIXME";
 
   g_assert (GABBLE_IS_CONNECTION (obj));
 
@@ -1445,9 +1446,7 @@ gboolean gabble_connection_release_handle (GabbleConnection *obj, guint handle_t
       return FALSE;
     }
 
-  /* TODO: this method is currently a no-op!
-   * we need a per-client list of handles. */
-
+  gabble_connection_client_release_handle (obj, client_name, handle, handle_type);
   return TRUE;
 }
 

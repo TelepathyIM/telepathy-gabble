@@ -27,14 +27,11 @@
 /* private functions */
 
 static GabbleHandlePriv *
-handle_priv_new (TpHandleType type)
+handle_priv_new ()
 {
   GabbleHandlePriv *priv;
 
-  g_assert (gabble_handle_type_is_valid (type));
-
   priv = g_new0 (GabbleHandlePriv, 1);
-  priv->type = type;
 
   return priv;
 }
@@ -57,16 +54,45 @@ handle_priv_lookup (GabbleHandleRepo *repo,
   g_assert (repo != NULL);
   g_assert (handle != 0);
 
-  priv = g_hash_table_lookup (repo->handles, GINT_TO_POINTER (handle));
-
-  if (priv == NULL)
-    return NULL;
-
-  if (priv->type != type)
-    return NULL;
+  switch (type) {
+    case TP_HANDLE_TYPE_CONTACT:
+      priv = g_hash_table_lookup (repo->contact_handles, GINT_TO_POINTER (handle));
+      break;
+    case TP_HANDLE_TYPE_ROOM:
+      priv = g_hash_table_lookup (repo->room_handles, GINT_TO_POINTER (handle));
+      break;
+    case TP_HANDLE_TYPE_LIST:
+      priv = g_datalist_id_get_data (repo->list_handles, handle);
+      break;
+    default:
+      g_critical ("Invalid handle type requested in handle_priv_lookup!");
+      return NULL;
+    }
 
   return priv;
 }
+
+void
+handle_priv_remove (GabbleHandleRepo *repo,
+                    TpHandleType type,
+                    GabbleHandlePriv *priv)
+{
+  g_assert (repo != NULL);
+
+  switch (type) {
+    case TP_HANDLE_TYPE_CONTACT:
+      g_hash_table_remove (repo->contact_handles, priv);
+      break;
+    case TP_HANDLE_TYPE_ROOM:
+      g_hash_table_remove (repo->room_handles, priv);
+      break;
+    default:
+      g_critical ("Invalid handle type requested in handle_priv_remove!");
+      return;
+    }
+    handle_priv_free (priv);
+}
+
 
 /* public API */
 
@@ -165,11 +191,19 @@ gabble_handle_repo_new ()
 
   repo = g_new0 (GabbleHandleRepo, 1);
 
-  repo->handles = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL, (GDestroyNotify) handle_priv_free);
+  repo->contact_handles = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL, (GDestroyNotify) handle_priv_free);
+
+  repo->room_handles = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL, (GDestroyNotify) handle_priv_free);
+
+  g_datalist_init (repo->list_handles);
 
   repo->list_publish = g_quark_from_static_string ("publish");
   repo->list_subscribe = g_quark_from_static_string ("subscribe");
 
+  g_datalist_id_set_data_full (repo->list_handles,  repo->list_publish,
+      handle_priv_new(), (GDestroyNotify) handle_priv_free);
+  g_datalist_id_set_data_full (repo->list_handles,  repo->list_subscribe,
+      handle_priv_new(), (GDestroyNotify) handle_priv_free);
   return repo;
 }
 
@@ -177,9 +211,12 @@ void
 gabble_handle_repo_destroy (GabbleHandleRepo *repo)
 {
   g_assert (repo != NULL);
-  g_assert (repo->handles != NULL);
+  g_assert (repo->contact_handles);
+  g_assert (repo->room_handles);
 
-  g_hash_table_destroy (repo->handles);
+  g_hash_table_destroy (repo->contact_handles);
+  g_hash_table_destroy (repo->room_handles);
+  g_datalist_clear (repo->list_handles);
 
   g_free (repo);
 }
@@ -224,12 +261,7 @@ gabble_handle_unref (GabbleHandleRepo *repo,
   priv->refcount--;
 
   if (priv->refcount == 0)
-    {
-      g_hash_table_remove (repo->handles, priv);
-
-      handle_priv_free (priv);
-    }
-
+    handle_priv_remove (repo, type, priv);
   return TRUE;
 }
 
@@ -293,12 +325,12 @@ gabble_handle_for_contact (GabbleHandleRepo *repo,
       /* pretend this string is static and just don't free it instead */
       handle = g_quark_from_static_string (clean_jid);
 
-      priv = handle_priv_new (TP_HANDLE_TYPE_CONTACT);
-      g_hash_table_insert (repo->handles, GINT_TO_POINTER (handle), priv);
+      priv = handle_priv_new ();
+      g_hash_table_insert (repo->contact_handles, GINT_TO_POINTER (handle), priv);
     }
   else
     {
-      g_assert (gabble_handle_is_valid (repo, TP_HANDLE_TYPE_CONTACT, handle));
+      g_assert (g_hash_table_lookup (repo->contact_handles, GINT_TO_POINTER(handle)));
 
       g_free (clean_jid);
     }
@@ -307,5 +339,15 @@ gabble_handle_for_contact (GabbleHandleRepo *repo,
   return handle;
 }
 
-GabbleHandle gabble_handle_for_list_publish(GabbleHandleRepo *repo);
-GabbleHandle gabble_handle_for_list_subscribe(GabbleHandleRepo *repo);
+GabbleHandle 
+gabble_handle_for_list_publish(GabbleHandleRepo *repo)
+{
+  return repo->list_publish;
+}
+
+GabbleHandle 
+gabble_handle_for_list_subscribe(GabbleHandleRepo *repo)
+{
+  return repo->list_subscribe;
+}
+

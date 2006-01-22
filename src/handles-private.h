@@ -26,20 +26,23 @@
 
 /* private data types */
 
-struct _GabbleHandleRepo
-{
-  GHashTable *handles;
-  GabbleHandle list_publish;
-  GabbleHandle list_subscribe;
-};
-
 typedef struct _GabbleHandlePriv GabbleHandlePriv;
 
 struct _GabbleHandlePriv
 {
   guint refcount;
-  TpHandleType type;
 };
+
+struct _GabbleHandleRepo
+{
+  GHashTable *contact_handles;
+  GHashTable *room_handles;
+
+  GData** list_handles;
+  GabbleHandle list_publish;
+  GabbleHandle list_subscribe;
+};
+
 
 #endif /*__HANDLE_PRIVATE_H__*/
 

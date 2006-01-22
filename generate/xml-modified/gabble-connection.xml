@@ -12,6 +12,7 @@
       <arg direction="out" type="s" />
     </method>
     <method name="ReleaseHandle">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value=""/>
       <arg direction="in"  type="u" name="handle_type" />
       <arg direction="in"  type="u" name="handle" />
     </method>
@@ -23,6 +24,7 @@
       <arg direction="out" type="o" />
     </method>
     <method name="RequestHandle">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value=""/>
       <arg direction="in"  type="u" name="handle_type" />
       <arg direction="in"  type="s" name="name" />
       <arg direction="out" type="u" />

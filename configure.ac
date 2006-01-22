@@ -64,6 +64,6 @@ AC_SUBST(LOUDMOUTH_LIBS)
 AC_OUTPUT( Makefile \
            src/Makefile \
            m4/Makefile \
-           tools/Makefile \
-           data/Makefile
+           data/Makefile \
+           generate/Makefile 
 )

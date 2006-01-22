@@ -53,7 +53,7 @@ struct _GabbleRosterChannelPrivate
 static void
 gabble_roster_channel_init (GabbleRosterChannel *obj)
 {
-  GabbleRosterChannelPrivate *priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (obj);
+  /* GabbleRosterChannelPrivate *priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (obj); */
 
   /* allocate any data required by the object here */
 }
@@ -121,8 +121,8 @@ gabble_roster_channel_dispose (GObject *object)
 void
 gabble_roster_channel_finalize (GObject *object)
 {
-  GabbleRosterChannel *self = GABBLE_ROSTER_CHANNEL (object);
-  GabbleRosterChannelPrivate *priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (self);
+/*  GabbleRosterChannel *self = GABBLE_ROSTER_CHANNEL (object);
+  GabbleRosterChannelPrivate *priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (self); */
 
   /* free any data held directly by the object here */
 

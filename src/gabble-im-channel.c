@@ -286,27 +286,37 @@ gabble_im_channel_dispose (GObject *object)
 {
   GabbleIMChannel *self = GABBLE_IM_CHANNEL (object);
   GabbleIMChannelPrivate *priv = GABBLE_IM_CHANNEL_GET_PRIVATE (self);
-  GabbleHandleRepo *handles;
 
   if (priv->dispose_has_run)
     return;
 
   priv->dispose_has_run = TRUE;
 
-  handles = _gabble_connection_get_handles (priv->connection);
-  gabble_handle_unref (handles, TP_HANDLE_TYPE_CONTACT, priv->handle);
-
   if (G_OBJECT_CLASS (gabble_im_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_im_channel_parent_class)->dispose (object);
 }
 
+static void _gabble_im_pending_free (GabbleIMPendingMessage *msg);
+
 void
 gabble_im_channel_finalize (GObject *object)
 {
-  /* GabbleIMChannel *self = GABBLE_IM_CHANNEL (object);
-  GabbleIMChannelPrivate *priv = GABBLE_IM_CHANNEL_GET_PRIVATE (self); */
+  GabbleIMChannel *self = GABBLE_IM_CHANNEL (object);
+  GabbleIMChannelPrivate *priv = GABBLE_IM_CHANNEL_GET_PRIVATE (self); 
+  GabbleIMPendingMessage *msg;
+  GabbleHandleRepo *handles;
 
   /* free any data held directly by the object here */
+
+  handles = _gabble_connection_get_handles (priv->connection);
+  gabble_handle_unref (handles, TP_HANDLE_TYPE_CONTACT, priv->handle);
+
+  g_free (priv->object_path);
+
+  while ((msg = g_queue_pop_head(priv->pending_messages)))
+    {
+      _gabble_im_pending_free (msg);
+    }
 
   G_OBJECT_CLASS (gabble_im_channel_parent_class)->finalize (object);
 }

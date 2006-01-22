@@ -381,13 +381,10 @@ gboolean gabble_connection_list_channels (GabbleConnection *obj, GPtrArray ** re
  * Implements DBus method ReleaseHandle
  * on interface org.freedesktop.Telepathy.Connection
  *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
+ * @context: The DBUS invocation context to use to return values
+ *           or throw an error.
  */
-gboolean gabble_connection_release_handle (GabbleConnection *obj, guint handle_type, guint handle, GError **error)
+gboolean gabble_connection_release_handle (GabbleConnection *obj, guint handle_type, guint handle, DBusGMethodInvocation *context)
 {
   return TRUE;
 }
@@ -435,13 +432,10 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
  * Implements DBus method RequestHandle
  * on interface org.freedesktop.Telepathy.Connection
  *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
+ * @context: The DBUS invocation context to use to return values
+ *           or throw an error.
  */
-gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_type, const gchar * name, guint* ret, GError **error)
+gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_type, const gchar * name, DBusGMethodInvocation *context)
 {
   return TRUE;
 }

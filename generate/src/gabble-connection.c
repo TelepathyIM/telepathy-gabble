@@ -97,7 +97,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
                   0,
                   NULL, NULL,
                   gabble_connection_marshal_VOID__BOXED,
-                  G_TYPE_NONE, 1, (dbus_g_type_get_map ("GHashTable", G_TYPE_UINT, G_VALUE_ARRAY)));
+                  G_TYPE_NONE, 1, (dbus_g_type_get_map ("GHashTable", G_TYPE_UINT, G_TYPE_VALUE_ARRAY)));
 
   signals[STATUS_CHANGED] =
     g_signal_new ("status-changed",

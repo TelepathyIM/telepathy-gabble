@@ -12,4 +12,4 @@ test -d generate && cd generate
 cd xml-pristine
 
 echo "Generating pristine XML in generate/xml-pristine..."
-$TP/tools/genxml.py ../gabble.def
+python $TP/tools/genxml.py ../gabble.def

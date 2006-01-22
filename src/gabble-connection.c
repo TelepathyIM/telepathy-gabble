@@ -73,6 +73,9 @@ struct _GabbleConnectionPrivate
   LmConnection *conn;
   LmMessageHandler *message_cb;
 
+  /* disconnect reason */
+  TpConnectionStatusReason disconnect_reason;
+
   /* telepathy properties */
   char *protocol;
 
@@ -330,6 +333,8 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_RESOURCE, param_spec);
 
+  /** signal definitions */
+
   signals[CAPABILITIES_CHANGED] =
     g_signal_new ("capabilities-changed",
                   G_OBJECT_CLASS_TYPE (gabble_connection_class),
@@ -383,8 +388,10 @@ gabble_connection_dispose (GObject *object)
   if (priv->conn)
     {
       if (lm_connection_is_open (priv->conn))
-        lm_connection_close (priv->conn, NULL);
-
+        {
+          g_warning ("connection was open when the object was deleted, it'll probably crash now...");
+          lm_connection_close (priv->conn, NULL);
+        }
       lm_connection_unregister_message_handler (priv->conn, priv->message_cb,
                                                 LM_MESSAGE_TYPE_MESSAGE);
       lm_message_handler_unref (priv->message_cb);
@@ -601,6 +608,9 @@ static void connection_open_cb (LmConnection*, gboolean, gpointer);
 static void connection_auth_cb (LmConnection*, gboolean, gpointer);
 static GabbleIMChannel *new_im_channel (GabbleConnection *conn, GabbleHandle handle, gboolean supress_handler);
 
+static void connection_disconnect (GabbleConnection *conn, TpConnectionStatusReason reason);
+static void connection_disconnected_cb (LmConnection *connection, LmDisconnectReason lm_reason, gpointer user_data);
+
 /**
  * _gabble_connection_connect
  *
@@ -638,6 +648,11 @@ _gabble_connection_connect (GabbleConnection *conn,
 
       jid = g_strdup_printf ("%s@%s", priv->username, priv->stream_server);
       lm_connection_set_jid (priv->conn, jid);
+
+      lm_connection_set_disconnect_function (priv->conn,
+                                             connection_disconnected_cb,
+                                             conn,
+                                             NULL);
 
       priv->self_handle = gabble_handle_for_contact (priv->handles,
                                                      jid, FALSE);
@@ -704,6 +719,43 @@ connection_status_change (GabbleConnection        *conn,
   priv->status = status;
 
   g_signal_emit (conn, signals[STATUS_CHANGED], 0, status, reason);
+}
+
+static void
+connection_disconnect (GabbleConnection *conn, TpConnectionStatusReason reason)
+{
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  priv->disconnect_reason = reason;
+  lm_connection_close (priv->conn, NULL);
+}
+
+static void
+connection_disconnected_cb (LmConnection *connection,
+                            LmDisconnectReason lm_reason,
+                            gpointer user_data)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  TpConnectionStatusReason tp_reason;
+
+  switch (lm_reason) {
+    case LM_DISCONNECT_REASON_OK:
+      tp_reason = priv->disconnect_reason;
+      break;
+    case LM_DISCONNECT_REASON_PING_TIME_OUT:
+    case LM_DISCONNECT_REASON_HUP:
+      tp_reason = TP_CONNECTION_STATUS_REASON_NETWORK_ERROR;
+      break;
+    case LM_DISCONNECT_REASON_ERROR:
+    case LM_DISCONNECT_REASON_UNKNOWN:
+      tp_reason = TP_CONNECTION_STATUS_REASON_NONE_SPECIFIED;
+    default:
+      g_warning ("Unknown reason code returned from libloudmouth");
+      tp_reason = TP_CONNECTION_STATUS_REASON_NONE_SPECIFIED;
+    }
+
+   connection_status_change (conn, TP_CONNECTION_STATUS_CONNECTED, tp_reason);
+
 }
 
 
@@ -815,8 +867,7 @@ connection_ssl_cb (LmSSL      *lmssl,
   if (response == LM_SSL_RESPONSE_CONTINUE)
     g_debug ("proceeding anyway!");
   else
-    connection_status_change (conn, TP_CONNECTION_STATUS_DISCONNECTED,
-                              TP_CONNECTION_STATUS_REASON_ENCRYPTION_ERROR);
+    connection_disconnect (conn, TP_CONNECTION_STATUS_REASON_ENCRYPTION_ERROR);
 
   return response;
 }
@@ -891,8 +942,8 @@ connection_auth_cb (LmConnection *lmconn,
     {
       g_debug ("connection_auth_cb failed");
 
-      connection_status_change (conn, TP_CONNECTION_STATUS_DISCONNECTED,
-                                TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED);
+      connection_disconnect (conn, 
+        TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED);
 
       return;
     }
@@ -905,13 +956,11 @@ connection_auth_cb (LmConnection *lmconn,
                error->message);
       g_error_free (error);
 
-      connection_status_change (conn, TP_CONNECTION_STATUS_DISCONNECTED,
-                                TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
+      connection_disconnect (conn, TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
     }
   else
     {
-      connection_status_change (conn, TP_CONNECTION_STATUS_CONNECTED,
-                                TP_CONNECTION_STATUS_REASON_REQUESTED);
+      connection_disconnect (conn, TP_CONNECTION_STATUS_REASON_REQUESTED);
     }
 
   lm_message_unref (message);
@@ -1026,9 +1075,6 @@ gboolean gabble_connection_disconnect (GabbleConnection *obj, GError **error)
   g_assert (GABBLE_IS_CONNECTION (obj));
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
-
-  connection_status_change (obj, TP_CONNECTION_STATUS_DISCONNECTED,
-                            TP_CONNECTION_STATUS_REASON_REQUESTED);
 
   lm_connection_close (priv->conn, NULL);
 

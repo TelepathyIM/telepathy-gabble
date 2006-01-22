@@ -1666,3 +1666,153 @@ gboolean gabble_connection_set_status (GabbleConnection *obj, GHashTable * statu
   return TRUE;
 }
 
+
+
+/**
+ * gabble_connection_request_presence
+ *
+ * Implements DBus method RequestPresence
+ * on interface org.freedesktop.Telepathy.Connection.Interface.Presence
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_connection_request_presence (GabbleConnection *obj, const GArray * contacts, GError **error)
+{
+  return TRUE;
+}
+
+
+/**
+ * gabble_connection_set_last_activity_time
+ *
+ * Implements DBus method SetLastActivityTime
+ * on interface org.freedesktop.Telepathy.Connection.Interface.Presence
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_connection_set_last_activity_time (GabbleConnection *obj, guint time, GError **error)
+{
+  return TRUE;
+}
+
+
+/**
+ * gabble_connection_set_status
+ *
+ * Implements DBus method SetStatus
+ * on interface org.freedesktop.Telepathy.Connection.Interface.Presence
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_connection_set_status (GabbleConnection *obj, GHashTable * statuses, GError **error)
+{
+  return TRUE;
+}
+
+
+static void destroy_handle_sets (gpointer data);
+
+void
+gabble_connection_client_hold_handle (GabbleConnection *conn, 
+                                     gchar* client_name,
+                                     GabbleHandle handle, TpHandleType type)
+{
+  GabbleConnectionPrivate *priv;
+  GabbleHandleSet *handle_set;
+  GData **handle_set_list;
+  g_assert (GABBLE_IS_CONNECTION (conn));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+
+  switch (type)
+    {
+    case TP_HANDLE_TYPE_CONTACT:
+      handle_set_list = priv->client_contact_handle_sets;
+      break;
+    case TP_HANDLE_TYPE_ROOM:
+      handle_set_list = priv->client_room_handle_sets;
+      break;
+    case TP_HANDLE_TYPE_LIST:
+      handle_set_list = priv->client_room_handle_sets;
+      break;
+    default:
+      g_critical ("gabble_connection_client_hold_handle called with invalid handle type");
+      return;
+    }
+
+  handle_set = (GabbleHandleSet*) g_datalist_get_data (handle_set_list, client_name);
+
+  if (!handle_set)
+    {
+      handle_set = handle_set_new (priv->handles, type);
+      g_datalist_set_data_full (handle_set_list, client_name, handle_set, destroy_handle_sets);
+    }
+
+  handle_set_add (handle_set, handle);
+
+}
+
+/**
+ * gabble_connection_client_release_handle:
+ * 
+ * Returns: false if client didn't hold this handle
+ */
+gboolean
+gabble_connection_client_release_handle (GabbleConnection *conn, 
+                                         gchar* client_name,
+                                         GabbleHandle handle, TpHandleType type)
+{
+  GabbleConnectionPrivate *priv;
+  GabbleHandleSet *handle_set;
+  GData **handle_set_list;
+
+  g_assert (GABBLE_IS_CONNECTION (conn));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+
+  switch (type)
+    {
+    case TP_HANDLE_TYPE_CONTACT:
+      handle_set_list = priv->client_contact_handle_sets;
+      break;
+    case TP_HANDLE_TYPE_ROOM:
+      handle_set_list = priv->client_room_handle_sets;
+      break;
+    case TP_HANDLE_TYPE_LIST:
+      handle_set_list = priv->client_room_handle_sets;
+      break;
+    default:
+      g_critical ("gabble_connection_client_hold_handle called with invalid handle type");
+      return FALSE;
+    }
+
+
+  handle_set = (GabbleHandleSet*) g_datalist_get_data (handle_set_list,
+                                                       client_name);
+  if (handle_set)
+    return handle_set_remove (handle_set, handle);
+  else
+    return FALSE;
+}
+
+static void destroy_handle_sets (gpointer data)
+{
+  GabbleHandleSet *handle_set;
+
+  handle_set = (GabbleHandleSet*) data;
+  handle_set_destroy (handle_set);
+}
+
+

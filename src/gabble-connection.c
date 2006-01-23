@@ -42,6 +42,8 @@
 #define BUS_NAME        "org.freedesktop.Telepathy.Connection.gabble"
 #define OBJECT_PATH     "/org/freedesktop/Telepathy/Connection/gabble"
 
+#define XMLNS_ROSTER    "jabber:iq:roster"
+
 G_DEFINE_TYPE(GabbleConnection, gabble_connection, G_TYPE_OBJECT)
 
 /* signal enum */
@@ -77,6 +79,8 @@ struct _GabbleConnectionPrivate
 {
   LmConnection *conn;
   LmMessageHandler *message_cb;
+  LmMessageHandler *presence_cb;
+  LmMessageHandler *roster_cb;
 
   /* disconnect reason */
   TpConnectionStatusReason disconnect_reason;
@@ -423,6 +427,14 @@ gabble_connection_dispose (GObject *object)
       lm_connection_unregister_message_handler (priv->conn, priv->message_cb,
                                                 LM_MESSAGE_TYPE_MESSAGE);
       lm_message_handler_unref (priv->message_cb);
+
+      lm_connection_unregister_message_handler (priv->conn, priv->presence_cb,
+                                                LM_MESSAGE_TYPE_PRESENCE);
+      lm_message_handler_unref (priv->presence_cb);
+
+      lm_connection_unregister_message_handler (priv->conn, priv->roster_cb,
+                                                LM_MESSAGE_TYPE_IQ);
+      lm_message_handler_unref (priv->roster_cb);
     }
 
   if (!dbus_g_proxy_call (bus_proxy, "ReleaseName", &error,
@@ -663,6 +675,8 @@ _gabble_connection_send (GabbleConnection *conn, LmMessage *msg, GError **error)
 }
 
 static LmHandlerResult connection_message_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
+static LmHandlerResult connection_presence_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
+static LmHandlerResult connection_roster_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmSSLResponse connection_ssl_cb (LmSSL*, LmSSLStatus, gpointer);
 static void connection_open_cb (LmConnection*, gboolean, gpointer);
 static void connection_auth_cb (LmConnection*, gboolean, gpointer);
@@ -734,6 +748,18 @@ _gabble_connection_connect (GabbleConnection *conn,
                                                  conn, NULL);
       lm_connection_register_message_handler (priv->conn, priv->message_cb,
                                               LM_MESSAGE_TYPE_MESSAGE,
+                                              LM_HANDLER_PRIORITY_NORMAL);
+
+      priv->presence_cb = lm_message_handler_new (connection_presence_cb,
+                                                  conn, NULL);
+      lm_connection_register_message_handler (priv->conn, priv->presence_cb,
+                                              LM_MESSAGE_TYPE_PRESENCE,
+                                              LM_HANDLER_PRIORITY_NORMAL);
+
+      priv->roster_cb = lm_message_handler_new (connection_roster_cb,
+                                                conn, NULL);
+      lm_connection_register_message_handler (priv->conn, priv->roster_cb,
+                                              LM_MESSAGE_TYPE_IQ,
                                               LM_HANDLER_PRIORITY_NORMAL);
     }
   else
@@ -881,6 +907,66 @@ connection_message_cb (LmMessageHandler *handler,
 
 
 /**
+ * connection_presence_cb
+ *
+ * Called by loudmouth when we get an incoming <presence>.
+ */
+static LmHandlerResult
+connection_presence_cb (LmMessageHandler *handler,
+                        LmConnection *connection,
+                        LmMessage *message,
+                        gpointer user_data)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  LmMessageNode *pres_node;
+
+  g_assert (connection == priv->conn);
+
+  pres_node = lm_message_get_node (message);
+
+  {
+    char *tmp = lm_message_node_to_string (pres_node);
+    g_debug ("connection_presence_cb: called with:\n%s", tmp);
+    g_free (tmp);
+  }
+
+  return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+}
+
+
+/**
+ * connection_roster_cb
+ *
+ * Called by loudmouth when we get an incoming <iq>. This handler
+ * is concerned only with roster queries, and allows other handlers
+ * if queries other than rosters are received.
+ */
+static LmHandlerResult
+connection_roster_cb (LmMessageHandler *handler,
+                      LmConnection *connection,
+                      LmMessage *message,
+                      gpointer user_data)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  LmMessageNode *roster_node;
+
+  g_assert (connection == priv->conn);
+
+  roster_node = lm_message_get_node (message);
+
+  {
+    char *tmp = lm_message_node_to_string (roster_node);
+    g_debug ("connection_roster_cb: called with:\n%s", tmp);
+    g_free (tmp);
+  }
+
+  return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+}
+
+
+/**
  * connection_ssl_cb
  *
  * If we're doing old SSL, this function gets called if the certificate
@@ -993,7 +1079,8 @@ connection_auth_cb (LmConnection *lmconn,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (data);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-  LmMessage *message;
+  LmMessage *message = NULL;
+  LmMessageNode *node;
   GError *error = NULL;
 
   g_assert (priv);
@@ -1009,22 +1096,48 @@ connection_auth_cb (LmConnection *lmconn,
       return;
     }
 
+  /* send <presence /> to the server to indicate availability */
   message = lm_message_new (NULL, LM_MESSAGE_TYPE_PRESENCE);
 
   if (!lm_connection_send (lmconn, message, &error))
     {
-      g_debug ("lm_connection_send of initial presence failed: %s",
+      g_debug (G_GNUC_FUNCTION "initial presence send failed: %s",
                error->message);
-      g_error_free (error);
 
-      connection_disconnect (conn, TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
-    }
-  else
-    {
-      connection_disconnect (conn, TP_CONNECTION_STATUS_REASON_REQUESTED);
+      goto ERROR;
     }
 
   lm_message_unref (message);
+
+  /* send <iq type="get"><query xmnls="jabber:iq:roster" /></iq> to
+   * request the roster */
+  message = lm_message_new_with_sub_type (NULL,
+                                          LM_MESSAGE_TYPE_IQ,
+                                          LM_MESSAGE_SUB_TYPE_GET);
+  node = lm_message_node_add_child (lm_message_get_node (message),
+                                    "query", NULL);
+  lm_message_node_set_attribute (node, "xmlns", XMLNS_ROSTER);
+
+  if (!lm_connection_send (lmconn, message, &error))
+    {
+      g_debug (G_GNUC_FUNCTION "initial roster request failed: %s",
+               error->message);
+
+      goto ERROR;
+    }
+
+  lm_message_unref (message);
+
+  return;
+
+ERROR:
+  if (error)
+    g_error_free (error);
+
+  if (message)
+    lm_message_unref(message);
+
+  connection_disconnect (conn, TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
 }
 
 /**

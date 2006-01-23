@@ -25,6 +25,7 @@
 
 #include "gabble-im-channel.h"
 #include "handles.h"
+#include "handle-set.h"
 #include "telepathy-constants.h"
 #include "telepathy-errors.h"
 #include "telepathy-helpers.h"
@@ -104,6 +105,11 @@ struct _GabbleConnectionPrivate
   /* channels */
   GHashTable *im_channels;
 
+  /* clients*/
+  GData **client_contact_handle_sets;
+  GData **client_room_handle_sets;
+  GData **client_list_handle_sets;
+
   /* gobject housekeeping */
   gboolean dispose_has_run;
 };
@@ -122,6 +128,9 @@ gabble_connection_init (GabbleConnection *obj)
 
   priv->im_channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
                                              NULL, g_object_unref);
+  g_datalist_init (priv->client_contact_handle_sets);
+  g_datalist_init (priv->client_room_handle_sets);
+  g_datalist_init (priv->client_list_handle_sets);
 }
 
 /* static GObject*
@@ -436,6 +445,10 @@ gabble_connection_finalize (GObject *object)
 
   if (priv->handles);
     gabble_handle_repo_destroy (priv->handles);
+  
+  g_datalist_clear (priv->client_room_handle_sets);
+  g_datalist_clear (priv->client_contact_handle_sets);
+  g_datalist_clear (priv->client_list_handle_sets);
 
   G_OBJECT_CLASS (gabble_connection_parent_class)->finalize (object);
 }
@@ -1597,7 +1610,7 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
 {
   GabbleConnectionPrivate *priv;
   GabbleHandle handle;
-  gboolean valid;
+  gchar *sender = "OH DEAR WE DON'T KNOW YET";
 
   g_assert (GABBLE_IS_CONNECTION (obj));
 

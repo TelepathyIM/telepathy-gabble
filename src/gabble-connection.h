@@ -83,6 +83,12 @@ gboolean gabble_connection_set_last_activity_time (GabbleConnection *obj, guint 
 gboolean gabble_connection_set_status (GabbleConnection *obj, GHashTable * statuses, GError **error);
 
 
+void gabble_connection_client_hold_handle (GabbleConnection *conn, 
+  gchar* client_name, GabbleHandle handle, TpHandleType type);
+
+gboolean gabble_connection_client_release_handle (GabbleConnection *conn, 
+  gchar* client_name, GabbleHandle handle, TpHandleType type);
+
 G_END_DECLS
 
 #endif /* #ifndef __GABBLE_CONNECTION_H__*/

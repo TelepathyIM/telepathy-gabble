@@ -572,6 +572,7 @@ _gabble_connection_register (GabbleConnection *conn,
   char *safe_proto;
   char *unique_name;
   guint request_name_result;
+  GError *request_error;
 
   g_assert (GABBLE_IS_CONNECTION (conn));
 
@@ -598,16 +599,41 @@ _gabble_connection_register (GabbleConnection *conn,
   g_free (safe_proto);
   g_free (unique_name);
 
-  if (!dbus_g_proxy_call (bus_proxy, "RequestName", error,
+  if (!dbus_g_proxy_call (bus_proxy, "RequestName", &request_error,
                           G_TYPE_STRING, priv->bus_name,
                           G_TYPE_UINT, DBUS_NAME_FLAG_DO_NOT_QUEUE,
                           G_TYPE_INVALID,
                           G_TYPE_UINT, &request_name_result,
                           G_TYPE_INVALID))
-    return FALSE;
+    {
+      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable, 
+                            request_error->message);
+      return FALSE;
+    }
+  if (request_name_result != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER)
+    {
+      gchar *msg;
+      switch (request_name_result)
+        {
+        case DBUS_REQUEST_NAME_REPLY_IN_QUEUE:
+          msg = "Request has been queued, though we request non-queueing.";
+          break;
+        case DBUS_REQUEST_NAME_REPLY_EXISTS:
+          msg = "A connection manger already has this busname.";
+          break;
+        case DBUS_REQUEST_NAME_REPLY_ALREADY_OWNER:
+          msg = "Connection Manager alredy has a connection to this account.";
+          break;
+        default:
+          msg = "Unknown error return from ReleaseName";
+        }
+      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                            "Error acquiring bus name %s, %s",
+                             priv->bus_name, msg);
+      return FALSE;
+    }
 
-  if (request_name_result == DBUS_REQUEST_NAME_REPLY_EXISTS)
-    g_error ("Failed to acquire bus name, connection manager already running?");
+
 
   g_debug ("%s: bus name %s", G_STRFUNC, priv->bus_name);
 

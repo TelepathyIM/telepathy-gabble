@@ -400,6 +400,10 @@ gabble_connection_dispose (GObject *object)
 {
   GabbleConnection *self = GABBLE_CONNECTION (object);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
+  GError *error=NULL;
+  guint release_name_result;
+  DBusGProxy *bus_proxy;
+  bus_proxy = tp_get_bus_proxy ();
 
   if (priv->dispose_has_run)
     return;
@@ -418,6 +422,35 @@ gabble_connection_dispose (GObject *object)
       lm_connection_unregister_message_handler (priv->conn, priv->message_cb,
                                                 LM_MESSAGE_TYPE_MESSAGE);
       lm_message_handler_unref (priv->message_cb);
+    }
+
+  
+  if (!dbus_g_proxy_call (bus_proxy, "ReleaseName", &error,
+                          G_TYPE_STRING, priv->bus_name,
+                          G_TYPE_INVALID,
+                          G_TYPE_UINT, &release_name_result,
+                          G_TYPE_INVALID))
+    {
+      g_critical ("Error releasing bus name %s: %s", 
+                  priv->bus_name, error->message);
+    }
+
+  if (release_name_result != DBUS_RELEASE_NAME_REPLY_RELEASED)
+    {
+      gchar *msg;
+      switch (release_name_result)
+        {
+        case DBUS_RELEASE_NAME_REPLY_NON_EXISTENT:
+          msg = "The given name did not exist on the bus.";
+          break;
+        case DBUS_RELEASE_NAME_REPLY_NOT_OWNER:
+          msg = "The caller was not the primary owner of the name";
+          break;
+        default:
+          msg = "Unknown error return from ReleaseName";
+        }
+      g_critical ("Error releasing bus name %s, ReleaseName returned: %s", 
+                  priv->bus_name, msg);
     }
 
   if (G_OBJECT_CLASS (gabble_connection_parent_class)->dispose)

@@ -407,13 +407,14 @@ gabble_connection_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
+  g_debug ("%s: dispose called", G_STRFUNC);
   g_hash_table_destroy (priv->im_channels);
 
   if (priv->conn)
     {
       if (lm_connection_is_open (priv->conn))
         {
-          g_warning ("connection was open when the object was deleted, it'll probably crash now...");
+          g_warning ("%s: connection was open when the object was deleted, it'll probably crash now...", G_STRFUNC);
           lm_connection_close (priv->conn, NULL);
         }
       lm_connection_unregister_message_handler (priv->conn, priv->message_cb,
@@ -435,8 +436,8 @@ gabble_connection_dispose (GObject *object)
                           G_TYPE_UINT, &release_name_result,
                           G_TYPE_INVALID))
     {
-      g_critical ("Error releasing bus name %s: %s",
-                  priv->bus_name, error->message);
+      g_critical ("%s: Error releasing bus name %s: %s",
+                  G_STRFUNC, priv->bus_name, error->message);
     }
 
   if (release_name_result != DBUS_RELEASE_NAME_REPLY_RELEASED)
@@ -453,8 +454,8 @@ gabble_connection_dispose (GObject *object)
         default:
           msg = "Unknown error return from ReleaseName";
         }
-      g_critical ("Error releasing bus name %s, ReleaseName returned: %s",
-                  priv->bus_name, msg);
+      g_critical ("%s: Error releasing bus name %s, ReleaseName returned: %s",
+                  G_STRFUNC, priv->bus_name, msg);
     }
 
   if (G_OBJECT_CLASS (gabble_connection_parent_class)->dispose)
@@ -607,11 +608,11 @@ _gabble_connection_register (GabbleConnection *conn,
   if (request_name_result == DBUS_REQUEST_NAME_REPLY_EXISTS)
     g_error ("Failed to acquire bus name, connection manager already running?");
 
-  g_debug ("_gabble_connection_register: bus name %s", priv->bus_name);
+  g_debug ("%s: bus name %s", G_STRFUNC, priv->bus_name);
 
   dbus_g_connection_register_g_object (bus, priv->object_path, G_OBJECT (conn));
 
-  g_debug ("_gabble_connection_register: object path %s", priv->object_path);
+  g_debug ("%s: object path %s", G_STRFUNC, priv->object_path);
 
   *bus_name = g_strdup (priv->bus_name);
   *object_path = g_strdup (priv->object_path);
@@ -762,7 +763,7 @@ _gabble_connection_connect (GabbleConnection *conn,
   if (!lm_connection_open (priv->conn, connection_open_cb,
                            conn, NULL, &lmerror))
     {
-      g_debug ("lm_connection_open failed: %s", lmerror->message);
+      g_debug ("%s: %s", G_STRFUNC, lmerror->message);
 
       *error = g_error_new (TELEPATHY_ERRORS, NetworkError,
                             "lm_connection_open_failed: %s", lmerror->message);
@@ -792,7 +793,7 @@ connection_status_change (GabbleConnection        *conn,
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
-  g_debug ("connection_status_change: status %u reason %u", status, reason);
+  g_debug ("%s: status %u reason %u", G_STRFUNC, status, reason);
 
   priv->status = status;
 
@@ -828,7 +829,8 @@ connection_disconnected_cb (LmConnection *connection,
     case LM_DISCONNECT_REASON_UNKNOWN:
       tp_reason = TP_CONN_STATUS_REASON_NONE_SPECIFIED;
     default:
-      g_warning ("Unknown reason code returned from libloudmouth");
+      g_warning ("%s: Unknown reason code returned from libloudmouth",
+          G_STRFUNC);
       tp_reason = TP_CONN_STATUS_REASON_NONE_SPECIFIED;
     }
 
@@ -865,7 +867,8 @@ connection_message_cb (LmMessageHandler *handler,
   if (from == NULL || body_node == NULL)
     {
       char *tmp = lm_message_node_to_string (msg_node);
-      g_debug ("connection_message_cb: got a message without a from and a body, ignoring:\n%s", tmp);
+      g_debug ("%s: got a message without a from and a body, ignoring:\n%s", 
+          G_STRFUNC, tmp);
       g_free (tmp);
 
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
@@ -874,14 +877,14 @@ connection_message_cb (LmMessageHandler *handler,
   body = lm_message_node_get_value (body_node);
   handle = gabble_handle_for_contact (priv->handles, from, FALSE);
 
-  g_debug ("connection_message_cb: message from %s (handle %u), body:\n%s",
-           from, handle, body);
+  g_debug ("%s: message from %s (handle %u), body:\n%s",
+           G_STRFUNC, from, handle, body);
 
   chan = g_hash_table_lookup (priv->im_channels, GINT_TO_POINTER (handle));
 
   if (chan == NULL)
     {
-      g_debug ("connection_message_cb: found no channel, creating one");
+      g_debug ("%s: found no channel, creating one", G_STRFUNC);
 
       chan = new_im_channel (conn, handle, FALSE);
     }
@@ -919,7 +922,7 @@ connection_presence_cb (LmMessageHandler *handler,
 
   {
     char *tmp = lm_message_node_to_string (pres_node);
-    g_debug ("connection_presence_cb: called with:\n%s", tmp);
+    g_debug ("%s: called with:\n%s", G_STRFUNC, tmp);
     g_free (tmp);
   }
 
@@ -954,7 +957,7 @@ connection_roster_cb (LmMessageHandler *handler,
         lm_message_node_get_attribute (query_node, "xmlns")))
     {
       char *tmp = lm_message_node_to_string (iq_node);
-      g_debug ("connection_roster_cb: ignoring non-roster iq:\n%s", tmp);
+      g_debug ("%s: ignoring non-roster iq:\n%s", G_STRFUNC, tmp);
       g_free (tmp);
 
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
@@ -1007,7 +1010,7 @@ connection_ssl_cb (LmSSL      *lmssl,
       g_assert_not_reached();
   }
 
-  g_debug ("connection_ssl_cb called: %s", reason);
+  g_debug ("%s called: %s", G_STRFUNC, reason);
 
   if (response == LM_SSL_RESPONSE_CONTINUE)
     g_debug ("proceeding anyway!");
@@ -1038,7 +1041,7 @@ connection_open_cb (LmConnection *lmconn,
 
   if (!success)
     {
-      g_debug ("connection_open_cb failed");
+      g_debug ("%s failed", G_STRFUNC);
 
       connection_status_change (conn, TP_CONN_STATUS_DISCONNECTED,
                                 TP_CONN_STATUS_REASON_NETWORK_ERROR);
@@ -1046,14 +1049,14 @@ connection_open_cb (LmConnection *lmconn,
       return;
     }
 
-  g_debug ("authenticating with username: %s, password: %s, resource: %s",
-           priv->username, priv->password, priv->resource);
+  g_debug ("%s: authenticating with username: %s, password: %s, resource: %s",
+           G_STRFUNC, priv->username, priv->password, priv->resource);
 
   if (!lm_connection_authenticate (lmconn, priv->username, priv->password,
                                    priv->resource, connection_auth_cb,
                                    conn, NULL, &error))
     {
-      g_debug ("lm_connection_authenticate failed: %s", error->message);
+      g_debug ("%s failed: %s", G_STRFUNC, error->message);
       g_error_free (error);
 
       /* the reason this function can fail is through network errors,
@@ -1086,7 +1089,7 @@ connection_auth_cb (LmConnection *lmconn,
 
   if (!success)
     {
-      g_debug ("connection_auth_cb failed");
+      g_debug ("%s failed", G_STRFUNC);
 
       connection_disconnect (conn,
         TP_CONN_STATUS_REASON_AUTHENTICATION_FAILED);
@@ -1153,7 +1156,7 @@ channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
 
   g_object_get (chan, "handle", &contact_handle, NULL);
 
-  g_debug ("%s: removing channel with handle %d", G_GNUC_FUNCTION, contact_handle);
+  g_debug ("%s: removing channel with handle %d", G_STRFUNC, contact_handle);
   g_hash_table_remove (priv->im_channels, GINT_TO_POINTER(contact_handle));
 
 }
@@ -1241,7 +1244,7 @@ _gabble_connection_client_hold_handle (GabbleConnection *conn,
       handle_set_list = &priv->client_room_handle_sets;
       break;
     default:
-      g_critical ("gabble_connection_client_hold_handle called with invalid handle type");
+      g_critical ("%s: gabble_connection_client_hold_handle called with invalid handle type", G_STRFUNC);
       return;
     }
 
@@ -1294,7 +1297,7 @@ _gabble_connection_client_release_handle (GabbleConnection *conn,
       handle_set_list = &priv->client_room_handle_sets;
       break;
     default:
-      g_critical ("_gabble_connection_client_hold_handle called with invalid handle type");
+      g_critical ("%s called with invalid handle type", G_STRFUNC);
       return FALSE;
     }
 

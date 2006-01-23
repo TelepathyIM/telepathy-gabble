@@ -177,7 +177,7 @@ get_parameters (const char *proto, const GabbleParamSpec **params, GError **erro
     }
   else
     {
-      g_debug ("get_parameters: unknown protocol %s", proto);
+      g_debug ("%s: unknown protocol %s", G_STRFUNC, proto);
 
       *error = g_error_new (TELEPATHY_ERRORS, NotImplemented,
                             "unknown protocol %s", proto);
@@ -275,7 +275,8 @@ set_param_from_value (const GabbleParamSpec *paramspec,
 {
   if (G_VALUE_TYPE (value) != paramspec->gtype)
     {
-      g_debug ("set_param_from_value: expected type %s for parameter %s, got %s",
+      g_debug ("%s: expected type %s for parameter %s, got %s",
+               G_STRFUNC,
                g_type_name (paramspec->gtype), paramspec->name,
                G_VALUE_TYPE_NAME (value));
       *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
@@ -325,8 +326,8 @@ parse_parameters (const GabbleParamSpec *paramspec,
         {
           if (paramspec[i].mandatory)
             {
-              g_debug ("parse_parameters: missing mandatory param %s",
-                       paramspec[i].name);
+              g_debug ("%s: missing mandatory param %s",
+                       G_STRFUNC, paramspec[i].name);
               *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
                                     "missing mandatory account parameter %s",
                                     paramspec[i].name);
@@ -334,8 +335,8 @@ parse_parameters (const GabbleParamSpec *paramspec,
             }
           else
             {
-              g_debug ("parse_parameters: using default value for param %s",
-                       paramspec[i].name);
+              g_debug ("%s: using default value for param %s",
+                       G_STRFUNC, paramspec[i].name);
               set_default_param (&paramspec[i], params);
             }
         }
@@ -346,17 +347,17 @@ parse_parameters (const GabbleParamSpec *paramspec,
 
           unhandled--;
           if (paramspec[i].gtype == G_TYPE_STRING)
-            g_debug ("parse_parameters: accepted value %s for param %s",
+            g_debug ("%s: accepted value %s for param %s", G_STRFUNC,
                      *((char **) ((void *)params + paramspec[i].offset)), paramspec[i].name);
           else
-            g_debug ("parse_parameters: accepted value %u for param %s",
+            g_debug ("%s: accepted value %u for param %s", G_STRFUNC,
                      *((guint *) ((void *)params + paramspec[i].offset)), paramspec[i].name);
         }
     }
 
   if (unhandled)
     {
-      g_debug ("parse_parameters: unknown argument name provided");
+      g_debug ("%s: unknown argument name provided", G_STRFUNC);
       *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
                             "unknown argument name provided");
       return FALSE;
@@ -392,7 +393,7 @@ status_changed_cb (GabbleConnection        *conn,
   GabbleConnectionManager *self = GABBLE_CONNECTION_MANAGER (data);
   GabbleConnectionManagerPrivate *priv = GABBLE_CONNECTION_MANAGER_GET_PRIVATE (self);
 
-  g_debug ("status_change_cb called with status %u reason %u", status, reason);
+  g_debug ("%s called with status %u reason %u", G_STRFUNC, status, reason);
 
   if (status == TP_CONN_STATUS_DISCONNECTED)
     {
@@ -407,7 +408,7 @@ status_changed_cb (GabbleConnection        *conn,
 
       g_object_unref (conn);
 
-      g_debug ("dereferenced connection");
+      g_debug ("%s: dereferenced connection", G_STRFUNC);
     }
 }
 
@@ -492,7 +493,7 @@ gboolean gabble_connection_manager_connect (GabbleConnectionManager *obj, const 
   /* register on bus and save bus name and object path */
   if (!_gabble_connection_register (conn, bus_name, object_path, error))
     {
-      g_debug ("_gabble_connection_register failed: %s", (*error)->message);
+      g_debug ("%s failed: %s", G_STRFUNC, (*error)->message);
 
       goto ERROR;
     }
@@ -508,7 +509,7 @@ gboolean gabble_connection_manager_connect (GabbleConnectionManager *obj, const 
   /* commence connecting */
   if (!_gabble_connection_connect (conn, error))
     {
-      g_debug ("_gabble_connection_connect failed: %s", (*error)->message);
+      g_debug ("%s failed: %s", G_STRFUNC, (*error)->message);
 
       goto ERROR;
     }

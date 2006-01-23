@@ -380,7 +380,7 @@ gboolean _gabble_im_channel_receive (GabbleIMChannel *chan,
 
   if (msg == NULL)
     {
-      g_debug ("_gabble_im_channel_receive: no more pending messages available, giving up");
+      g_debug ("%s: no more pending messages available, giving up", G_STRFUNC);
 
       /* TODO: something clever here */
 
@@ -391,7 +391,7 @@ gboolean _gabble_im_channel_receive (GabbleIMChannel *chan,
 
   if (len > MAX_MESSAGE_SIZE)
     {
-      g_debug ("_gabble_im_channel_receive: message exceeds maximum size, truncating");
+      g_debug ("%s: message exceeds maximum size, truncating", G_STRFUNC);
 
       /* TODO: something clever here */
 
@@ -402,7 +402,7 @@ gboolean _gabble_im_channel_receive (GabbleIMChannel *chan,
 
   if (msg->text == NULL)
     {
-      g_debug ("_gabble_im_channel_receive: unable to allocate message, giving up");
+      g_debug ("%s: unable to allocate message, giving up", G_STRFUNC);
 
       _gabble_im_pending_free (msg);
 
@@ -427,7 +427,7 @@ gboolean _gabble_im_channel_receive (GabbleIMChannel *chan,
                  msg->type,
                  msg->text);
 
-  g_debug ("_gabble_im_channel_receive: queued message %u", msg->id);
+  g_debug ("%s: queued message %u", G_STRFUNC, msg->id);
 
   return FALSE;
 }
@@ -470,7 +470,7 @@ gboolean gabble_im_channel_acknowledge_pending_message (GabbleIMChannel *obj, gu
 
   if (node == NULL)
     {
-      g_debug ("acknowledge_pending_message: invalid message id %u", id);
+      g_debug ("%s: invalid message id %u", G_STRFUNC, id);
 
       *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
                             "invalid message id %u", id);
@@ -480,7 +480,7 @@ gboolean gabble_im_channel_acknowledge_pending_message (GabbleIMChannel *obj, gu
 
   msg = (GabbleIMPendingMessage *) node->data;
 
-  g_debug ("acknowledge_pending_message: acknowleding message id %u", id);
+  g_debug ("%s: acknowleding message id %u", G_STRFUNC, id);
 
   g_queue_remove (priv->pending_messages, msg);
 
@@ -670,7 +670,7 @@ gboolean gabble_im_channel_send (GabbleIMChannel *obj, guint type, const gchar *
 
   if (type > TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE)
     {
-      g_debug ("gabble_im_channel_send: invalid message type %u", type);
+      g_debug ("%s: invalid message type %u", G_STRFUNC, type);
 
       *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
                             "invalid message type: %u", type);

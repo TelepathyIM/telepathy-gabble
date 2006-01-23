@@ -387,6 +387,14 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_connection_class), &dbus_glib_gabble_connection_object_info);
 }
 
+gboolean hash_select_all (gpointer key,
+                          gpointer value,
+                          gpointer user_data)
+{
+  return TRUE;
+}
+
+
 void
 gabble_connection_dispose (GObject *object)
 {
@@ -397,6 +405,8 @@ gabble_connection_dispose (GObject *object)
     return;
 
   priv->dispose_has_run = TRUE;
+
+  g_hash_table_foreach_remove(priv->im_channels, hash_select_all, NULL);
 
   if (priv->conn)
     {

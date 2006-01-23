@@ -1099,8 +1099,8 @@ connection_auth_cb (LmConnection *lmconn,
 
   if (!lm_connection_send (lmconn, message, &error))
     {
-      g_debug (G_GNUC_FUNCTION "initial presence send failed: %s",
-               error->message);
+      g_debug ("%s: initial presence send failed: %s",
+               G_STRFUNC, error->message);
 
       goto ERROR;
     }
@@ -1118,8 +1118,8 @@ connection_auth_cb (LmConnection *lmconn,
 
   if (!lm_connection_send (lmconn, message, &error))
     {
-      g_debug (G_GNUC_FUNCTION "initial roster request failed: %s",
-               error->message);
+      g_debug ("%s: initial roster request failed: %s",
+               G_STRFUNC, error->message);
 
       goto ERROR;
     }

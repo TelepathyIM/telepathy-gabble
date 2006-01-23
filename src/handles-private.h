@@ -38,7 +38,7 @@ struct _GabbleHandleRepo
   GHashTable *contact_handles;
   GHashTable *room_handles;
 
-  GData** list_handles;
+  GData* list_handles;
   GabbleHandle list_publish;
   GabbleHandle list_subscribe;
 };

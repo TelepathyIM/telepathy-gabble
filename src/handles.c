@@ -62,7 +62,7 @@ handle_priv_lookup (GabbleHandleRepo *repo,
       priv = g_hash_table_lookup (repo->room_handles, GINT_TO_POINTER (handle));
       break;
     case TP_HANDLE_TYPE_LIST:
-      priv = g_datalist_id_get_data (repo->list_handles, handle);
+      priv = g_datalist_id_get_data (&repo->list_handles, handle);
       break;
     default:
       g_critical ("Invalid handle type requested in handle_priv_lookup!");
@@ -195,14 +195,14 @@ gabble_handle_repo_new ()
 
   repo->room_handles = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL, (GDestroyNotify) handle_priv_free);
 
-  g_datalist_init (repo->list_handles);
+  g_datalist_init (&repo->list_handles);
 
   repo->list_publish = g_quark_from_static_string ("publish");
   repo->list_subscribe = g_quark_from_static_string ("subscribe");
 
-  g_datalist_id_set_data_full (repo->list_handles,  repo->list_publish,
+  g_datalist_id_set_data_full (&repo->list_handles, repo->list_publish,
       handle_priv_new(), (GDestroyNotify) handle_priv_free);
-  g_datalist_id_set_data_full (repo->list_handles,  repo->list_subscribe,
+  g_datalist_id_set_data_full (&repo->list_handles, repo->list_subscribe,
       handle_priv_new(), (GDestroyNotify) handle_priv_free);
   return repo;
 }
@@ -216,7 +216,7 @@ gabble_handle_repo_destroy (GabbleHandleRepo *repo)
 
   g_hash_table_destroy (repo->contact_handles);
   g_hash_table_destroy (repo->room_handles);
-  g_datalist_clear (repo->list_handles);
+  g_datalist_clear (&repo->list_handles);
 
   g_free (repo);
 }

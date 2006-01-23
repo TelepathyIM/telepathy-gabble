@@ -39,6 +39,7 @@
       <arg direction="out" type="a(osuu)" />
     </method>
     <method name="HoldHandle">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value=""/>
       <arg direction="in"  type="u" name="handle_type" />
       <arg direction="in"  type="u" name="handle" />
     </method>

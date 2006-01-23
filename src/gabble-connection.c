@@ -1410,8 +1410,21 @@ gboolean gabble_connection_get_capabilities (GabbleConnection *obj, guint handle
     "org.freedesktop.Telepathy.Channel.Type.Text");
 
   g_value_array_append (vals, NULL);
-  g_value_init (g_value_array_get_nth (vals, 0), G_TYPE_UINT);
-  g_value_set_uint (g_value_array_get_nth (vals, 0), 1); 
+  g_value_init (g_value_array_get_nth (vals, 1), G_TYPE_UINT);
+  g_value_set_uint (g_value_array_get_nth (vals, 1), TP_CONN_CAPABILITY_TYPE_CREATE );
+
+  g_ptr_array_add (*ret, vals);
+
+  vals = g_value_array_new (2);
+
+  g_value_array_append (vals, NULL);
+  g_value_init (g_value_array_get_nth (vals, 0), G_TYPE_STRING);
+  g_value_set_string (g_value_array_get_nth (vals,0),
+    "org.freedesktop.Telepathy.Channel.Type.Text");
+
+  g_value_array_append (vals, NULL);
+  g_value_init (g_value_array_get_nth (vals, 1), G_TYPE_UINT);
+  g_value_set_uint (g_value_array_get_nth (vals,1), TP_CONN_CAPABILITY_TYPE_INVITE); 
 
   g_ptr_array_add (*ret, vals);
 

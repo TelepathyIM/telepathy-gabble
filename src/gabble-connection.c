@@ -53,6 +53,7 @@ enum
     NEW_CHANNEL,
     PRESENCE_UPDATE,
     STATUS_CHANGED,
+    DISCONNECTED,
     LAST_SIGNAL
 };
 
@@ -389,8 +390,20 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
                   gabble_connection_marshal_VOID__INT_INT,
                   G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_UINT);
 
+  signals[DISCONNECTED] =
+    g_signal_new ("disconnected",
+                  G_OBJECT_CLASS_TYPE (gabble_connection_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  g_cclosure_marshal_VOID__VOID,
+                  G_TYPE_NONE, 0);
+
+
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_connection_class), &dbus_glib_gabble_connection_object_info);
 }
+
+static void close_all_channels (GabbleConnection *conn);
 
 void
 gabble_connection_dispose (GObject *object)
@@ -408,8 +421,7 @@ gabble_connection_dispose (GObject *object)
   priv->dispose_has_run = TRUE;
 
   g_debug ("%s: dispose called", G_STRFUNC);
-  if (priv->im_channels)
-    g_hash_table_destroy (priv->im_channels);
+  close_all_channels(self);
 
   if (priv->conn)
     {
@@ -468,6 +480,8 @@ gabble_connection_finalize (GObject *object)
 {
   GabbleConnection *self = GABBLE_CONNECTION (object);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
+
+  g_debug ("%s called with %p", G_STRFUNC, object);
 
   if (priv->conn)
     lm_connection_unref (priv->conn);
@@ -804,10 +818,13 @@ _gabble_connection_connect (GabbleConnection *conn,
 }
 
 /**
- * connection_status_change
+ * connection_status_change:
+ * @conn: a #GabbleConnection 
+ * @status: new status to advertise
+ * @reason: reason for new status
  *
- * Emit a signal for the status being changed, and update it in the
- * object.
+ * Compares status with current status. If different, emits a signal
+ * for the new status, and updates it in the #GabbleConnection.
  */
 static void
 connection_status_change (GabbleConnection        *conn,
@@ -822,11 +839,42 @@ connection_status_change (GabbleConnection        *conn,
 
   g_debug ("%s: status %u reason %u", G_STRFUNC, status, reason);
 
-  priv->status = status;
+  if (priv->status)
+    {
+      priv->status = status;
 
-  g_signal_emit (conn, signals[STATUS_CHANGED], 0, status, reason);
+      g_debug ("%s emitting status-changed with status %u reason %u", 
+               G_STRFUNC, status, reason);
+      g_signal_emit (conn, signals[STATUS_CHANGED], 0, status, reason);
+    }
 }
 
+/**
+ * close_all_channels:
+ * @conn: A #GabbleConnection object
+ *
+ * Closes all channels owned by @conn.
+ */
+static void
+close_all_channels (GabbleConnection *conn)
+{
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  if (priv->im_channels)
+    {
+      g_hash_table_destroy (priv->im_channels);
+      priv->im_channels = NULL;
+    }
+}
+
+/**
+ * connection_disconnect:
+ * @conn: A #GabbleConnection
+ * @reason: reason for disconnect
+ *
+ * Request @conn to disconnect
+ *
+ * Starts the disconnetion process and sets the status to disconnected.
+ */
 static void
 connection_disconnect (GabbleConnection *conn, TpConnectionStatusReason reason)
 {
@@ -836,9 +884,9 @@ connection_disconnect (GabbleConnection *conn, TpConnectionStatusReason reason)
   /* remove the im_channels so we dont get any race conditions
    * where method calls are deleivered to a channel after we've started
    * disconnection*/
+  close_all_channels (conn);
 
-  g_hash_table_destroy (priv->im_channels);
-  priv->im_channels = NULL;
+  connection_status_change (conn, TP_CONN_STATUS_DISCONNECTED, TP_CONN_STATUS_REASON_REQUESTED);
   lm_connection_close (priv->conn, NULL);
 }
 
@@ -868,13 +916,15 @@ connection_disconnected_cb (LmConnection *connection,
       tp_reason = TP_CONN_STATUS_REASON_NONE_SPECIFIED;
     }
 
+   close_all_channels (conn);
    connection_status_change (conn, TP_CONN_STATUS_DISCONNECTED, tp_reason);
+   g_signal_emit(conn, signals[DISCONNECTED], 0);
 
 }
 
 
 /**
- * connection_message_cb
+ * connection_message_cb:
  *
  * Called by loudmouth when we get an incoming <message>.
  */

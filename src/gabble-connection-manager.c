@@ -380,36 +380,33 @@ free_params (GabbleParams *params)
 }
 
 /**
- * status_change_cb is called when the status of connection objects
- * changes. When they become disconnected, we can unref and discard
+ * connection_disconnected_cb:
+ * @conn: #GabbleConnection
+ * @data: data passed in callback
+ * 
+ * Signal handler called when a connection object disconnects.
+ * When they become disconnected, we can unref and discard
  * them, and they will disappear from the bus.
  */
 static void
-status_changed_cb (GabbleConnection        *conn,
-                  TpConnectionStatus       status,
-                  TpConnectionStatusReason reason,
-                  gpointer                 data)
+connection_disconnected_cb (GabbleConnection        *conn,
+                            gpointer                 data)
 {
   GabbleConnectionManager *self = GABBLE_CONNECTION_MANAGER (data);
   GabbleConnectionManagerPrivate *priv = GABBLE_CONNECTION_MANAGER_GET_PRIVATE (self);
 
-  g_debug ("%s called with status %u reason %u", G_STRFUNC, status, reason);
+  gulong signal = GPOINTER_TO_INT (g_hash_table_lookup (priv->connections,
+                                                        conn));
 
-  if (status == TP_CONN_STATUS_DISCONNECTED)
-    {
-      gulong signal = GPOINTER_TO_INT (g_hash_table_lookup (priv->connections,
-                                                            conn));
+  g_assert (signal != 0);
 
-      g_assert (signal != 0);
+  g_signal_handler_disconnect (conn, signal);
 
-      g_signal_handler_disconnect (conn, signal);
+  g_hash_table_remove (priv->connections, conn);
 
-      g_hash_table_remove (priv->connections, conn);
+  g_object_unref (conn);
 
-      g_object_unref (conn);
-
-      g_debug ("%s: dereferenced connection", G_STRFUNC);
-    }
+  g_debug ("%s: dereferenced connection", G_STRFUNC);
 }
 
 /* public methods */
@@ -499,8 +496,8 @@ gboolean gabble_connection_manager_connect (GabbleConnectionManager *obj, const 
     }
 
   /* bind to status change signals from the connection object */
-  signal = g_signal_connect (conn, "status-changed",
-                             G_CALLBACK (status_changed_cb),
+  signal = g_signal_connect (conn, "disconnected",
+                             G_CALLBACK (connection_disconnected_cb),
                              obj);
 
   /* store the connection and the signal ID */

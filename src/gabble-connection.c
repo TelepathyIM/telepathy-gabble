@@ -822,17 +822,17 @@ connection_disconnected_cb (LmConnection *connection,
       break;
     case LM_DISCONNECT_REASON_PING_TIME_OUT:
     case LM_DISCONNECT_REASON_HUP:
-      tp_reason = TP_CONNECTION_STATUS_REASON_NETWORK_ERROR;
+      tp_reason = TP_CONN_STATUS_REASON_NETWORK_ERROR;
       break;
     case LM_DISCONNECT_REASON_ERROR:
     case LM_DISCONNECT_REASON_UNKNOWN:
-      tp_reason = TP_CONNECTION_STATUS_REASON_NONE_SPECIFIED;
+      tp_reason = TP_CONN_STATUS_REASON_NONE_SPECIFIED;
     default:
       g_warning ("Unknown reason code returned from libloudmouth");
-      tp_reason = TP_CONNECTION_STATUS_REASON_NONE_SPECIFIED;
+      tp_reason = TP_CONN_STATUS_REASON_NONE_SPECIFIED;
     }
 
-   connection_status_change (conn, TP_CONNECTION_STATUS_CONNECTED, tp_reason);
+   connection_status_change (conn, TP_CONN_STATUS_CONNECTED, tp_reason);
 
 }
 
@@ -1006,7 +1006,7 @@ connection_ssl_cb (LmSSL      *lmssl,
   if (response == LM_SSL_RESPONSE_CONTINUE)
     g_debug ("proceeding anyway!");
   else
-    connection_disconnect (conn, TP_CONNECTION_STATUS_REASON_ENCRYPTION_ERROR);
+    connection_disconnect (conn, TP_CONN_STATUS_REASON_ENCRYPTION_ERROR);
 
   return response;
 }
@@ -1034,8 +1034,8 @@ connection_open_cb (LmConnection *lmconn,
     {
       g_debug ("connection_open_cb failed");
 
-      connection_status_change (conn, TP_CONNECTION_STATUS_DISCONNECTED,
-                                TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
+      connection_status_change (conn, TP_CONN_STATUS_DISCONNECTED,
+                                TP_CONN_STATUS_REASON_NETWORK_ERROR);
 
       return;
     }
@@ -1052,8 +1052,8 @@ connection_open_cb (LmConnection *lmconn,
 
       /* the reason this function can fail is through network errors,
        * authentication failures are reported to our auth_cb */
-      connection_status_change (conn, TP_CONNECTION_STATUS_DISCONNECTED,
-                                TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
+      connection_status_change (conn, TP_CONN_STATUS_DISCONNECTED,
+                                TP_CONN_STATUS_REASON_NETWORK_ERROR);
     }
 }
 
@@ -1083,7 +1083,7 @@ connection_auth_cb (LmConnection *lmconn,
       g_debug ("connection_auth_cb failed");
 
       connection_disconnect (conn,
-        TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED);
+        TP_CONN_STATUS_REASON_AUTHENTICATION_FAILED);
 
       return;
     }
@@ -1096,7 +1096,7 @@ connection_auth_cb (LmConnection *lmconn,
       g_debug (G_GNUC_FUNCTION "initial presence send failed: %s",
                error->message);
 
-      goto ERROR;
+      connection_disconnect (conn, TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
     }
 
   lm_message_unref (message);
@@ -1112,10 +1112,7 @@ connection_auth_cb (LmConnection *lmconn,
 
   if (!lm_connection_send (lmconn, message, &error))
     {
-      g_debug (G_GNUC_FUNCTION "initial roster request failed: %s",
-               error->message);
-
-      goto ERROR;
+      connection_disconnect (conn, TP_CONNECTION_STATUS_REASON_REQUESTED);
     }
 
   lm_message_unref (message);

@@ -394,7 +394,7 @@ status_changed_cb (GabbleConnection        *conn,
 
   g_debug ("status_change_cb called with status %u reason %u", status, reason);
 
-  if (status == TP_CONNECTION_STATUS_DISCONNECTED)
+  if (status == TP_CONN_STATUS_DISCONNECTED)
     {
       gulong signal = GPOINTER_TO_INT (g_hash_table_lookup (priv->connections,
                                                             conn));

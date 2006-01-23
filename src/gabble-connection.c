@@ -1034,6 +1034,8 @@ gboolean gabble_connection_add_status (GabbleConnection *obj, const gchar * stat
  */
 gboolean gabble_connection_advertise_capabilities (GabbleConnection *obj, const gchar ** add, const gchar ** remove, GError **error)
 {
+  add = NULL;
+  remove = NULL;
   return TRUE;
 }
 
@@ -1096,6 +1098,42 @@ gboolean gabble_connection_disconnect (GabbleConnection *obj, GError **error)
  */
 gboolean gabble_connection_get_capabilities (GabbleConnection *obj, guint handle, GPtrArray ** ret, GError **error)
 {
+  GValueArray* vals;
+  GabbleConnectionPrivate *priv;
+
+  g_assert (GABBLE_IS_CONNECTION (obj));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+
+  if (!gabble_handle_is_valid(priv->handles, TP_HANDLE_TYPE_CONTACT, handle))
+    {
+      g_debug ("get_capabilites: invalid handle %u", handle);
+
+      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+                            "invalid handle %u", handle);
+
+      return FALSE;
+ 
+    }
+
+  *ret = g_ptr_array_sized_new (1);
+  dbus_g_collection_set_signature (*ret, "(su)");
+
+  vals = g_value_array_new (2);
+
+  g_value_array_append (vals, NULL);
+  g_value_init (g_value_array_get_nth (vals, 0), G_TYPE_STRING);
+  g_value_set_string (g_value_array_get_nth (vals, 0),
+    "org.freedesktop.Telepathy.Channel.Type.Text");
+
+  //FIXME:spec makes no sense about this value
+  g_value_array_append (vals, NULL);
+  g_value_init (g_value_array_get_nth (vals, 0), G_TYPE_UINT);
+  g_value_set_uint (g_value_array_get_nth (vals, 0), 1); 
+
+  g_ptr_array_add (*ret, vals);
+
   return TRUE;
 }
 

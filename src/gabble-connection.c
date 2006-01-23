@@ -510,9 +510,15 @@ gabble_connection_finalize (GObject *object)
   if (priv->object_path)
     g_free (priv->object_path);
 
+  if (priv->handles);
+    gabble_handle_repo_destroy (priv->handles);
+
   g_datalist_clear (&priv->client_room_handle_sets);
   g_datalist_clear (&priv->client_contact_handle_sets);
   g_datalist_clear (&priv->client_list_handle_sets);
+
+  if (priv->handles);
+    gabble_handle_repo_destroy (priv->handles);
 
   if (priv->handles);
     gabble_handle_repo_destroy (priv->handles);

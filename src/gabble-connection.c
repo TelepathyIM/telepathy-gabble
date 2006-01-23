@@ -1096,7 +1096,7 @@ connection_auth_cb (LmConnection *lmconn,
       g_debug (G_GNUC_FUNCTION "initial presence send failed: %s",
                error->message);
 
-      connection_disconnect (conn, TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
+      goto ERROR;
     }
 
   lm_message_unref (message);
@@ -1112,7 +1112,10 @@ connection_auth_cb (LmConnection *lmconn,
 
   if (!lm_connection_send (lmconn, message, &error))
     {
-      connection_disconnect (conn, TP_CONNECTION_STATUS_REASON_REQUESTED);
+      g_debug (G_GNUC_FUNCTION "initial roster request failed: %s",
+               error->message);
+
+      goto ERROR;
     }
 
   lm_message_unref (message);
@@ -1126,7 +1129,7 @@ ERROR:
   if (message)
     lm_message_unref(message);
 
-  connection_disconnect (conn, TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
+  connection_disconnect (conn, TP_CONN_STATUS_REASON_NETWORK_ERROR);
 }
 
 /**

@@ -1139,6 +1139,26 @@ ERROR:
 }
 
 /**
+ * channel_closed_cb:
+ *
+ * Signal callback for when a channel is closed.
+ * Removes all reference that #GabbleConnection holds.
+ */
+static void 
+channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  GabbleHandle contact_handle;
+
+  g_object_get (chan, "handle", &contact_handle, NULL);
+
+  g_debug ("%s: removing channel with handle %d", G_GNUC_FUNCTION, contact_handle);
+  g_hash_table_remove (priv->im_channels, GINT_TO_POINTER(contact_handle));
+
+}
+
+/**
  * new_im_channel
  */
 static GabbleIMChannel *
@@ -1161,6 +1181,8 @@ new_im_channel (GabbleConnection *conn, GabbleHandle handle, gboolean supress_ha
                        NULL);
 
   g_debug ("new_im_channel: object path %s", object_path);
+
+  g_signal_connect (chan, "closed", (GCallback) channel_closed_cb, conn);
 
   g_hash_table_insert (priv->im_channels, GINT_TO_POINTER (handle), chan);
 

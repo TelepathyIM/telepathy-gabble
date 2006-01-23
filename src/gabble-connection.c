@@ -827,14 +827,14 @@ connection_disconnected_cb (LmConnection *connection,
       break;
     case LM_DISCONNECT_REASON_ERROR:
     case LM_DISCONNECT_REASON_UNKNOWN:
-      tp_reason = TP_CONN_STATUS_REASON_NONE_SPECIFIED;
+      tp_reason = priv->disconnect_reason;
     default:
       g_warning ("%s: Unknown reason code returned from libloudmouth",
           G_STRFUNC);
       tp_reason = TP_CONN_STATUS_REASON_NONE_SPECIFIED;
     }
 
-   connection_status_change (conn, TP_CONN_STATUS_CONNECTED, tp_reason);
+   connection_status_change (conn, TP_CONN_STATUS_DISCONNECTED, tp_reason);
 
 }
 
@@ -1063,6 +1063,10 @@ connection_open_cb (LmConnection *lmconn,
        * authentication failures are reported to our auth_cb */
       connection_status_change (conn, TP_CONN_STATUS_DISCONNECTED,
                                 TP_CONN_STATUS_REASON_NETWORK_ERROR);
+    }
+  else 
+    {
+      connection_status_change (conn, TP_CONN_STATUS_CONNECTED, TP_CONN_STATUS_REASON_REQUESTED);
     }
 }
 
@@ -1392,7 +1396,7 @@ gboolean gabble_connection_disconnect (GabbleConnection *obj, GError **error)
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
 
-  lm_connection_close (priv->conn, NULL);
+  connection_disconnect (obj, TP_CONN_STATUS_REASON_REQUESTED);
 
   return TRUE;
 }

@@ -942,19 +942,25 @@ connection_roster_cb (LmMessageHandler *handler,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-  LmMessageNode *roster_node;
+  LmMessageNode *iq_node;
+  LmMessageNode *query_node;
 
   g_assert (connection == priv->conn);
 
-  roster_node = lm_message_get_node (message);
+  iq_node = lm_message_get_node (message);
+  query_node = lm_message_node_get_child (iq_node, "query");
 
-  {
-    char *tmp = lm_message_node_to_string (roster_node);
-    g_debug ("connection_roster_cb: called with:\n%s", tmp);
-    g_free (tmp);
-  }
+  if (!query_node || !strcmp (XMLNS_ROSTER,
+        lm_message_node_get_attribute (query_node, "xmlns")))
+    {
+      char *tmp = lm_message_node_to_string (iq_node);
+      g_debug ("connection_roster_cb: ignoring non-roster iq:\n%s", tmp);
+      g_free (tmp);
 
-  return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    }
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 

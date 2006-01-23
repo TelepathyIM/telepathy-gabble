@@ -2137,7 +2137,7 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
     case TP_HANDLE_TYPE_CONTACT:
       if (!strchr (name, '@'))
         {
-          g_debug ("request_handle: requested handle %s has no @ in", name);
+          g_debug ("%s: requested handle %s has no @ in", G_STRFUNC, name);
 
           error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
                                "requested handle %s has no @ in", name);
@@ -2150,10 +2150,26 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
           handle = gabble_handle_for_contact (priv->handles, name, FALSE);
         }
       break;
-      /* TODO: list handles */
-/*    case TP_HANDLE_TYPE_LIST:
-      g_assert_not_reached ();
-      break; */
+   case TP_HANDLE_TYPE_LIST:
+      if (!strcmp (name, "publish"))
+        {
+          handle = gabble_handle_for_list_publish (priv->handles);
+        }
+      else if (!strcmp (name, "subscribe"))
+        {
+          handle = gabble_handle_for_list_subscribe (priv->handles);
+        }
+      else
+        {
+          g_debug ("%s: requested list channel %s not available", G_STRFUNC, name);
+
+          error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                               "requested list channel %s not available", name);
+
+          dbus_g_method_return_error (context, error);
+          return FALSE;
+        }
+      break;
     default:
       g_debug ("request_handle: unimplemented handle type %u", handle_type);
 

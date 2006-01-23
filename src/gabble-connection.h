@@ -60,6 +60,8 @@ gboolean _gabble_connection_register (GabbleConnection *conn, char **bus_name, c
 gboolean _gabble_connection_connect (GabbleConnection *conn, GError **error);
 GabbleHandleRepo *_gabble_connection_get_handles (GabbleConnection *conn);
 gboolean _gabble_connection_send (GabbleConnection *conn, LmMessage *msg, GError **error);
+void _gabble_connection_client_hold_handle (GabbleConnection *conn, gchar* client_name, GabbleHandle handle, TpHandleType type);
+gboolean _gabble_connection_client_release_handle (GabbleConnection *conn, gchar* client_name, GabbleHandle handle, TpHandleType type);
 
 gboolean gabble_connection_add_status (GabbleConnection *obj, const gchar * status, GHashTable * parms, GError **error);
 gboolean gabble_connection_advertise_capabilities (GabbleConnection *obj, const gchar ** add, const gchar ** remove, GError **error);
@@ -83,11 +85,6 @@ gboolean gabble_connection_set_last_activity_time (GabbleConnection *obj, guint 
 gboolean gabble_connection_set_status (GabbleConnection *obj, GHashTable * statuses, GError **error);
 
 
-void gabble_connection_client_hold_handle (GabbleConnection *conn, 
-  gchar* client_name, GabbleHandle handle, TpHandleType type);
-
-gboolean gabble_connection_client_release_handle (GabbleConnection *conn, 
-  gchar* client_name, GabbleHandle handle, TpHandleType type);
 
 G_END_DECLS
 

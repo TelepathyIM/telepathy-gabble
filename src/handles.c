@@ -90,7 +90,6 @@ handle_priv_remove (GabbleHandleRepo *repo,
       g_critical ("Invalid handle type requested in handle_priv_remove!");
       return;
     }
-    handle_priv_free (priv);
 }
 
 

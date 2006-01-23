@@ -61,4 +61,4 @@
 \.pc$
 ^data/org.freedesktop.Telepathy.ConnectionManager.gabble.service$
 ^src/telepathy-gabble$
-
+(^|/)cscope\.out$

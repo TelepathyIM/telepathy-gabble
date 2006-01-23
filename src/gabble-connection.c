@@ -1353,7 +1353,10 @@ gboolean gabble_connection_inspect_handle (GabbleConnection *obj, guint handle_t
 
 
 /**
- * list_channel_hash_foreach
+ * list_channel_hash_foreach:
+ * @key: iterated key
+ * @value: iterated value 
+ * @data: data attached to this key/value pair
  *
  * Called by the exported ListChannels function, this should iterate over
  * the handle/channel pairs in a hash, and to the GPtrArray in the
@@ -1761,6 +1764,17 @@ gboolean gabble_connection_set_status (GabbleConnection *obj, GHashTable * statu
 
 static void destroy_handle_sets (gpointer data);
 
+/**
+ * gabble_connection_client_hold_handle:
+ * @conn: a #GabbleConnection
+ * @client_name: DBus bus name of client to hold ahandle for
+ * @handle: handle to hold 
+ * @type: type of handle to hold 
+ *
+ * Marks a handle as held by a given client.
+ * 
+ * Returns: false if client didn't hold this handle
+ */
 void
 gabble_connection_client_hold_handle (GabbleConnection *conn, 
                                      gchar* client_name,
@@ -1803,6 +1817,12 @@ gabble_connection_client_hold_handle (GabbleConnection *conn,
 
 /**
  * gabble_connection_client_release_handle:
+ * @conn: a #GabbleConnection
+ * @client_name: DBus bus name of client to release handle for
+ * @handle: handle to release
+ * @type: type of handle to release
+ *
+ * Releases a handle held by a given client
  * 
  * Returns: false if client didn't hold this handle
  */

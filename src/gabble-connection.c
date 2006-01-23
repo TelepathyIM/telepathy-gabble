@@ -2050,6 +2050,22 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
 
       g_object_get (chan, "object-path", ret, NULL);
     }
+  if (!strcmp (type, TP_IFACE_CHANNEL_TYPE_CONTACT_LIST))
+    {
+      GabbleRosterChannel *chan;
+
+      if (handle_type != TP_HANDLE_TYPE_LIST)
+        goto NOT_AVAILABLE;
+
+      if (handle == gabble_handle_for_list_publish (priv->handles))
+        chan = priv->publish_channel;
+      else if (handle == gabble_handle_for_list_subscribe (priv->handles))
+        chan = priv->subscribe_channel;
+      else
+        goto INVALID_HANDLE;
+
+      g_object_get (chan, "object-path", ret, NULL);
+    }
   else
     {
       goto NOT_IMPLEMENTED;

@@ -28,6 +28,7 @@
 #include <time.h>
 
 #include "gabble-im-channel.h"
+#include "gabble-roster-channel.h"
 #include "handles.h"
 #include "handle-set.h"
 #include "telepathy-constants.h"
@@ -113,8 +114,10 @@ struct _GabbleConnectionPrivate
 
   /* channels */
   GHashTable *im_channels;
+  GabbleRosterChannel *publish_channel;
+  GabbleRosterChannel *subscribe_channel;
 
-  /* clients*/
+  /* clients */
   GData *client_contact_handle_sets;
   GData *client_room_handle_sets;
   GData *client_list_handle_sets;
@@ -421,7 +424,8 @@ gabble_connection_dispose (GObject *object)
   priv->dispose_has_run = TRUE;
 
   g_debug ("%s: dispose called", G_STRFUNC);
-  close_all_channels(self);
+
+  close_all_channels (self);
 
   if (priv->conn)
     {
@@ -430,6 +434,7 @@ gabble_connection_dispose (GObject *object)
           g_warning ("%s: connection was open when the object was deleted, it'll probably crash now...", G_STRFUNC);
           lm_connection_close (priv->conn, NULL);
         }
+
       lm_connection_unregister_message_handler (priv->conn, priv->message_cb,
                                                 LM_MESSAGE_TYPE_MESSAGE);
       lm_message_handler_unref (priv->message_cb);
@@ -718,6 +723,7 @@ static LmSSLResponse connection_ssl_cb (LmSSL*, LmSSLStatus, gpointer);
 static void connection_open_cb (LmConnection*, gboolean, gpointer);
 static void connection_auth_cb (LmConnection*, gboolean, gpointer);
 static GabbleIMChannel *new_im_channel (GabbleConnection *conn, GabbleHandle handle, gboolean supress_handler);
+static void make_roster_channels (GabbleConnection *conn);
 
 static void connection_disconnect (GabbleConnection *conn, TpConnectionStatusReason reason);
 static void connection_disconnected_cb (LmConnection *connection, LmDisconnectReason lm_reason, gpointer user_data);
@@ -862,10 +868,23 @@ static void
 close_all_channels (GabbleConnection *conn)
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+
   if (priv->im_channels)
     {
       g_hash_table_destroy (priv->im_channels);
       priv->im_channels = NULL;
+    }
+
+  if (priv->publish_channel)
+    {
+      g_object_unref (priv->publish_channel);
+      priv->publish_channel = NULL;
+    }
+
+  if (priv->subscribe_channel)
+    {
+      g_object_unref (priv->subscribe_channel);
+      priv->publish_channel = NULL;
     }
 }
 
@@ -1220,6 +1239,8 @@ connection_auth_cb (LmConnection *lmconn,
 
   lm_message_unref (message);
 
+  make_roster_channels (conn);
+
   return;
 
 ERROR:
@@ -1233,13 +1254,69 @@ ERROR:
 }
 
 /**
- * channel_closed_cb:
+ * make_roster_channels
+ */
+static void
+make_roster_channels (GabbleConnection *conn)
+{
+  GabbleConnectionPrivate *priv;
+  GabbleHandle handle;
+  char *object_path;
+
+  g_assert (GABBLE_IS_CONNECTION (conn));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+
+  g_assert (priv->publish_channel == NULL);
+  g_assert (priv->subscribe_channel == NULL);
+
+  /* make publish list channel */
+  handle = gabble_handle_for_list_publish (priv->handles);
+  object_path = g_strdup_printf ("%s/RosterChannelPublish", priv->object_path);
+
+  priv->publish_channel = g_object_new (GABBLE_TYPE_ROSTER_CHANNEL,
+                                        "connection", conn,
+                                        "object-path", object_path,
+                                        "handle", handle,
+                                        NULL);
+
+  g_debug ("%s: created %s", G_STRFUNC, object_path);
+
+  g_signal_emit (conn, signals[NEW_CHANNEL], 0,
+                 object_path, TP_IFACE_CHANNEL_TYPE_CONTACT_LIST,
+                 TP_HANDLE_TYPE_LIST, handle,
+                 /* supress handler: */ FALSE);
+
+  g_free (object_path);
+
+  /* make subscribe list channel */
+  handle = gabble_handle_for_list_subscribe (priv->handles);
+  object_path = g_strdup_printf ("%s/RosterChannelSubscribe", priv->object_path);
+
+  priv->subscribe_channel = g_object_new (GABBLE_TYPE_ROSTER_CHANNEL,
+                                          "connection", conn,
+                                          "object-path", object_path,
+                                          "handle", handle,
+                                          NULL);
+
+  g_debug ("%s: created %s", G_STRFUNC, object_path);
+
+  g_signal_emit (conn, signals[NEW_CHANNEL], 0,
+                 object_path, TP_IFACE_CHANNEL_TYPE_CONTACT_LIST,
+                 TP_HANDLE_TYPE_LIST, handle,
+                 /* supress handler: */ FALSE);
+
+  g_free (object_path);
+}
+
+/**
+ * im_channel_closed_cb:
  *
- * Signal callback for when a channel is closed.
- * Removes all reference that #GabbleConnection holds.
+ * Signal callback for when an IM channel is closed. Removes the references
+ * that #GabbleConnection holds to them.
  */
 static void 
-channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
+im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
@@ -1249,7 +1326,6 @@ channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
 
   g_debug ("%s: removing channel with handle %d", G_STRFUNC, contact_handle);
   g_hash_table_remove (priv->im_channels, GINT_TO_POINTER(contact_handle));
-
 }
 
 /**
@@ -1276,7 +1352,7 @@ new_im_channel (GabbleConnection *conn, GabbleHandle handle, gboolean supress_ha
 
   g_debug ("new_im_channel: object path %s", object_path);
 
-  g_signal_connect (chan, "closed", (GCallback) channel_closed_cb, conn);
+  g_signal_connect (chan, "closed", (GCallback) im_channel_closed_cb, conn);
 
   g_hash_table_insert (priv->im_channels, GINT_TO_POINTER (handle), chan);
 
@@ -1857,6 +1933,12 @@ gboolean gabble_connection_list_channels (GabbleConnection *obj, GPtrArray ** re
   dbus_g_collection_set_signature (channels, "(osuu)");
 
   g_hash_table_foreach (priv->im_channels, list_channel_hash_foreach, channels);
+
+  if (priv->publish_channel)
+    list_channel_hash_foreach (NULL, priv->publish_channel, channels);
+
+  if (priv->subscribe_channel)
+    list_channel_hash_foreach (NULL, priv->subscribe_channel, channels);
 
   *ret = channels;
 

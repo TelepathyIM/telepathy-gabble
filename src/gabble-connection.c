@@ -18,7 +18,7 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#define DBUS_API_SUBJECT_TO_CHANGE 
+#define DBUS_API_SUBJECT_TO_CHANGE
 
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
@@ -424,14 +424,13 @@ gabble_connection_dispose (GObject *object)
       lm_message_handler_unref (priv->message_cb);
     }
 
-  
   if (!dbus_g_proxy_call (bus_proxy, "ReleaseName", &error,
                           G_TYPE_STRING, priv->bus_name,
                           G_TYPE_INVALID,
                           G_TYPE_UINT, &release_name_result,
                           G_TYPE_INVALID))
     {
-      g_critical ("Error releasing bus name %s: %s", 
+      g_critical ("Error releasing bus name %s: %s",
                   priv->bus_name, error->message);
     }
 
@@ -449,7 +448,7 @@ gabble_connection_dispose (GObject *object)
         default:
           msg = "Unknown error return from ReleaseName";
         }
-      g_critical ("Error releasing bus name %s, ReleaseName returned: %s", 
+      g_critical ("Error releasing bus name %s, ReleaseName returned: %s",
                   priv->bus_name, msg);
     }
 
@@ -879,6 +878,7 @@ connection_message_cb (LmMessageHandler *handler,
   return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 }
 
+
 /**
  * connection_ssl_cb
  *
@@ -1002,7 +1002,7 @@ connection_auth_cb (LmConnection *lmconn,
     {
       g_debug ("connection_auth_cb failed");
 
-      connection_disconnect (conn, 
+      connection_disconnect (conn,
         TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED);
 
       return;
@@ -1174,7 +1174,6 @@ gboolean gabble_connection_get_capabilities (GabbleConnection *obj, guint handle
                             "invalid handle %u", handle);
 
       return FALSE;
- 
     }
 
   *ret = g_ptr_array_sized_new (1);
@@ -1190,7 +1189,7 @@ gboolean gabble_connection_get_capabilities (GabbleConnection *obj, guint handle
   //FIXME:spec makes no sense about this value
   g_value_array_append (vals, NULL);
   g_value_init (g_value_array_get_nth (vals, 0), G_TYPE_UINT);
-  g_value_set_uint (g_value_array_get_nth (vals, 0), 1); 
+  g_value_set_uint (g_value_array_get_nth (vals, 0), 1);
 
   g_ptr_array_add (*ret, vals);
 
@@ -1363,6 +1362,7 @@ gboolean gabble_connection_hold_handle (GabbleConnection *obj, guint handle_type
   sender = dbus_g_method_get_sender (context);
   gabble_connection_client_hold_handle (obj, sender, handle, handle_type);
   dbus_g_method_return (context);
+
   return TRUE;
 }
 
@@ -1419,7 +1419,7 @@ gboolean gabble_connection_inspect_handle (GabbleConnection *obj, guint handle_t
 /**
  * list_channel_hash_foreach:
  * @key: iterated key
- * @value: iterated value 
+ * @value: iterated value
  * @data: data attached to this key/value pair
  *
  * Called by the exported ListChannels function, this should iterate over

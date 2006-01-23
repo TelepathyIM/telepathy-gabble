@@ -1720,61 +1720,6 @@ gboolean gabble_connection_set_status (GabbleConnection *obj, GHashTable * statu
 }
 
 
-
-/**
- * gabble_connection_request_presence
- *
- * Implements DBus method RequestPresence
- * on interface org.freedesktop.Telepathy.Connection.Interface.Presence
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean gabble_connection_request_presence (GabbleConnection *obj, const GArray * contacts, GError **error)
-{
-  return TRUE;
-}
-
-
-/**
- * gabble_connection_set_last_activity_time
- *
- * Implements DBus method SetLastActivityTime
- * on interface org.freedesktop.Telepathy.Connection.Interface.Presence
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean gabble_connection_set_last_activity_time (GabbleConnection *obj, guint time, GError **error)
-{
-  return TRUE;
-}
-
-
-/**
- * gabble_connection_set_status
- *
- * Implements DBus method SetStatus
- * on interface org.freedesktop.Telepathy.Connection.Interface.Presence
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean gabble_connection_set_status (GabbleConnection *obj, GHashTable * statuses, GError **error)
-{
-  return TRUE;
-}
-
-
 static void destroy_handle_sets (gpointer data);
 
 /**

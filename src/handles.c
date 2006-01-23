@@ -321,21 +321,22 @@ gabble_handle_for_contact (GabbleHandleRepo *repo,
 
   if (handle == 0)
     {
-      GabbleHandlePriv *priv;
-
       /* pretend this string is static and just don't free it instead */
       handle = g_quark_from_static_string (clean_jid);
-
-      priv = handle_priv_new ();
-      g_hash_table_insert (repo->contact_handles, GINT_TO_POINTER (handle), priv);
     }
   else
     {
-      g_assert (g_hash_table_lookup (repo->contact_handles, GINT_TO_POINTER(handle)));
-
       g_free (clean_jid);
     }
 
+  /* existence of the quark cannot be presumed to mean the handle exists
+   * in this repository, because of multiple connections */
+  if (!handle_priv_lookup (repo, TP_HANDLE_TYPE_CONTACT, handle))
+    {
+      GabbleHandlePriv *priv;
+      priv = handle_priv_new ();
+      g_hash_table_insert (repo->contact_handles, GINT_TO_POINTER (handle), priv);
+    }
 
   return handle;
 }

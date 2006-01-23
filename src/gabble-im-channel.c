@@ -294,7 +294,7 @@ gabble_im_channel_dispose (GObject *object)
   priv->dispose_has_run = TRUE;
 
   if (!priv->closed)
-    g_signal_emit(obj, signals[CLOSED], 0);
+    g_signal_emit(self, signals[CLOSED], 0);
 
   if (G_OBJECT_CLASS (gabble_im_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_im_channel_parent_class)->dispose (object);

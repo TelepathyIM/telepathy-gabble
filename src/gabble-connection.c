@@ -18,7 +18,11 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#define DBUS_API_SUBJECT_TO_CHANGE 
+
 #include <dbus/dbus-glib.h>
+#include <dbus/dbus-glib-lowlevel.h>
+
 #include <loudmouth/loudmouth.h>
 #include <string.h>
 #include <time.h>
@@ -1275,16 +1279,15 @@ gboolean gabble_connection_get_statuses (GabbleConnection *obj, GHashTable ** re
  * Implements DBus method HoldHandle
  * on interface org.freedesktop.Telepathy.Connection
  *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
+ * @context: The DBUS invocation context to use to return values
+ *           or throw an error.
  */
-gboolean gabble_connection_hold_handle (GabbleConnection *obj, guint handle_type, guint handle, GError **error)
+gboolean gabble_connection_hold_handle (GabbleConnection *obj, guint handle_type, guint handle, DBusGMethodInvocation *context)
 {
   GabbleConnectionPrivate *priv;
   gboolean valid;
+  GError *error = NULL;
+  gchar *sender;
 
   g_assert (GABBLE_IS_CONNECTION (obj));
 
@@ -1294,9 +1297,10 @@ gboolean gabble_connection_hold_handle (GabbleConnection *obj, guint handle_type
     {
       g_debug ("hold_handle: invalid handle type %u", handle_type);
 
-      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                            "invalid handle type %u", handle_type);
+      error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+                           "invalid handle type %u", handle_type);
 
+      dbus_g_method_return_error (context, error);
       return FALSE;
     }
 
@@ -1306,12 +1310,16 @@ gboolean gabble_connection_hold_handle (GabbleConnection *obj, guint handle_type
     {
       g_debug ("hold_handle: unknown handle %u", handle);
 
-      *error = g_error_new (TELEPATHY_ERRORS, InvalidHandle,
+      error = g_error_new (TELEPATHY_ERRORS, InvalidHandle,
                             "unknown handle %u", handle);
 
+      dbus_g_method_return_error (context, error);
       return FALSE;
     }
 
+  sender = dbus_g_method_get_sender (context);
+  gabble_connection_client_hold_handle (obj, sender, handle, handle_type);
+  dbus_g_method_return (context);
   return TRUE;
 }
 
@@ -1462,17 +1470,15 @@ gboolean gabble_connection_list_channels (GabbleConnection *obj, GPtrArray ** re
  * Implements DBus method ReleaseHandle
  * on interface org.freedesktop.Telepathy.Connection
  *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
+ * @context: The DBUS invocation context to use to return values
+ *           or throw an error.
  */
-gboolean gabble_connection_release_handle (GabbleConnection *obj, guint handle_type, guint handle, GError **error)
+gboolean gabble_connection_release_handle (GabbleConnection *obj, guint handle_type, guint handle, DBusGMethodInvocation *context)
 {
   GabbleConnectionPrivate *priv;
   gboolean valid;
-  char *client_name = "FIXME";
+  char *sender;
+  GError *error = NULL;
 
   g_assert (GABBLE_IS_CONNECTION (obj));
 
@@ -1482,9 +1488,9 @@ gboolean gabble_connection_release_handle (GabbleConnection *obj, guint handle_t
     {
       g_debug ("release_handle: invalid handle type %u", handle_type);
 
-      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                            "invalid handle type %u", handle_type);
-
+      error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+                           "invalid handle type %u", handle_type);
+      dbus_g_method_return_error (context, error);
       return FALSE;
     }
 
@@ -1494,13 +1500,16 @@ gboolean gabble_connection_release_handle (GabbleConnection *obj, guint handle_t
     {
       g_debug ("release_handle: invalid handle %u", handle);
 
-      *error = g_error_new (TELEPATHY_ERRORS, InvalidHandle,
+      error = g_error_new (TELEPATHY_ERRORS, InvalidHandle,
                             "unknown handle %u", handle);
 
+      dbus_g_method_return_error (context, error);
       return FALSE;
     }
 
-  gabble_connection_client_release_handle (obj, client_name, handle, handle_type);
+  sender = dbus_g_method_get_sender (context);
+  gabble_connection_client_release_handle (obj, sender, handle, handle_type);
+  dbus_g_method_return (context);
   return TRUE;
 }
 
@@ -1600,17 +1609,15 @@ NOT_IMPLEMENTED:
  * Implements DBus method RequestHandle
  * on interface org.freedesktop.Telepathy.Connection
  *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
+ * @context: The DBUS invocation context to use to return values
+ *           or throw an error.
  */
-gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_type, const gchar * name, guint* ret, GError **error)
+gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_type, const gchar * name, DBusGMethodInvocation *context)
 {
   GabbleConnectionPrivate *priv;
   GabbleHandle handle;
-  gchar *sender = "OH DEAR WE DON'T KNOW YET";
+  gchar *sender;
+  GError *error = NULL;
 
   g_assert (GABBLE_IS_CONNECTION (obj));
 
@@ -1620,9 +1627,10 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
     {
       g_debug ("request_handle: invalid handle type %u", handle_type);
 
-      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                            "invalid handle type %u", handle_type);
+      error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+                           "invalid handle type %u", handle_type);
 
+      dbus_g_method_return_error (context, error);
       return FALSE;
     }
 
@@ -1633,9 +1641,10 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
         {
           g_debug ("request_handle: requested handle %s has no @ in", name);
 
-          *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
-                                "requested handle %s has no @ in", name);
+          error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                               "requested handle %s has no @ in", name);
 
+          dbus_g_method_return_error (context, error);
           return FALSE;
         }
       else
@@ -1650,17 +1659,16 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
     default:
       g_debug ("request_handle: unimplemented handle type %u", handle_type);
 
-      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+      error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
                           "unimplemented handle type %u", handle_type);
 
+      dbus_g_method_return_error (context, error);
       return FALSE;
     }
 
-  /* TODO: this should use a per-client list of handles */
-  valid = gabble_handle_ref (priv->handles, handle_type, handle);
-  g_assert (valid);
-
-  *ret = handle;
+  sender = dbus_g_method_get_sender (context);
+  gabble_connection_client_hold_handle (obj, sender, handle, handle_type);
+  dbus_g_method_return (context);
 
   return TRUE;
 }

@@ -327,13 +327,10 @@ gboolean gabble_connection_get_statuses (GabbleConnection *obj, GHashTable ** re
  * Implements DBus method HoldHandle
  * on interface org.freedesktop.Telepathy.Connection
  *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
+ * @context: The DBUS invocation context to use to return values
+ *           or throw an error.
  */
-gboolean gabble_connection_hold_handle (GabbleConnection *obj, guint handle_type, guint handle, GError **error)
+gboolean gabble_connection_hold_handle (GabbleConnection *obj, guint handle_type, guint handle, DBusGMethodInvocation *context)
 {
   return TRUE;
 }

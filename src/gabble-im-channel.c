@@ -502,7 +502,7 @@ gboolean gabble_im_channel_acknowledge_pending_message (GabbleIMChannel *obj, gu
  */
 gboolean gabble_im_channel_close (GabbleIMChannel *obj, GError **error)
 {
-  g_signal_emit(obj, CLOSED, 0);
+  g_signal_emit(obj, signals[CLOSED], 0);
 
   return TRUE;
 }

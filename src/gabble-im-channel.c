@@ -75,6 +75,7 @@ struct _GabbleIMChannelPrivate
   guint recv_id;
   GQueue *pending_messages;
 
+  gboolean closed;
   gboolean dispose_has_run;
 };
 
@@ -292,6 +293,9 @@ gabble_im_channel_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
+  if (!priv->closed)
+    g_signal_emit(obj, signals[CLOSED], 0);
+
   if (G_OBJECT_CLASS (gabble_im_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_im_channel_parent_class)->dispose (object);
 }
@@ -504,6 +508,13 @@ gboolean gabble_im_channel_acknowledge_pending_message (GabbleIMChannel *obj, gu
  */
 gboolean gabble_im_channel_close (GabbleIMChannel *obj, GError **error)
 {
+  GabbleIMChannelPrivate *priv;
+
+  g_assert (GABBLE_IS_IM_CHANNEL (obj));
+
+  priv = GABBLE_IM_CHANNEL_GET_PRIVATE (obj);
+  priv->closed = TRUE;
+
   g_signal_emit(obj, signals[CLOSED], 0);
 
   return TRUE;

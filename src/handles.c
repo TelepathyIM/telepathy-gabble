@@ -188,6 +188,7 @@ GabbleHandleRepo *
 gabble_handle_repo_new ()
 {
   GabbleHandleRepo *repo;
+  GabbleHandle publish, subscribe;
 
   repo = g_new0 (GabbleHandleRepo, 1);
 
@@ -197,13 +198,14 @@ gabble_handle_repo_new ()
 
   g_datalist_init (&repo->list_handles);
 
-  repo->list_publish = g_quark_from_static_string ("publish");
-  repo->list_subscribe = g_quark_from_static_string ("subscribe");
+  publish = gabble_handle_for_list_publish (repo);
+  g_datalist_id_set_data_full (&repo->list_handles, publish,
+      handle_priv_new(), (GDestroyNotify) handle_priv_free);
 
-  g_datalist_id_set_data_full (&repo->list_handles, repo->list_publish,
+  subscribe = gabble_handle_for_list_subscribe (repo);
+  g_datalist_id_set_data_full (&repo->list_handles, subscribe,
       handle_priv_new(), (GDestroyNotify) handle_priv_free);
-  g_datalist_id_set_data_full (&repo->list_handles, repo->list_subscribe,
-      handle_priv_new(), (GDestroyNotify) handle_priv_free);
+
   return repo;
 }
 
@@ -309,7 +311,6 @@ gabble_handle_for_contact (GabbleHandleRepo *repo,
       clean_jid = g_strdup_printf ("%s@%s", username, server);
     }
 
-
   g_free (username);
   g_free (server);
 
@@ -339,15 +340,33 @@ gabble_handle_for_contact (GabbleHandleRepo *repo,
   return handle;
 }
 
-GabbleHandle 
-gabble_handle_for_list_publish(GabbleHandleRepo *repo)
+GabbleHandle
+gabble_handle_for_list_publish (GabbleHandleRepo *repo)
 {
-  return repo->list_publish;
+  static GabbleHandle publish = 0;
+
+  g_return_val_if_fail (repo != NULL, 0);
+
+  if (publish == 0)
+    {
+      publish = g_quark_from_static_string ("publish");
+    }
+
+  return publish;
 }
 
-GabbleHandle 
-gabble_handle_for_list_subscribe(GabbleHandleRepo *repo)
+GabbleHandle
+gabble_handle_for_list_subscribe (GabbleHandleRepo *repo)
 {
-  return repo->list_subscribe;
+  static GabbleHandle subscribe = 0;
+
+  g_return_val_if_fail (repo != NULL, 0);
+
+  if (subscribe == 0)
+    {
+      subscribe = g_quark_from_static_string ("subscribe");
+    }
+
+  return subscribe;
 }
 

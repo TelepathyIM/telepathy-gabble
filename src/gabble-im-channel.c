@@ -318,6 +318,8 @@ gabble_im_channel_finalize (GObject *object)
       _gabble_im_pending_free (msg);
     }
 
+  g_queue_free (priv->pending_messages);
+
   G_OBJECT_CLASS (gabble_im_channel_parent_class)->finalize (object);
 }
 

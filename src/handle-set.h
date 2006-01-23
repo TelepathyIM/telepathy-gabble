@@ -37,5 +37,6 @@ gboolean handle_set_is_member (GabbleHandleSet *set, GabbleHandle handle);
 void handle_set_foreach (GabbleHandleSet *set, GabbleHandleFunc func, gpointer userdata);
 
 int handle_set_size (GabbleHandleSet *set);
+GArray *handle_set_to_array (GabbleHandleSet *set);
 
 #endif /*__HANDLE_SET_H__*/

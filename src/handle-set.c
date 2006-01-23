@@ -53,8 +53,8 @@ handle_set_new (GabbleHandleRepo *repo, TpHandleType type)
   return set;
 }
 
-static void 
-freer(GabbleHandleSet *set, GabbleHandle handle, gpointer userdata)
+static void
+freer (GabbleHandleSet *set, GabbleHandle handle, gpointer userdata)
 {
   handle_set_remove (set, handle);
 }
@@ -65,7 +65,7 @@ freer(GabbleHandleSet *set, GabbleHandle handle, gpointer userdata)
  *
  * Delete a #GabbleHandleSet and unreference any handles that it holds
  */
-void 
+void
 handle_set_destroy (GabbleHandleSet *set)
 {
   handle_set_foreach (set, freer, NULL);
@@ -127,7 +127,7 @@ handle_set_remove (GabbleHandleSet *set, GabbleHandle handle)
  * Returns: TRUE if the (handle,type) pair is in this repo
  *
  */
-gboolean 
+gboolean
 handle_set_is_member (GabbleHandleSet *set, GabbleHandle handle)
 {
   return g_intset_is_member(set->intset, handle);
@@ -147,7 +147,8 @@ foreach_helper(guint i, gpointer userdata)
 
   data->func(data->set, i, data->userdata);
 }
-void 
+
+void
 handle_set_foreach (GabbleHandleSet *set, GabbleHandleFunc func, gpointer userdata)
 {
   _foreach_data data = {set, func, userdata};
@@ -163,3 +164,9 @@ handle_set_size (GabbleHandleSet *set)
   return g_intset_size (set->intset);
 }
 
+GArray *handle_set_to_array (GabbleHandleSet *set)
+{
+  g_return_val_if_fail (set == NULL, NULL);
+
+  return g_intset_to_array (set->intset);
+}

@@ -1406,10 +1406,9 @@ gboolean gabble_connection_get_capabilities (GabbleConnection *obj, guint handle
   g_value_set_string (g_value_array_get_nth (vals, 0),
     "org.freedesktop.Telepathy.Channel.Type.Text");
 
-  //FIXME:spec makes no sense about this value
   g_value_array_append (vals, NULL);
   g_value_init (g_value_array_get_nth (vals, 0), G_TYPE_UINT);
-  g_value_set_uint (g_value_array_get_nth (vals, 0), 1);
+  g_value_set_uint (g_value_array_get_nth (vals, 0), 1); 
 
   g_ptr_array_add (*ret, vals);
 

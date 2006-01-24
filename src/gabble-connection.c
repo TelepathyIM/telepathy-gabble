@@ -82,7 +82,8 @@ struct _GabbleConnectionPrivate
   LmConnection *conn;
   LmMessageHandler *message_cb;
   LmMessageHandler *presence_cb;
-  LmMessageHandler *roster_cb;
+  LmMessageHandler *iq_roster_cb;
+  LmMessageHandler *iq_unknown_cb;
 
   /* disconnect reason */
   TpConnectionStatusReason disconnect_reason;
@@ -443,9 +444,13 @@ gabble_connection_dispose (GObject *object)
                                                 LM_MESSAGE_TYPE_PRESENCE);
       lm_message_handler_unref (priv->presence_cb);
 
-      lm_connection_unregister_message_handler (priv->conn, priv->roster_cb,
+      lm_connection_unregister_message_handler (priv->conn, priv->iq_roster_cb,
                                                 LM_MESSAGE_TYPE_IQ);
-      lm_message_handler_unref (priv->roster_cb);
+      lm_message_handler_unref (priv->iq_roster_cb);
+
+      lm_connection_unregister_message_handler (priv->conn, priv->iq_unknown_cb,
+                                                LM_MESSAGE_TYPE_IQ);
+      lm_message_handler_unref (priv->iq_unknown_cb);
     }
 
   if (!dbus_g_proxy_call (bus_proxy, "ReleaseName", &error,
@@ -718,7 +723,8 @@ _gabble_connection_send (GabbleConnection *conn, LmMessage *msg, GError **error)
 
 static LmHandlerResult connection_message_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmHandlerResult connection_presence_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
-static LmHandlerResult connection_roster_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
+static LmHandlerResult connection_iq_roster_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
+static LmHandlerResult connection_iq_unknown_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmSSLResponse connection_ssl_cb (LmSSL*, LmSSLStatus, gpointer);
 static void connection_open_cb (LmConnection*, gboolean, gpointer);
 static void connection_auth_cb (LmConnection*, gboolean, gpointer);
@@ -799,11 +805,17 @@ _gabble_connection_connect (GabbleConnection *conn,
                                               LM_MESSAGE_TYPE_PRESENCE,
                                               LM_HANDLER_PRIORITY_NORMAL);
 
-      priv->roster_cb = lm_message_handler_new (connection_roster_cb,
+      priv->iq_roster_cb = lm_message_handler_new (connection_iq_roster_cb,
                                                 conn, NULL);
-      lm_connection_register_message_handler (priv->conn, priv->roster_cb,
+      lm_connection_register_message_handler (priv->conn, priv->iq_roster_cb,
                                               LM_MESSAGE_TYPE_IQ,
                                               LM_HANDLER_PRIORITY_NORMAL);
+
+      priv->iq_unknown_cb = lm_message_handler_new (connection_iq_unknown_cb,
+                                                conn, NULL);
+      lm_connection_register_message_handler (priv->conn, priv->iq_unknown_cb,
+                                              LM_MESSAGE_TYPE_IQ,
+                                              LM_HANDLER_PRIORITY_LAST);
     }
   else
     {
@@ -1037,37 +1049,67 @@ connection_presence_cb (LmMessageHandler *handler,
 
 
 /**
- * connection_roster_cb
+ * connection_iq_roster_cb
  *
  * Called by loudmouth when we get an incoming <iq>. This handler
  * is concerned only with roster queries, and allows other handlers
  * if queries other than rosters are received.
  */
 static LmHandlerResult
-connection_roster_cb (LmMessageHandler *handler,
-                      LmConnection *connection,
-                      LmMessage *message,
-                      gpointer user_data)
+connection_iq_roster_cb (LmMessageHandler *handler,
+                         LmConnection *connection,
+                         LmMessage *message,
+                         gpointer user_data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   LmMessageNode *iq_node;
   LmMessageNode *query_node;
+  char *tmp;
 
   g_assert (connection == priv->conn);
 
   iq_node = lm_message_get_node (message);
   query_node = lm_message_node_get_child (iq_node, "query");
 
-  if (!query_node || !strcmp (XMLNS_ROSTER,
+  if (!query_node || strcmp (XMLNS_ROSTER,
         lm_message_node_get_attribute (query_node, "xmlns")))
-    {
-      char *tmp = lm_message_node_to_string (iq_node);
-      g_debug ("%s: ignoring non-roster iq:\n%s", G_STRFUNC, tmp);
-      g_free (tmp);
+    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-    }
+  tmp = lm_message_node_to_string (iq_node);
+  g_debug ("%s: got roster iq:\n%s", G_STRFUNC, tmp);
+  g_free (tmp);
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
+
+/**
+ * connection_iq_unknown_cb
+ *
+ * Called by loudmouth when we get an incoming <iq>. This handler is
+ * at a lower priority than the others, and should reply with an error
+ * about unsupported get/set attempts.
+ */
+static LmHandlerResult
+connection_iq_unknown_cb (LmMessageHandler *handler,
+                          LmConnection *connection,
+                          LmMessage *message,
+                          gpointer user_data)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  LmMessageNode *iq_node;
+  char *iq_string;
+
+  g_assert (connection == priv->conn);
+
+  iq_node = lm_message_get_node (message);
+  iq_string = lm_message_node_to_string (iq_node);
+  g_debug ("%s: got unknown iq:\n%s", G_STRFUNC, iq_string);
+  g_free (iq_string);
+
+  /* TODO: return an IQ error for unknown get/set */
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }

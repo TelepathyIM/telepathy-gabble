@@ -61,4 +61,6 @@
 \.pc$
 ^data/org.freedesktop.Telepathy.ConnectionManager.gabble.service$
 ^src/telepathy-gabble$
+^tests/test-intset$
 (^|/)cscope\.out$
+(^|/)core$

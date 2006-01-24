@@ -179,3 +179,71 @@ GArray *handle_set_to_array (GabbleHandleSet *set)
 
   return g_intset_to_array (set->intset);
 }
+
+static void
+ref_one (guint handle, gpointer data)
+{
+  GabbleHandleSet *set = (GabbleHandleSet *) data;
+  gabble_handle_ref (set->repo, set->type, handle);
+}
+
+/**
+ * handle_set_update:
+ * @set: a #GabbleHandleSet to update
+ * @add: a #GIntSet of handles to add
+ *
+ * Add a set of handles to a handle set, referencing those which are not
+ * already members.
+ */
+void
+handle_set_update (GabbleHandleSet *set, const GIntSet *add)
+{
+  GIntSet *tmp;
+
+  g_return_if_fail (set != NULL);
+  g_return_if_fail (add != NULL);
+
+  /* reference each of ADD - CURRENT */
+  tmp = g_intset_difference (add, set->intset);
+  g_intset_foreach (tmp, ref_one, set);
+  g_intset_destroy (tmp);
+
+  /* update CURRENT to be the union of CURRENT and ADD */
+  tmp = g_intset_union (add, set->intset);
+  g_intset_destroy (set->intset);
+  set->intset = tmp;
+}
+
+static void
+unref_one (guint handle, gpointer data)
+{
+  GabbleHandleSet *set = (GabbleHandleSet *) data;
+  gabble_handle_unref (set->repo, set->type, handle);
+}
+
+/**
+ * handle_set_difference_update:
+ * @set: a #GabbleHandleSet to update
+ * @remove: a #GIntSet of handles to remove
+ *
+ * Remove a set of handles from a handle set, dereferencing those which are
+ * members.
+ */
+void
+handle_set_difference_update (GabbleHandleSet *set, const GIntSet *remove)
+{
+  GIntSet *tmp;
+
+  g_return_if_fail (set != NULL);
+  g_return_if_fail (remove != NULL);
+
+  /* dereference each of REMOVE n CURRENT */
+  tmp = g_intset_intersection (remove, set->intset);
+  g_intset_foreach (tmp, unref_one, set);
+  g_intset_destroy (tmp);
+
+  /* update CURRENT to be CURRENT - REMOVE */
+  tmp = g_intset_difference (set->intset, remove);
+  g_intset_destroy (set->intset);
+  set->intset = tmp;
+}

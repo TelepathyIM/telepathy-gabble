@@ -85,9 +85,13 @@ handle_set_destroy (GabbleHandleSet *set)
 void
 handle_set_add (GabbleHandleSet *set, GabbleHandle handle)
 {
+  g_return_if_fail (set != NULL);
+  g_return_if_fail (handle != 0);
+
   if (!g_intset_is_member(set->intset, handle))
     {
-      gabble_handle_ref (set->repo, set->type, handle);
+      g_return_if_fail (gabble_handle_ref (set->repo, set->type, handle));
+
       g_intset_add (set->intset, handle);
     }
 }
@@ -107,12 +111,17 @@ handle_set_add (GabbleHandleSet *set, GabbleHandle handle)
 gboolean
 handle_set_remove (GabbleHandleSet *set, GabbleHandle handle)
 {
+  g_return_val_if_fail (set != NULL, FALSE);
+  g_return_val_if_fail (handle != 0, FALSE);
+
   if (g_intset_is_member(set->intset, handle))
     {
-      gabble_handle_unref (set->repo, set->type, handle);
+      g_return_val_if_fail (gabble_handle_unref (set->repo, set->type, handle), FALSE);
+
       g_intset_remove (set->intset, handle);
       return TRUE;
     }
+
   return FALSE;
 }
 
@@ -166,7 +175,7 @@ handle_set_size (GabbleHandleSet *set)
 
 GArray *handle_set_to_array (GabbleHandleSet *set)
 {
-  g_return_val_if_fail (set == NULL, NULL);
+  g_return_val_if_fail (set != NULL, NULL);
 
   return g_intset_to_array (set->intset);
 }

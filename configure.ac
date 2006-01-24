@@ -65,5 +65,6 @@ AC_OUTPUT( Makefile \
            src/Makefile \
            m4/Makefile \
            data/Makefile \
-           generate/Makefile 
+           generate/Makefile \
+           tests/Makefile
 )

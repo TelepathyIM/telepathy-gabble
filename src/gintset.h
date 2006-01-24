@@ -27,11 +27,19 @@ void g_intset_destroy (GIntSet *);
 
 void g_intset_add (GIntSet *set, guint element);
 gboolean g_intset_remove (GIntSet *set, guint element);
-gboolean g_intset_is_member (GIntSet *set, guint element);
+gboolean g_intset_is_member (const GIntSet *set, guint element);
 
 void g_intset_foreach (GIntSet *set, GIntFunc func, gpointer userdata);
 GArray* g_intset_to_array (GIntSet *set);
 
-int g_intset_size(GIntSet *set);
+int g_intset_size(const GIntSet *set);
+
+gboolean g_intset_is_equal (const GIntSet *left, const GIntSet *right);
+
+GIntSet *g_intset_copy (const GIntSet *orig);
+GIntSet *g_intset_intersection (const GIntSet *left, const GIntSet *right);
+GIntSet *g_intset_union (const GIntSet *left, const GIntSet *right);
+GIntSet *g_intset_difference (const GIntSet *left, const GIntSet *right);
+GIntSet *g_intset_symmetric_difference (const GIntSet *left, const GIntSet *right);
 
 #endif /*__G_INTSET_H__*/

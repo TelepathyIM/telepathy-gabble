@@ -30,13 +30,19 @@ struct _GIntSet
   guint size;
 };
 
+static GIntSet *
+_g_intset_new_with_size (guint size)
+{
+  GIntSet *set = g_new(GIntSet, 1);
+  set->bits = g_new0(guint32, size);
+  set->size = size;
+  return set;
+}
+
 GIntSet *
 g_intset_new ()
 {
-  GIntSet *set= g_new(GIntSet,1);
-  set->bits = g_new0(guint32, DEFAULT_SIZE);
-  set->size = DEFAULT_SIZE;
-  return set;
+  return _g_intset_new_with_size (DEFAULT_SIZE);
 }
 
 /**
@@ -108,7 +114,7 @@ g_intset_remove (GIntSet *set, guint element)
  * Returns: TRUE if element was in set
  */
 gboolean
-g_intset_is_member (GIntSet *set, guint element)
+g_intset_is_member (const GIntSet *set, guint element)
 {
   guint offset = element >>5;
   if (offset >= set->size)
@@ -165,8 +171,8 @@ g_intset_to_array (GIntSet *set)
   return array;
 }
 
-int 
-g_intset_size(GIntSet *set)
+int
+g_intset_size(const GIntSet *set)
 {
   int i,count=0;
   guint32 n;
@@ -178,4 +184,164 @@ g_intset_size(GIntSet *set)
     count += ((n + (n >> 3)) & 030707070707) % 63;
   }
   return count;
+}
+
+gboolean
+g_intset_is_equal (const GIntSet *left, const GIntSet *right)
+{
+  const GIntSet *large, *small;
+  int i;
+
+  g_return_val_if_fail (left != NULL, FALSE);
+  g_return_val_if_fail (right != NULL, FALSE);
+
+  if (left->size > right->size)
+    {
+      large = left;
+      small = right;
+    }
+  else
+    {
+      large = right;
+      small = left;
+    }
+
+  for (i = 0; i < small->size; i++)
+    {
+      if (large->bits[i] != small->bits[i])
+        return FALSE;
+    }
+
+  for (i = small->size; i < large->size; i++)
+    {
+      if (large->bits[i] != 0)
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
+GIntSet *
+g_intset_copy (const GIntSet *orig)
+{
+  GIntSet *ret;
+
+  g_return_val_if_fail (orig != NULL, NULL);
+
+  ret = _g_intset_new_with_size (orig->size);
+  memcpy (ret->bits, orig->bits, (ret->size * sizeof(guint32)));
+
+  return ret;
+}
+
+GIntSet *
+g_intset_intersection (const GIntSet *left, const GIntSet *right)
+{
+  const GIntSet *large, *small;
+  GIntSet *ret;
+  int i;
+
+  g_return_val_if_fail (left != NULL, NULL);
+  g_return_val_if_fail (right != NULL, NULL);
+
+  if (left->size > right->size)
+    {
+      large = left;
+      small = right;
+    }
+  else
+    {
+      large = right;
+      small = left;
+    }
+
+  ret = g_intset_copy (small);
+
+  for (i = 0; i < ret->size; i++)
+    {
+      ret->bits[i] &= large->bits[i];
+    }
+
+  return ret;
+}
+
+GIntSet *
+g_intset_union (const GIntSet *left, const GIntSet *right)
+{
+  const GIntSet *large, *small;
+  GIntSet *ret;
+  int i;
+
+  g_return_val_if_fail (left != NULL, NULL);
+  g_return_val_if_fail (right != NULL, NULL);
+
+  if (left->size > right->size)
+    {
+      large = left;
+      small = right;
+    }
+  else
+    {
+      large = right;
+      small = left;
+    }
+
+  ret = g_intset_copy (large);
+
+  for (i = 0; i < small->size; i++)
+    {
+      ret->bits[i] |= small->bits[i];
+    }
+
+  return ret;
+}
+
+GIntSet *
+g_intset_difference (const GIntSet *left, const GIntSet *right)
+{
+  GIntSet *ret;
+  int i;
+
+  g_return_val_if_fail (left != NULL, NULL);
+  g_return_val_if_fail (right != NULL, NULL);
+
+  ret = g_intset_copy (left);
+
+  for (i = 0; i < MIN(right->size, left->size); i++)
+    {
+      ret->bits[i] &= ~right->bits[i];
+    }
+
+  return ret;
+}
+
+GIntSet *
+g_intset_symmetric_difference (const GIntSet *left, const GIntSet *right)
+{
+  const GIntSet *large, *small;
+  GIntSet *ret;
+  int i;
+
+  g_return_val_if_fail (left != NULL, NULL);
+  g_return_val_if_fail (right != NULL, NULL);
+
+  if (left->size > right->size)
+    {
+      large = left;
+      small = right;
+    }
+  else
+    {
+      large = right;
+      small = left;
+    }
+
+  ret = g_intset_copy (large);
+
+  for (i = 0; i < small->size; i++)
+    {
+      ret->bits[i] ^= small->bits[i];
+    }
+
+  return ret;
 }

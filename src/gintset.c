@@ -69,7 +69,7 @@ g_intset_add (GIntSet *set, guint element)
     newsize = ((offset>>DEFAULT_INCREMENT_LOG2) +1 ) << DEFAULT_INCREMENT_LOG2;
     set->bits = g_renew(guint32, set->bits, newsize);
     memset (set->bits + set->size, 0, sizeof(guint32) * (newsize - set->size));
-    set->size = newsize; 
+    set->size = newsize;
     g_assert(offset<newsize);
   }
   set->bits[offset] = set->bits[offset] | (1<<(element & 0x1f));
@@ -81,7 +81,7 @@ g_intset_add (GIntSet *set, guint element)
  * @element: integer to add
  *
  * Remove an integer from a GIntSet
- * Returns: TRUE if element was in set 
+ * Returns: TRUE if element was in set
  */
 gboolean
 g_intset_remove (GIntSet *set, guint element)
@@ -102,10 +102,10 @@ g_intset_remove (GIntSet *set, guint element)
 /**
  * g_intset_is_member:
  * @set: set
- * @element: integer to test 
+ * @element: integer to test
  *
  * Tests if @element is a member of @set
- * Returns: TRUE if element was in set 
+ * Returns: TRUE if element was in set
  */
 gboolean
 g_intset_is_member (GIntSet *set, guint element)
@@ -126,7 +126,7 @@ g_intset_is_member (GIntSet *set, guint element)
  * Iterates every member of the set calling @func
  */
 
-void 
+void
 g_intset_foreach (GIntSet *set, GIntFunc func, gpointer userdata)
 {
   guint i, j;
@@ -141,7 +141,7 @@ g_intset_foreach (GIntSet *set, GIntFunc func, gpointer userdata)
 }
 
 
-static void 
+static void
 addint(guint32 i, gpointer data)
 {
   GArray * array = (GArray *) data;
@@ -154,11 +154,11 @@ addint(guint32 i, gpointer data)
  * Convert a gintset to an array, allocates the array for you, hence you
  * must free it after use.
  */
-GArray* 
+GArray *
 g_intset_to_array (GIntSet *set)
 {
   GArray *array;
-  
+
   array = g_array_new (FALSE, TRUE, sizeof (guint32));
 
   g_intset_foreach(set, addint, array);

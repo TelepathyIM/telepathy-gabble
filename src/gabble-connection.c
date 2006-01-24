@@ -2050,7 +2050,7 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
 
       g_object_get (chan, "object-path", ret, NULL);
     }
-  if (!strcmp (type, TP_IFACE_CHANNEL_TYPE_CONTACT_LIST))
+  else if (!strcmp (type, TP_IFACE_CHANNEL_TYPE_CONTACT_LIST))
     {
       GabbleRosterChannel *chan;
 

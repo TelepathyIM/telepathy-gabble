@@ -70,7 +70,6 @@ struct _GabbleRosterChannelPrivate
   GabbleHandleSet *local_pending;
   GabbleHandleSet *remote_pending;
 
-  gboolean closed;
   gboolean dispose_has_run;
 };
 
@@ -279,8 +278,7 @@ gabble_roster_channel_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  if (!priv->closed)
-    g_signal_emit(self, signals[CLOSED], 0);
+  g_signal_emit(self, signals[CLOSED], 0);
 
   /* release any references held by the object here */
 

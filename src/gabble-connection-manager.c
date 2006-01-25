@@ -42,6 +42,7 @@ G_DEFINE_TYPE(GabbleConnectionManager, gabble_connection_manager, G_TYPE_OBJECT)
 enum
 {
     NEW_CONNECTION,
+    NO_MORE_CONNECTIONS,
     LAST_SIGNAL
 };
 
@@ -89,6 +90,15 @@ gabble_connection_manager_class_init (GabbleConnectionManagerClass *gabble_conne
                   NULL, NULL,
                   gabble_connection_manager_marshal_VOID__STRING_STRING_STRING,
                   G_TYPE_NONE, 3, G_TYPE_STRING, DBUS_TYPE_G_OBJECT_PATH, G_TYPE_STRING);
+
+  signals[NO_MORE_CONNECTIONS] =
+    g_signal_new ("no-more-connections",
+                  G_OBJECT_CLASS_TYPE (gabble_connection_manager_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  g_cclosure_marshal_VOID__VOID,
+                  G_TYPE_NONE, 0);
 
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_connection_manager_class), &dbus_glib_gabble_connection_manager_object_info);
 }
@@ -395,18 +405,16 @@ connection_disconnected_cb (GabbleConnection        *conn,
   GabbleConnectionManager *self = GABBLE_CONNECTION_MANAGER (data);
   GabbleConnectionManagerPrivate *priv = GABBLE_CONNECTION_MANAGER_GET_PRIVATE (self);
 
-  gulong signal = GPOINTER_TO_INT (g_hash_table_lookup (priv->connections,
-                                                        conn));
-
-  g_assert (signal != 0);
-
-  g_signal_handler_disconnect (conn, signal);
-
+  g_assert (g_hash_table_lookup (priv->connections, conn));
   g_hash_table_remove (priv->connections, conn);
 
   g_object_unref (conn);
 
   g_debug ("%s: dereferenced connection", G_STRFUNC);
+  if (g_hash_table_size (priv->connections) == 0)
+    {
+      g_signal_emit (self, signals[NO_MORE_CONNECTIONS], 0);
+    }
 }
 
 /* public methods */
@@ -458,7 +466,6 @@ gboolean gabble_connection_manager_connect (GabbleConnectionManager *obj, const 
   GabbleConnection *conn;
   const GabbleParamSpec *paramspec;
   GabbleParams params = { NULL };
-  gulong signal;
 
   g_assert (GABBLE_IS_CONNECTION_MANAGER (obj));
 
@@ -496,12 +503,12 @@ gboolean gabble_connection_manager_connect (GabbleConnectionManager *obj, const 
     }
 
   /* bind to status change signals from the connection object */
-  signal = g_signal_connect (conn, "disconnected",
+  g_signal_connect (conn, "disconnected",
                              G_CALLBACK (connection_disconnected_cb),
                              obj);
 
-  /* store the connection and the signal ID */
-  g_hash_table_insert (priv->connections, conn, GINT_TO_POINTER (signal));
+  /* store the connection, using a hash table as a set*/
+  g_hash_table_insert (priv->connections, conn, GINT_TO_POINTER(TRUE));
 
   /* commence connecting */
   if (!_gabble_connection_connect (conn, error))

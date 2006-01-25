@@ -45,6 +45,26 @@
 
 #define XMLNS_ROSTER    "jabber:iq:roster"
 
+#define ERROR_IF_NOT_CONNECTED(PRIV, ERROR) \
+  if ((PRIV)->status != TP_CONN_STATUS_CONNECTED) \
+    { \
+      g_debug ("%s: rejected request as disconnected", G_STRFUNC); \
+      (ERROR) = g_error_new(TELEPATHY_ERRORS, NotAvailable, \
+                            "Connection is disconnected"); \
+      return FALSE; \
+    }
+
+#define ERROR_IF_NOT_CONNECTED_ASYNC(PRIV, ERROR, CONTEXT) \
+  if ((PRIV)->status != TP_CONN_STATUS_CONNECTED) \
+    { \
+      g_debug ("%s: rejected request as disconnected", G_STRFUNC); \
+      (ERROR) = g_error_new(TELEPATHY_ERRORS, NotAvailable, \
+                            "Connection is disconnected"); \
+      dbus_g_method_return_error ((CONTEXT), (ERROR)); \
+      return FALSE; \
+    }
+
+
 G_DEFINE_TYPE(GabbleConnection, gabble_connection, G_TYPE_OBJECT)
 
 /* signal enum */
@@ -1652,6 +1672,14 @@ _gabble_connection_client_release_handle (GabbleConnection *conn,
  */
 gboolean gabble_connection_add_status (GabbleConnection *obj, const gchar * status, GHashTable * parms, GError **error)
 {
+  GabbleConnectionPrivate *priv;
+
+  g_assert (GABBLE_IS_CONNECTION (obj));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  ERROR_IF_NOT_CONNECTED (priv, *error);
+
   return TRUE;
 }
 
@@ -1670,6 +1698,15 @@ gboolean gabble_connection_add_status (GabbleConnection *obj, const gchar * stat
  */
 gboolean gabble_connection_advertise_capabilities (GabbleConnection *obj, const gchar ** add, const gchar ** remove, GError **error)
 {
+  GabbleConnectionPrivate *priv;
+
+  g_assert (GABBLE_IS_CONNECTION (obj));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  ERROR_IF_NOT_CONNECTED (priv, *error);
+
+
   add = NULL;
   remove = NULL;
   return TRUE;
@@ -1690,6 +1727,14 @@ gboolean gabble_connection_advertise_capabilities (GabbleConnection *obj, const 
  */
 gboolean gabble_connection_clear_status (GabbleConnection *obj, GError **error)
 {
+  GabbleConnectionPrivate *priv;
+
+  g_assert (GABBLE_IS_CONNECTION (obj));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  ERROR_IF_NOT_CONNECTED (priv, *error);
+
   return TRUE;
 }
 
@@ -1741,6 +1786,7 @@ gboolean gabble_connection_get_capabilities (GabbleConnection *obj, guint handle
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
 
+  ERROR_IF_NOT_CONNECTED (priv, *error);
 
   if (!gabble_handle_is_valid(priv->handles, TP_HANDLE_TYPE_CONTACT, handle))
     {
@@ -1800,6 +1846,13 @@ gboolean gabble_connection_get_capabilities (GabbleConnection *obj, guint handle
 gboolean gabble_connection_get_interfaces (GabbleConnection *obj, gchar *** ret, GError **error)
 {
   const char *interfaces[] = { TP_IFACE_CONN_INTERFACE, NULL };
+  GabbleConnectionPrivate *priv;
+
+  g_assert (GABBLE_IS_CONNECTION (obj));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  ERROR_IF_NOT_CONNECTED (priv, *error)
 
   *ret = g_strdupv ((gchar **) interfaces);
 
@@ -1827,6 +1880,8 @@ gboolean gabble_connection_get_protocol (GabbleConnection *obj, gchar ** ret, GE
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
 
+  ERROR_IF_NOT_CONNECTED (priv, *error)
+
   *ret = g_strdup (priv->protocol);
 
   return TRUE;
@@ -1852,6 +1907,8 @@ gboolean gabble_connection_get_self_handle (GabbleConnection *obj, guint* ret, G
   g_assert (GABBLE_IS_CONNECTION (obj));
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  ERROR_IF_NOT_CONNECTED (priv, *error)
 
   *ret = priv->self_handle;
 
@@ -1899,6 +1956,14 @@ gboolean gabble_connection_get_status (GabbleConnection *obj, guint* ret, GError
  */
 gboolean gabble_connection_get_statuses (GabbleConnection *obj, GHashTable ** ret, GError **error)
 {
+  GabbleConnectionPrivate *priv;
+
+  g_assert (GABBLE_IS_CONNECTION (obj));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  ERROR_IF_NOT_CONNECTED (priv, *error)
+
   return TRUE;
 }
 
@@ -1922,6 +1987,8 @@ gboolean gabble_connection_hold_handle (GabbleConnection *obj, guint handle_type
   g_assert (GABBLE_IS_CONNECTION (obj));
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  ERROR_IF_NOT_CONNECTED_ASYNC (priv, error, context)
 
   if (!gabble_handle_type_is_valid (handle_type))
     {
@@ -1975,6 +2042,8 @@ gboolean gabble_connection_inspect_handle (GabbleConnection *obj, guint handle_t
   g_assert (GABBLE_IS_CONNECTION (obj));
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  ERROR_IF_NOT_CONNECTED (priv, *error)
 
   if (!gabble_handle_type_is_valid (handle_type))
     {
@@ -2083,6 +2152,8 @@ gboolean gabble_connection_list_channels (GabbleConnection *obj, GPtrArray ** re
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
 
+  ERROR_IF_NOT_CONNECTED (priv, *error)
+
   count = g_hash_table_size (priv->im_channels);
   channels = g_ptr_array_sized_new (count);
   dbus_g_collection_set_signature (channels, "(osuu)");
@@ -2120,6 +2191,8 @@ gboolean gabble_connection_release_handle (GabbleConnection *obj, guint handle_t
   g_assert (GABBLE_IS_CONNECTION (obj));
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  ERROR_IF_NOT_CONNECTED_ASYNC (priv, error, context)
 
   if (!gabble_handle_type_is_valid (handle_type))
     {
@@ -2165,6 +2238,14 @@ gboolean gabble_connection_release_handle (GabbleConnection *obj, guint handle_t
  */
 gboolean gabble_connection_remove_status (GabbleConnection *obj, const gchar * status, GError **error)
 {
+  GabbleConnectionPrivate *priv;
+
+  g_assert (GABBLE_IS_CONNECTION (obj));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  ERROR_IF_NOT_CONNECTED (priv, *error)
+
   return TRUE;
 }
 
@@ -2188,6 +2269,8 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
   g_assert (GABBLE_IS_CONNECTION (obj));
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  ERROR_IF_NOT_CONNECTED (priv, *error)
 
   if (!strcmp (type, TP_IFACE_CHANNEL_TYPE_TEXT))
     {
@@ -2276,6 +2359,8 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
 
+  ERROR_IF_NOT_CONNECTED_ASYNC (priv, error, context)
+
   if (!gabble_handle_type_is_valid (handle_type))
     {
       g_debug ("request_handle: invalid handle type %u", handle_type);
@@ -2357,6 +2442,14 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
  */
 gboolean gabble_connection_request_presence (GabbleConnection *obj, const GArray * contacts, GError **error)
 {
+  GabbleConnectionPrivate *priv;
+
+  g_assert (GABBLE_IS_CONNECTION (obj));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  ERROR_IF_NOT_CONNECTED (priv, *error)
+
   return TRUE;
 }
 
@@ -2375,6 +2468,14 @@ gboolean gabble_connection_request_presence (GabbleConnection *obj, const GArray
  */
 gboolean gabble_connection_set_last_activity_time (GabbleConnection *obj, guint time, GError **error)
 {
+  GabbleConnectionPrivate *priv;
+
+  g_assert (GABBLE_IS_CONNECTION (obj));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  ERROR_IF_NOT_CONNECTED (priv, *error)
+
   return TRUE;
 }
 
@@ -2393,6 +2494,14 @@ gboolean gabble_connection_set_last_activity_time (GabbleConnection *obj, guint 
  */
 gboolean gabble_connection_set_status (GabbleConnection *obj, GHashTable * statuses, GError **error)
 {
+  GabbleConnectionPrivate *priv;
+
+  g_assert (GABBLE_IS_CONNECTION (obj));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  ERROR_IF_NOT_CONNECTED (priv, *error)
+
   return TRUE;
 }
 

@@ -445,9 +445,9 @@ gabble_connection_dispose (GObject *object)
   priv->dispose_has_run = TRUE;
 
   g_debug ("%s: dispose called", G_STRFUNC);
-  close_all_channels(self);
 
-  close_all_channels (self);
+  g_assert(g_hash_table_size (priv->im_channels) == 0);
+  g_hash_table_destroy (priv->im_channels);
 
   if (priv->conn)
     {

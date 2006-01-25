@@ -992,6 +992,14 @@ connection_disconnected_cb (LmConnection *connection,
 }
 
 
+#define HANDLER_DEBUG(n, s) \
+G_STMT_START { \
+  char *handler_debug_tmp = lm_message_node_to_string (n); \
+  g_debug ("%s: " s ":\n%s", G_STRFUNC, handler_debug_tmp); \
+  g_free (handler_debug_tmp); \
+} G_STMT_END
+
+
 /**
  * connection_message_cb:
  *
@@ -1019,10 +1027,7 @@ connection_message_cb (LmMessageHandler *handler,
 
   if (from == NULL || body_node == NULL)
     {
-      char *tmp = lm_message_node_to_string (msg_node);
-      g_debug ("%s: got a message without a from and a body, ignoring:\n%s", 
-          G_STRFUNC, tmp);
-      g_free (tmp);
+      HANDLER_DEBUG (msg_node, "got a message without a from and a body, ignoring");
 
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
@@ -1073,21 +1078,15 @@ connection_presence_cb (LmMessageHandler *handler,
 
   pres_node = lm_message_get_node (message);
 
-  {
-    char *tmp = lm_message_node_to_string (pres_node);
-    g_debug ("%s: called with:\n%s", G_STRFUNC, tmp);
-    g_free (tmp);
-  }
+  switch (lm_message_get_sub_type (message))
+    {
+      default:
+        HANDLER_DEBUG (pres_node, "called with unknown subtype");
+    }
 
   return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 }
 
-#define IQ_DEBUG(n, s) \
-G_STMT_START { \
-  char *iq_debug_tmp = lm_message_node_to_string (n); \
-  g_debug ("%s: " s ":\n%s", G_STRFUNC, iq_debug_tmp); \
-  g_free (iq_debug_tmp); \
-} G_STMT_END
 
 /**
  * connection_iq_roster_cb
@@ -1141,21 +1140,21 @@ connection_iq_roster_cb (LmMessageHandler *handler,
 
           if (strcmp (item_node->name, "item"))
             {
-              IQ_DEBUG (item_node, "query sub-node is not item, skipping");
+              HANDLER_DEBUG (item_node, "query sub-node is not item, skipping");
               continue;
             }
 
           jid = lm_message_node_get_attribute (item_node, "jid");
           if (!jid)
             {
-              IQ_DEBUG (item_node, "item node has no jid, skipping");
+              HANDLER_DEBUG (item_node, "item node has no jid, skipping");
               continue;
             }
 
           subscription = lm_message_node_get_attribute (item_node, "subscription");
           if (!subscription)
             {
-              IQ_DEBUG (item_node, "item node has no subscription, skipping");
+              HANDLER_DEBUG (item_node, "item node has no subscription, skipping");
               continue;
             }
 
@@ -1190,7 +1189,7 @@ connection_iq_roster_cb (LmMessageHandler *handler,
             }
           else
             {
-              IQ_DEBUG (item_node, "got unexpected subscription value");
+              HANDLER_DEBUG (item_node, "got unexpected subscription value");
             }
         }
 
@@ -1220,7 +1219,7 @@ connection_iq_roster_cb (LmMessageHandler *handler,
     }
   else
     {
-      IQ_DEBUG (iq_node, "unhandled roster IQ");
+      HANDLER_DEBUG (iq_node, "unhandled roster IQ");
     }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
@@ -1247,7 +1246,7 @@ connection_iq_unknown_cb (LmMessageHandler *handler,
   g_assert (connection == priv->conn);
 
   iq_node = lm_message_get_node (message);
-  IQ_DEBUG (iq_node, "got unknown iq");
+  HANDLER_DEBUG (iq_node, "got unknown iq");
 
   /* TODO: return an IQ error for unknown get/set */
 

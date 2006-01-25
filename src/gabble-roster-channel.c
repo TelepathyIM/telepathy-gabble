@@ -306,6 +306,77 @@ gabble_roster_channel_finalize (GObject *object)
 }
 
 
+/**
+ * _gabble_roster_channel_change_members:
+ *
+ * Request members to be added, removed or marked as local or remote pending.
+ * Changes member sets, references, and emits the MembersChanged signal.
+ */
+void
+_gabble_roster_channel_change_members (GabbleRosterChannel *chan,
+                                       const char *message,
+                                       GIntSet *add,
+                                       GIntSet *remove,
+                                       GIntSet *local_pending,
+                                       GIntSet *remote_pending)
+{
+  GabbleRosterChannelPrivate *priv;
+  GArray *arr_add, *arr_remove, *arr_local, *arr_remote;
+
+  g_assert (GABBLE_IS_ROSTER_CHANNEL (chan));
+  g_assert (add != NULL);
+  g_assert (remove != NULL);
+  g_assert (local_pending != NULL);
+  g_assert (remote_pending != NULL);
+
+  priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (chan);
+
+  /* members + add */
+  handle_set_update (priv->members, add);
+  /* members - remove */
+  handle_set_difference_update (priv->members, remove);
+  /* members - local_pending */
+  handle_set_difference_update (priv->members, local_pending);
+  /* members - remote_pending */
+  handle_set_difference_update (priv->members, remote_pending);
+
+  /* local pending + local_pending */
+  handle_set_update (priv->local_pending, local_pending);
+  /* local pending - add */
+  handle_set_difference_update (priv->local_pending, add);
+  /* local pending - remove */
+  handle_set_difference_update (priv->local_pending, remove);
+  /* local pending - remote_pending */
+  handle_set_difference_update (priv->local_pending, remote_pending);
+
+  /* remote pending + remote_pending */
+  handle_set_update (priv->remote_pending, remote_pending);
+  /* remote pending - add */
+  handle_set_difference_update (priv->remote_pending, add);
+  /* remote pending - remove */
+  handle_set_difference_update (priv->remote_pending, remove);
+  /* remote pending - local_pending */
+  handle_set_difference_update (priv->remote_pending, local_pending);
+
+  /* translate arguments to arrays */
+  arr_add = g_intset_to_array (add);
+  arr_remove = g_intset_to_array (remove);
+  arr_local = g_intset_to_array (local_pending);
+  arr_remote = g_intset_to_array (remote_pending);
+
+  /* emit signal */
+  g_signal_emit(chan, signals[MEMBERS_CHANGED], 0,
+                message,
+                arr_add, arr_remove,
+                arr_local, arr_remote);
+
+  /* free arrays */
+  g_array_free (arr_add, TRUE);
+  g_array_free (arr_remove, TRUE);
+  g_array_free (arr_local, TRUE);
+  g_array_free (arr_remote, TRUE);
+}
+
 
 /**
  * gabble_roster_channel_add_members

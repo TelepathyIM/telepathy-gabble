@@ -1047,6 +1047,12 @@ connection_presence_cb (LmMessageHandler *handler,
   return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 }
 
+#define IQ_DEBUG(n, s) \
+G_STMT_START { \
+  char *iq_debug_tmp = lm_message_node_to_string (n); \
+  g_debug ("%s: " s ":\n%s", G_STRFUNC, iq_debug_tmp); \
+  g_free (iq_debug_tmp); \
+} G_STMT_END
 
 /**
  * connection_iq_roster_cb
@@ -1063,9 +1069,7 @@ connection_iq_roster_cb (LmMessageHandler *handler,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-  LmMessageNode *iq_node;
-  LmMessageNode *query_node;
-  char *tmp;
+  LmMessageNode *iq_node, *query_node;
 
   g_assert (connection == priv->conn);
 
@@ -1076,9 +1080,113 @@ connection_iq_roster_cb (LmMessageHandler *handler,
         lm_message_node_get_attribute (query_node, "xmlns")))
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
-  tmp = lm_message_node_to_string (iq_node);
-  g_debug ("%s: got roster iq:\n%s", G_STRFUNC, tmp);
-  g_free (tmp);
+  /* if this is a response, then it's from us asking for the roster */
+  if (lm_message_get_sub_type (message) == LM_MESSAGE_SUB_TYPE_RESULT)
+    {
+      LmMessageNode *item_node;
+      GIntSet *empty, *pub_add, *pub_rem,
+              *sub_add, *sub_rem, *sub_rp;
+
+      /* asymmetry is because we don't get locally pending subscription
+       * requests via <roster>, we get it via <presence> */
+      empty = g_intset_new ();
+      pub_add = g_intset_new ();
+      pub_rem = g_intset_new ();
+      sub_add = g_intset_new ();
+      sub_rem = g_intset_new ();
+      sub_rp = g_intset_new ();
+
+      /* iterate every sub-node, which we expect to be <item>s */
+      for (item_node = query_node->children;
+           item_node;
+           item_node = item_node->next)
+        {
+          const char *jid, *subscription, *ask;
+          GabbleHandle handle;
+
+          if (strcmp (item_node->name, "item"))
+            {
+              IQ_DEBUG (item_node, "query sub-node is not item, skipping");
+              continue;
+            }
+
+          jid = lm_message_node_get_attribute (item_node, "jid");
+          if (!jid)
+            {
+              IQ_DEBUG (item_node, "item node has no jid, skipping");
+              continue;
+            }
+
+          subscription = lm_message_node_get_attribute (item_node, "subscription");
+          if (!subscription)
+            {
+              IQ_DEBUG (item_node, "item node has no subscription, skipping");
+              continue;
+            }
+
+          handle = gabble_handle_for_contact (priv->handles, jid, FALSE);
+          ask = lm_message_node_get_attribute (item_node, "ask");
+
+          if (!strcmp (subscription, "both"))
+            {
+              g_intset_add (pub_add, handle);
+              g_intset_add (sub_add, handle);
+            }
+          else if (!strcmp (subscription, "from"))
+            {
+              g_intset_add (pub_add, handle);
+              if (!strcmp (ask, "subscribe"))
+                g_intset_add (sub_rp, handle);
+              else
+                g_intset_add (sub_rem, handle);
+            }
+          else if (!strcmp (subscription, "none"))
+            {
+              g_intset_add (pub_rem, handle);
+              if (!strcmp (ask, "subscribe"))
+                g_intset_add (sub_rp, handle);
+              else
+                g_intset_add (sub_rem, handle);
+            }
+          else if (!strcmp (subscription, "to"))
+            {
+              g_intset_add (pub_rem, handle);
+              g_intset_add (sub_add, handle);
+            }
+          else
+            {
+              IQ_DEBUG (item_node, "got unexpected subscription value");
+            }
+        }
+
+      if (g_intset_size (pub_add) > 0 ||
+          g_intset_size (pub_rem) > 0)
+        {
+          g_debug ("%s: calling change members on publish channel", G_STRFUNC);
+          _gabble_roster_channel_change_members (priv->publish_channel,
+              "", pub_add, pub_rem, empty, empty);
+        }
+
+      if (g_intset_size (sub_add) > 0 ||
+          g_intset_size (sub_rem) > 0 ||
+          g_intset_size (sub_rp) > 0)
+        {
+          g_debug ("%s: calling change members on subscribe channel", G_STRFUNC);
+          _gabble_roster_channel_change_members (priv->subscribe_channel,
+              "", sub_add, sub_rem, empty, sub_rp);
+        }
+
+      g_intset_destroy (empty);
+      g_intset_destroy (pub_add);
+      g_intset_destroy (pub_rem);
+      g_intset_destroy (sub_add);
+      g_intset_destroy (sub_rem);
+      g_intset_destroy (sub_rp);
+    }
+  else
+    {
+      IQ_DEBUG (iq_node, "unhandled roster IQ");
+    }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
@@ -1100,14 +1208,11 @@ connection_iq_unknown_cb (LmMessageHandler *handler,
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   LmMessageNode *iq_node;
-  char *iq_string;
 
   g_assert (connection == priv->conn);
 
   iq_node = lm_message_get_node (message);
-  iq_string = lm_message_node_to_string (iq_node);
-  g_debug ("%s: got unknown iq:\n%s", G_STRFUNC, iq_string);
-  g_free (iq_string);
+  IQ_DEBUG (iq_node, "got unknown iq");
 
   /* TODO: return an IQ error for unknown get/set */
 

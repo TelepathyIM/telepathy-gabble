@@ -445,6 +445,7 @@ gabble_connection_dispose (GObject *object)
   priv->dispose_has_run = TRUE;
 
   g_debug ("%s: dispose called", G_STRFUNC);
+  close_all_channels(self);
 
   close_all_channels (self);
 
@@ -543,9 +544,6 @@ gabble_connection_finalize (GObject *object)
   g_datalist_clear (&priv->client_room_handle_sets);
   g_datalist_clear (&priv->client_contact_handle_sets);
   g_datalist_clear (&priv->client_list_handle_sets);
-
-  if (priv->handles);
-    gabble_handle_repo_destroy (priv->handles);
 
   if (priv->handles);
     gabble_handle_repo_destroy (priv->handles);
@@ -880,7 +878,7 @@ connection_status_change (GabbleConnection        *conn,
 
   g_debug ("%s: status %u reason %u", G_STRFUNC, status, reason);
 
-  if (priv->status)
+  if (priv->status != status)
     {
       priv->status = status;
 
@@ -888,6 +886,23 @@ connection_status_change (GabbleConnection        *conn,
                G_STRFUNC, status, reason);
       g_signal_emit (conn, signals[STATUS_CHANGED], 0, status, reason);
     }
+}
+
+static void channel_closed_cb (GabbleIMChannel *chan, gpointer user_data);
+
+gboolean hash_foreach_close_im_channel (gpointer key,
+                                    gpointer value,
+                                    gpointer user_data)
+{
+  GabbleIMChannel *chan = GABBLE_IM_CHANNEL (value);
+  GError *error = NULL;
+
+  g_signal_handlers_disconnect_by_func (chan, (GCallback) channel_closed_cb,
+                                       user_data);
+  g_debug ("%s calling gabble_im_channel_close on %p", G_STRFUNC, chan);
+  gabble_im_channel_close (chan, &error);
+  g_debug ("%s removing channel %p", G_STRFUNC, chan);
+  return TRUE;
 }
 
 /**
@@ -900,23 +915,10 @@ static void
 close_all_channels (GabbleConnection *conn)
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-
   if (priv->im_channels)
     {
       g_hash_table_destroy (priv->im_channels);
       priv->im_channels = NULL;
-    }
-
-  if (priv->publish_channel)
-    {
-      g_object_unref (priv->publish_channel);
-      priv->publish_channel = NULL;
-    }
-
-  if (priv->subscribe_channel)
-    {
-      g_object_unref (priv->subscribe_channel);
-      priv->publish_channel = NULL;
     }
 }
 

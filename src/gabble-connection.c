@@ -1563,7 +1563,7 @@ _gabble_connection_client_hold_handle (GabbleConnection *conn,
       handle_set_list = &priv->client_room_handle_sets;
       break;
     case TP_HANDLE_TYPE_LIST:
-      handle_set_list = &priv->client_room_handle_sets;
+      handle_set_list = &priv->client_list_handle_sets;
       break;
     default:
       g_critical ("%s: gabble_connection_client_hold_handle called with invalid handle type", G_STRFUNC);
@@ -1616,7 +1616,7 @@ _gabble_connection_client_release_handle (GabbleConnection *conn,
       handle_set_list = &priv->client_room_handle_sets;
       break;
     case TP_HANDLE_TYPE_LIST:
-      handle_set_list = &priv->client_room_handle_sets;
+      handle_set_list = &priv->client_list_handle_sets;
       break;
     default:
       g_critical ("%s called with invalid handle type", G_STRFUNC);

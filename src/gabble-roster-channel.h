@@ -56,6 +56,10 @@ GType gabble_roster_channel_get_type(void);
 
 
 void
+_gabble_roster_channel_change_group_flags (GabbleRosterChannel *chan,
+                                           TpChannelGroupFlags add,
+                                           TpChannelGroupFlags remove);
+void
 _gabble_roster_channel_change_members (GabbleRosterChannel *chan,
                                        const char *message,
                                        GIntSet *add,

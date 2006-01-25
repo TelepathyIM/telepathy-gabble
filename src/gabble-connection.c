@@ -1434,6 +1434,9 @@ make_roster_channels (GabbleConnection *conn)
                  TP_HANDLE_TYPE_LIST, handle,
                  /* supress handler: */ FALSE);
 
+  _gabble_roster_channel_change_group_flags (priv->publish_channel,
+      TP_CHANNEL_GROUP_FLAG_CAN_REMOVE, 0);
+
   g_free (object_path);
 
   /* make subscribe list channel */
@@ -1452,6 +1455,11 @@ make_roster_channels (GabbleConnection *conn)
                  object_path, TP_IFACE_CHANNEL_TYPE_CONTACT_LIST,
                  TP_HANDLE_TYPE_LIST, handle,
                  /* supress handler: */ FALSE);
+
+  _gabble_roster_channel_change_group_flags (priv->subscribe_channel,
+      TP_CHANNEL_GROUP_FLAG_CAN_ADD ^
+      TP_CHANNEL_GROUP_FLAG_CAN_REMOVE ^
+      TP_CHANNEL_GROUP_FLAG_CAN_RESCIND, 0);
 
   g_free (object_path);
 }

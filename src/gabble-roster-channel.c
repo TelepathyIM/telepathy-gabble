@@ -66,6 +66,7 @@ struct _GabbleRosterChannelPrivate
   char *object_path;
   GabbleHandle handle;
 
+  TpChannelGroupFlags group_flags;
   GabbleHandleSet *members;
   GabbleHandleSet *local_pending;
   GabbleHandleSet *remote_pending;
@@ -307,6 +308,36 @@ gabble_roster_channel_finalize (GObject *object)
 
 
 /**
+ * _gabble_roster_channel_change_group_flags:
+ *
+ * Request a change to be made to the flags set on this channel. Emits
+ * the signal with the changes which were made.
+ */
+void
+_gabble_roster_channel_change_group_flags (GabbleRosterChannel *chan,
+                                           TpChannelGroupFlags add,
+                                           TpChannelGroupFlags remove)
+{
+  GabbleRosterChannelPrivate *priv;
+  TpChannelGroupFlags added, removed;
+
+  g_assert (GABBLE_IS_ROSTER_CHANNEL (chan));
+
+  priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (chan);
+
+  added = add & ~priv->group_flags;
+  priv->group_flags |= added;
+
+  removed = remove & priv->group_flags;
+  priv->group_flags &= ~removed;
+
+  g_debug ("%s: emitting group flags changed, added 0x%X, removed 0x%X", G_STRFUNC, added, removed);
+
+  g_signal_emit(chan, signals[GROUP_FLAGS_CHANGED], 0, added, removed);
+}
+
+
+/**
  * _gabble_roster_channel_change_members:
  *
  * Request members to be added, removed or marked as local or remote pending.
@@ -451,6 +482,14 @@ gboolean gabble_roster_channel_get_channel_type (GabbleRosterChannel *obj, gchar
  */
 gboolean gabble_roster_channel_get_group_flags (GabbleRosterChannel *obj, guint* ret, GError **error)
 {
+  GabbleRosterChannelPrivate *priv;
+
+  g_assert (GABBLE_IS_ROSTER_CHANNEL (obj));
+
+  priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (obj);
+
+  *ret = priv->group_flags;
+
   return TRUE;
 }
 

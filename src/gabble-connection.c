@@ -1024,15 +1024,110 @@ connection_presence_cb (LmMessageHandler *handler,
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   LmMessageNode *pres_node;
+  const char *from;
+  GIntSet *empty, *tmp;
+  GabbleHandle handle;
+  LmMessage *reply = NULL;
 
   g_assert (connection == priv->conn);
 
   pres_node = lm_message_get_node (message);
+  from = lm_message_node_get_attribute (pres_node, "from");
+
+  if (from == NULL)
+    {
+      HANDLER_DEBUG (pres_node, "presence stanza without from attribute, ignoring");
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    }
+
+  handle = gabble_handle_for_contact (priv->handles, from, FALSE);
+  g_assert (handle != 0);
 
   switch (lm_message_get_sub_type (message))
     {
-      default:
-        HANDLER_DEBUG (pres_node, "called with unknown subtype");
+    case LM_MESSAGE_SUB_TYPE_SUBSCRIBE:
+      empty = g_intset_new ();
+      tmp = g_intset_new ();
+
+      g_debug ("%s: making %s (handle %u) local pending on the publish channel",
+          G_STRFUNC, from, handle);
+
+      /* make the contact local pending on the publish channel */
+      g_intset_add (tmp, handle);
+      _gabble_roster_channel_change_members (priv->publish_channel,
+          "", empty, empty, tmp, empty);
+
+      g_intset_destroy (empty);
+      g_intset_destroy (tmp);
+      break;
+    case LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE:
+      empty = g_intset_new ();
+      tmp = g_intset_new ();
+
+      g_debug ("%s: removing %s (handle %u) from the publish channel",
+          G_STRFUNC, from, handle);
+
+      /* remove the contact from the publish channel */
+      g_intset_add (tmp, handle);
+      _gabble_roster_channel_change_members (priv->publish_channel,
+          "", empty, tmp, empty, empty);
+
+      /* acknowledge the change */
+      reply = lm_message_new_with_sub_type (from,
+                LM_MESSAGE_TYPE_PRESENCE,
+                LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED);
+      _gabble_connection_send (conn, reply, NULL);
+      lm_message_unref (reply);
+
+      g_intset_destroy (empty);
+      g_intset_destroy (tmp);
+      break;
+    case LM_MESSAGE_SUB_TYPE_SUBSCRIBED:
+      empty = g_intset_new ();
+      tmp = g_intset_new ();
+
+      g_debug ("%s: adding %s (handle %u) to the subscribe channel",
+          G_STRFUNC, from, handle);
+
+      /* add the contact to the subscribe channel */
+      g_intset_add (tmp, handle);
+      _gabble_roster_channel_change_members (priv->subscribe_channel,
+          "", tmp, empty, empty, empty);
+
+      /* acknowledge the change */
+      reply = lm_message_new_with_sub_type (from,
+                LM_MESSAGE_TYPE_PRESENCE,
+                LM_MESSAGE_SUB_TYPE_SUBSCRIBE);
+      _gabble_connection_send (conn, reply, NULL);
+      lm_message_unref (reply);
+
+      g_intset_destroy (empty);
+      g_intset_destroy (tmp);
+      break;
+    case LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED:
+      empty = g_intset_new ();
+      tmp = g_intset_new ();
+
+      g_debug ("%s: removing %s (handle %u) from the subscribe channel",
+          G_STRFUNC, from, handle);
+
+      /* remove the contact from the subscribe channel */
+      g_intset_add (tmp, handle);
+      _gabble_roster_channel_change_members (priv->subscribe_channel,
+          "", empty, tmp, empty, empty);
+
+      /* acknowledge the change */
+      reply = lm_message_new_with_sub_type (from,
+                LM_MESSAGE_TYPE_PRESENCE,
+                LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE);
+      _gabble_connection_send (conn, reply, NULL);
+      lm_message_unref (reply);
+
+      g_intset_destroy (empty);
+      g_intset_destroy (tmp);
+      break;
+    default:
+      HANDLER_DEBUG (pres_node, "called with unknown subtype");
     }
 
   return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;

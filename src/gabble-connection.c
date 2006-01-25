@@ -888,7 +888,7 @@ connection_status_change (GabbleConnection        *conn,
     }
 }
 
-static void channel_closed_cb (GabbleIMChannel *chan, gpointer user_data);
+static void im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data);
 
 gboolean hash_foreach_close_im_channel (gpointer key,
                                     gpointer value,
@@ -897,7 +897,7 @@ gboolean hash_foreach_close_im_channel (gpointer key,
   GabbleIMChannel *chan = GABBLE_IM_CHANNEL (value);
   GError *error = NULL;
 
-  g_signal_handlers_disconnect_by_func (chan, (GCallback) channel_closed_cb,
+  g_signal_handlers_disconnect_by_func (chan, (GCallback) im_channel_closed_cb,
                                        user_data);
   g_debug ("%s calling gabble_im_channel_close on %p", G_STRFUNC, chan);
   gabble_im_channel_close (chan, &error);
@@ -915,10 +915,23 @@ static void
 close_all_channels (GabbleConnection *conn)
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+
   if (priv->im_channels)
     {
-      g_hash_table_destroy (priv->im_channels);
-      priv->im_channels = NULL;
+      g_debug ("%s: im_channels has %d members", G_STRFUNC, g_hash_table_size (priv->im_channels));
+      g_hash_table_foreach_remove (priv->im_channels, hash_foreach_close_im_channel, conn);
+    }
+
+  if (priv->publish_channel)
+    {
+      g_object_unref (priv->publish_channel);
+      priv->publish_channel = NULL;
+    }
+
+  if (priv->subscribe_channel)
+    {
+      g_object_unref (priv->subscribe_channel);
+      priv->subscribe_channel = NULL;
     }
 }
 

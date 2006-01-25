@@ -676,8 +676,11 @@ _gabble_connection_send (GabbleConnection *conn, LmMessage *msg, GError **error)
     {
       g_error ("_gabble_connection_send failed: %s", lmerror->message);
 
-      *error = g_error_new (TELEPATHY_ERRORS, NetworkError,
-                            "message send failed: %s", lmerror->message);
+      if (error)
+        {
+          *error = g_error_new (TELEPATHY_ERRORS, NetworkError,
+                                "message send failed: %s", lmerror->message);
+        }
 
       g_error_free (lmerror);
 

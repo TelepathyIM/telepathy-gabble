@@ -167,29 +167,6 @@ gabble_connection_init (GabbleConnection *obj)
   g_datalist_init (&priv->client_list_handle_sets);
 }
 
-/* static GObject*
-gabble_connection_constructor (GType                  type,
-                               guint                  n_construct_properties,
-                               GObjectConstructParam *construct_properties)
-{
-  GObject *object;
-  GabbleConnection *self;
-  GabbleConnectionPrivate *priv;
-  char *server;
-
-  object = G_OBJECT_CLASS (gabble_connection_parent_class)->constructor (type, n_construct_properties, construct_properties);
-  self = GABBLE_CONNECTION (object);
-  priv = GABBLE_CONNECTION_GET_PRIVATE (self);
-
-  server = priv->account;
-  while (*server && *server != '@')
-    server++;
-  server++;
-  g_assert (*server != '\0');
-
-  priv->conn = lm_connection_new (server);
-} */
-
 static void
 gabble_connection_get_property (GObject    *object,
                                 guint       property_id,
@@ -296,9 +273,6 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_connection_class);
   GParamSpec *param_spec;
-
-  /* not required currently:
-  object_class->constructor = gabble_connection_constructor; */
 
   object_class->get_property = gabble_connection_get_property;
   object_class->set_property = gabble_connection_set_property;

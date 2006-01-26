@@ -1160,8 +1160,10 @@ connection_iq_roster_cb (LmMessageHandler *handler,
         lm_message_node_get_attribute (query_node, "xmlns")))
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
-  /* if this is a response, then it's from us asking for the roster */
-  if (lm_message_get_sub_type (message) == LM_MESSAGE_SUB_TYPE_RESULT)
+  /* if this is a result, it's from our initial query. if it's a set,
+   * it's a roster push. either way, parse the items. */
+  if (lm_message_get_sub_type (message) == LM_MESSAGE_SUB_TYPE_RESULT ||
+      lm_message_get_sub_type (message) == LM_MESSAGE_SUB_TYPE_SET)
     {
       LmMessageNode *item_node;
       GIntSet *empty, *pub_add, *pub_rem,

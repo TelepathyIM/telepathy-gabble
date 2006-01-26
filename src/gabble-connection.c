@@ -67,6 +67,34 @@
 
 G_DEFINE_TYPE(GabbleConnection, gabble_connection, G_TYPE_OBJECT)
 
+#define JABBER_PRESENCE_AVAILABLE "available"
+#define JABBER_PRESENCE_AWAY "away"
+#define JABBER_PRESENCE_CHAT "chat"
+#define JABBER_PRESENCE_DND "dnd"
+#define JABBER_PRESENCE_XA "xa"
+#define JABBER_PRESENCE_OFFLINE "offline"
+
+typedef struct _StatusInfo StatusInfo;
+
+struct _StatusInfo
+{
+  const gchar *name;
+  TpConnectionPresenceType presence_type;
+  const gboolean self;
+  const gboolean exclusive;
+};
+
+static const StatusInfo status_infos[] = {
+ { JABBER_PRESENCE_AVAILABLE, TP_CONN_PRESENCE_TYPE_AVAILABLE, TRUE, TRUE },
+ { JABBER_PRESENCE_CHAT,      TP_CONN_PRESENCE_TYPE_AVAILABLE, TRUE, TRUE },
+ { JABBER_PRESENCE_DND,       TP_CONN_PRESENCE_TYPE_AWAY,      TRUE, TRUE },
+ { JABBER_PRESENCE_AWAY,      TP_CONN_PRESENCE_TYPE_AWAY,      TRUE, TRUE },
+ { JABBER_PRESENCE_XA,        TP_CONN_PRESENCE_TYPE_EXTENDED_AWAY, TRUE, TRUE },
+ { JABBER_PRESENCE_OFFLINE,   TP_CONN_PRESENCE_TYPE_OFFLINE,   TRUE, TRUE },
+ { NULL, }
+};
+
+
 /* signal enum */
 enum
 {
@@ -1746,6 +1774,19 @@ _gabble_connection_client_release_handle (GabbleConnection *conn,
     return FALSE;
 }
 
+static GHashTable *
+get_statuses_arguments()
+{
+  static GHashTable *arguments = NULL;
+
+  if (arguments == NULL)
+    {
+      arguments = g_hash_table_new (g_str_hash, g_str_equal);
+
+      g_hash_table_insert (arguments, "message", "s");
+    }
+  return arguments;
+}
 
 /****************************************************************************
  *                          D-BUS EXPORTED METHODS                          *
@@ -1939,7 +1980,11 @@ gboolean gabble_connection_get_capabilities (GabbleConnection *obj, guint handle
  */
 gboolean gabble_connection_get_interfaces (GabbleConnection *obj, gchar *** ret, GError **error)
 {
-  const char *interfaces[] = { TP_IFACE_CONN_INTERFACE, NULL };
+  const char *interfaces[] = { 
+      TP_IFACE_CONN_INTERFACE, 
+      TP_IFACE_CONN_INTERFACE_PRESENCE,
+      TP_IFACE_CONN_INTERFACE_CAPABILITIES,
+      NULL };
   GabbleConnectionPrivate *priv;
 
   g_assert (GABBLE_IS_CONNECTION (obj));
@@ -2051,6 +2096,8 @@ gboolean gabble_connection_get_status (GabbleConnection *obj, guint* ret, GError
 gboolean gabble_connection_get_statuses (GabbleConnection *obj, GHashTable ** ret, GError **error)
 {
   GabbleConnectionPrivate *priv;
+  GValueArray *status;
+  const StatusInfo *status_info;
 
   g_assert (GABBLE_IS_CONNECTION (obj));
 
@@ -2058,6 +2105,40 @@ gboolean gabble_connection_get_statuses (GabbleConnection *obj, GHashTable ** re
 
   ERROR_IF_NOT_CONNECTED (priv, *error)
 
+  g_debug ("%s called.", G_STRFUNC);
+
+  *ret = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                NULL, (GDestroyNotify) g_value_array_free);
+  dbus_g_map_set_value_signature (*ret, "(ubba{ss})");
+
+  for (status_info = status_infos; status_info->name; status_info++)
+    {
+      status = g_value_array_new (5);
+
+      g_value_array_append (status, NULL);
+      g_value_init (g_value_array_get_nth (status, 0), G_TYPE_UINT);
+      g_value_set_uint (g_value_array_get_nth (status, 0), 
+          status_info->presence_type);
+
+      g_value_array_append (status, NULL);
+      g_value_init (g_value_array_get_nth (status, 1), G_TYPE_BOOLEAN);
+      g_value_set_boolean (g_value_array_get_nth (status, 1), 
+          status_info->self);
+
+      g_value_array_append (status, NULL);
+      g_value_init (g_value_array_get_nth (status, 2), G_TYPE_BOOLEAN);
+      g_value_set_boolean (g_value_array_get_nth (status, 2), 
+          status_info->exclusive);
+
+      g_value_array_append (status, NULL);
+      g_value_init (g_value_array_get_nth (status, 3), 
+          DBUS_TYPE_G_STRING_STRING_HASHTABLE);
+      g_value_set_static_boxed (g_value_array_get_nth (status, 3), 
+          get_statuses_arguments());
+
+      g_hash_table_insert (*ret, (gchar*) status_info->name, status);
+
+    }
   return TRUE;
 }
 

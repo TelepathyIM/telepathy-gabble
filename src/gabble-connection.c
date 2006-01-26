@@ -1273,6 +1273,33 @@ connection_iq_roster_cb (LmMessageHandler *handler,
   else
     {
       HANDLER_DEBUG (iq_node, "unhandled roster IQ");
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    }
+
+  /* if this is a SET, it's a roster push, so we need to send an
+   * acknowledgement */
+  if (lm_message_get_sub_type (message) == LM_MESSAGE_SUB_TYPE_SET)
+    {
+      const char *id;
+
+      id = lm_message_node_get_attribute (iq_node, "id");
+      if (id == NULL)
+        {
+          HANDLER_DEBUG (iq_node, "got roster iq set with no id, not replying");
+        }
+      else
+        {
+          LmMessage *reply;
+
+          HANDLER_DEBUG (iq_node, "acknowledging roster push");
+
+          reply = lm_message_new_with_sub_type (NULL,
+              LM_MESSAGE_TYPE_IQ,
+              LM_MESSAGE_SUB_TYPE_RESULT);
+          lm_message_node_set_attribute (reply->node, "id", id);
+          _gabble_connection_send (conn, reply, NULL);
+          lm_message_unref (reply);
+        }
     }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;

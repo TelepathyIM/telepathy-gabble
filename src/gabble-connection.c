@@ -1217,7 +1217,7 @@ connection_iq_roster_cb (LmMessageHandler *handler,
           else if (!strcmp (subscription, "from"))
             {
               g_intset_add (pub_add, handle);
-              if (!strcmp (ask, "subscribe"))
+              if (ask != NULL && !strcmp (ask, "subscribe"))
                 g_intset_add (sub_rp, handle);
               else
                 g_intset_add (sub_rem, handle);
@@ -1225,7 +1225,7 @@ connection_iq_roster_cb (LmMessageHandler *handler,
           else if (!strcmp (subscription, "none"))
             {
               g_intset_add (pub_rem, handle);
-              if (!strcmp (ask, "subscribe"))
+              if (ask != NULL && !strcmp (ask, "subscribe"))
                 g_intset_add (sub_rp, handle);
               else
                 g_intset_add (sub_rem, handle);

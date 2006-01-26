@@ -1230,6 +1230,11 @@ connection_iq_roster_cb (LmMessageHandler *handler,
               else
                 g_intset_add (sub_rem, handle);
             }
+          else if (!strcmp (subscription, "remove"))
+            {
+              g_intset_add (pub_rem, handle);
+              g_intset_add (sub_rem, handle);
+            }
           else if (!strcmp (subscription, "to"))
             {
               g_intset_add (pub_rem, handle);

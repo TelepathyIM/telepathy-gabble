@@ -31,6 +31,7 @@ typedef struct _GabbleHandlePriv GabbleHandlePriv;
 struct _GabbleHandlePriv
 {
   guint refcount;
+  GData *datalist;
 };
 
 struct _GabbleHandleRepo

@@ -33,6 +33,7 @@ handle_priv_new ()
 
   priv = g_new0 (GabbleHandlePriv, 1);
 
+  g_datalist_init (&(priv->datalist));
   return priv;
 }
 
@@ -41,6 +42,7 @@ handle_priv_free (GabbleHandlePriv *priv)
 {
   g_assert (priv != NULL);
 
+  g_datalist_clear (&(priv->datalist));
   g_free (priv);
 }
 
@@ -370,3 +372,55 @@ gabble_handle_for_list_subscribe (GabbleHandleRepo *repo)
   return subscribe;
 }
 
+/**
+ * gabble_handle_set_qdata:
+ * @repo: A #GabbleHandleRepo
+ * @type: The handle type
+ * @handle: A handle to set data on
+ * @key_id: Key id to associate data with
+ * @data: data to associate with handle
+ * @destroy: A #GDestroyNotify to call to detroy the data, 
+ *           or NULL if not needed.
+ *
+ * Associates a blob of data with a given handle and a given key
+ *
+ * If @destroy is set, then the data is freed when the handle is freed.
+ */
+
+gboolean
+gabble_handle_set_qdata (GabbleHandleRepo *repo, 
+                         TpHandleType type, GabbleHandle handle,
+                         GQuark key_id, gpointer data, GDestroyNotify destroy)
+{
+  GabbleHandlePriv *priv;
+  priv = handle_priv_lookup (repo, type, handle);
+
+  if (!priv)
+    return FALSE;
+
+  g_datalist_id_set_data_full (&priv->datalist, key_id, data, destroy);
+  return TRUE;
+}
+
+/**
+ * gabble_handle_get_qdata:
+ * @repo: A #GabbleHandleRepo
+ * @type: The handle type
+ * @handle: A handle to get data from
+ * @key_id: Key id of data to fetch
+ *
+ * Gets the data associated with a given key on a given handle
+ */
+gpointer 
+gabble_handle_get_qdata (GabbleHandleRepo *repo,
+                         TpHandleType type, GabbleHandle handle,
+                         GQuark key_id)
+{
+  GabbleHandlePriv *priv;
+  priv = handle_priv_lookup (repo, type, handle);
+
+  if (!priv)
+    return NULL;
+
+  return g_datalist_id_get_data(&priv->datalist, key_id);
+}

@@ -187,6 +187,7 @@ struct _GabbleConnectionPrivate
 
   /* channels */
   GHashTable *im_channels;
+  GHashTable *media_channels;
   GabbleRosterChannel *publish_channel;
   GabbleRosterChannel *subscribe_channel;
 
@@ -213,6 +214,8 @@ gabble_connection_init (GabbleConnection *obj)
 
   priv->im_channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
                                              NULL, g_object_unref);
+  priv->media_channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+                                                NULL, g_object_unref);
 
   priv->status = TP_CONN_STATUS_CONNECTING;
 
@@ -934,23 +937,10 @@ static void
 close_all_channels (GabbleConnection *conn)
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-
   if (priv->im_channels)
     {
-      g_debug ("%s: im_channels has %d members", G_STRFUNC, g_hash_table_size (priv->im_channels));
-      g_hash_table_foreach_remove (priv->im_channels, hash_foreach_close_im_channel, conn);
-    }
-
-  if (priv->publish_channel)
-    {
-      g_object_unref (priv->publish_channel);
-      priv->publish_channel = NULL;
-    }
-
-  if (priv->subscribe_channel)
-    {
-      g_object_unref (priv->subscribe_channel);
-      priv->subscribe_channel = NULL;
+      g_hash_table_destroy (priv->im_channels);
+      priv->im_channels = NULL;
     }
 }
 
@@ -969,9 +959,9 @@ connection_disconnect (GabbleConnection *conn, TpConnectionStatusReason reason)
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   priv->disconnect_reason = reason;
 
-  /* remove the im_channels so we don't get any race conditions
-   * where method calls are delivered to a channel after we've started
-   * disconnection */
+  /* remove the im_channels so we dont get any race conditions
+   * where method calls are deleivered to a channel after we've started
+   * disconnection*/
   close_all_channels (conn);
 
   connection_status_change (conn, TP_CONN_STATUS_DISCONNECTED, TP_CONN_STATUS_REASON_REQUESTED);
@@ -1841,8 +1831,10 @@ connection_auth_cb (LmConnection *lmconn,
   /* go go gadget on-line */
   connection_status_change (conn, TP_CONN_STATUS_CONNECTED, TP_CONN_STATUS_REASON_REQUESTED);
 
-  /* send presence to the server to indicate availability */
-  if (!signal_own_presence (conn, &error))
+  /* send <presence /> to the server to indicate availability */
+  message = lm_message_new (NULL, LM_MESSAGE_TYPE_PRESENCE);
+
+  if (!lm_connection_send (lmconn, message, &error))
     {
       g_debug ("%s: sending initial presence failed: %s", G_STRFUNC,
           error->message);

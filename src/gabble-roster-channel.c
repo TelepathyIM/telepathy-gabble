@@ -635,6 +635,25 @@ gboolean gabble_roster_channel_get_remote_pending_members (GabbleRosterChannel *
  */
 gboolean gabble_roster_channel_get_self_handle (GabbleRosterChannel *obj, guint* ret, GError **error)
 {
+  GabbleRosterChannelPrivate *priv;
+  GabbleHandle handle;
+
+  g_assert (GABBLE_IS_ROSTER_CHANNEL (obj));
+
+  priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (obj);
+
+  if (!gabble_connection_get_self_handle (priv->connection, &handle, error))
+    return FALSE;
+
+  if (!handle_set_is_member (priv->members, handle))
+    {
+      *ret = 0;
+    }
+  else
+    {
+      *ret = handle;
+    }
+
   return TRUE;
 }
 

@@ -423,6 +423,106 @@ _gabble_roster_channel_change_members (GabbleRosterChannel *chan,
  */
 gboolean gabble_roster_channel_add_members (GabbleRosterChannel *obj, const GArray * contacts, const gchar * message, GError **error)
 {
+  GabbleRosterChannelPrivate *priv;
+  GabbleHandleRepo *repo;
+  int i;
+  GabbleHandle handle;
+
+  g_assert (GABBLE_IS_ROSTER_CHANNEL (obj));
+
+  priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (obj);
+  repo = _gabble_connection_get_handles (priv->connection);
+
+  /* reject invalid handles */
+  for (i = 0; i < contacts->len; i++)
+    {
+      handle = g_array_index (contacts, GabbleHandle, i);
+
+      if (!gabble_handle_is_valid (repo, TP_HANDLE_TYPE_CONTACT, handle))
+        {
+          g_debug ("%s: invalid handle %u", G_STRFUNC, handle);
+
+          *error = g_error_new (TELEPATHY_ERRORS, InvalidHandle,
+              "invalid handle %u", handle);
+
+          return FALSE;
+        }
+    }
+
+  /* publish list */
+  if (gabble_handle_for_list_publish (repo) == priv->handle)
+    {
+      /* reject handles who are not locally pending */
+      for (i = 0; i < contacts->len; i++)
+        {
+          handle = g_array_index (contacts, GabbleHandle, i);
+
+          if (!handle_set_is_member (priv->local_pending, handle))
+            {
+              g_debug ("%s: can't add members to publish list %u", G_STRFUNC, handle);
+
+              *error = g_error_new (TELEPATHY_ERRORS, PermissionDenied,
+                  "can't add members to publish list %u", handle);
+
+              return FALSE;
+            }
+        }
+
+      /* send <presence type="subscribed"> messages */
+      for (i = 0; i < contacts->len; i++)
+        {
+          LmMessage *message;
+          const char *contact;
+          gboolean result;
+
+          handle = g_array_index (contacts, GabbleHandle, i);
+          contact = gabble_handle_inspect (repo, TP_HANDLE_TYPE_CONTACT, handle);
+
+          message = lm_message_new_with_sub_type (contact,
+              LM_MESSAGE_TYPE_PRESENCE,
+              LM_MESSAGE_SUB_TYPE_SUBSCRIBED);
+          result = _gabble_connection_send (priv->connection, message, error);
+          lm_message_unref (message);
+
+          if (!result)
+            return FALSE;
+        }
+    }
+  /* subscribe list */
+  else if (gabble_handle_for_list_subscribe (repo) == priv->handle)
+    {
+      /* send <presence type="subscribe">, but skip existing members */
+      for (i = 0; i < contacts->len; i++)
+        {
+          LmMessage *message;
+          const char *contact;
+          gboolean result;
+
+          handle = g_array_index (contacts, GabbleHandle, i);
+          contact = gabble_handle_inspect (repo, TP_HANDLE_TYPE_CONTACT, handle);
+
+          if (!handle_set_is_member (priv->members, handle))
+            {
+              g_debug ("%s: already subscribed to handle %u, skipping", G_STRFUNC, handle);
+
+              continue;
+            }
+
+          message = lm_message_new_with_sub_type (contact,
+              LM_MESSAGE_TYPE_PRESENCE,
+              LM_MESSAGE_SUB_TYPE_SUBSCRIBE);
+          result = _gabble_connection_send (priv->connection, message, error);
+          lm_message_unref (message);
+
+          if (!result)
+            return FALSE;
+        }
+    }
+  else
+    {
+      g_assert_not_reached ();
+    }
+
   return TRUE;
 }
 
@@ -672,6 +772,117 @@ gboolean gabble_roster_channel_get_self_handle (GabbleRosterChannel *obj, guint*
  */
 gboolean gabble_roster_channel_remove_members (GabbleRosterChannel *obj, const GArray * contacts, const gchar * message, GError **error)
 {
+  GabbleRosterChannelPrivate *priv;
+  GabbleHandleRepo *repo;
+  int i;
+  GabbleHandle handle;
+
+  g_assert (GABBLE_IS_ROSTER_CHANNEL (obj));
+
+  priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (obj);
+  repo = _gabble_connection_get_handles (priv->connection);
+
+  /* reject invalid handles */
+  for (i = 0; i < contacts->len; i++)
+    {
+      handle = g_array_index (contacts, GabbleHandle, i);
+
+      if (!gabble_handle_is_valid (repo, TP_HANDLE_TYPE_CONTACT, handle))
+        {
+          g_debug ("%s: invalid handle %u", G_STRFUNC, handle);
+
+          *error = g_error_new (TELEPATHY_ERRORS, InvalidHandle,
+              "invalid handle %u", handle);
+
+          return FALSE;
+        }
+    }
+
+  /* publish list */
+  if (gabble_handle_for_list_publish (repo) == priv->handle)
+    {
+      /* reject handles who are not members or locally pending */
+      for (i = 0; i < contacts->len; i++)
+        {
+          handle = g_array_index (contacts, GabbleHandle, i);
+
+          if (!handle_set_is_member (priv->members, handle) ||
+              !handle_set_is_member (priv->local_pending, handle))
+            {
+              g_debug ("%s: handle isn't present to remove from publish list %u", G_STRFUNC, handle);
+
+              *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                  "handle isn't present to remove from publish list %u", handle);
+
+              return FALSE;
+            }
+        }
+
+      /* send <presence type="unsubscribed"> messages */
+      for (i = 0; i < contacts->len; i++)
+        {
+          LmMessage *message;
+          const char *contact;
+          gboolean result;
+
+          handle = g_array_index (contacts, GabbleHandle, i);
+          contact = gabble_handle_inspect (repo, TP_HANDLE_TYPE_CONTACT, handle);
+
+          message = lm_message_new_with_sub_type (contact,
+              LM_MESSAGE_TYPE_PRESENCE,
+              LM_MESSAGE_SUB_TYPE_SUBSCRIBED);
+          result = _gabble_connection_send (priv->connection, message, error);
+          lm_message_unref (message);
+
+          if (!result)
+            return FALSE;
+        }
+    }
+  /* subscribe list */
+  else if (gabble_handle_for_list_subscribe (repo) == priv->handle)
+    {
+      /* reject handles who are not members or remote pending */
+      for (i = 0; i < contacts->len; i++)
+        {
+          handle = g_array_index (contacts, GabbleHandle, i);
+
+          if (!handle_set_is_member (priv->members, handle) ||
+              !handle_set_is_member (priv->remote_pending, handle))
+            {
+              g_debug ("%s: handle isn't present to remove from subscribe list %u", G_STRFUNC, handle);
+
+              *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                  "handle isn't present to remove from subscribe list %u", handle);
+
+              return FALSE;
+            }
+        }
+
+      /* send <presence type="unsubscribe"> */
+      for (i = 0; i < contacts->len; i++)
+        {
+          LmMessage *message;
+          const char *contact;
+          gboolean result;
+
+          handle = g_array_index (contacts, GabbleHandle, i);
+          contact = gabble_handle_inspect (repo, TP_HANDLE_TYPE_CONTACT, handle);
+
+          message = lm_message_new_with_sub_type (contact,
+              LM_MESSAGE_TYPE_PRESENCE,
+              LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE);
+          result = _gabble_connection_send (priv->connection, message, error);
+          lm_message_unref (message);
+
+          if (!result)
+            return FALSE;
+        }
+    }
+  else
+    {
+      g_assert_not_reached ();
+    }
+
   return TRUE;
 }
 

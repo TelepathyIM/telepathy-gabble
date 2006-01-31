@@ -2306,8 +2306,7 @@ gboolean gabble_connection_get_capabilities (GabbleConnection *obj, guint handle
  */
 gboolean gabble_connection_get_interfaces (GabbleConnection *obj, gchar *** ret, GError **error)
 {
-  const char *interfaces[] = { 
-      TP_IFACE_CONN_INTERFACE, 
+  const char *interfaces[] = {
       TP_IFACE_CONN_INTERFACE_PRESENCE,
       TP_IFACE_CONN_INTERFACE_CAPABILITIES,
       NULL };

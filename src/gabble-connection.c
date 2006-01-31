@@ -1228,7 +1228,8 @@ signal_own_presence (GabbleConnection *self, GError **error)
       g_critical ("%s: Unexpected Telepathy presence type", G_STRFUNC);
       break;
     }
-  if (_gabble_connection_send (self, message, error))
+
+  if (!_gabble_connection_send (self, message, error))
     goto ERROR;
 
   lm_message_unref (message);

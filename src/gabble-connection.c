@@ -69,16 +69,16 @@ G_DEFINE_TYPE(GabbleConnection, gabble_connection, G_TYPE_OBJECT)
 
 typedef enum
 {
-  TP_PRESENCE_AVAILABLE,
-  TP_PRESENCE_AWAY,
-  TP_PRESENCE_CHAT,
-  TP_PRESENCE_DND,
-  TP_PRESENCE_XA,
-  TP_PRESENCE_OFFLINE,
-  TP_PRESENCE_MAX
-} TelepathyPresenceId;
+  GABBLE_PRESENCE_AVAILABLE,
+  GABBLE_PRESENCE_AWAY,
+  GABBLE_PRESENCE_CHAT,
+  GABBLE_PRESENCE_DND,
+  GABBLE_PRESENCE_XA,
+  GABBLE_PRESENCE_OFFLINE,
+  LAST_GABBLE_PRESENCE
+} GabblePresenceId;
 
-const gchar *telepathy_presence_values [TP_PRESENCE_MAX] = 
+const gchar *gabble_presence_values [LAST_GABBLE_PRESENCE] =
 {
   "available",
   "away",
@@ -88,10 +88,10 @@ const gchar *telepathy_presence_values [TP_PRESENCE_MAX] =
   "offline"
 };
 
-#define JABBER_PRESENCE_AWAY "away"
-#define JABBER_PRESENCE_CHAT "chat"
-#define JABBER_PRESENCE_DND "dnd"
-#define JABBER_PRESENCE_XA "xa"
+#define JABBER_PRESENCE_SHOW_AWAY "away"
+#define JABBER_PRESENCE_SHOW_CHAT "chat"
+#define JABBER_PRESENCE_SHOW_DND "dnd"
+#define JABBER_PRESENCE_SHOW_XA "xa"
 
 typedef struct _StatusInfo StatusInfo;
 
@@ -102,7 +102,7 @@ struct _StatusInfo
   const gboolean exclusive;
 };
 
-static const StatusInfo status_infos[TP_PRESENCE_MAX] = {
+static const StatusInfo status_infos[LAST_GABBLE_PRESENCE] = {
  { TP_CONN_PRESENCE_TYPE_AVAILABLE, TRUE, TRUE },
  { TP_CONN_PRESENCE_TYPE_AVAILABLE, TRUE, TRUE },
  { TP_CONN_PRESENCE_TYPE_AWAY,      TRUE, TRUE },
@@ -114,7 +114,7 @@ static const StatusInfo status_infos[TP_PRESENCE_MAX] = {
 typedef struct _ContactPresence ContactPresence;
 struct _ContactPresence
 {
-  TelepathyPresenceId telepathy_presence;
+  GabblePresenceId presence_id;
   gchar *status_message;
 };
 
@@ -760,7 +760,7 @@ static void make_roster_channels (GabbleConnection *conn);
 
 static void connection_disconnect (GabbleConnection *conn, TpConnectionStatusReason reason);
 static void connection_disconnected_cb (LmConnection *connection, LmDisconnectReason lm_reason, gpointer user_data);
-static void update_presence (GabbleConnection *self, GabbleHandle contact_handle, TelepathyPresenceId telepathy_presence, const gchar *status_message);
+static void update_presence (GabbleConnection *self, GabbleHandle contact_handle, GabblePresenceId presence_id, const gchar *status_message);
 
 /**
  * _gabble_connection_connect
@@ -812,8 +812,8 @@ _gabble_connection_connect (GabbleConnection *conn,
                                  priv->self_handle);
       g_assert (valid);
 
-      /* set initial presence. TODO: some way for the user to set this*/
-      update_presence (conn, priv->self_handle, TP_PRESENCE_AVAILABLE, NULL);
+      /* set initial presence. TODO: some way for the user to set this */
+      update_presence (conn, priv->self_handle, GABBLE_PRESENCE_AVAILABLE, NULL);
 
       g_free (jid);
 
@@ -1149,7 +1149,7 @@ emit_presence_update (GabbleConnection *self,
         g_hash_table_new_full (g_str_hash, g_str_equal,
                                NULL, (GDestroyNotify) g_hash_table_destroy);
       g_hash_table_insert (contact_status,
-          (gpointer) telepathy_presence_values[cp->telepathy_presence],
+          (gpointer) gabble_presence_values[cp->presence_id],
           parameters);
 
 
@@ -1192,7 +1192,7 @@ signal_own_presence (GabbleConnection *self, GError **error)
   LmMessageNode *node;
   LmMessageSubType subtype;
 
-  if (cp->telepathy_presence  == TP_CONN_PRESENCE_TYPE_OFFLINE)
+  if (cp->presence_id == GABBLE_PRESENCE_OFFLINE)
     subtype = LM_MESSAGE_SUB_TYPE_UNAVAILABLE;
   else
     subtype = LM_MESSAGE_SUB_TYPE_AVAILABLE;
@@ -1206,23 +1206,23 @@ signal_own_presence (GabbleConnection *self, GError **error)
     {
       lm_message_node_add_child (node, "status", cp->status_message);
     }
- 
-  switch (cp->telepathy_presence)
+
+  switch (cp->presence_id)
     {
-    case TP_PRESENCE_AVAILABLE:
-    case TP_PRESENCE_OFFLINE:
+    case GABBLE_PRESENCE_AVAILABLE:
+    case GABBLE_PRESENCE_OFFLINE:
       break;
-    case TP_PRESENCE_AWAY:
-      lm_message_node_add_child (node, "show", JABBER_PRESENCE_AWAY);
+    case GABBLE_PRESENCE_AWAY:
+      lm_message_node_add_child (node, "show", JABBER_PRESENCE_SHOW_AWAY);
       break;
-    case TP_PRESENCE_CHAT:
-      lm_message_node_add_child (node, "show", JABBER_PRESENCE_CHAT);
+    case GABBLE_PRESENCE_CHAT:
+      lm_message_node_add_child (node, "show", JABBER_PRESENCE_SHOW_CHAT);
       break;
-    case TP_PRESENCE_DND:
-      lm_message_node_add_child (node, "show", JABBER_PRESENCE_DND);
+    case GABBLE_PRESENCE_DND:
+      lm_message_node_add_child (node, "show", JABBER_PRESENCE_SHOW_DND);
       break;
-    case TP_PRESENCE_XA:
-      lm_message_node_add_child (node, "show", JABBER_PRESENCE_XA);
+    case GABBLE_PRESENCE_XA:
+      lm_message_node_add_child (node, "show", JABBER_PRESENCE_SHOW_XA);
       break;
     default:
       g_critical ("%s: Unexpected Telepathy presence type", G_STRFUNC);
@@ -1249,10 +1249,8 @@ ERROR:
 /**
  * update_presence:
  * @self: A #GabbleConnection
- * @contact_handles: zero terminated #GabbleHandle for contact to
- *                   update presence for
- * @telepathy_presence: string specifying new Telepathy presence type 
- *                      for contact;
+ * @contact_handle: #GabbleHandle representing a contact to update
+ * @presence_id: the presence to set
  * @status_message: message associated with new presence
  * 
  * This checks the new presence against the stored presence information
@@ -1260,8 +1258,8 @@ ERROR:
  * emits a PresenceUpdate signal using #emit_presence_update
  */
 static void
-update_presence (GabbleConnection *self, GabbleHandle contact_handle, 
-                 TelepathyPresenceId telepathy_presence, 
+update_presence (GabbleConnection *self, GabbleHandle contact_handle,
+                 GabblePresenceId presence_id,
                  const gchar *status_message)
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
@@ -1272,8 +1270,8 @@ update_presence (GabbleConnection *self, GabbleHandle contact_handle,
 
   if (cp)
     {
-      if (cp->telepathy_presence == telepathy_presence &&
-          ((cp->status_message == NULL && status_message ==NULL) ||
+      if (cp->presence_id == presence_id &&
+          ((cp->status_message == NULL && status_message == NULL) ||
            (cp->status_message && status_message &&
             strcmp(cp->status_message, status_message) == 0)))
         return;
@@ -1283,7 +1281,8 @@ update_presence (GabbleConnection *self, GabbleHandle contact_handle,
                                contact_handle, data_key, cp, 
                                (GDestroyNotify) contact_presence_destroy);
     }
-  cp->telepathy_presence = telepathy_presence;
+
+  cp->presence_id = presence_id;
 
   g_free (cp->status_message);
   if (status_message)
@@ -1319,7 +1318,7 @@ connection_presence_cb (LmMessageHandler *handler,
   LmMessage *reply = NULL;
   const gchar *presence_show = NULL;
   const gchar *status_message = NULL;
-  TelepathyPresenceId tp_presence;
+  GabblePresenceId presence_id;
 
   g_assert (connection == priv->conn);
 
@@ -1433,41 +1432,43 @@ connection_presence_cb (LmMessageHandler *handler,
       g_warning ("%s: XMPP Presence Error recieved, setting contact to offline",
                 G_STRFUNC);
     case LM_MESSAGE_SUB_TYPE_UNAVAILABLE:
-      update_presence (conn, handle, TP_PRESENCE_OFFLINE, status_message);
+      update_presence (conn, handle, GABBLE_PRESENCE_OFFLINE, status_message);
       break;
     case LM_MESSAGE_SUB_TYPE_NOT_SET:
     case LM_MESSAGE_SUB_TYPE_AVAILABLE:
       child_node = lm_message_node_get_child (pres_node, "show");
       if (!child_node)
-        tp_presence = TP_PRESENCE_AVAILABLE;
+        {
+          presence_id = GABBLE_PRESENCE_AVAILABLE;
+        }
       else
         {
           presence_show = lm_message_node_get_value (child_node);
           if (presence_show)
             {
-              if (0 == strcmp (presence_show, JABBER_PRESENCE_AWAY))
-                tp_presence = TP_PRESENCE_AWAY;
-              else if (0 == strcmp (presence_show, JABBER_PRESENCE_CHAT))
-                tp_presence = TP_PRESENCE_CHAT;
-              else if (0 == strcmp (presence_show, JABBER_PRESENCE_DND))
-                tp_presence = TP_PRESENCE_DND;
-              else if (0 == strcmp (presence_show, JABBER_PRESENCE_XA))
-                tp_presence = TP_PRESENCE_XA;
+              if (0 == strcmp (presence_show, JABBER_PRESENCE_SHOW_AWAY))
+                presence_id = GABBLE_PRESENCE_AWAY;
+              else if (0 == strcmp (presence_show, JABBER_PRESENCE_SHOW_CHAT))
+                presence_id = GABBLE_PRESENCE_CHAT;
+              else if (0 == strcmp (presence_show, JABBER_PRESENCE_SHOW_DND))
+                presence_id = GABBLE_PRESENCE_DND;
+              else if (0 == strcmp (presence_show, JABBER_PRESENCE_SHOW_XA))
+                presence_id = GABBLE_PRESENCE_XA;
               else
                 {
-                  g_debug ("Unrecognised <show/> value received from server\n"
-                           "Setting presence to available");
-                  tp_presence = TP_PRESENCE_AVAILABLE;
+                  HANDLER_DEBUG (pres_node, "unrecognised <show/> value received from "
+                      "server, setting presence to available");
+                  presence_id = GABBLE_PRESENCE_AVAILABLE;
                 }
             }
           else
             {
-              g_debug ("<show> tag received with no value from server\n"
-                       "Setting presence to available");
-              tp_presence = TP_PRESENCE_AVAILABLE;
+              HANDLER_DEBUG (pres_node, "empty <show> tag received from "
+                  "server, setting presence to available");
+              presence_id = GABBLE_PRESENCE_AVAILABLE;
             }
         }
-      update_presence (conn, handle, tp_presence, status_message);
+      update_presence (conn, handle, presence_id, status_message);
       break;
     default:
       HANDLER_DEBUG (pres_node, "called with unknown subtype");
@@ -2186,8 +2187,8 @@ gboolean gabble_connection_clear_status (GabbleConnection *obj, GError **error)
 
   cp = gabble_handle_get_qdata (priv->handles,
       TP_HANDLE_TYPE_CONTACT, priv->self_handle, data_key);
-  
-  update_presence (obj, priv->self_handle, TP_PRESENCE_AVAILABLE, NULL);
+
+  update_presence (obj, priv->self_handle, GABBLE_PRESENCE_AVAILABLE, NULL);
   return signal_own_presence (obj, error);
 }
 
@@ -2429,7 +2430,7 @@ gboolean gabble_connection_get_statuses (GabbleConnection *obj, GHashTable ** re
                                 NULL, (GDestroyNotify) g_value_array_free);
   dbus_g_map_set_value_signature (*ret, "(ubba{ss})");
 
-  for (i=0; i<TP_PRESENCE_MAX; i++)
+  for (i=0; i < LAST_GABBLE_PRESENCE; i++)
     {
       status = g_value_array_new (5);
 
@@ -2454,7 +2455,7 @@ gboolean gabble_connection_get_statuses (GabbleConnection *obj, GHashTable ** re
       g_value_set_static_boxed (g_value_array_get_nth (status, 3), 
           get_statuses_arguments());
 
-      g_hash_table_insert (*ret, (gchar*)telepathy_presence_values[i], status);
+      g_hash_table_insert (*ret, (gchar*) gabble_presence_values[i], status);
 
     }
   return TRUE;
@@ -2744,9 +2745,9 @@ gboolean gabble_connection_remove_status (GabbleConnection *obj, const gchar * s
   cp = gabble_handle_get_qdata (priv->handles,
       TP_HANDLE_TYPE_CONTACT, priv->self_handle, data_key);
 
-  if (strcmp (status, telepathy_presence_values[cp->telepathy_presence]) == 0)
+  if (strcmp (status, gabble_presence_values[cp->presence_id]) == 0)
     {
-      update_presence (obj, priv->self_handle, TP_PRESENCE_AVAILABLE, NULL);
+      update_presence (obj, priv->self_handle, GABBLE_PRESENCE_AVAILABLE, NULL);
       return signal_own_presence (obj, error);
     }
   else
@@ -3011,12 +3012,13 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (data->conn);
   int i;
 
-  for (i=0; i < TP_PRESENCE_MAX; i++)
+  for (i = 0; i < LAST_GABBLE_PRESENCE; i++)
     {
-      if (strcmp (telepathy_presence_values[i], (const gchar*) key)==0)
+      if (0 == strcmp (gabble_presence_values[i], (const gchar*) key))
         break;
     }
-  if (i < TP_PRESENCE_MAX)
+
+  if (i < LAST_GABBLE_PRESENCE)
     {
       GHashTable *args = (GHashTable *)value;
       GValue *message = g_hash_table_lookup (args, "message");

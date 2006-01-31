@@ -193,25 +193,28 @@ ref_one (guint handle, gpointer data)
  * @add: a #GIntSet of handles to add
  *
  * Add a set of handles to a handle set, referencing those which are not
- * already members.
+ * already members. The GIntSet returned must be freed with g_intset_destroy.
+ *
+ * Returns: the handles which were added
  */
-void
+GIntSet *
 handle_set_update (GabbleHandleSet *set, const GIntSet *add)
 {
-  GIntSet *tmp;
+  GIntSet *ret, *tmp;
 
-  g_return_if_fail (set != NULL);
-  g_return_if_fail (add != NULL);
+  g_return_val_if_fail (set != NULL, NULL);
+  g_return_val_if_fail (add != NULL, NULL);
 
   /* reference each of ADD - CURRENT */
-  tmp = g_intset_difference (add, set->intset);
-  g_intset_foreach (tmp, ref_one, set);
-  g_intset_destroy (tmp);
+  ret = g_intset_difference (add, set->intset);
+  g_intset_foreach (ret, ref_one, set);
 
   /* update CURRENT to be the union of CURRENT and ADD */
   tmp = g_intset_union (add, set->intset);
   g_intset_destroy (set->intset);
   set->intset = tmp;
+
+  return ret;
 }
 
 static void
@@ -227,23 +230,26 @@ unref_one (guint handle, gpointer data)
  * @remove: a #GIntSet of handles to remove
  *
  * Remove a set of handles from a handle set, dereferencing those which are
- * members.
+ * members. The GIntSet returned must be freed with g_intset_destroy.
+ *
+ * Returns: the handles which were removed
  */
-void
+GIntSet *
 handle_set_difference_update (GabbleHandleSet *set, const GIntSet *remove)
 {
-  GIntSet *tmp;
+  GIntSet *ret, *tmp;
 
-  g_return_if_fail (set != NULL);
-  g_return_if_fail (remove != NULL);
+  g_return_val_if_fail (set != NULL, NULL);
+  g_return_val_if_fail (remove != NULL, NULL);
 
   /* dereference each of REMOVE n CURRENT */
-  tmp = g_intset_intersection (remove, set->intset);
-  g_intset_foreach (tmp, unref_one, set);
-  g_intset_destroy (tmp);
+  ret = g_intset_intersection (remove, set->intset);
+  g_intset_foreach (ret, unref_one, set);
 
   /* update CURRENT to be CURRENT - REMOVE */
   tmp = g_intset_difference (set->intset, remove);
   g_intset_destroy (set->intset);
   set->intset = tmp;
+
+  return ret;
 }

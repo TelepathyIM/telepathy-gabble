@@ -43,8 +43,8 @@ void handle_set_foreach (GabbleHandleSet *set, GabbleHandleFunc func, gpointer u
 int handle_set_size (GabbleHandleSet *set);
 GArray *handle_set_to_array (GabbleHandleSet *set);
 
-void handle_set_update (GabbleHandleSet *set, const GIntSet *add);
-void handle_set_difference_update (GabbleHandleSet *set, const GIntSet *remove);
+GIntSet *handle_set_update (GabbleHandleSet *set, const GIntSet *add);
+GIntSet *handle_set_difference_update (GabbleHandleSet *set, const GIntSet *remove);
 
 G_END_DECLS
 

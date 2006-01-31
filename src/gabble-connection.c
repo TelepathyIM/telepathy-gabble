@@ -982,7 +982,10 @@ connection_disconnected_cb (LmConnection *connection,
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   TpConnectionStatusReason tp_reason;
 
-  switch (lm_reason) {
+  g_debug ("%s: called with reason %u", G_STRFUNC, lm_reason);
+
+  switch (lm_reason)
+    {
     case LM_DISCONNECT_REASON_OK:
       tp_reason = priv->disconnect_reason;
       break;
@@ -1337,8 +1340,7 @@ connection_presence_cb (LmMessageHandler *handler,
   handle = gabble_handle_for_contact (priv->handles, from, FALSE);
   if (handle == priv->self_handle)
     {
-      g_warning ("%s: Ignoring presence from ourselves on another resource"
-                 ": %s", G_STRFUNC, from);
+      HANDLER_DEBUG (pres_node, "ignoring presence from ourselves on another resource");
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 

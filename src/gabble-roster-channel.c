@@ -352,7 +352,8 @@ _gabble_roster_channel_change_members (GabbleRosterChannel *chan,
                                        GIntSet *remote_pending)
 {
   GabbleRosterChannelPrivate *priv;
-  GArray *arr_add, *arr_remove, *arr_local, *arr_remote;
+  GIntSet *new_add, *new_remove, *new_local_pending,
+          *new_remote_pending, *tmp, *tmp2;
 
   g_assert (GABBLE_IS_ROSTER_CHANNEL (chan));
   g_assert (add != NULL);
@@ -362,50 +363,94 @@ _gabble_roster_channel_change_members (GabbleRosterChannel *chan,
 
   priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (chan);
 
+
   /* members + add */
-  handle_set_update (priv->members, add);
+  new_add = handle_set_update (priv->members, add);
+
   /* members - remove */
-  handle_set_difference_update (priv->members, remove);
+  new_remove = handle_set_difference_update (priv->members, remove);
+
   /* members - local_pending */
-  handle_set_difference_update (priv->members, local_pending);
+  tmp = handle_set_difference_update (priv->members, local_pending);
+  g_intset_destroy (tmp);
+
   /* members - remote_pending */
-  handle_set_difference_update (priv->members, remote_pending);
+  tmp = handle_set_difference_update (priv->members, remote_pending);
+  g_intset_destroy (tmp);
+
 
   /* local pending + local_pending */
-  handle_set_update (priv->local_pending, local_pending);
+  new_local_pending = handle_set_update (priv->local_pending, local_pending);
+
   /* local pending - add */
-  handle_set_difference_update (priv->local_pending, add);
+  tmp = handle_set_difference_update (priv->local_pending, add);
+  g_intset_destroy (tmp);
+
   /* local pending - remove */
-  handle_set_difference_update (priv->local_pending, remove);
+  tmp = handle_set_difference_update (priv->local_pending, remove);
+  tmp2 = g_intset_union (new_remove, tmp);
+  g_intset_destroy (new_remove);
+  g_intset_destroy (tmp);
+  new_remove = tmp2;
+
   /* local pending - remote_pending */
-  handle_set_difference_update (priv->local_pending, remote_pending);
+  tmp = handle_set_difference_update (priv->local_pending, remote_pending);
+  g_intset_destroy (tmp);
+
 
   /* remote pending + remote_pending */
-  handle_set_update (priv->remote_pending, remote_pending);
+  new_remote_pending = handle_set_update (priv->remote_pending, remote_pending);
+
   /* remote pending - add */
-  handle_set_difference_update (priv->remote_pending, add);
+  tmp = handle_set_difference_update (priv->remote_pending, add);
+  g_intset_destroy (tmp);
+
   /* remote pending - remove */
-  handle_set_difference_update (priv->remote_pending, remove);
+  tmp = handle_set_difference_update (priv->remote_pending, remove);
+  tmp2 = g_intset_union (new_remove, tmp);
+  g_intset_destroy (new_remove);
+  g_intset_destroy (tmp);
+  new_remove = tmp2;
+
   /* remote pending - local_pending */
-  handle_set_difference_update (priv->remote_pending, local_pending);
+  tmp = handle_set_difference_update (priv->remote_pending, local_pending);
+  g_intset_destroy (tmp);
 
-  /* translate arguments to arrays */
-  arr_add = g_intset_to_array (add);
-  arr_remove = g_intset_to_array (remove);
-  arr_local = g_intset_to_array (local_pending);
-  arr_remote = g_intset_to_array (remote_pending);
+  if (g_intset_size (new_add) > 0 ||
+      g_intset_size (new_remove) > 0 ||
+      g_intset_size (new_local_pending) > 0 ||
+      g_intset_size (new_remote_pending) > 0)
+    {
+      GArray *arr_add, *arr_remove, *arr_local, *arr_remote;
 
-  /* emit signal */
-  g_signal_emit(chan, signals[MEMBERS_CHANGED], 0,
-                message,
-                arr_add, arr_remove,
-                arr_local, arr_remote);
+      /* translate intsets to arrays */
+      arr_add = g_intset_to_array (new_add);
+      arr_remove = g_intset_to_array (new_remove);
+      arr_local = g_intset_to_array (new_local_pending);
+      arr_remote = g_intset_to_array (new_remote_pending);
 
-  /* free arrays */
-  g_array_free (arr_add, TRUE);
-  g_array_free (arr_remove, TRUE);
-  g_array_free (arr_local, TRUE);
-  g_array_free (arr_remote, TRUE);
+      /* emit signal */
+      g_signal_emit(chan, signals[MEMBERS_CHANGED], 0,
+                    message,
+                    arr_add, arr_remove,
+                    arr_local, arr_remote);
+
+      /* free arrays */
+      g_array_free (arr_add, TRUE);
+      g_array_free (arr_remove, TRUE);
+      g_array_free (arr_local, TRUE);
+      g_array_free (arr_remote, TRUE);
+    }
+  else
+    {
+      g_debug ("%s: not emitting signal, nothing changed", G_STRFUNC);
+    }
+
+  /* free intsets */
+  g_intset_destroy (new_add);
+  g_intset_destroy (new_remove);
+  g_intset_destroy (new_local_pending);
+  g_intset_destroy (new_remote_pending);
 }
 
 

@@ -1334,7 +1334,7 @@ connection_presence_cb (LmMessageHandler *handler,
   if (from == NULL)
     {
       HANDLER_DEBUG (pres_node, "presence stanza without from attribute, ignoring");
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 
   handle = gabble_handle_for_contact (priv->handles, from, FALSE);

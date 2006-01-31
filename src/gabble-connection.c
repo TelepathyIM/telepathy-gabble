@@ -455,7 +455,6 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
                   g_cclosure_marshal_VOID__VOID,
                   G_TYPE_NONE, 0);
 
-
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_connection_class), &dbus_glib_gabble_connection_object_info);
 }
 
@@ -675,7 +674,7 @@ _gabble_connection_register (GabbleConnection *conn,
           msg = "A connection manger already has this busname.";
           break;
         case DBUS_REQUEST_NAME_REPLY_ALREADY_OWNER:
-          msg = "Connection Manager alredy has a connection to this account.";
+          msg = "Connection manager already has a connection to this account.";
           break;
         default:
           msg = "Unknown error return from ReleaseName";
@@ -733,7 +732,7 @@ _gabble_connection_send (GabbleConnection *conn, LmMessage *msg, GError **error)
 
   if (!lm_connection_send (priv->conn, msg, &lmerror))
     {
-      g_error ("_gabble_connection_send failed: %s", lmerror->message);
+      g_debug ("_gabble_connection_send failed: %s", lmerror->message);
 
       if (error)
         {
@@ -2759,7 +2758,7 @@ gboolean gabble_connection_remove_status (GabbleConnection *obj, const gchar * s
   else
     {
       *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                            "Attempting to remove nonexistent presence.");
+                            "Attempting to remove non-existent presence.");
       return FALSE;
     }
 }

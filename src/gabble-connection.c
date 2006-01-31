@@ -1362,7 +1362,7 @@ connection_presence_cb (LmMessageHandler *handler,
       /* make the contact local pending on the publish channel */
       g_intset_add (tmp, handle);
       _gabble_roster_channel_change_members (priv->publish_channel,
-          "", empty, empty, tmp, empty);
+          status_message, empty, empty, tmp, empty);
 
       g_intset_destroy (empty);
       g_intset_destroy (tmp);
@@ -1377,7 +1377,7 @@ connection_presence_cb (LmMessageHandler *handler,
       /* remove the contact from the publish channel */
       g_intset_add (tmp, handle);
       _gabble_roster_channel_change_members (priv->publish_channel,
-          "", empty, tmp, empty, empty);
+          status_message, empty, tmp, empty, empty);
 
       /* acknowledge the change */
       reply = lm_message_new_with_sub_type (from,
@@ -1399,7 +1399,7 @@ connection_presence_cb (LmMessageHandler *handler,
       /* add the contact to the subscribe channel */
       g_intset_add (tmp, handle);
       _gabble_roster_channel_change_members (priv->subscribe_channel,
-          "", tmp, empty, empty, empty);
+          status_message, tmp, empty, empty, empty);
 
       /* acknowledge the change */
       reply = lm_message_new_with_sub_type (from,
@@ -1421,7 +1421,7 @@ connection_presence_cb (LmMessageHandler *handler,
       /* remove the contact from the subscribe channel */
       g_intset_add (tmp, handle);
       _gabble_roster_channel_change_members (priv->subscribe_channel,
-          "", empty, tmp, empty, empty);
+          status_message, empty, tmp, empty, empty);
 
       /* acknowledge the change */
       reply = lm_message_new_with_sub_type (from,

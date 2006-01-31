@@ -657,13 +657,15 @@ _gabble_connection_register (GabbleConnection *conn,
                           G_TYPE_UINT, &request_name_result,
                           G_TYPE_INVALID))
     {
-      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable, 
+      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
                             request_error->message);
       return FALSE;
     }
+
   if (request_name_result != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER)
     {
       gchar *msg;
+
       switch (request_name_result)
         {
         case DBUS_REQUEST_NAME_REPLY_IN_QUEUE:
@@ -678,13 +680,12 @@ _gabble_connection_register (GabbleConnection *conn,
         default:
           msg = "Unknown error return from ReleaseName";
         }
+
       *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
                             "Error acquiring bus name %s, %s",
                              priv->bus_name, msg);
       return FALSE;
     }
-
-
 
   g_debug ("%s: bus name %s", G_STRFUNC, priv->bus_name);
 
@@ -871,7 +872,7 @@ _gabble_connection_connect (GabbleConnection *conn,
 
 /**
  * connection_status_change:
- * @conn: a #GabbleConnection 
+ * @conn: a #GabbleConnection
  * @status: new status to advertise
  * @reason: reason for new status
  *
@@ -895,7 +896,7 @@ connection_status_change (GabbleConnection        *conn,
     {
       priv->status = status;
 
-      g_debug ("%s emitting status-changed with status %u reason %u", 
+      g_debug ("%s emitting status-changed with status %u reason %u",
                G_STRFUNC, status, reason);
       g_signal_emit (conn, signals[STATUS_CHANGED], 0, status, reason);
     }
@@ -963,9 +964,9 @@ connection_disconnect (GabbleConnection *conn, TpConnectionStatusReason reason)
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   priv->disconnect_reason = reason;
 
-  /* remove the im_channels so we dont get any race conditions
-   * where method calls are deleivered to a channel after we've started
-   * disconnection*/
+  /* remove the im_channels so we don't get any race conditions
+   * where method calls are delivered to a channel after we've started
+   * disconnection */
   close_all_channels (conn);
 
   connection_status_change (conn, TP_CONN_STATUS_DISCONNECTED, TP_CONN_STATUS_REASON_REQUESTED);
@@ -1074,7 +1075,7 @@ connection_message_cb (LmMessageHandler *handler,
 /**
  * get_contact_presence_quark:
  *
- * Returns: the quark used for storing presence information on 
+ * Returns: the quark used for storing presence information on
  *          a GabbleHandle
  */
 static GQuark
@@ -1088,9 +1089,9 @@ get_contact_presence_quark()
 
 /**
  * destroy_the_bastard:
- * @data: a gvalue to destroy
- * 
- * destroys a gvale allocated on the heap
+ * @data: a GValue to destroy
+ *
+ * destroys a GValue allocated on the heap
  */
 static void
 destroy_the_bastard (GValue *value)
@@ -1102,14 +1103,14 @@ destroy_the_bastard (GValue *value)
 /**
  * emit_presence_update:
  * @self: A #GabbleConnection
- * @contact_handles: A zero-terminated array of #GabbleHandle for 
+ * @contact_handles: A zero-terminated array of #GabbleHandle for
  *                    the contacts to emit presence for
  *
- * Emits the Telepathy PresenceUpdate signal with the current 
- * stored presnce information for the given contact.
+ * Emits the Telepathy PresenceUpdate signal with the current
+ * stored presence information for the given contact.
  */
 static void
-emit_presence_update (GabbleConnection *self, 
+emit_presence_update (GabbleConnection *self,
                       const GabbleHandle* contact_handles)
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
@@ -1118,10 +1119,9 @@ emit_presence_update (GabbleConnection *self,
   GHashTable *presence;
   GValueArray *vals;
   GHashTable *contact_status, *parameters;
-  guint timestamp =0; /* this is never set at the moment*/
+  guint timestamp = 0; /* this is never set at the moment*/
 
-
-  presence = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL, 
+  presence = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
                                     (GDestroyNotify) g_value_array_free);
 
   dbus_g_map_set_value_signature (presence, "(ua{sa{sv}})");
@@ -1130,12 +1130,13 @@ emit_presence_update (GabbleConnection *self,
     {
       GValue *message;
 
-      cp = gabble_handle_get_qdata (priv->handles, TP_HANDLE_TYPE_CONTACT, 
+      cp = gabble_handle_get_qdata (priv->handles, TP_HANDLE_TYPE_CONTACT,
                                     *contact_handles, data_key);
 
       if (!cp)
         continue;
-      message = g_new0(GValue,1);
+
+      message = g_new0 (GValue, 1);
       g_value_init (message, G_TYPE_STRING);
       g_value_set_static_string (message, cp->status_message);
 
@@ -1145,13 +1146,12 @@ emit_presence_update (GabbleConnection *self,
 
       g_hash_table_insert (parameters, "message", message);
 
-      contact_status=
+      contact_status =
         g_hash_table_new_full (g_str_hash, g_str_equal,
                                NULL, (GDestroyNotify) g_hash_table_destroy);
       g_hash_table_insert (contact_status,
           (gpointer) gabble_presence_values[cp->presence_id],
           parameters);
-
 
       vals = g_value_array_new (2);
 
@@ -1168,6 +1168,7 @@ emit_presence_update (GabbleConnection *self,
       g_hash_table_insert (presence, GINT_TO_POINTER (*contact_handles),
                            vals);
     }
+
   g_signal_emit (self, signals[PRESENCE_UPDATE], 0, presence);
   g_hash_table_destroy (presence);
 }
@@ -1252,7 +1253,7 @@ ERROR:
  * @contact_handle: #GabbleHandle representing a contact to update
  * @presence_id: the presence to set
  * @status_message: message associated with new presence
- * 
+ *
  * This checks the new presence against the stored presence information
  * for this contact, and if it is different, updates our store and
  * emits a PresenceUpdate signal using #emit_presence_update
@@ -1275,10 +1276,12 @@ update_presence (GabbleConnection *self, GabbleHandle contact_handle,
            (cp->status_message && status_message &&
             strcmp(cp->status_message, status_message) == 0)))
         return;
-    } else {
-      cp = g_new0 (ContactPresence,1);
+    }
+  else
+    {
+      cp = g_new0 (ContactPresence, 1);
       gabble_handle_set_qdata (priv->handles, TP_HANDLE_TYPE_CONTACT,
-                               contact_handle, data_key, cp, 
+                               contact_handle, data_key, cp,
                                (GDestroyNotify) contact_presence_destroy);
     }
 
@@ -1288,7 +1291,7 @@ update_presence (GabbleConnection *self, GabbleHandle contact_handle,
   if (status_message)
     cp->status_message = g_strdup (status_message);
   else
-    cp->status_message = NULL; 
+    cp->status_message = NULL;
 
   emit_presence_update (self, handles);
 }
@@ -1338,6 +1341,7 @@ connection_presence_cb (LmMessageHandler *handler,
                  ": %s", G_STRFUNC, from);
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
+
   g_assert (handle != 0);
 
   child_node = lm_message_node_get_child (pres_node, "status");
@@ -1430,7 +1434,7 @@ connection_presence_cb (LmMessageHandler *handler,
 
     case LM_MESSAGE_SUB_TYPE_ERROR:
       g_warning ("%s: XMPP Presence Error recieved, setting contact to offline",
-                G_STRFUNC);
+                 G_STRFUNC);
     case LM_MESSAGE_SUB_TYPE_UNAVAILABLE:
       update_presence (conn, handle, GABBLE_PRESENCE_OFFLINE, status_message);
       break;
@@ -1775,7 +1779,7 @@ connection_open_cb (LmConnection *lmconn,
       connection_status_change (conn, TP_CONN_STATUS_DISCONNECTED,
                                 TP_CONN_STATUS_REASON_NETWORK_ERROR);
     }
-  else 
+  else
     {
       connection_status_change (conn, TP_CONN_STATUS_CONNECTED, TP_CONN_STATUS_REASON_REQUESTED);
     }
@@ -1815,7 +1819,7 @@ connection_auth_cb (LmConnection *lmconn,
   /* send presence to the server to indicate availability */
   if (!signal_own_presence (conn, &error))
     {
-      g_debug ("%s, Initial presence send failed: %s", G_STRFUNC, 
+      g_debug ("%s: sending initial presence failed: %s", G_STRFUNC,
           error->message);
       goto ERROR;
     }
@@ -1923,7 +1927,7 @@ make_roster_channels (GabbleConnection *conn)
  * Signal callback for when an IM channel is closed. Removes the references
  * that #GabbleConnection holds to them.
  */
-static void 
+static void
 im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
@@ -2076,9 +2080,9 @@ _gabble_connection_client_release_handle (GabbleConnection *conn,
       return FALSE;
     }
 
-
-  handle_set = (GabbleHandleSet*) g_datalist_get_data (handle_set_list,
+  handle_set = (GabbleHandleSet *) g_datalist_get_data (handle_set_list,
                                                        client_name);
+
   if (handle_set)
     return handle_set_remove (handle_set, handle);
   else
@@ -2096,6 +2100,7 @@ get_statuses_arguments()
 
       g_hash_table_insert (arguments, "message", "s");
     }
+
   return arguments;
 }
 
@@ -2126,7 +2131,7 @@ gboolean gabble_connection_add_status (GabbleConnection *obj, const gchar * stat
 
   ERROR_IF_NOT_CONNECTED (priv, *error);
 
-  *error = g_error_new (TELEPATHY_ERRORS, NotImplemented, 
+  *error = g_error_new (TELEPATHY_ERRORS, NotImplemented,
       "Only one status is possible at a time with this protocol");
 
   return FALSE;
@@ -2264,7 +2269,7 @@ gboolean gabble_connection_get_capabilities (GabbleConnection *obj, guint handle
 
   g_value_array_append (vals, NULL);
   g_value_init (g_value_array_get_nth (vals, 1), G_TYPE_UINT);
-  g_value_set_uint (g_value_array_get_nth (vals, 1), TP_CONN_CAPABILITY_TYPE_CREATE );
+  g_value_set_uint (g_value_array_get_nth (vals, 1), TP_CONN_CAPABILITY_TYPE_CREATE);
 
   g_ptr_array_add (*ret, vals);
 
@@ -2272,12 +2277,12 @@ gboolean gabble_connection_get_capabilities (GabbleConnection *obj, guint handle
 
   g_value_array_append (vals, NULL);
   g_value_init (g_value_array_get_nth (vals, 0), G_TYPE_STRING);
-  g_value_set_string (g_value_array_get_nth (vals,0),
+  g_value_set_string (g_value_array_get_nth (vals, 0),
     TP_IFACE_CHANNEL_TYPE_TEXT);
 
   g_value_array_append (vals, NULL);
   g_value_init (g_value_array_get_nth (vals, 1), G_TYPE_UINT);
-  g_value_set_uint (g_value_array_get_nth (vals,1), TP_CONN_CAPABILITY_TYPE_INVITE); 
+  g_value_set_uint (g_value_array_get_nth (vals, 1), TP_CONN_CAPABILITY_TYPE_INVITE);
 
   g_ptr_array_add (*ret, vals); */
 
@@ -2436,23 +2441,23 @@ gboolean gabble_connection_get_statuses (GabbleConnection *obj, GHashTable ** re
 
       g_value_array_append (status, NULL);
       g_value_init (g_value_array_get_nth (status, 0), G_TYPE_UINT);
-      g_value_set_uint (g_value_array_get_nth (status, 0), 
+      g_value_set_uint (g_value_array_get_nth (status, 0),
           status_infos[i].presence_type);
 
       g_value_array_append (status, NULL);
       g_value_init (g_value_array_get_nth (status, 1), G_TYPE_BOOLEAN);
-      g_value_set_boolean (g_value_array_get_nth (status, 1), 
+      g_value_set_boolean (g_value_array_get_nth (status, 1),
           status_infos[i].self);
 
       g_value_array_append (status, NULL);
       g_value_init (g_value_array_get_nth (status, 2), G_TYPE_BOOLEAN);
-      g_value_set_boolean (g_value_array_get_nth (status, 2), 
+      g_value_set_boolean (g_value_array_get_nth (status, 2),
           status_infos[i].exclusive);
 
       g_value_array_append (status, NULL);
-      g_value_init (g_value_array_get_nth (status, 3), 
+      g_value_init (g_value_array_get_nth (status, 3),
           DBUS_TYPE_G_STRING_STRING_HASHTABLE);
-      g_value_set_static_boxed (g_value_array_get_nth (status, 3), 
+      g_value_set_static_boxed (g_value_array_get_nth (status, 3),
           get_statuses_arguments());
 
       g_hash_table_insert (*ret, (gchar*) gabble_presence_values[i], status);
@@ -3006,7 +3011,7 @@ struct _i_hate_g_hash_table_foreach
 static void
 setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
 {
-  struct _i_hate_g_hash_table_foreach *data = 
+  struct _i_hate_g_hash_table_foreach *data =
     (struct _i_hate_g_hash_table_foreach*) user_data;
 
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (data->conn);
@@ -3027,7 +3032,7 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
         {
           if (!G_VALUE_HOLDS_STRING (message))
             {
-              *(data->error) = g_error_new (TELEPATHY_ERRORS, InvalidArgument, 
+              *(data->error) = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
                                  "Status argument 'message' requires a string");
               data->had_error = TRUE;
               return;

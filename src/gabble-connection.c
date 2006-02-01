@@ -24,10 +24,12 @@
 #include <dbus/dbus-glib-lowlevel.h>
 
 #include <loudmouth/loudmouth.h>
+#include <stdlib.h> /* atoi */
 #include <string.h>
 #include <time.h>
 
 #include "gabble-im-channel.h"
+#include "gabble-media-channel.h"
 #include "gabble-roster-channel.h"
 #include "handles.h"
 #include "handle-set.h"
@@ -155,6 +157,7 @@ struct _GabbleConnectionPrivate
   LmMessageHandler *message_cb;
   LmMessageHandler *presence_cb;
   LmMessageHandler *iq_roster_cb;
+  LmMessageHandler *iq_jingle_cb;
   LmMessageHandler *iq_unknown_cb;
 
   /* disconnect reason */
@@ -497,6 +500,10 @@ gabble_connection_dispose (GObject *object)
                                                 LM_MESSAGE_TYPE_IQ);
       lm_message_handler_unref (priv->iq_roster_cb);
 
+      lm_connection_unregister_message_handler (priv->conn, priv->iq_jingle_cb,
+                                                LM_MESSAGE_TYPE_IQ);
+      lm_message_handler_unref (priv->iq_jingle_cb);
+
       lm_connection_unregister_message_handler (priv->conn, priv->iq_unknown_cb,
                                                 LM_MESSAGE_TYPE_IQ);
       lm_message_handler_unref (priv->iq_unknown_cb);
@@ -750,6 +757,7 @@ _gabble_connection_send (GabbleConnection *conn, LmMessage *msg, GError **error)
 static LmHandlerResult connection_message_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmHandlerResult connection_presence_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmHandlerResult connection_iq_roster_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
+static LmHandlerResult connection_iq_jingle_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmHandlerResult connection_iq_unknown_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmSSLResponse connection_ssl_cb (LmSSL*, LmSSLStatus, gpointer);
 static void connection_open_cb (LmConnection*, gboolean, gpointer);
@@ -846,8 +854,14 @@ _gabble_connection_connect (GabbleConnection *conn,
                                               LM_HANDLER_PRIORITY_NORMAL);
 
       priv->iq_roster_cb = lm_message_handler_new (connection_iq_roster_cb,
-                                                conn, NULL);
+                                                   conn, NULL);
       lm_connection_register_message_handler (priv->conn, priv->iq_roster_cb,
+                                              LM_MESSAGE_TYPE_IQ,
+                                              LM_HANDLER_PRIORITY_NORMAL);
+
+      priv->iq_jingle_cb = lm_message_handler_new (connection_iq_jingle_cb,
+                                                   conn, NULL);
+      lm_connection_register_message_handler (priv->conn, priv->iq_jingle_cb,
                                               LM_MESSAGE_TYPE_IQ,
                                               LM_HANDLER_PRIORITY_NORMAL);
 
@@ -1666,6 +1680,296 @@ connection_iq_roster_cb (LmMessageHandler *handler,
         }
     }
 
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
+/**
+ * media_channel_closed_cb:
+ *
+ * Signal callback for when a media channel is closed. Removes the references
+ * that #GabbleConnection holds to them.
+ */
+static void 
+media_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
+{
+  /*
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  GabbleHandle contact_handle;
+
+  g_object_get (chan, "handle", &contact_handle, NULL);
+
+  g_debug ("%s: removing channel with handle %d", G_STRFUNC, contact_handle);
+  
+  g_hash_table_remove (priv->media_channels, GINT_TO_POINTER(contact_handle));
+  */
+}
+
+/**
+ * new_media_channel
+ */
+static GabbleMediaChannel *
+new_media_channel (GabbleConnection *conn, GabbleHandle handle, guint32 sid, gboolean suppress_handler)
+{
+  GabbleConnectionPrivate *priv;
+  GabbleMediaChannel *chan;
+  char *object_path;
+
+  g_assert (GABBLE_IS_CONNECTION (conn));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+
+  object_path = g_strdup_printf ("%s/MediaChannel%u", priv->object_path, handle);
+
+  chan = g_object_new (GABBLE_TYPE_MEDIA_CHANNEL,
+                       "connection", conn,
+                       "object-path", object_path,
+                       "handle", handle,
+                       NULL);
+
+  /* FIXME: this should be done with jingle_session_init() or something similar */
+  chan->session.id = sid;
+  chan->session.state = JS_STATE_PENDING;
+  chan->session.remote_candidates = NULL;
+  chan->session.remote_codecs = NULL;
+
+  g_debug ("new_media_channel: object path %s", object_path);
+
+  g_signal_connect (chan, "closed", (GCallback) media_channel_closed_cb, conn);
+
+  g_hash_table_insert (priv->media_channels, GINT_TO_POINTER (sid), chan);
+
+  g_signal_emit (conn, signals[NEW_CHANNEL], 0,
+                 object_path, TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA,
+                 TP_HANDLE_TYPE_CONTACT, handle,
+                 suppress_handler);
+
+  g_free (object_path);
+
+  return chan;
+}
+
+/**
+ * connection_iq_jingle_cb
+ *
+ * Called by loudmouth when we get an incoming <iq>. This handler
+ * is concerned only with jingle session queries, and allows other
+ * handlers to be called for other queries.
+ */
+static LmHandlerResult
+connection_iq_jingle_cb (LmMessageHandler *handler,
+                         LmConnection *connection,
+                         LmMessage *message,
+                         gpointer user_data)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  LmMessageNode *iq_node, *session_node, *desc_node, *node;
+  const gchar *from, *action, *str;
+  GabbleHandle handle;
+  guint32 sid;
+  GabbleMediaChannel *chan;
+  JingleSession *session;
+
+  g_assert (connection == priv->conn);
+
+  iq_node = lm_message_get_node (message);
+  session_node = lm_message_node_get_child (iq_node, "session");
+
+  /* is it for us? */
+  if (!session_node || strcmp (lm_message_node_get_attribute (session_node, "xmlns"),
+        "http://www.google.com/session"))
+    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+
+  /* determine the jingle action of the request */
+  action = lm_message_node_get_attribute (session_node, "type");
+  if (!action)
+    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+
+  from = lm_message_node_get_attribute (iq_node, "from");
+  if (!from)
+    {
+      IQ_DEBUG (iq_node, "'from' attribute not found");
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    }
+
+  handle = gabble_handle_for_contact (priv->handles, from, TRUE);
+  
+  /* does the session exist? */
+  str = lm_message_node_get_attribute (session_node, "id");
+  if (!str)
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+  
+  sid = atoi(str);
+  
+  chan = g_hash_table_lookup (priv->media_channels, GINT_TO_POINTER (sid));
+  if (chan == NULL)
+    {
+      /* if the session is unknown, the only allowed action is "initiate" */
+      if (strcmp (action, "initiate"))
+        return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+
+      desc_node = lm_message_node_get_child (session_node, "description");
+      if (!desc_node)
+        return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+      
+      if (strcmp (lm_message_node_get_attribute (desc_node, "xmlns"),
+                  "http://www.google.com/session/phone"))
+        {
+          g_debug ("%s: ignoring unknown session description", G_STRFUNC);
+          return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+        }
+
+      g_debug ("%s: creating media channel", G_STRFUNC);
+      
+      chan = new_media_channel (conn, handle, sid, FALSE);
+
+
+    }
+
+  session = &chan->session;
+  
+  /* do the state machine dance */
+  switch (session->state) {
+    case JS_STATE_PENDING:
+      if (!strcmp (action, "initiate")) {
+          desc_node = lm_message_node_get_child (session_node, "description");
+          if (!desc_node)
+            return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+
+          /* shouldn't happen */
+          if (session->remote_codecs)
+            goto ACK_FAILURE;
+          
+          session->remote_codecs = g_ptr_array_sized_new (12);
+          
+          for (node = desc_node->children; node; node = node->next)
+            {
+              guchar pt_id;
+              const gchar *pt_name;
+              JingleCodec *codec;
+
+              str = lm_message_node_get_attribute (node, "id");
+              if (!str)
+                goto ACK_FAILURE;
+
+              pt_id = atoi(str);
+              pt_name = lm_message_node_get_attribute (node, "name");
+              
+              codec = jingle_codec_new (pt_id, pt_name);
+              
+              g_ptr_array_add (session->remote_codecs, codec);
+            }
+
+          g_debug ("%s: parsed %d remote codecs", G_STRFUNC, session->remote_codecs->len);
+
+      } else if (!strcmp (action, "candidates")) { /* "negotiate" in JEP */
+
+          gint prev_len;
+
+          if (!session->remote_candidates)
+            session->remote_candidates = g_ptr_array_sized_new (4);
+
+          prev_len = session->remote_candidates->len;
+
+          for (node = session_node->children; node; node = node->next)
+            {
+              const gchar *c_name, *c_addr, *c_user, *c_pass, *c_proto, *c_type;
+              guint16 c_port;
+              gfloat c_pref;
+              guchar c_net, c_gen;
+              JingleCandidate *candidate;
+
+              c_name = lm_message_node_get_attribute (node, "name");
+              if (!c_name)
+                goto ACK_FAILURE;
+              
+              c_addr = lm_message_node_get_attribute (node, "address");
+              if (!c_addr)
+                goto ACK_FAILURE;
+              
+              str = lm_message_node_get_attribute (node, "port");
+              if (!str)
+                goto ACK_FAILURE;
+              c_port = atoi (str);
+
+              c_user = lm_message_node_get_attribute (node, "username");
+              if (!c_user)
+                goto ACK_FAILURE;
+              
+              c_pass = lm_message_node_get_attribute (node, "password");
+              if (!c_pass)
+                goto ACK_FAILURE;
+
+              str = lm_message_node_get_attribute (node, "preference");
+              if (!str)
+                goto ACK_FAILURE;
+              c_pref = (gfloat) g_ascii_strtod (str, NULL);
+              
+              c_proto = lm_message_node_get_attribute (node, "protocol");
+              if (!c_proto)
+                goto ACK_FAILURE;
+
+              c_type = lm_message_node_get_attribute (node, "type");
+              if (!c_type)
+                goto ACK_FAILURE;
+
+              str = lm_message_node_get_attribute (node, "network");
+              if (!str)
+                goto ACK_FAILURE;
+              c_net = atoi (str);
+              
+              str = lm_message_node_get_attribute (node, "generation");
+              if (!str)
+                goto ACK_FAILURE;
+              c_gen = atoi (str);
+
+              candidate = jingle_candidate_new (c_name, c_addr, c_port,
+                                                c_user, c_pass, c_pref,
+                                                c_proto, c_type, c_net,
+                                                c_gen);
+
+              g_ptr_array_add (session->remote_candidates, candidate);
+            }
+          
+          g_debug ("%s: parsed %d new remote candidate(s), "
+                   "%d remote candidate(s) in total now",
+                   G_STRFUNC,
+                   session->remote_candidates->len - prev_len,
+                   session->remote_candidates->len);
+          
+      } else {
+          g_debug ("%s: unhandled action \"%s\" in state JS_STATE_PENDING",
+              G_STRFUNC, action);
+          goto ACK_FAILURE;
+      }
+      
+      break;
+    case JS_STATE_ACTIVE:
+      g_debug ("%s: unhandled action \"%s\" in state JS_STATE_ACTIVE",
+          G_STRFUNC, action);
+      goto ACK_FAILURE;
+      
+      break;
+    case JS_STATE_ENDED:
+      g_debug ("%s: unhandled action \"%s\" in state JS_STATE_ENDED",
+          G_STRFUNC, action);
+      goto ACK_FAILURE;
+      
+      break;
+    default:
+      g_debug ("%s: unknown state, ignoring action \"%s\"",
+          G_STRFUNC, action);
+      goto ACK_FAILURE;
+  };
+
+//ACK_SUCCESS:
+  goto DONE;
+  
+ACK_FAILURE:
+  
+  
+DONE:
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 

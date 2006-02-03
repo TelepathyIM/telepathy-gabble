@@ -1,0 +1,49 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node name="/GabbleMediaStreamHandler">
+  <interface name="org.freedesktop.DBus.Introspectable">
+    <method name="Introspect">
+      <arg direction="out" type="s" />
+    </method>
+  </interface>
+  <interface name="org.freedesktop.Telepathy.Media.StreamHandler">
+    <signal name="RemoveRemoteCandidate">
+      <arg type="s" name="candidate_id" />
+    </signal>
+    <signal name="SetRemoteCandidateList">
+      <arg type="a(sa(usuussduss))" name="remote_candidates" />
+    </signal>
+    <method name="NewNativeCandidate">
+      <arg direction="in"  type="s" name="candidate_id" />
+      <arg direction="in"  type="a(usuussdiss)" name="transports" />
+    </method>
+    <method name="NewActiveCandidatePair">
+      <arg direction="in"  type="s" name="native_candidate_id" />
+      <arg direction="in"  type="s" name="remote_candidate_id" />
+    </method>
+    <method name="CodecChoice">
+      <arg direction="in"  type="u" name="codec_id" />
+    </method>
+    <method name="NativeCandidatesPrepared">
+    </method>
+    <method name="SupportedCodecs">
+      <arg direction="in"  type="a(usuuua{ss})" name="codecs" />
+    </method>
+    <signal name="AddRemoteCandidate">
+      <arg type="s" name="candidate_id" />
+      <arg type="a(usuussduss)" name="transports" />
+    </signal>
+    <method name="Error">
+      <arg direction="in"  type="u" name="errno" />
+      <arg direction="in"  type="s" name="message" />
+    </method>
+    <method name="Ready">
+    </method>
+    <signal name="SetRemoteCodecs">
+      <arg type="a(usuuua{ss})" name="codecs" />
+    </signal>
+    <signal name="SetActiveCandidatePair">
+      <arg type="s" name="native_candidate_id" />
+      <arg type="s" name="remote_candidate_id" />
+    </signal>
+  </interface>
+</node>

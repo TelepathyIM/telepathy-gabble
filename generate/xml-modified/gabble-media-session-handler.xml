@@ -1,0 +1,16 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node name="/GabbleMediaSessionHandler">
+  <interface name="org.freedesktop.Telepathy.Media.SessionHandler">
+    <method name="Ready">
+    </method>
+    <method name="Error">
+      <arg direction="in"  type="u" name="errno" />
+      <arg direction="in"  type="s" name="message" />
+    </method>
+    <signal name="NewMediaStreamHandler">
+      <arg type="o" name="stream_handler" />
+      <arg type="u" name="media_type" />
+      <arg type="u" name="direction" />
+    </signal>
+  </interface>
+</node>

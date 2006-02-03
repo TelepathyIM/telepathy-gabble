@@ -393,7 +393,9 @@ gboolean gabble_media_channel_get_interfaces (GabbleMediaChannel *obj, gchar ***
  */
 gboolean gabble_media_channel_get_session_handlers (GabbleMediaChannel *obj, GPtrArray ** ret, GError **error)
 {
-  return FALSE;
+  g_debug ("%s: w00t!!!", G_STRFUNC);
+  
+  return TRUE;
 }
 
 

@@ -11,6 +11,12 @@ BUILT_SOURCES = \
     gabble-media-channel-glue.h \
     gabble-media-channel-signals-marshal.h \
     gabble-media-channel-signals-marshal.c \
+    gabble-media-session-handler-glue.h \
+    gabble-media-session-handler-signals-marshal.h \
+    gabble-media-session-handler-signals-marshal.c \
+    gabble-media-stream-handler-glue.h \
+    gabble-media-stream-handler-signals-marshal.h \
+    gabble-media-stream-handler-signals-marshal.c \
     gabble-roster-channel-glue.h \
     gabble-roster-channel-signals-marshal.h \
     gabble-roster-channel-signals-marshal.c \
@@ -28,6 +34,8 @@ CORE_SOURCES = \
     gabble-connection.c \
     gabble-im-channel.c \
     gabble-media-channel.c \
+    gabble-media-session-handler.c \
+    gabble-media-stream-handler.c \
     gabble-roster-channel.c \
     gintset.c \
     handles.c \

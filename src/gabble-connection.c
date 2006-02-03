@@ -220,6 +220,8 @@ gabble_connection_init (GabbleConnection *obj)
   priv->im_channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
                                              NULL, g_object_unref);
 
+  priv->status = TP_CONN_STATUS_CONNECTING;
+
   g_datalist_init (&priv->client_contact_handle_sets);
   g_datalist_init (&priv->client_room_handle_sets);
   g_datalist_init (&priv->client_list_handle_sets);

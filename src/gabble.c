@@ -41,7 +41,6 @@ kill_connection_manager (gpointer data)
       g_object_unref (manager);
       g_main_loop_quit (mainloop);
     }
-#endif
 
   return FALSE;
 }

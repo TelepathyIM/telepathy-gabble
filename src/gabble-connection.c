@@ -951,6 +951,7 @@ static void
 close_all_channels (GabbleConnection *conn)
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+
   if (priv->im_channels)
     {
       g_hash_table_destroy (priv->im_channels);
@@ -973,9 +974,9 @@ connection_disconnect (GabbleConnection *conn, TpConnectionStatusReason reason)
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   priv->disconnect_reason = reason;
 
-  /* remove the im_channels so we dont get any race conditions
-   * where method calls are deleivered to a channel after we've started
-   * disconnection*/
+  /* remove the im_channels so we don't get any race conditions
+   * where method calls are delivered to a channel after we've started
+   * disconnection */
   close_all_channels (conn);
 
   connection_status_change (conn, TP_CONN_STATUS_DISCONNECTED, TP_CONN_STATUS_REASON_REQUESTED);
@@ -1247,6 +1248,18 @@ signal_own_presence (GabbleConnection *self, GError **error)
       g_critical ("%s: Unexpected Telepathy presence type", G_STRFUNC);
       break;
     }
+
+  /* FIXME: use constants from libloudmouth and libjingle here */
+  node = lm_message_node_add_child (node,
+                                    "c", NULL);
+  lm_message_node_set_attributes (node,
+                                  "node",  "http://www.google.com/xmpp/client/caps",
+                                  "ver",   "1.0.0.82", /* latest GTalk as of 20060117 */
+                                  "ext",   "voice-v1",
+                                  "xmlns", "http://jabber.org/protocol/caps",
+                                  NULL);
+
+  HANDLER_DEBUG (node, "sending presence stanza");
 
   if (!_gabble_connection_send (self, message, error))
     goto ERROR;
@@ -1789,7 +1802,7 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
   from = lm_message_node_get_attribute (iq_node, "from");
   if (!from)
     {
-      IQ_DEBUG (iq_node, "'from' attribute not found");
+      HANDLER_DEBUG (iq_node, "'from' attribute not found");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
@@ -2135,10 +2148,8 @@ connection_auth_cb (LmConnection *lmconn,
   /* go go gadget on-line */
   connection_status_change (conn, TP_CONN_STATUS_CONNECTED, TP_CONN_STATUS_REASON_REQUESTED);
 
-  /* send <presence /> to the server to indicate availability */
-  message = lm_message_new (NULL, LM_MESSAGE_TYPE_PRESENCE);
-
-  if (!lm_connection_send (lmconn, message, &error))
+  /* send presence to the server to indicate availability */
+  if (!signal_own_presence (conn, &error))
     {
       g_debug ("%s: sending initial presence failed: %s", G_STRFUNC,
           error->message);

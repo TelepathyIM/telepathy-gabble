@@ -1828,7 +1828,7 @@ new_media_channel (GabbleConnection *conn, GabbleHandle handle, guint32 sid, gbo
 {
   GabbleConnectionPrivate *priv;
   GabbleMediaChannel *chan;
-  char *object_path;
+  gchar *object_path;
 
   g_assert (GABBLE_IS_CONNECTION (conn));
 
@@ -1939,7 +1939,7 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
       
       chan = new_media_channel (conn, handle, sid, FALSE);
 
-
+      gabble_media_channel_create_session_handler (chan, handle);
     }
 
   session = &chan->session;
@@ -2079,6 +2079,7 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
   };
 
 //ACK_SUCCESS:
+  g_debug ("%s: ACK_SUCCESS not yet implemented", G_STRFUNC);
   goto DONE;
   
 ACK_FAILURE:

@@ -31,6 +31,8 @@
 
 #include "gabble-media-channel-glue.h"
 
+#include "gabble-media-session-handler.h"
+
 G_DEFINE_TYPE(GabbleMediaChannel, gabble_media_channel, G_TYPE_OBJECT)
 
 /* signal enum */
@@ -63,6 +65,8 @@ struct _GabbleMediaChannelPrivate
   gchar *object_path;
   GabbleHandle handle;
 
+  GHashTable *session_handlers;
+
   gboolean closed;
   gboolean dispose_has_run;
 };
@@ -73,6 +77,9 @@ static void
 gabble_media_channel_init (GabbleMediaChannel *obj)
 {
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (obj);
+  
+  priv->session_handlers = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+                                                  NULL, g_object_unref);
 
   priv->closed = FALSE;
 }
@@ -256,6 +263,9 @@ gabble_media_channel_dispose (GObject *object)
 
   if (priv->dispose_has_run)
     return;
+  
+  g_assert (g_hash_table_size (priv->session_handlers) == 0);
+  g_hash_table_destroy (priv->session_handlers);
 
   priv->dispose_has_run = TRUE;
 
@@ -373,11 +383,55 @@ gboolean gabble_media_channel_get_interfaces (GabbleMediaChannel *obj, gchar ***
 {
   const gchar *interfaces[] = { NULL };
 
+  g_debug ("%s called", G_STRFUNC);
+
   *ret = g_strdupv ((gchar **) interfaces);
 
   return TRUE;
 }
 
+/**
+ * get_session_handlers_hash_foreach:
+ * @key: iterated key
+ * @value: iterated value
+ * @data: data attached to this key/value pair
+ *
+ * Called by the exported GetSessionHandlers method, this should iterate over
+ * the handle/GabbleMediaSessionHandler pairs in a hash, and for each add a
+ * GValueArray containing the following:
+ *  an integer handle representing the member the MediaSessionHandler is created for
+ *  a D-Bus object path for the MediaSessionHandler object on this service
+ *  a string indicating the type of session
+ */
+static void
+get_session_handlers_hash_foreach (gpointer key,
+                                   gpointer value,
+                                   gpointer data)
+{
+  GabbleHandle member = GPOINTER_TO_UINT (key);
+  GObject *session_handler = G_OBJECT (value);
+  GPtrArray *handlers = (GPtrArray *) data;
+  GValueArray *vals;
+  gchar *path;
+
+  vals = g_value_array_new (3);
+  
+  g_value_array_append (vals, NULL);
+  g_value_init (g_value_array_get_nth (vals, 0), G_TYPE_UINT);
+  g_value_set_uint (g_value_array_get_nth (vals, 0), member);
+  
+  g_value_array_append (vals, NULL);
+  g_value_init (g_value_array_get_nth (vals, 1), DBUS_TYPE_G_OBJECT_PATH);
+  g_object_get (session_handler, "object-path", &path, NULL);
+  g_value_set_boxed (g_value_array_get_nth (vals, 1), path);
+  g_free (path);
+
+  g_value_array_append (vals, NULL);
+  g_value_init (g_value_array_get_nth (vals, 2), G_TYPE_STRING);
+  g_value_set_string (g_value_array_get_nth (vals, 2), "rtp");
+
+  g_ptr_array_add (handlers, vals);
+}
 
 /**
  * gabble_media_channel_get_session_handlers
@@ -393,11 +447,58 @@ gboolean gabble_media_channel_get_interfaces (GabbleMediaChannel *obj, gchar ***
  */
 gboolean gabble_media_channel_get_session_handlers (GabbleMediaChannel *obj, GPtrArray ** ret, GError **error)
 {
-  g_debug ("%s: w00t!!!", G_STRFUNC);
+  GabbleMediaChannelPrivate *priv;
+  guint count;
+  GPtrArray *handlers;
+  
+  g_debug ("%s called", G_STRFUNC);
+  
+  g_assert (GABBLE_IS_MEDIA_CHANNEL (obj));
+
+  priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (obj);
+  
+  count = g_hash_table_size (priv->session_handlers);
+  handlers = g_ptr_array_sized_new (count);
+  dbus_g_collection_set_signature (handlers, "(uos)");
+  
+  g_hash_table_foreach (priv->session_handlers,
+      get_session_handlers_hash_foreach,
+      handlers);
+
+  *ret = handlers;
   
   return TRUE;
 }
 
+/**
+ * gabble_media_channel_create_session_handler
+ *
+ * Creates a SessionHandler object for given member.
+ */
+void gabble_media_channel_create_session_handler (GabbleMediaChannel *channel, GabbleHandle member)
+{
+  GabbleMediaChannelPrivate *priv;
+  GabbleMediaSessionHandler *session;
+  gchar *object_path;
+
+  g_assert (GABBLE_IS_MEDIA_CHANNEL (channel));
+
+  priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (channel);
+  
+  object_path = g_strdup_printf ("%s/MediaSessionHandler%u", priv->object_path, member);
+
+  session = g_object_new (GABBLE_TYPE_MEDIA_SESSION_HANDLER,
+                          "media-channel", channel,
+                          "object-path", object_path,
+                          NULL);
+  
+  g_hash_table_insert (priv->session_handlers, GINT_TO_POINTER (member), session);
+
+  g_signal_emit (channel, signals[NEW_MEDIA_SESSION_HANDLER], 0,
+                 member, object_path, "rtp");
+
+  g_free (object_path);
+}
 
 /*
  * JingleCandidate

@@ -27,6 +27,8 @@
 
 #include "gabble-media-session-handler-glue.h"
 
+#include "gabble-media-channel.h"
+
 G_DEFINE_TYPE(GabbleMediaSessionHandler, gabble_media_session_handler, G_TYPE_OBJECT)
 
 /* signal enum */
@@ -38,11 +40,22 @@ enum
 
 static guint signals[LAST_SIGNAL] = {0};
 
+/* properties */
+enum
+{
+  PROP_MEDIA_CHANNEL = 1,
+  PROP_OBJECT_PATH,
+  LAST_PROPERTY
+};
+
 /* private structure */
 typedef struct _GabbleMediaSessionHandlerPrivate GabbleMediaSessionHandlerPrivate;
 
 struct _GabbleMediaSessionHandlerPrivate
 {
+  GabbleMediaChannel *channel;
+  gchar *object_path;
+  
   gboolean dispose_has_run;
 };
 
@@ -51,9 +64,56 @@ struct _GabbleMediaSessionHandlerPrivate
 static void
 gabble_media_session_handler_init (GabbleMediaSessionHandler *obj)
 {
-  GabbleMediaSessionHandlerPrivate *priv = GABBLE_MEDIA_SESSION_HANDLER_GET_PRIVATE (obj);
+  //GabbleMediaSessionHandlerPrivate *priv = GABBLE_MEDIA_SESSION_HANDLER_GET_PRIVATE (obj);
 
   /* allocate any data required by the object here */
+}
+
+static void
+gabble_media_session_handler_get_property (GObject    *object,
+                                           guint       property_id,
+                                           GValue     *value,
+                                           GParamSpec *pspec)
+{
+  GabbleMediaSessionHandler *session = GABBLE_MEDIA_SESSION_HANDLER (object);
+  GabbleMediaSessionHandlerPrivate *priv = GABBLE_MEDIA_SESSION_HANDLER_GET_PRIVATE (session);
+
+  switch (property_id) {
+    case PROP_MEDIA_CHANNEL:
+      g_value_set_object (value, priv->channel);
+      break;
+    case PROP_OBJECT_PATH:
+      g_value_set_string (value, priv->object_path);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+      break;
+  }
+}
+
+static void
+gabble_media_session_handler_set_property (GObject     *object,
+                                           guint        property_id,
+                                           const GValue *value,
+                                           GParamSpec   *pspec)
+{
+  GabbleMediaSessionHandler *session = GABBLE_MEDIA_SESSION_HANDLER (object);
+  GabbleMediaSessionHandlerPrivate *priv = GABBLE_MEDIA_SESSION_HANDLER_GET_PRIVATE (session);
+
+  switch (property_id) {
+    case PROP_MEDIA_CHANNEL:
+      priv->channel = g_value_get_object (value);
+      break;
+    case PROP_OBJECT_PATH:
+      if (priv->object_path)
+        g_free (priv->object_path);
+
+      priv->object_path = g_value_dup_string (value);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+      break;
+  }
 }
 
 static void gabble_media_session_handler_dispose (GObject *object);
@@ -63,11 +123,35 @@ static void
 gabble_media_session_handler_class_init (GabbleMediaSessionHandlerClass *gabble_media_session_handler_class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_media_session_handler_class);
+  GParamSpec *param_spec;
 
   g_type_class_add_private (gabble_media_session_handler_class, sizeof (GabbleMediaSessionHandlerPrivate));
+  
+  object_class->get_property = gabble_media_session_handler_get_property;
+  object_class->set_property = gabble_media_session_handler_set_property;
 
   object_class->dispose = gabble_media_session_handler_dispose;
   object_class->finalize = gabble_media_session_handler_finalize;
+  
+  param_spec = g_param_spec_object ("media-channel", "GabbleMediaChannel object",
+                                    "Gabble media channel object that owns this "
+                                    "media session handler object.",
+                                    GABBLE_TYPE_MEDIA_CHANNEL,
+                                    G_PARAM_CONSTRUCT_ONLY |
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_STATIC_NICK |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_MEDIA_CHANNEL, param_spec);
+
+  param_spec = g_param_spec_string ("object-path", "D-Bus object path",
+                                    "The D-Bus object path used for this "
+                                    "object on the bus.",
+                                    NULL,
+                                    G_PARAM_CONSTRUCT_ONLY |
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_STATIC_NAME |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_OBJECT_PATH, param_spec);
 
   signals[NEW_MEDIA_STREAM_HANDLER] =
     g_signal_new ("new-media-stream-handler",
@@ -101,8 +185,8 @@ gabble_media_session_handler_dispose (GObject *object)
 void
 gabble_media_session_handler_finalize (GObject *object)
 {
-  GabbleMediaSessionHandler *self = GABBLE_MEDIA_SESSION_HANDLER (object);
-  GabbleMediaSessionHandlerPrivate *priv = GABBLE_MEDIA_SESSION_HANDLER_GET_PRIVATE (self);
+  //GabbleMediaSessionHandler *self = GABBLE_MEDIA_SESSION_HANDLER (object);
+  //GabbleMediaSessionHandlerPrivate *priv = GABBLE_MEDIA_SESSION_HANDLER_GET_PRIVATE (self);
 
   /* free any data held directly by the object here */
 

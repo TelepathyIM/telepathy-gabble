@@ -477,8 +477,17 @@ gabble_connection_dispose (GObject *object)
 
   g_debug ("%s: dispose called", G_STRFUNC);
 
-  g_assert(g_hash_table_size (priv->im_channels) == 0);
-  g_hash_table_destroy (priv->im_channels);
+  if (priv->im_channels)
+    {
+      g_assert (g_hash_table_size (priv->im_channels) == 0);
+      g_hash_table_destroy (priv->im_channels);
+    }
+  
+  if (priv->media_channels)
+    {
+      g_assert (g_hash_table_size (priv->media_channels) == 0);
+      g_hash_table_destroy (priv->media_channels);
+    }
 
   if (priv->conn)
     {
@@ -957,6 +966,12 @@ close_all_channels (GabbleConnection *conn)
       g_hash_table_destroy (priv->im_channels);
       priv->im_channels = NULL;
     }
+  
+  if (priv->media_channels)
+    {
+      g_hash_table_destroy (priv->media_channels);
+      priv->media_channels = NULL;
+    }
 }
 
 /**
@@ -974,7 +989,7 @@ connection_disconnect (GabbleConnection *conn, TpConnectionStatusReason reason)
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   priv->disconnect_reason = reason;
 
-  /* remove the im_channels so we don't get any race conditions
+  /* remove the channels so we don't get any race conditions
    * where method calls are delivered to a channel after we've started
    * disconnection */
   close_all_channels (conn);

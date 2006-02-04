@@ -55,7 +55,7 @@ struct _GabbleMediaStreamHandlerPrivate
 static void
 gabble_media_stream_handler_init (GabbleMediaStreamHandler *obj)
 {
-  GabbleMediaStreamHandlerPrivate *priv = GABBLE_MEDIA_STREAM_HANDLER_GET_PRIVATE (obj);
+  //GabbleMediaStreamHandlerPrivate *priv = GABBLE_MEDIA_STREAM_HANDLER_GET_PRIVATE (obj);
 
   /* allocate any data required by the object here */
 }
@@ -141,8 +141,8 @@ gabble_media_stream_handler_dispose (GObject *object)
 void
 gabble_media_stream_handler_finalize (GObject *object)
 {
-  GabbleMediaStreamHandler *self = GABBLE_MEDIA_STREAM_HANDLER (object);
-  GabbleMediaStreamHandlerPrivate *priv = GABBLE_MEDIA_STREAM_HANDLER_GET_PRIVATE (self);
+  //GabbleMediaStreamHandler *self = GABBLE_MEDIA_STREAM_HANDLER (object);
+  //GabbleMediaStreamHandlerPrivate *priv = GABBLE_MEDIA_STREAM_HANDLER_GET_PRIVATE (self);
 
   /* free any data held directly by the object here */
 

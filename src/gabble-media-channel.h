@@ -23,6 +23,8 @@
 
 #include <glib-object.h>
 
+#include "handles.h"
+
 G_BEGIN_DECLS
 
 typedef enum {
@@ -96,6 +98,9 @@ gboolean gabble_media_channel_get_handle (GabbleMediaChannel *obj, guint* ret, g
 gboolean gabble_media_channel_get_interfaces (GabbleMediaChannel *obj, gchar *** ret, GError **error);
 gboolean gabble_media_channel_get_session_handlers (GabbleMediaChannel *obj, GPtrArray ** ret, GError **error);
 
+void gabble_media_channel_create_session_handler (GabbleMediaChannel *channel, GabbleHandle member);
+
+
 JingleCandidate *jingle_candidate_new (const gchar *name,
                                        const gchar *address,
                                        guint16 port,
@@ -107,6 +112,7 @@ JingleCandidate *jingle_candidate_new (const gchar *name,
                                        guchar network,
                                        guchar generation);
 void jingle_candidate_free (JingleCandidate *candidate);
+
 
 JingleCodec *jingle_codec_new (guchar id, const gchar *name);
 void jingle_codec_free (JingleCodec *codec);

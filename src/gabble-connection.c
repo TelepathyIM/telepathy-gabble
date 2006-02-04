@@ -1996,7 +1996,7 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
   goto DONE;
   
 ACK_FAILURE:
-  
+  g_debug ("%s: ACK_FAILURE not yet implemented", G_STRFUNC);
   
 DONE:
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;

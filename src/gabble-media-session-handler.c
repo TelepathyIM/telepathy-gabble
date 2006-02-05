@@ -29,6 +29,8 @@
 
 #include "gabble-media-channel.h"
 
+#include "telepathy-helpers.h"
+
 G_DEFINE_TYPE(GabbleMediaSessionHandler, gabble_media_session_handler, G_TYPE_OBJECT)
 
 /* signal enum */
@@ -67,6 +69,24 @@ gabble_media_session_handler_init (GabbleMediaSessionHandler *obj)
   //GabbleMediaSessionHandlerPrivate *priv = GABBLE_MEDIA_SESSION_HANDLER_GET_PRIVATE (obj);
 
   /* allocate any data required by the object here */
+}
+
+static GObject *
+gabble_media_session_handler_constructor (GType type, guint n_props,
+                                          GObjectConstructParam *props)
+{
+  GObject *obj;
+  GabbleMediaSessionHandlerPrivate *priv;
+  DBusGConnection *bus;
+  
+  obj = G_OBJECT_CLASS (gabble_media_session_handler_parent_class)->
+           constructor (type, n_props, props);
+  priv = GABBLE_MEDIA_SESSION_HANDLER_GET_PRIVATE (GABBLE_MEDIA_SESSION_HANDLER (obj));
+
+  bus = tp_get_bus ();
+  dbus_g_connection_register_g_object (bus, priv->object_path, obj);
+
+  return obj;
 }
 
 static void
@@ -126,6 +146,8 @@ gabble_media_session_handler_class_init (GabbleMediaSessionHandlerClass *gabble_
   GParamSpec *param_spec;
 
   g_type_class_add_private (gabble_media_session_handler_class, sizeof (GabbleMediaSessionHandlerPrivate));
+  
+  object_class->constructor = gabble_media_session_handler_constructor;
   
   object_class->get_property = gabble_media_session_handler_get_property;
   object_class->set_property = gabble_media_session_handler_set_property;
@@ -209,6 +231,8 @@ gabble_media_session_handler_finalize (GObject *object)
  */
 gboolean gabble_media_session_handler_error (GabbleMediaSessionHandler *obj, guint errno, const gchar * message, GError **error)
 {
+  g_debug ("%s called", G_STRFUNC);
+  
   return TRUE;
 }
 
@@ -227,6 +251,8 @@ gboolean gabble_media_session_handler_error (GabbleMediaSessionHandler *obj, gui
  */
 gboolean gabble_media_session_handler_ready (GabbleMediaSessionHandler *obj, GError **error)
 {
+  g_debug ("%s called", G_STRFUNC);
+
   return TRUE;
 }
 

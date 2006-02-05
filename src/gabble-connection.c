@@ -24,12 +24,13 @@
 #include <dbus/dbus-glib-lowlevel.h>
 
 #include <loudmouth/loudmouth.h>
-#include <stdlib.h> /* atoi */
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
 #include "gabble-im-channel.h"
 #include "gabble-media-channel.h"
+#include "gabble-media-session.h"
 #include "gabble-roster-channel.h"
 #include "handles.h"
 #include "handle-set.h"
@@ -188,6 +189,9 @@ struct _GabbleConnectionPrivate
   GabbleHandleRepo *handles;
   GabbleHandle self_handle;
 
+  /* jingle sessions */
+  GHashTable *jingle_sessions;
+
   /* channels */
   GHashTable *im_channels;
   GHashTable *media_channels;
@@ -215,6 +219,8 @@ gabble_connection_init (GabbleConnection *obj)
 
   priv->handles = gabble_handle_repo_new ();
 
+  priv->jingle_sessions = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+                                                 NULL, g_object_unref);
   priv->im_channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
                                              NULL, g_object_unref);
   priv->media_channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
@@ -476,7 +482,12 @@ gabble_connection_dispose (GObject *object)
   priv->dispose_has_run = TRUE;
 
   g_debug ("%s: dispose called", G_STRFUNC);
-
+  
+  if (priv->jingle_sessions)
+    {
+      g_assert (g_hash_table_size (priv->jingle_sessions) == 0);
+      g_hash_table_destroy (priv->jingle_sessions);
+    }
   if (priv->im_channels)
     {
       g_assert (g_hash_table_size (priv->im_channels) == 0);
@@ -1737,7 +1748,7 @@ media_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
  * new_media_channel
  */
 static GabbleMediaChannel *
-new_media_channel (GabbleConnection *conn, GabbleHandle handle, guint32 sid, gboolean suppress_handler)
+new_media_channel (GabbleConnection *conn, GabbleHandle handle, gboolean suppress_handler)
 {
   GabbleConnectionPrivate *priv;
   GabbleMediaChannel *chan;
@@ -1755,17 +1766,11 @@ new_media_channel (GabbleConnection *conn, GabbleHandle handle, guint32 sid, gbo
                        "handle", handle,
                        NULL);
 
-  /* FIXME: this should be done with jingle_session_init() or something similar */
-  chan->session.id = sid;
-  chan->session.state = JS_STATE_PENDING;
-  chan->session.remote_candidates = NULL;
-  chan->session.remote_codecs = NULL;
-
   g_debug ("new_media_channel: object path %s", object_path);
 
   g_signal_connect (chan, "closed", (GCallback) media_channel_closed_cb, conn);
 
-  g_hash_table_insert (priv->media_channels, GINT_TO_POINTER (sid), chan);
+  g_hash_table_insert (priv->media_channels, GINT_TO_POINTER (handle), chan);
 
   g_signal_emit (conn, signals[NEW_CHANNEL], 0,
                  object_path, TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA,
@@ -1776,6 +1781,50 @@ new_media_channel (GabbleConnection *conn, GabbleHandle handle, guint32 sid, gbo
 
   return chan;
 }
+
+/**
+ * ack_iq_message
+ *
+ * Helper function used to acknowledge an IQ stanza.
+ */
+static void
+ack_iq_message (GabbleConnection *conn, const gchar *to,
+                const gchar *id, LmMessageSubType type)
+{
+  LmMessage *msg;
+  
+  msg = lm_message_new_with_sub_type (to, LM_MESSAGE_TYPE_IQ, type);
+  lm_message_node_set_attribute (msg->node, "id", id);
+  if (!_gabble_connection_send (conn, msg, NULL)) {
+      g_warning ("%s: _gabble_connection_send failed", G_STRFUNC);
+  }
+  lm_message_unref (msg);
+}
+
+static void
+jingle_session_register (GabbleConnection *conn,
+                         guint32 sid,
+                         GabbleMediaSession *session)
+{
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+
+  g_debug ("%s: registering sid %d", G_STRFUNC, sid);
+
+  g_hash_table_insert (priv->jingle_sessions, GUINT_TO_POINTER (sid), session);
+}
+
+#if 0
+static void
+jingle_session_unregister (GabbleConnection *conn,
+                           guint32 sid)
+{
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+
+  g_debug ("%s: unregistering sid %d", G_STRFUNC, sid);
+
+  g_hash_table_remove (priv->jingle_sessions, GUINT_TO_POINTER (sid));
+}
+#endif
 
 /**
  * connection_iq_jingle_cb
@@ -1792,12 +1841,12 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-  LmMessageNode *iq_node, *session_node, *desc_node, *node;
-  const gchar *from, *action, *str;
+  LmMessageNode *iq_node, *session_node, *desc_node;
+  const gchar *from, *action, *id_str;
   GabbleHandle handle;
   guint32 sid;
   GabbleMediaChannel *chan;
-  JingleSession *session;
+  GabbleMediaSession *session;
 
   g_assert (connection == priv->conn);
 
@@ -1824,14 +1873,14 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
   handle = gabble_handle_for_contact (priv->handles, from, TRUE);
   
   /* does the session exist? */
-  str = lm_message_node_get_attribute (session_node, "id");
-  if (!str)
+  id_str = lm_message_node_get_attribute (session_node, "id");
+  if (!id_str)
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
   
-  sid = atoi(str);
+  sid = atoi(id_str);
   
-  chan = g_hash_table_lookup (priv->media_channels, GINT_TO_POINTER (sid));
-  if (chan == NULL)
+  session = g_hash_table_lookup (priv->jingle_sessions, GINT_TO_POINTER (sid));
+  if (session == NULL)
     {
       /* if the session is unknown, the only allowed action is "initiate" */
       if (strcmp (action, "initiate"))
@@ -1850,158 +1899,19 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
 
       g_debug ("%s: creating media channel", G_STRFUNC);
       
-      chan = new_media_channel (conn, handle, sid, FALSE);
-
-      gabble_media_channel_create_session_handler (chan, handle);
+      chan = new_media_channel (conn, handle, FALSE);
+      session = gabble_media_channel_create_session (chan, handle, sid);
+      
+      jingle_session_register (conn, sid, session);
     }
 
-  session = &chan->session;
+  if (gabble_media_session_dispatch_action (session, action, session_node))
+    ack_iq_message (conn, from, id_str, LM_MESSAGE_SUB_TYPE_RESULT);
+  else
+    ack_iq_message (conn, from, id_str, LM_MESSAGE_SUB_TYPE_ERROR);
   
-  /* do the state machine dance */
-  switch (session->state) {
-    case JS_STATE_PENDING:
-      if (!strcmp (action, "initiate")) {
-          desc_node = lm_message_node_get_child (session_node, "description");
-          if (!desc_node)
-            return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-
-          /* shouldn't happen */
-          if (session->remote_codecs)
-            goto ACK_FAILURE;
-          
-          session->remote_codecs = g_ptr_array_sized_new (12);
-          
-          for (node = desc_node->children; node; node = node->next)
-            {
-              guchar pt_id;
-              const gchar *pt_name;
-              JingleCodec *codec;
-
-              str = lm_message_node_get_attribute (node, "id");
-              if (!str)
-                goto ACK_FAILURE;
-
-              pt_id = atoi(str);
-              pt_name = lm_message_node_get_attribute (node, "name");
-              
-              codec = jingle_codec_new (pt_id, pt_name);
-              
-              g_ptr_array_add (session->remote_codecs, codec);
-            }
-
-          g_debug ("%s: parsed %d remote codecs", G_STRFUNC, session->remote_codecs->len);
-
-      } else if (!strcmp (action, "candidates")) { /* "negotiate" in JEP */
-
-          gint prev_len;
-
-          if (!session->remote_candidates)
-            session->remote_candidates = g_ptr_array_sized_new (4);
-
-          prev_len = session->remote_candidates->len;
-
-          for (node = session_node->children; node; node = node->next)
-            {
-              const gchar *c_name, *c_addr, *c_user, *c_pass, *c_proto, *c_type;
-              guint16 c_port;
-              gfloat c_pref;
-              guchar c_net, c_gen;
-              JingleCandidate *candidate;
-
-              c_name = lm_message_node_get_attribute (node, "name");
-              if (!c_name)
-                goto ACK_FAILURE;
-              
-              c_addr = lm_message_node_get_attribute (node, "address");
-              if (!c_addr)
-                goto ACK_FAILURE;
-              
-              str = lm_message_node_get_attribute (node, "port");
-              if (!str)
-                goto ACK_FAILURE;
-              c_port = atoi (str);
-
-              c_user = lm_message_node_get_attribute (node, "username");
-              if (!c_user)
-                goto ACK_FAILURE;
-              
-              c_pass = lm_message_node_get_attribute (node, "password");
-              if (!c_pass)
-                goto ACK_FAILURE;
-
-              str = lm_message_node_get_attribute (node, "preference");
-              if (!str)
-                goto ACK_FAILURE;
-              c_pref = (gfloat) g_ascii_strtod (str, NULL);
-              
-              c_proto = lm_message_node_get_attribute (node, "protocol");
-              if (!c_proto)
-                goto ACK_FAILURE;
-
-              c_type = lm_message_node_get_attribute (node, "type");
-              if (!c_type)
-                goto ACK_FAILURE;
-
-              str = lm_message_node_get_attribute (node, "network");
-              if (!str)
-                goto ACK_FAILURE;
-              c_net = atoi (str);
-              
-              str = lm_message_node_get_attribute (node, "generation");
-              if (!str)
-                goto ACK_FAILURE;
-              c_gen = atoi (str);
-
-              candidate = jingle_candidate_new (c_name, c_addr, c_port,
-                                                c_user, c_pass, c_pref,
-                                                c_proto, c_type, c_net,
-                                                c_gen);
-
-              g_ptr_array_add (session->remote_candidates, candidate);
-            }
-          
-          g_debug ("%s: parsed %d new remote candidate(s), "
-                   "%d remote candidate(s) in total now",
-                   G_STRFUNC,
-                   session->remote_candidates->len - prev_len,
-                   session->remote_candidates->len);
-          
-      } else {
-          g_debug ("%s: unhandled action \"%s\" in state JS_STATE_PENDING",
-              G_STRFUNC, action);
-          goto ACK_FAILURE;
-      }
-      
-      break;
-    case JS_STATE_ACTIVE:
-      g_debug ("%s: unhandled action \"%s\" in state JS_STATE_ACTIVE",
-          G_STRFUNC, action);
-      goto ACK_FAILURE;
-      
-      break;
-    case JS_STATE_ENDED:
-      g_debug ("%s: unhandled action \"%s\" in state JS_STATE_ENDED",
-          G_STRFUNC, action);
-      goto ACK_FAILURE;
-      
-      break;
-    default:
-      g_debug ("%s: unknown state, ignoring action \"%s\"",
-          G_STRFUNC, action);
-      goto ACK_FAILURE;
-  };
-
-//ACK_SUCCESS:
-  g_debug ("%s: ACK_SUCCESS not yet implemented", G_STRFUNC);
-  goto DONE;
-  
-ACK_FAILURE:
-  g_debug ("%s: ACK_FAILURE not yet implemented", G_STRFUNC);
-  
-DONE:
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
-
 
 /**
  * connection_iq_unknown_cb

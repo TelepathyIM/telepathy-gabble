@@ -21,6 +21,7 @@
 #include <dbus/dbus-glib.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "gabble-media-session.h"
 #include "gabble-media-session-signals-marshal.h"
@@ -47,8 +48,51 @@ enum
 {
   PROP_MEDIA_CHANNEL = 1,
   PROP_OBJECT_PATH,
+  PROP_SESSION_ID,
   LAST_PROPERTY
 };
+
+typedef enum {
+    JS_STATE_PENDING = 0,
+    JS_STATE_ACTIVE = 1,
+    JS_STATE_ENDED
+} JingleSessionState;
+
+typedef struct _JingleCandidate JingleCandidate;
+typedef struct _JingleCodec JingleCodec;
+
+struct _JingleCandidate {
+    gchar *name;
+    gchar *address;
+    guint16 port;
+    gchar *username;
+    gchar *password;
+    gfloat preference;
+    gchar *protocol;
+    gchar *type;
+    guchar network;
+    guchar generation;
+};
+
+struct _JingleCodec {
+    guchar id;
+    gchar *name;
+};
+
+JingleCandidate *jingle_candidate_new (const gchar *name,
+                                       const gchar *address,
+                                       guint16 port,
+                                       const gchar *username,
+                                       const gchar *password,
+                                       gfloat preference,
+                                       const gchar *protocol,
+                                       const gchar *type,
+                                       guchar network,
+                                       guchar generation);
+void jingle_candidate_free (JingleCandidate *candidate);
+
+JingleCodec *jingle_codec_new (guchar id, const gchar *name);
+void jingle_codec_free (JingleCodec *codec);
 
 /* private structure */
 typedef struct _GabbleMediaSessionPrivate GabbleMediaSessionPrivate;
@@ -57,6 +101,12 @@ struct _GabbleMediaSessionPrivate
 {
   GabbleMediaChannel *channel;
   gchar *object_path;
+  
+  guint32 id;
+  JingleSessionState state;
+  
+  GPtrArray *remote_candidates;
+  GPtrArray *remote_codecs;
   
   gboolean dispose_has_run;
 };
@@ -83,6 +133,10 @@ gabble_media_session_constructor (GType type, guint n_props,
            constructor (type, n_props, props);
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (GABBLE_MEDIA_SESSION (obj));
 
+  priv->state = JS_STATE_PENDING;
+  priv->remote_candidates = NULL;
+  priv->remote_codecs = NULL;
+
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
 
@@ -104,6 +158,9 @@ gabble_media_session_get_property (GObject    *object,
       break;
     case PROP_OBJECT_PATH:
       g_value_set_string (value, priv->object_path);
+      break;
+    case PROP_SESSION_ID:
+      g_value_set_uint (value, priv->id);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -129,6 +186,9 @@ gabble_media_session_set_property (GObject      *object,
         g_free (priv->object_path);
 
       priv->object_path = g_value_dup_string (value);
+      break;
+    case PROP_SESSION_ID:
+      priv->id = g_value_get_uint (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -174,6 +234,16 @@ gabble_media_session_class_init (GabbleMediaSessionClass *gabble_media_session_c
                                     G_PARAM_STATIC_NAME |
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_OBJECT_PATH, param_spec);
+  
+  param_spec = g_param_spec_uint ("session-id", "Session ID",
+                                  "A unique session identifier used "
+                                  "throughout all communication.",
+                                  0, G_MAXUINT32, 0,
+                                  G_PARAM_CONSTRUCT_ONLY |
+                                  G_PARAM_READWRITE |
+                                  G_PARAM_STATIC_NAME |
+                                  G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_SESSION_ID, param_spec);
 
   signals[NEW_MEDIA_STREAM_HANDLER] =
     g_signal_new ("new-media-stream-handler",
@@ -254,5 +324,221 @@ gboolean gabble_media_session_ready (GabbleMediaSession *obj, GError **error)
   g_debug ("%s called", G_STRFUNC);
 
   return TRUE;
+}
+
+gboolean gabble_media_session_dispatch_action (GabbleMediaSession *session,
+                                               const gchar *action,
+                                               LmMessageNode *session_node)
+{
+  GabbleMediaSessionPrivate *priv;
+  LmMessageNode *desc_node, *node;
+  const gchar *str;
+
+  g_assert (GABBLE_IS_MEDIA_SESSION (session));
+
+  priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+  
+  /* do the state machine dance */
+  switch (priv->state) {
+    case JS_STATE_PENDING:
+      if (!strcmp (action, "initiate")) {
+          desc_node = lm_message_node_get_child (session_node, "description");
+          if (!desc_node)
+            return FALSE;
+
+          /* shouldn't happen */
+          if (priv->remote_codecs)
+            return FALSE;
+          
+          priv->remote_codecs = g_ptr_array_sized_new (12);
+          
+          for (node = desc_node->children; node; node = node->next)
+            {
+              guchar pt_id;
+              const gchar *pt_name;
+              JingleCodec *codec;
+
+              str = lm_message_node_get_attribute (node, "id");
+              if (!str)
+                return FALSE;
+
+              pt_id = atoi(str);
+              pt_name = lm_message_node_get_attribute (node, "name");
+              
+              codec = jingle_codec_new (pt_id, pt_name);
+              
+              g_ptr_array_add (priv->remote_codecs, codec);
+            }
+
+          g_debug ("%s: parsed %d remote codecs", G_STRFUNC, priv->remote_codecs->len);
+
+      } else if (!strcmp (action, "candidates")) { /* "negotiate" in JEP */
+
+          gint prev_len;
+
+          if (!priv->remote_candidates)
+            priv->remote_candidates = g_ptr_array_sized_new (4);
+
+          prev_len = priv->remote_candidates->len;
+
+          for (node = session_node->children; node; node = node->next)
+            {
+              const gchar *c_name, *c_addr, *c_user, *c_pass, *c_proto, *c_type;
+              guint16 c_port;
+              gfloat c_pref;
+              guchar c_net, c_gen;
+              JingleCandidate *candidate;
+
+              c_name = lm_message_node_get_attribute (node, "name");
+              if (!c_name)
+                return FALSE;
+              
+              c_addr = lm_message_node_get_attribute (node, "address");
+              if (!c_addr)
+                return FALSE;
+              
+              str = lm_message_node_get_attribute (node, "port");
+              if (!str)
+                return FALSE;
+              c_port = atoi (str);
+
+              c_user = lm_message_node_get_attribute (node, "username");
+              if (!c_user)
+                return FALSE;
+              
+              c_pass = lm_message_node_get_attribute (node, "password");
+              if (!c_pass)
+                return FALSE;
+
+              str = lm_message_node_get_attribute (node, "preference");
+              if (!str)
+                return FALSE;
+              c_pref = (gfloat) g_ascii_strtod (str, NULL);
+              
+              c_proto = lm_message_node_get_attribute (node, "protocol");
+              if (!c_proto)
+                return FALSE;
+
+              c_type = lm_message_node_get_attribute (node, "type");
+              if (!c_type)
+                return FALSE;
+
+              str = lm_message_node_get_attribute (node, "network");
+              if (!str)
+                return FALSE;
+              c_net = atoi (str);
+              
+              str = lm_message_node_get_attribute (node, "generation");
+              if (!str)
+                return FALSE;
+              c_gen = atoi (str);
+
+              candidate = jingle_candidate_new (c_name, c_addr, c_port,
+                                                c_user, c_pass, c_pref,
+                                                c_proto, c_type, c_net,
+                                                c_gen);
+
+              g_ptr_array_add (priv->remote_candidates, candidate);
+            }
+          
+          g_debug ("%s: parsed %d new remote candidate(s), "
+                   "%d remote candidate(s) in total now",
+                   G_STRFUNC,
+                   priv->remote_candidates->len - prev_len,
+                   priv->remote_candidates->len);
+          
+      } else {
+          g_debug ("%s: unhandled action \"%s\" in state JS_STATE_PENDING",
+              G_STRFUNC, action);
+          return FALSE;
+      }
+      
+      break;
+    case JS_STATE_ACTIVE:
+      g_debug ("%s: unhandled action \"%s\" in state JS_STATE_ACTIVE",
+          G_STRFUNC, action);
+      return FALSE;
+      
+      break;
+    case JS_STATE_ENDED:
+      g_debug ("%s: unhandled action \"%s\" in state JS_STATE_ENDED",
+          G_STRFUNC, action);
+      return FALSE;
+      
+      break;
+    default:
+      g_debug ("%s: unknown state, ignoring action \"%s\"",
+          G_STRFUNC, action);
+      return FALSE;
+  };
+
+  return TRUE;
+}
+
+/*
+ * JingleCandidate
+ */
+
+JingleCandidate *jingle_candidate_new (const gchar *name,
+                                       const gchar *address,
+                                       guint16 port,
+                                       const gchar *username,
+                                       const gchar *password,
+                                       gfloat preference,
+                                       const gchar *protocol,
+                                       const gchar *type,
+                                       guchar network,
+                                       guchar generation)
+{
+  JingleCandidate *candidate = g_new (JingleCandidate, 1);
+
+  candidate->name = g_strdup (name);
+  candidate->address = g_strdup (address);
+  candidate->port = port;
+  candidate->username = g_strdup (username);
+  candidate->password = g_strdup (password);
+  candidate->preference = preference;
+  candidate->protocol = g_strdup (protocol);
+  candidate->type = g_strdup (type);
+  candidate->network = network;
+  candidate->generation = generation;
+
+  return candidate;
+}
+
+void jingle_candidate_free (JingleCandidate *candidate)
+{
+  g_free (candidate->name);
+  g_free (candidate->address);
+  g_free (candidate->username);
+  g_free (candidate->password);
+  g_free (candidate->protocol);
+  g_free (candidate->type);
+  
+  g_free (candidate);
+}
+
+
+/*
+ * JingleCodec
+ */
+
+JingleCodec *
+jingle_codec_new (guchar id, const gchar *name)
+{
+  JingleCodec *codec = g_new (JingleCodec, 1);
+
+  codec->id = id;
+  codec->name = g_strdup (name);
+
+  return codec;
+}
+
+void
+jingle_codec_free (JingleCodec *codec)
+{
+  g_free (codec->name);
+
+  g_free (codec);
 }
 

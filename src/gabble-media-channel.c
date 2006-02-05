@@ -65,7 +65,7 @@ struct _GabbleMediaChannelPrivate
   gchar *object_path;
   GabbleHandle handle;
 
-  GHashTable *sessions;
+  GHashTable *media_sessions;
 
   gboolean closed;
   gboolean dispose_has_run;
@@ -78,8 +78,8 @@ gabble_media_channel_init (GabbleMediaChannel *obj)
 {
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (obj);
   
-  priv->sessions = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-                                          NULL, g_object_unref);
+  priv->media_sessions = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+                                                NULL, g_object_unref);
 
   priv->closed = FALSE;
 }
@@ -264,8 +264,8 @@ gabble_media_channel_dispose (GObject *object)
   if (priv->dispose_has_run)
     return;
   
-  g_assert (g_hash_table_size (priv->sessions) == 0);
-  g_hash_table_destroy (priv->sessions);
+  g_assert (g_hash_table_size (priv->media_sessions) == 0);
+  g_hash_table_destroy (priv->media_sessions);
 
   priv->dispose_has_run = TRUE;
 
@@ -457,11 +457,11 @@ gboolean gabble_media_channel_get_session_handlers (GabbleMediaChannel *obj, GPt
 
   priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (obj);
   
-  count = g_hash_table_size (priv->sessions);
+  count = g_hash_table_size (priv->media_sessions);
   handlers = g_ptr_array_sized_new (count);
   dbus_g_collection_set_signature (handlers, "(uos)");
   
-  g_hash_table_foreach (priv->sessions,
+  g_hash_table_foreach (priv->media_sessions,
       get_session_handlers_hash_foreach,
       handlers);
 
@@ -471,11 +471,14 @@ gboolean gabble_media_channel_get_session_handlers (GabbleMediaChannel *obj, GPt
 }
 
 /**
- * gabble_media_channel_create_session_handler
+ * gabble_media_channel_create_session
  *
- * Creates a SessionHandler object for given member.
+ * Creates a GabbleMediaSession object for given member.
  */
-void gabble_media_channel_create_session_handler (GabbleMediaChannel *channel, GabbleHandle member)
+GabbleMediaSession *
+gabble_media_channel_create_session (GabbleMediaChannel *channel,
+                                     GabbleHandle member,
+                                     guint32 sid)
 {
   GabbleMediaChannelPrivate *priv;
   GabbleMediaSession *session;
@@ -485,85 +488,21 @@ void gabble_media_channel_create_session_handler (GabbleMediaChannel *channel, G
 
   priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (channel);
   
-  object_path = g_strdup_printf ("%s/MediaSessionHandler%u", priv->object_path, member);
+  object_path = g_strdup_printf ("%s/MediaSession%u", priv->object_path, member);
 
   session = g_object_new (GABBLE_TYPE_MEDIA_SESSION,
                           "media-channel", channel,
                           "object-path", object_path,
+                          "session-id", sid,
                           NULL);
   
-  g_hash_table_insert (priv->sessions, GINT_TO_POINTER (member), session);
+  g_hash_table_insert (priv->media_sessions, GUINT_TO_POINTER (member), session);
 
   g_signal_emit (channel, signals[NEW_MEDIA_SESSION_HANDLER], 0,
                  member, object_path, "rtp");
 
   g_free (object_path);
-}
 
-/*
- * JingleCandidate
- */
-
-JingleCandidate *jingle_candidate_new (const gchar *name,
-                                       const gchar *address,
-                                       guint16 port,
-                                       const gchar *username,
-                                       const gchar *password,
-                                       gfloat preference,
-                                       const gchar *protocol,
-                                       const gchar *type,
-                                       guchar network,
-                                       guchar generation)
-{
-  JingleCandidate *candidate = g_new (JingleCandidate, 1);
-
-  candidate->name = g_strdup (name);
-  candidate->address = g_strdup (address);
-  candidate->port = port;
-  candidate->username = g_strdup (username);
-  candidate->password = g_strdup (password);
-  candidate->preference = preference;
-  candidate->protocol = g_strdup (protocol);
-  candidate->type = g_strdup (type);
-  candidate->network = network;
-  candidate->generation = generation;
-
-  return candidate;
-}
-
-void jingle_candidate_free (JingleCandidate *candidate)
-{
-  g_free (candidate->name);
-  g_free (candidate->address);
-  g_free (candidate->username);
-  g_free (candidate->password);
-  g_free (candidate->protocol);
-  g_free (candidate->type);
-  
-  g_free (candidate);
-}
-
-
-/*
- * JingleCodec
- */
-
-JingleCodec *
-jingle_codec_new (guchar id, const gchar *name)
-{
-  JingleCodec *codec = g_new (JingleCodec, 1);
-
-  codec->id = id;
-  codec->name = g_strdup (name);
-
-  return codec;
-}
-
-void
-jingle_codec_free (JingleCodec *codec)
-{
-  g_free (codec->name);
-
-  g_free (codec);
+  return session;
 }
 

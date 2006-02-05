@@ -24,46 +24,12 @@
 #include <glib-object.h>
 
 #include "handles.h"
+#include "gabble-media-session.h"
 
 G_BEGIN_DECLS
 
-typedef enum {
-    JS_STATE_PENDING = 0,
-    JS_STATE_ACTIVE = 1,
-    JS_STATE_ENDED
-} JingleSessionState;
-
-typedef struct _JingleCandidate JingleCandidate;
-typedef struct _JingleCodec JingleCodec;
-typedef struct _JingleSession JingleSession;
 typedef struct _GabbleMediaChannel GabbleMediaChannel;
 typedef struct _GabbleMediaChannelClass GabbleMediaChannelClass;
-
-struct _JingleCandidate {
-    gchar *name;
-    gchar *address;
-    guint16 port;
-    gchar *username;
-    gchar *password;
-    gfloat preference;
-    gchar *protocol;
-    gchar *type;
-    guchar network;
-    guchar generation;
-};
-
-struct _JingleCodec {
-    guchar id;
-    gchar *name;
-};
-
-struct _JingleSession {
-    guint32 id;
-    JingleSessionState state;
-    
-    GPtrArray *remote_candidates;
-    GPtrArray *remote_codecs;
-};
 
 struct _GabbleMediaChannelClass {
     GObjectClass parent_class;
@@ -71,8 +37,6 @@ struct _GabbleMediaChannelClass {
 
 struct _GabbleMediaChannel {
     GObject parent;
-
-    JingleSession session;
 };
 
 GType gabble_media_channel_get_type(void);
@@ -98,24 +62,10 @@ gboolean gabble_media_channel_get_handle (GabbleMediaChannel *obj, guint* ret, g
 gboolean gabble_media_channel_get_interfaces (GabbleMediaChannel *obj, gchar *** ret, GError **error);
 gboolean gabble_media_channel_get_session_handlers (GabbleMediaChannel *obj, GPtrArray ** ret, GError **error);
 
-void gabble_media_channel_create_session_handler (GabbleMediaChannel *channel, GabbleHandle member);
-
-
-JingleCandidate *jingle_candidate_new (const gchar *name,
-                                       const gchar *address,
-                                       guint16 port,
-                                       const gchar *username,
-                                       const gchar *password,
-                                       gfloat preference,
-                                       const gchar *protocol,
-                                       const gchar *type,
-                                       guchar network,
-                                       guchar generation);
-void jingle_candidate_free (JingleCandidate *candidate);
-
-
-JingleCodec *jingle_codec_new (guchar id, const gchar *name);
-void jingle_codec_free (JingleCodec *codec);
+GabbleMediaSession *
+gabble_media_channel_create_session (GabbleMediaChannel *channel,
+                                     GabbleHandle member,
+                                     guint32 sid);
 
 G_END_DECLS
 

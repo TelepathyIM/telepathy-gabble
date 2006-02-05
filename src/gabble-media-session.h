@@ -22,6 +22,7 @@
 #define __GABBLE_MEDIA_SESSION_H__
 
 #include <glib-object.h>
+#include <loudmouth/loudmouth.h>
 
 G_BEGIN_DECLS
 
@@ -56,6 +57,9 @@ GType gabble_media_session_get_type(void);
 gboolean gabble_media_session_error (GabbleMediaSession *obj, guint errno, const gchar * message, GError **error);
 gboolean gabble_media_session_ready (GabbleMediaSession *obj, GError **error);
 
+gboolean gabble_media_session_dispatch_action (GabbleMediaSession *session,
+                                               const gchar *action,
+                                               LmMessageNode *session_node);
 
 G_END_DECLS
 

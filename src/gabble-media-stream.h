@@ -22,6 +22,7 @@
 #define __GABBLE_MEDIA_STREAM_H__
 
 #include <glib-object.h>
+#include <loudmouth/loudmouth.h>
 
 G_BEGIN_DECLS
 
@@ -61,6 +62,8 @@ gboolean gabble_media_stream_new_native_candidate (GabbleMediaStream *obj, const
 gboolean gabble_media_stream_ready (GabbleMediaStream *obj, GError **error);
 gboolean gabble_media_stream_supported_codecs (GabbleMediaStream *obj, const GPtrArray * codecs, GError **error);
 
+gboolean gabble_media_stream_parse_remote_codecs (GabbleMediaStream *stream, LmMessageNode *desc_node);
+gboolean gabble_media_stream_parse_remote_candidates (GabbleMediaStream *stream, LmMessageNode *session_node);
 
 G_END_DECLS
 

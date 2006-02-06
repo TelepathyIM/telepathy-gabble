@@ -21,6 +21,7 @@
 #include <dbus/dbus-glib.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "gabble-media-stream.h"
 #include "gabble-media-stream-signals-marshal.h"
@@ -34,7 +35,28 @@
 
 G_DEFINE_TYPE(GabbleMediaStream, gabble_media_stream, G_TYPE_OBJECT)
 
-#define TP_CODEC_SET_TYPE (dbus_g_type_get_struct ("GValueArray", \
+#define TP_TYPE_TRANSPORT_STRUCT (dbus_g_type_get_struct ("GValueArray", \
+      G_TYPE_UINT, \
+      G_TYPE_STRING, \
+      G_TYPE_UINT, \
+      G_TYPE_UINT, \
+      G_TYPE_STRING, \
+      G_TYPE_STRING, \
+      G_TYPE_DOUBLE, \
+      G_TYPE_UINT, \
+      G_TYPE_STRING, \
+      G_TYPE_STRING, \
+      G_TYPE_INVALID))
+#define TP_TYPE_TRANSPORT_LIST (dbus_g_type_get_collection ("GPtrArray", \
+      TP_TYPE_TRANSPORT_STRUCT))
+#define TP_TYPE_CANDIDATE_STRUCT (dbus_g_type_get_struct ("GValueArray", \
+      G_TYPE_STRING, \
+      TP_TYPE_TRANSPORT_LIST, \
+      G_TYPE_INVALID))
+#define TP_TYPE_CANDIDATE_LIST (dbus_g_type_get_collection ("GPtrArray", \
+      TP_TYPE_CANDIDATE_STRUCT))
+
+#define TP_TYPE_CODEC_STRUCT (dbus_g_type_get_struct ("GValueArray", \
       G_TYPE_UINT, \
       G_TYPE_STRING, \
       G_TYPE_UINT, \
@@ -42,6 +64,8 @@ G_DEFINE_TYPE(GabbleMediaStream, gabble_media_stream, G_TYPE_OBJECT)
       G_TYPE_UINT, \
       DBUS_TYPE_G_STRING_STRING_HASHTABLE, \
       G_TYPE_INVALID))
+#define TP_TYPE_CODEC_LIST (dbus_g_type_get_collection ("GPtrArray", \
+      TP_TYPE_CODEC_STRUCT))
 
 /* signal enum */
 enum
@@ -141,7 +165,7 @@ gabble_media_stream_constructor (GType type, guint n_props,
   priv->ready = FALSE;
 
   priv->remote_codecs = g_ptr_array_sized_new (12);
-  priv->remote_candidates = g_ptr_array_sized_new (4);
+  priv->remote_candidates = g_ptr_array_sized_new (2);
 
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
@@ -242,7 +266,7 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                   0,
                   NULL, NULL,
                   gabble_media_stream_marshal_VOID__STRING_BOXED,
-                  G_TYPE_NONE, 2, G_TYPE_STRING, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_UINT, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_DOUBLE, G_TYPE_UINT, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INVALID)))));
+                  G_TYPE_NONE, 2, G_TYPE_STRING, TP_TYPE_TRANSPORT_LIST);
 
   signals[REMOVE_REMOTE_CANDIDATE] =
     g_signal_new ("remove-remote-candidate",
@@ -269,7 +293,7 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                   0,
                   NULL, NULL,
                   gabble_media_stream_marshal_VOID__BOXED,
-                  G_TYPE_NONE, 1, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_STRING, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_UINT, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_DOUBLE, G_TYPE_UINT, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INVALID)))), G_TYPE_INVALID)))));
+                  G_TYPE_NONE, 1, TP_TYPE_CANDIDATE_LIST);
 
   signals[SET_REMOTE_CODECS] =
     g_signal_new ("set-remote-codecs",
@@ -278,7 +302,7 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                   0,
                   NULL, NULL,
                   gabble_media_stream_marshal_VOID__BOXED,
-                  G_TYPE_NONE, 1, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_UINT, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, DBUS_TYPE_G_STRING_STRING_HASHTABLE, G_TYPE_INVALID)))));
+                  G_TYPE_NONE, 1, TP_TYPE_CODEC_LIST);
   
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_media_stream_class), &dbus_glib_gabble_media_stream_object_info);
 }
@@ -469,7 +493,7 @@ static void
 push_remote_codecs (GabbleMediaStream *stream)
 {
   GabbleMediaStreamPrivate *priv;
-  int i;
+  /*int i;*/
   
   g_assert (GABBLE_IS_MEDIA_STREAM (stream));
   
@@ -481,15 +505,16 @@ push_remote_codecs (GabbleMediaStream *stream)
   if (priv->remote_codecs->len == 0)
     return;
 
+  g_debug ("%s: emitting MediaStreamHandler::SetRemoteCodecs signal",
+      G_STRFUNC);
+
   g_signal_emit (stream, signals[SET_REMOTE_CODECS], 0,
                  priv->remote_codecs);
 
-  for (i = 0; i < priv->remote_codecs->len; i++)
-    {
-      g_value_array_free (g_ptr_array_index (priv->remote_codecs, i));
-    }
+  /* FIXME: free */
 
-  g_ptr_array_remove_range (priv->remote_codecs, 0, priv->remote_codecs->len);
+  g_ptr_array_remove_range (priv->remote_codecs, 0,
+      priv->remote_codecs->len);
 }
 
 static void
@@ -504,7 +529,19 @@ push_remote_candidates (GabbleMediaStream *stream)
   if (!priv->ready)
     return;
 
+  if (priv->remote_candidates->len == 0)
+    return;
+  
+  g_debug ("%s: emitting MediaStreamHandler::SetRemoteCandidateList signal",
+      G_STRFUNC);
 
+  g_signal_emit (stream, signals[SET_REMOTE_CANDIDATE_LIST], 0,
+                 priv->remote_candidates);
+
+  /* FIXME: free */
+  
+  g_ptr_array_remove_range (priv->remote_candidates, 0,
+      priv->remote_candidates->len);
 }
 
 gboolean
@@ -538,9 +575,9 @@ gabble_media_stream_parse_remote_codecs (GabbleMediaStream *stream, LmMessageNod
       if (!name)
         return FALSE;
       
-      g_value_init (&codec, TP_CODEC_SET_TYPE);
+      g_value_init (&codec, TP_TYPE_CODEC_STRUCT);
       g_value_set_static_boxed (&codec,
-          dbus_g_type_specialized_construct (TP_CODEC_SET_TYPE));
+          dbus_g_type_specialized_construct (TP_TYPE_CODEC_STRUCT));
       
       dbus_g_type_struct_set (&codec,
           0, id,
@@ -562,11 +599,53 @@ gabble_media_stream_parse_remote_codecs (GabbleMediaStream *stream, LmMessageNod
   return TRUE;
 }
 
+#if 0
+static GPtrArray *
+get_candidate_transports (GabbleMediaStreamPrivate *priv, const gchar *name)
+{
+  GValueArray *candidate;
+  GValue *val;
+  int i;
+  GPtrArray *arr;
+
+  for (i = 0; i < priv->remote_candidates->len; i++)
+    {
+      const gchar *str;
+      
+      candidate = g_ptr_array_index (priv->remote_candidates, i);
+
+      val = g_value_array_get_nth (candidate, 0);
+      str = g_value_get_string (val);
+      if (!strcmp (str, name))
+        {
+          val = g_value_array_get_nth (candidate, 1);
+          return g_value_get_pointer (val);
+        }
+    }
+
+  candidate = g_value_array_new (2);
+  
+  g_value_array_append (candidate, NULL);
+  val = g_value_array_get_nth (candidate, 0);
+  g_value_init (val, G_TYPE_STRING);
+  g_value_set_string (val, name);
+
+  g_value_array_append (candidate, NULL);
+  val = g_value_array_get_nth (candidate, 1);
+  g_value_init (val, G_TYPE_POINTER);
+  arr = g_ptr_array_sized_new (4);
+  g_value_set_pointer (val, arr);
+
+  g_ptr_array_add (priv->remote_candidates, candidate);
+
+  return arr;
+}
+#endif
+
 gboolean
 gabble_media_stream_parse_remote_candidates (GabbleMediaStream *stream, LmMessageNode *session_node)
 {
   GabbleMediaStreamPrivate *priv;
-  gint prev_len;
   LmMessageNode *node;
   const gchar *str;
   
@@ -574,73 +653,145 @@ gabble_media_stream_parse_remote_candidates (GabbleMediaStream *stream, LmMessag
   
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
-  prev_len = priv->remote_candidates->len;
-
   for (node = session_node->children; node; node = node->next)
     {
-      const gchar *c_name, *c_addr, *c_user, *c_pass, *c_proto, *c_type;
-      guint16 c_port;
-      gfloat c_pref;
-      guchar c_net, c_gen;
-      JingleCandidate *candidate;
+      const gchar /**name, */*addr;
+      guint16 port;
+      TpMediaStreamProto proto;
+      gdouble pref;
+      TpMediaStreamTransportType type;
+      const gchar *user, *pass;
+      guchar net, gen;
 
-      c_name = lm_message_node_get_attribute (node, "name");
-      if (!c_name)
+      GValue candidate = { 0 };
+      GPtrArray *transports;
+      GValue transport = { 0 };
+
+
+      /*
+       * Candidate
+       */
+
+      /* id/name: assuming "username" here for now */
+      
+      
+      /*
+       * Transport
+       */
+      
+      /* ip address */
+      addr = lm_message_node_get_attribute (node, "address");
+      if (!addr)
         return FALSE;
       
-      c_addr = lm_message_node_get_attribute (node, "address");
-      if (!c_addr)
-        return FALSE;
-      
+      /* port */
       str = lm_message_node_get_attribute (node, "port");
       if (!str)
         return FALSE;
-      c_port = atoi (str);
-
-      c_user = lm_message_node_get_attribute (node, "username");
-      if (!c_user)
+      port = atoi (str);
+      
+      /* protocol */
+      str = lm_message_node_get_attribute (node, "protocol");
+      if (!str)
         return FALSE;
       
-      c_pass = lm_message_node_get_attribute (node, "password");
-      if (!c_pass)
+      if (!strcmp (str, "udp"))
+        proto = TP_MEDIA_STREAM_PROTO_UDP;
+      else if (!strcmp (str, "tcp"))
+        proto = TP_MEDIA_STREAM_PROTO_TCP;
+      else
         return FALSE;
 
+      /* protocol subtype: only "rtp" is supported here for now */
+      str = lm_message_node_get_attribute (node, "name");
+      if (!str)
+        return FALSE;
+      if (strcmp (str, "rtp"))
+        return FALSE;
+      
+      /* protocol profile: hardcoded to "AVP" for now */
+
+      /* preference */
       str = lm_message_node_get_attribute (node, "preference");
       if (!str)
         return FALSE;
-      c_pref = (gfloat) g_ascii_strtod (str, NULL);
+      pref = g_ascii_strtod (str, NULL);
+
+      /* type */
+      str = lm_message_node_get_attribute (node, "type");
+      if (!str)
+        return FALSE;
       
-      c_proto = lm_message_node_get_attribute (node, "protocol");
-      if (!c_proto)
+      if (!strcmp (str, "local"))
+        type = TP_MEDIA_STREAM_TRANSPORT_TYPE_LOCAL;
+      else if (!strcmp (str, "stun"))
+        type = TP_MEDIA_STREAM_TRANSPORT_TYPE_DERIVED;
+      else if (!strcmp (str, "relay"))
+        type = TP_MEDIA_STREAM_TRANSPORT_TYPE_RELAY;
+      else
+        return FALSE;
+      
+      /* username */
+      user = lm_message_node_get_attribute (node, "username");
+      if (!user)
+        return FALSE;
+      
+      /* password */
+      pass = lm_message_node_get_attribute (node, "password");
+      if (!pass)
         return FALSE;
 
-      c_type = lm_message_node_get_attribute (node, "type");
-      if (!c_type)
-        return FALSE;
-
+      /* unknown */
       str = lm_message_node_get_attribute (node, "network");
       if (!str)
         return FALSE;
-      c_net = atoi (str);
+      net = atoi (str);
       
+      /* unknown */
       str = lm_message_node_get_attribute (node, "generation");
       if (!str)
         return FALSE;
-      c_gen = atoi (str);
+      gen = atoi (str);
 
-      candidate = jingle_candidate_new (c_name, c_addr, c_port,
-                                        c_user, c_pass, c_pref,
-                                        c_proto, c_type, c_net,
-                                        c_gen);
 
-      g_ptr_array_add (priv->remote_candidates, candidate);
+      g_value_init (&transport, TP_TYPE_TRANSPORT_STRUCT);
+      g_value_set_static_boxed (&transport,
+          dbus_g_type_specialized_construct (TP_TYPE_TRANSPORT_STRUCT));
+
+      dbus_g_type_struct_set (&transport,
+          0, 0,         /* component number */
+          1, addr,
+          2, port,
+          3, proto,
+          4, "RTP",
+          5, "AVP",
+          6, pref,
+          7, type,
+          8, user,
+          9, pass,
+          G_MAXUINT);
+
+      transports = g_ptr_array_sized_new (1);
+      g_ptr_array_add (transports, g_value_get_boxed (&transport));
+      
+      
+      g_value_init (&candidate, TP_TYPE_CANDIDATE_STRUCT);
+      g_value_set_static_boxed (&candidate,
+          dbus_g_type_specialized_construct (TP_TYPE_CANDIDATE_STRUCT));
+
+      dbus_g_type_struct_set (&candidate,
+          0, user,
+          1, transports,
+          G_MAXUINT);
+
+      g_ptr_array_add (priv->remote_candidates, g_value_get_boxed (&candidate));
+
+      g_debug ("%s: added new candidate %s, "
+               "%d candidate(s) in total now",
+               G_STRFUNC,
+               user,
+               priv->remote_candidates->len);
     }
-  
-  g_debug ("%s: parsed %d new remote candidate(s), "
-           "%d remote candidate(s) in total now",
-           G_STRFUNC,
-           priv->remote_candidates->len - prev_len,
-           priv->remote_candidates->len);
 
   push_remote_candidates (stream);
   

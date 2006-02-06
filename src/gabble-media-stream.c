@@ -88,42 +88,6 @@ enum
   LAST_PROPERTY
 };
 
-typedef struct _JingleCandidate JingleCandidate;
-typedef struct _JingleCodec JingleCodec;
-
-struct _JingleCandidate {
-    gchar *name;
-    gchar *address;
-    guint16 port;
-    gchar *username;
-    gchar *password;
-    gfloat preference;
-    gchar *protocol;
-    gchar *type;
-    guchar network;
-    guchar generation;
-};
-
-struct _JingleCodec {
-    guchar id;
-    gchar *name;
-};
-
-JingleCandidate *jingle_candidate_new (const gchar *name,
-                                       const gchar *address,
-                                       guint16 port,
-                                       const gchar *username,
-                                       const gchar *password,
-                                       gfloat preference,
-                                       const gchar *protocol,
-                                       const gchar *type,
-                                       guchar network,
-                                       guchar generation);
-void jingle_candidate_free (JingleCandidate *candidate);
-
-JingleCodec *jingle_codec_new (guchar id, const gchar *name);
-void jingle_codec_free (JingleCodec *codec);
-
 /* private structure */
 typedef struct _GabbleMediaStreamPrivate GabbleMediaStreamPrivate;
 
@@ -796,72 +760,5 @@ gabble_media_stream_parse_remote_candidates (GabbleMediaStream *stream, LmMessag
   push_remote_candidates (stream);
   
   return TRUE;
-}
-
-/*
- * JingleCandidate
- */
-
-JingleCandidate *jingle_candidate_new (const gchar *name,
-                                       const gchar *address,
-                                       guint16 port,
-                                       const gchar *username,
-                                       const gchar *password,
-                                       gfloat preference,
-                                       const gchar *protocol,
-                                       const gchar *type,
-                                       guchar network,
-                                       guchar generation)
-{
-  JingleCandidate *candidate = g_new (JingleCandidate, 1);
-
-  candidate->name = g_strdup (name);
-  candidate->address = g_strdup (address);
-  candidate->port = port;
-  candidate->username = g_strdup (username);
-  candidate->password = g_strdup (password);
-  candidate->preference = preference;
-  candidate->protocol = g_strdup (protocol);
-  candidate->type = g_strdup (type);
-  candidate->network = network;
-  candidate->generation = generation;
-
-  return candidate;
-}
-
-void jingle_candidate_free (JingleCandidate *candidate)
-{
-  g_free (candidate->name);
-  g_free (candidate->address);
-  g_free (candidate->username);
-  g_free (candidate->password);
-  g_free (candidate->protocol);
-  g_free (candidate->type);
-  
-  g_free (candidate);
-}
-
-
-/*
- * JingleCodec
- */
-
-JingleCodec *
-jingle_codec_new (guchar id, const gchar *name)
-{
-  JingleCodec *codec = g_new (JingleCodec, 1);
-
-  codec->id = id;
-  codec->name = g_strdup (name);
-
-  return codec;
-}
-
-void
-jingle_codec_free (JingleCodec *codec)
-{
-  g_free (codec->name);
-
-  g_free (codec);
 }
 

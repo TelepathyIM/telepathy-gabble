@@ -524,7 +524,7 @@ gabble_media_stream_parse_remote_codecs (GabbleMediaStream *stream, LmMessageNod
     {
       guchar id;
       const gchar *name;
-      GValue codec;
+      GValue codec = { 0 };
       
       /* id of codec */
       str = lm_message_node_get_attribute (node, "id");

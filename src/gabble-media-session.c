@@ -360,7 +360,10 @@ gboolean gabble_media_session_dispatch_action (GabbleMediaSession *session,
       else if (!strcmp (action, "candidates")) /* "negotiate" in JEP */
         {
           if (!gabble_media_stream_parse_remote_candidates (priv->stream, session_node))
-            return FALSE;
+            {
+              g_warning ("%s: gabble_media_stream_parse_remote_candidates failed", G_STRFUNC);
+              return FALSE;
+            }
         }
       else
         {

@@ -1,5 +1,5 @@
 /*
- * telepathy-constants.h - constants used in telepathy 
+ * telepathy-constants.h - constants used in telepathy
  * Copyright (C) 2005 Collabora Ltd.
  * Copyright (C) 2005 Nokia Corporation
  *
@@ -19,7 +19,7 @@
  */
 
 #ifndef __TELEPATHY_CONSTANTS_H__
-#define __TELEPATHY_CONSTANTS_H__ 
+#define __TELEPATHY_CONSTANTS_H__
 
 #include <glib.h>
 G_BEGIN_DECLS
@@ -41,11 +41,12 @@ TP_HANDLE_TYPE_LIST = 3
 } TpHandleType;
 
 typedef enum {
-TP_CONN_PRESENCE_TYPE_OFFLINE = 0,
-TP_CONN_PRESENCE_TYPE_AVAILABLE = 1,
-TP_CONN_PRESENCE_TYPE_AWAY = 2,
-TP_CONN_PRESENCE_TYPE_EXTENDED_AWAY = 3,
-TP_CONN_PRESENCE_TYPE_HIDDEN = 4
+TP_CONN_PRESENCE_TYPE_UNSET = 0,
+TP_CONN_PRESENCE_TYPE_OFFLINE = 1,
+TP_CONN_PRESENCE_TYPE_AVAILABLE = 2,
+TP_CONN_PRESENCE_TYPE_AWAY = 3,
+TP_CONN_PRESENCE_TYPE_EXTENDED_AWAY = 4,
+TP_CONN_PRESENCE_TYPE_HIDDEN = 5
 } TpConnectionPresenceType;
 
 typedef enum {

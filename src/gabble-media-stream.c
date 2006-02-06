@@ -34,6 +34,15 @@
 
 G_DEFINE_TYPE(GabbleMediaStream, gabble_media_stream, G_TYPE_OBJECT)
 
+#define TP_CODEC_SET_TYPE (dbus_g_type_get_struct ("GValueArray", \
+      G_TYPE_UINT, \
+      G_TYPE_STRING, \
+      G_TYPE_UINT, \
+      G_TYPE_UINT, \
+      G_TYPE_UINT, \
+      DBUS_TYPE_G_STRING_STRING_HASHTABLE, \
+      G_TYPE_INVALID))
+
 /* signal enum */
 enum
 {
@@ -132,8 +141,6 @@ gabble_media_stream_constructor (GType type, guint n_props,
   priv->ready = FALSE;
 
   priv->remote_codecs = g_ptr_array_sized_new (12);
-  dbus_g_collection_set_signature (priv->remote_codecs, "(usuuua{ss})");
-  
   priv->remote_candidates = g_ptr_array_sized_new (4);
 
   bus = tp_get_bus ();
@@ -515,66 +522,37 @@ gabble_media_stream_parse_remote_codecs (GabbleMediaStream *stream, LmMessageNod
   
   for (node = desc_node->children; node; node = node->next)
     {
-      GValueArray *codec = g_value_array_new (7);
-      GValue *val;
       guchar id;
       const gchar *name;
+      GValue codec;
       
       /* id of codec */
       str = lm_message_node_get_attribute (node, "id");
       if (!str)
-        {
-          g_value_array_free (codec);
-          return FALSE;
-        }
+        return FALSE;
 
       id = atoi(str);
-
-      g_value_array_append (codec, NULL);
-      val = g_value_array_get_nth (codec, 0);
-      g_value_init (val, G_TYPE_UINT);
-      g_value_set_uint (val, id);
 
       /* codec name */
       name = lm_message_node_get_attribute (node, "name");
       if (!name)
-        {
-          g_value_array_free (codec);
-          return FALSE;
-        }
+        return FALSE;
       
-      g_value_array_append (codec, NULL);
-      val = g_value_array_get_nth (codec, 1);
-      g_value_init (val, G_TYPE_STRING);
-      g_value_set_string (val, name);
-
-      /* media type */
-      g_value_array_append (codec, NULL);
-      val = g_value_array_get_nth (codec, 2);
-      g_value_init (val, G_TYPE_UINT);
-      g_value_set_uint (val, TP_MEDIA_STREAM_TYPE_AUDIO); /* FIXME: this enum happens to match
-                                                             FarsightMediaType, is this the intention? */
+      g_value_init (&codec, TP_CODEC_SET_TYPE);
+      g_value_set_static_boxed (&codec,
+          dbus_g_type_specialized_construct (TP_CODEC_SET_TYPE));
       
-      /* clock rate */
-      g_value_array_append (codec, NULL);
-      val = g_value_array_get_nth (codec, 3);
-      g_value_init (val, G_TYPE_UINT);
-      g_value_set_uint (val, 0);                          /* FIXME: is this a valid default? */
+      dbus_g_type_struct_set (&codec,
+          0, id,
+          1, name,
+          2, TP_MEDIA_STREAM_TYPE_AUDIO, /* FIXME: this enum happens to match
+                                            FarsightMediaType, is this the intention? */
+          3, 0,                          /* FIXME: valid default clock rate? */
+          4, 1,                          /* number of supported channels */
+          5, g_hash_table_new (g_str_hash, g_str_equal),
+          G_MAXUINT);
       
-      /* number of supported channels */
-      g_value_array_append (codec, NULL);
-      val = g_value_array_get_nth (codec, 4);
-      g_value_init (val, G_TYPE_UINT);
-      g_value_set_uint (val, 1);                          /* FIXME: assuming this is a valid default as well */
-      
-      /* string key-value pairs for supported optional parameters */
-      g_value_array_append (codec, NULL);
-      val = g_value_array_get_nth (codec, 5);
-      g_value_init (val, DBUS_TYPE_G_STRING_STRING_HASHTABLE);
-      g_value_set_static_boxed (val, g_hash_table_new (g_str_hash, g_str_equal));
-
-      
-      g_ptr_array_add (priv->remote_codecs, codec);
+      g_ptr_array_add (priv->remote_codecs, g_value_get_boxed (&codec));
     }
 
   g_debug ("%s: parsed %d remote codecs", G_STRFUNC, priv->remote_codecs->len);

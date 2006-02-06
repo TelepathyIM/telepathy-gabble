@@ -616,7 +616,6 @@ gboolean gabble_im_channel_list_pending_messages (GabbleIMChannel *obj, GPtrArra
 
   count = g_queue_get_length (priv->pending_messages);
   messages = g_ptr_array_sized_new (count);
-  dbus_g_collection_set_signature (messages, "(uuuus)");
 
   for (cur = g_queue_peek_head_link(priv->pending_messages);
        cur != NULL;

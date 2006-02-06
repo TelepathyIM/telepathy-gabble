@@ -45,6 +45,8 @@
 
 #define XMLNS_ROSTER    "jabber:iq:roster"
 
+#define TP_CAPABILITY_PAIR_TYPE (dbus_g_type_get_struct ("GValueArray", G_TYPE_STRING, G_TYPE_UINT, G_TYPE_INVALID))
+
 #define ERROR_IF_NOT_CONNECTED(PRIV, ERROR) \
   if ((PRIV)->status != TP_CONN_STATUS_CONNECTED) \
     { \
@@ -419,7 +421,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
                   0,
                   NULL, NULL,
                   gabble_connection_marshal_VOID__INT_BOXED_BOXED,
-                  G_TYPE_NONE, 3, G_TYPE_UINT, (dbus_g_type_get_collection ("GPtrArray", G_TYPE_VALUE_ARRAY)), (dbus_g_type_get_collection ("GPtrArray", G_TYPE_VALUE_ARRAY)));
+                  G_TYPE_NONE, 3, G_TYPE_UINT, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_STRING, G_TYPE_UINT, G_TYPE_INVALID)))), (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_STRING, G_TYPE_UINT, G_TYPE_INVALID)))));
 
   signals[NEW_CHANNEL] =
     g_signal_new ("new-channel",
@@ -437,7 +439,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
                   0,
                   NULL, NULL,
                   gabble_connection_marshal_VOID__BOXED,
-                  G_TYPE_NONE, 1, (dbus_g_type_get_map ("GHashTable", G_TYPE_UINT, G_TYPE_VALUE_ARRAY)));
+                  G_TYPE_NONE, 1, (dbus_g_type_get_map ("GHashTable", G_TYPE_UINT, (dbus_g_type_get_struct ("GValueArray", G_TYPE_UINT, (dbus_g_type_get_map ("GHashTable", G_TYPE_STRING, (dbus_g_type_get_map ("GHashTable", G_TYPE_STRING, G_TYPE_VALUE)))), G_TYPE_INVALID)))));
 
   signals[STATUS_CHANGED] =
     g_signal_new ("status-changed",
@@ -1127,8 +1129,6 @@ emit_presence_update (GabbleConnection *self,
 
   presence = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
                                     (GDestroyNotify) g_value_array_free);
-
-  dbus_g_map_set_value_signature (presence, "(ua{sa{sv}})");
 
   for (;*contact_handles; contact_handles++)
     {
@@ -2241,7 +2241,7 @@ gboolean gabble_connection_disconnect (GabbleConnection *obj, GError **error)
  */
 gboolean gabble_connection_get_capabilities (GabbleConnection *obj, guint handle, GPtrArray ** ret, GError **error)
 {
-  GValueArray* vals;
+  GValue vals ={0.};
   GabbleConnectionPrivate *priv;
 
   g_assert (GABBLE_IS_CONNECTION (obj));
@@ -2261,33 +2261,17 @@ gboolean gabble_connection_get_capabilities (GabbleConnection *obj, guint handle
     }
 
   *ret = g_ptr_array_sized_new (1);
-  dbus_g_collection_set_signature (*ret, "(su)");
 
-  vals = g_value_array_new (2);
+  g_value_init (&vals, TP_CAPABILITY_PAIR_TYPE);
+  g_value_set_static_boxed (&vals,
+    dbus_g_type_specialized_construct (TP_CAPABILITY_PAIR_TYPE));
+  
+  dbus_g_type_struct_set (&vals,
+                        0, TP_IFACE_CHANNEL_TYPE_TEXT,
+                        1, TP_CONN_CAPABILITY_TYPE_CREATE,
+                        G_MAXUINT);
 
-  g_value_array_append (vals, NULL);
-  g_value_init (g_value_array_get_nth (vals, 0), G_TYPE_STRING);
-  g_value_set_string (g_value_array_get_nth (vals, 0),
-    TP_IFACE_CHANNEL_TYPE_TEXT);
-
-  g_value_array_append (vals, NULL);
-  g_value_init (g_value_array_get_nth (vals, 1), G_TYPE_UINT);
-  g_value_set_uint (g_value_array_get_nth (vals, 1), TP_CONN_CAPABILITY_TYPE_CREATE);
-
-  g_ptr_array_add (*ret, vals);
-
-/*  vals = g_value_array_new (2);
-
-  g_value_array_append (vals, NULL);
-  g_value_init (g_value_array_get_nth (vals, 0), G_TYPE_STRING);
-  g_value_set_string (g_value_array_get_nth (vals, 0),
-    TP_IFACE_CHANNEL_TYPE_TEXT);
-
-  g_value_array_append (vals, NULL);
-  g_value_init (g_value_array_get_nth (vals, 1), G_TYPE_UINT);
-  g_value_set_uint (g_value_array_get_nth (vals, 1), TP_CONN_CAPABILITY_TYPE_INVITE);
-
-  g_ptr_array_add (*ret, vals); */
+  g_ptr_array_add (*ret, g_value_get_boxed (&vals));
 
   return TRUE;
 }
@@ -2435,7 +2419,6 @@ gboolean gabble_connection_get_statuses (GabbleConnection *obj, GHashTable ** re
 
   *ret = g_hash_table_new_full (g_str_hash, g_str_equal,
                                 NULL, (GDestroyNotify) g_value_array_free);
-  dbus_g_map_set_value_signature (*ret, "(ubba{ss})");
 
   for (i=0; i < LAST_GABBLE_PRESENCE; i++)
     {
@@ -2657,7 +2640,6 @@ gboolean gabble_connection_list_channels (GabbleConnection *obj, GPtrArray ** re
 
   count = g_hash_table_size (priv->im_channels);
   channels = g_ptr_array_sized_new (count);
-  dbus_g_collection_set_signature (channels, "(osuu)");
 
   g_hash_table_foreach (priv->im_channels, list_channel_hash_foreach, channels);
 

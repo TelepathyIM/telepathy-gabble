@@ -35,6 +35,12 @@
 
 G_DEFINE_TYPE(GabbleMediaChannel, gabble_media_channel, G_TYPE_OBJECT)
 
+#define TP_SESSION_HANDLER_SET_TYPE (dbus_g_type_get_struct ("GValueArray", \
+      G_TYPE_UINT, \
+      DBUS_TYPE_G_OBJECT_PATH, \
+      G_TYPE_STRING, \
+      G_TYPE_INVALID))
+
 /* signal enum */
 enum
 {
@@ -411,26 +417,24 @@ get_session_handlers_hash_foreach (gpointer key,
   GabbleHandle member = GPOINTER_TO_UINT (key);
   GObject *session_handler = G_OBJECT (value);
   GPtrArray *handlers = (GPtrArray *) data;
-  GValueArray *vals;
+  GValue handler;
   gchar *path;
 
-  vals = g_value_array_new (3);
+  g_value_init (&handler, TP_SESSION_HANDLER_SET_TYPE);
+  g_value_set_static_boxed (&handler,
+      dbus_g_type_specialized_construct (TP_SESSION_HANDLER_SET_TYPE));
   
-  g_value_array_append (vals, NULL);
-  g_value_init (g_value_array_get_nth (vals, 0), G_TYPE_UINT);
-  g_value_set_uint (g_value_array_get_nth (vals, 0), member);
-  
-  g_value_array_append (vals, NULL);
-  g_value_init (g_value_array_get_nth (vals, 1), DBUS_TYPE_G_OBJECT_PATH);
   g_object_get (session_handler, "object-path", &path, NULL);
-  g_value_set_boxed (g_value_array_get_nth (vals, 1), path);
+
+  dbus_g_type_struct_set (&handler,
+      0, member,
+      1, path,
+      2, "rtp",
+      G_MAXUINT);
+  
   g_free (path);
 
-  g_value_array_append (vals, NULL);
-  g_value_init (g_value_array_get_nth (vals, 2), G_TYPE_STRING);
-  g_value_set_string (g_value_array_get_nth (vals, 2), "rtp");
-
-  g_ptr_array_add (handlers, vals);
+  g_ptr_array_add (handlers, g_value_get_boxed (&handler));
 }
 
 /**
@@ -459,7 +463,6 @@ gboolean gabble_media_channel_get_session_handlers (GabbleMediaChannel *obj, GPt
   
   count = g_hash_table_size (priv->sessions);
   handlers = g_ptr_array_sized_new (count);
-  dbus_g_collection_set_signature (handlers, "(uos)");
   
   g_hash_table_foreach (priv->sessions,
       get_session_handlers_hash_foreach,

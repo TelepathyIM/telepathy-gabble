@@ -80,7 +80,7 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                   0,
                   NULL, NULL,
                   gabble_media_stream_marshal_VOID__STRING_BOXED,
-                  G_TYPE_NONE, 2, G_TYPE_STRING, (dbus_g_type_get_collection ("GPtrArray", G_TYPE_VALUE_ARRAY)));
+                  G_TYPE_NONE, 2, G_TYPE_STRING, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_UINT, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_DOUBLE, G_TYPE_UINT, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INVALID)))));
 
   signals[REMOVE_REMOTE_CANDIDATE] =
     g_signal_new ("remove-remote-candidate",
@@ -107,7 +107,7 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                   0,
                   NULL, NULL,
                   gabble_media_stream_marshal_VOID__BOXED,
-                  G_TYPE_NONE, 1, (dbus_g_type_get_collection ("GPtrArray", G_TYPE_VALUE_ARRAY)));
+                  G_TYPE_NONE, 1, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_STRING, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_UINT, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_DOUBLE, G_TYPE_UINT, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INVALID)))), G_TYPE_INVALID)))));
 
   signals[SET_REMOTE_CODECS] =
     g_signal_new ("set-remote-codecs",
@@ -116,7 +116,7 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                   0,
                   NULL, NULL,
                   gabble_media_stream_marshal_VOID__BOXED,
-                  G_TYPE_NONE, 1, (dbus_g_type_get_collection ("GPtrArray", G_TYPE_VALUE_ARRAY)));
+                  G_TYPE_NONE, 1, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_UINT, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, DBUS_TYPE_G_STRING_STRING_HASHTABLE, G_TYPE_INVALID)))));
 
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_media_stream_class), &dbus_glib_gabble_media_stream_object_info);
 }

@@ -83,8 +83,8 @@ typedef enum
 const gchar *gabble_presence_values [LAST_GABBLE_PRESENCE] =
 {
   "available",
-  "away",
   "chat",
+  "away",
   "dnd",
   "xa",
   "offline"

@@ -253,7 +253,7 @@ gboolean gabble_media_stream_new_native_candidate (GabbleMediaStream *obj, const
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_stream_ready (GabbleMediaStream *obj, GError **error)
+gboolean gabble_media_stream_ready (GabbleMediaStream *obj, const GPtrArray * codecs, GError **error)
 {
   return TRUE;
 }

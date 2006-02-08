@@ -32,6 +32,7 @@
       <arg direction="in"  type="s" name="message" />
     </method>
     <method name="Ready">
+      <arg direction="in"  type="a(usuuua{ss})" name="codecs" />
     </method>
     <signal name="SetRemoteCodecs">
       <arg type="a(usuuua{ss})" name="codecs" />

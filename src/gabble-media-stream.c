@@ -415,7 +415,7 @@ static void push_remote_candidates (GabbleMediaStream *stream);
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_stream_ready (GabbleMediaStream *obj, GError **error)
+gboolean gabble_media_stream_ready (GabbleMediaStream *obj, const GPtrArray * codecs, GError **error)
 {
   GabbleMediaStreamPrivate *priv;
   

@@ -58,7 +58,7 @@ gboolean gabble_media_stream_error (GabbleMediaStream *obj, guint errno, const g
 gboolean gabble_media_stream_native_candidates_prepared (GabbleMediaStream *obj, GError **error);
 gboolean gabble_media_stream_new_active_candidate_pair (GabbleMediaStream *obj, const gchar * native_candidate_id, const gchar * remote_candidate_id, GError **error);
 gboolean gabble_media_stream_new_native_candidate (GabbleMediaStream *obj, const gchar * candidate_id, const GPtrArray * transports, GError **error);
-gboolean gabble_media_stream_ready (GabbleMediaStream *obj, GError **error);
+gboolean gabble_media_stream_ready (GabbleMediaStream *obj, const GPtrArray * codecs, GError **error);
 gboolean gabble_media_stream_supported_codecs (GabbleMediaStream *obj, const GPtrArray * codecs, GError **error);
 
 

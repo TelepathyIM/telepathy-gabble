@@ -63,6 +63,7 @@
       (ERROR) = g_error_new(TELEPATHY_ERRORS, NotAvailable, \
                             "Connection is disconnected"); \
       dbus_g_method_return_error ((CONTEXT), (ERROR)); \
+      g_error_free ((ERROR)); \
       return FALSE; \
     }
 
@@ -2480,8 +2481,9 @@ gboolean gabble_connection_hold_handle (GabbleConnection *obj, guint handle_type
 
       error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
                            "invalid handle type %u", handle_type);
-
       dbus_g_method_return_error (context, error);
+      g_error_free (error);
+
       return FALSE;
     }
 
@@ -2493,8 +2495,9 @@ gboolean gabble_connection_hold_handle (GabbleConnection *obj, guint handle_type
 
       error = g_error_new (TELEPATHY_ERRORS, InvalidHandle,
                             "unknown handle %u", handle);
-
       dbus_g_method_return_error (context, error);
+      g_error_free (error);
+
       return FALSE;
     }
 
@@ -2684,6 +2687,8 @@ gboolean gabble_connection_release_handle (GabbleConnection *obj, guint handle_t
       error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
                            "invalid handle type %u", handle_type);
       dbus_g_method_return_error (context, error);
+      g_error_free (error);
+
       return FALSE;
     }
 
@@ -2695,14 +2700,16 @@ gboolean gabble_connection_release_handle (GabbleConnection *obj, guint handle_t
 
       error = g_error_new (TELEPATHY_ERRORS, InvalidHandle,
                             "unknown handle %u", handle);
-
       dbus_g_method_return_error (context, error);
+      g_error_free (error);
+
       return FALSE;
     }
 
   sender = dbus_g_method_get_sender (context);
   _gabble_connection_client_release_handle (obj, sender, handle, handle_type);
   dbus_g_method_return (context);
+
   return TRUE;
 }
 
@@ -2865,8 +2872,9 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
 
       error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
                            "invalid handle type %u", handle_type);
-
       dbus_g_method_return_error (context, error);
+      g_error_free (error);
+
       return FALSE;
     }
 
@@ -2879,8 +2887,9 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
 
           error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
                                "requested handle %s has no @ in", name);
-
           dbus_g_method_return_error (context, error);
+          g_error_free (error);
+
           return FALSE;
         }
       else
@@ -2903,8 +2912,9 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
 
           error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
                                "requested list channel %s not available", name);
-
           dbus_g_method_return_error (context, error);
+          g_error_free (error);
+
           return FALSE;
         }
       break;
@@ -2913,8 +2923,9 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
 
       error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
                           "unimplemented handle type %u", handle_type);
-
       dbus_g_method_return_error (context, error);
+      g_error_free (error);
+
       return FALSE;
     }
 

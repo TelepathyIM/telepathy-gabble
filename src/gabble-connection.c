@@ -812,6 +812,16 @@ _gabble_connection_connect (GabbleConnection *conn,
 
       priv->self_handle = gabble_handle_for_contact (priv->handles,
                                                      jid, FALSE);
+
+      if (priv->self_handle == 0)
+        {
+          /* FIXME: check this sooner and return an error to the user
+           * this will be when we implement Connect() in spec 0.13 */
+          g_error ("%s: invalid jid %s", G_STRFUNC, jid);
+
+          return FALSE;
+        }
+
       valid = gabble_handle_ref (priv->handles,
                                  TP_HANDLE_TYPE_CONTACT,
                                  priv->self_handle);
@@ -1053,8 +1063,16 @@ connection_message_cb (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
-  body = lm_message_node_get_value (body_node);
   handle = gabble_handle_for_contact (priv->handles, from, FALSE);
+
+  if (handle == 0)
+    {
+      HANDLER_DEBUG (msg_node, "ignoring message node from malformed jid");
+
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    }
+
+  body = lm_message_node_get_value (body_node);
 
   g_debug ("%s: message from %s (handle %u), body:\n%s",
            G_STRFUNC, from, handle, body);
@@ -1340,6 +1358,13 @@ connection_presence_cb (LmMessageHandler *handler,
     }
 
   handle = gabble_handle_for_contact (priv->handles, from, FALSE);
+
+  if (handle == 0)
+    {
+      HANDLER_DEBUG (pres_node, "ignoring presence from malformed jid");
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    }
+
   if (handle == priv->self_handle)
     {
       HANDLER_DEBUG (pres_node, "ignoring presence from ourselves on another resource");
@@ -1551,6 +1576,13 @@ connection_iq_roster_cb (LmMessageHandler *handler,
               continue;
             }
 
+          handle = gabble_handle_for_contact (priv->handles, jid, FALSE);
+          if (handle == 0)
+            {
+              HANDLER_DEBUG (item_node, "item jid is malformed, skipping");
+              continue;
+            }
+
           subscription = lm_message_node_get_attribute (item_node, "subscription");
           if (!subscription)
             {
@@ -1558,7 +1590,6 @@ connection_iq_roster_cb (LmMessageHandler *handler,
               continue;
             }
 
-          handle = gabble_handle_for_contact (priv->handles, jid, FALSE);
           ask = lm_message_node_get_attribute (item_node, "ask");
 
           if (!strcmp (subscription, "both"))
@@ -2895,6 +2926,18 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
       else
         {
           handle = gabble_handle_for_contact (priv->handles, name, FALSE);
+
+          if (handle == 0)
+            {
+              g_debug ("%s: requested handle %s was invalid", G_STRFUNC, name);
+
+              error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                                   "requested handle %s was invalid", name);
+              dbus_g_method_return_error (context, error);
+              g_error_free (error);
+
+              return FALSE;
+            }
         }
       break;
    case TP_HANDLE_TYPE_LIST:

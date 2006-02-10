@@ -63,6 +63,10 @@ gboolean _gabble_connection_send (GabbleConnection *conn, LmMessage *msg, GError
 void _gabble_connection_client_hold_handle (GabbleConnection *conn, gchar* client_name, GabbleHandle handle, TpHandleType type);
 gboolean _gabble_connection_client_release_handle (GabbleConnection *conn, gchar* client_name, GabbleHandle handle, TpHandleType type);
 
+guint32 _gabble_connection_jingle_session_allocate (GabbleConnection *conn);
+void _gabble_connection_jingle_session_register (GabbleConnection *conn, guint32 sid, gpointer session);
+void _gabble_connection_jingle_session_unregister (GabbleConnection *conn, guint32 sid);
+
 gboolean gabble_connection_add_status (GabbleConnection *obj, const gchar * status, GHashTable * parms, GError **error);
 gboolean gabble_connection_advertise_capabilities (GabbleConnection *obj, const gchar ** add, const gchar ** remove, GError **error);
 gboolean gabble_connection_clear_status (GabbleConnection *obj, GError **error);

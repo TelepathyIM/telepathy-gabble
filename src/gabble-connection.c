@@ -1801,10 +1801,35 @@ ack_iq_message (GabbleConnection *conn, const gchar *to,
   lm_message_unref (msg);
 }
 
-static void
-jingle_session_register (GabbleConnection *conn,
-                         guint32 sid,
-                         GabbleMediaSession *session)
+guint32
+_gabble_connection_jingle_session_allocate (GabbleConnection *conn)
+{
+  GabbleConnectionPrivate *priv;
+  guint32 val;
+  gboolean unique = FALSE;
+
+  g_assert (GABBLE_IS_CONNECTION (conn));
+  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  
+  while (!unique)
+    {
+      gpointer k, v;
+      
+      val = g_random_int_range (1000000, G_MAXINT);
+
+      unique = !g_hash_table_lookup_extended (priv->jingle_sessions,
+                                              GUINT_TO_POINTER (val), &k, &v);
+    }
+
+  g_hash_table_insert (priv->jingle_sessions, GUINT_TO_POINTER (val), NULL);
+  
+  return val;
+}
+
+void
+_gabble_connection_jingle_session_register (GabbleConnection *conn,
+                                            guint32 sid,
+                                            gpointer session)
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
@@ -1813,10 +1838,9 @@ jingle_session_register (GabbleConnection *conn,
   g_hash_table_insert (priv->jingle_sessions, GUINT_TO_POINTER (sid), session);
 }
 
-#if 0
-static void
-jingle_session_unregister (GabbleConnection *conn,
-                           guint32 sid)
+void
+_gabble_connection_jingle_session_unregister (GabbleConnection *conn,
+                                              guint32 sid)
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
@@ -1824,7 +1848,6 @@ jingle_session_unregister (GabbleConnection *conn,
 
   g_hash_table_remove (priv->jingle_sessions, GUINT_TO_POINTER (sid));
 }
-#endif
 
 /**
  * connection_iq_jingle_cb
@@ -1901,8 +1924,6 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
       
       chan = new_media_channel (conn, handle, FALSE);
       session = gabble_media_channel_create_session (chan, handle, sid);
-      
-      jingle_session_register (conn, sid, session);
     }
 
   if (gabble_media_session_dispatch_action (session, action, session_node))

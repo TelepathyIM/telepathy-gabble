@@ -2962,7 +2962,7 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
         }
       break;
     default:
-      g_debug ("request_handle: unimplemented handle type %u", handle_type);
+      g_debug ("%s: unimplemented handle type %u", G_STRFUNC, handle_type);
 
       error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
                           "unimplemented handle type %u", handle_type);

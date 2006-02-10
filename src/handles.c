@@ -300,8 +300,10 @@ gabble_handle_for_contact (GabbleHandleRepo *repo,
                             with_resource ? &resource
                                           : NULL);
 
-  g_assert (username != NULL);
-  g_assert (*username != '\0');
+  if (username == NULL || *username == '\0')
+    {
+      return 0;
+    }
 
   if (with_resource && resource != NULL)
     {

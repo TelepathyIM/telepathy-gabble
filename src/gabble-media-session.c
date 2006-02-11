@@ -32,6 +32,8 @@
 
 #include "gabble-media-channel.h"
 
+#include "gabble-connection.h"
+
 #include "telepathy-helpers.h"
 
 G_DEFINE_TYPE(GabbleMediaSession, gabble_media_session, G_TYPE_OBJECT)
@@ -51,6 +53,8 @@ enum
   PROP_MEDIA_CHANNEL = 1,
   PROP_OBJECT_PATH,
   PROP_SESSION_ID,
+  PROP_INITIATOR,
+  PROP_PEER,
   LAST_PROPERTY
 };
 
@@ -65,6 +69,7 @@ typedef struct _GabbleMediaSessionPrivate GabbleMediaSessionPrivate;
 
 struct _GabbleMediaSessionPrivate
 {
+  GabbleConnection *connection;
   GabbleMediaChannel *channel;
   gchar *object_path;
 
@@ -73,6 +78,8 @@ struct _GabbleMediaSessionPrivate
   gboolean ready;
   
   guint32 id;
+  GabbleHandle initiator;
+  GabbleHandle peer;
   JingleSessionState state;
   
   gboolean dispose_has_run;
@@ -122,7 +129,10 @@ gabble_media_session_constructor (GType type, guint n_props,
   obj = G_OBJECT_CLASS (gabble_media_session_parent_class)->
            constructor (type, n_props, props);
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (GABBLE_MEDIA_SESSION (obj));
-
+  
+  /* get a handle to our GabbleConnection */
+  g_object_get (priv->channel, "connection", &priv->connection, NULL);
+  
   priv->ready = FALSE;
 
   priv->state = JS_STATE_PENDING;
@@ -154,6 +164,12 @@ gabble_media_session_get_property (GObject    *object,
     case PROP_SESSION_ID:
       g_value_set_uint (value, priv->id);
       break;
+    case PROP_INITIATOR:
+      g_value_set_uint (value, priv->initiator);
+      break;
+    case PROP_PEER:
+      g_value_set_uint (value, priv->peer);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -181,6 +197,12 @@ gabble_media_session_set_property (GObject      *object,
       break;
     case PROP_SESSION_ID:
       priv->id = g_value_get_uint (value);
+      break;
+    case PROP_INITIATOR:
+      priv->initiator = g_value_get_uint (value);
+      break;
+    case PROP_PEER:
+      priv->peer = g_value_get_uint (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -236,6 +258,26 @@ gabble_media_session_class_init (GabbleMediaSessionClass *gabble_media_session_c
                                   G_PARAM_STATIC_NAME |
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_SESSION_ID, param_spec);
+  
+  param_spec = g_param_spec_uint ("initiator", "Session initiator",
+                                  "The GabbleHandle representing the contact "
+                                  "who initiated the session.",
+                                  0, G_MAXUINT32, 0,
+                                  G_PARAM_CONSTRUCT_ONLY |
+                                  G_PARAM_READWRITE |
+                                  G_PARAM_STATIC_NAME |
+                                  G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_INITIATOR, param_spec);
+  
+  param_spec = g_param_spec_uint ("peer", "Session peer",
+                                  "The GabbleHandle representing the contact "
+                                  "with whom this session communicates.",
+                                  0, G_MAXUINT32, 0,
+                                  G_PARAM_CONSTRUCT_ONLY |
+                                  G_PARAM_READWRITE |
+                                  G_PARAM_STATIC_NAME |
+                                  G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_PEER, param_spec);
 
   signals[NEW_MEDIA_STREAM_HANDLER] =
     g_signal_new ("new-media-stream-handler",
@@ -392,5 +434,92 @@ gboolean gabble_media_session_dispatch_action (GabbleMediaSession *session,
   };
 
   return TRUE;
+}
+
+#if 0
+static const gchar *
+get_jid_for_self (GabbleMediaSession *session)
+{
+  GabbleMediaSessionPrivate *priv;
+  GabbleHandleRepo *repo;
+  GabbleHandle handle;
+  GError *error;
+
+  g_assert (GABBLE_IS_MEDIA_SESSION (session));
+
+  priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+  
+  repo = _gabble_connection_get_handles (priv->connection);
+  
+  gabble_connection_get_self_handle (priv->connection, &handle, &error);
+
+  return gabble_handle_inspect (repo, TP_HANDLE_TYPE_CONTACT, handle);
+}
+#endif
+
+static const gchar *
+get_jid_for_contact (GabbleMediaSession *session,
+                     GabbleHandle handle)
+{
+  GabbleMediaSessionPrivate *priv;
+  GabbleHandleRepo *repo;
+  
+  g_assert (GABBLE_IS_MEDIA_SESSION (session));
+  
+  priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+  
+  repo = _gabble_connection_get_handles (priv->connection);
+  
+  return gabble_handle_inspect (repo, TP_HANDLE_TYPE_CONTACT, handle);
+}
+
+LmMessage *
+gabble_media_session_message_new (GabbleMediaSession *session,
+                                  const gchar *action,
+                                  LmMessageNode **session_node)
+{
+  GabbleMediaSessionPrivate *priv;
+  LmMessage *msg;
+  LmMessageNode *iq_node, *node;
+  
+  g_assert (GABBLE_IS_MEDIA_SESSION (session));
+
+  priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+
+  msg = lm_message_new_with_sub_type (get_jid_for_contact (session, priv->peer),
+      LM_MESSAGE_TYPE_IQ,
+      LM_MESSAGE_SUB_TYPE_SET);
+
+  iq_node = lm_message_get_node (msg);
+  node = lm_message_node_add_child (iq_node, "session", NULL);
+  
+  lm_message_node_set_attributes (node,
+      "xmlns", "http://www.google.com/session",
+      "type", action,
+      "id", priv->id,
+      "initiator", get_jid_for_contact (session, priv->initiator),
+      NULL);
+  
+  if (session_node)
+    *session_node = node;
+
+  return msg;
+}
+
+void
+gabble_media_session_message_send (GabbleMediaSession *session,
+                                   LmMessage *msg)
+{
+  GabbleMediaSessionPrivate *priv;
+  GError *err;
+  
+  g_assert (GABBLE_IS_MEDIA_SESSION (session));
+
+  priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+  
+  _gabble_connection_send (priv->connection, msg, &err);
+
+  /* FIXME: this function might track the message and notify
+   *        about its response through a callback... */
 }
 

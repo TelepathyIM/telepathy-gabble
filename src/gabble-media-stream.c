@@ -632,7 +632,7 @@ gabble_media_stream_parse_remote_codecs (GabbleMediaStream *stream, LmMessageNod
           0, id,
           1, name,
           2, TP_CODEC_MEDIA_TYPE_AUDIO,
-          3, 0,                          /* FIXME: valid default clock rate? */
+          3, 0,                          /* clock rate */
           4, 1,                          /* number of supported channels */
           5, g_hash_table_new (g_str_hash, g_str_equal),
           G_MAXUINT);

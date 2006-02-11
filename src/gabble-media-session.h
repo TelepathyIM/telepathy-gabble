@@ -61,6 +61,12 @@ gboolean gabble_media_session_dispatch_action (GabbleMediaSession *session,
                                                const gchar *action,
                                                LmMessageNode *session_node);
 
+LmMessage *gabble_media_session_message_new (GabbleMediaSession *session,
+                                             const gchar *action,
+                                             LmMessageNode **session_node);
+void gabble_media_session_message_send (GabbleMediaSession *session,
+                                        LmMessage *msg);
+
 G_END_DECLS
 
 #endif /* #ifndef __GABBLE_MEDIA_SESSION_H__*/

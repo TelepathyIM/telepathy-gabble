@@ -476,33 +476,55 @@ gboolean gabble_media_channel_get_session_handlers (GabbleMediaChannel *obj, GPt
 /**
  * gabble_media_channel_create_session
  *
- * Creates a GabbleMediaSession object for given member.
+ * Creates a GabbleMediaSession object for given peer.
+ *
+ * If sid is set to 0 a unique sid is generated and
+ * the "initiator" property of the newly created
+ * GabbleMediaSession is set to our own handle.
  */
 GabbleMediaSession *
 gabble_media_channel_create_session (GabbleMediaChannel *channel,
-                                     GabbleHandle member,
+                                     GabbleHandle peer,
                                      guint32 sid)
 {
   GabbleMediaChannelPrivate *priv;
   GabbleMediaSession *session;
   gchar *object_path;
+  GabbleHandle initiator;
 
   g_assert (GABBLE_IS_MEDIA_CHANNEL (channel));
 
   priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (channel);
   
-  object_path = g_strdup_printf ("%s/MediaSession%u", priv->object_path, member);
+  object_path = g_strdup_printf ("%s/MediaSession%u", priv->object_path, peer);
+
+  if (sid == 0)
+    {
+      GError *err;
+      
+      gabble_connection_get_self_handle (priv->connection, &initiator, &err);
+
+      sid = _gabble_connection_jingle_session_allocate (priv->connection);
+    }
+  else
+    {
+      initiator = peer;
+    }
 
   session = g_object_new (GABBLE_TYPE_MEDIA_SESSION,
                           "media-channel", channel,
                           "object-path", object_path,
                           "session-id", sid,
+                          "initiator", initiator,
+                          "peer", peer,
                           NULL);
+
+  _gabble_connection_jingle_session_register (priv->connection, sid, session);
   
-  g_hash_table_insert (priv->sessions, GUINT_TO_POINTER (member), session);
+  g_hash_table_insert (priv->sessions, GUINT_TO_POINTER (peer), session);
 
   g_signal_emit (channel, signals[NEW_MEDIA_SESSION_HANDLER], 0,
-                 member, object_path, "rtp");
+                 peer, object_path, "rtp");
 
   g_free (object_path);
 

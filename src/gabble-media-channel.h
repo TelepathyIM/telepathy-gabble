@@ -62,10 +62,7 @@ gboolean gabble_media_channel_get_handle (GabbleMediaChannel *obj, guint* ret, g
 gboolean gabble_media_channel_get_interfaces (GabbleMediaChannel *obj, gchar *** ret, GError **error);
 gboolean gabble_media_channel_get_session_handlers (GabbleMediaChannel *obj, GPtrArray ** ret, GError **error);
 
-GabbleMediaSession *
-gabble_media_channel_create_session (GabbleMediaChannel *channel,
-                                     GabbleHandle member,
-                                     guint32 sid);
+GabbleMediaSession *gabble_media_channel_create_session (GabbleMediaChannel *channel, GabbleHandle peer, guint32 sid);
 
 G_END_DECLS
 

@@ -397,7 +397,90 @@ gboolean gabble_media_stream_new_active_candidate_pair (GabbleMediaStream *obj, 
  */
 gboolean gabble_media_stream_new_native_candidate (GabbleMediaStream *obj, const gchar * candidate_id, const GPtrArray * transports, GError **error)
 {
+  GabbleMediaStreamPrivate *priv;
+  GValue transport = { 0 };
+  LmMessage *msg;
+  LmMessageNode *session_node, *cand_node;
+  const gchar *addr;
+  guint16 port;
+  gchar *port_str;
+  TpMediaStreamProto proto;
+  gdouble pref;
+  gchar *pref_str;
+  TpMediaStreamTransportType type;
+  const gchar *type_str;
+  const gchar *user, *pass;
+  
   g_debug ("%s called", G_STRFUNC);
+  
+  g_assert (GABBLE_IS_MEDIA_STREAM (obj));
+  
+  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
+  
+  /* jingle audio only supports the concept of one transport per candidate */
+  g_assert (transports->len == 1);
+  
+  /* grab the interesting fields from the struct */
+  g_value_init (&transport, TP_TYPE_TRANSPORT_STRUCT);
+  g_value_set_static_boxed (&transport, g_ptr_array_index (transports, 0));
+
+  dbus_g_type_struct_get (&transport,
+      1, &addr,
+      2, &port,
+      3, &proto,
+      6, &pref,
+      7, &type,
+      8, &user,
+      9, &pass,
+      G_MAXUINT);
+
+  /* convert to strings */
+  port_str = g_strdup_printf ("%d", port);
+  
+  pref_str = g_strdup_printf ("%f", pref);
+
+  switch (type) {
+    case TP_MEDIA_STREAM_TRANSPORT_TYPE_LOCAL:
+      type_str = "local";
+      break;
+    case TP_MEDIA_STREAM_TRANSPORT_TYPE_DERIVED:
+      type_str = "stun";
+      break;
+    case TP_MEDIA_STREAM_TRANSPORT_TYPE_RELAY:
+      type_str = "relay";
+      break;
+    default:
+      g_critical ("%s: TpMediaStreamTransportType has an invalid value", G_STRFUNC);
+  }
+
+  /* construct a session message */
+  msg = gabble_media_session_message_new (priv->session, "candidates",
+                                          &session_node);
+  
+  /* create a sub-node called "candidate" and fill it with candidate info */
+  cand_node = lm_message_node_add_child (session_node, "candidate", NULL);
+
+  lm_message_node_set_attributes (cand_node,
+      "name", "rtp",
+      "address", addr,
+      "port", port_str,
+      "username", user,
+      "password", pass,
+      "preference", pref_str,
+      "protocol", (proto == TP_MEDIA_STREAM_PROTO_UDP) ? "udp" : "tcp",
+      "type", type_str,
+      "network", "0",
+      "generation", "0",
+      NULL);
+
+  /* send it */
+  gabble_media_session_message_send (priv->session, msg);
+
+  /* clean up */
+  lm_message_unref (msg);
+
+  g_free (port_str);
+  g_free (pref_str);
   
   return TRUE;
 }

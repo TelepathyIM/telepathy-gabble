@@ -524,6 +524,8 @@ gabble_media_session_message_send (GabbleMediaSession *session,
   
   _gabble_connection_send (priv->connection, msg, &err);
 
+  HANDLER_DEBUG (lm_message_get_node (msg), "sending stanza");
+  
   /* FIXME: this function might track the message and notify
    *        about its response through a callback... */
 }

@@ -122,15 +122,18 @@ gabble_media_stream_constructor (GType type, guint n_props,
   GabbleMediaStreamPrivate *priv;
   DBusGConnection *bus;
   
+  /* call base class constructor */
   obj = G_OBJECT_CLASS (gabble_media_stream_parent_class)->
            constructor (type, n_props, props);
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (GABBLE_MEDIA_STREAM (obj));
 
+  /* initialize state */
   priv->ready = FALSE;
 
   priv->remote_codecs = g_ptr_array_sized_new (12);
   priv->remote_candidates = g_ptr_array_sized_new (2);
 
+  /* go for the bus */
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
 
@@ -379,7 +382,6 @@ gboolean gabble_media_stream_new_active_candidate_pair (GabbleMediaStream *obj, 
   
   return TRUE;
 }
-
 
 /**
  * gabble_media_stream_new_native_candidate

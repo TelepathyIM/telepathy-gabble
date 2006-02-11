@@ -481,6 +481,7 @@ gabble_media_session_message_new (GabbleMediaSession *session,
   GabbleMediaSessionPrivate *priv;
   LmMessage *msg;
   LmMessageNode *iq_node, *node;
+  gchar *id_str;
   
   g_assert (GABBLE_IS_MEDIA_SESSION (session));
 
@@ -493,12 +494,16 @@ gabble_media_session_message_new (GabbleMediaSession *session,
   iq_node = lm_message_get_node (msg);
   node = lm_message_node_add_child (iq_node, "session", NULL);
   
+  id_str = g_strdup_printf ("%d", priv->id);
+  
   lm_message_node_set_attributes (node,
       "xmlns", "http://www.google.com/session",
       "type", action,
-      "id", priv->id,
+      "id", id_str,
       "initiator", get_jid_for_contact (session, priv->initiator),
       NULL);
+
+  g_free (id_str);
   
   if (session_node)
     *session_node = node;

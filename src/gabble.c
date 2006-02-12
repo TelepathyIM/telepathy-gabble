@@ -81,7 +81,8 @@ int main(int argc, char **argv) {
 
   mainloop = g_main_loop_new (NULL, FALSE);
 
-  dbus_g_error_domain_register (TELEPATHY_ERRORS, NULL, TELEPATHY_TYPE_ERRORS);
+  dbus_g_error_domain_register (TELEPATHY_ERRORS,
+      "org.freedesktop.Telepathy.Error", TELEPATHY_TYPE_ERRORS);
 
   manager = g_object_new (GABBLE_TYPE_CONNECTION_MANAGER, NULL);
 

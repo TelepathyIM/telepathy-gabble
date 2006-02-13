@@ -417,7 +417,7 @@ get_session_handlers_hash_foreach (gpointer key,
   GabbleHandle member = GPOINTER_TO_UINT (key);
   GObject *session_handler = G_OBJECT (value);
   GPtrArray *handlers = (GPtrArray *) data;
-  GValue handler = { 0 };
+  GValue handler = { 0, };
   gchar *path;
 
   g_value_init (&handler, TP_SESSION_HANDLER_SET_TYPE);

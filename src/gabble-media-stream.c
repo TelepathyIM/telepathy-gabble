@@ -398,7 +398,7 @@ gboolean gabble_media_stream_new_active_candidate_pair (GabbleMediaStream *obj, 
 gboolean gabble_media_stream_new_native_candidate (GabbleMediaStream *obj, const gchar * candidate_id, const GPtrArray * transports, GError **error)
 {
   GabbleMediaStreamPrivate *priv;
-  GValue transport = { 0 };
+  GValue transport = { 0, };
   LmMessage *msg;
   LmMessageNode *session_node, *cand_node;
   const gchar *addr;
@@ -610,7 +610,7 @@ gabble_media_stream_parse_remote_codecs (GabbleMediaStream *stream, LmMessageNod
     {
       guchar id;
       const gchar *name;
-      GValue codec = { 0 };
+      GValue codec = { 0, };
       
       /* id of codec */
       str = lm_message_node_get_attribute (node, "id");
@@ -711,9 +711,9 @@ gabble_media_stream_parse_remote_candidates (GabbleMediaStream *stream, LmMessag
       const gchar *user, *pass;
       guchar net, gen;
 
-      GValue candidate = { 0 };
+      GValue candidate = { 0, };
       GPtrArray *transports;
-      GValue transport = { 0 };
+      GValue transport = { 0, };
 
 
       /*

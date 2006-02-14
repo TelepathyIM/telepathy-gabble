@@ -306,7 +306,7 @@ void
 gabble_im_channel_finalize (GObject *object)
 {
   GabbleIMChannel *self = GABBLE_IM_CHANNEL (object);
-  GabbleIMChannelPrivate *priv = GABBLE_IM_CHANNEL_GET_PRIVATE (self); 
+  GabbleIMChannelPrivate *priv = GABBLE_IM_CHANNEL_GET_PRIVATE (self);
   GabbleIMPendingMessage *msg;
   GabbleHandleRepo *handles;
 

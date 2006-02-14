@@ -1,5 +1,5 @@
 /*
- * telepathy-helpers.h - Header for various helper functions 
+ * telepathy-helpers.h - Header for various helper functions
  * for telepathy implementation
  * Copyright (C) 2005 Collabora Ltd.
  * Copyright (C) 2005 Nokia Corporation

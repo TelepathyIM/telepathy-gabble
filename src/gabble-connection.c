@@ -482,7 +482,7 @@ gabble_connection_dispose (GObject *object)
   priv->dispose_has_run = TRUE;
 
   g_debug ("%s: dispose called", G_STRFUNC);
-  
+
   if (priv->jingle_sessions)
     {
       g_assert (g_hash_table_size (priv->jingle_sessions) == 0);
@@ -493,7 +493,7 @@ gabble_connection_dispose (GObject *object)
       g_assert (g_hash_table_size (priv->im_channels) == 0);
       g_hash_table_destroy (priv->im_channels);
     }
-  
+
   if (priv->media_channels)
     {
       g_assert (g_hash_table_size (priv->media_channels) == 0);
@@ -1064,7 +1064,7 @@ close_all_channels (GabbleConnection *conn)
       g_hash_table_destroy (priv->im_channels);
       priv->im_channels = NULL;
     }
-  
+
   if (priv->media_channels)
     {
       g_hash_table_destroy (priv->media_channels);
@@ -1807,7 +1807,7 @@ connection_iq_roster_cb (LmMessageHandler *handler,
  * Signal callback for when a media channel is closed. Removes the references
  * that #GabbleConnection holds to them.
  */
-static void 
+static void
 media_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
 {
   /*
@@ -1818,7 +1818,7 @@ media_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
   g_object_get (chan, "handle", &contact_handle, NULL);
 
   g_debug ("%s: removing channel with handle %d", G_STRFUNC, contact_handle);
-  
+
   g_hash_table_remove (priv->media_channels, GINT_TO_POINTER(contact_handle));
   */
 }
@@ -1871,7 +1871,7 @@ ack_iq_message (GabbleConnection *conn, const gchar *to,
                 const gchar *id, LmMessageSubType type)
 {
   LmMessage *msg;
-  
+
   msg = lm_message_new_with_sub_type (to, LM_MESSAGE_TYPE_IQ, type);
   lm_message_node_set_attribute (msg->node, "id", id);
   if (!_gabble_connection_send (conn, msg, NULL)) {
@@ -1889,11 +1889,11 @@ _gabble_connection_jingle_session_allocate (GabbleConnection *conn)
 
   g_assert (GABBLE_IS_CONNECTION (conn));
   priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-  
+
   while (!unique)
     {
       gpointer k, v;
-      
+
       val = g_random_int_range (1000000, G_MAXINT);
 
       unique = !g_hash_table_lookup_extended (priv->jingle_sessions,
@@ -1901,7 +1901,7 @@ _gabble_connection_jingle_session_allocate (GabbleConnection *conn)
     }
 
   g_hash_table_insert (priv->jingle_sessions, GUINT_TO_POINTER (val), NULL);
-  
+
   return val;
 }
 
@@ -1973,14 +1973,14 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
     }
 
   handle = gabble_handle_for_contact (priv->handles, from, TRUE);
-  
+
   /* does the session exist? */
   id_str = lm_message_node_get_attribute (session_node, "id");
   if (!id_str)
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-  
+
   sid = atoi(id_str);
-  
+
   session = g_hash_table_lookup (priv->jingle_sessions, GINT_TO_POINTER (sid));
   if (session == NULL)
     {
@@ -1991,7 +1991,7 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
       desc_node = lm_message_node_get_child (session_node, "description");
       if (!desc_node)
         return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-      
+
       if (strcmp (lm_message_node_get_attribute (desc_node, "xmlns"),
                   "http://www.google.com/session/phone"))
         {
@@ -2000,7 +2000,7 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
         }
 
       g_debug ("%s: creating media channel", G_STRFUNC);
-      
+
       chan = new_media_channel (conn, handle, FALSE);
       session = gabble_media_channel_create_session (chan, handle, sid);
     }
@@ -2009,7 +2009,7 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
     ack_iq_message (conn, from, id_str, LM_MESSAGE_SUB_TYPE_RESULT);
   else
     ack_iq_message (conn, from, id_str, LM_MESSAGE_SUB_TYPE_ERROR);
-  
+
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
@@ -2620,7 +2620,7 @@ gboolean gabble_connection_get_capabilities (GabbleConnection *obj, guint handle
   g_value_init (&vals, TP_CAPABILITY_PAIR_TYPE);
   g_value_set_static_boxed (&vals,
     dbus_g_type_specialized_construct (TP_CAPABILITY_PAIR_TYPE));
-  
+
   dbus_g_type_struct_set (&vals,
                         0, TP_IFACE_CHANNEL_TYPE_TEXT,
                         1, TP_CONN_CAPABILITY_TYPE_CREATE,

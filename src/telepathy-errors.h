@@ -47,7 +47,7 @@ typedef enum
   NotImplemented,   /** Raised when the requested method, channel, etc is not
                      *  available on this connection.
                      */
-} TelepathyErrors; 
+} TelepathyErrors;
 
 GQuark telepathy_errors_quark (void);
 #define TELEPATHY_ERRORS telepathy_errors_quark ()

@@ -3081,6 +3081,23 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
 
       g_object_get (chan, "object-path", ret, NULL);
     }
+  else if (!strcmp (type, TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA))
+    {
+      GabbleMediaChannel *chan;
+
+      if (handle_type != TP_HANDLE_TYPE_CONTACT)
+        goto NOT_AVAILABLE;
+
+      if (!gabble_handle_is_valid (priv->handles,
+                                   TP_HANDLE_TYPE_CONTACT,
+                                   handle))
+        goto INVALID_HANDLE;
+
+      chan = new_media_channel (obj, handle, suppress_handler);
+      gabble_media_channel_create_session (chan, handle, 0);
+
+      g_object_get (chan, "object-path", ret, NULL);
+    }
   else
     {
       goto NOT_IMPLEMENTED;

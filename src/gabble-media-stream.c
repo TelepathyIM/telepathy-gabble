@@ -783,6 +783,11 @@ gabble_media_stream_parse_remote_candidates (GabbleMediaStream *stream, LmMessag
         proto = TP_MEDIA_STREAM_PROTO_UDP;
       else if (!strcmp (str, "tcp"))
         proto = TP_MEDIA_STREAM_PROTO_TCP;
+      else if (!strcmp (str, "ssltcp"))
+        {
+          g_warning ("%s: ssltcp candidates not yet supported", G_STRFUNC);
+          return FALSE;
+        }
       else
         return FALSE;
 

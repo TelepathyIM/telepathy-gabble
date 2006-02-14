@@ -751,7 +751,7 @@ static LmHandlerResult connection_iq_unknown_cb (LmMessageHandler*, LmConnection
 static LmSSLResponse connection_ssl_cb (LmSSL*, LmSSLStatus, gpointer);
 static void connection_open_cb (LmConnection*, gboolean, gpointer);
 static void connection_auth_cb (LmConnection*, gboolean, gpointer);
-static GabbleIMChannel *new_im_channel (GabbleConnection *conn, GabbleHandle handle, gboolean supress_handler);
+static GabbleIMChannel *new_im_channel (GabbleConnection *conn, GabbleHandle handle, gboolean suppress_handler);
 static void make_roster_channels (GabbleConnection *conn);
 
 static void connection_disconnect (GabbleConnection *conn, TpConnectionStatusReason reason);
@@ -1970,7 +1970,7 @@ im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
  * new_im_channel
  */
 static GabbleIMChannel *
-new_im_channel (GabbleConnection *conn, GabbleHandle handle, gboolean supress_handler)
+new_im_channel (GabbleConnection *conn, GabbleHandle handle, gboolean suppress_handler)
 {
   GabbleConnectionPrivate *priv;
   GabbleIMChannel *chan;
@@ -1997,7 +1997,7 @@ new_im_channel (GabbleConnection *conn, GabbleHandle handle, gboolean supress_ha
   g_signal_emit (conn, signals[NEW_CHANNEL], 0,
                  object_path, TP_IFACE_CHANNEL_TYPE_TEXT,
                  TP_HANDLE_TYPE_CONTACT, handle,
-                 supress_handler);
+                 suppress_handler);
 
   g_free (object_path);
 
@@ -2789,7 +2789,7 @@ gboolean gabble_connection_remove_status (GabbleConnection *obj, const gchar * s
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar * type, guint handle_type, guint handle, gboolean supress_handler, gchar ** ret, GError **error)
+gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar * type, guint handle_type, guint handle, gboolean suppress_handler, gchar ** ret, GError **error)
 {
   GabbleConnectionPrivate *priv;
 

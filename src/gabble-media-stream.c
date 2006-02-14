@@ -100,7 +100,7 @@ struct _GabbleMediaStreamPrivate
   
   GPtrArray *remote_codecs;
   GPtrArray *remote_candidates;
-  
+
   gboolean dispose_has_run;
 };
 
@@ -121,7 +121,7 @@ gabble_media_stream_constructor (GType type, guint n_props,
   GObject *obj;
   GabbleMediaStreamPrivate *priv;
   DBusGConnection *bus;
-  
+
   /* call base class constructor */
   obj = G_OBJECT_CLASS (gabble_media_stream_parent_class)->
            constructor (type, n_props, props);
@@ -197,15 +197,15 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
   GParamSpec *param_spec;
 
   g_type_class_add_private (gabble_media_stream_class, sizeof (GabbleMediaStreamPrivate));
-  
+
   object_class->constructor = gabble_media_stream_constructor;
-  
+
   object_class->get_property = gabble_media_stream_get_property;
   object_class->set_property = gabble_media_stream_set_property;
 
   object_class->dispose = gabble_media_stream_dispose;
   object_class->finalize = gabble_media_stream_finalize;
-  
+
   param_spec = g_param_spec_object ("media-session", "GabbleMediaSession object",
                                     "Gabble media session object that owns this "
                                     "media stream object.",
@@ -270,7 +270,7 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                   NULL, NULL,
                   gabble_media_stream_marshal_VOID__BOXED,
                   G_TYPE_NONE, 1, TP_TYPE_CODEC_LIST);
-  
+
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_media_stream_class), &dbus_glib_gabble_media_stream_object_info);
 }
 
@@ -319,7 +319,7 @@ gabble_media_stream_finalize (GObject *object)
 gboolean gabble_media_stream_codec_choice (GabbleMediaStream *obj, guint codec_id, GError **error)
 {
   g_debug ("%s called", G_STRFUNC);
-  
+
   return TRUE;
 }
 
@@ -339,7 +339,7 @@ gboolean gabble_media_stream_codec_choice (GabbleMediaStream *obj, guint codec_i
 gboolean gabble_media_stream_error (GabbleMediaStream *obj, guint errno, const gchar * message, GError **error)
 {
   g_debug ("%s called", G_STRFUNC);
-  
+
   return TRUE;
 }
 
@@ -359,7 +359,7 @@ gboolean gabble_media_stream_error (GabbleMediaStream *obj, guint errno, const g
 gboolean gabble_media_stream_native_candidates_prepared (GabbleMediaStream *obj, GError **error)
 {
   g_debug ("%s called", G_STRFUNC);
-  
+
   return TRUE;
 }
 
@@ -410,16 +410,16 @@ gboolean gabble_media_stream_new_native_candidate (GabbleMediaStream *obj, const
   TpMediaStreamTransportType type;
   const gchar *type_str;
   const gchar *user, *pass;
-  
+
   g_debug ("%s called", G_STRFUNC);
-  
+
   g_assert (GABBLE_IS_MEDIA_STREAM (obj));
-  
+
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
-  
+
   /* jingle audio only supports the concept of one transport per candidate */
   g_assert (transports->len == 1);
-  
+
   /* grab the interesting fields from the struct */
   g_value_init (&transport, TP_TYPE_TRANSPORT_STRUCT);
   g_value_set_static_boxed (&transport, g_ptr_array_index (transports, 0));
@@ -436,7 +436,7 @@ gboolean gabble_media_stream_new_native_candidate (GabbleMediaStream *obj, const
 
   /* convert to strings */
   port_str = g_strdup_printf ("%d", port);
-  
+
   pref_str = g_strdup_printf ("%f", pref);
 
   switch (type) {
@@ -456,7 +456,7 @@ gboolean gabble_media_stream_new_native_candidate (GabbleMediaStream *obj, const
   /* construct a session message */
   msg = gabble_media_session_message_new (priv->session, "candidates",
                                           &session_node);
-  
+
   /* create a sub-node called "candidate" and fill it with candidate info */
   cand_node = lm_message_node_add_child (session_node, "candidate", NULL);
 
@@ -479,9 +479,11 @@ gboolean gabble_media_stream_new_native_candidate (GabbleMediaStream *obj, const
   /* clean up */
   lm_message_unref (msg);
 
+  /* FIXME: free values returned from struct */
+
   g_free (port_str);
   g_free (pref_str);
-  
+
   return TRUE;
 }
 
@@ -503,17 +505,20 @@ static void push_remote_candidates (GabbleMediaStream *stream);
 gboolean gabble_media_stream_ready (GabbleMediaStream *obj, const GPtrArray * codecs, GError **error)
 {
   GabbleMediaStreamPrivate *priv;
-  
+
   g_debug ("%s called", G_STRFUNC);
-  
+
   g_assert (GABBLE_IS_MEDIA_STREAM (obj));
-  
+
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
 
   priv->ready = TRUE;
 
   push_remote_codecs (obj);
   push_remote_candidates (obj);
+
+  /* FIXME: if the session's inititator is us we should construct an initiation
+   *        message here and send it */
 
   return TRUE;
 }
@@ -543,9 +548,9 @@ push_remote_codecs (GabbleMediaStream *stream)
 {
   GabbleMediaStreamPrivate *priv;
   /*int i;*/
-  
+
   g_assert (GABBLE_IS_MEDIA_STREAM (stream));
-  
+
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
   if (!priv->ready)
@@ -570,9 +575,9 @@ static void
 push_remote_candidates (GabbleMediaStream *stream)
 {
   GabbleMediaStreamPrivate *priv;
-  
+
   g_assert (GABBLE_IS_MEDIA_STREAM (stream));
-  
+
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
   if (!priv->ready)
@@ -580,7 +585,7 @@ push_remote_candidates (GabbleMediaStream *stream)
 
   if (priv->remote_candidates->len == 0)
     return;
-  
+
   g_debug ("%s: emitting MediaStreamHandler::SetRemoteCandidateList signal",
       G_STRFUNC);
 
@@ -588,7 +593,7 @@ push_remote_candidates (GabbleMediaStream *stream)
                  priv->remote_candidates);
 
   /* FIXME: free */
-  
+
   g_ptr_array_remove_range (priv->remote_candidates, 0,
       priv->remote_candidates->len);
 }
@@ -599,19 +604,19 @@ gabble_media_stream_parse_remote_codecs (GabbleMediaStream *stream, LmMessageNod
   GabbleMediaStreamPrivate *priv;
   LmMessageNode *node;
   const gchar *str;
-  
+
   g_assert (GABBLE_IS_MEDIA_STREAM (stream));
-  
+
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
   g_assert (priv->remote_codecs->len == 0);
-  
+
   for (node = desc_node->children; node; node = node->next)
     {
       guchar id;
       const gchar *name;
       GValue codec = { 0, };
-      
+
       /* id of codec */
       str = lm_message_node_get_attribute (node, "id");
       if (!str)
@@ -623,11 +628,11 @@ gabble_media_stream_parse_remote_codecs (GabbleMediaStream *stream, LmMessageNod
       name = lm_message_node_get_attribute (node, "name");
       if (!name)
         return FALSE;
-      
+
       g_value_init (&codec, TP_TYPE_CODEC_STRUCT);
       g_value_set_static_boxed (&codec,
           dbus_g_type_specialized_construct (TP_TYPE_CODEC_STRUCT));
-      
+
       dbus_g_type_struct_set (&codec,
           0, id,
           1, name,
@@ -636,7 +641,7 @@ gabble_media_stream_parse_remote_codecs (GabbleMediaStream *stream, LmMessageNod
           4, 1,                          /* number of supported channels */
           5, g_hash_table_new (g_str_hash, g_str_equal),
           G_MAXUINT);
-      
+
       g_ptr_array_add (priv->remote_codecs, g_value_get_boxed (&codec));
     }
 
@@ -696,9 +701,9 @@ gabble_media_stream_parse_remote_candidates (GabbleMediaStream *stream, LmMessag
   GabbleMediaStreamPrivate *priv;
   LmMessageNode *node;
   const gchar *str;
-  
+
   g_assert (GABBLE_IS_MEDIA_STREAM (stream));
-  
+
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
   for (node = session_node->children; node; node = node->next)
@@ -721,28 +726,28 @@ gabble_media_stream_parse_remote_candidates (GabbleMediaStream *stream, LmMessag
        */
 
       /* id/name: assuming "username" here for now */
-      
-      
+
+
       /*
        * Transport
        */
-      
+
       /* ip address */
       addr = lm_message_node_get_attribute (node, "address");
       if (!addr)
         return FALSE;
-      
+
       /* port */
       str = lm_message_node_get_attribute (node, "port");
       if (!str)
         return FALSE;
       port = atoi (str);
-      
+
       /* protocol */
       str = lm_message_node_get_attribute (node, "protocol");
       if (!str)
         return FALSE;
-      
+
       if (!strcmp (str, "udp"))
         proto = TP_MEDIA_STREAM_PROTO_UDP;
       else if (!strcmp (str, "tcp"))
@@ -756,7 +761,7 @@ gabble_media_stream_parse_remote_candidates (GabbleMediaStream *stream, LmMessag
         return FALSE;
       if (strcmp (str, "rtp"))
         return FALSE;
-      
+
       /* protocol profile: hardcoded to "AVP" for now */
 
       /* preference */
@@ -769,7 +774,7 @@ gabble_media_stream_parse_remote_candidates (GabbleMediaStream *stream, LmMessag
       str = lm_message_node_get_attribute (node, "type");
       if (!str)
         return FALSE;
-      
+
       if (!strcmp (str, "local"))
         type = TP_MEDIA_STREAM_TRANSPORT_TYPE_LOCAL;
       else if (!strcmp (str, "stun"))
@@ -778,12 +783,12 @@ gabble_media_stream_parse_remote_candidates (GabbleMediaStream *stream, LmMessag
         type = TP_MEDIA_STREAM_TRANSPORT_TYPE_RELAY;
       else
         return FALSE;
-      
+
       /* username */
       user = lm_message_node_get_attribute (node, "username");
       if (!user)
         return FALSE;
-      
+
       /* password */
       pass = lm_message_node_get_attribute (node, "password");
       if (!pass)
@@ -794,7 +799,7 @@ gabble_media_stream_parse_remote_candidates (GabbleMediaStream *stream, LmMessag
       if (!str)
         return FALSE;
       net = atoi (str);
-      
+
       /* unknown */
       str = lm_message_node_get_attribute (node, "generation");
       if (!str)
@@ -821,8 +826,8 @@ gabble_media_stream_parse_remote_candidates (GabbleMediaStream *stream, LmMessag
 
       transports = g_ptr_array_sized_new (1);
       g_ptr_array_add (transports, g_value_get_boxed (&transport));
-      
-      
+
+
       g_value_init (&candidate, TP_TYPE_CANDIDATE_STRUCT);
       g_value_set_static_boxed (&candidate,
           dbus_g_type_specialized_construct (TP_TYPE_CANDIDATE_STRUCT));
@@ -842,7 +847,7 @@ gabble_media_stream_parse_remote_candidates (GabbleMediaStream *stream, LmMessag
     }
 
   push_remote_candidates (stream);
-  
+
   return TRUE;
 }
 

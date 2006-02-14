@@ -562,8 +562,58 @@ gboolean gabble_media_stream_ready (GabbleMediaStream *obj, const GPtrArray * co
  */
 gboolean gabble_media_stream_supported_codecs (GabbleMediaStream *obj, const GPtrArray * codecs, GError **error)
 {
+  GabbleMediaStreamPrivate *priv;
+  LmMessageNode *session_node, *desc_node;
+  guint i;
+
   g_debug ("%s called", G_STRFUNC);
-  
+
+  g_assert (GABBLE_IS_MEDIA_STREAM (obj));
+
+  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
+
+  /* construct a session acceptance message */
+  priv->accept_message = gabble_media_session_message_new (
+      priv->session, "accept", &session_node);
+
+  /* create a sub-node called "description" and fill it with payload types */
+  desc_node = lm_message_node_add_child (session_node, "description", NULL);
+  lm_message_node_set_attribute (desc_node, "xmlns",
+      "http://www.google.com/session/phone");
+
+  for (i = 0; i < codecs->len; i++)
+    {
+      GValue codec = { 0, };
+      guint id;
+      gchar *id_str, *name;
+      LmMessageNode *pt_node;
+
+      g_value_init (&codec, TP_TYPE_CODEC_STRUCT);
+      g_value_set_static_boxed (&codec, g_ptr_array_index (codecs, i));
+
+      dbus_g_type_struct_get (&codec,
+          0, &id,
+          1, &name,
+          G_MAXUINT);
+
+      id_str = g_strdup_printf ("%d", id);
+
+      /* FIXME: parse the rest of the struct */
+
+      /* create a sub-node called "payload-type" and fill it */
+      pt_node = lm_message_node_add_child (desc_node, "payload-type", NULL);
+
+      lm_message_node_set_attributes (pt_node,
+          "xmlns", "http://www.google.com/session/phone",
+          "id", id_str,
+          "name", name,
+          NULL);
+
+      /* clean up */
+      g_free (id_str);
+      g_free (name);
+    }
+
   return TRUE;
 }
 

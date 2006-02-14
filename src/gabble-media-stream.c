@@ -726,49 +726,6 @@ gabble_media_stream_parse_remote_codecs (GabbleMediaStream *stream, LmMessageNod
   return TRUE;
 }
 
-#if 0
-static GPtrArray *
-get_candidate_transports (GabbleMediaStreamPrivate *priv, const gchar *name)
-{
-  GValueArray *candidate;
-  GValue *val;
-  int i;
-  GPtrArray *arr;
-
-  for (i = 0; i < priv->remote_candidates->len; i++)
-    {
-      const gchar *str;
-      
-      candidate = g_ptr_array_index (priv->remote_candidates, i);
-
-      val = g_value_array_get_nth (candidate, 0);
-      str = g_value_get_string (val);
-      if (!strcmp (str, name))
-        {
-          val = g_value_array_get_nth (candidate, 1);
-          return g_value_get_pointer (val);
-        }
-    }
-
-  candidate = g_value_array_new (2);
-  
-  g_value_array_append (candidate, NULL);
-  val = g_value_array_get_nth (candidate, 0);
-  g_value_init (val, G_TYPE_STRING);
-  g_value_set_string (val, name);
-
-  g_value_array_append (candidate, NULL);
-  val = g_value_array_get_nth (candidate, 1);
-  g_value_init (val, G_TYPE_POINTER);
-  arr = g_ptr_array_sized_new (4);
-  g_value_set_pointer (val, arr);
-
-  g_ptr_array_add (priv->remote_candidates, candidate);
-
-  return arr;
-}
-#endif
-
 gboolean
 gabble_media_stream_parse_remote_candidates (GabbleMediaStream *stream, LmMessageNode *session_node)
 {

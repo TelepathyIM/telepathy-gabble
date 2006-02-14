@@ -393,7 +393,7 @@ free_params (GabbleParams *params)
  * connection_disconnected_cb:
  * @conn: #GabbleConnection
  * @data: data passed in callback
- * 
+ *
  * Signal handler called when a connection object disconnects.
  * When they become disconnected, we can unref and discard
  * them, and they will disappear from the bus.

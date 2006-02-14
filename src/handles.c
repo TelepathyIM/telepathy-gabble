@@ -381,7 +381,7 @@ gabble_handle_for_list_subscribe (GabbleHandleRepo *repo)
  * @handle: A handle to set data on
  * @key_id: Key id to associate data with
  * @data: data to associate with handle
- * @destroy: A #GDestroyNotify to call to detroy the data, 
+ * @destroy: A #GDestroyNotify to call to detroy the data,
  *           or NULL if not needed.
  *
  * Associates a blob of data with a given handle and a given key
@@ -390,7 +390,7 @@ gabble_handle_for_list_subscribe (GabbleHandleRepo *repo)
  */
 
 gboolean
-gabble_handle_set_qdata (GabbleHandleRepo *repo, 
+gabble_handle_set_qdata (GabbleHandleRepo *repo,
                          TpHandleType type, GabbleHandle handle,
                          GQuark key_id, gpointer data, GDestroyNotify destroy)
 {
@@ -413,7 +413,7 @@ gabble_handle_set_qdata (GabbleHandleRepo *repo,
  *
  * Gets the data associated with a given key on a given handle
  */
-gpointer 
+gpointer
 gabble_handle_get_qdata (GabbleHandleRepo *repo,
                          TpHandleType type, GabbleHandle handle,
                          GQuark key_id)

@@ -128,7 +128,7 @@ handle_set_remove (GabbleHandleSet *set, GabbleHandle handle)
 /**
  * handle_set_is_member:
  * @set: A #GabbleHandleSet
- * @handle: handle to check 
+ * @handle: handle to check
  * @type: type of handle
  *
  * Check if the (handle,type) pair is in this set

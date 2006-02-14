@@ -83,7 +83,7 @@ static void
 gabble_media_channel_init (GabbleMediaChannel *obj)
 {
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (obj);
-  
+
   priv->sessions = g_hash_table_new_full (g_direct_hash, g_direct_equal,
                                           NULL, g_object_unref);
 
@@ -99,7 +99,7 @@ gabble_media_channel_constructor (GType type, guint n_props,
   DBusGConnection *bus;
   GabbleHandleRepo *handles;
   gboolean valid;
-  
+
   obj = G_OBJECT_CLASS (gabble_media_channel_parent_class)->
            constructor (type, n_props, props);
   priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (GABBLE_MEDIA_CHANNEL (obj));
@@ -181,7 +181,7 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_media_channel_class);
   GParamSpec *param_spec;
-  
+
   g_type_class_add_private (gabble_media_channel_class, sizeof (GabbleMediaChannelPrivate));
 
   object_class->constructor = gabble_media_channel_constructor;
@@ -239,7 +239,7 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
                                   G_PARAM_STATIC_NAME |
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_HANDLE, param_spec);
-  
+
   signals[CLOSED] =
     g_signal_new ("closed",
                   G_OBJECT_CLASS_TYPE (gabble_media_channel_class),
@@ -269,7 +269,7 @@ gabble_media_channel_dispose (GObject *object)
 
   if (priv->dispose_has_run)
     return;
-  
+
   g_assert (g_hash_table_size (priv->sessions) == 0);
   g_hash_table_destroy (priv->sessions);
 
@@ -316,12 +316,12 @@ gboolean gabble_media_channel_close (GabbleMediaChannel *obj, GError **error)
   GabbleMediaChannelPrivate *priv;
 
   g_assert (GABBLE_IS_MEDIA_CHANNEL (obj));
-  
+
   priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (obj);
   priv->closed = TRUE;
 
   g_signal_emit(obj, signals[CLOSED], 0);
-  
+
   return TRUE;
 }
 
@@ -361,14 +361,14 @@ gboolean gabble_media_channel_get_channel_type (GabbleMediaChannel *obj, gchar *
 gboolean gabble_media_channel_get_handle (GabbleMediaChannel *obj, guint* ret, guint* ret1, GError **error)
 {
   GabbleMediaChannelPrivate *priv;
-  
+
   g_assert (GABBLE_IS_MEDIA_CHANNEL (obj));
 
   priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (obj);
 
   *ret = TP_HANDLE_TYPE_CONTACT;
   *ret1 = priv->handle;
-  
+
   return TRUE;
 }
 
@@ -423,7 +423,7 @@ get_session_handlers_hash_foreach (gpointer key,
   g_value_init (&handler, TP_SESSION_HANDLER_SET_TYPE);
   g_value_set_static_boxed (&handler,
       dbus_g_type_specialized_construct (TP_SESSION_HANDLER_SET_TYPE));
-  
+
   g_object_get (session_handler, "object-path", &path, NULL);
 
   dbus_g_type_struct_set (&handler,
@@ -431,7 +431,7 @@ get_session_handlers_hash_foreach (gpointer key,
       1, path,
       2, "rtp",
       G_MAXUINT);
-  
+
   g_free (path);
 
   g_ptr_array_add (handlers, g_value_get_boxed (&handler));
@@ -454,22 +454,22 @@ gboolean gabble_media_channel_get_session_handlers (GabbleMediaChannel *obj, GPt
   GabbleMediaChannelPrivate *priv;
   guint count;
   GPtrArray *handlers;
-  
+
   g_debug ("%s called", G_STRFUNC);
-  
+
   g_assert (GABBLE_IS_MEDIA_CHANNEL (obj));
 
   priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (obj);
-  
+
   count = g_hash_table_size (priv->sessions);
   handlers = g_ptr_array_sized_new (count);
-  
+
   g_hash_table_foreach (priv->sessions,
       get_session_handlers_hash_foreach,
       handlers);
 
   *ret = handlers;
-  
+
   return TRUE;
 }
 
@@ -495,13 +495,13 @@ gabble_media_channel_create_session (GabbleMediaChannel *channel,
   g_assert (GABBLE_IS_MEDIA_CHANNEL (channel));
 
   priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (channel);
-  
+
   object_path = g_strdup_printf ("%s/MediaSession%u", priv->object_path, peer);
 
   if (sid == 0)
     {
       GError *err;
-      
+
       gabble_connection_get_self_handle (priv->connection, &initiator, &err);
 
       sid = _gabble_connection_jingle_session_allocate (priv->connection);
@@ -520,7 +520,7 @@ gabble_media_channel_create_session (GabbleMediaChannel *channel,
                           NULL);
 
   _gabble_connection_jingle_session_register (priv->connection, sid, session);
-  
+
   g_hash_table_insert (priv->sessions, GUINT_TO_POINTER (peer), session);
 
   g_signal_emit (channel, signals[NEW_MEDIA_SESSION_HANDLER], 0,

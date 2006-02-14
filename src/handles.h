@@ -46,10 +46,10 @@ GabbleHandle gabble_handle_for_list_publish (GabbleHandleRepo *repo);
 GabbleHandle gabble_handle_for_list_subscribe (GabbleHandleRepo *repo);
 
 
-gboolean gabble_handle_set_qdata (GabbleHandleRepo *repo, TpHandleType type, 
+gboolean gabble_handle_set_qdata (GabbleHandleRepo *repo, TpHandleType type,
     GabbleHandle handle, GQuark key_id, gpointer data, GDestroyNotify destroy);
 
-gpointer gabble_handle_get_qdata (GabbleHandleRepo *repo, TpHandleType type, 
+gpointer gabble_handle_get_qdata (GabbleHandleRepo *repo, TpHandleType type,
     GabbleHandle handle, GQuark key_id);
 
 G_END_DECLS

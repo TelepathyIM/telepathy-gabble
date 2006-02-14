@@ -33,6 +33,8 @@
 #include "telepathy-helpers.h"
 #include "telepathy-constants.h"
 
+#include "handles.h"
+
 G_DEFINE_TYPE(GabbleMediaStream, gabble_media_stream, G_TYPE_OBJECT)
 
 #define TP_TYPE_TRANSPORT_STRUCT (dbus_g_type_get_struct ("GValueArray", \
@@ -511,72 +513,13 @@ gboolean gabble_media_stream_new_native_candidate (GabbleMediaStream *obj, const
   return TRUE;
 }
 
-static void push_remote_codecs (GabbleMediaStream *stream);
-static void push_remote_candidates (GabbleMediaStream *stream);
-
-/**
- * gabble_media_stream_ready
- *
- * Implements DBus method Ready
- * on interface org.freedesktop.Telepathy.Media.StreamHandler
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean gabble_media_stream_ready (GabbleMediaStream *obj, const GPtrArray * codecs, GError **error)
+static void
+session_message_add_description (LmMessageNode *session_node,
+                                 const GPtrArray *codecs)
 {
-  GabbleMediaStreamPrivate *priv;
-
-  g_debug ("%s called", G_STRFUNC);
-
-  g_assert (GABBLE_IS_MEDIA_STREAM (obj));
-
-  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
-
-  priv->ready = TRUE;
-
-  push_remote_codecs (obj);
-  push_remote_candidates (obj);
-
-  /* FIXME: if the session's inititator is us we should construct an initiation
-   *        message here and send it */
-
-  return TRUE;
-}
-
-
-/**
- * gabble_media_stream_supported_codecs
- *
- * Implements DBus method SupportedCodecs
- * on interface org.freedesktop.Telepathy.Media.StreamHandler
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean gabble_media_stream_supported_codecs (GabbleMediaStream *obj, const GPtrArray * codecs, GError **error)
-{
-  GabbleMediaStreamPrivate *priv;
-  LmMessageNode *session_node, *desc_node;
+  LmMessageNode *desc_node;
   guint i;
 
-  g_debug ("%s called", G_STRFUNC);
-
-  g_assert (GABBLE_IS_MEDIA_STREAM (obj));
-
-  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
-
-  /* construct a session acceptance message */
-  priv->accept_message = gabble_media_session_message_new (
-      priv->session, "accept", &session_node);
-
-  /* create a sub-node called "description" and fill it with payload types */
   desc_node = lm_message_node_add_child (session_node, "description", NULL);
   lm_message_node_set_attribute (desc_node, "xmlns",
       "http://www.google.com/session/phone");
@@ -613,6 +556,95 @@ gboolean gabble_media_stream_supported_codecs (GabbleMediaStream *obj, const GPt
       g_free (id_str);
       g_free (name);
     }
+}
+
+static void push_remote_codecs (GabbleMediaStream *stream);
+static void push_remote_candidates (GabbleMediaStream *stream);
+
+/**
+ * gabble_media_stream_ready
+ *
+ * Implements DBus method Ready
+ * on interface org.freedesktop.Telepathy.Media.StreamHandler
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_media_stream_ready (GabbleMediaStream *obj, const GPtrArray * codecs, GError **error)
+{
+  GabbleMediaStreamPrivate *priv;
+  GabbleHandle initiator, peer;
+
+  g_debug ("%s called", G_STRFUNC);
+
+  g_assert (GABBLE_IS_MEDIA_STREAM (obj));
+
+  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
+
+  priv->ready = TRUE;
+
+  /* was the session initiated by us? */
+  g_object_get (priv->session,
+      "initiator", &initiator,
+      "peer", &peer,
+      NULL);
+
+  if (initiator != peer)        /* yes */
+    {
+      LmMessage *msg;
+      LmMessageNode *session_node;
+
+      msg = gabble_media_session_message_new (priv->session, "initiate",
+          &session_node);
+
+      session_message_add_description (session_node, codecs);
+
+      gabble_media_session_message_send (priv->session, msg);
+
+      lm_message_unref (msg);
+    }
+  else                          /* no */
+    {
+      push_remote_codecs (obj);
+      push_remote_candidates (obj);
+    }
+
+  return TRUE;
+}
+
+
+/**
+ * gabble_media_stream_supported_codecs
+ *
+ * Implements DBus method SupportedCodecs
+ * on interface org.freedesktop.Telepathy.Media.StreamHandler
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_media_stream_supported_codecs (GabbleMediaStream *obj, const GPtrArray * codecs, GError **error)
+{
+  GabbleMediaStreamPrivate *priv;
+  LmMessageNode *session_node;
+
+  g_debug ("%s called", G_STRFUNC);
+
+  g_assert (GABBLE_IS_MEDIA_STREAM (obj));
+
+  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
+
+  /* construct a session acceptance message
+   * and store it for later on */
+  priv->accept_message = gabble_media_session_message_new (
+      priv->session, "accept", &session_node);
+
+  session_message_add_description (session_node, codecs);
 
   return TRUE;
 }

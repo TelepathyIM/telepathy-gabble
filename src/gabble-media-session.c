@@ -395,12 +395,18 @@ gboolean gabble_media_session_dispatch_action (GabbleMediaSession *session,
           desc_node = lm_message_node_get_child (session_node, "description");
           if (!desc_node)
             return FALSE;
-          
+
           if (!gabble_media_stream_parse_remote_codecs (priv->stream, desc_node))
-            return FALSE;
+            {
+              g_warning ("%s: gabble_media_stream_parse_remote_codecs failed", G_STRFUNC);
+              HANDLER_DEBUG (session_node, "desc_node");
+              return FALSE;
+            }
         }
       else if (!strcmp (action, "candidates")) /* "negotiate" in JEP */
         {
+          HANDLER_DEBUG (session_node, "incoming candidates session_node");
+
           if (!gabble_media_stream_parse_remote_candidates (priv->stream, session_node))
             {
               g_warning ("%s: gabble_media_stream_parse_remote_candidates failed", G_STRFUNC);
@@ -413,13 +419,13 @@ gboolean gabble_media_session_dispatch_action (GabbleMediaSession *session,
               G_STRFUNC, action);
           return FALSE;
         }
-      
+
       break;
     case JS_STATE_ACTIVE:
       g_debug ("%s: unhandled action \"%s\" in state JS_STATE_ACTIVE",
           G_STRFUNC, action);
       return FALSE;
-      
+
       break;
     case JS_STATE_ENDED:
       g_debug ("%s: unhandled action \"%s\" in state JS_STATE_ENDED",

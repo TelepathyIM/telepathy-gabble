@@ -97,7 +97,9 @@ struct _GabbleMediaStreamPrivate
   gchar *object_path;
 
   gboolean ready;
-  
+
+  LmMessage *accept_message;
+
   GPtrArray *remote_codecs;
   GPtrArray *remote_candidates;
 
@@ -129,6 +131,8 @@ gabble_media_stream_constructor (GType type, guint n_props,
 
   /* initialize state */
   priv->ready = FALSE;
+
+  priv->accept_message = NULL;
 
   priv->remote_codecs = g_ptr_array_sized_new (12);
   priv->remote_candidates = g_ptr_array_sized_new (2);
@@ -378,8 +382,28 @@ gboolean gabble_media_stream_native_candidates_prepared (GabbleMediaStream *obj,
  */
 gboolean gabble_media_stream_new_active_candidate_pair (GabbleMediaStream *obj, const gchar * native_candidate_id, const gchar * remote_candidate_id, GError **error)
 {
+  GabbleMediaStreamPrivate *priv;
+
   g_debug ("%s called", G_STRFUNC);
-  
+
+  g_assert (GABBLE_IS_MEDIA_STREAM (obj));
+
+  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
+
+  if (priv->accept_message == NULL)
+    {
+      g_message ("%s: assuming that accept message has been sent", G_STRFUNC);
+      return TRUE;
+    }
+
+  g_debug ("%s: sending final acceptance message", G_STRFUNC);
+
+  /* send the final acceptance message */
+  gabble_media_session_message_send (priv->session, priv->accept_message);
+
+  lm_message_unref (priv->accept_message);
+  priv->accept_message = NULL;
+
   return TRUE;
 }
 

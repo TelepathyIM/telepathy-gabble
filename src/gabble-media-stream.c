@@ -425,8 +425,8 @@ gboolean gabble_media_stream_new_native_candidate (GabbleMediaStream *obj, const
   GValue transport = { 0, };
   LmMessage *msg;
   LmMessageNode *session_node, *cand_node;
-  const gchar *addr;
-  guint16 port;
+  gchar *addr;
+  guint port;
   gchar *port_str;
   TpMediaStreamProto proto;
   gdouble pref;

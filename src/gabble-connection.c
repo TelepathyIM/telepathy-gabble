@@ -209,6 +209,8 @@ struct _GabbleConnectionPrivate
 
 #define GABBLE_CONNECTION_GET_PRIVATE(o)     (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_CONNECTION, GabbleConnectionPrivate))
 
+static void unref_jingle_session (GObject *obj);
+
 static void
 gabble_connection_init (GabbleConnection *obj)
 {
@@ -220,7 +222,7 @@ gabble_connection_init (GabbleConnection *obj)
   priv->handles = gabble_handle_repo_new ();
 
   priv->jingle_sessions = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-                                                 NULL, g_object_unref);
+                                                 NULL, (GDestroyNotify) unref_jingle_session);
   priv->im_channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
                                              NULL, g_object_unref);
   priv->media_channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
@@ -1839,6 +1841,13 @@ _gabble_connection_jingle_session_unregister (GabbleConnection *conn,
   g_debug ("%s: unregistering sid %d", G_STRFUNC, sid);
 
   g_hash_table_remove (priv->jingle_sessions, GUINT_TO_POINTER (sid));
+}
+
+static void
+unref_jingle_session (GObject *obj)
+{
+  if (obj)
+    g_object_unref (obj);
 }
 
 /**

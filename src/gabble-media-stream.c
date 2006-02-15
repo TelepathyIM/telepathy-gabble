@@ -465,6 +465,8 @@ gboolean gabble_media_stream_new_native_candidate (GabbleMediaStream *obj, const
   JingleSessionState state;
   GPtrArray *candidates;
   GValue candidate = { 0, };
+  GValueArray *transport;
+  const gchar *addr;
 
   g_debug ("%s called", G_STRFUNC);
 
@@ -486,6 +488,14 @@ gboolean gabble_media_stream_new_native_candidate (GabbleMediaStream *obj, const
       0, candidate_id,
       1, transports,
       G_MAXUINT);
+
+  transport = g_ptr_array_index (transports, 0);
+  addr = g_value_get_string (g_value_array_get_nth (transport, 1));
+  if (!strcmp (addr, "127.0.0.1"))
+    {
+      g_debug ("%s: ignoring localhost candidate", G_STRFUNC);
+      return TRUE;
+    }
 
   g_ptr_array_add (candidates, g_value_get_boxed (&candidate));
 

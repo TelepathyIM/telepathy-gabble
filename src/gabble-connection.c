@@ -1866,7 +1866,7 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   LmMessageNode *iq_node, *session_node, *desc_node;
-  const gchar *from, *action, *id_str;
+  const gchar *from, *id, *action, *sid_str;
   GabbleHandle handle;
   guint32 sid;
   GabbleMediaChannel *chan;
@@ -1894,14 +1894,21 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
+  id = lm_message_node_get_attribute (iq_node, "id");
+  if (!id)
+    {
+      HANDLER_DEBUG (iq_node, "'id' attribute not found");
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    }
+
   handle = gabble_handle_for_contact (priv->handles, from, TRUE);
 
   /* does the session exist? */
-  id_str = lm_message_node_get_attribute (session_node, "id");
-  if (!id_str)
+  sid_str = lm_message_node_get_attribute (session_node, "id");
+  if (!sid_str)
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
-  sid = atoi(id_str);
+  sid = atoi(sid_str);
 
   session = g_hash_table_lookup (priv->jingle_sessions, GINT_TO_POINTER (sid));
   if (session == NULL)
@@ -1930,9 +1937,9 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
   HANDLER_DEBUG (session_node, "got jingle stanza");
 
   if (gabble_media_session_parse_node (session, action, session_node))
-    ack_iq_message (conn, from, id_str, LM_MESSAGE_SUB_TYPE_RESULT);
+    ack_iq_message (conn, from, id, LM_MESSAGE_SUB_TYPE_RESULT);
   else
-    ack_iq_message (conn, from, id_str, LM_MESSAGE_SUB_TYPE_ERROR);
+    ack_iq_message (conn, from, id, LM_MESSAGE_SUB_TYPE_ERROR);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }

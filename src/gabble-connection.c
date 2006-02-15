@@ -3043,7 +3043,7 @@ struct _i_hate_g_hash_table_foreach
 {
   GabbleConnection *conn;
   GError **error;
-  gboolean had_error;
+  gboolean retval;
 };
 
 static void
@@ -3054,6 +3054,7 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
 
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (data->conn);
   int i;
+
 
   for (i = 0; i < LAST_GABBLE_PRESENCE; i++)
     {
@@ -3066,19 +3067,30 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
       GHashTable *args = (GHashTable *)value;
       GValue *message = g_hash_table_lookup (args, "message");
       const gchar *status = NULL;
+
       if (message)
         {
           if (!G_VALUE_HOLDS_STRING (message))
             {
+              g_debug ("%s: got a status message which was not a string", G_STRFUNC);
               *(data->error) = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
                                  "Status argument 'message' requires a string");
-              data->had_error = TRUE;
+              data->retval = FALSE;
               return;
             }
           status = g_value_get_string (message);
-          data->had_error = !signal_own_presence (data->conn, data->error);
         }
+
       update_presence (data->conn, priv->self_handle, i, status);
+      data->retval = signal_own_presence (data->conn, data->error);
+    }
+  else
+    {
+      g_debug ("%s: got unknown status identifier %s", G_STRFUNC, (const gchar *) key);
+      *(data->error) = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+                                    "unknown status identifier: %s",
+                                    (const gchar *) key);
+      data->retval = FALSE;
     }
 }
 
@@ -3097,7 +3109,7 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
 gboolean gabble_connection_set_status (GabbleConnection *obj, GHashTable * statuses, GError **error)
 {
   GabbleConnectionPrivate *priv;
-  struct _i_hate_g_hash_table_foreach data = {NULL, NULL, FALSE};
+  struct _i_hate_g_hash_table_foreach data = { NULL, NULL, TRUE };
 
   g_assert (GABBLE_IS_CONNECTION (obj));
 
@@ -3107,16 +3119,16 @@ gboolean gabble_connection_set_status (GabbleConnection *obj, GHashTable * statu
 
   if (g_hash_table_size (statuses) != 1)
     {
+      g_debug ("%s: got more than one status", G_STRFUNC);
       *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
                  "Only one status may be set at a time in this protocol");
       return FALSE;
     }
+
   data.conn = obj;
   data.error = error;
   g_hash_table_foreach (statuses, setstatuses_foreach, &data);
-  if (data.had_error)
-    return FALSE;
-  else
-    return TRUE;
+
+  return data.retval;
 }
 

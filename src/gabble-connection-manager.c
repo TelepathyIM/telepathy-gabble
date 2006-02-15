@@ -355,9 +355,9 @@ parse_parameters (const GabbleParamSpec *paramspec,
   if (unhandled)
     {
       g_debug ("%s: unknown argument name provided", G_STRFUNC);
-      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                            "unknown argument name provided");
-      return FALSE;
+//      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+//                            "unknown argument name provided");
+//      return FALSE;
     }
 
   return TRUE;

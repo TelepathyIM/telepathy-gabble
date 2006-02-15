@@ -70,6 +70,21 @@
 
 G_DEFINE_TYPE(GabbleConnection, gabble_connection, G_TYPE_OBJECT)
 
+#define JABBER_PRESENCE_SHOW_AWAY "away"
+#define JABBER_PRESENCE_SHOW_CHAT "chat"
+#define JABBER_PRESENCE_SHOW_DND "dnd"
+#define JABBER_PRESENCE_SHOW_XA "xa"
+
+typedef struct _StatusInfo StatusInfo;
+
+struct _StatusInfo
+{
+  const gchar *name;
+  TpConnectionPresenceType presence_type;
+  const gboolean self;
+  const gboolean exclusive;
+};
+
 typedef enum
 {
   GABBLE_PRESENCE_AVAILABLE,
@@ -81,37 +96,13 @@ typedef enum
   LAST_GABBLE_PRESENCE
 } GabblePresenceId;
 
-const gchar *gabble_presence_values [LAST_GABBLE_PRESENCE] =
-{
-  "available",
-  "away",
-  "chat",
-  "dnd",
-  "xa",
-  "offline"
-};
-
-#define JABBER_PRESENCE_SHOW_AWAY "away"
-#define JABBER_PRESENCE_SHOW_CHAT "chat"
-#define JABBER_PRESENCE_SHOW_DND "dnd"
-#define JABBER_PRESENCE_SHOW_XA "xa"
-
-typedef struct _StatusInfo StatusInfo;
-
-struct _StatusInfo
-{
-  TpConnectionPresenceType presence_type;
-  const gboolean self;
-  const gboolean exclusive;
-};
-
-static const StatusInfo status_infos[LAST_GABBLE_PRESENCE] = {
- { TP_CONN_PRESENCE_TYPE_AVAILABLE, TRUE, TRUE },
- { TP_CONN_PRESENCE_TYPE_AVAILABLE, TRUE, TRUE },
- { TP_CONN_PRESENCE_TYPE_AWAY,      TRUE, TRUE },
- { TP_CONN_PRESENCE_TYPE_AWAY,      TRUE, TRUE },
- { TP_CONN_PRESENCE_TYPE_EXTENDED_AWAY, TRUE, TRUE },
- { TP_CONN_PRESENCE_TYPE_OFFLINE,   TRUE, TRUE }
+static const StatusInfo gabble_statuses[LAST_GABBLE_PRESENCE] = {
+ { "available", TP_CONN_PRESENCE_TYPE_AVAILABLE,     TRUE, TRUE },
+ { "away",      TP_CONN_PRESENCE_TYPE_AWAY,          TRUE, TRUE },
+ { "chat",      TP_CONN_PRESENCE_TYPE_AVAILABLE,     TRUE, TRUE },
+ { "dnd",       TP_CONN_PRESENCE_TYPE_AWAY,          TRUE, TRUE },
+ { "xa",        TP_CONN_PRESENCE_TYPE_EXTENDED_AWAY, TRUE, TRUE },
+ { "offline",   TP_CONN_PRESENCE_TYPE_OFFLINE,       TRUE, TRUE }
 };
 
 typedef struct _ContactPresence ContactPresence;
@@ -1173,7 +1164,7 @@ emit_presence_update (GabbleConnection *self,
         g_hash_table_new_full (g_str_hash, g_str_equal,
                                NULL, (GDestroyNotify) g_hash_table_destroy);
       g_hash_table_insert (contact_status,
-          (gpointer) gabble_presence_values[cp->presence_id],
+          (gpointer) gabble_statuses[cp->presence_id].name,
           parameters);
 
       vals = g_value_array_new (2);
@@ -2459,17 +2450,17 @@ gboolean gabble_connection_get_statuses (GabbleConnection *obj, GHashTable ** re
       g_value_array_append (status, NULL);
       g_value_init (g_value_array_get_nth (status, 0), G_TYPE_UINT);
       g_value_set_uint (g_value_array_get_nth (status, 0),
-          status_infos[i].presence_type);
+          gabble_statuses[i].presence_type);
 
       g_value_array_append (status, NULL);
       g_value_init (g_value_array_get_nth (status, 1), G_TYPE_BOOLEAN);
       g_value_set_boolean (g_value_array_get_nth (status, 1),
-          status_infos[i].self);
+          gabble_statuses[i].self);
 
       g_value_array_append (status, NULL);
       g_value_init (g_value_array_get_nth (status, 2), G_TYPE_BOOLEAN);
       g_value_set_boolean (g_value_array_get_nth (status, 2),
-          status_infos[i].exclusive);
+          gabble_statuses[i].exclusive);
 
       g_value_array_append (status, NULL);
       g_value_init (g_value_array_get_nth (status, 3),
@@ -2477,7 +2468,7 @@ gboolean gabble_connection_get_statuses (GabbleConnection *obj, GHashTable ** re
       g_value_set_static_boxed (g_value_array_get_nth (status, 3),
           get_statuses_arguments());
 
-      g_hash_table_insert (*ret, (gchar*) gabble_presence_values[i], status);
+      g_hash_table_insert (*ret, (gchar*) gabble_statuses[i].name, status);
 
     }
   return TRUE;
@@ -2772,7 +2763,7 @@ gboolean gabble_connection_remove_status (GabbleConnection *obj, const gchar * s
   cp = gabble_handle_get_qdata (priv->handles,
       TP_HANDLE_TYPE_CONTACT, priv->self_handle, data_key);
 
-  if (strcmp (status, gabble_presence_values[cp->presence_id]) == 0)
+  if (strcmp (status, gabble_statuses[cp->presence_id].name) == 0)
     {
       update_presence (obj, priv->self_handle, GABBLE_PRESENCE_AVAILABLE, NULL);
       return signal_own_presence (obj, error);
@@ -3058,7 +3049,7 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
 
   for (i = 0; i < LAST_GABBLE_PRESENCE; i++)
     {
-      if (0 == strcmp (gabble_presence_values[i], (const gchar*) key))
+      if (0 == strcmp (gabble_statuses[i].name, (const gchar*) key))
         break;
     }
 

@@ -3076,6 +3076,7 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
               return;
             }
           status = g_value_get_string (message);
+          data->had_error = !signal_own_presence (data->conn, data->error);
         }
       update_presence (data->conn, priv->self_handle, i, status);
     }

@@ -55,14 +55,9 @@ enum
   PROP_SESSION_ID,
   PROP_INITIATOR,
   PROP_PEER,
+  PROP_STATE,
   LAST_PROPERTY
 };
-
-typedef enum {
-    JS_STATE_PENDING = 0,
-    JS_STATE_ACTIVE = 1,
-    JS_STATE_ENDED
-} JingleSessionState;
 
 /* private structure */
 typedef struct _GabbleMediaSessionPrivate GabbleMediaSessionPrivate;
@@ -75,11 +70,10 @@ struct _GabbleMediaSessionPrivate
 
   GabbleMediaStream *stream;
 
-  gboolean ready;
-
   guint32 id;
   GabbleHandle initiator;
   GabbleHandle peer;
+
   JingleSessionState state;
 
   gboolean dispose_has_run;
@@ -94,6 +88,21 @@ gabble_media_session_init (GabbleMediaSession *obj)
 
   /* allocate any data required by the object here */
 }
+
+static void stream_new_active_candidate_pair_cb (GabbleMediaStream *stream,
+                                                 const gchar *native_candidate_id,
+                                                 const gchar *remote_candidate_id,
+                                                 GabbleMediaSession *session);
+static void stream_new_native_candidate_cb (GabbleMediaStream *stream,
+                                            const gchar *candidate_id,
+                                            const GPtrArray *transports,
+                                            GabbleMediaSession *session);
+static void stream_ready_cb (GabbleMediaStream *stream,
+                             const GPtrArray *codecs,
+                             GabbleMediaSession *session);
+static void stream_supported_codecs_cb (GabbleMediaStream *stream,
+                                        const GPtrArray *codecs,
+                                        GabbleMediaSession *session);
 
 static void
 create_media_stream (GabbleMediaSession *session)
@@ -112,6 +121,19 @@ create_media_stream (GabbleMediaSession *session)
                          "media-session", session,
                          "object-path", object_path,
                          NULL);
+
+  g_signal_connect (stream, "new-active-candidate-pair",
+                    (GCallback) stream_new_active_candidate_pair_cb,
+                    session);
+  g_signal_connect (stream, "new-native-candidate",
+                    (GCallback) stream_new_native_candidate_cb,
+                    session);
+  g_signal_connect (stream, "ready",
+                    (GCallback) stream_ready_cb,
+                    session);
+  g_signal_connect (stream, "supported-codecs",
+                    (GCallback) stream_supported_codecs_cb,
+                    session);
 
   priv->stream = stream;
 
@@ -133,9 +155,7 @@ gabble_media_session_constructor (GType type, guint n_props,
   /* get a handle to our GabbleConnection */
   g_object_get (priv->channel, "connection", &priv->connection, NULL);
 
-  priv->ready = FALSE;
-
-  priv->state = JS_STATE_PENDING;
+  priv->state = JS_STATE_PENDING_CREATED;
 
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
@@ -170,11 +190,18 @@ gabble_media_session_get_property (GObject    *object,
     case PROP_PEER:
       g_value_set_uint (value, priv->peer);
       break;
+    case PROP_STATE:
+      g_value_set_uint (value, priv->state);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
   }
 }
+
+static void session_state_changed (GabbleMediaSession *session,
+                                   JingleSessionState prev_state,
+                                   JingleSessionState new_state);
 
 static void
 gabble_media_session_set_property (GObject      *object,
@@ -184,6 +211,7 @@ gabble_media_session_set_property (GObject      *object,
 {
   GabbleMediaSession *session = GABBLE_MEDIA_SESSION (object);
   GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+  JingleSessionState prev_state;
 
   switch (property_id) {
     case PROP_MEDIA_CHANNEL:
@@ -203,6 +231,14 @@ gabble_media_session_set_property (GObject      *object,
       break;
     case PROP_PEER:
       priv->peer = g_value_get_uint (value);
+      break;
+    case PROP_STATE:
+      prev_state = priv->state;
+      priv->state = g_value_get_uint (value);
+
+      if (priv->state != prev_state)
+        session_state_changed (session, prev_state, priv->state);
+
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -279,6 +315,14 @@ gabble_media_session_class_init (GabbleMediaSessionClass *gabble_media_session_c
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_PEER, param_spec);
 
+  param_spec = g_param_spec_uint ("state", "Session state",
+                                  "The current state that the session is in.",
+                                  0, G_MAXUINT32, 0,
+                                  G_PARAM_READWRITE |
+                                  G_PARAM_STATIC_NAME |
+                                  G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_STATE, param_spec);
+
   signals[NEW_MEDIA_STREAM_HANDLER] =
     g_signal_new ("new-media-stream-handler",
                   G_OBJECT_CLASS_TYPE (gabble_media_session_class),
@@ -320,7 +364,6 @@ gabble_media_session_finalize (GObject *object)
 }
 
 
-
 /**
  * gabble_media_session_error
  *
@@ -339,6 +382,7 @@ gboolean gabble_media_session_error (GabbleMediaSession *obj, guint errno, const
 
   return TRUE;
 }
+
 
 /**
  * gabble_media_session_ready
@@ -363,8 +407,6 @@ gboolean gabble_media_session_ready (GabbleMediaSession *obj, GError **error)
 
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (obj);
 
-  priv->ready = TRUE;
-
   g_object_get (priv->stream, "object-path", &object_path, NULL);
 
   g_signal_emit (obj, signals[NEW_MEDIA_STREAM_HANDLER], 0,
@@ -376,9 +418,9 @@ gboolean gabble_media_session_ready (GabbleMediaSession *obj, GError **error)
   return TRUE;
 }
 
-gboolean gabble_media_session_dispatch_action (GabbleMediaSession *session,
-                                               const gchar *action,
-                                               LmMessageNode *session_node)
+gboolean gabble_media_session_parse_node (GabbleMediaSession *session,
+                                          const gchar *action,
+                                          LmMessageNode *session_node)
 {
   GabbleMediaSessionPrivate *priv;
   LmMessageNode *desc_node;
@@ -388,17 +430,20 @@ gboolean gabble_media_session_dispatch_action (GabbleMediaSession *session,
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
 
   /* do the state machine dance */
-  switch (priv->state) {
-    case JS_STATE_PENDING:
+
+  if (priv->state < JS_STATE_ACTIVE)
+    {
+      /* JS_STATE_PENDING_* */
+
       if (!strcmp (action, "initiate"))
         {
           desc_node = lm_message_node_get_child (session_node, "description");
           if (!desc_node)
             return FALSE;
 
-          if (!gabble_media_stream_parse_remote_codecs (priv->stream, desc_node))
+          if (!gabble_media_stream_post_remote_codecs (priv->stream, desc_node))
             {
-              g_warning ("%s: gabble_media_stream_parse_remote_codecs failed", G_STRFUNC);
+              g_warning ("%s: gabble_media_stream_post_remote_codecs failed", G_STRFUNC);
               HANDLER_DEBUG (session_node, "desc_node");
               return FALSE;
             }
@@ -407,11 +452,19 @@ gboolean gabble_media_session_dispatch_action (GabbleMediaSession *session,
         {
           HANDLER_DEBUG (session_node, "incoming candidates session_node");
 
-          if (!gabble_media_stream_parse_remote_candidates (priv->stream, session_node))
+          if (!gabble_media_stream_post_remote_candidates (priv->stream, session_node))
             {
-              g_warning ("%s: gabble_media_stream_parse_remote_candidates failed", G_STRFUNC);
-              return FALSE;
+              g_warning ("%s: gabble_media_stream_post_remote_candidates failed [but returning success anyway]", G_STRFUNC);
+              return TRUE;
             }
+        }
+      else if (!strcmp (action, "accept"))
+        {
+          HANDLER_DEBUG (session_node, "incoming accept session_node");
+
+          g_debug ("%s: changing state to JS_STATE_ACTIVE", G_STRFUNC);
+
+          g_object_set (session, "state", JS_STATE_ACTIVE, NULL);
         }
       else
         {
@@ -419,27 +472,141 @@ gboolean gabble_media_session_dispatch_action (GabbleMediaSession *session,
               G_STRFUNC, action);
           return FALSE;
         }
+    }
+  else if (priv->state < JS_STATE_ENDED)
+    {
+      /* JS_STATE_ACTIVE */
 
-      break;
-    case JS_STATE_ACTIVE:
       g_debug ("%s: unhandled action \"%s\" in state JS_STATE_ACTIVE",
           G_STRFUNC, action);
       return FALSE;
+    }
+  else
+    {
+      /* JS_STATE_ENDED */
 
-      break;
-    case JS_STATE_ENDED:
       g_debug ("%s: unhandled action \"%s\" in state JS_STATE_ENDED",
-          G_STRFUNC, action);
-      return FALSE;
-
-      break;
-    default:
-      g_debug ("%s: unknown state, ignoring action \"%s\"",
           G_STRFUNC, action);
       return FALSE;
   };
 
   return TRUE;
+}
+
+static void
+session_state_changed (GabbleMediaSession *session,
+                       JingleSessionState prev_state,
+                       JingleSessionState new_state)
+{
+
+  g_debug ("%s: %d -> %d", G_STRFUNC, prev_state, new_state);
+}
+
+static void
+stream_new_active_candidate_pair_cb (GabbleMediaStream *stream,
+                                     const gchar *native_candidate_id,
+                                     const gchar *remote_candidate_id,
+                                     GabbleMediaSession *session)
+{
+  GabbleMediaSessionPrivate *priv;
+
+  g_debug ("%s called", G_STRFUNC);
+
+  g_assert (GABBLE_IS_MEDIA_SESSION (session));
+
+  priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+
+  g_assert (priv->state < JS_STATE_ACTIVE);
+
+  /* send a session accept if the session was initiated by the peer */
+  if (priv->initiator == priv->peer)
+    {
+      LmMessage *msg;
+      LmMessageNode *session_node;
+
+      /* construct a session acceptance message
+       * and store it for later on */
+      msg = gabble_media_session_message_new (session, "accept", &session_node);
+
+      gabble_media_stream_session_node_add_description (priv->stream, session_node);
+
+      g_debug ("%s: sending final acceptance message", G_STRFUNC);
+
+      /* send the final acceptance message */
+      gabble_media_session_message_send (session, msg);
+
+      lm_message_unref (msg);
+    }
+  else
+    {
+      g_debug ("%s: session initiated by us, so we're not going to send an accept",
+          G_STRFUNC);
+    }
+}
+
+static void
+stream_new_native_candidate_cb (GabbleMediaStream *stream,
+                                const gchar *candidate_id,
+                                const GPtrArray *transports,
+                                GabbleMediaSession *session)
+{
+  g_debug ("%s called", G_STRFUNC);
+}
+
+static void
+stream_ready_cb (GabbleMediaStream *stream,
+                 const GPtrArray *codecs,
+                 GabbleMediaSession *session)
+{
+  GabbleMediaSessionPrivate *priv;
+
+  g_debug ("%s called", G_STRFUNC);
+
+  g_assert (GABBLE_IS_MEDIA_SESSION (session));
+
+  priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+
+  /* send an invitation if the session was initiated by us */
+  if (priv->initiator != priv->peer)
+    {
+      LmMessage *msg;
+      LmMessageNode *session_node;
+
+      msg = gabble_media_session_message_new (session, "initiate", &session_node);
+
+      gabble_media_stream_session_node_add_description (priv->stream, session_node);
+
+      gabble_media_session_message_send (session, msg);
+
+      lm_message_unref (msg);
+
+      /* FIXME: track the message and change state only if it receives a valid reply,
+       * and the other way around (after sending reply) when the other end is initiating. */
+    }
+
+  g_object_set (session, "state", JS_STATE_PENDING_INITIATED, NULL);
+}
+
+static void
+stream_supported_codecs_cb (GabbleMediaStream *stream,
+                            const GPtrArray *codecs,
+                            GabbleMediaSession *session)
+{
+  GabbleMediaSessionPrivate *priv;
+  /*LmMessageNode *session_node;*/
+
+  g_assert (GABBLE_IS_MEDIA_SESSION (session));
+
+  priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+
+  g_debug ("%s called", G_STRFUNC);
+
+  if (priv->initiator != priv->peer)
+    {
+      g_debug ("%s: session not initiated by peer so we're not preparing an accept message",
+          G_STRFUNC);
+      return;
+    }
 }
 
 #if 0
@@ -531,8 +698,5 @@ gabble_media_session_message_send (GabbleMediaSession *session,
   _gabble_connection_send (priv->connection, msg, &err);
 
   HANDLER_DEBUG (lm_message_get_node (msg), "sent stanza");
-
-  /* FIXME: this function might track the message and notify
-   *        about its response through a callback... */
 }
 

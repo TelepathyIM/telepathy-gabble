@@ -2014,7 +2014,9 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
       session = gabble_media_channel_create_session (chan, handle, sid);
     }
 
-  if (gabble_media_session_dispatch_action (session, action, session_node))
+  HANDLER_DEBUG (session_node, "got jingle stanza");
+
+  if (gabble_media_session_parse_node (session, action, session_node))
     ack_iq_message (conn, from, id_str, LM_MESSAGE_SUB_TYPE_RESULT);
   else
     ack_iq_message (conn, from, id_str, LM_MESSAGE_SUB_TYPE_ERROR);

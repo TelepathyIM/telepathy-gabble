@@ -53,6 +53,37 @@ GType gabble_media_stream_get_type(void);
 #define GABBLE_MEDIA_STREAM_GET_CLASS(obj) \
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_MEDIA_STREAM, GabbleMediaStreamClass))
 
+#define TP_TYPE_TRANSPORT_STRUCT (dbus_g_type_get_struct ("GValueArray", \
+      G_TYPE_UINT, \
+      G_TYPE_STRING, \
+      G_TYPE_UINT, \
+      G_TYPE_UINT, \
+      G_TYPE_STRING, \
+      G_TYPE_STRING, \
+      G_TYPE_DOUBLE, \
+      G_TYPE_UINT, \
+      G_TYPE_STRING, \
+      G_TYPE_STRING, \
+      G_TYPE_INVALID))
+#define TP_TYPE_TRANSPORT_LIST (dbus_g_type_get_collection ("GPtrArray", \
+      TP_TYPE_TRANSPORT_STRUCT))
+#define TP_TYPE_CANDIDATE_STRUCT (dbus_g_type_get_struct ("GValueArray", \
+      G_TYPE_STRING, \
+      TP_TYPE_TRANSPORT_LIST, \
+      G_TYPE_INVALID))
+#define TP_TYPE_CANDIDATE_LIST (dbus_g_type_get_collection ("GPtrArray", \
+      TP_TYPE_CANDIDATE_STRUCT))
+
+#define TP_TYPE_CODEC_STRUCT (dbus_g_type_get_struct ("GValueArray", \
+      G_TYPE_UINT, \
+      G_TYPE_STRING, \
+      G_TYPE_UINT, \
+      G_TYPE_UINT, \
+      G_TYPE_UINT, \
+      DBUS_TYPE_G_STRING_STRING_HASHTABLE, \
+      G_TYPE_INVALID))
+#define TP_TYPE_CODEC_LIST (dbus_g_type_get_collection ("GPtrArray", \
+      TP_TYPE_CODEC_STRUCT))
 
 gboolean gabble_media_stream_codec_choice (GabbleMediaStream *obj, guint codec_id, GError **error);
 gboolean gabble_media_stream_error (GabbleMediaStream *obj, guint errno, const gchar * message, GError **error);
@@ -62,8 +93,9 @@ gboolean gabble_media_stream_new_native_candidate (GabbleMediaStream *obj, const
 gboolean gabble_media_stream_ready (GabbleMediaStream *obj, const GPtrArray * codecs, GError **error);
 gboolean gabble_media_stream_supported_codecs (GabbleMediaStream *obj, const GPtrArray * codecs, GError **error);
 
-gboolean gabble_media_stream_parse_remote_codecs (GabbleMediaStream *stream, LmMessageNode *desc_node);
-gboolean gabble_media_stream_parse_remote_candidates (GabbleMediaStream *stream, LmMessageNode *session_node);
+gboolean gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream, LmMessageNode *desc_node);
+gboolean gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream, LmMessageNode *session_node);
+void gabble_media_stream_session_node_add_description (GabbleMediaStream *stream, LmMessageNode *session_node);
 
 G_END_DECLS
 

@@ -23,8 +23,16 @@
 
 #include <glib-object.h>
 #include <loudmouth/loudmouth.h>
+#include "gabble-media-stream.h"
 
 G_BEGIN_DECLS
+
+typedef enum {
+    JS_STATE_PENDING_CREATED,
+    JS_STATE_PENDING_INITIATED,
+    JS_STATE_ACTIVE,
+    JS_STATE_ENDED
+} JingleSessionState;
 
 typedef struct _GabbleMediaSession GabbleMediaSession;
 typedef struct _GabbleMediaSessionClass GabbleMediaSessionClass;
@@ -57,9 +65,9 @@ GType gabble_media_session_get_type(void);
 gboolean gabble_media_session_error (GabbleMediaSession *obj, guint errno, const gchar * message, GError **error);
 gboolean gabble_media_session_ready (GabbleMediaSession *obj, GError **error);
 
-gboolean gabble_media_session_dispatch_action (GabbleMediaSession *session,
-                                               const gchar *action,
-                                               LmMessageNode *session_node);
+gboolean gabble_media_session_parse_node (GabbleMediaSession *session,
+                                          const gchar *action,
+                                          LmMessageNode *session_node);
 
 LmMessage *gabble_media_session_message_new (GabbleMediaSession *session,
                                              const gchar *action,

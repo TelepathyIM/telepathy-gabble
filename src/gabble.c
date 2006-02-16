@@ -35,7 +35,7 @@ guint timeout_id;
 static gboolean
 kill_connection_manager (gpointer data)
 {
-  if (!connections_exist)
+  if (!g_getenv ("GABBLE_PERSIST") && !connections_exist)
     {
       g_debug("no connections, and timed out");
       g_object_unref (manager);
@@ -86,10 +86,10 @@ int main(int argc, char **argv) {
 
   manager = g_object_new (GABBLE_TYPE_CONNECTION_MANAGER, NULL);
 
-  g_signal_connect (manager, "new-connection", 
+  g_signal_connect (manager, "new-connection",
                     (GCallback) new_connection, NULL);
 
-  g_signal_connect (manager, "no-more-connections", 
+  g_signal_connect (manager, "no-more-connections",
                     (GCallback) no_more_connections, NULL);
 
   _gabble_connection_manager_register (manager);

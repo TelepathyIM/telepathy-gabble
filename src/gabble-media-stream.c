@@ -345,8 +345,6 @@ session_state_changed_cb (GabbleMediaSession *session,
 {
   JingleSessionState state;
 
-  g_debug ("%s called", G_STRFUNC);
-
   g_object_get (session, "state", &state, NULL);
 
   if (state == JS_STATE_PENDING_INITIATED)
@@ -372,7 +370,14 @@ session_state_changed_cb (GabbleMediaSession *session,
  */
 gboolean gabble_media_stream_codec_choice (GabbleMediaStream *obj, guint codec_id, GError **error)
 {
-  g_debug ("%s called", G_STRFUNC);
+  GabbleMediaStreamPrivate *priv;
+
+  g_assert (GABBLE_IS_MEDIA_STREAM (obj));
+
+  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
+
+  GMS_DEBUG (priv->session, DEBUG_MSG_WARNING,
+      "%s not yet implemented", G_STRFUNC);
 
   return TRUE;
 }
@@ -392,7 +397,14 @@ gboolean gabble_media_stream_codec_choice (GabbleMediaStream *obj, guint codec_i
  */
 gboolean gabble_media_stream_error (GabbleMediaStream *obj, guint errno, const gchar * message, GError **error)
 {
-  g_debug ("%s called", G_STRFUNC);
+  GabbleMediaStreamPrivate *priv;
+
+  g_assert (GABBLE_IS_MEDIA_STREAM (obj));
+
+  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
+
+  GMS_DEBUG (priv->session, DEBUG_MSG_WARNING,
+      "%s not yet implemented", G_STRFUNC);
 
   return TRUE;
 }
@@ -412,7 +424,14 @@ gboolean gabble_media_stream_error (GabbleMediaStream *obj, guint errno, const g
  */
 gboolean gabble_media_stream_native_candidates_prepared (GabbleMediaStream *obj, GError **error)
 {
-  g_debug ("%s called", G_STRFUNC);
+  GabbleMediaStreamPrivate *priv;
+
+  g_assert (GABBLE_IS_MEDIA_STREAM (obj));
+
+  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
+
+  GMS_DEBUG (priv->session, DEBUG_MSG_WARNING,
+      "%s not yet implemented", G_STRFUNC);
 
   return TRUE;
 }
@@ -433,8 +452,6 @@ gboolean gabble_media_stream_native_candidates_prepared (GabbleMediaStream *obj,
 gboolean gabble_media_stream_new_active_candidate_pair (GabbleMediaStream *obj, const gchar * native_candidate_id, const gchar * remote_candidate_id, GError **error)
 {
   GabbleMediaStreamPrivate *priv;
-
-  g_debug ("%s called", G_STRFUNC);
 
   g_assert (GABBLE_IS_MEDIA_STREAM (obj));
 
@@ -468,8 +485,6 @@ gboolean gabble_media_stream_new_native_candidate (GabbleMediaStream *obj, const
   GValueArray *transport;
   const gchar *addr;
 
-  g_debug ("%s called", G_STRFUNC);
-
   g_assert (GABBLE_IS_MEDIA_STREAM (obj));
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
@@ -493,7 +508,9 @@ gboolean gabble_media_stream_new_native_candidate (GabbleMediaStream *obj, const
   addr = g_value_get_string (g_value_array_get_nth (transport, 1));
   if (!strcmp (addr, "127.0.0.1"))
     {
-      g_debug ("%s: ignoring localhost candidate", G_STRFUNC);
+      GMS_DEBUG (priv->session, DEBUG_MSG_WARNING,
+                 "%s: ignoring localhost candidate",
+                 G_STRFUNC);
       return TRUE;
     }
 
@@ -525,8 +542,6 @@ gboolean gabble_media_stream_ready (GabbleMediaStream *obj, const GPtrArray * co
   GabbleMediaStreamPrivate *priv;
   GValue val = { 0, };
 
-  g_debug ("%s called", G_STRFUNC);
-
   g_assert (GABBLE_IS_MEDIA_STREAM (obj));
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
@@ -556,8 +571,6 @@ gboolean gabble_media_stream_ready (GabbleMediaStream *obj, const GPtrArray * co
 gboolean gabble_media_stream_supported_codecs (GabbleMediaStream *obj, const GPtrArray * codecs, GError **error)
 {
   GabbleMediaStreamPrivate *priv;
-
-  g_debug ("%s called", G_STRFUNC);
 
   g_assert (GABBLE_IS_MEDIA_STREAM (obj));
 
@@ -738,7 +751,7 @@ gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream,
       g_ptr_array_add (codecs, g_value_get_boxed (&codec));
     }
 
-  g_debug ("%s: parsed %d remote codecs", G_STRFUNC, codecs->len);
+  GMS_DEBUG (priv->session, DEBUG_MSG_INFO, "%s: parsed %d remote codecs", G_STRFUNC, codecs->len);
 
   push_remote_codecs (stream);
 
@@ -766,7 +779,8 @@ push_remote_codecs (GabbleMediaStream *stream)
   if (codecs->len == 0)
     return;
 
-  g_debug ("%s: emitting MediaStreamHandler::SetRemoteCodecs signal",
+  GMS_DEBUG (priv->session, DEBUG_MSG_EVENT,
+      "%s: emitting Media.StreamHandler::SetRemoteCodecs signal",
       G_STRFUNC);
 
   g_signal_emit (stream, signals[SET_REMOTE_CODECS], 0,
@@ -841,7 +855,9 @@ gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
         proto = TP_MEDIA_STREAM_PROTO_TCP;
       else if (!strcmp (str, "ssltcp"))
         {
-          g_warning ("%s: ssltcp candidates not yet supported", G_STRFUNC);
+          GMS_DEBUG (priv->session, DEBUG_MSG_WARNING,
+                     "%s: ssltcp candidates not yet supported",
+                     G_STRFUNC);
           return FALSE;
         }
       else
@@ -931,11 +947,10 @@ gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
 
       g_ptr_array_add (candidates, g_value_get_boxed (&candidate));
 
-      g_debug ("%s: added new candidate %s, "
-               "%d candidate(s) in total now",
-               G_STRFUNC,
-               user,
-               candidates->len);
+      GMS_DEBUG (priv->session, DEBUG_MSG_INFO,
+                 "%s: added new candidate \"%s\", "
+                 "%d candidate(s) in total now",
+                 G_STRFUNC, user, candidates->len);
     }
 
   push_remote_candidates (stream);
@@ -975,8 +990,9 @@ push_remote_candidates (GabbleMediaStream *stream)
       candidate_id = g_value_get_string (g_value_array_get_nth (candidate, 0));
       transports = g_value_get_boxed (g_value_array_get_nth (candidate, 1));
 
-      g_debug ("%s: emitting Media.StreamHandler::AddRemoteCandidate signal",
-          G_STRFUNC);
+      GMS_DEBUG (priv->session, DEBUG_MSG_EVENT,
+                 "%s: emitting Media.StreamHandler::AddRemoteCandidate signal",
+                 G_STRFUNC);
 
       g_signal_emit (stream, signals[ADD_REMOTE_CANDIDATE], 0,
                      candidate_id, transports);

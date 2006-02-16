@@ -34,6 +34,13 @@ typedef enum {
     JS_STATE_ENDED
 } JingleSessionState;
 
+typedef enum {
+    DEBUG_MSG_INFO = 0,
+    DEBUG_MSG_WARNING,
+    DEBUG_MSG_ERROR,
+    DEBUG_MSG_EVENT
+} DebugMessageType;
+
 typedef struct _GabbleMediaSession GabbleMediaSession;
 typedef struct _GabbleMediaSessionClass GabbleMediaSessionClass;
 
@@ -75,9 +82,10 @@ LmMessage *gabble_media_session_message_new (GabbleMediaSession *session,
 void gabble_media_session_message_send (GabbleMediaSession *session,
                                         LmMessage *msg);
 
-#define GMS_DEBUG(s, ...) gabble_media_session_debug (s, __VA_ARGS__)
+#define GMS_DEBUG(s, t, ...) gabble_media_session_debug (s, t, __VA_ARGS__)
 
 void gabble_media_session_debug (GabbleMediaSession *session,
+                                 DebugMessageType type,
                                  const gchar *format, ...);
 
 G_END_DECLS

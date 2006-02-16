@@ -455,8 +455,6 @@ gboolean gabble_media_channel_get_session_handlers (GabbleMediaChannel *obj, GPt
   guint count;
   GPtrArray *handlers;
 
-  g_debug ("%s called", G_STRFUNC);
-
   g_assert (GABBLE_IS_MEDIA_CHANNEL (obj));
 
   priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (obj);

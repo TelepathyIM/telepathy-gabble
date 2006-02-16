@@ -28,7 +28,7 @@
 G_BEGIN_DECLS
 
 typedef enum {
-    JS_STATE_PENDING_CREATED,
+    JS_STATE_PENDING_CREATED = 0,
     JS_STATE_PENDING_INITIATED,
     JS_STATE_ACTIVE,
     JS_STATE_ENDED
@@ -74,6 +74,11 @@ LmMessage *gabble_media_session_message_new (GabbleMediaSession *session,
                                              LmMessageNode **session_node);
 void gabble_media_session_message_send (GabbleMediaSession *session,
                                         LmMessage *msg);
+
+#define GMS_DEBUG(s, ...) gabble_media_session_debug (s, __VA_ARGS__)
+
+void gabble_media_session_debug (GabbleMediaSession *session,
+                                 const gchar *format, ...);
 
 G_END_DECLS
 

@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h> /* debugging */
 
 #include "gabble-media-session.h"
 #include "gabble-media-session-signals-marshal.h"
@@ -80,6 +81,40 @@ struct _GabbleMediaSessionPrivate
 };
 
 #define GABBLE_MEDIA_SESSION_GET_PRIVATE(o)     (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_MEDIA_SESSION, GabbleMediaSessionPrivate))
+
+#define ANSI_RESET      "\x1b[0m"
+#define ANSI_BOLD_ON    "\x1b[1m"
+#define ANSI_BOLD_OFF   "\x1b[22m"
+#define ANSI_INVERSE_ON "\x1b[7m"
+
+#define ANSI_BG_RED     "\x1b[41m"
+#define ANSI_BG_GREEN   "\x1b[42m"
+#define ANSI_BG_YELLOW  "\x1b[43m"
+#define ANSI_BG_BLUE    "\x1b[44m"
+#define ANSI_BG_MAGENTA "\x1b[45m"
+#define ANSI_BG_CYAN    "\x1b[46m"
+#define ANSI_BG_WHITE   "\x1b[47m"
+
+#define ANSI_FG_RED     "\x1b[31m"
+#define ANSI_FG_GREEN   "\x1b[32m"
+#define ANSI_FG_YELLOW  "\x1b[33m"
+#define ANSI_FG_BLUE    "\x1b[34m"
+#define ANSI_FG_MAGENTA "\x1b[35m"
+#define ANSI_FG_CYAN    "\x1b[36m"
+#define ANSI_FG_WHITE   "\x1b[37m"
+
+typedef struct {
+    gchar *name;
+    gchar *attributes;
+} SessionStateDescription;
+
+static const SessionStateDescription session_states [4] =
+{
+    { "JS_STATE_PENDING_CREATED",                ANSI_BG_WHITE   },
+    { "JS_STATE_PENDING_INITIATED", ANSI_BOLD_ON ANSI_BG_MAGENTA },
+    { "JS_STATE_ACTIVE",            ANSI_BOLD_ON ANSI_BG_BLUE    },
+    { "JS_STATE_ENDED",                          ANSI_BG_RED     }
+};
 
 static void
 gabble_media_session_init (GabbleMediaSession *obj)
@@ -437,6 +472,8 @@ gboolean gabble_media_session_parse_node (GabbleMediaSession *session,
 
       if (!strcmp (action, "initiate"))
         {
+          GMS_DEBUG (session, "<<< CODECS");
+
           desc_node = lm_message_node_get_child (session_node, "description");
           if (!desc_node)
             return FALSE;
@@ -450,7 +487,7 @@ gboolean gabble_media_session_parse_node (GabbleMediaSession *session,
         }
       else if (!strcmp (action, "candidates")) /* "negotiate" in JEP */
         {
-          HANDLER_DEBUG (session_node, "incoming candidates session_node");
+          GMS_DEBUG (session, "<<< CANDIDATES");
 
           if (!gabble_media_stream_post_remote_candidates (priv->stream, session_node))
             {
@@ -460,7 +497,7 @@ gboolean gabble_media_session_parse_node (GabbleMediaSession *session,
         }
       else if (!strcmp (action, "accept"))
         {
-          HANDLER_DEBUG (session_node, "incoming accept session_node");
+          GMS_DEBUG (session, "<<< ACCEPT");
 
           g_debug ("%s: changing state to JS_STATE_ACTIVE", G_STRFUNC);
 
@@ -498,8 +535,9 @@ session_state_changed (GabbleMediaSession *session,
                        JingleSessionState prev_state,
                        JingleSessionState new_state)
 {
-
-  g_debug ("%s: %d -> %d", G_STRFUNC, prev_state, new_state);
+  g_debug ("state changed from %s to %s",
+      session_states[prev_state].name,
+      session_states[new_state].name);
 }
 
 static void
@@ -509,8 +547,6 @@ stream_new_active_candidate_pair_cb (GabbleMediaStream *stream,
                                      GabbleMediaSession *session)
 {
   GabbleMediaSessionPrivate *priv;
-
-  g_debug ("%s called", G_STRFUNC);
 
   g_assert (GABBLE_IS_MEDIA_SESSION (session));
 
@@ -530,16 +566,18 @@ stream_new_active_candidate_pair_cb (GabbleMediaStream *stream,
 
       gabble_media_stream_session_node_add_description (priv->stream, session_node);
 
-      g_debug ("%s: sending final acceptance message", G_STRFUNC);
+      GMS_DEBUG (session, "%s: sending final acceptance message", G_STRFUNC);
 
       /* send the final acceptance message */
       gabble_media_session_message_send (session, msg);
 
       lm_message_unref (msg);
+
+      g_object_set (session, "state", JS_STATE_ACTIVE, NULL);
     }
   else
     {
-      g_debug ("%s: session initiated by us, so we're not going to send an accept",
+      GMS_DEBUG (session, "%s: session initiated by us, so we're not going to send an accept",
           G_STRFUNC);
     }
 }
@@ -550,7 +588,6 @@ stream_new_native_candidate_cb (GabbleMediaStream *stream,
                                 const GPtrArray *transports,
                                 GabbleMediaSession *session)
 {
-  g_debug ("%s called", G_STRFUNC);
 }
 
 static void
@@ -559,8 +596,6 @@ stream_ready_cb (GabbleMediaStream *stream,
                  GabbleMediaSession *session)
 {
   GabbleMediaSessionPrivate *priv;
-
-  g_debug ("%s called", G_STRFUNC);
 
   g_assert (GABBLE_IS_MEDIA_SESSION (session));
 
@@ -696,7 +731,46 @@ gabble_media_session_message_send (GabbleMediaSession *session,
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
 
   _gabble_connection_send (priv->connection, msg, &err);
+}
 
-  HANDLER_DEBUG (lm_message_get_node (msg), "sent stanza");
+void
+gabble_media_session_debug (GabbleMediaSession *session,
+                            const gchar *format, ...)
+{
+  va_list list;
+  gchar buf[512];
+  GabbleMediaSessionPrivate *priv;
+  time_t now;
+  struct tm tm_now;
+  gchar stamp[10];
+
+  g_assert (GABBLE_IS_MEDIA_SESSION (session));
+
+  priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+
+  time (&now);
+  localtime_r (&now, &tm_now);
+
+  strftime (stamp, strlen (stamp),
+            "%H:%M:%S", &tm_now);
+
+  va_start (list, format);
+
+  vsnprintf (buf, sizeof (buf), format, list);
+
+  va_end (list);
+
+  printf ("[%s%s%s] %s%-26s%s %s%s%s\n",
+      ANSI_BOLD_ON ANSI_FG_WHITE,
+      stamp,
+      ANSI_RESET,
+      session_states[priv->state].attributes,
+      session_states[priv->state].name,
+      ANSI_RESET,
+      ANSI_BOLD_ON ANSI_FG_WHITE,
+      buf,
+      ANSI_RESET);
+
+  fflush (stdout);
 }
 

@@ -72,21 +72,20 @@ GType gabble_media_session_get_type(void);
 gboolean gabble_media_session_error (GabbleMediaSession *obj, guint errno, const gchar * message, GError **error);
 gboolean gabble_media_session_ready (GabbleMediaSession *obj, GError **error);
 
-gboolean gabble_media_session_parse_node (GabbleMediaSession *session,
-                                          const gchar *action,
-                                          LmMessageNode *session_node);
+void _gabble_media_session_handle_incoming (GabbleMediaSession *session,
+                                            LmMessageNode *iq_node,
+                                            LmMessageNode *session_node,
+                                            const gchar *action);
 
-LmMessage *gabble_media_session_message_new (GabbleMediaSession *session,
-                                             const gchar *action,
-                                             LmMessageNode **session_node);
-void gabble_media_session_message_send (GabbleMediaSession *session,
-                                        LmMessage *msg);
+LmMessage *_gabble_media_session_message_new (GabbleMediaSession *session,
+                                              const gchar *action,
+                                              LmMessageNode **session_node);
 
-#define GMS_DEBUG(s, t, ...) gabble_media_session_debug (s, t, __VA_ARGS__)
+#define GMS_DEBUG(s, t, ...) _gabble_media_session_debug (s, t, __VA_ARGS__)
 
-void gabble_media_session_debug (GabbleMediaSession *session,
-                                 DebugMessageType type,
-                                 const gchar *format, ...);
+void _gabble_media_session_debug (GabbleMediaSession *session,
+                                  DebugMessageType type,
+                                  const gchar *format, ...);
 
 G_END_DECLS
 

@@ -36,6 +36,7 @@ typedef enum {
 
 typedef enum {
     DEBUG_MSG_INFO = 0,
+    DEBUG_MSG_DUMP,
     DEBUG_MSG_WARNING,
     DEBUG_MSG_ERROR,
     DEBUG_MSG_EVENT
@@ -73,13 +74,35 @@ GType gabble_media_session_get_type(void);
   G_STMT_START { \
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT) \
     { \
-      GMS_DEBUG (s, DEBUG_MSG_ERROR, m); \
+      GMS_DEBUG_ERROR (s, m); \
       HANDLER_DEBUG (sent_msg->node, "message sent"); \
       HANDLER_DEBUG (reply_msg->node, "message reply"); \
       g_object_set (s, "state", JS_STATE_ENDED, NULL); \
       return; \
     } \
   } G_STMT_END
+
+#define ANSI_RESET      "\x1b[0m"
+#define ANSI_BOLD_ON    "\x1b[1m"
+#define ANSI_BOLD_OFF   "\x1b[22m"
+#define ANSI_INVERSE_ON "\x1b[7m"
+
+#define ANSI_BG_RED     "\x1b[41m"
+#define ANSI_BG_GREEN   "\x1b[42m"
+#define ANSI_BG_YELLOW  "\x1b[43m"
+#define ANSI_BG_BLUE    "\x1b[44m"
+#define ANSI_BG_MAGENTA "\x1b[45m"
+#define ANSI_BG_CYAN    "\x1b[46m"
+#define ANSI_BG_WHITE   "\x1b[47m"
+
+#define ANSI_FG_BLACK   "\x1b[30m"
+#define ANSI_FG_RED     "\x1b[31m"
+#define ANSI_FG_GREEN   "\x1b[32m"
+#define ANSI_FG_YELLOW  "\x1b[33m"
+#define ANSI_FG_BLUE    "\x1b[34m"
+#define ANSI_FG_MAGENTA "\x1b[35m"
+#define ANSI_FG_CYAN    "\x1b[36m"
+#define ANSI_FG_WHITE   "\x1b[37m"
 
 
 gboolean gabble_media_session_error (GabbleMediaSession *obj, guint errno, const gchar * message, GError **error);
@@ -94,7 +117,11 @@ LmMessage *_gabble_media_session_message_new (GabbleMediaSession *session,
                                               const gchar *action,
                                               LmMessageNode **session_node);
 
-#define GMS_DEBUG(s, t, ...) _gabble_media_session_debug (s, t, __VA_ARGS__)
+#define GMS_DEBUG_INFO(s, ...)    _gabble_media_session_debug (s, DEBUG_MSG_INFO, __VA_ARGS__)
+#define GMS_DEBUG_DUMP(s, ...)    _gabble_media_session_debug (s, DEBUG_MSG_DUMP, __VA_ARGS__)
+#define GMS_DEBUG_WARNING(s, ...) _gabble_media_session_debug (s, DEBUG_MSG_WARNING, __VA_ARGS__)
+#define GMS_DEBUG_ERROR(s, ...)   _gabble_media_session_debug (s, DEBUG_MSG_ERROR, __VA_ARGS__)
+#define GMS_DEBUG_EVENT(s, ...)   _gabble_media_session_debug (s, DEBUG_MSG_EVENT, __VA_ARGS__)
 
 void _gabble_media_session_debug (GabbleMediaSession *session,
                                   DebugMessageType type,

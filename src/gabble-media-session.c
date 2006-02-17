@@ -22,7 +22,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h> /* debugging */
 
 #include "gabble-media-session.h"
 #include "gabble-media-session-signals-marshal.h"
@@ -81,28 +80,6 @@ struct _GabbleMediaSessionPrivate
 };
 
 #define GABBLE_MEDIA_SESSION_GET_PRIVATE(o)     (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_MEDIA_SESSION, GabbleMediaSessionPrivate))
-
-#define ANSI_RESET      "\x1b[0m"
-#define ANSI_BOLD_ON    "\x1b[1m"
-#define ANSI_BOLD_OFF   "\x1b[22m"
-#define ANSI_INVERSE_ON "\x1b[7m"
-
-#define ANSI_BG_RED     "\x1b[41m"
-#define ANSI_BG_GREEN   "\x1b[42m"
-#define ANSI_BG_YELLOW  "\x1b[43m"
-#define ANSI_BG_BLUE    "\x1b[44m"
-#define ANSI_BG_MAGENTA "\x1b[45m"
-#define ANSI_BG_CYAN    "\x1b[46m"
-#define ANSI_BG_WHITE   "\x1b[47m"
-
-#define ANSI_FG_BLACK   "\x1b[30m"
-#define ANSI_FG_RED     "\x1b[31m"
-#define ANSI_FG_GREEN   "\x1b[32m"
-#define ANSI_FG_YELLOW  "\x1b[33m"
-#define ANSI_FG_BLUE    "\x1b[34m"
-#define ANSI_FG_MAGENTA "\x1b[35m"
-#define ANSI_FG_CYAN    "\x1b[36m"
-#define ANSI_FG_WHITE   "\x1b[37m"
 
 typedef struct {
     gchar *name;
@@ -414,7 +391,7 @@ gabble_media_session_finalize (GObject *object)
  */
 gboolean gabble_media_session_error (GabbleMediaSession *obj, guint errno, const gchar * message, GError **error)
 {
-  GMS_DEBUG (obj, DEBUG_MSG_WARNING, "%s not yet implemented", G_STRFUNC);
+  GMS_DEBUG_WARNING (obj, "%s not yet implemented", G_STRFUNC);
 
   return TRUE;
 }
@@ -465,9 +442,8 @@ _gabble_media_session_handle_incoming (GabbleMediaSession *session,
 
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
 
-  GMS_DEBUG (session, DEBUG_MSG_INFO,
-             "got jingle session action \"%s\" from peer",
-             action);
+  GMS_DEBUG_INFO (session, "got jingle session action \"%s\" from peer",
+                  action);
 
   /* do the state machine dance */
 
@@ -478,9 +454,8 @@ _gabble_media_session_handle_incoming (GabbleMediaSession *session,
 
       if (!_gabble_media_stream_post_remote_candidates (priv->stream, iq_node, session_node))
         {
-          GMS_DEBUG (session, DEBUG_MSG_ERROR,
-                     "%s: gabble_media_stream_post_remote_candidates failed",
-                     G_STRFUNC);
+          GMS_DEBUG_ERROR (session, "%s: gabble_media_stream_post_remote_candidates failed",
+                           G_STRFUNC);
           HANDLER_DEBUG (session_node, "session_node");
         }
 
@@ -501,9 +476,8 @@ _gabble_media_session_handle_incoming (GabbleMediaSession *session,
         }
       else
         {
-          GMS_DEBUG (session, DEBUG_MSG_ERROR,
-                     "%s: gabble_media_stream_post_remote_codecs failed",
-                     G_STRFUNC);
+          GMS_DEBUG_ERROR (session, "%s: gabble_media_stream_post_remote_codecs failed",
+                           G_STRFUNC);
           HANDLER_DEBUG (desc_node, "desc_node");
         }
 
@@ -534,7 +508,7 @@ _gabble_media_session_handle_incoming (GabbleMediaSession *session,
   return;
 
 ACK_FAILURE:
-  GMS_DEBUG (session, DEBUG_MSG_ERROR, "unhandled jingle action \"%s\"", action);
+  GMS_DEBUG_ERROR (session, "unhandled jingle action \"%s\"", action);
 
   _gabble_connection_send_iq_ack (priv->conn, iq_node, LM_MESSAGE_SUB_TYPE_ERROR);
 }
@@ -544,9 +518,9 @@ session_state_changed (GabbleMediaSession *session,
                        JingleSessionState prev_state,
                        JingleSessionState new_state)
 {
-  GMS_DEBUG (session, DEBUG_MSG_EVENT, "state changed from %s to %s",
-      session_states[prev_state].name,
-      session_states[new_state].name);
+  GMS_DEBUG_EVENT (session, "state changed from %s to %s",
+                   session_states[prev_state].name,
+                   session_states[new_state].name);
 }
 
 static void
@@ -576,9 +550,8 @@ stream_new_active_candidate_pair_cb (GabbleMediaStream *stream,
 
   g_assert (priv->state < JS_STATE_ACTIVE);
 
-  GMS_DEBUG (session, DEBUG_MSG_INFO,
-             "voip-engine reported a new active candidate pair [\"%s\" - \"%s\"]",
-             native_candidate_id, remote_candidate_id);
+  GMS_DEBUG_INFO (session, "voip-engine reported a new active candidate pair [\"%s\" - \"%s\"]",
+                  native_candidate_id, remote_candidate_id);
 
   /* send a session accept if the session was initiated by the peer */
   if (priv->initiator == priv->peer)
@@ -592,8 +565,7 @@ stream_new_active_candidate_pair_cb (GabbleMediaStream *stream,
 
       _gabble_media_stream_session_node_add_description (priv->stream, session_node);
 
-      GMS_DEBUG (session, DEBUG_MSG_INFO,
-                 "sending jingle session action \"accept\" to peer");
+      GMS_DEBUG_INFO (session, "sending jingle session action \"accept\" to peer");
 
       /* send the final acceptance message */
       _gabble_connection_send_with_reply (priv->conn, msg, accept_msg_reply_cb,
@@ -603,8 +575,7 @@ stream_new_active_candidate_pair_cb (GabbleMediaStream *stream,
     }
   else
     {
-      GMS_DEBUG (session, DEBUG_MSG_INFO,
-                 "session initiated by us, so we're not going to send an accept");
+      GMS_DEBUG_INFO (session, "session initiated by us, so we're not going to send an accept");
     }
 }
 
@@ -650,8 +621,7 @@ stream_ready_cb (GabbleMediaStream *stream,
 
       _gabble_media_stream_session_node_add_description (priv->stream, session_node);
 
-      GMS_DEBUG (session, DEBUG_MSG_INFO,
-                 "sending jingle session action \"initiate\" to peer");
+      GMS_DEBUG_INFO (session, "sending jingle session action \"initiate\" to peer");
 
       _gabble_connection_send_with_reply (priv->conn, msg, initiate_msg_reply_cb,
                                           session, NULL);
@@ -674,9 +644,9 @@ stream_supported_codecs_cb (GabbleMediaStream *stream,
 
   if (priv->initiator != priv->peer)
     {
-      GMS_DEBUG (session, DEBUG_MSG_INFO,
-                 "%s: session not initiated by peer so we're not preparing an accept message",
-                 G_STRFUNC);
+      GMS_DEBUG_INFO (session, "%s: session not initiated by peer so we're "
+                      "not preparing an accept message",
+                      G_STRFUNC);
       return;
     }
 }
@@ -795,6 +765,9 @@ _gabble_media_session_debug (GabbleMediaSession *session,
   switch (type) {
     case DEBUG_MSG_INFO:
       type_str = ANSI_BOLD_ON ANSI_FG_WHITE;
+      break;
+    case DEBUG_MSG_DUMP:
+      type_str = ANSI_BOLD_ON ANSI_FG_GREEN;
       break;
     case DEBUG_MSG_WARNING:
       type_str = ANSI_BOLD_ON ANSI_FG_YELLOW;

@@ -697,27 +697,38 @@ _gabble_media_session_message_new (GabbleMediaSession *session,
   LmMessage *msg;
   LmMessageNode *iq_node, *node;
   gchar *id_str;
+  gchar *qualified_jid;
 
   g_assert (GABBLE_IS_MEDIA_SESSION (session));
 
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
 
+  qualified_jid = g_strdup_printf ("%s/Telepathy",
+                                   get_jid_for_contact (session, priv->peer));
+
   msg = lm_message_new_with_sub_type (
-      get_jid_for_contact (session, priv->peer),
+      qualified_jid,
       LM_MESSAGE_TYPE_IQ,
       LM_MESSAGE_SUB_TYPE_SET);
+
+  g_free (qualified_jid);
 
   iq_node = lm_message_get_node (msg);
   node = lm_message_node_add_child (iq_node, "session", NULL);
 
   id_str = g_strdup_printf ("%d", priv->id);
 
+  qualified_jid = g_strdup_printf ("%s/Telepathy",
+                                   get_jid_for_contact (session, priv->initiator));
+
   lm_message_node_set_attributes (node,
       "xmlns", "http://www.google.com/session",
       "type", action,
       "id", id_str,
-      "initiator", get_jid_for_contact (session, priv->initiator),
+      "initiator", qualified_jid,
       NULL);
+
+  g_free (qualified_jid);
 
   g_free (id_str);
 
@@ -736,7 +747,7 @@ _gabble_media_session_debug (GabbleMediaSession *session,
   gchar buf[512];
   GabbleMediaSessionPrivate *priv;
   /*
-  time_t now = 0;
+  time_t ttime = 0;
   struct tm tm_now = { 0, };
   */
   gchar stamp[10];

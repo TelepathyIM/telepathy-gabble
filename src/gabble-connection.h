@@ -28,8 +28,21 @@
 
 G_BEGIN_DECLS
 
+typedef enum
+{
+  GABBLE_PRESENCE_AVAILABLE,
+  GABBLE_PRESENCE_AWAY,
+  GABBLE_PRESENCE_CHAT,
+  GABBLE_PRESENCE_DND,
+  GABBLE_PRESENCE_XA,
+  GABBLE_PRESENCE_OFFLINE,
+  LAST_GABBLE_PRESENCE
+} GabblePresenceId;
+
 typedef struct _GabbleConnection GabbleConnection;
 typedef struct _GabbleConnectionClass GabbleConnectionClass;
+typedef struct _ContactPresence ContactPresence;
+
 typedef void (*GabbleConnectionMsgReplyFunc) (GabbleConnection *conn,
                                               LmMessage *sent_msg,
                                               LmMessage *reply_msg,
@@ -46,6 +59,13 @@ struct _GabbleConnectionClass {
 
 struct _GabbleConnection {
     GObject parent;
+};
+
+struct _ContactPresence
+{
+  GabblePresenceId presence_id;
+  gchar *status_message;
+  gchar *voice_resource;
 };
 
 GType gabble_connection_get_type(void);

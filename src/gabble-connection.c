@@ -792,6 +792,16 @@ message_send_reply_cb (LmMessageHandler *handler,
                        gpointer user_data)
 {
   GabbleMsgHandlerData *handler_data = user_data;
+  LmMessageSubType sub_type;
+
+  sub_type = lm_message_get_sub_type (reply_msg);
+  if (sub_type != LM_MESSAGE_SUB_TYPE_RESULT &&
+      sub_type != LM_MESSAGE_SUB_TYPE_ERROR)
+    {
+      lm_message_unref (handler_data->sent_msg);
+
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    }
 
   handler_data->reply_func (handler_data->conn,
                             handler_data->sent_msg,

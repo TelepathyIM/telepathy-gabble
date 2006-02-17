@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "gabble-media-session.h"
 #include "gabble-media-session-signals-marshal.h"
@@ -502,6 +503,13 @@ _gabble_media_session_handle_incoming (GabbleMediaSession *session,
 
       return;
     }
+  else if (strcmp (action, "reject") == 0)
+    {
+      if (priv->state != JS_STATE_PENDING_INITIATED)
+        goto ACK_FAILURE;
+
+      g_object_set (session, "state", JS_STATE_ENDED, NULL);
+    }
   else if (strcmp (action, "terminate") == 0)
     {
       if (priv->state < JS_STATE_PENDING_INITIATED)
@@ -768,6 +776,7 @@ _gabble_media_session_message_new (GabbleMediaSession *session,
   return msg;
 }
 
+#if GMS_DEBUG
 void
 _gabble_media_session_debug (GabbleMediaSession *session,
                              DebugMessageType type,
@@ -776,10 +785,8 @@ _gabble_media_session_debug (GabbleMediaSession *session,
   va_list list;
   gchar buf[512];
   GabbleMediaSessionPrivate *priv;
-  /*
-  time_t ttime = 0;
-  struct tm tm_now = { 0, };
-  */
+  time_t curtime;
+  struct tm *loctime;
   gchar stamp[10];
   const gchar *type_str;
 
@@ -787,15 +794,10 @@ _gabble_media_session_debug (GabbleMediaSession *session,
 
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
 
-  /*
-  time (&now);
-  localtime_r (&now, &tm_now);
+  curtime = time (NULL);
+  loctime = localtime (&curtime);
 
-  strftime (stamp, strlen (stamp),
-            "%T", &tm_now);
-  */
-
-  strcpy (stamp, "00:00:00");
+  strftime (stamp, sizeof (stamp), "%T", loctime);
 
   va_start (list, format);
 
@@ -834,4 +836,5 @@ _gabble_media_session_debug (GabbleMediaSession *session,
 
   fflush (stdout);
 }
+#endif /* GMS_DEBUG */
 

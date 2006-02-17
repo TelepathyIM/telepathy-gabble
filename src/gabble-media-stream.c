@@ -499,7 +499,7 @@ gboolean gabble_media_stream_new_native_candidate (GabbleMediaStream *obj, const
 
   g_object_get (priv->session, "state", &state, NULL);
 
-  g_assert (state < JS_STATE_ACTIVE);
+  g_assert (state <= JS_STATE_ACTIVE);
 
   candidates = g_value_get_boxed (&priv->native_candidates);
 
@@ -615,9 +615,7 @@ candidates_msg_reply_cb (GabbleConnection *conn,
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
-  /* FIXME: handle "candidates" reply here */
-  GMS_DEBUG (priv->session, DEBUG_MSG_WARNING,
-             "got reply to \"candidates\" from peer, this isn't handled yet");
+  MSG_REPLY_CB_END_SESSION_IF_NOT_SUCCESSFUL (priv->session, "candidates failed");
 }
 
 static void
@@ -636,7 +634,7 @@ push_native_candidates (GabbleMediaStream *stream)
   if (state < JS_STATE_PENDING_INITIATED)
     return;
 
-  g_assert (state == JS_STATE_PENDING_INITIATED);
+  g_assert (state < JS_STATE_ENDED);
 
   candidates = g_value_get_boxed (&priv->native_candidates);
 
@@ -740,8 +738,9 @@ push_native_candidates (GabbleMediaStream *stream)
 }
 
 gboolean
-gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream,
-                                        LmMessageNode *desc_node)
+_gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream,
+                                         LmMessageNode *iq_node,
+                                         LmMessageNode *desc_node)
 {
   GabbleMediaStreamPrivate *priv;
   LmMessageNode *node;
@@ -765,14 +764,14 @@ gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream,
       /* id of codec */
       str = lm_message_node_get_attribute (node, "id");
       if (!str)
-        return FALSE;
+        goto FAILURE;
 
       id = atoi(str);
 
       /* codec name */
       name = lm_message_node_get_attribute (node, "name");
       if (!name)
-        return FALSE;
+        goto FAILURE;
 
       g_value_init (&codec, TP_TYPE_CODEC_STRUCT);
       g_value_set_static_boxed (&codec,
@@ -794,9 +793,17 @@ gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream,
              "put %d remote codecs from peer into cache",
              codecs->len);
 
+/*SUCCESS:*/
+  _gabble_connection_send_iq_ack (priv->conn, iq_node, LM_MESSAGE_SUB_TYPE_RESULT);
+
   push_remote_codecs (stream);
 
   return TRUE;
+
+FAILURE:
+  _gabble_connection_send_iq_ack (priv->conn, iq_node, LM_MESSAGE_SUB_TYPE_ERROR);
+
+  return FALSE;
 }
 
 static void
@@ -834,8 +841,9 @@ push_remote_codecs (GabbleMediaStream *stream)
 static void push_remote_candidates (GabbleMediaStream *stream);
 
 gboolean
-gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
-                                            LmMessageNode *session_node)
+_gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
+                                             LmMessageNode *iq_node,
+                                             LmMessageNode *session_node)
 {
   GabbleMediaStreamPrivate *priv;
   LmMessageNode *node;
@@ -877,18 +885,18 @@ gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
       /* ip address */
       addr = lm_message_node_get_attribute (node, "address");
       if (!addr)
-        return FALSE;
+        goto FAILURE;
 
       /* port */
       str = lm_message_node_get_attribute (node, "port");
       if (!str)
-        return FALSE;
+        goto FAILURE;
       port = atoi (str);
 
       /* protocol */
       str = lm_message_node_get_attribute (node, "protocol");
       if (!str)
-        return FALSE;
+        goto FAILURE;
 
       if (!strcmp (str, "udp"))
         proto = TP_MEDIA_STREAM_PROTO_UDP;
@@ -899,30 +907,30 @@ gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
           GMS_DEBUG (priv->session, DEBUG_MSG_WARNING,
                      "%s: ssltcp candidates not yet supported",
                      G_STRFUNC);
-          return FALSE;
+          continue;
         }
       else
-        return FALSE;
+        goto FAILURE;
 
       /* protocol subtype: only "rtp" is supported here for now */
       str = lm_message_node_get_attribute (node, "name");
       if (!str)
-        return FALSE;
+        goto FAILURE;
       if (strcmp (str, "rtp"))
-        return FALSE;
+        goto FAILURE;
 
       /* protocol profile: hardcoded to "AVP" for now */
 
       /* preference */
       str = lm_message_node_get_attribute (node, "preference");
       if (!str)
-        return FALSE;
+        goto FAILURE;
       pref = g_ascii_strtod (str, NULL);
 
       /* type */
       str = lm_message_node_get_attribute (node, "type");
       if (!str)
-        return FALSE;
+        goto FAILURE;
 
       if (!strcmp (str, "local"))
         type = TP_MEDIA_STREAM_TRANSPORT_TYPE_LOCAL;
@@ -931,28 +939,28 @@ gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
       else if (!strcmp (str, "relay"))
         type = TP_MEDIA_STREAM_TRANSPORT_TYPE_RELAY;
       else
-        return FALSE;
+        goto FAILURE;
 
       /* username */
       user = lm_message_node_get_attribute (node, "username");
       if (!user)
-        return FALSE;
+        goto FAILURE;
 
       /* password */
       pass = lm_message_node_get_attribute (node, "password");
       if (!pass)
-        return FALSE;
+        goto FAILURE;
 
       /* unknown */
       str = lm_message_node_get_attribute (node, "network");
       if (!str)
-        return FALSE;
+        goto FAILURE;
       net = atoi (str);
 
       /* unknown */
       str = lm_message_node_get_attribute (node, "generation");
       if (!str)
-        return FALSE;
+        goto FAILURE;
       gen = atoi (str);
 
 
@@ -992,9 +1000,17 @@ gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
                  "put 1 remote candidate from peer into cache");
     }
 
+/*SUCCESS:*/
+  _gabble_connection_send_iq_ack (priv->conn, iq_node, LM_MESSAGE_SUB_TYPE_RESULT);
+
   push_remote_candidates (stream);
 
   return TRUE;
+
+FAILURE:
+  _gabble_connection_send_iq_ack (priv->conn, iq_node, LM_MESSAGE_SUB_TYPE_ERROR);
+
+  return FALSE;
 }
 
 static void
@@ -1018,7 +1034,7 @@ push_remote_candidates (GabbleMediaStream *stream)
   if (state < JS_STATE_PENDING_INITIATED)
     return;
 
-  g_assert (state == JS_STATE_PENDING_INITIATED);
+  g_assert (state < JS_STATE_ENDED);
 
   for (i = 0; i < candidates->len; i++)
     {
@@ -1041,8 +1057,8 @@ push_remote_candidates (GabbleMediaStream *stream)
 }
 
 void
-gabble_media_stream_session_node_add_description (GabbleMediaStream *stream,
-                                                  LmMessageNode *session_node)
+_gabble_media_stream_session_node_add_description (GabbleMediaStream *stream,
+                                                   LmMessageNode *session_node)
 {
   GabbleMediaStreamPrivate *priv;
   const GPtrArray *codecs;

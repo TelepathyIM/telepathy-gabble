@@ -113,6 +113,7 @@ struct _ContactPresence
 {
   GabblePresenceId presence_id;
   gchar *status_message;
+  gchar *voice_resource;
 };
 
 static void
@@ -789,7 +790,7 @@ static void make_roster_channels (GabbleConnection *conn);
 
 static void connection_disconnect (GabbleConnection *conn, TpConnectionStatusReason reason);
 static void connection_disconnected_cb (LmConnection *connection, LmDisconnectReason lm_reason, gpointer user_data);
-static void update_presence (GabbleConnection *self, GabbleHandle contact_handle, GabblePresenceId presence_id, const gchar *status_message);
+static void update_presence (GabbleConnection *self, GabbleHandle contact_handle, GabblePresenceId presence_id, const gchar *status_message, const gchar *voice_resource);
 
 /**
  * _gabble_connection_connect
@@ -852,7 +853,7 @@ _gabble_connection_connect (GabbleConnection *conn,
       g_assert (valid);
 
       /* set initial presence. TODO: some way for the user to set this */
-      update_presence (conn, priv->self_handle, GABBLE_PRESENCE_AVAILABLE, NULL);
+      update_presence (conn, priv->self_handle, GABBLE_PRESENCE_AVAILABLE, NULL, NULL);
 
       g_free (jid);
 
@@ -1279,8 +1280,6 @@ signal_own_presence (GabbleConnection *self, GError **error)
                                   "xmlns", "http://jabber.org/protocol/caps",
                                   NULL);
 
-  HANDLER_DEBUG (node, "sending presence stanza");
-
   if (!_gabble_connection_send (self, message, error))
     goto ERROR;
 
@@ -1312,7 +1311,8 @@ ERROR:
 static void
 update_presence (GabbleConnection *self, GabbleHandle contact_handle,
                  GabblePresenceId presence_id,
-                 const gchar *status_message)
+                 const gchar *status_message,
+                 const gchar *voice_resource)
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
   GQuark data_key = get_contact_presence_quark();
@@ -1325,8 +1325,11 @@ update_presence (GabbleConnection *self, GabbleHandle contact_handle,
       if (cp->presence_id == presence_id &&
           ((cp->status_message == NULL && status_message == NULL) ||
            (cp->status_message && status_message &&
-            strcmp(cp->status_message, status_message) == 0)))
-        return;
+            strcmp(cp->status_message, status_message) == 0 &&
+            (cp->voice_resource && !voice_resource))))
+        {
+          return;
+        }
     }
   else
     {
@@ -1343,6 +1346,14 @@ update_presence (GabbleConnection *self, GabbleHandle contact_handle,
     cp->status_message = g_strdup (status_message);
   else
     cp->status_message = NULL;
+
+  if (cp->voice_resource)
+    g_free (cp->voice_resource);
+
+  if (voice_resource)
+    cp->voice_resource = g_strdup (voice_resource);
+  else
+    cp->voice_resource = NULL;
 
   emit_presence_update (self, handles);
 }
@@ -1364,8 +1375,7 @@ connection_presence_cb (LmMessageHandler *handler,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-  LmMessageNode *pres_node;
-  LmMessageNode *child_node;
+  LmMessageNode *pres_node, *child_node, *node;
   const char *from;
   GIntSet *empty, *tmp;
   GabbleHandle handle;
@@ -1373,6 +1383,7 @@ connection_presence_cb (LmMessageHandler *handler,
   const gchar *presence_show = NULL;
   const gchar *status_message = NULL;
   GabblePresenceId presence_id;
+  const gchar *voice_resource = NULL;
 
   g_assert (connection == priv->conn);
 
@@ -1493,7 +1504,7 @@ connection_presence_cb (LmMessageHandler *handler,
       g_warning ("%s: XMPP Presence Error recieved, setting contact to offline",
                  G_STRFUNC);
     case LM_MESSAGE_SUB_TYPE_UNAVAILABLE:
-      update_presence (conn, handle, GABBLE_PRESENCE_OFFLINE, status_message);
+      update_presence (conn, handle, GABBLE_PRESENCE_OFFLINE, status_message, NULL);
       break;
     case LM_MESSAGE_SUB_TYPE_NOT_SET:
     case LM_MESSAGE_SUB_TYPE_AVAILABLE:
@@ -1529,8 +1540,33 @@ connection_presence_cb (LmMessageHandler *handler,
               presence_id = GABBLE_PRESENCE_AVAILABLE;
             }
         }
-      HANDLER_DEBUG (pres_node, "presence node");
-      update_presence (conn, handle, presence_id, status_message);
+
+      for (node = pres_node->children; node; node = node->next)
+        {
+          const gchar *cap_node, *cap_ext, *cap_xmlns;
+          if (strcmp (node->name, "c") != 0)
+            continue;
+
+          cap_node = lm_message_node_get_attribute (node, "xmlns");
+          cap_ext = lm_message_node_get_attribute (node, "ext");
+          cap_xmlns = lm_message_node_get_attribute (node, "xmlns");
+
+          if (!cap_node || !cap_ext || !cap_xmlns)
+            continue;
+
+          if (strcmp (cap_node, "http://www.google.com/xmpp/client/caps") != 0)
+            continue;
+
+          if (strcmp (cap_ext, "voice-v1") != 0)
+            continue;
+
+          if (strcmp (cap_xmlns, "http://jabber.org/protocol/caps") != 0)
+            continue;
+
+          voice_resource = NULL; /* FIXME: set this */
+        }
+
+      update_presence (conn, handle, presence_id, status_message, voice_resource);
       break;
     default:
       HANDLER_DEBUG (pres_node, "called with unknown subtype");
@@ -2495,7 +2531,7 @@ gboolean gabble_connection_clear_status (GabbleConnection *obj, GError **error)
   cp = gabble_handle_get_qdata (priv->handles,
       TP_HANDLE_TYPE_CONTACT, priv->self_handle, data_key);
 
-  update_presence (obj, priv->self_handle, GABBLE_PRESENCE_AVAILABLE, NULL);
+  update_presence (obj, priv->self_handle, GABBLE_PRESENCE_AVAILABLE, NULL, NULL);
   return signal_own_presence (obj, error);
 }
 
@@ -3041,7 +3077,7 @@ gboolean gabble_connection_remove_status (GabbleConnection *obj, const gchar * s
 
   if (strcmp (status, gabble_statuses[cp->presence_id].name) == 0)
     {
-      update_presence (obj, priv->self_handle, GABBLE_PRESENCE_AVAILABLE, NULL);
+      update_presence (obj, priv->self_handle, GABBLE_PRESENCE_AVAILABLE, NULL, NULL);
       return signal_own_presence (obj, error);
     }
   else
@@ -3369,17 +3405,7 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
             }
           status = g_value_get_string (message);
         }
-
       update_presence (data->conn, priv->self_handle, i, status);
-      data->retval = signal_own_presence (data->conn, data->error);
-    }
-  else
-    {
-      g_debug ("%s: got unknown status identifier %s", G_STRFUNC, (const gchar *) key);
-      *(data->error) = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                                    "unknown status identifier: %s",
-                                    (const gchar *) key);
-      data->retval = FALSE;
     }
 }
 

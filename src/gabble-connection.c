@@ -1415,13 +1415,19 @@ update_presence (GabbleConnection *self, GabbleHandle contact_handle,
   else
     cp->status_message = NULL;
 
-  if (cp->voice_resource)
-    g_free (cp->voice_resource);
-
   if (voice_resource)
-    cp->voice_resource = g_strdup (voice_resource);
-  else
-    cp->voice_resource = NULL;
+    {
+      if (cp->voice_resource)
+        {
+          g_debug ("%s: freeing old voice resource %s for GabbleHandle %d",
+                   G_STRFUNC, cp->voice_resource, contact_handle);
+          g_free (cp->voice_resource);
+        }
+
+      g_debug ("%s: setting voice resource to %s for GabbleHandle %d",
+               G_STRFUNC, voice_resource, contact_handle);
+      cp->voice_resource = g_strdup (voice_resource);
+    }
 
   emit_presence_update (self, handles);
 }
@@ -2037,7 +2043,7 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
-  handle = gabble_handle_for_contact (priv->handles, from, TRUE);
+  handle = gabble_handle_for_contact (priv->handles, from, FALSE);
 
   /* does the session exist? */
   sid_str = lm_message_node_get_attribute (session_node, "id");

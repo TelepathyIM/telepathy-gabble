@@ -477,9 +477,7 @@ _gabble_media_session_handle_incoming (GabbleMediaSession *session,
         }
       else
         {
-          GMS_DEBUG_ERROR (session, "%s: gabble_media_stream_post_remote_codecs failed",
-                           G_STRFUNC);
-          HANDLER_DEBUG (desc_node, "desc_node");
+          g_object_set (session, "state", JS_STATE_ENDED, NULL);
         }
 
       return;
@@ -495,7 +493,10 @@ _gabble_media_session_handle_incoming (GabbleMediaSession *session,
 
       if (_gabble_media_stream_post_remote_codecs (priv->stream, iq_node, desc_node))
         {
-          GMS_DEBUG_WARNING (session, "_gabble_media_stream_post_remote_codecs failed");
+          g_object_set (session, "state", JS_STATE_ACTIVE, NULL);
+        }
+      else
+        {
           g_object_set (session, "state", JS_STATE_ENDED, NULL);
         }
 
@@ -700,7 +701,21 @@ get_jid_for_contact (GabbleMediaSession *session,
   cp = gabble_handle_get_qdata (_gabble_connection_get_handles(priv->conn),
                                 TP_HANDLE_TYPE_CONTACT, handle, data_key);
 
-  g_assert (cp && cp->voice_resource);
+  if (cp == NULL)
+    {
+      GMS_DEBUG_ERROR (session, "%s: couldn't get presence for GabbleHandle %d",
+                       G_STRFUNC, handle);
+    }
+
+  g_assert (cp != NULL);
+
+  if (cp->voice_resource == NULL)
+    {
+      GMS_DEBUG_ERROR (session, "%s: couldn't get voice resource for GabbleHandle %d",
+                       G_STRFUNC, handle);
+    }
+
+  g_assert (cp->voice_resource != NULL);
 
   return g_strdup_printf ("%s/%s", base_jid, cp->voice_resource);
 }

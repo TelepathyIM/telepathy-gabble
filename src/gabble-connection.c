@@ -1805,10 +1805,6 @@ connection_open_cb (LmConnection *lmconn,
       connection_status_change (conn, TP_CONN_STATUS_DISCONNECTED,
                                 TP_CONN_STATUS_REASON_NETWORK_ERROR);
     }
-  else
-    {
-      connection_status_change (conn, TP_CONN_STATUS_CONNECTED, TP_CONN_STATUS_REASON_REQUESTED);
-    }
 }
 
 /**
@@ -1841,6 +1837,9 @@ connection_auth_cb (LmConnection *lmconn,
 
       return;
     }
+
+  /* go go gadget on-line */
+  connection_status_change (conn, TP_CONN_STATUS_CONNECTED, TP_CONN_STATUS_REASON_REQUESTED);
 
   /* send presence to the server to indicate availability */
   if (!signal_own_presence (conn, &error))

@@ -3405,7 +3405,17 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
             }
           status = g_value_get_string (message);
         }
-      update_presence (data->conn, priv->self_handle, i, status);
+
+      update_presence (data->conn, priv->self_handle, i, status, NULL);
+      data->retval = signal_own_presence (data->conn, data->error);
+    }
+  else
+    {
+      g_debug ("%s: got unknown status identifier %s", G_STRFUNC, (const gchar *) key);
+      *(data->error) = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+                                    "unknown status identifier: %s",
+                                    (const gchar *) key);
+      data->retval = FALSE;
     }
 }
 

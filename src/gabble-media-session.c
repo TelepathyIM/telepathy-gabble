@@ -468,70 +468,74 @@ _gabble_media_session_handle_incoming (GabbleMediaSession *session,
   GMS_DEBUG (session, DEBUG_MSG_INFO,
              "got jingle session action \"%s\" from peer",
              action);
+
   /* do the state machine dance */
 
-  if (priv->state < JS_STATE_ACTIVE)
+  if (strcmp (action, "candidates") == 0) /* "negotiate" in JEP */
     {
-      /* JS_STATE_PENDING_* */
+      if (priv->state < JS_STATE_PENDING_INITIATED || priv->state >= JS_STATE_ENDED)
+        goto ACK_FAILURE;
 
-      if (!strcmp (action, "initiate"))
+      if (!_gabble_media_stream_post_remote_candidates (priv->stream, iq_node, session_node))
         {
-          desc_node = lm_message_node_get_child (session_node, "description");
-          if (!desc_node)
-            goto ACK_ERROR;
-
-          _gabble_connection_send_iq_ack (priv->conn, iq_node, LM_MESSAGE_SUB_TYPE_RESULT);
-
-          if (!gabble_media_stream_post_remote_codecs (priv->stream, desc_node))
-            {
-              GMS_DEBUG (session, DEBUG_MSG_ERROR, "%s: gabble_media_stream_post_remote_codecs failed", G_STRFUNC);
-              HANDLER_DEBUG (session_node, "desc_node");
-            }
+          GMS_DEBUG (session, DEBUG_MSG_ERROR,
+                     "%s: gabble_media_stream_post_remote_candidates failed",
+                     G_STRFUNC);
+          HANDLER_DEBUG (session_node, "session_node");
         }
-      else if (!strcmp (action, "candidates")) /* "negotiate" in JEP */
-        {
-          _gabble_connection_send_iq_ack (priv->conn, iq_node, LM_MESSAGE_SUB_TYPE_RESULT);
 
-          if (!gabble_media_stream_post_remote_candidates (priv->stream, session_node))
-            {
-              GMS_DEBUG (session, DEBUG_MSG_ERROR,
-                         "%s: gabble_media_stream_post_remote_candidates failed",
-                         G_STRFUNC);
-            }
-        }
-      else if (!strcmp (action, "accept"))
-        {
-          _gabble_connection_send_iq_ack (priv->conn, iq_node, LM_MESSAGE_SUB_TYPE_RESULT);
+      return;
+    }
+  else if (strcmp (action, "initiate") == 0)
+    {
+      if (priv->state != JS_STATE_PENDING_CREATED)
+        goto ACK_FAILURE;
 
-          g_object_set (session, "state", JS_STATE_ACTIVE, NULL);
+      desc_node = lm_message_node_get_child (session_node, "description");
+      if (!desc_node)
+        goto ACK_FAILURE;
+
+      if (_gabble_media_stream_post_remote_codecs (priv->stream, iq_node, desc_node))
+        {
+          g_object_set (session, "state", JS_STATE_PENDING_INITIATED, NULL);
         }
       else
         {
-          GMS_DEBUG (session, DEBUG_MSG_ERROR, "%s: unhandled action \"%s\" in state JS_STATE_PENDING",
-              G_STRFUNC, action);
-          /*goto ACK_ERROR;*/
+          GMS_DEBUG (session, DEBUG_MSG_ERROR,
+                     "%s: gabble_media_stream_post_remote_codecs failed",
+                     G_STRFUNC);
+          HANDLER_DEBUG (desc_node, "desc_node");
         }
+
+      return;
     }
-  else if (priv->state < JS_STATE_ENDED)
+  else if (strcmp (action, "accept") == 0)
     {
-      /* JS_STATE_ACTIVE */
+      if (priv->state != JS_STATE_PENDING_INITIATED)
+        goto ACK_FAILURE;
 
-      GMS_DEBUG (session, DEBUG_MSG_ERROR, "%s: unhandled action \"%s\" in state JS_STATE_ACTIVE",
-          G_STRFUNC, action);
-      /*goto ACK_ERROR;*/
+      if (_gabble_media_stream_post_remote_codecs (priv->stream, iq_node, desc_node))
+        {
+          g_object_set (session, "state", JS_STATE_ENDED, NULL);
+        }
+
+      return;
     }
-  else
+  else if (strcmp (action, "terminate") == 0)
     {
-      /* JS_STATE_ENDED */
+      if (priv->state < JS_STATE_PENDING_INITIATED)
+        goto ACK_FAILURE;
 
-      GMS_DEBUG (session, DEBUG_MSG_ERROR, "%s: unhandled action \"%s\" in state JS_STATE_ENDED",
-          G_STRFUNC, action);
-      /*goto ACK_ERROR;*/
-  };
+      g_object_set (session, "state", JS_STATE_ENDED, NULL);
+    }
 
+/*ACK_SUCCESS:*/
+  _gabble_connection_send_iq_ack (priv->conn, iq_node, LM_MESSAGE_SUB_TYPE_RESULT);
   return;
 
-ACK_ERROR:
+ACK_FAILURE:
+  GMS_DEBUG (session, DEBUG_MSG_ERROR, "unhandled jingle action \"%s\"", action);
+
   _gabble_connection_send_iq_ack (priv->conn, iq_node, LM_MESSAGE_SUB_TYPE_ERROR);
 }
 
@@ -553,9 +557,9 @@ accept_msg_reply_cb (GabbleConnection *conn,
 {
   GabbleMediaSession *session = user_data;
 
-  /* FIXME: handle "accept" reply here */
-  GMS_DEBUG (session, DEBUG_MSG_WARNING,
-             "got reply to \"accept\" from peer, this isn't handled yet");
+  MSG_REPLY_CB_END_SESSION_IF_NOT_SUCCESSFUL (session, "accept failed");
+
+  g_object_set (session, "state", JS_STATE_ACTIVE, NULL);
 }
 
 static void
@@ -586,7 +590,7 @@ stream_new_active_candidate_pair_cb (GabbleMediaStream *stream,
        * and store it for later on */
       msg = _gabble_media_session_message_new (session, "accept", &session_node);
 
-      gabble_media_stream_session_node_add_description (priv->stream, session_node);
+      _gabble_media_stream_session_node_add_description (priv->stream, session_node);
 
       GMS_DEBUG (session, DEBUG_MSG_INFO,
                  "sending jingle session action \"accept\" to peer");
@@ -596,8 +600,6 @@ stream_new_active_candidate_pair_cb (GabbleMediaStream *stream,
                                           session, NULL);
 
       lm_message_unref (msg);
-
-      g_object_set (session, "state", JS_STATE_ACTIVE, NULL);
     }
   else
     {
@@ -622,22 +624,7 @@ initiate_msg_reply_cb (GabbleConnection *conn,
 {
   GabbleMediaSession *session = user_data;
 
-  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
-    {
-      LmMessageNode *node;
-
-      GMS_DEBUG (session, DEBUG_MSG_ERROR, "initiate failed");
-
-      node = lm_message_get_node (sent_msg);
-      HANDLER_DEBUG (node, "message sent");
-
-      node = lm_message_get_node (reply_msg);
-      HANDLER_DEBUG (node, "message reply");
-
-      g_object_set (session, "state", JS_STATE_ENDED, NULL);
-
-      return;
-    }
+  MSG_REPLY_CB_END_SESSION_IF_NOT_SUCCESSFUL (session, "initiate failed");
 
   g_object_set (session, "state", JS_STATE_PENDING_INITIATED, NULL);
 }
@@ -661,7 +648,7 @@ stream_ready_cb (GabbleMediaStream *stream,
 
       msg = _gabble_media_session_message_new (session, "initiate", &session_node);
 
-      gabble_media_stream_session_node_add_description (priv->stream, session_node);
+      _gabble_media_stream_session_node_add_description (priv->stream, session_node);
 
       GMS_DEBUG (session, DEBUG_MSG_INFO,
                  "sending jingle session action \"initiate\" to peer");
@@ -670,12 +657,6 @@ stream_ready_cb (GabbleMediaStream *stream,
                                           session, NULL);
 
       lm_message_unref (msg);
-    }
-  else
-    {
-      /* FIXME: shouldn't we be sending a reply before changing the state
-       * in this case? */
-      g_object_set (session, "state", JS_STATE_PENDING_INITIATED, NULL);
     }
 }
 

@@ -93,9 +93,9 @@ gboolean gabble_media_stream_new_native_candidate (GabbleMediaStream *obj, const
 gboolean gabble_media_stream_ready (GabbleMediaStream *obj, const GPtrArray * codecs, GError **error);
 gboolean gabble_media_stream_supported_codecs (GabbleMediaStream *obj, const GPtrArray * codecs, GError **error);
 
-gboolean gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream, LmMessageNode *desc_node);
-gboolean gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream, LmMessageNode *session_node);
-void gabble_media_stream_session_node_add_description (GabbleMediaStream *stream, LmMessageNode *session_node);
+gboolean _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream, LmMessageNode *iq_node, LmMessageNode *desc_node);
+gboolean _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream, LmMessageNode *iq_node, LmMessageNode *session_node);
+void _gabble_media_stream_session_node_add_description (GabbleMediaStream *stream, LmMessageNode *session_node);
 
 G_END_DECLS
 

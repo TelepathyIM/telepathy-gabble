@@ -68,6 +68,19 @@ GType gabble_media_session_get_type(void);
 #define GABBLE_MEDIA_SESSION_GET_CLASS(obj) \
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_MEDIA_SESSION, GabbleMediaSessionClass))
 
+/* CONVENIENCE MACROS */
+#define MSG_REPLY_CB_END_SESSION_IF_NOT_SUCCESSFUL(s, m) \
+  G_STMT_START { \
+  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT) \
+    { \
+      GMS_DEBUG (s, DEBUG_MSG_ERROR, m); \
+      HANDLER_DEBUG (sent_msg->node, "message sent"); \
+      HANDLER_DEBUG (reply_msg->node, "message reply"); \
+      g_object_set (s, "state", JS_STATE_ENDED, NULL); \
+      return; \
+    } \
+  } G_STMT_END
+
 
 gboolean gabble_media_session_error (GabbleMediaSession *obj, guint errno, const gchar * message, GError **error);
 gboolean gabble_media_session_ready (GabbleMediaSession *obj, GError **error);

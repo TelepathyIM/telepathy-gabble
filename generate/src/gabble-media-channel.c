@@ -33,6 +33,8 @@ G_DEFINE_TYPE(GabbleMediaChannel, gabble_media_channel, G_TYPE_OBJECT)
 enum
 {
     CLOSED,
+    GROUP_FLAGS_CHANGED,
+    MEMBERS_CHANGED,
     NEW_MEDIA_SESSION_HANDLER,
     LAST_SIGNAL
 };
@@ -79,6 +81,24 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
                   gabble_media_channel_marshal_VOID__VOID,
                   G_TYPE_NONE, 0);
 
+  signals[GROUP_FLAGS_CHANGED] =
+    g_signal_new ("group-flags-changed",
+                  G_OBJECT_CLASS_TYPE (gabble_media_channel_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_media_channel_marshal_VOID__INT_INT,
+                  G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_UINT);
+
+  signals[MEMBERS_CHANGED] =
+    g_signal_new ("members-changed",
+                  G_OBJECT_CLASS_TYPE (gabble_media_channel_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_media_channel_marshal_VOID__STRING_BOXED_BOXED_BOXED_BOXED,
+                  G_TYPE_NONE, 5, G_TYPE_STRING, DBUS_TYPE_G_UINT_ARRAY, DBUS_TYPE_G_UINT_ARRAY, DBUS_TYPE_G_UINT_ARRAY, DBUS_TYPE_G_UINT_ARRAY);
+
   signals[NEW_MEDIA_SESSION_HANDLER] =
     g_signal_new ("new-media-session-handler",
                   G_OBJECT_CLASS_TYPE (gabble_media_channel_class),
@@ -122,6 +142,24 @@ gabble_media_channel_finalize (GObject *object)
 
 
 /**
+ * gabble_media_channel_add_members
+ *
+ * Implements DBus method AddMembers
+ * on interface org.freedesktop.Telepathy.Channel.Interface.Group
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_media_channel_add_members (GabbleMediaChannel *obj, const GArray * contacts, const gchar * message, GError **error)
+{
+  return TRUE;
+}
+
+
+/**
  * gabble_media_channel_close
  *
  * Implements DBus method Close
@@ -152,6 +190,24 @@ gboolean gabble_media_channel_close (GabbleMediaChannel *obj, GError **error)
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 gboolean gabble_media_channel_get_channel_type (GabbleMediaChannel *obj, gchar ** ret, GError **error)
+{
+  return TRUE;
+}
+
+
+/**
+ * gabble_media_channel_get_group_flags
+ *
+ * Implements DBus method GetGroupFlags
+ * on interface org.freedesktop.Telepathy.Channel.Interface.Group
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_media_channel_get_group_flags (GabbleMediaChannel *obj, guint* ret, GError **error)
 {
   return TRUE;
 }
@@ -194,6 +250,78 @@ gboolean gabble_media_channel_get_interfaces (GabbleMediaChannel *obj, gchar ***
 
 
 /**
+ * gabble_media_channel_get_local_pending_members
+ *
+ * Implements DBus method GetLocalPendingMembers
+ * on interface org.freedesktop.Telepathy.Channel.Interface.Group
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_media_channel_get_local_pending_members (GabbleMediaChannel *obj, GArray ** ret, GError **error)
+{
+  return TRUE;
+}
+
+
+/**
+ * gabble_media_channel_get_members
+ *
+ * Implements DBus method GetMembers
+ * on interface org.freedesktop.Telepathy.Channel.Interface.Group
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_media_channel_get_members (GabbleMediaChannel *obj, GArray ** ret, GError **error)
+{
+  return TRUE;
+}
+
+
+/**
+ * gabble_media_channel_get_remote_pending_members
+ *
+ * Implements DBus method GetRemotePendingMembers
+ * on interface org.freedesktop.Telepathy.Channel.Interface.Group
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_media_channel_get_remote_pending_members (GabbleMediaChannel *obj, GArray ** ret, GError **error)
+{
+  return TRUE;
+}
+
+
+/**
+ * gabble_media_channel_get_self_handle
+ *
+ * Implements DBus method GetSelfHandle
+ * on interface org.freedesktop.Telepathy.Channel.Interface.Group
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_media_channel_get_self_handle (GabbleMediaChannel *obj, guint* ret, GError **error)
+{
+  return TRUE;
+}
+
+
+/**
  * gabble_media_channel_get_session_handlers
  *
  * Implements DBus method GetSessionHandlers
@@ -206,6 +334,24 @@ gboolean gabble_media_channel_get_interfaces (GabbleMediaChannel *obj, gchar ***
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 gboolean gabble_media_channel_get_session_handlers (GabbleMediaChannel *obj, GPtrArray ** ret, GError **error)
+{
+  return TRUE;
+}
+
+
+/**
+ * gabble_media_channel_remove_members
+ *
+ * Implements DBus method RemoveMembers
+ * on interface org.freedesktop.Telepathy.Channel.Interface.Group
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_media_channel_remove_members (GabbleMediaChannel *obj, const GArray * contacts, const gchar * message, GError **error)
 {
   return TRUE;
 }

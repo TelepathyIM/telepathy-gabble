@@ -2,6 +2,6 @@ gabble-connection-manager.xml	GabbleConnectionManager	ConnectionManager
 gabble-connection.xml	GabbleConnection	Connection, ConnectionInterfaceCapabilities, ConnectionInterfacePresence
 gabble-im-channel.xml	GabbleIMChannel	ChannelTypeText
 gabble-roster-channel.xml	GabbleRosterChannel	ChannelTypeContactList, ChannelInterfaceGroup
-gabble-media-channel.xml	GabbleMediaChannel	ChannelTypeStreamedMedia
+gabble-media-channel.xml	GabbleMediaChannel	ChannelTypeStreamedMedia, ChannelInterfaceGroup
 gabble-media-session.xml	GabbleMediaSession	MediaSessionHandler
 gabble-media-stream.xml	GabbleMediaStream	MediaStreamHandler

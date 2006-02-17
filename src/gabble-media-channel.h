@@ -56,11 +56,18 @@ GType gabble_media_channel_get_type(void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_MEDIA_CHANNEL, GabbleMediaChannelClass))
 
 
+gboolean gabble_media_channel_add_members (GabbleMediaChannel *obj, const GArray * contacts, const gchar * message, GError **error);
 gboolean gabble_media_channel_close (GabbleMediaChannel *obj, GError **error);
 gboolean gabble_media_channel_get_channel_type (GabbleMediaChannel *obj, gchar ** ret, GError **error);
+gboolean gabble_media_channel_get_group_flags (GabbleMediaChannel *obj, guint* ret, GError **error);
 gboolean gabble_media_channel_get_handle (GabbleMediaChannel *obj, guint* ret, guint* ret1, GError **error);
 gboolean gabble_media_channel_get_interfaces (GabbleMediaChannel *obj, gchar *** ret, GError **error);
+gboolean gabble_media_channel_get_local_pending_members (GabbleMediaChannel *obj, GArray ** ret, GError **error);
+gboolean gabble_media_channel_get_members (GabbleMediaChannel *obj, GArray ** ret, GError **error);
+gboolean gabble_media_channel_get_remote_pending_members (GabbleMediaChannel *obj, GArray ** ret, GError **error);
+gboolean gabble_media_channel_get_self_handle (GabbleMediaChannel *obj, guint* ret, GError **error);
 gboolean gabble_media_channel_get_session_handlers (GabbleMediaChannel *obj, GPtrArray ** ret, GError **error);
+gboolean gabble_media_channel_remove_members (GabbleMediaChannel *obj, const GArray * contacts, const gchar * message, GError **error);
 
 GabbleMediaSession *gabble_media_channel_create_session (GabbleMediaChannel *channel, GabbleHandle peer, guint32 sid);
 

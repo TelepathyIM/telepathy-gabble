@@ -1,5 +1,41 @@
 <!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 <node name="/GabbleMediaChannel">
+  <interface name="org.freedesktop.Telepathy.Channel.Interface.Group">
+    <method name="RemoveMembers">
+      <arg direction="in"  type="au" name="contacts" />
+      <arg direction="in"  type="s" name="message" />
+    </method>
+    <signal name="MembersChanged">
+      <arg type="s" name="message" />
+      <arg type="au" name="added" />
+      <arg type="au" name="removed" />
+      <arg type="au" name="local_pending" />
+      <arg type="au" name="remote_pending" />
+    </signal>
+    <method name="GetGroupFlags">
+      <arg direction="out" type="u" />
+    </method>
+    <method name="GetSelfHandle">
+      <arg direction="out" type="u" />
+    </method>
+    <method name="GetMembers">
+      <arg direction="out" type="au" />
+    </method>
+    <method name="AddMembers">
+      <arg direction="in"  type="au" name="contacts" />
+      <arg direction="in"  type="s" name="message" />
+    </method>
+    <signal name="GroupFlagsChanged">
+      <arg type="u" name="added" />
+      <arg type="u" name="removed" />
+    </signal>
+    <method name="GetRemotePendingMembers">
+      <arg direction="out" type="au" />
+    </method>
+    <method name="GetLocalPendingMembers">
+      <arg direction="out" type="au" />
+    </method>
+  </interface>
   <interface name="org.freedesktop.Telepathy.Channel">
     <method name="GetHandle">
       <arg direction="out" type="u" />

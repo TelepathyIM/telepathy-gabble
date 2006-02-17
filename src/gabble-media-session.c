@@ -33,6 +33,7 @@
 #include "gabble-media-channel.h"
 
 #include "gabble-connection.h"
+#include "handles.h"
 
 #include "telepathy-helpers.h"
 
@@ -488,8 +489,13 @@ _gabble_media_session_handle_incoming (GabbleMediaSession *session,
       if (priv->state != JS_STATE_PENDING_INITIATED)
         goto ACK_FAILURE;
 
+      desc_node = lm_message_node_get_child (session_node, "description");
+      if (!desc_node)
+        goto ACK_FAILURE;
+
       if (_gabble_media_stream_post_remote_codecs (priv->stream, iq_node, desc_node))
         {
+          GMS_DEBUG_WARNING (session, "_gabble_media_stream_post_remote_codecs failed");
           g_object_set (session, "state", JS_STATE_ENDED, NULL);
         }
 
@@ -672,12 +678,15 @@ get_jid_for_self (GabbleMediaSession *session)
 }
 #endif
 
-static const gchar *
+static gchar *
 get_jid_for_contact (GabbleMediaSession *session,
                      GabbleHandle handle)
 {
   GabbleMediaSessionPrivate *priv;
   GabbleHandleRepo *repo;
+  const gchar *base_jid;
+  GQuark data_key;
+  ContactPresence *cp;
 
   g_assert (GABBLE_IS_MEDIA_SESSION (session));
 
@@ -685,7 +694,15 @@ get_jid_for_contact (GabbleMediaSession *session,
 
   repo = _gabble_connection_get_handles (priv->conn);
 
-  return gabble_handle_inspect (repo, TP_HANDLE_TYPE_CONTACT, handle);
+  base_jid = gabble_handle_inspect (repo, TP_HANDLE_TYPE_CONTACT, handle);
+
+  data_key = _get_contact_presence_quark ();
+  cp = gabble_handle_get_qdata (_gabble_connection_get_handles(priv->conn),
+                                TP_HANDLE_TYPE_CONTACT, handle, data_key);
+
+  g_assert (cp && cp->voice_resource);
+
+  return g_strdup_printf ("%s/%s", base_jid, cp->voice_resource);
 }
 
 LmMessage *
@@ -697,38 +714,36 @@ _gabble_media_session_message_new (GabbleMediaSession *session,
   LmMessage *msg;
   LmMessageNode *iq_node, *node;
   gchar *id_str;
-  gchar *qualified_jid;
+  gchar *peer_jid, *initiator_jid;
 
   g_assert (GABBLE_IS_MEDIA_SESSION (session));
 
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
 
-  qualified_jid = g_strdup_printf ("%s/Telepathy",
-                                   get_jid_for_contact (session, priv->peer));
+  peer_jid = get_jid_for_contact (session, priv->peer);
 
   msg = lm_message_new_with_sub_type (
-      qualified_jid,
+      peer_jid,
       LM_MESSAGE_TYPE_IQ,
       LM_MESSAGE_SUB_TYPE_SET);
 
-  g_free (qualified_jid);
+  g_free (peer_jid);
 
   iq_node = lm_message_get_node (msg);
   node = lm_message_node_add_child (iq_node, "session", NULL);
 
   id_str = g_strdup_printf ("%d", priv->id);
 
-  qualified_jid = g_strdup_printf ("%s/Telepathy",
-                                   get_jid_for_contact (session, priv->initiator));
+  initiator_jid = get_jid_for_contact (session, priv->initiator);
 
   lm_message_node_set_attributes (node,
       "xmlns", "http://www.google.com/session",
       "type", action,
       "id", id_str,
-      "initiator", qualified_jid,
+      "initiator", initiator_jid,
       NULL);
 
-  g_free (qualified_jid);
+  g_free (initiator_jid);
 
   g_free (id_str);
 

@@ -86,6 +86,7 @@ struct _GabbleMediaStreamPrivate
 
 #define GABBLE_MEDIA_STREAM_GET_PRIVATE(o)     (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_MEDIA_STREAM, GabbleMediaStreamPrivate))
 
+#if GMS_DEBUG_WARNING
 static const char *tp_protocols[] = {
   "TP_MEDIA_STREAM_PROTO_UDP (0)",
   "TP_MEDIA_STREAM_PROTO_TCP (1)"
@@ -96,6 +97,7 @@ static const char *tp_transports[] = {
   "TP_MEDIA_STREAM_TRANSPORT_TYPE_DERIVED (1)",
   "TP_MEDIA_STREAM_TRANSPORT_TYPE_RELAY (2)"
 };
+#endif
 
 static void
 gabble_media_stream_init (GabbleMediaStream *obj)

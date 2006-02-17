@@ -28,8 +28,21 @@
 
 G_BEGIN_DECLS
 
+typedef enum
+{
+  GABBLE_PRESENCE_AVAILABLE,
+  GABBLE_PRESENCE_AWAY,
+  GABBLE_PRESENCE_CHAT,
+  GABBLE_PRESENCE_DND,
+  GABBLE_PRESENCE_XA,
+  GABBLE_PRESENCE_OFFLINE,
+  LAST_GABBLE_PRESENCE
+} GabblePresenceId;
+
 typedef struct _GabbleConnection GabbleConnection;
 typedef struct _GabbleConnectionClass GabbleConnectionClass;
+typedef struct _ContactPresence ContactPresence;
+
 typedef void (*GabbleConnectionMsgReplyFunc) (GabbleConnection *conn,
                                               LmMessage *sent_msg,
                                               LmMessage *reply_msg,
@@ -41,6 +54,13 @@ struct _GabbleConnectionClass {
 
 struct _GabbleConnection {
     GObject parent;
+};
+
+struct _ContactPresence
+{
+  GabblePresenceId presence_id;
+  gchar *status_message;
+  gchar *voice_resource;
 };
 
 GType gabble_connection_get_type(void);
@@ -75,6 +95,7 @@ GabbleHandleRepo *_gabble_connection_get_handles (GabbleConnection *conn);
 gboolean _gabble_connection_send (GabbleConnection *conn, LmMessage *msg, GError **error);
 gboolean _gabble_connection_send_with_reply (GabbleConnection *conn, LmMessage *msg, GabbleConnectionMsgReplyFunc reply_func, gpointer user_data, GError **error);
 void _gabble_connection_send_iq_ack (GabbleConnection *conn, LmMessageNode *iq_node, LmMessageSubType type);
+GQuark _get_contact_presence_quark();
 
 void _gabble_connection_client_hold_handle (GabbleConnection *conn, gchar* client_name, GabbleHandle handle, TpHandleType type);
 gboolean _gabble_connection_client_release_handle (GabbleConnection *conn, gchar* client_name, GabbleHandle handle, TpHandleType type);

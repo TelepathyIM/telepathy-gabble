@@ -118,7 +118,13 @@ LmMessage *_gabble_media_session_message_new (GabbleMediaSession *session,
                                               LmMessageNode **session_node);
 
 #define GMS_DEBUG_INFO(s, ...)    _gabble_media_session_debug (s, DEBUG_MSG_INFO, __VA_ARGS__)
+
+#if 0
 #define GMS_DEBUG_DUMP(s, ...)    _gabble_media_session_debug (s, DEBUG_MSG_DUMP, __VA_ARGS__)
+#else
+#define GMS_DEBUG_DUMP(s, ...)
+#endif
+
 #define GMS_DEBUG_WARNING(s, ...) _gabble_media_session_debug (s, DEBUG_MSG_WARNING, __VA_ARGS__)
 #define GMS_DEBUG_ERROR(s, ...)   _gabble_media_session_debug (s, DEBUG_MSG_ERROR, __VA_ARGS__)
 #define GMS_DEBUG_EVENT(s, ...)   _gabble_media_session_debug (s, DEBUG_MSG_EVENT, __VA_ARGS__)

@@ -88,17 +88,6 @@ struct _StatusInfo
   const gboolean exclusive;
 };
 
-typedef enum
-{
-  GABBLE_PRESENCE_AVAILABLE,
-  GABBLE_PRESENCE_AWAY,
-  GABBLE_PRESENCE_CHAT,
-  GABBLE_PRESENCE_DND,
-  GABBLE_PRESENCE_XA,
-  GABBLE_PRESENCE_OFFLINE,
-  LAST_GABBLE_PRESENCE
-} GabblePresenceId;
-
 static const StatusInfo gabble_statuses[LAST_GABBLE_PRESENCE] = {
  { "available", TP_CONN_PRESENCE_TYPE_AVAILABLE,     TRUE, TRUE },
  { "away",      TP_CONN_PRESENCE_TYPE_AWAY,          TRUE, TRUE },
@@ -106,14 +95,6 @@ static const StatusInfo gabble_statuses[LAST_GABBLE_PRESENCE] = {
  { "dnd",       TP_CONN_PRESENCE_TYPE_AWAY,          TRUE, TRUE },
  { "xa",        TP_CONN_PRESENCE_TYPE_EXTENDED_AWAY, TRUE, TRUE },
  { "offline",   TP_CONN_PRESENCE_TYPE_OFFLINE,       TRUE, TRUE }
-};
-
-typedef struct _ContactPresence ContactPresence;
-struct _ContactPresence
-{
-  GabblePresenceId presence_id;
-  gchar *status_message;
-  gchar *voice_resource;
 };
 
 static void
@@ -940,7 +921,7 @@ _gabble_connection_connect (GabbleConnection *conn,
       g_assert (valid);
 
       /* set initial presence. TODO: some way for the user to set this */
-      update_presence (conn, priv->self_handle, GABBLE_PRESENCE_AVAILABLE, NULL, NULL);
+      update_presence (conn, priv->self_handle, GABBLE_PRESENCE_AVAILABLE, NULL, "Telepathy");
 
       g_free (jid);
 
@@ -1202,13 +1183,13 @@ connection_message_cb (LmMessageHandler *handler,
 }
 
 /**
- * get_contact_presence_quark:
+ * _get_contact_presence_quark:
  *
  * Returns: the quark used for storing presence information on
  *          a GabbleHandle
  */
-static GQuark
-get_contact_presence_quark()
+GQuark
+_get_contact_presence_quark()
 {
   static GQuark presence_quark = 0;
   if (!presence_quark)
@@ -1243,7 +1224,7 @@ emit_presence_update (GabbleConnection *self,
                       const GabbleHandle* contact_handles)
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
-  GQuark data_key = get_contact_presence_quark();
+  GQuark data_key = _get_contact_presence_quark();
   ContactPresence *cp;
   GHashTable *presence;
   GValueArray *vals;
@@ -1313,7 +1294,7 @@ static gboolean
 signal_own_presence (GabbleConnection *self, GError **error)
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
-  GQuark data_key = get_contact_presence_quark();
+  GQuark data_key = _get_contact_presence_quark();
   ContactPresence *cp = gabble_handle_get_qdata (priv->handles,
       TP_HANDLE_TYPE_CONTACT, priv->self_handle, data_key);
   LmMessage *message = NULL;
@@ -1402,7 +1383,7 @@ update_presence (GabbleConnection *self, GabbleHandle contact_handle,
                  const gchar *voice_resource)
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
-  GQuark data_key = get_contact_presence_quark();
+  GQuark data_key = _get_contact_presence_quark();
   ContactPresence *cp = gabble_handle_get_qdata (priv->handles,
       TP_HANDLE_TYPE_CONTACT, contact_handle, data_key);
   GabbleHandle handles[2] = {contact_handle, 0};
@@ -1413,7 +1394,7 @@ update_presence (GabbleConnection *self, GabbleHandle contact_handle,
           ((cp->status_message == NULL && status_message == NULL) ||
            (cp->status_message && status_message &&
             strcmp(cp->status_message, status_message) == 0 &&
-            (cp->voice_resource && !voice_resource))))
+            (cp->voice_resource && voice_resource == NULL))))
         {
           return;
         }
@@ -1636,7 +1617,7 @@ connection_presence_cb (LmMessageHandler *handler,
           if (strcmp (node->name, "c") != 0)
             continue;
 
-          cap_node = lm_message_node_get_attribute (node, "xmlns");
+          cap_node = lm_message_node_get_attribute (node, "node");
           cap_ext = lm_message_node_get_attribute (node, "ext");
           cap_xmlns = lm_message_node_get_attribute (node, "xmlns");
 
@@ -1653,6 +1634,9 @@ connection_presence_cb (LmMessageHandler *handler,
             continue;
 
           gabble_handle_decode_jid (from, &username, &server, &voice_resource);
+
+          g_debug ("%s: %s has voice-v1 support, storing resource %s",
+                   G_STRFUNC, from, voice_resource);
 
           g_free (username);
           g_free (server);
@@ -2619,7 +2603,7 @@ gboolean gabble_connection_clear_status (GabbleConnection *obj, GError **error)
 {
   GabbleConnectionPrivate *priv;
   ContactPresence *cp;
-  GQuark data_key = get_contact_presence_quark();
+  GQuark data_key = _get_contact_presence_quark();
   g_assert (GABBLE_IS_CONNECTION (obj));
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
@@ -3160,7 +3144,7 @@ gboolean gabble_connection_release_handle (GabbleConnection *obj, guint handle_t
  */
 gboolean gabble_connection_remove_status (GabbleConnection *obj, const gchar * status, GError **error)
 {
-  GQuark data_key = get_contact_presence_quark();
+  GQuark data_key = _get_contact_presence_quark();
   GabbleConnectionPrivate *priv;
   ContactPresence *cp;
 
@@ -3249,6 +3233,8 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
   else if (!strcmp (type, TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA))
     {
       GabbleMediaChannel *chan;
+      GQuark data_key;
+      ContactPresence *cp;
 
       if (handle_type != TP_HANDLE_TYPE_CONTACT)
         goto NOT_AVAILABLE;
@@ -3258,8 +3244,20 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
                                    handle))
         goto INVALID_HANDLE;
 
-      chan = new_media_channel (obj, handle, suppress_handler);
-      gabble_media_channel_create_session (chan, handle, 0);
+      data_key = _get_contact_presence_quark ();
+      cp = gabble_handle_get_qdata (priv->handles, TP_HANDLE_TYPE_CONTACT,
+                                    handle, data_key);
+
+      if (!cp || !cp->voice_resource)
+        goto NOT_AVAILABLE;
+
+      chan = g_hash_table_lookup (priv->media_channels, GINT_TO_POINTER (handle));
+
+      if (chan == NULL)
+        {
+          chan = new_media_channel (obj, handle, suppress_handler);
+          gabble_media_channel_create_session (chan, handle, 0);
+        }
 
       g_object_get (chan, "object-path", ret, NULL);
     }

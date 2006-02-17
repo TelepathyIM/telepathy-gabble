@@ -86,7 +86,7 @@ struct _GabbleMediaStreamPrivate
 
 #define GABBLE_MEDIA_STREAM_GET_PRIVATE(o)     (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_MEDIA_STREAM, GabbleMediaStreamPrivate))
 
-#if GMS_DEBUG_WARNING
+#if GMS_DEBUG
 static const char *tp_protocols[] = {
   "TP_MEDIA_STREAM_PROTO_UDP (0)",
   "TP_MEDIA_STREAM_PROTO_TCP (1)"
@@ -729,7 +729,7 @@ push_native_candidates (GabbleMediaStream *stream)
       GMS_DEBUG_DUMP (priv->session, "  from Telepathy DBus struct: [%s\"%s\", %s[%s0, \"%s\", %d, %s, \"%s\", \"%s\", %f, %s, \"%s\", \"%s\"%s]]",
                       ANSI_BOLD_OFF, candidate_id, ANSI_BOLD_ON,
                       ANSI_BOLD_OFF, addr, port, tp_protocols[proto], "RTP", "AVP", pref, tp_transports[type], user, pass, ANSI_BOLD_ON);
-      GMS_DEBUG_DUMP (priv->session, "  to Jingle XML: [%s%s%s]\n",
+      GMS_DEBUG_DUMP (priv->session, "  to Jingle XML: [%s%s%s]",
                       ANSI_BOLD_OFF, xml, ANSI_BOLD_ON);
       g_free (xml);
 
@@ -760,6 +760,7 @@ _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream,
   LmMessageNode *node;
   const gchar *str;
   GPtrArray *codecs;
+  gchar *xml;
 
   g_assert (GABBLE_IS_MEDIA_STREAM (stream));
 
@@ -778,14 +779,22 @@ _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream,
       /* id of codec */
       str = lm_message_node_get_attribute (node, "id");
       if (!str)
-        goto FAILURE;
+        {
+          GMS_DEBUG_ERROR (priv->session, "_gabble_media_stream_post_remote_codecs "
+                           "failed: failed to get attribute \"id\"");
+          goto FAILURE;
+        }
 
       id = atoi(str);
 
       /* codec name */
       name = lm_message_node_get_attribute (node, "name");
       if (!name)
-        goto FAILURE;
+        {
+          GMS_DEBUG_ERROR (priv->session, "_gabble_media_stream_post_remote_codecs "
+                           "failed: failed to get attribute \"name\"");
+          goto FAILURE;
+        }
 
       g_value_init (&codec, TP_TYPE_CODEC_STRUCT);
       g_value_set_static_boxed (&codec,
@@ -814,6 +823,11 @@ _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream,
   return TRUE;
 
 FAILURE:
+  xml = lm_message_node_to_string (node);
+  GMS_DEBUG_DUMP (priv->session, "  node: [%s%s%s]",
+                  ANSI_BOLD_OFF, xml, ANSI_BOLD_ON);
+  g_free (xml);
+
   _gabble_connection_send_iq_ack (priv->conn, iq_node, LM_MESSAGE_SUB_TYPE_ERROR);
 
   return FALSE;
@@ -1009,7 +1023,7 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
 
       xml = lm_message_node_to_string (node);
       GMS_DEBUG_INFO (priv->session, "put 1 remote candidate from peer into cache");
-      GMS_DEBUG_DUMP (priv->session, "  from Jingle XML: [%s%s%s]\n",
+      GMS_DEBUG_DUMP (priv->session, "  from Jingle XML: [%s%s%s]",
                       ANSI_BOLD_OFF, xml, ANSI_BOLD_ON);
       GMS_DEBUG_DUMP (priv->session, "  to Telepathy DBus struct: [%s\"%s\", %s[%s0, \"%s\", %d, %s, \"%s\", \"%s\", %f, %s, \"%s\", \"%s\"%s]]",
                       ANSI_BOLD_OFF, user, ANSI_BOLD_ON,

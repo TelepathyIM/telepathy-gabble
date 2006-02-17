@@ -86,6 +86,17 @@ struct _GabbleMediaStreamPrivate
 
 #define GABBLE_MEDIA_STREAM_GET_PRIVATE(o)     (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_MEDIA_STREAM, GabbleMediaStreamPrivate))
 
+static const char *tp_protocols[] = {
+  "TP_MEDIA_STREAM_PROTO_UDP (0)",
+  "TP_MEDIA_STREAM_PROTO_TCP (1)"
+};
+
+static const char *tp_transports[] = {
+  "TP_MEDIA_STREAM_TRANSPORT_TYPE_LOCAL (0)",
+  "TP_MEDIA_STREAM_TRANSPORT_TYPE_DERIVED (1)",
+  "TP_MEDIA_STREAM_TRANSPORT_TYPE_RELAY (2)"
+};
+
 static void
 gabble_media_stream_init (GabbleMediaStream *obj)
 {
@@ -384,8 +395,7 @@ gboolean gabble_media_stream_codec_choice (GabbleMediaStream *obj, guint codec_i
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
 
-  GMS_DEBUG (priv->session, DEBUG_MSG_WARNING,
-      "%s not yet implemented", G_STRFUNC);
+  GMS_DEBUG_WARNING (priv->session, "%s not yet implemented", G_STRFUNC);
 
   return TRUE;
 }
@@ -411,8 +421,7 @@ gboolean gabble_media_stream_error (GabbleMediaStream *obj, guint errno, const g
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
 
-  GMS_DEBUG (priv->session, DEBUG_MSG_WARNING,
-      "%s not yet implemented", G_STRFUNC);
+  GMS_DEBUG_WARNING (priv->session, "%s not yet implemented", G_STRFUNC);
 
   return TRUE;
 }
@@ -438,8 +447,7 @@ gboolean gabble_media_stream_native_candidates_prepared (GabbleMediaStream *obj,
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
 
-  GMS_DEBUG (priv->session, DEBUG_MSG_WARNING,
-      "%s not yet implemented", G_STRFUNC);
+  GMS_DEBUG_WARNING (priv->session, "%s not yet implemented", G_STRFUNC);
 
   return TRUE;
 }
@@ -516,16 +524,14 @@ gboolean gabble_media_stream_new_native_candidate (GabbleMediaStream *obj, const
   addr = g_value_get_string (g_value_array_get_nth (transport, 1));
   if (!strcmp (addr, "127.0.0.1"))
     {
-      GMS_DEBUG (priv->session, DEBUG_MSG_WARNING,
-                 "%s: ignoring native localhost candidate",
-                 G_STRFUNC);
+      GMS_DEBUG_WARNING (priv->session, "%s: ignoring native localhost candidate",
+                         G_STRFUNC);
       return TRUE;
     }
 
   g_ptr_array_add (candidates, g_value_get_boxed (&candidate));
 
-  GMS_DEBUG (priv->session, DEBUG_MSG_INFO,
-             "put 1 native candidate from voip-engine into cache");
+  GMS_DEBUG_INFO (priv->session, "put 1 native candidate from voip-engine into cache");
 
   push_native_candidates (obj);
 
@@ -557,9 +563,8 @@ gboolean gabble_media_stream_ready (GabbleMediaStream *obj, const GPtrArray * co
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
 
-  GMS_DEBUG (priv->session, DEBUG_MSG_INFO,
-             "putting list of all %d locally supported codecs from voip-engine into cache",
-             codecs->len);
+  GMS_DEBUG_INFO (priv->session, "putting list of all %d locally supported "
+                  "codecs from voip-engine into cache", codecs->len);
 
   g_value_init (&val, TP_TYPE_CODEC_LIST);
   g_value_set_static_boxed (&val, codecs);
@@ -591,10 +596,10 @@ gboolean gabble_media_stream_supported_codecs (GabbleMediaStream *obj, const GPt
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
 
+  GMS_DEBUG_INFO (priv->session, "got codec intersection containing %d "
+                  "codecs from voip-engine", codecs->len);
+
   /* store the intersection for later on */
-  GMS_DEBUG (priv->session, DEBUG_MSG_INFO,
-             "got codec intersection containing %d codecs from voip-engine",
-             codecs->len);
   g_value_set_boxed (&priv->native_codecs, codecs);
 
   g_signal_emit (obj, signals[SUPPORTED_CODECS], 0, codecs);
@@ -654,7 +659,7 @@ push_native_candidates (GabbleMediaStream *stream)
       gchar *pref_str;
       TpMediaStreamTransportType type;
       const gchar *type_str;
-      gchar *user, *pass;
+      gchar *user, *pass, *xml;
 
       candidate = g_ptr_array_index (candidates, i);
 
@@ -716,8 +721,15 @@ push_native_candidates (GabbleMediaStream *stream)
           "generation", "0",
           NULL);
 
-      GMS_DEBUG (priv->session, DEBUG_MSG_INFO,
-                 "sending jingle session action \"candidate\" to peer");
+      GMS_DEBUG_INFO (priv->session, "sending jingle session action \"candidate\" to peer");
+
+      xml = lm_message_node_to_string (cand_node);
+      GMS_DEBUG_DUMP (priv->session, "  from Telepathy DBus struct: [%s\"%s\", %s[%s0, \"%s\", %d, %s, \"%s\", \"%s\", %f, %s, \"%s\", \"%s\"%s]]",
+                      ANSI_BOLD_OFF, candidate_id, ANSI_BOLD_ON,
+                      ANSI_BOLD_OFF, addr, port, tp_protocols[proto], "RTP", "AVP", pref, tp_transports[type], user, pass, ANSI_BOLD_ON);
+      GMS_DEBUG_DUMP (priv->session, "  to Jingle XML: [%s%s%s]\n",
+                      ANSI_BOLD_OFF, xml, ANSI_BOLD_ON);
+      g_free (xml);
 
       /* send it */
       _gabble_connection_send_with_reply (priv->conn, msg, candidates_msg_reply_cb, stream, NULL);
@@ -789,9 +801,8 @@ _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream,
       g_ptr_array_add (codecs, g_value_get_boxed (&codec));
     }
 
-  GMS_DEBUG (priv->session, DEBUG_MSG_INFO,
-             "put %d remote codecs from peer into cache",
-             codecs->len);
+  GMS_DEBUG_INFO (priv->session, "put %d remote codecs from peer into cache",
+                  codecs->len);
 
 /*SUCCESS:*/
   _gabble_connection_send_iq_ack (priv->conn, iq_node, LM_MESSAGE_SUB_TYPE_RESULT);
@@ -827,9 +838,8 @@ push_remote_codecs (GabbleMediaStream *stream)
   if (codecs->len == 0)
     return;
 
-  GMS_DEBUG (priv->session, DEBUG_MSG_EVENT,
-      "passing %d remote codecs to voip-engine",
-      codecs->len);
+  GMS_DEBUG_EVENT (priv->session, "passing %d remote codecs to voip-engine",
+                   codecs->len);
 
   g_signal_emit (stream, signals[SET_REMOTE_CODECS], 0,
                  codecs);
@@ -865,10 +875,10 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
       TpMediaStreamTransportType type;
       const gchar *user, *pass;
       guchar net, gen;
-
       GValue candidate = { 0, };
       GPtrArray *transports;
       GValue transport = { 0, };
+      gchar *xml;
 
 
       /*
@@ -904,9 +914,8 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
         proto = TP_MEDIA_STREAM_PROTO_TCP;
       else if (!strcmp (str, "ssltcp"))
         {
-          GMS_DEBUG (priv->session, DEBUG_MSG_WARNING,
-                     "%s: ssltcp candidates not yet supported",
-                     G_STRFUNC);
+          GMS_DEBUG_WARNING (priv->session, "%s: ssltcp candidates "
+                             "not yet supported", G_STRFUNC);
           continue;
         }
       else
@@ -996,8 +1005,14 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
 
       g_ptr_array_add (candidates, g_value_get_boxed (&candidate));
 
-      GMS_DEBUG (priv->session, DEBUG_MSG_INFO,
-                 "put 1 remote candidate from peer into cache");
+      xml = lm_message_node_to_string (node);
+      GMS_DEBUG_INFO (priv->session, "put 1 remote candidate from peer into cache");
+      GMS_DEBUG_DUMP (priv->session, "  from Jingle XML: [%s%s%s]\n",
+                      ANSI_BOLD_OFF, xml, ANSI_BOLD_ON);
+      GMS_DEBUG_DUMP (priv->session, "  to Telepathy DBus struct: [%s\"%s\", %s[%s0, \"%s\", %d, %s, \"%s\", \"%s\", %f, %s, \"%s\", \"%s\"%s]]",
+                      ANSI_BOLD_OFF, user, ANSI_BOLD_ON,
+                      ANSI_BOLD_OFF, addr, port, tp_protocols[proto], "RTP", "AVP", pref, tp_transports[type], user, pass, ANSI_BOLD_ON);
+      g_free (xml);
     }
 
 /*SUCCESS:*/
@@ -1045,8 +1060,8 @@ push_remote_candidates (GabbleMediaStream *stream)
       candidate_id = g_value_get_string (g_value_array_get_nth (candidate, 0));
       transports = g_value_get_boxed (g_value_array_get_nth (candidate, 1));
 
-      GMS_DEBUG (priv->session, DEBUG_MSG_EVENT,
-          "passing 1 remote candidate to voip-engine");
+      GMS_DEBUG_EVENT (priv->session, "passing 1 remote candidate "
+                       "to voip-engine");
 
       g_signal_emit (stream, signals[ADD_REMOTE_CANDIDATE], 0,
                      candidate_id, transports);

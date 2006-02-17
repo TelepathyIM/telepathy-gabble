@@ -1383,7 +1383,7 @@ connection_presence_cb (LmMessageHandler *handler,
   const gchar *presence_show = NULL;
   const gchar *status_message = NULL;
   GabblePresenceId presence_id;
-  const gchar *voice_resource = NULL;
+  gchar *voice_resource = NULL;
 
   g_assert (connection == priv->conn);
 
@@ -1544,6 +1544,8 @@ connection_presence_cb (LmMessageHandler *handler,
       for (node = pres_node->children; node; node = node->next)
         {
           const gchar *cap_node, *cap_ext, *cap_xmlns;
+          gchar *username, *server;
+
           if (strcmp (node->name, "c") != 0)
             continue;
 
@@ -1563,10 +1565,19 @@ connection_presence_cb (LmMessageHandler *handler,
           if (strcmp (cap_xmlns, "http://jabber.org/protocol/caps") != 0)
             continue;
 
-          voice_resource = NULL; /* FIXME: set this */
+          gabble_handle_decode_jid (from, &username, &server, &voice_resource);
+
+          g_free (username);
+          g_free (server);
+
+          break;
         }
 
       update_presence (conn, handle, presence_id, status_message, voice_resource);
+
+      if (voice_resource)
+        g_free (voice_resource);
+
       break;
     default:
       HANDLER_DEBUG (pres_node, "called with unknown subtype");

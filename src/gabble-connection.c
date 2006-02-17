@@ -2811,7 +2811,12 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
                                    handle))
         goto INVALID_HANDLE;
 
-      chan = new_im_channel (obj, handle, suppress_handler);
+      chan = g_hash_table_lookup (priv->im_channels, GINT_TO_POINTER (handle));
+
+      if (chan == NULL)
+        {
+          chan = new_im_channel (obj, handle, suppress_handler);
+        }
 
       g_object_get (chan, "object-path", ret, NULL);
     }

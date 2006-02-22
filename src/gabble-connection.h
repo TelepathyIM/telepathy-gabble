@@ -31,6 +31,11 @@ G_BEGIN_DECLS
 typedef struct _GabbleConnection GabbleConnection;
 typedef struct _GabbleConnectionClass GabbleConnectionClass;
 
+typedef void (*GabbleConnectionMsgReplyFunc) (GabbleConnection *conn,
+                                              LmMessage *sent_msg,
+                                              LmMessage *reply_msg,
+                                              gpointer user_data);
+
 struct _GabbleConnectionClass {
     GObjectClass parent_class;
 };
@@ -60,6 +65,8 @@ gboolean _gabble_connection_register (GabbleConnection *conn, char **bus_name, c
 gboolean _gabble_connection_connect (GabbleConnection *conn, GError **error);
 GabbleHandleRepo *_gabble_connection_get_handles (GabbleConnection *conn);
 gboolean _gabble_connection_send (GabbleConnection *conn, LmMessage *msg, GError **error);
+gboolean _gabble_connection_send_with_reply (GabbleConnection *conn, LmMessage *msg, GabbleConnectionMsgReplyFunc reply_func, gpointer user_data, GError **error);
+void _gabble_connection_send_iq_ack (GabbleConnection *conn, LmMessageNode *iq_node, LmMessageSubType type);
 void _gabble_connection_client_hold_handle (GabbleConnection *conn, gchar* client_name, GabbleHandle handle, TpHandleType type);
 gboolean _gabble_connection_client_release_handle (GabbleConnection *conn, gchar* client_name, GabbleHandle handle, TpHandleType type);
 

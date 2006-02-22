@@ -2073,7 +2073,7 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
       g_debug ("%s: creating media channel", G_STRFUNC);
 
       chan = new_media_channel (conn, handle, FALSE);
-      session = gabble_media_channel_create_session (chan, handle, sid);
+      session = _gabble_media_channel_create_session (chan, handle, sid);
     }
 
   _gabble_media_session_handle_incoming (session, iq_node, session_node, action);
@@ -3262,7 +3262,7 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
       if (chan == NULL)
         {
           chan = new_media_channel (obj, handle, suppress_handler);
-          gabble_media_channel_create_session (chan, handle, 0);
+          _gabble_media_channel_create_session (chan, handle, 0);
         }
 
       g_object_get (chan, "object-path", ret, NULL);

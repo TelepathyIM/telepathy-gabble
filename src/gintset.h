@@ -19,6 +19,8 @@
 #ifndef __G_INTSET_H__
 #define __G_INTSET_H__
 
+#include <glib-object.h>
+
 typedef struct _GIntSet GIntSet;
 typedef void (*GIntFunc)(guint i, gpointer userdata);
 

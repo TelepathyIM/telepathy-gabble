@@ -23,6 +23,7 @@
 
 #include <glib-object.h>
 
+#include "gabble-group-mixin.h"
 #include "handles.h"
 #include "gabble-media-session.h"
 
@@ -33,10 +34,14 @@ typedef struct _GabbleMediaChannelClass GabbleMediaChannelClass;
 
 struct _GabbleMediaChannelClass {
     GObjectClass parent_class;
+
+    GabbleGroupMixinClass group_class;
 };
 
 struct _GabbleMediaChannel {
     GObject parent;
+
+    GabbleGroupMixin group;
 };
 
 GType gabble_media_channel_get_type(void);
@@ -69,7 +74,7 @@ gboolean gabble_media_channel_get_self_handle (GabbleMediaChannel *obj, guint* r
 gboolean gabble_media_channel_get_session_handlers (GabbleMediaChannel *obj, GPtrArray ** ret, GError **error);
 gboolean gabble_media_channel_remove_members (GabbleMediaChannel *obj, const GArray * contacts, const gchar * message, GError **error);
 
-GabbleMediaSession *gabble_media_channel_create_session (GabbleMediaChannel *channel, GabbleHandle peer, guint32 sid);
+GabbleMediaSession *_gabble_media_channel_create_session (GabbleMediaChannel *channel, GabbleHandle peer, guint32 sid);
 
 G_END_DECLS
 

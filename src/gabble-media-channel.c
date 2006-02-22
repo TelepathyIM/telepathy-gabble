@@ -45,8 +45,6 @@ G_DEFINE_TYPE(GabbleMediaChannel, gabble_media_channel, G_TYPE_OBJECT)
 enum
 {
     CLOSED,
-    GROUP_FLAGS_CHANGED,
-    MEMBERS_CHANGED,
     NEW_MEDIA_SESSION_HANDLER,
     LAST_SIGNAL
 };
@@ -101,6 +99,8 @@ gabble_media_channel_constructor (GType type, guint n_props,
   DBusGConnection *bus;
   GabbleHandleRepo *handles;
   gboolean valid;
+  GabbleHandle self_handle;
+  GError *error;
 
   obj = G_OBJECT_CLASS (gabble_media_channel_parent_class)->
            constructor (type, n_props, props);
@@ -109,6 +109,12 @@ gabble_media_channel_constructor (GType type, guint n_props,
   handles = _gabble_connection_get_handles (priv->connection);
   valid = gabble_handle_ref (handles, TP_HANDLE_TYPE_CONTACT, priv->handle);
   g_assert (valid);
+
+  valid = gabble_connection_get_self_handle (priv->connection, &self_handle, &error);
+  g_assert (valid);
+
+  gabble_group_mixin_init (obj, G_STRUCT_OFFSET (GabbleMediaChannel, group),
+                           handles, self_handle);
 
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
@@ -177,6 +183,8 @@ gabble_media_channel_set_property (GObject     *object,
 
 static void gabble_media_channel_dispose (GObject *object);
 static void gabble_media_channel_finalize (GObject *object);
+static gboolean gabble_media_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *message, GError **error);
+static gboolean gabble_media_channel_remove_member (GObject *obj, GabbleHandle handle, const gchar *message, GError **error);
 
 static void
 gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_class)
@@ -251,24 +259,6 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
                   gabble_media_channel_marshal_VOID__VOID,
                   G_TYPE_NONE, 0);
 
-  signals[GROUP_FLAGS_CHANGED] =
-    g_signal_new ("group-flags-changed",
-                  G_OBJECT_CLASS_TYPE (gabble_media_channel_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  gabble_media_channel_marshal_VOID__INT_INT,
-                  G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_UINT);
-
-  signals[MEMBERS_CHANGED] =
-    g_signal_new ("members-changed",
-                  G_OBJECT_CLASS_TYPE (gabble_media_channel_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  gabble_media_channel_marshal_VOID__STRING_BOXED_BOXED_BOXED_BOXED,
-                  G_TYPE_NONE, 5, G_TYPE_STRING, DBUS_TYPE_G_UINT_ARRAY, DBUS_TYPE_G_UINT_ARRAY, DBUS_TYPE_G_UINT_ARRAY, DBUS_TYPE_G_UINT_ARRAY);
-
   signals[NEW_MEDIA_SESSION_HANDLER] =
     g_signal_new ("new-media-session-handler",
                   G_OBJECT_CLASS_TYPE (gabble_media_channel_class),
@@ -277,6 +267,11 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
                   NULL, NULL,
                   gabble_media_channel_marshal_VOID__INT_STRING_STRING,
                   G_TYPE_NONE, 3, G_TYPE_UINT, DBUS_TYPE_G_OBJECT_PATH, G_TYPE_STRING);
+
+  gabble_group_mixin_class_init (G_OBJECT_CLASS (gabble_media_channel_class),
+                                 G_STRUCT_OFFSET (GabbleMediaChannelClass, group_class),
+                                 gabble_media_channel_add_member,
+                                 gabble_media_channel_remove_member);
 
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_media_channel_class), &dbus_glib_gabble_media_channel_object_info);
 }
@@ -314,6 +309,8 @@ gabble_media_channel_finalize (GObject *object)
 
   g_free (priv->object_path);
 
+  gabble_group_mixin_finalize (object);
+
   G_OBJECT_CLASS (gabble_media_channel_parent_class)->finalize (object);
 }
 
@@ -333,7 +330,7 @@ gabble_media_channel_finalize (GObject *object)
  */
 gboolean gabble_media_channel_add_members (GabbleMediaChannel *obj, const GArray * contacts, const gchar * message, GError **error)
 {
-  return TRUE;
+  return gabble_group_mixin_add_members (G_OBJECT (obj), contacts, message, error);
 }
 
 
@@ -398,7 +395,7 @@ gboolean gabble_media_channel_get_channel_type (GabbleMediaChannel *obj, gchar *
  */
 gboolean gabble_media_channel_get_group_flags (GabbleMediaChannel *obj, guint* ret, GError **error)
 {
-  return TRUE;
+  return gabble_group_mixin_get_group_flags (G_OBJECT (obj), ret, error);
 }
 
 
@@ -507,7 +504,7 @@ get_session_handlers_hash_foreach (gpointer key,
  */
 gboolean gabble_media_channel_get_local_pending_members (GabbleMediaChannel *obj, GArray ** ret, GError **error)
 {
-  return TRUE;
+  return gabble_group_mixin_get_local_pending_members (G_OBJECT (obj), ret, error);
 }
 
 
@@ -525,7 +522,7 @@ gboolean gabble_media_channel_get_local_pending_members (GabbleMediaChannel *obj
  */
 gboolean gabble_media_channel_get_members (GabbleMediaChannel *obj, GArray ** ret, GError **error)
 {
-  return TRUE;
+  return gabble_group_mixin_get_members (G_OBJECT (obj), ret, error);
 }
 
 
@@ -543,7 +540,7 @@ gboolean gabble_media_channel_get_members (GabbleMediaChannel *obj, GArray ** re
  */
 gboolean gabble_media_channel_get_remote_pending_members (GabbleMediaChannel *obj, GArray ** ret, GError **error)
 {
-  return TRUE;
+  return gabble_group_mixin_get_remote_pending_members (G_OBJECT (obj), ret, error);
 }
 
 
@@ -561,7 +558,7 @@ gboolean gabble_media_channel_get_remote_pending_members (GabbleMediaChannel *ob
  */
 gboolean gabble_media_channel_get_self_handle (GabbleMediaChannel *obj, guint* ret, GError **error)
 {
-  return TRUE;
+  return gabble_group_mixin_get_self_handle (G_OBJECT (obj), ret, error);
 }
 
 
@@ -609,9 +606,9 @@ gboolean gabble_media_channel_get_session_handlers (GabbleMediaChannel *obj, GPt
  * GabbleMediaSession is set to our own handle.
  */
 GabbleMediaSession *
-gabble_media_channel_create_session (GabbleMediaChannel *channel,
-                                     GabbleHandle peer,
-                                     guint32 sid)
+_gabble_media_channel_create_session (GabbleMediaChannel *channel,
+                                      GabbleHandle peer,
+                                      guint32 sid)
 {
   GabbleMediaChannelPrivate *priv;
   GabbleMediaSession *session;
@@ -671,6 +668,18 @@ gabble_media_channel_create_session (GabbleMediaChannel *channel,
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 gboolean gabble_media_channel_remove_members (GabbleMediaChannel *obj, const GArray * contacts, const gchar * message, GError **error)
+{
+  return gabble_group_mixin_remove_members (G_OBJECT (obj), contacts, message, error);
+}
+
+static gboolean
+gabble_media_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *message, GError **error)
+{
+  return TRUE;
+}
+
+static gboolean
+gabble_media_channel_remove_member (GObject *obj, GabbleHandle handle, const gchar *message, GError **error)
 {
   return TRUE;
 }

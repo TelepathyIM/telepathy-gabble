@@ -5,6 +5,8 @@ BUILT_SOURCES = \
     gabble-connection-glue.h \
     gabble-connection-signals-marshal.h \
     gabble-connection-signals-marshal.c \
+    gabble-group-mixin-signals-marshal.h \
+    gabble-group-mixin-signals-marshal.c \
     gabble-im-channel-glue.h \
     gabble-im-channel-signals-marshal.h \
     gabble-im-channel-signals-marshal.c \
@@ -32,6 +34,7 @@ CORE_SOURCES = \
     allocator.c \
     gabble-connection-manager.c \
     gabble-connection.c \
+    gabble-group-mixin.c \
     gabble-im-channel.c \
     gabble-media-channel.c \
     gabble-media-session.c \

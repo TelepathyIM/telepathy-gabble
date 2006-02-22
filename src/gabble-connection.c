@@ -758,6 +758,93 @@ _gabble_connection_send (GabbleConnection *conn, LmMessage *msg, GError **error)
   return TRUE;
 }
 
+typedef struct {
+    GabbleConnectionMsgReplyFunc reply_func;
+
+    GabbleConnection *conn;
+    LmMessage *sent_msg;
+    gpointer user_data;
+} GabbleMsgHandlerData;
+
+static LmHandlerResult
+message_send_reply_cb (LmMessageHandler *handler,
+                       LmConnection *connection,
+                       LmMessage *reply_msg,
+                       gpointer user_data)
+{
+  GabbleMsgHandlerData *handler_data = user_data;
+  LmMessageSubType sub_type;
+
+  sub_type = lm_message_get_sub_type (reply_msg);
+  if (sub_type != LM_MESSAGE_SUB_TYPE_RESULT &&
+      sub_type != LM_MESSAGE_SUB_TYPE_ERROR)
+    {
+      lm_message_unref (handler_data->sent_msg);
+
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    }
+
+  handler_data->reply_func (handler_data->conn,
+                            handler_data->sent_msg,
+                            reply_msg,
+                            handler_data->user_data);
+
+  lm_message_unref (handler_data->sent_msg);
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
+/**
+ * _gabble_connection_send_with_reply
+ *
+ * Send a tracked LmMessage and trap network errors appropriately.
+ */
+gboolean
+_gabble_connection_send_with_reply (GabbleConnection *conn,
+                                    LmMessage *msg,
+                                    GabbleConnectionMsgReplyFunc reply_func,
+                                    gpointer user_data,
+                                    GError **error)
+{
+  GabbleConnectionPrivate *priv;
+  LmMessageHandler *handler;
+  GabbleMsgHandlerData *handler_data;
+  gboolean ret;
+  GError *lmerror = NULL;
+
+  g_assert (GABBLE_IS_CONNECTION (conn));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+
+  lm_message_ref (msg);
+
+  handler_data = g_new (GabbleMsgHandlerData, 1);
+  handler_data->reply_func = reply_func;
+  handler_data->conn = conn;
+  handler_data->sent_msg = msg;
+  handler_data->user_data = user_data;
+
+  handler = lm_message_handler_new (message_send_reply_cb, handler_data, g_free);
+
+  ret = lm_connection_send_with_reply (priv->conn, msg, handler, &lmerror);
+  if (!ret)
+    {
+      g_debug ("_gabble_connection_send_with_reply failed: %s", lmerror->message);
+
+      if (error)
+        {
+          *error = g_error_new (TELEPATHY_ERRORS, NetworkError,
+                                "message send failed: %s", lmerror->message);
+        }
+
+      g_error_free (lmerror);
+    }
+
+  lm_message_handler_unref (handler);
+
+  return ret;
+}
+
 static LmHandlerResult connection_message_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmHandlerResult connection_presence_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmHandlerResult connection_iq_roster_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);

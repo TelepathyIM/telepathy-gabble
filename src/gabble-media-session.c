@@ -80,6 +80,7 @@ struct _GabbleMediaSessionPrivate
   JingleSessionState state;
 
   gboolean accepted;
+  gboolean got_active_candidate_pair;
 
   gboolean dispose_has_run;
 };
@@ -570,9 +571,9 @@ try_session_accept (GabbleMediaSession *session)
   LmMessage *msg;
   LmMessageNode *session_node;
 
-  if (!priv->accepted)
+  if (!priv->accepted || !priv->got_active_candidate_pair)
     {
-      GMS_DEBUG_INFO (session, "not sending accept yet, waiting for acceptance");
+      GMS_DEBUG_INFO (session, "not sending accept yet, waiting for acceptance or active candidate pair");
       return;
     }
 
@@ -606,6 +607,8 @@ stream_new_active_candidate_pair_cb (GabbleMediaStream *stream,
 
   GMS_DEBUG_INFO (session, "voip-engine reported a new active candidate pair [\"%s\" - \"%s\"]",
                   native_candidate_id, remote_candidate_id);
+
+  priv->got_active_candidate_pair = TRUE;
 
   /* send a session accept if the session was initiated by the peer */
   if (priv->initiator == priv->peer)

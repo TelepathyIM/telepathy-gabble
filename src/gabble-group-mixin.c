@@ -25,6 +25,20 @@
 #include "telepathy-errors.h"
 
 /**
+ * gabble_group_mixin_class_get_offset_quark:
+ *
+ * Returns: the quark used for storing mixin offset on a GObjectClass
+ */
+GQuark
+gabble_group_mixin_class_get_offset_quark ()
+{
+  static GQuark offset_quark = 0;
+  if (!offset_quark)
+    offset_quark = g_quark_from_static_string("GroupMixinClassOffsetQuark");
+  return offset_quark;
+}
+
+/**
  * gabble_group_mixin_get_offset_quark:
  *
  * Returns: the quark used for storing mixin offset on a GObject
@@ -48,12 +62,10 @@ void gabble_group_mixin_class_init (GObjectClass *obj_cls,
   g_assert (G_IS_OBJECT_CLASS (obj_cls));
 
   g_type_set_qdata (G_OBJECT_CLASS_TYPE (obj_cls),
-                    GABBLE_GROUP_MIXIN_OFFSET_QUARK,
+                    GABBLE_GROUP_MIXIN_CLASS_OFFSET_QUARK,
                     GINT_TO_POINTER (offset));
 
   mixin_cls = GABBLE_GROUP_MIXIN_CLASS (obj_cls);
-
-  g_debug ("%s: mixin_cls = %p", G_STRFUNC, mixin_cls);
 
   mixin_cls->add_member = add_func;
   mixin_cls->remove_member = rem_func;
@@ -91,8 +103,6 @@ void gabble_group_mixin_init (GObject *obj,
                     GINT_TO_POINTER (offset));
 
   mixin = GABBLE_GROUP_MIXIN (obj);
-
-  g_debug ("%s: mixin = %p", G_STRFUNC, mixin);
 
   mixin->handle_repo = handle_repo;
   mixin->self_handle = self_handle;
@@ -140,9 +150,6 @@ gabble_group_mixin_add_members (GObject *obj, const GArray *contacts, const gcha
   GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
   guint i;
   GabbleHandle handle;
-
-  g_debug ("%s: mixin_cls = %p", G_STRFUNC, mixin_cls);
-  g_debug ("%s: mixin = %p", G_STRFUNC, mixin);
 
   /* reject invalid handles */
   for (i = 0; i < contacts->len; i++)
@@ -269,6 +276,33 @@ gabble_group_mixin_change_flags (GObject *obj,
 }
 
 /**
+ * FIXME: Really horrible -- just a quick hack for debugging.
+ */
+static gchar *
+g_array_to_string (const GArray *array)
+{
+  gchar *buf, *p;
+  guint i;
+
+  buf = g_strdup ("(");
+
+  for (i = 0; i < array->len; i++)
+    {
+      p = g_strdup_printf ("%s%s%u", buf,
+                           (i > 0) ? ", " : "",
+                           g_array_index (array, guint32, i));
+
+      g_free (buf);
+      buf = p;
+    }
+
+  p = g_strdup_printf ("%s)", buf);
+  g_free (buf);
+
+  return p;
+}
+
+/**
  * gabble_group_mixin_change_members:
  *
  * Request members to be added, removed or marked as local or remote pending.
@@ -350,12 +384,32 @@ gabble_group_mixin_change_members (GObject *obj,
       g_intset_size (new_remote_pending) > 0)
     {
       GArray *arr_add, *arr_remove, *arr_local, *arr_remote;
+      gchar *add_str, *rem_str, *local_str, *remote_str;
 
       /* translate intsets to arrays */
       arr_add = g_intset_to_array (new_add);
       arr_remove = g_intset_to_array (new_remove);
       arr_local = g_intset_to_array (new_local_pending);
       arr_remote = g_intset_to_array (new_remote_pending);
+
+      /* debug start */
+      add_str = g_array_to_string (arr_add);
+      rem_str = g_array_to_string (arr_remove);
+      local_str = g_array_to_string (arr_local);
+      remote_str = g_array_to_string (arr_remote);
+
+      g_debug ("%s: emitting members changed\n"
+               "  added: %s\n"
+               "  removed: %s\n"
+               "  local_pending: %s\n"
+               "  remote_pending: %s",
+               G_STRFUNC, add_str, rem_str, local_str, remote_str);
+
+      g_free (add_str);
+      g_free (rem_str);
+      g_free (local_str);
+      g_free (remote_str);
+      /* debug end */
 
       /* emit signal */
       g_signal_emit(obj, mixin_cls->members_changed_signal_id, 0,

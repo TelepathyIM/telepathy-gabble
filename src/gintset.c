@@ -345,3 +345,4 @@ g_intset_symmetric_difference (const GIntSet *left, const GIntSet *right)
 
   return ret;
 }
+

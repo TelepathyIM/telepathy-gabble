@@ -116,6 +116,10 @@ gabble_media_channel_constructor (GType type, guint n_props,
 
   g_debug ("%s: handles == %p", G_STRFUNC, handles);
 
+  g_debug ("%s: calculated mixin = 0x%lx", G_STRFUNC,
+           GPOINTER_TO_UINT (obj)
+           + G_STRUCT_OFFSET (GabbleMediaChannel, group));
+
   gabble_group_mixin_init (obj, G_STRUCT_OFFSET (GabbleMediaChannel, group),
                            handles, self_handle);
 
@@ -356,6 +360,10 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
                   NULL, NULL,
                   gabble_media_channel_marshal_VOID__INT_STRING_STRING,
                   G_TYPE_NONE, 3, G_TYPE_UINT, DBUS_TYPE_G_OBJECT_PATH, G_TYPE_STRING);
+
+  g_debug ("%s: calculated mixin_cls = 0x%lx", G_STRFUNC,
+           GPOINTER_TO_UINT (gabble_media_channel_class)
+           + G_STRUCT_OFFSET (GabbleMediaChannelClass, group_class));
 
   gabble_group_mixin_class_init (G_OBJECT_CLASS (gabble_media_channel_class),
                                  G_STRUCT_OFFSET (GabbleMediaChannelClass, group_class),

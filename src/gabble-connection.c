@@ -30,7 +30,6 @@
 
 #include "gabble-im-channel.h"
 #include "gabble-media-channel.h"
-#include "gabble-media-session.h"
 #include "gabble-roster-channel.h"
 #include "handles.h"
 #include "handle-set.h"
@@ -176,7 +175,10 @@ struct _GabbleConnectionPrivate
 
   /* channels */
   GHashTable *im_channels;
-  GHashTable *media_channels;
+
+  GPtrArray *media_channels;
+  guint media_channel_index;
+
   GabbleRosterChannel *publish_channel;
   GabbleRosterChannel *subscribe_channel;
 
@@ -207,8 +209,9 @@ gabble_connection_init (GabbleConnection *obj)
                                                  NULL, (GDestroyNotify) unref_jingle_session);
   priv->im_channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
                                              NULL, g_object_unref);
-  priv->media_channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-                                                NULL, g_object_unref);
+
+  priv->media_channels = g_ptr_array_sized_new (1);
+  priv->media_channel_index = 0;
 
   priv->status = TP_CONN_STATUS_CONNECTING;
 
@@ -476,12 +479,6 @@ gabble_connection_dispose (GObject *object)
     {
       g_assert (g_hash_table_size (priv->im_channels) == 0);
       g_hash_table_destroy (priv->im_channels);
-    }
-
-  if (priv->media_channels)
-    {
-      g_assert (g_hash_table_size (priv->media_channels) == 0);
-      g_hash_table_destroy (priv->media_channels);
     }
 
   if (priv->conn)
@@ -1047,12 +1044,6 @@ close_all_channels (GabbleConnection *conn)
     {
       g_hash_table_destroy (priv->im_channels);
       priv->im_channels = NULL;
-    }
-
-  if (priv->media_channels)
-    {
-      g_hash_table_destroy (priv->media_channels);
-      priv->media_channels = NULL;
     }
 }
 
@@ -1865,9 +1856,13 @@ media_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
 
 /**
  * new_media_channel
+ *
+ * Creates a new GabbleMediaChannel with contact specified by handle,
+ * or an empty channel if handle is set to zero.
+ * Also adds the session id specified by sid if non-zero.
  */
 static GabbleMediaChannel *
-new_media_channel (GabbleConnection *conn, GabbleHandle handle, gboolean suppress_handler)
+new_media_channel (GabbleConnection *conn, gboolean suppress_handler)
 {
   GabbleConnectionPrivate *priv;
   GabbleMediaChannel *chan;
@@ -1877,24 +1872,23 @@ new_media_channel (GabbleConnection *conn, GabbleHandle handle, gboolean suppres
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
-  object_path = g_strdup_printf ("%s/MediaChannel%u", priv->object_path, handle);
+  object_path = g_strdup_printf ("%s/MediaChannel%u", priv->object_path,
+                                 priv->media_channel_index);
 
   chan = g_object_new (GABBLE_TYPE_MEDIA_CHANNEL,
                        "connection", conn,
                        "object-path", object_path,
-                       "handle", handle,
                        NULL);
 
   g_debug ("new_media_channel: object path %s", object_path);
 
   g_signal_connect (chan, "closed", (GCallback) media_channel_closed_cb, conn);
 
-  g_hash_table_insert (priv->media_channels, GINT_TO_POINTER (handle), chan);
+  g_ptr_array_add (priv->media_channels, chan);
 
   g_signal_emit (conn, signals[NEW_CHANNEL], 0,
                  object_path, TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA,
-                 TP_HANDLE_TYPE_CONTACT, handle,
-                 suppress_handler);
+                 0, 0, suppress_handler);
 
   g_free (object_path);
 
@@ -1978,6 +1972,21 @@ unref_jingle_session (GObject *obj)
     g_object_unref (obj);
 }
 
+gboolean
+_gabble_connection_contact_supports_voice (GabbleConnection *conn,
+                                           GabbleHandle handle)
+{
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  GQuark data_key;
+  ContactPresence *cp;
+
+  data_key = _get_contact_presence_quark ();
+  cp = gabble_handle_get_qdata (priv->handles, TP_HANDLE_TYPE_CONTACT,
+                                handle, data_key);
+
+  return (cp && cp->voice_resource);
+}
+
 /**
  * connection_iq_jingle_cb
  *
@@ -1998,7 +2007,6 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
   GabbleHandle handle;
   guint32 sid;
   GabbleMediaChannel *chan;
-  GabbleMediaSession *session;
 
   g_assert (connection == priv->conn);
 
@@ -2052,8 +2060,8 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
 
   sid = atoi(sid_str);
 
-  session = g_hash_table_lookup (priv->jingle_sessions, GINT_TO_POINTER (sid));
-  if (session == NULL)
+  chan = g_hash_table_lookup (priv->jingle_sessions, GINT_TO_POINTER (sid));
+  if (chan == NULL)
     {
       /* if the session is unknown, the only allowed action is "initiate" */
       if (strcmp (action, "initiate"))
@@ -2072,11 +2080,10 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
 
       g_debug ("%s: creating media channel", G_STRFUNC);
 
-      chan = new_media_channel (conn, handle, FALSE);
-      session = _gabble_media_channel_create_session (chan, handle, sid);
+      chan = new_media_channel (conn, FALSE);
     }
 
-  _gabble_media_session_handle_incoming (session, iq_node, session_node, action);
+  _gabble_media_channel_dispatch_session_action (chan, handle, sid, iq_node, session_node, action);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
@@ -3176,6 +3183,73 @@ gboolean gabble_connection_remove_status (GabbleConnection *obj, const gchar * s
     }
 }
 
+static GabbleMediaChannel *
+find_media_channel_with_handle (GabbleConnection *conn, GabbleHandle handle)
+{
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  guint i, j;
+
+  for (i = 0; i < priv->media_channels->len; i++)
+    {
+      GArray *arr;
+      GError *err;
+
+      GabbleMediaChannel *chan = g_ptr_array_index (priv->media_channels, i);
+
+      /* search members */
+      if (!gabble_group_mixin_get_members (G_OBJECT (chan), &arr, &err))
+        {
+          g_debug ("%s: get_members failed", G_STRFUNC);
+          g_free (err);
+          continue;
+        }
+
+      for (j = 0; j < arr->len; j++)
+        if (g_array_index (arr, guint32, i) == handle)
+          {
+            g_array_free (arr, TRUE);
+            return chan;
+          }
+
+      g_array_free (arr, TRUE);
+
+      /* search local pending */
+      if (!gabble_group_mixin_get_local_pending_members (G_OBJECT (chan), &arr, &err))
+        {
+          g_debug ("%s: get_local_pending_members failed", G_STRFUNC);
+          g_free (err);
+          continue;
+        }
+
+      for (j = 0; j < arr->len; j++)
+        if (g_array_index (arr, guint32, i) == handle)
+          {
+            g_array_free (arr, TRUE);
+            return chan;
+          }
+
+      g_array_free (arr, TRUE);
+
+      /* search remote pending */
+      if (!gabble_group_mixin_get_remote_pending_members (G_OBJECT (chan), &arr, &err))
+        {
+          g_debug ("%s: get_remote_pending_members failed", G_STRFUNC);
+          g_free (err);
+          continue;
+        }
+
+      for (j = 0; j < arr->len; j++)
+        if (g_array_index (arr, guint32, i) == handle)
+          {
+            g_array_free (arr, TRUE);
+            return chan;
+          }
+
+      g_array_free (arr, TRUE);
+    }
+
+  return NULL;
+}
 
 /**
  * gabble_connection_request_channel
@@ -3239,30 +3313,32 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
   else if (!strcmp (type, TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA))
     {
       GabbleMediaChannel *chan;
-      GQuark data_key;
-      ContactPresence *cp;
 
-      if (handle_type != TP_HANDLE_TYPE_CONTACT)
-        goto NOT_AVAILABLE;
-
-      if (!gabble_handle_is_valid (priv->handles,
-                                   TP_HANDLE_TYPE_CONTACT,
-                                   handle))
-        goto INVALID_HANDLE;
-
-      data_key = _get_contact_presence_quark ();
-      cp = gabble_handle_get_qdata (priv->handles, TP_HANDLE_TYPE_CONTACT,
-                                    handle, data_key);
-
-      if (!cp || !cp->voice_resource)
-        goto NOT_AVAILABLE;
-
-      chan = g_hash_table_lookup (priv->media_channels, GINT_TO_POINTER (handle));
-
-      if (chan == NULL)
+      if (handle_type == 0)
         {
-          chan = new_media_channel (obj, handle, suppress_handler);
-          _gabble_media_channel_create_session (chan, handle, 0);
+          chan = new_media_channel (obj, suppress_handler);
+        }
+      else
+        {
+          gboolean ret;
+          GArray *members;
+
+          chan = find_media_channel_with_handle (obj, handle);
+
+          if (chan == NULL)
+            {
+              chan = new_media_channel (obj, suppress_handler);
+
+              members = g_array_sized_new (FALSE, FALSE, sizeof (GabbleHandle), 1);
+              g_array_append_val (members, handle);
+
+              ret = gabble_group_mixin_add_members (G_OBJECT (chan), members, "", error);
+
+              g_array_free (members, TRUE);
+
+              if (!ret)
+                return FALSE;
+            }
         }
 
       g_object_get (chan, "object-path", ret, NULL);

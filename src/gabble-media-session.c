@@ -44,6 +44,7 @@ G_DEFINE_TYPE(GabbleMediaSession, gabble_media_session, G_TYPE_OBJECT)
 enum
 {
     NEW_MEDIA_STREAM_HANDLER,
+    INVITATION_RECEIVED,
     LAST_SIGNAL
 };
 
@@ -77,6 +78,8 @@ struct _GabbleMediaSessionPrivate
   GabbleHandle peer;
 
   JingleSessionState state;
+
+  gboolean accepted;
 
   gboolean dispose_has_run;
 };
@@ -347,6 +350,15 @@ gabble_media_session_class_init (GabbleMediaSessionClass *gabble_media_session_c
                   gabble_media_session_marshal_VOID__STRING_INT_INT,
                   G_TYPE_NONE, 3, DBUS_TYPE_G_OBJECT_PATH, G_TYPE_UINT, G_TYPE_UINT);
 
+  signals[INVITATION_RECEIVED] =
+    g_signal_new ("invitation-received",
+                  G_OBJECT_CLASS_TYPE (gabble_media_session_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  g_cclosure_marshal_VOID__VOID,
+                  G_TYPE_NONE, 0);
+
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_media_session_class), &dbus_glib_gabble_media_session_object_info);
 }
 
@@ -432,10 +444,10 @@ gboolean gabble_media_session_ready (GabbleMediaSession *obj, GError **error)
 }
 
 void
-_gabble_media_session_handle_incoming (GabbleMediaSession *session,
-                                       LmMessageNode *iq_node,
-                                       LmMessageNode *session_node,
-                                       const gchar *action)
+_gabble_media_session_handle_action (GabbleMediaSession *session,
+                                     LmMessageNode *iq_node,
+                                     LmMessageNode *session_node,
+                                     const gchar *action)
 {
   GabbleMediaSessionPrivate *priv;
   LmMessageNode *desc_node;
@@ -552,6 +564,33 @@ accept_msg_reply_cb (GabbleConnection *conn,
 }
 
 static void
+try_session_accept (GabbleMediaSession *session)
+{
+  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+  LmMessage *msg;
+  LmMessageNode *session_node;
+
+  if (!priv->accepted)
+    {
+      GMS_DEBUG_INFO (session, "not sending accept yet, waiting for acceptance");
+      return;
+    }
+
+  /* construct a session acceptance message */
+  msg = _gabble_media_session_message_new (session, "accept", &session_node);
+
+  _gabble_media_stream_session_node_add_description (priv->stream, session_node);
+
+  GMS_DEBUG_INFO (session, "sending jingle session action \"accept\" to peer");
+
+  /* send the final acceptance message */
+  _gabble_connection_send_with_reply (priv->conn, msg, accept_msg_reply_cb,
+                                      session, NULL);
+
+  lm_message_unref (msg);
+}
+
+static void
 stream_new_active_candidate_pair_cb (GabbleMediaStream *stream,
                                      const gchar *native_candidate_id,
                                      const gchar *remote_candidate_id,
@@ -571,22 +610,7 @@ stream_new_active_candidate_pair_cb (GabbleMediaStream *stream,
   /* send a session accept if the session was initiated by the peer */
   if (priv->initiator == priv->peer)
     {
-      LmMessage *msg;
-      LmMessageNode *session_node;
-
-      /* construct a session acceptance message
-       * and store it for later on */
-      msg = _gabble_media_session_message_new (session, "accept", &session_node);
-
-      _gabble_media_stream_session_node_add_description (priv->stream, session_node);
-
-      GMS_DEBUG_INFO (session, "sending jingle session action \"accept\" to peer");
-
-      /* send the final acceptance message */
-      _gabble_connection_send_with_reply (priv->conn, msg, accept_msg_reply_cb,
-                                          session, NULL);
-
-      lm_message_unref (msg);
+      try_session_accept (session);
     }
   else
     {
@@ -774,6 +798,16 @@ _gabble_media_session_message_new (GabbleMediaSession *session,
     *session_node = node;
 
   return msg;
+}
+
+void
+_gabble_media_session_accept (GabbleMediaSession *session)
+{
+  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+
+  priv->accepted = TRUE;
+
+  try_session_accept (session);
 }
 
 #if GMS_DEBUG

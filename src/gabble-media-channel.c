@@ -148,6 +148,8 @@ gabble_media_channel_constructor (GType type, guint n_props,
   gabble_handle_unref (handles, TP_HANDLE_TYPE_CONTACT, priv->handle);
 #endif
 
+static void session_state_changed_cb (GabbleMediaSession *session, GParamSpec *arg1, GabbleMediaChannel *channel);
+
 /**
  * create_session
  *
@@ -193,6 +195,9 @@ create_session (GabbleMediaChannel *channel, GabbleHandle peer, guint32 sid)
                           "initiator", initiator,
                           "peer", peer,
                           NULL);
+
+  g_signal_connect (session, "notify::state",
+                    (GCallback) session_state_changed_cb, channel);
 
   g_hash_table_insert (priv->sessions, GUINT_TO_POINTER (peer), session);
 
@@ -365,7 +370,7 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
            GPOINTER_TO_UINT (gabble_media_channel_class)
            + G_STRUCT_OFFSET (GabbleMediaChannelClass, group_class));
 
-  gabble_group_mixin_class_init (G_OBJECT_CLASS (gabble_media_channel_class),
+  gabble_group_mixin_class_init (object_class,
                                  G_STRUCT_OFFSET (GabbleMediaChannelClass, group_class),
                                  gabble_media_channel_add_member,
                                  gabble_media_channel_remove_member);
@@ -533,9 +538,7 @@ gboolean gabble_media_channel_get_handle (GabbleMediaChannel *obj, guint* ret, g
  */
 gboolean gabble_media_channel_get_interfaces (GabbleMediaChannel *obj, gchar *** ret, GError **error)
 {
-  const gchar *interfaces[] = { NULL };
-
-  g_debug ("%s called", G_STRFUNC);
+  const gchar *interfaces[] = { TP_IFACE_CHANNEL_INTERFACE_GROUP, NULL };
 
   *ret = g_strdupv ((gchar **) interfaces);
 
@@ -818,5 +821,47 @@ static gboolean
 gabble_media_channel_remove_member (GObject *obj, GabbleHandle handle, const gchar *message, GError **error)
 {
   return TRUE;
+}
+
+static void
+session_state_changed_cb (GabbleMediaSession *session,
+                          GParamSpec *arg1,
+                          GabbleMediaChannel *channel)
+{
+  JingleSessionState state;
+  GabbleHandle peer;
+  GIntSet *empty, *set;
+
+  g_object_get (session,
+                "state", &state,
+                "peer", &peer,
+                NULL);
+
+  empty = g_intset_new ();
+  set = g_intset_new ();
+
+  g_intset_add (set, peer);
+
+  if (state == JS_STATE_ACTIVE)
+    {
+      /* add the peer to the member list */
+      gabble_group_mixin_change_members (G_OBJECT (channel), "", set, empty, empty, empty);
+
+      /* update flags accordingly -- allow removal, deny adding and rescinding */
+      gabble_group_mixin_change_flags (G_OBJECT (channel), TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
+                                       TP_CHANNEL_GROUP_FLAG_CAN_ADD ^ TP_CHANNEL_GROUP_FLAG_CAN_RESCIND);
+    }
+  else if (state == JS_STATE_ENDED)
+    {
+      /* remove the peer from the member list */
+      gabble_group_mixin_change_members (G_OBJECT (channel), "", empty, set, empty, empty);
+
+      /* update flags accordingly -- allow adding, deny removal */
+      gabble_group_mixin_change_flags (G_OBJECT (channel), TP_CHANNEL_GROUP_FLAG_CAN_ADD,
+                                       TP_CHANNEL_GROUP_FLAG_CAN_REMOVE);
+    }
+
+  g_intset_destroy (empty);
+  g_intset_destroy (set);
 }
 

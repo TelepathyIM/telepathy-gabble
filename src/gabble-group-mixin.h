@@ -52,12 +52,15 @@ struct _GabbleGroupMixin {
 };
 
 /* TYPE MACROS */
+#define GABBLE_GROUP_MIXIN_CLASS_OFFSET_QUARK (gabble_group_mixin_class_get_offset_quark())
+#define GABBLE_GROUP_MIXIN_CLASS_OFFSET(o) (GPOINTER_TO_UINT (g_type_get_qdata (G_OBJECT_CLASS_TYPE (o), GABBLE_GROUP_MIXIN_CLASS_OFFSET_QUARK)))
+#define GABBLE_GROUP_MIXIN_CLASS(o) ((GabbleGroupMixinClass *)(o + GABBLE_GROUP_MIXIN_CLASS_OFFSET (o)))
+
 #define GABBLE_GROUP_MIXIN_OFFSET_QUARK (gabble_group_mixin_get_offset_quark())
 #define GABBLE_GROUP_MIXIN_OFFSET(o) (GPOINTER_TO_UINT (g_type_get_qdata (G_OBJECT_TYPE (o), GABBLE_GROUP_MIXIN_OFFSET_QUARK)))
-
-#define GABBLE_GROUP_MIXIN_CLASS(o) ((GabbleGroupMixinClass *)(o + GABBLE_GROUP_MIXIN_OFFSET (o)))
 #define GABBLE_GROUP_MIXIN(o) ((GabbleGroupMixin *)(o + GABBLE_GROUP_MIXIN_OFFSET (o)))
 
+GQuark gabble_group_mixin_class_get_offset_quark (void);
 GQuark gabble_group_mixin_get_offset_quark (void);
 
 void gabble_group_mixin_class_init (GObjectClass *obj_cls, glong offset, GabbleGroupMixinAddMemberFunc add_func, GabbleGroupMixinRemMemberFunc rem_func);
@@ -75,6 +78,7 @@ gboolean gabble_group_mixin_get_members (GObject *obj, GArray **ret, GError **er
 gboolean gabble_group_mixin_get_local_pending_members (GObject *obj, GArray **ret, GError **error);
 gboolean gabble_group_mixin_get_remote_pending_members (GObject *obj, GArray **ret, GError **error);
 
+void gabble_group_mixin_change_flags (GObject *obj, TpChannelGroupFlags add, TpChannelGroupFlags remove);
 void gabble_group_mixin_change_members (GObject *obj, const gchar *message, GIntSet *add, GIntSet *remove, GIntSet *local_pending, GIntSet *remote_pending);
 
 G_END_DECLS

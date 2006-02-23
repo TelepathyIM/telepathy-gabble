@@ -25,10 +25,23 @@
 #include "telepathy-errors.h"
 
 /**
+ * gabble_group_mixin_class_get_offset_quark:
+ *
+ * Returns: the quark used for storing mixin offset on a GObjectClass
+ */
+GQuark
+gabble_group_mixin_class_get_offset_quark ()
+{
+  static GQuark offset_quark = 0;
+  if (!offset_quark)
+    offset_quark = g_quark_from_static_string("GroupMixinClassOffsetQuark");
+  return offset_quark;
+}
+
+/**
  * gabble_group_mixin_get_offset_quark:
  *
- * Returns: the quark used for storing mixin offset on an
- *          object class
+ * Returns: the quark used for storing mixin offset on a GObject
  */
 GQuark
 gabble_group_mixin_get_offset_quark ()
@@ -47,7 +60,7 @@ void gabble_group_mixin_class_init (GObjectClass *obj_cls,
   GabbleGroupMixinClass *mixin_cls;
 
   g_type_set_qdata (G_OBJECT_CLASS_TYPE (obj_cls),
-                    GABBLE_GROUP_MIXIN_OFFSET_QUARK,
+                    GABBLE_GROUP_MIXIN_CLASS_OFFSET_QUARK,
                     GINT_TO_POINTER (offset));
 
   mixin_cls = GABBLE_GROUP_MIXIN_CLASS (obj_cls);
@@ -89,6 +102,8 @@ void gabble_group_mixin_init (GObject *obj,
 
   mixin->handle_repo = handle_repo;
   mixin->self_handle = self_handle;
+
+  mixin->group_flags = 0;
 
   mixin->members = handle_set_new (handle_repo, TP_HANDLE_TYPE_CONTACT);
   mixin->local_pending = handle_set_new (handle_repo, TP_HANDLE_TYPE_CONTACT);
@@ -228,6 +243,32 @@ gabble_group_mixin_get_remote_pending_members (GObject *obj, GArray **ret, GErro
   *ret = handle_set_to_array (mixin->remote_pending);
 
   return TRUE;
+}
+
+/**
+ * gabble_group_mixin_change_flags:
+ *
+ * Request a change to be made to the flags. Emits the
+ * signal with the changes which were made.
+ */
+void
+gabble_group_mixin_change_flags (GObject *obj,
+                                 TpChannelGroupFlags add,
+                                 TpChannelGroupFlags remove)
+{
+  GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
+  GabbleGroupMixinClass *mixin_cls = GABBLE_GROUP_MIXIN_CLASS (G_OBJECT_GET_CLASS (obj));
+  TpChannelGroupFlags added, removed;
+
+  added = add & ~mixin->group_flags;
+  mixin->group_flags |= added;
+
+  removed = remove & mixin->group_flags;
+  mixin->group_flags &= ~removed;
+
+  g_debug ("%s: emitting group flags changed, added 0x%X, removed 0x%X", G_STRFUNC, added, removed);
+
+  g_signal_emit(obj, mixin_cls->group_flags_changed_signal_id, 0, added, removed);
 }
 
 /**

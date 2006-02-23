@@ -104,6 +104,8 @@ guint32 _gabble_connection_jingle_session_allocate (GabbleConnection *conn);
 void _gabble_connection_jingle_session_register (GabbleConnection *conn, guint32 sid, gpointer session);
 void _gabble_connection_jingle_session_unregister (GabbleConnection *conn, guint32 sid);
 
+gboolean _gabble_connection_contact_supports_voice (GabbleConnection *conn, GabbleHandle handle);
+
 gboolean gabble_connection_add_status (GabbleConnection *obj, const gchar * status, GHashTable * parms, GError **error);
 gboolean gabble_connection_advertise_capabilities (GabbleConnection *obj, const gchar ** add, const gchar ** remove, GError **error);
 gboolean gabble_connection_clear_status (GabbleConnection *obj, GError **error);

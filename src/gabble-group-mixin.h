@@ -52,15 +52,14 @@ struct _GabbleGroupMixin {
 };
 
 /* TYPE MACROS */
-#define GABBLE_GROUP_MIXIN_CLASS_OFFSET_QUARK (gabble_group_mixin_class_get_offset_quark())
-#define GABBLE_GROUP_MIXIN_CLASS_OFFSET(o) (GPOINTER_TO_UINT (g_type_get_qdata (G_OBJECT_CLASS_TYPE (o), GABBLE_GROUP_MIXIN_CLASS_OFFSET_QUARK)))
-#define GABBLE_GROUP_MIXIN_CLASS(o) ((GabbleGroupMixinClass *)(o + GABBLE_GROUP_MIXIN_CLASS_OFFSET (o)))
-
 #define GABBLE_GROUP_MIXIN_OFFSET_QUARK (gabble_group_mixin_get_offset_quark())
-#define GABBLE_GROUP_MIXIN_OFFSET(o) (GPOINTER_TO_UINT (g_type_get_qdata (G_OBJECT_TYPE (o), GABBLE_GROUP_MIXIN_OFFSET_QUARK)))
-#define GABBLE_GROUP_MIXIN(o) ((GabbleGroupMixin *)(o + GABBLE_GROUP_MIXIN_OFFSET (o)))
 
-GQuark gabble_group_mixin_class_get_offset_quark (void);
+#define GABBLE_GROUP_MIXIN_CLASS_OFFSET(o) (GPOINTER_TO_UINT (g_type_get_qdata (G_OBJECT_CLASS_TYPE (o), GABBLE_GROUP_MIXIN_OFFSET_QUARK)))
+#define GABBLE_GROUP_MIXIN_CLASS(o) ((GabbleGroupMixinClass *)((guchar *) o + GABBLE_GROUP_MIXIN_CLASS_OFFSET (o)))
+
+#define GABBLE_GROUP_MIXIN_OFFSET(o) (GPOINTER_TO_UINT (g_type_get_qdata (G_OBJECT_TYPE (o), GABBLE_GROUP_MIXIN_OFFSET_QUARK)))
+#define GABBLE_GROUP_MIXIN(o) ((GabbleGroupMixin *)((guchar *) o + GABBLE_GROUP_MIXIN_OFFSET (o)))
+
 GQuark gabble_group_mixin_get_offset_quark (void);
 
 void gabble_group_mixin_class_init (GObjectClass *obj_cls, glong offset, GabbleGroupMixinAddMemberFunc add_func, GabbleGroupMixinRemMemberFunc rem_func);

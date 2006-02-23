@@ -25,20 +25,6 @@
 #include "telepathy-errors.h"
 
 /**
- * gabble_group_mixin_class_get_offset_quark:
- *
- * Returns: the quark used for storing mixin offset on a GObjectClass
- */
-GQuark
-gabble_group_mixin_class_get_offset_quark ()
-{
-  static GQuark offset_quark = 0;
-  if (!offset_quark)
-    offset_quark = g_quark_from_static_string("GroupMixinClassOffsetQuark");
-  return offset_quark;
-}
-
-/**
  * gabble_group_mixin_get_offset_quark:
  *
  * Returns: the quark used for storing mixin offset on a GObject
@@ -59,11 +45,15 @@ void gabble_group_mixin_class_init (GObjectClass *obj_cls,
 {
   GabbleGroupMixinClass *mixin_cls;
 
+  g_assert (G_IS_OBJECT_CLASS (obj_cls));
+
   g_type_set_qdata (G_OBJECT_CLASS_TYPE (obj_cls),
-                    GABBLE_GROUP_MIXIN_CLASS_OFFSET_QUARK,
+                    GABBLE_GROUP_MIXIN_OFFSET_QUARK,
                     GINT_TO_POINTER (offset));
 
   mixin_cls = GABBLE_GROUP_MIXIN_CLASS (obj_cls);
+
+  g_debug ("%s: mixin_cls = %p", G_STRFUNC, mixin_cls);
 
   mixin_cls->add_member = add_func;
   mixin_cls->remove_member = rem_func;
@@ -94,11 +84,15 @@ void gabble_group_mixin_init (GObject *obj,
 {
   GabbleGroupMixin *mixin;
 
+  g_assert (G_IS_OBJECT (obj));
+
   g_type_set_qdata (G_OBJECT_TYPE (obj),
                     GABBLE_GROUP_MIXIN_OFFSET_QUARK,
                     GINT_TO_POINTER (offset));
 
   mixin = GABBLE_GROUP_MIXIN (obj);
+
+  g_debug ("%s: mixin = %p", G_STRFUNC, mixin);
 
   mixin->handle_repo = handle_repo;
   mixin->self_handle = self_handle;
@@ -142,10 +136,13 @@ gabble_group_mixin_get_group_flags (GObject *obj, guint *ret, GError **error)
 gboolean
 gabble_group_mixin_add_members (GObject *obj, const GArray *contacts, const gchar *message, GError **error)
 {
-  GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
   GabbleGroupMixinClass *mixin_cls = GABBLE_GROUP_MIXIN_CLASS (G_OBJECT_GET_CLASS (obj));
+  GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
   guint i;
   GabbleHandle handle;
+
+  g_debug ("%s: mixin_cls = %p", G_STRFUNC, mixin_cls);
+  g_debug ("%s: mixin = %p", G_STRFUNC, mixin);
 
   /* reject invalid handles */
   for (i = 0; i < contacts->len; i++)

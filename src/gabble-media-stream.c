@@ -1037,7 +1037,7 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
       GMS_DEBUG_INFO (priv->session, "put 1 remote candidate from peer into cache");
       GMS_DEBUG_DUMP (priv->session, "  from Jingle XML: [%s%s%s]",
                       ANSI_BOLD_OFF, xml, ANSI_BOLD_ON);
-      GMS_DEBUG_DUMP (priv->session, "  to Telepathy DBus struct: [%s\"%s\", %s[%s0, \"%s\", %d, %s, \"%s\", \"%s\", %f, %s, \"%s\", \"%s\"%s]]",
+      GMS_DEBUG_DUMP (priv->session, "  to Telepathy DBus struct: [%s\"%s\", %s[%s1, \"%s\", %d, %s, \"%s\", \"%s\", %f, %s, \"%s\", \"%s\"%s]]",
                       ANSI_BOLD_OFF, candidate_id, ANSI_BOLD_ON,
                       ANSI_BOLD_OFF, addr, port, tp_protocols[proto], "RTP", "AVP", pref, tp_transports[type], user, pass, ANSI_BOLD_ON);
       g_free (xml);

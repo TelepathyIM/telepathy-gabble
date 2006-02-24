@@ -711,7 +711,7 @@ push_native_candidates (GabbleMediaStream *stream)
       cand_node = lm_message_node_add_child (session_node, "candidate", NULL);
 
       lm_message_node_set_attributes (cand_node,
-          "name", "rtp",
+          "name", candidate_id,
           "address", addr,
           "port", port_str,
           "username", user,
@@ -726,7 +726,7 @@ push_native_candidates (GabbleMediaStream *stream)
       GMS_DEBUG_INFO (priv->session, "sending jingle session action \"candidate\" to peer");
 
       xml = lm_message_node_to_string (cand_node);
-      GMS_DEBUG_DUMP (priv->session, "  from Telepathy DBus struct: [%s\"%s\", %s[%s0, \"%s\", %d, %s, \"%s\", \"%s\", %f, %s, \"%s\", \"%s\"%s]]",
+      GMS_DEBUG_DUMP (priv->session, "  from Telepathy DBus struct: [%s\"%s\", %s[%s1, \"%s\", %d, %s, \"%s\", \"%s\", %f, %s, \"%s\", \"%s\"%s]]",
                       ANSI_BOLD_OFF, candidate_id, ANSI_BOLD_ON,
                       ANSI_BOLD_OFF, addr, port, tp_protocols[proto], "RTP", "AVP", pref, tp_transports[type], user, pass, ANSI_BOLD_ON);
       GMS_DEBUG_DUMP (priv->session, "  to Jingle XML: [%s%s%s]",
@@ -884,7 +884,7 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
 
   for (node = session_node->children; node; node = node->next)
     {
-      const gchar /**name, */*addr;
+      const gchar *name, *addr;
       guint16 port;
       TpMediaStreamProto proto;
       gdouble pref;
@@ -901,8 +901,10 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
        * Candidate
        */
 
-      /* id/name: assuming "username" here for now */
-
+      /* name */
+      name = lm_message_node_get_attribute (node, "name");
+      if (!name)
+        goto FAILURE;
 
       /*
        * Transport
@@ -994,7 +996,7 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
           dbus_g_type_specialized_construct (TP_TYPE_TRANSPORT_STRUCT));
 
       dbus_g_type_struct_set (&transport,
-          0, 0,         /* component number */
+          0, 1,         /* component number */
           1, addr,
           2, port,
           3, proto,
@@ -1015,7 +1017,7 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
           dbus_g_type_specialized_construct (TP_TYPE_CANDIDATE_STRUCT));
 
       dbus_g_type_struct_set (&candidate,
-          0, user,
+          0, name,
           1, transports,
           G_MAXUINT);
 
@@ -1026,7 +1028,7 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
       GMS_DEBUG_DUMP (priv->session, "  from Jingle XML: [%s%s%s]",
                       ANSI_BOLD_OFF, xml, ANSI_BOLD_ON);
       GMS_DEBUG_DUMP (priv->session, "  to Telepathy DBus struct: [%s\"%s\", %s[%s0, \"%s\", %d, %s, \"%s\", \"%s\", %f, %s, \"%s\", \"%s\"%s]]",
-                      ANSI_BOLD_OFF, user, ANSI_BOLD_ON,
+                      ANSI_BOLD_OFF, name, ANSI_BOLD_ON,
                       ANSI_BOLD_OFF, addr, port, tp_protocols[proto], "RTP", "AVP", pref, tp_transports[type], user, pass, ANSI_BOLD_ON);
       g_free (xml);
     }

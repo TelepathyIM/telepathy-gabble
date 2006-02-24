@@ -935,6 +935,8 @@ _gabble_media_session_debug (GabbleMediaSession *session,
     case DEBUG_MSG_EVENT:
       type_str = ANSI_BOLD_ON ANSI_FG_CYAN;
       break;
+    default:
+      g_assert_not_reached ();
   }
 
   printf ("[%s%s%s] %s%-26s%s %s%s%s\n",

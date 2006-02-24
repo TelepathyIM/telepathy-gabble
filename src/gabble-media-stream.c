@@ -727,6 +727,7 @@ push_native_candidates (GabbleMediaStream *stream)
           break;
         default:
           g_critical ("%s: TpMediaStreamTransportType has an invalid value", G_STRFUNC);
+          g_assert_not_reached ();
       }
 
       /* construct a session message */

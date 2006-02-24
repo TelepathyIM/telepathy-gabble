@@ -81,6 +81,8 @@ struct _GabbleMediaStreamPrivate
   GValue remote_codecs;
   GValue remote_candidates;
 
+  guint remote_candidate_count;
+
   gboolean dispose_has_run;
 };
 
@@ -711,7 +713,7 @@ push_native_candidates (GabbleMediaStream *stream)
       cand_node = lm_message_node_add_child (session_node, "candidate", NULL);
 
       lm_message_node_set_attributes (cand_node,
-          "name", candidate_id,
+          "name", "rtp",
           "address", addr,
           "port", port_str,
           "username", user,
@@ -884,6 +886,7 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
 
   for (node = session_node->children; node; node = node->next)
     {
+      gchar *candidate_id;
       const gchar *name, *addr;
       guint16 port;
       TpMediaStreamProto proto;
@@ -901,10 +904,11 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
        * Candidate
        */
 
-      /* name */
+      /* stream name */
       name = lm_message_node_get_attribute (node, "name");
-      if (!name)
+      if (name == NULL || strcmp (name, "rtp") != 0)
         goto FAILURE;
+
 
       /*
        * Transport
@@ -912,25 +916,29 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
 
       /* ip address */
       addr = lm_message_node_get_attribute (node, "address");
-      if (!addr)
+      if (addr == NULL)
         goto FAILURE;
 
       /* port */
       str = lm_message_node_get_attribute (node, "port");
-      if (!str)
+      if (str == NULL)
         goto FAILURE;
       port = atoi (str);
 
       /* protocol */
       str = lm_message_node_get_attribute (node, "protocol");
-      if (!str)
+      if (str == NULL)
         goto FAILURE;
 
-      if (!strcmp (str, "udp"))
-        proto = TP_MEDIA_STREAM_PROTO_UDP;
-      else if (!strcmp (str, "tcp"))
-        proto = TP_MEDIA_STREAM_PROTO_TCP;
-      else if (!strcmp (str, "ssltcp"))
+      if (strcmp (str, "udp") == 0)
+        {
+          proto = TP_MEDIA_STREAM_PROTO_UDP;
+        }
+      else if (strcmp (str, "tcp") == 0)
+        {
+          proto = TP_MEDIA_STREAM_PROTO_TCP;
+        }
+      else if (strcmp (str, "ssltcp") == 0)
         {
           GMS_DEBUG_WARNING (priv->session, "%s: ssltcp candidates "
                              "not yet supported", G_STRFUNC);
@@ -939,54 +947,53 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
       else
         goto FAILURE;
 
-      /* protocol subtype: only "rtp" is supported here for now */
-      str = lm_message_node_get_attribute (node, "name");
-      if (!str)
-        goto FAILURE;
-      if (strcmp (str, "rtp"))
-        goto FAILURE;
-
       /* protocol profile: hardcoded to "AVP" for now */
 
       /* preference */
       str = lm_message_node_get_attribute (node, "preference");
-      if (!str)
+      if (str == NULL)
         goto FAILURE;
       pref = g_ascii_strtod (str, NULL);
 
       /* type */
       str = lm_message_node_get_attribute (node, "type");
-      if (!str)
+      if (str == NULL)
         goto FAILURE;
 
-      if (!strcmp (str, "local"))
-        type = TP_MEDIA_STREAM_TRANSPORT_TYPE_LOCAL;
-      else if (!strcmp (str, "stun"))
-        type = TP_MEDIA_STREAM_TRANSPORT_TYPE_DERIVED;
-      else if (!strcmp (str, "relay"))
-        type = TP_MEDIA_STREAM_TRANSPORT_TYPE_RELAY;
+      if (strcmp (str, "local") == 0)
+        {
+          type = TP_MEDIA_STREAM_TRANSPORT_TYPE_LOCAL;
+        }
+      else if (strcmp (str, "stun") == 0)
+        {
+          type = TP_MEDIA_STREAM_TRANSPORT_TYPE_DERIVED;
+        }
+      else if (strcmp (str, "relay") == 0)
+        {
+          type = TP_MEDIA_STREAM_TRANSPORT_TYPE_RELAY;
+        }
       else
         goto FAILURE;
 
       /* username */
       user = lm_message_node_get_attribute (node, "username");
-      if (!user)
+      if (user == NULL)
         goto FAILURE;
 
       /* password */
       pass = lm_message_node_get_attribute (node, "password");
-      if (!pass)
+      if (pass == NULL)
         goto FAILURE;
 
       /* unknown */
       str = lm_message_node_get_attribute (node, "network");
-      if (!str)
+      if (str == NULL)
         goto FAILURE;
       net = atoi (str);
 
       /* unknown */
       str = lm_message_node_get_attribute (node, "generation");
-      if (!str)
+      if (str == NULL)
         goto FAILURE;
       gen = atoi (str);
 
@@ -1016,8 +1023,11 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
       g_value_set_static_boxed (&candidate,
           dbus_g_type_specialized_construct (TP_TYPE_CANDIDATE_STRUCT));
 
+      /* FIXME: is this naming scheme sensible? */
+      candidate_id = g_strdup_printf ("R%d", ++priv->remote_candidate_count);
+
       dbus_g_type_struct_set (&candidate,
-          0, name,
+          0, candidate_id,
           1, transports,
           G_MAXUINT);
 
@@ -1028,9 +1038,11 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
       GMS_DEBUG_DUMP (priv->session, "  from Jingle XML: [%s%s%s]",
                       ANSI_BOLD_OFF, xml, ANSI_BOLD_ON);
       GMS_DEBUG_DUMP (priv->session, "  to Telepathy DBus struct: [%s\"%s\", %s[%s0, \"%s\", %d, %s, \"%s\", \"%s\", %f, %s, \"%s\", \"%s\"%s]]",
-                      ANSI_BOLD_OFF, name, ANSI_BOLD_ON,
+                      ANSI_BOLD_OFF, candidate_id, ANSI_BOLD_ON,
                       ANSI_BOLD_OFF, addr, port, tp_protocols[proto], "RTP", "AVP", pref, tp_transports[type], user, pass, ANSI_BOLD_ON);
       g_free (xml);
+
+      g_free (candidate_id);
     }
 
 /*SUCCESS:*/

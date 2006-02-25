@@ -2,6 +2,7 @@
  * gabble-media-channel.c - Source for GabbleMediaChannel
  * Copyright (C) 2005 Collabora Ltd.
  * Copyright (C) 2005 Nokia Corporation
+ *   @author Ole Andre Vadla Ravnaas <ole.andre.ravnaas@collabora.co.uk>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -114,39 +115,11 @@ gabble_media_channel_constructor (GType type, guint n_props,
 
   handles = _gabble_connection_get_handles (priv->conn);
 
-  g_debug ("%s: handles == %p", G_STRFUNC, handles);
-
-  g_debug ("%s: calculated mixin = 0x%lx", G_STRFUNC,
-           GPOINTER_TO_UINT (obj)
-           + G_STRUCT_OFFSET (GabbleMediaChannel, group));
-
   gabble_group_mixin_init (obj, G_STRUCT_OFFSET (GabbleMediaChannel, group),
                            handles, self_handle);
 
   return obj;
 }
-
-#if 0
-  if (priv->handle != 0)
-    {
-      handles = _gabble_connection_get_handles (priv->connection);
-      valid = gabble_handle_ref (handles, TP_HANDLE_TYPE_CONTACT, priv->handle);
-      g_assert (valid);
-
-      gabble_group_mixin_change_flags (obj, TP_CHANNEL_GROUP_FLAG_CAN_REMOVE, 0);
-    }
-  else
-    {
-      gabble_group_mixin_change_flags (obj, CHANNEL_GROUP_FLAG_CAN_ADD, 0);
-    }
-#endif
-
-#if 0
-  GabbleHandleRepo *handles;
-
-  handles = _gabble_connection_get_handles (priv->connection);
-  gabble_handle_unref (handles, TP_HANDLE_TYPE_CONTACT, priv->handle);
-#endif
 
 static void session_state_changed_cb (GabbleMediaSession *session, GParamSpec *arg1, GabbleMediaChannel *channel);
 
@@ -245,7 +218,9 @@ _gabble_media_channel_dispatch_session_action (GabbleMediaChannel *chan,
                                        TP_CHANNEL_GROUP_FLAG_CAN_ADD);
     }
 
+  g_object_ref (session);
   _gabble_media_session_handle_action (session, iq_node, session_node, action);
+  g_object_unref (session);
 }
 
 static void
@@ -387,9 +362,6 @@ gabble_media_channel_dispose (GObject *object)
   if (priv->dispose_has_run)
     return;
 
-  g_assert (g_hash_table_size (priv->sessions) == 0);
-  g_hash_table_destroy (priv->sessions);
-
   priv->dispose_has_run = TRUE;
 
   if (!priv->closed)
@@ -406,6 +378,8 @@ gabble_media_channel_finalize (GObject *object)
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
 
   g_free (priv->object_path);
+
+  g_hash_table_destroy (priv->sessions);
 
   gabble_group_mixin_finalize (object);
 
@@ -453,6 +427,7 @@ gboolean gabble_media_channel_close (GabbleMediaChannel *obj, GError **error)
   priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (obj);
   priv->closed = TRUE;
 
+  g_debug ("%s called on %p", G_STRFUNC, obj);
   g_signal_emit(obj, signals[CLOSED], 0);
 
   return TRUE;
@@ -828,6 +803,7 @@ session_state_changed_cb (GabbleMediaSession *session,
                           GParamSpec *arg1,
                           GabbleMediaChannel *channel)
 {
+  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (channel);
   JingleSessionState state;
   GabbleHandle peer;
   GIntSet *empty, *set;
@@ -859,6 +835,28 @@ session_state_changed_cb (GabbleMediaSession *session,
       /* update flags accordingly -- allow adding, deny removal */
       gabble_group_mixin_change_flags (G_OBJECT (channel), TP_CHANNEL_GROUP_FLAG_CAN_ADD,
                                        TP_CHANNEL_GROUP_FLAG_CAN_REMOVE);
+
+      /* remove the session */
+      g_hash_table_remove (priv->sessions, GUINT_TO_POINTER (peer));
+
+      /* close the channel if there are no sessions left */
+      if (g_hash_table_size (priv->sessions) == 0)
+        {
+          GError *error;
+
+          g_debug ("%s: no sessions left in sessions gashtable, closing channel",
+                   G_STRFUNC);
+
+          if (!gabble_media_channel_close (channel, &error))
+            {
+              g_warning ("%s: failed to close media channel: %s", G_STRFUNC, error->message);
+            }
+        }
+      else
+        {
+          g_debug ("%s: sessions gashtable still has %d sessions, not closing channel",
+                   G_STRFUNC, g_hash_table_size (priv->sessions));
+        }
     }
 
   g_intset_destroy (empty);

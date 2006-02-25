@@ -2,6 +2,8 @@
  * gabble-group-mixin.c - Source for GabbleGroupMixin
  * Copyright (C) 2005 Collabora Ltd.
  * Copyright (C) 2005 Nokia Corporation
+ *   @author Ole Andre Vadla Ravnaas <ole.andre.ravnaas@collabora.co.uk>
+ *   @author Robert McQueen <robert.mcqueen@collabora.co.uk>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public

@@ -2,6 +2,7 @@
  * gabble-media-session.c - Source for GabbleMediaSession
  * Copyright (C) 2005 Collabora Ltd.
  * Copyright (C) 2005 Nokia Corporation
+ *   @author Ole Andre Vadla Ravnaas <ole.andre.ravnaas@collabora.co.uk>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -374,7 +375,7 @@ gabble_media_session_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  /* release any references held by the object here */
+  _gabble_connection_jingle_session_unregister (priv->conn, priv->id);
 
   if (G_OBJECT_CLASS (gabble_media_session_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_media_session_parent_class)->dispose (object);
@@ -383,10 +384,15 @@ gabble_media_session_dispose (GObject *object)
 void
 gabble_media_session_finalize (GObject *object)
 {
-  //GabbleMediaSession *self = GABBLE_MEDIA_SESSION (object);
-  //GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (self);
+  GabbleMediaSession *self = GABBLE_MEDIA_SESSION (object);
+  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (self);
 
-  /* free any data held directly by the object here */
+  g_debug ("%s: cleaning up", G_STRFUNC);
+
+  g_free (priv->object_path);
+
+  g_object_unref (priv->stream);
+  priv->stream = NULL;
 
   G_OBJECT_CLASS (gabble_media_session_parent_class)->finalize (object);
 }

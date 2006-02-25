@@ -2,6 +2,7 @@
  * gabble-media-stream.c - Source for GabbleMediaStream
  * Copyright (C) 2005 Collabora Ltd.
  * Copyright (C) 2005 Nokia Corporation
+ *   @author Ole Andre Vadla Ravnaas <ole.andre.ravnaas@collabora.co.uk>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -349,10 +350,16 @@ gabble_media_stream_dispose (GObject *object)
 void
 gabble_media_stream_finalize (GObject *object)
 {
-  //GabbleMediaStream *self = GABBLE_MEDIA_STREAM (object);
-  //GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
+  GabbleMediaStream *self = GABBLE_MEDIA_STREAM (object);
+  GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
 
-  /* free any data held directly by the object here */
+  g_debug ("%s: cleaning up", G_STRFUNC);
+
+  g_value_unset (&priv->native_codecs);
+  g_value_unset (&priv->native_candidates);
+
+  g_value_unset (&priv->remote_codecs);
+  g_value_unset (&priv->remote_candidates);
 
   G_OBJECT_CLASS (gabble_media_stream_parent_class)->finalize (object);
 }
@@ -511,7 +518,13 @@ gboolean gabble_media_stream_new_native_candidate (GabbleMediaStream *obj, const
 
   g_object_get (priv->session, "state", &state, NULL);
 
-  g_assert (state <= JS_STATE_ACTIVE);
+  /* FIXME: maybe this should be an assertion in case the channel
+   * isn't closed early enough right now? */
+  if (state > JS_STATE_ACTIVE)
+    {
+      g_debug ("%s: state > JS_STATE_ACTIVE, doing nothing", G_STRFUNC);
+      return TRUE;
+    }
 
   candidates = g_value_get_boxed (&priv->native_candidates);
 

@@ -193,8 +193,6 @@ struct _GabbleConnectionPrivate
 
 #define GABBLE_CONNECTION_GET_PRIVATE(o)     (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_CONNECTION, GabbleConnectionPrivate))
 
-static void unref_jingle_session (GObject *obj);
-
 static void
 gabble_connection_init (GabbleConnection *obj)
 {
@@ -206,7 +204,7 @@ gabble_connection_init (GabbleConnection *obj)
   priv->handles = gabble_handle_repo_new ();
 
   priv->jingle_sessions = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-                                                 NULL, (GDestroyNotify) unref_jingle_session);
+                                                 NULL, NULL);
   priv->im_channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
                                              NULL, g_object_unref);
 
@@ -479,6 +477,11 @@ gabble_connection_dispose (GObject *object)
     {
       g_assert (g_hash_table_size (priv->im_channels) == 0);
       g_hash_table_destroy (priv->im_channels);
+    }
+  if (priv->media_channels)
+    {
+      g_assert (priv->media_channels->len == 0);
+      g_ptr_array_free (priv->media_channels, TRUE);
     }
 
   if (priv->conn)
@@ -1039,12 +1042,28 @@ static void
 close_all_channels (GabbleConnection *conn)
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  guint i;
 
   if (priv->im_channels)
     {
       g_hash_table_destroy (priv->im_channels);
       priv->im_channels = NULL;
     }
+
+  if (priv->media_channels)
+    {
+      for (i = 0; i < priv->media_channels->len; i++)
+        {
+          GabbleMediaChannel *chan = g_ptr_array_index (priv->media_channels, i);
+
+          g_object_unref (chan);
+        }
+
+      g_ptr_array_free (priv->media_channels, TRUE);
+      priv->media_channels = NULL;
+    }
+
+  priv->media_channel_index = 0;
 }
 
 /**
@@ -1839,27 +1858,22 @@ connection_iq_roster_cb (LmMessageHandler *handler,
  * that #GabbleConnection holds to them.
  */
 static void
-media_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
+media_channel_closed_cb (GabbleMediaChannel *chan, gpointer user_data)
 {
-  /*
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-  GabbleHandle contact_handle;
 
-  g_object_get (chan, "handle", &contact_handle, NULL);
+  g_debug ("%s: removing channel with ref count %d", G_STRFUNC, G_OBJECT (chan)->ref_count);
 
-  g_debug ("%s: removing channel with handle %d", G_STRFUNC, contact_handle);
+  g_ptr_array_remove (priv->media_channels, chan);
 
-  g_hash_table_remove (priv->media_channels, GINT_TO_POINTER(contact_handle));
-  */
+  g_object_unref (chan);
 }
 
 /**
  * new_media_channel
  *
- * Creates a new GabbleMediaChannel with contact specified by handle,
- * or an empty channel if handle is set to zero.
- * Also adds the session id specified by sid if non-zero.
+ * Creates a new empty GabbleMediaChannel.
  */
 static GabbleMediaChannel *
 new_media_channel (GabbleConnection *conn, gboolean suppress_handler)
@@ -1949,7 +1963,7 @@ _gabble_connection_jingle_session_register (GabbleConnection *conn,
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
-  g_debug ("%s: registering sid %d", G_STRFUNC, sid);
+  g_debug ("%s: binding sid %d to %p", G_STRFUNC, sid, session);
 
   g_hash_table_insert (priv->jingle_sessions, GUINT_TO_POINTER (sid), session);
 }
@@ -1960,16 +1974,9 @@ _gabble_connection_jingle_session_unregister (GabbleConnection *conn,
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
-  g_debug ("%s: unregistering sid %d", G_STRFUNC, sid);
+  g_debug ("%s: unbinding sid %d", G_STRFUNC, sid);
 
-  g_hash_table_remove (priv->jingle_sessions, GUINT_TO_POINTER (sid));
-}
-
-static void
-unref_jingle_session (GObject *obj)
-{
-  if (obj)
-    g_object_unref (obj);
+  g_hash_table_insert (priv->jingle_sessions, GUINT_TO_POINTER (sid), NULL);
 }
 
 gboolean
@@ -2006,7 +2013,9 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
   const gchar *from, *id, *type, *action, *sid_str;
   GabbleHandle handle;
   guint32 sid;
-  GabbleMediaChannel *chan;
+  gboolean found;
+  gpointer orig_key;
+  GabbleMediaChannel *chan = NULL;
 
   g_assert (connection == priv->conn);
 
@@ -2060,8 +2069,12 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
 
   sid = atoi(sid_str);
 
-  chan = g_hash_table_lookup (priv->jingle_sessions, GINT_TO_POINTER (sid));
-  if (chan == NULL)
+  found = g_hash_table_lookup_extended (priv->jingle_sessions,
+                                        GUINT_TO_POINTER (sid),
+                                        &orig_key, (gpointer *) &chan);
+
+  /* is the session new and not a zombie? */
+  if (!found && chan == NULL)
     {
       /* if the session is unknown, the only allowed action is "initiate" */
       if (strcmp (action, "initiate"))
@@ -2083,7 +2096,17 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
       chan = new_media_channel (conn, FALSE);
     }
 
-  _gabble_media_channel_dispatch_session_action (chan, handle, sid, iq_node, session_node, action);
+  if (chan)
+    {
+      g_debug ("%s: chan ref_count before ref: %d", G_STRFUNC, G_OBJECT (chan)->ref_count);
+      g_object_ref (chan);
+      _gabble_media_channel_dispatch_session_action (chan, handle, sid, iq_node, session_node, action);
+      g_object_unref (chan);
+    }
+  else
+    {
+      g_debug ("%s: ignoring message from dead session", G_STRFUNC);
+    }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }

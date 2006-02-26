@@ -76,6 +76,8 @@ struct _GabbleMediaStreamPrivate
   GabbleMediaSession *session;
   gchar *object_path;
 
+  gboolean ready;
+
   GValue native_codecs;     /* intersected codec list */
   GValue native_candidates;
 
@@ -379,6 +381,7 @@ session_state_changed_cb (GabbleMediaSession *session,
   if (state == JS_STATE_PENDING_INITIATED)
     {
       push_native_candidates (stream);
+
       push_remote_codecs (stream);
       push_remote_candidates (stream);
     }
@@ -581,6 +584,8 @@ gboolean gabble_media_stream_ready (GabbleMediaStream *obj, const GPtrArray * co
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
 
+  priv->ready = TRUE;
+
   GMS_DEBUG_INFO (priv->session, "putting list of all %d locally supported "
                   "codecs from voip-engine into cache", codecs->len);
 
@@ -589,6 +594,9 @@ gboolean gabble_media_stream_ready (GabbleMediaStream *obj, const GPtrArray * co
   g_value_copy (&val, &priv->native_codecs);
 
   g_signal_emit (obj, signals[READY], 0, codecs);
+
+  push_remote_codecs (obj);
+  push_remote_candidates (obj);
 
   return TRUE;
 }
@@ -860,6 +868,9 @@ push_remote_codecs (GabbleMediaStream *stream)
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
+  if (!priv->ready)
+    return;
+
   g_object_get (priv->session, "state", &state, NULL);
   if (state < JS_STATE_PENDING_INITIATED)
     return;
@@ -1087,6 +1098,9 @@ push_remote_candidates (GabbleMediaStream *stream)
   candidates = g_value_get_boxed (&priv->remote_candidates);
 
   if (candidates->len == 0)
+    return;
+
+  if (!priv->ready)
     return;
 
   g_object_get (priv->session, "state", &state, NULL);

@@ -172,7 +172,6 @@ gabble_media_session_constructor (GType type, guint n_props,
            constructor (type, n_props, props);
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (GABBLE_MEDIA_SESSION (obj));
 
-  /* get a handle to our GabbleConnection */
   g_object_get (priv->channel, "connection", &priv->conn, NULL);
 
   priv->state = JS_STATE_PENDING_CREATED;
@@ -375,6 +374,8 @@ gabble_media_session_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
+  g_object_unref (priv->conn);
+
   _gabble_connection_jingle_session_unregister (priv->conn, priv->id);
 
   if (G_OBJECT_CLASS (gabble_media_session_parent_class)->dispose)
@@ -386,8 +387,6 @@ gabble_media_session_finalize (GObject *object)
 {
   GabbleMediaSession *self = GABBLE_MEDIA_SESSION (object);
   GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (self);
-
-  g_debug ("%s: cleaning up", G_STRFUNC);
 
   g_free (priv->object_path);
 

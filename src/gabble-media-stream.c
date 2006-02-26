@@ -131,9 +131,10 @@ gabble_media_stream_constructor (GType type, guint n_props,
   g_signal_connect (priv->session, "notify::state",
       (GCallback) session_state_changed_cb, obj);
 
-  /* get the connection handle once (useful for sending messages) */
+  /* get the connection handle once */
   g_object_get (priv->session, "media-channel", &chan, NULL);
   g_object_get (chan, "connection", &priv->conn, NULL);
+  g_object_unref (chan);
 
   g_value_init (&priv->native_codecs, TP_TYPE_CODEC_LIST);
   g_value_take_boxed (&priv->native_codecs,
@@ -341,7 +342,7 @@ gabble_media_stream_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  /* release any references held by the object here */
+  g_object_unref (priv->conn);
 
   if (G_OBJECT_CLASS (gabble_media_stream_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_media_stream_parent_class)->dispose (object);
@@ -352,8 +353,6 @@ gabble_media_stream_finalize (GObject *object)
 {
   GabbleMediaStream *self = GABBLE_MEDIA_STREAM (object);
   GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
-
-  g_debug ("%s: cleaning up", G_STRFUNC);
 
   g_value_unset (&priv->native_codecs);
   g_value_unset (&priv->native_candidates);

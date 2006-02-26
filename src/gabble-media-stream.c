@@ -637,9 +637,10 @@ static void
 candidates_msg_reply_cb (GabbleConnection *conn,
                          LmMessage *sent_msg,
                          LmMessage *reply_msg,
+                         GObject *object,
                          gpointer user_data)
 {
-  GabbleMediaStream *stream = user_data;
+  GabbleMediaStream *stream = GABBLE_MEDIA_STREAM (object);
   GabbleMediaStreamPrivate *priv;
 
   g_assert (GABBLE_IS_MEDIA_STREAM (stream));
@@ -758,7 +759,7 @@ push_native_candidates (GabbleMediaStream *stream)
       g_free (xml);
 
       /* send it */
-      _gabble_connection_send_with_reply (priv->conn, msg, candidates_msg_reply_cb, stream, NULL);
+      _gabble_connection_send_with_reply (priv->conn, msg, candidates_msg_reply_cb, G_OBJECT (stream), NULL, NULL);
 
       /* clean up */
       lm_message_unref (msg);

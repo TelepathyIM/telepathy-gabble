@@ -564,9 +564,10 @@ static void
 accept_msg_reply_cb (GabbleConnection *conn,
                      LmMessage *sent_msg,
                      LmMessage *reply_msg,
+                     GObject *object,
                      gpointer user_data)
 {
-  GabbleMediaSession *session = user_data;
+  GabbleMediaSession *session = GABBLE_MEDIA_SESSION (object);
 
   MSG_REPLY_CB_END_SESSION_IF_NOT_SUCCESSFUL (session, "accept failed");
 
@@ -595,7 +596,7 @@ try_session_accept (GabbleMediaSession *session)
 
   /* send the final acceptance message */
   _gabble_connection_send_with_reply (priv->conn, msg, accept_msg_reply_cb,
-                                      session, NULL);
+                                      G_OBJECT (session), NULL, NULL);
 
   lm_message_unref (msg);
 }
@@ -642,9 +643,10 @@ static void
 initiate_msg_reply_cb (GabbleConnection *conn,
                        LmMessage *sent_msg,
                        LmMessage *reply_msg,
+                       GObject *object,
                        gpointer user_data)
 {
-  GabbleMediaSession *session = user_data;
+  GabbleMediaSession *session = GABBLE_MEDIA_SESSION (object);
 
   MSG_REPLY_CB_END_SESSION_IF_NOT_SUCCESSFUL (session, "initiate failed");
 
@@ -675,7 +677,7 @@ stream_ready_cb (GabbleMediaStream *stream,
       GMS_DEBUG_INFO (session, "sending jingle session action \"initiate\" to peer");
 
       _gabble_connection_send_with_reply (priv->conn, msg, initiate_msg_reply_cb,
-                                          session, NULL);
+                                          G_OBJECT (session), NULL, NULL);
 
       lm_message_unref (msg);
     }
@@ -826,6 +828,7 @@ static void
 ignore_reply_cb (GabbleConnection *conn,
                  LmMessage *sent_msg,
                  LmMessage *reply_msg,
+                 GObject *object,
                  gpointer user_data)
 {
 }
@@ -844,7 +847,7 @@ send_reject_message (GabbleMediaSession *session)
 
   /* send it */
   _gabble_connection_send_with_reply (priv->conn, msg, ignore_reply_cb,
-                                      session, NULL);
+                                      G_OBJECT (session), NULL, NULL);
 
   lm_message_unref (msg);
 }
@@ -863,7 +866,7 @@ send_terminate_message (GabbleMediaSession *session)
 
   /* send it */
   _gabble_connection_send_with_reply (priv->conn, msg, ignore_reply_cb,
-                                      session, NULL);
+                                      G_OBJECT (session), NULL, NULL);
 
   lm_message_unref (msg);
 }

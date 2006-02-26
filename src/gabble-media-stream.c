@@ -432,7 +432,9 @@ gboolean gabble_media_stream_error (GabbleMediaStream *obj, guint errno, const g
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
 
-  GMS_DEBUG_WARNING (priv->session, "%s not yet implemented", G_STRFUNC);
+  GMS_DEBUG_WARNING (priv->session, "Media.StreamHandler::Error called -- terminating session");
+
+  _gabble_media_session_terminate (priv->session);
 
   return TRUE;
 }

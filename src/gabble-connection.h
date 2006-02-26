@@ -82,7 +82,7 @@ GType gabble_connection_get_type(void);
 /* Convenience macros */
 #define HANDLER_DEBUG(n, s) \
 G_STMT_START { \
-  char *handler_debug_tmp = lm_message_node_to_string (n); \
+  gchar *handler_debug_tmp = lm_message_node_to_string (n); \
   g_debug ("%s: " s ":\n%s", G_STRFUNC, handler_debug_tmp); \
   g_free (handler_debug_tmp); \
 } G_STMT_END

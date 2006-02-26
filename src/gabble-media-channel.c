@@ -214,8 +214,8 @@ _gabble_media_channel_dispatch_session_action (GabbleMediaChannel *chan,
 
       /* and update flags accordingly */
       gabble_group_mixin_change_flags (G_OBJECT (chan),
-                                       TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
-                                       TP_CHANNEL_GROUP_FLAG_CAN_ADD);
+                                       TP_CHANNEL_GROUP_FLAG_CAN_ADD ^ TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
+                                       0);
     }
 
   g_object_ref (session);
@@ -689,23 +689,8 @@ static gboolean
 gabble_media_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *message, GError **error)
 {
   GabbleMediaChannel *chan = GABBLE_MEDIA_CHANNEL (obj);
-  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (obj);
-  GabbleHandleRepo *handles;
+  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
   GabbleMediaSession *session;
-
-  handles = _gabble_connection_get_handles (priv->conn);
-
-  if (!gabble_handle_is_valid (handles,
-                               TP_HANDLE_TYPE_CONTACT,
-                               handle))
-    {
-      g_debug ("%s: handle %u is invalid", G_STRFUNC, handle);
-
-      *error = g_error_new (TELEPATHY_ERRORS, InvalidHandle,
-                            "handle %u is invalid", handle);
-
-      return FALSE;
-    }
 
   if (!_gabble_connection_contact_supports_voice (priv->conn, handle))
     {
@@ -778,9 +763,7 @@ gabble_media_channel_add_member (GObject *obj, GabbleHandle handle, const gchar 
           g_intset_destroy (set);
 
           /* and update flags accordingly */
-          gabble_group_mixin_change_flags (obj,
-                                           TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
-                                           TP_CHANNEL_GROUP_FLAG_CAN_ADD);
+          gabble_group_mixin_change_flags (obj, 0, TP_CHANNEL_GROUP_FLAG_CAN_ADD);
         }
       else
         {
@@ -795,6 +778,36 @@ gabble_media_channel_add_member (GObject *obj, GabbleHandle handle, const gchar 
 static gboolean
 gabble_media_channel_remove_member (GObject *obj, GabbleHandle handle, const gchar *message, GError **error)
 {
+  GabbleMediaChannel *chan = GABBLE_MEDIA_CHANNEL (obj);
+  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
+  GabbleMediaSession *session;
+  GIntSet *empty, *set;
+
+  session = g_hash_table_lookup (priv->sessions, GINT_TO_POINTER (handle));
+  if (session == NULL)
+    {
+      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                            "handle %u is not currently a member", handle);
+      return FALSE;
+    }
+
+  _gabble_media_session_terminate (session);
+
+  /* remove the peer */
+  empty = g_intset_new ();
+  set = g_intset_new ();
+  g_intset_add (set, handle);
+
+  gabble_group_mixin_change_members (obj, "", empty, set, empty, empty);
+
+  g_intset_destroy (empty);
+  g_intset_destroy (set);
+
+  /* and update flags accordingly */
+  gabble_group_mixin_change_flags (obj, TP_CHANNEL_GROUP_FLAG_CAN_ADD,
+                                   TP_CHANNEL_GROUP_FLAG_CAN_REMOVE ^
+                                   TP_CHANNEL_GROUP_FLAG_CAN_RESCIND);
+
   return TRUE;
 }
 

@@ -764,6 +764,9 @@ typedef struct {
     GabbleConnection *conn;
     LmMessage *sent_msg;
     gpointer user_data;
+
+    GObject *object;
+    gboolean object_alive;
 } GabbleMsgHandlerData;
 
 static LmHandlerResult
@@ -776,33 +779,66 @@ message_send_reply_cb (LmMessageHandler *handler,
   LmMessageSubType sub_type;
 
   sub_type = lm_message_get_sub_type (reply_msg);
+
+  /* Is it a reply to this message? */
   if (sub_type != LM_MESSAGE_SUB_TYPE_RESULT &&
       sub_type != LM_MESSAGE_SUB_TYPE_ERROR)
     {
-      lm_message_unref (handler_data->sent_msg);
-
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
-  handler_data->reply_func (handler_data->conn,
-                            handler_data->sent_msg,
-                            reply_msg,
-                            handler_data->user_data);
+  if (handler_data->object_alive)
+    {
+      handler_data->reply_func (handler_data->conn,
+                                handler_data->sent_msg,
+                                reply_msg,
+                                handler_data->object,
+                                handler_data->user_data);
+    }
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
+static void
+message_send_object_destroy_notify_cb (gpointer data,
+                                       GObject *where_the_object_was)
+{
+  GabbleMsgHandlerData *handler_data = data;
+
+  handler_data->object = NULL;
+  handler_data->object_alive = FALSE;
+}
+
+static void
+message_send_handler_destroy_cb (gpointer data)
+{
+  GabbleMsgHandlerData *handler_data = data;
 
   lm_message_unref (handler_data->sent_msg);
 
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  if (handler_data->object != NULL)
+    {
+      g_object_weak_unref (handler_data->object,
+                           message_send_object_destroy_notify_cb,
+                           handler_data);
+    }
+
+  g_free (handler_data);
 }
 
 /**
  * _gabble_connection_send_with_reply
  *
  * Send a tracked LmMessage and trap network errors appropriately.
+ *
+ * If object is non-NULL the handler will follow the lifetime of that object,
+ * which means that if the object is destroyed the callback will not be invoked.
  */
 gboolean
 _gabble_connection_send_with_reply (GabbleConnection *conn,
                                     LmMessage *msg,
                                     GabbleConnectionMsgReplyFunc reply_func,
+                                    GObject *object,
                                     gpointer user_data,
                                     GError **error)
 {
@@ -824,12 +860,23 @@ _gabble_connection_send_with_reply (GabbleConnection *conn,
   handler_data->sent_msg = msg;
   handler_data->user_data = user_data;
 
-  handler = lm_message_handler_new (message_send_reply_cb, handler_data, g_free);
+  handler_data->object = object;
+  handler_data->object_alive = TRUE;
+
+  if (object != NULL)
+    {
+      g_object_weak_ref (object, message_send_object_destroy_notify_cb,
+                         handler_data);
+    }
+
+  handler = lm_message_handler_new (message_send_reply_cb, handler_data,
+                                    message_send_handler_destroy_cb);
 
   ret = lm_connection_send_with_reply (priv->conn, msg, handler, &lmerror);
   if (!ret)
     {
-      g_debug ("_gabble_connection_send_with_reply failed: %s", lmerror->message);
+      g_debug ("_gabble_connection_send_with_reply failed: %s",
+               lmerror->message);
 
       if (error)
         {

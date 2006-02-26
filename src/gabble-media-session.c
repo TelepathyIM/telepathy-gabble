@@ -412,7 +412,9 @@ gabble_media_session_finalize (GObject *object)
  */
 gboolean gabble_media_session_error (GabbleMediaSession *obj, guint errno, const gchar * message, GError **error)
 {
-  GMS_DEBUG_WARNING (obj, "%s not yet implemented", G_STRFUNC);
+  GMS_DEBUG_INFO (obj, "Media.SessionHandler::Error called -- terminating session");
+
+  _gabble_media_session_terminate (obj);
 
   return TRUE;
 }
@@ -497,7 +499,7 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
         }
       else
         {
-          g_object_set (session, "state", JS_STATE_ENDED, NULL);
+          goto ACK_FAILURE;
         }
 
       return;
@@ -517,7 +519,7 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
         }
       else
         {
-          g_object_set (session, "state", JS_STATE_ENDED, NULL);
+          goto ACK_FAILURE;
         }
 
       return;
@@ -542,9 +544,11 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
   return;
 
 ACK_FAILURE:
-  GMS_DEBUG_ERROR (session, "unhandled jingle action \"%s\"", action);
+  GMS_DEBUG_ERROR (session, "error encountered with action \"%s\" in current state -- terminating session", action);
 
   _gabble_connection_send_iq_ack (priv->conn, iq_node, LM_MESSAGE_SUB_TYPE_ERROR);
+
+  _gabble_media_session_terminate (session);
 }
 
 static void
@@ -817,6 +821,71 @@ _gabble_media_session_accept (GabbleMediaSession *session)
   priv->accepted = TRUE;
 
   try_session_accept (session);
+}
+
+static void
+ignore_reply_cb (GabbleConnection *conn,
+                 LmMessage *sent_msg,
+                 LmMessage *reply_msg,
+                 gpointer user_data)
+{
+}
+
+static void
+send_reject_message (GabbleMediaSession *session)
+{
+  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+  LmMessage *msg;
+  LmMessageNode *session_node;
+
+  /* construct a session terminate message */
+  msg = _gabble_media_session_message_new (session, "reject", &session_node);
+
+  GMS_DEBUG_INFO (session, "sending jingle session action \"reject\" to peer");
+
+  /* send it */
+  _gabble_connection_send_with_reply (priv->conn, msg, ignore_reply_cb,
+                                      session, NULL);
+
+  lm_message_unref (msg);
+}
+
+static void
+send_terminate_message (GabbleMediaSession *session)
+{
+  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+  LmMessage *msg;
+  LmMessageNode *session_node;
+
+  /* construct a session terminate message */
+  msg = _gabble_media_session_message_new (session, "terminate", &session_node);
+
+  GMS_DEBUG_INFO (session, "sending jingle session action \"terminate\" to peer");
+
+  /* send it */
+  _gabble_connection_send_with_reply (priv->conn, msg, ignore_reply_cb,
+                                      session, NULL);
+
+  lm_message_unref (msg);
+}
+
+void
+_gabble_media_session_terminate (GabbleMediaSession *session)
+{
+  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+
+  if (priv->state == JS_STATE_ENDED)
+    return;
+
+  if (priv->initiator == priv->peer &&
+      priv->state == JS_STATE_PENDING_INITIATED)
+    {
+      send_reject_message (session);
+    }
+
+  send_terminate_message (session);
+
+  g_object_set (session, "state", JS_STATE_ENDED, NULL);
 }
 
 #if GMS_DEBUG

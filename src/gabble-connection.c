@@ -1056,6 +1056,9 @@ close_all_channels (GabbleConnection *conn)
         {
           GabbleMediaChannel *chan = g_ptr_array_index (priv->media_channels, i);
 
+          g_debug ("%s: about to unref channel with ref_count %d",
+                   G_STRFUNC, G_OBJECT (chan)->ref_count);
+
           g_object_unref (chan);
         }
 
@@ -1585,8 +1588,9 @@ connection_presence_cb (LmMessageHandler *handler,
       break;
 
     case LM_MESSAGE_SUB_TYPE_ERROR:
-      g_warning ("%s: XMPP Presence Error recieved, setting contact to offline",
+      g_warning ("%s: XMPP Presence Error received, setting contact to offline",
                  G_STRFUNC);
+      HANDLER_DEBUG (pres_node, "presence node");
     case LM_MESSAGE_SUB_TYPE_UNAVAILABLE:
       update_presence (conn, handle, GABBLE_PRESENCE_OFFLINE, status_message, NULL);
       break;
@@ -2105,7 +2109,7 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
     }
   else
     {
-      g_debug ("%s: ignoring message from dead session", G_STRFUNC);
+      HANDLER_DEBUG (iq_node, "ignoring message from dead session");
     }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;

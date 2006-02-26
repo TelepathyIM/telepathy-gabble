@@ -77,6 +77,7 @@ GType gabble_media_session_get_type(void);
       GMS_DEBUG_ERROR (s, m); \
       HANDLER_DEBUG (sent_msg->node, "message sent"); \
       HANDLER_DEBUG (reply_msg->node, "message reply"); \
+      _gabble_media_session_terminate (s); \
       g_object_set (s, "state", JS_STATE_ENDED, NULL); \
       return; \
     } \
@@ -118,6 +119,7 @@ LmMessage *_gabble_media_session_message_new (GabbleMediaSession *session,
                                               LmMessageNode **session_node);
 
 void _gabble_media_session_accept (GabbleMediaSession *session);
+void _gabble_media_session_terminate (GabbleMediaSession *session);
 
 #define GMS_DEBUG 1
 

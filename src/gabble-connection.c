@@ -1066,6 +1066,12 @@ close_all_channels (GabbleConnection *conn)
       priv->media_channels = NULL;
     }
 
+  if (priv->jingle_sessions)
+    {
+      g_hash_table_destroy (priv->jingle_sessions);
+      priv->jingle_sessions = NULL;
+    }
+
   priv->media_channel_index = 0;
 }
 
@@ -1076,7 +1082,7 @@ close_all_channels (GabbleConnection *conn)
  *
  * Request @conn to disconnect
  *
- * Starts the disconnetion process and sets the status to disconnected.
+ * Starts the disconnection process and sets the status to disconnected.
  */
 static void
 connection_disconnect (GabbleConnection *conn, TpConnectionStatusReason reason)

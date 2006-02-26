@@ -121,12 +121,22 @@ LmMessage *_gabble_media_session_message_new (GabbleMediaSession *session,
 void _gabble_media_session_accept (GabbleMediaSession *session);
 void _gabble_media_session_terminate (GabbleMediaSession *session);
 
-#define GMS_DEBUG 1
+#ifndef _GMS_DEBUG_LEVEL
+#ifdef MAINTAINER_MODE
+#define _GMS_DEBUG_LEVEL 1
+#else
+#define _GMS_DEBUG_LEVEL 0
+#endif
+#endif
 
-#if GMS_DEBUG
+#if _GMS_DEBUG_LEVEL
 
 #define GMS_DEBUG_INFO(s, ...)    _gabble_media_session_debug (s, DEBUG_MSG_INFO, __VA_ARGS__)
+#if _GMS_DEBUG_LEVEL > 1
 #define GMS_DEBUG_DUMP(s, ...)    _gabble_media_session_debug (s, DEBUG_MSG_DUMP, __VA_ARGS__)
+#else
+#define GMS_DEBUG_DUMP(s, ...)
+#endif
 #define GMS_DEBUG_WARNING(s, ...) _gabble_media_session_debug (s, DEBUG_MSG_WARNING, __VA_ARGS__)
 #define GMS_DEBUG_ERROR(s, ...)   _gabble_media_session_debug (s, DEBUG_MSG_ERROR, __VA_ARGS__)
 #define GMS_DEBUG_EVENT(s, ...)   _gabble_media_session_debug (s, DEBUG_MSG_EVENT, __VA_ARGS__)

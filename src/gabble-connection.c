@@ -1898,7 +1898,7 @@ new_media_channel (GabbleConnection *conn, gboolean suppress_handler)
                        "object-path", object_path,
                        NULL);
 
-  g_debug ("new_media_channel: object path %s", object_path);
+  g_debug ("%s: object path %s", G_STRFUNC, object_path);
 
   g_signal_connect (chan, "closed", (GCallback) media_channel_closed_cb, conn);
 
@@ -2102,14 +2102,9 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
 
   if (chan)
     {
-      g_debug ("%s: chan ref_count before ref: %d", G_STRFUNC, G_OBJECT (chan)->ref_count);
       g_object_ref (chan);
       _gabble_media_channel_dispatch_session_action (chan, handle, sid, iq_node, session_node, action);
       g_object_unref (chan);
-    }
-  else
-    {
-      HANDLER_DEBUG (iq_node, "ignoring message from dead session");
     }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;

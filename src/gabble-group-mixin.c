@@ -153,6 +153,16 @@ gabble_group_mixin_add_members (GObject *obj, const GArray *contacts, const gcha
   guint i;
   GabbleHandle handle;
 
+  /* is this action allowed according to the current flags? */
+  if ((mixin->group_flags & TP_CHANNEL_GROUP_FLAG_CAN_ADD) == 0)
+    {
+      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                            "add operation not available according to group_flags being 0x%x",
+                            mixin->group_flags);
+
+      return FALSE;
+    }
+
   /* reject invalid handles */
   for (i = 0; i < contacts->len; i++)
     {
@@ -186,10 +196,20 @@ gabble_group_mixin_add_members (GObject *obj, const GArray *contacts, const gcha
 gboolean
 gabble_group_mixin_remove_members (GObject *obj, const GArray *contacts, const gchar *message, GError **error)
 {
-  GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
   GabbleGroupMixinClass *mixin_cls = GABBLE_GROUP_MIXIN_CLASS (G_OBJECT_GET_CLASS (obj));
+  GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
   guint i;
   GabbleHandle handle;
+
+  /* is this action allowed according to the current flags? */
+  if ((mixin->group_flags & TP_CHANNEL_GROUP_FLAG_CAN_REMOVE) == 0)
+    {
+      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                            "remove operation not available according to group_flags being 0x%x",
+                            mixin->group_flags);
+
+      return FALSE;
+    }
 
   /* reject invalid handles */
   for (i = 0; i < contacts->len; i++)
@@ -201,7 +221,7 @@ gabble_group_mixin_remove_members (GObject *obj, const GArray *contacts, const g
           g_debug ("%s: invalid handle %u", G_STRFUNC, handle);
 
           *error = g_error_new (TELEPATHY_ERRORS, InvalidHandle,
-              "invalid handle %u", handle);
+                                "invalid handle %u", handle);
 
           return FALSE;
         }
@@ -272,9 +292,12 @@ gabble_group_mixin_change_flags (GObject *obj,
   removed = remove & mixin->group_flags;
   mixin->group_flags &= ~removed;
 
-  g_debug ("%s: emitting group flags changed, added 0x%X, removed 0x%X", G_STRFUNC, added, removed);
+  if (add != 0 || remove != 0)
+    {
+      g_debug ("%s: emitting group flags changed, added 0x%X, removed 0x%X", G_STRFUNC, added, removed);
 
-  g_signal_emit(obj, mixin_cls->group_flags_changed_signal_id, 0, added, removed);
+      g_signal_emit(obj, mixin_cls->group_flags_changed_signal_id, 0, added, removed);
+    }
 }
 
 /**

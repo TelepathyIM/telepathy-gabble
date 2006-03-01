@@ -60,6 +60,7 @@ enum
   PROP_CONNECTION = 1,
   PROP_OBJECT_PATH,
   PROP_CHANNEL_TYPE,
+  PROP_CREATOR,
   LAST_PROPERTY
 };
 
@@ -70,8 +71,9 @@ struct _GabbleMediaChannelPrivate
 {
   GabbleConnection *conn;
   gchar *object_path;
+  GabbleHandle creator;
 
-  GHashTable *sessions;
+  GabbleMediaSession *session;
 
   gboolean closed;
   gboolean dispose_has_run;
@@ -82,12 +84,7 @@ struct _GabbleMediaChannelPrivate
 static void
 gabble_media_channel_init (GabbleMediaChannel *obj)
 {
-  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (obj);
-
-  priv->sessions = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-                                          NULL, g_object_unref);
-
-  priv->closed = FALSE;
+  /*GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (obj);*/
 }
 
 static GObject *
@@ -101,15 +98,18 @@ gabble_media_channel_constructor (GType type, guint n_props,
   gboolean valid;
   GabbleHandle self_handle;
   GError *error;
+  GIntSet *empty, *set;
 
   obj = G_OBJECT_CLASS (gabble_media_channel_parent_class)->
            constructor (type, n_props, props);
 
   priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (GABBLE_MEDIA_CHANNEL (obj));
 
+  /* register object on the bus */
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
 
+  /* initialize group mixin */
   valid = gabble_connection_get_self_handle (priv->conn, &self_handle, &error);
   g_assert (valid);
 
@@ -118,6 +118,17 @@ gabble_media_channel_constructor (GType type, guint n_props,
   gabble_group_mixin_init (obj, G_STRUCT_OFFSET (GabbleMediaChannel, group),
                            handles, self_handle);
 
+  /* automatically add creator to channel */
+  empty = g_intset_new ();
+  set = g_intset_new ();
+  g_intset_add (set, priv->creator);
+
+  gabble_group_mixin_change_members (obj, "", set, empty, empty, empty);
+
+  g_intset_destroy (empty);
+  g_intset_destroy (set);
+
+  /* allow member adding */
   gabble_group_mixin_change_flags (obj, TP_CHANNEL_GROUP_FLAG_CAN_ADD, 0);
 
   return obj;
@@ -148,6 +159,8 @@ create_session (GabbleMediaChannel *channel, GabbleHandle peer, guint32 sid)
 
   priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (channel);
 
+  g_assert (priv->session == NULL);
+
   object_path = g_strdup_printf ("%s/MediaSession%u", priv->object_path, peer);
 
   if (sid == 0)
@@ -174,7 +187,7 @@ create_session (GabbleMediaChannel *channel, GabbleHandle peer, guint32 sid)
   g_signal_connect (session, "notify::state",
                     (GCallback) session_state_changed_cb, channel);
 
-  g_hash_table_insert (priv->sessions, GUINT_TO_POINTER (peer), session);
+  priv->session = session;
 
   _gabble_connection_jingle_session_register (priv->conn, sid, channel);
 
@@ -195,19 +208,19 @@ _gabble_media_channel_dispatch_session_action (GabbleMediaChannel *chan,
                                                const gchar *action)
 {
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
-  GabbleMediaSession *session;
+  GabbleMediaSession *session = priv->session;
 
-  session = g_hash_table_lookup (priv->sessions, GINT_TO_POINTER (peer));
   if (session == NULL)
     {
+      GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (chan);
       GIntSet *empty, *set;
 
       session = create_session (chan, peer, sid);
 
-      /* make the peer local pending */
+      /* make us local pending */
       empty = g_intset_new ();
       set = g_intset_new ();
-      g_intset_add (set, peer);
+      g_intset_add (set, mixin->self_handle);
 
       gabble_group_mixin_change_members (G_OBJECT (chan), "", empty, empty, set, empty);
 
@@ -244,6 +257,9 @@ gabble_media_channel_get_property (GObject    *object,
     case PROP_CHANNEL_TYPE:
       g_value_set_string (value, TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA);
       break;
+    case PROP_CREATOR:
+      g_value_set_uint (value, priv->creator);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -268,6 +284,9 @@ gabble_media_channel_set_property (GObject     *object,
         g_free (priv->object_path);
 
       priv->object_path = g_value_dup_string (value);
+      break;
+    case PROP_CREATOR:
+      priv->creator = g_value_get_uint (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -325,6 +344,16 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_CHANNEL_TYPE, param_spec);
 
+  param_spec = g_param_spec_uint ("creator", "Channel creator",
+                                  "The GabbleHandle representing the contact "
+                                  "who created the channel.",
+                                  0, G_MAXUINT32, 0,
+                                  G_PARAM_CONSTRUCT_ONLY |
+                                  G_PARAM_READWRITE |
+                                  G_PARAM_STATIC_NAME |
+                                  G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_CREATOR, param_spec);
+
   signals[CLOSED] =
     g_signal_new ("closed",
                   G_OBJECT_CLASS_TYPE (gabble_media_channel_class),
@@ -377,7 +406,8 @@ gabble_media_channel_finalize (GObject *object)
 
   g_free (priv->object_path);
 
-  g_hash_table_destroy (priv->sessions);
+  if (priv->session)
+    g_object_unref (priv->session);
 
   gabble_group_mixin_finalize (object);
 
@@ -518,46 +548,6 @@ gboolean gabble_media_channel_get_interfaces (GabbleMediaChannel *obj, gchar ***
   return TRUE;
 }
 
-/**
- * get_session_handlers_hash_foreach:
- * @key: iterated key
- * @value: iterated value
- * @data: data attached to this key/value pair
- *
- * Called by the exported GetSessionHandlers method, this should iterate over
- * the handle/GabbleMediaSessionHandler pairs in a hash, and for each add a
- * GValueArray containing the following:
- *  an integer handle representing the member the MediaSessionHandler is created for
- *  a D-Bus object path for the MediaSessionHandler object on this service
- *  a string indicating the type of session
- */
-static void
-get_session_handlers_hash_foreach (gpointer key,
-                                   gpointer value,
-                                   gpointer data)
-{
-  GabbleHandle member = GPOINTER_TO_UINT (key);
-  GObject *session_handler = G_OBJECT (value);
-  GPtrArray *handlers = (GPtrArray *) data;
-  GValue handler = { 0, };
-  gchar *path;
-
-  g_value_init (&handler, TP_SESSION_HANDLER_SET_TYPE);
-  g_value_set_static_boxed (&handler,
-      dbus_g_type_specialized_construct (TP_SESSION_HANDLER_SET_TYPE));
-
-  g_object_get (session_handler, "object-path", &path, NULL);
-
-  dbus_g_type_struct_set (&handler,
-      0, member,
-      1, path,
-      2, "rtp",
-      G_MAXUINT);
-
-  g_free (path);
-
-  g_ptr_array_add (handlers, g_value_get_boxed (&handler));
-}
 
 /**
  * gabble_media_channel_get_local_pending_members
@@ -646,21 +636,33 @@ gboolean gabble_media_channel_get_self_handle (GabbleMediaChannel *obj, guint* r
 gboolean gabble_media_channel_get_session_handlers (GabbleMediaChannel *obj, GPtrArray ** ret, GError **error)
 {
   GabbleMediaChannelPrivate *priv;
-  guint count;
-  GPtrArray *handlers;
+  GValue handler = { 0, };
+  GabbleHandle member;
+  gchar *path;
 
   g_assert (GABBLE_IS_MEDIA_CHANNEL (obj));
 
   priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (obj);
 
-  count = g_hash_table_size (priv->sessions);
-  handlers = g_ptr_array_sized_new (count);
+  g_value_init (&handler, TP_SESSION_HANDLER_SET_TYPE);
+  g_value_set_static_boxed (&handler,
+      dbus_g_type_specialized_construct (TP_SESSION_HANDLER_SET_TYPE));
 
-  g_hash_table_foreach (priv->sessions,
-      get_session_handlers_hash_foreach,
-      handlers);
+  g_object_get (priv->session,
+                "peer", &member,
+                "object-path", &path,
+                NULL);
 
-  *ret = handlers;
+  dbus_g_type_struct_set (&handler,
+      0, member,
+      1, path,
+      2, "rtp",
+      G_MAXUINT);
+
+  g_free (path);
+
+  *ret = g_ptr_array_sized_new (1);
+  g_ptr_array_add (*ret, g_value_get_boxed (&handler));
 
   return TRUE;
 }
@@ -688,7 +690,7 @@ gabble_media_channel_add_member (GObject *obj, GabbleHandle handle, const gchar 
 {
   GabbleMediaChannel *chan = GABBLE_MEDIA_CHANNEL (obj);
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
-  GabbleMediaSession *session;
+  GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
 
   if (!_gabble_connection_contact_supports_voice (priv->conn, handle))
     {
@@ -700,12 +702,16 @@ gabble_media_channel_add_member (GObject *obj, GabbleHandle handle, const gchar 
       return FALSE;
     }
 
-  session = g_hash_table_lookup (priv->sessions, GINT_TO_POINTER (handle));
-  if (session == NULL)
+  /* did we create this channel? */
+  if (priv->creator == mixin->self_handle &&
+      handle != mixin->self_handle)
     {
+      /* yes: invite the peer */
+
       GIntSet *empty, *set;
 
-      session = create_session (chan, handle, 0);
+      /* create a new session */
+      create_session (chan, handle, 0);
 
       /* make the peer remote pending */
       empty = g_intset_new ();
@@ -722,35 +728,23 @@ gabble_media_channel_add_member (GObject *obj, GabbleHandle handle, const gchar 
                                        TP_CHANNEL_GROUP_FLAG_CAN_REMOVE ^
                                        TP_CHANNEL_GROUP_FLAG_CAN_RESCIND,
                                        TP_CHANNEL_GROUP_FLAG_CAN_ADD);
+
+      return TRUE;
     }
   else
     {
-      GArray *arr;
-      gboolean found;
-      guint i;
+      /* no: has a session been created, is the handle being added ours,
+       *     and are we in local pending? */
 
-      if (!gabble_group_mixin_get_local_pending_members (obj, &arr, error))
+      if (priv->session &&
+          handle == mixin->self_handle &&
+          handle_set_is_member (mixin->local_pending, handle))
         {
-          return FALSE;
-        }
+          /* yes: accept the request */
 
-      found = FALSE;
-      for (i = 0; i < arr->len; i++)
-        if (g_array_index (arr, guint32, i) == handle)
-          {
-            found = TRUE;
-            break;
-          }
-
-      g_array_free (arr, TRUE);
-
-      if (found)
-        {
           GIntSet *empty, *set;
 
-          _gabble_media_session_accept (session);
-
-          /* make the peer a member */
+          /* make us a member */
           empty = g_intset_new ();
           set = g_intset_new ();
           g_intset_add (set, handle);
@@ -760,17 +754,19 @@ gabble_media_channel_add_member (GObject *obj, GabbleHandle handle, const gchar 
           g_intset_destroy (empty);
           g_intset_destroy (set);
 
-          /* and update flags accordingly */
+          /* update flags */
           gabble_group_mixin_change_flags (obj, 0, TP_CHANNEL_GROUP_FLAG_CAN_ADD);
-        }
-      else
-        {
-          *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
-                                "handle %u cannot be added in the current state", handle);
+
+          /* signal acceptance */
+          _gabble_media_session_accept (priv->session);
+
+          return TRUE;
         }
     }
 
-  return TRUE;
+  *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                        "handle %u cannot be added in the current state", handle);
+  return FALSE;
 }
 
 static gboolean
@@ -778,20 +774,32 @@ gabble_media_channel_remove_member (GObject *obj, GabbleHandle handle, const gch
 {
   GabbleMediaChannel *chan = GABBLE_MEDIA_CHANNEL (obj);
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
-  GabbleMediaSession *session;
+  GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
   GIntSet *empty, *set;
 
-  session = g_hash_table_lookup (priv->sessions, GINT_TO_POINTER (handle));
-  if (session == NULL)
+  if (priv->session == NULL)
     {
       *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
-                            "handle %u is not currently a member", handle);
+                            "handle %u cannot be removed in the current state",
+                            handle);
+
       return FALSE;
     }
 
-  _gabble_media_session_terminate (session);
+  if (priv->creator != mixin->self_handle &&
+      handle != mixin->self_handle)
+    {
+      *error = g_error_new (TELEPATHY_ERRORS, PermissionDenied,
+                            "handle %u cannot be removed because you are "
+                            "not the creator of the channel",
+                            handle);
 
-  /* remove the peer */
+      return FALSE;
+    }
+
+  _gabble_media_session_terminate (priv->session);
+
+  /* remove the member */
   empty = g_intset_new ();
   set = g_intset_new ();
   g_intset_add (set, handle);
@@ -815,6 +823,7 @@ session_state_changed_cb (GabbleMediaSession *session,
                           GabbleMediaChannel *channel)
 {
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (channel);
+  GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (channel);
   JingleSessionState state;
   GabbleHandle peer;
   GIntSet *empty, *set;
@@ -827,20 +836,28 @@ session_state_changed_cb (GabbleMediaSession *session,
   empty = g_intset_new ();
   set = g_intset_new ();
 
-  g_intset_add (set, peer);
-
   if (state == JS_STATE_ACTIVE)
     {
-      /* add the peer to the member list */
-      gabble_group_mixin_change_members (G_OBJECT (channel), "", set, empty, empty, empty);
+      if (priv->creator == mixin->self_handle)
+        {
+          /* add the peer to the member list */
+          g_intset_add (set, peer);
 
-      /* update flags accordingly -- allow removal, deny adding and rescinding */
-      gabble_group_mixin_change_flags (G_OBJECT (channel), TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
-                                       TP_CHANNEL_GROUP_FLAG_CAN_ADD ^ TP_CHANNEL_GROUP_FLAG_CAN_RESCIND);
+          gabble_group_mixin_change_members (G_OBJECT (channel), "", set, empty, empty, empty);
+
+          /* update flags accordingly -- allow removal, deny adding and rescinding */
+          gabble_group_mixin_change_flags (G_OBJECT (channel), TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
+                                           TP_CHANNEL_GROUP_FLAG_CAN_ADD ^ TP_CHANNEL_GROUP_FLAG_CAN_RESCIND);
+        }
     }
   else if (state == JS_STATE_ENDED)
     {
-      /* remove the peer from the member list */
+      GError *error;
+
+      /* remove us and the peer from the member list */
+      g_intset_add (set, mixin->self_handle);
+      g_intset_add (set, peer);
+
       gabble_group_mixin_change_members (G_OBJECT (channel), "", empty, set, empty, empty);
 
       /* update flags accordingly -- allow adding, deny removal */
@@ -848,29 +865,18 @@ session_state_changed_cb (GabbleMediaSession *session,
                                        TP_CHANNEL_GROUP_FLAG_CAN_REMOVE);
 
       /* remove the session */
-      g_hash_table_remove (priv->sessions, GUINT_TO_POINTER (peer));
+      g_object_unref (priv->session);
+      priv->session = NULL;
 
-      /* close the channel if there are no sessions left */
-      if (g_hash_table_size (priv->sessions) == 0)
+      /* close the channel */
+      if (!gabble_media_channel_close (channel, &error))
         {
-          GError *error;
-
-          g_debug ("%s: no sessions left in sessions gashtable, closing channel",
-                   G_STRFUNC);
-
-          if (!gabble_media_channel_close (channel, &error))
-            {
-              g_warning ("%s: failed to close media channel: %s", G_STRFUNC, error->message);
-            }
-        }
-      else
-        {
-          g_debug ("%s: sessions gashtable still has %d sessions, not closing channel",
-                   G_STRFUNC, g_hash_table_size (priv->sessions));
+          g_warning ("%s: failed to close media channel: %s", G_STRFUNC, error->message);
         }
     }
 
-  g_intset_destroy (empty);
-  g_intset_destroy (set);
+    g_intset_destroy (empty);
+    g_intset_destroy (set);
+
 }
 

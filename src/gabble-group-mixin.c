@@ -130,7 +130,15 @@ gabble_group_mixin_get_self_handle (GObject *obj, guint *ret, GError **error)
 {
   GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
 
-  *ret = mixin->self_handle;
+  if (handle_set_is_member (mixin->members, mixin->self_handle) ||
+      handle_set_is_member (mixin->local_pending, mixin->self_handle))
+    {
+      *ret = mixin->self_handle;
+    }
+  else
+    {
+      *ret = 0;
+    }
 
   return TRUE;
 }
@@ -211,7 +219,7 @@ gabble_group_mixin_remove_members (GObject *obj, const GArray *contacts, const g
       return FALSE;
     }
 
-  /* reject invalid handles */
+  /* reject invalid and non-member handles */
   for (i = 0; i < contacts->len; i++)
     {
       handle = g_array_index (contacts, GabbleHandle, i);
@@ -222,6 +230,20 @@ gabble_group_mixin_remove_members (GObject *obj, const GArray *contacts, const g
 
           *error = g_error_new (TELEPATHY_ERRORS, InvalidHandle,
                                 "invalid handle %u", handle);
+
+          return FALSE;
+        }
+
+      if (!handle_set_is_member (mixin->members, handle) &&
+          !handle_set_is_member (mixin->local_pending, handle) &&
+          !handle_set_is_member (mixin->remote_pending, handle))
+        {
+          g_debug ("%s: handle %u is not a current or pending member",
+                   G_STRFUNC, handle);
+
+          *error = g_error_new (TELEPATHY_ERRORS, InvalidHandle,
+                                "handle %u is not a current or pending member",
+                                handle);
 
           return FALSE;
         }

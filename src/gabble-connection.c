@@ -1933,7 +1933,7 @@ media_channel_closed_cb (GabbleMediaChannel *chan, gpointer user_data)
  * Creates a new empty GabbleMediaChannel.
  */
 static GabbleMediaChannel *
-new_media_channel (GabbleConnection *conn, gboolean suppress_handler)
+new_media_channel (GabbleConnection *conn, GabbleHandle creator, gboolean suppress_handler)
 {
   GabbleConnectionPrivate *priv;
   GabbleMediaChannel *chan;
@@ -1949,6 +1949,7 @@ new_media_channel (GabbleConnection *conn, gboolean suppress_handler)
   chan = g_object_new (GABBLE_TYPE_MEDIA_CHANNEL,
                        "connection", conn,
                        "object-path", object_path,
+                       "creator", creator,
                        NULL);
 
   g_debug ("%s: object path %s", G_STRFUNC, object_path);
@@ -2150,7 +2151,7 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
 
       g_debug ("%s: creating media channel", G_STRFUNC);
 
-      chan = new_media_channel (conn, FALSE);
+      chan = new_media_channel (conn, handle, FALSE);
     }
 
   if (chan)
@@ -3391,18 +3392,21 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
 
       if (handle_type == 0)
         {
-          chan = new_media_channel (obj, suppress_handler);
+          /* create an empty channel */
+          chan = new_media_channel (obj, priv->self_handle, suppress_handler);
         }
       else
         {
-          gboolean ret;
-          GArray *members;
-
+          /* have we already got a channel with this handle? */
           chan = find_media_channel_with_handle (obj, handle);
 
-          if (chan == NULL)
+          /* no: create it and add the peer to it */
+          if (!chan)
             {
-              chan = new_media_channel (obj, suppress_handler);
+              GArray *members;
+              gboolean ret;
+
+              chan = new_media_channel (obj, priv->self_handle, suppress_handler);
 
               members = g_array_sized_new (FALSE, FALSE, sizeof (GabbleHandle), 1);
               g_array_append_val (members, handle);
@@ -3412,7 +3416,16 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
               g_array_free (members, TRUE);
 
               if (!ret)
-                return FALSE;
+                {
+                  GError *close_err;
+
+                  if (!gabble_media_channel_close (chan, &close_err))
+                    {
+                      g_error_free (close_err);
+                    }
+
+                  return FALSE;
+                }
             }
         }
 

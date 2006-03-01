@@ -122,11 +122,7 @@ void _gabble_media_session_accept (GabbleMediaSession *session);
 void _gabble_media_session_terminate (GabbleMediaSession *session);
 
 #ifndef _GMS_DEBUG_LEVEL
-#ifdef MAINTAINER_MODE
-#define _GMS_DEBUG_LEVEL 1
-#else
-#define _GMS_DEBUG_LEVEL 0
-#endif
+#define _GMS_DEBUG_LEVEL 2
 #endif
 
 #if _GMS_DEBUG_LEVEL

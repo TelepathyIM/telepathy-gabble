@@ -58,10 +58,6 @@ telepathy_gabble_LDADD = libgabble-convenience.la
 noinst_LTLIBRARIES = libgabble-convenience.la
 
 AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @LOUDMOUTH_CFLAGS@
-if MAINTAINER_MODE
-  AM_CFLAGS += -DMAINTAINER_MODE
-endif
-
 AM_LDFLAGS = @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@
 
 

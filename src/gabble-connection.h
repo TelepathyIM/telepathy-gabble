@@ -43,11 +43,11 @@ typedef struct _GabbleConnection GabbleConnection;
 typedef struct _GabbleConnectionClass GabbleConnectionClass;
 typedef struct _ContactPresence ContactPresence;
 
-typedef void (*GabbleConnectionMsgReplyFunc) (GabbleConnection *conn,
-                                              LmMessage *sent_msg,
-                                              LmMessage *reply_msg,
-                                              GObject *object,
-                                              gpointer user_data);
+typedef LmHandlerResult (*GabbleConnectionMsgReplyFunc) (GabbleConnection *conn,
+                                                         LmMessage *sent_msg,
+                                                         LmMessage *reply_msg,
+                                                         GObject *object,
+                                                         gpointer user_data);
 
 struct _GabbleConnectionClass {
     GObjectClass parent_class;

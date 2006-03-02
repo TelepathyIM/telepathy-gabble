@@ -560,7 +560,7 @@ session_state_changed (GabbleMediaSession *session,
                    session_states[new_state].name);
 }
 
-static void
+static LmHandlerResult
 accept_msg_reply_cb (GabbleConnection *conn,
                      LmMessage *sent_msg,
                      LmMessage *reply_msg,
@@ -572,6 +572,8 @@ accept_msg_reply_cb (GabbleConnection *conn,
   MSG_REPLY_CB_END_SESSION_IF_NOT_SUCCESSFUL (session, "accept failed");
 
   g_object_set (session, "state", JS_STATE_ACTIVE, NULL);
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static void
@@ -639,7 +641,7 @@ stream_new_native_candidate_cb (GabbleMediaStream *stream,
 {
 }
 
-static void
+static LmHandlerResult
 initiate_msg_reply_cb (GabbleConnection *conn,
                        LmMessage *sent_msg,
                        LmMessage *reply_msg,
@@ -651,6 +653,8 @@ initiate_msg_reply_cb (GabbleConnection *conn,
   MSG_REPLY_CB_END_SESSION_IF_NOT_SUCCESSFUL (session, "initiate failed");
 
   g_object_set (session, "state", JS_STATE_PENDING_INITIATED, NULL);
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static void
@@ -824,13 +828,16 @@ _gabble_media_session_accept (GabbleMediaSession *session)
   try_session_accept (session);
 }
 
-static void
+/* for when you want the reply to be removed from
+ * the handler chain, but don't care what it is */
+static LmHandlerResult
 ignore_reply_cb (GabbleConnection *conn,
                  LmMessage *sent_msg,
                  LmMessage *reply_msg,
                  GObject *object,
                  gpointer user_data)
 {
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static void

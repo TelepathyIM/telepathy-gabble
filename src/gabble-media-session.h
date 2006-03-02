@@ -79,7 +79,7 @@ GType gabble_media_session_get_type(void);
       HANDLER_DEBUG (reply_msg->node, "message reply"); \
       _gabble_media_session_terminate (s); \
       g_object_set (s, "state", JS_STATE_ENDED, NULL); \
-      return; \
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE; \
     } \
   } G_STMT_END
 

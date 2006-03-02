@@ -633,7 +633,7 @@ gboolean gabble_media_stream_supported_codecs (GabbleMediaStream *obj, const GPt
   return TRUE;
 }
 
-static void
+static LmHandlerResult
 candidates_msg_reply_cb (GabbleConnection *conn,
                          LmMessage *sent_msg,
                          LmMessage *reply_msg,
@@ -648,6 +648,8 @@ candidates_msg_reply_cb (GabbleConnection *conn,
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
   MSG_REPLY_CB_END_SESSION_IF_NOT_SUCCESSFUL (priv->session, "candidates failed");
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static void

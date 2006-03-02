@@ -2073,7 +2073,6 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
   GabbleHandle handle;
   guint32 sid;
   gboolean found;
-  gpointer orig_key;
   GabbleMediaChannel *chan = NULL;
 
   g_assert (connection == priv->conn);
@@ -2128,9 +2127,13 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
 
   sid = atoi(sid_str);
 
-  found = g_hash_table_lookup_extended (priv->jingle_sessions,
-                                        GUINT_TO_POINTER (sid),
-                                        &orig_key, (gpointer *) &chan);
+  {
+    gpointer k, v;
+    found = g_hash_table_lookup_extended (priv->jingle_sessions,
+                                          GUINT_TO_POINTER (sid),
+                                          &k, &v);
+    chan = (GabbleMediaChannel *) v;
+  }
 
   /* is the session new and not a zombie? */
   if (!found && chan == NULL)

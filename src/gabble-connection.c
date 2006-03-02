@@ -780,7 +780,8 @@ message_send_reply_cb (LmMessageHandler *handler,
 
   sub_type = lm_message_get_sub_type (reply_msg);
 
-  /* Is it a reply to this message? */
+  /* Is it a reply to this message? If we're talking to another loudmouth,
+   * they can send us messages which have the same ID as ones we send. :-O */
   if (sub_type != LM_MESSAGE_SUB_TYPE_RESULT &&
       sub_type != LM_MESSAGE_SUB_TYPE_ERROR)
     {
@@ -789,11 +790,11 @@ message_send_reply_cb (LmMessageHandler *handler,
 
   if (handler_data->object_alive)
     {
-      handler_data->reply_func (handler_data->conn,
-                                handler_data->sent_msg,
-                                reply_msg,
-                                handler_data->object,
-                                handler_data->user_data);
+      return handler_data->reply_func (handler_data->conn,
+                                       handler_data->sent_msg,
+                                       reply_msg,
+                                       handler_data->object,
+                                       handler_data->user_data);
     }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;

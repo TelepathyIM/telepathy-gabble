@@ -40,6 +40,7 @@ CORE_SOURCES = \
     gabble-media-session.c \
     gabble-media-stream.c \
     gabble-roster-channel.c \
+    gabble-disco.c \
     gintset.c \
     handles.c \
     handle-set.c \

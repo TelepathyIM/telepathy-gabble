@@ -41,6 +41,8 @@
 
 G_DEFINE_TYPE(GabbleMediaSession, gabble_media_session, G_TYPE_OBJECT)
 
+#define DEFAULT_SESSION_TIMEOUT 50000
+
 /* signal enum */
 enum
 {
@@ -82,6 +84,8 @@ struct _GabbleMediaSessionPrivate
 
   gboolean accepted;
   gboolean got_active_candidate_pair;
+
+  guint timer_id;
 
   gboolean dispose_has_run;
 };
@@ -374,6 +378,9 @@ gabble_media_session_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
+  if (priv->timer_id != 0)
+    g_source_remove (priv->timer_id);
+
   g_object_unref (priv->conn);
 
   _gabble_connection_jingle_session_unregister (priv->conn, priv->id);
@@ -550,14 +557,39 @@ ACK_FAILURE:
   _gabble_media_session_terminate (session);
 }
 
+static gboolean
+timeout_session (gpointer data)
+{
+  GabbleMediaSession *session = data;
+
+  g_debug ("%s: session timed out", G_STRFUNC);
+
+  _gabble_media_session_terminate (session);
+
+  return FALSE;
+}
+
 static void
 session_state_changed (GabbleMediaSession *session,
                        JingleSessionState prev_state,
                        JingleSessionState new_state)
 {
+  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+
   GMS_DEBUG_EVENT (session, "state changed from %s to %s",
                    session_states[prev_state].name,
                    session_states[new_state].name);
+
+  if (new_state == JS_STATE_PENDING_INITIATED)
+    {
+      priv->timer_id =
+        g_timeout_add (DEFAULT_SESSION_TIMEOUT, timeout_session, session);
+    }
+  else if (new_state == JS_STATE_ACTIVE)
+    {
+      g_source_remove (priv->timer_id);
+      priv->timer_id = 0;
+    }
 }
 
 static LmHandlerResult

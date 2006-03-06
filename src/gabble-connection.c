@@ -28,9 +28,6 @@
 #include <string.h>
 #include <time.h>
 
-#include "gabble-im-channel.h"
-#include "gabble-media-channel.h"
-#include "gabble-roster-channel.h"
 #include "handles.h"
 #include "handle-set.h"
 #include "telepathy-constants.h"
@@ -41,6 +38,11 @@
 #include "gabble-connection.h"
 #include "gabble-connection-glue.h"
 #include "gabble-connection-signals-marshal.h"
+
+#include "gabble-im-channel.h"
+#include "gabble-media-channel.h"
+#include "gabble-roster-channel.h"
+#include "gabble-disco.h"
 
 #define BUS_NAME        "org.freedesktop.Telepathy.Connection.gabble"
 #define OBJECT_PATH     "/org/freedesktop/Telepathy/Connection/gabble"
@@ -187,6 +189,9 @@ struct _GabbleConnectionPrivate
   GData *client_room_handle_sets;
   GData *client_list_handle_sets;
 
+  /* DISCO! */
+  GabbleDisco *disco;
+
   /* gobject housekeeping */
   gboolean dispose_has_run;
 };
@@ -216,6 +221,8 @@ gabble_connection_init (GabbleConnection *obj)
   g_datalist_init (&priv->client_contact_handle_sets);
   g_datalist_init (&priv->client_room_handle_sets);
   g_datalist_init (&priv->client_list_handle_sets);
+
+  priv->disco = gabble_disco_new (obj);
 }
 
 static void
@@ -483,6 +490,8 @@ gabble_connection_dispose (GObject *object)
       g_assert (priv->media_channels->len == 0);
       g_ptr_array_free (priv->media_channels, TRUE);
     }
+
+  g_object_unref (priv->disco);
 
   if (priv->conn)
     {
@@ -903,6 +912,7 @@ static void connection_open_cb (LmConnection*, gboolean, gpointer);
 static void connection_auth_cb (LmConnection*, gboolean, gpointer);
 static GabbleIMChannel *new_im_channel (GabbleConnection *conn, GabbleHandle handle, gboolean suppress_handler);
 static void make_roster_channels (GabbleConnection *conn);
+static void discover_services (GabbleConnection *conn);
 
 static void connection_disconnect (GabbleConnection *conn, TpConnectionStatusReason reason);
 static void connection_disconnected_cb (LmConnection *connection, LmDisconnectReason lm_reason, gpointer user_data);
@@ -2358,6 +2368,8 @@ connection_auth_cb (LmConnection *lmconn,
 
   make_roster_channels (conn);
 
+  discover_services (conn);
+
   return;
 
 ERROR:
@@ -2432,6 +2444,30 @@ make_roster_channels (GabbleConnection *conn)
       TP_CHANNEL_GROUP_FLAG_CAN_RESCIND, 0);
 
   g_free (object_path);
+}
+
+static void
+services_discover_cb (GabbleDisco *disco, const gchar *jid, const gchar *node,
+                      LmMessageNode *result, GError *error,
+                      gpointer user_data)
+{
+  if (error)
+    {
+      g_debug ("%s: got error %s", G_STRFUNC, error->message);
+    }
+  g_debug ("%s: got %s", G_STRFUNC, lm_message_node_to_string (result));
+}
+
+static void
+discover_services (GabbleConnection *conn)
+{
+  GabbleConnectionPrivate *priv;
+  g_assert (GABBLE_IS_CONNECTION (conn));
+  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+
+  gabble_disco_request (priv->disco, GABBLE_DISCO_TYPE_INFO, 
+                        priv->connect_server, NULL, 
+                        services_discover_cb, conn, NULL);
 }
 
 /**

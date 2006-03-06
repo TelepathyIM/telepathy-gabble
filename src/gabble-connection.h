@@ -102,7 +102,7 @@ void _gabble_connection_client_hold_handle (GabbleConnection *conn, gchar* clien
 gboolean _gabble_connection_client_release_handle (GabbleConnection *conn, gchar* client_name, GabbleHandle handle, TpHandleType type);
 
 guint32 _gabble_connection_jingle_session_allocate (GabbleConnection *conn);
-void _gabble_connection_jingle_session_register (GabbleConnection *conn, guint32 sid, gpointer session);
+void _gabble_connection_jingle_session_register (GabbleConnection *conn, guint32 sid, gpointer channel);
 void _gabble_connection_jingle_session_unregister (GabbleConnection *conn, guint32 sid);
 
 gboolean _gabble_connection_contact_supports_voice (GabbleConnection *conn, GabbleHandle handle);

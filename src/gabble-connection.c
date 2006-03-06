@@ -2028,13 +2028,13 @@ _gabble_connection_jingle_session_allocate (GabbleConnection *conn)
 void
 _gabble_connection_jingle_session_register (GabbleConnection *conn,
                                             guint32 sid,
-                                            gpointer session)
+                                            gpointer channel)
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
-  g_debug ("%s: binding sid %d to %p", G_STRFUNC, sid, session);
+  g_debug ("%s: binding sid %d to %p", G_STRFUNC, sid, channel);
 
-  g_hash_table_insert (priv->jingle_sessions, GUINT_TO_POINTER (sid), session);
+  g_hash_table_insert (priv->jingle_sessions, GUINT_TO_POINTER (sid), channel);
 }
 
 void

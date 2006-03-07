@@ -34,21 +34,40 @@ CLEANFILES = $(BUILT_SOURCES)
 bin_PROGRAMS=telepathy-gabble
 
 CORE_SOURCES = \
+    allocator.h \
     allocator.c \
+    gabble-connection-manager.h \
     gabble-connection-manager.c \
+    gabble-connection.h \
     gabble-connection.c \
+    gabble-group-mixin.h \
     gabble-group-mixin.c \
+    gabble-im-channel.h \
     gabble-im-channel.c \
+    gabble-muc-channel.h \
     gabble-muc-channel.c \
+    gabble-media-channel.h \
     gabble-media-channel.c \
+    gabble-media-session.h \
     gabble-media-session.c \
+    gabble-media-stream.h \
     gabble-media-stream.c \
+    gabble-roster-channel.h \
     gabble-roster-channel.c \
+    gabble-disco.h \
     gabble-disco.c \
+    gintset.h \
     gintset.c \
+    handles.h \
     handles.c \
+    handles-private.h \
+    handle-set.h \
     handle-set.c \
+    telepathy-constants.h \
+    telepathy-interfaces.h \
+    telepathy-errors.h \
     telepathy-errors.c \
+    telepathy-helpers.h \
     telepathy-helpers.c \
     $(BUILT_SOURCES)
 
@@ -56,6 +75,7 @@ libgabble_convenience_la_SOURCES = \
     $(CORE_SOURCES)
 
 telepathy_gabble_SOURCES = \
+    gabble.h \
     gabble.c
 
 telepathy_gabble_LDADD = libgabble-convenience.la

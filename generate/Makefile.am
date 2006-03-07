@@ -1,3 +1,8 @@
 EXTRA_DIST = \
-	generrors.py \
-	gengobject.py
+	do_src.sh \
+	do_xml.sh \
+	gabble.def \
+	src \
+	xml-pristine \
+	xml-modified
+

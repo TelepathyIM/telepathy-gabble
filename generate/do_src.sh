@@ -20,6 +20,9 @@ python $TP/tools/gengobject.py ../xml-modified/gabble-connection.xml GabbleConne
 echo Generating GabbleIMChannel files ...
 python $TP/tools/gengobject.py ../xml-modified/gabble-im-channel.xml GabbleIMChannel
 
+echo Generating GabbleMucChannel files ...
+python $TP/tools/gengobject.py ../xml-modified/gabble-muc-channel.xml GabbleMucChannel
+
 echo Generating GabbleMediaChannel files ...
 python $TP/tools/gengobject.py ../xml-modified/gabble-media-channel.xml GabbleMediaChannel
 

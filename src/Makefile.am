@@ -10,6 +10,9 @@ BUILT_SOURCES = \
     gabble-im-channel-glue.h \
     gabble-im-channel-signals-marshal.h \
     gabble-im-channel-signals-marshal.c \
+    gabble-muc-channel-glue.h \
+    gabble-muc-channel-signals-marshal.h \
+    gabble-muc-channel-signals-marshal.c \
     gabble-media-channel-glue.h \
     gabble-media-channel-signals-marshal.h \
     gabble-media-channel-signals-marshal.c \
@@ -36,6 +39,7 @@ CORE_SOURCES = \
     gabble-connection.c \
     gabble-group-mixin.c \
     gabble-im-channel.c \
+    gabble-muc-channel.c \
     gabble-media-channel.c \
     gabble-media-session.c \
     gabble-media-stream.c \

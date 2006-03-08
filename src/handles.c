@@ -23,6 +23,7 @@
 
 #include "handles.h"
 #include "handles-private.h"
+#include "telepathy-errors.h"
 
 /* private functions */
 
@@ -96,6 +97,40 @@ handle_priv_remove (GabbleHandleRepo *repo,
 
 
 /* public API */
+
+/**
+ * gabble_handle_jid_is_valid
+ *
+ * Validates a jid for given handle type and returns TRUE/FALSE
+ * on success/failure. In the latter case further information is
+ * provided through error if set.
+ */
+gboolean
+gabble_handle_jid_is_valid (TpHandleType type, const gchar *jid, GError **error)
+{
+  if (type == TP_HANDLE_TYPE_CONTACT || type == TP_HANDLE_TYPE_ROOM)
+    {
+      if (!strchr (jid, '@'))
+        {
+          g_debug ("%s: jid %s has no @", G_STRFUNC, jid);
+
+          if (error)
+            *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+                                  "jid %s has no @", jid);
+
+          return FALSE;
+        }
+
+      /* FIXME: do more extensive checking */
+    }
+  else
+    {
+      g_assert_not_reached ();
+      /* FIXME: add checking for other types here */
+    }
+
+  return TRUE;
+}
 
 /**
  * gabble_handle_decode_jid
@@ -340,6 +375,69 @@ gabble_handle_for_contact (GabbleHandleRepo *repo,
       priv = handle_priv_new ();
       g_hash_table_insert (repo->contact_handles, GINT_TO_POINTER (handle), priv);
     }
+
+  return handle;
+}
+
+gboolean
+gabble_handle_for_room_exists (GabbleHandleRepo *repo,
+                               const gchar *jid)
+{
+  GabbleHandle handle;
+
+  handle = g_quark_try_string (jid);
+  if (handle == 0)
+    return FALSE;
+
+  return (handle_priv_lookup (repo, TP_HANDLE_TYPE_ROOM, handle) != NULL);
+}
+
+GabbleHandle
+gabble_handle_for_room (GabbleHandleRepo *repo,
+                        const gchar *jid)
+{
+  GabbleHandle handle;
+  gchar *room, *service, *clean_jid;
+
+  g_assert (repo != NULL);
+  g_assert (jid != NULL);
+  g_assert (*jid != '\0');
+
+  handle = 0;
+
+  room = service = NULL;
+  gabble_handle_decode_jid (jid, &room, &service, NULL);
+
+  if (room && service && *room != '\0')
+    {
+      clean_jid = g_strdup_printf ("%s@%s", room, service);
+
+      handle = g_quark_try_string (clean_jid);
+
+      if (handle == 0)
+        {
+          /* pretend this string is static and just don't free it instead */
+          handle = g_quark_from_static_string (clean_jid);
+        }
+      else
+        {
+          g_free (clean_jid);
+        }
+
+      /* existence of the quark cannot be presumed to mean the handle exists
+       * in this repository, because of multiple connections */
+      if (!handle_priv_lookup (repo, TP_HANDLE_TYPE_ROOM, handle))
+        {
+          GabbleHandlePriv *priv;
+          priv = handle_priv_new ();
+          g_hash_table_insert (repo->room_handles, GINT_TO_POINTER (handle), priv);
+        }
+    }
+
+  if (room)
+    g_free (room);
+  if (service)
+    g_free (service);
 
   return handle;
 }

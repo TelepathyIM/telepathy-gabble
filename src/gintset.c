@@ -54,6 +54,8 @@ g_intset_new ()
 void
 g_intset_destroy (GIntSet *set)
 {
+  g_return_if_fail (set != NULL);
+
   g_free (set->bits);
   g_free (set);
 }
@@ -68,8 +70,13 @@ g_intset_destroy (GIntSet *set)
 void
 g_intset_add (GIntSet *set, guint element)
 {
-  guint offset = element>>5;
+  guint offset;
   guint newsize;
+
+  g_return_if_fail (set != NULL);
+
+  offset = element >> 5;
+
   if (offset >= set->size)
   {
     newsize = ((offset>>DEFAULT_INCREMENT_LOG2) +1 ) << DEFAULT_INCREMENT_LOG2;
@@ -92,8 +99,13 @@ g_intset_add (GIntSet *set, guint element)
 gboolean
 g_intset_remove (GIntSet *set, guint element)
 {
-  guint offset = element >>5;
-  guint mask = 1 << (element & 0x1f);
+  guint offset;
+  guint mask;
+
+  g_return_val_if_fail (set != NULL, FALSE);
+
+  offset = element >>5;
+  mask = 1 << (element & 0x1f);
   if (offset >= set->size)
     return FALSE;
   else if (! (set->bits[offset] & mask))
@@ -116,7 +128,11 @@ g_intset_remove (GIntSet *set, guint element)
 gboolean
 g_intset_is_member (const GIntSet *set, guint element)
 {
-  guint offset = element >>5;
+  guint offset;
+
+  g_return_val_if_fail (set != NULL, FALSE);
+
+  offset = element >>5;
   if (offset >= set->size)
     return FALSE;
   else
@@ -136,6 +152,10 @@ void
 g_intset_foreach (GIntSet *set, GIntFunc func, gpointer userdata)
 {
   guint i, j;
+
+  g_return_if_fail (set != NULL);
+  g_return_if_fail (func != NULL);
+
   for (i=0; i<set->size; i++)
   {
     for (j=0; j<32; j++)
@@ -165,6 +185,8 @@ g_intset_to_array (GIntSet *set)
 {
   GArray *array;
 
+  g_return_val_if_fail (set != NULL, NULL);
+
   array = g_array_new (FALSE, TRUE, sizeof (guint32));
 
   g_intset_foreach(set, addint, array);
@@ -176,6 +198,8 @@ g_intset_size(const GIntSet *set)
 {
   int i,count=0;
   guint32 n;
+
+  g_return_val_if_fail (set != NULL, 0);
 
   for (i=0; i< set->size ; i++)
   {

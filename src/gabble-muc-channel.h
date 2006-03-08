@@ -23,6 +23,9 @@
 
 #include <glib-object.h>
 
+#include "gabble-group-mixin.h"
+#include "handles.h"
+
 G_BEGIN_DECLS
 
 typedef struct _GabbleMucChannel GabbleMucChannel;
@@ -30,10 +33,14 @@ typedef struct _GabbleMucChannelClass GabbleMucChannelClass;
 
 struct _GabbleMucChannelClass {
     GObjectClass parent_class;
+
+    GabbleGroupMixinClass group_class;
 };
 
 struct _GabbleMucChannel {
     GObject parent;
+
+    GabbleGroupMixin group;
 };
 
 GType gabble_muc_channel_get_type(void);

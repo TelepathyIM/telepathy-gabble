@@ -40,6 +40,7 @@
 #include "gabble-connection-signals-marshal.h"
 
 #include "gabble-im-channel.h"
+#include "gabble-muc-channel.h"
 #include "gabble-media-channel.h"
 #include "gabble-roster-channel.h"
 #include "gabble-disco.h"
@@ -178,6 +179,8 @@ struct _GabbleConnectionPrivate
   /* channels */
   GHashTable *im_channels;
 
+  GHashTable *muc_channels;
+
   GPtrArray *media_channels;
   guint media_channel_index;
 
@@ -210,8 +213,12 @@ gabble_connection_init (GabbleConnection *obj)
 
   priv->jingle_sessions = g_hash_table_new_full (g_direct_hash, g_direct_equal,
                                                  NULL, NULL);
+
   priv->im_channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
                                              NULL, g_object_unref);
+
+  priv->muc_channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+                                              NULL, g_object_unref);
 
   priv->media_channels = g_ptr_array_sized_new (1);
   priv->media_channel_index = 0;
@@ -484,6 +491,11 @@ gabble_connection_dispose (GObject *object)
     {
       g_assert (g_hash_table_size (priv->im_channels) == 0);
       g_hash_table_destroy (priv->im_channels);
+    }
+  if (priv->muc_channels)
+    {
+      g_assert (g_hash_table_size (priv->muc_channels) == 0);
+      g_hash_table_destroy (priv->muc_channels);
     }
   if (priv->media_channels)
     {
@@ -1106,6 +1118,12 @@ close_all_channels (GabbleConnection *conn)
     {
       g_hash_table_destroy (priv->im_channels);
       priv->im_channels = NULL;
+    }
+
+  if (priv->muc_channels)
+    {
+      g_hash_table_destroy (priv->muc_channels);
+      priv->muc_channels = NULL;
     }
 
   if (priv->media_channels)
@@ -2486,7 +2504,7 @@ im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
   g_object_get (chan, "handle", &contact_handle, NULL);
 
   g_debug ("%s: removing channel with handle %d", G_STRFUNC, contact_handle);
-  g_hash_table_remove (priv->im_channels, GINT_TO_POINTER(contact_handle));
+  g_hash_table_remove (priv->im_channels, GINT_TO_POINTER (contact_handle));
 }
 
 /**
@@ -2520,6 +2538,63 @@ new_im_channel (GabbleConnection *conn, GabbleHandle handle, gboolean suppress_h
   g_signal_emit (conn, signals[NEW_CHANNEL], 0,
                  object_path, TP_IFACE_CHANNEL_TYPE_TEXT,
                  TP_HANDLE_TYPE_CONTACT, handle,
+                 suppress_handler);
+
+  g_free (object_path);
+
+  return chan;
+}
+
+/**
+ * muc_channel_closed_cb:
+ *
+ * Signal callback for when a MUC channel is closed. Removes the references
+ * that #GabbleConnection holds to them.
+ */
+static void
+muc_channel_closed_cb (GabbleMucChannel *chan, gpointer user_data)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  GabbleHandle room_handle;
+
+  g_object_get (chan, "handle", &room_handle, NULL);
+
+  g_debug ("%s: removing MUC channel with handle %d", G_STRFUNC, room_handle);
+  g_hash_table_remove (priv->muc_channels, GINT_TO_POINTER (room_handle));
+}
+
+/**
+ * new_muc_channel
+ */
+static GabbleMucChannel *
+new_muc_channel (GabbleConnection *conn, GabbleHandle handle, gboolean suppress_handler)
+{
+  GabbleConnectionPrivate *priv;
+  GabbleMucChannel *chan;
+  char *object_path;
+
+  g_assert (GABBLE_IS_CONNECTION (conn));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+
+  object_path = g_strdup_printf ("%s/MucChannel%u", priv->object_path, handle);
+
+  chan = g_object_new (GABBLE_TYPE_MUC_CHANNEL,
+                       "connection", conn,
+                       "object-path", object_path,
+                       "handle", handle,
+                       NULL);
+
+  g_debug ("new_muc_channel: object path %s", object_path);
+
+  g_signal_connect (chan, "closed", (GCallback) muc_channel_closed_cb, conn);
+
+  g_hash_table_insert (priv->muc_channels, GINT_TO_POINTER (handle), chan);
+
+  g_signal_emit (conn, signals[NEW_CHANNEL], 0,
+                 object_path, TP_IFACE_CHANNEL_TYPE_TEXT,
+                 TP_HANDLE_TYPE_ROOM, handle,
                  suppress_handler);
 
   g_free (object_path);
@@ -3191,6 +3266,10 @@ gboolean gabble_connection_list_channels (GabbleConnection *obj, GPtrArray ** re
 
   g_hash_table_foreach (priv->im_channels, list_channel_hash_foreach, channels);
 
+  g_hash_table_foreach (priv->muc_channels, list_channel_hash_foreach, channels);
+
+  /* FIXME: do this for media channels as well */
+
   if (priv->publish_channel)
     list_channel_hash_foreach (NULL, priv->publish_channel, channels);
 
@@ -3391,24 +3470,46 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
 
   if (!strcmp (type, TP_IFACE_CHANNEL_TYPE_TEXT))
     {
-      GabbleIMChannel *chan;
-
-      if (handle_type != TP_HANDLE_TYPE_CONTACT)
-        goto NOT_AVAILABLE;
+      GObject *chan;
 
       if (!gabble_handle_is_valid (priv->handles,
-                                   TP_HANDLE_TYPE_CONTACT,
+                                   handle_type,
                                    handle))
-        goto INVALID_HANDLE;
-
-      chan = g_hash_table_lookup (priv->im_channels, GINT_TO_POINTER (handle));
-
-      if (chan == NULL)
         {
-          chan = new_im_channel (obj, handle, suppress_handler);
+          goto INVALID_HANDLE;
         }
 
-      g_object_get (chan, "object-path", ret, NULL);
+      if (handle_type == TP_HANDLE_TYPE_CONTACT)
+        {
+          chan = g_hash_table_lookup (priv->im_channels, GINT_TO_POINTER (handle));
+
+          if (chan == NULL)
+            {
+              chan = G_OBJECT (new_im_channel (obj, handle, suppress_handler));
+            }
+        }
+      else if (handle_type == TP_HANDLE_TYPE_ROOM)
+        {
+          chan = g_hash_table_lookup (priv->muc_channels, GINT_TO_POINTER (handle));
+
+          if (chan == NULL)
+            {
+              chan = G_OBJECT (new_muc_channel (obj, handle, suppress_handler));
+            }
+        }
+      else
+        {
+          goto NOT_AVAILABLE;
+        }
+
+      if (chan)
+        {
+          g_object_get (chan, "object-path", ret, NULL);
+        }
+      else
+        {
+          goto NOT_AVAILABLE;
+        }
     }
   else if (!strcmp (type, TP_IFACE_CHANNEL_TYPE_CONTACT_LIST))
     {
@@ -3505,6 +3606,102 @@ NOT_IMPLEMENTED:
   return FALSE;
 }
 
+typedef struct {
+    GabbleConnection *conn;
+    gchar *jid;
+    DBusGMethodInvocation *context;
+} RoomVerifyContext;
+
+static void
+room_jid_disco_cb (GabbleDisco *disco, const gchar *jid, const gchar *node,
+                   LmMessageNode *query_result, GError *error,
+                   gpointer user_data)
+{
+  RoomVerifyContext *rvctx = user_data;
+  LmMessageNode *lm_node;
+  GabbleConnectionPrivate *priv;
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (rvctx->conn);
+
+  if (error != NULL)
+    {
+      goto ERROR;
+    }
+
+  for (lm_node = query_result->children; lm_node; lm_node = lm_node->next)
+    {
+      if (strcmp (lm_node->name, "feature") == 0)
+        {
+          const gchar *name;
+
+          name = lm_message_node_get_attribute (lm_node, "var");
+          if (name != NULL)
+            {
+              if (strcmp (name, "http://jabber.org/protocol/muc") == 0)
+                {
+                  gchar *sender;
+                  GabbleHandle handle;
+
+                  handle = gabble_handle_for_room (priv->handles, rvctx->jid);
+                  g_assert (handle != 0);
+
+                  sender = dbus_g_method_get_sender (rvctx->context);
+                  _gabble_connection_client_hold_handle (rvctx->conn, sender, handle, TP_HANDLE_TYPE_ROOM);
+
+                  g_debug ("%s: DISCO reported MUC support for service name in jid %s", G_STRFUNC, rvctx->jid);
+
+                  dbus_g_method_return (rvctx->context, handle);
+
+                  goto OUT;
+                }
+            }
+        }
+    }
+
+ERROR:
+  g_debug ("%s: DISCO reply error or no MUC support", G_STRFUNC);
+  dbus_g_method_return_error (rvctx->context, error);
+
+OUT:
+  g_free (rvctx->jid);
+  g_free (rvctx);
+}
+
+/**
+ * room_jid_verify:
+ *
+ * Utility function that verifies that the service name of
+ * the specified jid exists and reports MUC support.
+ */
+static gboolean
+room_jid_verify (GabbleConnection *conn, const gchar *jid,
+                 DBusGMethodInvocation *context, GError **error)
+{
+  GabbleConnectionPrivate *priv;
+  gchar *room, *service;
+  gboolean ret;
+  RoomVerifyContext *rvctx;
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+
+  room = service = NULL;
+  gabble_handle_decode_jid (jid, &room, &service, NULL);
+
+  g_assert (room && service);
+
+  rvctx = g_new (RoomVerifyContext, 1);
+  rvctx->conn = conn;
+  rvctx->jid = g_strdup (jid);
+  rvctx->context = context;
+
+  ret = (gabble_disco_request (priv->disco, GABBLE_DISCO_TYPE_INFO, service, NULL,
+                               room_jid_disco_cb, NULL, error) != NULL);
+
+  g_free (room);
+  g_free (service);
+
+  return ret;
+}
 
 /**
  * gabble_connection_request_handle
@@ -3543,18 +3740,17 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
   switch (handle_type)
     {
     case TP_HANDLE_TYPE_CONTACT:
-      if (!strchr (name, '@'))
-        {
-          g_debug ("%s: requested handle %s has no @ in", G_STRFUNC, name);
+    case TP_HANDLE_TYPE_ROOM:
 
-          error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
-                               "requested handle %s has no @ in", name);
+      if (!gabble_handle_jid_is_valid (handle_type, name, &error))
+        {
           dbus_g_method_return_error (context, error);
           g_error_free (error);
 
           return FALSE;
         }
-      else
+
+      if (handle == TP_HANDLE_TYPE_CONTACT)
         {
           handle = gabble_handle_for_contact (priv->handles, name, FALSE);
 
@@ -3570,8 +3766,32 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
               return FALSE;
             }
         }
+      else /* TP_HANDLE_TYPE_ROOM */
+        {
+          /* has the handle been verified before? */
+          if (gabble_handle_for_room_exists (priv->handles, name))
+            {
+              handle = gabble_handle_for_room (priv->handles, name);
+            }
+          else
+            {
+              /* verify it */
+              if (room_jid_verify (obj, name, context, &error))
+                {
+                  return TRUE;
+                }
+              else
+                {
+                  dbus_g_method_return_error (context, error);
+                  g_error_free (error);
+
+                  return FALSE;
+                }
+            }
+        }
+
       break;
-   case TP_HANDLE_TYPE_LIST:
+    case TP_HANDLE_TYPE_LIST:
       if (!strcmp (name, "publish"))
         {
           handle = gabble_handle_for_list_publish (priv->handles);

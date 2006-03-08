@@ -319,15 +319,35 @@ gabble_disco_request (GabbleDisco *self, GabbleDiscoType type,
   request->callback = callback;
   request->user_data = user_data;
 
-  g_debug ("%s: Creating DISCO request %p for %s", 
+  g_debug ("%s: Creating DISCO request %p for %s",
            G_STRFUNC, request, request->jid);
 
   priv->requests = g_list_prepend (priv->requests, request);
   msg = lm_message_new_with_sub_type (jid, LM_MESSAGE_TYPE_IQ,
                                            LM_MESSAGE_SUB_TYPE_GET);
   lm_node = lm_message_node_add_child (msg->node, "query", NULL);
-  lm_message_node_set_attribute (lm_node, "xmlns", 
-                                 "http://jabber.org/protocol/disco#items");
+  if (type == GABBLE_DISCO_TYPE_ITEMS)
+    {
+      lm_message_node_set_attribute (lm_node, "xmlns",
+                                     "http://jabber.org/protocol/disco#items");
+    }
+  else if (type == GABBLE_DISCO_TYPE_INFO)
+    {
+      lm_message_node_set_attribute (lm_node, "xmlns",
+                                     "http://jabber.org/protocol/disco#info");
+    }
+  else
+    {
+      delete_request (request);
+      error = NULL; /*FIXME*/
+      return NULL;
+    }
+
+  if (node)
+    {
+      lm_message_node_set_attribute (lm_node, "node", node);
+    }
+
   if (! _gabble_connection_send_with_reply (priv->connection, msg,
         request_reply_cb, G_OBJECT(self), request, error))
     {

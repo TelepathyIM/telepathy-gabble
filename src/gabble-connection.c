@@ -3695,7 +3695,7 @@ room_jid_verify (GabbleConnection *conn, const gchar *jid,
   rvctx->context = context;
 
   ret = (gabble_disco_request (priv->disco, GABBLE_DISCO_TYPE_INFO, service, NULL,
-                               room_jid_disco_cb, NULL, error) != NULL);
+                               room_jid_disco_cb, rvctx, error) != NULL);
 
   g_free (room);
   g_free (service);

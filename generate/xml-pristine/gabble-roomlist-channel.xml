@@ -1,0 +1,37 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node name="/GabbleRoomlistChannel">
+  <interface name="org.freedesktop.DBus.Introspectable">
+    <method name="Introspect">
+      <arg direction="out" type="s" />
+    </method>
+  </interface>
+  <interface name="org.freedesktop.Telepathy.Channel">
+    <method name="GetHandle">
+      <arg direction="out" type="u" />
+      <arg direction="out" type="u" />
+    </method>
+    <method name="GetInterfaces">
+      <arg direction="out" type="as" />
+    </method>
+    <method name="GetChannelType">
+      <arg direction="out" type="s" />
+    </method>
+    <signal name="Closed">
+    </signal>
+    <method name="Close">
+    </method>
+  </interface>
+  <interface name="org.freedesktop.Telepathy.Channel.Type.RoomList">
+    <method name="ListRooms">
+    </method>
+    <method name="GetListingRooms">
+      <arg direction="out" type="b" />
+    </method>
+    <signal name="ListingRooms">
+      <arg type="b" name="listing" />
+    </signal>
+    <signal name="GotRooms">
+      <arg type="a(usa{sv})" name="rooms" />
+    </signal>
+  </interface>
+</node>

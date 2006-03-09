@@ -6,3 +6,4 @@ gabble-roster-channel.xml	GabbleRosterChannel	ChannelTypeContactList, ChannelInt
 gabble-media-channel.xml	GabbleMediaChannel	ChannelTypeStreamedMedia, ChannelInterfaceGroup
 gabble-media-session.xml	GabbleMediaSession	MediaSessionHandler
 gabble-media-stream.xml	GabbleMediaStream	MediaStreamHandler
+gabble-roomlist-channel.xml	GabbleRoomlistChannel	ChannelTypeRoomList

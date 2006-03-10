@@ -19,6 +19,7 @@
  */
 
 #define DBUS_API_SUBJECT_TO_CHANGE
+#define _GNU_SOURCE /* Needed for strptime (_XOPEN_SOURCE can also be used). */
 
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
@@ -1224,7 +1225,7 @@ connection_message_cb (LmMessageHandler *handler,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-  LmMessageNode *msg_node, *body_node;
+  LmMessageNode *msg_node, *body_node, *node;
   const gchar *type, *from, *body;
   GabbleHandle handle;
   time_t stamp;
@@ -1245,8 +1246,41 @@ connection_message_cb (LmMessageHandler *handler,
 
   body = lm_message_node_get_value (body_node);
 
-  /* TODO: correctly parse timestamp of delayed messages */
-  stamp = time (NULL);
+  /* parse timestamp of delayed messages */
+  stamp = 0;
+
+  for (node = msg_node->children; node; node = node->next)
+    {
+      if (strcmp (node->name, "x") == 0)
+        {
+          const gchar *xmlns, *stamp_str, *p;
+          struct tm stamp_tm = { 0, };
+
+          xmlns = lm_message_node_get_attribute (node, "xmlns");
+          if (xmlns == NULL)
+            continue;
+
+          if (strcmp (xmlns, "jabber:x:delay") != 0)
+            continue;
+
+          stamp_str = lm_message_node_get_attribute (node, "stamp");
+          if (stamp_str == NULL)
+            continue;
+
+          p = strptime (stamp_str, "%Y%m%dT%T", &stamp_tm);
+          if (p == NULL || *p != '\0')
+            {
+              g_warning ("%s: malformed date string '%s' for jabber:x:delay",
+                         G_STRFUNC, stamp_str);
+              continue;
+            }
+
+          stamp = timegm (&stamp_tm);
+        }
+    }
+
+  if (stamp == 0)
+    stamp = time (NULL);
 
   if (strcmp (type, "groupchat") == 0)
     {

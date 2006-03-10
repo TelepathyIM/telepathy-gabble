@@ -202,7 +202,7 @@ GabbleDisco *
 gabble_disco_new (GabbleConnection *conn)
 {
   g_return_val_if_fail (GABBLE_IS_CONNECTION (conn), NULL);
-  return GABBLE_DISCO (g_object_new (GABBLE_TYPE_DISCO, "connection", conn));
+  return GABBLE_DISCO (g_object_new (GABBLE_TYPE_DISCO, "connection", conn, NULL));
 }
 
 

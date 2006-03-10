@@ -59,6 +59,16 @@ GType gabble_muc_channel_get_type(void);
 #define GABBLE_MUC_CHANNEL_GET_CLASS(obj) \
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_MUC_CHANNEL, GabbleMucChannelClass))
 
+#define TP_TYPE_PENDING_MESSAGE_STRUCT (dbus_g_type_get_struct ("GValueArray", \
+      G_TYPE_UINT, \
+      G_TYPE_UINT, \
+      G_TYPE_UINT, \
+      G_TYPE_UINT, \
+      G_TYPE_STRING, \
+      G_TYPE_INVALID))
+
+void _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan, GabbleHandle handle, LmMessageNode *pres_node);
+gboolean _gabble_muc_channel_receive (GabbleMucChannel *chan, TpChannelTextMessageType type, GabbleHandle sender, time_t timestamp, const gchar *text, LmMessageNode *msg_node);
 
 gboolean gabble_muc_channel_acknowledge_pending_message (GabbleMucChannel *obj, guint id, GError **error);
 gboolean gabble_muc_channel_add_members (GabbleMucChannel *obj, const GArray * contacts, const gchar * message, GError **error);
@@ -78,7 +88,6 @@ gboolean gabble_muc_channel_provide_password (GabbleMucChannel *obj, const gchar
 gboolean gabble_muc_channel_remove_members (GabbleMucChannel *obj, const GArray * contacts, const gchar * message, GError **error);
 gboolean gabble_muc_channel_send (GabbleMucChannel *obj, guint type, const gchar * text, GError **error);
 gboolean gabble_muc_channel_set_password (GabbleMucChannel *obj, const gchar * password, GError **error);
-
 
 G_END_DECLS
 

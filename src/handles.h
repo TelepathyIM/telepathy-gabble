@@ -31,6 +31,7 @@ typedef struct _GabbleHandleRepo GabbleHandleRepo;
 typedef GQuark GabbleHandle;
 
 gboolean gabble_handle_jid_is_valid (TpHandleType type, const gchar *jid, GError **error);
+gchar *gabble_handle_jid_get_base (const gchar *jid);
 
 void gabble_handle_decode_jid (const char *jid, char **username, char **server, char **resource);
 gboolean gabble_handle_type_is_valid (TpHandleType type);

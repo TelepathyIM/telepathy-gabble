@@ -133,6 +133,34 @@ gabble_handle_jid_is_valid (TpHandleType type, const gchar *jid, GError **error)
 }
 
 /**
+ * gabble_handle_jid_get_base
+ *
+ * Utility function to return the base portion of a jid.
+ */
+gchar *
+gabble_handle_jid_get_base (const gchar *jid)
+{
+  gchar *base_jid;
+  const gchar *p;
+
+  p = strchr (jid, '/');
+  if (p == NULL)
+    {
+      base_jid = g_strdup (jid);
+    }
+  else
+    {
+      gint len = p - jid;
+
+      base_jid = g_new (gchar, len + 1);
+      memcpy (base_jid, jid, len);
+      base_jid[len] = '\0';
+    }
+
+  return base_jid;
+}
+
+/**
  * gabble_handle_decode_jid
  *
  * Parses a JID which may be one of the following forms:

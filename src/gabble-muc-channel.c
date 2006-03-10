@@ -974,7 +974,6 @@ gboolean gabble_muc_channel_remove_members (GabbleMucChannel *obj, const GArray 
   return gabble_group_mixin_remove_members (G_OBJECT (obj), contacts, message, error);
 }
 
-
 /**
  * gabble_muc_channel_send
  *
@@ -989,7 +988,43 @@ gboolean gabble_muc_channel_remove_members (GabbleMucChannel *obj, const GArray 
  */
 gboolean gabble_muc_channel_send (GabbleMucChannel *obj, guint type, const gchar * text, GError **error)
 {
-  /* FIXME */
+  GabbleMucChannelPrivate *priv;
+  LmMessage *msg;
+  gboolean result;
+  time_t timestamp;
+
+  g_assert (GABBLE_IS_MUC_CHANNEL (obj));
+
+  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
+
+  if (type > TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE)
+    {
+      g_debug ("%s: invalid message type %u", G_STRFUNC, type);
+
+      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+                            "invalid message type: %u", type);
+
+      return FALSE;
+    }
+
+  /* TODO: send different message types */
+
+  msg = lm_message_new_with_sub_type (priv->jid, LM_MESSAGE_TYPE_MESSAGE,
+                                      LM_MESSAGE_SUB_TYPE_GROUPCHAT);
+  lm_message_node_add_child (msg->node, "body", text);
+
+  result = _gabble_connection_send (priv->conn, msg, error);
+  lm_message_unref (msg);
+
+  if (!result)
+    return FALSE;
+
+  timestamp = time (NULL);
+
+  g_signal_emit (obj, signals[SENT], 0,
+                 timestamp,
+                 type,
+                 text);
 
   return TRUE;
 }

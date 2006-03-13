@@ -3894,7 +3894,7 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
           return FALSE;
         }
 
-      if (handle == TP_HANDLE_TYPE_CONTACT)
+      if (handle_type == TP_HANDLE_TYPE_CONTACT)
         {
           handle = gabble_handle_for_contact (priv->handles, name, FALSE);
 

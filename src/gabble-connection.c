@@ -2639,8 +2639,8 @@ discover_services (GabbleConnection *conn)
   g_assert (GABBLE_IS_CONNECTION (conn));
   priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
-  gabble_disco_request (priv->disco, GABBLE_DISCO_TYPE_INFO, 
-                        priv->connect_server, NULL, 
+  gabble_disco_request (priv->disco, GABBLE_DISCO_TYPE_INFO,
+                        priv->connect_server, NULL,
                         services_discover_cb, conn, NULL);
 }
 
@@ -3410,6 +3410,7 @@ gboolean gabble_connection_list_channels (GabbleConnection *obj, GPtrArray ** re
   GabbleConnectionPrivate *priv;
   guint count;
   GPtrArray *channels;
+  guint i;
 
   g_assert (GABBLE_IS_CONNECTION (obj));
 
@@ -3418,13 +3419,19 @@ gboolean gabble_connection_list_channels (GabbleConnection *obj, GPtrArray ** re
   ERROR_IF_NOT_CONNECTED (priv, *error)
 
   count = g_hash_table_size (priv->im_channels);
+  count += g_hash_table_size (priv->muc_channels);
+  count += priv->media_channels->len;
+
   channels = g_ptr_array_sized_new (count);
 
   g_hash_table_foreach (priv->im_channels, list_channel_hash_foreach, channels);
 
   g_hash_table_foreach (priv->muc_channels, list_channel_hash_foreach, channels);
 
-  /* FIXME: do this for media channels as well */
+  for (i = 0; i < priv->media_channels->len; i++)
+    {
+      list_channel_hash_foreach (NULL, g_ptr_array_index (priv->media_channels, i), channels);
+    }
 
   if (priv->publish_channel)
     list_channel_hash_foreach (NULL, priv->publish_channel, channels);

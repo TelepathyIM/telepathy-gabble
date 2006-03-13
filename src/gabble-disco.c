@@ -77,15 +77,15 @@ gabble_disco_error_quark (void)
 static void
 gabble_disco_init (GabbleDisco *obj)
 {
-  GabbleDiscoPrivate *priv = 
+  GabbleDiscoPrivate *priv =
      G_TYPE_INSTANCE_GET_PRIVATE (obj, GABBLE_TYPE_DISCO, GabbleDiscoPrivate);
   obj->priv = priv;
 
 }
 
-static void gabble_disco_set_property (GObject *object, guint property_id, 
+static void gabble_disco_set_property (GObject *object, guint property_id,
     const GValue *value, GParamSpec *pspec);
-static void gabble_disco_get_property (GObject *object, guint property_id, 
+static void gabble_disco_get_property (GObject *object, guint property_id,
     GValue *value, GParamSpec *pspec);
 static void gabble_disco_dispose (GObject *object);
 static void gabble_disco_finalize (GObject *object);
@@ -224,7 +224,7 @@ timeout_request (gpointer data)
   GError *err;
   g_return_val_if_fail (data != NULL, FALSE);
 
-  err = g_error_new (GABBLE_DISCO_ERROR, GABBLE_DISCO_ERROR_TIMEOUT, 
+  err = g_error_new (GABBLE_DISCO_ERROR, GABBLE_DISCO_ERROR_TIMEOUT,
       "Request for %s on %s timed out",
       (request->type == GABBLE_DISCO_TYPE_INFO)?"info":"items",
       request->jid);
@@ -266,7 +266,7 @@ request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
   node = lm_message_node_get_attribute (query_node, "node");
 
 
-  if (0 == strcmp (lm_message_node_get_attribute (reply_msg->node, "type"), 
+  if (0 == strcmp (lm_message_node_get_attribute (reply_msg->node, "type"),
               "error"))
       {
         error_node = lm_message_node_get_child (reply_msg->node, "error");
@@ -278,7 +278,7 @@ request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
                                request->jid);
             goto done;
           }
-        child_node = lm_message_node_get_child (error_node, 
+        child_node = lm_message_node_get_child (error_node,
                                                 "service-unavailable");
         if (child_node)
           {

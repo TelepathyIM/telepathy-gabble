@@ -41,7 +41,7 @@
 
 G_DEFINE_TYPE(GabbleMucChannel, gabble_muc_channel, G_TYPE_OBJECT)
 
-#define DEFAULT_JOIN_TIMEOUT 60000
+#define DEFAULT_JOIN_TIMEOUT (180 * 1000)
 
 /* signal enum */
 enum
@@ -92,7 +92,8 @@ struct _GabbleMucChannelPrivate
   gchar *object_path;
 
   GabbleMucState state;
-  guint timer_id;
+
+  guint join_timer_id;
 
   TpChannelPasswordFlags password_flags;
 
@@ -474,8 +475,8 @@ gabble_muc_channel_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  if (priv->timer_id != 0)
-    g_source_remove (priv->timer_id);
+  if (priv->join_timer_id != 0)
+    g_source_remove (priv->join_timer_id);
 
   if (G_OBJECT_CLASS (gabble_muc_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_muc_channel_parent_class)->dispose (object);
@@ -541,13 +542,13 @@ channel_state_changed (GabbleMucChannel *chan,
 
   if (new_state == MUC_STATE_INITIATED)
     {
-      priv->timer_id =
+      priv->join_timer_id =
         g_timeout_add (DEFAULT_JOIN_TIMEOUT, timeout_join, chan);
     }
   else if (new_state == MUC_STATE_JOINED)
     {
-      g_source_remove (priv->timer_id);
-      priv->timer_id = 0;
+      g_source_remove (priv->join_timer_id);
+      priv->join_timer_id = 0;
     }
 }
 

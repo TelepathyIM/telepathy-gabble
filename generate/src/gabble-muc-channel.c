@@ -419,13 +419,10 @@ gboolean gabble_muc_channel_list_pending_messages (GabbleMucChannel *obj, GPtrAr
  * Implements DBus method ProvidePassword
  * on interface org.freedesktop.Telepathy.Channel.Interface.Password
  *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
+ * @context: The DBUS invocation context to use to return values
+ *           or throw an error.
  */
-gboolean gabble_muc_channel_provide_password (GabbleMucChannel *obj, const gchar * password, gboolean* ret, GError **error)
+gboolean gabble_muc_channel_provide_password (GabbleMucChannel *obj, const gchar * password, DBusGMethodInvocation *context)
 {
   return TRUE;
 }

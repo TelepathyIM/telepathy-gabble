@@ -96,6 +96,7 @@ struct _GabbleMucChannelPrivate
   guint join_timer_id;
 
   TpChannelPasswordFlags password_flags;
+  DBusGMethodInvocation *password_ctx;
 
   GabbleHandle handle;
   const gchar *jid;
@@ -131,7 +132,7 @@ gabble_muc_channel_init (GabbleMucChannel *obj)
   priv->pending_messages = g_queue_new ();
 }
 
-static gboolean send_join_request (GabbleMucChannel *channel, const gchar *password);
+static gboolean send_join_request (GabbleMucChannel *channel, const gchar *password, GError **error);
 
 static GObject *
 gabble_muc_channel_constructor (GType type, guint n_props,
@@ -191,12 +192,14 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   g_intset_destroy (set);
 
   /* seek to enter the room */
-  if (send_join_request (GABBLE_MUC_CHANNEL (obj), NULL))
+  if (send_join_request (GABBLE_MUC_CHANNEL (obj), NULL, &error))
     {
       g_object_set (obj, "state", MUC_STATE_INITIATED, NULL);
     }
   else
     {
+      g_error_free (error);
+
       g_object_set (obj, "state", MUC_STATE_ENDED, NULL);
     }
 
@@ -205,12 +208,12 @@ gabble_muc_channel_constructor (GType type, guint n_props,
 
 static gboolean
 send_join_request (GabbleMucChannel *channel,
-                   const gchar *password)
+                   const gchar *password,
+                   GError **error)
 {
   GabbleMucChannelPrivate *priv;
   LmMessage *msg;
   LmMessageNode *x_node;
-  GError *error;
   gboolean ret;
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (channel);
@@ -227,11 +230,10 @@ send_join_request (GabbleMucChannel *channel,
     }
 
   /* send it */
-  ret = _gabble_connection_send (priv->conn, msg, &error);
+  ret = _gabble_connection_send (priv->conn, msg, error);
   if (!ret)
     {
       g_warning ("%s: _gabble_connection_send_with_reply failed", G_STRFUNC);
-      g_error_free (error);
     }
   else
     {
@@ -464,6 +466,8 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_muc_channel_class), &dbus_glib_gabble_muc_channel_object_info);
 }
 
+static void clear_join_timer (GabbleMucChannel *chan);
+
 void
 gabble_muc_channel_dispose (GObject *object)
 {
@@ -475,8 +479,7 @@ gabble_muc_channel_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  if (priv->join_timer_id != 0)
-    g_source_remove (priv->join_timer_id);
+  clear_join_timer (self);
 
   if (G_OBJECT_CLASS (gabble_muc_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_muc_channel_parent_class)->dispose (object);
@@ -509,6 +512,28 @@ gabble_muc_channel_finalize (GObject *object)
   G_OBJECT_CLASS (gabble_muc_channel_parent_class)->finalize (object);
 }
 
+static void clear_join_timer (GabbleMucChannel *chan)
+{
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+
+  if (priv->join_timer_id != 0)
+    {
+      g_source_remove (priv->join_timer_id);
+      priv->join_timer_id = 0;
+    }
+}
+
+static void provide_password_return_if_pending (GabbleMucChannel *chan, gboolean success)
+{
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+
+  if (priv->password_ctx)
+    {
+      dbus_g_method_return (priv->password_ctx, success);
+      priv->password_ctx = NULL;
+    }
+}
+
 static void close_channel (GabbleMucChannel *chan, const gchar *reason, gboolean inform_muc);
 
 static gboolean
@@ -524,6 +549,8 @@ timeout_join (gpointer data)
   msg = (priv->state == MUC_STATE_AUTH)
     ? "No password provided within timeout" : "Timed out";
   */
+
+  provide_password_return_if_pending (chan, FALSE);
 
   close_channel (chan, NULL, FALSE);
 
@@ -547,8 +574,9 @@ channel_state_changed (GabbleMucChannel *chan,
     }
   else if (new_state == MUC_STATE_JOINED)
     {
-      g_source_remove (priv->join_timer_id);
-      priv->join_timer_id = 0;
+      provide_password_return_if_pending (chan, TRUE);
+
+      clear_join_timer (chan);
     }
 }
 
@@ -721,6 +749,8 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
       /* Password already provided and incorrect? */
       if (priv->state == MUC_STATE_AUTH)
         {
+          provide_password_return_if_pending (chan, FALSE);
+
           close_channel (chan, text, FALSE);
 
           return;
@@ -1330,30 +1360,38 @@ gboolean gabble_muc_channel_list_pending_messages (GabbleMucChannel *obj, GPtrAr
  * Implements DBus method ProvidePassword
  * on interface org.freedesktop.Telepathy.Channel.Interface.Password
  *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
+ * @context: The DBUS invocation context to use to return values
+ *           or throw an error.
  */
-gboolean gabble_muc_channel_provide_password (GabbleMucChannel *obj, const gchar * password, gboolean* ret, GError **error)
+gboolean gabble_muc_channel_provide_password (GabbleMucChannel *obj, const gchar * password, DBusGMethodInvocation *context)
 {
+  GError *error;
   GabbleMucChannelPrivate *priv;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (obj));
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
 
-  if ((priv->password_flags & TP_CHANNEL_PASSWORD_FLAG_PROVIDE) == 0)
+  if ((priv->password_flags & TP_CHANNEL_PASSWORD_FLAG_PROVIDE) == 0 ||
+      priv->password_ctx != NULL)
     {
-      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                            "password cannot be provided in the current state");
+      error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                           "password cannot be provided in the current state");
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
 
       return FALSE;
     }
 
-  send_join_request (obj, password);
-  *ret = TRUE;
+  if (!send_join_request (obj, password, &error))
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+
+      return FALSE;
+    }
+
+  priv->password_ctx = context;
 
   change_password_flags (obj, 0, TP_CHANNEL_PASSWORD_FLAG_PROVIDE);
 

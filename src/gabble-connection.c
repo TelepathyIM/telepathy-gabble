@@ -1642,6 +1642,29 @@ presence_node_is_for_muc (LmMessageNode *pres_node)
   return FALSE;
 }
 
+static GabbleMucChannel *
+get_muc_from_jid (GabbleConnection *conn, const gchar *jid)
+{
+  gchar *base_jid;
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  GabbleHandle handle;
+  GabbleMucChannel *chan = NULL;
+
+  base_jid = gabble_handle_jid_get_base (jid);
+
+  if (gabble_handle_for_room_exists (priv->handles, base_jid))
+    {
+      handle = gabble_handle_for_room (priv->handles, base_jid);
+
+      chan = g_hash_table_lookup (priv->muc_channels,
+                                  GUINT_TO_POINTER (handle));
+    }
+
+  g_free (base_jid);
+
+  return chan;
+}
+
 /**
  * connection_presence_cb:
  * @handler: #LmMessageHandler for this message
@@ -1661,6 +1684,8 @@ connection_presence_cb (LmMessageHandler *handler,
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   LmMessageNode *pres_node, *child_node, *node;
   const char *from;
+  LmMessageSubType sub_type;
+  GabbleMucChannel *muc_chan;
   gboolean is_for_muc;
   GIntSet *empty, *tmp;
   GabbleHandle handle;
@@ -1674,14 +1699,27 @@ connection_presence_cb (LmMessageHandler *handler,
 
   pres_node = lm_message_get_node (message);
 
-  /*HANDLER_DEBUG (pres_node, "got presence stanza");*/
-
   from = lm_message_node_get_attribute (pres_node, "from");
 
   if (from == NULL)
     {
       HANDLER_DEBUG (pres_node, "presence stanza without from attribute, ignoring");
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    }
+
+  sub_type = lm_message_get_sub_type (message);
+
+  /* is it an error and for a MUC? */
+  if (sub_type == LM_MESSAGE_SUB_TYPE_ERROR)
+    {
+      muc_chan = get_muc_from_jid (conn, from);
+
+      if (muc_chan != NULL)
+        {
+          _gabble_muc_channel_presence_error (muc_chan, from, pres_node);
+
+          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+        }
     }
 
   is_for_muc = presence_node_is_for_muc (pres_node);
@@ -1706,7 +1744,7 @@ connection_presence_cb (LmMessageHandler *handler,
   if (child_node)
     status_message = lm_message_node_get_value (child_node);
 
-  switch (lm_message_get_sub_type (message))
+  switch (sub_type)
     {
     case LM_MESSAGE_SUB_TYPE_SUBSCRIBE:
       empty = g_intset_new ();
@@ -1879,37 +1917,18 @@ connection_presence_cb (LmMessageHandler *handler,
 
   if (is_for_muc)
     {
-      gchar *base_jid;
+      muc_chan = get_muc_from_jid (conn, from);
 
-      base_jid = gabble_handle_jid_get_base (from);
-
-      if (gabble_handle_for_room_exists (priv->handles, base_jid))
+      if (muc_chan != NULL)
         {
-          GabbleHandle room_handle;
-          GabbleMucChannel *chan;
-
-          room_handle = gabble_handle_for_room (priv->handles, base_jid);
-
-          chan = g_hash_table_lookup (priv->muc_channels,
-                                      GUINT_TO_POINTER (room_handle));
-
-          if (chan != NULL)
-            {
-              _gabble_muc_channel_member_presence_updated (chan, handle, pres_node);
-            }
-          else
-            {
-              g_warning ("%s: muc channel for %s (%d) does not exist",
-                         G_STRFUNC, base_jid, room_handle);
-            }
+          _gabble_muc_channel_member_presence_updated (muc_chan, handle,
+                                                       pres_node);
         }
       else
         {
-          g_warning ("%s: room handle for %s does not exist",
-                     G_STRFUNC, base_jid);
+          g_warning ("%s: muc channel for %s (%d) does not exist",
+                     G_STRFUNC, from, handle);
         }
-
-      g_free (base_jid);
     }
 
   return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;

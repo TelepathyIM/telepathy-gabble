@@ -1149,6 +1149,18 @@ close_all_channels (GabbleConnection *conn)
       priv->jingle_sessions = NULL;
     }
 
+  if (priv->publish_channel)
+    {
+      g_object_unref (priv->publish_channel);
+      priv->publish_channel = NULL;
+    }
+
+  if (priv->subscribe_channel)
+    {
+      g_object_unref (priv->subscribe_channel);
+      priv->subscribe_channel = NULL;
+    }
+
   priv->media_channel_index = 0;
 }
 

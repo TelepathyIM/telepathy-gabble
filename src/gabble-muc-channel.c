@@ -41,6 +41,8 @@
 
 G_DEFINE_TYPE(GabbleMucChannel, gabble_muc_channel, G_TYPE_OBJECT)
 
+#define DEFAULT_JOIN_TIMEOUT 60000
+
 /* signal enum */
 enum
 {
@@ -60,7 +62,25 @@ enum
   PROP_OBJECT_PATH,
   PROP_CHANNEL_TYPE,
   PROP_HANDLE,
+  PROP_STATE,
   LAST_PROPERTY
+};
+
+typedef enum {
+    MUC_STATE_CREATED = 0,
+    MUC_STATE_INITIATED,
+    MUC_STATE_AUTH,
+    MUC_STATE_JOINED,
+    MUC_STATE_ENDED,
+} GabbleMucState;
+
+static const gchar *muc_states[] =
+{
+    "MUC_STATE_CREATED",
+    "MUC_STATE_INITIATED",
+    "MUC_STATE_AUTH",
+    "MUC_STATE_JOINED",
+    "MUC_STATE_ENDED",
 };
 
 /* private structure */
@@ -70,6 +90,11 @@ struct _GabbleMucChannelPrivate
 {
   GabbleConnection *conn;
   gchar *object_path;
+
+  GabbleMucState state;
+  guint timer_id;
+
+  TpChannelPasswordFlags password_flags;
 
   GabbleHandle handle;
   const gchar *jid;
@@ -105,7 +130,7 @@ gabble_muc_channel_init (GabbleMucChannel *obj)
   priv->pending_messages = g_queue_new ();
 }
 
-static void send_join_request (GabbleMucChannel *channel);
+static gboolean send_join_request (GabbleMucChannel *channel, const gchar *password);
 
 static GObject *
 gabble_muc_channel_constructor (GType type, guint n_props,
@@ -154,7 +179,7 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   gabble_group_mixin_init (obj, G_STRUCT_OFFSET (GabbleMucChannel, group),
                            handles, self_handle);
 
-  /* automatically add ourself to remote pending */
+  /* add ourself to remote pending */
   empty = g_intset_new ();
   set = g_intset_new ();
   g_intset_add (set, self_handle);
@@ -165,46 +190,45 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   g_intset_destroy (set);
 
   /* seek to enter the room */
-  send_join_request (GABBLE_MUC_CHANNEL (obj));
+  if (send_join_request (GABBLE_MUC_CHANNEL (obj), NULL))
+    {
+      g_object_set (obj, "state", MUC_STATE_INITIATED, NULL);
+    }
+  else
+    {
+      g_object_set (obj, "state", MUC_STATE_ENDED, NULL);
+    }
 
   return obj;
 }
 
-static LmHandlerResult
-join_request_reply_cb (GabbleConnection *conn,
-                       LmMessage *sent_msg,
-                       LmMessage *reply_msg,
-                       GObject *object,
-                       gpointer user_data)
-{
-  g_debug ("%s: %s", G_STRFUNC, lm_message_node_to_string (reply_msg->node));
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-}
-
-static void
-send_join_request (GabbleMucChannel *channel)
+static gboolean
+send_join_request (GabbleMucChannel *channel,
+                   const gchar *password)
 {
   GabbleMucChannelPrivate *priv;
   LmMessage *msg;
-  LmMessageNode *node;
+  LmMessageNode *x_node;
   GError *error;
+  gboolean ret;
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (channel);
 
   /* build the message */
   msg = lm_message_new (priv->self_jid, LM_MESSAGE_TYPE_PRESENCE);
 
-  node = lm_message_node_add_child (msg->node, "x", NULL);
-  lm_message_node_set_attribute (node, "xmlns", "http://jabber.org/protocol/muc");
+  x_node = lm_message_node_add_child (msg->node, "x", NULL);
+  lm_message_node_set_attribute (x_node, "xmlns", "http://jabber.org/protocol/muc");
+
+  if (password != NULL)
+    {
+      lm_message_node_add_child (x_node, "password", password);
+    }
 
   /* send it */
-  if (!_gabble_connection_send_with_reply (priv->conn, msg,
-                                           join_request_reply_cb,
-                                           G_OBJECT (channel), NULL,
-                                           &error))
+  ret = _gabble_connection_send (priv->conn, msg, &error);
+  if (!ret)
     {
-      /* TODO: do something clever here */
       g_warning ("%s: _gabble_connection_send_with_reply failed", G_STRFUNC);
       g_error_free (error);
     }
@@ -214,6 +238,45 @@ send_join_request (GabbleMucChannel *channel)
     }
 
   lm_message_unref (msg);
+
+  return ret;
+}
+
+static gboolean
+send_leave_message (GabbleMucChannel *channel,
+                    const gchar *reason)
+{
+  GabbleMucChannelPrivate *priv;
+  LmMessage *msg;
+  GError *error;
+  gboolean ret;
+
+  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (channel);
+
+  /* build the message */
+  msg = lm_message_new_with_sub_type (priv->self_jid, LM_MESSAGE_TYPE_PRESENCE,
+                                      LM_MESSAGE_SUB_TYPE_UNAVAILABLE);
+
+  if (reason != NULL)
+    {
+      lm_message_node_add_child (msg->node, "status", reason);
+    }
+
+  /* send it */
+  ret = _gabble_connection_send (priv->conn, msg, &error);
+  if (!ret)
+    {
+      g_warning ("%s: _gabble_connection_send_with_reply failed", G_STRFUNC);
+      g_error_free (error);
+    }
+  else
+    {
+      g_debug ("%s: leave message sent", G_STRFUNC);
+    }
+
+  lm_message_unref (msg);
+
+  return ret;
 }
 
 static void
@@ -238,11 +301,18 @@ gabble_muc_channel_get_property (GObject    *object,
     case PROP_HANDLE:
       g_value_set_uint (value, priv->handle);
       break;
+    case PROP_STATE:
+      g_value_set_uint (value, priv->state);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
   }
 }
+
+static void channel_state_changed (GabbleMucChannel *chan,
+                                   GabbleMucState prev_state,
+                                   GabbleMucState new_state);
 
 static void
 gabble_muc_channel_set_property (GObject     *object,
@@ -252,6 +322,7 @@ gabble_muc_channel_set_property (GObject     *object,
 {
   GabbleMucChannel *chan = GABBLE_MUC_CHANNEL (object);
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  GabbleMucState prev_state;
 
   switch (property_id) {
     case PROP_CONNECTION:
@@ -265,6 +336,14 @@ gabble_muc_channel_set_property (GObject     *object,
       break;
     case PROP_HANDLE:
       priv->handle = g_value_get_uint (value);
+      break;
+    case PROP_STATE:
+      prev_state = priv->state;
+      priv->state = g_value_get_uint (value);
+
+      if (priv->state != prev_state)
+        channel_state_changed (chan, prev_state, priv->state);
+
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -332,6 +411,14 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_HANDLE, param_spec);
 
+  param_spec = g_param_spec_uint ("state", "Channel state",
+                                  "The current state that the channel is in.",
+                                  0, G_MAXUINT32, 0,
+                                  G_PARAM_READWRITE |
+                                  G_PARAM_STATIC_NAME |
+                                  G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_STATE, param_spec);
+
   signals[CLOSED] =
     g_signal_new ("closed",
                   G_OBJECT_CLASS_TYPE (gabble_muc_channel_class),
@@ -387,7 +474,8 @@ gabble_muc_channel_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  /* release any references held by the object here */
+  if (priv->timer_id != 0)
+    g_source_remove (priv->timer_id);
 
   if (G_OBJECT_CLASS (gabble_muc_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_muc_channel_parent_class)->dispose (object);
@@ -418,6 +506,49 @@ gabble_muc_channel_finalize (GObject *object)
   g_queue_free (priv->pending_messages);
 
   G_OBJECT_CLASS (gabble_muc_channel_parent_class)->finalize (object);
+}
+
+static void close_channel (GabbleMucChannel *chan, const gchar *reason, gboolean inform_muc);
+
+static gboolean
+timeout_join (gpointer data)
+{
+  GabbleMucChannel *chan = data;
+  /*GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  const gchar *msg;*/
+
+  g_debug ("%s: join timed out, closing channel", G_STRFUNC);
+
+  /*
+  msg = (priv->state == MUC_STATE_AUTH)
+    ? "No password provided within timeout" : "Timed out";
+  */
+
+  close_channel (chan, NULL, FALSE);
+
+  return FALSE;
+}
+
+static void
+channel_state_changed (GabbleMucChannel *chan,
+                       GabbleMucState prev_state,
+                       GabbleMucState new_state)
+{
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+
+  g_debug ("%s: state changed from %s to %s", G_STRFUNC,
+           muc_states[prev_state], muc_states[new_state]);
+
+  if (new_state == MUC_STATE_INITIATED)
+    {
+      priv->timer_id =
+        g_timeout_add (DEFAULT_JOIN_TIMEOUT, timeout_join, chan);
+    }
+  else if (new_state == MUC_STATE_JOINED)
+    {
+      g_source_remove (priv->timer_id);
+      priv->timer_id = 0;
+    }
 }
 
 /**
@@ -455,6 +586,161 @@ static void _gabble_muc_pending_free (GabbleMucPendingMessage *msg)
   gabble_allocator_free (_gabble_muc_pending_get_alloc (), msg);
 }
 
+static void
+change_password_flags (GabbleMucChannel *chan,
+                       TpChannelPasswordFlags add,
+                       TpChannelPasswordFlags remove)
+{
+  GabbleMucChannelPrivate *priv;
+  TpChannelGroupFlags added, removed;
+
+  g_assert (GABBLE_IS_MUC_CHANNEL (chan));
+
+  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+
+  added = add & ~priv->password_flags;
+  priv->password_flags |= added;
+
+  removed = remove & priv->password_flags;
+  priv->password_flags &= ~removed;
+
+  if (add != 0 || remove != 0)
+    {
+      g_debug ("%s: emitting password flags changed, added 0x%X, removed 0x%X",
+               G_STRFUNC, added, removed);
+
+      g_signal_emit(chan, PASSWORD_FLAGS_CHANGED, 0, added, removed);
+    }
+}
+
+static void
+close_channel (GabbleMucChannel *chan, const gchar *reason,
+               gboolean inform_muc)
+{
+  GabbleMucChannelPrivate *priv;
+  GIntSet *empty, *set;
+
+  g_assert (GABBLE_IS_MUC_CHANNEL (chan));
+
+  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+
+  if (priv->closed)
+    return;
+
+  priv->closed = TRUE;
+
+  /* Remove us from member list */
+  empty = g_intset_new ();
+  set = g_intset_new ();
+  g_intset_add (set, GABBLE_GROUP_MIXIN (chan)->self_handle);
+
+  gabble_group_mixin_change_members (G_OBJECT (chan),
+                                     (reason != NULL) ? reason : "",
+                                     empty, set, empty, empty);
+
+  g_intset_destroy (empty);
+  g_intset_destroy (set);
+
+  /* Inform the MUC if requested */
+  if (inform_muc)
+    {
+      send_leave_message (chan, reason);
+    }
+
+  /* Update state and emit Closed signal */
+  g_object_set (chan, "state", MUC_STATE_ENDED, NULL);
+
+  g_signal_emit(chan, signals[CLOSED], 0);
+}
+
+/**
+ * _gabble_muc_channel_presence_error
+ */
+void
+_gabble_muc_channel_presence_error (GabbleMucChannel *chan,
+                                    const gchar *jid,
+                                    LmMessageNode *pres_node)
+{
+  GabbleMucChannelPrivate *priv;
+  LmMessageNode *error_node, *text_node;
+  const gchar *code_str, *type, *text;
+  gint code;
+
+  g_assert (GABBLE_IS_MUC_CHANNEL (chan));
+
+  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+
+  if (strcmp (jid, priv->self_jid) != 0)
+    {
+      g_warning ("%s: presence error from other jids than self not handled",
+                 G_STRFUNC);
+      return;
+    }
+
+  error_node = lm_message_node_get_child (pres_node, "error");
+  if (error_node == NULL)
+    {
+      g_warning ("%s: missing required node 'error'", G_STRFUNC);
+      return;
+    }
+
+  text_node = lm_message_node_get_child (error_node, "text");
+  if (text_node == NULL)
+    {
+      g_warning ("%s: missing required node 'text'", G_STRFUNC);
+      return;
+    }
+
+  code_str = lm_message_node_get_attribute (error_node, "code");
+  type = lm_message_node_get_attribute (error_node, "type");
+  text = lm_message_node_get_value (text_node);
+
+  if (code_str == NULL || type == NULL || text == NULL)
+    {
+      g_warning ("%s: missing required attribute", G_STRFUNC);
+      HANDLER_DEBUG (pres_node, "presence node");
+      return;
+    }
+
+  code = atoi (code_str);
+
+  if (priv->state >= MUC_STATE_JOINED)
+    {
+      g_warning ("%s: presence error while already member of the channel -- NYI",
+                 G_STRFUNC);
+      return;
+    }
+
+  g_debug ("%s: presence node: %s", G_STRFUNC, lm_message_node_to_string (pres_node));
+
+  /* We're not a member, find out why the join request failed
+   * and act accordingly. */
+  switch (code) {
+    case 401:
+      /* Password already provided and incorrect? */
+      if (priv->state == MUC_STATE_AUTH)
+        {
+          close_channel (chan, text, FALSE);
+
+          return;
+        }
+
+      g_debug ("%s: password required to join, changing password flags",
+               G_STRFUNC);
+
+      change_password_flags (chan,
+                             TP_CHANNEL_PASSWORD_FLAG_REQUIRED ^
+                             TP_CHANNEL_PASSWORD_FLAG_PROVIDE, 0);
+
+      g_object_set (chan, "state", MUC_STATE_AUTH, NULL);
+
+      break;
+
+    default:
+      g_warning ("%s: unhandled errorcode %d", G_STRFUNC, code);
+  }
+}
+
 /**
  * _gabble_muc_channel_member_presence_updated
  */
@@ -468,6 +754,8 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
   ContactPresence *cp;
   GIntSet *empty, *set;
   GabbleGroupMixin *mixin;
+  LmMessageNode *x_node, *item_node;
+  const gchar *affil, *role;
 
   g_debug (G_STRFUNC);
 
@@ -482,6 +770,30 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
   cp = gabble_handle_get_qdata (mixin->handle_repo, TP_HANDLE_TYPE_CONTACT,
                                 handle, data_key);
 
+  /* find useful MUC subnodes */
+  x_node = lm_message_node_get_child (pres_node, "x");
+  if (x_node == NULL)
+    {
+      g_warning ("%s: node missing 'x' child, ignoring", G_STRFUNC);
+      return;
+    }
+
+  item_node = lm_message_node_get_child (x_node, "item");
+  if (item_node == NULL)
+    {
+      g_warning ("%s: node missing 'item' child, ignoring", G_STRFUNC);
+      return;
+    }
+
+  affil = lm_message_node_get_attribute (item_node, "affiliation");
+  role = lm_message_node_get_attribute (item_node, "role");
+  if (affil == NULL || role == NULL)
+    {
+      g_warning ("%s: item node missing affiliation and/or role attributes, "
+                 "ignoring", G_STRFUNC);
+      return;
+    }
+
   /* update channel members according to presence */
   empty = g_intset_new ();
   set = g_intset_new ();
@@ -493,12 +805,56 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
         {
           gabble_group_mixin_change_members (G_OBJECT (chan), "", set, empty,
                                              empty, empty);
+
+          if (handle == mixin->self_handle)
+            {
+              g_object_set (chan, "state", MUC_STATE_JOINED, NULL);
+            }
+        }
+
+      if (handle == mixin->self_handle)
+        {
+          TpChannelGroupFlags flags_add, flags_rem;
+
+          flags_add = TP_CHANNEL_GROUP_FLAG_CAN_ADD ^
+                      TP_CHANNEL_GROUP_FLAG_MESSAGE_ADD;
+          flags_rem = 0;
+
+          if (strcmp (role, "moderator") == 0)
+            {
+              flags_add ^= TP_CHANNEL_GROUP_FLAG_CAN_REMOVE ^
+                           TP_CHANNEL_GROUP_FLAG_MESSAGE_REMOVE;
+            }
+          else
+            {
+              flags_rem ^= TP_CHANNEL_GROUP_FLAG_CAN_REMOVE ^
+                           TP_CHANNEL_GROUP_FLAG_MESSAGE_REMOVE;
+            }
+
+          gabble_group_mixin_change_flags (G_OBJECT (chan), flags_add,
+                                           flags_rem);
         }
     }
   else
     {
-      gabble_group_mixin_change_members (G_OBJECT (chan), "", empty, set,
-                                         empty, empty);
+      LmMessageNode *reason_node;
+      const gchar *reason = "";
+
+      reason_node = lm_message_node_get_child (item_node, "reason");
+      if (reason_node != NULL)
+        {
+          reason = lm_message_node_get_value (reason_node);
+        }
+
+      if (handle != mixin->self_handle)
+        {
+          gabble_group_mixin_change_members (G_OBJECT (chan), reason,
+                                             empty, set, empty, empty);
+        }
+      else
+        {
+          close_channel (chan, reason, FALSE);
+        }
     }
 
   g_intset_destroy (empty);
@@ -684,10 +1040,19 @@ gboolean gabble_muc_channel_close (GabbleMucChannel *obj, GError **error)
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
 
-  priv->closed = TRUE;
-
   g_debug ("%s called on %p", G_STRFUNC, obj);
-  g_signal_emit(obj, signals[CLOSED], 0);
+
+  if (priv->closed)
+    {
+      g_debug ("%s: channel already closed", G_STRFUNC);
+
+      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                            "Channel already closed");
+
+      return FALSE;
+    }
+
+  close_channel (obj, NULL, TRUE);
 
   return TRUE;
 }
@@ -835,7 +1200,8 @@ gboolean gabble_muc_channel_get_members (GabbleMucChannel *obj, GArray ** ret, G
 gboolean gabble_muc_channel_get_password (GabbleMucChannel *obj, gchar ** ret, GError **error)
 {
   *error = g_error_new (TELEPATHY_ERRORS, NotImplemented,
-                        "not yet implemented");
+                        "deliberately not implemented as this "
+                        "will go into ChannelProperties");
 
   return FALSE;
 }
@@ -855,7 +1221,13 @@ gboolean gabble_muc_channel_get_password (GabbleMucChannel *obj, gchar ** ret, G
  */
 gboolean gabble_muc_channel_get_password_flags (GabbleMucChannel *obj, guint* ret, GError **error)
 {
-  /* FIXME */
+  GabbleMucChannelPrivate *priv;
+
+  g_assert (GABBLE_IS_MUC_CHANNEL (obj));
+
+  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
+
+  *ret = priv->password_flags;
 
   return TRUE;
 }
@@ -965,7 +1337,24 @@ gboolean gabble_muc_channel_list_pending_messages (GabbleMucChannel *obj, GPtrAr
  */
 gboolean gabble_muc_channel_provide_password (GabbleMucChannel *obj, const gchar * password, gboolean* ret, GError **error)
 {
-  /* FIXME */
+  GabbleMucChannelPrivate *priv;
+
+  g_assert (GABBLE_IS_MUC_CHANNEL (obj));
+
+  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
+
+  if ((priv->password_flags & TP_CHANNEL_PASSWORD_FLAG_PROVIDE) == 0)
+    {
+      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+                            "password cannot be provided in the current state");
+
+      return FALSE;
+    }
+
+  send_join_request (obj, password);
+  *ret = TRUE;
+
+  change_password_flags (obj, 0, TP_CHANNEL_PASSWORD_FLAG_PROVIDE);
 
   return TRUE;
 }
@@ -1059,7 +1448,8 @@ gboolean gabble_muc_channel_send (GabbleMucChannel *obj, guint type, const gchar
 gboolean gabble_muc_channel_set_password (GabbleMucChannel *obj, const gchar * password, GError **error)
 {
   *error = g_error_new (TELEPATHY_ERRORS, NotImplemented,
-                        "not yet implemented");
+                        "deliberately not implemented as this "
+                        "will go into ChannelProperties");
 
   return FALSE;
 }

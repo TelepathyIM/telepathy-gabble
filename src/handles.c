@@ -55,7 +55,12 @@ handle_priv_lookup (GabbleHandleRepo *repo,
   GabbleHandlePriv *priv;
 
   g_assert (repo != NULL);
-  g_assert (handle != 0);
+
+  if (handle == 0)
+    {
+      g_warning ("Invalid handle requested in handle_priv_lookup!");
+      return NULL;
+    }
 
   switch (type) {
     case TP_HANDLE_TYPE_CONTACT:
@@ -68,7 +73,7 @@ handle_priv_lookup (GabbleHandleRepo *repo,
       priv = g_datalist_id_get_data (&repo->list_handles, handle);
       break;
     default:
-      g_critical ("Invalid handle type requested in handle_priv_lookup!");
+      g_warning ("Invalid handle type requested in handle_priv_lookup!");
       return NULL;
     }
 

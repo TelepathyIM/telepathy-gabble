@@ -1498,18 +1498,103 @@ gboolean gabble_muc_channel_set_password (GabbleMucChannel *obj, const gchar * p
 static gboolean
 gabble_muc_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *message, GError **error)
 {
-  *error = g_error_new (TELEPATHY_ERRORS, NotImplemented,
-                        "not yet implemented");
+  GabbleMucChannelPrivate *priv;
+  const gchar *jid;
+  LmMessage *msg;
+  LmMessageNode *x_node, *invite_node;
+  gboolean result;
 
-  return FALSE;
+  g_assert (GABBLE_IS_MUC_CHANNEL (obj));
+
+  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
+
+  msg = lm_message_new (priv->jid, LM_MESSAGE_TYPE_MESSAGE);
+
+  x_node = lm_message_node_add_child (msg->node, "x", NULL);
+  lm_message_node_set_attribute (x_node, "xmlns", MUC_XMLNS_USER);
+
+  invite_node = lm_message_node_add_child (x_node, "invite", NULL);
+
+  jid = gabble_handle_inspect (GABBLE_GROUP_MIXIN (obj)->handle_repo,
+                               TP_HANDLE_TYPE_CONTACT, handle);
+
+  lm_message_node_set_attribute (invite_node, "to", jid);
+
+  if (*message != '\0')
+    {
+      lm_message_node_add_child (invite_node, "reason", message);
+    }
+
+  HANDLER_DEBUG (msg->node, "sending MUC invitation");
+
+  result = _gabble_connection_send (priv->conn, msg, error);
+  lm_message_unref (msg);
+
+  if (result)
+    {
+      GIntSet *empty, *set;
+
+      /* add user to remote pending */
+      empty = g_intset_new ();
+      set = g_intset_new ();
+      g_intset_add (set, handle);
+
+      gabble_group_mixin_change_members (obj, "", empty, empty, empty, set);
+
+      g_intset_destroy (empty);
+      g_intset_destroy (set);
+    }
+
+  return result;
 }
 
 static gboolean
 gabble_muc_channel_remove_member (GObject *obj, GabbleHandle handle, const gchar *message, GError **error)
 {
-  *error = g_error_new (TELEPATHY_ERRORS, NotImplemented,
-                        "not yet implemented");
+  GabbleMucChannelPrivate *priv;
+  LmMessage *msg;
+  LmMessageNode *query_node, *item_node;
+  const gchar *jid;
+  gchar *room, *server, *nick;
+  gboolean result;
 
-  return FALSE;
+  g_assert (GABBLE_IS_MUC_CHANNEL (obj));
+
+  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
+
+  msg = lm_message_new_with_sub_type (priv->jid, LM_MESSAGE_TYPE_IQ,
+                                      LM_MESSAGE_SUB_TYPE_SET);
+
+  query_node = lm_message_node_add_child (msg->node, "query", NULL);
+  lm_message_node_set_attribute (query_node, "xmlns", MUC_XMLNS_ADMIN);
+
+  item_node = lm_message_node_add_child (query_node, "item", NULL);
+
+  jid = gabble_handle_inspect (GABBLE_GROUP_MIXIN (obj)->handle_repo,
+                               TP_HANDLE_TYPE_CONTACT, handle);
+
+  gabble_handle_decode_jid (jid, &room, &server, &nick);
+
+  lm_message_node_set_attributes (item_node,
+                                  "nick", nick,
+                                  "role", "none",
+                                  NULL);
+
+  g_free (room);
+  g_free (server);
+  g_free (nick);
+
+  if (*message != '\0')
+    {
+      lm_message_node_add_child (item_node, "reason", message);
+    }
+
+  HANDLER_DEBUG (msg->node, "sending MUC kick request");
+
+  /* FIXME: use send_with_reply here */
+  result = _gabble_connection_send (priv->conn, msg, error);
+  lm_message_unref (msg);
+
+  return result;
 }
 

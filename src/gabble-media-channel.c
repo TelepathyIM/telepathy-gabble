@@ -450,12 +450,18 @@ gboolean gabble_media_channel_close (GabbleMediaChannel *obj, GError **error)
 {
   GabbleMediaChannelPrivate *priv;
 
+  g_debug ("%s called on %p", G_STRFUNC, obj);
+
   g_assert (GABBLE_IS_MEDIA_CHANNEL (obj));
 
   priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (obj);
   priv->closed = TRUE;
 
-  g_debug ("%s called on %p", G_STRFUNC, obj);
+  if (priv->session)
+    {
+      _gabble_media_session_terminate (priv->session);
+    }
+
   g_signal_emit(obj, signals[CLOSED], 0);
 
   return TRUE;

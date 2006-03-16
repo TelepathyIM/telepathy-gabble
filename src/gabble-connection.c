@@ -1636,7 +1636,7 @@ presence_node_is_for_muc (LmMessageNode *pres_node)
   if (x_node != NULL)
     {
       return (strcmp (lm_message_node_get_attribute (x_node, "xmlns"),
-                      "http://jabber.org/protocol/muc#user") == 0);
+                      MUC_XMLNS_USER) == 0);
     }
 
   return FALSE;
@@ -3819,7 +3819,7 @@ room_jid_disco_cb (GabbleDisco *disco, const gchar *jid, const gchar *node,
           name = lm_message_node_get_attribute (lm_node, "var");
           if (name != NULL)
             {
-              if (strcmp (name, "http://jabber.org/protocol/muc") == 0)
+              if (strcmp (name, MUC_XMLNS) == 0)
                 {
                   gchar *sender;
                   GabbleHandle handle;

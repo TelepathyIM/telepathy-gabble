@@ -1,7 +1,7 @@
 /*
  * gabble-group-mixin.h - Header for GabbleGroupMixin
- * Copyright (C) 2005 Collabora Ltd.
- * Copyright (C) 2005 Nokia Corporation
+ * Copyright (C) 2006 Collabora Ltd.
+ * Copyright (C) 2006 Nokia Corporation
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public

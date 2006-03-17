@@ -1211,7 +1211,7 @@ connection_message_cb (LmMessageHandler *handler,
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   LmMessageNode *msg_node, *body_node, *node;
-  const gchar *type, *from, *body;
+  const gchar *type, *from, *body, *body_offset;
   GabbleHandle handle;
   time_t stamp;
 
@@ -1272,6 +1272,7 @@ connection_message_cb (LmMessageHandler *handler,
       gchar *base_jid;
       GabbleHandle room_handle;
       GabbleMucChannel *chan;
+      TpChannelTextMessageType msgtype;
 
       /* verify that the room exists and get its handle */
       base_jid = gabble_handle_jid_get_base (from);
@@ -1313,8 +1314,19 @@ connection_message_cb (LmMessageHandler *handler,
           handle = gabble_handle_for_contact (priv->handles, from, TRUE);
         }
 
-      if (_gabble_muc_channel_receive (chan, TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL,
-                                       handle, stamp, body, msg_node))
+      if (0 == strncmp (body, "/me ", 4))
+        {
+          msgtype = TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION;
+          body_offset = body + 4;
+        }
+      else
+        {
+          msgtype = TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL;
+          body_offset = body;
+        }
+
+      if (_gabble_muc_channel_receive (chan, msgtype, handle, stamp,
+                                       body_offset, msg_node))
         return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
   else
@@ -1331,20 +1343,29 @@ connection_message_cb (LmMessageHandler *handler,
           return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
         }
 
-      /* type="chat" messages are NORMAL.  everything else is something that
-       * doesn't necessarily expect a reply or ongoing conversation ("normal")
-       * or has been auto-sent, so we make it NOTICE in all other cases. */
-      if (type != NULL && 0 == strcmp (type, "chat"))
+      /* messages starting with /me are ACTION messages, and the /me should be
+       * removed. type="chat" messages are NORMAL.  everything else is
+       * something that doesn't necessarily expect a reply or ongoing
+       * conversation ("normal") or has been auto-sent, so we make it NOTICE in
+       * all other cases. */
+      if (0 == strncmp (body, "/me ", 4))
+        {
+          msgtype = TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION;
+          body_offset = body + 4;
+        }
+      else if (type != NULL && 0 == strcmp (type, "chat"))
         {
           msgtype = TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL;
+          body_offset = body;
         }
       else
         {
           msgtype = TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE;
+          body_offset = body;
         }
 
       g_debug ("%s: message from %s (handle %u), msgtype %d, body:\n%s",
-               G_STRFUNC, from, handle, msgtype, body);
+               G_STRFUNC, from, handle, msgtype, body_offset);
 
       chan = g_hash_table_lookup (priv->im_channels, GINT_TO_POINTER (handle));
 
@@ -1355,7 +1376,8 @@ connection_message_cb (LmMessageHandler *handler,
           chan = new_im_channel (conn, handle, FALSE);
         }
 
-      if (_gabble_im_channel_receive (chan, msgtype, handle, stamp, body))
+      if (_gabble_im_channel_receive (chan, msgtype, handle,
+                                      stamp, body_offset))
         return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 

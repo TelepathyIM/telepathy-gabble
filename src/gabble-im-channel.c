@@ -667,8 +667,8 @@ gboolean gabble_im_channel_send (GabbleIMChannel *obj, guint type, const gchar *
 {
   GabbleIMChannelPrivate *priv;
   LmMessage *msg;
+  LmMessageSubType subtype;
   const char *recipient;
-  const char *typestr;
   gboolean result;
   time_t timestamp;
 
@@ -679,10 +679,11 @@ gboolean gabble_im_channel_send (GabbleIMChannel *obj, guint type, const gchar *
   switch (type)
     {
     case TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL:
-      typestr = "chat";
+    case TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION:
+      subtype = LM_MESSAGE_SUB_TYPE_CHAT;
       break;
     case TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE:
-      typestr = "normal";
+      subtype = LM_MESSAGE_SUB_TYPE_NORMAL;
       break;
     default:
       g_debug ("%s: invalid message type %u", G_STRFUNC, type);
@@ -698,9 +699,18 @@ gboolean gabble_im_channel_send (GabbleIMChannel *obj, guint type, const gchar *
       TP_HANDLE_TYPE_CONTACT,
       priv->handle);
 
-  msg = lm_message_new (recipient, LM_MESSAGE_TYPE_MESSAGE);
-  lm_message_node_set_attribute (msg->node, "type", typestr);
-  lm_message_node_add_child (msg->node, "body", text);
+  msg = lm_message_new_with_sub_type (recipient, LM_MESSAGE_TYPE_MESSAGE, subtype);
+  if (type == TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION)
+    {
+      gchar *tmp;
+      tmp = g_strconcat ("/me ", text, NULL);
+      lm_message_node_add_child (msg->node, "body", tmp);
+      g_free (tmp);
+    }
+  else
+    {
+      lm_message_node_add_child (msg->node, "body", text);
+    }
 
   /* TODO: send with callback? */
 

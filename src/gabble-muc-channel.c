@@ -1446,11 +1446,19 @@ gboolean gabble_muc_channel_send (GabbleMucChannel *obj, guint type, const gchar
       return FALSE;
     }
 
-  /* TODO: send different message types */
-
   msg = lm_message_new_with_sub_type (priv->jid, LM_MESSAGE_TYPE_MESSAGE,
                                       LM_MESSAGE_SUB_TYPE_GROUPCHAT);
-  lm_message_node_add_child (msg->node, "body", text);
+  if (type == TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION)
+    {
+      gchar *tmp;
+      tmp = g_strconcat ("/me ", text, NULL);
+      lm_message_node_add_child (msg->node, "body", tmp);
+      g_free (tmp);
+    }
+  else
+    {
+      lm_message_node_add_child (msg->node, "body", text);
+    }
 
   result = _gabble_connection_send (priv->conn, msg, error);
   lm_message_unref (msg);

@@ -284,15 +284,11 @@ gabble_connection_set_property (GObject      *object,
 
   switch (property_id) {
     case PROP_PROTOCOL:
-      if (priv->protocol)
-        g_free (priv->protocol);
-
+      g_free (priv->protocol);
       priv->protocol = g_value_dup_string (value);
       break;
     case PROP_CONNECT_SERVER:
-      if (priv->connect_server)
-        g_free (priv->connect_server);
-
+      g_free (priv->connect_server);
       priv->connect_server = g_value_dup_string (value);
       break;
     case PROP_PORT:
@@ -302,27 +298,19 @@ gabble_connection_set_property (GObject      *object,
       priv->old_ssl = g_value_get_boolean (value);
       break;
     case PROP_STREAM_SERVER:
-      if (priv->stream_server);
-        g_free (priv->stream_server);
-
+      g_free (priv->stream_server);
       priv->stream_server = g_value_dup_string (value);
       break;
     case PROP_USERNAME:
-      if (priv->username);
-        g_free (priv->username);
-
+      g_free (priv->username);
       priv->username = g_value_dup_string (value);
       break;
    case PROP_PASSWORD:
-      if (priv->password)
-        g_free (priv->password);
-
+      g_free (priv->password);
       priv->password = g_value_dup_string (value);
       break;
     case PROP_RESOURCE:
-      if (priv->resource)
-        g_free (priv->resource);
-
+      g_free (priv->resource);
       priv->resource = g_value_dup_string (value);
       break;
     default:
@@ -554,29 +542,14 @@ gabble_connection_finalize (GObject *object)
   if (priv->conn)
     lm_connection_unref (priv->conn);
 
-  if (priv->protocol)
-    g_free (priv->protocol);
-
-  if (priv->connect_server)
-    g_free (priv->connect_server);
-
-  if (priv->stream_server)
-    g_free (priv->stream_server);
-
-  if (priv->username)
-    g_free (priv->username);
-
-  if (priv->password)
-    g_free (priv->password);
-
-  if (priv->resource)
-    g_free (priv->resource);
-
-  if (priv->bus_name)
-    g_free (priv->bus_name);
-
-  if (priv->object_path)
-    g_free (priv->object_path);
+  g_free (priv->protocol);
+  g_free (priv->connect_server);
+  g_free (priv->stream_server);
+  g_free (priv->username);
+  g_free (priv->password);
+  g_free (priv->resource);
+  g_free (priv->bus_name);
+  g_free (priv->object_path);
 
   g_datalist_clear (&priv->client_room_handle_sets);
   g_datalist_clear (&priv->client_contact_handle_sets);
@@ -1612,15 +1585,9 @@ update_presence (GabbleConnection *self, GabbleHandle contact_handle,
 
   if (voice_resource)
     {
-      if (cp->voice_resource)
-        {
-          g_debug ("%s: freeing old voice resource %s for GabbleHandle %d",
-                   G_STRFUNC, cp->voice_resource, contact_handle);
-          g_free (cp->voice_resource);
-        }
-
-      g_debug ("%s: setting voice resource to %s for GabbleHandle %d",
-               G_STRFUNC, voice_resource, contact_handle);
+      g_debug ("%s: setting voice resource to %s (was %s) for GabbleHandle %d",
+               G_STRFUNC, voice_resource, cp->voice_resource, contact_handle);
+      g_free (cp->voice_resource);
       cp->voice_resource = g_strdup (voice_resource);
     }
 
@@ -1906,10 +1873,7 @@ connection_presence_cb (LmMessageHandler *handler,
         }
 
       update_presence (conn, handle, presence_id, status_message, voice_resource);
-
-      if (voice_resource)
-        g_free (voice_resource);
-
+      g_free (voice_resource);
       break;
     default:
       HANDLER_DEBUG (pres_node, "called with unknown subtype");

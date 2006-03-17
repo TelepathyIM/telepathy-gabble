@@ -384,9 +384,7 @@ gabble_handle_for_contact (GabbleHandleRepo *repo,
 
   g_free (username);
   g_free (server);
-
-  if (resource)
-    g_free (resource);
+  g_free (resource);
 
   handle = g_quark_try_string (clean_jid);
 
@@ -467,10 +465,8 @@ gabble_handle_for_room (GabbleHandleRepo *repo,
         }
     }
 
-  if (room)
-    g_free (room);
-  if (service)
-    g_free (service);
+  g_free (room);
+  g_free (service);
 
   return handle;
 }

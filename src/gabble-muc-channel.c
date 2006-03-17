@@ -333,9 +333,7 @@ gabble_muc_channel_set_property (GObject     *object,
       priv->conn = g_value_get_object (value);
       break;
     case PROP_OBJECT_PATH:
-      if (priv->object_path)
-        g_free (priv->object_path);
-
+      g_free (priv->object_path);
       priv->object_path = g_value_dup_string (value);
       break;
     case PROP_HANDLE:
@@ -610,9 +608,7 @@ _gabble_muc_pending_get_alloc ()
  */
 static void _gabble_muc_pending_free (GabbleMucPendingMessage *msg)
 {
-  if (msg->text)
-    g_free (msg->text);
-
+  g_free (msg->text);
   gabble_allocator_free (_gabble_muc_pending_get_alloc (), msg);
 }
 

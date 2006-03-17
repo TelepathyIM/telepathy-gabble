@@ -241,9 +241,7 @@ gabble_media_session_set_property (GObject      *object,
       priv->channel = g_value_get_object (value);
       break;
     case PROP_OBJECT_PATH:
-      if (priv->object_path)
-        g_free (priv->object_path);
-
+      g_free (priv->object_path);
       priv->object_path = g_value_dup_string (value);
       break;
     case PROP_SESSION_ID:

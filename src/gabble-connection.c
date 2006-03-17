@@ -1222,9 +1222,9 @@ connection_message_cb (LmMessageHandler *handler,
   from = lm_message_node_get_attribute (msg_node, "from");
   body_node = lm_message_node_get_child (msg_node, "body");
 
-  if (type == NULL || from == NULL || body_node == NULL)
+  if (from == NULL || body_node == NULL)
     {
-      HANDLER_DEBUG (msg_node, "got a message without a type, from and/or body, ignoring");
+      HANDLER_DEBUG (msg_node, "got a message without a from and/or body, ignoring");
 
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
@@ -1267,7 +1267,7 @@ connection_message_cb (LmMessageHandler *handler,
   if (stamp == 0)
     stamp = time (NULL);
 
-  if (strcmp (type, "groupchat") == 0)
+  if (type != NULL && 0 == strcmp (type, "groupchat"))
     {
       gchar *base_jid;
       GabbleHandle room_handle;
@@ -1319,6 +1319,7 @@ connection_message_cb (LmMessageHandler *handler,
     }
   else
     {
+      TpChannelTextMessageType msgtype;
       GabbleIMChannel *chan;
 
       handle = gabble_handle_for_contact (priv->handles, from, FALSE);
@@ -1330,8 +1331,20 @@ connection_message_cb (LmMessageHandler *handler,
           return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
         }
 
-      g_debug ("%s: message from %s (handle %u), body:\n%s",
-               G_STRFUNC, from, handle, body);
+      /* type="chat" messages are NORMAL.  everything else is something that
+       * doesn't necessarily expect a reply or ongoing conversation ("normal")
+       * or has been auto-sent, so we make it NOTICE in all other cases. */
+      if (type != NULL && 0 == strcmp (type, "chat"))
+        {
+          msgtype = TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL;
+        }
+      else
+        {
+          msgtype = TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE;
+        }
+
+      g_debug ("%s: message from %s (handle %u), msgtype %d, body:\n%s",
+               G_STRFUNC, from, handle, msgtype, body);
 
       chan = g_hash_table_lookup (priv->im_channels, GINT_TO_POINTER (handle));
 
@@ -1342,8 +1355,7 @@ connection_message_cb (LmMessageHandler *handler,
           chan = new_im_channel (conn, handle, FALSE);
         }
 
-      if (_gabble_im_channel_receive (chan, TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL,
-                                      handle, stamp, body))
+      if (_gabble_im_channel_receive (chan, msgtype, handle, stamp, body))
         return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 

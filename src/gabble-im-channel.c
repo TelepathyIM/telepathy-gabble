@@ -668,6 +668,7 @@ gboolean gabble_im_channel_send (GabbleIMChannel *obj, guint type, const gchar *
   GabbleIMChannelPrivate *priv;
   LmMessage *msg;
   const char *recipient;
+  const char *typestr;
   gboolean result;
   time_t timestamp;
 
@@ -675,8 +676,15 @@ gboolean gabble_im_channel_send (GabbleIMChannel *obj, guint type, const gchar *
 
   priv = GABBLE_IM_CHANNEL_GET_PRIVATE (obj);
 
-  if (type > TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE)
+  switch (type)
     {
+    case TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL:
+      typestr = "chat";
+      break;
+    case TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE:
+      typestr = "normal";
+      break;
+    default:
       g_debug ("%s: invalid message type %u", G_STRFUNC, type);
 
       *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
@@ -685,14 +693,13 @@ gboolean gabble_im_channel_send (GabbleIMChannel *obj, guint type, const gchar *
       return FALSE;
     }
 
-  /* TODO: send different message types */
-
   recipient = gabble_handle_inspect (
       _gabble_connection_get_handles (priv->connection),
       TP_HANDLE_TYPE_CONTACT,
       priv->handle);
 
   msg = lm_message_new (recipient, LM_MESSAGE_TYPE_MESSAGE);
+  lm_message_node_set_attribute (msg->node, "type", typestr);
   lm_message_node_add_child (msg->node, "body", text);
 
   /* TODO: send with callback? */

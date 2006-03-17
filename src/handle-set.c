@@ -70,7 +70,7 @@ handle_set_destroy (GabbleHandleSet *set)
 {
   handle_set_foreach (set, freer, NULL);
   g_intset_destroy (set->intset);
-  g_free(set);
+  g_free (set);
 }
 
 /**

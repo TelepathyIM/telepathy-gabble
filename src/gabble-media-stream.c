@@ -197,9 +197,7 @@ gabble_media_stream_set_property (GObject      *object,
       priv->session = g_value_get_object (value);
       break;
     case PROP_OBJECT_PATH:
-      if (priv->object_path)
-        g_free (priv->object_path);
-
+      g_free (priv->object_path);
       priv->object_path = g_value_dup_string (value);
       break;
     default:
@@ -355,6 +353,8 @@ gabble_media_stream_finalize (GObject *object)
 {
   GabbleMediaStream *self = GABBLE_MEDIA_STREAM (object);
   GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
+
+  g_free (priv->object_path);
 
   g_value_unset (&priv->native_codecs);
   g_value_unset (&priv->native_candidates);

@@ -157,9 +157,7 @@ gabble_roster_channel_set_property (GObject     *object,
       priv->connection = g_value_get_object (value);
       break;
     case PROP_OBJECT_PATH:
-      if (priv->object_path)
-        g_free (priv->object_path);
-
+      g_free (priv->object_path);
       priv->object_path = g_value_dup_string (value);
       break;
     case PROP_HANDLE:
@@ -295,6 +293,8 @@ gabble_roster_channel_finalize (GObject *object)
   GabbleHandleRepo *handles;
 
   /* free any data held directly by the object here */
+
+  g_free (priv->object_path);
 
   handles = _gabble_connection_get_handles (priv->connection);
   gabble_handle_unref (handles, TP_HANDLE_TYPE_CONTACT, priv->handle);

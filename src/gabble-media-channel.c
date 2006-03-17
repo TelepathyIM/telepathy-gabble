@@ -280,9 +280,7 @@ gabble_media_channel_set_property (GObject     *object,
       priv->conn = g_value_get_object (value);
       break;
     case PROP_OBJECT_PATH:
-      if (priv->object_path)
-        g_free (priv->object_path);
-
+      g_free (priv->object_path);
       priv->object_path = g_value_dup_string (value);
       break;
     case PROP_CREATOR:

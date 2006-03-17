@@ -379,14 +379,9 @@ parse_parameters (const GabbleParamSpec *paramspec,
 static void
 free_params (GabbleParams *params)
 {
-  if (params->account)
-    g_free (params->account);
-
-  if (params->password)
-    g_free (params->password);
-
-  if (params->server)
-    g_free (params->server);
+  g_free (params->account);
+  g_free (params->password);
+  g_free (params->server);
 }
 
 /**

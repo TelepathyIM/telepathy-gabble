@@ -939,6 +939,9 @@ _gabble_connection_connect (GabbleConnection *conn,
       priv->conn = lm_connection_new (priv->connect_server);
       lm_connection_set_port (priv->conn, priv->port);
 
+      /* send whitespace to the server every 30 seconds */
+      lm_connection_set_keep_alive_rate (priv->conn, 30);
+
       jid = g_strdup_printf ("%s@%s", priv->username, priv->stream_server);
       lm_connection_set_jid (priv->conn, jid);
 

@@ -1229,7 +1229,7 @@ gboolean gabble_muc_channel_get_password (GabbleMucChannel *obj, gchar ** ret, G
 {
   *error = g_error_new (TELEPATHY_ERRORS, NotImplemented,
                         "deliberately not implemented as this "
-                        "will go into ChannelProperties");
+                        "will go into RoomProperties");
 
   return FALSE;
 }
@@ -1493,7 +1493,7 @@ gboolean gabble_muc_channel_set_password (GabbleMucChannel *obj, const gchar * p
 {
   *error = g_error_new (TELEPATHY_ERRORS, NotImplemented,
                         "deliberately not implemented as this "
-                        "will go into ChannelProperties");
+                        "will go into RoomProperties");
 
   return FALSE;
 }

@@ -133,6 +133,7 @@ gabble_muc_channel_init (GabbleMucChannel *obj)
   priv->pending_messages = g_queue_new ();
 }
 
+static void contact_handle_to_room_identity (GabbleMucChannel *chan, GabbleHandle main_handle, GabbleHandle *room_handle, gchar **room_jid);
 static gboolean send_join_request (GabbleMucChannel *channel, const gchar *password, GError **error);
 
 static GObject *
@@ -145,15 +146,13 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   GabbleHandleRepo *handles;
   GabbleHandle self_handle_primary, self_handle;
   gboolean valid;
-  const gchar *self_jid;
-  gchar *username, *server;
   GError *error;
   GIntSet *empty, *set;
 
   obj = G_OBJECT_CLASS (gabble_muc_channel_parent_class)->
            constructor (type, n_props, props);
 
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (GABBLE_MUC_CHANNEL (obj));
+  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
 
   handles = _gabble_connection_get_handles (priv->conn);
   valid = gabble_connection_get_self_handle (priv->conn, &self_handle_primary, &error);
@@ -166,13 +165,9 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   /* get the room's jid */
   priv->jid = gabble_handle_inspect (handles, TP_HANDLE_TYPE_ROOM, priv->handle);
 
-  /* generate our own jid in the room */
-  self_jid = gabble_handle_inspect (handles, TP_HANDLE_TYPE_CONTACT, self_handle_primary);
-  gabble_handle_decode_jid (self_jid, &username, &server, NULL);
-  priv->self_jid = g_strdup_printf ("%s/%s", priv->jid, username);
-  g_free (username);
-  g_free (server);
-  self_handle = gabble_handle_for_contact (handles, priv->self_jid, TRUE);
+  /* get our own identity in the room */
+  contact_handle_to_room_identity (GABBLE_MUC_CHANNEL (obj), self_handle_primary,
+                                   &self_handle, &priv->self_jid);
 
   /* register object on the bus */
   bus = tp_get_bus ();
@@ -205,6 +200,45 @@ gabble_muc_channel_constructor (GType type, guint n_props,
     }
 
   return obj;
+}
+
+static void
+contact_handle_to_room_identity (GabbleMucChannel *chan, GabbleHandle main_handle,
+                                 GabbleHandle *room_handle, gchar **room_jid)
+{
+  GabbleMucChannelPrivate *priv;
+  GabbleHandleRepo *handles;
+  const gchar *main_jid;
+  gchar *username, *server;
+  gchar *jid;
+
+  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+
+  handles = _gabble_connection_get_handles (priv->conn);
+
+  main_jid = gabble_handle_inspect (handles, TP_HANDLE_TYPE_CONTACT,
+                                    main_handle);
+
+  gabble_handle_decode_jid (main_jid, &username, &server, NULL);
+
+  jid = g_strdup_printf ("%s/%s", priv->jid, username);
+
+  g_free (username);
+  g_free (server);
+
+  if (room_handle)
+    {
+      *room_handle = gabble_handle_for_contact (handles, jid, TRUE);
+    }
+
+  if (room_jid)
+    {
+      *room_jid = jid;
+    }
+  else
+    {
+      g_free (jid);
+    }
 }
 
 static gboolean
@@ -1537,11 +1571,15 @@ gabble_muc_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *m
   if (result)
     {
       GIntSet *empty, *set;
+      GabbleHandle room_handle;
 
       /* add user to remote pending */
       empty = g_intset_new ();
       set = g_intset_new ();
-      g_intset_add (set, handle);
+
+      contact_handle_to_room_identity (GABBLE_MUC_CHANNEL (obj), handle,
+                                       &room_handle, NULL);
+      g_intset_add (set, room_handle);
 
       gabble_group_mixin_change_members (obj, "", empty, empty, empty, set);
 

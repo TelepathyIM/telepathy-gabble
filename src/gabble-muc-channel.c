@@ -1590,6 +1590,21 @@ gabble_muc_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *m
   return result;
 }
 
+static LmHandlerResult
+kick_request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
+                       LmMessage *reply_msg, GObject *object,
+                       gpointer user_data)
+{
+  const gchar *jid = user_data;
+
+  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
+    {
+      g_warning ("%s: Failed to kick user %s from room", G_STRFUNC, jid);
+    }
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
 static gboolean
 gabble_muc_channel_remove_member (GObject *obj, GabbleHandle handle, const gchar *message, GError **error)
 {
@@ -1633,8 +1648,11 @@ gabble_muc_channel_remove_member (GObject *obj, GabbleHandle handle, const gchar
 
   HANDLER_DEBUG (msg->node, "sending MUC kick request");
 
-  /* FIXME: use send_with_reply here */
-  result = _gabble_connection_send (priv->conn, msg, error);
+  result = _gabble_connection_send_with_reply (priv->conn, msg,
+                                               kick_request_reply_cb,
+                                               obj, (gpointer) jid,
+                                               error);
+
   lm_message_unref (msg);
 
   return result;

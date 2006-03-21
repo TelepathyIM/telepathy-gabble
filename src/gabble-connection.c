@@ -2340,7 +2340,7 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
   }
 
   /* is the session new and not a zombie? */
-  if (!found && chan == NULL)
+  if (!found)
     {
       /* if the session is unknown, the only allowed action is "initiate" */
       if (strcmp (action, "initiate"))

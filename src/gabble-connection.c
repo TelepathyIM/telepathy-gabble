@@ -2133,7 +2133,7 @@ media_channel_closed_cb (GabbleMediaChannel *chan, gpointer user_data)
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
-  g_debug ("%s: removing channel with ref count %d", G_STRFUNC, G_OBJECT (chan)->ref_count);
+  g_debug ("%s: removing media channel %p with ref count %d", G_STRFUNC, chan, G_OBJECT (chan)->ref_count);
 
   g_ptr_array_remove (priv->media_channels, chan);
 

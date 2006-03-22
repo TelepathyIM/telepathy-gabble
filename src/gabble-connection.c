@@ -1623,7 +1623,9 @@ update_presence (GabbleConnection *self, GabbleHandle contact_handle,
   if (voice_resource)
     {
       g_debug ("%s: setting voice resource to %s (was %s) for GabbleHandle %d",
-               G_STRFUNC, voice_resource, cp->voice_resource, contact_handle);
+               G_STRFUNC, voice_resource,
+               cp->voice_resource ? cp->voice_resource : "<unset>",
+               contact_handle);
       g_free (cp->voice_resource);
       cp->voice_resource = g_strdup (voice_resource);
     }

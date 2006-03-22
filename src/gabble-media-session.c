@@ -381,6 +381,9 @@ gabble_media_session_dispose (GObject *object)
 
   g_object_unref (priv->conn);
 
+  g_object_unref (priv->stream);
+  priv->stream = NULL;
+
   _gabble_connection_jingle_session_unregister (priv->conn, priv->id);
 
   if (G_OBJECT_CLASS (gabble_media_session_parent_class)->dispose)
@@ -395,8 +398,6 @@ gabble_media_session_finalize (GObject *object)
 
   g_free (priv->object_path);
 
-  g_object_unref (priv->stream);
-  priv->stream = NULL;
 
   G_OBJECT_CLASS (gabble_media_session_parent_class)->finalize (object);
 }

@@ -389,6 +389,9 @@ gabble_media_channel_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
+  if (priv->session)
+    g_object_unref (priv->session);
+
   if (!priv->closed)
     g_signal_emit (self, signals[CLOSED], 0);
 
@@ -403,9 +406,6 @@ gabble_media_channel_finalize (GObject *object)
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
 
   g_free (priv->object_path);
-
-  if (priv->session)
-    g_object_unref (priv->session);
 
   gabble_group_mixin_finalize (object);
 

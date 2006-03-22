@@ -2,17 +2,10 @@
 Name = gabble
 BusName = org.freedesktop.Telepathy.ConnectionManager.gabble
 ObjectPath = /org/freedesktop/Telepathy/ConnectionManager/gabble
-Protos = jabber,google-talk
+Protos = jabber
 
 [Proto jabber]
 MandatoryParams = s:account,s:password
 OptionalParams  = s:server,q:port,b:old-ssl
 default-port = 5222
 default-old-ssl = 0
-
-[Proto google-talk]
-MandatoryParams = s:account,s:password
-OptionalParams  = s:server,q:port,b:old-ssl
-default-server = talk.google.com
-default-port = 5223
-default-old-ssl = 1

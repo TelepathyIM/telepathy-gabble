@@ -154,15 +154,6 @@ struct _GabbleParamSpec {
   const gsize offset;
 };
 
-static const GabbleParamSpec google_talk_params[] = {
-  { "account", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, TRUE, NULL, G_STRUCT_OFFSET(GabbleParams, account) },
-  { "password", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, TRUE, NULL, G_STRUCT_OFFSET(GabbleParams, password) },
-  { "server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, FALSE, "talk.google.com", G_STRUCT_OFFSET(GabbleParams, server) },
-  { "port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT, FALSE, GINT_TO_POINTER(5223), G_STRUCT_OFFSET(GabbleParams, port) },
-  { "old-ssl", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN, FALSE, GINT_TO_POINTER(TRUE), G_STRUCT_OFFSET(GabbleParams, old_ssl) },
-  { NULL, NULL, 0, 0, NULL, 0 }
-};
-
 static const GabbleParamSpec jabber_params[] = {
   { "account", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, TRUE, NULL, G_STRUCT_OFFSET(GabbleParams, account) },
   { "password", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, TRUE, NULL, G_STRUCT_OFFSET(GabbleParams, password) },
@@ -180,10 +171,6 @@ get_parameters (const char *proto, const GabbleParamSpec **params, GError **erro
   if (!strcmp (proto, "jabber"))
     {
       *params = jabber_params;
-    }
-  else if (!strcmp (proto, "google-talk"))
-    {
-      *params = google_talk_params;
     }
   else
     {
@@ -608,7 +595,7 @@ gboolean gabble_connection_manager_get_parameter_defaults (GabbleConnectionManag
  */
 gboolean gabble_connection_manager_list_protocols (GabbleConnectionManager *obj, gchar *** ret, GError **error)
 {
-  const char *protocols[] = { "jabber", "google-talk", NULL };
+  const char *protocols[] = { "jabber", NULL };
 
   *ret = g_strdupv ((gchar **)protocols);
 

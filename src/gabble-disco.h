@@ -47,6 +47,7 @@ typedef struct _GabbleDiscoRequest GabbleDiscoRequest;
  */
 typedef enum
 {
+  GABBLE_DISCO_ERROR_CANCELLED,
   GABBLE_DISCO_ERROR_TIMEOUT,
   GABBLE_DISCO_ERROR_NOT_FOUND,
   GABBLE_DISCO_ERROR_UNAVAILABLE
@@ -85,7 +86,8 @@ typedef void (*GabbleDiscoCb)(GabbleDisco *self, const gchar *jid, const gchar *
 GabbleDisco *gabble_disco_new (GabbleConnection *);
 GabbleDiscoRequest *gabble_disco_request (GabbleDisco *self,
     GabbleDiscoType type, const gchar *jid, const char *node,
-    GabbleDiscoCb callback, gpointer user_data, GError **error);
+    GabbleDiscoCb callback, gpointer user_data, GObject *object,
+    GError **error);
 
 void gabble_disco_cancel_request (GabbleDiscoRequest *);
 

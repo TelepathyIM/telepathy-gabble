@@ -61,6 +61,7 @@ struct _GabbleDiscoRequest
   gchar *node;
   GabbleDiscoCb callback;
   gpointer user_data;
+  GObject *bound_object;
 };
 
 GQuark
@@ -153,7 +154,7 @@ gabble_disco_set_property (GObject     *object,
   }
 }
 
-static void clear_timer_and_delete_request (GabbleDiscoRequest *request);
+static void cancel_request (GabbleDiscoRequest *request);
 
 void
 gabble_disco_dispose (GObject *object)
@@ -173,7 +174,7 @@ gabble_disco_dispose (GObject *object)
 
   for (li = g_list_first (priv->requests); li; li = li->next)
     {
-      clear_timer_and_delete_request (li->data);
+      cancel_request (li->data);
     }
 
   g_list_free (priv->requests);
@@ -206,15 +207,22 @@ gabble_disco_new (GabbleConnection *conn)
 }
 
 
+static void notify_delete_request (gpointer data, GObject *obj);
+
 static void
 delete_request (GabbleDiscoRequest *request)
 {
   GabbleDiscoPrivate *priv = GABBLE_DISCO_GET_PRIVATE (request->disco);
   g_return_if_fail (request != NULL);
 
-  priv->requests = g_list_remove (priv->requests, request);
-  g_free (request->jid);
-  g_free (request);
+  GList *item = g_list_find (priv->requests, request);
+  if (item)
+    {
+      priv->requests = g_list_delete_link (priv->requests, item);
+      g_object_weak_unref (request->bound_object, notify_delete_request, request);
+      g_free (request->jid);
+      g_free (request);
+    }
 }
 
 static gboolean
@@ -224,7 +232,7 @@ timeout_request (gpointer data)
   GError *err;
   g_return_val_if_fail (data != NULL, FALSE);
 
-  err = g_error_new (GABBLE_DISCO_ERROR, GABBLE_DISCO_ERROR_TIMEOUT,
+  err = g_error_new (GABBLE_DISCO_ERROR, GABBLE_DISCO_ERROR_TIMEOUT, 
       "Request for %s on %s timed out",
       (request->type == GABBLE_DISCO_TYPE_INFO)?"info":"items",
       request->jid);
@@ -235,10 +243,18 @@ timeout_request (gpointer data)
   return FALSE;
 }
 
-  static void
-clear_timer_and_delete_request (GabbleDiscoRequest *request)
+static void
+cancel_request (GabbleDiscoRequest *request)
 {
   g_assert (request != NULL);
+  GError *err;
+  err = g_error_new (GABBLE_DISCO_ERROR, GABBLE_DISCO_ERROR_CANCELLED,
+      "Request for %s on %s cancelled",
+      (request->type == GABBLE_DISCO_TYPE_INFO)?"info":"items",
+      request->jid);
+  (request->callback)(request->disco, request->jid, request->node, NULL, err, request->user_data);
+  g_error_free (err);
+
 
   g_source_remove (request->timer_id);
   delete_request (request);
@@ -251,10 +267,16 @@ request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
   const gchar *namespace;
   const gchar *node;
   GabbleDiscoRequest *request = (GabbleDiscoRequest*) user_data;
+  GabbleDisco *disco = GABBLE_DISCO (object);
+  GabbleDiscoPrivate *priv = GABBLE_DISCO_GET_PRIVATE (disco);
+
   LmMessageNode *query_node, *error_node, *child_node;
   GError *err = NULL;
 
   g_assert (request);
+
+  if (!g_list_find (priv->requests, request))
+    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
   query_node = lm_message_node_get_child (reply_msg->node, "query");
 
@@ -299,11 +321,30 @@ done:
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
+static void
+notify_delete_request (gpointer data, GObject *obj)
+{
+  cancel_request ((GabbleDiscoRequest*) data);
+}
+/**
+ * gabble_disco_request:
+ * @self: #GabbleDisco object to use for request
+ * @type: type of request
+ * @jid: Jabber ID to request on
+ * @node: node to request on @jid, or NULL
+ * @callback: #GabbleDiscoCb to call on request fullfilment
+ * @object: GObject to bind request to. the callback will not be
+ *          called if this object has been unrefed. NULL if not needed
+ * @error: #GError to return a telepathy error in if unable to make 
+ *         request, NULL if unneeded.
+ *
+ * Make a DISCO request on the given jid.
+ */
 GabbleDiscoRequest *
 gabble_disco_request (GabbleDisco *self, GabbleDiscoType type,
                       const gchar *jid, const char *node,
                       GabbleDiscoCb callback, gpointer user_data,
-                      GError **error)
+                      GObject *object, GError **error)
 {
   GabbleDiscoPrivate *priv = GABBLE_DISCO_GET_PRIVATE (self);
   GabbleDiscoRequest *request;
@@ -319,6 +360,9 @@ gabble_disco_request (GabbleDisco *self, GabbleDiscoType type,
     request->node = g_strdup (node);
   request->callback = callback;
   request->user_data = user_data;
+  request->bound_object = object;
+
+  g_object_weak_ref (object, notify_delete_request, request);
 
   g_debug ("%s: Creating DISCO request %p for %s",
            G_STRFUNC, request, request->jid);
@@ -364,6 +408,6 @@ gabble_disco_request (GabbleDisco *self, GabbleDiscoType type,
 void
 gabble_disco_cancel_request (GabbleDiscoRequest *request)
 {
-  clear_timer_and_delete_request (request);
+  cancel_request (request);
 }
 

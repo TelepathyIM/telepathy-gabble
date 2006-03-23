@@ -232,7 +232,7 @@ timeout_request (gpointer data)
   GError *err;
   g_return_val_if_fail (data != NULL, FALSE);
 
-  err = g_error_new (GABBLE_DISCO_ERROR, GABBLE_DISCO_ERROR_TIMEOUT, 
+  err = g_error_new (GABBLE_DISCO_ERROR, GABBLE_DISCO_ERROR_TIMEOUT,
       "Request for %s on %s timed out",
       (request->type == GABBLE_DISCO_TYPE_INFO)?"info":"items",
       request->jid);

@@ -45,6 +45,7 @@
 #include "gabble-media-channel.h"
 #include "gabble-roster-channel.h"
 #include "gabble-disco.h"
+#include "gabble-roomlist-channel.h"
 
 #define BUS_NAME        "org.freedesktop.Telepathy.Connection.gabble"
 #define OBJECT_PATH     "/org/freedesktop/Telepathy/Connection/gabble"
@@ -188,6 +189,8 @@ struct _GabbleConnectionPrivate
   GabbleRosterChannel *publish_channel;
   GabbleRosterChannel *subscribe_channel;
 
+  GabbleRoomlistChannel *roomlist_channel;
+
   /* clients */
   GData *client_contact_handle_sets;
   GData *client_room_handle_sets;
@@ -195,6 +198,9 @@ struct _GabbleConnectionPrivate
 
   /* DISCO! */
   GabbleDisco *disco;
+
+  /* server services */
+  GList *conference_servers;
 
   /* gobject housekeeping */
   gboolean dispose_has_run;
@@ -2643,15 +2649,129 @@ make_roster_channels (GabbleConnection *conn)
 }
 
 static void
+roomlist_channel_closed_cb (GabbleRoomlistChannel *chan, gpointer data)
+{
+  GabbleConnection *conn = data;
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  g_object_unref (priv->roomlist_channel);
+  priv->roomlist_channel = NULL;
+}
+
+static void
+make_roomlist_channel (GabbleConnection *conn, gboolean suppress_handler)
+{
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+
+  if (!priv->roomlist_channel)
+    {
+      gchar *object_path;
+
+      object_path =
+        g_strdup_printf ("%s/RoomlistChannel", priv->object_path);
+      priv->roomlist_channel =
+        gabble_roomlist_channel_new (conn, priv->disco, object_path,
+            priv->conference_servers->data);
+
+      g_signal_connect (priv->roomlist_channel, "closed",
+                        (GCallback) roomlist_channel_closed_cb, conn);
+
+      g_signal_emit (conn, signals[NEW_CHANNEL], 0,
+                     object_path, TP_IFACE_CHANNEL_TYPE_ROOM_LIST,
+                     0, 0,
+                     suppress_handler);
+
+      g_free (object_path);
+
+    }
+
+}
+static void
+service_info_cb (GabbleDisco *disco, const gchar *jid, const gchar *node,
+                 LmMessageNode *result, GError *error,
+                 gpointer user_data)
+{
+  LmMessageNode *identity, *feature;
+  gboolean is_muc = FALSE;
+  const char *category, *type, *var;
+  GabbleConnection *conn = user_data;
+  GabbleConnectionPrivate *priv;
+  g_assert (GABBLE_IS_CONNECTION (conn));
+  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+
+  if (error)
+    {
+      g_debug ("%s: got error %s", G_STRFUNC, error->message);
+      return;
+    }
+  g_debug ("%s: got %s", G_STRFUNC, lm_message_node_to_string (result));
+
+  identity = lm_message_node_get_child (result, "identity");
+  if (identity)
+    {
+      category = lm_message_node_get_attribute (identity, "category");
+      type = lm_message_node_get_attribute (identity, "type");
+      g_debug ("%s: got identity, category=%s, type=%s", G_STRFUNC,
+               category, type);
+      if (category && 0 == strcmp (category, "conference")
+                   && 0 == strcmp (type, "text"))
+        {
+          for (feature = result->children; feature; feature = feature->next)
+            {
+              g_debug ("%s: Got child %s", G_STRFUNC, 
+                       lm_message_node_to_string (feature));
+              if (0 == strcmp (feature->name, "feature"))
+                {
+                  var = lm_message_node_get_attribute (feature, "var");
+                  if (var &&
+                      0 == strcmp (var, "http://jabber.org/protocol/muc"))
+                    {
+                      is_muc = TRUE;
+                      break;
+                    }
+                }
+            }
+          if (is_muc)
+            {
+              g_debug ("%s: Adding conference server %s", G_STRFUNC, jid);
+              priv->conference_servers =
+                g_list_prepend (priv->conference_servers, g_strdup (jid));
+            }
+        }
+    }
+}
+
+static void
 services_discover_cb (GabbleDisco *disco, const gchar *jid, const gchar *node,
                       LmMessageNode *result, GError *error,
                       gpointer user_data)
 {
+  LmMessageNode *iter;
+  GabbleConnection *conn = user_data;
+  GabbleConnectionPrivate *priv;
+  const char *item_jid;
+  g_assert (GABBLE_IS_CONNECTION (conn));
+  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+
   if (error)
     {
       g_debug ("%s: got error %s", G_STRFUNC, error->message);
+      return;
     }
   g_debug ("%s: got %s", G_STRFUNC, lm_message_node_to_string (result));
+
+  iter = result->children;
+
+  for (; iter; iter = iter->next)
+    {
+      if (0 == strcmp (iter->name, "item"))
+        {
+          item_jid = lm_message_node_get_attribute (iter, "jid");
+          if (item_jid)
+            gabble_disco_request (priv->disco, GABBLE_DISCO_TYPE_INFO,
+                                  item_jid, NULL,
+                                  service_info_cb, conn, G_OBJECT (conn), NULL);
+        }
+    }
 }
 
 static void
@@ -2665,6 +2785,7 @@ discover_services (GabbleConnection *conn)
                         priv->connect_server, NULL, 
                         services_discover_cb, conn, NULL);
 }
+
 
 /**
  * im_channel_closed_cb:
@@ -3757,6 +3878,13 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
 
       g_object_get (chan, "object-path", ret, NULL);
     }
+  else if (!strcmp (type, TP_IFACE_CHANNEL_TYPE_ROOM_LIST))
+    {
+      if (!priv->conference_servers)
+        goto NOT_AVAILABLE;
+      make_roomlist_channel (obj, suppress_handler);
+      g_object_get (priv->roomlist_channel, "object-path", ret, NULL);
+    }
   else
     {
       goto NOT_IMPLEMENTED;
@@ -3935,7 +4063,7 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
           return FALSE;
         }
 
-      if (handle_type == TP_HANDLE_TYPE_CONTACT)
+      if (handle == TP_HANDLE_TYPE_CONTACT)
         {
           handle = gabble_handle_for_contact (priv->handles, name, FALSE);
 

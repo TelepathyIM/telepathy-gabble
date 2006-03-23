@@ -2781,9 +2781,9 @@ discover_services (GabbleConnection *conn)
   g_assert (GABBLE_IS_CONNECTION (conn));
   priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
-  gabble_disco_request (priv->disco, GABBLE_DISCO_TYPE_INFO, 
-                        priv->connect_server, NULL, 
-                        services_discover_cb, conn, NULL);
+  gabble_disco_request (priv->disco, GABBLE_DISCO_TYPE_INFO,
+                        priv->connect_server, NULL,
+                        services_discover_cb, conn, G_OBJECT(conn), NULL);
 }
 
 
@@ -4063,7 +4063,7 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
           return FALSE;
         }
 
-      if (handle == TP_HANDLE_TYPE_CONTACT)
+      if (handle_type == TP_HANDLE_TYPE_CONTACT)
         {
           handle = gabble_handle_for_contact (priv->handles, name, FALSE);
 

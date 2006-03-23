@@ -2661,8 +2661,8 @@ discover_services (GabbleConnection *conn)
   g_assert (GABBLE_IS_CONNECTION (conn));
   priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
-  gabble_disco_request (priv->disco, GABBLE_DISCO_TYPE_INFO,
-                        priv->connect_server, NULL,
+  gabble_disco_request (priv->disco, GABBLE_DISCO_TYPE_INFO, 
+                        priv->connect_server, NULL, 
                         services_discover_cb, conn, NULL);
 }
 
@@ -3844,7 +3844,7 @@ room_jid_disco_cb (GabbleDisco *disco, const gchar *jid, const gchar *node,
     }
 
 ERROR:
-  g_debug ("%s: DISCO reply error or no MUC support", G_STRFUNC);
+  g_debug ("%s: DISCO reply error %s", G_STRFUNC, error->message);
   dbus_g_method_return_error (rvctx->context, error);
 
 OUT:
@@ -3880,7 +3880,7 @@ room_jid_verify (GabbleConnection *conn, const gchar *jid,
   rvctx->context = context;
 
   ret = (gabble_disco_request (priv->disco, GABBLE_DISCO_TYPE_INFO, service, NULL,
-                               room_jid_disco_cb, rvctx, error) != NULL);
+                               room_jid_disco_cb, rvctx, G_OBJECT (conn), error) != NULL);
 
   g_free (room);
   g_free (service);

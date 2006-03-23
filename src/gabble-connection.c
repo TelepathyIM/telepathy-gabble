@@ -2284,8 +2284,8 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
   const gchar *from, *id, *type, *action, *sid_str;
   GabbleHandle handle;
   guint32 sid;
-  gboolean found;
   GabbleMediaChannel *chan = NULL;
+  gpointer k, v;
 
   g_assert (connection == priv->conn);
 
@@ -2339,16 +2339,16 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
 
   sid = atoi(sid_str);
 
-  {
-    gpointer k, v;
-    found = g_hash_table_lookup_extended (priv->jingle_sessions,
-                                          GUINT_TO_POINTER (sid),
-                                          &k, &v);
-    chan = (GabbleMediaChannel *) v;
-  }
+
 
   /* is the session new and not a zombie? */
-  if (!found)
+  if (g_hash_table_lookup_extended (priv->jingle_sessions,
+                                    GUINT_TO_POINTER (sid),
+                                    &k, &v))
+    {
+      chan = (GabbleMediaChannel *) v;
+    }
+  else
     {
       /* if the session is unknown, the only allowed action is "initiate" */
       if (strcmp (action, "initiate"))

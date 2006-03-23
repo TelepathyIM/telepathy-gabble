@@ -25,6 +25,9 @@ BUILT_SOURCES = \
     gabble-roster-channel-glue.h \
     gabble-roster-channel-signals-marshal.h \
     gabble-roster-channel-signals-marshal.c \
+    gabble-roomlist-channel-glue.h \
+    gabble-roomlist-channel-signals-marshal.h \
+    gabble-roomlist-channel-signals-marshal.c \
     telepathy-errors-enumtypes.h \
     telepathy-errors-enumtypes.c
 
@@ -54,6 +57,8 @@ CORE_SOURCES = \
     gabble-media-stream.c \
     gabble-roster-channel.h \
     gabble-roster-channel.c \
+    gabble-roomlist-channel.h \
+    gabble-roomlist-channel.c \
     gabble-disco.h \
     gabble-disco.c \
     gintset.h \

@@ -14,7 +14,7 @@
     </signal>
     <method name="NewNativeCandidate">
       <arg direction="in"  type="s" name="candidate_id" />
-      <arg direction="in"  type="a(usuussduss)" name="transports" />
+      <arg direction="in"  type="a(usuussdiss)" name="transports" />
     </method>
     <method name="NewActiveCandidatePair">
       <arg direction="in"  type="s" name="native_candidate_id" />
@@ -37,7 +37,6 @@
       <arg direction="in"  type="s" name="message" />
     </method>
     <method name="Ready">
-      <arg direction="in"  type="a(usuuua{ss})" name="codecs" />
     </method>
     <signal name="SetRemoteCodecs">
       <arg type="a(usuuua{ss})" name="codecs" />

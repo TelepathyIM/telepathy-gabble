@@ -112,6 +112,7 @@ contact_presence_destroy (ContactPresence *cp)
 enum
 {
     CAPABILITIES_CHANGED,
+    GOT_CONTACT_INFO,
     NEW_CHANNEL,
     PRESENCE_UPDATE,
     STATUS_CHANGED,
@@ -419,7 +420,16 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
                   0,
                   NULL, NULL,
                   gabble_connection_marshal_VOID__INT_BOXED_BOXED,
-                  G_TYPE_NONE, 3, G_TYPE_UINT, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_STRING, G_TYPE_UINT, G_TYPE_INVALID)))), (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_STRING, G_TYPE_UINT, G_TYPE_INVALID)))));
+                  G_TYPE_NONE, 3, G_TYPE_UINT, (dbus_g_type_get_collection ("GPtrArray", G_TYPE_VALUE_ARRAY)), (dbus_g_type_get_collection ("GPtrArray", G_TYPE_VALUE_ARRAY)));
+
+  signals[GOT_CONTACT_INFO] =
+    g_signal_new ("got-contact-info",
+                  G_OBJECT_CLASS_TYPE (gabble_connection_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_connection_marshal_VOID__INT_STRING,
+                  G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_STRING);
 
   signals[NEW_CHANNEL] =
     g_signal_new ("new-channel",
@@ -2616,7 +2626,7 @@ make_roster_channels (GabbleConnection *conn)
   g_signal_emit (conn, signals[NEW_CHANNEL], 0,
                  object_path, TP_IFACE_CHANNEL_TYPE_CONTACT_LIST,
                  TP_HANDLE_TYPE_LIST, handle,
-                 /* supress handler: */ FALSE);
+                 /* suppress handler: */ FALSE);
 
   _gabble_roster_channel_change_group_flags (priv->publish_channel,
       TP_CHANNEL_GROUP_FLAG_CAN_REMOVE, 0);
@@ -3214,6 +3224,7 @@ gboolean gabble_connection_get_interfaces (GabbleConnection *obj, gchar *** ret,
   const char *interfaces[] = {
       TP_IFACE_CONN_INTERFACE_PRESENCE,
       TP_IFACE_CONN_INTERFACE_CAPABILITIES,
+      TP_IFACE_CONN_INTERFACE_CONTACT_INFO,
       NULL };
   GabbleConnectionPrivate *priv;
 
@@ -3917,6 +3928,94 @@ NOT_IMPLEMENTED:
                         "unsupported channel type %s", type);
 
   return FALSE;
+}
+
+
+static LmHandlerResult
+contact_info_got_vcard (GabbleConnection *conn, LmMessage *sent_msg,
+                        LmMessage *reply_msg, GObject *object,
+                        gpointer user_data)
+{
+  GabbleHandle contact = GPOINTER_TO_INT (user_data);
+  LmMessageNode *node, *child;
+  node = lm_message_node_get_child (reply_msg->node, "vCard");
+  GString *vcard = g_string_new("");
+  gchar *str;
+
+  child = node->children;
+  while (child)
+    {
+      if (0 != strcmp (child->name, "PHOTO")
+       && 0 != strcmp (child->name, "photo"))
+        {
+          str = lm_message_node_to_string (child);
+          g_string_append_printf (vcard, "  %s", str);
+          g_free (str);
+        }
+    }
+
+  g_signal_emit (conn, signals[GOT_CONTACT_INFO], 0, contact, vcard->str);
+
+  g_string_free (vcard, TRUE);
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
+/**
+ * gabble_connection_request_contact_info
+ *
+ * Implements DBus method RequestContactInfo
+ * on interface org.freedesktop.Telepathy.Connection.Interface.ContactInfo
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_connection_request_contact_info (GabbleConnection *obj, guint contact, GError **error)
+{
+  GabbleConnectionPrivate *priv;
+  LmMessage *msg;
+  LmMessageNode *vcard_node;
+  const char *contact_jid;
+
+  g_assert (GABBLE_IS_CONNECTION (obj));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  if (!gabble_handle_is_valid(priv->handles, TP_HANDLE_TYPE_CONTACT, contact))
+    {
+      g_debug ("%s: invalid handle %u", G_STRFUNC, contact);
+
+      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+                            "invalid handle %u", contact);
+
+      return FALSE;
+    }
+
+  contact_jid = gabble_handle_inspect (priv->handles, TP_HANDLE_TYPE_CONTACT,
+                                       contact);
+
+  /* build the message */
+  msg = lm_message_new_with_sub_type (contact_jid, LM_MESSAGE_TYPE_IQ,
+                                     LM_MESSAGE_SUB_TYPE_GET);
+
+  vcard_node = lm_message_node_add_child (msg->node, "vCard", NULL);
+
+  lm_message_node_set_attribute (vcard_node, "xmlns", "vcard-temp");
+
+
+  if (!_gabble_connection_send_with_reply (obj, msg, contact_info_got_vcard,
+                                           G_OBJECT(obj), GINT_TO_POINTER (contact),
+                                           error))
+    {
+      return FALSE;
+    }
+  else
+    {
+      return TRUE;
+    }
 }
 
 typedef struct {

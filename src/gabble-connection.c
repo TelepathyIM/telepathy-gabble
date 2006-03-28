@@ -4027,22 +4027,38 @@ contact_info_got_vcard (GabbleConnection *conn, LmMessage *sent_msg,
                         LmMessage *reply_msg, GObject *object,
                         gpointer user_data)
 {
+  GabbleConnectionPrivate *priv;
   GabbleHandle contact = GPOINTER_TO_INT (user_data);
   LmMessageNode *node, *child;
   node = lm_message_node_get_child (reply_msg->node, "vCard");
   GString *vcard = g_string_new("");
   gchar *str;
 
-  child = node->children;
-  while (child)
+  g_assert (GABBLE_IS_CONNECTION (object));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (object);
+
+  if (!node)
     {
+      g_debug ("%s: request to %s returned with no contact info",
+               G_STRFUNC, gabble_handle_inspect (priv->handles, TP_HANDLE_TYPE_CONTACT, contact));
+      g_signal_emit (conn, signals[GOT_CONTACT_INFO], 0, contact, "");
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    }
+
+ g_debug ("%s: request to %s returned contact info:",
+               G_STRFUNC, gabble_handle_inspect (priv->handles, TP_HANDLE_TYPE_CONTACT, contact));
+  child = node->children;
+  for (;child; child = child->next)
+    {
+      str = lm_message_node_to_string (child);
+      g_debug ("%s: %s", G_STRFUNC, str);
       if (0 != strcmp (child->name, "PHOTO")
        && 0 != strcmp (child->name, "photo"))
         {
-          str = lm_message_node_to_string (child);
           g_string_append_printf (vcard, "  %s", str);
-          g_free (str);
         }
+      g_free (str);
     }
 
   g_signal_emit (conn, signals[GOT_CONTACT_INFO], 0, contact, vcard->str);

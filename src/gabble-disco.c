@@ -326,6 +326,7 @@ notify_delete_request (gpointer data, GObject *obj)
 {
   cancel_request ((GabbleDiscoRequest*) data);
 }
+
 /**
  * gabble_disco_request:
  * @self: #GabbleDisco object to use for request
@@ -335,16 +336,45 @@ notify_delete_request (gpointer data, GObject *obj)
  * @callback: #GabbleDiscoCb to call on request fullfilment
  * @object: GObject to bind request to. the callback will not be
  *          called if this object has been unrefed. NULL if not needed
- * @error: #GError to return a telepathy error in if unable to make 
+ * @error: #GError to return a telepathy error in if unable to make
  *         request, NULL if unneeded.
  *
- * Make a DISCO request on the given jid.
+ * Make a DISCO request on the given jid with the default timeout.
  */
 GabbleDiscoRequest *
 gabble_disco_request (GabbleDisco *self, GabbleDiscoType type,
                       const gchar *jid, const char *node,
                       GabbleDiscoCb callback, gpointer user_data,
                       GObject *object, GError **error)
+{
+  return gabble_disco_request_with_timeout (self, type, jid, node,
+                                            DEFAULT_REQUEST_TIMEOUT,
+                                            callback, user_data,
+                                            object, error);
+}
+
+/**
+ * gabble_disco_request_with_timeout:
+ * @self: #GabbleDisco object to use for request
+ * @type: type of request
+ * @jid: Jabber ID to request on
+ * @node: node to request on @jid, or NULL
+ * @timeout: the time until the request fails, in milliseconds (1/1000ths of a second)
+ * @callback: #GabbleDiscoCb to call on request fullfilment
+ * @object: GObject to bind request to. the callback will not be
+ *          called if this object has been unrefed. NULL if not needed
+ * @error: #GError to return a telepathy error in if unable to make
+ *         request, NULL if unneeded.
+ *
+ * Make a DISCO request on the given jid, which will fail unless a reply
+ * is received within the given timeout interval.
+ */
+GabbleDiscoRequest *
+gabble_disco_request_with_timeout (GabbleDisco *self, GabbleDiscoType type,
+                                   const gchar *jid, const char *node,
+                                   guint timeout, GabbleDiscoCb callback,
+                                   gpointer user_data, GObject *object,
+                                   GError **error)
 {
   GabbleDiscoPrivate *priv = GABBLE_DISCO_GET_PRIVATE (self);
   GabbleDiscoRequest *request;
@@ -399,7 +429,7 @@ gabble_disco_request (GabbleDisco *self, GabbleDiscoType type,
   else
     {
       request->timer_id =
-          g_timeout_add (DEFAULT_REQUEST_TIMEOUT, timeout_request, request);
+          g_timeout_add (timeout, timeout_request, request);
 
       return request;
     }

@@ -84,13 +84,17 @@ struct _GabbleDisco {
 typedef void (*GabbleDiscoCb)(GabbleDisco *self, const gchar *jid, const gchar *node, LmMessageNode *query_result, GError* error, gpointer user_data);
 
 GabbleDisco *gabble_disco_new (GabbleConnection *);
+
 GabbleDiscoRequest *gabble_disco_request (GabbleDisco *self,
     GabbleDiscoType type, const gchar *jid, const char *node,
     GabbleDiscoCb callback, gpointer user_data, GObject *object,
     GError **error);
+GabbleDiscoRequest *gabble_disco_request_with_timeout (GabbleDisco *self,
+    GabbleDiscoType type, const gchar *jid, const char *node,
+    guint timeout, GabbleDiscoCb callback, gpointer user_data,
+    GObject *object, GError **error);
 
 void gabble_disco_cancel_request (GabbleDiscoRequest *);
-
 
 G_END_DECLS
 

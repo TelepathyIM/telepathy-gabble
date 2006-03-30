@@ -269,8 +269,7 @@ request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
   GabbleDiscoRequest *request = (GabbleDiscoRequest*) user_data;
   GabbleDisco *disco = GABBLE_DISCO (object);
   GabbleDiscoPrivate *priv = GABBLE_DISCO_GET_PRIVATE (disco);
-
-  LmMessageNode *query_node, *error_node, *child_node;
+  LmMessageNode *query_node;
   GError *err = NULL;
 
   g_assert (request);
@@ -291,33 +290,49 @@ request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
   if (0 == strcmp (lm_message_node_get_attribute (reply_msg->node, "type"),
               "error"))
       {
+        LmMessageNode *error_node;
+
         error_node = lm_message_node_get_child (reply_msg->node, "error");
-        child_node = lm_message_node_get_child (error_node, "item-not-found");
-        if (child_node)
+        if (lm_message_node_get_child (error_node, "item-not-found"))
           {
-            err = g_error_new (GABBLE_DISCO_ERROR, GABBLE_DISCO_ERROR_NOT_FOUND,
+            err = g_error_new (GABBLE_DISCO_ERROR,
+                               GABBLE_DISCO_ERROR_NOT_FOUND,
                                "Item %s was not found",
                                request->jid);
-            goto done;
           }
-        child_node = lm_message_node_get_child (error_node,
-                                                "service-unavailable");
-        if (child_node)
+        else if (lm_message_node_get_child (error_node, "service-unavailable"))
           {
             err = g_error_new (GABBLE_DISCO_ERROR,
                                GABBLE_DISCO_ERROR_UNAVAILABLE,
-                               "Service %s was unavailiable",
+                               "Service %s was unavailable",
                                request->jid);
-            goto done;
+          }
+        else if (lm_message_node_get_child (error_node, "remote-server-not-found"))
+          {
+            err = g_error_new (GABBLE_DISCO_ERROR,
+                               GABBLE_DISCO_ERROR_SERVER_NOT_FOUND,
+                               "Remote server for %s was not found",
+                               request->jid);
+          }
+        else
+          {
+            gchar *msg = lm_message_node_to_string (error_node);
+            err = g_error_new (GABBLE_DISCO_ERROR,
+                               GABBLE_DISCO_ERROR_UNKNOWN,
+                               "Unknown error node: %s",
+                               msg);
+            g_free (msg);
           }
       }
-done:
+
   g_source_remove (request->timer_id);
   request->callback (request->disco, request->jid, node, query_node, err,
                      request->user_data);
   delete_request (request);
+
   if (err)
     g_error_free (err);
+
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 

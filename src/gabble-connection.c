@@ -2816,10 +2816,9 @@ make_roomlist_channel (GabbleConnection *conn, gboolean suppress_handler)
                      suppress_handler);
 
       g_free (object_path);
-
     }
-
 }
+
 static void
 service_info_cb (GabbleDisco *disco, const gchar *jid, const gchar *node,
                  LmMessageNode *result, GError *error,
@@ -2830,15 +2829,17 @@ service_info_cb (GabbleDisco *disco, const gchar *jid, const gchar *node,
   const char *category, *type, *var;
   GabbleConnection *conn = user_data;
   GabbleConnectionPrivate *priv;
+
   g_assert (GABBLE_IS_CONNECTION (conn));
   priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
   if (error)
     {
-      g_debug ("%s: got error %s", G_STRFUNC, error->message);
+      g_debug ("%s: got error: %s", G_STRFUNC, error->message);
       return;
     }
-  g_debug ("%s: got %s", G_STRFUNC, lm_message_node_to_string (result));
+
+  HANDLER_DEBUG (result, "got");
 
   identity = lm_message_node_get_child (result, "identity");
   if (identity)
@@ -2889,10 +2890,10 @@ services_discover_cb (GabbleDisco *disco, const gchar *jid, const gchar *node,
 
   if (error)
     {
-      g_debug ("%s: got error %s", G_STRFUNC, error->message);
+      g_debug ("%s: got error: %s", G_STRFUNC, error->message);
       return;
     }
-  g_debug ("%s: got %s", G_STRFUNC, lm_message_node_to_string (result));
+  HANDLER_DEBUG (result, "got");
 
   iter = result->children;
 
@@ -2916,8 +2917,8 @@ discover_services (GabbleConnection *conn)
   g_assert (GABBLE_IS_CONNECTION (conn));
   priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
-  gabble_disco_request (priv->disco, GABBLE_DISCO_TYPE_INFO,
-                        priv->connect_server, NULL,
+  gabble_disco_request (priv->disco, GABBLE_DISCO_TYPE_ITEMS,
+                        priv->stream_server, NULL,
                         services_discover_cb, conn, G_OBJECT(conn), NULL);
 }
 
@@ -3445,8 +3446,8 @@ gboolean gabble_connection_get_statuses (GabbleConnection *obj, GHashTable ** re
           get_statuses_arguments());
 
       g_hash_table_insert (*ret, (gchar*) gabble_statuses[i].name, status);
-
     }
+
   return TRUE;
 }
 

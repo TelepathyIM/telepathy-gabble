@@ -100,7 +100,8 @@ static const StatusInfo gabble_statuses[LAST_GABBLE_PRESENCE] = {
  { "chat",      TP_CONN_PRESENCE_TYPE_AVAILABLE,     TRUE, TRUE },
  { "dnd",       TP_CONN_PRESENCE_TYPE_AWAY,          TRUE, TRUE },
  { "xa",        TP_CONN_PRESENCE_TYPE_EXTENDED_AWAY, TRUE, TRUE },
- { "offline",   TP_CONN_PRESENCE_TYPE_OFFLINE,       TRUE, TRUE }
+ { "offline",   TP_CONN_PRESENCE_TYPE_OFFLINE,       TRUE, TRUE },
+ { "hidden",    TP_CONN_PRESENCE_TYPE_HIDDEN,        TRUE, TRUE }
 };
 
 static void
@@ -1598,6 +1599,28 @@ _get_contact_presence_quark()
 }
 
 /**
+ * status_is_available
+ *
+ * Returns a boolean to indicate whether the given gabble status is
+ * available on this connection.
+ */
+static gboolean
+status_is_available (GabbleConnection *conn, int status)
+{
+  GabbleConnectionPrivate *priv;
+
+  g_assert (GABBLE_IS_CONNECTION (conn));
+  g_assert (status < LAST_GABBLE_PRESENCE);
+  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+
+  if (gabble_statuses[status].presence_type == TP_CONN_PRESENCE_TYPE_HIDDEN &&
+      (priv->features & GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE) == 0)
+    return FALSE;
+  else
+    return TRUE;
+}
+
+/**
  * destroy_the_bastard:
  * @data: a GValue to destroy
  *
@@ -1709,6 +1732,12 @@ signal_own_presence (GabbleConnection *self, GError **error)
   message = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_PRESENCE,
               subtype);
 
+  if (cp->presence_id == GABBLE_PRESENCE_HIDDEN)
+    {
+      if ((priv->features & GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE) != 0)
+        lm_message_node_set_attribute (message->node, "type", "invisible");
+    }
+
   node = lm_message_get_node (message);
 
   if (cp->status_message)
@@ -1720,6 +1749,7 @@ signal_own_presence (GabbleConnection *self, GError **error)
     {
     case GABBLE_PRESENCE_AVAILABLE:
     case GABBLE_PRESENCE_OFFLINE:
+    case GABBLE_PRESENCE_HIDDEN:
       break;
     case GABBLE_PRESENCE_AWAY:
       lm_message_node_add_child (node, "show", JABBER_PRESENCE_SHOW_AWAY);
@@ -3502,6 +3532,11 @@ gboolean gabble_connection_get_statuses (GabbleConnection *obj, GHashTable ** re
 
   for (i=0; i < LAST_GABBLE_PRESENCE; i++)
     {
+      /* don't report the invisible presence if the server
+       * doesn't have the presence-invisible feature */
+      if (!status_is_available (obj, i))
+        continue;
+
       status = g_value_array_new (5);
 
       g_value_array_append (status, NULL);
@@ -4506,7 +4541,6 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (data->conn);
   int i;
 
-
   for (i = 0; i < LAST_GABBLE_PRESENCE; i++)
     {
       if (0 == strcmp (gabble_statuses[i].name, (const gchar*) key))
@@ -4518,6 +4552,17 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
       GHashTable *args = (GHashTable *)value;
       GValue *message = g_hash_table_lookup (args, "message");
       const gchar *status = NULL;
+
+      if (!status_is_available (data->conn, i))
+        {
+          g_debug ("%s: requested status %s is not available", G_STRFUNC,
+             (const gchar *) key);
+          *(data->error) = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                             "requested status '%s' is not available on this connection",
+                             (const gchar *) key);
+          data->retval = FALSE;
+          return;
+        }
 
       if (message)
         {

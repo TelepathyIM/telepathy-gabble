@@ -50,7 +50,9 @@
 #define BUS_NAME        "org.freedesktop.Telepathy.Connection.gabble"
 #define OBJECT_PATH     "/org/freedesktop/Telepathy/Connection/gabble"
 
-#define XMLNS_ROSTER    "jabber:iq:roster"
+#define NS_PRESENCE_INVISIBLE "presence-invisible"
+#define NS_PRIVACY            "jabber:iq:privacy"
+#define NS_ROSTER             "jabber:iq:roster"
 
 #define TP_CAPABILITY_PAIR_TYPE (dbus_g_type_get_struct ("GValueArray", G_TYPE_STRING, G_TYPE_UINT, G_TYPE_INVALID))
 
@@ -136,6 +138,13 @@ enum
     LAST_PROPERTY
 };
 
+typedef enum
+{
+  GABBLE_CONNECTION_FEATURES_NONE = 0,
+  GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE = 1 << 0,
+  GABBLE_CONNECTION_FEATURES_PRIVACY = 1 << 1
+} GabbleConnectionFeatures;
+
 /* private structure */
 typedef struct _GabbleConnectionPrivate GabbleConnectionPrivate;
 
@@ -202,6 +211,9 @@ struct _GabbleConnectionPrivate
 
   /* server services */
   GList *conference_servers;
+
+  /* connection feature flags */
+  GabbleConnectionFeatures features;
 
   /* gobject housekeeping */
   gboolean dispose_has_run;
@@ -912,6 +924,9 @@ static LmHandlerResult connection_iq_unknown_cb (LmMessageHandler*, LmConnection
 static LmSSLResponse connection_ssl_cb (LmSSL*, LmSSLStatus, gpointer);
 static void connection_open_cb (LmConnection*, gboolean, gpointer);
 static void connection_auth_cb (LmConnection*, gboolean, gpointer);
+static void connection_disco_cb (GabbleDisco *disco, const gchar *jid,
+                                 const gchar *node, LmMessageNode *result,
+                                 GError *disco_error, gpointer user_data);
 static GabbleIMChannel *new_im_channel (GabbleConnection *conn, GabbleHandle handle, gboolean suppress_handler);
 static void make_roster_channels (GabbleConnection *conn);
 static void discover_services (GabbleConnection *conn);
@@ -930,8 +945,9 @@ static void update_presence (GabbleConnection *self, GabbleHandle contact_handle
  *
  * Stage 1 is _gabble_connection_connect calling lm_connection_open
  * Stage 2 is connection_open_cb calling lm_connection_auth
- * Stage 3 is connection_auth_cb advertising initial presence and
- *  setting the CONNECTED state
+ * Stage 3 is connection_auth_cb initiating service discovery
+ * Stage 4 is connection_disco_cb advertising initial presence, requesting
+ *   the roster and setting the CONNECTED state
  */
 gboolean
 _gabble_connection_connect (GabbleConnection *conn,
@@ -2101,7 +2117,7 @@ connection_iq_roster_cb (LmMessageHandler *handler,
   iq_node = lm_message_get_node (message);
   query_node = lm_message_node_get_child (iq_node, "query");
 
-  if (!query_node || strcmp (XMLNS_ROSTER,
+  if (!query_node || strcmp (NS_ROSTER,
         lm_message_node_get_attribute (query_node, "xmlns")))
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
@@ -2637,8 +2653,7 @@ connection_open_cb (LmConnection *lmconn,
 
       /* the reason this function can fail is through network errors,
        * authentication failures are reported to our auth_cb */
-      connection_status_change (conn, TP_CONN_STATUS_DISCONNECTED,
-                                TP_CONN_STATUS_REASON_NETWORK_ERROR);
+      connection_disconnect (conn, TP_CONN_STATUS_REASON_NETWORK_ERROR);
     }
 }
 
@@ -2647,7 +2662,7 @@ connection_open_cb (LmConnection *lmconn,
  *
  * Stage 3 of connecting, this function is called by loudmouth after the
  * result of the non-blocking lm_connection_auth call is known. It sends
- * the user's initial presence to the server, marking them as available.
+ * a discovery request to find the server's features.
  */
 static void
 connection_auth_cb (LmConnection *lmconn,
@@ -2656,8 +2671,6 @@ connection_auth_cb (LmConnection *lmconn,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (data);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-  LmMessage *message = NULL;
-  LmMessageNode *node;
   GError *error = NULL;
 
   g_assert (priv);
@@ -2671,6 +2684,71 @@ connection_auth_cb (LmConnection *lmconn,
         TP_CONN_STATUS_REASON_AUTHENTICATION_FAILED);
 
       return;
+    }
+
+  if (!gabble_disco_request_with_timeout (priv->disco, GABBLE_DISCO_TYPE_INFO,
+                                          priv->stream_server, NULL, 5000,
+                                          connection_disco_cb, conn,
+                                          G_OBJECT(conn), &error))
+    {
+      g_debug ("%s: sending disco request failed: %s",
+          G_STRFUNC, error->message);
+
+      g_error_free (error);
+
+      connection_disconnect (conn, TP_CONN_STATUS_REASON_NETWORK_ERROR);
+    }
+}
+
+/**
+ * connection_disco_cb
+ *
+ * Stage 4 of connecting, this function is called by GabbleDisco after the
+ * result of the non-blocking server feature discovery call is known. It sends
+ * the user's initial presence to the server, marking them as available,
+ * and requests the roster.
+ */
+static void
+connection_disco_cb (GabbleDisco *disco, const gchar *jid,
+                     const gchar *node, LmMessageNode *result,
+                     GError *disco_error, gpointer user_data)
+{
+  GabbleConnection *conn = user_data;
+  GabbleConnectionPrivate *priv;
+  LmMessage *message = NULL;
+  LmMessageNode *msgnode;
+  GError *error;
+
+  g_assert (GABBLE_IS_CONNECTION (conn));
+  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+
+  if (disco_error)
+    {
+      g_debug ("%s: got disco error, setting no features: %s", G_STRFUNC, disco_error->message);
+    }
+  else
+    {
+      LmMessageNode *iter;
+
+      HANDLER_DEBUG (result, "got");
+
+      for (iter = result->children; iter != NULL; iter = iter->next)
+        {
+          if (0 == strcmp (iter->name, "feature"))
+            {
+              const gchar *var = lm_message_node_get_attribute (iter, "var");
+
+              if (var == NULL)
+                continue;
+
+              if (0 == strcmp (var, NS_PRESENCE_INVISIBLE))
+                priv->features |= GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE;
+              else if (0 == strcmp (var, NS_PRIVACY))
+                priv->features |= GABBLE_CONNECTION_FEATURES_PRIVACY;
+            }
+        }
+
+      g_debug ("%s: set features flags to %d", G_STRFUNC, priv->features);
     }
 
   /* go go gadget on-line */
@@ -2689,11 +2767,11 @@ connection_auth_cb (LmConnection *lmconn,
   message = lm_message_new_with_sub_type (NULL,
                                           LM_MESSAGE_TYPE_IQ,
                                           LM_MESSAGE_SUB_TYPE_GET);
-  node = lm_message_node_add_child (lm_message_get_node (message),
+  msgnode = lm_message_node_add_child (lm_message_get_node (message),
                                     "query", NULL);
-  lm_message_node_set_attribute (node, "xmlns", XMLNS_ROSTER);
+  lm_message_node_set_attribute (msgnode, "xmlns", NS_ROSTER);
 
-  if (!lm_connection_send (lmconn, message, &error))
+  if (!lm_connection_send (priv->conn, message, &error))
     {
       g_debug ("%s: initial roster request failed: %s",
                G_STRFUNC, error->message);
@@ -2714,9 +2792,11 @@ ERROR:
     g_error_free (error);
 
   if (message)
-    lm_message_unref(message);
+    lm_message_unref (message);
 
   connection_disconnect (conn, TP_CONN_STATUS_REASON_NETWORK_ERROR);
+
+  return;
 }
 
 /**

@@ -408,8 +408,6 @@ gboolean gabble_media_stream_codec_choice (GabbleMediaStream *obj, guint codec_i
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
 
-  GMS_DEBUG_WARNING (priv->session, "%s not yet implemented", G_STRFUNC);
-
   return TRUE;
 }
 
@@ -461,8 +459,6 @@ gboolean gabble_media_stream_native_candidates_prepared (GabbleMediaStream *obj,
   g_assert (GABBLE_IS_MEDIA_STREAM (obj));
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
-
-  GMS_DEBUG_WARNING (priv->session, "%s not yet implemented", G_STRFUNC);
 
   return TRUE;
 }

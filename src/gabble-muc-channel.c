@@ -147,7 +147,6 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   GabbleHandle self_handle_primary, self_handle;
   gboolean valid;
   GError *error;
-  GIntSet *empty, *set;
 
   obj = G_OBJECT_CLASS (gabble_muc_channel_parent_class)->
            constructor (type, n_props, props);
@@ -176,28 +175,6 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   /* initialize group mixin */
   gabble_group_mixin_init (obj, G_STRUCT_OFFSET (GabbleMucChannel, group),
                            handles, self_handle);
-
-  /* add ourself to remote pending */
-  empty = g_intset_new ();
-  set = g_intset_new ();
-  g_intset_add (set, self_handle);
-
-  gabble_group_mixin_change_members (obj, "", empty, empty, empty, set);
-
-  g_intset_destroy (empty);
-  g_intset_destroy (set);
-
-  /* seek to enter the room */
-  if (send_join_request (GABBLE_MUC_CHANNEL (obj), NULL, &error))
-    {
-      g_object_set (obj, "state", MUC_STATE_INITIATED, NULL);
-    }
-  else
-    {
-      g_error_free (error);
-
-      g_object_set (obj, "state", MUC_STATE_ENDED, NULL);
-    }
 
   return obj;
 }
@@ -510,6 +487,8 @@ gabble_muc_channel_dispose (GObject *object)
   if (priv->dispose_has_run)
     return;
 
+  g_debug (G_STRFUNC);
+
   priv->dispose_has_run = TRUE;
 
   clear_join_timer (self);
@@ -527,6 +506,8 @@ gabble_muc_channel_finalize (GObject *object)
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
   GabbleMucPendingMessage *msg;
   GabbleHandleRepo *handles;
+
+  g_debug (G_STRFUNC);
 
   /* free any data held directly by the object here */
   handles = _gabble_connection_get_handles (priv->conn);
@@ -573,15 +554,8 @@ static gboolean
 timeout_join (gpointer data)
 {
   GabbleMucChannel *chan = data;
-  /*GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
-  const gchar *msg;*/
 
   g_debug ("%s: join timed out, closing channel", G_STRFUNC);
-
-  /*
-  msg = (priv->state == MUC_STATE_AUTH)
-    ? "No password provided within timeout" : "Timed out";
-  */
 
   provide_password_return_if_pending (chan, FALSE);
 
@@ -702,7 +676,7 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
   g_intset_destroy (set);
 
   /* Inform the MUC if requested */
-  if (inform_muc)
+  if (inform_muc && priv->state >= MUC_STATE_INITIATED)
     {
       send_leave_message (chan, reason);
     }
@@ -1537,6 +1511,8 @@ static gboolean
 gabble_muc_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *message, GError **error)
 {
   GabbleMucChannelPrivate *priv;
+  GabbleGroupMixin *mixin;
+  GabbleHandle main_self_handle;
   const gchar *jid;
   LmMessage *msg;
   LmMessageNode *x_node, *invite_node;
@@ -1545,6 +1521,41 @@ gabble_muc_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *m
   g_assert (GABBLE_IS_MUC_CHANNEL (obj));
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
+
+  mixin = GABBLE_GROUP_MIXIN (obj);
+
+  result = gabble_connection_get_self_handle (priv->conn, &main_self_handle,
+                                              error);
+  if (!result)
+    return result;
+
+  if (handle == mixin->self_handle || handle == main_self_handle)
+    {
+      GIntSet *empty, *add, *remove;
+
+      /* add ourself to remote pending */
+      empty = g_intset_new ();
+      add = g_intset_new ();
+      remove = g_intset_new ();
+
+      g_intset_add (add, mixin->self_handle);
+      g_intset_add (remove, handle);
+
+      gabble_group_mixin_change_members (obj, "", empty, remove, empty, add);
+
+      g_intset_destroy (empty);
+      g_intset_destroy (add);
+      g_intset_destroy (remove);
+
+      /* seek to enter the room */
+      result = send_join_request (GABBLE_MUC_CHANNEL (obj), NULL, error);
+
+      g_object_set (obj, "state",
+                    (result) ? MUC_STATE_INITIATED : MUC_STATE_ENDED,
+                    NULL);
+
+      return result;
+    }
 
   msg = lm_message_new (priv->jid, LM_MESSAGE_TYPE_MESSAGE);
 

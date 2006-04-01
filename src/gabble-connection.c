@@ -1215,6 +1215,112 @@ connection_disconnected_cb (LmConnection *connection,
 
 }
 
+/**
+ * muc_channel_closed_cb:
+ *
+ * Signal callback for when a MUC channel is closed. Removes the references
+ * that #GabbleConnection holds to them.
+ */
+static void
+muc_channel_closed_cb (GabbleMucChannel *chan, gpointer user_data)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  GabbleHandle room_handle;
+
+  g_object_get (chan, "handle", &room_handle, NULL);
+
+  g_debug ("%s: removing MUC channel with handle %d", G_STRFUNC, room_handle);
+  g_hash_table_remove (priv->muc_channels, GINT_TO_POINTER (room_handle));
+}
+
+/**
+ * new_muc_channel
+ */
+static GabbleMucChannel *
+new_muc_channel (GabbleConnection *conn, GabbleHandle handle, gboolean suppress_handler)
+{
+  GabbleConnectionPrivate *priv;
+  GabbleMucChannel *chan;
+  char *object_path;
+
+  g_assert (GABBLE_IS_CONNECTION (conn));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+
+  object_path = g_strdup_printf ("%s/MucChannel%u", priv->object_path, handle);
+
+  chan = g_object_new (GABBLE_TYPE_MUC_CHANNEL,
+                       "connection", conn,
+                       "object-path", object_path,
+                       "handle", handle,
+                       NULL);
+
+  g_debug ("new_muc_channel: object path %s", object_path);
+
+  g_signal_connect (chan, "closed", (GCallback) muc_channel_closed_cb, conn);
+
+  g_hash_table_insert (priv->muc_channels, GINT_TO_POINTER (handle), chan);
+
+  g_signal_emit (conn, signals[NEW_CHANNEL], 0,
+                 object_path, TP_IFACE_CHANNEL_TYPE_TEXT,
+                 TP_HANDLE_TYPE_ROOM, handle,
+                 suppress_handler);
+
+  g_free (object_path);
+
+  return chan;
+}
+
+static gboolean
+node_is_for_muc (LmMessageNode *toplevel_node, LmMessageNode **muc_node)
+{
+  LmMessageNode *node;
+
+  for (node = toplevel_node->children; node; node = node->next)
+    {
+      if (strcmp (node->name, "x") == 0)
+        {
+          const gchar *xmlns;
+
+          xmlns = lm_message_node_get_attribute (node, "xmlns");
+          if (xmlns && strcmp (xmlns, MUC_XMLNS_USER) == 0)
+            {
+              if (muc_node)
+                {
+                  *muc_node = node;
+                }
+
+              return TRUE;
+            }
+        }
+    }
+
+  return FALSE;
+}
+
+static GabbleMucChannel *
+get_muc_from_jid (GabbleConnection *conn, const gchar *jid)
+{
+  gchar *base_jid;
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  GabbleHandle handle;
+  GabbleMucChannel *chan = NULL;
+
+  base_jid = gabble_handle_jid_get_base (jid);
+
+  if (gabble_handle_for_room_exists (priv->handles, base_jid))
+    {
+      handle = gabble_handle_for_room (priv->handles, base_jid);
+
+      chan = g_hash_table_lookup (priv->muc_channels,
+                                  GUINT_TO_POINTER (handle));
+    }
+
+  g_free (base_jid);
+
+  return chan;
+}
 
 /**
  * connection_message_cb:
@@ -1229,7 +1335,7 @@ connection_message_cb (LmMessageHandler *handler,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-  LmMessageNode *msg_node, *body_node, *node;
+  LmMessageNode *msg_node, *body_node, *muc_node, *node;
   const gchar *type, *from, *body, *body_offset;
   GabbleHandle handle;
   time_t stamp;
@@ -1241,9 +1347,66 @@ connection_message_cb (LmMessageHandler *handler,
   from = lm_message_node_get_attribute (msg_node, "from");
   body_node = lm_message_node_get_child (msg_node, "body");
 
-  if (from == NULL || body_node == NULL)
+  if (from == NULL)
     {
-      HANDLER_DEBUG (msg_node, "got a message without a from and/or body, ignoring");
+      HANDLER_DEBUG (msg_node, "got a message without a from field, ignoring");
+
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    }
+
+  /* is it a MUC message? */
+  if (node_is_for_muc (msg_node, &muc_node))
+    {
+      GabbleMucChannel *chan;
+
+      /* and an invitation? */
+      node = lm_message_node_get_child (muc_node, "invite");
+      if (node)
+        {
+          LmMessageNode *reason_node;
+          const gchar *reason;
+          GabbleGroupMixin *mixin;
+          GIntSet *empty, *set;
+
+          /* create the channel */
+          handle = gabble_handle_for_room (priv->handles, from);
+
+          chan = new_muc_channel (conn, handle, FALSE);
+
+          reason_node = lm_message_node_get_child (node, "reason");
+          if (reason_node)
+            {
+              reason = lm_message_node_get_value (reason_node);
+            }
+          else
+            {
+              reason = "";
+              HANDLER_DEBUG (msg_node, "no MUC invite reason specified");
+            }
+
+          /* add ourself to local pending */
+          mixin = GABBLE_GROUP_MIXIN (chan);
+
+          empty = g_intset_new ();
+          set = g_intset_new ();
+          g_intset_add (set, mixin->self_handle);
+
+          gabble_group_mixin_change_members (G_OBJECT (chan), reason, empty,
+                                             empty, set, empty);
+
+          g_intset_destroy (empty);
+          g_intset_destroy (set);
+
+          gabble_group_mixin_change_flags (G_OBJECT (chan),
+                                           TP_CHANNEL_GROUP_FLAG_CAN_ADD, 0);
+
+          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+        }
+    }
+
+  if (body_node == NULL)
+    {
+      HANDLER_DEBUG (msg_node, "got a message without a body field, ignoring");
 
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
@@ -1649,44 +1812,6 @@ update_presence (GabbleConnection *self, GabbleHandle contact_handle,
   emit_presence_update (self, handles);
 }
 
-static gboolean
-presence_node_is_for_muc (LmMessageNode *pres_node)
-{
-  LmMessageNode *x_node;
-
-  x_node = lm_message_node_get_child (pres_node, "x");
-  if (x_node != NULL)
-    {
-      return (strcmp (lm_message_node_get_attribute (x_node, "xmlns"),
-                      MUC_XMLNS_USER) == 0);
-    }
-
-  return FALSE;
-}
-
-static GabbleMucChannel *
-get_muc_from_jid (GabbleConnection *conn, const gchar *jid)
-{
-  gchar *base_jid;
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-  GabbleHandle handle;
-  GabbleMucChannel *chan = NULL;
-
-  base_jid = gabble_handle_jid_get_base (jid);
-
-  if (gabble_handle_for_room_exists (priv->handles, base_jid))
-    {
-      handle = gabble_handle_for_room (priv->handles, base_jid);
-
-      chan = g_hash_table_lookup (priv->muc_channels,
-                                  GUINT_TO_POINTER (handle));
-    }
-
-  g_free (base_jid);
-
-  return chan;
-}
-
 /**
  * connection_presence_cb:
  * @handler: #LmMessageHandler for this message
@@ -1744,7 +1869,7 @@ connection_presence_cb (LmMessageHandler *handler,
         }
     }
 
-  is_for_muc = presence_node_is_for_muc (pres_node);
+  is_for_muc = node_is_for_muc (pres_node, NULL);
 
   handle = gabble_handle_for_contact (priv->handles, from, is_for_muc);
 
@@ -2854,63 +2979,6 @@ new_im_channel (GabbleConnection *conn, GabbleHandle handle, gboolean suppress_h
   return chan;
 }
 
-/**
- * muc_channel_closed_cb:
- *
- * Signal callback for when a MUC channel is closed. Removes the references
- * that #GabbleConnection holds to them.
- */
-static void
-muc_channel_closed_cb (GabbleMucChannel *chan, gpointer user_data)
-{
-  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-  GabbleHandle room_handle;
-
-  g_object_get (chan, "handle", &room_handle, NULL);
-
-  g_debug ("%s: removing MUC channel with handle %d", G_STRFUNC, room_handle);
-  g_hash_table_remove (priv->muc_channels, GINT_TO_POINTER (room_handle));
-}
-
-/**
- * new_muc_channel
- */
-static GabbleMucChannel *
-new_muc_channel (GabbleConnection *conn, GabbleHandle handle, gboolean suppress_handler)
-{
-  GabbleConnectionPrivate *priv;
-  GabbleMucChannel *chan;
-  char *object_path;
-
-  g_assert (GABBLE_IS_CONNECTION (conn));
-
-  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-
-  object_path = g_strdup_printf ("%s/MucChannel%u", priv->object_path, handle);
-
-  chan = g_object_new (GABBLE_TYPE_MUC_CHANNEL,
-                       "connection", conn,
-                       "object-path", object_path,
-                       "handle", handle,
-                       NULL);
-
-  g_debug ("new_muc_channel: object path %s", object_path);
-
-  g_signal_connect (chan, "closed", (GCallback) muc_channel_closed_cb, conn);
-
-  g_hash_table_insert (priv->muc_channels, GINT_TO_POINTER (handle), chan);
-
-  g_signal_emit (conn, signals[NEW_CHANNEL], 0,
-                 object_path, TP_IFACE_CHANNEL_TYPE_TEXT,
-                 TP_HANDLE_TYPE_ROOM, handle,
-                 suppress_handler);
-
-  g_free (object_path);
-
-  return chan;
-}
-
 static void
 destroy_handle_sets (gpointer data)
 {
@@ -3811,7 +3879,30 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
 
           if (chan == NULL)
             {
+              GArray *members;
+              gboolean ret;
+
               chan = G_OBJECT (new_muc_channel (obj, handle, suppress_handler));
+
+              members = g_array_sized_new (FALSE, FALSE, sizeof (GabbleHandle), 1);
+              g_array_append_val (members, priv->self_handle);
+
+              ret = gabble_group_mixin_add_members (chan, members, "", error);
+
+              g_array_free (members, TRUE);
+
+              if (!ret)
+                {
+                  GError *close_err;
+
+                  if (!gabble_muc_channel_close (GABBLE_MUC_CHANNEL (chan),
+                                                 &close_err))
+                    {
+                      g_error_free (close_err);
+                    }
+
+                  return FALSE;
+                }
             }
         }
       else

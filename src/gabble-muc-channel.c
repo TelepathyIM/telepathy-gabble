@@ -1579,25 +1579,6 @@ gabble_muc_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *m
   result = _gabble_connection_send (priv->conn, msg, error);
   lm_message_unref (msg);
 
-  if (result)
-    {
-      GIntSet *empty, *set;
-      GabbleHandle room_handle;
-
-      /* add user to remote pending */
-      empty = g_intset_new ();
-      set = g_intset_new ();
-
-      contact_handle_to_room_identity (GABBLE_MUC_CHANNEL (obj), handle,
-                                       &room_handle, NULL);
-      g_intset_add (set, room_handle);
-
-      gabble_group_mixin_change_members (obj, "", empty, empty, empty, set);
-
-      g_intset_destroy (empty);
-      g_intset_destroy (set);
-    }
-
   return result;
 }
 

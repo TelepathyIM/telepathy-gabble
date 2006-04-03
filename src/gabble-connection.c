@@ -1193,7 +1193,7 @@ connection_disconnect (GabbleConnection *conn, TpConnectionStatusReason reason)
    * disconnection */
   close_all_channels (conn);
 
-  connection_status_change (conn, TP_CONN_STATUS_DISCONNECTED, TP_CONN_STATUS_REASON_REQUESTED);
+  connection_status_change (conn, TP_CONN_STATUS_DISCONNECTED, reason);
   lm_connection_close (priv->conn, NULL);
 }
 

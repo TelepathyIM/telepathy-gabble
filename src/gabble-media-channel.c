@@ -453,6 +453,10 @@ gboolean gabble_media_channel_close (GabbleMediaChannel *obj, GError **error)
   g_assert (GABBLE_IS_MEDIA_CHANNEL (obj));
 
   priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (obj);
+
+  if (priv->closed)
+    return TRUE;
+
   priv->closed = TRUE;
 
   if (priv->session)

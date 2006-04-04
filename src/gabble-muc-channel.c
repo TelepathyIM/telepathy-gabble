@@ -500,14 +500,13 @@ gabble_muc_channel_dispose (GObject *object)
     G_OBJECT_CLASS (gabble_muc_channel_parent_class)->dispose (object);
 }
 
-static void _gabble_muc_pending_free (GabbleMucPendingMessage *msg);
+static void clear_message_queue (GabbleMucChannel *chan);
 
 void
 gabble_muc_channel_finalize (GObject *object)
 {
   GabbleMucChannel *self = GABBLE_MUC_CHANNEL (object);
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
-  GabbleMucPendingMessage *msg;
   GabbleHandleRepo *handles;
 
   g_debug (G_STRFUNC);
@@ -519,10 +518,7 @@ gabble_muc_channel_finalize (GObject *object)
   g_free (priv->object_path);
   g_free (priv->self_jid);
 
-  while ((msg = g_queue_pop_head (priv->pending_messages)))
-    {
-      _gabble_muc_pending_free (msg);
-    }
+  clear_message_queue (self);
 
   g_queue_free (priv->pending_messages);
 
@@ -900,16 +896,12 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
   g_intset_destroy (set);
 }
 
-/**
- * _gabble_muc_channel_receive
- */
-gboolean
-_gabble_muc_channel_receive (GabbleMucChannel *chan,
-                             TpChannelTextMessageType type,
-                             GabbleHandle sender,
-                             time_t timestamp,
-                             const gchar *text,
-                             LmMessageNode *msg_node)
+static gboolean
+queue_message (GabbleMucChannel *chan,
+               TpChannelTextMessageType type,
+               GabbleHandle sender,
+               time_t timestamp,
+               const gchar *text)
 {
   GabbleMucChannelPrivate *priv;
   GabbleMucPendingMessage *msg;
@@ -918,14 +910,6 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
-
-  if (sender == priv->handle)
-    {
-      g_debug ("%s: ignoring message from the channel itself, support "
-               "for subject etc. needs a Telepathy interface",
-               G_STRFUNC);
-      return TRUE;
-    }
 
   msg = _gabble_muc_pending_new0 ();
 
@@ -980,7 +964,94 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
 
   g_debug ("%s: queued message %u", G_STRFUNC, msg->id);
 
-  return FALSE;
+  return TRUE;
+}
+
+static void
+clear_message_queue (GabbleMucChannel *chan)
+{
+  GabbleMucChannelPrivate *priv;
+  GabbleMucPendingMessage *msg;
+
+  g_assert (GABBLE_IS_MUC_CHANNEL (chan));
+
+  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+
+  while ((msg = g_queue_pop_head (priv->pending_messages)))
+    {
+      _gabble_muc_pending_free (msg);
+    }
+}
+
+/**
+ * _gabble_muc_channel_receive
+ */
+gboolean
+_gabble_muc_channel_receive (GabbleMucChannel *chan,
+                             TpChannelTextMessageType type,
+                             GabbleHandle sender,
+                             time_t timestamp,
+                             const gchar *text,
+                             LmMessageNode *msg_node)
+{
+  GabbleMucChannelPrivate *priv;
+
+  g_assert (GABBLE_IS_MUC_CHANNEL (chan));
+
+  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+
+  if (sender == priv->handle)
+    {
+      g_debug ("%s: ignoring message from the channel itself, support "
+               "for subject etc. needs a Telepathy interface",
+               G_STRFUNC);
+      return TRUE;
+    }
+
+  return queue_message (chan, type, sender, timestamp, text);
+}
+
+void
+_gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
+                                    GabbleHandle inviter,
+                                    const gchar *message)
+{
+  GabbleMucChannelPrivate *priv;
+  GabbleHandleRepo *handles;
+  GabbleHandle self_handle;
+  GError *error;
+  gboolean valid;
+  GIntSet *empty, *set_members, *set_pending;
+
+  g_assert (GABBLE_IS_MUC_CHANNEL (chan));
+
+  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+
+  handles = _gabble_connection_get_handles (priv->conn);
+  valid = gabble_connection_get_self_handle (priv->conn, &self_handle, &error);
+  g_assert (valid);
+
+  /* add ourself to local pending and the inviter to members */
+  empty = g_intset_new ();
+  set_members = g_intset_new ();
+  set_pending = g_intset_new ();
+
+  g_intset_add (set_members, inviter);
+  g_intset_add (set_pending, self_handle);
+
+  gabble_group_mixin_change_members (G_OBJECT (chan), message, set_members,
+                                     empty, set_pending, empty);
+
+  g_intset_destroy (empty);
+  g_intset_destroy (set_members);
+  g_intset_destroy (set_pending);
+
+  /* queue the message */
+  if (message[0] != '\0')
+    {
+      queue_message (chan, TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE, inviter,
+                     time(NULL), message);
+    }
 }
 
 static gint
@@ -1532,9 +1603,9 @@ gabble_muc_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *m
   if (!result)
     return result;
 
-  if (handle == mixin->self_handle || handle == main_self_handle)
+  if (handle == main_self_handle)
     {
-      GIntSet *empty, *add, *remove;
+      GIntSet *empty, *set;
 
       /* are we already a member or in remote pending? */
       if (handle_set_is_member (mixin->members, handle) ||
@@ -1548,17 +1619,14 @@ gabble_muc_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *m
 
       /* add ourself to remote pending */
       empty = g_intset_new ();
-      add = g_intset_new ();
-      remove = g_intset_new ();
+      set = g_intset_new ();
 
-      g_intset_add (add, mixin->self_handle);
-      g_intset_add (remove, handle);
+      g_intset_add (set, handle);
 
-      gabble_group_mixin_change_members (obj, "", empty, remove, empty, add);
+      gabble_group_mixin_change_members (obj, "", empty, empty, empty, set);
 
       g_intset_destroy (empty);
-      g_intset_destroy (add);
-      g_intset_destroy (remove);
+      g_intset_destroy (set);
 
       /* seek to enter the room */
       result = send_join_request (GABBLE_MUC_CHANNEL (obj), NULL, error);
@@ -1569,6 +1637,9 @@ gabble_muc_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *m
 
       /* deny adding */
       gabble_group_mixin_change_flags (obj, 0, TP_CHANNEL_GROUP_FLAG_CAN_ADD);
+
+      /* clear message queue (which might contain an invite reason) */
+      clear_message_queue (GABBLE_MUC_CHANNEL (obj));
 
       return result;
     }

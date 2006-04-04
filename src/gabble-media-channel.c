@@ -392,8 +392,7 @@ gabble_media_channel_dispose (GObject *object)
   if (priv->session)
     g_object_unref (priv->session);
 
-  if (!priv->closed)
-    g_signal_emit (self, signals[CLOSED], 0);
+  gabble_media_channel_close (self, NULL);
 
   if (G_OBJECT_CLASS (gabble_media_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_media_channel_parent_class)->dispose (object);

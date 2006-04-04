@@ -21,10 +21,22 @@
  */
 
 #include <dbus/dbus-glib.h>
+#include <string.h>
+#include <stdio.h>
 
 #include "gabble-group-mixin.h"
 #include "gabble-group-mixin-signals-marshal.h"
 #include "telepathy-errors.h"
+
+/*
+ * FIXME: move this and the other defines in gabble-media-session.h
+ *        to a common header
+ */
+#define ANSI_RESET      "\x1b[0m"
+#define ANSI_BOLD_ON    "\x1b[1m"
+#define ANSI_BOLD_OFF   "\x1b[22m"
+#define ANSI_FG_CYAN    "\x1b[36m"
+#define ANSI_FG_WHITE   "\x1b[37m"
 
 /**
  * gabble_group_mixin_class_get_offset_quark:
@@ -293,6 +305,34 @@ gabble_group_mixin_get_remote_pending_members (GObject *obj, GArray **ret, GErro
   return TRUE;
 }
 
+#define GFTS_APPEND_FLAG_IF_SET(flag) \
+  if (flags & flag) \
+    { \
+      if (i++ > 0) \
+        strcat (str, "\n              "); \
+      strcat (str, #flag); \
+    }
+
+static gchar *
+group_flags_to_string (TpChannelGroupFlags flags)
+{
+  gint i = 0;
+  gchar str[512] = "[" ANSI_BOLD_OFF;
+
+  GFTS_APPEND_FLAG_IF_SET (TP_CHANNEL_GROUP_FLAG_CAN_ADD);
+  GFTS_APPEND_FLAG_IF_SET (TP_CHANNEL_GROUP_FLAG_CAN_REMOVE);
+  GFTS_APPEND_FLAG_IF_SET (TP_CHANNEL_GROUP_FLAG_CAN_RESCIND);
+  GFTS_APPEND_FLAG_IF_SET (TP_CHANNEL_GROUP_FLAG_MESSAGE_ADD);
+  GFTS_APPEND_FLAG_IF_SET (TP_CHANNEL_GROUP_FLAG_MESSAGE_REMOVE);
+  GFTS_APPEND_FLAG_IF_SET (TP_CHANNEL_GROUP_FLAG_MESSAGE_ACCEPT);
+  GFTS_APPEND_FLAG_IF_SET (TP_CHANNEL_GROUP_FLAG_MESSAGE_REJECT);
+  GFTS_APPEND_FLAG_IF_SET (TP_CHANNEL_GROUP_FLAG_MESSAGE_RESCIND);
+
+  strcat (str, ANSI_BOLD_ON "]");
+
+  return g_strdup (str);
+}
+
 /**
  * gabble_group_mixin_change_flags:
  *
@@ -316,7 +356,24 @@ gabble_group_mixin_change_flags (GObject *obj,
 
   if (add != 0 || remove != 0)
     {
-      g_debug ("%s: emitting group flags changed, added 0x%X, removed 0x%X", G_STRFUNC, added, removed);
+      gchar *str_added, *str_removed, *str_flags;
+
+      str_added = group_flags_to_string (added);
+      str_removed = group_flags_to_string (removed);
+      str_flags = group_flags_to_string (mixin->group_flags);
+
+      printf (ANSI_BOLD_ON ANSI_FG_WHITE
+              "%s: emitting group flags changed\n"
+              "  added    : %s\n"
+              "  removed  : %s\n"
+              "  flags now: %s\n" ANSI_RESET,
+              G_STRFUNC, str_added, str_removed, str_flags);
+
+      fflush (stdout);
+
+      g_free (str_added);
+      g_free (str_removed);
+      g_free (str_flags);
 
       g_signal_emit(obj, mixin_cls->group_flags_changed_signal_id, 0, added, removed);
     }
@@ -326,24 +383,30 @@ gabble_group_mixin_change_flags (GObject *obj,
  * FIXME: Really horrible -- just a quick hack for debugging.
  */
 static gchar *
-g_array_to_string (const GArray *array)
+member_array_to_string (GabbleHandleRepo *repo, const GArray *array)
 {
   gchar *buf, *p;
   guint i;
 
-  buf = g_strdup ("(");
+  buf = g_strdup ("[" ANSI_BOLD_OFF);
 
   for (i = 0; i < array->len; i++)
     {
-      p = g_strdup_printf ("%s%s%u", buf,
-                           (i > 0) ? ", " : "",
-                           g_array_index (array, guint32, i));
+      GabbleHandle handle;
+      const gchar *handle_str;
+
+      handle = g_array_index (array, guint32, i);
+      handle_str = gabble_handle_inspect (repo, TP_HANDLE_TYPE_CONTACT, handle);
+
+      p = g_strdup_printf ("%s%s%u (%s)",
+                           buf, (i > 0) ? "\n              " : "",
+                           handle, handle_str);
 
       g_free (buf);
       buf = p;
     }
 
-  p = g_strdup_printf ("%s)", buf);
+  p = g_strdup_printf ("%s" ANSI_BOLD_ON "]", buf);
   g_free (buf);
 
   return p;
@@ -440,17 +503,21 @@ gabble_group_mixin_change_members (GObject *obj,
       arr_remote = g_intset_to_array (new_remote_pending);
 
       /* debug start */
-      add_str = g_array_to_string (arr_add);
-      rem_str = g_array_to_string (arr_remove);
-      local_str = g_array_to_string (arr_local);
-      remote_str = g_array_to_string (arr_remote);
+      add_str = member_array_to_string (mixin->handle_repo, arr_add);
+      rem_str = member_array_to_string (mixin->handle_repo, arr_remove);
+      local_str = member_array_to_string (mixin->handle_repo, arr_local);
+      remote_str = member_array_to_string (mixin->handle_repo, arr_remote);
 
-      g_debug ("%s: emitting members changed\n"
-               "  added: %s\n"
-               "  removed: %s\n"
-               "  local_pending: %s\n"
-               "  remote_pending: %s",
-               G_STRFUNC, add_str, rem_str, local_str, remote_str);
+      printf (ANSI_BOLD_ON ANSI_FG_CYAN
+              "%s: emitting members changed\n"
+              "  message       : \"%s\"\n"
+              "  added         : %s\n"
+              "  removed       : %s\n"
+              "  local_pending : %s\n"
+              "  remote_pending: %s\n" ANSI_RESET,
+              G_STRFUNC, message, add_str, rem_str, local_str, remote_str);
+
+      fflush (stdout);
 
       g_free (add_str);
       g_free (rem_str);

@@ -1381,14 +1381,20 @@ connection_message_cb (LmMessageHandler *handler,
       if (node)
         {
           LmMessageNode *reason_node;
-          const gchar *reason;
-          GabbleGroupMixin *mixin;
-          GIntSet *empty, *set;
+          const gchar *invite_from, *reason;
+          GabbleHandle inviter_handle;
 
-          /* create the channel */
-          handle = gabble_handle_for_room (priv->handles, from);
+          invite_from = lm_message_node_get_attribute (node, "from");
+          if (invite_from == NULL)
+            {
+              HANDLER_DEBUG (msg_node, "got a MUC invitation message without "
+                             "a from field on the invite node, ignoring");
 
-          chan = new_muc_channel (conn, handle, FALSE);
+              return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+            }
+
+          inviter_handle = gabble_handle_for_contact (priv->handles,
+                                                      invite_from, FALSE);
 
           reason_node = lm_message_node_get_child (node, "reason");
           if (reason_node)
@@ -1401,21 +1407,12 @@ connection_message_cb (LmMessageHandler *handler,
               HANDLER_DEBUG (msg_node, "no MUC invite reason specified");
             }
 
-          /* add ourself to local pending */
-          mixin = GABBLE_GROUP_MIXIN (chan);
+          /* create the channel */
+          handle = gabble_handle_for_room (priv->handles, from);
 
-          empty = g_intset_new ();
-          set = g_intset_new ();
-          g_intset_add (set, mixin->self_handle);
+          chan = new_muc_channel (conn, handle, FALSE);
 
-          gabble_group_mixin_change_members (G_OBJECT (chan), reason, empty,
-                                             empty, set, empty);
-
-          g_intset_destroy (empty);
-          g_intset_destroy (set);
-
-          gabble_group_mixin_change_flags (G_OBJECT (chan),
-                                           TP_CHANNEL_GROUP_FLAG_CAN_ADD, 0);
+          _gabble_muc_channel_handle_invited (chan, inviter_handle, reason);
 
           return LM_HANDLER_RESULT_REMOVE_MESSAGE;
         }

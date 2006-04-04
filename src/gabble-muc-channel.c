@@ -176,6 +176,9 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   gabble_group_mixin_init (obj, G_STRUCT_OFFSET (GabbleMucChannel, group),
                            handles, self_handle);
 
+  /* allow adding ourself */
+  gabble_group_mixin_change_flags (obj, TP_CHANNEL_GROUP_FLAG_CAN_ADD, 0);
+
   return obj;
 }
 
@@ -1533,6 +1536,16 @@ gabble_muc_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *m
     {
       GIntSet *empty, *add, *remove;
 
+      /* are we already a member or in remote pending? */
+      if (handle_set_is_member (mixin->members, handle) ||
+          handle_set_is_member (mixin->remote_pending, handle))
+        {
+          *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                                "already a member or in remote pending");
+
+          return FALSE;
+        }
+
       /* add ourself to remote pending */
       empty = g_intset_new ();
       add = g_intset_new ();
@@ -1554,7 +1567,19 @@ gabble_muc_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *m
                     (result) ? MUC_STATE_INITIATED : MUC_STATE_ENDED,
                     NULL);
 
+      /* deny adding */
+      gabble_group_mixin_change_flags (obj, 0, TP_CHANNEL_GROUP_FLAG_CAN_ADD);
+
       return result;
+    }
+
+  /* check that we're indeed a member when attempting to invite others */
+  if (priv->state < MUC_STATE_JOINED)
+    {
+      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                            "channel membership is required for inviting others");
+
+      return FALSE;
     }
 
   msg = lm_message_new (priv->jid, LM_MESSAGE_TYPE_MESSAGE);

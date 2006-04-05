@@ -49,6 +49,8 @@ enum
 {
     CLOSED,
     PASSWORD_FLAGS_CHANGED,
+    PROPERTIES_CHANGED,
+    PROPERTY_FLAGS_CHANGED,
     RECEIVED,
     SENT,
     LAST_SIGNAL
@@ -453,6 +455,24 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   gabble_muc_channel_marshal_VOID__INT_INT,
                   G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_UINT);
 
+  signals[PROPERTIES_CHANGED] =
+    g_signal_new ("properties-changed",
+                  G_OBJECT_CLASS_TYPE (gabble_muc_channel_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_muc_channel_marshal_VOID__BOXED,
+                  G_TYPE_NONE, 1, (dbus_g_type_get_map ("GHashTable", G_TYPE_UINT, G_TYPE_VALUE)));
+
+  signals[PROPERTY_FLAGS_CHANGED] =
+    g_signal_new ("property-flags-changed",
+                  G_OBJECT_CLASS_TYPE (gabble_muc_channel_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_muc_channel_marshal_VOID__BOXED,
+                  G_TYPE_NONE, 1, (dbus_g_type_get_map ("GHashTable", G_TYPE_UINT, G_TYPE_UINT)));
+
   signals[RECEIVED] =
     g_signal_new ("received",
                   G_OBJECT_CLASS_TYPE (gabble_muc_channel_class),
@@ -763,9 +783,7 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
       g_debug ("%s: password required to join, changing password flags",
                G_STRFUNC);
 
-      change_password_flags (chan,
-                             TP_CHANNEL_PASSWORD_FLAG_REQUIRED ^
-                             TP_CHANNEL_PASSWORD_FLAG_PROVIDE, 0);
+      change_password_flags (chan, TP_CHANNEL_PASSWORD_FLAG_PROVIDE, 0);
 
       g_object_set (chan, "state", MUC_STATE_AUTH, NULL);
 
@@ -1295,26 +1313,6 @@ gboolean gabble_muc_channel_get_members (GabbleMucChannel *obj, GArray ** ret, G
 }
 
 
-/**
- * gabble_muc_channel_get_password
- *
- * Implements DBus method GetPassword
- * on interface org.freedesktop.Telepathy.Channel.Interface.Password
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean gabble_muc_channel_get_password (GabbleMucChannel *obj, gchar ** ret, GError **error)
-{
-  *error = g_error_new (TELEPATHY_ERRORS, NotImplemented,
-                        "deliberately not implemented as this "
-                        "will go into RoomProperties");
-
-  return FALSE;
-}
 
 
 /**
@@ -1559,28 +1557,6 @@ gboolean gabble_muc_channel_send (GabbleMucChannel *obj, guint type, const gchar
 }
 
 
-/**
- * gabble_muc_channel_set_password
- *
- * Implements DBus method SetPassword
- * on interface org.freedesktop.Telepathy.Channel.Interface.Password
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean gabble_muc_channel_set_password (GabbleMucChannel *obj, const gchar * password, GError **error)
-{
-  *error = g_error_new (TELEPATHY_ERRORS, NotImplemented,
-                        "deliberately not implemented as this "
-                        "will go into RoomProperties");
-
-  return FALSE;
-}
-
-
 static gboolean
 gabble_muc_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *message, GError **error)
 {
@@ -1744,5 +1720,59 @@ gabble_muc_channel_remove_member (GObject *obj, GabbleHandle handle, const gchar
   lm_message_unref (msg);
 
   return result;
+}
+
+
+/**
+ * gabble_muc_channel_list_properties
+ *
+ * Implements DBus method ListProperties
+ * on interface org.freedesktop.Telepathy.Channel.Interface.RoomProperties
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_muc_channel_list_properties (GabbleMucChannel *obj, GHashTable ** ret, GError **error)
+{
+  return TRUE;
+}
+
+
+/**
+ * gabble_muc_channel_get_properties
+ *
+ * Implements DBus method GetProperties
+ * on interface org.freedesktop.Telepathy.Channel.Interface.RoomProperties
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_muc_channel_get_properties (GabbleMucChannel *obj, const GArray * properties, GHashTable ** ret, GError **error)
+{
+  return TRUE;
+}
+
+
+/**
+ * gabble_muc_channel_set_properties
+ *
+ * Implements DBus method SetProperties
+ * on interface org.freedesktop.Telepathy.Channel.Interface.RoomProperties
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_muc_channel_set_properties (GabbleMucChannel *obj, GHashTable * properties, GError **error)
+{
+  return TRUE;
 }
 

@@ -1,5 +1,53 @@
 <!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 <node name="/GabbleMucChannel">
+  <interface name="org.freedesktop.Telepathy.Channel.Interface.Password">
+    <signal name="PasswordFlagsChanged">
+      <arg type="u" name="added" />
+      <arg type="u" name="removed" />
+    </signal>
+    <method name="GetPasswordFlags">
+      <arg direction="out" type="u" />
+    </method>
+    <method name="ProvidePassword">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value=""/>
+      <arg direction="in"  type="s" name="password" />
+      <arg direction="out" type="b" />
+    </method>
+  </interface>
+  <interface name="org.freedesktop.Telepathy.Channel">
+    <method name="GetHandle">
+      <arg direction="out" type="u" />
+      <arg direction="out" type="u" />
+    </method>
+    <method name="GetInterfaces">
+      <arg direction="out" type="as" />
+    </method>
+    <method name="GetChannelType">
+      <arg direction="out" type="s" />
+    </method>
+    <signal name="Closed">
+    </signal>
+    <method name="Close">
+    </method>
+  </interface>
+  <interface name="org.freedesktop.Telepathy.Channel.Interface.RoomProperties">
+    <signal name="PropertiesChanged">
+      <arg type="a{uv}" name="properties" />
+    </signal>
+    <method name="ListProperties">
+      <arg direction="out" type="a{u(ssu)}" />
+    </method>
+    <signal name="PropertyFlagsChanged">
+      <arg type="a{uu}" name="properties" />
+    </signal>
+    <method name="SetProperties">
+      <arg direction="in"  type="a{uv}" name="properties" />
+    </method>
+    <method name="GetProperties">
+      <arg direction="in"  type="au" name="properties" />
+      <arg direction="out" type="a{uv}" />
+    </method>
+  </interface>
   <interface name="org.freedesktop.Telepathy.Channel.Interface.Group">
     <method name="RemoveMembers">
       <arg direction="in"  type="au" name="contacts" />
@@ -59,41 +107,5 @@
       <arg type="u" name="type" />
       <arg type="s" name="text" />
     </signal>
-  </interface>
-  <interface name="org.freedesktop.Telepathy.Channel">
-    <method name="GetHandle">
-      <arg direction="out" type="u" />
-      <arg direction="out" type="u" />
-    </method>
-    <method name="GetInterfaces">
-      <arg direction="out" type="as" />
-    </method>
-    <method name="GetChannelType">
-      <arg direction="out" type="s" />
-    </method>
-    <signal name="Closed">
-    </signal>
-    <method name="Close">
-    </method>
-  </interface>
-  <interface name="org.freedesktop.Telepathy.Channel.Interface.Password">
-    <method name="SetPassword">
-      <arg direction="in"  type="s" name="password" />
-    </method>
-    <signal name="PasswordFlagsChanged">
-      <arg type="u" name="added" />
-      <arg type="u" name="removed" />
-    </signal>
-    <method name="GetPasswordFlags">
-      <arg direction="out" type="u" />
-    </method>
-    <method name="GetPassword">
-      <arg direction="out" type="s" />
-    </method>
-    <method name="ProvidePassword">
-      <annotation name="org.freedesktop.DBus.GLib.Async" value=""/>
-      <arg direction="in"  type="s" name="password" />
-      <arg direction="out" type="b" />
-    </method>
   </interface>
 </node>

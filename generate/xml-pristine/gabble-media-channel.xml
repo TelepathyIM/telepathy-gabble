@@ -63,6 +63,14 @@
       <arg type="o" name="session_handler" />
       <arg type="s" name="type" />
     </signal>
+    <signal name="StreamStateChanged">
+      <arg type="u" name="contact_handle" />
+      <arg type="u" name="stream_id" />
+      <arg type="u" name="stream_state" />
+    </signal>
+    <method name="GetStreams">
+      <arg direction="out" type="a(uuuu)" />
+    </method>
     <method name="GetSessionHandlers">
       <arg direction="out" type="a(uos)" />
     </method>

@@ -990,5 +990,15 @@ _gabble_media_session_debug (GabbleMediaSession *session,
 
   fflush (stdout);
 }
+
+void
+_gabble_media_session_stream_state (GabbleMediaSession *session, guint state)
+{
+  GabbleMediaSessionPrivate *priv;
+  g_assert (GABBLE_IS_MEDIA_SESSION (session));
+  priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+  _gabble_media_channel_stream_state (priv->channel, state);
+}
+
 #endif /* _GMS_DEBUG_LEVEL */
 

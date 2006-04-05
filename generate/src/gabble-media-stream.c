@@ -260,6 +260,24 @@ gboolean gabble_media_stream_ready (GabbleMediaStream *obj, const GPtrArray * co
 
 
 /**
+ * gabble_media_stream_stream_state
+ *
+ * Implements DBus method StreamState
+ * on interface org.freedesktop.Telepathy.Media.StreamHandler
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_media_stream_stream_state (GabbleMediaStream *obj, guint state, GError **error)
+{
+  return TRUE;
+}
+
+
+/**
  * gabble_media_stream_supported_codecs
  *
  * Implements DBus method SupportedCodecs

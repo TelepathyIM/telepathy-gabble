@@ -36,6 +36,7 @@ enum
     GROUP_FLAGS_CHANGED,
     MEMBERS_CHANGED,
     NEW_MEDIA_SESSION_HANDLER,
+    STREAM_STATE_CHANGED,
     LAST_SIGNAL
 };
 
@@ -107,6 +108,15 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
                   NULL, NULL,
                   gabble_media_channel_marshal_VOID__INT_STRING_STRING,
                   G_TYPE_NONE, 3, G_TYPE_UINT, DBUS_TYPE_G_OBJECT_PATH, G_TYPE_STRING);
+
+  signals[STREAM_STATE_CHANGED] =
+    g_signal_new ("stream-state-changed",
+                  G_OBJECT_CLASS_TYPE (gabble_media_channel_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_media_channel_marshal_VOID__INT_INT_INT,
+                  G_TYPE_NONE, 3, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT);
 
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_media_channel_class), &dbus_glib_gabble_media_channel_object_info);
 }
@@ -334,6 +344,24 @@ gboolean gabble_media_channel_get_self_handle (GabbleMediaChannel *obj, guint* r
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 gboolean gabble_media_channel_get_session_handlers (GabbleMediaChannel *obj, GPtrArray ** ret, GError **error)
+{
+  return TRUE;
+}
+
+
+/**
+ * gabble_media_channel_get_streams
+ *
+ * Implements DBus method GetStreams
+ * on interface org.freedesktop.Telepathy.Channel.Type.StreamedMedia
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_media_channel_get_streams (GabbleMediaChannel *obj, GPtrArray ** ret, GError **error)
 {
   return TRUE;
 }

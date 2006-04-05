@@ -44,11 +44,20 @@ G_DEFINE_TYPE(GabbleMediaChannel, gabble_media_channel, G_TYPE_OBJECT)
       G_TYPE_STRING, \
       G_TYPE_INVALID))
 
+#define TP_CHANNEL_STREAM_TYPE (dbus_g_type_get_struct ("GValueArray", \
+      G_TYPE_UINT, \
+      G_TYPE_UINT, \
+      G_TYPE_UINT, \
+      G_TYPE_UINT, \
+      G_TYPE_INVALID))
+
+
 /* signal enum */
 enum
 {
     CLOSED,
     NEW_MEDIA_SESSION_HANDLER,
+    STREAM_STATE_CHANGED,
     LAST_SIGNAL
 };
 
@@ -375,6 +384,15 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
                                  gabble_media_channel_add_member,
                                  gabble_media_channel_remove_member);
 
+  signals[STREAM_STATE_CHANGED] =
+    g_signal_new ("stream-state-changed",
+                  G_OBJECT_CLASS_TYPE (gabble_media_channel_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_media_channel_marshal_VOID__INT_INT_INT,
+                  G_TYPE_NONE, 3, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT);
+
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_media_channel_class), &dbus_glib_gabble_media_channel_object_info);
 }
 
@@ -676,6 +694,71 @@ gboolean gabble_media_channel_get_session_handlers (GabbleMediaChannel *obj, GPt
 
 
 /**
+ * gabble_media_channel_get_streams
+ *
+ * Implements DBus method GetStreams
+ * on interface org.freedesktop.Telepathy.Channel.Type.StreamedMedia
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_media_channel_get_streams (GabbleMediaChannel *obj, GPtrArray ** ret, GError **error)
+{
+  GabbleMediaChannelPrivate *priv;
+  GArray *array;
+  GabbleHandle handle,self_handle;
+  int i;
+
+  g_assert (GABBLE_IS_MEDIA_CHANNEL (obj));
+
+  priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (obj);
+  if (!gabble_connection_get_self_handle (priv->conn, &self_handle, error))
+    {
+      return FALSE;
+    }
+  if (gabble_group_mixin_get_members (G_OBJECT (obj), &array, error))
+    {
+      if (array->len < 2)
+        {
+          *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                                "Channel has only one member");
+          return FALSE;
+        }
+
+      *ret = g_ptr_array_sized_new (array->len - 1);
+
+      for (i =0; i < array->len; i++)
+        {
+          handle = g_array_index(array, guint, i);
+          if (handle != self_handle)
+            {
+              GValue streams = { 0, };
+              g_value_init (&streams, TP_CHANNEL_STREAM_TYPE);
+              g_value_set_static_boxed (&streams,
+                  dbus_g_type_specialized_construct (TP_CHANNEL_STREAM_TYPE));
+
+              dbus_g_type_struct_set (&streams,
+                  0, handle,
+                  1, 1,
+                  2, TP_CODEC_MEDIA_TYPE_AUDIO,
+                  1, TP_MEDIA_STREAM_STATE_STOPPED,
+                  G_MAXUINT);
+
+
+              g_ptr_array_add (*ret, g_value_get_boxed (&streams));
+
+            }
+        }
+    }
+
+  return TRUE;
+}
+
+
+/**
  * gabble_media_channel_remove_members
  *
  * Implements DBus method RemoveMembers
@@ -887,3 +970,28 @@ session_state_changed_cb (GabbleMediaSession *session,
 
 }
 
+void 
+_gabble_media_channel_stream_state (GabbleMediaChannel *chan, guint state)
+{
+  GError *error;
+  GArray *array;
+  GabbleHandle handle,self_handle;
+  int i;
+
+  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
+
+  if (!gabble_connection_get_self_handle (priv->conn, &self_handle, &error))
+    return;
+
+  if (gabble_group_mixin_get_members (G_OBJECT (chan), &array, &error))
+    {
+      for (i =0; i < array->len; i++)
+        {
+          handle = g_array_index(array, guint, i);
+          if (handle != self_handle)
+            {
+              g_signal_emit (chan, signals[STREAM_STATE_CHANGED], 0, handle, i, state);
+            }
+        }
+    }
+}

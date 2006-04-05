@@ -37,6 +37,9 @@
     <signal name="SetRemoteCodecs">
       <arg type="a(usuuua{ss})" name="codecs" />
     </signal>
+    <method name="StreamState">
+      <arg direction="in"  type="u" name="state" />
+    </method>
     <signal name="SetActiveCandidatePair">
       <arg type="s" name="native_candidate_id" />
       <arg type="s" name="remote_candidate_id" />

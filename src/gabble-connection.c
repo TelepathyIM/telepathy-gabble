@@ -560,6 +560,15 @@ gabble_connection_dispose (GObject *object)
     G_OBJECT_CLASS (gabble_connection_parent_class)->dispose (object);
 }
 
+static gboolean
+_unref_lm_connection (gpointer data)
+{
+  LmConnection *conn = (LmConnection *) data;
+
+  lm_connection_unref (conn);
+  return FALSE;
+}
+
 void
 gabble_connection_finalize (GObject *object)
 {
@@ -568,8 +577,13 @@ gabble_connection_finalize (GObject *object)
 
   g_debug ("%s called with %p", G_STRFUNC, object);
 
+  /*
+   * The Loudmouth connection can't be unref'd immediately because this
+   * function might (indirectly) return into Loudmouth code which expects the
+   * connection to always be there.
+   */
   if (priv->conn)
-    lm_connection_unref (priv->conn);
+    g_idle_add (_unref_lm_connection, priv->conn);
 
   g_free (priv->protocol);
   g_free (priv->connect_server);
@@ -1220,6 +1234,7 @@ connection_disconnected_cb (LmConnection *connection,
     case LM_DISCONNECT_REASON_ERROR:
     case LM_DISCONNECT_REASON_UNKNOWN:
       tp_reason = priv->disconnect_reason;
+      break;
     default:
       g_warning ("%s: Unknown reason code returned from libloudmouth",
           G_STRFUNC);

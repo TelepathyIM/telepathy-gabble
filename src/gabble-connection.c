@@ -1286,6 +1286,7 @@ new_muc_channel (GabbleConnection *conn, GabbleHandle handle, gboolean suppress_
                        "connection", conn,
                        "object-path", object_path,
                        "handle", handle,
+                       "disco", priv->disco,
                        NULL);
 
   g_debug ("new_muc_channel: object path %s", object_path);

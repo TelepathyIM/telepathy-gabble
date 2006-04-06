@@ -26,8 +26,16 @@
 
 G_BEGIN_DECLS
 
+typedef struct
+{
+  gpointer key;
+  gpointer value;
+} TpKeyValue;
+
 DBusGConnection * tp_get_bus ();
 DBusGProxy * tp_get_bus_proxy ();
+GSList *tp_hash_to_key_value_list (GHashTable *hash);
+void tp_key_value_list_free (GSList *list);
 
 G_END_DECLS
 

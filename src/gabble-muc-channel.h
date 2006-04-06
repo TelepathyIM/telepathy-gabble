@@ -71,6 +71,13 @@ GType gabble_muc_channel_get_type(void);
       G_TYPE_UINT, \
       G_TYPE_STRING, \
       G_TYPE_INVALID))
+#define TP_TYPE_ROOM_PROPERTY_STRUCT (dbus_g_type_get_struct ("GValueArray", \
+      G_TYPE_STRING, \
+      G_TYPE_STRING, \
+      G_TYPE_UINT, \
+      G_TYPE_INVALID))
+#define TP_TYPE_ROOM_PROPERTY_LIST (dbus_g_type_get_collection ("GPtrArray", \
+      TP_TYPE_ROOM_PROPERTY_STRUCT))
 
 void _gabble_muc_channel_presence_error (GabbleMucChannel *chan, const gchar *jid, LmMessageNode *pres_node);
 void _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan, GabbleHandle handle, LmMessageNode *pres_node);

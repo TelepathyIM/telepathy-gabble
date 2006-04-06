@@ -909,8 +909,7 @@ push_remote_codecs (GabbleMediaStream *stream)
   GMS_DEBUG_EVENT (priv->session, "passing %d remote codecs to voip-engine",
                    codecs->len);
 
-  g_signal_emit (stream, signals[SET_REMOTE_CODECS], 0,
-                 codecs);
+  g_signal_emit (stream, signals[SET_REMOTE_CODECS], 0, codecs);
 
   g_value_take_boxed (&priv->remote_codecs,
       dbus_g_type_specialized_construct (TP_TYPE_CODEC_LIST));

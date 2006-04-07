@@ -508,13 +508,10 @@ gboolean gabble_muc_channel_send (GabbleMucChannel *obj, guint type, const gchar
  * Implements DBus method SetProperties
  * on interface org.freedesktop.Telepathy.Channel.Interface.RoomProperties
  *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
+ * @context: The DBUS invocation context to use to return values
+ *           or throw an error.
  */
-gboolean gabble_muc_channel_set_properties (GabbleMucChannel *obj, GHashTable * properties, GError **error)
+gboolean gabble_muc_channel_set_properties (GabbleMucChannel *obj, GHashTable * properties, DBusGMethodInvocation *context)
 {
   return TRUE;
 }

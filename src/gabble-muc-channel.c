@@ -81,11 +81,50 @@ typedef enum {
 
 static const gchar *muc_states[] =
 {
-    "MUC_STATE_CREATED",
-    "MUC_STATE_INITIATED",
-    "MUC_STATE_AUTH",
-    "MUC_STATE_JOINED",
-    "MUC_STATE_ENDED",
+  "MUC_STATE_CREATED",
+  "MUC_STATE_INITIATED",
+  "MUC_STATE_AUTH",
+  "MUC_STATE_JOINED",
+  "MUC_STATE_ENDED",
+};
+
+/* role and affiliation enums */
+typedef enum {
+    ROLE_NONE = 0,
+    ROLE_VISITOR,
+    ROLE_PARTICIPANT,
+    ROLE_MODERATOR,
+
+    NUM_ROLES,
+
+    INVALID_ROLE,
+} GabbleMucRole;
+
+typedef enum {
+    AFFILIATION_NONE = 0,
+    AFFILIATION_MEMBER,
+    AFFILIATION_ADMIN,
+    AFFILIATION_OWNER,
+
+    NUM_AFFILIATIONS,
+
+    INVALID_AFFILIATION,
+} GabbleMucAffiliation;
+
+static const gchar *muc_roles[NUM_ROLES] =
+{
+  "none",
+  "visitor",
+  "participant",
+  "moderator",
+};
+
+static const gchar *muc_affiliations[NUM_AFFILIATIONS] =
+{
+  "none",
+  "member",
+  "admin",
+  "owner",
 };
 
 /* room properties */
@@ -160,6 +199,8 @@ struct _GabbleMucChannelPrivate
   const gchar *jid;
 
   gchar *self_jid;
+  GabbleMucRole self_role;
+  GabbleMucAffiliation self_affil;
 
   guint recv_id;
   GQueue *pending_messages;
@@ -227,6 +268,10 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   contact_handle_to_room_identity (GABBLE_MUC_CHANNEL (obj), self_handle_primary,
                                    &self_handle, &priv->self_jid);
 
+  /* initialize our own role and affiliation */
+  priv->self_role = ROLE_NONE;
+  priv->self_affil = AFFILIATION_NONE;
+
   /* register object on the bus */
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
@@ -270,7 +315,7 @@ static void room_properties_emit_flags (GabbleMucChannel *chan, GArray *props);
 
 static void properties_disco_cb (GabbleDisco *disco, const gchar *jid,
                                  const gchar *node, LmMessageNode *query_result,
-                                 GError* error, gpointer user_data)
+                                 GError *error, gpointer user_data)
 {
   GabbleMucChannel *chan = user_data;
   GabbleMucChannelPrivate *priv;
@@ -285,12 +330,21 @@ static void properties_disco_cb (GabbleDisco *disco, const gchar *jid,
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
 
-  /* FIXME: check if an error is returned */
+  if (error != NULL)
+    {
+      HANDLER_DEBUG (query_result, "disco query failed");
+      return;
+    }
 
   changed_props_val = g_array_sized_new (FALSE, FALSE, sizeof (guint),
                                          NUM_ROOM_PROPS);
   changed_props_flags = g_array_sized_new (FALSE, FALSE, sizeof (guint),
                                            NUM_ROOM_PROPS);
+
+
+  /*
+   * Update room definition.
+   */
 
   /* ROOM_PROP_NAME */
   lm_node = lm_message_node_get_child (query_result, "identity");
@@ -437,6 +491,53 @@ static void properties_disco_cb (GabbleDisco *disco, const gchar *jid,
         }
     }
 
+
+  /*
+   * Update write capabilities based on room configuration
+   * and own role and affiliation.
+   */
+
+  /* Subject */
+  /* FIXME: this might be allowed for participants/moderators only,
+   *        so for now just rely on the server making that call. */
+  if (priv->self_role >= ROLE_VISITOR)
+    {
+      room_property_change_flags (chan, ROOM_PROP_SUBJECT,
+          TP_CHANNEL_ROOM_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
+    }
+
+  /* Room definition */
+  if (priv->self_affil == AFFILIATION_OWNER)
+    {
+      room_property_change_flags (chan, ROOM_PROP_ANONYMOUS,
+          TP_CHANNEL_ROOM_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
+
+      room_property_change_flags (chan, ROOM_PROP_INVITE_ONLY,
+          TP_CHANNEL_ROOM_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
+
+      room_property_change_flags (chan, ROOM_PROP_MODERATED,
+          TP_CHANNEL_ROOM_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
+
+      room_property_change_flags (chan, ROOM_PROP_NAME,
+          TP_CHANNEL_ROOM_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
+
+      room_property_change_flags (chan, ROOM_PROP_PASSWORD,
+          TP_CHANNEL_ROOM_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
+
+      room_property_change_flags (chan, ROOM_PROP_PASSWORD_REQUIRED,
+          TP_CHANNEL_ROOM_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
+
+      room_property_change_flags (chan, ROOM_PROP_PERSISTENT,
+          TP_CHANNEL_ROOM_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
+
+      room_property_change_flags (chan, ROOM_PROP_PRIVATE,
+          TP_CHANNEL_ROOM_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
+    }
+
+
+  /*
+   * Emit signals.
+   */
   room_properties_emit_changed (chan, changed_props_val);
   room_properties_emit_flags (chan, changed_props_flags);
 
@@ -1088,6 +1189,54 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
   }
 }
 
+static GabbleMucRole
+get_role_from_string (const gchar *role)
+{
+  guint i;
+
+  if (role == NULL)
+    {
+      return ROLE_VISITOR;
+    }
+
+  for (i = 0; i < NUM_ROLES; i++)
+    {
+      if (strcmp (role, muc_roles[i]) == 0)
+        {
+          return i;
+        }
+    }
+
+  g_warning ("%s: unknown role '%s' -- defaulting to ROLE_VISITOR",
+             G_STRFUNC, role);
+
+  return ROLE_VISITOR;
+}
+
+static GabbleMucAffiliation
+get_affiliation_from_string (const gchar *affil)
+{
+  guint i;
+
+  if (affil == NULL)
+    {
+      return AFFILIATION_NONE;
+    }
+
+  for (i = 0; i < NUM_AFFILIATIONS; i++)
+    {
+      if (strcmp (affil, muc_affiliations[i]) == 0)
+        {
+          return i;
+        }
+    }
+
+  g_warning ("%s: unknown affiliation '%s' -- defaulting to "
+             "AFFILIATION_NONE", G_STRFUNC, affil);
+
+  return AFFILIATION_NONE;
+}
+
 /**
  * _gabble_muc_channel_member_presence_updated
  */
@@ -1132,14 +1281,8 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
       return;
     }
 
-  affil = lm_message_node_get_attribute (item_node, "affiliation");
   role = lm_message_node_get_attribute (item_node, "role");
-  if (affil == NULL || role == NULL)
-    {
-      g_warning ("%s: item node missing affiliation and/or role attributes, "
-                 "ignoring", G_STRFUNC);
-      return;
-    }
+  affil = lm_message_node_get_attribute (item_node, "affiliation");
 
   /* update channel members according to presence */
   empty = g_intset_new ();
@@ -1163,11 +1306,14 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
         {
           TpChannelGroupFlags flags_add, flags_rem;
 
+          priv->self_role = get_role_from_string (role);
+          priv->self_affil = get_affiliation_from_string (affil);
+
           flags_add = TP_CHANNEL_GROUP_FLAG_CAN_ADD ^
                       TP_CHANNEL_GROUP_FLAG_MESSAGE_ADD;
           flags_rem = 0;
 
-          if (strcmp (role, "moderator") == 0)
+          if (priv->self_role == ROLE_MODERATOR)
             {
               flags_add ^= TP_CHANNEL_GROUP_FLAG_CAN_REMOVE ^
                            TP_CHANNEL_GROUP_FLAG_MESSAGE_REMOVE;
@@ -2161,6 +2307,12 @@ gboolean gabble_muc_channel_get_properties (GabbleMucChannel *obj, const GArray 
   return TRUE;
 }
 
+typedef struct {
+    DBusGMethodInvocation *call_ctx;
+    GHashTable *prop_list;
+} RequestConfigFormContext;
+
+static LmHandlerResult request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg, LmMessage *reply_msg, GObject *object, gpointer user_data);
 
 /**
  * gabble_muc_channel_set_properties
@@ -2168,17 +2320,20 @@ gboolean gabble_muc_channel_get_properties (GabbleMucChannel *obj, const GArray 
  * Implements DBus method SetProperties
  * on interface org.freedesktop.Telepathy.Channel.Interface.RoomProperties
  *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
+ * @context: The DBUS invocation context to use to return values
+ *           or throw an error.
  */
-gboolean gabble_muc_channel_set_properties (GabbleMucChannel *obj, GHashTable * properties, GError **error)
+gboolean gabble_muc_channel_set_properties (GabbleMucChannel *obj, GHashTable * properties, DBusGMethodInvocation *context)
 {
   GabbleMucChannelPrivate *priv;
-  GSList *prop_list, *iter;
   gboolean result;
+  GError *error;
+  gboolean ret;
+  GSList *prop_list, *iter;
+  GHashTable *props_config;
+  LmMessage *msg;
+  LmMessageNode *node;
+  const gchar *str;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (obj));
 
@@ -2186,6 +2341,7 @@ gboolean gabble_muc_channel_set_properties (GabbleMucChannel *obj, GHashTable * 
 
   result = TRUE;
   prop_list = tp_hash_to_key_value_list (properties);
+  props_config = NULL;
 
   /* Check input property identifiers */
   for (iter = prop_list; iter; iter = iter->next)
@@ -2197,8 +2353,11 @@ gboolean gabble_muc_channel_set_properties (GabbleMucChannel *obj, GHashTable * 
       /* Valid? */
       if (prop_id >= NUM_ROOM_PROPS)
         {
-          *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                                "invalid property identifier %d", prop_id);
+          error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+                               "invalid property identifier %d", prop_id);
+          dbus_g_method_return_error (context, error);
+          g_error_free (error);
+
           result = FALSE;
           goto OUT;
         }
@@ -2206,8 +2365,11 @@ gboolean gabble_muc_channel_set_properties (GabbleMucChannel *obj, GHashTable * 
       /* Permitted? */
       if (!(priv->room_props[prop_id].flags & TP_CHANNEL_ROOM_PROPERTY_FLAG_WRITE))
         {
-          *error = g_error_new (TELEPATHY_ERRORS, PermissionDenied,
-                                "permission denied for property identifier %d", prop_id);
+          error = g_error_new (TELEPATHY_ERRORS, PermissionDenied,
+                               "permission denied for property identifier %d", prop_id);
+          dbus_g_method_return_error (context, error);
+          g_error_free (error);
+
           result = FALSE;
           goto OUT;
         }
@@ -2216,29 +2378,356 @@ gboolean gabble_muc_channel_set_properties (GabbleMucChannel *obj, GHashTable * 
       if (!g_value_type_compatible (G_VALUE_TYPE (prop_val),
                                     G_VALUE_TYPE (&priv->room_props[prop_id].value)))
         {
-          *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
-                                "incompatible value type for property identifier %d",
-                                prop_id);
+          error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                               "incompatible value type for property identifier %d",
+                               prop_id);
+          dbus_g_method_return_error (context, error);
+          g_error_free (error);
+
           result = FALSE;
           goto OUT;
         }
     }
 
-#if 0
-  /* Change the values */
+
+  /* Try to change subject first, and in the same run, determine if we're
+   * about to change the channel configuration. */
+
   for (iter = prop_list; iter; iter = iter->next)
     {
       TpKeyValue *kv = iter->data;
-      guint prop_id = kv->key;
+      guint prop_id = GPOINTER_TO_UINT (kv->key);
       GValue *prop_val = kv->value;
+      GValue *cfg_val;
+
+      switch (prop_id) {
+        case ROOM_PROP_ANONYMOUS:
+        case ROOM_PROP_INVITE_ONLY:
+        case ROOM_PROP_MODERATED:
+        case ROOM_PROP_NAME:
+        case ROOM_PROP_PASSWORD:
+        case ROOM_PROP_PASSWORD_REQUIRED:
+        case ROOM_PROP_PERSISTENT:
+        case ROOM_PROP_PRIVATE:
+          if (props_config == NULL)
+            {
+              props_config = g_hash_table_new_full (g_direct_hash,
+                  g_direct_equal, NULL, (GDestroyNotify) g_value_unset);
+            }
+
+          cfg_val = g_new0 (GValue, 1);
+          g_value_init (cfg_val, G_VALUE_TYPE (prop_val));
+          g_value_copy (prop_val, cfg_val);
+
+          g_hash_table_insert (props_config, GUINT_TO_POINTER (prop_id),
+                               cfg_val);
+
+          break;
+        case ROOM_PROP_SUBJECT:
+          str = g_value_get_boxed (prop_val);
+
+          msg = lm_message_new_with_sub_type (priv->jid,
+              LM_MESSAGE_TYPE_MESSAGE, LM_MESSAGE_SUB_TYPE_GROUPCHAT);
+          lm_message_node_add_child (msg->node, "subject", str);
+
+          ret = _gabble_connection_send (priv->conn, msg, &error);
+
+          lm_message_unref (msg);
+
+          if (!ret)
+            {
+              dbus_g_method_return_error (context, error);
+              g_error_free (error);
+
+              result = FALSE;
+              goto OUT;
+            }
+
+          break;
+        default:
+          g_assert_not_reached ();
+      }
     }
-#endif
+
+  if (props_config)
+    {
+      RequestConfigFormContext *ctx = g_new (RequestConfigFormContext, 1);
+
+      ctx->call_ctx = context;
+      ctx->prop_list = props_config;
+
+      msg = lm_message_new_with_sub_type (priv->jid,
+          LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET);
+      node = lm_message_node_add_child (msg->node, "query", NULL);
+      lm_message_node_set_attribute (node, "xmlns", MUC_XMLNS_OWNER);
+
+      ret = _gabble_connection_send_with_reply (priv->conn, msg,
+          request_config_form_reply_cb, G_OBJECT (obj), ctx, &error);
+
+      lm_message_unref (msg);
+
+      if (!ret)
+        {
+          g_free (ctx);
+
+          dbus_g_method_return_error (context, error);
+          g_error_free (error);
+
+          result = FALSE;
+        }
+    }
 
 OUT:
   if (prop_list)
     tp_key_value_list_free (prop_list);
 
+  if (!result && props_config)
+    {
+      g_hash_table_destroy (props_config);
+    }
+
   return result;
+}
+
+static LmHandlerResult request_config_form_submit_reply_cb (GabbleConnection *conn, LmMessage *sent_msg, LmMessage *reply_msg, GObject *object, gpointer user_data);
+
+static LmHandlerResult
+request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
+                              LmMessage *reply_msg, GObject *object,
+                              gpointer user_data)
+{
+  GabbleMucChannelPrivate *priv;
+  RequestConfigFormContext *ctx = user_data;
+  GError *error = NULL;
+  LmMessage *msg;
+  LmMessageNode *query_node, *form_node, *value_node, *node;
+  guint n, count;
+
+  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
+    {
+      error = g_error_new (TELEPATHY_ERRORS, PermissionDenied,
+                           "request for configuration form denied");
+
+      goto OUT;
+    }
+
+  g_assert (GABBLE_IS_MUC_CHANNEL (object));
+
+  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (object);
+
+  /* initialize */
+  n = 0;
+  count = g_hash_table_size (ctx->prop_list);
+
+  /* find the query node */
+  query_node = lm_message_node_get_child (reply_msg->node, "query");
+  if (query_node == NULL)
+    goto PARSE_ERROR;
+
+  /* then the form node */
+  form_node = NULL;
+  for (node = query_node->children; node; node = node->next)
+    {
+      if (strcmp (node->name, "x") == 0)
+        {
+          if (strcmp (lm_message_node_get_attribute (node, "xmlns"),
+                      "jabber:x:data") != 0)
+            {
+              continue;
+            }
+
+          if (strcmp (lm_message_node_get_attribute (node, "type"),
+                      "form") != 0)
+            {
+              continue;
+            }
+
+          form_node = node;
+          break;
+        }
+    }
+
+  if (form_node == NULL)
+    goto PARSE_ERROR;
+
+  lm_message_node_set_attribute (form_node, "type", "submit");
+
+  for (node = form_node->children; node; node = node->next)
+    {
+      const gchar *var;
+      GValue *val;
+      guint id;
+      GType type;
+      gboolean invert;
+      gchar buf[16];
+      gchar *val_str;
+      gboolean val_bool;
+
+      if (strcmp (node->name, "field") != 0)
+        {
+          g_debug ("%s: skipping node '%s'", G_STRFUNC, node->name);
+          continue;
+        }
+
+      var = lm_message_node_get_attribute (node, "var");
+      if (var == NULL) {
+        g_debug ("%s: skipping node '%s' because of lacking var attribute",
+                 G_STRFUNC, node->name);
+        continue;
+      }
+
+      /* FIXME: can we rely on the 'value' node always being there? */
+      value_node = lm_message_node_get_child (node, "value");
+      if (value_node == NULL)
+        {
+          g_warning ("%s: the field node for '%s' doesn't have a 'value' child",
+                     G_STRFUNC, var);
+          continue;
+        }
+
+      /* FIXME: if the string starts with 'muc#', skip that part */
+
+      id = INVALID_ROOM_PROP;
+      type = G_TYPE_BOOLEAN;
+      invert = FALSE;
+
+      if (strcmp (var, "anonymous") == 0)
+        {
+          id = ROOM_PROP_ANONYMOUS;
+        }
+      else if (strcmp (var, "members_only") == 0)
+        {
+          id = ROOM_PROP_INVITE_ONLY;
+        }
+      else if (strcmp (var, "moderated") == 0)
+        {
+          id = ROOM_PROP_MODERATED;
+        }
+      else if (strcmp (var, "title") == 0)
+        {
+          id = ROOM_PROP_NAME;
+          type = G_TYPE_STRING;
+        }
+      else if (strcmp (var, "password") == 0)
+        {
+          id = ROOM_PROP_PASSWORD;
+          type = G_TYPE_STRING;
+        }
+      else if (strcmp (var, "password_protected") == 0)
+        {
+          id = ROOM_PROP_PASSWORD_REQUIRED;
+        }
+      else if (strcmp (var, "persistent") == 0)
+        {
+          id = ROOM_PROP_PERSISTENT;
+        }
+      else if (strcmp (var, "public") == 0)
+        {
+          id = ROOM_PROP_PRIVATE;
+          invert = TRUE;
+        }
+      else
+        {
+          g_warning ("%s: ignoring field '%s'", G_STRFUNC, var);
+          continue;
+        }
+
+      g_debug ("%s: looking up %s", G_STRFUNC, room_property_signatures[id].name);
+
+      if (!(val = g_hash_table_lookup (ctx->prop_list, GUINT_TO_POINTER (id))))
+        {
+          continue;
+        }
+
+      switch (type) {
+        case G_TYPE_BOOLEAN:
+          val_bool = g_value_get_boolean (val);
+          sprintf (buf, "%d", (invert) ? !val_bool : val_bool);
+          val_str = buf;
+          break;
+        case G_TYPE_STRING:
+          val_str = g_value_get_boxed (val);
+          break;
+        default:
+          g_assert_not_reached ();
+      }
+
+      lm_message_node_set_value (value_node, val_str);
+
+      g_hash_table_remove (ctx->prop_list, GUINT_TO_POINTER (id));
+      n++;
+    }
+
+  if (n == 0)
+    {
+      error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+                           "no properties substituted");
+
+      goto OUT;
+    }
+  else if (n < count)
+    {
+      g_warning ("%s: only %d out of %d properties substituted",
+                 G_STRFUNC, n, count);
+    }
+
+  msg = lm_message_new_with_sub_type (priv->jid, LM_MESSAGE_TYPE_IQ,
+                                      LM_MESSAGE_SUB_TYPE_SET);
+
+  msg->node->children = reply_msg->node->children;
+  lm_message_node_ref (msg->node->children);
+
+  _gabble_connection_send_with_reply (priv->conn, msg,
+      request_config_form_submit_reply_cb, G_OBJECT (object),
+      ctx->call_ctx, &error);
+
+  lm_message_unref (msg);
+
+  goto OUT;
+
+PARSE_ERROR:
+  error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                       "error parsing reply from server");
+
+OUT:
+  if (error)
+    {
+      dbus_g_method_return_error (ctx->call_ctx, error);
+      g_error_free (error);
+    }
+
+  g_hash_table_destroy (ctx->prop_list);
+  g_free (ctx);
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
+static LmHandlerResult
+request_config_form_submit_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
+                                     LmMessage *reply_msg, GObject *object,
+                                     gpointer user_data)
+{
+  DBusGMethodInvocation *call_ctx = user_data;
+  GError *error = NULL;
+
+  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
+    {
+      error = g_error_new (TELEPATHY_ERRORS, PermissionDenied,
+                           "submitted configuration form was rejected");
+
+      goto OUT;
+    }
+
+  dbus_g_method_return (call_ctx);
+
+OUT:
+  if (error)
+    {
+      dbus_g_method_return_error (call_ctx, error);
+      g_error_free (error);
+    }
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 /*

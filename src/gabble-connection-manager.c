@@ -344,11 +344,32 @@ parse_parameters (const GabbleParamSpec *paramspec,
 
           unhandled--;
           if (paramspec[i].gtype == G_TYPE_STRING)
-            g_debug ("%s: accepted value %s for param %s", G_STRFUNC,
-                     *((char **) ((void *)params + paramspec[i].offset)), paramspec[i].name);
+            {
+              gchar *param = *((char **) ((void *)params + paramspec[i].offset));
+              if (0 == strcmp (paramspec[i].name, "password"))
+                {
+                  gchar *asterisks, *tmp;
+
+                  asterisks = g_strdup (param);
+                  for (tmp = asterisks; *tmp != '\0'; tmp++)
+                    *tmp = '*';
+
+                  g_debug ("%s: accepted value %s for param password",
+                      G_STRFUNC, asterisks);
+
+                  g_free (asterisks);
+                }
+              else
+                {
+                  g_debug ("%s: accepted value %s for param %s",
+                      G_STRFUNC, param, paramspec[i].name);
+                }
+            }
           else
-            g_debug ("%s: accepted value %u for param %s", G_STRFUNC,
-                     *((guint *) ((void *)params + paramspec[i].offset)), paramspec[i].name);
+            {
+              g_debug ("%s: accepted value %u for param %s", G_STRFUNC,
+                       *((guint *) ((void *)params + paramspec[i].offset)), paramspec[i].name);
+            }
         }
     }
 

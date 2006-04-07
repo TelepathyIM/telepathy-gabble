@@ -2416,8 +2416,8 @@ _gabble_connection_jingle_session_allocate (GabbleConnection *conn)
       g_free (sid);
       sid = g_strdup_printf ("%u", val);
 
-      unique = g_hash_table_lookup_extended (priv->jingle_sessions,
-                                             sid, &k, &v);
+      unique = !g_hash_table_lookup_extended (priv->jingle_sessions,
+                                              sid, &k, &v);
     }
 
   g_hash_table_insert (priv->jingle_sessions, sid, NULL);
@@ -2486,19 +2486,12 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
 
   g_assert (connection == priv->conn);
 
-  g_debug("%s, in",G_STRFUNC);
-	
   iq_node = lm_message_get_node (message);
   session_node = lm_message_node_get_child (iq_node, "session");
 
   /* is it for us? */
   if (!session_node || strcmp (lm_message_node_get_attribute (session_node, "xmlns"),
         "http://www.google.com/session"))
-    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-
-  /* determine the jingle action of the request */
-  action = lm_message_node_get_attribute (session_node, "type");
-  if (!action)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
   from = lm_message_node_get_attribute (iq_node, "from");
@@ -2524,12 +2517,24 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
 
   if (strcmp (type, "set") != 0)
     {
-      g_warning ("%s: ignoring jingle iq stanza with type \"%s\"",
-                 G_STRFUNC, type);
+      HANDLER_DEBUG (iq_node, "'type' is not \"set\"");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
   handle = gabble_handle_for_contact (priv->handles, from, FALSE);
+  if (!handle)
+    {
+      HANDLER_DEBUG (iq_node, "unable to get handle for sender");
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    }
+
+  /* determine the jingle action of the request */
+  action = lm_message_node_get_attribute (session_node, "type");
+  if (!action)
+    {
+      HANDLER_DEBUG (iq_node, "session 'type' attribute not found");
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    }
 
   /* does the session exist? */
   sid = lm_message_node_get_attribute (session_node, "id");
@@ -2541,29 +2546,28 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
                                     g_strdup (sid),
                                     &k, &v))
     {
-      g_debug("%s, lookup ok",G_STRFUNC);
       chan = (GabbleMediaChannel *) v;
     }
   else
     {
       /* if the session is unknown, the only allowed action is "initiate" */
       if (strcmp (action, "initiate"))
-      {
-	g_debug("%s, action is not initiate",G_STRFUNC);
-        return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-      }
+        {
+          HANDLER_DEBUG (iq_node, "action is not \"initiate\", ignoring");
+          return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+        }
 
       desc_node = lm_message_node_get_child (session_node, "description");
       if (!desc_node)
-      {
-        g_debug("%s, !desc_node",G_STRFUNC);
-        return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-      }
+        {
+          HANDLER_DEBUG (iq_node, "node has no description, ignoring");
+          return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+        }
 
       if (strcmp (lm_message_node_get_attribute (desc_node, "xmlns"),
                   "http://www.google.com/session/phone"))
         {
-          g_debug ("%s: ignoring unknown session description", G_STRFUNC);
+          HANDLER_DEBUG (iq_node, "unknown session description, ignoring");
           return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
         }
 
@@ -2574,9 +2578,16 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
 
   if (chan)
     {
+      g_debug ("%s: dispatching to session %s", G_STRFUNC, sid);
       g_object_ref (chan);
-      _gabble_media_channel_dispatch_session_action (chan, handle, sid, iq_node, session_node, action);
+      _gabble_media_channel_dispatch_session_action (chan, handle, sid,
+          iq_node, session_node, action);
       g_object_unref (chan);
+    }
+  else
+    {
+      g_debug ("%s: zombie session %s, we should reject this",
+          G_STRFUNC, sid);
     }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;

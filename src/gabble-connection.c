@@ -232,8 +232,8 @@ gabble_connection_init (GabbleConnection *obj)
 
   priv->handles = gabble_handle_repo_new ();
 
-  priv->jingle_sessions = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-                                                 NULL, NULL);
+  priv->jingle_sessions = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                                 g_free, NULL);
 
   priv->im_channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
                                              NULL, g_object_unref);
@@ -2396,11 +2396,12 @@ _gabble_connection_send_iq_ack (GabbleConnection *conn, LmMessageNode *iq_node, 
   lm_message_unref (msg);
 }
 
-guint32
+const gchar *
 _gabble_connection_jingle_session_allocate (GabbleConnection *conn)
 {
   GabbleConnectionPrivate *priv;
   guint32 val;
+  gchar *sid = NULL;
   gboolean unique = FALSE;
 
   g_assert (GABBLE_IS_CONNECTION (conn));
@@ -2412,36 +2413,39 @@ _gabble_connection_jingle_session_allocate (GabbleConnection *conn)
 
       val = g_random_int_range (1000000, G_MAXINT);
 
-      unique = !g_hash_table_lookup_extended (priv->jingle_sessions,
-                                              GUINT_TO_POINTER (val), &k, &v);
+      g_free (sid);
+      sid = g_strdup_printf ("%u", val);
+
+      unique = g_hash_table_lookup_extended (priv->jingle_sessions,
+                                             sid, &k, &v);
     }
 
-  g_hash_table_insert (priv->jingle_sessions, GUINT_TO_POINTER (val), NULL);
+  g_hash_table_insert (priv->jingle_sessions, sid, NULL);
 
-  return val;
+  return (const gchar *) sid;
 }
 
 void
 _gabble_connection_jingle_session_register (GabbleConnection *conn,
-                                            guint32 sid,
+                                            const gchar *sid,
                                             gpointer channel)
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
-  g_debug ("%s: binding sid %d to %p", G_STRFUNC, sid, channel);
+  g_debug ("%s: binding sid %s to %p", G_STRFUNC, sid, channel);
 
-  g_hash_table_insert (priv->jingle_sessions, GUINT_TO_POINTER (sid), channel);
+  g_hash_table_insert (priv->jingle_sessions, g_strdup (sid), channel);
 }
 
 void
 _gabble_connection_jingle_session_unregister (GabbleConnection *conn,
-                                              guint32 sid)
+                                              const gchar *sid)
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
-  g_debug ("%s: unbinding sid %d", G_STRFUNC, sid);
+  g_debug ("%s: unbinding sid %s", G_STRFUNC, sid);
 
-  g_hash_table_insert (priv->jingle_sessions, GUINT_TO_POINTER (sid), NULL);
+  g_hash_table_insert (priv->jingle_sessions, g_strdup (sid), NULL);
 }
 
 gboolean
@@ -2475,14 +2479,15 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   LmMessageNode *iq_node, *session_node, *desc_node;
-  const gchar *from, *id, *type, *action, *sid_str;
+  const gchar *from, *id, *type, *action, *sid;
   GabbleHandle handle;
-  guint32 sid;
   GabbleMediaChannel *chan = NULL;
   gpointer k, v;
 
   g_assert (connection == priv->conn);
 
+  g_debug("%s, in",G_STRFUNC);
+	
   iq_node = lm_message_get_node (message);
   session_node = lm_message_node_get_child (iq_node, "session");
 
@@ -2527,30 +2532,33 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
   handle = gabble_handle_for_contact (priv->handles, from, FALSE);
 
   /* does the session exist? */
-  sid_str = lm_message_node_get_attribute (session_node, "id");
-  if (!sid_str)
+  sid = lm_message_node_get_attribute (session_node, "id");
+  if (!sid)
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-
-  sid = atoi(sid_str);
-
-
 
   /* is the session new and not a zombie? */
   if (g_hash_table_lookup_extended (priv->jingle_sessions,
-                                    GUINT_TO_POINTER (sid),
+                                    g_strdup (sid),
                                     &k, &v))
     {
+      g_debug("%s, lookup ok",G_STRFUNC);
       chan = (GabbleMediaChannel *) v;
     }
   else
     {
       /* if the session is unknown, the only allowed action is "initiate" */
       if (strcmp (action, "initiate"))
+      {
+	g_debug("%s, action is not initiate",G_STRFUNC);
         return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+      }
 
       desc_node = lm_message_node_get_child (session_node, "description");
       if (!desc_node)
+      {
+        g_debug("%s, !desc_node",G_STRFUNC);
         return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+      }
 
       if (strcmp (lm_message_node_get_attribute (desc_node, "xmlns"),
                   "http://www.google.com/session/phone"))

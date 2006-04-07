@@ -76,7 +76,7 @@ struct _GabbleMediaSessionPrivate
 
   GabbleMediaStream *stream;
 
-  guint32 id;
+  gchar *id;
   GabbleHandle initiator;
   GabbleHandle peer;
   gchar *voice_resource;
@@ -214,7 +214,7 @@ gabble_media_session_get_property (GObject    *object,
       g_value_set_string (value, priv->object_path);
       break;
     case PROP_SESSION_ID:
-      g_value_set_uint (value, priv->id);
+      g_value_set_string (value, priv->id);
       break;
     case PROP_INITIATOR:
       g_value_set_uint (value, priv->initiator);
@@ -254,7 +254,8 @@ gabble_media_session_set_property (GObject      *object,
       priv->object_path = g_value_dup_string (value);
       break;
     case PROP_SESSION_ID:
-      priv->id = g_value_get_uint (value);
+      g_free (priv->id);
+      priv->id = g_value_dup_string (value);
       break;
     case PROP_INITIATOR:
       priv->initiator = g_value_get_uint (value);
@@ -315,14 +316,14 @@ gabble_media_session_class_init (GabbleMediaSessionClass *gabble_media_session_c
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_OBJECT_PATH, param_spec);
 
-  param_spec = g_param_spec_uint ("session-id", "Session ID",
-                                  "A unique session identifier used "
-                                  "throughout all communication.",
-                                  0, G_MAXUINT32, 0,
-                                  G_PARAM_CONSTRUCT_ONLY |
-                                  G_PARAM_READWRITE |
-                                  G_PARAM_STATIC_NAME |
-                                  G_PARAM_STATIC_BLURB);
+  param_spec = g_param_spec_string ("session-id", "Session ID",
+                                    "A unique session identifier used "
+                                    "throughout all communication.",
+				    NULL,
+                                    G_PARAM_CONSTRUCT_ONLY |
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_STATIC_NAME |
+                                    G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_SESSION_ID, param_spec);
 
   param_spec = g_param_spec_uint ("initiator", "Session initiator",
@@ -405,6 +406,7 @@ gabble_media_session_finalize (GObject *object)
   GabbleMediaSession *self = GABBLE_MEDIA_SESSION (object);
   GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (self);
 
+  g_free (priv->id);
   g_free (priv->object_path);
   g_free (priv->voice_resource);
 
@@ -655,7 +657,7 @@ stream_new_active_candidate_pair_cb (GabbleMediaStream *stream,
 
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
 
-  g_assert (priv->state < JS_STATE_ACTIVE);
+  /* g_assert (priv->state < JS_STATE_ACTIVE); */
 
   GMS_DEBUG_INFO (session, "voip-engine reported a new active candidate pair [\"%s\" - \"%s\"]",
                   native_candidate_id, remote_candidate_id);
@@ -819,7 +821,6 @@ _gabble_media_session_message_new (GabbleMediaSession *session,
   GabbleMediaSessionPrivate *priv;
   LmMessage *msg;
   LmMessageNode *iq_node, *node;
-  gchar *id_str;
   gchar *peer_jid, *initiator_jid;
 
   g_assert (GABBLE_IS_MEDIA_SESSION (session));
@@ -838,20 +839,16 @@ _gabble_media_session_message_new (GabbleMediaSession *session,
   iq_node = lm_message_get_node (msg);
   node = lm_message_node_add_child (iq_node, "session", NULL);
 
-  id_str = g_strdup_printf ("%d", priv->id);
-
   initiator_jid = get_jid_for_contact (session, priv->initiator);
 
   lm_message_node_set_attributes (node,
       "xmlns", "http://www.google.com/session",
+      "id", priv->id,
       "type", action,
-      "id", id_str,
       "initiator", initiator_jid,
       NULL);
 
   g_free (initiator_jid);
-
-  g_free (id_str);
 
   if (session_node)
     *session_node = node;

@@ -41,6 +41,7 @@
       <arg type="a{uu}" name="properties" />
     </signal>
     <method name="SetProperties">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value=""/>
       <arg direction="in"  type="a{uv}" name="properties" />
     </method>
     <method name="GetProperties">

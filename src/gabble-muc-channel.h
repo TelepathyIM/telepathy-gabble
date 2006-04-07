@@ -49,6 +49,7 @@ GType gabble_muc_channel_get_type(void);
 #define MUC_XMLNS       "http://jabber.org/protocol/muc"
 #define MUC_XMLNS_USER  "http://jabber.org/protocol/muc#user"
 #define MUC_XMLNS_ADMIN "http://jabber.org/protocol/muc#admin"
+#define MUC_XMLNS_OWNER "http://jabber.org/protocol/muc#owner"
 
 /* TYPE MACROS */
 #define GABBLE_TYPE_MUC_CHANNEL \
@@ -103,7 +104,7 @@ gboolean gabble_muc_channel_list_properties (GabbleMucChannel *obj, GHashTable *
 gboolean gabble_muc_channel_provide_password (GabbleMucChannel *obj, const gchar * password, DBusGMethodInvocation *context);
 gboolean gabble_muc_channel_remove_members (GabbleMucChannel *obj, const GArray * contacts, const gchar * message, GError **error);
 gboolean gabble_muc_channel_send (GabbleMucChannel *obj, guint type, const gchar * text, GError **error);
-gboolean gabble_muc_channel_set_properties (GabbleMucChannel *obj, GHashTable * properties, GError **error);
+gboolean gabble_muc_channel_set_properties (GabbleMucChannel *obj, GHashTable * properties, DBusGMethodInvocation *context);
 
 G_END_DECLS
 

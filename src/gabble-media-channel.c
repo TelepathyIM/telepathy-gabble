@@ -150,12 +150,12 @@ static void session_state_changed_cb (GabbleMediaSession *session, GParamSpec *a
  *
  * Creates a GabbleMediaSession object for given peer.
  *
- * If sid is set to 0 a unique sid is generated and
+ * If sid is set to NULL a unique sid is generated and
  * the "initiator" property of the newly created
  * GabbleMediaSession is set to our own handle.
  */
 static GabbleMediaSession *
-create_session (GabbleMediaChannel *channel, GabbleHandle peer, guint32 sid)
+create_session (GabbleMediaChannel *channel, GabbleHandle peer, const gchar *sid)
 {
   GabbleMediaChannelPrivate *priv;
   GabbleMediaSession *session;
@@ -172,7 +172,7 @@ create_session (GabbleMediaChannel *channel, GabbleHandle peer, guint32 sid)
 
   object_path = g_strdup_printf ("%s/MediaSession%u", priv->object_path, peer);
 
-  if (sid == 0)
+  if (sid == NULL)
     {
       GError *err;
 
@@ -211,7 +211,7 @@ create_session (GabbleMediaChannel *channel, GabbleHandle peer, guint32 sid)
 void
 _gabble_media_channel_dispatch_session_action (GabbleMediaChannel *chan,
                                                GabbleHandle peer,
-                                               guint32 sid,
+                                               const gchar *sid,
                                                LmMessageNode *iq_node,
                                                LmMessageNode *session_node,
                                                const gchar *action)
@@ -410,7 +410,8 @@ gabble_media_channel_dispose (GObject *object)
   if (priv->session)
     g_object_unref (priv->session);
 
-  gabble_media_channel_close (self, NULL);
+  if (!priv->closed) 
+    g_signal_emit (self, signals[CLOSED], 0);
 
   if (G_OBJECT_CLASS (gabble_media_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_media_channel_parent_class)->dispose (object);
@@ -801,7 +802,7 @@ gabble_media_channel_add_member (GObject *obj, GabbleHandle handle, const gchar 
       GIntSet *empty, *set;
 
       /* create a new session */
-      create_session (chan, handle, 0);
+      create_session (chan, handle, NULL);
 
       /* make the peer remote pending */
       empty = g_intset_new ();

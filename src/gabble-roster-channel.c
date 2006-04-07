@@ -546,7 +546,7 @@ gboolean gabble_roster_channel_add_members (GabbleRosterChannel *obj, const GArr
           handle = g_array_index (contacts, GabbleHandle, i);
           contact = gabble_handle_inspect (repo, TP_HANDLE_TYPE_CONTACT, handle);
 
-          if (!handle_set_is_member (priv->members, handle))
+          if (handle_set_is_member (priv->members, handle))
             {
               g_debug ("%s: already subscribed to handle %u, skipping", G_STRFUNC, handle);
 

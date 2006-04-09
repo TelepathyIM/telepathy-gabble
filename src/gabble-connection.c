@@ -1435,15 +1435,6 @@ connection_message_cb (LmMessageHandler *handler,
         }
     }
 
-  if (body_node == NULL)
-    {
-      HANDLER_DEBUG (msg_node, "got a message without a body field, ignoring");
-
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-    }
-
-  body = lm_message_node_get_value (body_node);
-
   /* parse timestamp of delayed messages */
   stamp = 0;
 
@@ -1479,6 +1470,15 @@ connection_message_cb (LmMessageHandler *handler,
 
   if (stamp == 0)
     stamp = time (NULL);
+
+  if (body_node)
+    {
+      body = lm_message_node_get_value (body_node);
+    }
+  else
+    {
+      body = NULL;
+    }
 
   if (type != NULL && 0 == strcmp (type, "groupchat"))
     {
@@ -1527,15 +1527,23 @@ connection_message_cb (LmMessageHandler *handler,
           handle = gabble_handle_for_contact (priv->handles, from, TRUE);
         }
 
-      if (0 == strncmp (body, "/me ", 4))
+      if (body)
         {
-          msgtype = TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION;
-          body_offset = body + 4;
+          if (0 == strncmp (body, "/me ", 4))
+            {
+              msgtype = TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION;
+              body_offset = body + 4;
+            }
+          else
+            {
+              msgtype = TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL;
+              body_offset = body;
+            }
         }
       else
         {
           msgtype = TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL;
-          body_offset = body;
+          body_offset = NULL;
         }
 
       if (_gabble_muc_channel_receive (chan, msgtype, handle, stamp,
@@ -1546,6 +1554,13 @@ connection_message_cb (LmMessageHandler *handler,
     {
       TpChannelTextMessageType msgtype;
       GabbleIMChannel *chan;
+
+      if (body == NULL)
+        {
+          HANDLER_DEBUG (msg_node, "got a message without a body field, ignoring");
+
+          return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+        }
 
       handle = gabble_handle_for_contact (priv->handles, from, FALSE);
 

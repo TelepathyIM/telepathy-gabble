@@ -132,8 +132,6 @@ enum
 {
   ROOM_PROP_ANONYMOUS,
   ROOM_PROP_INVITE_ONLY,
-  ROOM_PROP_LIMIT,
-  ROOM_PROP_LIMITED,
   ROOM_PROP_MODERATED,
   ROOM_PROP_NAME,
   ROOM_PROP_PASSWORD,
@@ -159,8 +157,6 @@ typedef struct _RoomPropertySignature RoomPropertySignature;
 const RoomPropertySignature room_property_signatures[NUM_ROOM_PROPS] = {
       { "anonymous",         G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
       { "invite-only",       G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
-      { "limit",             G_TYPE_UINT },
-      { "limited",           G_TYPE_BOOLEAN },
       { "moderated",         G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
       { "name",              G_TYPE_STRING },   /* impl: READ, WRITE */
       { "password",          G_TYPE_STRING },   /* impl: WRITE */
@@ -168,8 +164,8 @@ const RoomPropertySignature room_property_signatures[NUM_ROOM_PROPS] = {
       { "persistent",        G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
       { "private",           G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
       { "subject",           G_TYPE_STRING },   /* impl: READ, WRITE */
-      { "subject-contact",   G_TYPE_UINT },
-      { "subject-timestamp", G_TYPE_UINT },
+      { "subject-contact",   G_TYPE_UINT },     /* impl: READ */
+      { "subject-timestamp", G_TYPE_UINT },     /* impl: READ */
 };
 
 struct _RoomProperty {
@@ -1456,29 +1452,60 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
                              LmMessageNode *msg_node)
 {
   GabbleMucChannelPrivate *priv;
+  LmMessageNode *node;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
 
-  if (sender == priv->handle)
+  node = lm_message_node_get_child (msg_node, "subject");
+
+  if (node)
     {
-      LmMessageNode *subject_node = lm_message_node_get_child (msg_node,
-          "subject");
+      GArray *changed_values, *changed_flags;
+      GValue val = { 0, };
 
-      if (subject_node)
-        {
-          GValue val = { 0, };
+      changed_values = g_array_sized_new (FALSE, FALSE, sizeof (guint), 3);
+      changed_flags = g_array_sized_new (FALSE, FALSE, sizeof (guint), 3);
 
-          g_value_init (&val, G_TYPE_STRING);
-          g_value_set_string (&val, lm_message_node_get_value (subject_node));
+      /* ROOM_PROP_SUBJECT */
+      g_value_init (&val, G_TYPE_STRING);
+      g_value_set_string (&val, lm_message_node_get_value (node));
 
-          room_property_change_value (chan, ROOM_PROP_SUBJECT, &val, NULL);
-          room_property_change_flags (chan, ROOM_PROP_SUBJECT,
-              TP_CHANNEL_ROOM_PROPERTY_FLAG_READ, 0, NULL);
+      room_property_change_value (chan, ROOM_PROP_SUBJECT, &val, changed_values);
+      room_property_change_flags (chan, ROOM_PROP_SUBJECT,
+          TP_CHANNEL_ROOM_PROPERTY_FLAG_READ, 0, changed_flags);
 
-          g_value_unset (&val);
-        }
+      g_value_unset (&val);
+
+      /* ROOM_PROP_SUBJECT_CONTACT */
+      g_value_init (&val, G_TYPE_UINT);
+      g_value_set_uint (&val, sender);
+
+      room_property_change_value (chan, ROOM_PROP_SUBJECT_CONTACT, &val,
+          changed_values);
+      room_property_change_flags (chan, ROOM_PROP_SUBJECT_CONTACT,
+          TP_CHANNEL_ROOM_PROPERTY_FLAG_READ, 0, changed_flags);
+
+      g_value_unset (&val);
+
+      /* ROOM_PROP_SUBJECT_TIMESTAMP */
+      g_value_init (&val, G_TYPE_UINT);
+      g_value_set_uint (&val, timestamp);
+
+      room_property_change_value (chan, ROOM_PROP_SUBJECT_TIMESTAMP, &val,
+          changed_values);
+      room_property_change_flags (chan, ROOM_PROP_SUBJECT_TIMESTAMP,
+          TP_CHANNEL_ROOM_PROPERTY_FLAG_READ, 0, changed_flags);
+
+      g_value_unset (&val);
+
+      /* Emit signals */
+      room_properties_emit_changed (chan, changed_values);
+      room_properties_emit_flags (chan, changed_flags);
+
+      g_array_free (changed_values, TRUE);
+      g_array_free (changed_flags, TRUE);
 
       return TRUE;
     }
@@ -2334,12 +2361,16 @@ gboolean gabble_muc_channel_set_properties (GabbleMucChannel *obj, GHashTable * 
   LmMessage *msg;
   LmMessageNode *node;
   const gchar *str;
+  guint count, n;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (obj));
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
 
   result = TRUE;
+  n = 0;
+  count = g_hash_table_size (properties);
+
   prop_list = tp_hash_to_key_value_list (properties);
   props_config = NULL;
 
@@ -2424,7 +2455,7 @@ gboolean gabble_muc_channel_set_properties (GabbleMucChannel *obj, GHashTable * 
 
           break;
         case ROOM_PROP_SUBJECT:
-          str = g_value_get_boxed (prop_val);
+          str = g_value_get_string (prop_val);
 
           msg = lm_message_new_with_sub_type (priv->jid,
               LM_MESSAGE_TYPE_MESSAGE, LM_MESSAGE_SUB_TYPE_GROUPCHAT);
@@ -2442,6 +2473,8 @@ gboolean gabble_muc_channel_set_properties (GabbleMucChannel *obj, GHashTable * 
               result = FALSE;
               goto OUT;
             }
+
+          n++;
 
           break;
         default:
@@ -2474,7 +2507,13 @@ gboolean gabble_muc_channel_set_properties (GabbleMucChannel *obj, GHashTable * 
           g_error_free (error);
 
           result = FALSE;
+          goto OUT;
         }
+    }
+
+  if (n == count)
+    {
+      dbus_g_method_return (context);
     }
 
 OUT:
@@ -2571,7 +2610,7 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
       GType type;
       gboolean invert;
       gchar buf[16];
-      gchar *val_str;
+      const gchar *val_str;
       gboolean val_bool;
 
       if (strcmp (node->name, "field") != 0)
@@ -2663,7 +2702,7 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
           val_str = buf;
           break;
         case G_TYPE_STRING:
-          val_str = g_value_get_boxed (val);
+          val_str = g_value_get_string (val);
           break;
         default:
           g_assert_not_reached ();

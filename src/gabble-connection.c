@@ -1282,6 +1282,8 @@ new_muc_channel (GabbleConnection *conn, GabbleHandle handle, gboolean suppress_
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
+  g_assert (g_hash_table_lookup (priv->muc_channels, GINT_TO_POINTER (handle)) == NULL);
+
   object_path = g_strdup_printf ("%s/MucChannel%u", priv->object_path, handle);
 
   chan = g_object_new (GABBLE_TYPE_MUC_CHANNEL,
@@ -1428,9 +1430,15 @@ connection_message_cb (LmMessageHandler *handler,
           /* create the channel */
           handle = gabble_handle_for_room (priv->handles, from);
 
-          chan = new_muc_channel (conn, handle, FALSE);
-
-          _gabble_muc_channel_handle_invited (chan, inviter_handle, reason);
+          if (g_hash_table_lookup (priv->muc_channels, GINT_TO_POINTER (handle)) == NULL)
+            {
+              chan = new_muc_channel (conn, handle, FALSE);
+              _gabble_muc_channel_handle_invited (chan, inviter_handle, reason);
+            }
+          else
+            {
+              HANDLER_DEBUG (msg_node, "ignoring invite to a room we're already in");
+            }
 
           return LM_HANDLER_RESULT_REMOVE_MESSAGE;
         }

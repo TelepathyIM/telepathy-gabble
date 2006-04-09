@@ -1603,7 +1603,7 @@ _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
   g_intset_destroy (set_pending);
 
   /* queue the message */
-  if (message[0] != '\0')
+  if (message && (message[0] != '\0'))
     {
       queue_message (chan, TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE, inviter,
                      time(NULL), message);

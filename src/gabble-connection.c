@@ -84,6 +84,8 @@ G_DEFINE_TYPE(GabbleConnection, gabble_connection, G_TYPE_OBJECT)
 #define JABBER_PRESENCE_SHOW_DND "dnd"
 #define JABBER_PRESENCE_SHOW_XA "xa"
 
+#define GOOGLE_VOICE_VERSION "1.0.0.82"
+
 typedef struct _StatusInfo StatusInfo;
 
 struct _StatusInfo
@@ -1802,7 +1804,7 @@ signal_own_presence (GabbleConnection *self, GError **error)
                                     "c", NULL);
   lm_message_node_set_attributes (node,
                                   "node",  "http://www.google.com/xmpp/client/caps",
-                                  "ver",   "1.0.0.82", /* latest GTalk as of 20060117 */
+                                  "ver",   GOOGLE_VOICE_VERSION,
                                   "ext",   "voice-v1",
                                   "xmlns", "http://jabber.org/protocol/caps",
                                   NULL);

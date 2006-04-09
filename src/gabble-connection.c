@@ -4320,7 +4320,10 @@ room_jid_disco_cb (GabbleDisco *disco, const gchar *jid, const gchar *node,
 
   if (error != NULL)
     {
-      goto ERROR;
+      g_debug ("%s: DISCO reply error %s", G_STRFUNC, error->message);
+      dbus_g_method_return_error (rvctx->context, error);
+
+      goto OUT;
     }
 
   for (lm_node = query_result->children; lm_node; lm_node = lm_node->next)
@@ -4353,8 +4356,8 @@ room_jid_disco_cb (GabbleDisco *disco, const gchar *jid, const gchar *node,
         }
     }
 
-ERROR:
-  g_debug ("%s: DISCO reply error %s", G_STRFUNC, error->message);
+  error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                      "specified server doesn't support MUC");
   dbus_g_method_return_error (rvctx->context, error);
 
 OUT:

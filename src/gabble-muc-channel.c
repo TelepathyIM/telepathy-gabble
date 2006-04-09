@@ -528,6 +528,9 @@ static void properties_disco_cb (GabbleDisco *disco, const gchar *jid,
 
       room_property_change_flags (chan, ROOM_PROP_PRIVATE,
           TP_CHANNEL_ROOM_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
+
+      room_property_change_flags (chan, ROOM_PROP_SUBJECT,
+          TP_CHANNEL_ROOM_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
     }
 
 
@@ -1233,6 +1236,19 @@ get_affiliation_from_string (const gchar *affil)
   return AFFILIATION_NONE;
 }
 
+static LmHandlerResult
+room_created_submit_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
+                              LmMessage *reply_msg, GObject *object,
+                              gpointer user_data)
+{
+  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
+    {
+      g_warning ("%s: failed to submit room config", G_STRFUNC);
+    }
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
 /**
  * _gabble_muc_channel_member_presence_updated
  */
@@ -1246,8 +1262,8 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
   ContactPresence *cp;
   GIntSet *empty, *set;
   GabbleGroupMixin *mixin;
-  LmMessageNode *x_node, *item_node;
-  const gchar *affil, *role;
+  LmMessageNode *x_node, *item_node, *node;
+  const gchar *affil, *role, *status_code;
 
   g_debug (G_STRFUNC);
 
@@ -1275,6 +1291,16 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
     {
       g_warning ("%s: node missing 'item' child, ignoring", G_STRFUNC);
       return;
+    }
+
+  node = lm_message_node_get_child (x_node, "status");
+  if (node)
+    {
+      status_code = lm_message_node_get_attribute (node, "code");
+    }
+  else
+    {
+      status_code = NULL;
     }
 
   role = lm_message_node_get_attribute (item_node, "role");
@@ -1322,6 +1348,34 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
 
           gabble_group_mixin_change_flags (G_OBJECT (chan), flags_add,
                                            flags_rem);
+
+          if (status_code && strcmp (status_code, "201") == 0)
+            {
+              LmMessage *msg;
+              GError *error;
+
+              msg = lm_message_new_with_sub_type (priv->jid, LM_MESSAGE_TYPE_IQ,
+                                                  LM_MESSAGE_SUB_TYPE_SET);
+
+              node = lm_message_node_add_child (msg->node, "query", NULL);
+              lm_message_node_set_attribute (node, "xmlns", MUC_XMLNS_OWNER);
+
+              node = lm_message_node_add_child (node, "x", NULL);
+              lm_message_node_set_attributes (node,
+                                              "xmlns", "jabber:x:data",
+                                              "type", "submit",
+                                              NULL);
+
+              if (!_gabble_connection_send_with_reply (priv->conn, msg,
+                    room_created_submit_reply_cb, G_OBJECT (chan), NULL, &error))
+                {
+                  g_warning ("%s: failed to send submit message: %s", G_STRFUNC,
+                             error->message);
+                  g_error_free (error);
+
+                  close_channel (chan, NULL, TRUE);
+                }
+            }
 
           /* Update room properties */
           room_properties_update (chan);
@@ -2651,33 +2705,40 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
         {
           id = ROOM_PROP_ANONYMOUS;
         }
-      else if (strcmp (var, "members_only") == 0)
+      else if (strcmp (var, "members_only") == 0 ||
+               strcmp (var, "muc#owner_inviteonly") == 0)
         {
           id = ROOM_PROP_INVITE_ONLY;
         }
-      else if (strcmp (var, "moderated") == 0)
+      else if (strcmp (var, "moderated") == 0 ||
+               strcmp (var, "muc#owner_moderatedroom") == 0)
         {
           id = ROOM_PROP_MODERATED;
         }
-      else if (strcmp (var, "title") == 0)
+      else if (strcmp (var, "title") == 0 ||
+               strcmp (var, "muc#owner_roomname") == 0)
         {
           id = ROOM_PROP_NAME;
           type = G_TYPE_STRING;
         }
-      else if (strcmp (var, "password") == 0)
+      else if (strcmp (var, "password") == 0 ||
+               strcmp (var, "muc#roomconfig_roomsecret") == 0)
         {
           id = ROOM_PROP_PASSWORD;
           type = G_TYPE_STRING;
         }
-      else if (strcmp (var, "password_protected") == 0)
+      else if (strcmp (var, "password_protected") == 0 ||
+               strcmp (var, "muc#owner_passwordprotectedroom") == 0)
         {
           id = ROOM_PROP_PASSWORD_REQUIRED;
         }
-      else if (strcmp (var, "persistent") == 0)
+      else if (strcmp (var, "persistent") == 0 ||
+               strcmp (var, "muc#owner_persistentroom") == 0)
         {
           id = ROOM_PROP_PERSISTENT;
         }
-      else if (strcmp (var, "public") == 0)
+      else if (strcmp (var, "public") == 0 ||
+               strcmp (var, "muc#owner_publicroom") == 0)
         {
           id = ROOM_PROP_PRIVATE;
           invert = TRUE;

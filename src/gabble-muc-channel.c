@@ -157,17 +157,17 @@ struct _RoomPropertySignature {
 typedef struct _RoomPropertySignature RoomPropertySignature;
 
 const RoomPropertySignature room_property_signatures[NUM_ROOM_PROPS] = {
-      { "anonymous",         G_TYPE_BOOLEAN },  /* impl: READ */
-      { "invite-only",       G_TYPE_BOOLEAN },  /* impl: READ */
+      { "anonymous",         G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
+      { "invite-only",       G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
       { "limit",             G_TYPE_UINT },
       { "limited",           G_TYPE_BOOLEAN },
-      { "moderated",         G_TYPE_BOOLEAN },  /* impl: READ */
-      { "name",              G_TYPE_STRING },   /* impl: READ */
-      { "password",          G_TYPE_STRING },
-      { "password-required", G_TYPE_BOOLEAN },  /* impl: READ */
-      { "persistent",        G_TYPE_BOOLEAN },  /* impl: READ */
-      { "private",           G_TYPE_BOOLEAN },  /* impl: READ */
-      { "subject",           G_TYPE_STRING },   /* impl: READ */
+      { "moderated",         G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
+      { "name",              G_TYPE_STRING },   /* impl: READ, WRITE */
+      { "password",          G_TYPE_STRING },   /* impl: WRITE */
+      { "password-required", G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
+      { "persistent",        G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
+      { "private",           G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
+      { "subject",           G_TYPE_STRING },   /* impl: READ, WRITE */
       { "subject-contact",   G_TYPE_UINT },
       { "subject-timestamp", G_TYPE_UINT },
 };
@@ -2499,9 +2499,13 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
   GabbleMucChannelPrivate *priv;
   RequestConfigFormContext *ctx = user_data;
   GError *error = NULL;
-  LmMessage *msg;
-  LmMessageNode *query_node, *form_node, *value_node, *node;
+  LmMessage *msg = NULL;
+  LmMessageNode *submit_node, *query_node, *form_node, *node;
   guint n, count;
+
+  g_assert (GABBLE_IS_MUC_CHANNEL (object));
+
+  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (object);
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
@@ -2511,13 +2515,21 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
       goto OUT;
     }
 
-  g_assert (GABBLE_IS_MUC_CHANNEL (object));
-
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (object);
-
   /* initialize */
   n = 0;
   count = g_hash_table_size (ctx->prop_list);
+
+  msg = lm_message_new_with_sub_type (priv->jid, LM_MESSAGE_TYPE_IQ,
+                                      LM_MESSAGE_SUB_TYPE_SET);
+
+  node = lm_message_node_add_child (msg->node, "query", NULL);
+  lm_message_node_set_attribute (node, "xmlns", MUC_XMLNS_OWNER);
+
+  submit_node = lm_message_node_add_child (node, "x", NULL);
+  lm_message_node_set_attributes (submit_node,
+                                  "xmlns", "jabber:x:data",
+                                  "type", "submit",
+                                  NULL);
 
   /* find the query node */
   query_node = lm_message_node_get_child (reply_msg->node, "query");
@@ -2550,11 +2562,10 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
   if (form_node == NULL)
     goto PARSE_ERROR;
 
-  lm_message_node_set_attribute (form_node, "type", "submit");
-
   for (node = form_node->children; node; node = node->next)
     {
-      const gchar *var;
+      const gchar *var, *prev_value;
+      LmMessageNode *field_node, *value_node;
       GValue *val;
       guint id;
       GType type;
@@ -2576,14 +2587,20 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
         continue;
       }
 
-      /* FIXME: can we rely on the 'value' node always being there? */
       value_node = lm_message_node_get_child (node, "value");
       if (value_node == NULL)
         {
-          g_warning ("%s: the field node for '%s' doesn't have a 'value' child",
-                     G_STRFUNC, var);
+          g_debug ("%s: skipping var '%s' because of lacking value attribute",
+                   G_STRFUNC, var);
           continue;
         }
+
+      prev_value = lm_message_node_get_value (value_node);
+
+      /* add the corresponding field node to the reply message */
+      field_node = lm_message_node_add_child (submit_node, "field", NULL);
+      lm_message_node_set_attribute (field_node, "var", var);
+      value_node = lm_message_node_add_child (field_node, "value", prev_value);
 
       /* FIXME: if the string starts with 'muc#', skip that part */
 
@@ -2671,17 +2688,9 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
                  G_STRFUNC, n, count);
     }
 
-  msg = lm_message_new_with_sub_type (priv->jid, LM_MESSAGE_TYPE_IQ,
-                                      LM_MESSAGE_SUB_TYPE_SET);
-
-  msg->node->children = reply_msg->node->children;
-  lm_message_node_ref (msg->node->children);
-
   _gabble_connection_send_with_reply (priv->conn, msg,
       request_config_form_submit_reply_cb, G_OBJECT (object),
       ctx->call_ctx, &error);
-
-  lm_message_unref (msg);
 
   goto OUT;
 
@@ -2695,6 +2704,9 @@ OUT:
       dbus_g_method_return_error (ctx->call_ctx, error);
       g_error_free (error);
     }
+
+  if (msg)
+    lm_message_unref (msg);
 
   g_hash_table_destroy (ctx->prop_list);
   g_free (ctx);

@@ -1098,10 +1098,12 @@ connection_disconnected_cb (LmConnection *lmconn,
    * change */
   if (priv->status == TP_CONN_STATUS_DISCONNECTED)
     {
+      g_debug ("%s: expected; emitting DISCONNECTED", G_STRFUNC);
       g_signal_emit (conn, signals[DISCONNECTED], 0);
     }
   else
     {
+      g_debug ("%s: unexpected; calling connection_status_change", G_STRFUNC);
       connection_status_change (conn,
           TP_CONN_STATUS_DISCONNECTED,
           TP_CONN_STATUS_REASON_NETWORK_ERROR);
@@ -1155,10 +1157,12 @@ connection_status_change (GabbleConnection        *conn,
            * can emit DISCONNECTED and have the connection manager unref us */
           if (lm_connection_is_open (priv->conn))
             {
+              g_debug ("%s: still open; calling lm_connection_close", G_STRFUNC);
               lm_connection_close (priv->conn, NULL);
             }
           else
             {
+              g_debug ("%s: closed; emitting DISCONNECTED", G_STRFUNC);
               g_signal_emit (conn, signals[DISCONNECTED], 0);
             }
         }

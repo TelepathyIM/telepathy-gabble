@@ -2378,6 +2378,7 @@ new_media_channel (GabbleConnection *conn, GabbleHandle creator, gboolean suppre
 
   object_path = g_strdup_printf ("%s/MediaChannel%u", priv->object_path,
                                  priv->media_channel_index);
+  priv->media_channel_index += 1;
 
   chan = g_object_new (GABBLE_TYPE_MEDIA_CHANNEL,
                        "connection", conn,

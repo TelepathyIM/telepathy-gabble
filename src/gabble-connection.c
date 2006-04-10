@@ -4174,7 +4174,15 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
   else if (!strcmp (type, TP_IFACE_CHANNEL_TYPE_ROOM_LIST))
     {
       if (!priv->conference_servers)
-        goto NOT_AVAILABLE;
+        {
+          g_debug ("%s: no conference server found when requesting roomlist",
+                   G_STRFUNC);
+
+          *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                                "no conference server found when "
+                                "requesting roomlist");
+          return FALSE;
+        }
       make_roomlist_channel (obj, suppress_handler);
       g_object_get (priv->roomlist_channel, "object-path", ret, NULL);
     }

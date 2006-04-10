@@ -181,6 +181,7 @@ typedef struct _GabbleMucChannelPrivate GabbleMucChannelPrivate;
 struct _GabbleMucChannelPrivate
 {
   GabbleConnection *conn;
+  GabbleHandle conn_self_handle;
   GabbleDisco *disco;
   gchar *object_path;
 
@@ -240,7 +241,7 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   GabbleMucChannelPrivate *priv;
   DBusGConnection *bus;
   GabbleHandleRepo *handles;
-  GabbleHandle self_handle_primary, self_handle;
+  GabbleHandle self_handle;
   gboolean valid;
   GError *error;
 
@@ -250,7 +251,7 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
 
   handles = _gabble_connection_get_handles (priv->conn);
-  valid = gabble_connection_get_self_handle (priv->conn, &self_handle_primary, &error);
+  valid = gabble_connection_get_self_handle (priv->conn, &priv->conn_self_handle, &error);
   g_assert (valid);
 
   /* ref our room handle */
@@ -261,7 +262,7 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   priv->jid = gabble_handle_inspect (handles, TP_HANDLE_TYPE_ROOM, priv->handle);
 
   /* get our own identity in the room */
-  contact_handle_to_room_identity (GABBLE_MUC_CHANNEL (obj), self_handle_primary,
+  contact_handle_to_room_identity (GABBLE_MUC_CHANNEL (obj), priv->conn_self_handle,
                                    &self_handle, &priv->self_jid);
 
   /* initialize our own role and affiliation */
@@ -1331,6 +1332,7 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
           priv->self_role = get_role_from_string (role);
           priv->self_affil = get_affiliation_from_string (affil);
 
+          /* update flags */
           flags_add = TP_CHANNEL_GROUP_FLAG_CAN_ADD ^
                       TP_CHANNEL_GROUP_FLAG_MESSAGE_ADD;
           flags_rem = 0;
@@ -1573,19 +1575,11 @@ _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
                                     const gchar *message)
 {
   GabbleMucChannelPrivate *priv;
-  GabbleHandleRepo *handles;
-  GabbleHandle self_handle;
-  GError *error;
-  gboolean valid;
   GIntSet *empty, *set_members, *set_pending;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
-
-  handles = _gabble_connection_get_handles (priv->conn);
-  valid = gabble_connection_get_self_handle (priv->conn, &self_handle, &error);
-  g_assert (valid);
 
   /* add ourself to local pending and the inviter to members */
   empty = g_intset_new ();
@@ -1593,7 +1587,7 @@ _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
   set_pending = g_intset_new ();
 
   g_intset_add (set_members, inviter);
-  g_intset_add (set_pending, self_handle);
+  g_intset_add (set_pending, priv->conn_self_handle);
 
   gabble_group_mixin_change_members (G_OBJECT (chan), message, set_members,
                                      empty, set_pending, empty);
@@ -2101,7 +2095,6 @@ gabble_muc_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *m
 {
   GabbleMucChannelPrivate *priv;
   GabbleGroupMixin *mixin;
-  GabbleHandle main_self_handle;
   const gchar *jid;
   LmMessage *msg;
   LmMessageNode *x_node, *invite_node;
@@ -2113,14 +2106,10 @@ gabble_muc_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *m
 
   mixin = GABBLE_GROUP_MIXIN (obj);
 
-  result = gabble_connection_get_self_handle (priv->conn, &main_self_handle,
-                                              error);
-  if (!result)
-    return result;
-
-  if (handle == main_self_handle)
+  if (handle == priv->conn_self_handle)
     {
-      GIntSet *empty, *set;
+      GIntSet *set_empty, *set_members, *set_pending;
+      GArray *arr_members;
 
       /* are we already a member or in remote pending? */
       if (handle_set_is_member (mixin->members, handle) ||
@@ -2132,16 +2121,24 @@ gabble_muc_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *m
           return FALSE;
         }
 
-      /* add ourself to remote pending */
-      empty = g_intset_new ();
-      set = g_intset_new ();
+      /* add ourself to remote pending and remove the inviter's
+       * main jid from the member list */
+      set_empty = g_intset_new ();
+      set_members = g_intset_new ();
+      set_pending = g_intset_new ();
 
-      g_intset_add (set, handle);
+      arr_members = handle_set_to_array (mixin->members);
+      g_intset_add (set_members, g_array_index (arr_members, guint32, 0));
+      g_array_free (arr_members, TRUE);
 
-      gabble_group_mixin_change_members (obj, "", empty, empty, empty, set);
+      g_intset_add (set_pending, handle);
 
-      g_intset_destroy (empty);
-      g_intset_destroy (set);
+      gabble_group_mixin_change_members (obj, "", set_empty, set_members,
+                                         set_empty, set_pending);
+
+      g_intset_destroy (set_empty);
+      g_intset_destroy (set_members);
+      g_intset_destroy (set_pending);
 
       /* seek to enter the room */
       result = send_join_request (GABBLE_MUC_CHANNEL (obj), NULL, error);

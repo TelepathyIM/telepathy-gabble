@@ -34,6 +34,8 @@ typedef void (*GabbleHandleFunc)(GabbleHandleSet *set, GabbleHandle handle, gpoi
 GabbleHandleSet * handle_set_new (GabbleHandleRepo *, TpHandleType type);
 void handle_set_destroy (GabbleHandleSet *);
 
+GIntSet *handle_set_peek (GabbleHandleSet *set);
+
 void handle_set_add (GabbleHandleSet *set, GabbleHandle handle);
 gboolean handle_set_remove (GabbleHandleSet *set, GabbleHandle handle);
 gboolean handle_set_is_member (GabbleHandleSet *set, GabbleHandle handle);

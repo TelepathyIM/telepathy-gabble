@@ -61,7 +61,7 @@ freer (GabbleHandleSet *set, GabbleHandle handle, gpointer userdata)
 
 /**
  * handle_set_destroy:
- * @set:#GabbleHandleSetto destroy
+ * @set:#GabbleHandleSet to destroy
  *
  * Delete a #GabbleHandleSet and unreference any handles that it holds
  */
@@ -71,6 +71,18 @@ handle_set_destroy (GabbleHandleSet *set)
   handle_set_foreach (set, freer, NULL);
   g_intset_destroy (set->intset);
   g_free (set);
+}
+
+/**
+ * handle_set_peek:
+ * @set:#GabbleHandleSet to peek at
+ *
+ * Get the underlying GIntSet used by this GabbleHandleSet
+ */
+GIntSet *
+handle_set_peek (GabbleHandleSet *set)
+{
+  return set->intset;
 }
 
 /**

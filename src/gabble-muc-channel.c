@@ -1133,17 +1133,19 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
     }
 
   text_node = lm_message_node_get_child (error_node, "text");
-  if (text_node == NULL)
+  if (text_node)
     {
-      g_warning ("%s: missing required node 'text'", G_STRFUNC);
-      return;
+      text = lm_message_node_get_value (text_node);
+    }
+  else
+    {
+      text = NULL;
     }
 
   code_str = lm_message_node_get_attribute (error_node, "code");
   type = lm_message_node_get_attribute (error_node, "type");
-  text = lm_message_node_get_value (text_node);
 
-  if (code_str == NULL || type == NULL || text == NULL)
+  if (code_str == NULL || type == NULL)
     {
       g_warning ("%s: missing required attribute", G_STRFUNC);
       HANDLER_DEBUG (pres_node, "presence node");

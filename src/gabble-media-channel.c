@@ -709,6 +709,8 @@ gboolean gabble_media_channel_get_session_handlers (GabbleMediaChannel *obj, GPt
  */
 gboolean gabble_media_channel_get_streams (GabbleMediaChannel *obj, GPtrArray ** ret, GError **error)
 {
+
+#if 0
   GabbleMediaChannelPrivate *priv;
   GArray *array;
   GabbleHandle handle,self_handle;
@@ -746,7 +748,7 @@ gboolean gabble_media_channel_get_streams (GabbleMediaChannel *obj, GPtrArray **
                   0, handle,
                   1, 1,
                   2, TP_CODEC_MEDIA_TYPE_AUDIO,
-                  1, TP_MEDIA_STREAM_STATE_STOPPED,
+                  3, TP_MEDIA_STREAM_STATE_STOPPED,
                   G_MAXUINT);
 
 
@@ -757,6 +759,15 @@ gboolean gabble_media_channel_get_streams (GabbleMediaChannel *obj, GPtrArray **
     }
 
   return TRUE;
+#else
+      g_debug ("%s: not implemented", G_STRFUNC);
+
+      *error = g_error_new (TELEPATHY_ERRORS, NotImplemented,
+                            "GetStreams not implemented!");
+
+      return FALSE;
+#endif
+
 }
 
 

@@ -363,7 +363,7 @@ static void properties_disco_cb (GabbleDisco *disco, const gchar *jid,
                                       changed_props_val);
 
           room_property_change_flags (chan, ROOM_PROP_NAME,
-                                      TP_CHANNEL_ROOM_PROPERTY_FLAG_READ,
+                                      TP_PROPERTY_FLAG_READ,
                                       0, changed_props_flags);
 
           g_value_unset (&val);
@@ -481,7 +481,7 @@ static void properties_disco_cb (GabbleDisco *disco, const gchar *jid,
         {
           room_property_change_value (chan, prop_id, &val, changed_props_val);
 
-          room_property_change_flags (chan, prop_id, TP_CHANNEL_ROOM_PROPERTY_FLAG_READ,
+          room_property_change_flags (chan, prop_id, TP_PROPERTY_FLAG_READ,
                                       0, changed_props_flags);
 
           g_value_unset (&val);
@@ -500,38 +500,38 @@ static void properties_disco_cb (GabbleDisco *disco, const gchar *jid,
   if (priv->self_role >= ROLE_VISITOR)
     {
       room_property_change_flags (chan, ROOM_PROP_SUBJECT,
-          TP_CHANNEL_ROOM_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
+          TP_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
     }
 
   /* Room definition */
   if (priv->self_affil == AFFILIATION_OWNER)
     {
       room_property_change_flags (chan, ROOM_PROP_ANONYMOUS,
-          TP_CHANNEL_ROOM_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
+          TP_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
 
       room_property_change_flags (chan, ROOM_PROP_INVITE_ONLY,
-          TP_CHANNEL_ROOM_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
+          TP_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
 
       room_property_change_flags (chan, ROOM_PROP_MODERATED,
-          TP_CHANNEL_ROOM_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
+          TP_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
 
       room_property_change_flags (chan, ROOM_PROP_NAME,
-          TP_CHANNEL_ROOM_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
+          TP_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
 
       room_property_change_flags (chan, ROOM_PROP_PASSWORD,
-          TP_CHANNEL_ROOM_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
+          TP_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
 
       room_property_change_flags (chan, ROOM_PROP_PASSWORD_REQUIRED,
-          TP_CHANNEL_ROOM_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
+          TP_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
 
       room_property_change_flags (chan, ROOM_PROP_PERSISTENT,
-          TP_CHANNEL_ROOM_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
+          TP_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
 
       room_property_change_flags (chan, ROOM_PROP_PRIVATE,
-          TP_CHANNEL_ROOM_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
+          TP_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
 
       room_property_change_flags (chan, ROOM_PROP_SUBJECT,
-          TP_CHANNEL_ROOM_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
+          TP_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
     }
 
 
@@ -857,7 +857,7 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   0,
                   NULL, NULL,
                   gabble_muc_channel_marshal_VOID__BOXED,
-                  G_TYPE_NONE, 1, (dbus_g_type_get_map ("GHashTable", G_TYPE_UINT, G_TYPE_VALUE)));
+                  G_TYPE_NONE, 1, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_UINT, G_TYPE_VALUE, G_TYPE_INVALID)))));
 
   signals[PROPERTY_FLAGS_CHANGED] =
     g_signal_new ("property-flags-changed",
@@ -866,7 +866,7 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   0,
                   NULL, NULL,
                   gabble_muc_channel_marshal_VOID__BOXED,
-                  G_TYPE_NONE, 1, (dbus_g_type_get_map ("GHashTable", G_TYPE_UINT, G_TYPE_UINT)));
+                  G_TYPE_NONE, 1, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_UINT, G_TYPE_UINT, G_TYPE_INVALID)))));
 
   signals[RECEIVED] =
     g_signal_new ("received",
@@ -1531,8 +1531,8 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
       g_value_set_string (&val, lm_message_node_get_value (node));
 
       room_property_change_value (chan, ROOM_PROP_SUBJECT, &val, changed_values);
-      room_property_change_flags (chan, ROOM_PROP_SUBJECT,
-          TP_CHANNEL_ROOM_PROPERTY_FLAG_READ, 0, changed_flags);
+      room_property_change_flags (chan, ROOM_PROP_SUBJECT, TP_PROPERTY_FLAG_READ,
+                                  0, changed_flags);
 
       g_value_unset (&val);
 
@@ -1543,7 +1543,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
       room_property_change_value (chan, ROOM_PROP_SUBJECT_CONTACT, &val,
           changed_values);
       room_property_change_flags (chan, ROOM_PROP_SUBJECT_CONTACT,
-          TP_CHANNEL_ROOM_PROPERTY_FLAG_READ, 0, changed_flags);
+          TP_PROPERTY_FLAG_READ, 0, changed_flags);
 
       g_value_unset (&val);
 
@@ -1554,7 +1554,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
       room_property_change_value (chan, ROOM_PROP_SUBJECT_TIMESTAMP, &val,
           changed_values);
       room_property_change_flags (chan, ROOM_PROP_SUBJECT_TIMESTAMP,
-          TP_CHANNEL_ROOM_PROPERTY_FLAG_READ, 0, changed_flags);
+          TP_PROPERTY_FLAG_READ, 0, changed_flags);
 
       g_value_unset (&val);
 
@@ -2130,7 +2130,10 @@ gabble_muc_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *m
       set_pending = g_intset_new ();
 
       arr_members = handle_set_to_array (mixin->members);
-      g_intset_add (set_members, g_array_index (arr_members, guint32, 0));
+      if (arr_members->len > 0)
+        {
+          g_intset_add (set_members, g_array_index (arr_members, guint32, 0));
+        }
       g_array_free (arr_members, TRUE);
 
       g_intset_add (set_pending, handle);
@@ -2265,7 +2268,7 @@ gabble_muc_channel_remove_member (GObject *obj, GabbleHandle handle, const gchar
  * gabble_muc_channel_list_properties
  *
  * Implements DBus method ListProperties
- * on interface org.freedesktop.Telepathy.Channel.Interface.RoomProperties
+ * on interface org.freedesktop.Telepathy.Properties
  *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this
@@ -2273,7 +2276,7 @@ gabble_muc_channel_remove_member (GObject *obj, GabbleHandle handle, const gchar
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_muc_channel_list_properties (GabbleMucChannel *obj, GHashTable ** ret, GError **error)
+gboolean gabble_muc_channel_list_properties (GabbleMucChannel *obj, GPtrArray ** ret, GError **error)
 {
   GabbleMucChannelPrivate *priv;
   guint i;
@@ -2282,8 +2285,7 @@ gboolean gabble_muc_channel_list_properties (GabbleMucChannel *obj, GHashTable *
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
 
-  *ret = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
-                                (GDestroyNotify) g_value_array_free);
+  *ret = g_ptr_array_sized_new (NUM_ROOM_PROPS);
 
   for (i = 0; i < NUM_ROOM_PROPS; i++)
     {
@@ -2305,16 +2307,18 @@ gboolean gabble_muc_channel_list_properties (GabbleMucChannel *obj, GHashTable *
           g_assert_not_reached ();
       };
 
-      g_value_init (&val, TP_TYPE_ROOM_PROPERTY_STRUCT);
+      g_value_init (&val, TP_TYPE_PROPERTY_INFO_STRUCT);
       g_value_set_static_boxed (&val,
-          dbus_g_type_specialized_construct (TP_TYPE_ROOM_PROPERTY_STRUCT));
+          dbus_g_type_specialized_construct (TP_TYPE_PROPERTY_INFO_STRUCT));
 
       dbus_g_type_struct_set (&val,
-          0, room_property_signatures[i].name,
-          1, dbus_sig,
-          2, prop->flags);
+          0, i,
+          1, room_property_signatures[i].name,
+          2, dbus_sig,
+          3, prop->flags,
+          G_MAXUINT);
 
-      g_hash_table_insert (*ret, GUINT_TO_POINTER (i), g_value_get_boxed (&val));
+      g_ptr_array_add (*ret, g_value_get_boxed (&val));
     }
 
   return TRUE;
@@ -2325,7 +2329,7 @@ gboolean gabble_muc_channel_list_properties (GabbleMucChannel *obj, GHashTable *
  * gabble_muc_channel_get_properties
  *
  * Implements DBus method GetProperties
- * on interface org.freedesktop.Telepathy.Channel.Interface.RoomProperties
+ * on interface org.freedesktop.Telepathy.Properties
  *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this
@@ -2333,7 +2337,7 @@ gboolean gabble_muc_channel_list_properties (GabbleMucChannel *obj, GHashTable *
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_muc_channel_get_properties (GabbleMucChannel *obj, const GArray * properties, GHashTable ** ret, GError **error)
+gboolean gabble_muc_channel_get_properties (GabbleMucChannel *obj, const GArray * properties, GPtrArray ** ret, GError **error)
 {
   GabbleMucChannelPrivate *priv;
   guint i;
@@ -2357,7 +2361,7 @@ gboolean gabble_muc_channel_get_properties (GabbleMucChannel *obj, const GArray 
         }
 
       /* Permitted? */
-      if (!(priv->room_props[prop_id].flags & TP_CHANNEL_ROOM_PROPERTY_FLAG_READ))
+      if (!(priv->room_props[prop_id].flags & TP_PROPERTY_FLAG_READ))
         {
           *error = g_error_new (TELEPATHY_ERRORS, PermissionDenied,
                                 "permission denied for property identifier %d", prop_id);
@@ -2367,21 +2371,24 @@ gboolean gabble_muc_channel_get_properties (GabbleMucChannel *obj, const GArray 
     }
 
   /* If we got this far, return the actual values */
-  *ret = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
-                                (GDestroyNotify) g_value_unset);
+  *ret = g_ptr_array_sized_new (properties->len);
 
   for (i = 0; i < properties->len; i++)
     {
-      GValue *val, *orig_val;
       guint prop_id = g_array_index (properties, guint, i);
+      GValue val_struct = { 0, };
 
-      orig_val = &priv->room_props[prop_id].value;
+      /* id/value struct */
+      g_value_init (&val_struct, TP_TYPE_PROPERTY_VALUE_STRUCT);
+      g_value_set_static_boxed (&val_struct,
+          dbus_g_type_specialized_construct (TP_TYPE_PROPERTY_VALUE_STRUCT));
 
-      val = g_new0 (GValue, 1);
-      g_value_init (val, G_VALUE_TYPE (orig_val));
-      g_value_copy (orig_val, val);
+      dbus_g_type_struct_set (&val_struct,
+          0, prop_id,
+          1, &priv->room_props[prop_id].value,
+          G_MAXUINT);
 
-      g_hash_table_insert (*ret, GUINT_TO_POINTER (prop_id), val);
+      g_ptr_array_add (*ret, g_value_get_boxed (&val_struct));
     }
 
   return TRUE;
@@ -2398,23 +2405,22 @@ static LmHandlerResult request_config_form_reply_cb (GabbleConnection *conn, LmM
  * gabble_muc_channel_set_properties
  *
  * Implements DBus method SetProperties
- * on interface org.freedesktop.Telepathy.Channel.Interface.RoomProperties
+ * on interface org.freedesktop.Telepathy.Properties
  *
  * @context: The DBUS invocation context to use to return values
  *           or throw an error.
  */
-gboolean gabble_muc_channel_set_properties (GabbleMucChannel *obj, GHashTable * properties, DBusGMethodInvocation *context)
+gboolean gabble_muc_channel_set_properties (GabbleMucChannel *obj, const GPtrArray * properties, DBusGMethodInvocation *context)
 {
   GabbleMucChannelPrivate *priv;
   gboolean result;
   GError *error;
   gboolean ret;
-  GSList *prop_list, *iter;
   GHashTable *props_config;
   LmMessage *msg;
   LmMessageNode *node;
   const gchar *str;
-  guint count, n;
+  guint i, n;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (obj));
 
@@ -2422,40 +2428,39 @@ gboolean gabble_muc_channel_set_properties (GabbleMucChannel *obj, GHashTable * 
 
   result = TRUE;
   n = 0;
-  count = g_hash_table_size (properties);
 
-  prop_list = tp_hash_to_key_value_list (properties);
+  error = NULL;
   props_config = NULL;
 
   /* Check input property identifiers */
-  for (iter = prop_list; iter; iter = iter->next)
+  for (i = 0; i < properties->len; i++)
     {
-      TpKeyValue *kv = iter->data;
-      guint prop_id = GPOINTER_TO_UINT (kv->key);
-      GValue *prop_val = kv->value;
+      GValue val_struct = { 0, };
+      guint prop_id;
+      GValue *prop_val;
+
+      g_value_init (&val_struct, TP_TYPE_PROPERTY_VALUE_STRUCT);
+      g_value_set_static_boxed (&val_struct, g_ptr_array_index (properties, i));
+
+      dbus_g_type_struct_get (&val_struct,
+          0, &prop_id,
+          1, &prop_val,
+          G_MAXUINT);
 
       /* Valid? */
       if (prop_id >= NUM_ROOM_PROPS)
         {
           error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
                                "invalid property identifier %d", prop_id);
-          dbus_g_method_return_error (context, error);
-          g_error_free (error);
-
-          result = FALSE;
-          goto OUT;
+          goto PROPERTY_CHECKED;
         }
 
       /* Permitted? */
-      if (!(priv->room_props[prop_id].flags & TP_CHANNEL_ROOM_PROPERTY_FLAG_WRITE))
+      if (!(priv->room_props[prop_id].flags & TP_PROPERTY_FLAG_WRITE))
         {
           error = g_error_new (TELEPATHY_ERRORS, PermissionDenied,
                                "permission denied for property identifier %d", prop_id);
-          dbus_g_method_return_error (context, error);
-          g_error_free (error);
-
-          result = FALSE;
-          goto OUT;
+          goto PROPERTY_CHECKED;
         }
 
       /* Compatible type? */
@@ -2465,6 +2470,14 @@ gboolean gabble_muc_channel_set_properties (GabbleMucChannel *obj, GHashTable * 
           error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
                                "incompatible value type for property identifier %d",
                                prop_id);
+          goto PROPERTY_CHECKED;
+        }
+
+PROPERTY_CHECKED:
+      g_value_unset (prop_val);
+
+      if (error)
+        {
           dbus_g_method_return_error (context, error);
           g_error_free (error);
 
@@ -2477,12 +2490,22 @@ gboolean gabble_muc_channel_set_properties (GabbleMucChannel *obj, GHashTable * 
   /* Try to change subject first, and in the same run, determine if we're
    * about to change the channel configuration. */
 
-  for (iter = prop_list; iter; iter = iter->next)
+  error = NULL;
+
+  for (i = 0; i < properties->len; i++)
     {
-      TpKeyValue *kv = iter->data;
-      guint prop_id = GPOINTER_TO_UINT (kv->key);
-      GValue *prop_val = kv->value;
+      GValue val_struct = { 0, };
+      guint prop_id;
+      GValue *prop_val;
       GValue *cfg_val;
+
+      g_value_init (&val_struct, TP_TYPE_PROPERTY_VALUE_STRUCT);
+      g_value_set_static_boxed (&val_struct, g_ptr_array_index (properties, i));
+
+      dbus_g_type_struct_get (&val_struct,
+          0, &prop_id,
+          1, &prop_val,
+          G_MAXUINT);
 
       switch (prop_id) {
         case ROOM_PROP_ANONYMOUS:
@@ -2520,11 +2543,7 @@ gboolean gabble_muc_channel_set_properties (GabbleMucChannel *obj, GHashTable * 
 
           if (!ret)
             {
-              dbus_g_method_return_error (context, error);
-              g_error_free (error);
-
-              result = FALSE;
-              goto OUT;
+              goto PROPERTY_HANDLED;
             }
 
           n++;
@@ -2533,6 +2552,18 @@ gboolean gabble_muc_channel_set_properties (GabbleMucChannel *obj, GHashTable * 
         default:
           g_assert_not_reached ();
       }
+
+PROPERTY_HANDLED:
+      g_value_unset (prop_val);
+
+      if (error)
+        {
+          dbus_g_method_return_error (context, error);
+          g_error_free (error);
+
+          result = FALSE;
+          goto OUT;
+        }
     }
 
   if (props_config)
@@ -2564,15 +2595,12 @@ gboolean gabble_muc_channel_set_properties (GabbleMucChannel *obj, GHashTable * 
         }
     }
 
-  if (n == count)
+  if (n == properties->len)
     {
       dbus_g_method_return (context);
     }
 
 OUT:
-  if (prop_list)
-    tp_key_value_list_free (prop_list);
-
   if (!result && props_config)
     {
       g_hash_table_destroy (props_config);
@@ -2694,8 +2722,6 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
       lm_message_node_set_attribute (field_node, "var", var);
       value_node = lm_message_node_add_child (field_node, "value", prev_value);
 
-      /* FIXME: if the string starts with 'muc#', skip that part */
-
       id = INVALID_ROOM_PROP;
       type = G_TYPE_BOOLEAN;
       invert = FALSE;
@@ -2721,7 +2747,8 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
           type = G_TYPE_STRING;
         }
       else if (strcmp (var, "password") == 0 ||
-               strcmp (var, "muc#roomconfig_roomsecret") == 0)
+               strcmp (var, "muc#roomconfig_roomsecret") == 0 ||
+               strcmp (var, "muc#owner_roomsecret") == 0)
         {
           id = ROOM_PROP_PASSWORD;
           type = G_TYPE_STRING;
@@ -2783,8 +2810,10 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
     }
   else if (n < count)
     {
-      g_warning ("%s: only %d out of %d properties substituted",
-                 G_STRFUNC, n, count);
+      error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+                           "only %d out of %d properties substituted",
+                           n, count);
+      goto OUT;
     }
 
   _gabble_connection_send_with_reply (priv->conn, msg,
@@ -2865,8 +2894,8 @@ room_property_flags_to_string (TpChannelRoomPropertyFlags flags)
   gint i = 0;
   gchar str[512] = "[" ANSI_BOLD_OFF;
 
-  RPTS_APPEND_FLAG_IF_SET (TP_CHANNEL_ROOM_PROPERTY_FLAG_READ);
-  RPTS_APPEND_FLAG_IF_SET (TP_CHANNEL_ROOM_PROPERTY_FLAG_WRITE);
+  RPTS_APPEND_FLAG_IF_SET (TP_PROPERTY_FLAG_READ);
+  RPTS_APPEND_FLAG_IF_SET (TP_PROPERTY_FLAG_WRITE);
 
   strcat (str, ANSI_BOLD_ON "]");
 
@@ -2948,14 +2977,15 @@ static void
 room_properties_emit_changed (GabbleMucChannel *chan, GArray *props)
 {
   GabbleMucChannelPrivate *priv;
-  GHashTable *hash;
+  GPtrArray *prop_arr;
+  GValue prop_list = { 0, };
   guint i;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
 
-  hash = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL, NULL);
+  prop_arr = g_ptr_array_sized_new (props->len);
 
   printf (ANSI_BOLD_ON ANSI_FG_CYAN
           "%s: emitting room properties changed for propert%s:\n",
@@ -2963,13 +2993,19 @@ room_properties_emit_changed (GabbleMucChannel *chan, GArray *props)
 
   for (i = 0; i < props->len; i++)
     {
-      guint prop_id;
-      RoomProperty *prop;
+      GValue prop_val = { 0, };
+      guint prop_id = g_array_index (props, guint, i);
 
-      prop_id = g_array_index (props, guint, i);
-      prop = &priv->room_props[prop_id];
+      g_value_init (&prop_val, TP_TYPE_PROPERTY_VALUE_STRUCT);
+      g_value_set_static_boxed (&prop_val,
+          dbus_g_type_specialized_construct (TP_TYPE_PROPERTY_VALUE_STRUCT));
 
-      g_hash_table_insert (hash, GUINT_TO_POINTER (prop_id), &prop->value);
+      dbus_g_type_struct_set (&prop_val,
+          0, prop_id,
+          1, &priv->room_props[prop_id].value,
+          G_MAXUINT);
+
+      g_ptr_array_add (prop_arr, g_value_get_boxed (&prop_val));
 
       printf ("  %s\n", room_property_signatures[prop_id].name);
     }
@@ -2977,23 +3013,26 @@ room_properties_emit_changed (GabbleMucChannel *chan, GArray *props)
   printf (ANSI_RESET);
   fflush (stdout);
 
-  g_signal_emit (chan, signals[PROPERTIES_CHANGED], 0, hash);
+  g_signal_emit (chan, signals[PROPERTIES_CHANGED], 0, prop_arr);
 
-  g_hash_table_destroy (hash);
+  g_value_init (&prop_list, TP_TYPE_PROPERTY_VALUE_LIST);
+  g_value_set_static_boxed (&prop_list, prop_arr);
+  g_value_unset (&prop_list);
 }
 
 static void
 room_properties_emit_flags (GabbleMucChannel *chan, GArray *props)
 {
   GabbleMucChannelPrivate *priv;
-  GHashTable *hash;
+  GPtrArray *prop_arr;
+  GValue prop_list = { 0, };
   guint i;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
 
-  hash = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL, NULL);
+  prop_arr = g_ptr_array_sized_new (props->len);
 
   printf (ANSI_BOLD_ON ANSI_FG_WHITE
           "%s: emitting room properties flags changed for propert%s:\n",
@@ -3001,18 +3040,25 @@ room_properties_emit_flags (GabbleMucChannel *chan, GArray *props)
 
   for (i = 0; i < props->len; i++)
     {
-      guint prop_id;
-      RoomProperty *prop;
+      GValue prop_val = { 0, };
+      guint prop_id = g_array_index (props, guint, i);
+      guint prop_flags;
       gchar *str_flags;
 
-      prop_id = g_array_index (props, guint, i);
-      prop = &priv->room_props[prop_id];
+      prop_flags = priv->room_props[prop_id].flags;
 
-      g_hash_table_insert (hash,
-          GUINT_TO_POINTER (prop_id),
-          GUINT_TO_POINTER (prop->flags));
+      g_value_init (&prop_val, TP_TYPE_PROPERTY_FLAGS_STRUCT);
+      g_value_set_static_boxed (&prop_val,
+          dbus_g_type_specialized_construct (TP_TYPE_PROPERTY_FLAGS_STRUCT));
 
-      str_flags = room_property_flags_to_string (prop->flags);
+      dbus_g_type_struct_set (&prop_val,
+          0, prop_id,
+          1, prop_flags,
+          G_MAXUINT);
+
+      g_ptr_array_add (prop_arr, g_value_get_boxed (&prop_val));
+
+      str_flags = room_property_flags_to_string (prop_flags);
 
       printf ("  %s's flags now: %s\n",
           room_property_signatures[prop_id].name,
@@ -3024,8 +3070,10 @@ room_properties_emit_flags (GabbleMucChannel *chan, GArray *props)
   printf (ANSI_RESET);
   fflush (stdout);
 
-  g_signal_emit (chan, signals[PROPERTY_FLAGS_CHANGED], 0, hash);
+  g_signal_emit (chan, signals[PROPERTY_FLAGS_CHANGED], 0, prop_arr);
 
-  g_hash_table_destroy (hash);
+  g_value_init (&prop_list, TP_TYPE_PROPERTY_FLAGS_LIST);
+  g_value_set_static_boxed (&prop_list, prop_arr);
+  g_value_unset (&prop_list);
 }
 

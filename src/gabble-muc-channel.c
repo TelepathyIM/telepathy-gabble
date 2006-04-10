@@ -1333,18 +1333,18 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
           priv->self_affil = get_affiliation_from_string (affil);
 
           /* update flags */
-          flags_add = TP_CHANNEL_GROUP_FLAG_CAN_ADD ^
+          flags_add = TP_CHANNEL_GROUP_FLAG_CAN_ADD |
                       TP_CHANNEL_GROUP_FLAG_MESSAGE_ADD;
           flags_rem = 0;
 
           if (priv->self_role == ROLE_MODERATOR)
             {
-              flags_add ^= TP_CHANNEL_GROUP_FLAG_CAN_REMOVE ^
+              flags_add |= TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
                            TP_CHANNEL_GROUP_FLAG_MESSAGE_REMOVE;
             }
           else
             {
-              flags_rem ^= TP_CHANNEL_GROUP_FLAG_CAN_REMOVE ^
+              flags_rem |= TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
                            TP_CHANNEL_GROUP_FLAG_MESSAGE_REMOVE;
             }
 

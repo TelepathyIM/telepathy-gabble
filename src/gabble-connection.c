@@ -2959,8 +2959,8 @@ make_roster_channels (GabbleConnection *conn)
                  /* supress handler: */ FALSE);
 
   _gabble_roster_channel_change_group_flags (priv->subscribe_channel,
-      TP_CHANNEL_GROUP_FLAG_CAN_ADD ^
-      TP_CHANNEL_GROUP_FLAG_CAN_REMOVE ^
+      TP_CHANNEL_GROUP_FLAG_CAN_ADD |
+      TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
       TP_CHANNEL_GROUP_FLAG_CAN_RESCIND, 0);
 
   g_free (object_path);

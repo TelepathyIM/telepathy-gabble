@@ -238,7 +238,8 @@ _gabble_media_channel_dispatch_session_action (GabbleMediaChannel *chan,
 
       /* and update flags accordingly */
       gabble_group_mixin_change_flags (G_OBJECT (chan),
-                                       TP_CHANNEL_GROUP_FLAG_CAN_ADD ^ TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
+                                       TP_CHANNEL_GROUP_FLAG_CAN_ADD |
+                                       TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
                                        0);
     }
 
@@ -816,7 +817,7 @@ gabble_media_channel_add_member (GObject *obj, GabbleHandle handle, const gchar 
 
       /* and update flags accordingly */
       gabble_group_mixin_change_flags (obj,
-                                       TP_CHANNEL_GROUP_FLAG_CAN_REMOVE ^
+                                       TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
                                        TP_CHANNEL_GROUP_FLAG_CAN_RESCIND,
                                        TP_CHANNEL_GROUP_FLAG_CAN_ADD);
 
@@ -902,7 +903,7 @@ gabble_media_channel_remove_member (GObject *obj, GabbleHandle handle, const gch
 
   /* and update flags accordingly */
   gabble_group_mixin_change_flags (obj, TP_CHANNEL_GROUP_FLAG_CAN_ADD,
-                                   TP_CHANNEL_GROUP_FLAG_CAN_REMOVE ^
+                                   TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
                                    TP_CHANNEL_GROUP_FLAG_CAN_RESCIND);
 
   return TRUE;
@@ -937,8 +938,10 @@ session_state_changed_cb (GabbleMediaSession *session,
           gabble_group_mixin_change_members (G_OBJECT (channel), "", set, empty, empty, empty);
 
           /* update flags accordingly -- allow removal, deny adding and rescinding */
-          gabble_group_mixin_change_flags (G_OBJECT (channel), TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
-                                           TP_CHANNEL_GROUP_FLAG_CAN_ADD ^ TP_CHANNEL_GROUP_FLAG_CAN_RESCIND);
+          gabble_group_mixin_change_flags (G_OBJECT (channel),
+              TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
+              TP_CHANNEL_GROUP_FLAG_CAN_ADD |
+              TP_CHANNEL_GROUP_FLAG_CAN_RESCIND);
         }
     }
   else if (state == JS_STATE_ENDED)

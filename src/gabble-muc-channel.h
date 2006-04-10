@@ -72,13 +72,29 @@ GType gabble_muc_channel_get_type(void);
       G_TYPE_UINT, \
       G_TYPE_STRING, \
       G_TYPE_INVALID))
-#define TP_TYPE_ROOM_PROPERTY_STRUCT (dbus_g_type_get_struct ("GValueArray", \
+
+#define TP_TYPE_PROPERTY_INFO_STRUCT (dbus_g_type_get_struct ("GValueArray", \
+      G_TYPE_UINT, \
       G_TYPE_STRING, \
       G_TYPE_STRING, \
       G_TYPE_UINT, \
       G_TYPE_INVALID))
-#define TP_TYPE_ROOM_PROPERTY_LIST (dbus_g_type_get_collection ("GPtrArray", \
-      TP_TYPE_ROOM_PROPERTY_STRUCT))
+#define TP_TYPE_PROPERTY_INFO_LIST (dbus_g_type_get_collection ("GPtrArray", \
+      TP_TYPE_PROPERTY_INFO_STRUCT))
+
+#define TP_TYPE_PROPERTY_VALUE_STRUCT (dbus_g_type_get_struct ("GValueArray", \
+      G_TYPE_UINT, \
+      G_TYPE_VALUE, \
+      G_TYPE_INVALID))
+#define TP_TYPE_PROPERTY_VALUE_LIST (dbus_g_type_get_collection ("GPtrArray", \
+      TP_TYPE_PROPERTY_VALUE_STRUCT))
+
+#define TP_TYPE_PROPERTY_FLAGS_STRUCT (dbus_g_type_get_struct ("GValueArray", \
+      G_TYPE_UINT, \
+      G_TYPE_UINT, \
+      G_TYPE_INVALID))
+#define TP_TYPE_PROPERTY_FLAGS_LIST (dbus_g_type_get_collection ("GPtrArray", \
+      TP_TYPE_PROPERTY_FLAGS_STRUCT))
 
 void _gabble_muc_channel_presence_error (GabbleMucChannel *chan, const gchar *jid, LmMessageNode *pres_node);
 void _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan, GabbleHandle handle, LmMessageNode *pres_node);
@@ -96,15 +112,15 @@ gboolean gabble_muc_channel_get_interfaces (GabbleMucChannel *obj, gchar *** ret
 gboolean gabble_muc_channel_get_local_pending_members (GabbleMucChannel *obj, GArray ** ret, GError **error);
 gboolean gabble_muc_channel_get_members (GabbleMucChannel *obj, GArray ** ret, GError **error);
 gboolean gabble_muc_channel_get_password_flags (GabbleMucChannel *obj, guint* ret, GError **error);
-gboolean gabble_muc_channel_get_properties (GabbleMucChannel *obj, const GArray * properties, GHashTable ** ret, GError **error);
+gboolean gabble_muc_channel_get_properties (GabbleMucChannel *obj, const GArray * properties, GPtrArray ** ret, GError **error);
 gboolean gabble_muc_channel_get_remote_pending_members (GabbleMucChannel *obj, GArray ** ret, GError **error);
 gboolean gabble_muc_channel_get_self_handle (GabbleMucChannel *obj, guint* ret, GError **error);
 gboolean gabble_muc_channel_list_pending_messages (GabbleMucChannel *obj, GPtrArray ** ret, GError **error);
-gboolean gabble_muc_channel_list_properties (GabbleMucChannel *obj, GHashTable ** ret, GError **error);
+gboolean gabble_muc_channel_list_properties (GabbleMucChannel *obj, GPtrArray ** ret, GError **error);
 gboolean gabble_muc_channel_provide_password (GabbleMucChannel *obj, const gchar * password, DBusGMethodInvocation *context);
 gboolean gabble_muc_channel_remove_members (GabbleMucChannel *obj, const GArray * contacts, const gchar * message, GError **error);
 gboolean gabble_muc_channel_send (GabbleMucChannel *obj, guint type, const gchar * text, GError **error);
-gboolean gabble_muc_channel_set_properties (GabbleMucChannel *obj, GHashTable * properties, DBusGMethodInvocation *context);
+gboolean gabble_muc_channel_set_properties (GabbleMucChannel *obj, const GPtrArray * properties, DBusGMethodInvocation *context);
 
 G_END_DECLS
 

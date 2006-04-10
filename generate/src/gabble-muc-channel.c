@@ -119,7 +119,7 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   0,
                   NULL, NULL,
                   gabble_muc_channel_marshal_VOID__BOXED,
-                  G_TYPE_NONE, 1, (dbus_g_type_get_map ("GHashTable", G_TYPE_UINT, G_TYPE_VALUE)));
+                  G_TYPE_NONE, 1, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_UINT, G_TYPE_VALUE, G_TYPE_INVALID)))));
 
   signals[PROPERTY_FLAGS_CHANGED] =
     g_signal_new ("property-flags-changed",
@@ -128,7 +128,7 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   0,
                   NULL, NULL,
                   gabble_muc_channel_marshal_VOID__BOXED,
-                  G_TYPE_NONE, 1, (dbus_g_type_get_map ("GHashTable", G_TYPE_UINT, G_TYPE_UINT)));
+                  G_TYPE_NONE, 1, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_UINT, G_TYPE_UINT, G_TYPE_INVALID)))));
 
   signals[RECEIVED] =
     g_signal_new ("received",
@@ -365,7 +365,7 @@ gboolean gabble_muc_channel_get_password_flags (GabbleMucChannel *obj, guint* re
  * gabble_muc_channel_get_properties
  *
  * Implements DBus method GetProperties
- * on interface org.freedesktop.Telepathy.Channel.Interface.RoomProperties
+ * on interface org.freedesktop.Telepathy.Properties
  *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this
@@ -373,7 +373,7 @@ gboolean gabble_muc_channel_get_password_flags (GabbleMucChannel *obj, guint* re
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_muc_channel_get_properties (GabbleMucChannel *obj, const GArray * properties, GHashTable ** ret, GError **error)
+gboolean gabble_muc_channel_get_properties (GabbleMucChannel *obj, const GArray * properties, GPtrArray ** ret, GError **error)
 {
   return TRUE;
 }
@@ -437,7 +437,7 @@ gboolean gabble_muc_channel_list_pending_messages (GabbleMucChannel *obj, GPtrAr
  * gabble_muc_channel_list_properties
  *
  * Implements DBus method ListProperties
- * on interface org.freedesktop.Telepathy.Channel.Interface.RoomProperties
+ * on interface org.freedesktop.Telepathy.Properties
  *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this
@@ -445,7 +445,7 @@ gboolean gabble_muc_channel_list_pending_messages (GabbleMucChannel *obj, GPtrAr
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_muc_channel_list_properties (GabbleMucChannel *obj, GHashTable ** ret, GError **error)
+gboolean gabble_muc_channel_list_properties (GabbleMucChannel *obj, GPtrArray ** ret, GError **error)
 {
   return TRUE;
 }
@@ -506,12 +506,12 @@ gboolean gabble_muc_channel_send (GabbleMucChannel *obj, guint type, const gchar
  * gabble_muc_channel_set_properties
  *
  * Implements DBus method SetProperties
- * on interface org.freedesktop.Telepathy.Channel.Interface.RoomProperties
+ * on interface org.freedesktop.Telepathy.Properties
  *
  * @context: The DBUS invocation context to use to return values
  *           or throw an error.
  */
-gboolean gabble_muc_channel_set_properties (GabbleMucChannel *obj, GHashTable * properties, DBusGMethodInvocation *context)
+gboolean gabble_muc_channel_set_properties (GabbleMucChannel *obj, const GPtrArray * properties, DBusGMethodInvocation *context)
 {
   return TRUE;
 }

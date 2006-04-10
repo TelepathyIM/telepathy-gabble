@@ -34,24 +34,6 @@
     <method name="Close">
     </method>
   </interface>
-  <interface name="org.freedesktop.Telepathy.Channel.Interface.RoomProperties">
-    <signal name="PropertiesChanged">
-      <arg type="a{uv}" name="properties" />
-    </signal>
-    <method name="ListProperties">
-      <arg direction="out" type="a{u(ssu)}" />
-    </method>
-    <signal name="PropertyFlagsChanged">
-      <arg type="a{uu}" name="properties" />
-    </signal>
-    <method name="SetProperties">
-      <arg direction="in"  type="a{uv}" name="properties" />
-    </method>
-    <method name="GetProperties">
-      <arg direction="in"  type="au" name="properties" />
-      <arg direction="out" type="a{uv}" />
-    </method>
-  </interface>
   <interface name="org.freedesktop.Telepathy.Channel.Interface.Group">
     <method name="RemoveMembers">
       <arg direction="in"  type="au" name="contacts" />
@@ -86,6 +68,24 @@
     </method>
     <method name="GetLocalPendingMembers">
       <arg direction="out" type="au" />
+    </method>
+  </interface>
+  <interface name="org.freedesktop.Telepathy.Properties">
+    <signal name="PropertiesChanged">
+      <arg type="a(uv)" name="properties" />
+    </signal>
+    <method name="ListProperties">
+      <arg direction="out" type="a(ussu)" />
+    </method>
+    <signal name="PropertyFlagsChanged">
+      <arg type="a(uu)" name="properties" />
+    </signal>
+    <method name="SetProperties">
+      <arg direction="in"  type="a(uv)" name="properties" />
+    </method>
+    <method name="GetProperties">
+      <arg direction="in"  type="au" name="properties" />
+      <arg direction="out" type="a(uv)" />
     </method>
   </interface>
   <interface name="org.freedesktop.Telepathy.Channel.Type.Text">

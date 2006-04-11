@@ -136,30 +136,49 @@ gabble_connection_manager_finalize (GObject *object)
 typedef struct _GabbleParams GabbleParams;
 
 struct _GabbleParams {
-  char *account;
-  char *password;
-  char *server;
+  guint set_mask;
+
+  gchar *account;
+  gchar *password;
+  gchar *server;
+  gchar *resource;
   guint16 port;
   gboolean old_ssl;
+  gchar *https_proxy_server;
+  guint16 https_proxy_port;
 };
 
 typedef struct _GabbleParamSpec GabbleParamSpec;
 
 struct _GabbleParamSpec {
-  const char *name;
-  const char *dtype;
+  const gchar *name;
+  const gchar *dtype;
   const GType gtype;
   gboolean mandatory;
   const gpointer def;
   const gsize offset;
 };
 
+enum {
+    JABBER_PARAM_ACCOUNT = 0,
+    JABBER_PARAM_PASSWORD,
+    JABBER_PARAM_SERVER,
+    JABBER_PARAM_RESOURCE,
+    JABBER_PARAM_PORT,
+    JABBER_PARAM_OLD_SSL,
+    JABBER_PARAM_HTTPS_PROXY_SERVER,
+    JABBER_PARAM_HTTPS_PROXY_PORT,
+};
+
 static const GabbleParamSpec jabber_params[] = {
   { "account", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, TRUE, NULL, G_STRUCT_OFFSET(GabbleParams, account) },
   { "password", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, TRUE, NULL, G_STRUCT_OFFSET(GabbleParams, password) },
   { "server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, FALSE, NULL, G_STRUCT_OFFSET(GabbleParams, server) },
-  { "port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT, FALSE, GINT_TO_POINTER(5222), G_STRUCT_OFFSET(GabbleParams, port) },
-  { "old-ssl", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN, FALSE, GINT_TO_POINTER(FALSE), G_STRUCT_OFFSET(GabbleParams, old_ssl) },
+  { "resource", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, FALSE, GABBLE_PARAMS_DEFAULT_RESOURCE, G_STRUCT_OFFSET(GabbleParams, resource) },
+  { "port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT, FALSE, GINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_PORT), G_STRUCT_OFFSET(GabbleParams, port) },
+  { "old-ssl", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN, FALSE, GINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_OLD_SSL), G_STRUCT_OFFSET(GabbleParams, old_ssl) },
+  { "https-proxy-server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, FALSE, GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_SERVER, G_STRUCT_OFFSET(GabbleParams, https_proxy_server) },
+  { "https-proxy-port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT, FALSE, GINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_PORT), G_STRUCT_OFFSET(GabbleParams, https_proxy_port) },
   { NULL, NULL, 0, 0, NULL, 0 }
 };
 
@@ -243,27 +262,6 @@ parameter_defaults (const GabbleParamSpec *params, GHashTable **ret)
   return TRUE;
 }
 
-static void
-set_default_param (const GabbleParamSpec *paramspec,
-                            GabbleParams *params)
-{
-  switch (paramspec->dtype[0])
-    {
-      case DBUS_TYPE_STRING:
-        *((char **) ((void *)params + paramspec->offset)) = g_strdup (paramspec->def);
-        break;
-      case DBUS_TYPE_UINT16:
-        *((guint16 *) ((void *)params + paramspec->offset)) = GPOINTER_TO_INT (paramspec->def);
-        break;
-      case DBUS_TYPE_BOOLEAN:
-        *((gboolean *) ((void *)params + paramspec->offset)) = GPOINTER_TO_INT (paramspec->def);
-        break;
-      default:
-        g_error ("set_default_param: encountered unknown type %s on argument %s",
-                 paramspec->dtype, paramspec->name);
-    }
-}
-
 static gboolean
 set_param_from_value (const GabbleParamSpec *paramspec,
                                      GValue *value,
@@ -334,13 +332,14 @@ parse_parameters (const GabbleParamSpec *paramspec,
             {
               g_debug ("%s: using default value for param %s",
                        G_STRFUNC, paramspec[i].name);
-              set_default_param (&paramspec[i], params);
             }
         }
       else
         {
           if (!set_param_from_value (&paramspec[i], value, params, error))
             return FALSE;
+
+          params->set_mask |= 1 << i;
 
           unhandled--;
           if (paramspec[i].gtype == G_TYPE_STRING)
@@ -451,6 +450,12 @@ _gabble_connection_manager_register (GabbleConnectionManager *self)
 
 /* dbus-exported methods */
 
+#define SET_PROPERTY_IF_PARAM_SET(prop, param, member) \
+  if ((params.set_mask & (1 << param)) != 0) \
+    { \
+      g_object_set (conn, prop, member, NULL); \
+    }
+
 /**
  * gabble_connection_manager_connect
  *
@@ -468,7 +473,7 @@ gboolean gabble_connection_manager_connect (GabbleConnectionManager *obj, const 
   GabbleConnectionManagerPrivate *priv;
   GabbleConnection *conn;
   const GabbleParamSpec *paramspec;
-  GabbleParams params = { NULL };
+  GabbleParams params = { 0, };
 
   g_assert (GABBLE_IS_CONNECTION_MANAGER (obj));
 
@@ -484,15 +489,24 @@ gboolean gabble_connection_manager_connect (GabbleConnectionManager *obj, const 
     }
 
   conn = g_object_new (GABBLE_TYPE_CONNECTION,
-                       "protocol",       proto,
-                       "password",       params.password,
-                       "connect-server", params.server,
-                       "port",           params.port,
-                       "old-ssl",        params.old_ssl,
+                       "protocol",           proto,
+                       "password",           params.password,
                        NULL);
 
+  SET_PROPERTY_IF_PARAM_SET ("resource", JABBER_PARAM_RESOURCE, params.resource);
+  SET_PROPERTY_IF_PARAM_SET ("connect-server", JABBER_PARAM_SERVER, params.server);
+  SET_PROPERTY_IF_PARAM_SET ("port", JABBER_PARAM_PORT, params.port);
+  SET_PROPERTY_IF_PARAM_SET ("old-ssl", JABBER_PARAM_OLD_SSL, params.old_ssl);
+  SET_PROPERTY_IF_PARAM_SET ("https-proxy-server", JABBER_PARAM_HTTPS_PROXY_SERVER,
+                             params.https_proxy_server);
+  SET_PROPERTY_IF_PARAM_SET ("https-proxy-port", JABBER_PARAM_HTTPS_PROXY_PORT,
+                             params.https_proxy_port);
+
   /* split up account into username, stream-server and resource */
-  _gabble_connection_set_properties_from_account (conn, params.account);
+  if (!_gabble_connection_set_properties_from_account (conn, params.account, error))
+    {
+      goto ERROR;
+    }
 
   /* free memory allocated by param parser */
   free_params(&params);

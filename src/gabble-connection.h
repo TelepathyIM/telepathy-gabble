@@ -28,6 +28,13 @@
 
 G_BEGIN_DECLS
 
+/* Default parameters for optional parameters */
+#define GABBLE_PARAMS_DEFAULT_RESOURCE           "Telepathy"
+#define GABBLE_PARAMS_DEFAULT_PORT               5222
+#define GABBLE_PARAMS_DEFAULT_OLD_SSL            FALSE
+#define GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_SERVER NULL
+#define GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_PORT   443
+
 typedef enum
 {
   GABBLE_PRESENCE_AVAILABLE,
@@ -90,7 +97,7 @@ G_STMT_START { \
 } G_STMT_END
 
 
-void _gabble_connection_set_properties_from_account (GabbleConnection *conn, const char *account);
+gboolean _gabble_connection_set_properties_from_account (GabbleConnection *conn, const gchar *account, GError **error);
 gboolean _gabble_connection_register (GabbleConnection *conn, char **bus_name, char **object_path, GError **error);
 gboolean _gabble_connection_connect (GabbleConnection *conn, GError **error);
 GabbleHandleRepo *_gabble_connection_get_handles (GabbleConnection *conn);

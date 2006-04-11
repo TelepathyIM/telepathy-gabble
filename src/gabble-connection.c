@@ -138,6 +138,8 @@ enum
     PROP_USERNAME,
     PROP_PASSWORD,
     PROP_RESOURCE,
+    PROP_HTTPS_PROXY_SERVER,
+    PROP_HTTPS_PROXY_PORT,
     LAST_PROPERTY
 };
 
@@ -164,22 +166,25 @@ struct _GabbleConnectionPrivate
   TpConnectionStatusReason disconnect_reason;
 
   /* telepathy properties */
-  char *protocol;
+  gchar *protocol;
 
   /* connection properties */
-  char *connect_server;
+  gchar *connect_server;
   guint port;
   gboolean old_ssl;
 
+  gchar *https_proxy_server;
+  guint https_proxy_port;
+
   /* authentication properties */
-  char *stream_server;
-  char *username;
-  char *password;
-  char *resource;
+  gchar *stream_server;
+  gchar *username;
+  gchar *password;
+  gchar *resource;
 
   /* dbus object location */
-  char *bus_name;
-  char *object_path;
+  gchar *bus_name;
+  gchar *object_path;
 
   /* connection status */
   TpConnectionStatus status;
@@ -229,9 +234,6 @@ gabble_connection_init (GabbleConnection *obj)
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
 
-  priv->port = 5222;
-  priv->resource = g_strdup ("Telepathy");
-
   priv->handles = gabble_handle_repo_new ();
 
   priv->jingle_sessions = g_hash_table_new_full (g_str_hash, g_str_equal,
@@ -253,6 +255,13 @@ gabble_connection_init (GabbleConnection *obj)
   g_datalist_init (&priv->client_list_handle_sets);
 
   priv->disco = gabble_disco_new (obj);
+
+  /* Set default parameters for optional parameters */
+  priv->resource = g_strdup (GABBLE_PARAMS_DEFAULT_RESOURCE);
+  priv->port = GABBLE_PARAMS_DEFAULT_PORT;
+  priv->old_ssl = GABBLE_PARAMS_DEFAULT_OLD_SSL;
+  priv->https_proxy_server = g_strdup (GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_SERVER);
+  priv->https_proxy_port = GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_PORT;
 }
 
 static void
@@ -288,6 +297,12 @@ gabble_connection_get_property (GObject    *object,
       break;
     case PROP_RESOURCE:
       g_value_set_string (value, priv->resource);
+      break;
+    case PROP_HTTPS_PROXY_SERVER:
+      g_value_set_string (value, priv->https_proxy_server);
+      break;
+    case PROP_HTTPS_PROXY_PORT:
+      g_value_set_uint (value, priv->https_proxy_port);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -335,6 +350,13 @@ gabble_connection_set_property (GObject      *object,
       g_free (priv->resource);
       priv->resource = g_value_dup_string (value);
       break;
+    case PROP_HTTPS_PROXY_SERVER:
+      g_free (priv->https_proxy_server);
+      priv->https_proxy_server = g_value_dup_string (value);
+      break;
+    case PROP_HTTPS_PROXY_PORT:
+      priv->https_proxy_port = g_value_get_uint (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -377,7 +399,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
 
   param_spec = g_param_spec_uint ("port", "Jabber server port",
                                   "The port used when establishing a connection.",
-                                  0, G_MAXUINT16, 5222,
+                                  0, G_MAXUINT16, GABBLE_PARAMS_DEFAULT_PORT,
                                   G_PARAM_READWRITE |
                                   G_PARAM_STATIC_NAME |
                                   G_PARAM_STATIC_BLURB);
@@ -425,6 +447,24 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
                                     G_PARAM_STATIC_NAME |
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_RESOURCE, param_spec);
+
+  param_spec = g_param_spec_string ("https-proxy-server", "The server name "
+                                    "used as an HTTPS proxy server",
+                                    "The server name used as an HTTPS proxy "
+                                    "server.",
+                                    NULL,
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_STATIC_NAME |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_HTTPS_PROXY_SERVER, param_spec);
+
+  param_spec = g_param_spec_uint ("https-proxy-port", "The HTTP proxy server "
+                                  "port", "The HTTP proxy server port.",
+                                  0, G_MAXUINT16, 0,
+                                  G_PARAM_READWRITE |
+                                  G_PARAM_STATIC_NAME |
+                                  G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_HTTPS_PROXY_PORT, param_spec);
 
   /** signal definitions */
 
@@ -617,20 +657,33 @@ gabble_connection_finalize (GObject *object)
  * appropriately. Also sets the connect server to the stream server if one has
  * not yet been specified.
  */
-void
+gboolean
 _gabble_connection_set_properties_from_account (GabbleConnection *conn,
-                                                const char       *account)
+                                                const gchar      *account,
+                                                GError          **error)
 {
   GabbleConnectionPrivate *priv;
   char *username, *server, *resource;
+  gboolean result;
 
   g_assert (GABBLE_IS_CONNECTION (conn));
   g_assert (account != NULL);
-  g_assert (*account != '\0');
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
+  username = server = resource = NULL;
+  result = TRUE;
+
   gabble_handle_decode_jid (account, &username, &server, &resource);
+
+  if (username == NULL || server == NULL ||
+      *username == '\0' || *server == '\0')
+    {
+      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+                            "unable to get username and server from account");
+      result = FALSE;
+      goto OUT;
+    }
 
   g_object_set (G_OBJECT (conn),
                 "username", username,
@@ -645,9 +698,12 @@ _gabble_connection_set_properties_from_account (GabbleConnection *conn,
   if (!priv->connect_server)
     g_object_set (G_OBJECT (conn), "connect-server", server, NULL);
 
+OUT:
   g_free (username);
   g_free (server);
   g_free (resource);
+
+  return result;
 }
 
 /**
@@ -987,6 +1043,19 @@ _gabble_connection_connect (GabbleConnection *conn,
       gboolean valid;
 
       priv->conn = lm_connection_new (priv->connect_server);
+
+      if (priv->https_proxy_server)
+        {
+          LmProxy *proxy;
+
+          proxy = lm_proxy_new_with_server (LM_PROXY_TYPE_HTTP,
+              priv->https_proxy_server, priv->https_proxy_port);
+
+          lm_connection_set_proxy (priv->conn, proxy);
+
+          lm_proxy_unref (proxy);
+        }
+
       lm_connection_set_port (priv->conn, priv->port);
 
       /* send whitespace to the server every 30 seconds */
@@ -1008,7 +1077,6 @@ _gabble_connection_connect (GabbleConnection *conn,
           /* FIXME: check this sooner and return an error to the user
            * this will be when we implement Connect() in spec 0.13 */
           g_error ("%s: invalid jid %s", G_STRFUNC, jid);
-
           return FALSE;
         }
 
@@ -1064,6 +1132,7 @@ _gabble_connection_connect (GabbleConnection *conn,
       g_assert (lm_connection_is_open (priv->conn) == FALSE);
     }
 
+  g_debug ("%s: calling lm_connection_open", G_STRFUNC);
   if (!lm_connection_open (priv->conn, connection_open_cb,
                            conn, NULL, &lmerror))
     {

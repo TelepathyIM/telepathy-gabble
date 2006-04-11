@@ -317,6 +317,7 @@ gabble_im_channel_finalize (GObject *object)
 
   while ((msg = g_queue_pop_head(priv->pending_messages)))
     {
+      gabble_handle_unref (handles, TP_HANDLE_TYPE_CONTACT, msg->sender);
       _gabble_im_pending_free (msg);
     }
 
@@ -370,11 +371,13 @@ gboolean _gabble_im_channel_receive (GabbleIMChannel *chan,
 {
   GabbleIMChannelPrivate *priv;
   GabbleIMPendingMessage *msg;
+  GabbleHandleRepo *handles;
   gsize len;
 
   g_assert (GABBLE_IS_IM_CHANNEL (chan));
 
   priv = GABBLE_IM_CHANNEL_GET_PRIVATE (chan);
+  handles = _gabble_connection_get_handles (priv->connection);
 
   msg = _gabble_im_pending_new0 ();
 
@@ -411,6 +414,7 @@ gboolean _gabble_im_channel_receive (GabbleIMChannel *chan,
       return FALSE;
     }
 
+  /* TODO: UTF-8 truncation */
   g_strlcpy (msg->text, text, len + 1);
 
   msg->id = priv->recv_id++;
@@ -418,6 +422,7 @@ gboolean _gabble_im_channel_receive (GabbleIMChannel *chan,
   msg->sender = sender;
   msg->type = type;
 
+  gabble_handle_ref (handles, TP_HANDLE_TYPE_CONTACT, msg->sender);
   g_queue_push_tail (priv->pending_messages, msg);
 
   g_signal_emit (chan, signals[RECEIVED], 0,
@@ -459,10 +464,12 @@ gboolean gabble_im_channel_acknowledge_pending_message (GabbleIMChannel *obj, gu
   GabbleIMChannelPrivate *priv;
   GList *node;
   GabbleIMPendingMessage *msg;
+  GabbleHandleRepo *handles;
 
   g_assert (GABBLE_IS_IM_CHANNEL (obj));
 
   priv = GABBLE_IM_CHANNEL_GET_PRIVATE (obj);
+  handles = _gabble_connection_get_handles (priv->connection);
 
   node = g_queue_find_custom (priv->pending_messages,
                               GINT_TO_POINTER (id),
@@ -484,6 +491,7 @@ gboolean gabble_im_channel_acknowledge_pending_message (GabbleIMChannel *obj, gu
 
   g_queue_remove (priv->pending_messages, msg);
 
+  gabble_handle_unref (handles, TP_HANDLE_TYPE_CONTACT, msg->sender);
   _gabble_im_pending_free (msg);
 
   return TRUE;

@@ -82,6 +82,8 @@ struct _GabbleRoomlistChannelPrivate
   gboolean closed;
   gboolean listing;
 
+  GHashTable *remaining_rooms;
+
   gboolean dispose_has_run;
 };
 
@@ -90,8 +92,11 @@ struct _GabbleRoomlistChannelPrivate
 static void
 gabble_roomlist_channel_init (GabbleRoomlistChannel *obj)
 {
-/*  GabbleRoomlistChannelPrivate *priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (obj);
-*/
+  GabbleRoomlistChannelPrivate *priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (obj);
+
+  priv->remaining_rooms = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                           g_free, g_free);
+
 }
 
 
@@ -329,6 +334,7 @@ gabble_roomlist_channel_finalize (GObject *object)
   g_free (priv->object_path);
   g_free (priv->conference_server);
 
+  g_hash_table_destroy (priv->remaining_rooms);
   G_OBJECT_CLASS (gabble_roomlist_channel_parent_class)->finalize (object);
 }
 
@@ -372,8 +378,8 @@ room_info_cb (GabbleDisco *disco, const gchar *jid, const gchar *node,
 {
   GabbleRoomlistChannel *chan = user_data;
   GabbleRoomlistChannelPrivate *priv;
-  LmMessageNode *identity, *feature;
-  const char *category, *type, *var, *name;
+  LmMessageNode *identity, *feature, *field, *value_node;
+  const char *category, *type, *var, *name, *namespace, *value;
   GabbleHandle handle;
   GHashTable *keys;
   GValue room = {0,};
@@ -381,21 +387,23 @@ room_info_cb (GabbleDisco *disco, const gchar *jid, const gchar *node,
   GValue *tmp;
   gboolean is_muc;
 
-  #define INSERT_KEY(hash, name, type, value) \
-    do { \
+  #define INSERT_KEY(hash, name, type, type2, value) \
+    do {\
       tmp = g_new0 (GValue, 1); \
       g_value_init (tmp, (type)); \
-      g_value_set_boolean (tmp, (value)); \
+      g_value_set_##type2 (tmp, (value)); \
       g_hash_table_insert (hash, (name), tmp); \
     } while (0)
 
   g_assert (GABBLE_IS_ROOMLIST_CHANNEL (chan));
   priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (chan);
 
+  g_hash_table_remove (priv->remaining_rooms, jid);
+
   if (error)
     {
       g_debug ("%s: got error %s", G_STRFUNC, error->message);
-      return;
+      goto done;
     }
   g_debug ("%s: got %s", G_STRFUNC, lm_message_node_to_string (result));
 
@@ -426,40 +434,75 @@ room_info_cb (GabbleDisco *disco, const gchar *jid, const gchar *node,
                   if (0 == strcmp (var, "http://jabber.org/protocol/muc"))
                     is_muc = TRUE;
                   else if (0 == strcmp (var, "muc_membersonly"))
-                    INSERT_KEY (keys, "invite-only", G_TYPE_BOOLEAN, TRUE);
+                    INSERT_KEY (keys, "invite-only", G_TYPE_BOOLEAN, boolean, TRUE);
                   else if (0 == strcmp (var, "muc_open"))
-                    INSERT_KEY (keys, "invite-only", G_TYPE_BOOLEAN, FALSE);
+                    INSERT_KEY (keys, "invite-only", G_TYPE_BOOLEAN, boolean, FALSE);
                   else if (0 == strcmp (var, "muc_passwordprotected"))
-                    INSERT_KEY (keys, "password", G_TYPE_BOOLEAN, TRUE);
+                    INSERT_KEY (keys, "password", G_TYPE_BOOLEAN, boolean, TRUE);
                   else if (0 == strcmp (var, "muc_unsecured"))
-                    INSERT_KEY (keys, "password", G_TYPE_BOOLEAN, FALSE);
+                    INSERT_KEY (keys, "password", G_TYPE_BOOLEAN, boolean, FALSE);
                   else if (0 == strcmp (var, "muc_hidden"))
-                    INSERT_KEY (keys, "hidden", G_TYPE_BOOLEAN, TRUE);
+                    INSERT_KEY (keys, "hidden", G_TYPE_BOOLEAN, boolean, TRUE);
                   else if (0 == strcmp (var, "muc_public"))
-                    INSERT_KEY (keys, "hidden", G_TYPE_BOOLEAN, FALSE);
+                    INSERT_KEY (keys, "hidden", G_TYPE_BOOLEAN, boolean, FALSE);
                   else if (0 == strcmp (var, "muc_membersonly"))
-                    INSERT_KEY (keys, "members-only", G_TYPE_BOOLEAN, TRUE);
+                    INSERT_KEY (keys, "members-only", G_TYPE_BOOLEAN, boolean, TRUE);
                   else if (0 == strcmp (var, "muc_open"))
-                    INSERT_KEY (keys, "members-only", G_TYPE_BOOLEAN, FALSE);
+                    INSERT_KEY (keys, "members-only", G_TYPE_BOOLEAN, boolean, FALSE);
                   else if (0 == strcmp (var, "muc_moderated"))
-                    INSERT_KEY (keys, "moderated", G_TYPE_BOOLEAN, TRUE);
+                    INSERT_KEY (keys, "moderated", G_TYPE_BOOLEAN, boolean, TRUE);
                   else if (0 == strcmp (var, "muc_unmoderated"))
-                    INSERT_KEY (keys, "moderated", G_TYPE_BOOLEAN, FALSE);
+                    INSERT_KEY (keys, "moderated", G_TYPE_BOOLEAN, boolean, FALSE);
                   else if (0 == strcmp (var, "muc_nonanonymous"))
-                    INSERT_KEY (keys, "anonymous", G_TYPE_BOOLEAN, FALSE);
+                    INSERT_KEY (keys, "anonymous", G_TYPE_BOOLEAN, boolean, FALSE);
                   else if (0 == strcmp (var, "muc_anonymous"))
-                    INSERT_KEY (keys, "anonymous", G_TYPE_BOOLEAN, TRUE);
+                    INSERT_KEY (keys, "anonymous", G_TYPE_BOOLEAN, boolean, TRUE);
                   else if (0 == strcmp (var, "muc_semianonymous"))
-                    INSERT_KEY (keys, "semi-anonymous", G_TYPE_BOOLEAN, TRUE);
+                    INSERT_KEY (keys, "semi-anonymous", G_TYPE_BOOLEAN, boolean, TRUE);
                   else if (0 == strcmp (var, "muc_persistant"))
-                    INSERT_KEY (keys, "persistant", G_TYPE_BOOLEAN, TRUE);
+                    INSERT_KEY (keys, "persistant", G_TYPE_BOOLEAN, boolean, TRUE);
                   else if (0 == strcmp (var, "muc_temporary"))
-                    INSERT_KEY (keys, "persistant", G_TYPE_BOOLEAN, FALSE);
+                    INSERT_KEY (keys, "persistant", G_TYPE_BOOLEAN, boolean, FALSE);
 
+                }
+              if (0 == strcmp (feature->name, "x"))
+                {
+                  namespace = lm_message_node_get_attribute (feature, "xmlns");
+                  if (namespace && 0 == strcmp (namespace, "jabber:x:data"))
+                    {
+                      for (field = feature->children;
+                           field; field = field->next)
+                        {
+                          if (0 != strcmp (field->name, "field"))
+                            continue;
+                          var = lm_message_node_get_attribute (field, "var");
+                          value_node = lm_message_node_get_child (field, "value");
+                          value = lm_message_node_get_value (value_node);
+                          if (!value)
+                            continue;
+
+                          if (0 == strcmp (var, "muc#roominfo_description"))
+                            {
+                              INSERT_KEY (keys, "description",
+                                          G_TYPE_STRING, string, value);
+                            }
+                          if (0 == strcmp (var, "muc#roominfo_occupants"))
+                            {
+                              INSERT_KEY (keys, "members", G_TYPE_UINT, uint,
+                                (guint) g_ascii_strtoull (value, NULL, 10));
+                            }
+                           if (0 == strcmp (var, "muc#roominfo_lang"))
+                            {
+                              INSERT_KEY (keys, "language", G_TYPE_STRING,
+                                          string, value);
+                            }
+                        }
+                    }
                 }
             }
           if (is_muc)
             {
+              INSERT_KEY (keys, "name", G_TYPE_STRING, string, name);
               g_debug ("%s:emitting new room signal for %s", G_STRFUNC,jid);
 
               handle = gabble_handle_for_room (
@@ -484,6 +527,13 @@ room_info_cb (GabbleDisco *disco, const gchar *jid, const gchar *node,
             }
         }
     }
+done:
+  if (g_hash_table_size (priv->remaining_rooms) == 0)
+    {
+      priv->listing=FALSE;
+      g_signal_emit (chan, signals [LISTING_ROOMS], FALSE);
+    }
+  return;
 }
 
 
@@ -495,7 +545,8 @@ rooms_cb (GabbleDisco *disco, const gchar *jid, const gchar *node,
   LmMessageNode *iter;
   GabbleRoomlistChannel *chan = user_data;
   GabbleRoomlistChannelPrivate *priv;
-  const char *item_jid;
+  const char *item_jid, *name;
+  gpointer key, value;
   g_assert (GABBLE_IS_ROOMLIST_CHANNEL (chan));
   priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (chan);
 
@@ -513,10 +564,19 @@ rooms_cb (GabbleDisco *disco, const gchar *jid, const gchar *node,
       if (0 == strcmp (iter->name, "item"))
         {
           item_jid = lm_message_node_get_attribute (iter, "jid");
-          if (item_jid)
-            gabble_disco_request (priv->disco, GABBLE_DISCO_TYPE_INFO,
-                                  item_jid, NULL,
-                                  room_info_cb, chan, G_OBJECT(chan), NULL);
+          name = lm_message_node_get_attribute (iter, "name");
+          if (item_jid && name)
+            {
+              if (! g_hash_table_lookup_extended (priv->remaining_rooms, item_jid, &key, &value))
+                {
+                  g_hash_table_insert (priv->remaining_rooms,
+                                       g_strdup(item_jid), g_strdup(name));
+
+                  gabble_disco_request (priv->disco, GABBLE_DISCO_TYPE_INFO,
+                                        item_jid, NULL,
+                                        room_info_cb, chan, G_OBJECT(chan), NULL);
+                }
+            }
         }
     }
 }
@@ -660,6 +720,7 @@ gboolean gabble_roomlist_channel_list_rooms (GabbleRoomlistChannel *obj, GError 
   priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (obj);
 
   priv->listing = TRUE;
+  g_signal_emit (obj, signals[LISTING_ROOMS], TRUE);
   gabble_disco_request (priv->disco, GABBLE_DISCO_TYPE_ITEMS,
                         priv->conference_server, NULL,
                         rooms_cb, obj, G_OBJECT(obj), NULL);

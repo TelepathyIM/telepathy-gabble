@@ -140,6 +140,17 @@ enum
     PROP_RESOURCE,
     PROP_HTTPS_PROXY_SERVER,
     PROP_HTTPS_PROXY_PORT,
+    PROP_FALLBACK_CONFERENCE_SERVER,
+    PROP_STUN_SERVER,
+    PROP_STUN_PORT,
+    PROP_STUN_RELAY_MAGIC_COOKIE,
+    PROP_STUN_RELAY_SERVER,
+    PROP_STUN_RELAY_UDP_PORT,
+    PROP_STUN_RELAY_TCP_PORT,
+    PROP_STUN_RELAY_SSLTCP_PORT,
+    PROP_STUN_RELAY_USERNAME,
+    PROP_STUN_RELAY_PASSWORD,
+
     LAST_PROPERTY
 };
 
@@ -175,6 +186,18 @@ struct _GabbleConnectionPrivate
 
   gchar *https_proxy_server;
   guint https_proxy_port;
+
+  gchar *fallback_conference_server;
+
+  gchar *stun_server;
+  guint stun_port;
+  gchar *stun_relay_magic_cookie;
+  gchar *stun_relay_server;
+  guint stun_relay_udp_port;
+  guint stun_relay_tcp_port;
+  guint stun_relay_ssltcp_port;
+  gchar *stun_relay_username;
+  gchar *stun_relay_password;
 
   /* authentication properties */
   gchar *stream_server;
@@ -304,6 +327,36 @@ gabble_connection_get_property (GObject    *object,
     case PROP_HTTPS_PROXY_PORT:
       g_value_set_uint (value, priv->https_proxy_port);
       break;
+    case PROP_FALLBACK_CONFERENCE_SERVER:
+      g_value_set_string (value, priv->fallback_conference_server);
+      break;
+    case PROP_STUN_SERVER:
+      g_value_set_string (value, priv->stun_server);
+      break;
+    case PROP_STUN_PORT:
+      g_value_set_uint (value, priv->stun_port);
+      break;
+    case PROP_STUN_RELAY_MAGIC_COOKIE:
+      g_value_set_string (value, priv->stun_relay_magic_cookie);
+      break;
+    case PROP_STUN_RELAY_SERVER:
+      g_value_set_string (value, priv->stun_relay_server);
+      break;
+    case PROP_STUN_RELAY_UDP_PORT:
+      g_value_set_uint (value, priv->stun_relay_udp_port);
+      break;
+    case PROP_STUN_RELAY_TCP_PORT:
+      g_value_set_uint (value, priv->stun_relay_tcp_port);
+      break;
+    case PROP_STUN_RELAY_SSLTCP_PORT:
+      g_value_set_uint (value, priv->stun_relay_ssltcp_port);
+      break;
+    case PROP_STUN_RELAY_USERNAME:
+      g_value_set_string (value, priv->stun_relay_username);
+      break;
+    case PROP_STUN_RELAY_PASSWORD:
+      g_value_set_string (value, priv->stun_relay_password);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -356,6 +409,42 @@ gabble_connection_set_property (GObject      *object,
       break;
     case PROP_HTTPS_PROXY_PORT:
       priv->https_proxy_port = g_value_get_uint (value);
+      break;
+    case PROP_FALLBACK_CONFERENCE_SERVER:
+      g_free (priv->fallback_conference_server);
+      priv->fallback_conference_server = g_value_dup_string (value);
+      break;
+    case PROP_STUN_SERVER:
+      g_free (priv->stun_server);
+      priv->stun_server = g_value_dup_string (value);
+      break;
+    case PROP_STUN_PORT:
+      priv->stun_port = g_value_get_uint (value);
+      break;
+    case PROP_STUN_RELAY_MAGIC_COOKIE:
+      g_free (priv->stun_relay_magic_cookie);
+      priv->stun_relay_magic_cookie = g_value_dup_string (value);
+      break;
+    case PROP_STUN_RELAY_SERVER:
+      g_free (priv->stun_relay_server);
+      priv->stun_relay_server = g_value_dup_string (value);
+      break;
+    case PROP_STUN_RELAY_UDP_PORT:
+      priv->stun_relay_udp_port = g_value_get_uint (value);
+      break;
+    case PROP_STUN_RELAY_TCP_PORT:
+      priv->stun_relay_tcp_port = g_value_get_uint (value);
+      break;
+    case PROP_STUN_RELAY_SSLTCP_PORT:
+      priv->stun_relay_ssltcp_port = g_value_get_uint (value);
+      break;
+    case PROP_STUN_RELAY_USERNAME:
+      g_free (priv->stun_relay_username);
+      priv->stun_relay_username = g_value_dup_string (value);
+      break;
+    case PROP_STUN_RELAY_PASSWORD:
+      g_free (priv->stun_relay_password);
+      priv->stun_relay_password = g_value_dup_string (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -465,6 +554,105 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
                                   G_PARAM_STATIC_NAME |
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_HTTPS_PROXY_PORT, param_spec);
+
+  param_spec = g_param_spec_string ("fallback-conference-server",
+                                    "The conference server used as fallback",
+                                    "The conference server used as fallback when "
+                                    "everything else fails.",
+                                    NULL,
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_STATIC_NAME |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_FALLBACK_CONFERENCE_SERVER,
+                                   param_spec);
+
+  param_spec = g_param_spec_string ("stun-server",
+                                    "STUN server",
+                                    "STUN server.",
+                                    NULL,
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_STATIC_NAME |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_STUN_SERVER, param_spec);
+
+  param_spec = g_param_spec_uint ("stun-port",
+                                  "STUN port",
+                                  "STUN port.",
+                                  0, G_MAXUINT16, 0,
+                                  G_PARAM_READWRITE |
+                                  G_PARAM_STATIC_NAME |
+                                  G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_STUN_PORT, param_spec);
+
+  param_spec = g_param_spec_string ("stun-relay-magic-cookie",
+                                    "STUN relay magic cookie",
+                                    "STUN relay magic cookie.",
+                                    NULL,
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_STATIC_NAME |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_STUN_RELAY_MAGIC_COOKIE,
+                                   param_spec);
+
+  param_spec = g_param_spec_string ("stun-relay-server",
+                                    "STUN relay server",
+                                    "STUN relay server.",
+                                    NULL,
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_STATIC_NAME |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_STUN_RELAY_SERVER,
+                                   param_spec);
+
+  param_spec = g_param_spec_uint ("stun-relay-udp-port",
+                                  "STUN relay UDP port",
+                                  "STUN relay UDP port.",
+                                  0, G_MAXUINT16, 0,
+                                  G_PARAM_READWRITE |
+                                  G_PARAM_STATIC_NAME |
+                                  G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_STUN_RELAY_UDP_PORT,
+                                   param_spec);
+
+  param_spec = g_param_spec_uint ("stun-relay-tcp-port",
+                                  "STUN relay TCP port",
+                                  "STUN relay TCP port.",
+                                  0, G_MAXUINT16, 0,
+                                  G_PARAM_READWRITE |
+                                  G_PARAM_STATIC_NAME |
+                                  G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_STUN_RELAY_TCP_PORT,
+                                   param_spec);
+
+  param_spec = g_param_spec_uint ("stun-relay-ssltcp-port",
+                                  "STUN relay SSL-TCP port",
+                                  "STUN relay SSL-TCP port.",
+                                  0, G_MAXUINT16, 0,
+                                  G_PARAM_READWRITE |
+                                  G_PARAM_STATIC_NAME |
+                                  G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_STUN_RELAY_SSLTCP_PORT,
+                                   param_spec);
+
+  param_spec = g_param_spec_string ("stun-relay-username",
+                                    "STUN relay username",
+                                    "STUN relay username.",
+                                    NULL,
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_STATIC_NAME |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_STUN_RELAY_USERNAME,
+                                   param_spec);
+
+  param_spec = g_param_spec_string ("stun-relay-password",
+                                    "STUN relay password",
+                                    "STUN relay password.",
+                                    NULL,
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_STATIC_NAME |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_STUN_RELAY_PASSWORD,
+                                   param_spec);
 
   /** signal definitions */
 
@@ -634,6 +822,14 @@ gabble_connection_finalize (GObject *object)
   g_free (priv->resource);
   g_free (priv->bus_name);
   g_free (priv->object_path);
+
+  g_free (priv->https_proxy_server);
+  g_free (priv->fallback_conference_server);
+  g_free (priv->stun_server);
+  g_free (priv->stun_relay_magic_cookie);
+  g_free (priv->stun_relay_server);
+  g_free (priv->stun_relay_username);
+  g_free (priv->stun_relay_password);
 
   g_datalist_clear (&priv->client_room_handle_sets);
   g_datalist_clear (&priv->client_contact_handle_sets);

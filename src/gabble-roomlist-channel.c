@@ -354,7 +354,7 @@ gabble_roomlist_channel_new (GabbleConnection *conn,
                     "connection", conn,
                     "disco", disco,
                     "object-path", object_path,
-                    "conference-server", conference_server));
+                    "conference-server", conference_server, NULL));
 }
 
 /**

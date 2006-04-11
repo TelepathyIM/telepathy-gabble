@@ -531,7 +531,7 @@ done:
   if (g_hash_table_size (priv->remaining_rooms) == 0)
     {
       priv->listing=FALSE;
-      g_signal_emit (chan, signals [LISTING_ROOMS], FALSE);
+      g_signal_emit (chan, signals [LISTING_ROOMS], 0, FALSE);
     }
   return;
 }
@@ -720,7 +720,7 @@ gboolean gabble_roomlist_channel_list_rooms (GabbleRoomlistChannel *obj, GError 
   priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (obj);
 
   priv->listing = TRUE;
-  g_signal_emit (obj, signals[LISTING_ROOMS], TRUE);
+  g_signal_emit (obj, signals[LISTING_ROOMS], 0, TRUE);
   gabble_disco_request (priv->disco, GABBLE_DISCO_TYPE_ITEMS,
                         priv->conference_server, NULL,
                         rooms_cb, obj, G_OBJECT(obj), NULL);

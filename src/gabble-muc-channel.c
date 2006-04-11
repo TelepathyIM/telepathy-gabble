@@ -1421,10 +1421,12 @@ queue_message (GabbleMucChannel *chan,
   GabbleMucChannelPrivate *priv;
   GabbleMucPendingMessage *msg;
   gsize len;
+  GabbleHandleRepo *handles;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  handles = _gabble_connection_get_handles (priv->conn);
 
   msg = _gabble_muc_pending_new0 ();
 
@@ -1468,6 +1470,7 @@ queue_message (GabbleMucChannel *chan,
   msg->sender = sender;
   msg->type = type;
 
+  gabble_handle_ref (handles, TP_HANDLE_TYPE_CONTACT, msg->sender);
   g_queue_push_tail (priv->pending_messages, msg);
 
   g_signal_emit (chan, signals[RECEIVED], 0,
@@ -1487,13 +1490,16 @@ clear_message_queue (GabbleMucChannel *chan)
 {
   GabbleMucChannelPrivate *priv;
   GabbleMucPendingMessage *msg;
+  GabbleHandleRepo *handles;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  handles = _gabble_connection_get_handles (priv->conn);
 
   while ((msg = g_queue_pop_head (priv->pending_messages)))
     {
+      gabble_handle_unref (handles, TP_HANDLE_TYPE_CONTACT, msg->sender);
       _gabble_muc_pending_free (msg);
     }
 }
@@ -1633,10 +1639,12 @@ gboolean gabble_muc_channel_acknowledge_pending_message (GabbleMucChannel *obj, 
   GabbleMucChannelPrivate *priv;
   GList *node;
   GabbleMucPendingMessage *msg;
+  GabbleHandleRepo *handles;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (obj));
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
+  handles = _gabble_connection_get_handles (priv->conn);
 
   node = g_queue_find_custom (priv->pending_messages,
                               GUINT_TO_POINTER (id),
@@ -1658,6 +1666,7 @@ gboolean gabble_muc_channel_acknowledge_pending_message (GabbleMucChannel *obj, 
 
   g_queue_remove (priv->pending_messages, msg);
 
+  gabble_handle_unref (handles, TP_HANDLE_TYPE_CONTACT, msg->sender);
   _gabble_muc_pending_free (msg);
 
   return TRUE;

@@ -4079,15 +4079,10 @@ gboolean gabble_connection_hold_handle (GabbleConnection *obj, guint handle_type
 
   ERROR_IF_NOT_CONNECTED_ASYNC (obj, error, context)
 
-  if (!gabble_handle_type_is_valid (handle_type))
+  if (!gabble_handle_type_is_valid (handle_type, &error))
     {
-      g_debug ("hold_handle: invalid handle type %u", handle_type);
-
-      error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                           "invalid handle type %u", handle_type);
       dbus_g_method_return_error (context, error);
       g_error_free (error);
-
       return FALSE;
     }
 
@@ -4136,13 +4131,8 @@ gboolean gabble_connection_inspect_handle (GabbleConnection *obj, guint handle_t
 
   ERROR_IF_NOT_CONNECTED (obj, *error)
 
-  if (!gabble_handle_type_is_valid (handle_type))
+  if (!gabble_handle_type_is_valid (handle_type, error))
     {
-      g_debug ("inspect_handle: invalid handle type %u", handle_type);
-
-      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                            "invalid handle type %u", handle_type);
-
       return FALSE;
     }
 
@@ -4295,15 +4285,10 @@ gboolean gabble_connection_release_handle (GabbleConnection *obj, guint handle_t
 
   ERROR_IF_NOT_CONNECTED_ASYNC (obj, error, context)
 
-  if (!gabble_handle_type_is_valid (handle_type))
+  if (!gabble_handle_type_is_valid (handle_type, &error))
     {
-      g_debug ("release_handle: invalid handle type %u", handle_type);
-
-      error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                           "invalid handle type %u", handle_type);
       dbus_g_method_return_error (context, error);
       g_error_free (error);
-
       return FALSE;
     }
 
@@ -4891,15 +4876,10 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
 
   ERROR_IF_NOT_CONNECTED_ASYNC (obj, error, context)
 
-  if (!gabble_handle_type_is_valid (handle_type))
+  if (!gabble_handle_type_is_valid (handle_type, &error))
     {
-      g_debug ("request_handle: invalid handle type %u", handle_type);
-
-      error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                           "invalid handle type %u", handle_type);
       dbus_g_method_return_error (context, error);
       g_error_free (error);
-
       return FALSE;
     }
 

@@ -173,9 +173,6 @@ struct _GabbleConnectionPrivate
   LmMessageHandler *iq_jingle_cb;
   LmMessageHandler *iq_unknown_cb;
 
-  /* disconnect reason */
-  TpConnectionStatusReason disconnect_reason;
-
   /* telepathy properties */
   gchar *protocol;
 

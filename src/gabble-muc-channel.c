@@ -1172,6 +1172,9 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
    * and act accordingly. */
   switch (code) {
     case 401:
+      /* channel can sit requiring a password indefinitely */
+      clear_join_timer (chan);
+
       /* Password already provided and incorrect? */
       if (priv->state == MUC_STATE_AUTH)
         {

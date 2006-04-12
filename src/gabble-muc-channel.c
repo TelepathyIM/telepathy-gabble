@@ -951,6 +951,33 @@ static void clear_join_timer (GabbleMucChannel *chan)
     }
 }
 
+static void
+change_password_flags (GabbleMucChannel *chan,
+                       TpChannelPasswordFlags add,
+                       TpChannelPasswordFlags remove)
+{
+  GabbleMucChannelPrivate *priv;
+  TpChannelGroupFlags added, removed;
+
+  g_assert (GABBLE_IS_MUC_CHANNEL (chan));
+
+  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+
+  added = add & ~priv->password_flags;
+  priv->password_flags |= added;
+
+  removed = remove & priv->password_flags;
+  priv->password_flags &= ~removed;
+
+  if (add != 0 || remove != 0)
+    {
+      g_debug ("%s: emitting password flags changed, added 0x%X, removed 0x%X",
+               G_STRFUNC, added, removed);
+
+      g_signal_emit (chan, signals[PASSWORD_FLAGS_CHANGED], 0, added, removed);
+    }
+}
+
 static void provide_password_return_if_pending (GabbleMucChannel *chan, gboolean success)
 {
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
@@ -959,6 +986,11 @@ static void provide_password_return_if_pending (GabbleMucChannel *chan, gboolean
     {
       dbus_g_method_return (priv->password_ctx, success);
       priv->password_ctx = NULL;
+    }
+
+  if (success)
+    {
+      change_password_flags (chan, 0, TP_CHANNEL_PASSWORD_FLAG_PROVIDE);
     }
 }
 
@@ -1032,33 +1064,6 @@ static void _gabble_muc_pending_free (GabbleMucPendingMessage *msg)
 {
   g_free (msg->text);
   gabble_allocator_free (_gabble_muc_pending_get_alloc (), msg);
-}
-
-static void
-change_password_flags (GabbleMucChannel *chan,
-                       TpChannelPasswordFlags add,
-                       TpChannelPasswordFlags remove)
-{
-  GabbleMucChannelPrivate *priv;
-  TpChannelGroupFlags added, removed;
-
-  g_assert (GABBLE_IS_MUC_CHANNEL (chan));
-
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
-
-  added = add & ~priv->password_flags;
-  priv->password_flags |= added;
-
-  removed = remove & priv->password_flags;
-  priv->password_flags &= ~removed;
-
-  if (add != 0 || remove != 0)
-    {
-      g_debug ("%s: emitting password flags changed, added 0x%X, removed 0x%X",
-               G_STRFUNC, added, removed);
-
-      g_signal_emit (chan, signals[PASSWORD_FLAGS_CHANGED], 0, added, removed);
-    }
 }
 
 static void
@@ -1171,8 +1176,6 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
       if (priv->state == MUC_STATE_AUTH)
         {
           provide_password_return_if_pending (chan, FALSE);
-
-          close_channel (chan, text, FALSE);
 
           return;
         }
@@ -2013,8 +2016,6 @@ gboolean gabble_muc_channel_provide_password (GabbleMucChannel *obj, const gchar
     }
 
   priv->password_ctx = context;
-
-  change_password_flags (obj, 0, TP_CHANNEL_PASSWORD_FLAG_PROVIDE);
 
   return TRUE;
 }

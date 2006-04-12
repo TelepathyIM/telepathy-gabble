@@ -298,6 +298,41 @@ gabble_handle_is_valid (GabbleHandleRepo *repo, TpHandleType type, GabbleHandle 
 }
 
 gboolean
+gabble_handles_are_valid (GabbleHandleRepo *repo,
+                          TpHandleType type,
+                          const GArray *array,
+                          gboolean allow_zero,
+                          GError **error)
+{
+  int i;
+
+  g_return_val_if_fail (repo != NULL, FALSE);
+  g_return_val_if_fail (!gabble_handle_type_is_valid (type), FALSE);
+  g_return_val_if_fail (array != NULL, FALSE);
+
+  for (i = 0; i < array->len; i++)
+    {
+      GabbleHandle handle = g_array_index (array, GabbleHandle, i);
+
+      if ((handle == 0 && !allow_zero) ||
+          (handle_priv_lookup (repo, type, handle) == NULL))
+        {
+          g_debug ("%s: invalid handle %u", G_STRFUNC, handle);
+
+          if (error)
+            {
+              *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+                  "invalid handle %u", handle);
+            }
+
+          return FALSE;
+        }
+    }
+
+  return TRUE;
+}
+
+gboolean
 gabble_handle_ref (GabbleHandleRepo *repo,
                    TpHandleType type,
                    GabbleHandle handle)

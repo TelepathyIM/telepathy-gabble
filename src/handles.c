@@ -244,12 +244,26 @@ gabble_handle_decode_jid (const char *jid,
 }
 
 gboolean
-gabble_handle_type_is_valid (TpHandleType type)
+gabble_handle_type_is_valid (TpHandleType type, GError **error)
 {
+  gboolean ret;
+
   if (type > TP_HANDLE_TYPE_NONE && type <= TP_HANDLE_TYPE_LIST)
-    return TRUE;
+    {
+      ret = TRUE;
+    }
   else
-    return FALSE;
+    {
+      if (error != NULL)
+        {
+          *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+                                "invalid handle type %u", type);
+        }
+
+      ret = FALSE;
+    }
+
+  return ret;
 }
 
 GabbleHandleRepo *
@@ -307,7 +321,7 @@ gabble_handles_are_valid (GabbleHandleRepo *repo,
   int i;
 
   g_return_val_if_fail (repo != NULL, FALSE);
-  g_return_val_if_fail (!gabble_handle_type_is_valid (type), FALSE);
+  g_return_val_if_fail (!gabble_handle_type_is_valid (type, NULL), FALSE);
   g_return_val_if_fail (array != NULL, FALSE);
 
   for (i = 0; i < array->len; i++)
@@ -317,9 +331,7 @@ gabble_handles_are_valid (GabbleHandleRepo *repo,
       if ((handle == 0 && !allow_zero) ||
           (handle_priv_lookup (repo, type, handle) == NULL))
         {
-          g_debug ("%s: invalid handle %u", G_STRFUNC, handle);
-
-          if (error)
+          if (error != NULL)
             {
               *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
                   "invalid handle %u", handle);

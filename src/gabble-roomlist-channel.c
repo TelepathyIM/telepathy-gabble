@@ -439,6 +439,8 @@ room_info_cb (GabbleDisco *disco, const gchar *jid, const gchar *node,
                     INSERT_KEY (keys, "invite-only", G_TYPE_BOOLEAN, boolean, FALSE);
                   else if (0 == strcmp (var, "muc_passwordprotected"))
                     INSERT_KEY (keys, "password", G_TYPE_BOOLEAN, boolean, TRUE);
+                  else if (0 == strcmp (var, "muc_unsecure"))
+                    INSERT_KEY (keys, "password", G_TYPE_BOOLEAN, boolean, FALSE);
                   else if (0 == strcmp (var, "muc_unsecured"))
                     INSERT_KEY (keys, "password", G_TYPE_BOOLEAN, boolean, FALSE);
                   else if (0 == strcmp (var, "muc_hidden"))
@@ -459,10 +461,10 @@ room_info_cb (GabbleDisco *disco, const gchar *jid, const gchar *node,
                     INSERT_KEY (keys, "anonymous", G_TYPE_BOOLEAN, boolean, TRUE);
                   else if (0 == strcmp (var, "muc_semianonymous"))
                     INSERT_KEY (keys, "semi-anonymous", G_TYPE_BOOLEAN, boolean, TRUE);
-                  else if (0 == strcmp (var, "muc_persistant"))
-                    INSERT_KEY (keys, "persistant", G_TYPE_BOOLEAN, boolean, TRUE);
+                  else if (0 == strcmp (var, "muc_persistent"))
+                    INSERT_KEY (keys, "persistent", G_TYPE_BOOLEAN, boolean, TRUE);
                   else if (0 == strcmp (var, "muc_temporary"))
-                    INSERT_KEY (keys, "persistant", G_TYPE_BOOLEAN, boolean, FALSE);
+                    INSERT_KEY (keys, "persistent", G_TYPE_BOOLEAN, boolean, FALSE);
 
                 }
               if (0 == strcmp (feature->name, "x"))

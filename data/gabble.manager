@@ -6,6 +6,6 @@ Protos = jabber
 
 [Proto jabber]
 MandatoryParams = s:account,s:password
-OptionalParams  = s:server,q:port,b:old-ssl
+OptionalParams  = s:server,q:port,b:old-ssl,s:https-proxy-server,q:https-proxy-port
 default-port = 5222
 default-old-ssl = 0

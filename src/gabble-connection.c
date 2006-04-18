@@ -2180,7 +2180,7 @@ connection_presence_cb (LmMessageHandler *handler,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-  LmMessageNode *pres_node, *child_node, *node;
+  LmMessageNode *pres_node, *x_node, *child_node, *node;
   const char *from;
   LmMessageSubType sub_type;
   GabbleMucChannel *muc_chan;
@@ -2220,7 +2220,7 @@ connection_presence_cb (LmMessageHandler *handler,
         }
     }
 
-  is_for_muc = node_is_for_muc (pres_node, NULL);
+  is_for_muc = node_is_for_muc (pres_node, &x_node);
 
   handle = gabble_handle_for_contact (priv->handles, from, is_for_muc);
 
@@ -2417,7 +2417,7 @@ connection_presence_cb (LmMessageHandler *handler,
       if (muc_chan != NULL)
         {
           _gabble_muc_channel_member_presence_updated (muc_chan, handle,
-                                                       pres_node);
+                                                       pres_node, x_node);
         }
       else
         {

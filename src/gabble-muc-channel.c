@@ -1264,14 +1264,15 @@ room_created_submit_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 void
 _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
                                              GabbleHandle handle,
-                                             LmMessageNode *pres_node)
+                                             LmMessageNode *pres_node,
+                                             LmMessageNode *x_node)
 {
   GabbleMucChannelPrivate *priv;
   GQuark data_key;
   ContactPresence *cp;
   GIntSet *empty, *set;
   GabbleGroupMixin *mixin;
-  LmMessageNode *x_node, *item_node, *node;
+  LmMessageNode *item_node, *node;
   const gchar *affil, *role, *status_code;
 
   g_debug (G_STRFUNC);
@@ -1286,14 +1287,6 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
   data_key = _get_contact_presence_quark ();
   cp = gabble_handle_get_qdata (mixin->handle_repo, TP_HANDLE_TYPE_CONTACT,
                                 handle, data_key);
-
-  /* find useful MUC subnodes */
-  x_node = lm_message_node_get_child (pres_node, "x");
-  if (x_node == NULL)
-    {
-      g_warning ("%s: node missing 'x' child, ignoring", G_STRFUNC);
-      return;
-    }
 
   item_node = lm_message_node_get_child (x_node, "item");
   if (item_node == NULL)

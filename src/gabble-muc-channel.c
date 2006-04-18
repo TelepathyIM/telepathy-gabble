@@ -425,7 +425,8 @@ static void properties_disco_cb (GabbleDisco *disco, const gchar *jid,
         }
 
       /* ROOM_PROP_PASSWORD_REQUIRED */
-      else if (strcmp (str, "muc_unsecured") == 0)
+      else if (strcmp (str, "muc_unsecure") == 0 ||
+               strcmp (str, "muc_unsecured") == 0)
         {
           prop_id = ROOM_PROP_PASSWORD_REQUIRED;
           g_value_init (&val, G_TYPE_BOOLEAN);

@@ -2999,8 +2999,8 @@ connection_open_cb (LmConnection *lmconn,
       return;
     }
 
-  g_debug ("%s: authenticating with username: %s, password: %s, resource: %s",
-           G_STRFUNC, priv->username, priv->password, priv->resource);
+  g_debug ("%s: authenticating with username: %s, password: <hidden>, resource: %s",
+           G_STRFUNC, priv->username, priv->resource);
 
   if (!lm_connection_authenticate (lmconn, priv->username, priv->password,
                                    priv->resource, connection_auth_cb,

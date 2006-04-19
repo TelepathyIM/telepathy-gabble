@@ -143,7 +143,8 @@ gabble_group_mixin_get_self_handle (GObject *obj, guint *ret, GError **error)
   GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
 
   if (handle_set_is_member (mixin->members, mixin->self_handle) ||
-      handle_set_is_member (mixin->local_pending, mixin->self_handle))
+      handle_set_is_member (mixin->local_pending, mixin->self_handle) ||
+      handle_set_is_member (mixin->remote_pending, mixin->self_handle))
     {
       *ret = mixin->self_handle;
     }
@@ -173,16 +174,6 @@ gabble_group_mixin_add_members (GObject *obj, const GArray *contacts, const gcha
   guint i;
   GabbleHandle handle;
 
-  /* is this action allowed according to the current flags? */
-  if ((mixin->group_flags & TP_CHANNEL_GROUP_FLAG_CAN_ADD) == 0)
-    {
-      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
-                            "add operation not available according to group_flags being 0x%x",
-                            mixin->group_flags);
-
-      return FALSE;
-    }
-
   /* reject invalid handles */
   for (i = 0; i < contacts->len; i++)
     {
@@ -194,6 +185,19 @@ gabble_group_mixin_add_members (GObject *obj, const GArray *contacts, const gcha
 
           *error = g_error_new (TELEPATHY_ERRORS, InvalidHandle,
               "invalid handle %u", handle);
+
+          return FALSE;
+        }
+
+      if ((mixin->group_flags & TP_CHANNEL_GROUP_FLAG_CAN_ADD) == 0 &&
+          !handle_set_is_member (mixin->local_pending, handle))
+        {
+          g_debug ("%s: handle %u cannot be added to members without GROUP_FLAG_CAN_ADD",
+              G_STRFUNC, handle);
+
+          *error = g_error_new (TELEPATHY_ERRORS, PermissionDenied,
+              "handle %u cannot be added to members without GROUP_FLAG_CAN_ADD",
+              handle);
 
           return FALSE;
         }
@@ -221,16 +225,6 @@ gabble_group_mixin_remove_members (GObject *obj, const GArray *contacts, const g
   guint i;
   GabbleHandle handle;
 
-  /* is this action allowed according to the current flags? */
-  if ((mixin->group_flags & TP_CHANNEL_GROUP_FLAG_CAN_REMOVE) == 0)
-    {
-      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
-                            "remove operation not available according to group_flags being 0x%x",
-                            mixin->group_flags);
-
-      return FALSE;
-    }
-
   /* reject invalid and non-member handles */
   for (i = 0; i < contacts->len; i++)
     {
@@ -241,21 +235,46 @@ gabble_group_mixin_remove_members (GObject *obj, const GArray *contacts, const g
           g_debug ("%s: invalid handle %u", G_STRFUNC, handle);
 
           *error = g_error_new (TELEPATHY_ERRORS, InvalidHandle,
-                                "invalid handle %u", handle);
+              "invalid handle %u", handle);
 
           return FALSE;
         }
 
-      if (!handle_set_is_member (mixin->members, handle) &&
-          !handle_set_is_member (mixin->local_pending, handle) &&
-          !handle_set_is_member (mixin->remote_pending, handle))
+      if (handle_set_is_member (mixin->members, handle))
+        {
+          if ((mixin->group_flags & TP_CHANNEL_GROUP_FLAG_CAN_REMOVE) == 0)
+            {
+              g_debug ("%s: handle %u cannot be removed from members without GROUP_FLAG_CAN_REMOVE",
+                  G_STRFUNC, handle);
+
+              *error = g_error_new (TELEPATHY_ERRORS, PermissionDenied,
+                  "handle %u cannot be removed from members without GROUP_FLAG_CAN_REMOVE",
+                  handle);
+
+              return FALSE;
+            }
+        }
+      else if (handle_set_is_member (mixin->remote_pending, handle))
+        {
+          if ((mixin->group_flags & TP_CHANNEL_GROUP_FLAG_CAN_RESCIND) == 0)
+            {
+              g_debug ("%s: handle %u cannot be removed from remote pending without GROUP_FLAG_CAN_RESCIND",
+                  G_STRFUNC, handle);
+
+              *error = g_error_new (TELEPATHY_ERRORS, PermissionDenied,
+                  "handle %u cannot be removed from remote pending without GROUP_FLAG_CAN_RESCIND",
+                  handle);
+
+              return FALSE;
+            }
+        }
+      else if (!handle_set_is_member (mixin->local_pending, handle))
         {
           g_debug ("%s: handle %u is not a current or pending member",
                    G_STRFUNC, handle);
 
-          *error = g_error_new (TELEPATHY_ERRORS, InvalidHandle,
-                                "handle %u is not a current or pending member",
-                                handle);
+          *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+              "handle %u is not a current or pending member", handle);
 
           return FALSE;
         }

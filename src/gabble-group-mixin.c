@@ -208,6 +208,13 @@ gabble_group_mixin_add_members (GObject *obj, const GArray *contacts, const gcha
     {
       handle = g_array_index (contacts, GabbleHandle, i);
 
+      if (handle_set_is_member (mixin->members, handle))
+        {
+          g_debug ("%s: handle %u is already a member, skipping", G_STRFUNC, handle);
+
+          continue;
+        }
+
       if (!mixin_cls->add_member (obj, handle, message, error))
         {
           return FALSE;

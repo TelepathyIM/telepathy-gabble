@@ -32,10 +32,14 @@ typedef struct _GabbleRosterChannelClass GabbleRosterChannelClass;
 
 struct _GabbleRosterChannelClass {
     GObjectClass parent_class;
+
+    GabbleGroupMixinClass group_class;
 };
 
 struct _GabbleRosterChannel {
     GObject parent;
+
+    GabbleGroupMixin group;
 };
 
 GType gabble_roster_channel_get_type(void);
@@ -53,19 +57,6 @@ GType gabble_roster_channel_get_type(void);
   (G_TYPE_CHECK_CLASS_TYPE((klass), GABBLE_TYPE_ROSTER_CHANNEL))
 #define GABBLE_ROSTER_CHANNEL_GET_CLASS(obj) \
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_ROSTER_CHANNEL, GabbleRosterChannelClass))
-
-
-void
-_gabble_roster_channel_change_group_flags (GabbleRosterChannel *chan,
-                                           TpChannelGroupFlags add,
-                                           TpChannelGroupFlags remove);
-void
-_gabble_roster_channel_change_members (GabbleRosterChannel *chan,
-                                       const char *message,
-                                       GIntSet *add,
-                                       GIntSet *remove,
-                                       GIntSet *local_pending,
-                                       GIntSet *remote_pending);
 
 
 gboolean gabble_roster_channel_add_members (GabbleRosterChannel *obj, const GArray * contacts, const gchar * message, GError **error);

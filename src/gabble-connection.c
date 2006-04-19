@@ -2253,7 +2253,7 @@ connection_presence_cb (LmMessageHandler *handler,
 
       /* make the contact local pending on the publish channel */
       g_intset_add (tmp, handle);
-      _gabble_roster_channel_change_members (priv->publish_channel,
+      gabble_group_mixin_change_members (G_OBJECT (priv->publish_channel),
           status_message, empty, empty, tmp, empty);
 
       g_intset_destroy (empty);
@@ -2268,7 +2268,7 @@ connection_presence_cb (LmMessageHandler *handler,
 
       /* remove the contact from the publish channel */
       g_intset_add (tmp, handle);
-      _gabble_roster_channel_change_members (priv->publish_channel,
+      gabble_group_mixin_change_members (G_OBJECT (priv->publish_channel),
           status_message, empty, tmp, empty, empty);
 
       /* acknowledge the change */
@@ -2290,7 +2290,7 @@ connection_presence_cb (LmMessageHandler *handler,
 
       /* add the contact to the subscribe channel */
       g_intset_add (tmp, handle);
-      _gabble_roster_channel_change_members (priv->subscribe_channel,
+      gabble_group_mixin_change_members (G_OBJECT (priv->subscribe_channel),
           status_message, tmp, empty, empty, empty);
 
       /* acknowledge the change */
@@ -2312,7 +2312,7 @@ connection_presence_cb (LmMessageHandler *handler,
 
       /* remove the contact from the subscribe channel */
       g_intset_add (tmp, handle);
-      _gabble_roster_channel_change_members (priv->subscribe_channel,
+      gabble_group_mixin_change_members (G_OBJECT (priv->subscribe_channel),
           status_message, empty, tmp, empty, empty);
 
       /* acknowledge the change */
@@ -2552,7 +2552,7 @@ connection_iq_roster_cb (LmMessageHandler *handler,
           g_intset_size (pub_rem) > 0)
         {
           g_debug ("%s: calling change members on publish channel", G_STRFUNC);
-          _gabble_roster_channel_change_members (priv->publish_channel,
+          gabble_group_mixin_change_members (G_OBJECT (priv->publish_channel),
               "", pub_add, pub_rem, empty, empty);
         }
 
@@ -2561,7 +2561,7 @@ connection_iq_roster_cb (LmMessageHandler *handler,
           g_intset_size (sub_rp) > 0)
         {
           g_debug ("%s: calling change members on subscribe channel", G_STRFUNC);
-          _gabble_roster_channel_change_members (priv->subscribe_channel,
+          gabble_group_mixin_change_members (G_OBJECT (priv->subscribe_channel),
               "", sub_add, sub_rem, empty, sub_rp);
         }
 
@@ -3198,9 +3198,6 @@ make_roster_channels (GabbleConnection *conn)
                  TP_HANDLE_TYPE_LIST, handle,
                  /* suppress handler: */ FALSE);
 
-  _gabble_roster_channel_change_group_flags (priv->publish_channel,
-      TP_CHANNEL_GROUP_FLAG_CAN_REMOVE, 0);
-
   g_free (object_path);
 
   /* make subscribe list channel */
@@ -3219,11 +3216,6 @@ make_roster_channels (GabbleConnection *conn)
                  object_path, TP_IFACE_CHANNEL_TYPE_CONTACT_LIST,
                  TP_HANDLE_TYPE_LIST, handle,
                  /* supress handler: */ FALSE);
-
-  _gabble_roster_channel_change_group_flags (priv->subscribe_channel,
-      TP_CHANNEL_GROUP_FLAG_CAN_ADD |
-      TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
-      TP_CHANNEL_GROUP_FLAG_CAN_RESCIND, 0);
 
   g_free (object_path);
 }

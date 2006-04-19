@@ -29,6 +29,7 @@
 #include "telepathy-helpers.h"
 #include "telepathy-interfaces.h"
 
+#include "gabble-group-mixin.h"
 #include "gabble-roster-channel.h"
 #include "gabble-roster-channel-glue.h"
 #include "gabble-roster-channel-signals-marshal.h"
@@ -66,11 +67,6 @@ struct _GabbleRosterChannelPrivate
   char *object_path;
   GabbleHandle handle;
 
-  TpChannelGroupFlags group_flags;
-  GabbleHandleSet *members;
-  GabbleHandleSet *local_pending;
-  GabbleHandleSet *remote_pending;
-
   gboolean dispose_has_run;
 };
 
@@ -93,21 +89,46 @@ gabble_roster_channel_constructor (GType type, guint n_props,
   DBusGConnection *bus;
   GabbleHandleRepo *handles;
   gboolean valid;
+  GabbleHandle self_handle;
+  GError *error = NULL;
 
   obj = G_OBJECT_CLASS (gabble_roster_channel_parent_class)->
            constructor (type, n_props, props);
   priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (GABBLE_ROSTER_CHANNEL (obj));
 
+  /* register object on the bus */
+  bus = tp_get_bus ();
+  dbus_g_connection_register_g_object (bus, priv->object_path, obj);
+
+  /* ref our list handle */
   handles = _gabble_connection_get_handles (priv->connection);
   valid = gabble_handle_ref (handles, TP_HANDLE_TYPE_LIST, priv->handle);
   g_assert (valid);
 
-  priv->members = handle_set_new (handles, TP_HANDLE_TYPE_CONTACT);
-  priv->local_pending = handle_set_new (handles, TP_HANDLE_TYPE_CONTACT);
-  priv->remote_pending = handle_set_new (handles, TP_HANDLE_TYPE_CONTACT);
+  /* initialize group mixin */
+  valid = gabble_connection_get_self_handle (priv->connection, &self_handle, &error);
+  g_assert (valid);
+  gabble_group_mixin_init (obj, G_STRUCT_OFFSET (GabbleRosterChannel, group),
+                           handles, self_handle);
 
-  bus = tp_get_bus ();
-  dbus_g_connection_register_g_object (bus, priv->object_path, obj);
+  if (gabble_handle_for_list_publish (handles) == priv->handle)
+    {
+      gabble_group_mixin_change_flags (obj,
+          TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
+          0);
+    }
+  else if (gabble_handle_for_list_subscribe (handles) == priv->handle)
+    {
+      gabble_group_mixin_change_flags (obj,
+          TP_CHANNEL_GROUP_FLAG_CAN_ADD |
+          TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
+          TP_CHANNEL_GROUP_FLAG_CAN_RESCIND,
+          0);
+    }
+  else
+    {
+      g_assert_not_reached ();
+    }
 
   return obj;
 }
@@ -171,6 +192,9 @@ gabble_roster_channel_set_property (GObject     *object,
 
 static void gabble_roster_channel_dispose (GObject *object);
 static void gabble_roster_channel_finalize (GObject *object);
+
+static gboolean _gabble_roster_channel_add_member_cb (GObject *obj, GabbleHandle handle, const gchar *message, GError **error);
+static gboolean _gabble_roster_channel_remove_member_cb (GObject *obj, GabbleHandle handle, const gchar *message, GError **error);
 
 static void
 gabble_roster_channel_class_init (GabbleRosterChannelClass *gabble_roster_channel_class)
@@ -245,23 +269,10 @@ gabble_roster_channel_class_init (GabbleRosterChannelClass *gabble_roster_channe
                   gabble_roster_channel_marshal_VOID__VOID,
                   G_TYPE_NONE, 0);
 
-  signals[GROUP_FLAGS_CHANGED] =
-    g_signal_new ("group-flags-changed",
-                  G_OBJECT_CLASS_TYPE (gabble_roster_channel_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  gabble_roster_channel_marshal_VOID__INT_INT,
-                  G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_UINT);
-
-  signals[MEMBERS_CHANGED] =
-    g_signal_new ("members-changed",
-                  G_OBJECT_CLASS_TYPE (gabble_roster_channel_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  gabble_roster_channel_marshal_VOID__STRING_BOXED_BOXED_BOXED_BOXED,
-                  G_TYPE_NONE, 5, G_TYPE_STRING, DBUS_TYPE_G_UINT_ARRAY, DBUS_TYPE_G_UINT_ARRAY, DBUS_TYPE_G_UINT_ARRAY, DBUS_TYPE_G_UINT_ARRAY);
+  gabble_group_mixin_class_init (object_class,
+                                 G_STRUCT_OFFSET (GabbleRosterChannelClass, group_class),
+                                 _gabble_roster_channel_add_member_cb,
+                                 _gabble_roster_channel_remove_member_cb);
 
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_roster_channel_class), &dbus_glib_gabble_roster_channel_object_info);
 }
@@ -299,158 +310,141 @@ gabble_roster_channel_finalize (GObject *object)
   handles = _gabble_connection_get_handles (priv->connection);
   gabble_handle_unref (handles, TP_HANDLE_TYPE_LIST, priv->handle);
 
-  handle_set_destroy (priv->members);
-  handle_set_destroy (priv->local_pending);
-  handle_set_destroy (priv->remote_pending);
+  gabble_group_mixin_finalize (object);
 
   G_OBJECT_CLASS (gabble_roster_channel_parent_class)->finalize (object);
 }
 
 
 /**
- * _gabble_roster_channel_change_group_flags:
+ * _gabble_roster_channel_add_member_cb
  *
- * Request a change to be made to the flags set on this channel. Emits
- * the signal with the changes which were made.
+ * Called by the group mixin to add one member.
  */
-void
-_gabble_roster_channel_change_group_flags (GabbleRosterChannel *chan,
-                                           TpChannelGroupFlags add,
-                                           TpChannelGroupFlags remove)
+static gboolean
+_gabble_roster_channel_add_member_cb (GObject *obj,
+                                      GabbleHandle handle,
+                                      const gchar *message,
+                                      GError **error)
 {
   GabbleRosterChannelPrivate *priv;
-  TpChannelGroupFlags added, removed;
+  GabbleHandleRepo *repo;
 
-  g_assert (GABBLE_IS_ROSTER_CHANNEL (chan));
+  g_assert (GABBLE_IS_ROSTER_CHANNEL (obj));
 
-  priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (chan);
+  priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (obj);
+  repo = _gabble_connection_get_handles (priv->connection);
 
-  added = add & ~priv->group_flags;
-  priv->group_flags |= added;
+  /* publish list */
+  if (gabble_handle_for_list_publish (repo) == priv->handle)
+    {
+      /* send <presence type="subscribed"> messages */
+      LmMessage *message;
+      const char *contact;
+      gboolean result;
 
-  removed = remove & priv->group_flags;
-  priv->group_flags &= ~removed;
+      contact = gabble_handle_inspect (repo, TP_HANDLE_TYPE_CONTACT, handle);
 
-  g_debug ("%s: emitting group flags changed, added 0x%X, removed 0x%X", G_STRFUNC, added, removed);
+      message = lm_message_new_with_sub_type (contact,
+          LM_MESSAGE_TYPE_PRESENCE,
+          LM_MESSAGE_SUB_TYPE_SUBSCRIBED);
+      result = _gabble_connection_send (priv->connection, message, error);
+      lm_message_unref (message);
 
-  g_signal_emit(chan, signals[GROUP_FLAGS_CHANGED], 0, added, removed);
+      if (!result)
+        return FALSE;
+    }
+  /* subscribe list */
+  else if (gabble_handle_for_list_subscribe (repo) == priv->handle)
+    {
+      /* send <presence type="subscribe">, but skip existing members */
+      LmMessage *message;
+      const char *contact;
+      gboolean result;
+
+      contact = gabble_handle_inspect (repo, TP_HANDLE_TYPE_CONTACT, handle);
+
+      message = lm_message_new_with_sub_type (contact,
+          LM_MESSAGE_TYPE_PRESENCE,
+          LM_MESSAGE_SUB_TYPE_SUBSCRIBE);
+      result = _gabble_connection_send (priv->connection, message, error);
+      lm_message_unref (message);
+
+      if (!result)
+        return FALSE;
+    }
+  else
+    {
+      g_assert_not_reached ();
+    }
+
+  return TRUE;
 }
 
 
 /**
- * _gabble_roster_channel_change_members:
+ * _gabble_roster_channel_remove_member_cb
  *
- * Request members to be added, removed or marked as local or remote pending.
- * Changes member sets, references, and emits the MembersChanged signal.
+ * Called by the group mixin to remove one member.
  */
-void
-_gabble_roster_channel_change_members (GabbleRosterChannel *chan,
-                                       const char *message,
-                                       GIntSet *add,
-                                       GIntSet *remove,
-                                       GIntSet *local_pending,
-                                       GIntSet *remote_pending)
+static gboolean
+_gabble_roster_channel_remove_member_cb (GObject *obj,
+                                         GabbleHandle handle,
+                                         const gchar *message,
+                                         GError **error)
 {
   GabbleRosterChannelPrivate *priv;
-  GIntSet *new_add, *new_remove, *new_local_pending,
-          *new_remote_pending, *tmp, *tmp2;
+  GabbleHandleRepo *repo;
 
-  g_assert (GABBLE_IS_ROSTER_CHANNEL (chan));
-  g_assert (add != NULL);
-  g_assert (remove != NULL);
-  g_assert (local_pending != NULL);
-  g_assert (remote_pending != NULL);
+  g_assert (GABBLE_IS_ROSTER_CHANNEL (obj));
 
-  priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (chan);
+  priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (obj);
+  repo = _gabble_connection_get_handles (priv->connection);
 
-
-  /* members + add */
-  new_add = handle_set_update (priv->members, add);
-
-  /* members - remove */
-  new_remove = handle_set_difference_update (priv->members, remove);
-
-  /* members - local_pending */
-  tmp = handle_set_difference_update (priv->members, local_pending);
-  g_intset_destroy (tmp);
-
-  /* members - remote_pending */
-  tmp = handle_set_difference_update (priv->members, remote_pending);
-  g_intset_destroy (tmp);
-
-
-  /* local pending + local_pending */
-  new_local_pending = handle_set_update (priv->local_pending, local_pending);
-
-  /* local pending - add */
-  tmp = handle_set_difference_update (priv->local_pending, add);
-  g_intset_destroy (tmp);
-
-  /* local pending - remove */
-  tmp = handle_set_difference_update (priv->local_pending, remove);
-  tmp2 = g_intset_union (new_remove, tmp);
-  g_intset_destroy (new_remove);
-  g_intset_destroy (tmp);
-  new_remove = tmp2;
-
-  /* local pending - remote_pending */
-  tmp = handle_set_difference_update (priv->local_pending, remote_pending);
-  g_intset_destroy (tmp);
-
-
-  /* remote pending + remote_pending */
-  new_remote_pending = handle_set_update (priv->remote_pending, remote_pending);
-
-  /* remote pending - add */
-  tmp = handle_set_difference_update (priv->remote_pending, add);
-  g_intset_destroy (tmp);
-
-  /* remote pending - remove */
-  tmp = handle_set_difference_update (priv->remote_pending, remove);
-  tmp2 = g_intset_union (new_remove, tmp);
-  g_intset_destroy (new_remove);
-  g_intset_destroy (tmp);
-  new_remove = tmp2;
-
-  /* remote pending - local_pending */
-  tmp = handle_set_difference_update (priv->remote_pending, local_pending);
-  g_intset_destroy (tmp);
-
-  if (g_intset_size (new_add) > 0 ||
-      g_intset_size (new_remove) > 0 ||
-      g_intset_size (new_local_pending) > 0 ||
-      g_intset_size (new_remote_pending) > 0)
+  /* publish list */
+  if (gabble_handle_for_list_publish (repo) == priv->handle)
     {
-      GArray *arr_add, *arr_remove, *arr_local, *arr_remote;
+      /* send <presence type="unsubscribed"> messages */
+      LmMessage *message;
+      const char *contact;
+      gboolean result;
 
-      /* translate intsets to arrays */
-      arr_add = g_intset_to_array (new_add);
-      arr_remove = g_intset_to_array (new_remove);
-      arr_local = g_intset_to_array (new_local_pending);
-      arr_remote = g_intset_to_array (new_remote_pending);
+      contact = gabble_handle_inspect (repo, TP_HANDLE_TYPE_CONTACT, handle);
 
-      /* emit signal */
-      g_signal_emit(chan, signals[MEMBERS_CHANGED], 0,
-                    message,
-                    arr_add, arr_remove,
-                    arr_local, arr_remote);
+      message = lm_message_new_with_sub_type (contact,
+          LM_MESSAGE_TYPE_PRESENCE,
+          LM_MESSAGE_SUB_TYPE_SUBSCRIBED);
+      result = _gabble_connection_send (priv->connection, message, error);
+      lm_message_unref (message);
 
-      /* free arrays */
-      g_array_free (arr_add, TRUE);
-      g_array_free (arr_remove, TRUE);
-      g_array_free (arr_local, TRUE);
-      g_array_free (arr_remote, TRUE);
+      if (!result)
+        return FALSE;
+    }
+  /* subscribe list */
+  else if (gabble_handle_for_list_subscribe (repo) == priv->handle)
+    {
+      /* send <presence type="unsubscribe"> */
+      LmMessage *message;
+      const char *contact;
+      gboolean result;
+
+      contact = gabble_handle_inspect (repo, TP_HANDLE_TYPE_CONTACT, handle);
+
+      message = lm_message_new_with_sub_type (contact,
+          LM_MESSAGE_TYPE_PRESENCE,
+          LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE);
+      result = _gabble_connection_send (priv->connection, message, error);
+      lm_message_unref (message);
+
+      if (!result)
+        return FALSE;
     }
   else
     {
-      g_debug ("%s: not emitting signal, nothing changed", G_STRFUNC);
+      g_assert_not_reached ();
     }
 
-  /* free intsets */
-  g_intset_destroy (new_add);
-  g_intset_destroy (new_remove);
-  g_intset_destroy (new_local_pending);
-  g_intset_destroy (new_remote_pending);
+  return TRUE;
 }
 
 
@@ -468,107 +462,7 @@ _gabble_roster_channel_change_members (GabbleRosterChannel *chan,
  */
 gboolean gabble_roster_channel_add_members (GabbleRosterChannel *obj, const GArray * contacts, const gchar * message, GError **error)
 {
-  GabbleRosterChannelPrivate *priv;
-  GabbleHandleRepo *repo;
-  int i;
-  GabbleHandle handle;
-
-  g_assert (GABBLE_IS_ROSTER_CHANNEL (obj));
-
-  priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (obj);
-  repo = _gabble_connection_get_handles (priv->connection);
-
-  /* reject invalid handles */
-  for (i = 0; i < contacts->len; i++)
-    {
-      handle = g_array_index (contacts, GabbleHandle, i);
-
-      if (!gabble_handle_is_valid (repo, TP_HANDLE_TYPE_CONTACT, handle))
-        {
-          g_debug ("%s: invalid handle %u", G_STRFUNC, handle);
-
-          *error = g_error_new (TELEPATHY_ERRORS, InvalidHandle,
-              "invalid handle %u", handle);
-
-          return FALSE;
-        }
-    }
-
-  /* publish list */
-  if (gabble_handle_for_list_publish (repo) == priv->handle)
-    {
-      /* reject handles who are not locally pending */
-      for (i = 0; i < contacts->len; i++)
-        {
-          handle = g_array_index (contacts, GabbleHandle, i);
-
-          if (!handle_set_is_member (priv->local_pending, handle))
-            {
-              g_debug ("%s: can't add members to publish list %u", G_STRFUNC, handle);
-
-              *error = g_error_new (TELEPATHY_ERRORS, PermissionDenied,
-                  "can't add members to publish list %u", handle);
-
-              return FALSE;
-            }
-        }
-
-      /* send <presence type="subscribed"> messages */
-      for (i = 0; i < contacts->len; i++)
-        {
-          LmMessage *message;
-          const char *contact;
-          gboolean result;
-
-          handle = g_array_index (contacts, GabbleHandle, i);
-          contact = gabble_handle_inspect (repo, TP_HANDLE_TYPE_CONTACT, handle);
-
-          message = lm_message_new_with_sub_type (contact,
-              LM_MESSAGE_TYPE_PRESENCE,
-              LM_MESSAGE_SUB_TYPE_SUBSCRIBED);
-          result = _gabble_connection_send (priv->connection, message, error);
-          lm_message_unref (message);
-
-          if (!result)
-            return FALSE;
-        }
-    }
-  /* subscribe list */
-  else if (gabble_handle_for_list_subscribe (repo) == priv->handle)
-    {
-      /* send <presence type="subscribe">, but skip existing members */
-      for (i = 0; i < contacts->len; i++)
-        {
-          LmMessage *message;
-          const char *contact;
-          gboolean result;
-
-          handle = g_array_index (contacts, GabbleHandle, i);
-          contact = gabble_handle_inspect (repo, TP_HANDLE_TYPE_CONTACT, handle);
-
-          if (handle_set_is_member (priv->members, handle))
-            {
-              g_debug ("%s: already subscribed to handle %u, skipping", G_STRFUNC, handle);
-
-              continue;
-            }
-
-          message = lm_message_new_with_sub_type (contact,
-              LM_MESSAGE_TYPE_PRESENCE,
-              LM_MESSAGE_SUB_TYPE_SUBSCRIBE);
-          result = _gabble_connection_send (priv->connection, message, error);
-          lm_message_unref (message);
-
-          if (!result)
-            return FALSE;
-        }
-    }
-  else
-    {
-      g_assert_not_reached ();
-    }
-
-  return TRUE;
+  return gabble_group_mixin_add_members (G_OBJECT (obj), contacts, message, error);
 }
 
 
@@ -627,15 +521,7 @@ gboolean gabble_roster_channel_get_channel_type (GabbleRosterChannel *obj, gchar
  */
 gboolean gabble_roster_channel_get_group_flags (GabbleRosterChannel *obj, guint* ret, GError **error)
 {
-  GabbleRosterChannelPrivate *priv;
-
-  g_assert (GABBLE_IS_ROSTER_CHANNEL (obj));
-
-  priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (obj);
-
-  *ret = priv->group_flags;
-
-  return TRUE;
+  return gabble_group_mixin_get_group_flags (G_OBJECT (obj), ret, error);
 }
 
 
@@ -702,15 +588,7 @@ gboolean gabble_roster_channel_get_interfaces (GabbleRosterChannel *obj, gchar *
  */
 gboolean gabble_roster_channel_get_local_pending_members (GabbleRosterChannel *obj, GArray ** ret, GError **error)
 {
-  GabbleRosterChannelPrivate *priv;
-
-  g_assert (GABBLE_IS_ROSTER_CHANNEL (obj));
-
-  priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (obj);
-
-  *ret = handle_set_to_array (priv->local_pending);
-
-  return TRUE;
+  return gabble_group_mixin_get_local_pending_members (G_OBJECT (obj), ret, error);
 }
 
 
@@ -728,15 +606,7 @@ gboolean gabble_roster_channel_get_local_pending_members (GabbleRosterChannel *o
  */
 gboolean gabble_roster_channel_get_members (GabbleRosterChannel *obj, GArray ** ret, GError **error)
 {
-  GabbleRosterChannelPrivate *priv;
-
-  g_assert (GABBLE_IS_ROSTER_CHANNEL (obj));
-
-  priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (obj);
-
-  *ret = handle_set_to_array (priv->members);
-
-  return TRUE;
+  return gabble_group_mixin_get_members (G_OBJECT (obj), ret, error);
 }
 
 
@@ -754,15 +624,7 @@ gboolean gabble_roster_channel_get_members (GabbleRosterChannel *obj, GArray ** 
  */
 gboolean gabble_roster_channel_get_remote_pending_members (GabbleRosterChannel *obj, GArray ** ret, GError **error)
 {
-  GabbleRosterChannelPrivate *priv;
-
-  g_assert (GABBLE_IS_ROSTER_CHANNEL (obj));
-
-  priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (obj);
-
-  *ret = handle_set_to_array (priv->remote_pending);
-
-  return TRUE;
+  return gabble_group_mixin_get_remote_pending_members (G_OBJECT (obj), ret, error);
 }
 
 
@@ -780,26 +642,7 @@ gboolean gabble_roster_channel_get_remote_pending_members (GabbleRosterChannel *
  */
 gboolean gabble_roster_channel_get_self_handle (GabbleRosterChannel *obj, guint* ret, GError **error)
 {
-  GabbleRosterChannelPrivate *priv;
-  GabbleHandle handle;
-
-  g_assert (GABBLE_IS_ROSTER_CHANNEL (obj));
-
-  priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (obj);
-
-  if (!gabble_connection_get_self_handle (priv->connection, &handle, error))
-    return FALSE;
-
-  if (!handle_set_is_member (priv->members, handle))
-    {
-      *ret = 0;
-    }
-  else
-    {
-      *ret = handle;
-    }
-
-  return TRUE;
+  return gabble_group_mixin_get_self_handle (G_OBJECT (obj), ret, error);
 }
 
 
@@ -817,117 +660,6 @@ gboolean gabble_roster_channel_get_self_handle (GabbleRosterChannel *obj, guint*
  */
 gboolean gabble_roster_channel_remove_members (GabbleRosterChannel *obj, const GArray * contacts, const gchar * message, GError **error)
 {
-  GabbleRosterChannelPrivate *priv;
-  GabbleHandleRepo *repo;
-  int i;
-  GabbleHandle handle;
-
-  g_assert (GABBLE_IS_ROSTER_CHANNEL (obj));
-
-  priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (obj);
-  repo = _gabble_connection_get_handles (priv->connection);
-
-  /* reject invalid handles */
-  for (i = 0; i < contacts->len; i++)
-    {
-      handle = g_array_index (contacts, GabbleHandle, i);
-
-      if (!gabble_handle_is_valid (repo, TP_HANDLE_TYPE_CONTACT, handle))
-        {
-          g_debug ("%s: invalid handle %u", G_STRFUNC, handle);
-
-          *error = g_error_new (TELEPATHY_ERRORS, InvalidHandle,
-              "invalid handle %u", handle);
-
-          return FALSE;
-        }
-    }
-
-  /* publish list */
-  if (gabble_handle_for_list_publish (repo) == priv->handle)
-    {
-      /* reject handles who are not members or locally pending */
-      for (i = 0; i < contacts->len; i++)
-        {
-          handle = g_array_index (contacts, GabbleHandle, i);
-
-          if (!handle_set_is_member (priv->members, handle) ||
-              !handle_set_is_member (priv->local_pending, handle))
-            {
-              g_debug ("%s: handle isn't present to remove from publish list %u", G_STRFUNC, handle);
-
-              *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
-                  "handle isn't present to remove from publish list %u", handle);
-
-              return FALSE;
-            }
-        }
-
-      /* send <presence type="unsubscribed"> messages */
-      for (i = 0; i < contacts->len; i++)
-        {
-          LmMessage *message;
-          const char *contact;
-          gboolean result;
-
-          handle = g_array_index (contacts, GabbleHandle, i);
-          contact = gabble_handle_inspect (repo, TP_HANDLE_TYPE_CONTACT, handle);
-
-          message = lm_message_new_with_sub_type (contact,
-              LM_MESSAGE_TYPE_PRESENCE,
-              LM_MESSAGE_SUB_TYPE_SUBSCRIBED);
-          result = _gabble_connection_send (priv->connection, message, error);
-          lm_message_unref (message);
-
-          if (!result)
-            return FALSE;
-        }
-    }
-  /* subscribe list */
-  else if (gabble_handle_for_list_subscribe (repo) == priv->handle)
-    {
-      /* reject handles who are not members or remote pending */
-      for (i = 0; i < contacts->len; i++)
-        {
-          handle = g_array_index (contacts, GabbleHandle, i);
-
-          if (!handle_set_is_member (priv->members, handle) ||
-              !handle_set_is_member (priv->remote_pending, handle))
-            {
-              g_debug ("%s: handle isn't present to remove from subscribe list %u", G_STRFUNC, handle);
-
-              *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
-                  "handle isn't present to remove from subscribe list %u", handle);
-
-              return FALSE;
-            }
-        }
-
-      /* send <presence type="unsubscribe"> */
-      for (i = 0; i < contacts->len; i++)
-        {
-          LmMessage *message;
-          const char *contact;
-          gboolean result;
-
-          handle = g_array_index (contacts, GabbleHandle, i);
-          contact = gabble_handle_inspect (repo, TP_HANDLE_TYPE_CONTACT, handle);
-
-          message = lm_message_new_with_sub_type (contact,
-              LM_MESSAGE_TYPE_PRESENCE,
-              LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE);
-          result = _gabble_connection_send (priv->connection, message, error);
-          lm_message_unref (message);
-
-          if (!result)
-            return FALSE;
-        }
-    }
-  else
-    {
-      g_assert_not_reached ();
-    }
-
-  return TRUE;
+  return gabble_group_mixin_remove_members (G_OBJECT (obj), contacts, message, error);
 }
 

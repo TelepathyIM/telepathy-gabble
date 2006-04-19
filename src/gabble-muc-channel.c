@@ -938,6 +938,8 @@ gabble_muc_channel_finalize (GObject *object)
 
   g_queue_free (priv->pending_messages);
 
+  gabble_group_mixin_finalize (object);
+
   G_OBJECT_CLASS (gabble_muc_channel_parent_class)->finalize (object);
 }
 

@@ -297,7 +297,7 @@ gabble_roster_channel_finalize (GObject *object)
   g_free (priv->object_path);
 
   handles = _gabble_connection_get_handles (priv->connection);
-  gabble_handle_unref (handles, TP_HANDLE_TYPE_CONTACT, priv->handle);
+  gabble_handle_unref (handles, TP_HANDLE_TYPE_LIST, priv->handle);
 
   handle_set_destroy (priv->members);
   handle_set_destroy (priv->local_pending);

@@ -23,9 +23,10 @@
 
 #define DBUS_API_SUBJECT_TO_CHANGE
 
-#include <string.h>
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "telepathy-helpers.h"
 
@@ -291,23 +292,30 @@ request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
               "error"))
       {
         LmMessageNode *error_node;
+        const char *error_code_str;
+        gint error_code;
 
         error_node = lm_message_node_get_child (reply_msg->node, "error");
-        if (lm_message_node_get_child (error_node, "item-not-found"))
+        error_code_str = lm_message_node_get_attribute (error_node, "code");
+        error_code = error_code_str ? atoi (error_code_str) : 0;
+
+        if (error_code == 404 ||
+            lm_message_node_get_child (error_node, "item-not-found") != NULL)
           {
             err = g_error_new (GABBLE_DISCO_ERROR,
                                GABBLE_DISCO_ERROR_NOT_FOUND,
                                "Item %s was not found",
                                request->jid);
           }
-        else if (lm_message_node_get_child (error_node, "service-unavailable"))
+        else if (error_code == 503 ||
+                 lm_message_node_get_child (error_node, "service-unavailable") != NULL)
           {
             err = g_error_new (GABBLE_DISCO_ERROR,
                                GABBLE_DISCO_ERROR_UNAVAILABLE,
                                "Service %s was unavailable",
                                request->jid);
           }
-        else if (lm_message_node_get_child (error_node, "remote-server-not-found"))
+        else if (lm_message_node_get_child (error_node, "remote-server-not-found") != NULL)
           {
             err = g_error_new (GABBLE_DISCO_ERROR,
                                GABBLE_DISCO_ERROR_SERVER_NOT_FOUND,
@@ -319,7 +327,7 @@ request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
             gchar *msg = lm_message_node_to_string (error_node);
             err = g_error_new (GABBLE_DISCO_ERROR,
                                GABBLE_DISCO_ERROR_UNKNOWN,
-                               "Unknown error node: %s",
+                               "Unknown error: %s",
                                msg);
             g_free (msg);
           }
@@ -354,7 +362,7 @@ notify_delete_request (gpointer data, GObject *obj)
  * @error: #GError to return a telepathy error in if unable to make
  *         request, NULL if unneeded.
  *
- * Make a DISCO request on the given jid with the default timeout.
+ * Make a disco request on the given jid with the default timeout.
  */
 GabbleDiscoRequest *
 gabble_disco_request (GabbleDisco *self, GabbleDiscoType type,
@@ -381,7 +389,7 @@ gabble_disco_request (GabbleDisco *self, GabbleDiscoType type,
  * @error: #GError to return a telepathy error in if unable to make
  *         request, NULL if unneeded.
  *
- * Make a DISCO request on the given jid, which will fail unless a reply
+ * Make a disco request on the given jid, which will fail unless a reply
  * is received within the given timeout interval.
  */
 GabbleDiscoRequest *
@@ -409,7 +417,7 @@ gabble_disco_request_with_timeout (GabbleDisco *self, GabbleDiscoType type,
 
   g_object_weak_ref (object, notify_delete_request, request);
 
-  g_debug ("%s: Creating DISCO request %p for %s",
+  g_debug ("%s: Creating disco request %p for %s",
            G_STRFUNC, request, request->jid);
 
   priv->requests = g_list_prepend (priv->requests, request);

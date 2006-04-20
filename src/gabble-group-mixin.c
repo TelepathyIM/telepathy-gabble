@@ -335,15 +335,17 @@ gabble_group_mixin_get_remote_pending_members (GObject *obj, GArray **ret, GErro
   if (flags & flag) \
     { \
       if (i++ > 0) \
-        strcat (str, "\n              "); \
-      strcat (str, #flag); \
+        g_string_append (str, "\n              "); \
+      g_string_append (str, #flag); \
     }
 
 static gchar *
 group_flags_to_string (TpChannelGroupFlags flags)
 {
   gint i = 0;
-  gchar str[512] = "[" ANSI_BOLD_OFF;
+  GString *str;
+
+  str = g_string_new ("[" ANSI_BOLD_OFF);
 
   GFTS_APPEND_FLAG_IF_SET (TP_CHANNEL_GROUP_FLAG_CAN_ADD);
   GFTS_APPEND_FLAG_IF_SET (TP_CHANNEL_GROUP_FLAG_CAN_REMOVE);
@@ -354,9 +356,9 @@ group_flags_to_string (TpChannelGroupFlags flags)
   GFTS_APPEND_FLAG_IF_SET (TP_CHANNEL_GROUP_FLAG_MESSAGE_REJECT);
   GFTS_APPEND_FLAG_IF_SET (TP_CHANNEL_GROUP_FLAG_MESSAGE_RESCIND);
 
-  strcat (str, ANSI_BOLD_ON "]");
+  g_string_append (str, ANSI_BOLD_ON "]");
 
-  return g_strdup (str);
+  return g_string_free (str, FALSE);
 }
 
 /**

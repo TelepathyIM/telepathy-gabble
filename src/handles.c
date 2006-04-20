@@ -52,15 +52,11 @@ handle_priv_lookup (GabbleHandleRepo *repo,
                     TpHandleType type,
                     GabbleHandle handle)
 {
-  GabbleHandlePriv *priv;
+  GabbleHandlePriv *priv = NULL;
 
   g_assert (repo != NULL);
-
-  if (handle == 0)
-    {
-      g_warning ("Invalid handle requested in handle_priv_lookup!");
-      return NULL;
-    }
+  g_assert (gabble_handle_type_is_valid (type));
+  g_assert (handle != 0);
 
   switch (type) {
     case TP_HANDLE_TYPE_CONTACT:
@@ -73,8 +69,7 @@ handle_priv_lookup (GabbleHandleRepo *repo,
       priv = g_datalist_id_get_data (&repo->list_handles, handle);
       break;
     default:
-      g_warning ("Invalid handle type requested in handle_priv_lookup!");
-      return NULL;
+      g_assert_not_reached();
     }
 
   return priv;
@@ -83,20 +78,24 @@ handle_priv_lookup (GabbleHandleRepo *repo,
 void
 handle_priv_remove (GabbleHandleRepo *repo,
                     TpHandleType type,
-                    GabbleHandlePriv *priv)
+                    GabbleHandle handle)
 {
+  g_assert (gabble_handle_type_is_valid (type));
+  g_assert (handle != 0);
   g_assert (repo != NULL);
 
   switch (type) {
     case TP_HANDLE_TYPE_CONTACT:
-      g_hash_table_remove (repo->contact_handles, priv);
+      g_hash_table_remove (repo->contact_handles, GINT_TO_POINTER (handle));
       break;
     case TP_HANDLE_TYPE_ROOM:
-      g_hash_table_remove (repo->room_handles, priv);
+      g_hash_table_remove (repo->room_handles, GINT_TO_POINTER (handle));
+      break;
+    case TP_HANDLE_TYPE_LIST:
+      g_dataset_id_remove_data (&repo->list_handles, handle);
       break;
     default:
-      g_critical ("Invalid handle type requested in handle_priv_remove!");
-      return;
+      g_assert_not_reached ();
     }
 }
 
@@ -332,7 +331,8 @@ gabble_handle_unref (GabbleHandleRepo *repo,
   priv->refcount--;
 
   if (priv->refcount == 0)
-    handle_priv_remove (repo, type, priv);
+    handle_priv_remove (repo, type, handle);
+
   return TRUE;
 }
 

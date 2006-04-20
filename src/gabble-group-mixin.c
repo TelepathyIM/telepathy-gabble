@@ -21,7 +21,6 @@
  */
 
 #include <dbus/dbus-glib.h>
-#include <string.h>
 #include <stdio.h>
 
 #include "gabble-group-mixin.h"
@@ -407,16 +406,13 @@ gabble_group_mixin_change_flags (GObject *obj,
     }
 }
 
-/**
- * FIXME: Really horrible -- just a quick hack for debugging.
- */
 static gchar *
 member_array_to_string (GabbleHandleRepo *repo, const GArray *array)
 {
-  gchar *buf, *p;
+  GString *str;
   guint i;
 
-  buf = g_strdup ("[" ANSI_BOLD_OFF);
+  str = g_string_new ("[" ANSI_BOLD_OFF);
 
   for (i = 0; i < array->len; i++)
     {
@@ -426,18 +422,14 @@ member_array_to_string (GabbleHandleRepo *repo, const GArray *array)
       handle = g_array_index (array, guint32, i);
       handle_str = gabble_handle_inspect (repo, TP_HANDLE_TYPE_CONTACT, handle);
 
-      p = g_strdup_printf ("%s%s%u (%s)",
-                           buf, (i > 0) ? "\n              " : "",
-                           handle, handle_str);
-
-      g_free (buf);
-      buf = p;
+      g_string_append_printf (str, "%s%u (%s)",
+          (i > 0) ? "\n              " : "",
+          handle, handle_str);
     }
 
-  p = g_strdup_printf ("%s" ANSI_BOLD_ON "]", buf);
-  g_free (buf);
+  g_string_append (str, ANSI_BOLD_ON "]");
 
-  return p;
+  return g_string_free (str, FALSE);
 }
 
 /**

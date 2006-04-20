@@ -35,8 +35,6 @@ G_BEGIN_DECLS
         "org.freedesktop.Telepathy.Channel.Interface.Hold"
 #define TP_IFACE_CHANNEL_INTERFACE_PASSWORD \
         "org.freedesktop.Telepathy.Channel.Interface.Password"
-#define TP_IFACE_CHANNEL_INTERFACE_ROOM_PROPERTIES \
-        "org.freedesktop.Telepathy.Channel.Interface.RoomProperties"
 #define TP_IFACE_CHANNEL_INTERFACE_TRANSFER \
         "org.freedesktop.Telepathy.Channel.Interface.Transfer"
 #define TP_IFACE_CHANNEL_TYPE_CONTACT_LIST \
@@ -71,6 +69,8 @@ G_BEGIN_DECLS
         "org.freedesktop.Telepathy.Media.SessionHandler"
 #define TP_IFACE_MEDIA_STREAM_HANDLER \
         "org.freedesktop.Telepathy.Media.StreamHandler"
+#define TP_IFACE_PROPERTIES \
+        "org.freedesktop.Telepathy.Properties"
 
 G_END_DECLS
 

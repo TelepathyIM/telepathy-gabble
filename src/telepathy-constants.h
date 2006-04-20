@@ -98,11 +98,6 @@ TP_CHANNEL_PASSWORD_FLAG_PROVIDE = 8
 } TpChannelPasswordFlags;
 
 typedef enum {
-TP_PROPERTY_FLAG_READ = 1,
-TP_PROPERTY_FLAG_WRITE = 2
-} TpChannelRoomPropertyFlags;
-
-typedef enum {
 TP_MEDIA_STREAM_TYPE_AUDIO = 0,
 TP_MEDIA_STREAM_TYPE_VIDEO = 1
 } TpMediaStreamType;
@@ -141,6 +136,11 @@ typedef enum {
   TP_MEDIA_STREAM_STATE_CONNECTING = 2,
   TP_MEDIA_STREAM_STATE_CONNECTED = 3
 } TpMediaStreamState;
+
+typedef enum {
+TP_PROPERTY_FLAG_READ = 1,
+TP_PROPERTY_FLAG_WRITE = 2
+} TpPropertyFlags;
 
 G_END_DECLS
 

@@ -2327,7 +2327,7 @@ connection_presence_cb (LmMessageHandler *handler,
       break;
 
     case LM_MESSAGE_SUB_TYPE_ERROR:
-      g_warning ("%s: XMPP Presence Error received, setting contact to offline",
+      g_warning ("%s: presence error received, setting contact to offline",
                  G_STRFUNC);
       HANDLER_DEBUG (pres_node, "presence node");
     case LM_MESSAGE_SUB_TYPE_UNAVAILABLE:

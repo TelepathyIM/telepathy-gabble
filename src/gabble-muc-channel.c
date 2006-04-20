@@ -306,7 +306,7 @@ room_properties_init (GabbleMucChannel *chan)
 }
 
 static void room_property_change_value (GabbleMucChannel *chan, guint prop_id, const GValue *new_value, GArray *props);
-static void room_property_change_flags (GabbleMucChannel *chan, guint prop_id, TpChannelRoomPropertyFlags add, TpChannelRoomPropertyFlags remove, GArray *props);
+static void room_property_change_flags (GabbleMucChannel *chan, guint prop_id, TpPropertyFlags add, TpPropertyFlags remove, GArray *props);
 static void room_properties_emit_changed (GabbleMucChannel *chan, GArray *props);
 static void room_properties_emit_flags (GabbleMucChannel *chan, GArray *props);
 
@@ -1811,7 +1811,7 @@ gboolean gabble_muc_channel_get_interfaces (GabbleMucChannel *obj, gchar *** ret
   const gchar *interfaces[] = {
       TP_IFACE_CHANNEL_INTERFACE_GROUP,
       TP_IFACE_CHANNEL_INTERFACE_PASSWORD,
-      TP_IFACE_CHANNEL_INTERFACE_ROOM_PROPERTIES,
+      TP_IFACE_PROPERTIES,
       NULL
   };
 
@@ -2896,7 +2896,7 @@ OUT:
     }
 
 static gchar *
-room_property_flags_to_string (TpChannelRoomPropertyFlags flags)
+room_property_flags_to_string (TpPropertyFlags flags)
 {
   gint i = 0;
   gchar str[512] = "[" ANSI_BOLD_OFF;
@@ -2945,8 +2945,8 @@ room_property_change_value (GabbleMucChannel *chan,
 static void
 room_property_change_flags (GabbleMucChannel *chan,
                             guint prop_id,
-                            TpChannelRoomPropertyFlags add,
-                            TpChannelRoomPropertyFlags remove,
+                            TpPropertyFlags add,
+                            TpPropertyFlags remove,
                             GArray *props)
 {
   GabbleMucChannelPrivate *priv;

@@ -4866,7 +4866,7 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
 {
   GabbleConnectionPrivate *priv;
   GabbleHandle handle;
-  gchar *sender;
+  gchar *sender, *qualified_name;
   GError *error = NULL;
 
   g_assert (GABBLE_IS_CONNECTION (obj));
@@ -4890,8 +4890,6 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
   switch (handle_type)
     {
     case TP_HANDLE_TYPE_CONTACT:
-    case TP_HANDLE_TYPE_ROOM:
-
       if (!gabble_handle_jid_is_valid (handle_type, name, &error))
         {
           dbus_g_method_return_error (context, error);
@@ -4900,53 +4898,50 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
           return FALSE;
         }
 
-      if (handle_type == TP_HANDLE_TYPE_CONTACT)
+      handle = gabble_handle_for_contact (priv->handles, name, FALSE);
+
+      if (handle == 0)
         {
-          handle = gabble_handle_for_contact (priv->handles, name, FALSE);
+          g_debug ("%s: requested handle %s was invalid", G_STRFUNC, name);
 
-          if (handle == 0)
+          error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                               "requested handle %s was invalid", name);
+          dbus_g_method_return_error (context, error);
+          g_error_free (error);
+
+          return FALSE;
+        }
+
+      break;
+    case TP_HANDLE_TYPE_ROOM:
+      qualified_name = room_name_to_canonical (obj, name);
+
+      /* has the handle been verified before? */
+      if (gabble_handle_for_room_exists (priv->handles, qualified_name))
+        {
+          handle = gabble_handle_for_room (priv->handles, qualified_name);
+
+          g_free (qualified_name);
+        }
+      else
+        {
+          gboolean success;
+
+          /* verify it */
+          success = room_jid_verify (obj, qualified_name, context, &error);
+
+          g_free (qualified_name);
+
+          if (success)
             {
-              g_debug ("%s: requested handle %s was invalid", G_STRFUNC, name);
-
-              error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
-                                   "requested handle %s was invalid", name);
+              return TRUE;
+            }
+          else
+            {
               dbus_g_method_return_error (context, error);
               g_error_free (error);
 
               return FALSE;
-            }
-        }
-      else /* TP_HANDLE_TYPE_ROOM */
-        {
-          gchar *qualified_name = room_name_to_canonical (obj, name);
-
-          /* has the handle been verified before? */
-          if (gabble_handle_for_room_exists (priv->handles, qualified_name))
-            {
-              handle = gabble_handle_for_room (priv->handles, qualified_name);
-
-              g_free (qualified_name);
-            }
-          else
-            {
-              gboolean success;
-
-              /* verify it */
-              success = room_jid_verify (obj, qualified_name, context, &error);
-
-              g_free (qualified_name);
-
-              if (success)
-                {
-                  return TRUE;
-                }
-              else
-                {
-                  dbus_g_method_return_error (context, error);
-                  g_error_free (error);
-
-                  return FALSE;
-                }
             }
         }
 

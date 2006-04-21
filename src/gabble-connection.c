@@ -4697,8 +4697,6 @@ static gchar *room_name_to_canonical (GabbleConnection *conn, const gchar *name)
       return g_strdup (name);
     }
 
-  server = NULL;
-
   if (priv->conference_servers)
     {
       server = priv->conference_servers->data;

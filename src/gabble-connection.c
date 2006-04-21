@@ -86,6 +86,8 @@ G_DEFINE_TYPE(GabbleConnection, gabble_connection, G_TYPE_OBJECT)
 
 #define GOOGLE_VOICE_VERSION "1.0.0.82"
 
+#define DEFAULT_CONFERENCE_SERVER "conference.jabber.org"
+
 typedef struct _StatusInfo StatusInfo;
 
 struct _StatusInfo
@@ -3445,7 +3447,7 @@ service_info_cb (GabbleDisco *disco, const gchar *jid, const gchar *node,
             {
               g_debug ("%s: Adding conference server %s", G_STRFUNC, jid);
               priv->conference_servers =
-                g_list_prepend (priv->conference_servers, g_strdup (jid));
+                g_list_append (priv->conference_servers, g_strdup (jid));
             }
         }
     }
@@ -4816,6 +4818,38 @@ room_jid_verify (GabbleConnection *conn, const gchar *jid,
   return ret;
 }
 
+static gchar *room_name_to_canonical (GabbleConnection *conn, const gchar *name)
+{
+  GabbleConnectionPrivate *priv;
+  const gchar *server;
+
+  g_assert (GABBLE_IS_CONNECTION (conn));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+
+  if (index (name, '@'))
+    {
+      return g_strdup (name);
+    }
+
+  server = NULL;
+
+  if (priv->conference_servers)
+    {
+      server = priv->conference_servers->data;
+    }
+  else if (priv->fallback_conference_server)
+    {
+      server = priv->fallback_conference_server;
+    }
+  else
+    {
+      server = DEFAULT_CONFERENCE_SERVER;
+    }
+
+  return g_strdup_printf ("%s@%s", name, server);
+}
+
 /**
  * gabble_connection_request_handle
  *
@@ -4881,15 +4915,25 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
         }
       else /* TP_HANDLE_TYPE_ROOM */
         {
+          gchar *qualified_name = room_name_to_canonical (obj, name);
+
           /* has the handle been verified before? */
-          if (gabble_handle_for_room_exists (priv->handles, name))
+          if (gabble_handle_for_room_exists (priv->handles, qualified_name))
             {
-              handle = gabble_handle_for_room (priv->handles, name);
+              handle = gabble_handle_for_room (priv->handles, qualified_name);
+
+              g_free (qualified_name);
             }
           else
             {
+              gboolean success;
+
               /* verify it */
-              if (room_jid_verify (obj, name, context, &error))
+              success = room_jid_verify (obj, qualified_name, context, &error);
+
+              g_free (qualified_name);
+
+              if (success)
                 {
                   return TRUE;
                 }

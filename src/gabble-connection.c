@@ -834,6 +834,9 @@ gabble_connection_finalize (GObject *object)
   g_datalist_clear (&priv->client_contact_handle_sets);
   g_datalist_clear (&priv->client_list_handle_sets);
 
+  if (priv->conference_servers)
+    g_list_free (priv->conference_servers);
+
   if (priv->handles);
     gabble_handle_repo_destroy (priv->handles);
 

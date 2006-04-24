@@ -1267,12 +1267,10 @@ room_created_submit_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 void
 _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
                                              GabbleHandle handle,
-                                             LmMessageNode *pres_node,
+                                             LmMessage *message,
                                              LmMessageNode *x_node)
 {
   GabbleMucChannelPrivate *priv;
-  GQuark data_key;
-  ContactPresence *cp;
   GIntSet *empty, *set;
   GabbleGroupMixin *mixin;
   LmMessageNode *item_node, *node;
@@ -1285,11 +1283,6 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
 
   mixin = GABBLE_GROUP_MIXIN (chan);
-
-  /* get presence */
-  data_key = _get_contact_presence_quark ();
-  cp = gabble_handle_get_qdata (mixin->handle_repo, TP_HANDLE_TYPE_CONTACT,
-                                handle, data_key);
 
   item_node = lm_message_node_get_child (x_node, "item");
   if (item_node == NULL)
@@ -1316,7 +1309,7 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
   set = g_intset_new ();
   g_intset_add (set, handle);
 
-  if (cp->presence_id != GABBLE_PRESENCE_OFFLINE)
+  if (lm_message_get_sub_type (message) != LM_MESSAGE_SUB_TYPE_UNAVAILABLE)
     {
       if (!handle_set_is_member (mixin->members, handle))
         {

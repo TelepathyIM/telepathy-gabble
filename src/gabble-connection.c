@@ -168,7 +168,9 @@ struct _GabbleConnectionPrivate
 {
   LmConnection *conn;
   LmMessageHandler *message_cb;
+  LmMessageHandler *presence_muc_cb;
   LmMessageHandler *presence_cb;
+  LmMessageHandler *presence_roster_cb;
   LmMessageHandler *iq_roster_cb;
   LmMessageHandler *iq_jingle_cb;
   LmMessageHandler *iq_unknown_cb;
@@ -761,9 +763,17 @@ gabble_connection_dispose (GObject *object)
                                                 LM_MESSAGE_TYPE_MESSAGE);
       lm_message_handler_unref (priv->message_cb);
 
+      lm_connection_unregister_message_handler (priv->conn, priv->presence_muc_cb,
+                                                LM_MESSAGE_TYPE_PRESENCE);
+      lm_message_handler_unref (priv->presence_muc_cb);
+
       lm_connection_unregister_message_handler (priv->conn, priv->presence_cb,
                                                 LM_MESSAGE_TYPE_PRESENCE);
       lm_message_handler_unref (priv->presence_cb);
+
+      lm_connection_unregister_message_handler (priv->conn, priv->presence_roster_cb,
+                                                LM_MESSAGE_TYPE_PRESENCE);
+      lm_message_handler_unref (priv->presence_roster_cb);
 
       lm_connection_unregister_message_handler (priv->conn, priv->iq_roster_cb,
                                                 LM_MESSAGE_TYPE_IQ);
@@ -1183,6 +1193,8 @@ _gabble_connection_send_with_reply (GabbleConnection *conn,
 
 static LmHandlerResult connection_message_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmHandlerResult connection_presence_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
+static LmHandlerResult connection_presence_muc_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
+static LmHandlerResult connection_presence_roster_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmHandlerResult connection_iq_roster_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmHandlerResult connection_iq_jingle_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmHandlerResult connection_iq_unknown_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
@@ -1296,11 +1308,23 @@ _gabble_connection_connect (GabbleConnection *conn,
                                               LM_MESSAGE_TYPE_MESSAGE,
                                               LM_HANDLER_PRIORITY_NORMAL);
 
+      priv->presence_muc_cb = lm_message_handler_new (connection_presence_muc_cb,
+                                                  conn, NULL);
+      lm_connection_register_message_handler (priv->conn, priv->presence_muc_cb,
+                                              LM_MESSAGE_TYPE_PRESENCE,
+                                              LM_HANDLER_PRIORITY_FIRST);
+
       priv->presence_cb = lm_message_handler_new (connection_presence_cb,
                                                   conn, NULL);
       lm_connection_register_message_handler (priv->conn, priv->presence_cb,
                                               LM_MESSAGE_TYPE_PRESENCE,
                                               LM_HANDLER_PRIORITY_NORMAL);
+
+      priv->presence_roster_cb = lm_message_handler_new (connection_presence_roster_cb,
+                                                  conn, NULL);
+      lm_connection_register_message_handler (priv->conn, priv->presence_roster_cb,
+                                              LM_MESSAGE_TYPE_PRESENCE,
+                                              LM_HANDLER_PRIORITY_LAST);
 
       priv->iq_roster_cb = lm_message_handler_new (connection_iq_roster_cb,
                                                    conn, NULL);
@@ -2163,6 +2187,76 @@ update_presence (GabbleConnection *self, GabbleHandle contact_handle,
   emit_presence_update (self, handles);
 }
 
+
+/**
+ * connection_presence_muc_cb:
+ * @handler: #LmMessageHandler for this message
+ * @connection: #LmConnection that originated the message
+ * @message: the presence message
+ * @user_data: callback data
+ *
+ * Called by loudmouth when we get an incoming <presence>.
+ */
+static LmHandlerResult
+connection_presence_muc_cb (LmMessageHandler *handler,
+                            LmConnection *connection,
+                            LmMessage *msg,
+                            gpointer user_data)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  const char *from;
+  LmMessageSubType sub_type;
+  GabbleMucChannel *muc_chan;
+  LmMessageNode *x_node;
+
+  g_assert (connection == priv->conn);
+
+  from = lm_message_node_get_attribute (msg->node, "from");
+
+  if (from == NULL)
+    {
+      HANDLER_DEBUG (msg->node, "presence stanza without from attribute, ignoring");
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    }
+
+  sub_type = lm_message_get_sub_type (msg);
+
+  muc_chan = get_muc_from_jid (conn, from);
+
+  /* is it an error and for a MUC? */
+  if (sub_type == LM_MESSAGE_SUB_TYPE_ERROR
+      && muc_chan != NULL)
+    {
+      _gabble_muc_channel_presence_error (muc_chan, from, msg->node);
+
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    }
+
+  /* is it a MUC member presence? */
+  if (node_is_for_muc (msg->node, &x_node))
+    {
+      if (muc_chan != NULL)
+        {
+          GabbleHandle handle;
+
+          handle = gabble_handle_for_contact (priv->handles, from, TRUE);
+
+          _gabble_muc_channel_member_presence_updated (muc_chan, handle,
+                                                       msg, x_node);
+        }
+      else
+        {
+          HANDLER_DEBUG (msg->node, "unexpected MUC member presence");
+        }
+    }
+
+  /* intentionally do not remove the message, so that the
+   * normal presence handler gets called */
+  return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+}
+
+
 /**
  * connection_presence_cb:
  * @handler: #LmMessageHandler for this message
@@ -2180,14 +2274,11 @@ connection_presence_cb (LmMessageHandler *handler,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-  LmMessageNode *pres_node, *x_node, *child_node, *node;
+  LmMessageNode *pres_node, *child_node, *node;
   const char *from;
   LmMessageSubType sub_type;
-  GabbleMucChannel *muc_chan;
   gboolean is_for_muc;
-  GIntSet *empty, *tmp;
   GabbleHandle handle;
-  LmMessage *reply = NULL;
   const gchar *presence_show = NULL;
   const gchar *status_message = NULL;
   GabblePresenceId presence_id;
@@ -2202,38 +2293,25 @@ connection_presence_cb (LmMessageHandler *handler,
   if (from == NULL)
     {
       HANDLER_DEBUG (pres_node, "presence stanza without from attribute, ignoring");
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
   sub_type = lm_message_get_sub_type (message);
 
-  /* is it an error and for a MUC? */
-  if (sub_type == LM_MESSAGE_SUB_TYPE_ERROR)
-    {
-      muc_chan = get_muc_from_jid (conn, from);
-
-      if (muc_chan != NULL)
-        {
-          _gabble_muc_channel_presence_error (muc_chan, from, pres_node);
-
-          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-        }
-    }
-
-  is_for_muc = node_is_for_muc (pres_node, &x_node);
+  is_for_muc = node_is_for_muc (pres_node, NULL);
 
   handle = gabble_handle_for_contact (priv->handles, from, is_for_muc);
 
   if (handle == 0)
     {
       HANDLER_DEBUG (pres_node, "ignoring presence from malformed jid");
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
   if (handle == priv->self_handle)
     {
       HANDLER_DEBUG (pres_node, "ignoring presence from ourselves on another resource");
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
   g_assert (handle != 0);
@@ -2244,95 +2322,13 @@ connection_presence_cb (LmMessageHandler *handler,
 
   switch (sub_type)
     {
-    case LM_MESSAGE_SUB_TYPE_SUBSCRIBE:
-      empty = g_intset_new ();
-      tmp = g_intset_new ();
-
-      g_debug ("%s: making %s (handle %u) local pending on the publish channel",
-          G_STRFUNC, from, handle);
-
-      /* make the contact local pending on the publish channel */
-      g_intset_add (tmp, handle);
-      gabble_group_mixin_change_members (G_OBJECT (priv->publish_channel),
-          status_message, empty, empty, tmp, empty);
-
-      g_intset_destroy (empty);
-      g_intset_destroy (tmp);
-      break;
-    case LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE:
-      empty = g_intset_new ();
-      tmp = g_intset_new ();
-
-      g_debug ("%s: removing %s (handle %u) from the publish channel",
-          G_STRFUNC, from, handle);
-
-      /* remove the contact from the publish channel */
-      g_intset_add (tmp, handle);
-      gabble_group_mixin_change_members (G_OBJECT (priv->publish_channel),
-          status_message, empty, tmp, empty, empty);
-
-      /* acknowledge the change */
-      reply = lm_message_new_with_sub_type (from,
-                LM_MESSAGE_TYPE_PRESENCE,
-                LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED);
-      _gabble_connection_send (conn, reply, NULL);
-      lm_message_unref (reply);
-
-      g_intset_destroy (empty);
-      g_intset_destroy (tmp);
-      break;
-    case LM_MESSAGE_SUB_TYPE_SUBSCRIBED:
-      empty = g_intset_new ();
-      tmp = g_intset_new ();
-
-      g_debug ("%s: adding %s (handle %u) to the subscribe channel",
-          G_STRFUNC, from, handle);
-
-      /* add the contact to the subscribe channel */
-      g_intset_add (tmp, handle);
-      gabble_group_mixin_change_members (G_OBJECT (priv->subscribe_channel),
-          status_message, tmp, empty, empty, empty);
-
-      /* acknowledge the change */
-      reply = lm_message_new_with_sub_type (from,
-                LM_MESSAGE_TYPE_PRESENCE,
-                LM_MESSAGE_SUB_TYPE_SUBSCRIBE);
-      _gabble_connection_send (conn, reply, NULL);
-      lm_message_unref (reply);
-
-      g_intset_destroy (empty);
-      g_intset_destroy (tmp);
-      break;
-    case LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED:
-      empty = g_intset_new ();
-      tmp = g_intset_new ();
-
-      g_debug ("%s: removing %s (handle %u) from the subscribe channel",
-          G_STRFUNC, from, handle);
-
-      /* remove the contact from the subscribe channel */
-      g_intset_add (tmp, handle);
-      gabble_group_mixin_change_members (G_OBJECT (priv->subscribe_channel),
-          status_message, empty, tmp, empty, empty);
-
-      /* acknowledge the change */
-      reply = lm_message_new_with_sub_type (from,
-                LM_MESSAGE_TYPE_PRESENCE,
-                LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE);
-      _gabble_connection_send (conn, reply, NULL);
-      lm_message_unref (reply);
-
-      g_intset_destroy (empty);
-      g_intset_destroy (tmp);
-      break;
-
     case LM_MESSAGE_SUB_TYPE_ERROR:
       g_warning ("%s: presence error received, setting contact to offline",
                  G_STRFUNC);
       HANDLER_DEBUG (pres_node, "presence node");
     case LM_MESSAGE_SUB_TYPE_UNAVAILABLE:
       update_presence (conn, handle, GABBLE_PRESENCE_OFFLINE, status_message, NULL);
-      break;
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     case LM_MESSAGE_SUB_TYPE_NOT_SET:
     case LM_MESSAGE_SUB_TYPE_AVAILABLE:
       child_node = lm_message_node_get_child (pres_node, "show");
@@ -2405,28 +2401,170 @@ connection_presence_cb (LmMessageHandler *handler,
 
       update_presence (conn, handle, presence_id, status_message, voice_resource);
       g_free (voice_resource);
-      break;
+
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     default:
-      HANDLER_DEBUG (pres_node, "called with unknown subtype");
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
+}
 
-  if (is_for_muc)
+
+/**
+ * connection_presence_roster_cb:
+ * @handler: #LmMessageHandler for this message
+ * @connection: #LmConnection that originated the message
+ * @message: the presence message
+ * @user_data: callback data
+ *
+ * Called by loudmouth when we get an incoming <presence>.
+ */
+static LmHandlerResult
+connection_presence_roster_cb (LmMessageHandler *handler,
+                               LmConnection *connection,
+                               LmMessage *message,
+                               gpointer user_data)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  LmMessageNode *pres_node, *child_node;
+  const char *from;
+  LmMessageSubType sub_type;
+  GIntSet *empty, *tmp;
+  GabbleHandle handle;
+  LmMessage *reply = NULL;
+  const gchar *status_message = NULL;
+
+  g_assert (connection == priv->conn);
+
+  pres_node = lm_message_get_node (message);
+
+  from = lm_message_node_get_attribute (pres_node, "from");
+
+  if (from == NULL)
     {
-      muc_chan = get_muc_from_jid (conn, from);
-
-      if (muc_chan != NULL)
-        {
-          _gabble_muc_channel_member_presence_updated (muc_chan, handle,
-                                                       message, x_node);
-        }
-      else
-        {
-          g_warning ("%s: muc channel for %s (%d) does not exist",
-                     G_STRFUNC, from, handle);
-        }
+      HANDLER_DEBUG (pres_node, "presence stanza without from attribute, ignoring");
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
-  return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+  sub_type = lm_message_get_sub_type (message);
+
+  if (node_is_for_muc (pres_node, NULL))
+    {
+      HANDLER_DEBUG (pres_node, "ignoring MUC presence");
+
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    }
+
+  handle = gabble_handle_for_contact (priv->handles, from, FALSE);
+
+  if (handle == 0)
+    {
+      HANDLER_DEBUG (pres_node, "ignoring presence from malformed jid");
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    }
+
+  if (handle == priv->self_handle)
+    {
+      HANDLER_DEBUG (pres_node, "ignoring presence from ourselves on another resource");
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    }
+
+  g_assert (handle != 0);
+
+  child_node = lm_message_node_get_child (pres_node, "status");
+  if (child_node)
+    status_message = lm_message_node_get_value (child_node);
+
+  switch (sub_type)
+    {
+    case LM_MESSAGE_SUB_TYPE_SUBSCRIBE:
+      empty = g_intset_new ();
+      tmp = g_intset_new ();
+
+      g_debug ("%s: making %s (handle %u) local pending on the publish channel",
+          G_STRFUNC, from, handle);
+
+      /* make the contact local pending on the publish channel */
+      g_intset_add (tmp, handle);
+      gabble_group_mixin_change_members (G_OBJECT (priv->publish_channel),
+          status_message, empty, empty, tmp, empty);
+
+      g_intset_destroy (empty);
+      g_intset_destroy (tmp);
+
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    case LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE:
+      empty = g_intset_new ();
+      tmp = g_intset_new ();
+
+      g_debug ("%s: removing %s (handle %u) from the publish channel",
+          G_STRFUNC, from, handle);
+
+      /* remove the contact from the publish channel */
+      g_intset_add (tmp, handle);
+      gabble_group_mixin_change_members (G_OBJECT (priv->publish_channel),
+          status_message, empty, tmp, empty, empty);
+
+      /* acknowledge the change */
+      reply = lm_message_new_with_sub_type (from,
+                LM_MESSAGE_TYPE_PRESENCE,
+                LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED);
+      _gabble_connection_send (conn, reply, NULL);
+      lm_message_unref (reply);
+
+      g_intset_destroy (empty);
+      g_intset_destroy (tmp);
+
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    case LM_MESSAGE_SUB_TYPE_SUBSCRIBED:
+      empty = g_intset_new ();
+      tmp = g_intset_new ();
+
+      g_debug ("%s: adding %s (handle %u) to the subscribe channel",
+          G_STRFUNC, from, handle);
+
+      /* add the contact to the subscribe channel */
+      g_intset_add (tmp, handle);
+      gabble_group_mixin_change_members (G_OBJECT (priv->subscribe_channel),
+          status_message, tmp, empty, empty, empty);
+
+      /* acknowledge the change */
+      reply = lm_message_new_with_sub_type (from,
+                LM_MESSAGE_TYPE_PRESENCE,
+                LM_MESSAGE_SUB_TYPE_SUBSCRIBE);
+      _gabble_connection_send (conn, reply, NULL);
+      lm_message_unref (reply);
+
+      g_intset_destroy (empty);
+      g_intset_destroy (tmp);
+
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    case LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED:
+      empty = g_intset_new ();
+      tmp = g_intset_new ();
+
+      g_debug ("%s: removing %s (handle %u) from the subscribe channel",
+          G_STRFUNC, from, handle);
+
+      /* remove the contact from the subscribe channel */
+      g_intset_add (tmp, handle);
+      gabble_group_mixin_change_members (G_OBJECT (priv->subscribe_channel),
+          status_message, empty, tmp, empty, empty);
+
+      /* acknowledge the change */
+      reply = lm_message_new_with_sub_type (from,
+                LM_MESSAGE_TYPE_PRESENCE,
+                LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE);
+      _gabble_connection_send (conn, reply, NULL);
+      lm_message_unref (reply);
+
+      g_intset_destroy (empty);
+      g_intset_destroy (tmp);
+
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    default:
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    }
 }
 
 

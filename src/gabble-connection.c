@@ -2422,7 +2422,7 @@ connection_presence_cb (LmMessageHandler *handler,
       if (muc_chan != NULL)
         {
           _gabble_muc_channel_member_presence_updated (muc_chan, handle,
-                                                       pres_node, x_node);
+                                                       message, x_node);
         }
       else
         {

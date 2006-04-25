@@ -144,6 +144,7 @@ struct _GabbleParams {
   gchar *resource;
   guint16 port;
   gboolean old_ssl;
+  gboolean do_register;
   gchar *https_proxy_server;
   guint16 https_proxy_port;
   gchar *fallback_conference_server;
@@ -167,6 +168,7 @@ enum {
     JABBER_PARAM_RESOURCE,
     JABBER_PARAM_PORT,
     JABBER_PARAM_OLD_SSL,
+    JABBER_PARAM_REGISTER,
     JABBER_PARAM_HTTPS_PROXY_SERVER,
     JABBER_PARAM_HTTPS_PROXY_PORT,
     JABBER_PARAM_FALLBACK_CONFERENCE_SERVER,
@@ -179,6 +181,7 @@ static const GabbleParamSpec jabber_params[] = {
   { "resource", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, FALSE, GABBLE_PARAMS_DEFAULT_RESOURCE, G_STRUCT_OFFSET(GabbleParams, resource) },
   { "port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT, FALSE, GINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_PORT), G_STRUCT_OFFSET(GabbleParams, port) },
   { "old-ssl", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN, FALSE, GINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_OLD_SSL), G_STRUCT_OFFSET(GabbleParams, old_ssl) },
+  { "register", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN, FALSE, GINT_TO_POINTER(FALSE), G_STRUCT_OFFSET(GabbleParams, do_register) },
   { "https-proxy-server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, FALSE, GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_SERVER, G_STRUCT_OFFSET(GabbleParams, https_proxy_server) },
   { "https-proxy-port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT, FALSE, GINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_PORT), G_STRUCT_OFFSET(GabbleParams, https_proxy_port) },
   { "fallback-conference-server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, FALSE, GABBLE_PARAMS_DEFAULT_FALLBACK_CONFERENCE_SERVER, G_STRUCT_OFFSET(GabbleParams, fallback_conference_server) },
@@ -493,6 +496,7 @@ gboolean gabble_connection_manager_connect (GabbleConnectionManager *obj, const 
   SET_PROPERTY_IF_PARAM_SET ("connect-server", JABBER_PARAM_SERVER, params.server);
   SET_PROPERTY_IF_PARAM_SET ("port", JABBER_PARAM_PORT, params.port);
   SET_PROPERTY_IF_PARAM_SET ("old-ssl", JABBER_PARAM_OLD_SSL, params.old_ssl);
+  SET_PROPERTY_IF_PARAM_SET ("register", JABBER_PARAM_REGISTER, params.do_register);
   SET_PROPERTY_IF_PARAM_SET ("https-proxy-server", JABBER_PARAM_HTTPS_PROXY_SERVER,
                              params.https_proxy_server);
   SET_PROPERTY_IF_PARAM_SET ("https-proxy-port", JABBER_PARAM_HTTPS_PROXY_PORT,

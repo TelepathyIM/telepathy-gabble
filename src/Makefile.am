@@ -5,6 +5,8 @@ BUILT_SOURCES = \
     gabble-connection-glue.h \
     gabble-connection-signals-marshal.h \
     gabble-connection-signals-marshal.c \
+    gabble-register-signals-marshal.h \
+    gabble-register-signals-marshal.c \
     gabble-group-mixin-signals-marshal.h \
     gabble-group-mixin-signals-marshal.c \
     gabble-im-channel-glue.h \
@@ -61,6 +63,8 @@ CORE_SOURCES = \
     gabble-roomlist-channel.c \
     gabble-disco.h \
     gabble-disco.c \
+    gabble-register.c \
+    gabble-register.h \
     gintset.h \
     gintset.c \
     handles.h \

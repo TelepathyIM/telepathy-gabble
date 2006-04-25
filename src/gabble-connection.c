@@ -3178,7 +3178,8 @@ registration_finished_cb (GabbleRegister *reg,
 
       connection_status_change (conn,
           TP_CONN_STATUS_DISCONNECTED,
-          TP_CONN_STATUS_REASON_AUTHENTICATION_FAILED);
+          (err_code == InvalidArgument) ? TP_CONN_STATUS_REASON_NAME_IN_USE :
+            TP_CONN_STATUS_REASON_AUTHENTICATION_FAILED);
     }
 }
 

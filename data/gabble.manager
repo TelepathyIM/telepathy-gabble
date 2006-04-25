@@ -6,6 +6,6 @@ Protos = jabber
 
 [Proto jabber]
 MandatoryParams = s:account,s:password
-OptionalParams  = s:server,q:port,b:old-ssl,s:https-proxy-server,q:https-proxy-port
+OptionalParams  = s:server,s:resource,q:port,b:old-ssl,b:register,s:https-proxy-server,q:https-proxy-port,s:fallback-conference-server,s:stun-server,q:stun-port,s:stun-relay-magic-cookie,s:stun-relay-server,q:stun-relay-udp-port,q:stun-relay-tcp-port,q:stun-relay-ssltcp-port,s:stun-relay-username,s:stun-relay-password
 default-port = 5222
 default-old-ssl = 0

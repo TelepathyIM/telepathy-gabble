@@ -16,6 +16,9 @@
       <arg direction="in"  type="s" name="candidate_id" />
       <arg direction="in"  type="a(usuussduss)" name="transports" />
     </method>
+    <signal name="SetStreamPlaying">
+      <arg type="b" name="playing" />
+    </signal>
     <method name="NewActiveCandidatePair">
       <arg direction="in"  type="s" name="native_candidate_id" />
       <arg direction="in"  type="s" name="remote_candidate_id" />

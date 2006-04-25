@@ -40,6 +40,7 @@
 #include "gabble-connection-glue.h"
 #include "gabble-connection-signals-marshal.h"
 
+#include "gabble-register.h"
 #include "gabble-im-channel.h"
 #include "gabble-muc-channel.h"
 #include "gabble-media-channel.h"
@@ -136,6 +137,7 @@ enum
     PROP_CONNECT_SERVER,
     PROP_PORT,
     PROP_OLD_SSL,
+    PROP_REGISTER,
     PROP_STREAM_SERVER,
     PROP_USERNAME,
     PROP_PASSWORD,
@@ -184,6 +186,8 @@ struct _GabbleConnectionPrivate
   gchar *connect_server;
   guint port;
   gboolean old_ssl;
+
+  gboolean do_register;
 
   gchar *https_proxy_server;
   guint https_proxy_port;
@@ -284,6 +288,7 @@ gabble_connection_init (GabbleConnection *obj)
   priv->resource = g_strdup (GABBLE_PARAMS_DEFAULT_RESOURCE);
   priv->port = GABBLE_PARAMS_DEFAULT_PORT;
   priv->old_ssl = GABBLE_PARAMS_DEFAULT_OLD_SSL;
+  priv->do_register = FALSE;
   priv->https_proxy_server = g_strdup (GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_SERVER);
   priv->https_proxy_port = GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_PORT;
 }
@@ -312,6 +317,9 @@ gabble_connection_get_property (GObject    *object,
       break;
     case PROP_OLD_SSL:
       g_value_set_boolean (value, priv->old_ssl);
+      break;
+    case PROP_REGISTER:
+      g_value_set_boolean (value, priv->do_register);
       break;
     case PROP_USERNAME:
       g_value_set_string (value, priv->username);
@@ -387,6 +395,9 @@ gabble_connection_set_property (GObject      *object,
       break;
     case PROP_OLD_SSL:
       priv->old_ssl = g_value_get_boolean (value);
+      break;
+    case PROP_REGISTER:
+      priv->do_register = g_value_get_boolean (value);
       break;
     case PROP_STREAM_SERVER:
       g_free (priv->stream_server);
@@ -504,6 +515,13 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
                                      G_PARAM_STATIC_NAME |
                                      G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_OLD_SSL, param_spec);
+
+  param_spec = g_param_spec_boolean ("register", "Register account on server",
+                                     "Register a new account on server.", FALSE,
+                                     G_PARAM_READWRITE |
+                                     G_PARAM_STATIC_NAME |
+                                     G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_REGISTER, param_spec);
 
   param_spec = g_param_spec_string ("stream-server", "The server name used to initialise the stream.",
                                     "The server name used when initialising the stream, "
@@ -3112,12 +3130,78 @@ connection_ssl_cb (LmSSL      *lmssl,
   return response;
 }
 
+static void
+do_auth (GabbleConnection *conn)
+{
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  GError *error = NULL;
+
+  g_debug ("%s: authenticating with username: %s, password: <hidden>, resource: %s",
+           G_STRFUNC, priv->username, priv->resource);
+
+  if (!lm_connection_authenticate (priv->conn, priv->username, priv->password,
+                                   priv->resource, connection_auth_cb,
+                                   conn, NULL, &error))
+    {
+      g_debug ("%s failed: %s", G_STRFUNC, error->message);
+      g_error_free (error);
+
+      /* the reason this function can fail is through network errors,
+       * authentication failures are reported to our auth_cb */
+      connection_status_change (conn,
+          TP_CONN_STATUS_DISCONNECTED,
+          TP_CONN_STATUS_REASON_NETWORK_ERROR);
+    }
+}
+
+static void
+registration_finished_cb (GabbleRegister *reg,
+                          gboolean success,
+                          gint err_code,
+                          const gchar *err_msg,
+                          gpointer user_data)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+
+  g_debug ("%s: %s", G_STRFUNC, (success) ? "succeeded" : "failed");
+
+  g_object_unref (reg);
+
+  if (success)
+    {
+      do_auth (conn);
+    }
+  else
+    {
+      g_debug ("%s: err_code = %d, err_msg = '%s'",
+               G_STRFUNC, err_code, err_msg);
+
+      connection_status_change (conn,
+          TP_CONN_STATUS_DISCONNECTED,
+          TP_CONN_STATUS_REASON_AUTHENTICATION_FAILED);
+    }
+}
+
+static void
+do_register (GabbleConnection *conn)
+{
+  GabbleRegister *reg;
+
+  reg = gabble_register_new (conn);
+
+  g_signal_connect (reg, "finished", (GCallback) registration_finished_cb,
+                    conn);
+
+  gabble_register_start (reg);
+}
+
 /**
  * connection_open_cb
  *
  * Stage 2 of connecting, this function is called by loudmouth after the
  * result of the non-blocking lm_connection_open call is known. It makes
- * a request to authenticate the user with the server.
+ * a request to authenticate the user with the server, or optionally
+ * registers user on the server first.
  */
 static void
 connection_open_cb (LmConnection *lmconn,
@@ -3126,7 +3210,6 @@ connection_open_cb (LmConnection *lmconn,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (data);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-  GError *error = NULL;
 
   g_assert (priv);
   g_assert (lmconn == priv->conn);
@@ -3142,22 +3225,10 @@ connection_open_cb (LmConnection *lmconn,
       return;
     }
 
-  g_debug ("%s: authenticating with username: %s, password: <hidden>, resource: %s",
-           G_STRFUNC, priv->username, priv->resource);
-
-  if (!lm_connection_authenticate (lmconn, priv->username, priv->password,
-                                   priv->resource, connection_auth_cb,
-                                   conn, NULL, &error))
-    {
-      g_debug ("%s failed: %s", G_STRFUNC, error->message);
-      g_error_free (error);
-
-      /* the reason this function can fail is through network errors,
-       * authentication failures are reported to our auth_cb */
-      connection_status_change (conn,
-          TP_CONN_STATUS_DISCONNECTED,
-          TP_CONN_STATUS_REASON_NETWORK_ERROR);
-    }
+  if (!priv->do_register)
+    do_auth (conn);
+  else
+    do_register (conn);
 }
 
 /**

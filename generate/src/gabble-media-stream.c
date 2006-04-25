@@ -37,6 +37,7 @@ enum
     SET_ACTIVE_CANDIDATE_PAIR,
     SET_REMOTE_CANDIDATE_LIST,
     SET_REMOTE_CODECS,
+    SET_STREAM_PLAYING,
     LAST_SIGNAL
 };
 
@@ -117,6 +118,15 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                   NULL, NULL,
                   gabble_media_stream_marshal_VOID__BOXED,
                   G_TYPE_NONE, 1, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_UINT, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, DBUS_TYPE_G_STRING_STRING_HASHTABLE, G_TYPE_INVALID)))));
+
+  signals[SET_STREAM_PLAYING] =
+    g_signal_new ("set-stream-playing",
+                  G_OBJECT_CLASS_TYPE (gabble_media_stream_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_media_stream_marshal_VOID__BOOLEAN,
+                  G_TYPE_NONE, 1, G_TYPE_BOOLEAN);
 
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_media_stream_class), &dbus_glib_gabble_media_stream_object_info);
 }

@@ -53,7 +53,7 @@ GType gabble_roomlist_channel_get_type(void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_ROOMLIST_CHANNEL, GabbleRoomlistChannelClass))
 
 
-GabbleRoomlistChannel * gabble_roomlist_channel_new (GabbleConnection *conn, GabbleDisco *disco, const gchar *object_path, const gchar *conference_server);
+GabbleRoomlistChannel *_gabble_roomlist_channel_new (GabbleConnection *conn, const gchar *object_path, const gchar *conference_server);
 
 gboolean gabble_roomlist_channel_close (GabbleRoomlistChannel *obj, GError **error);
 gboolean gabble_roomlist_channel_get_channel_type (GabbleRoomlistChannel *obj, gchar ** ret, GError **error);

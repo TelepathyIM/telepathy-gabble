@@ -63,7 +63,7 @@ typedef struct _GabbleRosterChannelPrivate GabbleRosterChannelPrivate;
 
 struct _GabbleRosterChannelPrivate
 {
-  GabbleConnection *connection;
+  GabbleConnection *conn;
   char *object_path;
   GabbleHandle handle;
 
@@ -90,24 +90,22 @@ gabble_roster_channel_constructor (GType type, guint n_props,
   GabbleHandleRepo *handles;
   gboolean valid;
   GabbleHandle self_handle;
-  GError *error = NULL;
 
   obj = G_OBJECT_CLASS (gabble_roster_channel_parent_class)->
            constructor (type, n_props, props);
   priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (GABBLE_ROSTER_CHANNEL (obj));
+  handles = priv->conn->handles;
+  self_handle = priv->conn->self_handle;
 
   /* register object on the bus */
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
 
   /* ref our list handle */
-  handles = _gabble_connection_get_handles (priv->connection);
   valid = gabble_handle_ref (handles, TP_HANDLE_TYPE_LIST, priv->handle);
   g_assert (valid);
 
   /* initialize group mixin */
-  valid = gabble_connection_get_self_handle (priv->connection, &self_handle, &error);
-  g_assert (valid);
   gabble_group_mixin_init (obj, G_STRUCT_OFFSET (GabbleRosterChannel, group),
                            handles, self_handle);
 
@@ -144,7 +142,7 @@ gabble_roster_channel_get_property (GObject    *object,
 
   switch (property_id) {
     case PROP_CONNECTION:
-      g_value_set_object (value, priv->connection);
+      g_value_set_object (value, priv->conn);
       break;
     case PROP_OBJECT_PATH:
       g_value_set_string (value, priv->object_path);
@@ -175,7 +173,7 @@ gabble_roster_channel_set_property (GObject     *object,
 
   switch (property_id) {
     case PROP_CONNECTION:
-      priv->connection = g_value_get_object (value);
+      priv->conn = g_value_get_object (value);
       break;
     case PROP_OBJECT_PATH:
       g_free (priv->object_path);
@@ -301,14 +299,12 @@ gabble_roster_channel_finalize (GObject *object)
 {
   GabbleRosterChannel *self = GABBLE_ROSTER_CHANNEL (object);
   GabbleRosterChannelPrivate *priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (self);
-  GabbleHandleRepo *handles;
 
   /* free any data held directly by the object here */
 
   g_free (priv->object_path);
 
-  handles = _gabble_connection_get_handles (priv->connection);
-  gabble_handle_unref (handles, TP_HANDLE_TYPE_LIST, priv->handle);
+  gabble_handle_unref (priv->conn->handles, TP_HANDLE_TYPE_LIST, priv->handle);
 
   gabble_group_mixin_finalize (object);
 
@@ -333,7 +329,7 @@ _gabble_roster_channel_add_member_cb (GObject *obj,
   g_assert (GABBLE_IS_ROSTER_CHANNEL (obj));
 
   priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (obj);
-  repo = _gabble_connection_get_handles (priv->connection);
+  repo = priv->conn->handles;
 
   /* publish list */
   if (gabble_handle_for_list_publish (repo) == priv->handle)
@@ -348,7 +344,7 @@ _gabble_roster_channel_add_member_cb (GObject *obj,
       message = lm_message_new_with_sub_type (contact,
           LM_MESSAGE_TYPE_PRESENCE,
           LM_MESSAGE_SUB_TYPE_SUBSCRIBED);
-      result = _gabble_connection_send (priv->connection, message, error);
+      result = _gabble_connection_send (priv->conn, message, error);
       lm_message_unref (message);
 
       if (!result)
@@ -367,7 +363,7 @@ _gabble_roster_channel_add_member_cb (GObject *obj,
       message = lm_message_new_with_sub_type (contact,
           LM_MESSAGE_TYPE_PRESENCE,
           LM_MESSAGE_SUB_TYPE_SUBSCRIBE);
-      result = _gabble_connection_send (priv->connection, message, error);
+      result = _gabble_connection_send (priv->conn, message, error);
       lm_message_unref (message);
 
       if (!result)
@@ -399,7 +395,7 @@ _gabble_roster_channel_remove_member_cb (GObject *obj,
   g_assert (GABBLE_IS_ROSTER_CHANNEL (obj));
 
   priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (obj);
-  repo = _gabble_connection_get_handles (priv->connection);
+  repo = priv->conn->handles;
 
   /* publish list */
   if (gabble_handle_for_list_publish (repo) == priv->handle)
@@ -414,7 +410,7 @@ _gabble_roster_channel_remove_member_cb (GObject *obj,
       message = lm_message_new_with_sub_type (contact,
           LM_MESSAGE_TYPE_PRESENCE,
           LM_MESSAGE_SUB_TYPE_SUBSCRIBED);
-      result = _gabble_connection_send (priv->connection, message, error);
+      result = _gabble_connection_send (priv->conn, message, error);
       lm_message_unref (message);
 
       if (!result)
@@ -433,7 +429,7 @@ _gabble_roster_channel_remove_member_cb (GObject *obj,
       message = lm_message_new_with_sub_type (contact,
           LM_MESSAGE_TYPE_PRESENCE,
           LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE);
-      result = _gabble_connection_send (priv->connection, message, error);
+      result = _gabble_connection_send (priv->conn, message, error);
       lm_message_unref (message);
 
       if (!result)

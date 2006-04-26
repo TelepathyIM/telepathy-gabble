@@ -23,12 +23,10 @@
 
 #include <glib.h>
 
+#include "gabble-types.h"
 #include "telepathy-constants.h"
 
 G_BEGIN_DECLS
-
-typedef struct _GabbleHandleRepo GabbleHandleRepo;
-typedef GQuark GabbleHandle;
 
 gboolean gabble_handle_jid_is_valid (TpHandleType type, const gchar *jid, GError **error);
 gchar *gabble_handle_jid_get_base (const gchar *jid);

@@ -185,7 +185,7 @@ gabble_media_session_constructor (GType type, guint n_props,
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
 
-  cp = gabble_handle_get_qdata (_gabble_connection_get_handles (priv->conn),
+  cp = gabble_handle_get_qdata (priv->conn->handles,
                                 TP_HANDLE_TYPE_CONTACT, priv->peer,
                                 _get_contact_presence_quark ());
   g_assert (cp != NULL);
@@ -750,48 +750,22 @@ stream_supported_codecs_cb (GabbleMediaStream *stream,
     }
 }
 
-#if 0
-static const gchar *
-get_jid_for_self (GabbleMediaSession *session)
-{
-  GabbleMediaSessionPrivate *priv;
-  GabbleHandleRepo *repo;
-  GabbleHandle handle;
-  GError *error;
-
-  g_assert (GABBLE_IS_MEDIA_SESSION (session));
-
-  priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
-
-  repo = _gabble_connection_get_handles (priv->connection);
-
-  gabble_connection_get_self_handle (priv->connection, &handle, &error);
-
-  return gabble_handle_inspect (repo, TP_HANDLE_TYPE_CONTACT, handle);
-}
-#endif
-
 static gchar *
 get_jid_for_contact (GabbleMediaSession *session,
                      GabbleHandle handle)
 {
   GabbleMediaSessionPrivate *priv;
-  GabbleHandleRepo *repo;
   const gchar *base_jid;
   GabbleHandle self;
-  GError *error = NULL;
   gchar *resource, *ret;
 
   g_assert (GABBLE_IS_MEDIA_SESSION (session));
 
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+  self = priv->conn->self_handle;
 
-  repo = _gabble_connection_get_handles (priv->conn);
-  base_jid = gabble_handle_inspect (repo, TP_HANDLE_TYPE_CONTACT, handle);
+  base_jid = gabble_handle_inspect (priv->conn->handles, TP_HANDLE_TYPE_CONTACT, handle);
   g_assert (base_jid != NULL);
-
-  gabble_connection_get_self_handle (priv->conn, &self, &error);
-  g_assert (error == NULL);
 
   if (handle == self)
     {

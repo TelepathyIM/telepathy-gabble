@@ -45,6 +45,8 @@ CORE_SOURCES = \
     gabble-connection-manager.c \
     gabble-connection.h \
     gabble-connection.c \
+    gabble-disco.h \
+    gabble-disco.c \
     gabble-group-mixin.h \
     gabble-group-mixin.c \
     gabble-im-channel.h \
@@ -57,14 +59,13 @@ CORE_SOURCES = \
     gabble-media-session.c \
     gabble-media-stream.h \
     gabble-media-stream.c \
+    gabble-register.c \
+    gabble-register.h \
     gabble-roster-channel.h \
     gabble-roster-channel.c \
     gabble-roomlist-channel.h \
     gabble-roomlist-channel.c \
-    gabble-disco.h \
-    gabble-disco.c \
-    gabble-register.c \
-    gabble-register.h \
+    gabble-types.h \
     gintset.h \
     gintset.c \
     handles.h \

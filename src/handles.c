@@ -55,7 +55,7 @@ handle_priv_lookup (GabbleHandleRepo *repo,
   GabbleHandlePriv *priv = NULL;
 
   g_assert (repo != NULL);
-  g_assert (gabble_handle_type_is_valid (type));
+  g_assert (gabble_handle_type_is_valid (type, NULL));
   g_assert (handle != 0);
 
   switch (type) {
@@ -80,7 +80,7 @@ handle_priv_remove (GabbleHandleRepo *repo,
                     TpHandleType type,
                     GabbleHandle handle)
 {
-  g_assert (gabble_handle_type_is_valid (type));
+  g_assert (gabble_handle_type_is_valid (type, NULL));
   g_assert (handle != 0);
   g_assert (repo != NULL);
 
@@ -321,7 +321,7 @@ gabble_handles_are_valid (GabbleHandleRepo *repo,
   int i;
 
   g_return_val_if_fail (repo != NULL, FALSE);
-  g_return_val_if_fail (!gabble_handle_type_is_valid (type, NULL), FALSE);
+  g_return_val_if_fail (gabble_handle_type_is_valid (type, NULL), FALSE);
   g_return_val_if_fail (array != NULL, FALSE);
 
   for (i = 0; i < array->len; i++)

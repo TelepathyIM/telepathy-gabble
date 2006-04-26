@@ -98,6 +98,8 @@ gboolean _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream, LmM
 gboolean _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream, LmMessageNode *iq_node, LmMessageNode *session_node);
 void _gabble_media_stream_session_node_add_description (GabbleMediaStream *stream, LmMessageNode *session_node);
 
+void _gabble_media_stream_set_playing (GabbleMediaStream *stream, gboolean playing);
+
 G_END_DECLS
 
 #endif /* #ifndef __GABBLE_MEDIA_STREAM_H__*/

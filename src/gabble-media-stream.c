@@ -48,6 +48,7 @@ enum
     SET_ACTIVE_CANDIDATE_PAIR,
     SET_REMOTE_CANDIDATE_LIST,
     SET_REMOTE_CODECS,
+    SET_STREAM_PLAYING,
 
     NEW_ACTIVE_CANDIDATE_PAIR,
     NEW_NATIVE_CANDIDATE,
@@ -77,6 +78,8 @@ struct _GabbleMediaStreamPrivate
   gchar *object_path;
 
   gboolean ready;
+
+  gboolean playing;
 
   GValue native_codecs;     /* intersected codec list */
   GValue native_candidates;
@@ -327,6 +330,15 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                   NULL, NULL,
                   gabble_media_stream_marshal_VOID__BOXED,
                   G_TYPE_NONE, 1, TP_TYPE_CODEC_LIST);
+
+  signals[SET_STREAM_PLAYING] =
+    g_signal_new ("set-stream-playing",
+                  G_OBJECT_CLASS_TYPE (gabble_media_stream_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_media_stream_marshal_VOID__BOOLEAN,
+                  G_TYPE_NONE, 1, G_TYPE_BOOLEAN);
 
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_media_stream_class), &dbus_glib_gabble_media_stream_object_info);
 }
@@ -593,6 +605,8 @@ gboolean gabble_media_stream_ready (GabbleMediaStream *obj, const GPtrArray * co
 
   push_remote_codecs (obj);
   push_remote_candidates (obj);
+
+  g_signal_emit (obj, signals[SET_STREAM_PLAYING], 0, priv->playing);
 
   return TRUE;
 }
@@ -1206,3 +1220,14 @@ _gabble_media_stream_session_node_add_description (GabbleMediaStream *stream,
     }
 }
 
+void
+_gabble_media_stream_set_playing (GabbleMediaStream *stream, gboolean playing)
+{
+  GabbleMediaStreamPrivate *priv;
+  g_assert (GABBLE_IS_MEDIA_STREAM (stream));
+  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
+
+  priv->playing = playing;
+  if (priv->ready)
+    g_signal_emit (stream, signals[SET_STREAM_PLAYING], 0, playing);
+}

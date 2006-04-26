@@ -631,6 +631,9 @@ try_session_accept (GabbleMediaSession *session)
       return;
     }
 
+  /* Start the stream playing */
+  _gabble_media_stream_set_playing (priv->stream, 1);
+
   /* construct a session acceptance message */
   msg = _gabble_media_session_message_new (session, "accept", &session_node);
 
@@ -672,6 +675,8 @@ stream_new_active_candidate_pair_cb (GabbleMediaStream *stream,
   else
     {
       GMS_DEBUG_INFO (session, "session initiated by us, so we're not going to send an accept");
+      GMS_DEBUG_INFO (session, "setting stream playing");
+      _gabble_media_stream_set_playing (priv->stream, 1);
     }
 }
 

@@ -103,10 +103,6 @@ gabble_media_channel_constructor (GType type, guint n_props,
   GObject *obj;
   GabbleMediaChannelPrivate *priv;
   DBusGConnection *bus;
-  GabbleHandleRepo *handles;
-  gboolean valid;
-  GabbleHandle self_handle;
-  GError *error;
   GIntSet *empty, *set;
 
   obj = G_OBJECT_CLASS (gabble_media_channel_parent_class)->
@@ -118,14 +114,8 @@ gabble_media_channel_constructor (GType type, guint n_props,
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
 
-  /* initialize group mixin */
-  valid = gabble_connection_get_self_handle (priv->conn, &self_handle, &error);
-  g_assert (valid);
-
-  handles = _gabble_connection_get_handles (priv->conn);
-
   gabble_group_mixin_init (obj, G_STRUCT_OFFSET (GabbleMediaChannel, group),
-                           handles, self_handle);
+                           priv->conn->handles, priv->conn->self_handle);
 
   /* automatically add creator to channel */
   empty = g_intset_new ();
@@ -174,10 +164,7 @@ create_session (GabbleMediaChannel *channel, GabbleHandle peer, const gchar *sid
 
   if (sid == NULL)
     {
-      GError *err;
-
-      gabble_connection_get_self_handle (priv->conn, &initiator, &err);
-
+      initiator = priv->conn->self_handle;
       sid = _gabble_connection_jingle_session_allocate (priv->conn);
     }
   else
@@ -709,65 +696,60 @@ gboolean gabble_media_channel_get_session_handlers (GabbleMediaChannel *obj, GPt
  */
 gboolean gabble_media_channel_get_streams (GabbleMediaChannel *obj, GPtrArray ** ret, GError **error)
 {
-
 #if 0
   GabbleMediaChannelPrivate *priv;
+  GabbleHandle handle, self_handle;
   GArray *array;
-  GabbleHandle handle,self_handle;
   int i;
 
   g_assert (GABBLE_IS_MEDIA_CHANNEL (obj));
 
   priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (obj);
-  if (!gabble_connection_get_self_handle (priv->conn, &self_handle, error))
+
+  self_handle = obj->group.self_handle;
+  array = handle_set_to_array (obj->group.self_handle);
+
+  if (array->len < 2)
     {
+      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                            "Channel has only one member");
       return FALSE;
     }
-  if (gabble_group_mixin_get_members (G_OBJECT (obj), &array, error))
+
+  *ret = g_ptr_array_sized_new (array->len - 1);
+
+  for (i = 0; i < array->len; i++)
     {
-      if (array->len < 2)
+      handle = g_array_index (array, GabbleHandle, i);
+      if (handle != self_handle)
         {
-          *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
-                                "Channel has only one member");
-          return FALSE;
-        }
+          GValue streams = { 0, };
+          g_value_init (&streams, TP_CHANNEL_STREAM_TYPE);
+          g_value_set_static_boxed (&streams,
+              dbus_g_type_specialized_construct (TP_CHANNEL_STREAM_TYPE));
 
-      *ret = g_ptr_array_sized_new (array->len - 1);
+          dbus_g_type_struct_set (&streams,
+              0, handle,
+              1, 1,
+              2, TP_CODEC_MEDIA_TYPE_AUDIO,
+              3, TP_MEDIA_STREAM_STATE_STOPPED,
+              G_MAXUINT);
 
-      for (i =0; i < array->len; i++)
-        {
-          handle = g_array_index(array, guint, i);
-          if (handle != self_handle)
-            {
-              GValue streams = { 0, };
-              g_value_init (&streams, TP_CHANNEL_STREAM_TYPE);
-              g_value_set_static_boxed (&streams,
-                  dbus_g_type_specialized_construct (TP_CHANNEL_STREAM_TYPE));
-
-              dbus_g_type_struct_set (&streams,
-                  0, handle,
-                  1, 1,
-                  2, TP_CODEC_MEDIA_TYPE_AUDIO,
-                  3, TP_MEDIA_STREAM_STATE_STOPPED,
-                  G_MAXUINT);
-
-
-              g_ptr_array_add (*ret, g_value_get_boxed (&streams));
-
-            }
+          g_ptr_array_add (*ret, g_value_get_boxed (&streams));
         }
     }
+
+  g_array_free (array, TRUE);
 
   return TRUE;
 #else
-      g_debug ("%s: not implemented", G_STRFUNC);
+  g_debug ("%s: not implemented", G_STRFUNC);
 
-      *error = g_error_new (TELEPATHY_ERRORS, NotImplemented,
-                            "GetStreams not implemented!");
+  *error = g_error_new (TELEPATHY_ERRORS, NotImplemented,
+                        "GetStreams not implemented!");
 
-      return FALSE;
+  return FALSE;
 #endif
-
 }
 
 
@@ -985,28 +967,25 @@ session_state_changed_cb (GabbleMediaSession *session,
 
 }
 
-void 
+void
 _gabble_media_channel_stream_state (GabbleMediaChannel *chan, guint state)
 {
-  GError *error;
+  GabbleHandle handle, self_handle;
   GArray *array;
-  GabbleHandle handle,self_handle;
   int i;
 
-  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
+  self_handle = chan->group.self_handle;
+  array = handle_set_to_array (chan->group.members);
 
-  if (!gabble_connection_get_self_handle (priv->conn, &self_handle, &error))
-    return;
-
-  if (gabble_group_mixin_get_members (G_OBJECT (chan), &array, &error))
+  for (i = 0; i < array->len; i++)
     {
-      for (i =0; i < array->len; i++)
+      handle = g_array_index (array, GabbleHandle, i);
+
+      if (handle != self_handle)
         {
-          handle = g_array_index(array, guint, i);
-          if (handle != self_handle)
-            {
-              g_signal_emit (chan, signals[STREAM_STATE_CHANGED], 0, handle, i, state);
-            }
+          g_signal_emit (chan, signals[STREAM_STATE_CHANGED], 1, handle, i, state);
         }
     }
+
+  g_array_free (array, TRUE);
 }

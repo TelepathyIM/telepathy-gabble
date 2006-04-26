@@ -27,6 +27,8 @@
 #include <glib-object.h>
 #include <loudmouth/loudmouth.h>
 
+#include "gabble-types.h"
+
 G_BEGIN_DECLS
 
 typedef enum
@@ -35,7 +37,6 @@ typedef enum
   GABBLE_DISCO_TYPE_ITEMS
 } GabbleDiscoType;
 
-typedef struct _GabbleDisco GabbleDisco;
 typedef struct _GabbleDiscoClass GabbleDiscoClass;
 typedef struct _GabbleDiscoRequest GabbleDiscoRequest;
 

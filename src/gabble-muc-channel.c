@@ -63,7 +63,6 @@ static guint signals[LAST_SIGNAL] = {0};
 enum
 {
   PROP_CONNECTION = 1,
-  PROP_DISCO,
   PROP_OBJECT_PATH,
   PROP_CHANNEL_TYPE,
   PROP_HANDLE,
@@ -181,8 +180,6 @@ typedef struct _GabbleMucChannelPrivate GabbleMucChannelPrivate;
 struct _GabbleMucChannelPrivate
 {
   GabbleConnection *conn;
-  GabbleHandle conn_self_handle;
-  GabbleDisco *disco;
   gchar *object_path;
 
   GabbleMucState state;
@@ -243,16 +240,13 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   GabbleHandleRepo *handles;
   GabbleHandle self_handle;
   gboolean valid;
-  GError *error;
 
   obj = G_OBJECT_CLASS (gabble_muc_channel_parent_class)->
            constructor (type, n_props, props);
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
 
-  handles = _gabble_connection_get_handles (priv->conn);
-  valid = gabble_connection_get_self_handle (priv->conn, &priv->conn_self_handle, &error);
-  g_assert (valid);
+  handles = priv->conn->handles;
 
   /* ref our room handle */
   valid = gabble_handle_ref (handles, TP_HANDLE_TYPE_ROOM, priv->handle);
@@ -262,7 +256,7 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   priv->jid = gabble_handle_inspect (handles, TP_HANDLE_TYPE_ROOM, priv->handle);
 
   /* get our own identity in the room */
-  contact_handle_to_room_identity (GABBLE_MUC_CHANNEL (obj), priv->conn_self_handle,
+  contact_handle_to_room_identity (GABBLE_MUC_CHANNEL (obj), priv->conn->self_handle,
                                    &self_handle, &priv->self_jid);
 
   /* initialize our own role and affiliation */
@@ -556,7 +550,7 @@ room_properties_update (GabbleMucChannel *chan)
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
 
-  if (gabble_disco_request (priv->disco, GABBLE_DISCO_TYPE_INFO, priv->jid, NULL,
+  if (gabble_disco_request (priv->conn->disco, GABBLE_DISCO_TYPE_INFO, priv->jid, NULL,
         properties_disco_cb, chan, G_OBJECT (chan), &error) == NULL)
     {
       g_warning ("%s: disco query failed: '%s'", G_STRFUNC, error->message);
@@ -576,7 +570,7 @@ contact_handle_to_room_identity (GabbleMucChannel *chan, GabbleHandle main_handl
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
 
-  handles = _gabble_connection_get_handles (priv->conn);
+  handles = priv->conn->handles;
 
   main_jid = gabble_handle_inspect (handles, TP_HANDLE_TYPE_CONTACT,
                                     main_handle);
@@ -692,9 +686,6 @@ gabble_muc_channel_get_property (GObject    *object,
     case PROP_CONNECTION:
       g_value_set_object (value, priv->conn);
       break;
-    case PROP_DISCO:
-      g_value_set_object (value, priv->disco);
-      break;
     case PROP_OBJECT_PATH:
       g_value_set_string (value, priv->object_path);
       break;
@@ -730,9 +721,6 @@ gabble_muc_channel_set_property (GObject     *object,
   switch (property_id) {
     case PROP_CONNECTION:
       priv->conn = g_value_get_object (value);
-      break;
-    case PROP_DISCO:
-      priv->disco = g_value_get_object (value);
       break;
     case PROP_OBJECT_PATH:
       g_free (priv->object_path);
@@ -785,16 +773,6 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                                     G_PARAM_STATIC_NICK |
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
-
-  param_spec = g_param_spec_object ("disco", "GabbleDisco object",
-                                    "Gabble disco object used by this MUC "
-                                    "channel object to do service discovery.",
-                                    GABBLE_TYPE_DISCO,
-                                    G_PARAM_CONSTRUCT_ONLY |
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NICK |
-                                    G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_DISCO, param_spec);
 
   param_spec = g_param_spec_string ("object-path", "D-Bus object path",
                                     "The D-Bus object path used for this "
@@ -923,12 +901,11 @@ gabble_muc_channel_finalize (GObject *object)
 {
   GabbleMucChannel *self = GABBLE_MUC_CHANNEL (object);
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
-  GabbleHandleRepo *handles;
+  GabbleHandleRepo *handles = priv->conn->handles;
 
   g_debug (G_STRFUNC);
 
   /* free any data held directly by the object here */
-  handles = _gabble_connection_get_handles (priv->conn);
   gabble_handle_unref (handles, TP_HANDLE_TYPE_ROOM, priv->handle);
 
   g_free (priv->object_path);
@@ -1416,12 +1393,10 @@ queue_message (GabbleMucChannel *chan,
   GabbleMucChannelPrivate *priv;
   GabbleMucPendingMessage *msg;
   gsize len;
-  GabbleHandleRepo *handles;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
-  handles = _gabble_connection_get_handles (priv->conn);
 
   msg = _gabble_muc_pending_new0 ();
 
@@ -1465,7 +1440,7 @@ queue_message (GabbleMucChannel *chan,
   msg->sender = sender;
   msg->type = type;
 
-  gabble_handle_ref (handles, TP_HANDLE_TYPE_CONTACT, msg->sender);
+  gabble_handle_ref (priv->conn->handles, TP_HANDLE_TYPE_CONTACT, msg->sender);
   g_queue_push_tail (priv->pending_messages, msg);
 
   g_signal_emit (chan, signals[RECEIVED], 0,
@@ -1485,16 +1460,14 @@ clear_message_queue (GabbleMucChannel *chan)
 {
   GabbleMucChannelPrivate *priv;
   GabbleMucPendingMessage *msg;
-  GabbleHandleRepo *handles;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
-  handles = _gabble_connection_get_handles (priv->conn);
 
   while ((msg = g_queue_pop_head (priv->pending_messages)))
     {
-      gabble_handle_unref (handles, TP_HANDLE_TYPE_CONTACT, msg->sender);
+      gabble_handle_unref (priv->conn->handles, TP_HANDLE_TYPE_CONTACT, msg->sender);
       _gabble_muc_pending_free (msg);
     }
 }
@@ -1590,7 +1563,7 @@ _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
   set_pending = g_intset_new ();
 
   g_intset_add (set_members, inviter);
-  g_intset_add (set_pending, priv->conn_self_handle);
+  g_intset_add (set_pending, priv->conn->self_handle);
 
   gabble_group_mixin_change_members (G_OBJECT (chan), message, set_members,
                                      empty, set_pending, empty);
@@ -1634,12 +1607,10 @@ gboolean gabble_muc_channel_acknowledge_pending_message (GabbleMucChannel *obj, 
   GabbleMucChannelPrivate *priv;
   GList *node;
   GabbleMucPendingMessage *msg;
-  GabbleHandleRepo *handles;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (obj));
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
-  handles = _gabble_connection_get_handles (priv->conn);
 
   node = g_queue_find_custom (priv->pending_messages,
                               GUINT_TO_POINTER (id),
@@ -1661,7 +1632,7 @@ gboolean gabble_muc_channel_acknowledge_pending_message (GabbleMucChannel *obj, 
 
   g_queue_remove (priv->pending_messages, msg);
 
-  gabble_handle_unref (handles, TP_HANDLE_TYPE_CONTACT, msg->sender);
+  gabble_handle_unref (priv->conn->handles, TP_HANDLE_TYPE_CONTACT, msg->sender);
   _gabble_muc_pending_free (msg);
 
   return TRUE;
@@ -2110,7 +2081,7 @@ gabble_muc_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *m
 
   mixin = GABBLE_GROUP_MIXIN (obj);
 
-  if (handle == priv->conn_self_handle)
+  if (handle == priv->conn->self_handle)
     {
       GIntSet *set_empty, *set_members, *set_pending;
       GArray *arr_members;

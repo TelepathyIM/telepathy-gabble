@@ -28,11 +28,11 @@
 #include "telepathy-helpers.h"
 #include "gabble-connection.h"
 #include "gabble-disco.h"
+#include "handles.h"
+
 #include "gabble-roomlist-channel.h"
-#include "gabble-roomlist-channel-signals-marshal.h"
-
 #include "gabble-roomlist-channel-glue.h"
-
+#include "gabble-roomlist-channel-signals-marshal.h"
 
 #define TP_TYPE_ROOM_STRUCT (dbus_g_type_get_struct ("GValueArray", \
       G_TYPE_UINT, \
@@ -64,7 +64,6 @@ enum
   PROP_CHANNEL_TYPE,
 /*  PROP_HANDLE_TYPE,
   PROP_HANDLE,*/
-  PROP_DISCO,
   PROP_CONFERENCE_SERVER,
   LAST_PROPERTY
 };
@@ -74,8 +73,7 @@ typedef struct _GabbleRoomlistChannelPrivate GabbleRoomlistChannelPrivate;
 
 struct _GabbleRoomlistChannelPrivate
 {
-  GabbleConnection *connection;
-  GabbleDisco *disco;
+  GabbleConnection *conn;
   gchar *object_path;
   gchar *conference_server;
 
@@ -129,7 +127,7 @@ gabble_roomlist_channel_get_property (GObject    *object,
 
   switch (property_id) {
     case PROP_CONNECTION:
-      g_value_set_object (value, priv->connection);
+      g_value_set_object (value, priv->conn);
       break;
     case PROP_OBJECT_PATH:
       g_value_set_string (value, priv->object_path);
@@ -162,7 +160,7 @@ gabble_roomlist_channel_set_property (GObject     *object,
 
   switch (property_id) {
     case PROP_CONNECTION:
-      priv->connection = g_value_get_object (value);
+      priv->conn = g_value_get_object (value);
       break;
     case PROP_OBJECT_PATH:
       if (priv->object_path)
@@ -175,9 +173,6 @@ gabble_roomlist_channel_set_property (GObject     *object,
       priv->handle = g_value_get_uint (value);
       break;
       */
-    case PROP_DISCO:
-      priv->disco = g_value_get_object (value);
-      break;
     case PROP_CONFERENCE_SERVER:
       priv->conference_server = g_value_dup_string (value);
     default:
@@ -253,15 +248,6 @@ gabble_roomlist_channel_class_init (GabbleRoomlistChannelClass *gabble_roomlist_
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_HANDLE, param_spec);
 */
-
-  param_spec = g_param_spec_object ("disco", "GabbleDisco object",
-                                    "GabbleDisco object to use for discovery.",
-                                    GABBLE_TYPE_DISCO,
-                                    G_PARAM_CONSTRUCT_ONLY |
-                                    G_PARAM_WRITABLE |
-                                    G_PARAM_STATIC_NICK |
-                                    G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_DISCO, param_spec);
 
   param_spec = g_param_spec_string ("conference-server",
                                     "Name of conference server to use",
@@ -339,20 +325,17 @@ gabble_roomlist_channel_finalize (GObject *object)
 }
 
 GabbleRoomlistChannel *
-gabble_roomlist_channel_new (GabbleConnection *conn,
-                             GabbleDisco *disco,
-                             const gchar *object_path,
-                             const gchar *conference_server)
+_gabble_roomlist_channel_new (GabbleConnection *conn,
+                              const gchar *object_path,
+                              const gchar *conference_server)
 {
-  g_return_val_if_fail ( GABBLE_IS_CONNECTION (conn), NULL);
-  g_return_val_if_fail ( GABBLE_IS_DISCO (disco), NULL);
-  g_return_val_if_fail ( object_path != NULL , NULL);
-  g_return_val_if_fail ( conference_server != NULL , NULL);
+  g_return_val_if_fail (GABBLE_IS_CONNECTION (conn), NULL);
+  g_return_val_if_fail (object_path != NULL, NULL);
+  g_return_val_if_fail (conference_server != NULL, NULL);
 
   return GABBLE_ROOMLIST_CHANNEL (
       g_object_new (GABBLE_TYPE_ROOMLIST_CHANNEL,
                     "connection", conn,
-                    "disco", disco,
                     "object-path", object_path,
                     "conference-server", conference_server, NULL));
 }
@@ -507,8 +490,7 @@ room_info_cb (GabbleDisco *disco, const gchar *jid, const gchar *node,
               INSERT_KEY (keys, "name", G_TYPE_STRING, string, name);
               g_debug ("%s:emitting new room signal for %s", G_STRFUNC,jid);
 
-              handle = gabble_handle_for_room (
-                  _gabble_connection_get_handles (priv->connection),jid);
+              handle = gabble_handle_for_room (priv->conn->handles, jid);
 
               g_value_init (&room, TP_TYPE_ROOM_STRUCT);
               g_value_take_boxed (&room,
@@ -574,7 +556,7 @@ rooms_cb (GabbleDisco *disco, const gchar *jid, const gchar *node,
                   g_hash_table_insert (priv->remaining_rooms,
                                        g_strdup(item_jid), g_strdup(name));
 
-                  gabble_disco_request (priv->disco, GABBLE_DISCO_TYPE_INFO,
+                  gabble_disco_request (priv->conn->disco, GABBLE_DISCO_TYPE_INFO,
                                         item_jid, NULL,
                                         room_info_cb, chan, G_OBJECT(chan), NULL);
                 }
@@ -723,7 +705,7 @@ gboolean gabble_roomlist_channel_list_rooms (GabbleRoomlistChannel *obj, GError 
 
   priv->listing = TRUE;
   g_signal_emit (obj, signals[LISTING_ROOMS], 0, TRUE);
-  gabble_disco_request (priv->disco, GABBLE_DISCO_TYPE_ITEMS,
+  gabble_disco_request (priv->conn->disco, GABBLE_DISCO_TYPE_ITEMS,
                         priv->conference_server, NULL,
                         rooms_cb, obj, G_OBJECT(obj), NULL);
   return TRUE;

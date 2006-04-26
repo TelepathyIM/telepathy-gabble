@@ -24,7 +24,8 @@
 #include <glib-object.h>
 #include <loudmouth/loudmouth.h>
 
-#include "handles.h"
+#include "gabble-types.h"
+#include "telepathy-constants.h"
 
 G_BEGIN_DECLS
 
@@ -57,7 +58,13 @@ typedef enum
   LAST_GABBLE_PRESENCE
 } GabblePresenceId;
 
-typedef struct _GabbleConnection GabbleConnection;
+typedef enum
+{
+  GABBLE_CONNECTION_FEATURES_NONE = 0,
+  GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE = 1 << 0,
+  GABBLE_CONNECTION_FEATURES_PRIVACY = 1 << 1
+} GabbleConnectionFeatures;
+
 typedef struct _GabbleConnectionClass GabbleConnectionClass;
 typedef struct _ContactPresence ContactPresence;
 
@@ -73,6 +80,26 @@ struct _GabbleConnectionClass {
 
 struct _GabbleConnection {
     GObject parent;
+
+    /* dbus object location */
+    gchar *bus_name;
+    gchar *object_path;
+
+    /* loudmouth connection */
+    LmConnection *lmconn;
+
+    /* connection status */
+    TpConnectionStatus status;
+
+    /* handles */
+    GabbleHandleRepo *handles;
+    GabbleHandle self_handle;
+
+    /* DISCO! */
+    GabbleDisco *disco;
+
+    /* connection feature flags */
+    GabbleConnectionFeatures features;
 };
 
 struct _ContactPresence
@@ -110,7 +137,6 @@ G_STMT_START { \
 gboolean _gabble_connection_set_properties_from_account (GabbleConnection *conn, const gchar *account, GError **error);
 gboolean _gabble_connection_register (GabbleConnection *conn, char **bus_name, char **object_path, GError **error);
 gboolean _gabble_connection_connect (GabbleConnection *conn, GError **error);
-GabbleHandleRepo *_gabble_connection_get_handles (GabbleConnection *conn);
 gboolean _gabble_connection_send (GabbleConnection *conn, LmMessage *msg, GError **error);
 gboolean _gabble_connection_send_with_reply (GabbleConnection *conn, LmMessage *msg, GabbleConnectionMsgReplyFunc reply_func, GObject *object, gpointer user_data, GError **error);
 void _gabble_connection_send_iq_ack (GabbleConnection *conn, LmMessageNode *iq_node, LmMessageSubType type);

@@ -632,6 +632,7 @@ try_session_accept (GabbleMediaSession *session)
     }
 
   /* Start the stream playing */
+  GMS_DEBUG_INFO (session, "setting stream playing");
   _gabble_media_stream_set_playing (priv->stream, 1);
 
   /* construct a session acceptance message */

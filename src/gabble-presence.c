@@ -86,6 +86,27 @@ gabble_presence_get_supports_voice (GabblePresence *presence)
 }
 
 void
+gabble_presence_set_capabilities (GabblePresence *presence, const gchar *resource, GabblePresenceCapability caps)
+{
+  GSList *i;
+  GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
+
+  if (caps & CAP_VOICE)
+    g_debug ("setting voice cap for resource %s", resource);
+
+  for (i = priv->resources; NULL != i; i = i->next)
+    {
+      Resource *tmp = (Resource *) i->data;
+
+      if (0 == strcmp (tmp->name, resource))
+        {
+          tmp->caps |= caps;
+          break;
+        }
+    }
+}
+
+void
 gabble_presence_update (GabblePresence *presence, const gchar *resource, GabblePresenceId status, const gchar *status_message)
 {
   GSList *i;

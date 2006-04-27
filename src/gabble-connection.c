@@ -2105,9 +2105,6 @@ ERROR:
 }
 
 
-
-
-
 /**
  * update_presence:
  * @self: A #GabbleConnection

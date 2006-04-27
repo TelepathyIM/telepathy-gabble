@@ -66,6 +66,8 @@ gboolean gabble_presence_get_supports_voice (GabblePresence *presence);
 
 void gabble_presence_update (GabblePresence *presence, const gchar *resource, GabblePresenceId status, const gchar *status_message);
 
+void gabble_presence_set_capabilities (GabblePresence *presence, const gchar *resource, GabblePresenceCapability caps);
+
 G_END_DECLS
 
 #endif /* __GABBLE_PRESENCE_H__ */

@@ -1227,6 +1227,7 @@ _gabble_media_stream_set_playing (GabbleMediaStream *stream, gboolean playing)
   g_assert (GABBLE_IS_MEDIA_STREAM (stream));
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
+  g_debug ("%s: Emitting SetStreamPlaying signal with %d",G_STRFUNC, playing);
   priv->playing = playing;
   if (priv->ready)
     g_signal_emit (stream, signals[SET_STREAM_PLAYING], 0, playing);

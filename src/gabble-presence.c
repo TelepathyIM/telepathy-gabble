@@ -13,7 +13,7 @@ typedef struct _Resource Resource;
 
 struct _Resource {
     gchar *name;
-    guint caps;
+    GabblePresenceCapability caps;
     GabblePresenceId status;
     gchar *status_message;
     gchar *status_name;

@@ -59,8 +59,6 @@ CORE_SOURCES = \
     gabble-media-session.c \
     gabble-media-stream.h \
     gabble-media-stream.c \
-    gabble-register.c \
-    gabble-register.h \
     gabble-roster-channel.h \
     gabble-roster-channel.c \
     gabble-roomlist-channel.h \

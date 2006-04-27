@@ -62,6 +62,8 @@ void gabble_presence_update (GabblePresence *presence, const gchar *resource, Ga
 
 void gabble_presence_set_capabilities (GabblePresence *presence, const gchar *resource, GabblePresenceCapability caps);
 
+const gchar *gabble_presence_pick_voice_resource (GabblePresence *presence);
+
 G_END_DECLS
 
 #endif /* __GABBLE_PRESENCE_H__ */

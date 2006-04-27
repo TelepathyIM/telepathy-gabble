@@ -85,6 +85,23 @@ gabble_presence_get_supports_voice (GabblePresence *presence)
   return FALSE;
 }
 
+const gchar *
+gabble_presence_pick_voice_resource (GabblePresence *presence)
+{
+  GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
+  GSList *i;
+
+  for (i = priv->resources; NULL != i; i = i->next)
+    {
+      Resource *res = (Resource *) i->data;
+
+      if (res->caps & CAP_VOICE)
+        return res->name;
+    }
+
+  return NULL;
+}
+
 void
 gabble_presence_set_capabilities (GabblePresence *presence, const gchar *resource, GabblePresenceCapability caps)
 {

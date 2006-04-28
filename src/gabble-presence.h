@@ -34,7 +34,7 @@ typedef enum {
     CAP_NONE = 0,
     CAP_VOICE = 1 << 0,
     CAP_VIDEO = 1 << 1,
-} GabblePresenceCapability;
+} GabblePresenceCapabilities;
 
 typedef struct _GabblePresence GabblePresence;
 
@@ -60,7 +60,7 @@ gboolean gabble_presence_get_supports_voice (GabblePresence *presence);
 
 void gabble_presence_update (GabblePresence *presence, const gchar *resource, GabblePresenceId status, const gchar *status_message);
 
-void gabble_presence_set_capabilities (GabblePresence *presence, const gchar *resource, GabblePresenceCapability caps);
+void gabble_presence_set_capabilities (GabblePresence *presence, const gchar *resource, GabblePresenceCapabilities caps);
 
 const gchar *gabble_presence_pick_voice_resource (GabblePresence *presence);
 

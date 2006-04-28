@@ -111,26 +111,33 @@ gabble_presence_set_capabilities (GabblePresence *presence, const gchar *resourc
     }
 }
 
+static Resource *
+_find_resource (GabblePresence *presence, const gchar *resource)
+{
+  GSList *i;
+  GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
+
+  for (i = priv->resources; NULL != i; i = i->next)
+    {
+      Resource *res = (Resource *) i->data;
+
+      if (0 == strcmp (res->name, resource))
+        return res;
+    }
+
+  return NULL;
+}
+
 void
 gabble_presence_update (GabblePresence *presence, const gchar *resource, GabblePresenceId status, const gchar *status_message)
 {
-  GSList *i;
-  Resource *res = NULL;
+  Resource *res;
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
 
   g_assert (NULL != resource);
   g_debug ("UPDATE: %s/%d/%s", resource, status, status_message);
 
-  for (i = priv->resources; NULL != i; i = i->next)
-    {
-      Resource *tmp = (Resource *) i->data;
-
-      if (0 == strcmp (tmp->name, resource))
-        {
-          res = tmp;
-          break;
-        }
-    }
+  res = _find_resource (presence, resource);
 
   if (NULL == res)
     {

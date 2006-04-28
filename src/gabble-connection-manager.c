@@ -406,6 +406,14 @@ free_params (GabbleParams *params)
   g_free (params->account);
   g_free (params->password);
   g_free (params->server);
+  g_free (params->resource);
+  g_free (params->https_proxy_server);
+  g_free (params->fallback_conference_server);
+  g_free (params->stun_server);
+  g_free (params->stun_relay_magic_cookie);
+  g_free (params->stun_relay_server);
+  g_free (params->stun_relay_username);
+  g_free (params->stun_relay_password);
 }
 
 /**

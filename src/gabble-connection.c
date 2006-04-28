@@ -4065,7 +4065,6 @@ gboolean gabble_connection_get_statuses (GabbleConnection *obj, GHashTable ** re
 gboolean gabble_connection_hold_handle (GabbleConnection *obj, guint handle_type, guint handle, DBusGMethodInvocation *context)
 {
   GabbleConnectionPrivate *priv;
-  gboolean valid;
   GError *error = NULL;
   gchar *sender;
 
@@ -4075,24 +4074,13 @@ gboolean gabble_connection_hold_handle (GabbleConnection *obj, guint handle_type
 
   ERROR_IF_NOT_CONNECTED_ASYNC (obj, error, context)
 
-  if (!gabble_handle_type_is_valid (handle_type, &error))
+  if (!gabble_handle_is_valid (obj->handles,
+                               handle_type,
+                               handle,
+                               &error))
     {
       dbus_g_method_return_error (context, error);
       g_error_free (error);
-      return FALSE;
-    }
-
-  valid = gabble_handle_ref (obj->handles, handle_type, handle);
-
-  if (!valid)
-    {
-      g_debug ("hold_handle: unknown handle %u", handle);
-
-      error = g_error_new (TELEPATHY_ERRORS, InvalidHandle,
-                            "unknown handle %u", handle);
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-
       return FALSE;
     }
 
@@ -4127,23 +4115,14 @@ gboolean gabble_connection_inspect_handle (GabbleConnection *obj, guint handle_t
 
   ERROR_IF_NOT_CONNECTED (obj, *error)
 
-  if (!gabble_handle_type_is_valid (handle_type, error))
-    {
-      return FALSE;
-    }
+  if (!gabble_handle_is_valid (obj->handles,
+                               handle_type,
+                               handle,
+                               error))
+    return FALSE;
 
   tmp = gabble_handle_inspect (obj->handles, handle_type, handle);
-
-  if (tmp == NULL)
-    {
-      g_debug ("inspect_handle: invalid handle %u", handle);
-
-      *error = g_error_new (TELEPATHY_ERRORS, InvalidHandle,
-                            "unknown handle %u", handle);
-
-      return FALSE;
-    }
-
+  g_assert (tmp != NULL);
   *ret = g_strdup (tmp);
 
   return TRUE;
@@ -4280,7 +4259,10 @@ gboolean gabble_connection_release_handle (GabbleConnection *obj, guint handle_t
 
   ERROR_IF_NOT_CONNECTED_ASYNC (obj, error, context)
 
-  if (!gabble_handle_is_valid (obj->handles, handle_type, handle, &error))
+  if (!gabble_handle_is_valid (obj->handles,
+                               handle_type,
+                               handle,
+                               &error))
     {
       dbus_g_method_return_error (context, error);
       g_error_free (error);

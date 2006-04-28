@@ -31,8 +31,6 @@ G_BEGIN_DECLS
   (G_TYPE_INSTANCE_GET_CLASS ((obj), \
   GABBLE_TYPE_PRESENCE_CACHE, GabblePresenceCacheClass))
 
-typedef struct _GabblePresenceCache GabblePresenceCache;
-
 struct _GabblePresenceCache {
     GObject parent;
     gpointer priv;

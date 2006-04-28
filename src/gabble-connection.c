@@ -3853,15 +3853,11 @@ gboolean gabble_connection_get_capabilities (GabbleConnection *obj, guint handle
 
   ERROR_IF_NOT_CONNECTED (obj, *error);
 
-  if (!gabble_handle_is_valid (obj->handles, TP_HANDLE_TYPE_CONTACT, handle))
-    {
-      g_debug ("get_capabilites: invalid handle %u", handle);
-
-      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                            "invalid handle %u", handle);
-
-      return FALSE;
-    }
+  if (!gabble_handle_is_valid (obj->handles,
+                               TP_HANDLE_TYPE_CONTACT,
+                               handle,
+                               error))
+    return FALSE;
 
   *ret = g_ptr_array_sized_new (1);
 
@@ -4275,7 +4271,6 @@ gboolean gabble_connection_list_channels (GabbleConnection *obj, GPtrArray ** re
 gboolean gabble_connection_release_handle (GabbleConnection *obj, guint handle_type, guint handle, DBusGMethodInvocation *context)
 {
   GabbleConnectionPrivate *priv;
-  gboolean valid;
   char *sender;
   GError *error = NULL;
 
@@ -4285,24 +4280,10 @@ gboolean gabble_connection_release_handle (GabbleConnection *obj, guint handle_t
 
   ERROR_IF_NOT_CONNECTED_ASYNC (obj, error, context)
 
-  if (!gabble_handle_type_is_valid (handle_type, &error))
+  if (!gabble_handle_is_valid (obj->handles, handle_type, handle, &error))
     {
       dbus_g_method_return_error (context, error);
       g_error_free (error);
-      return FALSE;
-    }
-
-  valid = gabble_handle_is_valid (obj->handles, handle_type, handle);
-
-  if (!valid)
-    {
-      g_debug ("release_handle: invalid handle %u", handle);
-
-      error = g_error_new (TELEPATHY_ERRORS, InvalidHandle,
-                            "unknown handle %u", handle);
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-
       return FALSE;
     }
 
@@ -4450,10 +4431,9 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
 
       if (!gabble_handle_is_valid (obj->handles,
                                    handle_type,
-                                   handle))
-        {
-          goto INVALID_HANDLE;
-        }
+                                   handle,
+                                   error))
+        return FALSE;
 
       if (handle_type == TP_HANDLE_TYPE_CONTACT)
         {
@@ -4517,12 +4497,18 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
       if (handle_type != TP_HANDLE_TYPE_LIST)
         goto NOT_AVAILABLE;
 
+      if (!gabble_handle_is_valid (obj->handles,
+                                   handle_type,
+                                   handle,
+                                   error))
+        return FALSE;
+
       if (handle == gabble_handle_for_list_publish (obj->handles))
         chan = priv->publish_channel;
       else if (handle == gabble_handle_for_list_subscribe (obj->handles))
         chan = priv->subscribe_channel;
       else
-        goto INVALID_HANDLE;
+        g_assert_not_reached ();
 
       g_object_get (chan, "object-path", ret, NULL);
     }
@@ -4600,14 +4586,6 @@ NOT_AVAILABLE:
   *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
                         "requested channel is not available with "
                         "handle type %u", handle_type);
-
-  return FALSE;
-
-INVALID_HANDLE:
-  g_debug ("request_channel: handle %u (type %u) not valid", handle, handle_type);
-
-  *error = g_error_new (TELEPATHY_ERRORS, InvalidHandle,
-                        "handle %u (type %u) not valid", handle, handle_type);
 
   return FALSE;
 
@@ -4690,15 +4668,11 @@ gboolean gabble_connection_request_contact_info (GabbleConnection *obj, guint co
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
 
-  if (!gabble_handle_is_valid (obj->handles, TP_HANDLE_TYPE_CONTACT, contact))
-    {
-      g_debug ("%s: invalid handle %u", G_STRFUNC, contact);
-
-      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                            "invalid handle %u", contact);
-
-      return FALSE;
-    }
+  if (!gabble_handle_is_valid (obj->handles,
+                               TP_HANDLE_TYPE_CONTACT,
+                               contact,
+                               error))
+    return FALSE;
 
   contact_jid = gabble_handle_inspect (obj->handles, TP_HANDLE_TYPE_CONTACT,
                                        contact);

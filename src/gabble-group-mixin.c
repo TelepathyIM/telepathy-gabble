@@ -174,19 +174,17 @@ gabble_group_mixin_add_members (GObject *obj, const GArray *contacts, const gcha
   GabbleHandle handle;
 
   /* reject invalid handles */
+  if (!gabble_handles_are_valid (mixin->handle_repo,
+                                 TP_HANDLE_TYPE_CONTACT,
+                                 contacts,
+                                 FALSE,
+                                 error))
+    return FALSE;
+
+  /* check that adding is allowed by flags */
   for (i = 0; i < contacts->len; i++)
     {
       handle = g_array_index (contacts, GabbleHandle, i);
-
-      if (!gabble_handle_is_valid (mixin->handle_repo, TP_HANDLE_TYPE_CONTACT, handle))
-        {
-          g_debug ("%s: invalid handle %u", G_STRFUNC, handle);
-
-          *error = g_error_new (TELEPATHY_ERRORS, InvalidHandle,
-              "invalid handle %u", handle);
-
-          return FALSE;
-        }
 
       if ((mixin->group_flags & TP_CHANNEL_GROUP_FLAG_CAN_ADD) == 0 &&
           !handle_set_is_member (mixin->local_pending, handle))
@@ -231,20 +229,18 @@ gabble_group_mixin_remove_members (GObject *obj, const GArray *contacts, const g
   guint i;
   GabbleHandle handle;
 
-  /* reject invalid and non-member handles */
+  /* reject invalid handles */
+  if (!gabble_handles_are_valid (mixin->handle_repo,
+                                 TP_HANDLE_TYPE_CONTACT,
+                                 contacts,
+                                 FALSE,
+                                 error))
+    return FALSE;
+
+  /* check removing is allowed by flags */
   for (i = 0; i < contacts->len; i++)
     {
       handle = g_array_index (contacts, GabbleHandle, i);
-
-      if (!gabble_handle_is_valid (mixin->handle_repo, TP_HANDLE_TYPE_CONTACT, handle))
-        {
-          g_debug ("%s: invalid handle %u", G_STRFUNC, handle);
-
-          *error = g_error_new (TELEPATHY_ERRORS, InvalidHandle,
-              "invalid handle %u", handle);
-
-          return FALSE;
-        }
 
       if (handle_set_is_member (mixin->members, handle))
         {

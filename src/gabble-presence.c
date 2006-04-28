@@ -13,7 +13,7 @@ typedef struct _Resource Resource;
 
 struct _Resource {
     gchar *name;
-    GabblePresenceCapability caps;
+    GabblePresenceCapabilities caps;
     GabblePresenceId status;
     gchar *status_message;
     gchar *status_name;
@@ -103,7 +103,7 @@ gabble_presence_pick_voice_resource (GabblePresence *presence)
 }
 
 void
-gabble_presence_set_capabilities (GabblePresence *presence, const gchar *resource, GabblePresenceCapability caps)
+gabble_presence_set_capabilities (GabblePresence *presence, const gchar *resource, GabblePresenceCapabilities caps)
 {
   GSList *i;
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);

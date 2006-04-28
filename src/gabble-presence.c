@@ -30,7 +30,7 @@ _resource_new (gchar *name)
 {
   Resource *new = g_new (Resource, 1);
   new->name = name;
-  new->caps = CAP_NONE;
+  new->caps = PRESENCE_CAP_NONE;
   new->status = GABBLE_PRESENCE_OFFLINE;
   new->status_message = NULL;
   return new;
@@ -108,8 +108,11 @@ gabble_presence_set_capabilities (GabblePresence *presence, const gchar *resourc
   GSList *i;
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
 
-  if (caps & CAP_VOICE)
-    g_debug ("setting voice cap for resource %s", resource);
+  if (caps & PRESENCE_CAP_GOOGLE_VOICE)
+    g_debug ("setting Google voice cap for resource %s", resource);
+
+  if (caps & PRESENCE_CAP_JINGLE_VOICE)
+    g_debug ("setting Jingle voice cap for resource %s", resource);
 
   for (i = priv->resources; NULL != i; i = i->next)
     {

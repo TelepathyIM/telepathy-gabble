@@ -31,9 +31,10 @@ G_BEGIN_DECLS
                                   GABBLE_TYPE_PRESENCE, GabblePresenceClass))
 
 typedef enum {
-    CAP_NONE = 0,
-    CAP_VOICE = 1 << 0,
-    CAP_VIDEO = 1 << 1,
+    PRESENCE_CAP_NONE = 0,
+    PRESENCE_CAP_GOOGLE_VOICE = 1 << 0,
+    PRESENCE_CAP_JINGLE_VOICE = 1 << 1,
+    PRESENCE_CAP_JINGLE_VIDEO = 1 << 2,
 } GabblePresenceCapabilities;
 
 typedef struct _GabblePresence GabblePresence;

@@ -47,6 +47,8 @@
 #include "gabble-roster-channel.h"
 #include "gabble-disco.h"
 #include "gabble-roomlist-channel.h"
+#include "gabble-presence.h"
+#include "gabble-presence-cache.h"
 
 #define BUS_NAME        "org.freedesktop.Telepathy.Connection.gabble"
 #define OBJECT_PATH     "/org/freedesktop/Telepathy/Connection/gabble"
@@ -240,6 +242,7 @@ gabble_connection_init (GabbleConnection *obj)
   obj->status = TP_CONN_STATUS_CONNECTING;
   obj->handles = gabble_handle_repo_new ();
   obj->disco = gabble_disco_new (obj);
+  obj->presence_cache = gabble_presence_cache_new ();
 
   priv->jingle_sessions = g_hash_table_new_full (g_str_hash, g_str_equal,
                                                  g_free, NULL);

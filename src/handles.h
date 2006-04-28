@@ -37,7 +37,7 @@ gboolean gabble_handle_type_is_valid (TpHandleType type, GError **error);
 GabbleHandleRepo *gabble_handle_repo_new ();
 void gabble_handle_repo_destroy (GabbleHandleRepo *repo);
 
-gboolean gabble_handle_is_valid (GabbleHandleRepo *repo, TpHandleType type, GabbleHandle handle);
+gboolean gabble_handle_is_valid (GabbleHandleRepo *repo, TpHandleType type, GabbleHandle handle, GError **error);
 gboolean gabble_handles_are_valid (GabbleHandleRepo *repo, TpHandleType type, const GArray *array, gboolean allow_zero, GError **error);
 
 gboolean gabble_handle_ref (GabbleHandleRepo *repo, TpHandleType type, GabbleHandle handle);

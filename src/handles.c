@@ -306,9 +306,19 @@ gabble_handle_repo_destroy (GabbleHandleRepo *repo)
 }
 
 gboolean
-gabble_handle_is_valid (GabbleHandleRepo *repo, TpHandleType type, GabbleHandle handle)
+gabble_handle_is_valid (GabbleHandleRepo *repo, TpHandleType type, GabbleHandle handle, GError **error)
 {
-  return (handle_priv_lookup (repo, type, handle) != NULL);
+  GArray *arr;
+  gboolean ret;
+
+  arr = g_array_new (FALSE, FALSE, sizeof (GabbleHandle));
+  g_array_insert_val (arr, 0, handle);
+
+  ret = gabble_handles_are_valid (repo, type, arr, FALSE, error);
+
+  g_array_free (arr, TRUE);
+
+  return ret;
 }
 
 gboolean
@@ -321,8 +331,10 @@ gabble_handles_are_valid (GabbleHandleRepo *repo,
   int i;
 
   g_return_val_if_fail (repo != NULL, FALSE);
-  g_return_val_if_fail (gabble_handle_type_is_valid (type, NULL), FALSE);
   g_return_val_if_fail (array != NULL, FALSE);
+
+  if (!gabble_handle_type_is_valid (type, error))
+    return FALSE;
 
   for (i = 0; i < array->len; i++)
     {

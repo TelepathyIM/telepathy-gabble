@@ -86,7 +86,9 @@ gabble_presence_get_supports_voice (GabblePresence *presence)
 }
 
 const gchar *
-gabble_presence_pick_voice_resource (GabblePresence *presence)
+gabble_presence_pick_resource_by_caps (
+    GabblePresence *presence,
+    GabblePresenceCapabilities caps)
 {
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
   GSList *i;
@@ -95,7 +97,7 @@ gabble_presence_pick_voice_resource (GabblePresence *presence)
     {
       Resource *res = (Resource *) i->data;
 
-      if (res->caps & CAP_VOICE)
+      if (res->caps & caps)
         return res->name;
     }
 

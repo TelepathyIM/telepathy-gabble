@@ -59,6 +59,12 @@ CORE_SOURCES = \
     gabble-media-session.c \
     gabble-media-stream.h \
     gabble-media-stream.c \
+    gabble-presence.h \
+    gabble-presence.c \
+    gabble-presence-cache.h \
+    gabble-presence-cache.c \
+    gabble-register.c \
+    gabble-register.h \
     gabble-roster-channel.h \
     gabble-roster-channel.c \
     gabble-roomlist-channel.h \

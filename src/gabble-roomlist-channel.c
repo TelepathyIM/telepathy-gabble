@@ -388,8 +388,8 @@ room_info_cb (GabbleDisco *disco, const gchar *jid, const gchar *node,
       g_debug ("%s: got error %s", G_STRFUNC, error->message);
       goto done;
     }
-  g_debug ("%s: got %s", G_STRFUNC, lm_message_node_to_string (result));
 
+  HANDLER_DEBUG (result, "got");
 
   keys = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
                                 (GDestroyNotify) destroy_value);
@@ -407,8 +407,8 @@ room_info_cb (GabbleDisco *disco, const gchar *jid, const gchar *node,
           is_muc = FALSE;
           for (feature = result->children; feature; feature = feature->next)
             {
-              g_debug ("%s: Got child %s", G_STRFUNC, 
-                       lm_message_node_to_string (feature));
+              HANDLER_DEBUG (feature, "got child");
+
               if (0 == strcmp (feature->name, "feature"))
                 {
                   var = lm_message_node_get_attribute (feature, "var");

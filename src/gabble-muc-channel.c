@@ -1146,7 +1146,7 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
       return;
     }
 
-  g_debug ("%s: presence node: %s", G_STRFUNC, lm_message_node_to_string (pres_node));
+  HANDLER_DEBUG (pres_node, "presence node");
 
   /* We're not a member, find out why the join request failed
    * and act accordingly. */

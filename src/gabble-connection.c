@@ -3461,8 +3461,8 @@ service_info_cb (GabbleDisco *disco, const gchar *jid, const gchar *node,
         {
           for (feature = result->children; feature; feature = feature->next)
             {
-              g_debug ("%s: Got child %s", G_STRFUNC, 
-                       lm_message_node_to_string (feature));
+              HANDLER_DEBUG (feature, "got child");
+
               if (0 == strcmp (feature->name, "feature"))
                 {
                   var = lm_message_node_get_attribute (feature, "var");

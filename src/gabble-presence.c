@@ -68,23 +68,6 @@ gabble_presence_new (void)
   return g_object_new (GABBLE_TYPE_PRESENCE, NULL);
 }
 
-gboolean
-gabble_presence_get_supports_voice (GabblePresence *presence)
-{
-  GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
-  GSList *i;
-
-  for (i = priv->resources; NULL != i; i = i->next)
-    {
-      Resource *res = (Resource *) i->data;
-
-      if (res->caps & CAP_VOICE)
-        return TRUE;
-    }
-
-  return FALSE;
-}
-
 const gchar *
 gabble_presence_pick_resource_by_caps (
     GabblePresence *presence,

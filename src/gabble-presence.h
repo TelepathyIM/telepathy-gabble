@@ -57,8 +57,6 @@ GType gabble_presence_get_type (void);
 
 GabblePresence* gabble_presence_new (void);
 
-gboolean gabble_presence_get_supports_voice (GabblePresence *presence);
-
 void gabble_presence_update (GabblePresence *presence, const gchar *resource, GabblePresenceId status, const gchar *status_message);
 
 void gabble_presence_set_capabilities (GabblePresence *presence, const gchar *resource, GabblePresenceCapabilities caps);

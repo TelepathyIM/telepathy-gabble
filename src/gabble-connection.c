@@ -1574,31 +1574,21 @@ new_muc_channel (GabbleConnection *conn, GabbleHandle handle, gboolean suppress_
   return chan;
 }
 
-static gboolean
-node_is_for_muc (LmMessageNode *toplevel_node, LmMessageNode **muc_node)
+LmMessageNode *
+_get_muc_node (LmMessageNode *toplevel_node)
 {
   LmMessageNode *node;
 
   for (node = toplevel_node->children; node; node = node->next)
-    {
-      if (strcmp (node->name, "x") == 0)
-        {
-          const gchar *xmlns;
+    if (strcmp (node->name, "x") == 0)
+      {
+        const gchar *xmlns = lm_message_node_get_attribute (node, "xmlns");
 
-          xmlns = lm_message_node_get_attribute (node, "xmlns");
-          if (xmlns && strcmp (xmlns, MUC_XMLNS_USER) == 0)
-            {
-              if (muc_node)
-                {
-                  *muc_node = node;
-                }
+        if (xmlns && strcmp (xmlns, MUC_XMLNS_USER) == 0)
+          return node;
+      }
 
-              return TRUE;
-            }
-        }
-    }
-
-  return FALSE;
+  return NULL;
 }
 
 static GabbleMucChannel *
@@ -1657,7 +1647,10 @@ connection_message_cb (LmMessageHandler *handler,
     }
 
   /* is it a MUC message? */
-  if (node_is_for_muc (msg_node, &muc_node))
+
+  muc_node = _get_muc_node (msg_node);
+
+  if (muc_node)
     {
       GabbleMucChannel *chan;
 
@@ -2200,8 +2193,10 @@ connection_presence_muc_cb (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 
+  x_node = _get_muc_node (msg->node);
+
   /* is it a MUC member presence? */
-  if (node_is_for_muc (msg->node, &x_node))
+  if (x_node)
     {
       if (muc_chan != NULL)
         {
@@ -2264,7 +2259,7 @@ connection_presence_roster_cb (LmMessageHandler *handler,
 
   sub_type = lm_message_get_sub_type (message);
 
-  if (node_is_for_muc (pres_node, NULL))
+  if (_get_muc_node (pres_node))
     {
       HANDLER_DEBUG (pres_node, "ignoring MUC presence");
 

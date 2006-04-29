@@ -82,11 +82,6 @@
 
 G_DEFINE_TYPE(GabbleConnection, gabble_connection, G_TYPE_OBJECT)
 
-#define JABBER_PRESENCE_SHOW_AWAY "away"
-#define JABBER_PRESENCE_SHOW_CHAT "chat"
-#define JABBER_PRESENCE_SHOW_DND "dnd"
-#define JABBER_PRESENCE_SHOW_XA "xa"
-
 #define GOOGLE_VOICE_VERSION "1.0.0.82"
 
 #define DEFAULT_CONFERENCE_SERVER "conference.jabber.org"

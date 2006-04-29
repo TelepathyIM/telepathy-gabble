@@ -36,7 +36,6 @@ _resource_new (gchar *name)
   return new;
 }
 
-/*
 static void
 _resource_free (Resource *resource)
 {
@@ -45,13 +44,26 @@ _resource_free (Resource *resource)
 
   g_free (resource);
 }
-*/
+
+static void
+gabble_presence_finalize (GObject *object)
+{
+  GSList *i;
+  GabblePresence *presence = GABBLE_PRESENCE (object);
+  GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
+
+  for (i = priv->resources; NULL != i; i = i->next)
+    _resource_free (i->data);
+
+  g_slist_free (priv->resources);
+}
 
 static void
 gabble_presence_class_init (GabblePresenceClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
   g_type_class_add_private (object_class, sizeof (GabblePresencePrivate));
+  object_class->finalize = gabble_presence_finalize;
 }
 
 static void

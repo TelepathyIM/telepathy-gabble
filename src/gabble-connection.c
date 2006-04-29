@@ -795,6 +795,8 @@ gabble_connection_dispose (GObject *object)
       lm_message_handler_unref (priv->iq_unknown_cb);
     }
 
+  g_object_unref (self->presence_cache);
+
   dbus_g_proxy_call_no_reply (bus_proxy, "ReleaseName",
                               G_TYPE_STRING, self->bus_name,
                               G_TYPE_INVALID);

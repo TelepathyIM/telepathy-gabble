@@ -35,6 +35,8 @@
 #include "gabble-media-channel.h"
 
 #include "gabble-connection.h"
+#include "gabble-presence.h"
+#include "gabble-presence-cache.h"
 #include "handles.h"
 
 #include "telepathy-helpers.h"
@@ -79,7 +81,7 @@ struct _GabbleMediaSessionPrivate
   gchar *id;
   GabbleHandle initiator;
   GabbleHandle peer;
-  gchar *voice_resource;
+  const gchar *voice_resource;
 
   JingleSessionState state;
 
@@ -172,7 +174,8 @@ gabble_media_session_constructor (GType type, guint n_props,
   GObject *obj;
   GabbleMediaSessionPrivate *priv;
   DBusGConnection *bus;
-  ContactPresence *cp;
+  //ContactPresence *cp;
+  GabblePresence *presence;
 
   obj = G_OBJECT_CLASS (gabble_media_session_parent_class)->
            constructor (type, n_props, props);
@@ -185,12 +188,10 @@ gabble_media_session_constructor (GType type, guint n_props,
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
 
-  cp = gabble_handle_get_qdata (priv->conn->handles,
-                                TP_HANDLE_TYPE_CONTACT, priv->peer,
-                                _get_contact_presence_quark ());
-  g_assert (cp != NULL);
-  g_assert (cp->voice_resource != NULL);
-  priv->voice_resource = g_strdup (cp->voice_resource);
+  presence = gabble_presence_cache_get (priv->conn->presence_cache, priv->peer);
+  g_assert (presence);
+  priv->voice_resource = gabble_presence_pick_resource_by_caps (presence, PRESENCE_CAP_GOOGLE_VOICE);
+  g_assert (priv->voice_resource);
 
   create_media_stream (GABBLE_MEDIA_SESSION (obj));
 
@@ -408,7 +409,6 @@ gabble_media_session_finalize (GObject *object)
 
   g_free (priv->id);
   g_free (priv->object_path);
-  g_free (priv->voice_resource);
 
   G_OBJECT_CLASS (gabble_media_session_parent_class)->finalize (object);
 }
@@ -763,7 +763,6 @@ get_jid_for_contact (GabbleMediaSession *session,
   GabbleMediaSessionPrivate *priv;
   const gchar *base_jid;
   GabbleHandle self;
-  gchar *resource, *ret;
 
   g_assert (GABBLE_IS_MEDIA_SESSION (session));
 
@@ -775,22 +774,18 @@ get_jid_for_contact (GabbleMediaSession *session,
 
   if (handle == self)
     {
+      gchar *resource, *ret;
       g_object_get (priv->conn, "resource", &resource, NULL);
+      g_assert (resource != NULL);
+      ret = g_strdup_printf ("%s/%s", base_jid, resource);
+      g_free (resource);
+      return ret;
     }
   else
     {
-      resource = priv->voice_resource;
+      g_assert (priv->voice_resource != NULL);
+      return g_strdup_printf ("%s/%s", base_jid, priv->voice_resource);
     }
-  g_assert (resource != NULL);
-
-  ret = g_strdup_printf ("%s/%s", base_jid, resource);
-
-  if (handle == self)
-    {
-      g_free (resource);
-    }
-
-  return ret;
 }
 
 LmMessage *

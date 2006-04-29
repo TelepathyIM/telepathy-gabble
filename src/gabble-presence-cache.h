@@ -31,6 +31,11 @@ G_BEGIN_DECLS
   (G_TYPE_INSTANCE_GET_CLASS ((obj), \
   GABBLE_TYPE_PRESENCE_CACHE, GabblePresenceCacheClass))
 
+#define JABBER_PRESENCE_SHOW_AWAY "away"
+#define JABBER_PRESENCE_SHOW_CHAT "chat"
+#define JABBER_PRESENCE_SHOW_DND "dnd"
+#define JABBER_PRESENCE_SHOW_XA "xa"
+
 struct _GabblePresenceCache {
     GObject parent;
     gpointer priv;

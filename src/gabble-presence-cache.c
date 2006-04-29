@@ -109,7 +109,6 @@ connection_presence_cb (LmMessageHandler *handler,
                         LmMessage *message,
                         gpointer user_data)
 {
-  //GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   GabblePresenceCache *cache = GABBLE_PRESENCE_CACHE (user_data);
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
   LmMessageNode *pres_node, *child_node;
@@ -142,14 +141,6 @@ connection_presence_cb (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
-  /*
-  if (handle == conn->self_handle)
-    {
-      HANDLER_DEBUG (pres_node, "ignoring presence from ourselves on another resource");
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-    }
-  */
-
   child_node = lm_message_node_get_child (pres_node, "status");
 
   if (child_node)
@@ -178,7 +169,6 @@ connection_presence_cb (LmMessageHandler *handler,
     case LM_MESSAGE_SUB_TYPE_NOT_SET:
     case LM_MESSAGE_SUB_TYPE_AVAILABLE:
       presence_id = _presence_get_status (pres_node);
-      //update_presence (conn, handle, resource, presence_id, status_message);
       gabble_presence_cache_update (cache, handle, resource, presence_id, status_message);
       g_signal_emit_by_name (cache, "presence-update", handle, resource, presence_id, status_message);
 
@@ -207,7 +197,6 @@ gabble_presence_cache_new (LmConnection *lmconn, GabbleHandleRepo *handles)
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (new);
 
   priv->lmconn = lmconn;
-  //priv->handles = gabble_handle_repo_new ();
   priv->handles = handles;
   priv->presence_cb = lm_message_handler_new (connection_presence_cb,
                                               new, NULL);
@@ -229,7 +218,6 @@ gabble_presence_cache_finalize (GObject *object)
   lm_message_handler_unref (priv->presence_cb);
 
   g_hash_table_destroy (priv->presence);
-  // gabble_handle_repo_destroy (priv->handles);
 }
 
 static void

@@ -21,6 +21,7 @@
 #ifndef __GABBLE_CONNECTION_H__
 #define __GABBLE_CONNECTION_H__
 
+#include <dbus/dbus-glib.h>
 #include <glib-object.h>
 #include <loudmouth/loudmouth.h>
 
@@ -66,7 +67,6 @@ typedef enum
 } GabbleConnectionFeatures;
 
 typedef struct _GabbleConnectionClass GabbleConnectionClass;
-typedef struct _ContactPresence ContactPresence;
 
 typedef LmHandlerResult (*GabbleConnectionMsgReplyFunc) (GabbleConnection *conn,
                                                          LmMessage *sent_msg,
@@ -100,13 +100,9 @@ struct _GabbleConnection {
 
     /* connection feature flags */
     GabbleConnectionFeatures features;
-};
 
-struct _ContactPresence
-{
-  GabblePresenceId presence_id;
-  gchar *status_message;
-  gchar *voice_resource;
+    /* presence */
+    GabblePresenceCache *presence_cache;
 };
 
 GType gabble_connection_get_type(void);
@@ -141,6 +137,7 @@ gboolean _gabble_connection_send (GabbleConnection *conn, LmMessage *msg, GError
 gboolean _gabble_connection_send_with_reply (GabbleConnection *conn, LmMessage *msg, GabbleConnectionMsgReplyFunc reply_func, GObject *object, gpointer user_data, GError **error);
 void _gabble_connection_send_iq_ack (GabbleConnection *conn, LmMessageNode *iq_node, LmMessageSubType type);
 GQuark _get_contact_presence_quark();
+LmMessageNode *_get_muc_node (LmMessageNode *node);
 
 void _gabble_connection_client_hold_handle (GabbleConnection *conn, gchar* client_name, GabbleHandle handle, TpHandleType type);
 gboolean _gabble_connection_client_release_handle (GabbleConnection *conn, gchar* client_name, GabbleHandle handle, TpHandleType type);

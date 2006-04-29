@@ -29,6 +29,8 @@
 #include <string.h>
 #include <time.h>
 
+#include <glib-object.h>
+
 #include "handles.h"
 #include "handle-set.h"
 #include "telepathy-constants.h"
@@ -105,13 +107,6 @@ static const StatusInfo gabble_statuses[LAST_GABBLE_PRESENCE] = {
  { "offline",   TP_CONN_PRESENCE_TYPE_OFFLINE,       TRUE, TRUE },
  { "hidden",    TP_CONN_PRESENCE_TYPE_HIDDEN,        TRUE, TRUE }
 };
-
-static void
-contact_presence_destroy (ContactPresence *cp)
-{
-  g_free (cp->status_message);
-  g_free (cp);
-}
 
 /* signal enum */
 enum
@@ -236,7 +231,7 @@ gabble_connection_init (GabbleConnection *obj)
   obj->status = TP_CONN_STATUS_CONNECTING;
   obj->handles = gabble_handle_repo_new ();
   obj->disco = gabble_disco_new (obj);
-  obj->presence_cache = gabble_presence_cache_new ();
+  obj->presence_cache = NULL;
 
   priv->jingle_sessions = g_hash_table_new_full (g_str_hash, g_str_equal,
                                                  g_free, NULL);
@@ -1193,8 +1188,18 @@ static void close_all_channels (GabbleConnection *conn);
 static GabbleIMChannel *new_im_channel (GabbleConnection *conn, GabbleHandle handle, gboolean suppress_handler);
 static void make_roster_channels (GabbleConnection *conn);
 static void discover_services (GabbleConnection *conn);
+static void emit_one_presence_update (GabbleConnection *self, GabbleHandle handle);
 
-static void update_presence (GabbleConnection *self, GabbleHandle contact_handle, GabblePresenceId presence_id, const gchar *status_message, const gchar *voice_resource);
+void
+presence_update_cb (GabblePresenceCache *cache, GabbleHandle handle, gpointer user_data)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+
+  if (handle == conn->self_handle)
+    g_debug ("ignoring presence from ourselves on another resource");
+  else
+    emit_one_presence_update (conn, handle);
+}
 
 /**
  * _gabble_connection_connect
@@ -1228,8 +1233,11 @@ _gabble_connection_connect (GabbleConnection *conn,
     {
       char *jid;
       gboolean valid;
+      GabblePresence *presence;
 
       conn->lmconn = lm_connection_new (priv->connect_server);
+      conn->presence_cache = gabble_presence_cache_new (conn->lmconn, conn->handles);
+      g_signal_connect (conn->presence_cache, "presence-update", (GCallback) presence_update_cb, conn);
 
       if (priv->https_proxy_server)
         {
@@ -1273,7 +1281,12 @@ _gabble_connection_connect (GabbleConnection *conn,
       g_assert (valid);
 
       /* set initial presence. TODO: some way for the user to set this */
-      update_presence (conn, conn->self_handle, GABBLE_PRESENCE_AVAILABLE, NULL, "Telepathy");
+      gabble_presence_cache_update (conn->presence_cache, conn->self_handle, priv->resource, GABBLE_PRESENCE_AVAILABLE, NULL);
+      emit_one_presence_update (conn, conn->self_handle);
+      presence = gabble_presence_cache_get (conn->presence_cache, conn->self_handle);
+      g_assert (presence);
+      gabble_presence_set_capabilities (presence, priv->resource,
+          PRESENCE_CAP_JINGLE_VOICE | PRESENCE_CAP_GOOGLE_VOICE);
 
       g_free (jid);
 
@@ -1940,31 +1953,35 @@ destroy_the_bastard (GValue *value)
  */
 static void
 emit_presence_update (GabbleConnection *self,
-                      const GabbleHandle *contact_handles)
+                      const GArray *contact_handles)
 {
-  GQuark data_key = _get_contact_presence_quark();
-  ContactPresence *cp;
-  GHashTable *presence;
+  GHashTable *presence_hash;
   GValueArray *vals;
   GHashTable *contact_status, *parameters;
   guint timestamp = 0; /* this is never set at the moment*/
+  guint i;
 
-  presence = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
+  presence_hash = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
                                     (GDestroyNotify) g_value_array_free);
 
-  for (;*contact_handles; contact_handles++)
+  for (i = 0; i < contact_handles->len; i++)
     {
+      GabbleHandle handle = g_array_index (contact_handles, GabbleHandle, i);
       GValue *message;
+      GabblePresence *presence = gabble_presence_cache_get (self->presence_cache, handle);
 
-      cp = gabble_handle_get_qdata (self->handles, TP_HANDLE_TYPE_CONTACT,
-                                    *contact_handles, data_key);
+      g_assert (gabble_handle_is_valid (self->handles, TP_HANDLE_TYPE_CONTACT, handle));
 
-      if (!cp)
-        continue;
+      /* WTF */
+      if (!presence)
+        {
+          g_debug ("no presence in cache for %d", handle);
+          continue;
+        }
 
       message = g_new0 (GValue, 1);
       g_value_init (message, G_TYPE_STRING);
-      g_value_set_static_string (message, cp->status_message);
+      g_value_set_static_string (message, presence->status_message);
 
       parameters =
         g_hash_table_new_full (g_str_hash, g_str_equal,
@@ -1975,9 +1992,9 @@ emit_presence_update (GabbleConnection *self,
       contact_status =
         g_hash_table_new_full (g_str_hash, g_str_equal,
                                NULL, (GDestroyNotify) g_hash_table_destroy);
-      g_hash_table_insert (contact_status,
-          (gpointer) gabble_statuses[cp->presence_id].name,
-          parameters);
+      g_hash_table_insert (
+        contact_status, (gchar *) gabble_statuses[presence->status].name,
+        parameters);
 
       vals = g_value_array_new (2);
 
@@ -1991,12 +2008,28 @@ emit_presence_update (GabbleConnection *self,
             dbus_g_type_get_map ("GHashTable", G_TYPE_STRING, G_TYPE_VALUE)));
       g_value_take_boxed (g_value_array_get_nth (vals, 1), contact_status);
 
-      g_hash_table_insert (presence, GINT_TO_POINTER (*contact_handles),
+      g_hash_table_insert (presence_hash, GINT_TO_POINTER (handle),
                            vals);
     }
 
-  g_signal_emit (self, signals[PRESENCE_UPDATE], 0, presence);
-  g_hash_table_destroy (presence);
+  g_signal_emit (self, signals[PRESENCE_UPDATE], 0, presence_hash);
+  g_hash_table_destroy (presence_hash);
+}
+
+/**
+ * emit_one_presence_update:
+ * Convenience function for calling emit_presence_update with one handle.
+ */
+
+static void
+emit_one_presence_update (GabbleConnection *self,
+                          GabbleHandle handle)
+{
+  GArray *handles = g_array_sized_new (FALSE, FALSE, sizeof (GabbleHandle), 1);
+
+  g_array_insert_val (handles, 0, handle);
+  emit_presence_update (self, handles);
+  g_array_free (handles, TRUE);
 }
 
 /**
@@ -2011,14 +2044,12 @@ emit_presence_update (GabbleConnection *self,
 static gboolean
 signal_own_presence (GabbleConnection *self, GError **error)
 {
-  GQuark data_key = _get_contact_presence_quark();
-  ContactPresence *cp = gabble_handle_get_qdata (self->handles,
-      TP_HANDLE_TYPE_CONTACT, self->self_handle, data_key);
+  GabblePresence *presence = gabble_presence_cache_get (self->presence_cache, self->self_handle);
   LmMessage *message = NULL;
   LmMessageNode *node;
   LmMessageSubType subtype;
 
-  if (cp->presence_id == GABBLE_PRESENCE_OFFLINE)
+  if (presence->status == GABBLE_PRESENCE_OFFLINE)
     subtype = LM_MESSAGE_SUB_TYPE_UNAVAILABLE;
   else
     subtype = LM_MESSAGE_SUB_TYPE_AVAILABLE;
@@ -2026,7 +2057,7 @@ signal_own_presence (GabbleConnection *self, GError **error)
   message = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_PRESENCE,
               subtype);
 
-  if (cp->presence_id == GABBLE_PRESENCE_HIDDEN)
+  if (presence->status == GABBLE_PRESENCE_HIDDEN)
     {
       if ((self->features & GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE) != 0)
         lm_message_node_set_attribute (message->node, "type", "invisible");
@@ -2034,12 +2065,12 @@ signal_own_presence (GabbleConnection *self, GError **error)
 
   node = lm_message_get_node (message);
 
-  if (cp->status_message)
+  if (presence->status_message)
     {
-      lm_message_node_add_child (node, "status", cp->status_message);
+      lm_message_node_add_child (node, "status", presence->status_message);
     }
 
-  switch (cp->presence_id)
+  switch (presence->status)
     {
     case GABBLE_PRESENCE_AVAILABLE:
     case GABBLE_PRESENCE_OFFLINE:
@@ -2083,69 +2114,6 @@ ERROR:
     lm_message_unref(message);
 
   return FALSE;
-}
-
-
-/**
- * update_presence:
- * @self: A #GabbleConnection
- * @contact_handle: #GabbleHandle representing a contact to update
- * @presence_id: the presence to set
- * @status_message: message associated with new presence
- *
- * This checks the new presence against the stored presence information
- * for this contact, and if it is different, updates our store and
- * emits a PresenceUpdate signal using #emit_presence_update
- */
-static void
-update_presence (GabbleConnection *self, GabbleHandle contact_handle,
-                 GabblePresenceId presence_id,
-                 const gchar *status_message,
-                 const gchar *voice_resource)
-{
-  GQuark data_key = _get_contact_presence_quark();
-  ContactPresence *cp = gabble_handle_get_qdata (self->handles,
-      TP_HANDLE_TYPE_CONTACT, contact_handle, data_key);
-  GabbleHandle handles[2] = {contact_handle, 0};
-
-  if (cp)
-    {
-      if (cp->presence_id == presence_id &&
-          ((cp->status_message == NULL && status_message == NULL) ||
-           (cp->status_message && status_message &&
-            strcmp(cp->status_message, status_message) == 0 &&
-            (cp->voice_resource && voice_resource == NULL))))
-        {
-          return;
-        }
-    }
-  else
-    {
-      cp = g_new0 (ContactPresence, 1);
-      gabble_handle_set_qdata (self->handles, TP_HANDLE_TYPE_CONTACT,
-                               contact_handle, data_key, cp,
-                               (GDestroyNotify) contact_presence_destroy);
-    }
-
-  cp->presence_id = presence_id;
-
-  g_free (cp->status_message);
-  if (status_message)
-    cp->status_message = g_strdup (status_message);
-  else
-    cp->status_message = NULL;
-
-  if (voice_resource)
-    {
-      g_debug ("%s: setting voice resource to %s (was %s) for GabbleHandle %d",
-               G_STRFUNC, voice_resource,
-               cp->voice_resource ? cp->voice_resource : "<unset>",
-               contact_handle);
-      g_free (cp->voice_resource);
-      cp->voice_resource = g_strdup (voice_resource);
-    }
-
-  emit_presence_update (self, handles);
 }
 
 
@@ -2690,20 +2658,6 @@ _gabble_connection_jingle_session_unregister (GabbleConnection *conn,
   g_hash_table_insert (priv->jingle_sessions, g_strdup (sid), NULL);
 }
 
-gboolean
-_gabble_connection_contact_supports_voice (GabbleConnection *conn,
-                                           GabbleHandle handle)
-{
-  GQuark data_key;
-  ContactPresence *cp;
-
-  data_key = _get_contact_presence_quark ();
-  cp = gabble_handle_get_qdata (conn->handles, TP_HANDLE_TYPE_CONTACT,
-                                handle, data_key);
-
-  return (cp && cp->voice_resource);
-}
-
 /**
  * connection_iq_jingle_cb
  *
@@ -2833,6 +2787,25 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
+
+/**
+ * connection_iq_disco_cb
+ *
+ * Called by loudmouth when we get an incoming <iq>. This handler handles
+ * disco-related IQs.
+ */
+/*
+static LmHandlerResult
+connection_iq_disco_cb (LmMessageHandler *handler,
+                        LmConnection *connection,
+                        LmMessage *message,
+                        gpointer user_data)
+{
+  // GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+
+  return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+}
+*/
 
 /**
  * connection_iq_unknown_cb
@@ -3614,20 +3587,14 @@ gboolean gabble_connection_advertise_capabilities (GabbleConnection *obj, const 
 gboolean gabble_connection_clear_status (GabbleConnection *obj, GError **error)
 {
   GabbleConnectionPrivate *priv;
-  ContactPresence *cp;
-  GQuark data_key = _get_contact_presence_quark();
-
   g_assert (GABBLE_IS_CONNECTION (obj));
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
 
   ERROR_IF_NOT_CONNECTED (obj, *error);
 
-  cp = gabble_handle_get_qdata (obj->handles,
-      TP_HANDLE_TYPE_CONTACT, obj->self_handle, data_key);
-
-  update_presence (obj, obj->self_handle, GABBLE_PRESENCE_AVAILABLE, NULL, NULL);
-
+  gabble_presence_cache_update (obj->presence_cache, obj->self_handle, priv->resource, GABBLE_PRESENCE_AVAILABLE, NULL);
+  emit_one_presence_update (obj, obj->self_handle);
   return signal_own_presence (obj, error);
 }
 
@@ -4121,22 +4088,19 @@ gboolean gabble_connection_release_handle (GabbleConnection *obj, guint handle_t
  */
 gboolean gabble_connection_remove_status (GabbleConnection *obj, const gchar * status, GError **error)
 {
-  GQuark data_key = _get_contact_presence_quark();
-  GabbleConnectionPrivate *priv;
-  ContactPresence *cp;
+  GabblePresence *presence;
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
 
   g_assert (GABBLE_IS_CONNECTION (obj));
 
-  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
-
   ERROR_IF_NOT_CONNECTED (obj, *error)
 
-  cp = gabble_handle_get_qdata (obj->handles,
-      TP_HANDLE_TYPE_CONTACT, obj->self_handle, data_key);
+  presence = gabble_presence_cache_get (obj->presence_cache, obj->self_handle);
 
-  if (strcmp (status, gabble_statuses[cp->presence_id].name) == 0)
+  if (strcmp (status, gabble_statuses[presence->status].name) == 0)
     {
-      update_presence (obj, obj->self_handle, GABBLE_PRESENCE_AVAILABLE, NULL, NULL);
+      gabble_presence_cache_update (obj->presence_cache, obj->self_handle, priv->resource, GABBLE_PRESENCE_AVAILABLE, NULL);
+      emit_one_presence_update (obj, obj->self_handle);
       return signal_own_presence (obj, error);
     }
   else
@@ -4441,7 +4405,7 @@ contact_info_got_vcard (GabbleConnection *conn, LmMessage *sent_msg,
   for (;child; child = child->next)
     {
       str = lm_message_node_to_string (child);
-      g_debug ("%s: %s", G_STRFUNC, str);
+      //g_debug ("%s: %s", G_STRFUNC, str);
       if (0 != strcmp (child->name, "PHOTO")
        && 0 != strcmp (child->name, "photo"))
         {
@@ -4783,7 +4747,6 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
 gboolean gabble_connection_request_presence (GabbleConnection *obj, const GArray * contacts, GError **error)
 {
   GabbleConnectionPrivate *priv;
-  GabbleHandle *handles = (GabbleHandle *)contacts->data;
 
   g_assert (GABBLE_IS_CONNECTION (obj));
 
@@ -4791,12 +4754,13 @@ gboolean gabble_connection_request_presence (GabbleConnection *obj, const GArray
 
   ERROR_IF_NOT_CONNECTED (obj, *error)
 
+  if (!gabble_handles_are_valid (obj->handles, TP_HANDLE_TYPE_CONTACT, contacts, FALSE, error))
+    return FALSE;
+
   /*TODO; what do we do about requests for non-rostered contacts?*/
 
   if (contacts->len)
-    {
-      emit_presence_update (obj, handles);
-    }
+    emit_presence_update (obj, contacts);
 
   return TRUE;
 }
@@ -4839,6 +4803,7 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
 {
   struct _i_hate_g_hash_table_foreach *data =
     (struct _i_hate_g_hash_table_foreach*) user_data;
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (data->conn);
 
   int i;
 
@@ -4878,7 +4843,8 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
           status = g_value_get_string (message);
         }
 
-      update_presence (data->conn, data->conn->self_handle, i, status, NULL);
+      gabble_presence_cache_update (data->conn->presence_cache, data->conn->self_handle, priv->resource, i, status);
+      emit_one_presence_update (data->conn, data->conn->self_handle);
       data->retval = signal_own_presence (data->conn, data->error);
     }
   else

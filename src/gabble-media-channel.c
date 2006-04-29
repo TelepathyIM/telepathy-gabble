@@ -24,6 +24,8 @@
 #include <stdlib.h>
 
 #include "gabble-connection.h"
+#include "gabble-presence.h"
+#include "gabble-presence-cache.h"
 
 #include "telepathy-errors.h"
 #include "telepathy-helpers.h"
@@ -776,8 +778,12 @@ gabble_media_channel_add_member (GObject *obj, GabbleHandle handle, const gchar 
   GabbleMediaChannel *chan = GABBLE_MEDIA_CHANNEL (obj);
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
   GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
+  GabblePresence *presence;
 
-  if (!_gabble_connection_contact_supports_voice (priv->conn, handle))
+  presence = gabble_presence_cache_get (priv->conn->presence_cache, handle);
+  g_assert (presence);
+
+  if (!gabble_presence_pick_resource_by_caps (presence, PRESENCE_CAP_GOOGLE_VOICE))
     {
       g_debug ("%s: handle %u doesn't support voice", G_STRFUNC, handle);
 

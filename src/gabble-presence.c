@@ -143,25 +143,45 @@ _find_resource (GabblePresence *presence, const gchar *resource)
 void
 gabble_presence_update (GabblePresence *presence, const gchar *resource, GabblePresenceId status, const gchar *status_message)
 {
-  Resource *res;
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
 
   g_assert (NULL != resource);
   g_debug ("UPDATE: %s/%d/%s", resource, status, status_message);
 
-  res = _find_resource (presence, resource);
-
-  if (NULL == res)
+  if (status == GABBLE_PRESENCE_OFFLINE)
     {
-      res = _resource_new (g_strdup (resource));
-      priv->resources = g_slist_append (priv->resources, res);
+      Resource *res = _find_resource (presence, resource);
+
+      if (NULL != res)
+        {
+          priv->resources = g_slist_remove (priv->resources, res);
+
+          if (NULL == priv->resources)
+            {
+              presence->status = GABBLE_PRESENCE_OFFLINE;
+              presence->status_message = NULL;
+            }
+        }
     }
+  else
+    {
+      Resource *res = _find_resource (presence, resource);
 
-  res->status = status;
-  g_free (res->status_message);
-  res->status_message = g_strdup (status_message);
+      if (NULL == res)
+        {
+          res = _resource_new (g_strdup (resource));
+          priv->resources = g_slist_append (priv->resources, res);
+        }
 
-  presence->status = res->status;
-  presence->status_message = res->status_message;
+      res->status = status;
+      g_free (res->status_message);
+      res->status_message = g_strdup (status_message);
+
+      if (status < presence->status)
+        {
+          presence->status = res->status;
+          presence->status_message = res->status_message;
+        }
+    }
 }
 

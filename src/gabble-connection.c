@@ -1970,7 +1970,7 @@ emit_presence_update (GabbleConnection *self,
       GValue *message;
       GabblePresence *presence = gabble_presence_cache_get (self->presence_cache, handle);
 
-      g_assert (gabble_handle_is_valid (self->handles, TP_HANDLE_TYPE_CONTACT, handle));
+      g_assert (gabble_handle_is_valid (self->handles, TP_HANDLE_TYPE_CONTACT, handle, NULL));
 
       /* WTF */
       if (!presence)

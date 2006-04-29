@@ -1190,7 +1190,7 @@ static void make_roster_channels (GabbleConnection *conn);
 static void discover_services (GabbleConnection *conn);
 static void emit_one_presence_update (GabbleConnection *self, GabbleHandle handle);
 
-void
+static void
 presence_update_cb (GabblePresenceCache *cache, GabbleHandle handle, gpointer user_data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);

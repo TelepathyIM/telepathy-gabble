@@ -162,7 +162,6 @@ struct _GabbleConnectionPrivate
 {
   LmMessageHandler *message_cb;
   LmMessageHandler *presence_muc_cb;
-  LmMessageHandler *presence_cb;
   LmMessageHandler *presence_roster_cb;
   LmMessageHandler *iq_roster_cb;
   LmMessageHandler *iq_jingle_cb;
@@ -769,10 +768,6 @@ gabble_connection_dispose (GObject *object)
                                                 LM_MESSAGE_TYPE_PRESENCE);
       lm_message_handler_unref (priv->presence_muc_cb);
 
-      lm_connection_unregister_message_handler (self->lmconn, priv->presence_cb,
-                                                LM_MESSAGE_TYPE_PRESENCE);
-      lm_message_handler_unref (priv->presence_cb);
-
       lm_connection_unregister_message_handler (self->lmconn, priv->presence_roster_cb,
                                                 LM_MESSAGE_TYPE_PRESENCE);
       lm_message_handler_unref (priv->presence_roster_cb);
@@ -1180,7 +1175,6 @@ _gabble_connection_send_with_reply (GabbleConnection *conn,
 }
 
 static LmHandlerResult connection_message_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
-static LmHandlerResult connection_presence_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmHandlerResult connection_presence_muc_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmHandlerResult connection_presence_roster_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmHandlerResult connection_iq_roster_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
@@ -1301,12 +1295,6 @@ _gabble_connection_connect (GabbleConnection *conn,
       lm_connection_register_message_handler (conn->lmconn, priv->presence_muc_cb,
                                               LM_MESSAGE_TYPE_PRESENCE,
                                               LM_HANDLER_PRIORITY_FIRST);
-
-      priv->presence_cb = lm_message_handler_new (connection_presence_cb,
-                                                  conn, NULL);
-      lm_connection_register_message_handler (conn->lmconn, priv->presence_cb,
-                                              LM_MESSAGE_TYPE_PRESENCE,
-                                              LM_HANDLER_PRIORITY_NORMAL);
 
       priv->presence_roster_cb = lm_message_handler_new (connection_presence_roster_cb,
                                                   conn, NULL);
@@ -2235,156 +2223,6 @@ connection_presence_muc_cb (LmMessageHandler *handler,
   return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 }
 
-
-/**
- * connection_presence_cb:
- * @handler: #LmMessageHandler for this message
- * @connection: #LmConnection that originated the message
- * @message: the presence message
- * @user_data: callback data
- *
- * Called by loudmouth when we get an incoming <presence>.
- */
-static LmHandlerResult
-connection_presence_cb (LmMessageHandler *handler,
-                        LmConnection *lmconn,
-                        LmMessage *message,
-                        gpointer user_data)
-{
-  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
-  LmMessageNode *pres_node, *child_node, *node;
-  const char *from;
-  LmMessageSubType sub_type;
-  gboolean is_for_muc;
-  GabbleHandle handle;
-  const gchar *presence_show = NULL;
-  const gchar *status_message = NULL;
-  GabblePresenceId presence_id;
-  gchar *voice_resource = NULL;
-
-  g_assert (lmconn == conn->lmconn);
-
-  pres_node = lm_message_get_node (message);
-
-  from = lm_message_node_get_attribute (pres_node, "from");
-
-  if (from == NULL)
-    {
-      HANDLER_DEBUG (pres_node, "presence stanza without from attribute, ignoring");
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-    }
-
-  sub_type = lm_message_get_sub_type (message);
-
-  is_for_muc = node_is_for_muc (pres_node, NULL);
-
-  handle = gabble_handle_for_contact (conn->handles, from, is_for_muc);
-
-  if (handle == 0)
-    {
-      HANDLER_DEBUG (pres_node, "ignoring presence from malformed jid");
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-    }
-
-  if (handle == conn->self_handle)
-    {
-      HANDLER_DEBUG (pres_node, "ignoring presence from ourselves on another resource");
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-    }
-
-  g_assert (handle != 0);
-
-  child_node = lm_message_node_get_child (pres_node, "status");
-  if (child_node)
-    status_message = lm_message_node_get_value (child_node);
-
-  switch (sub_type)
-    {
-    case LM_MESSAGE_SUB_TYPE_ERROR:
-      g_warning ("%s: presence error received, setting contact to offline",
-                 G_STRFUNC);
-      HANDLER_DEBUG (pres_node, "presence node");
-    case LM_MESSAGE_SUB_TYPE_UNAVAILABLE:
-      update_presence (conn, handle, GABBLE_PRESENCE_OFFLINE, status_message, NULL);
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-    case LM_MESSAGE_SUB_TYPE_NOT_SET:
-    case LM_MESSAGE_SUB_TYPE_AVAILABLE:
-      child_node = lm_message_node_get_child (pres_node, "show");
-      if (!child_node)
-        {
-          presence_id = GABBLE_PRESENCE_AVAILABLE;
-        }
-      else
-        {
-          presence_show = lm_message_node_get_value (child_node);
-          if (presence_show)
-            {
-              if (0 == strcmp (presence_show, JABBER_PRESENCE_SHOW_AWAY))
-                presence_id = GABBLE_PRESENCE_AWAY;
-              else if (0 == strcmp (presence_show, JABBER_PRESENCE_SHOW_CHAT))
-                presence_id = GABBLE_PRESENCE_CHAT;
-              else if (0 == strcmp (presence_show, JABBER_PRESENCE_SHOW_DND))
-                presence_id = GABBLE_PRESENCE_DND;
-              else if (0 == strcmp (presence_show, JABBER_PRESENCE_SHOW_XA))
-                presence_id = GABBLE_PRESENCE_XA;
-              else
-                {
-                  HANDLER_DEBUG (pres_node, "unrecognised <show/> value received from "
-                      "server, setting presence to available");
-                  presence_id = GABBLE_PRESENCE_AVAILABLE;
-                }
-            }
-          else
-            {
-              HANDLER_DEBUG (pres_node, "empty <show> tag received from "
-                  "server, setting presence to available");
-              presence_id = GABBLE_PRESENCE_AVAILABLE;
-            }
-        }
-
-      for (node = pres_node->children; node; node = node->next)
-        {
-          const gchar *cap_node, *cap_ext, *cap_xmlns;
-          gchar *username, *server;
-
-          if (strcmp (node->name, "c") != 0)
-            continue;
-
-          cap_node = lm_message_node_get_attribute (node, "node");
-          cap_ext = lm_message_node_get_attribute (node, "ext");
-          cap_xmlns = lm_message_node_get_attribute (node, "xmlns");
-
-          if (!cap_node || !cap_ext || !cap_xmlns)
-            continue;
-
-          if (strcmp (cap_node, "http://www.google.com/xmpp/client/caps") != 0)
-            continue;
-
-          if (strcmp (cap_ext, "voice-v1") != 0)
-            continue;
-
-          if (strcmp (cap_xmlns, "http://jabber.org/protocol/caps") != 0)
-            continue;
-
-          gabble_handle_decode_jid (from, &username, &server, &voice_resource);
-
-          g_debug ("%s: %s has voice-v1 support, storing resource %s",
-                   G_STRFUNC, from, voice_resource);
-
-          g_free (username);
-          g_free (server);
-
-          break;
-        }
-
-      update_presence (conn, handle, presence_id, status_message, voice_resource);
-      g_free (voice_resource);
-
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-    default:
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-    }
-}
 
 
 /**

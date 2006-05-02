@@ -160,6 +160,7 @@ struct _GabbleConnectionPrivate
   LmMessageHandler *presence_roster_cb;
   LmMessageHandler *iq_roster_cb;
   LmMessageHandler *iq_jingle_cb;
+  LmMessageHandler *iq_disco_cb;
   LmMessageHandler *iq_unknown_cb;
 
   /* telepathy properties */
@@ -775,6 +776,10 @@ gabble_connection_dispose (GObject *object)
                                                 LM_MESSAGE_TYPE_IQ);
       lm_message_handler_unref (priv->iq_jingle_cb);
 
+      lm_connection_unregister_message_handler (self->lmconn, priv->iq_disco_cb,
+                                                LM_MESSAGE_TYPE_IQ);
+      lm_message_handler_unref (priv->iq_disco_cb);
+
       lm_connection_unregister_message_handler (self->lmconn, priv->iq_unknown_cb,
                                                 LM_MESSAGE_TYPE_IQ);
       lm_message_handler_unref (priv->iq_unknown_cb);
@@ -1174,6 +1179,7 @@ static LmHandlerResult connection_presence_muc_cb (LmMessageHandler*, LmConnecti
 static LmHandlerResult connection_presence_roster_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmHandlerResult connection_iq_roster_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmHandlerResult connection_iq_jingle_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
+static LmHandlerResult connection_iq_disco_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmHandlerResult connection_iq_unknown_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmSSLResponse connection_ssl_cb (LmSSL*, LmSSLStatus, gpointer);
 static void connection_open_cb (LmConnection*, gboolean, gpointer);
@@ -1324,6 +1330,12 @@ _gabble_connection_connect (GabbleConnection *conn,
       priv->iq_jingle_cb = lm_message_handler_new (connection_iq_jingle_cb,
                                                    conn, NULL);
       lm_connection_register_message_handler (conn->lmconn, priv->iq_jingle_cb,
+                                              LM_MESSAGE_TYPE_IQ,
+                                              LM_HANDLER_PRIORITY_NORMAL);
+
+      priv->iq_disco_cb = lm_message_handler_new (connection_iq_disco_cb,
+                                                  conn, NULL);
+      lm_connection_register_message_handler (conn->lmconn, priv->iq_disco_cb,
                                               LM_MESSAGE_TYPE_IQ,
                                               LM_HANDLER_PRIORITY_NORMAL);
 
@@ -2794,18 +2806,75 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
  * Called by loudmouth when we get an incoming <iq>. This handler handles
  * disco-related IQs.
  */
-/*
 static LmHandlerResult
 connection_iq_disco_cb (LmMessageHandler *handler,
                         LmConnection *connection,
                         LmMessage *message,
                         gpointer user_data)
 {
-  // GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  LmMessage *result;
+  LmMessageNode *node, *query, *feature;
+  gchar *to_jid;
+  const gchar *xmlns, *from_jid;
 
-  return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+  HANDLER_DEBUG (message->node, "got IQ");
+
+  if (lm_message_get_sub_type (message) != LM_MESSAGE_SUB_TYPE_GET)
+    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+
+  g_debug ("1");
+
+  node = lm_message_get_node (message);
+
+  to_jid = g_strdup_printf ("%s/%s", gabble_handle_inspect (conn->handles, TP_HANDLE_TYPE_CONTACT, conn->self_handle), priv->resource);
+  g_assert (0 == strcmp (lm_message_node_get_attribute (node, "to"), to_jid));
+  g_free (to_jid);
+
+  from_jid = lm_message_node_get_attribute (node, "from");
+  g_assert (from_jid);
+
+  node = lm_message_node_get_child (node, "query");
+
+  if (!node)
+    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+
+  g_debug ("2");
+
+  xmlns = lm_message_node_get_attribute (node, "xmlns");
+
+  if (!xmlns)
+    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+
+  g_debug ("3");
+
+  if (0 != strcmp (xmlns, "http://jabber.org/protocol/disco#info"))
+    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+
+  result = lm_message_new_with_sub_type (from_jid, LM_MESSAGE_TYPE_IQ,
+                                         LM_MESSAGE_SUB_TYPE_RESULT);
+  lm_message_node_set_attribute (result->node, "id",
+      lm_message_node_get_attribute (message->node, "id"));
+
+  query = lm_message_node_add_child (result->node, "query", NULL);
+  lm_message_node_set_attribute (query, "xmlns", xmlns);
+
+  feature = lm_message_node_add_child (query, "feature", NULL);
+  lm_message_node_set_attribute (feature, "var",
+      "http://jabber.org/protocol/jingle");
+
+  feature = lm_message_node_add_child (query, "feature", NULL);
+  lm_message_node_set_attribute (feature, "var",
+      "http://jabber.org/protocol/jingle/media/audio");
+
+  HANDLER_DEBUG (result->node, "sending disco response");
+
+  if (!lm_connection_send (conn->lmconn, result, NULL))
+    g_debug("sending disco response failed");
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
-*/
 
 /**
  * connection_iq_unknown_cb

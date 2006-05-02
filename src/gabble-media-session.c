@@ -174,7 +174,6 @@ gabble_media_session_constructor (GType type, guint n_props,
   GObject *obj;
   GabbleMediaSessionPrivate *priv;
   DBusGConnection *bus;
-  //ContactPresence *cp;
   GabblePresence *presence;
 
   obj = G_OBJECT_CLASS (gabble_media_session_parent_class)->

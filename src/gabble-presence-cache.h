@@ -50,7 +50,7 @@ struct _GabblePresenceCacheClass {
 
 GType gabble_presence_cache_get_type (void);
 
-GabblePresenceCache *gabble_presence_cache_new (LmConnection *lm_conn, GabbleHandleRepo *handles);
+GabblePresenceCache *gabble_presence_cache_new (GabbleConnection *conn);
 GabblePresence *gabble_presence_cache_get (GabblePresenceCache *cache, GabbleHandle handle);
 LmHandlerResult gabble_presence_cache_parse_message (GabblePresenceCache *cache, GabbleHandle handle, const char *from, LmMessage *message);
 void gabble_presence_cache_update (GabblePresenceCache *cache, GabbleHandle handle, const gchar *resource, GabblePresenceId presence_id, const gchar *status_message, gint8 priority);

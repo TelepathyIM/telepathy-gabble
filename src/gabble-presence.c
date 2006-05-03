@@ -17,6 +17,7 @@ struct _Resource {
     GabblePresenceId status;
     gchar *status_message;
     gchar *status_name;
+    gint8 priority;
 };
 
 typedef struct _GabblePresencePrivate GabblePresencePrivate;
@@ -33,6 +34,7 @@ _resource_new (gchar *name)
   new->caps = PRESENCE_CAP_NONE;
   new->status = GABBLE_PRESENCE_OFFLINE;
   new->status_message = NULL;
+  new->priority = 0;
   return new;
 }
 
@@ -141,12 +143,12 @@ _find_resource (GabblePresence *presence, const gchar *resource)
 }
 
 void
-gabble_presence_update (GabblePresence *presence, const gchar *resource, GabblePresenceId status, const gchar *status_message)
+gabble_presence_update (GabblePresence *presence, const gchar *resource, GabblePresenceId status, const gchar *status_message, gint8 priority)
 {
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
 
   g_assert (NULL != resource);
-  g_debug ("UPDATE: %s/%d/%s", resource, status, status_message);
+  g_debug ("UPDATE: %s/%d/%s/%d", resource, status, status_message, priority);
 
   if (status == GABBLE_PRESENCE_OFFLINE)
     {
@@ -176,6 +178,7 @@ gabble_presence_update (GabblePresence *presence, const gchar *resource, GabbleP
       res->status = status;
       g_free (res->status_message);
       res->status_message = g_strdup (status_message);
+      res->priority = priority;
 
       if (status < presence->status)
         {

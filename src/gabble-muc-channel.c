@@ -2761,8 +2761,11 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
         {
           id = ROOM_PROP_ANONYMOUS;
 
-          val_bool = g_value_get_boolean (ctx->values[id]);
-          val_str = (val_bool) ? "admins" : "anyone";
+          if (ctx->values[id])
+            {
+              val_bool = g_value_get_boolean (ctx->values[id]);
+              val_str = (val_bool) ? "admins" : "anyone";
+            }
         }
       else if (strcmp (var, "members_only") == 0 ||
                strcmp (var, "muc#owner_inviteonly") == 0)

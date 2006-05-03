@@ -2879,22 +2879,24 @@ request_config_form_submit_reply_cb (GabbleConnection *conn, LmMessage *sent_msg
   if (flags & flag) \
     { \
       if (i++ > 0) \
-        strcat (str, "\n              "); \
-      strcat (str, #flag); \
+        g_string_append (str, "|"); \
+      g_string_append (str, #flag + 17); \
     }
 
 static gchar *
 room_property_flags_to_string (TpPropertyFlags flags)
 {
   gint i = 0;
-  gchar str[512] = "[" ANSI_BOLD_OFF;
+  GString *str;
+
+  str = g_string_new ("[" ANSI_BOLD_OFF);
 
   RPTS_APPEND_FLAG_IF_SET (TP_PROPERTY_FLAG_READ);
   RPTS_APPEND_FLAG_IF_SET (TP_PROPERTY_FLAG_WRITE);
 
-  strcat (str, ANSI_BOLD_ON "]");
+  g_string_append (str, ANSI_BOLD_ON "]");
 
-  return g_strdup (str);
+  return g_string_free (str, FALSE);
 }
 
 static void

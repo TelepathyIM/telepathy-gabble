@@ -45,6 +45,17 @@ G_DEFINE_TYPE(GabbleMucChannel, gabble_muc_channel, G_TYPE_OBJECT)
 
 #define DEFAULT_JOIN_TIMEOUT (180 * 1000)
 
+/*
+ * FIXME: move these and the other defines in gabble-media-session.h
+ *        to a common header
+ */
+#define ANSI_RESET      "\x1b[0m"
+#define ANSI_BOLD_ON    "\x1b[1m"
+#define ANSI_BOLD_OFF   "\x1b[22m"
+#define ANSI_FG_CYAN    "\x1b[36m"
+#define ANSI_FG_WHITE   "\x1b[37m"
+#define ANSI_BG_RED     "\x1b[41m"
+
 /* signal enum */
 enum
 {
@@ -129,7 +140,7 @@ static const gchar *muc_affiliations[NUM_AFFILIATIONS] =
 /* room properties */
 enum
 {
-  ROOM_PROP_ANONYMOUS,
+  ROOM_PROP_ANONYMOUS = 0,
   ROOM_PROP_INVITE_ONLY,
   ROOM_PROP_MODERATED,
   ROOM_PROP_NAME,
@@ -174,7 +185,14 @@ struct _RoomProperty {
 
 typedef struct _RoomProperty RoomProperty;
 
-/* private structure */
+/* private structures */
+
+typedef struct {
+    DBusGMethodInvocation *call_ctx;
+    guint32 remaining;
+    GValue *values[NUM_ROOM_PROPS];
+} SetPropertiesContext;
+
 typedef struct _GabbleMucChannelPrivate GabbleMucChannelPrivate;
 
 struct _GabbleMucChannelPrivate
@@ -200,6 +218,7 @@ struct _GabbleMucChannelPrivate
   GQueue *pending_messages;
 
   RoomProperty room_props[NUM_ROOM_PROPS];
+  SetPropertiesContext set_props_ctx;
 
   gboolean closed;
   gboolean dispose_has_run;
@@ -1472,6 +1491,8 @@ clear_message_queue (GabbleMucChannel *chan)
     }
 }
 
+static void set_properties_context_return (GabbleMucChannel *chan, GError *error);
+
 /**
  * _gabble_muc_channel_receive
  */
@@ -1496,6 +1517,26 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
     {
       GArray *changed_values, *changed_flags;
       GValue val = { 0, };
+
+      priv->set_props_ctx.remaining &= ~(1 << ROOM_PROP_SUBJECT);
+
+      if (lm_message_node_get_child (msg_node, "error"))
+        {
+          g_debug ("%s: error node present", G_STRFUNC);
+
+          if (priv->set_props_ctx.call_ctx)
+            {
+              GError *error;
+
+              /* FIXME: use gabble-error to parse the error node */
+              error = g_error_new (TELEPATHY_ERRORS, PermissionDenied,
+                  "failed to change subject: permission denied");
+
+              set_properties_context_return (chan, error);
+            }
+
+          return TRUE;
+        }
 
       changed_values = g_array_sized_new (FALSE, FALSE, sizeof (guint), 3);
       changed_flags = g_array_sized_new (FALSE, FALSE, sizeof (guint), 3);
@@ -1539,6 +1580,16 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
       g_array_free (changed_values, TRUE);
       g_array_free (changed_flags, TRUE);
 
+      if (priv->set_props_ctx.call_ctx && priv->set_props_ctx.remaining == 0)
+        {
+          set_properties_context_return (chan, NULL);
+        }
+
+      return TRUE;
+    }
+  else if (sender == priv->handle)
+    {
+      HANDLER_DEBUG (msg_node, "ignoring message from channel");
       return TRUE;
     }
 
@@ -2367,10 +2418,63 @@ gboolean gabble_muc_channel_get_properties (GabbleMucChannel *obj, const GArray 
   return TRUE;
 }
 
-typedef struct {
-    DBusGMethodInvocation *call_ctx;
-    GHashTable *prop_list;
-} RequestConfigFormContext;
+static void set_properties_context_return (GabbleMucChannel *chan, GError *error)
+{
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  SetPropertiesContext *ctx = &priv->set_props_ctx;
+  GArray *changed_props_val, *changed_props_flags;
+  int i, n;
+
+  g_debug ("%s: %s", G_STRFUNC, (error) ? "failure" : "success");
+
+  changed_props_val = g_array_sized_new (FALSE, FALSE, sizeof (guint),
+                                         NUM_ROOM_PROPS);
+  changed_props_flags = g_array_sized_new (FALSE, FALSE, sizeof (guint),
+                                           NUM_ROOM_PROPS);
+
+  for (i = n = 0; i < NUM_ROOM_PROPS; i++)
+    {
+      if (ctx->values[i])
+        {
+          if (!error && i != ROOM_PROP_SUBJECT)
+            {
+              room_property_change_value (chan, i, ctx->values[i],
+                                          changed_props_val);
+
+              room_property_change_flags (chan, i, TP_PROPERTY_FLAG_READ,
+                                          0, changed_props_flags);
+
+              n++;
+            }
+
+          g_value_unset (ctx->values[i]);
+        }
+    }
+
+  if (!error)
+    {
+      if (n)
+        {
+          room_properties_emit_changed (chan, changed_props_val);
+          room_properties_emit_flags (chan, changed_props_flags);
+        }
+
+      dbus_g_method_return (ctx->call_ctx);
+    }
+  else
+    {
+      dbus_g_method_return_error (ctx->call_ctx, error);
+      g_error_free (error);
+
+      /* Get the properties into a consistent state. */
+      room_properties_update (chan);
+    }
+
+  memset (ctx, 0, sizeof (SetPropertiesContext));
+
+  g_array_free (changed_props_val, TRUE);
+  g_array_free (changed_props_flags, TRUE);
+}
 
 static LmHandlerResult request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg, LmMessage *reply_msg, GObject *object, gpointer user_data);
 
@@ -2388,22 +2492,25 @@ gboolean gabble_muc_channel_set_properties (GabbleMucChannel *obj, const GPtrArr
   GabbleMucChannelPrivate *priv;
   gboolean result;
   GError *error;
-  gboolean ret;
-  GHashTable *props_config;
   LmMessage *msg;
   LmMessageNode *node;
-  const gchar *str;
-  guint i, n;
+  guint i;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (obj));
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
 
-  result = TRUE;
-  n = 0;
+  /* Is another SetProperties request already in progress? */
+  if (priv->set_props_ctx.call_ctx)
+    {
+      error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                           "A SetProperties request is already in progress");
+      goto ERROR;
+    }
 
+  priv->set_props_ctx.call_ctx = context;
+  result = TRUE;
   error = NULL;
-  props_config = NULL;
 
   /* Check input property identifiers */
   for (i = 0; i < properties->len; i++)
@@ -2423,17 +2530,23 @@ gboolean gabble_muc_channel_set_properties (GabbleMucChannel *obj, const GPtrArr
       /* Valid? */
       if (prop_id >= NUM_ROOM_PROPS)
         {
+          g_value_unset (prop_val);
+
           error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
                                "invalid property identifier %d", prop_id);
-          goto PROPERTY_CHECKED;
+          goto ERROR;
         }
+
+      /* Store the value in the context */
+      priv->set_props_ctx.remaining |= 1 << prop_id;
+      priv->set_props_ctx.values[prop_id] = prop_val;
 
       /* Permitted? */
       if (!(priv->room_props[prop_id].flags & TP_PROPERTY_FLAG_WRITE))
         {
           error = g_error_new (TELEPATHY_ERRORS, PermissionDenied,
                                "permission denied for property identifier %d", prop_id);
-          goto PROPERTY_CHECKED;
+          goto ERROR;
         }
 
       /* Compatible type? */
@@ -2443,142 +2556,54 @@ gboolean gabble_muc_channel_set_properties (GabbleMucChannel *obj, const GPtrArr
           error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
                                "incompatible value type for property identifier %d",
                                prop_id);
-          goto PROPERTY_CHECKED;
-        }
-
-PROPERTY_CHECKED:
-      g_value_unset (prop_val);
-
-      if (error)
-        {
-          dbus_g_method_return_error (context, error);
-          g_error_free (error);
-
-          result = FALSE;
-          goto OUT;
+          goto ERROR;
         }
     }
 
-
-  /* Try to change subject first, and in the same run, determine if we're
-   * about to change the channel configuration. */
-
-  error = NULL;
-
-  for (i = 0; i < properties->len; i++)
+  /* Changing subject? */
+  if (priv->set_props_ctx.values[ROOM_PROP_SUBJECT])
     {
-      GValue val_struct = { 0, };
-      guint prop_id;
-      GValue *prop_val;
-      GValue *cfg_val;
+      const gchar *str;
 
-      g_value_init (&val_struct, TP_TYPE_PROPERTY_VALUE_STRUCT);
-      g_value_set_static_boxed (&val_struct, g_ptr_array_index (properties, i));
+      str = g_value_get_string (priv->set_props_ctx.values[ROOM_PROP_SUBJECT]);
 
-      dbus_g_type_struct_get (&val_struct,
-          0, &prop_id,
-          1, &prop_val,
-          G_MAXUINT);
+      msg = lm_message_new_with_sub_type (priv->jid,
+          LM_MESSAGE_TYPE_MESSAGE, LM_MESSAGE_SUB_TYPE_GROUPCHAT);
+      lm_message_node_add_child (msg->node, "subject", str);
 
-      switch (prop_id) {
-        case ROOM_PROP_ANONYMOUS:
-        case ROOM_PROP_INVITE_ONLY:
-        case ROOM_PROP_MODERATED:
-        case ROOM_PROP_NAME:
-        case ROOM_PROP_PASSWORD:
-        case ROOM_PROP_PASSWORD_REQUIRED:
-        case ROOM_PROP_PERSISTENT:
-        case ROOM_PROP_PRIVATE:
-          if (props_config == NULL)
-            {
-              props_config = g_hash_table_new_full (g_direct_hash,
-                  g_direct_equal, NULL, (GDestroyNotify) g_value_unset);
-            }
+      _gabble_connection_send (priv->conn, msg, &error);
 
-          cfg_val = g_new0 (GValue, 1);
-          g_value_init (cfg_val, G_VALUE_TYPE (prop_val));
-          g_value_copy (prop_val, cfg_val);
-
-          g_hash_table_insert (props_config, GUINT_TO_POINTER (prop_id),
-                               cfg_val);
-
-          break;
-        case ROOM_PROP_SUBJECT:
-          str = g_value_get_string (prop_val);
-
-          msg = lm_message_new_with_sub_type (priv->jid,
-              LM_MESSAGE_TYPE_MESSAGE, LM_MESSAGE_SUB_TYPE_GROUPCHAT);
-          lm_message_node_add_child (msg->node, "subject", str);
-
-          ret = _gabble_connection_send (priv->conn, msg, &error);
-
-          lm_message_unref (msg);
-
-          if (!ret)
-            {
-              goto PROPERTY_HANDLED;
-            }
-
-          n++;
-
-          break;
-        default:
-          g_assert_not_reached ();
-      }
-
-PROPERTY_HANDLED:
-      g_value_unset (prop_val);
+      lm_message_unref (msg);
 
       if (error)
-        {
-          dbus_g_method_return_error (context, error);
-          g_error_free (error);
-
-          result = FALSE;
-          goto OUT;
-        }
+        goto ERROR;
     }
 
-  if (props_config)
+  /* Changing any other properties? */
+  if ((priv->set_props_ctx.remaining & ~(1 << ROOM_PROP_SUBJECT)) != 0)
     {
-      RequestConfigFormContext *ctx = g_new (RequestConfigFormContext, 1);
-
-      ctx->call_ctx = context;
-      ctx->prop_list = props_config;
-
       msg = lm_message_new_with_sub_type (priv->jid,
           LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET);
       node = lm_message_node_add_child (msg->node, "query", NULL);
       lm_message_node_set_attribute (node, "xmlns", MUC_XMLNS_OWNER);
 
-      ret = _gabble_connection_send_with_reply (priv->conn, msg,
-          request_config_form_reply_cb, G_OBJECT (obj), ctx, &error);
+       _gabble_connection_send_with_reply (priv->conn, msg,
+          request_config_form_reply_cb, G_OBJECT (obj), &priv->set_props_ctx,
+          &error);
 
       lm_message_unref (msg);
 
-      if (!ret)
-        {
-          g_free (ctx);
-
-          dbus_g_method_return_error (context, error);
-          g_error_free (error);
-
-          result = FALSE;
-          goto OUT;
-        }
+      if (error)
+        goto ERROR;
     }
 
-  if (n == properties->len)
-    {
-      dbus_g_method_return (context);
-    }
+  goto OUT;
+
+ERROR:
+  set_properties_context_return (obj, error);
+  result = FALSE;
 
 OUT:
-  if (!result && props_config)
-    {
-      g_hash_table_destroy (props_config);
-    }
-
   return result;
 }
 
@@ -2589,16 +2614,12 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
                               LmMessage *reply_msg, GObject *object,
                               gpointer user_data)
 {
-  GabbleMucChannelPrivate *priv;
-  RequestConfigFormContext *ctx = user_data;
+  GabbleMucChannel *chan = GABBLE_MUC_CHANNEL (object);
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  SetPropertiesContext *ctx = user_data;
   GError *error = NULL;
   LmMessage *msg = NULL;
   LmMessageNode *submit_node, *query_node, *form_node, *node;
-  guint n, count;
-
-  g_assert (GABBLE_IS_MUC_CHANNEL (object));
-
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (object);
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
@@ -2609,9 +2630,6 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
     }
 
   /* initialize */
-  n = 0;
-  count = g_hash_table_size (ctx->prop_list);
-
   msg = lm_message_new_with_sub_type (priv->jid, LM_MESSAGE_TYPE_IQ,
                                       LM_MESSAGE_SUB_TYPE_SET);
 
@@ -2659,7 +2677,6 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
     {
       const gchar *var, *prev_value;
       LmMessageNode *field_node, *value_node;
-      GValue *val;
       guint id;
       GType type;
       gboolean invert;
@@ -2692,16 +2709,32 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 
       /* add the corresponding field node to the reply message */
       field_node = lm_message_node_add_child (submit_node, "field", NULL);
+
       lm_message_node_set_attribute (field_node, "var", var);
+
+      val_str = lm_message_node_get_attribute (node, "type");
+      if (val_str)
+        {
+          lm_message_node_set_attribute (field_node, "type", val_str);
+        }
+
       value_node = lm_message_node_add_child (field_node, "value", prev_value);
 
       id = INVALID_ROOM_PROP;
       type = G_TYPE_BOOLEAN;
       invert = FALSE;
+      val_str = NULL;
 
       if (strcmp (var, "anonymous") == 0)
         {
           id = ROOM_PROP_ANONYMOUS;
+        }
+      else if (strcmp (var, "muc#owner_whois") == 0)
+        {
+          id = ROOM_PROP_ANONYMOUS;
+
+          val_bool = g_value_get_boolean (ctx->values[id]);
+          val_str = (val_bool) ? "admins" : "anyone";
         }
       else if (strcmp (var, "members_only") == 0 ||
                strcmp (var, "muc#owner_inviteonly") == 0)
@@ -2737,6 +2770,7 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
           id = ROOM_PROP_PERSISTENT;
         }
       else if (strcmp (var, "public") == 0 ||
+               strcmp (var, "muc#roomconfig_publicroom") == 0 ||
                strcmp (var, "muc#owner_publicroom") == 0)
         {
           id = ROOM_PROP_PRIVATE;
@@ -2750,48 +2784,59 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 
       g_debug ("%s: looking up %s", G_STRFUNC, room_property_signatures[id].name);
 
-      if (!(val = g_hash_table_lookup (ctx->prop_list, GUINT_TO_POINTER (id))))
-        {
-          continue;
-        }
+      if (!ctx->values[id])
+        continue;
 
-      switch (type) {
-        case G_TYPE_BOOLEAN:
-          val_bool = g_value_get_boolean (val);
-          sprintf (buf, "%d", (invert) ? !val_bool : val_bool);
-          val_str = buf;
-          break;
-        case G_TYPE_STRING:
-          val_str = g_value_get_string (val);
-          break;
-        default:
-          g_assert_not_reached ();
-      }
+      if (!val_str)
+        {
+          switch (type) {
+            case G_TYPE_BOOLEAN:
+              val_bool = g_value_get_boolean (ctx->values[id]);
+              sprintf (buf, "%d", (invert) ? !val_bool : val_bool);
+              val_str = buf;
+              break;
+            case G_TYPE_STRING:
+              val_str = g_value_get_string (ctx->values[id]);
+              break;
+            default:
+              g_assert_not_reached ();
+          }
+        }
 
       lm_message_node_set_value (value_node, val_str);
 
-      g_hash_table_remove (ctx->prop_list, GUINT_TO_POINTER (id));
-      n++;
+      ctx->remaining &= ~(1 << id);
     }
 
-  if (n == 0)
+  if ((ctx->remaining & ~(1 << ROOM_PROP_SUBJECT)) != 0)
     {
-      error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                           "no properties substituted");
+      gint i;
 
-      goto OUT;
-    }
-  else if (n < count)
-    {
+      printf (ANSI_BOLD_ON ANSI_FG_WHITE ANSI_BG_RED
+              "\n%s: the following properties were not substituted:\n",
+              G_STRFUNC);
+
+      for (i = 0; i < NUM_ROOM_PROPS; i++)
+        {
+          if (ctx->remaining & (1 << i))
+            {
+              printf ("  %s\n", room_property_signatures[i].name);
+            }
+        }
+
+      printf ("\nthis is a MUC server compatibility bug in gabble, please "
+              "report it with a full debug log attached (running gabble "
+              "with LM_DEBUG=net)" ANSI_RESET "\n\n");
+      fflush (stdout);
+
       error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                           "only %d out of %d properties substituted",
-                           n, count);
+                           "not all properties were substituted");
       goto OUT;
     }
 
   _gabble_connection_send_with_reply (priv->conn, msg,
       request_config_form_submit_reply_cb, G_OBJECT (object),
-      ctx->call_ctx, &error);
+      ctx, &error);
 
   goto OUT;
 
@@ -2801,16 +2846,10 @@ PARSE_ERROR:
 
 OUT:
   if (error)
-    {
-      dbus_g_method_return_error (ctx->call_ctx, error);
-      g_error_free (error);
-    }
+    set_properties_context_return (chan, error);
 
   if (msg)
     lm_message_unref (msg);
-
-  g_hash_table_destroy (ctx->prop_list);
-  g_free (ctx);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
@@ -2820,38 +2859,21 @@ request_config_form_submit_reply_cb (GabbleConnection *conn, LmMessage *sent_msg
                                      LmMessage *reply_msg, GObject *object,
                                      gpointer user_data)
 {
-  DBusGMethodInvocation *call_ctx = user_data;
+  GabbleMucChannel *chan = GABBLE_MUC_CHANNEL (object);
+  SetPropertiesContext *ctx = user_data;
   GError *error = NULL;
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
       error = g_error_new (TELEPATHY_ERRORS, PermissionDenied,
                            "submitted configuration form was rejected");
-
-      goto OUT;
     }
 
-  dbus_g_method_return (call_ctx);
-
-OUT:
-  if (error)
-    {
-      dbus_g_method_return_error (call_ctx, error);
-      g_error_free (error);
-    }
+  if (ctx->remaining == 0 || error)
+    set_properties_context_return (chan, error);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
-
-/*
- * FIXME: move this and the other defines in gabble-media-session.h
- *        to a common header
- */
-#define ANSI_RESET      "\x1b[0m"
-#define ANSI_BOLD_ON    "\x1b[1m"
-#define ANSI_BOLD_OFF   "\x1b[22m"
-#define ANSI_FG_CYAN    "\x1b[36m"
-#define ANSI_FG_WHITE   "\x1b[37m"
 
 #define RPTS_APPEND_FLAG_IF_SET(flag) \
   if (flags & flag) \

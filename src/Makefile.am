@@ -41,6 +41,8 @@ bin_PROGRAMS=telepathy-gabble
 CORE_SOURCES = \
     allocator.h \
     allocator.c \
+    gabble-error.c \
+    gabble-error.h \
     gabble-connection-manager.h \
     gabble-connection-manager.c \
     gabble-connection.h \

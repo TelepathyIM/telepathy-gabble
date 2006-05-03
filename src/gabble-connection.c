@@ -155,7 +155,8 @@ typedef struct _GabbleConnectionPrivate GabbleConnectionPrivate;
 
 struct _GabbleConnectionPrivate
 {
-  LmMessageHandler *message_cb;
+  LmMessageHandler *message_im_cb;
+  LmMessageHandler *message_muc_cb;
   LmMessageHandler *presence_muc_cb;
   LmMessageHandler *presence_roster_cb;
   LmMessageHandler *iq_roster_cb;
@@ -756,9 +757,13 @@ gabble_connection_dispose (GObject *object)
           lm_connection_close (self->lmconn, NULL);
         }
 
-      lm_connection_unregister_message_handler (self->lmconn, priv->message_cb,
+      lm_connection_unregister_message_handler (self->lmconn, priv->message_im_cb,
                                                 LM_MESSAGE_TYPE_MESSAGE);
-      lm_message_handler_unref (priv->message_cb);
+      lm_message_handler_unref (priv->message_im_cb);
+
+      lm_connection_unregister_message_handler (self->lmconn, priv->message_muc_cb,
+                                                LM_MESSAGE_TYPE_MESSAGE);
+      lm_message_handler_unref (priv->message_muc_cb);
 
       lm_connection_unregister_message_handler (self->lmconn, priv->presence_muc_cb,
                                                 LM_MESSAGE_TYPE_PRESENCE);
@@ -1174,7 +1179,8 @@ _gabble_connection_send_with_reply (GabbleConnection *conn,
   return ret;
 }
 
-static LmHandlerResult connection_message_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
+static LmHandlerResult connection_message_im_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
+static LmHandlerResult connection_message_muc_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmHandlerResult connection_presence_muc_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmHandlerResult connection_presence_roster_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmHandlerResult connection_iq_roster_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
@@ -1303,11 +1309,17 @@ _gabble_connection_connect (GabbleConnection *conn,
           lm_ssl_unref (ssl);
         }
 
-      priv->message_cb = lm_message_handler_new (connection_message_cb,
-                                                 conn, NULL);
-      lm_connection_register_message_handler (conn->lmconn, priv->message_cb,
+      priv->message_im_cb = lm_message_handler_new (connection_message_im_cb,
+                                                    conn, NULL);
+      lm_connection_register_message_handler (conn->lmconn, priv->message_im_cb,
                                               LM_MESSAGE_TYPE_MESSAGE,
-                                              LM_HANDLER_PRIORITY_NORMAL);
+                                              LM_HANDLER_PRIORITY_LAST);
+
+      priv->message_muc_cb = lm_message_handler_new (connection_message_muc_cb,
+                                                     conn, NULL);
+      lm_connection_register_message_handler (conn->lmconn, priv->message_muc_cb,
+                                              LM_MESSAGE_TYPE_MESSAGE,
+                                              LM_HANDLER_PRIORITY_FIRST);
 
       priv->presence_muc_cb = lm_message_handler_new (connection_presence_muc_cb,
                                                   conn, NULL);
@@ -1619,118 +1631,47 @@ _get_muc_node (LmMessageNode *toplevel_node)
 static GabbleMucChannel *
 get_muc_from_jid (GabbleConnection *conn, const gchar *jid)
 {
-  gchar *base_jid;
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   GabbleHandle handle;
   GabbleMucChannel *chan = NULL;
 
-  base_jid = gabble_handle_jid_get_base (jid);
-
-  if (gabble_handle_for_room_exists (conn->handles, base_jid))
+  if (gabble_handle_for_room_exists (conn->handles, jid, TRUE))
     {
-      handle = gabble_handle_for_room (conn->handles, base_jid);
+      handle = gabble_handle_for_room (conn->handles, jid);
 
       chan = g_hash_table_lookup (priv->muc_channels,
                                   GUINT_TO_POINTER (handle));
     }
 
-  g_free (base_jid);
-
   return chan;
 }
 
-/**
- * connection_message_cb:
- *
- * Called by loudmouth when we get an incoming <message>.
- */
-static LmHandlerResult
-connection_message_cb (LmMessageHandler *handler,
-                       LmConnection *lmconn,
-                       LmMessage *message,
-                       gpointer user_data)
+static gboolean
+parse_incoming_message (LmMessage *message,
+                        const gchar **from,
+                        time_t *stamp,
+                        TpChannelTextMessageType *msgtype,
+                        const gchar **body,
+                        const gchar **body_offset)
 {
-  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-  LmMessageNode *msg_node, *body_node, *muc_node, *node;
-  const gchar *type, *from, *body, *body_offset;
-  GabbleHandle handle;
-  time_t stamp;
+  const gchar *type;
+  LmMessageNode *node;
 
-  g_assert (lmconn == conn->lmconn);
-
-  msg_node = lm_message_get_node (message);
-  type = lm_message_node_get_attribute (msg_node, "type");
-  from = lm_message_node_get_attribute (msg_node, "from");
-  body_node = lm_message_node_get_child (msg_node, "body");
-
-  if (from == NULL)
+  *from = lm_message_node_get_attribute (message->node, "from");
+  if (*from == NULL)
     {
-      HANDLER_DEBUG (msg_node, "got a message without a from field, ignoring");
-
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+      HANDLER_DEBUG (message->node, "got a message without a from field");
+      return FALSE;
     }
 
-  /* is it a MUC message? */
+  type = lm_message_node_get_attribute (message->node, "type");
 
-  muc_node = _get_muc_node (msg_node);
+  /*
+   * Parse timestamp of delayed messages.
+   */
+  *stamp = 0;
 
-  if (muc_node)
-    {
-      GabbleMucChannel *chan;
-
-      /* and an invitation? */
-      node = lm_message_node_get_child (muc_node, "invite");
-      if (node)
-        {
-          LmMessageNode *reason_node;
-          const gchar *invite_from, *reason;
-          GabbleHandle inviter_handle;
-
-          invite_from = lm_message_node_get_attribute (node, "from");
-          if (invite_from == NULL)
-            {
-              HANDLER_DEBUG (msg_node, "got a MUC invitation message without "
-                             "a from field on the invite node, ignoring");
-
-              return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-            }
-
-          inviter_handle = gabble_handle_for_contact (conn->handles,
-                                                      invite_from, FALSE);
-
-          reason_node = lm_message_node_get_child (node, "reason");
-          if (reason_node)
-            {
-              reason = lm_message_node_get_value (reason_node);
-            }
-          else
-            {
-              reason = "";
-              HANDLER_DEBUG (msg_node, "no MUC invite reason specified");
-            }
-
-          /* create the channel */
-          handle = gabble_handle_for_room (conn->handles, from);
-
-          if (g_hash_table_lookup (priv->muc_channels, GINT_TO_POINTER (handle)) == NULL)
-            {
-              chan = new_muc_channel (conn, handle, FALSE);
-              _gabble_muc_channel_handle_invited (chan, inviter_handle, reason);
-            }
-          else
-            {
-              HANDLER_DEBUG (msg_node, "ignoring invite to a room we're already in");
-            }
-
-          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-        }
-    }
-
-  /* parse timestamp of delayed messages */
-  stamp = 0;
-
-  for (node = msg_node->children; node; node = node->next)
+  for (node = message->node->children; node; node = node->next)
     {
       if (strcmp (node->name, "x") == 0)
         {
@@ -1756,150 +1697,226 @@ connection_message_cb (LmMessageHandler *handler,
               continue;
             }
 
-          stamp = timegm (&stamp_tm);
+          *stamp = timegm (&stamp_tm);
         }
     }
 
-  if (stamp == 0)
-    stamp = time (NULL);
+  if (*stamp == 0)
+    *stamp = time (NULL);
 
-  if (body_node)
+
+  /*
+   * Parse body if it exists.
+   */
+  node = lm_message_node_get_child (message->node, "body");
+
+  if (node)
     {
-      body = lm_message_node_get_value (body_node);
+      *body = lm_message_node_get_value (node);
     }
   else
     {
-      body = NULL;
+      *body = NULL;
     }
 
-  if (type != NULL && 0 == strcmp (type, "groupchat"))
+  /* Messages starting with /me are ACTION messages, and the /me should be
+   * removed. type="chat" messages are NORMAL.  everything else is
+   * something that doesn't necessarily expect a reply or ongoing
+   * conversation ("normal") or has been auto-sent, so we make it NOTICE in
+   * all other cases. */
+
+  *msgtype = TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE;
+  *body_offset = *body;
+
+  if (*body)
     {
-      gchar *base_jid;
-      GabbleHandle room_handle;
-      GabbleMucChannel *chan;
-      TpChannelTextMessageType msgtype;
-
-      /* verify that the room exists and get its handle */
-      base_jid = gabble_handle_jid_get_base (from);
-
-      if (gabble_handle_for_room_exists (conn->handles, base_jid))
+      if (0 == strncmp (*body, "/me ", 4))
         {
-          room_handle = gabble_handle_for_room (conn->handles, base_jid);
-          g_free (base_jid);
+          *msgtype = TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION;
+          *body_offset = *body + 4;
         }
-      else
+      else if (type != NULL && (0 == strcmp (type, "chat") ||
+                                0 == strcmp (type, "groupchat")))
         {
-          g_free (base_jid);
-          g_warning ("%s: ignoring groupchat message from unknown chat",
-                     G_STRFUNC);
-
-          return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+          *msgtype = TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL;
+          *body_offset = *body;
         }
+    }
 
-      /* find the MUC channel */
-      chan = g_hash_table_lookup (priv->muc_channels,
-                                  GUINT_TO_POINTER (room_handle));
+  return TRUE;
+}
 
-      if (!chan)
+/**
+ * connection_message_im_cb:
+ *
+ * Called by loudmouth when we get an incoming <message>.
+ */
+static LmHandlerResult
+connection_message_im_cb (LmMessageHandler *handler,
+                          LmConnection *lmconn,
+                          LmMessage *message,
+                          gpointer user_data)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  const gchar *from, *body, *body_offset;
+  time_t stamp;
+  TpChannelTextMessageType msgtype;
+  GabbleHandle handle;
+  GabbleIMChannel *chan;
+
+  g_assert (lmconn == conn->lmconn);
+
+  if (!parse_incoming_message (message, &from, &stamp, &msgtype, &body,
+                               &body_offset))
+    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+
+  if (body == NULL)
+    {
+      HANDLER_DEBUG (message->node, "got a message without a body field, ignoring");
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    }
+
+  handle = gabble_handle_for_contact (conn->handles, from, FALSE);
+  if (handle == 0)
+    {
+      HANDLER_DEBUG (message->node, "ignoring message node from malformed jid");
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    }
+
+  g_debug ("%s: message from %s (handle %u), msgtype %d, body:\n%s",
+           G_STRFUNC, from, handle, msgtype, body_offset);
+
+  chan = g_hash_table_lookup (priv->im_channels, GINT_TO_POINTER (handle));
+
+  if (chan == NULL)
+    {
+      g_debug ("%s: found no IM channel, creating one", G_STRFUNC);
+
+      chan = new_im_channel (conn, handle, FALSE);
+    }
+
+  if (_gabble_im_channel_receive (chan, msgtype, handle,
+                                  stamp, body_offset))
+    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+
+  return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+}
+
+/**
+ * connection_message_muc_cb:
+ *
+ * Called by loudmouth when we get an incoming <message>,
+ * which might be for a MUC.
+ */
+static LmHandlerResult
+connection_message_muc_cb (LmMessageHandler *handler,
+                           LmConnection *lmconn,
+                           LmMessage *message,
+                           gpointer user_data)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  const gchar *from, *body, *body_offset;
+  time_t stamp;
+  TpChannelTextMessageType msgtype;
+  LmMessageNode *node;
+  GabbleHandle room_handle, handle;
+  GabbleMucChannel *chan;
+
+  g_assert (lmconn == conn->lmconn);
+
+  if (!parse_incoming_message (message, &from, &stamp, &msgtype, &body,
+                               &body_offset))
+    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+
+  /* does it have a muc subnode? */
+  node = _get_muc_node (message->node);
+  if (node)
+    {
+      /* and an invitation? */
+      node = lm_message_node_get_child (node, "invite");
+      if (node)
         {
-          g_warning ("%s: ignoring groupchat message from known handle with "
-                     "no MUC channel", G_STRFUNC);
+          LmMessageNode *reason_node;
+          const gchar *invite_from, *reason;
+          GabbleHandle inviter_handle;
 
-          return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-        }
-
-      /* get the handle of the sender, which is either the room
-       * itself or one of its members */
-      if (gabble_handle_for_room_exists (conn->handles, from))
-        {
-          handle = room_handle;
-        }
-      else
-        {
-          handle = gabble_handle_for_contact (conn->handles, from, TRUE);
-        }
-
-      if (body)
-        {
-          if (0 == strncmp (body, "/me ", 4))
+          invite_from = lm_message_node_get_attribute (node, "from");
+          if (invite_from == NULL)
             {
-              msgtype = TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION;
-              body_offset = body + 4;
+              HANDLER_DEBUG (message->node, "got a MUC invitation message "
+                             "without a from field on the invite node, "
+                             "ignoring");
+
+              return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+            }
+
+          inviter_handle = gabble_handle_for_contact (conn->handles,
+                                                      invite_from, FALSE);
+
+          reason_node = lm_message_node_get_child (node, "reason");
+          if (reason_node)
+            {
+              reason = lm_message_node_get_value (reason_node);
             }
           else
             {
-              msgtype = TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL;
-              body_offset = body;
+              reason = "";
+              HANDLER_DEBUG (message->node, "no MUC invite reason specified");
             }
-        }
-      else
-        {
-          msgtype = TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL;
-          body_offset = NULL;
-        }
 
-      if (_gabble_muc_channel_receive (chan, msgtype, handle, stamp,
-                                       body_offset, msg_node))
-        return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+          /* create the channel */
+          handle = gabble_handle_for_room (conn->handles, from);
+
+          if (g_hash_table_lookup (priv->muc_channels, GINT_TO_POINTER (handle)) == NULL)
+            {
+              chan = new_muc_channel (conn, handle, FALSE);
+              _gabble_muc_channel_handle_invited (chan, inviter_handle, reason);
+            }
+          else
+            {
+              HANDLER_DEBUG (message->node, "ignoring invite to a room we're already in");
+            }
+
+          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+        }
+    }
+
+  /* check if a room with the jid exists */
+  if (!gabble_handle_for_room_exists (conn->handles, from, TRUE))
+    {
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    }
+
+  room_handle = gabble_handle_for_room (conn->handles, from);
+
+  /* find the MUC channel */
+  chan = g_hash_table_lookup (priv->muc_channels,
+                              GUINT_TO_POINTER (room_handle));
+
+  if (!chan)
+    {
+      g_warning ("%s: ignoring groupchat message from known handle with "
+                 "no MUC channel", G_STRFUNC);
+
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    }
+
+  /* get the handle of the sender, which is either the room
+   * itself or one of its members */
+  if (gabble_handle_for_room_exists (conn->handles, from, FALSE))
+    {
+      handle = room_handle;
     }
   else
     {
-      TpChannelTextMessageType msgtype;
-      GabbleIMChannel *chan;
-
-      if (body == NULL)
-        {
-          HANDLER_DEBUG (msg_node, "got a message without a body field, ignoring");
-
-          return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-        }
-
-      handle = gabble_handle_for_contact (conn->handles, from, FALSE);
-
-      if (handle == 0)
-        {
-          HANDLER_DEBUG (msg_node, "ignoring message node from malformed jid");
-
-          return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-        }
-
-      /* messages starting with /me are ACTION messages, and the /me should be
-       * removed. type="chat" messages are NORMAL.  everything else is
-       * something that doesn't necessarily expect a reply or ongoing
-       * conversation ("normal") or has been auto-sent, so we make it NOTICE in
-       * all other cases. */
-      if (0 == strncmp (body, "/me ", 4))
-        {
-          msgtype = TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION;
-          body_offset = body + 4;
-        }
-      else if (type != NULL && 0 == strcmp (type, "chat"))
-        {
-          msgtype = TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL;
-          body_offset = body;
-        }
-      else
-        {
-          msgtype = TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE;
-          body_offset = body;
-        }
-
-      g_debug ("%s: message from %s (handle %u), msgtype %d, body:\n%s",
-               G_STRFUNC, from, handle, msgtype, body_offset);
-
-      chan = g_hash_table_lookup (priv->im_channels, GINT_TO_POINTER (handle));
-
-      if (chan == NULL)
-        {
-          g_debug ("%s: found no IM channel, creating one", G_STRFUNC);
-
-          chan = new_im_channel (conn, handle, FALSE);
-        }
-
-      if (_gabble_im_channel_receive (chan, msgtype, handle,
-                                      stamp, body_offset))
-        return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      handle = gabble_handle_for_contact (conn->handles, from, TRUE);
     }
+
+  if (_gabble_muc_channel_receive (chan, msgtype, handle, stamp,
+                                   body_offset, message->node))
+    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
   return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 }
@@ -4732,7 +4749,7 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
       qualified_name = room_name_to_canonical (obj, name);
 
       /* has the handle been verified before? */
-      if (gabble_handle_for_room_exists (obj->handles, qualified_name))
+      if (gabble_handle_for_room_exists (obj->handles, qualified_name, FALSE))
         {
           handle = gabble_handle_for_room (obj->handles, qualified_name);
 

@@ -144,6 +144,7 @@ enum
   ROOM_PROP_INVITE_ONLY,
   ROOM_PROP_MODERATED,
   ROOM_PROP_NAME,
+  ROOM_PROP_DESCRIPTION,
   ROOM_PROP_PASSWORD,
   ROOM_PROP_PASSWORD_REQUIRED,
   ROOM_PROP_PERSISTENT,
@@ -169,6 +170,7 @@ const RoomPropertySignature room_property_signatures[NUM_ROOM_PROPS] = {
       { "invite-only",       G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
       { "moderated",         G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
       { "name",              G_TYPE_STRING },   /* impl: READ, WRITE */
+      { "description",       G_TYPE_STRING },   /* impl: READ, WRITE */
       { "password",          G_TYPE_STRING },   /* impl: WRITE */
       { "password-required", G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
       { "persistent",        G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
@@ -530,6 +532,9 @@ static void properties_disco_cb (GabbleDisco *disco, const gchar *jid,
           TP_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
 
       room_property_change_flags (chan, ROOM_PROP_NAME,
+          TP_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
+
+      room_property_change_flags (chan, ROOM_PROP_DESCRIPTION,
           TP_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
 
       room_property_change_flags (chan, ROOM_PROP_PASSWORD,
@@ -1506,6 +1511,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
 {
   GabbleMucChannelPrivate *priv;
   LmMessageNode *node;
+  GValue val = { 0, };
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
@@ -1516,7 +1522,6 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
   if (node)
     {
       GArray *changed_values, *changed_flags;
-      GValue val = { 0, };
 
       priv->set_props_ctx.remaining &= ~(1 << ROOM_PROP_SUBJECT);
 
@@ -1589,7 +1594,30 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
     }
   else if (sender == priv->handle)
     {
-      HANDLER_DEBUG (msg_node, "ignoring message from channel");
+      if (text)
+        {
+          gchar *desc;
+
+          desc = g_strdup (text);
+          g_strstrip (desc);
+
+          g_value_init (&val, G_TYPE_STRING);
+          g_value_set_string (&val, desc);
+
+          room_property_change_value (chan, ROOM_PROP_DESCRIPTION,
+                                      &val, NULL);
+          room_property_change_flags (chan, ROOM_PROP_DESCRIPTION,
+                                      TP_PROPERTY_FLAG_READ, 0, NULL);
+
+          g_value_unset (&val);
+
+          g_free (desc);
+        }
+      else
+        {
+          HANDLER_DEBUG (msg_node, "ignoring message from channel");
+        }
+
       return TRUE;
     }
 
@@ -2750,6 +2778,12 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
                strcmp (var, "muc#owner_roomname") == 0)
         {
           id = ROOM_PROP_NAME;
+          type = G_TYPE_STRING;
+        }
+      else if (strcmp (var, "muc#roomconfig_roomdesc") == 0 ||
+               strcmp (var, "muc#owner_roomdesc") == 0)
+        {
+          id = ROOM_PROP_DESCRIPTION;
           type = G_TYPE_STRING;
         }
       else if (strcmp (var, "password") == 0 ||

@@ -139,29 +139,33 @@ gabble_handle_jid_is_valid (TpHandleType type, const gchar *jid, GError **error)
 /**
  * gabble_handle_jid_get_base
  *
- * Utility function to return the base portion of a jid.
+ * Utility function to extract the base portion of a jid.
+ *
+ * The character array pointed to by base_jid must be at
+ * least JID_MAX_SIZE bytes in size.
  */
-gchar *
-gabble_handle_jid_get_base (const gchar *jid)
+void gabble_handle_jid_get_base (const gchar *jid, gchar *base_jid)
 {
-  gchar *base_jid;
   const gchar *p;
+  gint len;
 
   p = strchr (jid, '/');
   if (p == NULL)
     {
-      base_jid = g_strdup (jid);
+      len = strlen (jid);
     }
   else
     {
-      gint len = p - jid;
-
-      base_jid = g_new (gchar, len + 1);
-      memcpy (base_jid, jid, len);
-      base_jid[len] = '\0';
+      len = p - jid;
     }
 
-  return base_jid;
+  if (len >= JID_MAX_SIZE)
+    {
+      len = JID_MAX_SIZE - 1;
+    }
+
+  strncpy (base_jid, jid, len);
+  base_jid[len] = '\0';
 }
 
 /**
@@ -471,11 +475,18 @@ gabble_handle_for_contact (GabbleHandleRepo *repo,
 
 gboolean
 gabble_handle_for_room_exists (GabbleHandleRepo *repo,
-                               const gchar *jid)
+                               const gchar *jid,
+                               gboolean ignore_nick)
 {
+  gchar base_jid[JID_MAX_SIZE];
   GabbleHandle handle;
 
-  handle = g_quark_try_string (jid);
+  if (ignore_nick)
+    {
+      gabble_handle_jid_get_base (jid, base_jid);
+    }
+
+  handle = g_quark_try_string ((ignore_nick) ? base_jid : jid);
   if (handle == 0)
     return FALSE;
 

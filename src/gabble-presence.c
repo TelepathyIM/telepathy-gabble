@@ -154,15 +154,15 @@ gabble_presence_update (GabblePresence *presence, const gchar *resource, GabbleP
     {
       Resource *res = _find_resource (presence, resource);
 
-      if (NULL != res)
-        {
-          priv->resources = g_slist_remove (priv->resources, res);
+      if (NULL == res)
+        return;
 
-          if (NULL == priv->resources)
-            {
-              presence->status = GABBLE_PRESENCE_OFFLINE;
-              presence->status_message = NULL;
-            }
+      priv->resources = g_slist_remove (priv->resources, res);
+
+      if (NULL == priv->resources)
+        {
+          presence->status = GABBLE_PRESENCE_OFFLINE;
+          presence->status_message = NULL;
         }
     }
   else

@@ -319,7 +319,7 @@ gabble_media_session_class_init (GabbleMediaSessionClass *gabble_media_session_c
   param_spec = g_param_spec_string ("session-id", "Session ID",
                                     "A unique session identifier used "
                                     "throughout all communication.",
-				    NULL,
+                                    NULL,
                                     G_PARAM_CONSTRUCT_ONLY |
                                     G_PARAM_READWRITE |
                                     G_PARAM_STATIC_NAME |

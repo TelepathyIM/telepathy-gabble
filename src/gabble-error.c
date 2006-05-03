@@ -49,7 +49,8 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
     { "service-unavailable",          "cancel",         { 502, 503, 510, }, },
 };
 
-GabbleXmppError gabble_xmpp_error_from_node (LmMessageNode *error_node)
+GabbleXmppError
+gabble_xmpp_error_from_node (LmMessageNode *error_node)
 {
   gint i, j;
   const gchar *error_code_str;
@@ -93,8 +94,9 @@ GabbleXmppError gabble_xmpp_error_from_node (LmMessageNode *error_node)
   return INVALID_XMPP_ERROR;
 }
 
-LmMessageNode *gabble_xmpp_error_to_node (GabbleXmppError error,
-                                          LmMessageNode *parent_node)
+LmMessageNode *
+gabble_xmpp_error_to_node (GabbleXmppError error,
+                           LmMessageNode *parent_node)
 {
   const XmppErrorSpec *spec;
   LmMessageNode *error_node, *node;
@@ -122,7 +124,8 @@ LmMessageNode *gabble_xmpp_error_to_node (GabbleXmppError error,
   return error_node;
 }
 
-const gchar *gabble_xmpp_error_string (GabbleXmppError error)
+const gchar *
+gabble_xmpp_error_string (GabbleXmppError error)
 {
   if (error >= 0 && error < NUM_XMPP_ERRORS)
     return xmpp_errors[error].name;

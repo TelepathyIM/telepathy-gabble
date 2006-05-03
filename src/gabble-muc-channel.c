@@ -2757,6 +2757,16 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
         {
           id = ROOM_PROP_ANONYMOUS;
         }
+      else if (strcmp (var, "muc#roomconfig_whois") == 0)
+        {
+          id = ROOM_PROP_ANONYMOUS;
+
+          if (ctx->values[id])
+            {
+              val_bool = g_value_get_boolean (ctx->values[id]);
+              val_str = (val_bool) ? "moderators" : "anyone";
+            }
+        }
       else if (strcmp (var, "muc#owner_whois") == 0)
         {
           id = ROOM_PROP_ANONYMOUS;
@@ -2768,21 +2778,26 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
             }
         }
       else if (strcmp (var, "members_only") == 0 ||
+               strcmp (var, "muc#roomconfig_membersonly") == 0 ||
                strcmp (var, "muc#owner_inviteonly") == 0)
         {
           id = ROOM_PROP_INVITE_ONLY;
         }
       else if (strcmp (var, "moderated") == 0 ||
+               strcmp (var, "muc#roomconfig_moderatedroom") == 0 ||
                strcmp (var, "muc#owner_moderatedroom") == 0)
         {
           id = ROOM_PROP_MODERATED;
         }
       else if (strcmp (var, "title") == 0 ||
+               strcmp (var, "muc#roomconfig_roomname") == 0 ||
                strcmp (var, "muc#owner_roomname") == 0)
         {
           id = ROOM_PROP_NAME;
           type = G_TYPE_STRING;
         }
+      /* FIXME: figure out the last remaining variable name
+       *        for room description */
       else if (strcmp (var, "muc#roomconfig_roomdesc") == 0 ||
                strcmp (var, "muc#owner_roomdesc") == 0)
         {
@@ -2797,11 +2812,13 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
           type = G_TYPE_STRING;
         }
       else if (strcmp (var, "password_protected") == 0 ||
+               strcmp (var, "muc#roomconfig_passwordprotectedroom") == 0 ||
                strcmp (var, "muc#owner_passwordprotectedroom") == 0)
         {
           id = ROOM_PROP_PASSWORD_REQUIRED;
         }
       else if (strcmp (var, "persistent") == 0 ||
+               strcmp (var, "muc#roomconfig_persistentroom") == 0 ||
                strcmp (var, "muc#owner_persistentroom") == 0)
         {
           id = ROOM_PROP_PERSISTENT;

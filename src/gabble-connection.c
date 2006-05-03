@@ -2822,8 +2822,6 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   if (lm_message_get_sub_type (message) != LM_MESSAGE_SUB_TYPE_GET)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
-  g_debug ("1");
-
   node = lm_message_get_node (message);
 
   to_jid = g_strdup_printf ("%s/%s", gabble_handle_inspect (conn->handles, TP_HANDLE_TYPE_CONTACT, conn->self_handle), priv->resource);
@@ -2838,14 +2836,10 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   if (!node)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
-  g_debug ("2");
-
   xmlns = lm_message_node_get_attribute (node, "xmlns");
 
   if (!xmlns)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-
-  g_debug ("3");
 
   if (0 != strcmp (xmlns, "http://jabber.org/protocol/disco#info"))
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;

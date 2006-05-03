@@ -8,6 +8,15 @@
 
 G_DEFINE_TYPE (GabblePresenceCache, gabble_presence_cache, G_TYPE_OBJECT);
 
+/* signal enum */
+enum
+{
+  PRESENCE_UPDATE,
+  LAST_SIGNAL
+};
+
+static guint signals[LAST_SIGNAL] = { 0 };
+
 #define GABBLE_PRESENCE_CACHE_PRIV(account) ((GabblePresenceCachePrivate *)account->priv)
 
 typedef struct _GabblePresenceCachePrivate GabblePresenceCachePrivate;
@@ -233,15 +242,13 @@ gabble_presence_cache_class_init (GabblePresenceCacheClass *klass)
   g_type_class_add_private (object_class, sizeof (GabblePresenceCachePrivate));
   object_class->finalize = gabble_presence_cache_finalize;
 
-  g_signal_new (
+  signals[PRESENCE_UPDATE] = g_signal_new (
     "presence-update",
     G_TYPE_FROM_CLASS (klass),
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET (GabblePresenceCacheClass, presence_update),
     NULL, NULL,
-    g_cclosure_marshal_VOID__INT,
-    G_TYPE_NONE, 1,
-    G_TYPE_UINT);
+    g_cclosure_marshal_VOID__INT, G_TYPE_NONE, 1, G_TYPE_UINT);
 }
 
 static void

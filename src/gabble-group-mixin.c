@@ -330,8 +330,8 @@ gabble_group_mixin_get_remote_pending_members (GObject *obj, GArray **ret, GErro
   if (flags & flag) \
     { \
       if (i++ > 0) \
-        g_string_append (str, "\n              "); \
-      g_string_append (str, #flag); \
+        g_string_append (str, "|"); \
+      g_string_append (str, #flag + 22); \
     }
 
 static gchar *

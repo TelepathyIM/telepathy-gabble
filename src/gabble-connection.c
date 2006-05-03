@@ -2819,8 +2819,6 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   gchar *to_jid;
   const gchar *xmlns, *from_jid;
 
-  HANDLER_DEBUG (message->node, "got IQ");
-
   if (lm_message_get_sub_type (message) != LM_MESSAGE_SUB_TYPE_GET)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 

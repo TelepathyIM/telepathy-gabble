@@ -1293,7 +1293,7 @@ _gabble_connection_connect (GabbleConnection *conn,
       g_assert (valid);
 
       /* set initial presence. TODO: some way for the user to set this */
-      gabble_presence_cache_update (conn->presence_cache, conn->self_handle, priv->resource, GABBLE_PRESENCE_AVAILABLE, NULL);
+      gabble_presence_cache_update (conn->presence_cache, conn->self_handle, priv->resource, GABBLE_PRESENCE_AVAILABLE, NULL, 0);
       emit_one_presence_update (conn, conn->self_handle);
       presence = gabble_presence_cache_get (conn->presence_cache, conn->self_handle);
       g_assert (presence);
@@ -3590,6 +3590,7 @@ get_statuses_arguments()
       arguments = g_hash_table_new (g_str_hash, g_str_equal);
 
       g_hash_table_insert (arguments, "message", "s");
+      g_hash_table_insert (arguments, "priority", "n");
     }
 
   return arguments;
@@ -3671,7 +3672,7 @@ gboolean gabble_connection_clear_status (GabbleConnection *obj, GError **error)
 
   ERROR_IF_NOT_CONNECTED (obj, *error);
 
-  gabble_presence_cache_update (obj->presence_cache, obj->self_handle, priv->resource, GABBLE_PRESENCE_AVAILABLE, NULL);
+  gabble_presence_cache_update (obj->presence_cache, obj->self_handle, priv->resource, GABBLE_PRESENCE_AVAILABLE, NULL, 0);
   emit_one_presence_update (obj, obj->self_handle);
   return signal_own_presence (obj, error);
 }
@@ -4177,7 +4178,7 @@ gboolean gabble_connection_remove_status (GabbleConnection *obj, const gchar * s
 
   if (strcmp (status, gabble_statuses[presence->status].name) == 0)
     {
-      gabble_presence_cache_update (obj->presence_cache, obj->self_handle, priv->resource, GABBLE_PRESENCE_AVAILABLE, NULL);
+      gabble_presence_cache_update (obj->presence_cache, obj->self_handle, priv->resource, GABBLE_PRESENCE_AVAILABLE, NULL, 0);
       emit_one_presence_update (obj, obj->self_handle);
       return signal_own_presence (obj, error);
     }
@@ -4895,7 +4896,9 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
     {
       GHashTable *args = (GHashTable *)value;
       GValue *message = g_hash_table_lookup (args, "message");
+      GValue *priority = g_hash_table_lookup (args, "priority");
       const gchar *status = NULL;
+      gint8 prio = 0;
 
       if (!status_is_available (data->conn, i))
         {
@@ -4921,7 +4924,20 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
           status = g_value_get_string (message);
         }
 
-      gabble_presence_cache_update (data->conn->presence_cache, data->conn->self_handle, priv->resource, i, status);
+      if (priority)
+        {
+          if (!G_VALUE_HOLDS_UINT (priority))
+            {
+              g_debug ("%s: got a priority value which was not an unsigned int", G_STRFUNC);
+              *(data->error) = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+                                 "Status argument 'priority' requires an unsigned int");
+              data->retval = FALSE;
+              return;
+            }
+          prio = CLAMP (g_value_get_uint (priority), G_MININT8, G_MAXINT8);
+        }
+
+      gabble_presence_cache_update (data->conn->presence_cache, data->conn->self_handle, priv->resource, i, status, prio);
       emit_one_presence_update (data->conn, data->conn->self_handle);
       data->retval = signal_own_presence (data->conn, data->error);
     }

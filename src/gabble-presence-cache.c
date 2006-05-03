@@ -1,4 +1,5 @@
 
+#include <stdlib.h>
 #include <string.h>
 
 #include "gabble-presence.h"
@@ -116,6 +117,7 @@ connection_presence_cb (LmMessageHandler *handler,
   gboolean is_for_muc;
   GabbleHandle handle;
   const gchar *status_message = NULL;
+  gint8 priority = 0;
   GabblePresenceId presence_id;
   gchar *server = NULL;
   gchar *resource = NULL;
@@ -142,9 +144,15 @@ connection_presence_cb (LmMessageHandler *handler,
     }
 
   child_node = lm_message_node_get_child (pres_node, "status");
-
   if (child_node)
     status_message = lm_message_node_get_value (child_node);
+
+  child_node = lm_message_node_get_child (pres_node, "priority");
+  if (child_node)
+    {
+      const gchar *prio = lm_message_node_get_value (child_node);
+      priority = CLAMP (atoi (prio), G_MININT8, G_MAXINT8);
+    }
 
   gabble_handle_decode_jid (from, NULL, &server, &resource);
   g_free (server);
@@ -162,15 +170,13 @@ connection_presence_cb (LmMessageHandler *handler,
                  G_STRFUNC);
       HANDLER_DEBUG (pres_node, "presence node");
     case LM_MESSAGE_SUB_TYPE_UNAVAILABLE:
-      gabble_presence_cache_update (cache, handle, resource, GABBLE_PRESENCE_OFFLINE, status_message);
-      g_signal_emit_by_name (cache, "presence-update", handle, resource, GABBLE_PRESENCE_OFFLINE, status_message);
+      gabble_presence_cache_update (cache, handle, resource, GABBLE_PRESENCE_OFFLINE, status_message, priority);
       g_free (resource);
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     case LM_MESSAGE_SUB_TYPE_NOT_SET:
     case LM_MESSAGE_SUB_TYPE_AVAILABLE:
       presence_id = _presence_get_status (pres_node);
-      gabble_presence_cache_update (cache, handle, resource, presence_id, status_message);
-      g_signal_emit_by_name (cache, "presence-update", handle, resource, presence_id, status_message);
+      gabble_presence_cache_update (cache, handle, resource, presence_id, status_message, priority);
 
       if (_presence_has_google_voice (pres_node))
         {
@@ -256,7 +262,7 @@ gabble_presence_cache_get (GabblePresenceCache *cache, GabbleHandle handle)
 }
 
 void
-gabble_presence_cache_update (GabblePresenceCache *cache, GabbleHandle handle, const gchar *resource, GabblePresenceId presence_id, const gchar *status_message)
+gabble_presence_cache_update (GabblePresenceCache *cache, GabbleHandle handle, const gchar *resource, GabblePresenceId presence_id, const gchar *status_message, gint8 priority)
 {
   GabblePresence *presence = gabble_presence_cache_get (cache, handle);
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
@@ -267,6 +273,8 @@ gabble_presence_cache_update (GabblePresenceCache *cache, GabbleHandle handle, c
       g_hash_table_insert (priv->presence, GINT_TO_POINTER (handle), presence);
     }
 
-  gabble_presence_update (presence, resource, presence_id, status_message);
+  g_signal_emit (cache, signals[PRESENCE_UPDATE], 0, handle);
+
+  gabble_presence_update (presence, resource, presence_id, status_message, priority);
 }
 

@@ -62,6 +62,20 @@ g_intset_destroy (GIntSet *set)
 }
 
 /**
+ * g_intset_clear:
+ * @set : set
+ *
+ * Unset every integer in the set.
+ */
+void
+g_intset_clear (GIntSet *set)
+{
+  g_return_if_fail (set != NULL);
+
+  memset (set->bits, 0, set->size);
+}
+
+/**
  * g_intset_add:
  * @set: set
  * @element: integer to add

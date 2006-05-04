@@ -1533,9 +1533,12 @@ close_all_channels (GabbleConnection *conn)
 
   if (priv->media_channels)
     {
-      for (i = 0; i < priv->media_channels->len; i++)
+      GPtrArray *tmp = priv->media_channels;
+      priv->media_channels = NULL;
+
+      for (i = 0; i < tmp->len; i++)
         {
-          GabbleMediaChannel *chan = g_ptr_array_index (priv->media_channels, i);
+          GabbleMediaChannel *chan = g_ptr_array_index (tmp, i);
 
           g_debug ("%s: about to unref channel with ref_count %d",
                    G_STRFUNC, G_OBJECT (chan)->ref_count);
@@ -1543,8 +1546,7 @@ close_all_channels (GabbleConnection *conn)
           g_object_unref (chan);
         }
 
-      g_ptr_array_free (priv->media_channels, TRUE);
-      priv->media_channels = NULL;
+      g_ptr_array_free (tmp, TRUE);
     }
 
   if (priv->jingle_sessions)
@@ -2582,11 +2584,14 @@ media_channel_closed_cb (GabbleMediaChannel *chan, gpointer user_data)
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
-  g_debug ("%s: removing media channel %p with ref count %d", G_STRFUNC, chan, G_OBJECT (chan)->ref_count);
+  if (priv->media_channels)
+    {
+      g_debug ("%s: removing media channel %p with ref count %d",
+          G_STRFUNC, chan, G_OBJECT (chan)->ref_count);
 
-  g_ptr_array_remove (priv->media_channels, chan);
-
-  g_object_unref (chan);
+      g_ptr_array_remove (priv->media_channels, chan);
+      g_object_unref (chan);
+    }
 }
 
 /**

@@ -67,7 +67,11 @@ typedef enum {
     INVALID_XMPP_ERROR,
 } GabbleXmppError;
 
+GQuark gabble_xmpp_error_quark (void);
+#define GABBLE_XMPP_ERROR gabble_xmpp_error_quark ()
+
 GabbleXmppError gabble_xmpp_error_from_node (LmMessageNode *error_node);
+GError *gabble_xmpp_error_to_g_error (GabbleXmppError error);
 LmMessageNode *gabble_xmpp_error_to_node (GabbleXmppError error, LmMessageNode *parent_node);
 const gchar *gabble_xmpp_error_string (GabbleXmppError error);
 

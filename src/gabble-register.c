@@ -31,6 +31,7 @@
 #include "telepathy-errors.h"
 
 #include "gabble-connection.h"
+#include "gabble-error.h"
 #include "gabble-register.h"
 #include "gabble-register-signals-marshal.h"
 
@@ -208,15 +209,18 @@ set_reply_cb (GabbleConnection *conn,
       node = lm_message_node_get_child (reply_msg->node, "error");
       if (node)
         {
-          const gchar *str = lm_message_node_get_attribute (node, "code");
-          if (strcmp (str, "409") == 0)
+          GabbleXmppError error;
+
+          error = gabble_xmpp_error_from_node (node);
+          if (error == XMPP_ERROR_CONFLICT)
             {
               code = InvalidArgument;
             }
 
-          if (node->children)
+          if (error != INVALID_XMPP_ERROR)
             {
-              g_string_append_printf (msg, ": %s", node->children->name);
+              g_string_append_printf (msg, ": %s",
+                  gabble_xmpp_error_string (error));
             }
         }
 

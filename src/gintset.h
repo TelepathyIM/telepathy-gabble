@@ -27,6 +27,7 @@ typedef void (*GIntFunc)(guint i, gpointer userdata);
 
 GIntSet * g_intset_new ();
 void g_intset_destroy (GIntSet *);
+void g_intset_clear (GIntSet *set);
 
 void g_intset_add (GIntSet *set, guint element);
 gboolean g_intset_remove (GIntSet *set, guint element);

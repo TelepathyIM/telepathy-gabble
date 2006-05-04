@@ -306,3 +306,12 @@ gabble_xmpp_error_string (GabbleXmppError error)
     return NULL;
 }
 
+const gchar *
+gabble_xmpp_error_description (GabbleXmppError error)
+{
+  if (error >= 0 && error < NUM_XMPP_ERRORS)
+    return xmpp_errors[error].description;
+  else
+    return NULL;
+}
+

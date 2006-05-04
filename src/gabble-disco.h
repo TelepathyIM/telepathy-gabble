@@ -42,17 +42,14 @@ typedef struct _GabbleDiscoRequest GabbleDiscoRequest;
 
 /**
  * GabbleDiscoError:
+ * @GABBLE_DISCO_ERROR_CANCELLED: The DISCO request was cancelled
  * @GABBLE_DISCO_ERROR_TIMEOUT: The DISCO request timed out
- * @GABBLE_DISCO_ERROR_NOT_FOUND: The requested item was not found
- * @GABBLE_DISCO_ERROR_UNAVAILABLE: The requested service was unavailiable
+ * @GABBLE_DISCO_ERROR_UNKNOWN: An unknown error occured
  */
 typedef enum
 {
   GABBLE_DISCO_ERROR_CANCELLED,
   GABBLE_DISCO_ERROR_TIMEOUT,
-  GABBLE_DISCO_ERROR_NOT_FOUND,
-  GABBLE_DISCO_ERROR_UNAVAILABLE,
-  GABBLE_DISCO_ERROR_SERVER_NOT_FOUND,
   GABBLE_DISCO_ERROR_UNKNOWN
 } GabbleDiscoError;
 

@@ -130,6 +130,7 @@ enum
     PROP_PORT,
     PROP_OLD_SSL,
     PROP_REGISTER,
+    PROP_LOW_BANDWIDTH,
     PROP_STREAM_SERVER,
     PROP_USERNAME,
     PROP_PASSWORD,
@@ -173,6 +174,8 @@ struct _GabbleConnectionPrivate
   gboolean old_ssl;
 
   gboolean do_register;
+
+  gboolean low_bandwidth;
 
   gchar *https_proxy_server;
   guint https_proxy_port;
@@ -288,6 +291,9 @@ gabble_connection_get_property (GObject    *object,
     case PROP_REGISTER:
       g_value_set_boolean (value, priv->do_register);
       break;
+    case PROP_LOW_BANDWIDTH:
+      g_value_set_boolean (value, priv->low_bandwidth);
+      break;
     case PROP_USERNAME:
       g_value_set_string (value, priv->username);
       break;
@@ -365,6 +371,9 @@ gabble_connection_set_property (GObject      *object,
       break;
     case PROP_REGISTER:
       priv->do_register = g_value_get_boolean (value);
+      break;
+    case PROP_LOW_BANDWIDTH:
+      priv->low_bandwidth = g_value_get_boolean (value);
       break;
     case PROP_STREAM_SERVER:
       g_free (priv->stream_server);
@@ -489,6 +498,15 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
                                      G_PARAM_STATIC_NAME |
                                      G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_REGISTER, param_spec);
+
+  param_spec = g_param_spec_boolean ("low-bandwidth", "Low bandwidth mode",
+                                     "Determines whether we are in low "
+                                     "bandwidth mode. This influences "
+                                     "polling behaviour.", FALSE,
+                                     G_PARAM_READWRITE |
+                                     G_PARAM_STATIC_NAME |
+                                     G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_LOW_BANDWIDTH, param_spec);
 
   param_spec = g_param_spec_string ("stream-server", "The server name used to initialise the stream.",
                                     "The server name used when initialising the stream, "

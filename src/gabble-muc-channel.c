@@ -1152,8 +1152,8 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
 
   /* We're not a member, find out why the join request failed
    * and act accordingly. */
-  switch (error) {
-    case XMPP_ERROR_NOT_AUTHORIZED:
+  if (error == XMPP_ERROR_NOT_AUTHORIZED)
+    {
       /* channel can sit requiring a password indefinitely */
       clear_join_timer (chan);
 
@@ -1171,15 +1171,18 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
       change_password_flags (chan, TP_CHANNEL_PASSWORD_FLAG_PROVIDE, 0);
 
       g_object_set (chan, "state", MUC_STATE_AUTH, NULL);
+    }
+  else
+    {
+      const gchar *msg = "";
 
-      break;
-    case INVALID_XMPP_ERROR:
-      HANDLER_DEBUG (error_node, "got an unknown XMPP error");
-      break;
-    default:
-      g_warning ("%s: unhandled error %s", G_STRFUNC,
-                 gabble_xmpp_error_string (error));
-  }
+      if (error != INVALID_XMPP_ERROR)
+        {
+          msg = gabble_xmpp_error_description (error);
+        }
+
+      close_channel (chan, msg, FALSE);
+    }
 }
 
 static GabbleMucRole

@@ -98,7 +98,7 @@ GType gabble_muc_channel_get_type(void);
 
 void _gabble_muc_channel_presence_error (GabbleMucChannel *chan, const gchar *jid, LmMessageNode *pres_node);
 void _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan, GabbleHandle handle, LmMessage *message, LmMessageNode *x_node);
-gboolean _gabble_muc_channel_receive (GabbleMucChannel *chan, TpChannelTextMessageType type, GabbleHandle sender, time_t timestamp, const gchar *text, LmMessageNode *msg_node);
+gboolean _gabble_muc_channel_receive (GabbleMucChannel *chan, TpChannelTextMessageType type, GabbleHandle sender, time_t timestamp, const gchar *text, LmMessage *msg);
 
 void _gabble_muc_channel_handle_invited (GabbleMucChannel *chan, GabbleHandle inviter, const gchar *message);
 

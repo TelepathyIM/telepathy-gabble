@@ -27,6 +27,7 @@
 
 #include "allocator.h"
 #include "gabble-connection.h"
+#include "gabble-error.h"
 #include "gabble-disco.h"
 
 #include "telepathy-errors.h"
@@ -1119,9 +1120,8 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
                                     LmMessageNode *pres_node)
 {
   GabbleMucChannelPrivate *priv;
-  LmMessageNode *error_node, *text_node;
-  const gchar *code_str, *type, *text;
-  gint code;
+  LmMessageNode *error_node;
+  GabbleXmppError error;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
@@ -1141,27 +1141,7 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
       return;
     }
 
-  text_node = lm_message_node_get_child (error_node, "text");
-  if (text_node)
-    {
-      text = lm_message_node_get_value (text_node);
-    }
-  else
-    {
-      text = NULL;
-    }
-
-  code_str = lm_message_node_get_attribute (error_node, "code");
-  type = lm_message_node_get_attribute (error_node, "type");
-
-  if (code_str == NULL || type == NULL)
-    {
-      g_warning ("%s: missing required attribute", G_STRFUNC);
-      HANDLER_DEBUG (pres_node, "presence node");
-      return;
-    }
-
-  code = atoi (code_str);
+  error = gabble_xmpp_error_from_node (error_node);
 
   if (priv->state >= MUC_STATE_JOINED)
     {
@@ -1170,12 +1150,10 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
       return;
     }
 
-  HANDLER_DEBUG (pres_node, "presence node");
-
   /* We're not a member, find out why the join request failed
    * and act accordingly. */
-  switch (code) {
-    case 401:
+  switch (error) {
+    case XMPP_ERROR_NOT_AUTHORIZED:
       /* channel can sit requiring a password indefinitely */
       clear_join_timer (chan);
 
@@ -1195,9 +1173,12 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
       g_object_set (chan, "state", MUC_STATE_AUTH, NULL);
 
       break;
-
+    case INVALID_XMPP_ERROR:
+      HANDLER_DEBUG (error_node, "got an unknown XMPP error");
+      break;
     default:
-      g_warning ("%s: unhandled errorcode %d", G_STRFUNC, code);
+      g_warning ("%s: unhandled error %s", G_STRFUNC,
+                 gabble_xmpp_error_string (error));
   }
 }
 
@@ -1507,35 +1488,49 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
                              GabbleHandle sender,
                              time_t timestamp,
                              const gchar *text,
-                             LmMessageNode *msg_node)
+                             LmMessage *msg)
 {
+  gboolean error;
   GabbleMucChannelPrivate *priv;
-  LmMessageNode *node;
+  LmMessageNode *subj_node, *node;
   GValue val = { 0, };
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
 
-  node = lm_message_node_get_child (msg_node, "subject");
+  error = lm_message_get_sub_type (msg) == LM_MESSAGE_SUB_TYPE_ERROR;
 
-  if (node)
+  subj_node = lm_message_node_get_child (msg->node, "subject");
+
+  if (subj_node)
     {
       GArray *changed_values, *changed_flags;
 
       priv->set_props_ctx.remaining &= ~(1 << ROOM_PROP_SUBJECT);
 
-      if (lm_message_node_get_child (msg_node, "error"))
+      if (error)
         {
-          g_debug ("%s: error node present", G_STRFUNC);
+          GabbleXmppError xmpp_error = INVALID_XMPP_ERROR;
+          const gchar *err_desc = NULL;
+
+          node = lm_message_node_get_child (msg->node, "error");
+          if (node)
+            {
+              xmpp_error = gabble_xmpp_error_from_node (node);
+            }
+
+          if (xmpp_error != INVALID_XMPP_ERROR)
+            {
+              err_desc = gabble_xmpp_error_description (xmpp_error);
+            }
 
           if (priv->set_props_ctx.call_ctx)
             {
               GError *error;
 
-              /* FIXME: use gabble-error to parse the error node */
               error = g_error_new (TELEPATHY_ERRORS, PermissionDenied,
-                  "failed to change subject: permission denied");
+                  (err_desc) ? err_desc : "failed to change subject");
 
               set_properties_context_return (chan, error);
             }
@@ -1548,7 +1543,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
 
       /* ROOM_PROP_SUBJECT */
       g_value_init (&val, G_TYPE_STRING);
-      g_value_set_string (&val, lm_message_node_get_value (node));
+      g_value_set_string (&val, lm_message_node_get_value (subj_node));
 
       room_property_change_value (chan, ROOM_PROP_SUBJECT, &val, changed_values);
       room_property_change_flags (chan, ROOM_PROP_SUBJECT, TP_PROPERTY_FLAG_READ,
@@ -1615,7 +1610,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
         }
       else
         {
-          HANDLER_DEBUG (msg_node, "ignoring message from channel");
+          HANDLER_DEBUG (msg->node, "ignoring message from channel");
         }
 
       return TRUE;

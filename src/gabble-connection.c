@@ -1915,7 +1915,7 @@ connection_message_muc_cb (LmMessageHandler *handler,
     }
 
   if (_gabble_muc_channel_receive (chan, msgtype, handle, stamp,
-                                   body_offset, message->node))
+                                   body_offset, message))
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
   return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;

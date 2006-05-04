@@ -31,6 +31,7 @@
 #include "telepathy-helpers.h"
 
 #include "gabble-connection.h"
+#include "gabble-error.h"
 #include "gabble-disco.h"
 
 #define DEFAULT_REQUEST_TIMEOUT 20000
@@ -287,51 +288,24 @@ request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
     }
   node = lm_message_node_get_attribute (query_node, "node");
 
+  if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_ERROR)
+    {
+      LmMessageNode *error_node;
 
-  if (0 == strcmp (lm_message_node_get_attribute (reply_msg->node, "type"),
-              "error"))
-      {
-        LmMessageNode *error_node;
-        const char *error_code_str;
-        gint error_code;
+      error_node = lm_message_node_get_child (reply_msg->node, "error");
+      if (error_node)
+        {
+          err = gabble_xmpp_error_to_g_error (
+              gabble_xmpp_error_from_node (error_node));
+        }
 
-        error_node = lm_message_node_get_child (reply_msg->node, "error");
-        error_code_str = lm_message_node_get_attribute (error_node, "code");
-        error_code = error_code_str ? atoi (error_code_str) : 0;
-
-        if (error_code == 404 ||
-            lm_message_node_get_child (error_node, "item-not-found") != NULL)
-          {
-            err = g_error_new (GABBLE_DISCO_ERROR,
-                               GABBLE_DISCO_ERROR_NOT_FOUND,
-                               "Item %s was not found",
-                               request->jid);
-          }
-        else if (error_code == 503 ||
-                 lm_message_node_get_child (error_node, "service-unavailable") != NULL)
-          {
-            err = g_error_new (GABBLE_DISCO_ERROR,
-                               GABBLE_DISCO_ERROR_UNAVAILABLE,
-                               "Service %s was unavailable",
-                               request->jid);
-          }
-        else if (lm_message_node_get_child (error_node, "remote-server-not-found") != NULL)
-          {
-            err = g_error_new (GABBLE_DISCO_ERROR,
-                               GABBLE_DISCO_ERROR_SERVER_NOT_FOUND,
-                               "Remote server for %s was not found",
-                               request->jid);
-          }
-        else
-          {
-            gchar *msg = lm_message_node_to_string (error_node);
-            err = g_error_new (GABBLE_DISCO_ERROR,
-                               GABBLE_DISCO_ERROR_UNKNOWN,
-                               "Unknown error: %s",
-                               msg);
-            g_free (msg);
-          }
-      }
+      if (err == NULL)
+        {
+          err = g_error_new (GABBLE_DISCO_ERROR,
+                             GABBLE_DISCO_ERROR_UNKNOWN,
+                             "an unknown error occured");
+        }
+    }
 
   g_source_remove (request->timer_id);
   request->callback (request->disco, request->jid, node, query_node, err,

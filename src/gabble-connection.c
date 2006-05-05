@@ -2100,52 +2100,13 @@ static gboolean
 signal_own_presence (GabbleConnection *self, GError **error)
 {
   GabblePresence *presence = gabble_presence_cache_get (self->presence_cache, self->self_handle);
-  LmMessage *message = NULL;
-  LmMessageNode *node;
-  LmMessageSubType subtype;
-
-  if (presence->status == GABBLE_PRESENCE_OFFLINE)
-    subtype = LM_MESSAGE_SUB_TYPE_UNAVAILABLE;
-  else
-    subtype = LM_MESSAGE_SUB_TYPE_AVAILABLE;
-
-  message = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_PRESENCE,
-              subtype);
+  LmMessage *message = gabble_presence_as_message (presence);
+  LmMessageNode *node = lm_message_get_node (message);
 
   if (presence->status == GABBLE_PRESENCE_HIDDEN)
     {
       if ((self->features & GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE) != 0)
-        lm_message_node_set_attribute (message->node, "type", "invisible");
-    }
-
-  node = lm_message_get_node (message);
-
-  if (presence->status_message)
-    {
-      lm_message_node_add_child (node, "status", presence->status_message);
-    }
-
-  switch (presence->status)
-    {
-    case GABBLE_PRESENCE_AVAILABLE:
-    case GABBLE_PRESENCE_OFFLINE:
-    case GABBLE_PRESENCE_HIDDEN:
-      break;
-    case GABBLE_PRESENCE_AWAY:
-      lm_message_node_add_child (node, "show", JABBER_PRESENCE_SHOW_AWAY);
-      break;
-    case GABBLE_PRESENCE_CHAT:
-      lm_message_node_add_child (node, "show", JABBER_PRESENCE_SHOW_CHAT);
-      break;
-    case GABBLE_PRESENCE_DND:
-      lm_message_node_add_child (node, "show", JABBER_PRESENCE_SHOW_DND);
-      break;
-    case GABBLE_PRESENCE_XA:
-      lm_message_node_add_child (node, "show", JABBER_PRESENCE_SHOW_XA);
-      break;
-    default:
-      g_critical ("%s: Unexpected Telepathy presence type", G_STRFUNC);
-      break;
+        lm_message_node_set_attribute (node, "type", "invisible");
     }
 
   /* FIXME: use constants from libloudmouth and libjingle here */
@@ -2159,16 +2120,15 @@ signal_own_presence (GabbleConnection *self, GError **error)
                                   NULL);
 
   if (!_gabble_connection_send (self, message, error))
-    goto ERROR;
-
-  lm_message_unref (message);
-  return TRUE;
-
-ERROR:
-  if (message)
-    lm_message_unref(message);
-
-  return FALSE;
+    {
+      lm_message_unref (message);
+      return FALSE;
+    }
+  else
+    {
+      lm_message_unref (message);
+      return TRUE;
+    }
 }
 
 

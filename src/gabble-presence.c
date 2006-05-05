@@ -3,6 +3,8 @@
 
 #include <glib.h>
 
+#include "gabble-presence-cache.h"
+
 #include "gabble-presence.h"
 
 G_DEFINE_TYPE (GabblePresence, gabble_presence, G_TYPE_OBJECT);
@@ -192,5 +194,50 @@ gabble_presence_update (GabblePresence *presence, const gchar *resource, GabbleP
           presence->status_message = res->status_message;
         }
     }
+}
+
+LmMessage *
+gabble_presence_as_message (GabblePresence *presence)
+{
+  LmMessage *message;
+  LmMessageNode *node;
+  LmMessageSubType subtype;
+
+  if (presence->status == GABBLE_PRESENCE_OFFLINE)
+    subtype = LM_MESSAGE_SUB_TYPE_UNAVAILABLE;
+  else
+    subtype = LM_MESSAGE_SUB_TYPE_AVAILABLE;
+
+  message = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_PRESENCE,
+              subtype);
+  node = lm_message_get_node (message);
+
+  switch (presence->status)
+    {
+    case GABBLE_PRESENCE_AVAILABLE:
+    case GABBLE_PRESENCE_OFFLINE:
+    case GABBLE_PRESENCE_HIDDEN:
+      break;
+    case GABBLE_PRESENCE_AWAY:
+      lm_message_node_add_child (node, "show", JABBER_PRESENCE_SHOW_AWAY);
+      break;
+    case GABBLE_PRESENCE_CHAT:
+      lm_message_node_add_child (node, "show", JABBER_PRESENCE_SHOW_CHAT);
+      break;
+    case GABBLE_PRESENCE_DND:
+      lm_message_node_add_child (node, "show", JABBER_PRESENCE_SHOW_DND);
+      break;
+    case GABBLE_PRESENCE_XA:
+      lm_message_node_add_child (node, "show", JABBER_PRESENCE_SHOW_XA);
+      break;
+    default:
+      g_critical ("%s: Unexpected Telepathy presence type", G_STRFUNC);
+      break;
+    }
+
+  if (presence->status_message)
+      lm_message_node_add_child (node, "status", presence->status_message);
+
+  return message;
 }
 

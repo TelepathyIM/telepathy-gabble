@@ -146,14 +146,14 @@ void
 gabble_presence_update (GabblePresence *presence, const gchar *resource, GabblePresenceId status, const gchar *status_message, gint8 priority)
 {
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
+  GSList *i;
 
   g_assert (NULL != resource);
-  g_debug ("UPDATE: %s/%d/%s/%d", resource, status, status_message, priority);
+  g_debug ("presence update: %s/%d/%s/%d", resource, status, status_message, priority);
 
   if (status == GABBLE_PRESENCE_OFFLINE)
     {
       Resource *res = _find_resource (presence, resource);
-      GSList *i;
 
       if (NULL == res)
         return;
@@ -162,17 +162,6 @@ gabble_presence_update (GabblePresence *presence, const gchar *resource, GabbleP
 
       presence->status = GABBLE_PRESENCE_OFFLINE;
       presence->status_message = NULL;
-
-      for (i = priv->resources; NULL != i; i = i->next)
-        {
-          Resource *res = (Resource *) i->data;
-
-          if (res->status < presence->status)
-            {
-              presence->status = res->status;
-              presence->status_message = res->status_message;
-            }
-        }
     }
   else
     {
@@ -189,7 +178,15 @@ gabble_presence_update (GabblePresence *presence, const gchar *resource, GabbleP
       res->status_message = g_strdup (status_message);
       res->priority = priority;
 
-      if (status < presence->status)
+      presence->status = res->status;
+      presence->status_message = res->status_message;
+    }
+
+  for (i = priv->resources; NULL != i; i = i->next)
+    {
+      Resource *res = (Resource *) i->data;
+
+      if (res->status < presence->status)
         {
           presence->status = res->status;
           presence->status_message = res->status_message;

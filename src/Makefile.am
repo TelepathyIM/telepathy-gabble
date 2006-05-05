@@ -88,6 +88,10 @@ CORE_SOURCES = \
     telepathy-errors.c \
     telepathy-helpers.h \
     telepathy-helpers.c \
+    tp-channel-iface.h \
+    tp-channel-iface.c \
+    tp-channel-factory-iface.h \
+    tp-channel-factory-iface.c \
     $(BUILT_SOURCES)
 
 libgabble_convenience_la_SOURCES = \

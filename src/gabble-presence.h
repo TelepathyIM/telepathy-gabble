@@ -63,6 +63,8 @@ void gabble_presence_set_capabilities (GabblePresence *presence, const gchar *re
 
 const gchar *gabble_presence_pick_resource_by_caps (GabblePresence *presence, GabblePresenceCapabilities caps);
 
+LmMessage *gabble_presence_as_message (GabblePresence *presence);
+
 G_END_DECLS
 
 #endif /* __GABBLE_PRESENCE_H__ */

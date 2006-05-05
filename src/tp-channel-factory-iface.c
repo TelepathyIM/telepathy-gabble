@@ -60,33 +60,38 @@ tp_channel_factory_iface_get_type (void)
 }
 
 void
-tp_channel_factory_connected (TpChannelFactoryIface *self)
-{
-  TP_CHANNEL_FACTORY_IFACE_GET_CLASS (self)->connected (self);
-}
-
-void
-tp_channel_factory_close_all (TpChannelFactoryIface *self)
+tp_channel_factory_iface_close_all (TpChannelFactoryIface *self)
 {
   TP_CHANNEL_FACTORY_IFACE_GET_CLASS (self)->close_all (self);
 }
 
 void
-tp_channel_factory_foreach (TpChannelFactoryIface *self,
-                            TpChannelFunc func,
-                            gpointer data)
+tp_channel_factory_iface_connected (TpChannelFactoryIface *self)
+{
+  TP_CHANNEL_FACTORY_IFACE_GET_CLASS (self)->connected (self);
+}
+
+void
+tp_channel_factory_iface_disconnected (TpChannelFactoryIface *self)
+{
+  TP_CHANNEL_FACTORY_IFACE_GET_CLASS (self)->disconnected (self);
+}
+
+void
+tp_channel_factory_iface_foreach (TpChannelFactoryIface *self,
+                                  TpChannelFunc func,
+                                  gpointer data)
 {
   TP_CHANNEL_FACTORY_IFACE_GET_CLASS (self)->foreach (self, func, data);
 }
 
 TpChannelFactoryRequestStatus
-tp_channel_factory_request (TpChannelFactoryIface *self,
-                            const gchar *chan_type,
-                            TpHandleType handle_type,
-                            guint handle,
-                            TpChannelIface **ret)
+tp_channel_factory_iface_request (TpChannelFactoryIface *self,
+                                  const gchar *chan_type,
+                                  TpHandleType handle_type,
+                                  guint handle,
+                                  TpChannelIface **ret)
 {
   return (TP_CHANNEL_FACTORY_IFACE_GET_CLASS (self)->request (self, chan_type,
         handle_type, handle_type, ret));
 }
-

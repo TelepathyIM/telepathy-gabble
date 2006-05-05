@@ -2897,6 +2897,14 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   lm_message_node_set_attribute (feature, "var",
       "http://jabber.org/protocol/jingle/media/audio");
 
+  feature = lm_message_node_add_child (query, "feature", NULL);
+  lm_message_node_set_attribute (feature, "var",
+      "http://www.google.com/session");
+
+  feature = lm_message_node_add_child (query, "feature", NULL);
+  lm_message_node_set_attribute (feature, "var",
+      "http://www.google.com/session/phone");
+
   HANDLER_DEBUG (result->node, "sending disco response");
 
   if (!lm_connection_send (conn->lmconn, result, NULL))

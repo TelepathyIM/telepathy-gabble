@@ -64,18 +64,20 @@ typedef enum {
 struct _TpChannelFactoryIfaceClass {
   GTypeInterface parent_class;
 
-  void (*connected) (TpChannelFactoryIface *);
   void (*close_all) (TpChannelFactoryIface *);
+  void (*connected) (TpChannelFactoryIface *);
+  void (*disconnected) (TpChannelFactoryIface *);
   void (*foreach) (TpChannelFactoryIface *, TpChannelFunc func, gpointer data);
   TpChannelFactoryRequestStatus (*request) (TpChannelFactoryIface *, const gchar *chan_type, TpHandleType handle_type, guint handle, TpChannelIface **ret);
 };
 
 GType tp_channel_factory_iface_get_type (void);
 
-void tp_channel_factory_connected (TpChannelFactoryIface *);
-void tp_channel_factory_close_all (TpChannelFactoryIface *);
-void tp_channel_factory_foreach (TpChannelFactoryIface *, TpChannelFunc func, gpointer data);
-TpChannelFactoryRequestStatus tp_channel_factory_request (TpChannelFactoryIface *, const gchar *chan_type, TpHandleType handle_type, guint handle, TpChannelIface **ret);
+void tp_channel_factory_iface_close_all (TpChannelFactoryIface *);
+void tp_channel_factory_iface_connected (TpChannelFactoryIface *);
+void tp_channel_factory_iface_disconnected (TpChannelFactoryIface *);
+void tp_channel_factory_iface_foreach (TpChannelFactoryIface *, TpChannelFunc func, gpointer data);
+TpChannelFactoryRequestStatus tp_channel_factory_iface_request (TpChannelFactoryIface *, const gchar *chan_type, TpHandleType handle_type, guint handle, TpChannelIface **ret);
 
 G_END_DECLS
 

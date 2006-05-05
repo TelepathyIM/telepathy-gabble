@@ -2111,14 +2111,14 @@ signal_own_presence (GabbleConnection *self, GError **error)
     }
 
   /* FIXME: use constants from libloudmouth and libjingle here */
-  node = lm_message_node_add_child (node,
-                                    "c", NULL);
-  lm_message_node_set_attributes (node,
-                                  "node",  "http://telepathy.freedesktop.org/caps",
-                                  "ver",   GABBLE_VERSION,
-                                  "ext",   "voice-v1",
-                                  "xmlns", "http://jabber.org/protocol/caps",
-                                  NULL);
+  node = lm_message_node_add_child (node, "c", NULL);
+  lm_message_node_set_attributes (
+    node,
+    "node",  "http://telepathy.freedesktop.org/caps",
+    "ver",   GABBLE_VERSION,
+    "ext",   "voice-v1",
+    "xmlns", "http://jabber.org/protocol/caps",
+    NULL);
 
   if (!_gabble_connection_send (self, message, error))
     {

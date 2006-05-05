@@ -386,6 +386,8 @@ gabble_media_session_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
+  _gabble_media_session_terminate (self);
+
   if (priv->timer_id != 0)
     g_source_remove (priv->timer_id);
 

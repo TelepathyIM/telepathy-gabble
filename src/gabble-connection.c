@@ -84,8 +84,6 @@
 
 G_DEFINE_TYPE(GabbleConnection, gabble_connection, G_TYPE_OBJECT)
 
-#define GOOGLE_VOICE_VERSION "1.0.0.82"
-
 #define DEFAULT_CONFERENCE_SERVER "conference.jabber.org"
 
 typedef struct _StatusInfo StatusInfo;
@@ -2145,8 +2143,8 @@ signal_own_presence (GabbleConnection *self, GError **error)
   node = lm_message_node_add_child (node,
                                     "c", NULL);
   lm_message_node_set_attributes (node,
-                                  "node",  "http://www.google.com/xmpp/client/caps",
-                                  "ver",   GOOGLE_VOICE_VERSION,
+                                  "node",  "http://telepathy.freedesktop.org/caps",
+                                  "ver",   GABBLE_VERSION,
                                   "ext",   "voice-v1",
                                   "xmlns", "http://jabber.org/protocol/caps",
                                   NULL);

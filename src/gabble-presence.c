@@ -197,11 +197,14 @@ gabble_presence_update (GabblePresence *presence, const gchar *resource, GabbleP
 }
 
 LmMessage *
-gabble_presence_as_message (GabblePresence *presence)
+gabble_presence_as_message (GabblePresence *presence, const gchar *resource)
 {
   LmMessage *message;
   LmMessageNode *node;
   LmMessageSubType subtype;
+  Resource *res = _find_resource (presence, resource);
+
+  g_assert (NULL != res);
 
   if (presence->status == GABBLE_PRESENCE_OFFLINE)
     subtype = LM_MESSAGE_SUB_TYPE_UNAVAILABLE;
@@ -237,6 +240,13 @@ gabble_presence_as_message (GabblePresence *presence)
 
   if (presence->status_message)
       lm_message_node_add_child (node, "status", presence->status_message);
+
+  if (res->priority)
+    {
+      gchar *priority = g_strdup_printf ("%d", res->priority);
+      lm_message_node_add_child (node, "priority", priority);
+      g_free (priority);
+    }
 
   return message;
 }

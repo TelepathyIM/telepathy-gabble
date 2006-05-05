@@ -2091,7 +2091,8 @@ static gboolean
 signal_own_presence (GabbleConnection *self, GError **error)
 {
   GabblePresence *presence = gabble_presence_cache_get (self->presence_cache, self->self_handle);
-  LmMessage *message = gabble_presence_as_message (presence);
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
+  LmMessage *message = gabble_presence_as_message (presence, priv->resource);
   LmMessageNode *node = lm_message_get_node (message);
 
   if (presence->status == GABBLE_PRESENCE_HIDDEN)

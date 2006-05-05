@@ -1235,6 +1235,28 @@ presence_update_cb (GabblePresenceCache *cache, GabbleHandle handle, gpointer us
     emit_one_presence_update (conn, handle);
 }
 
+static gboolean
+do_connect (GabbleConnection *conn, GError **error)
+{
+  GError *lmerror = NULL;
+
+  g_debug ("%s: calling lm_connection_open", G_STRFUNC);
+  if (!lm_connection_open (conn->lmconn, connection_open_cb,
+                           conn, NULL, &lmerror))
+    {
+      g_debug ("%s: %s", G_STRFUNC, lmerror->message);
+
+      *error = g_error_new (TELEPATHY_ERRORS, NetworkError,
+                            "lm_connection_open_failed: %s", lmerror->message);
+
+      g_error_free (lmerror);
+
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
 /**
  * _gabble_connection_connect
  *
@@ -1254,7 +1276,6 @@ _gabble_connection_connect (GabbleConnection *conn,
                             GError          **error)
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-  GError *lmerror = NULL;
 
   g_assert (priv->connect_server != NULL);
   g_assert (priv->port > 0 && priv->port <= G_MAXUINT16);
@@ -1384,19 +1405,7 @@ _gabble_connection_connect (GabbleConnection *conn,
       g_assert (lm_connection_is_open (conn->lmconn) == FALSE);
     }
 
-  g_debug ("%s: calling lm_connection_open", G_STRFUNC);
-  if (!lm_connection_open (conn->lmconn, connection_open_cb,
-                           conn, NULL, &lmerror))
-    {
-      g_debug ("%s: %s", G_STRFUNC, lmerror->message);
-
-      *error = g_error_new (TELEPATHY_ERRORS, NetworkError,
-                            "lm_connection_open_failed: %s", lmerror->message);
-
-      g_error_free (lmerror);
-
-      return FALSE;
-    }
+  do_connect (conn, error);
 
   return TRUE;
 }
@@ -3095,7 +3104,27 @@ connection_open_cb (LmConnection *lmconn,
 
   if (!success)
     {
-      g_debug ("%s failed", G_STRFUNC);
+
+      if (lm_connection_get_proxy (lmconn))
+        {
+          GError *error;
+
+          g_debug ("%s failed, retrying without proxy", G_STRFUNC);
+          lm_connection_set_proxy (lmconn, NULL);
+
+          if (do_connect (conn, &error))
+            {
+              return;
+            }
+          else
+            {
+              g_error_free (error);
+            }
+        }
+      else
+        {
+          g_debug ("%s failed", G_STRFUNC);
+        }
 
       connection_status_change (conn,
           TP_CONN_STATUS_DISCONNECTED,

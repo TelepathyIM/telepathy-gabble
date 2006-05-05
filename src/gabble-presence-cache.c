@@ -71,9 +71,11 @@ _presence_get_status (LmMessageNode *pres_node)
 
   if (!child_node)
     {
+      /*
       HANDLER_DEBUG (pres_node,
         "<presence> without <show> received from server, "
         "setting presence to available");
+      */
       return GABBLE_PRESENCE_AVAILABLE;
     }
 
@@ -81,9 +83,11 @@ _presence_get_status (LmMessageNode *pres_node)
 
   if (!presence_show)
     {
+      /*
       HANDLER_DEBUG (pres_node,
         "empty <show> tag received from server, "
         "setting presence to available");
+      */
       return GABBLE_PRESENCE_AVAILABLE;
     }
 

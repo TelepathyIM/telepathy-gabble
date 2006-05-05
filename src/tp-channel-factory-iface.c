@@ -30,8 +30,15 @@ tp_channel_factory_iface_base_init (gpointer klass)
   static gboolean initialized = FALSE;
 
   if (!initialized) {
-    /* create interface signals here. */
     initialized = TRUE;
+
+    g_signal_new ("new-channel",
+                  G_OBJECT_CLASS_TYPE (klass),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  g_cclosure_marshal_VOID__OBJECT,
+                  G_TYPE_NONE, 1, TP_TYPE_CHANNEL_IFACE);
   }
 }
 

@@ -284,7 +284,7 @@ gabble_presence_cache_update (GabblePresenceCache *cache, GabbleHandle handle, c
       g_hash_table_insert (priv->presence, GINT_TO_POINTER (handle), presence);
     }
 
-  gabble_presence_update (presence, resource, presence_id, status_message, priority);
-  g_signal_emit (cache, signals[PRESENCE_UPDATE], 0, handle);
+  if (gabble_presence_update (presence, resource, presence_id, status_message, priority))
+    g_signal_emit (cache, signals[PRESENCE_UPDATE], 0, handle);
 }
 

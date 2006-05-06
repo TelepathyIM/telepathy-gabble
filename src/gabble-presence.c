@@ -144,9 +144,11 @@ _find_resource (GabblePresence *presence, const gchar *resource)
   return NULL;
 }
 
-void
+gboolean
 gabble_presence_update (GabblePresence *presence, const gchar *resource, GabblePresenceId status, const gchar *status_message, gint8 priority)
 {
+  GabblePresenceId old_status = presence->status;
+  gchar *old_status_message = presence->status_message;
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
   GSList *i;
 
@@ -158,7 +160,7 @@ gabble_presence_update (GabblePresence *presence, const gchar *resource, GabbleP
       Resource *res = _find_resource (presence, resource);
 
       if (NULL == res)
-        return;
+        return FALSE;
 
       priv->resources = g_slist_remove (priv->resources, res);
 
@@ -194,6 +196,17 @@ gabble_presence_update (GabblePresence *presence, const gchar *resource, GabbleP
           presence->status_message = res->status_message;
         }
     }
+
+  if (presence->status != old_status)
+    return TRUE;
+
+  if (presence->status_message == NULL)
+    return old_status_message == NULL;
+
+  if (old_status_message == NULL)
+    return TRUE;
+
+  return strcmp (presence->status_message, old_status_message) != 0;
 }
 
 LmMessage *

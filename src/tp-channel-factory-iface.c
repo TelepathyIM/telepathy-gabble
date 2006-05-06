@@ -38,7 +38,7 @@ tp_channel_factory_iface_base_init (gpointer klass)
                   0,
                   NULL, NULL,
                   g_cclosure_marshal_VOID__OBJECT,
-                  G_TYPE_NONE, 1, TP_TYPE_CHANNEL_IFACE);
+                  G_TYPE_NONE, 1, G_TYPE_OBJECT);
   }
 }
 

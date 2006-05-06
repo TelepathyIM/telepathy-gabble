@@ -22,12 +22,13 @@
 #define __GABBLE_ROSTER_CHANNEL_H__
 
 #include <glib-object.h>
-
 #include "gintset.h"
+
+#include "gabble-types.h"
+#include "gabble-group-mixin.h"
 
 G_BEGIN_DECLS
 
-typedef struct _GabbleRosterChannel GabbleRosterChannel;
 typedef struct _GabbleRosterChannelClass GabbleRosterChannelClass;
 
 struct _GabbleRosterChannelClass {

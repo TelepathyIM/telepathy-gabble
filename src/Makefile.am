@@ -21,6 +21,8 @@ BUILT_SOURCES = \
     gabble-media-session-glue.h \
     gabble-media-session-signals-marshal.h \
     gabble-media-session-signals-marshal.c \
+    gabble-media-session-enumtypes.h \
+    gabble-media-session-enumtypes.c \
     gabble-media-stream-glue.h \
     gabble-media-stream-signals-marshal.h \
     gabble-media-stream-signals-marshal.c \

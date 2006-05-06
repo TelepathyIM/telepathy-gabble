@@ -27,6 +27,12 @@
 
 G_BEGIN_DECLS
 
+typedef enum
+{
+  MODE_GOOGLE,
+  MODE_JINGLE
+} GabbleMediaSessionMode;
+
 typedef enum {
     JS_STATE_PENDING_CREATED = 0,
     JS_STATE_PENDING_INITIATED,

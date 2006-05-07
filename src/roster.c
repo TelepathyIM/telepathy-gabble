@@ -324,6 +324,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
   GabbleRoster *roster = GABBLE_ROSTER (user_data);
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
   LmMessageNode *iq_node, *query_node;
+  LmMessageSubType sub_type;
 
   g_assert (lmconn == priv->conn->lmconn);
 
@@ -339,15 +340,18 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
 
   /* TODO: check it's from the server or us */
 
+  sub_type = lm_message_get_sub_type (message);
+
   /* if this is a result, it's from our initial query. if it's a set,
    * it's a roster push. either way, parse the items. */
-  if (lm_message_get_sub_type (message) == LM_MESSAGE_SUB_TYPE_RESULT ||
-      lm_message_get_sub_type (message) == LM_MESSAGE_SUB_TYPE_SET)
+  switch (sub_type)
     {
       LmMessageNode *item_node;
       GIntSet *empty, *pub_add, *pub_rem,
               *sub_add, *sub_rem, *sub_rp;
 
+    case LM_MESSAGE_SUB_TYPE_RESULT:
+    case LM_MESSAGE_SUB_TYPE_SET:
       /* asymmetry is because we don't get locally pending subscription
        * requests via <roster>, we get it via <presence> */
       empty = g_intset_new ();
@@ -460,19 +464,26 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
       g_intset_destroy (sub_add);
       g_intset_destroy (sub_rem);
       g_intset_destroy (sub_rp);
-    }
-  else
-    {
+      break;
+    default:
       HANDLER_DEBUG (iq_node, "unhandled roster IQ");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
-  /* if this is a SET, it's a roster push and the roster is now complete.
-   * we should also send an acknowledgement if the IQ had an id */
-  if (lm_message_get_sub_type (message) == LM_MESSAGE_SUB_TYPE_SET)
+  switch (sub_type)
     {
+    case LM_MESSAGE_SUB_TYPE_RESULT:
+      /* result means it's a roster push, so the roster is now complete and we
+       * can emit signals */
       _gabble_roster_received (roster);
-      _gabble_connection_send_iq_ack (priv->conn, iq_node, LM_MESSAGE_SUB_TYPE_RESULT);
+      break;
+    case LM_MESSAGE_SUB_TYPE_SET:
+      /* acknowledge roster */
+      _gabble_connection_send_iq_ack (priv->conn, iq_node,
+          LM_MESSAGE_SUB_TYPE_RESULT);
+      break;
+    default:
+      break;
     }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;

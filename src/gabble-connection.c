@@ -64,8 +64,7 @@
 #define NS_GOOGLE             "http://www.google.com/session"
 #define NS_GOOGLE_PHONE       "http://www.google.com/session/phone"
 #define NS_CAPS               "http://jabber.org/protocol/caps"
-
-#define NODE_TELEPATHY_CAPS "http://telepathy.freedesktop.org/caps"
+#define NS_GABBLE_CAPS        "http://telepathy.freedesktop.org/caps"
 
 #define TP_CAPABILITY_PAIR_TYPE (dbus_g_type_get_struct ("GValueArray", G_TYPE_STRING, G_TYPE_UINT, G_TYPE_INVALID))
 
@@ -2116,7 +2115,7 @@ signal_own_presence (GabbleConnection *self, GError **error)
   node = lm_message_node_add_child (node, "c", NULL);
   lm_message_node_set_attributes (
     node,
-    "node",  NODE_TELEPATHY_CAPS,
+    "node",  NS_GABBLE_CAPS,
     "ver",   GABBLE_VERSION,
     "ext",   "voice-v1",
     "xmlns", NS_CAPS,
@@ -2840,6 +2839,21 @@ _lm_iq_message_make_result (LmMessage *iq_message)
   return result;
 }
 
+typedef struct _Feature Feature;
+
+struct _Feature
+{
+  const gchar *name;
+  const gchar *ns;
+};
+
+static Feature features[] = {
+      { NULL,       NS_JINGLE },
+      { NULL,       NS_JINGLE_AUDIO },
+      { "voice-v1", NS_GOOGLE },
+      { "voice-v1", NS_GOOGLE_PHONE },
+      { NULL, NULL },
+      };
 
 /**
  * connection_iq_disco_cb
@@ -2856,13 +2870,8 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   LmMessage *result;
   LmMessageNode *iq, *result_iq, *query, *result_query;
-  const gchar **feature_url, *feature_urls[] = {
-      NS_JINGLE,
-      NS_JINGLE_AUDIO,
-      NS_GOOGLE,
-      NS_GOOGLE_PHONE,
-      NULL
-  };
+  const gchar *node, *suffix;
+  Feature *feature;
 
   if (lm_message_get_sub_type (message) != LM_MESSAGE_SUB_TYPE_GET)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
@@ -2876,15 +2885,38 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   if (!_lm_message_node_has_namespace (query, NS_DISCO_INFO))
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
+  node = lm_message_node_get_attribute (query, "node");
+
+  if (node && (
+      0 != strncmp (node, NS_GABBLE_CAPS "#", strlen (NS_GABBLE_CAPS) + 1) ||
+      strlen(node) < strlen (NS_GABBLE_CAPS) + 2))
+    {
+      HANDLER_DEBUG (iq, "got iq disco query with unexpected node attribute");
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    }
+
+  if (node == NULL)
+    suffix = NULL;
+  else
+    suffix = node + strlen (NS_GABBLE_CAPS) + 1;
+
+  /* having a suffix equal to the Gabble version is the same as having no
+   * suffix at all: i.e. list all features */
+
+  if (suffix != NULL && 0 == strcmp (suffix, GABBLE_VERSION))
+    suffix = NULL;
+
   result = _lm_iq_message_make_result (message);
   result_iq = lm_message_get_node (result);
   result_query = lm_message_node_get_child (result_iq, "query");
 
-  for (feature_url = feature_urls; NULL != *feature_url; feature_url++)
-    {
-      LmMessageNode *feature = lm_message_node_add_child (result_query, "feature", NULL);
-      lm_message_node_set_attribute (feature, "var", *feature_url);
-    }
+  for (feature = features; NULL != feature->ns; feature++)
+    if (suffix == NULL ||
+        (feature->name != NULL && 0 == strcmp (suffix, feature->name)))
+      {
+        LmMessageNode *node = lm_message_node_add_child (result_query, "feature", NULL);
+        lm_message_node_set_attribute (node, "var", feature->ns);
+      }
 
   HANDLER_DEBUG (result_iq, "sending disco response");
 

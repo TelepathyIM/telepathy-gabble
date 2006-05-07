@@ -155,7 +155,6 @@ gabble_roster_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  tp_channel_factory_iface_disconnected (TP_CHANNEL_FACTORY_IFACE (object));
   g_assert (priv->iq_cb == NULL);
   g_assert (priv->presence_cb == NULL);
 

@@ -100,6 +100,9 @@ struct _GabbleConnection {
     GabbleHandleRepo *handles;
     GabbleHandle self_handle;
 
+    /* roster */
+    GabbleRoster *roster;
+
     /* DISCO! */
     GabbleDisco *disco;
 

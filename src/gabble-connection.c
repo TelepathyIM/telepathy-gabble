@@ -38,6 +38,8 @@
 #include "telepathy-helpers.h"
 #include "telepathy-interfaces.h"
 
+#include "tp-channel-factory-iface.h"
+
 #include "gabble-connection.h"
 #include "gabble-connection-glue.h"
 #include "gabble-connection-signals-marshal.h"
@@ -1450,9 +1452,15 @@ connection_status_change (GabbleConnection        *conn,
 
       if (status == TP_CONN_STATUS_DISCONNECTED)
         {
-          /* remove the channels so we don't get any race conditions
-           * where method calls are delivered to a channel after we've started
+          /* remove the channels so we don't get any race conditions where
+           * method calls are delivered to a channel after we've started
            * disconnecting */
+
+          /* trigger close_all on all channel factories */
+          g_ptr_array_foreach (priv->channel_factories, (GFunc)
+              tp_channel_factory_iface_close_all, NULL);
+
+          /* the old way */
           close_all_channels (conn);
         }
 
@@ -1461,8 +1469,18 @@ connection_status_change (GabbleConnection        *conn,
 
       g_signal_emit (conn, signals[STATUS_CHANGED], 0, status, reason);
 
-      if (status == TP_CONN_STATUS_DISCONNECTED)
+      if (status == TP_CONN_STATUS_CONNECTED)
         {
+          /* trigger connected on all channel factories */
+          g_ptr_array_foreach (priv->channel_factories, (GFunc)
+              tp_channel_factory_iface_connected, NULL);
+        }
+      else if (status == TP_CONN_STATUS_DISCONNECTED)
+        {
+          /* trigger disconnected on all channel factories */
+          g_ptr_array_foreach (priv->channel_factories, (GFunc)
+              tp_channel_factory_iface_disconnected, NULL);
+
           /* if the connection is open, this function will close it for you.
            * if it's already closed (eg network error) then we're done, so
            * can emit DISCONNECTED and have the connection manager unref us */

@@ -2836,14 +2836,6 @@ connection_iq_disco_cb (LmMessageHandler *handler,
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
   iq = lm_message_get_node (message);
-
-  to_jid = g_strdup_printf ("%s/%s", gabble_handle_inspect (conn->handles, TP_HANDLE_TYPE_CONTACT, conn->self_handle), priv->resource);
-  g_assert (0 == strcmp (lm_message_node_get_attribute (iq, "to"), to_jid));
-  g_free (to_jid);
-
-  from_jid = lm_message_node_get_attribute (iq, "from");
-  g_assert (from_jid);
-
   query = lm_message_node_get_child (iq, "query");
 
   if (!query)

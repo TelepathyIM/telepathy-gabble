@@ -232,24 +232,35 @@ struct _GabbleConnectionPrivate
 
 #define GABBLE_CONNECTION_GET_PRIVATE(o)     (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_CONNECTION, GabbleConnectionPrivate))
 
+static void connection_new_channel_cb (TpChannelFactoryIface *, GObject *, gpointer);
 static void connection_presence_update_cb (GabblePresenceCache *, GabbleHandle, gpointer);
 
 static void
 gabble_connection_init (GabbleConnection *obj)
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+  int i;
 
   obj->lmconn = lm_connection_new (NULL);
   obj->status = TP_CONN_STATUS_CONNECTING;
   obj->handles = gabble_handle_repo_new ();
   obj->disco = gabble_disco_new (obj);
-  obj->presence_cache = gabble_presence_cache_new (obj);
-  obj->roster = gabble_roster_new (obj);
 
-  g_signal_connect (obj->presence_cache, "presence-update", (GCallback) connection_presence_update_cb, obj);
+  obj->presence_cache = gabble_presence_cache_new (obj);
+  g_signal_connect (obj->presence_cache, "presence-update", G_CALLBACK
+      (connection_presence_update_cb), obj);
 
   priv->channel_factories = g_ptr_array_sized_new (1);
+
+  obj->roster = gabble_roster_new (obj);
   g_ptr_array_add (priv->channel_factories, obj->roster);
+
+  for (i = 0; i < priv->channel_factories->len; i++)
+    {
+      GObject *factory = g_ptr_array_index (priv->channel_factories, i);
+      g_signal_connect (factory, "new-channel", G_CALLBACK
+          (connection_new_channel_cb), obj);
+    }
 
   priv->jingle_sessions = g_hash_table_new_full (g_str_hash, g_str_equal,
                                                  g_free, NULL);
@@ -1935,6 +1946,13 @@ connection_message_muc_cb (LmMessageHandler *handler,
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
   return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+}
+
+static void connection_new_channel_cb (TpChannelFactoryIface *factory,
+                                       GObject *chan,
+                                       gpointer data)
+{
+  // ROSTER
 }
 
 static void

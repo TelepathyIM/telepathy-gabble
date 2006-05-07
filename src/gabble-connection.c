@@ -1636,6 +1636,17 @@ new_muc_channel (GabbleConnection *conn, GabbleHandle handle, gboolean suppress_
   return chan;
 }
 
+static gboolean
+_lm_message_node_has_namespace (LmMessageNode *node, const gchar *ns)
+{
+  const gchar *node_ns = lm_message_node_get_attribute (node, ns);
+
+  if (!node_ns)
+    return FALSE;
+
+  return 0 == strcmp (ns, node_ns);
+}
+
 LmMessageNode *
 _get_muc_node (LmMessageNode *toplevel_node)
 {
@@ -1643,12 +1654,8 @@ _get_muc_node (LmMessageNode *toplevel_node)
 
   for (node = toplevel_node->children; node; node = node->next)
     if (strcmp (node->name, "x") == 0)
-      {
-        const gchar *xmlns = lm_message_node_get_attribute (node, "xmlns");
-
-        if (xmlns && strcmp (xmlns, MUC_XMLNS_USER) == 0)
-          return node;
-      }
+      if (_lm_message_node_has_namespace (node, MUC_XMLNS_USER))
+        return node;
 
   return NULL;
 }
@@ -1700,14 +1707,10 @@ parse_incoming_message (LmMessage *message,
     {
       if (strcmp (node->name, "x") == 0)
         {
-          const gchar *xmlns, *stamp_str, *p;
+          const gchar *stamp_str, *p;
           struct tm stamp_tm = { 0, };
 
-          xmlns = lm_message_node_get_attribute (node, "xmlns");
-          if (xmlns == NULL)
-            continue;
-
-          if (strcmp (xmlns, "jabber:x:delay") != 0)
+          if (!_lm_message_node_has_namespace (node, "jabber:x:delay"))
             continue;
 
           stamp_str = lm_message_node_get_attribute (node, "stamp");
@@ -2116,7 +2119,7 @@ signal_own_presence (GabbleConnection *self, GError **error)
     "node",  NODE_TELEPATHY_CAPS,
     "ver",   GABBLE_VERSION,
     "ext",   "voice-v1",
-    "xmlns", "http://jabber.org/protocol/caps",
+    "xmlns", NS_CAPS,
     NULL);
 
   if (!_gabble_connection_send (self, message, error))
@@ -2384,8 +2387,7 @@ connection_iq_roster_cb (LmMessageHandler *handler,
   iq_node = lm_message_get_node (message);
   query_node = lm_message_node_get_child (iq_node, "query");
 
-  if (!query_node || strcmp (NS_ROSTER,
-        lm_message_node_get_attribute (query_node, "xmlns")))
+  if (!query_node || !_lm_message_node_has_namespace (query_node, NS_ROSTER))
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
   /* if this is a result, it's from our initial query. if it's a set,
@@ -2703,7 +2705,7 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
   session_node = lm_message_node_get_child (iq_node, "session");
 
   /* is it for us? */
-  if (!session_node || strcmp (lm_message_node_get_attribute (session_node, "xmlns"),
+  if (!session_node || !_lm_message_node_has_namespace (session_node,
         "http://www.google.com/session"))
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
@@ -2777,8 +2779,7 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
           return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
         }
 
-      if (strcmp (lm_message_node_get_attribute (desc_node, "xmlns"),
-                  "http://www.google.com/session/phone"))
+      if (!_lm_message_node_has_namespace (desc_node, NS_GOOGLE_PHONE))
         {
           HANDLER_DEBUG (iq_node, "unknown session description, ignoring");
           return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
@@ -2806,17 +2807,6 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
-static gboolean
-_lm_message_node_has_namespace (LmMessageNode *node, const gchar *ns)
-{
-  const gchar *node_ns = lm_message_node_get_attribute (node, ns);
-
-  if (!node_ns)
-    return FALSE;
-
-  return 0 == strcmp (ns, node_ns);
-}
-
 /**
  * connection_iq_disco_cb
  *
@@ -2835,10 +2825,10 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   LmMessageNode *iq, *result_iq, *query, *result_query;
   gchar *to_jid;
   const gchar *from_jid, **feature_url, *feature_urls[] = {
-      "http://jabber.org/protocol/jingle",
-      "http://jabber.org/protocol/jingle/media/audio",
-      "http://www.google.com/session",
-      "http://www.google.com/session/phone",
+      NS_JINGLE,
+      NS_JINGLE_AUDIO,
+      NS_GOOGLE,
+      NS_GOOGLE_PHONE,
       NULL
   };
 

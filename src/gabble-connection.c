@@ -2801,6 +2801,17 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
+static gboolean
+_lm_message_node_has_namespace (LmMessageNode *node, const gchar *ns)
+{
+  const gchar *node_ns = lm_message_node_get_attribute (node, ns);
+
+  if (!node_ns)
+    return FALSE;
+
+  return 0 == strcmp (ns, node_ns);
+}
+
 /**
  * connection_iq_disco_cb
  *
@@ -2818,7 +2829,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   LmMessage *result;
   LmMessageNode *iq, *result_iq, *query, *result_query;
   gchar *to_jid;
-  const gchar *xmlns, *from_jid, **feature_url, *feature_urls[] = {
+  const gchar *from_jid, **feature_url, *feature_urls[] = {
       "http://jabber.org/protocol/jingle",
       "http://jabber.org/protocol/jingle/media/audio",
       "http://www.google.com/session",
@@ -2843,12 +2854,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   if (!query)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
-  xmlns = lm_message_node_get_attribute (query, "xmlns");
-
-  if (!xmlns)
-    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-
-  if (0 != strcmp (xmlns, NS_DISCO_INFO))
+  if (!_lm_message_node_has_namespace (query, NS_DISCO_INFO))
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
   result = lm_message_new_with_sub_type (from_jid, LM_MESSAGE_TYPE_IQ,

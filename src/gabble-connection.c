@@ -2816,6 +2816,40 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
+static LmMessage *
+_lm_iq_message_make_result (LmMessage *iq_message)
+{
+  LmMessage *result;
+  LmMessageNode *iq, *query, *result_iq, *result_query;
+  const gchar *from_jid, *xmlns;
+
+  g_assert (lm_message_get_type (iq_message) == LM_MESSAGE_TYPE_IQ);
+  g_assert (lm_message_get_sub_type (iq_message) == LM_MESSAGE_SUB_TYPE_GET ||
+            lm_message_get_sub_type (iq_message) == LM_MESSAGE_SUB_TYPE_SET);
+
+  iq = lm_message_get_node (iq_message);
+  from_jid = lm_message_node_get_attribute (iq, "from");
+  g_assert (from_jid);
+
+  query = lm_message_node_get_child (iq, "query");
+  g_assert (query);
+
+  xmlns = lm_message_node_get_attribute (query, "xmlns");
+  g_assert (xmlns);
+
+  result = lm_message_new_with_sub_type (from_jid, LM_MESSAGE_TYPE_IQ,
+                                         LM_MESSAGE_SUB_TYPE_RESULT);
+  result_iq = lm_message_get_node (result);
+  lm_message_node_set_attribute (result_iq, "id",
+    lm_message_node_get_attribute (iq, "id"));
+
+  result_query = lm_message_node_add_child (result_iq, "query", NULL);
+  lm_message_node_set_attribute (result_query, "xmlns", xmlns);
+
+  return result;
+}
+
+
 /**
  * connection_iq_disco_cb
  *
@@ -2829,11 +2863,9 @@ connection_iq_disco_cb (LmMessageHandler *handler,
                         gpointer user_data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   LmMessage *result;
   LmMessageNode *iq, *result_iq, *query, *result_query;
-  gchar *to_jid;
-  const gchar *from_jid, **feature_url, *feature_urls[] = {
+  const gchar **feature_url, *feature_urls[] = {
       NS_JINGLE,
       NS_JINGLE_AUDIO,
       NS_GOOGLE,
@@ -2853,18 +2885,13 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   if (!_lm_message_node_has_namespace (query, NS_DISCO_INFO))
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
-  result = lm_message_new_with_sub_type (from_jid, LM_MESSAGE_TYPE_IQ,
-                                         LM_MESSAGE_SUB_TYPE_RESULT);
+  result = _lm_iq_message_make_result (message);
   result_iq = lm_message_get_node (result);
-  lm_message_node_set_attribute (result_iq, "id",
-      lm_message_node_get_attribute (iq, "id"));
-
-  result_query = lm_message_node_add_child (result_iq, "query", NULL);
-  lm_message_node_set_attribute (result_query, "xmlns", NS_DISCO_INFO);
+  result_query = lm_message_node_get_child (result_iq, "query");
 
   for (feature_url = feature_urls; NULL != *feature_url; feature_url++)
     {
-      LmMessageNode *feature = lm_message_node_add_child (query, "feature", NULL);
+      LmMessageNode *feature = lm_message_node_add_child (result_query, "feature", NULL);
       lm_message_node_set_attribute (feature, "var", *feature_url);
     }
 

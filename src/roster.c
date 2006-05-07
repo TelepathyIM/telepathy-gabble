@@ -24,6 +24,7 @@
 #include <dbus/dbus-glib.h>
 #include <string.h>
 
+#include "telepathy-interfaces.h"
 #include "tp-channel-factory-iface.h"
 
 #include "gabble-connection.h"
@@ -667,6 +668,8 @@ gabble_roster_factory_iface_close_all (TpChannelFactoryIface *iface)
   GabbleRoster *roster = GABBLE_ROSTER (iface);
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
 
+  g_debug ("%s: closing channels", G_STRFUNC);
+
   if (priv->channels)
     {
       g_hash_table_destroy (priv->channels);
@@ -742,31 +745,32 @@ gabble_roster_factory_iface_request (TpChannelFactoryIface *iface,
                                      guint handle,
                                      TpChannelIface **ret)
 {
-  // TODO
-//   GabbleRoster *roster = GABBLE_ROSTER (iface);
-//   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
+  GabbleRoster *roster = GABBLE_ROSTER (iface);
+  GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
 
-//       GabbleRosterChannel *chan;
-// 
-//       if (handle_type != TP_HANDLE_TYPE_LIST)
-//         goto NOT_AVAILABLE;
-// 
-//       if (!gabble_handle_is_valid (obj->handles,
-//                                    handle_type,
-//                                    handle,
-//                                    error))
-//         return FALSE;
-// 
-//       if (handle == gabble_handle_for_list_publish (obj->handles))
-//         chan = priv->publish_channel;
-//       else if (handle == gabble_handle_for_list_subscribe (obj->handles))
-//         chan = priv->subscribe_channel;
-//       else
-//         g_assert_not_reached ();
-// 
-//       g_object_get (chan, "object-path", ret, NULL);
+  if (!strcmp (chan_type, TP_IFACE_CHANNEL_TYPE_CONTACT_LIST))
+    return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_IMPLEMENTED;
 
-  return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_IMPLEMENTED;
+  if (handle_type != TP_HANDLE_TYPE_LIST)
+    return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_AVAILABLE;
+
+  if (!gabble_handle_is_valid (priv->conn->handles,
+                               TP_HANDLE_TYPE_LIST,
+                               handle,
+                               NULL))
+    return TP_CHANNEL_FACTORY_REQUEST_STATUS_INVALID_HANDLE;
+
+  if (priv->roster_received)
+    {
+      GabbleRosterChannel *chan;
+      chan = _gabble_roster_get_channel (roster, handle);
+      *ret = TP_CHANNEL_IFACE (chan);
+      return TP_CHANNEL_FACTORY_REQUEST_STATUS_DONE;
+    }
+  else
+    {
+      return TP_CHANNEL_FACTORY_REQUEST_STATUS_QUEUED;
+    }
 }
 
 static void

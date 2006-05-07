@@ -59,6 +59,8 @@
 #define NS_PRIVACY            "jabber:iq:privacy"
 #define NS_ROSTER             "jabber:iq:roster"
 
+#define NODE_TELEPATHY_CAPS "http://telepathy.freedesktop.org/caps"
+
 #define TP_CAPABILITY_PAIR_TYPE (dbus_g_type_get_struct ("GValueArray", G_TYPE_STRING, G_TYPE_UINT, G_TYPE_INVALID))
 
 #define ERROR_IF_NOT_CONNECTED(CONN, ERROR) \
@@ -2114,7 +2116,7 @@ signal_own_presence (GabbleConnection *self, GError **error)
   node = lm_message_node_add_child (node, "c", NULL);
   lm_message_node_set_attributes (
     node,
-    "node",  "http://telepathy.freedesktop.org/caps",
+    "node",  NODE_TELEPATHY_CAPS,
     "ver",   GABBLE_VERSION,
     "ext",   "voice-v1",
     "xmlns", "http://jabber.org/protocol/caps",

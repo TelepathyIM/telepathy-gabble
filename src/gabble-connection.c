@@ -4338,12 +4338,38 @@ find_media_channel_with_handle (GabbleConnection *conn, GabbleHandle handle)
 gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar * type, guint handle_type, guint handle, gboolean suppress_handler, gchar ** ret, GError **error)
 {
   GabbleConnectionPrivate *priv;
+  TpChannelFactoryRequestStatus status = TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_AVAILABLE;
+  int i;
 
   g_assert (GABBLE_IS_CONNECTION (obj));
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
 
   ERROR_IF_NOT_CONNECTED (obj, *error)
+
+  for (i = 0; i < priv->channel_factories->len; i++)
+    {
+      TpChannelFactoryIface *factory = g_ptr_array_index (priv->channel_factories, i);
+      TpChannelFactoryRequestStatus cur_status;
+      TpChannelIface *chan = NULL;
+
+      cur_status = tp_channel_factory_iface_request (factory, type, handle_type, handle, &chan);
+
+      switch (cur_status)
+        {
+        case TP_CHANNEL_FACTORY_REQUEST_STATUS_DONE:
+          g_object_get (chan, "object-path", ret, NULL);
+          return TRUE;
+        case TP_CHANNEL_FACTORY_REQUEST_STATUS_QUEUED:
+          // ROSTER
+          g_debug ("%s: damn, a queued request %s/%u/%u", G_STRFUNC, type, handle_type, handle);
+          goto NOT_AVAILABLE;
+        default:
+          /* always return the most specific error */
+          if (cur_status > status)
+            status = cur_status;
+        }
+    }
 
   if (!strcmp (type, TP_IFACE_CHANNEL_TYPE_TEXT))
     {
@@ -4410,10 +4436,6 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
           goto NOT_AVAILABLE;
         }
     }
-  else if (!strcmp (type, TP_IFACE_CHANNEL_TYPE_CONTACT_LIST))
-    {
-      /* ROSTER: lala */
-    }
   else if (!strcmp (type, TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA))
     {
       GabbleMediaChannel *chan;
@@ -4478,14 +4500,32 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
     }
   else
     {
-      goto NOT_IMPLEMENTED;
+      switch (status)
+        {
+        case TP_CHANNEL_FACTORY_REQUEST_STATUS_INVALID_HANDLE:
+          goto INVALID_HANDLE;
+        case TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_AVAILABLE:
+          goto NOT_AVAILABLE;
+        case TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_IMPLEMENTED:
+          goto NOT_IMPLEMENTED;
+        default:
+          g_assert_not_reached ();
+        }
     }
 
   return TRUE;
 
+INVALID_HANDLE:
+  g_debug ("%s: invalid handle %u", G_STRFUNC, handle);
+
+  *error = g_error_new (TELEPATHY_ERRORS, InvalidHandle,
+                        "invalid handle %u", handle);
+
+  return FALSE;
+
 NOT_AVAILABLE:
-  g_debug ("request_channel: requested channel is unavailable with "
-           "handle type %u", handle_type);
+  g_debug ("%s: requested channel is unavailable with "
+           "handle type %u", G_STRFUNC, handle_type);
 
   *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
                         "requested channel is not available with "
@@ -4494,7 +4534,7 @@ NOT_AVAILABLE:
   return FALSE;
 
 NOT_IMPLEMENTED:
-  g_debug ("request_channel: unsupported channel type %s", type);
+  g_debug ("%s: unsupported channel type %s", G_STRFUNC, type);
 
   *error = g_error_new (TELEPATHY_ERRORS, NotImplemented,
                         "unsupported channel type %s", type);

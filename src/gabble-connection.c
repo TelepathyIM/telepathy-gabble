@@ -2824,7 +2824,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   LmMessage *result;
-  LmMessageNode *node, *query;
+  LmMessageNode *iq, *result_iq, *query, *result_query;
   gchar *to_jid;
   const gchar *xmlns, *from_jid, **feature_url, *feature_urls[] = {
       "http://jabber.org/protocol/jingle",
@@ -2837,21 +2837,21 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   if (lm_message_get_sub_type (message) != LM_MESSAGE_SUB_TYPE_GET)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
-  node = lm_message_get_node (message);
+  iq = lm_message_get_node (message);
 
   to_jid = g_strdup_printf ("%s/%s", gabble_handle_inspect (conn->handles, TP_HANDLE_TYPE_CONTACT, conn->self_handle), priv->resource);
-  g_assert (0 == strcmp (lm_message_node_get_attribute (node, "to"), to_jid));
+  g_assert (0 == strcmp (lm_message_node_get_attribute (iq, "to"), to_jid));
   g_free (to_jid);
 
-  from_jid = lm_message_node_get_attribute (node, "from");
+  from_jid = lm_message_node_get_attribute (iq, "from");
   g_assert (from_jid);
 
-  node = lm_message_node_get_child (node, "query");
+  query = lm_message_node_get_child (iq, "query");
 
-  if (!node)
+  if (!query)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
-  xmlns = lm_message_node_get_attribute (node, "xmlns");
+  xmlns = lm_message_node_get_attribute (query, "xmlns");
 
   if (!xmlns)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
@@ -2861,11 +2861,12 @@ connection_iq_disco_cb (LmMessageHandler *handler,
 
   result = lm_message_new_with_sub_type (from_jid, LM_MESSAGE_TYPE_IQ,
                                          LM_MESSAGE_SUB_TYPE_RESULT);
-  lm_message_node_set_attribute (result->node, "id",
-      lm_message_node_get_attribute (message->node, "id"));
+  result_iq = lm_message_get_node (result);
+  lm_message_node_set_attribute (result_iq, "id",
+      lm_message_node_get_attribute (iq, "id"));
 
-  query = lm_message_node_add_child (result->node, "query", NULL);
-  lm_message_node_set_attribute (query, "xmlns", xmlns);
+  result_query = lm_message_node_add_child (result_iq, "query", NULL);
+  lm_message_node_set_attribute (result_query, "xmlns", xmlns);
 
   for (feature_url = feature_urls; NULL != *feature_url; feature_url++)
     {
@@ -2873,7 +2874,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
       lm_message_node_set_attribute (feature, "var", *feature_url);
     }
 
-  HANDLER_DEBUG (result->node, "sending disco response");
+  HANDLER_DEBUG (result_iq, "sending disco response");
 
   if (!lm_connection_send (conn->lmconn, result, NULL))
     g_debug("sending disco response failed");

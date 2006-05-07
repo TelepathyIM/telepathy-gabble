@@ -59,6 +59,11 @@
 #define NS_PRIVACY            "jabber:iq:privacy"
 #define NS_ROSTER             "jabber:iq:roster"
 #define NS_DISCO_INFO         "http://jabber.org/protocol/disco#info"
+#define NS_JINGLE             "http://jabber.org/protocol/jingle"
+#define NS_JINGLE_AUDIO       "http://jabber.org/protocol/jingle/media/audio"
+#define NS_GOOGLE             "http://www.google.com/session"
+#define NS_GOOGLE_PHONE       "http://www.google.com/session/phone"
+#define NS_CAPS               "http://jabber.org/protocol/caps"
 
 #define NODE_TELEPATHY_CAPS "http://telepathy.freedesktop.org/caps"
 

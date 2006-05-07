@@ -4682,22 +4682,14 @@ static gchar *room_name_to_canonical (GabbleConnection *conn, const gchar *name)
   priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
   if (index (name, '@'))
-    {
-      return g_strdup (name);
-    }
+    return g_strdup (name);
 
   if (priv->conference_servers)
-    {
-      server = priv->conference_servers->data;
-    }
+    server = priv->conference_servers->data;
   else if (priv->fallback_conference_server)
-    {
-      server = priv->fallback_conference_server;
-    }
+    server = priv->fallback_conference_server;
   else
-    {
-      server = DEFAULT_CONFERENCE_SERVER;
-    }
+    server = DEFAULT_CONFERENCE_SERVER;
 
   return g_strdup_printf ("%s@%s", name, server);
 }

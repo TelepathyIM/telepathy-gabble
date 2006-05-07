@@ -1506,21 +1506,6 @@ connection_status_change (GabbleConnection        *conn,
 
 static void im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data);
 
-gboolean hash_foreach_close_im_channel (gpointer key,
-                                    gpointer value,
-                                    gpointer user_data)
-{
-  GabbleIMChannel *chan = GABBLE_IM_CHANNEL (value);
-  GError *error = NULL;
-
-  g_signal_handlers_disconnect_by_func (chan, (GCallback) im_channel_closed_cb,
-                                       user_data);
-  g_debug ("%s calling gabble_im_channel_close on %p", G_STRFUNC, chan);
-  gabble_im_channel_close (chan, &error);
-  g_debug ("%s removing channel %p", G_STRFUNC, chan);
-  return TRUE;
-}
-
 /**
  * close_all_channels:
  * @conn: A #GabbleConnection object

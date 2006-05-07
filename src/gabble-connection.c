@@ -58,6 +58,7 @@
 #define NS_PRESENCE_INVISIBLE "presence-invisible"
 #define NS_PRIVACY            "jabber:iq:privacy"
 #define NS_ROSTER             "jabber:iq:roster"
+#define NS_DISCO_INFO         "http://jabber.org/protocol/disco#info"
 
 #define NODE_TELEPATHY_CAPS "http://telepathy.freedesktop.org/caps"
 
@@ -2856,7 +2857,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   if (!xmlns)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
-  if (0 != strcmp (xmlns, "http://jabber.org/protocol/disco#info"))
+  if (0 != strcmp (xmlns, NS_DISCO_INFO))
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
   result = lm_message_new_with_sub_type (from_jid, LM_MESSAGE_TYPE_IQ,
@@ -2866,7 +2867,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
       lm_message_node_get_attribute (iq, "id"));
 
   result_query = lm_message_node_add_child (result_iq, "query", NULL);
-  lm_message_node_set_attribute (result_query, "xmlns", xmlns);
+  lm_message_node_set_attribute (result_query, "xmlns", NS_DISCO_INFO);
 
   for (feature_url = feature_urls; NULL != *feature_url; feature_url++)
     {

@@ -42,10 +42,13 @@
 #include "gabble-connection-glue.h"
 #include "gabble-connection-signals-marshal.h"
 
-#include "gabble-disco.h"
+#include "gabble-register.h"
 #include "gabble-im-channel.h"
 #include "gabble-media-channel.h"
-#include "gabble-muc-channel.h"
+#include "gabble-roster-channel.h"
+#include "gabble-disco.h"
+#include "gabble-roomlist-channel.h"
+#include "gabble-presence.h"
 #include "gabble-presence-cache.h"
 #include "gabble-presence.h"
 #include "gabble-register.h"
@@ -55,6 +58,12 @@
 
 #define BUS_NAME        "org.freedesktop.Telepathy.Connection.gabble"
 #define OBJECT_PATH     "/org/freedesktop/Telepathy/Connection/gabble"
+
+#define NS_PRESENCE_INVISIBLE "presence-invisible"
+#define NS_PRIVACY            "jabber:iq:privacy"
+#define NS_ROSTER             "jabber:iq:roster"
+
+#define NODE_TELEPATHY_CAPS "http://telepathy.freedesktop.org/caps"
 
 #define TP_CAPABILITY_PAIR_TYPE (dbus_g_type_get_struct ("GValueArray", G_TYPE_STRING, G_TYPE_UINT, G_TYPE_INVALID))
 
@@ -154,8 +163,6 @@ struct _GabbleConnectionPrivate
   LmMessageHandler *message_im_cb;
   LmMessageHandler *message_muc_cb;
   LmMessageHandler *presence_muc_cb;
-  LmMessageHandler *presence_roster_cb;
-  LmMessageHandler *iq_roster_cb;
   LmMessageHandler *iq_jingle_cb;
   LmMessageHandler *iq_disco_cb;
   LmMessageHandler *iq_unknown_cb;
@@ -204,9 +211,6 @@ struct _GabbleConnectionPrivate
   GPtrArray *media_channels;
   guint media_channel_index;
 
-  GabbleRosterChannel *publish_channel;
-  GabbleRosterChannel *subscribe_channel;
-
   GabbleRoomlistChannel *roomlist_channel;
 
   /* clients */
@@ -217,21 +221,33 @@ struct _GabbleConnectionPrivate
   /* server services */
   GList *conference_servers;
 
+  /* channel factories */
+  GPtrArray *channel_factories;
+
   /* gobject housekeeping */
   gboolean dispose_has_run;
 };
 
 #define GABBLE_CONNECTION_GET_PRIVATE(o)     (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_CONNECTION, GabbleConnectionPrivate))
 
+static void connection_presence_update_cb (GabblePresenceCache *, GabbleHandle, gpointer);
+
 static void
 gabble_connection_init (GabbleConnection *obj)
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
 
+  obj->lmconn = lm_connection_new (NULL);
   obj->status = TP_CONN_STATUS_CONNECTING;
   obj->handles = gabble_handle_repo_new ();
   obj->disco = gabble_disco_new (obj);
-  obj->presence_cache = NULL;
+  obj->presence_cache = gabble_presence_cache_new (obj);
+  obj->roster = gabble_roster_new (obj);
+
+  g_signal_connect (obj->presence_cache, "presence-update", (GCallback) connection_presence_update_cb, obj);
+
+  priv->channel_factories = g_ptr_array_sized_new (1);
+  g_ptr_array_add (priv->channel_factories, obj->roster);
 
   priv->jingle_sessions = g_hash_table_new_full (g_str_hash, g_str_equal,
                                                  g_free, NULL);
@@ -756,8 +772,17 @@ gabble_connection_dispose (GObject *object)
       priv->media_channels = NULL;
     }
 
+  g_ptr_array_foreach (priv->channel_factories, (GFunc) g_object_unref, NULL);
+  g_ptr_array_free (priv->channel_factories, TRUE);
+
+  /* unreffing channel factories frees the roster */
+  self->roster = NULL;
+
   g_object_unref (self->disco);
   self->disco = NULL;
+
+  g_object_unref (self->presence_cache);
+  self->presence_cache = NULL;
 
   if (self->lmconn)
     {
@@ -779,14 +804,6 @@ gabble_connection_dispose (GObject *object)
                                                 LM_MESSAGE_TYPE_PRESENCE);
       lm_message_handler_unref (priv->presence_muc_cb);
 
-      lm_connection_unregister_message_handler (self->lmconn, priv->presence_roster_cb,
-                                                LM_MESSAGE_TYPE_PRESENCE);
-      lm_message_handler_unref (priv->presence_roster_cb);
-
-      lm_connection_unregister_message_handler (self->lmconn, priv->iq_roster_cb,
-                                                LM_MESSAGE_TYPE_IQ);
-      lm_message_handler_unref (priv->iq_roster_cb);
-
       lm_connection_unregister_message_handler (self->lmconn, priv->iq_jingle_cb,
                                                 LM_MESSAGE_TYPE_IQ);
       lm_message_handler_unref (priv->iq_jingle_cb);
@@ -799,8 +816,6 @@ gabble_connection_dispose (GObject *object)
                                                 LM_MESSAGE_TYPE_IQ);
       lm_message_handler_unref (priv->iq_unknown_cb);
     }
-
-  g_object_unref (self->presence_cache);
 
   dbus_g_proxy_call_no_reply (bus_proxy, "ReleaseName",
                               G_TYPE_STRING, self->bus_name,
@@ -912,10 +927,6 @@ _gabble_connection_set_properties_from_account (GabbleConnection *conn,
   /* only override the default resource if we actually got one */
   if (resource)
     g_object_set (G_OBJECT (conn), "resource", resource, NULL);
-
-  /* only set the connect server if one hasn't already been specified */
-  if (!priv->connect_server)
-    g_object_set (G_OBJECT (conn), "connect-server", server, NULL);
 
 OUT:
   g_free (username);
@@ -1194,8 +1205,6 @@ _gabble_connection_send_with_reply (GabbleConnection *conn,
 static LmHandlerResult connection_message_im_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmHandlerResult connection_message_muc_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmHandlerResult connection_presence_muc_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
-static LmHandlerResult connection_presence_roster_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
-static LmHandlerResult connection_iq_roster_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmHandlerResult connection_iq_jingle_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmHandlerResult connection_iq_disco_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmHandlerResult connection_iq_unknown_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
@@ -1208,7 +1217,6 @@ static void connection_status_change (GabbleConnection *, TpConnectionStatus, Tp
 
 static void close_all_channels (GabbleConnection *conn);
 static GabbleIMChannel *new_im_channel (GabbleConnection *conn, GabbleHandle handle, gboolean suppress_handler);
-static void make_roster_channels (GabbleConnection *conn);
 static void discover_services (GabbleConnection *conn);
 static void emit_one_presence_update (GabbleConnection *self, GabbleHandle handle);
 
@@ -1217,29 +1225,10 @@ presence_update_cb (GabblePresenceCache *cache, GabbleHandle handle, gpointer us
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
 
-  emit_one_presence_update (conn, handle);
-}
-
-static gboolean
-do_connect (GabbleConnection *conn, GError **error)
-{
-  GError *lmerror = NULL;
-
-  g_debug ("%s: calling lm_connection_open", G_STRFUNC);
-  if (!lm_connection_open (conn->lmconn, connection_open_cb,
-                           conn, NULL, &lmerror))
-    {
-      g_debug ("%s: %s", G_STRFUNC, lmerror->message);
-
-      *error = g_error_new (TELEPATHY_ERRORS, NetworkError,
-                            "lm_connection_open_failed: %s", lmerror->message);
-
-      g_error_free (lmerror);
-
-      return FALSE;
-    }
-
-  return TRUE;
+  if (handle == conn->self_handle)
+    g_debug ("ignoring presence from ourselves on another resource");
+  else
+    emit_one_presence_update (conn, handle);
 }
 
 /**
@@ -1261,6 +1250,7 @@ _gabble_connection_connect (GabbleConnection *conn,
                             GError          **error)
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  GError *lmerror = NULL;
 
   g_assert (priv->connect_server != NULL);
   g_assert (priv->port > 0 && priv->port <= G_MAXUINT16);
@@ -1268,129 +1258,136 @@ _gabble_connection_connect (GabbleConnection *conn,
   g_assert (priv->username != NULL);
   g_assert (priv->password != NULL);
   g_assert (priv->resource != NULL);
+  g_assert (lm_connection_is_open (conn->lmconn) == FALSE);
 
-  if (conn->lmconn == NULL)
-    {
-      char *jid;
-      gboolean valid;
-      GabblePresence *presence;
+  jid = g_strdup_printf ("%s@%s", priv->username, priv->stream_server);
+  lm_connection_set_jid (conn->lmconn, jid);
 
       conn->lmconn = lm_connection_new (priv->connect_server);
-      conn->presence_cache = gabble_presence_cache_new (conn);
+      conn->presence_cache = gabble_presence_cache_new (conn->lmconn, conn->handles);
       g_signal_connect (conn->presence_cache, "presence-update", (GCallback) presence_update_cb, conn);
 
       if (priv->https_proxy_server)
         {
           LmProxy *proxy;
 
-          proxy = lm_proxy_new_with_server (LM_PROXY_TYPE_HTTP,
-              priv->https_proxy_server, priv->https_proxy_port);
-
-          lm_connection_set_proxy (conn->lmconn, proxy);
-
-          lm_proxy_unref (proxy);
-        }
-
-      lm_connection_set_port (conn->lmconn, priv->port);
-
-      /* send whitespace to the server every 30 seconds */
-      lm_connection_set_keep_alive_rate (conn->lmconn, 30);
-
-      jid = g_strdup_printf ("%s@%s", priv->username, priv->stream_server);
-      lm_connection_set_jid (conn->lmconn, jid);
-
-      lm_connection_set_disconnect_function (conn->lmconn,
-                                             connection_disconnected_cb,
-                                             conn,
-                                             NULL);
-
-      conn->self_handle = gabble_handle_for_contact (conn->handles,
-                                                     jid, FALSE);
-
-      if (conn->self_handle == 0)
-        {
-          /* FIXME: check this sooner and return an error to the user
-           * this will be when we implement Connect() in spec 0.13 */
-          g_error ("%s: invalid jid %s", G_STRFUNC, jid);
-          return FALSE;
-        }
-
-      valid = gabble_handle_ref (conn->handles,
-                                 TP_HANDLE_TYPE_CONTACT,
-                                 conn->self_handle);
-      g_assert (valid);
-
-      /* set initial presence. TODO: some way for the user to set this */
-      gabble_presence_cache_update (conn->presence_cache, conn->self_handle, priv->resource, GABBLE_PRESENCE_AVAILABLE, NULL, 0);
-      emit_one_presence_update (conn, conn->self_handle);
-      presence = gabble_presence_cache_get (conn->presence_cache, conn->self_handle);
-      g_assert (presence);
-      gabble_presence_set_capabilities (presence, priv->resource,
-          PRESENCE_CAP_JINGLE_VOICE | PRESENCE_CAP_GOOGLE_VOICE);
-
-      g_free (jid);
-
-      if (priv->old_ssl)
-        {
-          LmSSL *ssl = lm_ssl_new (NULL, connection_ssl_cb, conn, NULL);
-          lm_connection_set_ssl (conn->lmconn, ssl);
-          lm_ssl_unref (ssl);
-        }
-
-      priv->message_im_cb = lm_message_handler_new (connection_message_im_cb,
-                                                    conn, NULL);
-      lm_connection_register_message_handler (conn->lmconn, priv->message_im_cb,
-                                              LM_MESSAGE_TYPE_MESSAGE,
-                                              LM_HANDLER_PRIORITY_LAST);
-
-      priv->message_muc_cb = lm_message_handler_new (connection_message_muc_cb,
-                                                     conn, NULL);
-      lm_connection_register_message_handler (conn->lmconn, priv->message_muc_cb,
-                                              LM_MESSAGE_TYPE_MESSAGE,
-                                              LM_HANDLER_PRIORITY_FIRST);
-
-      priv->presence_muc_cb = lm_message_handler_new (connection_presence_muc_cb,
-                                                  conn, NULL);
-      lm_connection_register_message_handler (conn->lmconn, priv->presence_muc_cb,
-                                              LM_MESSAGE_TYPE_PRESENCE,
-                                              LM_HANDLER_PRIORITY_FIRST);
-
-      priv->presence_roster_cb = lm_message_handler_new (connection_presence_roster_cb,
-                                                  conn, NULL);
-      lm_connection_register_message_handler (conn->lmconn, priv->presence_roster_cb,
-                                              LM_MESSAGE_TYPE_PRESENCE,
-                                              LM_HANDLER_PRIORITY_LAST);
-
-      priv->iq_roster_cb = lm_message_handler_new (connection_iq_roster_cb,
-                                                   conn, NULL);
-      lm_connection_register_message_handler (conn->lmconn, priv->iq_roster_cb,
-                                              LM_MESSAGE_TYPE_IQ,
-                                              LM_HANDLER_PRIORITY_NORMAL);
-
-      priv->iq_jingle_cb = lm_message_handler_new (connection_iq_jingle_cb,
-                                                   conn, NULL);
-      lm_connection_register_message_handler (conn->lmconn, priv->iq_jingle_cb,
-                                              LM_MESSAGE_TYPE_IQ,
-                                              LM_HANDLER_PRIORITY_NORMAL);
-
-      priv->iq_disco_cb = lm_message_handler_new (connection_iq_disco_cb,
-                                                  conn, NULL);
-      lm_connection_register_message_handler (conn->lmconn, priv->iq_disco_cb,
-                                              LM_MESSAGE_TYPE_IQ,
-                                              LM_HANDLER_PRIORITY_NORMAL);
-
-      priv->iq_unknown_cb = lm_message_handler_new (connection_iq_unknown_cb,
-                                                conn, NULL);
-      lm_connection_register_message_handler (conn->lmconn, priv->iq_unknown_cb,
-                                              LM_MESSAGE_TYPE_IQ,
-                                              LM_HANDLER_PRIORITY_LAST);
-    }
-  else
+  if (conn->self_handle == 0)
     {
-      g_assert (lm_connection_is_open (conn->lmconn) == FALSE);
+      /* FIXME: check this sooner and return an error to the user
+       * this will be when we implement Connect() in spec 0.13 */
+      g_error ("%s: invalid jid %s", G_STRFUNC, jid);
+      return FALSE;
     }
 
-  do_connect (conn, error);
+  valid = gabble_handle_ref (conn->handles,
+                             TP_HANDLE_TYPE_CONTACT,
+                             conn->self_handle);
+  g_assert (valid);
+
+  /* set initial presence */
+  /* TODO: some way for the user to set this */
+  gabble_presence_cache_update (conn->presence_cache, conn->self_handle, priv->resource, GABBLE_PRESENCE_AVAILABLE, NULL, 0);
+  emit_one_presence_update (conn, conn->self_handle);
+
+  /* set initial capabilities */
+  /* TODO: get these from AdvertiseCapabilities  */
+  presence = gabble_presence_cache_get (conn->presence_cache, conn->self_handle);
+  g_assert (presence);
+  gabble_presence_set_capabilities (presence, priv->resource,
+      PRESENCE_CAP_JINGLE_VOICE | PRESENCE_CAP_GOOGLE_VOICE);
+
+  g_free (jid);
+
+  /* always override server and port if one was forced upon us */
+  if (priv->connect_server != NULL)
+    {
+      lm_connection_set_server (conn->lmconn, priv->connect_server);
+      lm_connection_set_port (conn->lmconn, priv->port);
+    }
+  /* otherwise set the server & port to the stream server,
+   * if one didn't appear from a SRV lookup */
+  else if (lm_connection_get_server (conn->lmconn) == NULL)
+    {
+      lm_connection_set_server (conn->lmconn, priv->stream_server);
+      lm_connection_set_port (conn->lmconn, priv->port);
+    }
+
+  if (priv->https_proxy_server)
+    {
+      LmProxy *proxy;
+
+      proxy = lm_proxy_new_with_server (LM_PROXY_TYPE_HTTP,
+          priv->https_proxy_server, priv->https_proxy_port);
+
+      lm_connection_set_proxy (conn->lmconn, proxy);
+
+      lm_proxy_unref (proxy);
+    }
+
+  if (priv->old_ssl)
+    {
+      LmSSL *ssl = lm_ssl_new (NULL, connection_ssl_cb, conn, NULL);
+      lm_connection_set_ssl (conn->lmconn, ssl);
+      lm_ssl_unref (ssl);
+    }
+
+  /* send whitespace to the server every 30 seconds */
+  lm_connection_set_keep_alive_rate (conn->lmconn, 30);
+
+  lm_connection_set_disconnect_function (conn->lmconn,
+                                         connection_disconnected_cb,
+                                         conn,
+                                         NULL);
+
+  priv->message_im_cb = lm_message_handler_new (connection_message_im_cb,
+                                                conn, NULL);
+  lm_connection_register_message_handler (conn->lmconn, priv->message_im_cb,
+                                          LM_MESSAGE_TYPE_MESSAGE,
+                                          LM_HANDLER_PRIORITY_LAST);
+
+  priv->message_muc_cb = lm_message_handler_new (connection_message_muc_cb,
+                                                 conn, NULL);
+  lm_connection_register_message_handler (conn->lmconn, priv->message_muc_cb,
+                                          LM_MESSAGE_TYPE_MESSAGE,
+                                          LM_HANDLER_PRIORITY_FIRST);
+
+  priv->presence_muc_cb = lm_message_handler_new (connection_presence_muc_cb,
+                                              conn, NULL);
+  lm_connection_register_message_handler (conn->lmconn, priv->presence_muc_cb,
+                                          LM_MESSAGE_TYPE_PRESENCE,
+                                          LM_HANDLER_PRIORITY_FIRST);
+
+  priv->iq_jingle_cb = lm_message_handler_new (connection_iq_jingle_cb,
+                                               conn, NULL);
+  lm_connection_register_message_handler (conn->lmconn, priv->iq_jingle_cb,
+                                          LM_MESSAGE_TYPE_IQ,
+                                          LM_HANDLER_PRIORITY_NORMAL);
+
+  priv->iq_disco_cb = lm_message_handler_new (connection_iq_disco_cb,
+                                              conn, NULL);
+  lm_connection_register_message_handler (conn->lmconn, priv->iq_disco_cb,
+                                          LM_MESSAGE_TYPE_IQ,
+                                          LM_HANDLER_PRIORITY_NORMAL);
+
+  priv->iq_unknown_cb = lm_message_handler_new (connection_iq_unknown_cb,
+                                            conn, NULL);
+  lm_connection_register_message_handler (conn->lmconn, priv->iq_unknown_cb,
+                                          LM_MESSAGE_TYPE_IQ,
+                                          LM_HANDLER_PRIORITY_LAST);
+
+  g_debug ("%s: calling lm_connection_open", G_STRFUNC);
+  if (!lm_connection_open (conn->lmconn, connection_open_cb,
+                           conn, NULL, &lmerror))
+    {
+      g_debug ("%s: %s", G_STRFUNC, lmerror->message);
+
+      *error = g_error_new (TELEPATHY_ERRORS, NetworkError,
+                            "lm_connection_open_failed: %s", lmerror->message);
+
+      g_error_free (lmerror);
+
+      return FALSE;
+    }
 
   return TRUE;
 }
@@ -1537,18 +1534,6 @@ close_all_channels (GabbleConnection *conn)
     {
       g_hash_table_destroy (priv->jingle_sessions);
       priv->jingle_sessions = NULL;
-    }
-
-  if (priv->publish_channel)
-    {
-      g_object_unref (priv->publish_channel);
-      priv->publish_channel = NULL;
-    }
-
-  if (priv->subscribe_channel)
-    {
-      g_object_unref (priv->subscribe_channel);
-      priv->subscribe_channel = NULL;
     }
 
   priv->media_channel_index = 0;
@@ -1934,19 +1919,15 @@ connection_message_muc_cb (LmMessageHandler *handler,
   return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 }
 
-/**
- * _get_contact_presence_quark:
- *
- * Returns: the quark used for storing presence information on
- *          a GabbleHandle
- */
-GQuark
-_get_contact_presence_quark()
+static void
+connection_presence_update_cb (GabblePresenceCache *cache, GabbleHandle handle, gpointer user_data)
 {
-  static GQuark presence_quark = 0;
-  if (!presence_quark)
-    presence_quark = g_quark_from_static_string("ContactPresenceQuark");
-  return presence_quark;
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+
+  if (handle == conn->self_handle)
+    g_debug ("ignoring presence from ourselves on another resource");
+  else
+    emit_one_presence_update (conn, handle);
 }
 
 /**
@@ -2374,7 +2355,8 @@ connection_iq_roster_cb (LmMessageHandler *handler,
   iq_node = lm_message_get_node (message);
   query_node = lm_message_node_get_child (iq_node, "query");
 
-  if (!query_node || !_lm_message_node_has_namespace (query_node, NS_ROSTER))
+  if (!query_node || strcmp (NS_ROSTER,
+        lm_message_node_get_attribute (query_node, "xmlns")))
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
   /* if this is a result, it's from our initial query. if it's a set,
@@ -3239,8 +3221,6 @@ connection_disco_cb (GabbleDisco *disco,
 {
   GabbleConnection *conn = user_data;
   GabbleConnectionPrivate *priv;
-  LmMessage *message = NULL;
-  LmMessageNode *msgnode;
   GError *error;
 
   g_assert (GABBLE_IS_CONNECTION (conn));
@@ -3290,27 +3270,6 @@ connection_disco_cb (GabbleDisco *disco,
       goto ERROR;
     }
 
-  /* send <iq type="get"><query xmnls="jabber:iq:roster" /></iq> to
-   * request the roster */
-  message = lm_message_new_with_sub_type (NULL,
-                                          LM_MESSAGE_TYPE_IQ,
-                                          LM_MESSAGE_SUB_TYPE_GET);
-  msgnode = lm_message_node_add_child (lm_message_get_node (message),
-                                    "query", NULL);
-  lm_message_node_set_attribute (msgnode, "xmlns", NS_ROSTER);
-
-  if (!lm_connection_send (conn->lmconn, message, &error))
-    {
-      g_debug ("%s: initial roster request failed: %s",
-               G_STRFUNC, error->message);
-
-      goto ERROR;
-    }
-
-  lm_message_unref (message);
-
-  make_roster_channels (conn);
-
   discover_services (conn);
 
   return;
@@ -3319,70 +3278,11 @@ ERROR:
   if (error)
     g_error_free (error);
 
-  if (message)
-    lm_message_unref (message);
-
   connection_status_change (conn,
       TP_CONN_STATUS_DISCONNECTED,
       TP_CONN_STATUS_REASON_NETWORK_ERROR);
 
   return;
-}
-
-/**
- * make_roster_channels
- */
-static void
-make_roster_channels (GabbleConnection *conn)
-{
-  GabbleConnectionPrivate *priv;
-  GabbleHandle handle;
-  char *object_path;
-
-  g_assert (GABBLE_IS_CONNECTION (conn));
-
-  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-
-  g_assert (priv->publish_channel == NULL);
-  g_assert (priv->subscribe_channel == NULL);
-
-  /* make publish list channel */
-  handle = gabble_handle_for_list_publish (conn->handles);
-  object_path = g_strdup_printf ("%s/RosterChannelPublish", conn->object_path);
-
-  priv->publish_channel = g_object_new (GABBLE_TYPE_ROSTER_CHANNEL,
-                                        "connection", conn,
-                                        "object-path", object_path,
-                                        "handle", handle,
-                                        NULL);
-
-  g_debug ("%s: created %s", G_STRFUNC, object_path);
-
-  g_signal_emit (conn, signals[NEW_CHANNEL], 0,
-                 object_path, TP_IFACE_CHANNEL_TYPE_CONTACT_LIST,
-                 TP_HANDLE_TYPE_LIST, handle,
-                 /* suppress handler: */ FALSE);
-
-  g_free (object_path);
-
-  /* make subscribe list channel */
-  handle = gabble_handle_for_list_subscribe (conn->handles);
-  object_path = g_strdup_printf ("%s/RosterChannelSubscribe", conn->object_path);
-
-  priv->subscribe_channel = g_object_new (GABBLE_TYPE_ROSTER_CHANNEL,
-                                          "connection", conn,
-                                          "object-path", object_path,
-                                          "handle", handle,
-                                          NULL);
-
-  g_debug ("%s: created %s", G_STRFUNC, object_path);
-
-  g_signal_emit (conn, signals[NEW_CHANNEL], 0,
-                 object_path, TP_IFACE_CHANNEL_TYPE_CONTACT_LIST,
-                 TP_HANDLE_TYPE_LIST, handle,
-                 /* supress handler: */ FALSE);
-
-  g_free (object_path);
 }
 
 static void
@@ -4235,11 +4135,7 @@ gboolean gabble_connection_list_channels (GabbleConnection *obj, GPtrArray ** re
       list_channel_hash_foreach (NULL, g_ptr_array_index (priv->media_channels, i), channels);
     }
 
-  if (priv->publish_channel)
-    list_channel_hash_foreach (NULL, priv->publish_channel, channels);
-
-  if (priv->subscribe_channel)
-    list_channel_hash_foreach (NULL, priv->subscribe_channel, channels);
+  /* ROSTER: include roster channels */
 
   *ret = channels;
 
@@ -4480,25 +4376,7 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
     }
   else if (!strcmp (type, TP_IFACE_CHANNEL_TYPE_CONTACT_LIST))
     {
-      GabbleRosterChannel *chan;
-
-      if (handle_type != TP_HANDLE_TYPE_LIST)
-        goto NOT_AVAILABLE;
-
-      if (!gabble_handle_is_valid (obj->handles,
-                                   handle_type,
-                                   handle,
-                                   error))
-        return FALSE;
-
-      if (handle == gabble_handle_for_list_publish (obj->handles))
-        chan = priv->publish_channel;
-      else if (handle == gabble_handle_for_list_subscribe (obj->handles))
-        chan = priv->subscribe_channel;
-      else
-        g_assert_not_reached ();
-
-      g_object_get (chan, "object-path", ret, NULL);
+      /* ROSTER: lala */
     }
   else if (!strcmp (type, TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA))
     {
@@ -4980,7 +4858,7 @@ gboolean gabble_connection_request_presence (GabbleConnection *obj, const GArray
   if (!gabble_handles_are_valid (obj->handles, TP_HANDLE_TYPE_CONTACT, contacts, FALSE, error))
     return FALSE;
 
-  /*TODO; what do we do about requests for non-rostered contacts?*/
+  /* TODO: what do we do about requests for non-rostered contacts? */
 
   if (contacts->len)
     emit_presence_update (obj, contacts);

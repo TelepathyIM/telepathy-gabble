@@ -2813,9 +2813,15 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   LmMessage *result;
-  LmMessageNode *node, *query, *feature;
+  LmMessageNode *node, *query;
   gchar *to_jid;
-  const gchar *xmlns, *from_jid;
+  const gchar *xmlns, *from_jid, **feature_url, *feature_urls[] = {
+      "http://jabber.org/protocol/jingle",
+      "http://jabber.org/protocol/jingle/media/audio",
+      "http://www.google.com/session",
+      "http://www.google.com/session/phone",
+      NULL
+  };
 
   if (lm_message_get_sub_type (message) != LM_MESSAGE_SUB_TYPE_GET)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
@@ -2850,21 +2856,11 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   query = lm_message_node_add_child (result->node, "query", NULL);
   lm_message_node_set_attribute (query, "xmlns", xmlns);
 
-  feature = lm_message_node_add_child (query, "feature", NULL);
-  lm_message_node_set_attribute (feature, "var",
-      "http://jabber.org/protocol/jingle");
-
-  feature = lm_message_node_add_child (query, "feature", NULL);
-  lm_message_node_set_attribute (feature, "var",
-      "http://jabber.org/protocol/jingle/media/audio");
-
-  feature = lm_message_node_add_child (query, "feature", NULL);
-  lm_message_node_set_attribute (feature, "var",
-      "http://www.google.com/session");
-
-  feature = lm_message_node_add_child (query, "feature", NULL);
-  lm_message_node_set_attribute (feature, "var",
-      "http://www.google.com/session/phone");
+  for (feature_url = feature_urls; NULL != *feature_url; feature_url++)
+    {
+      LmMessageNode *feature = lm_message_node_add_child (query, "feature", NULL);
+      lm_message_node_set_attribute (feature, "var", *feature_url);
+    }
 
   HANDLER_DEBUG (result->node, "sending disco response");
 

@@ -1233,10 +1233,7 @@ presence_update_cb (GabblePresenceCache *cache, GabbleHandle handle, gpointer us
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
 
-  if (handle == conn->self_handle)
-    g_debug ("ignoring presence from ourselves on another resource");
-  else
-    emit_one_presence_update (conn, handle);
+  emit_one_presence_update (conn, handle);
 }
 
 static gboolean

@@ -26,6 +26,7 @@
 #include <loudmouth/loudmouth.h>
 
 #include "gabble-types.h"
+#include "gabble-error.h"
 #include "telepathy-constants.h"
 
 G_BEGIN_DECLS
@@ -135,7 +136,8 @@ gboolean _gabble_connection_register (GabbleConnection *conn, char **bus_name, c
 gboolean _gabble_connection_connect (GabbleConnection *conn, GError **error);
 gboolean _gabble_connection_send (GabbleConnection *conn, LmMessage *msg, GError **error);
 gboolean _gabble_connection_send_with_reply (GabbleConnection *conn, LmMessage *msg, GabbleConnectionMsgReplyFunc reply_func, GObject *object, gpointer user_data, GError **error);
-void _gabble_connection_send_iq_ack (GabbleConnection *conn, LmMessageNode *iq_node, LmMessageSubType type);
+void _gabble_connection_send_iq_result (GabbleConnection *conn, LmMessageNode *iq_node);
+void _gabble_connection_send_iq_error (GabbleConnection *conn, LmMessageNode *iq_node, GabbleXmppError error);
 GQuark _get_contact_presence_quark();
 LmMessageNode *_get_muc_node (LmMessageNode *node);
 

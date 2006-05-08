@@ -2613,12 +2613,13 @@ new_media_channel (GabbleConnection *conn, GabbleHandle creator, gboolean suppre
 }
 
 /**
- * _gabble_connection_send_iq_ack
+ * _gabble_connection_send_iq_result
  *
  * Function used to acknowledge an IQ stanza.
  */
 void
-_gabble_connection_send_iq_ack (GabbleConnection *conn, LmMessageNode *iq_node, LmMessageSubType type)
+_gabble_connection_send_iq_result (GabbleConnection *conn,
+                                   LmMessageNode *iq_node)
 {
   const gchar *to, *id;
   LmMessage *msg;
@@ -2626,8 +2627,53 @@ _gabble_connection_send_iq_ack (GabbleConnection *conn, LmMessageNode *iq_node, 
   to = lm_message_node_get_attribute (iq_node, "from");
   id = lm_message_node_get_attribute (iq_node, "id");
 
-  msg = lm_message_new_with_sub_type (to, LM_MESSAGE_TYPE_IQ, type);
+  if (to == NULL || id == NULL)
+    {
+      g_warning ("%s: missing required attribute", G_STRFUNC);
+      return;
+    }
+
+  msg = lm_message_new_with_sub_type (to, LM_MESSAGE_TYPE_IQ,
+                                      LM_MESSAGE_SUB_TYPE_RESULT);
   lm_message_node_set_attribute (msg->node, "id", id);
+  if (!_gabble_connection_send (conn, msg, NULL)) {
+      g_warning ("%s: _gabble_connection_send failed", G_STRFUNC);
+  }
+  lm_message_unref (msg);
+}
+
+/**
+ * _gabble_connection_send_iq_error
+ *
+ * Function used to acknowledge an IQ stanza with an error.
+ */
+void
+_gabble_connection_send_iq_error (GabbleConnection *conn,
+                                  LmMessageNode *iq_node,
+                                  GabbleXmppError error)
+{
+  const gchar *to, *id;
+  LmMessage *msg;
+
+  to = lm_message_node_get_attribute (iq_node, "from");
+  id = lm_message_node_get_attribute (iq_node, "id");
+
+  if (to == NULL || id == NULL)
+    {
+      g_warning ("%s: missing required attribute", G_STRFUNC);
+      return;
+    }
+
+  msg = lm_message_new_with_sub_type (to, LM_MESSAGE_TYPE_IQ,
+                                      LM_MESSAGE_SUB_TYPE_ERROR);
+
+  lm_message_node_set_attribute (msg->node, "id", id);
+
+  msg->node->children = iq_node->children;
+  msg->node->children->parent = msg->node;
+  iq_node->children = NULL;
+  gabble_xmpp_error_to_node (error, msg->node);
+
   if (!_gabble_connection_send (conn, msg, NULL)) {
       g_warning ("%s: _gabble_connection_send failed", G_STRFUNC);
   }

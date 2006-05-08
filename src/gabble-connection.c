@@ -2995,14 +2995,13 @@ connection_iq_unknown_cb (LmMessageHandler *handler,
                           gpointer user_data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
-  LmMessageNode *iq_node;
 
   g_assert (connection == conn->lmconn);
 
-  iq_node = lm_message_get_node (message);
-  HANDLER_DEBUG (iq_node, "got unknown iq");
+  HANDLER_DEBUG (message->node, "got unknown iq");
 
-  /* TODO: return an IQ error for unknown get/set */
+  _gabble_connection_send_iq_error (conn, message->node,
+                                    XMPP_ERROR_FEATURE_NOT_IMPLEMENTED);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }

@@ -879,7 +879,7 @@ _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream,
                   codecs->len);
 
 /*SUCCESS:*/
-  _gabble_connection_send_iq_ack (priv->conn, iq_node, LM_MESSAGE_SUB_TYPE_RESULT);
+  _gabble_connection_send_iq_result (priv->conn, iq_node);
 
   push_remote_codecs (stream);
 
@@ -891,7 +891,7 @@ FAILURE:
                   ANSI_BOLD_OFF, xml, ANSI_BOLD_ON);
   g_free (xml);
 
-  _gabble_connection_send_iq_ack (priv->conn, iq_node, LM_MESSAGE_SUB_TYPE_ERROR);
+  _gabble_connection_send_iq_error (priv->conn, iq_node, XMPP_ERROR_NOT_ALLOWED);
 
   return FALSE;
 }
@@ -1109,14 +1109,14 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
     }
 
 /*SUCCESS:*/
-  _gabble_connection_send_iq_ack (priv->conn, iq_node, LM_MESSAGE_SUB_TYPE_RESULT);
+  _gabble_connection_send_iq_result (priv->conn, iq_node);
 
   push_remote_candidates (stream);
 
   return TRUE;
 
 FAILURE:
-  _gabble_connection_send_iq_ack (priv->conn, iq_node, LM_MESSAGE_SUB_TYPE_ERROR);
+  _gabble_connection_send_iq_error (priv->conn, iq_node, XMPP_ERROR_BAD_REQUEST);
 
   return FALSE;
 }

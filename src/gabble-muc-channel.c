@@ -2620,7 +2620,7 @@ gboolean gabble_muc_channel_set_properties (GabbleMucChannel *obj, const GPtrArr
 
       /* Compatible type? */
       if (!g_value_type_compatible (G_VALUE_TYPE (prop_val),
-                                    G_VALUE_TYPE (priv->room_props[prop_id].value)))
+                                    room_property_signatures[prop_id].type))
         {
           error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
                                "incompatible value type for property identifier %d",

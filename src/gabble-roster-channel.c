@@ -112,7 +112,9 @@ gabble_roster_channel_constructor (GType type, guint n_props,
   if (gabble_handle_for_list_publish (handles) == priv->handle)
     {
       gabble_group_mixin_change_flags (obj,
-          TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
+          TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
+          TP_CHANNEL_GROUP_FLAG_MESSAGE_ACCEPT |
+          TP_CHANNEL_GROUP_FLAG_MESSAGE_REMOVE,
           0);
     }
   else if (gabble_handle_for_list_subscribe (handles) == priv->handle)
@@ -120,7 +122,10 @@ gabble_roster_channel_constructor (GType type, guint n_props,
       gabble_group_mixin_change_flags (obj,
           TP_CHANNEL_GROUP_FLAG_CAN_ADD |
           TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
-          TP_CHANNEL_GROUP_FLAG_CAN_RESCIND,
+          TP_CHANNEL_GROUP_FLAG_CAN_RESCIND |
+          TP_CHANNEL_GROUP_FLAG_MESSAGE_ADD |
+          TP_CHANNEL_GROUP_FLAG_MESSAGE_REMOVE |
+          TP_CHANNEL_GROUP_FLAG_MESSAGE_RESCIND,
           0);
     }
   else
@@ -312,6 +317,38 @@ gabble_roster_channel_finalize (GObject *object)
 }
 
 
+static gboolean
+_gabble_roster_channel_send_presence (GabbleRosterChannel *chan,
+                                      LmMessageSubType sub_type,
+                                      GabbleHandle handle,
+                                      const gchar *status,
+                                      GError **error)
+{
+  GabbleRosterChannelPrivate *priv;
+  GabbleHandleRepo *repo;
+  const char *contact;
+  LmMessage *message;
+  gboolean result;
+
+  priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (chan);
+  repo = priv->conn->handles;
+  contact = gabble_handle_inspect (repo, TP_HANDLE_TYPE_CONTACT, handle);
+
+  message = lm_message_new_with_sub_type (contact,
+      LM_MESSAGE_TYPE_PRESENCE,
+      sub_type);
+
+  if (status != NULL && status[0] != '\0')
+    lm_message_node_add_child (message->node, "status", status);
+
+  result = _gabble_connection_send (priv->conn, message, error);
+
+  lm_message_unref (message);
+
+  return result;
+}
+
+
 /**
  * _gabble_roster_channel_add_member_cb
  *
@@ -325,6 +362,7 @@ _gabble_roster_channel_add_member_cb (GObject *obj,
 {
   GabbleRosterChannelPrivate *priv;
   GabbleHandleRepo *repo;
+  gboolean ret = FALSE;
 
   g_assert (GABBLE_IS_ROSTER_CHANNEL (obj));
 
@@ -334,47 +372,23 @@ _gabble_roster_channel_add_member_cb (GObject *obj,
   /* publish list */
   if (gabble_handle_for_list_publish (repo) == priv->handle)
     {
-      /* send <presence type="subscribed"> messages */
-      LmMessage *message;
-      const char *contact;
-      gboolean result;
-
-      contact = gabble_handle_inspect (repo, TP_HANDLE_TYPE_CONTACT, handle);
-
-      message = lm_message_new_with_sub_type (contact,
-          LM_MESSAGE_TYPE_PRESENCE,
-          LM_MESSAGE_SUB_TYPE_SUBSCRIBED);
-      result = _gabble_connection_send (priv->conn, message, error);
-      lm_message_unref (message);
-
-      if (!result)
-        return FALSE;
+      /* send <presence type="subscribed"> */
+      ret = _gabble_roster_channel_send_presence (GABBLE_ROSTER_CHANNEL (obj),
+          LM_MESSAGE_SUB_TYPE_SUBSCRIBED, handle, message, error);
     }
   /* subscribe list */
   else if (gabble_handle_for_list_subscribe (repo) == priv->handle)
     {
-      /* send <presence type="subscribe">, but skip existing members */
-      LmMessage *message;
-      const char *contact;
-      gboolean result;
-
-      contact = gabble_handle_inspect (repo, TP_HANDLE_TYPE_CONTACT, handle);
-
-      message = lm_message_new_with_sub_type (contact,
-          LM_MESSAGE_TYPE_PRESENCE,
-          LM_MESSAGE_SUB_TYPE_SUBSCRIBE);
-      result = _gabble_connection_send (priv->conn, message, error);
-      lm_message_unref (message);
-
-      if (!result)
-        return FALSE;
+      /* send <presence type="subscribe"> */
+      ret = _gabble_roster_channel_send_presence (GABBLE_ROSTER_CHANNEL (obj),
+          LM_MESSAGE_SUB_TYPE_SUBSCRIBE, handle, message, error);
     }
   else
     {
       g_assert_not_reached ();
     }
 
-  return TRUE;
+  return ret;
 }
 
 
@@ -391,6 +405,7 @@ _gabble_roster_channel_remove_member_cb (GObject *obj,
 {
   GabbleRosterChannelPrivate *priv;
   GabbleHandleRepo *repo;
+  gboolean ret = FALSE;
 
   g_assert (GABBLE_IS_ROSTER_CHANNEL (obj));
 
@@ -400,47 +415,23 @@ _gabble_roster_channel_remove_member_cb (GObject *obj,
   /* publish list */
   if (gabble_handle_for_list_publish (repo) == priv->handle)
     {
-      /* send <presence type="unsubscribed"> messages */
-      LmMessage *message;
-      const char *contact;
-      gboolean result;
-
-      contact = gabble_handle_inspect (repo, TP_HANDLE_TYPE_CONTACT, handle);
-
-      message = lm_message_new_with_sub_type (contact,
-          LM_MESSAGE_TYPE_PRESENCE,
-          LM_MESSAGE_SUB_TYPE_SUBSCRIBED);
-      result = _gabble_connection_send (priv->conn, message, error);
-      lm_message_unref (message);
-
-      if (!result)
-        return FALSE;
+      /* send <presence type="unsubscribed"> */
+      ret = _gabble_roster_channel_send_presence (GABBLE_ROSTER_CHANNEL (obj),
+          LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED, handle, message, error);
     }
   /* subscribe list */
   else if (gabble_handle_for_list_subscribe (repo) == priv->handle)
     {
       /* send <presence type="unsubscribe"> */
-      LmMessage *message;
-      const char *contact;
-      gboolean result;
-
-      contact = gabble_handle_inspect (repo, TP_HANDLE_TYPE_CONTACT, handle);
-
-      message = lm_message_new_with_sub_type (contact,
-          LM_MESSAGE_TYPE_PRESENCE,
-          LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE);
-      result = _gabble_connection_send (priv->conn, message, error);
-      lm_message_unref (message);
-
-      if (!result)
-        return FALSE;
+      ret = _gabble_roster_channel_send_presence (GABBLE_ROSTER_CHANNEL (obj),
+          LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE, handle, message, error);
     }
   else
     {
       g_assert_not_reached ();
     }
 
-  return TRUE;
+  return ret;
 }
 
 

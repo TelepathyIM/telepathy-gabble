@@ -1567,6 +1567,13 @@ close_all_channels (GabbleConnection *conn)
     }
 
   priv->media_channel_index = 0;
+
+  if (priv->roomlist_channel)
+    {
+      GObject *tmp = G_OBJECT (priv->roomlist_channel);
+      priv->roomlist_channel = NULL;
+      g_object_unref (tmp);
+    }
 }
 
 
@@ -3372,8 +3379,12 @@ roomlist_channel_closed_cb (GabbleRoomlistChannel *chan, gpointer data)
 {
   GabbleConnection *conn = data;
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-  g_object_unref (priv->roomlist_channel);
-  priv->roomlist_channel = NULL;
+
+  if (priv->roomlist_channel)
+    {
+      g_object_unref (priv->roomlist_channel);
+      priv->roomlist_channel = NULL;
+    }
 }
 
 static void

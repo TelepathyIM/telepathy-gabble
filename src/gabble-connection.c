@@ -788,6 +788,7 @@ gabble_connection_dispose (GObject *object)
 
   g_ptr_array_foreach (priv->channel_factories, (GFunc) g_object_unref, NULL);
   g_ptr_array_free (priv->channel_factories, TRUE);
+  priv->channel_factories = NULL;
 
   /* unreffing channel factories frees the roster */
   self->roster = NULL;

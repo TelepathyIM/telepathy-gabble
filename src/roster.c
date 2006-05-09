@@ -505,11 +505,40 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
-// TODO
-// static void
-// _gabble_roster_presence_ack ()
-// {
-// }
+
+static void
+_gabble_roster_send_presence_ack (GabbleRoster *roster,
+                                  const gchar *from,
+                                  LmMessageSubType sub_type)
+{
+  GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
+  LmMessage *reply;
+
+  switch (sub_type)
+    {
+    case LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE:
+      sub_type = LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED;
+      break;
+    case LM_MESSAGE_SUB_TYPE_SUBSCRIBED:
+      sub_type = LM_MESSAGE_SUB_TYPE_SUBSCRIBE;
+      break;
+    case LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED:
+      sub_type = LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE;
+      break;
+    default:
+      g_assert_not_reached();
+      return;
+    }
+
+  reply = lm_message_new_with_sub_type (from,
+      LM_MESSAGE_TYPE_PRESENCE,
+      sub_type);
+
+  _gabble_connection_send (priv->conn, reply, NULL);
+
+  lm_message_unref (reply);
+}
+
 
 /**
  * connection_presence_roster_cb:
@@ -533,7 +562,6 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
   LmMessageSubType sub_type;
   GIntSet *empty, *tmp;
   GabbleHandle handle;
-  LmMessage *reply = NULL;
   const gchar *status_message = NULL;
   GabbleRosterChannel *chan = NULL;
 
@@ -613,12 +641,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
       gabble_group_mixin_change_members (G_OBJECT (chan), status_message,
           empty, tmp, empty, empty);
 
-      /* acknowledge the change */
-      reply = lm_message_new_with_sub_type (from,
-                LM_MESSAGE_TYPE_PRESENCE,
-                LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED);
-      _gabble_connection_send (priv->conn, reply, NULL);
-      lm_message_unref (reply);
+      _gabble_roster_send_presence_ack (roster, from, sub_type);
 
       g_intset_destroy (empty);
       g_intset_destroy (tmp);
@@ -637,12 +660,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
       gabble_group_mixin_change_members (G_OBJECT (chan), status_message, tmp,
           empty, empty, empty);
 
-      /* acknowledge the change */
-      reply = lm_message_new_with_sub_type (from,
-                LM_MESSAGE_TYPE_PRESENCE,
-                LM_MESSAGE_SUB_TYPE_SUBSCRIBE);
-      _gabble_connection_send (priv->conn, reply, NULL);
-      lm_message_unref (reply);
+      _gabble_roster_send_presence_ack (roster, from, sub_type);
 
       g_intset_destroy (empty);
       g_intset_destroy (tmp);
@@ -661,12 +679,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
       gabble_group_mixin_change_members (G_OBJECT (chan), status_message,
           empty, tmp, empty, empty);
 
-      /* acknowledge the change */
-      reply = lm_message_new_with_sub_type (from,
-                LM_MESSAGE_TYPE_PRESENCE,
-                LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE);
-      _gabble_connection_send (priv->conn, reply, NULL);
-      lm_message_unref (reply);
+      _gabble_roster_send_presence_ack (roster, from, sub_type);
 
       g_intset_destroy (empty);
       g_intset_destroy (tmp);

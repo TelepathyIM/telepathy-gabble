@@ -33,10 +33,13 @@
 #include "telepathy-errors.h"
 #include "telepathy-helpers.h"
 #include "telepathy-interfaces.h"
+#include "tp-channel-iface.h"
 
 #include "gabble-media-channel.h"
 #include "gabble-media-channel-signals-marshal.h"
 #include "gabble-media-channel-glue.h"
+
+#include "gabble-media-session.h"
 
 G_DEFINE_TYPE(GabbleMediaChannel, gabble_media_channel, G_TYPE_OBJECT)
 
@@ -53,6 +56,8 @@ G_DEFINE_TYPE(GabbleMediaChannel, gabble_media_channel, G_TYPE_OBJECT)
       G_TYPE_UINT, \
       G_TYPE_INVALID))
 
+G_DEFINE_TYPE_WITH_CODE (GabbleMediaChannel, gabble_media_channel,
+    G_TYPE_OBJECT, G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL));
 
 /* signal enum */
 enum
@@ -68,9 +73,11 @@ static guint signals[LAST_SIGNAL] = {0};
 /* properties */
 enum
 {
-  PROP_CONNECTION = 1,
-  PROP_OBJECT_PATH,
+  PROP_OBJECT_PATH = 1,
   PROP_CHANNEL_TYPE,
+  PROP_HANDLE_TYPE,
+  PROP_HANDLE,
+  PROP_CONNECTION,
   PROP_CREATOR,
   LAST_PROPERTY
 };
@@ -247,14 +254,20 @@ gabble_media_channel_get_property (GObject    *object,
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
 
   switch (property_id) {
-    case PROP_CONNECTION:
-      g_value_set_object (value, priv->conn);
-      break;
     case PROP_OBJECT_PATH:
       g_value_set_string (value, priv->object_path);
       break;
     case PROP_CHANNEL_TYPE:
-      g_value_set_string (value, TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA);
+      g_value_set_static_string (value, TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA);
+      break;
+    case PROP_HANDLE_TYPE:
+      g_value_set_uint (value, TP_HANDLE_TYPE_NONE);
+      break;
+    case PROP_HANDLE:
+      g_value_set_uint (value, 0);
+      break;
+    case PROP_CONNECTION:
+      g_value_set_object (value, priv->conn);
       break;
     case PROP_CREATOR:
       g_value_set_uint (value, priv->creator);
@@ -275,12 +288,12 @@ gabble_media_channel_set_property (GObject     *object,
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
 
   switch (property_id) {
-    case PROP_CONNECTION:
-      priv->conn = g_value_get_object (value);
-      break;
     case PROP_OBJECT_PATH:
       g_free (priv->object_path);
       priv->object_path = g_value_dup_string (value);
+      break;
+    case PROP_CONNECTION:
+      priv->conn = g_value_get_object (value);
       break;
     case PROP_CREATOR:
       priv->creator = g_value_get_uint (value);
@@ -312,6 +325,11 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
   object_class->dispose = gabble_media_channel_dispose;
   object_class->finalize = gabble_media_channel_finalize;
 
+  g_object_class_override_property (object_class, PROP_OBJECT_PATH, "object-path");
+  g_object_class_override_property (object_class, PROP_CHANNEL_TYPE, "channel-type");
+  g_object_class_override_property (object_class, PROP_HANDLE_TYPE, "handle-type");
+  g_object_class_override_property (object_class, PROP_HANDLE, "handle");
+
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
                                     "Gabble connection object that owns this "
                                     "IM channel object.",
@@ -321,25 +339,6 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
                                     G_PARAM_STATIC_NICK |
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
-
-  param_spec = g_param_spec_string ("object-path", "D-Bus object path",
-                                    "The D-Bus object path used for this "
-                                    "object on the bus.",
-                                    NULL,
-                                    G_PARAM_CONSTRUCT_ONLY |
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_OBJECT_PATH, param_spec);
-
-  param_spec = g_param_spec_string ("channel-type", "Telepathy channel type",
-                                    "The D-Bus interface representing the "
-                                    "type of this channel.",
-                                    NULL,
-                                    G_PARAM_READABLE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_CHANNEL_TYPE, param_spec);
 
   param_spec = g_param_spec_uint ("creator", "Channel creator",
                                   "The GabbleHandle representing the contact "

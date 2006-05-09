@@ -3847,7 +3847,13 @@ gboolean gabble_connection_list_channels (GabbleConnection *obj, GPtrArray ** re
 
   for (i = 0; i < priv->media_channels->len; i++)
     {
-      list_channel_hash_foreach (NULL, g_ptr_array_index (priv->media_channels, i), channels);
+      list_channel_factory_foreach (TP_CHANNEL_IFACE (g_ptr_array_index
+            (priv->media_channels, i)), channels);
+    }
+
+  if (priv->roomlist_channel)
+    {
+      list_channel_factory_foreach (TP_CHANNEL_IFACE (priv->roomlist_channel), channels);
     }
 
   *ret = channels;

@@ -727,14 +727,36 @@ gabble_roster_factory_iface_disconnected (TpChannelFactoryIface *iface)
     }
 }
 
+struct foreach_data {
+    TpChannelFunc func;
+    gpointer data;
+};
+
+static void
+_gabble_roster_factory_iface_foreach_one (gpointer key,
+                                          gpointer value,
+                                          gpointer data)
+{
+  TpChannelIface *chan = TP_CHANNEL_IFACE (value);
+  struct foreach_data *foreach = (struct foreach_data *) data;
+
+  foreach->func (chan, foreach->data);
+}
+
 void
 gabble_roster_factory_iface_foreach (TpChannelFactoryIface *iface,
                                      TpChannelFunc func,
                                      gpointer data)
 {
-  // TODO
-//   GabbleRoster *roster = GABBLE_ROSTER (iface);
-//   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
+  GabbleRoster *roster = GABBLE_ROSTER (iface);
+  GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
+  struct foreach_data foreach;
+
+  foreach.func = func;
+  foreach.data = data;
+
+  g_hash_table_foreach (priv->channels,
+      _gabble_roster_factory_iface_foreach_one, &foreach);
 }
 
 TpChannelFactoryRequestStatus

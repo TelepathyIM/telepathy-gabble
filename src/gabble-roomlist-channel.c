@@ -26,6 +26,7 @@
 #include "telepathy-constants.h"
 #include "telepathy-interfaces.h"
 #include "telepathy-helpers.h"
+#include "tp-channel-iface.h"
 #include "gabble-connection.h"
 #include "gabble-disco.h"
 #include "handles.h"
@@ -43,8 +44,6 @@
 #define TP_TYPE_ROOM_LIST (dbus_g_type_get_collection ("GPtrArray", \
       TP_TYPE_ROOM_STRUCT))
 
-#define DISCO_PIPELINE_SIZE 10
-
 G_DEFINE_TYPE(GabbleRoomlistChannel, gabble_roomlist_channel, G_TYPE_OBJECT)
 
 /* signal enum */
@@ -61,11 +60,11 @@ static guint signals[LAST_SIGNAL] = {0};
 /* properties */
 enum
 {
-  PROP_CONNECTION = 1,
-  PROP_OBJECT_PATH,
+  PROP_OBJECT_PATH = 1,
   PROP_CHANNEL_TYPE,
-/*  PROP_HANDLE_TYPE,
-  PROP_HANDLE,*/
+  PROP_HANDLE_TYPE,
+  PROP_HANDLE,
+  PROP_CONNECTION,
   PROP_CONFERENCE_SERVER,
   LAST_PROPERTY
 };
@@ -129,23 +128,24 @@ gabble_roomlist_channel_get_property (GObject    *object,
   GabbleRoomlistChannelPrivate *priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (chan);
 
   switch (property_id) {
-    case PROP_CONNECTION:
-      g_value_set_object (value, priv->conn);
-      break;
     case PROP_OBJECT_PATH:
       g_value_set_string (value, priv->object_path);
       break;
     case PROP_CHANNEL_TYPE:
-      g_value_set_string (value, TP_IFACE_CHANNEL_TYPE_ROOM_LIST);
+      g_value_set_static_string (value, TP_IFACE_CHANNEL_TYPE_ROOM_LIST);
       break;
-/* TODO: do we need conference server handles??
- * case PROP_HANDLE_TYPE:
-      g_value_set_uint (value, TP_HANDLE_TYPE_CONTACT);
+    case PROP_HANDLE_TYPE:
+      g_value_set_uint (value, TP_HANDLE_TYPE_NONE);
       break;
     case PROP_HANDLE:
-      g_value_set_uint (value, priv->handle);
+      g_value_set_uint (value, 0);
       break;
-*/
+    case PROP_CONNECTION:
+      g_value_set_object (value, priv->conn);
+      break;
+    case PROP_CONFERENCE_SERVER:
+      g_value_set_string (value, priv->conference_server);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -162,22 +162,17 @@ gabble_roomlist_channel_set_property (GObject     *object,
   GabbleRoomlistChannelPrivate *priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (chan);
 
   switch (property_id) {
+    case PROP_OBJECT_PATH:
+      g_free (priv->object_path);
+      priv->object_path = g_value_dup_string (value);
+      break;
     case PROP_CONNECTION:
       priv->conn = g_value_get_object (value);
       break;
-    case PROP_OBJECT_PATH:
-      if (priv->object_path)
-        g_free (priv->object_path);
-
-      priv->object_path = g_value_dup_string (value);
-      break;
-      /*
-    case PROP_HANDLE:
-      priv->handle = g_value_get_uint (value);
-      break;
-      */
     case PROP_CONFERENCE_SERVER:
+      g_free (priv->conference_server);
       priv->conference_server = g_value_dup_string (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -203,54 +198,20 @@ gabble_roomlist_channel_class_init (GabbleRoomlistChannelClass *gabble_roomlist_
   object_class->dispose = gabble_roomlist_channel_dispose;
   object_class->finalize = gabble_roomlist_channel_finalize;
 
+  g_object_class_override_property (object_class, PROP_OBJECT_PATH, "object-path");
+  g_object_class_override_property (object_class, PROP_CHANNEL_TYPE, "channel-type");
+  g_object_class_override_property (object_class, PROP_HANDLE_TYPE, "handle-type");
+  g_object_class_override_property (object_class, PROP_HANDLE, "handle");
+
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
                                     "Gabble connection object that owns this "
-                                    "IM channel object.",
+                                    "room list channel object.",
                                     GABBLE_TYPE_CONNECTION,
                                     G_PARAM_CONSTRUCT_ONLY |
                                     G_PARAM_READWRITE |
                                     G_PARAM_STATIC_NICK |
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
-
-  param_spec = g_param_spec_string ("object-path", "D-Bus object path",
-                                    "The D-Bus object path used for this "
-                                    "object on the bus.",
-                                    NULL,
-                                    G_PARAM_CONSTRUCT_ONLY |
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_OBJECT_PATH, param_spec);
-
-  param_spec = g_param_spec_string ("channel-type", "Telepathy channel type",
-                                    "The D-Bus interface representing the "
-                                    "type of this channel.",
-                                    NULL,
-                                    G_PARAM_READABLE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_CHANNEL_TYPE, param_spec);
-/*
-  param_spec = g_param_spec_uint ("handle-type", "Contact handle type",
-                                  "The TpHandleType representing a "
-                                  "contact handle.",
-                                  0, G_MAXUINT32, 0,
-                                  G_PARAM_READABLE |
-                                  G_PARAM_STATIC_NAME |
-                                  G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_HANDLE_TYPE, param_spec);
-
-  param_spec = g_param_spec_uint ("handle", "Contact handle",
-                                  "The GabbleHandle representing the contact "
-                                  "with whom this channel communicates.",
-                                  0, G_MAXUINT32, 0,
-                                  G_PARAM_CONSTRUCT_ONLY |
-                                  G_PARAM_READWRITE |
-                                  G_PARAM_STATIC_NAME |
-                                  G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_HANDLE, param_spec);
-*/
 
   param_spec = g_param_spec_string ("conference-server",
                                     "Name of conference server to use",
@@ -263,7 +224,6 @@ gabble_roomlist_channel_class_init (GabbleRoomlistChannelClass *gabble_roomlist_
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_CONFERENCE_SERVER,
                                    param_spec);
-
 
   signals[CLOSED] =
     g_signal_new ("closed",

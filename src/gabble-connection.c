@@ -225,6 +225,7 @@ struct _GabbleConnectionPrivate
 
   /* channel factories */
   GPtrArray *channel_factories;
+  gboolean suppress_next_handler;
 
   /* gobject housekeeping */
   gboolean dispose_has_run;
@@ -1948,7 +1949,29 @@ static void connection_new_channel_cb (TpChannelFactoryIface *factory,
                                        GObject *chan,
                                        gpointer data)
 {
-  // ROSTER
+  GabbleConnection *conn = GABBLE_CONNECTION (data);
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  gchar *object_path = NULL, *channel_type = NULL;
+  guint handle_type = 0, handle = 0;
+
+  g_object_get (chan,
+      "object-path", &object_path,
+      "channel-type", &channel_type,
+      "handle-type", &handle_type,
+      "handle", &handle,
+      NULL);
+
+  g_debug ("%s: called for %s", G_STRFUNC, object_path);
+
+  g_signal_emit (conn, signals[NEW_CHANNEL], 0,
+                 object_path, channel_type,
+                 handle_type, handle,
+                 priv->suppress_next_handler);
+
+  priv->suppress_next_handler = FALSE;
+
+  g_free (object_path);
+  g_free (channel_type);
 }
 
 static void
@@ -3999,6 +4022,8 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
   priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
 
   ERROR_IF_NOT_CONNECTED (obj, *error)
+
+  priv->suppress_next_handler = suppress_handler;
 
   for (i = 0; i < priv->channel_factories->len; i++)
     {

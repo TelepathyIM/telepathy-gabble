@@ -38,6 +38,7 @@
 #include "telepathy-helpers.h"
 #include "telepathy-interfaces.h"
 
+#include "tp-channel-iface.h"
 #include "tp-channel-factory-iface.h"
 
 #include "gabble-connection.h"
@@ -3752,61 +3753,60 @@ gboolean gabble_connection_inspect_handle (GabbleConnection *obj, guint handle_t
 
 
 /**
- * list_channel_hash_foreach:
+ * list_channel_factory_foreach:
  * @key: iterated key
  * @value: iterated value
  * @data: data attached to this key/value pair
  *
  * Called by the exported ListChannels function, this should iterate over
- * the handle/channel pairs in a hash, and to the GPtrArray in the
- * ListChannelInfo struct, add a GValueArray containing the following:
+ * the handle/channel pairs in a channel factory, and to the GPtrArray in
+ * the data pointer, add a GValueArray containing the following:
  *  a D-Bus object path for the channel object on this service
  *  a D-Bus interface name representing the channel type
  *  an integer representing the handle type this channel communicates with, or zero
  *  an integer handle representing the contact, room or list this channel communicates with, or zero
  */
 static void
+list_channel_factory_foreach (TpChannelIface *chan,
+                              gpointer data)
+{
+  GObject *channel = G_OBJECT (chan);
+  GPtrArray *channels = (GPtrArray *) data;
+  gchar *path, *type;
+  guint handle_type, handle;
+  GValue entry = { 0, };
+
+  g_value_init (&entry, TP_CHANNEL_LIST_ENTRY_TYPE);
+  g_value_set_boxed (&entry, dbus_g_type_specialized_construct
+      (TP_CHANNEL_LIST_ENTRY_TYPE));
+
+  g_object_get (channel,
+      "object-path", &path,
+      "channel-type", &type,
+      "handle-type", &handle_type,
+      "handle", &handle,
+      NULL);
+
+  dbus_g_type_struct_set (&entry,
+      0, path,
+      1, type,
+      2, handle_type,
+      3, handle,
+      G_MAXUINT);
+
+  g_ptr_array_add (channels, g_value_get_boxed (&entry));
+
+  g_free (path);
+  g_free (type);
+}
+
+static void
 list_channel_hash_foreach (gpointer key,
                            gpointer value,
                            gpointer data)
 {
-  GObject *channel = G_OBJECT (value);
-  GPtrArray *channels = (GPtrArray *) data;
-  char *path, *type;
-  guint handle_type, handle;
-  GValueArray *vals;
-
-  g_object_get (channel, "object-path", &path,
-                         "channel-type", &type,
-                         "handle-type", &handle_type,
-                         "handle", &handle, NULL);
-
-  g_debug ("list_channels_foreach_hash: adding path %s, type %s, "
-           "handle type %u, handle %u", path, type, handle_type, handle);
-
-  vals = g_value_array_new (4);
-
-  g_value_array_append (vals, NULL);
-  g_value_init (g_value_array_get_nth (vals, 0), DBUS_TYPE_G_OBJECT_PATH);
-  g_value_set_boxed (g_value_array_get_nth (vals, 0), path);
-  g_free (path);
-
-  g_value_array_append (vals, NULL);
-  g_value_init (g_value_array_get_nth (vals, 1), G_TYPE_STRING);
-  g_value_set_string (g_value_array_get_nth (vals, 1), type);
-  g_free (type);
-
-  g_value_array_append (vals, NULL);
-  g_value_init (g_value_array_get_nth (vals, 2), G_TYPE_UINT);
-  g_value_set_uint (g_value_array_get_nth (vals, 2), handle_type);
-
-  g_value_array_append (vals, NULL);
-  g_value_init (g_value_array_get_nth (vals, 3), G_TYPE_UINT);
-  g_value_set_uint (g_value_array_get_nth (vals, 3), handle);
-
-  g_ptr_array_add (channels, vals);
+  list_channel_factory_foreach (TP_CHANNEL_IFACE (value), data);
 }
-
 
 /**
  * gabble_connection_list_channels
@@ -3823,7 +3823,6 @@ list_channel_hash_foreach (gpointer key,
 gboolean gabble_connection_list_channels (GabbleConnection *obj, GPtrArray ** ret, GError **error)
 {
   GabbleConnectionPrivate *priv;
-  guint count;
   GPtrArray *channels;
   guint i;
 
@@ -3833,11 +3832,14 @@ gboolean gabble_connection_list_channels (GabbleConnection *obj, GPtrArray ** re
 
   ERROR_IF_NOT_CONNECTED (obj, *error)
 
-  count = g_hash_table_size (priv->im_channels);
-  count += g_hash_table_size (priv->muc_channels);
-  count += priv->media_channels->len;
+  /* I think on average, each factory will have 2 channels :D */
+  channels = g_ptr_array_sized_new (priv->channel_factories->len * 2);
 
-  channels = g_ptr_array_sized_new (count);
+  for (i = 0; i < priv->channel_factories->len; i++)
+    {
+      TpChannelFactoryIface *factory = g_ptr_array_index (priv->channel_factories, i);
+      tp_channel_factory_iface_foreach (factory, list_channel_factory_foreach, channels);
+    }
 
   g_hash_table_foreach (priv->im_channels, list_channel_hash_foreach, channels);
 
@@ -3847,8 +3849,6 @@ gboolean gabble_connection_list_channels (GabbleConnection *obj, GPtrArray ** re
     {
       list_channel_hash_foreach (NULL, g_ptr_array_index (priv->media_channels, i), channels);
     }
-
-  /* ROSTER: include roster channels */
 
   *ret = channels;
 

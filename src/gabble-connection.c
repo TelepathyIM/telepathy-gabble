@@ -1263,7 +1263,9 @@ _gabble_connection_connect (GabbleConnection *conn,
                             GError          **error)
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-  GError *lmerror = NULL;
+  char *jid;
+  gboolean valid;
+  GabblePresence *presence;
 
   g_assert (priv->connect_server != NULL);
   g_assert (priv->port > 0 && priv->port <= G_MAXUINT16);
@@ -1299,7 +1301,8 @@ _gabble_connection_connect (GabbleConnection *conn,
 
   /* set initial presence */
   /* TODO: some way for the user to set this */
-  gabble_presence_cache_update (conn->presence_cache, conn->self_handle, priv->resource, GABBLE_PRESENCE_AVAILABLE, NULL, 0);
+  gabble_presence_cache_update (conn->presence_cache, conn->self_handle,
+      priv->resource, GABBLE_PRESENCE_AVAILABLE, NULL, 0);
   emit_one_presence_update (conn, conn->self_handle);
 
   /* set initial capabilities */
@@ -1388,18 +1391,11 @@ _gabble_connection_connect (GabbleConnection *conn,
                                           LM_MESSAGE_TYPE_IQ,
                                           LM_HANDLER_PRIORITY_LAST);
 
-  g_debug ("%s: calling lm_connection_open", G_STRFUNC);
-  if (!lm_connection_open (conn->lmconn, connection_open_cb,
-                           conn, NULL, &lmerror))
+  if (!do_connect (conn, error))
     {
-      g_debug ("%s: %s", G_STRFUNC, lmerror->message);
-
-      *error = g_error_new (TELEPATHY_ERRORS, NetworkError,
-                            "lm_connection_open_failed: %s", lmerror->message);
-
-      g_error_free (lmerror);
-
-      return FALSE;
+      connection_status_change (conn,
+          TP_CONN_STATUS_DISCONNECTED,
+          TP_CONN_STATUS_REASON_NETWORK_ERROR);
     }
 
   return TRUE;
@@ -3157,21 +3153,15 @@ connection_open_cb (LmConnection *lmconn,
 
   if (!success)
     {
-
       if (lm_connection_get_proxy (lmconn))
         {
-          GError *error;
-
           g_debug ("%s failed, retrying without proxy", G_STRFUNC);
+
           lm_connection_set_proxy (lmconn, NULL);
 
-          if (do_connect (conn, &error))
+          if (do_connect (conn, NULL))
             {
               return;
-            }
-          else
-            {
-              g_error_free (error);
             }
         }
       else

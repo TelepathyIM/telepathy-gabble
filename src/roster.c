@@ -326,6 +326,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
   LmMessageNode *iq_node, *query_node;
   LmMessageSubType sub_type;
+  const gchar *from;
 
   g_assert (lmconn == priv->conn->lmconn);
 
@@ -339,7 +340,22 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
         lm_message_node_get_attribute (query_node, "xmlns")))
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
-  /* TODO: check it's from the server or us */
+  from = lm_message_node_get_attribute (message->node, "from");
+
+  if (from != NULL)
+    {
+      GabbleHandle sender;
+
+      sender = gabble_handle_for_contact (priv->conn->handles,
+          from, FALSE);
+
+      if (sender != priv->conn->self_handle)
+        {
+          HANDLER_DEBUG (iq_node, "discarding roster IQ which is not from "
+              "ourselves or the server");
+          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+        }
+    }
 
   sub_type = lm_message_get_sub_type (message);
 

@@ -480,8 +480,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
       break;
     case LM_MESSAGE_SUB_TYPE_SET:
       /* acknowledge roster */
-      _gabble_connection_send_iq_ack (priv->conn, iq_node,
-          LM_MESSAGE_SUB_TYPE_RESULT);
+      _gabble_connection_send_iq_result (priv->conn, iq_node);
       break;
     default:
       break;

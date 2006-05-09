@@ -2029,10 +2029,9 @@ emit_presence_update (GabbleConnection *self,
 
       g_assert (gabble_handle_is_valid (self->handles, TP_HANDLE_TYPE_CONTACT, handle, NULL));
 
-      /* WTF */
       if (!presence)
         {
-          g_debug ("no presence in cache for %d", handle);
+          /* no presence = unavailable */
           continue;
         }
 

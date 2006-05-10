@@ -55,16 +55,18 @@
 #define BUS_NAME        "org.freedesktop.Telepathy.Connection.gabble"
 #define OBJECT_PATH     "/org/freedesktop/Telepathy/Connection/gabble"
 
-#define NS_PRESENCE_INVISIBLE "presence-invisible"
-#define NS_PRIVACY            "jabber:iq:privacy"
-#define NS_ROSTER             "jabber:iq:roster"
-#define NS_DISCO_INFO         "http://jabber.org/protocol/disco#info"
-#define NS_JINGLE             "http://jabber.org/protocol/jingle"
-#define NS_JINGLE_AUDIO       "http://jabber.org/protocol/jingle/media/audio"
-#define NS_GOOGLE             "http://www.google.com/session"
-#define NS_GOOGLE_PHONE       "http://www.google.com/session/phone"
-#define NS_CAPS               "http://jabber.org/protocol/caps"
-#define NS_GABBLE_CAPS        "http://telepathy.freedesktop.org/caps"
+#define NS_CAPS                 "http://jabber.org/protocol/caps"
+#define NS_DISCO_INFO           "http://jabber.org/protocol/disco#info"
+#define NS_GABBLE_CAPS          "http://telepathy.freedesktop.org/caps"
+#define NS_GOOGLE_JINGLE_INFO   "google:jingleinfo"
+#define NS_GOOGLE_ROSTER        "google:roster"
+#define NS_GOOGLE_SESSION       "http://www.google.com/session"
+#define NS_GOOGLE_SESSION_PHONE "http://www.google.com/session/phone"
+#define NS_JINGLE               "http://jabber.org/protocol/jingle"
+#define NS_JINGLE_AUDIO         "http://jabber.org/protocol/jingle/media/audio"
+#define NS_PRESENCE_INVISIBLE   "presence-invisible"
+#define NS_PRIVACY              "jabber:iq:privacy"
+#define NS_ROSTER               "jabber:iq:roster"
 
 #define TP_CAPABILITY_PAIR_TYPE (dbus_g_type_get_struct ("GValueArray", G_TYPE_STRING, G_TYPE_UINT, G_TYPE_INVALID))
 
@@ -2819,7 +2821,7 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
           return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
         }
 
-      if (!_lm_message_node_has_namespace (desc_node, NS_GOOGLE_PHONE))
+      if (!_lm_message_node_has_namespace (desc_node, NS_GOOGLE_SESSION_PHONE))
         {
           HANDLER_DEBUG (iq_node, "unknown session description, ignoring");
           return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
@@ -2891,8 +2893,8 @@ struct _Feature
 static Feature features[] = {
       { NULL,       NS_JINGLE },
       { NULL,       NS_JINGLE_AUDIO },
-      { "voice-v1", NS_GOOGLE },
-      { "voice-v1", NS_GOOGLE_PHONE },
+      { "voice-v1", NS_GOOGLE_SESSION },
+      { "voice-v1", NS_GOOGLE_SESSION_PHONE },
       { NULL, NULL },
       };
 
@@ -3257,7 +3259,11 @@ connection_disco_cb (GabbleDisco *disco, const gchar *jid,
               if (var == NULL)
                 continue;
 
-              if (0 == strcmp (var, NS_PRESENCE_INVISIBLE))
+              if (0 == strcmp (var, NS_GOOGLE_JINGLE_INFO))
+                conn->features |= GABBLE_CONNECTION_FEATURES_GOOGLE_JINGLE_INFO;
+              else if (0 == strcmp (var, NS_GOOGLE_ROSTER))
+                conn->features |= GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER;
+              else if (0 == strcmp (var, NS_PRESENCE_INVISIBLE))
                 conn->features |= GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE;
               else if (0 == strcmp (var, NS_PRIVACY))
                 conn->features |= GABBLE_CONNECTION_FEATURES_PRIVACY;

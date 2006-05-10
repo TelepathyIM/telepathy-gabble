@@ -1651,7 +1651,7 @@ _lm_message_node_has_namespace (LmMessageNode *node, const gchar *ns)
   return 0 == strcmp (ns, node_ns);
 }
 
-LmMessageNode *
+static LmMessageNode *
 _get_muc_node (LmMessageNode *toplevel_node)
 {
   LmMessageNode *node;
@@ -2187,18 +2187,26 @@ connection_presence_muc_cb (LmMessageHandler *handler,
           GabbleHandle handle;
 
           handle = gabble_handle_for_contact (conn->handles, from, TRUE);
+          if (handle == 0)
+            {
+              HANDLER_DEBUG (msg->node, "discarding MUC presence from malformed jid");
+              return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+            }
 
           _gabble_muc_channel_member_presence_updated (muc_chan, handle,
                                                        msg, x_node);
+
+          return gabble_presence_cache_parse_message (conn->presence_cache,
+              handle, from, msg);
         }
       else
         {
-          HANDLER_DEBUG (msg->node, "unexpected MUC member presence");
+          HANDLER_DEBUG (msg->node, "discarding unexpected MUC member presence");
+
+          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
         }
     }
 
-  /* intentionally do not remove the message, so that the
-   * normal presence handler gets called */
   return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 }
 

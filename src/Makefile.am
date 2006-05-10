@@ -7,6 +7,8 @@ BUILT_SOURCES = \
     gabble-connection-signals-marshal.c \
     gabble-register-signals-marshal.h \
     gabble-register-signals-marshal.c \
+    gabble-group-mixin-signals-marshal.h \
+    gabble-group-mixin-signals-marshal.c \
     gabble-im-channel-glue.h \
     gabble-im-channel-signals-marshal.h \
     gabble-im-channel-signals-marshal.c \
@@ -51,6 +53,8 @@ CORE_SOURCES = \
     gabble-connection.c \
     gabble-disco.h \
     gabble-disco.c \
+    gabble-group-mixin.h \
+    gabble-group-mixin.c \
     gabble-im-channel.h \
     gabble-im-channel.c \
     gabble-muc-channel.h \

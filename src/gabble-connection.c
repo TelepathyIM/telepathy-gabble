@@ -105,14 +105,16 @@ struct _StatusInfo
   const gboolean exclusive;
 };
 
+/* order must match PresenceId enum in gabble-connection.h */
+/* in increasing order of presence */
 static const StatusInfo gabble_statuses[LAST_GABBLE_PRESENCE] = {
- { "available", TP_CONN_PRESENCE_TYPE_AVAILABLE,     TRUE, TRUE },
- { "away",      TP_CONN_PRESENCE_TYPE_AWAY,          TRUE, TRUE },
- { "chat",      TP_CONN_PRESENCE_TYPE_AVAILABLE,     TRUE, TRUE },
- { "dnd",       TP_CONN_PRESENCE_TYPE_AWAY,          TRUE, TRUE },
- { "xa",        TP_CONN_PRESENCE_TYPE_EXTENDED_AWAY, TRUE, TRUE },
  { "offline",   TP_CONN_PRESENCE_TYPE_OFFLINE,       TRUE, TRUE },
- { "hidden",    TP_CONN_PRESENCE_TYPE_HIDDEN,        TRUE, TRUE }
+ { "hidden",    TP_CONN_PRESENCE_TYPE_HIDDEN,        TRUE, TRUE },
+ { "xa",        TP_CONN_PRESENCE_TYPE_EXTENDED_AWAY, TRUE, TRUE },
+ { "away",      TP_CONN_PRESENCE_TYPE_AWAY,          TRUE, TRUE },
+ { "dnd",       TP_CONN_PRESENCE_TYPE_AWAY,          TRUE, TRUE },
+ { "available", TP_CONN_PRESENCE_TYPE_AVAILABLE,     TRUE, TRUE },
+ { "chat",      TP_CONN_PRESENCE_TYPE_AVAILABLE,     TRUE, TRUE }
 };
 
 /* signal enum */

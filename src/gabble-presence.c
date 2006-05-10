@@ -187,7 +187,9 @@ gabble_presence_update (GabblePresence *presence, const gchar *resource, GabbleP
 
       presence->caps |= res->caps;
 
-      if (res->status < presence->status ||
+      /* trump existing status & message if its more present
+       * or a higher priority */
+      if (res->status > presence->status ||
           res->priority > prio)
         {
           presence->status = res->status;

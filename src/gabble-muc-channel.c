@@ -56,6 +56,8 @@ enum
     PASSWORD_FLAGS_CHANGED,
     PROPERTIES_CHANGED,
     PROPERTY_FLAGS_CHANGED,
+    RECEIVED,
+    SENT,
     LAST_SIGNAL
 };
 
@@ -150,14 +152,7 @@ enum
   INVALID_ROOM_PROP,
 };
 
-struct _RoomPropertySignature {
-    gchar *name;
-    GType type;
-};
-
-typedef struct _RoomPropertySignature RoomPropertySignature;
-
-const RoomPropertySignature room_property_signatures[NUM_ROOM_PROPS] = {
+const GabblePropertySignature room_property_signatures[NUM_ROOM_PROPS] = {
       { "anonymous",         G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
       { "invite-only",       G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
       { "moderated",         G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
@@ -172,20 +167,7 @@ const RoomPropertySignature room_property_signatures[NUM_ROOM_PROPS] = {
       { "subject-timestamp", G_TYPE_UINT },     /* impl: READ */
 };
 
-struct _RoomProperty {
-    GValue *value;
-    guint flags;
-};
-
-typedef struct _RoomProperty RoomProperty;
-
 /* private structures */
-
-typedef struct {
-    DBusGMethodInvocation *call_ctx;
-    guint32 remaining;
-    GValue *values[NUM_ROOM_PROPS];
-} SetPropertiesContext;
 
 typedef struct _GabbleMucChannelPrivate GabbleMucChannelPrivate;
 
@@ -211,8 +193,7 @@ struct _GabbleMucChannelPrivate
 
   guint recv_id;
 
-  RoomProperty room_props[NUM_ROOM_PROPS];
-  SetPropertiesContext set_props_ctx;
+  GabblePropertiesContext *properties_ctx;
 
   gboolean closed;
   gboolean dispose_has_run;
@@ -275,14 +256,6 @@ gabble_muc_channel_constructor (GType type, guint n_props,
       TP_CHANNEL_GROUP_FLAG_CAN_ADD,
       0);
 
-  /* initialize text mixin */
-  gabble_text_mixin_init (obj, G_STRUCT_OFFSET (GabbleMucChannel, text), handles);
-
-  gabble_text_mixin_set_message_types (obj,
-      TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL,
-      TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION,
-      G_MAXUINT);
-
   return obj;
 }
 
@@ -291,13 +264,9 @@ static void room_property_change_flags (GabbleMucChannel *chan, guint prop_id, T
 static void room_properties_emit_changed (GabbleMucChannel *chan, GArray *props);
 static void room_properties_emit_flags (GabbleMucChannel *chan, GArray *props);
 
-static void properties_disco_cb (GabbleDisco *disco,
-                                 GabbleDiscoRequest *request,
-                                 const gchar *jid,
-                                 const gchar *node,
-                                 LmMessageNode *query_result,
-                                 GError *error,
-                                 gpointer user_data)
+static void properties_disco_cb (GabbleDisco *disco, const gchar *jid,
+                                 const gchar *node, LmMessageNode *query_result,
+                                 GError *error, gpointer user_data)
 {
   GabbleMucChannel *chan = user_data;
   GabbleMucChannelPrivate *priv;
@@ -318,10 +287,7 @@ static void properties_disco_cb (GabbleDisco *disco,
       return;
     }
 
-  changed_props_val = g_array_sized_new (FALSE, FALSE, sizeof (guint),
-                                         NUM_ROOM_PROPS);
-  changed_props_flags = g_array_sized_new (FALSE, FALSE, sizeof (guint),
-                                           NUM_ROOM_PROPS);
+  changed_props_val = changed_props_flags = NULL;
 
 
   /*
@@ -344,12 +310,12 @@ static void properties_disco_cb (GabbleDisco *disco,
           g_value_init (&val, G_TYPE_STRING);
           g_value_set_string (&val, str);
 
-          room_property_change_value (chan, ROOM_PROP_NAME, &val,
-                                      changed_props_val);
+          gabble_properties_mixin_change_value (G_OBJECT (chan), ROOM_PROP_NAME,
+                                                &val, &changed_props_val);
 
-          room_property_change_flags (chan, ROOM_PROP_NAME,
-                                      TP_PROPERTY_FLAG_READ,
-                                      0, changed_props_flags);
+          gabble_properties_mixin_change_flags (G_OBJECT (chan), ROOM_PROP_NAME,
+                                                TP_PROPERTY_FLAG_READ,
+                                                0, &changed_props_flags);
 
           g_value_unset (&val);
         }
@@ -465,10 +431,12 @@ static void properties_disco_cb (GabbleDisco *disco,
 
       if (prop_id != INVALID_ROOM_PROP)
         {
-          room_property_change_value (chan, prop_id, &val, changed_props_val);
+          gabble_properties_mixin_change_value (G_OBJECT (chan), prop_id, &val,
+                                                &changed_props_val);
 
-          room_property_change_flags (chan, prop_id, TP_PROPERTY_FLAG_READ,
-                                      0, changed_props_flags);
+          gabble_properties_mixin_change_flags (G_OBJECT (chan), prop_id,
+                                                TP_PROPERTY_FLAG_READ,
+                                                0, &changed_props_flags);
 
           g_value_unset (&val);
         }
@@ -485,53 +453,61 @@ static void properties_disco_cb (GabbleDisco *disco,
    *        so for now just rely on the server making that call. */
   if (priv->self_role >= ROLE_VISITOR)
     {
-      room_property_change_flags (chan, ROOM_PROP_SUBJECT,
-          TP_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
+      gabble_properties_mixin_change_flags (G_OBJECT (chan),
+          ROOM_PROP_SUBJECT, TP_PROPERTY_FLAG_WRITE, 0,
+          &changed_props_flags);
     }
 
   /* Room definition */
   if (priv->self_affil == AFFILIATION_OWNER)
     {
-      room_property_change_flags (chan, ROOM_PROP_ANONYMOUS,
-          TP_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
+      gabble_properties_mixin_change_flags (G_OBJECT (chan),
+          ROOM_PROP_ANONYMOUS, TP_PROPERTY_FLAG_WRITE, 0,
+          &changed_props_flags);
 
-      room_property_change_flags (chan, ROOM_PROP_INVITE_ONLY,
-          TP_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
+      gabble_properties_mixin_change_flags (G_OBJECT (chan),
+          ROOM_PROP_INVITE_ONLY, TP_PROPERTY_FLAG_WRITE, 0,
+          &changed_props_flags);
 
-      room_property_change_flags (chan, ROOM_PROP_MODERATED,
-          TP_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
+      gabble_properties_mixin_change_flags (G_OBJECT (chan),
+          ROOM_PROP_MODERATED, TP_PROPERTY_FLAG_WRITE, 0,
+          &changed_props_flags);
 
-      room_property_change_flags (chan, ROOM_PROP_NAME,
-          TP_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
+      gabble_properties_mixin_change_flags (G_OBJECT (chan),
+          ROOM_PROP_NAME, TP_PROPERTY_FLAG_WRITE, 0,
+          &changed_props_flags);
 
-      room_property_change_flags (chan, ROOM_PROP_DESCRIPTION,
-          TP_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
+      gabble_properties_mixin_change_flags (G_OBJECT (chan),
+          ROOM_PROP_DESCRIPTION, TP_PROPERTY_FLAG_WRITE, 0,
+          &changed_props_flags);
 
-      room_property_change_flags (chan, ROOM_PROP_PASSWORD,
-          TP_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
+      gabble_properties_mixin_change_flags (G_OBJECT (chan),
+          ROOM_PROP_PASSWORD, TP_PROPERTY_FLAG_WRITE, 0,
+          &changed_props_flags);
 
-      room_property_change_flags (chan, ROOM_PROP_PASSWORD_REQUIRED,
-          TP_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
+      gabble_properties_mixin_change_flags (G_OBJECT (chan),
+          ROOM_PROP_PASSWORD_REQUIRED, TP_PROPERTY_FLAG_WRITE, 0,
+          &changed_props_flags);
 
-      room_property_change_flags (chan, ROOM_PROP_PERSISTENT,
-          TP_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
+      gabble_properties_mixin_change_flags (G_OBJECT (chan),
+          ROOM_PROP_PERSISTENT, TP_PROPERTY_FLAG_WRITE, 0,
+          &changed_props_flags);
 
-      room_property_change_flags (chan, ROOM_PROP_PRIVATE,
-          TP_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
+      gabble_properties_mixin_change_flags (G_OBJECT (chan),
+          ROOM_PROP_PRIVATE, TP_PROPERTY_FLAG_WRITE, 0,
+          &changed_props_flags);
 
-      room_property_change_flags (chan, ROOM_PROP_SUBJECT,
-          TP_PROPERTY_FLAG_WRITE, 0, changed_props_flags);
+      gabble_properties_mixin_change_flags (G_OBJECT (chan),
+          ROOM_PROP_SUBJECT, TP_PROPERTY_FLAG_WRITE, 0,
+          &changed_props_flags);
     }
 
 
   /*
    * Emit signals.
    */
-  room_properties_emit_changed (chan, changed_props_val);
-  room_properties_emit_flags (chan, changed_props_flags);
-
-  g_array_free (changed_props_val, TRUE);
-  g_array_free (changed_props_flags, TRUE);
+  gabble_properties_mixin_emit_changed (G_OBJECT (chan), &changed_props_val);
+  gabble_properties_mixin_emit_flags (G_OBJECT (chan), &changed_props_flags);
 }
 
 static void
@@ -744,6 +720,7 @@ static void gabble_muc_channel_dispose (GObject *object);
 static void gabble_muc_channel_finalize (GObject *object);
 static gboolean gabble_muc_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *message, GError **error);
 static gboolean gabble_muc_channel_remove_member (GObject *obj, GabbleHandle handle, const gchar *message, GError **error);
+static gboolean gabble_muc_channel_do_set_properties (GObject *obj, GabblePropertiesContext *ctx, GError **error);
 
 static void
 gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
@@ -820,12 +797,28 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   gabble_muc_channel_marshal_VOID__BOXED,
                   G_TYPE_NONE, 1, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_UINT, G_TYPE_UINT, G_TYPE_INVALID)))));
 
+  signals[RECEIVED] =
+    g_signal_new ("received",
+                  G_OBJECT_CLASS_TYPE (gabble_muc_channel_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_muc_channel_marshal_VOID__INT_INT_INT_INT_STRING,
+                  G_TYPE_NONE, 5, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING);
+
+  signals[SENT] =
+    g_signal_new ("sent",
+                  G_OBJECT_CLASS_TYPE (gabble_muc_channel_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_muc_channel_marshal_VOID__INT_INT_STRING,
+                  G_TYPE_NONE, 3, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING);
+
   gabble_group_mixin_class_init (object_class,
                                  G_STRUCT_OFFSET (GabbleMucChannelClass, group_class),
                                  gabble_muc_channel_add_member,
                                  gabble_muc_channel_remove_member);
-
-  gabble_text_mixin_class_init (object_class, G_STRUCT_OFFSET (GabbleMucChannelClass, text_class));
 
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_muc_channel_class), &dbus_glib_gabble_muc_channel_object_info);
 }
@@ -871,6 +864,8 @@ room_properties_free (GabbleMucChannel *chan)
     }
 }
 
+static void clear_message_queue (GabbleMucChannel *chan);
+
 void
 gabble_muc_channel_finalize (GObject *object)
 {
@@ -881,12 +876,14 @@ gabble_muc_channel_finalize (GObject *object)
   g_debug (G_STRFUNC);
 
   /* free any data held directly by the object here */
-  room_properties_free (self);
-
   gabble_handle_unref (handles, TP_HANDLE_TYPE_ROOM, priv->handle);
 
   g_free (priv->object_path);
   g_free (priv->self_jid);
+
+  clear_message_queue (self);
+
+  g_queue_free (priv->pending_messages);
 
   gabble_group_mixin_finalize (object);
 
@@ -1362,8 +1359,6 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
 }
 
 
-static void set_properties_context_return (GabbleMucChannel *chan, GError *error);
-
 /**
  * _gabble_muc_channel_receive
  */
@@ -1392,7 +1387,11 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
     {
       GArray *changed_values, *changed_flags;
 
-      priv->set_props_ctx.remaining &= ~(1 << ROOM_PROP_SUBJECT);
+      if (priv->properties_ctx)
+        {
+          gabble_properties_context_remove (priv->properties_ctx,
+              ROOM_PROP_SUBJECT);
+        }
 
       if (error)
         {
@@ -1410,29 +1409,35 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
               err_desc = gabble_xmpp_error_description (xmpp_error);
             }
 
-          if (priv->set_props_ctx.call_ctx)
+          if (priv->properties_ctx)
             {
               GError *error;
 
               error = g_error_new (TELEPATHY_ERRORS, PermissionDenied,
                   (err_desc) ? err_desc : "failed to change subject");
 
-              set_properties_context_return (chan, error);
+              gabble_properties_context_return (priv->properties_ctx, error);
+              priv->properties_ctx = NULL;
+
+              /* Get the properties into a consistent state. */
+              room_properties_update (chan);
             }
 
           return TRUE;
         }
 
-      changed_values = g_array_sized_new (FALSE, FALSE, sizeof (guint), 3);
-      changed_flags = g_array_sized_new (FALSE, FALSE, sizeof (guint), 3);
+      changed_values = changed_flags = NULL;
 
       /* ROOM_PROP_SUBJECT */
       g_value_init (&val, G_TYPE_STRING);
       g_value_set_string (&val, lm_message_node_get_value (subj_node));
 
-      room_property_change_value (chan, ROOM_PROP_SUBJECT, &val, changed_values);
-      room_property_change_flags (chan, ROOM_PROP_SUBJECT, TP_PROPERTY_FLAG_READ,
-                                  0, changed_flags);
+      gabble_properties_mixin_change_value (G_OBJECT (chan),
+          ROOM_PROP_SUBJECT, &val, &changed_values);
+
+      gabble_properties_mixin_change_flags (G_OBJECT (chan),
+          ROOM_PROP_SUBJECT, TP_PROPERTY_FLAG_READ, 0,
+          &changed_flags);
 
       g_value_unset (&val);
 
@@ -1440,10 +1445,12 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
       g_value_init (&val, G_TYPE_UINT);
       g_value_set_uint (&val, sender);
 
-      room_property_change_value (chan, ROOM_PROP_SUBJECT_CONTACT, &val,
-          changed_values);
-      room_property_change_flags (chan, ROOM_PROP_SUBJECT_CONTACT,
-          TP_PROPERTY_FLAG_READ, 0, changed_flags);
+      gabble_properties_mixin_change_value (G_OBJECT (chan),
+          ROOM_PROP_SUBJECT_CONTACT, &val, &changed_values);
+
+      gabble_properties_mixin_change_flags (G_OBJECT (chan),
+          ROOM_PROP_SUBJECT_CONTACT, TP_PROPERTY_FLAG_READ, 0,
+          &changed_flags);
 
       g_value_unset (&val);
 
@@ -1451,23 +1458,25 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
       g_value_init (&val, G_TYPE_UINT);
       g_value_set_uint (&val, timestamp);
 
-      room_property_change_value (chan, ROOM_PROP_SUBJECT_TIMESTAMP, &val,
-          changed_values);
-      room_property_change_flags (chan, ROOM_PROP_SUBJECT_TIMESTAMP,
-          TP_PROPERTY_FLAG_READ, 0, changed_flags);
+      gabble_properties_mixin_change_value (G_OBJECT (chan),
+          ROOM_PROP_SUBJECT_TIMESTAMP, &val, &changed_values);
+
+      gabble_properties_mixin_change_flags (G_OBJECT (chan),
+          ROOM_PROP_SUBJECT_TIMESTAMP, TP_PROPERTY_FLAG_READ, 0,
+          &changed_flags);
 
       g_value_unset (&val);
 
       /* Emit signals */
-      room_properties_emit_changed (chan, changed_values);
-      room_properties_emit_flags (chan, changed_flags);
+      gabble_properties_mixin_emit_changed (G_OBJECT (chan), &changed_values);
+      gabble_properties_mixin_emit_flags (G_OBJECT (chan), &changed_flags);
 
-      g_array_free (changed_values, TRUE);
-      g_array_free (changed_flags, TRUE);
-
-      if (priv->set_props_ctx.call_ctx && priv->set_props_ctx.remaining == 0)
+      if (priv->properties_ctx)
         {
-          set_properties_context_return (chan, NULL);
+          if (gabble_properties_context_return_if_done (priv->properties_ctx))
+            {
+              priv->properties_ctx = NULL;
+            }
         }
 
       return TRUE;
@@ -1484,10 +1493,11 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
           g_value_init (&val, G_TYPE_STRING);
           g_value_set_string (&val, desc);
 
-          room_property_change_value (chan, ROOM_PROP_DESCRIPTION,
-                                      &val, NULL);
-          room_property_change_flags (chan, ROOM_PROP_DESCRIPTION,
-                                      TP_PROPERTY_FLAG_READ, 0, NULL);
+          gabble_properties_mixin_change_value (G_OBJECT (chan),
+              ROOM_PROP_DESCRIPTION, &val, NULL);
+
+          gabble_properties_mixin_change_flags (G_OBJECT (chan),
+              ROOM_PROP_DESCRIPTION, TP_PROPERTY_FLAG_READ, 0, NULL);
 
           g_value_unset (&val);
 
@@ -2181,7 +2191,7 @@ gboolean gabble_muc_channel_list_properties (GabbleMucChannel *obj, GPtrArray **
       };
 
       g_value_init (&val, TP_TYPE_PROPERTY_INFO_STRUCT);
-      g_value_take_boxed (&val,
+      g_value_set_static_boxed (&val,
           dbus_g_type_specialized_construct (TP_TYPE_PROPERTY_INFO_STRUCT));
 
       dbus_g_type_struct_set (&val,
@@ -2253,7 +2263,7 @@ gboolean gabble_muc_channel_get_properties (GabbleMucChannel *obj, const GArray 
 
       /* id/value struct */
       g_value_init (&val_struct, TP_TYPE_PROPERTY_VALUE_STRUCT);
-      g_value_take_boxed (&val_struct,
+      g_value_set_static_boxed (&val_struct,
           dbus_g_type_specialized_construct (TP_TYPE_PROPERTY_VALUE_STRUCT));
 
       dbus_g_type_struct_set (&val_struct,
@@ -2267,66 +2277,6 @@ gboolean gabble_muc_channel_get_properties (GabbleMucChannel *obj, const GArray 
   return TRUE;
 }
 
-static void set_properties_context_return (GabbleMucChannel *chan, GError *error)
-{
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
-  SetPropertiesContext *ctx = &priv->set_props_ctx;
-  GArray *changed_props_val, *changed_props_flags;
-  int i, n;
-
-  g_debug ("%s: %s", G_STRFUNC, (error) ? "failure" : "success");
-
-  changed_props_val = g_array_sized_new (FALSE, FALSE, sizeof (guint),
-                                         NUM_ROOM_PROPS);
-  changed_props_flags = g_array_sized_new (FALSE, FALSE, sizeof (guint),
-                                           NUM_ROOM_PROPS);
-
-  for (i = n = 0; i < NUM_ROOM_PROPS; i++)
-    {
-      if (ctx->values[i])
-        {
-          if (!error && i != ROOM_PROP_SUBJECT)
-            {
-              room_property_change_value (chan, i, ctx->values[i],
-                                          changed_props_val);
-
-              room_property_change_flags (chan, i, TP_PROPERTY_FLAG_READ,
-                                          0, changed_props_flags);
-
-              n++;
-            }
-
-          g_value_unset (ctx->values[i]);
-        }
-    }
-
-  if (!error)
-    {
-      if (n)
-        {
-          room_properties_emit_changed (chan, changed_props_val);
-          room_properties_emit_flags (chan, changed_props_flags);
-        }
-
-      dbus_g_method_return (ctx->call_ctx);
-    }
-  else
-    {
-      dbus_g_method_return_error (ctx->call_ctx, error);
-      g_error_free (error);
-
-      /* Get the properties into a consistent state. */
-      room_properties_update (chan);
-    }
-
-  memset (ctx, 0, sizeof (SetPropertiesContext));
-
-  g_array_free (changed_props_val, TRUE);
-  g_array_free (changed_props_flags, TRUE);
-}
-
-static LmHandlerResult request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg, LmMessage *reply_msg, GObject *object, gpointer user_data);
-
 /**
  * gabble_muc_channel_set_properties
  *
@@ -2338,122 +2288,65 @@ static LmHandlerResult request_config_form_reply_cb (GabbleConnection *conn, LmM
  */
 gboolean gabble_muc_channel_set_properties (GabbleMucChannel *obj, const GPtrArray * properties, DBusGMethodInvocation *context)
 {
+  return gabble_properties_mixin_set_properties (G_OBJECT (obj), properties, context);
+}
+
+static LmHandlerResult request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg, LmMessage *reply_msg, GObject *object, gpointer user_data);
+
+static gboolean
+gabble_muc_channel_do_set_properties (GObject *obj, GabblePropertiesContext *ctx, GError **error)
+{
   GabbleMucChannelPrivate *priv;
-  gboolean result;
-  GError *error;
   LmMessage *msg;
   LmMessageNode *node;
-  guint i;
+  gboolean success;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (obj));
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
 
-  /* Is another SetProperties request already in progress? */
-  if (priv->set_props_ctx.call_ctx)
-    {
-      error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
-                           "A SetProperties request is already in progress");
-      goto ERROR;
-    }
-
-  priv->set_props_ctx.call_ctx = context;
-  result = TRUE;
-  error = NULL;
-
-  /* Check input property identifiers */
-  for (i = 0; i < properties->len; i++)
-    {
-      GValue val_struct = { 0, };
-      guint prop_id;
-      GValue *prop_val;
-
-      g_value_init (&val_struct, TP_TYPE_PROPERTY_VALUE_STRUCT);
-      g_value_set_static_boxed (&val_struct, g_ptr_array_index (properties, i));
-
-      dbus_g_type_struct_get (&val_struct,
-          0, &prop_id,
-          1, &prop_val,
-          G_MAXUINT);
-
-      /* Valid? */
-      if (prop_id >= NUM_ROOM_PROPS)
-        {
-          g_value_unset (prop_val);
-
-          error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                               "invalid property identifier %d", prop_id);
-          goto ERROR;
-        }
-
-      /* Store the value in the context */
-      priv->set_props_ctx.remaining |= 1 << prop_id;
-      priv->set_props_ctx.values[prop_id] = prop_val;
-
-      /* Permitted? */
-      if (!(priv->room_props[prop_id].flags & TP_PROPERTY_FLAG_WRITE))
-        {
-          error = g_error_new (TELEPATHY_ERRORS, PermissionDenied,
-                               "permission denied for property identifier %d", prop_id);
-          goto ERROR;
-        }
-
-      /* Compatible type? */
-      if (!g_value_type_compatible (G_VALUE_TYPE (prop_val),
-                                    room_property_signatures[prop_id].type))
-        {
-          error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
-                               "incompatible value type for property identifier %d",
-                               prop_id);
-          goto ERROR;
-        }
-    }
+  g_assert (priv->properties_ctx == NULL);
 
   /* Changing subject? */
-  if (priv->set_props_ctx.values[ROOM_PROP_SUBJECT])
+  if (gabble_properties_context_has (ctx, ROOM_PROP_SUBJECT))
     {
       const gchar *str;
 
-      str = g_value_get_string (priv->set_props_ctx.values[ROOM_PROP_SUBJECT]);
+      str = g_value_get_string (gabble_properties_context_get (ctx, ROOM_PROP_SUBJECT));
 
       msg = lm_message_new_with_sub_type (priv->jid,
           LM_MESSAGE_TYPE_MESSAGE, LM_MESSAGE_SUB_TYPE_GROUPCHAT);
       lm_message_node_add_child (msg->node, "subject", str);
 
-      _gabble_connection_send (priv->conn, msg, &error);
+      success = _gabble_connection_send (priv->conn, msg, error);
 
       lm_message_unref (msg);
 
-      if (error)
-        goto ERROR;
+      if (!success)
+        return FALSE;
     }
 
   /* Changing any other properties? */
-  if ((priv->set_props_ctx.remaining & ~(1 << ROOM_PROP_SUBJECT)) != 0)
+  if (gabble_properties_context_has_other_than (ctx, ROOM_PROP_SUBJECT))
     {
       msg = lm_message_new_with_sub_type (priv->jid,
           LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET);
       node = lm_message_node_add_child (msg->node, "query", NULL);
       lm_message_node_set_attribute (node, "xmlns", NS_MUC_OWNER);
 
-       _gabble_connection_send_with_reply (priv->conn, msg,
-          request_config_form_reply_cb, G_OBJECT (obj), &priv->set_props_ctx,
-          &error);
+      success = _gabble_connection_send_with_reply (priv->conn, msg,
+          request_config_form_reply_cb, G_OBJECT (obj), NULL,
+          error);
 
       lm_message_unref (msg);
 
-      if (error)
-        goto ERROR;
+      if (!success)
+        return FALSE;
     }
 
-  goto OUT;
+  priv->properties_ctx = ctx;
 
-ERROR:
-  set_properties_context_return (obj, error);
-  result = FALSE;
-
-OUT:
-  return result;
+  return TRUE;
 }
 
 static LmHandlerResult request_config_form_submit_reply_cb (GabbleConnection *conn, LmMessage *sent_msg, LmMessage *reply_msg, GObject *object, gpointer user_data);
@@ -2465,10 +2358,11 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 {
   GabbleMucChannel *chan = GABBLE_MUC_CHANNEL (object);
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
-  SetPropertiesContext *ctx = user_data;
+  GabblePropertiesContext *ctx = priv->properties_ctx;
   GError *error = NULL;
   LmMessage *msg = NULL;
   LmMessageNode *submit_node, *query_node, *form_node, *node;
+  guint i, props_left;
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
@@ -2521,6 +2415,16 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 
   if (form_node == NULL)
     goto PARSE_ERROR;
+
+  props_left = 0;
+  for (i = 0; i < NUM_ROOM_PROPS; i++)
+    {
+      if (i == ROOM_PROP_SUBJECT)
+        continue;
+
+      if (gabble_properties_context_has (ctx, i))
+        props_left |= 1 << i;
+    }
 
   for (node = form_node->children; node; node = node->next)
     {
@@ -2582,9 +2486,10 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
         {
           id = ROOM_PROP_ANONYMOUS;
 
-          if (ctx->values[id])
+          if (gabble_properties_context_has (ctx, id))
             {
-              val_bool = g_value_get_boolean (ctx->values[id]);
+              val_bool = g_value_get_boolean (
+                  gabble_properties_context_get (ctx, id));
               val_str = (val_bool) ? "moderators" : "anyone";
             }
         }
@@ -2592,9 +2497,10 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
         {
           id = ROOM_PROP_ANONYMOUS;
 
-          if (ctx->values[id])
+          if (gabble_properties_context_has (ctx, id))
             {
-              val_bool = g_value_get_boolean (ctx->values[id]);
+              val_bool = g_value_get_boolean (
+                  gabble_properties_context_get (ctx, id));
               val_str = (val_bool) ? "admins" : "anyone";
             }
         }
@@ -2659,19 +2565,23 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 
       g_debug ("%s: looking up %s", G_STRFUNC, room_property_signatures[id].name);
 
-      if (!ctx->values[id])
+      if (!gabble_properties_context_has (ctx, id))
         continue;
 
       if (!val_str)
         {
+          const GValue *provided_value;
+
+          provided_value = gabble_properties_context_get (ctx, id);
+
           switch (type) {
             case G_TYPE_BOOLEAN:
-              val_bool = g_value_get_boolean (ctx->values[id]);
+              val_bool = g_value_get_boolean (provided_value);
               sprintf (buf, "%d", (invert) ? !val_bool : val_bool);
               val_str = buf;
               break;
             case G_TYPE_STRING:
-              val_str = g_value_get_string (ctx->values[id]);
+              val_str = g_value_get_string (provided_value);
               break;
             default:
               g_assert_not_reached ();
@@ -2680,20 +2590,18 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 
       lm_message_node_set_value (value_node, val_str);
 
-      ctx->remaining &= ~(1 << id);
+      props_left &= ~(1 << id);
     }
 
-  if ((ctx->remaining & ~(1 << ROOM_PROP_SUBJECT)) != 0)
+  if (props_left != 0)
     {
-      gint i;
-
       printf (ANSI_BOLD_ON ANSI_FG_WHITE ANSI_BG_RED
               "\n%s: the following properties were not substituted:\n",
               G_STRFUNC);
 
       for (i = 0; i < NUM_ROOM_PROPS; i++)
         {
-          if (ctx->remaining & (1 << i))
+          if ((props_left & (1 << i)) != 0)
             {
               printf ("  %s\n", room_property_signatures[i].name);
             }
@@ -2711,7 +2619,7 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 
   _gabble_connection_send_with_reply (priv->conn, msg,
       request_config_form_submit_reply_cb, G_OBJECT (object),
-      ctx, &error);
+      NULL, &error);
 
   goto OUT;
 
@@ -2721,7 +2629,10 @@ PARSE_ERROR:
 
 OUT:
   if (error)
-    set_properties_context_return (chan, error);
+    {
+      gabble_properties_context_return (ctx, error);
+      priv->properties_ctx = NULL;
+    }
 
   if (msg)
     lm_message_unref (msg);
@@ -2735,8 +2646,10 @@ request_config_form_submit_reply_cb (GabbleConnection *conn, LmMessage *sent_msg
                                      gpointer user_data)
 {
   GabbleMucChannel *chan = GABBLE_MUC_CHANNEL (object);
-  SetPropertiesContext *ctx = user_data;
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  GabblePropertiesContext *ctx = priv->properties_ctx;
   GError *error = NULL;
+  gboolean returned;
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
@@ -2744,188 +2657,22 @@ request_config_form_submit_reply_cb (GabbleConnection *conn, LmMessage *sent_msg
                            "submitted configuration form was rejected");
     }
 
-  if (ctx->remaining == 0 || error)
-    set_properties_context_return (chan, error);
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-}
-
-#define RPTS_APPEND_FLAG_IF_SET(flag) \
-  if (flags & flag) \
-    { \
-      if (i++ > 0) \
-        g_string_append (str, "|"); \
-      g_string_append (str, #flag + 17); \
-    }
-
-static gchar *
-room_property_flags_to_string (TpPropertyFlags flags)
-{
-  gint i = 0;
-  GString *str;
-
-  str = g_string_new ("[" ANSI_BOLD_OFF);
-
-  RPTS_APPEND_FLAG_IF_SET (TP_PROPERTY_FLAG_READ);
-  RPTS_APPEND_FLAG_IF_SET (TP_PROPERTY_FLAG_WRITE);
-
-  g_string_append (str, ANSI_BOLD_ON "]");
-
-  return g_string_free (str, FALSE);
-}
-
-static gboolean
-values_are_equal (const GValue *v1, const GValue *v2)
-{
-  GType type = G_VALUE_TYPE (v1);
-  const gchar *s1, *s2;
-
-  switch (type) {
-    case G_TYPE_BOOLEAN:
-      return (g_value_get_boolean (v1) == g_value_get_boolean (v2));
-
-    case G_TYPE_STRING:
-      s1 = g_value_get_string (v1);
-      s2 = g_value_get_string (v2);
-
-      /* are they both NULL? */
-      if (s1 == s2)
-        return TRUE;
-
-      /* is one of them NULL? */
-      if (s1 == NULL || s2 == NULL)
-        return FALSE;
-
-      return (strcmp (s1, s2) == 0);
-
-    case G_TYPE_UINT:
-      return (g_value_get_uint (v1) == g_value_get_uint (v2));
-
-    case G_TYPE_INT:
-      return (g_value_get_int (v1) == g_value_get_int (v2));
-  }
-
-  return FALSE;
-}
-
-static void
-room_property_change_value (GabbleMucChannel *chan,
-                            guint prop_id,
-                            const GValue *new_value,
-                            GArray *props)
-{
-  GabbleMucChannelPrivate *priv;
-  RoomProperty *prop;
-
-  g_assert (GABBLE_IS_MUC_CHANNEL (chan));
-
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
-
-  prop = &priv->room_props[prop_id];
-
-  if (prop->value)
+  if (!error)
     {
-      if (values_are_equal (prop->value, new_value))
-        return;
+      guint i;
+
+      for (i = 0; i < NUM_ROOM_PROPS; i++)
+        {
+          if (i != ROOM_PROP_SUBJECT)
+            gabble_properties_context_remove (ctx, i);
+        }
+
+      returned = gabble_properties_context_return_if_done (ctx);
     }
   else
     {
-      prop->value = g_new0 (GValue, 1);
-      g_value_init (prop->value, room_property_signatures[prop_id].type);
-    }
-
-  g_value_copy (new_value, prop->value);
-
-  if (props)
-    {
-      gint i;
-
-      for (i = 0; i < props->len; i++)
-        {
-          if (g_array_index (props, guint, i) == prop_id)
-            return;
-        }
-
-      g_array_append_val (props, prop_id);
-    }
-  else
-    {
-      GArray *changed_props = g_array_sized_new (FALSE, FALSE,
-                                                 sizeof (guint), 1);
-      g_array_append_val (changed_props, prop_id);
-
-      room_properties_emit_changed (chan, changed_props);
-
-      g_array_free (changed_props, TRUE);
-    }
-}
-
-static void
-room_property_change_flags (GabbleMucChannel *chan,
-                            guint prop_id,
-                            TpPropertyFlags add,
-                            TpPropertyFlags remove,
-                            GArray *props)
-{
-  GabbleMucChannelPrivate *priv;
-  RoomProperty *prop;
-  guint prev_flags;
-
-  g_assert (GABBLE_IS_MUC_CHANNEL (chan));
-
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
-
-  prop = &priv->room_props[prop_id];
-
-  prev_flags = prop->flags;
-
-  prop->flags |= add;
-  prop->flags &= ~remove;
-
-  if (prop->flags == prev_flags)
-    return;
-
-  if (add != 0 || remove != 0)
-    {
-      if (props)
-        {
-          gint i;
-
-          for (i = 0; i < props->len; i++)
-            {
-              if (g_array_index (props, guint, i) == prop_id)
-                return;
-            }
-
-          g_array_append_val (props, prop_id);
-        }
-      else
-        {
-          GArray *changed_props = g_array_sized_new (FALSE, FALSE,
-                                                     sizeof (guint), 1);
-          g_array_append_val (changed_props, prop_id);
-
-          room_properties_emit_flags (chan, changed_props);
-
-          g_array_free (changed_props, TRUE);
-        }
-    }
-}
-
-static void
-room_properties_emit_changed (GabbleMucChannel *chan, GArray *props)
-{
-  GabbleMucChannelPrivate *priv;
-  GPtrArray *prop_arr;
-  GValue prop_list = { 0, };
-  guint i;
-
-  g_assert (GABBLE_IS_MUC_CHANNEL (chan));
-
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
-
-  if (props->len == 0)
-    return;
+      gabble_properties_context_return (ctx, error);
+      returned = TRUE;
 
   prop_arr = g_ptr_array_sized_new (props->len);
 
@@ -2939,7 +2686,7 @@ room_properties_emit_changed (GabbleMucChannel *chan, GArray *props)
       guint prop_id = g_array_index (props, guint, i);
 
       g_value_init (&prop_val, TP_TYPE_PROPERTY_VALUE_STRUCT);
-      g_value_take_boxed (&prop_val,
+      g_value_set_static_boxed (&prop_val,
           dbus_g_type_specialized_construct (TP_TYPE_PROPERTY_VALUE_STRUCT));
 
       dbus_g_type_struct_set (&prop_val,
@@ -2958,7 +2705,7 @@ room_properties_emit_changed (GabbleMucChannel *chan, GArray *props)
   g_signal_emit (chan, signals[PROPERTIES_CHANGED], 0, prop_arr);
 
   g_value_init (&prop_list, TP_TYPE_PROPERTY_VALUE_LIST);
-  g_value_take_boxed (&prop_list, prop_arr);
+  g_value_set_static_boxed (&prop_list, prop_arr);
   g_value_unset (&prop_list);
 }
 
@@ -2993,7 +2740,7 @@ room_properties_emit_flags (GabbleMucChannel *chan, GArray *props)
       prop_flags = priv->room_props[prop_id].flags;
 
       g_value_init (&prop_val, TP_TYPE_PROPERTY_FLAGS_STRUCT);
-      g_value_take_boxed (&prop_val,
+      g_value_set_static_boxed (&prop_val,
           dbus_g_type_specialized_construct (TP_TYPE_PROPERTY_FLAGS_STRUCT));
 
       dbus_g_type_struct_set (&prop_val,
@@ -3012,13 +2759,13 @@ room_properties_emit_flags (GabbleMucChannel *chan, GArray *props)
       g_free (str_flags);
     }
 
-  printf (ANSI_RESET);
-  fflush (stdout);
+  if (returned)
+    priv->properties_ctx = NULL;
 
   g_signal_emit (chan, signals[PROPERTY_FLAGS_CHANGED], 0, prop_arr);
 
   g_value_init (&prop_list, TP_TYPE_PROPERTY_FLAGS_LIST);
-  g_value_take_boxed (&prop_list, prop_arr);
+  g_value_set_static_boxed (&prop_list, prop_arr);
   g_value_unset (&prop_list);
 }
 

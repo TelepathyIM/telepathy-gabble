@@ -582,13 +582,6 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
 
   sub_type = lm_message_get_sub_type (message);
 
-/* TODO: if (node_is_for_muc (pres_node, NULL))
-    {
-      HANDLER_DEBUG (pres_node, "ignoring MUC presence");
-
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-    } */
-
   handle = gabble_handle_for_contact (priv->conn->handles, from, FALSE);
 
   if (handle == 0)

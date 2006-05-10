@@ -2310,7 +2310,7 @@ gabble_muc_channel_remove_member (GObject *obj, GabbleHandle handle, const gchar
   LmMessage *msg;
   LmMessageNode *query_node, *item_node;
   const gchar *jid;
-  gchar *room, *server, *nick;
+  gchar *nick;
   gboolean result;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (obj));
@@ -2328,15 +2328,13 @@ gabble_muc_channel_remove_member (GObject *obj, GabbleHandle handle, const gchar
   jid = gabble_handle_inspect (GABBLE_GROUP_MIXIN (obj)->handle_repo,
                                TP_HANDLE_TYPE_CONTACT, handle);
 
-  gabble_handle_decode_jid (jid, &room, &server, &nick);
+  gabble_handle_decode_jid (jid, NULL, NULL, &nick);
 
   lm_message_node_set_attributes (item_node,
                                   "nick", nick,
                                   "role", "none",
                                   NULL);
 
-  g_free (room);
-  g_free (server);
   g_free (nick);
 
   if (*message != '\0')

@@ -177,11 +177,13 @@ void gabble_handle_jid_get_base (const gchar *jid, gchar *base_jid)
  *  username@server
  *  username@server/resource
  * And sets the caller's username, server and resource pointers. The
- * caller must provide a server pointer, and may set username and resource
- * to NULL if they are not interested. The returned values may be NULL
- * or zero-length if a component was either not present or zero-length
- * respectively in the given JID. The username and server are lower-cased
- * because the Jabber protocol treats these case-insensitively.
+ * caller may set any of the pointers to NULL if they are not interested
+ * in a certain component.
+ *
+ * The returned values may be NULL or zero-length if a component was either
+ * not present or zero-length respectively in the given JID. The username and
+ * server are lower-cased because the Jabber protocol treats these
+ * case-insensitively.
  */
 void
 gabble_handle_decode_jid (const char *jid,
@@ -194,10 +196,11 @@ gabble_handle_decode_jid (const char *jid,
   g_assert (jid != NULL);
   g_assert (*jid != '\0');
 
-  g_assert (server != NULL);
-
   if (username != NULL)
     *username = NULL;
+
+  if (server != NULL)
+    *server = NULL;
 
   if (resource != NULL)
     *resource = NULL;
@@ -241,7 +244,8 @@ gabble_handle_decode_jid (const char *jid,
 
   /* the server must be stored after the resource, in case we truncated a
    * resource from it */
-  *server = g_utf8_strdown (tmp_server, -1);
+  if (server != NULL)
+    *server = g_utf8_strdown (tmp_server, -1);
 
   /* free our working copy */
   g_free (tmp_jid);

@@ -324,20 +324,11 @@ _presence_get_status (LmMessageNode *pres_node)
     }
 }
 
-/**
- * connection_presence_cb:
- * @handler: #LmMessageHandler for this message
- * @connection: #LmConnection that originated the message
- * @message: the presence message
- * @user_data: callback data
- *
- * Called by loudmouth when we get an incoming <presence>.
- */
-static LmHandlerResult
-connection_presence_cb (LmMessageHandler *handler,
-                        LmConnection *lmconn,
-                        LmMessage *message,
-                        gpointer user_data)
+LmHandlerResult
+gabble_presence_cache_parse_message (GabblePresenceCache *cache,
+                                     GabbleHandle handle,
+                                     const char *from,
+                                     LmMessage *message)
 {
   GabblePresenceCachePrivate *priv;
   gchar *resource;
@@ -348,18 +339,15 @@ connection_presence_cb (LmMessageHandler *handler,
   GabblePresence *presence;
   LmHandlerResult ret = LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
-  g_assert (lmconn == priv->lmconn);
+  g_assert (cache != NULL);
+  priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
 
-  pres_node = lm_message_get_node (message);
-  from = lm_message_node_get_attribute (pres_node, "from");
-
-  g_assert (gabble_handle_is_valid (priv->handles, TP_HANDLE_TYPE_CONTACT,
-        handle, NULL));
+  g_assert (gabble_handle_is_valid (priv->conn->handles,
+        TP_HANDLE_TYPE_CONTACT, handle, NULL));
   g_assert (from != NULL);
   g_assert (message != NULL);
 
-  is_for_muc = NULL != _get_muc_node (pres_node);
-  handle = gabble_handle_for_contact (priv->handles, from, is_for_muc);
+  pres_node = message->node;
 
   gabble_handle_decode_jid (from, NULL, NULL, &resource);
   if (resource == NULL)
@@ -419,7 +407,7 @@ OUT:
 
 
 /**
- * connection_presence_cb:
+ * gabble_presence_cache_presence_cb:
  * @handler: #LmMessageHandler for this message
  * @connection: #LmConnection that originated the message
  * @message: the presence message
@@ -438,7 +426,7 @@ gabble_presence_cache_presence_cb (LmMessageHandler *handler,
   const char *from;
   GabbleHandle handle;
 
-  g_assert (lmconn == priv->lmconn);
+  g_assert (lmconn == priv->conn->lmconn);
 
   from = lm_message_node_get_attribute (message->node, "from");
   if (from == NULL)
@@ -447,7 +435,7 @@ gabble_presence_cache_presence_cb (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
-  handle = gabble_handle_for_contact (priv->handles, from, FALSE);
+  handle = gabble_handle_for_contact (priv->conn->handles, from, FALSE);
   if (handle == 0)
     {
       HANDLER_DEBUG (message->node, "ignoring presence from malformed jid");
@@ -459,53 +447,7 @@ gabble_presence_cache_presence_cb (LmMessageHandler *handler,
 
 
 GabblePresenceCache *
-gabble_presence_cache_new (LmConnection *lmconn, GabbleHandleRepo *handles)
-{
-  GabblePresenceCache *new = g_object_new (GABBLE_TYPE_PRESENCE_CACHE, NULL);
-  GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (new);
-
-  priv->lmconn = lmconn;
-  priv->handles = handles;
-  priv->presence_cb = lm_message_handler_new (connection_presence_cb,
-                                              new, NULL);
-  lm_connection_register_message_handler (priv->lmconn, priv->presence_cb,
-                                          LM_MESSAGE_TYPE_PRESENCE,
-                                          LM_HANDLER_PRIORITY_NORMAL);
-
-  return new;
-}
-
-static void
-gabble_presence_cache_finalize (GObject *object)
-{
-  GabblePresenceCache *cache = GABBLE_PRESENCE_CACHE (object);
-  GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
-
-  lm_connection_unregister_message_handler (priv->lmconn, priv->presence_cb,
-                                            LM_MESSAGE_TYPE_PRESENCE);
-  lm_message_handler_unref (priv->presence_cb);
-
-  g_hash_table_destroy (priv->presence);
-}
-
-static void
-gabble_presence_cache_class_init (GabblePresenceCacheClass *klass)
-{
-  GObjectClass *object_class = G_OBJECT_CLASS (klass);
-  g_type_class_add_private (object_class, sizeof (GabblePresenceCachePrivate));
-  object_class->finalize = gabble_presence_cache_finalize;
-
-  signals[PRESENCE_UPDATE] = g_signal_new (
-    "presence-update",
-    G_TYPE_FROM_CLASS (klass),
-    G_SIGNAL_RUN_LAST,
-    G_STRUCT_OFFSET (GabblePresenceCacheClass, presence_update),
-    NULL, NULL,
-    g_cclosure_marshal_VOID__INT, G_TYPE_NONE, 1, G_TYPE_UINT);
-}
-
-static void
-gabble_presence_cache_init (GabblePresenceCache *cache)
+gabble_presence_cache_new (GabbleConnection *conn)
 {
   return g_object_new (GABBLE_TYPE_PRESENCE_CACHE,
                        "connection", conn,
@@ -525,11 +467,11 @@ gabble_presence_cache_update (GabblePresenceCache *cache, GabbleHandle handle, c
 {
   GabblePresence *presence = gabble_presence_cache_get (cache, handle);
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
-  const gchar *jid = gabble_handle_inspect (priv->handles,
+  const gchar *jid = gabble_handle_inspect (priv->conn->handles,
       TP_HANDLE_TYPE_CONTACT, handle);
 
-  g_debug ("%s: %s (%d) resource %s presence %d message %s prio %d", G_STRFUNC,
-      jid, handle, resource, presence_id, status_message, priority);
+  g_debug ("%s: %s (%d) resource %s prio %d presence %d message \"%s\"",
+      G_STRFUNC, jid, handle, resource, priority, presence_id, status_message);
 
   if (presence == NULL)
     {

@@ -141,6 +141,7 @@ gboolean
 gabble_presence_update (GabblePresence *presence, const gchar *resource, GabblePresenceId status, const gchar *status_message, gint8 priority)
 {
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
+  Resource *res;
   GabblePresenceId old_status;
   gchar *old_status_message;
   GSList *i;
@@ -148,20 +149,20 @@ gabble_presence_update (GabblePresence *presence, const gchar *resource, GabbleP
 
   g_assert (NULL != resource);
 
-  if (status == GABBLE_PRESENCE_OFFLINE)
+  res = _find_resource (presence, resource);
+
+  if (GABBLE_PRESENCE_OFFLINE == status &&
+      NULL == status_message)
     {
-      Resource *res = _find_resource (presence, resource);
-
-      if (NULL == res)
-        return FALSE;
-
-      priv->resources = g_slist_remove (priv->resources, res);
-      _resource_free (res);
+      if (NULL != res)
+        {
+          priv->resources = g_slist_remove (priv->resources, res);
+          _resource_free (res);
+          res = NULL;
+        }
     }
   else
     {
-      Resource *res = _find_resource (presence, resource);
-
       if (NULL == res)
         {
           res = _resource_new (g_strdup (resource));
@@ -178,7 +179,7 @@ gabble_presence_update (GabblePresence *presence, const gchar *resource, GabbleP
   old_status_message = presence->status_message;
   presence->caps = 0;
   presence->status = GABBLE_PRESENCE_OFFLINE;
-  presence->status_message = NULL;
+  presence->status_message = res ? res->status_message : NULL;
   prio = -128;
 
   for (i = priv->resources; NULL != i; i = i->next)

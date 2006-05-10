@@ -36,28 +36,44 @@ _presence_has_google_voice (LmMessageNode *pres_node)
 
   for (node = pres_node->children; node; node = node->next)
     {
-      const gchar *cap_node, *cap_ext, *cap_xmlns;
+      const gchar *cap_xmlns, *cap_ext;
 
       if (strcmp (node->name, "c") != 0)
         continue;
 
-      cap_node = lm_message_node_get_attribute (node, "node");
-      cap_ext = lm_message_node_get_attribute (node, "ext");
       cap_xmlns = lm_message_node_get_attribute (node, "xmlns");
-
-      if (!cap_node || !cap_ext || !cap_xmlns)
+      if (NULL == cap_xmlns ||
+          0 != strcmp (cap_xmlns, "http://jabber.org/protocol/caps"))
         continue;
 
-      if (strcmp (cap_node, "http://www.google.com/xmpp/client/caps") != 0)
-        continue;
+      cap_ext = lm_message_node_get_attribute (node, "ext");
+      if (NULL != cap_ext)
+        {
+          gchar **features, **tmp;
+          gboolean found = FALSE;
 
-      if (strcmp (cap_ext, "voice-v1") != 0)
-        continue;
+          features = g_strsplit (cap_ext, " ", 0);
 
-      if (strcmp (cap_xmlns, "http://jabber.org/protocol/caps") != 0)
-        continue;
+          for (tmp = features; *tmp; tmp++)
+            {
+              if (0 == strcmp (*tmp, "voice-v1"))
+                {
+                  found = TRUE;
+                  break;
+                }
+            }
 
-      return TRUE;
+          g_strfreev (features);
+
+          if (found)
+            {
+              return TRUE;
+            }
+        }
+      else
+        {
+          continue;
+        }
     }
 
   return FALSE;

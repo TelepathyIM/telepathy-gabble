@@ -41,6 +41,7 @@ typedef struct _GabblePresence GabblePresence;
 
 struct _GabblePresence {
     GObject parent;
+    GabblePresenceCapabilities caps;
     GabblePresenceId status;
     gchar *status_name;
     gchar *status_message;

@@ -43,9 +43,7 @@ _resource_new (gchar *name)
 static void
 _resource_free (Resource *resource)
 {
-  if (resource->status_message)
-    g_free (resource->status_message);
-
+  g_free (resource->status_message);
   g_free (resource);
 }
 
@@ -106,8 +104,8 @@ gabble_presence_pick_resource_by_caps (
 void
 gabble_presence_set_capabilities (GabblePresence *presence, const gchar *resource, GabblePresenceCapabilities caps)
 {
-  GSList *i;
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
+  GSList *i;
 
   for (i = priv->resources; NULL != i; i = i->next)
     {
@@ -116,6 +114,7 @@ gabble_presence_set_capabilities (GabblePresence *presence, const gchar *resourc
       if (0 == strcmp (tmp->name, resource))
         {
           tmp->caps |= caps;
+          presence->caps |= caps;
           break;
         }
     }
@@ -141,10 +140,11 @@ _find_resource (GabblePresence *presence, const gchar *resource)
 gboolean
 gabble_presence_update (GabblePresence *presence, const gchar *resource, GabblePresenceId status, const gchar *status_message, gint8 priority)
 {
-  GabblePresenceId old_status = presence->status;
-  gchar *old_status_message = presence->status_message;
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
+  GabblePresenceId old_status;
+  gchar *old_status_message;
   GSList *i;
+  guint8 prio;
 
   g_assert (NULL != resource);
 
@@ -156,9 +156,7 @@ gabble_presence_update (GabblePresence *presence, const gchar *resource, GabbleP
         return FALSE;
 
       priv->resources = g_slist_remove (priv->resources, res);
-
-      presence->status = GABBLE_PRESENCE_OFFLINE;
-      presence->status_message = NULL;
+      _resource_free (res);
     }
   else
     {
@@ -174,19 +172,27 @@ gabble_presence_update (GabblePresence *presence, const gchar *resource, GabbleP
       g_free (res->status_message);
       res->status_message = g_strdup (status_message);
       res->priority = priority;
-
-      presence->status = res->status;
-      presence->status_message = res->status_message;
     }
+
+  old_status = presence->status;
+  old_status_message = presence->status_message;
+  presence->caps = 0;
+  presence->status = GABBLE_PRESENCE_OFFLINE;
+  presence->status_message = NULL;
+  prio = -128;
 
   for (i = priv->resources; NULL != i; i = i->next)
     {
       Resource *res = (Resource *) i->data;
 
-      if (res->status < presence->status)
+      presence->caps |= res->caps;
+
+      if (res->status < presence->status ||
+          res->priority > prio)
         {
           presence->status = res->status;
           presence->status_message = res->status_message;
+          prio = res->priority;
         }
     }
 

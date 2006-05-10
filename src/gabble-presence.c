@@ -109,12 +109,6 @@ gabble_presence_set_capabilities (GabblePresence *presence, const gchar *resourc
   GSList *i;
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
 
-  if (caps & PRESENCE_CAP_GOOGLE_VOICE)
-    g_debug ("setting Google voice cap for resource %s", resource);
-
-  if (caps & PRESENCE_CAP_JINGLE_VOICE)
-    g_debug ("setting Jingle voice cap for resource %s", resource);
-
   for (i = priv->resources; NULL != i; i = i->next)
     {
       Resource *tmp = (Resource *) i->data;
@@ -153,7 +147,6 @@ gabble_presence_update (GabblePresence *presence, const gchar *resource, GabbleP
   GSList *i;
 
   g_assert (NULL != resource);
-  g_debug ("presence update: %s/%d/%s/%d", resource, status, status_message, priority);
 
   if (status == GABBLE_PRESENCE_OFFLINE)
     {

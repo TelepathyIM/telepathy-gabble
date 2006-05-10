@@ -185,7 +185,6 @@ connection_presence_cb (LmMessageHandler *handler,
 
   gabble_handle_decode_jid (from, NULL, &server, &resource);
   g_free (server);
-  g_debug ("presence from %s", from);
 
   /* FIXME: move this check earlier? */
 
@@ -293,6 +292,11 @@ gabble_presence_cache_update (GabblePresenceCache *cache, GabbleHandle handle, c
 {
   GabblePresence *presence = gabble_presence_cache_get (cache, handle);
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
+  const gchar *jid = gabble_handle_inspect (priv->handles,
+      TP_HANDLE_TYPE_CONTACT, handle);
+
+  g_debug ("%s: %s (%d) resource %s presence %d message %s prio %d", G_STRFUNC,
+      jid, handle, resource, presence_id, status_message, priority);
 
   if (presence == NULL)
     {

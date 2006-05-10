@@ -2,6 +2,8 @@
  * group-mixin.h - Header for GabbleGroupMixin
  * Copyright (C) 2006 Collabora Ltd.
  * Copyright (C) 2006 Nokia Corporation
+ *   @author Ole Andre Vadla Ravnaas <ole.andre.ravnaas@collabora.co.uk>
+ *   @author Robert McQueen <robert.mcqueen@collabora.co.uk>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public

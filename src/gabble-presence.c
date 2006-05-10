@@ -199,13 +199,19 @@ gabble_presence_update (GabblePresence *presence, const gchar *resource, GabbleP
   if (presence->status != old_status)
     return TRUE;
 
-  if (presence->status_message == NULL)
-    return old_status_message == NULL;
+  if (presence->status_message == old_status_message)
+    return FALSE;
 
-  if (old_status_message == NULL)
+  if (NULL == presence->status_message && NULL != old_status_message)
     return TRUE;
 
-  return strcmp (presence->status_message, old_status_message) != 0;
+  if (NULL == old_status_message && NULL != presence->status_message)
+    return TRUE;
+
+  if (0 != strcmp (presence->status_message, old_status_message))
+    return TRUE;
+
+  return FALSE;
 }
 
 LmMessage *

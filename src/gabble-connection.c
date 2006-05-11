@@ -1295,7 +1295,7 @@ _gabble_connection_connect (GabbleConnection *conn,
       GabblePresence *presence;
 
       conn->lmconn = lm_connection_new (priv->connect_server);
-      conn->presence_cache = gabble_presence_cache_new (conn->lmconn, conn->handles);
+      conn->presence_cache = gabble_presence_cache_new (conn);
       g_signal_connect (conn->presence_cache, "presence-update", (GCallback) presence_update_cb, conn);
 
       if (priv->https_proxy_server)

@@ -32,6 +32,7 @@
 #include "gabble-connection.h"
 #include "gabble-media-channel.h"
 #include "gabble-media-session.h"
+#include "gabble-media-session-enumtypes.h"
 
 #include "telepathy-helpers.h"
 #include "telepathy-constants.h"
@@ -65,6 +66,7 @@ enum
 {
   PROP_MEDIA_SESSION = 1,
   PROP_OBJECT_PATH,
+  PROP_MODE,
   LAST_PROPERTY
 };
 
@@ -75,6 +77,7 @@ struct _GabbleMediaStreamPrivate
 {
   GabbleConnection *conn;
   GabbleMediaSession *session;
+  GabbleMediaSessionMode mode;
   gchar *object_path;
 
   gboolean ready;
@@ -132,6 +135,7 @@ gabble_media_stream_constructor (GType type, guint n_props,
   obj = G_OBJECT_CLASS (gabble_media_stream_parent_class)->
            constructor (type, n_props, props);
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (GABBLE_MEDIA_STREAM (obj));
+  priv->mode = MODE_GOOGLE;
 
   g_signal_connect (priv->session, "notify::state",
       (GCallback) session_state_changed_cb, obj);
@@ -180,6 +184,9 @@ gabble_media_stream_get_property (GObject    *object,
     case PROP_OBJECT_PATH:
       g_value_set_string (value, priv->object_path);
       break;
+    case PROP_MODE:
+      g_value_set_enum (value, priv->mode);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -202,6 +209,9 @@ gabble_media_stream_set_property (GObject      *object,
     case PROP_OBJECT_PATH:
       g_free (priv->object_path);
       priv->object_path = g_value_dup_string (value);
+      break;
+    case PROP_MODE:
+      priv->mode = g_value_get_enum (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -247,6 +257,17 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                                     G_PARAM_STATIC_NAME |
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_OBJECT_PATH, param_spec);
+
+  param_spec = g_param_spec_enum ("mode", "Signalling mode",
+                                  "Which signalling mode used to control the "
+                                  "stream.",
+                                  gabble_media_session_mode_get_type(),
+                                  MODE_JINGLE,
+                                  G_PARAM_CONSTRUCT_ONLY |
+                                  G_PARAM_READWRITE |
+                                  G_PARAM_STATIC_NAME |
+                                  G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_MODE, param_spec);
 
   /* signals exported by DBus interface */
   signals[ADD_REMOTE_CANDIDATE] =

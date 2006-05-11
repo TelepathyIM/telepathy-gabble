@@ -502,7 +502,8 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
 
   /* do the state machine dance */
 
-  if (strcmp (action, "candidates") == 0) /* "negotiate" in JEP */
+  if (strcmp (action, "candidates") == 0 ||
+      strcmp (action, "transport-info") == 0)
     {
       if (priv->state < JS_STATE_PENDING_INITIATED || priv->state >= JS_STATE_ENDED)
         goto ACK_FAILURE;
@@ -516,7 +517,8 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
 
       return;
     }
-  else if (strcmp (action, "initiate") == 0)
+  else if (strcmp (action, "initiate") == 0 ||
+           strcmp (action, "session-initiate") == 0)
     {
       if (priv->state != JS_STATE_PENDING_CREATED)
         goto ACK_FAILURE;
@@ -536,7 +538,8 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
 
       return;
     }
-  else if (strcmp (action, "accept") == 0)
+  else if (strcmp (action, "accept") == 0 ||
+           strcmp (action, "session-accept") == 0)
     {
       if (priv->state != JS_STATE_PENDING_INITIATED)
         goto ACK_FAILURE;

@@ -443,7 +443,7 @@ room_info_cb (GabbleDisco *disco, const gchar *jid, const gchar *node,
                   else if (0 == strcmp (var, "muc_anonymous"))
                     INSERT_KEY (keys, "anonymous", G_TYPE_BOOLEAN, boolean, TRUE);
                   else if (0 == strcmp (var, "muc_semianonymous"))
-                    INSERT_KEY (keys, "semi-anonymous", G_TYPE_BOOLEAN, boolean, TRUE);
+                    INSERT_KEY (keys, "anonymous", G_TYPE_BOOLEAN, boolean, FALSE);
                   else if (0 == strcmp (var, "muc_persistent"))
                     INSERT_KEY (keys, "persistent", G_TYPE_BOOLEAN, boolean, TRUE);
                   else if (0 == strcmp (var, "muc_temporary"))

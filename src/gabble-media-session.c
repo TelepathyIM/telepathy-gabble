@@ -148,6 +148,7 @@ create_media_stream (GabbleMediaSession *session)
   stream = g_object_new (GABBLE_TYPE_MEDIA_STREAM,
                          "media-session", session,
                          "object-path", object_path,
+                         "mode", priv->mode,
                          NULL);
 
   g_signal_connect (stream, "new-active-candidate-pair",

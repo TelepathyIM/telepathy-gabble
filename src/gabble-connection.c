@@ -1281,13 +1281,8 @@ _gabble_connection_connect (GabbleConnection *conn,
   jid = g_strdup_printf ("%s@%s", priv->username, priv->stream_server);
   lm_connection_set_jid (conn->lmconn, jid);
 
-      conn->lmconn = lm_connection_new (priv->connect_server);
-      conn->presence_cache = gabble_presence_cache_new (conn->lmconn, conn->handles);
-      g_signal_connect (conn->presence_cache, "presence-update", (GCallback) presence_update_cb, conn);
-
-      if (priv->https_proxy_server)
-        {
-          LmProxy *proxy;
+  conn->self_handle = gabble_handle_for_contact (conn->handles,
+                                                 jid, FALSE);
 
   if (conn->self_handle == 0)
     {

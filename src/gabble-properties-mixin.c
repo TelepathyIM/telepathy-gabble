@@ -355,8 +355,16 @@ gabble_properties_mixin_set_properties (GObject *obj, const GPtrArray *propertie
         }
     }
 
-  if (mixin_cls->set_properties (obj, ctx, &error))
-    goto OUT;
+  if (mixin_cls->set_properties)
+    {
+      if (mixin_cls->set_properties (obj, ctx, &error))
+        goto OUT;
+    }
+  else
+    {
+      gabble_properties_context_return (ctx, NULL);
+      goto OUT;
+    }
 
 ERROR:
   gabble_properties_context_return (ctx, error);
@@ -364,6 +372,28 @@ ERROR:
 
 OUT:
   return result;
+}
+
+gboolean
+gabble_properties_mixin_has_property (GObject *obj, const gchar *name,
+                                      guint *property)
+{
+  GabblePropertiesMixinClass *mixin_cls = GABBLE_PROPERTIES_MIXIN_CLASS (
+                                            G_OBJECT_GET_CLASS (obj));
+  guint i;
+
+  for (i = 0; i < mixin_cls->num_props; i++)
+    {
+      if (strcmp (mixin_cls->signatures[i].name, name) == 0)
+        {
+          if (property)
+            *property = i;
+
+          return TRUE;
+        }
+    }
+
+  return FALSE;
 }
 
 gboolean

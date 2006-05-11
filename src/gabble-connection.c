@@ -4006,55 +4006,10 @@ find_media_channel_with_handle (GabbleConnection *conn, GabbleHandle handle)
   return NULL;
 }
 
-/**
- * gabble_connection_request_channel
- *
- * Implements DBus method RequestChannel
- * on interface org.freedesktop.Telepathy.Connection
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar * type, guint handle_type, guint handle, gboolean suppress_handler, gchar ** ret, GError **error)
+static gboolean
+_gabble_connection_request_channel_deprecated (GabbleConnection *obj, const gchar *type, guint handle_type, guint handle, gboolean suppress_handler, gchar **ret, GError **error)
 {
-  GabbleConnectionPrivate *priv;
-  TpChannelFactoryRequestStatus status = TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_AVAILABLE;
-  int i;
-
-  g_assert (GABBLE_IS_CONNECTION (obj));
-
-  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
-
-  ERROR_IF_NOT_CONNECTED (obj, *error)
-
-  priv->suppress_next_handler = suppress_handler;
-
-  for (i = 0; i < priv->channel_factories->len; i++)
-    {
-      TpChannelFactoryIface *factory = g_ptr_array_index (priv->channel_factories, i);
-      TpChannelFactoryRequestStatus cur_status;
-      TpChannelIface *chan = NULL;
-
-      cur_status = tp_channel_factory_iface_request (factory, type, handle_type, handle, &chan);
-
-      switch (cur_status)
-        {
-        case TP_CHANNEL_FACTORY_REQUEST_STATUS_DONE:
-          g_object_get (chan, "object-path", ret, NULL);
-          return TRUE;
-        case TP_CHANNEL_FACTORY_REQUEST_STATUS_QUEUED:
-          // ROSTER
-          g_debug ("%s: damn, a queued request %s/%u/%u", G_STRFUNC, type, handle_type, handle);
-          goto NOT_AVAILABLE;
-        default:
-          /* always return the most specific error */
-          if (cur_status > status)
-            status = cur_status;
-        }
-    }
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
 
   if (!strcmp (type, TP_IFACE_CHANNEL_TYPE_TEXT))
     {
@@ -4185,28 +4140,10 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
     }
   else
     {
-      switch (status)
-        {
-        case TP_CHANNEL_FACTORY_REQUEST_STATUS_INVALID_HANDLE:
-          goto INVALID_HANDLE;
-        case TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_AVAILABLE:
-          goto NOT_AVAILABLE;
-        case TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_IMPLEMENTED:
-          goto NOT_IMPLEMENTED;
-        default:
-          g_assert_not_reached ();
-        }
+      return FALSE;
     }
 
   return TRUE;
-
-INVALID_HANDLE:
-  g_debug ("%s: invalid handle %u", G_STRFUNC, handle);
-
-  *error = g_error_new (TELEPATHY_ERRORS, InvalidHandle,
-                        "invalid handle %u", handle);
-
-  return FALSE;
 
 NOT_AVAILABLE:
   g_debug ("%s: requested channel is unavailable with "
@@ -4217,14 +4154,119 @@ NOT_AVAILABLE:
                         "handle type %u", handle_type);
 
   return FALSE;
+}
 
-NOT_IMPLEMENTED:
-  g_debug ("%s: unsupported channel type %s", G_STRFUNC, type);
 
-  *error = g_error_new (TELEPATHY_ERRORS, NotImplemented,
-                        "unsupported channel type %s", type);
+/**
+ * gabble_connection_request_channel
+ *
+ * Implements DBus method RequestChannel
+ * on interface org.freedesktop.Telepathy.Connection
+ *
+ * @context: The DBUS invocation context to use to return values
+ *           or throw an error.
+ */
+gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar * type, guint handle_type, guint handle, gboolean suppress_handler, DBusGMethodInvocation *context)
+{
+  GabbleConnectionPrivate *priv;
+  TpChannelFactoryRequestStatus status = TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_AVAILABLE;
+  gchar *object_path = NULL;
+  GError *error = NULL;
+  int i;
 
-  return FALSE;
+  g_assert (GABBLE_IS_CONNECTION (obj));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  ERROR_IF_NOT_CONNECTED_ASYNC (obj, error, context);
+
+  priv->suppress_next_handler = suppress_handler;
+
+  for (i = 0; i < priv->channel_factories->len; i++)
+    {
+      TpChannelFactoryIface *factory = g_ptr_array_index (priv->channel_factories, i);
+      TpChannelFactoryRequestStatus cur_status;
+      TpChannelIface *chan = NULL;
+
+      cur_status = tp_channel_factory_iface_request (factory, type, handle_type, handle, &chan);
+
+      switch (cur_status)
+        {
+        case TP_CHANNEL_FACTORY_REQUEST_STATUS_DONE:
+          g_assert (NULL != chan);
+          g_object_get (chan, "object-path", &object_path, NULL);
+          goto OUT;
+        case TP_CHANNEL_FACTORY_REQUEST_STATUS_QUEUED:
+          // ROSTER
+          g_debug ("%s: damn, a queued request %s/%u/%u", G_STRFUNC, type, handle_type, handle);
+          status = TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_AVAILABLE;
+          goto NO_QUEUE_YET;
+        default:
+          /* always return the most specific error */
+          if (cur_status > status)
+            status = cur_status;
+        }
+    }
+
+  /* TODO: delete this bit */
+  if (_gabble_connection_request_channel_deprecated (obj, type, handle_type,
+        handle, suppress_handler, &object_path, &error))
+    {
+      g_assert (NULL != object_path);
+      goto OUT;
+    }
+  else if (NULL != error)
+    {
+      goto OUT;
+    }
+
+NO_QUEUE_YET:
+  switch (status)
+    {
+      case TP_CHANNEL_FACTORY_REQUEST_STATUS_INVALID_HANDLE:
+        g_debug ("%s: invalid handle %u", G_STRFUNC, handle);
+
+        error = g_error_new (TELEPATHY_ERRORS, InvalidHandle,
+                             "invalid handle %u", handle);
+
+        break;
+
+      case TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_AVAILABLE:
+        g_debug ("%s: requested channel is unavailable with "
+                 "handle type %u", G_STRFUNC, handle_type);
+
+        error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                             "requested channel is not available with "
+                             "handle type %u", handle_type);
+
+        break;
+
+      case TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_IMPLEMENTED:
+        g_debug ("%s: unsupported channel type %s", G_STRFUNC, type);
+
+        error = g_error_new (TELEPATHY_ERRORS, NotImplemented,
+                             "unsupported channel type %s", type);
+
+        break;
+
+      default:
+        g_assert_not_reached ();
+    }
+
+OUT:
+  if (NULL != error)
+    {
+      g_assert (NULL == object_path);
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return FALSE;
+    }
+
+  g_assert (NULL != object_path);
+  dbus_g_method_return (context, object_path);
+  g_free (object_path);
+
+  return TRUE;
 }
 
 

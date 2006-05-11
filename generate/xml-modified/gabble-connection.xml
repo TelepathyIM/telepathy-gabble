@@ -17,10 +17,11 @@
       <arg direction="in"  type="u" name="handle" />
     </method>
     <method name="RequestChannel">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value=""/>
       <arg direction="in"  type="s" name="type" />
       <arg direction="in"  type="u" name="handle_type" />
       <arg direction="in"  type="u" name="handle" />
-      <arg direction="in"  type="b" name="supress_handler" />
+      <arg direction="in"  type="b" name="suppress_handler" />
       <arg direction="out" type="o" />
     </method>
     <method name="RequestHandle">
@@ -51,7 +52,7 @@
       <arg type="s" name="channel_type" />
       <arg type="u" name="handle_type" />
       <arg type="u" name="handle" />
-      <arg type="b" name="supress_handler" />
+      <arg type="b" name="suppress_handler" />
     </signal>
     <signal name="StatusChanged">
       <arg type="u" name="status" />

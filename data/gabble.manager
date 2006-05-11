@@ -5,7 +5,25 @@ ObjectPath = /org/freedesktop/Telepathy/ConnectionManager/gabble
 Protos = jabber
 
 [Proto jabber]
-MandatoryParams = s:account,s:password
-OptionalParams  = s:server,s:resource,q:port,b:old-ssl,b:register,b:low-bandwidth,s:https-proxy-server,q:https-proxy-port,s:fallback-conference-server,s:stun-server,q:stun-port,s:stun-relay-magic-cookie,s:stun-relay-server,q:stun-relay-udp-port,q:stun-relay-tcp-port,q:stun-relay-ssltcp-port,s:stun-relay-username,s:stun-relay-password
+param-account = s required register
+param-password = s required register
+param-server = s
+param-resource = s
+param-port = q default:5222
+param-old-ssl = b default:0
+param-register = b
+param-low-bandwitdth = b
+param-https-proxy-server = s
+param-https-proxy-port = q
+param-fallback-conference-server = s
+param-stun-server = s
+param-stun-port = q
+param-stun-relay-magic-cookie = s
+param-stun-relay-server = s
+param-stun-relay-udp-port = q
+param-stun-relay-tcp-port = q
+param-stun-relay-ssltcp-port = q
+param-stun-relay-username = s
+param-stun-relay-password = s
 default-port = 5222
 default-old-ssl = 0

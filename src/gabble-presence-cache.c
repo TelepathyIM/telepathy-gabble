@@ -442,6 +442,12 @@ gabble_presence_cache_presence_cb (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
+  if (handle == priv->conn->self_handle)
+    {
+      HANDLER_DEBUG (message->node, "ignoring presence from ourselves on another resource");
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    }
+
   return gabble_presence_cache_parse_message (cache, handle, from, message);
 }
 

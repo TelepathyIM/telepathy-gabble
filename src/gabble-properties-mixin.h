@@ -111,6 +111,8 @@ gboolean gabble_properties_mixin_list_properties (GObject *obj, GPtrArray **ret,
 gboolean gabble_properties_mixin_get_properties (GObject *obj, const GArray *properties, GPtrArray **ret, GError **error);
 gboolean gabble_properties_mixin_set_properties (GObject *obj, const GPtrArray *properties, DBusGMethodInvocation *context);
 
+gboolean gabble_properties_mixin_has_property (GObject *obj, const gchar *name, guint *property);
+
 gboolean gabble_properties_context_has (GabblePropertiesContext *ctx, guint property);
 gboolean gabble_properties_context_has_other_than (GabblePropertiesContext *ctx, guint property);
 const GValue *gabble_properties_context_get (GabblePropertiesContext *ctx, guint property);

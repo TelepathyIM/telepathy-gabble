@@ -74,6 +74,7 @@ struct _GabbleMediaSessionPrivate
 {
   GabbleConnection *conn;
   GabbleMediaChannel *channel;
+  GabbleMediaSessionMode mode;
   gchar *object_path;
 
   GabbleMediaStream *stream;
@@ -189,8 +190,21 @@ gabble_media_session_constructor (GType type, guint n_props,
 
   presence = gabble_presence_cache_get (priv->conn->presence_cache, priv->peer);
   g_assert (presence);
-  priv->voice_resource = gabble_presence_pick_resource_by_caps (presence, PRESENCE_CAP_GOOGLE_VOICE);
-  g_assert (priv->voice_resource);
+
+  priv->voice_resource = gabble_presence_pick_resource_by_caps (
+    presence, PRESENCE_CAP_JINGLE_VOICE);
+
+  if (NULL == priv->voice_resource)
+    {
+      priv->voice_resource = gabble_presence_pick_resource_by_caps (
+        presence, PRESENCE_CAP_GOOGLE_VOICE);
+      g_assert (NULL != priv->voice_resource);
+      priv->mode = MODE_GOOGLE;
+    }
+  else
+    {
+      priv->mode = MODE_JINGLE;
+    }
 
   create_media_stream (GABBLE_MEDIA_SESSION (obj));
 

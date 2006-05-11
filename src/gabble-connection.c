@@ -1236,15 +1236,29 @@ static GabbleIMChannel *new_im_channel (GabbleConnection *conn, GabbleHandle han
 static void discover_services (GabbleConnection *conn);
 static void emit_one_presence_update (GabbleConnection *self, GabbleHandle handle);
 
-static void
-presence_update_cb (GabblePresenceCache *cache, GabbleHandle handle, gpointer user_data)
+static gboolean
+do_connect (GabbleConnection *conn, GError **error)
 {
-  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+  GError *lmerror = NULL;
 
-  if (handle == conn->self_handle)
-    g_debug ("ignoring presence from ourselves on another resource");
-  else
-    emit_one_presence_update (conn, handle);
+  g_debug ("%s: calling lm_connection_open", G_STRFUNC);
+
+  if (!lm_connection_open (conn->lmconn, connection_open_cb,
+                           conn, NULL, &lmerror))
+    {
+      g_debug ("%s: lm_connection_open failed %s", G_STRFUNC, lmerror->message);
+
+      if (error)
+        *error = g_error_new (TELEPATHY_ERRORS, NetworkError,
+                              "lm_connection_open failed: %s",
+                              lmerror->message);
+
+      g_error_free (lmerror);
+
+      return FALSE;
+    }
+
+  return TRUE;
 }
 
 /**
@@ -1976,10 +1990,7 @@ connection_presence_update_cb (GabblePresenceCache *cache, GabbleHandle handle, 
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
 
-  if (handle == conn->self_handle)
-    g_debug ("ignoring presence from ourselves on another resource");
-  else
-    emit_one_presence_update (conn, handle);
+  emit_one_presence_update (conn, handle);
 }
 
 /**

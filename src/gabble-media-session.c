@@ -968,8 +968,12 @@ _gabble_media_session_terminate (GabbleMediaSession *session)
   if (priv->state == JS_STATE_ENDED)
     return;
 
+  /* Jingle doesn't have a "reject" action; a termination before an acceptance
+   * indicates that the call has been declined */
+
   if (priv->initiator == priv->peer &&
-      priv->state == JS_STATE_PENDING_INITIATED)
+      priv->state == JS_STATE_PENDING_INITIATED &&
+      priv->mode == MODE_GOOGLE)
     {
       send_reject_message (session);
     }

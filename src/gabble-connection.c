@@ -1643,7 +1643,7 @@ _get_muc_node (LmMessageNode *toplevel_node)
 
   for (node = toplevel_node->children; node; node = node->next)
     if (strcmp (node->name, "x") == 0)
-      if (_lm_message_node_has_namespace (node, MUC_XMLNS_USER))
+      if (_lm_message_node_has_namespace (node, NS_MUC_USER))
         return node;
 
   return NULL;
@@ -4695,7 +4695,7 @@ room_jid_disco_cb (GabbleDisco *disco, const gchar *jid, const gchar *node,
           name = lm_message_node_get_attribute (lm_node, "var");
           if (name != NULL)
             {
-              if (strcmp (name, MUC_XMLNS) == 0)
+              if (strcmp (name, NS_MUC) == 0)
                 {
                   gchar *sender;
                   GabbleHandle handle;

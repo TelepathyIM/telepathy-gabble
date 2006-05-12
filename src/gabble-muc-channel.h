@@ -45,12 +45,6 @@ struct _GabbleMucChannel {
 
 GType gabble_muc_channel_get_type(void);
 
-/* CONSTANTS */
-#define MUC_XMLNS       "http://jabber.org/protocol/muc"
-#define MUC_XMLNS_USER  "http://jabber.org/protocol/muc#user"
-#define MUC_XMLNS_ADMIN "http://jabber.org/protocol/muc#admin"
-#define MUC_XMLNS_OWNER "http://jabber.org/protocol/muc#owner"
-
 /* TYPE MACROS */
 #define GABBLE_TYPE_MUC_CHANNEL \
   (gabble_muc_channel_get_type())

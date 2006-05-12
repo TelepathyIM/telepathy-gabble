@@ -26,6 +26,7 @@
 #include <time.h>
 
 #include "allocator.h"
+#include "namespaces.h"
 #include "gabble-connection.h"
 #include "gabble-error.h"
 #include "gabble-disco.h"
@@ -465,7 +466,7 @@ static void properties_disco_cb (GabbleDisco *disco, const gchar *jid,
         }
 
       /* Ignored */
-      else if (strcmp (str, "http://jabber.org/protocol/muc") == 0)
+      else if (strcmp (str, NS_MUC) == 0)
         {
         }
 
@@ -619,7 +620,7 @@ send_join_request (GabbleMucChannel *channel,
   msg = lm_message_new (priv->self_jid, LM_MESSAGE_TYPE_PRESENCE);
 
   x_node = lm_message_node_add_child (msg->node, "x", NULL);
-  lm_message_node_set_attribute (x_node, "xmlns", "http://jabber.org/protocol/muc");
+  lm_message_node_set_attribute (x_node, "xmlns", NS_MUC);
 
   if (password != NULL)
     {
@@ -1385,7 +1386,7 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
                                                   LM_MESSAGE_SUB_TYPE_SET);
 
               node = lm_message_node_add_child (msg->node, "query", NULL);
-              lm_message_node_set_attribute (node, "xmlns", MUC_XMLNS_OWNER);
+              lm_message_node_set_attribute (node, "xmlns", NS_MUC_OWNER);
 
               node = lm_message_node_add_child (node, "x", NULL);
               lm_message_node_set_attributes (node,
@@ -2266,7 +2267,7 @@ gabble_muc_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *m
   msg = lm_message_new (priv->jid, LM_MESSAGE_TYPE_MESSAGE);
 
   x_node = lm_message_node_add_child (msg->node, "x", NULL);
-  lm_message_node_set_attribute (x_node, "xmlns", MUC_XMLNS_USER);
+  lm_message_node_set_attribute (x_node, "xmlns", NS_MUC_USER);
 
   invite_node = lm_message_node_add_child (x_node, "invite", NULL);
 
@@ -2321,7 +2322,7 @@ gabble_muc_channel_remove_member (GObject *obj, GabbleHandle handle, const gchar
                                       LM_MESSAGE_SUB_TYPE_SET);
 
   query_node = lm_message_node_add_child (msg->node, "query", NULL);
-  lm_message_node_set_attribute (query_node, "xmlns", MUC_XMLNS_ADMIN);
+  lm_message_node_set_attribute (query_node, "xmlns", NS_MUC_ADMIN);
 
   item_node = lm_message_node_add_child (query_node, "item", NULL);
 
@@ -2652,7 +2653,7 @@ gboolean gabble_muc_channel_set_properties (GabbleMucChannel *obj, const GPtrArr
       msg = lm_message_new_with_sub_type (priv->jid,
           LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET);
       node = lm_message_node_add_child (msg->node, "query", NULL);
-      lm_message_node_set_attribute (node, "xmlns", MUC_XMLNS_OWNER);
+      lm_message_node_set_attribute (node, "xmlns", NS_MUC_OWNER);
 
        _gabble_connection_send_with_reply (priv->conn, msg,
           request_config_form_reply_cb, G_OBJECT (obj), &priv->set_props_ctx,
@@ -2701,7 +2702,7 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
                                       LM_MESSAGE_SUB_TYPE_SET);
 
   node = lm_message_node_add_child (msg->node, "query", NULL);
-  lm_message_node_set_attribute (node, "xmlns", MUC_XMLNS_OWNER);
+  lm_message_node_set_attribute (node, "xmlns", NS_MUC_OWNER);
 
   submit_node = lm_message_node_add_child (node, "x", NULL);
   lm_message_node_set_attributes (submit_node,

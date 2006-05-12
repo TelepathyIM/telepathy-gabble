@@ -31,6 +31,10 @@
 #define NS_JINGLE_AUDIO         "http://jabber.org/protocol/jingle/media/audio"
 #define NS_JINGLE               "http://jabber.org/protocol/jingle"
 #define NS_MUC                  "http://jabber.org/protocol/muc"
+#define NS_MUC_USER             "http://jabber.org/protocol/muc#user"
+#define NS_MUC_ADMIN            "http://jabber.org/protocol/muc#admin"
+#define NS_MUC_OWNER            "http://jabber.org/protocol/muc#owner"
+
 #define NS_PRESENCE_INVISIBLE   "presence-invisible"
 #define NS_PRIVACY              "jabber:iq:privacy"
 #define NS_ROSTER               "jabber:iq:roster"

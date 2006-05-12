@@ -25,6 +25,7 @@
 #include <string.h>
 #include <time.h>
 
+#include "ansi.h"
 #include "allocator.h"
 #include "namespaces.h"
 #include "gabble-connection.h"
@@ -49,17 +50,6 @@ G_DEFINE_TYPE(GabbleMucChannel, gabble_muc_channel, G_TYPE_OBJECT)
 
 #define PROPS_POLL_INTERVAL_LOW  (60 * 1000 * 5)
 #define PROPS_POLL_INTERVAL_HIGH (60 * 1000)
-
-/*
- * FIXME: move these and the other defines in gabble-media-session.h
- *        to a common header
- */
-#define ANSI_RESET      "\x1b[0m"
-#define ANSI_BOLD_ON    "\x1b[1m"
-#define ANSI_BOLD_OFF   "\x1b[22m"
-#define ANSI_FG_CYAN    "\x1b[36m"
-#define ANSI_FG_WHITE   "\x1b[37m"
-#define ANSI_BG_RED     "\x1b[41m"
 
 /* signal enum */
 enum

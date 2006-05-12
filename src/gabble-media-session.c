@@ -25,22 +25,21 @@
 #include <string.h>
 #include <time.h>
 
-#include "gabble-media-session.h"
-#include "gabble-media-session-signals-marshal.h"
-
-#include "gabble-media-session-glue.h"
-
-#include "gabble-media-stream.h"
-
-#include "gabble-media-channel.h"
-
-#include "gabble-connection.h"
-#include "gabble-presence.h"
-#include "gabble-presence-cache.h"
+#include "ansi.h"
 #include "handles.h"
 #include "namespaces.h"
 
 #include "telepathy-helpers.h"
+
+#include "gabble-connection.h"
+#include "gabble-media-channel.h"
+#include "gabble-media-stream.h"
+#include "gabble-presence-cache.h"
+#include "gabble-presence.h"
+
+#include "gabble-media-session.h"
+#include "gabble-media-session-signals-marshal.h"
+#include "gabble-media-session-glue.h"
 
 G_DEFINE_TYPE(GabbleMediaSession, gabble_media_session, G_TYPE_OBJECT)
 

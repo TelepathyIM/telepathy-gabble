@@ -1202,6 +1202,7 @@ _gabble_media_stream_session_node_add_description (GabbleMediaStream *stream,
   const GPtrArray *codecs;
   LmMessageNode *desc_node;
   guint i;
+  const gchar *xmlns;
 
   g_assert (GABBLE_IS_MEDIA_STREAM (stream));
 
@@ -1210,8 +1211,13 @@ _gabble_media_stream_session_node_add_description (GabbleMediaStream *stream,
   codecs = g_value_get_boxed (&priv->native_codecs);
 
   desc_node = lm_message_node_add_child (session_node, "description", NULL);
-  lm_message_node_set_attribute (desc_node, "xmlns",
-      "http://www.google.com/session/phone");
+
+  if (priv->mode == MODE_GOOGLE)
+    xmlns = NS_GOOGLE_SESSION_PHONE;
+  else
+    xmlns = NS_JINGLE_AUDIO;
+
+  lm_message_node_set_attribute (desc_node, "xmlns", xmlns);
 
   for (i = 0; i < codecs->len; i++)
     {
@@ -1236,7 +1242,6 @@ _gabble_media_stream_session_node_add_description (GabbleMediaStream *stream,
       pt_node = lm_message_node_add_child (desc_node, "payload-type", NULL);
 
       lm_message_node_set_attributes (pt_node,
-          "xmlns", "http://www.google.com/session/phone",
           "id", id_str,
           "name", name,
           NULL);

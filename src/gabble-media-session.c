@@ -664,6 +664,7 @@ try_session_accept (GabbleMediaSession *session)
   GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
   LmMessage *msg;
   LmMessageNode *session_node;
+  const gchar *action;
 
   if (!priv->accepted || !priv->got_active_candidate_pair)
     {
@@ -675,12 +676,17 @@ try_session_accept (GabbleMediaSession *session)
   GMS_DEBUG_INFO (session, "setting stream playing");
   _gabble_media_stream_set_playing (priv->stream, TRUE);
 
+  if (priv->mode == MODE_GOOGLE)
+    action = "accept";
+  else
+    action = "session-accept";
+
   /* construct a session acceptance message */
-  msg = _gabble_media_session_message_new (session, "accept", &session_node);
+  msg = _gabble_media_session_message_new (session, action, &session_node);
 
   _gabble_media_stream_session_node_add_description (priv->stream, session_node);
 
-  GMS_DEBUG_INFO (session, "sending jingle session action \"accept\" to peer");
+  GMS_DEBUG_INFO (session, "sending jingle session action \"%s\" to peer", action);
 
   /* send the final acceptance message */
   _gabble_connection_send_with_reply (priv->conn, msg, accept_msg_reply_cb,
@@ -761,12 +767,23 @@ stream_ready_cb (GabbleMediaStream *stream,
     {
       LmMessage *msg;
       LmMessageNode *session_node;
+      const gchar *action;
 
-      msg = _gabble_media_session_message_new (session, "initiate", &session_node);
+      if (priv->mode == MODE_GOOGLE)
+          action = "initiate";
+      else
+          action = "session-initiate";
+
+      msg = _gabble_media_session_message_new (session, action, &session_node);
 
       _gabble_media_stream_session_node_add_description (priv->stream, session_node);
 
-      GMS_DEBUG_INFO (session, "sending jingle session action \"initiate\" to peer");
+      /*
+      if (priv->mode == MODE_JINGLE)
+        _gabble_media_stream_session_node_add_transport (priv->stream, session_node);
+      */
+
+      GMS_DEBUG_INFO (session, "sending jingle action \"%s\" to peer", action);
 
       _gabble_connection_send_with_reply (priv->conn, msg, initiate_msg_reply_cb,
                                           G_OBJECT (session), NULL, NULL);
@@ -837,6 +854,7 @@ _gabble_media_session_message_new (GabbleMediaSession *session,
   LmMessage *msg;
   LmMessageNode *iq_node, *node;
   gchar *peer_jid, *initiator_jid;
+  const gchar *element, *xmlns;
 
   g_assert (GABBLE_IS_MEDIA_SESSION (session));
 
@@ -852,17 +870,27 @@ _gabble_media_session_message_new (GabbleMediaSession *session,
   g_free (peer_jid);
 
   iq_node = lm_message_get_node (msg);
-  node = lm_message_node_add_child (iq_node, "session", NULL);
 
+  if (priv->mode == MODE_GOOGLE)
+    element = "session";
+  else
+    element = "jingle";
+
+  node = lm_message_node_add_child (iq_node, element, NULL);
   initiator_jid = get_jid_for_contact (session, priv->initiator);
 
   lm_message_node_set_attributes (node,
-      "xmlns", "http://www.google.com/session",
       "id", priv->id,
       "type", action,
       "initiator", initiator_jid,
       NULL);
 
+  if (priv->mode == MODE_GOOGLE)
+    xmlns = NS_GOOGLE_SESSION;
+  else
+    xmlns = NS_JINGLE;
+
+  lm_message_node_set_attribute (node, "xmlns", xmlns);
   g_free (initiator_jid);
 
   if (session_node)

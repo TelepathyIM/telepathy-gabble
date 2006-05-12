@@ -169,6 +169,38 @@ create_media_stream (GabbleMediaSession *session)
   g_free (object_path);
 }
 
+gboolean
+_get_voice_resource (GabblePresence *presence, const gchar **voice_resource,
+                     GabbleMediaSessionMode *mode)
+{
+  const gchar *resource;
+
+  if (g_getenv ("GABBLE_JINGLE"))
+    {
+      resource = gabble_presence_pick_resource_by_caps (presence,
+        PRESENCE_CAP_JINGLE_VOICE);
+
+      if (resource)
+        {
+          *voice_resource = resource;
+          *mode = MODE_JINGLE;
+          return TRUE;
+        }
+    }
+
+  resource = gabble_presence_pick_resource_by_caps (presence,
+    PRESENCE_CAP_GOOGLE_VOICE);
+
+  if (resource)
+    {
+      *voice_resource = resource;
+      *mode = MODE_GOOGLE;
+      return TRUE;
+    }
+
+  return FALSE;
+}
+
 static GObject *
 gabble_media_session_constructor (GType type, guint n_props,
                                   GObjectConstructParam *props)
@@ -192,20 +224,8 @@ gabble_media_session_constructor (GType type, guint n_props,
   presence = gabble_presence_cache_get (priv->conn->presence_cache, priv->peer);
   g_assert (presence);
 
-  priv->voice_resource = gabble_presence_pick_resource_by_caps (
-    presence, PRESENCE_CAP_JINGLE_VOICE);
-
-  if (NULL == priv->voice_resource)
-    {
-      priv->voice_resource = gabble_presence_pick_resource_by_caps (
-        presence, PRESENCE_CAP_GOOGLE_VOICE);
-      g_assert (NULL != priv->voice_resource);
-      priv->mode = MODE_GOOGLE;
-    }
-  else
-    {
-      priv->mode = MODE_JINGLE;
-    }
+  if (!_get_voice_resource (presence, &priv->voice_resource, &priv->mode))
+    g_critical ("%s: no voice resource found for remote handle", G_STRFUNC);
 
   create_media_stream (GABBLE_MEDIA_SESSION (obj));
 

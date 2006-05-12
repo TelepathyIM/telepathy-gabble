@@ -800,6 +800,29 @@ _add_rtp_candidate_node (GabbleMediaSession *session, LmMessageNode *parent,
 }
 
 static void
+push_candidate (GabbleMediaStream *stream, GValueArray *candidate)
+{
+  LmMessage *msg;
+  LmMessageNode *session_node;
+  GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
+
+  /* construct a session message */
+  msg = _gabble_media_session_message_new (priv->session, "candidates",
+    &session_node);
+  _add_rtp_candidate_node (priv->session, msg->node, candidate);
+
+  GMS_DEBUG_INFO (priv->session,
+    "sending jingle session action \"candidate\" to peer");
+
+  /* send it */
+  _gabble_connection_send_with_reply (priv->conn, msg,
+    candidates_msg_reply_cb, G_OBJECT (stream), NULL, NULL);
+
+  /* clean up */
+  lm_message_unref (msg);
+}
+
+static void
 push_native_candidates (GabbleMediaStream *stream)
 {
   GabbleMediaStreamPrivate *priv;
@@ -820,27 +843,10 @@ push_native_candidates (GabbleMediaStream *stream)
   candidates = g_value_get_boxed (&priv->native_candidates);
 
   for (i = 0; i < candidates->len; i++)
-    {
-      GValueArray *candidate;
-      LmMessage *msg;
-      LmMessageNode *session_node;
-
-      /* construct a session message */
-      msg = _gabble_media_session_message_new (priv->session, "candidates", &session_node);
-      candidate = g_ptr_array_index (candidates, i);
-      _add_rtp_candidate_node (priv->session, msg->node, candidate);
-
-      GMS_DEBUG_INFO (priv->session, "sending jingle session action \"candidate\" to peer");
-
-      /* send it */
-      _gabble_connection_send_with_reply (priv->conn, msg, candidates_msg_reply_cb, G_OBJECT (stream), NULL, NULL);
-
-      /* clean up */
-      lm_message_unref (msg);
-    }
+    push_candidate (stream, g_ptr_array_index (candidates, i));
 
   g_value_take_boxed (&priv->native_candidates,
-      dbus_g_type_specialized_construct (TP_TYPE_CANDIDATE_LIST));
+    dbus_g_type_specialized_construct (TP_TYPE_CANDIDATE_LIST));
 }
 
 gboolean

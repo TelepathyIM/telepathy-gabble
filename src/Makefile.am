@@ -81,6 +81,7 @@ CORE_SOURCES = \
     handles-private.h \
     handle-set.h \
     handle-set.c \
+    namespaces.h \
     telepathy-constants.h \
     telepathy-interfaces.h \
     telepathy-errors.h \

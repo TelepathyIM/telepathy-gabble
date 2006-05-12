@@ -46,12 +46,12 @@
 #include "gabble-im-channel.h"
 #include "gabble-media-channel.h"
 #include "gabble-muc-channel.h"
-#include "gabble-namespaces.h"
 #include "gabble-presence-cache.h"
 #include "gabble-presence.h"
 #include "gabble-register.h"
 #include "gabble-roomlist-channel.h"
 #include "gabble-roster-channel.h"
+#include "namespaces.h"
 
 #define BUS_NAME        "org.freedesktop.Telepathy.Connection.gabble"
 #define OBJECT_PATH     "/org/freedesktop/Telepathy/Connection/gabble"

@@ -23,19 +23,12 @@
 #include <dbus/dbus-glib.h>
 #include <stdio.h>
 
-#include "gabble-group-mixin.h"
-#include "gabble-group-mixin-signals-marshal.h"
+#include "ansi.h"
+
 #include "telepathy-errors.h"
 
-/*
- * FIXME: move this and the other defines in gabble-media-session.h
- *        to a common header
- */
-#define ANSI_RESET      "\x1b[0m"
-#define ANSI_BOLD_ON    "\x1b[1m"
-#define ANSI_BOLD_OFF   "\x1b[22m"
-#define ANSI_FG_CYAN    "\x1b[36m"
-#define ANSI_FG_WHITE   "\x1b[37m"
+#include "gabble-group-mixin.h"
+#include "gabble-group-mixin-signals-marshal.h"
 
 /**
  * gabble_group_mixin_class_get_offset_quark:

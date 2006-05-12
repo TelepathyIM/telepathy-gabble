@@ -23,7 +23,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "ansi.h"
+
 #include "gabble-connection.h"
+#include "gabble-media-session.h"
 #include "gabble-presence.h"
 #include "gabble-presence-cache.h"
 
@@ -33,10 +36,7 @@
 
 #include "gabble-media-channel.h"
 #include "gabble-media-channel-signals-marshal.h"
-
 #include "gabble-media-channel-glue.h"
-
-#include "gabble-media-session.h"
 
 G_DEFINE_TYPE(GabbleMediaChannel, gabble_media_channel, G_TYPE_OBJECT)
 

@@ -24,10 +24,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "gabble-media-stream.h"
-#include "gabble-media-stream-signals-marshal.h"
-
-#include "gabble-media-stream-glue.h"
+#include "ansi.h"
+#include "handles.h"
+#include "namespaces.h"
 
 #include "gabble-connection.h"
 #include "gabble-media-channel.h"
@@ -37,8 +36,9 @@
 #include "telepathy-helpers.h"
 #include "telepathy-constants.h"
 
-#include "handles.h"
-#include "namespaces.h"
+#include "gabble-media-stream.h"
+#include "gabble-media-stream-signals-marshal.h"
+#include "gabble-media-stream-glue.h"
 
 G_DEFINE_TYPE(GabbleMediaStream, gabble_media_stream, G_TYPE_OBJECT)
 

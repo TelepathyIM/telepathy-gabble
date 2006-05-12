@@ -2744,7 +2744,7 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
 
   /* is it for us? */
   if (!session_node || !_lm_message_node_has_namespace (session_node,
-        "http://www.google.com/session"))
+        NS_GOOGLE_SESSION))
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
   from = lm_message_node_get_attribute (iq_node, "from");
@@ -3456,8 +3456,7 @@ service_info_cb (GabbleDisco *disco, const gchar *jid, const gchar *node,
               if (0 == strcmp (feature->name, "feature"))
                 {
                   var = lm_message_node_get_attribute (feature, "var");
-                  if (var &&
-                      0 == strcmp (var, "http://jabber.org/protocol/muc"))
+                  if (var && 0 == strcmp (var, NS_MUC))
                     {
                       is_muc = TRUE;
                       break;

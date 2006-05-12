@@ -10,6 +10,7 @@
 #define NS_GOOGLE_SESSION_PHONE "http://www.google.com/session/phone"
 #define NS_JINGLE_AUDIO         "http://jabber.org/protocol/jingle/media/audio"
 #define NS_JINGLE               "http://jabber.org/protocol/jingle"
+#define NS_MUC                  "http://jabber.org/protocol/muc"
 #define NS_PRESENCE_INVISIBLE   "presence-invisible"
 #define NS_PRIVACY              "jabber:iq:privacy"
 #define NS_ROSTER               "jabber:iq:roster"

@@ -709,6 +709,96 @@ candidates_msg_reply_cb (GabbleConnection *conn,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
+void
+_add_rtp_candidate_node (GabbleMediaSession *session, LmMessageNode *parent,
+                         GValueArray *candidate)
+{
+  gchar *addr;
+  gchar *user;
+  gchar *pass;
+  gchar *port_str;
+  gchar *pref_str;
+  gchar *xml;
+  const gchar *type_str;
+  const gchar *candidate_id;
+  guint port;
+  gdouble pref;
+  TpMediaStreamProto proto;
+  TpMediaStreamTransportType type;
+  const GPtrArray *transports;
+  GValue transport = { 0, };
+  LmMessageNode *cand_node;
+
+  candidate_id = g_value_get_string (g_value_array_get_nth (candidate, 0));
+  transports = g_value_get_boxed (g_value_array_get_nth (candidate, 1));
+
+  /* jingle audio only supports the concept of one transport per candidate */
+  g_assert (transports->len == 1);
+
+  g_value_init (&transport, TP_TYPE_TRANSPORT_STRUCT);
+  g_value_set_static_boxed (&transport, g_ptr_array_index (transports, 0));
+
+  dbus_g_type_struct_get (&transport,
+      1, &addr,
+      2, &port,
+      3, &proto,
+      6, &pref,
+      7, &type,
+      8, &user,
+      9, &pass,
+      G_MAXUINT);
+
+  port_str = g_strdup_printf ("%d", port);
+  pref_str = g_strdup_printf ("%f", pref);
+
+  switch (type) {
+    case TP_MEDIA_STREAM_TRANSPORT_TYPE_LOCAL:
+      type_str = "local";
+      break;
+    case TP_MEDIA_STREAM_TRANSPORT_TYPE_DERIVED:
+      type_str = "stun";
+      break;
+    case TP_MEDIA_STREAM_TRANSPORT_TYPE_RELAY:
+      type_str = "relay";
+      break;
+    default:
+      g_critical ("%s: TpMediaStreamTransportType has an invalid value",
+        G_STRFUNC);
+      g_assert_not_reached ();
+  }
+
+  cand_node = lm_message_node_add_child (parent, "candidate", NULL);
+  lm_message_node_set_attributes (cand_node,
+      "name", "rtp",
+      "address", addr,
+      "port", port_str,
+      "username", user,
+      "password", pass,
+      "preference", pref_str,
+      "protocol", (proto == TP_MEDIA_STREAM_PROTO_UDP) ? "udp" : "tcp",
+      "type", type_str,
+      "network", "0",
+      "generation", "0",
+      NULL);
+
+  xml = lm_message_node_to_string (cand_node);
+  GMS_DEBUG_DUMP (session,
+    "  from Telepathy DBus struct: [%s\"%s\", %s[%s1, \"%s\", %d, %s, "
+    "\"%s\", \"%s\", %f, %s, \"%s\", \"%s\"%s]]",
+    ANSI_BOLD_OFF, candidate_id, ANSI_BOLD_ON, ANSI_BOLD_OFF, addr, port,
+    tp_protocols[proto], "RTP", "AVP", pref, tp_transports[type], user, pass,
+    ANSI_BOLD_ON);
+  GMS_DEBUG_DUMP (session,
+    "  to Jingle XML: [%s%s%s]", ANSI_BOLD_OFF, xml, ANSI_BOLD_ON);
+  g_free (xml);
+
+  g_free (addr);
+  g_free (user);
+  g_free (pass);
+  g_free (port_str);
+  g_free (pref_str);
+}
+
 static void
 push_native_candidates (GabbleMediaStream *stream)
 {
@@ -732,104 +822,21 @@ push_native_candidates (GabbleMediaStream *stream)
   for (i = 0; i < candidates->len; i++)
     {
       GValueArray *candidate;
-      const gchar *candidate_id;
-      const GPtrArray *transports;
-      GValue transport = { 0, };
       LmMessage *msg;
-      LmMessageNode *session_node, *cand_node;
-      gchar *addr;
-      guint port;
-      gchar *port_str;
-      TpMediaStreamProto proto;
-      gdouble pref;
-      gchar *pref_str;
-      TpMediaStreamTransportType type;
-      const gchar *type_str;
-      gchar *user, *pass, *xml;
-
-      candidate = g_ptr_array_index (candidates, i);
-
-      candidate_id = g_value_get_string (g_value_array_get_nth (candidate, 0));
-      transports = g_value_get_boxed (g_value_array_get_nth (candidate, 1));
-
-      /* jingle audio only supports the concept of one transport per candidate */
-      g_assert (transports->len == 1);
-
-      /* grab the interesting fields from the struct */
-      g_value_init (&transport, TP_TYPE_TRANSPORT_STRUCT);
-      g_value_set_static_boxed (&transport, g_ptr_array_index (transports, 0));
-
-      dbus_g_type_struct_get (&transport,
-          1, &addr,
-          2, &port,
-          3, &proto,
-          6, &pref,
-          7, &type,
-          8, &user,
-          9, &pass,
-          G_MAXUINT);
-
-      /* convert to strings */
-      port_str = g_strdup_printf ("%d", port);
-
-      pref_str = g_strdup_printf ("%f", pref);
-
-      switch (type) {
-        case TP_MEDIA_STREAM_TRANSPORT_TYPE_LOCAL:
-          type_str = "local";
-          break;
-        case TP_MEDIA_STREAM_TRANSPORT_TYPE_DERIVED:
-          type_str = "stun";
-          break;
-        case TP_MEDIA_STREAM_TRANSPORT_TYPE_RELAY:
-          type_str = "relay";
-          break;
-        default:
-          g_critical ("%s: TpMediaStreamTransportType has an invalid value", G_STRFUNC);
-          g_assert_not_reached ();
-      }
+      LmMessageNode *session_node;
 
       /* construct a session message */
       msg = _gabble_media_session_message_new (priv->session, "candidates", &session_node);
-
-      /* create a sub-node called "candidate" and fill it with candidate info */
-      cand_node = lm_message_node_add_child (session_node, "candidate", NULL);
-
-      lm_message_node_set_attributes (cand_node,
-          "name", "rtp",
-          "address", addr,
-          "port", port_str,
-          "username", user,
-          "password", pass,
-          "preference", pref_str,
-          "protocol", (proto == TP_MEDIA_STREAM_PROTO_UDP) ? "udp" : "tcp",
-          "type", type_str,
-          "network", "0",
-          "generation", "0",
-          NULL);
+      candidate = g_ptr_array_index (candidates, i);
+      _add_rtp_candidate_node (priv->session, msg->node, candidate);
 
       GMS_DEBUG_INFO (priv->session, "sending jingle session action \"candidate\" to peer");
-
-      xml = lm_message_node_to_string (cand_node);
-      GMS_DEBUG_DUMP (priv->session, "  from Telepathy DBus struct: [%s\"%s\", %s[%s1, \"%s\", %d, %s, \"%s\", \"%s\", %f, %s, \"%s\", \"%s\"%s]]",
-                      ANSI_BOLD_OFF, candidate_id, ANSI_BOLD_ON,
-                      ANSI_BOLD_OFF, addr, port, tp_protocols[proto], "RTP", "AVP", pref, tp_transports[type], user, pass, ANSI_BOLD_ON);
-      GMS_DEBUG_DUMP (priv->session, "  to Jingle XML: [%s%s%s]",
-                      ANSI_BOLD_OFF, xml, ANSI_BOLD_ON);
-      g_free (xml);
 
       /* send it */
       _gabble_connection_send_with_reply (priv->conn, msg, candidates_msg_reply_cb, G_OBJECT (stream), NULL, NULL);
 
       /* clean up */
       lm_message_unref (msg);
-
-      g_free (addr);
-      g_free (user);
-      g_free (pass);
-
-      g_free (port_str);
-      g_free (pref_str);
     }
 
   g_value_take_boxed (&priv->native_candidates,

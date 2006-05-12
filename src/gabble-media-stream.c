@@ -958,7 +958,7 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
                                              LmMessageNode *session_node)
 {
   GabbleMediaStreamPrivate *priv;
-  LmMessageNode *node;
+  LmMessageNode *node, *transport_node;
   const gchar *str;
   GPtrArray *candidates;
 
@@ -968,7 +968,13 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
 
   candidates = g_value_get_boxed (&priv->remote_candidates);
 
-  for (node = session_node->children; node; node = node->next)
+  /* Jingle has an extra <transport> node; Google Talk doesn't */
+  transport_node = lm_message_node_get_child (session_node, "transport");
+
+  if (NULL == transport_node)
+    transport_node = session_node;
+
+  for (node = transport_node->children; node; node = node->next)
     {
       gchar *candidate_id;
       const gchar *name, *addr;

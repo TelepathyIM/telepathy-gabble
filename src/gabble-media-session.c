@@ -38,6 +38,7 @@
 #include "gabble-presence.h"
 #include "gabble-presence-cache.h"
 #include "handles.h"
+#include "namespaces.h"
 
 #include "telepathy-helpers.h"
 

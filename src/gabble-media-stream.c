@@ -38,6 +38,7 @@
 #include "telepathy-constants.h"
 
 #include "handles.h"
+#include "namespaces.h"
 
 G_DEFINE_TYPE(GabbleMediaStream, gabble_media_stream, G_TYPE_OBJECT)
 

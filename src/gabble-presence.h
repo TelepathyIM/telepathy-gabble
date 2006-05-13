@@ -43,7 +43,6 @@ struct _GabblePresence {
     GObject parent;
     GabblePresenceCapabilities caps;
     GabblePresenceId status;
-    gchar *status_name;
     gchar *status_message;
     gpointer priv;
 };

@@ -323,7 +323,7 @@ request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 static void
 notify_delete_request (gpointer data, GObject *obj)
 {
-  cancel_request ((GabbleDiscoRequest*) data);
+  delete_request ((GabbleDiscoRequest*) data);
 }
 
 /**

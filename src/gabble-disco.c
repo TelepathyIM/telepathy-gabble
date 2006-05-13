@@ -238,7 +238,8 @@ timeout_request (gpointer data)
       "Request for %s on %s timed out",
       (request->type == GABBLE_DISCO_TYPE_INFO)?"info":"items",
       request->jid);
-  (request->callback)(request->disco, request->jid, request->node, NULL, err, request->user_data);
+  (request->callback)(request->disco, request, request->jid, request->node,
+                      NULL, err, request->user_data);
   g_error_free (err);
 
   delete_request (request);
@@ -254,7 +255,8 @@ cancel_request (GabbleDiscoRequest *request)
       "Request for %s on %s cancelled",
       (request->type == GABBLE_DISCO_TYPE_INFO)?"info":"items",
       request->jid);
-  (request->callback)(request->disco, request->jid, request->node, NULL, err, request->user_data);
+  (request->callback)(request->disco, request, request->jid, request->node,
+                      NULL, err, request->user_data);
   g_error_free (err);
 
 
@@ -308,8 +310,8 @@ request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
     }
 
   g_source_remove (request->timer_id);
-  request->callback (request->disco, request->jid, node, query_node, err,
-                     request->user_data);
+  request->callback (request->disco, request, request->jid, node, query_node,
+                     err, request->user_data);
   delete_request (request);
 
   if (err)

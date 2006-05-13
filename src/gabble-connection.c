@@ -1204,10 +1204,8 @@ static LmHandlerResult connection_iq_unknown_cb (LmMessageHandler*, LmConnection
 static LmSSLResponse connection_ssl_cb (LmSSL*, LmSSLStatus, gpointer);
 static void connection_open_cb (LmConnection*, gboolean, gpointer);
 static void connection_auth_cb (LmConnection*, gboolean, gpointer);
-static void connection_disco_cb (GabbleDisco *disco, const gchar *jid,
-                                 const gchar *node, LmMessageNode *result,
-                                 GError *disco_error, gpointer user_data);
-static void connection_disconnected_cb (LmConnection *connection, LmDisconnectReason lm_reason, gpointer user_data);
+static void connection_disco_cb (GabbleDisco *, GabbleDiscoRequest *, const gchar *, const gchar *, LmMessageNode *, GError *, gpointer);
+static void connection_disconnected_cb (LmConnection *, LmDisconnectReason, gpointer);
 static void connection_status_change (GabbleConnection *, TpConnectionStatus, TpConnectionStatusReason);
 
 static void close_all_channels (GabbleConnection *conn);
@@ -3225,9 +3223,13 @@ connection_auth_cb (LmConnection *lmconn,
  * and requests the roster.
  */
 static void
-connection_disco_cb (GabbleDisco *disco, const gchar *jid,
-                     const gchar *node, LmMessageNode *result,
-                     GError *disco_error, gpointer user_data)
+connection_disco_cb (GabbleDisco *disco,
+                     GabbleDiscoRequest *request,
+                     const gchar *jid,
+                     const gchar *node,
+                     LmMessageNode *result,
+                     GError *disco_error,
+                     gpointer user_data)
 {
   GabbleConnection *conn = user_data;
   GabbleConnectionPrivate *priv;
@@ -3418,8 +3420,12 @@ make_roomlist_channel (GabbleConnection *conn, gboolean suppress_handler)
 }
 
 static void
-service_info_cb (GabbleDisco *disco, const gchar *jid, const gchar *node,
-                 LmMessageNode *result, GError *error,
+service_info_cb (GabbleDisco *disco,
+                 GabbleDiscoRequest *request,
+                 const gchar *jid,
+                 const gchar *node,
+                 LmMessageNode *result,
+                 GError *error,
                  gpointer user_data)
 {
   LmMessageNode *identity, *feature;
@@ -3474,8 +3480,12 @@ service_info_cb (GabbleDisco *disco, const gchar *jid, const gchar *node,
 }
 
 static void
-services_discover_cb (GabbleDisco *disco, const gchar *jid, const gchar *node,
-                      LmMessageNode *result, GError *error,
+services_discover_cb (GabbleDisco *disco,
+                      GabbleDiscoRequest *request,
+                      const gchar *jid,
+                      const gchar *node,
+                      LmMessageNode *result,
+                      GError *error,
                       gpointer user_data)
 {
   LmMessageNode *iter;
@@ -4668,8 +4678,12 @@ typedef struct {
 } RoomVerifyContext;
 
 static void
-room_jid_disco_cb (GabbleDisco *disco, const gchar *jid, const gchar *node,
-                   LmMessageNode *query_result, GError *error,
+room_jid_disco_cb (GabbleDisco *disco,
+                   GabbleDiscoRequest *request,
+                   const gchar *jid,
+                   const gchar *node,
+                   LmMessageNode *query_result,
+                   GError *error,
                    gpointer user_data)
 {
   RoomVerifyContext *rvctx = user_data;

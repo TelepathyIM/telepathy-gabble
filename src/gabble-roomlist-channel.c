@@ -355,9 +355,13 @@ destroy_value (GValue *value)
 
 
 static void
-room_info_cb (GabbleDisco *disco, const gchar *jid, const gchar *node,
-          LmMessageNode *result, GError *error,
-          gpointer user_data)
+room_info_cb (GabbleDisco *disco,
+              GabbleDiscoRequest *request,
+              const gchar *jid,
+              const gchar *node,
+              LmMessageNode *result,
+              GError *error,
+              gpointer user_data)
 {
   GabbleRoomlistChannel *chan = user_data;
   GabbleRoomlistChannelPrivate *priv;
@@ -522,8 +526,12 @@ done:
 
 
 static void
-rooms_cb (GabbleDisco *disco, const gchar *jid, const gchar *node,
-          LmMessageNode *result, GError *error,
+rooms_cb (GabbleDisco *disco,
+          GabbleDiscoRequest *request,
+          const gchar *jid,
+          const gchar *node,
+          LmMessageNode *result,
+          GError *error,
           gpointer user_data)
 {
   LmMessageNode *iter;

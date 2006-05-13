@@ -298,9 +298,13 @@ static void room_property_change_flags (GabbleMucChannel *chan, guint prop_id, T
 static void room_properties_emit_changed (GabbleMucChannel *chan, GArray *props);
 static void room_properties_emit_flags (GabbleMucChannel *chan, GArray *props);
 
-static void properties_disco_cb (GabbleDisco *disco, const gchar *jid,
-                                 const gchar *node, LmMessageNode *query_result,
-                                 GError *error, gpointer user_data)
+static void properties_disco_cb (GabbleDisco *disco,
+                                 GabbleDiscoRequest *request,
+                                 const gchar *jid,
+                                 const gchar *node,
+                                 LmMessageNode *query_result,
+                                 GError *error,
+                                 gpointer user_data)
 {
   GabbleMucChannel *chan = user_data;
   GabbleMucChannelPrivate *priv;

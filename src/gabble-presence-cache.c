@@ -465,6 +465,9 @@ gabble_presence_cache_get (GabblePresenceCache *cache, GabbleHandle handle)
 {
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
 
+  g_assert (gabble_handle_is_valid (priv->conn->handles,
+        TP_HANDLE_TYPE_CONTACT, handle, NULL));
+
   return g_hash_table_lookup (priv->presence, GINT_TO_POINTER (handle));
 }
 
@@ -483,9 +486,19 @@ gabble_presence_cache_update (GabblePresenceCache *cache, GabbleHandle handle, c
     {
       presence = gabble_presence_new ();
       g_hash_table_insert (priv->presence, GINT_TO_POINTER (handle), presence);
+      gabble_handle_ref (priv->conn->handles, TP_HANDLE_TYPE_CONTACT, handle);
     }
 
   if (gabble_presence_update (presence, resource, presence_id, status_message, priority))
     g_signal_emit (cache, signals[PRESENCE_UPDATE], 0, handle);
+
+  if (presence->status == GABBLE_PRESENCE_OFFLINE &&
+      presence->status_message == NULL)
+    {
+      g_debug ("%s: discarding cached presence for unavailable jid %s",
+          G_STRFUNC, jid);
+      g_hash_table_remove (priv->presence, GINT_TO_POINTER (handle));
+      gabble_handle_unref (priv->conn->handles, TP_HANDLE_TYPE_CONTACT, handle);
+    }
 }
 

@@ -3443,8 +3443,6 @@ service_info_cb (GabbleDisco *disco,
       return;
     }
 
-  HANDLER_DEBUG (result, "got");
-
   identity = lm_message_node_get_child (result, "identity");
   if (identity)
     {
@@ -3500,7 +3498,6 @@ services_discover_cb (GabbleDisco *disco,
       g_debug ("%s: got error: %s", G_STRFUNC, error->message);
       return;
     }
-  HANDLER_DEBUG (result, "got");
 
   iter = result->children;
 

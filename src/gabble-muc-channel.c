@@ -50,16 +50,8 @@
 #define PROPS_POLL_INTERVAL_LOW  (60 * 1000 * 5)
 #define PROPS_POLL_INTERVAL_HIGH (60 * 1000)
 
-/*
- * FIXME: move these and the other defines in gabble-media-session.h
- *        to a common header
- */
-#define ANSI_RESET      "\x1b[0m"
-#define ANSI_BOLD_ON    "\x1b[1m"
-#define ANSI_BOLD_OFF   "\x1b[22m"
-#define ANSI_FG_CYAN    "\x1b[36m"
-#define ANSI_FG_WHITE   "\x1b[37m"
-#define ANSI_BG_RED     "\x1b[41m"
+G_DEFINE_TYPE_WITH_CODE (GabbleMucChannel, gabble_muc_channel,
+    G_TYPE_OBJECT, G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL));
 
 /* signal enum */
 enum

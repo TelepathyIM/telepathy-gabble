@@ -29,9 +29,8 @@
 
 #include "gabble-connection.h"
 #include "gabble-roster-channel.h"
+#include "namespaces.h"
 #include "roster.h"
-
-#define NS_ROSTER             "jabber:iq:roster"
 
 /* Properties */
 enum

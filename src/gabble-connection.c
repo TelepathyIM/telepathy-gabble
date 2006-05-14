@@ -226,6 +226,7 @@ struct _GabbleConnectionPrivate
 
   /* channel factories */
   GPtrArray *channel_factories;
+  GPtrArray *channel_requests;
   gboolean suppress_next_handler;
 
   /* gobject housekeeping */
@@ -233,6 +234,17 @@ struct _GabbleConnectionPrivate
 };
 
 #define GABBLE_CONNECTION_GET_PRIVATE(o)     (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_CONNECTION, GabbleConnectionPrivate))
+
+typedef struct _ChannelRequest ChannelRequest;
+
+struct _ChannelRequest
+{
+  DBusGMethodInvocation *context;
+  gchar *channel_type;
+  guint handle_type;
+  guint handle;
+  gboolean suppress_handler;
+};
 
 static void connection_new_channel_cb (TpChannelFactoryIface *, GObject *, gpointer);
 static void connection_presence_update_cb (GabblePresenceCache *, GabbleHandle, gpointer);
@@ -263,6 +275,8 @@ gabble_connection_init (GabbleConnection *obj)
       g_signal_connect (factory, "new-channel", G_CALLBACK
           (connection_new_channel_cb), obj);
     }
+
+  priv->channel_requests = g_ptr_array_new ();
 
   priv->jingle_sessions = g_hash_table_new_full (g_str_hash, g_str_equal,
                                                  g_free, NULL);
@@ -743,7 +757,6 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_connection_class), &dbus_glib_gabble_connection_object_info);
 }
 
-
 void
 gabble_connection_dispose (GObject *object)
 {
@@ -785,6 +798,13 @@ gabble_connection_dispose (GObject *object)
       g_assert (priv->media_channels->len == 0);
       g_ptr_array_free (priv->media_channels, TRUE);
       priv->media_channels = NULL;
+    }
+
+  if (priv->channel_requests)
+    {
+      g_assert (priv->channel_requests->len == 0);
+      g_ptr_array_free (priv->channel_requests, TRUE);
+      priv->channel_requests = NULL;
     }
 
   g_ptr_array_foreach (priv->channel_factories, (GFunc) g_object_unref, NULL);
@@ -1231,10 +1251,13 @@ static void connection_disco_cb (GabbleDisco *, GabbleDiscoRequest *, const gcha
 static void connection_disconnected_cb (LmConnection *, LmDisconnectReason, gpointer);
 static void connection_status_change (GabbleConnection *, TpConnectionStatus, TpConnectionStatusReason);
 
+static void channel_request_cancel (gpointer data, gpointer user_data);
+
 static void close_all_channels (GabbleConnection *conn);
 static GabbleIMChannel *new_im_channel (GabbleConnection *conn, GabbleHandle handle, gboolean suppress_handler);
 static void discover_services (GabbleConnection *conn);
 static void emit_one_presence_update (GabbleConnection *self, GabbleHandle handle);
+
 
 static gboolean
 do_connect (GabbleConnection *conn, GError **error)
@@ -1478,6 +1501,12 @@ connection_status_change (GabbleConnection        *conn,
           /* trigger close_all on all channel factories */
           g_ptr_array_foreach (priv->channel_factories, (GFunc)
               tp_channel_factory_iface_close_all, NULL);
+
+          /* cancel all queued channel requests */
+          g_ptr_array_foreach (priv->channel_requests, (GFunc)
+              channel_request_cancel, NULL);
+          g_ptr_array_remove_range (priv->channel_requests, 0,
+              priv->channel_requests->len);
 
           /* the old way */
           close_all_channels (conn);
@@ -1956,6 +1985,55 @@ connection_message_muc_cb (LmMessageHandler *handler,
   return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 }
 
+static ChannelRequest *
+channel_request_new (DBusGMethodInvocation *context,
+                     const char *channel_type,
+                     guint handle_type,
+                     guint handle,
+                     gboolean suppress_handler)
+{
+  ChannelRequest *ret;
+
+  g_assert (NULL != context);
+  g_assert (NULL != channel_type);
+
+  ret = g_new0 (ChannelRequest, 1);
+  ret->context = context;
+  ret->channel_type = g_strdup (channel_type);
+  ret->handle_type = handle_type;
+  ret->handle = handle;
+  ret->suppress_handler = suppress_handler;
+
+  return ret;
+}
+
+static void
+channel_request_free (ChannelRequest *request)
+{
+  g_assert (NULL == request->context);
+  g_free (request->channel_type);
+  g_free (request);
+}
+
+static void
+channel_request_cancel (gpointer data, gpointer user_data)
+{
+  ChannelRequest *request = (ChannelRequest *) data;
+  GError *error;
+
+  g_debug ("%s: cancelling request for %s/%d/%d", G_STRFUNC,
+      request->channel_type, request->handle_type, request->handle);
+
+  error = g_error_new (TELEPATHY_ERRORS, Disconnected, "unable to "
+      "service this channel request, we're disconnecting!");
+
+  dbus_g_method_return_error (request->context, error);
+  request->context = NULL;
+
+  g_error_free (error);
+  channel_request_free (request);
+}
+
 static void connection_new_channel_cb (TpChannelFactoryIface *factory,
                                        GObject *chan,
                                        gpointer data)
@@ -1964,6 +2042,9 @@ static void connection_new_channel_cb (TpChannelFactoryIface *factory,
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   gchar *object_path = NULL, *channel_type = NULL;
   guint handle_type = 0, handle = 0;
+  gboolean suppress_handler = priv->suppress_next_handler;
+  GPtrArray *tmp;
+  int i;
 
   g_object_get (chan,
       "object-path", &object_path,
@@ -1974,10 +2055,49 @@ static void connection_new_channel_cb (TpChannelFactoryIface *factory,
 
   g_debug ("%s: called for %s", G_STRFUNC, object_path);
 
+  tmp = g_ptr_array_new ();
+
+  for (i = 0; i < priv->channel_requests->len; i++)
+    {
+      ChannelRequest *request = g_ptr_array_index (priv->channel_requests, i);
+
+      if (0 != strcmp (request->channel_type, channel_type))
+        continue;
+
+      if (handle_type != request->handle_type)
+        continue;
+
+      if (handle != request->handle)
+        continue;
+
+      if (suppress_handler)
+        request->suppress_handler = TRUE;
+
+      g_ptr_array_add (tmp, request);
+    }
+
   g_signal_emit (conn, signals[NEW_CHANNEL], 0,
                  object_path, channel_type,
                  handle_type, handle,
-                 priv->suppress_next_handler);
+                 suppress_handler);
+
+  for (i = 0; i < tmp->len; i++)
+    {
+      ChannelRequest *request = g_ptr_array_index (tmp, i);
+
+      g_debug ("%s: completing queued request, channel_type=%s, handle_type=%u, "
+          "handle=%u, suppress_handler=%u", G_STRFUNC, request->channel_type,
+          request->handle_type, request->handle, request->suppress_handler);
+
+      dbus_g_method_return (request->context, object_path);
+      request->context = NULL;
+
+      g_ptr_array_remove (priv->channel_requests, request);
+
+      channel_request_free (request);
+    }
+
+  g_ptr_array_free (tmp, TRUE);
 
   priv->suppress_next_handler = FALSE;
 
@@ -4193,6 +4313,7 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
       TpChannelFactoryIface *factory = g_ptr_array_index (priv->channel_factories, i);
       TpChannelFactoryRequestStatus cur_status;
       TpChannelIface *chan = NULL;
+      ChannelRequest *request = NULL;
 
       cur_status = tp_channel_factory_iface_request (factory, type, handle_type, handle, &chan);
 
@@ -4203,10 +4324,12 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
           g_object_get (chan, "object-path", &object_path, NULL);
           goto OUT;
         case TP_CHANNEL_FACTORY_REQUEST_STATUS_QUEUED:
-          // ROSTER
-          g_debug ("%s: damn, a queued request %s/%u/%u", G_STRFUNC, type, handle_type, handle);
-          status = TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_AVAILABLE;
-          goto NO_QUEUE_YET;
+          g_debug ("%s: queueing request, channel_type=%s, handle_type=%u, "
+              "handle=%u, suppress_handler=%u", G_STRFUNC, type, handle_type,
+              handle, suppress_handler);
+          request = channel_request_new (context, type, handle_type, handle_type, suppress_handler);
+          g_ptr_array_add (priv->channel_requests, request);
+          return TRUE;
         default:
           /* always return the most specific error */
           if (cur_status > status)
@@ -4226,7 +4349,6 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
       goto OUT;
     }
 
-NO_QUEUE_YET:
   switch (status)
     {
       case TP_CHANNEL_FACTORY_REQUEST_STATUS_INVALID_HANDLE:

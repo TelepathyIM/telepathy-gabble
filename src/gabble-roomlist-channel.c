@@ -656,15 +656,11 @@ out:
  */
 gboolean gabble_roomlist_channel_close (GabbleRoomlistChannel *obj, GError **error)
 {
-  GabbleRoomlistChannelPrivate *priv;
-
   g_assert (GABBLE_IS_ROOMLIST_CHANNEL (obj));
 
-  priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (obj);
-  priv->closed = TRUE;
-
   g_debug ("%s called on %p", G_STRFUNC, obj);
-  g_signal_emit(obj, signals[CLOSED], 0);
+
+  g_object_run_dispose (G_OBJECT (obj));
 
   return TRUE;
 }

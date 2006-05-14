@@ -614,9 +614,8 @@ rooms_cb (GabbleDisco *disco,
   if (error)
     {
       g_debug ("%s: got error %s", G_STRFUNC, error->message);
-      return;
+      goto out;
     }
-  g_debug ("%s: got %s", G_STRFUNC, lm_message_node_to_string (result));
 
   iter = result->children;
 
@@ -637,6 +636,7 @@ rooms_cb (GabbleDisco *disco,
         }
     }
 
+out:
   room_list_fill_disco_pipeline (chan);
 }
 

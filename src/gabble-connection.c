@@ -45,30 +45,27 @@
 #include "gabble-connection-glue.h"
 #include "gabble-connection-signals-marshal.h"
 
-#include "gabble-register.h"
-#include "gabble-im-channel.h"
-#include "gabble-media-channel.h"
-#include "gabble-roster-channel.h"
 #include "gabble-disco.h"
-#include "gabble-roomlist-channel.h"
-#include "gabble-presence.h"
 #include "gabble-presence-cache.h"
 #include "gabble-presence.h"
 #include "gabble-register.h"
+#include "roster.h"
+#include "namespaces.h"
+
+#include "gabble-im-channel.h"
+#include "gabble-media-channel.h"
+#include "gabble-muc-channel.h"
 #include "gabble-roomlist-channel.h"
 #include "gabble-roster-channel.h"
-#include "namespaces.h"
 
 #define BUS_NAME        "org.freedesktop.Telepathy.Connection.gabble"
 #define OBJECT_PATH     "/org/freedesktop/Telepathy/Connection/gabble"
 
-#define NS_PRESENCE_INVISIBLE "presence-invisible"
-#define NS_PRIVACY            "jabber:iq:privacy"
-#define NS_ROSTER             "jabber:iq:roster"
-
-#define NODE_TELEPATHY_CAPS "http://telepathy.freedesktop.org/caps"
-
-#define TP_CAPABILITY_PAIR_TYPE (dbus_g_type_get_struct ("GValueArray", G_TYPE_STRING, G_TYPE_UINT, G_TYPE_INVALID))
+#define TP_CAPABILITY_PAIR_TYPE (dbus_g_type_get_struct ("GValueArray", \
+      G_TYPE_STRING, G_TYPE_UINT, G_TYPE_INVALID))
+#define TP_CHANNEL_LIST_ENTRY_TYPE (dbus_g_type_get_struct ("GValueArray", \
+      DBUS_TYPE_G_OBJECT_PATH, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT, \
+      G_TYPE_INVALID))
 
 #define ERROR_IF_NOT_CONNECTED(CONN, ERROR) \
   if ((CONN)->status != TP_CONN_STATUS_CONNECTED) \

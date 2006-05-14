@@ -44,7 +44,10 @@
 #define TP_TYPE_ROOM_LIST (dbus_g_type_get_collection ("GPtrArray", \
       TP_TYPE_ROOM_STRUCT))
 
-G_DEFINE_TYPE(GabbleRoomlistChannel, gabble_roomlist_channel, G_TYPE_OBJECT)
+#define DISCO_PIPELINE_SIZE 10
+
+G_DEFINE_TYPE_WITH_CODE (GabbleRoomlistChannel, gabble_roomlist_channel,
+    G_TYPE_OBJECT, G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL));
 
 /* signal enum */
 enum

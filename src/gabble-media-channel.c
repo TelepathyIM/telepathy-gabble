@@ -41,8 +41,6 @@
 
 #include "gabble-media-session.h"
 
-G_DEFINE_TYPE(GabbleMediaChannel, gabble_media_channel, G_TYPE_OBJECT)
-
 #define TP_SESSION_HANDLER_SET_TYPE (dbus_g_type_get_struct ("GValueArray", \
       G_TYPE_UINT, \
       DBUS_TYPE_G_OBJECT_PATH, \

@@ -2982,8 +2982,16 @@ connection_iq_unknown_cb (LmMessageHandler *handler,
 
   HANDLER_DEBUG (message->node, "got unknown iq");
 
-  _gabble_connection_send_iq_error (conn, message->node,
-                                    XMPP_ERROR_FEATURE_NOT_IMPLEMENTED);
+  switch (lm_message_get_sub_type (message))
+    {
+    case LM_MESSAGE_SUB_TYPE_GET:
+    case LM_MESSAGE_SUB_TYPE_SET:
+      _gabble_connection_send_iq_error (conn, message->node,
+          XMPP_ERROR_FEATURE_NOT_IMPLEMENTED);
+      break;
+    default:
+      break;
+    }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }

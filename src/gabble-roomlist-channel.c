@@ -395,6 +395,12 @@ room_list_fill_disco_pipeline (GabbleRoomlistChannel *chan)
        * until there are DISCO_PIPELINE_SIZE requests in progress */
       g_hash_table_find (priv->remaining_rooms,
         room_list_channel_fill_pipeline_one, chan);
+
+      if (0 == priv->disco_pipeline->len)
+        {
+          priv->listing = FALSE;
+          g_signal_emit (chan, signals [LISTING_ROOMS], 0, FALSE);
+        }
     }
 }
 
@@ -577,12 +583,6 @@ room_info_cb (GabbleDisco *disco,
 
 done:
   room_list_fill_disco_pipeline (chan);
-
-  if (0 == priv->disco_pipeline->len)
-    {
-      priv->listing = FALSE;
-      g_signal_emit (chan, signals [LISTING_ROOMS], 0, FALSE);
-    }
 
   return;
 }

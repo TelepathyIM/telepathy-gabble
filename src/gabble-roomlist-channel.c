@@ -457,128 +457,135 @@ room_info_cb (GabbleDisco *disco,
       goto done;
     }
 
-  HANDLER_DEBUG (result, "got");
-
   keys = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
                                 (GDestroyNotify) destroy_value);
   identity = lm_message_node_get_child (result, "identity");
-  if (identity)
+  if (NULL == identity)
+    goto done;
+
+  name = lm_message_node_get_attribute (identity, "name");
+  if (NULL == name)
+    goto done;
+
+  category = lm_message_node_get_attribute (identity, "category");
+  if (NULL == category)
+    goto done;
+
+  type = lm_message_node_get_attribute (identity, "type");
+  if (NULL == type)
+    goto done;
+
+  g_debug ("%s: got room identity, name=%s, category=%s, type=%s", G_STRFUNC,
+      name, category, type);
+
+  if (0 != strcmp (category, "conference") ||
+      0 != strcmp (type, "text"))
+    goto done;
+
+  is_muc = FALSE;
+
+  for (feature = result->children; feature; feature = feature->next)
     {
-      category = lm_message_node_get_attribute (identity, "category");
-      type = lm_message_node_get_attribute (identity, "type");
-      name = lm_message_node_get_attribute (identity, "name");
-      g_debug ("%s: got room identity, name=%s, category=%s, type=%s", 
-               G_STRFUNC, name, category, type);
-      if (category && 0 == strcmp (category, "conference")
-                   && 0 == strcmp (type, "text"))
+      if (0 == strcmp (feature->name, "feature"))
         {
-          is_muc = FALSE;
-          for (feature = result->children; feature; feature = feature->next)
+          var = lm_message_node_get_attribute (feature, "var");
+          if (!var)
+            continue;
+          if (0 == strcmp (var, "http://jabber.org/protocol/muc"))
+            is_muc = TRUE;
+          else if (0 == strcmp (var, "muc_membersonly"))
+            INSERT_KEY (keys, "invite-only", G_TYPE_BOOLEAN, boolean, TRUE);
+          else if (0 == strcmp (var, "muc_open"))
+            INSERT_KEY (keys, "invite-only", G_TYPE_BOOLEAN, boolean, FALSE);
+          else if (0 == strcmp (var, "muc_passwordprotected"))
+            INSERT_KEY (keys, "password", G_TYPE_BOOLEAN, boolean, TRUE);
+          else if (0 == strcmp (var, "muc_unsecure"))
+            INSERT_KEY (keys, "password", G_TYPE_BOOLEAN, boolean, FALSE);
+          else if (0 == strcmp (var, "muc_unsecured"))
+            INSERT_KEY (keys, "password", G_TYPE_BOOLEAN, boolean, FALSE);
+          else if (0 == strcmp (var, "muc_hidden"))
+            INSERT_KEY (keys, "hidden", G_TYPE_BOOLEAN, boolean, TRUE);
+          else if (0 == strcmp (var, "muc_public"))
+            INSERT_KEY (keys, "hidden", G_TYPE_BOOLEAN, boolean, FALSE);
+          else if (0 == strcmp (var, "muc_membersonly"))
+            INSERT_KEY (keys, "members-only", G_TYPE_BOOLEAN, boolean, TRUE);
+          else if (0 == strcmp (var, "muc_open"))
+            INSERT_KEY (keys, "members-only", G_TYPE_BOOLEAN, boolean, FALSE);
+          else if (0 == strcmp (var, "muc_moderated"))
+            INSERT_KEY (keys, "moderated", G_TYPE_BOOLEAN, boolean, TRUE);
+          else if (0 == strcmp (var, "muc_unmoderated"))
+            INSERT_KEY (keys, "moderated", G_TYPE_BOOLEAN, boolean, FALSE);
+          else if (0 == strcmp (var, "muc_nonanonymous"))
+            INSERT_KEY (keys, "anonymous", G_TYPE_BOOLEAN, boolean, FALSE);
+          else if (0 == strcmp (var, "muc_anonymous"))
+            INSERT_KEY (keys, "anonymous", G_TYPE_BOOLEAN, boolean, TRUE);
+          else if (0 == strcmp (var, "muc_semianonymous"))
+            INSERT_KEY (keys, "anonymous", G_TYPE_BOOLEAN, boolean, FALSE);
+          else if (0 == strcmp (var, "muc_persistent"))
+            INSERT_KEY (keys, "persistent", G_TYPE_BOOLEAN, boolean, TRUE);
+          else if (0 == strcmp (var, "muc_temporary"))
+            INSERT_KEY (keys, "persistent", G_TYPE_BOOLEAN, boolean, FALSE);
+          else
+            HANDLER_DEBUG (feature, "got unknown feature");
+        }
+      else if (0 == strcmp (feature->name, "x"))
+        {
+          namespace = lm_message_node_get_attribute (feature, "xmlns");
+          if (namespace && 0 == strcmp (namespace, "jabber:x:data"))
             {
-              HANDLER_DEBUG (feature, "got child");
-
-              if (0 == strcmp (feature->name, "feature"))
+              for (field = feature->children;
+                   field; field = field->next)
                 {
-                  var = lm_message_node_get_attribute (feature, "var");
-                  if (!var)
+                  if (0 != strcmp (field->name, "field"))
                     continue;
-                  if (0 == strcmp (var, "http://jabber.org/protocol/muc"))
-                    is_muc = TRUE;
-                  else if (0 == strcmp (var, "muc_membersonly"))
-                    INSERT_KEY (keys, "invite-only", G_TYPE_BOOLEAN, boolean, TRUE);
-                  else if (0 == strcmp (var, "muc_open"))
-                    INSERT_KEY (keys, "invite-only", G_TYPE_BOOLEAN, boolean, FALSE);
-                  else if (0 == strcmp (var, "muc_passwordprotected"))
-                    INSERT_KEY (keys, "password", G_TYPE_BOOLEAN, boolean, TRUE);
-                  else if (0 == strcmp (var, "muc_unsecure"))
-                    INSERT_KEY (keys, "password", G_TYPE_BOOLEAN, boolean, FALSE);
-                  else if (0 == strcmp (var, "muc_unsecured"))
-                    INSERT_KEY (keys, "password", G_TYPE_BOOLEAN, boolean, FALSE);
-                  else if (0 == strcmp (var, "muc_hidden"))
-                    INSERT_KEY (keys, "hidden", G_TYPE_BOOLEAN, boolean, TRUE);
-                  else if (0 == strcmp (var, "muc_public"))
-                    INSERT_KEY (keys, "hidden", G_TYPE_BOOLEAN, boolean, FALSE);
-                  else if (0 == strcmp (var, "muc_membersonly"))
-                    INSERT_KEY (keys, "members-only", G_TYPE_BOOLEAN, boolean, TRUE);
-                  else if (0 == strcmp (var, "muc_open"))
-                    INSERT_KEY (keys, "members-only", G_TYPE_BOOLEAN, boolean, FALSE);
-                  else if (0 == strcmp (var, "muc_moderated"))
-                    INSERT_KEY (keys, "moderated", G_TYPE_BOOLEAN, boolean, TRUE);
-                  else if (0 == strcmp (var, "muc_unmoderated"))
-                    INSERT_KEY (keys, "moderated", G_TYPE_BOOLEAN, boolean, FALSE);
-                  else if (0 == strcmp (var, "muc_nonanonymous"))
-                    INSERT_KEY (keys, "anonymous", G_TYPE_BOOLEAN, boolean, FALSE);
-                  else if (0 == strcmp (var, "muc_anonymous"))
-                    INSERT_KEY (keys, "anonymous", G_TYPE_BOOLEAN, boolean, TRUE);
-                  else if (0 == strcmp (var, "muc_semianonymous"))
-                    INSERT_KEY (keys, "anonymous", G_TYPE_BOOLEAN, boolean, FALSE);
-                  else if (0 == strcmp (var, "muc_persistent"))
-                    INSERT_KEY (keys, "persistent", G_TYPE_BOOLEAN, boolean, TRUE);
-                  else if (0 == strcmp (var, "muc_temporary"))
-                    INSERT_KEY (keys, "persistent", G_TYPE_BOOLEAN, boolean, FALSE);
+                  var = lm_message_node_get_attribute (field, "var");
+                  value_node = lm_message_node_get_child (field, "value");
+                  value = lm_message_node_get_value (value_node);
+                  if (!value)
+                    continue;
 
-                }
-              if (0 == strcmp (feature->name, "x"))
-                {
-                  namespace = lm_message_node_get_attribute (feature, "xmlns");
-                  if (namespace && 0 == strcmp (namespace, "jabber:x:data"))
+                  if (0 == strcmp (var, "muc#roominfo_description"))
                     {
-                      for (field = feature->children;
-                           field; field = field->next)
-                        {
-                          if (0 != strcmp (field->name, "field"))
-                            continue;
-                          var = lm_message_node_get_attribute (field, "var");
-                          value_node = lm_message_node_get_child (field, "value");
-                          value = lm_message_node_get_value (value_node);
-                          if (!value)
-                            continue;
-
-                          if (0 == strcmp (var, "muc#roominfo_description"))
-                            {
-                              INSERT_KEY (keys, "description",
-                                          G_TYPE_STRING, string, value);
-                            }
-                          if (0 == strcmp (var, "muc#roominfo_occupants"))
-                            {
-                              INSERT_KEY (keys, "members", G_TYPE_UINT, uint,
-                                (guint) g_ascii_strtoull (value, NULL, 10));
-                            }
-                           if (0 == strcmp (var, "muc#roominfo_lang"))
-                            {
-                              INSERT_KEY (keys, "language", G_TYPE_STRING,
-                                          string, value);
-                            }
-                        }
+                      INSERT_KEY (keys, "description",
+                                  G_TYPE_STRING, string, value);
+                    }
+                  else if (0 == strcmp (var, "muc#roominfo_occupants"))
+                    {
+                      INSERT_KEY (keys, "members", G_TYPE_UINT, uint,
+                        (guint) g_ascii_strtoull (value, NULL, 10));
+                    }
+                  else if (0 == strcmp (var, "muc#roominfo_lang"))
+                    {
+                      INSERT_KEY (keys, "language", G_TYPE_STRING,
+                                  string, value);
                     }
                 }
             }
-
-          if (is_muc)
-            {
-              INSERT_KEY (keys, "name", G_TYPE_STRING, string, name);
-              g_debug ("%s:emitting new room signal for %s", G_STRFUNC,jid);
-
-              handle = gabble_handle_for_room (priv->conn->handles, jid);
-
-              g_value_init (&room, TP_TYPE_ROOM_STRUCT);
-              g_value_take_boxed (&room,
-                  dbus_g_type_specialized_construct (TP_TYPE_ROOM_STRUCT));
-
-
-              dbus_g_type_struct_set (&room,
-                  0, handle,
-                  1, "org.freedesktop.Telepathy.Channel.Type.Text",
-                  2, keys,
-                  G_MAXUINT);
-
-              rooms = g_ptr_array_sized_new(1);
-              g_ptr_array_add (rooms, g_value_get_boxed (&room));
-              g_signal_emit (chan, signals[GOT_ROOMS], 0, rooms);
-              g_ptr_array_free (rooms, TRUE);
-              g_value_unset (&room);
-            }
         }
+    }
+
+  if (is_muc)
+    {
+      INSERT_KEY (keys, "name", G_TYPE_STRING, string, name);
+      g_debug ("%s: emitting new room signal for %s", G_STRFUNC, jid);
+
+      handle = gabble_handle_for_room (priv->conn->handles, jid);
+
+      g_value_init (&room, TP_TYPE_ROOM_STRUCT);
+      g_value_take_boxed (&room,
+          dbus_g_type_specialized_construct (TP_TYPE_ROOM_STRUCT));
+
+      dbus_g_type_struct_set (&room,
+          0, handle,
+          1, "org.freedesktop.Telepathy.Channel.Type.Text",
+          2, keys,
+          G_MAXUINT);
+
+      rooms = g_ptr_array_sized_new(1);
+      g_ptr_array_add (rooms, g_value_get_boxed (&room));
+      g_signal_emit (chan, signals[GOT_ROOMS], 0, rooms);
+      g_ptr_array_free (rooms, TRUE);
+      g_value_unset (&room);
     }
 
 done:

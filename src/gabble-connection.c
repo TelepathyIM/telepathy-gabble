@@ -81,8 +81,6 @@
 
 G_DEFINE_TYPE(GabbleConnection, gabble_connection, G_TYPE_OBJECT)
 
-#define DEFAULT_CONFERENCE_SERVER "conference.jabber.org"
-
 typedef struct _StatusInfo StatusInfo;
 
 struct _StatusInfo
@@ -3399,13 +3397,25 @@ make_roomlist_channel (GabbleConnection *conn, gboolean suppress_handler)
 
   if (!priv->roomlist_channel)
     {
-      gchar *object_path;
+      gchar *server, *object_path;
 
-      object_path =
-        g_strdup_printf ("%s/RoomlistChannel", conn->object_path);
-      priv->roomlist_channel =
-        _gabble_roomlist_channel_new (conn, object_path,
-            priv->conference_servers->data);
+      if (priv->conference_servers)
+        {
+          server = priv->conference_servers->data;
+        }
+      else if (priv->fallback_conference_server)
+        {
+          server = priv->fallback_conference_server;
+        }
+      else
+        {
+          g_assert_not_reached ();
+        }
+
+      object_path = g_strdup_printf ("%s/RoomlistChannel", conn->object_path);
+
+      priv->roomlist_channel = _gabble_roomlist_channel_new (conn, object_path,
+          server);
 
       g_signal_connect (priv->roomlist_channel, "closed",
                         (GCallback) roomlist_channel_closed_cb, conn);
@@ -4529,14 +4539,16 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
     }
   else if (!strcmp (type, TP_IFACE_CHANNEL_TYPE_ROOM_LIST))
     {
-      if (!priv->conference_servers)
+      if (NULL == priv->conference_servers &&
+          NULL == priv->fallback_conference_server)
         {
-          g_debug ("%s: no conference server found when requesting roomlist",
+          g_debug ("%s: no conference server available for roomlist request",
                    G_STRFUNC);
 
-          *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
-                                "no conference server found when "
-                                "requesting roomlist");
+          *error = g_error_new (TELEPATHY_ERRORS, NotAvailable, "unable to "
+              "list rooms because we have not discovered any local conference "
+              "servers and no fallback was provided");
+
           return FALSE;
         }
       make_roomlist_channel (obj, suppress_handler);
@@ -4789,7 +4801,7 @@ static gchar *room_name_to_canonical (GabbleConnection *conn, const gchar *name)
   else if (priv->fallback_conference_server)
     server = priv->fallback_conference_server;
   else
-    server = DEFAULT_CONFERENCE_SERVER;
+    return NULL;
 
   return g_strdup_printf ("%s@%s", name, server);
 }
@@ -4851,6 +4863,19 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
       break;
     case TP_HANDLE_TYPE_ROOM:
       qualified_name = room_name_to_canonical (obj, name);
+
+      if (!qualified_name)
+        {
+          g_debug ("%s: requested handle %s contains no conference server", G_STRFUNC, name);
+
+          error = g_error_new (TELEPATHY_ERRORS, NotAvailable, "requested "
+              "room handle %s does not specify a server, but we have not discovered "
+              "any local conference servers and no fallback was provided", name);
+          dbus_g_method_return_error (context, error);
+          g_error_free (error);
+
+          return FALSE;
+        }
 
       /* has the handle been verified before? */
       if (gabble_handle_for_room_exists (obj->handles, qualified_name, FALSE))

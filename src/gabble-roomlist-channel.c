@@ -295,6 +295,24 @@ gabble_roomlist_channel_class_init (GabbleRoomlistChannelClass *gabble_roomlist_
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_roomlist_channel_class), &dbus_glib_gabble_roomlist_channel_object_info);
 }
 
+static void
+room_list_flush_disco_pipeline_one (gpointer item, gpointer data)
+{
+  GabbleDiscoRequest *request = (GabbleDiscoRequest *) item;
+  GabbleDisco *disco = GABBLE_DISCO (data);
+
+  gabble_disco_cancel_request (disco, request);
+}
+
+void
+room_list_flush_disco_pipeline (GabbleRoomlistChannel *self)
+{
+  GabbleRoomlistChannelPrivate *priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (self);
+
+  g_ptr_array_foreach (priv->disco_pipeline, (GFunc)
+      room_list_flush_disco_pipeline_one, priv->conn->disco);
+}
+
 void
 gabble_roomlist_channel_dispose (GObject *object)
 {
@@ -318,7 +336,7 @@ gabble_roomlist_channel_dispose (GObject *object)
       priv->closed = TRUE;
     }
 
-  g_ptr_array_foreach (priv->disco_pipeline, (GFunc) gabble_disco_cancel_request, NULL);
+  room_list_flush_disco_pipeline (self);
 
   if (G_OBJECT_CLASS (gabble_roomlist_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_roomlist_channel_parent_class)->dispose (object);

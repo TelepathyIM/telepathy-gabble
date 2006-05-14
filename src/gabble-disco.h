@@ -94,7 +94,7 @@ GabbleDiscoRequest *gabble_disco_request_with_timeout (GabbleDisco *self,
     guint timeout, GabbleDiscoCb callback, gpointer user_data,
     GObject *object, GError **error);
 
-void gabble_disco_cancel_request (GabbleDiscoRequest *);
+void gabble_disco_cancel_request (GabbleDisco *, GabbleDiscoRequest *);
 
 G_END_DECLS
 

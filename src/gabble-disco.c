@@ -215,26 +215,24 @@ static void
 delete_request (GabbleDiscoRequest *request)
 {
   GabbleDiscoPrivate *priv = GABBLE_DISCO_GET_PRIVATE (request->disco);
-  g_return_if_fail (request != NULL);
 
-  GList *item = g_list_find (priv->requests, request);
-  if (item)
+  g_assert (NULL != request);
+  g_assert (NULL != g_list_find (priv->requests, request));
+
+  priv->requests = g_list_remove (priv->requests, request);
+
+  if (NULL != request->bound_object)
     {
-      priv->requests = g_list_delete_link (priv->requests, item);
-
-      if (NULL != request->bound_object)
-        {
-          g_object_weak_unref (request->bound_object, notify_delete_request, request);
-        }
-
-      if (0 != request->timer_id)
-        {
-          g_source_remove (request->timer_id);
-        }
-
-      g_free (request->jid);
-      g_free (request);
+      g_object_weak_unref (request->bound_object, notify_delete_request, request);
     }
+
+  if (0 != request->timer_id)
+    {
+      g_source_remove (request->timer_id);
+    }
+
+  g_free (request->jid);
+  g_free (request);
 }
 
 static gboolean
@@ -449,8 +447,16 @@ gabble_disco_request_with_timeout (GabbleDisco *self, GabbleDiscoType type,
 }
 
 void
-gabble_disco_cancel_request (GabbleDiscoRequest *request)
+gabble_disco_cancel_request (GabbleDisco *disco, GabbleDiscoRequest *request)
 {
+  GabbleDiscoPrivate *priv;
+
+  g_return_if_fail (GABBLE_IS_DISCO (disco));
+  g_return_if_fail (NULL != request);
+
+  priv = GABBLE_DISCO_GET_PRIVATE (disco);
+
+  g_return_if_fail (NULL != g_list_find (priv->requests, request));
+
   cancel_request (request);
 }
-

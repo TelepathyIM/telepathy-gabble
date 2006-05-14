@@ -97,7 +97,7 @@ gabble_roomlist_channel_init (GabbleRoomlistChannel *obj)
 
   priv->disco_pipeline = g_ptr_array_sized_new (DISCO_PIPELINE_SIZE);
   priv->remaining_rooms = g_hash_table_new_full (g_str_hash, g_str_equal,
-      g_free, g_free);
+      g_free, NULL);
 }
 
 
@@ -360,23 +360,9 @@ static void room_info_cb (GabbleDisco *, GabbleDiscoRequest *, const gchar *,
     const gchar *, LmMessageNode *, GError *, gpointer);
 
 static gboolean
-room_list_channel_fill_pipeline_one (gpointer key, gpointer value, gpointer data)
+return_true (gpointer key, gpointer value, gpointer data)
 {
-  GabbleRoomlistChannel *chan = GABBLE_ROOMLIST_CHANNEL (data);
-  GabbleRoomlistChannelPrivate *priv =
-    GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (chan);
-  gchar *jid = (gchar *) key;
-  GabbleDiscoRequest *request;
-
-  g_assert (priv->disco_pipeline->len < DISCO_PIPELINE_SIZE);
-
-  request = gabble_disco_request (priv->conn->disco, GABBLE_DISCO_TYPE_INFO,
-      jid, NULL, room_info_cb, chan, G_OBJECT(chan), NULL);
-
-  g_ptr_array_add (priv->disco_pipeline, request);
-
-  /* return TRUE if we want to stop filling the pipeline */
-  return (priv->disco_pipeline->len == DISCO_PIPELINE_SIZE);
+  return TRUE;
 }
 
 static void
@@ -393,8 +379,25 @@ room_list_fill_disco_pipeline (GabbleRoomlistChannel *chan)
     {
       /* send disco requests for the JIDs in the remaining_rooms hash table
        * until there are DISCO_PIPELINE_SIZE requests in progress */
-      g_hash_table_find (priv->remaining_rooms,
-        room_list_channel_fill_pipeline_one, chan);
+      while (priv->disco_pipeline->len < DISCO_PIPELINE_SIZE)
+        {
+          gchar *jid;
+          GabbleDiscoRequest *request;
+
+          jid = (gchar *) g_hash_table_find (priv->remaining_rooms,
+              return_true, NULL);
+          if (NULL == jid)
+            break;
+
+          request = gabble_disco_request (priv->conn->disco,
+              GABBLE_DISCO_TYPE_INFO, jid, NULL, room_info_cb, chan,
+              G_OBJECT(chan), NULL);
+
+          g_ptr_array_add (priv->disco_pipeline, request);
+
+          /* frees jid */
+          g_hash_table_remove (priv->remaining_rooms, jid);
+        }
 
       if (0 == priv->disco_pipeline->len)
         {
@@ -449,7 +452,6 @@ room_info_cb (GabbleDisco *disco,
   priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (chan);
 
   g_ptr_array_remove_fast (priv->disco_pipeline, request);
-  g_hash_table_remove (priv->remaining_rooms, jid);
 
   if (error)
     {
@@ -606,9 +608,11 @@ rooms_cb (GabbleDisco *disco,
   LmMessageNode *iter;
   GabbleRoomlistChannel *chan = user_data;
   GabbleRoomlistChannelPrivate *priv;
-  const char *item_jid, *name;
+  const char *item_jid;
   gpointer key, value;
+
   g_assert (GABBLE_IS_ROOMLIST_CHANNEL (chan));
+
   priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (chan);
 
   if (error)
@@ -621,18 +625,16 @@ rooms_cb (GabbleDisco *disco,
 
   for (; iter; iter = iter->next)
     {
-      if (0 == strcmp (iter->name, "item"))
+      if (0 != strcmp (iter->name, "item"))
+        continue;
+
+      item_jid = lm_message_node_get_attribute (iter, "jid");
+
+      if (NULL != item_jid &&
+          !g_hash_table_lookup_extended (priv->remaining_rooms, item_jid, &key, &value))
         {
-          item_jid = lm_message_node_get_attribute (iter, "jid");
-          name = lm_message_node_get_attribute (iter, "name");
-          if (item_jid && name)
-            {
-              if (! g_hash_table_lookup_extended (priv->remaining_rooms, item_jid, &key, &value))
-                {
-                  g_hash_table_insert (priv->remaining_rooms,
-                                       g_strdup(item_jid), g_strdup(name));
-                }
-            }
+          gchar *tmp = g_strdup (item_jid);
+          g_hash_table_insert (priv->remaining_rooms, tmp, tmp);
         }
     }
 

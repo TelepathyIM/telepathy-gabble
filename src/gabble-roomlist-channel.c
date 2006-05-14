@@ -43,6 +43,8 @@
 #define TP_TYPE_ROOM_LIST (dbus_g_type_get_collection ("GPtrArray", \
       TP_TYPE_ROOM_STRUCT))
 
+#define DISCO_PIPELINE_SIZE 10
+
 G_DEFINE_TYPE(GabbleRoomlistChannel, gabble_roomlist_channel, G_TYPE_OBJECT)
 
 /* signal enum */
@@ -80,6 +82,7 @@ struct _GabbleRoomlistChannelPrivate
   gboolean closed;
   gboolean listing;
 
+  GPtrArray *disco_pipeline;
   GHashTable *remaining_rooms;
 
   gboolean dispose_has_run;
@@ -92,9 +95,9 @@ gabble_roomlist_channel_init (GabbleRoomlistChannel *obj)
 {
   GabbleRoomlistChannelPrivate *priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (obj);
 
+  priv->disco_pipeline = g_ptr_array_sized_new (DISCO_PIPELINE_SIZE);
   priv->remaining_rooms = g_hash_table_new_full (g_str_hash, g_str_equal,
-                                           g_free, g_free);
-
+      g_free, g_free);
 }
 
 
@@ -303,7 +306,19 @@ gabble_roomlist_channel_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  /* release any references held by the object here */
+  if (priv->listing)
+    {
+      g_signal_emit (object, signals [LISTING_ROOMS], 0, FALSE);
+      priv->listing = FALSE;
+    }
+
+  if (!priv->closed)
+    {
+      g_signal_emit (object, signals[CLOSED], 0);
+      priv->closed = TRUE;
+    }
+
+  g_ptr_array_foreach (priv->disco_pipeline, (GFunc) gabble_disco_cancel_request, NULL);
 
   if (G_OBJECT_CLASS (gabble_roomlist_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_roomlist_channel_parent_class)->dispose (object);
@@ -321,6 +336,7 @@ gabble_roomlist_channel_finalize (GObject *object)
   g_free (priv->conference_server);
 
   g_hash_table_destroy (priv->remaining_rooms);
+
   G_OBJECT_CLASS (gabble_roomlist_channel_parent_class)->finalize (object);
 }
 
@@ -340,6 +356,48 @@ _gabble_roomlist_channel_new (GabbleConnection *conn,
                     "conference-server", conference_server, NULL));
 }
 
+static void room_info_cb (GabbleDisco *, GabbleDiscoRequest *, const gchar *,
+    const gchar *, LmMessageNode *, GError *, gpointer);
+
+static gboolean
+room_list_channel_fill_pipeline_one (gpointer key, gpointer value, gpointer data)
+{
+  GabbleRoomlistChannel *chan = GABBLE_ROOMLIST_CHANNEL (data);
+  GabbleRoomlistChannelPrivate *priv =
+    GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (chan);
+  gchar *jid = (gchar *) key;
+  GabbleDiscoRequest *request;
+
+  g_assert (priv->disco_pipeline->len < DISCO_PIPELINE_SIZE);
+
+  request = gabble_disco_request (priv->conn->disco, GABBLE_DISCO_TYPE_INFO,
+      jid, NULL, room_info_cb, chan, G_OBJECT(chan), NULL);
+
+  g_ptr_array_add (priv->disco_pipeline, request);
+
+  /* return TRUE if we want to stop filling the pipeline */
+  return (priv->disco_pipeline->len == DISCO_PIPELINE_SIZE);
+}
+
+static void
+room_list_fill_disco_pipeline (GabbleRoomlistChannel *chan)
+{
+  GabbleRoomlistChannelPrivate *priv =
+    GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (chan);
+
+  if (priv->closed)
+    {
+      g_debug ("%s: not refilling pipeline, channel is closed", G_STRFUNC);
+    }
+  else
+    {
+      /* send disco requests for the JIDs in the remaining_rooms hash table
+       * until there are DISCO_PIPELINE_SIZE requests in progress */
+      g_hash_table_find (priv->remaining_rooms,
+        room_list_channel_fill_pipeline_one, chan);
+    }
+}
+
 /**
  * destroy_value:
  * @data: a GValue to destroy
@@ -352,7 +410,6 @@ destroy_value (GValue *value)
   g_value_unset (value);
   g_free (value);
 }
-
 
 static void
 room_info_cb (GabbleDisco *disco,
@@ -385,6 +442,7 @@ room_info_cb (GabbleDisco *disco,
   g_assert (GABBLE_IS_ROOMLIST_CHANNEL (chan));
   priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (chan);
 
+  g_ptr_array_remove_fast (priv->disco_pipeline, request);
   g_hash_table_remove (priv->remaining_rooms, jid);
 
   if (error)
@@ -489,6 +547,7 @@ room_info_cb (GabbleDisco *disco,
                     }
                 }
             }
+
           if (is_muc)
             {
               INSERT_KEY (keys, "name", G_TYPE_STRING, string, name);
@@ -515,15 +574,18 @@ room_info_cb (GabbleDisco *disco,
             }
         }
     }
+
 done:
-  if (g_hash_table_size (priv->remaining_rooms) == 0)
+  room_list_fill_disco_pipeline (chan);
+
+  if (0 == priv->disco_pipeline->len)
     {
-      priv->listing=FALSE;
+      priv->listing = FALSE;
       g_signal_emit (chan, signals [LISTING_ROOMS], 0, FALSE);
     }
+
   return;
 }
-
 
 static void
 rooms_cb (GabbleDisco *disco,
@@ -563,14 +625,12 @@ rooms_cb (GabbleDisco *disco,
                 {
                   g_hash_table_insert (priv->remaining_rooms,
                                        g_strdup(item_jid), g_strdup(name));
-
-                  gabble_disco_request (priv->conn->disco, GABBLE_DISCO_TYPE_INFO,
-                                        item_jid, NULL,
-                                        room_info_cb, chan, G_OBJECT(chan), NULL);
                 }
             }
         }
     }
+
+  room_list_fill_disco_pipeline (chan);
 }
 
 /************************* DBUS Method definitions **************************/

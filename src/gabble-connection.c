@@ -1317,12 +1317,14 @@ _gabble_connection_connect (GabbleConnection *conn,
 
   conn->self_handle = gabble_handle_for_contact (conn->handles,
                                                  jid, FALSE);
+  g_free (jid);
 
   if (conn->self_handle == 0)
     {
       /* FIXME: check this sooner and return an error to the user
        * this will be when we implement Connect() in spec 0.13 */
-      g_error ("%s: invalid jid %s", G_STRFUNC, jid);
+      g_error ("%s: invalid jid %s@%s", G_STRFUNC, priv->username,
+          priv->stream_server);
       return FALSE;
     }
 
@@ -1343,8 +1345,6 @@ _gabble_connection_connect (GabbleConnection *conn,
   g_assert (presence);
   gabble_presence_set_capabilities (presence, priv->resource,
       PRESENCE_CAP_JINGLE_VOICE | PRESENCE_CAP_GOOGLE_VOICE);
-
-  g_free (jid);
 
   /* always override server and port if one was forced upon us */
   if (priv->connect_server != NULL)
@@ -3876,7 +3876,7 @@ gboolean gabble_connection_inspect_handle (GabbleConnection *obj, guint handle_t
 
 
 /**
- * list_channel_factory_foreach:
+ * list_channel_factory_foreach_one:
  * @key: iterated key
  * @value: iterated value
  * @data: data attached to this key/value pair
@@ -3890,8 +3890,8 @@ gboolean gabble_connection_inspect_handle (GabbleConnection *obj, guint handle_t
  *  an integer handle representing the contact, room or list this channel communicates with, or zero
  */
 static void
-list_channel_factory_foreach (TpChannelIface *chan,
-                              gpointer data)
+list_channel_factory_foreach_one (TpChannelIface *chan,
+                                  gpointer data)
 {
   GObject *channel = G_OBJECT (chan);
   GPtrArray *channels = (GPtrArray *) data;
@@ -3924,11 +3924,11 @@ list_channel_factory_foreach (TpChannelIface *chan,
 }
 
 static void
-list_channel_hash_foreach (gpointer key,
-                           gpointer value,
-                           gpointer data)
+list_channel_hash_foreach_one (gpointer key,
+                               gpointer value,
+                               gpointer data)
 {
-  list_channel_factory_foreach (TP_CHANNEL_IFACE (value), data);
+  list_channel_factory_foreach_one (TP_CHANNEL_IFACE (value), data);
 }
 
 /**
@@ -3960,23 +3960,28 @@ gboolean gabble_connection_list_channels (GabbleConnection *obj, GPtrArray ** re
 
   for (i = 0; i < priv->channel_factories->len; i++)
     {
-      TpChannelFactoryIface *factory = g_ptr_array_index (priv->channel_factories, i);
-      tp_channel_factory_iface_foreach (factory, list_channel_factory_foreach, channels);
+      TpChannelFactoryIface *factory = g_ptr_array_index
+        (priv->channel_factories, i);
+      tp_channel_factory_iface_foreach (factory,
+          list_channel_factory_foreach_one, channels);
     }
 
-  g_hash_table_foreach (priv->im_channels, list_channel_hash_foreach, channels);
+  g_hash_table_foreach (priv->im_channels, list_channel_hash_foreach_one,
+      channels);
 
-  g_hash_table_foreach (priv->muc_channels, list_channel_hash_foreach, channels);
+  g_hash_table_foreach (priv->muc_channels, list_channel_hash_foreach_one,
+      channels);
 
   for (i = 0; i < priv->media_channels->len; i++)
     {
-      list_channel_factory_foreach (TP_CHANNEL_IFACE (g_ptr_array_index
+      list_channel_factory_foreach_one (TP_CHANNEL_IFACE (g_ptr_array_index
             (priv->media_channels, i)), channels);
     }
 
   if (priv->roomlist_channel)
     {
-      list_channel_factory_foreach (TP_CHANNEL_IFACE (priv->roomlist_channel), channels);
+      list_channel_factory_foreach_one (TP_CHANNEL_IFACE
+          (priv->roomlist_channel), channels);
     }
 
   *ret = channels;

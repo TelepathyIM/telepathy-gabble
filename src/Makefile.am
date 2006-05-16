@@ -96,6 +96,8 @@ CORE_SOURCES = \
     tp-channel-factory-iface.c \
 		gabble-text-mixin.h \
 		gabble-text-mixin.c \
+		gabble-im-factory.h \
+		gabble-im-factory.c \
     $(BUILT_SOURCES)
 
 libgabble_convenience_la_SOURCES = \

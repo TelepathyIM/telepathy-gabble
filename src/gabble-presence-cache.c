@@ -281,7 +281,7 @@ gabble_presence_cache_status_changed_cb (GabbleConnection *conn,
 }
 
 static GabblePresenceId
-_presence_get_status (LmMessageNode *pres_node)
+_presence_node_get_status (LmMessageNode *pres_node)
 {
   const gchar *presence_show;
   LmMessageNode *child_node = lm_message_node_get_child (pres_node, "show");
@@ -367,7 +367,7 @@ _parse_presence_message (GabblePresenceCache *cache,
     {
     case LM_MESSAGE_SUB_TYPE_NOT_SET:
     case LM_MESSAGE_SUB_TYPE_AVAILABLE:
-      presence_id = _presence_get_status (presence_node);
+      presence_id = _presence_node_get_status (presence_node);
       gabble_presence_cache_update (cache, handle, resource, presence_id,
           status_message, priority);
 

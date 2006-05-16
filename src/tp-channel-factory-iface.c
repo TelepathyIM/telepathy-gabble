@@ -100,5 +100,5 @@ tp_channel_factory_iface_request (TpChannelFactoryIface *self,
                                   TpChannelIface **ret)
 {
   return (TP_CHANNEL_FACTORY_IFACE_GET_CLASS (self)->request (self, chan_type,
-        handle_type, handle_type, ret));
+        handle_type, handle, ret));
 }

@@ -2174,18 +2174,25 @@ emit_presence_update (GabbleConnection *self,
       GabbleHandle handle = g_array_index (contact_handles, GabbleHandle, i);
       GValue *message;
       GabblePresence *presence = gabble_presence_cache_get (self->presence_cache, handle);
+      GabblePresenceId status;
+      const gchar *status_message;
 
       g_assert (gabble_handle_is_valid (self->handles, TP_HANDLE_TYPE_CONTACT, handle, NULL));
 
-      if (!presence)
+      if (presence)
         {
-          /* no presence = unavailable */
-          continue;
+          status = presence->status;
+          status_message = presence->status_message;
+        }
+      else
+        {
+          status = GABBLE_PRESENCE_OFFLINE;
+          status_message = NULL;
         }
 
       message = g_new0 (GValue, 1);
       g_value_init (message, G_TYPE_STRING);
-      g_value_set_static_string (message, presence->status_message);
+      g_value_set_static_string (message, status_message);
 
       parameters =
         g_hash_table_new_full (g_str_hash, g_str_equal,
@@ -2197,7 +2204,7 @@ emit_presence_update (GabbleConnection *self,
         g_hash_table_new_full (g_str_hash, g_str_equal,
                                NULL, (GDestroyNotify) g_hash_table_destroy);
       g_hash_table_insert (
-        contact_status, (gchar *) gabble_statuses[presence->status].name,
+        contact_status, (gchar *) gabble_statuses[status].name,
         parameters);
 
       vals = g_value_array_new (2);
@@ -4792,8 +4799,6 @@ gboolean gabble_connection_request_presence (GabbleConnection *obj, const GArray
 
   if (!gabble_handles_are_valid (obj->handles, TP_HANDLE_TYPE_CONTACT, contacts, FALSE, error))
     return FALSE;
-
-  /* TODO: what do we do about requests for non-rostered contacts? */
 
   if (contacts->len)
     emit_presence_update (obj, contacts);

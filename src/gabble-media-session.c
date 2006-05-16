@@ -182,6 +182,7 @@ _get_voice_resource (GabblePresence *presence, const gchar **voice_resource,
 
       if (resource)
         {
+          g_debug ("using Jingle-capable resource %s\n", resource);
           *voice_resource = resource;
           *mode = MODE_JINGLE;
           return TRUE;
@@ -193,6 +194,7 @@ _get_voice_resource (GabblePresence *presence, const gchar **voice_resource,
 
   if (resource)
     {
+      g_debug ("using GTalk-capable resource %s\n", resource);
       *voice_resource = resource;
       *mode = MODE_GOOGLE;
       return TRUE;

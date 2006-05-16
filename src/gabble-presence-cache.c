@@ -324,43 +324,38 @@ _presence_get_status (LmMessageNode *pres_node)
     }
 }
 
-LmHandlerResult
-gabble_presence_cache_parse_message (GabblePresenceCache *cache,
-                                     GabbleHandle handle,
-                                     const char *from,
-                                     LmMessage *message)
+static LmHandlerResult
+_parse_presence_message (GabblePresenceCache *cache,
+                         GabbleHandle handle,
+                         const gchar *from,
+                         LmMessage *message)
 {
-  GabblePresenceCachePrivate *priv;
-  gchar *resource;
-  LmMessageNode *pres_node, *child_node;
-  const gchar *status_message = NULL;
   gint8 priority = 0;
+  gchar *resource = NULL;
+  const gchar *status_message = NULL;
+  LmMessageNode *presence_node, *child_node;
+  LmHandlerResult ret = LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
   GabblePresenceId presence_id;
   GabblePresence *presence;
-  LmHandlerResult ret = LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
-  g_assert (cache != NULL);
-  priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
-
-  g_assert (gabble_handle_is_valid (priv->conn->handles,
-        TP_HANDLE_TYPE_CONTACT, handle, NULL));
-  g_assert (from != NULL);
-  g_assert (message != NULL);
-
-  pres_node = message->node;
+  presence_node = message->node;
+  g_assert (0 == strcmp (presence_node->name, "presence"));
 
   gabble_handle_decode_jid (from, NULL, NULL, &resource);
+
   if (resource == NULL)
     {
-      HANDLER_DEBUG (pres_node, "ignoring presence with no resource");
+      HANDLER_DEBUG (presence_node, "ignoring presence with no resource");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
-  child_node = lm_message_node_get_child (pres_node, "status");
+  child_node = lm_message_node_get_child (presence_node, "status");
+
   if (child_node)
     status_message = lm_message_node_get_value (child_node);
 
-  child_node = lm_message_node_get_child (pres_node, "priority");
+  child_node = lm_message_node_get_child (presence_node, "priority");
+
   if (child_node)
     {
       const gchar *prio = lm_message_node_get_value (child_node);
@@ -371,11 +366,11 @@ gabble_presence_cache_parse_message (GabblePresenceCache *cache,
     {
     case LM_MESSAGE_SUB_TYPE_NOT_SET:
     case LM_MESSAGE_SUB_TYPE_AVAILABLE:
-      presence_id = _presence_get_status (pres_node);
+      presence_id = _presence_get_status (presence_node);
       gabble_presence_cache_update (cache, handle, resource, presence_id,
           status_message, priority);
 
-      if (_presence_has_google_voice (pres_node))
+      if (_presence_has_google_voice (presence_node))
         {
           presence = gabble_presence_cache_get (cache, handle);
           g_assert (presence);
@@ -388,7 +383,9 @@ gabble_presence_cache_parse_message (GabblePresenceCache *cache,
       goto OUT;
 
     case LM_MESSAGE_SUB_TYPE_ERROR:
-      HANDLER_DEBUG (pres_node, "setting contact offline due to error");
+      HANDLER_DEBUG (presence_node, "setting contact offline due to error");
+      /* fall through */
+
     case LM_MESSAGE_SUB_TYPE_UNAVAILABLE:
       gabble_presence_cache_update (cache, handle, resource,
           GABBLE_PRESENCE_OFFLINE, status_message, priority);
@@ -403,6 +400,28 @@ gabble_presence_cache_parse_message (GabblePresenceCache *cache,
 OUT:
   g_free (resource);
   return ret;
+}
+
+LmHandlerResult
+gabble_presence_cache_parse_message (GabblePresenceCache *cache,
+                                     GabbleHandle handle,
+                                     const char *from,
+                                     LmMessage *message)
+{
+  GabblePresenceCachePrivate *priv;
+
+  g_assert (cache != NULL);
+  g_assert (from != NULL);
+  g_assert (message != NULL);
+
+  priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
+  g_assert (gabble_handle_is_valid (priv->conn->handles,
+        TP_HANDLE_TYPE_CONTACT, handle, NULL));
+
+  if (0 == strcmp (message->node->name, "presence"))
+    return _parse_presence_message (cache, handle, from, message);
+  else
+    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 }
 
 

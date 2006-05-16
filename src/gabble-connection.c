@@ -52,9 +52,9 @@
 #include "roster.h"
 #include "namespaces.h"
 
-#include "gabble-im-channel.h"
+#include "gabble-im-factory.h"
 #include "gabble-media-channel.h"
-#include "gabble-muc-channel.h"
+#include "gabble-muc-factory.h"
 #include "gabble-roomlist-channel.h"
 #include "gabble-roster-channel.h"
 
@@ -160,9 +160,6 @@ typedef struct _GabbleConnectionPrivate GabbleConnectionPrivate;
 
 struct _GabbleConnectionPrivate
 {
-  LmMessageHandler *message_im_cb;
-  LmMessageHandler *message_muc_cb;
-  LmMessageHandler *presence_muc_cb;
   LmMessageHandler *iq_jingle_cb;
   LmMessageHandler *iq_disco_cb;
   LmMessageHandler *iq_unknown_cb;
@@ -202,11 +199,6 @@ struct _GabbleConnectionPrivate
 
   /* jingle sessions */
   GHashTable *jingle_sessions;
-
-  /* channels */
-  GHashTable *im_channels;
-
-  GHashTable *muc_channels;
 
   GPtrArray *media_channels;
   guint media_channel_index;
@@ -266,6 +258,13 @@ gabble_connection_init (GabbleConnection *obj)
   obj->roster = gabble_roster_new (obj);
   g_ptr_array_add (priv->channel_factories, obj->roster);
 
+  g_ptr_array_add (priv->channel_factories,
+                   g_object_new (GABBLE_TYPE_MUC_FACTORY, "connection", obj, NULL));
+
+  g_ptr_array_add (priv->channel_factories,
+                   g_object_new (GABBLE_TYPE_IM_FACTORY, "connection", obj, NULL));
+
+  
   for (i = 0; i < priv->channel_factories->len; i++)
     {
       GObject *factory = g_ptr_array_index (priv->channel_factories, i);
@@ -277,12 +276,6 @@ gabble_connection_init (GabbleConnection *obj)
 
   priv->jingle_sessions = g_hash_table_new_full (g_str_hash, g_str_equal,
                                                  g_free, NULL);
-
-  priv->im_channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-                                             NULL, g_object_unref);
-
-  priv->muc_channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-                                              NULL, g_object_unref);
 
   priv->media_channels = g_ptr_array_sized_new (1);
   priv->media_channel_index = 0;
@@ -776,20 +769,6 @@ gabble_connection_dispose (GObject *object)
       priv->jingle_sessions = NULL;
     }
 
-  if (priv->im_channels)
-    {
-      g_assert (g_hash_table_size (priv->im_channels) == 0);
-      g_hash_table_destroy (priv->im_channels);
-      priv->im_channels = NULL;
-    }
-
-  if (priv->muc_channels)
-    {
-      g_assert (g_hash_table_size (priv->muc_channels) == 0);
-      g_hash_table_destroy (priv->muc_channels);
-      priv->muc_channels = NULL;
-    }
-
   if (priv->media_channels)
     {
       g_assert (priv->media_channels->len == 0);
@@ -824,18 +803,6 @@ gabble_connection_dispose (GObject *object)
           g_warning ("%s: connection was open when the object was deleted, it'll probably crash now...", G_STRFUNC);
           lm_connection_close (self->lmconn, NULL);
         }
-
-      lm_connection_unregister_message_handler (self->lmconn, priv->message_im_cb,
-                                                LM_MESSAGE_TYPE_MESSAGE);
-      lm_message_handler_unref (priv->message_im_cb);
-
-      lm_connection_unregister_message_handler (self->lmconn, priv->message_muc_cb,
-                                                LM_MESSAGE_TYPE_MESSAGE);
-      lm_message_handler_unref (priv->message_muc_cb);
-
-      lm_connection_unregister_message_handler (self->lmconn, priv->presence_muc_cb,
-                                                LM_MESSAGE_TYPE_PRESENCE);
-      lm_message_handler_unref (priv->presence_muc_cb);
 
       lm_connection_unregister_message_handler (self->lmconn, priv->iq_jingle_cb,
                                                 LM_MESSAGE_TYPE_IQ);
@@ -910,6 +877,7 @@ gabble_connection_finalize (GObject *object)
   gabble_handle_repo_destroy (self->handles);
 
   G_OBJECT_CLASS (gabble_connection_parent_class)->finalize (object);
+
 }
 
 /**
@@ -1235,9 +1203,6 @@ _gabble_connection_send_with_reply (GabbleConnection *conn,
   return ret;
 }
 
-static LmHandlerResult connection_message_im_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
-static LmHandlerResult connection_message_muc_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
-static LmHandlerResult connection_presence_muc_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmHandlerResult connection_iq_jingle_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmHandlerResult connection_iq_disco_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmHandlerResult connection_iq_unknown_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
@@ -1251,7 +1216,6 @@ static void connection_status_change (GabbleConnection *, TpConnectionStatus, Tp
 static void channel_request_cancel (gpointer data, gpointer user_data);
 
 static void close_all_channels (GabbleConnection *conn);
-static GabbleIMChannel *new_im_channel (GabbleConnection *conn, GabbleHandle handle, gboolean suppress_handler);
 static void discover_services (GabbleConnection *conn);
 static void emit_one_presence_update (GabbleConnection *self, GabbleHandle handle);
 
@@ -1385,24 +1349,6 @@ _gabble_connection_connect (GabbleConnection *conn,
                                          connection_disconnected_cb,
                                          conn,
                                          NULL);
-
-  priv->message_im_cb = lm_message_handler_new (connection_message_im_cb,
-                                                conn, NULL);
-  lm_connection_register_message_handler (conn->lmconn, priv->message_im_cb,
-                                          LM_MESSAGE_TYPE_MESSAGE,
-                                          LM_HANDLER_PRIORITY_LAST);
-
-  priv->message_muc_cb = lm_message_handler_new (connection_message_muc_cb,
-                                                 conn, NULL);
-  lm_connection_register_message_handler (conn->lmconn, priv->message_muc_cb,
-                                          LM_MESSAGE_TYPE_MESSAGE,
-                                          LM_HANDLER_PRIORITY_FIRST);
-
-  priv->presence_muc_cb = lm_message_handler_new (connection_presence_muc_cb,
-                                              conn, NULL);
-  lm_connection_register_message_handler (conn->lmconn, priv->presence_muc_cb,
-                                          LM_MESSAGE_TYPE_PRESENCE,
-                                          LM_HANDLER_PRIORITY_FIRST);
 
   priv->iq_jingle_cb = lm_message_handler_new (connection_iq_jingle_cb,
                                                conn, NULL);
@@ -1550,9 +1496,6 @@ connection_status_change (GabbleConnection        *conn,
     }
 }
 
-
-static void im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data);
-
 /**
  * close_all_channels:
  * @conn: A #GabbleConnection object
@@ -1565,17 +1508,8 @@ close_all_channels (GabbleConnection *conn)
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   guint i;
 
-  if (priv->im_channels)
-    {
-      g_hash_table_destroy (priv->im_channels);
-      priv->im_channels = NULL;
-    }
-
-  if (priv->muc_channels)
-    {
-      g_hash_table_destroy (priv->muc_channels);
-      priv->muc_channels = NULL;
-    }
+  /* FIXME - call tp_channel_factory_iface_close_all () here ?
+   * What about roster chans? */
 
   if (priv->media_channels)
     {
@@ -1612,65 +1546,6 @@ close_all_channels (GabbleConnection *conn)
 }
 
 
-/**
- * muc_channel_closed_cb:
- *
- * Signal callback for when a MUC channel is closed. Removes the references
- * that #GabbleConnection holds to them.
- */
-static void
-muc_channel_closed_cb (GabbleMucChannel *chan, gpointer user_data)
-{
-  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-  GabbleHandle room_handle;
-
-  g_object_get (chan, "handle", &room_handle, NULL);
-
-  g_debug ("%s: removing MUC channel with handle %d", G_STRFUNC, room_handle);
-  g_hash_table_remove (priv->muc_channels, GINT_TO_POINTER (room_handle));
-}
-
-/**
- * new_muc_channel
- */
-static GabbleMucChannel *
-new_muc_channel (GabbleConnection *conn, GabbleHandle handle, gboolean suppress_handler)
-{
-  GabbleConnectionPrivate *priv;
-  GabbleMucChannel *chan;
-  char *object_path;
-
-  g_assert (GABBLE_IS_CONNECTION (conn));
-
-  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-
-  g_assert (g_hash_table_lookup (priv->muc_channels, GINT_TO_POINTER (handle)) == NULL);
-
-  object_path = g_strdup_printf ("%s/MucChannel%u", conn->object_path, handle);
-
-  chan = g_object_new (GABBLE_TYPE_MUC_CHANNEL,
-                       "connection", conn,
-                       "object-path", object_path,
-                       "handle", handle,
-                       NULL);
-
-  g_debug ("new_muc_channel: object path %s", object_path);
-
-  g_signal_connect (chan, "closed", (GCallback) muc_channel_closed_cb, conn);
-
-  g_hash_table_insert (priv->muc_channels, GINT_TO_POINTER (handle), chan);
-
-  g_signal_emit (conn, signals[NEW_CHANNEL], 0,
-                 object_path, TP_IFACE_CHANNEL_TYPE_TEXT,
-                 TP_HANDLE_TYPE_ROOM, handle,
-                 suppress_handler);
-
-  g_free (object_path);
-
-  return chan;
-}
-
 gboolean
 _lm_message_node_has_namespace (LmMessageNode *node, const gchar *ns)
 {
@@ -1680,308 +1555,6 @@ _lm_message_node_has_namespace (LmMessageNode *node, const gchar *ns)
     return FALSE;
 
   return 0 == strcmp (ns, node_ns);
-}
-
-static LmMessageNode *
-_get_muc_node (LmMessageNode *toplevel_node)
-{
-  LmMessageNode *node;
-
-  for (node = toplevel_node->children; node; node = node->next)
-    if (strcmp (node->name, "x") == 0)
-      if (_lm_message_node_has_namespace (node, NS_MUC_USER))
-        return node;
-
-  return NULL;
-}
-
-static GabbleMucChannel *
-get_muc_from_jid (GabbleConnection *conn, const gchar *jid)
-{
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-  GabbleHandle handle;
-  GabbleMucChannel *chan = NULL;
-
-  if (gabble_handle_for_room_exists (conn->handles, jid, TRUE))
-    {
-      handle = gabble_handle_for_room (conn->handles, jid);
-
-      chan = g_hash_table_lookup (priv->muc_channels,
-                                  GUINT_TO_POINTER (handle));
-    }
-
-  return chan;
-}
-
-static gboolean
-parse_incoming_message (LmMessage *message,
-                        const gchar **from,
-                        time_t *stamp,
-                        TpChannelTextMessageType *msgtype,
-                        const gchar **body,
-                        const gchar **body_offset)
-{
-  const gchar *type;
-  LmMessageNode *node;
-
-  *from = lm_message_node_get_attribute (message->node, "from");
-  if (*from == NULL)
-    {
-      HANDLER_DEBUG (message->node, "got a message without a from field");
-      return FALSE;
-    }
-
-  type = lm_message_node_get_attribute (message->node, "type");
-
-  /*
-   * Parse timestamp of delayed messages.
-   */
-  *stamp = 0;
-
-  for (node = message->node->children; node; node = node->next)
-    {
-      if (strcmp (node->name, "x") == 0)
-        {
-          const gchar *stamp_str, *p;
-          struct tm stamp_tm = { 0, };
-
-          if (!_lm_message_node_has_namespace (node, "jabber:x:delay"))
-            continue;
-
-          stamp_str = lm_message_node_get_attribute (node, "stamp");
-          if (stamp_str == NULL)
-            continue;
-
-          p = strptime (stamp_str, "%Y%m%dT%T", &stamp_tm);
-          if (p == NULL || *p != '\0')
-            {
-              g_warning ("%s: malformed date string '%s' for jabber:x:delay",
-                         G_STRFUNC, stamp_str);
-              continue;
-            }
-
-          *stamp = timegm (&stamp_tm);
-        }
-    }
-
-  if (*stamp == 0)
-    *stamp = time (NULL);
-
-
-  /*
-   * Parse body if it exists.
-   */
-  node = lm_message_node_get_child (message->node, "body");
-
-  if (node)
-    {
-      *body = lm_message_node_get_value (node);
-    }
-  else
-    {
-      *body = NULL;
-    }
-
-  /* Messages starting with /me are ACTION messages, and the /me should be
-   * removed. type="chat" messages are NORMAL.  everything else is
-   * something that doesn't necessarily expect a reply or ongoing
-   * conversation ("normal") or has been auto-sent, so we make it NOTICE in
-   * all other cases. */
-
-  *msgtype = TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE;
-  *body_offset = *body;
-
-  if (*body)
-    {
-      if (0 == strncmp (*body, "/me ", 4))
-        {
-          *msgtype = TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION;
-          *body_offset = *body + 4;
-        }
-      else if (type != NULL && (0 == strcmp (type, "chat") ||
-                                0 == strcmp (type, "groupchat")))
-        {
-          *msgtype = TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL;
-          *body_offset = *body;
-        }
-    }
-
-  return TRUE;
-}
-
-/**
- * connection_message_im_cb:
- *
- * Called by loudmouth when we get an incoming <message>.
- */
-static LmHandlerResult
-connection_message_im_cb (LmMessageHandler *handler,
-                          LmConnection *lmconn,
-                          LmMessage *message,
-                          gpointer user_data)
-{
-  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-  const gchar *from, *body, *body_offset;
-  time_t stamp;
-  TpChannelTextMessageType msgtype;
-  GabbleHandle handle;
-  GabbleIMChannel *chan;
-
-  g_assert (lmconn == conn->lmconn);
-
-  if (!parse_incoming_message (message, &from, &stamp, &msgtype, &body,
-                               &body_offset))
-    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-
-  if (body == NULL)
-    {
-      HANDLER_DEBUG (message->node, "got a message without a body field, ignoring");
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-    }
-
-  handle = gabble_handle_for_contact (conn->handles, from, FALSE);
-  if (handle == 0)
-    {
-      HANDLER_DEBUG (message->node, "ignoring message node from malformed jid");
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-    }
-
-  g_debug ("%s: message from %s (handle %u), msgtype %d, body:\n%s",
-           G_STRFUNC, from, handle, msgtype, body_offset);
-
-  chan = g_hash_table_lookup (priv->im_channels, GINT_TO_POINTER (handle));
-
-  if (chan == NULL)
-    {
-      g_debug ("%s: found no IM channel, creating one", G_STRFUNC);
-
-      chan = new_im_channel (conn, handle, FALSE);
-    }
-
-  if (_gabble_im_channel_receive (chan, msgtype, handle,
-                                  stamp, body_offset))
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-
-  return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-}
-
-/**
- * connection_message_muc_cb:
- *
- * Called by loudmouth when we get an incoming <message>,
- * which might be for a MUC.
- */
-static LmHandlerResult
-connection_message_muc_cb (LmMessageHandler *handler,
-                           LmConnection *lmconn,
-                           LmMessage *message,
-                           gpointer user_data)
-{
-  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-  const gchar *from, *body, *body_offset;
-  time_t stamp;
-  TpChannelTextMessageType msgtype;
-  LmMessageNode *node;
-  GabbleHandle room_handle, handle;
-  GabbleMucChannel *chan;
-
-  g_assert (lmconn == conn->lmconn);
-
-  if (!parse_incoming_message (message, &from, &stamp, &msgtype, &body,
-                               &body_offset))
-    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-
-  /* does it have a muc subnode? */
-  node = _get_muc_node (message->node);
-  if (node)
-    {
-      /* and an invitation? */
-      node = lm_message_node_get_child (node, "invite");
-      if (node)
-        {
-          LmMessageNode *reason_node;
-          const gchar *invite_from, *reason;
-          GabbleHandle inviter_handle;
-
-          invite_from = lm_message_node_get_attribute (node, "from");
-          if (invite_from == NULL)
-            {
-              HANDLER_DEBUG (message->node, "got a MUC invitation message "
-                             "without a from field on the invite node, "
-                             "ignoring");
-
-              return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-            }
-
-          inviter_handle = gabble_handle_for_contact (conn->handles,
-                                                      invite_from, FALSE);
-
-          reason_node = lm_message_node_get_child (node, "reason");
-          if (reason_node)
-            {
-              reason = lm_message_node_get_value (reason_node);
-            }
-          else
-            {
-              reason = "";
-              HANDLER_DEBUG (message->node, "no MUC invite reason specified");
-            }
-
-          /* create the channel */
-          handle = gabble_handle_for_room (conn->handles, from);
-
-          if (g_hash_table_lookup (priv->muc_channels, GINT_TO_POINTER (handle)) == NULL)
-            {
-              chan = new_muc_channel (conn, handle, FALSE);
-              _gabble_muc_channel_handle_invited (chan, inviter_handle, reason);
-            }
-          else
-            {
-              HANDLER_DEBUG (message->node, "ignoring invite to a room we're already in");
-            }
-
-          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-        }
-    }
-
-  /* check if a room with the jid exists */
-  if (!gabble_handle_for_room_exists (conn->handles, from, TRUE))
-    {
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-    }
-
-  room_handle = gabble_handle_for_room (conn->handles, from);
-
-  /* find the MUC channel */
-  chan = g_hash_table_lookup (priv->muc_channels,
-                              GUINT_TO_POINTER (room_handle));
-
-  if (!chan)
-    {
-      g_warning ("%s: ignoring groupchat message from known handle with "
-                 "no MUC channel", G_STRFUNC);
-
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-    }
-
-  /* get the handle of the sender, which is either the room
-   * itself or one of its members */
-  if (gabble_handle_for_room_exists (conn->handles, from, FALSE))
-    {
-      handle = room_handle;
-    }
-  else
-    {
-      handle = gabble_handle_for_contact (conn->handles, from, TRUE);
-    }
-
-  if (_gabble_muc_channel_receive (chan, msgtype, handle, stamp,
-                                   body_offset, message))
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-
-  return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 }
 
 static ChannelRequest *
@@ -2281,84 +1854,6 @@ signal_own_presence (GabbleConnection *self, GError **error)
   lm_message_unref (message);
 
   return ret;
-}
-
-
-/**
- * connection_presence_muc_cb:
- * @handler: #LmMessageHandler for this message
- * @connection: #LmConnection that originated the message
- * @message: the presence message
- * @user_data: callback data
- *
- * Called by loudmouth when we get an incoming <presence>.
- */
-static LmHandlerResult
-connection_presence_muc_cb (LmMessageHandler *handler,
-                            LmConnection *lmconn,
-                            LmMessage *msg,
-                            gpointer user_data)
-{
-  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
-  const char *from;
-  LmMessageSubType sub_type;
-  GabbleMucChannel *muc_chan;
-  LmMessageNode *x_node;
-
-  g_assert (lmconn == conn->lmconn);
-
-  from = lm_message_node_get_attribute (msg->node, "from");
-
-  if (from == NULL)
-    {
-      HANDLER_DEBUG (msg->node, "presence stanza without from attribute, ignoring");
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-    }
-
-  sub_type = lm_message_get_sub_type (msg);
-
-  muc_chan = get_muc_from_jid (conn, from);
-
-  /* is it an error and for a MUC? */
-  if (sub_type == LM_MESSAGE_SUB_TYPE_ERROR
-      && muc_chan != NULL)
-    {
-      _gabble_muc_channel_presence_error (muc_chan, from, msg->node);
-
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-    }
-
-  x_node = _get_muc_node (msg->node);
-
-  /* is it a MUC member presence? */
-  if (x_node)
-    {
-      if (muc_chan != NULL)
-        {
-          GabbleHandle handle;
-
-          handle = gabble_handle_for_contact (conn->handles, from, TRUE);
-          if (handle == 0)
-            {
-              HANDLER_DEBUG (msg->node, "discarding MUC presence from malformed jid");
-              return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-            }
-
-          _gabble_muc_channel_member_presence_updated (muc_chan, handle,
-                                                       msg, x_node);
-
-          return gabble_presence_cache_parse_message (conn->presence_cache,
-              handle, from, msg);
-        }
-      else
-        {
-          HANDLER_DEBUG (msg->node, "discarding unexpected MUC member presence");
-
-          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-        }
-    }
-
-  return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 }
 
 
@@ -3006,8 +2501,8 @@ connection_open_cb (LmConnection *lmconn,
  * connection_auth_cb
  *
  * Stage 3 of connecting, this function is called by loudmouth after the
- * result of the non-blocking lm_connection_authenticate call is known. It
- * sends a discovery request to find the server's features.
+ * result of the non-blocking lm_connection_authenticate call is known.
+ * It sends a discovery request to find the server's features.
  */
 static void
 connection_auth_cb (LmConnection *lmconn,
@@ -3290,63 +2785,6 @@ discover_services (GabbleConnection *conn)
                         services_discover_cb, conn, G_OBJECT(conn), NULL);
 }
 
-
-/**
- * im_channel_closed_cb:
- *
- * Signal callback for when an IM channel is closed. Removes the references
- * that #GabbleConnection holds to them.
- */
-static void
-im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
-{
-  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-  GabbleHandle contact_handle;
-
-  g_object_get (chan, "handle", &contact_handle, NULL);
-
-  g_debug ("%s: removing channel with handle %d", G_STRFUNC, contact_handle);
-  g_hash_table_remove (priv->im_channels, GINT_TO_POINTER (contact_handle));
-}
-
-/**
- * new_im_channel
- */
-static GabbleIMChannel *
-new_im_channel (GabbleConnection *conn, GabbleHandle handle, gboolean suppress_handler)
-{
-  GabbleConnectionPrivate *priv;
-  GabbleIMChannel *chan;
-  char *object_path;
-
-  g_assert (GABBLE_IS_CONNECTION (conn));
-
-  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-
-  object_path = g_strdup_printf ("%s/ImChannel%u", conn->object_path, handle);
-
-  chan = g_object_new (GABBLE_TYPE_IM_CHANNEL,
-                       "connection", conn,
-                       "object-path", object_path,
-                       "handle", handle,
-                       NULL);
-
-  g_debug ("new_im_channel: object path %s", object_path);
-
-  g_signal_connect (chan, "closed", (GCallback) im_channel_closed_cb, conn);
-
-  g_hash_table_insert (priv->im_channels, GINT_TO_POINTER (handle), chan);
-
-  g_signal_emit (conn, signals[NEW_CHANNEL], 0,
-                 object_path, TP_IFACE_CHANNEL_TYPE_TEXT,
-                 TP_HANDLE_TYPE_CONTACT, handle,
-                 suppress_handler);
-
-  g_free (object_path);
-
-  return chan;
-}
 
 static void
 destroy_handle_sets (gpointer data)
@@ -3932,14 +3370,6 @@ list_channel_factory_foreach_one (TpChannelIface *chan,
   g_free (type);
 }
 
-static void
-list_channel_hash_foreach_one (gpointer key,
-                               gpointer value,
-                               gpointer data)
-{
-  list_channel_factory_foreach_one (TP_CHANNEL_IFACE (value), data);
-}
-
 /**
  * gabble_connection_list_channels
  *
@@ -3974,12 +3404,6 @@ gboolean gabble_connection_list_channels (GabbleConnection *obj, GPtrArray ** re
       tp_channel_factory_iface_foreach (factory,
           list_channel_factory_foreach_one, channels);
     }
-
-  g_hash_table_foreach (priv->im_channels, list_channel_hash_foreach_one,
-      channels);
-
-  g_hash_table_foreach (priv->muc_channels, list_channel_hash_foreach_one,
-      channels);
 
   for (i = 0; i < priv->media_channels->len; i++)
     {
@@ -4148,72 +3572,7 @@ _gabble_connection_request_channel_deprecated (GabbleConnection *obj, const gcha
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
 
-  if (!strcmp (type, TP_IFACE_CHANNEL_TYPE_TEXT))
-    {
-      GObject *chan;
-
-      if (!gabble_handle_is_valid (obj->handles,
-                                   handle_type,
-                                   handle,
-                                   error))
-        return FALSE;
-
-      if (handle_type == TP_HANDLE_TYPE_CONTACT)
-        {
-          chan = g_hash_table_lookup (priv->im_channels, GINT_TO_POINTER (handle));
-
-          if (chan == NULL)
-            {
-              chan = G_OBJECT (new_im_channel (obj, handle, suppress_handler));
-            }
-        }
-      else if (handle_type == TP_HANDLE_TYPE_ROOM)
-        {
-          chan = g_hash_table_lookup (priv->muc_channels, GINT_TO_POINTER (handle));
-
-          if (chan == NULL)
-            {
-              GArray *members;
-              gboolean ret;
-
-              chan = G_OBJECT (new_muc_channel (obj, handle, suppress_handler));
-
-              members = g_array_sized_new (FALSE, FALSE, sizeof (GabbleHandle), 1);
-              g_array_append_val (members, obj->self_handle);
-
-              ret = gabble_group_mixin_add_members (chan, members, "", error);
-
-              g_array_free (members, TRUE);
-
-              if (!ret)
-                {
-                  GError *close_err;
-
-                  if (!gabble_muc_channel_close (GABBLE_MUC_CHANNEL (chan),
-                                                 &close_err))
-                    {
-                      g_error_free (close_err);
-                    }
-
-                  return FALSE;
-                }
-            }
-        }
-      else
-        {
-          goto NOT_AVAILABLE;
-        }
-
-      if (chan)
-        {
-          g_object_get (chan, "object-path", ret, NULL);
-        }
-      else
-        {
-          goto NOT_AVAILABLE;
-        }
-    }
-  else if (!strcmp (type, TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA))
+  if (!strcmp (type, TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA))
     {
       GabbleMediaChannel *chan;
 
@@ -4281,16 +3640,6 @@ _gabble_connection_request_channel_deprecated (GabbleConnection *obj, const gcha
     }
 
   return TRUE;
-
-NOT_AVAILABLE:
-  g_debug ("%s: requested channel is unavailable with "
-           "handle type %u", G_STRFUNC, handle_type);
-
-  *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
-                        "requested channel is not available with "
-                        "handle type %u", handle_type);
-
-  return FALSE;
 }
 
 
@@ -4326,7 +3675,7 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
       TpChannelIface *chan = NULL;
       ChannelRequest *request = NULL;
 
-      cur_status = tp_channel_factory_iface_request (factory, type, handle_type, handle, &chan);
+      cur_status = tp_channel_factory_iface_request (factory, type, (TpHandleType) handle_type, handle, &chan);
 
       switch (cur_status)
         {

@@ -18,7 +18,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
- * -- LETS DISCO!!!  \o/ \o_ _o/ /\o/\ _/o/- -\o\_ --
+ * -- LET'S DISCO!!!  \o/ \o_ _o/ /\o/\ _/o/- -\o\_ --
  */
 
 #ifndef __GABBLE_DISCO_H__

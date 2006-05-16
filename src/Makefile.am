@@ -98,6 +98,8 @@ CORE_SOURCES = \
 		gabble-text-mixin.c \
 		gabble-im-factory.h \
 		gabble-im-factory.c \
+		gabble-muc-factory.h \
+		gabble-muc-factory.c \
     $(BUILT_SOURCES)
 
 libgabble_convenience_la_SOURCES = \

@@ -1671,7 +1671,7 @@ new_muc_channel (GabbleConnection *conn, GabbleHandle handle, gboolean suppress_
   return chan;
 }
 
-static gboolean
+gboolean
 _lm_message_node_has_namespace (LmMessageNode *node, const gchar *ns)
 {
   const gchar *node_ns = lm_message_node_get_attribute (node, "xmlns");

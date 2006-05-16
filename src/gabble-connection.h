@@ -178,7 +178,7 @@ gboolean gabble_connection_request_presence (GabbleConnection *obj, const GArray
 gboolean gabble_connection_set_last_activity_time (GabbleConnection *obj, guint time, GError **error);
 gboolean gabble_connection_set_status (GabbleConnection *obj, GHashTable * statuses, GError **error);
 
-
+gboolean _lm_message_node_has_namespace (LmMessageNode *node, const gchar *ns);
 
 G_END_DECLS
 

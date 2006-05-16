@@ -695,7 +695,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
   g_object_class_install_property (object_class, PROP_STUN_RELAY_PASSWORD,
                                    param_spec);
 
-  /** signal definitions */
+  /* signal definitions */
 
   signals[CAPABILITIES_CHANGED] =
     g_signal_new ("capabilities-changed",
@@ -1290,7 +1290,7 @@ do_connect (GabbleConnection *conn, GError **error)
  * if necessary.
  *
  * Stage 1 is _gabble_connection_connect calling lm_connection_open
- * Stage 2 is connection_open_cb calling lm_connection_auth
+ * Stage 2 is connection_open_cb calling lm_connection_authenticate
  * Stage 3 is connection_auth_cb initiating service discovery
  * Stage 4 is connection_disco_cb advertising initial presence, requesting
  *   the roster and setting the CONNECTED state
@@ -3000,8 +3000,8 @@ connection_open_cb (LmConnection *lmconn,
  * connection_auth_cb
  *
  * Stage 3 of connecting, this function is called by loudmouth after the
- * result of the non-blocking lm_connection_auth call is known. It sends
- * a discovery request to find the server's features.
+ * result of the non-blocking lm_connection_authenticate call is known. It
+ * sends a discovery request to find the server's features.
  */
 static void
 connection_auth_cb (LmConnection *lmconn,

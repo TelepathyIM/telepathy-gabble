@@ -1500,10 +1500,13 @@ connection_status_change (GabbleConnection        *conn,
               tp_channel_factory_iface_close_all, NULL);
 
           /* cancel all queued channel requests */
-          g_ptr_array_foreach (priv->channel_requests, (GFunc)
-              channel_request_cancel, NULL);
-          g_ptr_array_remove_range (priv->channel_requests, 0,
-              priv->channel_requests->len);
+          if (priv->channel_requests->len > 0)
+            {
+              g_ptr_array_foreach (priv->channel_requests, (GFunc)
+                channel_request_cancel, NULL);
+              g_ptr_array_remove_range (priv->channel_requests, 0,
+                priv->channel_requests->len);
+            }
 
           /* the old way */
           close_all_channels (conn);

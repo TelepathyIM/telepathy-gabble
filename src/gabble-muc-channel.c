@@ -26,7 +26,6 @@
 #include <time.h>
 
 #include "ansi.h"
-#include "allocator.h"
 #include "namespaces.h"
 #include "gabble-connection.h"
 #include "gabble-error.h"
@@ -41,9 +40,6 @@
 #include "gabble-muc-channel-signals-marshal.h"
 
 #include "gabble-muc-channel-glue.h"
-
-#define MAX_PENDING_MESSAGES 256
-#define MAX_MESSAGE_SIZE 8*1024 - 1
 
 #define DEFAULT_JOIN_TIMEOUT (180 * 1000)
 
@@ -216,7 +212,6 @@ struct _GabbleMucChannelPrivate
   GabbleMucAffiliation self_affil;
 
   guint recv_id;
-  GQueue *pending_messages;
 
   RoomProperty room_props[NUM_ROOM_PROPS];
   SetPropertiesContext set_props_ctx;
@@ -225,26 +220,12 @@ struct _GabbleMucChannelPrivate
   gboolean dispose_has_run;
 };
 
-/* pending message */
-typedef struct _GabbleMucPendingMessage GabbleMucPendingMessage;
-
-struct _GabbleMucPendingMessage
-{
-  guint id;
-  time_t timestamp;
-  GabbleHandle sender;
-  TpChannelTextMessageType type;
-  gchar *text;
-};
-
 #define GABBLE_MUC_CHANNEL_GET_PRIVATE(o)     (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_MUC_CHANNEL, GabbleMucChannelPrivate))
 
 static void
 gabble_muc_channel_init (GabbleMucChannel *obj)
 {
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
-
-  priv->pending_messages = g_queue_new ();
+  /* do nothing? */
 }
 
 static void contact_handle_to_room_identity (GabbleMucChannel *chan, GabbleHandle main_handle, GabbleHandle *room_handle, gchar **room_jid);
@@ -292,6 +273,9 @@ gabble_muc_channel_constructor (GType type, guint n_props,
 
   /* allow adding ourself */
   gabble_group_mixin_change_flags (obj, TP_CHANNEL_GROUP_FLAG_CAN_ADD, 0);
+
+  /* initialize text mixin */
+  gabble_text_mixin_init (obj, G_STRUCT_OFFSET (GabbleMucChannel, text), handles);
 
   return obj;
 }
@@ -830,28 +814,12 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   gabble_muc_channel_marshal_VOID__BOXED,
                   G_TYPE_NONE, 1, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_UINT, G_TYPE_UINT, G_TYPE_INVALID)))));
 
-  signals[RECEIVED] =
-    g_signal_new ("received",
-                  G_OBJECT_CLASS_TYPE (gabble_muc_channel_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  gabble_muc_channel_marshal_VOID__INT_INT_INT_INT_STRING,
-                  G_TYPE_NONE, 5, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING);
-
-  signals[SENT] =
-    g_signal_new ("sent",
-                  G_OBJECT_CLASS_TYPE (gabble_muc_channel_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  gabble_muc_channel_marshal_VOID__INT_INT_STRING,
-                  G_TYPE_NONE, 3, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING);
-
   gabble_group_mixin_class_init (object_class,
                                  G_STRUCT_OFFSET (GabbleMucChannelClass, group_class),
                                  gabble_muc_channel_add_member,
                                  gabble_muc_channel_remove_member);
+
+  gabble_text_mixin_class_init (object_class, G_STRUCT_OFFSET (GabbleMucChannelClass, text_class));
 
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_muc_channel_class), &dbus_glib_gabble_muc_channel_object_info);
 }
@@ -897,8 +865,6 @@ room_properties_free (GabbleMucChannel *chan)
     }
 }
 
-static void clear_message_queue (GabbleMucChannel *chan);
-
 void
 gabble_muc_channel_finalize (GObject *object)
 {
@@ -916,11 +882,9 @@ gabble_muc_channel_finalize (GObject *object)
   g_free (priv->object_path);
   g_free (priv->self_jid);
 
-  clear_message_queue (self);
-
-  g_queue_free (priv->pending_messages);
-
   gabble_group_mixin_finalize (object);
+
+  gabble_text_mixin_finalize (object);
 
   G_OBJECT_CLASS (gabble_muc_channel_parent_class)->finalize (object);
 }
@@ -1058,38 +1022,6 @@ channel_state_changed (GabbleMucChannel *chan,
     }
 }
 
-/**
- * _gabble_muc_pending_get_alloc
- *
- * Returns a GabbleAllocator for creating up to 256 pending messages, but no
- * more.
- */
-static GabbleAllocator *
-_gabble_muc_pending_get_alloc ()
-{
-  static GabbleAllocator *alloc = NULL;
-
-  if (alloc == NULL)
-    alloc = gabble_allocator_new (sizeof(GabbleMucPendingMessage), MAX_PENDING_MESSAGES);
-
-  return alloc;
-}
-
-#define _gabble_muc_pending_new() \
-  (ga_new (_gabble_muc_pending_get_alloc (), GabbleMucPendingMessage))
-#define _gabble_muc_pending_new0() \
-  (ga_new0 (_gabble_muc_pending_get_alloc (), GabbleMucPendingMessage))
-
-/**
- * _gabble_muc_pending_free
- *
- * Free up a GabbleMucPendingMessage struct.
- */
-static void _gabble_muc_pending_free (GabbleMucPendingMessage *msg)
-{
-  g_free (msg->text);
-  gabble_allocator_free (_gabble_muc_pending_get_alloc (), msg);
-}
 
 static void
 close_channel (GabbleMucChannel *chan, const gchar *reason,
@@ -1411,94 +1343,6 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
   g_intset_destroy (set);
 }
 
-static gboolean
-queue_message (GabbleMucChannel *chan,
-               TpChannelTextMessageType type,
-               GabbleHandle sender,
-               time_t timestamp,
-               const gchar *text)
-{
-  GabbleMucChannelPrivate *priv;
-  GabbleMucPendingMessage *msg;
-  gsize len;
-
-  g_assert (GABBLE_IS_MUC_CHANNEL (chan));
-
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
-
-  msg = _gabble_muc_pending_new0 ();
-
-  if (msg == NULL)
-    {
-      g_debug ("%s: no more pending messages available, giving up", G_STRFUNC);
-
-      /* TODO: something clever here */
-
-      return FALSE;
-    }
-
-  len = strlen (text);
-
-  if (len > MAX_MESSAGE_SIZE)
-    {
-      g_debug ("%s: message exceeds maximum size, truncating", G_STRFUNC);
-
-      /* TODO: something clever here */
-
-      len = MAX_MESSAGE_SIZE;
-    }
-
-  msg->text = g_try_malloc (len + 1);
-
-  if (msg->text == NULL)
-    {
-      g_debug ("%s: unable to allocate message, giving up", G_STRFUNC);
-
-      _gabble_muc_pending_free (msg);
-
-      /* TODO: something clever here */
-
-      return FALSE;
-    }
-
-  g_strlcpy (msg->text, text, len + 1);
-
-  msg->id = priv->recv_id++;
-  msg->timestamp = timestamp;
-  msg->sender = sender;
-  msg->type = type;
-
-  gabble_handle_ref (priv->conn->handles, TP_HANDLE_TYPE_CONTACT, msg->sender);
-  g_queue_push_tail (priv->pending_messages, msg);
-
-  g_signal_emit (chan, signals[RECEIVED], 0,
-                 msg->id,
-                 msg->timestamp,
-                 msg->sender,
-                 msg->type,
-                 msg->text);
-
-  g_debug ("%s: queued message %u", G_STRFUNC, msg->id);
-
-  return TRUE;
-}
-
-static void
-clear_message_queue (GabbleMucChannel *chan)
-{
-  GabbleMucChannelPrivate *priv;
-  GabbleMucPendingMessage *msg;
-
-  g_assert (GABBLE_IS_MUC_CHANNEL (chan));
-
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
-
-  while ((msg = g_queue_pop_head (priv->pending_messages)))
-    {
-      gabble_handle_unref (priv->conn->handles, TP_HANDLE_TYPE_CONTACT, msg->sender);
-      _gabble_muc_pending_free (msg);
-    }
-}
 
 static void set_properties_context_return (GabbleMucChannel *chan, GError *error);
 
@@ -1639,7 +1483,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
       return TRUE;
     }
 
-  return queue_message (chan, type, sender, timestamp, text);
+  return gabble_text_mixin_receive (G_OBJECT (chan), type, sender, timestamp, text);
 }
 
 void
@@ -1672,20 +1516,11 @@ _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
   /* queue the message */
   if (message && (message[0] != '\0'))
     {
-      queue_message (chan, TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE, inviter,
-                     time(NULL), message);
+      gabble_text_mixin_receive (G_OBJECT (chan), TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE, inviter,
+                                  time(NULL), message);
     }
 }
 
-static gint
-compare_pending_message (gconstpointer haystack,
-                         gconstpointer needle)
-{
-  const GabbleMucPendingMessage *msg = haystack;
-  guint id = GPOINTER_TO_UINT (needle);
-
-  return (msg->id != id);
-}
 
 /**
  * gabble_muc_channel_acknowledge_pending_message
@@ -1701,38 +1536,9 @@ compare_pending_message (gconstpointer haystack,
  */
 gboolean gabble_muc_channel_acknowledge_pending_message (GabbleMucChannel *obj, guint id, GError **error)
 {
-  GabbleMucChannelPrivate *priv;
-  GList *node;
-  GabbleMucPendingMessage *msg;
-
   g_assert (GABBLE_IS_MUC_CHANNEL (obj));
 
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
-
-  node = g_queue_find_custom (priv->pending_messages,
-                              GUINT_TO_POINTER (id),
-                              compare_pending_message);
-
-  if (node == NULL)
-    {
-      g_debug ("%s: invalid message id %u", G_STRFUNC, id);
-
-      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                            "invalid message id %u", id);
-
-      return FALSE;
-    }
-
-  msg = node->data;
-
-  g_debug ("%s: acknowleding message id %u", G_STRFUNC, id);
-
-  g_queue_remove (priv->pending_messages, msg);
-
-  gabble_handle_unref (priv->conn->handles, TP_HANDLE_TYPE_CONTACT, msg->sender);
-  _gabble_muc_pending_free (msg);
-
-  return TRUE;
+  return gabble_text_mixin_acknowledge_pending_message (G_OBJECT (obj), id, error);
 }
 
 
@@ -1998,43 +1804,9 @@ gboolean gabble_muc_channel_get_self_handle (GabbleMucChannel *obj, guint* ret, 
  */
 gboolean gabble_muc_channel_list_pending_messages (GabbleMucChannel *obj, GPtrArray ** ret, GError **error)
 {
-  GabbleMucChannelPrivate *priv;
-  guint count;
-  GPtrArray *messages;
-  GList *cur;
-
   g_assert (GABBLE_IS_MUC_CHANNEL (obj));
 
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
-
-  count = g_queue_get_length (priv->pending_messages);
-  messages = g_ptr_array_sized_new (count);
-
-  for (cur = g_queue_peek_head_link (priv->pending_messages);
-       cur != NULL;
-       cur = cur->next)
-    {
-      GabbleMucPendingMessage *msg = cur->data;
-      GValue val = { 0, };
-
-      g_value_init (&val, TP_TYPE_PENDING_MESSAGE_STRUCT);
-      g_value_take_boxed (&val,
-          dbus_g_type_specialized_construct (TP_TYPE_PENDING_MESSAGE_STRUCT));
-
-      dbus_g_type_struct_set (&val,
-                              0, msg->id,
-                              1, msg->timestamp,
-                              2, msg->sender,
-                              3, msg->type,
-                              4, msg->text,
-                              G_MAXUINT);
-
-      g_ptr_array_add (messages, g_value_get_boxed (&val));
-    }
-
-  *ret = messages;
-
-  return TRUE;
+  return gabble_text_mixin_list_pending_messages (G_OBJECT (obj), ret, error);
 }
 
 
@@ -2113,52 +1885,12 @@ gboolean gabble_muc_channel_remove_members (GabbleMucChannel *obj, const GArray 
 gboolean gabble_muc_channel_send (GabbleMucChannel *obj, guint type, const gchar * text, GError **error)
 {
   GabbleMucChannelPrivate *priv;
-  LmMessage *msg;
-  gboolean result;
-  time_t timestamp;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (obj));
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
 
-  if (type > TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE)
-    {
-      g_debug ("%s: invalid message type %u", G_STRFUNC, type);
-
-      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                            "invalid message type: %u", type);
-
-      return FALSE;
-    }
-
-  msg = lm_message_new_with_sub_type (priv->jid, LM_MESSAGE_TYPE_MESSAGE,
-                                      LM_MESSAGE_SUB_TYPE_GROUPCHAT);
-  if (type == TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION)
-    {
-      gchar *tmp;
-      tmp = g_strconcat ("/me ", text, NULL);
-      lm_message_node_add_child (msg->node, "body", tmp);
-      g_free (tmp);
-    }
-  else
-    {
-      lm_message_node_add_child (msg->node, "body", text);
-    }
-
-  result = _gabble_connection_send (priv->conn, msg, error);
-  lm_message_unref (msg);
-
-  if (!result)
-    return FALSE;
-
-  timestamp = time (NULL);
-
-  g_signal_emit (obj, signals[SENT], 0,
-                 timestamp,
-                 type,
-                 text);
-
-  return TRUE;
+  return gabble_text_mixin_send (G_OBJECT (obj), type, LM_MESSAGE_SUB_TYPE_GROUPCHAT, priv->jid, text, priv->conn, error);
 }
 
 
@@ -2226,7 +1958,7 @@ gabble_muc_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *m
       gabble_group_mixin_change_flags (obj, 0, TP_CHANNEL_GROUP_FLAG_CAN_ADD);
 
       /* clear message queue (which might contain an invite reason) */
-      clear_message_queue (GABBLE_MUC_CHANNEL (obj));
+      gabble_text_mixin_clear (G_OBJECT (obj));
 
       return result;
     }

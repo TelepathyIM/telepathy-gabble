@@ -89,16 +89,18 @@ gabble_presence_pick_resource_by_caps (
 {
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
   GSList *i;
+  Resource *chosen = NULL;
 
   for (i = priv->resources; NULL != i; i = i->next)
     {
       Resource *res = (Resource *) i->data;
 
-      if (res->caps & caps)
-        return res->name;
+      if ((res->caps & caps) &&
+          (NULL == chosen || res->priority > chosen->priority))
+        chosen = res;
     }
 
-  return NULL;
+  return chosen->name;
 }
 
 void

@@ -26,6 +26,7 @@
 
 #include "handles.h"
 #include "telepathy-constants.h"
+#include "gabble-text-mixin.h"
 
 G_BEGIN_DECLS
 
@@ -34,10 +35,14 @@ typedef struct _GabbleIMChannelClass GabbleIMChannelClass;
 
 struct _GabbleIMChannelClass {
     GObjectClass parent_class;
+
+    GabbleTextMixinClass text_class;
 };
 
 struct _GabbleIMChannel {
     GObject parent;
+
+    GabbleTextMixin text;
 };
 
 GType gabble_im_channel_get_type(void);

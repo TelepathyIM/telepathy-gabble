@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "namespaces.h"
+
 #include "gabble-presence.h"
 
 #include "gabble-presence-cache.h"
@@ -208,8 +210,7 @@ _presence_node_has_google_voice (LmMessageNode *pres_node)
         continue;
 
       cap_xmlns = lm_message_node_get_attribute (node, "xmlns");
-      if (NULL == cap_xmlns ||
-          0 != strcmp (cap_xmlns, "http://jabber.org/protocol/caps"))
+      if (NULL == cap_xmlns || 0 != strcmp (cap_xmlns, NS_CAPS))
         continue;
 
       cap_ext = lm_message_node_get_attribute (node, "ext");

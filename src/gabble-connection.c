@@ -1304,7 +1304,6 @@ _gabble_connection_connect (GabbleConnection *conn,
   gboolean valid;
   GabblePresence *presence;
 
-  g_assert (priv->connect_server != NULL);
   g_assert (priv->port > 0 && priv->port <= G_MAXUINT16);
   g_assert (priv->stream_server != NULL);
   g_assert (priv->username != NULL);

@@ -406,7 +406,7 @@ OUT:
 LmHandlerResult
 gabble_presence_cache_parse_message (GabblePresenceCache *cache,
                                      GabbleHandle handle,
-                                     const char *from,
+                                     const gchar *from,
                                      LmMessage *message)
 {
   GabblePresenceCachePrivate *priv;

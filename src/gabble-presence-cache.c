@@ -492,15 +492,24 @@ gabble_presence_cache_get (GabblePresenceCache *cache, GabbleHandle handle)
 }
 
 void
-gabble_presence_cache_update (GabblePresenceCache *cache, GabbleHandle handle, const gchar *resource, GabblePresenceId presence_id, const gchar *status_message, gint8 priority)
+gabble_presence_cache_update (
+    GabblePresenceCache *cache,
+    GabbleHandle handle,
+    const gchar *resource,
+    GabblePresenceId presence_id,
+    const gchar *status_message,
+    gint8 priority)
 {
-  GabblePresence *presence = gabble_presence_cache_get (cache, handle);
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
-  const gchar *jid = gabble_handle_inspect (priv->conn->handles,
-      TP_HANDLE_TYPE_CONTACT, handle);
+  const gchar *jid;
+  GabblePresence *presence;
 
+  jid = gabble_handle_inspect (priv->conn->handles, TP_HANDLE_TYPE_CONTACT,
+      handle);
   g_debug ("%s: %s (%d) resource %s prio %d presence %d message \"%s\"",
       G_STRFUNC, jid, handle, resource, priority, presence_id, status_message);
+
+  presence = gabble_presence_cache_get (cache, handle);
 
   if (presence == NULL)
     {
@@ -509,7 +518,8 @@ gabble_presence_cache_update (GabblePresenceCache *cache, GabbleHandle handle, c
       gabble_handle_ref (priv->conn->handles, TP_HANDLE_TYPE_CONTACT, handle);
     }
 
-  if (gabble_presence_update (presence, resource, presence_id, status_message, priority))
+  if (gabble_presence_update (presence, resource, presence_id, status_message,
+        priority))
     g_signal_emit (cache, signals[PRESENCE_UPDATE], 0, handle);
 
   if (presence->status == GABBLE_PRESENCE_OFFLINE &&

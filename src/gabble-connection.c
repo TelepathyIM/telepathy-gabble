@@ -55,7 +55,6 @@
 
 #include "gabble-media-channel.h"
 #include "gabble-roomlist-channel.h"
-#include "gabble-roster-channel.h"
 
 #define BUS_NAME        "org.freedesktop.Telepathy.Connection.gabble"
 #define OBJECT_PATH     "/org/freedesktop/Telepathy/Connection/gabble"

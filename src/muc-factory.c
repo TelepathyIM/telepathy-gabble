@@ -241,10 +241,15 @@ muc_channel_closed_cb (GabbleMucChannel *chan, gpointer user_data)
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
   GabbleHandle room_handle;
 
-  g_object_get (chan, "handle", &room_handle, NULL);
+  if (priv->channels)
+    {
+      g_object_get (chan, "handle", &room_handle, NULL);
 
-  g_debug ("%s: removing MUC channel with handle %d", G_STRFUNC, room_handle);
-  g_hash_table_remove (priv->channels, GINT_TO_POINTER (room_handle));
+      g_debug ("%s: removing MUC channel with handle %d", G_STRFUNC,
+          room_handle);
+
+      g_hash_table_remove (priv->channels, GINT_TO_POINTER (room_handle));
+    }
 }
 
 /**
@@ -487,8 +492,9 @@ gabble_muc_factory_iface_close_all (TpChannelFactoryIface *iface)
 
   if (priv->channels)
     {
-      g_hash_table_destroy (priv->channels);
+      GHashTable *tmp = priv->channels;
       priv->channels = NULL;
+      g_hash_table_destroy (tmp);
     }
 }
 

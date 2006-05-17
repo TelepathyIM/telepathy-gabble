@@ -264,7 +264,6 @@ gabble_connection_init (GabbleConnection *obj)
   g_ptr_array_add (priv->channel_factories,
                    g_object_new (GABBLE_TYPE_IM_FACTORY, "connection", obj, NULL));
 
-  
   for (i = 0; i < priv->channel_factories->len; i++)
     {
       GObject *factory = g_ptr_array_index (priv->channel_factories, i);

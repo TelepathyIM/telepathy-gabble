@@ -186,7 +186,7 @@ gabble_text_mixin_class_init (GObjectClass *obj_cls, glong offset)
       GINT_TO_POINTER (offset));
 
   mixin_cls = GABBLE_TEXT_MIXIN_CLASS (obj_cls);
-  
+
   /* FIXME - own marshallers */
   mixin_cls->received_signal_id = g_signal_new ("received",
                 G_OBJECT_CLASS_TYPE (obj_cls),

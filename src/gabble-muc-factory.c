@@ -197,10 +197,7 @@ gabble_muc_factory_class_init (GabbleMucFactoryClass *gabble_muc_factory_class)
                                     G_PARAM_STATIC_NICK |
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
-  
 }
-
-
 
 static LmMessageNode *
 _get_muc_node (LmMessageNode *toplevel_node)
@@ -214,6 +211,7 @@ _get_muc_node (LmMessageNode *toplevel_node)
 
   return NULL;
 }
+
 
 static GabbleMucChannel *
 get_muc_from_jid (GabbleMucFactory *fac, const gchar *jid)
@@ -537,7 +535,7 @@ _foreach_slave (gpointer key, gpointer value, gpointer user_data)
 {
   struct _ForeachData *data = (struct _ForeachData *) user_data;
   TpChannelIface *chan = TP_CHANNEL_IFACE (value);
-  
+
   data->foreach (chan, data->user_data);
 }
 

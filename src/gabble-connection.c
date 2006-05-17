@@ -2226,12 +2226,12 @@ struct _Feature
 };
 
 static Feature features[] = {
-      { NULL,       NS_JINGLE },
-      { NULL,       NS_JINGLE_AUDIO },
-      { "voice-v1", NS_GOOGLE_SESSION },
-      { "voice-v1", NS_GOOGLE_SESSION_PHONE },
       { NULL,       "jabber:iq:register" },
       { NULL,       "jabber:iq:roster" },
+      { "jingle",   NS_JINGLE },
+      { "jingle",   NS_JINGLE_AUDIO },
+      { "voice-v1", NS_GOOGLE_SESSION },
+      { "voice-v1", NS_GOOGLE_SESSION_PHONE },
       { NULL, NULL },
       };
 

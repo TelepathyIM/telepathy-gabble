@@ -50,10 +50,10 @@
 #include "gabble-register.h"
 #include "roster.h"
 #include "namespaces.h"
+#include "muc-factory.h"
 
 #include "gabble-im-factory.h"
 #include "gabble-media-channel.h"
-#include "gabble-muc-factory.h"
 #include "gabble-roomlist-channel.h"
 #include "gabble-roster-channel.h"
 

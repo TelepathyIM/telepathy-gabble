@@ -22,8 +22,6 @@
 
 #include <glib-object.h>
 
-#include "gabble-muc-channel.h"
-
 G_BEGIN_DECLS
 
 typedef struct _GabbleMucFactory GabbleMucFactory;

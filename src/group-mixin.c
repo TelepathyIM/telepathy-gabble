@@ -1,5 +1,5 @@
 /*
- * gabble-group-mixin.c - Source for GabbleGroupMixin
+ * group-mixin.c - Source for GabbleGroupMixin
  * Copyright (C) 2006 Collabora Ltd.
  * Copyright (C) 2006 Nokia Corporation
  *   @author Ole Andre Vadla Ravnaas <ole.andre.ravnaas@collabora.co.uk>
@@ -27,8 +27,8 @@
 
 #include "telepathy-errors.h"
 
-#include "gabble-group-mixin.h"
-#include "gabble-group-mixin-signals-marshal.h"
+#include "group-mixin.h"
+#include "group-mixin-signals-marshal.h"
 
 /**
  * gabble_group_mixin_class_get_offset_quark:
@@ -82,7 +82,7 @@ void gabble_group_mixin_class_init (GObjectClass *obj_cls,
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_group_mixin_marshal_VOID__INT_INT,
+                  group_mixin_marshal_VOID__INT_INT,
                   G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_UINT);
 
   mixin_cls->members_changed_signal_id =
@@ -91,7 +91,7 @@ void gabble_group_mixin_class_init (GObjectClass *obj_cls,
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_group_mixin_marshal_VOID__STRING_BOXED_BOXED_BOXED_BOXED,
+                  group_mixin_marshal_VOID__STRING_BOXED_BOXED_BOXED_BOXED,
                   G_TYPE_NONE, 5, G_TYPE_STRING, DBUS_TYPE_G_UINT_ARRAY, DBUS_TYPE_G_UINT_ARRAY, DBUS_TYPE_G_UINT_ARRAY, DBUS_TYPE_G_UINT_ARRAY);
 }
 

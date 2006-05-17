@@ -41,7 +41,7 @@
 
 #include "namespaces.h"
 
-#include "gabble-text-mixin.h"
+#include "text-mixin.h"
 #include "gabble-presence-cache.h"
 
 static void gabble_muc_factory_iface_init (gpointer g_iface, gpointer iface_data);

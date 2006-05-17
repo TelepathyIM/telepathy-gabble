@@ -24,7 +24,7 @@
 #include <glib-object.h>
 
 #include "gabble-group-mixin.h"
-#include "gabble-text-mixin.h"
+#include "text-mixin.h"
 #include "handles.h"
 
 G_BEGIN_DECLS

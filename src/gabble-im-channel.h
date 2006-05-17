@@ -26,7 +26,7 @@
 
 #include "handles.h"
 #include "telepathy-constants.h"
-#include "gabble-text-mixin.h"
+#include "text-mixin.h"
 
 G_BEGIN_DECLS
 

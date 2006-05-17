@@ -40,6 +40,14 @@
 #include "gabble-im-channel.h"
 #include "gabble-muc-channel.h"
 
+#define TP_TYPE_PENDING_MESSAGE_STRUCT (dbus_g_type_get_struct ("GValueArray", \
+      G_TYPE_UINT, \
+      G_TYPE_UINT, \
+      G_TYPE_UINT, \
+      G_TYPE_UINT, \
+      G_TYPE_STRING, \
+      G_TYPE_INVALID))
+
 /* allocator */
 
 typedef struct _GabbleAllocator GabbleAllocator;
@@ -443,31 +451,20 @@ gboolean gabble_text_mixin_list_pending_messages (GObject *obj, GPtrArray ** ret
        cur = cur->next)
     {
       GabblePendingMessage *msg = (GabblePendingMessage *) cur->data;
-      GValueArray *vals;
+      GValue val = { 0, };
 
-      vals = g_value_array_new (5);
+      g_value_init (&val, TP_TYPE_PENDING_MESSAGE_STRUCT);
+      g_value_take_boxed (&val,
+          dbus_g_type_specialized_construct (TP_TYPE_PENDING_MESSAGE_STRUCT));
+      dbus_g_type_struct_set (&val,
+          0, msg->id,
+          1, msg->timestamp,
+          2, msg->sender,
+          3, msg->type,
+          4, msg->text,
+          G_MAXUINT);
 
-      g_value_array_append (vals, NULL);
-      g_value_init (g_value_array_get_nth (vals, 0), G_TYPE_UINT);
-      g_value_set_uint (g_value_array_get_nth (vals, 0), msg->id);
-
-      g_value_array_append (vals, NULL);
-      g_value_init (g_value_array_get_nth (vals, 1), G_TYPE_UINT);
-      g_value_set_uint (g_value_array_get_nth (vals, 1), msg->timestamp);
-
-      g_value_array_append (vals, NULL);
-      g_value_init (g_value_array_get_nth (vals, 2), G_TYPE_UINT);
-      g_value_set_uint (g_value_array_get_nth (vals, 2), msg->sender);
-
-      g_value_array_append (vals, NULL);
-      g_value_init (g_value_array_get_nth (vals, 3), G_TYPE_UINT);
-      g_value_set_uint (g_value_array_get_nth (vals, 3), msg->type);
-
-      g_value_array_append (vals, NULL);
-      g_value_init (g_value_array_get_nth (vals, 4), G_TYPE_STRING);
-      g_value_set_string (g_value_array_get_nth (vals, 4), msg->text);
-
-      g_ptr_array_add (messages, vals);
+      g_ptr_array_add (messages, g_value_get_boxed (&val));
     }
 
   *ret = messages;

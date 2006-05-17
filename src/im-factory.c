@@ -258,10 +258,15 @@ im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
   GabbleImFactoryPrivate *priv = GABBLE_IM_FACTORY_GET_PRIVATE (conn);
   GabbleHandle contact_handle;
 
-  g_object_get (chan, "handle", &contact_handle, NULL);
+  if (priv->channels)
+    {
+      g_object_get (chan, "handle", &contact_handle, NULL);
 
-  g_debug ("%s: removing channel with handle %d", G_STRFUNC, contact_handle);
-  g_hash_table_remove (priv->channels, GINT_TO_POINTER (contact_handle));
+      g_debug ("%s: removing channel with handle %d", G_STRFUNC,
+          contact_handle);
+
+      g_hash_table_remove (priv->channels, GINT_TO_POINTER (contact_handle));
+    }
 }
 
 /**
@@ -309,8 +314,9 @@ gabble_im_factory_iface_close_all (TpChannelFactoryIface *iface)
 
   if (priv->channels)
     {
-      g_hash_table_destroy (priv->channels);
+      GHashTable *tmp = priv->channels;
       priv->channels = NULL;
+      g_hash_table_destroy (tmp);
     }
 }
 

@@ -88,12 +88,12 @@ CORE_SOURCES = \
     telepathy-errors.c \
     telepathy-helpers.h \
     telepathy-helpers.c \
+    text-mixin.h \
+    text-mixin.c \
     tp-channel-iface.h \
     tp-channel-iface.c \
     tp-channel-factory-iface.h \
     tp-channel-factory-iface.c \
-		gabble-text-mixin.h \
-		gabble-text-mixin.c \
 		gabble-im-factory.h \
 		gabble-im-factory.c \
 		gabble-muc-factory.h \

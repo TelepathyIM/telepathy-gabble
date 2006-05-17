@@ -38,7 +38,7 @@
 #include "gabble-im-channel.h"
 #include "handles.h"
 
-#include "gabble-text-mixin.h"
+#include "text-mixin.h"
 
 static void gabble_im_factory_iface_init (gpointer g_iface, gpointer iface_data);
 static LmHandlerResult im_factory_message_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);

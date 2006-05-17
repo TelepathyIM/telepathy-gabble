@@ -33,7 +33,7 @@
 #include "telepathy-constants.h"
 #include "telepathy-errors.h"
 
-#include "gabble-text-mixin.h"
+#include "text-mixin.h"
 
 #include "gabble-connection.h"
 #include "gabble-im-channel.h"

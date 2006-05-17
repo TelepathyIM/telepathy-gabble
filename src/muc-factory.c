@@ -30,18 +30,16 @@
 
 #include <loudmouth/loudmouth.h>
 
-#include "telepathy-interfaces.h"
-#include "tp-channel-factory-iface.h"
-#include "gabble-muc-factory.h"
 #include "gabble-connection.h"
+#include "gabble-disco.h"
+#include "gabble-presence-cache.h"
 #include "gabble-muc-channel.h"
 #include "handles.h"
-#include "gabble-disco.h"
-
+#include "muc-factory.h"
 #include "namespaces.h"
-
+#include "telepathy-interfaces.h"
 #include "text-mixin.h"
-#include "gabble-presence-cache.h"
+#include "tp-channel-factory-iface.h"
 
 static void gabble_muc_factory_iface_init (gpointer g_iface, gpointer iface_data);
 static LmHandlerResult muc_factory_message_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);

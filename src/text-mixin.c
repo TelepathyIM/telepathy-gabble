@@ -23,12 +23,12 @@
 
 #define _GNU_SOURCE /* Needed for strptime (_XOPEN_SOURCE can also be used). */
 
+#include <loudmouth/loudmouth.h>
 #include <dbus/dbus-glib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <loudmouth/loudmouth.h>
+#include <time.h>
 
 #include "telepathy-constants.h"
 #include "telepathy-errors.h"

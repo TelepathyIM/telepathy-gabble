@@ -22,13 +22,10 @@
 
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
-
+#include <glib-object.h>
 #include <loudmouth/loudmouth.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
-
-#include <glib-object.h>
 
 #include "handles.h"
 #include "handle-set.h"

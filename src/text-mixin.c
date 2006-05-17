@@ -37,8 +37,6 @@
 #include "text-mixin-signals-marshal.h"
 
 #include "gabble-connection.h"
-#include "gabble-im-channel.h"
-#include "gabble-muc-channel.h"
 
 #define TP_TYPE_PENDING_MESSAGE_STRUCT (dbus_g_type_get_struct ("GValueArray", \
       G_TYPE_UINT, \

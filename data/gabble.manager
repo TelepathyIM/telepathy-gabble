@@ -3,7 +3,7 @@ Name = gabble
 BusName = org.freedesktop.Telepathy.ConnectionManager.gabble
 ObjectPath = /org/freedesktop/Telepathy/ConnectionManager/gabble
 
-[Protocols jabber]
+[Protocol jabber]
 param-account = s required register
 param-password = s required register
 param-server = s

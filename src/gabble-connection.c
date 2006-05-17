@@ -1508,9 +1508,6 @@ close_all_channels (GabbleConnection *conn)
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   guint i;
 
-  /* FIXME - call tp_channel_factory_iface_close_all () here ?
-   * What about roster chans? */
-
   if (priv->media_channels)
     {
       GPtrArray *tmp = priv->media_channels;

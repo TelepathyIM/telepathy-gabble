@@ -81,6 +81,8 @@ CORE_SOURCES = \
     handles-private.h \
     handle-set.h \
     handle-set.c \
+    im-factory.h \
+    im-factory.c \
     muc-factory.h \
     muc-factory.c \
     namespaces.h \
@@ -98,8 +100,6 @@ CORE_SOURCES = \
     tp-channel-iface.c \
     tp-channel-factory-iface.h \
     tp-channel-factory-iface.c \
-		gabble-im-factory.h \
-		gabble-im-factory.c \
     $(BUILT_SOURCES)
 
 libgabble_convenience_la_SOURCES = \

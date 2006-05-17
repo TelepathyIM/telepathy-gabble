@@ -30,14 +30,13 @@
 
 #include <loudmouth/loudmouth.h>
 
-#include "telepathy-interfaces.h"
-#include "tp-channel-factory-iface.h"
-#include "gabble-im-factory.h"
 #include "gabble-connection.h"
 #include "gabble-im-channel.h"
 #include "handles.h"
-
+#include "im-factory.h"
+#include "telepathy-interfaces.h"
 #include "text-mixin.h"
+#include "tp-channel-factory-iface.h"
 
 static void gabble_im_factory_iface_init (gpointer g_iface, gpointer iface_data);
 static LmHandlerResult im_factory_message_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);

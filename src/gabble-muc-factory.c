@@ -18,7 +18,6 @@
  */
 
 #define DBUS_API_SUBJECT_TO_CHANGE
-#define _GNU_SOURCE /* Needed for strptime (_XOPEN_SOURCE can also be used). */
 
 #include <stdlib.h>
 #include <string.h>

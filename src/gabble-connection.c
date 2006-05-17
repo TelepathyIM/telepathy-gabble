@@ -19,7 +19,6 @@
  */
 
 #define DBUS_API_SUBJECT_TO_CHANGE
-#define _GNU_SOURCE /* Needed for strptime (_XOPEN_SOURCE can also be used). */
 
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>

@@ -18,7 +18,6 @@ struct _Resource {
     GabblePresenceCapabilities caps;
     GabblePresenceId status;
     gchar *status_message;
-    gchar *status_name;
     gint8 priority;
 };
 

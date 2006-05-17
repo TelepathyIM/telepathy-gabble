@@ -23,7 +23,7 @@
 
 #include <glib-object.h>
 
-#include "gabble-group-mixin.h"
+#include "group-mixin.h"
 #include "text-mixin.h"
 #include "handles.h"
 

@@ -23,9 +23,9 @@
 
 #include <glib-object.h>
 
-#include "gabble-group-mixin.h"
-#include "handles.h"
 #include "gabble-media-session.h"
+#include "group-mixin.h"
+#include "handles.h"
 
 G_BEGIN_DECLS
 

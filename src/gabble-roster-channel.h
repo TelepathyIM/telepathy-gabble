@@ -25,7 +25,7 @@
 #include "gintset.h"
 
 #include "gabble-types.h"
-#include "gabble-group-mixin.h"
+#include "group-mixin.h"
 
 G_BEGIN_DECLS
 

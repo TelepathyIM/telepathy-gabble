@@ -24,13 +24,13 @@
 
 #include "gabble-connection.h"
 #include "gintset.h"
+#include "group-mixin.h"
 #include "handle-set.h"
 #include "telepathy-errors.h"
 #include "telepathy-helpers.h"
 #include "telepathy-interfaces.h"
 #include "tp-channel-iface.h"
 
-#include "gabble-group-mixin.h"
 #include "gabble-roster-channel.h"
 #include "gabble-roster-channel-glue.h"
 #include "gabble-roster-channel-signals-marshal.h"

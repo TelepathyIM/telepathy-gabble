@@ -1,5 +1,5 @@
 /*
- * gabble-text-mixin.h - Header for GabbleTextMixin
+ * text-mixin.h - Header for GabbleTextMixin
  * Copyright (C) 2006 Collabora Ltd.
  * Copyright (C) 2006 Nokia Corporation
  *

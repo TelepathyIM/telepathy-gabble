@@ -1,5 +1,5 @@
 /*
- * gabble-text-mixin.c - Source for GabbleTextMixin
+ * text-mixin.c - Source for GabbleTextMixin
  * Copyright (C) 2006 Collabora Ltd.
  * Copyright (C) 2006 Nokia Corporation
  *   @author Ole Andre Vadla Ravnaas <ole.andre.ravnaas@collabora.co.uk>

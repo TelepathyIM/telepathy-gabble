@@ -34,14 +34,11 @@
 #include "telepathy-errors.h"
 
 #include "text-mixin.h"
+#include "text-mixin-signals-marshal.h"
 
 #include "gabble-connection.h"
 #include "gabble-im-channel.h"
 #include "gabble-muc-channel.h"
-
-/* FIXME - get own list */
-#include "gabble-im-channel-signals-marshal.h"
-
 
 /* allocator */
 
@@ -187,13 +184,12 @@ gabble_text_mixin_class_init (GObjectClass *obj_cls, glong offset)
 
   mixin_cls = GABBLE_TEXT_MIXIN_CLASS (obj_cls);
 
-  /* FIXME - own marshallers */
   mixin_cls->received_signal_id = g_signal_new ("received",
                 G_OBJECT_CLASS_TYPE (obj_cls),
                 G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                 0,
                 NULL, NULL,
-                gabble_im_channel_marshal_VOID__INT_INT_INT_INT_STRING,
+                text_mixin_marshal_VOID__INT_INT_INT_INT_STRING,
                 G_TYPE_NONE, 5, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING);
 
   mixin_cls->sent_signal_id = g_signal_new ("sent",
@@ -201,7 +197,7 @@ gabble_text_mixin_class_init (GObjectClass *obj_cls, glong offset)
                 G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                 0,
                 NULL, NULL,
-                gabble_im_channel_marshal_VOID__INT_INT_STRING,
+                text_mixin_marshal_VOID__INT_INT_STRING,
                 G_TYPE_NONE, 3, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING);
 
   /*
@@ -210,7 +206,7 @@ gabble_text_mixin_class_init (GObjectClass *obj_cls, glong offset)
                 G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                 0,
                 NULL, NULL,
-                gabble_im_channel_marshal_VOID__INT_INT_INT_INT_STRING,
+                text_mixin_marshal_VOID__INT_INT_INT_INT_STRING,
                 G_TYPE_NONE, 5, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING); */
 
 }

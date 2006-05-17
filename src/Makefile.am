@@ -32,6 +32,8 @@ BUILT_SOURCES = \
     gabble-roomlist-channel-glue.h \
     gabble-roomlist-channel-signals-marshal.h \
     gabble-roomlist-channel-signals-marshal.c \
+    text-mixin-signals-marshal.h \
+    text-mixin-signals-marshal.c \
     telepathy-errors-enumtypes.h \
     telepathy-errors-enumtypes.c
 

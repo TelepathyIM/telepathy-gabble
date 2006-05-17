@@ -574,10 +574,8 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
   if (handle_type != TP_HANDLE_TYPE_ROOM)
     return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_AVAILABLE;
 
-  g_debug ("WEEE1");
   if (!gabble_handle_is_valid (priv->conn->handles, TP_HANDLE_TYPE_ROOM, handle, NULL))
     return TP_CHANNEL_FACTORY_REQUEST_STATUS_INVALID_HANDLE;
-  g_debug ("WEEE2");
 
   chan = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (handle));
   if (!chan)

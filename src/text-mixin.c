@@ -536,8 +536,6 @@ gboolean gabble_text_mixin_send (GObject *obj, guint type, guint subtype, const 
       lm_message_node_add_child (msg->node, "body", text);
     }
 
-  /* TODO: send with callback? */
-
   result = _gabble_connection_send (conn, msg, error);
   lm_message_unref (msg);
 

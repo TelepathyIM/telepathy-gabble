@@ -56,8 +56,6 @@ struct _GabbleAllocator
   guint count;
 };
 
-#define ga_new(alloc, type) \
-    ((type *) gabble_allocator_alloc (alloc))
 #define ga_new0(alloc, type) \
     ((type *) gabble_allocator_alloc0 (alloc))
 
@@ -81,28 +79,6 @@ static void gabble_allocator_destroy (GabbleAllocator *alloc)
 {
   g_free (alloc);
 }
-
-/* FIXME - warning: defined but not used 
-static gpointer gabble_allocator_alloc (GabbleAllocator *alloc)
-{
-  gpointer ret;
-
-  g_assert (alloc != NULL);
-  g_assert (alloc->count <= alloc->limit);
-
-  if (alloc->count == alloc->limit)
-    {
-      ret = NULL;
-    }
-  else
-    {
-      ret = g_malloc (alloc->size);
-      alloc->count++;
-    }
-
-  return ret;
-}
-*/
 
 static gpointer gabble_allocator_alloc0 (GabbleAllocator *alloc)
 {
@@ -234,7 +210,6 @@ void gabble_text_mixin_init (GObject *obj,
   mixin->pending = g_queue_new ();
   mixin->handle_repo = handle_repo;
   mixin->recv_id = 0;
-
 }
 
 static void _gabble_pending_free (GabblePendingMessage *msg);

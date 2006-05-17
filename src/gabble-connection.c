@@ -1633,8 +1633,8 @@ static void connection_new_channel_cb (TpChannelFactoryIface *factory,
       if (handle != request->handle)
         continue;
 
-      if (suppress_handler)
-        request->suppress_handler = TRUE;
+      if (request->suppress_handler)
+        suppress_handler = TRUE;
 
       g_ptr_array_add (tmp, request);
     }
@@ -3646,7 +3646,7 @@ _gabble_connection_request_channel_deprecated (GabbleConnection *obj, const gcha
 gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar * type, guint handle_type, guint handle, gboolean suppress_handler, DBusGMethodInvocation *context)
 {
   GabbleConnectionPrivate *priv;
-  TpChannelFactoryRequestStatus status = TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_AVAILABLE;
+  TpChannelFactoryRequestStatus status = TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_IMPLEMENTED;
   gchar *object_path = NULL;
   GError *error = NULL;
   int i;
@@ -3678,7 +3678,7 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
           g_debug ("%s: queueing request, channel_type=%s, handle_type=%u, "
               "handle=%u, suppress_handler=%u", G_STRFUNC, type, handle_type,
               handle, suppress_handler);
-          request = channel_request_new (context, type, handle_type, handle_type, suppress_handler);
+          request = channel_request_new (context, type, handle_type, handle, suppress_handler);
           g_ptr_array_add (priv->channel_requests, request);
           return TRUE;
         default:

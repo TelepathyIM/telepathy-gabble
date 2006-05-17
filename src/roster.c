@@ -790,7 +790,7 @@ gabble_roster_factory_iface_request (TpChannelFactoryIface *iface,
   GabbleRoster *roster = GABBLE_ROSTER (iface);
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
 
-  if (!strcmp (chan_type, TP_IFACE_CHANNEL_TYPE_CONTACT_LIST))
+  if (strcmp (chan_type, TP_IFACE_CHANNEL_TYPE_CONTACT_LIST))
     return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_IMPLEMENTED;
 
   if (handle_type != TP_HANDLE_TYPE_LIST)

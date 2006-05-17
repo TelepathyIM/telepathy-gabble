@@ -349,7 +349,7 @@ _foreach_slave (gpointer key, gpointer value, gpointer user_data)
 {
   struct _ForeachData *data = (struct _ForeachData *) user_data;
   TpChannelIface *chan = TP_CHANNEL_IFACE (value);
-  
+
   data->foreach (chan, data->user_data);
 }
 

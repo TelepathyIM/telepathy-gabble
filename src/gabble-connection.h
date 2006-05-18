@@ -34,19 +34,8 @@ G_BEGIN_DECLS
 /* Default parameters for optional parameters */
 #define GABBLE_PARAMS_DEFAULT_RESOURCE                   "Telepathy"
 #define GABBLE_PARAMS_DEFAULT_PORT                       5222
-#define GABBLE_PARAMS_DEFAULT_OLD_SSL                    FALSE
-#define GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_SERVER         NULL
 #define GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_PORT           443
-#define GABBLE_PARAMS_DEFAULT_FALLBACK_CONFERENCE_SERVER NULL
-#define GABBLE_PARAMS_DEFAULT_STUN_SERVER                NULL
-#define GABBLE_PARAMS_DEFAULT_STUN_PORT                  0
-#define GABBLE_PARAMS_DEFAULT_STUN_RELAY_MAGIC_COOKIE    NULL
-#define GABBLE_PARAMS_DEFAULT_STUN_RELAY_SERVER          NULL
-#define GABBLE_PARAMS_DEFAULT_STUN_RELAY_UDP_PORT        0
-#define GABBLE_PARAMS_DEFAULT_STUN_RELAY_TCP_PORT        80
-#define GABBLE_PARAMS_DEFAULT_STUN_RELAY_SSLTCP_PORT     443
-#define GABBLE_PARAMS_DEFAULT_STUN_RELAY_USERNAME        NULL
-#define GABBLE_PARAMS_DEFAULT_STUN_RELAY_PASSWORD        NULL
+#define GABBLE_PARAMS_DEFAULT_STUN_PORT                  3478
 
 /* order must match array of statuses in gabble-connection.c */
 /* in increasing order of presence */

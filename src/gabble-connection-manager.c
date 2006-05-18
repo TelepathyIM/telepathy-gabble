@@ -151,13 +151,6 @@ struct _GabbleParams {
   gchar *fallback_conference_server;
   gchar *stun_server;
   guint stun_port;
-  gchar *stun_relay_magic_cookie;
-  gchar *stun_relay_server;
-  guint stun_relay_udp_port;
-  guint stun_relay_tcp_port;
-  guint stun_relay_ssltcp_port;
-  gchar *stun_relay_username;
-  gchar *stun_relay_password;
 };
 
 typedef struct _GabbleParamSpec GabbleParamSpec;
@@ -184,14 +177,7 @@ enum {
     JABBER_PARAM_HTTPS_PROXY_PORT,
     JABBER_PARAM_FALLBACK_CONFERENCE_SERVER,
     JABBER_PARAM_STUN_SERVER,
-    JABBER_PARAM_STUN_PORT,
-    JABBER_PARAM_STUN_RELAY_MAGIC_COOKIE,
-    JABBER_PARAM_STUN_RELAY_SERVER,
-    JABBER_PARAM_STUN_RELAY_UDP_PORT,
-    JABBER_PARAM_STUN_RELAY_TCP_PORT,
-    JABBER_PARAM_STUN_RELAY_SSLTCP_PORT,
-    JABBER_PARAM_STUN_RELAY_USERNAME,
-    JABBER_PARAM_STUN_RELAY_PASSWORD,
+    JABBER_PARAM_STUN_PORT
 };
 
 static const GabbleParamSpec jabber_params[] = {
@@ -200,21 +186,14 @@ static const GabbleParamSpec jabber_params[] = {
   { "server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, FALSE, NULL, G_STRUCT_OFFSET(GabbleParams, server) },
   { "resource", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, FALSE, GABBLE_PARAMS_DEFAULT_RESOURCE, G_STRUCT_OFFSET(GabbleParams, resource) },
   { "port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT, FALSE, GINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_PORT), G_STRUCT_OFFSET(GabbleParams, port) },
-  { "old-ssl", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN, FALSE, GINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_OLD_SSL), G_STRUCT_OFFSET(GabbleParams, old_ssl) },
+  { "old-ssl", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN, FALSE, GINT_TO_POINTER(FALSE), G_STRUCT_OFFSET(GabbleParams, old_ssl) },
   { "register", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN, FALSE, GINT_TO_POINTER(FALSE), G_STRUCT_OFFSET(GabbleParams, do_register) },
   { "low-bandwidth", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN, FALSE, GINT_TO_POINTER(FALSE), G_STRUCT_OFFSET(GabbleParams, low_bandwidth) },
-  { "https-proxy-server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, FALSE, GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_SERVER, G_STRUCT_OFFSET(GabbleParams, https_proxy_server) },
+  { "https-proxy-server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, FALSE, NULL, G_STRUCT_OFFSET(GabbleParams, https_proxy_server) },
   { "https-proxy-port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT, FALSE, GINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_PORT), G_STRUCT_OFFSET(GabbleParams, https_proxy_port) },
-  { "fallback-conference-server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, FALSE, GABBLE_PARAMS_DEFAULT_FALLBACK_CONFERENCE_SERVER, G_STRUCT_OFFSET(GabbleParams, fallback_conference_server) },
-  { "stun-server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, FALSE, GABBLE_PARAMS_DEFAULT_STUN_SERVER, G_STRUCT_OFFSET(GabbleParams, stun_server) },
+  { "fallback-conference-server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, FALSE, NULL, G_STRUCT_OFFSET(GabbleParams, fallback_conference_server) },
+  { "stun-server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, FALSE, NULL, G_STRUCT_OFFSET(GabbleParams, stun_server) },
   { "stun-port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT, FALSE, GINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_STUN_PORT), G_STRUCT_OFFSET(GabbleParams, stun_port) },
-  { "stun-relay-magic-cookie", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, FALSE, GABBLE_PARAMS_DEFAULT_STUN_RELAY_MAGIC_COOKIE, G_STRUCT_OFFSET(GabbleParams, stun_relay_magic_cookie) },
-  { "stun-relay-server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, FALSE, GABBLE_PARAMS_DEFAULT_STUN_RELAY_SERVER, G_STRUCT_OFFSET(GabbleParams, stun_relay_server) },
-  { "stun-relay-udp-port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT, FALSE, GINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_STUN_RELAY_UDP_PORT), G_STRUCT_OFFSET(GabbleParams, stun_relay_udp_port) },
-  { "stun-relay-tcp-port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT, FALSE, GINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_STUN_RELAY_TCP_PORT), G_STRUCT_OFFSET(GabbleParams, stun_relay_tcp_port) },
-  { "stun-relay-ssltcp-port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT, FALSE, GINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_STUN_RELAY_SSLTCP_PORT), G_STRUCT_OFFSET(GabbleParams, stun_relay_ssltcp_port) },
-  { "stun-relay-username", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, FALSE, GABBLE_PARAMS_DEFAULT_STUN_RELAY_USERNAME, G_STRUCT_OFFSET(GabbleParams, stun_relay_username) },
-  { "stun-relay-password", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, FALSE, GABBLE_PARAMS_DEFAULT_STUN_RELAY_PASSWORD, G_STRUCT_OFFSET(GabbleParams, stun_relay_password) },
   { NULL, NULL, 0, 0, NULL, 0 }
 };
 
@@ -422,10 +401,6 @@ free_params (GabbleParams *params)
   g_free (params->https_proxy_server);
   g_free (params->fallback_conference_server);
   g_free (params->stun_server);
-  g_free (params->stun_relay_magic_cookie);
-  g_free (params->stun_relay_server);
-  g_free (params->stun_relay_username);
-  g_free (params->stun_relay_password);
 }
 
 /**
@@ -552,27 +527,6 @@ gboolean gabble_connection_manager_connect (GabbleConnectionManager *obj, const 
                              params.stun_server);
   SET_PROPERTY_IF_PARAM_SET ("stun-port", JABBER_PARAM_STUN_PORT,
                              params.stun_port);
-  SET_PROPERTY_IF_PARAM_SET ("stun-relay-magic-cookie",
-                             JABBER_PARAM_STUN_RELAY_MAGIC_COOKIE,
-                             params.stun_relay_magic_cookie);
-  SET_PROPERTY_IF_PARAM_SET ("stun-relay-server",
-                             JABBER_PARAM_STUN_RELAY_SERVER,
-                             params.stun_relay_server);
-  SET_PROPERTY_IF_PARAM_SET ("stun-relay-udp-port",
-                             JABBER_PARAM_STUN_RELAY_UDP_PORT,
-                             params.stun_relay_udp_port);
-  SET_PROPERTY_IF_PARAM_SET ("stun-relay-tcp-port",
-                             JABBER_PARAM_STUN_RELAY_TCP_PORT,
-                             params.stun_relay_tcp_port);
-  SET_PROPERTY_IF_PARAM_SET ("stun-relay-ssltcp-port",
-                             JABBER_PARAM_STUN_RELAY_SSLTCP_PORT,
-                             params.stun_relay_ssltcp_port);
-  SET_PROPERTY_IF_PARAM_SET ("stun-relay-username",
-                             JABBER_PARAM_STUN_RELAY_USERNAME,
-                             params.stun_relay_username);
-  SET_PROPERTY_IF_PARAM_SET ("stun-relay-password",
-                             JABBER_PARAM_STUN_RELAY_PASSWORD,
-                             params.stun_relay_password);
 
   /* split up account into username, stream-server and resource */
   if (!_gabble_connection_set_properties_from_account (conn, params.account, error))

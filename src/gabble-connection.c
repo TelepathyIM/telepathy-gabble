@@ -281,10 +281,8 @@ gabble_connection_init (GabbleConnection *obj)
   /* Set default parameters for optional parameters */
   priv->resource = g_strdup (GABBLE_PARAMS_DEFAULT_RESOURCE);
   priv->port = GABBLE_PARAMS_DEFAULT_PORT;
-  priv->old_ssl = GABBLE_PARAMS_DEFAULT_OLD_SSL;
-  priv->do_register = FALSE;
-  priv->https_proxy_server = g_strdup (GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_SERVER);
   priv->https_proxy_port = GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_PORT;
+  priv->stun_port = GABBLE_PARAMS_DEFAULT_STUN_PORT;
 }
 
 static void

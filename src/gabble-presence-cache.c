@@ -449,14 +449,16 @@ gabble_presence_cache_presence_cb (LmMessageHandler *handler,
   g_assert (lmconn == priv->conn->lmconn);
 
   from = lm_message_node_get_attribute (message->node, "from");
-  if (from == NULL)
+
+  if (NULL == from)
     {
       HANDLER_DEBUG (message->node, "presence stanza without from attribute, ignoring");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
   handle = gabble_handle_for_contact (priv->conn->handles, from, FALSE);
-  if (handle == 0)
+
+  if (0 == handle)
     {
       HANDLER_DEBUG (message->node, "ignoring presence from malformed jid");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;

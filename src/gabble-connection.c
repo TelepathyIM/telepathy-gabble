@@ -134,6 +134,7 @@ enum
     PROP_USERNAME,
     PROP_PASSWORD,
     PROP_RESOURCE,
+    PROP_PRIORITY,
     PROP_HTTPS_PROXY_SERVER,
     PROP_HTTPS_PROXY_PORT,
     PROP_FALLBACK_CONFERENCE_SERVER,
@@ -191,6 +192,7 @@ struct _GabbleConnectionPrivate
   gchar *username;
   gchar *password;
   gchar *resource;
+  gint8 priority;
 
   /* jingle sessions */
   GHashTable *jingle_sessions;
@@ -325,6 +327,9 @@ gabble_connection_get_property (GObject    *object,
     case PROP_RESOURCE:
       g_value_set_string (value, priv->resource);
       break;
+    case PROP_PRIORITY:
+      g_value_set_int (value, priv->priority);
+      break;
     case PROP_HTTPS_PROXY_SERVER:
       g_value_set_string (value, priv->https_proxy_server);
       break;
@@ -412,6 +417,9 @@ gabble_connection_set_property (GObject      *object,
     case PROP_RESOURCE:
       g_free (priv->resource);
       priv->resource = g_value_dup_string (value);
+      break;
+    case PROP_PRIORITY:
+      priv->priority = CLAMP (g_value_get_int (value), G_MININT8, G_MAXINT8);
       break;
     case PROP_HTTPS_PROXY_SERVER:
       g_free (priv->https_proxy_server);
@@ -562,6 +570,14 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
                                     G_PARAM_STATIC_NAME |
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_RESOURCE, param_spec);
+
+  param_spec = g_param_spec_int ("priority", "Jabber presence priority",
+                                 "The default priority used when reporting our presence.",
+                                 G_MININT8, G_MAXINT8, 0,
+                                 G_PARAM_READWRITE |
+                                 G_PARAM_STATIC_NAME |
+                                 G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_PRIORITY, param_spec);
 
   param_spec = g_param_spec_string ("https-proxy-server", "The server name "
                                     "used as an HTTPS proxy server",
@@ -1291,7 +1307,7 @@ _gabble_connection_connect (GabbleConnection *conn,
   /* set initial presence */
   /* TODO: some way for the user to set this */
   gabble_presence_cache_update (conn->presence_cache, conn->self_handle,
-      priv->resource, GABBLE_PRESENCE_AVAILABLE, NULL, 0);
+      priv->resource, GABBLE_PRESENCE_AVAILABLE, NULL, priv->priority);
   emit_one_presence_update (conn, conn->self_handle);
 
   /* set initial capabilities */
@@ -2978,7 +2994,7 @@ gboolean gabble_connection_clear_status (GabbleConnection *obj, GError **error)
 
   ERROR_IF_NOT_CONNECTED (obj, *error);
 
-  gabble_presence_cache_update (obj->presence_cache, obj->self_handle, priv->resource, GABBLE_PRESENCE_AVAILABLE, NULL, 0);
+  gabble_presence_cache_update (obj->presence_cache, obj->self_handle, priv->resource, GABBLE_PRESENCE_AVAILABLE, NULL, priv->priority);
   emit_one_presence_update (obj, obj->self_handle);
   return signal_own_presence (obj, error);
 }
@@ -3476,7 +3492,7 @@ gboolean gabble_connection_remove_status (GabbleConnection *obj, const gchar * s
 
   if (strcmp (status, gabble_statuses[presence->status].name) == 0)
     {
-      gabble_presence_cache_update (obj->presence_cache, obj->self_handle, priv->resource, GABBLE_PRESENCE_AVAILABLE, NULL, 0);
+      gabble_presence_cache_update (obj->presence_cache, obj->self_handle, priv->resource, GABBLE_PRESENCE_AVAILABLE, NULL, priv->priority);
       emit_one_presence_update (obj, obj->self_handle);
       return signal_own_presence (obj, error);
     }
@@ -4198,7 +4214,7 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
       GValue *message = g_hash_table_lookup (args, "message");
       GValue *priority = g_hash_table_lookup (args, "priority");
       const gchar *status = NULL;
-      gint8 prio = 0;
+      gint8 prio = priv->priority;
 
       if (!status_is_available (data->conn, i))
         {
@@ -4226,15 +4242,15 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
 
       if (priority)
         {
-          if (!G_VALUE_HOLDS_UINT (priority))
+          if (!G_VALUE_HOLDS_INT (priority))
             {
-              g_debug ("%s: got a priority value which was not an unsigned int", G_STRFUNC);
+              g_debug ("%s: got a priority value which was not a signed integer", G_STRFUNC);
               *(data->error) = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                                 "Status argument 'priority' requires an unsigned int");
+                                 "Status argument 'priority' requires a signed integer");
               data->retval = FALSE;
               return;
             }
-          prio = CLAMP (g_value_get_uint (priority), G_MININT8, G_MAXINT8);
+          prio = CLAMP (g_value_get_int (priority), G_MININT8, G_MAXINT8);
         }
 
       gabble_presence_cache_update (data->conn->presence_cache, data->conn->self_handle, priv->resource, i, status, prio);

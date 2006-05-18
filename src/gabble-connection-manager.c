@@ -142,6 +142,7 @@ struct _GabbleParams {
   gchar *password;
   gchar *server;
   gchar *resource;
+  gint priority;
   guint port;
   gboolean old_ssl;
   gboolean do_register;
@@ -169,6 +170,7 @@ enum {
     JABBER_PARAM_PASSWORD,
     JABBER_PARAM_SERVER,
     JABBER_PARAM_RESOURCE,
+    JABBER_PARAM_PRIORITY,
     JABBER_PARAM_PORT,
     JABBER_PARAM_OLD_SSL,
     JABBER_PARAM_REGISTER,
@@ -185,6 +187,7 @@ static const GabbleParamSpec jabber_params[] = {
   { "password", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, TRUE, NULL, G_STRUCT_OFFSET(GabbleParams, password) },
   { "server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, FALSE, NULL, G_STRUCT_OFFSET(GabbleParams, server) },
   { "resource", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, FALSE, GABBLE_PARAMS_DEFAULT_RESOURCE, G_STRUCT_OFFSET(GabbleParams, resource) },
+  { "priority", DBUS_TYPE_INT16_AS_STRING, G_TYPE_INT, FALSE, GINT_TO_POINTER(0), G_STRUCT_OFFSET(GabbleParams, priority) },
   { "port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT, FALSE, GINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_PORT), G_STRUCT_OFFSET(GabbleParams, port) },
   { "old-ssl", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN, FALSE, GINT_TO_POINTER(FALSE), G_STRUCT_OFFSET(GabbleParams, old_ssl) },
   { "register", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN, FALSE, GINT_TO_POINTER(FALSE), G_STRUCT_OFFSET(GabbleParams, do_register) },
@@ -515,6 +518,8 @@ gboolean gabble_connection_manager_connect (GabbleConnectionManager *obj, const 
                              params.server);
   SET_PROPERTY_IF_PARAM_SET ("resource", JABBER_PARAM_RESOURCE,
                              params.resource);
+  SET_PROPERTY_IF_PARAM_SET ("priority", JABBER_PARAM_PRIORITY,
+                             CLAMP (params.priority, G_MININT8, G_MAXINT8));
   SET_PROPERTY_IF_PARAM_SET ("port", JABBER_PARAM_PORT, params.port);
   SET_PROPERTY_IF_PARAM_SET ("old-ssl", JABBER_PARAM_OLD_SSL, params.old_ssl);
   SET_PROPERTY_IF_PARAM_SET ("register", JABBER_PARAM_REGISTER,

@@ -70,7 +70,7 @@ struct _GabbleIMChannelPrivate
   char *object_path;
   GabbleHandle handle;
 
-  guint recv_id;
+  gchar *peer_jid;
 
   gboolean closed;
   gboolean dispose_has_run;
@@ -99,6 +99,9 @@ gabble_im_channel_constructor (GType type, guint n_props,
 
   valid = gabble_handle_ref (priv->conn->handles, TP_HANDLE_TYPE_CONTACT, priv->handle);
   g_assert (valid);
+
+  priv->peer_jid = g_strdup (gabble_handle_inspect (priv->conn->handles,
+        TP_HANDLE_TYPE_CONTACT, priv->handle));
 
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
@@ -243,6 +246,7 @@ gabble_im_channel_finalize (GObject *object)
   gabble_handle_unref (priv->conn->handles, TP_HANDLE_TYPE_CONTACT, priv->handle);
 
   g_free (priv->object_path);
+  g_free (priv->peer_jid);
 
   gabble_text_mixin_finalize (object);
 
@@ -256,10 +260,21 @@ gabble_im_channel_finalize (GObject *object)
 gboolean _gabble_im_channel_receive (GabbleIMChannel *chan,
                                      TpChannelTextMessageType type,
                                      GabbleHandle sender,
+                                     const char *from,
                                      time_t timestamp,
                                      const char *text)
 {
+  GabbleIMChannelPrivate *priv;
+
   g_assert (GABBLE_IS_IM_CHANNEL (chan));
+  priv = GABBLE_IM_CHANNEL_GET_PRIVATE (chan);
+
+  /* update peer's full JID if it's changed */
+  if (0 != strcmp (from, priv->peer_jid))
+    {
+      g_free (priv->peer_jid);
+      priv->peer_jid = g_strdup (from);
+    }
 
   return gabble_text_mixin_receive (G_OBJECT (chan), type, sender, timestamp, text);
 }
@@ -416,14 +431,11 @@ gboolean gabble_im_channel_list_pending_messages (GabbleIMChannel *obj, GPtrArra
 gboolean gabble_im_channel_send (GabbleIMChannel *obj, guint type, const gchar * text, GError **error)
 {
   GabbleIMChannelPrivate *priv;
-  const char *recipient;
 
   g_assert (GABBLE_IS_IM_CHANNEL (obj));
   priv = GABBLE_IM_CHANNEL_GET_PRIVATE (obj);
 
-  recipient = gabble_handle_inspect (priv->conn->handles,
-      TP_HANDLE_TYPE_CONTACT, priv->handle);
-
-  return gabble_text_mixin_send (G_OBJECT (obj), type, 0, recipient, text, priv->conn, error);
+  return gabble_text_mixin_send (G_OBJECT (obj), type, 0, priv->peer_jid, text,
+      priv->conn, error);
 }
 

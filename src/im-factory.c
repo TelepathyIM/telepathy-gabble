@@ -238,7 +238,7 @@ im_factory_message_cb (LmMessageHandler *handler,
       chan = new_im_channel (fac, handle);
     }
 
-  if (_gabble_im_channel_receive (chan, msgtype, handle,
+  if (_gabble_im_channel_receive (chan, msgtype, handle, from,
                                   stamp, body_offset))
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 

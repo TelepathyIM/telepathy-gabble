@@ -8,6 +8,7 @@ param-account = s required register
 param-password = s required register
 param-server = s
 param-resource = s
+param-priority = n
 param-port = q
 param-old-ssl = b
 param-register = b

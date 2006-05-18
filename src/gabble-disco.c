@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "namespaces.h"
 #include "telepathy-helpers.h"
 
 #include "gabble-connection.h"
@@ -414,10 +415,10 @@ gabble_disco_request_with_timeout (GabbleDisco *self, GabbleDiscoType type,
 
   switch (type) {
     case GABBLE_DISCO_TYPE_INFO:
-      xmlns = "http://jabber.org/protocol/disco#info";
+      xmlns = NS_DISCO_INFO;
       break;
     case GABBLE_DISCO_TYPE_ITEMS:
-      xmlns = "http://jabber.org/protocol/disco#items";
+      xmlns = NS_DISCO_ITEMS;
       break;
     default:
       g_assert_not_reached ();

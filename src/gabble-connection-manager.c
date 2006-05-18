@@ -260,6 +260,9 @@ parameter_defaults (const GabbleParamSpec *params, GHashTable **ret)
           case DBUS_TYPE_STRING:
             g_value_set_static_string (value, (const gchar*) params[i].def);
             break;
+          case DBUS_TYPE_INT16:
+            g_value_set_int (value, GPOINTER_TO_INT (params[i].def));
+            break;
           case DBUS_TYPE_UINT16:
             g_value_set_uint (value, GPOINTER_TO_INT (params[i].def));
             break;
@@ -301,8 +304,11 @@ set_param_from_value (const GabbleParamSpec *paramspec,
       case DBUS_TYPE_STRING:
         *((char **) ((void *)params + paramspec->offset)) = g_value_dup_string (value);
         break;
+      case DBUS_TYPE_INT16:
+        *((gint *) ((void *)params + paramspec->offset)) = g_value_get_int (value);
+        break;
       case DBUS_TYPE_UINT16:
-        *((guint16 *) ((void *)params + paramspec->offset)) = g_value_get_uint (value);
+        *((guint *) ((void *)params + paramspec->offset)) = g_value_get_uint (value);
         break;
       case DBUS_TYPE_BOOLEAN:
         *((gboolean *) ((void *)params + paramspec->offset)) = g_value_get_boolean (value);

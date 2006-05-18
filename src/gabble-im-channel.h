@@ -61,7 +61,7 @@ GType gabble_im_channel_get_type(void);
 #define GABBLE_IM_CHANNEL_GET_CLASS(obj) \
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_IM_CHANNEL, GabbleIMChannelClass))
 
-gboolean _gabble_im_channel_receive (GabbleIMChannel *chan, TpChannelTextMessageType type, GabbleHandle sender, time_t timestamp, const char *text);
+gboolean _gabble_im_channel_receive (GabbleIMChannel *chan, TpChannelTextMessageType type, GabbleHandle sender, const char *from, time_t timestamp, const char *text);
 
 gboolean gabble_im_channel_acknowledge_pending_message (GabbleIMChannel *obj, guint id, GError **error);
 gboolean gabble_im_channel_close (GabbleIMChannel *obj, GError **error);

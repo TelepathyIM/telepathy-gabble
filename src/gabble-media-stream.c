@@ -809,7 +809,7 @@ push_candidate (GabbleMediaStream *stream, GValueArray *candidate)
   /* construct a session message */
   msg = _gabble_media_session_message_new (priv->session, "candidates",
     &session_node);
-  _add_rtp_candidate_node (priv->session, msg->node, candidate);
+  _add_rtp_candidate_node (priv->session, session_node, candidate);
 
   GMS_DEBUG_INFO (priv->session,
     "sending jingle session action \"candidate\" to peer");

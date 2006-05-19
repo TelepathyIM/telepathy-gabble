@@ -2221,19 +2221,46 @@ typedef struct _Feature Feature;
 
 struct _Feature
 {
-  const gchar *name;
+  const gchar *bundle;
   const gchar *ns;
 };
 
-static Feature features[] = {
-      { NULL,       "jabber:iq:register" },
-      { NULL,       "jabber:iq:roster" },
-      { "jingle",   NS_JINGLE },
-      { "jingle",   NS_JINGLE_AUDIO },
-      { "voice-v1", NS_GOOGLE_SESSION },
-      { "voice-v1", NS_GOOGLE_SESSION_PHONE },
-      { NULL, NULL },
-      };
+static Feature *
+feature_new (const gchar *bundle, const gchar *ns)
+{
+  Feature *feature;
+
+  feature = g_new0 (Feature, 1);
+  feature->bundle = bundle;
+  feature->ns = ns;
+  return feature;
+}
+
+static GSList *
+get_features ()
+{
+  static GSList *features = NULL;
+
+  if (NULL == features)
+    {
+      features = g_slist_append (features,
+        feature_new (NULL, "jabber:iq:roster"));
+      features = g_slist_append (features,
+        feature_new ("voice-v1", NS_GOOGLE_SESSION));
+      features = g_slist_append (features,
+        feature_new ("voice-v1", NS_GOOGLE_SESSION_PHONE));
+
+      if (g_getenv ("GABBLE_JINGLE"))
+        {
+          features = g_slist_append (features,
+            feature_new ("jingle", NS_JINGLE));
+          features = g_slist_append (features,
+            feature_new ("jingle", NS_JINGLE_AUDIO));
+        }
+    }
+
+  return features;
+}
 
 /**
  * connection_iq_disco_cb
@@ -2251,7 +2278,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   LmMessage *result;
   LmMessageNode *iq, *result_iq, *query, *result_query;
   const gchar *node, *suffix;
-  Feature *feature;
+  GSList *i;
 
   if (lm_message_get_sub_type (message) != LM_MESSAGE_SUB_TYPE_GET)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
@@ -2290,13 +2317,18 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   result_iq = lm_message_get_node (result);
   result_query = lm_message_node_get_child (result_iq, "query");
 
-  for (feature = features; NULL != feature->ns; feature++)
-    if (suffix == NULL ||
-        (feature->name != NULL && 0 == strcmp (suffix, feature->name)))
-      {
-        LmMessageNode *node = lm_message_node_add_child (result_query, "feature", NULL);
-        lm_message_node_set_attribute (node, "var", feature->ns);
-      }
+  for (i = get_features (); NULL != i; i = i->next)
+    {
+      Feature *feature = (Feature *) i->data;
+
+      if (suffix == NULL ||
+          (feature->bundle != NULL && 0 == strcmp (suffix, feature->bundle)))
+        {
+          LmMessageNode *node = lm_message_node_add_child (result_query,
+              "feature", NULL);
+          lm_message_node_set_attribute (node, "var", feature->ns);
+        }
+    }
 
   HANDLER_DEBUG (result_iq, "sending disco response");
 

@@ -57,6 +57,7 @@ gabble_presence_finalize (GObject *object)
     _resource_free (i->data);
 
   g_slist_free (priv->resources);
+  g_free (presence->nickname);
 }
 
 static void

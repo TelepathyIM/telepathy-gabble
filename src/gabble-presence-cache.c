@@ -35,7 +35,7 @@ struct _GabblePresenceCachePrivate
   GabbleConnection *conn;
 
   gulong status_changed_cb;
-  LmMessageHandler *presence_cb;
+  LmMessageHandler *lm_message_cb;
 
   GHashTable *presence;
 
@@ -117,10 +117,10 @@ gabble_presence_cache_constructor (GType type, guint n_props,
                                               G_CALLBACK (gabble_presence_cache_status_changed_cb),
                                               obj);
 
-  priv->presence_cb = lm_message_handler_new (gabble_presence_cache_presence_cb,
+  priv->lm_message_cb = lm_message_handler_new (gabble_presence_cache_presence_cb,
                                               obj, NULL);
   lm_connection_register_message_handler (priv->conn->lmconn,
-                                          priv->presence_cb,
+                                          priv->lm_message_cb,
                                           LM_MESSAGE_TYPE_PRESENCE,
                                           LM_HANDLER_PRIORITY_NORMAL);
 
@@ -140,7 +140,7 @@ gabble_presence_cache_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  g_assert (priv->presence_cb == NULL);
+  g_assert (priv->lm_message_cb == NULL);
 
   g_signal_handler_disconnect (priv->conn, priv->status_changed_cb);
 
@@ -266,13 +266,13 @@ gabble_presence_cache_status_changed_cb (GabbleConnection *conn,
       break;
     case TP_CONN_STATUS_DISCONNECTED:
       /* disconnect our handlers so they don't get created again */
-      if (priv->presence_cb)
+      if (priv->lm_message_cb)
         {
           lm_connection_unregister_message_handler (conn->lmconn,
-                                                    priv->presence_cb,
+                                                    priv->lm_message_cb,
                                                     LM_MESSAGE_TYPE_PRESENCE);
-          lm_message_handler_unref (priv->presence_cb);
-          priv->presence_cb = NULL;
+          lm_message_handler_unref (priv->lm_message_cb);
+          priv->lm_message_cb = NULL;
         }
       break;
     default:

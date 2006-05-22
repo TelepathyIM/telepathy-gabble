@@ -110,8 +110,6 @@ static const StatusInfo gabble_statuses[LAST_GABBLE_PRESENCE] = {
 /* signal enum */
 enum
 {
-    CAPABILITIES_CHANGED,
-    GOT_CONTACT_INFO,
     NEW_CHANNEL,
     PRESENCE_UPDATE,
     STATUS_CHANGED,
@@ -697,24 +695,6 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
                                    param_spec);
 
   /* signal definitions */
-
-  signals[CAPABILITIES_CHANGED] =
-    g_signal_new ("capabilities-changed",
-                  G_OBJECT_CLASS_TYPE (gabble_connection_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  gabble_connection_marshal_VOID__INT_BOXED_BOXED,
-                  G_TYPE_NONE, 3, G_TYPE_UINT, (dbus_g_type_get_collection ("GPtrArray", G_TYPE_VALUE_ARRAY)), (dbus_g_type_get_collection ("GPtrArray", G_TYPE_VALUE_ARRAY)));
-
-  signals[GOT_CONTACT_INFO] =
-    g_signal_new ("got-contact-info",
-                  G_OBJECT_CLASS_TYPE (gabble_connection_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  gabble_connection_marshal_VOID__INT_STRING,
-                  G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_STRING);
 
   signals[NEW_CHANNEL] =
     g_signal_new ("new-channel",
@@ -2946,6 +2926,7 @@ gboolean gabble_connection_add_status (GabbleConnection *obj, const gchar * stat
 }
 
 
+#if 0
 /**
  * gabble_connection_advertise_capabilities
  *
@@ -2969,6 +2950,7 @@ gboolean gabble_connection_advertise_capabilities (GabbleConnection *obj, const 
 
   return TRUE;
 }
+#endif
 
 
 /**
@@ -3026,6 +3008,7 @@ gboolean gabble_connection_disconnect (GabbleConnection *obj, GError **error)
 }
 
 
+#if 0
 /**
  * gabble_connection_get_capabilities
  *
@@ -3070,6 +3053,7 @@ gboolean gabble_connection_get_capabilities (GabbleConnection *obj, guint handle
 
   return TRUE;
 }
+#endif
 
 
 /**
@@ -3764,6 +3748,7 @@ OUT:
 }
 
 
+#if 0
 static LmHandlerResult
 contact_info_got_vcard (GabbleConnection *conn, LmMessage *sent_msg,
                         LmMessage *reply_msg, GObject *object,
@@ -3862,6 +3847,8 @@ gboolean gabble_connection_request_contact_info (GabbleConnection *obj, guint co
       return TRUE;
     }
 }
+#endif
+
 
 typedef struct {
     GabbleConnection *conn;

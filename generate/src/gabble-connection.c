@@ -32,8 +32,6 @@ G_DEFINE_TYPE(GabbleConnection, gabble_connection, G_TYPE_OBJECT)
 /* signal enum */
 enum
 {
-    CAPABILITIES_CHANGED,
-    GOT_CONTACT_INFO,
     NEW_CHANNEL,
     PRESENCE_UPDATE,
     STATUS_CHANGED,
@@ -72,24 +70,6 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
 
   object_class->dispose = gabble_connection_dispose;
   object_class->finalize = gabble_connection_finalize;
-
-  signals[CAPABILITIES_CHANGED] =
-    g_signal_new ("capabilities-changed",
-                  G_OBJECT_CLASS_TYPE (gabble_connection_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  gabble_connection_marshal_VOID__INT_BOXED_BOXED,
-                  G_TYPE_NONE, 3, G_TYPE_UINT, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_STRING, G_TYPE_UINT, G_TYPE_INVALID)))), (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_STRING, G_TYPE_UINT, G_TYPE_INVALID)))));
-
-  signals[GOT_CONTACT_INFO] =
-    g_signal_new ("got-contact-info",
-                  G_OBJECT_CLASS_TYPE (gabble_connection_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  gabble_connection_marshal_VOID__INT_STRING,
-                  G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_STRING);
 
   signals[NEW_CHANNEL] =
     g_signal_new ("new-channel",
@@ -170,24 +150,6 @@ gboolean gabble_connection_add_status (GabbleConnection *obj, const gchar * stat
 
 
 /**
- * gabble_connection_advertise_capabilities
- *
- * Implements DBus method AdvertiseCapabilities
- * on interface org.freedesktop.Telepathy.Connection.Interface.Capabilities
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean gabble_connection_advertise_capabilities (GabbleConnection *obj, const gchar ** add, const gchar ** remove, GError **error)
-{
-  return TRUE;
-}
-
-
-/**
  * gabble_connection_clear_status
  *
  * Implements DBus method ClearStatus
@@ -218,24 +180,6 @@ gboolean gabble_connection_clear_status (GabbleConnection *obj, GError **error)
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 gboolean gabble_connection_disconnect (GabbleConnection *obj, GError **error)
-{
-  return TRUE;
-}
-
-
-/**
- * gabble_connection_get_capabilities
- *
- * Implements DBus method GetCapabilities
- * on interface org.freedesktop.Telepathy.Connection.Interface.Capabilities
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean gabble_connection_get_capabilities (GabbleConnection *obj, guint handle, GPtrArray ** ret, GError **error)
 {
   return TRUE;
 }
@@ -425,24 +369,6 @@ gboolean gabble_connection_remove_status (GabbleConnection *obj, const gchar * s
  *           or throw an error.
  */
 gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar * type, guint handle_type, guint handle, gboolean suppress_handler, DBusGMethodInvocation *context)
-{
-  return TRUE;
-}
-
-
-/**
- * gabble_connection_request_contact_info
- *
- * Implements DBus method RequestContactInfo
- * on interface org.freedesktop.Telepathy.Connection.Interface.ContactInfo
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean gabble_connection_request_contact_info (GabbleConnection *obj, guint contact, GError **error)
 {
   return TRUE;
 }

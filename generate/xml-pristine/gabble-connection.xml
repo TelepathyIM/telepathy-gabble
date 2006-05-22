@@ -54,30 +54,6 @@
       <arg name="reason" type="u"/>
     </signal>
   </interface>
-  <interface name="org.freedesktop.Telepathy.Connection.Interface.Capabilities">
-    <method name="AdvertiseCapabilities">
-      <arg direction="in" name="add" type="as"/>
-      <arg direction="in" name="remove" type="as"/>
-    </method>
-    <signal name="CapabilitiesChanged">
-      <arg name="handle" type="u"/>
-      <arg name="added" type="a(su)"/>
-      <arg name="removed" type="a(su)"/>
-    </signal>
-    <method name="GetCapabilities">
-      <arg direction="in" name="handle" type="u"/>
-      <arg direction="out" type="a(su)"/>
-    </method>
-  </interface>
-  <interface name="org.freedesktop.Telepathy.Connection.Interface.ContactInfo">
-    <signal name="GotContactInfo">
-      <arg name="contact" type="u"/>
-      <arg name="vcard" type="s"/>
-    </signal>
-    <method name="RequestContactInfo">
-      <arg direction="in" name="contact" type="u"/>
-    </method>
-  </interface>
   <interface name="org.freedesktop.Telepathy.Connection.Interface.Presence">
     <method name="AddStatus">
       <arg direction="in" name="status" type="s"/>

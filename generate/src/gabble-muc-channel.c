@@ -34,11 +34,13 @@ enum
 {
     CLOSED,
     GROUP_FLAGS_CHANGED,
+    LOST_MESSAGE,
     MEMBERS_CHANGED,
     PASSWORD_FLAGS_CHANGED,
     PROPERTIES_CHANGED,
     PROPERTY_FLAGS_CHANGED,
     RECEIVED,
+    SEND_ERROR,
     SENT,
     LAST_SIGNAL
 };
@@ -94,6 +96,15 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   gabble_muc_channel_marshal_VOID__INT_INT,
                   G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_UINT);
 
+  signals[LOST_MESSAGE] =
+    g_signal_new ("lost-message",
+                  G_OBJECT_CLASS_TYPE (gabble_muc_channel_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_muc_channel_marshal_VOID__VOID,
+                  G_TYPE_NONE, 0);
+
   signals[MEMBERS_CHANGED] =
     g_signal_new ("members-changed",
                   G_OBJECT_CLASS_TYPE (gabble_muc_channel_class),
@@ -138,6 +149,15 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   NULL, NULL,
                   gabble_muc_channel_marshal_VOID__INT_INT_INT_INT_STRING,
                   G_TYPE_NONE, 5, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING);
+
+  signals[SEND_ERROR] =
+    g_signal_new ("send-error",
+                  G_OBJECT_CLASS_TYPE (gabble_muc_channel_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_muc_channel_marshal_VOID__INT_INT_INT_STRING,
+                  G_TYPE_NONE, 4, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING);
 
   signals[SENT] =
     g_signal_new ("sent",

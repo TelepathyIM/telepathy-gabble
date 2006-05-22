@@ -43,8 +43,6 @@ G_DEFINE_TYPE_WITH_CODE (GabbleIMChannel, gabble_im_channel, G_TYPE_OBJECT,
 enum
 {
     CLOSED,
-    RECEIVED,
-    SENT,
     LAST_SIGNAL
 };
 

@@ -33,7 +33,9 @@ G_DEFINE_TYPE(GabbleIMChannel, gabble_im_channel, G_TYPE_OBJECT)
 enum
 {
     CLOSED,
+    LOST_MESSAGE,
     RECEIVED,
+    SEND_ERROR,
     SENT,
     LAST_SIGNAL
 };
@@ -80,6 +82,15 @@ gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
                   gabble_im_channel_marshal_VOID__VOID,
                   G_TYPE_NONE, 0);
 
+  signals[LOST_MESSAGE] =
+    g_signal_new ("lost-message",
+                  G_OBJECT_CLASS_TYPE (gabble_im_channel_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_im_channel_marshal_VOID__VOID,
+                  G_TYPE_NONE, 0);
+
   signals[RECEIVED] =
     g_signal_new ("received",
                   G_OBJECT_CLASS_TYPE (gabble_im_channel_class),
@@ -88,6 +99,15 @@ gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
                   NULL, NULL,
                   gabble_im_channel_marshal_VOID__INT_INT_INT_INT_STRING,
                   G_TYPE_NONE, 5, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING);
+
+  signals[SEND_ERROR] =
+    g_signal_new ("send-error",
+                  G_OBJECT_CLASS_TYPE (gabble_im_channel_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_im_channel_marshal_VOID__INT_INT_INT_STRING,
+                  G_TYPE_NONE, 4, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING);
 
   signals[SENT] =
     g_signal_new ("sent",

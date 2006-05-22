@@ -166,6 +166,14 @@ gabble_text_mixin_class_init (GObjectClass *obj_cls, glong offset)
 
   mixin_cls = GABBLE_TEXT_MIXIN_CLASS (obj_cls);
 
+  mixin_cls->lost_message_signal_id = g_signal_new ("lost-message",
+                G_OBJECT_CLASS_TYPE (obj_cls),
+                G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                0,
+                NULL, NULL,
+                text_mixin_marshal_VOID__VOID,
+                G_TYPE_NONE, 0);
+
   mixin_cls->received_signal_id = g_signal_new ("received",
                 G_OBJECT_CLASS_TYPE (obj_cls),
                 G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
@@ -174,6 +182,14 @@ gabble_text_mixin_class_init (GObjectClass *obj_cls, glong offset)
                 text_mixin_marshal_VOID__INT_INT_INT_INT_STRING,
                 G_TYPE_NONE, 5, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING);
 
+  mixin_cls->send_error_signal_id = g_signal_new ("send-error",
+                G_OBJECT_CLASS_TYPE (obj_cls),
+                G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                0,
+                NULL, NULL,
+                text_mixin_marshal_VOID__INT_INT_INT_STRING,
+                G_TYPE_NONE, 4, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING);
+
   mixin_cls->sent_signal_id = g_signal_new ("sent",
                 G_OBJECT_CLASS_TYPE (obj_cls),
                 G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
@@ -181,16 +197,6 @@ gabble_text_mixin_class_init (GObjectClass *obj_cls, glong offset)
                 NULL, NULL,
                 text_mixin_marshal_VOID__INT_INT_STRING,
                 G_TYPE_NONE, 3, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING);
-
-  /*
-  mixin_cls->lost_message_signal_id = g_signal_new ("lost-message",
-                G_OBJECT_CLASS_TYPE (obj_cls),
-                G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                0,
-                NULL, NULL,
-                text_mixin_marshal_VOID__INT_INT_INT_INT_STRING,
-                G_TYPE_NONE, 5, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING); */
-
 }
 
 void gabble_text_mixin_init (GObject *obj,

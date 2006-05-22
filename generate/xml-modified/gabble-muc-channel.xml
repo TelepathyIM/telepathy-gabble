@@ -1,112 +1,117 @@
-<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<?xml version="1.0" ?>
 <node name="/GabbleMucChannel">
-  <interface name="org.freedesktop.Telepathy.Channel.Interface.Password">
-    <signal name="PasswordFlagsChanged">
-      <arg type="u" name="added" />
-      <arg type="u" name="removed" />
-    </signal>
-    <method name="GetPasswordFlags">
-      <arg direction="out" type="u" />
-    </method>
-    <method name="ProvidePassword">
-      <annotation name="org.freedesktop.DBus.GLib.Async" value=""/>
-      <arg direction="in"  type="s" name="password" />
-      <arg direction="out" type="b" />
-    </method>
-  </interface>
   <interface name="org.freedesktop.Telepathy.Channel">
+    <method name="Close"/>
+    <signal name="Closed"/>
+    <method name="GetChannelType">
+      <arg direction="out" type="s"/>
+    </method>
     <method name="GetHandle">
-      <arg direction="out" type="u" />
-      <arg direction="out" type="u" />
+      <arg direction="out" type="u"/>
+      <arg direction="out" type="u"/>
     </method>
     <method name="GetInterfaces">
-      <arg direction="out" type="as" />
-    </method>
-    <method name="GetChannelType">
-      <arg direction="out" type="s" />
-    </method>
-    <signal name="Closed">
-    </signal>
-    <method name="Close">
+      <arg direction="out" type="as"/>
     </method>
   </interface>
   <interface name="org.freedesktop.Telepathy.Channel.Interface.Group">
-    <method name="RemoveMembers">
-      <arg direction="in"  type="au" name="contacts" />
-      <arg direction="in"  type="s" name="message" />
-    </method>
-    <signal name="MembersChanged">
-      <arg type="s" name="message" />
-      <arg type="au" name="added" />
-      <arg type="au" name="removed" />
-      <arg type="au" name="local_pending" />
-      <arg type="au" name="remote_pending" />
-    </signal>
-    <method name="GetGroupFlags">
-      <arg direction="out" type="u" />
-    </method>
-    <method name="GetSelfHandle">
-      <arg direction="out" type="u" />
-    </method>
-    <method name="GetMembers">
-      <arg direction="out" type="au" />
-    </method>
     <method name="AddMembers">
-      <arg direction="in"  type="au" name="contacts" />
-      <arg direction="in"  type="s" name="message" />
+      <arg direction="in" name="contacts" type="au"/>
+      <arg direction="in" name="message" type="s"/>
     </method>
-    <signal name="GroupFlagsChanged">
-      <arg type="u" name="added" />
-      <arg type="u" name="removed" />
-    </signal>
-    <method name="GetRemotePendingMembers">
-      <arg direction="out" type="au" />
+    <method name="GetGroupFlags">
+      <arg direction="out" type="u"/>
     </method>
     <method name="GetLocalPendingMembers">
-      <arg direction="out" type="au" />
+      <arg direction="out" type="au"/>
+    </method>
+    <method name="GetMembers">
+      <arg direction="out" type="au"/>
+    </method>
+    <method name="GetRemotePendingMembers">
+      <arg direction="out" type="au"/>
+    </method>
+    <method name="GetSelfHandle">
+      <arg direction="out" type="u"/>
+    </method>
+    <signal name="GroupFlagsChanged">
+      <arg name="added" type="u"/>
+      <arg name="removed" type="u"/>
+    </signal>
+    <signal name="MembersChanged">
+      <arg name="message" type="s"/>
+      <arg name="added" type="au"/>
+      <arg name="removed" type="au"/>
+      <arg name="local_pending" type="au"/>
+      <arg name="remote_pending" type="au"/>
+    </signal>
+    <method name="RemoveMembers">
+      <arg direction="in" name="contacts" type="au"/>
+      <arg direction="in" name="message" type="s"/>
     </method>
   </interface>
-  <interface name="org.freedesktop.Telepathy.Properties">
-    <signal name="PropertiesChanged">
-      <arg type="a(uv)" name="properties" />
-    </signal>
-    <method name="ListProperties">
-      <arg direction="out" type="a(ussu)" />
+  <interface name="org.freedesktop.Telepathy.Channel.Interface.Password">
+    <method name="GetPasswordFlags">
+      <arg direction="out" type="u"/>
     </method>
-    <signal name="PropertyFlagsChanged">
-      <arg type="a(uu)" name="properties" />
+    <signal name="PasswordFlagsChanged">
+      <arg name="added" type="u"/>
+      <arg name="removed" type="u"/>
     </signal>
-    <method name="SetProperties">
+    <method name="ProvidePassword">
       <annotation name="org.freedesktop.DBus.GLib.Async" value=""/>
-      <arg direction="in"  type="a(uv)" name="properties" />
-    </method>
-    <method name="GetProperties">
-      <arg direction="in"  type="au" name="properties" />
-      <arg direction="out" type="a(uv)" />
+      <arg direction="in" name="password" type="s"/>
+      <arg direction="out" type="b"/>
     </method>
   </interface>
   <interface name="org.freedesktop.Telepathy.Channel.Type.Text">
-    <signal name="Received">
-      <arg type="u" name="id" />
-      <arg type="u" name="timestamp" />
-      <arg type="u" name="sender" />
-      <arg type="u" name="type" />
-      <arg type="s" name="text" />
-    </signal>
-    <method name="ListPendingMessages">
-      <arg direction="out" type="a(uuuus)" />
-    </method>
     <method name="AcknowledgePendingMessage">
-      <arg direction="in"  type="u" name="id" />
+      <arg direction="in" name="id" type="u"/>
     </method>
-    <method name="Send">
-      <arg direction="in"  type="u" name="type" />
-      <arg direction="in"  type="s" name="text" />
+    <method name="ListPendingMessages">
+      <arg direction="out" type="a(uuuus)"/>
     </method>
-    <signal name="Sent">
-      <arg type="u" name="timestamp" />
-      <arg type="u" name="type" />
-      <arg type="s" name="text" />
+    <signal name="LostMessage"/>
+    <signal name="Received">
+      <arg name="id" type="u"/>
+      <arg name="timestamp" type="u"/>
+      <arg name="sender" type="u"/>
+      <arg name="type" type="u"/>
+      <arg name="text" type="s"/>
     </signal>
+    <method name="Send">
+      <arg direction="in" name="type" type="u"/>
+      <arg direction="in" name="text" type="s"/>
+    </method>
+    <signal name="SendError">
+      <arg name="error" type="u"/>
+      <arg name="timestamp" type="u"/>
+      <arg name="type" type="u"/>
+      <arg name="text" type="s"/>
+    </signal>
+    <signal name="Sent">
+      <arg name="timestamp" type="u"/>
+      <arg name="type" type="u"/>
+      <arg name="text" type="s"/>
+    </signal>
+  </interface>
+  <interface name="org.freedesktop.Telepathy.Properties">
+    <method name="GetProperties">
+      <arg direction="in" name="properties" type="au"/>
+      <arg direction="out" type="a(uv)"/>
+    </method>
+    <method name="ListProperties">
+      <arg direction="out" type="a(ussu)"/>
+    </method>
+    <signal name="PropertiesChanged">
+      <arg name="properties" type="a(uv)"/>
+    </signal>
+    <signal name="PropertyFlagsChanged">
+      <arg name="properties" type="a(uu)"/>
+    </signal>
+    <method name="SetProperties">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value=""/>
+      <arg direction="in" name="properties" type="a(uv)"/>
+    </method>
   </interface>
 </node>

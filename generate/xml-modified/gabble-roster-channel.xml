@@ -1,55 +1,53 @@
-<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<?xml version="1.0" ?>
 <node name="/GabbleRosterChannel">
-  <interface name="org.freedesktop.Telepathy.Channel.Interface.Group">
-    <method name="RemoveMembers">
-      <arg direction="in"  type="au" name="contacts" />
-      <arg direction="in"  type="s" name="message" />
-    </method>
-    <signal name="MembersChanged">
-      <arg type="s" name="message" />
-      <arg type="au" name="added" />
-      <arg type="au" name="removed" />
-      <arg type="au" name="local_pending" />
-      <arg type="au" name="remote_pending" />
-    </signal>
-    <method name="GetGroupFlags">
-      <arg direction="out" type="u" />
-    </method>
-    <method name="GetSelfHandle">
-      <arg direction="out" type="u" />
-    </method>
-    <method name="GetMembers">
-      <arg direction="out" type="au" />
-    </method>
-    <method name="AddMembers">
-      <arg direction="in"  type="au" name="contacts" />
-      <arg direction="in"  type="s" name="message" />
-    </method>
-    <signal name="GroupFlagsChanged">
-      <arg type="u" name="added" />
-      <arg type="u" name="removed" />
-    </signal>
-    <method name="GetRemotePendingMembers">
-      <arg direction="out" type="au" />
-    </method>
-    <method name="GetLocalPendingMembers">
-      <arg direction="out" type="au" />
-    </method>
-  </interface>
   <interface name="org.freedesktop.Telepathy.Channel">
+    <method name="Close"/>
+    <signal name="Closed"/>
+    <method name="GetChannelType">
+      <arg direction="out" type="s"/>
+    </method>
     <method name="GetHandle">
-      <arg direction="out" type="u" />
-      <arg direction="out" type="u" />
+      <arg direction="out" type="u"/>
+      <arg direction="out" type="u"/>
     </method>
     <method name="GetInterfaces">
-      <arg direction="out" type="as" />
+      <arg direction="out" type="as"/>
     </method>
-    <method name="GetChannelType">
-      <arg direction="out" type="s" />
+  </interface>
+  <interface name="org.freedesktop.Telepathy.Channel.Interface.Group">
+    <method name="AddMembers">
+      <arg direction="in" name="contacts" type="au"/>
+      <arg direction="in" name="message" type="s"/>
     </method>
-    <signal name="Closed">
+    <method name="GetGroupFlags">
+      <arg direction="out" type="u"/>
+    </method>
+    <method name="GetLocalPendingMembers">
+      <arg direction="out" type="au"/>
+    </method>
+    <method name="GetMembers">
+      <arg direction="out" type="au"/>
+    </method>
+    <method name="GetRemotePendingMembers">
+      <arg direction="out" type="au"/>
+    </method>
+    <method name="GetSelfHandle">
+      <arg direction="out" type="u"/>
+    </method>
+    <signal name="GroupFlagsChanged">
+      <arg name="added" type="u"/>
+      <arg name="removed" type="u"/>
     </signal>
-    <method name="Close">
+    <signal name="MembersChanged">
+      <arg name="message" type="s"/>
+      <arg name="added" type="au"/>
+      <arg name="removed" type="au"/>
+      <arg name="local_pending" type="au"/>
+      <arg name="remote_pending" type="au"/>
+    </signal>
+    <method name="RemoveMembers">
+      <arg direction="in" name="contacts" type="au"/>
+      <arg direction="in" name="message" type="s"/>
     </method>
   </interface>
 </node>

@@ -153,6 +153,36 @@ enum
     LAST_PROPERTY
 };
 
+/* TP properties */
+enum
+{
+  CONN_PROP_STUN_SERVER = 0,
+  CONN_PROP_STUN_PORT,
+  CONN_PROP_STUN_RELAY_MAGIC_COOKIE,
+  CONN_PROP_STUN_RELAY_SERVER,
+  CONN_PROP_STUN_RELAY_UDP_PORT,
+  CONN_PROP_STUN_RELAY_TCP_PORT,
+  CONN_PROP_STUN_RELAY_SSLTCP_PORT,
+  CONN_PROP_STUN_RELAY_USERNAME,
+  CONN_PROP_STUN_RELAY_PASSWORD,
+
+  NUM_CONN_PROPS,
+
+  INVALID_CONN_PROP,
+};
+
+const GabblePropertySignature connection_property_signatures[NUM_CONN_PROPS] = {
+      { "stun-server",                  G_TYPE_STRING },
+      { "stun-port",                    G_TYPE_UINT   },
+      { "stun-relay-magic-cookie",      G_TYPE_STRING },
+      { "stun-relay-server",            G_TYPE_STRING },
+      { "stun-relay-udp-port",          G_TYPE_UINT   },
+      { "stun-relay-tcp-port",          G_TYPE_UINT   },
+      { "stun-relay-ssltcp-port",       G_TYPE_UINT   },
+      { "stun-relay-username",          G_TYPE_STRING },
+      { "stun-relay-password",          G_TYPE_STRING },
+};
+
 /* private structure */
 typedef struct _GabbleConnectionPrivate GabbleConnectionPrivate;
 
@@ -182,6 +212,8 @@ struct _GabbleConnectionPrivate
 
   gchar *fallback_conference_server;
 
+  /*
+   * FIXME: remove these when stored in properties mixin
   gchar *stun_server;
   guint stun_port;
   gchar *stun_relay_magic_cookie;
@@ -191,6 +223,7 @@ struct _GabbleConnectionPrivate
   guint stun_relay_ssltcp_port;
   gchar *stun_relay_username;
   gchar *stun_relay_password;
+  */
 
   /* authentication properties */
   gchar *stream_server;
@@ -295,7 +328,6 @@ gabble_connection_init (GabbleConnection *obj)
   priv->resource = g_strdup (GABBLE_PARAMS_DEFAULT_RESOURCE);
   priv->port = GABBLE_PARAMS_DEFAULT_PORT;
   priv->https_proxy_port = GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_PORT;
-  priv->stun_port = GABBLE_PARAMS_DEFAULT_STUN_PORT;
 }
 
 static void
@@ -306,6 +338,8 @@ gabble_connection_get_property (GObject    *object,
 {
   GabbleConnection *self = (GabbleConnection *) object;
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
+  const gchar *param_name;
+  guint tp_property_id;
 
   switch (property_id) {
     case PROP_PROTOCOL:
@@ -350,6 +384,7 @@ gabble_connection_get_property (GObject    *object,
     case PROP_FALLBACK_CONFERENCE_SERVER:
       g_value_set_string (value, priv->fallback_conference_server);
       break;
+/* FIXME: remove these
     case PROP_STUN_SERVER:
       g_value_set_string (value, priv->stun_server);
       break;
@@ -377,10 +412,22 @@ gabble_connection_get_property (GObject    *object,
     case PROP_STUN_RELAY_PASSWORD:
       g_value_set_string (value, priv->stun_relay_password);
       break;
-    case PROP_IGNORE_SSL_ERRORS:
-      g_value_set_boolean (value, priv->ignore_ssl_errors);
-      break;
     default:
+      param_name = g_param_spec_get_name (pspec);
+
+      if (gabble_properties_mixin_has_property (object, param_name,
+            &tp_property_id))
+        {
+          GValue *tp_property_value =
+            self->properties.properties[tp_property_id].value;
+
+          if (tp_property_value)
+            {
+              g_value_copy (tp_property_value, value);
+              return;
+            }
+        }
+
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
   }
@@ -394,6 +441,8 @@ gabble_connection_set_property (GObject      *object,
 {
   GabbleConnection *self = (GabbleConnection *) object;
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
+  const gchar *param_name;
+  guint tp_property_id;
 
   switch (property_id) {
     case PROP_PROTOCOL:
@@ -446,6 +495,7 @@ gabble_connection_set_property (GObject      *object,
       g_free (priv->fallback_conference_server);
       priv->fallback_conference_server = g_value_dup_string (value);
       break;
+/* FIXME: remove these
     case PROP_STUN_SERVER:
       g_free (priv->stun_server);
       priv->stun_server = g_value_dup_string (value);
@@ -478,10 +528,21 @@ gabble_connection_set_property (GObject      *object,
       g_free (priv->stun_relay_password);
       priv->stun_relay_password = g_value_dup_string (value);
       break;
-    case PROP_IGNORE_SSL_ERRORS:
-      priv->ignore_ssl_errors = g_value_get_boolean (value);
-      break;
     default:
+      param_name = g_param_spec_get_name (pspec);
+
+      if (gabble_properties_mixin_has_property (object, param_name,
+            &tp_property_id))
+        {
+          gabble_properties_mixin_change_value (object, tp_property_id, value,
+                                                NULL);
+          gabble_properties_mixin_change_flags (object, tp_property_id,
+                                                TP_PROPERTY_FLAG_WRITE,
+                                                0, NULL);
+
+          return;
+        }
+
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
   }
@@ -770,7 +831,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
                   G_TYPE_NONE, 0);
 
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_connection_class), &dbus_glib_gabble_connection_object_info);
-}
+
 
 void
 gabble_connection_dispose (GObject *object)
@@ -887,11 +948,13 @@ gabble_connection_finalize (GObject *object)
 
   g_free (priv->https_proxy_server);
   g_free (priv->fallback_conference_server);
+/* FIXME: remove these
   g_free (priv->stun_server);
   g_free (priv->stun_relay_magic_cookie);
   g_free (priv->stun_relay_server);
   g_free (priv->stun_relay_username);
   g_free (priv->stun_relay_password);
+*/
 
   g_list_free (priv->conference_servers);
 
@@ -900,6 +963,8 @@ gabble_connection_finalize (GObject *object)
   g_datalist_clear (&priv->client_list_handle_sets);
 
   gabble_handle_repo_destroy (self->handles);
+
+  gabble_properties_mixin_finalize (object);
 
   G_OBJECT_CLASS (gabble_connection_parent_class)->finalize (object);
 

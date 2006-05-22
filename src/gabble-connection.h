@@ -25,6 +25,7 @@
 #include <glib-object.h>
 #include <loudmouth/loudmouth.h>
 
+#include "gabble-properties-mixin.h"
 #include "gabble-types.h"
 #include "gabble-error.h"
 #include "telepathy-constants.h"
@@ -70,10 +71,14 @@ typedef LmHandlerResult (*GabbleConnectionMsgReplyFunc) (GabbleConnection *conn,
 
 struct _GabbleConnectionClass {
     GObjectClass parent_class;
+
+    GabblePropertiesMixinClass properties_class;
 };
 
 struct _GabbleConnection {
     GObject parent;
+
+    GabblePropertiesMixin properties;
 
     /* dbus object location */
     gchar *bus_name;

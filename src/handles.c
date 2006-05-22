@@ -418,62 +418,80 @@ gabble_handle_inspect (GabbleHandleRepo *repo,
     return g_quark_to_string (handle);
 }
 
+static GabbleHandle
+_handle_lookup_by_jid (GabbleHandleRepo *repo,
+                       const gchar *jid)
+{
+  GabbleHandle handle;
+  GabbleHandlePriv *priv;
+
+  handle = g_quark_try_string (jid);
+
+  if (0 == handle)
+    return 0;
+
+  priv = handle_priv_lookup (repo, TP_HANDLE_TYPE_CONTACT, handle);
+
+  if (NULL == priv)
+    return 0;
+
+  return handle;
+}
+
 GabbleHandle
 gabble_handle_for_contact (GabbleHandleRepo *repo,
                            const char *jid,
                            gboolean with_resource)
 {
-  char *username, *server, *resource, *clean_jid;
-  GabbleHandle handle;
+  char *username = NULL;
+  char *server = NULL;
+  char *resource = NULL;
+  char *clean_jid = NULL;
+  GabbleHandle handle = 0;
+  GabbleHandlePriv *priv;
 
   g_assert (repo != NULL);
   g_assert (jid != NULL);
   g_assert (*jid != '\0');
 
-  username = server = resource = NULL;
-  gabble_handle_decode_jid (jid, &username, &server,
-                            with_resource ? &resource
-                                          : NULL);
+  gabble_handle_decode_jid (jid, &username, &server, &resource);
 
-  if (username == NULL || *username == '\0')
-    {
-      return 0;
-    }
+  if (NULL == username || '\0' == *username)
+    goto OUT;
 
-  if (with_resource && resource != NULL)
+  if (NULL == resource && with_resource)
+    goto OUT;
+
+  if (NULL != resource)
     {
       clean_jid = g_strdup_printf ("%s@%s/%s", username, server, resource);
-    }
-  else
-    {
-      clean_jid = g_strdup_printf ("%s@%s", username, server);
+      handle = _handle_lookup_by_jid (repo, clean_jid);
+
+      if (0 != handle)
+        goto OUT;
     }
 
+  if (!with_resource)
+    {
+      g_free (clean_jid);
+      clean_jid = g_strdup_printf ("%s@%s", username, server);
+      handle = _handle_lookup_by_jid (repo, clean_jid);
+
+      if (0 != handle)
+        goto OUT;
+    }
+
+  /* pretend this string is static and just don't free it instead */
+  handle = g_quark_from_static_string (clean_jid);
+  clean_jid = NULL;
+  priv = handle_priv_new ();
+  g_hash_table_insert (repo->contact_handles, GINT_TO_POINTER (handle), priv);
+
+OUT:
+  g_free (clean_jid);
   g_free (username);
   g_free (server);
   g_free (resource);
-
-  handle = g_quark_try_string (clean_jid);
-
-  if (handle == 0)
-    {
-      /* pretend this string is static and just don't free it instead */
-      handle = g_quark_from_static_string (clean_jid);
-    }
-  else
-    {
-      g_free (clean_jid);
-    }
-
-  /* existence of the quark cannot be presumed to mean the handle exists
-   * in this repository, because of multiple connections */
-  if (!handle_priv_lookup (repo, TP_HANDLE_TYPE_CONTACT, handle))
-    {
-      GabbleHandlePriv *priv;
-      priv = handle_priv_new ();
-      g_hash_table_insert (repo->contact_handles, GINT_TO_POINTER (handle), priv);
-    }
-
   return handle;
 }
 

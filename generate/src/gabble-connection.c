@@ -32,6 +32,7 @@ G_DEFINE_TYPE(GabbleConnection, gabble_connection, G_TYPE_OBJECT)
 /* signal enum */
 enum
 {
+    ALIASES_CHANGED,
     NEW_CHANNEL,
     PRESENCE_UPDATE,
     STATUS_CHANGED,
@@ -70,6 +71,15 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
 
   object_class->dispose = gabble_connection_dispose;
   object_class->finalize = gabble_connection_finalize;
+
+  signals[ALIASES_CHANGED] =
+    g_signal_new ("aliases-changed",
+                  G_OBJECT_CLASS_TYPE (gabble_connection_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_connection_marshal_VOID__BOXED,
+                  G_TYPE_NONE, 1, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_UINT, G_TYPE_STRING, G_TYPE_INVALID)))));
 
   signals[NEW_CHANNEL] =
     g_signal_new ("new-channel",
@@ -180,6 +190,24 @@ gboolean gabble_connection_clear_status (GabbleConnection *obj, GError **error)
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 gboolean gabble_connection_disconnect (GabbleConnection *obj, GError **error)
+{
+  return TRUE;
+}
+
+
+/**
+ * gabble_connection_get_alias_flags
+ *
+ * Implements DBus method GetAliasFlags
+ * on interface org.freedesktop.Telepathy.Connection.Interface.Aliasing
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_connection_get_alias_flags (GabbleConnection *obj, guint* ret, GError **error)
 {
   return TRUE;
 }
@@ -360,6 +388,24 @@ gboolean gabble_connection_remove_status (GabbleConnection *obj, const gchar * s
 
 
 /**
+ * gabble_connection_request_aliases
+ *
+ * Implements DBus method RequestAliases
+ * on interface org.freedesktop.Telepathy.Connection.Interface.Aliasing
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_connection_request_aliases (GabbleConnection *obj, const GArray * contacts, gchar *** ret, GError **error)
+{
+  return TRUE;
+}
+
+
+/**
  * gabble_connection_request_channel
  *
  * Implements DBus method RequestChannel
@@ -402,6 +448,24 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 gboolean gabble_connection_request_presence (GabbleConnection *obj, const GArray * contacts, GError **error)
+{
+  return TRUE;
+}
+
+
+/**
+ * gabble_connection_set_aliases
+ *
+ * Implements DBus method SetAliases
+ * on interface org.freedesktop.Telepathy.Connection.Interface.Aliasing
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_connection_set_aliases (GabbleConnection *obj, GHashTable * aliases, GError **error)
 {
   return TRUE;
 }

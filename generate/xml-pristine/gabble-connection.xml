@@ -54,6 +54,21 @@
       <arg name="reason" type="u"/>
     </signal>
   </interface>
+  <interface name="org.freedesktop.Telepathy.Connection.Interface.Aliasing">
+    <signal name="AliasesChanged">
+      <arg name="aliases" type="a(us)"/>
+    </signal>
+    <method name="GetAliasFlags">
+      <arg direction="out" type="u"/>
+    </method>
+    <method name="RequestAliases">
+      <arg direction="in" name="contacts" type="au"/>
+      <arg direction="out" type="as"/>
+    </method>
+    <method name="SetAliases">
+      <arg direction="in" name="aliases" type="a{us}"/>
+    </method>
+  </interface>
   <interface name="org.freedesktop.Telepathy.Connection.Interface.Presence">
     <method name="AddStatus">
       <arg direction="in" name="status" type="s"/>

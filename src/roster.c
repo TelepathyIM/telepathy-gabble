@@ -144,7 +144,7 @@ gabble_roster_constructor (GType type, guint n_props,
   lm_connection_register_message_handler (priv->conn->lmconn,
                                           priv->presence_cb,
                                           LM_MESSAGE_TYPE_PRESENCE,
-                                          LM_HANDLER_PRIORITY_NORMAL);
+                                          LM_HANDLER_PRIORITY_LAST);
 
   return obj;
 }

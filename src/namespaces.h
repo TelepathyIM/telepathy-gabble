@@ -36,7 +36,7 @@
 #define NS_MUC_USER             "http://jabber.org/protocol/muc#user"
 #define NS_MUC_ADMIN            "http://jabber.org/protocol/muc#admin"
 #define NS_MUC_OWNER            "http://jabber.org/protocol/muc#owner"
-
+#define NS_NICK                 "http://jabber.org/protocol/nick"
 #define NS_PRESENCE_INVISIBLE   "presence-invisible"
 #define NS_PRIVACY              "jabber:iq:privacy"
 #define NS_ROSTER               "jabber:iq:roster"

@@ -419,10 +419,13 @@ _parse_message (GabblePresenceCache *cache,
   g_assert (gabble_handle_is_valid (priv->conn->handles,
         TP_HANDLE_TYPE_CONTACT, handle, NULL));
 
-  if (0 == strcmp (message->node->name, "presence"))
-    return _parse_presence_message (cache, handle, from, message);
-  else
-    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+  switch (lm_message_get_type (message))
+    {
+    case LM_MESSAGE_TYPE_PRESENCE:
+      return _parse_presence_message(cache, handle, from, message);
+    default:
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    }
 }
 
 

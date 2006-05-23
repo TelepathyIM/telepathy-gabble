@@ -332,8 +332,10 @@ _presence_node_get_status (LmMessageNode *pres_node)
 static void
 _grab_nickname (GabblePresenceCache *cache,
                 GabbleHandle handle,
+                const gchar *from,
                 LmMessageNode *node)
 {
+  const gchar *nickname;
   GabblePresence *presence;
 
   node = lm_message_node_find_child (node, "nick");
@@ -346,10 +348,13 @@ _grab_nickname (GabblePresenceCache *cache,
   if (NULL == presence)
     return;
 
+  nickname = lm_message_node_get_value (node);
+  g_debug ("got nickname \"%s\" for %s", nickname, from);
+
   if (NULL != presence->nickname)
     g_free (presence->nickname);
 
-  presence->nickname = g_strdup (lm_message_node_get_value (node));
+  presence->nickname = g_strdup (nickname);
 }
 
 static LmHandlerResult
@@ -369,7 +374,7 @@ _parse_presence_message (GabblePresenceCache *cache,
   presence_node = message->node;
   g_assert (0 == strcmp (presence_node->name, "presence"));
 
-  _grab_nickname (cache, handle, presence_node);
+  _grab_nickname (cache, handle, from, presence_node);
 
   gabble_handle_decode_jid (from, NULL, NULL, &resource);
 
@@ -441,7 +446,7 @@ _parse_message_message (GabblePresenceCache *cache,
   LmMessageNode *node;
 
   node = lm_message_get_node (message);
-  _grab_nickname (cache, handle, node);
+  _grab_nickname (cache, handle, from, node);
 
   return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 }

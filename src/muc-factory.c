@@ -466,9 +466,6 @@ muc_factory_presence_cb (LmMessageHandler *handler,
 
           _gabble_muc_channel_member_presence_updated (muc_chan, handle,
                                                        msg, x_node);
-
-          return gabble_presence_cache_parse_message (priv->conn->presence_cache,
-              handle, from, msg);
         }
       else
         {

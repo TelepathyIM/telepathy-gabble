@@ -100,6 +100,8 @@ CORE_SOURCES = \
     tp-channel-iface.c \
     tp-channel-factory-iface.h \
     tp-channel-factory-iface.c \
+    util.h \
+    util.c \
     $(BUILT_SOURCES)
 
 libgabble_convenience_la_SOURCES = \

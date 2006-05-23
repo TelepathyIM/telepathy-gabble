@@ -75,7 +75,7 @@ gboolean gabble_media_channel_get_session_handlers (GabbleMediaChannel *obj, GPt
 gboolean gabble_media_channel_get_streams (GabbleMediaChannel *obj, GPtrArray ** ret, GError **error);
 gboolean gabble_media_channel_remove_members (GabbleMediaChannel *obj, const GArray * contacts, const gchar * message, GError **error);
 
-void _gabble_media_channel_dispatch_session_action (GabbleMediaChannel *chan, GabbleHandle peer, const gchar *sid, LmMessageNode *iq_node, LmMessageNode *session_node, const gchar *action);
+void _gabble_media_channel_dispatch_session_action (GabbleMediaChannel *chan, GabbleHandle peer, const gchar *peer_resource, const gchar *sid, LmMessageNode *iq_node, LmMessageNode *session_node, const gchar *action);
 
 void _gabble_media_channel_stream_state (GabbleMediaChannel *chan, guint state);
 

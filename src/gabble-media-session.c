@@ -63,6 +63,7 @@ enum
   PROP_SESSION_ID,
   PROP_INITIATOR,
   PROP_PEER,
+  PROP_PEER_RESOURCE,
   PROP_STATE,
   LAST_PROPERTY
 };
@@ -82,7 +83,7 @@ struct _GabbleMediaSessionPrivate
   gchar *id;
   GabbleHandle initiator;
   GabbleHandle peer;
-  const gchar *voice_resource;
+  gchar *peer_resource;
 
   JingleSessionState state;
 
@@ -170,7 +171,7 @@ create_media_stream (GabbleMediaSession *session)
 }
 
 gboolean
-_get_voice_resource (GabblePresence *presence, const gchar **voice_resource,
+_get_peer_resource (GabblePresence *presence, gchar **peer_resource,
                      GabbleMediaSessionMode *mode)
 {
   const gchar *resource;
@@ -183,7 +184,7 @@ _get_voice_resource (GabblePresence *presence, const gchar **voice_resource,
       if (resource)
         {
           g_debug ("using Jingle-capable resource %s\n", resource);
-          *voice_resource = resource;
+          *peer_resource = g_strdup (resource);
           *mode = MODE_JINGLE;
           return TRUE;
         }
@@ -195,7 +196,7 @@ _get_voice_resource (GabblePresence *presence, const gchar **voice_resource,
   if (resource)
     {
       g_debug ("using GTalk-capable resource %s\n", resource);
-      *voice_resource = resource;
+      *peer_resource = g_strdup (resource);
       *mode = MODE_GOOGLE;
       return TRUE;
     }
@@ -226,9 +227,11 @@ gabble_media_session_constructor (GType type, guint n_props,
   presence = gabble_presence_cache_get (priv->conn->presence_cache, priv->peer);
   g_assert (presence);
 
-  if (!_get_voice_resource (presence, &priv->voice_resource, &priv->mode))
-    g_critical ("%s: no voice resource found for remote handle", G_STRFUNC);
-
+  if (!priv->peer_resource)
+    {
+      if (!_get_peer_resource (presence, &priv->peer_resource, &priv->mode))
+        g_critical ("%s: no voice resource found for remote handle", G_STRFUNC);
+    }
   create_media_stream (GABBLE_MEDIA_SESSION (obj));
 
   return obj;
@@ -258,6 +261,9 @@ gabble_media_session_get_property (GObject    *object,
       break;
     case PROP_PEER:
       g_value_set_uint (value, priv->peer);
+      break;
+    case PROP_PEER_RESOURCE:
+      g_value_set_string (value, priv->peer_resource);
       break;
     case PROP_STATE:
       g_value_set_uint (value, priv->state);
@@ -299,6 +305,10 @@ gabble_media_session_set_property (GObject      *object,
       break;
     case PROP_PEER:
       priv->peer = g_value_get_uint (value);
+      break;
+    case PROP_PEER_RESOURCE:
+      g_free (priv->peer_resource);
+      priv->peer_resource = g_value_dup_string (value);
       break;
     case PROP_STATE:
       prev_state = priv->state;
@@ -383,6 +393,20 @@ gabble_media_session_class_init (GabbleMediaSessionClass *gabble_media_session_c
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_PEER, param_spec);
 
+
+  param_spec = g_param_spec_string ("peer-resource",
+                                    "Session peer's resource",
+                                    "The resource of the contact "
+                                    "with whom this session communicates, "
+                                    "if applicable",
+                                    NULL,
+                                    G_PARAM_CONSTRUCT_ONLY |
+                                    G_PARAM_WRITABLE |
+                                    G_PARAM_STATIC_NAME |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_PEER_RESOURCE,
+                                   param_spec);
+
   param_spec = g_param_spec_uint ("state", "Session state",
                                   "The current state that the session is in.",
                                   0, G_MAXUINT32, 0,
@@ -447,7 +471,7 @@ gabble_media_session_finalize (GObject *object)
 
   g_free (priv->id);
   g_free (priv->object_path);
-
+  g_free (priv->peer_resource);
   G_OBJECT_CLASS (gabble_media_session_parent_class)->finalize (object);
 }
 
@@ -842,8 +866,8 @@ get_jid_for_contact (GabbleMediaSession *session,
     }
   else
     {
-      g_assert (priv->voice_resource != NULL);
-      return g_strdup_printf ("%s/%s", base_jid, priv->voice_resource);
+      g_assert (priv->peer_resource != NULL);
+      return g_strdup_printf ("%s/%s", base_jid, priv->peer_resource);
     }
 }
 

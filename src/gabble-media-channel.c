@@ -151,8 +151,8 @@ static void session_state_changed_cb (GabbleMediaSession *session, GParamSpec *a
  * the "initiator" property of the newly created
  * GabbleMediaSession is set to our own handle.
  */
-static GabbleMediaSession *
-create_session (GabbleMediaChannel *channel, GabbleHandle peer, const gchar *sid)
+static GabbleMediaSession*
+create_session (GabbleMediaChannel *channel, GabbleHandle peer, const gchar *peer_resource, const gchar *sid)
 {
   GabbleMediaChannelPrivate *priv;
   GabbleMediaSession *session;
@@ -185,6 +185,7 @@ create_session (GabbleMediaChannel *channel, GabbleHandle peer, const gchar *sid
                           "session-id", sid,
                           "initiator", initiator,
                           "peer", peer,
+                          "peer-resource", peer_resource,
                           NULL);
 
   g_signal_connect (session, "notify::state",
@@ -205,6 +206,7 @@ create_session (GabbleMediaChannel *channel, GabbleHandle peer, const gchar *sid
 void
 _gabble_media_channel_dispatch_session_action (GabbleMediaChannel *chan,
                                                GabbleHandle peer,
+                                               const gchar *peer_resource,
                                                const gchar *sid,
                                                LmMessageNode *iq_node,
                                                LmMessageNode *session_node,
@@ -218,7 +220,7 @@ _gabble_media_channel_dispatch_session_action (GabbleMediaChannel *chan,
       GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (chan);
       GIntSet *empty, *set;
 
-      session = create_session (chan, peer, sid);
+      session = create_session (chan, peer, peer_resource, sid);
 
       /* make us local pending */
       empty = g_intset_new ();
@@ -799,7 +801,7 @@ gabble_media_channel_add_member (GObject *obj, GabbleHandle handle, const gchar 
       GIntSet *empty, *set;
 
       /* create a new session */
-      create_session (chan, handle, NULL);
+      create_session (chan, handle, NULL, NULL);
 
       /* make the peer remote pending */
       empty = g_intset_new ();

@@ -5,6 +5,7 @@
 #include "namespaces.h"
 
 #include "gabble-presence.h"
+#include "util.h"
 
 #include "gabble-presence-cache.h"
 
@@ -351,10 +352,14 @@ _grab_nickname (GabblePresenceCache *cache,
   nickname = lm_message_node_get_value (node);
   g_debug ("got nickname \"%s\" for %s", nickname, from);
 
-  if (NULL != presence->nickname)
-    g_free (presence->nickname);
+  if (g_strdiff (presence->nickname, nickname))
+    {
+      if (NULL != presence->nickname)
+        g_free (presence->nickname);
 
-  presence->nickname = g_strdup (nickname);
+      presence->nickname = g_strdup (nickname);
+      g_signal_emit (cache, signals[PRESENCE_UPDATE], 0, handle);
+    }
 }
 
 static LmHandlerResult

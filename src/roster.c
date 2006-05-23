@@ -243,7 +243,7 @@ gabble_roster_handle_is_subscribed (GabbleRoster *roster, GabbleHandle handle)
   g_return_val_if_fail (roster != NULL, FALSE);
   g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
   g_return_val_if_fail (gabble_handle_is_valid (priv->conn->handles,
-      TP_HANDLE_TYPE_CONTACT, handles, NULL), FALSE);
+      TP_HANDLE_TYPE_CONTACT, handle, NULL), FALSE);
 
   item = g_hash_table_lookup (priv->items, GINT_TO_POINTER (handle));
 

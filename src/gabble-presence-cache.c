@@ -325,6 +325,29 @@ _presence_node_get_status (LmMessageNode *pres_node)
     }
 }
 
+static void
+_grab_nickname (GabblePresenceCache *cache,
+                GabbleHandle handle,
+                LmMessageNode *node)
+{
+  GabblePresence *presence;
+
+  node = lm_message_node_find_child (node, "nick");
+
+  if (NULL == node)
+    return;
+
+  presence = gabble_presence_cache_get (cache, handle);
+
+  if (NULL == presence)
+    return;
+
+  if (NULL != presence->nickname)
+    g_free (presence->nickname);
+
+  presence->nickname = g_strdup (lm_message_node_get_value (node));
+}
+
 static LmHandlerResult
 _parse_presence_message (GabblePresenceCache *cache,
                          GabbleHandle handle,
@@ -341,6 +364,8 @@ _parse_presence_message (GabblePresenceCache *cache,
 
   presence_node = message->node;
   g_assert (0 == strcmp (presence_node->name, "presence"));
+
+  _grab_nickname (cache, handle, presence_node);
 
   gabble_handle_decode_jid (from, NULL, NULL, &resource);
 

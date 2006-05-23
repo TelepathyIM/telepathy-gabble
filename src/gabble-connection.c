@@ -145,6 +145,7 @@ enum
     PROP_STUN_RELAY_SSLTCP_PORT,
     PROP_STUN_RELAY_USERNAME,
     PROP_STUN_RELAY_PASSWORD,
+    PROP_IGNORE_SSL_ERRORS,
 
     LAST_PROPERTY
 };
@@ -165,6 +166,9 @@ struct _GabbleConnectionPrivate
   gchar *connect_server;
   guint port;
   gboolean old_ssl;
+
+  gboolean ignore_ssl_errors;
+  TpConnectionStatusReason ssl_error;
 
   gboolean do_register;
 
@@ -364,6 +368,9 @@ gabble_connection_get_property (GObject    *object,
     case PROP_STUN_RELAY_PASSWORD:
       g_value_set_string (value, priv->stun_relay_password);
       break;
+    case PROP_IGNORE_SSL_ERRORS:
+      g_value_set_boolean (value, priv->ignore_ssl_errors);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -461,6 +468,9 @@ gabble_connection_set_property (GObject      *object,
     case PROP_STUN_RELAY_PASSWORD:
       g_free (priv->stun_relay_password);
       priv->stun_relay_password = g_value_dup_string (value);
+      break;
+    case PROP_IGNORE_SSL_ERRORS:
+      priv->ignore_ssl_errors = g_value_get_boolean (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -1372,6 +1382,7 @@ connection_disconnected_cb (LmConnection *lmconn,
                             gpointer user_data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
   g_assert (conn->lmconn == lmconn);
 
@@ -1389,9 +1400,18 @@ connection_disconnected_cb (LmConnection *lmconn,
   else
     {
       g_debug ("%s: unexpected; calling connection_status_change", G_STRFUNC);
-      connection_status_change (conn,
-          TP_CONN_STATUS_DISCONNECTED,
-          TP_CONN_STATUS_REASON_NETWORK_ERROR);
+      if (priv->ssl_error)
+        {
+          connection_status_change (conn,
+            TP_CONN_STATUS_DISCONNECTED,
+            priv->ssl_error);
+        }
+      else
+        {
+          connection_status_change (conn,
+            TP_CONN_STATUS_DISCONNECTED,
+            TP_CONN_STATUS_REASON_NETWORK_ERROR);
+        }
     }
 }
 
@@ -2323,32 +2343,38 @@ connection_ssl_cb (LmSSL      *lmssl,
                    gpointer    data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (data);
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   const char *reason;
-  LmSSLResponse response = LM_SSL_RESPONSE_STOP;
+  TpConnectionStatusReason tp_reason;
 
   switch (status) {
     case LM_SSL_STATUS_NO_CERT_FOUND:
       reason = "The server doesn't provide a certificate.";
-      response = LM_SSL_RESPONSE_CONTINUE;
+      tp_reason = TP_CONN_STATUS_REASON_CERT_NOT_PROVIDED;
       break;
     case LM_SSL_STATUS_UNTRUSTED_CERT:
       reason = "The certificate can not be trusted.";
-      response = LM_SSL_RESPONSE_CONTINUE;
+      tp_reason = TP_CONN_STATUS_REASON_CERT_UNTRUSTED;
       break;
     case LM_SSL_STATUS_CERT_EXPIRED:
       reason = "The certificate has expired.";
+      tp_reason = TP_CONN_STATUS_REASON_CERT_EXPIRED;
       break;
     case LM_SSL_STATUS_CERT_NOT_ACTIVATED:
       reason = "The certificate has not been activated.";
+      tp_reason = TP_CONN_STATUS_REASON_CERT_NOT_ACTIVATED;
       break;
     case LM_SSL_STATUS_CERT_HOSTNAME_MISMATCH:
       reason = "The server hostname doesn't match the one in the certificate.";
+      tp_reason = TP_CONN_STATUS_REASON_CERT_HOSTNAME_MISMATCH;
       break;
     case LM_SSL_STATUS_CERT_FINGERPRINT_MISMATCH:
       reason = "The fingerprint doesn't match the expected value.";
+      tp_reason = TP_CONN_STATUS_REASON_CERT_FINGERPRINT_MISMATCH;
       break;
     case LM_SSL_STATUS_GENERIC_ERROR:
       reason = "An unknown SSL error occured.";
+      tp_reason = TP_CONN_STATUS_REASON_CERT_OTHER_ERROR;
       break;
     default:
       g_assert_not_reached();
@@ -2356,14 +2382,15 @@ connection_ssl_cb (LmSSL      *lmssl,
 
   g_debug ("%s called: %s", G_STRFUNC, reason);
 
-  if (response == LM_SSL_RESPONSE_CONTINUE)
-    g_debug ("proceeding anyway!");
+  if (priv->ignore_ssl_errors)
+    {
+      return LM_SSL_RESPONSE_CONTINUE;
+    }
   else
-    connection_status_change (conn,
-        TP_CONN_STATUS_DISCONNECTED,
-        TP_CONN_STATUS_REASON_ENCRYPTION_ERROR);
-
-  return response;
+    {
+      priv->ssl_error = tp_reason;
+      return LM_SSL_RESPONSE_STOP;
+    }
 }
 
 static void

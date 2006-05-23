@@ -152,6 +152,7 @@ struct _GabbleParams {
   gchar *fallback_conference_server;
   gchar *stun_server;
   guint stun_port;
+  gboolean ignore_ssl_errors;
 };
 
 typedef struct _GabbleParamSpec GabbleParamSpec;
@@ -179,7 +180,8 @@ enum {
     JABBER_PARAM_HTTPS_PROXY_PORT,
     JABBER_PARAM_FALLBACK_CONFERENCE_SERVER,
     JABBER_PARAM_STUN_SERVER,
-    JABBER_PARAM_STUN_PORT
+    JABBER_PARAM_STUN_PORT,
+    JABBER_PARAM_IGNORE_SSL_ERRORS
 };
 
 static const GabbleParamSpec jabber_params[] = {
@@ -197,6 +199,7 @@ static const GabbleParamSpec jabber_params[] = {
   { "fallback-conference-server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, FALSE, NULL, G_STRUCT_OFFSET(GabbleParams, fallback_conference_server) },
   { "stun-server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, FALSE, NULL, G_STRUCT_OFFSET(GabbleParams, stun_server) },
   { "stun-port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT, FALSE, GINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_STUN_PORT), G_STRUCT_OFFSET(GabbleParams, stun_port) },
+  { "ignore-ssl-errors", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN, FALSE, GINT_TO_POINTER(FALSE), G_STRUCT_OFFSET(GabbleParams, ignore_ssl_errors) },
   { NULL, NULL, 0, 0, NULL, 0 }
 };
 
@@ -545,6 +548,9 @@ gboolean gabble_connection_manager_connect (GabbleConnectionManager *obj, const 
                              params.stun_server);
   SET_PROPERTY_IF_PARAM_SET ("stun-port", JABBER_PARAM_STUN_PORT,
                              params.stun_port);
+  SET_PROPERTY_IF_PARAM_SET ("ignore-ssl-errors",
+                              JABBER_PARAM_IGNORE_SSL_ERRORS,
+                              params.ignore_ssl_errors);
 
   /* split up account into username, stream-server and resource */
   if (!_gabble_connection_set_properties_from_account (conn, params.account, error))

@@ -1676,8 +1676,6 @@ static void connection_new_channel_cb (TpChannelFactoryIface *factory,
 
   g_ptr_array_free (tmp, TRUE);
 
-  priv->suppress_next_handler = FALSE;
-
   g_free (object_path);
   g_free (channel_type);
 }
@@ -3671,8 +3669,6 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
 
   ERROR_IF_NOT_CONNECTED_ASYNC (obj, error, context);
 
-  priv->suppress_next_handler = suppress_handler;
-
   for (i = 0; i < priv->channel_factories->len; i++)
     {
       TpChannelFactoryIface *factory = g_ptr_array_index (priv->channel_factories, i);
@@ -3680,7 +3676,12 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
       TpChannelIface *chan = NULL;
       ChannelRequest *request = NULL;
 
-      cur_status = tp_channel_factory_iface_request (factory, type, (TpHandleType) handle_type, handle, &chan);
+      priv->suppress_next_handler = suppress_handler;
+
+      cur_status = tp_channel_factory_iface_request (factory, type,
+          (TpHandleType) handle_type, handle, &chan);
+
+      priv->suppress_next_handler = FALSE;
 
       switch (cur_status)
         {

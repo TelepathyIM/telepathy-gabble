@@ -57,6 +57,8 @@ struct _GabbleRoster {
 
 GabbleRoster *gabble_roster_new (GabbleConnection *);
 
+gboolean gabble_roster_handle_is_subscribed (GabbleRoster *, GabbleHandle);
+
 G_END_DECLS
 
 #endif /* __ROSTER_H__ */

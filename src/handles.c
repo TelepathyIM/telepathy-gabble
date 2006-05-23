@@ -186,10 +186,10 @@ void gabble_handle_jid_get_base (const gchar *jid, gchar *base_jid)
  * case-insensitively.
  */
 void
-gabble_handle_decode_jid (const char *jid,
-                          char **username,
-                          char **server,
-                          char **resource)
+gabble_handle_decode_jid (const gchar *jid,
+                          gchar **username,
+                          gchar **server,
+                          gchar **resource)
 {
   char *tmp_jid, *tmp_username, *tmp_server, *tmp_resource;
 

@@ -2041,6 +2041,7 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   LmMessageNode *iq_node, *session_node, *desc_node;
   const gchar *from, *id, *type, *action, *sid;
+  gchar *resource;
   GabbleHandle handle;
   GabbleMediaChannel *chan = NULL;
   gpointer k, v;
@@ -2140,8 +2141,9 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
     {
       g_debug ("%s: dispatching to session %s", G_STRFUNC, sid);
       g_object_ref (chan);
-      _gabble_media_channel_dispatch_session_action (chan, handle, sid,
-          iq_node, session_node, action);
+      gabble_handle_decode_jid (from, NULL, NULL, &resource);
+      _gabble_media_channel_dispatch_session_action (chan, handle, resource,
+          sid, iq_node, session_node, action);
       g_object_unref (chan);
     }
   else

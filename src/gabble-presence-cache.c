@@ -22,6 +22,7 @@ enum
 enum
 {
   PRESENCE_UPDATE,
+  NICKNAME_UPDATE,
   LAST_SIGNAL
 };
 
@@ -88,6 +89,13 @@ gabble_presence_cache_class_init (GabblePresenceCacheClass *klass)
     G_TYPE_FROM_CLASS (klass),
     G_SIGNAL_RUN_LAST,
     G_STRUCT_OFFSET (GabblePresenceCacheClass, presence_update),
+    NULL, NULL,
+    g_cclosure_marshal_VOID__INT, G_TYPE_NONE, 1, G_TYPE_UINT);
+  signals[NICKNAME_UPDATE] = g_signal_new (
+    "nickname-update",
+    G_TYPE_FROM_CLASS (klass),
+    G_SIGNAL_RUN_LAST,
+    G_STRUCT_OFFSET (GabblePresenceCacheClass, nickname_update),
     NULL, NULL,
     g_cclosure_marshal_VOID__INT, G_TYPE_NONE, 1, G_TYPE_UINT);
 }
@@ -358,7 +366,7 @@ _grab_nickname (GabblePresenceCache *cache,
         g_free (presence->nickname);
 
       presence->nickname = g_strdup (nickname);
-      g_signal_emit (cache, signals[PRESENCE_UPDATE], 0, handle);
+      g_signal_emit (cache, signals[NICKNAME_UPDATE], 0, handle);
     }
 }
 

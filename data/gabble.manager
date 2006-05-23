@@ -18,6 +18,7 @@ param-https-proxy-port = q
 param-fallback-conference-server = s
 param-stun-server = s
 param-stun-port = q
+param-ignore-ssl-errors = b
 default-port = 5222
 default-https-proxy-port = 443
 default-stun-port = 3478

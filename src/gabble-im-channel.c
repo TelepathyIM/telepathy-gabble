@@ -25,7 +25,10 @@
 #include <time.h>
 
 #include "gabble-connection.h"
+#include "gabble-presence.h"
+#include "gabble-presence-cache.h"
 #include "handles.h"
+#include "roster.h"
 #include "telepathy-constants.h"
 #include "telepathy-errors.h"
 #include "telepathy-helpers.h"
@@ -225,6 +228,21 @@ gabble_im_channel_dispose (GObject *object)
     return;
 
   priv->dispose_has_run = TRUE;
+
+  if (!gabble_roster_handle_is_subscribed (priv->conn->roster, handle))
+    {
+      GabblePresence *presence;
+
+      presence = gabble_presence_cache_get (priv->conn->presence_cache,
+          handle);
+
+      if (NULL != presence)
+        {
+          presence->keep_unavailable = FALSE;
+          gabble_presence_cache_maybe_remove (priv->conn->presence_cache,
+              handle);
+        }
+    }
 
   if (!priv->closed)
     g_signal_emit(self, signals[CLOSED], 0);

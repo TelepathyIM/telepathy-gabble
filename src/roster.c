@@ -233,6 +233,32 @@ gabble_roster_new (GabbleConnection *conn)
                        NULL);
 }
 
+gboolean
+gabble_roster_handle_is_subscribed (GabbleRoster *roster, GabbleHandle handle)
+{
+  GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
+  LmMessageNode *item;
+  const gchar *subscription;
+
+  g_return_val_if_fail (roster != NULL, FALSE);
+  g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
+  g_return_val_if_fail (gabble_handle_is_valid (priv->conn->handles,
+      TP_HANDLE_TYPE_CONTACT, handles, NULL), FALSE);
+
+  item = g_hash_table_lookup (priv->items, GINT_TO_POINTER (handle));
+
+  if (NULL == item)
+    return FALSE;
+
+  subscription = lm_message_node_get_attribute (item, "subscription");
+
+  if (g_strdiff (subscription, "to") &&
+      g_strdiff (subscription, "both"))
+    return FALSE;
+
+  return TRUE;
+}
+
 static void
 _gabble_roster_alias_changed (GabbleRoster *roster,
                               GabbleHandle handle,

@@ -305,7 +305,13 @@ set_param_from_value (const GabbleParamSpec *paramspec,
   switch (paramspec->dtype[0])
     {
       case DBUS_TYPE_STRING:
-        *((char **) ((void *)params + paramspec->offset)) = g_value_dup_string (value);
+        {
+          const char *str = g_value_get_string (value);
+          if (!str || *str == '\0')
+            return FALSE;
+          else
+            *((char **) ((void *)params + paramspec->offset)) = g_value_dup_string (value);
+        }
         break;
       case DBUS_TYPE_INT16:
         *((gint *) ((void *)params + paramspec->offset)) = g_value_get_int (value);
@@ -319,6 +325,7 @@ set_param_from_value (const GabbleParamSpec *paramspec,
       default:
         g_error ("set_param_from_value: encountered unknown type %s on argument %s",
                  paramspec->dtype, paramspec->name);
+        return FALSE;
     }
 
   return TRUE;

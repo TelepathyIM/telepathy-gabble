@@ -123,6 +123,10 @@ gabble_presence_cache_constructor (GType type, guint n_props,
                                           priv->lm_message_cb,
                                           LM_MESSAGE_TYPE_PRESENCE,
                                           LM_HANDLER_PRIORITY_LAST);
+  lm_connection_register_message_handler (priv->conn->lmconn,
+                                          priv->lm_message_cb,
+                                          LM_MESSAGE_TYPE_MESSAGE,
+                                          LM_HANDLER_PRIORITY_FIRST);
 
   return obj;
 }
@@ -429,6 +433,20 @@ OUT:
 }
 
 static LmHandlerResult
+_parse_message_message (GabblePresenceCache *cache,
+                        GabbleHandle handle,
+                        const gchar *from,
+                        LmMessage *message)
+{
+  LmMessageNode *node;
+
+  node = lm_message_get_node (message);
+  _grab_nickname (cache, handle, node);
+
+  return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+}
+
+static LmHandlerResult
 _parse_message (GabblePresenceCache *cache,
                 GabbleHandle handle,
                 const gchar *from,
@@ -447,7 +465,9 @@ _parse_message (GabblePresenceCache *cache,
   switch (lm_message_get_type (message))
     {
     case LM_MESSAGE_TYPE_PRESENCE:
-      return _parse_presence_message(cache, handle, from, message);
+      return _parse_presence_message (cache, handle, from, message);
+    case LM_MESSAGE_TYPE_MESSAGE:
+      return _parse_message_message (cache, handle, from, message);
     default:
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }

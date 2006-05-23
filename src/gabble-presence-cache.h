@@ -46,6 +46,7 @@ typedef struct _GabblePresenceCacheClass GabblePresenceCacheClass;
 struct _GabblePresenceCacheClass {
     GObjectClass parent_class;
     void (*presence_update) (guint handle);
+    void (*nickname_update) (guint handle);
 };
 
 GType gabble_presence_cache_get_type (void);

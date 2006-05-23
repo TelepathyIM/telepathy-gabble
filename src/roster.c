@@ -815,7 +815,7 @@ gabble_roster_factory_iface_connected (TpChannelFactoryIface *iface)
   lm_message_unref (message);
 }
 
-void
+static void
 gabble_roster_factory_iface_disconnected (TpChannelFactoryIface *iface)
 {
   GabbleRoster *roster = GABBLE_ROSTER (iface);
@@ -858,7 +858,7 @@ _gabble_roster_factory_iface_foreach_one (gpointer key,
   foreach->func (chan, foreach->data);
 }
 
-void
+static void
 gabble_roster_factory_iface_foreach (TpChannelFactoryIface *iface,
                                      TpChannelFunc func,
                                      gpointer data)
@@ -874,7 +874,7 @@ gabble_roster_factory_iface_foreach (TpChannelFactoryIface *iface,
       _gabble_roster_factory_iface_foreach_one, &foreach);
 }
 
-TpChannelFactoryRequestStatus
+static TpChannelFactoryRequestStatus
 gabble_roster_factory_iface_request (TpChannelFactoryIface *iface,
                                      const gchar *chan_type,
                                      TpHandleType handle_type,

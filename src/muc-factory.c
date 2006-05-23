@@ -105,12 +105,12 @@ gabble_muc_factory_constructor (GType type, guint n_props,
   priv->message_cb = lm_message_handler_new (muc_factory_message_cb, obj, NULL);
   lm_connection_register_message_handler (priv->conn->lmconn, priv->message_cb,
                                           LM_MESSAGE_TYPE_MESSAGE,
-                                          LM_HANDLER_PRIORITY_FIRST);
+                                          LM_HANDLER_PRIORITY_NORMAL);
 
   priv->presence_cb = lm_message_handler_new (muc_factory_presence_cb, obj, NULL);
   lm_connection_register_message_handler (priv->conn->lmconn, priv->presence_cb,
                                           LM_MESSAGE_TYPE_PRESENCE,
-                                          LM_HANDLER_PRIORITY_FIRST);
+                                          LM_HANDLER_PRIORITY_NORMAL);
   return obj;
 }
 

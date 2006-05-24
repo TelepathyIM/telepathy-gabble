@@ -286,6 +286,7 @@ gboolean gabble_text_mixin_receive (GObject *obj,
   GabbleTextMixin *mixin = GABBLE_TEXT_MIXIN (obj);
   GabbleTextMixinClass *mixin_cls = GABBLE_TEXT_MIXIN_CLASS (G_OBJECT_GET_CLASS (obj));
 
+  gchar *end;
   GabblePendingMessage *msg;
   gsize len;
 
@@ -308,7 +309,11 @@ gboolean gabble_text_mixin_receive (GObject *obj,
 
       /* TODO: add CHANNEL_TEXT_MESSAGE_FLAG_TRUNCATED flag*/
 
-      len = MAX_MESSAGE_SIZE;
+      end = g_utf8_find_prev_char (text, text+MAX_MESSAGE_SIZE);
+      if (end)
+        len = end-text;
+      else
+        len = 0;
     }
 
   msg->text = g_try_malloc (len + 1);

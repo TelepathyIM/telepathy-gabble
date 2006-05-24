@@ -1391,7 +1391,6 @@ connection_disconnected_cb (LmConnection *lmconn,
                             gpointer user_data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
   g_assert (conn->lmconn == lmconn);
 
@@ -1409,18 +1408,9 @@ connection_disconnected_cb (LmConnection *lmconn,
   else
     {
       g_debug ("%s: unexpected; calling connection_status_change", G_STRFUNC);
-      if (priv->ssl_error)
-        {
-          connection_status_change (conn,
-            TP_CONN_STATUS_DISCONNECTED,
-            priv->ssl_error);
-        }
-      else
-        {
-          connection_status_change (conn,
-            TP_CONN_STATUS_DISCONNECTED,
-            TP_CONN_STATUS_REASON_NETWORK_ERROR);
-        }
+      connection_status_change (conn,
+          TP_CONN_STATUS_DISCONNECTED,
+          TP_CONN_STATUS_REASON_NETWORK_ERROR);
     }
 }
 
@@ -2533,9 +2523,18 @@ connection_open_cb (LmConnection *lmconn,
           g_debug ("%s failed", G_STRFUNC);
         }
 
-      connection_status_change (conn,
-          TP_CONN_STATUS_DISCONNECTED,
-          TP_CONN_STATUS_REASON_NETWORK_ERROR);
+      if (priv->ssl_error)
+        {
+          connection_status_change (conn,
+            TP_CONN_STATUS_DISCONNECTED,
+            priv->ssl_error);
+        }
+      else
+        {
+          connection_status_change (conn,
+              TP_CONN_STATUS_DISCONNECTED,
+              TP_CONN_STATUS_REASON_NETWORK_ERROR);
+        }
 
       return;
     }

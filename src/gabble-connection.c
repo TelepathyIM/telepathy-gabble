@@ -704,6 +704,15 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
   g_object_class_install_property (object_class, PROP_STUN_RELAY_PASSWORD,
                                    param_spec);
 
+  param_spec = g_param_spec_boolean ("ignore-ssl-errors", "Ignore SSL errors",
+                                     "Continue connecting even if the server's "
+                                     "SSL certificate is invalid or missing.",
+                                     FALSE,
+                                     G_PARAM_READWRITE |
+                                     G_PARAM_STATIC_NAME |
+                                     G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_IGNORE_SSL_ERRORS, param_spec);
+
   /* signal definitions */
 
   signals[NEW_CHANNEL] =

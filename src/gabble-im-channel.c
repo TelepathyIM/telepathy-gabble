@@ -229,18 +229,18 @@ gabble_im_channel_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  if (!gabble_roster_handle_is_subscribed (priv->conn->roster, handle))
+  if (!gabble_roster_handle_is_subscribed (priv->conn->roster, priv->handle))
     {
       GabblePresence *presence;
 
       presence = gabble_presence_cache_get (priv->conn->presence_cache,
-          handle);
+          priv->handle);
 
       if (NULL != presence)
         {
           presence->keep_unavailable = FALSE;
           gabble_presence_cache_maybe_remove (priv->conn->presence_cache,
-              handle);
+              priv->handle);
         }
     }
 

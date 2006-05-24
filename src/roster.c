@@ -55,6 +55,24 @@ struct _GabbleRosterPrivate
   gboolean dispose_has_run;
 };
 
+typedef enum
+{
+  GABBLE_ROSTER_SUBSCRIPTION_NONE = 0,
+  GABBLE_ROSTER_SUBSCRIPTION_FROM,
+  GABBLE_ROSTER_SUBSCRIPTION_TO,
+  GABBLE_ROSTER_SUBSCRIPTION_BOTH,
+  GABBLE_ROSTER_SUBSCRIPTION_REMOVE
+} GabbleRosterSubscription;
+
+typedef struct _GabbleRosterItem GabbleRosterItem;
+struct _GabbleRosterItem
+{
+  GabbleRosterSubscription subscription;
+  gboolean ask_subscribe;
+  gchar *name;
+  gchar **groups;
+};
+
 static void gabble_roster_factory_iface_init ();
 static void gabble_roster_init (GabbleRoster *roster);
 static GObject * gabble_roster_constructor (GType type, guint n_props, GObjectConstructParam *props);
@@ -67,6 +85,8 @@ static void gabble_roster_get_property (GObject *object, guint property_id,
 
 static LmHandlerResult gabble_roster_iq_cb (LmMessageHandler *, LmConnection *, LmMessage *, gpointer);
 static LmHandlerResult gabble_roster_presence_cb (LmMessageHandler *, LmConnection *, LmMessage *, gpointer);
+
+static void _gabble_roster_item_free (GabbleRosterItem *item);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleRoster, gabble_roster, G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_FACTORY_IFACE, gabble_roster_factory_iface_init));
@@ -118,7 +138,7 @@ gabble_roster_init (GabbleRoster *obj)
   priv->items = g_hash_table_new_full (g_direct_hash,
                                        g_direct_equal,
                                        NULL,
-                                       (GDestroyNotify) lm_message_node_unref);
+                                       (GDestroyNotify) _gabble_roster_item_free);
 }
 
 static GObject *
@@ -223,84 +243,120 @@ gabble_roster_set_property (GObject     *object,
   }
 }
 
-GabbleRoster *
-gabble_roster_new (GabbleConnection *conn)
+static void
+_gabble_roster_item_free (GabbleRosterItem *item)
 {
-  g_return_val_if_fail (conn != NULL, NULL);
+  g_assert (item != NULL);
 
-  return g_object_new (GABBLE_TYPE_ROSTER,
-                       "connection", conn,
-                       NULL);
-}
-
-gboolean
-gabble_roster_handle_is_subscribed (GabbleRoster *roster, GabbleHandle handle)
-{
-  GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
-  LmMessageNode *item;
-  const gchar *subscription;
-
-  g_return_val_if_fail (roster != NULL, FALSE);
-  g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
-  g_return_val_if_fail (gabble_handle_is_valid (priv->conn->handles,
-      TP_HANDLE_TYPE_CONTACT, handle, NULL), FALSE);
-
-  item = g_hash_table_lookup (priv->items, GINT_TO_POINTER (handle));
-
-  if (NULL == item)
-    return FALSE;
-
-  subscription = lm_message_node_get_attribute (item, "subscription");
-
-  if (g_strdiff (subscription, "to") &&
-      g_strdiff (subscription, "both"))
-    return FALSE;
-
-  return TRUE;
+  g_strfreev (item->groups);
+  g_free (item->name);
+  g_free (item);
 }
 
 static void
 _gabble_roster_alias_changed (GabbleRoster *roster,
                               GabbleHandle handle,
-                              const gchar *old_name,
-                              const gchar *new_name)
+                              const gchar *name)
 {
-  if (g_strdiff (old_name, new_name))
+  g_debug ("%s: alias for handle %d changed to %s", G_STRFUNC, handle,
+      name);
+}
+
+static const gchar *
+_subscription_to_string (GabbleRosterSubscription subscription)
+{
+  switch (subscription)
     {
-      g_debug ("%s: alias for handle %d changed from %s to %s", G_STRFUNC,
-          handle, old_name, new_name);
+      case GABBLE_ROSTER_SUBSCRIPTION_NONE:
+        return "none";
+      case GABBLE_ROSTER_SUBSCRIPTION_FROM:
+        return "from";
+      case GABBLE_ROSTER_SUBSCRIPTION_TO:
+        return "to";
+      case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
+        return "both";
+      case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
+        return "remove";
+      default:
+        g_assert_not_reached ();
+        return NULL;
     }
 }
 
-static void
-_gabble_roster_item_update (GabbleRoster *roster,
-                            GabbleHandle handle,
-                            LmMessageNode *new_node)
+static GabbleRosterSubscription
+_parse_item_subscription (LmMessageNode *item_node)
 {
-  GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
-  LmMessageNode *old_node;
-  const gchar *old_name, *new_name;
+  const gchar *subscription;
 
-  g_return_if_fail (GABBLE_IS_ROSTER (roster));
-  g_return_if_fail (gabble_handle_is_valid (priv->conn->handles,
-        TP_HANDLE_TYPE_CONTACT, handle, NULL));
-  g_return_if_fail (new_node != NULL);
+  g_assert (item_node != NULL);
 
-  old_node = g_hash_table_lookup (priv->items, GINT_TO_POINTER (handle));
-  if (NULL != old_node)
-    {
-      old_name = lm_message_node_get_attribute (old_node, "name");
-    }
+  subscription = lm_message_node_get_attribute (item_node, "subscription");
+
+  if (NULL == subscription || 0 == strcmp (subscription, "none"))
+    return GABBLE_ROSTER_SUBSCRIPTION_NONE;
+  else if (0 == strcmp (subscription, "from"))
+    return GABBLE_ROSTER_SUBSCRIPTION_FROM;
+  else if (0 == strcmp (subscription, "to"))
+    return GABBLE_ROSTER_SUBSCRIPTION_TO;
+  else if (0 == strcmp (subscription, "both"))
+    return GABBLE_ROSTER_SUBSCRIPTION_BOTH;
+  else if (0 == strcmp (subscription, "remove"))
+    return GABBLE_ROSTER_SUBSCRIPTION_REMOVE;
   else
     {
-      old_name = NULL;
+      HANDLER_DEBUG (item_node, "got unexpected subscription value");
+      return GABBLE_ROSTER_SUBSCRIPTION_NONE;
+    }
+}
+
+static gchar **
+_parse_item_groups (LmMessageNode *item_node)
+{
+  LmMessageNode *group_node;
+  GPtrArray *strv;
+
+  strv = g_ptr_array_new ();
+
+  for (group_node = item_node->children;
+      NULL != group_node;
+      group_node = group_node->next)
+    {
+      if (0 != strcmp (group_node->name, "group"))
+        continue;
+
+      if (NULL == group_node->value)
+        continue;
+
+      g_ptr_array_add (strv, g_strdup (group_node->value));
     }
 
-  new_name = lm_message_node_get_attribute (new_node, "name");
-  _gabble_roster_alias_changed (roster, handle, old_name, new_name);
+  g_ptr_array_add (strv, NULL);
 
-  lm_message_node_ref (new_node);
-  g_hash_table_insert (priv->items, GINT_TO_POINTER (handle), new_node);
+  return (gchar **) g_ptr_array_free (strv, FALSE);
+}
+
+static GabbleRosterItem *
+_gabble_roster_item_get (GabbleRoster *roster,
+                         GabbleHandle handle)
+{
+  GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
+  GabbleRosterItem *item;
+
+  g_assert (roster != NULL);
+  g_assert (GABBLE_IS_ROSTER (roster));
+  g_assert (gabble_handle_is_valid (priv->conn->handles,
+        TP_HANDLE_TYPE_CONTACT, handle, NULL));
+
+  item = g_hash_table_lookup (priv->items, GINT_TO_POINTER (handle));
+
+  if (NULL == item)
+    {
+      item = g_new0 (GabbleRosterItem, 1);
+      gabble_handle_ref (priv->conn->handles, TP_HANDLE_TYPE_CONTACT, handle);
+      g_hash_table_insert (priv->items, GINT_TO_POINTER (handle), item);
+    }
+
+  return item;
 }
 
 static void
@@ -309,11 +365,145 @@ _gabble_roster_item_remove (GabbleRoster *roster,
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
 
-  g_return_if_fail (GABBLE_IS_ROSTER (roster));
-  g_return_if_fail (gabble_handle_is_valid (priv->conn->handles,
+  g_assert (roster != NULL);
+  g_assert (GABBLE_IS_ROSTER (roster));
+  g_assert (gabble_handle_is_valid (priv->conn->handles,
         TP_HANDLE_TYPE_CONTACT, handle, NULL));
 
   g_hash_table_remove (priv->items, GINT_TO_POINTER (handle));
+  gabble_handle_unref (priv->conn->handles, TP_HANDLE_TYPE_CONTACT, handle);
+}
+
+static GabbleRosterItem *
+_gabble_roster_item_update (GabbleRoster *roster,
+                            GabbleHandle handle,
+                            LmMessageNode *node)
+{
+  GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
+  GabbleRosterItem *item;
+  const gchar *ask, *name;
+
+  g_assert (roster != NULL);
+  g_assert (GABBLE_IS_ROSTER (roster));
+  g_assert (gabble_handle_is_valid (priv->conn->handles,
+        TP_HANDLE_TYPE_CONTACT, handle, NULL));
+  g_assert (node != NULL);
+
+  item = _gabble_roster_item_get (roster, handle);
+
+  item->subscription = _parse_item_subscription (node);
+
+  ask = lm_message_node_get_attribute (node, "ask");
+  if (NULL != ask && 0 == strcmp (ask, "subscribe"))
+    item->ask_subscribe = TRUE;
+  else
+    item->ask_subscribe = FALSE;
+
+  name = lm_message_node_get_attribute (node, "name");
+  if (g_strdiff (item->name, name))
+    {
+      g_free (item->name);
+      item->name = g_strdup (name);
+      _gabble_roster_alias_changed (roster, handle, name);
+    }
+
+  g_strfreev (item->groups);
+  item->groups = _parse_item_groups (node);
+
+  return item;
+}
+
+
+static gchar *
+_gabble_roster_item_dump (GabbleRosterItem *item)
+{
+  GString *str;
+
+  g_assert (item != NULL);
+
+  str = g_string_new ("subscription: ");
+
+  g_string_append (str, _subscription_to_string (item->subscription));
+
+  if (item->ask_subscribe)
+    g_string_append (str, ", ask: subscribe");
+
+  if (item->name)
+    g_string_append_printf (str, ", name: %s", item->name);
+
+  if (item->groups)
+    {
+      gchar **tmp;
+      g_string_append (str, ", groups: { ");
+      for (tmp = item->groups; *tmp; tmp++)
+        {
+          g_string_append (str, *tmp);
+          g_string_append_c (str, ' ');
+        }
+      g_string_append (str, "}");
+    }
+
+  return g_string_free (str, FALSE);
+}
+
+static LmMessage *
+_gabble_roster_item_to_message (GabbleRoster *roster,
+                                GabbleHandle handle,
+                                LmMessageNode **item_return)
+{
+  GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
+  GabbleRosterItem *item;
+  LmMessage *message;
+  LmMessageNode *query_node, *item_node;
+  const gchar *jid;
+
+  g_assert (roster != NULL);
+  g_assert (GABBLE_IS_ROSTER (roster));
+  g_assert (gabble_handle_is_valid (priv->conn->handles,
+        TP_HANDLE_TYPE_CONTACT, handle, NULL));
+
+  item = _gabble_roster_item_get (roster, handle);
+
+  message = lm_message_new_with_sub_type (NULL,
+                                          LM_MESSAGE_TYPE_IQ,
+                                          LM_MESSAGE_SUB_TYPE_GET);
+
+  query_node = lm_message_node_add_child (message->node, "query", NULL);
+
+  lm_message_node_set_attribute (query_node, "xmlns", NS_ROSTER);
+
+  item_node = lm_message_node_add_child (query_node, "item", NULL);
+
+  jid = gabble_handle_inspect (priv->conn->handles, TP_HANDLE_TYPE_CONTACT,
+      handle);
+  lm_message_node_set_attribute (item_node, "jid", jid);
+
+  if (item->subscription != GABBLE_ROSTER_SUBSCRIPTION_NONE)
+    {
+      const gchar *subscription =  _subscription_to_string (item->subscription);
+      lm_message_node_set_attribute (item_node, "subscription", subscription);
+    }
+
+  if (item->ask_subscribe)
+    lm_message_node_set_attribute (item_node, "ask", "subscribe");
+
+  if (item->name)
+    lm_message_node_set_attribute (item_node, "name", item->name);
+
+  if (item->groups)
+    {
+      gchar **tmp;
+
+      for (tmp = item->groups; *tmp; tmp++)
+        {
+          lm_message_node_add_child (item_node, "group", *tmp);
+        }
+    }
+
+  if (NULL != item_return)
+    *item_return = item_node;
+
+  return message;
 }
 
 static GabbleRosterChannel *
@@ -477,8 +667,9 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
            item_node;
            item_node = item_node->next)
         {
-          const char *jid, *subscription, *ask;
+          const char *jid;
           GabbleHandle handle;
+          GabbleRosterItem *item;
 
           if (strcmp (item_node->name, "item"))
             {
@@ -500,48 +691,44 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
               continue;
             }
 
-          subscription = lm_message_node_get_attribute (item_node, "subscription");
-          ask = lm_message_node_get_attribute (item_node, "ask");
+          item = _gabble_roster_item_update (roster, handle, item_node);
+            {
+              gchar *dump = _gabble_roster_item_dump (item);
+              g_debug ("%s: jid: %s, %s", G_STRFUNC, jid, dump);
+              g_free (dump);
+            }
 
-          if (NULL == subscription || 0 == strcmp (subscription, "none"))
+          switch (item->subscription)
             {
+            case GABBLE_ROSTER_SUBSCRIPTION_NONE:
               g_intset_add (pub_rem, handle);
-              if (ask != NULL && !strcmp (ask, "subscribe"))
+              if (item->ask_subscribe)
                 g_intset_add (sub_rp, handle);
               else
                 g_intset_add (sub_rem, handle);
-              _gabble_roster_item_update (roster, handle, item_node);
-            }
-          else if (0 == strcmp (subscription, "to"))
-            {
+              break;
+            case GABBLE_ROSTER_SUBSCRIPTION_TO:
               g_intset_add (pub_rem, handle);
               g_intset_add (sub_add, handle);
-              _gabble_roster_item_update (roster, handle, item_node);
-            }
-          else if (0 == strcmp (subscription, "from"))
-            {
+              break;
+            case GABBLE_ROSTER_SUBSCRIPTION_FROM:
               g_intset_add (pub_add, handle);
-              if (ask != NULL && !strcmp (ask, "subscribe"))
+              if (item->ask_subscribe)
                 g_intset_add (sub_rp, handle);
               else
                 g_intset_add (sub_rem, handle);
-              _gabble_roster_item_update (roster, handle, item_node);
-            }
-          else if (0 == strcmp (subscription, "both"))
-            {
+              break;
+            case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
               g_intset_add (pub_add, handle);
               g_intset_add (sub_add, handle);
-              _gabble_roster_item_update (roster, handle, item_node);
-            }
-          else if (0 == strcmp (subscription, "remove"))
-            {
+              break;
+            case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
               g_intset_add (pub_rem, handle);
               g_intset_add (sub_rem, handle);
               _gabble_roster_item_remove (roster, handle);
-            }
-          else
-            {
-              HANDLER_DEBUG (item_node, "got unexpected subscription value");
+              break;
+            default:
+              g_assert_not_reached ();
             }
         }
 

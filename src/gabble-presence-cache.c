@@ -53,6 +53,8 @@ static void gabble_presence_cache_set_property (GObject *object, guint
     property_id, const GValue *value, GParamSpec *pspec);
 static void gabble_presence_cache_get_property (GObject *object, guint
     property_id, GValue *value, GParamSpec *pspec);
+static GabblePresence *_cache_insert (GabblePresenceCache *cache,
+    GabbleHandle handle);
 
 static void gabble_presence_cache_status_changed_cb (GabbleConnection *,
     TpConnectionStatus, TpConnectionStatusReason, gpointer);
@@ -358,7 +360,10 @@ _grab_nickname (GabblePresenceCache *cache,
   presence = gabble_presence_cache_get (cache, handle);
 
   if (NULL == presence)
-    return;
+    {
+      presence = _cache_insert (cache, handle);
+      presence->keep_unavailable = TRUE;
+    }
 
   nickname = lm_message_node_get_value (node);
   g_debug ("got nickname \"%s\" for %s", nickname, from);

@@ -350,11 +350,17 @@ _grab_nickname (GabblePresenceCache *cache,
                 LmMessageNode *node)
 {
   const gchar *nickname;
+  const gchar *xmlns;
   GabblePresence *presence;
 
   node = lm_message_node_find_child (node, "nick");
 
   if (NULL == node)
+    return;
+
+  xmlns = lm_message_node_get_attribute (node, "xmlns");
+
+  if (0 != strcmp(xmlns, NS_NICK))
     return;
 
   presence = gabble_presence_cache_get (cache, handle);

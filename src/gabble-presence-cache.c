@@ -45,16 +45,19 @@ struct _GabblePresenceCachePrivate
 };
 
 static void gabble_presence_cache_init (GabblePresenceCache *presence_cache);
-static GObject * gabble_presence_cache_constructor (GType type, guint n_props, GObjectConstructParam *props);
+static GObject * gabble_presence_cache_constructor (GType type, guint n_props,
+    GObjectConstructParam *props);
 static void gabble_presence_cache_dispose (GObject *object);
 static void gabble_presence_cache_finalize (GObject *object);
-static void gabble_presence_cache_set_property (GObject *object, guint property_id,
-    const GValue *value, GParamSpec *pspec);
-static void gabble_presence_cache_get_property (GObject *object, guint property_id,
-    GValue *value, GParamSpec *pspec);
+static void gabble_presence_cache_set_property (GObject *object, guint
+    property_id, const GValue *value, GParamSpec *pspec);
+static void gabble_presence_cache_get_property (GObject *object, guint
+    property_id, GValue *value, GParamSpec *pspec);
 
-static void gabble_presence_cache_status_changed_cb (GabbleConnection *, TpConnectionStatus, TpConnectionStatusReason, gpointer);
-static LmHandlerResult gabble_presence_cache_presence_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
+static void gabble_presence_cache_status_changed_cb (GabbleConnection *,
+    TpConnectionStatus, TpConnectionStatusReason, gpointer);
+static LmHandlerResult gabble_presence_cache_presence_cb (LmMessageHandler*,
+    LmConnection*, LmMessage*, gpointer);
 
 static void
 gabble_presence_cache_class_init (GabblePresenceCacheClass *klass)

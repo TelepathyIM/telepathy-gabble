@@ -30,6 +30,7 @@
 #define NS_GOOGLE_ROSTER        "google:roster"
 #define NS_GOOGLE_SESSION       "http://www.google.com/session"
 #define NS_GOOGLE_SESSION_PHONE "http://www.google.com/session/phone"
+#define NS_GOOGLE_VOICE         "http://www.google.com/xmpp/protocol/voice/v1"
 #define NS_JINGLE_AUDIO         "http://jabber.org/protocol/jingle/media/audio"
 #define NS_JINGLE               "http://jabber.org/protocol/jingle"
 #define NS_MUC                  "http://jabber.org/protocol/muc"

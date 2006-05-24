@@ -2244,9 +2244,7 @@ get_features ()
   if (NULL == features)
     {
       features = g_slist_append (features,
-        feature_new ("voice-v1", NS_GOOGLE_SESSION));
-      features = g_slist_append (features,
-        feature_new ("voice-v1", NS_GOOGLE_SESSION_PHONE));
+        feature_new ("voice-v1", NS_GOOGLE_VOICE));
 
       if (g_getenv ("GABBLE_JINGLE"))
         {

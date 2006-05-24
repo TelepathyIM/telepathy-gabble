@@ -478,33 +478,6 @@ _parse_message_message (GabblePresenceCache *cache,
   return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 }
 
-static LmHandlerResult
-_parse_message (GabblePresenceCache *cache,
-                GabbleHandle handle,
-                const gchar *from,
-                LmMessage *message)
-{
-  GabblePresenceCachePrivate *priv;
-
-  g_assert (cache != NULL);
-  g_assert (from != NULL);
-  g_assert (message != NULL);
-
-  priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
-  g_assert (gabble_handle_is_valid (priv->conn->handles,
-        TP_HANDLE_TYPE_CONTACT, handle, NULL));
-
-  switch (lm_message_get_type (message))
-    {
-    case LM_MESSAGE_TYPE_PRESENCE:
-      return _parse_presence_message (cache, handle, from, message);
-    case LM_MESSAGE_TYPE_MESSAGE:
-      return _parse_message_message (cache, handle, from, message);
-    default:
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-    }
-}
-
 
 /**
  * gabble_presence_cache_presence_cb:
@@ -550,7 +523,15 @@ gabble_presence_cache_presence_cb (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
-  return _parse_message (cache, handle, from, message);
+  switch (lm_message_get_type (message))
+    {
+    case LM_MESSAGE_TYPE_PRESENCE:
+      return _parse_presence_message (cache, handle, from, message);
+    case LM_MESSAGE_TYPE_MESSAGE:
+      return _parse_message_message (cache, handle, from, message);
+    default:
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    }
 }
 
 

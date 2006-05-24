@@ -507,7 +507,8 @@ _gabble_roster_item_to_message (GabbleRoster *roster,
 }
 
 static GabbleRosterChannel *
-_gabble_roster_create_channel (GabbleRoster *roster, GabbleHandle handle)
+_gabble_roster_create_channel (GabbleRoster *roster,
+                               GabbleHandle handle)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
   GabbleRosterChannel *chan;
@@ -547,7 +548,8 @@ _gabble_roster_create_channel (GabbleRoster *roster, GabbleHandle handle)
 }
 
 static GabbleRosterChannel *
-_gabble_roster_get_channel (GabbleRoster *roster, GabbleHandle handle)
+_gabble_roster_get_channel (GabbleRoster *roster,
+                            GabbleHandle handle)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
   GabbleRosterChannel *chan;
@@ -564,7 +566,9 @@ _gabble_roster_get_channel (GabbleRoster *roster, GabbleHandle handle)
 }
 
 static void
-_gabble_roster_emit_one (gpointer key, gpointer value, gpointer data)
+_gabble_roster_emit_one (gpointer key,
+                         gpointer value,
+                         gpointer data)
 {
   GabbleRoster *roster = GABBLE_ROSTER (data);
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);

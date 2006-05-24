@@ -1112,3 +1112,89 @@ gabble_roster_factory_iface_init (gpointer g_iface,
   klass->foreach = gabble_roster_factory_iface_foreach;
   klass->request = gabble_roster_factory_iface_request;
 }
+
+GabbleRoster *
+gabble_roster_new (GabbleConnection *conn)
+{
+  g_return_val_if_fail (conn != NULL, NULL);
+
+  return g_object_new (GABBLE_TYPE_ROSTER,
+                       "connection", conn,
+                       NULL);
+}
+
+gboolean
+gabble_roster_handle_is_subscribed (GabbleRoster *roster,
+                                    GabbleHandle handle)
+{
+  GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
+  GabbleRosterItem *item;
+
+  g_return_val_if_fail (roster != NULL, FALSE);
+  g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
+  g_return_val_if_fail (gabble_handle_is_valid (priv->conn->handles,
+      TP_HANDLE_TYPE_CONTACT, handle, NULL), FALSE);
+
+  item = g_hash_table_lookup (priv->items, GINT_TO_POINTER (handle));
+
+  if (NULL == item)
+    return FALSE;
+
+  switch (item->subscription)
+    {
+    case GABBLE_ROSTER_SUBSCRIPTION_TO:
+    case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
+      return TRUE;
+    default:
+      return FALSE;
+    }
+}
+
+const gchar *
+gabble_roster_handle_get_alias (GabbleRoster *roster,
+                                GabbleHandle handle)
+{
+  GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
+  GabbleRosterItem *item;
+
+  g_return_val_if_fail (roster != NULL, NULL);
+  g_return_val_if_fail (GABBLE_IS_ROSTER (roster), NULL);
+  g_return_val_if_fail (gabble_handle_is_valid (priv->conn->handles,
+      TP_HANDLE_TYPE_CONTACT, handle, NULL), NULL);
+
+  item = g_hash_table_lookup (priv->items, GINT_TO_POINTER (handle));
+
+  if (NULL == item)
+    return NULL;
+
+  return item->name;
+}
+
+gboolean
+gabble_roster_handle_set_alias (GabbleRoster *roster,
+                                GabbleHandle handle,
+                                const gchar *name,
+                                GError **error)
+{
+  GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
+  LmMessage *message;
+  LmMessageNode *item_node;
+  gboolean ret;
+
+  g_return_val_if_fail (roster != NULL, FALSE);
+  g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
+  g_return_val_if_fail (gabble_handle_is_valid (priv->conn->handles,
+      TP_HANDLE_TYPE_CONTACT, handle, NULL), FALSE);
+  g_return_val_if_fail (name != NULL, FALSE);
+
+  message = _gabble_roster_item_to_message (roster, handle, &item_node);
+
+  lm_message_node_set_attribute (item_node, "name", name);
+
+  ret = _gabble_connection_send (priv->conn, message, error);
+
+  lm_message_unref (message);
+
+  return ret;
+}
+

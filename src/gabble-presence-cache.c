@@ -590,6 +590,19 @@ gabble_presence_cache_maybe_remove (
     }
 }
 
+static GabblePresence *
+_cache_insert (
+    GabblePresenceCache *cache,
+    GabbleHandle handle)
+{
+  GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
+  GabblePresence *presence;
+
+  presence = gabble_presence_new ();
+  g_hash_table_insert (priv->presence, GINT_TO_POINTER (handle), presence);
+  gabble_handle_ref (priv->conn->handles, TP_HANDLE_TYPE_CONTACT, handle);
+  return presence;
+}
 
 void
 gabble_presence_cache_update (
@@ -612,11 +625,7 @@ gabble_presence_cache_update (
   presence = gabble_presence_cache_get (cache, handle);
 
   if (presence == NULL)
-    {
-      presence = gabble_presence_new ();
-      g_hash_table_insert (priv->presence, GINT_TO_POINTER (handle), presence);
-      gabble_handle_ref (priv->conn->handles, TP_HANDLE_TYPE_CONTACT, handle);
-    }
+    presence = _cache_insert (cache, handle);
 
   if (gabble_presence_update (presence, resource, presence_id, status_message,
         priority))

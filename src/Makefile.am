@@ -83,6 +83,8 @@ CORE_SOURCES = \
     handles-private.h \
     handle-set.h \
     handle-set.c \
+    jingle-info.c \
+    jingle-info.h \
     im-factory.h \
     im-factory.c \
     muc-factory.h \

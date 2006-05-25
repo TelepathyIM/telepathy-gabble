@@ -25,9 +25,9 @@
 #include <glib-object.h>
 #include <loudmouth/loudmouth.h>
 
-#include "gabble-properties-mixin.h"
 #include "gabble-types.h"
 #include "gabble-error.h"
+#include "properties-mixin.h"
 #include "telepathy-constants.h"
 
 G_BEGIN_DECLS

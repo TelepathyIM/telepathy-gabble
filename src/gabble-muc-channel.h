@@ -24,8 +24,8 @@
 
 #include <glib-object.h>
 
-#include "gabble-properties-mixin.h"
 #include "group-mixin.h"
+#include "properties-mixin.h"
 #include "text-mixin.h"
 #include "handles.h"
 

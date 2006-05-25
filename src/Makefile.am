@@ -7,8 +7,6 @@ BUILT_SOURCES = \
     gabble-connection-signals-marshal.c \
     gabble-register-signals-marshal.h \
     gabble-register-signals-marshal.c \
-    gabble-properties-mixin-signals-marshal.h \
-    gabble-properties-mixin-signals-marshal.c \
     gabble-im-channel-glue.h \
     gabble-im-channel-signals-marshal.h \
     gabble-im-channel-signals-marshal.c \
@@ -34,6 +32,8 @@ BUILT_SOURCES = \
     gabble-roomlist-channel-signals-marshal.c \
     group-mixin-signals-marshal.h \
     group-mixin-signals-marshal.c \
+    properties-mixin-signals-marshal.h \
+    properties-mixin-signals-marshal.c \
     text-mixin-signals-marshal.h \
     text-mixin-signals-marshal.c \
     telepathy-errors-enumtypes.h \
@@ -53,8 +53,6 @@ CORE_SOURCES = \
     gabble-connection.c \
     gabble-disco.h \
     gabble-disco.c \
-    gabble-properties-mixin.h \
-    gabble-properties-mixin.c \
     gabble-im-channel.h \
     gabble-im-channel.c \
     gabble-muc-channel.h \
@@ -90,6 +88,8 @@ CORE_SOURCES = \
     muc-factory.h \
     muc-factory.c \
     namespaces.h \
+    properties-mixin.h \
+    properties-mixin.c \
     roster.h \
     roster.c \
     telepathy-constants.h \

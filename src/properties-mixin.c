@@ -1,5 +1,5 @@
 /*
- * gabble-group-mixin.c - Source for GabblePropertiesMixin
+ * properties-mixin.c - Source for GabblePropertiesMixin
  * Copyright (C) 2006 Collabora Ltd.
  * Copyright (C) 2006 Nokia Corporation
  *   @author Ole Andre Vadla Ravnaas <ole.andre.ravnaas@collabora.co.uk>
@@ -24,8 +24,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "gabble-properties-mixin.h"
-#include "gabble-properties-mixin-signals-marshal.h"
+#include "properties-mixin.h"
+#include "properties-mixin-signals-marshal.h"
 #include "telepathy-errors.h"
 
 /*

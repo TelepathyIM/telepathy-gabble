@@ -292,6 +292,9 @@ request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 
   query_node = lm_message_node_get_child (reply_msg->node, "query");
 
+  if (NULL == query_node)
+    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+
   namespace = lm_message_node_get_attribute (query_node, "xmlns");
   if (!namespace)
     {

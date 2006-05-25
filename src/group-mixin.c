@@ -30,6 +30,10 @@
 #include "group-mixin.h"
 #include "group-mixin-signals-marshal.h"
 
+struct _GabbleGroupMixinPrivate {
+    GHashTable *handle_owners;
+};
+
 /**
  * gabble_group_mixin_class_get_offset_quark:
  *
@@ -118,11 +122,33 @@ void gabble_group_mixin_init (GObject *obj,
   mixin->members = handle_set_new (handle_repo, TP_HANDLE_TYPE_CONTACT);
   mixin->local_pending = handle_set_new (handle_repo, TP_HANDLE_TYPE_CONTACT);
   mixin->remote_pending = handle_set_new (handle_repo, TP_HANDLE_TYPE_CONTACT);
+
+  mixin->priv = g_new0 (GabbleGroupMixinPrivate, 1);
+  mixin->priv->handle_owners = g_hash_table_new (g_direct_hash, g_direct_equal);
+}
+
+static void
+handle_owners_foreach_unref (gpointer key,
+                             gpointer value,
+                             gpointer user_data)
+{
+  GabbleGroupMixin *mixin = user_data;
+
+  gabble_handle_unref (mixin->handle_repo, TP_HANDLE_TYPE_CONTACT,
+                       GPOINTER_TO_UINT (key));
+  gabble_handle_unref (mixin->handle_repo, TP_HANDLE_TYPE_CONTACT,
+                       GPOINTER_TO_UINT (value));
 }
 
 void gabble_group_mixin_finalize (GObject *obj)
 {
   GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
+
+  g_hash_table_foreach (mixin->priv->handle_owners,
+                        handle_owners_foreach_unref,
+                        mixin);
+
+  g_hash_table_destroy (mixin->priv->handle_owners);
 
   handle_set_destroy (mixin->members);
   handle_set_destroy (mixin->local_pending);
@@ -319,6 +345,71 @@ gabble_group_mixin_get_remote_pending_members (GObject *obj, GArray **ret, GErro
   return TRUE;
 }
 
+gboolean
+gabble_group_mixin_get_all_members (GObject *obj, GArray **ret, GArray **ret1, GArray **ret2, GError **error)
+{
+  GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
+
+  *ret = handle_set_to_array (mixin->members);
+  *ret1 = handle_set_to_array (mixin->local_pending);
+  *ret2 = handle_set_to_array (mixin->remote_pending);
+
+  return TRUE;
+}
+
+gboolean
+gabble_group_mixin_get_handle_owners (GObject *obj,
+                                      const GArray *handles,
+                                      GArray **ret,
+                                      GError **error)
+{
+  GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
+  GabbleGroupMixinPrivate *priv = mixin->priv;
+  guint i;
+
+  if ((mixin->group_flags &
+        TP_CHANNEL_GROUP_FLAG_CHANNEL_SPECIFIC_HANDLES) == 0)
+    {
+      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+          "channel doesn't have channel specific handles");
+
+      return FALSE;
+    }
+
+  if (!gabble_handles_are_valid (mixin->handle_repo, TP_HANDLE_TYPE_CONTACT,
+                                 handles, FALSE, error))
+    {
+      return FALSE;
+    }
+
+  *ret = g_array_sized_new (FALSE, FALSE, sizeof (GabbleHandle), handles->len);
+
+  for (i = 0; i < handles->len; i++)
+    {
+      GabbleHandle local_handle = g_array_index (handles, GabbleHandle, i);
+      GabbleHandle owner_handle;
+
+      if (!handle_set_is_member (mixin->members, local_handle))
+        {
+          *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+              "handle %u is not a member", local_handle);
+
+          g_array_free (*ret, TRUE);
+          *ret = NULL;
+
+          return FALSE;
+        }
+
+      owner_handle = GPOINTER_TO_UINT (
+          g_hash_table_lookup (priv->handle_owners,
+                               GUINT_TO_POINTER (local_handle)));
+
+      g_array_append_val (*ret, owner_handle);
+    }
+
+  return TRUE;
+}
+
 #define GFTS_APPEND_FLAG_IF_SET(flag) \
   if (flags & flag) \
     { \
@@ -421,6 +512,8 @@ member_array_to_string (GabbleHandleRepo *repo, const GArray *array)
   return g_string_free (str, FALSE);
 }
 
+static void remove_handle_owners_if_exist (GObject *obj, GArray *array);
+
 /**
  * gabble_group_mixin_change_members:
  *
@@ -511,6 +604,9 @@ gabble_group_mixin_change_members (GObject *obj,
       arr_local = g_intset_to_array (new_local_pending);
       arr_remote = g_intset_to_array (new_remote_pending);
 
+      /* remove any handle owner mappings */
+      remove_handle_owners_if_exist (obj, arr_remove);
+
       /* debug start */
       add_str = member_array_to_string (mixin->handle_repo, arr_add);
       rem_str = member_array_to_string (mixin->handle_repo, arr_remove);
@@ -556,5 +652,49 @@ gabble_group_mixin_change_members (GObject *obj,
   g_intset_destroy (new_remove);
   g_intset_destroy (new_local_pending);
   g_intset_destroy (new_remote_pending);
+}
+
+void
+gabble_group_mixin_add_handle_owner (GObject *obj,
+                                     GabbleHandle local_handle,
+                                     GabbleHandle owner_handle)
+{
+  GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
+  GabbleGroupMixinPrivate *priv = mixin->priv;
+
+  g_hash_table_insert (priv->handle_owners, GUINT_TO_POINTER (local_handle),
+                       GUINT_TO_POINTER (owner_handle));
+
+  gabble_handle_ref (mixin->handle_repo, TP_HANDLE_TYPE_CONTACT,
+                     local_handle);
+  gabble_handle_ref (mixin->handle_repo, TP_HANDLE_TYPE_CONTACT,
+                     owner_handle);
+}
+
+static void
+remove_handle_owners_if_exist (GObject *obj, GArray *array)
+{
+  GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
+  GabbleGroupMixinPrivate *priv = mixin->priv;
+  guint i;
+
+  for (i = 0; i < array->len; i++)
+    {
+      GabbleHandle handle = g_array_index (array, guint32, i);
+      GabbleHandle local_handle, owner_handle;
+
+      if (g_hash_table_lookup_extended (priv->handle_owners,
+                                        GUINT_TO_POINTER (handle),
+                                        (gpointer *) &local_handle,
+                                        (gpointer *) &owner_handle))
+        {
+          gabble_handle_unref (mixin->handle_repo, TP_HANDLE_TYPE_CONTACT,
+                               local_handle);
+          gabble_handle_unref (mixin->handle_repo, TP_HANDLE_TYPE_CONTACT,
+                               owner_handle);
+
+          g_hash_table_remove (priv->handle_owners, GUINT_TO_POINTER (handle));
+        }
+    }
 }
 

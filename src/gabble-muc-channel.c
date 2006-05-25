@@ -269,8 +269,11 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   gabble_group_mixin_init (obj, G_STRUCT_OFFSET (GabbleMucChannel, group),
                            handles, self_handle);
 
-  /* allow adding ourself */
-  gabble_group_mixin_change_flags (obj, TP_CHANNEL_GROUP_FLAG_CAN_ADD, 0);
+  /* set initial group flags */
+  gabble_group_mixin_change_flags (obj,
+      TP_CHANNEL_GROUP_FLAG_CHANNEL_SPECIFIC_HANDLES |
+      TP_CHANNEL_GROUP_FLAG_CAN_ADD,
+      0);
 
   /* initialize text mixin */
   gabble_text_mixin_init (obj, G_STRUCT_OFFSET (GabbleMucChannel, text), handles);
@@ -1214,7 +1217,7 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
   GIntSet *empty, *set;
   GabbleGroupMixin *mixin;
   LmMessageNode *item_node, *node;
-  const gchar *affil, *role, *status_code;
+  const gchar *affil, *role, *owner_jid, *status_code;
 
   g_debug (G_STRFUNC);
 
@@ -1243,6 +1246,7 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
 
   role = lm_message_node_get_attribute (item_node, "role");
   affil = lm_message_node_get_attribute (item_node, "affiliation");
+  owner_jid = lm_message_node_get_attribute (item_node, "jid");
 
   /* update channel members according to presence */
   empty = g_intset_new ();
@@ -1255,6 +1259,17 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
         {
           gabble_group_mixin_change_members (G_OBJECT (chan), "", set, empty,
                                              empty, empty);
+
+          if (owner_jid != NULL)
+            {
+              GabbleHandle owner_handle;
+
+              owner_handle = gabble_handle_for_contact (
+                  chan->group.handle_repo, owner_jid, FALSE);
+
+              gabble_group_mixin_add_handle_owner (G_OBJECT (chan), handle,
+                                                   owner_handle);
+            }
 
           if (handle == mixin->self_handle)
             {
@@ -1602,6 +1617,24 @@ gboolean gabble_muc_channel_close (GabbleMucChannel *obj, GError **error)
 
 
 /**
+ * gabble_muc_channel_get_all_members
+ *
+ * Implements DBus method GetAllMembers
+ * on interface org.freedesktop.Telepathy.Channel.Interface.Group
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_muc_channel_get_all_members (GabbleMucChannel *obj, GArray ** ret, GArray ** ret1, GArray ** ret2, GError **error)
+{
+  return gabble_group_mixin_get_all_members (G_OBJECT (obj), ret, ret1, ret2, error);
+}
+
+
+/**
  * gabble_muc_channel_get_channel_type
  *
  * Implements DBus method GetChannelType
@@ -1663,6 +1696,25 @@ gboolean gabble_muc_channel_get_handle (GabbleMucChannel *obj, guint* ret, guint
   *ret1 = priv->handle;
 
   return TRUE;
+}
+
+
+/**
+ * gabble_muc_channel_get_handle_owners
+ *
+ * Implements DBus method GetHandleOwners
+ * on interface org.freedesktop.Telepathy.Channel.Interface.Group
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_muc_channel_get_handle_owners (GabbleMucChannel *obj, const GArray * handles, GArray ** ret, GError **error)
+{
+  return gabble_group_mixin_get_handle_owners (G_OBJECT (obj), handles, ret,
+                                               error);
 }
 
 

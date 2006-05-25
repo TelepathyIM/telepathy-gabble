@@ -28,6 +28,7 @@ G_BEGIN_DECLS
 
 typedef struct _GabbleGroupMixinClass GabbleGroupMixinClass;
 typedef struct _GabbleGroupMixin GabbleGroupMixin;
+typedef struct _GabbleGroupMixinPrivate GabbleGroupMixinPrivate;
 
 typedef gboolean (*GabbleGroupMixinAddMemberFunc) (GObject *obj, GabbleHandle handle, const gchar *message, GError **error);
 typedef gboolean (*GabbleGroupMixinRemMemberFunc) (GObject *obj, GabbleHandle handle, const gchar *message, GError **error);
@@ -49,6 +50,8 @@ struct _GabbleGroupMixin {
   GabbleHandleSet *members;
   GabbleHandleSet *local_pending;
   GabbleHandleSet *remote_pending;
+
+  GabbleGroupMixinPrivate *priv;
 };
 
 /* TYPE MACROS */
@@ -77,9 +80,14 @@ gboolean gabble_group_mixin_remove_members (GObject *obj, const GArray *contacts
 gboolean gabble_group_mixin_get_members (GObject *obj, GArray **ret, GError **error);
 gboolean gabble_group_mixin_get_local_pending_members (GObject *obj, GArray **ret, GError **error);
 gboolean gabble_group_mixin_get_remote_pending_members (GObject *obj, GArray **ret, GError **error);
+gboolean gabble_group_mixin_get_all_members (GObject *obj, GArray **ret, GArray **ret1, GArray **ret2, GError **error);
+
+gboolean gabble_group_mixin_get_handle_owners (GObject *obj, const GArray *handles, GArray **ret, GError **error);
 
 void gabble_group_mixin_change_flags (GObject *obj, TpChannelGroupFlags add, TpChannelGroupFlags remove);
 void gabble_group_mixin_change_members (GObject *obj, const gchar *message, GIntSet *add, GIntSet *remove, GIntSet *local_pending, GIntSet *remote_pending);
+
+void gabble_group_mixin_add_handle_owner (GObject *obj, GabbleHandle local_handle, GabbleHandle owner_handle);
 
 G_END_DECLS
 

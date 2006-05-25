@@ -444,6 +444,24 @@ gboolean gabble_roster_channel_close (GabbleRosterChannel *obj, GError **error)
 
 
 /**
+ * gabble_roster_channel_get_all_members
+ *
+ * Implements DBus method GetAllMembers
+ * on interface org.freedesktop.Telepathy.Channel.Interface.Group
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_roster_channel_get_all_members (GabbleRosterChannel *obj, GArray ** ret, GArray ** ret1, GArray ** ret2, GError **error)
+{
+  return gabble_group_mixin_get_all_members (G_OBJECT (obj), ret, ret1, ret2, error);
+}
+
+
+/**
  * gabble_roster_channel_get_channel_type
  *
  * Implements DBus method GetChannelType
@@ -505,6 +523,24 @@ gboolean gabble_roster_channel_get_handle (GabbleRosterChannel *obj, guint* ret,
   *ret1 = priv->handle;
 
   return TRUE;
+}
+
+
+/**
+ * gabble_roster_channel_get_handle_owners
+ *
+ * Implements DBus method GetHandleOwners
+ * on interface org.freedesktop.Telepathy.Channel.Interface.Group
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_roster_channel_get_handle_owners (GabbleRosterChannel *obj, const GArray * handles, GArray ** ret, GError **error)
+{
+  return gabble_group_mixin_get_handle_owners (G_OBJECT (obj), handles, ret, error);
 }
 
 

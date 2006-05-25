@@ -63,9 +63,11 @@ GType gabble_media_channel_get_type(void);
 
 gboolean gabble_media_channel_add_members (GabbleMediaChannel *obj, const GArray * contacts, const gchar * message, GError **error);
 gboolean gabble_media_channel_close (GabbleMediaChannel *obj, GError **error);
+gboolean gabble_media_channel_get_all_members (GabbleMediaChannel *obj, GArray ** ret, GArray ** ret1, GArray ** ret2, GError **error);
 gboolean gabble_media_channel_get_channel_type (GabbleMediaChannel *obj, gchar ** ret, GError **error);
 gboolean gabble_media_channel_get_group_flags (GabbleMediaChannel *obj, guint* ret, GError **error);
 gboolean gabble_media_channel_get_handle (GabbleMediaChannel *obj, guint* ret, guint* ret1, GError **error);
+gboolean gabble_media_channel_get_handle_owners (GabbleMediaChannel *obj, const GArray * handles, GArray ** ret, GError **error);
 gboolean gabble_media_channel_get_interfaces (GabbleMediaChannel *obj, gchar *** ret, GError **error);
 gboolean gabble_media_channel_get_local_pending_members (GabbleMediaChannel *obj, GArray ** ret, GError **error);
 gboolean gabble_media_channel_get_members (GabbleMediaChannel *obj, GArray ** ret, GError **error);

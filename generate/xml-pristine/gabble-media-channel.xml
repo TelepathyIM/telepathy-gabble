@@ -19,8 +19,17 @@
       <arg direction="in" name="contacts" type="au"/>
       <arg direction="in" name="message" type="s"/>
     </method>
+    <method name="GetAllMembers">
+      <arg direction="out" type="au"/>
+      <arg direction="out" type="au"/>
+      <arg direction="out" type="au"/>
+    </method>
     <method name="GetGroupFlags">
       <arg direction="out" type="u"/>
+    </method>
+    <method name="GetHandleOwners">
+      <arg direction="in" name="handles" type="au"/>
+      <arg direction="out" type="au"/>
     </method>
     <method name="GetLocalPendingMembers">
       <arg direction="out" type="au"/>

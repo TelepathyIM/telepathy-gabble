@@ -406,6 +406,11 @@ _parse_presence_message (GabblePresenceCache *cache,
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
+  presence = gabble_presence_cache_get (cache, handle);
+
+  if (NULL != presence)
+      presence->keep_unavailable = FALSE;
+
   child_node = lm_message_node_get_child (presence_node, "status");
 
   if (child_node)
@@ -430,7 +435,7 @@ _parse_presence_message (GabblePresenceCache *cache,
       if (_presence_node_has_google_voice (presence_node))
         {
           presence = gabble_presence_cache_get (cache, handle);
-          g_assert (presence);
+          g_assert (NULL != presence);
           g_debug ("%s: %s has voice-v1 support", G_STRFUNC, from);
           gabble_presence_set_capabilities (presence, resource,
               PRESENCE_CAP_GOOGLE_VOICE);

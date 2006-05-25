@@ -107,7 +107,14 @@ gabble_im_channel_constructor (GType type, guint n_props,
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
 
-  gabble_text_mixin_init (obj, G_STRUCT_OFFSET (GabbleIMChannel, text), priv->conn->handles);
+  gabble_text_mixin_init (obj, G_STRUCT_OFFSET (GabbleIMChannel, text),
+                          priv->conn->handles);
+
+  gabble_text_mixin_set_message_types (obj,
+      TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL,
+      TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION,
+      TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE,
+      G_MAXUINT);
 
   return obj;
 }
@@ -409,6 +416,24 @@ gboolean gabble_im_channel_get_interfaces (GabbleIMChannel *obj, gchar *** ret, 
   *ret = g_strdupv ((gchar **) interfaces);
 
   return TRUE;
+}
+
+
+/**
+ * gabble_im_channel_get_message_types
+ *
+ * Implements DBus method GetMessageTypes
+ * on interface org.freedesktop.Telepathy.Channel.Type.Text
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_im_channel_get_message_types (GabbleIMChannel *obj, GArray ** ret, GError **error)
+{
+  return gabble_text_mixin_get_message_types (G_OBJECT (obj), ret, error);
 }
 
 

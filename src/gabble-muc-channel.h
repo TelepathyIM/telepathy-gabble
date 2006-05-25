@@ -100,6 +100,7 @@ gboolean gabble_muc_channel_get_handle (GabbleMucChannel *obj, guint* ret, guint
 gboolean gabble_muc_channel_get_interfaces (GabbleMucChannel *obj, gchar *** ret, GError **error);
 gboolean gabble_muc_channel_get_local_pending_members (GabbleMucChannel *obj, GArray ** ret, GError **error);
 gboolean gabble_muc_channel_get_members (GabbleMucChannel *obj, GArray ** ret, GError **error);
+gboolean gabble_muc_channel_get_message_types (GabbleMucChannel *obj, GArray ** ret, GError **error);
 gboolean gabble_muc_channel_get_password_flags (GabbleMucChannel *obj, guint* ret, GError **error);
 gboolean gabble_muc_channel_get_properties (GabbleMucChannel *obj, const GArray * properties, GPtrArray ** ret, GError **error);
 gboolean gabble_muc_channel_get_remote_pending_members (GabbleMucChannel *obj, GArray ** ret, GError **error);

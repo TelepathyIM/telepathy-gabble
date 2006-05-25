@@ -58,6 +58,7 @@ gboolean gabble_connection_clear_status (GabbleConnection *obj, GError **error);
 gboolean gabble_connection_disconnect (GabbleConnection *obj, GError **error);
 gboolean gabble_connection_get_alias_flags (GabbleConnection *obj, guint* ret, GError **error);
 gboolean gabble_connection_get_interfaces (GabbleConnection *obj, gchar *** ret, GError **error);
+gboolean gabble_connection_get_properties (GabbleConnection *obj, const GArray * properties, GPtrArray ** ret, GError **error);
 gboolean gabble_connection_get_protocol (GabbleConnection *obj, gchar ** ret, GError **error);
 gboolean gabble_connection_get_self_handle (GabbleConnection *obj, guint* ret, GError **error);
 gboolean gabble_connection_get_status (GabbleConnection *obj, guint* ret, GError **error);
@@ -65,6 +66,7 @@ gboolean gabble_connection_get_statuses (GabbleConnection *obj, GHashTable ** re
 gboolean gabble_connection_hold_handle (GabbleConnection *obj, guint handle_type, guint handle, DBusGMethodInvocation *context);
 gboolean gabble_connection_inspect_handle (GabbleConnection *obj, guint handle_type, guint handle, gchar ** ret, GError **error);
 gboolean gabble_connection_list_channels (GabbleConnection *obj, GPtrArray ** ret, GError **error);
+gboolean gabble_connection_list_properties (GabbleConnection *obj, GPtrArray ** ret, GError **error);
 gboolean gabble_connection_release_handle (GabbleConnection *obj, guint handle_type, guint handle, DBusGMethodInvocation *context);
 gboolean gabble_connection_remove_status (GabbleConnection *obj, const gchar * status, GError **error);
 gboolean gabble_connection_request_aliases (GabbleConnection *obj, const GArray * contacts, gchar *** ret, GError **error);
@@ -73,6 +75,7 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
 gboolean gabble_connection_request_presence (GabbleConnection *obj, const GArray * contacts, GError **error);
 gboolean gabble_connection_set_aliases (GabbleConnection *obj, GHashTable * aliases, GError **error);
 gboolean gabble_connection_set_last_activity_time (GabbleConnection *obj, guint time, GError **error);
+gboolean gabble_connection_set_properties (GabbleConnection *obj, const GPtrArray * properties, DBusGMethodInvocation *context);
 gboolean gabble_connection_set_status (GabbleConnection *obj, GHashTable * statuses, GError **error);
 
 

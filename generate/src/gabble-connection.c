@@ -35,6 +35,8 @@ enum
     ALIASES_CHANGED,
     NEW_CHANNEL,
     PRESENCE_UPDATE,
+    PROPERTIES_CHANGED,
+    PROPERTY_FLAGS_CHANGED,
     STATUS_CHANGED,
     LAST_SIGNAL
 };
@@ -98,6 +100,24 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
                   NULL, NULL,
                   gabble_connection_marshal_VOID__BOXED,
                   G_TYPE_NONE, 1, (dbus_g_type_get_map ("GHashTable", G_TYPE_UINT, (dbus_g_type_get_struct ("GValueArray", G_TYPE_UINT, (dbus_g_type_get_map ("GHashTable", G_TYPE_STRING, (dbus_g_type_get_map ("GHashTable", G_TYPE_STRING, G_TYPE_VALUE)))), G_TYPE_INVALID)))));
+
+  signals[PROPERTIES_CHANGED] =
+    g_signal_new ("properties-changed",
+                  G_OBJECT_CLASS_TYPE (gabble_connection_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_connection_marshal_VOID__BOXED,
+                  G_TYPE_NONE, 1, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_UINT, G_TYPE_VALUE, G_TYPE_INVALID)))));
+
+  signals[PROPERTY_FLAGS_CHANGED] =
+    g_signal_new ("property-flags-changed",
+                  G_OBJECT_CLASS_TYPE (gabble_connection_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_connection_marshal_VOID__BOXED,
+                  G_TYPE_NONE, 1, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_UINT, G_TYPE_UINT, G_TYPE_INVALID)))));
 
   signals[STATUS_CHANGED] =
     g_signal_new ("status-changed",
@@ -232,6 +252,24 @@ gboolean gabble_connection_get_interfaces (GabbleConnection *obj, gchar *** ret,
 
 
 /**
+ * gabble_connection_get_properties
+ *
+ * Implements DBus method GetProperties
+ * on interface org.freedesktop.Telepathy.Properties
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_connection_get_properties (GabbleConnection *obj, const GArray * properties, GPtrArray ** ret, GError **error)
+{
+  return TRUE;
+}
+
+
+/**
  * gabble_connection_get_protocol
  *
  * Implements DBus method GetProtocol
@@ -349,6 +387,24 @@ gboolean gabble_connection_inspect_handle (GabbleConnection *obj, guint handle_t
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 gboolean gabble_connection_list_channels (GabbleConnection *obj, GPtrArray ** ret, GError **error)
+{
+  return TRUE;
+}
+
+
+/**
+ * gabble_connection_list_properties
+ *
+ * Implements DBus method ListProperties
+ * on interface org.freedesktop.Telepathy.Properties
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_connection_list_properties (GabbleConnection *obj, GPtrArray ** ret, GError **error)
 {
   return TRUE;
 }
@@ -484,6 +540,21 @@ gboolean gabble_connection_set_aliases (GabbleConnection *obj, GHashTable * alia
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 gboolean gabble_connection_set_last_activity_time (GabbleConnection *obj, guint time, GError **error)
+{
+  return TRUE;
+}
+
+
+/**
+ * gabble_connection_set_properties
+ *
+ * Implements DBus method SetProperties
+ * on interface org.freedesktop.Telepathy.Properties
+ *
+ * @context: The DBUS invocation context to use to return values
+ *           or throw an error.
+ */
+gboolean gabble_connection_set_properties (GabbleConnection *obj, const GPtrArray * properties, DBusGMethodInvocation *context)
 {
   return TRUE;
 }

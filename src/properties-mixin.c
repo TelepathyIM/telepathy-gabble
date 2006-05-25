@@ -212,7 +212,7 @@ gabble_properties_mixin_list_properties (GObject *obj, GPtrArray **ret, GError *
       };
 
       g_value_init (&val, TP_TYPE_PROPERTY_INFO_STRUCT);
-      g_value_set_static_boxed (&val,
+      g_value_take_boxed (&val,
           dbus_g_type_specialized_construct (TP_TYPE_PROPERTY_INFO_STRUCT));
 
       dbus_g_type_struct_set (&val,
@@ -270,7 +270,7 @@ gabble_properties_mixin_get_properties (GObject *obj, const GArray *properties, 
 
       /* id/value struct */
       g_value_init (&val_struct, TP_TYPE_PROPERTY_VALUE_STRUCT);
-      g_value_set_static_boxed (&val_struct,
+      g_value_take_boxed (&val_struct,
           dbus_g_type_specialized_construct (TP_TYPE_PROPERTY_VALUE_STRUCT));
 
       dbus_g_type_struct_set (&val_struct,
@@ -694,7 +694,7 @@ gabble_properties_mixin_emit_changed (GObject *obj, GArray **props)
       guint prop_id = g_array_index (*props, guint, i);
 
       g_value_init (&prop_val, TP_TYPE_PROPERTY_VALUE_STRUCT);
-      g_value_set_static_boxed (&prop_val,
+      g_value_take_boxed (&prop_val,
           dbus_g_type_specialized_construct (TP_TYPE_PROPERTY_VALUE_STRUCT));
 
       dbus_g_type_struct_set (&prop_val,
@@ -713,7 +713,7 @@ gabble_properties_mixin_emit_changed (GObject *obj, GArray **props)
   g_signal_emit (obj, mixin_cls->properties_changed_signal_id, 0, prop_arr);
 
   g_value_init (&prop_list, TP_TYPE_PROPERTY_VALUE_LIST);
-  g_value_set_static_boxed (&prop_list, prop_arr);
+  g_value_take_boxed (&prop_list, prop_arr);
   g_value_unset (&prop_list);
 
   g_array_free (*props, TRUE);
@@ -752,7 +752,7 @@ gabble_properties_mixin_emit_flags (GObject *obj, GArray **props)
       prop_flags = mixin->properties[prop_id].flags;
 
       g_value_init (&prop_val, TP_TYPE_PROPERTY_FLAGS_STRUCT);
-      g_value_set_static_boxed (&prop_val,
+      g_value_take_boxed (&prop_val,
           dbus_g_type_specialized_construct (TP_TYPE_PROPERTY_FLAGS_STRUCT));
 
       dbus_g_type_struct_set (&prop_val,
@@ -776,7 +776,7 @@ gabble_properties_mixin_emit_flags (GObject *obj, GArray **props)
   g_signal_emit (obj, mixin_cls->property_flags_changed_signal_id, 0, prop_arr);
 
   g_value_init (&prop_list, TP_TYPE_PROPERTY_FLAGS_LIST);
-  g_value_set_static_boxed (&prop_list, prop_arr);
+  g_value_take_boxed (&prop_list, prop_arr);
   g_value_unset (&prop_list);
 
   g_array_free (*props, TRUE);

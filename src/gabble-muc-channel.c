@@ -2117,50 +2117,7 @@ gabble_muc_channel_remove_member (GObject *obj, GabbleHandle handle, const gchar
  */
 gboolean gabble_muc_channel_list_properties (GabbleMucChannel *obj, GPtrArray ** ret, GError **error)
 {
-  GabbleMucChannelPrivate *priv;
-  guint i;
-
-  g_assert (GABBLE_IS_MUC_CHANNEL (obj));
-
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
-
-  *ret = g_ptr_array_sized_new (NUM_ROOM_PROPS);
-
-  for (i = 0; i < NUM_ROOM_PROPS; i++)
-    {
-      RoomProperty *prop = &priv->room_props[i];
-      const gchar *dbus_sig;
-      GValue val = { 0, };
-
-      switch (room_property_signatures[i].type) {
-        case G_TYPE_BOOLEAN:
-          dbus_sig = "b";
-          break;
-        case G_TYPE_UINT:
-          dbus_sig = "u";
-          break;
-        case G_TYPE_STRING:
-          dbus_sig = "s";
-          break;
-        default:
-          g_assert_not_reached ();
-      };
-
-      g_value_init (&val, TP_TYPE_PROPERTY_INFO_STRUCT);
-      g_value_set_static_boxed (&val,
-          dbus_g_type_specialized_construct (TP_TYPE_PROPERTY_INFO_STRUCT));
-
-      dbus_g_type_struct_set (&val,
-          0, i,
-          1, room_property_signatures[i].name,
-          2, dbus_sig,
-          3, prop->flags,
-          G_MAXUINT);
-
-      g_ptr_array_add (*ret, g_value_get_boxed (&val));
-    }
-
-  return TRUE;
+  return gabble_properties_mixin_list_properties (G_OBJECT (obj), ret, error);
 }
 
 
@@ -2178,59 +2135,7 @@ gboolean gabble_muc_channel_list_properties (GabbleMucChannel *obj, GPtrArray **
  */
 gboolean gabble_muc_channel_get_properties (GabbleMucChannel *obj, const GArray * properties, GPtrArray ** ret, GError **error)
 {
-  GabbleMucChannelPrivate *priv;
-  guint i;
-
-  g_assert (GABBLE_IS_MUC_CHANNEL (obj));
-
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
-
-  /* Check input property identifiers */
-  for (i = 0; i < properties->len; i++)
-    {
-      guint prop_id = g_array_index (properties, guint, i);
-
-      /* Valid? */
-      if (prop_id >= NUM_ROOM_PROPS)
-        {
-          *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                                "invalid property identifier %d", prop_id);
-
-          return FALSE;
-        }
-
-      /* Permitted? */
-      if (!(priv->room_props[prop_id].flags & TP_PROPERTY_FLAG_READ))
-        {
-          *error = g_error_new (TELEPATHY_ERRORS, PermissionDenied,
-                                "permission denied for property identifier %d", prop_id);
-
-          return FALSE;
-        }
-    }
-
-  /* If we got this far, return the actual values */
-  *ret = g_ptr_array_sized_new (properties->len);
-
-  for (i = 0; i < properties->len; i++)
-    {
-      guint prop_id = g_array_index (properties, guint, i);
-      GValue val_struct = { 0, };
-
-      /* id/value struct */
-      g_value_init (&val_struct, TP_TYPE_PROPERTY_VALUE_STRUCT);
-      g_value_set_static_boxed (&val_struct,
-          dbus_g_type_specialized_construct (TP_TYPE_PROPERTY_VALUE_STRUCT));
-
-      dbus_g_type_struct_set (&val_struct,
-          0, prop_id,
-          1, priv->room_props[prop_id].value,
-          G_MAXUINT);
-
-      g_ptr_array_add (*ret, g_value_get_boxed (&val_struct));
-    }
-
-  return TRUE;
+  return gabble_properties_mixin_get_properties (G_OBJECT (obj), properties, ret, error);
 }
 
 /**
@@ -2630,98 +2535,13 @@ request_config_form_submit_reply_cb (GabbleConnection *conn, LmMessage *sent_msg
       gabble_properties_context_return (ctx, error);
       returned = TRUE;
 
-  prop_arr = g_ptr_array_sized_new (props->len);
-
-  printf (ANSI_BOLD_ON ANSI_FG_CYAN
-          "%s: emitting room properties changed for propert%s:\n",
-          G_STRFUNC, (props->len > 1) ? "ies" : "y");
-
-  for (i = 0; i < props->len; i++)
-    {
-      GValue prop_val = { 0, };
-      guint prop_id = g_array_index (props, guint, i);
-
-      g_value_init (&prop_val, TP_TYPE_PROPERTY_VALUE_STRUCT);
-      g_value_set_static_boxed (&prop_val,
-          dbus_g_type_specialized_construct (TP_TYPE_PROPERTY_VALUE_STRUCT));
-
-      dbus_g_type_struct_set (&prop_val,
-          0, prop_id,
-          1, priv->room_props[prop_id].value,
-          G_MAXUINT);
-
-      g_ptr_array_add (prop_arr, g_value_get_boxed (&prop_val));
-
-      printf ("  %s\n", room_property_signatures[prop_id].name);
-    }
-
-  printf (ANSI_RESET);
-  fflush (stdout);
-
-  g_signal_emit (chan, signals[PROPERTIES_CHANGED], 0, prop_arr);
-
-  g_value_init (&prop_list, TP_TYPE_PROPERTY_VALUE_LIST);
-  g_value_set_static_boxed (&prop_list, prop_arr);
-  g_value_unset (&prop_list);
-}
-
-static void
-room_properties_emit_flags (GabbleMucChannel *chan, GArray *props)
-{
-  GabbleMucChannelPrivate *priv;
-  GPtrArray *prop_arr;
-  GValue prop_list = { 0, };
-  guint i;
-
-  g_assert (GABBLE_IS_MUC_CHANNEL (chan));
-
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
-
-  if (props->len == 0)
-    return;
-
-  prop_arr = g_ptr_array_sized_new (props->len);
-
-  printf (ANSI_BOLD_ON ANSI_FG_WHITE
-          "%s: emitting room properties flags changed for propert%s:\n",
-          G_STRFUNC, (props->len > 1) ? "ies" : "y");
-
-  for (i = 0; i < props->len; i++)
-    {
-      GValue prop_val = { 0, };
-      guint prop_id = g_array_index (props, guint, i);
-      guint prop_flags;
-      gchar *str_flags;
-
-      prop_flags = priv->room_props[prop_id].flags;
-
-      g_value_init (&prop_val, TP_TYPE_PROPERTY_FLAGS_STRUCT);
-      g_value_set_static_boxed (&prop_val,
-          dbus_g_type_specialized_construct (TP_TYPE_PROPERTY_FLAGS_STRUCT));
-
-      dbus_g_type_struct_set (&prop_val,
-          0, prop_id,
-          1, prop_flags,
-          G_MAXUINT);
-
-      g_ptr_array_add (prop_arr, g_value_get_boxed (&prop_val));
-
-      str_flags = room_property_flags_to_string (prop_flags);
-
-      printf ("  %s's flags now: %s\n",
-          room_property_signatures[prop_id].name,
-          str_flags);
-
-      g_free (str_flags);
+      /* Get the properties into a consistent state. */
+      room_properties_update (chan);
     }
 
   if (returned)
     priv->properties_ctx = NULL;
 
-  g_signal_emit (chan, signals[PROPERTY_FLAGS_CHANGED], 0, prop_arr);
-
-  g_value_init (&prop_list, TP_TYPE_PROPERTY_FLAGS_LIST);
-  g_value_set_static_boxed (&prop_list, prop_arr);
-  g_value_unset (&prop_list);
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 

@@ -2502,7 +2502,7 @@ connection_iq_unknown_cb (LmMessageHandler *handler,
     case LM_MESSAGE_SUB_TYPE_GET:
     case LM_MESSAGE_SUB_TYPE_SET:
       _gabble_connection_send_iq_error (conn, message->node,
-          XMPP_ERROR_FEATURE_NOT_IMPLEMENTED);
+          XMPP_ERROR_SERVICE_UNAVAILABLE);
       break;
     default:
       break;

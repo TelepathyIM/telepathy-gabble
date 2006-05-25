@@ -20,10 +20,12 @@
  */
 
 #include <glib.h>
+#include <loudmouth/loudmouth.h>
 
 #ifndef __GABBLE_UTIL_H__
 #define __GABBLE_UTIL_H__
 
 gboolean g_strdiff (const gchar *left, const gchar *right);
+void lm_message_node_add_nick (LmMessageNode *node, const gchar *nick);
 
 #endif /* __GABBLE_UTIL_H__ */

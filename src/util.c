@@ -23,6 +23,7 @@
 #include <string.h>
 
 #include "util.h"
+#include "namespaces.h"
 
 gboolean
 g_strdiff (const gchar *left, const gchar *right)
@@ -36,3 +37,13 @@ g_strdiff (const gchar *left, const gchar *right)
   else
     return (0 != strcmp (left, right));
 }
+
+void
+lm_message_node_add_nick (LmMessageNode *node, const gchar *nick)
+{
+  LmMessageNode *nick_node;
+
+  nick_node = lm_message_node_add_child (node, "nick", nick);
+  lm_message_node_set_attribute (nick_node, "xmlns", NS_NICK);
+}
+

@@ -1,5 +1,5 @@
 /*
- * gabble-properties-mixin.h - Header for GabblePropertiesMixin
+ * properties-mixin.h - Header for GabblePropertiesMixin
  * Copyright (C) 2006 Collabora Ltd.
  * Copyright (C) 2006 Nokia Corporation
  *   @author Ole Andre Vadla Ravnaas <ole.andre.ravnaas@collabora.co.uk>

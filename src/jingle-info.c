@@ -24,6 +24,7 @@
 
 #include "jingle-info.h"
 #include "gabble-error.h"
+#include "namespaces.h"
 
 
 /**

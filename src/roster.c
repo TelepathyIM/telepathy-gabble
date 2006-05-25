@@ -40,6 +40,15 @@ enum
   LAST_PROPERTY
 };
 
+/* signal enum */
+enum
+{
+  NICKNAME_UPDATE,
+  LAST_SIGNAL
+};
+
+static guint signals[LAST_SIGNAL] = { 0 };
+
 typedef struct _GabbleRosterPrivate GabbleRosterPrivate;
 struct _GabbleRosterPrivate
 {
@@ -120,6 +129,14 @@ gabble_roster_class_init (GabbleRosterClass *gabble_roster_class)
   g_object_class_install_property (object_class,
                                    PROP_CONNECTION,
                                    param_spec);
+
+  signals[NICKNAME_UPDATE] = g_signal_new (
+    "nickname-update",
+    G_TYPE_FROM_CLASS (gabble_roster_class),
+    G_SIGNAL_RUN_LAST,
+    0,
+    NULL, NULL,
+    g_cclosure_marshal_VOID__UINT, G_TYPE_NONE, 1, G_TYPE_UINT);
 }
 
 static void
@@ -251,15 +268,6 @@ _gabble_roster_item_free (GabbleRosterItem *item)
   g_strfreev (item->groups);
   g_free (item->name);
   g_free (item);
-}
-
-static void
-_gabble_roster_alias_changed (GabbleRoster *roster,
-                              GabbleHandle handle,
-                              const gchar *name)
-{
-  g_debug ("%s: alias for handle %d changed to %s", G_STRFUNC, handle,
-      name);
 }
 
 static const gchar *
@@ -404,7 +412,10 @@ _gabble_roster_item_update (GabbleRoster *roster,
     {
       g_free (item->name);
       item->name = g_strdup (name);
-      _gabble_roster_alias_changed (roster, handle, name);
+
+      g_debug ("%s: name for handle %d changed to %s", G_STRFUNC, handle,
+          name);
+      g_signal_emit (G_OBJECT (roster), signals[NICKNAME_UPDATE], 0, handle);
     }
 
   g_strfreev (item->groups);

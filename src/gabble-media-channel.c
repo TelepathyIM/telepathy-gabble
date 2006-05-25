@@ -696,7 +696,7 @@ gboolean gabble_media_channel_get_session_handlers (GabbleMediaChannel *obj, GPt
   priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (obj);
 
   g_value_init (&handler, TP_SESSION_HANDLER_SET_TYPE);
-  g_value_set_static_boxed (&handler,
+  g_value_take_boxed (&handler,
       dbus_g_type_specialized_construct (TP_SESSION_HANDLER_SET_TYPE));
 
   g_object_get (priv->session,
@@ -762,7 +762,7 @@ gboolean gabble_media_channel_get_streams (GabbleMediaChannel *obj, GPtrArray **
         {
           GValue streams = { 0, };
           g_value_init (&streams, TP_CHANNEL_STREAM_TYPE);
-          g_value_set_static_boxed (&streams,
+          g_value_take_boxed (&streams,
               dbus_g_type_specialized_construct (TP_CHANNEL_STREAM_TYPE));
 
           dbus_g_type_struct_set (&streams,

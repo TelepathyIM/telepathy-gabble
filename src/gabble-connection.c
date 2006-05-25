@@ -3116,7 +3116,7 @@ gboolean gabble_connection_get_capabilities (GabbleConnection *obj, guint handle
   *ret = g_ptr_array_sized_new (1);
 
   g_value_init (&vals, TP_CAPABILITY_PAIR_TYPE);
-  g_value_set_static_boxed (&vals,
+  g_value_take_boxed (&vals,
     dbus_g_type_specialized_construct (TP_CAPABILITY_PAIR_TYPE));
 
   dbus_g_type_struct_set (&vals,
@@ -3316,7 +3316,7 @@ gboolean gabble_connection_get_statuses (GabbleConnection *obj, GHashTable ** re
       g_value_array_append (status, NULL);
       g_value_init (g_value_array_get_nth (status, 3),
           DBUS_TYPE_G_STRING_STRING_HASHTABLE);
-      g_value_set_static_boxed (g_value_array_get_nth (status, 3),
+      g_value_take_boxed (g_value_array_get_nth (status, 3),
           get_statuses_arguments());
 
       g_hash_table_insert (*ret, (gchar*) gabble_statuses[i].name, status);
@@ -3427,7 +3427,7 @@ list_channel_factory_foreach_one (TpChannelIface *chan,
   GValue entry = { 0, };
 
   g_value_init (&entry, TP_CHANNEL_LIST_ENTRY_TYPE);
-  g_value_set_boxed (&entry, dbus_g_type_specialized_construct
+  g_value_take_boxed (&entry, dbus_g_type_specialized_construct
       (TP_CHANNEL_LIST_ENTRY_TYPE));
 
   g_object_get (channel,

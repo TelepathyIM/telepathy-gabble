@@ -563,7 +563,7 @@ gboolean gabble_media_stream_new_native_candidate (GabbleMediaStream *obj, const
   candidates = g_value_get_boxed (&priv->native_candidates);
 
   g_value_init (&candidate, TP_TYPE_CANDIDATE_STRUCT);
-  g_value_set_static_boxed (&candidate,
+  g_value_take_boxed (&candidate,
       dbus_g_type_specialized_construct (TP_TYPE_CANDIDATE_STRUCT));
 
   dbus_g_type_struct_set (&candidate,
@@ -683,7 +683,7 @@ gboolean gabble_media_stream_supported_codecs (GabbleMediaStream *obj, const GPt
                   "codecs from voip-engine", codecs->len);
 
   /* store the intersection for later on */
-  g_value_set_boxed (&priv->native_codecs, codecs);
+  g_value_take_boxed (&priv->native_codecs, codecs);
 
   g_signal_emit (obj, signals[SUPPORTED_CODECS], 0, codecs);
 
@@ -895,7 +895,7 @@ _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream,
         }
 
       g_value_init (&codec, TP_TYPE_CODEC_STRUCT);
-      g_value_set_static_boxed (&codec,
+      g_value_take_boxed (&codec,
           dbus_g_type_specialized_construct (TP_TYPE_CODEC_STRUCT));
 
       dbus_g_type_struct_set (&codec,
@@ -1103,7 +1103,7 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
 
 
       g_value_init (&transport, TP_TYPE_TRANSPORT_STRUCT);
-      g_value_set_static_boxed (&transport,
+      g_value_take_boxed (&transport,
           dbus_g_type_specialized_construct (TP_TYPE_TRANSPORT_STRUCT));
 
       dbus_g_type_struct_set (&transport,
@@ -1124,7 +1124,7 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
 
 
       g_value_init (&candidate, TP_TYPE_CANDIDATE_STRUCT);
-      g_value_set_static_boxed (&candidate,
+      g_value_take_boxed (&candidate,
           dbus_g_type_specialized_construct (TP_TYPE_CANDIDATE_STRUCT));
 
       /* FIXME: is this naming scheme sensible? */

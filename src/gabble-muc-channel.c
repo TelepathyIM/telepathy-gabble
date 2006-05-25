@@ -2181,7 +2181,7 @@ gboolean gabble_muc_channel_list_properties (GabbleMucChannel *obj, GPtrArray **
       };
 
       g_value_init (&val, TP_TYPE_PROPERTY_INFO_STRUCT);
-      g_value_set_static_boxed (&val,
+      g_value_take_boxed (&val,
           dbus_g_type_specialized_construct (TP_TYPE_PROPERTY_INFO_STRUCT));
 
       dbus_g_type_struct_set (&val,
@@ -2253,7 +2253,7 @@ gboolean gabble_muc_channel_get_properties (GabbleMucChannel *obj, const GArray 
 
       /* id/value struct */
       g_value_init (&val_struct, TP_TYPE_PROPERTY_VALUE_STRUCT);
-      g_value_set_static_boxed (&val_struct,
+      g_value_take_boxed (&val_struct,
           dbus_g_type_specialized_construct (TP_TYPE_PROPERTY_VALUE_STRUCT));
 
       dbus_g_type_struct_set (&val_struct,
@@ -2939,7 +2939,7 @@ room_properties_emit_changed (GabbleMucChannel *chan, GArray *props)
       guint prop_id = g_array_index (props, guint, i);
 
       g_value_init (&prop_val, TP_TYPE_PROPERTY_VALUE_STRUCT);
-      g_value_set_static_boxed (&prop_val,
+      g_value_take_boxed (&prop_val,
           dbus_g_type_specialized_construct (TP_TYPE_PROPERTY_VALUE_STRUCT));
 
       dbus_g_type_struct_set (&prop_val,
@@ -2958,7 +2958,7 @@ room_properties_emit_changed (GabbleMucChannel *chan, GArray *props)
   g_signal_emit (chan, signals[PROPERTIES_CHANGED], 0, prop_arr);
 
   g_value_init (&prop_list, TP_TYPE_PROPERTY_VALUE_LIST);
-  g_value_set_static_boxed (&prop_list, prop_arr);
+  g_value_take_boxed (&prop_list, prop_arr);
   g_value_unset (&prop_list);
 }
 
@@ -2993,7 +2993,7 @@ room_properties_emit_flags (GabbleMucChannel *chan, GArray *props)
       prop_flags = priv->room_props[prop_id].flags;
 
       g_value_init (&prop_val, TP_TYPE_PROPERTY_FLAGS_STRUCT);
-      g_value_set_static_boxed (&prop_val,
+      g_value_take_boxed (&prop_val,
           dbus_g_type_specialized_construct (TP_TYPE_PROPERTY_FLAGS_STRUCT));
 
       dbus_g_type_struct_set (&prop_val,
@@ -3018,7 +3018,7 @@ room_properties_emit_flags (GabbleMucChannel *chan, GArray *props)
   g_signal_emit (chan, signals[PROPERTY_FLAGS_CHANGED], 0, prop_arr);
 
   g_value_init (&prop_list, TP_TYPE_PROPERTY_FLAGS_LIST);
-  g_value_set_static_boxed (&prop_list, prop_arr);
+  g_value_take_boxed (&prop_list, prop_arr);
   g_value_unset (&prop_list);
 }
 

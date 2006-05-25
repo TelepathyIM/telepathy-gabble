@@ -681,17 +681,17 @@ remove_handle_owners_if_exist (GObject *obj, GArray *array)
   for (i = 0; i < array->len; i++)
     {
       GabbleHandle handle = g_array_index (array, guint32, i);
-      GabbleHandle local_handle, owner_handle;
+      gpointer local_handle, owner_handle;
 
       if (g_hash_table_lookup_extended (priv->handle_owners,
                                         GUINT_TO_POINTER (handle),
-                                        (gpointer *) &local_handle,
-                                        (gpointer *) &owner_handle))
+                                        &local_handle,
+                                        &owner_handle))
         {
           gabble_handle_unref (mixin->handle_repo, TP_HANDLE_TYPE_CONTACT,
-                               local_handle);
+                               GPOINTER_TO_UINT (local_handle));
           gabble_handle_unref (mixin->handle_repo, TP_HANDLE_TYPE_CONTACT,
-                               owner_handle);
+                               GPOINTER_TO_UINT (owner_handle));
 
           g_hash_table_remove (priv->handle_owners, GUINT_TO_POINTER (handle));
         }

@@ -1162,8 +1162,8 @@ gabble_roster_handle_is_subscribed (GabbleRoster *roster,
 }
 
 const gchar *
-gabble_roster_handle_get_alias (GabbleRoster *roster,
-                                GabbleHandle handle)
+gabble_roster_handle_get_name (GabbleRoster *roster,
+                               GabbleHandle handle)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
   GabbleRosterItem *item;
@@ -1182,10 +1182,10 @@ gabble_roster_handle_get_alias (GabbleRoster *roster,
 }
 
 gboolean
-gabble_roster_handle_set_alias (GabbleRoster *roster,
-                                GabbleHandle handle,
-                                const gchar *name,
-                                GError **error)
+gabble_roster_handle_set_name (GabbleRoster *roster,
+                               GabbleHandle handle,
+                               const gchar *name,
+                               GError **error)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
   LmMessage *message;

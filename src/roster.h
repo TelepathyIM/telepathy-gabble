@@ -58,8 +58,8 @@ struct _GabbleRoster {
 GabbleRoster *gabble_roster_new (GabbleConnection *);
 
 gboolean gabble_roster_handle_is_subscribed (GabbleRoster *, GabbleHandle);
-const gchar *gabble_roster_handle_get_alias (GabbleRoster *, GabbleHandle);
-gboolean gabble_roster_handle_set_alias (GabbleRoster *, GabbleHandle, const gchar *, GError **);
+const gchar *gabble_roster_handle_get_name (GabbleRoster *, GabbleHandle);
+gboolean gabble_roster_handle_set_name (GabbleRoster *, GabbleHandle, const gchar *, GError **);
 
 G_END_DECLS
 

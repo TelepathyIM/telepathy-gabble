@@ -68,6 +68,9 @@
     <method name="AcknowledgePendingMessage">
       <arg direction="in" name="id" type="u"/>
     </method>
+    <method name="GetMessageTypes">
+      <arg direction="out" type="au"/>
+    </method>
     <method name="ListPendingMessages">
       <arg direction="out" type="a(uuuus)"/>
     </method>

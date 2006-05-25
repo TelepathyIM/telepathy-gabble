@@ -364,6 +364,24 @@ gboolean gabble_muc_channel_get_members (GabbleMucChannel *obj, GArray ** ret, G
 
 
 /**
+ * gabble_muc_channel_get_message_types
+ *
+ * Implements DBus method GetMessageTypes
+ * on interface org.freedesktop.Telepathy.Channel.Type.Text
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_muc_channel_get_message_types (GabbleMucChannel *obj, GArray ** ret, GError **error)
+{
+  return TRUE;
+}
+
+
+/**
  * gabble_muc_channel_get_password_flags
  *
  * Implements DBus method GetPasswordFlags

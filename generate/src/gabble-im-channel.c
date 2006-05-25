@@ -242,6 +242,24 @@ gboolean gabble_im_channel_get_interfaces (GabbleIMChannel *obj, gchar *** ret, 
 
 
 /**
+ * gabble_im_channel_get_message_types
+ *
+ * Implements DBus method GetMessageTypes
+ * on interface org.freedesktop.Telepathy.Channel.Type.Text
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_im_channel_get_message_types (GabbleIMChannel *obj, GArray ** ret, GError **error)
+{
+  return TRUE;
+}
+
+
+/**
  * gabble_im_channel_list_pending_messages
  *
  * Implements DBus method ListPendingMessages

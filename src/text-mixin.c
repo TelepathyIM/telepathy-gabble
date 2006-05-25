@@ -199,9 +199,10 @@ gabble_text_mixin_class_init (GObjectClass *obj_cls, glong offset)
                 G_TYPE_NONE, 3, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING);
 }
 
-void gabble_text_mixin_init (GObject *obj,
-                             glong offset,
-                             GabbleHandleRepo *handle_repo)
+void
+gabble_text_mixin_init (GObject *obj,
+                        glong offset,
+                        GabbleHandleRepo *handle_repo)
 {
   GabbleTextMixin *mixin;
 
@@ -216,6 +217,23 @@ void gabble_text_mixin_init (GObject *obj,
   mixin->pending = g_queue_new ();
   mixin->handle_repo = handle_repo;
   mixin->recv_id = 0;
+  mixin->msg_types = g_array_sized_new (FALSE, FALSE, sizeof (guint), 4);
+}
+
+void
+gabble_text_mixin_set_message_types (GObject *obj,
+                                     ...)
+{
+  GabbleTextMixin *mixin = GABBLE_TEXT_MIXIN (obj);
+  va_list args;
+  guint type;
+
+  va_start (args, obj);
+
+  while ((type = va_arg (args, guint)) != G_MAXUINT)
+    g_array_append_val (mixin->msg_types, type);
+
+  va_end (args);
 }
 
 static void _gabble_pending_free (GabblePendingMessage *msg);
@@ -238,6 +256,8 @@ gabble_text_mixin_finalize (GObject *obj)
   /* FIXME - this allocates & destroys if there haven't been any messages */
   gabble_allocator_destroy (_gabble_pending_get_alloc ());
   g_queue_free (mixin->pending);
+
+  g_array_free (mixin->msg_types, TRUE);
 }
 
 /**
@@ -529,6 +549,22 @@ gboolean gabble_text_mixin_send (GObject *obj, guint type, guint subtype, const 
   return TRUE;
 }
 
+gboolean
+gabble_text_mixin_get_message_types (GObject *obj, GArray **ret, GError **error)
+{
+  GabbleTextMixin *mixin = GABBLE_TEXT_MIXIN (obj);
+  guint i;
+
+  *ret = g_array_sized_new (FALSE, FALSE, sizeof (guint),
+                            mixin->msg_types->len);
+
+  for (i = 0; i < mixin->msg_types->len; i++)
+    {
+      g_array_append_val (*ret, g_array_index (mixin->msg_types, guint, i));
+    }
+
+  return TRUE;
+}
 
 
 void

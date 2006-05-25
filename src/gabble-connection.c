@@ -3891,6 +3891,31 @@ _gabble_connection_request_channel_deprecated (GabbleConnection *obj, const gcha
  */
 gboolean gabble_connection_request_aliases (GabbleConnection *obj, const GArray * contacts, gchar *** ret, GError **error)
 {
+  int i;
+  gchar **aliases;
+
+  if (!gabble_handles_are_valid (obj->handles, TP_HANDLE_TYPE_CONTACT,
+        contacts, FALSE, error));
+    return FALSE;
+
+  aliases = g_new0 (gchar *, contacts->len + 1);
+
+  for (i = 0; i < contacts->len; i++)
+    {
+      GabbleHandle handle = g_array_index (contacts, GabbleHandle, i);
+      GabbleConnectionAliasSource source;
+      gchar *alias;
+
+      source = _gabble_connection_get_cached_alias (obj, handle, &alias);
+
+      g_assert (source != GABBLE_CONNECTION_ALIAS_NONE);
+      g_assert (NULL != alias);
+
+      aliases[i] = alias;
+    }
+
+  *ret = aliases;
+
   return TRUE;
 }
 

@@ -93,16 +93,16 @@ gabble_presence_cache_class_init (GabblePresenceCacheClass *klass)
     "presence-update",
     G_TYPE_FROM_CLASS (klass),
     G_SIGNAL_RUN_LAST,
-    G_STRUCT_OFFSET (GabblePresenceCacheClass, presence_update),
+    0,
     NULL, NULL,
-    g_cclosure_marshal_VOID__INT, G_TYPE_NONE, 1, G_TYPE_UINT);
+    g_cclosure_marshal_VOID__UINT, G_TYPE_NONE, 1, G_TYPE_UINT);
   signals[NICKNAME_UPDATE] = g_signal_new (
     "nickname-update",
     G_TYPE_FROM_CLASS (klass),
     G_SIGNAL_RUN_LAST,
-    G_STRUCT_OFFSET (GabblePresenceCacheClass, nickname_update),
+    0,
     NULL, NULL,
-    g_cclosure_marshal_VOID__INT, G_TYPE_NONE, 1, G_TYPE_UINT);
+    g_cclosure_marshal_VOID__UINT, G_TYPE_NONE, 1, G_TYPE_UINT);
 }
 
 static void

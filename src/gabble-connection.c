@@ -4138,7 +4138,7 @@ room_jid_disco_cb (GabbleDisco *disco,
 
   if (error != NULL)
     {
-      g_debug ("%s: DISCO reply error %s", G_STRFUNC, error->message);
+      g_debug ("%s: disco reply error %s", G_STRFUNC, error->message);
       dbus_g_method_return_error (rvctx->context, error);
 
       goto OUT;

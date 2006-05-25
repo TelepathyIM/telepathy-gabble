@@ -366,10 +366,7 @@ _grab_nickname (GabblePresenceCache *cache,
   presence = gabble_presence_cache_get (cache, handle);
 
   if (NULL == presence)
-    {
-      presence = _cache_insert (cache, handle);
-      presence->keep_unavailable = TRUE;
-    }
+    return;
 
   nickname = lm_message_node_get_value (node);
   g_debug ("got nickname \"%s\" for %s", nickname, from);
@@ -471,6 +468,15 @@ _parse_message_message (GabblePresenceCache *cache,
                         LmMessage *message)
 {
   LmMessageNode *node;
+  GabblePresence *presence;
+
+  presence = gabble_presence_cache_get (cache, handle);
+
+  if (NULL == presence)
+    {
+      presence = _cache_insert (cache, handle);
+      presence->keep_unavailable = TRUE;
+    }
 
   node = lm_message_get_node (message);
   _grab_nickname (cache, handle, from, node);

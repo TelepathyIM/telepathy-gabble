@@ -54,10 +54,6 @@ enum
 {
     CLOSED,
     PASSWORD_FLAGS_CHANGED,
-    PROPERTIES_CHANGED,
-    PROPERTY_FLAGS_CHANGED,
-    RECEIVED,
-    SENT,
     LAST_SIGNAL
 };
 
@@ -256,17 +252,28 @@ gabble_muc_channel_constructor (GType type, guint n_props,
       TP_CHANNEL_GROUP_FLAG_CAN_ADD,
       0);
 
+  /* initialize properties mixin */
+  gabble_properties_mixin_init (obj, G_STRUCT_OFFSET (
+        GabbleMucChannel, properties));
+
+  /* initialize text mixin */
+  gabble_text_mixin_init (obj, G_STRUCT_OFFSET (GabbleMucChannel, text), handles);
+
+  gabble_text_mixin_set_message_types (obj,
+      TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL,
+      TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION,
+      G_MAXUINT);
+
   return obj;
 }
 
-static void room_property_change_value (GabbleMucChannel *chan, guint prop_id, const GValue *new_value, GArray *props);
-static void room_property_change_flags (GabbleMucChannel *chan, guint prop_id, TpPropertyFlags add, TpPropertyFlags remove, GArray *props);
-static void room_properties_emit_changed (GabbleMucChannel *chan, GArray *props);
-static void room_properties_emit_flags (GabbleMucChannel *chan, GArray *props);
-
-static void properties_disco_cb (GabbleDisco *disco, const gchar *jid,
-                                 const gchar *node, LmMessageNode *query_result,
-                                 GError *error, gpointer user_data)
+static void properties_disco_cb (GabbleDisco *disco,
+                                 GabbleDiscoRequest *request,
+                                 const gchar *jid,
+                                 const gchar *node,
+                                 LmMessageNode *query_result,
+                                 GError *error,
+                                 gpointer user_data)
 {
   GabbleMucChannel *chan = user_data;
   GabbleMucChannelPrivate *priv;
@@ -779,46 +786,17 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   gabble_muc_channel_marshal_VOID__INT_INT,
                   G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_UINT);
 
-  signals[PROPERTIES_CHANGED] =
-    g_signal_new ("properties-changed",
-                  G_OBJECT_CLASS_TYPE (gabble_muc_channel_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  gabble_muc_channel_marshal_VOID__BOXED,
-                  G_TYPE_NONE, 1, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_UINT, G_TYPE_VALUE, G_TYPE_INVALID)))));
-
-  signals[PROPERTY_FLAGS_CHANGED] =
-    g_signal_new ("property-flags-changed",
-                  G_OBJECT_CLASS_TYPE (gabble_muc_channel_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  gabble_muc_channel_marshal_VOID__BOXED,
-                  G_TYPE_NONE, 1, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_UINT, G_TYPE_UINT, G_TYPE_INVALID)))));
-
-  signals[RECEIVED] =
-    g_signal_new ("received",
-                  G_OBJECT_CLASS_TYPE (gabble_muc_channel_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  gabble_muc_channel_marshal_VOID__INT_INT_INT_INT_STRING,
-                  G_TYPE_NONE, 5, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING);
-
-  signals[SENT] =
-    g_signal_new ("sent",
-                  G_OBJECT_CLASS_TYPE (gabble_muc_channel_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  gabble_muc_channel_marshal_VOID__INT_INT_STRING,
-                  G_TYPE_NONE, 3, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING);
-
   gabble_group_mixin_class_init (object_class,
                                  G_STRUCT_OFFSET (GabbleMucChannelClass, group_class),
                                  gabble_muc_channel_add_member,
                                  gabble_muc_channel_remove_member);
+
+  gabble_properties_mixin_class_init (object_class,
+                                      G_STRUCT_OFFSET (GabbleMucChannelClass, properties_class),
+                                      room_property_signatures, NUM_ROOM_PROPS,
+                                      gabble_muc_channel_do_set_properties);
+
+  gabble_text_mixin_class_init (object_class, G_STRUCT_OFFSET (GabbleMucChannelClass, text_class));
 
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_muc_channel_class), &dbus_glib_gabble_muc_channel_object_info);
 }
@@ -846,26 +824,6 @@ gabble_muc_channel_dispose (GObject *object)
     G_OBJECT_CLASS (gabble_muc_channel_parent_class)->dispose (object);
 }
 
-static void
-room_properties_free (GabbleMucChannel *chan)
-{
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
-  gint i;
-
-  for (i = 0; i < NUM_ROOM_PROPS; i++)
-    {
-      RoomProperty *prop = &priv->room_props[i];
-
-      if (prop->value)
-        {
-          g_value_unset (prop->value);
-          g_free (prop->value);
-        }
-    }
-}
-
-static void clear_message_queue (GabbleMucChannel *chan);
-
 void
 gabble_muc_channel_finalize (GObject *object)
 {
@@ -881,9 +839,7 @@ gabble_muc_channel_finalize (GObject *object)
   g_free (priv->object_path);
   g_free (priv->self_jid);
 
-  clear_message_queue (self);
-
-  g_queue_free (priv->pending_messages);
+  gabble_properties_mixin_finalize (object);
 
   gabble_group_mixin_finalize (object);
 

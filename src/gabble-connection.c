@@ -328,6 +328,11 @@ gabble_connection_init (GabbleConnection *obj)
   priv->resource = g_strdup (GABBLE_PARAMS_DEFAULT_RESOURCE);
   priv->port = GABBLE_PARAMS_DEFAULT_PORT;
   priv->https_proxy_port = GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_PORT;
+  priv->stun_port = GABBLE_PARAMS_DEFAULT_STUN_PORT;
+
+  /* initialize properties mixin */
+  gabble_properties_mixin_init (G_OBJECT (obj), G_STRUCT_OFFSET (
+        GabbleConnection, properties));
 }
 
 static void
@@ -384,6 +389,9 @@ gabble_connection_get_property (GObject    *object,
     case PROP_FALLBACK_CONFERENCE_SERVER:
       g_value_set_string (value, priv->fallback_conference_server);
       break;
+    case PROP_IGNORE_SSL_ERRORS:
+      g_value_set_boolean (value, priv->ignore_ssl_errors);
+      break;
 /* FIXME: remove these
     case PROP_STUN_SERVER:
       g_value_set_string (value, priv->stun_server);
@@ -412,6 +420,7 @@ gabble_connection_get_property (GObject    *object,
     case PROP_STUN_RELAY_PASSWORD:
       g_value_set_string (value, priv->stun_relay_password);
       break;
+*/
     default:
       param_name = g_param_spec_get_name (pspec);
 
@@ -495,6 +504,9 @@ gabble_connection_set_property (GObject      *object,
       g_free (priv->fallback_conference_server);
       priv->fallback_conference_server = g_value_dup_string (value);
       break;
+    case PROP_IGNORE_SSL_ERRORS:
+      priv->ignore_ssl_errors = g_value_get_boolean (value);
+      break;
 /* FIXME: remove these
     case PROP_STUN_SERVER:
       g_free (priv->stun_server);
@@ -528,6 +540,7 @@ gabble_connection_set_property (GObject      *object,
       g_free (priv->stun_relay_password);
       priv->stun_relay_password = g_value_dup_string (value);
       break;
+*/
     default:
       param_name = g_param_spec_get_name (pspec);
 
@@ -832,6 +845,11 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
 
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_connection_class), &dbus_glib_gabble_connection_object_info);
 
+  gabble_properties_mixin_class_init (G_OBJECT_CLASS (gabble_connection_class),
+                                      G_STRUCT_OFFSET (GabbleConnectionClass, properties_class),
+                                      connection_property_signatures, NUM_CONN_PROPS,
+                                      NULL);
+}
 
 void
 gabble_connection_dispose (GObject *object)

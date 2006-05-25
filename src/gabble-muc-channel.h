@@ -24,7 +24,9 @@
 
 #include <glib-object.h>
 
-#include "gabble-group-mixin.h"
+#include "gabble-properties-mixin.h"
+#include "group-mixin.h"
+#include "text-mixin.h"
 #include "handles.h"
 
 G_BEGIN_DECLS
@@ -36,12 +38,16 @@ struct _GabbleMucChannelClass {
     GObjectClass parent_class;
 
     GabbleGroupMixinClass group_class;
+    GabblePropertiesMixinClass properties_class;
+    GabbleTextMixinClass text_class;
 };
 
 struct _GabbleMucChannel {
     GObject parent;
 
     GabbleGroupMixin group;
+    GabblePropertiesMixin properties;
+    GabbleTextMixin text;
 };
 
 GType gabble_muc_channel_get_type(void);

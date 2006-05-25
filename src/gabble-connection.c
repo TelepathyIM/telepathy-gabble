@@ -3894,6 +3894,10 @@ gboolean gabble_connection_request_aliases (GabbleConnection *obj, const GArray 
   int i;
   gchar **aliases;
 
+  g_assert (GABBLE_IS_CONNECTION (obj));
+
+  ERROR_IF_NOT_CONNECTED (obj, *error)
+
   if (!gabble_handles_are_valid (obj->handles, TP_HANDLE_TYPE_CONTACT,
         contacts, FALSE, error));
     return FALSE;
@@ -4453,9 +4457,10 @@ setaliases_foreach (gpointer key, gpointer value, gpointer user_data)
     (struct _i_hate_g_hash_table_foreach *) user_data;
   GabbleHandle handle = GPOINTER_TO_INT (key);
   gchar *alias = (gchar *) value;
+  GError *error = NULL;
 
   if (!gabble_handle_is_valid (data->conn->handles, TP_HANDLE_TYPE_CONTACT, handle,
-        data->error))
+        &error))
     {
       data->retval = FALSE;
     }
@@ -4463,6 +4468,18 @@ setaliases_foreach (gpointer key, gpointer value, gpointer user_data)
         data->error))
     {
       data->retval = FALSE;
+    }
+
+  if (NULL != error)
+    {
+      if (NULL == *(data->error))
+        {
+          *(data->error) = error;
+        }
+      else
+        {
+          g_error_free (error);
+        }
     }
 }
 

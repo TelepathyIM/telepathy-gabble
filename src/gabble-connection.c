@@ -56,6 +56,8 @@
 #define BUS_NAME        "org.freedesktop.Telepathy.Connection.gabble"
 #define OBJECT_PATH     "/org/freedesktop/Telepathy/Connection/gabble"
 
+#define TP_ALIAS_PAIR_TYPE (dbus_g_type_get_struct ("GValueArray", \
+      G_TYPE_UINT, G_TYPE_STRING, G_TYPE_INVALID))
 #define TP_CAPABILITY_PAIR_TYPE (dbus_g_type_get_struct ("GValueArray", \
       G_TYPE_STRING, G_TYPE_UINT, G_TYPE_INVALID))
 #define TP_CHANNEL_LIST_ENTRY_TYPE (dbus_g_type_get_struct ("GValueArray", \
@@ -236,6 +238,7 @@ struct _ChannelRequest
 };
 
 static void connection_new_channel_cb (TpChannelFactoryIface *, GObject *, gpointer);
+static void connection_nickname_update_cb (GObject *, GabbleHandle, gpointer);
 static void connection_presence_update_cb (GabblePresenceCache *, GabbleHandle, gpointer);
 
 static void
@@ -250,12 +253,17 @@ gabble_connection_init (GabbleConnection *obj)
   obj->disco = gabble_disco_new (obj);
 
   obj->presence_cache = gabble_presence_cache_new (obj);
+  g_signal_connect (obj->presence_cache, "nickname-update", G_CALLBACK
+      (connection_nickname_update_cb), obj);
   g_signal_connect (obj->presence_cache, "presence-update", G_CALLBACK
       (connection_presence_update_cb), obj);
 
+  obj->roster = gabble_roster_new (obj);
+  g_signal_connect (obj->roster, "nickname-update", G_CALLBACK
+      (connection_nickname_update_cb), obj);
+
   priv->channel_factories = g_ptr_array_sized_new (1);
 
-  obj->roster = gabble_roster_new (obj);
   g_ptr_array_add (priv->channel_factories, obj->roster);
 
   g_ptr_array_add (priv->channel_factories,
@@ -1695,6 +1703,142 @@ connection_presence_update_cb (GabblePresenceCache *cache, GabbleHandle handle, 
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
 
   emit_one_presence_update (conn, handle);
+}
+
+GabbleConnectionAliasSource
+_gabble_connection_get_cached_alias (GabbleConnection *conn,
+                                     GabbleHandle handle,
+                                     gchar **alias)
+{
+  GabbleConnectionAliasSource ret = GABBLE_CONNECTION_ALIAS_NONE;
+  GabblePresence *pres;
+  const gchar *tmp;
+  gchar *user = NULL, *resource = NULL;
+
+  g_return_val_if_fail (NULL != conn, GABBLE_CONNECTION_ALIAS_NONE);
+  g_return_val_if_fail (GABBLE_IS_CONNECTION (conn), GABBLE_CONNECTION_ALIAS_NONE);
+  g_return_val_if_fail (gabble_handle_is_valid (conn->handles,
+        TP_HANDLE_TYPE_CONTACT, handle, NULL), GABBLE_CONNECTION_ALIAS_NONE);
+
+  tmp = gabble_roster_handle_get_name (conn->roster, handle);
+  if (NULL != tmp)
+    {
+      ret = GABBLE_CONNECTION_ALIAS_FROM_ROSTER;
+
+      if (NULL != alias)
+        *alias = g_strdup (tmp);
+
+      goto OUT;
+    }
+
+  pres = gabble_presence_cache_get (conn->presence_cache, handle);
+  if (NULL != pres && NULL != pres->nickname)
+    {
+      ret = GABBLE_CONNECTION_ALIAS_FROM_PRESENCE;
+
+      if (NULL != alias)
+        *alias = g_strdup (pres->nickname);
+
+      goto OUT;
+    }
+
+  /* todo: vcard */
+
+  /* fallback to JID */
+  tmp = gabble_handle_inspect (conn->handles, TP_HANDLE_TYPE_CONTACT, handle);
+  g_assert (NULL != tmp);
+
+  gabble_handle_decode_jid (tmp, &user, NULL, &resource);
+
+  /* MUC handles have the nickname in the resource */
+  if (NULL != resource)
+    {
+      ret = GABBLE_CONNECTION_ALIAS_FROM_JID;
+
+      if (NULL != alias)
+        {
+          *alias = resource;
+          resource = NULL;
+        }
+
+      goto OUT;
+    }
+
+  /* otherwise just take their local part */
+  if (NULL != user)
+    {
+      ret = GABBLE_CONNECTION_ALIAS_FROM_JID;
+
+      if (NULL != alias)
+        {
+          *alias = user;
+          user = NULL;
+        }
+
+      goto OUT;
+    }
+
+OUT:
+  g_free (user);
+  g_free (resource);
+  return ret;
+}
+
+static void
+connection_nickname_update_cb (GObject *object,
+                               GabbleHandle handle,
+                               gpointer user_data)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+  GabbleConnectionAliasSource signal_source, real_source;
+  gchar *alias = NULL;
+  GPtrArray *aliases;
+  GValue entry = { 0, };
+
+  if (object == G_OBJECT (conn->roster))
+    signal_source = GABBLE_CONNECTION_ALIAS_FROM_ROSTER;
+  else if (object == G_OBJECT (conn->presence_cache))
+    signal_source = GABBLE_CONNECTION_ALIAS_FROM_PRESENCE;
+/*  else if (object == G_OBJECT (conn->vcard_cache))
+ *  signal_source = GABBLE_CONNECTION_ALIAS_FROM_VCARD;
+ */
+  else
+    g_assert_not_reached ();
+
+  real_source = _gabble_connection_get_cached_alias (conn, handle, &alias);
+
+  g_assert (real_source != GABBLE_CONNECTION_ALIAS_NONE);
+
+  /* if the active alias for this handle is already known and from
+   * a higher priority, this signal is not interesting so we do
+   * nothing */
+  if (real_source > signal_source)
+    {
+      g_debug ("%s: ignoring boring alias change for handle %u, signal from %u "
+          "but source %u has alias \"%s\"", G_STRFUNC, handle, signal_source,
+          real_source, alias);
+      goto OUT;
+    }
+
+  g_value_init (&entry, TP_ALIAS_PAIR_TYPE);
+  g_value_take_boxed (&entry, dbus_g_type_specialized_construct
+      (TP_ALIAS_PAIR_TYPE));
+
+  dbus_g_type_struct_set (&entry,
+      0, handle,
+      1, alias,
+      G_MAXUINT);
+
+  aliases = g_ptr_array_sized_new (1);
+  g_ptr_array_add (aliases, g_value_get_boxed (&entry));
+
+  g_signal_emit (conn, signals[ALIASES_CHANGED], 0, aliases);
+
+  g_value_unset (&entry);
+  g_ptr_array_free (aliases, TRUE);
+
+OUT:
+  g_free (alias);
 }
 
 /**
@@ -3145,6 +3289,16 @@ gboolean gabble_connection_get_capabilities (GabbleConnection *obj, guint handle
  */
 gboolean gabble_connection_get_alias_flags (GabbleConnection *obj, guint* ret, GError **error)
 {
+  GabbleConnectionPrivate *priv;
+
+  g_assert (GABBLE_IS_CONNECTION (obj));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  ERROR_IF_NOT_CONNECTED (obj, *error)
+
+  *ret = TP_CONN_ALIAS_FLAG_USER_SET;
+
   return TRUE;
 }
 
@@ -4260,6 +4414,33 @@ gboolean gabble_connection_request_presence (GabbleConnection *obj, const GArray
 }
 
 
+struct _i_hate_g_hash_table_foreach
+{
+  GabbleConnection *conn;
+  GError **error;
+  gboolean retval;
+};
+
+static void
+setaliases_foreach (gpointer key, gpointer value, gpointer user_data)
+{
+  struct _i_hate_g_hash_table_foreach *data =
+    (struct _i_hate_g_hash_table_foreach *) user_data;
+  GabbleHandle handle = GPOINTER_TO_INT (key);
+  gchar *alias = (gchar *) value;
+
+  if (!gabble_handle_is_valid (data->conn->handles, TP_HANDLE_TYPE_CONTACT, handle,
+        data->error))
+    {
+      data->retval = FALSE;
+    }
+  else if (!gabble_roster_handle_set_name (data->conn->roster, handle, alias,
+        data->error))
+    {
+      data->retval = FALSE;
+    }
+}
+
 /**
  * gabble_connection_set_aliases
  *
@@ -4274,7 +4455,21 @@ gboolean gabble_connection_request_presence (GabbleConnection *obj, const GArray
  */
 gboolean gabble_connection_set_aliases (GabbleConnection *obj, GHashTable * aliases, GError **error)
 {
-  return TRUE;
+  GabbleConnectionPrivate *priv;
+  struct _i_hate_g_hash_table_foreach data = { NULL, NULL, TRUE };
+
+  g_assert (GABBLE_IS_CONNECTION (obj));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  ERROR_IF_NOT_CONNECTED (obj, *error)
+
+  data.conn = obj;
+  data.error = error;
+
+  g_hash_table_foreach (aliases, setaliases_foreach, &data);
+
+  return data.retval;
 }
 
 
@@ -4303,12 +4498,6 @@ gboolean gabble_connection_set_last_activity_time (GabbleConnection *obj, guint 
   return TRUE;
 }
 
-struct _i_hate_g_hash_table_foreach
-{
-  GabbleConnection *conn;
-  GError **error;
-  gboolean retval;
-};
 
 static void
 setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)

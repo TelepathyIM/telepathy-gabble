@@ -102,6 +102,14 @@ struct _GabbleConnection {
     GabblePresenceCache *presence_cache;
 };
 
+typedef enum {
+    GABBLE_CONNECTION_ALIAS_NONE = 0,
+    GABBLE_CONNECTION_ALIAS_FROM_JID,
+    GABBLE_CONNECTION_ALIAS_FROM_VCARD,
+    GABBLE_CONNECTION_ALIAS_FROM_PRESENCE,
+    GABBLE_CONNECTION_ALIAS_FROM_ROSTER
+} GabbleConnectionAliasSource;
+
 GType gabble_connection_get_type(void);
 
 /* TYPE MACROS */
@@ -142,7 +150,7 @@ const gchar *_gabble_connection_jingle_session_allocate (GabbleConnection *conn)
 void _gabble_connection_jingle_session_register (GabbleConnection *conn, const gchar *sid, gpointer channel);
 void _gabble_connection_jingle_session_unregister (GabbleConnection *conn, const gchar *sid);
 
-gboolean _gabble_connection_contact_supports_voice (GabbleConnection *conn, GabbleHandle handle);
+GabbleConnectionAliasSource _gabble_connection_get_cached_alias (GabbleConnection *, GabbleHandle, gchar **);
 
 gboolean gabble_connection_add_status (GabbleConnection *obj, const gchar * status, GHashTable * parms, GError **error);
 gboolean gabble_connection_clear_status (GabbleConnection *obj, GError **error);

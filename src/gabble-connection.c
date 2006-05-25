@@ -280,7 +280,8 @@ static void
 gabble_connection_init (GabbleConnection *obj)
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
-  int i;
+  guint i;
+  GValue val = { 0, };
 
   obj->lmconn = lm_connection_new (NULL);
   obj->status = TP_CONN_STATUS_CONNECTING;
@@ -330,11 +331,20 @@ gabble_connection_init (GabbleConnection *obj)
   priv->resource = g_strdup (GABBLE_PARAMS_DEFAULT_RESOURCE);
   priv->port = GABBLE_PARAMS_DEFAULT_PORT;
   priv->https_proxy_port = GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_PORT;
-  priv->stun_port = GABBLE_PARAMS_DEFAULT_STUN_PORT;
 
   /* initialize properties mixin */
   gabble_properties_mixin_init (G_OBJECT (obj), G_STRUCT_OFFSET (
         GabbleConnection, properties));
+
+  g_value_init (&val, G_TYPE_UINT);
+  g_value_set_uint (&val, GABBLE_PARAMS_DEFAULT_STUN_PORT);
+
+  gabble_properties_mixin_change_value (G_OBJECT (obj), CONN_PROP_STUN_PORT,
+                                        &val, NULL);
+  gabble_properties_mixin_change_flags (G_OBJECT (obj), CONN_PROP_STUN_PORT,
+                                        TP_PROPERTY_FLAG_READ, 0, NULL);
+
+  g_value_unset (&val);
 }
 
 static void
@@ -552,7 +562,7 @@ gabble_connection_set_property (GObject      *object,
           gabble_properties_mixin_change_value (object, tp_property_id, value,
                                                 NULL);
           gabble_properties_mixin_change_flags (object, tp_property_id,
-                                                TP_PROPERTY_FLAG_WRITE,
+                                                TP_PROPERTY_FLAG_READ,
                                                 0, NULL);
 
           return;
@@ -3438,6 +3448,24 @@ gboolean gabble_connection_get_interfaces (GabbleConnection *obj, gchar *** ret,
 
 
 /**
+ * gabble_connection_get_properties
+ *
+ * Implements DBus method GetProperties
+ * on interface org.freedesktop.Telepathy.Properties
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_connection_get_properties (GabbleConnection *obj, const GArray * properties, GPtrArray ** ret, GError **error)
+{
+  return gabble_properties_mixin_get_properties (G_OBJECT (obj), properties, ret, error);
+}
+
+
+/**
  * gabble_connection_get_protocol
  *
  * Implements DBus method GetProtocol
@@ -3755,6 +3783,24 @@ gboolean gabble_connection_list_channels (GabbleConnection *obj, GPtrArray ** re
   *ret = channels;
 
   return TRUE;
+}
+
+
+/**
+ * gabble_connection_list_properties
+ *
+ * Implements DBus method ListProperties
+ * on interface org.freedesktop.Telepathy.Properties
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_connection_list_properties (GabbleConnection *obj, GPtrArray ** ret, GError **error)
+{
+  return gabble_properties_mixin_list_properties (G_OBJECT (obj), ret, error);
 }
 
 
@@ -4714,6 +4760,20 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
                                     (const gchar *) key);
       data->retval = FALSE;
     }
+}
+
+/**
+ * gabble_connection_set_properties
+ *
+ * Implements DBus method SetProperties
+ * on interface org.freedesktop.Telepathy.Properties
+ *
+ * @context: The DBUS invocation context to use to return values
+ *           or throw an error.
+ */
+gboolean gabble_connection_set_properties (GabbleConnection *obj, const GPtrArray * properties, DBusGMethodInvocation *context)
+{
+  return gabble_properties_mixin_set_properties (G_OBJECT (obj), properties, context);
 }
 
 /**

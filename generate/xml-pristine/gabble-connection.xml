@@ -94,4 +94,22 @@
       <arg direction="in" name="statuses" type="a{sa{sv}}"/>
     </method>
   </interface>
+  <interface name="org.freedesktop.Telepathy.Properties">
+    <method name="GetProperties">
+      <arg direction="in" name="properties" type="au"/>
+      <arg direction="out" type="a(uv)"/>
+    </method>
+    <method name="ListProperties">
+      <arg direction="out" type="a(ussu)"/>
+    </method>
+    <signal name="PropertiesChanged">
+      <arg name="properties" type="a(uv)"/>
+    </signal>
+    <signal name="PropertyFlagsChanged">
+      <arg name="properties" type="a(uu)"/>
+    </signal>
+    <method name="SetProperties">
+      <arg direction="in" name="properties" type="a(uv)"/>
+    </method>
+  </interface>
 </node>

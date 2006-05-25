@@ -44,6 +44,7 @@
 #include "gabble-disco.h"
 #include "gabble-presence-cache.h"
 #include "gabble-presence.h"
+#include "jingle-info.h"
 #include "gabble-register.h"
 #include "im-factory.h"
 #include "muc-factory.h"
@@ -188,6 +189,7 @@ typedef struct _GabbleConnectionPrivate GabbleConnectionPrivate;
 
 struct _GabbleConnectionPrivate
 {
+  LmMessageHandler *iq_jingle_info_cb;
   LmMessageHandler *iq_jingle_cb;
   LmMessageHandler *iq_disco_cb;
   LmMessageHandler *iq_unknown_cb;
@@ -908,6 +910,10 @@ gabble_connection_dispose (GObject *object)
           lm_connection_close (self->lmconn, NULL);
         }
 
+      lm_connection_unregister_message_handler (self->lmconn, priv->iq_jingle_info_cb,
+                                                LM_MESSAGE_TYPE_IQ);
+      lm_message_handler_unref (priv->iq_jingle_info_cb);
+
       lm_connection_unregister_message_handler (self->lmconn, priv->iq_jingle_cb,
                                                 LM_MESSAGE_TYPE_IQ);
       lm_message_handler_unref (priv->iq_jingle_cb);
@@ -1457,6 +1463,13 @@ _gabble_connection_connect (GabbleConnection *conn,
                                          connection_disconnected_cb,
                                          conn,
                                          NULL);
+
+  priv->iq_jingle_info_cb = lm_message_handler_new (jingle_info_iq_callback,
+                                                    conn, NULL);
+  lm_connection_register_message_handler (conn->lmconn,
+                                          priv->iq_jingle_info_cb,
+                                          LM_MESSAGE_TYPE_IQ,
+                                          LM_HANDLER_PRIORITY_NORMAL);
 
   priv->iq_jingle_cb = lm_message_handler_new (connection_iq_jingle_cb,
                                                conn, NULL);
@@ -2897,6 +2910,11 @@ connection_disco_cb (GabbleDisco *disco,
     }
 
   discover_services (conn);
+
+  if (conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_JINGLE_INFO)
+    {
+      jingle_info_discover_servers (conn);
+    }
 
   return;
 

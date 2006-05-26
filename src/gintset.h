@@ -23,18 +23,19 @@
 #include <glib-object.h>
 
 typedef struct _GIntSet GIntSet;
-typedef void (*GIntFunc)(guint i, gpointer userdata);
+typedef void (*GIntFunc) (guint i, gpointer userdata);
 
-GIntSet * g_intset_new ();
+GIntSet *g_intset_new ();
 void g_intset_destroy (GIntSet *);
-void g_intset_clear (GIntSet *set);
+void g_intset_clear (GIntSet *);
 
 void g_intset_add (GIntSet *set, guint element);
 gboolean g_intset_remove (GIntSet *set, guint element);
 gboolean g_intset_is_member (const GIntSet *set, guint element);
 
 void g_intset_foreach (GIntSet *set, GIntFunc func, gpointer userdata);
-GArray* g_intset_to_array (GIntSet *set);
+GArray *g_intset_to_array (GIntSet *set);
+GIntSet *g_intset_from_array (GArray *array);
 
 int g_intset_size(const GIntSet *set);
 

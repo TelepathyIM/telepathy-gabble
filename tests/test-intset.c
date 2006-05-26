@@ -102,5 +102,22 @@ int main (int argc, char **argv)
   ab_symmdiff = g_intset_symmetric_difference (a, b);
   g_assert (g_intset_is_equal (ab_symmdiff, ab_expected_symmdiff));
 
+  {
+    GArray *arr;
+    GIntSet *tmp;
+
+    arr = g_intset_to_array (a);
+    tmp = g_intset_from_array (arr);
+    g_assert (g_intset_is_equal (a, tmp));
+    g_array_free (arr, TRUE);
+    g_intset_destroy (tmp);
+
+    arr = g_intset_to_array (b);
+    tmp = g_intset_from_array (arr);
+    g_assert (g_intset_is_equal (b, tmp));
+    g_array_free (arr, TRUE);
+    g_intset_destroy (tmp);
+  }
+
   return 0;
 }

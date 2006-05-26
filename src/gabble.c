@@ -20,13 +20,13 @@
 
 #include "config.h"
 
+#include <dbus/dbus-glib.h>
 #include <stdlib.h>
-#include <stdio.h>
+#include <unistd.h>
+
 #if defined (HAVE_EXECINFO_H)
 #include <execinfo.h>
 #endif /* HAVE_EXECINFO_H */
-
-#include <dbus/dbus-glib.h>
 
 #include "gabble-connection-manager.h"
 #include "telepathy-errors.h"
@@ -80,23 +80,14 @@ no_more_connections (GabbleConnectionManager *conn)
 static void
 print_backtrace (void)
 {
-#if defined (HAVE_BACKTRACE) && defined (HAVE_BACKTRACE_SYMBOLS)
-  void *array[10];
+#if defined (HAVE_BACKTRACE) && defined (HAVE_BACKTRACE_SYMBOLS_FD)
+  void *array[20];
   size_t size;
-  char **strings;
-  size_t i;
 
-  fprintf(stderr, "\n########## Backtrace ##########\n");
-  size = backtrace (array, 10);
-  strings = backtrace_symbols (array, size);
-
-  fprintf (stderr, "Obtained %zd stack frames.\n", size);
-
-  for (i = 0; i < size; i++)
-     fprintf (stderr, "%s\n", strings[i]);
-
-  free (strings);
-#endif /* HAVE_BACKTRACE && HAVE_BACKTRACE_SYMBOLS */
+  write (2, "\n########## Backtrace ##########\n", 33);
+  size = backtrace (array, 20);
+  backtrace_symbols_fd (array, size, 2);
+#endif /* HAVE_BACKTRACE && HAVE_BACKTRACE_SYMBOLS_FD */
 }
 
 static void

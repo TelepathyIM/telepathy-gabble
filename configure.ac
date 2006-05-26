@@ -62,7 +62,7 @@ AC_SUBST(LOUDMOUTH_CFLAGS)
 AC_SUBST(LOUDMOUTH_LIBS)
 
 dnl glibc backtrace functions
-AC_CHECK_FUNCS(backtrace backtrace_symbols)
+AC_CHECK_FUNCS(backtrace backtrace_symbols_fd)
 AC_CHECK_HEADERS(execinfo.h)
 
 AC_OUTPUT( Makefile \

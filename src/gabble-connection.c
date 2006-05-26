@@ -18,6 +18,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include "config.h"
+
 #define DBUS_API_SUBJECT_TO_CHANGE
 
 #include <dbus/dbus-glib.h>
@@ -2107,7 +2109,7 @@ signal_own_presence (GabbleConnection *self, GError **error)
     node,
     "xmlns", NS_CAPS,
     "node",  NS_GABBLE_CAPS,
-    "ver",   GABBLE_VERSION,
+    "ver",   VERSION,
     "ext",   "voice-v1",
     NULL);
 
@@ -2556,7 +2558,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   /* having a suffix equal to the Gabble version is the same as having no
    * suffix at all: i.e. list all features */
 
-  if (suffix != NULL && 0 == strcmp (suffix, GABBLE_VERSION))
+  if (suffix != NULL && 0 == strcmp (suffix, VERSION))
     suffix = NULL;
 
   result = _lm_iq_message_make_result (message);

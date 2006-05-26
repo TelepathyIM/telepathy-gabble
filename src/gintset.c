@@ -21,7 +21,7 @@
 #include <glib.h>
 #include "gintset.h"
 
-#define DEFAULT_SIZE 32
+#define DEFAULT_SIZE 16
 #define DEFAULT_INCREMENT 8
 #define DEFAULT_INCREMENT_LOG2 3
 
@@ -35,8 +35,8 @@ static GIntSet *
 _g_intset_new_with_size (guint size)
 {
   GIntSet *set = g_new(GIntSet, 1);
-  set->bits = g_new0(guint32, size);
-  set->size = size;
+  set->size = MAX (size, DEFAULT_SIZE);
+  set->bits = g_new0 (guint32, set->size);
   return set;
 }
 
@@ -205,7 +205,34 @@ g_intset_to_array (GIntSet *set)
   array = g_array_new (FALSE, TRUE, sizeof (guint32));
 
   g_intset_foreach(set, addint, array);
+
   return array;
+}
+
+GIntSet *
+g_intset_from_array (GArray *array)
+{
+  GIntSet *set;
+  guint32 max, i;
+
+  g_return_val_if_fail (array != NULL, NULL);
+
+  /* look at the 1st, last and middle values in the array to get an
+   * approximation of the largest */
+  max = 0;
+  if (array->len > 0)
+    max = g_array_index (array, guint32, 0);
+  if (array->len > 1)
+    max = MAX (max, g_array_index (array, guint32, array->len - 1));
+  if (array->len > 2)
+    max = MAX (max, g_array_index (array, guint32, (array->len - 1) >> 1));
+  set = _g_intset_new_with_size (1 + (max >> 5));
+
+  for (i = 0; i < array->len; i++) {
+    g_intset_add (set, g_array_index (array, guint32, i));
+  }
+
+  return set;
 }
 
 int

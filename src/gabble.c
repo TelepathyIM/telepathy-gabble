@@ -131,7 +131,7 @@ int main(int argc, char **argv) {
 
   _gabble_connection_manager_register (manager);
 
-  g_debug ("started");
+  g_debug ("started version " GABBLE_VERSION);
 
   timeout_id = g_timeout_add(DIE_TIME, kill_connection_manager, NULL);
 

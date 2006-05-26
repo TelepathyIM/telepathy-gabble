@@ -22,6 +22,7 @@
 
 #include <dbus/dbus-glib.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #ifdef HAVE_EXECINFO_H
@@ -88,9 +89,12 @@ print_backtrace (void)
   void *array[20];
   size_t size;
 
-  write (2, "\n########## Backtrace ##########\n", 33);
+#define MSG "\n########## Backtrace (version " VERSION ") ##########\n"
+  write (STDERR_FILENO, MSG, strlen (MSG));
+#undef MSG
+
   size = backtrace (array, 20);
-  backtrace_symbols_fd (array, size, 2);
+  backtrace_symbols_fd (array, size, STDERR_FILENO);
 #endif /* HAVE_BACKTRACE && HAVE_BACKTRACE_SYMBOLS_FD */
 }
 
@@ -108,7 +112,10 @@ critical_handler (const gchar *log_domain,
 static void
 segv_handler (int sig)
 {
-  write (2, "caught SIGSEGV\n", 15);
+#define MSG "caught SIGSEGV\n"
+  write (STDERR_FILENO, MSG, strlen (MSG));
+#undef MSG
+
   print_backtrace ();
   abort ();
 }

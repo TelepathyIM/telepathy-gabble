@@ -290,13 +290,6 @@ request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 
   query_node = lm_message_node_get_child (reply_msg->node, "query");
 
-  namespace = lm_message_node_get_attribute (query_node, "xmlns");
-  if (!namespace)
-    {
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-    }
-  node = lm_message_node_get_attribute (query_node, "node");
-
   if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_ERROR)
     {
       LmMessageNode *error_node;

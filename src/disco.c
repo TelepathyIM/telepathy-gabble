@@ -308,6 +308,11 @@ request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
                              "an unknown error occured");
         }
     }
+  else if (NULL == query_node)
+    {
+      err = g_error_new (GABBLE_DISCO_ERROR, GABBLE_DISCO_ERROR_UNKNOWN,
+          "disco response contained no <query> node");
+    }
 
   request->callback (request->disco, request, request->jid, request->node,
                      query_node, err, request->user_data);

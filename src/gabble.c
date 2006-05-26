@@ -24,9 +24,13 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#if defined (HAVE_EXECINFO_H)
+#ifdef HAVE_EXECINFO_H
 #include <execinfo.h>
 #endif /* HAVE_EXECINFO_H */
+
+#ifdef HAVE_SIGNAL_H
+#include <signal.h>
+#endif /* HAVE_SIGNAL_H */
 
 #include "gabble-connection-manager.h"
 #include "telepathy-errors.h"
@@ -96,15 +100,34 @@ critical_handler (const gchar *log_domain,
                   const gchar *message,
                   gpointer user_data)
 {
-  print_backtrace ();
-
   g_log_default_handler (log_domain, log_level, message, user_data);
+  print_backtrace ();
+}
+
+#ifdef HAVE_SIGNAL
+static void
+segv_handler (int sig)
+{
+  write (2, "caught SIGSEGV\n", 15);
+  print_backtrace ();
+  abort ();
+}
+#endif /* HAVE_SIGNAL */
+
+static void
+add_signal_handlers (void)
+{
+#ifdef HAVE_SIGNAL
+  signal (SIGSEGV, segv_handler);
+#endif /* HAVE_SIGNAL */
 }
 
 int
 main (int argc,
       char **argv)
 {
+  add_signal_handlers ();
+
   g_type_init();
 
   g_set_prgname("telepathy-gabble");

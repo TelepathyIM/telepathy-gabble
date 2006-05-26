@@ -65,6 +65,10 @@ dnl glibc backtrace functions
 AC_CHECK_FUNCS(backtrace backtrace_symbols_fd)
 AC_CHECK_HEADERS(execinfo.h)
 
+dnl signal functions
+AC_CHECK_FUNCS(signal)
+AC_CHECK_HEADERS(signal.h)
+
 AC_OUTPUT( Makefile \
            src/Makefile \
            m4/Makefile \

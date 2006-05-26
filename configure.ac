@@ -61,6 +61,10 @@ PKG_CHECK_MODULES(LOUDMOUTH, loudmouth-1.0)
 AC_SUBST(LOUDMOUTH_CFLAGS)
 AC_SUBST(LOUDMOUTH_LIBS)
 
+dnl glibc backtrace functions
+AC_CHECK_FUNCS(backtrace backtrace_symbols)
+AC_CHECK_HEADERS(execinfo.h)
+
 AC_OUTPUT( Makefile \
            src/Makefile \
            m4/Makefile \

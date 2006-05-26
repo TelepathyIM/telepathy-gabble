@@ -18,9 +18,13 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include "config.h"
+
 #include <stdlib.h>
 #include <stdio.h>
+#if defined (HAVE_EXECINFO_H)
 #include <execinfo.h>
+#endif /* HAVE_EXECINFO_H */
 
 #include <dbus/dbus-glib.h>
 
@@ -76,6 +80,7 @@ no_more_connections (GabbleConnectionManager *conn)
 static void
 print_backtrace (void)
 {
+#if defined (HAVE_BACKTRACE) && defined (HAVE_BACKTRACE_SYMBOLS)
   void *array[10];
   size_t size;
   char **strings;
@@ -91,6 +96,7 @@ print_backtrace (void)
      fprintf (stderr, "%s\n", strings[i]);
 
   free (strings);
+#endif /* HAVE_BACKTRACE && HAVE_BACKTRACE_SYMBOLS */
 }
 
 static void
@@ -148,7 +154,7 @@ main (int argc,
 
   _gabble_connection_manager_register (manager);
 
-  g_debug ("started version " GABBLE_VERSION);
+  g_debug ("started version " VERSION);
 
   timeout_id = g_timeout_add (DIE_TIME, kill_connection_manager, NULL);
 

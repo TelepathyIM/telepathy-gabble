@@ -277,8 +277,6 @@ static LmHandlerResult
 request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
                   LmMessage *reply_msg, GObject *object, gpointer user_data)
 {
-  const gchar *namespace;
-  const gchar *node;
   GabbleDiscoRequest *request = (GabbleDiscoRequest*) user_data;
   GabbleDisco *disco = GABBLE_DISCO (object);
   GabbleDiscoPrivate *priv = GABBLE_DISCO_GET_PRIVATE (disco);
@@ -291,9 +289,6 @@ request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
   query_node = lm_message_node_get_child (reply_msg->node, "query");
-
-  if (NULL == query_node)
-    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
   namespace = lm_message_node_get_attribute (query_node, "xmlns");
   if (!namespace)
@@ -321,8 +316,8 @@ request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
         }
     }
 
-  request->callback (request->disco, request, request->jid, node, query_node,
-                     err, request->user_data);
+  request->callback (request->disco, request, request->jid, request->node,
+                     query_node, err, request->user_data);
   delete_request (request);
 
   if (err)

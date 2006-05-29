@@ -52,6 +52,7 @@
 #include "muc-factory.h"
 #include "namespaces.h"
 #include "roster.h"
+#include "util.h"
 
 #include "gabble-media-channel.h"
 #include "gabble-roomlist-channel.h"
@@ -2555,8 +2556,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   else
     suffix = node + strlen (NS_GABBLE_CAPS) + 1;
 
-  /* having a suffix equal to the Gabble version is the same as having no
-   * suffix at all: i.e. list all features */
+  /* if the suffix is our version number, look up features with a NULL bundle */
 
   if (suffix != NULL && 0 == strcmp (suffix, VERSION))
     suffix = NULL;
@@ -2569,7 +2569,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
     {
       Feature *feature = (Feature *) i->data;
 
-      if (NULL == suffix || !g_strdiff (suffix, feature->bundle))
+      if (NULL == node || !g_strdiff (suffix, feature->bundle))
         {
           LmMessageNode *node = lm_message_node_add_child (result_query,
               "feature", NULL);

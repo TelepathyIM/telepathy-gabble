@@ -26,11 +26,10 @@
 #include <time.h>
 
 #include "ansi.h"
-#include "namespaces.h"
+#include "disco.h"
 #include "gabble-connection.h"
 #include "gabble-error.h"
-#include "gabble-disco.h"
-
+#include "namespaces.h"
 #include "telepathy-errors.h"
 #include "telepathy-helpers.h"
 #include "telepathy-interfaces.h"

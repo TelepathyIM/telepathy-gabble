@@ -23,13 +23,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "disco.h"
+#include "gabble-connection.h"
+#include "handles.h"
 #include "telepathy-constants.h"
 #include "telepathy-interfaces.h"
 #include "telepathy-helpers.h"
 #include "tp-channel-iface.h"
-#include "gabble-connection.h"
-#include "gabble-disco.h"
-#include "handles.h"
 
 #include "gabble-roomlist-channel.h"
 #include "gabble-roomlist-channel-glue.h"

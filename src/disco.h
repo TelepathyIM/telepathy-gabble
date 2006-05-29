@@ -1,5 +1,5 @@
 /*
- * gabble-disco.h - Headers for Gabble service discovery
+ * disco.h - Headers for Gabble service discovery
  *
  * Copyright (C) 2006 Collabora Ltd.
  * Copyright (C) 2006 Nokia Corporation

@@ -484,7 +484,7 @@ _parse_presence_message (GabblePresenceCache *cache,
         }
 
       ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
-      goto OUT;
+      break;
 
     case LM_MESSAGE_SUB_TYPE_ERROR:
        NODE_DEBUG (presence_node, "setting contact offline due to error");
@@ -495,15 +495,13 @@ _parse_presence_message (GabblePresenceCache *cache,
           GABBLE_PRESENCE_OFFLINE, status_message, priority);
 
       ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
-      goto OUT;
+      break;
 
     default:
       break;
     }
 
-OUT:
   _grab_nickname (cache, handle, from, presence_node);
-
   g_free (resource);
   return ret;
 }

@@ -2489,7 +2489,7 @@ feature_new (const gchar *bundle, const gchar *ns)
 }
 
 static GSList *
-get_features ()
+get_features (void)
 {
   static GSList *features = NULL;
 

@@ -64,15 +64,6 @@ struct _GabbleRosterPrivate
   gboolean dispose_has_run;
 };
 
-typedef enum
-{
-  GABBLE_ROSTER_SUBSCRIPTION_NONE = 0,
-  GABBLE_ROSTER_SUBSCRIPTION_FROM,
-  GABBLE_ROSTER_SUBSCRIPTION_TO,
-  GABBLE_ROSTER_SUBSCRIPTION_BOTH,
-  GABBLE_ROSTER_SUBSCRIPTION_REMOVE
-} GabbleRosterSubscription;
-
 typedef struct _GabbleRosterItem GabbleRosterItem;
 struct _GabbleRosterItem
 {
@@ -1134,31 +1125,26 @@ gabble_roster_new (GabbleConnection *conn)
                        NULL);
 }
 
-gboolean
-gabble_roster_handle_is_subscribed (GabbleRoster *roster,
-                                    GabbleHandle handle)
+GabbleRosterSubscription
+gabble_roster_handle_get_subscription (GabbleRoster *roster,
+                                       GabbleHandle handle)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
   GabbleRosterItem *item;
 
-  g_return_val_if_fail (roster != NULL, FALSE);
-  g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
+  g_return_val_if_fail (roster != NULL, GABBLE_ROSTER_SUBSCRIPTION_NONE);
+  g_return_val_if_fail (GABBLE_IS_ROSTER (roster),
+      GABBLE_ROSTER_SUBSCRIPTION_NONE);
   g_return_val_if_fail (gabble_handle_is_valid (priv->conn->handles,
-      TP_HANDLE_TYPE_CONTACT, handle, NULL), FALSE);
+        TP_HANDLE_TYPE_CONTACT, handle, NULL),
+      GABBLE_ROSTER_SUBSCRIPTION_NONE);
 
   item = g_hash_table_lookup (priv->items, GINT_TO_POINTER (handle));
 
   if (NULL == item)
-    return FALSE;
+    return GABBLE_ROSTER_SUBSCRIPTION_NONE;
 
-  switch (item->subscription)
-    {
-    case GABBLE_ROSTER_SUBSCRIPTION_TO:
-    case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
-      return TRUE;
-    default:
-      return FALSE;
-    }
+  return item->subscription;
 }
 
 const gchar *

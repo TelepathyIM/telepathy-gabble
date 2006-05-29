@@ -230,13 +230,17 @@ gabble_im_channel_dispose (GObject *object)
 {
   GabbleIMChannel *self = GABBLE_IM_CHANNEL (object);
   GabbleIMChannelPrivate *priv = GABBLE_IM_CHANNEL_GET_PRIVATE (self);
+  GabbleRosterSubscription subscription;
 
   if (priv->dispose_has_run)
     return;
 
   priv->dispose_has_run = TRUE;
 
-  if (!gabble_roster_handle_is_subscribed (priv->conn->roster, priv->handle))
+  subscription = gabble_roster_handle_get_subscription (priv->conn->roster,
+      priv->handle);
+
+  if ((GABBLE_ROSTER_SUBSCRIPTION_TO & subscription) == 0)
     {
       GabblePresence *presence;
 

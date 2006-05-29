@@ -55,9 +55,19 @@ struct _GabbleRoster {
     gpointer priv;
 };
 
+typedef enum
+{
+  GABBLE_ROSTER_SUBSCRIPTION_NONE = 0,
+  GABBLE_ROSTER_SUBSCRIPTION_FROM = 1 << 0,
+  GABBLE_ROSTER_SUBSCRIPTION_TO = 1 << 1,
+  GABBLE_ROSTER_SUBSCRIPTION_BOTH = GABBLE_ROSTER_SUBSCRIPTION_FROM |
+      GABBLE_ROSTER_SUBSCRIPTION_TO,
+  GABBLE_ROSTER_SUBSCRIPTION_REMOVE = 1 << 2,
+} GabbleRosterSubscription;
+
 GabbleRoster *gabble_roster_new (GabbleConnection *);
 
-gboolean gabble_roster_handle_is_subscribed (GabbleRoster *, GabbleHandle);
+GabbleRosterSubscription gabble_roster_handle_get_subscription (GabbleRoster *, GabbleHandle);
 const gchar *gabble_roster_handle_get_name (GabbleRoster *, GabbleHandle);
 gboolean gabble_roster_handle_set_name (GabbleRoster *, GabbleHandle, const gchar *, GError **);
 

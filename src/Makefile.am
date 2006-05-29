@@ -45,14 +45,14 @@ CLEANFILES = $(BUILT_SOURCES)
 bin_PROGRAMS=telepathy-gabble
 
 CORE_SOURCES = \
+    disco.h \
+    disco.c \
     gabble-error.c \
     gabble-error.h \
     gabble-connection-manager.h \
     gabble-connection-manager.c \
     gabble-connection.h \
     gabble-connection.c \
-    gabble-disco.h \
-    gabble-disco.c \
     gabble-im-channel.h \
     gabble-im-channel.c \
     gabble-muc-channel.h \

@@ -1,5 +1,5 @@
 /*
- * gabble-disco.c - Source for Gabble service discovery
+ * disco.c - Source for Gabble service discovery
  *
  * Copyright (C) 2006 Collabora Ltd.
  * Copyright (C) 2006 Nokia Corporation
@@ -28,12 +28,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "namespaces.h"
-#include "telepathy-helpers.h"
-
+#include "disco.h"
 #include "gabble-connection.h"
 #include "gabble-error.h"
-#include "gabble-disco.h"
+#include "namespaces.h"
+#include "telepathy-helpers.h"
 
 #define DEFAULT_REQUEST_TIMEOUT 20000
 

@@ -30,8 +30,8 @@
 
 #include <loudmouth/loudmouth.h>
 
+#include "disco.h"
 #include "gabble-connection.h"
-#include "gabble-disco.h"
 #include "gabble-presence-cache.h"
 #include "gabble-muc-channel.h"
 #include "handles.h"

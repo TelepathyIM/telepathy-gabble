@@ -43,7 +43,7 @@
 #include "gabble-connection-glue.h"
 #include "gabble-connection-signals-marshal.h"
 
-#include "gabble-disco.h"
+#include "disco.h"
 #include "gabble-presence-cache.h"
 #include "gabble-presence.h"
 #include "jingle-info.h"

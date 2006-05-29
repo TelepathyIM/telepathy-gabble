@@ -2547,7 +2547,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
       strlen(node) < strlen (NS_GABBLE_CAPS) + 2))
     {
       HANDLER_DEBUG (iq, "got iq disco query with unexpected node attribute");
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
   if (node == NULL)

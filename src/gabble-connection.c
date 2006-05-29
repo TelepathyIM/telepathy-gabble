@@ -2569,8 +2569,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
     {
       Feature *feature = (Feature *) i->data;
 
-      if (suffix == NULL ||
-          (feature->bundle != NULL && 0 == strcmp (suffix, feature->bundle)))
+      if (NULL == suffix || !g_strdiff (suffix, feature->bundle))
         {
           LmMessageNode *node = lm_message_node_add_child (result_query,
               "feature", NULL);

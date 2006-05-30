@@ -66,7 +66,11 @@ new_connection (GabbleConnectionManager *conn,
                 gchar *proto)
 {
   connections_exist = TRUE;
-  g_source_remove (timeout_id);
+
+  if (0 != timeout_id)
+    {
+      g_source_remove (timeout_id);
+    }
 }
 
 static void

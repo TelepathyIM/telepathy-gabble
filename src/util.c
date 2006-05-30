@@ -22,8 +22,10 @@
 #include <glib.h>
 #include <string.h>
 
-#include "util.h"
 #include "namespaces.h"
+#include "gabble-connection.h"
+
+#include "util.h"
 
 gboolean
 g_strdiff (const gchar *left, const gchar *right)
@@ -45,5 +47,21 @@ lm_message_node_add_nick (LmMessageNode *node, const gchar *nick)
 
   nick_node = lm_message_node_add_child (node, "nick", nick);
   lm_message_node_set_attribute (nick_node, "xmlns", NS_NICK);
+}
+
+void
+lm_message_node_add_own_nick (LmMessageNode *node,
+                              GabbleConnection *connection)
+{
+  gchar *nick;
+  GabbleConnectionAliasSource source;
+
+  source = _gabble_connection_get_cached_alias (connection,
+        connection->self_handle, &nick);
+
+  if (source > GABBLE_CONNECTION_ALIAS_FROM_JID)
+    lm_message_node_add_nick (node, nick);
+
+  g_free (nick);
 }
 

@@ -30,6 +30,8 @@
 #include "gabble-connection.h"
 #include "gabble-error.h"
 #include "namespaces.h"
+#include "util.h"
+
 #include "telepathy-errors.h"
 #include "telepathy-helpers.h"
 #include "telepathy-interfaces.h"
@@ -256,7 +258,7 @@ gabble_muc_channel_constructor (GType type, guint n_props,
         GabbleMucChannel, properties));
 
   /* initialize text mixin */
-  gabble_text_mixin_init (obj, G_STRUCT_OFFSET (GabbleMucChannel, text), handles);
+  gabble_text_mixin_init (obj, G_STRUCT_OFFSET (GabbleMucChannel, text), handles, FALSE);
 
   gabble_text_mixin_set_message_types (obj,
       TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL,
@@ -595,6 +597,8 @@ send_join_request (GabbleMucChannel *channel,
     {
       lm_message_node_add_child (x_node, "password", password);
     }
+
+  lm_message_node_add_own_nick (msg->node, priv->conn);
 
   /* send it */
   ret = _gabble_connection_send (priv->conn, msg, error);

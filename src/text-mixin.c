@@ -33,10 +33,12 @@
 #include "telepathy-constants.h"
 #include "telepathy-errors.h"
 
+#include "gabble-connection.h"
+#include "roster.h"
+#include "util.h"
+
 #include "text-mixin.h"
 #include "text-mixin-signals-marshal.h"
-
-#include "gabble-connection.h"
 
 #define TP_TYPE_PENDING_MESSAGE_STRUCT (dbus_g_type_get_struct ("GValueArray", \
       G_TYPE_UINT, \
@@ -192,7 +194,8 @@ gabble_text_mixin_class_init (GObjectClass *obj_cls, glong offset)
 void
 gabble_text_mixin_init (GObject *obj,
                         glong offset,
-                        GabbleHandleRepo *handle_repo)
+                        GabbleHandleRepo *handle_repo,
+                        gboolean send_nick)
 {
   GabbleTextMixin *mixin;
 
@@ -474,8 +477,11 @@ gboolean gabble_text_mixin_list_pending_messages (GObject *obj, GPtrArray ** ret
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_text_mixin_send (GObject *obj, guint type, guint subtype, const char * recipient, const gchar * text, GabbleConnection *conn, GError **error)
+gboolean gabble_text_mixin_send (GObject *obj, guint type, guint subtype,
+                                 const char *recipient, const gchar *text,
+                                 GabbleConnection *conn, GError **error)
 {
+  GabbleTextMixin *mixin = GABBLE_TEXT_MIXIN (obj);
   GabbleTextMixinClass *mixin_cls = GABBLE_TEXT_MIXIN_CLASS (G_OBJECT_GET_CLASS (obj));
   LmMessage *msg;
   gboolean result;
@@ -506,6 +512,12 @@ gboolean gabble_text_mixin_send (GObject *obj, guint type, guint subtype, const 
     }
 
   msg = lm_message_new_with_sub_type (recipient, LM_MESSAGE_TYPE_MESSAGE, subtype);
+
+  if (mixin->send_nick)
+    {
+      lm_message_node_add_own_nick (msg->node, conn);
+      mixin->send_nick = FALSE;
+    }
 
   if (type == TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION)
     {

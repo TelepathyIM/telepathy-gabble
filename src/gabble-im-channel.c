@@ -92,7 +92,7 @@ gabble_im_channel_constructor (GType type, guint n_props,
   GObject *obj;
   GabbleIMChannelPrivate *priv;
   DBusGConnection *bus;
-  gboolean valid;
+  gboolean valid, send_nick;
 
   obj = G_OBJECT_CLASS (gabble_im_channel_parent_class)->
            constructor (type, n_props, props);
@@ -107,8 +107,14 @@ gabble_im_channel_constructor (GType type, guint n_props,
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
 
+  if (gabble_roster_handle_get_subscription (priv->conn->roster, priv->handle)
+        & GABBLE_ROSTER_SUBSCRIPTION_FROM)
+    send_nick = FALSE;
+  else
+    send_nick = TRUE;
+
   gabble_text_mixin_init (obj, G_STRUCT_OFFSET (GabbleIMChannel, text),
-                          priv->conn->handles);
+                          priv->conn->handles, send_nick);
 
   gabble_text_mixin_set_message_types (obj,
       TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL,

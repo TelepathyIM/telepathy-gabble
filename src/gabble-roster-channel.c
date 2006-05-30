@@ -31,6 +31,7 @@
 #include "telepathy-helpers.h"
 #include "telepathy-interfaces.h"
 #include "tp-channel-iface.h"
+#include "util.h"
 
 #include "gabble-roster-channel.h"
 #include "gabble-roster-channel-glue.h"
@@ -313,6 +314,9 @@ _gabble_roster_channel_send_presence (GabbleRosterChannel *chan,
   message = lm_message_new_with_sub_type (contact,
       LM_MESSAGE_TYPE_PRESENCE,
       sub_type);
+
+  if (LM_MESSAGE_SUB_TYPE_SUBSCRIBE == sub_type)
+    lm_message_node_add_own_nick (message->node, priv->conn);
 
   if (status != NULL && status[0] != '\0')
     lm_message_node_add_child (message->node, "status", status);

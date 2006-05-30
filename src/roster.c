@@ -655,7 +655,10 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
     {
       LmMessageNode *item_node;
       GIntSet *empty, *pub_add, *pub_rem,
-              *sub_add, *sub_rem, *sub_rp;
+              *sub_add, *sub_rem, *sub_rp,
+              *known_add, *known_rem;
+      GabbleHandle handle;
+      GabbleRosterChannel *chan;
 
     case LM_MESSAGE_SUB_TYPE_RESULT:
     case LM_MESSAGE_SUB_TYPE_SET:
@@ -667,6 +670,8 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
       sub_add = g_intset_new ();
       sub_rem = g_intset_new ();
       sub_rp = g_intset_new ();
+      known_add = g_intset_new ();
+      known_rem = g_intset_new ();
 
       /* iterate every sub-node, which we expect to be <item>s */
       for (item_node = query_node->children;
@@ -674,7 +679,6 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
            item_node = item_node->next)
         {
           const char *jid;
-          GabbleHandle handle;
           GabbleRosterItem *item;
 
           if (strcmp (item_node->name, "item"))
@@ -712,10 +716,12 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
                 g_intset_add (sub_rp, handle);
               else
                 g_intset_add (sub_rem, handle);
+              g_intset_add (known_add, handle);
               break;
             case GABBLE_ROSTER_SUBSCRIPTION_TO:
               g_intset_add (pub_rem, handle);
               g_intset_add (sub_add, handle);
+              g_intset_add (known_add, handle);
               break;
             case GABBLE_ROSTER_SUBSCRIPTION_FROM:
               g_intset_add (pub_add, handle);
@@ -723,14 +729,17 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
                 g_intset_add (sub_rp, handle);
               else
                 g_intset_add (sub_rem, handle);
+              g_intset_add (known_add, handle);
               break;
             case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
               g_intset_add (pub_add, handle);
               g_intset_add (sub_add, handle);
+              g_intset_add (known_add, handle);
               break;
             case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
               g_intset_add (pub_rem, handle);
               g_intset_add (sub_rem, handle);
+              g_intset_add (known_rem, handle);
               _gabble_roster_item_remove (roster, handle);
               break;
             default:
@@ -738,28 +747,26 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
             }
         }
 
-      if (g_intset_size (pub_add) > 0 ||
-          g_intset_size (pub_rem) > 0)
-        {
-          GabbleHandle handle = gabble_handle_for_list_publish (priv->conn->handles);
-          GabbleRosterChannel *publish = _gabble_roster_get_channel (roster, handle);
+      handle = gabble_handle_for_list_publish (priv->conn->handles);
+      chan = _gabble_roster_get_channel (roster, handle);
 
-          g_debug ("%s: calling change members on publish channel", G_STRFUNC);
-          gabble_group_mixin_change_members (G_OBJECT (publish),
-              "", pub_add, pub_rem, empty, empty);
-        }
+      g_debug ("%s: calling change members on publish channel", G_STRFUNC);
+      gabble_group_mixin_change_members (G_OBJECT (chan),
+            "", pub_add, pub_rem, empty, empty);
 
-      if (g_intset_size (sub_add) > 0 ||
-          g_intset_size (sub_rem) > 0 ||
-          g_intset_size (sub_rp) > 0)
-        {
-          GabbleHandle handle = gabble_handle_for_list_subscribe (priv->conn->handles);
-          GabbleRosterChannel *subscribe = _gabble_roster_get_channel (roster, handle);
+      handle = gabble_handle_for_list_subscribe (priv->conn->handles);
+      chan = _gabble_roster_get_channel (roster, handle);
 
-          g_debug ("%s: calling change members on subscribe channel", G_STRFUNC);
-          gabble_group_mixin_change_members (G_OBJECT (subscribe),
-              "", sub_add, sub_rem, empty, sub_rp);
-        }
+      g_debug ("%s: calling change members on subscribe channel", G_STRFUNC);
+      gabble_group_mixin_change_members (G_OBJECT (chan),
+            "", sub_add, sub_rem, empty, sub_rp);
+
+      handle = gabble_handle_for_list_known (priv->conn->handles);
+      chan = _gabble_roster_get_channel (roster, handle);
+
+      g_debug ("%s: calling change members on known channel", G_STRFUNC);
+      gabble_group_mixin_change_members (G_OBJECT (chan),
+            "", known_add, known_rem, empty, empty);
 
       g_intset_destroy (empty);
       g_intset_destroy (pub_add);
@@ -767,6 +774,8 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
       g_intset_destroy (sub_add);
       g_intset_destroy (sub_rem);
       g_intset_destroy (sub_rp);
+      g_intset_destroy (known_add);
+      g_intset_destroy (known_rem);
       break;
     default:
       HANDLER_DEBUG (iq_node, "unhandled roster IQ");

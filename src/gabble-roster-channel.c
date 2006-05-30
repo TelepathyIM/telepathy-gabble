@@ -131,6 +131,12 @@ gabble_roster_channel_constructor (GType type, guint n_props,
           TP_CHANNEL_GROUP_FLAG_MESSAGE_RESCIND,
           0);
     }
+  else if (gabble_handle_for_list_known (handles) == priv->handle)
+    {
+      gabble_group_mixin_change_flags (obj,
+          TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
+          0);
+    }
   else
     {
       g_assert_not_reached ();

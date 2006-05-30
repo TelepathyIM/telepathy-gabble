@@ -26,6 +26,7 @@
 #include "gintset.h"
 #include "group-mixin.h"
 #include "handle-set.h"
+#include "roster.h"
 #include "telepathy-errors.h"
 #include "telepathy-helpers.h"
 #include "telepathy-interfaces.h"
@@ -400,6 +401,11 @@ _gabble_roster_channel_remove_member_cb (GObject *obj,
       /* send <presence type="unsubscribe"> */
       ret = _gabble_roster_channel_send_presence (GABBLE_ROSTER_CHANNEL (obj),
           LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE, handle, message, error);
+    }
+  else if (gabble_handle_for_list_known (repo) == priv->handle)
+    {
+      /* send roster subscription=remove IQ */
+      ret = gabble_roster_handle_remove (priv->conn->roster, handle, error);
     }
   else
     {

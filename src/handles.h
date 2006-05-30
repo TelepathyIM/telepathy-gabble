@@ -51,7 +51,7 @@ gboolean gabble_handle_for_room_exists (GabbleHandleRepo *repo, const gchar *jid
 GabbleHandle gabble_handle_for_room (GabbleHandleRepo *repo, const gchar *jid);
 GabbleHandle gabble_handle_for_list_publish (GabbleHandleRepo *repo);
 GabbleHandle gabble_handle_for_list_subscribe (GabbleHandleRepo *repo);
-
+GabbleHandle gabble_handle_for_list_known (GabbleHandleRepo *repo);
 
 gboolean gabble_handle_set_qdata (GabbleHandleRepo *repo, TpHandleType type,
     GabbleHandle handle, GQuark key_id, gpointer data, GDestroyNotify destroy);

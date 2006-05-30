@@ -59,25 +59,15 @@ struct _GabbleAllocator
 #define ga_new0(alloc, type) \
     ((type *) gabble_allocator_alloc0 (alloc))
 
-static GabbleAllocator *
-gabble_allocator_new (gulong size, guint limit)
+static void
+gabble_allocator_init (GabbleAllocator *alloc, gulong size, guint limit)
 {
-  GabbleAllocator *alloc;
-
+  g_assert (alloc != NULL);
   g_assert (size > 0);
   g_assert (limit > 0);
 
-  alloc = g_new0 (GabbleAllocator, 1);
-
   alloc->size = size;
   alloc->limit = limit;
-
-  return alloc;
-}
-
-static void gabble_allocator_destroy (GabbleAllocator *alloc)
-{
-  g_free (alloc);
 }
 
 static gpointer gabble_allocator_alloc0 (GabbleAllocator *alloc)
@@ -253,8 +243,6 @@ gabble_text_mixin_finalize (GObject *obj)
       _gabble_pending_free (msg);
     }
 
-  /* FIXME - this allocates & destroys if there haven't been any messages */
-  gabble_allocator_destroy (_gabble_pending_get_alloc ());
   g_queue_free (mixin->pending);
 
   g_array_free (mixin->msg_types, TRUE);
@@ -269,16 +257,14 @@ gabble_text_mixin_finalize (GObject *obj)
 static GabbleAllocator *
 _gabble_pending_get_alloc ()
 {
-  static GabbleAllocator *alloc = NULL;
+  static GabbleAllocator alloc = { 0, };
 
-  if (alloc == NULL)
-    alloc = gabble_allocator_new (sizeof(GabblePendingMessage), MAX_PENDING_MESSAGES);
+  if (0 == alloc.size)
+    gabble_allocator_init (&alloc, sizeof(GabblePendingMessage), MAX_PENDING_MESSAGES);
 
-  return alloc;
+  return &alloc;
 }
 
-#define _gabble_pending_new() \
-  (ga_new (_gabble_pending_get_alloc (), GabblePendingMessage))
 #define _gabble_pending_new0() \
   (ga_new0 (_gabble_pending_get_alloc (), GabblePendingMessage))
 

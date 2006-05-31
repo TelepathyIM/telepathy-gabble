@@ -521,10 +521,17 @@ room_info_cb (GabbleDisco *disco,
                 {
                   if (0 != strcmp (field->name, "field"))
                     continue;
+
                   var = lm_message_node_get_attribute (field, "var");
+                  if (NULL == var)
+                    continue;
+
                   value_node = lm_message_node_get_child (field, "value");
+                  if (NULL == value_node)
+                    continue;
+
                   value = lm_message_node_get_value (value_node);
-                  if (!value)
+                  if (NULL == value)
                     continue;
 
                   if (0 == strcmp (var, "muc#roominfo_description"))

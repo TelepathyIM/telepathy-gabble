@@ -4046,7 +4046,7 @@ gboolean gabble_connection_request_aliases (GabbleConnection *obj, const GArray 
   ERROR_IF_NOT_CONNECTED (obj, *error)
 
   if (!gabble_handles_are_valid (obj->handles, TP_HANDLE_TYPE_CONTACT,
-        contacts, FALSE, error));
+        contacts, FALSE, error))
     return FALSE;
 
   aliases = g_new0 (gchar *, contacts->len + 1);

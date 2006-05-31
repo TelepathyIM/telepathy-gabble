@@ -19,12 +19,11 @@
  */
 
 #include <string.h>
-
 #include <glib.h>
 
 #include "gabble-presence-cache.h"
-
 #include "gabble-presence.h"
+#include "util.h"
 
 G_DEFINE_TYPE (GabblePresence, gabble_presence, G_TYPE_OBJECT);
 
@@ -171,11 +170,17 @@ gabble_presence_update (GabblePresence *presence, const gchar *resource, GabbleP
   gchar *old_status_message;
   GSList *i;
   guint8 prio;
+  gboolean ret = FALSE;
 
   g_assert (NULL != resource);
 
   res = _find_resource (presence, resource);
 
+  /* save our current state */
+  old_status = presence->status;
+  old_status_message = g_strdup (presence->status_message);
+
+  /* remove, create or update a Resource as appropriate */
   if (GABBLE_PRESENCE_OFFLINE == status &&
       NULL == status_message)
     {
@@ -195,16 +200,24 @@ gabble_presence_update (GabblePresence *presence, const gchar *resource, GabbleP
         }
 
       res->status = status;
-      g_free (res->status_message);
-      res->status_message = g_strdup (status_message);
+
+      if (g_strdiff (res->status_message, status_message))
+        {
+          g_free (res->status_message);
+          res->status_message = g_strdup (status_message);
+        }
+
       res->priority = priority;
     }
 
-  old_status = presence->status;
-  old_status_message = presence->status_message;
+  /* select the most preferable Resource and update presence->* based on our choice */
   presence->caps = 0;
   presence->status = GABBLE_PRESENCE_OFFLINE;
+
+  /* use the status message from any offline Resource we're
+   * keeping around just because it has a message on it */
   presence->status_message = res ? res->status_message : NULL;
+
   prio = -128;
 
   for (i = priv->resources; NULL != i; i = i->next)
@@ -224,22 +237,13 @@ gabble_presence_update (GabblePresence *presence, const gchar *resource, GabbleP
         }
     }
 
-  if (presence->status != old_status)
-    return TRUE;
+  /* detect changes */
+  if (presence->status != old_status ||
+      g_strdiff (presence->status_message, old_status_message))
+    ret = TRUE;
 
-  if (presence->status_message == old_status_message)
-    return FALSE;
-
-  if (NULL == presence->status_message && NULL != old_status_message)
-    return TRUE;
-
-  if (NULL == old_status_message && NULL != presence->status_message)
-    return TRUE;
-
-  if (0 != strcmp (presence->status_message, old_status_message))
-    return TRUE;
-
-  return FALSE;
+  g_free (old_status_message);
+  return ret;
 }
 
 LmMessage *

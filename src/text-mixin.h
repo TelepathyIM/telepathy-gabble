@@ -40,6 +40,7 @@ struct _GabbleTextMixin {
   GabbleHandleRepo *handle_repo;
   guint recv_id;
   gboolean send_nick;
+  gboolean message_lost;
 
   GQueue *pending;
 

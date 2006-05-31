@@ -56,6 +56,20 @@ int main(int argc, char **argv)
     PRESENCE_CAP_GOOGLE_VOICE);
   g_assert (NULL == resource);
 
+  g_assert (FALSE == gabble_presence_update(presence, "bar",
+    GABBLE_PRESENCE_AVAILABLE, "dingoes", -1));
+  gabble_presence_set_capabilities (presence, "bar", PRESENCE_CAP_GOOGLE_VOICE);
+
+  resource = gabble_presence_pick_resource_by_caps (presence,
+    PRESENCE_CAP_GOOGLE_VOICE);
+  g_assert (NULL == resource);
+
+  gabble_presence_set_capabilities (presence, "foo", PRESENCE_CAP_GOOGLE_VOICE);
+
+  resource = gabble_presence_pick_resource_by_caps (presence,
+    PRESENCE_CAP_GOOGLE_VOICE);
+  g_assert (0 == strcmp ("foo", resource));
+
   return 0;
 }
 

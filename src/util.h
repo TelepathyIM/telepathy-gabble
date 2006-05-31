@@ -22,6 +22,8 @@
 #include <glib.h>
 #include <loudmouth/loudmouth.h>
 
+#include "gabble-types.h"
+
 #ifndef __GABBLE_UTIL_H__
 #define __GABBLE_UTIL_H__
 

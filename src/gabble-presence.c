@@ -118,7 +118,10 @@ gabble_presence_pick_resource_by_caps (
         chosen = res;
     }
 
-  return chosen->name;
+  if (chosen)
+    return chosen->name;
+  else
+    return NULL;
 }
 
 void

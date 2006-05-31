@@ -6,6 +6,7 @@
 
 int main(int argc, char **argv)
 {
+  const gchar *resource;
   GabblePresence *presence;
 
   g_type_init();
@@ -50,6 +51,10 @@ int main(int argc, char **argv)
 
   g_assert (GABBLE_PRESENCE_CHAT == presence->status);
   g_assert (0 == strcmp ("status message", presence->status_message));
+
+  resource = gabble_presence_pick_resource_by_caps (presence,
+    PRESENCE_CAP_GOOGLE_VOICE);
+  g_assert (NULL == resource);
 
   return 0;
 }

@@ -211,6 +211,8 @@ gabble_text_mixin_init (GObject *obj,
   mixin->handle_repo = handle_repo;
   mixin->recv_id = 0;
   mixin->msg_types = g_array_sized_new (FALSE, FALSE, sizeof (guint), 4);
+
+  mixin->message_lost = FALSE;
 }
 
 void
@@ -305,7 +307,11 @@ gboolean gabble_text_mixin_receive (GObject *obj,
     {
       g_debug ("%s: no more pending messages available, giving up", G_STRFUNC);
 
-      /* TODO - g_signal_emit (obj, mixin_cls->lost_message_signal_id, 0); */
+      if (!mixin->message_lost)
+        {
+          g_signal_emit (obj, mixin_cls->lost_message_signal_id, 0);
+          mixin->message_lost = TRUE;
+        }
 
       return FALSE;
     }
@@ -331,11 +337,13 @@ gboolean gabble_text_mixin_receive (GObject *obj,
     {
       g_debug ("%s: unable to allocate message, giving up", G_STRFUNC);
 
-      /* TODO - g_signal_emit (obj, mixin_cls->lost_message_signal_id, 0); */
+      if (!mixin->message_lost)
+        {
+          g_signal_emit (obj, mixin_cls->lost_message_signal_id, 0);
+          mixin->message_lost = TRUE;
+        }
 
       _gabble_pending_free (msg);
-
-      /* TODO: send LostMessage() signal */
 
       return FALSE;
     }
@@ -359,6 +367,8 @@ gboolean gabble_text_mixin_receive (GObject *obj,
                  msg->text);
 
   g_debug ("%s: queued message %u", G_STRFUNC, msg->id);
+
+  mixin->message_lost = FALSE;
 
   return TRUE;
 }

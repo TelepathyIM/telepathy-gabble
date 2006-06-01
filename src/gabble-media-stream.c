@@ -608,7 +608,6 @@ gboolean gabble_media_stream_new_native_candidate (GabbleMediaStream *obj, const
 gboolean gabble_media_stream_ready (GabbleMediaStream *obj, const GPtrArray * codecs, GError **error)
 {
   GabbleMediaStreamPrivate *priv;
-  GValue val = { 0, };
 
   g_assert (GABBLE_IS_MEDIA_STREAM (obj));
 
@@ -619,9 +618,7 @@ gboolean gabble_media_stream_ready (GabbleMediaStream *obj, const GPtrArray * co
   GMS_DEBUG_INFO (priv->session, "putting list of all %d locally supported "
                   "codecs from voip-engine into cache", codecs->len);
 
-  g_value_init (&val, TP_TYPE_CODEC_LIST);
-  g_value_set_static_boxed (&val, codecs);
-  g_value_copy (&val, &priv->native_codecs);
+  g_value_set_boxed (&priv->native_codecs, codecs);
 
   g_signal_emit (obj, signals[READY], 0, codecs);
 
@@ -683,7 +680,7 @@ gboolean gabble_media_stream_supported_codecs (GabbleMediaStream *obj, const GPt
                   "codecs from voip-engine", codecs->len);
 
   /* store the intersection for later on */
-  g_value_take_boxed (&priv->native_codecs, codecs);
+  g_value_set_boxed (&priv->native_codecs, codecs);
 
   g_signal_emit (obj, signals[SUPPORTED_CODECS], 0, codecs);
 

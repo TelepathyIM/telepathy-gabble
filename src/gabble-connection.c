@@ -4527,6 +4527,10 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
         {
           handle = gabble_handle_for_list_subscribe (obj->handles);
         }
+      else if (!strcmp (name, "known"))
+        {
+          handle = gabble_handle_for_list_known (obj->handles);
+        }
       else
         {
           g_debug ("%s: requested list channel %s not available", G_STRFUNC, name);

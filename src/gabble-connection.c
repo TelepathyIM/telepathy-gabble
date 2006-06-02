@@ -3430,6 +3430,7 @@ gboolean gabble_connection_get_alias_flags (GabbleConnection *obj, guint* ret, G
 gboolean gabble_connection_get_interfaces (GabbleConnection *obj, gchar *** ret, GError **error)
 {
   const char *interfaces[] = {
+      TP_IFACE_CONN_INTERFACE_ALIASING,
       TP_IFACE_CONN_INTERFACE_PRESENCE,
       TP_IFACE_PROPERTIES,
       NULL };

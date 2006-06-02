@@ -400,11 +400,14 @@ gabble_media_channel_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  if (priv->session)
-    g_object_unref (priv->session);
+  /** In this we set the state to ENDED, then the callback unrefs
+   * the session
+   */
 
-  if (!priv->closed) 
-    g_signal_emit (self, signals[CLOSED], 0);
+  if (!priv->closed)
+    gabble_media_channel_close (self, NULL);
+
+  g_assert (priv->closed && priv->session==NULL);
 
   if (G_OBJECT_CLASS (gabble_media_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_media_channel_parent_class)->dispose (object);

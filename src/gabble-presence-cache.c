@@ -23,7 +23,6 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 
-#include "debug.h"
 #include "gabble-presence.h"
 #include "namespaces.h"
 #include "util.h"
@@ -62,10 +61,65 @@ struct _GabblePresenceCachePrivate
   LmMessageHandler *lm_message_cb;
 
   GHashTable *presence;
-  GabbleHandleSet *presence_handles;
 
   gboolean dispose_has_run;
 };
+
+typedef struct _DiscoWaiter DiscoWaiter;
+
+struct _DiscoWaiter
+{
+  GabbleHandleRepo *repo;
+  GabbleHandle handle;
+  gchar *resource;
+};
+
+/**
+ * disco_waiter_new ()
+ */
+static DiscoWaiter *
+disco_waiter_new (GabbleHandleRepo *repo, GabbleHandle handle, const gchar *resource)
+{
+  DiscoWaiter *waiter;
+
+  g_assert (repo);
+  gabble_handle_ref (repo, TP_HANDLE_TYPE_CONTACT, handle);
+
+  waiter = g_new0 (DiscoWaiter, 1);
+  waiter->handle = handle;
+  waiter->resource = g_strdup (resource);
+  waiter->repo = repo;
+
+  g_debug ("%s: %p", G_STRFUNC, waiter);
+
+  return waiter;
+}
+
+static void
+disco_waiter_free (DiscoWaiter *waiter)
+{
+  g_assert (NULL != waiter);
+
+  g_debug ("%s: %p", G_STRFUNC, waiter);
+
+  gabble_handle_unref (waiter->repo, TP_HANDLE_TYPE_CONTACT, waiter->handle);
+
+  g_free (waiter->resource);
+  g_free (waiter);
+}
+
+static void
+disco_waiter_list_free (GSList *list)
+{
+  GSList *i;
+
+  g_debug ("%s: %p", G_STRFUNC, list);
+
+  for (i = list; NULL != i; i = i->next)
+    disco_waiter_free ((DiscoWaiter *) i->data);
+
+  g_slist_free (list);
+}
 
 static void gabble_presence_cache_init (GabblePresenceCache *presence_cache);
 static GObject * gabble_presence_cache_constructor (GType type, guint n_props,
@@ -137,6 +191,13 @@ gabble_presence_cache_init (GabblePresenceCache *cache)
   cache->priv = priv;
 
   priv->presence = g_hash_table_new_full (NULL, NULL, NULL, g_object_unref);
+  priv->capabilities = g_hash_table_new (g_str_hash, g_str_equal);
+  priv->disco_pending = g_hash_table_new_full (g_str_hash, g_str_equal,
+    g_free, (GDestroyNotify) disco_waiter_list_free);
+
+  g_hash_table_insert (priv->capabilities,
+    NS_GABBLE_CAPS "#jingle",
+    GINT_TO_POINTER (PRESENCE_CAP_GOOGLE_VOICE | PRESENCE_CAP_JINGLE_VOICE));
 }
 
 static GObject *
@@ -421,6 +482,183 @@ _grab_nickname (GabblePresenceCache *cache,
     }
 }
 
+static GSList *
+_extract_cap_bundles (LmMessageNode *lm_node)
+{
+  const gchar *node, *ver, *ext;
+  GSList *uris = NULL;
+  LmMessageNode *cap_node;
+
+  cap_node = lm_message_node_find_child (lm_node, "c");
+
+  if (NULL == cap_node)
+    return NULL;
+
+  node = lm_message_node_get_attribute (cap_node, "node");
+
+  if (NULL == node)
+    return NULL;
+
+  ver = lm_message_node_get_attribute (cap_node, "ver");
+
+  if (NULL != ver)
+    uris = g_slist_prepend (uris, g_strdup_printf ("%s#%s", node, ver));
+
+  ext = lm_message_node_get_attribute (cap_node, "ext");
+
+  if (NULL != ext)
+    {
+      gchar **exts, **i;
+
+      exts = g_strsplit (ext, " ", 0);
+
+      for (i = exts; NULL != *i; i++)
+        uris = g_slist_prepend (uris, g_strdup_printf ("%s#%s", node, *i));
+
+      g_strfreev (exts);
+    }
+
+  return uris;
+}
+
+static void
+_caps_disco_cb (GabbleDisco *disco,
+                GabbleDiscoRequest *request,
+                const gchar *jid,
+                const gchar *node,
+                LmMessageNode *query_result,
+                GError *error,
+                gpointer user_data)
+{
+  GSList *waiters, *i;
+  LmMessageNode *child;
+  GabblePresenceCache *cache;
+  GabblePresenceCachePrivate *priv;
+  GabblePresenceCapabilities caps = 0;
+
+  cache = GABBLE_PRESENCE_CACHE (user_data);
+  priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
+
+  if (NULL == node)
+    {
+      g_warning ("got disco response with NULL node, ignoring");
+      return;
+    }
+
+  for (child = query_result->children; NULL != child; child = child->next)
+    {
+      const gchar *var;
+
+      if (0 != strcmp (child->name, "feature"))
+        continue;
+
+      var = lm_message_node_get_attribute (child, "var");
+
+      if (NULL == var)
+        continue;
+
+      if (0 == strcmp (var, NS_GOOGLE_SESSION_PHONE))
+        caps |= PRESENCE_CAP_GOOGLE_VOICE;
+      else if (0 == strcmp (var, NS_JINGLE_AUDIO))
+        caps |= PRESENCE_CAP_JINGLE_VOICE;
+    }
+
+  g_hash_table_insert (priv->capabilities, g_strdup (node),
+    GINT_TO_POINTER (caps));
+
+  waiters = g_hash_table_lookup (priv->disco_pending, node);
+
+  for (i = waiters; NULL != i; i = i->next)
+    {
+      DiscoWaiter *waiter;
+      GabblePresence *presence;
+
+      waiter = (DiscoWaiter *) i->data;
+      presence = gabble_presence_cache_get (cache, waiter->handle);
+
+      if (presence)
+        gabble_presence_set_capabilities (presence, waiter->resource, caps);
+    }
+
+  g_hash_table_remove (priv->disco_pending, node);
+}
+
+static void
+_process_caps_uri (GabblePresenceCache *cache,
+                   const gchar *from,
+                   const gchar *uri,
+                   GabbleHandle handle,
+                   const gchar *resource)
+{
+  gpointer value;
+  GabblePresenceCachePrivate *priv;
+
+  priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
+
+  if (g_hash_table_lookup_extended (priv->capabilities, uri, NULL, &value))
+    {
+      /* we have already discoed this node; apply the cached value to the
+       * (handle, resource) */
+
+      GabblePresence *presence = gabble_presence_cache_get (cache, handle);
+
+      if (presence)
+        gabble_presence_set_capabilities (presence, resource,
+          GPOINTER_TO_INT (value));
+    }
+  else
+    {
+      /* Append the (handle, resource) pair to the list of such pairs
+       * waiting for capabilities for this uri, and send a disco request
+       * if this is the first such pair. */
+
+      GSList *waiters;
+      DiscoWaiter *waiter;
+
+      g_debug ("caps cache miss: %s", uri);
+      value = g_hash_table_lookup (priv->disco_pending, uri);
+
+      if (value)
+        g_hash_table_steal (priv->disco_pending, uri);
+
+      waiters = (GSList *) value;
+      waiter = disco_waiter_new (priv->conn->handles, handle, resource);
+      waiters = g_slist_prepend (waiters, waiter);
+      g_hash_table_insert (priv->disco_pending, g_strdup (uri), waiters);
+
+      if (!value)
+        /* DISCO */
+        gabble_disco_request (priv->conn->disco, GABBLE_DISCO_TYPE_INFO,
+            from, uri, _caps_disco_cb, cache, G_OBJECT (cache), NULL);
+    }
+}
+
+static void
+_process_caps (GabblePresenceCache *cache,
+               GabbleHandle handle,
+               const gchar *from,
+               LmMessageNode *lm_node)
+{
+  gchar *resource;
+  GSList *uris, *i;
+  GabblePresenceCachePrivate *priv;
+
+  priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
+
+  gabble_handle_decode_jid (from, NULL, NULL, &resource);
+
+  if (NULL == resource)
+    return;
+
+  uris = _extract_cap_bundles (lm_node);
+
+  for (i = uris; NULL != i; i = i->next)
+    _process_caps_uri (cache, from, (gchar *) i->data, handle, resource);
+
+  g_free (resource);
+  g_slist_free (uris);
+}
+
 static LmHandlerResult
 _parse_presence_message (GabblePresenceCache *cache,
                          GabbleHandle handle,
@@ -502,6 +740,7 @@ _parse_presence_message (GabblePresenceCache *cache,
     }
 
   _grab_nickname (cache, handle, from, presence_node);
+  _process_caps (cache, handle, from, presence_node);
   g_free (resource);
   return ret;
 }
@@ -525,6 +764,7 @@ _parse_message_message (GabblePresenceCache *cache,
 
   node = lm_message_get_node (message);
   _grab_nickname (cache, handle, from, node);
+  _process_caps (cache, handle, from, node);
 
   return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 }

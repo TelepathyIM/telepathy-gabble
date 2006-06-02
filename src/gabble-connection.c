@@ -2322,7 +2322,7 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   LmMessageNode *iq_node, *session_node, *desc_node;
-  const gchar *from, *id, *type, *action, *sid;
+  const gchar *from, *id, *action, *sid;
   gchar *resource;
   GabbleHandle handle;
   GabbleMediaChannel *chan = NULL;
@@ -2352,16 +2352,9 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
-  type = lm_message_node_get_attribute (iq_node, "type");
-  if (!type)
+  if (LM_MESSAGE_SUB_TYPE_SET != lm_message_get_sub_type (message))
     {
-      HANDLER_DEBUG (iq_node, "'type' attribute not found");
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-    }
-
-  if (strcmp (type, "set") != 0)
-    {
-      HANDLER_DEBUG (iq_node, "'type' is not \"set\"");
+      HANDLER_DEBUG (iq_node, "Jingle message sub type is not \"set\"");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 

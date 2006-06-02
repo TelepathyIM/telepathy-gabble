@@ -564,7 +564,8 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
   if (strcmp (action, "candidates") == 0 ||
       strcmp (action, "transport-info") == 0)
     {
-      if (priv->state < JS_STATE_PENDING_INITIATED || priv->state >= JS_STATE_ENDED)
+      if (priv->state < JS_STATE_PENDING_INITIATED ||
+          priv->state >= JS_STATE_ENDED)
         goto ACK_FAILURE;
 
       if (!_gabble_media_stream_post_remote_candidates (priv->stream, message, session_node))

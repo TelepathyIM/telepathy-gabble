@@ -541,6 +541,137 @@ gboolean gabble_media_session_ready (GabbleMediaSession *obj, GError **error)
   return TRUE;
 }
 
+static gboolean
+_handle_candidates (GabbleMediaSession *session,
+                    LmMessageNode *iq_node,
+                    LmMessageNode *session_node)
+{
+  GabbleMediaSessionPrivate *priv;
+
+  priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+
+  if (priv->state < JS_STATE_PENDING_INITIATED ||
+      priv->state >= JS_STATE_ENDED)
+    return FALSE;
+
+  if (!_gabble_media_stream_post_remote_candidates (priv->stream, iq_node,
+                                                    session_node))
+    {
+      GMS_DEBUG_ERROR (session,
+        "%s: gabble_media_stream_post_remote_candidates failed", G_STRFUNC);
+      HANDLER_DEBUG (session_node, "session_node");
+    }
+
+  return TRUE;
+}
+
+static gboolean
+_handle_initiate (GabbleMediaSession *session,
+                    LmMessageNode *iq_node,
+                    LmMessageNode *session_node)
+{
+  LmMessageNode *desc_node;
+  GabbleMediaSessionPrivate *priv;
+
+  priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+
+  if (priv->state != JS_STATE_PENDING_CREATED)
+    return FALSE;
+
+  desc_node = lm_message_node_get_child (session_node, "description");
+
+  if (!desc_node)
+    return FALSE;
+
+  if (!_gabble_media_stream_post_remote_codecs (priv->stream, iq_node,
+                                                desc_node))
+    return FALSE;
+
+  g_object_set (session, "state", JS_STATE_PENDING_INITIATED, NULL);
+  return TRUE;
+}
+
+static gboolean
+_handle_accept (GabbleMediaSession *session,
+                LmMessageNode *iq_node,
+                LmMessageNode *session_node)
+{
+  LmMessageNode *desc_node;
+  GabbleMediaSessionPrivate *priv;
+
+  priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+
+  if (priv->state != JS_STATE_PENDING_INITIATED)
+    return FALSE;
+
+  desc_node = lm_message_node_get_child (session_node, "description");
+
+  if (!desc_node)
+    return FALSE;
+
+  if (!_gabble_media_stream_post_remote_codecs (priv->stream, iq_node,
+                                                desc_node))
+    return FALSE;
+
+  g_object_set (session, "state", JS_STATE_ACTIVE, NULL);
+  return TRUE;
+}
+
+static gboolean
+_handle_reject (GabbleMediaSession *session,
+                LmMessageNode *iq_node,
+                LmMessageNode *session_node)
+{
+  GabbleMediaSessionPrivate *priv;
+
+  priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+
+  if (priv->state != JS_STATE_PENDING_INITIATED)
+    return FALSE;
+
+  g_object_set (session, "state", JS_STATE_ENDED, NULL);
+  return TRUE;
+}
+
+static gboolean
+_handle_terminate (GabbleMediaSession *session,
+                   LmMessageNode *iq_node,
+                   LmMessageNode *session_node)
+{
+  GabbleMediaSessionPrivate *priv;
+
+  priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+
+  if (priv->state < JS_STATE_PENDING_INITIATED)
+    return FALSE;
+
+  g_object_set (session, "state", JS_STATE_ENDED, NULL);
+  return TRUE;
+}
+
+typedef gboolean (*HandlerFunc)(GabbleMediaSession *session,
+                                LmMessageNode *iq_node,
+                                LmMessageNode *session_node);
+
+typedef struct _Handler Handler;
+
+struct _Handler {
+  const gchar *action;
+  HandlerFunc handler;
+};
+
+static Handler handlers[] = {
+  { "candidates", _handle_candidates },
+  { "transport-info", _handle_candidates },
+  { "initiate", _handle_initiate },
+  { "session-initiate", _handle_initiate },
+  { "accept", _handle_accept },
+  { "session-accept", _handle_accept },
+  { "reject", _handle_reject },
+  { "terminate", _handle_terminate },
+  { NULL, NULL }
+};
+
 void
 _gabble_media_session_handle_action (GabbleMediaSession *session,
                                      LmMessage *message,
@@ -548,7 +679,7 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
                                      const gchar *action)
 {
   GabbleMediaSessionPrivate *priv;
-  LmMessageNode *desc_node, *iq_node;
+  LmMessageNode *desc_node;
 
   g_assert (GABBLE_IS_MEDIA_SESSION (session));
 
@@ -561,21 +692,18 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
 
   /* do the state machine dance */
 
-  if (strcmp (action, "candidates") == 0 ||
-      strcmp (action, "transport-info") == 0)
+  for (i = handlers; NULL != i->action; i++)
     {
       if (priv->state < JS_STATE_PENDING_INITIATED ||
           priv->state >= JS_STATE_ENDED)
         goto ACK_FAILURE;
 
-      if (!_gabble_media_stream_post_remote_candidates (priv->stream, message, session_node))
+      if (!_gabble_media_stream_post_remote_candidates (priv->stream, iq_node, session_node))
         {
           GMS_DEBUG_ERROR (session, "%s: gabble_media_stream_post_remote_candidates failed",
                            G_STRFUNC);
-          NODE_DEBUG (session_node, "session_node");
+          HANDLER_DEBUG (session_node, "session_node");
         }
-
-      return;
     }
   else if (strcmp (action, "initiate") == 0 ||
            strcmp (action, "session-initiate") == 0)
@@ -587,7 +715,7 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
       if (!desc_node)
         goto ACK_FAILURE;
 
-      if (_gabble_media_stream_post_remote_codecs (priv->stream, message, desc_node))
+      if (_gabble_media_stream_post_remote_codecs (priv->stream, iq_node, desc_node))
         {
           g_object_set (session, "state", JS_STATE_PENDING_INITIATED, NULL);
         }
@@ -596,10 +724,7 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
           goto ACK_FAILURE;
         }
 
-      return;
-    }
-  else if (strcmp (action, "accept") == 0 ||
-           strcmp (action, "session-accept") == 0)
+  if (NULL == func)
     {
       if (priv->state != JS_STATE_PENDING_INITIATED)
         goto ACK_FAILURE;
@@ -608,7 +733,7 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
       if (!desc_node)
         goto ACK_FAILURE;
 
-      if (_gabble_media_stream_post_remote_codecs (priv->stream, message, desc_node))
+      if (_gabble_media_stream_post_remote_codecs (priv->stream, iq_node, desc_node))
         {
           g_object_set (session, "state", JS_STATE_ACTIVE, NULL);
         }
@@ -619,19 +744,13 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
 
       return;
     }
-  else if (strcmp (action, "reject") == 0)
-    {
-      if (priv->state != JS_STATE_PENDING_INITIATED)
-        goto ACK_FAILURE;
 
-      g_object_set (session, "state", JS_STATE_ENDED, NULL);
-    }
-  else if (strcmp (action, "terminate") == 0)
+  if (!func (session, iq_node, session_node))
     {
-      if (priv->state < JS_STATE_PENDING_INITIATED)
-        goto ACK_FAILURE;
-
-      g_object_set (session, "state", JS_STATE_ENDED, NULL);
+      GMS_DEBUG_ERROR (session,
+        "error encountered with action \"%s\" in current state -- "
+        "terminating session", action);
+      goto ACK_FAILURE;
     }
 
 /*ACK_SUCCESS:*/
@@ -639,11 +758,9 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
   return;
 
 ACK_FAILURE:
-  GMS_DEBUG_ERROR (session, "error encountered with action \"%s\" in current state -- terminating session", action);
 
   _gabble_connection_send_iq_error (priv->conn, message,
                                     XMPP_ERROR_NOT_ALLOWED);
-
   _gabble_media_session_terminate (session);
 }
 

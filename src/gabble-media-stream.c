@@ -848,7 +848,7 @@ push_native_candidates (GabbleMediaStream *stream)
 
 gboolean
 _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream,
-                                         LmMessageNode *iq_node,
+                                         LmMessage *message,
                                          LmMessageNode *desc_node)
 {
   GabbleMediaStreamPrivate *priv;
@@ -911,7 +911,7 @@ _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream,
                   codecs->len);
 
 /*SUCCESS:*/
-  _gabble_connection_send_iq_result (priv->conn, iq_node);
+  _gabble_connection_send_iq_result (priv->conn, message->node);
 
   push_remote_codecs (stream);
 
@@ -923,7 +923,7 @@ FAILURE:
                   ANSI_BOLD_OFF, xml, ANSI_BOLD_ON);
   g_free (xml);
 
-  _gabble_connection_send_iq_error (priv->conn, iq_node, XMPP_ERROR_NOT_ALLOWED);
+  _gabble_connection_send_iq_error (priv->conn, message->node, XMPP_ERROR_NOT_ALLOWED);
 
   return FALSE;
 }
@@ -965,7 +965,7 @@ static void push_remote_candidates (GabbleMediaStream *stream);
 
 gboolean
 _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
-                                             LmMessageNode *iq_node,
+                                             LmMessage *message,
                                              LmMessageNode *session_node)
 {
   GabbleMediaStreamPrivate *priv;
@@ -1147,14 +1147,14 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
     }
 
 /*SUCCESS:*/
-  _gabble_connection_send_iq_result (priv->conn, iq_node);
+  _gabble_connection_send_iq_result (priv->conn, message->node);
 
   push_remote_candidates (stream);
 
   return TRUE;
 
 FAILURE:
-  _gabble_connection_send_iq_error (priv->conn, iq_node, XMPP_ERROR_BAD_REQUEST);
+  _gabble_connection_send_iq_error (priv->conn, message->node, XMPP_ERROR_BAD_REQUEST);
 
   return FALSE;
 }

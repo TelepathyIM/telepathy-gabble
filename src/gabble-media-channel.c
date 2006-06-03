@@ -208,7 +208,7 @@ _gabble_media_channel_dispatch_session_action (GabbleMediaChannel *chan,
                                                GabbleHandle peer,
                                                const gchar *peer_resource,
                                                const gchar *sid,
-                                               LmMessageNode *iq_node,
+                                               LmMessage *message,
                                                LmMessageNode *session_node,
                                                const gchar *action)
 {
@@ -240,7 +240,7 @@ _gabble_media_channel_dispatch_session_action (GabbleMediaChannel *chan,
     }
 
   g_object_ref (session);
-  _gabble_media_session_handle_action (session, iq_node, session_node, action);
+  _gabble_media_session_handle_action (session, message, session_node, action);
   g_object_unref (session);
 }
 

@@ -93,7 +93,7 @@ gboolean gabble_media_session_error (GabbleMediaSession *obj, guint errno, const
 gboolean gabble_media_session_ready (GabbleMediaSession *obj, GError **error);
 
 void _gabble_media_session_handle_action (GabbleMediaSession *session,
-                                          LmMessageNode *iq_node,
+                                          LmMessage *message,
                                           LmMessageNode *session_node,
                                           const gchar *action);
 

@@ -532,16 +532,18 @@ gboolean gabble_media_session_ready (GabbleMediaSession *obj, GError **error)
 
 void
 _gabble_media_session_handle_action (GabbleMediaSession *session,
-                                     LmMessageNode *iq_node,
+                                     LmMessage *message,
                                      LmMessageNode *session_node,
                                      const gchar *action)
 {
   GabbleMediaSessionPrivate *priv;
-  LmMessageNode *desc_node;
+  LmMessageNode *desc_node, *iq_node;
 
   g_assert (GABBLE_IS_MEDIA_SESSION (session));
 
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+
+  iq_node = lm_message_get_node (message);
 
   GMS_DEBUG_INFO (session, "got jingle session action \"%s\" from peer",
                   action);
@@ -554,7 +556,7 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
       if (priv->state < JS_STATE_PENDING_INITIATED || priv->state >= JS_STATE_ENDED)
         goto ACK_FAILURE;
 
-      if (!_gabble_media_stream_post_remote_candidates (priv->stream, iq_node, session_node))
+      if (!_gabble_media_stream_post_remote_candidates (priv->stream, message, session_node))
         {
           GMS_DEBUG_ERROR (session, "%s: gabble_media_stream_post_remote_candidates failed",
                            G_STRFUNC);
@@ -573,7 +575,7 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
       if (!desc_node)
         goto ACK_FAILURE;
 
-      if (_gabble_media_stream_post_remote_codecs (priv->stream, iq_node, desc_node))
+      if (_gabble_media_stream_post_remote_codecs (priv->stream, message, desc_node))
         {
           g_object_set (session, "state", JS_STATE_PENDING_INITIATED, NULL);
         }
@@ -594,7 +596,7 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
       if (!desc_node)
         goto ACK_FAILURE;
 
-      if (_gabble_media_stream_post_remote_codecs (priv->stream, iq_node, desc_node))
+      if (_gabble_media_stream_post_remote_codecs (priv->stream, message, desc_node))
         {
           g_object_set (session, "state", JS_STATE_ACTIVE, NULL);
         }

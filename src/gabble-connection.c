@@ -2459,7 +2459,7 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
       g_object_ref (chan);
       gabble_handle_decode_jid (from, NULL, NULL, &resource);
       _gabble_media_channel_dispatch_session_action (chan, handle, resource,
-          sid, iq_node, session_node, action);
+          sid, message, session_node, action);
       g_object_unref (chan);
     }
   else

@@ -2553,7 +2553,8 @@ connection_iq_disco_cb (LmMessageHandler *handler,
 
   result = _lm_iq_message_make_result (message);
   result_iq = lm_message_get_node (result);
-  result_query = lm_message_node_get_child (result_iq, "query");
+  result_query = lm_message_node_add_child (result_iq, "query", NULL);
+  lm_message_node_set_attribute (result_query, "xmlns", NS_DISCO_INFO);
 
   for (i = get_features (); NULL != i; i = i->next)
     {

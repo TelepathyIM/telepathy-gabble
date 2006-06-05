@@ -2202,8 +2202,12 @@ _gabble_connection_acknowledge_set_iq (GabbleConnection *conn,
   g_assert (LM_MESSAGE_SUB_TYPE_SET == lm_message_get_sub_type (iq));
 
   result = _lm_iq_message_make_result (iq);
-  _gabble_connection_send (conn, result, NULL);
-  lm_message_unref (result);
+
+  if (NULL != result)
+    {
+      _gabble_connection_send (conn, result, NULL);
+      lm_message_unref (result);
+    }
 }
 
 

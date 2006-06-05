@@ -216,7 +216,7 @@ jingle_info_iq_callback (LmMessageHandler *handler,
 
       if (sub_type == LM_MESSAGE_SUB_TYPE_SET)
         {
-          _gabble_connection_send_iq_result (conn, message->node);
+          _gabble_connection_acknowledge_set_iq (conn, message);
         }
     }
   else if (sub_type == LM_MESSAGE_SUB_TYPE_ERROR)

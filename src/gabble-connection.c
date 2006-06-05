@@ -2226,36 +2226,27 @@ new_media_channel (GabbleConnection *conn, GabbleHandle creator, gboolean suppre
   return chan;
 }
 
+static LmMessage *_lm_iq_message_make_result (LmMessage *iq_message);
+
 /**
  * _gabble_connection_send_iq_result
  *
  * Function used to acknowledge an IQ stanza.
  */
 void
-_gabble_connection_send_iq_result (GabbleConnection *conn,
-                                   LmMessageNode *iq_node)
+_gabble_connection_acknowledge_set_iq (GabbleConnection *conn,
+                                       LmMessage *iq)
 {
-  const gchar *to, *id;
-  LmMessage *msg;
+  LmMessage *result;
 
-  to = lm_message_node_get_attribute (iq_node, "from");
-  id = lm_message_node_get_attribute (iq_node, "id");
+  g_assert (LM_MESSAGE_TYPE_IQ == lm_message_get_type (iq));
+  g_assert (LM_MESSAGE_SUB_TYPE_SET == lm_message_get_sub_type (iq));
 
-  if (id == NULL)
-    {
-      HANDLER_DEBUG (iq_node, "can't acknowledge IQ with no id");
-      return;
-    }
-
-  msg = lm_message_new_with_sub_type (to, LM_MESSAGE_TYPE_IQ,
-                                      LM_MESSAGE_SUB_TYPE_RESULT);
-
-  lm_message_node_set_attribute (msg->node, "id", id);
-
-  _gabble_connection_send (conn, msg, NULL);
-
-  lm_message_unref (msg);
+  result = _lm_iq_message_make_result (iq);
+  _gabble_connection_send (conn, result, NULL);
+  lm_message_unref (result);
 }
+
 
 /**
  * _gabble_connection_send_iq_error
@@ -2264,12 +2255,14 @@ _gabble_connection_send_iq_result (GabbleConnection *conn,
  */
 void
 _gabble_connection_send_iq_error (GabbleConnection *conn,
-                                  LmMessageNode *iq_node,
+                                  LmMessage *message,
                                   GabbleXmppError error)
 {
   const gchar *to, *id;
   LmMessage *msg;
+  LmMessageNode *iq_node;
 
+  iq_node = lm_message_get_node (message);
   to = lm_message_node_get_attribute (iq_node, "from");
   id = lm_message_node_get_attribute (iq_node, "id");
 
@@ -2640,7 +2633,7 @@ connection_iq_unknown_cb (LmMessageHandler *handler,
     {
     case LM_MESSAGE_SUB_TYPE_GET:
     case LM_MESSAGE_SUB_TYPE_SET:
-      _gabble_connection_send_iq_error (conn, message->node,
+      _gabble_connection_send_iq_error (conn, message,
           XMPP_ERROR_SERVICE_UNAVAILABLE);
       break;
     default:

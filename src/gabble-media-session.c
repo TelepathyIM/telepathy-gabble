@@ -623,13 +623,13 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
     }
 
 /*ACK_SUCCESS:*/
-  _gabble_connection_send_iq_result (priv->conn, iq_node);
+  _gabble_connection_acknowledge_set_iq (priv->conn, message);
   return;
 
 ACK_FAILURE:
   GMS_DEBUG_ERROR (session, "error encountered with action \"%s\" in current state -- terminating session", action);
 
-  _gabble_connection_send_iq_error (priv->conn, iq_node,
+  _gabble_connection_send_iq_error (priv->conn, message,
                                     XMPP_ERROR_NOT_ALLOWED);
 
   _gabble_media_session_terminate (session);

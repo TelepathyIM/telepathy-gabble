@@ -2492,7 +2492,6 @@ _lm_iq_message_make_result (LmMessage *iq_message)
     }
 
   from_jid = lm_message_node_get_attribute (iq, "from");
-  g_assert (from_jid);
 
   query = lm_message_node_get_child (iq, "query");
   g_assert (query);

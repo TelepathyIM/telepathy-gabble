@@ -2483,6 +2483,14 @@ _lm_iq_message_make_result (LmMessage *iq_message)
             lm_message_get_sub_type (iq_message) == LM_MESSAGE_SUB_TYPE_SET);
 
   iq = lm_message_get_node (iq_message);
+  id = lm_message_node_get_attribute (iq, "id");
+
+  if (id == NULL)
+    {
+      HANDLER_DEBUG (iq, "can't acknowledge IQ with no id");
+      return NULL;
+    }
+
   from_jid = lm_message_node_get_attribute (iq, "from");
   g_assert (from_jid);
 
@@ -2495,8 +2503,7 @@ _lm_iq_message_make_result (LmMessage *iq_message)
   result = lm_message_new_with_sub_type (from_jid, LM_MESSAGE_TYPE_IQ,
                                          LM_MESSAGE_SUB_TYPE_RESULT);
   result_iq = lm_message_get_node (result);
-  lm_message_node_set_attribute (result_iq, "id",
-    lm_message_node_get_attribute (iq, "id"));
+  lm_message_node_set_attribute (result_iq, "id", id);
 
   result_query = lm_message_node_add_child (result_iq, "query", NULL);
   lm_message_node_set_attribute (result_query, "xmlns", xmlns);

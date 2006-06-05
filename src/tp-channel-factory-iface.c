@@ -73,6 +73,12 @@ tp_channel_factory_iface_close_all (TpChannelFactoryIface *self)
 }
 
 void
+tp_channel_factory_iface_connecting (TpChannelFactoryIface *self)
+{
+  TP_CHANNEL_FACTORY_IFACE_GET_CLASS (self)->connecting (self);
+}
+
+void
 tp_channel_factory_iface_connected (TpChannelFactoryIface *self)
 {
   TP_CHANNEL_FACTORY_IFACE_GET_CLASS (self)->connected (self);

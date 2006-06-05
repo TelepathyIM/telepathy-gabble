@@ -287,7 +287,7 @@ gabble_connection_init (GabbleConnection *obj)
   GValue val = { 0, };
 
   obj->lmconn = lm_connection_new (NULL);
-  obj->status = TP_CONN_STATUS_CONNECTING;
+  obj->status = TP_CONN_STATUS_DISCONNECTED;
   obj->handles = gabble_handle_repo_new ();
   obj->disco = gabble_disco_new (obj);
 
@@ -866,6 +866,15 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
                                       NULL);
 }
 
+static gboolean
+_unref_lm_connection (gpointer data)
+{
+  LmConnection *conn = (LmConnection *) data;
+
+  lm_connection_unref (conn);
+  return FALSE;
+}
+
 void
 gabble_connection_dispose (GObject *object)
 {
@@ -915,30 +924,20 @@ gabble_connection_dispose (GObject *object)
   g_object_unref (self->presence_cache);
   self->presence_cache = NULL;
 
-  if (self->lmconn)
-    {
-      if (lm_connection_is_open (self->lmconn))
-        {
-          g_warning ("%s: connection was open when the object was deleted, it'll probably crash now...", G_STRFUNC);
-          lm_connection_close (self->lmconn, NULL);
-        }
+  /* if this is not already the case, we'll crash anyway */
+  g_assert (!lm_connection_is_open (self->lmconn));
 
-      lm_connection_unregister_message_handler (self->lmconn, priv->iq_jingle_info_cb,
-                                                LM_MESSAGE_TYPE_IQ);
-      lm_message_handler_unref (priv->iq_jingle_info_cb);
+  g_assert (priv->iq_jingle_info_cb == NULL);
+  g_assert (priv->iq_jingle_cb == NULL);
+  g_assert (priv->iq_disco_cb == NULL);
+  g_assert (priv->iq_unknown_cb == NULL);
 
-      lm_connection_unregister_message_handler (self->lmconn, priv->iq_jingle_cb,
-                                                LM_MESSAGE_TYPE_IQ);
-      lm_message_handler_unref (priv->iq_jingle_cb);
-
-      lm_connection_unregister_message_handler (self->lmconn, priv->iq_disco_cb,
-                                                LM_MESSAGE_TYPE_IQ);
-      lm_message_handler_unref (priv->iq_disco_cb);
-
-      lm_connection_unregister_message_handler (self->lmconn, priv->iq_unknown_cb,
-                                                LM_MESSAGE_TYPE_IQ);
-      lm_message_handler_unref (priv->iq_unknown_cb);
-    }
+  /*
+   * The Loudmouth connection can't be unref'd immediately because this
+   * function might (indirectly) return into Loudmouth code which expects the
+   * connection to always be there.
+   */
+  g_idle_add (_unref_lm_connection, self->lmconn);
 
   dbus_g_proxy_call_no_reply (bus_proxy, "ReleaseName",
                               G_TYPE_STRING, self->bus_name,
@@ -948,15 +947,6 @@ gabble_connection_dispose (GObject *object)
     G_OBJECT_CLASS (gabble_connection_parent_class)->dispose (object);
 }
 
-static gboolean
-_unref_lm_connection (gpointer data)
-{
-  LmConnection *conn = (LmConnection *) data;
-
-  lm_connection_unref (conn);
-  return FALSE;
-}
-
 void
 gabble_connection_finalize (GObject *object)
 {
@@ -964,14 +954,6 @@ gabble_connection_finalize (GObject *object)
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
   g_debug ("%s called with %p", G_STRFUNC, object);
-
-  /*
-   * The Loudmouth connection can't be unref'd immediately because this
-   * function might (indirectly) return into Loudmouth code which expects the
-   * connection to always be there.
-   */
-  if (self->lmconn)
-    g_idle_add (_unref_lm_connection, self->lmconn);
 
   g_free (self->bus_name);
   g_free (self->object_path);
@@ -1004,7 +986,6 @@ gabble_connection_finalize (GObject *object)
   gabble_properties_mixin_finalize (object);
 
   G_OBJECT_CLASS (gabble_connection_parent_class)->finalize (object);
-
 }
 
 /**
@@ -1372,6 +1353,73 @@ do_connect (GabbleConnection *conn, GError **error)
   return TRUE;
 }
 
+static void
+connect_callbacks (GabbleConnection *conn)
+{
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+
+  g_assert (priv->iq_jingle_info_cb == NULL);
+  g_assert (priv->iq_jingle_cb == NULL);
+  g_assert (priv->iq_disco_cb == NULL);
+  g_assert (priv->iq_unknown_cb == NULL);
+
+  priv->iq_jingle_info_cb = lm_message_handler_new (jingle_info_iq_callback,
+                                                    conn, NULL);
+  lm_connection_register_message_handler (conn->lmconn,
+                                          priv->iq_jingle_info_cb,
+                                          LM_MESSAGE_TYPE_IQ,
+                                          LM_HANDLER_PRIORITY_NORMAL);
+
+  priv->iq_jingle_cb = lm_message_handler_new (connection_iq_jingle_cb,
+                                               conn, NULL);
+  lm_connection_register_message_handler (conn->lmconn, priv->iq_jingle_cb,
+                                          LM_MESSAGE_TYPE_IQ,
+                                          LM_HANDLER_PRIORITY_NORMAL);
+
+  priv->iq_disco_cb = lm_message_handler_new (connection_iq_disco_cb,
+                                              conn, NULL);
+  lm_connection_register_message_handler (conn->lmconn, priv->iq_disco_cb,
+                                          LM_MESSAGE_TYPE_IQ,
+                                          LM_HANDLER_PRIORITY_NORMAL);
+
+  priv->iq_unknown_cb = lm_message_handler_new (connection_iq_unknown_cb,
+                                            conn, NULL);
+  lm_connection_register_message_handler (conn->lmconn, priv->iq_unknown_cb,
+                                          LM_MESSAGE_TYPE_IQ,
+                                          LM_HANDLER_PRIORITY_LAST);
+}
+
+static void
+disconnect_callbacks (GabbleConnection *conn)
+{
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+
+  g_assert (priv->iq_jingle_info_cb != NULL);
+  g_assert (priv->iq_jingle_cb != NULL);
+  g_assert (priv->iq_disco_cb != NULL);
+  g_assert (priv->iq_unknown_cb != NULL);
+
+  lm_connection_unregister_message_handler (conn->lmconn, priv->iq_jingle_info_cb,
+                                            LM_MESSAGE_TYPE_IQ);
+  lm_message_handler_unref (priv->iq_jingle_info_cb);
+  priv->iq_jingle_info_cb = NULL;
+
+  lm_connection_unregister_message_handler (conn->lmconn, priv->iq_jingle_cb,
+                                            LM_MESSAGE_TYPE_IQ);
+  lm_message_handler_unref (priv->iq_jingle_cb);
+  priv->iq_jingle_cb = NULL;
+
+  lm_connection_unregister_message_handler (conn->lmconn, priv->iq_disco_cb,
+                                            LM_MESSAGE_TYPE_IQ);
+  lm_message_handler_unref (priv->iq_disco_cb);
+  priv->iq_disco_cb = NULL;
+
+  lm_connection_unregister_message_handler (conn->lmconn, priv->iq_unknown_cb,
+                                            LM_MESSAGE_TYPE_IQ);
+  lm_message_handler_unref (priv->iq_unknown_cb);
+  priv->iq_unknown_cb = NULL;
+}
+
 /**
  * _gabble_connection_connect
  *
@@ -1477,40 +1525,21 @@ _gabble_connection_connect (GabbleConnection *conn,
                                          conn,
                                          NULL);
 
-  priv->iq_jingle_info_cb = lm_message_handler_new (jingle_info_iq_callback,
-                                                    conn, NULL);
-  lm_connection_register_message_handler (conn->lmconn,
-                                          priv->iq_jingle_info_cb,
-                                          LM_MESSAGE_TYPE_IQ,
-                                          LM_HANDLER_PRIORITY_NORMAL);
-
-  priv->iq_jingle_cb = lm_message_handler_new (connection_iq_jingle_cb,
-                                               conn, NULL);
-  lm_connection_register_message_handler (conn->lmconn, priv->iq_jingle_cb,
-                                          LM_MESSAGE_TYPE_IQ,
-                                          LM_HANDLER_PRIORITY_NORMAL);
-
-  priv->iq_disco_cb = lm_message_handler_new (connection_iq_disco_cb,
-                                              conn, NULL);
-  lm_connection_register_message_handler (conn->lmconn, priv->iq_disco_cb,
-                                          LM_MESSAGE_TYPE_IQ,
-                                          LM_HANDLER_PRIORITY_NORMAL);
-
-  priv->iq_unknown_cb = lm_message_handler_new (connection_iq_unknown_cb,
-                                            conn, NULL);
-  lm_connection_register_message_handler (conn->lmconn, priv->iq_unknown_cb,
-                                          LM_MESSAGE_TYPE_IQ,
-                                          LM_HANDLER_PRIORITY_LAST);
-
-  if (!do_connect (conn, error))
+  if (do_connect (conn, error))
     {
       connection_status_change (conn,
-          TP_CONN_STATUS_DISCONNECTED,
-          TP_CONN_STATUS_REASON_NETWORK_ERROR);
+          TP_CONN_STATUS_CONNECTING,
+          TP_CONN_STATUS_REASON_REQUESTED);
+    }
+  else
+    {
+      return FALSE;
     }
 
   return TRUE;
 }
+
+
 
 static void
 connection_disconnected_cb (LmConnection *lmconn,
@@ -1596,7 +1625,16 @@ connection_status_change (GabbleConnection        *conn,
 
       g_signal_emit (conn, signals[STATUS_CHANGED], 0, status, reason);
 
-      if (status == TP_CONN_STATUS_CONNECTED)
+      if (status == TP_CONN_STATUS_CONNECTING)
+        {
+          /* add our callbacks */
+          connect_callbacks (conn);
+
+          /* trigger connecting on all channel factories */
+          g_ptr_array_foreach (priv->channel_factories, (GFunc)
+              tp_channel_factory_iface_connecting, NULL);
+        }
+      else if (status == TP_CONN_STATUS_CONNECTED)
         {
           /* trigger connected on all channel factories */
           g_ptr_array_foreach (priv->channel_factories, (GFunc)
@@ -1604,6 +1642,9 @@ connection_status_change (GabbleConnection        *conn,
         }
       else if (status == TP_CONN_STATUS_DISCONNECTED)
         {
+          /* remove our callbacks */
+          disconnect_callbacks (conn);
+
           /* trigger disconnected on all channel factories */
           g_ptr_array_foreach (priv->channel_factories, (GFunc)
               tp_channel_factory_iface_disconnected, NULL);

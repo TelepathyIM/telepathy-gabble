@@ -66,6 +66,7 @@ struct _TpChannelFactoryIfaceClass {
   GTypeInterface parent_class;
 
   void (*close_all) (TpChannelFactoryIface *);
+  void (*connecting) (TpChannelFactoryIface *);
   void (*connected) (TpChannelFactoryIface *);
   void (*disconnected) (TpChannelFactoryIface *);
   void (*foreach) (TpChannelFactoryIface *, TpChannelFunc func, gpointer data);
@@ -75,6 +76,7 @@ struct _TpChannelFactoryIfaceClass {
 GType tp_channel_factory_iface_get_type (void);
 
 void tp_channel_factory_iface_close_all (TpChannelFactoryIface *);
+void tp_channel_factory_iface_connecting (TpChannelFactoryIface *);
 void tp_channel_factory_iface_connected (TpChannelFactoryIface *);
 void tp_channel_factory_iface_disconnected (TpChannelFactoryIface *);
 void tp_channel_factory_iface_foreach (TpChannelFactoryIface *, TpChannelFunc func, gpointer data);

@@ -83,9 +83,6 @@ static void gabble_roster_set_property (GObject *object, guint property_id,
 static void gabble_roster_get_property (GObject *object, guint property_id,
     GValue *value, GParamSpec *pspec);
 
-static LmHandlerResult gabble_roster_iq_cb (LmMessageHandler *, LmConnection *, LmMessage *, gpointer);
-static LmHandlerResult gabble_roster_presence_cb (LmMessageHandler *, LmConnection *, LmMessage *, gpointer);
-
 static void _gabble_roster_item_free (GabbleRosterItem *item);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleRoster, gabble_roster, G_TYPE_OBJECT,
@@ -154,25 +151,11 @@ gabble_roster_constructor (GType type, guint n_props,
                            GObjectConstructParam *props)
 {
   GObject *obj;
-  GabbleRosterPrivate *priv;
+  /* GabbleRosterPrivate *priv; */
 
   obj = G_OBJECT_CLASS (gabble_roster_parent_class)->
            constructor (type, n_props, props);
-  priv = GABBLE_ROSTER_GET_PRIVATE (GABBLE_ROSTER (obj));
-
-  priv->iq_cb = lm_message_handler_new (gabble_roster_iq_cb,
-                                        obj, NULL);
-  lm_connection_register_message_handler (priv->conn->lmconn,
-                                          priv->iq_cb,
-                                          LM_MESSAGE_TYPE_IQ,
-                                          LM_HANDLER_PRIORITY_NORMAL);
-
-  priv->presence_cb = lm_message_handler_new (gabble_roster_presence_cb,
-                                              obj, NULL);
-  lm_connection_register_message_handler (priv->conn->lmconn,
-                                          priv->presence_cb,
-                                          LM_MESSAGE_TYPE_PRESENCE,
-                                          LM_HANDLER_PRIORITY_LAST);
+  /* priv = GABBLE_ROSTER_GET_PRIVATE (GABBLE_ROSTER (obj)); */
 
   return obj;
 }
@@ -998,6 +981,32 @@ gabble_roster_factory_iface_close_all (TpChannelFactoryIface *iface)
 }
 
 static void
+gabble_roster_factory_iface_connecting (TpChannelFactoryIface *iface)
+{
+  GabbleRoster *roster = GABBLE_ROSTER (iface);
+  GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
+
+  g_debug ("%s: adding callbacks", G_STRFUNC);
+
+  g_assert (priv->iq_cb == NULL);
+  g_assert (priv->presence_cb == NULL);
+
+  priv->iq_cb = lm_message_handler_new (gabble_roster_iq_cb,
+                                        roster, NULL);
+  lm_connection_register_message_handler (priv->conn->lmconn,
+                                          priv->iq_cb,
+                                          LM_MESSAGE_TYPE_IQ,
+                                          LM_HANDLER_PRIORITY_NORMAL);
+
+  priv->presence_cb = lm_message_handler_new (gabble_roster_presence_cb,
+                                              roster, NULL);
+  lm_connection_register_message_handler (priv->conn->lmconn,
+                                          priv->presence_cb,
+                                          LM_MESSAGE_TYPE_PRESENCE,
+                                          LM_HANDLER_PRIORITY_LAST);
+}
+
+static void
 gabble_roster_factory_iface_connected (TpChannelFactoryIface *iface)
 {
   GabbleRoster *roster = GABBLE_ROSTER (iface);
@@ -1029,23 +1038,20 @@ gabble_roster_factory_iface_disconnected (TpChannelFactoryIface *iface)
 
   g_debug ("%s: removing callbacks", G_STRFUNC);
 
-  if (priv->iq_cb)
-    {
-      lm_connection_unregister_message_handler (priv->conn->lmconn,
-                                                priv->iq_cb,
-                                                LM_MESSAGE_TYPE_IQ);
-      lm_message_handler_unref (priv->iq_cb);
-      priv->iq_cb = NULL;
-    }
+  g_assert (priv->iq_cb != NULL);
+  g_assert (priv->presence_cb != NULL);
 
-  if (priv->presence_cb)
-    {
-      lm_connection_unregister_message_handler (priv->conn->lmconn,
-                                                priv->presence_cb,
-                                                LM_MESSAGE_TYPE_PRESENCE);
-      lm_message_handler_unref (priv->presence_cb);
-      priv->presence_cb = NULL;
-    }
+  lm_connection_unregister_message_handler (priv->conn->lmconn,
+                                            priv->iq_cb,
+                                            LM_MESSAGE_TYPE_IQ);
+  lm_message_handler_unref (priv->iq_cb);
+  priv->iq_cb = NULL;
+
+  lm_connection_unregister_message_handler (priv->conn->lmconn,
+                                            priv->presence_cb,
+                                            LM_MESSAGE_TYPE_PRESENCE);
+  lm_message_handler_unref (priv->presence_cb);
+  priv->presence_cb = NULL;
 }
 
 struct foreach_data {
@@ -1122,6 +1128,7 @@ gabble_roster_factory_iface_init (gpointer g_iface,
   TpChannelFactoryIfaceClass *klass = (TpChannelFactoryIfaceClass *) g_iface;
 
   klass->close_all = gabble_roster_factory_iface_close_all;
+  klass->connecting = gabble_roster_factory_iface_connecting;
   klass->connected = gabble_roster_factory_iface_connected;
   klass->disconnected = gabble_roster_factory_iface_disconnected;
   klass->foreach = gabble_roster_factory_iface_foreach;

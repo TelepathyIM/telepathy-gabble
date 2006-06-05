@@ -42,9 +42,6 @@
 #include "tp-channel-factory-iface.h"
 
 static void gabble_muc_factory_iface_init (gpointer g_iface, gpointer iface_data);
-static LmHandlerResult muc_factory_message_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
-static LmHandlerResult muc_factory_presence_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
-
 
 G_DEFINE_TYPE_WITH_CODE (GabbleMucFactory, gabble_muc_factory, G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_FACTORY_IFACE, gabble_muc_factory_iface_init));
@@ -93,24 +90,12 @@ gabble_muc_factory_constructor (GType type, guint n_props,
                                 GObjectConstructParam *props)
 {
   GObject *obj;
-  GabbleMucFactoryPrivate *priv;
+  /* GabbleMucFactoryPrivate *priv; */
 
   obj = G_OBJECT_CLASS (gabble_muc_factory_parent_class)->
            constructor (type, n_props, props);
-  priv = GABBLE_MUC_FACTORY_GET_PRIVATE (obj);
+  /* priv = GABBLE_MUC_FACTORY_GET_PRIVATE (obj); */
 
-  g_assert(priv->conn != NULL);
-  g_assert(priv->conn->lmconn != NULL);
-
-  priv->message_cb = lm_message_handler_new (muc_factory_message_cb, obj, NULL);
-  lm_connection_register_message_handler (priv->conn->lmconn, priv->message_cb,
-                                          LM_MESSAGE_TYPE_MESSAGE,
-                                          LM_HANDLER_PRIORITY_NORMAL);
-
-  priv->presence_cb = lm_message_handler_new (muc_factory_presence_cb, obj, NULL);
-  lm_connection_register_message_handler (priv->conn->lmconn, priv->presence_cb,
-                                          LM_MESSAGE_TYPE_PRESENCE,
-                                          LM_HANDLER_PRIORITY_NORMAL);
   return obj;
 }
 
@@ -495,6 +480,29 @@ gabble_muc_factory_iface_close_all (TpChannelFactoryIface *iface)
 }
 
 static void
+gabble_muc_factory_iface_connecting (TpChannelFactoryIface *iface)
+{
+  GabbleMucFactory *fac = GABBLE_MUC_FACTORY (iface);
+  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
+
+  g_debug ("%s: adding callbacks", G_STRFUNC);
+
+  g_assert (priv->message_cb == NULL);
+  g_assert (priv->presence_cb == NULL);
+
+  priv->message_cb = lm_message_handler_new (muc_factory_message_cb, fac, NULL);
+  lm_connection_register_message_handler (priv->conn->lmconn, priv->message_cb,
+                                          LM_MESSAGE_TYPE_MESSAGE,
+                                          LM_HANDLER_PRIORITY_NORMAL);
+
+  priv->presence_cb = lm_message_handler_new (muc_factory_presence_cb, fac, NULL);
+  lm_connection_register_message_handler (priv->conn->lmconn, priv->presence_cb,
+                                          LM_MESSAGE_TYPE_PRESENCE,
+                                          LM_HANDLER_PRIORITY_NORMAL);
+}
+
+
+static void
 gabble_muc_factory_iface_connected (TpChannelFactoryIface *iface)
 {
   /* nothing to do */
@@ -508,19 +516,18 @@ gabble_muc_factory_iface_disconnected (TpChannelFactoryIface *iface)
 
   g_debug ("%s: removing callbacks", G_STRFUNC);
 
-  if (priv->message_cb)
-    {
-      lm_connection_unregister_message_handler (priv->conn->lmconn, priv->message_cb,
-                                                LM_MESSAGE_TYPE_MESSAGE);
-      priv->message_cb = NULL;
-    }
+  g_assert (priv->message_cb != NULL);
+  g_assert (priv->presence_cb != NULL);
 
-  if (priv->presence_cb)
-    {
-      lm_connection_unregister_message_handler (priv->conn->lmconn, priv->presence_cb,
-                                                LM_MESSAGE_TYPE_PRESENCE);
-      priv->presence_cb = NULL;
-    }
+  lm_connection_unregister_message_handler (priv->conn->lmconn, priv->message_cb,
+                                            LM_MESSAGE_TYPE_MESSAGE);
+  lm_message_handler_unref (priv->message_cb);
+  priv->message_cb = NULL;
+
+  lm_connection_unregister_message_handler (priv->conn->lmconn, priv->presence_cb,
+                                            LM_MESSAGE_TYPE_PRESENCE);
+  lm_message_handler_unref (priv->presence_cb);
+  priv->presence_cb = NULL;
 }
 
 struct _ForeachData
@@ -611,6 +618,7 @@ gabble_muc_factory_iface_init (gpointer g_iface,
   TpChannelFactoryIfaceClass *klass = (TpChannelFactoryIfaceClass *) g_iface;
 
   klass->close_all = gabble_muc_factory_iface_close_all;
+  klass->connecting = gabble_muc_factory_iface_connecting;
   klass->connected = gabble_muc_factory_iface_connected;
   klass->disconnected = gabble_muc_factory_iface_disconnected;
   klass->foreach = gabble_muc_factory_iface_foreach;

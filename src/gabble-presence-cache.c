@@ -77,7 +77,7 @@ static GabblePresence *_cache_insert (GabblePresenceCache *cache,
 
 static void gabble_presence_cache_status_changed_cb (GabbleConnection *,
     TpConnectionStatus, TpConnectionStatusReason, gpointer);
-static LmHandlerResult gabble_presence_cache_presence_cb (LmMessageHandler*,
+static LmHandlerResult gabble_presence_cache_lm_message_cb (LmMessageHandler*,
     LmConnection*, LmMessage*, gpointer);
 
 static void
@@ -147,19 +147,7 @@ gabble_presence_cache_constructor (GType type, guint n_props,
   priv = GABBLE_PRESENCE_CACHE_PRIV (GABBLE_PRESENCE_CACHE (obj));
 
   priv->status_changed_cb = g_signal_connect (priv->conn, "status-changed",
-                                              G_CALLBACK (gabble_presence_cache_status_changed_cb),
-                                              obj);
-
-  priv->lm_message_cb = lm_message_handler_new (gabble_presence_cache_presence_cb,
-                                              obj, NULL);
-  lm_connection_register_message_handler (priv->conn->lmconn,
-                                          priv->lm_message_cb,
-                                          LM_MESSAGE_TYPE_PRESENCE,
-                                          LM_HANDLER_PRIORITY_LAST);
-  lm_connection_register_message_handler (priv->conn->lmconn,
-                                          priv->lm_message_cb,
-                                          LM_MESSAGE_TYPE_MESSAGE,
-                                          LM_HANDLER_PRIORITY_FIRST);
+      G_CALLBACK (gabble_presence_cache_status_changed_cb), obj);
 
   return obj;
 }
@@ -297,20 +285,30 @@ gabble_presence_cache_status_changed_cb (GabbleConnection *conn,
   switch (status)
     {
     case TP_CONN_STATUS_CONNECTING:
+      g_assert (priv->lm_message_cb == NULL);
+
+      priv->lm_message_cb = lm_message_handler_new (gabble_presence_cache_lm_message_cb,
+                                                    cache, NULL);
+      lm_connection_register_message_handler (priv->conn->lmconn,
+                                              priv->lm_message_cb,
+                                              LM_MESSAGE_TYPE_PRESENCE,
+                                              LM_HANDLER_PRIORITY_LAST);
+      lm_connection_register_message_handler (priv->conn->lmconn,
+                                              priv->lm_message_cb,
+                                              LM_MESSAGE_TYPE_MESSAGE,
+                                              LM_HANDLER_PRIORITY_FIRST);
       break;
     case TP_CONN_STATUS_CONNECTED:
       /* TODO: emit self presence */
       break;
     case TP_CONN_STATUS_DISCONNECTED:
-      /* disconnect our handlers so they don't get created again */
-      if (priv->lm_message_cb)
-        {
-          lm_connection_unregister_message_handler (conn->lmconn,
-                                                    priv->lm_message_cb,
-                                                    LM_MESSAGE_TYPE_PRESENCE);
-          lm_message_handler_unref (priv->lm_message_cb);
-          priv->lm_message_cb = NULL;
-        }
+      g_assert (priv->lm_message_cb != NULL);
+
+      lm_connection_unregister_message_handler (conn->lmconn,
+                                                priv->lm_message_cb,
+                                                LM_MESSAGE_TYPE_PRESENCE);
+      lm_message_handler_unref (priv->lm_message_cb);
+      priv->lm_message_cb = NULL;
       break;
     default:
       g_assert_not_reached ();
@@ -510,7 +508,7 @@ _parse_message_message (GabblePresenceCache *cache,
 
 
 /**
- * gabble_presence_cache_presence_cb:
+ * gabble_presence_cache_message_cb:
  * @handler: #LmMessageHandler for this message
  * @connection: #LmConnection that originated the message
  * @message: the presence message
@@ -519,10 +517,10 @@ _parse_message_message (GabblePresenceCache *cache,
  * Called by loudmouth when we get an incoming <presence>.
  */
 static LmHandlerResult
-gabble_presence_cache_presence_cb (LmMessageHandler *handler,
-                                   LmConnection *lmconn,
-                                   LmMessage *message,
-                                   gpointer user_data)
+gabble_presence_cache_lm_message_cb (LmMessageHandler *handler,
+                                     LmConnection *lmconn,
+                                     LmMessage *message,
+                                     gpointer user_data)
 {
   GabblePresenceCache *cache = GABBLE_PRESENCE_CACHE (user_data);
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);

@@ -2475,8 +2475,8 @@ static LmMessage *
 _lm_iq_message_make_result (LmMessage *iq_message)
 {
   LmMessage *result;
-  LmMessageNode *iq, *query, *result_iq, *result_query;
-  const gchar *from_jid, *xmlns;
+  LmMessageNode *iq, *result_iq;
+  const gchar *from_jid, *id;
 
   g_assert (lm_message_get_type (iq_message) == LM_MESSAGE_TYPE_IQ);
   g_assert (lm_message_get_sub_type (iq_message) == LM_MESSAGE_SUB_TYPE_GET ||
@@ -2493,19 +2493,10 @@ _lm_iq_message_make_result (LmMessage *iq_message)
 
   from_jid = lm_message_node_get_attribute (iq, "from");
 
-  query = lm_message_node_get_child (iq, "query");
-  g_assert (query);
-
-  xmlns = lm_message_node_get_attribute (query, "xmlns");
-  g_assert (xmlns);
-
   result = lm_message_new_with_sub_type (from_jid, LM_MESSAGE_TYPE_IQ,
                                          LM_MESSAGE_SUB_TYPE_RESULT);
   result_iq = lm_message_get_node (result);
   lm_message_node_set_attribute (result_iq, "id", id);
-
-  result_query = lm_message_node_add_child (result_iq, "query", NULL);
-  lm_message_node_set_attribute (result_query, "xmlns", xmlns);
 
   return result;
 }

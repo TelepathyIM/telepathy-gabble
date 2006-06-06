@@ -127,19 +127,19 @@ AM_LDFLAGS = @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@
 
 
 # rule to generate the binding headers
-%-glue.h: ../generate/xml-modified/%.xml Makefile
+%-glue.h: ../generate/xml-modified/%.xml
 	dbus-binding-tool --mode=glib-server --output=$@ --prefix=$(subst -,_,$*) $<
 
-%-signals-marshal.h: %-signals-marshal.list Makefile
+%-signals-marshal.h: %-signals-marshal.list
 	glib-genmarshal --header --prefix=$(subst -,_,$*)_marshal $< > $*-signals-marshal.h
 
-%-signals-marshal.c: %-signals-marshal.list Makefile
+%-signals-marshal.c: %-signals-marshal.list
 	glib-genmarshal --body --prefix=$(subst -,_,$*)_marshal $< > $*-signals-marshal.c
 
-%-marshal.h: %-marshal.list Makefile
+%-marshal.h: %-marshal.list
 	glib-genmarshal --header --prefix=$(subst -,_,$*)_marshal $< > $*-marshal.h
 
-%-marshal.c: %-marshal.list Makefile
+%-marshal.c: %-marshal.list
 	glib-genmarshal --body --prefix=$(subst -,_,$*)_marshal $< > $*-marshal.c
 
 

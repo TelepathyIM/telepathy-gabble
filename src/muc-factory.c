@@ -309,6 +309,14 @@ muc_factory_message_cb (LmMessageHandler *handler,
           const gchar *invite_from, *reason;
           GabbleHandle inviter_handle;
 
+          if (send_error != CHANNEL_TEXT_SEND_NO_ERROR)
+            {
+              HANDLER_DEBUG (message->node, "got a MUC invitation message "
+                             "with a send error; ignoring");
+
+              return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+            }
+
           invite_from = lm_message_node_get_attribute (node, "from");
           if (invite_from == NULL)
             {

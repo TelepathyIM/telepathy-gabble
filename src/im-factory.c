@@ -225,6 +225,13 @@ im_factory_message_cb (LmMessageHandler *handler,
 
   if (chan == NULL)
     {
+      if (send_error != CHANNEL_TEXT_SEND_NO_ERROR)
+        {
+          g_debug ("%s: ignoring message error; no sending channel",
+            G_STRFUNC);
+          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+        }
+
       g_debug ("%s: found no IM channel, creating one", G_STRFUNC);
 
       chan = new_im_channel (fac, handle);

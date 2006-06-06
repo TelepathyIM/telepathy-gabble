@@ -594,10 +594,57 @@ gabble_text_mixin_parse_incoming_message (LmMessage *message,
                         time_t *stamp,
                         TpChannelTextMessageType *msgtype,
                         const gchar **body,
-                        const gchar **body_offset)
+                        const gchar **body_offset,
+                        GabbleTextMixinSendError *send_error)
 {
   const gchar *type;
   LmMessageNode *node;
+
+  *send_error = CHANNEL_TEXT_SEND_NO_ERROR;
+
+  if (lm_message_get_sub_type (message) == LM_MESSAGE_SUB_TYPE_ERROR)
+    {
+      LmMessageNode *error_node;
+
+      error_node = lm_message_node_get_child (message->node, "error");
+      if (error_node)
+        {
+          GabbleXmppError err = gabble_xmpp_error_from_node (error_node);
+          g_debug ("%s: got xmpp error: %s: %s", G_STRFUNC,
+                   gabble_xmpp_error_string (err),
+                   gabble_xmpp_error_description (err));
+
+          /* these are based on descriptions of errors, and some testing */
+          switch (err)
+            {
+              case XMPP_ERROR_SERVICE_UNAVAILABLE:
+              case XMPP_ERROR_RECIPIENT_UNAVAILABLE:
+                *send_error = CHANNEL_TEXT_SEND_ERROR_OFFLINE;
+                break;
+
+              case XMPP_ERROR_ITEM_NOT_FOUND:
+              case XMPP_ERROR_JID_MALFORMED:
+              case XMPP_ERROR_REMOTE_SERVER_TIMEOUT:
+                *send_error = CHANNEL_TEXT_SEND_ERROR_INVALID_CONTACT;
+                break;
+
+              case XMPP_ERROR_FORBIDDEN:
+                *send_error = CHANNEL_TEXT_SEND_ERROR_PERMISSION_DENIED;
+                break;
+
+              case XMPP_ERROR_RESOURCE_CONSTRAINT:
+                *send_error = CHANNEL_TEXT_SEND_ERROR_TOO_LONG;
+                break;
+
+              default:
+                *send_error = CHANNEL_TEXT_SEND_ERROR_UNKNOWN;
+            }
+        }
+      else
+        {
+          *send_error = CHANNEL_TEXT_SEND_ERROR_UNKNOWN;
+        }
+    }
 
   *from = lm_message_node_get_attribute (message->node, "from");
   if (*from == NULL)
@@ -682,5 +729,18 @@ gabble_text_mixin_parse_incoming_message (LmMessage *message,
     }
 
   return TRUE;
+}
+
+void
+_gabble_text_mixin_send_error_signal (GObject *obj,
+                                      GabbleTextMixinSendError error,
+                                      time_t timestamp,
+                                      TpChannelTextMessageType type,
+                                      gchar *text)
+{
+  GabbleTextMixin *mixin = GABBLE_TEXT_MIXIN (obj);
+  GabbleTextMixinClass *mixin_cls = GABBLE_TEXT_MIXIN_CLASS (G_OBJECT_GET_CLASS (obj));
+
+  g_signal_emit (obj, mixin_cls->send_error_signal_id, error, timestamp, type, text, 0);
 }
 

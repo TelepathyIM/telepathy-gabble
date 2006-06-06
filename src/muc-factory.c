@@ -292,8 +292,9 @@ muc_factory_message_cb (LmMessageHandler *handler,
   LmMessageNode *node;
   GabbleHandle room_handle, handle;
   GabbleMucChannel *chan;
+  GabbleTextMixinSendError send_error;
 
-  if (!gabble_text_mixin_parse_incoming_message (message, &from, &stamp, &msgtype, &body, &body_offset))
+  if (!gabble_text_mixin_parse_incoming_message (message, &from, &stamp, &msgtype, &body, &body_offset, &send_error))
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
   /* does it have a muc subnode? */
@@ -377,6 +378,13 @@ muc_factory_message_cb (LmMessageHandler *handler,
   else
     {
       handle = gabble_handle_for_contact (priv->conn->handles, from, TRUE);
+    }
+
+  if (send_error != CHANNEL_TEXT_SEND_NO_ERROR)
+    {
+      _gabble_text_mixin_send_error_signal (chan, send_error, stamp,
+                                            msgtype, body_offset);
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 
   if (_gabble_muc_channel_receive (chan, msgtype, handle, stamp,

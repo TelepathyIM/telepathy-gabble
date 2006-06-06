@@ -200,8 +200,9 @@ im_factory_message_cb (LmMessageHandler *handler,
   TpChannelTextMessageType msgtype;
   GabbleHandle handle;
   GabbleIMChannel *chan;
+  GabbleTextMixinSendError send_error;
 
-  if (!gabble_text_mixin_parse_incoming_message (message, &from, &stamp, &msgtype, &body, &body_offset))
+  if (!gabble_text_mixin_parse_incoming_message (message, &from, &stamp, &msgtype, &body, &body_offset, &send_error))
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
   if (body == NULL)
@@ -227,6 +228,13 @@ im_factory_message_cb (LmMessageHandler *handler,
       g_debug ("%s: found no IM channel, creating one", G_STRFUNC);
 
       chan = new_im_channel (fac, handle);
+    }
+
+  if (send_error != CHANNEL_TEXT_SEND_NO_ERROR)
+    {
+      _gabble_text_mixin_send_error_signal (chan, send_error, stamp,
+                                            msgtype, body_offset);
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 
   if (_gabble_im_channel_receive (chan, msgtype, handle, from,

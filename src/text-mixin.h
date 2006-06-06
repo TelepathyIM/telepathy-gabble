@@ -24,6 +24,16 @@
 #include "handles.h"
 #include "handle-set.h"
 
+typedef enum {
+    CHANNEL_TEXT_SEND_ERROR_UNKNOWN = 0,
+    CHANNEL_TEXT_SEND_ERROR_OFFLINE,
+    CHANNEL_TEXT_SEND_ERROR_INVALID_CONTACT,
+    CHANNEL_TEXT_SEND_ERROR_PERMISSION_DENIED,
+    CHANNEL_TEXT_SEND_ERROR_TOO_LONG,
+
+    CHANNEL_TEXT_SEND_NO_ERROR = -1
+} GabbleTextMixinSendError;
+
 G_BEGIN_DECLS
 
 typedef struct _GabbleTextMixinClass GabbleTextMixinClass;
@@ -73,7 +83,9 @@ gboolean gabble_text_mixin_send (GObject *obj, guint type, guint subtype, const 
 gboolean gabble_text_mixin_get_message_types (GObject *obj, GArray **ret, GError **error);
 void gabble_text_mixin_clear (GObject *obj);
 
-gboolean gabble_text_mixin_parse_incoming_message (LmMessage *message, const gchar **from, time_t *stamp, TpChannelTextMessageType *msgtype, const gchar **body, const gchar **body_offset);
+gboolean gabble_text_mixin_parse_incoming_message (LmMessage *message, const gchar **from, time_t *stamp, TpChannelTextMessageType *msgtype, const gchar **body, const gchar **body_offset, GabbleTextMixinSendError *send_error);
+
+void _gabble_text_mixin_send_error_signal (GObject *obj, GabbleTextMixinSendError error, time_t timestamp, TpChannelTextMessageType type, gchar *text);
 
 G_END_DECLS
 

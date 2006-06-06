@@ -144,7 +144,7 @@ AM_LDFLAGS = @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@
 
 
 # rules for making the glib enum objects
-%-enumtypes.h: %.h Makefile
+%-enumtypes.h: %.h Makefile.in
 	glib-mkenums \
 	--fhead "#ifndef __$(shell echo $* | tr [:lower:]- [:upper:]_)_ENUM_TYPES_H__\n#define __$(shell echo $* | tr [:lower:]- [:upper:]_)_ENUM_TYPES_H__\n\n#include <glib-object.h>\n\nG_BEGIN_DECLS\n" \
 	--fprod "/* enumerations from \"@filename@\" */\n" \
@@ -152,7 +152,7 @@ AM_LDFLAGS = @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@
 	--ftail "G_END_DECLS\n\n#endif /* __$(shell echo $* | tr [:lower:]- [:upper:]_)_ENUM_TYPES_H__ */" \
 	$< > $@
 
-%-enumtypes.c: %.h Makefile
+%-enumtypes.c: %.h Makefile.in
 	glib-mkenums \
 	--fhead "#include <$*.h>" \
 	--fprod "\n/* enumerations from \"@filename@\" */" \

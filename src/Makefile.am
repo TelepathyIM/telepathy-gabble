@@ -45,6 +45,7 @@ CLEANFILES = $(BUILT_SOURCES)
 bin_PROGRAMS=telepathy-gabble
 
 CORE_SOURCES = \
+    ansi.h \
     disco.h \
     disco.c \
     gabble-error.c \

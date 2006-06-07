@@ -62,6 +62,7 @@
 ^data/org.freedesktop.Telepathy.ConnectionManager.gabble.service$
 ^src/telepathy-gabble$
 ^tests/test-intset$
+^tests/test-gabble-presence$
 (^|/)cscope\.out$
 (^|/)core$
 ^debian($|/)

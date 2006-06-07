@@ -85,7 +85,7 @@ void gabble_text_mixin_clear (GObject *obj);
 
 gboolean gabble_text_mixin_parse_incoming_message (LmMessage *message, const gchar **from, time_t *stamp, TpChannelTextMessageType *msgtype, const gchar **body, const gchar **body_offset, GabbleTextMixinSendError *send_error);
 
-void _gabble_text_mixin_send_error_signal (GObject *obj, GabbleTextMixinSendError error, time_t timestamp, TpChannelTextMessageType type, gchar *text);
+void _gabble_text_mixin_send_error_signal (GObject *obj, GabbleTextMixinSendError error, time_t timestamp, TpChannelTextMessageType type, const gchar *text);
 
 G_END_DECLS
 

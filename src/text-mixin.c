@@ -736,9 +736,8 @@ _gabble_text_mixin_send_error_signal (GObject *obj,
                                       GabbleTextMixinSendError error,
                                       time_t timestamp,
                                       TpChannelTextMessageType type,
-                                      gchar *text)
+                                      const gchar *text)
 {
-  GabbleTextMixin *mixin = GABBLE_TEXT_MIXIN (obj);
   GabbleTextMixinClass *mixin_cls = GABBLE_TEXT_MIXIN_CLASS (G_OBJECT_GET_CLASS (obj));
 
   g_signal_emit (obj, mixin_cls->send_error_signal_id, error, timestamp, type, text, 0);

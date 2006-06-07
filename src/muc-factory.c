@@ -263,8 +263,6 @@ new_muc_channel (GabbleMucFactory *fac, GabbleHandle handle)
 
   g_hash_table_insert (priv->channels, GINT_TO_POINTER (handle), chan);
 
-  g_signal_emit_by_name (fac, "new-channel", chan);
-
   g_free (object_path);
 
   return chan;
@@ -574,6 +572,30 @@ gabble_muc_factory_iface_foreach (TpChannelFactoryIface *iface, TpChannelFunc fo
   g_hash_table_foreach (priv->channels, _foreach_slave, &data);
 }
 
+static void
+muc_ready_cb (GabbleMucChannel *chan,
+              gpointer data)
+{
+  GabbleMucFactory *fac = GABBLE_MUC_FACTORY (data);
+
+  g_debug ("%s: chan=%p", G_STRFUNC, chan);
+
+  g_signal_emit_by_name (fac, "new-channel", chan);
+}
+
+static void
+muc_join_error_cb (GabbleMucChannel *chan,
+                   GError *error,
+                   gpointer data)
+{
+  GabbleMucFactory *fac = GABBLE_MUC_FACTORY (data);
+
+  g_debug ("%s: error->code=%u, error->message=\"%s\"", G_STRFUNC,
+           error->code, error->message);
+
+  g_signal_emit_by_name (fac, "channel-error", chan, error);
+}
+
 static TpChannelFactoryRequestStatus
 gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
                                   const gchar *chan_type,
@@ -602,6 +624,10 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
     {
       chan = new_muc_channel (fac, handle);
 
+      g_signal_connect (chan, "ready", G_CALLBACK (muc_ready_cb), fac);
+      g_signal_connect (chan, "join-error", G_CALLBACK (muc_join_error_cb),
+                        fac);
+
       members = g_array_sized_new (FALSE, FALSE, sizeof (GabbleHandle), 1);
       g_array_append_val (members, priv->conn->self_handle);
 
@@ -621,6 +647,8 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
           g_debug ("%s: error while adding self to group mixin", G_STRFUNC);
           return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_AVAILABLE;
         }
+
+      return TP_CHANNEL_FACTORY_REQUEST_STATUS_QUEUED;
     }
 
   *ret = TP_CHANNEL_IFACE (chan);

@@ -22,6 +22,7 @@
 #include <glib-object.h>
 
 #include "tp-channel-factory-iface.h"
+#include "tp-channel-factory-iface-signals-marshal.h"
 #include "tp-channel-iface.h"
 
 static void
@@ -39,6 +40,14 @@ tp_channel_factory_iface_base_init (gpointer klass)
                   NULL, NULL,
                   g_cclosure_marshal_VOID__OBJECT,
                   G_TYPE_NONE, 1, G_TYPE_OBJECT);
+
+    g_signal_new ("channel-error",
+                  G_OBJECT_CLASS_TYPE (klass),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  tp_channel_factory_iface_marshal_VOID__OBJECT_POINTER,
+                  G_TYPE_NONE, 2, G_TYPE_OBJECT, G_TYPE_POINTER);
   }
 }
 

@@ -43,6 +43,7 @@
 #include "gabble-muc-channel-glue.h"
 
 #define DEFAULT_JOIN_TIMEOUT (180 * 1000)
+#define MAX_NICK_RETRIES 3
 
 #define PROPS_POLL_INTERVAL_LOW  (60 * 1000 * 5)
 #define PROPS_POLL_INTERVAL_HIGH (60 * 1000)
@@ -53,6 +54,8 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMucChannel, gabble_muc_channel,
 /* signal enum */
 enum
 {
+    READY,
+    JOIN_ERROR,
     CLOSED,
     PASSWORD_FLAGS_CHANGED,
     LAST_SIGNAL
@@ -180,11 +183,13 @@ struct _GabbleMucChannelPrivate
 
   TpChannelPasswordFlags password_flags;
   DBusGMethodInvocation *password_ctx;
+  gchar *password;
 
   GabbleHandle handle;
   const gchar *jid;
 
-  gchar *self_jid;
+  guint nick_retry_count;
+  GString *self_jid;
   GabbleMucRole self_role;
   GabbleMucAffiliation self_affil;
 
@@ -204,7 +209,7 @@ gabble_muc_channel_init (GabbleMucChannel *obj)
   /* do nothing? */
 }
 
-static void contact_handle_to_room_identity (GabbleMucChannel *chan, GabbleHandle main_handle, GabbleHandle *room_handle, gchar **room_jid);
+static void contact_handle_to_room_identity (GabbleMucChannel *, GabbleHandle, GabbleHandle *, GString **);
 
 static GObject *
 gabble_muc_channel_constructor (GType type, guint n_props,
@@ -538,7 +543,7 @@ room_properties_update (GabbleMucChannel *chan)
 
 static void
 contact_handle_to_room_identity (GabbleMucChannel *chan, GabbleHandle main_handle,
-                                 GabbleHandle *room_handle, gchar **room_jid)
+                                 GabbleHandle *room_handle, GString **room_jid)
 {
   GabbleMucChannelPrivate *priv;
   GabbleHandleRepo *handles;
@@ -567,7 +572,7 @@ contact_handle_to_room_identity (GabbleMucChannel *chan, GabbleHandle main_handl
 
   if (room_jid)
     {
-      *room_jid = jid;
+      *room_jid = g_string_new (jid);
     }
   else
     {
@@ -588,17 +593,18 @@ send_join_request (GabbleMucChannel *channel,
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (channel);
 
   /* build the message */
-  msg = lm_message_new (priv->self_jid, LM_MESSAGE_TYPE_PRESENCE);
+  msg = lm_message_new (priv->self_jid->str, LM_MESSAGE_TYPE_PRESENCE);
 
   x_node = lm_message_node_add_child (msg->node, "x", NULL);
   lm_message_node_set_attribute (x_node, "xmlns", NS_MUC);
 
+  g_free (priv->password);
+
   if (password != NULL)
     {
+      priv->password = g_strdup (password);
       lm_message_node_add_child (x_node, "password", password);
     }
-
-  lm_message_node_add_own_nick (msg->node, priv->conn);
 
   /* send it */
   ret = _gabble_connection_send (priv->conn, msg, error);
@@ -628,7 +634,8 @@ send_leave_message (GabbleMucChannel *channel,
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (channel);
 
   /* build the message */
-  msg = lm_message_new_with_sub_type (priv->self_jid, LM_MESSAGE_TYPE_PRESENCE,
+  msg = lm_message_new_with_sub_type (priv->self_jid->str,
+                                      LM_MESSAGE_TYPE_PRESENCE,
                                       LM_MESSAGE_SUB_TYPE_UNAVAILABLE);
 
   if (reason != NULL)
@@ -771,6 +778,24 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_STATE, param_spec);
 
+  signals[READY] =
+    g_signal_new ("ready",
+                  G_OBJECT_CLASS_TYPE (gabble_muc_channel_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_muc_channel_marshal_VOID__VOID,
+                  G_TYPE_NONE, 0);
+
+  signals[JOIN_ERROR] =
+    g_signal_new ("join-error",
+                  G_OBJECT_CLASS_TYPE (gabble_muc_channel_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_muc_channel_marshal_VOID__POINTER,
+                  G_TYPE_NONE, 1, G_TYPE_POINTER);
+
   signals[CLOSED] =
     g_signal_new ("closed",
                   G_OBJECT_CLASS_TYPE (gabble_muc_channel_class),
@@ -840,7 +865,13 @@ gabble_muc_channel_finalize (GObject *object)
   gabble_handle_unref (handles, TP_HANDLE_TYPE_ROOM, priv->handle);
 
   g_free (priv->object_path);
-  g_free (priv->self_jid);
+
+  if (priv->self_jid)
+    {
+      g_string_free (priv->self_jid, TRUE);
+    }
+
+  g_free (priv->password);
 
   gabble_properties_mixin_finalize (object);
 
@@ -977,10 +1008,19 @@ channel_state_changed (GabbleMucChannel *chan,
         interval = PROPS_POLL_INTERVAL_HIGH;
 
       priv->poll_timer_id = g_timeout_add (interval, timeout_poll, chan);
+
+      /* no need to keep this around any longer, if it's set */
+      g_free (priv->password);
+      priv->password = NULL;
     }
   else if (new_state == MUC_STATE_ENDED)
     {
       clear_poll_timer (chan);
+    }
+
+  if (new_state == MUC_STATE_JOINED || new_state == MUC_STATE_AUTH)
+    {
+      g_signal_emit (chan, signals[READY], 0);
     }
 }
 
@@ -1041,7 +1081,7 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
 
-  if (strcmp (jid, priv->self_jid) != 0)
+  if (strcmp (jid, priv->self_jid->str) != 0)
     {
       g_warning ("%s: presence error from other jids than self not handled",
                  G_STRFUNC);
@@ -1088,14 +1128,57 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
     }
   else
     {
-      const gchar *msg = "";
+      GError *tp_error;
 
-      if (error != INVALID_XMPP_ERROR)
-        {
-          msg = gabble_xmpp_error_description (error);
-        }
+      switch (error) {
+        case XMPP_ERROR_FORBIDDEN:
+          tp_error = g_error_new (TELEPATHY_ERRORS, ChannelBanned,
+                                  "banned from room");
+          break;
+        case XMPP_ERROR_SERVICE_UNAVAILABLE:
+          tp_error = g_error_new (TELEPATHY_ERRORS, ChannelFull,
+                                  "room is full");
+          break;
+        case XMPP_ERROR_REGISTRATION_REQUIRED:
+          tp_error = g_error_new (TELEPATHY_ERRORS, ChannelInviteOnly,
+                                  "room is invite only");
+          break;
+        case XMPP_ERROR_CONFLICT:
+          if (priv->nick_retry_count < MAX_NICK_RETRIES)
+            {
+              g_string_append_c (priv->self_jid, '_');
 
-      close_channel (chan, msg, FALSE);
+              if (send_join_request (chan, priv->password, &tp_error))
+                {
+                  priv->nick_retry_count++;
+                  return;
+                }
+            }
+          else
+            {
+              tp_error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                  "nickname already in use and retry count exceeded");
+            }
+          break;
+        default:
+          if (error != INVALID_XMPP_ERROR)
+            {
+              tp_error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                                      gabble_xmpp_error_description (error));
+            }
+          else
+            {
+              tp_error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                                      "unknown error");
+            }
+          break;
+      }
+
+      g_signal_emit (chan, signals[JOIN_ERROR], 0, tp_error);
+
+      close_channel (chan, tp_error->message, FALSE);
+
+      g_error_free (tp_error);
     }
 }
 

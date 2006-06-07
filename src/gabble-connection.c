@@ -276,6 +276,7 @@ struct _ChannelRequest
 };
 
 static void connection_new_channel_cb (TpChannelFactoryIface *, GObject *, gpointer);
+static void connection_channel_error_cb (TpChannelFactoryIface *, GObject *, GError *, gpointer);
 static void connection_nickname_update_cb (GObject *, GabbleHandle, gpointer);
 static void connection_presence_update_cb (GabblePresenceCache *, GabbleHandle, gpointer);
 
@@ -316,6 +317,8 @@ gabble_connection_init (GabbleConnection *obj)
       GObject *factory = g_ptr_array_index (priv->channel_factories, i);
       g_signal_connect (factory, "new-channel", G_CALLBACK
           (connection_new_channel_cb), obj);
+      g_signal_connect (factory, "channel-error", G_CALLBACK
+          (connection_channel_error_cb), obj);
     }
 
   priv->channel_requests = g_ptr_array_new ();
@@ -1778,28 +1781,18 @@ channel_request_cancel (gpointer data, gpointer user_data)
   channel_request_free (request);
 }
 
-static void connection_new_channel_cb (TpChannelFactoryIface *factory,
-                                       GObject *chan,
-                                       gpointer data)
+static GPtrArray *
+find_matching_channel_requests (GabbleConnection *conn,
+                                const gchar *channel_type,
+                                guint handle_type,
+                                guint handle,
+                                gboolean *suppress_handler)
 {
-  GabbleConnection *conn = GABBLE_CONNECTION (data);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-  gchar *object_path = NULL, *channel_type = NULL;
-  guint handle_type = 0, handle = 0;
-  gboolean suppress_handler = priv->suppress_next_handler;
-  GPtrArray *tmp;
-  int i;
+  GPtrArray *requests;
+  guint i;
 
-  g_object_get (chan,
-      "object-path", &object_path,
-      "channel-type", &channel_type,
-      "handle-type", &handle_type,
-      "handle", &handle,
-      NULL);
-
-  g_debug ("%s: called for %s", G_STRFUNC, object_path);
-
-  tmp = g_ptr_array_new ();
+  requests = g_ptr_array_sized_new (1);
 
   for (i = 0; i < priv->channel_requests->len; i++)
     {
@@ -1814,11 +1807,39 @@ static void connection_new_channel_cb (TpChannelFactoryIface *factory,
       if (handle != request->handle)
         continue;
 
-      if (request->suppress_handler)
-        suppress_handler = TRUE;
+      if (request->suppress_handler && suppress_handler)
+        *suppress_handler = TRUE;
 
-      g_ptr_array_add (tmp, request);
+      g_ptr_array_add (requests, request);
     }
+
+  return requests;
+}
+
+static void
+connection_new_channel_cb (TpChannelFactoryIface *factory,
+                           GObject *chan,
+                           gpointer data)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (data);
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  gchar *object_path = NULL, *channel_type = NULL;
+  guint handle_type = 0, handle = 0;
+  gboolean suppress_handler = priv->suppress_next_handler;
+  GPtrArray *tmp;
+  guint i;
+
+  g_object_get (chan,
+      "object-path", &object_path,
+      "channel-type", &channel_type,
+      "handle-type", &handle_type,
+      "handle", &handle,
+      NULL);
+
+  g_debug ("%s: called for %s", G_STRFUNC, object_path);
+
+  tmp = find_matching_channel_requests (conn, channel_type, handle_type,
+                                        handle, &suppress_handler);
 
   g_signal_emit (conn, signals[NEW_CHANNEL], 0,
                  object_path, channel_type,
@@ -1844,6 +1865,53 @@ static void connection_new_channel_cb (TpChannelFactoryIface *factory,
   g_ptr_array_free (tmp, TRUE);
 
   g_free (object_path);
+  g_free (channel_type);
+}
+
+static void
+connection_channel_error_cb (TpChannelFactoryIface *factory,
+                             GObject *chan,
+                             GError *error,
+                             gpointer data)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (data);
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  gchar *channel_type = NULL;
+  guint handle_type = 0, handle = 0;
+  GPtrArray *tmp;
+  guint i;
+
+  g_debug ("%s: channel_type=%s, handle_type=%u, handle=%u, error_code=%u, "
+      "error_message=\"%s\"", G_STRFUNC, channel_type, handle_type, handle,
+      error->code, error->message);
+
+  g_object_get (chan,
+      "channel-type", &channel_type,
+      "handle-type", &handle_type,
+      "handle", &handle,
+      NULL);
+
+  tmp = find_matching_channel_requests (conn, channel_type, handle_type,
+                                        handle, NULL);
+
+  for (i = 0; i < tmp->len; i++)
+    {
+      ChannelRequest *request = g_ptr_array_index (tmp, i);
+
+      g_debug ("%s: completing queued request %p, channel_type=%s, "
+          "handle_type=%u, handle=%u, suppress_handler=%u",
+          G_STRFUNC, request, request->channel_type,
+          request->handle_type, request->handle, request->suppress_handler);
+
+      dbus_g_method_return_error (request->context, error);
+      request->context = NULL;
+
+      g_ptr_array_remove (priv->channel_requests, request);
+
+      channel_request_free (request);
+    }
+
+  g_ptr_array_free (tmp, TRUE);
   g_free (channel_type);
 }
 

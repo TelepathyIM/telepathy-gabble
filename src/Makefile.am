@@ -34,10 +34,12 @@ BUILT_SOURCES = \
     group-mixin-signals-marshal.c \
     properties-mixin-signals-marshal.h \
     properties-mixin-signals-marshal.c \
+    telepathy-errors-enumtypes.h \
+    telepathy-errors-enumtypes.c \
     text-mixin-signals-marshal.h \
     text-mixin-signals-marshal.c \
-    telepathy-errors-enumtypes.h \
-    telepathy-errors-enumtypes.c
+    tp-channel-factory-iface-signals-marshal.h \
+    tp-channel-factory-iface-signals-marshal.c
 
 # correctly clean the generated source files
 CLEANFILES = $(BUILT_SOURCES)

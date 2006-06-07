@@ -388,8 +388,8 @@ muc_factory_message_cb (LmMessageHandler *handler,
 
   if (send_error != CHANNEL_TEXT_SEND_NO_ERROR)
     {
-      _gabble_text_mixin_send_error_signal (chan, send_error, stamp,
-                                            msgtype, body_offset);
+      _gabble_text_mixin_send_error_signal (G_OBJECT (chan), send_error, stamp,
+          msgtype, body_offset);
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 

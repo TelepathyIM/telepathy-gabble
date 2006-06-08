@@ -349,6 +349,10 @@ _gabble_roster_channel_add_member_cb (GObject *obj,
   priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (obj);
   repo = priv->conn->handles;
 
+  g_debug ("%s: called on %s with handle %u (%s) \"%s\"", G_STRFUNC,
+      gabble_handle_inspect (repo, TP_HANDLE_TYPE_LIST, priv->handle), handle,
+      gabble_handle_inspect (repo, TP_HANDLE_TYPE_CONTACT, handle), message);
+
   /* publish list */
   if (gabble_handle_for_list_publish (repo) == priv->handle)
     {
@@ -391,6 +395,10 @@ _gabble_roster_channel_remove_member_cb (GObject *obj,
 
   priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (obj);
   repo = priv->conn->handles;
+
+  g_debug ("%s: called on %s with handle %u (%s) \"%s\"", G_STRFUNC,
+      gabble_handle_inspect (repo, TP_HANDLE_TYPE_LIST, priv->handle), handle,
+      gabble_handle_inspect (repo, TP_HANDLE_TYPE_CONTACT, handle), message);
 
   /* publish list */
   if (gabble_handle_for_list_publish (repo) == priv->handle)

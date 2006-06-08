@@ -34,6 +34,7 @@
 #include "telepathy-interfaces.h"
 #include "telepathy-helpers.h"
 #include "tp-channel-iface.h"
+#include "namespaces.h"
 
 #include "gabble-roomlist-channel.h"
 #include "gabble-roomlist-channel-glue.h"
@@ -438,7 +439,7 @@ room_info_cb (GabbleDisco *disco,
   GabbleRoomlistChannel *chan = user_data;
   GabbleRoomlistChannelPrivate *priv;
   LmMessageNode *identity, *feature, *field, *value_node;
-  const char *category, *type, *var, *name, *namespace, *value;
+  const char *category, *type, *var, *name, *value;
   GabbleHandle handle;
   GHashTable *keys;
   GValue room = {0,};
@@ -540,8 +541,7 @@ room_info_cb (GabbleDisco *disco,
         }
       else if (0 == strcmp (feature->name, "x"))
         {
-          namespace = lm_message_node_get_attribute (feature, "xmlns");
-          if (namespace && 0 == strcmp (namespace, "jabber:x:data"))
+          if (_lm_message_node_has_namespace (feature, NS_DATA))
             {
               for (field = feature->children;
                    field; field = field->next)

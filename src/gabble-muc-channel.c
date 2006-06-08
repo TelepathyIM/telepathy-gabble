@@ -288,17 +288,17 @@ static void properties_disco_cb (GabbleDisco *disco,
   const gchar *str;
   GValue val = { 0, };
 
-  HANDLER_DEBUG (query_result, "disco query result");
-
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
 
-  if (error != NULL)
+  if (error)
     {
-      HANDLER_DEBUG (query_result, "disco query failed");
+      g_debug ("%s: got error %s", G_STRFUNC, error->message);
       return;
     }
+
+  HANDLER_DEBUG (query_result, "disco query result");
 
   changed_props_val = changed_props_flags = NULL;
 

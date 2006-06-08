@@ -242,7 +242,7 @@ gabble_properties_mixin_get_properties (GObject *obj, const GArray *properties, 
         }
 
       /* Permitted? */
-      if (!(mixin->properties[prop_id].flags & TP_PROPERTY_FLAG_READ))
+      if (!gabble_properties_mixin_is_readable (obj, prop_id))
         {
           *error = g_error_new (TELEPATHY_ERRORS, PermissionDenied,
                                 "permission denied for property identifier %d", prop_id);
@@ -328,7 +328,7 @@ gabble_properties_mixin_set_properties (GObject *obj, const GPtrArray *propertie
       ctx->values[prop_id] = prop_val;
 
       /* Permitted? */
-      if (!(mixin->properties[prop_id].flags & TP_PROPERTY_FLAG_WRITE))
+      if (!gabble_properties_mixin_is_writable (obj, prop_id))
         {
           error = g_error_new (TELEPATHY_ERRORS, PermissionDenied,
                                "permission denied for property identifier %d", prop_id);
@@ -772,5 +772,31 @@ gabble_properties_mixin_emit_flags (GObject *obj, GArray **props)
 
   g_array_free (*props, TRUE);
   *props = NULL;
+}
+
+gboolean
+gabble_properties_mixin_is_readable (GObject *obj, guint prop_id)
+{
+  GabblePropertiesMixin *mixin = GABBLE_PROPERTIES_MIXIN (obj);
+  GabblePropertiesMixinClass *mixin_cls = GABBLE_PROPERTIES_MIXIN_CLASS (
+                                            G_OBJECT_GET_CLASS (obj));
+
+  if (prop_id >= mixin_cls->num_props)
+    return FALSE;
+
+  return ((mixin->properties[prop_id].flags & TP_PROPERTY_FLAG_READ) != 0);
+}
+
+gboolean
+gabble_properties_mixin_is_writable (GObject *obj, guint prop_id)
+{
+  GabblePropertiesMixin *mixin = GABBLE_PROPERTIES_MIXIN (obj);
+  GabblePropertiesMixinClass *mixin_cls = GABBLE_PROPERTIES_MIXIN_CLASS (
+                                            G_OBJECT_GET_CLASS (obj));
+
+  if (prop_id >= mixin_cls->num_props)
+    return FALSE;
+
+  return ((mixin->properties[prop_id].flags & TP_PROPERTY_FLAG_WRITE) != 0);
 }
 

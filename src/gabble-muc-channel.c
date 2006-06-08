@@ -341,108 +341,142 @@ static void properties_disco_cb (GabbleDisco *disco,
     {
       guint prop_id = INVALID_ROOM_PROP;
 
-      if (strcmp (lm_node->name, "feature") != 0)
-        continue;
+      if (strcmp (lm_node->name, "feature") == 0)
+        {
+          str = lm_message_node_get_attribute (lm_node, "var");
+          if (str == NULL)
+            continue;
 
-      str = lm_message_node_get_attribute (lm_node, "var");
-      if (str == NULL)
-        continue;
+          /* ROOM_PROP_ANONYMOUS */
+          if (strcmp (str, "muc_nonanonymous") == 0)
+            {
+              prop_id = ROOM_PROP_ANONYMOUS;
+              g_value_init (&val, G_TYPE_BOOLEAN);
+              g_value_set_boolean (&val, FALSE);
+            }
+          else if (strcmp (str, "muc_semianonymous") == 0 ||
+                   strcmp (str, "muc_anonymous") == 0)
+            {
+              prop_id = ROOM_PROP_ANONYMOUS;
+              g_value_init (&val, G_TYPE_BOOLEAN);
+              g_value_set_boolean (&val, TRUE);
+            }
 
-      /* ROOM_PROP_ANONYMOUS */
-      if (strcmp (str, "muc_nonanonymous") == 0)
-        {
-          prop_id = ROOM_PROP_ANONYMOUS;
-          g_value_init (&val, G_TYPE_BOOLEAN);
-          g_value_set_boolean (&val, FALSE);
-        }
-      else if (strcmp (str, "muc_semianonymous") == 0 ||
-               strcmp (str, "muc_anonymous") == 0)
-        {
-          prop_id = ROOM_PROP_ANONYMOUS;
-          g_value_init (&val, G_TYPE_BOOLEAN);
-          g_value_set_boolean (&val, TRUE);
-        }
+          /* ROOM_PROP_INVITE_ONLY */
+          else if (strcmp (str, "muc_open") == 0)
+            {
+              prop_id = ROOM_PROP_INVITE_ONLY;
+              g_value_init (&val, G_TYPE_BOOLEAN);
+              g_value_set_boolean (&val, FALSE);
+            }
+          else if (strcmp (str, "muc_membersonly") == 0)
+            {
+              prop_id = ROOM_PROP_INVITE_ONLY;
+              g_value_init (&val, G_TYPE_BOOLEAN);
+              g_value_set_boolean (&val, TRUE);
+            }
 
-      /* ROOM_PROP_INVITE_ONLY */
-      else if (strcmp (str, "muc_open") == 0)
-        {
-          prop_id = ROOM_PROP_INVITE_ONLY;
-          g_value_init (&val, G_TYPE_BOOLEAN);
-          g_value_set_boolean (&val, FALSE);
-        }
-      else if (strcmp (str, "muc_membersonly") == 0)
-        {
-          prop_id = ROOM_PROP_INVITE_ONLY;
-          g_value_init (&val, G_TYPE_BOOLEAN);
-          g_value_set_boolean (&val, TRUE);
-        }
+          /* ROOM_PROP_MODERATED */
+          else if (strcmp (str, "muc_unmoderated") == 0)
+            {
+              prop_id = ROOM_PROP_MODERATED;
+              g_value_init (&val, G_TYPE_BOOLEAN);
+              g_value_set_boolean (&val, FALSE);
+            }
+          else if (strcmp (str, "muc_moderated") == 0)
+            {
+              prop_id = ROOM_PROP_MODERATED;
+              g_value_init (&val, G_TYPE_BOOLEAN);
+              g_value_set_boolean (&val, TRUE);
+            }
 
-      /* ROOM_PROP_MODERATED */
-      else if (strcmp (str, "muc_unmoderated") == 0)
-        {
-          prop_id = ROOM_PROP_MODERATED;
-          g_value_init (&val, G_TYPE_BOOLEAN);
-          g_value_set_boolean (&val, FALSE);
-        }
-      else if (strcmp (str, "muc_moderated") == 0)
-        {
-          prop_id = ROOM_PROP_MODERATED;
-          g_value_init (&val, G_TYPE_BOOLEAN);
-          g_value_set_boolean (&val, TRUE);
-        }
+          /* ROOM_PROP_PASSWORD_REQUIRED */
+          else if (strcmp (str, "muc_unsecure") == 0 ||
+                   strcmp (str, "muc_unsecured") == 0)
+            {
+              prop_id = ROOM_PROP_PASSWORD_REQUIRED;
+              g_value_init (&val, G_TYPE_BOOLEAN);
+              g_value_set_boolean (&val, FALSE);
+            }
+          else if (strcmp (str, "muc_passwordprotected") == 0)
+            {
+              prop_id = ROOM_PROP_PASSWORD_REQUIRED;
+              g_value_init (&val, G_TYPE_BOOLEAN);
+              g_value_set_boolean (&val, TRUE);
+            }
 
-      /* ROOM_PROP_PASSWORD_REQUIRED */
-      else if (strcmp (str, "muc_unsecure") == 0 ||
-               strcmp (str, "muc_unsecured") == 0)
-        {
-          prop_id = ROOM_PROP_PASSWORD_REQUIRED;
-          g_value_init (&val, G_TYPE_BOOLEAN);
-          g_value_set_boolean (&val, FALSE);
-        }
-      else if (strcmp (str, "muc_passwordprotected") == 0)
-        {
-          prop_id = ROOM_PROP_PASSWORD_REQUIRED;
-          g_value_init (&val, G_TYPE_BOOLEAN);
-          g_value_set_boolean (&val, TRUE);
-        }
+          /* ROOM_PROP_PERSISTENT */
+          else if (strcmp (str, "muc_temporary") == 0)
+            {
+              prop_id = ROOM_PROP_PERSISTENT;
+              g_value_init (&val, G_TYPE_BOOLEAN);
+              g_value_set_boolean (&val, FALSE);
+            }
+          else if (strcmp (str, "muc_persistent") == 0)
+            {
+              prop_id = ROOM_PROP_PERSISTENT;
+              g_value_init (&val, G_TYPE_BOOLEAN);
+              g_value_set_boolean (&val, TRUE);
+            }
 
-      /* ROOM_PROP_PERSISTENT */
-      else if (strcmp (str, "muc_temporary") == 0)
-        {
-          prop_id = ROOM_PROP_PERSISTENT;
-          g_value_init (&val, G_TYPE_BOOLEAN);
-          g_value_set_boolean (&val, FALSE);
-        }
-      else if (strcmp (str, "muc_persistent") == 0)
-        {
-          prop_id = ROOM_PROP_PERSISTENT;
-          g_value_init (&val, G_TYPE_BOOLEAN);
-          g_value_set_boolean (&val, TRUE);
-        }
+          /* ROOM_PROP_PRIVATE */
+          else if (strcmp (str, "muc_public") == 0)
+            {
+              prop_id = ROOM_PROP_PRIVATE;
+              g_value_init (&val, G_TYPE_BOOLEAN);
+              g_value_set_boolean (&val, FALSE);
+            }
+          else if (strcmp (str, "muc_hidden") == 0)
+            {
+              prop_id = ROOM_PROP_PRIVATE;
+              g_value_init (&val, G_TYPE_BOOLEAN);
+              g_value_set_boolean (&val, TRUE);
+            }
 
-      /* ROOM_PROP_PRIVATE */
-      else if (strcmp (str, "muc_public") == 0)
-        {
-          prop_id = ROOM_PROP_PRIVATE;
-          g_value_init (&val, G_TYPE_BOOLEAN);
-          g_value_set_boolean (&val, FALSE);
-        }
-      else if (strcmp (str, "muc_hidden") == 0)
-        {
-          prop_id = ROOM_PROP_PRIVATE;
-          g_value_init (&val, G_TYPE_BOOLEAN);
-          g_value_set_boolean (&val, TRUE);
-        }
+          /* Ignored */
+          else if (strcmp (str, NS_MUC) == 0)
+            {
+            }
 
-      /* Ignored */
-      else if (strcmp (str, NS_MUC) == 0)
-        {
+          /* Unhandled */
+          else
+            {
+              g_warning ("%s: unhandled feature '%s'", G_STRFUNC, str);
+            }
         }
-
-      /* Unhandled */
-      else
+      else if (strcmp (lm_node->name, "x") == 0)
         {
-          g_warning ("%s: unhandled feature '%s'", G_STRFUNC, str);
+          if (_lm_message_node_has_namespace (lm_node, NS_DATA))
+            {
+              LmMessageNode *field, *value_node;
+
+              for (field = lm_node->children; field; field = field->next)
+                {
+                  if (strcmp (field->name, "field") != 0)
+                    continue;
+
+                  str = lm_message_node_get_attribute (field, "var");
+                  if (str == NULL)
+                    continue;
+
+                  if (strcmp (str, "muc#roominfo_description") != 0)
+                    continue;
+
+                  value_node = lm_message_node_get_child (field, "value");
+                  if (value_node == NULL)
+                    continue;
+
+                  str = lm_message_node_get_value (value_node);
+                  if (str == NULL)
+                    {
+                      str = "";
+                    }
+
+                  prop_id = ROOM_PROP_DESCRIPTION;
+                  g_value_init (&val, G_TYPE_STRING);
+                  g_value_set_string (&val, str);
+                }
+            }
         }
 
       if (prop_id != INVALID_ROOM_PROP)
@@ -493,9 +527,13 @@ static void properties_disco_cb (GabbleDisco *disco,
           ROOM_PROP_NAME, TP_PROPERTY_FLAG_WRITE, 0,
           &changed_props_flags);
 
-      gabble_properties_mixin_change_flags (G_OBJECT (chan),
-          ROOM_PROP_DESCRIPTION, TP_PROPERTY_FLAG_WRITE, 0,
-          &changed_props_flags);
+      if (gabble_properties_mixin_is_readable (G_OBJECT (chan),
+                                               ROOM_PROP_DESCRIPTION))
+        {
+          gabble_properties_mixin_change_flags (G_OBJECT (chan),
+              ROOM_PROP_DESCRIPTION, TP_PROPERTY_FLAG_WRITE, 0,
+              &changed_props_flags);
+        }
 
       gabble_properties_mixin_change_flags (G_OBJECT (chan),
           ROOM_PROP_PASSWORD, TP_PROPERTY_FLAG_WRITE, 0,

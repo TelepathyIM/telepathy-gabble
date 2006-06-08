@@ -126,6 +126,9 @@ void gabble_properties_mixin_change_flags (GObject *obj, guint prop_id, TpProper
 void gabble_properties_mixin_emit_changed (GObject *obj, GArray **props);
 void gabble_properties_mixin_emit_flags (GObject *obj, GArray **props);
 
+gboolean gabble_properties_mixin_is_readable (GObject *obj, guint prop_id);
+gboolean gabble_properties_mixin_is_writable (GObject *obj, guint prop_id);
+
 G_END_DECLS
 
 #endif /* #ifndef __GABBLE_PROPERTIES_MIXIN_H__ */

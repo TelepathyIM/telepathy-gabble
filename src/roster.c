@@ -451,7 +451,7 @@ _gabble_roster_item_to_message (GabbleRoster *roster,
 
   message = lm_message_new_with_sub_type (NULL,
                                           LM_MESSAGE_TYPE_IQ,
-                                          LM_MESSAGE_SUB_TYPE_GET);
+                                          LM_MESSAGE_SUB_TYPE_SET);
 
   query_node = lm_message_node_add_child (message->node, "query", NULL);
 

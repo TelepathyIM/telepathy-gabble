@@ -3006,9 +3006,6 @@ connection_disco_cb (GabbleDisco *disco,
       g_debug ("%s: set features flags to %d", G_STRFUNC, conn->features);
     }
 
-  /* go go gadget on-line */
-  connection_status_change (conn, TP_CONN_STATUS_CONNECTED, TP_CONN_STATUS_REASON_REQUESTED);
-
   /* send presence to the server to indicate availability */
   if (!signal_own_presence (conn, &error))
     {
@@ -3016,6 +3013,9 @@ connection_disco_cb (GabbleDisco *disco,
           error->message);
       goto ERROR;
     }
+
+  /* go go gadget on-line */
+  connection_status_change (conn, TP_CONN_STATUS_CONNECTED, TP_CONN_STATUS_REASON_REQUESTED);
 
   discover_services (conn);
 

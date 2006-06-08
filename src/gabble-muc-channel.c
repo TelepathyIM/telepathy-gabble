@@ -311,17 +311,18 @@ static void properties_disco_cb (GabbleDisco *disco,
   lm_node = lm_message_node_get_child (query_result, "identity");
   if (lm_node)
     {
-      str = lm_message_node_get_attribute (lm_node, "type");
-      g_assert (str && strcmp (str, "text") == 0);
+      const gchar *type, *category, *name;
 
-      str = lm_message_node_get_attribute (lm_node, "category");
-      g_assert (str && strcmp (str, "conference") == 0);
+      type = lm_message_node_get_attribute (lm_node, "type");
+      category = lm_message_node_get_attribute (lm_node, "category");
+      name = lm_message_node_get_attribute (lm_node, "name");
 
-      str = lm_message_node_get_attribute (lm_node, "name");
-      if (str)
+      if (NULL != type && 0 == strcmp (type, "text") &&
+          NULL != category && 0 == strcmp (type, "conference") &&
+          NULL != name)
         {
           g_value_init (&val, G_TYPE_STRING);
-          g_value_set_string (&val, str);
+          g_value_set_string (&val, name);
 
           gabble_properties_mixin_change_value (G_OBJECT (chan), ROOM_PROP_NAME,
                                                 &val, &changed_props_val);

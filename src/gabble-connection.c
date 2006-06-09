@@ -3994,8 +3994,8 @@ find_media_channel_with_handle (GabbleConnection *conn, GabbleHandle handle)
       /* search members */
       if (!gabble_group_mixin_get_members (G_OBJECT (chan), &arr, &err))
         {
-          g_debug ("%s: get_members failed", G_STRFUNC);
-          g_free (err);
+          g_debug ("%s: get_members failed: %s", G_STRFUNC, err->message);
+          g_error_free (err);
           continue;
         }
 
@@ -4011,8 +4011,9 @@ find_media_channel_with_handle (GabbleConnection *conn, GabbleHandle handle)
       /* search local pending */
       if (!gabble_group_mixin_get_local_pending_members (G_OBJECT (chan), &arr, &err))
         {
-          g_debug ("%s: get_local_pending_members failed", G_STRFUNC);
-          g_free (err);
+          g_debug ("%s: get_local_pending_members failed: %s", G_STRFUNC,
+              err->message);
+          g_error_free (err);
           continue;
         }
 
@@ -4028,8 +4029,9 @@ find_media_channel_with_handle (GabbleConnection *conn, GabbleHandle handle)
       /* search remote pending */
       if (!gabble_group_mixin_get_remote_pending_members (G_OBJECT (chan), &arr, &err))
         {
-          g_debug ("%s: get_remote_pending_members failed", G_STRFUNC);
-          g_free (err);
+          g_debug ("%s: get_remote_pending_members failed: %s", G_STRFUNC,
+              err->message);
+          g_error_free (err);
           continue;
         }
 

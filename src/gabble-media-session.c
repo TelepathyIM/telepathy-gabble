@@ -211,7 +211,6 @@ gabble_media_session_constructor (GType type, guint n_props,
   GObject *obj;
   GabbleMediaSessionPrivate *priv;
   DBusGConnection *bus;
-  GabblePresence *presence;
 
   obj = G_OBJECT_CLASS (gabble_media_session_parent_class)->
            constructor (type, n_props, props);
@@ -224,14 +223,18 @@ gabble_media_session_constructor (GType type, guint n_props,
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
 
-  presence = gabble_presence_cache_get (priv->conn->presence_cache, priv->peer);
-  g_assert (presence);
-
   if (!priv->peer_resource)
     {
-      if (!_get_peer_resource (presence, &priv->peer_resource, &priv->mode))
+      GabblePresence *presence;
+
+      presence = gabble_presence_cache_get (priv->conn->presence_cache,
+          priv->peer);
+
+      if (NULL == presence ||
+          !_get_peer_resource (presence, &priv->peer_resource, &priv->mode))
         g_critical ("%s: no voice resource found for remote handle", G_STRFUNC);
     }
+
   create_media_stream (GABBLE_MEDIA_SESSION (obj));
 
   return obj;

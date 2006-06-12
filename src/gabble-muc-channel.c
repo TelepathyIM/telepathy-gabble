@@ -197,6 +197,8 @@ struct _GabbleMucChannelPrivate
 
   GabblePropertiesContext *properties_ctx;
 
+  gboolean ready_emitted;
+
   gboolean closed;
   gboolean dispose_has_run;
 };
@@ -1021,7 +1023,12 @@ channel_state_changed (GabbleMucChannel *chan,
 
   if (new_state == MUC_STATE_JOINED || new_state == MUC_STATE_AUTH)
     {
-      g_signal_emit (chan, signals[READY], 0);
+      if (!priv->ready_emitted)
+        {
+          g_signal_emit (chan, signals[READY], 0);
+
+          priv->ready_emitted = TRUE;
+        }
     }
 }
 

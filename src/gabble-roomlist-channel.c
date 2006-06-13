@@ -320,6 +320,7 @@ gabble_roomlist_channel_finalize (GObject *object)
   g_free (priv->object_path);
   g_free (priv->conference_server);
 
+  g_ptr_array_free (priv->disco_pipeline, TRUE);
   g_hash_table_destroy (priv->remaining_rooms);
 
   G_OBJECT_CLASS (gabble_roomlist_channel_parent_class)->finalize (object);
@@ -444,8 +445,6 @@ room_info_cb (GabbleDisco *disco,
       goto done;
     }
 
-  keys = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
-                                (GDestroyNotify) destroy_value);
   identity = lm_message_node_get_child (result, "identity");
   if (NULL == identity)
     goto done;
@@ -462,12 +461,17 @@ room_info_cb (GabbleDisco *disco,
   if (NULL == type)
     goto done;
 
-  g_debug ("%s: got room identity, name=%s, category=%s, type=%s", G_STRFUNC,
-      name, category, type);
-
   if (0 != strcmp (category, "conference") ||
       0 != strcmp (type, "text"))
     goto done;
+
+  g_debug ("%s: got room identity, name=%s, category=%s, type=%s", G_STRFUNC,
+      name, category, type);
+
+  keys = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
+                                (GDestroyNotify) destroy_value);
+
+  INSERT_KEY (keys, "name", G_TYPE_STRING, string, name);
 
   is_muc = FALSE;
 
@@ -560,7 +564,6 @@ room_info_cb (GabbleDisco *disco,
 
   if (is_muc)
     {
-      INSERT_KEY (keys, "name", G_TYPE_STRING, string, name);
       g_debug ("%s: emitting new room signal for %s", G_STRFUNC, jid);
 
       handle = gabble_handle_for_room (priv->conn->handles, jid);
@@ -575,12 +578,14 @@ room_info_cb (GabbleDisco *disco,
           2, keys,
           G_MAXUINT);
 
-      rooms = g_ptr_array_sized_new(1);
+      rooms = g_ptr_array_sized_new (1);
       g_ptr_array_add (rooms, g_value_get_boxed (&room));
       g_signal_emit (chan, signals[GOT_ROOMS], 0, rooms);
       g_ptr_array_free (rooms, TRUE);
       g_value_unset (&room);
     }
+
+  g_hash_table_destroy (keys);
 
 done:
   room_list_fill_disco_pipeline (chan);

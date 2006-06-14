@@ -651,8 +651,15 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
       return TP_CHANNEL_FACTORY_REQUEST_STATUS_QUEUED;
     }
 
-  *ret = TP_CHANNEL_IFACE (chan);
-  return TP_CHANNEL_FACTORY_REQUEST_STATUS_DONE;
+  if (_gabble_muc_channel_is_ready (chan))
+    {
+      *ret = TP_CHANNEL_IFACE (chan);
+      return TP_CHANNEL_FACTORY_REQUEST_STATUS_DONE;
+    }
+  else
+    {
+      return TP_CHANNEL_FACTORY_REQUEST_STATUS_QUEUED;
+    }
 }
 
 static void

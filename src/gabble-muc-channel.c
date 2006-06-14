@@ -1046,6 +1046,18 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
   g_signal_emit (chan, signals[CLOSED], 0);
 }
 
+gboolean
+_gabble_muc_channel_is_ready (GabbleMucChannel *chan)
+{
+  GabbleMucChannelPrivate *priv;
+
+  g_assert (GABBLE_IS_MUC_CHANNEL (chan));
+
+  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+
+  return priv->ready_emitted;
+}
+
 /**
  * _gabble_muc_channel_presence_error
  */

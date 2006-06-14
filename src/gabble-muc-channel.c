@@ -326,7 +326,7 @@ properties_disco_cb (GabbleDisco *disco,
       name = lm_message_node_get_attribute (lm_node, "name");
 
       if (NULL != type && 0 == strcmp (type, "text") &&
-          NULL != category && 0 == strcmp (type, "conference") &&
+          NULL != category && 0 == strcmp (category, "conference") &&
           NULL != name)
         {
           g_value_init (&val, G_TYPE_STRING);

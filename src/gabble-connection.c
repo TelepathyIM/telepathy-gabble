@@ -942,9 +942,12 @@ gabble_connection_dispose (GObject *object)
    */
   g_idle_add (_unref_lm_connection, self->lmconn);
 
-  dbus_g_proxy_call_no_reply (bus_proxy, "ReleaseName",
-                              G_TYPE_STRING, self->bus_name,
-                              G_TYPE_INVALID);
+  if (NULL != self->bus_name)
+    {
+      dbus_g_proxy_call_no_reply (bus_proxy, "ReleaseName",
+                                  G_TYPE_STRING, self->bus_name,
+                                  G_TYPE_INVALID);
+    }
 
   if (G_OBJECT_CLASS (gabble_connection_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_connection_parent_class)->dispose (object);
@@ -1103,8 +1106,14 @@ _gabble_connection_register (GabbleConnection *conn,
                           G_TYPE_UINT, &request_name_result,
                           G_TYPE_INVALID))
     {
-      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
-                            request_error->message);
+      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable, "Error acquiring "
+          "bus name %s: %s", conn->bus_name, request_error->message);
+
+      g_error_free (request_error);
+
+      g_free (conn->bus_name);
+      conn->bus_name = NULL;
+
       return FALSE;
     }
 
@@ -1127,9 +1136,12 @@ _gabble_connection_register (GabbleConnection *conn,
           msg = "Unknown error return from ReleaseName";
         }
 
-      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
-                            "Error acquiring bus name %s, %s",
-                             conn->bus_name, msg);
+      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable, "Error acquiring "
+          "bus name %s: %s", conn->bus_name, msg);
+
+      g_free (conn->bus_name);
+      conn->bus_name = NULL;
+
       return FALSE;
     }
 

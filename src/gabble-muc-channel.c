@@ -1597,6 +1597,10 @@ _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
       gabble_text_mixin_receive (G_OBJECT (chan), TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE, inviter,
                                   time(NULL), message);
     }
+
+  /* emit READY signal so NewChannel is emitted */
+  g_signal_emit (chan, signals[READY], 0);
+  priv->ready_emitted = TRUE;
 }
 
 

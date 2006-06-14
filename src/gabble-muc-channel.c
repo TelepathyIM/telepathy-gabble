@@ -280,13 +280,14 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   return obj;
 }
 
-static void properties_disco_cb (GabbleDisco *disco,
-                                 GabbleDiscoRequest *request,
-                                 const gchar *jid,
-                                 const gchar *node,
-                                 LmMessageNode *query_result,
-                                 GError *error,
-                                 gpointer user_data)
+static void
+properties_disco_cb (GabbleDisco *disco,
+                     GabbleDiscoRequest *request,
+                     const gchar *jid,
+                     const gchar *node,
+                     LmMessageNode *query_result,
+                     GError *error,
+                     gpointer user_data)
 {
   GabbleMucChannel *chan = user_data;
   GabbleMucChannelPrivate *priv;
@@ -305,7 +306,7 @@ static void properties_disco_cb (GabbleDisco *disco,
       return;
     }
 
-  NODE_DEBUG (query_result, "disco query result");
+  HANDLER_DEBUG (query_result, "disco query result");
 
   changed_props_val = changed_props_flags = NULL;
 
@@ -497,71 +498,6 @@ static void properties_disco_cb (GabbleDisco *disco,
         }
     }
 
-
-  /*
-   * Update write capabilities based on room configuration
-   * and own role and affiliation.
-   */
-
-  /* Subject */
-  /* FIXME: this might be allowed for participants/moderators only,
-   *        so for now just rely on the server making that call. */
-  if (priv->self_role >= ROLE_VISITOR)
-    {
-      gabble_properties_mixin_change_flags (G_OBJECT (chan),
-          ROOM_PROP_SUBJECT, TP_PROPERTY_FLAG_WRITE, 0,
-          &changed_props_flags);
-    }
-
-  /* Room definition */
-  if (priv->self_affil == AFFILIATION_OWNER)
-    {
-      gabble_properties_mixin_change_flags (G_OBJECT (chan),
-          ROOM_PROP_ANONYMOUS, TP_PROPERTY_FLAG_WRITE, 0,
-          &changed_props_flags);
-
-      gabble_properties_mixin_change_flags (G_OBJECT (chan),
-          ROOM_PROP_INVITE_ONLY, TP_PROPERTY_FLAG_WRITE, 0,
-          &changed_props_flags);
-
-      gabble_properties_mixin_change_flags (G_OBJECT (chan),
-          ROOM_PROP_MODERATED, TP_PROPERTY_FLAG_WRITE, 0,
-          &changed_props_flags);
-
-      gabble_properties_mixin_change_flags (G_OBJECT (chan),
-          ROOM_PROP_NAME, TP_PROPERTY_FLAG_WRITE, 0,
-          &changed_props_flags);
-
-      if (gabble_properties_mixin_is_readable (G_OBJECT (chan),
-                                               ROOM_PROP_DESCRIPTION))
-        {
-          gabble_properties_mixin_change_flags (G_OBJECT (chan),
-              ROOM_PROP_DESCRIPTION, TP_PROPERTY_FLAG_WRITE, 0,
-              &changed_props_flags);
-        }
-
-      gabble_properties_mixin_change_flags (G_OBJECT (chan),
-          ROOM_PROP_PASSWORD, TP_PROPERTY_FLAG_WRITE, 0,
-          &changed_props_flags);
-
-      gabble_properties_mixin_change_flags (G_OBJECT (chan),
-          ROOM_PROP_PASSWORD_REQUIRED, TP_PROPERTY_FLAG_WRITE, 0,
-          &changed_props_flags);
-
-      gabble_properties_mixin_change_flags (G_OBJECT (chan),
-          ROOM_PROP_PERSISTENT, TP_PROPERTY_FLAG_WRITE, 0,
-          &changed_props_flags);
-
-      gabble_properties_mixin_change_flags (G_OBJECT (chan),
-          ROOM_PROP_PRIVATE, TP_PROPERTY_FLAG_WRITE, 0,
-          &changed_props_flags);
-
-      gabble_properties_mixin_change_flags (G_OBJECT (chan),
-          ROOM_PROP_SUBJECT, TP_PROPERTY_FLAG_WRITE, 0,
-          &changed_props_flags);
-    }
-
-
   /*
    * Emit signals.
    */
@@ -579,11 +515,12 @@ room_properties_update (GabbleMucChannel *chan)
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
 
-  if (gabble_disco_request (priv->conn->disco, GABBLE_DISCO_TYPE_INFO, priv->jid, NULL,
-        properties_disco_cb, chan, G_OBJECT (chan), &error) == NULL)
+  if (gabble_disco_request (priv->conn->disco, GABBLE_DISCO_TYPE_INFO,
+        priv->jid, NULL, properties_disco_cb, chan, G_OBJECT (chan),
+        &error) == NULL)
     {
       g_warning ("%s: disco query failed: '%s'", G_STRFUNC, error->message);
-      return;
+      g_error_free (error);
     }
 }
 
@@ -1296,6 +1233,238 @@ room_created_submit_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
+static LmMessageNode *
+config_form_get_form_node (LmMessage *msg)
+{
+  LmMessageNode *node;
+
+  /* find the query node */
+  node = lm_message_node_get_child (msg->node, "query");
+  if (node == NULL)
+    return NULL;
+
+  /* then the form node */
+  for (node = node->children; node; node = node->next)
+    {
+      if (strcmp (node->name, "x") == 0)
+        {
+          if (strcmp (lm_message_node_get_attribute (node, "xmlns"),
+                      "jabber:x:data") != 0)
+            {
+              continue;
+            }
+
+          if (strcmp (lm_message_node_get_attribute (node, "type"),
+                      "form") != 0)
+            {
+              continue;
+            }
+
+          return node;
+        }
+    }
+
+  return NULL;
+}
+
+static LmHandlerResult
+perms_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
+                            LmMessage *reply_msg, GObject *object,
+                            gpointer user_data)
+{
+  GabbleMucChannel *chan = GABBLE_MUC_CHANNEL (object);
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  LmMessageNode *form_node, *node;
+
+  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
+    {
+      g_warning ("%s: request for config form denied, property permissions "
+                 "will be inaccurate", G_STRFUNC);
+      goto OUT;
+    }
+
+  /* just in case our affiliation has changed in the meantime */
+  if (priv->self_affil != AFFILIATION_OWNER)
+    goto OUT;
+
+  form_node = config_form_get_form_node (reply_msg);
+  if (form_node == NULL)
+    {
+      g_warning ("%s: form node node found, property permissions will be "
+                 "inaccurate", G_STRFUNC);
+      goto OUT;
+    }
+
+  for (node = form_node->children; node; node = node->next)
+    {
+      const gchar *var;
+
+      if (strcmp (node->name, "field") != 0)
+        continue;
+
+      var = lm_message_node_get_attribute (node, "var");
+      if (var == NULL)
+        continue;
+
+      if (strcmp (var, "muc#roomconfig_roomdesc") == 0 ||
+                  strcmp (var, "muc#owner_roomdesc") == 0)
+        {
+          if (gabble_properties_mixin_is_readable (G_OBJECT (chan),
+                                                   ROOM_PROP_DESCRIPTION))
+            {
+              gabble_properties_mixin_change_flags (G_OBJECT (chan),
+                  ROOM_PROP_DESCRIPTION, TP_PROPERTY_FLAG_WRITE, 0,
+                  NULL);
+
+              goto OUT;
+            }
+        }
+    }
+
+OUT:
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
+static void
+update_permissions (GabbleMucChannel *chan)
+{
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  TpChannelGroupFlags grp_flags_add, grp_flags_rem;
+  TpPropertyFlags prop_flags_add, prop_flags_rem;
+  GArray *changed_props_val, *changed_props_flags;
+
+  /*
+   * Update group flags.
+   */
+  grp_flags_add = TP_CHANNEL_GROUP_FLAG_CAN_ADD |
+                  TP_CHANNEL_GROUP_FLAG_MESSAGE_ADD;
+  grp_flags_rem = 0;
+
+  if (priv->self_role == ROLE_MODERATOR)
+    {
+      grp_flags_add |= TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
+                       TP_CHANNEL_GROUP_FLAG_MESSAGE_REMOVE;
+    }
+  else
+    {
+      grp_flags_rem |= TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
+                       TP_CHANNEL_GROUP_FLAG_MESSAGE_REMOVE;
+    }
+
+  gabble_group_mixin_change_flags (G_OBJECT (chan), grp_flags_add,
+                                   grp_flags_rem);
+
+
+  /*
+   * Update write capabilities based on room configuration
+   * and own role and affiliation.
+   */
+
+  changed_props_val = changed_props_flags = NULL;
+
+  /*
+   * Subject
+   *
+   * FIXME: this might be allowed for participants/moderators only,
+   *        so for now just rely on the server making that call.
+   */
+
+  if (priv->self_role >= ROLE_VISITOR)
+    {
+      prop_flags_add = TP_PROPERTY_FLAG_WRITE;
+      prop_flags_rem = 0;
+    }
+  else
+    {
+      prop_flags_add = 0;
+      prop_flags_rem = TP_PROPERTY_FLAG_WRITE;
+    }
+
+  gabble_properties_mixin_change_flags (G_OBJECT (chan),
+      ROOM_PROP_SUBJECT, prop_flags_add, prop_flags_rem,
+      &changed_props_flags);
+
+  /* Room definition */
+  if (priv->self_affil == AFFILIATION_OWNER)
+    {
+      prop_flags_add = TP_PROPERTY_FLAG_WRITE;
+      prop_flags_rem = 0;
+    }
+  else
+    {
+      prop_flags_add = 0;
+      prop_flags_rem = TP_PROPERTY_FLAG_WRITE;
+    }
+
+  gabble_properties_mixin_change_flags (G_OBJECT (chan),
+      ROOM_PROP_ANONYMOUS, prop_flags_add, prop_flags_rem,
+      &changed_props_flags);
+
+  gabble_properties_mixin_change_flags (G_OBJECT (chan),
+      ROOM_PROP_INVITE_ONLY, prop_flags_add, prop_flags_rem,
+      &changed_props_flags);
+
+  gabble_properties_mixin_change_flags (G_OBJECT (chan),
+      ROOM_PROP_MODERATED, prop_flags_add, prop_flags_rem,
+      &changed_props_flags);
+
+  gabble_properties_mixin_change_flags (G_OBJECT (chan),
+      ROOM_PROP_NAME, prop_flags_add, prop_flags_rem,
+      &changed_props_flags);
+
+  gabble_properties_mixin_change_flags (G_OBJECT (chan),
+      ROOM_PROP_PASSWORD, prop_flags_add, prop_flags_rem,
+      &changed_props_flags);
+
+  gabble_properties_mixin_change_flags (G_OBJECT (chan),
+      ROOM_PROP_PASSWORD_REQUIRED, prop_flags_add, prop_flags_rem,
+      &changed_props_flags);
+
+  gabble_properties_mixin_change_flags (G_OBJECT (chan),
+      ROOM_PROP_PERSISTENT, prop_flags_add, prop_flags_rem,
+      &changed_props_flags);
+
+  gabble_properties_mixin_change_flags (G_OBJECT (chan),
+      ROOM_PROP_PRIVATE, prop_flags_add, prop_flags_rem,
+      &changed_props_flags);
+
+  gabble_properties_mixin_change_flags (G_OBJECT (chan),
+      ROOM_PROP_SUBJECT, prop_flags_add, prop_flags_rem,
+      &changed_props_flags);
+
+  /*
+   * Emit signals.
+   */
+  gabble_properties_mixin_emit_changed (G_OBJECT (chan), &changed_props_val);
+  gabble_properties_mixin_emit_flags (G_OBJECT (chan), &changed_props_flags);
+
+  if (priv->self_affil == AFFILIATION_OWNER)
+    {
+      LmMessage *msg;
+      LmMessageNode *node;
+      GError *error;
+      gboolean success;
+
+      msg = lm_message_new_with_sub_type (priv->jid,
+          LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET);
+      node = lm_message_node_add_child (msg->node, "query", NULL);
+      lm_message_node_set_attribute (node, "xmlns", NS_MUC_OWNER);
+
+      success = _gabble_connection_send_with_reply (priv->conn, msg,
+          perms_config_form_reply_cb, G_OBJECT (chan), NULL,
+          &error);
+
+      lm_message_unref (msg);
+
+      if (!success)
+        {
+          g_warning ("%s: failed to request config form: %s",
+              G_STRFUNC, error->message);
+          g_error_free (error);
+        }
+    }
+}
+
 /**
  * _gabble_muc_channel_member_presence_updated
  */
@@ -1373,29 +1542,19 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
 
       if (handle == mixin->self_handle)
         {
-          TpChannelGroupFlags flags_add, flags_rem;
+          GabbleMucRole new_role;
+          GabbleMucAffiliation new_affil;
 
-          priv->self_role = get_role_from_string (role);
-          priv->self_affil = get_affiliation_from_string (affil);
+          new_role = get_role_from_string (role);
+          new_affil = get_affiliation_from_string (affil);
 
-          /* update flags */
-          flags_add = TP_CHANNEL_GROUP_FLAG_CAN_ADD |
-                      TP_CHANNEL_GROUP_FLAG_MESSAGE_ADD;
-          flags_rem = 0;
-
-          if (priv->self_role == ROLE_MODERATOR)
+          if (new_role != priv->self_role || new_affil != priv->self_affil)
             {
-              flags_add |= TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
-                           TP_CHANNEL_GROUP_FLAG_MESSAGE_REMOVE;
-            }
-          else
-            {
-              flags_rem |= TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
-                           TP_CHANNEL_GROUP_FLAG_MESSAGE_REMOVE;
-            }
+              priv->self_role = new_role;
+              priv->self_affil = new_affil;
 
-          gabble_group_mixin_change_flags (G_OBJECT (chan), flags_add,
-                                           flags_rem);
+              update_permissions (chan);
+            }
 
           if (status_code && strcmp (status_code, "201") == 0)
             {
@@ -1421,7 +1580,7 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
                              error->message);
                   g_error_free (error);
 
-                  close_channel (chan, NULL, TRUE, actor, reason_code);
+                  close_channel (chan, NULL, TRUE);
                 }
             }
 
@@ -1481,6 +1640,7 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
         }
     }
 
+OUT:
   g_intset_destroy (empty);
   g_intset_destroy (set);
 }
@@ -2408,7 +2568,7 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
   GabblePropertiesContext *ctx = priv->properties_ctx;
   GError *error = NULL;
   LmMessage *msg = NULL;
-  LmMessageNode *submit_node, *query_node, *form_node, *node;
+  LmMessageNode *submit_node, *form_node, *node;
   guint i, props_left;
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
@@ -2418,6 +2578,10 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 
       goto OUT;
     }
+
+  form_node = config_form_get_form_node (reply_msg);
+  if (form_node == NULL)
+    goto PARSE_ERROR;
 
   /* initialize */
   msg = lm_message_new_with_sub_type (priv->jid, LM_MESSAGE_TYPE_IQ,
@@ -2443,13 +2607,17 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
     {
       if (strcmp (node->name, "x") == 0)
         {
-          const gchar *type = lm_message_node_get_attribute (node, "type");
+          if (strcmp (lm_message_node_get_attribute (node, "xmlns"),
+                      "jabber:x:data") != 0)
+            {
+              continue;
+            }
 
-          if (!_lm_message_node_has_namespace (node, NS_DATA))
-            continue;
-
-          if (g_strdiff (type, "form"))
-            continue;
+          if (strcmp (lm_message_node_get_attribute (node, "type"),
+                      "form") != 0)
+            {
+              continue;
+            }
 
           form_node = node;
           break;

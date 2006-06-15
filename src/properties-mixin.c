@@ -24,19 +24,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "ansi.h"
 #include "properties-mixin.h"
 #include "properties-mixin-signals-marshal.h"
 #include "telepathy-errors.h"
-
-/*
- * FIXME: move this and the other defines in gabble-media-session.h
- *        to a common header
- */
-#define ANSI_RESET      "\x1b[0m"
-#define ANSI_BOLD_ON    "\x1b[1m"
-#define ANSI_BOLD_OFF   "\x1b[22m"
-#define ANSI_FG_CYAN    "\x1b[36m"
-#define ANSI_FG_WHITE   "\x1b[37m"
 
 struct _GabblePropertiesContext {
     GabblePropertiesMixinClass *mixin_cls;

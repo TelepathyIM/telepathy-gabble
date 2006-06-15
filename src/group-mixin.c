@@ -520,7 +520,7 @@ static void remove_handle_owners_if_exist (GObject *obj, GArray *array);
  * Request members to be added, removed or marked as local or remote pending.
  * Changes member sets, references, and emits the MembersChanged signal.
  */
-void
+gboolean
 gabble_group_mixin_change_members (GObject *obj,
                                    const gchar *message,
                                    GIntSet *add,
@@ -532,6 +532,7 @@ gabble_group_mixin_change_members (GObject *obj,
   GabbleGroupMixinClass *mixin_cls = GABBLE_GROUP_MIXIN_CLASS (G_OBJECT_GET_CLASS (obj));
   GIntSet *new_add, *new_remove, *new_local_pending,
           *new_remote_pending, *tmp, *tmp2;
+  gboolean ret;
 
   g_assert (add != NULL);
   g_assert (remove != NULL);
@@ -641,10 +642,14 @@ gabble_group_mixin_change_members (GObject *obj,
       g_array_free (arr_remove, TRUE);
       g_array_free (arr_local, TRUE);
       g_array_free (arr_remote, TRUE);
+
+      ret = TRUE;
     }
   else
     {
       g_debug ("%s: not emitting signal, nothing changed", G_STRFUNC);
+
+      ret = FALSE;
     }
 
   /* free intsets */
@@ -652,6 +657,8 @@ gabble_group_mixin_change_members (GObject *obj,
   g_intset_destroy (new_remove);
   g_intset_destroy (new_local_pending);
   g_intset_destroy (new_remote_pending);
+
+  return ret;
 }
 
 void

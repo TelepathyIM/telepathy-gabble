@@ -676,7 +676,7 @@ gabble_properties_mixin_emit_changed (GObject *obj, GArray **props)
   prop_arr = g_ptr_array_sized_new ((*props)->len);
 
   printf (ANSI_BOLD_ON ANSI_FG_CYAN
-          "%s: emitting room properties changed for propert%s:\n",
+          "%s: emitting properties changed for propert%s:\n",
           G_STRFUNC, ((*props)->len > 1) ? "ies" : "y");
 
   for (i = 0; i < (*props)->len; i++)
@@ -730,7 +730,7 @@ gabble_properties_mixin_emit_flags (GObject *obj, GArray **props)
   prop_arr = g_ptr_array_sized_new ((*props)->len);
 
   printf (ANSI_BOLD_ON ANSI_FG_WHITE
-          "%s: emitting room properties flags changed for propert%s:\n",
+          "%s: emitting properties flags changed for propert%s:\n",
           G_STRFUNC, ((*props)->len > 1) ? "ies" : "y");
 
   for (i = 0; i < (*props)->len; i++)

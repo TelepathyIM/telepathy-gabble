@@ -738,10 +738,14 @@ stream_new_active_candidate_pair_cb (GabbleMediaStream *stream,
 
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
 
-  /* g_assert (priv->state < JS_STATE_ACTIVE); */
-
   GMS_DEBUG_INFO (session, "voip-engine reported a new active candidate pair [\"%s\" - \"%s\"]",
                   native_candidate_id, remote_candidate_id);
+
+  if (priv->got_active_candidate_pair)
+    {
+      GMS_DEBUG_INFO (session, "not doing anything, already got an active candidate pair");
+      return;
+    }
 
   priv->got_active_candidate_pair = TRUE;
 

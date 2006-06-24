@@ -887,6 +887,8 @@ _parse_presence_message (GabblePresenceCache *cache,
   presence = gabble_presence_cache_get (cache, handle);
 
   if (NULL != presence)
+      /* Once we've received presence from somebody, we don't need to keep the
+       * presence around when it's unavailable. */
       presence->keep_unavailable = FALSE;
 
   child_node = lm_message_node_get_child (presence_node, "status");

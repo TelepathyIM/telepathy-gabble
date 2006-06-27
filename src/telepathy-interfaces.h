@@ -53,6 +53,8 @@ G_BEGIN_DECLS
         "org.freedesktop.Telepathy.Connection"
 #define TP_IFACE_CONN_INTERFACE_ALIASING \
         "org.freedesktop.Telepathy.Connection.Interface.Aliasing"
+#define TP_IFACE_CONN_INTERFACE_AVATARS \
+        "org.freedesktop.Telepathy.Channel.Interface.Avatars"
 #define TP_IFACE_CONN_INTERFACE_CAPABILITIES \
         "org.freedesktop.Telepathy.Connection.Interface.Capabilities"
 #define TP_IFACE_CONN_INTERFACE_CONTACT_INFO \

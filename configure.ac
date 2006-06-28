@@ -1,11 +1,29 @@
 AC_PREREQ([2.59])
 
-AC_INIT
+# Making releases:
+#   set the new version number:
+#     odd minor -> development series
+#     even minor -> stable series
+#     increment micro for each release within a series
+#   set gabble_release to 1.
+
+m4_define([gabble_major_version], [0])
+m4_define([gabble_minor_version], [1])
+m4_define([gabble_micro_version], [42])
+
+m4_define([gabble_release], [1])
+
+# Some magic
+m4_define([gabble_base_version],
+          [gabble_major_version.gabble_minor_version.gabble_micro_version])
+m4_define([gabble_version],
+          [m4_if(gabble_release, 1, [gabble_base_version], [gabble_base_version]+[`date +%Y%m%d.%H%M%S`])])dnl
+
+AC_INIT([Telepathy Gabble], [gabble_version], [https://bugs.freedesktop.org/enter_bug.cgi?product=Telepathy])
+
+AS_VERSION(telepathy-gabble, TELEPATHY_GABBLE_VERSION, 0, 1, 38, 1, WERROR="no", WERROR="yes")
+
 AC_CONFIG_MACRO_DIR([m4])
-
-AS_VERSION(telepathy-gabble, TELEPATHY_GABBLE_VERSION, 0, 3, 1, 1, WERROR="no", WERROR="yes")
-
-AM_INIT_AUTOMAKE($PACKAGE, $VERSION)
 
 AM_PROG_LIBTOOL
 AM_CONFIG_HEADER(config.h)
@@ -14,6 +32,7 @@ dnl check for tools
 AC_PROG_CC
 AC_PROG_CC_STDC
 AM_PROG_AS
+
 
 dnl decide on error flags
 AS_COMPILER_FLAG(-Wall, WALL="yes", WALL="no")

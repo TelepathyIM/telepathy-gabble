@@ -3132,8 +3132,8 @@ service_info_cb (GabbleDisco *disco,
       type = lm_message_node_get_attribute (identity, "type");
       g_debug ("%s: got identity, category=%s, type=%s", G_STRFUNC,
                category, type);
-      if (category && 0 == strcmp (category, "conference")
-                   && 0 == strcmp (type, "text"))
+      if (category && 0 == strcmp (category, "conference") &&
+          type && 0 == strcmp (type, "text"))
         {
           for (feature = result->children; feature; feature = feature->next)
             {

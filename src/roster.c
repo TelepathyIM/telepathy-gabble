@@ -613,8 +613,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
   iq_node = lm_message_get_node (message);
   query_node = lm_message_node_get_child (iq_node, "query");
 
-  if (!query_node || strcmp (NS_ROSTER,
-        lm_message_node_get_attribute (query_node, "xmlns")))
+  if (!query_node || !_lm_message_node_has_namespace (query_node, NS_ROSTER))
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
   from = lm_message_node_get_attribute (message->node, "from");

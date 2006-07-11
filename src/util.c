@@ -33,7 +33,7 @@ g_strdiff (const gchar *left, const gchar *right)
   if ((NULL == left) != (NULL == right))
     return TRUE;
 
-  else if (NULL == left && NULL == right)
+  else if (left == right)
     return FALSE;
 
   else

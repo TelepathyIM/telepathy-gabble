@@ -2355,17 +2355,13 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
     {
       if (strcmp (node->name, "x") == 0)
         {
-          if (strcmp (lm_message_node_get_attribute (node, "xmlns"),
-                      "jabber:x:data") != 0)
-            {
-              continue;
-            }
+          const gchar *type = lm_message_node_get_attribute (node, "type");
 
-          if (strcmp (lm_message_node_get_attribute (node, "type"),
-                      "form") != 0)
-            {
-              continue;
-            }
+          if (!_lm_message_node_has_namespace (node, NS_DATA))
+            continue;
+
+          if (g_strdiff (type, "form"))
+            continue;
 
           form_node = node;
           break;

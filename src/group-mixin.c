@@ -150,6 +150,8 @@ void gabble_group_mixin_finalize (GObject *obj)
 
   g_hash_table_destroy (mixin->priv->handle_owners);
 
+  g_free (mixin->priv);
+
   handle_set_destroy (mixin->members);
   handle_set_destroy (mixin->local_pending);
   handle_set_destroy (mixin->remote_pending);

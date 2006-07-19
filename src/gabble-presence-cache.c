@@ -441,7 +441,9 @@ _parse_presence_message (GabblePresenceCache *cache,
   if (child_node)
     {
       const gchar *prio = lm_message_node_get_value (child_node);
-      priority = CLAMP (atoi (prio), G_MININT8, G_MAXINT8);
+
+      if (prio != NULL)
+        priority = CLAMP (atoi (prio), G_MININT8, G_MAXINT8);
     }
 
   switch (lm_message_get_sub_type (message))

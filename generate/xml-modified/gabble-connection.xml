@@ -25,6 +25,7 @@
       <arg direction="out" type="s"/>
     </method>
     <method name="InspectHandles">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value=""/>
       <arg direction="in" name="handle_type" type="u"/>
       <arg direction="in" name="handles" type="au"/>
       <arg direction="out" type="as"/>

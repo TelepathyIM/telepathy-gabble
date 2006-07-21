@@ -3794,47 +3794,52 @@ gboolean gabble_connection_inspect_handle (GabbleConnection *obj, guint handle_t
   return TRUE;
 }
 
-gboolean gabble_connection_inspect_handles (GabbleConnection *obj, guint handle_type, const GArray *handles, gchar ***ret, GError **error)
+gboolean gabble_connection_inspect_handles (GabbleConnection *obj, guint handle_type, const GArray *handles, DBusGMethodInvocation *context)
 {
   GabbleConnectionPrivate *priv;
-  char **tmp;
-  const gchar *tmp2;
+  GError *error = NULL;
+  const gchar **ret;
   int i;
-  GabbleHandle handle;
 
   g_assert (GABBLE_IS_CONNECTION (obj));
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
 
-  ERROR_IF_NOT_CONNECTED (obj, *error);
+  ERROR_IF_NOT_CONNECTED_ASYNC (obj, error, context);
 
-  for (i=0; i<handles->len; i++)
+  if (!gabble_handles_are_valid (obj->handles,
+                                 handle_type,
+                                 handles,
+                                 FALSE,
+                                 &error))
     {
-      handle = g_array_index (handles, guint, i);
+      dbus_g_method_return_error (context, error);
 
-      if (!gabble_handle_is_valid (obj->handles,
-                                   handle_type,
-                                   handle,
-                                   error))
-        return FALSE;
+      g_error_free (error);
+
+      return FALSE;
     }
 
-  tmp = g_new (gchar *, handles->len+1);
+  ret = g_new (const gchar *, handles->len + 1);
 
-  for (i=0; i<handles->len; i++)
+  for (i = 0; i < handles->len; i++)
     {
-      handle = g_array_index (handles, guint, i);
+      GabbleHandle handle;
+      const gchar *tmp;
 
-      tmp2 = gabble_handle_inspect (obj->handles, handle_type, handle);
-	  g_assert (tmp2 != NULL);
+      handle = g_array_index (handles, GabbleHandle, i);
+      tmp = gabble_handle_inspect (obj->handles, handle_type, handle);
+      g_assert (tmp != NULL);
 
-      tmp[i] = g_strdup(tmp2);
+      ret[i] = tmp;
     }
-  
-  tmp[i] = NULL;
-  
-  *ret = tmp;
-  
+
+  ret[i] = NULL;
+
+  dbus_g_method_return (context, ret);
+
+  g_free (ret);
+
   return TRUE;
 }
 

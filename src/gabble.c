@@ -33,6 +33,7 @@
 #include <signal.h>
 #endif /* HAVE_SIGNAL_H */
 
+#include "debug.h"
 #include "gabble-connection-manager.h"
 #include "telepathy-errors.h"
 #include "telepathy-errors-enumtypes.h"
@@ -142,6 +143,8 @@ main (int argc,
   g_type_init();
 
   g_set_prgname("telepathy-gabble");
+
+  gabble_debug_set_flags_from_env ();
 
     {
       GLogLevelFlags fatal_mask;

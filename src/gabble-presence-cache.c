@@ -21,9 +21,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "namespaces.h"
+#define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 
+#include "debug.h"
 #include "gabble-presence.h"
+#include "namespaces.h"
 #include "util.h"
 
 #include "gabble-presence-cache.h"
@@ -161,7 +163,7 @@ gabble_presence_cache_dispose (GObject *object)
   if (priv->dispose_has_run)
     return;
 
-  g_debug ("%s: dispose called", G_STRFUNC);
+  DEBUG ("%s: dispose called", G_STRFUNC);
 
   priv->dispose_has_run = TRUE;
 
@@ -179,7 +181,7 @@ gabble_presence_cache_dispose (GObject *object)
 static void
 gabble_presence_cache_finalize (GObject *object)
 {
-  g_debug ("%s called with %p", G_STRFUNC, object);
+  DEBUG ("%s called with %p", G_STRFUNC, object);
 
   G_OBJECT_CLASS (gabble_presence_cache_parent_class)->finalize (object);
 }
@@ -356,7 +358,7 @@ _presence_node_get_status (LmMessageNode *pres_node)
     return GABBLE_PRESENCE_XA;
   else
     {
-      HANDLER_DEBUG (pres_node,
+      IF_DEBUG HANDLER_DEBUG (pres_node,
         "unrecognised <show/> value received from server, "
         "setting presence to available");
       return GABBLE_PRESENCE_AVAILABLE;
@@ -389,7 +391,7 @@ _grab_nickname (GabblePresenceCache *cache,
     return;
 
   nickname = lm_message_node_get_value (node);
-  g_debug ("got nickname \"%s\" for %s", nickname, from);
+  DEBUG ("got nickname \"%s\" for %s", nickname, from);
 
   if (g_strdiff (presence->nickname, nickname))
     {
@@ -422,7 +424,7 @@ _parse_presence_message (GabblePresenceCache *cache,
 
   if (resource == NULL)
     {
-      HANDLER_DEBUG (presence_node, "ignoring presence with no resource");
+      IF_DEBUG HANDLER_DEBUG (presence_node, "ignoring presence with no resource");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
@@ -458,7 +460,7 @@ _parse_presence_message (GabblePresenceCache *cache,
         {
           presence = gabble_presence_cache_get (cache, handle);
           g_assert (NULL != presence);
-          g_debug ("%s: %s has voice-v1 support", G_STRFUNC, from);
+          DEBUG ("%s: %s has voice-v1 support", G_STRFUNC, from);
           gabble_presence_set_capabilities (presence, resource,
               PRESENCE_CAP_GOOGLE_VOICE);
         }
@@ -467,7 +469,7 @@ _parse_presence_message (GabblePresenceCache *cache,
       goto OUT;
 
     case LM_MESSAGE_SUB_TYPE_ERROR:
-      HANDLER_DEBUG (presence_node, "setting contact offline due to error");
+      IF_DEBUG HANDLER_DEBUG (presence_node, "setting contact offline due to error");
       /* fall through */
 
     case LM_MESSAGE_SUB_TYPE_UNAVAILABLE:
@@ -538,7 +540,7 @@ gabble_presence_cache_lm_message_cb (LmMessageHandler *handler,
 
   if (NULL == from)
     {
-      HANDLER_DEBUG (message->node, "presence stanza without from attribute, ignoring");
+      IF_DEBUG HANDLER_DEBUG (message->node, "presence stanza without from attribute, ignoring");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
@@ -546,13 +548,13 @@ gabble_presence_cache_lm_message_cb (LmMessageHandler *handler,
 
   if (0 == handle)
     {
-      HANDLER_DEBUG (message->node, "ignoring presence from malformed jid");
+      IF_DEBUG HANDLER_DEBUG (message->node, "ignoring presence from malformed jid");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
   if (handle == priv->conn->self_handle)
     {
-      HANDLER_DEBUG (message->node, "ignoring presence from ourselves on another resource");
+      IF_DEBUG HANDLER_DEBUG (message->node, "ignoring presence from ourselves on another resource");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
@@ -608,7 +610,7 @@ gabble_presence_cache_maybe_remove (
 
       jid = gabble_handle_inspect (priv->conn->handles, TP_HANDLE_TYPE_CONTACT,
           handle);
-      g_debug ("%s: discarding cached presence for unavailable jid %s",
+      DEBUG ("%s: discarding cached presence for unavailable jid %s",
           G_STRFUNC, jid);
       g_hash_table_remove (priv->presence, GINT_TO_POINTER (handle));
       gabble_handle_unref (priv->conn->handles, TP_HANDLE_TYPE_CONTACT, handle);
@@ -644,7 +646,7 @@ gabble_presence_cache_update (
 
   jid = gabble_handle_inspect (priv->conn->handles, TP_HANDLE_TYPE_CONTACT,
       handle);
-  g_debug ("%s: %s (%d) resource %s prio %d presence %d message \"%s\"",
+  DEBUG ("%s: %s (%d) resource %s prio %d presence %d message \"%s\"",
       G_STRFUNC, jid, handle, resource, priority, presence_id, status_message);
 
   presence = gabble_presence_cache_get (cache, handle);

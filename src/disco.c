@@ -28,6 +28,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define DEBUG_FLAG GABBLE_DEBUG_DISCO
+
+#include "debug.h"
 #include "disco.h"
 #include "gabble-connection.h"
 #include "gabble-error.h"
@@ -172,7 +175,7 @@ gabble_disco_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  g_debug ("%s: dispose called", G_STRFUNC);
+  DEBUG ("%s: dispose called", G_STRFUNC);
 
   for (li = g_list_first (priv->requests); li; li = li->next)
     {
@@ -188,7 +191,7 @@ gabble_disco_dispose (GObject *object)
 void
 gabble_disco_finalize (GObject *object)
 {
-  g_debug ("%s called with %p", G_STRFUNC, object);
+  DEBUG ("%s called with %p", G_STRFUNC, object);
 
   G_OBJECT_CLASS (gabble_disco_parent_class)->finalize (object);
 }
@@ -400,7 +403,7 @@ gabble_disco_request_with_timeout (GabbleDisco *self, GabbleDiscoType type,
   if (NULL != object)
     g_object_weak_ref (object, notify_delete_request, request);
 
-  g_debug ("%s: Creating disco request %p for %s",
+  DEBUG ("%s: Creating disco request %p for %s",
            G_STRFUNC, request, request->jid);
 
   priv->requests = g_list_prepend (priv->requests, request);

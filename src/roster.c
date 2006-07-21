@@ -27,6 +27,9 @@
 #include "telepathy-interfaces.h"
 #include "tp-channel-factory-iface.h"
 
+#define DEBUG_FLAG GABBLE_DEBUG_ROSTER
+
+#include "debug.h"
 #include "gabble-connection.h"
 #include "gabble-roster-channel.h"
 #include "namespaces.h"
@@ -169,7 +172,7 @@ gabble_roster_dispose (GObject *object)
   if (priv->dispose_has_run)
     return;
 
-  g_debug ("%s: dispose called", G_STRFUNC);
+  DEBUG ("%s: dispose called", G_STRFUNC);
 
   priv->dispose_has_run = TRUE;
 
@@ -189,7 +192,7 @@ gabble_roster_finalize (GObject *object)
   GabbleRoster *self = GABBLE_ROSTER (object);
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (self);
 
-  g_debug ("%s called with %p", G_STRFUNC, object);
+  DEBUG ("%s called with %p", G_STRFUNC, object);
 
   g_hash_table_destroy (priv->items);
 
@@ -286,7 +289,7 @@ _parse_item_subscription (LmMessageNode *item_node)
     return GABBLE_ROSTER_SUBSCRIPTION_REMOVE;
   else
     {
-      HANDLER_DEBUG (item_node, "got unexpected subscription value");
+      IF_DEBUG HANDLER_DEBUG (item_node, "got unexpected subscription value");
       return GABBLE_ROSTER_SUBSCRIPTION_NONE;
     }
 }
@@ -387,7 +390,7 @@ _gabble_roster_item_update (GabbleRoster *roster,
       g_free (item->name);
       item->name = g_strdup (name);
 
-      g_debug ("%s: name for handle %d changed to %s", G_STRFUNC, handle,
+      DEBUG ("%s: name for handle %d changed to %s", G_STRFUNC, handle,
           name);
       g_signal_emit (G_OBJECT (roster), signals[NICKNAME_UPDATE], 0, handle);
     }
@@ -515,21 +518,21 @@ _gabble_roster_create_channel (GabbleRoster *roster,
                        "handle", handle,
                        NULL);
 
-  g_debug ("%s: created %s", G_STRFUNC, object_path);
+  DEBUG ("%s: created %s", G_STRFUNC, object_path);
   g_free (object_path);
 
   g_hash_table_insert (priv->channels, GINT_TO_POINTER (handle), chan);
 
   if (priv->roster_received)
     {
-      g_debug ("%s: roster already received, emitting signal for %s list channel",
+      DEBUG ("%s: roster already received, emitting signal for %s list channel",
           G_STRFUNC, name);
 
       g_signal_emit_by_name (roster, "new-channel", chan);
     }
   else
     {
-      g_debug ("%s: roster not yet received, not emitting signal for %s list channel",
+      DEBUG ("%s: roster not yet received, not emitting signal for %s list channel",
           G_STRFUNC, name);
     }
 
@@ -565,7 +568,7 @@ _gabble_roster_emit_one (gpointer key,
   GabbleHandle handle = GPOINTER_TO_INT (key);
   const gchar *name = gabble_handle_inspect (priv->conn->handles, TP_HANDLE_TYPE_LIST, handle);
 
-  g_debug ("%s: roster now received, emitting signal signal for %s list channel",
+  DEBUG ("%s: roster now received, emitting signal signal for %s list channel",
       G_STRFUNC, name);
 
   g_signal_emit_by_name (roster, "new-channel", chan);
@@ -627,7 +630,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
 
       if (sender != priv->conn->self_handle)
         {
-          HANDLER_DEBUG (iq_node, "discarding roster IQ which is not from "
+          IF_DEBUG HANDLER_DEBUG (iq_node, "discarding roster IQ which is not from "
               "ourselves or the server");
           return LM_HANDLER_RESULT_REMOVE_MESSAGE;
         }
@@ -669,28 +672,28 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
 
           if (strcmp (item_node->name, "item"))
             {
-              HANDLER_DEBUG (item_node, "query sub-node is not item, skipping");
+              IF_DEBUG HANDLER_DEBUG (item_node, "query sub-node is not item, skipping");
               continue;
             }
 
           jid = lm_message_node_get_attribute (item_node, "jid");
           if (!jid)
             {
-              HANDLER_DEBUG (item_node, "item node has no jid, skipping");
+              IF_DEBUG HANDLER_DEBUG (item_node, "item node has no jid, skipping");
               continue;
             }
 
           handle = gabble_handle_for_contact (priv->conn->handles, jid, FALSE);
           if (handle == 0)
             {
-              HANDLER_DEBUG (item_node, "item jid is malformed, skipping");
+              IF_DEBUG HANDLER_DEBUG (item_node, "item jid is malformed, skipping");
               continue;
             }
 
           item = _gabble_roster_item_update (roster, handle, item_node);
             {
               gchar *dump = _gabble_roster_item_dump (item);
-              g_debug ("%s: jid: %s, %s", G_STRFUNC, jid, dump);
+              DEBUG ("%s: jid: %s, %s", G_STRFUNC, jid, dump);
               g_free (dump);
             }
 
@@ -736,21 +739,21 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
       handle = gabble_handle_for_list_publish (priv->conn->handles);
       chan = _gabble_roster_get_channel (roster, handle);
 
-      g_debug ("%s: calling change members on publish channel", G_STRFUNC);
+      DEBUG ("%s: calling change members on publish channel", G_STRFUNC);
       gabble_group_mixin_change_members (G_OBJECT (chan),
             "", pub_add, pub_rem, empty, empty);
 
       handle = gabble_handle_for_list_subscribe (priv->conn->handles);
       chan = _gabble_roster_get_channel (roster, handle);
 
-      g_debug ("%s: calling change members on subscribe channel", G_STRFUNC);
+      DEBUG ("%s: calling change members on subscribe channel", G_STRFUNC);
       gabble_group_mixin_change_members (G_OBJECT (chan),
             "", sub_add, sub_rem, empty, sub_rp);
 
       handle = gabble_handle_for_list_known (priv->conn->handles);
       chan = _gabble_roster_get_channel (roster, handle);
 
-      g_debug ("%s: calling change members on known channel", G_STRFUNC);
+      DEBUG ("%s: calling change members on known channel", G_STRFUNC);
       gabble_group_mixin_change_members (G_OBJECT (chan),
             "", known_add, known_rem, empty, empty);
 
@@ -764,7 +767,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
       g_intset_destroy (known_rem);
       break;
     default:
-      HANDLER_DEBUG (iq_node, "unhandled roster IQ");
+      IF_DEBUG HANDLER_DEBUG (iq_node, "unhandled roster IQ");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
@@ -798,7 +801,7 @@ _gabble_roster_send_presence_ack (GabbleRoster *roster,
 
   if (!changed)
     {
-      g_debug ("%s: not sending ack to avoid loop with buggy server",
+      DEBUG ("%s: not sending ack to avoid loop with buggy server",
           G_STRFUNC);
       return;
     }
@@ -866,7 +869,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
 
   if (from == NULL)
     {
-      HANDLER_DEBUG (pres_node, "presence stanza without from attribute, ignoring");
+      IF_DEBUG HANDLER_DEBUG (pres_node, "presence stanza without from attribute, ignoring");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
@@ -876,13 +879,13 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
 
   if (handle == 0)
     {
-      HANDLER_DEBUG (pres_node, "ignoring presence from malformed jid");
+      IF_DEBUG HANDLER_DEBUG (pres_node, "ignoring presence from malformed jid");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
   if (handle == priv->conn->self_handle)
     {
-      HANDLER_DEBUG (pres_node, "ignoring presence from ourselves on another resource");
+      IF_DEBUG HANDLER_DEBUG (pres_node, "ignoring presence from ourselves on another resource");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
@@ -895,7 +898,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
   switch (sub_type)
     {
     case LM_MESSAGE_SUB_TYPE_SUBSCRIBE:
-      g_debug ("%s: making %s (handle %u) local pending on the publish channel",
+      DEBUG ("%s: making %s (handle %u) local pending on the publish channel",
           G_STRFUNC, from, handle);
 
       empty = g_intset_new ();
@@ -912,7 +915,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
 
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     case LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE:
-      g_debug ("%s: removing %s (handle %u) from the publish channel",
+      DEBUG ("%s: removing %s (handle %u) from the publish channel",
           G_STRFUNC, from, handle);
 
       empty = g_intset_new ();
@@ -931,7 +934,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
 
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     case LM_MESSAGE_SUB_TYPE_SUBSCRIBED:
-      g_debug ("%s: adding %s (handle %u) to the subscribe channel",
+      DEBUG ("%s: adding %s (handle %u) to the subscribe channel",
           G_STRFUNC, from, handle);
 
       empty = g_intset_new ();
@@ -950,7 +953,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
 
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     case LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED:
-      g_debug ("%s: removing %s (handle %u) from the subscribe channel",
+      DEBUG ("%s: removing %s (handle %u) from the subscribe channel",
           G_STRFUNC, from, handle);
 
       empty = g_intset_new ();
@@ -979,7 +982,7 @@ gabble_roster_factory_iface_close_all (TpChannelFactoryIface *iface)
   GabbleRoster *roster = GABBLE_ROSTER (iface);
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
 
-  g_debug ("%s: closing channels", G_STRFUNC);
+  DEBUG ("%s: closing channels", G_STRFUNC);
 
   if (priv->channels)
     {
@@ -994,7 +997,7 @@ gabble_roster_factory_iface_connecting (TpChannelFactoryIface *iface)
   GabbleRoster *roster = GABBLE_ROSTER (iface);
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
 
-  g_debug ("%s: adding callbacks", G_STRFUNC);
+  DEBUG ("%s: adding callbacks", G_STRFUNC);
 
   g_assert (priv->iq_cb == NULL);
   g_assert (priv->presence_cb == NULL);
@@ -1022,7 +1025,7 @@ gabble_roster_factory_iface_connected (TpChannelFactoryIface *iface)
   LmMessage *message;
   LmMessageNode *msgnode;
 
-  g_debug ("%s: requesting roster", G_STRFUNC);
+  DEBUG ("%s: requesting roster", G_STRFUNC);
 
   message = lm_message_new_with_sub_type (NULL,
                                           LM_MESSAGE_TYPE_IQ,
@@ -1044,7 +1047,7 @@ gabble_roster_factory_iface_disconnected (TpChannelFactoryIface *iface)
   GabbleRoster *roster = GABBLE_ROSTER (iface);
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
 
-  g_debug ("%s: removing callbacks", G_STRFUNC);
+  DEBUG ("%s: removing callbacks", G_STRFUNC);
 
   g_assert (priv->iq_cb != NULL);
   g_assert (priv->presence_cb != NULL);

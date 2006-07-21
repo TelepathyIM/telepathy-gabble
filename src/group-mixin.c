@@ -27,6 +27,9 @@
 
 #include "telepathy-errors.h"
 
+#define DEBUG_FLAG GABBLE_DEBUG_GROUPS
+
+#include "debug.h"
 #include "group-mixin.h"
 #include "group-mixin-signals-marshal.h"
 
@@ -210,7 +213,7 @@ gabble_group_mixin_add_members (GObject *obj, const GArray *contacts, const gcha
       if ((mixin->group_flags & TP_CHANNEL_GROUP_FLAG_CAN_ADD) == 0 &&
           !handle_set_is_member (mixin->local_pending, handle))
         {
-          g_debug ("%s: handle %u cannot be added to members without GROUP_FLAG_CAN_ADD",
+          DEBUG ("%s: handle %u cannot be added to members without GROUP_FLAG_CAN_ADD",
               G_STRFUNC, handle);
 
           *error = g_error_new (TELEPATHY_ERRORS, PermissionDenied,
@@ -228,7 +231,7 @@ gabble_group_mixin_add_members (GObject *obj, const GArray *contacts, const gcha
 
       if (handle_set_is_member (mixin->members, handle))
         {
-          g_debug ("%s: handle %u is already a member, skipping", G_STRFUNC, handle);
+          DEBUG ("%s: handle %u is already a member, skipping", G_STRFUNC, handle);
 
           continue;
         }
@@ -267,7 +270,7 @@ gabble_group_mixin_remove_members (GObject *obj, const GArray *contacts, const g
         {
           if ((mixin->group_flags & TP_CHANNEL_GROUP_FLAG_CAN_REMOVE) == 0)
             {
-              g_debug ("%s: handle %u cannot be removed from members without GROUP_FLAG_CAN_REMOVE",
+              DEBUG ("%s: handle %u cannot be removed from members without GROUP_FLAG_CAN_REMOVE",
                   G_STRFUNC, handle);
 
               *error = g_error_new (TELEPATHY_ERRORS, PermissionDenied,
@@ -281,7 +284,7 @@ gabble_group_mixin_remove_members (GObject *obj, const GArray *contacts, const g
         {
           if ((mixin->group_flags & TP_CHANNEL_GROUP_FLAG_CAN_RESCIND) == 0)
             {
-              g_debug ("%s: handle %u cannot be removed from remote pending without GROUP_FLAG_CAN_RESCIND",
+              DEBUG ("%s: handle %u cannot be removed from remote pending without GROUP_FLAG_CAN_RESCIND",
                   G_STRFUNC, handle);
 
               *error = g_error_new (TELEPATHY_ERRORS, PermissionDenied,
@@ -293,7 +296,7 @@ gabble_group_mixin_remove_members (GObject *obj, const GArray *contacts, const g
         }
       else if (!handle_set_is_member (mixin->local_pending, handle))
         {
-          g_debug ("%s: handle %u is not a current or pending member",
+          DEBUG ("%s: handle %u is not a current or pending member",
                    G_STRFUNC, handle);
 
           *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
@@ -467,22 +470,25 @@ gabble_group_mixin_change_flags (GObject *obj,
     {
       gchar *str_added, *str_removed, *str_flags;
 
-      str_added = group_flags_to_string (added);
-      str_removed = group_flags_to_string (removed);
-      str_flags = group_flags_to_string (mixin->group_flags);
+      IF_DEBUG
+        {
+          str_added = group_flags_to_string (added);
+          str_removed = group_flags_to_string (removed);
+          str_flags = group_flags_to_string (mixin->group_flags);
 
-      printf (ANSI_BOLD_ON ANSI_FG_WHITE
-              "%s: emitting group flags changed\n"
-              "  added    : %s\n"
-              "  removed  : %s\n"
-              "  flags now: %s\n" ANSI_RESET,
-              G_STRFUNC, str_added, str_removed, str_flags);
+          printf (ANSI_BOLD_ON ANSI_FG_WHITE
+                  "%s: emitting group flags changed\n"
+                  "  added    : %s\n"
+                  "  removed  : %s\n"
+                  "  flags now: %s\n" ANSI_RESET,
+                  G_STRFUNC, str_added, str_removed, str_flags);
 
-      fflush (stdout);
+          fflush (stdout);
 
-      g_free (str_added);
-      g_free (str_removed);
-      g_free (str_flags);
+          g_free (str_added);
+          g_free (str_removed);
+          g_free (str_flags);
+        }
 
       g_signal_emit(obj, mixin_cls->group_flags_changed_signal_id, 0, added, removed);
     }
@@ -610,28 +616,29 @@ gabble_group_mixin_change_members (GObject *obj,
       /* remove any handle owner mappings */
       remove_handle_owners_if_exist (obj, arr_remove);
 
-      /* debug start */
-      add_str = member_array_to_string (mixin->handle_repo, arr_add);
-      rem_str = member_array_to_string (mixin->handle_repo, arr_remove);
-      local_str = member_array_to_string (mixin->handle_repo, arr_local);
-      remote_str = member_array_to_string (mixin->handle_repo, arr_remote);
+      IF_DEBUG
+        {
+          add_str = member_array_to_string (mixin->handle_repo, arr_add);
+          rem_str = member_array_to_string (mixin->handle_repo, arr_remove);
+          local_str = member_array_to_string (mixin->handle_repo, arr_local);
+          remote_str = member_array_to_string (mixin->handle_repo, arr_remote);
 
-      printf (ANSI_BOLD_ON ANSI_FG_CYAN
-              "%s: emitting members changed\n"
-              "  message       : \"%s\"\n"
-              "  added         : %s\n"
-              "  removed       : %s\n"
-              "  local_pending : %s\n"
-              "  remote_pending: %s\n" ANSI_RESET,
-              G_STRFUNC, message, add_str, rem_str, local_str, remote_str);
+          printf (ANSI_BOLD_ON ANSI_FG_CYAN
+                  "%s: emitting members changed\n"
+                  "  message       : \"%s\"\n"
+                  "  added         : %s\n"
+                  "  removed       : %s\n"
+                  "  local_pending : %s\n"
+                  "  remote_pending: %s\n" ANSI_RESET,
+                  G_STRFUNC, message, add_str, rem_str, local_str, remote_str);
 
-      fflush (stdout);
+          fflush (stdout);
 
-      g_free (add_str);
-      g_free (rem_str);
-      g_free (local_str);
-      g_free (remote_str);
-      /* debug end */
+          g_free (add_str);
+          g_free (rem_str);
+          g_free (local_str);
+          g_free (remote_str);
+        }
 
       /* emit signal */
       g_signal_emit(obj, mixin_cls->members_changed_signal_id, 0,
@@ -649,7 +656,7 @@ gabble_group_mixin_change_members (GObject *obj,
     }
   else
     {
-      g_debug ("%s: not emitting signal, nothing changed", G_STRFUNC);
+      DEBUG ("%s: not emitting signal, nothing changed", G_STRFUNC);
 
       ret = FALSE;
     }

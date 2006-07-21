@@ -48,6 +48,8 @@ bin_PROGRAMS=telepathy-gabble
 
 CORE_SOURCES = \
     ansi.h \
+    debug.h \
+    debug.c \
     disco.h \
     disco.c \
     gabble-error.c \

@@ -65,3 +65,22 @@ lm_message_node_add_own_nick (LmMessageNode *node,
   g_free (nick);
 }
 
+void
+lm_message_node_steal_children (LmMessageNode *snatcher,
+                                LmMessageNode *mum)
+{
+  LmMessageNode *baby;
+
+  g_return_if_fail (snatcher->children == NULL);
+
+  if (mum->children == NULL)
+    return;
+
+  snatcher->children = mum->children;
+  mum->children = NULL;
+
+  for (baby = snatcher->children;
+       baby != NULL;
+       baby = baby->next)
+    baby->parent = snatcher;
+}

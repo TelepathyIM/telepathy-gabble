@@ -3794,6 +3794,49 @@ gboolean gabble_connection_inspect_handle (GabbleConnection *obj, guint handle_t
   return TRUE;
 }
 
+gboolean gabble_connection_inspect_handles (GabbleConnection *obj, guint handle_type, const GArray *handles, gchar ***ret, GError **error)
+{
+  GabbleConnectionPrivate *priv;
+  char **tmp;
+  const gchar *tmp2;
+  int i;
+  GabbleHandle handle;
+
+  g_assert (GABBLE_IS_CONNECTION (obj));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  ERROR_IF_NOT_CONNECTED (obj, *error);
+
+  for (i=0; i<handles->len; i++)
+    {
+      handle = g_array_index (handles, guint, i);
+
+      if (!gabble_handle_is_valid (obj->handles,
+                                   handle_type,
+                                   handle,
+                                   error))
+        return FALSE;
+    }
+
+  tmp = g_new (gchar *, handles->len+1);
+
+  for (i=0; i<handles->len; i++)
+    {
+      handle = g_array_index (handles, guint, i);
+
+      tmp2 = gabble_handle_inspect (obj->handles, handle_type, handle);
+	  g_assert (tmp2 != NULL);
+
+      tmp[i] = g_strdup(tmp2);
+    }
+  
+  tmp[i] = NULL;
+  
+  *ret = tmp;
+  
+  return TRUE;
+}
 
 /**
  * list_channel_factory_foreach_one:

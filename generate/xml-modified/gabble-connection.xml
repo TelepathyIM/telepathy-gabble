@@ -24,6 +24,11 @@
       <arg direction="in" name="handle" type="u"/>
       <arg direction="out" type="s"/>
     </method>
+    <method name="InspectHandles">
+      <arg direction="in" name="handle_type" type="u"/>
+      <arg direction="in" name="handles" type="au"/>
+      <arg direction="out" type="as"/>
+    </method>
     <method name="ListChannels">
       <arg direction="out" type="a(osuu)"/>
     </method>

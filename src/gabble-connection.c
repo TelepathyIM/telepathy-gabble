@@ -2361,12 +2361,7 @@ _gabble_connection_send_iq_error (GabbleConnection *conn,
 
   lm_message_node_set_attribute (msg->node, "id", id);
 
-  if (iq_node->children != NULL)
-    {
-      msg->node->children = iq_node->children;
-      msg->node->children->parent = msg->node;
-      iq_node->children = NULL;
-    }
+  lm_message_node_steal_children (msg->node, iq_node);
 
   gabble_xmpp_error_to_node (error, msg->node);
 

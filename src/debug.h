@@ -14,8 +14,6 @@ enum
   GABBLE_DEBUG_DISCO    = 1 << 3,
 };
 
-#define GABBLE_DEBUG_ALL 0xffffffff
-
 void gabble_debug_set_flags_from_env ();
 void gabble_debug_set_flags (guint flags);
 gboolean gabble_debug_flag_is_set (guint flag);

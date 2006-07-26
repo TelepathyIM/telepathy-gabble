@@ -1026,6 +1026,8 @@ _gabble_media_session_debug (GabbleMediaSession *session,
                              DebugMessageType type,
                              const gchar *format, ...)
 {
+  BEGIN_DEBUG
+
   va_list list;
   gchar buf[512];
   GabbleMediaSessionPrivate *priv;
@@ -1081,6 +1083,8 @@ _gabble_media_session_debug (GabbleMediaSession *session,
       ANSI_RESET);
 
   fflush (stdout);
+
+  END_DEBUG
 }
 
 void

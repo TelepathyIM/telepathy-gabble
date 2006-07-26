@@ -110,6 +110,7 @@ void _gabble_media_session_stream_state (GabbleMediaSession *sess, guint state);
 #endif
 
 #if _GMS_DEBUG_LEVEL
+#ifdef ENABLE_DEBUG
 
 #define GMS_DEBUG_INFO(s, ...)    _gabble_media_session_debug (s, DEBUG_MSG_INFO, __VA_ARGS__)
 #if _GMS_DEBUG_LEVEL > 1
@@ -133,7 +134,8 @@ void _gabble_media_session_debug (GabbleMediaSession *session,
 #define GMS_DEBUG_ERROR(s, ...)
 #define GMS_DEBUG_EVENT(s, ...)
 
-#endif
+#endif /* ENABLE_DEBUG */
+#endif /* _GMS_DEBUG_LEVEL */
 
 G_END_DECLS
 

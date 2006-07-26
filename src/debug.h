@@ -25,7 +25,7 @@ void gabble_debug (guint flag, const gchar *format, ...);
   gabble_debug(DEBUG_FLAG, format, __VA_ARGS__)
 
 #define IF_DEBUG if (gabble_debug_flag_is_set (DEBUG_FLAG))
-#endif
+#endif /* DEBUG_FLAG */
 
 G_END_DECLS
 

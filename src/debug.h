@@ -47,7 +47,6 @@ G_STMT_START { \
   g_free (debug_tmp); \
 } G_STMT_END
 
-
 #endif /* DEBUG_FLAG */
 
 #else /* ENABLE_DEBUG */

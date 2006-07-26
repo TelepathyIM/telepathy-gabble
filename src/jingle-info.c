@@ -127,8 +127,7 @@ jingle_info_iq_callback (LmMessageHandler *handler,
                   str = lm_message_node_get_attribute (node, "host");
                   if (str)
                     {
-                      DEBUG ("%s: setting 'stun-server' to '%s'", G_STRFUNC,
-                               str);
+                      DEBUG_FUNC ("setting 'stun-server' to '%s'", str);
 
                       g_object_set (conn, "stun-server", str, NULL);
                     }
@@ -161,8 +160,8 @@ jingle_info_iq_callback (LmMessageHandler *handler,
                   str = lm_message_node_get_attribute (node, "host");
                   if (str)
                     {
-                      DEBUG ("%s: setting 'stun-relay-server' to '%s'",
-                               G_STRFUNC, str);
+                      DEBUG_FUNC ("setting 'stun-relay-server' to '%s'",
+                               str);
 
                       g_object_set (conn, "stun-relay-server", str, NULL);
                     }
@@ -172,8 +171,8 @@ jingle_info_iq_callback (LmMessageHandler *handler,
                     {
                       port = atoi (str);
 
-                      DEBUG ("%s: setting 'stun-relay-udp-port' to %d",
-                               G_STRFUNC, port);
+                      DEBUG_FUNC ("setting 'stun-relay-udp-port' to %d",
+                               port);
 
                       g_object_set (conn, "stun-relay-udp-port", port, NULL);
                     }
@@ -183,8 +182,8 @@ jingle_info_iq_callback (LmMessageHandler *handler,
                     {
                       port = atoi (str);
 
-                      DEBUG ("%s: setting 'stun-relay-tcp-port' to %d",
-                               G_STRFUNC, port);
+                      DEBUG_FUNC ("setting 'stun-relay-tcp-port' to %d",
+                               port);
 
                       g_object_set (conn, "stun-relay-tcp-port", port, NULL);
                     }
@@ -194,8 +193,8 @@ jingle_info_iq_callback (LmMessageHandler *handler,
                     {
                       port = atoi (str);
 
-                      DEBUG ("%s: setting 'stun-relay-ssltcp-port' to %d",
-                               G_STRFUNC, port);
+                      DEBUG_FUNC ("setting 'stun-relay-ssltcp-port' to %d",
+                               port);
 
                       g_object_set (conn, "stun-relay-ssltcp-port", port, NULL);
                     }
@@ -207,8 +206,8 @@ jingle_info_iq_callback (LmMessageHandler *handler,
                   str = lm_message_node_get_value (node);
                   if (str)
                     {
-                      DEBUG ("%s: setting 'stun-relay-magic-cookie' to '%s'",
-                               G_STRFUNC, str);
+                      DEBUG_FUNC ("setting 'stun-relay-magic-cookie' to '%s'",
+                               str);
 
                       g_object_set (conn, "stun-relay-magic-cookie", str, NULL);
                     }

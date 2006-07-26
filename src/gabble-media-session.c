@@ -646,7 +646,7 @@ timeout_session (gpointer data)
 {
   GabbleMediaSession *session = data;
 
-  DEBUG ("%s: session timed out", G_STRFUNC);
+  DEBUG_FUNC ("session timed out");
 
   _gabble_media_session_terminate (session);
 

@@ -308,7 +308,7 @@ gboolean gabble_text_mixin_receive (GObject *obj,
 
   if (msg == NULL)
     {
-      DEBUG ("%s: no more pending messages available, giving up", G_STRFUNC);
+      DEBUG_FUNC ("no more pending messages available, giving up");
 
       if (!mixin->message_lost)
         {
@@ -323,7 +323,7 @@ gboolean gabble_text_mixin_receive (GObject *obj,
 
   if (len > MAX_MESSAGE_SIZE)
     {
-      DEBUG ("%s: message exceeds maximum size, truncating", G_STRFUNC);
+      DEBUG_FUNC ("message exceeds maximum size, truncating");
 
       /* TODO: add CHANNEL_TEXT_MESSAGE_FLAG_TRUNCATED flag*/
 
@@ -338,7 +338,7 @@ gboolean gabble_text_mixin_receive (GObject *obj,
 
   if (msg->text == NULL)
     {
-      DEBUG ("%s: unable to allocate message, giving up", G_STRFUNC);
+      DEBUG_FUNC ("unable to allocate message, giving up");
 
       if (!mixin->message_lost)
         {
@@ -613,8 +613,7 @@ gabble_text_mixin_parse_incoming_message (LmMessage *message,
       if (error_node)
         {
           GabbleXmppError err = gabble_xmpp_error_from_node (error_node);
-          DEBUG ("%s: got xmpp error: %s: %s", G_STRFUNC,
-                 gabble_xmpp_error_string (err),
+          DEBUG_FUNC ("got xmpp error: %s: %s", gabble_xmpp_error_string (err),
                  gabble_xmpp_error_description (err));
 
           /* these are based on descriptions of errors, and some testing */

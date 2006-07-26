@@ -620,7 +620,7 @@ send_join_request (GabbleMucChannel *channel,
     }
   else
     {
-      DEBUG ("%s: join request sent", G_STRFUNC);
+      DEBUG_FUNC ("join request sent");
     }
 
   lm_message_unref (msg);
@@ -658,7 +658,7 @@ send_leave_message (GabbleMucChannel *channel,
     }
   else
     {
-      DEBUG ("%s: leave message sent", G_STRFUNC);
+      DEBUG_FUNC ("leave message sent");
     }
 
   lm_message_unref (msg);
@@ -930,8 +930,8 @@ change_password_flags (GabbleMucChannel *chan,
 
   if (add != 0 || remove != 0)
     {
-      DEBUG ("%s: emitting password flags changed, added 0x%X, removed 0x%X",
-              G_STRFUNC, added, removed);
+      DEBUG_FUNC ("emitting password flags changed, added 0x%X, removed 0x%X",
+              added, removed);
 
       g_signal_emit (chan, signals[PASSWORD_FLAGS_CHANGED], 0, added, removed);
     }
@@ -961,7 +961,7 @@ timeout_join (gpointer data)
 {
   GabbleMucChannel *chan = data;
 
-  DEBUG ("%s: join timed out, closing channel", G_STRFUNC);
+  DEBUG_FUNC ("join timed out, closing channel");
 
   provide_password_return_if_pending (chan, FALSE);
 
@@ -975,7 +975,7 @@ timeout_poll (gpointer data)
 {
   GabbleMucChannel *chan = data;
 
-  DEBUG ("%s: polling for room properties", G_STRFUNC);
+  DEBUG_FUNC ("polling for room properties");
 
   room_properties_update (chan);
 
@@ -989,8 +989,7 @@ channel_state_changed (GabbleMucChannel *chan,
 {
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
 
-  DEBUG ("%s: state changed from %s to %s", G_STRFUNC,
-         muc_states[prev_state], muc_states[new_state]);
+  DEBUG_FUNC ("state changed from %s to %s", muc_states[prev_state], muc_states[new_state]);
 
   if (new_state == MUC_STATE_INITIATED)
     {
@@ -1130,8 +1129,7 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
           return;
         }
 
-      DEBUG ("%s: password required to join, changing password flags",
-               G_STRFUNC);
+      DEBUG_FUNC ("password required to join, changing password flags");
 
       change_password_flags (chan, TP_CHANNEL_PASSWORD_FLAG_PROVIDE, 0);
 
@@ -1665,11 +1663,11 @@ gboolean gabble_muc_channel_close (GabbleMucChannel *obj, GError **error)
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
 
-  DEBUG ("%s called on %p", G_STRFUNC, obj);
+  DEBUG_FUNC ("called on %p", obj);
 
   if (priv->closed)
     {
-      DEBUG ("%s: channel already closed", G_STRFUNC);
+      DEBUG_FUNC ("channel already closed");
 
       *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
                             "Channel already closed");
@@ -2403,16 +2401,16 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 
       var = lm_message_node_get_attribute (node, "var");
       if (var == NULL) {
-        DEBUG ("%s: skipping node '%s' because of lacking var attribute",
-               G_STRFUNC, node->name);
+        DEBUG_FUNC ("skipping node '%s' because of lacking var attribute",
+               node->name);
         continue;
       }
 
       value_node = lm_message_node_get_child (node, "value");
       if (value_node == NULL)
         {
-          DEBUG ("%s: skipping var '%s' because of lacking value attribute",
-                 G_STRFUNC, var);
+          DEBUG_FUNC ("skipping var '%s' because of lacking value attribute",
+                 var);
           continue;
         }
 

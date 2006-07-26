@@ -362,7 +362,7 @@ room_list_fill_disco_pipeline (GabbleRoomlistChannel *chan)
 
   if (priv->closed)
     {
-      DEBUG ("%s: not refilling pipeline, channel is closed", G_STRFUNC);
+      DEBUG_FUNC ("not refilling pipeline, channel is closed");
     }
   else
     {
@@ -468,8 +468,7 @@ room_info_cb (GabbleDisco *disco,
       0 != strcmp (type, "text"))
     goto done;
 
-  DEBUG ("%s: got room identity, name=%s, category=%s, type=%s", G_STRFUNC,
-      name, category, type);
+  DEBUG_FUNC ("got room identity, name=%s, category=%s, type=%s", name, category, type);
 
   keys = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
                                 (GDestroyNotify) destroy_value);
@@ -660,7 +659,7 @@ gboolean gabble_roomlist_channel_close (GabbleRoomlistChannel *obj, GError **err
 {
   g_assert (GABBLE_IS_ROOMLIST_CHANNEL (obj));
 
-  DEBUG ("%s called on %p", G_STRFUNC, obj);
+  DEBUG_FUNC ("called on %p", obj);
 
   g_object_run_dispose (G_OBJECT (obj));
 

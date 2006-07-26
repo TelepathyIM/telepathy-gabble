@@ -357,7 +357,7 @@ gboolean gabble_im_channel_close (GabbleIMChannel *obj, GError **error)
   priv = GABBLE_IM_CHANNEL_GET_PRIVATE (obj);
   priv->closed = TRUE;
 
-  DEBUG ("%s called on %p", G_STRFUNC, obj);
+  DEBUG_FUNC ("called on %p", obj);
   g_signal_emit(obj, signals[CLOSED], 0);
 
   return TRUE;

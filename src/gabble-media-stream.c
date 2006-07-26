@@ -559,7 +559,7 @@ gboolean gabble_media_stream_new_native_candidate (GabbleMediaStream *obj, const
    * isn't closed early enough right now? */
   if (state > JS_STATE_ACTIVE)
     {
-      DEBUG ("%s: state > JS_STATE_ACTIVE, doing nothing", G_STRFUNC);
+      DEBUG_FUNC ("state > JS_STATE_ACTIVE, doing nothing");
       return TRUE;
     }
 
@@ -1273,7 +1273,7 @@ _gabble_media_stream_set_playing (GabbleMediaStream *stream, gboolean playing)
   g_assert (GABBLE_IS_MEDIA_STREAM (stream));
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
-  DEBUG ("%s: Emitting SetStreamPlaying signal with %d",G_STRFUNC, playing);
+  DEBUG_FUNC ("emitting SetStreamPlaying signal with %d", playing);
   priv->playing = playing;
   if (priv->ready)
     g_signal_emit (stream, signals[SET_STREAM_PLAYING], 0, playing);

@@ -107,7 +107,7 @@ gabble_im_factory_dispose (GObject *object)
   if (priv->dispose_has_run)
     return;
 
-  DEBUG ("%s: dispose called", G_STRFUNC);
+  DEBUG_FUNC ("dispose called");
   priv->dispose_has_run = TRUE;
 
   tp_channel_factory_iface_close_all (TP_CHANNEL_FACTORY_IFACE (object));
@@ -223,8 +223,8 @@ im_factory_message_cb (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
-  DEBUG ("%s: message from %s (handle %u), msgtype %d, body:\n%s",
-         G_STRFUNC, from, handle, msgtype, body_offset);
+  DEBUG_FUNC ("message from %s (handle %u), msgtype %d, body:\n%s",
+         from, handle, msgtype, body_offset);
 
   chan = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (handle));
 
@@ -232,12 +232,11 @@ im_factory_message_cb (LmMessageHandler *handler,
     {
       if (send_error != CHANNEL_TEXT_SEND_NO_ERROR)
         {
-          DEBUG ("%s: ignoring message error; no sending channel",
-            G_STRFUNC);
+          DEBUG_FUNC ("ignoring message error; no sending channel");
           return LM_HANDLER_RESULT_REMOVE_MESSAGE;
         }
 
-      DEBUG ("%s: found no IM channel, creating one", G_STRFUNC);
+      DEBUG_FUNC ("found no IM channel, creating one");
 
       chan = new_im_channel (fac, handle);
     }
@@ -273,8 +272,7 @@ im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
     {
       g_object_get (chan, "handle", &contact_handle, NULL);
 
-      DEBUG ("%s: removing channel with handle %d", G_STRFUNC,
-          contact_handle);
+      DEBUG_FUNC ("removing channel with handle %d", contact_handle);
 
       g_hash_table_remove (priv->channels, GINT_TO_POINTER (contact_handle));
     }
@@ -321,7 +319,7 @@ gabble_im_factory_iface_close_all (TpChannelFactoryIface *iface)
   GabbleImFactory *fac = GABBLE_IM_FACTORY (iface);
   GabbleImFactoryPrivate *priv = GABBLE_IM_FACTORY_GET_PRIVATE (fac);
 
-  DEBUG ("%s: closing channels", G_STRFUNC);
+  DEBUG_FUNC ("closing channels");
 
   if (priv->channels)
     {
@@ -337,7 +335,7 @@ gabble_im_factory_iface_connecting (TpChannelFactoryIface *iface)
   GabbleImFactory *fac = GABBLE_IM_FACTORY (iface);
   GabbleImFactoryPrivate *priv = GABBLE_IM_FACTORY_GET_PRIVATE (fac);
 
-  DEBUG ("%s: adding callbacks", G_STRFUNC);
+  DEBUG_FUNC ("adding callbacks");
 
   g_assert (priv->message_cb == NULL);
 
@@ -361,7 +359,7 @@ gabble_im_factory_iface_disconnected (TpChannelFactoryIface *iface)
   GabbleImFactory *fac = GABBLE_IM_FACTORY (iface);
   GabbleImFactoryPrivate *priv = GABBLE_IM_FACTORY_GET_PRIVATE (fac);
 
-  DEBUG ("%s: removing callbacks", G_STRFUNC);
+  DEBUG_FUNC ("removing callbacks");
 
   g_assert (priv->message_cb != NULL);
 

@@ -678,9 +678,11 @@ gabble_properties_mixin_emit_changed (GObject *obj, GArray **props)
 
   prop_arr = g_ptr_array_sized_new ((*props)->len);
 
-  printf (ANSI_BOLD_ON ANSI_FG_CYAN
-          "%s: emitting properties changed for propert%s:\n",
-          G_STRFUNC, ((*props)->len > 1) ? "ies" : "y");
+  BEGIN_DEBUG
+    printf (ANSI_BOLD_ON ANSI_FG_CYAN
+            "%s: emitting properties changed for propert%s:\n",
+            G_STRFUNC, ((*props)->len > 1) ? "ies" : "y");
+  END_DEBUG
 
   for (i = 0; i < (*props)->len; i++)
     {
@@ -698,11 +700,15 @@ gabble_properties_mixin_emit_changed (GObject *obj, GArray **props)
 
       g_ptr_array_add (prop_arr, g_value_get_boxed (&prop_val));
 
-      printf ("  %s\n", mixin_cls->signatures[prop_id].name);
+      BEGIN_DEBUG
+        printf ("  %s\n", mixin_cls->signatures[prop_id].name);
+      END_DEBUG
     }
 
-  printf (ANSI_RESET);
+  BEGIN_DEBUG
+    printf (ANSI_RESET);
   fflush (stdout);
+  END_DEBUG
 
   g_signal_emit (obj, mixin_cls->properties_changed_signal_id, 0, prop_arr);
 

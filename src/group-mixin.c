@@ -213,8 +213,8 @@ gabble_group_mixin_add_members (GObject *obj, const GArray *contacts, const gcha
       if ((mixin->group_flags & TP_CHANNEL_GROUP_FLAG_CAN_ADD) == 0 &&
           !handle_set_is_member (mixin->local_pending, handle))
         {
-          DEBUG ("%s: handle %u cannot be added to members without GROUP_FLAG_CAN_ADD",
-              G_STRFUNC, handle);
+          DEBUG_FUNC ("handle %u cannot be added to members without GROUP_FLAG_CAN_ADD",
+              handle);
 
           *error = g_error_new (TELEPATHY_ERRORS, PermissionDenied,
               "handle %u cannot be added to members without GROUP_FLAG_CAN_ADD",
@@ -270,8 +270,8 @@ gabble_group_mixin_remove_members (GObject *obj, const GArray *contacts, const g
         {
           if ((mixin->group_flags & TP_CHANNEL_GROUP_FLAG_CAN_REMOVE) == 0)
             {
-              DEBUG ("%s: handle %u cannot be removed from members without GROUP_FLAG_CAN_REMOVE",
-                  G_STRFUNC, handle);
+              DEBUG_FUNC ("handle %u cannot be removed from members without GROUP_FLAG_CAN_REMOVE",
+                  handle);
 
               *error = g_error_new (TELEPATHY_ERRORS, PermissionDenied,
                   "handle %u cannot be removed from members without GROUP_FLAG_CAN_REMOVE",
@@ -284,8 +284,8 @@ gabble_group_mixin_remove_members (GObject *obj, const GArray *contacts, const g
         {
           if ((mixin->group_flags & TP_CHANNEL_GROUP_FLAG_CAN_RESCIND) == 0)
             {
-              DEBUG ("%s: handle %u cannot be removed from remote pending without GROUP_FLAG_CAN_RESCIND",
-                  G_STRFUNC, handle);
+              DEBUG_FUNC ("handle %u cannot be removed from remote pending without GROUP_FLAG_CAN_RESCIND",
+                  handle);
 
               *error = g_error_new (TELEPATHY_ERRORS, PermissionDenied,
                   "handle %u cannot be removed from remote pending without GROUP_FLAG_CAN_RESCIND",
@@ -296,8 +296,8 @@ gabble_group_mixin_remove_members (GObject *obj, const GArray *contacts, const g
         }
       else if (!handle_set_is_member (mixin->local_pending, handle))
         {
-          DEBUG ("%s: handle %u is not a current or pending member",
-                   G_STRFUNC, handle);
+          DEBUG_FUNC ("handle %u is not a current or pending member",
+                   handle);
 
           *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
               "handle %u is not a current or pending member", handle);
@@ -654,7 +654,7 @@ END_DEBUG
     }
   else
     {
-      DEBUG ("%s: not emitting signal, nothing changed", G_STRFUNC);
+      DEBUG_FUNC ("not emitting signal, nothing changed");
 
       ret = FALSE;
     }

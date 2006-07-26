@@ -163,7 +163,7 @@ gabble_presence_cache_dispose (GObject *object)
   if (priv->dispose_has_run)
     return;
 
-  DEBUG ("%s: dispose called", G_STRFUNC);
+  DEBUG_FUNC ("dispose called");
 
   priv->dispose_has_run = TRUE;
 
@@ -181,7 +181,7 @@ gabble_presence_cache_dispose (GObject *object)
 static void
 gabble_presence_cache_finalize (GObject *object)
 {
-  DEBUG ("%s called with %p", G_STRFUNC, object);
+  DEBUG_FUNC ("called with %p", object);
 
   G_OBJECT_CLASS (gabble_presence_cache_parent_class)->finalize (object);
 }
@@ -610,8 +610,8 @@ gabble_presence_cache_maybe_remove (
 
       jid = gabble_handle_inspect (priv->conn->handles, TP_HANDLE_TYPE_CONTACT,
           handle);
-      DEBUG ("%s: discarding cached presence for unavailable jid %s",
-          G_STRFUNC, jid);
+      DEBUG_FUNC ("discarding cached presence for unavailable jid %s",
+          jid);
       g_hash_table_remove (priv->presence, GINT_TO_POINTER (handle));
       gabble_handle_unref (priv->conn->handles, TP_HANDLE_TYPE_CONTACT, handle);
     }
@@ -646,8 +646,8 @@ gabble_presence_cache_update (
 
   jid = gabble_handle_inspect (priv->conn->handles, TP_HANDLE_TYPE_CONTACT,
       handle);
-  DEBUG ("%s: %s (%d) resource %s prio %d presence %d message \"%s\"",
-      G_STRFUNC, jid, handle, resource, priority, presence_id, status_message);
+  DEBUG_FUNC ("%s (%d) resource %s prio %d presence %d message \"%s\"",
+      jid, handle, resource, priority, presence_id, status_message);
 
   presence = gabble_presence_cache_get (cache, handle);
 

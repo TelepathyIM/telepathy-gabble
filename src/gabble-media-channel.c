@@ -161,7 +161,7 @@ create_session (GabbleMediaChannel *channel, GabbleHandle peer, const gchar *pee
   gchar *object_path;
   GabbleHandle initiator;
 
-  DEBUG ("%s called", G_STRFUNC);
+  DEBUG_FUNC ("called");
 
   g_assert (GABBLE_IS_MEDIA_CHANNEL (channel));
 
@@ -464,7 +464,7 @@ gboolean gabble_media_channel_close (GabbleMediaChannel *obj, GError **error)
 {
   GabbleMediaChannelPrivate *priv;
 
-  DEBUG ("%s called on %p", G_STRFUNC, obj);
+  DEBUG_FUNC ("called on %p", obj);
 
   g_assert (GABBLE_IS_MEDIA_CHANNEL (obj));
 
@@ -789,7 +789,7 @@ gboolean gabble_media_channel_get_streams (GabbleMediaChannel *obj, GPtrArray **
 
   return TRUE;
 #else
-  DEBUG ("%s: not implemented", G_STRFUNC);
+  DEBUG_FUNC ("not implemented");
 
   *error = g_error_new (TELEPATHY_ERRORS, NotImplemented,
                         "GetStreams not implemented!");

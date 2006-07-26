@@ -8,10 +8,11 @@
 static guint flags = 0;
 
 GDebugKey keys[] = {
-  { "presence", GABBLE_DEBUG_PRESENCE },
-  { "groups",   GABBLE_DEBUG_GROUPS },
-  { "roster",   GABBLE_DEBUG_ROSTER },
-  { "disco",    GABBLE_DEBUG_DISCO },
+  { "presence",   GABBLE_DEBUG_PRESENCE },
+  { "groups",     GABBLE_DEBUG_GROUPS },
+  { "roster",     GABBLE_DEBUG_ROSTER },
+  { "disco",      GABBLE_DEBUG_DISCO },
+  { "properties", GABBLE_DEBUG_PROPERTIES },
   { 0, },
 };
 

@@ -8,10 +8,11 @@ G_BEGIN_DECLS
 
 enum
 {
-  GABBLE_DEBUG_PRESENCE = 1 << 0,
-  GABBLE_DEBUG_GROUPS   = 1 << 1,
-  GABBLE_DEBUG_ROSTER   = 1 << 2,
-  GABBLE_DEBUG_DISCO    = 1 << 3,
+  GABBLE_DEBUG_PRESENCE   = 1 << 0,
+  GABBLE_DEBUG_GROUPS     = 1 << 1,
+  GABBLE_DEBUG_ROSTER     = 1 << 2,
+  GABBLE_DEBUG_DISCO      = 1 << 3,
+  GABBLE_DEBUG_PROPERTIES = 1 << 4,
 };
 
 void gabble_debug_set_flags_from_env ();

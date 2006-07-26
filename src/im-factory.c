@@ -30,13 +30,18 @@
 
 #include <loudmouth/loudmouth.h>
 
+#define DEBUG_FLAG GABBLE_DEBUG_IM
+
+#include "debug.h"
+#include "disco.h"
 #include "gabble-connection.h"
 #include "gabble-im-channel.h"
 #include "handles.h"
-#include "im-factory.h"
 #include "telepathy-interfaces.h"
 #include "text-mixin.h"
 #include "tp-channel-factory-iface.h"
+
+#include "im-factory.h"
 
 static void gabble_im_factory_iface_init (gpointer g_iface, gpointer iface_data);
 
@@ -102,7 +107,7 @@ gabble_im_factory_dispose (GObject *object)
   if (priv->dispose_has_run)
     return;
 
-  g_debug ("%s: dispose called", G_STRFUNC);
+  DEBUG ("%s: dispose called", G_STRFUNC);
   priv->dispose_has_run = TRUE;
 
   tp_channel_factory_iface_close_all (TP_CHANNEL_FACTORY_IFACE (object));
@@ -207,19 +212,19 @@ im_factory_message_cb (LmMessageHandler *handler,
 
   if (body == NULL)
     {
-      HANDLER_DEBUG (message->node, "got a message without a body field, ignoring");
+      NODE_DEBUG (message->node, "got a message without a body field, ignoring");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
   handle = gabble_handle_for_contact (priv->conn->handles, from, FALSE);
   if (handle == 0)
     {
-      HANDLER_DEBUG (message->node, "ignoring message node from malformed jid");
+      NODE_DEBUG (message->node, "ignoring message node from malformed jid");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
-  g_debug ("%s: message from %s (handle %u), msgtype %d, body:\n%s",
-           G_STRFUNC, from, handle, msgtype, body_offset);
+  DEBUG ("%s: message from %s (handle %u), msgtype %d, body:\n%s",
+         G_STRFUNC, from, handle, msgtype, body_offset);
 
   chan = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (handle));
 
@@ -227,12 +232,12 @@ im_factory_message_cb (LmMessageHandler *handler,
     {
       if (send_error != CHANNEL_TEXT_SEND_NO_ERROR)
         {
-          g_debug ("%s: ignoring message error; no sending channel",
+          DEBUG ("%s: ignoring message error; no sending channel",
             G_STRFUNC);
           return LM_HANDLER_RESULT_REMOVE_MESSAGE;
         }
 
-      g_debug ("%s: found no IM channel, creating one", G_STRFUNC);
+      DEBUG ("%s: found no IM channel, creating one", G_STRFUNC);
 
       chan = new_im_channel (fac, handle);
     }
@@ -268,7 +273,7 @@ im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
     {
       g_object_get (chan, "handle", &contact_handle, NULL);
 
-      g_debug ("%s: removing channel with handle %d", G_STRFUNC,
+      DEBUG ("%s: removing channel with handle %d", G_STRFUNC,
           contact_handle);
 
       g_hash_table_remove (priv->channels, GINT_TO_POINTER (contact_handle));
@@ -297,7 +302,7 @@ new_im_channel (GabbleImFactory *fac, GabbleHandle handle)
                        "handle", handle,
                        NULL);
 
-  g_debug ("new_im_channel: object path %s", object_path);
+  DEBUG ("new_im_channel: object path %s", object_path);
 
   g_signal_connect (chan, "closed", (GCallback) im_channel_closed_cb, fac);
 
@@ -316,7 +321,7 @@ gabble_im_factory_iface_close_all (TpChannelFactoryIface *iface)
   GabbleImFactory *fac = GABBLE_IM_FACTORY (iface);
   GabbleImFactoryPrivate *priv = GABBLE_IM_FACTORY_GET_PRIVATE (fac);
 
-  g_debug ("%s: closing channels", G_STRFUNC);
+  DEBUG ("%s: closing channels", G_STRFUNC);
 
   if (priv->channels)
     {
@@ -332,7 +337,7 @@ gabble_im_factory_iface_connecting (TpChannelFactoryIface *iface)
   GabbleImFactory *fac = GABBLE_IM_FACTORY (iface);
   GabbleImFactoryPrivate *priv = GABBLE_IM_FACTORY_GET_PRIVATE (fac);
 
-  g_debug ("%s: adding callbacks", G_STRFUNC);
+  DEBUG ("%s: adding callbacks", G_STRFUNC);
 
   g_assert (priv->message_cb == NULL);
 
@@ -341,6 +346,7 @@ gabble_im_factory_iface_connecting (TpChannelFactoryIface *iface)
                                           LM_MESSAGE_TYPE_MESSAGE,
                                           LM_HANDLER_PRIORITY_LAST);
 }
+
 
 
 static void
@@ -355,7 +361,7 @@ gabble_im_factory_iface_disconnected (TpChannelFactoryIface *iface)
   GabbleImFactory *fac = GABBLE_IM_FACTORY (iface);
   GabbleImFactoryPrivate *priv = GABBLE_IM_FACTORY_GET_PRIVATE (fac);
 
-  g_debug ("%s: removing callbacks", G_STRFUNC);
+  DEBUG ("%s: removing callbacks", G_STRFUNC);
 
   g_assert (priv->message_cb != NULL);
 

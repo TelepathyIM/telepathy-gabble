@@ -23,8 +23,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "ansi.h"
+#define DEBUG_FLAG GABBLE_DEBUG_MEDIA_CHANNEL
 
+#include "ansi.h"
+#include "debug.h"
 #include "gabble-connection.h"
 #include "gabble-media-session.h"
 #include "gabble-presence.h"
@@ -159,7 +161,7 @@ create_session (GabbleMediaChannel *channel, GabbleHandle peer, const gchar *pee
   gchar *object_path;
   GabbleHandle initiator;
 
-  g_debug ("%s called", G_STRFUNC);
+  DEBUG ("%s called", G_STRFUNC);
 
   g_assert (GABBLE_IS_MEDIA_CHANNEL (channel));
 
@@ -462,7 +464,7 @@ gboolean gabble_media_channel_close (GabbleMediaChannel *obj, GError **error)
 {
   GabbleMediaChannelPrivate *priv;
 
-  g_debug ("%s called on %p", G_STRFUNC, obj);
+  DEBUG ("%s called on %p", G_STRFUNC, obj);
 
   g_assert (GABBLE_IS_MEDIA_CHANNEL (obj));
 
@@ -787,7 +789,7 @@ gboolean gabble_media_channel_get_streams (GabbleMediaChannel *obj, GPtrArray **
 
   return TRUE;
 #else
-  g_debug ("%s: not implemented", G_STRFUNC);
+  DEBUG ("%s: not implemented", G_STRFUNC);
 
   *error = g_error_new (TELEPATHY_ERRORS, NotImplemented,
                         "GetStreams not implemented!");
@@ -827,7 +829,7 @@ gabble_media_channel_add_member (GObject *obj, GabbleHandle handle, const gchar 
   if (NULL == presence ||
       0 == (presence->caps & PRESENCE_CAP_GOOGLE_VOICE))
     {
-      g_debug ("%s: handle %u doesn't support voice", G_STRFUNC, handle);
+      DEBUG ("%s: handle %u doesn't support voice", G_STRFUNC, handle);
 
       *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
                             "handle %u doesn't support voice", handle);

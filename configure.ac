@@ -26,6 +26,14 @@ if test "x$WALL" = "xyes"; then
   fi
 fi
 
+AC_ARG_ENABLE(debug,
+  AC_HELP_STRING([--disable-debug],[compile without debug code]),
+    enable_debug=$enableval, enable_debug=yes )
+
+if test x$enable_debug = xyes; then
+  AC_DEFINE(ENABLE_DEBUG, [], [Enable debug code])
+fi
+
 AC_SUBST(ERROR_CFLAGS)
 
 AC_HEADER_STDC([])

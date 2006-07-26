@@ -24,7 +24,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define DEBUG_FLAG GABBLE_DEBUG_MEDIA_CHANNEL
+
 #include "ansi.h"
+#include "debug.h"
 #include "handles.h"
 #include "namespaces.h"
 
@@ -556,7 +559,7 @@ gboolean gabble_media_stream_new_native_candidate (GabbleMediaStream *obj, const
    * isn't closed early enough right now? */
   if (state > JS_STATE_ACTIVE)
     {
-      g_debug ("%s: state > JS_STATE_ACTIVE, doing nothing", G_STRFUNC);
+      DEBUG ("%s: state > JS_STATE_ACTIVE, doing nothing", G_STRFUNC);
       return TRUE;
     }
 
@@ -1270,7 +1273,7 @@ _gabble_media_stream_set_playing (GabbleMediaStream *stream, gboolean playing)
   g_assert (GABBLE_IS_MEDIA_STREAM (stream));
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
-  g_debug ("%s: Emitting SetStreamPlaying signal with %d",G_STRFUNC, playing);
+  DEBUG ("%s: Emitting SetStreamPlaying signal with %d",G_STRFUNC, playing);
   priv->playing = playing;
   if (priv->ready)
     g_signal_emit (stream, signals[SET_STREAM_PLAYING], 0, playing);

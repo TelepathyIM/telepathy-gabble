@@ -30,6 +30,9 @@
 
 #include <loudmouth/loudmouth.h>
 
+#define DEBUG_FLAG GABBLE_DEBUG_MUC
+
+#include "debug.h"
 #include "disco.h"
 #include "gabble-connection.h"
 #include "gabble-presence-cache.h"
@@ -109,7 +112,7 @@ gabble_muc_factory_dispose (GObject *object)
   if (priv->dispose_has_run)
     return;
 
-  g_debug ("%s: dispose called", G_STRFUNC);
+  DEBUG ("%s: dispose called", G_STRFUNC);
   priv->dispose_has_run = TRUE;
 
   tp_channel_factory_iface_close_all (TP_CHANNEL_FACTORY_IFACE (object));
@@ -230,7 +233,7 @@ muc_channel_closed_cb (GabbleMucChannel *chan, gpointer user_data)
     {
       g_object_get (chan, "handle", &room_handle, NULL);
 
-      g_debug ("%s: removing MUC channel with handle %d", G_STRFUNC,
+      DEBUG ("%s: removing MUC channel with handle %d", G_STRFUNC,
           room_handle);
 
       g_hash_table_remove (priv->channels, GINT_TO_POINTER (room_handle));
@@ -243,7 +246,7 @@ muc_ready_cb (GabbleMucChannel *chan,
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (data);
 
-  g_debug ("%s: chan=%p", G_STRFUNC, chan);
+  DEBUG ("%s: chan=%p", G_STRFUNC, chan);
 
   g_signal_emit_by_name (fac, "new-channel", chan);
 }
@@ -255,8 +258,8 @@ muc_join_error_cb (GabbleMucChannel *chan,
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (data);
 
-  g_debug ("%s: error->code=%u, error->message=\"%s\"", G_STRFUNC,
-           error->code, error->message);
+  DEBUG ("%s: error->code=%u, error->message=\"%s\"", G_STRFUNC,
+         error->code, error->message);
 
   g_signal_emit_by_name (fac, "channel-error", chan, error);
 }
@@ -275,7 +278,7 @@ new_muc_channel (GabbleMucFactory *fac, GabbleHandle handle)
 
   object_path = g_strdup_printf ("%s/MucChannel%u", priv->conn->object_path, handle);
 
-  g_debug ("new_muc_channel: creating new chan, object path %s", object_path);
+  DEBUG ("new_muc_channel: creating new chan, object path %s", object_path);
 
   chan = g_object_new (GABBLE_TYPE_MUC_CHANNEL,
                        "connection", priv->conn,
@@ -337,7 +340,7 @@ muc_factory_message_cb (LmMessageHandler *handler,
 
           if (send_error != CHANNEL_TEXT_SEND_NO_ERROR)
             {
-              HANDLER_DEBUG (message->node, "got a MUC invitation message "
+              NODE_DEBUG (message->node, "got a MUC invitation message "
                              "with a send error; ignoring");
 
               return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
@@ -346,7 +349,7 @@ muc_factory_message_cb (LmMessageHandler *handler,
           invite_from = lm_message_node_get_attribute (node, "from");
           if (invite_from == NULL)
             {
-              HANDLER_DEBUG (message->node, "got a MUC invitation message "
+              NODE_DEBUG (message->node, "got a MUC invitation message "
                              "without a from field on the invite node, "
                              "ignoring");
 
@@ -364,7 +367,7 @@ muc_factory_message_cb (LmMessageHandler *handler,
           else
             {
               reason = "";
-              HANDLER_DEBUG (message->node, "no MUC invite reason specified");
+              NODE_DEBUG (message->node, "no MUC invite reason specified");
             }
 
           /* create the channel */
@@ -377,7 +380,7 @@ muc_factory_message_cb (LmMessageHandler *handler,
             }
           else
             {
-              HANDLER_DEBUG (message->node, "ignoring invite to a room we're already in");
+              NODE_DEBUG (message->node, "ignoring invite to a room we're already in");
             }
 
           return LM_HANDLER_RESULT_REMOVE_MESSAGE;
@@ -457,7 +460,7 @@ muc_factory_presence_cb (LmMessageHandler *handler,
 
   if (from == NULL)
     {
-      HANDLER_DEBUG (msg->node, "presence stanza without from attribute, ignoring");
+      NODE_DEBUG (msg->node, "presence stanza without from attribute, ignoring");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
@@ -486,7 +489,7 @@ muc_factory_presence_cb (LmMessageHandler *handler,
           handle = gabble_handle_for_contact (priv->conn->handles, from, TRUE);
           if (handle == 0)
             {
-              HANDLER_DEBUG (msg->node, "discarding MUC presence from malformed jid");
+              NODE_DEBUG (msg->node, "discarding MUC presence from malformed jid");
               return LM_HANDLER_RESULT_REMOVE_MESSAGE;
             }
 
@@ -495,7 +498,7 @@ muc_factory_presence_cb (LmMessageHandler *handler,
         }
       else
         {
-          HANDLER_DEBUG (msg->node, "discarding unexpected MUC member presence");
+          NODE_DEBUG (msg->node, "discarding unexpected MUC member presence");
 
           return LM_HANDLER_RESULT_REMOVE_MESSAGE;
         }
@@ -511,7 +514,7 @@ gabble_muc_factory_iface_close_all (TpChannelFactoryIface *iface)
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (iface);
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
 
-  g_debug ("%s: closing channels", G_STRFUNC);
+  DEBUG ("%s: closing channels", G_STRFUNC);
 
   if (priv->channels)
     {
@@ -527,7 +530,7 @@ gabble_muc_factory_iface_connecting (TpChannelFactoryIface *iface)
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (iface);
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
 
-  g_debug ("%s: adding callbacks", G_STRFUNC);
+  DEBUG ("%s: adding callbacks", G_STRFUNC);
 
   g_assert (priv->message_cb == NULL);
   g_assert (priv->presence_cb == NULL);
@@ -556,7 +559,7 @@ gabble_muc_factory_iface_disconnected (TpChannelFactoryIface *iface)
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (iface);
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
 
-  g_debug ("%s: removing callbacks", G_STRFUNC);
+  DEBUG ("%s: removing callbacks", G_STRFUNC);
 
   g_assert (priv->message_cb != NULL);
   g_assert (priv->presence_cb != NULL);
@@ -644,7 +647,7 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
               g_error_free (close_err);
             }
 
-          g_debug ("%s: error while adding self to group mixin", G_STRFUNC);
+          DEBUG ("%s: error while adding self to group mixin", G_STRFUNC);
           return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_AVAILABLE;
         }
 

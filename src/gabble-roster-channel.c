@@ -22,6 +22,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define DEBUG_FLAG GABBLE_DEBUG_ROSTER
+
+#include "debug.h"
 #include "gabble-connection.h"
 #include "gintset.h"
 #include "group-mixin.h"
@@ -349,7 +352,7 @@ _gabble_roster_channel_add_member_cb (GObject *obj,
   priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (obj);
   repo = priv->conn->handles;
 
-  g_debug ("%s: called on %s with handle %u (%s) \"%s\"", G_STRFUNC,
+  DEBUG ("%s: called on %s with handle %u (%s) \"%s\"", G_STRFUNC,
       gabble_handle_inspect (repo, TP_HANDLE_TYPE_LIST, priv->handle), handle,
       gabble_handle_inspect (repo, TP_HANDLE_TYPE_CONTACT, handle), message);
 
@@ -396,7 +399,7 @@ _gabble_roster_channel_remove_member_cb (GObject *obj,
   priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (obj);
   repo = priv->conn->handles;
 
-  g_debug ("%s: called on %s with handle %u (%s) \"%s\"", G_STRFUNC,
+  DEBUG ("%s: called on %s with handle %u (%s) \"%s\"", G_STRFUNC,
       gabble_handle_inspect (repo, TP_HANDLE_TYPE_LIST, priv->handle), handle,
       gabble_handle_inspect (repo, TP_HANDLE_TYPE_CONTACT, handle), message);
 

@@ -131,15 +131,6 @@ GType gabble_connection_get_type(void);
 #define GABBLE_CONNECTION_GET_CLASS(obj) \
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_CONNECTION, GabbleConnectionClass))
 
-/* Convenience macros */
-#define HANDLER_DEBUG(n, s) \
-G_STMT_START { \
-  gchar *handler_debug_tmp = lm_message_node_to_string (n); \
-  g_debug ("%s: " s ":\n%s", G_STRFUNC, handler_debug_tmp); \
-  g_free (handler_debug_tmp); \
-} G_STMT_END
-
-
 gboolean _gabble_connection_set_properties_from_account (GabbleConnection *conn, const gchar *account, GError **error);
 gboolean _gabble_connection_register (GabbleConnection *conn, char **bus_name, char **object_path, GError **error);
 gboolean _gabble_connection_connect (GabbleConnection *conn, GError **error);

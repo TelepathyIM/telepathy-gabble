@@ -81,8 +81,8 @@ GType gabble_media_session_get_type(void);
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT) \
     { \
       GMS_DEBUG_ERROR (s, m); \
-      HANDLER_DEBUG (sent_msg->node, "message sent"); \
-      HANDLER_DEBUG (reply_msg->node, "message reply"); \
+      NODE_DEBUG (sent_msg->node, "message sent"); \
+      NODE_DEBUG (reply_msg->node, "message reply"); \
       _gabble_media_session_terminate (s); \
       return LM_HANDLER_RESULT_REMOVE_MESSAGE; \
     } \

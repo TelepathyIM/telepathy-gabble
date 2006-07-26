@@ -24,6 +24,10 @@
 #include <string.h>
 #include <time.h>
 
+#define DEBUG_FLAG GABBLE_DEBUG_IM
+
+#include "debug.h"
+#include "disco.h"
 #include "gabble-connection.h"
 #include "gabble-presence.h"
 #include "gabble-presence-cache.h"
@@ -353,7 +357,7 @@ gboolean gabble_im_channel_close (GabbleIMChannel *obj, GError **error)
   priv = GABBLE_IM_CHANNEL_GET_PRIVATE (obj);
   priv->closed = TRUE;
 
-  g_debug ("%s called on %p", G_STRFUNC, obj);
+  DEBUG ("%s called on %p", G_STRFUNC, obj);
   g_signal_emit(obj, signals[CLOSED], 0);
 
   return TRUE;

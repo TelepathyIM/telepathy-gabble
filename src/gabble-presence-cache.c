@@ -329,7 +329,7 @@ _presence_node_get_status (LmMessageNode *pres_node)
   if (!child_node)
     {
       /*
-      HANDLER_DEBUG (pres_node,
+      NODE_DEBUG (pres_node,
         "<presence> without <show> received from server, "
         "setting presence to available");
       */
@@ -341,7 +341,7 @@ _presence_node_get_status (LmMessageNode *pres_node)
   if (!presence_show)
     {
       /*
-      HANDLER_DEBUG (pres_node,
+      NODE_DEBUG (pres_node,
         "empty <show> tag received from server, "
         "setting presence to available");
       */
@@ -358,7 +358,7 @@ _presence_node_get_status (LmMessageNode *pres_node)
     return GABBLE_PRESENCE_XA;
   else
     {
-      IF_DEBUG HANDLER_DEBUG (pres_node,
+       NODE_DEBUG (pres_node,
         "unrecognised <show/> value received from server, "
         "setting presence to available");
       return GABBLE_PRESENCE_AVAILABLE;
@@ -424,7 +424,7 @@ _parse_presence_message (GabblePresenceCache *cache,
 
   if (resource == NULL)
     {
-      IF_DEBUG HANDLER_DEBUG (presence_node, "ignoring presence with no resource");
+       NODE_DEBUG (presence_node, "ignoring presence with no resource");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
@@ -469,7 +469,7 @@ _parse_presence_message (GabblePresenceCache *cache,
       goto OUT;
 
     case LM_MESSAGE_SUB_TYPE_ERROR:
-      IF_DEBUG HANDLER_DEBUG (presence_node, "setting contact offline due to error");
+       NODE_DEBUG (presence_node, "setting contact offline due to error");
       /* fall through */
 
     case LM_MESSAGE_SUB_TYPE_UNAVAILABLE:
@@ -540,7 +540,7 @@ gabble_presence_cache_lm_message_cb (LmMessageHandler *handler,
 
   if (NULL == from)
     {
-      IF_DEBUG HANDLER_DEBUG (message->node, "presence stanza without from attribute, ignoring");
+       NODE_DEBUG (message->node, "presence stanza without from attribute, ignoring");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
@@ -548,13 +548,13 @@ gabble_presence_cache_lm_message_cb (LmMessageHandler *handler,
 
   if (0 == handle)
     {
-      IF_DEBUG HANDLER_DEBUG (message->node, "ignoring presence from malformed jid");
+       NODE_DEBUG (message->node, "ignoring presence from malformed jid");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
   if (handle == priv->conn->self_handle)
     {
-      IF_DEBUG HANDLER_DEBUG (message->node, "ignoring presence from ourselves on another resource");
+       NODE_DEBUG (message->node, "ignoring presence from ourselves on another resource");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 

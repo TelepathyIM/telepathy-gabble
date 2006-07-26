@@ -144,7 +144,9 @@ main (int argc,
 
   g_set_prgname("telepathy-gabble");
 
+#ifdef ENABLE_DEBUG
   gabble_debug_set_flags_from_env ();
+#endif
 
     {
       GLogLevelFlags fatal_mask;

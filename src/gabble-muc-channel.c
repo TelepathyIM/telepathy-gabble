@@ -25,7 +25,10 @@
 #include <string.h>
 #include <time.h>
 
+#define DEBUG_FLAG GABBLE_DEBUG_MUC
+
 #include "ansi.h"
+#include "debug.h"
 #include "disco.h"
 #include "gabble-connection.h"
 #include "gabble-error.h"
@@ -296,11 +299,11 @@ static void properties_disco_cb (GabbleDisco *disco,
 
   if (error)
     {
-      g_debug ("%s: got error %s", G_STRFUNC, error->message);
+      DEBUG ("%s: got error %s", G_STRFUNC, error->message);
       return;
     }
 
-  HANDLER_DEBUG (query_result, "disco query result");
+  NODE_DEBUG (query_result, "disco query result");
 
   changed_props_val = changed_props_flags = NULL;
 
@@ -617,7 +620,7 @@ send_join_request (GabbleMucChannel *channel,
     }
   else
     {
-      g_debug ("%s: join request sent", G_STRFUNC);
+      DEBUG ("%s: join request sent", G_STRFUNC);
     }
 
   lm_message_unref (msg);
@@ -655,7 +658,7 @@ send_leave_message (GabbleMucChannel *channel,
     }
   else
     {
-      g_debug ("%s: leave message sent", G_STRFUNC);
+      DEBUG ("%s: leave message sent", G_STRFUNC);
     }
 
   lm_message_unref (msg);
@@ -844,7 +847,7 @@ gabble_muc_channel_dispose (GObject *object)
   if (priv->dispose_has_run)
     return;
 
-  g_debug (G_STRFUNC);
+  DEBUG (G_STRFUNC);
 
   priv->dispose_has_run = TRUE;
 
@@ -862,7 +865,7 @@ gabble_muc_channel_finalize (GObject *object)
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
   GabbleHandleRepo *handles = priv->conn->handles;
 
-  g_debug (G_STRFUNC);
+  DEBUG (G_STRFUNC);
 
   /* free any data held directly by the object here */
   gabble_handle_unref (handles, TP_HANDLE_TYPE_ROOM, priv->handle);
@@ -927,8 +930,8 @@ change_password_flags (GabbleMucChannel *chan,
 
   if (add != 0 || remove != 0)
     {
-      g_debug ("%s: emitting password flags changed, added 0x%X, removed 0x%X",
-               G_STRFUNC, added, removed);
+      DEBUG ("%s: emitting password flags changed, added 0x%X, removed 0x%X",
+              G_STRFUNC, added, removed);
 
       g_signal_emit (chan, signals[PASSWORD_FLAGS_CHANGED], 0, added, removed);
     }
@@ -958,7 +961,7 @@ timeout_join (gpointer data)
 {
   GabbleMucChannel *chan = data;
 
-  g_debug ("%s: join timed out, closing channel", G_STRFUNC);
+  DEBUG ("%s: join timed out, closing channel", G_STRFUNC);
 
   provide_password_return_if_pending (chan, FALSE);
 
@@ -972,7 +975,7 @@ timeout_poll (gpointer data)
 {
   GabbleMucChannel *chan = data;
 
-  g_debug ("%s: polling for room properties", G_STRFUNC);
+  DEBUG ("%s: polling for room properties", G_STRFUNC);
 
   room_properties_update (chan);
 
@@ -986,8 +989,8 @@ channel_state_changed (GabbleMucChannel *chan,
 {
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
 
-  g_debug ("%s: state changed from %s to %s", G_STRFUNC,
-           muc_states[prev_state], muc_states[new_state]);
+  DEBUG ("%s: state changed from %s to %s", G_STRFUNC,
+         muc_states[prev_state], muc_states[new_state]);
 
   if (new_state == MUC_STATE_INITIATED)
     {
@@ -1127,7 +1130,7 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
           return;
         }
 
-      g_debug ("%s: password required to join, changing password flags",
+      DEBUG ("%s: password required to join, changing password flags",
                G_STRFUNC);
 
       change_password_flags (chan, TP_CHANNEL_PASSWORD_FLAG_PROVIDE, 0);
@@ -1266,7 +1269,7 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
   LmMessageNode *item_node, *node;
   const gchar *affil, *role, *owner_jid, *status_code;
 
-  g_debug (G_STRFUNC);
+  DEBUG (G_STRFUNC);
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
@@ -1555,7 +1558,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
         }
       else
         {
-          HANDLER_DEBUG (msg->node, "ignoring message from channel");
+          NODE_DEBUG (msg->node, "ignoring message from channel");
         }
 
       return TRUE;
@@ -1662,11 +1665,11 @@ gboolean gabble_muc_channel_close (GabbleMucChannel *obj, GError **error)
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
 
-  g_debug ("%s called on %p", G_STRFUNC, obj);
+  DEBUG ("%s called on %p", G_STRFUNC, obj);
 
   if (priv->closed)
     {
-      g_debug ("%s: channel already closed", G_STRFUNC);
+      DEBUG ("%s: channel already closed", G_STRFUNC);
 
       *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
                             "Channel already closed");
@@ -2126,7 +2129,7 @@ gabble_muc_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *m
       lm_message_node_add_child (invite_node, "reason", message);
     }
 
-  HANDLER_DEBUG (msg->node, "sending MUC invitation");
+  NODE_DEBUG (msg->node, "sending MUC invitation");
 
   result = _gabble_connection_send (priv->conn, msg, error);
   lm_message_unref (msg);
@@ -2188,7 +2191,7 @@ gabble_muc_channel_remove_member (GObject *obj, GabbleHandle handle, const gchar
       lm_message_node_add_child (item_node, "reason", message);
     }
 
-  HANDLER_DEBUG (msg->node, "sending MUC kick request");
+  NODE_DEBUG (msg->node, "sending MUC kick request");
 
   result = _gabble_connection_send_with_reply (priv->conn, msg,
                                                kick_request_reply_cb,
@@ -2394,22 +2397,22 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 
       if (strcmp (node->name, "field") != 0)
         {
-          g_debug ("%s: skipping node '%s'", G_STRFUNC, node->name);
+          DEBUG ("%s: skipping node '%s'", G_STRFUNC, node->name);
           continue;
         }
 
       var = lm_message_node_get_attribute (node, "var");
       if (var == NULL) {
-        g_debug ("%s: skipping node '%s' because of lacking var attribute",
-                 G_STRFUNC, node->name);
+        DEBUG ("%s: skipping node '%s' because of lacking var attribute",
+               G_STRFUNC, node->name);
         continue;
       }
 
       value_node = lm_message_node_get_child (node, "value");
       if (value_node == NULL)
         {
-          g_debug ("%s: skipping var '%s' because of lacking value attribute",
-                   G_STRFUNC, var);
+          DEBUG ("%s: skipping var '%s' because of lacking value attribute",
+                 G_STRFUNC, var);
           continue;
         }
 
@@ -2518,7 +2521,7 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
           continue;
         }
 
-      g_debug ("%s: looking up %s", G_STRFUNC, room_property_signatures[id].name);
+      DEBUG ("%s: looking up %s", G_STRFUNC, room_property_signatures[id].name);
 
       if (!gabble_properties_context_has (ctx, id))
         continue;

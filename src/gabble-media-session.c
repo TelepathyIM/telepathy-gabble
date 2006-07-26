@@ -25,7 +25,10 @@
 #include <string.h>
 #include <time.h>
 
+#define DEBUG_FLAG GABBLE_DEBUG_MEDIA_CHANNEL
+
 #include "ansi.h"
+#include "debug.h"
 #include "handles.h"
 #include "namespaces.h"
 
@@ -183,7 +186,7 @@ _get_peer_resource (GabblePresence *presence, gchar **peer_resource,
 
       if (resource)
         {
-          g_debug ("using Jingle-capable resource %s\n", resource);
+          DEBUG ("using Jingle-capable resource %s\n", resource);
           *peer_resource = g_strdup (resource);
           *mode = MODE_JINGLE;
           return TRUE;
@@ -195,7 +198,7 @@ _get_peer_resource (GabblePresence *presence, gchar **peer_resource,
 
   if (resource)
     {
-      g_debug ("using GTalk-capable resource %s\n", resource);
+      DEBUG ("using GTalk-capable resource %s\n", resource);
       *peer_resource = g_strdup (resource);
       *mode = MODE_GOOGLE;
       return TRUE;
@@ -563,7 +566,7 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
         {
           GMS_DEBUG_ERROR (session, "%s: gabble_media_stream_post_remote_candidates failed",
                            G_STRFUNC);
-          HANDLER_DEBUG (session_node, "session_node");
+          NODE_DEBUG (session_node, "session_node");
         }
 
       return;
@@ -643,7 +646,7 @@ timeout_session (gpointer data)
 {
   GabbleMediaSession *session = data;
 
-  g_debug ("%s: session timed out", G_STRFUNC);
+  DEBUG ("%s: session timed out", G_STRFUNC);
 
   _gabble_media_session_terminate (session);
 

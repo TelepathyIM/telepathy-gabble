@@ -289,7 +289,7 @@ _parse_item_subscription (LmMessageNode *item_node)
     return GABBLE_ROSTER_SUBSCRIPTION_REMOVE;
   else
     {
-      IF_DEBUG HANDLER_DEBUG (item_node, "got unexpected subscription value");
+       NODE_DEBUG (item_node, "got unexpected subscription value");
       return GABBLE_ROSTER_SUBSCRIPTION_NONE;
     }
 }
@@ -630,7 +630,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
 
       if (sender != priv->conn->self_handle)
         {
-          IF_DEBUG HANDLER_DEBUG (iq_node, "discarding roster IQ which is not from "
+           NODE_DEBUG (iq_node, "discarding roster IQ which is not from "
               "ourselves or the server");
           return LM_HANDLER_RESULT_REMOVE_MESSAGE;
         }
@@ -672,21 +672,21 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
 
           if (strcmp (item_node->name, "item"))
             {
-              IF_DEBUG HANDLER_DEBUG (item_node, "query sub-node is not item, skipping");
+               NODE_DEBUG (item_node, "query sub-node is not item, skipping");
               continue;
             }
 
           jid = lm_message_node_get_attribute (item_node, "jid");
           if (!jid)
             {
-              IF_DEBUG HANDLER_DEBUG (item_node, "item node has no jid, skipping");
+               NODE_DEBUG (item_node, "item node has no jid, skipping");
               continue;
             }
 
           handle = gabble_handle_for_contact (priv->conn->handles, jid, FALSE);
           if (handle == 0)
             {
-              IF_DEBUG HANDLER_DEBUG (item_node, "item jid is malformed, skipping");
+               NODE_DEBUG (item_node, "item jid is malformed, skipping");
               continue;
             }
 
@@ -767,7 +767,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
       g_intset_destroy (known_rem);
       break;
     default:
-      IF_DEBUG HANDLER_DEBUG (iq_node, "unhandled roster IQ");
+       NODE_DEBUG (iq_node, "unhandled roster IQ");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
@@ -869,7 +869,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
 
   if (from == NULL)
     {
-      IF_DEBUG HANDLER_DEBUG (pres_node, "presence stanza without from attribute, ignoring");
+       NODE_DEBUG (pres_node, "presence stanza without from attribute, ignoring");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
@@ -879,13 +879,13 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
 
   if (handle == 0)
     {
-      IF_DEBUG HANDLER_DEBUG (pres_node, "ignoring presence from malformed jid");
+       NODE_DEBUG (pres_node, "ignoring presence from malformed jid");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
   if (handle == priv->conn->self_handle)
     {
-      IF_DEBUG HANDLER_DEBUG (pres_node, "ignoring presence from ourselves on another resource");
+       NODE_DEBUG (pres_node, "ignoring presence from ourselves on another resource");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 

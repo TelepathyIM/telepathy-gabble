@@ -33,6 +33,9 @@
 #include "telepathy-constants.h"
 #include "telepathy-errors.h"
 
+#define DEBUG_FLAG GABBLE_DEBUG_IM
+
+#include "debug.h"
 #include "gabble-connection.h"
 #include "roster.h"
 #include "util.h"
@@ -305,7 +308,7 @@ gboolean gabble_text_mixin_receive (GObject *obj,
 
   if (msg == NULL)
     {
-      g_debug ("%s: no more pending messages available, giving up", G_STRFUNC);
+      DEBUG ("%s: no more pending messages available, giving up", G_STRFUNC);
 
       if (!mixin->message_lost)
         {
@@ -320,7 +323,7 @@ gboolean gabble_text_mixin_receive (GObject *obj,
 
   if (len > MAX_MESSAGE_SIZE)
     {
-      g_debug ("%s: message exceeds maximum size, truncating", G_STRFUNC);
+      DEBUG ("%s: message exceeds maximum size, truncating", G_STRFUNC);
 
       /* TODO: add CHANNEL_TEXT_MESSAGE_FLAG_TRUNCATED flag*/
 
@@ -335,7 +338,7 @@ gboolean gabble_text_mixin_receive (GObject *obj,
 
   if (msg->text == NULL)
     {
-      g_debug ("%s: unable to allocate message, giving up", G_STRFUNC);
+      DEBUG ("%s: unable to allocate message, giving up", G_STRFUNC);
 
       if (!mixin->message_lost)
         {
@@ -366,7 +369,7 @@ gboolean gabble_text_mixin_receive (GObject *obj,
                  msg->type,
                  msg->text);
 
-  g_debug ("%s: queued message %u", G_STRFUNC, msg->id);
+  DEBUG ("%s: queued message %u", G_STRFUNC, msg->id);
 
   mixin->message_lost = FALSE;
 
@@ -407,7 +410,7 @@ gboolean gabble_text_mixin_acknowledge_pending_message (GObject *obj, guint id, 
 
   if (node == NULL)
     {
-      g_debug ("%s: invalid message id %u", G_STRFUNC, id);
+      DEBUG ("%s: invalid message id %u", G_STRFUNC, id);
 
       *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
                             "invalid message id %u", id);
@@ -417,7 +420,7 @@ gboolean gabble_text_mixin_acknowledge_pending_message (GObject *obj, guint id, 
 
   msg = (GabblePendingMessage *) node->data;
 
-  g_debug ("%s: acknowleding message id %u", G_STRFUNC, id);
+  DEBUG ("%s: acknowleding message id %u", G_STRFUNC, id);
 
   g_queue_remove (mixin->pending, msg);
 
@@ -499,7 +502,7 @@ gboolean gabble_text_mixin_send (GObject *obj, guint type, guint subtype,
 
   if (type > TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE)
     {
-      g_debug ("%s: invalid message type %u", G_STRFUNC, type);
+      DEBUG ("%s: invalid message type %u", G_STRFUNC, type);
 
       *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
                             "invalid message type: %u", type);
@@ -610,9 +613,9 @@ gabble_text_mixin_parse_incoming_message (LmMessage *message,
       if (error_node)
         {
           GabbleXmppError err = gabble_xmpp_error_from_node (error_node);
-          g_debug ("%s: got xmpp error: %s: %s", G_STRFUNC,
-                   gabble_xmpp_error_string (err),
-                   gabble_xmpp_error_description (err));
+          DEBUG ("%s: got xmpp error: %s: %s", G_STRFUNC,
+                 gabble_xmpp_error_string (err),
+                 gabble_xmpp_error_description (err));
 
           /* these are based on descriptions of errors, and some testing */
           switch (err)
@@ -649,7 +652,7 @@ gabble_text_mixin_parse_incoming_message (LmMessage *message,
   *from = lm_message_node_get_attribute (message->node, "from");
   if (*from == NULL)
     {
-      HANDLER_DEBUG (message->node, "got a message without a from field");
+      NODE_DEBUG (message->node, "got a message without a from field");
       return FALSE;
     }
 

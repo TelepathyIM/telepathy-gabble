@@ -23,6 +23,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define DEBUG_FLAG GABBLE_DEBUG_ROOMLIST
+
+#include "debug.h"
 #include "disco.h"
 #include "gabble-connection.h"
 #include "handles.h"
@@ -359,7 +362,7 @@ room_list_fill_disco_pipeline (GabbleRoomlistChannel *chan)
 
   if (priv->closed)
     {
-      g_debug ("%s: not refilling pipeline, channel is closed", G_STRFUNC);
+      DEBUG ("%s: not refilling pipeline, channel is closed", G_STRFUNC);
     }
   else
     {
@@ -441,7 +444,7 @@ room_info_cb (GabbleDisco *disco,
 
   if (error)
     {
-      g_debug ("%s: got error %s", G_STRFUNC, error->message);
+      DEBUG ("%s: got error %s", G_STRFUNC, error->message);
       goto done;
     }
 
@@ -465,7 +468,7 @@ room_info_cb (GabbleDisco *disco,
       0 != strcmp (type, "text"))
     goto done;
 
-  g_debug ("%s: got room identity, name=%s, category=%s, type=%s", G_STRFUNC,
+  DEBUG ("%s: got room identity, name=%s, category=%s, type=%s", G_STRFUNC,
       name, category, type);
 
   keys = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
@@ -517,7 +520,7 @@ room_info_cb (GabbleDisco *disco,
           else if (0 == strcmp (var, "muc_temporary"))
             INSERT_KEY (keys, "persistent", G_TYPE_BOOLEAN, boolean, FALSE);
           else
-            HANDLER_DEBUG (feature, "got unknown feature");
+            NODE_DEBUG (feature, "got unknown feature");
         }
       else if (0 == strcmp (feature->name, "x"))
         {
@@ -564,7 +567,7 @@ room_info_cb (GabbleDisco *disco,
 
   if (is_muc)
     {
-      g_debug ("%s: emitting new room signal for %s", G_STRFUNC, jid);
+      DEBUG ("%s: emitting new room signal for %s", G_STRFUNC, jid);
 
       handle = gabble_handle_for_room (priv->conn->handles, jid);
 
@@ -614,7 +617,7 @@ rooms_cb (GabbleDisco *disco,
 
   if (error)
     {
-      g_debug ("%s: got error %s", G_STRFUNC, error->message);
+      DEBUG ("%s: got error %s", G_STRFUNC, error->message);
       goto out;
     }
 
@@ -657,7 +660,7 @@ gboolean gabble_roomlist_channel_close (GabbleRoomlistChannel *obj, GError **err
 {
   g_assert (GABBLE_IS_ROOMLIST_CHANNEL (obj));
 
-  g_debug ("%s called on %p", G_STRFUNC, obj);
+  DEBUG ("%s called on %p", G_STRFUNC, obj);
 
   g_object_run_dispose (G_OBJECT (obj));
 

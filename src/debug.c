@@ -5,14 +5,20 @@
 
 #include "debug.h"
 
+#ifdef ENABLE_DEBUG
+
 static guint flags = 0;
 
 GDebugKey keys[] = {
-  { "presence",   GABBLE_DEBUG_PRESENCE },
-  { "groups",     GABBLE_DEBUG_GROUPS },
-  { "roster",     GABBLE_DEBUG_ROSTER },
-  { "disco",      GABBLE_DEBUG_DISCO },
-  { "properties", GABBLE_DEBUG_PROPERTIES },
+  { "presence",      GABBLE_DEBUG_PRESENCE },
+  { "groups",        GABBLE_DEBUG_GROUPS },
+  { "roster",        GABBLE_DEBUG_ROSTER },
+  { "disco",         GABBLE_DEBUG_DISCO },
+  { "properties",    GABBLE_DEBUG_PROPERTIES },
+  { "roomlist",      GABBLE_DEBUG_ROOMLIST },
+  { "media-channel", GABBLE_DEBUG_MEDIA_CHANNEL },
+  { "muc",           GABBLE_DEBUG_MUC },
+  { "connection",    GABBLE_DEBUG_CONNECTION },
   { 0, },
 };
 
@@ -49,4 +55,6 @@ void gabble_debug (guint flag, const gchar *format, ...)
       va_end (args);
     }
 }
+
+#endif /* ENABLE_DEBUG */
 

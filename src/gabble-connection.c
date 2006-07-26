@@ -74,7 +74,7 @@
 #define ERROR_IF_NOT_CONNECTED(CONN, ERROR) \
   if ((CONN)->status != TP_CONN_STATUS_CONNECTED) \
     { \
-      DEBUG ("%s: rejected request as disconnected", G_STRFUNC); \
+      DEBUG_FUNC ("rejected request as disconnected"); \
       (ERROR) = g_error_new(TELEPATHY_ERRORS, NotAvailable, \
                             "Connection is disconnected"); \
       return FALSE; \
@@ -83,7 +83,7 @@
 #define ERROR_IF_NOT_CONNECTED_ASYNC(CONN, ERROR, CONTEXT) \
   if ((CONN)->status != TP_CONN_STATUS_CONNECTED) \
     { \
-      DEBUG ("%s: rejected request as disconnected", G_STRFUNC); \
+      DEBUG_FUNC ("rejected request as disconnected"); \
       (ERROR) = g_error_new(TELEPATHY_ERRORS, NotAvailable, \
                             "Connection is disconnected"); \
       dbus_g_method_return_error ((CONTEXT), (ERROR)); \
@@ -894,7 +894,7 @@ gabble_connection_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  DEBUG ("%s: dispose called", G_STRFUNC);
+  DEBUG_FUNC ("dispose called");
 
   if (priv->jingle_sessions)
     {
@@ -962,7 +962,7 @@ gabble_connection_finalize (GObject *object)
   GabbleConnection *self = GABBLE_CONNECTION (object);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
-  DEBUG ("%s called with %p", G_STRFUNC, object);
+  DEBUG_FUNC ("called with %p", object);
 
   g_free (self->bus_name);
   g_free (self->object_path);
@@ -1148,11 +1148,11 @@ _gabble_connection_register (GabbleConnection *conn,
       return FALSE;
     }
 
-  DEBUG ("%s: bus name %s", G_STRFUNC, conn->bus_name);
+  DEBUG_FUNC ("bus name %s", conn->bus_name);
 
   dbus_g_connection_register_g_object (bus, conn->object_path, G_OBJECT (conn));
 
-  DEBUG ("%s: object path %s", G_STRFUNC, conn->object_path);
+  DEBUG_FUNC ("object path %s", conn->object_path);
 
   *bus_name = g_strdup (conn->bus_name);
   *object_path = g_strdup (conn->object_path);
@@ -1351,12 +1351,12 @@ do_connect (GabbleConnection *conn, GError **error)
 {
   GError *lmerror = NULL;
 
-  DEBUG ("%s: calling lm_connection_open", G_STRFUNC);
+  DEBUG_FUNC ("calling lm_connection_open");
 
   if (!lm_connection_open (conn->lmconn, connection_open_cb,
                            conn, NULL, &lmerror))
     {
-      DEBUG ("%s: lm_connection_open failed %s", G_STRFUNC, lmerror->message);
+      DEBUG_FUNC ("lm_connection_open failed %s", lmerror->message);
 
       if (error)
         *error = g_error_new (TELEPATHY_ERRORS, NetworkError,
@@ -1568,7 +1568,7 @@ connection_disconnected_cb (LmConnection *lmconn,
 
   g_assert (conn->lmconn == lmconn);
 
-  DEBUG ("%s: called with reason %u", G_STRFUNC, lm_reason);
+  DEBUG_FUNC ("called with reason %u", lm_reason);
 
   /* if we were expecting this disconnection, we're done so can tell
    * the connection manager to unref us. otherwise it's a network error
@@ -1609,7 +1609,7 @@ connection_status_change (GabbleConnection        *conn,
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
-  DEBUG ("%s: status %u reason %u", G_STRFUNC, status, reason);
+  DEBUG_FUNC ("status %u reason %u", status, reason);
 
   if (conn->status != status)
     {
@@ -1851,7 +1851,7 @@ connection_new_channel_cb (TpChannelFactoryIface *factory,
       "handle", &handle,
       NULL);
 
-  DEBUG ("%s: called for %s", G_STRFUNC, object_path);
+  DEBUG_FUNC ("called for %s", object_path);
 
   tmp = find_matching_channel_requests (conn, channel_type, handle_type,
                                         handle, &suppress_handler);
@@ -2294,7 +2294,7 @@ new_media_channel (GabbleConnection *conn, GabbleHandle creator, gboolean suppre
                        "creator", creator,
                        NULL);
 
-  DEBUG ("%s: object path %s", G_STRFUNC, object_path);
+  DEBUG_FUNC ("object path %s", object_path);
 
   g_signal_connect (chan, "closed", (GCallback) media_channel_closed_cb, conn);
 
@@ -2409,7 +2409,7 @@ _gabble_connection_jingle_session_register (GabbleConnection *conn,
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
-  DEBUG ("%s: binding sid %s to %p", G_STRFUNC, sid, channel);
+  DEBUG_FUNC ("binding sid %s to %p", sid, channel);
 
   g_hash_table_insert (priv->jingle_sessions, g_strdup (sid), channel);
 }
@@ -2420,7 +2420,7 @@ _gabble_connection_jingle_session_unregister (GabbleConnection *conn,
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
-  DEBUG ("%s: unbinding sid %s", G_STRFUNC, sid);
+  DEBUG_FUNC ("unbinding sid %s", sid);
 
   g_hash_table_insert (priv->jingle_sessions, g_strdup (sid), NULL);
 }
@@ -2533,7 +2533,7 @@ connection_iq_jingle_cb (LmMessageHandler *handler,
 
   if (chan)
     {
-      DEBUG ("%s: dispatching to session %s", G_STRFUNC, sid);
+      DEBUG_FUNC ("dispatching to session %s", sid);
       g_object_ref (chan);
       gabble_handle_decode_jid (from, NULL, NULL, &resource);
       _gabble_media_channel_dispatch_session_action (chan, handle, resource,
@@ -2824,7 +2824,7 @@ registration_finished_cb (GabbleRegister *reg,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
 
-  DEBUG ("%s: %s", G_STRFUNC, (success) ? "succeeded" : "failed");
+  DEBUG_FUNC ("%s", (success) ? "succeeded" : "failed");
 
   g_object_unref (reg);
 
@@ -2988,7 +2988,7 @@ connection_disco_cb (GabbleDisco *disco,
 
   if (disco_error)
     {
-      DEBUG ("%s: got disco error, setting no features: %s", G_STRFUNC, disco_error->message);
+      DEBUG_FUNC ("got disco error, setting no features: %s", disco_error->message);
     }
   else
     {
@@ -3016,7 +3016,7 @@ connection_disco_cb (GabbleDisco *disco,
             }
         }
 
-      DEBUG ("%s: set features flags to %d", G_STRFUNC, conn->features);
+      DEBUG_FUNC ("set features flags to %d", conn->features);
     }
 
   /* send presence to the server to indicate availability */
@@ -3122,7 +3122,7 @@ service_info_cb (GabbleDisco *disco,
 
   if (error)
     {
-      DEBUG ("%s: got error: %s", G_STRFUNC, error->message);
+      DEBUG_FUNC ("got error: %s", error->message);
       return;
     }
 
@@ -3152,7 +3152,7 @@ service_info_cb (GabbleDisco *disco,
             }
           if (is_muc)
             {
-              DEBUG ("%s: Adding conference server %s", G_STRFUNC, jid);
+              DEBUG_FUNC ("Adding conference server %s", jid);
               priv->conference_servers =
                 g_list_append (priv->conference_servers, g_strdup (jid));
             }
@@ -3178,7 +3178,7 @@ services_discover_cb (GabbleDisco *disco,
 
   if (error)
     {
-      DEBUG ("%s: got error: %s", G_STRFUNC, error->message);
+      DEBUG_FUNC ("got error: %s", error->message);
       return;
     }
 
@@ -4055,7 +4055,7 @@ find_media_channel_with_handle (GabbleConnection *conn, GabbleHandle handle)
       /* search members */
       if (!gabble_group_mixin_get_members (G_OBJECT (chan), &arr, &err))
         {
-          DEBUG ("%s: get_members failed: %s", G_STRFUNC, err->message);
+          DEBUG_FUNC ("get_members failed: %s", err->message);
           g_error_free (err);
           continue;
         }
@@ -4304,7 +4304,7 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
   switch (status)
     {
       case TP_CHANNEL_FACTORY_REQUEST_STATUS_INVALID_HANDLE:
-        DEBUG ("%s: invalid handle %u", G_STRFUNC, handle);
+        DEBUG_FUNC ("invalid handle %u", handle);
 
         error = g_error_new (TELEPATHY_ERRORS, InvalidHandle,
                              "invalid handle %u", handle);
@@ -4322,7 +4322,7 @@ gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar *
         break;
 
       case TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_IMPLEMENTED:
-        DEBUG ("%s: unsupported channel type %s", G_STRFUNC, type);
+        DEBUG_FUNC ("unsupported channel type %s", type);
 
         error = g_error_new (TELEPATHY_ERRORS, NotImplemented,
                              "unsupported channel type %s", type);
@@ -4381,7 +4381,7 @@ contact_info_got_vcard (GabbleConnection *conn, LmMessage *sent_msg,
   for (;child; child = child->next)
     {
       str = lm_message_node_to_string (child);
-      //DEBUG ("%s: %s", G_STRFUNC, str);
+      //DEBUG_FUNC ("%s", str);
       if (0 != strcmp (child->name, "PHOTO")
        && 0 != strcmp (child->name, "photo"))
         {
@@ -4475,7 +4475,7 @@ room_jid_disco_cb (GabbleDisco *disco,
 
   if (error != NULL)
     {
-      DEBUG ("%s: disco reply error %s", G_STRFUNC, error->message);
+      DEBUG_FUNC ("disco reply error %s", error->message);
       dbus_g_method_return_error (rvctx->context, error);
 
       goto OUT;
@@ -4501,7 +4501,7 @@ room_jid_disco_cb (GabbleDisco *disco,
                   sender = dbus_g_method_get_sender (rvctx->context);
                   _gabble_connection_client_hold_handle (rvctx->conn, sender, handle, TP_HANDLE_TYPE_ROOM);
 
-                  DEBUG ("%s: disco reported MUC support for service name in jid %s", G_STRFUNC, rvctx->jid);
+                  DEBUG_FUNC ("disco reported MUC support for service name in jid %s", rvctx->jid);
 
                   dbus_g_method_return (rvctx->context, handle);
 
@@ -4622,7 +4622,7 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
 
       if (handle == 0)
         {
-          DEBUG ("%s: requested handle %s was invalid", G_STRFUNC, name);
+          DEBUG_FUNC ("requested handle %s was invalid", name);
 
           error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
                                "requested handle %s was invalid", name);
@@ -4638,7 +4638,7 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
 
       if (!qualified_name)
         {
-          DEBUG ("%s: requested handle %s contains no conference server", G_STRFUNC, name);
+          DEBUG_FUNC ("requested handle %s contains no conference server", name);
 
           error = g_error_new (TELEPATHY_ERRORS, NotAvailable, "requested "
               "room handle %s does not specify a server, but we have not discovered "
@@ -4694,7 +4694,7 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
         }
       else
         {
-          DEBUG ("%s: requested list channel %s not available", G_STRFUNC, name);
+          DEBUG_FUNC ("requested list channel %s not available", name);
 
           error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
                                "requested list channel %s not available", name);
@@ -4705,7 +4705,7 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
         }
       break;
     default:
-      DEBUG ("%s: unimplemented handle type %u", G_STRFUNC, handle_type);
+      DEBUG_FUNC ("unimplemented handle type %u", handle_type);
 
       error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
                           "unimplemented handle type %u", handle_type);
@@ -4919,7 +4919,7 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
     }
   else
     {
-      DEBUG ("%s: got unknown status identifier %s", G_STRFUNC, (const gchar *) key);
+      DEBUG_FUNC ("got unknown status identifier %s", (const gchar *) key);
       *(data->error) = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
                                     "unknown status identifier: %s",
                                     (const gchar *) key);

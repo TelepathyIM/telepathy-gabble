@@ -246,7 +246,7 @@ muc_ready_cb (GabbleMucChannel *chan,
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (data);
 
-  DEBUG ("%s: chan=%p", G_STRFUNC, chan);
+  DEBUG_FUNC ("chan=%p", chan);
 
   g_signal_emit_by_name (fac, "new-channel", chan);
 }

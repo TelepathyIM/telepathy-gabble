@@ -231,7 +231,7 @@ gabble_group_mixin_add_members (GObject *obj, const GArray *contacts, const gcha
 
       if (handle_set_is_member (mixin->members, handle))
         {
-          DEBUG ("%s: handle %u is already a member, skipping", G_STRFUNC, handle);
+          DEBUG_FUNC ("handle %u is already a member, skipping", handle);
 
           continue;
         }

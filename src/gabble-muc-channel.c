@@ -299,7 +299,7 @@ static void properties_disco_cb (GabbleDisco *disco,
 
   if (error)
     {
-      DEBUG ("%s: got error %s", G_STRFUNC, error->message);
+      DEBUG_FUNC ("got error %s", error->message);
       return;
     }
 
@@ -2397,7 +2397,7 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 
       if (strcmp (node->name, "field") != 0)
         {
-          DEBUG ("%s: skipping node '%s'", G_STRFUNC, node->name);
+          DEBUG_FUNC ("skipping node '%s'", node->name);
           continue;
         }
 
@@ -2521,7 +2521,7 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
           continue;
         }
 
-      DEBUG ("%s: looking up %s", G_STRFUNC, room_property_signatures[id].name);
+      DEBUG_FUNC ("looking up %s", room_property_signatures[id].name);
 
       if (!gabble_properties_context_has (ctx, id))
         continue;

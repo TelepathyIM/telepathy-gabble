@@ -460,7 +460,7 @@ _parse_presence_message (GabblePresenceCache *cache,
         {
           presence = gabble_presence_cache_get (cache, handle);
           g_assert (NULL != presence);
-          DEBUG ("%s: %s has voice-v1 support", G_STRFUNC, from);
+          DEBUG_FUNC ("%s has voice-v1 support", from);
           gabble_presence_set_capabilities (presence, resource,
               PRESENCE_CAP_GOOGLE_VOICE);
         }

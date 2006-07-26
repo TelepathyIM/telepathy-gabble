@@ -444,7 +444,7 @@ room_info_cb (GabbleDisco *disco,
 
   if (error)
     {
-      DEBUG ("%s: got error %s", G_STRFUNC, error->message);
+      DEBUG_FUNC ("got error %s", error->message);
       goto done;
     }
 
@@ -567,7 +567,7 @@ room_info_cb (GabbleDisco *disco,
 
   if (is_muc)
     {
-      DEBUG ("%s: emitting new room signal for %s", G_STRFUNC, jid);
+      DEBUG_FUNC ("emitting new room signal for %s", jid);
 
       handle = gabble_handle_for_room (priv->conn->handles, jid);
 
@@ -617,7 +617,7 @@ rooms_cb (GabbleDisco *disco,
 
   if (error)
     {
-      DEBUG ("%s: got error %s", G_STRFUNC, error->message);
+      DEBUG_FUNC ("got error %s", error->message);
       goto out;
     }
 

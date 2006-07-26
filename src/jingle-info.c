@@ -138,7 +138,7 @@ jingle_info_iq_callback (LmMessageHandler *handler,
                     {
                       port = atoi (str);
 
-                      DEBUG ("%s: setting 'stun-port' to %d", G_STRFUNC, port);
+                      DEBUG_FUNC ("setting 'stun-port' to %d", port);
 
                       g_object_set (conn, "stun-port", port, NULL);
                     }

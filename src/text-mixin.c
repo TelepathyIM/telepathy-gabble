@@ -369,7 +369,7 @@ gboolean gabble_text_mixin_receive (GObject *obj,
                  msg->type,
                  msg->text);
 
-  DEBUG ("%s: queued message %u", G_STRFUNC, msg->id);
+  DEBUG_FUNC ("queued message %u", msg->id);
 
   mixin->message_lost = FALSE;
 
@@ -410,7 +410,7 @@ gboolean gabble_text_mixin_acknowledge_pending_message (GObject *obj, guint id, 
 
   if (node == NULL)
     {
-      DEBUG ("%s: invalid message id %u", G_STRFUNC, id);
+      DEBUG_FUNC ("invalid message id %u", id);
 
       *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
                             "invalid message id %u", id);
@@ -420,7 +420,7 @@ gboolean gabble_text_mixin_acknowledge_pending_message (GObject *obj, guint id, 
 
   msg = (GabblePendingMessage *) node->data;
 
-  DEBUG ("%s: acknowleding message id %u", G_STRFUNC, id);
+  DEBUG_FUNC ("acknowleding message id %u", id);
 
   g_queue_remove (mixin->pending, msg);
 
@@ -502,7 +502,7 @@ gboolean gabble_text_mixin_send (GObject *obj, guint type, guint subtype,
 
   if (type > TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE)
     {
-      DEBUG ("%s: invalid message type %u", G_STRFUNC, type);
+      DEBUG_FUNC ("invalid message type %u", type);
 
       *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
                             "invalid message type: %u", type);

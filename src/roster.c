@@ -518,7 +518,7 @@ _gabble_roster_create_channel (GabbleRoster *roster,
                        "handle", handle,
                        NULL);
 
-  DEBUG ("%s: created %s", G_STRFUNC, object_path);
+  DEBUG_FUNC ("created %s", object_path);
   g_free (object_path);
 
   g_hash_table_insert (priv->channels, GINT_TO_POINTER (handle), chan);
@@ -693,7 +693,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
           item = _gabble_roster_item_update (roster, handle, item_node);
             {
               gchar *dump = _gabble_roster_item_dump (item);
-              DEBUG ("%s: jid: %s, %s", G_STRFUNC, jid, dump);
+              DEBUG_FUNC ("jid: %s, %s", jid, dump);
               g_free (dump);
             }
 

@@ -444,7 +444,7 @@ gabble_properties_context_return (GabblePropertiesContext *ctx, GError *error)
   GArray *changed_props_val, *changed_props_flags;
   int i;
 
-  DEBUG ("%s: %s", G_STRFUNC, (error) ? "failure" : "success");
+  DEBUG_FUNC ("%s", (error) ? "failure" : "success");
 
   changed_props_val = changed_props_flags = NULL;
 

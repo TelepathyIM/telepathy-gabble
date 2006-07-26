@@ -32,10 +32,10 @@ void gabble_debug (guint flag, const gchar *format, ...);
 #ifdef DEBUG_FLAG
 
 #define DEBUG(format, ...) \
-  gabble_debug(DEBUG_FLAG, format, __VA_ARGS__)
+  gabble_debug(DEBUG_FLAG, format, ##__VA_ARGS__)
 
 #define DEBUG_FUNC(format, ...) \
-  gabble_debug("%s: " format, G_STRFUNC, __VA_ARGS__)
+  gabble_debug(DEBUG_FLAG, "%s: " format, G_STRFUNC, ##__VA_ARGS__)
 
 #define BEGIN_DEBUG if (gabble_debug_flag_is_set (DEBUG_FLAG)) {
 #define END_DEBUG }

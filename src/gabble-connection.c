@@ -1178,7 +1178,7 @@ _gabble_connection_send (GabbleConnection *conn, LmMessage *msg, GError **error)
 
   if (!lm_connection_send (conn->lmconn, msg, &lmerror))
     {
-      DEBUG ("_gabble_connection_send failed: %s", lmerror->message);
+      DEBUG_FUNC ("failed: %s", lmerror->message);
 
       if (error)
         {
@@ -1312,8 +1312,7 @@ _gabble_connection_send_with_reply (GabbleConnection *conn,
   ret = lm_connection_send_with_reply (conn->lmconn, msg, handler, &lmerror);
   if (!ret)
     {
-      DEBUG ("_gabble_connection_send_with_reply failed: %s",
-               lmerror->message);
+      DEBUG_FUNC ("failed: %s", lmerror->message);
 
       if (error)
         {

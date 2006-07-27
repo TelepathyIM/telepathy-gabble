@@ -300,7 +300,7 @@ new_im_channel (GabbleImFactory *fac, GabbleHandle handle)
                        "handle", handle,
                        NULL);
 
-  DEBUG ("new_im_channel: object path %s", object_path);
+  DEBUG_FUNC ("object path %s", object_path);
 
   g_signal_connect (chan, "closed", (GCallback) im_channel_closed_cb, fac);
 

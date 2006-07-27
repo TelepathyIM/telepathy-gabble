@@ -276,7 +276,7 @@ new_muc_channel (GabbleMucFactory *fac, GabbleHandle handle)
 
   object_path = g_strdup_printf ("%s/MucChannel%u", priv->conn->object_path, handle);
 
-  DEBUG ("new_muc_channel: creating new chan, object path %s", object_path);
+  DEBUG_FUNC ("creating new chan, object path %s", object_path);
 
   chan = g_object_new (GABBLE_TYPE_MUC_CHANNEL,
                        "connection", priv->conn,

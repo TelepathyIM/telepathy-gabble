@@ -49,7 +49,7 @@ guint timeout_id;
 static gboolean
 kill_connection_manager (gpointer data)
 {
-  if (!g_getenv ("GABBLE_PERSIST") && !connections_exist)
+  if (!gabble_debug_flag_is_set (GABBLE_DEBUG_PERSIST) && !connections_exist)
     {
       g_debug ("no connections, and timed out");
       g_object_unref (manager);

@@ -146,6 +146,9 @@ main (int argc,
 
 #ifdef ENABLE_DEBUG
   gabble_debug_set_flags_from_env ();
+
+  if (g_getenv ("GABBLE_PERSIST"))
+    gabble_debug_set_flags (GABBLE_DEBUG_PERSIST);
 #endif
 
     {

@@ -1026,65 +1026,64 @@ _gabble_media_session_debug (GabbleMediaSession *session,
                              DebugMessageType type,
                              const gchar *format, ...)
 {
-  BEGIN_DEBUG
+  if (DEBUGGING)
+    {
+      va_list list;
+      gchar buf[512];
+      GabbleMediaSessionPrivate *priv;
+      time_t curtime;
+      struct tm *loctime;
+      gchar stamp[10];
+      const gchar *type_str;
 
-  va_list list;
-  gchar buf[512];
-  GabbleMediaSessionPrivate *priv;
-  time_t curtime;
-  struct tm *loctime;
-  gchar stamp[10];
-  const gchar *type_str;
+      g_assert (GABBLE_IS_MEDIA_SESSION (session));
 
-  g_assert (GABBLE_IS_MEDIA_SESSION (session));
+      priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
 
-  priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+      curtime = time (NULL);
+      loctime = localtime (&curtime);
 
-  curtime = time (NULL);
-  loctime = localtime (&curtime);
+      strftime (stamp, sizeof (stamp), "%T", loctime);
 
-  strftime (stamp, sizeof (stamp), "%T", loctime);
+      va_start (list, format);
 
-  va_start (list, format);
+      vsnprintf (buf, sizeof (buf), format, list);
 
-  vsnprintf (buf, sizeof (buf), format, list);
+      va_end (list);
 
-  va_end (list);
+      switch (type) {
+        case DEBUG_MSG_INFO:
+          type_str = ANSI_BOLD_ON ANSI_FG_WHITE;
+          break;
+        case DEBUG_MSG_DUMP:
+          type_str = ANSI_BOLD_ON ANSI_FG_GREEN;
+          break;
+        case DEBUG_MSG_WARNING:
+          type_str = ANSI_BOLD_ON ANSI_FG_YELLOW;
+          break;
+        case DEBUG_MSG_ERROR:
+          type_str = ANSI_BOLD_ON ANSI_FG_WHITE ANSI_BG_RED;
+          break;
+        case DEBUG_MSG_EVENT:
+          type_str = ANSI_BOLD_ON ANSI_FG_CYAN;
+          break;
+        default:
+          g_assert_not_reached ();
+      }
 
-  switch (type) {
-    case DEBUG_MSG_INFO:
-      type_str = ANSI_BOLD_ON ANSI_FG_WHITE;
-      break;
-    case DEBUG_MSG_DUMP:
-      type_str = ANSI_BOLD_ON ANSI_FG_GREEN;
-      break;
-    case DEBUG_MSG_WARNING:
-      type_str = ANSI_BOLD_ON ANSI_FG_YELLOW;
-      break;
-    case DEBUG_MSG_ERROR:
-      type_str = ANSI_BOLD_ON ANSI_FG_WHITE ANSI_BG_RED;
-      break;
-    case DEBUG_MSG_EVENT:
-      type_str = ANSI_BOLD_ON ANSI_FG_CYAN;
-      break;
-    default:
-      g_assert_not_reached ();
-  }
+      printf ("[%s%s%s] %s%-26s%s %s%s%s\n",
+          ANSI_BOLD_ON ANSI_FG_WHITE,
+          stamp,
+          ANSI_RESET,
+          session_states[priv->state].attributes,
+          session_states[priv->state].name,
+          ANSI_RESET,
+          type_str,
+          buf,
+          ANSI_RESET);
 
-  printf ("[%s%s%s] %s%-26s%s %s%s%s\n",
-      ANSI_BOLD_ON ANSI_FG_WHITE,
-      stamp,
-      ANSI_RESET,
-      session_states[priv->state].attributes,
-      session_states[priv->state].name,
-      ANSI_RESET,
-      type_str,
-      buf,
-      ANSI_RESET);
-
-  fflush (stdout);
-
-  END_DEBUG
+      fflush (stdout);
+    }
 }
 
 void

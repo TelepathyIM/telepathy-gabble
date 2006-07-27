@@ -470,7 +470,8 @@ gabble_group_mixin_change_flags (GObject *obj,
     {
       gchar *str_added, *str_removed, *str_flags;
 
-      BEGIN_DEBUG
+      if (DEBUGGING)
+        {
           str_added = group_flags_to_string (added);
           str_removed = group_flags_to_string (removed);
           str_flags = group_flags_to_string (mixin->group_flags);
@@ -487,7 +488,7 @@ gabble_group_mixin_change_flags (GObject *obj,
           g_free (str_added);
           g_free (str_removed);
           g_free (str_flags);
-      END_DEBUG
+        }
 
       g_signal_emit(obj, mixin_cls->group_flags_changed_signal_id, 0, added, removed);
     }
@@ -615,7 +616,8 @@ gabble_group_mixin_change_members (GObject *obj,
       /* remove any handle owner mappings */
       remove_handle_owners_if_exist (obj, arr_remove);
 
-BEGIN_DEBUG
+      if (DEBUGGING)
+        {
           add_str = member_array_to_string (mixin->handle_repo, arr_add);
           rem_str = member_array_to_string (mixin->handle_repo, arr_remove);
           local_str = member_array_to_string (mixin->handle_repo, arr_local);
@@ -636,7 +638,7 @@ BEGIN_DEBUG
           g_free (rem_str);
           g_free (local_str);
           g_free (remote_str);
-END_DEBUG
+        }
 
       /* emit signal */
       g_signal_emit(obj, mixin_cls->members_changed_signal_id, 0,

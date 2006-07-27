@@ -391,7 +391,7 @@ _grab_nickname (GabblePresenceCache *cache,
     return;
 
   nickname = lm_message_node_get_value (node);
-  DEBUG ("got nickname \"%s\" for %s", nickname, from);
+  DEBUG_FUNC ("got nickname \"%s\" for %s", nickname, from);
 
   if (g_strdiff (presence->nickname, nickname))
     {
@@ -610,8 +610,7 @@ gabble_presence_cache_maybe_remove (
 
       jid = gabble_handle_inspect (priv->conn->handles, TP_HANDLE_TYPE_CONTACT,
           handle);
-      DEBUG_FUNC ("discarding cached presence for unavailable jid %s",
-          jid);
+      DEBUG_FUNC ("discarding cached presence for unavailable jid %s", jid);
       g_hash_table_remove (priv->presence, GINT_TO_POINTER (handle));
       gabble_handle_unref (priv->conn->handles, TP_HANDLE_TYPE_CONTACT, handle);
     }

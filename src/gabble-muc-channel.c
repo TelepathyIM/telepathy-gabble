@@ -847,7 +847,7 @@ gabble_muc_channel_dispose (GObject *object)
   if (priv->dispose_has_run)
     return;
 
-  DEBUG (G_STRFUNC);
+  DEBUG_FUNC ("called");
 
   priv->dispose_has_run = TRUE;
 
@@ -865,7 +865,7 @@ gabble_muc_channel_finalize (GObject *object)
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
   GabbleHandleRepo *handles = priv->conn->handles;
 
-  DEBUG (G_STRFUNC);
+  DEBUG_FUNC ("called");
 
   /* free any data held directly by the object here */
   gabble_handle_unref (handles, TP_HANDLE_TYPE_ROOM, priv->handle);
@@ -1267,7 +1267,7 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
   LmMessageNode *item_node, *node;
   const gchar *affil, *role, *owner_jid, *status_code;
 
-  DEBUG (G_STRFUNC);
+  DEBUG_FUNC ("called");
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 

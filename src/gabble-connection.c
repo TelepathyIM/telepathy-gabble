@@ -894,7 +894,7 @@ gabble_connection_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  DEBUG_FUNC ("dispose called");
+  DEBUG_FUNC ("called");
 
   if (priv->jingle_sessions)
     {
@@ -2688,7 +2688,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   NODE_DEBUG (result_iq, "sending disco response");
 
   if (!lm_connection_send (conn->lmconn, result, NULL))
-    DEBUG("sending disco response failed");
+    DEBUG_FUNC ("sending disco response failed");
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }

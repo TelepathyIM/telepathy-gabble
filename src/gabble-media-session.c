@@ -186,7 +186,7 @@ _get_peer_resource (GabblePresence *presence, gchar **peer_resource,
 
       if (resource)
         {
-          DEBUG ("using Jingle-capable resource %s\n", resource);
+          DEBUG_FUNC ("using Jingle-capable resource %s\n", resource);
           *peer_resource = g_strdup (resource);
           *mode = MODE_JINGLE;
           return TRUE;
@@ -198,7 +198,7 @@ _get_peer_resource (GabblePresence *presence, gchar **peer_resource,
 
   if (resource)
     {
-      DEBUG ("using GTalk-capable resource %s\n", resource);
+      DEBUG_FUNC ("using GTalk-capable resource %s\n", resource);
       *peer_resource = g_strdup (resource);
       *mode = MODE_GOOGLE;
       return TRUE;

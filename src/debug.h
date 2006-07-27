@@ -10,7 +10,7 @@
 
 G_BEGIN_DECLS
 
-enum
+typedef enum
 {
   GABBLE_DEBUG_PRESENCE      = 1 << 0,
   GABBLE_DEBUG_GROUPS        = 1 << 1,
@@ -22,12 +22,12 @@ enum
   GABBLE_DEBUG_MUC           = 1 << 7,
   GABBLE_DEBUG_CONNECTION    = 1 << 8,
   GABBLE_DEBUG_IM            = 1 << 9,
-};
+} GabbleDebugFlags;
 
 void gabble_debug_set_flags_from_env ();
-void gabble_debug_set_flags (guint flags);
-gboolean gabble_debug_flag_is_set (guint flag);
-void gabble_debug (guint flag, const gchar *format, ...);
+void gabble_debug_set_flags (GabbleDebugFlags flags);
+gboolean gabble_debug_flag_is_set (GabbleDebugFlags flag);
+void gabble_debug (GabbleDebugFlags flag, const gchar *format, ...);
 
 #ifdef DEBUG_FLAG
 

@@ -7,7 +7,7 @@
 
 #ifdef ENABLE_DEBUG
 
-static guint flags = 0;
+static GabbleDebugFlags flags = 0;
 
 GDebugKey keys[] = {
   { "presence",      GABBLE_DEBUG_PRESENCE },
@@ -35,17 +35,17 @@ void gabble_debug_set_flags_from_env ()
     gabble_debug_set_flags (g_parse_debug_string (flags_string, keys, nkeys));
 }
 
-void gabble_debug_set_flags (guint new_flags)
+void gabble_debug_set_flags (GabbleDebugFlags new_flags)
 {
   flags = new_flags;
 }
 
-gboolean gabble_debug_flag_is_set (guint flag)
+gboolean gabble_debug_flag_is_set (GabbleDebugFlags flag)
 {
   return flag & flags;
 }
 
-void gabble_debug (guint flag, const gchar *format, ...)
+void gabble_debug (GabbleDebugFlags flag, const gchar *format, ...)
 {
   if (flag & flags)
     {

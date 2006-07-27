@@ -37,7 +37,7 @@ void gabble_debug_set_flags_from_env ()
 
 void gabble_debug_set_flags (GabbleDebugFlags new_flags)
 {
-  flags = new_flags;
+  flags |= new_flags;
 }
 
 gboolean gabble_debug_flag_is_set (GabbleDebugFlags flag)

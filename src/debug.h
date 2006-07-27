@@ -52,8 +52,6 @@ G_STMT_START { \
 
 #define DEBUG(format, ...)
 
-#define DEBUG(format, ...)
-
 #define DEBUGGING 0
 
 #define NODE_DEBUG(n, s)

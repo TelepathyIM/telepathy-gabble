@@ -24,7 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define DEBUG_FLAG GABBLE_DEBUG_MEDIA_CHANNEL
+#define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
 #include "ansi.h"
 #include "debug.h"

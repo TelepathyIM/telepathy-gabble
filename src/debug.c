@@ -16,7 +16,7 @@ GDebugKey keys[] = {
   { "disco",         GABBLE_DEBUG_DISCO },
   { "properties",    GABBLE_DEBUG_PROPERTIES },
   { "roomlist",      GABBLE_DEBUG_ROOMLIST },
-  { "media-channel", GABBLE_DEBUG_MEDIA_CHANNEL },
+  { "media-channel", GABBLE_DEBUG_MEDIA },
   { "muc",           GABBLE_DEBUG_MUC },
   { "connection",    GABBLE_DEBUG_CONNECTION },
   { "persist",       GABBLE_DEBUG_PERSIST },

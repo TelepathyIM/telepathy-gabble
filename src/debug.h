@@ -18,7 +18,7 @@ typedef enum
   GABBLE_DEBUG_DISCO         = 1 << 3,
   GABBLE_DEBUG_PROPERTIES    = 1 << 4,
   GABBLE_DEBUG_ROOMLIST      = 1 << 5,
-  GABBLE_DEBUG_MEDIA_CHANNEL = 1 << 6,
+  GABBLE_DEBUG_MEDIA         = 1 << 6,
   GABBLE_DEBUG_MUC           = 1 << 7,
   GABBLE_DEBUG_CONNECTION    = 1 << 8,
   GABBLE_DEBUG_IM            = 1 << 9,

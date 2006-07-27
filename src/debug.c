@@ -19,6 +19,7 @@ GDebugKey keys[] = {
   { "media-channel", GABBLE_DEBUG_MEDIA_CHANNEL },
   { "muc",           GABBLE_DEBUG_MUC },
   { "connection",    GABBLE_DEBUG_CONNECTION },
+  { "persist",       GABBLE_DEBUG_PERSIST },
   { 0, },
 };
 

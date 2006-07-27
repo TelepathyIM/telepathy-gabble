@@ -172,7 +172,7 @@ gabble_roster_dispose (GObject *object)
   if (priv->dispose_has_run)
     return;
 
-  DEBUG_FUNC ("dispose called");
+  DEBUG ("dispose called");
 
   priv->dispose_has_run = TRUE;
 
@@ -192,7 +192,7 @@ gabble_roster_finalize (GObject *object)
   GabbleRoster *self = GABBLE_ROSTER (object);
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (self);
 
-  DEBUG_FUNC ("called with %p", object);
+  DEBUG ("called with %p", object);
 
   g_hash_table_destroy (priv->items);
 
@@ -390,7 +390,7 @@ _gabble_roster_item_update (GabbleRoster *roster,
       g_free (item->name);
       item->name = g_strdup (name);
 
-      DEBUG_FUNC ("name for handle %d changed to %s", handle,
+      DEBUG ("name for handle %d changed to %s", handle,
           name);
       g_signal_emit (G_OBJECT (roster), signals[NICKNAME_UPDATE], 0, handle);
     }
@@ -518,21 +518,21 @@ _gabble_roster_create_channel (GabbleRoster *roster,
                        "handle", handle,
                        NULL);
 
-  DEBUG_FUNC ("created %s", object_path);
+  DEBUG ("created %s", object_path);
   g_free (object_path);
 
   g_hash_table_insert (priv->channels, GINT_TO_POINTER (handle), chan);
 
   if (priv->roster_received)
     {
-      DEBUG_FUNC ("roster already received, emitting signal for %s list channel",
+      DEBUG ("roster already received, emitting signal for %s list channel",
           name);
 
       g_signal_emit_by_name (roster, "new-channel", chan);
     }
   else
     {
-      DEBUG_FUNC ("roster not yet received, not emitting signal for %s list channel",
+      DEBUG ("roster not yet received, not emitting signal for %s list channel",
           name);
     }
 
@@ -568,7 +568,7 @@ _gabble_roster_emit_one (gpointer key,
   GabbleHandle handle = GPOINTER_TO_INT (key);
   const gchar *name = gabble_handle_inspect (priv->conn->handles, TP_HANDLE_TYPE_LIST, handle);
 
-  DEBUG_FUNC ("roster now received, emitting signal signal for %s list channel",
+  DEBUG ("roster now received, emitting signal signal for %s list channel",
       name);
 
   g_signal_emit_by_name (roster, "new-channel", chan);
@@ -693,7 +693,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
           item = _gabble_roster_item_update (roster, handle, item_node);
             {
               gchar *dump = _gabble_roster_item_dump (item);
-              DEBUG_FUNC ("jid: %s, %s", jid, dump);
+              DEBUG ("jid: %s, %s", jid, dump);
               g_free (dump);
             }
 
@@ -739,21 +739,21 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
       handle = gabble_handle_for_list_publish (priv->conn->handles);
       chan = _gabble_roster_get_channel (roster, handle);
 
-      DEBUG_FUNC ("calling change members on publish channel");
+      DEBUG ("calling change members on publish channel");
       gabble_group_mixin_change_members (G_OBJECT (chan),
             "", pub_add, pub_rem, empty, empty);
 
       handle = gabble_handle_for_list_subscribe (priv->conn->handles);
       chan = _gabble_roster_get_channel (roster, handle);
 
-      DEBUG_FUNC ("calling change members on subscribe channel");
+      DEBUG ("calling change members on subscribe channel");
       gabble_group_mixin_change_members (G_OBJECT (chan),
             "", sub_add, sub_rem, empty, sub_rp);
 
       handle = gabble_handle_for_list_known (priv->conn->handles);
       chan = _gabble_roster_get_channel (roster, handle);
 
-      DEBUG_FUNC ("calling change members on known channel");
+      DEBUG ("calling change members on known channel");
       gabble_group_mixin_change_members (G_OBJECT (chan),
             "", known_add, known_rem, empty, empty);
 
@@ -801,7 +801,7 @@ _gabble_roster_send_presence_ack (GabbleRoster *roster,
 
   if (!changed)
     {
-      DEBUG_FUNC ("not sending ack to avoid loop with buggy server");
+      DEBUG ("not sending ack to avoid loop with buggy server");
       return;
     }
 
@@ -897,7 +897,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
   switch (sub_type)
     {
     case LM_MESSAGE_SUB_TYPE_SUBSCRIBE:
-      DEBUG_FUNC ("making %s (handle %u) local pending on the publish channel",
+      DEBUG ("making %s (handle %u) local pending on the publish channel",
           from, handle);
 
       empty = g_intset_new ();
@@ -914,7 +914,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
 
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     case LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE:
-      DEBUG_FUNC ("removing %s (handle %u) from the publish channel",
+      DEBUG ("removing %s (handle %u) from the publish channel",
           from, handle);
 
       empty = g_intset_new ();
@@ -933,7 +933,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
 
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     case LM_MESSAGE_SUB_TYPE_SUBSCRIBED:
-      DEBUG_FUNC ("adding %s (handle %u) to the subscribe channel",
+      DEBUG ("adding %s (handle %u) to the subscribe channel",
           from, handle);
 
       empty = g_intset_new ();
@@ -952,7 +952,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
 
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     case LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED:
-      DEBUG_FUNC ("removing %s (handle %u) from the subscribe channel",
+      DEBUG ("removing %s (handle %u) from the subscribe channel",
           from, handle);
 
       empty = g_intset_new ();
@@ -981,7 +981,7 @@ gabble_roster_factory_iface_close_all (TpChannelFactoryIface *iface)
   GabbleRoster *roster = GABBLE_ROSTER (iface);
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
 
-  DEBUG_FUNC ("closing channels");
+  DEBUG ("closing channels");
 
   if (priv->channels)
     {
@@ -996,7 +996,7 @@ gabble_roster_factory_iface_connecting (TpChannelFactoryIface *iface)
   GabbleRoster *roster = GABBLE_ROSTER (iface);
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
 
-  DEBUG_FUNC ("adding callbacks");
+  DEBUG ("adding callbacks");
 
   g_assert (priv->iq_cb == NULL);
   g_assert (priv->presence_cb == NULL);
@@ -1024,7 +1024,7 @@ gabble_roster_factory_iface_connected (TpChannelFactoryIface *iface)
   LmMessage *message;
   LmMessageNode *msgnode;
 
-  DEBUG_FUNC ("requesting roster");
+  DEBUG ("requesting roster");
 
   message = lm_message_new_with_sub_type (NULL,
                                           LM_MESSAGE_TYPE_IQ,
@@ -1046,7 +1046,7 @@ gabble_roster_factory_iface_disconnected (TpChannelFactoryIface *iface)
   GabbleRoster *roster = GABBLE_ROSTER (iface);
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
 
-  DEBUG_FUNC ("removing callbacks");
+  DEBUG ("removing callbacks");
 
   g_assert (priv->iq_cb != NULL);
   g_assert (priv->presence_cb != NULL);

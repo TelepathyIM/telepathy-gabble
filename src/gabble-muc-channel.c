@@ -299,7 +299,7 @@ static void properties_disco_cb (GabbleDisco *disco,
 
   if (error)
     {
-      DEBUG_FUNC ("got error %s", error->message);
+      DEBUG ("got error %s", error->message);
       return;
     }
 
@@ -620,7 +620,7 @@ send_join_request (GabbleMucChannel *channel,
     }
   else
     {
-      DEBUG_FUNC ("join request sent");
+      DEBUG ("join request sent");
     }
 
   lm_message_unref (msg);
@@ -658,7 +658,7 @@ send_leave_message (GabbleMucChannel *channel,
     }
   else
     {
-      DEBUG_FUNC ("leave message sent");
+      DEBUG ("leave message sent");
     }
 
   lm_message_unref (msg);
@@ -847,7 +847,7 @@ gabble_muc_channel_dispose (GObject *object)
   if (priv->dispose_has_run)
     return;
 
-  DEBUG_FUNC ("called");
+  DEBUG ("called");
 
   priv->dispose_has_run = TRUE;
 
@@ -865,7 +865,7 @@ gabble_muc_channel_finalize (GObject *object)
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
   GabbleHandleRepo *handles = priv->conn->handles;
 
-  DEBUG_FUNC ("called");
+  DEBUG ("called");
 
   /* free any data held directly by the object here */
   gabble_handle_unref (handles, TP_HANDLE_TYPE_ROOM, priv->handle);
@@ -930,7 +930,7 @@ change_password_flags (GabbleMucChannel *chan,
 
   if (add != 0 || remove != 0)
     {
-      DEBUG_FUNC ("emitting password flags changed, added 0x%X, removed 0x%X",
+      DEBUG ("emitting password flags changed, added 0x%X, removed 0x%X",
               added, removed);
 
       g_signal_emit (chan, signals[PASSWORD_FLAGS_CHANGED], 0, added, removed);
@@ -961,7 +961,7 @@ timeout_join (gpointer data)
 {
   GabbleMucChannel *chan = data;
 
-  DEBUG_FUNC ("join timed out, closing channel");
+  DEBUG ("join timed out, closing channel");
 
   provide_password_return_if_pending (chan, FALSE);
 
@@ -975,7 +975,7 @@ timeout_poll (gpointer data)
 {
   GabbleMucChannel *chan = data;
 
-  DEBUG_FUNC ("polling for room properties");
+  DEBUG ("polling for room properties");
 
   room_properties_update (chan);
 
@@ -989,7 +989,7 @@ channel_state_changed (GabbleMucChannel *chan,
 {
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
 
-  DEBUG_FUNC ("state changed from %s to %s", muc_states[prev_state], muc_states[new_state]);
+  DEBUG ("state changed from %s to %s", muc_states[prev_state], muc_states[new_state]);
 
   if (new_state == MUC_STATE_INITIATED)
     {
@@ -1129,7 +1129,7 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
           return;
         }
 
-      DEBUG_FUNC ("password required to join, changing password flags");
+      DEBUG ("password required to join, changing password flags");
 
       change_password_flags (chan, TP_CHANNEL_PASSWORD_FLAG_PROVIDE, 0);
 
@@ -1267,7 +1267,7 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
   LmMessageNode *item_node, *node;
   const gchar *affil, *role, *owner_jid, *status_code;
 
-  DEBUG_FUNC ("called");
+  DEBUG ("called");
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
@@ -1663,11 +1663,11 @@ gboolean gabble_muc_channel_close (GabbleMucChannel *obj, GError **error)
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
 
-  DEBUG_FUNC ("called on %p", obj);
+  DEBUG ("called on %p", obj);
 
   if (priv->closed)
     {
-      DEBUG_FUNC ("channel already closed");
+      DEBUG ("channel already closed");
 
       *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
                             "Channel already closed");
@@ -2395,13 +2395,13 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 
       if (strcmp (node->name, "field") != 0)
         {
-          DEBUG_FUNC ("skipping node '%s'", node->name);
+          DEBUG ("skipping node '%s'", node->name);
           continue;
         }
 
       var = lm_message_node_get_attribute (node, "var");
       if (var == NULL) {
-        DEBUG_FUNC ("skipping node '%s' because of lacking var attribute",
+        DEBUG ("skipping node '%s' because of lacking var attribute",
                node->name);
         continue;
       }
@@ -2409,7 +2409,7 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
       value_node = lm_message_node_get_child (node, "value");
       if (value_node == NULL)
         {
-          DEBUG_FUNC ("skipping var '%s' because of lacking value attribute",
+          DEBUG ("skipping var '%s' because of lacking value attribute",
                  var);
           continue;
         }
@@ -2519,7 +2519,7 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
           continue;
         }
 
-      DEBUG_FUNC ("looking up %s", room_property_signatures[id].name);
+      DEBUG ("looking up %s", room_property_signatures[id].name);
 
       if (!gabble_properties_context_has (ctx, id))
         continue;

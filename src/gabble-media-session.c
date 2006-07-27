@@ -186,7 +186,7 @@ _get_peer_resource (GabblePresence *presence, gchar **peer_resource,
 
       if (resource)
         {
-          DEBUG_FUNC ("using Jingle-capable resource %s\n", resource);
+          DEBUG ("using Jingle-capable resource %s\n", resource);
           *peer_resource = g_strdup (resource);
           *mode = MODE_JINGLE;
           return TRUE;
@@ -198,7 +198,7 @@ _get_peer_resource (GabblePresence *presence, gchar **peer_resource,
 
   if (resource)
     {
-      DEBUG_FUNC ("using GTalk-capable resource %s\n", resource);
+      DEBUG ("using GTalk-capable resource %s\n", resource);
       *peer_resource = g_strdup (resource);
       *mode = MODE_GOOGLE;
       return TRUE;
@@ -646,7 +646,7 @@ timeout_session (gpointer data)
 {
   GabbleMediaSession *session = data;
 
-  DEBUG_FUNC ("session timed out");
+  DEBUG ("session timed out");
 
   _gabble_media_session_terminate (session);
 

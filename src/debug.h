@@ -33,9 +33,6 @@ void gabble_debug (GabbleDebugFlags flag, const gchar *format, ...);
 #ifdef DEBUG_FLAG
 
 #define DEBUG(format, ...) \
-  gabble_debug(DEBUG_FLAG, format, ##__VA_ARGS__)
-
-#define DEBUG_FUNC(format, ...) \
   gabble_debug(DEBUG_FLAG, "%s: " format, G_STRFUNC, ##__VA_ARGS__)
 
 #define DEBUGGING gabble_debug_flag_is_set(DEBUG_FLAG)
@@ -55,7 +52,7 @@ G_STMT_START { \
 
 #define DEBUG(format, ...)
 
-#define DEBUG_FUNC(format, ...)
+#define DEBUG(format, ...)
 
 #define DEBUGGING 0
 

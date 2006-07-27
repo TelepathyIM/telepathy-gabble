@@ -175,7 +175,7 @@ gabble_disco_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  DEBUG_FUNC ("dispose called");
+  DEBUG ("dispose called");
 
   for (li = g_list_first (priv->requests); li; li = li->next)
     {
@@ -191,7 +191,7 @@ gabble_disco_dispose (GObject *object)
 void
 gabble_disco_finalize (GObject *object)
 {
-  DEBUG_FUNC ("called with %p", object);
+  DEBUG ("called with %p", object);
 
   G_OBJECT_CLASS (gabble_disco_parent_class)->finalize (object);
 }
@@ -403,7 +403,7 @@ gabble_disco_request_with_timeout (GabbleDisco *self, GabbleDiscoType type,
   if (NULL != object)
     g_object_weak_ref (object, notify_delete_request, request);
 
-  DEBUG_FUNC ("Creating disco request %p for %s",
+  DEBUG ("Creating disco request %p for %s",
            request, request->jid);
 
   priv->requests = g_list_prepend (priv->requests, request);

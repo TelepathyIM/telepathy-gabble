@@ -161,7 +161,7 @@ create_session (GabbleMediaChannel *channel, GabbleHandle peer, const gchar *pee
   gchar *object_path;
   GabbleHandle initiator;
 
-  DEBUG_FUNC ("called");
+  DEBUG ("called");
 
   g_assert (GABBLE_IS_MEDIA_CHANNEL (channel));
 
@@ -464,7 +464,7 @@ gboolean gabble_media_channel_close (GabbleMediaChannel *obj, GError **error)
 {
   GabbleMediaChannelPrivate *priv;
 
-  DEBUG_FUNC ("called on %p", obj);
+  DEBUG ("called on %p", obj);
 
   g_assert (GABBLE_IS_MEDIA_CHANNEL (obj));
 
@@ -789,7 +789,7 @@ gboolean gabble_media_channel_get_streams (GabbleMediaChannel *obj, GPtrArray **
 
   return TRUE;
 #else
-  DEBUG_FUNC ("not implemented");
+  DEBUG ("not implemented");
 
   *error = g_error_new (TELEPATHY_ERRORS, NotImplemented,
                         "GetStreams not implemented!");
@@ -829,7 +829,7 @@ gabble_media_channel_add_member (GObject *obj, GabbleHandle handle, const gchar 
   if (NULL == presence ||
       0 == (presence->caps & PRESENCE_CAP_GOOGLE_VOICE))
     {
-      DEBUG_FUNC ("handle %u doesn't support voice", handle);
+      DEBUG ("handle %u doesn't support voice", handle);
 
       *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
                             "handle %u doesn't support voice", handle);

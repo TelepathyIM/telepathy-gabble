@@ -163,7 +163,7 @@ gabble_presence_cache_dispose (GObject *object)
   if (priv->dispose_has_run)
     return;
 
-  DEBUG_FUNC ("dispose called");
+  DEBUG ("dispose called");
 
   priv->dispose_has_run = TRUE;
 
@@ -181,7 +181,7 @@ gabble_presence_cache_dispose (GObject *object)
 static void
 gabble_presence_cache_finalize (GObject *object)
 {
-  DEBUG_FUNC ("called with %p", object);
+  DEBUG ("called with %p", object);
 
   G_OBJECT_CLASS (gabble_presence_cache_parent_class)->finalize (object);
 }
@@ -391,7 +391,7 @@ _grab_nickname (GabblePresenceCache *cache,
     return;
 
   nickname = lm_message_node_get_value (node);
-  DEBUG_FUNC ("got nickname \"%s\" for %s", nickname, from);
+  DEBUG ("got nickname \"%s\" for %s", nickname, from);
 
   if (g_strdiff (presence->nickname, nickname))
     {
@@ -460,7 +460,7 @@ _parse_presence_message (GabblePresenceCache *cache,
         {
           presence = gabble_presence_cache_get (cache, handle);
           g_assert (NULL != presence);
-          DEBUG_FUNC ("%s has voice-v1 support", from);
+          DEBUG ("%s has voice-v1 support", from);
           gabble_presence_set_capabilities (presence, resource,
               PRESENCE_CAP_GOOGLE_VOICE);
         }
@@ -610,7 +610,7 @@ gabble_presence_cache_maybe_remove (
 
       jid = gabble_handle_inspect (priv->conn->handles, TP_HANDLE_TYPE_CONTACT,
           handle);
-      DEBUG_FUNC ("discarding cached presence for unavailable jid %s", jid);
+      DEBUG ("discarding cached presence for unavailable jid %s", jid);
       g_hash_table_remove (priv->presence, GINT_TO_POINTER (handle));
       gabble_handle_unref (priv->conn->handles, TP_HANDLE_TYPE_CONTACT, handle);
     }
@@ -645,7 +645,7 @@ gabble_presence_cache_update (
 
   jid = gabble_handle_inspect (priv->conn->handles, TP_HANDLE_TYPE_CONTACT,
       handle);
-  DEBUG_FUNC ("%s (%d) resource %s prio %d presence %d message \"%s\"",
+  DEBUG ("%s (%d) resource %s prio %d presence %d message \"%s\"",
       jid, handle, resource, priority, presence_id, status_message);
 
   presence = gabble_presence_cache_get (cache, handle);

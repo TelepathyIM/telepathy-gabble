@@ -308,7 +308,7 @@ gboolean gabble_text_mixin_receive (GObject *obj,
 
   if (msg == NULL)
     {
-      DEBUG_FUNC ("no more pending messages available, giving up");
+      DEBUG ("no more pending messages available, giving up");
 
       if (!mixin->message_lost)
         {
@@ -323,7 +323,7 @@ gboolean gabble_text_mixin_receive (GObject *obj,
 
   if (len > MAX_MESSAGE_SIZE)
     {
-      DEBUG_FUNC ("message exceeds maximum size, truncating");
+      DEBUG ("message exceeds maximum size, truncating");
 
       /* TODO: add CHANNEL_TEXT_MESSAGE_FLAG_TRUNCATED flag*/
 
@@ -338,7 +338,7 @@ gboolean gabble_text_mixin_receive (GObject *obj,
 
   if (msg->text == NULL)
     {
-      DEBUG_FUNC ("unable to allocate message, giving up");
+      DEBUG ("unable to allocate message, giving up");
 
       if (!mixin->message_lost)
         {
@@ -369,7 +369,7 @@ gboolean gabble_text_mixin_receive (GObject *obj,
                  msg->type,
                  msg->text);
 
-  DEBUG_FUNC ("queued message %u", msg->id);
+  DEBUG ("queued message %u", msg->id);
 
   mixin->message_lost = FALSE;
 
@@ -410,7 +410,7 @@ gboolean gabble_text_mixin_acknowledge_pending_message (GObject *obj, guint id, 
 
   if (node == NULL)
     {
-      DEBUG_FUNC ("invalid message id %u", id);
+      DEBUG ("invalid message id %u", id);
 
       *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
                             "invalid message id %u", id);
@@ -420,7 +420,7 @@ gboolean gabble_text_mixin_acknowledge_pending_message (GObject *obj, guint id, 
 
   msg = (GabblePendingMessage *) node->data;
 
-  DEBUG_FUNC ("acknowleding message id %u", id);
+  DEBUG ("acknowleding message id %u", id);
 
   g_queue_remove (mixin->pending, msg);
 
@@ -502,7 +502,7 @@ gboolean gabble_text_mixin_send (GObject *obj, guint type, guint subtype,
 
   if (type > TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE)
     {
-      DEBUG_FUNC ("invalid message type %u", type);
+      DEBUG ("invalid message type %u", type);
 
       *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
                             "invalid message type: %u", type);
@@ -613,7 +613,7 @@ gabble_text_mixin_parse_incoming_message (LmMessage *message,
       if (error_node)
         {
           GabbleXmppError err = gabble_xmpp_error_from_node (error_node);
-          DEBUG_FUNC ("got xmpp error: %s: %s", gabble_xmpp_error_string (err),
+          DEBUG ("got xmpp error: %s: %s", gabble_xmpp_error_string (err),
                  gabble_xmpp_error_description (err));
 
           /* these are based on descriptions of errors, and some testing */

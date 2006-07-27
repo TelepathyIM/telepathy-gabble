@@ -112,7 +112,7 @@ gabble_muc_factory_dispose (GObject *object)
   if (priv->dispose_has_run)
     return;
 
-  DEBUG_FUNC ("dispose called");
+  DEBUG ("dispose called");
   priv->dispose_has_run = TRUE;
 
   tp_channel_factory_iface_close_all (TP_CHANNEL_FACTORY_IFACE (object));
@@ -233,7 +233,7 @@ muc_channel_closed_cb (GabbleMucChannel *chan, gpointer user_data)
     {
       g_object_get (chan, "handle", &room_handle, NULL);
 
-      DEBUG_FUNC ("removing MUC channel with handle %d", room_handle);
+      DEBUG ("removing MUC channel with handle %d", room_handle);
 
       g_hash_table_remove (priv->channels, GINT_TO_POINTER (room_handle));
     }
@@ -245,7 +245,7 @@ muc_ready_cb (GabbleMucChannel *chan,
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (data);
 
-  DEBUG_FUNC ("chan=%p", chan);
+  DEBUG ("chan=%p", chan);
 
   g_signal_emit_by_name (fac, "new-channel", chan);
 }
@@ -257,7 +257,7 @@ muc_join_error_cb (GabbleMucChannel *chan,
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (data);
 
-  DEBUG_FUNC ("error->code=%u, error->message=\"%s\"", error->code, error->message);
+  DEBUG ("error->code=%u, error->message=\"%s\"", error->code, error->message);
 
   g_signal_emit_by_name (fac, "channel-error", chan, error);
 }
@@ -276,7 +276,7 @@ new_muc_channel (GabbleMucFactory *fac, GabbleHandle handle)
 
   object_path = g_strdup_printf ("%s/MucChannel%u", priv->conn->object_path, handle);
 
-  DEBUG_FUNC ("creating new chan, object path %s", object_path);
+  DEBUG ("creating new chan, object path %s", object_path);
 
   chan = g_object_new (GABBLE_TYPE_MUC_CHANNEL,
                        "connection", priv->conn,
@@ -512,7 +512,7 @@ gabble_muc_factory_iface_close_all (TpChannelFactoryIface *iface)
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (iface);
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
 
-  DEBUG_FUNC ("closing channels");
+  DEBUG ("closing channels");
 
   if (priv->channels)
     {
@@ -528,7 +528,7 @@ gabble_muc_factory_iface_connecting (TpChannelFactoryIface *iface)
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (iface);
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
 
-  DEBUG_FUNC ("adding callbacks");
+  DEBUG ("adding callbacks");
 
   g_assert (priv->message_cb == NULL);
   g_assert (priv->presence_cb == NULL);
@@ -557,7 +557,7 @@ gabble_muc_factory_iface_disconnected (TpChannelFactoryIface *iface)
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (iface);
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
 
-  DEBUG_FUNC ("removing callbacks");
+  DEBUG ("removing callbacks");
 
   g_assert (priv->message_cb != NULL);
   g_assert (priv->presence_cb != NULL);
@@ -645,7 +645,7 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
               g_error_free (close_err);
             }
 
-          DEBUG_FUNC ("error while adding self to group mixin");
+          DEBUG ("error while adding self to group mixin");
           return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_AVAILABLE;
         }
 

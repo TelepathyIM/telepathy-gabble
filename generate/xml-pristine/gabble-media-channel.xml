@@ -53,6 +53,8 @@
       <arg name="removed" type="au"/>
       <arg name="local_pending" type="au"/>
       <arg name="remote_pending" type="au"/>
+      <arg name="actor" type="u"/>
+      <arg name="reason" type="u"/>
     </signal>
     <method name="RemoveMembers">
       <arg direction="in" name="contacts" type="au"/>

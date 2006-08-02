@@ -15,13 +15,14 @@
     </method>
   </interface>
   <interface name="org.freedesktop.Telepathy.Channel.Type.Text">
-    <method name="AcknowledgePendingMessage">
-      <arg direction="in" name="id" type="u"/>
+    <method name="AcknowledgePendingMessages">
+      <arg direction="in" name="ids" type="au"/>
     </method>
     <method name="GetMessageTypes">
       <arg direction="out" type="au"/>
     </method>
     <method name="ListPendingMessages">
+      <arg direction="in" name="clear" type="b"/>
       <arg direction="out" type="a(uuuus)"/>
     </method>
     <signal name="LostMessage"/>
@@ -30,6 +31,7 @@
       <arg name="timestamp" type="u"/>
       <arg name="sender" type="u"/>
       <arg name="type" type="u"/>
+      <arg name="flags" type="u"/>
       <arg name="text" type="s"/>
     </signal>
     <method name="Send">

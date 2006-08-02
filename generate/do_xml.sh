@@ -1,5 +1,10 @@
 #!/bin/sh
 
+set -e
+
+PYVER=2.4
+PYTHON=python$PYVER
+
 if [ `basename $PWD` == "generate" ]; then
   TP=${TELEPATHY_PYTHON:=$PWD/../../telepathy-python}
 else
@@ -8,8 +13,8 @@ fi
 
 export PYTHONPATH=$TP:$PYTHONPATH
 
-test -d generate && cd generate
+if test -d generate; then cd generate; fi
 cd xml-pristine
 
 echo "Generating pristine XML in generate/xml-pristine..."
-python $TP/tools/genxml.py ../gabble.def
+$PYTHON $TP/tools/genxml.py ../gabble.def

@@ -1,6 +1,7 @@
 <?xml version="1.0" ?>
 <node name="/GabbleConnection">
   <interface name="org.freedesktop.Telepathy.Connection">
+    <method name="Connect"/>
     <method name="Disconnect"/>
     <method name="GetInterfaces">
       <arg direction="out" type="as"/>
@@ -14,15 +15,15 @@
     <method name="GetStatus">
       <arg direction="out" type="u"/>
     </method>
-    <method name="HoldHandle">
+    <method name="HoldHandles">
       <annotation name="org.freedesktop.DBus.GLib.Async" value=""/>
       <arg direction="in" name="handle_type" type="u"/>
-      <arg direction="in" name="handle" type="u"/>
+      <arg direction="in" name="handles" type="au"/>
     </method>
-    <method name="InspectHandle">
+    <method name="InspectHandles">
       <arg direction="in" name="handle_type" type="u"/>
-      <arg direction="in" name="handle" type="u"/>
-      <arg direction="out" type="s"/>
+      <arg direction="in" name="handles" type="au"/>
+      <arg direction="out" type="as"/>
     </method>
     <method name="InspectHandles">
       <annotation name="org.freedesktop.DBus.GLib.Async" value=""/>
@@ -40,10 +41,10 @@
       <arg name="handle" type="u"/>
       <arg name="suppress_handler" type="b"/>
     </signal>
-    <method name="ReleaseHandle">
+    <method name="ReleaseHandles">
       <annotation name="org.freedesktop.DBus.GLib.Async" value=""/>
       <arg direction="in" name="handle_type" type="u"/>
-      <arg direction="in" name="handle" type="u"/>
+      <arg direction="in" name="handles" type="au"/>
     </method>
     <method name="RequestChannel">
       <annotation name="org.freedesktop.DBus.GLib.Async" value=""/>
@@ -53,11 +54,11 @@
       <arg direction="in" name="suppress_handler" type="b"/>
       <arg direction="out" type="o"/>
     </method>
-    <method name="RequestHandle">
+    <method name="RequestHandles">
       <annotation name="org.freedesktop.DBus.GLib.Async" value=""/>
       <arg direction="in" name="handle_type" type="u"/>
-      <arg direction="in" name="name" type="s"/>
-      <arg direction="out" type="u"/>
+      <arg direction="in" name="names" type="as"/>
+      <arg direction="out" type="au"/>
     </method>
     <signal name="StatusChanged">
       <arg name="status" type="u"/>

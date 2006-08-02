@@ -1,23 +1,9 @@
 <?xml version="1.0" ?>
 <node name="/GabbleConnectionManager">
   <interface name="org.freedesktop.Telepathy.ConnectionManager">
-    <method name="Connect">
+    <method name="GetParameters">
       <arg direction="in" name="proto" type="s"/>
-      <arg direction="in" name="parameters" type="a{sv}"/>
-      <arg direction="out" type="s"/>
-      <arg direction="out" type="o"/>
-    </method>
-    <method name="GetMandatoryParameters">
-      <arg direction="in" name="proto" type="s"/>
-      <arg direction="out" type="a{ss}"/>
-    </method>
-    <method name="GetOptionalParameters">
-      <arg direction="in" name="proto" type="s"/>
-      <arg direction="out" type="a{ss}"/>
-    </method>
-    <method name="GetParameterDefaults">
-      <arg direction="in" name="proto" type="s"/>
-      <arg direction="out" type="a{sv}"/>
+      <arg direction="out" type="a(susv)"/>
     </method>
     <method name="ListProtocols">
       <arg direction="out" type="as"/>
@@ -27,5 +13,11 @@
       <arg name="object_path" type="o"/>
       <arg name="proto" type="s"/>
     </signal>
+    <method name="RequestConnection">
+      <arg direction="in" name="proto" type="s"/>
+      <arg direction="in" name="parameters" type="a{sv}"/>
+      <arg direction="out" type="s"/>
+      <arg direction="out" type="o"/>
+    </method>
   </interface>
 </node>

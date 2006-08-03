@@ -3754,6 +3754,35 @@ gboolean gabble_connection_get_statuses (GabbleConnection *obj, GHashTable ** re
  */
 gboolean gabble_connection_hold_handles (GabbleConnection *obj, guint handle_type, const GArray *handles, DBusGMethodInvocation *context)
 {
+  GabbleConnectionPrivate *priv;
+  GError *error = NULL;
+  gchar *sender;
+
+  g_assert (GABBLE_IS_CONNECTION (obj));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  ERROR_IF_NOT_CONNECTED_ASYNC (obj, error, context)
+
+  if (!gabble_handles_are_valid (obj->handles,
+                                 handle_type,
+                                 handles,
+                                 FALSE,
+                                 &error))
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return FALSE;
+    }
+
+  sender = dbus_g_method_get_sender (context);
+  for (i = 0; i < handles->len; i++)
+    {
+      GabbleHandle handle = g_array_index (handles, GabbleHandle, i);
+      _gabble_connection_client_hold_handle (obj, sender, handle, handle_type);
+    }
+  dbus_g_method_return (context);
+
   return TRUE;
 }
 
@@ -4021,6 +4050,35 @@ gboolean gabble_connection_list_properties (GabbleConnection *obj, GPtrArray ** 
  */
 gboolean gabble_connection_release_handles (GabbleConnection *obj, guint handle_type, const GArray * handles, DBusGMethodInvocation *context)
 {
+  GabbleConnectionPrivate *priv;
+  char *sender;
+  GError *error = NULL;
+
+  g_assert (GABBLE_IS_CONNECTION (obj));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  ERROR_IF_NOT_CONNECTED_ASYNC (obj, error, context)
+
+  if (!gabble_handles_are_valid (obj->handles,
+                                 handle_type,
+                                 handles,
+                                 FALSE,
+                                 &error))
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return FALSE;
+    }
+
+  sender = dbus_g_method_get_sender (context);
+  for (i = 0; i < handles->len; i++)
+    {
+      GabbleHandle handle = g_array_index (handles, GabbleHandle, i);
+      _gabble_connection_client_release_handle (obj, sender, handle, handle_type);
+    }
+  dbus_g_method_return (context);
+
   return TRUE;
 }
 

@@ -170,7 +170,6 @@ gboolean gabble_connection_release_handles (GabbleConnection *obj, guint handle_
 gboolean gabble_connection_remove_status (GabbleConnection *obj, const gchar * status, GError **error);
 gboolean gabble_connection_request_aliases (GabbleConnection *obj, const GArray * contacts, gchar *** ret, GError **error);
 gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar * type, guint handle_type, guint handle, gboolean suppress_handler, DBusGMethodInvocation *context);
-gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_type, const gchar * name, DBusGMethodInvocation *context);
 gboolean gabble_connection_request_handles (GabbleConnection *obj, guint handle_type, const gchar ** names, DBusGMethodInvocation *context);
 gboolean gabble_connection_request_presence (GabbleConnection *obj, const GArray * contacts, GError **error);
 gboolean gabble_connection_set_aliases (GabbleConnection *obj, GHashTable * aliases, GError **error);

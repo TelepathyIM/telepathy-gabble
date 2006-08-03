@@ -4707,25 +4707,19 @@ static gchar *room_name_to_canonical (GabbleConnection *conn, const gchar *name)
  */
 gboolean gabble_connection_request_handles (GabbleConnection *obj, guint handle_type, const gchar ** names, DBusGMethodInvocation *context)
 {
-  return TRUE;
-}
-
-
-/**
- * gabble_connection_request_handle
- *
- * Implements DBus method RequestHandle
- * on interface org.freedesktop.Telepathy.Connection
- *
- * @context: The DBUS invocation context to use to return values
- *           or throw an error.
- */
-gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_type, const gchar * name, DBusGMethodInvocation *context)
-{
   GabbleConnectionPrivate *priv;
+  guint i, count = 0;
+  const gchar **cur_name;
+  GArray *handles;
   GabbleHandle handle;
   gchar *sender, *qualified_name;
   GError *error = NULL;
+
+  for (cur_name = names; cur_name != NULL; cur_name++)
+    {
+      count++;
+    }
+  handles = g_array_sized_new(FALSE, FALSE, sizeof(GabbleHandle), count);
 
   g_assert (GABBLE_IS_CONNECTION (obj));
 
@@ -4740,73 +4734,109 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
       return FALSE;
     }
 
-  switch (handle_type)
+  for (i = 0; i < count; i++)
     {
-    case TP_HANDLE_TYPE_CONTACT:
-      if (!gabble_handle_jid_is_valid (handle_type, name, &error))
+      const gchar *name = names[i];
+
+      switch (handle_type)
         {
-          dbus_g_method_return_error (context, error);
-          g_error_free (error);
-
-          return FALSE;
-        }
-
-      handle = gabble_handle_for_contact (obj->handles, name, FALSE);
-
-      if (handle == 0)
-        {
-          DEBUG ("requested handle %s was invalid", name);
-
-          error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
-                               "requested handle %s was invalid", name);
-          dbus_g_method_return_error (context, error);
-          g_error_free (error);
-
-          return FALSE;
-        }
-
-      break;
-    case TP_HANDLE_TYPE_ROOM:
-      qualified_name = room_name_to_canonical (obj, name);
-
-      if (!qualified_name)
-        {
-          DEBUG ("requested handle %s contains no conference server", name);
-
-          error = g_error_new (TELEPATHY_ERRORS, NotAvailable, "requested "
-              "room handle %s does not specify a server, but we have not discovered "
-              "any local conference servers and no fallback was provided", name);
-          dbus_g_method_return_error (context, error);
-          g_error_free (error);
-
-          return FALSE;
-        }
-
-      /* has the handle been verified before? */
-      if (gabble_handle_for_room_exists (obj->handles, qualified_name, FALSE))
-        {
-          handle = gabble_handle_for_room (obj->handles, qualified_name);
-
-          g_free (qualified_name);
-        }
-      else
-        {
-          gboolean success;
-
-          /* verify it */
-          success = room_jid_verify (obj, qualified_name, context, &error);
-
-          g_free (qualified_name);
-
-          if (success)
-            {
-              return TRUE;
-            }
-          else
+        case TP_HANDLE_TYPE_CONTACT:
+          if (!gabble_handle_jid_is_valid (handle_type, name, &error))
             {
               dbus_g_method_return_error (context, error);
               g_error_free (error);
 
+              g_array_free (handles, TRUE);
+              return FALSE;
+            }
+
+          handle = gabble_handle_for_contact (obj->handles, name, FALSE);
+
+          if (handle == 0)
+            {
+              DEBUG ("requested handle %s was invalid", name);
+
+              error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                                   "requested handle %s was invalid", name);
+              dbus_g_method_return_error (context, error);
+              g_error_free (error);
+
+              g_array_free (handles, TRUE);
+              return FALSE;
+            }
+
+          break;
+        case TP_HANDLE_TYPE_ROOM:
+          qualified_name = room_name_to_canonical (obj, name);
+
+          if (!qualified_name)
+            {
+              DEBUG ("requested handle %s contains no conference server", name);
+
+              error = g_error_new (TELEPATHY_ERRORS, NotAvailable, "requested "
+                  "room handle %s does not specify a server, but we have not discovered "
+                  "any local conference servers and no fallback was provided", name);
+              dbus_g_method_return_error (context, error);
+              g_error_free (error);
+
+              g_array_free (handles, TRUE);
+              return FALSE;
+            }
+
+          /* has the handle been verified before? */
+          if (gabble_handle_for_room_exists (obj->handles, qualified_name, FALSE))
+            {
+              handle = gabble_handle_for_room (obj->handles, qualified_name);
+
+              g_free (qualified_name);
+            }
+          else
+            {
+              gboolean success;
+
+              /* verify it */
+              success = room_jid_verify (obj, qualified_name, context, &error);
+
+              g_free (qualified_name);
+
+              if (success)
+                {
+                  return TRUE;
+                }
+              else
+                {
+                  dbus_g_method_return_error (context, error);
+                  g_error_free (error);
+
+                  g_array_free (handles, TRUE);
+                  return FALSE;
+                }
+            }
+
+          break;
+        case TP_HANDLE_TYPE_LIST:
+          if (!strcmp (name, "publish"))
+            {
+              handle = gabble_handle_for_list_publish (obj->handles);
+            }
+          else if (!strcmp (name, "subscribe"))
+            {
+              handle = gabble_handle_for_list_subscribe (obj->handles);
+            }
+          else if (!strcmp (name, "known"))
+            {
+              handle = gabble_handle_for_list_known (obj->handles);
+            }
+          else
+            {
+              DEBUG ("requested list channel %s not available", name);
+
+              error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                                   "requested list channel %s not available", name);
+              dbus_g_method_return_error (context, error);
+              g_error_free (error);
+
+              g_array_free (handles, TRUE);
               return FALSE;
             }
         }
@@ -4825,36 +4855,27 @@ gboolean gabble_connection_request_handle (GabbleConnection *obj, guint handle_t
         {
           handle = gabble_handle_for_list_known (obj->handles);
         }
-      else if (!strcmp (name, "block"))
-        {
-          handle = gabble_handle_for_list_block (obj->handles);
-        }
       else
         {
           DEBUG ("requested list channel %s not available", name);
 
           error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
-                               "requested list channel %s not available", name);
+                              "unimplemented handle type %u", handle_type);
           dbus_g_method_return_error (context, error);
           g_error_free (error);
 
+          g_array_free (handles, TRUE);
           return FALSE;
         }
-      break;
-    default:
-      DEBUG ("unimplemented handle type %u", handle_type);
-
-      error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
-                          "unimplemented handle type %u", handle_type);
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-
-      return FALSE;
+      g_array_append_val(handles, handle);
     }
 
   sender = dbus_g_method_get_sender (context);
-  _gabble_connection_client_hold_handle (obj, sender, handle, handle_type);
-  dbus_g_method_return (context, handle);
+  for (i = 0; i < count; i++)
+    {
+      _gabble_connection_client_hold_handle (obj, sender, g_array_index(handles, GabbleHandle, i), handle_type);
+    }
+  dbus_g_method_return (context, handles);
 
   return TRUE;
 }

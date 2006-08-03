@@ -3833,6 +3833,15 @@ gboolean gabble_connection_inspect_handle (GabbleConnection *obj, guint handle_t
   return TRUE;
 }
 
+
+/**
+ * gabble_connection_inspect_handles
+ *
+ * Implements DBus method InspectHandles
+ * on interface org.freedesktop.Telepathy.Connection
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
 gboolean gabble_connection_inspect_handles (GabbleConnection *obj, guint handle_type, const GArray *handles, DBusGMethodInvocation *context)
 {
   GabbleConnectionPrivate *priv;

@@ -227,7 +227,7 @@ gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_im_channel_marshal_VOID__VOID,
+                  g_cclosure_marshal_VOID__VOID,
                   G_TYPE_NONE, 0);
 
   gabble_text_mixin_class_init (object_class, G_STRUCT_OFFSET (GabbleIMChannelClass, text_class));

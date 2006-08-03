@@ -3752,6 +3752,7 @@ gboolean gabble_connection_hold_handles (GabbleConnection *obj, guint handle_typ
   GabbleConnectionPrivate *priv;
   GError *error = NULL;
   gchar *sender;
+  guint i;
 
   g_assert (GABBLE_IS_CONNECTION (obj));
 
@@ -3972,6 +3973,7 @@ gboolean gabble_connection_release_handles (GabbleConnection *obj, guint handle_
   GabbleConnectionPrivate *priv;
   char *sender;
   GError *error = NULL;
+  guint i;
 
   g_assert (GABBLE_IS_CONNECTION (obj));
 

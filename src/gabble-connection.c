@@ -3418,6 +3418,33 @@ gboolean gabble_connection_clear_status (GabbleConnection *obj, GError **error)
 
 
 /**
+ * gabble_connection_connect
+ * Implements DBus method Connect
+ * on interface org.freedesktop.Telepathy.Connection
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_connection_connect (GabbleConnection *obj, GError **error)
+{
+  GabbleConnectionPrivate *priv;
+  gboolean ret = TRUE;
+
+  g_assert(GABBLE_IS_CONNECTION (obj));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  if (priv->status == TP_CONN_STATUS_DISCONNECTED)
+    ret = _gabble_connection_connect (obj, error);
+
+  return ret;
+}
+
+
+/**
  * gabble_connection_disconnect
  *
  * Implements DBus method Disconnect

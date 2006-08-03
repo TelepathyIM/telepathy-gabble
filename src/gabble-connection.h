@@ -150,6 +150,7 @@ GabbleConnectionAliasSource _gabble_connection_get_cached_alias (GabbleConnectio
 
 gboolean gabble_connection_add_status (GabbleConnection *obj, const gchar * status, GHashTable * parms, GError **error);
 gboolean gabble_connection_clear_status (GabbleConnection *obj, GError **error);
+gboolean gabble_connection_connect (GabbleConnection *obj, GError **error);
 gboolean gabble_connection_disconnect (GabbleConnection *obj, GError **error);
 gboolean gabble_connection_get_alias_flags (GabbleConnection *obj, guint* ret, GError **error);
 gboolean gabble_connection_get_interfaces (GabbleConnection *obj, gchar *** ret, GError **error);

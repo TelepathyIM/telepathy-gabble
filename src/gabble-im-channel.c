@@ -463,11 +463,11 @@ gboolean gabble_im_channel_get_message_types (GabbleIMChannel *obj, GArray ** re
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_im_channel_list_pending_messages (GabbleIMChannel *obj, GPtrArray ** ret, GError **error)
+gboolean gabble_im_channel_list_pending_messages (GabbleIMChannel *obj, gboolean clear, GPtrArray ** ret, GError **error)
 {
   g_assert (GABBLE_IS_IM_CHANNEL (obj));
 
-  return gabble_text_mixin_list_pending_messages (G_OBJECT (obj), ret, error);
+  return gabble_text_mixin_list_pending_messages (G_OBJECT (obj), clear, ret, error);
 }
 
 

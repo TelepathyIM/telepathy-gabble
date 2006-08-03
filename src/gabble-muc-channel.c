@@ -1940,11 +1940,11 @@ gboolean gabble_muc_channel_get_self_handle (GabbleMucChannel *obj, guint* ret, 
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_muc_channel_list_pending_messages (GabbleMucChannel *obj, GPtrArray ** ret, GError **error)
+gboolean gabble_muc_channel_list_pending_messages (GabbleMucChannel *obj, gboolean clear, GPtrArray ** ret, GError **error)
 {
   g_assert (GABBLE_IS_MUC_CHANNEL (obj));
 
-  return gabble_text_mixin_list_pending_messages (G_OBJECT (obj), ret, error);
+  return gabble_text_mixin_list_pending_messages (G_OBJECT (obj), clear, ret, error);
 }
 
 

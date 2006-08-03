@@ -456,7 +456,7 @@ gboolean gabble_text_mixin_acknowledge_pending_messages (GObject *obj, const GAr
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_text_mixin_list_pending_messages (GObject *obj, GPtrArray ** ret, GError **error)
+gboolean gabble_text_mixin_list_pending_messages (GObject *obj, gboolean clear, GPtrArray ** ret, GError **error)
 {
   GabbleTextMixin *mixin = GABBLE_TEXT_MIXIN (obj);
   guint count;
@@ -466,9 +466,11 @@ gboolean gabble_text_mixin_list_pending_messages (GObject *obj, GPtrArray ** ret
   count = g_queue_get_length (mixin->pending);
   messages = g_ptr_array_sized_new (count);
 
-  for (cur = g_queue_peek_head_link(mixin->pending);
+  for (cur = (clear ? g_queue_pop_head_link(mixin->pending)
+                    : g_queue_peek_head_link(mixin->pending));
        cur != NULL;
-       cur = cur->next)
+       cur = (clear ? g_queue_pop_head_link(mixin->pending)
+                    : cur->next))
     {
       GabblePendingMessage *msg = (GabblePendingMessage *) cur->data;
       GValue val = { 0, };

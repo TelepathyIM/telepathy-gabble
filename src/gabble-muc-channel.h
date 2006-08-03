@@ -88,7 +88,7 @@ gboolean gabble_muc_channel_get_password_flags (GabbleMucChannel *obj, guint* re
 gboolean gabble_muc_channel_get_properties (GabbleMucChannel *obj, const GArray * properties, GPtrArray ** ret, GError **error);
 gboolean gabble_muc_channel_get_remote_pending_members (GabbleMucChannel *obj, GArray ** ret, GError **error);
 gboolean gabble_muc_channel_get_self_handle (GabbleMucChannel *obj, guint* ret, GError **error);
-gboolean gabble_muc_channel_list_pending_messages (GabbleMucChannel *obj, GPtrArray ** ret, GError **error);
+gboolean gabble_muc_channel_list_pending_messages (GabbleMucChannel *obj, gboolean clear, GPtrArray ** ret, GError **error);
 gboolean gabble_muc_channel_list_properties (GabbleMucChannel *obj, GPtrArray ** ret, GError **error);
 gboolean gabble_muc_channel_provide_password (GabbleMucChannel *obj, const gchar * password, DBusGMethodInvocation *context);
 gboolean gabble_muc_channel_remove_members (GabbleMucChannel *obj, const GArray * contacts, const gchar * message, GError **error);

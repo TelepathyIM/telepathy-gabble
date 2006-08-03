@@ -3430,17 +3430,12 @@ gboolean gabble_connection_clear_status (GabbleConnection *obj, GError **error)
  */
 gboolean gabble_connection_connect (GabbleConnection *obj, GError **error)
 {
-  GabbleConnectionPrivate *priv;
-  gboolean ret = TRUE;
-
   g_assert(GABBLE_IS_CONNECTION (obj));
 
-  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+  if (obj->status == TP_CONN_STATUS_DISCONNECTED)
+    return _gabble_connection_connect (obj, error);
 
-  if (priv->status == TP_CONN_STATUS_DISCONNECTED)
-    ret = _gabble_connection_connect (obj, error);
-
-  return ret;
+  return TRUE;
 }
 
 

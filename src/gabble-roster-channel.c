@@ -256,7 +256,7 @@ gabble_roster_channel_class_init (GabbleRosterChannelClass *gabble_roster_channe
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_roster_channel_marshal_VOID__VOID,
+                  g_cclosure_marshal_VOID__VOID,
                   G_TYPE_NONE, 0);
 
   gabble_group_mixin_class_init (object_class,

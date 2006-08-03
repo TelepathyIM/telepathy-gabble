@@ -174,8 +174,8 @@ gabble_text_mixin_class_init (GObjectClass *obj_cls, glong offset)
                 G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                 0,
                 NULL, NULL,
-                text_mixin_marshal_VOID__INT_INT_INT_INT_STRING,
-                G_TYPE_NONE, 5, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING);
+                text_mixin_marshal_VOID__INT_INT_INT_INT_INT_STRING,
+                G_TYPE_NONE, 6, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING);
 
   mixin_cls->send_error_signal_id = g_signal_new ("send-error",
                 G_OBJECT_CLASS_TYPE (obj_cls),
@@ -367,6 +367,7 @@ gboolean gabble_text_mixin_receive (GObject *obj,
                  msg->timestamp,
                  msg->sender,
                  msg->type,
+                 0, /* TODO: fill in flags properly */
                  msg->text);
 
   DEBUG ("queued message %u", msg->id);

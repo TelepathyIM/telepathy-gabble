@@ -362,7 +362,7 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_media_channel_marshal_VOID__VOID,
+                  g_cclosure_marshal_VOID__VOID,
                   G_TYPE_NONE, 0);
 
   signals[NEW_MEDIA_SESSION_HANDLER] =

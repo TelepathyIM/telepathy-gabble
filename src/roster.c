@@ -763,11 +763,14 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
             }
 
           item = _gabble_roster_item_update (roster, handle, item_node);
+#ifdef ENABLE_DEBUG
+          if (DEBUGGING)
             {
               gchar *dump = _gabble_roster_item_dump (item);
               DEBUG ("jid: %s, %s", jid, dump);
               g_free (dump);
             }
+#endif
 
           switch (item->subscription)
             {

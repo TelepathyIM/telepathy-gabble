@@ -42,23 +42,8 @@ jingle_info_discover_servers (GabbleConnection *conn)
   LmMessage *msg = NULL;
   LmMessageNode *node;
   GError *error = NULL;
-  GabbleHandle handle;
-  gchar *jid = NULL;
-
-  if (!gabble_connection_get_self_handle (conn, &handle, &error))
-    {
-      g_warning ("%s: get_self_handle failed: %s\n", G_STRFUNC,
-                 error->message);
-      goto OUT;
-    }
-
-  if (!gabble_connection_inspect_handle (conn, TP_HANDLE_TYPE_CONTACT, handle,
-                                         &jid, &error))
-    {
-      g_warning ("%s: get_self_handle failed: %s\n", G_STRFUNC,
-                 error->message);
-      goto OUT;
-    }
+  GabbleHandle handle = conn->self_handle;
+  const gchar *jid = gabble_handle_inspect (conn->handles, TP_HANDLE_TYPE_CONTACT, handle);
 
   msg = lm_message_new_with_sub_type (jid, LM_MESSAGE_TYPE_IQ,
                                       LM_MESSAGE_SUB_TYPE_GET);
@@ -73,9 +58,6 @@ jingle_info_discover_servers (GabbleConnection *conn)
     }
 
 OUT:
-  if (jid)
-    g_free (jid);
-
   if (msg)
     lm_message_unref (msg);
 

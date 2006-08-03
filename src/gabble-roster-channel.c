@@ -141,6 +141,13 @@ gabble_roster_channel_constructor (GType type, guint n_props,
           TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
           0);
     }
+  else if (gabble_handle_for_list_block (handles) == priv->handle)
+    {
+      gabble_group_mixin_change_flags (obj,
+          TP_CHANNEL_GROUP_FLAG_CAN_ADD |
+          TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
+          0);
+    }
   else
     {
       g_assert_not_reached ();
@@ -369,6 +376,13 @@ _gabble_roster_channel_add_member_cb (GObject *obj,
       ret = _gabble_roster_channel_send_presence (GABBLE_ROSTER_CHANNEL (obj),
           LM_MESSAGE_SUB_TYPE_SUBSCRIBE, handle, message, error);
     }
+  /* block list */
+  else if (gabble_handle_for_list_block (repo) == priv->handle)
+    {
+      /* block contact */
+      ret = gabble_roster_handle_set_blocked (priv->conn->roster, handle, TRUE,
+          error);
+    }
   else
     {
       g_assert_not_reached ();
@@ -415,10 +429,18 @@ _gabble_roster_channel_remove_member_cb (GObject *obj,
       ret = _gabble_roster_channel_send_presence (GABBLE_ROSTER_CHANNEL (obj),
           LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE, handle, message, error);
     }
+  /* known list */
   else if (gabble_handle_for_list_known (repo) == priv->handle)
     {
       /* send roster subscription=remove IQ */
       ret = gabble_roster_handle_remove (priv->conn->roster, handle, error);
+    }
+  /* block list */
+  else if (gabble_handle_for_list_block (repo) == priv->handle)
+    {
+      /* unblock contact */
+      ret = gabble_roster_handle_set_blocked (priv->conn->roster, handle, FALSE,
+          error);
     }
   else
     {

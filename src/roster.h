@@ -68,6 +68,7 @@ typedef enum
 GabbleRoster *gabble_roster_new (GabbleConnection *);
 
 GabbleRosterSubscription gabble_roster_handle_get_subscription (GabbleRoster *, GabbleHandle);
+gboolean gabble_roster_handle_set_blocked (GabbleRoster *, GabbleHandle, gboolean, GError **);
 const gchar *gabble_roster_handle_get_name (GabbleRoster *, GabbleHandle);
 gboolean gabble_roster_handle_set_name (GabbleRoster *, GabbleHandle, const gchar *, GError **);
 gboolean gabble_roster_handle_remove (GabbleRoster *, GabbleHandle, GError **);

@@ -1263,6 +1263,40 @@ gabble_roster_handle_get_subscription (GabbleRoster *roster,
   return item->subscription;
 }
 
+gboolean
+gabble_roster_handle_set_blocked (GabbleRoster *roster,
+                                  GabbleHandle handle,
+                                  gboolean blocked,
+                                  GError **error)
+{
+  GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
+  GabbleRosterItem *item;
+  LmMessage *message;
+  gboolean orig_blocked, ret;
+
+  g_return_val_if_fail (roster != NULL, FALSE);
+  g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
+  g_return_val_if_fail (gabble_handle_is_valid (priv->conn->handles,
+      TP_HANDLE_TYPE_CONTACT, handle, NULL), FALSE);
+
+  item = g_hash_table_lookup (priv->items, GINT_TO_POINTER (handle));
+  orig_blocked = item->blocked;
+
+  if (blocked == orig_blocked)
+    return TRUE;
+
+  /* temporarily set the desired block state and generate a message */
+  item->blocked = blocked;
+  message = _gabble_roster_item_to_message (roster, handle, NULL);
+  item->blocked = orig_blocked;
+
+  ret = _gabble_connection_send (priv->conn, message, error);
+
+  lm_message_unref (message);
+
+  return ret;
+}
+
 const gchar *
 gabble_roster_handle_get_name (GabbleRoster *roster,
                                GabbleHandle handle)

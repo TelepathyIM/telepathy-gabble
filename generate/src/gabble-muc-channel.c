@@ -111,8 +111,8 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_muc_channel_marshal_VOID__STRING_BOXED_BOXED_BOXED_BOXED,
-                  G_TYPE_NONE, 5, G_TYPE_STRING, DBUS_TYPE_G_UINT_ARRAY, DBUS_TYPE_G_UINT_ARRAY, DBUS_TYPE_G_UINT_ARRAY, DBUS_TYPE_G_UINT_ARRAY);
+                  gabble_muc_channel_marshal_VOID__STRING_BOXED_BOXED_BOXED_BOXED_INT_INT,
+                  G_TYPE_NONE, 7, G_TYPE_STRING, DBUS_TYPE_G_UINT_ARRAY, DBUS_TYPE_G_UINT_ARRAY, DBUS_TYPE_G_UINT_ARRAY, DBUS_TYPE_G_UINT_ARRAY, G_TYPE_UINT, G_TYPE_UINT);
 
   signals[PASSWORD_FLAGS_CHANGED] =
     g_signal_new ("password-flags-changed",
@@ -147,8 +147,8 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_muc_channel_marshal_VOID__INT_INT_INT_INT_STRING,
-                  G_TYPE_NONE, 5, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING);
+                  gabble_muc_channel_marshal_VOID__INT_INT_INT_INT_INT_STRING,
+                  G_TYPE_NONE, 6, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING);
 
   signals[SEND_ERROR] =
     g_signal_new ("send-error",
@@ -202,9 +202,9 @@ gabble_muc_channel_finalize (GObject *object)
 
 
 /**
- * gabble_muc_channel_acknowledge_pending_message
+ * gabble_muc_channel_acknowledge_pending_messages
  *
- * Implements DBus method AcknowledgePendingMessage
+ * Implements DBus method AcknowledgePendingMessages
  * on interface org.freedesktop.Telepathy.Channel.Type.Text
  *
  * @error: Used to return a pointer to a GError detailing any error
@@ -213,7 +213,7 @@ gabble_muc_channel_finalize (GObject *object)
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_muc_channel_acknowledge_pending_message (GabbleMucChannel *obj, guint id, GError **error)
+gboolean gabble_muc_channel_acknowledge_pending_messages (GabbleMucChannel *obj, const GArray * ids, GError **error)
 {
   return TRUE;
 }
@@ -501,7 +501,7 @@ gboolean gabble_muc_channel_get_self_handle (GabbleMucChannel *obj, guint* ret, 
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_muc_channel_list_pending_messages (GabbleMucChannel *obj, GPtrArray ** ret, GError **error)
+gboolean gabble_muc_channel_list_pending_messages (GabbleMucChannel *obj, gboolean clear, GPtrArray ** ret, GError **error)
 {
   return TRUE;
 }

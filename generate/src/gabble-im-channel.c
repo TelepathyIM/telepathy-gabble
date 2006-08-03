@@ -97,8 +97,8 @@ gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_im_channel_marshal_VOID__INT_INT_INT_INT_STRING,
-                  G_TYPE_NONE, 5, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING);
+                  gabble_im_channel_marshal_VOID__INT_INT_INT_INT_INT_STRING,
+                  G_TYPE_NONE, 6, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING);
 
   signals[SEND_ERROR] =
     g_signal_new ("send-error",
@@ -152,9 +152,9 @@ gabble_im_channel_finalize (GObject *object)
 
 
 /**
- * gabble_im_channel_acknowledge_pending_message
+ * gabble_im_channel_acknowledge_pending_messages
  *
- * Implements DBus method AcknowledgePendingMessage
+ * Implements DBus method AcknowledgePendingMessages
  * on interface org.freedesktop.Telepathy.Channel.Type.Text
  *
  * @error: Used to return a pointer to a GError detailing any error
@@ -163,7 +163,7 @@ gabble_im_channel_finalize (GObject *object)
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_im_channel_acknowledge_pending_message (GabbleIMChannel *obj, guint id, GError **error)
+gboolean gabble_im_channel_acknowledge_pending_messages (GabbleIMChannel *obj, const GArray * ids, GError **error)
 {
   return TRUE;
 }
@@ -271,7 +271,7 @@ gboolean gabble_im_channel_get_message_types (GabbleIMChannel *obj, GArray ** re
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_im_channel_list_pending_messages (GabbleIMChannel *obj, GPtrArray ** ret, GError **error)
+gboolean gabble_im_channel_list_pending_messages (GabbleIMChannel *obj, gboolean clear, GPtrArray ** ret, GError **error)
 {
   return TRUE;
 }

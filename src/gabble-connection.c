@@ -3744,6 +3744,21 @@ gboolean gabble_connection_get_statuses (GabbleConnection *obj, GHashTable ** re
 
 
 /**
+ * gabble_connection_hold_handles
+ *
+ * Implements DBus method HoldHandles
+ * on interface org.freedesktop.Telepathy.Connection
+ *
+ * @context: The DBUS invocation context to use to return values
+ *           or throw an error.
+ */
+gboolean gabble_connection_hold_handles (GabbleConnection *obj, guint handle_type, const GArray *handles, DBusGMethodInvocation *context)
+{
+  return TRUE;
+}
+
+
+/**
  * gabble_connection_hold_handle
  *
  * Implements DBus method HoldHandle
@@ -3983,6 +3998,21 @@ gboolean gabble_connection_list_channels (GabbleConnection *obj, GPtrArray ** re
 gboolean gabble_connection_list_properties (GabbleConnection *obj, GPtrArray ** ret, GError **error)
 {
   return gabble_properties_mixin_list_properties (G_OBJECT (obj), ret, error);
+}
+
+
+/**
+ * gabble_connection_release_handles
+ *
+ * Implements DBus method ReleaseHandles
+ * on interface org.freedesktop.Telepathy.Connection
+ *
+ * @context: The DBUS invocation context to use to return values
+ *           or throw an error.
+ */
+gboolean gabble_connection_release_handles (GabbleConnection *obj, guint handle_type, const GArray * handles, DBusGMethodInvocation *context)
+{
+  return TRUE;
 }
 
 
@@ -4597,6 +4627,22 @@ static gchar *room_name_to_canonical (GabbleConnection *conn, const gchar *name)
 
   return g_strdup_printf ("%s@%s", name, server);
 }
+
+
+/**
+ * gabble_connection_request_handles
+ *
+ * Implements DBus method RequestHandles
+ * on interface org.freedesktop.Telepathy.Connection
+ *
+ * @context: The DBUS invocation context to use to return values
+ *           or throw an error.
+ */
+gboolean gabble_connection_request_handles (GabbleConnection *obj, guint handle_type, const gchar ** names, DBusGMethodInvocation *context)
+{
+  return TRUE;
+}
+
 
 /**
  * gabble_connection_request_handle

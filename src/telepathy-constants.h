@@ -29,6 +29,11 @@ TP_CONN_ALIAS_FLAG_USER_SET = 1
 } TpConnAliasFlags;
 
 typedef enum {
+TP_CONN_CAPABILITY_FLAG_CREATE = 1,
+TP_CONN_CAPABILITY_FLAG_INVITE = 2
+} TpConnectionCapabilityFlags;
+
+typedef enum {
 TP_CONN_CAPABILITY_TYPE_CREATE = 0,
 TP_CONN_CAPABILITY_TYPE_INVITE = 1
 } TpConnectionCapabilityType;

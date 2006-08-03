@@ -36,6 +36,13 @@
 #define BUS_NAME        "org.freedesktop.Telepathy.ConnectionManager.gabble"
 #define OBJECT_PATH     "/org/freedesktop/Telepathy/ConnectionManager/gabble"
 
+#define TP_TYPE_PARAM (dbus_g_type_get_struct ("GValueArray", \
+      G_TYPE_STRING, \
+      G_TYPE_UINT, \
+      G_TYPE_STRING, \
+      G_TYPE_VALUE, \
+      G_TYPE_INVALID))
+
 G_DEFINE_TYPE(GabbleConnectionManager, gabble_connection_manager, G_TYPE_OBJECT)
 
 /* signal enum */
@@ -181,7 +188,8 @@ enum {
     JABBER_PARAM_FALLBACK_CONFERENCE_SERVER,
     JABBER_PARAM_STUN_SERVER,
     JABBER_PARAM_STUN_PORT,
-    JABBER_PARAM_IGNORE_SSL_ERRORS
+    JABBER_PARAM_IGNORE_SSL_ERRORS,
+    LAST_JABBER_PARAM
 };
 
 static const GabbleParamSpec jabber_params[] = {
@@ -225,65 +233,40 @@ get_parameters (const char *proto, const GabbleParamSpec **params, GError **erro
   return TRUE;
 }
 
-static gboolean
-list_parameters (const GabbleParamSpec *params, gboolean mandatory, GHashTable **ret)
+static GValue *param_default_value (const GabbleParamSpec *params, int i)
 {
-  int i;
+  GValue *value;
 
-  *ret = g_hash_table_new(g_str_hash, g_str_equal);
+  value = g_new0(GValue, 1);
+  g_value_init(value, params[i].gtype);
 
-  for (i = 0; params[i].name; i++)
+  if (params[i].mandatory)
     {
-      if (params[i].mandatory == mandatory)
-        g_hash_table_insert (*ret, (gpointer) params[i].name, (gpointer) params[i].dtype);
+      g_assert(params[i].def == NULL);
+      goto OUT;
     }
 
-  return TRUE;
-}
-
-static gboolean
-parameter_defaults (const GabbleParamSpec *params, GHashTable **ret)
-{
-  int i;
-
-  *ret = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
-
-  for (i = 0; params[i].name; i++)
+  switch (params[i].dtype[0])
     {
-      GValue *value;
-
-      if (params[i].mandatory)
-        {
-          g_assert (params[i].def == NULL);
-          continue;
-        }
-
-      value = g_new0(GValue, 1);
-      g_value_init (value, params[i].gtype);
-
-      switch (params[i].dtype[0])
-        {
-          case DBUS_TYPE_STRING:
-            g_value_set_static_string (value, (const gchar*) params[i].def);
-            break;
-          case DBUS_TYPE_INT16:
-            g_value_set_int (value, GPOINTER_TO_INT (params[i].def));
-            break;
-          case DBUS_TYPE_UINT16:
-            g_value_set_uint (value, GPOINTER_TO_INT (params[i].def));
-            break;
-          case DBUS_TYPE_BOOLEAN:
-            g_value_set_boolean (value, GPOINTER_TO_INT (params[i].def));
-            break;
-          default:
-            g_error ("parameter_defaults: encountered unknown type %s on argument %s",
-                     params[i].dtype, params[i].name);
-        }
-
-      g_hash_table_insert (*ret, (gpointer) params[i].name, value);
+      case DBUS_TYPE_STRING:
+        g_value_set_static_string (value, (const gchar*) params[i].def);
+        break;
+      case DBUS_TYPE_INT16:
+        g_value_set_int (value, GPOINTER_TO_INT (params[i].def));
+        break;
+      case DBUS_TYPE_UINT16:
+        g_value_set_uint (value, GPOINTER_TO_INT (params[i].def));
+        break;
+      case DBUS_TYPE_BOOLEAN:
+        g_value_set_boolean (value, GPOINTER_TO_INT (params[i].def));
+        break;
+      default:
+        g_error("parameter_defaults: encountered unknown type %s on argument %s",
+                params[i].dtype, params[i].name);
     }
 
-  return TRUE;
+OUT:
+  return value;
 }
 
 static gboolean
@@ -481,16 +464,10 @@ _gabble_connection_manager_register (GabbleConnectionManager *self)
 
 /* dbus-exported methods */
 
-#define SET_PROPERTY_IF_PARAM_SET(prop, param, member) \
-  if ((params.set_mask & (1 << param)) != 0) \
-    { \
-      g_object_set (conn, prop, member, NULL); \
-    }
-
 /**
- * gabble_connection_manager_connect
+ * gabble_connection_manager_get_parameters
  *
- * Implements DBus method Connect
+ * Implements DBus method GetParameters
  * on interface org.freedesktop.Telepathy.ConnectionManager
  *
  * @error: Used to return a pointer to a GError detailing any error
@@ -499,7 +476,80 @@ _gabble_connection_manager_register (GabbleConnectionManager *self)
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_connection_manager_connect (GabbleConnectionManager *obj, const gchar * proto, GHashTable * parameters, gchar ** bus_name, gchar ** object_path, GError **error)
+gboolean gabble_connection_manager_get_parameters (GabbleConnectionManager *obj, const gchar * proto, GPtrArray ** ret, GError **error)
+{
+  const GabbleParamSpec *params = NULL;
+  int i;
+
+  if (!get_parameters (proto, &params, error))
+    return FALSE;
+
+  *ret = g_ptr_array_new ();
+
+  for (i = 0; params[i].name; i++)
+    {
+      GValue param = { 0, };
+
+      g_value_init (&param, TP_TYPE_PARAM);
+      g_value_set_static_boxed (&param,
+        dbus_g_type_specialized_construct (TP_TYPE_PARAM));
+
+      dbus_g_type_struct_set (&param,
+        0, params[i].name,
+        1, params[i].mandatory,
+        2, params[i].dtype,
+        3, param_default_value (params, i),
+        G_MAXUINT);
+
+      g_ptr_array_add (*ret, g_value_get_boxed (&param));
+    }
+
+  return TRUE;
+}
+
+
+/**
+ * gabble_connection_manager_list_protocols
+ *
+ * Implements DBus method ListProtocols
+ * on interface org.freedesktop.Telepathy.ConnectionManager
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_connection_manager_list_protocols (GabbleConnectionManager *obj, gchar *** ret, GError **error)
+{
+  const char *protocols[] = { "jabber", NULL };
+
+  *ret = g_strdupv ((gchar **)protocols);
+
+  return TRUE;
+}
+
+
+#define SET_PROPERTY_IF_PARAM_SET(prop, param, member) \
+  if ((params.set_mask & (1 << param)) != 0) \
+    { \
+      g_object_set (conn, prop, member, NULL); \
+    }
+
+
+/**
+ * gabble_connection_manager_request_connection
+ *
+ * Implements DBus method RequestConnection
+ * on interface org.freedesktop.Telepathy.ConnectionManager
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_connection_manager_request_connection (GabbleConnectionManager *obj, const gchar * proto, GHashTable * parameters, gchar ** bus_name, gchar ** object_path, GError **error)
 {
   GabbleConnectionManagerPrivate *priv;
   GabbleConnection *conn;
@@ -574,16 +624,8 @@ gboolean gabble_connection_manager_connect (GabbleConnectionManager *obj, const 
                              G_CALLBACK (connection_disconnected_cb),
                              obj);
 
-  /* store the connection, using a hash table as a set*/
+  /* store the connection, using a hash table as a set */
   g_hash_table_insert (priv->connections, conn, GINT_TO_POINTER(TRUE));
-
-  /* commence connecting */
-  if (!_gabble_connection_connect (conn, error))
-    {
-      g_debug ("%s failed: %s", G_STRFUNC, (*error)->message);
-
-      goto ERROR;
-    }
 
   /* emit the new connection signal */
   g_signal_emit (obj, signals[NEW_CONNECTION], 0, *bus_name, *object_path, proto);
@@ -596,94 +638,3 @@ ERROR:
 
   return FALSE;
 }
-
-/**
- * gabble_connection_manager_get_mandatory_parameters
- *
- * Implements DBus method GetMandatoryParameters
- * on interface org.freedesktop.Telepathy.ConnectionManager
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean gabble_connection_manager_get_mandatory_parameters (GabbleConnectionManager *obj, const gchar * proto, GHashTable ** ret, GError **error)
-{
-  const GabbleParamSpec *params = NULL;
-
-  if (!get_parameters (proto, &params, error))
-    return FALSE;
-
-  return list_parameters (params, TRUE, ret);
-}
-
-
-/**
- * gabble_connection_manager_get_optional_parameters
- *
- * Implements DBus method GetOptionalParameters
- * on interface org.freedesktop.Telepathy.ConnectionManager
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean gabble_connection_manager_get_optional_parameters (GabbleConnectionManager *obj, const gchar * proto, GHashTable ** ret, GError **error)
-{
-  const GabbleParamSpec *params = NULL;
-
-  if (!get_parameters (proto, &params, error))
-    return FALSE;
-
-  return list_parameters (params, FALSE, ret);
-}
-
-
-/**
- * gabble_connection_manager_get_parameter_defaults
- *
- * Implements DBus method GetParameterDefaults
- * on interface org.freedesktop.Telepathy.ConnectionManager
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean gabble_connection_manager_get_parameter_defaults (GabbleConnectionManager *obj, const gchar * proto, GHashTable ** ret, GError **error)
-{
-  const GabbleParamSpec *params = NULL;
-
-  if (!get_parameters (proto, &params, error))
-    return FALSE;
-
-  return parameter_defaults (params, ret);
-}
-
-
-/**
- * gabble_connection_manager_list_protocols
- *
- * Implements DBus method ListProtocols
- * on interface org.freedesktop.Telepathy.ConnectionManager
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean gabble_connection_manager_list_protocols (GabbleConnectionManager *obj, gchar *** ret, GError **error)
-{
-  const char *protocols[] = { "jabber", NULL };
-
-  *ret = g_strdupv ((gchar **)protocols);
-
-  return TRUE;
-}
-

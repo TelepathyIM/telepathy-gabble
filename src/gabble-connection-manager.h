@@ -54,7 +54,7 @@ GType gabble_connection_manager_get_type(void);
 
 void _gabble_connection_manager_register (GabbleConnectionManager *self);
 
-gboolean gabble_connection_manager_get_parameters (GabbleConnectionManager *obj, const gchar * proto, GHashTable ** ret, GError **error);
+gboolean gabble_connection_manager_get_parameters (GabbleConnectionManager *obj, const gchar * proto, GPtrArray ** ret, GError **error);
 gboolean gabble_connection_manager_list_protocols (GabbleConnectionManager *obj, gchar *** ret, GError **error);
 gboolean gabble_connection_manager_request_connection (GabbleConnectionManager *obj, const gchar * proto, GHashTable * parameters, gchar ** ret, gchar ** ret1, GError **error);
 

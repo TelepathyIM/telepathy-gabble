@@ -36,6 +36,8 @@
 #include "roster.h"
 #include "util.h"
 
+#define GOOGLE_ROSTER_VERSION "2"
+
 /* Properties */
 enum
 {
@@ -72,6 +74,7 @@ struct _GabbleRosterItem
 {
   GabbleRosterSubscription subscription;
   gboolean ask_subscribe;
+  gboolean blocked;
   gchar *name;
   gchar **groups;
 };
@@ -366,7 +369,7 @@ _gabble_roster_item_update (GabbleRoster *roster,
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
   GabbleRosterItem *item;
-  const gchar *ask, *name;
+  const gchar *ask, *block, *name;
 
   g_assert (roster != NULL);
   g_assert (GABBLE_IS_ROSTER (roster));
@@ -383,6 +386,12 @@ _gabble_roster_item_update (GabbleRoster *roster,
     item->ask_subscribe = TRUE;
   else
     item->ask_subscribe = FALSE;
+
+  block = lm_message_node_get_attribute (node, "gr:t");
+  if (!g_strdiff (block, "b"))
+    item->blocked = TRUE;
+  else
+    item->blocked = FALSE;
 
   name = lm_message_node_get_attribute (node, "name");
   if (g_strdiff (item->name, name))
@@ -402,6 +411,7 @@ _gabble_roster_item_update (GabbleRoster *roster,
 }
 
 
+#ifdef ENABLE_DEBUG
 static gchar *
 _gabble_roster_item_dump (GabbleRosterItem *item)
 {
@@ -415,6 +425,9 @@ _gabble_roster_item_dump (GabbleRosterItem *item)
 
   if (item->ask_subscribe)
     g_string_append (str, ", ask: subscribe");
+
+  if (item->blocked)
+    g_string_append (str, ", blocked");
 
   if (item->name)
     g_string_append_printf (str, ", name: %s", item->name);
@@ -433,6 +446,43 @@ _gabble_roster_item_dump (GabbleRosterItem *item)
 
   return g_string_free (str, FALSE);
 }
+#endif /* ENABLE_DEBUG */
+
+
+static LmMessage *
+_gabble_roster_message_new (GabbleRoster *roster,
+                            LmMessageSubType sub_type,
+                            LmMessageNode **query_return)
+{
+  GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
+  LmMessage *message;
+  LmMessageNode *query_node;
+
+  g_assert (roster != NULL);
+  g_assert (GABBLE_IS_ROSTER (roster));
+
+  message = lm_message_new_with_sub_type (NULL,
+                                          LM_MESSAGE_TYPE_IQ,
+                                          sub_type);
+
+  query_node = lm_message_node_add_child (message->node, "query", NULL);
+
+  if (NULL != query_return)
+    *query_return = query_node;
+
+  lm_message_node_set_attribute (query_node, "xmlns", NS_ROSTER);
+
+  if (priv->conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER)
+    {
+      lm_message_node_set_attributes (query_node,
+          "xmlns:gr", NS_GOOGLE_ROSTER,
+          "gr:ext", GOOGLE_ROSTER_VERSION,
+          NULL);
+    }
+
+  return message;
+}
+
 
 static LmMessage *
 _gabble_roster_item_to_message (GabbleRoster *roster,
@@ -452,13 +502,8 @@ _gabble_roster_item_to_message (GabbleRoster *roster,
 
   item = _gabble_roster_item_get (roster, handle);
 
-  message = lm_message_new_with_sub_type (NULL,
-                                          LM_MESSAGE_TYPE_IQ,
-                                          LM_MESSAGE_SUB_TYPE_SET);
-
-  query_node = lm_message_node_add_child (message->node, "query", NULL);
-
-  lm_message_node_set_attribute (query_node, "xmlns", NS_ROSTER);
+  message = _gabble_roster_message_new (roster, LM_MESSAGE_SUB_TYPE_SET,
+      &query_node);
 
   item_node = lm_message_node_add_child (query_node, "item", NULL);
 
@@ -477,6 +522,10 @@ _gabble_roster_item_to_message (GabbleRoster *roster,
 
   if (item->subscription == GABBLE_ROSTER_SUBSCRIPTION_REMOVE)
     goto DONE;
+
+  if ((priv->conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER) &&
+      item->blocked)
+    lm_message_node_set_attribute (item_node, "gr:t", "b");
 
   if (item->ask_subscribe)
     lm_message_node_set_attribute (item_node, "ask", "subscribe");
@@ -1022,18 +1071,10 @@ gabble_roster_factory_iface_connected (TpChannelFactoryIface *iface)
   GabbleRoster *roster = GABBLE_ROSTER (iface);
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
   LmMessage *message;
-  LmMessageNode *msgnode;
 
   DEBUG ("requesting roster");
 
-  message = lm_message_new_with_sub_type (NULL,
-                                          LM_MESSAGE_TYPE_IQ,
-                                          LM_MESSAGE_SUB_TYPE_GET);
-
-  msgnode = lm_message_node_add_child (lm_message_get_node (message),
-                                       "query", NULL);
-
-  lm_message_node_set_attribute (msgnode, "xmlns", NS_ROSTER);
+  message = _gabble_roster_message_new (roster, LM_MESSAGE_SUB_TYPE_GET, NULL);
 
   _gabble_connection_send (priv->conn, message, NULL);
 

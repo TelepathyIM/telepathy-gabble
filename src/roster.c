@@ -604,6 +604,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
   LmMessageNode *iq_node, *query_node;
   LmMessageSubType sub_type;
   const gchar *from;
+  gboolean google_roster = FALSE;
 
   g_assert (lmconn == priv->conn->lmconn);
 
@@ -633,6 +634,16 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
         }
     }
 
+  if (priv->conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER)
+    {
+      const char *gr_ext;
+
+      gr_ext = lm_message_node_get_attribute (query_node, "gr:ext");
+
+      if (!g_strdiff (gr_ext, GOOGLE_ROSTER_VERSION))
+        google_roster = TRUE;
+    }
+
   sub_type = lm_message_get_sub_type (message);
 
   /* if this is a result, it's from our initial query. if it's a set,
@@ -642,7 +653,8 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
       LmMessageNode *item_node;
       GIntSet *empty, *pub_add, *pub_rem,
               *sub_add, *sub_rem, *sub_rp,
-              *known_add, *known_rem;
+              *known_add, *known_rem,
+              *block_add, *block_rem;
       GabbleHandle handle;
       GabbleRosterChannel *chan;
 
@@ -658,6 +670,17 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
       sub_rp = g_intset_new ();
       known_add = g_intset_new ();
       known_rem = g_intset_new ();
+
+      if (google_roster)
+        {
+          block_add = g_intset_new ();
+          block_rem = g_intset_new ();
+        }
+      else
+        {
+          block_add = NULL;
+          block_rem = NULL;
+        }
 
       /* iterate every sub-node, which we expect to be <item>s */
       for (item_node = query_node->children;
@@ -746,6 +769,15 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
             default:
               g_assert_not_reached ();
             }
+
+          if (google_roster)
+            {
+              if (GABBLE_ROSTER_SUBSCRIPTION_REMOVE == item->subscription ||
+                  !item->blocked)
+                g_intset_add (block_rem, handle);
+              else /* it's still subscribed in some way, and blocked */
+                g_intset_add (block_add, handle);
+            }
         }
 
       handle = gabble_handle_for_list_publish (priv->conn->handles);
@@ -768,6 +800,19 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
       g_debug ("%s: calling change members on known channel", G_STRFUNC);
       gabble_group_mixin_change_members (G_OBJECT (chan),
             "", known_add, known_rem, empty, empty);
+
+      if (google_roster)
+        {
+          handle = gabble_handle_for_list_block (priv->conn->handles);
+          chan = _gabble_roster_get_channel (roster, handle);
+
+          DEBUG ("calling change members on block channel");
+          gabble_group_mixin_change_members (G_OBJECT (chan),
+              "", block_add, block_rem, empty, empty);
+
+          g_intset_destroy (block_add);
+          g_intset_destroy (block_rem);
+        }
 
       g_intset_destroy (empty);
       g_intset_destroy (pub_add);

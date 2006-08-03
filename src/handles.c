@@ -278,7 +278,7 @@ GabbleHandleRepo *
 gabble_handle_repo_new ()
 {
   GabbleHandleRepo *repo;
-  GabbleHandle publish, subscribe, known;
+  GabbleHandle publish, subscribe, known, block;
 
   repo = g_new0 (GabbleHandleRepo, 1);
 
@@ -298,6 +298,10 @@ gabble_handle_repo_new ()
 
   known = gabble_handle_for_list_known (repo);
   g_datalist_id_set_data_full (&repo->list_handles, known,
+      handle_priv_new(), (GDestroyNotify) handle_priv_free);
+
+  block = gabble_handle_for_list_block (repo);
+  g_datalist_id_set_data_full (&repo->list_handles, block,
       handle_priv_new(), (GDestroyNotify) handle_priv_free);
 
   return repo;
@@ -610,6 +614,21 @@ gabble_handle_for_list_known (GabbleHandleRepo *repo)
     }
 
   return known;
+}
+
+GabbleHandle
+gabble_handle_for_list_block (GabbleHandleRepo *repo)
+{
+  static GabbleHandle block = 0;
+
+  g_return_val_if_fail (repo != NULL, 0);
+
+  if (block == 0)
+    {
+      block = g_quark_from_static_string ("block");
+    }
+
+  return block;
 }
 
 

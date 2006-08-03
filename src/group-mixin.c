@@ -98,8 +98,8 @@ void gabble_group_mixin_class_init (GObjectClass *obj_cls,
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  group_mixin_marshal_VOID__STRING_BOXED_BOXED_BOXED_BOXED,
-                  G_TYPE_NONE, 5, G_TYPE_STRING, DBUS_TYPE_G_UINT_ARRAY, DBUS_TYPE_G_UINT_ARRAY, DBUS_TYPE_G_UINT_ARRAY, DBUS_TYPE_G_UINT_ARRAY);
+                  group_mixin_marshal_VOID__STRING_BOXED_BOXED_BOXED_BOXED_INT_INT,
+                  G_TYPE_NONE, 7, G_TYPE_STRING, DBUS_TYPE_G_UINT_ARRAY, DBUS_TYPE_G_UINT_ARRAY, DBUS_TYPE_G_UINT_ARRAY, DBUS_TYPE_G_UINT_ARRAY, G_TYPE_UINT, G_TYPE_UINT);
 }
 
 void gabble_group_mixin_init (GObject *obj,
@@ -644,7 +644,9 @@ gabble_group_mixin_change_members (GObject *obj,
       g_signal_emit(obj, mixin_cls->members_changed_signal_id, 0,
                     message,
                     arr_add, arr_remove,
-                    arr_local, arr_remote);
+                    arr_local, arr_remote,
+                    0, /* TODO: fill in actor if any */
+                    0 /* TODO: fill in reason if any */);
 
       /* free arrays */
       g_array_free (arr_add, TRUE);

@@ -3788,82 +3788,6 @@ gboolean gabble_connection_hold_handles (GabbleConnection *obj, guint handle_typ
 
 
 /**
- * gabble_connection_hold_handle
- *
- * Implements DBus method HoldHandle
- * on interface org.freedesktop.Telepathy.Connection
- *
- * @context: The DBUS invocation context to use to return values
- *           or throw an error.
- */
-gboolean gabble_connection_hold_handle (GabbleConnection *obj, guint handle_type, guint handle, DBusGMethodInvocation *context)
-{
-  GabbleConnectionPrivate *priv;
-  GError *error = NULL;
-  gchar *sender;
-
-  g_assert (GABBLE_IS_CONNECTION (obj));
-
-  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
-
-  ERROR_IF_NOT_CONNECTED_ASYNC (obj, error, context)
-
-  if (!gabble_handle_is_valid (obj->handles,
-                               handle_type,
-                               handle,
-                               &error))
-    {
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-      return FALSE;
-    }
-
-  sender = dbus_g_method_get_sender (context);
-  _gabble_connection_client_hold_handle (obj, sender, handle, handle_type);
-  dbus_g_method_return (context);
-
-  return TRUE;
-}
-
-
-/**
- * gabble_connection_inspect_handle
- *
- * Implements DBus method InspectHandle
- * on interface org.freedesktop.Telepathy.Connection
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean gabble_connection_inspect_handle (GabbleConnection *obj, guint handle_type, guint handle, gchar ** ret, GError **error)
-{
-  GabbleConnectionPrivate *priv;
-  const char *tmp;
-
-  g_assert (GABBLE_IS_CONNECTION (obj));
-
-  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
-
-  ERROR_IF_NOT_CONNECTED (obj, *error)
-
-  if (!gabble_handle_is_valid (obj->handles,
-                               handle_type,
-                               handle,
-                               error))
-    return FALSE;
-
-  tmp = gabble_handle_inspect (obj->handles, handle_type, handle);
-  g_assert (tmp != NULL);
-  *ret = g_strdup (tmp);
-
-  return TRUE;
-}
-
-
-/**
  * gabble_connection_inspect_handles
  *
  * Implements DBus method InspectHandles
@@ -4077,45 +4001,6 @@ gboolean gabble_connection_release_handles (GabbleConnection *obj, guint handle_
       GabbleHandle handle = g_array_index (handles, GabbleHandle, i);
       _gabble_connection_client_release_handle (obj, sender, handle, handle_type);
     }
-  dbus_g_method_return (context);
-
-  return TRUE;
-}
-
-
-/**
- * gabble_connection_release_handle
- *
- * Implements DBus method ReleaseHandle
- * on interface org.freedesktop.Telepathy.Connection
- *
- * @context: The DBUS invocation context to use to return values
- *           or throw an error.
- */
-gboolean gabble_connection_release_handle (GabbleConnection *obj, guint handle_type, guint handle, DBusGMethodInvocation *context)
-{
-  GabbleConnectionPrivate *priv;
-  char *sender;
-  GError *error = NULL;
-
-  g_assert (GABBLE_IS_CONNECTION (obj));
-
-  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
-
-  ERROR_IF_NOT_CONNECTED_ASYNC (obj, error, context)
-
-  if (!gabble_handle_is_valid (obj->handles,
-                               handle_type,
-                               handle,
-                               &error))
-    {
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-      return FALSE;
-    }
-
-  sender = dbus_g_method_get_sender (context);
-  _gabble_connection_client_release_handle (obj, sender, handle, handle_type);
   dbus_g_method_return (context);
 
   return TRUE;

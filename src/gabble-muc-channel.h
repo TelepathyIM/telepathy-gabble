@@ -72,7 +72,7 @@ gboolean _gabble_muc_channel_receive (GabbleMucChannel *chan, TpChannelTextMessa
 
 void _gabble_muc_channel_handle_invited (GabbleMucChannel *chan, GabbleHandle inviter, const gchar *message);
 
-gboolean gabble_muc_channel_acknowledge_pending_message (GabbleMucChannel *obj, guint id, GError **error);
+gboolean gabble_muc_channel_acknowledge_pending_messages (GabbleMucChannel *obj, const GArray * ids, GError **error);
 gboolean gabble_muc_channel_add_members (GabbleMucChannel *obj, const GArray * contacts, const gchar * message, GError **error);
 gboolean gabble_muc_channel_close (GabbleMucChannel *obj, GError **error);
 gboolean gabble_muc_channel_get_all_members (GabbleMucChannel *obj, GArray ** ret, GArray ** ret1, GArray ** ret2, GError **error);

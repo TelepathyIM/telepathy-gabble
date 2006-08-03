@@ -317,9 +317,9 @@ gboolean _gabble_im_channel_receive (GabbleIMChannel *chan,
 }
 
 /**
- * gabble_im_channel_acknowledge_pending_message
+ * gabble_im_channel_acknowledge_pending_messages
  *
- * Implements DBus method AcknowledgePendingMessage
+ * Implements DBus method AcknowledgePendingMessages
  * on interface org.freedesktop.Telepathy.Channel.Type.Text
  *
  * @error: Used to return a pointer to a GError detailing any error
@@ -328,11 +328,11 @@ gboolean _gabble_im_channel_receive (GabbleIMChannel *chan,
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_im_channel_acknowledge_pending_message (GabbleIMChannel *obj, guint id, GError **error)
+gboolean gabble_im_channel_acknowledge_pending_messages (GabbleIMChannel *obj, const GArray * ids, GError **error)
 {
   g_assert (GABBLE_IS_IM_CHANNEL (obj));
 
-  return gabble_text_mixin_acknowledge_pending_message (G_OBJECT (obj), id, error);
+  return gabble_text_mixin_acknowledge_pending_messages (G_OBJECT (obj), ids, error);
 }
 
 

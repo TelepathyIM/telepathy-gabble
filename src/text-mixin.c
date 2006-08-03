@@ -388,9 +388,9 @@ compare_pending_message (gconstpointer haystack,
 }
 
 /**
- * gabble_text_mixin_acknowledge_pending_message
+ * gabble_text_mixin_acknowledge_pending_messages
  *
- * Implements DBus method AcknowledgePendingMessage
+ * Implements DBus method AcknowledgePendingMessages
  * on interface org.freedesktop.Telepathy.Channel.Type.Text
  *
  * @error: Used to return a pointer to a GError detailing any error
@@ -399,34 +399,47 @@ compare_pending_message (gconstpointer haystack,
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_text_mixin_acknowledge_pending_message (GObject *obj, guint id, GError **error)
+gboolean gabble_text_mixin_acknowledge_pending_messages (GObject *obj, const GArray * ids, GError **error)
 {
   GabbleTextMixin *mixin = GABBLE_TEXT_MIXIN (obj);
-  GList *node;
+  GList **nodes;
   GabblePendingMessage *msg;
+  guint i;
 
-  node = g_queue_find_custom (mixin->pending,
-                              GINT_TO_POINTER (id),
-                              compare_pending_message);
+  nodes = g_new(GList *, ids->len);
 
-  if (node == NULL)
+  for (i = 0; i < ids->len; i++)
     {
-      DEBUG ("invalid message id %u", id);
+      guint id = g_array_index(ids, guint, i);
 
-      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                            "invalid message id %u", id);
+      nodes[i] = g_queue_find_custom (mixin->pending,
+                                      GINT_TO_POINTER (id),
+                                      compare_pending_message);
 
-      return FALSE;
+      if (nodes[i] == NULL)
+        {
+          DEBUG ("invalid message id %u", id);
+
+          *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+                                "invalid message id %u", id);
+
+          return FALSE;
+        }
     }
 
-  msg = (GabblePendingMessage *) node->data;
+  for (i = 0; i < ids->len; i++)
+    {
+      guint id = g_array_index(ids, guint, i);
 
-  DEBUG ("acknowleding message id %u", id);
+      msg = (GabblePendingMessage *) nodes[i]->data;
 
-  g_queue_remove (mixin->pending, msg);
+      DEBUG ("acknowleding message id %u", id);
 
-  gabble_handle_unref (mixin->handle_repo, TP_HANDLE_TYPE_CONTACT, msg->sender);
-  _gabble_pending_free (msg);
+      g_queue_remove (mixin->pending, msg);
+
+      gabble_handle_unref (mixin->handle_repo, TP_HANDLE_TYPE_CONTACT, msg->sender);
+      _gabble_pending_free (msg);
+    }
 
   return TRUE;
 }

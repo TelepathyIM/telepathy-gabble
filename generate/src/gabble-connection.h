@@ -65,7 +65,6 @@ gboolean gabble_connection_get_self_handle (GabbleConnection *obj, guint* ret, G
 gboolean gabble_connection_get_status (GabbleConnection *obj, guint* ret, GError **error);
 gboolean gabble_connection_get_statuses (GabbleConnection *obj, GHashTable ** ret, GError **error);
 gboolean gabble_connection_hold_handles (GabbleConnection *obj, guint handle_type, const GArray * handles, DBusGMethodInvocation *context);
-gboolean gabble_connection_inspect_handles (GabbleConnection *obj, guint handle_type, const GArray * handles, gchar *** ret, GError **error);
 gboolean gabble_connection_inspect_handles (GabbleConnection *obj, guint handle_type, const GArray * handles, DBusGMethodInvocation *context);
 gboolean gabble_connection_list_channels (GabbleConnection *obj, GPtrArray ** ret, GError **error);
 gboolean gabble_connection_list_properties (GabbleConnection *obj, GPtrArray ** ret, GError **error);

@@ -380,24 +380,6 @@ gboolean gabble_connection_hold_handles (GabbleConnection *obj, guint handle_typ
  * Implements DBus method InspectHandles
  * on interface org.freedesktop.Telepathy.Connection
  *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean gabble_connection_inspect_handles (GabbleConnection *obj, guint handle_type, const GArray * handles, gchar *** ret, GError **error)
-{
-  return TRUE;
-}
-
-
-/**
- * gabble_connection_inspect_handles
- *
- * Implements DBus method InspectHandles
- * on interface org.freedesktop.Telepathy.Connection
- *
  * @context: The DBUS invocation context to use to return values
  *           or throw an error.
  */

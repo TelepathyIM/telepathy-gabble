@@ -114,7 +114,7 @@ gabble_media_factory_dispose (GObject *object)
   if (priv->dispose_has_run)
     return;
 
-  g_debug ("%s: dispose called", G_STRFUNC);
+  DEBUG ("dispose called");
   priv->dispose_has_run = TRUE;
 
   tp_channel_factory_iface_close_all (TP_CHANNEL_FACTORY_IFACE (object));
@@ -269,13 +269,13 @@ media_factory_jingle_cb (LmMessageHandler *handler,
   if (!sid)
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
-  if (_gabble_connection_jingle_sid_in_use (priv->conn, sid))
+  if (_gabble_media_factory_sid_in_use (fac, sid))
     {
       /* if it's media session, we should have it in here */
       chan = g_hash_table_lookup (priv->session_chans, sid);
     }
-      
-  /* is the session new and not a zombie? */
+   
+  /* it's a new session */
   if (!chan)
     {
       /* if the session is unknown, the only allowed action is "initiate" */
@@ -298,34 +298,59 @@ media_factory_jingle_cb (LmMessageHandler *handler,
           return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
         }
 
-      g_debug ("%s: creating media channel", G_STRFUNC);
+      DEBUG ("creating media channel");
 
       chan = new_media_channel (fac, handle);
     }
 
-  if (chan != NULL)
-    {
-      DEBUG ("dispatching to session %s", sid);
-      g_object_ref (chan);
-      gabble_handle_decode_jid (from, NULL, NULL, &resource);
-      _gabble_media_channel_dispatch_session_action (chan, handle, resource,
-          sid, message, session_node, action);
-      g_object_unref (chan);
+  g_assert (chan != NULL);
+  
+  DEBUG ("dispatching to session %s", sid);
+  g_object_ref (chan);
+  gabble_handle_decode_jid (from, NULL, NULL, &resource);
+  _gabble_media_channel_dispatch_session_action (chan, handle, resource,
+      sid, message, session_node, action);
+  g_object_unref (chan);
   g_free (resource);
-    }
-  else
-    {
-      DEBUG ("zombie session %s, we should reject this", sid);    
-    }    
+
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
+static const gchar *
+_gabble_media_factory_get_unique_sid (GabbleMediaFactory *fac)
+{
+  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
+  guint32 val;
+  gchar *sid = NULL;
+  gboolean unique = FALSE;
+
+  while (!unique)
+    {
+      val = g_random_int_range (1000000, G_MAXINT);
+
+      g_free (sid);
+      sid = g_strdup_printf ("%u", val);
+
+      unique = !_gabble_media_factory_sid_in_use (fac, sid);
+    }
+
+  g_hash_table_insert (priv->session_chans, sid, NULL);
+
+  return (const gchar *) sid;
+}
+
+gboolean
+_gabble_media_factory_sid_in_use (GabbleMediaFactory *fac, const char *sid)
+{
+  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
+  return (g_hash_table_lookup (priv->session_chans, sid) != NULL);
+}
 
 const gchar *
 _gabble_media_factory_allocate_sid (GabbleMediaFactory *fac, GabbleMediaChannel *chan)
 {
   GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
-  const gchar *sid = _gabble_connection_allocate_jingle_sid (priv->conn);
+  const gchar *sid = _gabble_media_factory_get_unique_sid (fac);
   g_return_val_if_fail (sid, NULL);
 
   g_hash_table_insert (priv->session_chans, (gchar *) sid, (gpointer) chan);
@@ -339,28 +364,17 @@ _gabble_media_factory_free_sid (GabbleMediaFactory *fac, const gchar *sid)
   if (g_hash_table_lookup (priv->session_chans, sid))
     {
       g_hash_table_remove (priv->session_chans, sid);
-      _gabble_connection_free_jingle_sid (priv->conn, sid);
     }
 }
-
-struct foreach_remove_data {
-  GabbleMediaFactory *fac;
-  GabbleMediaChannel *chan;
-};
 
 static gboolean
 _remove_sid_mapping (gpointer key, gpointer value, gpointer user_data)
 {
-  struct foreach_remove_data *data = user_data;
   GabbleMediaChannel *chan = GABBLE_MEDIA_CHANNEL (value);
-  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (data->fac);
+  GabbleMediaChannel *target_chan = GABBLE_MEDIA_CHANNEL (user_data);
 
-  if (chan != data->chan) return FALSE;
-  
-  gchar *sid = key;
-  _gabble_connection_free_jingle_sid (priv->conn, sid);
-
-  return TRUE;
+  if (chan == target_chan) return TRUE;
+  return FALSE;
 }
 
 /**
@@ -378,8 +392,8 @@ media_channel_closed_cb (GabbleMediaChannel *chan, gpointer user_data)
 
   if (priv->channels)
     {
-      g_debug ("%s: removing media channel %p with ref count %d",
-          G_STRFUNC, chan, G_OBJECT (chan)->ref_count);
+      DEBUG ("removing media channel %p with ref count %d",
+          chan, G_OBJECT (chan)->ref_count);
 
       g_ptr_array_remove (priv->channels, chan);
       g_object_unref (chan);
@@ -387,7 +401,7 @@ media_channel_closed_cb (GabbleMediaChannel *chan, gpointer user_data)
 
   if (priv->session_chans)
     {
-      g_hash_table_foreach_remove (priv->session_chans, _remove_sid_mapping, fac);
+      g_hash_table_foreach_remove (priv->session_chans, _remove_sid_mapping, chan);
     }
 
 }
@@ -418,7 +432,7 @@ new_media_channel (GabbleMediaFactory *fac, GabbleHandle creator)
                        "creator", creator,
                        NULL);
 
-  g_debug ("%s: object path %s", G_STRFUNC, object_path);
+  DEBUG ("object path %s", object_path);
 
   g_signal_connect (chan, "closed", (GCallback) media_channel_closed_cb, fac);
 
@@ -507,7 +521,7 @@ gabble_media_factory_iface_close_all (TpChannelFactoryIface *iface)
   GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (iface);
   GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
 
-  g_debug ("%s: closing channels", G_STRFUNC);
+  DEBUG ("closing channels");
 
   if (priv->channels)
     {
@@ -520,8 +534,8 @@ gabble_media_factory_iface_close_all (TpChannelFactoryIface *iface)
         {
           GabbleMediaChannel *chan = g_ptr_array_index (tmp, i);
 
-          g_debug ("%s: about to unref channel with ref_count %d",
-                   G_STRFUNC, G_OBJECT (chan)->ref_count);
+          DEBUG ("%s: about to unref channel with ref_count %d",
+                   G_OBJECT (chan)->ref_count);
 
           g_object_unref (chan);
         }

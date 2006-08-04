@@ -2359,49 +2359,6 @@ _gabble_connection_send_iq_error (GabbleConnection *conn,
   lm_message_unref (msg);
 }
 
-gboolean
-_gabble_connection_jingle_sid_in_use (GabbleConnection *conn, const gchar *sid)
-{
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-
-  return (g_hash_table_lookup (priv->jingle_sessions, sid) != NULL);
-}
-
-const gchar *
-_gabble_connection_allocate_jingle_sid (GabbleConnection *conn)
-{
-  GabbleConnectionPrivate *priv;
-  guint32 val;
-  gchar *sid = NULL;
-  gboolean unique = FALSE;
-
-  g_assert (GABBLE_IS_CONNECTION (conn));
-  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-
-  while (!unique)
-    {
-      val = g_random_int_range (1000000, G_MAXINT);
-
-      g_free (sid);
-      sid = g_strdup_printf ("%u", val);
-
-      unique = !_gabble_connection_jingle_sid_in_use (conn, sid);
-    }
-
-  g_hash_table_insert (priv->jingle_sessions, sid, NULL);
-
-  return (const gchar *) sid;
-}
-
-void
-_gabble_connection_free_jingle_sid (GabbleConnection *conn, const gchar *sid)
-{
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-
-  g_hash_table_remove (priv->jingle_sessions, sid);
-}
-
-
 static LmMessage *
 _lm_iq_message_make_result (LmMessage *iq_message)
 {

@@ -117,6 +117,7 @@ struct _GabblePendingMessage
   GabbleHandle sender;
   TpChannelTextMessageType type;
   char *text;
+  guint flags;
 };
 
 /**
@@ -326,7 +327,7 @@ gboolean gabble_text_mixin_receive (GObject *obj,
     {
       DEBUG ("message exceeds maximum size, truncating");
 
-      /* TODO: add CHANNEL_TEXT_MESSAGE_FLAG_TRUNCATED flag*/
+      msg->flags |= TP_CHANNEL_TEXT_MESSAGE_FLAG_TRUNCATED;
 
       end = g_utf8_find_prev_char (text, text+MAX_MESSAGE_SIZE);
       if (end)
@@ -352,7 +353,6 @@ gboolean gabble_text_mixin_receive (GObject *obj,
       return FALSE;
     }
 
-  /* TODO: UTF-8 truncation */
   g_strlcpy (msg->text, text, len + 1);
 
   msg->id = mixin->recv_id++;
@@ -368,7 +368,7 @@ gboolean gabble_text_mixin_receive (GObject *obj,
                  msg->timestamp,
                  msg->sender,
                  msg->type,
-                 0, /* TODO: fill in flags properly */
+                 msg->flags,
                  msg->text);
 
   DEBUG ("queued message %u", msg->id);
@@ -484,7 +484,7 @@ gboolean gabble_text_mixin_list_pending_messages (GObject *obj, gboolean clear, 
           1, msg->timestamp,
           2, msg->sender,
           3, msg->type,
-          4, 0,         /* TODO: fill in flags, if any */
+          4, msg->flags,
           5, msg->text,
           G_MAXUINT);
 

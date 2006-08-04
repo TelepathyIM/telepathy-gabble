@@ -119,6 +119,10 @@ TP_CHANNEL_PASSWORD_FLAG_PROVIDE = 8
 } TpChannelPasswordFlags;
 
 typedef enum {
+TP_CHANNEL_TEXT_MESSAGE_FLAG_TRUNCATED = 1
+} TpChannelTextMessageFlags;
+
+typedef enum {
 TP_MEDIA_STREAM_TYPE_AUDIO = 0,
 TP_MEDIA_STREAM_TYPE_VIDEO = 1
 } TpMediaStreamType;

@@ -48,6 +48,7 @@
       G_TYPE_UINT, \
       G_TYPE_UINT, \
       G_TYPE_UINT, \
+      G_TYPE_UINT, \
       G_TYPE_STRING, \
       G_TYPE_INVALID))
 
@@ -483,7 +484,8 @@ gboolean gabble_text_mixin_list_pending_messages (GObject *obj, gboolean clear, 
           1, msg->timestamp,
           2, msg->sender,
           3, msg->type,
-          4, msg->text,
+          4, 0,         /* TODO: fill in flags, if any */
+          5, msg->text,
           G_MAXUINT);
 
       g_ptr_array_add (messages, g_value_get_boxed (&val));

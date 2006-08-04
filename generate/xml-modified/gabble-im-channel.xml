@@ -23,7 +23,7 @@
     </method>
     <method name="ListPendingMessages">
       <arg direction="in" name="clear" type="b"/>
-      <arg direction="out" type="a(uuuus)"/>
+      <arg direction="out" type="a(uuuuus)"/>
     </method>
     <signal name="LostMessage"/>
     <signal name="Received">

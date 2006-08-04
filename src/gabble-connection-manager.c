@@ -488,15 +488,22 @@ gboolean gabble_connection_manager_get_parameters (GabbleConnectionManager *obj,
 
   for (i = 0; params[i].name; i++)
     {
+      guint flags;
+
       GValue param = { 0, };
 
       g_value_init (&param, TP_TYPE_PARAM);
       g_value_set_static_boxed (&param,
         dbus_g_type_specialized_construct (TP_TYPE_PARAM));
 
+      flags = 0;
+      if (params[i].mandatory)
+        flags |= (TP_CONN_MGR_PARAM_FLAG_REQUIRED |
+                  TP_CONN_MGR_PARAM_FLAG_REGISTER);
+
       dbus_g_type_struct_set (&param,
         0, params[i].name,
-        1, params[i].mandatory,
+        1, flags,
         2, params[i].dtype,
         3, param_default_value (params, i),
         G_MAXUINT);

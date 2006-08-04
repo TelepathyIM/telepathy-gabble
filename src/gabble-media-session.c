@@ -44,6 +44,8 @@
 #include "gabble-media-session-signals-marshal.h"
 #include "gabble-media-session-glue.h"
 
+#include "media-factory.h"
+
 G_DEFINE_TYPE(GabbleMediaSession, gabble_media_session, G_TYPE_OBJECT)
 
 #define DEFAULT_SESSION_TIMEOUT 50000
@@ -89,6 +91,8 @@ struct _GabbleMediaSessionPrivate
   gchar *peer_resource;
 
   JingleSessionState state;
+
+  GabbleMediaFactory *media_factory;
 
   gboolean accepted;
   gboolean got_active_candidate_pair;
@@ -220,6 +224,7 @@ gabble_media_session_constructor (GType type, guint n_props,
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (GABBLE_MEDIA_SESSION (obj));
 
   g_object_get (priv->channel, "connection", &priv->conn, NULL);
+  g_object_get (priv->channel, "factory", &priv->media_factory, NULL);
 
   priv->state = JS_STATE_PENDING_CREATED;
 
@@ -463,7 +468,7 @@ gabble_media_session_dispose (GObject *object)
   g_object_unref (priv->stream);
   priv->stream = NULL;
 
-  _gabble_connection_jingle_session_unregister (priv->conn, priv->id);
+  _gabble_media_factory_free_sid (priv->media_factory, priv->id);
 
   if (G_OBJECT_CLASS (gabble_media_session_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_media_session_parent_class)->dispose (object);

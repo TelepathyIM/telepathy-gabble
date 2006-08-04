@@ -52,6 +52,7 @@
 #include "jingle-info.h"
 #include "gabble-register.h"
 #include "im-factory.h"
+#include "media-factory.h"
 #include "muc-factory.h"
 #include "namespaces.h"
 #include "roster.h"
@@ -196,7 +197,6 @@ typedef struct _GabbleConnectionPrivate GabbleConnectionPrivate;
 struct _GabbleConnectionPrivate
 {
   LmMessageHandler *iq_jingle_info_cb;
-  LmMessageHandler *iq_jingle_cb;
   LmMessageHandler *iq_disco_cb;
   LmMessageHandler *iq_unknown_cb;
 
@@ -311,6 +311,9 @@ gabble_connection_init (GabbleConnection *obj)
 
   g_ptr_array_add (priv->channel_factories,
                    g_object_new (GABBLE_TYPE_MUC_FACTORY, "connection", obj, NULL));
+
+  g_ptr_array_add (priv->channel_factories,
+                   g_object_new (GABBLE_TYPE_MEDIA_FACTORY, "connection", obj, NULL));
 
   g_ptr_array_add (priv->channel_factories,
                    g_object_new (GABBLE_TYPE_IM_FACTORY, "connection", obj, NULL));
@@ -934,7 +937,6 @@ gabble_connection_dispose (GObject *object)
   g_assert (!lm_connection_is_open (self->lmconn));
 
   g_assert (priv->iq_jingle_info_cb == NULL);
-  g_assert (priv->iq_jingle_cb == NULL);
   g_assert (priv->iq_disco_cb == NULL);
   g_assert (priv->iq_unknown_cb == NULL);
 
@@ -1328,7 +1330,6 @@ _gabble_connection_send_with_reply (GabbleConnection *conn,
   return ret;
 }
 
-static LmHandlerResult connection_iq_jingle_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmHandlerResult connection_iq_disco_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmHandlerResult connection_iq_unknown_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmSSLResponse connection_ssl_cb (LmSSL*, LmSSLStatus, gpointer);
@@ -1376,7 +1377,6 @@ connect_callbacks (GabbleConnection *conn)
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
   g_assert (priv->iq_jingle_info_cb == NULL);
-  g_assert (priv->iq_jingle_cb == NULL);
   g_assert (priv->iq_disco_cb == NULL);
   g_assert (priv->iq_unknown_cb == NULL);
 
@@ -1384,12 +1384,6 @@ connect_callbacks (GabbleConnection *conn)
                                                     conn, NULL);
   lm_connection_register_message_handler (conn->lmconn,
                                           priv->iq_jingle_info_cb,
-                                          LM_MESSAGE_TYPE_IQ,
-                                          LM_HANDLER_PRIORITY_NORMAL);
-
-  priv->iq_jingle_cb = lm_message_handler_new (connection_iq_jingle_cb,
-                                               conn, NULL);
-  lm_connection_register_message_handler (conn->lmconn, priv->iq_jingle_cb,
                                           LM_MESSAGE_TYPE_IQ,
                                           LM_HANDLER_PRIORITY_NORMAL);
 
@@ -1412,7 +1406,6 @@ disconnect_callbacks (GabbleConnection *conn)
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
   g_assert (priv->iq_jingle_info_cb != NULL);
-  g_assert (priv->iq_jingle_cb != NULL);
   g_assert (priv->iq_disco_cb != NULL);
   g_assert (priv->iq_unknown_cb != NULL);
 
@@ -1420,11 +1413,6 @@ disconnect_callbacks (GabbleConnection *conn)
                                             LM_MESSAGE_TYPE_IQ);
   lm_message_handler_unref (priv->iq_jingle_info_cb);
   priv->iq_jingle_info_cb = NULL;
-
-  lm_connection_unregister_message_handler (conn->lmconn, priv->iq_jingle_cb,
-                                            LM_MESSAGE_TYPE_IQ);
-  lm_message_handler_unref (priv->iq_jingle_cb);
-  priv->iq_jingle_cb = NULL;
 
   lm_connection_unregister_message_handler (conn->lmconn, priv->iq_disco_cb,
                                             LM_MESSAGE_TYPE_IQ);
@@ -2371,8 +2359,16 @@ _gabble_connection_send_iq_error (GabbleConnection *conn,
   lm_message_unref (msg);
 }
 
+gboolean
+_gabble_connection_jingle_sid_in_use (GabbleConnection *conn, const gchar *sid)
+{
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+
+  return (g_hash_table_lookup (priv->jingle_sessions, sid) != NULL);
+}
+
 const gchar *
-_gabble_connection_jingle_session_allocate (GabbleConnection *conn)
+_gabble_connection_allocate_jingle_sid (GabbleConnection *conn)
 {
   GabbleConnectionPrivate *priv;
   guint32 val;
@@ -2384,15 +2380,12 @@ _gabble_connection_jingle_session_allocate (GabbleConnection *conn)
 
   while (!unique)
     {
-      gpointer k, v;
-
       val = g_random_int_range (1000000, G_MAXINT);
 
       g_free (sid);
       sid = g_strdup_printf ("%u", val);
 
-      unique = !g_hash_table_lookup_extended (priv->jingle_sessions,
-                                              sid, &k, &v);
+      unique = !_gabble_connection_jingle_sid_in_use (conn, sid);
     }
 
   g_hash_table_insert (priv->jingle_sessions, sid, NULL);
@@ -2401,151 +2394,13 @@ _gabble_connection_jingle_session_allocate (GabbleConnection *conn)
 }
 
 void
-_gabble_connection_jingle_session_register (GabbleConnection *conn,
-                                            const gchar *sid,
-                                            gpointer channel)
+_gabble_connection_free_jingle_sid (GabbleConnection *conn, const gchar *sid)
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
-  DEBUG ("binding sid %s to %p", sid, channel);
-
-  g_hash_table_insert (priv->jingle_sessions, g_strdup (sid), channel);
+  g_hash_table_remove (priv->jingle_sessions, sid);
 }
 
-void
-_gabble_connection_jingle_session_unregister (GabbleConnection *conn,
-                                              const gchar *sid)
-{
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-
-  DEBUG ("unbinding sid %s", sid);
-
-  g_hash_table_insert (priv->jingle_sessions, g_strdup (sid), NULL);
-}
-
-/**
- * connection_iq_jingle_cb
- *
- * Called by loudmouth when we get an incoming <iq>. This handler
- * is concerned only with jingle session queries, and allows other
- * handlers to be called for other queries.
- */
-static LmHandlerResult
-connection_iq_jingle_cb (LmMessageHandler *handler,
-                         LmConnection *lmconn,
-                         LmMessage *message,
-                         gpointer user_data)
-{
-  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-  LmMessageNode *iq_node, *session_node, *desc_node;
-  const gchar *from, *id, *action, *sid;
-  gchar *resource;
-  GabbleHandle handle;
-  GabbleMediaChannel *chan = NULL;
-  gpointer k, v;
-
-  g_assert (lmconn == conn->lmconn);
-
-  iq_node = lm_message_get_node (message);
-  session_node = lm_message_node_get_child (iq_node, "session");
-
-  /* is it for us? */
-  if (!session_node || !_lm_message_node_has_namespace (session_node,
-        NS_GOOGLE_SESSION))
-    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-
-  from = lm_message_node_get_attribute (iq_node, "from");
-  if (!from)
-    {
-      NODE_DEBUG (iq_node, "'from' attribute not found");
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-    }
-
-  id = lm_message_node_get_attribute (iq_node, "id");
-  if (!id)
-    {
-      NODE_DEBUG (iq_node, "'id' attribute not found");
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-    }
-
-  if (LM_MESSAGE_SUB_TYPE_SET != lm_message_get_sub_type (message))
-    {
-      NODE_DEBUG (iq_node, "Jingle message sub type is not \"set\"");
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-    }
-
-  handle = gabble_handle_for_contact (conn->handles, from, FALSE);
-  if (!handle)
-    {
-      NODE_DEBUG (iq_node, "unable to get handle for sender");
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-    }
-
-  /* determine the jingle action of the request */
-  action = lm_message_node_get_attribute (session_node, "type");
-  if (!action)
-    {
-      NODE_DEBUG (iq_node, "session 'type' attribute not found");
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-    }
-
-  /* does the session exist? */
-  sid = lm_message_node_get_attribute (session_node, "id");
-  if (!sid)
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-
-  /* is the session new and not a zombie? */
-  if (g_hash_table_lookup_extended (priv->jingle_sessions,
-                                    g_strdup (sid),
-                                    &k, &v))
-    {
-      chan = (GabbleMediaChannel *) v;
-    }
-  else
-    {
-      /* if the session is unknown, the only allowed action is "initiate" */
-      if (strcmp (action, "initiate"))
-        {
-          NODE_DEBUG (iq_node, "action is not \"initiate\", ignoring");
-          return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-        }
-
-      desc_node = lm_message_node_get_child (session_node, "description");
-      if (!desc_node)
-        {
-          NODE_DEBUG (iq_node, "node has no description, ignoring");
-          return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-        }
-
-      if (!_lm_message_node_has_namespace (desc_node, NS_GOOGLE_SESSION_PHONE))
-        {
-          NODE_DEBUG (iq_node, "unknown session description, ignoring");
-          return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-        }
-
-      DEBUG ("creating media channel");
-
-      chan = new_media_channel (conn, handle, FALSE);
-    }
-
-  if (chan)
-    {
-      DEBUG ("dispatching to session %s", sid);
-      g_object_ref (chan);
-      gabble_handle_decode_jid (from, NULL, NULL, &resource);
-      _gabble_media_channel_dispatch_session_action (chan, handle, resource,
-          sid, message, session_node, action);
-      g_object_unref (chan);
-    }
-  else
-    {
-      DEBUG ("zombie session %s, we should reject this",
-          sid);
-    }
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-}
 
 static LmMessage *
 _lm_iq_message_make_result (LmMessage *iq_message)

@@ -43,6 +43,8 @@
 
 #include "gabble-media-session.h"
 
+#include "media-factory.h"
+
 #define TP_SESSION_HANDLER_SET_TYPE (dbus_g_type_get_struct ("GValueArray", \
       G_TYPE_UINT, \
       DBUS_TYPE_G_OBJECT_PATH, \
@@ -79,6 +81,7 @@ enum
   PROP_HANDLE,
   PROP_CONNECTION,
   PROP_CREATOR,
+  PROP_FACTORY,
   LAST_PROPERTY
 };
 
@@ -91,6 +94,7 @@ struct _GabbleMediaChannelPrivate
   gchar *object_path;
   GabbleHandle creator;
 
+  GabbleMediaFactory *factory;
   GabbleMediaSession *session;
 
   gboolean closed;
@@ -174,7 +178,7 @@ create_session (GabbleMediaChannel *channel, GabbleHandle peer, const gchar *pee
   if (sid == NULL)
     {
       initiator = priv->conn->self_handle;
-      sid = _gabble_connection_jingle_session_allocate (priv->conn);
+      sid = _gabble_media_factory_allocate_sid (priv->factory, channel);
     }
   else
     {
@@ -195,7 +199,8 @@ create_session (GabbleMediaChannel *channel, GabbleHandle peer, const gchar *pee
 
   priv->session = session;
 
-  _gabble_connection_jingle_session_register (priv->conn, sid, channel);
+  /* FIXME - jingle_session_registered (re)registered sid for a new chan every
+     time session was registered - what's intended here? */
 
   g_signal_emit (channel, signals[NEW_MEDIA_SESSION_HANDLER], 0,
                  peer, object_path, "rtp");
@@ -274,6 +279,9 @@ gabble_media_channel_get_property (GObject    *object,
     case PROP_CREATOR:
       g_value_set_uint (value, priv->creator);
       break;
+    case PROP_FACTORY:
+      g_value_set_object (value, priv->factory);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -303,6 +311,9 @@ gabble_media_channel_set_property (GObject     *object,
       break;
     case PROP_CREATOR:
       priv->creator = g_value_get_uint (value);
+      break;
+    case PROP_FACTORY:
+      priv->factory = g_value_get_object (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -355,6 +366,16 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
                                   G_PARAM_STATIC_NAME |
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_CREATOR, param_spec);
+
+  param_spec = g_param_spec_object ("factory", "GabbleMediaFactory object",
+                                    "The factory that created this object.",
+                                    GABBLE_TYPE_MEDIA_FACTORY,
+                                    G_PARAM_CONSTRUCT_ONLY |
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_STATIC_NICK |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_FACTORY, param_spec);
+
 
   signals[CLOSED] =
     g_signal_new ("closed",

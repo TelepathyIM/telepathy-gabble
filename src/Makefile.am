@@ -93,6 +93,8 @@ CORE_SOURCES = \
     jingle-info.h \
     im-factory.h \
     im-factory.c \
+    media-factory.h \
+    media-factory.c \
     muc-factory.h \
     muc-factory.c \
     namespaces.h \

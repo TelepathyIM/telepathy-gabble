@@ -388,7 +388,7 @@ _gabble_roster_item_update (GabbleRoster *roster,
     item->ask_subscribe = FALSE;
 
   block = lm_message_node_get_attribute (node, "gr:t");
-  if (!g_strdiff (block, "b"))
+  if (!g_strdiff (block, "B"))
     item->blocked = TRUE;
   else
     item->blocked = FALSE;
@@ -525,7 +525,7 @@ _gabble_roster_item_to_message (GabbleRoster *roster,
 
   if ((priv->conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER) &&
       item->blocked)
-    lm_message_node_set_attribute (item_node, "gr:t", "b");
+    lm_message_node_set_attribute (item_node, "gr:t", "B");
 
   if (item->ask_subscribe)
     lm_message_node_set_attribute (item_node, "ask", "subscribe");

@@ -4597,7 +4597,7 @@ gboolean gabble_connection_request_handles (GabbleConnection *obj, guint handle_
   gchar *sender, *qualified_name;
   GError *error = NULL;
 
-  for (cur_name = names; cur_name != NULL; cur_name++)
+  for (cur_name = names; *cur_name != NULL; cur_name++)
     {
       count++;
     }

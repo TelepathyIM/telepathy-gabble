@@ -4577,6 +4577,19 @@ static gchar *room_name_to_canonical (GabbleConnection *conn, const gchar *name)
   return g_strdup_printf ("%s@%s", name, server);
 }
 
+static void hold_and_return_handles (DBusGMethodInvocation *context,
+                                     GabbleConnection *conn,
+                                     GArray *handles)
+{
+  gchar *sender = dbus_g_method_get_sender(context);
+  for (i = 0; i < handles->len; i++)
+    {
+      _gabble_connection_client_hold_handle (conn, sender, g_array_index(handles, GabbleHandle, i), handle_type);
+    }
+  dbus_g_method_return (context, handles);
+  g_array_free (handles, TRUE);
+}
+
 
 /**
  * gabble_connection_request_handles
@@ -4589,23 +4602,16 @@ static gchar *room_name_to_canonical (GabbleConnection *conn, const gchar *name)
  */
 gboolean gabble_connection_request_handles (GabbleConnection *obj, guint handle_type, const gchar ** names, DBusGMethodInvocation *context)
 {
-  GabbleConnectionPrivate *priv;
-  guint i, count = 0;
+  guint count = 0;
   const gchar **cur_name;
-  GArray *handles;
-  GabbleHandle handle;
-  gchar *sender, *qualified_name;
   GError *error = NULL;
 
   for (cur_name = names; *cur_name != NULL; cur_name++)
     {
       count++;
     }
-  handles = g_array_sized_new(FALSE, FALSE, sizeof(GabbleHandle), count);
 
   g_assert (GABBLE_IS_CONNECTION (obj));
-
-  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
 
   ERROR_IF_NOT_CONNECTED_ASYNC (obj, error, context)
 
@@ -4619,8 +4625,12 @@ gboolean gabble_connection_request_handles (GabbleConnection *obj, guint handle_
   switch (handle_type)
     {
     case TP_HANDLE_TYPE_CONTACT:
+      GArray *handles = g_array_sized_new(FALSE, FALSE, sizeof(GabbleHandle), count);
+      guint i;
+
       for (i = 0; i < count; i++)
         {
+          GabbleHandle handle;
           const gchar *name = names[i];
 
           if (!gabble_handle_jid_is_valid (handle_type, name, &error))
@@ -4649,10 +4659,16 @@ gboolean gabble_connection_request_handles (GabbleConnection *obj, guint handle_
 
           g_array_append_val(handles, handle);
         }
-        break;
+      hold_and_return_handles (context, conn, handles);
+      return TRUE;
     case TP_HANDLE_TYPE_ROOM:
+      GArray *handles = g_array_sized_new(FALSE, FALSE, sizeof(GabbleHandle), count);
+      guint i;
+      gchar *qualified_name;
+
       for (i = 0; i < count; i++)
         {
+          GabbleHandle handle;
           const gchar *name = names[i];
 
           qualified_name = room_name_to_canonical (obj, name);
@@ -4703,10 +4719,15 @@ gboolean gabble_connection_request_handles (GabbleConnection *obj, guint handle_
 
           g_array_append_val(handles, handle);
         }
-      break;
+      hold_and_return_handles (context, conn, handles);
+      return TRUE;
     case TP_HANDLE_TYPE_LIST:
+      GArray *handles = g_array_sized_new(FALSE, FALSE, sizeof(GabbleHandle), count);
+      guint i;
+
       for (i = 0; i < count; i++)
         {
+          GabbleHandle handle;
           const gchar *name = names[i];
 
           if (!strcmp (name, "publish"))
@@ -4758,19 +4779,8 @@ gboolean gabble_connection_request_handles (GabbleConnection *obj, guint handle_
       dbus_g_method_return_error (context, error);
       g_error_free (error);
 
-          g_array_free (handles, TRUE);
-          return FALSE;
+      return FALSE;
     }
-
-  sender = dbus_g_method_get_sender (context);
-  for (i = 0; i < count; i++)
-    {
-      _gabble_connection_client_hold_handle (obj, sender, g_array_index(handles, GabbleHandle, i), handle_type);
-    }
-  dbus_g_method_return (context, handles);
-  g_array_free (handles, TRUE);
-
-  return TRUE;
 }
 
 

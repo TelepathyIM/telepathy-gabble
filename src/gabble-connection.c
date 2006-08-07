@@ -4616,13 +4616,13 @@ gboolean gabble_connection_request_handles (GabbleConnection *obj, guint handle_
       return FALSE;
     }
 
-  for (i = 0; i < count; i++)
+  switch (handle_type)
     {
-      const gchar *name = names[i];
-
-      switch (handle_type)
+    case TP_HANDLE_TYPE_CONTACT:
+      for (i = 0; i < count; i++)
         {
-        case TP_HANDLE_TYPE_CONTACT:
+          const gchar *name = names[i];
+
           if (!gabble_handle_jid_is_valid (handle_type, name, &error))
             {
               dbus_g_method_return_error (context, error);
@@ -4647,8 +4647,14 @@ gboolean gabble_connection_request_handles (GabbleConnection *obj, guint handle_
               return FALSE;
             }
 
-          break;
-        case TP_HANDLE_TYPE_ROOM:
+          g_array_append_val(handles, handle);
+        }
+        break;
+    case TP_HANDLE_TYPE_ROOM:
+      for (i = 0; i < count; i++)
+        {
+          const gchar *name = names[i];
+
           qualified_name = room_name_to_canonical (obj, name);
 
           if (!qualified_name)
@@ -4695,8 +4701,14 @@ gboolean gabble_connection_request_handles (GabbleConnection *obj, guint handle_
                 }
             }
 
-          break;
-        case TP_HANDLE_TYPE_LIST:
+          g_array_append_val(handles, handle);
+        }
+      break;
+    case TP_HANDLE_TYPE_LIST:
+      for (i = 0; i < count; i++)
+        {
+          const gchar *name = names[i];
+
           if (!strcmp (name, "publish"))
             {
               handle = gabble_handle_for_list_publish (obj->handles);
@@ -4741,15 +4753,13 @@ gboolean gabble_connection_request_handles (GabbleConnection *obj, guint handle_
         {
           DEBUG ("requested list channel %s not available", name);
 
-          error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
-                              "unimplemented handle type %u", handle_type);
-          dbus_g_method_return_error (context, error);
-          g_error_free (error);
+      error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                          "unimplemented handle type %u", handle_type);
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
 
           g_array_free (handles, TRUE);
           return FALSE;
-        }
-      g_array_append_val(handles, handle);
     }
 
   sender = dbus_g_method_get_sender (context);

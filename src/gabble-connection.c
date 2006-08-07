@@ -4768,6 +4768,7 @@ gboolean gabble_connection_request_handles (GabbleConnection *obj, guint handle_
       _gabble_connection_client_hold_handle (obj, sender, g_array_index(handles, GabbleHandle, i), handle_type);
     }
   dbus_g_method_return (context, handles);
+  g_array_free (handles, TRUE);
 
   return TRUE;
 }

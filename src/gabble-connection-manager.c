@@ -240,7 +240,10 @@ static GValue *param_default_value (const GabbleParamSpec *params, int i)
   value = g_new0(GValue, 1);
   g_value_init(value, params[i].gtype);
 
-  if (params[i].mandatory)
+  /* TODO: this check could be stricter if we knew whether register
+  was true. In practice REQUIRED and REGISTER always go together in
+  the Gabble params, though */
+  if (params[i].flags & TP_CONN_MGR_PARAM_FLAG_REQUIRED & TP_CONN_MGR_PARAM_FLAG_REGISTER)
     {
       g_assert(params[i].def == NULL);
       goto OUT;
@@ -325,18 +328,25 @@ parse_parameters (const GabbleParamSpec *paramspec,
 {
   int unhandled;
   int i;
+  guint mandatory_flag = TP_CONN_MGR_PARAM_FLAG_REQUIRED;
+  GValue *value;
 
   unhandled = g_hash_table_size (provided);
 
+  value = g_hash_table_lookup (provided, "register");
+  if (value != NULL && G_VALUE_TYPE(value) == G_TYPE_BOOLEAN &&
+      g_value_get_boolean(value))
+    {
+      mandatory_flag = TP_CONN_MGR_PARAM_FLAG_REGISTER;
+    }
+
   for (i = 0; paramspec[i].name; i++)
     {
-      GValue *value;
-
       value = g_hash_table_lookup (provided, paramspec[i].name);
 
       if (value == NULL)
         {
-          if (paramspec[i].mandatory)
+          if (paramspec[i].flags & mandatory_flag)
             {
               g_debug ("%s: missing mandatory param %s",
                        G_STRFUNC, paramspec[i].name);

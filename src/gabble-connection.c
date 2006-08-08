@@ -4463,7 +4463,6 @@ static void hold_and_return_handles (DBusGMethodInvocation *context,
       _gabble_connection_client_hold_handle (conn, sender, g_array_index(handles, GabbleHandle, i), handle_type);
     }
   dbus_g_method_return (context, handles);
-  g_array_free (handles, TRUE);
 }
 
 static gchar *room_name_to_canonical (GabbleConnection *conn, const gchar *name)
@@ -4591,7 +4590,8 @@ room_verify_batch_new
   return batch;
 }
 
-/* If all handles in the array have been disco'd or got from cache, return. */
+/* If all handles in the array have been disco'd or got from cache,
+free the batch and return TRUE. Else return FALSE. */
 static gboolean room_verify_batch_try_return (RoomVerifyBatch *batch)
 {
   guint i;
@@ -4779,6 +4779,7 @@ gboolean gabble_connection_request_handles (GabbleConnection *obj, guint handle_
           g_array_append_val(handles, handle);
         }
       hold_and_return_handles (context, obj, handles, handle_type);
+      g_array_free(handles, TRUE);
       return TRUE;
     case TP_HANDLE_TYPE_ROOM:
       batch = room_verify_batch_new(obj, context, count, names);

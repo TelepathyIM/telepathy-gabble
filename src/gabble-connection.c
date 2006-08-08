@@ -4828,6 +4828,10 @@ gboolean gabble_connection_request_handles (GabbleConnection *obj, guint handle_
             {
               handle = gabble_handle_for_list_known (obj->handles);
             }
+          else if (!strcmp (name, "block"))
+            {
+              handle = gabble_handle_for_list_block (obj->handles);
+            }
           else
             {
               DEBUG ("requested list channel %s not available", name);
@@ -4840,25 +4844,13 @@ gboolean gabble_connection_request_handles (GabbleConnection *obj, guint handle_
               g_array_free (handles, TRUE);
               return FALSE;
             }
+          g_array_append_val(handles, handle);
         }
-
-      break;
-    case TP_HANDLE_TYPE_LIST:
-      if (!strcmp (name, "publish"))
-        {
-          handle = gabble_handle_for_list_publish (obj->handles);
-        }
-      else if (!strcmp (name, "subscribe"))
-        {
-          handle = gabble_handle_for_list_subscribe (obj->handles);
-        }
-      else if (!strcmp (name, "known"))
-        {
-          handle = gabble_handle_for_list_known (obj->handles);
-        }
-      else
-        {
-          DEBUG ("requested list channel %s not available", name);
+      hold_and_return_handles (context, obj, handles, handle_type);
+      g_array_free(handles, TRUE);
+      return TRUE;
+    default:
+      DEBUG ("unimplemented handle type %u", handle_type);
 
       error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
                           "unimplemented handle type %u", handle_type);

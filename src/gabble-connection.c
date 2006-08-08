@@ -4450,10 +4450,11 @@ gboolean gabble_connection_request_contact_info (GabbleConnection *obj, guint co
 }
 #endif
 
-static void hold_and_return_handles (DBusGMethodInvocation *context,
-                                     GabbleConnection *conn,
-                                     GArray *handles,
-                                     guint handle_type)
+static void
+hold_and_return_handles (DBusGMethodInvocation *context,
+                         GabbleConnection *conn,
+                         GArray *handles,
+                         guint handle_type)
 {
   gchar *sender = dbus_g_method_get_sender(context);
   guint i;
@@ -4465,7 +4466,9 @@ static void hold_and_return_handles (DBusGMethodInvocation *context,
   dbus_g_method_return (context, handles);
 }
 
-static gchar *room_name_to_canonical (GabbleConnection *conn, const gchar *name)
+static gchar *
+room_name_to_canonical (GabbleConnection *conn,
+                        const gchar *name)
 {
   GabbleConnectionPrivate *priv;
   const gchar *server;
@@ -4505,7 +4508,8 @@ struct _RoomVerifyContext {
     GabbleDiscoRequest *request;
 };
 
-static void room_verify_batch_free (RoomVerifyBatch *batch)
+static void
+room_verify_batch_free (RoomVerifyBatch *batch)
 {
   guint i;
 
@@ -4518,7 +4522,9 @@ static void room_verify_batch_free (RoomVerifyBatch *batch)
 }
 
 /* Frees the error and the batch. */
-static void room_verify_batch_raise_error (RoomVerifyBatch *batch, GError *error)
+static void
+room_verify_batch_raise_error (RoomVerifyBatch *batch,
+                               GError *error)
 {
   guint i;
 
@@ -4537,9 +4543,10 @@ static void room_verify_batch_raise_error (RoomVerifyBatch *batch, GError *error
 }
 
 static RoomVerifyBatch *
-room_verify_batch_new
-(GabbleConnection *conn, DBusGMethodInvocation *invocation, guint count,
- const gchar **jids)
+room_verify_batch_new (GabbleConnection *conn,
+                       DBusGMethodInvocation *invocation,
+                       guint count,
+                       const gchar **jids)
 {
   RoomVerifyBatch *batch = g_new(RoomVerifyBatch, 1);
   guint i;
@@ -4592,7 +4599,8 @@ room_verify_batch_new
 
 /* If all handles in the array have been disco'd or got from cache,
 free the batch and return TRUE. Else return FALSE. */
-static gboolean room_verify_batch_try_return (RoomVerifyBatch *batch)
+static gboolean
+room_verify_batch_try_return (RoomVerifyBatch *batch)
 {
   guint i;
 
@@ -4681,7 +4689,8 @@ OUT:
  * the specified jid exists and reports MUC support.
  */
 static gboolean
-room_jid_verify (RoomVerifyBatch *batch, guint index,
+room_jid_verify (RoomVerifyBatch *batch,
+                 guint index,
                  DBusGMethodInvocation *context)
 {
   gchar *room, *service;

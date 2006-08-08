@@ -45,6 +45,7 @@ BUILT_SOURCES = \
 CLEANFILES = $(BUILT_SOURCES)
 
 bin_PROGRAMS=telepathy-gabble
+noinst_PROGRAMS = write_mgr_file
 
 CORE_SOURCES = \
     ansi.h \
@@ -117,6 +118,10 @@ CORE_SOURCES = \
 
 libgabble_convenience_la_SOURCES = \
     $(CORE_SOURCES)
+
+write_mgr_file_SOURCES = write_mgr_file.c
+
+write_mgr_file_LDADD = libgabble-convenience.la
 
 telepathy_gabble_SOURCES = \
     gabble.h \

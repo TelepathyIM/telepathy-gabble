@@ -168,7 +168,7 @@ struct _GabbleParamSpec {
   const gchar *name;
   const gchar *dtype;
   const GType gtype;
-  gboolean mandatory;
+  guint flags;
   const gpointer def;
   const gsize offset;
 };
@@ -193,21 +193,21 @@ enum {
 };
 
 static const GabbleParamSpec jabber_params[] = {
-  { "account", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, TRUE, NULL, G_STRUCT_OFFSET(GabbleParams, account) },
-  { "password", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, TRUE, NULL, G_STRUCT_OFFSET(GabbleParams, password) },
-  { "server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, FALSE, NULL, G_STRUCT_OFFSET(GabbleParams, server) },
-  { "resource", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, FALSE, GABBLE_PARAMS_DEFAULT_RESOURCE, G_STRUCT_OFFSET(GabbleParams, resource) },
-  { "priority", DBUS_TYPE_INT16_AS_STRING, G_TYPE_INT, FALSE, GINT_TO_POINTER(0), G_STRUCT_OFFSET(GabbleParams, priority) },
-  { "port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT, FALSE, GINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_PORT), G_STRUCT_OFFSET(GabbleParams, port) },
-  { "old-ssl", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN, FALSE, GINT_TO_POINTER(FALSE), G_STRUCT_OFFSET(GabbleParams, old_ssl) },
-  { "register", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN, FALSE, GINT_TO_POINTER(FALSE), G_STRUCT_OFFSET(GabbleParams, do_register) },
-  { "low-bandwidth", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN, FALSE, GINT_TO_POINTER(FALSE), G_STRUCT_OFFSET(GabbleParams, low_bandwidth) },
-  { "https-proxy-server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, FALSE, NULL, G_STRUCT_OFFSET(GabbleParams, https_proxy_server) },
-  { "https-proxy-port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT, FALSE, GINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_PORT), G_STRUCT_OFFSET(GabbleParams, https_proxy_port) },
-  { "fallback-conference-server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, FALSE, NULL, G_STRUCT_OFFSET(GabbleParams, fallback_conference_server) },
-  { "stun-server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, FALSE, NULL, G_STRUCT_OFFSET(GabbleParams, stun_server) },
-  { "stun-port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT, FALSE, GINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_STUN_PORT), G_STRUCT_OFFSET(GabbleParams, stun_port) },
-  { "ignore-ssl-errors", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN, FALSE, GINT_TO_POINTER(FALSE), G_STRUCT_OFFSET(GabbleParams, ignore_ssl_errors) },
+  { "account", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, TP_CONN_MGR_PARAM_FLAG_REQUIRED | TP_CONN_MGR_PARAM_FLAG_REGISTER, NULL, G_STRUCT_OFFSET(GabbleParams, account) },
+  { "password", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, TP_CONN_MGR_PARAM_FLAG_REQUIRED | TP_CONN_MGR_PARAM_FLAG_REGISTER, NULL, G_STRUCT_OFFSET(GabbleParams, password) },
+  { "server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, 0, NULL, G_STRUCT_OFFSET(GabbleParams, server) },
+  { "resource", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GABBLE_PARAMS_DEFAULT_RESOURCE, G_STRUCT_OFFSET(GabbleParams, resource) },
+  { "priority", DBUS_TYPE_INT16_AS_STRING, G_TYPE_INT, TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(0), G_STRUCT_OFFSET(GabbleParams, priority) },
+  { "port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT, TP_CONN_MGR_FLAG_HAS_DEFAULT, GINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_PORT), G_STRUCT_OFFSET(GabbleParams, port) },
+  { "old-ssl", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN, TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(FALSE), G_STRUCT_OFFSET(GabbleParams, old_ssl) },
+  { "register", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN, TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(FALSE), G_STRUCT_OFFSET(GabbleParams, do_register) },
+  { "low-bandwidth", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN, TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(FALSE), G_STRUCT_OFFSET(GabbleParams, low_bandwidth) },
+  { "https-proxy-server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, 0, NULL, G_STRUCT_OFFSET(GabbleParams, https_proxy_server) },
+  { "https-proxy-port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT, TP_CONN_MGR_FLAG_HAS_DEFAULT, GINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_PORT), G_STRUCT_OFFSET(GabbleParams, https_proxy_port) },
+  { "fallback-conference-server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, 0, NULL, G_STRUCT_OFFSET(GabbleParams, fallback_conference_server) },
+  { "stun-server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, 0, NULL, G_STRUCT_OFFSET(GabbleParams, stun_server) },
+  { "stun-port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT, TP_CONN_MGR_FLAG_HAS_DEFAULT, GINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_STUN_PORT), G_STRUCT_OFFSET(GabbleParams, stun_port) },
+  { "ignore-ssl-errors", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN, TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(FALSE), G_STRUCT_OFFSET(GabbleParams, ignore_ssl_errors) },
   { NULL, NULL, 0, 0, NULL, 0 }
 };
 
@@ -488,23 +488,17 @@ gboolean gabble_connection_manager_get_parameters (GabbleConnectionManager *obj,
 
   for (i = 0; params[i].name; i++)
     {
-      guint flags;
       GValue *def_value;
       GValue param = { 0, };
 
       g_value_init (&param, TP_TYPE_PARAM);
       g_value_set_static_boxed (&param,
         dbus_g_type_specialized_construct (TP_TYPE_PARAM));
-
-      flags = 0;
-      if (params[i].mandatory)
-        flags |= (TP_CONN_MGR_PARAM_FLAG_REQUIRED |
-                  TP_CONN_MGR_PARAM_FLAG_REGISTER);
       
       def_value = param_default_value (params, i);
       dbus_g_type_struct_set (&param,
         0, params[i].name,
-        1, flags,
+        1, params[i].flags,
         2, params[i].dtype,
         3, def_value,
         G_MAXUINT);

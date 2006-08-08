@@ -4492,9 +4492,123 @@ typedef struct _RoomVerifyContext RoomVerifyContext;
 
 typedef struct {
     GabbleConnection *conn;
+    DBusGMethodInvocation *invocation;
+    gboolean errored;
+    guint count;
+    GArray *handles;
+    RoomVerifyContext *contexts;
+} RoomVerifyBatch;
+
+struct _RoomVerifyContext {
     gchar *jid;
-    DBusGMethodInvocation *context;
-} RoomVerifyContext;
+    guint index;
+    RoomVerifyBatch *batch;
+    GabbleDiscoRequest *request;
+};
+
+static void room_verify_batch_free (RoomVerifyBatch *batch)
+{
+  guint i;
+
+  g_array_free (batch->handles, TRUE);
+  for (i = 0; i < batch->count; i++)
+    {
+      g_free(batch->contexts[i].jid);
+    }
+  g_free (batch->contexts);
+}
+
+/* Frees the error and the batch. */
+static void room_verify_batch_raise_error (RoomVerifyBatch *batch, GError *error)
+{
+  guint i;
+
+  dbus_g_method_return_error (batch->invocation, error);
+  g_error_free (error);
+  batch->errored = TRUE;
+  for (i = 0; i < batch->count; i++)
+    {
+      if (batch->contexts[i].request)
+        {
+          gabble_disco_cancel_request(batch->conn->disco,
+                                      batch->contexts[i].request);
+        }
+    }
+  room_verify_batch_free (batch);
+}
+
+static RoomVerifyBatch *
+room_verify_batch_new
+(GabbleConnection *conn, DBusGMethodInvocation *invocation, guint count,
+ const gchar **jids)
+{
+  RoomVerifyBatch *batch = g_new(RoomVerifyBatch, 1);
+  guint i;
+
+  batch->errored = FALSE;
+  batch->conn = conn;
+  batch->invocation = invocation;
+  batch->count = count;
+  batch->handles = g_array_sized_new(FALSE, FALSE, sizeof(GabbleHandle), count);
+  batch->contexts = g_new0(RoomVerifyContext, count);
+  for (i = 0; i < count; i++)
+    {
+      const gchar *name = jids[i];
+      gchar *qualified_name;
+      GabbleHandle handle;
+
+      batch->contexts[i].index = i;
+      batch->contexts[i].batch = batch;
+
+      qualified_name = room_name_to_canonical(conn, name);
+
+      if (!qualified_name)
+        {
+          GError *error;
+          DEBUG ("requested handle %s contains no conference server",
+                 name);
+          error = g_error_new (TELEPATHY_ERRORS, NotAvailable, "requested "
+                  "room handle %s does not specify a server, but we have not discovered "
+                  "any local conference servers and no fallback was provided", name);
+          room_verify_batch_raise_error (batch, error);
+          return NULL;
+        }
+
+      batch->contexts[i].jid = qualified_name;
+
+      /* has the handle been verified before? */
+      if (gabble_handle_for_room_exists (conn->handles, qualified_name, FALSE))
+        {
+          handle = gabble_handle_for_room (conn->handles, qualified_name);
+        }
+      else
+        {
+          handle = 0;
+        }
+      g_array_append_val (batch->handles, handle);
+    }
+
+  return batch;
+}
+
+/* If all handles in the array have been disco'd or got from cache, return. */
+static gboolean room_verify_batch_try_return (RoomVerifyBatch *batch)
+{
+  guint i;
+
+  for (i = 0; i < batch->count; i++)
+    {
+      if (!g_array_index(batch->handles, GabbleHandle, i))
+        {
+          /* we're not ready yet */
+          return FALSE;
+        }
+    }
+
+  hold_and_return_handles (batch->invocation, batch->conn, batch->handles, TP_HANDLE_TYPE_ROOM);
+  room_verify_batch_free (batch);
+  return TRUE;
+}
 
 static void
 room_jid_disco_cb (GabbleDisco *disco,
@@ -4506,16 +4620,22 @@ room_jid_disco_cb (GabbleDisco *disco,
                    gpointer user_data)
 {
   RoomVerifyContext *rvctx = user_data;
+  RoomVerifyBatch *batch = rvctx->batch;
   LmMessageNode *lm_node;
-  GabbleConnectionPrivate *priv;
 
-  priv = GABBLE_CONNECTION_GET_PRIVATE (rvctx->conn);
+  /* stop the request getting cancelled after it's already finished */
+  rvctx->request = NULL;
+
+  /* if an error is being handled already, quietly go away */
+  if (batch->errored)
+    {
+      return;
+    }
 
   if (error != NULL)
     {
       DEBUG ("disco reply error %s", error->message);
-      dbus_g_method_return_error (rvctx->context, error);
-
+      room_verify_batch_raise_error(batch, error);
       goto OUT;
     }
 
@@ -4530,18 +4650,13 @@ room_jid_disco_cb (GabbleDisco *disco,
             {
               if (strcmp (name, NS_MUC) == 0)
                 {
-                  gchar *sender;
                   GabbleHandle handle;
 
-                  handle = gabble_handle_for_room (rvctx->conn->handles, rvctx->jid);
+                  handle = gabble_handle_for_room (batch->conn->handles, rvctx->jid);
                   g_assert (handle != 0);
 
-                  sender = dbus_g_method_get_sender (rvctx->context);
-                  _gabble_connection_client_hold_handle (rvctx->conn, sender, handle, TP_HANDLE_TYPE_ROOM);
-
                   DEBUG ("disco reported MUC support for service name in jid %s", rvctx->jid);
-
-                  dbus_g_method_return (rvctx->context, handle);
+                  g_array_index(batch->handles, GabbleHandle, rvctx->index) = handle;
 
                   goto OUT;
                 }
@@ -4551,11 +4666,12 @@ room_jid_disco_cb (GabbleDisco *disco,
 
   error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
                       "specified server doesn't support MUC");
-  dbus_g_method_return_error (rvctx->context, error);
+  room_verify_batch_raise_error (batch, error);
+  return;
 
 OUT:
-  g_free (rvctx->jid);
-  g_free (rvctx);
+  /* if this was the last callback to be run, send off the result */
+  room_verify_batch_try_return (batch);
 }
 
 /**
@@ -4565,28 +4681,26 @@ OUT:
  * the specified jid exists and reports MUC support.
  */
 static gboolean
-room_jid_verify (GabbleConnection *conn, const gchar *jid,
-                 DBusGMethodInvocation *context, GError **error)
+room_jid_verify (RoomVerifyBatch *batch, guint index,
+                 DBusGMethodInvocation *context)
 {
-  GabbleConnectionPrivate *priv;
   gchar *room, *service;
   gboolean ret;
-  RoomVerifyContext *rvctx;
-
-  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  GError *error;
 
   room = service = NULL;
-  gabble_handle_decode_jid (jid, &room, &service, NULL);
+  gabble_handle_decode_jid (batch->contexts[index].jid, &room, &service, NULL);
 
   g_assert (room && service);
 
-  rvctx = g_new (RoomVerifyContext, 1);
-  rvctx->conn = conn;
-  rvctx->jid = g_strdup (jid);
-  rvctx->context = context;
-
-  ret = (gabble_disco_request (conn->disco, GABBLE_DISCO_TYPE_INFO, service, NULL,
-                               room_jid_disco_cb, rvctx, G_OBJECT (conn), error) != NULL);
+  ret = (gabble_disco_request (batch->conn->disco, GABBLE_DISCO_TYPE_INFO,
+                               service, NULL, room_jid_disco_cb,
+                               batch->contexts + index,
+                               G_OBJECT (batch->conn), &error) != NULL);
+  if (!ret)
+    {
+      room_verify_batch_raise_error (batch, error);
+    }
 
   g_free (room);
   g_free (service);
@@ -4606,9 +4720,11 @@ room_jid_verify (GabbleConnection *conn, const gchar *jid,
  */
 gboolean gabble_connection_request_handles (GabbleConnection *obj, guint handle_type, const gchar ** names, DBusGMethodInvocation *context)
 {
-  guint count = 0;
+  guint count = 0, i;
   const gchar **cur_name;
   GError *error = NULL;
+  GArray *handles = NULL;
+  RoomVerifyBatch *batch = NULL;
 
   for (cur_name = names; *cur_name != NULL; cur_name++)
     {
@@ -4629,8 +4745,7 @@ gboolean gabble_connection_request_handles (GabbleConnection *obj, guint handle_
   switch (handle_type)
     {
     case TP_HANDLE_TYPE_CONTACT:
-      GArray *handles = g_array_sized_new(FALSE, FALSE, sizeof(GabbleHandle), count);
-      guint i;
+      handles = g_array_sized_new(FALSE, FALSE, sizeof(GabbleHandle), count);
 
       for (i = 0; i < count; i++)
         {
@@ -4663,71 +4778,37 @@ gboolean gabble_connection_request_handles (GabbleConnection *obj, guint handle_
 
           g_array_append_val(handles, handle);
         }
-      hold_and_return_handles (context, conn, handles);
+      hold_and_return_handles (context, obj, handles, handle_type);
       return TRUE;
     case TP_HANDLE_TYPE_ROOM:
-      GArray *handles = g_array_sized_new(FALSE, FALSE, sizeof(GabbleHandle), count);
-      guint i;
-      gchar *qualified_name;
+      batch = room_verify_batch_new(obj, context, count, names);
+      if (!batch)
+        {
+          /* an error occurred while setting up the batch, and we returned error
+          to dbus */
+          return FALSE;
+        }
+
+      /* have all the handles been verified already? If so, nothing to do */
+      if (room_verify_batch_try_return (batch))
+        {
+          return TRUE;
+        }
 
       for (i = 0; i < count; i++)
         {
-          GabbleHandle handle;
-          const gchar *name = names[i];
-
-          qualified_name = room_name_to_canonical (obj, name);
-
-          if (!qualified_name)
+          if (!room_jid_verify (batch, i, context))
             {
-              DEBUG ("requested handle %s contains no conference server", name);
-
-              error = g_error_new (TELEPATHY_ERRORS, NotAvailable, "requested "
-                  "room handle %s does not specify a server, but we have not discovered "
-                  "any local conference servers and no fallback was provided", name);
-              dbus_g_method_return_error (context, error);
-              g_error_free (error);
-
-              g_array_free (handles, TRUE);
               return FALSE;
             }
-
-          /* has the handle been verified before? */
-          if (gabble_handle_for_room_exists (obj->handles, qualified_name, FALSE))
-            {
-              handle = gabble_handle_for_room (obj->handles, qualified_name);
-
-              g_free (qualified_name);
-            }
-          else
-            {
-              gboolean success;
-
-              /* verify it */
-              success = room_jid_verify (obj, qualified_name, context, &error);
-
-              g_free (qualified_name);
-
-              if (success)
-                {
-                  return TRUE;
-                }
-              else
-                {
-                  dbus_g_method_return_error (context, error);
-                  g_error_free (error);
-
-                  g_array_free (handles, TRUE);
-                  return FALSE;
-                }
-            }
-
-          g_array_append_val(handles, handle);
         }
-      hold_and_return_handles (context, conn, handles);
+
+      /* we've set the verification process going - the callback will handle
+      returning or raising error */
       return TRUE;
+
     case TP_HANDLE_TYPE_LIST:
-      GArray *handles = g_array_sized_new(FALSE, FALSE, sizeof(GabbleHandle), count);
-      guint i;
+      handles = g_array_sized_new(FALSE, FALSE, sizeof(GabbleHandle), count);
 
       for (i = 0; i < count; i++)
         {

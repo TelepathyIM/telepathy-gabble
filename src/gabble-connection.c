@@ -4450,6 +4450,45 @@ gboolean gabble_connection_request_contact_info (GabbleConnection *obj, guint co
 }
 #endif
 
+static void hold_and_return_handles (DBusGMethodInvocation *context,
+                                     GabbleConnection *conn,
+                                     GArray *handles,
+                                     guint handle_type)
+{
+  gchar *sender = dbus_g_method_get_sender(context);
+  guint i;
+
+  for (i = 0; i < handles->len; i++)
+    {
+      _gabble_connection_client_hold_handle (conn, sender, g_array_index(handles, GabbleHandle, i), handle_type);
+    }
+  dbus_g_method_return (context, handles);
+  g_array_free (handles, TRUE);
+}
+
+static gchar *room_name_to_canonical (GabbleConnection *conn, const gchar *name)
+{
+  GabbleConnectionPrivate *priv;
+  const gchar *server;
+
+  g_assert (GABBLE_IS_CONNECTION (conn));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+
+  if (index (name, '@'))
+    return g_strdup (name);
+
+  if (priv->conference_servers)
+    server = priv->conference_servers->data;
+  else if (priv->fallback_conference_server)
+    server = priv->fallback_conference_server;
+  else
+    return NULL;
+
+  return g_strdup_printf ("%s@%s", name, server);
+}
+
+typedef struct _RoomVerifyContext RoomVerifyContext;
 
 typedef struct {
     GabbleConnection *conn;
@@ -4553,41 +4592,6 @@ room_jid_verify (GabbleConnection *conn, const gchar *jid,
   g_free (service);
 
   return ret;
-}
-
-static gchar *room_name_to_canonical (GabbleConnection *conn, const gchar *name)
-{
-  GabbleConnectionPrivate *priv;
-  const gchar *server;
-
-  g_assert (GABBLE_IS_CONNECTION (conn));
-
-  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-
-  if (index (name, '@'))
-    return g_strdup (name);
-
-  if (priv->conference_servers)
-    server = priv->conference_servers->data;
-  else if (priv->fallback_conference_server)
-    server = priv->fallback_conference_server;
-  else
-    return NULL;
-
-  return g_strdup_printf ("%s@%s", name, server);
-}
-
-static void hold_and_return_handles (DBusGMethodInvocation *context,
-                                     GabbleConnection *conn,
-                                     GArray *handles)
-{
-  gchar *sender = dbus_g_method_get_sender(context);
-  for (i = 0; i < handles->len; i++)
-    {
-      _gabble_connection_client_hold_handle (conn, sender, g_array_index(handles, GabbleHandle, i), handle_type);
-    }
-  dbus_g_method_return (context, handles);
-  g_array_free (handles, TRUE);
 }
 
 

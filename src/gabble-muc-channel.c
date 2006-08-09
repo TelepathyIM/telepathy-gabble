@@ -1403,6 +1403,25 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
             }
         }
 
+      /* Possible reasons we could have been removed from the room:
+       * 301 banned
+       * 307 kicked
+       * 321 "because of an affiliation change" - no reason_code
+       * 322 room has become members-only and we're not a member - no reason_code
+       * 332 system (server) is being shut down - no reason code
+       */
+      if (status_code)
+        {
+          if (strcmp (status_code, "301") == 0)
+            {
+              reason_code = TP_CHANNEL_GROUP_CHANGE_REASON_BANNED;
+            }
+          else if (strcmp (status_code, "307") == 0)
+            {
+              reason_code = TP_CHANNEL_GROUP_CHANGE_REASON_KICKED;
+            }
+        }
+
       reason_node = lm_message_node_get_child (item_node, "reason");
       if (reason_node != NULL)
         {

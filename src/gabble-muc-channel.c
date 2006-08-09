@@ -1146,6 +1146,7 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
         case XMPP_ERROR_FORBIDDEN:
           tp_error = g_error_new (TELEPATHY_ERRORS, ChannelBanned,
                                   "banned from room");
+          reason_code = TP_CHANNEL_GROUP_CHANGE_REASON_BANNED;
           break;
         case XMPP_ERROR_SERVICE_UNAVAILABLE:
           tp_error = g_error_new (TELEPATHY_ERRORS, ChannelFull,
@@ -1628,7 +1629,8 @@ _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
   g_intset_add (set_pending, priv->conn->self_handle);
 
   gabble_group_mixin_change_members (G_OBJECT (chan), message, set_members,
-                                     empty, set_pending, empty, 0, 0);
+                                     empty, set_pending, empty, inviter,
+                                     TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
 
   g_intset_destroy (empty);
   g_intset_destroy (set_members);
@@ -2123,7 +2125,8 @@ gabble_muc_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *m
       g_intset_add (set_pending, handle);
 
       gabble_group_mixin_change_members (obj, "", set_empty, set_members,
-                                         set_empty, set_pending, 0, 0);
+                                         set_empty, set_pending, 0,
+                                         TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
 
       g_intset_destroy (set_empty);
       g_intset_destroy (set_members);

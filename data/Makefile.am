@@ -3,16 +3,22 @@ managerdir = $(datadir)/telepathy/managers
 manager_DATA = gabble.manager
 
 # Dbus service file
-BUILT_FILES = $(service_in_files:.service.in=.service)
-
 servicedir = $(DBUS_SERVICES_DIR)
 service_in_files = org.freedesktop.Telepathy.ConnectionManager.gabble.service.in
-service_DATA = $(BUILT_FILES)
+service_DATA = $(service_in_files:.service.in=.service)
+
+BUILT_FILES = $(service_DATA) $(manager_DATA)
+
 CLEANFILES = $(BUILT_FILES)
 
-EXTRA_DIST = $(service_in_files) \
-	     gabble.manager
+EXTRA_DIST = $(service_in_files)
 
 # Rule to make the service file with bindir expanded
 $(service_DATA): $(service_in_files) Makefile
 	@sed -e "s|\@bindir\@|$(bindir)|" $< > $@
+
+$(manager_DATA): always-build
+	$(MAKE) -C ../src write-mgr-file
+	../src/write-mgr-file > $@
+
+.PHONY: always-build

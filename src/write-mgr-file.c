@@ -1,6 +1,7 @@
 /*
  * write_mgr_file.c - utility to produce gabble.manager. Part of Gabble.
  * Copyright (C) 2006 Collabora Ltd.
+ * Copyright (C) 2006 Nokia Corporation
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public

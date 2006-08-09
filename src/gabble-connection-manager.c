@@ -508,6 +508,7 @@ gboolean gabble_connection_manager_get_parameters (GabbleConnectionManager *obj,
         2, params[i].dtype,
         3, def_value,
         G_MAXUINT);
+      g_value_unset(def_value);
       g_free(def_value);
 
       g_ptr_array_add (*ret, g_value_get_boxed (&param));

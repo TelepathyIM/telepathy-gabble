@@ -512,10 +512,10 @@ gboolean gabble_text_mixin_list_pending_messages (GObject *obj, gboolean clear, 
  */
 gboolean gabble_text_mixin_send (GObject *obj, guint type, guint subtype,
                                  const char *recipient, const gchar *text,
-                                 GabbleConnection *conn, GError **error)
+                                 GabbleConnection *conn, gboolean emit_signal,
+                                 GError **error)
 {
   GabbleTextMixin *mixin = GABBLE_TEXT_MIXIN (obj);
-  GabbleTextMixinClass *mixin_cls = GABBLE_TEXT_MIXIN_CLASS (G_OBJECT_GET_CLASS (obj));
   LmMessage *msg;
   gboolean result;
   time_t timestamp;
@@ -570,14 +570,29 @@ gboolean gabble_text_mixin_send (GObject *obj, guint type, guint subtype,
   if (!result)
     return FALSE;
 
-  timestamp = time (NULL);
+  if (emit_signal)
+    {
+      timestamp = time (NULL);
+
+      gabble_text_mixin_emit_sent (obj, timestamp, type, text);
+    }
+
+  return TRUE;
+}
+
+void
+gabble_text_mixin_emit_sent (GObject *obj,
+                             time_t timestamp,
+                             guint type,
+                             const char *text)
+{
+  GabbleTextMixinClass *mixin_cls = GABBLE_TEXT_MIXIN_CLASS (G_OBJECT_GET_CLASS
+      (obj));
 
   g_signal_emit (obj, mixin_cls->sent_signal_id, 0,
                  timestamp,
                  type,
                  text);
-
-  return TRUE;
 }
 
 gboolean

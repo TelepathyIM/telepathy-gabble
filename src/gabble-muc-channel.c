@@ -1561,8 +1561,15 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
 
       return TRUE;
     }
+  else if (sender == chan->group.self_handle)
+    {
+      gabble_text_mixin_emit_sent (G_OBJECT (chan), timestamp, type, text);
 
-  return gabble_text_mixin_receive (G_OBJECT (chan), type, sender, timestamp, text);
+      return TRUE;
+    }
+
+  return gabble_text_mixin_receive (G_OBJECT (chan), type, sender, timestamp,
+      text);
 }
 
 void
@@ -2028,7 +2035,9 @@ gboolean gabble_muc_channel_send (GabbleMucChannel *obj, guint type, const gchar
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
 
-  return gabble_text_mixin_send (G_OBJECT (obj), type, LM_MESSAGE_SUB_TYPE_GROUPCHAT, priv->jid, text, priv->conn, error);
+  return gabble_text_mixin_send (G_OBJECT (obj), type,
+      LM_MESSAGE_SUB_TYPE_GROUPCHAT, priv->jid, text, priv->conn,
+      FALSE /* emit_signal */, error);
 }
 
 

@@ -491,6 +491,6 @@ gboolean gabble_im_channel_send (GabbleIMChannel *obj, guint type, const gchar *
   priv = GABBLE_IM_CHANNEL_GET_PRIVATE (obj);
 
   return gabble_text_mixin_send (G_OBJECT (obj), type, 0, priv->peer_jid, text,
-      priv->conn, error);
+      priv->conn, TRUE /* emit_signal */, error);
 }
 

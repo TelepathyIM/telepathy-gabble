@@ -79,7 +79,8 @@ void gabble_text_mixin_finalize (GObject *obj);
 gboolean gabble_text_mixin_receive (GObject *obj, TpChannelTextMessageType type, GabbleHandle sender, time_t timestamp, const char *text);
 gboolean gabble_text_mixin_acknowledge_pending_messages (GObject *obj, const GArray * ids, GError **error);
 gboolean gabble_text_mixin_list_pending_messages (GObject *obj, gboolean clear, GPtrArray ** ret, GError **error);
-gboolean gabble_text_mixin_send (GObject *obj, guint type, guint subtype, const char * recipient, const gchar * text, GabbleConnection *conn, GError **error);
+gboolean gabble_text_mixin_send (GObject *obj, guint type, guint subtype, const char * recipient, const gchar * text, GabbleConnection *conn, gboolean emit_signal, GError **error);
+void gabble_text_mixin_emit_sent (GObject *obj, time_t timestamp, guint type, const char *text);
 gboolean gabble_text_mixin_get_message_types (GObject *obj, GArray **ret, GError **error);
 void gabble_text_mixin_clear (GObject *obj);
 

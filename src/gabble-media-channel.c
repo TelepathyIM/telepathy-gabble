@@ -696,33 +696,41 @@ gboolean gabble_media_channel_get_self_handle (GabbleMediaChannel *obj, guint* r
 gboolean gabble_media_channel_get_session_handlers (GabbleMediaChannel *obj, GPtrArray ** ret, GError **error)
 {
   GabbleMediaChannelPrivate *priv;
-  GValue handler = { 0, };
-  GabbleHandle member;
-  gchar *path;
 
   g_assert (GABBLE_IS_MEDIA_CHANNEL (obj));
 
   priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (obj);
 
-  g_value_init (&handler, TP_SESSION_HANDLER_SET_TYPE);
-  g_value_take_boxed (&handler,
-      dbus_g_type_specialized_construct (TP_SESSION_HANDLER_SET_TYPE));
+  if (priv->session)
+    {
+      GValue handler = { 0, };
+      GabbleHandle member;
+      gchar *path;
 
-  g_object_get (priv->session,
-                "peer", &member,
-                "object-path", &path,
-                NULL);
+      g_value_init (&handler, TP_SESSION_HANDLER_SET_TYPE);
+      g_value_take_boxed (&handler,
+          dbus_g_type_specialized_construct (TP_SESSION_HANDLER_SET_TYPE));
 
-  dbus_g_type_struct_set (&handler,
-      0, member,
-      1, path,
-      2, "rtp",
-      G_MAXUINT);
+      g_object_get (priv->session,
+                    "peer", &member,
+                    "object-path", &path,
+                    NULL);
 
-  g_free (path);
+      dbus_g_type_struct_set (&handler,
+          0, member,
+          1, path,
+          2, "rtp",
+          G_MAXUINT);
 
-  *ret = g_ptr_array_sized_new (1);
-  g_ptr_array_add (*ret, g_value_get_boxed (&handler));
+      g_free (path);
+
+      *ret = g_ptr_array_sized_new (1);
+      g_ptr_array_add (*ret, g_value_get_boxed (&handler));
+    }
+  else
+    {
+      *ret = g_ptr_array_sized_new (0);
+    }
 
   return TRUE;
 }

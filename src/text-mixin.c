@@ -424,6 +424,7 @@ gboolean gabble_text_mixin_acknowledge_pending_messages (GObject *obj, const GAr
           *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
                                 "invalid message id %u", id);
 
+          g_free(nodes);
           return FALSE;
         }
     }
@@ -442,6 +443,7 @@ gboolean gabble_text_mixin_acknowledge_pending_messages (GObject *obj, const GAr
       _gabble_pending_free (msg);
     }
 
+  g_free(nodes);
   return TRUE;
 }
 

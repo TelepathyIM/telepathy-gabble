@@ -954,7 +954,7 @@ provide_password_return_if_pending (GabbleMucChannel *chan, gboolean success)
     }
 }
 
-static void close_channel (GabbleMucChannel *chan, const gchar *reason, gboolean inform_muc);
+static void close_channel (GabbleMucChannel *chan, const gchar *reason, gboolean inform_muc, GabbleHandle actor, guint reason_code);
 
 static gboolean
 timeout_join (gpointer data)
@@ -965,7 +965,7 @@ timeout_join (gpointer data)
 
   provide_password_return_if_pending (chan, FALSE);
 
-  close_channel (chan, NULL, FALSE);
+  close_channel (chan, NULL, FALSE, 0, 0);
 
   return FALSE;
 }
@@ -1037,7 +1037,7 @@ channel_state_changed (GabbleMucChannel *chan,
 
 static void
 close_channel (GabbleMucChannel *chan, const gchar *reason,
-               gboolean inform_muc)
+               gboolean inform_muc, GabbleHandle actor, guint reason_code)
 {
   GabbleMucChannelPrivate *priv;
   GIntSet *empty, *set;
@@ -1058,7 +1058,8 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
 
   gabble_group_mixin_change_members (G_OBJECT (chan),
                                      (reason != NULL) ? reason : "",
-                                     empty, set, empty, empty, 0, 0);
+                                     empty, set, empty, empty, actor,
+                                     reason_code);
 
   g_intset_destroy (empty);
   g_intset_destroy (set);
@@ -1086,6 +1087,8 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
   GabbleMucChannelPrivate *priv;
   LmMessageNode *error_node;
   GabbleXmppError error;
+  GabbleHandle actor = 0;
+  guint reason_code = TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
@@ -1185,7 +1188,7 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
 
       g_signal_emit (chan, signals[JOIN_ERROR], 0, tp_error);
 
-      close_channel (chan, tp_error->message, FALSE);
+      close_channel (chan, tp_error->message, FALSE, actor, reason_code);
 
       g_error_free (tp_error);
     }
@@ -1266,6 +1269,8 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
   GabbleGroupMixin *mixin;
   LmMessageNode *item_node, *node;
   const gchar *affil, *role, *owner_jid, *status_code;
+  GabbleHandle actor = 0;
+  guint reason_code = TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
 
   DEBUG ("called");
 
@@ -1375,7 +1380,7 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
                              error->message);
                   g_error_free (error);
 
-                  close_channel (chan, NULL, TRUE);
+                  close_channel (chan, NULL, TRUE, actor, reason_code);
                 }
             }
 
@@ -1385,8 +1390,18 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
     }
   else
     {
-      LmMessageNode *reason_node;
-      const gchar *reason = "";
+      LmMessageNode *reason_node, *actor_node;
+      const gchar *reason = "", *actor_jid = "";
+
+      actor_node = lm_message_node_get_child (item_node, "actor");
+      if (actor_node != NULL)
+        {
+          actor_jid = lm_message_node_get_attribute (actor_node, "jid");
+          if (actor_jid != NULL)
+            {
+              actor = gabble_handle_for_contact(chan->group.handle_repo, actor_jid, FALSE);
+            }
+        }
 
       reason_node = lm_message_node_get_child (item_node, "reason");
       if (reason_node != NULL)
@@ -1397,11 +1412,12 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
       if (handle != mixin->self_handle)
         {
           gabble_group_mixin_change_members (G_OBJECT (chan), reason,
-                                             empty, set, empty, empty, 0, 0);
+                                             empty, set, empty, empty,
+                                             actor, reason_code);
         }
       else
         {
-          close_channel (chan, reason, FALSE);
+          close_channel (chan, reason, FALSE, actor, reason_code);
         }
     }
 
@@ -1682,7 +1698,7 @@ gboolean gabble_muc_channel_close (GabbleMucChannel *obj, GError **error)
       return FALSE;
     }
 
-  close_channel (obj, NULL, TRUE);
+  close_channel (obj, NULL, TRUE, 0, 0);
 
   return TRUE;
 }

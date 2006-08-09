@@ -635,8 +635,11 @@ gabble_group_mixin_change_members (GObject *obj,
                   "  added         : %s\n"
                   "  removed       : %s\n"
                   "  local_pending : %s\n"
-                  "  remote_pending: %s\n" ANSI_RESET,
-                  G_STRFUNC, message, add_str, rem_str, local_str, remote_str);
+                  "  remote_pending: %s\n"
+                  "  actor         : %d\n"
+                  "  reason        : %d\n" ANSI_RESET,
+                  G_STRFUNC, message, add_str, rem_str, local_str, remote_str,
+                  actor, reason);
 
           fflush (stdout);
 

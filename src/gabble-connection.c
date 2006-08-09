@@ -4519,6 +4519,7 @@ room_verify_batch_free (RoomVerifyBatch *batch)
       g_free(batch->contexts[i].jid);
     }
   g_free (batch->contexts);
+  g_free (batch);
 }
 
 /* Frees the error and the batch. */

@@ -129,6 +129,7 @@ void gabble_group_mixin_init (GObject *obj,
 
   mixin->priv = g_new0 (GabbleGroupMixinPrivate, 1);
   mixin->priv->handle_owners = g_hash_table_new (g_direct_hash, g_direct_equal);
+  mixin->priv->actors = handle_set_new (handle_repo, TP_HANDLE_TYPE_CONTACT);
 }
 
 static void

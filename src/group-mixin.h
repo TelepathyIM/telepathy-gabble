@@ -87,7 +87,7 @@ gboolean gabble_group_mixin_get_all_members (GObject *obj, GArray **ret, GArray 
 gboolean gabble_group_mixin_get_handle_owners (GObject *obj, const GArray *handles, GArray **ret, GError **error);
 
 void gabble_group_mixin_change_flags (GObject *obj, TpChannelGroupFlags add, TpChannelGroupFlags remove);
-gboolean gabble_group_mixin_change_members (GObject *obj, const gchar *message, GIntSet *add, GIntSet *remove, GIntSet *local_pending, GIntSet *remote_pending);
+gboolean gabble_group_mixin_change_members (GObject *obj, const gchar *message, GIntSet *add, GIntSet *remove, GIntSet *local_pending, GIntSet *remote_pending, GabbleHandle actor, guint reason);
 
 void gabble_group_mixin_add_handle_owner (GObject *obj, GabbleHandle local_handle, GabbleHandle owner_handle);
 

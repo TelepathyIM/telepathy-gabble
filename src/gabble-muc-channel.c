@@ -1058,7 +1058,7 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
 
   gabble_group_mixin_change_members (G_OBJECT (chan),
                                      (reason != NULL) ? reason : "",
-                                     empty, set, empty, empty);
+                                     empty, set, empty, empty, 0, 0);
 
   g_intset_destroy (empty);
   g_intset_destroy (set);
@@ -1306,7 +1306,7 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
       if (!handle_set_is_member (mixin->members, handle))
         {
           gabble_group_mixin_change_members (G_OBJECT (chan), "", set, empty,
-                                             empty, empty);
+                                             empty, empty, 0, 0);
 
           if (owner_jid != NULL)
             {
@@ -1397,7 +1397,7 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
       if (handle != mixin->self_handle)
         {
           gabble_group_mixin_change_members (G_OBJECT (chan), reason,
-                                             empty, set, empty, empty);
+                                             empty, set, empty, empty, 0, 0);
         }
       else
         {
@@ -1593,7 +1593,7 @@ _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
   g_intset_add (set_pending, priv->conn->self_handle);
 
   gabble_group_mixin_change_members (G_OBJECT (chan), message, set_members,
-                                     empty, set_pending, empty);
+                                     empty, set_pending, empty, 0, 0);
 
   g_intset_destroy (empty);
   g_intset_destroy (set_members);
@@ -2088,7 +2088,7 @@ gabble_muc_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *m
       g_intset_add (set_pending, handle);
 
       gabble_group_mixin_change_members (obj, "", set_empty, set_members,
-                                         set_empty, set_pending);
+                                         set_empty, set_pending, 0, 0);
 
       g_intset_destroy (set_empty);
       g_intset_destroy (set_members);

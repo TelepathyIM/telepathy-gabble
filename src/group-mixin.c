@@ -34,6 +34,7 @@
 #include "group-mixin-signals-marshal.h"
 
 struct _GabbleGroupMixinPrivate {
+    GabbleHandleSet *actors;
     GHashTable *handle_owners;
 };
 
@@ -146,6 +147,8 @@ handle_owners_foreach_unref (gpointer key,
 void gabble_group_mixin_finalize (GObject *obj)
 {
   GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
+
+  handle_set_destroy (mixin->priv->actors);
 
   g_hash_table_foreach (mixin->priv->handle_owners,
                         handle_owners_foreach_unref,
@@ -534,7 +537,9 @@ gabble_group_mixin_change_members (GObject *obj,
                                    GIntSet *add,
                                    GIntSet *remove,
                                    GIntSet *local_pending,
-                                   GIntSet *remote_pending)
+                                   GIntSet *remote_pending,
+                                   GabbleHandle actor,
+                                   guint reason)
 {
   GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
   GabbleGroupMixinClass *mixin_cls = GABBLE_GROUP_MIXIN_CLASS (G_OBJECT_GET_CLASS (obj));
@@ -640,13 +645,16 @@ gabble_group_mixin_change_members (GObject *obj,
           g_free (remote_str);
         }
 
+      if (actor)
+        {
+          handle_set_add (mixin->priv->actors, actor);
+        }
       /* emit signal */
       g_signal_emit(obj, mixin_cls->members_changed_signal_id, 0,
                     message,
                     arr_add, arr_remove,
                     arr_local, arr_remote,
-                    0, /* TODO: fill in actor if any */
-                    0 /* TODO: fill in reason if any */);
+                    actor, reason);
 
       /* free arrays */
       g_array_free (arr_add, TRUE);

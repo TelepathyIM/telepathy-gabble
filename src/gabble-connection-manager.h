@@ -23,6 +23,9 @@
 
 #include <glib-object.h>
 
+#define GABBLE_CONN_MGR_BUS_NAME        "org.freedesktop.Telepathy.ConnectionManager.gabble"
+#define GABBLE_CONN_MGR_OBJECT_PATH     "/org/freedesktop/Telepathy/ConnectionManager/gabble"
+
 G_BEGIN_DECLS
 
 typedef struct _GabbleConnectionManager GabbleConnectionManager;
@@ -35,6 +38,22 @@ struct _GabbleConnectionManagerClass {
 struct _GabbleConnectionManager {
     GObject parent;
 };
+
+typedef struct {
+    const gchar *name;          /* name as passed over dbus */
+    const gchar *dtype;         /* DBUS type string */
+    const GType gtype;          /* glib type string */
+    guint flags;                /* combination of TP_CONN_MGR_PARAM_FLAG_foo */
+    const gpointer def;         /* default - gchar * or GINT_TO_POINTER */
+    const gsize offset;         /* internal use only */
+} GabbleParamSpec;
+
+typedef struct {
+    const gchar *name;
+    const GabbleParamSpec *parameters;       /* terminated by a NULL name */
+} GabbleProtocolSpec;
+
+const GabbleProtocolSpec *gabble_protocols; /* terminated by a NULL name */
 
 GType gabble_connection_manager_get_type(void);
 

@@ -33,9 +33,6 @@
 #include "gabble-connection-manager-glue.h"
 #include "gabble-connection-manager-signals-marshal.h"
 
-#define BUS_NAME        "org.freedesktop.Telepathy.ConnectionManager.gabble"
-#define OBJECT_PATH     "/org/freedesktop/Telepathy/ConnectionManager/gabble"
-
 #define TP_TYPE_PARAM (dbus_g_type_get_struct ("GValueArray", \
       G_TYPE_STRING, \
       G_TYPE_UINT, \
@@ -162,17 +159,6 @@ struct _GabbleParams {
   gboolean ignore_ssl_errors;
 };
 
-typedef struct _GabbleParamSpec GabbleParamSpec;
-
-struct _GabbleParamSpec {
-  const gchar *name;
-  const gchar *dtype;
-  const GType gtype;
-  guint flags;
-  const gpointer def;
-  const gsize offset;
-};
-
 enum {
     JABBER_PARAM_ACCOUNT = 0,
     JABBER_PARAM_PASSWORD,
@@ -210,6 +196,12 @@ static const GabbleParamSpec jabber_params[] = {
   { "ignore-ssl-errors", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN, TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(FALSE), G_STRUCT_OFFSET(GabbleParams, ignore_ssl_errors) },
   { NULL, NULL, 0, 0, NULL, 0 }
 };
+
+static const GabbleProtocolSpec _gabble_protocols[] = {
+  { "jabber", jabber_params },
+  { NULL, NULL }
+};
+const GabbleProtocolSpec *gabble_protocols = _gabble_protocols;
 
 /* private methods */
 
@@ -459,7 +451,7 @@ _gabble_connection_manager_register (GabbleConnectionManager *self)
   bus_proxy = tp_get_bus_proxy ();
 
   if (!dbus_g_proxy_call (bus_proxy, "RequestName", &error,
-                          G_TYPE_STRING, BUS_NAME,
+                          G_TYPE_STRING, GABBLE_CONN_MGR_BUS_NAME,
                           G_TYPE_UINT, DBUS_NAME_FLAG_DO_NOT_QUEUE,
                           G_TYPE_INVALID,
                           G_TYPE_UINT, &request_name_result,
@@ -469,7 +461,7 @@ _gabble_connection_manager_register (GabbleConnectionManager *self)
   if (request_name_result == DBUS_REQUEST_NAME_REPLY_EXISTS)
     g_error ("Failed to acquire bus name, connection manager already running?");
 
-  dbus_g_connection_register_g_object (bus, OBJECT_PATH, G_OBJECT (self));
+  dbus_g_connection_register_g_object (bus, GABBLE_CONN_MGR_OBJECT_PATH, G_OBJECT (self));
 }
 
 /* dbus-exported methods */

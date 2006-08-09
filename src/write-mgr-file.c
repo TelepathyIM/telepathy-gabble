@@ -17,58 +17,81 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#include "gabble-connection-manager.c"
+#include <stdio.h>
 
-int
-main(void)
+#include <dbus/dbus-glib.h>
+#include <dbus/dbus-protocol.h>
+
+#include "telepathy-constants.h"
+#include "gabble-connection-manager.h"
+
+static gchar *
+mgr_file_contents (const char *name,
+                   const char *busname,
+                   const char *objpath,
+                   const GabbleProtocolSpec *protocols,
+                   GError **error)
 {
   GKeyFile *f = g_key_file_new();
+  const GabbleProtocolSpec *protocol;
   const GabbleParamSpec *row;
-  GError *error;
-  gchar *s;
 
-  g_key_file_set_string(f, "ConnectionManager", "Name", "gabble");
-  g_key_file_set_string(f, "ConnectionManager", "BusName", BUS_NAME);
-  g_key_file_set_string(f, "ConnectionManager", "ObjectPath", OBJECT_PATH);
+  g_key_file_set_string(f, "ConnectionManager", "Name", name);
+  g_key_file_set_string(f, "ConnectionManager", "BusName", busname);
+  g_key_file_set_string(f, "ConnectionManager", "ObjectPath", objpath);
 
-  for (row = jabber_params; row->name; row++)
+  for (protocol = protocols; protocol->name; protocol++)
     {
-      gchar *param_name = g_strdup_printf("param-%s", row->name);
-      gchar *param_value = g_strdup_printf("%s%s%s", row->dtype,
-          (row->flags & TP_CONN_MGR_PARAM_FLAG_REQUIRED ? " required" : ""),
-          (row->flags & TP_CONN_MGR_PARAM_FLAG_REGISTER ? " register" : ""));
-      g_key_file_set_string(f, "Protocol jabber", param_name, param_value);
-      g_free(param_value);
-      g_free(param_name);
+      gchar *section_name = g_strdup_printf("Protocol %s", protocol->name);
 
-    }
-
-  for (row = jabber_params; row->name; row++)
-    {
-      if (row->flags & TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT)
+      for (row = protocol->parameters; row->name; row++)
         {
-          gchar *default_name = g_strdup_printf("default-%s", row->name);
-
-          switch (row->gtype)
-            {
-            case G_TYPE_STRING:
-              g_key_file_set_string(f, "Protocol jabber", default_name,
-                                    row->def);
-              break;
-            case G_TYPE_INT:
-            case G_TYPE_UINT:
-              g_key_file_set_integer(f, "Protocol jabber", default_name,
-                                     GPOINTER_TO_INT(row->def));
-              break;
-            case G_TYPE_BOOLEAN:
-              g_key_file_set_boolean(f, "Protocol jabber", default_name,
-                                     GPOINTER_TO_INT(row->def) ? 1 : 0);
-            }
-          g_free(default_name);
+          gchar *param_name = g_strdup_printf("param-%s", row->name);
+          gchar *param_value = g_strdup_printf("%s%s%s", row->dtype,
+              (row->flags & TP_CONN_MGR_PARAM_FLAG_REQUIRED ? " required" : ""),
+              (row->flags & TP_CONN_MGR_PARAM_FLAG_REGISTER ? " register" : ""));
+          g_key_file_set_string(f, section_name, param_name, param_value);
+          g_free(param_value);
+          g_free(param_name);
         }
-    }
 
-  s = g_key_file_to_data(f, NULL, &error);
+      for (row = protocol->parameters; row->name; row++)
+        {
+          if (row->flags & TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT)
+            {
+              gchar *default_name = g_strdup_printf("default-%s", row->name);
+
+              switch (row->gtype)
+                {
+                case G_TYPE_STRING:
+                  g_key_file_set_string(f, section_name, default_name,
+                                        row->def);
+                  break;
+                case G_TYPE_INT:
+                case G_TYPE_UINT:
+                  g_key_file_set_integer(f, section_name, default_name,
+                                         GPOINTER_TO_INT(row->def));
+                  break;
+                case G_TYPE_BOOLEAN:
+                  g_key_file_set_boolean(f, section_name, default_name,
+                                         GPOINTER_TO_INT(row->def) ? 1 : 0);
+                }
+              g_free(default_name);
+            }
+        }
+      g_free(section_name);
+    }
+  return g_key_file_to_data(f, NULL, error);
+}
+
+int
+main (void)
+{
+  GError *error = NULL;
+
+  gchar *s = mgr_file_contents("gabble", GABBLE_CONN_MGR_BUS_NAME,
+                               GABBLE_CONN_MGR_OBJECT_PATH,
+                               gabble_protocols, &error);
   if (!s)
     {
       fprintf(stderr, error->message);

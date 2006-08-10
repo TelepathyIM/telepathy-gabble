@@ -310,7 +310,10 @@ ERROR_MALFORMED_REPLY:
   err_msg = "Malformed reply";
 
 OUT:
-  g_signal_emit (reg, signals[FINISHED], 0, (err_code == -1), err_code, err_msg);
+  if (err_code != -1)
+    {
+      g_signal_emit (reg, signals[FINISHED], 0, FALSE, err_code, err_msg);
+    }
 
   if (msg)
     lm_message_unref (msg);

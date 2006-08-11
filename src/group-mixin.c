@@ -33,6 +33,27 @@
 #include "group-mixin.h"
 #include "group-mixin-signals-marshal.h"
 
+static const char *group_change_reason_str(guint reason)
+{
+  switch (reason)
+    {
+    case TP_CHANNEL_GROUP_CHANGE_REASON_NONE:
+      return "unspecified reason";
+    case TP_CHANNEL_GROUP_CHANGE_REASON_OFFLINE:
+      return "offline";
+    case TP_CHANNEL_GROUP_CHANGE_REASON_KICKED:
+      return "kicked";
+    case TP_CHANNEL_GROUP_CHANGE_REASON_BUSY:
+      return "busy";
+    case TP_CHANNEL_GROUP_CHANGE_REASON_INVITED:
+      return "invited";
+    case TP_CHANNEL_GROUP_CHANGE_REASON_BANNED:
+      return "banned";
+    default:
+      return "(unknown reason code)";
+    }
+}
+
 struct _GabbleGroupMixinPrivate {
     GabbleHandleSet *actors;
     GHashTable *handle_owners;
@@ -636,10 +657,10 @@ gabble_group_mixin_change_members (GObject *obj,
                   "  removed       : %s\n"
                   "  local_pending : %s\n"
                   "  remote_pending: %s\n"
-                  "  actor         : %d\n"
-                  "  reason        : %d\n" ANSI_RESET,
+                  "  actor         : %u\n"
+                  "  reason        : %u: %s\n" ANSI_RESET,
                   G_STRFUNC, message, add_str, rem_str, local_str, remote_str,
-                  actor, reason);
+                  actor, reason, group_change_reason_str(reason));
 
           fflush (stdout);
 

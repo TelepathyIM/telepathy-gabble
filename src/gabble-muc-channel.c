@@ -2530,7 +2530,7 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
   GabblePropertiesContext *ctx = priv->properties_ctx;
   GError *error = NULL;
   LmMessage *msg = NULL;
-  LmMessageNode *submit_node, *form_node, *node;
+  LmMessageNode *submit_node, *form_node, *node, *query_node;
   guint i, props_left;
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
@@ -2569,17 +2569,13 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
     {
       if (strcmp (node->name, "x") == 0)
         {
-          if (strcmp (lm_message_node_get_attribute (node, "xmlns"),
-                      "jabber:x:data") != 0)
-            {
-              continue;
-            }
+          const gchar *type = lm_message_node_get_attribute (node, "type");
 
-          if (strcmp (lm_message_node_get_attribute (node, "type"),
-                      "form") != 0)
-            {
-              continue;
-            }
+          if (!_lm_message_node_has_namespace (node, NS_DATA))
+            continue;
+
+          if (g_strdiff (type, "form"))
+            continue;
 
           form_node = node;
           break;

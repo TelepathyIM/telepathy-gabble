@@ -694,37 +694,52 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
               g_free (dump);
             }
 
+          /* handle publish list changes */
+          switch (item->subscription)
+            {
+            case GABBLE_ROSTER_SUBSCRIPTION_FROM:
+            case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
+              g_intset_add (pub_add, handle);
+              break;
+            case GABBLE_ROSTER_SUBSCRIPTION_NONE:
+            case GABBLE_ROSTER_SUBSCRIPTION_TO:
+            case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
+              g_intset_add (pub_rem, handle);
+              break;
+            default:
+              g_assert_not_reached ();
+            }
+
+          /* handle subscribe list changes */
+          switch (item->subscription)
+            {
+            case GABBLE_ROSTER_SUBSCRIPTION_TO:
+            case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
+              g_intset_add (sub_add, handle);
+              break;
+            case GABBLE_ROSTER_SUBSCRIPTION_NONE:
+            case GABBLE_ROSTER_SUBSCRIPTION_FROM:
+              if (item->ask_subscribe)
+                g_intset_add (sub_rp, handle);
+              else
+                g_intset_add (sub_rem, handle);
+              break;
+            case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
+              g_intset_add (sub_rem, handle);
+            default:
+              g_assert_not_reached ();
+            }
+
+          /* handle known list changes */
           switch (item->subscription)
             {
             case GABBLE_ROSTER_SUBSCRIPTION_NONE:
-              g_intset_add (pub_rem, handle);
-              if (item->ask_subscribe)
-                g_intset_add (sub_rp, handle);
-              else
-                g_intset_add (sub_rem, handle);
-              g_intset_add (known_add, handle);
-              break;
             case GABBLE_ROSTER_SUBSCRIPTION_TO:
-              g_intset_add (pub_rem, handle);
-              g_intset_add (sub_add, handle);
-              g_intset_add (known_add, handle);
-              break;
             case GABBLE_ROSTER_SUBSCRIPTION_FROM:
-              g_intset_add (pub_add, handle);
-              if (item->ask_subscribe)
-                g_intset_add (sub_rp, handle);
-              else
-                g_intset_add (sub_rem, handle);
-              g_intset_add (known_add, handle);
-              break;
             case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
-              g_intset_add (pub_add, handle);
-              g_intset_add (sub_add, handle);
               g_intset_add (known_add, handle);
               break;
             case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
-              g_intset_add (pub_rem, handle);
-              g_intset_add (sub_rem, handle);
               g_intset_add (known_rem, handle);
               _gabble_roster_item_remove (roster, handle);
               break;

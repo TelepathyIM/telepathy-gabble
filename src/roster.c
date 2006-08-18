@@ -734,6 +734,10 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
           block_rem = NULL;
         }
 
+      /* get the publish channel first because we need it when processing */
+      handle = gabble_handle_for_list_publish (priv->conn->handles);
+      chan = _gabble_roster_get_channel (roster, handle);
+
       /* iterate every sub-node, which we expect to be <item>s */
       for (item_node = query_node->children;
            item_node;
@@ -782,7 +786,14 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
             case GABBLE_ROSTER_SUBSCRIPTION_NONE:
             case GABBLE_ROSTER_SUBSCRIPTION_TO:
             case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
-              g_intset_add (pub_rem, handle);
+              /* publish channel is a bit odd, the roster item doesn't tell us
+               * if someone is awaiting our approval - we get this via presence
+               * type=subscribe, so we have to not remove them if they're
+               * already local_pending in our publish channel */
+              if (!handle_set_is_member (chan.group->local_pending, handle))
+                {
+                  g_intset_add (pub_rem, handle);
+                }
               break;
             default:
               g_assert_not_reached ();
@@ -851,8 +862,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
             _gabble_roster_item_remove (roster, handle);
         }
 
-      handle = gabble_handle_for_list_publish (priv->conn->handles);
-      chan = _gabble_roster_get_channel (roster, handle);
+      /* chan was initialised to the publish channel before the for loop */
 
       DEBUG ("calling change members on publish channel");
       gabble_group_mixin_change_members (G_OBJECT (chan),

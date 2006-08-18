@@ -804,7 +804,6 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
               g_intset_add (pub_rem, handle);
               g_intset_add (sub_rem, handle);
               g_intset_add (known_rem, handle);
-              _gabble_roster_item_remove (roster, handle);
               break;
             default:
               g_assert_not_reached ();
@@ -818,6 +817,10 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
               else /* it's still subscribed in some way, and blocked */
                 g_intset_add (block_add, handle);
             }
+
+          /* remove item last to avoid dereferencing freed memory */
+          if (GABBLE_ROSTER_SUBSCRIPTION_REMOVE == item->subscription)
+            _gabble_roster_item_remove (roster, handle);
         }
 
       handle = gabble_handle_for_list_publish (priv->conn->handles);

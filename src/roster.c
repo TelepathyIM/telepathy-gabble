@@ -781,13 +781,26 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
               g_assert_not_reached ();
             }
 
+          /* handle block list changes */
           if (google_roster)
             {
-              if (GABBLE_ROSTER_SUBSCRIPTION_REMOVE == item->subscription ||
-                  !item->blocked)
-                g_intset_add (block_rem, handle);
-              else /* it's still subscribed in some way, and blocked */
-                g_intset_add (block_add, handle);
+              switch (item->subscription)
+                {
+                case GABBLE_ROSTER_SUBSCRIPTION_NONE:
+                case GABBLE_ROSTER_SUBSCRIPTION_TO:
+                case GABBLE_ROSTER_SUBSCRIPTION_FROM:
+                case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
+                  if (item->blocked)
+                    g_intset_add (block_add, handle);
+                  else
+                    g_intset_add (block_rem, handle);
+                  break;
+                case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
+                  g_intset_add (block_rem, handle);
+                  break;
+                default:
+                  g_assert_not_reached ();
+                }
             }
         }
 

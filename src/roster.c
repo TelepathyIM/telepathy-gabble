@@ -1287,7 +1287,7 @@ gabble_roster_handle_set_blocked (GabbleRoster *roster,
   g_return_val_if_fail (priv->conn->features &
       GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER, FALSE);
 
-  item = g_hash_table_lookup (priv->items, GINT_TO_POINTER (handle));
+  item = _gabble_roster_item_get (roster, handle);
   orig_blocked = item->blocked;
 
   if (blocked == orig_blocked)

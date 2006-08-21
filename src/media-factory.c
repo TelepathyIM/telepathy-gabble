@@ -441,6 +441,7 @@ new_media_channel (GabbleMediaFactory *fac, GabbleHandle creator)
 
   chan = g_object_new (GABBLE_TYPE_MEDIA_CHANNEL,
                        "connection", priv->conn,
+                       "factory", fac,
                        "object-path", object_path,
                        "creator", creator,
                        NULL);

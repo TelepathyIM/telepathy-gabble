@@ -547,7 +547,7 @@ gabble_media_factory_iface_close_all (TpChannelFactoryIface *iface)
         {
           GabbleMediaChannel *chan = g_ptr_array_index (tmp, i);
 
-          DEBUG ("%s: about to unref channel with ref_count %d",
+          DEBUG ("about to unref channel with ref_count %d",
                    G_OBJECT (chan)->ref_count);
 
           g_object_unref (chan);

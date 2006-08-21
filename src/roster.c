@@ -735,7 +735,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
                * if someone is awaiting our approval - we get this via presence
                * type=subscribe, so we have to not remove them if they're
                * already local_pending in our publish channel */
-              if (!handle_set_is_member (chan.group->local_pending, handle))
+              if (!handle_set_is_member (chan->group.local_pending, handle))
                 {
                   g_intset_add (pub_rem, handle);
                 }

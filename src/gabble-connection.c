@@ -220,19 +220,6 @@ struct _GabbleConnectionPrivate
 
   gchar *fallback_conference_server;
 
-  /*
-   * FIXME: remove these when stored in properties mixin
-  gchar *stun_server;
-  guint stun_port;
-  gchar *stun_relay_magic_cookie;
-  gchar *stun_relay_server;
-  guint stun_relay_udp_port;
-  guint stun_relay_tcp_port;
-  guint stun_relay_ssltcp_port;
-  gchar *stun_relay_username;
-  gchar *stun_relay_password;
-  */
-
   /* authentication properties */
   gchar *stream_server;
   gchar *username;

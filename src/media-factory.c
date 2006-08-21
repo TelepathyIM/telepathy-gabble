@@ -577,7 +577,7 @@ gabble_media_factory_iface_connecting (TpChannelFactoryIface *iface)
 
   priv->jingle_cb = lm_message_handler_new (media_factory_jingle_cb, fac, NULL);
   lm_connection_register_message_handler (priv->conn->lmconn, priv->jingle_cb,
-                                          LM_MESSAGE_TYPE_MESSAGE,
+                                          LM_MESSAGE_TYPE_IQ,
                                           LM_HANDLER_PRIORITY_NORMAL);
 }
 

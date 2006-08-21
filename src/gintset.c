@@ -72,7 +72,7 @@ g_intset_clear (GIntSet *set)
 {
   g_return_if_fail (set != NULL);
 
-  memset (set->bits, 0, set->size);
+  memset (set->bits, 0, set->size * sizeof(guint32));
 }
 
 /**

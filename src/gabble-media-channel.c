@@ -183,6 +183,7 @@ create_session (GabbleMediaChannel *channel, GabbleHandle peer, const gchar *pee
   else
     {
       initiator = peer;
+      _gabble_media_factory_register_sid (priv->factory, sid, channel);
     }
 
   session = g_object_new (GABBLE_TYPE_MEDIA_SESSION,
@@ -198,9 +199,6 @@ create_session (GabbleMediaChannel *channel, GabbleHandle peer, const gchar *pee
                     (GCallback) session_state_changed_cb, channel);
 
   priv->session = session;
-
-  /* FIXME - jingle_session_registered (re)registered sid for a new chan every
-     time session was registered - what's intended here? */
 
   g_signal_emit (channel, signals[NEW_MEDIA_SESSION_HANDLER], 0,
                  peer, object_path, "rtp");

@@ -80,6 +80,8 @@ CORE_SOURCES = \
     gabble-roomlist-channel.h \
     gabble-roomlist-channel.c \
     gabble-types.h \
+    gheap.h \
+    gheap.c \
     gintset.h \
     gintset.c \
     group-mixin.h \

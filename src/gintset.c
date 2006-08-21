@@ -34,7 +34,7 @@ struct _GIntSet
 static GIntSet *
 _g_intset_new_with_size (guint size)
 {
-  GIntSet *set = g_new(GIntSet, 1);
+  GIntSet *set = g_new (GIntSet, 1);
   set->size = MAX (size, DEFAULT_SIZE);
   set->bits = g_new0 (guint32, set->size);
   return set;
@@ -72,7 +72,7 @@ g_intset_clear (GIntSet *set)
 {
   g_return_if_fail (set != NULL);
 
-  memset (set->bits, 0, set->size * sizeof(guint32));
+  memset (set->bits, 0, set->size * sizeof (guint32));
 }
 
 /**
@@ -119,17 +119,17 @@ g_intset_remove (GIntSet *set, guint element)
 
   g_return_val_if_fail (set != NULL, FALSE);
 
-  offset = element >>5;
+  offset = element >> 5;
   mask = 1 << (element & 0x1f);
   if (offset >= set->size)
     return FALSE;
-  else if (! (set->bits[offset] & mask))
+  else if (!(set->bits[offset] & mask))
     return FALSE;
   else
-  {
-    set->bits[offset] &= ~mask;
-    return TRUE;
-  }
+    {
+      set->bits[offset] &= ~mask;
+      return TRUE;
+    }
 }
 
 /**
@@ -147,7 +147,7 @@ g_intset_is_member (const GIntSet *set, guint element)
 
   g_return_val_if_fail (set != NULL, FALSE);
 
-  offset = element >>5;
+  offset = element >> 5;
   if (offset >= set->size)
     return FALSE;
   else
@@ -171,22 +171,22 @@ g_intset_foreach (GIntSet *set, GIntFunc func, gpointer userdata)
   g_return_if_fail (set != NULL);
   g_return_if_fail (func != NULL);
 
-  for (i=0; i<set->size; i++)
-  {
-    if (set->bits[i])
-      for (j=0; j<32; j++)
-      {
-        if (set->bits[i] & 1<<j)
-          func(i*32 +j, userdata);
-      }
-  }
+  for (i = 0; i < set->size; i++)
+    {
+      if (set->bits[i])
+        for (j = 0; j < 32; j++)
+          {
+            if (set->bits[i] & 1 << j)
+              func (i * 32 + j, userdata);
+          }
+    }
 }
 
 
 static void
-addint(guint32 i, gpointer data)
+addint (guint32 i, gpointer data)
 {
-  GArray * array = (GArray *) data;
+  GArray *array = (GArray *) data;
   g_array_append_val (array, i);
 }
 
@@ -205,7 +205,7 @@ g_intset_to_array (GIntSet *set)
 
   array = g_array_new (FALSE, TRUE, sizeof (guint32));
 
-  g_intset_foreach(set, addint, array);
+  g_intset_foreach (set, addint, array);
 
   return array;
 }
@@ -229,9 +229,10 @@ g_intset_from_array (GArray *array)
     max = MAX (max, g_array_index (array, guint32, (array->len - 1) >> 1));
   set = _g_intset_new_with_size (1 + (max >> 5));
 
-  for (i = 0; i < array->len; i++) {
-    g_intset_add (set, g_array_index (array, guint32, i));
-  }
+  for (i = 0; i < array->len; i++)
+    {
+      g_intset_add (set, g_array_index (array, guint32, i));
+    }
 
   return set;
 }
@@ -239,17 +240,17 @@ g_intset_from_array (GArray *array)
 int
 g_intset_size(const GIntSet *set)
 {
-  int i,count=0;
+  int i, count = 0;
   guint32 n;
 
   g_return_val_if_fail (set != NULL, 0);
 
-  for (i=0; i< set->size ; i++)
-  {
-    n = set->bits[i];
-    n = n - ((n >> 1) & 033333333333) - ((n >> 2) & 011111111111);
-    count += ((n + (n >> 3)) & 030707070707) % 63;
-  }
+  for (i = 0; i < set->size; i++)
+    {
+      n = set->bits[i];
+      n = n - ((n >> 1) & 033333333333) - ((n >> 2) & 011111111111);
+      count += ((n + (n >> 3)) & 030707070707) % 63;
+    }
   return count;
 }
 
@@ -296,7 +297,7 @@ g_intset_copy (const GIntSet *orig)
   g_return_val_if_fail (orig != NULL, NULL);
 
   ret = _g_intset_new_with_size (orig->size);
-  memcpy (ret->bits, orig->bits, (ret->size * sizeof(guint32)));
+  memcpy (ret->bits, orig->bits, (ret->size * sizeof (guint32)));
 
   return ret;
 }
@@ -374,7 +375,7 @@ g_intset_difference (const GIntSet *left, const GIntSet *right)
 
   ret = g_intset_copy (left);
 
-  for (i = 0; i < MIN(right->size, left->size); i++)
+  for (i = 0; i < MIN (right->size, left->size); i++)
     {
       ret->bits[i] &= ~right->bits[i];
     }
@@ -412,4 +413,3 @@ g_intset_symmetric_difference (const GIntSet *left, const GIntSet *right)
 
   return ret;
 }
-

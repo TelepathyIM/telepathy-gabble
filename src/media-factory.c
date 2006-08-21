@@ -274,7 +274,7 @@ media_factory_jingle_cb (LmMessageHandler *handler,
       /* if it's media session, we should have it in here */
       chan = g_hash_table_lookup (priv->session_chans, sid);
     }
-   
+
   /* it's a new session */
   if (!chan)
     {
@@ -304,7 +304,7 @@ media_factory_jingle_cb (LmMessageHandler *handler,
     }
 
   g_assert (chan != NULL);
-  
+
   DEBUG ("dispatching to session %s", sid);
   g_object_ref (chan);
   gabble_handle_decode_jid (from, NULL, NULL, &resource);
@@ -572,9 +572,9 @@ gabble_media_factory_iface_connecting (TpChannelFactoryIface *iface)
   g_assert(priv->conn != NULL);
   g_assert(priv->conn->lmconn != NULL);
 
-  DEBUG ("registering callbacks");
-  
-  priv->jingle_cb = lm_message_handler_new (media_factory_jingle_cb, G_OBJECT (fac), NULL);
+  DEBUG ("adding callbacks");
+
+  priv->jingle_cb = lm_message_handler_new (media_factory_jingle_cb, fac, NULL);
   lm_connection_register_message_handler (priv->conn->lmconn, priv->jingle_cb,
                                           LM_MESSAGE_TYPE_MESSAGE,
                                           LM_HANDLER_PRIORITY_NORMAL);
@@ -593,7 +593,7 @@ gabble_media_factory_iface_disconnected (TpChannelFactoryIface *iface)
   GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
 
   g_assert (priv->jingle_cb != NULL);
-  
+
   DEBUG ("removing callbacks");
 
   lm_connection_unregister_message_handler (priv->conn->lmconn, priv->jingle_cb,
@@ -641,7 +641,7 @@ gabble_media_factory_iface_request (TpChannelFactoryIface *iface,
       {
         return TP_CHANNEL_FACTORY_REQUEST_STATUS_INVALID_HANDLE;
       }
-      
+
       /* have we already got a channel with this handle? */
       chan = find_media_channel_with_handle (fac, handle);
 

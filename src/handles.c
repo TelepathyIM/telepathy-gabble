@@ -26,6 +26,28 @@
 #include "handles-private.h"
 #include "telepathy-errors.h"
 
+typedef struct _GabbleHandlePriv GabbleHandlePriv;
+
+struct _GabbleHandlePriv
+{
+  guint refcount;
+  gchar *string;
+  GData *datalist;
+};
+
+struct _GabbleHandleRepo
+{
+  GHashTable *contact_handles;
+  GHashTable *room_handles;
+  GData *list_handles;
+  GHashTable *contact_strings;
+  GHashTable *room_strings;
+  GHeap *free_contact_handles;
+  GHeap *free_room_handles;
+  guint contact_serial;
+  guint room_serial;
+};
+
 /* private functions */
 
 static GabbleHandlePriv *

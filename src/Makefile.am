@@ -88,7 +88,6 @@ CORE_SOURCES = \
     group-mixin.c \
     handles.h \
     handles.c \
-    handles-private.h \
     handle-set.h \
     handle-set.c \
     jingle-info.c \

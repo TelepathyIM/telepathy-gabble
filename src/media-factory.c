@@ -87,7 +87,7 @@ gabble_media_factory_init (GabbleMediaFactory *fac)
   priv->dispose_has_run = FALSE;
 
   priv->session_chans = g_hash_table_new_full (g_str_hash, g_str_equal,
-                                               NULL, NULL);
+                                               g_free, NULL);
 }
 
 static GObject *
@@ -336,25 +336,39 @@ _gabble_media_factory_get_unique_sid (GabbleMediaFactory *fac)
 
   g_hash_table_insert (priv->session_chans, sid, NULL);
 
-  return (const gchar *) sid;
+  return sid;
 }
 
 gboolean
-_gabble_media_factory_sid_in_use (GabbleMediaFactory *fac, const char *sid)
+_gabble_media_factory_sid_in_use (GabbleMediaFactory *fac, const gchar *sid)
 {
   GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
-  return (g_hash_table_lookup (priv->session_chans, sid) != NULL);
+  gpointer key, value;
+
+  return g_hash_table_lookup_extended (priv->session_chans, sid, &key, &value);
 }
 
 const gchar *
 _gabble_media_factory_allocate_sid (GabbleMediaFactory *fac, GabbleMediaChannel *chan)
 {
-  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
   const gchar *sid = _gabble_media_factory_get_unique_sid (fac);
+
   g_return_val_if_fail (sid, NULL);
 
-  g_hash_table_insert (priv->session_chans, (gchar *) sid, (gpointer) chan);
-  return sid;
+  return _gabble_media_factory_register_sid (fac, sid, chan);
+}
+
+const gchar *
+_gabble_media_factory_register_sid (GabbleMediaFactory *fac,
+                                    const gchar *sid,
+                                    GabbleMediaChannel *chan)
+{
+  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
+  gchar *sid_copy = g_strdup (sid);
+
+  g_hash_table_insert (priv->session_chans, sid_copy, chan);
+
+  return sid_copy;
 }
 
 void
@@ -403,7 +417,6 @@ media_channel_closed_cb (GabbleMediaChannel *chan, gpointer user_data)
     {
       g_hash_table_foreach_remove (priv->session_chans, _remove_sid_mapping, chan);
     }
-
 }
 
 /**

@@ -30,9 +30,10 @@ struct _GHeap
   GCompareFunc comparator;
 };
 
-GHeap *g_heap_new (GCompareFunc comparator)
+GHeap *
+g_heap_new (GCompareFunc comparator)
 {
-  GHeap *ret = g_slice_new(GHeap);
+  GHeap *ret = g_slice_new (GHeap);
   g_assert (comparator != NULL);
 
   ret->data = g_ptr_array_sized_new (DEFAULT_SIZE);
@@ -41,7 +42,8 @@ GHeap *g_heap_new (GCompareFunc comparator)
   return ret;
 }
 
-void g_heap_destroy (GHeap *heap)
+void
+g_heap_destroy (GHeap * heap)
 {
   g_return_if_fail (heap != NULL);
 
@@ -49,7 +51,8 @@ void g_heap_destroy (GHeap *heap)
   g_slice_free (GHeap, heap);
 }
 
-void g_heap_clear (GHeap *heap)
+void
+g_heap_clear (GHeap *heap)
 {
   g_return_if_fail (heap != NULL);
 
@@ -59,30 +62,32 @@ void g_heap_clear (GHeap *heap)
 
 #define HEAP_INDEX(heap, index) (g_ptr_array_index ((heap)->data, (index)-1))
 
-void g_heap_add (GHeap *heap, gpointer element)
+void
+g_heap_add (GHeap *heap, gpointer element)
 {
   guint m;
 
   g_return_if_fail (heap != NULL);
-  
+
   g_ptr_array_add (heap->data, element);
   m = heap->data->len;
   while (m != 1)
-  {
-    gpointer parent = HEAP_INDEX (heap, m/2);
-
-    if (heap->comparator (element, parent) == -1)
     {
-      HEAP_INDEX (heap, m/2) = element;
-      HEAP_INDEX (heap, m) = parent;
-      m /= 2;
+      gpointer parent = HEAP_INDEX (heap, m / 2);
+
+      if (heap->comparator (element, parent) == -1)
+        {
+          HEAP_INDEX (heap, m / 2) = element;
+          HEAP_INDEX (heap, m) = parent;
+          m /= 2;
+        }
+      else
+        break;
     }
-    else
-      break;
-  }
 }
 
-gpointer g_heap_peek_first (GHeap *heap)
+gpointer
+g_heap_peek_first (GHeap *heap)
 {
   g_return_val_if_fail (heap != NULL, NULL);
 
@@ -92,52 +97,56 @@ gpointer g_heap_peek_first (GHeap *heap)
     return NULL;
 }
 
-gpointer g_heap_extract_first (GHeap *heap)
+gpointer
+g_heap_extract_first (GHeap * heap)
 {
   gpointer ret;
 
   g_return_val_if_fail (heap != NULL, NULL);
 
   if (heap->data->len > 0)
-  {
-    guint m = heap->data->len;
-    guint i = 1, j;
-    ret = HEAP_INDEX (heap, 1);
-
-    HEAP_INDEX (heap, 1) = HEAP_INDEX (heap, m);
-
-    while (i*2 <= m)
     {
-      /* select the child which is supposed to come FIRST */
-      if ((i*2+1 <= m)
-          && (heap->comparator (HEAP_INDEX (heap, i*2), HEAP_INDEX (heap, i*2+1)) == 1))
-            j = i*2+1;
-      else
-        j = i*2;
+      guint m = heap->data->len;
+      guint i = 1, j;
+      ret = HEAP_INDEX (heap, 1);
 
-      if (heap->comparator (HEAP_INDEX (heap, i), HEAP_INDEX (heap, j)) == 1)
-      {
-        gpointer tmp = HEAP_INDEX (heap, i);
-        HEAP_INDEX (heap, i) = HEAP_INDEX (heap, j);
-        HEAP_INDEX (heap, j) = tmp;
-        i = j;
-      }
-      else
-        break;
+      HEAP_INDEX (heap, 1) = HEAP_INDEX (heap, m);
+
+      while (i * 2 <= m)
+        {
+          /* select the child which is supposed to come FIRST */
+          if ((i * 2 + 1 <= m)
+              && (heap->
+                  comparator (HEAP_INDEX (heap, i * 2),
+                              HEAP_INDEX (heap, i * 2 + 1)) == 1))
+            j = i * 2 + 1;
+          else
+            j = i * 2;
+
+          if (heap->comparator (HEAP_INDEX (heap, i), HEAP_INDEX (heap, j)) ==
+              1)
+            {
+              gpointer tmp = HEAP_INDEX (heap, i);
+              HEAP_INDEX (heap, i) = HEAP_INDEX (heap, j);
+              HEAP_INDEX (heap, j) = tmp;
+              i = j;
+            }
+          else
+            break;
+        }
+
+      g_ptr_array_remove_index (heap->data, m - 1);
     }
-
-    g_ptr_array_remove_index (heap->data, m-1);
-  }
   else
     ret = NULL;
 
   return ret;
 }
 
-guint g_heap_size (GHeap *heap)
+guint
+g_heap_size (GHeap *heap)
 {
   g_return_val_if_fail (heap != NULL, 0);
 
   return heap->data->len;
 }
-

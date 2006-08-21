@@ -21,6 +21,7 @@
 #include <glib.h>
 #include <string.h>
 
+#include "gheap.h"
 #include "handles.h"
 #include "handles-private.h"
 #include "telepathy-errors.h"
@@ -43,6 +44,7 @@ handle_priv_free (GabbleHandlePriv *priv)
 {
   g_assert (priv != NULL);
 
+  g_free(priv->string);
   g_datalist_clear (&(priv->datalist));
   g_free (priv);
 }
@@ -75,21 +77,77 @@ handle_priv_lookup (GabbleHandleRepo *repo,
   return priv;
 }
 
+static GabbleHandle
+gabble_handle_alloc (GabbleHandleRepo *repo, TpHandleType type)
+{
+  GabbleHandle ret;
+
+  g_assert (repo != NULL);
+  g_assert (gabble_handle_type_is_valid (type, NULL));
+
+  switch (type) {
+    case TP_HANDLE_TYPE_CONTACT:
+      if (g_heap_size (repo->free_contact_handles))
+        ret = GPOINTER_TO_UINT (g_heap_extract_first (repo->free_contact_handles));
+      else
+        ret = repo->contact_serial++;
+      break;
+    case TP_HANDLE_TYPE_ROOM:
+      if (g_heap_size (repo->free_room_handles))
+        ret = GPOINTER_TO_UINT (g_heap_extract_first (repo->free_room_handles));
+      else
+        ret = repo->room_serial++;
+      break;
+    default:
+      g_assert_not_reached();
+    }
+
+  return ret;
+}
+
+static gint
+handle_compare_func (gconstpointer a, gconstpointer b)
+{
+  GabbleHandle first = GPOINTER_TO_UINT (a);
+  GabbleHandle second = GPOINTER_TO_UINT (b);
+
+  return (first == second) ? 0 : ((first < second) ? -1 : 1);
+}
+
 void
 handle_priv_remove (GabbleHandleRepo *repo,
                     TpHandleType type,
                     GabbleHandle handle)
 {
+  GabbleHandlePriv *priv;
+  const gchar *string;
+
   g_assert (gabble_handle_type_is_valid (type, NULL));
   g_assert (handle != 0);
   g_assert (repo != NULL);
 
+  priv = handle_priv_lookup (repo, type, handle);
+
+  g_assert (priv != NULL);
+
+  string = priv->string;
+
   switch (type) {
     case TP_HANDLE_TYPE_CONTACT:
+      g_hash_table_remove (repo->contact_strings, string);
       g_hash_table_remove (repo->contact_handles, GINT_TO_POINTER (handle));
+      if (handle == repo->contact_serial-1)
+        repo->contact_serial--;
+      else
+        g_heap_add (repo->free_contact_handles, GUINT_TO_POINTER (handle));
       break;
     case TP_HANDLE_TYPE_ROOM:
+      g_hash_table_remove (repo->room_strings, string);
       g_hash_table_remove (repo->room_handles, GINT_TO_POINTER (handle));
+      if (handle == repo->room_serial-1)
+        repo->room_serial--;
+      else
+        g_heap_add (repo->free_room_handles, GUINT_TO_POINTER (handle));
       break;
     case TP_HANDLE_TYPE_LIST:
       g_dataset_id_remove_data (&repo->list_handles, handle);
@@ -286,6 +344,15 @@ gabble_handle_repo_new ()
 
   repo->room_handles = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL, (GDestroyNotify) handle_priv_free);
 
+  repo->contact_strings = g_hash_table_new (g_str_hash, g_str_equal);
+  repo->room_strings = g_hash_table_new (g_str_hash, g_str_equal);
+
+  repo->free_contact_handles = g_heap_new (handle_compare_func);
+  repo->free_room_handles = g_heap_new (handle_compare_func);
+
+  repo->contact_serial = 1;
+  repo->room_serial = 1;
+
   g_datalist_init (&repo->list_handles);
 
   publish = gabble_handle_for_list_publish (repo);
@@ -313,9 +380,15 @@ gabble_handle_repo_destroy (GabbleHandleRepo *repo)
   g_assert (repo != NULL);
   g_assert (repo->contact_handles);
   g_assert (repo->room_handles);
+  g_assert (repo->contact_strings);
+  g_assert (repo->room_strings);
 
   g_hash_table_destroy (repo->contact_handles);
   g_hash_table_destroy (repo->room_handles);
+  g_hash_table_destroy (repo->contact_strings);
+  g_hash_table_destroy (repo->room_strings);
+  g_heap_destroy (repo->free_contact_handles);
+  g_heap_destroy (repo->free_room_handles);
   g_datalist_clear (&repo->list_handles);
 
   g_free (repo);
@@ -423,7 +496,7 @@ gabble_handle_inspect (GabbleHandleRepo *repo,
   if (priv == NULL)
     return NULL;
   else
-    return g_quark_to_string (handle);
+    return priv->string;
 }
 
 static GabbleHandle
@@ -431,16 +504,10 @@ _handle_lookup_by_jid (GabbleHandleRepo *repo,
                        const gchar *jid)
 {
   GabbleHandle handle;
-  GabbleHandlePriv *priv;
 
-  handle = g_quark_try_string (jid);
+  handle = GPOINTER_TO_UINT (g_hash_table_lookup (repo->contact_strings, jid));
 
   if (0 == handle)
-    return 0;
-
-  priv = handle_priv_lookup (repo, TP_HANDLE_TYPE_CONTACT, handle);
-
-  if (NULL == priv)
     return 0;
 
   return handle;
@@ -489,13 +556,17 @@ gabble_handle_for_contact (GabbleHandleRepo *repo,
         goto OUT;
     }
 
-  /* pretend this string is static and just don't free it instead */
-  handle = g_quark_from_static_string (clean_jid);
-  clean_jid = NULL;
+  handle = gabble_handle_alloc (repo, TP_HANDLE_TYPE_CONTACT);
   priv = handle_priv_new ();
+  priv->string = clean_jid;
+  clean_jid = NULL;
   g_hash_table_insert (repo->contact_handles, GINT_TO_POINTER (handle), priv);
+  g_hash_table_insert (repo->contact_strings, priv->string, GUINT_TO_POINTER (handle));
 
 OUT:
+  /* FIXME: add unrefing to every place gabble_handle_for_{contact,room} is used and uncomment this */
+/*  gabble_handle_ref (repo, TP_HANDLE_TYPE_CONTACT, handle);*/
+
   g_free (clean_jid);
   g_free (username);
   g_free (server);
@@ -516,7 +587,8 @@ gabble_handle_for_room_exists (GabbleHandleRepo *repo,
       gabble_handle_jid_get_base (jid, base_jid);
     }
 
-  handle = g_quark_try_string ((ignore_nick) ? base_jid : jid);
+  handle = GPOINTER_TO_UINT (g_hash_table_lookup (repo->room_strings,
+                                                  ignore_nick ? base_jid : jid));
   if (handle == 0)
     return FALSE;
 
@@ -543,27 +615,25 @@ gabble_handle_for_room (GabbleHandleRepo *repo,
     {
       clean_jid = g_strdup_printf ("%s@%s", room, service);
 
-      handle = g_quark_try_string (clean_jid);
+      handle = GPOINTER_TO_UINT (g_hash_table_lookup (repo->room_strings, clean_jid));
 
       if (handle == 0)
         {
-          /* pretend this string is static and just don't free it instead */
-          handle = g_quark_from_static_string (clean_jid);
+          GabbleHandlePriv *priv;
+          handle = gabble_handle_alloc (repo, TP_HANDLE_TYPE_ROOM);
+          priv = handle_priv_new ();
+          priv->string = clean_jid;
+          g_hash_table_insert (repo->room_handles, GUINT_TO_POINTER (handle), priv);
+          g_hash_table_insert (repo->room_strings, clean_jid, GUINT_TO_POINTER (handle));
         }
       else
         {
           g_free (clean_jid);
         }
-
-      /* existence of the quark cannot be presumed to mean the handle exists
-       * in this repository, because of multiple connections */
-      if (!handle_priv_lookup (repo, TP_HANDLE_TYPE_ROOM, handle))
-        {
-          GabbleHandlePriv *priv;
-          priv = handle_priv_new ();
-          g_hash_table_insert (repo->room_handles, GINT_TO_POINTER (handle), priv);
-        }
     }
+
+  /* FIXME: add unrefing to every place gabble_handle_for_{contact,room} is used and uncomment this */
+/*  gabble_handle_ref (repo, TP_HANDLE_TYPE_ROOM, handle);*/
 
   g_free (room);
   g_free (service);

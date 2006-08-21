@@ -23,7 +23,6 @@
 #include <glib.h>
 #include "gintset.h"
 #include "handles.h"
-#include "handles-private.h"
 
 #include "handle-set.h"
 

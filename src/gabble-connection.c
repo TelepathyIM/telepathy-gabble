@@ -227,9 +227,6 @@ struct _GabbleConnectionPrivate
   gchar *resource;
   gint8 priority;
 
-  /* jingle sessions */
-  GHashTable *jingle_sessions;
-
   GPtrArray *media_channels;
   guint media_channel_index;
 
@@ -315,9 +312,6 @@ gabble_connection_init (GabbleConnection *obj)
     }
 
   priv->channel_requests = g_ptr_array_new ();
-
-  priv->jingle_sessions = g_hash_table_new_full (g_str_hash, g_str_equal,
-                                                 g_free, NULL);
 
   priv->media_channels = g_ptr_array_sized_new (1);
   priv->media_channel_index = 0;
@@ -885,13 +879,6 @@ gabble_connection_dispose (GObject *object)
   priv->dispose_has_run = TRUE;
 
   DEBUG ("called");
-
-  if (priv->jingle_sessions)
-    {
-      g_assert (g_hash_table_size (priv->jingle_sessions) == 0);
-      g_hash_table_destroy (priv->jingle_sessions);
-      priv->jingle_sessions = NULL;
-    }
 
   if (priv->media_channels)
     {
@@ -1693,12 +1680,6 @@ close_all_channels (GabbleConnection *conn)
       g_ptr_array_free (tmp, TRUE);
     }
 
-  if (priv->jingle_sessions)
-    {
-      g_hash_table_destroy (priv->jingle_sessions);
-      priv->jingle_sessions = NULL;
-    }
-
   priv->media_channel_index = 0;
 
   if (priv->roomlist_channel)
@@ -2216,70 +2197,6 @@ signal_own_presence (GabbleConnection *self, GError **error)
   lm_message_unref (message);
 
   return ret;
-}
-
-
-/**
- * media_channel_closed_cb:
- *
- * Signal callback for when a media channel is closed. Removes the references
- * that #GabbleConnection holds to them.
- */
-static void
-media_channel_closed_cb (GabbleMediaChannel *chan, gpointer user_data)
-{
-  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-
-  if (priv->media_channels)
-    {
-      DEBUG ("removing media channel %p with ref count %d",
-          chan, G_OBJECT (chan)->ref_count);
-
-      g_ptr_array_remove (priv->media_channels, chan);
-      g_object_unref (chan);
-    }
-}
-
-/**
- * new_media_channel
- *
- * Creates a new empty GabbleMediaChannel.
- */
-static GabbleMediaChannel *
-new_media_channel (GabbleConnection *conn, GabbleHandle creator, gboolean suppress_handler)
-{
-  GabbleConnectionPrivate *priv;
-  GabbleMediaChannel *chan;
-  gchar *object_path;
-
-  g_assert (GABBLE_IS_CONNECTION (conn));
-
-  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-
-  object_path = g_strdup_printf ("%s/MediaChannel%u", conn->object_path,
-                                 priv->media_channel_index);
-  priv->media_channel_index += 1;
-
-  chan = g_object_new (GABBLE_TYPE_MEDIA_CHANNEL,
-                       "connection", conn,
-                       "object-path", object_path,
-                       "creator", creator,
-                       NULL);
-
-  DEBUG ("object path %s", object_path);
-
-  g_signal_connect (chan, "closed", (GCallback) media_channel_closed_cb, conn);
-
-  g_ptr_array_add (priv->media_channels, chan);
-
-  g_signal_emit (conn, signals[NEW_CHANNEL], 0,
-                 object_path, TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA,
-                 0, 0, suppress_handler);
-
-  g_free (object_path);
-
-  return chan;
 }
 
 static LmMessage *_lm_iq_message_make_result (LmMessage *iq_message);
@@ -3840,125 +3757,12 @@ gboolean gabble_connection_remove_status (GabbleConnection *obj, const gchar * s
     }
 }
 
-static GabbleMediaChannel *
-find_media_channel_with_handle (GabbleConnection *conn, GabbleHandle handle)
-{
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-  guint i, j;
-
-  for (i = 0; i < priv->media_channels->len; i++)
-    {
-      GArray *arr;
-      GError *err;
-
-      GabbleMediaChannel *chan = g_ptr_array_index (priv->media_channels, i);
-
-      /* search members */
-      if (!gabble_group_mixin_get_members (G_OBJECT (chan), &arr, &err))
-        {
-          DEBUG ("get_members failed: %s", err->message);
-          g_error_free (err);
-          continue;
-        }
-
-      for (j = 0; j < arr->len; j++)
-        if (g_array_index (arr, guint32, i) == handle)
-          {
-            g_array_free (arr, TRUE);
-            return chan;
-          }
-
-      g_array_free (arr, TRUE);
-
-      /* search local pending */
-      if (!gabble_group_mixin_get_local_pending_members (G_OBJECT (chan), &arr, &err))
-        {
-          DEBUG ("get_local_pending_members failed: %s", err->message);
-          g_error_free (err);
-          continue;
-        }
-
-      for (j = 0; j < arr->len; j++)
-        if (g_array_index (arr, guint32, i) == handle)
-          {
-            g_array_free (arr, TRUE);
-            return chan;
-          }
-
-      g_array_free (arr, TRUE);
-
-      /* search remote pending */
-      if (!gabble_group_mixin_get_remote_pending_members (G_OBJECT (chan), &arr, &err))
-        {
-          DEBUG ("get_remote_pending_members failed: %s", err->message);
-          g_error_free (err);
-          continue;
-        }
-
-      for (j = 0; j < arr->len; j++)
-        if (g_array_index (arr, guint32, i) == handle)
-          {
-            g_array_free (arr, TRUE);
-            return chan;
-          }
-
-      g_array_free (arr, TRUE);
-    }
-
-  return NULL;
-}
-
 static gboolean
 _gabble_connection_request_channel_deprecated (GabbleConnection *obj, const gchar *type, guint handle_type, guint handle, gboolean suppress_handler, gchar **ret, GError **error)
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
 
-  if (!strcmp (type, TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA))
-    {
-      GabbleMediaChannel *chan;
-
-      if (handle_type == 0)
-        {
-          /* create an empty channel */
-          chan = new_media_channel (obj, obj->self_handle, suppress_handler);
-        }
-      else
-        {
-          /* have we already got a channel with this handle? */
-          chan = find_media_channel_with_handle (obj, handle);
-
-          /* no: create it and add the peer to it */
-          if (!chan)
-            {
-              GArray *members;
-              gboolean ret;
-
-              chan = new_media_channel (obj, obj->self_handle, suppress_handler);
-
-              members = g_array_sized_new (FALSE, FALSE, sizeof (GabbleHandle), 1);
-              g_array_append_val (members, handle);
-
-              ret = gabble_group_mixin_add_members (G_OBJECT (chan), members, "", error);
-
-              g_array_free (members, TRUE);
-
-              if (!ret)
-                {
-                  GError *close_err;
-
-                  if (!gabble_media_channel_close (chan, &close_err))
-                    {
-                      g_error_free (close_err);
-                    }
-
-                  return FALSE;
-                }
-            }
-        }
-
-      g_object_get (chan, "object-path", ret, NULL);
-    }
-  else if (!strcmp (type, TP_IFACE_CHANNEL_TYPE_ROOM_LIST))
+  if (!strcmp (type, TP_IFACE_CHANNEL_TYPE_ROOM_LIST))
     {
       if (NULL == priv->conference_servers &&
           NULL == priv->fallback_conference_server)

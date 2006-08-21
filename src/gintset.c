@@ -173,11 +173,12 @@ g_intset_foreach (GIntSet *set, GIntFunc func, gpointer userdata)
 
   for (i=0; i<set->size; i++)
   {
-    for (j=0; j<32; j++)
-    {
-      if (set->bits[i] & 1<<j)
-        func(i*32 +j, userdata);
-    }
+    if (set->bits[i])
+      for (j=0; j<32; j++)
+      {
+        if (set->bits[i] & 1<<j)
+          func(i*32 +j, userdata);
+      }
   }
 }
 

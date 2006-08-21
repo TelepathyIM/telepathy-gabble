@@ -28,8 +28,6 @@
 
 G_BEGIN_DECLS
 
-#define JID_MAX_SIZE 256
-
 gboolean gabble_handle_jid_is_valid (TpHandleType type, const gchar *jid, GError **error);
 void gabble_handle_jid_get_base (const gchar *jid, gchar *base_jid);
 

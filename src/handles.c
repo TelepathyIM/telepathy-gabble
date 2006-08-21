@@ -26,6 +26,8 @@
 #include "handles-private.h"
 #include "telepathy-errors.h"
 
+#define JID_MAX_SIZE 256
+
 typedef struct _GabbleHandlePriv GabbleHandlePriv;
 
 struct _GabbleHandlePriv

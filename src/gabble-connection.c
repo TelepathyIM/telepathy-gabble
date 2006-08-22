@@ -388,35 +388,6 @@ gabble_connection_get_property (GObject    *object,
     case PROP_IGNORE_SSL_ERRORS:
       g_value_set_boolean (value, priv->ignore_ssl_errors);
       break;
-/* FIXME: remove these
-    case PROP_STUN_SERVER:
-      g_value_set_string (value, priv->stun_server);
-      break;
-    case PROP_STUN_PORT:
-      g_value_set_uint (value, priv->stun_port);
-      break;
-    case PROP_STUN_RELAY_MAGIC_COOKIE:
-      g_value_set_string (value, priv->stun_relay_magic_cookie);
-      break;
-    case PROP_STUN_RELAY_SERVER:
-      g_value_set_string (value, priv->stun_relay_server);
-      break;
-    case PROP_STUN_RELAY_UDP_PORT:
-      g_value_set_uint (value, priv->stun_relay_udp_port);
-      break;
-    case PROP_STUN_RELAY_TCP_PORT:
-      g_value_set_uint (value, priv->stun_relay_tcp_port);
-      break;
-    case PROP_STUN_RELAY_SSLTCP_PORT:
-      g_value_set_uint (value, priv->stun_relay_ssltcp_port);
-      break;
-    case PROP_STUN_RELAY_USERNAME:
-      g_value_set_string (value, priv->stun_relay_username);
-      break;
-    case PROP_STUN_RELAY_PASSWORD:
-      g_value_set_string (value, priv->stun_relay_password);
-      break;
-*/
     default:
       param_name = g_param_spec_get_name (pspec);
 
@@ -503,40 +474,6 @@ gabble_connection_set_property (GObject      *object,
     case PROP_IGNORE_SSL_ERRORS:
       priv->ignore_ssl_errors = g_value_get_boolean (value);
       break;
-/* FIXME: remove these
-    case PROP_STUN_SERVER:
-      g_free (priv->stun_server);
-      priv->stun_server = g_value_dup_string (value);
-      break;
-    case PROP_STUN_PORT:
-      priv->stun_port = g_value_get_uint (value);
-      break;
-    case PROP_STUN_RELAY_MAGIC_COOKIE:
-      g_free (priv->stun_relay_magic_cookie);
-      priv->stun_relay_magic_cookie = g_value_dup_string (value);
-      break;
-    case PROP_STUN_RELAY_SERVER:
-      g_free (priv->stun_relay_server);
-      priv->stun_relay_server = g_value_dup_string (value);
-      break;
-    case PROP_STUN_RELAY_UDP_PORT:
-      priv->stun_relay_udp_port = g_value_get_uint (value);
-      break;
-    case PROP_STUN_RELAY_TCP_PORT:
-      priv->stun_relay_tcp_port = g_value_get_uint (value);
-      break;
-    case PROP_STUN_RELAY_SSLTCP_PORT:
-      priv->stun_relay_ssltcp_port = g_value_get_uint (value);
-      break;
-    case PROP_STUN_RELAY_USERNAME:
-      g_free (priv->stun_relay_username);
-      priv->stun_relay_username = g_value_dup_string (value);
-      break;
-    case PROP_STUN_RELAY_PASSWORD:
-      g_free (priv->stun_relay_password);
-      priv->stun_relay_password = g_value_dup_string (value);
-      break;
-*/
     default:
       param_name = g_param_spec_get_name (pspec);
 
@@ -943,13 +880,6 @@ gabble_connection_finalize (GObject *object)
 
   g_free (priv->https_proxy_server);
   g_free (priv->fallback_conference_server);
-/* FIXME: remove these
-  g_free (priv->stun_server);
-  g_free (priv->stun_relay_magic_cookie);
-  g_free (priv->stun_relay_server);
-  g_free (priv->stun_relay_username);
-  g_free (priv->stun_relay_password);
-*/
 
   g_list_free (priv->conference_servers);
 

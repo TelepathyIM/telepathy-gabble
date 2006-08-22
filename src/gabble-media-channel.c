@@ -884,7 +884,7 @@ gboolean gabble_media_channel_request_streams (GabbleMediaChannel *obj, guint co
   DEBUG ("not implemented");
 
   *error = g_error_new (TELEPATHY_ERRORS, NotImplemented,
-                        "ListStreams not implemented!");
+                        "RequestStreams not implemented!");
 
   return FALSE;
 }

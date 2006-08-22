@@ -28,6 +28,14 @@
 
 G_BEGIN_DECLS
 
+typedef enum
+{
+  GABBLE_LIST_HANDLE_PUBLISH = 1,
+  GABBLE_LIST_HANDLE_SUBSCRIBE,
+  GABBLE_LIST_HANDLE_KNOWN,
+  GABBLE_LIST_HANDLE_BLOCK
+} GabbleListHandle;
+
 gboolean gabble_handle_jid_is_valid (TpHandleType type, const gchar *jid, GError **error);
 void gabble_handle_jid_get_base (const gchar *jid, gchar *base_jid);
 
@@ -47,10 +55,7 @@ const char *gabble_handle_inspect (GabbleHandleRepo *repo, TpHandleType type, Ga
 GabbleHandle gabble_handle_for_contact (GabbleHandleRepo *repo, const char *jid, gboolean with_resource);
 gboolean gabble_handle_for_room_exists (GabbleHandleRepo *repo, const gchar *jid, gboolean ignore_nick);
 GabbleHandle gabble_handle_for_room (GabbleHandleRepo *repo, const gchar *jid);
-GabbleHandle gabble_handle_for_list_publish (GabbleHandleRepo *repo);
-GabbleHandle gabble_handle_for_list_subscribe (GabbleHandleRepo *repo);
-GabbleHandle gabble_handle_for_list_known (GabbleHandleRepo *repo);
-GabbleHandle gabble_handle_for_list_block (GabbleHandleRepo *repo);
+GabbleHandle gabble_handle_for_list (GabbleHandleRepo *repo, const gchar *list);
 
 gboolean gabble_handle_set_qdata (GabbleHandleRepo *repo, TpHandleType type,
     GabbleHandle handle, GQuark key_id, gpointer data, GDestroyNotify destroy);

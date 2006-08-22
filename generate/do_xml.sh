@@ -6,9 +6,9 @@ PYVER=2.4
 PYTHON=python$PYVER
 
 if [ `basename $PWD` == "generate" ]; then
-  TP=${TELEPATHY_PYTHON:=$PWD/../../telepathy-python}
+  TP=${TELEPATHY_SPEC:=$PWD/../../telepathy-spec}
 else
-  TP=${TELEPATHY_PYTHON:=$PWD/../telepathy-python}
+  TP=${TELEPATHY_SPEC:=$PWD/../telepathy-spec}
 fi
 
 export PYTHONPATH=$TP:$PYTHONPATH

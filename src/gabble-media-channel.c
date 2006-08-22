@@ -639,7 +639,11 @@ gboolean gabble_media_channel_get_handle_owners (GabbleMediaChannel *obj, const 
  */
 gboolean gabble_media_channel_get_interfaces (GabbleMediaChannel *obj, gchar *** ret, GError **error)
 {
-  const gchar *interfaces[] = { TP_IFACE_CHANNEL_INTERFACE_GROUP, NULL };
+  const gchar *interfaces[] = {
+      TP_IFACE_CHANNEL_INTERFACE_GROUP,
+      TP_IFACE_CHANNEL_INTERFACE_ICE_SIGNALLING,
+      NULL
+  };
 
   *ret = g_strdupv ((gchar **) interfaces);
 

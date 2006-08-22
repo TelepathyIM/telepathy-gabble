@@ -32,7 +32,7 @@ G_DEFINE_TYPE(GabbleMediaSession, gabble_media_session, G_TYPE_OBJECT)
 /* signal enum */
 enum
 {
-    NEW_MEDIA_STREAM_HANDLER,
+    NEW_ICE_STREAM_HANDLER,
     LAST_SIGNAL
 };
 
@@ -69,14 +69,14 @@ gabble_media_session_class_init (GabbleMediaSessionClass *gabble_media_session_c
   object_class->dispose = gabble_media_session_dispose;
   object_class->finalize = gabble_media_session_finalize;
 
-  signals[NEW_MEDIA_STREAM_HANDLER] =
-    g_signal_new ("new-media-stream-handler",
+  signals[NEW_ICE_STREAM_HANDLER] =
+    g_signal_new ("new-ice-stream-handler",
                   G_OBJECT_CLASS_TYPE (gabble_media_session_class),
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_media_session_marshal_VOID__STRING_INT_INT,
-                  G_TYPE_NONE, 3, DBUS_TYPE_G_OBJECT_PATH, G_TYPE_UINT, G_TYPE_UINT);
+                  gabble_media_session_marshal_VOID__STRING_INT_INT_INT,
+                  G_TYPE_NONE, 4, DBUS_TYPE_G_OBJECT_PATH, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT);
 
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_media_session_class), &dbus_glib_gabble_media_session_object_info);
 }
@@ -115,7 +115,7 @@ gabble_media_session_finalize (GObject *object)
  * gabble_media_session_error
  *
  * Implements DBus method Error
- * on interface org.freedesktop.Telepathy.Media.SessionHandler
+ * on interface org.freedesktop.Telepathy.Ice.SessionHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this
@@ -133,7 +133,7 @@ gboolean gabble_media_session_error (GabbleMediaSession *obj, guint errno, const
  * gabble_media_session_ready
  *
  * Implements DBus method Ready
- * on interface org.freedesktop.Telepathy.Media.SessionHandler
+ * on interface org.freedesktop.Telepathy.Ice.SessionHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this

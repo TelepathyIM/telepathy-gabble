@@ -65,7 +65,9 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMediaChannel, gabble_media_channel,
 enum
 {
     CLOSED,
-    NEW_MEDIA_SESSION_HANDLER,
+    NEW_ICE_SESSION_HANDLER,
+    STREAM_ADDED,
+    STREAM_REMOVED,
     STREAM_STATE_CHANGED,
     LAST_SIGNAL
 };
@@ -200,8 +202,8 @@ create_session (GabbleMediaChannel *channel, GabbleHandle peer, const gchar *pee
 
   priv->session = session;
 
-  g_signal_emit (channel, signals[NEW_MEDIA_SESSION_HANDLER], 0,
-                 peer, object_path, "rtp");
+  g_signal_emit (channel, signals[NEW_ICE_SESSION_HANDLER], 0,
+                 object_path, "rtp");
 
   g_free (object_path);
 
@@ -340,6 +342,11 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
   object_class->dispose = gabble_media_channel_dispose;
   object_class->finalize = gabble_media_channel_finalize;
 
+  gabble_group_mixin_class_init (object_class,
+                                 G_STRUCT_OFFSET (GabbleMediaChannelClass, group_class),
+                                 gabble_media_channel_add_member,
+                                 gabble_media_channel_remove_member);
+
   g_object_class_override_property (object_class, PROP_OBJECT_PATH, "object-path");
   g_object_class_override_property (object_class, PROP_CHANNEL_TYPE, "channel-type");
   g_object_class_override_property (object_class, PROP_HANDLE_TYPE, "handle-type");
@@ -374,7 +381,6 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_FACTORY, param_spec);
 
-
   signals[CLOSED] =
     g_signal_new ("closed",
                   G_OBJECT_CLASS_TYPE (gabble_media_channel_class),
@@ -384,19 +390,32 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
                   g_cclosure_marshal_VOID__VOID,
                   G_TYPE_NONE, 0);
 
-  signals[NEW_MEDIA_SESSION_HANDLER] =
-    g_signal_new ("new-media-session-handler",
+  signals[NEW_ICE_SESSION_HANDLER] =
+    g_signal_new ("new-ice-session-handler",
                   G_OBJECT_CLASS_TYPE (gabble_media_channel_class),
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_media_channel_marshal_VOID__INT_STRING_STRING,
-                  G_TYPE_NONE, 3, G_TYPE_UINT, DBUS_TYPE_G_OBJECT_PATH, G_TYPE_STRING);
+                  gabble_media_channel_marshal_VOID__STRING_STRING,
+                  G_TYPE_NONE, 2, DBUS_TYPE_G_OBJECT_PATH, G_TYPE_STRING);
 
-  gabble_group_mixin_class_init (object_class,
-                                 G_STRUCT_OFFSET (GabbleMediaChannelClass, group_class),
-                                 gabble_media_channel_add_member,
-                                 gabble_media_channel_remove_member);
+  signals[STREAM_ADDED] =
+    g_signal_new ("stream-added",
+                  G_OBJECT_CLASS_TYPE (gabble_media_channel_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_media_channel_marshal_VOID__INT_INT_INT,
+                  G_TYPE_NONE, 3, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT);
+
+  signals[STREAM_REMOVED] =
+    g_signal_new ("stream-removed",
+                  G_OBJECT_CLASS_TYPE (gabble_media_channel_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  g_cclosure_marshal_VOID__INT,
+                  G_TYPE_NONE, 1, G_TYPE_UINT);
 
   signals[STREAM_STATE_CHANGED] =
     g_signal_new ("stream-state-changed",
@@ -404,8 +423,8 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_media_channel_marshal_VOID__INT_INT_INT,
-                  G_TYPE_NONE, 3, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT);
+                  gabble_media_channel_marshal_VOID__INT_INT,
+                  G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_UINT);
 
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_media_channel_class), &dbus_glib_gabble_media_channel_object_info);
 }
@@ -704,7 +723,7 @@ gboolean gabble_media_channel_get_self_handle (GabbleMediaChannel *obj, guint* r
  * gabble_media_channel_get_session_handlers
  *
  * Implements DBus method GetSessionHandlers
- * on interface org.freedesktop.Telepathy.Channel.Type.StreamedMedia
+ * on interface org.freedesktop.Telepathy.Channel.Interface.IceSignalling
  *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this
@@ -756,9 +775,9 @@ gboolean gabble_media_channel_get_session_handlers (GabbleMediaChannel *obj, GPt
 
 
 /**
- * gabble_media_channel_get_streams
+ * gabble_media_channel_list_streams
  *
- * Implements DBus method GetStreams
+ * Implements DBus method ListStreams
  * on interface org.freedesktop.Telepathy.Channel.Type.StreamedMedia
  *
  * @error: Used to return a pointer to a GError detailing any error
@@ -767,7 +786,7 @@ gboolean gabble_media_channel_get_session_handlers (GabbleMediaChannel *obj, GPt
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_channel_get_streams (GabbleMediaChannel *obj, GPtrArray ** ret, GError **error)
+gboolean gabble_media_channel_list_streams (GabbleMediaChannel *obj, GPtrArray ** ret, GError **error)
 {
 #if 0
   GabbleMediaChannelPrivate *priv;
@@ -819,7 +838,7 @@ gboolean gabble_media_channel_get_streams (GabbleMediaChannel *obj, GPtrArray **
   DEBUG ("not implemented");
 
   *error = g_error_new (TELEPATHY_ERRORS, NotImplemented,
-                        "GetStreams not implemented!");
+                        "ListStreams not implemented!");
 
   return FALSE;
 #endif
@@ -842,6 +861,30 @@ gboolean gabble_media_channel_remove_members (GabbleMediaChannel *obj, const GAr
 {
   return gabble_group_mixin_remove_members (G_OBJECT (obj), contacts, message, error);
 }
+
+
+/**
+ * gabble_media_channel_request_streams
+ *
+ * Implements DBus method RequestStreams
+ * on interface org.freedesktop.Telepathy.Channel.Type.StreamedMedia
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_media_channel_request_streams (GabbleMediaChannel *obj, guint contact_handle, const GArray * types, GArray ** ret, GError **error)
+{
+  DEBUG ("not implemented");
+
+  *error = g_error_new (TELEPATHY_ERRORS, NotImplemented,
+                        "ListStreams not implemented!");
+
+  return FALSE;
+}
+
 
 static gboolean
 gabble_media_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *message, GError **error)

@@ -429,7 +429,7 @@ session_state_changed_cb (GabbleMediaSession *session,
  * gabble_media_stream_codec_choice
  *
  * Implements DBus method CodecChoice
- * on interface org.freedesktop.Telepathy.Media.StreamHandler
+ * on interface org.freedesktop.Telepathy.Ice.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this
@@ -453,7 +453,7 @@ gboolean gabble_media_stream_codec_choice (GabbleMediaStream *obj, guint codec_i
  * gabble_media_stream_error
  *
  * Implements DBus method Error
- * on interface org.freedesktop.Telepathy.Media.StreamHandler
+ * on interface org.freedesktop.Telepathy.Ice.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this
@@ -481,7 +481,7 @@ gboolean gabble_media_stream_error (GabbleMediaStream *obj, guint errno, const g
  * gabble_media_stream_native_candidates_prepared
  *
  * Implements DBus method NativeCandidatesPrepared
- * on interface org.freedesktop.Telepathy.Media.StreamHandler
+ * on interface org.freedesktop.Telepathy.Ice.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this
@@ -505,7 +505,7 @@ gboolean gabble_media_stream_native_candidates_prepared (GabbleMediaStream *obj,
  * gabble_media_stream_new_active_candidate_pair
  *
  * Implements DBus method NewActiveCandidatePair
- * on interface org.freedesktop.Telepathy.Media.StreamHandler
+ * on interface org.freedesktop.Telepathy.Ice.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this
@@ -532,7 +532,7 @@ gboolean gabble_media_stream_new_active_candidate_pair (GabbleMediaStream *obj, 
  * gabble_media_stream_new_native_candidate
  *
  * Implements DBus method NewNativeCandidate
- * on interface org.freedesktop.Telepathy.Media.StreamHandler
+ * on interface org.freedesktop.Telepathy.Ice.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this
@@ -600,7 +600,7 @@ gboolean gabble_media_stream_new_native_candidate (GabbleMediaStream *obj, const
  * gabble_media_stream_ready
  *
  * Implements DBus method Ready
- * on interface org.freedesktop.Telepathy.Media.StreamHandler
+ * on interface org.freedesktop.Telepathy.Ice.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this
@@ -638,7 +638,7 @@ gboolean gabble_media_stream_ready (GabbleMediaStream *obj, const GPtrArray * co
  * gabble_media_stream_stream_state
  *
  * Implements DBus method StreamState
- * on interface org.freedesktop.Telepathy.Media.StreamHandler
+ * on interface org.freedesktop.Telepathy.Ice.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this
@@ -663,7 +663,7 @@ gboolean gabble_media_stream_stream_state (GabbleMediaStream *obj, guint state, 
  * gabble_media_stream_supported_codecs
  *
  * Implements DBus method SupportedCodecs
- * on interface org.freedesktop.Telepathy.Media.StreamHandler
+ * on interface org.freedesktop.Telepathy.Ice.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occured, DBus will throw the error only if this

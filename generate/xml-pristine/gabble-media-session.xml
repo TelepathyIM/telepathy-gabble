@@ -1,12 +1,13 @@
 <?xml version="1.0" ?>
 <node name="/GabbleMediaSession">
-  <interface name="org.freedesktop.Telepathy.Media.SessionHandler">
+  <interface name="org.freedesktop.Telepathy.Ice.SessionHandler">
     <method name="Error">
       <arg direction="in" name="errno" type="u"/>
       <arg direction="in" name="message" type="s"/>
     </method>
-    <signal name="NewMediaStreamHandler">
+    <signal name="NewIceStreamHandler">
       <arg name="stream_handler" type="o"/>
+      <arg name="id" type="u"/>
       <arg name="media_type" type="u"/>
       <arg name="direction" type="u"/>
     </signal>

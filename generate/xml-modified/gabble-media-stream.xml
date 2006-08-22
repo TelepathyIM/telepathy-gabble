@@ -1,6 +1,6 @@
 <?xml version="1.0" ?>
 <node name="/GabbleMediaStream">
-  <interface name="org.freedesktop.Telepathy.Media.StreamHandler">
+  <interface name="org.freedesktop.Telepathy.Ice.StreamHandler">
     <signal name="AddRemoteCandidate">
       <arg name="candidate_id" type="s"/>
       <arg name="transports" type="a(usuussduss)"/>

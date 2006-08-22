@@ -61,20 +61,33 @@
       <arg direction="in" name="message" type="s"/>
     </method>
   </interface>
-  <interface name="org.freedesktop.Telepathy.Channel.Type.StreamedMedia">
+  <interface name="org.freedesktop.Telepathy.Channel.Interface.IceSignalling">
     <method name="GetSessionHandlers">
-      <arg direction="out" type="a(uos)"/>
+      <arg direction="out" type="a(os)"/>
     </method>
-    <method name="GetStreams">
-      <arg direction="out" type="a(uuuu)"/>
-    </method>
-    <signal name="NewMediaSessionHandler">
-      <arg name="member" type="u"/>
+    <signal name="NewIceSessionHandler">
       <arg name="session_handler" type="o"/>
       <arg name="type" type="s"/>
     </signal>
-    <signal name="StreamStateChanged">
+  </interface>
+  <interface name="org.freedesktop.Telepathy.Channel.Type.StreamedMedia">
+    <method name="ListStreams">
+      <arg direction="out" type="a(uuuuu)"/>
+    </method>
+    <method name="RequestStreams">
+      <arg direction="in" name="contact_handle" type="u"/>
+      <arg direction="in" name="types" type="au"/>
+      <arg direction="out" type="au"/>
+    </method>
+    <signal name="StreamAdded">
+      <arg name="stream_id" type="u"/>
       <arg name="contact_handle" type="u"/>
+      <arg name="stream_type" type="u"/>
+    </signal>
+    <signal name="StreamRemoved">
+      <arg name="stream_id" type="u"/>
+    </signal>
+    <signal name="StreamStateChanged">
       <arg name="stream_id" type="u"/>
       <arg name="stream_state" type="u"/>
     </signal>

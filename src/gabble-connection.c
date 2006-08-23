@@ -4431,19 +4431,19 @@ gboolean gabble_connection_request_handles (GabbleConnection *obj, guint handle_
 
           if (!strcmp (name, "publish"))
             {
-              handle = gabble_handle_for_list_publish (obj->handles);
+              handle = GABBLE_LIST_HANDLE_PUBLISH;
             }
           else if (!strcmp (name, "subscribe"))
             {
-              handle = gabble_handle_for_list_subscribe (obj->handles);
+              handle = GABBLE_LIST_HANDLE_SUBSCRIBE;
             }
           else if (!strcmp (name, "known"))
             {
-              handle = gabble_handle_for_list_known (obj->handles);
+              handle = GABBLE_LIST_HANDLE_KNOWN;
             }
           else if (!strcmp (name, "block"))
             {
-              handle = gabble_handle_for_list_block (obj->handles);
+              handle = GABBLE_LIST_HANDLE_BLOCK;
             }
           else
             {

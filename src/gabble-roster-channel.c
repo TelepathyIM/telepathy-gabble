@@ -116,7 +116,7 @@ gabble_roster_channel_constructor (GType type, guint n_props,
   gabble_group_mixin_init (obj, G_STRUCT_OFFSET (GabbleRosterChannel, group),
                            handles, self_handle);
 
-  if (gabble_handle_for_list_publish (handles) == priv->handle)
+  if (GABBLE_LIST_HANDLE_PUBLISH == priv->handle)
     {
       gabble_group_mixin_change_flags (obj,
           TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
@@ -124,7 +124,7 @@ gabble_roster_channel_constructor (GType type, guint n_props,
           TP_CHANNEL_GROUP_FLAG_MESSAGE_REMOVE,
           0);
     }
-  else if (gabble_handle_for_list_subscribe (handles) == priv->handle)
+  else if (GABBLE_LIST_HANDLE_SUBSCRIBE == priv->handle)
     {
       gabble_group_mixin_change_flags (obj,
           TP_CHANNEL_GROUP_FLAG_CAN_ADD |
@@ -135,13 +135,13 @@ gabble_roster_channel_constructor (GType type, guint n_props,
           TP_CHANNEL_GROUP_FLAG_MESSAGE_RESCIND,
           0);
     }
-  else if (gabble_handle_for_list_known (handles) == priv->handle)
+  else if (GABBLE_LIST_HANDLE_KNOWN == priv->handle)
     {
       gabble_group_mixin_change_flags (obj,
           TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
           0);
     }
-  else if (gabble_handle_for_list_block (handles) == priv->handle)
+  else if (GABBLE_LIST_HANDLE_BLOCK == priv->handle)
     {
       gabble_group_mixin_change_flags (obj,
           TP_CHANNEL_GROUP_FLAG_CAN_ADD |
@@ -363,21 +363,21 @@ _gabble_roster_channel_add_member_cb (GObject *obj,
       gabble_handle_inspect (repo, TP_HANDLE_TYPE_CONTACT, handle), message);
 
   /* publish list */
-  if (gabble_handle_for_list_publish (repo) == priv->handle)
+  if (GABBLE_LIST_HANDLE_PUBLISH == priv->handle)
     {
       /* send <presence type="subscribed"> */
       ret = _gabble_roster_channel_send_presence (GABBLE_ROSTER_CHANNEL (obj),
           LM_MESSAGE_SUB_TYPE_SUBSCRIBED, handle, message, error);
     }
   /* subscribe list */
-  else if (gabble_handle_for_list_subscribe (repo) == priv->handle)
+  else if (GABBLE_LIST_HANDLE_SUBSCRIBE == priv->handle)
     {
       /* send <presence type="subscribe"> */
       ret = _gabble_roster_channel_send_presence (GABBLE_ROSTER_CHANNEL (obj),
           LM_MESSAGE_SUB_TYPE_SUBSCRIBE, handle, message, error);
     }
   /* block list */
-  else if (gabble_handle_for_list_block (repo) == priv->handle)
+  else if (GABBLE_LIST_HANDLE_BLOCK == priv->handle)
     {
       /* block contact */
       ret = gabble_roster_handle_set_blocked (priv->conn->roster, handle, TRUE,
@@ -416,27 +416,27 @@ _gabble_roster_channel_remove_member_cb (GObject *obj,
       gabble_handle_inspect (repo, TP_HANDLE_TYPE_CONTACT, handle), message);
 
   /* publish list */
-  if (gabble_handle_for_list_publish (repo) == priv->handle)
+  if (GABBLE_LIST_HANDLE_PUBLISH == priv->handle)
     {
       /* send <presence type="unsubscribed"> */
       ret = _gabble_roster_channel_send_presence (GABBLE_ROSTER_CHANNEL (obj),
           LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED, handle, message, error);
     }
   /* subscribe list */
-  else if (gabble_handle_for_list_subscribe (repo) == priv->handle)
+  else if (GABBLE_LIST_HANDLE_SUBSCRIBE == priv->handle)
     {
       /* send <presence type="unsubscribe"> */
       ret = _gabble_roster_channel_send_presence (GABBLE_ROSTER_CHANNEL (obj),
           LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE, handle, message, error);
     }
   /* known list */
-  else if (gabble_handle_for_list_known (repo) == priv->handle)
+  else if (GABBLE_LIST_HANDLE_KNOWN == priv->handle)
     {
       /* send roster subscription=remove IQ */
       ret = gabble_roster_handle_remove (priv->conn->roster, handle, error);
     }
   /* block list */
-  else if (gabble_handle_for_list_block (repo) == priv->handle)
+  else if (GABBLE_LIST_HANDLE_BLOCK == priv->handle)
     {
       /* unblock contact */
       ret = gabble_roster_handle_set_blocked (priv->conn->roster, handle, FALSE,

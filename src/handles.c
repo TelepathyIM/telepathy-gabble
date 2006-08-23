@@ -23,7 +23,6 @@
 
 #include "gheap.h"
 #include "handles.h"
-#include "handles-private.h"
 #include "telepathy-errors.h"
 
 #define JID_MAX_SIZE 256
@@ -48,6 +47,14 @@ struct _GabbleHandleRepo
   GHeap *free_room_handles;
   guint contact_serial;
   guint room_serial;
+};
+
+static const char *list_handle_strings[GABBLE_LIST_HANDLE_BLOCK] =
+{
+    "publish",      /* GABBLE_LIST_HANDLE_PUBLISH */
+    "subscribe",    /* GABBLE_LIST_HANDLE_SUBSCRIBE */
+    "known",        /* GABBLE_LIST_HANDLE_KNOWN */
+    "block"         /* GABBLE_LIST_HANDLE_BLOCK */
 };
 
 /* private functions */
@@ -379,20 +386,20 @@ gabble_handle_repo_new ()
 
   g_datalist_init (&repo->list_handles);
 
-  publish = gabble_handle_for_list_publish (repo);
-  g_datalist_id_set_data_full (&repo->list_handles, publish,
+  publish = GABBLE_LIST_HANDLE_PUBLISH;
+  g_datalist_id_set_data_full (&repo->list_handles, (GQuark) publish,
       handle_priv_new(), (GDestroyNotify) handle_priv_free);
 
-  subscribe = gabble_handle_for_list_subscribe (repo);
-  g_datalist_id_set_data_full (&repo->list_handles, subscribe,
+  subscribe = GABBLE_LIST_HANDLE_SUBSCRIBE;
+  g_datalist_id_set_data_full (&repo->list_handles, (GQuark) subscribe,
       handle_priv_new(), (GDestroyNotify) handle_priv_free);
 
-  known = gabble_handle_for_list_known (repo);
-  g_datalist_id_set_data_full (&repo->list_handles, known,
+  known = GABBLE_LIST_HANDLE_KNOWN;
+  g_datalist_id_set_data_full (&repo->list_handles, (GQuark) known,
       handle_priv_new(), (GDestroyNotify) handle_priv_free);
 
-  block = gabble_handle_for_list_block (repo);
-  g_datalist_id_set_data_full (&repo->list_handles, block,
+  block = GABBLE_LIST_HANDLE_BLOCK;
+  g_datalist_id_set_data_full (&repo->list_handles, (GQuark) block,
       handle_priv_new(), (GDestroyNotify) handle_priv_free);
 
   return repo;
@@ -476,6 +483,9 @@ gabble_handle_ref (GabbleHandleRepo *repo,
 {
   GabbleHandlePriv *priv;
 
+  if (type == TP_HANDLE_TYPE_LIST)
+    return TRUE;
+
   priv = handle_priv_lookup (repo, type, handle);
 
   if (priv == NULL)
@@ -492,6 +502,9 @@ gabble_handle_unref (GabbleHandleRepo *repo,
                      GabbleHandle handle)
 {
   GabbleHandlePriv *priv;
+
+  if (type == TP_HANDLE_TYPE_LIST)
+    return TRUE;
 
   priv = handle_priv_lookup (repo, type, handle);
 
@@ -514,6 +527,13 @@ gabble_handle_inspect (GabbleHandleRepo *repo,
                        GabbleHandle handle)
 {
   GabbleHandlePriv *priv;
+
+  if (type == TP_HANDLE_TYPE_LIST)
+    {
+      g_assert (handle >= GABBLE_LIST_HANDLE_PUBLISH
+                  && handle <= GABBLE_LIST_HANDLE_BLOCK);
+      return list_handle_strings[handle-1];
+    }
 
   priv = handle_priv_lookup (repo, type, handle);
 
@@ -666,65 +686,23 @@ gabble_handle_for_room (GabbleHandleRepo *repo,
 }
 
 GabbleHandle
-gabble_handle_for_list_publish (GabbleHandleRepo *repo)
+gabble_handle_for_list (GabbleHandleRepo *repo,
+                        const gchar *list)
 {
-  static GabbleHandle publish = 0;
+  GabbleHandle handle = 0;
+  int i;
 
-  g_return_val_if_fail (repo != NULL, 0);
+  g_assert (repo != NULL);
+  g_assert (list != NULL);
 
-  if (publish == 0)
+  for (i = 0; i < GABBLE_LIST_HANDLE_BLOCK; i++)
     {
-      publish = g_quark_from_static_string ("publish");
+      if (0 == strcmp (list_handle_strings[i], list))
+        handle = (GabbleHandle) i + 1;
     }
 
-  return publish;
+  return handle;
 }
-
-GabbleHandle
-gabble_handle_for_list_subscribe (GabbleHandleRepo *repo)
-{
-  static GabbleHandle subscribe = 0;
-
-  g_return_val_if_fail (repo != NULL, 0);
-
-  if (subscribe == 0)
-    {
-      subscribe = g_quark_from_static_string ("subscribe");
-    }
-
-  return subscribe;
-}
-
-GabbleHandle
-gabble_handle_for_list_known (GabbleHandleRepo *repo)
-{
-  static GabbleHandle known = 0;
-
-  g_return_val_if_fail (repo != NULL, 0);
-
-  if (known == 0)
-    {
-      known = g_quark_from_static_string ("known");
-    }
-
-  return known;
-}
-
-GabbleHandle
-gabble_handle_for_list_block (GabbleHandleRepo *repo)
-{
-  static GabbleHandle block = 0;
-
-  g_return_val_if_fail (repo != NULL, 0);
-
-  if (block == 0)
-    {
-      block = g_quark_from_static_string ("block");
-    }
-
-  return block;
-}
-
 
 /**
  * gabble_handle_set_qdata:

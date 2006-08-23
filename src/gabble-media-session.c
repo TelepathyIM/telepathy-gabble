@@ -543,6 +543,7 @@ gboolean gabble_media_session_ready (GabbleMediaSession *obj, GError **error)
 
 static gboolean
 _handle_candidates (GabbleMediaSession *session,
+                    LmMessage *message,
                     LmMessageNode *iq_node,
                     LmMessageNode *session_node)
 {
@@ -554,7 +555,7 @@ _handle_candidates (GabbleMediaSession *session,
       priv->state >= JS_STATE_ENDED)
     return FALSE;
 
-  if (!_gabble_media_stream_post_remote_candidates (priv->stream, iq_node,
+  if (!_gabble_media_stream_post_remote_candidates (priv->stream, message,
                                                     session_node))
     {
       GMS_DEBUG_ERROR (session,
@@ -567,8 +568,9 @@ _handle_candidates (GabbleMediaSession *session,
 
 static gboolean
 _handle_initiate (GabbleMediaSession *session,
-                    LmMessageNode *iq_node,
-                    LmMessageNode *session_node)
+                  LmMessage *message,
+                  LmMessageNode *iq_node,
+                  LmMessageNode *session_node)
 {
   LmMessageNode *desc_node;
   GabbleMediaSessionPrivate *priv;
@@ -583,7 +585,7 @@ _handle_initiate (GabbleMediaSession *session,
   if (!desc_node)
     return FALSE;
 
-  if (!_gabble_media_stream_post_remote_codecs (priv->stream, iq_node,
+  if (!_gabble_media_stream_post_remote_codecs (priv->stream, message,
                                                 desc_node))
     return FALSE;
 
@@ -593,6 +595,7 @@ _handle_initiate (GabbleMediaSession *session,
 
 static gboolean
 _handle_accept (GabbleMediaSession *session,
+                LmMessage *message,
                 LmMessageNode *iq_node,
                 LmMessageNode *session_node)
 {
@@ -609,7 +612,7 @@ _handle_accept (GabbleMediaSession *session,
   if (!desc_node)
     return FALSE;
 
-  if (!_gabble_media_stream_post_remote_codecs (priv->stream, iq_node,
+  if (!_gabble_media_stream_post_remote_codecs (priv->stream, message,
                                                 desc_node))
     return FALSE;
 
@@ -619,6 +622,7 @@ _handle_accept (GabbleMediaSession *session,
 
 static gboolean
 _handle_reject (GabbleMediaSession *session,
+                LmMessage *message,
                 LmMessageNode *iq_node,
                 LmMessageNode *session_node)
 {
@@ -635,6 +639,7 @@ _handle_reject (GabbleMediaSession *session,
 
 static gboolean
 _handle_terminate (GabbleMediaSession *session,
+                   LmMessage *message,
                    LmMessageNode *iq_node,
                    LmMessageNode *session_node)
 {
@@ -650,6 +655,7 @@ _handle_terminate (GabbleMediaSession *session,
 }
 
 typedef gboolean (*HandlerFunc)(GabbleMediaSession *session,
+                                LmMessage *message,
                                 LmMessageNode *iq_node,
                                 LmMessageNode *session_node);
 
@@ -710,7 +716,7 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
       goto ACK_FAILURE;
     }
 
-  if (!func (session, iq_node, session_node))
+  if (!func (session, message, iq_node, session_node))
     {
       GMS_DEBUG_ERROR (session,
         "error encountered with action \"%s\" in current state -- "

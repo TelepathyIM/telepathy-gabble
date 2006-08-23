@@ -559,7 +559,7 @@ _handle_candidates (GabbleMediaSession *session,
     {
       GMS_DEBUG_ERROR (session,
         "%s: gabble_media_stream_post_remote_candidates failed", G_STRFUNC);
-      HANDLER_DEBUG (session_node, "session_node");
+      NODE_DEBUG (session_node, "session_node");
     }
 
   return TRUE;
@@ -679,7 +679,9 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
                                      const gchar *action)
 {
   GabbleMediaSessionPrivate *priv;
-  LmMessageNode *desc_node;
+  HandlerFunc func = NULL;
+  Handler *i;
+  LmMessageNode *iq_node;
 
   g_assert (GABBLE_IS_MEDIA_SESSION (session));
 
@@ -694,55 +696,18 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
 
   for (i = handlers; NULL != i->action; i++)
     {
-      if (priv->state < JS_STATE_PENDING_INITIATED ||
-          priv->state >= JS_STATE_ENDED)
-        goto ACK_FAILURE;
-
-      if (!_gabble_media_stream_post_remote_candidates (priv->stream, iq_node, session_node))
+      if (0 == strcmp (i->action, action))
         {
-          GMS_DEBUG_ERROR (session, "%s: gabble_media_stream_post_remote_candidates failed",
-                           G_STRFUNC);
-          HANDLER_DEBUG (session_node, "session_node");
+          func = i->handler;
+          break;
         }
     }
-  else if (strcmp (action, "initiate") == 0 ||
-           strcmp (action, "session-initiate") == 0)
-    {
-      if (priv->state != JS_STATE_PENDING_CREATED)
-        goto ACK_FAILURE;
-
-      desc_node = lm_message_node_get_child (session_node, "description");
-      if (!desc_node)
-        goto ACK_FAILURE;
-
-      if (_gabble_media_stream_post_remote_codecs (priv->stream, iq_node, desc_node))
-        {
-          g_object_set (session, "state", JS_STATE_PENDING_INITIATED, NULL);
-        }
-      else
-        {
-          goto ACK_FAILURE;
-        }
 
   if (NULL == func)
     {
-      if (priv->state != JS_STATE_PENDING_INITIATED)
-        goto ACK_FAILURE;
-
-      desc_node = lm_message_node_get_child (session_node, "description");
-      if (!desc_node)
-        goto ACK_FAILURE;
-
-      if (_gabble_media_stream_post_remote_codecs (priv->stream, iq_node, desc_node))
-        {
-          g_object_set (session, "state", JS_STATE_ACTIVE, NULL);
-        }
-      else
-        {
-          goto ACK_FAILURE;
-        }
-
-      return;
+      GMS_DEBUG_ERROR (session,
+        "received unrecognised action \"%s\"; terminating session", action);
+      goto ACK_FAILURE;
     }
 
   if (!func (session, iq_node, session_node))

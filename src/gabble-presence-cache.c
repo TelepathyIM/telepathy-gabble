@@ -798,7 +798,7 @@ gabble_presence_cache_lm_message_cb (LmMessageHandler *handler,
 
   if (NULL == from)
     {
-      HANDLER_DEBUG (message->node, "presence stanza without from attribute, ignoring");
+      NODE_DEBUG (message->node, "message without from attribute, ignoring");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
@@ -806,13 +806,14 @@ gabble_presence_cache_lm_message_cb (LmMessageHandler *handler,
 
   if (0 == handle)
     {
-      HANDLER_DEBUG (message->node, "ignoring presence from malformed jid");
+      NODE_DEBUG (message->node, "ignoring message from malformed jid");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
   if (handle == priv->conn->self_handle)
     {
-      HANDLER_DEBUG (message->node, "ignoring presence from ourselves on another resource");
+      NODE_DEBUG (message->node,
+        "ignoring message from ourselves on another resource");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 

@@ -226,38 +226,6 @@ gabble_handle_jid_is_valid (TpHandleType type, const gchar *jid, GError **error)
 }
 
 /**
- * gabble_handle_jid_get_base
- *
- * Utility function to extract the base portion of a jid.
- *
- * The character array pointed to by base_jid must be at
- * least JID_MAX_SIZE bytes in size.
- */
-void gabble_handle_jid_get_base (const gchar *jid, gchar *base_jid)
-{
-  const gchar *p;
-  gint len;
-
-  p = strchr (jid, '/');
-  if (p == NULL)
-    {
-      len = strlen (jid);
-    }
-  else
-    {
-      len = p - jid;
-    }
-
-  if (len >= JID_MAX_SIZE)
-    {
-      len = JID_MAX_SIZE - 1;
-    }
-
-  strncpy (base_jid, jid, len);
-  base_jid[len] = '\0';
-}
-
-/**
  * gabble_handle_decode_jid
  *
  * Parses a JID which may be one of the following forms:
@@ -265,6 +233,7 @@ void gabble_handle_jid_get_base (const gchar *jid, gchar *base_jid)
  *  server/resource
  *  username@server
  *  username@server/resource
+ *  room@service/nick
  * And sets the caller's username, server and resource pointers. The
  * caller may set any of the pointers to NULL if they are not interested
  * in a certain component.
@@ -623,16 +592,28 @@ gabble_handle_for_room_exists (GabbleHandleRepo *repo,
                                const gchar *jid,
                                gboolean ignore_nick)
 {
-  gchar base_jid[JID_MAX_SIZE];
   GabbleHandle handle;
+  gchar *room, *service, *nick;
+  gchar *clean_jid;
 
-  if (ignore_nick)
-    {
-      gabble_handle_jid_get_base (jid, base_jid);
-    }
+  gabble_handle_decode_jid (jid, &room, &service, &nick);
+
+  if (!room || !service || room[0] == '\0')
+    return FALSE;
+
+  if (ignore_nick || !nick)
+    clean_jid = g_strdup_printf ("%s@%s", room, service);
+  else
+    clean_jid = g_strdup_printf ("%s@%s/%s", room, service, nick);
 
   handle = GPOINTER_TO_UINT (g_hash_table_lookup (repo->room_strings,
-                                                  ignore_nick ? base_jid : jid));
+                                                  clean_jid));
+  
+  g_free (clean_jid);
+  g_free (room);
+  g_free (service);
+  g_free (nick);
+
   if (handle == 0)
     return FALSE;
 

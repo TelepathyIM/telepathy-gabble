@@ -45,8 +45,16 @@ AC_ARG_ENABLE(debug,
   AC_HELP_STRING([--disable-debug],[compile without debug code]),
     enable_debug=$enableval, enable_debug=yes )
 
+AC_ARG_ENABLE(handle-leak-debug,
+  AC_HELP_STRING([--enable-handle-leak-debug],[compile with handle leak debugging code]),
+    enable_handle_leak_debug=$enableval, enable_handle_leak_debug=no )
+
 if test x$enable_debug = xyes; then
   AC_DEFINE(ENABLE_DEBUG, [], [Enable debug code])
+fi
+
+if test x$enable_handle_leak_debug = xyes; then
+  AC_DEFINE(ENABLE_HANDLE_LEAK_DEBUG, [], [Enable handle leak debug code])
 fi
 
 AC_HEADER_STDC([])

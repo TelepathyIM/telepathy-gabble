@@ -25,6 +25,14 @@
 #include "handles.h"
 #include "telepathy-errors.h"
 
+#include "config.h"
+
+#ifdef ENABLE_HANDLE_LEAK_DEBUG
+#include <stdlib.h>
+#include <stdio.h>
+#include <execinfo.h>
+#endif /* ENABLE_HANDLE_LEAK_DEBUG */
+
 #define JID_MAX_SIZE 256
 
 typedef struct _GabbleHandlePriv GabbleHandlePriv;
@@ -33,6 +41,10 @@ struct _GabbleHandlePriv
 {
   guint refcount;
   gchar *string;
+#ifdef ENABLE_HANDLE_LEAK_DEBUG
+  char **trace;
+  int trace_len;
+#endif /* ENABLE_HANDLE_LEAK_DEBUG */
   GData *datalist;
 };
 
@@ -77,6 +89,9 @@ handle_priv_free (GabbleHandlePriv *priv)
 
   g_free(priv->string);
   g_datalist_clear (&(priv->datalist));
+#ifdef ENABLE_HANDLE_LEAK_DEBUG
+  free (priv->trace);
+#endif /* ENABLE_HANDLE_LEAK_DEBUG */
   g_free (priv);
 }
 
@@ -374,6 +389,34 @@ gabble_handle_repo_new ()
   return repo;
 }
 
+#ifdef ENABLE_HANDLE_LEAK_DEBUG
+void
+handle_leak_debug_printbt_foreach (gpointer key, gpointer value, gpointer ignore)
+{
+  GabbleHandle handle = GPOINTER_TO_UINT (key);
+  GabbleHandlePriv *priv = (GabbleHandlePriv *) value;
+  int i;
+
+  printf ("\t%5u:%20s (%u references)\n", handle, priv->string, priv->refcount);
+
+  for (i = 0; i < priv->trace_len; i++)
+    {
+      printf ("\t\t%s\n", priv->trace[i]);
+    }
+}
+
+void
+handle_leak_debug_print_report (GabbleHandleRepo *repo)
+{
+  g_assert (repo != NULL);
+
+  printf ("The following contact handles were not freed:\n");
+  g_hash_table_foreach (repo->contact_handles, handle_leak_debug_printbt_foreach, NULL);
+  printf ("The following room handles were not freed:\n");
+  g_hash_table_foreach (repo->room_handles, handle_leak_debug_printbt_foreach, NULL);
+}
+#endif /* ENABLE_HANDLE_LEAK_DEBUG */
+
 void
 gabble_handle_repo_destroy (GabbleHandleRepo *repo)
 {
@@ -382,6 +425,10 @@ gabble_handle_repo_destroy (GabbleHandleRepo *repo)
   g_assert (repo->room_handles);
   g_assert (repo->contact_strings);
   g_assert (repo->room_strings);
+
+#ifdef ENABLE_HANDLE_LEAK_DEBUG
+  handle_leak_debug_print_report (repo);
+#endif /* ENABLE_HANDLE_LEAK_DEBUG */
 
   g_hash_table_destroy (repo->contact_handles);
   g_hash_table_destroy (repo->room_handles);
@@ -536,6 +583,22 @@ _handle_lookup_by_jid (GabbleHandleRepo *repo,
   return handle;
 }
 
+#ifdef ENABLE_HANDLE_LEAK_DEBUG
+void
+handle_leak_debug_bt (GabbleHandlePriv *priv)
+{
+  void *bt_addresses[32];
+  gchar **ret;
+  int bt_len;
+  
+  bt_len = backtrace (bt_addresses, 32);
+  ret = backtrace_symbols (bt_addresses, bt_len);
+
+  priv->trace = ret;
+  priv->trace_len = bt_len;
+}
+#endif /* ENABLE_HANDLE_LEAK_DEBUG */
+
 GabbleHandle
 gabble_handle_for_contact (GabbleHandleRepo *repo,
                            const char *jid,
@@ -585,6 +648,10 @@ gabble_handle_for_contact (GabbleHandleRepo *repo,
   clean_jid = NULL;
   g_hash_table_insert (repo->contact_handles, GINT_TO_POINTER (handle), priv);
   g_hash_table_insert (repo->contact_strings, priv->string, GUINT_TO_POINTER (handle));
+
+#ifdef ENABLE_HANDLE_LEAK_DEBUG
+  handle_leak_debug_bt (priv);
+#endif /* ENABLE_HANDLE_LEAK_DEBUG */
 
 OUT:
   /* FIXME: add unrefing to every place gabble_handle_for_{contact,room} is used and uncomment this */
@@ -660,6 +727,10 @@ gabble_handle_for_room (GabbleHandleRepo *repo,
           priv->string = clean_jid;
           g_hash_table_insert (repo->room_handles, GUINT_TO_POINTER (handle), priv);
           g_hash_table_insert (repo->room_strings, clean_jid, GUINT_TO_POINTER (handle));
+
+#ifdef ENABLE_HANDLE_LEAK_DEBUG
+          handle_leak_debug_bt (priv);
+#endif /* ENABLE_HANDLE_LEAK_DEBUG */
         }
       else
         {

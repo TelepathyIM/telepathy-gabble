@@ -966,9 +966,9 @@ gabble_connection_finalize (GObject *object)
   g_datalist_clear (&priv->client_contact_handle_sets);
   g_datalist_clear (&priv->client_list_handle_sets);
 
-  gabble_handle_repo_destroy (self->handles);
-
   gabble_properties_mixin_finalize (object);
+
+  gabble_handle_repo_destroy (self->handles);
 
   G_OBJECT_CLASS (gabble_connection_parent_class)->finalize (object);
 }

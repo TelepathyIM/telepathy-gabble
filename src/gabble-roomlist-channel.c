@@ -29,6 +29,7 @@
 #include "disco.h"
 #include "gabble-connection.h"
 #include "handles.h"
+#include "handle-set.h"
 #include "telepathy-constants.h"
 #include "telepathy-interfaces.h"
 #include "telepathy-helpers.h"
@@ -89,6 +90,7 @@ struct _GabbleRoomlistChannelPrivate
 
   GPtrArray *disco_pipeline;
   GHashTable *remaining_rooms;
+  GabbleHandleSet *signalled_rooms;
 
   gboolean dispose_has_run;
 };
@@ -178,6 +180,11 @@ gabble_roomlist_channel_set_property (GObject     *object,
       break;
     case PROP_CONNECTION:
       priv->conn = g_value_get_object (value);
+      if (priv->signalled_rooms)
+        {
+          handle_set_destroy (priv->signalled_rooms);
+        }
+      priv->signalled_rooms = handle_set_new (priv->conn->handles, TP_HANDLE_TYPE_ROOM);
       break;
     case PROP_CONFERENCE_SERVER:
       g_free (priv->conference_server);
@@ -325,6 +332,9 @@ gabble_roomlist_channel_finalize (GObject *object)
 
   g_ptr_array_free (priv->disco_pipeline, TRUE);
   g_hash_table_destroy (priv->remaining_rooms);
+
+  if (priv->signalled_rooms)
+    handle_set_destroy (priv->signalled_rooms);
 
   G_OBJECT_CLASS (gabble_roomlist_channel_parent_class)->finalize (object);
 }
@@ -569,6 +579,8 @@ room_info_cb (GabbleDisco *disco,
       DEBUG ("emitting new room signal for %s", jid);
 
       handle = gabble_handle_for_room (priv->conn->handles, jid);
+
+      handle_set_add (priv->signalled_rooms, handle);
 
       g_value_init (&room, TP_TYPE_ROOM_STRUCT);
       g_value_take_boxed (&room,

@@ -4429,23 +4429,9 @@ gboolean gabble_connection_request_handles (GabbleConnection *obj, guint handle_
           GabbleHandle handle;
           const gchar *name = names[i];
 
-          if (!strcmp (name, "publish"))
-            {
-              handle = GABBLE_LIST_HANDLE_PUBLISH;
-            }
-          else if (!strcmp (name, "subscribe"))
-            {
-              handle = GABBLE_LIST_HANDLE_SUBSCRIBE;
-            }
-          else if (!strcmp (name, "known"))
-            {
-              handle = GABBLE_LIST_HANDLE_KNOWN;
-            }
-          else if (!strcmp (name, "block"))
-            {
-              handle = GABBLE_LIST_HANDLE_BLOCK;
-            }
-          else
+          handle = gabble_handle_for_list (obj->handles, name);
+
+          if (handle == 0)
             {
               DEBUG ("requested list channel %s not available", name);
 

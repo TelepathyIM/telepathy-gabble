@@ -46,7 +46,6 @@
 #include "media-factory.h"
 
 #define TP_SESSION_HANDLER_SET_TYPE (dbus_g_type_get_struct ("GValueArray", \
-      G_TYPE_UINT, \
       DBUS_TYPE_G_OBJECT_PATH, \
       G_TYPE_STRING, \
       G_TYPE_INVALID))
@@ -759,7 +758,6 @@ gboolean gabble_media_channel_get_session_handlers (GabbleMediaChannel *obj, GPt
                     NULL);
 
       dbus_g_type_struct_set (&handler,
-          0, member,
           1, path,
           2, "rtp",
           G_MAXUINT);

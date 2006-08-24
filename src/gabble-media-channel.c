@@ -758,8 +758,8 @@ gboolean gabble_media_channel_get_session_handlers (GabbleMediaChannel *obj, GPt
                     NULL);
 
       dbus_g_type_struct_set (&handler,
-          1, path,
-          2, "rtp",
+          0, path,
+          1, "rtp",
           G_MAXUINT);
 
       g_free (path);

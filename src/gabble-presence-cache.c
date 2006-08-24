@@ -23,6 +23,8 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 
+#include "debug.h"
+#include "disco.h" /* \o\ \o/ /o/ */
 #include "gabble-presence.h"
 #include "namespaces.h"
 #include "util.h"

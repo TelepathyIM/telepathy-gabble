@@ -453,7 +453,12 @@ gabble_handle_ref (GabbleHandleRepo *repo,
   GabbleHandlePriv *priv;
 
   if (type == TP_HANDLE_TYPE_LIST)
-    return TRUE;
+    {
+      if (handle >= GABBLE_LIST_HANDLE_PUBLISH && handle <= GABBLE_LIST_HANDLE_BLOCK)
+        return TRUE;
+      else
+        return FALSE;
+    }
 
   priv = handle_priv_lookup (repo, type, handle);
 
@@ -473,7 +478,12 @@ gabble_handle_unref (GabbleHandleRepo *repo,
   GabbleHandlePriv *priv;
 
   if (type == TP_HANDLE_TYPE_LIST)
-    return TRUE;
+    {
+      if (handle >= GABBLE_LIST_HANDLE_PUBLISH && handle <= GABBLE_LIST_HANDLE_BLOCK)
+        return TRUE;
+      else
+        return FALSE;
+    }
 
   priv = handle_priv_lookup (repo, type, handle);
 

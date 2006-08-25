@@ -27,6 +27,7 @@
 #include "gabble-presence.h"
 #include "namespaces.h"
 #include "util.h"
+#include "handle-set.h"
 
 #include "gabble-presence-cache.h"
 
@@ -61,6 +62,7 @@ struct _GabblePresenceCachePrivate
   LmMessageHandler *lm_message_cb;
 
   GHashTable *presence;
+  GabbleHandleSet *presence_handles;
 
   gboolean dispose_has_run;
 };
@@ -174,6 +176,9 @@ gabble_presence_cache_dispose (GObject *object)
   g_hash_table_destroy (priv->presence);
   priv->presence = NULL;
 
+  handle_set_destroy (priv->presence_handles);
+  priv->presence_handles = NULL;
+
   if (G_OBJECT_CLASS (gabble_presence_cache_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_presence_cache_parent_class)->dispose (object);
 }
@@ -213,10 +218,23 @@ gabble_presence_cache_set_property (GObject     *object,
 {
   GabblePresenceCache *cache = GABBLE_PRESENCE_CACHE (object);
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
+  GabbleHandleSet *new_presence_handles;
 
   switch (property_id) {
     case PROP_CONNECTION:
       priv->conn = g_value_get_object (value);
+      new_presence_handles = handle_set_new (priv->conn->handles, TP_HANDLE_TYPE_CONTACT);
+
+      if (priv->presence_handles)
+        {
+          const GIntSet *add;
+          GIntSet *tmp;
+          add = handle_set_peek (priv->presence_handles);
+          tmp = handle_set_update (new_presence_handles, add);
+          handle_set_destroy (priv->presence_handles);
+          g_intset_destroy (tmp);
+        }
+      priv->presence_handles = new_presence_handles;
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -626,7 +644,7 @@ _cache_insert (
 
   presence = gabble_presence_new ();
   g_hash_table_insert (priv->presence, GINT_TO_POINTER (handle), presence);
-  gabble_handle_ref (priv->conn->handles, TP_HANDLE_TYPE_CONTACT, handle);
+  handle_set_add (priv->presence_handles, handle);
   return presence;
 }
 

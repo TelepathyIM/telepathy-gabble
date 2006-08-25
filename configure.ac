@@ -55,7 +55,10 @@ fi
 
 if test x$enable_handle_leak_debug = xyes; then
   AC_DEFINE(ENABLE_HANDLE_LEAK_DEBUG, [], [Enable handle leak debug code])
+  HANDLE_LEAK_DEBUG_CFLAGS="-rdynamic"
 fi
+
+AC_SUBST(ERROR_CFLAGS)
 
 AC_HEADER_STDC([])
 AC_C_INLINE

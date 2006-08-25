@@ -450,10 +450,10 @@ handle_leak_debug_print_report (GabbleHandleRepo *repo)
 static HandleLeakTrace *
 handle_leak_debug_bt ()
 {
-  void *bt_addresses[6];
+  void *bt_addresses[16];
   HandleLeakTrace *ret = g_new0 (HandleLeakTrace, 1);
   
-  ret->len = backtrace (bt_addresses, 6);
+  ret->len = backtrace (bt_addresses, 16);
   ret->trace = backtrace_symbols (bt_addresses, ret->len);
 
   return ret;

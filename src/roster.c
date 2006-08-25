@@ -189,6 +189,15 @@ gabble_roster_dispose (GObject *object)
     G_OBJECT_CLASS (gabble_roster_parent_class)->dispose (object);
 }
 
+static void
+item_handle_unref_foreach (gpointer key, gpointer data, gpointer user_data)
+{
+  GabbleHandle handle = (GabbleHandle) key;
+  GabbleRosterPrivate *priv = (GabbleRosterPrivate *) user_data;
+
+  gabble_handle_unref (priv->conn->handles, TP_HANDLE_TYPE_CONTACT, handle);
+}
+
 void
 gabble_roster_finalize (GObject *object)
 {
@@ -197,6 +206,7 @@ gabble_roster_finalize (GObject *object)
 
   DEBUG ("called with %p", object);
 
+  g_hash_table_foreach (priv->items, item_handle_unref_foreach, priv);
   g_hash_table_destroy (priv->items);
 
   G_OBJECT_CLASS (gabble_roster_parent_class)->finalize (object);

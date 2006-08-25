@@ -968,6 +968,7 @@ gabble_connection_finalize (GObject *object)
 
   gabble_properties_mixin_finalize (object);
 
+  gabble_handle_unref (self->handles, TP_HANDLE_TYPE_CONTACT, self->self_handle);
   gabble_handle_repo_destroy (self->handles);
 
   G_OBJECT_CLASS (gabble_connection_parent_class)->finalize (object);

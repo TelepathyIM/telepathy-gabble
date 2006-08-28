@@ -19,12 +19,14 @@
  */
 
 #include <glib.h>
+#include <dbus/dbus-glib.h>
 #include <string.h>
 
 #include "gheap.h"
 #include "handles.h"
-#include "telepathy-errors.h"
 #include "handle-set.h"
+#include "telepathy-errors.h"
+#include "telepathy-helpers.h"
 
 #include "config.h"
 
@@ -81,6 +83,7 @@ struct _GabbleHandleRepo
   guint room_serial;
   GData *client_contact_handle_sets;
   GData *client_room_handle_sets;
+  DBusGProxy *bus_service_proxy;
 };
 
 static const char *list_handle_strings[GABBLE_LIST_HANDLE_BLOCK] =
@@ -226,6 +229,24 @@ handle_priv_remove (GabbleHandleRepo *repo,
     }
 }
 
+void
+handles_name_owner_changed_cb (DBusGProxy *proxy,
+                               const gchar *name,
+                               const gchar *old_owner,
+                               const gchar *new_owner,
+                               gpointer data)
+{
+  GabbleHandleRepo *repo = (GabbleHandleRepo *) data;
+
+  if (old_owner && strlen (old_owner))
+    {
+      if (!new_owner || !strlen (new_owner))
+        {
+          g_datalist_remove_data (&repo->client_contact_handle_sets, old_owner);
+          g_datalist_remove_data (&repo->client_room_handle_sets, old_owner);
+        }
+    }
+}
 
 /* public API */
 
@@ -412,6 +433,23 @@ gabble_handle_repo_new ()
   g_datalist_init (&repo->client_contact_handle_sets);
   g_datalist_init (&repo->client_room_handle_sets);
 
+  repo->bus_service_proxy = dbus_g_proxy_new_for_name (tp_get_bus(),
+                                                       DBUS_SERVICE_DBUS,
+                                                       DBUS_PATH_DBUS,
+                                                       DBUS_INTERFACE_DBUS);
+
+  dbus_g_proxy_add_signal (repo->bus_service_proxy,
+                           "NameOwnerChanged",
+                           G_TYPE_STRING,
+                           G_TYPE_STRING,
+                           G_TYPE_STRING,
+                           G_TYPE_INVALID);
+  dbus_g_proxy_connect_signal (repo->bus_service_proxy,
+                               "NameOwnerChanged",
+                               G_CALLBACK (handles_name_owner_changed_cb),
+                               repo,
+                               NULL);
+
   return repo;
 }
 
@@ -497,6 +535,12 @@ gabble_handle_repo_destroy (GabbleHandleRepo *repo)
   g_heap_destroy (repo->free_contact_handles);
   g_heap_destroy (repo->free_room_handles);
   g_datalist_clear (&repo->list_handles);
+
+  dbus_g_proxy_disconnect_signal (repo->bus_service_proxy,
+                                  "NameOwnerChanged",
+                                  G_CALLBACK (handles_name_owner_changed_cb),
+                                  repo);
+  g_object_unref (G_OBJECT (repo->bus_service_proxy));
 
   g_free (repo);
 }

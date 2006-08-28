@@ -63,6 +63,10 @@ gboolean gabble_handle_set_qdata (GabbleHandleRepo *repo, TpHandleType type,
 gpointer gabble_handle_get_qdata (GabbleHandleRepo *repo, TpHandleType type,
     GabbleHandle handle, GQuark key_id);
 
+gboolean gabble_handle_client_hold (GabbleHandleRepo *repo, const gchar *client_name, GabbleHandle handle, TpHandleType type, GError **error);
+
+gboolean gabble_handle_client_release (GabbleHandleRepo *repo, const gchar *client_name, GabbleHandle handle, TpHandleType type, GError **error);
+
 G_END_DECLS
 
 #endif /* #ifndef __HANDLES_H__ */

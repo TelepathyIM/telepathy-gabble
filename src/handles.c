@@ -24,6 +24,7 @@
 #include "gheap.h"
 #include "handles.h"
 #include "telepathy-errors.h"
+#include "handle-set.h"
 
 #include "config.h"
 
@@ -78,6 +79,8 @@ struct _GabbleHandleRepo
   GHeap *free_room_handles;
   guint contact_serial;
   guint room_serial;
+  GData *client_contact_handle_sets;
+  GData *client_room_handle_sets;
 };
 
 static const char *list_handle_strings[GABBLE_LIST_HANDLE_BLOCK] =
@@ -406,6 +409,9 @@ gabble_handle_repo_new ()
   g_datalist_id_set_data_full (&repo->list_handles, (GQuark) block,
       handle_priv_new(), (GDestroyNotify) handle_priv_free);
 
+  g_datalist_init (&repo->client_contact_handle_sets);
+  g_datalist_init (&repo->client_room_handle_sets);
+
   return repo;
 }
 
@@ -476,6 +482,9 @@ gabble_handle_repo_destroy (GabbleHandleRepo *repo)
   g_assert (repo->room_handles);
   g_assert (repo->contact_strings);
   g_assert (repo->room_strings);
+
+  g_datalist_clear (&repo->client_contact_handle_sets);
+  g_datalist_clear (&repo->client_room_handle_sets);
 
 #ifdef ENABLE_HANDLE_LEAK_DEBUG
   handle_leak_debug_print_report (repo);
@@ -847,3 +856,139 @@ gabble_handle_get_qdata (GabbleHandleRepo *repo,
 
   return g_datalist_id_get_data(&priv->datalist, key_id);
 }
+
+/**
+ * gabble_handle_client_hold:
+ * @repo: a #GabbleHandleRepo
+ * @client_name: DBus bus name of client to hold the handle for
+ * @handle: the handle to hold
+ * @type: type of handle to hold
+ * @error: used to return a pointer to a GError detailing any error that occurred
+ *
+ * Marks a handle as held by a given client.
+ *
+ * Returns: Whether the handle was succesfully marked as held or an error occurred.
+ */
+gboolean
+gabble_handle_client_hold (GabbleHandleRepo *repo,
+                           const gchar *client_name,
+                           GabbleHandle handle,
+                           TpHandleType type,
+                           GError **error)
+{
+  GData **handle_set_list;
+  GabbleHandleSet *handle_set;
+
+  g_assert (repo != NULL);
+
+  switch (type)
+    {
+    case TP_HANDLE_TYPE_CONTACT:
+      handle_set_list = &repo->client_contact_handle_sets;
+      break;
+    case TP_HANDLE_TYPE_ROOM:
+      handle_set_list = &repo->client_room_handle_sets;
+      break;
+    case TP_HANDLE_TYPE_LIST:
+      /* no-op */
+      return TRUE;
+    default:
+      g_critical ("%s: called with invalid handle type %u", G_STRFUNC, type);
+      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument, "invalid handle type %u", type);
+      return FALSE;
+    }
+
+  if (!client_name || *client_name == '\0')
+    {
+      g_critical ("%s: called with invalid client name", G_STRFUNC);
+      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument, "invalid client name");
+      return FALSE;
+    }
+
+  handle_set = (GabbleHandleSet*) g_datalist_get_data (handle_set_list, client_name);
+
+  if (!handle_set)
+    {
+      handle_set = handle_set_new (repo, type);
+      g_datalist_set_data_full (handle_set_list,
+                                client_name,
+                                handle_set,
+                                (GDestroyNotify) handle_set_destroy);
+    }
+
+  handle_set_add (handle_set, handle);
+
+  return TRUE;
+}
+
+/**
+ * gabble_handle_client_release:
+ * @repo: a #GabbleHandleRepo
+ * @client_name: DBus bus name of client to release the handle for
+ * @handle: the handle to release
+ * @type: type of handle to release
+ * @error: used to return a pointer to a GError detailing any error that occurred
+ *
+ * Unmarks a handle as held by a given client.
+ *
+ * Returns: Whether the handle had been marked as held by the given client and now unmarked or not.
+ */
+gboolean
+gabble_handle_client_release (GabbleHandleRepo *repo,
+                           const gchar *client_name,
+                           GabbleHandle handle,
+                           TpHandleType type,
+                           GError **error)
+{
+  GData **handle_set_list;
+  GabbleHandleSet *handle_set;
+
+  g_assert (repo != NULL);
+
+  switch (type)
+    {
+    case TP_HANDLE_TYPE_CONTACT:
+      handle_set_list = &repo->client_contact_handle_sets;
+      break;
+    case TP_HANDLE_TYPE_ROOM:
+      handle_set_list = &repo->client_room_handle_sets;
+      break;
+    case TP_HANDLE_TYPE_LIST:
+      /* no-op */
+      return TRUE;
+    default:
+      g_critical ("%s: called with invalid handle type %u", G_STRFUNC, type);
+      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument, "invalid handle type %u", type);
+      return FALSE;
+    }
+
+  if (!client_name || *client_name == '\0')
+    {
+      g_critical ("%s: called with invalid client name", G_STRFUNC);
+      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument, "invalid client name");
+      return FALSE;
+    }
+
+  handle_set = (GabbleHandleSet*) g_datalist_get_data (handle_set_list, client_name);
+
+  if (!handle_set)
+    {
+      g_critical ("%s: no handle set found for the given client %s", G_STRFUNC, client_name);
+      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                            "the given client %s wasn't holding any handles",
+                            client_name);
+      return FALSE;
+    }
+
+  if (!handle_set_remove (handle_set, handle))
+    {
+      g_critical ("%s: the client %s wasn't holding the handle %u", G_STRFUNC, client_name, handle);
+      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                            "the given client %s wasn't holding the handle %u",
+                            client_name, handle);
+      return FALSE;
+    }
+
+  return TRUE;
+}
+

@@ -232,11 +232,6 @@ struct _GabbleConnectionPrivate
 
   GabbleRoomlistChannel *roomlist_channel;
 
-  /* clients */
-  GData *client_contact_handle_sets;
-  GData *client_room_handle_sets;
-  GData *client_list_handle_sets;
-
   /* server services */
   GList *conference_servers;
 
@@ -315,10 +310,6 @@ gabble_connection_init (GabbleConnection *obj)
 
   priv->media_channels = g_ptr_array_sized_new (1);
   priv->media_channel_index = 0;
-
-  g_datalist_init (&priv->client_contact_handle_sets);
-  g_datalist_init (&priv->client_room_handle_sets);
-  g_datalist_init (&priv->client_list_handle_sets);
 
   /* Set default parameters for optional parameters */
   priv->resource = g_strdup (GABBLE_PARAMS_DEFAULT_RESOURCE);
@@ -961,10 +952,6 @@ gabble_connection_finalize (GObject *object)
 */
 
   g_list_free (priv->conference_servers);
-
-  g_datalist_clear (&priv->client_room_handle_sets);
-  g_datalist_clear (&priv->client_contact_handle_sets);
-  g_datalist_clear (&priv->client_list_handle_sets);
 
   gabble_properties_mixin_finalize (object);
 
@@ -2922,118 +2909,6 @@ discover_services (GabbleConnection *conn)
                         services_discover_cb, conn, G_OBJECT(conn), NULL);
 }
 
-
-static void
-destroy_handle_sets (gpointer data)
-{
-  GabbleHandleSet *handle_set;
-
-  handle_set = (GabbleHandleSet*) data;
-  handle_set_destroy (handle_set);
-}
-
-/**
- * _gabble_connection_client_hold_handle:
- * @conn: a #GabbleConnection
- * @client_name: DBus bus name of client to hold ahandle for
- * @handle: handle to hold
- * @type: type of handle to hold
- *
- * Marks a handle as held by a given client.
- *
- * Returns: false if client didn't hold this handle
- */
-void
-_gabble_connection_client_hold_handle (GabbleConnection *conn,
-                                       gchar *client_name,
-                                       GabbleHandle handle,
-                                       TpHandleType type)
-{
-  GabbleConnectionPrivate *priv;
-  GabbleHandleSet *handle_set;
-  GData **handle_set_list;
-  g_assert (GABBLE_IS_CONNECTION (conn));
-
-  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-
-  switch (type)
-    {
-    case TP_HANDLE_TYPE_CONTACT:
-      handle_set_list = &priv->client_contact_handle_sets;
-      break;
-    case TP_HANDLE_TYPE_ROOM:
-      handle_set_list = &priv->client_room_handle_sets;
-      break;
-    case TP_HANDLE_TYPE_LIST:
-      handle_set_list = &priv->client_list_handle_sets;
-      break;
-    default:
-      g_critical ("%s: gabble_connection_client_hold_handle called with invalid handle type", G_STRFUNC);
-      return;
-    }
-
-  handle_set = (GabbleHandleSet*) g_datalist_get_data (handle_set_list, client_name);
-
-  if (!handle_set)
-    {
-      handle_set = handle_set_new (conn->handles, type);
-      g_datalist_set_data_full (handle_set_list, client_name, handle_set, destroy_handle_sets);
-    }
-
-  handle_set_add (handle_set, handle);
-
-}
-
-/**
- * _gabble_connection_client_release_handle:
- * @conn: a #GabbleConnection
- * @client_name: DBus bus name of client to release handle for
- * @handle: handle to release
- * @type: type of handle to release
- *
- * Releases a handle held by a given client
- *
- * Returns: false if client didn't hold this handle
- */
-gboolean
-_gabble_connection_client_release_handle (GabbleConnection *conn,
-                                         gchar* client_name,
-                                         GabbleHandle handle,
-                                         TpHandleType type)
-{
-  GabbleConnectionPrivate *priv;
-  GabbleHandleSet *handle_set;
-  GData **handle_set_list;
-
-  g_assert (GABBLE_IS_CONNECTION (conn));
-
-  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-
-  switch (type)
-    {
-    case TP_HANDLE_TYPE_CONTACT:
-      handle_set_list = &priv->client_contact_handle_sets;
-      break;
-    case TP_HANDLE_TYPE_ROOM:
-      handle_set_list = &priv->client_room_handle_sets;
-      break;
-    case TP_HANDLE_TYPE_LIST:
-      handle_set_list = &priv->client_list_handle_sets;
-      break;
-    default:
-      g_critical ("%s called with invalid handle type", G_STRFUNC);
-      return FALSE;
-    }
-
-  handle_set = (GabbleHandleSet *) g_datalist_get_data (handle_set_list,
-                                                       client_name);
-
-  if (handle_set)
-    return handle_set_remove (handle_set, handle);
-  else
-    return FALSE;
-}
-
 static GHashTable *
 get_statuses_arguments()
 {
@@ -3492,7 +3367,12 @@ gboolean gabble_connection_hold_handles (GabbleConnection *obj, guint handle_typ
   for (i = 0; i < handles->len; i++)
     {
       GabbleHandle handle = g_array_index (handles, GabbleHandle, i);
-      _gabble_connection_client_hold_handle (obj, sender, handle, handle_type);
+      if (!gabble_handle_client_hold (obj->handles, sender, handle, handle_type, &error))
+        {
+          dbus_g_method_return_error (context, error);
+          g_error_free (error);
+          return FALSE;
+        }
     }
   dbus_g_method_return (context);
 
@@ -3713,7 +3593,12 @@ gboolean gabble_connection_release_handles (GabbleConnection *obj, guint handle_
   for (i = 0; i < handles->len; i++)
     {
       GabbleHandle handle = g_array_index (handles, GabbleHandle, i);
-      _gabble_connection_client_release_handle (obj, sender, handle, handle_type);
+      if (!gabble_handle_client_release (obj->handles, sender, handle, handle_type, &error))
+        {
+          dbus_g_method_return_error (context, error);
+          g_error_free (error);
+          return FALSE;
+        }
     }
   dbus_g_method_return (context);
 
@@ -4060,12 +3945,19 @@ hold_and_return_handles (DBusGMethodInvocation *context,
                          GArray *handles,
                          guint handle_type)
 {
+  GError *error;
   gchar *sender = dbus_g_method_get_sender(context);
   guint i;
 
   for (i = 0; i < handles->len; i++)
     {
-      _gabble_connection_client_hold_handle (conn, sender, g_array_index(handles, GabbleHandle, i), handle_type);
+      GabbleHandle handle = (GabbleHandle) g_array_index (handles, guint, i);
+      if (!gabble_handle_client_hold (conn->handles, sender, handle, handle_type, &error))
+        {
+          dbus_g_method_return_error (context, error);
+          g_error_free (error);
+          return;
+        }
     }
   dbus_g_method_return (context, handles);
 }

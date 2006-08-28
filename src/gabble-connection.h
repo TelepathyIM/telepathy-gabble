@@ -139,9 +139,6 @@ gboolean _gabble_connection_send_with_reply (GabbleConnection *conn, LmMessage *
 void _gabble_connection_acknowledge_set_iq (GabbleConnection *conn, LmMessage *iq);
 void _gabble_connection_send_iq_error (GabbleConnection *conn, LmMessage *message, GabbleXmppError error);
 
-void _gabble_connection_client_hold_handle (GabbleConnection *conn, gchar* client_name, GabbleHandle handle, TpHandleType type);
-gboolean _gabble_connection_client_release_handle (GabbleConnection *conn, gchar* client_name, GabbleHandle handle, TpHandleType type);
-
 GabbleConnectionAliasSource _gabble_connection_get_cached_alias (GabbleConnection *, GabbleHandle, gchar **);
 
 gboolean gabble_connection_add_status (GabbleConnection *obj, const gchar * status, GHashTable * parms, GError **error);

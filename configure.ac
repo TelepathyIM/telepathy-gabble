@@ -23,7 +23,7 @@ AC_INIT([Telepathy Gabble], [gabble_version], [https://bugs.freedesktop.org/ente
 
 AC_CONFIG_MACRO_DIR([m4])
 
-AM_INIT_AUTOMAKE ([1.8])
+AM_INIT_AUTOMAKE([1.8])
 AM_PROG_LIBTOOL
 AM_CONFIG_HEADER(config.h)
 

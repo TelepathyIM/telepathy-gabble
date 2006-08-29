@@ -32,17 +32,14 @@ AC_PROG_CC
 AC_PROG_CC_STDC
 AM_PROG_AS
 
+dnl decide error flags
+AS_COMPILER_FLAG(-Wall, ERROR_CFLAGS="-Wall", ERROR_CFLAGS="")
 
-dnl decide on error flags
-AS_COMPILER_FLAG(-Wall, WALL="yes", WALL="no")
-
-if test "x$WALL" = "xyes"; then
-  ERROR_CFLAGS="-Wall"
-
-  if test "x$WERROR" = "xyes"; then
-    AS_COMPILER_FLAG(-Werror,ERROR_CFLAGS="$ERROR_CFLAGS -Werror",ERROR_CFLAGS="$ERROR_CFLAGS")
-  fi
-fi
+ifelse(gabble_nano_version, 0,
+    [],
+    [AS_COMPILER_FLAG(-Werror,ERROR_CFLAGS="$ERROR_CFLAGS -Werror",ERROR_CFLAGS="$ERROR_CFLAGS")
+    ])
+AC_SUBST(ERROR_CFLAGS)
 
 AC_ARG_ENABLE(debug,
   AC_HELP_STRING([--disable-debug],[compile without debug code]),
@@ -51,8 +48,6 @@ AC_ARG_ENABLE(debug,
 if test x$enable_debug = xyes; then
   AC_DEFINE(ENABLE_DEBUG, [], [Enable debug code])
 fi
-
-AC_SUBST(ERROR_CFLAGS)
 
 AC_HEADER_STDC([])
 AC_C_INLINE

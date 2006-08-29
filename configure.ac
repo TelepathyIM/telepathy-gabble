@@ -8,10 +8,10 @@ AC_PREREQ([2.59])
 #   set gabble_release to 1.
 
 m4_define([gabble_major_version], [0])
-m4_define([gabble_minor_version], [1])
-m4_define([gabble_micro_version], [42])
+m4_define([gabble_minor_version], [3])
+m4_define([gabble_micro_version], [1])
 
-m4_define([gabble_release], [1])
+m4_define([gabble_release], [0])
 
 # Some magic
 m4_define([gabble_base_version],
@@ -21,7 +21,6 @@ m4_define([gabble_version],
 
 AC_INIT([Telepathy Gabble], [gabble_version], [https://bugs.freedesktop.org/enter_bug.cgi?product=Telepathy])
 
-AS_VERSION(telepathy-gabble, TELEPATHY_GABBLE_VERSION, 0, 1, 38, 1, WERROR="no", WERROR="yes")
 
 AC_CONFIG_MACRO_DIR([m4])
 

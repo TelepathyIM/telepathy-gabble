@@ -37,8 +37,6 @@ typedef enum
 } GabbleListHandle;
 
 gboolean gabble_handle_jid_is_valid (TpHandleType type, const gchar *jid, GError **error);
-void gabble_handle_jid_get_base (const gchar *jid, gchar *base_jid);
-
 void gabble_handle_decode_jid (const gchar *jid, gchar **username, gchar **server, gchar **resource);
 gboolean gabble_handle_type_is_valid (TpHandleType type, GError **error);
 

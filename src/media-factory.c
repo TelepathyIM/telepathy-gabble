@@ -366,7 +366,7 @@ _gabble_media_factory_register_sid (GabbleMediaFactory *fac,
   GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
   gchar *sid_copy = g_strdup (sid);
 
-  g_hash_table_insert (priv->session_chans, sid_copy, chan);
+  g_hash_table_replace (priv->session_chans, sid_copy, chan);
 
   return sid_copy;
 }

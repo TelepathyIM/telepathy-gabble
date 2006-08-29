@@ -990,7 +990,7 @@ _gabble_connection_set_properties_from_account (GabbleConnection *conn,
   username = server = resource = NULL;
   result = TRUE;
 
-  gabble_handle_decode_jid (account, &username, &server, &resource);
+  gabble_decode_jid (account, &username, &server, &resource);
 
   if (username == NULL || server == NULL ||
       *username == '\0' || *server == '\0')
@@ -1923,7 +1923,7 @@ _gabble_connection_get_cached_alias (GabbleConnection *conn,
   tmp = gabble_handle_inspect (conn->handles, TP_HANDLE_TYPE_CONTACT, handle);
   g_assert (NULL != tmp);
 
-  gabble_handle_decode_jid (tmp, &user, NULL, &resource);
+  gabble_decode_jid (tmp, &user, NULL, &resource);
 
   /* MUC handles have the nickname in the resource */
   if (NULL != resource)
@@ -4195,7 +4195,7 @@ room_jid_verify (RoomVerifyBatch *batch,
   GError *error;
 
   room = service = NULL;
-  gabble_handle_decode_jid (batch->contexts[index].jid, &room, &service, NULL);
+  gabble_decode_jid (batch->contexts[index].jid, &room, &service, NULL);
 
   g_assert (room && service);
 

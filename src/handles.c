@@ -27,6 +27,7 @@
 #include "handle-set.h"
 #include "telepathy-errors.h"
 #include "telepathy-helpers.h"
+#include "util.h"
 
 #include "config.h"
 
@@ -282,90 +283,6 @@ gabble_handle_jid_is_valid (TpHandleType type, const gchar *jid, GError **error)
     }
 
   return TRUE;
-}
-
-/**
- * gabble_handle_decode_jid
- *
- * Parses a JID which may be one of the following forms:
- *  server
- *  server/resource
- *  username@server
- *  username@server/resource
- *  room@service/nick
- * And sets the caller's username, server and resource pointers. The
- * caller may set any of the pointers to NULL if they are not interested
- * in a certain component.
- *
- * The returned values may be NULL or zero-length if a component was either
- * not present or zero-length respectively in the given JID. The username and
- * server are lower-cased because the Jabber protocol treats these
- * case-insensitively.
- */
-void
-gabble_handle_decode_jid (const gchar *jid,
-                          gchar **username,
-                          gchar **server,
-                          gchar **resource)
-{
-  char *tmp_jid, *tmp_username, *tmp_server, *tmp_resource;
-
-  g_assert (jid != NULL);
-  g_assert (*jid != '\0');
-
-  if (username != NULL)
-    *username = NULL;
-
-  if (server != NULL)
-    *server = NULL;
-
-  if (resource != NULL)
-    *resource = NULL;
-
-  /* take a local copy so we don't modify the caller's string */
-  tmp_jid = g_strdup (jid);
-
-  /* find an @ in username, truncate username to that length, and point
-   * 'server' to the byte afterwards */
-  tmp_server = strchr (tmp_jid, '@');
-  if (tmp_server)
-    {
-      tmp_username = tmp_jid;
-
-      *tmp_server = '\0';
-      tmp_server++;
-
-      /* store the username if the user provided a pointer */
-      if (username != NULL)
-        *username = g_utf8_strdown (tmp_username, -1);
-    }
-  else
-    {
-      tmp_username = NULL;
-      tmp_server = tmp_jid;
-    }
-
-  /* if we have a server, find a / in it, truncate it to that length, and point
-   * 'resource' to the byte afterwards. otherwise, do the same to username to
-   * find any resource there. */
-  tmp_resource = strchr (tmp_server, '/');
-  if (tmp_resource)
-    {
-      *tmp_resource = '\0';
-      tmp_resource++;
-
-      /* store the resource if the user provided a pointer */
-      if (resource != NULL)
-        *resource = g_strdup (tmp_resource);
-    }
-
-  /* the server must be stored after the resource, in case we truncated a
-   * resource from it */
-  if (server != NULL)
-    *server = g_utf8_strdown (tmp_server, -1);
-
-  /* free our working copy */
-  g_free (tmp_jid);
 }
 
 gboolean
@@ -707,7 +624,7 @@ gabble_handle_for_contact (GabbleHandleRepo *repo,
   g_assert (jid != NULL);
   g_assert (*jid != '\0');
 
-  gabble_handle_decode_jid (jid, &username, &server, &resource);
+  gabble_decode_jid (jid, &username, &server, &resource);
 
   if (NULL == username || '\0' == *username)
     goto OUT;
@@ -761,7 +678,7 @@ gabble_handle_for_room_exists (GabbleHandleRepo *repo,
   gchar *room, *service, *nick;
   gchar *clean_jid;
 
-  gabble_handle_decode_jid (jid, &room, &service, &nick);
+  gabble_decode_jid (jid, &room, &service, &nick);
 
   if (!room || !service || room[0] == '\0')
     return FALSE;
@@ -799,7 +716,7 @@ gabble_handle_for_room (GabbleHandleRepo *repo,
   handle = 0;
 
   room = service = NULL;
-  gabble_handle_decode_jid (jid, &room, &service, NULL);
+  gabble_decode_jid (jid, &room, &service, NULL);
 
   if (room && service && *room != '\0')
     {

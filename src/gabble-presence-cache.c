@@ -438,7 +438,7 @@ _parse_presence_message (GabblePresenceCache *cache,
   presence_node = message->node;
   g_assert (0 == strcmp (presence_node->name, "presence"));
 
-  gabble_handle_decode_jid (from, NULL, NULL, &resource);
+  gabble_decode_jid (from, NULL, NULL, &resource);
 
   if (resource == NULL)
     {

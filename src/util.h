@@ -31,5 +31,7 @@ gboolean g_strdiff (const gchar *left, const gchar *right);
 void lm_message_node_add_nick (LmMessageNode *node, const gchar *nick);
 void lm_message_node_add_own_nick (LmMessageNode *node, GabbleConnection *conn);
 void lm_message_node_steal_children (LmMessageNode *snatcher, LmMessageNode *mum);
+/* format: a@b/c */
+void gabble_decode_jid (const gchar *jid, gchar **a, gchar **b, gchar **c);
 
 #endif /* __GABBLE_UTIL_H__ */

@@ -564,7 +564,7 @@ contact_handle_to_room_identity (GabbleMucChannel *chan, GabbleHandle main_handl
   main_jid = gabble_handle_inspect (handles, TP_HANDLE_TYPE_CONTACT,
                                     main_handle);
 
-  gabble_handle_decode_jid (main_jid, &username, &server, NULL);
+  gabble_decode_jid (main_jid, &username, &server, NULL);
 
   jid = g_strdup_printf ("%s/%s", priv->jid, username);
 
@@ -2222,7 +2222,7 @@ gabble_muc_channel_remove_member (GObject *obj, GabbleHandle handle, const gchar
   jid = gabble_handle_inspect (GABBLE_GROUP_MIXIN (obj)->handle_repo,
                                TP_HANDLE_TYPE_CONTACT, handle);
 
-  gabble_handle_decode_jid (jid, NULL, NULL, &nick);
+  gabble_decode_jid (jid, NULL, NULL, &nick);
 
   lm_message_node_set_attributes (item_node,
                                   "nick", nick,

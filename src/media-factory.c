@@ -41,6 +41,7 @@
 #include "telepathy-interfaces.h"
 #include "text-mixin.h"
 #include "tp-channel-factory-iface.h"
+#include "util.h"
 
 static void gabble_media_factory_iface_init (gpointer g_iface, gpointer iface_data);
 static LmHandlerResult media_factory_jingle_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
@@ -307,7 +308,7 @@ media_factory_jingle_cb (LmMessageHandler *handler,
 
   DEBUG ("dispatching to session %s", sid);
   g_object_ref (chan);
-  gabble_handle_decode_jid (from, NULL, NULL, &resource);
+  gabble_decode_jid (from, NULL, NULL, &resource);
   _gabble_media_channel_dispatch_session_action (chan, handle, resource,
       sid, message, session_node, action);
   g_object_unref (chan);

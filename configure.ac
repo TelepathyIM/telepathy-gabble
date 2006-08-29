@@ -10,14 +10,13 @@ AC_PREREQ([2.59])
 m4_define([gabble_major_version], [0])
 m4_define([gabble_minor_version], [3])
 m4_define([gabble_micro_version], [1])
-
-m4_define([gabble_release], [0])
+m4_define([gabble_nano_version], [1])
 
 # Some magic
 m4_define([gabble_base_version],
           [gabble_major_version.gabble_minor_version.gabble_micro_version])
 m4_define([gabble_version],
-          [m4_if(gabble_release, 1, [gabble_base_version], [gabble_base_version]+[`date +%Y%m%d.%H%M%S`])])dnl
+          [m4_if(gabble_nano_version, 0, [gabble_base_version], [gabble_base_version].[gabble_nano_version])])dnl
 
 AC_INIT([Telepathy Gabble], [gabble_version], [https://bugs.freedesktop.org/enter_bug.cgi?product=Telepathy])
 

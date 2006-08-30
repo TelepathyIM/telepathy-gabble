@@ -1160,13 +1160,19 @@ static void
 send_terminate_message (GabbleMediaSession *session)
 {
   GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+  const gchar *action;
   LmMessage *msg;
   LmMessageNode *session_node;
 
   /* construct a session terminate message */
-  msg = _gabble_media_session_message_new (session, "terminate", &session_node);
+  if (priv->mode == MODE_GOOGLE)
+    action = "terminate";
+  else
+    action = "session-terminate";
 
-  GMS_DEBUG_INFO (session, "sending jingle session action \"terminate\" to peer");
+  msg = _gabble_media_session_message_new (session, action, &session_node);
+
+  GMS_DEBUG_INFO (session, "sending jingle session action \"%s\" to peer", action);
 
   /* send it */
   _gabble_connection_send_with_reply (priv->conn, msg, ignore_reply_cb,

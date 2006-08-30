@@ -622,13 +622,15 @@ _gabble_roster_emit_one (gpointer key,
                          gpointer data)
 {
   GabbleRoster *roster = GABBLE_ROSTER (data);
-  GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
   GabbleRosterChannel *chan = GABBLE_ROSTER_CHANNEL (value);
+#ifdef ENABLE_DEBUG
+  GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
   GabbleHandle handle = GPOINTER_TO_INT (key);
   const gchar *name = gabble_handle_inspect (priv->conn->handles, TP_HANDLE_TYPE_LIST, handle);
 
   DEBUG ("roster now received, emitting signal signal for %s list channel",
       name);
+#endif
 
   g_signal_emit_by_name (roster, "new-channel", chan);
 }

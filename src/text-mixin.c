@@ -431,11 +431,9 @@ gboolean gabble_text_mixin_acknowledge_pending_messages (GObject *obj, const GAr
 
   for (i = 0; i < ids->len; i++)
     {
-      guint id = g_array_index(ids, guint, i);
-
       msg = (GabblePendingMessage *) nodes[i]->data;
 
-      DEBUG ("acknowleding message id %u", id);
+      DEBUG ("acknowleding message id %u", msg->id);
 
       g_queue_remove (mixin->pending, msg);
 

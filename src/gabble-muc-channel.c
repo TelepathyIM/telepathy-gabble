@@ -86,6 +86,7 @@ typedef enum {
     MUC_STATE_ENDED,
 } GabbleMucState;
 
+#ifdef ENABLE_DEBUG
 static const gchar *muc_states[] =
 {
   "MUC_STATE_CREATED",
@@ -94,6 +95,7 @@ static const gchar *muc_states[] =
   "MUC_STATE_JOINED",
   "MUC_STATE_ENDED",
 };
+#endif
 
 /* role and affiliation enums */
 typedef enum {

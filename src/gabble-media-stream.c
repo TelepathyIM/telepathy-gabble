@@ -71,6 +71,9 @@ enum
   PROP_MEDIA_SESSION = 1,
   PROP_OBJECT_PATH,
   PROP_MODE,
+  PROP_NAME,
+  PROP_ID,
+  PROP_MEDIA_TYPE,
   LAST_PROPERTY
 };
 
@@ -83,6 +86,9 @@ struct _GabbleMediaStreamPrivate
   GabbleMediaSession *session;
   GabbleMediaSessionMode mode;
   gchar *object_path;
+  gchar *name;
+  guint id;
+  guint media_type;
 
   gboolean ready;
 
@@ -193,6 +199,15 @@ gabble_media_stream_get_property (GObject    *object,
     case PROP_MODE:
       g_value_set_enum (value, priv->mode);
       break;
+    case PROP_NAME:
+      g_value_set_string (value, priv->name);
+      break;
+    case PROP_ID:
+      g_value_set_uint (value, priv->id);
+      break;
+    case PROP_MEDIA_TYPE:
+      g_value_set_uint (value, priv->media_type);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -218,6 +233,16 @@ gabble_media_stream_set_property (GObject      *object,
       break;
     case PROP_MODE:
       priv->mode = g_value_get_enum (value);
+      break;
+    case PROP_NAME:
+      g_free (priv->name);
+      priv->name = g_value_dup_string (value);
+      break;
+    case PROP_ID:
+      priv->id = g_value_get_uint (value);
+      break;
+    case PROP_MEDIA_TYPE:
+      priv->media_type = g_value_get_uint (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -274,6 +299,38 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                                   G_PARAM_STATIC_NAME |
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_MODE, param_spec);
+
+  param_spec = g_param_spec_string ("name", "stream name",
+                                    "An opaque name for the stream used in the "
+                                    "signalling.",
+                                    NULL,
+                                    G_PARAM_CONSTRUCT_ONLY |
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_STATIC_NAME |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_NAME, param_spec);
+
+  param_spec = g_param_spec_uint ("id", "stream ID",
+                                  "A stream number for the stream used in the "
+                                  "D-Bus API.",
+                                  0, G_MAXUINT, 0,
+                                  G_PARAM_CONSTRUCT_ONLY |
+                                  G_PARAM_READWRITE |
+                                  G_PARAM_STATIC_NAME |
+                                  G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_ID, param_spec);
+
+  param_spec = g_param_spec_uint ("media-type", "stream media type",
+                                  "A constant indicating which media type the "
+                                  "stream carries.",
+                                  TP_MEDIA_STREAM_TYPE_AUDIO,
+                                  TP_MEDIA_STREAM_TYPE_VIDEO,
+                                  TP_MEDIA_STREAM_TYPE_AUDIO,
+                                  G_PARAM_CONSTRUCT_ONLY |
+                                  G_PARAM_READWRITE |
+                                  G_PARAM_STATIC_NAME |
+                                  G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_MEDIA_TYPE, param_spec);
 
   /* signals exported by DBus interface */
   signals[ADD_REMOTE_CANDIDATE] =

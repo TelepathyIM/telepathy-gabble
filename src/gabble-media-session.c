@@ -734,6 +734,48 @@ static Handler handlers[] = {
   }
 };
 
+static gboolean
+_call_handler_on_streams (GabbleMediaSession *session,
+                          LmMessage *message,
+                          LmMessageNode *session_node,
+                          StreamHandlerFunc func)
+{
+  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+
+  if (MODE_GOOGLE == priv->mode)
+    {
+      if (!func (session, message, GTALK_STREAM_NAME, session_node))
+        return FALSE;
+    }
+  else
+    {
+      LmMessageNode *content_node;
+
+      for (content_node = session_node->children;
+           NULL != content_node;
+           content_node = content_node->next)
+        {
+          const gchar *stream_name;
+
+          if (g_strdiff (content_node->name, "content"))
+            continue;
+
+          stream_name = lm_message_node_get_attribute (content_node, "name");
+
+          if (NULL == stream_name)
+            {
+              NODE_DEBUG (content_node, "skipping content node with no name");
+              continue;
+            }
+
+          if (!func (session, message, stream_name, content_node))
+            return FALSE;
+        }
+    }
+
+  return TRUE;
+}
+
 void
 _gabble_media_session_handle_action (GabbleMediaSession *session,
                                      LmMessage *message,
@@ -778,42 +820,17 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
       break;
     }
 
-  if (NULL == func)
+  if (NULL == func && JS_STATE_INVALID == new_state)
     {
       GMS_DEBUG_ERROR (session, "received unrecognised action \"%s\"; "
           "terminating session", action);
       goto ACK_FAILURE;
     }
 
-  if (MODE_GOOGLE == priv->mode)
+  if (NULL != func)
     {
-      if (!func (session, message, GTALK_STREAM_NAME, session_node))
+      if (!_call_handler_on_streams (session, message, session_node, func))
         goto FUNC_ERROR;
-    }
-  else
-    {
-      LmMessageNode *content_node;
-
-      for (content_node = session_node->children;
-           NULL != content_node;
-           content_node = content_node->next)
-        {
-          const gchar *stream_name;
-
-          if (g_strdiff (content_node->name, "content"))
-            continue;
-
-          stream_name = lm_message_node_get_attribute (content_node, "name");
-
-          if (NULL == stream_name)
-            {
-              NODE_DEBUG (content_node, "skipping content node with no name");
-              continue;
-            }
-
-          if (!func (session, message, stream_name, content_node))
-            goto FUNC_ERROR;
-        }
     }
 
   if (JS_STATE_INVALID != new_state)

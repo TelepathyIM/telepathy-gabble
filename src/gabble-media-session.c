@@ -50,6 +50,8 @@ G_DEFINE_TYPE(GabbleMediaSession, gabble_media_session, G_TYPE_OBJECT)
 
 #define DEFAULT_SESSION_TIMEOUT 50000
 
+#define GTALK_STREAM_NAME "gtalk"
+
 /* signal enum */
 enum
 {
@@ -83,7 +85,7 @@ struct _GabbleMediaSessionPrivate
   GabbleMediaSessionMode mode;
   gchar *object_path;
 
-  GabbleMediaStream *stream;
+  GHashTable *streams;
 
   gchar *id;
   GabbleHandle initiator;
@@ -94,6 +96,7 @@ struct _GabbleMediaSessionPrivate
 
   GabbleMediaFactory *media_factory;
 
+  gboolean ready;
   gboolean accepted;
   gboolean got_active_candidate_pair;
 
@@ -120,9 +123,10 @@ static const SessionStateDescription session_states[] =
 static void
 gabble_media_session_init (GabbleMediaSession *obj)
 {
-  //GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (obj);
+  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (obj);
 
-  /* allocate any data required by the object here */
+  priv->streams = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
+      g_object_unref);
 }
 
 static void stream_new_active_candidate_pair_cb (GabbleMediaStream *stream,
@@ -141,22 +145,49 @@ static void stream_supported_codecs_cb (GabbleMediaStream *stream,
                                         GabbleMediaSession *session);
 
 static void
-create_media_stream (GabbleMediaSession *session)
+_emit_new_stream (const gchar *name,
+                  GabbleMediaStream *stream,
+                  GabbleMediaSession *session)
+{
+  gchar *object_path;
+  guint id, media_type;
+
+  g_object_get (stream,
+                "object-path", &object_path,
+                "id", &id,
+                "media-type", &media_type,
+                NULL);
+
+  /* all of the streams are bidirectional from farsight's point of view, it's
+   * just in the signalling they change */
+  g_signal_emit (session, signals[NEW_ICE_STREAM_HANDLER], 0,
+                 object_path, id, media_type,
+                 TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL);
+
+  g_free (object_path);
+}
+
+static void
+create_media_stream (GabbleMediaSession *session, const gchar *name, guint id, guint media_type)
 {
   GabbleMediaSessionPrivate *priv;
   gchar *object_path;
   GabbleMediaStream *stream;
 
   g_assert (GABBLE_IS_MEDIA_SESSION (session));
+  g_assert (name != NULL);
 
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
 
-  object_path = g_strdup_printf ("%s/MediaStream1", priv->object_path);
+  object_path = g_strdup_printf ("%s/IceStream%u", priv->object_path, id);
 
   stream = g_object_new (GABBLE_TYPE_MEDIA_STREAM,
                          "media-session", session,
                          "object-path", object_path,
                          "mode", priv->mode,
+                         "name", name,
+                         "id", id,
+                         "media-type", media_type,
                          NULL);
 
   g_signal_connect (stream, "new-active-candidate-pair",
@@ -172,9 +203,12 @@ create_media_stream (GabbleMediaSession *session)
                     (GCallback) stream_supported_codecs_cb,
                     session);
 
-  priv->stream = stream;
+  g_hash_table_insert (priv->streams, g_strdup (name), stream);
 
   g_free (object_path);
+
+  if (priv->ready)
+    _emit_new_stream (name, stream, session);
 }
 
 gboolean
@@ -243,7 +277,8 @@ gabble_media_session_constructor (GType type, guint n_props,
         g_critical ("%s: no voice resource found for remote handle", G_STRFUNC);
     }
 
-  create_media_stream (GABBLE_MEDIA_SESSION (obj));
+  create_media_stream (GABBLE_MEDIA_SESSION (obj), GTALK_STREAM_NAME, 1,
+      TP_MEDIA_STREAM_TYPE_AUDIO);
 
   return obj;
 }
@@ -465,8 +500,8 @@ gabble_media_session_dispose (GObject *object)
 
   g_object_unref (priv->conn);
 
-  g_object_unref (priv->stream);
-  priv->stream = NULL;
+  g_hash_table_destroy (priv->streams);
+  priv->streams = NULL;
 
   _gabble_media_factory_free_sid (priv->media_factory, priv->id);
 
@@ -524,19 +559,14 @@ gboolean gabble_media_session_error (GabbleMediaSession *obj, guint errno, const
 gboolean gabble_media_session_ready (GabbleMediaSession *obj, GError **error)
 {
   GabbleMediaSessionPrivate *priv;
-  gchar *object_path;
 
   g_assert (GABBLE_IS_MEDIA_SESSION (obj));
 
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (obj);
 
-  g_object_get (priv->stream, "object-path", &object_path, NULL);
+  priv->ready = TRUE;
 
-  g_signal_emit (obj, signals[NEW_ICE_STREAM_HANDLER], 0,
-                 object_path, 1 /* id */, TP_MEDIA_STREAM_TYPE_AUDIO,
-                 TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL);
-
-  g_free (object_path);
+  g_hash_table_foreach (priv->streams, (GHFunc) _emit_new_stream, obj);
 
   return TRUE;
 }

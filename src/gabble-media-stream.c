@@ -1028,10 +1028,10 @@ static void push_remote_candidates (GabbleMediaStream *stream);
 gboolean
 _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
                                              LmMessage *message,
-                                             LmMessageNode *session_node)
+                                             LmMessageNode *transport_node)
 {
   GabbleMediaStreamPrivate *priv;
-  LmMessageNode *node, *transport_node;
+  LmMessageNode *node;
   const gchar *str;
   GPtrArray *candidates;
 
@@ -1040,12 +1040,6 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
   candidates = g_value_get_boxed (&priv->remote_candidates);
-
-  /* Jingle has an extra <transport> node; Google Talk doesn't */
-  transport_node = lm_message_node_get_child (session_node, "transport");
-
-  if (NULL == transport_node)
-    transport_node = session_node;
 
   for (node = transport_node->children; node; node = node->next)
     {
@@ -1268,8 +1262,8 @@ push_remote_candidates (GabbleMediaStream *stream)
 }
 
 void
-_gabble_media_stream_session_node_add_description (GabbleMediaStream *stream,
-                                                   LmMessageNode *session_node)
+_gabble_media_stream_content_node_add_description (GabbleMediaStream *stream,
+                                                   LmMessageNode *content_node)
 {
   GabbleMediaStreamPrivate *priv;
   const GPtrArray *codecs;
@@ -1283,7 +1277,7 @@ _gabble_media_stream_session_node_add_description (GabbleMediaStream *stream,
 
   codecs = g_value_get_boxed (&priv->native_codecs);
 
-  desc_node = lm_message_node_add_child (session_node, "description", NULL);
+  desc_node = lm_message_node_add_child (content_node, "description", NULL);
 
   if (priv->mode == MODE_GOOGLE)
     xmlns = NS_GOOGLE_SESSION_PHONE;

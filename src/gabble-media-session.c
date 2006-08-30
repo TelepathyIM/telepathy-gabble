@@ -819,6 +819,65 @@ accept_msg_reply_cb (GabbleConnection *conn,
 }
 
 static void
+_set_streams_playing_one (const gchar *name,
+                          GabbleMediaStream *stream,
+                          GabbleMediaSession *session)
+{
+  GMS_DEBUG_INFO (session, "setting stream \"%s\" playing", name);
+
+  _gabble_media_stream_set_playing (stream, TRUE);
+}
+
+static void
+_set_streams_playing (GabbleMediaSession *session)
+{
+  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+
+  g_hash_table_foreach (priv->streams, (GHFunc) _set_streams_playing_one, session);
+}
+
+typedef struct _AddDescriptionsData AddDescriptionsData;
+
+struct _AddDescriptionsData {
+  GabbleMediaSession *session;
+  LmMessageNode *session_node;
+};
+
+static void
+_add_content_descriptions_one (const gchar *name,
+                               GabbleMediaStream *stream,
+                               AddDescriptionsData *data)
+{
+  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (data->session);
+  LmMessageNode *content_node;
+
+  if (priv->mode == MODE_GOOGLE)
+    {
+      content_node = data->session_node;
+    }
+  else
+    {
+      content_node = lm_message_node_add_child (data->session_node, "content", NULL);
+      lm_message_node_set_attribute (content_node, "name", name);
+    }
+
+  _gabble_media_stream_content_node_add_description (stream, content_node);
+}
+
+static void
+_add_content_descriptions (GabbleMediaSession *session,
+                           LmMessageNode *session_node)
+{
+  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+  AddDescriptionsData data;
+
+  data.session = session;
+  data.session_node = session_node;
+
+  g_hash_table_foreach (priv->streams, (GHFunc) _add_content_descriptions_one, &data);
+}
+
+static void
 try_session_accept (GabbleMediaSession *session)
 {
   GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
@@ -833,8 +892,7 @@ try_session_accept (GabbleMediaSession *session)
     }
 
   /* Start the stream playing */
-  GMS_DEBUG_INFO (session, "setting stream playing");
-  _gabble_media_stream_set_playing (priv->stream, TRUE);
+  _set_streams_playing (session);
 
   if (priv->mode == MODE_GOOGLE)
     action = "accept";
@@ -844,7 +902,7 @@ try_session_accept (GabbleMediaSession *session)
   /* construct a session acceptance message */
   msg = _gabble_media_session_message_new (session, action, &session_node);
 
-  _gabble_media_stream_session_node_add_description (priv->stream, session_node);
+  _add_content_descriptions (session, session_node);
 
   GMS_DEBUG_INFO (session, "sending jingle session action \"%s\" to peer", action);
 
@@ -886,8 +944,7 @@ stream_new_active_candidate_pair_cb (GabbleMediaStream *stream,
   else
     {
       GMS_DEBUG_INFO (session, "session initiated by us, so we're not going to send an accept");
-      GMS_DEBUG_INFO (session, "setting stream playing");
-      _gabble_media_stream_set_playing (priv->stream, TRUE);
+      _set_streams_playing (session);
     }
 }
 
@@ -940,12 +997,7 @@ stream_ready_cb (GabbleMediaStream *stream,
 
       msg = _gabble_media_session_message_new (session, action, &session_node);
 
-      _gabble_media_stream_session_node_add_description (priv->stream, session_node);
-
-      /*
-      if (priv->mode == MODE_JINGLE)
-        _gabble_media_stream_session_node_add_transport (priv->stream, session_node);
-      */
+      _add_content_descriptions (session, session_node);
 
       GMS_DEBUG_INFO (session, "sending jingle action \"%s\" to peer", action);
 

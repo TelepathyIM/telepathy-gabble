@@ -34,6 +34,7 @@ typedef enum
 } GabbleMediaSessionMode;
 
 typedef enum {
+    JS_STATE_INVALID = -1,
     JS_STATE_PENDING_CREATED = 0,
     JS_STATE_PENDING_INITIATED,
     JS_STATE_ACTIVE,

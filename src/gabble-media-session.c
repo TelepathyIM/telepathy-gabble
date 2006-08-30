@@ -257,8 +257,10 @@ gabble_media_session_constructor (GType type, guint n_props,
            constructor (type, n_props, props);
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (GABBLE_MEDIA_SESSION (obj));
 
-  g_object_get (priv->channel, "connection", &priv->conn, NULL);
-  g_object_get (priv->channel, "factory", &priv->media_factory, NULL);
+  g_object_get (priv->channel,
+                "connection", &priv->conn,
+                "factory", &priv->media_factory,
+                NULL);
 
   priv->state = JS_STATE_PENDING_CREATED;
 

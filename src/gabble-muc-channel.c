@@ -1435,14 +1435,10 @@ update_permissions (GabbleMucChannel *chan)
       ROOM_PROP_SUBJECT, prop_flags_add, prop_flags_rem,
       &changed_props_flags);
 
-  /*
-   * Emit signals.
-   */
-  gabble_properties_mixin_emit_changed (G_OBJECT (chan), &changed_props_val);
-  gabble_properties_mixin_emit_flags (G_OBJECT (chan), &changed_props_flags);
-
   if (priv->self_affil == AFFILIATION_OWNER)
     {
+      /* request the configuration form purely to see if the description
+       * is writable by us in this room. sigh. GO MUC!!! */
       LmMessage *msg;
       LmMessageNode *node;
       GError *error;
@@ -1466,6 +1462,19 @@ update_permissions (GabbleMucChannel *chan)
           g_error_free (error);
         }
     }
+  else
+    {
+      /* mark description unwritable if we're no longer an owner */
+      gabble_properties_mixin_change_flags (G_OBJECT (chan),
+          ROOM_PROP_DESCRIPTION, 0, TP_PROPERTY_FLAG_WRITE,
+          &changed_props_flags);
+    }
+
+  /*
+   * Emit signals.
+   */
+  gabble_properties_mixin_emit_changed (G_OBJECT (chan), &changed_props_val);
+  gabble_properties_mixin_emit_flags (G_OBJECT (chan), &changed_props_flags);
 }
 
 /**

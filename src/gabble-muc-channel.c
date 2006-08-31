@@ -1310,7 +1310,7 @@ perms_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
         continue;
 
       if (strcmp (var, "muc#roomconfig_roomdesc") == 0 ||
-                  strcmp (var, "muc#owner_roomdesc") == 0)
+          strcmp (var, "muc#owner_roomdesc") == 0)
         {
           if (gabble_properties_mixin_is_readable (G_OBJECT (chan),
                                                    ROOM_PROP_DESCRIPTION))
@@ -2684,8 +2684,6 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
           id = ROOM_PROP_NAME;
           type = G_TYPE_STRING;
         }
-      /* FIXME: figure out the last remaining variable name
-       *        for room description */
       else if (strcmp (var, "muc#roomconfig_roomdesc") == 0 ||
                strcmp (var, "muc#owner_roomdesc") == 0)
         {

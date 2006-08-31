@@ -169,7 +169,7 @@ _emit_new_stream (const gchar *name,
   g_free (object_path);
 }
 
-static void
+static GabbleMediaStream *
 create_media_stream (GabbleMediaSession *session, const gchar *name, guint id, guint media_type)
 {
   GabbleMediaSessionPrivate *priv;
@@ -211,6 +211,8 @@ create_media_stream (GabbleMediaSession *session, const gchar *name, guint id, g
 
   if (priv->ready)
     _emit_new_stream (name, stream, session);
+
+  return stream;
 }
 
 gboolean
@@ -600,18 +602,69 @@ _handle_initiate (GabbleMediaSession *session,
                   const gchar *stream_name,
                   LmMessageNode *content_node)
 {
+  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
   GabbleMediaStream *stream;
   LmMessageNode *desc_node;
 
-  stream = _lookup_stream_by_name (session, stream_name);
-
-  if (!stream)
-    return FALSE;
-
   desc_node = lm_message_node_get_child (content_node, "description");
 
-  if (!desc_node)
+  if (desc_node == NULL)
     return FALSE;
+
+  stream = _lookup_stream_by_name (session, stream_name);
+
+  if (stream == NULL)
+    {
+      GabbleMediaSessionMode session_mode;
+      TpMediaStreamType stream_type;
+      guint stream_id;
+
+      if (_lm_message_node_has_namespace (desc_node, NS_GOOGLE_SESSION_PHONE))
+        {
+          session_mode = MODE_GOOGLE;
+          stream_type = TP_MEDIA_STREAM_TYPE_AUDIO;
+        }
+      else if (_lm_message_node_has_namespace (desc_node, NS_JINGLE_DESCRIPTION_AUDIO))
+        {
+          session_mode = MODE_JINGLE;
+          stream_type = TP_MEDIA_STREAM_TYPE_AUDIO;
+        }
+      else if (_lm_message_node_has_namespace (desc_node, NS_JINGLE_DESCRIPTION_VIDEO))
+        {
+          session_mode = MODE_JINGLE;
+          stream_type = TP_MEDIA_STREAM_TYPE_VIDEO;
+        }
+      else
+        {
+          NODE_DEBUG (desc_node, "refusing to create stream for unsupported media description");
+          return FALSE;
+        }
+
+      if (session_mode != priv->mode)
+        {
+          if (g_hash_table_size (priv->streams) > 0)
+            {
+              NODE_DEBUG (desc_node, "refusing to change mode because streams already exist");
+              return FALSE;
+            }
+          else
+            {
+              DEBUG ("setting session mode to %s", session_mode == MODE_GOOGLE ? "google" : "jingle");
+              priv->mode = session_mode;
+            }
+        }
+
+      stream_id = _gabble_media_channel_get_stream_id (priv->channel);
+
+      DEBUG ("creating new %s %s stream called \"%s\" with id %u",
+          session_mode == MODE_GOOGLE ? "google" : "jingle",
+          stream_type == TP_MEDIA_STREAM_TYPE_AUDIO ? "audio" : "video",
+          stream_name,
+          stream_id);
+
+      stream = create_media_stream (session, stream_name, stream_id,
+          stream_type);
+    }
 
   if (!_gabble_media_stream_post_remote_codecs (stream, message,
                                                 desc_node))

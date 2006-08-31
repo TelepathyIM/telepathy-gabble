@@ -1289,6 +1289,64 @@ push_remote_candidates (GabbleMediaStream *stream)
       dbus_g_type_specialized_construct (TP_TYPE_CANDIDATE_LIST));
 }
 
+/*
+ * oh sweet g_hash_table_foreach how beautiful thou be'st
+ *
+ *    _\ / ^/
+ *  \/ \// 7_   __
+ *  ( 7 ) (__) (__)
+ *  ^\\ |/__/___/
+ *   \\/_/     | <-- TP-cable kindly provided by Mika N.
+ *    \ /      O
+ *     ||     /|\
+ *     ||     / \
+ *     ||
+ * ____||_____________
+ */
+
+typedef struct {
+    GabbleMediaStreamPrivate *priv;
+    LmMessageNode *pt_node;
+} CodecParamsFromTpContext;
+
+static const gchar *video_codec_params[] = {
+  "x", "y", "width", "height", "layer", "transparent",
+};
+
+static void
+codec_params_from_tp_foreach (gpointer key, gpointer value, gpointer user_data)
+{
+  CodecParamsFromTpContext *ctx = user_data;
+  GabbleMediaStreamPrivate *priv = ctx->priv;
+  const gchar *pname, *pvalue;
+
+  if (priv->media_type == TP_CODEC_MEDIA_TYPE_AUDIO)
+    {
+      if (priv->mode == MODE_GOOGLE && strcmp (pname, "bitrate") == 0)
+        {
+          lm_message_node_set_attribute (ctx->pt_node, pname, pvalue);
+          return;
+        }
+    }
+  else if (priv->mode == MODE_JINGLE)
+    {
+      gint i;
+
+      for (i = 0; video_codec_params[i] != NULL; i++)
+        {
+          if (strcmp (pname, video_codec_params[i]) == 0)
+            {
+              lm_message_node_set_attribute (ctx->pt_node, pname, pvalue);
+              return;
+            }
+        }
+    }
+
+  DEBUG ("ignoring %s=%s for %s %s stream", pname, pvalue,
+      (priv->mode == MODE_JINGLE) ? "jingle" : "google",
+      (priv->media_type == TP_CODEC_MEDIA_TYPE_AUDIO) ? "audio" : "video");
+}
+
 void
 _gabble_media_stream_content_node_add_description (GabbleMediaStream *stream,
                                                    LmMessageNode *content_node)
@@ -1317,9 +1375,11 @@ _gabble_media_stream_content_node_add_description (GabbleMediaStream *stream,
   for (i = 0; i < codecs->len; i++)
     {
       GValue codec = { 0, };
-      guint id;
-      gchar *id_str, *name;
+      guint id, clock_rate, channels;
+      gchar *name, buf[16];
+      GHashTable *params;
       LmMessageNode *pt_node;
+      CodecParamsFromTpContext ctx;
 
       g_value_init (&codec, TP_TYPE_CODEC_STRUCT);
       g_value_set_static_boxed (&codec, g_ptr_array_index (codecs, i));
@@ -1327,23 +1387,48 @@ _gabble_media_stream_content_node_add_description (GabbleMediaStream *stream,
       dbus_g_type_struct_get (&codec,
           0, &id,
           1, &name,
+          3, &clock_rate,
+          4, &channels,
+          5, &params,
           G_MAXUINT);
-
-      id_str = g_strdup_printf ("%d", id);
-
-      /* FIXME: parse the rest of the struct */
 
       /* create a sub-node called "payload-type" and fill it */
       pt_node = lm_message_node_add_child (desc_node, "payload-type", NULL);
 
-      lm_message_node_set_attributes (pt_node,
-          "id", id_str,
-          "name", name,
-          NULL);
+      /* id: required */
+      sprintf (buf, "%u", id);
+      lm_message_node_set_attribute (pt_node, "id", buf);
+
+      /* name: optional */
+      if (*name != '\0')
+        {
+          lm_message_node_set_attribute (pt_node, "name", name);
+        }
+
+      /* clock rate: optional */
+      if (clock_rate != 0)
+        {
+          sprintf (buf, "%u", clock_rate);
+          lm_message_node_set_attribute (pt_node,
+              (priv->mode == MODE_GOOGLE) ? "clockrate" : "rate", buf);
+        }
+
+      /* number of channels: optional, jingle only */
+      /* FIXME: is it? */
+      if (channels != 0 && priv->mode == MODE_JINGLE)
+        {
+          sprintf (buf, "%u", channels);
+          lm_message_node_set_attribute (pt_node, "channels", buf);
+        }
+
+      /* parse the optional params */
+      ctx.priv = priv;
+      ctx.pt_node = pt_node;
+      g_hash_table_foreach (params, codec_params_from_tp_foreach, &ctx);
 
       /* clean up */
-      g_free (id_str);
       g_free (name);
+      g_hash_table_destroy (params);
     }
 }
 

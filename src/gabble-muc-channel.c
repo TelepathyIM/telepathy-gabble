@@ -1799,30 +1799,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
     }
   else if (sender == priv->handle)
     {
-      if (text)
-        {
-          gchar *desc;
-
-          desc = g_strdup (text);
-          g_strstrip (desc);
-
-          g_value_init (&val, G_TYPE_STRING);
-          g_value_set_string (&val, desc);
-
-          gabble_properties_mixin_change_value (G_OBJECT (chan),
-              ROOM_PROP_DESCRIPTION, &val, NULL);
-
-          gabble_properties_mixin_change_flags (G_OBJECT (chan),
-              ROOM_PROP_DESCRIPTION, TP_PROPERTY_FLAG_READ, 0, NULL);
-
-          g_value_unset (&val);
-
-          g_free (desc);
-        }
-      else
-        {
-          HANDLER_DEBUG (msg->node, "ignoring message from channel");
-        }
+      NODE_DEBUG (msg->node, "ignoring message from channel");
 
       return TRUE;
     }

@@ -1566,17 +1566,8 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
           GabbleMucRole new_role;
           GabbleMucAffiliation new_affil;
 
-          new_role = get_role_from_string (role);
-          new_affil = get_affiliation_from_string (affil);
-
-          if (new_role != priv->self_role || new_affil != priv->self_affil)
-            {
-              priv->self_role = new_role;
-              priv->self_affil = new_affil;
-
-              update_permissions (chan);
-            }
-
+          /* accept newly-created room settings before we send anything
+           * below which queryies them. */
           if (status_code && strcmp (status_code, "201") == 0)
             {
               LmMessage *msg;
@@ -1609,6 +1600,21 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
 
           /* Update room properties */
           room_properties_update (chan);
+
+          /* update permissions after requesting new properties so that if we
+           * become an owner, we get our configuration form reply after the
+           * discovery reply, so we know whether there is a description
+           * property before we try and decide whether we can write to it. */
+          new_role = get_role_from_string (role);
+          new_affil = get_affiliation_from_string (affil);
+
+          if (new_role != priv->self_role || new_affil != priv->self_affil)
+            {
+              priv->self_role = new_role;
+              priv->self_affil = new_affil;
+
+              update_permissions (chan);
+            }
         }
     }
   else

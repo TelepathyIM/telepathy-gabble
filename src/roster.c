@@ -604,7 +604,9 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
   LmMessageNode *iq_node, *query_node;
   LmMessageSubType sub_type;
   const gchar *from;
+#if 0
   gboolean google_roster = FALSE;
+#endif
 
   g_assert (lmconn == priv->conn->lmconn);
 
@@ -634,6 +636,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
         }
     }
 
+#if 0
   if (priv->conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER)
     {
       const char *gr_ext;
@@ -643,6 +646,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
       if (!g_strdiff (gr_ext, GOOGLE_ROSTER_VERSION))
         google_roster = TRUE;
     }
+#endif
 
   sub_type = lm_message_get_sub_type (message);
 
@@ -653,8 +657,10 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
       LmMessageNode *item_node;
       GIntSet *empty, *pub_add, *pub_rem,
               *sub_add, *sub_rem, *sub_rp,
-              *known_add, *known_rem,
+              *known_add, *known_rem;
+#if 0
               *block_add, *block_rem;
+#endif
       GabbleHandle handle;
       GabbleRosterChannel *chan;
 
@@ -671,6 +677,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
       known_add = g_intset_new ();
       known_rem = g_intset_new ();
 
+#if 0
       if (google_roster)
         {
           block_add = g_intset_new ();
@@ -681,6 +688,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
           block_add = NULL;
           block_rem = NULL;
         }
+#endif
 
       /* get the publish channel first because we need it when processing */
       handle = gabble_handle_for_list_publish (priv->conn->handles);
@@ -781,6 +789,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
               g_assert_not_reached ();
             }
 
+#if 0
           /* handle block list changes */
           if (google_roster)
             {
@@ -802,6 +811,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
                   g_assert_not_reached ();
                 }
             }
+#endif
         }
 
       /* chan was initialised to the publish channel before the for loop */
@@ -824,6 +834,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
       gabble_group_mixin_change_members (G_OBJECT (chan),
             "", known_add, known_rem, empty, empty);
 
+#if 0
       if (google_roster)
         {
           handle = gabble_handle_for_list_block (priv->conn->handles);
@@ -836,6 +847,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
           g_intset_destroy (block_add);
           g_intset_destroy (block_rem);
         }
+#endif
 
       g_intset_destroy (empty);
       g_intset_destroy (pub_add);

@@ -2417,7 +2417,7 @@ connection_ssl_cb (LmSSL      *lmssl,
       break;
     default:
       g_assert_not_reached();
-      reason "Unknown SSL error code from Loudmouth.";
+      reason = "Unknown SSL error code from Loudmouth.";
       tp_reason = TP_CONN_STATUS_REASON_ENCRYPTION_ERROR;
       break;
   }

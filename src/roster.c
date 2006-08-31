@@ -827,6 +827,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
               break;
             case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
               g_intset_add (sub_rem, handle);
+              break;
             default:
               g_assert_not_reached ();
             }

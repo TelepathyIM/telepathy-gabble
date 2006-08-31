@@ -796,9 +796,9 @@ _call_handler_on_streams (GabbleMediaSession *session,
                           LmMessageNode *session_node,
                           StreamHandlerFunc func)
 {
-  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+  /* GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session); */
 
-  if (MODE_GOOGLE == priv->mode)
+  if (_lm_message_node_has_namespace (session_node, NS_GOOGLE_SESSION))
     {
       if (!func (session, message, GTALK_STREAM_NAME, session_node))
         return FALSE;

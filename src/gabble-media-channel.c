@@ -98,6 +98,8 @@ struct _GabbleMediaChannelPrivate
   GabbleMediaFactory *factory;
   GabbleMediaSession *session;
 
+  guint next_stream_id;
+
   gboolean closed;
   gboolean dispose_has_run;
 };
@@ -107,7 +109,9 @@ struct _GabbleMediaChannelPrivate
 static void
 gabble_media_channel_init (GabbleMediaChannel *obj)
 {
-  /*GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (obj);*/
+  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (obj);
+
+  priv->next_stream_id = 1;
 }
 
 static GObject *
@@ -1110,4 +1114,12 @@ _gabble_media_channel_stream_state (GabbleMediaChannel *chan, guint state)
     }
 
   g_array_free (array, TRUE);
+}
+
+guint
+_gabble_media_channel_get_stream_id (GabbleMediaChannel *chan)
+{
+  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
+
+  return priv->next_stream_id++;
 }

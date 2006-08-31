@@ -82,6 +82,8 @@ void _gabble_media_channel_dispatch_session_action (GabbleMediaChannel *chan, Ga
 
 void _gabble_media_channel_stream_state (GabbleMediaChannel *chan, guint state);
 
+guint _gabble_media_channel_get_stream_id (GabbleMediaChannel *chan);
+
 G_END_DECLS
 
 #endif /* #ifndef __GABBLE_MEDIA_CHANNEL_H__*/

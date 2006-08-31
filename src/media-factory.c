@@ -214,7 +214,7 @@ media_factory_jingle_cb (LmMessageHandler *handler,
 {
   GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (user_data);
   GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
-  LmMessageNode *iq_node, *session_node, *desc_node;
+  LmMessageNode *iq_node, *session_node;
   const gchar *from, *id, *action, *sid;
   gchar *resource;
   GabbleHandle handle;
@@ -222,53 +222,68 @@ media_factory_jingle_cb (LmMessageHandler *handler,
 
   g_assert (lmconn == priv->conn->lmconn);
 
-  iq_node = lm_message_get_node (message);
-  session_node = lm_message_node_get_child (iq_node, "session");
+  /* all jingle actions are sets */
+  if (LM_MESSAGE_SUB_TYPE_SET != lm_message_get_sub_type (message))
+    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
   /* is it for us? */
-  if (!session_node || !_lm_message_node_has_namespace (session_node,
-        NS_GOOGLE_SESSION))
-    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+  iq_node = lm_message_get_node (message);
+  session_node = lm_message_node_get_child (message->node, "jingle");
+
+  if (session_node != NULL)
+    {
+      if (!_lm_message_node_has_namespace (session_node, NS_JINGLE))
+        return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+
+      action = lm_message_node_get_attribute (session_node, "action");
+    }
+  else
+    {
+      session_node = lm_message_node_get_child (iq_node, "session");
+
+      if (session_node == NULL)
+        return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+
+      if (!_lm_message_node_has_namespace (session_node, NS_GOOGLE_SESSION))
+        return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+
+      action = lm_message_node_get_attribute (session_node, "type");
+    }
+
+  if (!action)
+    {
+      NODE_DEBUG (iq_node, "session action not found");
+      goto BAD_REQUEST;
+    }
 
   from = lm_message_node_get_attribute (iq_node, "from");
   if (!from)
     {
       NODE_DEBUG (iq_node, "'from' attribute not found");
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-    }
-
-  id = lm_message_node_get_attribute (iq_node, "id");
-  if (!id)
-    {
-      NODE_DEBUG (iq_node, "'id' attribute not found");
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-    }
-
-  if (LM_MESSAGE_SUB_TYPE_SET != lm_message_get_sub_type (message))
-    {
-      NODE_DEBUG (iq_node, "Jingle message sub type is not \"set\"");
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      goto BAD_REQUEST;
     }
 
   handle = gabble_handle_for_contact (priv->conn->handles, from, FALSE);
   if (!handle)
     {
       NODE_DEBUG (iq_node, "unable to get handle for sender");
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      goto BAD_REQUEST;
     }
 
-  /* determine the jingle action of the request */
-  action = lm_message_node_get_attribute (session_node, "type");
-  if (!action)
+  id = lm_message_node_get_attribute (iq_node, "id");
+  if (!id)
     {
-      NODE_DEBUG (iq_node, "session 'type' attribute not found");
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      NODE_DEBUG (iq_node, "'id' attribute not found");
+      goto BAD_REQUEST;
     }
 
   /* does the session exist? */
   sid = lm_message_node_get_attribute (session_node, "id");
   if (!sid)
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    {
+      NODE_DEBUG (iq_node, "unable to get session id");
+      goto BAD_REQUEST;
+    }
 
   if (_gabble_media_factory_sid_in_use (fac, sid))
     {
@@ -277,26 +292,13 @@ media_factory_jingle_cb (LmMessageHandler *handler,
     }
 
   /* it's a new session */
-  if (!chan)
+  if (chan == NULL)
     {
       /* if the session is unknown, the only allowed action is "initiate" */
-      if (strcmp (action, "initiate"))
+      if (g_strdiff (action, "initiate") && g_strdiff (action, "session-initiate"))
         {
-          NODE_DEBUG (iq_node, "action is not \"initiate\", ignoring");
-          return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-        }
-
-      desc_node = lm_message_node_get_child (session_node, "description");
-      if (!desc_node)
-        {
-          NODE_DEBUG (iq_node, "node has no description, ignoring");
-          return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-        }
-
-      if (!_lm_message_node_has_namespace (desc_node, NS_GOOGLE_SESSION_PHONE))
-        {
-          NODE_DEBUG (iq_node, "unknown session description, ignoring");
-          return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+          NODE_DEBUG (iq_node, "action is not \"initiate\" or \"session-initiate\", rejecting");
+          goto BAD_REQUEST;
         }
 
       DEBUG ("creating media channel");
@@ -313,6 +315,11 @@ media_factory_jingle_cb (LmMessageHandler *handler,
       sid, message, session_node, action);
   g_object_unref (chan);
   g_free (resource);
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+
+BAD_REQUEST:
+  _gabble_connection_send_iq_error (priv->conn, message, XMPP_ERROR_BAD_REQUEST);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }

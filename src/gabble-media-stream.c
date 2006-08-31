@@ -973,8 +973,6 @@ _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream,
                   codecs->len);
 
 /*SUCCESS:*/
-  _gabble_connection_acknowledge_set_iq (priv->conn, message);
-
   push_remote_codecs (stream);
 
   return TRUE;
@@ -1203,8 +1201,6 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
     }
 
 /*SUCCESS:*/
-  _gabble_connection_acknowledge_set_iq (priv->conn, message);
-
   push_remote_candidates (stream);
 
   return TRUE;

@@ -269,6 +269,7 @@ gabble_media_session_constructor (GType type, guint n_props,
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
 
+#if 0
   if (!priv->peer_resource)
     {
       GabblePresence *presence;
@@ -283,6 +284,7 @@ gabble_media_session_constructor (GType type, guint n_props,
 
   create_media_stream (GABBLE_MEDIA_SESSION (obj), GTALK_STREAM_NAME, 1,
       TP_MEDIA_STREAM_TYPE_AUDIO);
+#endif
 
   return obj;
 }

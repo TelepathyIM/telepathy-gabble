@@ -1821,7 +1821,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
         }
       else
         {
-          NODE_DEBUG (msg->node, "ignoring message from channel");
+          HANDLER_DEBUG (msg->node, "ignoring message from channel");
         }
 
       return TRUE;

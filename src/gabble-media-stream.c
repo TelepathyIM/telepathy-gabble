@@ -915,7 +915,6 @@ _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream,
 {
   GabbleMediaStreamPrivate *priv;
   LmMessageNode *node;
-  const gchar *str;
   GPtrArray *codecs;
   gchar *xml;
 
@@ -930,12 +929,14 @@ _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream,
   for (node = desc_node->children; node; node = node->next)
     {
       guchar id;
-      const gchar *name;
+      const gchar *name, *str;
+      guint clockrate, channels;
+      GHashTable *params;
       GValue codec = { 0, };
 
       /* id of codec */
       str = lm_message_node_get_attribute (node, "id");
-      if (!str)
+      if (str == NULL)
         {
           GMS_DEBUG_ERROR (priv->session, "_gabble_media_stream_post_remote_codecs "
                            "failed: failed to get attribute \"id\"");
@@ -946,11 +947,43 @@ _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream,
 
       /* codec name */
       name = lm_message_node_get_attribute (node, "name");
-      if (!name)
+      if (name == NULL)
         {
-          GMS_DEBUG_ERROR (priv->session, "_gabble_media_stream_post_remote_codecs "
-                           "failed: failed to get attribute \"name\"");
-          goto FAILURE;
+          name = "";
+        }
+
+      /* clock rate: jingle and newer GTalk */
+      str = lm_message_node_get_attribute (node, "clockrate"); /* google */
+      if (str == NULL)
+        str = lm_message_node_get_attribute (node, "rate"); /* jingle */
+
+      if (str != NULL)
+        {
+          clockrate = atoi (str);
+        }
+      else
+        {
+          clockrate = 0;
+        }
+
+      /* number of channels: jingle only */
+      str = lm_message_node_get_attribute (node, "channels");
+      if (str != NULL)
+        {
+          channels = atoi (str);
+        }
+      else
+        {
+          channels = 1;
+        }
+
+      params = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+
+      /* bitrate: newer GTalk only */
+      str = lm_message_node_get_attribute (node, "bitrate");
+      if (str != NULL)
+        {
+          g_hash_table_insert (params, "bitrate", g_strdup (str));
         }
 
       g_value_init (&codec, TP_TYPE_CODEC_STRUCT);
@@ -961,9 +994,9 @@ _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream,
           0, id,
           1, name,
           2, TP_CODEC_MEDIA_TYPE_AUDIO,
-          3, 0,                          /* clock rate */
-          4, 1,                          /* number of supported channels */
-          5, g_hash_table_new (g_str_hash, g_str_equal),
+          3, clockrate,
+          4, channels,
+          5, params,
           G_MAXUINT);
 
       g_ptr_array_add (codecs, g_value_get_boxed (&codec));
@@ -972,7 +1005,6 @@ _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream,
   GMS_DEBUG_INFO (priv->session, "put %d remote codecs from peer into cache",
                   codecs->len);
 
-/*SUCCESS:*/
   push_remote_codecs (stream);
 
   return TRUE;

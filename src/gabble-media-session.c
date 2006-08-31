@@ -126,6 +126,7 @@ gabble_media_session_init (GabbleMediaSession *obj)
 {
   GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (obj);
 
+  priv->mode = MODE_JINGLE;
   priv->streams = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
       g_object_unref);
 }

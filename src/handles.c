@@ -153,7 +153,7 @@ handle_priv_lookup (GabbleHandleRepo *repo,
 static GabbleHandle
 gabble_handle_alloc (GabbleHandleRepo *repo, TpHandleType type)
 {
-  GabbleHandle ret;
+  GabbleHandle ret = 0;
 
   g_assert (repo != NULL);
   g_assert (gabble_handle_type_is_valid (type, NULL));

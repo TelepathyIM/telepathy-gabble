@@ -1163,6 +1163,7 @@ _gabble_media_session_debug (GabbleMediaSession *session,
           break;
         default:
           g_assert_not_reached ();
+          return;
       }
 
       printf ("[%s%s%s] %s%-26s%s %s%s%s\n",

@@ -1901,14 +1901,23 @@ connection_nickname_update_cb (GObject *object,
   GValue entry = { 0, };
 
   if (object == G_OBJECT (conn->roster))
-    signal_source = GABBLE_CONNECTION_ALIAS_FROM_ROSTER;
+    {
+      signal_source = GABBLE_CONNECTION_ALIAS_FROM_ROSTER;
+    }
   else if (object == G_OBJECT (conn->presence_cache))
-    signal_source = GABBLE_CONNECTION_ALIAS_FROM_PRESENCE;
-/*  else if (object == G_OBJECT (conn->vcard_cache))
- *  signal_source = GABBLE_CONNECTION_ALIAS_FROM_VCARD;
+    {
+      signal_source = GABBLE_CONNECTION_ALIAS_FROM_PRESENCE;
+    }
+/* else if (object == G_OBJECT (conn->vcard_cache))
+ *   {
+ *     signal_source = GABBLE_CONNECTION_ALIAS_FROM_VCARD;
+ *   }
  */
   else
-    g_assert_not_reached ();
+    {
+      g_assert_not_reached ();
+      return;
+    }
 
   real_source = _gabble_connection_get_cached_alias (conn, handle, &alias);
 
@@ -2408,6 +2417,9 @@ connection_ssl_cb (LmSSL      *lmssl,
       break;
     default:
       g_assert_not_reached();
+      reason "Unknown SSL error code from Loudmouth.";
+      tp_reason = TP_CONN_STATUS_REASON_ENCRYPTION_ERROR;
+      break;
   }
 
   DEBUG ("called: %s", reason);
@@ -2714,6 +2726,7 @@ make_roomlist_channel (GabbleConnection *conn, gboolean suppress_handler)
       else
         {
           g_assert_not_reached ();
+          return;
         }
 
       object_path = g_strdup_printf ("%s/RoomlistChannel", conn->object_path);

@@ -420,6 +420,7 @@ gabble_disco_request_with_timeout (GabbleDisco *self, GabbleDiscoType type,
       break;
     default:
       g_assert_not_reached ();
+      return NULL;
   }
 
   lm_message_node_set_attribute (lm_node, "xmlns", xmlns);

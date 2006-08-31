@@ -764,9 +764,9 @@ _add_rtp_candidate_node (GabbleMediaSession *session, LmMessageNode *parent,
       type_str = "relay";
       break;
     default:
-      g_critical ("%s: TpMediaStreamTransportType has an invalid value",
+      g_error ("%s: TpMediaStreamTransportType has an invalid value",
         G_STRFUNC);
-      g_assert_not_reached ();
+      return;
   }
 
   cand_node = lm_message_node_add_child (parent, "candidate", NULL);

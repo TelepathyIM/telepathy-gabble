@@ -203,6 +203,7 @@ gabble_properties_mixin_list_properties (GObject *obj, GPtrArray **ret, GError *
           break;
         default:
           g_assert_not_reached ();
+          continue;
       };
 
       g_value_init (&val, TP_TYPE_PROPERTY_INFO_STRUCT);

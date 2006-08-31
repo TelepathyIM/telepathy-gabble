@@ -1310,7 +1310,7 @@ _gabble_media_stream_content_node_add_description (GabbleMediaStream *stream,
   if (priv->mode == MODE_GOOGLE)
     xmlns = NS_GOOGLE_SESSION_PHONE;
   else
-    xmlns = NS_JINGLE_AUDIO;
+    xmlns = NS_JINGLE_DESCRIPTION_AUDIO;
 
   lm_message_node_set_attribute (desc_node, "xmlns", xmlns);
 

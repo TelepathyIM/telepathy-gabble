@@ -1357,7 +1357,7 @@ codec_params_from_tp_foreach (gpointer key, gpointer value, gpointer user_data)
 {
   CodecParamsFromTpContext *ctx = user_data;
   GabbleMediaStreamPrivate *priv = ctx->priv;
-  const gchar *pname, *pvalue;
+  const gchar *pname = key, *pvalue = value;
 
   if (priv->media_type == TP_CODEC_MEDIA_TYPE_AUDIO)
     {

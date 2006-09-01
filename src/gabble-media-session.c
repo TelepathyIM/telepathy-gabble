@@ -170,16 +170,27 @@ _emit_new_stream (const gchar *name,
 }
 
 static GabbleMediaStream *
-create_media_stream (GabbleMediaSession *session, const gchar *name, guint id, guint media_type)
+create_media_stream (GabbleMediaSession *session,
+                     const gchar *name,
+                     guint media_type)
 {
   GabbleMediaSessionPrivate *priv;
   gchar *object_path;
   GabbleMediaStream *stream;
+  guint id;
 
   g_assert (GABBLE_IS_MEDIA_SESSION (session));
   g_assert (name != NULL);
 
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+
+  id = _gabble_media_channel_get_stream_id (priv->channel);
+
+  GMS_DEBUG_INFO (session,
+      "creating new %s %s stream called \"%s\" with id %u",
+      priv->mode == MODE_GOOGLE ? "google" : "jingle",
+      media_type == TP_MEDIA_STREAM_TYPE_AUDIO ? "audio" : "video",
+      name, id);
 
   object_path = g_strdup_printf ("%s/IceStream%u", priv->object_path, id);
 
@@ -290,7 +301,7 @@ gabble_media_session_constructor (GType type, guint n_props,
     GabbleMediaStream *stream;
 
     stream = create_media_stream (GABBLE_MEDIA_SESSION (obj), GTALK_STREAM_NAME,
-        1, TP_MEDIA_STREAM_TYPE_AUDIO);
+        TP_MEDIA_STREAM_TYPE_AUDIO);
   }
 #endif
 
@@ -650,22 +661,9 @@ _handle_initiate (GabbleMediaSession *session,
               priv->mode = session_mode;
             }
         }
-
-      stream_id = _gabble_media_channel_get_stream_id (priv->channel);
-
-      DEBUG ("creating new %s %s stream called \"%s\" with id %u",
-          session_mode == MODE_GOOGLE ? "google" : "jingle",
-          stream_type == TP_MEDIA_STREAM_TYPE_AUDIO ? "audio" : "video",
-          stream_name,
-          stream_id);
-
-      stream = create_media_stream (session, stream_name, stream_id,
-          stream_type);
     }
 
-  if (!_gabble_media_stream_post_remote_codecs (stream, message,
-                                                desc_node))
-    return FALSE;
+  stream = create_media_stream (session, stream_name, stream_type);
 
   return TRUE;
 }

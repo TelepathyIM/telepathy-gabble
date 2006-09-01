@@ -2068,13 +2068,15 @@ signal_own_presence (GabbleConnection *self, GError **error)
         lm_message_node_set_attribute (node, "type", "invisible");
     }
 
+  /* TODO: determine which feature bundles to advertise based on
+   * which capabilities of ours are turned on. */
   node = lm_message_node_add_child (node, "c", NULL);
   lm_message_node_set_attributes (
     node,
     "xmlns", NS_CAPS,
     "node",  NS_GABBLE_CAPS,
     "ver",   VERSION,
-    "ext",   "voice-v1",
+    "ext",   "voice-v1 jingle-audio jingle-video",
     NULL);
 
   ret = _gabble_connection_send (self, message, error);

@@ -63,6 +63,7 @@
 ^data/org.freedesktop.Telepathy.ConnectionManager.gabble.service$
 ^src/telepathy-gabble$
 ^src/write-mgr-file$
+^tests/test-heap$
 ^tests/test-intset$
 ^tests/test-gabble-presence$
 (^|/)cscope\.out$

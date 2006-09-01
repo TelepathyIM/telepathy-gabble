@@ -246,36 +246,39 @@ media_factory_jingle_cb (LmMessageHandler *handler,
       action = lm_message_node_get_attribute (session_node, "type");
     }
 
-  if (!action)
+  if (action == NULL)
     {
       NODE_DEBUG (iq_node, "session action not found");
       goto BAD_REQUEST;
     }
 
   from = lm_message_node_get_attribute (iq_node, "from");
-  if (!from)
+  if (from == NULL)
     {
       NODE_DEBUG (iq_node, "'from' attribute not found");
       goto BAD_REQUEST;
     }
 
   handle = gabble_handle_for_contact (priv->conn->handles, from, FALSE);
-  if (!handle)
+  if (handle == 0)
     {
       NODE_DEBUG (iq_node, "unable to get handle for sender");
       goto BAD_REQUEST;
     }
 
   id = lm_message_node_get_attribute (iq_node, "id");
-  if (!id)
+  if (id == NULL)
     {
       NODE_DEBUG (iq_node, "'id' attribute not found");
       goto BAD_REQUEST;
     }
 
   /* does the session exist? */
-  sid = lm_message_node_get_attribute (session_node, "id");
-  if (!sid)
+  sid = lm_message_node_get_attribute (session_node, "sid");
+  if (sid == NULL)
+    sid = lm_message_node_get_attribute (session_node, "id");
+
+  if (sid == NULL)
     {
       NODE_DEBUG (iq_node, "unable to get session id");
       goto BAD_REQUEST;

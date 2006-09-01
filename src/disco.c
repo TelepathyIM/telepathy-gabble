@@ -166,7 +166,6 @@ gabble_disco_dispose (GObject *object)
 {
   GabbleDisco *self = GABBLE_DISCO (object);
   GabbleDiscoPrivate *priv = GABBLE_DISCO_GET_PRIVATE (self);
-  GList *li;
   DBusGProxy *bus_proxy;
   bus_proxy = tp_get_bus_proxy ();
 
@@ -177,12 +176,9 @@ gabble_disco_dispose (GObject *object)
 
   DEBUG ("dispose called");
 
-  for (li = g_list_first (priv->requests); li; li = li->next)
-    {
-      cancel_request (li->data);
-    }
-
-  g_list_free (priv->requests);
+  /* cancel request removes the element from the list after cancelling */
+  while (priv->requests)
+    cancel_request (priv->requests->data);
 
   if (G_OBJECT_CLASS (gabble_disco_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_disco_parent_class)->dispose (object);
@@ -217,9 +213,14 @@ static void notify_delete_request (gpointer data, GObject *obj);
 static void
 delete_request (GabbleDiscoRequest *request)
 {
-  GabbleDiscoPrivate *priv = GABBLE_DISCO_GET_PRIVATE (request->disco);
+  GabbleDisco *disco = request->disco;
+  GabbleDiscoPrivate *priv;
 
   g_assert (NULL != request);
+  g_assert (GABBLE_IS_DISCO (disco));
+
+  priv = GABBLE_DISCO_GET_PRIVATE (disco);
+
   g_assert (NULL != g_list_find (priv->requests, request));
 
   priv->requests = g_list_remove (priv->requests, request);

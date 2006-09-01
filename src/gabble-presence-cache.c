@@ -201,9 +201,13 @@ gabble_presence_cache_init (GabblePresenceCache *cache)
   priv->disco_pending = g_hash_table_new_full (g_str_hash, g_str_equal,
     g_free, (GDestroyNotify) disco_waiter_list_free);
 
+#if 0
+  /* TODO: initialise our cache from a lookup table of capabilities
+   * and flags */
   g_hash_table_insert (priv->capabilities,
     NS_GABBLE_CAPS "#jingle",
     GINT_TO_POINTER (PRESENCE_CAP_GOOGLE_VOICE | PRESENCE_CAP_JINGLE_VOICE));
+#endif
 }
 
 static GObject *

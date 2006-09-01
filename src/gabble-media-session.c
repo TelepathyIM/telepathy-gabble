@@ -57,7 +57,6 @@ G_DEFINE_TYPE(GabbleMediaSession, gabble_media_session, G_TYPE_OBJECT)
 enum
 {
     NEW_ICE_STREAM_HANDLER,
-    INVITATION_RECEIVED,
     LAST_SIGNAL
 };
 
@@ -477,15 +476,6 @@ gabble_media_session_class_init (GabbleMediaSessionClass *gabble_media_session_c
                   NULL, NULL,
                   gabble_media_session_marshal_VOID__STRING_INT_INT_INT,
                   G_TYPE_NONE, 4, DBUS_TYPE_G_OBJECT_PATH, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT);
-
-  signals[INVITATION_RECEIVED] =
-    g_signal_new ("invitation-received",
-                  G_OBJECT_CLASS_TYPE (gabble_media_session_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  g_cclosure_marshal_VOID__VOID,
-                  G_TYPE_NONE, 0);
 
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_media_session_class), &dbus_glib_gabble_media_session_object_info);
 }

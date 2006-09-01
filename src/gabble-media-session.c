@@ -1097,9 +1097,12 @@ try_session_accept (GabbleMediaSession *session)
   LmMessageNode *session_node;
   const gchar *action;
 
-  if (!priv->accepted || !priv->got_active_candidate_pair)
+  if (!priv->accepted ||
+      !priv->got_active_candidate_pair ||
+      priv->pending_stream_count > 0)
     {
-      GMS_DEBUG_INFO (session, "not sending accept yet, waiting for acceptance or active candidate pair");
+      GMS_DEBUG_INFO (session, "not sending accept yet, waiting for "
+          "acceptance, active candidate pair or streams to become ready");
       return;
     }
 
@@ -1237,9 +1240,15 @@ stream_ready_cb (GabbleMediaStream *stream,
       return;
     }
 
-  /* send an invitation if the session was initiated by us */
-  if (priv->initiator != priv->peer)
+  if (priv->initiator == priv->peer)
     {
+      /* now we have the codecs, we can possibly send an accept if the session
+       * was initiated by the peer */
+      try_session_accept (session);
+    }
+  else
+    {
+      /* send an invitation if the session was initiated by us */
       send_initiate_message (session);
     }
 }

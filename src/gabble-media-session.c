@@ -1259,7 +1259,7 @@ _gabble_media_session_message_new (GabbleMediaSession *session,
 
   lm_message_node_set_attributes (node,
       (priv->mode == MODE_GOOGLE) ? "id" : "sid", priv->id,
-      "type", action,
+      (priv->mode == MODE_GOOGLE) ? "type" : "action", action,
       "initiator", initiator_jid,
       NULL);
 

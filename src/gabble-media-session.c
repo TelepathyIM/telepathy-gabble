@@ -86,6 +86,7 @@ struct _GabbleMediaSessionPrivate
   gchar *object_path;
 
   GHashTable *streams;
+  gint pending_stream_count;
 
   gchar *id;
   GabbleHandle initiator;
@@ -206,6 +207,8 @@ create_media_stream (GabbleMediaSession *session, const gchar *name, guint id, g
 
   g_hash_table_insert (priv->streams, g_strdup (name), stream);
 
+  priv->pending_stream_count++;
+
   g_free (object_path);
 
   if (priv->ready)
@@ -238,7 +241,10 @@ _get_peer_resource (GabblePresence *presence, gchar **peer_resource,
     {
       DEBUG ("using GTalk-capable resource %s\n", resource);
       *peer_resource = g_strdup (resource);
-      *mode = MODE_GOOGLE;
+      if (g_getenv ("GABBLE_JINGLE_FORCE"))
+        *mode = MODE_JINGLE;
+      else
+        *mode = MODE_GOOGLE;
       return TRUE;
     }
 
@@ -267,7 +273,7 @@ gabble_media_session_constructor (GType type, guint n_props,
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
 
-#if 0
+#if 1
   if (!priv->peer_resource)
     {
       GabblePresence *presence;
@@ -280,8 +286,12 @@ gabble_media_session_constructor (GType type, guint n_props,
         g_critical ("%s: no voice resource found for remote handle", G_STRFUNC);
     }
 
-  create_media_stream (GABBLE_MEDIA_SESSION (obj), GTALK_STREAM_NAME, 1,
-      TP_MEDIA_STREAM_TYPE_AUDIO);
+  {
+    GabbleMediaStream *stream;
+
+    stream = create_media_stream (GABBLE_MEDIA_SESSION (obj), GTALK_STREAM_NAME,
+        1, TP_MEDIA_STREAM_TYPE_AUDIO);
+  }
 #endif
 
   return obj;
@@ -988,6 +998,8 @@ _add_content_descriptions_one (const gchar *name,
     }
 
   _gabble_media_stream_content_node_add_description (stream, content_node);
+
+  _gabble_media_stream_content_node_add_transports (stream, content_node);
 }
 
 static void
@@ -1099,6 +1111,35 @@ initiate_msg_reply_cb (GabbleConnection *conn,
 }
 
 static void
+send_initiate_message (GabbleMediaSession *session)
+{
+  GabbleMediaSessionPrivate *priv;
+  LmMessage *msg;
+  LmMessageNode *session_node;
+  const gchar *action;
+
+  g_assert (GABBLE_IS_MEDIA_SESSION (session));
+
+  priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+
+  if (priv->mode == MODE_GOOGLE)
+      action = "initiate";
+  else
+      action = "session-initiate";
+
+  msg = _gabble_media_session_message_new (session, action, &session_node);
+
+  _add_content_descriptions (session, session_node);
+
+  GMS_DEBUG_INFO (session, "sending jingle action \"%s\" to peer", action);
+
+  _gabble_connection_send_with_reply (priv->conn, msg, initiate_msg_reply_cb,
+                                      G_OBJECT (session), NULL, NULL);
+
+  lm_message_unref (msg);
+}
+
+static void
 stream_ready_cb (GabbleMediaStream *stream,
                  const GPtrArray *codecs,
                  GabbleMediaSession *session)
@@ -1109,28 +1150,23 @@ stream_ready_cb (GabbleMediaStream *stream,
 
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
 
+  priv->pending_stream_count--;
+
+  /* any more streams pending to be signalled ready? */
+  if (priv->pending_stream_count > 0)
+    {
+      GMS_DEBUG_INFO (session, "holding our horses and badgers because there's "
+          "still %d stream%s waiting to be signalled ready",
+          priv->pending_stream_count,
+          (priv->pending_stream_count > 1) ? "s" : "");
+
+      return;
+    }
+
   /* send an invitation if the session was initiated by us */
   if (priv->initiator != priv->peer)
     {
-      LmMessage *msg;
-      LmMessageNode *session_node;
-      const gchar *action;
-
-      if (priv->mode == MODE_GOOGLE)
-          action = "initiate";
-      else
-          action = "session-initiate";
-
-      msg = _gabble_media_session_message_new (session, action, &session_node);
-
-      _add_content_descriptions (session, session_node);
-
-      GMS_DEBUG_INFO (session, "sending jingle action \"%s\" to peer", action);
-
-      _gabble_connection_send_with_reply (priv->conn, msg, initiate_msg_reply_cb,
-                                          G_OBJECT (session), NULL, NULL);
-
-      lm_message_unref (msg);
+      send_initiate_message (session);
     }
 }
 
@@ -1222,7 +1258,7 @@ _gabble_media_session_message_new (GabbleMediaSession *session,
   initiator_jid = get_jid_for_contact (session, priv->initiator);
 
   lm_message_node_set_attributes (node,
-      "id", priv->id,
+      (priv->mode == MODE_GOOGLE) ? "id" : "sid", priv->id,
       "type", action,
       "initiator", initiator_jid,
       NULL);

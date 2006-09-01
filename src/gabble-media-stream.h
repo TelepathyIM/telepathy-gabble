@@ -97,6 +97,7 @@ gboolean gabble_media_stream_supported_codecs (GabbleMediaStream *obj, const GPt
 gboolean _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream, LmMessage *message, LmMessageNode *desc_node);
 gboolean _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream, LmMessage *message, LmMessageNode *transport_node);
 void _gabble_media_stream_content_node_add_description (GabbleMediaStream *stream, LmMessageNode *content_node);
+void _gabble_media_stream_content_node_add_transports (GabbleMediaStream *stream, LmMessageNode *content_node);
 
 void _gabble_media_stream_set_playing (GabbleMediaStream *stream, gboolean playing);
 

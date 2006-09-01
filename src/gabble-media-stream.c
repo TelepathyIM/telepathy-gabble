@@ -147,7 +147,13 @@ gabble_media_stream_constructor (GType type, guint n_props,
   obj = G_OBJECT_CLASS (gabble_media_stream_parent_class)->
            constructor (type, n_props, props);
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (GABBLE_MEDIA_STREAM (obj));
+
+  /* FIXME: make this google again once RequestsStreams is implemented */
+#if 0
   priv->mode = MODE_GOOGLE;
+#elseif
+  priv->mode = MODE_JINGLE;
+#endif
 
   g_signal_connect (priv->session, "notify::state",
       (GCallback) session_state_changed_cb, obj);
@@ -1430,6 +1436,25 @@ _gabble_media_stream_content_node_add_description (GabbleMediaStream *stream,
       g_free (name);
       g_hash_table_destroy (params);
     }
+}
+
+void
+_gabble_media_stream_content_node_add_transports (GabbleMediaStream *stream,
+                                                  LmMessageNode *content_node)
+{
+  GabbleMediaStreamPrivate *priv;
+  LmMessageNode *node;
+
+  g_assert (GABBLE_IS_MEDIA_STREAM (stream));
+
+  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
+
+  if (priv->mode != MODE_JINGLE)
+    return;
+
+  node = lm_message_node_add_child (content_node, "transport", NULL);
+
+  lm_message_node_set_attribute (node, "xmlns", NS_GOOGLE_TRANSPORT_P2P);
 }
 
 void

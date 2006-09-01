@@ -228,23 +228,19 @@ media_factory_jingle_cb (LmMessageHandler *handler,
 
   /* is it for us? */
   iq_node = lm_message_get_node (message);
-  session_node = lm_message_node_get_child (message->node, "jingle");
+  session_node = lm_message_node_get_child_with_namespace (message->node,
+      "jingle", NS_JINGLE);
 
   if (session_node != NULL)
     {
-      if (!lm_message_node_has_namespace (session_node, NS_JINGLE))
-        return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-
       action = lm_message_node_get_attribute (session_node, "action");
     }
   else
     {
-      session_node = lm_message_node_get_child (iq_node, "session");
+      session_node = lm_message_node_get_child_with_namespace (iq_node,
+          "session", NS_GOOGLE_SESSION);
 
       if (session_node == NULL)
-        return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-
-      if (!lm_message_node_has_namespace (session_node, NS_GOOGLE_SESSION))
         return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
       action = lm_message_node_get_attribute (session_node, "type");

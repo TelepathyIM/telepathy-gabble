@@ -696,29 +696,26 @@ gabble_text_mixin_parse_incoming_message (LmMessage *message,
    */
   *stamp = 0;
 
-  for (node = message->node->children; node; node = node->next)
+  node = lm_message_node_get_child_with_namespace (message->node, "x",
+      NS_DELAY);
+  if (node != NULL)
     {
-      if (strcmp (node->name, "x") == 0)
+      const gchar *stamp_str, *p;
+      struct tm stamp_tm = { 0, };
+
+      stamp_str = lm_message_node_get_attribute (node, "stamp");
+      if (stamp_str != NULL)
         {
-          const gchar *stamp_str, *p;
-          struct tm stamp_tm = { 0, };
-
-          if (!lm_message_node_has_namespace (node, NS_DELAY))
-            continue;
-
-          stamp_str = lm_message_node_get_attribute (node, "stamp");
-          if (stamp_str == NULL)
-            continue;
-
           p = strptime (stamp_str, "%Y%m%dT%T", &stamp_tm);
           if (p == NULL || *p != '\0')
             {
               g_warning ("%s: malformed date string '%s' for jabber:x:delay",
                          G_STRFUNC, stamp_str);
-              continue;
             }
-
-          *stamp = timegm (&stamp_tm);
+          else
+            {
+              *stamp = timegm (&stamp_tm);
+            }
         }
     }
 

@@ -85,13 +85,11 @@ jingle_info_iq_callback (LmMessageHandler *handler,
   const gchar *str;
   guint port;
 
-  query_node = lm_message_node_get_child (message->node, "query");
+  query_node = lm_message_node_get_child_with_namespace (message->node,
+      "query", NS_GOOGLE_JINGLE_INFO);
 
-  if (!query_node || !lm_message_node_has_namespace (query_node,
-        NS_GOOGLE_JINGLE_INFO))
-    {
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-    }
+  if (query_node == NULL)
+    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
   NODE_DEBUG (message->node, "got");
 

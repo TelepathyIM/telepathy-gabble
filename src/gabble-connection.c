@@ -2275,12 +2275,10 @@ connection_iq_disco_cb (LmMessageHandler *handler,
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
   iq = lm_message_get_node (message);
-  query = lm_message_node_get_child (iq, "query");
+  query = lm_message_node_get_child_with_namespace (iq, "query",
+      NS_DISCO_INFO);
 
   if (!query)
-    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-
-  if (!lm_message_node_has_namespace (query, NS_DISCO_INFO))
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
   node = lm_message_node_get_attribute (query, "node");

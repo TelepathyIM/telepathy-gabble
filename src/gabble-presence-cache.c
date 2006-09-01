@@ -313,6 +313,7 @@ gabble_presence_cache_set_property (GObject     *object,
   }
 }
 
+#if 0
 static gboolean
 _presence_node_has_google_voice (LmMessageNode *pres_node)
 {
@@ -361,6 +362,7 @@ _presence_node_has_google_voice (LmMessageNode *pres_node)
 
   return FALSE;
 }
+#endif
 
 static void
 gabble_presence_cache_status_changed_cb (GabbleConnection *conn,
@@ -729,6 +731,7 @@ _parse_presence_message (GabblePresenceCache *cache,
       gabble_presence_cache_update (cache, handle, resource, presence_id,
           status_message, priority);
 
+#if 0
       if (_presence_node_has_google_voice (presence_node))
         {
           presence = gabble_presence_cache_get (cache, handle);
@@ -737,6 +740,7 @@ _parse_presence_message (GabblePresenceCache *cache,
           gabble_presence_set_capabilities (presence, resource,
               PRESENCE_CAP_GOOGLE_VOICE);
         }
+#endif
 
       ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
       break;

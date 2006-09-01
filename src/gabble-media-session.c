@@ -605,61 +605,78 @@ _lookup_stream_by_name (GabbleMediaSession *session,
 
 
 static gboolean
-_handle_initiate (GabbleMediaSession *session,
-                  LmMessage *message,
-                  const gchar *stream_name,
-                  LmMessageNode *content_node)
+_handle_create (GabbleMediaSession *session,
+                LmMessage *message,
+                LmMessageNode *content_node,
+                const gchar *stream_name,
+                GabbleMediaStream *stream,
+                LmMessageNode *desc_node,
+                LmMessageNode *trans_node)
 {
   GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
-  GabbleMediaStream *stream;
-  LmMessageNode *desc_node;
+  GabbleMediaSessionMode session_mode;
+  TpMediaStreamType stream_type;
 
-  desc_node = lm_message_node_get_child (content_node, "description");
+  if (stream != NULL)
+    {
+      GMS_DEBUG_WARNING (session, "can't create new stream called \"%s\", it "
+          "already exists; rejecting", stream_name);
+      return FALSE;
+    }
 
   if (desc_node == NULL)
-    return FALSE;
-
-  stream = _lookup_stream_by_name (session, stream_name);
-
-  if (stream == NULL)
     {
-      GabbleMediaSessionMode session_mode;
-      TpMediaStreamType stream_type;
-      guint stream_id;
+      GMS_DEBUG_WARNING (session, "unable to create stream without a "
+          "content description");
+      return FALSE;
+    }
 
-      if (lm_message_node_has_namespace (desc_node, NS_GOOGLE_SESSION_PHONE))
+  if (lm_message_node_has_namespace (desc_node,
+        NS_GOOGLE_SESSION_PHONE))
+    {
+      session_mode = MODE_GOOGLE;
+      stream_type = TP_MEDIA_STREAM_TYPE_AUDIO;
+    }
+  else if (lm_message_node_has_namespace (desc_node,
+        NS_JINGLE_DESCRIPTION_AUDIO))
+    {
+      session_mode = MODE_JINGLE;
+      stream_type = TP_MEDIA_STREAM_TYPE_AUDIO;
+    }
+  else if (lm_message_node_has_namespace (desc_node,
+        NS_JINGLE_DESCRIPTION_VIDEO))
+    {
+      session_mode = MODE_JINGLE;
+      stream_type = TP_MEDIA_STREAM_TYPE_VIDEO;
+    }
+  else
+    {
+      GMS_DEBUG_WARNING (session, "refusing to create stream for "
+          "unsupported content description");
+      return FALSE;
+    }
+
+  /* MODE_GOOGLE is allowed to have a null transport node */
+  if (session_mode == MODE_JINGLE && trans_node == NULL)
+    {
+      GMS_DEBUG_WARNING (session, "refusing to create stream for "
+          "unsupported transport");
+      return FALSE;
+    }
+
+  if (session_mode != priv->mode)
+    {
+      if (g_hash_table_size (priv->streams) > 0)
         {
-          session_mode = MODE_GOOGLE;
-          stream_type = TP_MEDIA_STREAM_TYPE_AUDIO;
-        }
-      else if (lm_message_node_has_namespace (desc_node, NS_JINGLE_DESCRIPTION_AUDIO))
-        {
-          session_mode = MODE_JINGLE;
-          stream_type = TP_MEDIA_STREAM_TYPE_AUDIO;
-        }
-      else if (lm_message_node_has_namespace (desc_node, NS_JINGLE_DESCRIPTION_VIDEO))
-        {
-          session_mode = MODE_JINGLE;
-          stream_type = TP_MEDIA_STREAM_TYPE_VIDEO;
+          GMS_DEBUG_WARNING (session, "refusing to change mode because "
+              "streams already exist");
+          return FALSE;
         }
       else
         {
-          NODE_DEBUG (desc_node, "refusing to create stream for unsupported media description");
-          return FALSE;
-        }
-
-      if (session_mode != priv->mode)
-        {
-          if (g_hash_table_size (priv->streams) > 0)
-            {
-              NODE_DEBUG (desc_node, "refusing to change mode because streams already exist");
-              return FALSE;
-            }
-          else
-            {
-              DEBUG ("setting session mode to %s", session_mode == MODE_GOOGLE ? "google" : "jingle");
-              priv->mode = session_mode;
-            }
+          GMS_DEBUG_INFO (session, "setting session mode to %s",
+              session_mode == MODE_GOOGLE ? "google" : "jingle");
+          priv->mode = session_mode;
         }
     }
 
@@ -670,28 +687,32 @@ _handle_initiate (GabbleMediaSession *session,
 
 
 static gboolean
-_handle_candidates (GabbleMediaSession *session,
-                    LmMessage *message,
-                    const gchar *stream_name,
-                    LmMessageNode *content_node)
+_handle_codecs (GabbleMediaSession *session,
+                LmMessage *message,
+                LmMessageNode *content_node,
+                const gchar *stream_name,
+                GabbleMediaStream *stream,
+                LmMessageNode *desc_node,
+                LmMessageNode *trans_node)
 {
-  GabbleMediaStream *stream;
-  LmMessageNode *transport_node;
-
-  stream = _lookup_stream_by_name (session, stream_name);
-
-  if (!stream)
-    return FALSE;
-
-  /* Jingle has an extra <transport> node; Google Talk doesn't */
-  transport_node = lm_message_node_get_child (content_node, "transport");
-
-  if (NULL == transport_node)
-    transport_node = content_node;
-
-  if (!_gabble_media_stream_post_remote_candidates (stream, message, transport_node))
+  if (stream == NULL)
     {
-      NODE_DEBUG (content_node, "_gabble_media_stream_post_remote_candidates failed");
+      GMS_DEBUG_WARNING (session, "unable to handle codecs for unknown stream "
+          "\"%s\"", stream_name);
+      return FALSE;
+    }
+
+  if (desc_node == NULL)
+    {
+      GMS_DEBUG_WARNING (session, "unable to handle codecs without a content "
+          "description node");
+      return FALSE;
+    }
+
+  if (!_gabble_media_stream_post_remote_codecs (stream, message, desc_node))
+    {
+      GMS_DEBUG_INFO (session, "_gabble_media_stream_post_remote_codecs "
+          "failed");
       return FALSE;
     }
 
@@ -700,35 +721,56 @@ _handle_candidates (GabbleMediaSession *session,
 
 
 static gboolean
-_handle_accept (GabbleMediaSession *session,
-                LmMessage *message,
-                const gchar *stream_name,
-                LmMessageNode *session_node)
+_handle_candidates (GabbleMediaSession *session,
+                    LmMessage *message,
+                    LmMessageNode *content_node,
+                    const gchar *stream_name,
+                    GabbleMediaStream *stream,
+                    LmMessageNode *desc_node,
+                    LmMessageNode *trans_node)
 {
-  GabbleMediaStream *stream;
-  LmMessageNode *desc_node;
+  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
 
-  stream = _lookup_stream_by_name (session, stream_name);
+  if (stream == NULL)
+    {
+      GMS_DEBUG_WARNING (session, "unable to handle candidates for unknown "
+          "stream \"%s\"");
+      return FALSE;
+    }
 
-  if (!stream)
-    return FALSE;
+  if (trans_node == NULL)
+    {
+      if (priv->mode == MODE_GOOGLE)
+        {
+          trans_node = content_node;
+        }
+      else
+        {
+          GMS_DEBUG_WARNING (session, "unable to handle candidates without a "
+              "transport node");
+          return FALSE;
+        }
+    }
 
-  desc_node = lm_message_node_get_child (session_node, "description");
-
-  if (!desc_node)
-    return FALSE;
-
-  if (!_gabble_media_stream_post_remote_codecs (stream, message,
-                                                desc_node))
-    return FALSE;
+  if (!_gabble_media_stream_post_remote_candidates (stream, message,
+        trans_node))
+    {
+      GMS_DEBUG_INFO (session, "_gabble_media_stream_post_remote_candidates "
+          "failed");
+      return FALSE;
+    }
 
   return TRUE;
 }
 
+
 typedef gboolean (*StreamHandlerFunc)(GabbleMediaSession *session,
                                       LmMessage *message,
+                                      LmMessageNode *content_node,
                                       const gchar *stream_name,
-                                      LmMessageNode *content_node);
+                                      GabbleMediaStream *stream,
+                                      LmMessageNode *desc_node,
+                                      LmMessageNode *trans_node);
 
 typedef struct _Handler Handler;
 
@@ -736,7 +778,7 @@ struct _Handler {
   const gchar *actions[3];
   JingleSessionState min_allowed_state;
   JingleSessionState max_allowed_state;
-  StreamHandlerFunc stream_handler;
+  StreamHandlerFunc stream_handlers[3];
   JingleSessionState new_state;
 };
 
@@ -745,57 +787,88 @@ static Handler handlers[] = {
     { "initiate", "session-initiate", NULL },
     JS_STATE_PENDING_CREATED,
     JS_STATE_PENDING_CREATED,
-    _handle_initiate,
+    { _handle_create, _handle_codecs, NULL },
     JS_STATE_PENDING_INITIATED
   },
   {
     { "candidates", "transport-info", NULL },
     JS_STATE_PENDING_INITIATED,
     JS_STATE_ACTIVE,
-    _handle_candidates,
+    { _handle_candidates, NULL },
     JS_STATE_INVALID
   },
   {
     { "accept", "session-accept", NULL },
     JS_STATE_PENDING_INITIATED,
     JS_STATE_PENDING_INITIATED,
-    _handle_accept,
+    { _handle_codecs, NULL },
     JS_STATE_ACTIVE
   },
   {
     { "reject", NULL },
     JS_STATE_PENDING_INITIATED,
     JS_STATE_PENDING_INITIATED,
-    NULL,
+    { NULL },
     JS_STATE_ENDED
   },
   {
     { "terminate", "session-terminate", NULL },
     JS_STATE_PENDING_INITIATED,
     JS_STATE_ENDED,
-    NULL,
+    { NULL },
     JS_STATE_ENDED
   },
   {
     { NULL },
     JS_STATE_INVALID,
     JS_STATE_INVALID,
-    NULL,
+    { NULL },
     JS_STATE_INVALID
   }
 };
 
-static gboolean
-_call_handler_on_streams (GabbleMediaSession *session,
-                          LmMessage *message,
-                          LmMessageNode *session_node,
-                          StreamHandlerFunc func)
-{
-  /* GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session); */
 
+static gboolean
+_call_handlers_on_stream (GabbleMediaSession *session,
+                          LmMessage *message,
+                          LmMessageNode *content_node,
+                          const gchar *stream_name,
+                          StreamHandlerFunc *func)
+{
+  GabbleMediaStream *stream = NULL;
+  LmMessageNode *desc_node, *trans_node;
+  StreamHandlerFunc *tmp;
+
+  desc_node = lm_message_node_get_child (content_node, "description");
+
+  trans_node = lm_message_node_get_child_with_namespace (content_node,
+      "transport", NS_GOOGLE_TRANSPORT_P2P);
+
+  for (tmp = func; *tmp != NULL; tmp++)
+    {
+       /* handlers may create the stream */
+       if (stream == NULL)
+         stream = _lookup_stream_by_name (session, stream_name);
+
+       if (!(*tmp) (session, message, content_node, stream_name, stream,
+             desc_node, trans_node))
+       return FALSE;
+    }
+
+  return TRUE;
+}
+
+
+static gboolean
+_call_handlers_on_streams (GabbleMediaSession *session,
+                           LmMessage *message,
+                           LmMessageNode *session_node,
+                           StreamHandlerFunc *func)
+{
   if (lm_message_node_has_namespace (session_node, NS_GOOGLE_SESSION))
     {
-      if (!func (session, message, GTALK_STREAM_NAME, session_node))
+      if (!_call_handlers_on_stream (session, message, session_node,
+            GTALK_STREAM_NAME, func))
         return FALSE;
     }
   else
@@ -813,19 +886,22 @@ _call_handler_on_streams (GabbleMediaSession *session,
 
           stream_name = lm_message_node_get_attribute (content_node, "name");
 
-          if (NULL == stream_name)
+          if (stream_name == NULL)
             {
-              NODE_DEBUG (content_node, "skipping content node with no name");
-              continue;
+              GMS_DEBUG_WARNING (session, "rejecting content node with no "
+                  "name");
+              return FALSE;
             }
 
-          if (!func (session, message, stream_name, content_node))
+          if (!_call_handlers_on_stream (session, message, content_node,
+                stream_name, func))
             return FALSE;
         }
     }
 
   return TRUE;
 }
+
 
 void
 _gabble_media_session_handle_action (GabbleMediaSession *session,
@@ -834,7 +910,7 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
                                      const gchar *action)
 {
   GabbleMediaSessionPrivate *priv;
-  StreamHandlerFunc func = NULL;
+  StreamHandlerFunc *func = NULL;
   JingleSessionState new_state = JS_STATE_INVALID;
   Handler *i;
   const gchar **tmp;
@@ -865,22 +941,22 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
           goto ACK_FAILURE;
         }
 
-      func = i->stream_handler;
+      func = i->stream_handlers;
       new_state = i->new_state;
 
       break;
     }
 
-  if (NULL == func && JS_STATE_INVALID == new_state)
+  if (NULL == func)
     {
       GMS_DEBUG_ERROR (session, "received unrecognised action \"%s\"; "
           "terminating session", action);
       goto ACK_FAILURE;
     }
 
-  if (NULL != func)
+  if (NULL != *func)
     {
-      if (!_call_handler_on_streams (session, message, session_node, func))
+      if (!_call_handlers_on_streams (session, message, session_node, func))
         goto FUNC_ERROR;
     }
 

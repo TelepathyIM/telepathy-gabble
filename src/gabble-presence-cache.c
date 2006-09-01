@@ -746,7 +746,7 @@ _parse_presence_message (GabblePresenceCache *cache,
       break;
 
     case LM_MESSAGE_SUB_TYPE_ERROR:
-       NODE_DEBUG (presence_node, "setting contact offline due to error");
+      NODE_DEBUG (presence_node, "setting contact offline due to error");
       /* fall through */
 
     case LM_MESSAGE_SUB_TYPE_UNAVAILABLE:
@@ -762,7 +762,9 @@ _parse_presence_message (GabblePresenceCache *cache,
 
   _grab_nickname (cache, handle, from, presence_node);
   _process_caps (cache, handle, from, presence_node);
+
   g_free (resource);
+
   return ret;
 }
 
@@ -784,6 +786,7 @@ _parse_message_message (GabblePresenceCache *cache,
     }
 
   node = lm_message_get_node (message);
+
   _grab_nickname (cache, handle, from, node);
   _process_caps (cache, handle, from, node);
 

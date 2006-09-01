@@ -864,24 +864,50 @@ _add_rtp_candidate_node (GabbleMediaSession *session, LmMessageNode *parent,
   g_free (pref_str);
 }
 
+static LmMessage *
+_gabble_media_stream_message_new (GabbleMediaStream *stream,
+                                  const gchar *action,
+                                  LmMessageNode **content_node)
+{
+  GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
+  LmMessage *msg;
+
+  /* construct a session message */
+  msg = _gabble_media_session_message_new (priv->session, action,
+                                           content_node);
+
+  /* add our content node to it if in jingle mode */
+  if (priv->mode == MODE_JINGLE)
+    {
+      LmMessageNode *node;
+
+      node = lm_message_node_add_child (*content_node, "content", NULL);
+      lm_message_node_set_attribute (node, "name", priv->name);
+
+      *content_node = node;
+    }
+
+  return msg;
+}
+
 static void
 push_candidate (GabbleMediaStream *stream, GValueArray *candidate)
 {
-  LmMessage *msg;
-  LmMessageNode *session_node;
   GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
+  LmMessage *msg;
+  LmMessageNode *content_node, *transport_node;
 
-  /* construct a session message */
-  msg = _gabble_media_session_message_new (priv->session,
+  /* construct a base message */
+  msg = _gabble_media_stream_message_new (stream,
       (priv->mode == MODE_GOOGLE) ? "candidates" : "transport-info",
-      &session_node);
+      &content_node);
 
-  if (priv->mode == MODE_JINGLE)
-    {
-      /* FIXME */
-    }
+  /* for jingle, add a transport */
+  transport_node = _gabble_media_stream_content_node_add_transport (
+      stream, content_node);
 
-  _add_rtp_candidate_node (priv->session, session_node, candidate);
+  /* add transport info to it */
+  _add_rtp_candidate_node (priv->session, transport_node, candidate);
 
   GMS_DEBUG_INFO (priv->session,
     "sending jingle session action \"candidates\" to peer");
@@ -1445,9 +1471,9 @@ _gabble_media_stream_content_node_add_description (GabbleMediaStream *stream,
     }
 }
 
-void
-_gabble_media_stream_content_node_add_transports (GabbleMediaStream *stream,
-                                                  LmMessageNode *content_node)
+LmMessageNode *
+_gabble_media_stream_content_node_add_transport (GabbleMediaStream *stream,
+                                                 LmMessageNode *content_node)
 {
   GabbleMediaStreamPrivate *priv;
   LmMessageNode *node;
@@ -1457,11 +1483,13 @@ _gabble_media_stream_content_node_add_transports (GabbleMediaStream *stream,
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
   if (priv->mode != MODE_JINGLE)
-    return;
+    return content_node;
 
   node = lm_message_node_add_child (content_node, "transport", NULL);
 
   lm_message_node_set_attribute (node, "xmlns", NS_GOOGLE_TRANSPORT_P2P);
+
+  return node;
 }
 
 void

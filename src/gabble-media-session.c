@@ -999,7 +999,7 @@ _add_content_descriptions_one (const gchar *name,
 
   _gabble_media_stream_content_node_add_description (stream, content_node);
 
-  _gabble_media_stream_content_node_add_transports (stream, content_node);
+  _gabble_media_stream_content_node_add_transport (stream, content_node);
 }
 
 static void

@@ -227,9 +227,6 @@ struct _GabbleConnectionPrivate
   gchar *resource;
   gint8 priority;
 
-  GPtrArray *media_channels;
-  guint media_channel_index;
-
   GabbleRoomlistChannel *roomlist_channel;
 
   /* server services */
@@ -307,9 +304,6 @@ gabble_connection_init (GabbleConnection *obj)
     }
 
   priv->channel_requests = g_ptr_array_new ();
-
-  priv->media_channels = g_ptr_array_sized_new (1);
-  priv->media_channel_index = 0;
 
   /* Set default parameters for optional parameters */
   priv->resource = g_strdup (GABBLE_PARAMS_DEFAULT_RESOURCE);
@@ -807,13 +801,6 @@ gabble_connection_dispose (GObject *object)
   priv->dispose_has_run = TRUE;
 
   DEBUG ("called");
-
-  if (priv->media_channels)
-    {
-      g_assert (priv->media_channels->len == 0);
-      g_ptr_array_free (priv->media_channels, TRUE);
-      priv->media_channels = NULL;
-    }
 
   if (priv->channel_requests)
     {
@@ -1578,27 +1565,6 @@ static void
 close_all_channels (GabbleConnection *conn)
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-  guint i;
-
-  if (priv->media_channels)
-    {
-      GPtrArray *tmp = priv->media_channels;
-      priv->media_channels = NULL;
-
-      for (i = 0; i < tmp->len; i++)
-        {
-          GabbleMediaChannel *chan = g_ptr_array_index (tmp, i);
-
-          DEBUG ("about to unref channel with ref_count %d",
-                   G_OBJECT (chan)->ref_count);
-
-          g_object_unref (chan);
-        }
-
-      g_ptr_array_free (tmp, TRUE);
-    }
-
-  priv->media_channel_index = 0;
 
   if (priv->roomlist_channel)
     {
@@ -3451,12 +3417,6 @@ gboolean gabble_connection_list_channels (GabbleConnection *obj, GPtrArray ** re
         (priv->channel_factories, i);
       tp_channel_factory_iface_foreach (factory,
           list_channel_factory_foreach_one, channels);
-    }
-
-  for (i = 0; i < priv->media_channels->len; i++)
-    {
-      list_channel_factory_foreach_one (TP_CHANNEL_IFACE (g_ptr_array_index
-            (priv->media_channels, i)), channels);
     }
 
   if (priv->roomlist_channel)

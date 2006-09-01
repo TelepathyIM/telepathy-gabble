@@ -557,6 +557,12 @@ _caps_disco_cb (GabbleDisco *disco,
       return;
     }
 
+  if (NULL != error)
+    {
+      DEBUG ("disco query failed: %s", error->message);
+      return;
+    }
+
   for (child = query_result->children; NULL != child; child = child->next)
     {
       const gchar *var;

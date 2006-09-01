@@ -899,7 +899,7 @@ gabble_presence_cache_maybe_remove (
           handle);
       DEBUG ("discarding cached presence for unavailable jid %s", jid);
       g_hash_table_remove (priv->presence, GINT_TO_POINTER (handle));
-      gabble_handle_unref (priv->conn->handles, TP_HANDLE_TYPE_CONTACT, handle);
+      handle_set_remove (priv->presence_handles, handle);
     }
 }
 

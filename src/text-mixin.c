@@ -37,6 +37,7 @@
 
 #include "debug.h"
 #include "gabble-connection.h"
+#include "namespaces.h"
 #include "roster.h"
 #include "util.h"
 
@@ -702,7 +703,7 @@ gabble_text_mixin_parse_incoming_message (LmMessage *message,
           const gchar *stamp_str, *p;
           struct tm stamp_tm = { 0, };
 
-          if (!_lm_message_node_has_namespace (node, "jabber:x:delay"))
+          if (!lm_message_node_has_namespace (node, NS_DELAY))
             continue;
 
           stamp_str = lm_message_node_get_attribute (node, "stamp");

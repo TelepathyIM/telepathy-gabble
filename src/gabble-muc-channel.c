@@ -452,7 +452,7 @@ properties_disco_cb (GabbleDisco *disco,
         }
       else if (strcmp (lm_node->name, "x") == 0)
         {
-          if (_lm_message_node_has_namespace (lm_node, NS_DATA))
+          if (lm_message_node_has_namespace (lm_node, NS_DATA))
             {
               LmMessageNode *field, *value_node;
 
@@ -2615,7 +2615,7 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
         {
           const gchar *type = lm_message_node_get_attribute (node, "type");
 
-          if (!_lm_message_node_has_namespace (node, NS_DATA))
+          if (!lm_message_node_has_namespace (node, NS_DATA))
             continue;
 
           if (g_strdiff (type, "form"))

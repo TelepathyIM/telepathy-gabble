@@ -232,7 +232,7 @@ media_factory_jingle_cb (LmMessageHandler *handler,
 
   if (session_node != NULL)
     {
-      if (!_lm_message_node_has_namespace (session_node, NS_JINGLE))
+      if (!lm_message_node_has_namespace (session_node, NS_JINGLE))
         return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
       action = lm_message_node_get_attribute (session_node, "action");
@@ -244,7 +244,7 @@ media_factory_jingle_cb (LmMessageHandler *handler,
       if (session_node == NULL)
         return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
-      if (!_lm_message_node_has_namespace (session_node, NS_GOOGLE_SESSION))
+      if (!lm_message_node_has_namespace (session_node, NS_GOOGLE_SESSION))
         return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
       action = lm_message_node_get_attribute (session_node, "type");

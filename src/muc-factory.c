@@ -43,6 +43,7 @@
 #include "telepathy-interfaces.h"
 #include "text-mixin.h"
 #include "tp-channel-factory-iface.h"
+#include "util.h"
 
 static void gabble_muc_factory_iface_init (gpointer g_iface, gpointer iface_data);
 
@@ -184,19 +185,6 @@ gabble_muc_factory_class_init (GabbleMucFactoryClass *gabble_muc_factory_class)
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 }
 
-static LmMessageNode *
-_get_muc_node (LmMessageNode *toplevel_node)
-{
-  LmMessageNode *node;
-
-  for (node = toplevel_node->children; node; node = node->next)
-    if (strcmp (node->name, "x") == 0)
-      if (_lm_message_node_has_namespace (node, NS_MUC_USER))
-        return node;
-
-  return NULL;
-}
-
 
 static GabbleMucChannel *
 get_muc_from_jid (GabbleMucFactory *fac, const gchar *jid)
@@ -325,7 +313,7 @@ muc_factory_message_cb (LmMessageHandler *handler,
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
   /* does it have a muc subnode? */
-  node = _get_muc_node (message->node);
+  node = lm_message_node_get_child_with_namespace (message->node, "x", NS_MUC_USER);
   if (node)
     {
       /* and an invitation? */
@@ -475,7 +463,7 @@ muc_factory_presence_cb (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 
-  x_node = _get_muc_node (msg->node);
+  x_node = lm_message_node_get_child_with_namespace (msg->node, "x", NS_MUC_USER);
 
   /* is it a MUC member presence? */
   if (x_node)

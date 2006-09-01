@@ -28,6 +28,7 @@
 #include "jingle-info.h"
 #include "gabble-error.h"
 #include "namespaces.h"
+#include "util.h"
 
 /**
  * jingle_info_discover_servers:
@@ -86,7 +87,7 @@ jingle_info_iq_callback (LmMessageHandler *handler,
 
   query_node = lm_message_node_get_child (message->node, "query");
 
-  if (!query_node || !_lm_message_node_has_namespace (query_node,
+  if (!query_node || !lm_message_node_has_namespace (query_node,
         NS_GOOGLE_JINGLE_INFO))
     {
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;

@@ -35,6 +35,7 @@
 #include "telepathy-helpers.h"
 #include "tp-channel-iface.h"
 #include "namespaces.h"
+#include "util.h"
 
 #include "gabble-roomlist-channel.h"
 #include "gabble-roomlist-channel-glue.h"
@@ -541,7 +542,7 @@ room_info_cb (GabbleDisco *disco,
         }
       else if (0 == strcmp (feature->name, "x"))
         {
-          if (_lm_message_node_has_namespace (feature, NS_DATA))
+          if (lm_message_node_has_namespace (feature, NS_DATA))
             {
               for (field = feature->children;
                    field; field = field->next)

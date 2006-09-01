@@ -85,6 +85,39 @@ lm_message_node_steal_children (LmMessageNode *snatcher,
     baby->parent = snatcher;
 }
 
+gboolean
+lm_message_node_has_namespace (LmMessageNode *node,
+                               const gchar *ns)
+{
+  const gchar *node_ns = lm_message_node_get_attribute (node, "xmlns");
+
+  if (!node_ns)
+    return FALSE;
+
+  return 0 == strcmp (ns, node_ns);
+}
+
+LmMessageNode *
+lm_message_node_get_child_with_namespace (LmMessageNode *node,
+                                          const gchar *name,
+                                          const gchar *ns)
+{
+  LmMessageNode *tmp;
+
+  for (tmp = node->children;
+       tmp != NULL;
+       tmp = tmp->next)
+    {
+      if (g_strdiff (tmp->name, name))
+        continue;
+
+      if (lm_message_node_has_namespace (tmp, ns))
+        return tmp;
+    }
+
+  return NULL;
+}
+
 /**
  * gabble_decode_jid
  *

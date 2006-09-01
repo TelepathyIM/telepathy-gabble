@@ -23,6 +23,7 @@
 
 #define NS_CAPS                 "http://jabber.org/protocol/caps"
 #define NS_DATA                 "jabber:x:data"
+#define NS_DELAY                "jabber:x:delay"
 #define NS_DISCO_INFO           "http://jabber.org/protocol/disco#info"
 #define NS_DISCO_ITEMS          "http://jabber.org/protocol/disco#items"
 #define NS_GABBLE_CAPS          "http://telepathy.freedesktop.org/caps"

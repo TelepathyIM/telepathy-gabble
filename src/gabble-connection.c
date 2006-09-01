@@ -1608,18 +1608,6 @@ close_all_channels (GabbleConnection *conn)
     }
 }
 
-
-gboolean
-_lm_message_node_has_namespace (LmMessageNode *node, const gchar *ns)
-{
-  const gchar *node_ns = lm_message_node_get_attribute (node, "xmlns");
-
-  if (!node_ns)
-    return FALSE;
-
-  return 0 == strcmp (ns, node_ns);
-}
-
 static ChannelRequest *
 channel_request_new (DBusGMethodInvocation *context,
                      const char *channel_type,
@@ -2292,7 +2280,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   if (!query)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
-  if (!_lm_message_node_has_namespace (query, NS_DISCO_INFO))
+  if (!lm_message_node_has_namespace (query, NS_DISCO_INFO))
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
   node = lm_message_node_get_attribute (query, "node");

@@ -872,8 +872,15 @@ push_candidate (GabbleMediaStream *stream, GValueArray *candidate)
   GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
   /* construct a session message */
-  msg = _gabble_media_session_message_new (priv->session, "candidates",
-    &session_node);
+  msg = _gabble_media_session_message_new (priv->session,
+      (priv->mode == MODE_GOOGLE) ? "candidates" : "transport-info",
+      &session_node);
+
+  if (priv->mode == MODE_JINGLE)
+    {
+      /* FIXME */
+    }
+
   _add_rtp_candidate_node (priv->session, session_node, candidate);
 
   GMS_DEBUG_INFO (priv->session,

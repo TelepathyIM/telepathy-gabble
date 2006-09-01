@@ -2204,22 +2204,24 @@ get_features (void)
 {
   static GSList *features = NULL;
 
+  /* TODO: this list should be generated from our own capability flags
+   * using a table that equates disco features to the flags, which can
+   * be used when parsing too */
   if (NULL == features)
     {
       features = g_slist_append (features,
+        feature_new (NULL, NS_GOOGLE_FEAT_SESSION));
+      features = g_slist_append (features,
         feature_new (NULL, NS_GOOGLE_TRANSPORT_P2P));
       features = g_slist_append (features,
-        feature_new ("voice-v1", NS_GOOGLE_VOICE));
+        feature_new (NULL, NS_JINGLE));
 
-      if (g_getenv ("GABBLE_JINGLE"))
-        {
-          features = g_slist_append (features,
-            feature_new (NULL, NS_JINGLE));
-          features = g_slist_append (features,
-            feature_new ("jingle-audio", NS_JINGLE_DESCRIPTION_AUDIO));
-          features = g_slist_append (features,
-            feature_new ("jingle-video", NS_JINGLE_DESCRIPTION_VIDEO));
-        }
+      features = g_slist_append (features,
+        feature_new ("jingle-audio", NS_JINGLE_DESCRIPTION_AUDIO));
+      features = g_slist_append (features,
+        feature_new ("jingle-video", NS_JINGLE_DESCRIPTION_VIDEO));
+      features = g_slist_append (features,
+        feature_new ("voice-v1", NS_GOOGLE_FEAT_VOICE));
     }
 
   return features;

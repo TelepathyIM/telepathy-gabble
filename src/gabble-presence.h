@@ -52,9 +52,11 @@ G_BEGIN_DECLS
 
 typedef enum {
     PRESENCE_CAP_NONE = 0,
-    PRESENCE_CAP_GOOGLE_VOICE = 1 << 0,
-    PRESENCE_CAP_JINGLE_VOICE = 1 << 1,
-    PRESENCE_CAP_JINGLE_VIDEO = 1 << 2,
+    PRESENCE_CAP_GOOGLE_TRANSPORT_P2P = 1 << 0,
+    PRESENCE_CAP_GOOGLE_VOICE = 1 << 1,
+    PRESENCE_CAP_JINGLE = 1 << 2,
+    PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO = 1 << 3,
+    PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO = 1 << 4,
 } GabblePresenceCapabilities;
 
 typedef struct _GabblePresence GabblePresence;

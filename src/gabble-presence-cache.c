@@ -563,10 +563,17 @@ _caps_disco_cb (GabbleDisco *disco,
       if (NULL == var)
         continue;
 
-      if (0 == strcmp (var, NS_GOOGLE_SESSION_PHONE))
+      /* TODO: use a table that equates disco features to caps */
+      if (0 == strcmp (var, NS_GOOGLE_TRANSPORT_P2P))
+        caps |= PRESENCE_CAP_GOOGLE_TRANSPORT_P2P;
+      else if (0 == strcmp (var, NS_GOOGLE_FEAT_VOICE))
         caps |= PRESENCE_CAP_GOOGLE_VOICE;
-      else if (0 == strcmp (var, NS_JINGLE_AUDIO))
-        caps |= PRESENCE_CAP_JINGLE_VOICE;
+      else if (0 == strcmp (var, NS_JINGLE))
+        caps |= PRESENCE_CAP_JINGLE;
+      else if (0 == strcmp (var, NS_JINGLE_DESCRIPTION_AUDIO))
+        caps |= PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO;
+      else if (0 == strcmp (var, NS_JINGLE_DESCRIPTION_VIDEO))
+        caps |= PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO;
     }
 
   g_hash_table_insert (priv->capabilities, g_strdup (node),

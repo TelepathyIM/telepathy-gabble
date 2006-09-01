@@ -220,22 +220,19 @@ _get_peer_resource (GabblePresence *presence, gchar **peer_resource,
 {
   const gchar *resource;
 
-  if (g_getenv ("GABBLE_JINGLE"))
-    {
-      resource = gabble_presence_pick_resource_by_caps (presence,
-        PRESENCE_CAP_JINGLE_VOICE);
+  resource = gabble_presence_pick_resource_by_caps (presence,
+      PRESENCE_CAP_JINGLE);
 
-      if (resource)
-        {
-          DEBUG ("using Jingle-capable resource %s\n", resource);
-          *peer_resource = g_strdup (resource);
-          *mode = MODE_JINGLE;
-          return TRUE;
-        }
+  if (resource)
+    {
+      DEBUG ("using Jingle-capable resource %s\n", resource);
+      *peer_resource = g_strdup (resource);
+      *mode = MODE_JINGLE;
+      return TRUE;
     }
 
   resource = gabble_presence_pick_resource_by_caps (presence,
-    PRESENCE_CAP_GOOGLE_VOICE);
+      PRESENCE_CAP_GOOGLE_VOICE);
 
   if (resource)
     {

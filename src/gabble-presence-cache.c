@@ -63,6 +63,10 @@ struct _GabblePresenceCachePrivate
   LmMessageHandler *lm_message_cb;
 
   GHashTable *presence;
+  GabbleHandleSet *presence_handles;
+
+  GHashTable *capabilities;
+  GHashTable *disco_pending;
 
   gboolean dispose_has_run;
 };
@@ -92,7 +96,7 @@ disco_waiter_new (GabbleHandleRepo *repo, GabbleHandle handle, const gchar *reso
   waiter->resource = g_strdup (resource);
   waiter->repo = repo;
 
-  g_debug ("%s: %p", G_STRFUNC, waiter);
+  DEBUG ("created waiter %p for handle %u", waiter, handle);
 
   return waiter;
 }
@@ -102,7 +106,7 @@ disco_waiter_free (DiscoWaiter *waiter)
 {
   g_assert (NULL != waiter);
 
-  g_debug ("%s: %p", G_STRFUNC, waiter);
+  DEBUG ("freeing waiter %p for handle %u", waiter, waiter->handle);
 
   gabble_handle_unref (waiter->repo, TP_HANDLE_TYPE_CONTACT, waiter->handle);
 
@@ -115,7 +119,7 @@ disco_waiter_list_free (GSList *list)
 {
   GSList *i;
 
-  g_debug ("%s: %p", G_STRFUNC, list);
+  DEBUG ("list %p", list);
 
   for (i = list; NULL != i; i = i->next)
     disco_waiter_free ((DiscoWaiter *) i->data);
@@ -617,7 +621,7 @@ _process_caps_uri (GabblePresenceCache *cache,
       GSList *waiters;
       DiscoWaiter *waiter;
 
-      g_debug ("caps cache miss: %s", uri);
+      DEBUG ("caps cache miss: %s", uri);
       value = g_hash_table_lookup (priv->disco_pending, uri);
 
       if (value)
@@ -647,7 +651,7 @@ _process_caps (GabblePresenceCache *cache,
 
   priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
 
-  gabble_handle_decode_jid (from, NULL, NULL, &resource);
+  gabble_decode_jid (from, NULL, NULL, &resource);
 
   if (NULL == resource)
     return;

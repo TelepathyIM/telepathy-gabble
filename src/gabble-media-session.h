@@ -130,7 +130,8 @@ gboolean _gabble_media_session_request_streams (GabbleMediaSession *session,
 
 void _gabble_media_session_debug (GabbleMediaSession *session,
                                   DebugMessageType type,
-                                  const gchar *format, ...);
+                                  const gchar *format, ...)
+    G_GNUC_PRINTF (3, 4);
 
 #else
 

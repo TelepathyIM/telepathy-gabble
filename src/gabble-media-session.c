@@ -737,7 +737,7 @@ _handle_candidates (GabbleMediaSession *session,
   if (stream == NULL)
     {
       GMS_DEBUG_WARNING (session, "unable to handle candidates for unknown "
-          "stream \"%s\"");
+          "stream \"%s\"", stream_name);
       return FALSE;
     }
 

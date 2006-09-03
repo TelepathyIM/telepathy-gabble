@@ -1392,6 +1392,9 @@ send_reject_message (GabbleMediaSession *session)
   LmMessage *msg;
   LmMessageNode *session_node;
 
+  if (priv->peer_resource == NULL)
+    return;
+
   /* construct a session terminate message */
   msg = _gabble_media_session_message_new (session, "reject", &session_node);
 
@@ -1411,6 +1414,9 @@ send_terminate_message (GabbleMediaSession *session)
   const gchar *action;
   LmMessage *msg;
   LmMessageNode *session_node;
+
+  if (priv->peer_resource == NULL)
+    return;
 
   /* construct a session terminate message */
   if (priv->mode == MODE_GOOGLE)

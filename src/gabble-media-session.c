@@ -229,7 +229,8 @@ create_media_stream (GabbleMediaSession *session,
   return id;
 }
 
-gboolean
+#if 0
+static gboolean
 _get_peer_resource (GabblePresence *presence, gchar **peer_resource,
                      GabbleMediaSessionMode *mode)
 {
@@ -262,6 +263,7 @@ _get_peer_resource (GabblePresence *presence, gchar **peer_resource,
 
   return FALSE;
 }
+#endif
 
 static GObject *
 gabble_media_session_constructor (GType type, guint n_props,
@@ -285,7 +287,7 @@ gabble_media_session_constructor (GType type, guint n_props,
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
 
-#if 1
+#if 0
   if (!priv->peer_resource)
     {
       GabblePresence *presence;

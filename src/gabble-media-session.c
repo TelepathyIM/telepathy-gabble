@@ -54,6 +54,10 @@ G_DEFINE_TYPE(GabbleMediaSession, gabble_media_session, G_TYPE_OBJECT)
 
 #define GTALK_STREAM_NAME "gtalk"
 
+/* 99 streams gives us a max name length of 8 (videoXX\0 or audioXX\0) */
+#define MAX_STREAMS 99
+#define MAX_STREAM_NAME_LEN 8
+
 /* signal enum */
 enum
 {
@@ -184,6 +188,8 @@ create_media_stream (GabbleMediaSession *session,
   g_assert (name != NULL);
 
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+
+  g_assert (g_hash_table_size (priv->streams) < MAX_STREAMS);
 
   id = _gabble_media_channel_get_stream_id (priv->channel);
 
@@ -681,6 +687,13 @@ _handle_create (GabbleMediaSession *session,
               session_mode == MODE_GOOGLE ? "google" : "jingle");
           priv->mode = session_mode;
         }
+    }
+
+  if (g_hash_table_size (priv->streams) == MAX_STREAMS)
+    {
+      GMS_DEBUG_WARNING (session, "refusing to create more than "
+          G_STRINGIFY (MAX_STREAMS) " streams");
+      return FALSE;
     }
 
   create_media_stream (session, stream_name, stream_type);
@@ -1539,22 +1552,19 @@ _gabble_media_session_stream_state (GabbleMediaSession *session, guint state)
   _gabble_media_channel_stream_state (priv->channel, state);
 }
 
-#define NAME_MAX_LEN 10
-
 static const gchar *
 _name_stream (GabbleMediaSession *session,
               TpMediaStreamType media_type)
 {
   GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
-  static gchar ret[NAME_MAX_LEN] = GTALK_STREAM_NAME;
+  static gchar ret[MAX_STREAM_NAME_LEN] = GTALK_STREAM_NAME;
 
   if (priv->mode != MODE_GOOGLE)
     {
       guint i = 1;
-      guint len;
 
       do {
-          len = g_snprintf (ret, NAME_MAX_LEN, "%s%u",
+          g_snprintf (ret, MAX_STREAM_NAME_LEN, "%s%u",
               media_type == TP_MEDIA_STREAM_TYPE_AUDIO ? "audio" : "video",
               i++);
 
@@ -1562,19 +1572,10 @@ _name_stream (GabbleMediaSession *session,
             {
               ret[0] = '\0';
             }
-
-          if (len > NAME_MAX_LEN)
-            {
-              ret[0] = '\0';
-              break;
-            }
       } while (ret[0] == '\0');
     }
 
-  if (ret[0] == '\0')
-    return NULL;
-  else
-    return ret;
+  return ret;
 }
 
 
@@ -1723,6 +1724,14 @@ _gabble_media_session_request_streams (GabbleMediaSession *session,
       priv->peer_resource = g_strdup (resource);
     }
 
+  /* check it's not a ridiculous number of streams */
+  if ((g_hash_table_size (priv->streams) + media_types->len) > MAX_STREAMS)
+    {
+      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable, "I think that's "
+          "quite enough streams already");
+      return FALSE;
+    }
+
   /* if we've got here, we're good to make the streams */
 
   *ret = g_array_new (FALSE, FALSE, sizeof (guint));
@@ -1734,18 +1743,8 @@ _gabble_media_session_request_streams (GabbleMediaSession *session,
       guint stream_id;
 
       stream_name = _name_stream (session, media_type);
-
-      /* if we've got over 99999 streams of a certain type... */
-      if (stream_name == NULL)
-        {
-          *error = g_error_new (TELEPATHY_ERRORS, NotAvailable, "I think "
-              "that's quite enough streams already");
-
-          g_array_free (*ret, TRUE);
-          return FALSE;
-        }
-
       stream_id = create_media_stream (session, stream_name, media_type);
+
       g_array_append_val (*ret, stream_id);
     }
 

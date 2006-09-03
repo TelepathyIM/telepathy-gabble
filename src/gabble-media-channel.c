@@ -883,12 +883,29 @@ gboolean gabble_media_channel_remove_members (GabbleMediaChannel *obj, const GAr
  */
 gboolean gabble_media_channel_request_streams (GabbleMediaChannel *obj, guint contact_handle, const GArray * types, GArray ** ret, GError **error)
 {
-  DEBUG ("not implemented");
+  GabbleMediaChannelPrivate *priv;
 
-  *error = g_error_new (TELEPATHY_ERRORS, NotImplemented,
-                        "RequestStreams not implemented!");
+  g_assert (GABBLE_IS_MEDIA_CHANNEL (obj));
 
-  return FALSE;
+  priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (obj);
+
+  if (!gabble_handle_is_valid (priv->conn->handles, TP_HANDLE_TYPE_CONTACT,
+        contact_handle, error))
+    return FALSE;
+
+  if (!handle_set_is_member (obj->group.members, contact_handle) &&
+      !handle_set_is_member (obj->group.remote_pending, contact_handle))
+    {
+      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument, "given handle "
+          "%u is not a member of the channel", contact_handle);
+      return FALSE;
+    }
+
+  /* if the person is a channel member, we should have a session */
+  g_assert (priv->session != NULL);
+
+  return _gabble_media_session_request_streams (priv->session, types, ret,
+      error);
 }
 
 

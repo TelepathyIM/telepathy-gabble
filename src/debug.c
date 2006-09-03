@@ -46,7 +46,9 @@ gboolean gabble_debug_flag_is_set (GabbleDebugFlags flag)
   return flag & flags;
 }
 
-void gabble_debug (GabbleDebugFlags flag, const gchar *format, ...)
+void gabble_debug (GabbleDebugFlags flag,
+                   const gchar *format,
+                   ...)
 {
   if (flag & flags)
     {

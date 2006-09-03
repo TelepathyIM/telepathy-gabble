@@ -87,6 +87,11 @@ void gabble_presence_set_capabilities (GabblePresence *presence, const gchar *re
 
 const gchar *gabble_presence_pick_resource_by_caps (GabblePresence *presence, GabblePresenceCapabilities caps);
 
+gboolean
+gabble_presence_resource_has_caps (GabblePresence *presence,
+                                   const gchar *resource,
+                                   GabblePresenceCapabilities caps);
+
 LmMessage *gabble_presence_as_message (GabblePresence *presence, const gchar *resource);
 
 G_END_DECLS

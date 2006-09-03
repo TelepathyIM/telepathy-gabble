@@ -125,6 +125,25 @@ gabble_presence_pick_resource_by_caps (
     return NULL;
 }
 
+gboolean
+gabble_presence_resource_has_caps (GabblePresence *presence,
+                                   const gchar *resource,
+                                   GabblePresenceCapabilities caps)
+{
+  GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
+  GSList *i;
+
+  for (i = priv->resources; NULL != i; i = i->next)
+    {
+      Resource *res = (Resource *) i->data;
+
+      if (res->caps & caps)
+        return TRUE;
+    }
+
+  return FALSE;
+}
+
 void
 gabble_presence_set_capabilities (GabblePresence *presence, const gchar *resource, GabblePresenceCapabilities caps)
 {

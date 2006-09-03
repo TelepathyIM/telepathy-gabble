@@ -1539,5 +1539,216 @@ _gabble_media_session_stream_state (GabbleMediaSession *session, guint state)
   _gabble_media_channel_stream_state (priv->channel, state);
 }
 
-#endif /* _GMS_DEBUG_LEVEL */
+#define NAME_MAX_LEN 10
+
+static const gchar *
+_name_stream (GabbleMediaSession *session,
+              TpMediaStreamType media_type)
+{
+  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+  static gchar ret[NAME_MAX_LEN] = GTALK_STREAM_NAME;
+
+  if (priv->mode != MODE_GOOGLE)
+    {
+      guint i = 1;
+      guint len;
+
+      do {
+          len = g_snprintf (ret, NAME_MAX_LEN, "%s%u",
+              media_type == TP_MEDIA_STREAM_TYPE_AUDIO ? "audio" : "video",
+              i++);
+
+          if (g_hash_table_lookup (priv->streams, ret) != NULL)
+            {
+              ret[0] = '\0';
+            }
+
+          if (len > NAME_MAX_LEN)
+            {
+              ret[0] = '\0';
+              break;
+            }
+      } while (ret[0] == '\0');
+    }
+
+  if (ret[0] == '\0')
+    return NULL;
+  else
+    return ret;
+}
+
+
+gboolean
+_gabble_media_session_request_streams (GabbleMediaSession *session,
+                                       const GArray *media_types,
+                                       GArray **ret,
+                                       GError **error)
+{
+  static GabblePresenceCapabilities google_audio_caps =
+    PRESENCE_CAP_GOOGLE_VOICE;
+  static GabblePresenceCapabilities jingle_audio_caps =
+    PRESENCE_CAP_JINGLE | PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO |
+    PRESENCE_CAP_GOOGLE_TRANSPORT_P2P;
+  static GabblePresenceCapabilities jingle_video_caps =
+    PRESENCE_CAP_JINGLE | PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO |
+    PRESENCE_CAP_GOOGLE_TRANSPORT_P2P;
+
+  GabbleMediaSessionPrivate *priv;
+  GabblePresence *presence;
+  gboolean want_audio, want_video;
+  GabblePresenceCapabilities jingle_desired_caps;
+  guint idx;
+
+  g_assert (GABBLE_IS_MEDIA_SESSION (session));
+
+  priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+
+  presence = gabble_presence_cache_get (priv->conn->presence_cache,
+      priv->peer);
+
+  if (presence == NULL)
+    {
+      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable, "member has no "
+          "audio/video capabilities");
+
+      return FALSE;
+    }
+
+  want_audio = want_video = FALSE;
+
+  for (idx = 0; idx < media_types->len; idx++)
+    {
+      guint media_type = g_array_index (media_types, guint, idx);
+
+      if (media_type == TP_MEDIA_STREAM_TYPE_AUDIO)
+        {
+          want_audio = TRUE;
+        }
+      else if (media_type == TP_MEDIA_STREAM_TYPE_VIDEO)
+        {
+          want_video = TRUE;
+        }
+      else
+        {
+          *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument, "given "
+            "media type %u is invalid", media_type);
+          return FALSE;
+        }
+    }
+
+  /* work out what we'd need to do these streams with jingle */
+  jingle_desired_caps = 0;
+
+  if (want_audio)
+    jingle_desired_caps |= jingle_audio_caps;
+
+  if (want_video)
+    jingle_desired_caps |= jingle_video_caps;
+
+  /* existing call; the recipient and the mode has already been decided */
+  if (priv->peer_resource)
+    {
+      /* is a google call... we have no other option */
+      if (priv->mode == MODE_GOOGLE)
+        {
+          g_assert (g_hash_table_size (priv->streams) == 1);
+
+          *error = g_error_new (TELEPATHY_ERRORS, NotAvailable, "google talk "
+              "calls may only contain one stream");
+
+          return FALSE;
+        }
+
+      if (!gabble_presence_resource_has_caps (presence, priv->peer_resource,
+            jingle_desired_caps))
+        {
+          *error = g_error_new (TELEPATHY_ERRORS, NotAvailable, "existing "
+              "call member doesn't support all requested media types");
+
+          return FALSE;
+        }
+    }
+
+  /* no existing call; we should choose a recipient and a mode */
+  else
+    {
+      const gchar *resource;
+
+      g_assert (g_hash_table_size (priv->streams) == 0);
+
+      /* see if we have a fully-capable jingle resource; regardless of the
+       * desired media type it's best if we can add/remove the others later */
+      resource = gabble_presence_pick_resource_by_caps (presence,
+          jingle_audio_caps | jingle_video_caps);
+
+      if (resource == NULL)
+        {
+          /* ok, no problem. see if we can do just what's wanted with jingle */
+          resource = gabble_presence_pick_resource_by_caps (presence,
+              jingle_desired_caps);
+
+          if (resource == NULL && want_audio && !want_video)
+            {
+              /* last ditch... if we want only audio and not video, we can make
+               * do with google talk */
+              resource = gabble_presence_pick_resource_by_caps (presence,
+                  google_audio_caps);
+
+              if (resource != NULL)
+                {
+                  /* only one stream possible with google */
+                  if (media_types->len == 1)
+                    {
+                      priv->mode = MODE_GOOGLE;
+                    }
+                  else
+                    {
+                      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                          "google talk calls may only contain one stream");
+
+                      return FALSE;
+                    }
+                }
+            }
+        }
+
+      if (resource == NULL)
+        {
+          *error = g_error_new (TELEPATHY_ERRORS, NotAvailable, "member does "
+              "not have the desired audio/video capabilities");
+
+          return FALSE;
+        }
+
+      priv->peer_resource = g_strdup (resource);
+    }
+
+  /* if we've got here, we're good to make the streams */
+
+  *ret = g_array_new (FALSE, FALSE, sizeof (guint));
+
+  for (idx = 0; idx < media_types->len; idx++)
+    {
+      guint media_type = g_array_index (media_types, guint, idx);
+      const gchar *stream_name;
+      guint stream_id;
+
+      stream_name = _name_stream (session, media_type);
+
+      /* if we've got over 99999 streams of a certain type... */
+      if (stream_name == NULL)
+        {
+          *error = g_error_new (TELEPATHY_ERRORS, NotAvailable, "I think "
+              "that's quite enough streams already");
+
+          g_array_free (*ret, TRUE);
+          return FALSE;
+        }
+
+      stream_id = create_media_stream (session, stream_name, media_type);
+      g_array_append_val (*ret, stream_id);
+    }
+
+  return TRUE;
+}
 

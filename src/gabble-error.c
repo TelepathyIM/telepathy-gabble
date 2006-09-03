@@ -19,9 +19,11 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#include "gabble-error.h"
 #include <stdlib.h>
 #include <stdio.h>
+
+#include "gabble-error.h"
+#include "namespaces.h"
 
 #define MAX_LEGACY_ERRORS 3
 
@@ -291,8 +293,7 @@ gabble_xmpp_error_to_node (GabbleXmppError error,
     }
 
   node = lm_message_node_add_child (error_node, spec->name, NULL);
-  lm_message_node_set_attribute (node, "xmlns",
-                                 "urn:ietf:params:xml:ns:xmpp-stanzas");
+  lm_message_node_set_attribute (node, "xmlns", NS_XMPP_STANZAS);
 
   return error_node;
 }

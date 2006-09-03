@@ -318,49 +318,34 @@ static gboolean
 _presence_node_has_google_voice (LmMessageNode *pres_node)
 {
   LmMessageNode *node;
+  const gchar *cap_ext;
+  gchar **features, **tmp;
+  gboolean found = FALSE;
 
-  for (node = pres_node->children; node; node = node->next)
+  node = lm_message_node_get_child_with_namespace (pres_node, "c", NS_CAPS);
+
+  if (node == NULL);
+    return FALSE;
+
+  cap_ext = lm_message_node_get_attribute (node, "ext");
+
+  if (cap_ext == NULL);
+    return FALSE;
+
+  features = g_strsplit (cap_ext, " ", 0);
+
+  for (tmp = features; *tmp; tmp++)
     {
-      const gchar *cap_xmlns, *cap_ext;
-
-      if (strcmp (node->name, "c") != 0)
-        continue;
-
-      cap_xmlns = lm_message_node_get_attribute (node, "xmlns");
-      if (NULL == cap_xmlns || 0 != strcmp (cap_xmlns, NS_CAPS))
-        continue;
-
-      cap_ext = lm_message_node_get_attribute (node, "ext");
-      if (NULL != cap_ext)
+      if (!g_strdiff (tmp, "voice-v1"))
         {
-          gchar **features, **tmp;
-          gboolean found = FALSE;
-
-          features = g_strsplit (cap_ext, " ", 0);
-
-          for (tmp = features; *tmp; tmp++)
-            {
-              if (0 == strcmp (*tmp, "voice-v1"))
-                {
-                  found = TRUE;
-                  break;
-                }
-            }
-
-          g_strfreev (features);
-
-          if (found)
-            {
-              return TRUE;
-            }
-        }
-      else
-        {
-          continue;
+          found = TRUE;
+          break;
         }
     }
 
-  return FALSE;
+  g_strfreev (features);
+
+  return found;
 }
 #endif
 
@@ -463,17 +448,11 @@ _grab_nickname (GabblePresenceCache *cache,
                 LmMessageNode *node)
 {
   const gchar *nickname;
-  const gchar *xmlns;
   GabblePresence *presence;
 
-  node = lm_message_node_find_child (node, "nick");
+  node = lm_message_node_get_child_with_namespace (node, "nick", NS_NICK);
 
   if (NULL == node)
-    return;
-
-  xmlns = lm_message_node_get_attribute (node, "xmlns");
-
-  if (0 != strcmp(xmlns, NS_NICK))
     return;
 
   presence = gabble_presence_cache_get (cache, handle);

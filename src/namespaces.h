@@ -22,8 +22,6 @@
 #define __GABBLE_NAMESPACES__H__
 
 #define NS_CAPS                 "http://jabber.org/protocol/caps"
-#define NS_DATA                 "jabber:x:data"
-#define NS_DELAY                "jabber:x:delay"
 #define NS_DISCO_INFO           "http://jabber.org/protocol/disco#info"
 #define NS_DISCO_ITEMS          "http://jabber.org/protocol/disco#items"
 #define NS_GABBLE_CAPS          "http://telepathy.freedesktop.org/caps"
@@ -46,6 +44,11 @@
 #define NS_NICK                 "http://jabber.org/protocol/nick"
 #define NS_PRESENCE_INVISIBLE   "presence-invisible"
 #define NS_PRIVACY              "jabber:iq:privacy"
+#define NS_REGISTER             "jabber:iq:register"
 #define NS_ROSTER               "jabber:iq:roster"
+#define NS_VCARD_TEMP           "vcard-temp"
+#define NS_X_DATA               "jabber:x:data"
+#define NS_X_DELAY              "jabber:x:delay"
+#define NS_XMPP_STANZAS         "urn:ietf:params:xml:ns:xmpp-stanzas"
 
 #endif /* __GABBLE_NAMESPACES__H__ */

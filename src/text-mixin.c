@@ -697,7 +697,7 @@ gabble_text_mixin_parse_incoming_message (LmMessage *message,
   *stamp = 0;
 
   node = lm_message_node_get_child_with_namespace (message->node, "x",
-      NS_DELAY);
+      NS_X_DELAY);
   if (node != NULL)
     {
       const gchar *stamp_str, *p;

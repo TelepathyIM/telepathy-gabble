@@ -34,8 +34,8 @@
 #include "gabble-error.h"
 #include "gabble-register.h"
 #include "gabble-register-signals-marshal.h"
-
-#define XMLNS_JABBER_REGISTER   "jabber:iq:register"
+#include "namespaces.h"
+#include "util.h"
 
 /* signal enum */
 enum
@@ -249,27 +249,21 @@ get_reply_cb (GabbleConnection *conn,
   const gchar *err_msg = NULL;
   LmMessage *msg = NULL;
   LmMessageNode *query_node;
-  const gchar *str;
   gchar *username, *password;
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
       err_code = NotAvailable;
-      err_msg = "Server doesn't support " XMLNS_JABBER_REGISTER;
+      err_msg = "Server doesn't support " NS_REGISTER;
 
       goto OUT;
     }
 
   /* sanity check the reply to some degree ... */
-  query_node = lm_message_node_get_child (reply_msg->node, "query");
-  if (!query_node)
-    goto ERROR_MALFORMED_REPLY;
+  query_node = lm_message_node_get_child_with_namespace (reply_msg->node,
+      "query", NS_REGISTER);
 
-  str = lm_message_node_get_attribute (query_node, "xmlns");
-  if (!str)
-    goto ERROR_MALFORMED_REPLY;
-
-  if (strcmp (str, XMLNS_JABBER_REGISTER))
+  if (query_node == NULL)
     goto ERROR_MALFORMED_REPLY;
 
   if (!lm_message_node_get_child (query_node, "username"))
@@ -283,7 +277,7 @@ get_reply_cb (GabbleConnection *conn,
                                       LM_MESSAGE_SUB_TYPE_SET);
 
   query_node = lm_message_node_add_child (msg->node, "query", NULL);
-  lm_message_node_set_attribute (query_node, "xmlns", XMLNS_JABBER_REGISTER);
+  lm_message_node_set_attribute (query_node, "xmlns", NS_REGISTER);
 
   g_object_get (priv->conn,
       "username", &username,
@@ -342,7 +336,7 @@ void gabble_register_start (GabbleRegister *reg)
                                       LM_MESSAGE_SUB_TYPE_GET);
 
   node = lm_message_node_add_child (msg->node, "query", NULL);
-  lm_message_node_set_attribute (node, "xmlns", XMLNS_JABBER_REGISTER);
+  lm_message_node_set_attribute (node, "xmlns", NS_REGISTER);
 
   if (!_gabble_connection_send_with_reply (priv->conn, msg, get_reply_cb,
                                            G_OBJECT (reg), NULL, &error))

@@ -3824,7 +3824,7 @@ gboolean gabble_connection_request_contact_info (GabbleConnection *obj, guint co
 
   vcard_node = lm_message_node_add_child (msg->node, "vCard", NULL);
 
-  lm_message_node_set_attribute (vcard_node, "xmlns", "vcard-temp");
+  lm_message_node_set_attribute (vcard_node, "xmlns", NS_VCARD_TEMP);
 
 
   if (!_gabble_connection_send_with_reply (obj, msg, contact_info_got_vcard,

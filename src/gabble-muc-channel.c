@@ -452,7 +452,7 @@ properties_disco_cb (GabbleDisco *disco,
         }
       else if (strcmp (lm_node->name, "x") == 0)
         {
-          if (lm_message_node_has_namespace (lm_node, NS_DATA))
+          if (lm_message_node_has_namespace (lm_node, NS_X_DATA))
             {
               LmMessageNode *field, *value_node;
 
@@ -1260,8 +1260,7 @@ config_form_get_form_node (LmMessage *msg)
     {
       if (strcmp (node->name, "x") == 0)
         {
-          if (strcmp (lm_message_node_get_attribute (node, "xmlns"),
-                      "jabber:x:data") != 0)
+          if (!lm_message_node_has_namespace (node, NS_X_DATA))
             {
               continue;
             }
@@ -1581,7 +1580,7 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
 
               node = lm_message_node_add_child (node, "x", NULL);
               lm_message_node_set_attributes (node,
-                                              "xmlns", "jabber:x:data",
+                                              "xmlns", NS_X_DATA,
                                               "type", "submit",
                                               NULL);
 
@@ -2598,7 +2597,7 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 
   submit_node = lm_message_node_add_child (node, "x", NULL);
   lm_message_node_set_attributes (submit_node,
-                                  "xmlns", "jabber:x:data",
+                                  "xmlns", NS_X_DATA,
                                   "type", "submit",
                                   NULL);
 
@@ -2615,7 +2614,7 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
         {
           const gchar *type = lm_message_node_get_attribute (node, "type");
 
-          if (!lm_message_node_has_namespace (node, NS_DATA))
+          if (!lm_message_node_has_namespace (node, NS_X_DATA))
             continue;
 
           if (g_strdiff (type, "form"))

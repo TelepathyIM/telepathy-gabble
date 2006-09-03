@@ -33,6 +33,7 @@
 #include "namespaces.h"
 #include "util.h"
 
+#include "telepathy-errors.h"
 #include "telepathy-helpers.h"
 
 #include "gabble-connection.h"
@@ -169,7 +170,7 @@ _emit_new_stream (const gchar *name,
   g_free (object_path);
 }
 
-static GabbleMediaStream *
+static guint
 create_media_stream (GabbleMediaSession *session,
                      const gchar *name,
                      guint media_type)
@@ -225,7 +226,7 @@ create_media_stream (GabbleMediaSession *session,
   if (priv->ready)
     _emit_new_stream (name, stream, session);
 
-  return stream;
+  return id;
 }
 
 gboolean
@@ -680,7 +681,7 @@ _handle_create (GabbleMediaSession *session,
         }
     }
 
-  stream = create_media_stream (session, stream_name, stream_type);
+  create_media_stream (session, stream_name, stream_type);
 
   return TRUE;
 }

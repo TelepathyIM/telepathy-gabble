@@ -1401,6 +1401,8 @@ _gabble_media_stream_content_node_add_description (GabbleMediaStream *stream,
 
   if (priv->mode == MODE_GOOGLE)
     xmlns = NS_GOOGLE_SESSION_PHONE;
+  else if (priv->media_type == TP_CODEC_MEDIA_TYPE_VIDEO)
+    xmlns = NS_JINGLE_DESCRIPTION_VIDEO;
   else
     xmlns = NS_JINGLE_DESCRIPTION_AUDIO;
 

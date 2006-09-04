@@ -68,7 +68,8 @@ static guint signals[LAST_SIGNAL] = {0};
 /* properties */
 enum
 {
-  PROP_MEDIA_SESSION = 1,
+  PROP_CONNECTION = 1,
+  PROP_MEDIA_SESSION,
   PROP_OBJECT_PATH,
   PROP_MODE,
   PROP_NAME,
@@ -125,36 +126,7 @@ static const char *tp_transports[] = {
 static void
 gabble_media_stream_init (GabbleMediaStream *obj)
 {
-  //GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
-
-  /* allocate any data required by the object here */
-}
-
-static void session_state_changed_cb (GabbleMediaSession *session,
-                                      GParamSpec *arg1,
-                                      GabbleMediaStream *stream);
-
-static GObject *
-gabble_media_stream_constructor (GType type, guint n_props,
-                                 GObjectConstructParam *props)
-{
-  GObject *obj;
-  GabbleMediaStreamPrivate *priv;
-  GabbleMediaChannel *chan;
-  DBusGConnection *bus;
-
-  /* call base class constructor */
-  obj = G_OBJECT_CLASS (gabble_media_stream_parent_class)->
-           constructor (type, n_props, props);
-  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (GABBLE_MEDIA_STREAM (obj));
-
-  g_signal_connect (priv->session, "notify::state",
-      (GCallback) session_state_changed_cb, obj);
-
-  /* get the connection handle once */
-  g_object_get (priv->session, "media-channel", &chan, NULL);
-  g_object_get (chan, "connection", &priv->conn, NULL);
-  g_object_unref (chan);
+  GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
 
   g_value_init (&priv->native_codecs, TP_TYPE_CODEC_LIST);
   g_value_take_boxed (&priv->native_codecs,
@@ -171,6 +143,27 @@ gabble_media_stream_constructor (GType type, guint n_props,
   g_value_init (&priv->remote_candidates, TP_TYPE_CANDIDATE_LIST);
   g_value_take_boxed (&priv->remote_candidates,
       dbus_g_type_specialized_construct (TP_TYPE_CANDIDATE_LIST));
+}
+
+static void session_state_changed_cb (GabbleMediaSession *session,
+                                      GParamSpec *arg1,
+                                      GabbleMediaStream *stream);
+
+static GObject *
+gabble_media_stream_constructor (GType type, guint n_props,
+                                 GObjectConstructParam *props)
+{
+  GObject *obj;
+  GabbleMediaStreamPrivate *priv;
+  DBusGConnection *bus;
+
+  /* call base class constructor */
+  obj = G_OBJECT_CLASS (gabble_media_stream_parent_class)->
+           constructor (type, n_props, props);
+  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (GABBLE_MEDIA_STREAM (obj));
+
+  g_signal_connect (priv->session, "notify::state",
+      (GCallback) session_state_changed_cb, obj);
 
   /* go for the bus */
   bus = tp_get_bus ();
@@ -189,6 +182,9 @@ gabble_media_stream_get_property (GObject    *object,
   GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
   switch (property_id) {
+    case PROP_CONNECTION:
+      g_value_set_object (value, priv->conn);
+      break;
     case PROP_MEDIA_SESSION:
       g_value_set_object (value, priv->session);
       break;
@@ -223,6 +219,9 @@ gabble_media_stream_set_property (GObject      *object,
   GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
   switch (property_id) {
+    case PROP_CONNECTION:
+      priv->conn = g_value_get_object (value);
+      break;
     case PROP_MEDIA_SESSION:
       priv->session = g_value_get_object (value);
       break;
@@ -267,6 +266,16 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
 
   object_class->dispose = gabble_media_stream_dispose;
   object_class->finalize = gabble_media_stream_finalize;
+
+  param_spec = g_param_spec_object ("connection", "GabbleConnection object",
+                                    "Gabble connection object that owns this "
+                                    "media stream's channel.",
+                                    GABBLE_TYPE_CONNECTION,
+                                    G_PARAM_CONSTRUCT_ONLY |
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_STATIC_NICK |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 
   param_spec = g_param_spec_object ("media-session", "GabbleMediaSession object",
                                     "Gabble media session object that owns this "

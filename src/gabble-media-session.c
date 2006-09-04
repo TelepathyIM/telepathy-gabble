@@ -200,6 +200,7 @@ create_media_stream (GabbleMediaSession *session,
   object_path = g_strdup_printf ("%s/IceStream%u", priv->object_path, id);
 
   stream = g_object_new (GABBLE_TYPE_MEDIA_STREAM,
+                         "connection", priv->conn,
                          "media-session", session,
                          "object-path", object_path,
                          "mode", priv->mode,

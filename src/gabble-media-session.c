@@ -187,6 +187,10 @@ create_media_stream (GabbleMediaSession *session,
 
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
 
+  /* assert that we only try to make one audio stream in google mode */
+  g_assert (priv->mode != MODE_GOOGLE ||
+      (media_type == TP_MEDIA_STREAM_TYPE_AUDIO &&
+       g_hash_table_size (priv->streams) == 0));
   g_assert (g_hash_table_size (priv->streams) < MAX_STREAMS);
 
   id = _gabble_media_channel_get_stream_id (priv->channel);

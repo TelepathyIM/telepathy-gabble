@@ -936,7 +936,7 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
                                      const gchar *action)
 {
   GabbleMediaSessionPrivate *priv;
-  StreamHandlerFunc *func = NULL;
+  StreamHandlerFunc *funcs = NULL;
   JingleSessionState new_state = JS_STATE_INVALID;
   Handler *i;
   const gchar **tmp;
@@ -950,6 +950,7 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
 
   /* do the state machine dance */
 
+  /* search the table of handlers for the action */
   for (i = handlers; NULL != i->actions[0]; i++)
     {
       for (tmp = i->actions; NULL != *tmp; tmp++)
@@ -959,6 +960,8 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
       if (NULL == *tmp)
         continue;
 
+      /* if we're outside the allowable states for this action, return an error
+       * immediately */
       if (priv->state < i->min_allowed_state ||
           priv->state > i->max_allowed_state)
         {
@@ -967,25 +970,28 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
           goto ACK_FAILURE;
         }
 
-      func = i->stream_handlers;
+      funcs = i->stream_handlers;
       new_state = i->new_state;
 
       break;
     }
 
-  if (NULL == func)
+  /* pointer is not NULL if we found a matching action */
+  if (NULL == funcs)
     {
       GMS_DEBUG_ERROR (session, "received unrecognised action \"%s\"; "
           "terminating session", action);
       goto ACK_FAILURE;
     }
 
-  if (NULL != *func)
+  /* call handlers if there are any (NULL-terminated array) */
+  if (NULL != *funcs)
     {
-      if (!_call_handlers_on_streams (session, message, session_node, func))
+      if (!_call_handlers_on_streams (session, message, session_node, funcs))
         goto FUNC_ERROR;
     }
 
+  /* if the action specified a new state to go to, set it */
   if (JS_STATE_INVALID != new_state)
     g_object_set (session, "state", new_state, NULL);
 

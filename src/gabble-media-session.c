@@ -1425,7 +1425,7 @@ send_reject_message (GabbleMediaSession *session)
    * mode when we've ended up talking to a resource that doesn't support
    * jingle */
   g_assert (priv->mode == MODE_GOOGLE);
-  g_assert (priv->resource != NULL);
+  g_assert (priv->peer_resource != NULL);
 
   /* construct a session terminate message */
   msg = _gabble_media_session_message_new (session, "reject", &session_node);

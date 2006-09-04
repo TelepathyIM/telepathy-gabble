@@ -1421,8 +1421,11 @@ send_reject_message (GabbleMediaSession *session)
   LmMessage *msg;
   LmMessageNode *session_node;
 
-  if (priv->peer_resource == NULL)
-    return;
+  /* this should only happen in google mode, and we should only arrive in that
+   * mode when we've ended up talking to a resource that doesn't support
+   * jingle */
+  g_assert (priv->mode == MODE_GOOGLE);
+  g_assert (priv->resource != NULL);
 
   /* construct a session terminate message */
   msg = _gabble_media_session_message_new (session, "reject", &session_node);
@@ -1444,6 +1447,8 @@ send_terminate_message (GabbleMediaSession *session)
   LmMessage *msg;
   LmMessageNode *session_node;
 
+  /* if we have no resource, then we've not sent or received any messages about
+   * this session yet, so no terminate is necessary */
   if (priv->peer_resource == NULL)
     return;
 

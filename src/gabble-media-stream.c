@@ -148,8 +148,6 @@ gabble_media_stream_constructor (GType type, guint n_props,
            constructor (type, n_props, props);
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (GABBLE_MEDIA_STREAM (obj));
 
-  priv->mode = MODE_JINGLE;
-
   g_signal_connect (priv->session, "notify::state",
       (GCallback) session_state_changed_cb, obj);
 

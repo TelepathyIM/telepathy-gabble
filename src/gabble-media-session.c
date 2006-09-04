@@ -46,8 +46,6 @@
 #include "gabble-media-session-signals-marshal.h"
 #include "gabble-media-session-glue.h"
 
-#include "media-factory.h"
-
 G_DEFINE_TYPE(GabbleMediaSession, gabble_media_session, G_TYPE_OBJECT)
 
 #define DEFAULT_SESSION_TIMEOUT 50000
@@ -70,7 +68,8 @@ static guint signals[LAST_SIGNAL] = {0};
 /* properties */
 enum
 {
-  PROP_MEDIA_CHANNEL = 1,
+  PROP_CONNECTION = 1,
+  PROP_MEDIA_CHANNEL,
   PROP_OBJECT_PATH,
   PROP_SESSION_ID,
   PROP_INITIATOR,
@@ -99,8 +98,6 @@ struct _GabbleMediaSessionPrivate
   gchar *peer_resource;
 
   JingleSessionState state;
-
-  GabbleMediaFactory *media_factory;
 
   gboolean ready;
   gboolean accepted;
@@ -132,6 +129,7 @@ gabble_media_session_init (GabbleMediaSession *obj)
   GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (obj);
 
   priv->mode = MODE_JINGLE;
+  priv->state = JS_STATE_PENDING_CREATED;
   priv->streams = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
       g_object_unref);
 }
@@ -283,13 +281,6 @@ gabble_media_session_constructor (GType type, guint n_props,
            constructor (type, n_props, props);
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (GABBLE_MEDIA_SESSION (obj));
 
-  g_object_get (priv->channel,
-                "connection", &priv->conn,
-                "factory", &priv->media_factory,
-                NULL);
-
-  priv->state = JS_STATE_PENDING_CREATED;
-
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
 
@@ -327,6 +318,9 @@ gabble_media_session_get_property (GObject    *object,
   GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
 
   switch (property_id) {
+    case PROP_CONNECTION:
+      g_value_set_object (value, priv->conn);
+      break;
     case PROP_MEDIA_CHANNEL:
       g_value_set_object (value, priv->channel);
       break;
@@ -369,6 +363,9 @@ gabble_media_session_set_property (GObject      *object,
   JingleSessionState prev_state;
 
   switch (property_id) {
+    case PROP_CONNECTION:
+      priv->conn = g_value_get_object (value);
+      break;
     case PROP_MEDIA_CHANNEL:
       priv->channel = g_value_get_object (value);
       break;
@@ -422,6 +419,16 @@ gabble_media_session_class_init (GabbleMediaSessionClass *gabble_media_session_c
 
   object_class->dispose = gabble_media_session_dispose;
   object_class->finalize = gabble_media_session_finalize;
+
+  param_spec = g_param_spec_object ("connection", "GabbleConnection object",
+                                    "Gabble connection object that owns this "
+                                    "media session's channel.",
+                                    GABBLE_TYPE_CONNECTION,
+                                    G_PARAM_CONSTRUCT_ONLY |
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_STATIC_NICK |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 
   param_spec = g_param_spec_object ("media-channel", "GabbleMediaChannel object",
                                     "Gabble media channel object that owns this "
@@ -527,8 +534,6 @@ gabble_media_session_dispose (GObject *object)
 
   g_hash_table_destroy (priv->streams);
   priv->streams = NULL;
-
-  _gabble_media_factory_free_sid (priv->media_factory, priv->id);
 
   if (G_OBJECT_CLASS (gabble_media_session_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_media_session_parent_class)->dispose (object);

@@ -192,6 +192,7 @@ create_session (GabbleMediaChannel *channel, GabbleHandle peer, const gchar *pee
     }
 
   session = g_object_new (GABBLE_TYPE_MEDIA_SESSION,
+                          "connection", priv->conn,
                           "media-channel", channel,
                           "object-path", object_path,
                           "session-id", sid,
@@ -357,7 +358,7 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
 
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
                                     "Gabble connection object that owns this "
-                                    "IM channel object.",
+                                    "media channel object.",
                                     GABBLE_TYPE_CONNECTION,
                                     G_PARAM_CONSTRUCT_ONLY |
                                     G_PARAM_READWRITE |
@@ -1085,6 +1086,7 @@ session_state_changed_cb (GabbleMediaSession *session,
   else if (state == JS_STATE_ENDED)
     {
       GError *error;
+      gchar *sid;
 
       /* remove us and the peer from the member list */
       g_intset_add (set, mixin->self_handle);
@@ -1095,6 +1097,11 @@ session_state_changed_cb (GabbleMediaSession *session,
       /* update flags accordingly -- allow adding, deny removal */
       gabble_group_mixin_change_flags (G_OBJECT (channel), TP_CHANNEL_GROUP_FLAG_CAN_ADD,
                                        TP_CHANNEL_GROUP_FLAG_CAN_REMOVE);
+
+      /* clear the session ID */
+      g_object_get (priv->session, "session-id", &sid, NULL);
+      _gabble_media_factory_free_sid (priv->factory, sid);
+      g_free (sid);
 
       /* remove the session */
       g_object_unref (priv->session);

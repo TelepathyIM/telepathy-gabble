@@ -923,6 +923,7 @@ gabble_media_channel_add_member (GObject *obj, GabbleHandle handle, const gchar 
       /* yes: invite the peer */
 
       GIntSet *empty, *set;
+#if 0
       GabblePresence *presence;
 
       presence = gabble_presence_cache_get (priv->conn->presence_cache, handle);
@@ -937,6 +938,7 @@ gabble_media_channel_add_member (GObject *obj, GabbleHandle handle, const gchar 
 
           return FALSE;
         }
+#endif
 
       /* create a new session */
       create_session (chan, handle, NULL, NULL);

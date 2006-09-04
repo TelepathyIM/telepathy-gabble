@@ -1679,7 +1679,8 @@ OUT:
  */
 gboolean
 _gabble_muc_channel_receive (GabbleMucChannel *chan,
-                             TpChannelTextMessageType type,
+                             TpChannelTextMessageType msg_type,
+                             TpHandleType handle_type,
                              GabbleHandle sender,
                              time_t timestamp,
                              const gchar *text,
@@ -1756,18 +1757,21 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
 
       g_value_unset (&val);
 
-      /* ROOM_PROP_SUBJECT_CONTACT */
-      g_value_init (&val, G_TYPE_UINT);
-      g_value_set_uint (&val, sender);
+      if (handle_type == TP_HANDLE_TYPE_CONTACT)
+        {
+          /* ROOM_PROP_SUBJECT_CONTACT */
+          g_value_init (&val, G_TYPE_UINT);
+          g_value_set_uint (&val, sender);
 
-      gabble_properties_mixin_change_value (G_OBJECT (chan),
-          ROOM_PROP_SUBJECT_CONTACT, &val, &changed_values);
+          gabble_properties_mixin_change_value (G_OBJECT (chan),
+              ROOM_PROP_SUBJECT_CONTACT, &val, &changed_values);
 
-      gabble_properties_mixin_change_flags (G_OBJECT (chan),
-          ROOM_PROP_SUBJECT_CONTACT, TP_PROPERTY_FLAG_READ, 0,
-          &changed_flags);
+          gabble_properties_mixin_change_flags (G_OBJECT (chan),
+              ROOM_PROP_SUBJECT_CONTACT, TP_PROPERTY_FLAG_READ, 0,
+              &changed_flags);
 
-      g_value_unset (&val);
+          g_value_unset (&val);
+        }
 
       /* ROOM_PROP_SUBJECT_TIMESTAMP */
       g_value_init (&val, G_TYPE_UINT);
@@ -1796,7 +1800,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
 
       return TRUE;
     }
-  else if (sender == priv->handle)
+  else if (handle_type == TP_HANDLE_TYPE_ROOM)
     {
       NODE_DEBUG (msg->node, "ignoring message from channel");
 
@@ -1804,13 +1808,13 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
     }
   else if (sender == chan->group.self_handle)
     {
-      gabble_text_mixin_emit_sent (G_OBJECT (chan), timestamp, type, text);
+      gabble_text_mixin_emit_sent (G_OBJECT (chan), timestamp, msg_type, text);
 
       return TRUE;
     }
 
-  return gabble_text_mixin_receive (G_OBJECT (chan), type, sender, timestamp,
-      text);
+  return gabble_text_mixin_receive (G_OBJECT (chan), msg_type, sender,
+      timestamp, text);
 }
 
 void

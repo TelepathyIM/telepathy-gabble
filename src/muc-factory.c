@@ -305,15 +305,18 @@ muc_factory_message_cb (LmMessageHandler *handler,
   time_t stamp;
   TpChannelTextMessageType msgtype;
   LmMessageNode *node;
+  TpHandleType handle_type;
   GabbleHandle room_handle, handle;
   GabbleMucChannel *chan;
   GabbleTextMixinSendError send_error;
 
-  if (!gabble_text_mixin_parse_incoming_message (message, &from, &stamp, &msgtype, &body, &body_offset, &send_error))
+  if (!gabble_text_mixin_parse_incoming_message (message, &from, &stamp,
+        &msgtype, &body, &body_offset, &send_error))
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
   /* does it have a muc subnode? */
-  node = lm_message_node_get_child_with_namespace (message->node, "x", NS_MUC_USER);
+  node = lm_message_node_get_child_with_namespace (message->node, "x",
+      NS_MUC_USER);
   if (node)
     {
       /* and an invitation? */
@@ -396,10 +399,12 @@ muc_factory_message_cb (LmMessageHandler *handler,
    * itself or one of its members */
   if (gabble_handle_for_room_exists (priv->conn->handles, from, FALSE))
     {
+      handle_type = TP_HANDLE_TYPE_ROOM;
       handle = room_handle;
     }
   else
     {
+      handle_type = TP_HANDLE_TYPE_CONTACT;
       handle = gabble_handle_for_contact (priv->conn->handles, from, TRUE);
     }
 
@@ -410,7 +415,7 @@ muc_factory_message_cb (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 
-  if (_gabble_muc_channel_receive (chan, msgtype, handle, stamp,
+  if (_gabble_muc_channel_receive (chan, msgtype, handle_type, handle, stamp,
                                    body_offset, message))
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 

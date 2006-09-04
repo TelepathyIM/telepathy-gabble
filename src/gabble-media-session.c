@@ -59,7 +59,7 @@ G_DEFINE_TYPE(GabbleMediaSession, gabble_media_session, G_TYPE_OBJECT)
 /* signal enum */
 enum
 {
-    NEW_STREAM_HANDLER,
+    NEW_ICE_STREAM_HANDLER,
     LAST_SIGNAL
 };
 
@@ -293,27 +293,6 @@ gabble_media_session_constructor (GType type, guint n_props,
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
 
-#if 0
-  if (!priv->peer_resource)
-    {
-      GabblePresence *presence;
-
-      presence = gabble_presence_cache_get (priv->conn->presence_cache,
-          priv->peer);
-
-      if (NULL == presence ||
-          !_get_peer_resource (presence, &priv->peer_resource, &priv->mode))
-        g_critical ("%s: no voice resource found for remote handle", G_STRFUNC);
-    }
-
-  {
-    GabbleMediaStream *stream;
-
-    stream = create_media_stream (GABBLE_MEDIA_SESSION (obj), GTALK_STREAM_NAME,
-        TP_MEDIA_STREAM_TYPE_AUDIO);
-  }
-#endif
-
   return obj;
 }
 
@@ -519,6 +498,15 @@ gabble_media_session_class_init (GabbleMediaSessionClass *gabble_media_session_c
                   NULL, NULL,
                   gabble_media_session_marshal_VOID__STRING_UINT_UINT_UINT,
                   G_TYPE_NONE, 4, DBUS_TYPE_G_OBJECT_PATH, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT);
+
+  signals[STREAM_ADDED] =
+    g_signal_new ("stream-added",
+                  G_OBJECT_CLASS_TYPE (gabble_media_session_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  g_cclosure_marshal_VOID__OBJECT,
+                  G_TYPE_NONE, 1, G_TYPE_OBJECT);
 
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_media_session_class), &dbus_glib_gabble_media_session_object_info);
 }
@@ -1267,6 +1255,8 @@ stream_ready_cb (GabbleMediaStream *stream,
 
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
 
+  g_signal_emit (session, signals[STREAM_ADDED], 0, stream);
+
   priv->pending_stream_count--;
 
   /* any more streams pending to be signalled ready? */
@@ -1568,18 +1558,6 @@ _gabble_media_session_debug (GabbleMediaSession *session,
 }
 
 #endif /* _GMS_DEBUG_LEVEL */
-
-void
-_gabble_media_session_stream_state (GabbleMediaSession *session, guint state)
-{
-  GabbleMediaSessionPrivate *priv;
-
-  g_assert (GABBLE_IS_MEDIA_SESSION (session));
-
-  priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
-
-  _gabble_media_channel_stream_state (priv->channel, state);
-}
 
 static const gchar *
 _name_stream (GabbleMediaSession *session,

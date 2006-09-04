@@ -48,6 +48,8 @@ G_DEFINE_TYPE(GabbleMediaStream, gabble_media_stream, G_TYPE_OBJECT)
 /* signal enum */
 enum
 {
+    DESTROY,
+
     ADD_REMOTE_CANDIDATE,
     REMOVE_REMOTE_CANDIDATE,
     SET_ACTIVE_CANDIDATE_PAIR,
@@ -76,6 +78,7 @@ enum
   PROP_NAME,
   PROP_ID,
   PROP_MEDIA_TYPE,
+  PROP_STATE,
   LAST_PROPERTY
 };
 
@@ -91,6 +94,7 @@ struct _GabbleMediaStreamPrivate
   gchar *name;
   guint id;
   guint media_type;
+  TpMediaStreamState state;
 
   gboolean ready;
 
@@ -208,6 +212,9 @@ gabble_media_stream_get_property (GObject    *object,
     case PROP_MEDIA_TYPE:
       g_value_set_uint (value, priv->media_type);
       break;
+    case PROP_STATE:
+      g_value_set_uint (value, priv->state);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -246,6 +253,9 @@ gabble_media_stream_set_property (GObject      *object,
       break;
     case PROP_MEDIA_TYPE:
       priv->media_type = g_value_get_uint (value);
+      break;
+    case PROP_STATE:
+      priv->state = g_value_get_uint (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -313,7 +323,7 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_MODE, param_spec);
 
-  param_spec = g_param_spec_string ("name", "stream name",
+  param_spec = g_param_spec_string ("name", "Stream name",
                                     "An opaque name for the stream used in the "
                                     "signalling.",
                                     NULL,
@@ -323,7 +333,7 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_NAME, param_spec);
 
-  param_spec = g_param_spec_uint ("id", "stream ID",
+  param_spec = g_param_spec_uint ("id", "Stream ID",
                                   "A stream number for the stream used in the "
                                   "D-Bus API.",
                                   0, G_MAXUINT, 0,
@@ -333,7 +343,7 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_ID, param_spec);
 
-  param_spec = g_param_spec_uint ("media-type", "stream media type",
+  param_spec = g_param_spec_uint ("media-type", "Stream media type",
                                   "A constant indicating which media type the "
                                   "stream carries.",
                                   TP_MEDIA_STREAM_TYPE_AUDIO,
@@ -345,7 +355,7 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_MEDIA_TYPE, param_spec);
 
-  /* signals exported by D-Bus interface */
+  /* signals exported by DBus interface */
   signals[ADD_REMOTE_CANDIDATE] =
     g_signal_new ("add-remote-candidate",
                   G_OBJECT_CLASS_TYPE (gabble_media_stream_class),
@@ -457,6 +467,8 @@ gabble_media_stream_dispose (GObject *object)
 
   if (priv->dispose_has_run)
     return;
+
+  g_signal_emit (self, signals[DESTROY], 0);
 
   priv->dispose_has_run = TRUE;
 
@@ -752,11 +764,10 @@ gabble_media_stream_stream_state (GabbleMediaStream *self,
 {
   GabbleMediaStreamPrivate *priv;
 
-  g_assert (GABBLE_IS_MEDIA_STREAM (self));
+  g_assert (GABBLE_IS_MEDIA_STREAM (obj));
 
-  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
+  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
 
-  _gabble_media_session_stream_state (priv->session, state);
   return TRUE;
 }
 

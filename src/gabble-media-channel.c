@@ -99,6 +99,7 @@ struct _GabbleMediaChannelPrivate
 
   GabbleMediaFactory *factory;
   GabbleMediaSession *session;
+  GPtrArray *streams;
 
   guint next_stream_id;
 
@@ -158,6 +159,7 @@ gabble_media_channel_constructor (GType type, guint n_props,
 }
 
 static void session_state_changed_cb (GabbleMediaSession *session, GParamSpec *arg1, GabbleMediaChannel *channel);
+static void session_stream_added_cb (GabbleMediaSession *session, GabbleMediaStream  *stream, GabbleMediaChannel *chan);
 
 /**
  * create_session
@@ -209,10 +211,12 @@ create_session (GabbleMediaChannel *channel, GabbleHandle peer, const gchar *pee
 
   g_signal_connect (session, "notify::state",
                     (GCallback) session_state_changed_cb, channel);
+  g_signal_connect (session, "stream-added",
+                    (GCallback) session_stream_added_cb, channel);
 
   priv->session = session;
 
-  g_signal_emit (channel, signals[NEW_SESSION_HANDLER], 0,
+  g_signal_emit (channel, signals[NEW_ICE_SESSION_HANDLER], 0,
                  object_path, "rtp");
 
   g_free (object_path);
@@ -467,6 +471,8 @@ gabble_media_channel_dispose (GObject *object)
     gabble_media_channel_close (self, NULL);
 
   g_assert (priv->closed && priv->session==NULL);
+
+  g_ptr_array_free (priv->streams, TRUE);
 
   if (G_OBJECT_CLASS (gabble_media_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_media_channel_parent_class)->dispose (object);
@@ -856,65 +862,52 @@ gabble_media_channel_get_session_handlers (GabbleMediaChannel *self,
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_media_channel_list_streams (GabbleMediaChannel *self,
-                                   GPtrArray **ret,
-                                   GError **error)
+gboolean gabble_media_channel_list_streams (GabbleMediaChannel *obj, GPtrArray ** ret, GError **error)
 {
-#if 0
   GabbleMediaChannelPrivate *priv;
-  GabbleHandle handle, self_handle;
-  GArray *array;
-  int i;
+  guint i;
 
   g_assert (GABBLE_IS_MEDIA_CHANNEL (obj));
 
   priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (obj);
 
-  self_handle = obj->group.self_handle;
-  array = handle_set_to_array (obj->group.self_handle);
+  *ret = g_ptr_array_sized_new (priv->streams->len);
 
-  if (array->len < 2)
+  /* no session yet? return an empty array */
+  if (priv->session == NULL)
+    return TRUE;
+
+  for (i = 0; i < priv->streams->len; i++)
     {
-      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
-                            "Channel has only one member");
-      return FALSE;
+      GabbleMediaStream *stream = g_ptr_array_index (*ret, i);
+      GValue entry = { 0, };
+      guint id;
+      GabbleHandle peer;
+      TpCodecMediaType type;
+      TpMediaStreamDirection direction = TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL; /* FIXME */
+      TpMediaStreamState state;
+
+      g_object_get (stream, "id", &id, "media-type", &type,
+                    "state", &state, NULL);
+
+      g_object_get (priv->session, "peer", &peer, NULL);
+
+      g_value_init (&entry, TP_CHANNEL_STREAM_TYPE);
+      g_value_take_boxed (&entry,
+          dbus_g_type_specialized_construct (TP_CHANNEL_STREAM_TYPE));
+
+      dbus_g_type_struct_set (&entry,
+          0, id,
+          1, peer,
+          2, type,
+          3, direction,
+          4, state,
+          G_MAXUINT);
+
+      g_ptr_array_add (*ret, g_value_get_boxed (&entry));
     }
-
-  *ret = g_ptr_array_sized_new (array->len - 1);
-
-  for (i = 0; i < array->len; i++)
-    {
-      handle = g_array_index (array, GabbleHandle, i);
-      if (handle != self_handle)
-        {
-          GValue streams = { 0, };
-          g_value_init (&streams, TP_CHANNEL_STREAM_TYPE);
-          g_value_take_boxed (&streams,
-              dbus_g_type_specialized_construct (TP_CHANNEL_STREAM_TYPE));
-
-          dbus_g_type_struct_set (&streams,
-              0, handle,
-              1, 1,
-              2, TP_CODEC_MEDIA_TYPE_AUDIO,
-              3, TP_MEDIA_STREAM_STATE_STOPPED,
-              G_MAXUINT);
-
-          g_ptr_array_add (*ret, g_value_get_boxed (&streams));
-        }
-    }
-
-  g_array_free (array, TRUE);
 
   return TRUE;
-#else
-  DEBUG ("not implemented");
-
-  *error = g_error_new (TELEPATHY_ERRORS, NotImplemented,
-                        "ListStreams not implemented!");
-
-  return FALSE;
-#endif
 }
 
 
@@ -1217,27 +1210,55 @@ session_state_changed_cb (GabbleMediaSession *session,
 
 }
 
-void
-_gabble_media_channel_stream_state (GabbleMediaChannel *chan, guint state)
+static void
+stream_destroy_cb (GabbleMediaStream *stream,
+                   GabbleMediaChannel *chan)
 {
-  GabbleHandle handle, self_handle;
-  GArray *array;
-  int i;
+  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
+  guint id;
 
-  self_handle = chan->group.self_handle;
-  array = handle_set_to_array (chan->group.members);
+  g_ptr_array_remove (priv->streams, stream);
 
-  for (i = 0; i < array->len; i++)
-    {
-      handle = g_array_index (array, GabbleHandle, i);
+  g_object_get (stream, "id", &id, NULL);
 
-      if (handle != self_handle)
-        {
-          g_signal_emit (chan, signals[STREAM_STATE_CHANGED], 1, handle, i, state);
-        }
-    }
+  g_signal_emit (chan, signals[STREAM_REMOVED], id);
+}
 
-  g_array_free (array, TRUE);
+static void
+stream_state_changed_cb (GabbleMediaStream *stream,
+                         GParamSpec *pspec,
+                         GabbleMediaChannel *chan)
+{
+  guint id;
+  TpMediaStreamState state;
+
+  g_object_get (stream, "id", &id, "state", &state, NULL);
+
+  g_signal_emit (chan, signals[STREAM_STATE_CHANGED], id, state);
+}
+
+static void
+session_stream_added_cb (GabbleMediaSession *session,
+                         GabbleMediaStream  *stream,
+                         GabbleMediaChannel *chan)
+{
+  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
+
+  guint id, handle, type;
+
+  /* keep track of the stream */
+  g_ptr_array_add (priv->streams, stream);
+
+  g_signal_connect (stream, "destroy",
+                    (GCallback) stream_destroy_cb, chan);
+  g_signal_connect (stream, "notify::state",
+                    (GCallback) stream_state_changed_cb, chan);
+
+  /* emit StreamAdded */
+  g_object_get (session, "peer", &handle, NULL);
+  g_object_get (stream, "id", &id, "media-type", &type, NULL);
+
+  g_signal_emit (chan, signals[STREAM_ADDED], id, handle, type);
 }
 
 guint

@@ -446,8 +446,6 @@ gabble_media_stream_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  g_object_unref (priv->conn);
-
   if (G_OBJECT_CLASS (gabble_media_stream_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_media_stream_parent_class)->dispose (object);
 }

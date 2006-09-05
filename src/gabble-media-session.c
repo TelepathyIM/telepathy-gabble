@@ -535,8 +535,6 @@ gabble_media_session_dispose (GObject *object)
   if (priv->timer_id != 0)
     g_source_remove (priv->timer_id);
 
-  g_object_unref (priv->conn);
-
   g_hash_table_destroy (priv->streams);
   priv->streams = NULL;
 

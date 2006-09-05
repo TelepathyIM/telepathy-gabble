@@ -802,6 +802,9 @@ gabble_connection_dispose (GObject *object)
 
   DEBUG ("called");
 
+  g_assert (self->status == TP_CONN_STATUS_DISCONNECTED);
+  g_assert (self->self_handle == 0);
+
   if (priv->channel_requests)
     {
       g_assert (priv->channel_requests->len == 0);
@@ -872,7 +875,6 @@ gabble_connection_finalize (GObject *object)
 
   gabble_properties_mixin_finalize (object);
 
-  gabble_handle_unref (self->handles, TP_HANDLE_TYPE_CONTACT, self->self_handle);
   gabble_handle_repo_destroy (self->handles);
 
   G_OBJECT_CLASS (gabble_connection_parent_class)->finalize (object);
@@ -1324,7 +1326,6 @@ _gabble_connection_connect (GabbleConnection *conn,
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   char *jid;
-  gboolean valid;
 #if 0
   GabblePresence *presence;
 #endif
@@ -1351,11 +1352,6 @@ _gabble_connection_connect (GabbleConnection *conn,
           priv->stream_server);
       return FALSE;
     }
-
-  valid = gabble_handle_ref (conn->handles,
-                             TP_HANDLE_TYPE_CONTACT,
-                             conn->self_handle);
-  g_assert (valid);
 
   /* set initial presence */
   /* TODO: some way for the user to set this */
@@ -1415,9 +1411,16 @@ _gabble_connection_connect (GabbleConnection *conn,
 
   if (do_connect (conn, error))
     {
+      gboolean valid;
+
       connection_status_change (conn,
           TP_CONN_STATUS_CONNECTING,
           TP_CONN_STATUS_REASON_REQUESTED);
+
+      valid = gabble_handle_ref (conn->handles,
+                                 TP_HANDLE_TYPE_CONTACT,
+                                 conn->self_handle);
+      g_assert (valid);
     }
   else
     {
@@ -1506,6 +1509,11 @@ connection_status_change (GabbleConnection        *conn,
 
           /* the old way */
           close_all_channels (conn);
+
+          /* unref our self handle */
+          gabble_handle_unref (conn->handles, TP_HANDLE_TYPE_CONTACT,
+              conn->self_handle);
+          conn->self_handle = 0;
         }
 
       DEBUG ("emitting status-changed with status %u reason %u",

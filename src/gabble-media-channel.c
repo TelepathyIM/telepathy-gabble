@@ -472,7 +472,8 @@ gabble_media_channel_dispose (GObject *object)
 
   g_assert (priv->closed && priv->session==NULL);
 
-  g_ptr_array_free (priv->streams, TRUE);
+  if (priv->streams != NULL)
+    g_ptr_array_free (priv->streams, TRUE);
 
   if (G_OBJECT_CLASS (gabble_media_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_media_channel_parent_class)->dispose (object);

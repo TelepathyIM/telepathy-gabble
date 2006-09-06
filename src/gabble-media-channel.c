@@ -1098,7 +1098,7 @@ session_state_changed_cb (GabbleMediaSession *session,
       gabble_group_mixin_change_flags (G_OBJECT (channel), TP_CHANNEL_GROUP_FLAG_CAN_ADD,
                                        TP_CHANNEL_GROUP_FLAG_CAN_REMOVE);
 
-      /* clear the session ID */
+      /* free the session ID */
       g_object_get (priv->session, "session-id", &sid, NULL);
       _gabble_media_factory_free_sid (priv->factory, sid);
       g_free (sid);

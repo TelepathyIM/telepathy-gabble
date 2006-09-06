@@ -78,6 +78,7 @@ struct _DiscoWaiter
   GabbleHandleRepo *repo;
   GabbleHandle handle;
   gchar *resource;
+  gboolean disco_requested;
 };
 
 /**
@@ -536,9 +537,46 @@ _caps_disco_cb (GabbleDisco *disco,
       return;
     }
 
+  waiters = g_hash_table_lookup (priv->disco_pending, node);
+
   if (NULL != error)
     {
+      DiscoWaiter *waiter = NULL;
+      gchar *full_jid = NULL;
+
       DEBUG ("disco query failed: %s", error->message);
+
+      for (i = waiters; NULL != i; i = i->next)
+        {
+          waiter = (DiscoWaiter *) i->data;
+
+          if (!waiter->disco_requested)
+            {
+              const gchar *jid;
+
+              jid = gabble_handle_inspect (priv->conn->handles,
+                                           TP_HANDLE_TYPE_CONTACT,
+                                           waiter->handle);
+              full_jid = g_strdup_printf ("%s/%s", jid, waiter->resource);
+
+              gabble_disco_request (disco, GABBLE_DISCO_TYPE_INFO, full_jid, node,
+                                    _caps_disco_cb, cache, G_OBJECT(cache), NULL);
+              waiter->disco_requested = TRUE;
+              break;
+            }
+        }
+
+      if (NULL != i)
+        {
+          DEBUG ("sent a retry disco request to %s for URI %s", full_jid, node);
+        }
+      else
+        {
+          DEBUG ("failed to find a suitable candidate to retry disco request for URI %s", node);
+          /* FIXME do something very clever here? */
+          g_hash_table_remove (priv->disco_pending, node);
+        }
+
       return;
     }
 
@@ -569,8 +607,6 @@ _caps_disco_cb (GabbleDisco *disco,
 
   g_hash_table_insert (priv->capabilities, g_strdup (node),
     GINT_TO_POINTER (caps));
-
-  waiters = g_hash_table_lookup (priv->disco_pending, node);
 
   for (i = waiters; NULL != i; i = i->next)
     {
@@ -631,9 +667,13 @@ _process_caps_uri (GabblePresenceCache *cache,
       g_hash_table_insert (priv->disco_pending, g_strdup (uri), waiters);
 
       if (!value)
-        /* DISCO */
-        gabble_disco_request (priv->conn->disco, GABBLE_DISCO_TYPE_INFO,
-            from, uri, _caps_disco_cb, cache, G_OBJECT (cache), NULL);
+        {
+          /* DISCO */
+          gabble_disco_request (priv->conn->disco, GABBLE_DISCO_TYPE_INFO,
+              from, uri, _caps_disco_cb, cache, G_OBJECT (cache), NULL);
+          /* enough DISCO for you, buddy */
+          waiter->disco_requested = TRUE;
+        }
     }
 }
 

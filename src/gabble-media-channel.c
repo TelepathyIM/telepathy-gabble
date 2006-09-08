@@ -1235,7 +1235,7 @@ stream_state_changed_cb (GabbleMediaStream *stream,
 
   g_object_get (stream, "id", &id, "state", &state, NULL);
 
-  g_signal_emit (chan, signals[STREAM_STATE_CHANGED], id, state);
+  g_signal_emit (chan, signals[STREAM_STATE_CHANGED], 0, id, state);
 }
 
 static void

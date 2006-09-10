@@ -35,8 +35,9 @@ enum
     CLOSED,
     GROUP_FLAGS_CHANGED,
     MEMBERS_CHANGED,
-    NEW_ICE_SESSION_HANDLER,
+    NEW_SESSION_HANDLER,
     STREAM_ADDED,
+    STREAM_DIRECTION_CHANGED,
     STREAM_REMOVED,
     STREAM_STATE_CHANGED,
     LAST_SIGNAL
@@ -106,8 +107,8 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
                   gabble_media_channel_marshal_VOID__STRING_BOXED_BOXED_BOXED_BOXED_UINT_UINT,
                   G_TYPE_NONE, 7, G_TYPE_STRING, DBUS_TYPE_G_UINT_ARRAY, DBUS_TYPE_G_UINT_ARRAY, DBUS_TYPE_G_UINT_ARRAY, DBUS_TYPE_G_UINT_ARRAY, G_TYPE_UINT, G_TYPE_UINT);
 
-  signals[NEW_ICE_SESSION_HANDLER] =
-    g_signal_new ("new-ice-session-handler",
+  signals[NEW_SESSION_HANDLER] =
+    g_signal_new ("new-session-handler",
                   G_OBJECT_CLASS_TYPE (gabble_media_channel_class),
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
@@ -117,6 +118,15 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
 
   signals[STREAM_ADDED] =
     g_signal_new ("stream-added",
+                  G_OBJECT_CLASS_TYPE (gabble_media_channel_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_media_channel_marshal_VOID__UINT_UINT_UINT,
+                  G_TYPE_NONE, 3, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT);
+
+  signals[STREAM_DIRECTION_CHANGED] =
+    g_signal_new ("stream-direction-changed",
                   G_OBJECT_CLASS_TYPE (gabble_media_channel_class),
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
@@ -435,7 +445,7 @@ gabble_media_channel_get_self_handle (GabbleMediaChannel *self,
  * gabble_media_channel_get_session_handlers
  *
  * Implements D-Bus method GetSessionHandlers
- * on interface org.freedesktop.Telepathy.Channel.Interface.IceSignalling
+ * on interface org.freedesktop.Telepathy.Channel.Interface.MediaSignalling
  *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occurred, D-Bus will throw the error only if this
@@ -490,6 +500,28 @@ gabble_media_channel_remove_members (GabbleMediaChannel *self,
                                      const GArray *contacts,
                                      const gchar *message,
                                      GError **error)
+{
+  return TRUE;
+}
+
+
+/**
+ * gabble_media_channel_request_stream_direction
+ *
+ * Implements D-Bus method RequestStreamDirection
+ * on interface org.freedesktop.Telepathy.Channel.Type.StreamedMedia
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occurred, D-Bus will throw the error only if this
+ *         function returns FALSE.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean
+gabble_media_channel_request_stream_direction (GabbleMediaChannel *self,
+                                               guint stream_id,
+                                               guint stream_direction,
+                                               GError **error)
 {
   return TRUE;
 }

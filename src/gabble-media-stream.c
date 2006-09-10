@@ -54,6 +54,7 @@ enum
     SET_REMOTE_CANDIDATE_LIST,
     SET_REMOTE_CODECS,
     SET_STREAM_PLAYING,
+    SET_STREAM_SENDING,
 
     NEW_ACTIVE_CANDIDATE_PAIR,
     NEW_NATIVE_CANDIDATE,
@@ -436,6 +437,15 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                   g_cclosure_marshal_VOID__BOOLEAN,
                   G_TYPE_NONE, 1, G_TYPE_BOOLEAN);
 
+  signals[SET_STREAM_SENDING] =
+    g_signal_new ("set-stream-sending",
+                  G_OBJECT_CLASS_TYPE (gabble_media_stream_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  g_cclosure_marshal_VOID__BOOLEAN,
+                  G_TYPE_NONE, 1, G_TYPE_BOOLEAN);
+
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_media_stream_class), &dbus_glib_gabble_media_stream_object_info);
 }
 
@@ -498,7 +508,7 @@ session_state_changed_cb (GabbleMediaSession *session,
  * gabble_media_stream_codec_choice
  *
  * Implements D-Bus method CodecChoice
- * on interface org.freedesktop.Telepathy.Ice.StreamHandler
+ * on interface org.freedesktop.Telepathy.Media.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occurred, D-Bus will throw the error only if this
@@ -525,7 +535,7 @@ gabble_media_stream_codec_choice (GabbleMediaStream *self,
  * gabble_media_stream_error
  *
  * Implements D-Bus method Error
- * on interface org.freedesktop.Telepathy.Ice.StreamHandler
+ * on interface org.freedesktop.Telepathy.Media.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occurred, D-Bus will throw the error only if this
@@ -557,7 +567,7 @@ gabble_media_stream_error (GabbleMediaStream *self,
  * gabble_media_stream_native_candidates_prepared
  *
  * Implements D-Bus method NativeCandidatesPrepared
- * on interface org.freedesktop.Telepathy.Ice.StreamHandler
+ * on interface org.freedesktop.Telepathy.Media.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occurred, D-Bus will throw the error only if this
@@ -583,7 +593,7 @@ gabble_media_stream_native_candidates_prepared (GabbleMediaStream *self,
  * gabble_media_stream_new_active_candidate_pair
  *
  * Implements D-Bus method NewActiveCandidatePair
- * on interface org.freedesktop.Telepathy.Ice.StreamHandler
+ * on interface org.freedesktop.Telepathy.Media.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occurred, D-Bus will throw the error only if this
@@ -614,7 +624,7 @@ gabble_media_stream_new_active_candidate_pair (GabbleMediaStream *self,
  * gabble_media_stream_new_native_candidate
  *
  * Implements D-Bus method NewNativeCandidate
- * on interface org.freedesktop.Telepathy.Ice.StreamHandler
+ * on interface org.freedesktop.Telepathy.Media.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occurred, D-Bus will throw the error only if this
@@ -686,7 +696,7 @@ gabble_media_stream_new_native_candidate (GabbleMediaStream *self,
  * gabble_media_stream_ready
  *
  * Implements D-Bus method Ready
- * on interface org.freedesktop.Telepathy.Ice.StreamHandler
+ * on interface org.freedesktop.Telepathy.Media.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occurred, D-Bus will throw the error only if this
@@ -727,7 +737,7 @@ gabble_media_stream_ready (GabbleMediaStream *self,
  * gabble_media_stream_stream_state
  *
  * Implements D-Bus method StreamState
- * on interface org.freedesktop.Telepathy.Ice.StreamHandler
+ * on interface org.freedesktop.Telepathy.Media.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occurred, D-Bus will throw the error only if this
@@ -755,7 +765,7 @@ gabble_media_stream_stream_state (GabbleMediaStream *self,
  * gabble_media_stream_supported_codecs
  *
  * Implements D-Bus method SupportedCodecs
- * on interface org.freedesktop.Telepathy.Ice.StreamHandler
+ * on interface org.freedesktop.Telepathy.Media.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occurred, D-Bus will throw the error only if this

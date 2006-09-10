@@ -33,8 +33,8 @@ G_BEGIN_DECLS
         "org.freedesktop.Telepathy.Channel.Interface.Group"
 #define TP_IFACE_CHANNEL_INTERFACE_HOLD \
         "org.freedesktop.Telepathy.Channel.Interface.Hold"
-#define TP_IFACE_CHANNEL_INTERFACE_ICE_SIGNALLING \
-        "org.freedesktop.Telepathy.Channel.Interface.IceSignalling"
+#define TP_IFACE_CHANNEL_INTERFACE_MEDIA_SIGNALLING \
+        "org.freedesktop.Telepathy.Channel.Interface.MediaSignalling"
 #define TP_IFACE_CHANNEL_INTERFACE_PASSWORD \
         "org.freedesktop.Telepathy.Channel.Interface.Password"
 #define TP_IFACE_CHANNEL_INTERFACE_TRANSFER \
@@ -67,10 +67,10 @@ G_BEGIN_DECLS
         "org.freedesktop.Telepathy.Connection.Interface.Renaming"
 #define TP_IFACE_CONN_MGR_INTERFACE \
         "org.freedesktop.Telepathy.ConnectionManager"
-#define TP_IFACE_ICE_SESSION_HANDLER \
-        "org.freedesktop.Telepathy.Ice.SessionHandler"
-#define TP_IFACE_ICE_STREAM_HANDLER \
-        "org.freedesktop.Telepathy.Ice.StreamHandler"
+#define TP_IFACE_MEDIA_SESSION_HANDLER \
+        "org.freedesktop.Telepathy.Media.SessionHandler"
+#define TP_IFACE_MEDIA_STREAM_HANDLER \
+        "org.freedesktop.Telepathy.Media.StreamHandler"
 #define TP_IFACE_PROPERTIES \
         "org.freedesktop.Telepathy.Properties"
 

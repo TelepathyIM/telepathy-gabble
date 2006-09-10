@@ -3,7 +3,7 @@ gabble-connection.xml	GabbleConnection	Connection, ConnectionInterfaceAliasing, 
 gabble-im-channel.xml	GabbleIMChannel	ChannelTypeText
 gabble-muc-channel.xml	GabbleMucChannel	ChannelTypeText, ChannelInterfaceGroup, ChannelInterfacePassword, PropertiesInterface
 gabble-roster-channel.xml	GabbleRosterChannel	ChannelTypeContactList, ChannelInterfaceGroup
-gabble-media-channel.xml	GabbleMediaChannel	ChannelTypeStreamedMedia, ChannelInterfaceGroup, ChannelInterfaceIceSignalling
-gabble-media-session.xml	GabbleMediaSession	IceSessionHandler
-gabble-media-stream.xml	GabbleMediaStream	IceStreamHandler
+gabble-media-channel.xml	GabbleMediaChannel	ChannelTypeStreamedMedia, ChannelInterfaceGroup, ChannelInterfaceMediaSignalling
+gabble-media-session.xml	GabbleMediaSession	MediaSessionHandler
+gabble-media-stream.xml	GabbleMediaStream	MediaStreamHandler
 gabble-roomlist-channel.xml	GabbleRoomlistChannel	ChannelTypeRoomList

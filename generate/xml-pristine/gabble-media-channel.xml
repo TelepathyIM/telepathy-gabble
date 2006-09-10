@@ -61,18 +61,22 @@
       <arg direction="in" name="message" type="s"/>
     </method>
   </interface>
-  <interface name="org.freedesktop.Telepathy.Channel.Interface.IceSignalling">
+  <interface name="org.freedesktop.Telepathy.Channel.Interface.MediaSignalling">
     <method name="GetSessionHandlers">
       <arg direction="out" type="a(os)"/>
     </method>
-    <signal name="NewIceSessionHandler">
+    <signal name="NewSessionHandler">
       <arg name="session_handler" type="o"/>
       <arg name="type" type="s"/>
     </signal>
   </interface>
   <interface name="org.freedesktop.Telepathy.Channel.Type.StreamedMedia">
     <method name="ListStreams">
-      <arg direction="out" type="a(uuuuu)"/>
+      <arg direction="out" type="a(uuuuuu)"/>
+    </method>
+    <method name="RequestStreamDirection">
+      <arg direction="in" name="stream_id" type="u"/>
+      <arg direction="in" name="stream_direction" type="u"/>
     </method>
     <method name="RequestStreams">
       <arg direction="in" name="contact_handle" type="u"/>
@@ -83,6 +87,11 @@
       <arg name="stream_id" type="u"/>
       <arg name="contact_handle" type="u"/>
       <arg name="stream_type" type="u"/>
+    </signal>
+    <signal name="StreamDirectionChanged">
+      <arg name="stream_id" type="u"/>
+      <arg name="stream_direction" type="u"/>
+      <arg name="pending_flags" type="u"/>
     </signal>
     <signal name="StreamRemoved">
       <arg name="stream_id" type="u"/>

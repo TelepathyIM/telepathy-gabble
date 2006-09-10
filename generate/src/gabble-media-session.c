@@ -32,7 +32,7 @@ G_DEFINE_TYPE(GabbleMediaSession, gabble_media_session, G_TYPE_OBJECT)
 /* signal enum */
 enum
 {
-    NEW_ICE_STREAM_HANDLER,
+    NEW_STREAM_HANDLER,
     LAST_SIGNAL
 };
 
@@ -73,8 +73,8 @@ gabble_media_session_class_init (GabbleMediaSessionClass *gabble_media_session_c
   object_class->dispose = gabble_media_session_dispose;
   object_class->finalize = gabble_media_session_finalize;
 
-  signals[NEW_ICE_STREAM_HANDLER] =
-    g_signal_new ("new-ice-stream-handler",
+  signals[NEW_STREAM_HANDLER] =
+    g_signal_new ("new-stream-handler",
                   G_OBJECT_CLASS_TYPE (gabble_media_session_class),
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
@@ -119,7 +119,7 @@ gabble_media_session_finalize (GObject *object)
  * gabble_media_session_error
  *
  * Implements D-Bus method Error
- * on interface org.freedesktop.Telepathy.Ice.SessionHandler
+ * on interface org.freedesktop.Telepathy.Media.SessionHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occurred, D-Bus will throw the error only if this
@@ -141,7 +141,7 @@ gabble_media_session_error (GabbleMediaSession *self,
  * gabble_media_session_ready
  *
  * Implements D-Bus method Ready
- * on interface org.freedesktop.Telepathy.Ice.SessionHandler
+ * on interface org.freedesktop.Telepathy.Media.SessionHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
  *         that occurred, D-Bus will throw the error only if this

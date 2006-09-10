@@ -967,49 +967,6 @@ gabble_media_channel_remove_members (GabbleMediaChannel *self,
 
 
 /**
- * gabble_media_channel_remove_streams
- *
- * Implements D-Bus method RemoveStreams
- * on interface org.freedesktop.Telepathy.Channel.Type.StreamedMedia
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_media_channel_remove_streams (GabbleMediaChannel *self,
-                                     const GArray *streams,
-                                     GError **error)
-{
-  return TRUE;
-}
-
-
-/**
- * gabble_media_channel_request_stream_direction
- *
- * Implements D-Bus method RequestStreamDirection
- * on interface org.freedesktop.Telepathy.Channel.Type.StreamedMedia
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_media_channel_request_stream_direction (GabbleMediaChannel *self,
-                                               guint stream_id,
-                                               guint stream_direction,
-                                               GError **error)
-{
-  return TRUE;
-}
-
-
-/**
  * gabble_media_channel_request_streams
  *
  * Implements D-Bus method RequestStreams

@@ -140,6 +140,8 @@ gabble_media_session_init (GabbleMediaSession *self)
       g_object_unref);
 }
 
+static void stream_destroy_cb (GabbleMediaStream *stream,
+                               GabbleMediaSession *session);
 static void stream_new_active_candidate_pair_cb (GabbleMediaStream *stream,
                                                  const gchar *native_candidate_id,
                                                  const gchar *remote_candidate_id,
@@ -221,6 +223,9 @@ create_media_stream (GabbleMediaSession *session,
                          "media-type", media_type,
                          NULL);
 
+  g_signal_connect (stream, "destroy",
+                    (GCallback) stream_destroy_cb,
+                    session);
   g_signal_connect (stream, "new-active-candidate-pair",
                     (GCallback) stream_new_active_candidate_pair_cb,
                     session);
@@ -792,6 +797,37 @@ _handle_candidates (GabbleMediaSession *session,
 }
 
 
+static gboolean
+_handle_reduce (GabbleMediaSession *session,
+                LmMessage *message,
+                LmMessageNode *content_node,
+                const gchar *stream_name,
+                GabbleMediaStream *stream,
+                LmMessageNode *desc_node,
+                LmMessageNode *trans_node)
+{
+  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+
+  if (stream == NULL)
+    {
+      GMS_DEBUG_WARNING (session, "unable to handle session-reduce for "
+          "unknown stream \"%s\"", stream_name);
+      return FALSE;
+    }
+
+  /* this shouldn't happen */
+  if (g_hash_table_size (priv->streams) == 1)
+    {
+      return FALSE;
+    }
+
+  /* close the stream */
+  _gabble_media_stream_close (stream);
+
+  return TRUE;
+}
+
+
 typedef gboolean (*StreamHandlerFunc)(GabbleMediaSession *session,
                                       LmMessage *message,
                                       LmMessageNode *content_node,
@@ -817,6 +853,13 @@ static Handler handlers[] = {
     JS_STATE_PENDING_CREATED,
     { _handle_create, _handle_codecs, NULL },
     JS_STATE_PENDING_INITIATED
+  },
+  {
+    { "session-reduce", NULL },
+    JS_STATE_PENDING_INITIATED,
+    JS_STATE_ACTIVE,
+    { _handle_reduce, NULL },
+    JS_STATE_INVALID
   },
   {
     { "candidates", "transport-info", NULL },
@@ -1229,6 +1272,24 @@ initiate_msg_reply_cb (GabbleConnection *conn,
 }
 
 static void
+stream_destroy_cb (GabbleMediaStream *stream,
+                   GabbleMediaSession *session)
+{
+  GabbleMediaSessionPrivate *priv;
+  gchar *name;
+
+  g_assert (GABBLE_IS_MEDIA_SESSION (session));
+
+  priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+
+  g_object_get (stream, "name", &name, NULL);
+
+  g_hash_table_remove (priv->streams, name);
+
+  g_free (name);
+}
+
+static void
 send_initiate_message (GabbleMediaSession *session)
 {
   GabbleMediaSessionPrivate *priv;
@@ -1429,6 +1490,58 @@ ignore_reply_cb (GabbleConnection *conn,
                  gpointer user_data)
 {
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
+void
+_gabble_media_session_remove_streams (GabbleMediaSession *session,
+                                      const GPtrArray *streams)
+{
+  GabbleMediaSessionPrivate *priv;
+  LmMessage *msg;
+  LmMessageNode *session_node;
+  guint i;
+
+  g_assert (GABBLE_IS_MEDIA_SESSION (session));
+
+  priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+
+  /* end the session if there'd be no streams left after reducing it */
+  if (streams->len == g_hash_table_size (priv->streams))
+    {
+      _gabble_media_session_terminate (session);
+      return;
+    }
+
+  /* construct a reduce message */
+  msg = _gabble_media_session_message_new (session, "session-reduce",
+                                           &session_node);
+
+  GMS_DEBUG_INFO (session, "sending jingle session action \"session-reduce\" "
+                  "to peer");
+
+  /* right, reduce it */
+  for (i = 0; i < streams->len; i++)
+    {
+      GabbleMediaStream *stream = g_ptr_array_index (streams, i);
+      gchar *name;
+      LmMessageNode *content_node;
+
+      g_object_get (stream, "name", &name, NULL);
+
+      content_node = lm_message_node_add_child (session_node, "content", NULL);
+      lm_message_node_set_attribute (content_node, "name", name);
+
+      g_free (name);
+
+      /* close the stream */
+      _gabble_media_stream_close (stream);
+    }
+
+    /* send the reduce message */
+    _gabble_connection_send_with_reply (priv->conn, msg, ignore_reply_cb,
+                                        G_OBJECT (session), NULL, NULL);
+
+    lm_message_unref (msg);
 }
 
 static void

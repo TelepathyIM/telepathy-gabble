@@ -118,6 +118,7 @@ LmMessage *_gabble_media_session_message_new (GabbleMediaSession *session,
                                               LmMessageNode **session_node);
 
 void _gabble_media_session_accept (GabbleMediaSession *session);
+void _gabble_media_session_remove_streams (GabbleMediaSession *session, const GPtrArray *streams);
 void _gabble_media_session_terminate (GabbleMediaSession *session);
 
 gboolean _gabble_media_session_request_streams (GabbleMediaSession *session,

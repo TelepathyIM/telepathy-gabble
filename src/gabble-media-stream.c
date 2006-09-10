@@ -51,7 +51,6 @@ enum
     DESTROY,
 
     ADD_REMOTE_CANDIDATE,
-    CLOSE,
     REMOVE_REMOTE_CANDIDATE,
     SET_ACTIVE_CANDIDATE_PAIR,
     SET_REMOTE_CANDIDATE_LIST,
@@ -405,15 +404,6 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                   NULL, NULL,
                   gabble_media_stream_marshal_VOID__STRING_BOXED,
                   G_TYPE_NONE, 2, G_TYPE_STRING, TP_TYPE_TRANSPORT_LIST);
-
-  signals[CLOSE] =
-    g_signal_new ("close",
-                  G_OBJECT_CLASS_TYPE (gabble_media_stream_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  g_cclosure_marshal_VOID__VOID,
-                  G_TYPE_NONE, 0);
 
   signals[REMOVE_REMOTE_CANDIDATE] =
     g_signal_new ("remove-remote-candidate",
@@ -1045,6 +1035,18 @@ push_native_candidates (GabbleMediaStream *stream)
 
   g_value_take_boxed (&priv->native_candidates,
     dbus_g_type_specialized_construct (TP_TYPE_CANDIDATE_LIST));
+}
+
+void
+_gabble_media_stream_close (GabbleMediaStream *stream)
+{
+  GabbleMediaStreamPrivate *priv;
+
+  g_assert (GABBLE_IS_MEDIA_STREAM (stream));
+
+  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
+
+  g_signal_emit (stream, signals[CLOSE], 0);
 }
 
 gboolean

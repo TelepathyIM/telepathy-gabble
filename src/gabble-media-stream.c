@@ -720,7 +720,7 @@ gabble_media_stream_new_native_candidate (GabbleMediaStream *self,
 
   g_ptr_array_add (candidates, g_value_get_boxed (&candidate));
 
-  GMS_DEBUG_INFO (priv->session, "put 1 native candidate from voip-engine into cache");
+  GMS_DEBUG_INFO (priv->session, "put 1 native candidate from stream-engine into cache");
 
   push_native_candidates (self);
 
@@ -755,7 +755,7 @@ gabble_media_stream_ready (GabbleMediaStream *self,
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
 
   GMS_DEBUG_INFO (priv->session, "putting list of all %d locally supported "
-                  "codecs from voip-engine into cache", codecs->len);
+                  "codecs from stream-engine into cache", codecs->len);
 
   g_value_set_boxed (&priv->native_codecs, codecs);
 
@@ -819,7 +819,7 @@ gabble_media_stream_supported_codecs (GabbleMediaStream *self,
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
 
   GMS_DEBUG_INFO (priv->session, "got codec intersection containing %d "
-                  "codecs from voip-engine", codecs->len);
+                  "codecs from stream-engine", codecs->len);
 
   /* store the intersection for later on */
   g_value_set_boxed (&priv->native_codecs, codecs);
@@ -1158,7 +1158,7 @@ push_remote_codecs (GabbleMediaStream *stream)
   if (codecs->len == 0)
     return;
 
-  GMS_DEBUG_EVENT (priv->session, "passing %d remote codecs to voip-engine",
+  GMS_DEBUG_EVENT (priv->session, "passing %d remote codecs to stream-engine",
                    codecs->len);
 
   g_signal_emit (stream, signals[SET_REMOTE_CODECS], 0, codecs);
@@ -1386,7 +1386,7 @@ push_remote_candidates (GabbleMediaStream *stream)
       transports = g_value_get_boxed (g_value_array_get_nth (candidate, 1));
 
       GMS_DEBUG_EVENT (priv->session, "passing 1 remote candidate "
-                       "to voip-engine");
+                       "to stream-engine");
 
       g_signal_emit (stream, signals[ADD_REMOTE_CANDIDATE], 0,
                      candidate_id, transports);

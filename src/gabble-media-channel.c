@@ -56,6 +56,7 @@
       G_TYPE_UINT, \
       G_TYPE_UINT, \
       G_TYPE_UINT, \
+      G_TYPE_UINT, \
       G_TYPE_INVALID))
 
 G_DEFINE_TYPE_WITH_CODE (GabbleMediaChannel, gabble_media_channel,
@@ -216,7 +217,9 @@ create_session (GabbleMediaChannel *channel, GabbleHandle peer, const gchar *pee
 
   priv->session = session;
 
-  g_signal_emit (channel, signals[NEW_ICE_SESSION_HANDLER], 0,
+  priv->streams = g_ptr_array_sized_new (1);
+
+  g_signal_emit (channel, signals[NEW_SESSION_HANDLER], 0,
                  object_path, "rtp");
 
   g_free (object_path);
@@ -871,14 +874,17 @@ gabble_media_channel_get_session_handlers (GabbleMediaChannel *self,
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_channel_list_streams (GabbleMediaChannel *obj, GPtrArray ** ret, GError **error)
+gboolean
+gabble_media_channel_list_streams (GabbleMediaChannel *self,
+                                   GPtrArray **ret,
+                                   GError **error)
 {
   GabbleMediaChannelPrivate *priv;
   guint i;
 
-  g_assert (GABBLE_IS_MEDIA_CHANNEL (obj));
+  g_assert (GABBLE_IS_MEDIA_CHANNEL (self));
 
-  priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (obj);
+  priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
 
   *ret = g_ptr_array_sized_new (priv->streams->len);
 
@@ -893,8 +899,10 @@ gboolean gabble_media_channel_list_streams (GabbleMediaChannel *obj, GPtrArray *
       guint id;
       GabbleHandle peer;
       TpCodecMediaType type;
-      TpMediaStreamDirection direction = TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL; /* FIXME */
       TpMediaStreamState state;
+      TpMediaStreamDirection direction =
+        TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL; /* FIXME */
+      TpMediaStreamPendingSend pending = TP_MEDIA_STREAM_PENDING_NONE;
 
       g_object_get (stream, "id", &id, "media-type", &type,
                     "state", &state, NULL);
@@ -909,8 +917,9 @@ gboolean gabble_media_channel_list_streams (GabbleMediaChannel *obj, GPtrArray *
           0, id,
           1, peer,
           2, type,
-          3, direction,
-          4, state,
+          3, state,
+          4, direction,
+          5, pending,
           G_MAXUINT);
 
       g_ptr_array_add (*ret, g_value_get_boxed (&entry));

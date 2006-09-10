@@ -355,7 +355,27 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_MEDIA_TYPE, param_spec);
 
-  /* signals exported by DBus interface */
+  param_spec = g_param_spec_uint ("state", "Stream state",
+                                  "An integer indicating which state the "
+                                  "stream is currently in.",
+                                  TP_MEDIA_STREAM_STATE_DISCONNECTED,
+                                  TP_MEDIA_STREAM_STATE_CONNECTED,
+                                  TP_MEDIA_STREAM_STATE_DISCONNECTED,
+                                  G_PARAM_READWRITE |
+                                  G_PARAM_STATIC_NAME |
+                                  G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_STATE, param_spec);
+
+  /* signals exported by D-Bus interface */
+  signals[DESTROY] =
+    g_signal_new ("destroy",
+                  G_OBJECT_CLASS_TYPE (gabble_media_stream_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  g_cclosure_marshal_VOID__VOID,
+                  G_TYPE_NONE, 0);
+
   signals[ADD_REMOTE_CANDIDATE] =
     g_signal_new ("add-remote-candidate",
                   G_OBJECT_CLASS_TYPE (gabble_media_stream_class),
@@ -762,11 +782,9 @@ gabble_media_stream_stream_state (GabbleMediaStream *self,
                                   guint state,
                                   GError **error)
 {
-  GabbleMediaStreamPrivate *priv;
+  g_assert (GABBLE_IS_MEDIA_STREAM (self));
 
-  g_assert (GABBLE_IS_MEDIA_STREAM (obj));
-
-  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
+  g_object_set (self, "state", state, NULL);
 
   return TRUE;
 }

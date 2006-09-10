@@ -59,7 +59,8 @@ G_DEFINE_TYPE(GabbleMediaSession, gabble_media_session, G_TYPE_OBJECT)
 /* signal enum */
 enum
 {
-    NEW_ICE_STREAM_HANDLER,
+    NEW_STREAM_HANDLER,
+    STREAM_ADDED,
     LAST_SIGNAL
 };
 

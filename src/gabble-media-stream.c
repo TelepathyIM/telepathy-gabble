@@ -78,6 +78,7 @@ enum
   PROP_MODE,
   PROP_NAME,
   PROP_ID,
+  PROP_INITIATOR,
   PROP_MEDIA_TYPE,
   PROP_STATE,
   LAST_PROPERTY
@@ -94,6 +95,7 @@ struct _GabbleMediaStreamPrivate
   gchar *object_path;
   gchar *name;
   guint id;
+  JingleInitiator initiator;
   guint media_type;
   TpMediaStreamState state;
 
@@ -210,6 +212,9 @@ gabble_media_stream_get_property (GObject    *object,
     case PROP_ID:
       g_value_set_uint (value, priv->id);
       break;
+    case PROP_INITIATOR:
+      g_value_set_uint (value, priv->initiator);
+      break;
     case PROP_MEDIA_TYPE:
       g_value_set_uint (value, priv->media_type);
       break;
@@ -251,6 +256,9 @@ gabble_media_stream_set_property (GObject      *object,
       break;
     case PROP_ID:
       priv->id = g_value_get_uint (value);
+      break;
+    case PROP_INITIATOR:
+      priv->initiator = g_value_get_uint (value);
       break;
     case PROP_MEDIA_TYPE:
       priv->media_type = g_value_get_uint (value);
@@ -343,6 +351,18 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                                   G_PARAM_STATIC_NAME |
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_ID, param_spec);
+
+  param_spec = g_param_spec_uint ("initiator", "Stream initiator",
+                                  "An enum signifying which end initiated "
+                                  "the stream.",
+                                  INITIATOR_LOCAL,
+                                  INITIATOR_REMOTE,
+                                  INITIATOR_LOCAL,
+                                  G_PARAM_CONSTRUCT_ONLY |
+                                  G_PARAM_READWRITE |
+                                  G_PARAM_STATIC_NAME |
+                                  G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_INITIATOR, param_spec);
 
   param_spec = g_param_spec_uint ("media-type", "Stream media type",
                                   "A constant indicating which media type the "

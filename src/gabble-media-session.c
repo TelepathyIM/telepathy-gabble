@@ -119,10 +119,11 @@ typedef struct {
 
 static const SessionStateDescription session_states[] =
 {
-    { "JS_STATE_PENDING_CREATED",   ANSI_BOLD_ON ANSI_FG_BLACK ANSI_BG_WHITE   },
-    { "JS_STATE_PENDING_INITIATED", ANSI_BOLD_ON               ANSI_BG_MAGENTA },
-    { "JS_STATE_ACTIVE",            ANSI_BOLD_ON               ANSI_BG_BLUE    },
-    { "JS_STATE_ENDED",                                        ANSI_BG_RED     }
+    { "JS_STATE_PENDING_CREATED",       ANSI_BOLD_ON ANSI_FG_BLACK ANSI_BG_WHITE   },
+    { "JS_STATE_PENDING_INITIATE_SENT", ANSI_BOLD_ON               ANSI_BG_CYAN    },
+    { "JS_STATE_PENDING_INITIATED",     ANSI_BOLD_ON               ANSI_BG_MAGENTA },
+    { "JS_STATE_ACTIVE",                ANSI_BOLD_ON               ANSI_BG_BLUE    },
+    { "JS_STATE_ENDED",                                            ANSI_BG_RED     }
 };
 
 static void
@@ -180,6 +181,7 @@ _emit_new_stream (const gchar *name,
 static GabbleMediaStream *
 create_media_stream (GabbleMediaSession *session,
                      const gchar *name,
+                     JingleInitiator initiator,
                      guint media_type)
 {
   GabbleMediaSessionPrivate *priv;
@@ -215,6 +217,7 @@ create_media_stream (GabbleMediaSession *session,
                          "mode", priv->mode,
                          "name", name,
                          "id", id,
+                         "initiator", initiator,
                          "media-type", media_type,
                          NULL);
 
@@ -704,7 +707,8 @@ _handle_create (GabbleMediaSession *session,
       return FALSE;
     }
 
-  create_media_stream (session, stream_name, stream_type);
+  create_media_stream (session, stream_name, INITIATOR_REMOTE,
+                       stream_type);
 
   return TRUE;
 }
@@ -1030,7 +1034,14 @@ session_state_changed (GabbleMediaSession *session,
                    session_states[prev_state].name,
                    session_states[new_state].name);
 
-  if (new_state == JS_STATE_PENDING_INITIATED)
+  /*
+   * If the state goes from CREATED to INITIATED (which means the remote
+   * end initiated), set the timer. If, OTOH, we're the end which just sent an
+   * initiate, set the timer.
+   */
+  if ((prev_state != JS_STATE_PENDING_INITIATE_SENT &&
+       new_state == JS_STATE_PENDING_INITIATED) ||
+      (new_state == JS_STATE_PENDING_INITIATE_SENT))
     {
       priv->timer_id =
         g_timeout_add (DEFAULT_SESSION_TIMEOUT, timeout_session, session);
@@ -1758,7 +1769,7 @@ _gabble_media_session_request_streams (GabbleMediaSession *session,
       GabbleMediaStream *stream;
 
       stream_name = _name_stream (session, media_type);
-      stream = create_media_stream (session, stream_name, media_type);
+      stream_id = create_media_stream (session, stream_name, media_type);
 
       g_ptr_array_add (*ret, stream);
     }

@@ -34,6 +34,8 @@ struct _GabbleIMChannelClass {
 
 struct _GabbleIMChannel {
     GObject parent;
+
+    gpointer priv;
 };
 
 GType gabble_im_channel_get_type(void);
@@ -53,14 +55,48 @@ GType gabble_im_channel_get_type(void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_IM_CHANNEL, GabbleIMChannelClass))
 
 
-gboolean gabble_im_channel_acknowledge_pending_messages (GabbleIMChannel *obj, const GArray * ids, GError **error);
-gboolean gabble_im_channel_close (GabbleIMChannel *obj, GError **error);
-gboolean gabble_im_channel_get_channel_type (GabbleIMChannel *obj, gchar ** ret, GError **error);
-gboolean gabble_im_channel_get_handle (GabbleIMChannel *obj, guint* ret, guint* ret1, GError **error);
-gboolean gabble_im_channel_get_interfaces (GabbleIMChannel *obj, gchar *** ret, GError **error);
-gboolean gabble_im_channel_get_message_types (GabbleIMChannel *obj, GArray ** ret, GError **error);
-gboolean gabble_im_channel_list_pending_messages (GabbleIMChannel *obj, gboolean clear, GPtrArray ** ret, GError **error);
-gboolean gabble_im_channel_send (GabbleIMChannel *obj, guint type, const gchar * text, GError **error);
+gboolean
+gabble_im_channel_acknowledge_pending_messages (GabbleIMChannel *self,
+                                                const GArray *ids,
+                                                GError **error);
+
+gboolean
+gabble_im_channel_close (GabbleIMChannel *self,
+                         GError **error);
+
+gboolean
+gabble_im_channel_get_channel_type (GabbleIMChannel *self,
+                                    gchar **ret,
+                                    GError **error);
+
+gboolean
+gabble_im_channel_get_handle (GabbleIMChannel *self,
+                              guint *ret,
+                              guint *ret1,
+                              GError **error);
+
+gboolean
+gabble_im_channel_get_interfaces (GabbleIMChannel *self,
+                                  gchar ***ret,
+                                  GError **error);
+
+gboolean
+gabble_im_channel_get_message_types (GabbleIMChannel *self,
+                                     GArray **ret,
+                                     GError **error);
+
+gboolean
+gabble_im_channel_list_pending_messages (GabbleIMChannel *self,
+                                         gboolean clear,
+                                         GPtrArray **ret,
+                                         GError **error);
+
+gboolean
+gabble_im_channel_send (GabbleIMChannel *self,
+                        guint type,
+                        const gchar *text,
+                        GError **error);
+
 
 
 G_END_DECLS

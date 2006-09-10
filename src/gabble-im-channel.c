@@ -81,12 +81,16 @@ struct _GabbleIMChannelPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_IM_CHANNEL_GET_PRIVATE(o)     (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_IM_CHANNEL, GabbleIMChannelPrivate))
+#define GABBLE_IM_CHANNEL_GET_PRIVATE(obj) \
+    ((GabbleIMChannelPrivate *)obj->priv)
 
 static void
-gabble_im_channel_init (GabbleIMChannel *obj)
+gabble_im_channel_init (GabbleIMChannel *self)
 {
-  /* do nothing? */
+  GabbleIMChannelPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
+      GABBLE_TYPE_IM_CHANNEL, GabbleIMChannelPrivate);
+
+  self->priv = priv;
 }
 
 static GObject *
@@ -185,7 +189,6 @@ gabble_im_channel_set_property (GObject     *object,
       break;
   }
 }
-
 
 static void gabble_im_channel_dispose (GObject *object);
 static void gabble_im_channel_finalize (GObject *object);
@@ -319,46 +322,53 @@ gboolean _gabble_im_channel_receive (GabbleIMChannel *chan,
 /**
  * gabble_im_channel_acknowledge_pending_messages
  *
- * Implements DBus method AcknowledgePendingMessages
+ * Implements D-Bus method AcknowledgePendingMessages
  * on interface org.freedesktop.Telepathy.Channel.Type.Text
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_im_channel_acknowledge_pending_messages (GabbleIMChannel *obj, const GArray * ids, GError **error)
+gboolean
+gabble_im_channel_acknowledge_pending_messages (GabbleIMChannel *self,
+                                                const GArray *ids,
+                                                GError **error)
 {
-  g_assert (GABBLE_IS_IM_CHANNEL (obj));
+  g_assert (GABBLE_IS_IM_CHANNEL (self));
 
-  return gabble_text_mixin_acknowledge_pending_messages (G_OBJECT (obj), ids, error);
+  return gabble_text_mixin_acknowledge_pending_messages (G_OBJECT (self), ids,
+      error);
 }
 
 
 /**
  * gabble_im_channel_close
  *
- * Implements DBus method Close
+ * Implements D-Bus method Close
  * on interface org.freedesktop.Telepathy.Channel
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_im_channel_close (GabbleIMChannel *obj, GError **error)
+gboolean
+gabble_im_channel_close (GabbleIMChannel *self,
+                         GError **error)
 {
   GabbleIMChannelPrivate *priv;
 
-  g_assert (GABBLE_IS_IM_CHANNEL (obj));
+  g_assert (GABBLE_IS_IM_CHANNEL (self));
 
-  priv = GABBLE_IM_CHANNEL_GET_PRIVATE (obj);
+  DEBUG ("called on %p", self);
+
+  priv = GABBLE_IM_CHANNEL_GET_PRIVATE (self);
   priv->closed = TRUE;
 
-  DEBUG ("called on %p", obj);
-  g_signal_emit(obj, signals[CLOSED], 0);
+  g_signal_emit (self, signals[CLOSED], 0);
 
   return TRUE;
 }
@@ -367,16 +377,19 @@ gboolean gabble_im_channel_close (GabbleIMChannel *obj, GError **error)
 /**
  * gabble_im_channel_get_channel_type
  *
- * Implements DBus method GetChannelType
+ * Implements D-Bus method GetChannelType
  * on interface org.freedesktop.Telepathy.Channel
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_im_channel_get_channel_type (GabbleIMChannel *obj, gchar ** ret, GError **error)
+gboolean
+gabble_im_channel_get_channel_type (GabbleIMChannel *self,
+                                    gchar **ret,
+                                    GError **error)
 {
   *ret = g_strdup (TP_IFACE_CHANNEL_TYPE_TEXT);
 
@@ -387,22 +400,26 @@ gboolean gabble_im_channel_get_channel_type (GabbleIMChannel *obj, gchar ** ret,
 /**
  * gabble_im_channel_get_handle
  *
- * Implements DBus method GetHandle
+ * Implements D-Bus method GetHandle
  * on interface org.freedesktop.Telepathy.Channel
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_im_channel_get_handle (GabbleIMChannel *obj, guint* ret, guint* ret1, GError **error)
+gboolean
+gabble_im_channel_get_handle (GabbleIMChannel *self,
+                              guint *ret,
+                              guint *ret1,
+                              GError **error)
 {
   GabbleIMChannelPrivate *priv;
 
-  g_assert (GABBLE_IS_IM_CHANNEL (obj));
+  g_assert (GABBLE_IS_IM_CHANNEL (self));
 
-  priv = GABBLE_IM_CHANNEL_GET_PRIVATE (obj);
+  priv = GABBLE_IM_CHANNEL_GET_PRIVATE (self);
 
   *ret = TP_HANDLE_TYPE_CONTACT;
   *ret1 = priv->handle;
@@ -414,16 +431,19 @@ gboolean gabble_im_channel_get_handle (GabbleIMChannel *obj, guint* ret, guint* 
 /**
  * gabble_im_channel_get_interfaces
  *
- * Implements DBus method GetInterfaces
+ * Implements D-Bus method GetInterfaces
  * on interface org.freedesktop.Telepathy.Channel
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_im_channel_get_interfaces (GabbleIMChannel *obj, gchar *** ret, GError **error)
+gboolean
+gabble_im_channel_get_interfaces (GabbleIMChannel *self,
+                                  gchar ***ret,
+                                  GError **error)
 {
   const char *interfaces[] = { NULL };
 
@@ -436,61 +456,73 @@ gboolean gabble_im_channel_get_interfaces (GabbleIMChannel *obj, gchar *** ret, 
 /**
  * gabble_im_channel_get_message_types
  *
- * Implements DBus method GetMessageTypes
+ * Implements D-Bus method GetMessageTypes
  * on interface org.freedesktop.Telepathy.Channel.Type.Text
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_im_channel_get_message_types (GabbleIMChannel *obj, GArray ** ret, GError **error)
+gboolean
+gabble_im_channel_get_message_types (GabbleIMChannel *self,
+                                     GArray **ret,
+                                     GError **error)
 {
-  return gabble_text_mixin_get_message_types (G_OBJECT (obj), ret, error);
+  return gabble_text_mixin_get_message_types (G_OBJECT (self), ret, error);
 }
 
 
 /**
  * gabble_im_channel_list_pending_messages
  *
- * Implements DBus method ListPendingMessages
+ * Implements D-Bus method ListPendingMessages
  * on interface org.freedesktop.Telepathy.Channel.Type.Text
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_im_channel_list_pending_messages (GabbleIMChannel *obj, gboolean clear, GPtrArray ** ret, GError **error)
+gboolean
+gabble_im_channel_list_pending_messages (GabbleIMChannel *self,
+                                         gboolean clear,
+                                         GPtrArray **ret,
+                                         GError **error)
 {
-  g_assert (GABBLE_IS_IM_CHANNEL (obj));
+  g_assert (GABBLE_IS_IM_CHANNEL (self));
 
-  return gabble_text_mixin_list_pending_messages (G_OBJECT (obj), clear, ret, error);
+  return gabble_text_mixin_list_pending_messages (G_OBJECT (self), clear, ret,
+      error);
 }
 
 
 /**
  * gabble_im_channel_send
  *
- * Implements DBus method Send
+ * Implements D-Bus method Send
  * on interface org.freedesktop.Telepathy.Channel.Type.Text
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_im_channel_send (GabbleIMChannel *obj, guint type, const gchar * text, GError **error)
+gboolean
+gabble_im_channel_send (GabbleIMChannel *self,
+                        guint type,
+                        const gchar *text,
+                        GError **error)
 {
   GabbleIMChannelPrivate *priv;
 
-  g_assert (GABBLE_IS_IM_CHANNEL (obj));
-  priv = GABBLE_IM_CHANNEL_GET_PRIVATE (obj);
+  g_assert (GABBLE_IS_IM_CHANNEL (self));
+  priv = GABBLE_IM_CHANNEL_GET_PRIVATE (self);
 
-  return gabble_text_mixin_send (G_OBJECT (obj), type, 0, priv->peer_jid, text,
-      priv->conn, TRUE /* emit_signal */, error);
+  return gabble_text_mixin_send (G_OBJECT (self), type, 0, priv->peer_jid,
+      text, priv->conn, TRUE /* emit_signal */, error);
 }
 

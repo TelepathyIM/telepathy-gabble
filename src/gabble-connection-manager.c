@@ -61,14 +61,18 @@ struct _GabbleConnectionManagerPrivate
   GHashTable *connections;
 };
 
-#define GABBLE_CONNECTION_MANAGER_GET_PRIVATE(o)     (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_CONNECTION_MANAGER, GabbleConnectionManagerPrivate))
+#define GABBLE_CONNECTION_MANAGER_GET_PRIVATE(obj) \
+    ((GabbleConnectionManagerPrivate *)obj->priv)
 
 /* type definition stuff */
 
 static void
-gabble_connection_manager_init (GabbleConnectionManager *obj)
+gabble_connection_manager_init (GabbleConnectionManager *self)
 {
-  GabbleConnectionManagerPrivate *priv = GABBLE_CONNECTION_MANAGER_GET_PRIVATE (obj);
+  GabbleConnectionManagerPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
+      GABBLE_TYPE_CONNECTION_MANAGER, GabbleConnectionManagerPrivate);
+
+  self->priv = priv;
 
   priv->connections = g_hash_table_new (g_direct_hash, g_direct_equal);
 }
@@ -469,16 +473,20 @@ _gabble_connection_manager_register (GabbleConnectionManager *self)
 /**
  * gabble_connection_manager_get_parameters
  *
- * Implements DBus method GetParameters
+ * Implements D-Bus method GetParameters
  * on interface org.freedesktop.Telepathy.ConnectionManager
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_connection_manager_get_parameters (GabbleConnectionManager *obj, const gchar * proto, GPtrArray ** ret, GError **error)
+gboolean
+gabble_connection_manager_get_parameters (GabbleConnectionManager *self,
+                                          const gchar *proto,
+                                          GPtrArray **ret,
+                                          GError **error)
 {
   const GabbleParamSpec *params = NULL;
   int i;
@@ -517,16 +525,19 @@ gboolean gabble_connection_manager_get_parameters (GabbleConnectionManager *obj,
 /**
  * gabble_connection_manager_list_protocols
  *
- * Implements DBus method ListProtocols
+ * Implements D-Bus method ListProtocols
  * on interface org.freedesktop.Telepathy.ConnectionManager
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_connection_manager_list_protocols (GabbleConnectionManager *obj, gchar *** ret, GError **error)
+gboolean
+gabble_connection_manager_list_protocols (GabbleConnectionManager *self,
+                                          gchar ***ret,
+                                          GError **error)
 {
   const char *protocols[] = { "jabber", NULL };
 
@@ -546,25 +557,31 @@ gboolean gabble_connection_manager_list_protocols (GabbleConnectionManager *obj,
 /**
  * gabble_connection_manager_request_connection
  *
- * Implements DBus method RequestConnection
+ * Implements D-Bus method RequestConnection
  * on interface org.freedesktop.Telepathy.ConnectionManager
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_connection_manager_request_connection (GabbleConnectionManager *obj, const gchar * proto, GHashTable * parameters, gchar ** bus_name, gchar ** object_path, GError **error)
+gboolean
+gabble_connection_manager_request_connection (GabbleConnectionManager *self,
+                                              const gchar *proto,
+                                              GHashTable *parameters,
+                                              gchar **bus_name,
+                                              gchar **object_path,
+                                              GError **error)
 {
   GabbleConnectionManagerPrivate *priv;
   GabbleConnection *conn;
   const GabbleParamSpec *paramspec;
   GabbleParams params = { 0, };
 
-  g_assert (GABBLE_IS_CONNECTION_MANAGER (obj));
+  g_assert (GABBLE_IS_CONNECTION_MANAGER (self));
 
-  priv = GABBLE_CONNECTION_MANAGER_GET_PRIVATE (obj);
+  priv = GABBLE_CONNECTION_MANAGER_GET_PRIVATE (self);
 
   if (!get_parameters (proto, &paramspec, error))
     return FALSE;
@@ -628,13 +645,13 @@ gboolean gabble_connection_manager_request_connection (GabbleConnectionManager *
   /* bind to status change signals from the connection object */
   g_signal_connect (conn, "disconnected",
                              G_CALLBACK (connection_disconnected_cb),
-                             obj);
+                             self);
 
   /* store the connection, using a hash table as a set */
   g_hash_table_insert (priv->connections, conn, GINT_TO_POINTER(TRUE));
 
   /* emit the new connection signal */
-  g_signal_emit (obj, signals[NEW_CONNECTION], 0, *bus_name, *object_path, proto);
+  g_signal_emit (self, signals[NEW_CONNECTION], 0, *bus_name, *object_path, proto);
 
   return TRUE;
 

@@ -51,12 +51,16 @@ struct _GabbleMediaStreamPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_MEDIA_STREAM_GET_PRIVATE(o)     (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_MEDIA_STREAM, GabbleMediaStreamPrivate))
+#define GABBLE_MEDIA_STREAM_GET_PRIVATE(obj) \
+    ((GabbleMediaStreamPrivate *)obj->priv)
 
 static void
-gabble_media_stream_init (GabbleMediaStream *obj)
+gabble_media_stream_init (GabbleMediaStream *self)
 {
-  GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
+  GabbleMediaStreamPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
+      GABBLE_TYPE_MEDIA_STREAM, GabbleMediaStreamPrivate);
+
+  self->priv = priv;
 
   /* allocate any data required by the object here */
 }
@@ -89,7 +93,7 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_media_stream_marshal_VOID__STRING,
+                  g_cclosure_marshal_VOID__STRING,
                   G_TYPE_NONE, 1, G_TYPE_STRING);
 
   signals[SET_ACTIVE_CANDIDATE_PAIR] =
@@ -107,7 +111,7 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_media_stream_marshal_VOID__BOXED,
+                  g_cclosure_marshal_VOID__BOXED,
                   G_TYPE_NONE, 1, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_STRING, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_UINT, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_DOUBLE, G_TYPE_UINT, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INVALID)))), G_TYPE_INVALID)))));
 
   signals[SET_REMOTE_CODECS] =
@@ -116,7 +120,7 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_media_stream_marshal_VOID__BOXED,
+                  g_cclosure_marshal_VOID__BOXED,
                   G_TYPE_NONE, 1, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_UINT, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, DBUS_TYPE_G_STRING_STRING_HASHTABLE, G_TYPE_INVALID)))));
 
   signals[SET_STREAM_PLAYING] =
@@ -125,7 +129,7 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_media_stream_marshal_VOID__BOOLEAN,
+                  g_cclosure_marshal_VOID__BOOLEAN,
                   G_TYPE_NONE, 1, G_TYPE_BOOLEAN);
 
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_media_stream_class), &dbus_glib_gabble_media_stream_object_info);
@@ -164,16 +168,19 @@ gabble_media_stream_finalize (GObject *object)
 /**
  * gabble_media_stream_codec_choice
  *
- * Implements DBus method CodecChoice
+ * Implements D-Bus method CodecChoice
  * on interface org.freedesktop.Telepathy.Ice.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_stream_codec_choice (GabbleMediaStream *obj, guint codec_id, GError **error)
+gboolean
+gabble_media_stream_codec_choice (GabbleMediaStream *self,
+                                  guint codec_id,
+                                  GError **error)
 {
   return TRUE;
 }
@@ -182,16 +189,20 @@ gboolean gabble_media_stream_codec_choice (GabbleMediaStream *obj, guint codec_i
 /**
  * gabble_media_stream_error
  *
- * Implements DBus method Error
+ * Implements D-Bus method Error
  * on interface org.freedesktop.Telepathy.Ice.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_stream_error (GabbleMediaStream *obj, guint errno, const gchar * message, GError **error)
+gboolean
+gabble_media_stream_error (GabbleMediaStream *self,
+                           guint errno,
+                           const gchar *message,
+                           GError **error)
 {
   return TRUE;
 }
@@ -200,16 +211,18 @@ gboolean gabble_media_stream_error (GabbleMediaStream *obj, guint errno, const g
 /**
  * gabble_media_stream_native_candidates_prepared
  *
- * Implements DBus method NativeCandidatesPrepared
+ * Implements D-Bus method NativeCandidatesPrepared
  * on interface org.freedesktop.Telepathy.Ice.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_stream_native_candidates_prepared (GabbleMediaStream *obj, GError **error)
+gboolean
+gabble_media_stream_native_candidates_prepared (GabbleMediaStream *self,
+                                                GError **error)
 {
   return TRUE;
 }
@@ -218,16 +231,20 @@ gboolean gabble_media_stream_native_candidates_prepared (GabbleMediaStream *obj,
 /**
  * gabble_media_stream_new_active_candidate_pair
  *
- * Implements DBus method NewActiveCandidatePair
+ * Implements D-Bus method NewActiveCandidatePair
  * on interface org.freedesktop.Telepathy.Ice.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_stream_new_active_candidate_pair (GabbleMediaStream *obj, const gchar * native_candidate_id, const gchar * remote_candidate_id, GError **error)
+gboolean
+gabble_media_stream_new_active_candidate_pair (GabbleMediaStream *self,
+                                               const gchar *native_candidate_id,
+                                               const gchar *remote_candidate_id,
+                                               GError **error)
 {
   return TRUE;
 }
@@ -236,16 +253,20 @@ gboolean gabble_media_stream_new_active_candidate_pair (GabbleMediaStream *obj, 
 /**
  * gabble_media_stream_new_native_candidate
  *
- * Implements DBus method NewNativeCandidate
+ * Implements D-Bus method NewNativeCandidate
  * on interface org.freedesktop.Telepathy.Ice.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_stream_new_native_candidate (GabbleMediaStream *obj, const gchar * candidate_id, const GPtrArray * transports, GError **error)
+gboolean
+gabble_media_stream_new_native_candidate (GabbleMediaStream *self,
+                                          const gchar *candidate_id,
+                                          const GPtrArray *transports,
+                                          GError **error)
 {
   return TRUE;
 }
@@ -254,16 +275,19 @@ gboolean gabble_media_stream_new_native_candidate (GabbleMediaStream *obj, const
 /**
  * gabble_media_stream_ready
  *
- * Implements DBus method Ready
+ * Implements D-Bus method Ready
  * on interface org.freedesktop.Telepathy.Ice.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_stream_ready (GabbleMediaStream *obj, const GPtrArray * codecs, GError **error)
+gboolean
+gabble_media_stream_ready (GabbleMediaStream *self,
+                           const GPtrArray *codecs,
+                           GError **error)
 {
   return TRUE;
 }
@@ -272,16 +296,19 @@ gboolean gabble_media_stream_ready (GabbleMediaStream *obj, const GPtrArray * co
 /**
  * gabble_media_stream_stream_state
  *
- * Implements DBus method StreamState
+ * Implements D-Bus method StreamState
  * on interface org.freedesktop.Telepathy.Ice.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_stream_stream_state (GabbleMediaStream *obj, guint state, GError **error)
+gboolean
+gabble_media_stream_stream_state (GabbleMediaStream *self,
+                                  guint state,
+                                  GError **error)
 {
   return TRUE;
 }
@@ -290,16 +317,19 @@ gboolean gabble_media_stream_stream_state (GabbleMediaStream *obj, guint state, 
 /**
  * gabble_media_stream_supported_codecs
  *
- * Implements DBus method SupportedCodecs
+ * Implements D-Bus method SupportedCodecs
  * on interface org.freedesktop.Telepathy.Ice.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_stream_supported_codecs (GabbleMediaStream *obj, const GPtrArray * codecs, GError **error)
+gboolean
+gabble_media_stream_supported_codecs (GabbleMediaStream *self,
+                                      const GPtrArray *codecs,
+                                      GError **error)
 {
   return TRUE;
 }

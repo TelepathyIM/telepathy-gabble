@@ -108,7 +108,8 @@ struct _GabbleMediaSessionPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_MEDIA_SESSION_GET_PRIVATE(o)     (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_MEDIA_SESSION, GabbleMediaSessionPrivate))
+#define GABBLE_MEDIA_SESSION_GET_PRIVATE(obj) \
+    ((GabbleMediaSessionPrivate *)obj->priv)
 
 typedef struct {
     gchar *name;
@@ -124,9 +125,12 @@ static const SessionStateDescription session_states[] =
 };
 
 static void
-gabble_media_session_init (GabbleMediaSession *obj)
+gabble_media_session_init (GabbleMediaSession *self)
 {
-  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (obj);
+  GabbleMediaSessionPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
+      GABBLE_TYPE_MEDIA_SESSION, GabbleMediaSessionPrivate);
+
+  self->priv = priv;
 
   priv->mode = MODE_JINGLE;
   priv->state = JS_STATE_PENDING_CREATED;
@@ -513,7 +517,7 @@ gabble_media_session_class_init (GabbleMediaSessionClass *gabble_media_session_c
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_media_session_marshal_VOID__STRING_INT_INT_INT,
+                  gabble_media_session_marshal_VOID__STRING_UINT_UINT_UINT,
                   G_TYPE_NONE, 4, DBUS_TYPE_G_OBJECT_PATH, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT);
 
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_media_session_class), &dbus_glib_gabble_media_session_object_info);
@@ -558,20 +562,24 @@ gabble_media_session_finalize (GObject *object)
 /**
  * gabble_media_session_error
  *
- * Implements DBus method Error
+ * Implements D-Bus method Error
  * on interface org.freedesktop.Telepathy.Ice.SessionHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_session_error (GabbleMediaSession *obj, guint errno, const gchar * message, GError **error)
+gboolean
+gabble_media_session_error (GabbleMediaSession *self,
+                            guint errno,
+                            const gchar *message,
+                            GError **error)
 {
-  GMS_DEBUG_INFO (obj, "Media.SessionHandler::Error called -- terminating session");
+  GMS_DEBUG_INFO (self, "Media.SessionHandler::Error called -- terminating session");
 
-  _gabble_media_session_terminate (obj);
+  _gabble_media_session_terminate (self);
 
   return TRUE;
 }
@@ -580,26 +588,28 @@ gboolean gabble_media_session_error (GabbleMediaSession *obj, guint errno, const
 /**
  * gabble_media_session_ready
  *
- * Implements DBus method Ready
+ * Implements D-Bus method Ready
  * on interface org.freedesktop.Telepathy.Ice.SessionHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_session_ready (GabbleMediaSession *obj, GError **error)
+gboolean
+gabble_media_session_ready (GabbleMediaSession *self,
+                            GError **error)
 {
   GabbleMediaSessionPrivate *priv;
 
-  g_assert (GABBLE_IS_MEDIA_SESSION (obj));
+  g_assert (GABBLE_IS_MEDIA_SESSION (self));
 
-  priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (obj);
+  priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (self);
 
   priv->ready = TRUE;
 
-  g_hash_table_foreach (priv->streams, (GHFunc) _emit_new_stream, obj);
+  g_hash_table_foreach (priv->streams, (GHFunc) _emit_new_stream, self);
 
   return TRUE;
 }

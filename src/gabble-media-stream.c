@@ -106,7 +106,8 @@ struct _GabbleMediaStreamPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_MEDIA_STREAM_GET_PRIVATE(o)     (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_MEDIA_STREAM, GabbleMediaStreamPrivate))
+#define GABBLE_MEDIA_STREAM_GET_PRIVATE(obj) \
+    ((GabbleMediaStreamPrivate *)obj->priv)
 
 #ifdef ENABLE_DEBUG
 #if _GMS_DEBUG_LEVEL > 1
@@ -124,9 +125,12 @@ static const char *tp_transports[] = {
 #endif
 
 static void
-gabble_media_stream_init (GabbleMediaStream *obj)
+gabble_media_stream_init (GabbleMediaStream *self)
 {
-  GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
+  GabbleMediaStreamPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
+      GABBLE_TYPE_MEDIA_STREAM, GabbleMediaStreamPrivate);
+
+  self->priv = priv;
 
   g_value_init (&priv->native_codecs, TP_TYPE_CODEC_LIST);
   g_value_take_boxed (&priv->native_codecs,
@@ -340,7 +344,7 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_MEDIA_TYPE, param_spec);
 
-  /* signals exported by DBus interface */
+  /* signals exported by D-Bus interface */
   signals[ADD_REMOTE_CANDIDATE] =
     g_signal_new ("add-remote-candidate",
                   G_OBJECT_CLASS_TYPE (gabble_media_stream_class),
@@ -386,7 +390,7 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                   g_cclosure_marshal_VOID__BOXED,
                   G_TYPE_NONE, 1, TP_TYPE_CODEC_LIST);
 
-  /* signals not exported by DBus interface */
+  /* signals not exported by D-Bus interface */
   signals[NEW_ACTIVE_CANDIDATE_PAIR] =
     g_signal_new ("new-active-candidate-pair",
                   G_OBJECT_CLASS_TYPE (gabble_media_stream_class),
@@ -493,22 +497,25 @@ session_state_changed_cb (GabbleMediaSession *session,
 /**
  * gabble_media_stream_codec_choice
  *
- * Implements DBus method CodecChoice
+ * Implements D-Bus method CodecChoice
  * on interface org.freedesktop.Telepathy.Ice.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_stream_codec_choice (GabbleMediaStream *obj, guint codec_id, GError **error)
+gboolean
+gabble_media_stream_codec_choice (GabbleMediaStream *self,
+                                  guint codec_id,
+                                  GError **error)
 {
   GabbleMediaStreamPrivate *priv;
 
-  g_assert (GABBLE_IS_MEDIA_STREAM (obj));
+  g_assert (GABBLE_IS_MEDIA_STREAM (self));
 
-  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
+  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
 
   return TRUE;
 }
@@ -517,22 +524,26 @@ gboolean gabble_media_stream_codec_choice (GabbleMediaStream *obj, guint codec_i
 /**
  * gabble_media_stream_error
  *
- * Implements DBus method Error
+ * Implements D-Bus method Error
  * on interface org.freedesktop.Telepathy.Ice.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_stream_error (GabbleMediaStream *obj, guint errno, const gchar * message, GError **error)
+gboolean
+gabble_media_stream_error (GabbleMediaStream *self,
+                           guint errno,
+                           const gchar *message,
+                           GError **error)
 {
   GabbleMediaStreamPrivate *priv;
 
-  g_assert (GABBLE_IS_MEDIA_STREAM (obj));
+  g_assert (GABBLE_IS_MEDIA_STREAM (self));
 
-  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
+  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
 
   GMS_DEBUG_WARNING (priv->session, "Media.StreamHandler::Error called -- terminating session");
 
@@ -545,22 +556,24 @@ gboolean gabble_media_stream_error (GabbleMediaStream *obj, guint errno, const g
 /**
  * gabble_media_stream_native_candidates_prepared
  *
- * Implements DBus method NativeCandidatesPrepared
+ * Implements D-Bus method NativeCandidatesPrepared
  * on interface org.freedesktop.Telepathy.Ice.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_stream_native_candidates_prepared (GabbleMediaStream *obj, GError **error)
+gboolean
+gabble_media_stream_native_candidates_prepared (GabbleMediaStream *self,
+                                                GError **error)
 {
   GabbleMediaStreamPrivate *priv;
 
-  g_assert (GABBLE_IS_MEDIA_STREAM (obj));
+  g_assert (GABBLE_IS_MEDIA_STREAM (self));
 
-  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
+  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
 
   return TRUE;
 }
@@ -569,24 +582,28 @@ gboolean gabble_media_stream_native_candidates_prepared (GabbleMediaStream *obj,
 /**
  * gabble_media_stream_new_active_candidate_pair
  *
- * Implements DBus method NewActiveCandidatePair
+ * Implements D-Bus method NewActiveCandidatePair
  * on interface org.freedesktop.Telepathy.Ice.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_stream_new_active_candidate_pair (GabbleMediaStream *obj, const gchar * native_candidate_id, const gchar * remote_candidate_id, GError **error)
+gboolean
+gabble_media_stream_new_active_candidate_pair (GabbleMediaStream *self,
+                                               const gchar *native_candidate_id,
+                                               const gchar *remote_candidate_id,
+                                               GError **error)
 {
   GabbleMediaStreamPrivate *priv;
 
-  g_assert (GABBLE_IS_MEDIA_STREAM (obj));
+  g_assert (GABBLE_IS_MEDIA_STREAM (self));
 
-  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
+  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
 
-  g_signal_emit (obj, signals[NEW_ACTIVE_CANDIDATE_PAIR], 0,
+  g_signal_emit (self, signals[NEW_ACTIVE_CANDIDATE_PAIR], 0,
                  native_candidate_id, remote_candidate_id);
 
   return TRUE;
@@ -596,16 +613,20 @@ gboolean gabble_media_stream_new_active_candidate_pair (GabbleMediaStream *obj, 
 /**
  * gabble_media_stream_new_native_candidate
  *
- * Implements DBus method NewNativeCandidate
+ * Implements D-Bus method NewNativeCandidate
  * on interface org.freedesktop.Telepathy.Ice.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_stream_new_native_candidate (GabbleMediaStream *obj, const gchar * candidate_id, const GPtrArray * transports, GError **error)
+gboolean
+gabble_media_stream_new_native_candidate (GabbleMediaStream *self,
+                                          const gchar *candidate_id,
+                                          const GPtrArray *transports,
+                                          GError **error)
 {
   GabbleMediaStreamPrivate *priv;
   JingleSessionState state;
@@ -614,9 +635,9 @@ gboolean gabble_media_stream_new_native_candidate (GabbleMediaStream *obj, const
   GValueArray *transport;
   const gchar *addr;
 
-  g_assert (GABBLE_IS_MEDIA_STREAM (obj));
+  g_assert (GABBLE_IS_MEDIA_STREAM (self));
 
-  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
+  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
 
   g_object_get (priv->session, "state", &state, NULL);
 
@@ -652,9 +673,9 @@ gboolean gabble_media_stream_new_native_candidate (GabbleMediaStream *obj, const
 
   GMS_DEBUG_INFO (priv->session, "put 1 native candidate from voip-engine into cache");
 
-  push_native_candidates (obj);
+  push_native_candidates (self);
 
-  g_signal_emit (obj, signals[NEW_NATIVE_CANDIDATE], 0,
+  g_signal_emit (self, signals[NEW_NATIVE_CANDIDATE], 0,
                  candidate_id, transports);
 
   return TRUE;
@@ -664,22 +685,25 @@ gboolean gabble_media_stream_new_native_candidate (GabbleMediaStream *obj, const
 /**
  * gabble_media_stream_ready
  *
- * Implements DBus method Ready
+ * Implements D-Bus method Ready
  * on interface org.freedesktop.Telepathy.Ice.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_stream_ready (GabbleMediaStream *obj, const GPtrArray * codecs, GError **error)
+gboolean
+gabble_media_stream_ready (GabbleMediaStream *self,
+                           const GPtrArray *codecs,
+                           GError **error)
 {
   GabbleMediaStreamPrivate *priv;
 
-  g_assert (GABBLE_IS_MEDIA_STREAM (obj));
+  g_assert (GABBLE_IS_MEDIA_STREAM (self));
 
-  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
+  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
 
   priv->ready = TRUE;
 
@@ -688,12 +712,12 @@ gboolean gabble_media_stream_ready (GabbleMediaStream *obj, const GPtrArray * co
 
   g_value_set_boxed (&priv->native_codecs, codecs);
 
-  g_signal_emit (obj, signals[READY], 0, codecs);
+  g_signal_emit (self, signals[READY], 0, codecs);
 
-  push_remote_codecs (obj);
-  push_remote_candidates (obj);
+  push_remote_codecs (self);
+  push_remote_candidates (self);
 
-  g_signal_emit (obj, signals[SET_STREAM_PLAYING], 0, priv->playing);
+  g_signal_emit (self, signals[SET_STREAM_PLAYING], 0, priv->playing);
 
   return TRUE;
 }
@@ -702,22 +726,25 @@ gboolean gabble_media_stream_ready (GabbleMediaStream *obj, const GPtrArray * co
 /**
  * gabble_media_stream_stream_state
  *
- * Implements DBus method StreamState
+ * Implements D-Bus method StreamState
  * on interface org.freedesktop.Telepathy.Ice.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_stream_stream_state (GabbleMediaStream *obj, guint state, GError **error)
+gboolean
+gabble_media_stream_stream_state (GabbleMediaStream *self,
+                                  guint state,
+                                  GError **error)
 {
   GabbleMediaStreamPrivate *priv;
 
-  g_assert (GABBLE_IS_MEDIA_STREAM (obj));
+  g_assert (GABBLE_IS_MEDIA_STREAM (self));
 
-  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
+  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
 
   _gabble_media_session_stream_state (priv->session, state);
   return TRUE;
@@ -727,22 +754,25 @@ gboolean gabble_media_stream_stream_state (GabbleMediaStream *obj, guint state, 
 /**
  * gabble_media_stream_supported_codecs
  *
- * Implements DBus method SupportedCodecs
+ * Implements D-Bus method SupportedCodecs
  * on interface org.freedesktop.Telepathy.Ice.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_stream_supported_codecs (GabbleMediaStream *obj, const GPtrArray * codecs, GError **error)
+gboolean
+gabble_media_stream_supported_codecs (GabbleMediaStream *self,
+                                      const GPtrArray *codecs,
+                                      GError **error)
 {
   GabbleMediaStreamPrivate *priv;
 
-  g_assert (GABBLE_IS_MEDIA_STREAM (obj));
+  g_assert (GABBLE_IS_MEDIA_STREAM (self));
 
-  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (obj);
+  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
 
   GMS_DEBUG_INFO (priv->session, "got codec intersection containing %d "
                   "codecs from voip-engine", codecs->len);
@@ -750,7 +780,7 @@ gboolean gabble_media_stream_supported_codecs (GabbleMediaStream *obj, const GPt
   /* store the intersection for later on */
   g_value_set_boxed (&priv->native_codecs, codecs);
 
-  g_signal_emit (obj, signals[SUPPORTED_CODECS], 0, codecs);
+  g_signal_emit (self, signals[SUPPORTED_CODECS], 0, codecs);
 
   return TRUE;
 }
@@ -848,7 +878,7 @@ _add_rtp_candidate_node (GabbleMediaSession *session, LmMessageNode *parent,
 
   xml = lm_message_node_to_string (cand_node);
   GMS_DEBUG_DUMP (session,
-    "  from Telepathy DBus struct: [%s\"%s\", %s[%s1, \"%s\", %d, %s, "
+    "  from Telepathy D-Bus struct: [%s\"%s\", %s[%s1, \"%s\", %d, %s, "
     "\"%s\", \"%s\", %f, %s, \"%s\", \"%s\"%s]]",
     ANSI_BOLD_OFF, candidate_id, ANSI_BOLD_ON, ANSI_BOLD_OFF, addr, port,
     tp_protocols[proto], "RTP", "AVP", pref, tp_transports[type], user, pass,
@@ -1263,7 +1293,7 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
       GMS_DEBUG_INFO (priv->session, "put 1 remote candidate from peer into cache");
       GMS_DEBUG_DUMP (priv->session, "  from Jingle XML: [%s%s%s]",
                       ANSI_BOLD_OFF, xml, ANSI_BOLD_ON);
-      GMS_DEBUG_DUMP (priv->session, "  to Telepathy DBus struct: [%s\"%s\", %s[%s1, \"%s\", %d, %s, \"%s\", \"%s\", %f, %s, \"%s\", \"%s\"%s]]",
+      GMS_DEBUG_DUMP (priv->session, "  to Telepathy D-Bus struct: [%s\"%s\", %s[%s1, \"%s\", %d, %s, \"%s\", \"%s\", %f, %s, \"%s\", \"%s\"%s]]",
                       ANSI_BOLD_OFF, candidate_id, ANSI_BOLD_ON,
                       ANSI_BOLD_OFF, addr, port, tp_protocols[proto], "RTP", "AVP", pref, tp_transports[type], user, pass, ANSI_BOLD_ON);
       g_free (xml);

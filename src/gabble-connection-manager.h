@@ -37,11 +37,13 @@ struct _GabbleConnectionManagerClass {
 
 struct _GabbleConnectionManager {
     GObject parent;
+
+    gpointer priv;
 };
 
 typedef struct {
     const gchar *name;          /* name as passed over dbus */
-    const gchar *dtype;         /* DBUS type string */
+    const gchar *dtype;         /* D-Bus type string */
     const GType gtype;          /* glib type string */
     guint flags;                /* combination of TP_CONN_MGR_PARAM_FLAG_foo */
     const gpointer def;         /* default - gchar * or GINT_TO_POINTER */
@@ -73,9 +75,25 @@ GType gabble_connection_manager_get_type(void);
 
 void _gabble_connection_manager_register (GabbleConnectionManager *self);
 
-gboolean gabble_connection_manager_get_parameters (GabbleConnectionManager *obj, const gchar * proto, GPtrArray ** ret, GError **error);
-gboolean gabble_connection_manager_list_protocols (GabbleConnectionManager *obj, gchar *** ret, GError **error);
-gboolean gabble_connection_manager_request_connection (GabbleConnectionManager *obj, const gchar * proto, GHashTable * parameters, gchar ** ret, gchar ** ret1, GError **error);
+gboolean
+gabble_connection_manager_get_parameters (GabbleConnectionManager *self,
+                                          const gchar *proto,
+                                          GPtrArray **ret,
+                                          GError **error);
+
+gboolean
+gabble_connection_manager_list_protocols (GabbleConnectionManager *self,
+                                          gchar ***ret,
+                                          GError **error);
+
+gboolean
+gabble_connection_manager_request_connection (GabbleConnectionManager *self,
+                                              const gchar *proto,
+                                              GHashTable *parameters,
+                                              gchar **ret,
+                                              gchar **ret1,
+                                              GError **error);
+
 
 
 G_END_DECLS

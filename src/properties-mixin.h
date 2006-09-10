@@ -109,7 +109,7 @@ void gabble_properties_mixin_finalize (GObject *obj);
 
 gboolean gabble_properties_mixin_list_properties (GObject *obj, GPtrArray **ret, GError **error);
 gboolean gabble_properties_mixin_get_properties (GObject *obj, const GArray *properties, GPtrArray **ret, GError **error);
-gboolean gabble_properties_mixin_set_properties (GObject *obj, const GPtrArray *properties, DBusGMethodInvocation *context);
+void gabble_properties_mixin_set_properties (GObject *obj, const GPtrArray *properties, DBusGMethodInvocation *context);
 
 gboolean gabble_properties_mixin_has_property (GObject *obj, const gchar *name, guint *property);
 

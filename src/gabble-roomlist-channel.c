@@ -97,12 +97,16 @@ struct _GabbleRoomlistChannelPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE(o)     (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_ROOMLIST_CHANNEL, GabbleRoomlistChannelPrivate))
+#define GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE(obj) \
+    ((GabbleRoomlistChannelPrivate *)obj->priv)
 
 static void
-gabble_roomlist_channel_init (GabbleRoomlistChannel *obj)
+gabble_roomlist_channel_init (GabbleRoomlistChannel *self)
 {
-  GabbleRoomlistChannelPrivate *priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (obj);
+  GabbleRoomlistChannelPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
+      GABBLE_TYPE_ROOMLIST_CHANNEL, GabbleRoomlistChannelPrivate);
+
+  self->priv = priv;
 
   priv->disco_pipeline = g_ptr_array_sized_new (DISCO_PIPELINE_SIZE);
   priv->remaining_rooms = g_hash_table_new_full (g_str_hash, g_str_equal,
@@ -661,27 +665,29 @@ out:
   room_list_fill_disco_pipeline (chan);
 }
 
-/************************* DBUS Method definitions **************************/
+/************************* D-Bus Method definitions **************************/
 
 /**
  * gabble_roomlist_channel_close
  *
- * Implements DBus method Close
+ * Implements D-Bus method Close
  * on interface org.freedesktop.Telepathy.Channel
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_roomlist_channel_close (GabbleRoomlistChannel *obj, GError **error)
+gboolean
+gabble_roomlist_channel_close (GabbleRoomlistChannel *self,
+                               GError **error)
 {
-  g_assert (GABBLE_IS_ROOMLIST_CHANNEL (obj));
+  g_assert (GABBLE_IS_ROOMLIST_CHANNEL (self));
 
-  DEBUG ("called on %p", obj);
+  DEBUG ("called on %p", self);
 
-  g_object_run_dispose (G_OBJECT (obj));
+  g_object_run_dispose (G_OBJECT (self));
 
   return TRUE;
 }
@@ -690,16 +696,19 @@ gboolean gabble_roomlist_channel_close (GabbleRoomlistChannel *obj, GError **err
 /**
  * gabble_roomlist_channel_get_channel_type
  *
- * Implements DBus method GetChannelType
+ * Implements D-Bus method GetChannelType
  * on interface org.freedesktop.Telepathy.Channel
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_roomlist_channel_get_channel_type (GabbleRoomlistChannel *obj, gchar ** ret, GError **error)
+gboolean
+gabble_roomlist_channel_get_channel_type (GabbleRoomlistChannel *self,
+                                          gchar **ret,
+                                          GError **error)
 {
   *ret = g_strdup (TP_IFACE_CHANNEL_TYPE_ROOM_LIST);
   return TRUE;
@@ -709,18 +718,22 @@ gboolean gabble_roomlist_channel_get_channel_type (GabbleRoomlistChannel *obj, g
 /**
  * gabble_roomlist_channel_get_handle
  *
- * Implements DBus method GetHandle
+ * Implements D-Bus method GetHandle
  * on interface org.freedesktop.Telepathy.Channel
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_roomlist_channel_get_handle (GabbleRoomlistChannel *obj, guint* ret, guint* ret1, GError **error)
+gboolean
+gabble_roomlist_channel_get_handle (GabbleRoomlistChannel *self,
+                                    guint *ret,
+                                    guint *ret1,
+                                    GError **error)
 {
-  g_assert (GABBLE_IS_ROOMLIST_CHANNEL (obj));
+  g_assert (GABBLE_IS_ROOMLIST_CHANNEL (self));
 
   *ret = 0;
   *ret1 = 0;
@@ -732,16 +745,19 @@ gboolean gabble_roomlist_channel_get_handle (GabbleRoomlistChannel *obj, guint* 
 /**
  * gabble_roomlist_channel_get_interfaces
  *
- * Implements DBus method GetInterfaces
+ * Implements D-Bus method GetInterfaces
  * on interface org.freedesktop.Telepathy.Channel
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_roomlist_channel_get_interfaces (GabbleRoomlistChannel *obj, gchar *** ret, GError **error)
+gboolean
+gabble_roomlist_channel_get_interfaces (GabbleRoomlistChannel *self,
+                                        gchar ***ret,
+                                        GError **error)
 {
   const char *interfaces[] = { NULL };
 
@@ -754,22 +770,25 @@ gboolean gabble_roomlist_channel_get_interfaces (GabbleRoomlistChannel *obj, gch
 /**
  * gabble_roomlist_channel_get_listing_rooms
  *
- * Implements DBus method GetListingRooms
+ * Implements D-Bus method GetListingRooms
  * on interface org.freedesktop.Telepathy.Channel.Type.RoomList
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_roomlist_channel_get_listing_rooms (GabbleRoomlistChannel *obj, gboolean* ret, GError **error)
+gboolean
+gabble_roomlist_channel_get_listing_rooms (GabbleRoomlistChannel *self,
+                                           gboolean *ret,
+                                           GError **error)
 {
   GabbleRoomlistChannelPrivate *priv;
 
-  g_assert (GABBLE_IS_ROOMLIST_CHANNEL (obj));
+  g_assert (GABBLE_IS_ROOMLIST_CHANNEL (self));
 
-  priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (obj);
+  priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (self);
   *ret = priv->listing;
   return TRUE;
 }
@@ -778,28 +797,30 @@ gboolean gabble_roomlist_channel_get_listing_rooms (GabbleRoomlistChannel *obj, 
 /**
  * gabble_roomlist_channel_list_rooms
  *
- * Implements DBus method ListRooms
+ * Implements D-Bus method ListRooms
  * on interface org.freedesktop.Telepathy.Channel.Type.RoomList
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_roomlist_channel_list_rooms (GabbleRoomlistChannel *obj, GError **error)
+gboolean
+gabble_roomlist_channel_list_rooms (GabbleRoomlistChannel *self,
+                                    GError **error)
 {
   GabbleRoomlistChannelPrivate *priv;
 
-  g_assert (GABBLE_IS_ROOMLIST_CHANNEL (obj));
+  g_assert (GABBLE_IS_ROOMLIST_CHANNEL (self));
 
-  priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (obj);
+  priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (self);
 
   priv->listing = TRUE;
-  g_signal_emit (obj, signals[LISTING_ROOMS], 0, TRUE);
+  g_signal_emit (self, signals[LISTING_ROOMS], 0, TRUE);
   gabble_disco_request (priv->conn->disco, GABBLE_DISCO_TYPE_ITEMS,
                         priv->conference_server, NULL,
-                        rooms_cb, obj, G_OBJECT(obj), NULL);
+                        rooms_cb, self, G_OBJECT(self), NULL);
   return TRUE;
 }
 

@@ -34,6 +34,8 @@ struct _GabbleConnectionClass {
 
 struct _GabbleConnection {
     GObject parent;
+
+    gpointer priv;
 };
 
 GType gabble_connection_get_type(void);
@@ -53,31 +55,138 @@ GType gabble_connection_get_type(void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_CONNECTION, GabbleConnectionClass))
 
 
-gboolean gabble_connection_add_status (GabbleConnection *obj, const gchar * status, GHashTable * parms, GError **error);
-gboolean gabble_connection_clear_status (GabbleConnection *obj, GError **error);
-gboolean gabble_connection_connect (GabbleConnection *obj, GError **error);
-gboolean gabble_connection_disconnect (GabbleConnection *obj, GError **error);
-gboolean gabble_connection_get_alias_flags (GabbleConnection *obj, guint* ret, GError **error);
-gboolean gabble_connection_get_interfaces (GabbleConnection *obj, gchar *** ret, GError **error);
-gboolean gabble_connection_get_properties (GabbleConnection *obj, const GArray * properties, GPtrArray ** ret, GError **error);
-gboolean gabble_connection_get_protocol (GabbleConnection *obj, gchar ** ret, GError **error);
-gboolean gabble_connection_get_self_handle (GabbleConnection *obj, guint* ret, GError **error);
-gboolean gabble_connection_get_status (GabbleConnection *obj, guint* ret, GError **error);
-gboolean gabble_connection_get_statuses (GabbleConnection *obj, GHashTable ** ret, GError **error);
-gboolean gabble_connection_hold_handles (GabbleConnection *obj, guint handle_type, const GArray * handles, DBusGMethodInvocation *context);
-gboolean gabble_connection_inspect_handles (GabbleConnection *obj, guint handle_type, const GArray * handles, DBusGMethodInvocation *context);
-gboolean gabble_connection_list_channels (GabbleConnection *obj, GPtrArray ** ret, GError **error);
-gboolean gabble_connection_list_properties (GabbleConnection *obj, GPtrArray ** ret, GError **error);
-gboolean gabble_connection_release_handles (GabbleConnection *obj, guint handle_type, const GArray * handles, DBusGMethodInvocation *context);
-gboolean gabble_connection_remove_status (GabbleConnection *obj, const gchar * status, GError **error);
-gboolean gabble_connection_request_aliases (GabbleConnection *obj, const GArray * contacts, gchar *** ret, GError **error);
-gboolean gabble_connection_request_channel (GabbleConnection *obj, const gchar * type, guint handle_type, guint handle, gboolean suppress_handler, DBusGMethodInvocation *context);
-gboolean gabble_connection_request_handles (GabbleConnection *obj, guint handle_type, const gchar ** names, DBusGMethodInvocation *context);
-gboolean gabble_connection_request_presence (GabbleConnection *obj, const GArray * contacts, GError **error);
-gboolean gabble_connection_set_aliases (GabbleConnection *obj, GHashTable * aliases, GError **error);
-gboolean gabble_connection_set_last_activity_time (GabbleConnection *obj, guint time, GError **error);
-gboolean gabble_connection_set_properties (GabbleConnection *obj, const GPtrArray * properties, DBusGMethodInvocation *context);
-gboolean gabble_connection_set_status (GabbleConnection *obj, GHashTable * statuses, GError **error);
+gboolean
+gabble_connection_add_status (GabbleConnection *self,
+                              const gchar *status,
+                              GHashTable *parms,
+                              GError **error);
+
+gboolean
+gabble_connection_clear_status (GabbleConnection *self,
+                                GError **error);
+
+gboolean
+gabble_connection_connect (GabbleConnection *self,
+                           GError **error);
+
+gboolean
+gabble_connection_disconnect (GabbleConnection *self,
+                              GError **error);
+
+gboolean
+gabble_connection_get_alias_flags (GabbleConnection *self,
+                                   guint *ret,
+                                   GError **error);
+
+gboolean
+gabble_connection_get_interfaces (GabbleConnection *self,
+                                  gchar ***ret,
+                                  GError **error);
+
+gboolean
+gabble_connection_get_properties (GabbleConnection *self,
+                                  const GArray *properties,
+                                  GPtrArray **ret,
+                                  GError **error);
+
+gboolean
+gabble_connection_get_protocol (GabbleConnection *self,
+                                gchar **ret,
+                                GError **error);
+
+gboolean
+gabble_connection_get_self_handle (GabbleConnection *self,
+                                   guint *ret,
+                                   GError **error);
+
+gboolean
+gabble_connection_get_status (GabbleConnection *self,
+                              guint *ret,
+                              GError **error);
+
+gboolean
+gabble_connection_get_statuses (GabbleConnection *self,
+                                GHashTable **ret,
+                                GError **error);
+
+void
+gabble_connection_hold_handles (GabbleConnection *self,
+                                guint handle_type,
+                                const GArray *handles,
+                                DBusGMethodInvocation *context);
+
+void
+gabble_connection_inspect_handles (GabbleConnection *self,
+                                   guint handle_type,
+                                   const GArray *handles,
+                                   DBusGMethodInvocation *context);
+
+gboolean
+gabble_connection_list_channels (GabbleConnection *self,
+                                 GPtrArray **ret,
+                                 GError **error);
+
+gboolean
+gabble_connection_list_properties (GabbleConnection *self,
+                                   GPtrArray **ret,
+                                   GError **error);
+
+void
+gabble_connection_release_handles (GabbleConnection *self,
+                                   guint handle_type,
+                                   const GArray *handles,
+                                   DBusGMethodInvocation *context);
+
+gboolean
+gabble_connection_remove_status (GabbleConnection *self,
+                                 const gchar *status,
+                                 GError **error);
+
+gboolean
+gabble_connection_request_aliases (GabbleConnection *self,
+                                   const GArray *contacts,
+                                   gchar ***ret,
+                                   GError **error);
+
+void
+gabble_connection_request_channel (GabbleConnection *self,
+                                   const gchar *type,
+                                   guint handle_type,
+                                   guint handle,
+                                   gboolean suppress_handler,
+                                   DBusGMethodInvocation *context);
+
+void
+gabble_connection_request_handles (GabbleConnection *self,
+                                   guint handle_type,
+                                   const gchar **names,
+                                   DBusGMethodInvocation *context);
+
+gboolean
+gabble_connection_request_presence (GabbleConnection *self,
+                                    const GArray *contacts,
+                                    GError **error);
+
+gboolean
+gabble_connection_set_aliases (GabbleConnection *self,
+                               GHashTable *aliases,
+                               GError **error);
+
+gboolean
+gabble_connection_set_last_activity_time (GabbleConnection *self,
+                                          guint time,
+                                          GError **error);
+
+void
+gabble_connection_set_properties (GabbleConnection *self,
+                                  const GPtrArray *properties,
+                                  DBusGMethodInvocation *context);
+
+gboolean
+gabble_connection_set_status (GabbleConnection *self,
+                              GHashTable *statuses,
+                              GError **error);
+
 
 
 G_END_DECLS

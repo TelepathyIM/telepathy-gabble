@@ -55,12 +55,16 @@ struct _GabbleMucChannelPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_MUC_CHANNEL_GET_PRIVATE(o)     (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_MUC_CHANNEL, GabbleMucChannelPrivate))
+#define GABBLE_MUC_CHANNEL_GET_PRIVATE(obj) \
+    ((GabbleMucChannelPrivate *)obj->priv)
 
 static void
-gabble_muc_channel_init (GabbleMucChannel *obj)
+gabble_muc_channel_init (GabbleMucChannel *self)
 {
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
+  GabbleMucChannelPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
+      GABBLE_TYPE_MUC_CHANNEL, GabbleMucChannelPrivate);
+
+  self->priv = priv;
 
   /* allocate any data required by the object here */
 }
@@ -84,7 +88,7 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_muc_channel_marshal_VOID__VOID,
+                  g_cclosure_marshal_VOID__VOID,
                   G_TYPE_NONE, 0);
 
   signals[GROUP_FLAGS_CHANGED] =
@@ -93,7 +97,7 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_muc_channel_marshal_VOID__INT_INT,
+                  gabble_muc_channel_marshal_VOID__UINT_UINT,
                   G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_UINT);
 
   signals[LOST_MESSAGE] =
@@ -102,7 +106,7 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_muc_channel_marshal_VOID__VOID,
+                  g_cclosure_marshal_VOID__VOID,
                   G_TYPE_NONE, 0);
 
   signals[MEMBERS_CHANGED] =
@@ -111,7 +115,7 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_muc_channel_marshal_VOID__STRING_BOXED_BOXED_BOXED_BOXED_INT_INT,
+                  gabble_muc_channel_marshal_VOID__STRING_BOXED_BOXED_BOXED_BOXED_UINT_UINT,
                   G_TYPE_NONE, 7, G_TYPE_STRING, DBUS_TYPE_G_UINT_ARRAY, DBUS_TYPE_G_UINT_ARRAY, DBUS_TYPE_G_UINT_ARRAY, DBUS_TYPE_G_UINT_ARRAY, G_TYPE_UINT, G_TYPE_UINT);
 
   signals[PASSWORD_FLAGS_CHANGED] =
@@ -120,7 +124,7 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_muc_channel_marshal_VOID__INT_INT,
+                  gabble_muc_channel_marshal_VOID__UINT_UINT,
                   G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_UINT);
 
   signals[PROPERTIES_CHANGED] =
@@ -129,7 +133,7 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_muc_channel_marshal_VOID__BOXED,
+                  g_cclosure_marshal_VOID__BOXED,
                   G_TYPE_NONE, 1, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_UINT, G_TYPE_VALUE, G_TYPE_INVALID)))));
 
   signals[PROPERTY_FLAGS_CHANGED] =
@@ -138,7 +142,7 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_muc_channel_marshal_VOID__BOXED,
+                  g_cclosure_marshal_VOID__BOXED,
                   G_TYPE_NONE, 1, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_UINT, G_TYPE_UINT, G_TYPE_INVALID)))));
 
   signals[RECEIVED] =
@@ -147,7 +151,7 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_muc_channel_marshal_VOID__INT_INT_INT_INT_INT_STRING,
+                  gabble_muc_channel_marshal_VOID__UINT_UINT_UINT_UINT_UINT_STRING,
                   G_TYPE_NONE, 6, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING);
 
   signals[SEND_ERROR] =
@@ -156,7 +160,7 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_muc_channel_marshal_VOID__INT_INT_INT_STRING,
+                  gabble_muc_channel_marshal_VOID__UINT_UINT_UINT_STRING,
                   G_TYPE_NONE, 4, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING);
 
   signals[SENT] =
@@ -165,7 +169,7 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_muc_channel_marshal_VOID__INT_INT_STRING,
+                  gabble_muc_channel_marshal_VOID__UINT_UINT_STRING,
                   G_TYPE_NONE, 3, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING);
 
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_muc_channel_class), &dbus_glib_gabble_muc_channel_object_info);
@@ -204,16 +208,19 @@ gabble_muc_channel_finalize (GObject *object)
 /**
  * gabble_muc_channel_acknowledge_pending_messages
  *
- * Implements DBus method AcknowledgePendingMessages
+ * Implements D-Bus method AcknowledgePendingMessages
  * on interface org.freedesktop.Telepathy.Channel.Type.Text
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_muc_channel_acknowledge_pending_messages (GabbleMucChannel *obj, const GArray * ids, GError **error)
+gboolean
+gabble_muc_channel_acknowledge_pending_messages (GabbleMucChannel *self,
+                                                 const GArray *ids,
+                                                 GError **error)
 {
   return TRUE;
 }
@@ -222,16 +229,20 @@ gboolean gabble_muc_channel_acknowledge_pending_messages (GabbleMucChannel *obj,
 /**
  * gabble_muc_channel_add_members
  *
- * Implements DBus method AddMembers
+ * Implements D-Bus method AddMembers
  * on interface org.freedesktop.Telepathy.Channel.Interface.Group
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_muc_channel_add_members (GabbleMucChannel *obj, const GArray * contacts, const gchar * message, GError **error)
+gboolean
+gabble_muc_channel_add_members (GabbleMucChannel *self,
+                                const GArray *contacts,
+                                const gchar *message,
+                                GError **error)
 {
   return TRUE;
 }
@@ -240,16 +251,18 @@ gboolean gabble_muc_channel_add_members (GabbleMucChannel *obj, const GArray * c
 /**
  * gabble_muc_channel_close
  *
- * Implements DBus method Close
+ * Implements D-Bus method Close
  * on interface org.freedesktop.Telepathy.Channel
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_muc_channel_close (GabbleMucChannel *obj, GError **error)
+gboolean
+gabble_muc_channel_close (GabbleMucChannel *self,
+                          GError **error)
 {
   return TRUE;
 }
@@ -258,16 +271,21 @@ gboolean gabble_muc_channel_close (GabbleMucChannel *obj, GError **error)
 /**
  * gabble_muc_channel_get_all_members
  *
- * Implements DBus method GetAllMembers
+ * Implements D-Bus method GetAllMembers
  * on interface org.freedesktop.Telepathy.Channel.Interface.Group
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_muc_channel_get_all_members (GabbleMucChannel *obj, GArray ** ret, GArray ** ret1, GArray ** ret2, GError **error)
+gboolean
+gabble_muc_channel_get_all_members (GabbleMucChannel *self,
+                                    GArray **ret,
+                                    GArray **ret1,
+                                    GArray **ret2,
+                                    GError **error)
 {
   return TRUE;
 }
@@ -276,16 +294,19 @@ gboolean gabble_muc_channel_get_all_members (GabbleMucChannel *obj, GArray ** re
 /**
  * gabble_muc_channel_get_channel_type
  *
- * Implements DBus method GetChannelType
+ * Implements D-Bus method GetChannelType
  * on interface org.freedesktop.Telepathy.Channel
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_muc_channel_get_channel_type (GabbleMucChannel *obj, gchar ** ret, GError **error)
+gboolean
+gabble_muc_channel_get_channel_type (GabbleMucChannel *self,
+                                     gchar **ret,
+                                     GError **error)
 {
   return TRUE;
 }
@@ -294,16 +315,19 @@ gboolean gabble_muc_channel_get_channel_type (GabbleMucChannel *obj, gchar ** re
 /**
  * gabble_muc_channel_get_group_flags
  *
- * Implements DBus method GetGroupFlags
+ * Implements D-Bus method GetGroupFlags
  * on interface org.freedesktop.Telepathy.Channel.Interface.Group
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_muc_channel_get_group_flags (GabbleMucChannel *obj, guint* ret, GError **error)
+gboolean
+gabble_muc_channel_get_group_flags (GabbleMucChannel *self,
+                                    guint *ret,
+                                    GError **error)
 {
   return TRUE;
 }
@@ -312,16 +336,20 @@ gboolean gabble_muc_channel_get_group_flags (GabbleMucChannel *obj, guint* ret, 
 /**
  * gabble_muc_channel_get_handle
  *
- * Implements DBus method GetHandle
+ * Implements D-Bus method GetHandle
  * on interface org.freedesktop.Telepathy.Channel
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_muc_channel_get_handle (GabbleMucChannel *obj, guint* ret, guint* ret1, GError **error)
+gboolean
+gabble_muc_channel_get_handle (GabbleMucChannel *self,
+                               guint *ret,
+                               guint *ret1,
+                               GError **error)
 {
   return TRUE;
 }
@@ -330,16 +358,20 @@ gboolean gabble_muc_channel_get_handle (GabbleMucChannel *obj, guint* ret, guint
 /**
  * gabble_muc_channel_get_handle_owners
  *
- * Implements DBus method GetHandleOwners
+ * Implements D-Bus method GetHandleOwners
  * on interface org.freedesktop.Telepathy.Channel.Interface.Group
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_muc_channel_get_handle_owners (GabbleMucChannel *obj, const GArray * handles, GArray ** ret, GError **error)
+gboolean
+gabble_muc_channel_get_handle_owners (GabbleMucChannel *self,
+                                      const GArray *handles,
+                                      GArray **ret,
+                                      GError **error)
 {
   return TRUE;
 }
@@ -348,16 +380,19 @@ gboolean gabble_muc_channel_get_handle_owners (GabbleMucChannel *obj, const GArr
 /**
  * gabble_muc_channel_get_interfaces
  *
- * Implements DBus method GetInterfaces
+ * Implements D-Bus method GetInterfaces
  * on interface org.freedesktop.Telepathy.Channel
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_muc_channel_get_interfaces (GabbleMucChannel *obj, gchar *** ret, GError **error)
+gboolean
+gabble_muc_channel_get_interfaces (GabbleMucChannel *self,
+                                   gchar ***ret,
+                                   GError **error)
 {
   return TRUE;
 }
@@ -366,16 +401,19 @@ gboolean gabble_muc_channel_get_interfaces (GabbleMucChannel *obj, gchar *** ret
 /**
  * gabble_muc_channel_get_local_pending_members
  *
- * Implements DBus method GetLocalPendingMembers
+ * Implements D-Bus method GetLocalPendingMembers
  * on interface org.freedesktop.Telepathy.Channel.Interface.Group
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_muc_channel_get_local_pending_members (GabbleMucChannel *obj, GArray ** ret, GError **error)
+gboolean
+gabble_muc_channel_get_local_pending_members (GabbleMucChannel *self,
+                                              GArray **ret,
+                                              GError **error)
 {
   return TRUE;
 }
@@ -384,16 +422,19 @@ gboolean gabble_muc_channel_get_local_pending_members (GabbleMucChannel *obj, GA
 /**
  * gabble_muc_channel_get_members
  *
- * Implements DBus method GetMembers
+ * Implements D-Bus method GetMembers
  * on interface org.freedesktop.Telepathy.Channel.Interface.Group
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_muc_channel_get_members (GabbleMucChannel *obj, GArray ** ret, GError **error)
+gboolean
+gabble_muc_channel_get_members (GabbleMucChannel *self,
+                                GArray **ret,
+                                GError **error)
 {
   return TRUE;
 }
@@ -402,16 +443,19 @@ gboolean gabble_muc_channel_get_members (GabbleMucChannel *obj, GArray ** ret, G
 /**
  * gabble_muc_channel_get_message_types
  *
- * Implements DBus method GetMessageTypes
+ * Implements D-Bus method GetMessageTypes
  * on interface org.freedesktop.Telepathy.Channel.Type.Text
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_muc_channel_get_message_types (GabbleMucChannel *obj, GArray ** ret, GError **error)
+gboolean
+gabble_muc_channel_get_message_types (GabbleMucChannel *self,
+                                      GArray **ret,
+                                      GError **error)
 {
   return TRUE;
 }
@@ -420,16 +464,19 @@ gboolean gabble_muc_channel_get_message_types (GabbleMucChannel *obj, GArray ** 
 /**
  * gabble_muc_channel_get_password_flags
  *
- * Implements DBus method GetPasswordFlags
+ * Implements D-Bus method GetPasswordFlags
  * on interface org.freedesktop.Telepathy.Channel.Interface.Password
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_muc_channel_get_password_flags (GabbleMucChannel *obj, guint* ret, GError **error)
+gboolean
+gabble_muc_channel_get_password_flags (GabbleMucChannel *self,
+                                       guint *ret,
+                                       GError **error)
 {
   return TRUE;
 }
@@ -438,16 +485,20 @@ gboolean gabble_muc_channel_get_password_flags (GabbleMucChannel *obj, guint* re
 /**
  * gabble_muc_channel_get_properties
  *
- * Implements DBus method GetProperties
+ * Implements D-Bus method GetProperties
  * on interface org.freedesktop.Telepathy.Properties
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_muc_channel_get_properties (GabbleMucChannel *obj, const GArray * properties, GPtrArray ** ret, GError **error)
+gboolean
+gabble_muc_channel_get_properties (GabbleMucChannel *self,
+                                   const GArray *properties,
+                                   GPtrArray **ret,
+                                   GError **error)
 {
   return TRUE;
 }
@@ -456,16 +507,19 @@ gboolean gabble_muc_channel_get_properties (GabbleMucChannel *obj, const GArray 
 /**
  * gabble_muc_channel_get_remote_pending_members
  *
- * Implements DBus method GetRemotePendingMembers
+ * Implements D-Bus method GetRemotePendingMembers
  * on interface org.freedesktop.Telepathy.Channel.Interface.Group
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_muc_channel_get_remote_pending_members (GabbleMucChannel *obj, GArray ** ret, GError **error)
+gboolean
+gabble_muc_channel_get_remote_pending_members (GabbleMucChannel *self,
+                                               GArray **ret,
+                                               GError **error)
 {
   return TRUE;
 }
@@ -474,16 +528,19 @@ gboolean gabble_muc_channel_get_remote_pending_members (GabbleMucChannel *obj, G
 /**
  * gabble_muc_channel_get_self_handle
  *
- * Implements DBus method GetSelfHandle
+ * Implements D-Bus method GetSelfHandle
  * on interface org.freedesktop.Telepathy.Channel.Interface.Group
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_muc_channel_get_self_handle (GabbleMucChannel *obj, guint* ret, GError **error)
+gboolean
+gabble_muc_channel_get_self_handle (GabbleMucChannel *self,
+                                    guint *ret,
+                                    GError **error)
 {
   return TRUE;
 }
@@ -492,16 +549,20 @@ gboolean gabble_muc_channel_get_self_handle (GabbleMucChannel *obj, guint* ret, 
 /**
  * gabble_muc_channel_list_pending_messages
  *
- * Implements DBus method ListPendingMessages
+ * Implements D-Bus method ListPendingMessages
  * on interface org.freedesktop.Telepathy.Channel.Type.Text
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_muc_channel_list_pending_messages (GabbleMucChannel *obj, gboolean clear, GPtrArray ** ret, GError **error)
+gboolean
+gabble_muc_channel_list_pending_messages (GabbleMucChannel *self,
+                                          gboolean clear,
+                                          GPtrArray **ret,
+                                          GError **error)
 {
   return TRUE;
 }
@@ -510,16 +571,19 @@ gboolean gabble_muc_channel_list_pending_messages (GabbleMucChannel *obj, gboole
 /**
  * gabble_muc_channel_list_properties
  *
- * Implements DBus method ListProperties
+ * Implements D-Bus method ListProperties
  * on interface org.freedesktop.Telepathy.Properties
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_muc_channel_list_properties (GabbleMucChannel *obj, GPtrArray ** ret, GError **error)
+gboolean
+gabble_muc_channel_list_properties (GabbleMucChannel *self,
+                                    GPtrArray **ret,
+                                    GError **error)
 {
   return TRUE;
 }
@@ -528,31 +592,38 @@ gboolean gabble_muc_channel_list_properties (GabbleMucChannel *obj, GPtrArray **
 /**
  * gabble_muc_channel_provide_password
  *
- * Implements DBus method ProvidePassword
+ * Implements D-Bus method ProvidePassword
  * on interface org.freedesktop.Telepathy.Channel.Interface.Password
  *
- * @context: The DBUS invocation context to use to return values
+ * @context: The D-Bus invocation context to use to return values
  *           or throw an error.
  */
-gboolean gabble_muc_channel_provide_password (GabbleMucChannel *obj, const gchar * password, DBusGMethodInvocation *context)
+void
+gabble_muc_channel_provide_password (GabbleMucChannel *self,
+                                     const gchar *password,
+                                     DBusGMethodInvocation *context)
 {
-  return TRUE;
+  return;
 }
 
 
 /**
  * gabble_muc_channel_remove_members
  *
- * Implements DBus method RemoveMembers
+ * Implements D-Bus method RemoveMembers
  * on interface org.freedesktop.Telepathy.Channel.Interface.Group
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_muc_channel_remove_members (GabbleMucChannel *obj, const GArray * contacts, const gchar * message, GError **error)
+gboolean
+gabble_muc_channel_remove_members (GabbleMucChannel *self,
+                                   const GArray *contacts,
+                                   const gchar *message,
+                                   GError **error)
 {
   return TRUE;
 }
@@ -561,16 +632,20 @@ gboolean gabble_muc_channel_remove_members (GabbleMucChannel *obj, const GArray 
 /**
  * gabble_muc_channel_send
  *
- * Implements DBus method Send
+ * Implements D-Bus method Send
  * on interface org.freedesktop.Telepathy.Channel.Type.Text
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_muc_channel_send (GabbleMucChannel *obj, guint type, const gchar * text, GError **error)
+gboolean
+gabble_muc_channel_send (GabbleMucChannel *self,
+                         guint type,
+                         const gchar *text,
+                         GError **error)
 {
   return TRUE;
 }
@@ -579,14 +654,17 @@ gboolean gabble_muc_channel_send (GabbleMucChannel *obj, guint type, const gchar
 /**
  * gabble_muc_channel_set_properties
  *
- * Implements DBus method SetProperties
+ * Implements D-Bus method SetProperties
  * on interface org.freedesktop.Telepathy.Properties
  *
- * @context: The DBUS invocation context to use to return values
+ * @context: The D-Bus invocation context to use to return values
  *           or throw an error.
  */
-gboolean gabble_muc_channel_set_properties (GabbleMucChannel *obj, const GPtrArray * properties, DBusGMethodInvocation *context)
+void
+gabble_muc_channel_set_properties (GabbleMucChannel *self,
+                                   const GPtrArray *properties,
+                                   DBusGMethodInvocation *context)
 {
-  return TRUE;
+  return;
 }
 

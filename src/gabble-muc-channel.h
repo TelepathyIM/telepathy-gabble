@@ -48,6 +48,8 @@ struct _GabbleMucChannel {
     GabbleGroupMixin group;
     GabblePropertiesMixin properties;
     GabbleTextMixin text;
+
+    gpointer priv;
 };
 
 GType gabble_muc_channel_get_type(void);
@@ -73,28 +75,124 @@ gboolean _gabble_muc_channel_receive (GabbleMucChannel *chan, TpChannelTextMessa
 
 void _gabble_muc_channel_handle_invited (GabbleMucChannel *chan, GabbleHandle inviter, const gchar *message);
 
-gboolean gabble_muc_channel_acknowledge_pending_messages (GabbleMucChannel *obj, const GArray * ids, GError **error);
-gboolean gabble_muc_channel_add_members (GabbleMucChannel *obj, const GArray * contacts, const gchar * message, GError **error);
-gboolean gabble_muc_channel_close (GabbleMucChannel *obj, GError **error);
-gboolean gabble_muc_channel_get_all_members (GabbleMucChannel *obj, GArray ** ret, GArray ** ret1, GArray ** ret2, GError **error);
-gboolean gabble_muc_channel_get_channel_type (GabbleMucChannel *obj, gchar ** ret, GError **error);
-gboolean gabble_muc_channel_get_group_flags (GabbleMucChannel *obj, guint* ret, GError **error);
-gboolean gabble_muc_channel_get_handle (GabbleMucChannel *obj, guint* ret, guint* ret1, GError **error);
-gboolean gabble_muc_channel_get_handle_owners (GabbleMucChannel *obj, const GArray * handles, GArray ** ret, GError **error);
-gboolean gabble_muc_channel_get_interfaces (GabbleMucChannel *obj, gchar *** ret, GError **error);
-gboolean gabble_muc_channel_get_local_pending_members (GabbleMucChannel *obj, GArray ** ret, GError **error);
-gboolean gabble_muc_channel_get_members (GabbleMucChannel *obj, GArray ** ret, GError **error);
-gboolean gabble_muc_channel_get_message_types (GabbleMucChannel *obj, GArray ** ret, GError **error);
-gboolean gabble_muc_channel_get_password_flags (GabbleMucChannel *obj, guint* ret, GError **error);
-gboolean gabble_muc_channel_get_properties (GabbleMucChannel *obj, const GArray * properties, GPtrArray ** ret, GError **error);
-gboolean gabble_muc_channel_get_remote_pending_members (GabbleMucChannel *obj, GArray ** ret, GError **error);
-gboolean gabble_muc_channel_get_self_handle (GabbleMucChannel *obj, guint* ret, GError **error);
-gboolean gabble_muc_channel_list_pending_messages (GabbleMucChannel *obj, gboolean clear, GPtrArray ** ret, GError **error);
-gboolean gabble_muc_channel_list_properties (GabbleMucChannel *obj, GPtrArray ** ret, GError **error);
-gboolean gabble_muc_channel_provide_password (GabbleMucChannel *obj, const gchar * password, DBusGMethodInvocation *context);
-gboolean gabble_muc_channel_remove_members (GabbleMucChannel *obj, const GArray * contacts, const gchar * message, GError **error);
-gboolean gabble_muc_channel_send (GabbleMucChannel *obj, guint type, const gchar * text, GError **error);
-gboolean gabble_muc_channel_set_properties (GabbleMucChannel *obj, const GPtrArray * properties, DBusGMethodInvocation *context);
+gboolean
+gabble_muc_channel_acknowledge_pending_messages (GabbleMucChannel *self,
+                                                 const GArray *ids,
+                                                 GError **error);
+
+gboolean
+gabble_muc_channel_add_members (GabbleMucChannel *self,
+                                const GArray *contacts,
+                                const gchar *message,
+                                GError **error);
+
+gboolean
+gabble_muc_channel_close (GabbleMucChannel *self,
+                          GError **error);
+
+gboolean
+gabble_muc_channel_get_all_members (GabbleMucChannel *self,
+                                    GArray **ret,
+                                    GArray **ret1,
+                                    GArray **ret2,
+                                    GError **error);
+
+gboolean
+gabble_muc_channel_get_channel_type (GabbleMucChannel *self,
+                                     gchar **ret,
+                                     GError **error);
+
+gboolean
+gabble_muc_channel_get_group_flags (GabbleMucChannel *self,
+                                    guint *ret,
+                                    GError **error);
+
+gboolean
+gabble_muc_channel_get_handle (GabbleMucChannel *self,
+                               guint *ret,
+                               guint *ret1,
+                               GError **error);
+
+gboolean
+gabble_muc_channel_get_handle_owners (GabbleMucChannel *self,
+                                      const GArray *handles,
+                                      GArray **ret,
+                                      GError **error);
+
+gboolean
+gabble_muc_channel_get_interfaces (GabbleMucChannel *self,
+                                   gchar ***ret,
+                                   GError **error);
+
+gboolean
+gabble_muc_channel_get_local_pending_members (GabbleMucChannel *self,
+                                              GArray **ret,
+                                              GError **error);
+
+gboolean
+gabble_muc_channel_get_members (GabbleMucChannel *self,
+                                GArray **ret,
+                                GError **error);
+
+gboolean
+gabble_muc_channel_get_message_types (GabbleMucChannel *self,
+                                      GArray **ret,
+                                      GError **error);
+
+gboolean
+gabble_muc_channel_get_password_flags (GabbleMucChannel *self,
+                                       guint *ret,
+                                       GError **error);
+
+gboolean
+gabble_muc_channel_get_properties (GabbleMucChannel *self,
+                                   const GArray *properties,
+                                   GPtrArray **ret,
+                                   GError **error);
+
+gboolean
+gabble_muc_channel_get_remote_pending_members (GabbleMucChannel *self,
+                                               GArray **ret,
+                                               GError **error);
+
+gboolean
+gabble_muc_channel_get_self_handle (GabbleMucChannel *self,
+                                    guint *ret,
+                                    GError **error);
+
+gboolean
+gabble_muc_channel_list_pending_messages (GabbleMucChannel *self,
+                                          gboolean clear,
+                                          GPtrArray **ret,
+                                          GError **error);
+
+gboolean
+gabble_muc_channel_list_properties (GabbleMucChannel *self,
+                                    GPtrArray **ret,
+                                    GError **error);
+
+void
+gabble_muc_channel_provide_password (GabbleMucChannel *self,
+                                     const gchar *password,
+                                     DBusGMethodInvocation *context);
+
+gboolean
+gabble_muc_channel_remove_members (GabbleMucChannel *self,
+                                   const GArray *contacts,
+                                   const gchar *message,
+                                   GError **error);
+
+gboolean
+gabble_muc_channel_send (GabbleMucChannel *self,
+                         guint type,
+                         const gchar *text,
+                         GError **error);
+
+void
+gabble_muc_channel_set_properties (GabbleMucChannel *self,
+                                   const GPtrArray *properties,
+                                   DBusGMethodInvocation *context);
+
 
 G_END_DECLS
 

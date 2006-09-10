@@ -35,6 +35,8 @@ struct _GabbleMediaStreamClass {
 
 struct _GabbleMediaStream {
     GObject parent;
+
+    gpointer priv;
 };
 
 GType gabble_media_stream_get_type(void);
@@ -85,14 +87,48 @@ GType gabble_media_stream_get_type(void);
 #define TP_TYPE_CODEC_LIST (dbus_g_type_get_collection ("GPtrArray", \
       TP_TYPE_CODEC_STRUCT))
 
-gboolean gabble_media_stream_codec_choice (GabbleMediaStream *obj, guint codec_id, GError **error);
-gboolean gabble_media_stream_error (GabbleMediaStream *obj, guint errno, const gchar * message, GError **error);
-gboolean gabble_media_stream_native_candidates_prepared (GabbleMediaStream *obj, GError **error);
-gboolean gabble_media_stream_new_active_candidate_pair (GabbleMediaStream *obj, const gchar * native_candidate_id, const gchar * remote_candidate_id, GError **error);
-gboolean gabble_media_stream_new_native_candidate (GabbleMediaStream *obj, const gchar * candidate_id, const GPtrArray * transports, GError **error);
-gboolean gabble_media_stream_ready (GabbleMediaStream *obj, const GPtrArray * codecs, GError **error);
-gboolean gabble_media_stream_stream_state (GabbleMediaStream *obj, guint state, GError **error);
-gboolean gabble_media_stream_supported_codecs (GabbleMediaStream *obj, const GPtrArray * codecs, GError **error);
+gboolean
+gabble_media_stream_codec_choice (GabbleMediaStream *self,
+                                  guint codec_id,
+                                  GError **error);
+
+gboolean
+gabble_media_stream_error (GabbleMediaStream *self,
+                           guint errno,
+                           const gchar *message,
+                           GError **error);
+
+gboolean
+gabble_media_stream_native_candidates_prepared (GabbleMediaStream *self,
+                                                GError **error);
+
+gboolean
+gabble_media_stream_new_active_candidate_pair (GabbleMediaStream *self,
+                                               const gchar *native_candidate_id,
+                                               const gchar *remote_candidate_id,
+                                               GError **error);
+
+gboolean
+gabble_media_stream_new_native_candidate (GabbleMediaStream *self,
+                                          const gchar *candidate_id,
+                                          const GPtrArray *transports,
+                                          GError **error);
+
+gboolean
+gabble_media_stream_ready (GabbleMediaStream *self,
+                           const GPtrArray *codecs,
+                           GError **error);
+
+gboolean
+gabble_media_stream_stream_state (GabbleMediaStream *self,
+                                  guint state,
+                                  GError **error);
+
+gboolean
+gabble_media_stream_supported_codecs (GabbleMediaStream *self,
+                                      const GPtrArray *codecs,
+                                      GError **error);
+
 
 gboolean _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream, LmMessage *message, LmMessageNode *desc_node);
 gboolean _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream, LmMessage *message, LmMessageNode *transport_node);

@@ -821,7 +821,7 @@ gabble_handle_get_qdata (GabbleHandleRepo *repo,
 /**
  * gabble_handle_client_hold:
  * @repo: a #GabbleHandleRepo
- * @client_name: DBus bus name of client to hold the handle for
+ * @client_name: D-Bus bus name of client to hold the handle for
  * @handle: the handle to hold
  * @type: type of handle to hold
  * @error: used to return a pointer to a GError detailing any error that occurred
@@ -885,7 +885,7 @@ gabble_handle_client_hold (GabbleHandleRepo *repo,
 /**
  * gabble_handle_client_release:
  * @repo: a #GabbleHandleRepo
- * @client_name: DBus bus name of client to release the handle for
+ * @client_name: D-Bus bus name of client to release the handle for
  * @handle: the handle to release
  * @type: type of handle to release
  * @error: used to return a pointer to a GError detailing any error that occurred

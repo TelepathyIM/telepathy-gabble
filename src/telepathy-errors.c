@@ -1,5 +1,5 @@
 /*
- * telepathy-errors.c - Source for DBus error types used in telepathy
+ * telepathy-errors.c - Source for D-Bus error types used in telepathy
  * Copyright (C) 2005 Collabora Ltd.
  * Copyright (C) 2005 Nokia Corporation
  *

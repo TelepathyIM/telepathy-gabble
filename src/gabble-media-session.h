@@ -58,6 +58,8 @@ struct _GabbleMediaSessionClass {
 
 struct _GabbleMediaSession {
     GObject parent;
+
+    gpointer priv;
 };
 
 GType gabble_media_session_get_type(void);
@@ -89,8 +91,16 @@ GType gabble_media_session_get_type(void);
     } \
   } G_STMT_END
 
-gboolean gabble_media_session_error (GabbleMediaSession *obj, guint errno, const gchar * message, GError **error);
-gboolean gabble_media_session_ready (GabbleMediaSession *obj, GError **error);
+gboolean
+gabble_media_session_error (GabbleMediaSession *self,
+                            guint errno,
+                            const gchar *message,
+                            GError **error);
+
+gboolean
+gabble_media_session_ready (GabbleMediaSession *self,
+                            GError **error);
+
 
 void _gabble_media_session_handle_action (GabbleMediaSession *session,
                                           LmMessage *message,

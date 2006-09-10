@@ -1,5 +1,5 @@
 /*
- * telepathy-helpers.c - Source for some Telepathy DBus helper functions
+ * telepathy-helpers.c - Source for some Telepathy D-Bus helper functions
  * Copyright (C) 2005 Collabora Ltd.
  * Copyright (C) 2005 Nokia Corporation
  *

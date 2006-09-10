@@ -46,12 +46,16 @@ struct _GabbleConnectionManagerPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_CONNECTION_MANAGER_GET_PRIVATE(o)     (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_CONNECTION_MANAGER, GabbleConnectionManagerPrivate))
+#define GABBLE_CONNECTION_MANAGER_GET_PRIVATE(obj) \
+    ((GabbleConnectionManagerPrivate *)obj->priv)
 
 static void
-gabble_connection_manager_init (GabbleConnectionManager *obj)
+gabble_connection_manager_init (GabbleConnectionManager *self)
 {
-  GabbleConnectionManagerPrivate *priv = GABBLE_CONNECTION_MANAGER_GET_PRIVATE (obj);
+  GabbleConnectionManagerPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
+      GABBLE_TYPE_CONNECTION_MANAGER, GabbleConnectionManagerPrivate);
+
+  self->priv = priv;
 
   /* allocate any data required by the object here */
 }
@@ -114,16 +118,20 @@ gabble_connection_manager_finalize (GObject *object)
 /**
  * gabble_connection_manager_get_parameters
  *
- * Implements DBus method GetParameters
+ * Implements D-Bus method GetParameters
  * on interface org.freedesktop.Telepathy.ConnectionManager
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_connection_manager_get_parameters (GabbleConnectionManager *obj, const gchar * proto, GPtrArray ** ret, GError **error)
+gboolean
+gabble_connection_manager_get_parameters (GabbleConnectionManager *self,
+                                          const gchar *proto,
+                                          GPtrArray **ret,
+                                          GError **error)
 {
   return TRUE;
 }
@@ -132,16 +140,19 @@ gboolean gabble_connection_manager_get_parameters (GabbleConnectionManager *obj,
 /**
  * gabble_connection_manager_list_protocols
  *
- * Implements DBus method ListProtocols
+ * Implements D-Bus method ListProtocols
  * on interface org.freedesktop.Telepathy.ConnectionManager
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_connection_manager_list_protocols (GabbleConnectionManager *obj, gchar *** ret, GError **error)
+gboolean
+gabble_connection_manager_list_protocols (GabbleConnectionManager *self,
+                                          gchar ***ret,
+                                          GError **error)
 {
   return TRUE;
 }
@@ -150,16 +161,22 @@ gboolean gabble_connection_manager_list_protocols (GabbleConnectionManager *obj,
 /**
  * gabble_connection_manager_request_connection
  *
- * Implements DBus method RequestConnection
+ * Implements D-Bus method RequestConnection
  * on interface org.freedesktop.Telepathy.ConnectionManager
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_connection_manager_request_connection (GabbleConnectionManager *obj, const gchar * proto, GHashTable * parameters, gchar ** ret, gchar ** ret1, GError **error)
+gboolean
+gabble_connection_manager_request_connection (GabbleConnectionManager *self,
+                                              const gchar *proto,
+                                              GHashTable *parameters,
+                                              gchar **ret,
+                                              gchar **ret1,
+                                              GError **error)
 {
   return TRUE;
 }

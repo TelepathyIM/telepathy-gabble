@@ -279,14 +279,15 @@ gabble_properties_mixin_get_properties (GObject *obj, const GArray *properties, 
   return TRUE;
 }
 
-gboolean
-gabble_properties_mixin_set_properties (GObject *obj, const GPtrArray *properties, DBusGMethodInvocation *context)
+void
+gabble_properties_mixin_set_properties (GObject *obj,
+                                        const GPtrArray *properties,
+                                        DBusGMethodInvocation *context)
 {
   GabblePropertiesMixin *mixin = GABBLE_PROPERTIES_MIXIN (obj);
   GabblePropertiesMixinClass *mixin_cls = GABBLE_PROPERTIES_MIXIN_CLASS (
                                             G_OBJECT_GET_CLASS (obj));
   GabblePropertiesContext *ctx = &mixin->priv->context;
-  gboolean result;
   GError *error;
   guint i;
 
@@ -299,7 +300,6 @@ gabble_properties_mixin_set_properties (GObject *obj, const GPtrArray *propertie
     }
 
   ctx->dbus_ctx = context;
-  result = TRUE;
   error = NULL;
 
   /* Check input property identifiers */
@@ -353,20 +353,16 @@ gabble_properties_mixin_set_properties (GObject *obj, const GPtrArray *propertie
   if (mixin_cls->set_properties)
     {
       if (mixin_cls->set_properties (obj, ctx, &error))
-        goto OUT;
+        return;
     }
   else
     {
       gabble_properties_context_return (ctx, NULL);
-      goto OUT;
+      return;
     }
 
 ERROR:
   gabble_properties_context_return (ctx, error);
-  result = FALSE;
-
-OUT:
-  return result;
 }
 
 gboolean

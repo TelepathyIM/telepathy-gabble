@@ -34,6 +34,8 @@ struct _GabbleConnectionManagerClass {
 
 struct _GabbleConnectionManager {
     GObject parent;
+
+    gpointer priv;
 };
 
 GType gabble_connection_manager_get_type(void);
@@ -53,9 +55,25 @@ GType gabble_connection_manager_get_type(void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_CONNECTION_MANAGER, GabbleConnectionManagerClass))
 
 
-gboolean gabble_connection_manager_get_parameters (GabbleConnectionManager *obj, const gchar * proto, GPtrArray ** ret, GError **error);
-gboolean gabble_connection_manager_list_protocols (GabbleConnectionManager *obj, gchar *** ret, GError **error);
-gboolean gabble_connection_manager_request_connection (GabbleConnectionManager *obj, const gchar * proto, GHashTable * parameters, gchar ** ret, gchar ** ret1, GError **error);
+gboolean
+gabble_connection_manager_get_parameters (GabbleConnectionManager *self,
+                                          const gchar *proto,
+                                          GPtrArray **ret,
+                                          GError **error);
+
+gboolean
+gabble_connection_manager_list_protocols (GabbleConnectionManager *self,
+                                          gchar ***ret,
+                                          GError **error);
+
+gboolean
+gabble_connection_manager_request_connection (GabbleConnectionManager *self,
+                                              const gchar *proto,
+                                              GHashTable *parameters,
+                                              gchar **ret,
+                                              gchar **ret1,
+                                              GError **error);
+
 
 
 G_END_DECLS

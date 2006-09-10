@@ -104,12 +104,16 @@ struct _GabbleMediaChannelPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_MEDIA_CHANNEL_GET_PRIVATE(o)     (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_MEDIA_CHANNEL, GabbleMediaChannelPrivate))
+#define GABBLE_MEDIA_CHANNEL_GET_PRIVATE(obj) \
+    ((GabbleMediaChannelPrivate *)obj->priv)
 
 static void
-gabble_media_channel_init (GabbleMediaChannel *obj)
+gabble_media_channel_init (GabbleMediaChannel *self)
 {
-  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (obj);
+  GabbleMediaChannelPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
+      GABBLE_TYPE_MEDIA_CHANNEL, GabbleMediaChannelPrivate);
+
+  self->priv = priv;
 
   priv->next_stream_id = 1;
 }
@@ -409,7 +413,7 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_media_channel_marshal_VOID__INT_INT_INT,
+                  gabble_media_channel_marshal_VOID__UINT_UINT_UINT,
                   G_TYPE_NONE, 3, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT);
 
   signals[STREAM_REMOVED] =
@@ -418,7 +422,7 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  g_cclosure_marshal_VOID__INT,
+                  g_cclosure_marshal_VOID__UINT,
                   G_TYPE_NONE, 1, G_TYPE_UINT);
 
   signals[STREAM_STATE_CHANGED] =
@@ -427,7 +431,7 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_media_channel_marshal_VOID__INT_INT,
+                  gabble_media_channel_marshal_VOID__UINT_UINT,
                   G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_UINT);
 
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_media_channel_class), &dbus_glib_gabble_media_channel_object_info);
@@ -475,42 +479,49 @@ gabble_media_channel_finalize (GObject *object)
 /**
  * gabble_media_channel_add_members
  *
- * Implements DBus method AddMembers
+ * Implements D-Bus method AddMembers
  * on interface org.freedesktop.Telepathy.Channel.Interface.Group
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_channel_add_members (GabbleMediaChannel *obj, const GArray * contacts, const gchar * message, GError **error)
+gboolean
+gabble_media_channel_add_members (GabbleMediaChannel *self,
+                                  const GArray *contacts,
+                                  const gchar *message,
+                                  GError **error)
 {
-  return gabble_group_mixin_add_members (G_OBJECT (obj), contacts, message, error);
+  return gabble_group_mixin_add_members (G_OBJECT (self), contacts, message,
+      error);
 }
 
 
 /**
  * gabble_media_channel_close
  *
- * Implements DBus method Close
+ * Implements D-Bus method Close
  * on interface org.freedesktop.Telepathy.Channel
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_channel_close (GabbleMediaChannel *obj, GError **error)
+gboolean
+gabble_media_channel_close (GabbleMediaChannel *self,
+                            GError **error)
 {
   GabbleMediaChannelPrivate *priv;
 
-  DEBUG ("called on %p", obj);
+  DEBUG ("called on %p", self);
 
-  g_assert (GABBLE_IS_MEDIA_CHANNEL (obj));
+  g_assert (GABBLE_IS_MEDIA_CHANNEL (self));
 
-  priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (obj);
+  priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
 
   if (priv->closed)
     return TRUE;
@@ -522,7 +533,7 @@ gboolean gabble_media_channel_close (GabbleMediaChannel *obj, GError **error)
       _gabble_media_session_terminate (priv->session);
     }
 
-  g_signal_emit(obj, signals[CLOSED], 0);
+  g_signal_emit (self, signals[CLOSED], 0);
 
   return TRUE;
 }
@@ -531,34 +542,43 @@ gboolean gabble_media_channel_close (GabbleMediaChannel *obj, GError **error)
 /**
  * gabble_media_channel_get_all_members
  *
- * Implements DBus method GetAllMembers
+ * Implements D-Bus method GetAllMembers
  * on interface org.freedesktop.Telepathy.Channel.Interface.Group
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_channel_get_all_members (GabbleMediaChannel *obj, GArray ** ret, GArray ** ret1, GArray ** ret2, GError **error)
+gboolean
+gabble_media_channel_get_all_members (GabbleMediaChannel *self,
+                                      GArray **ret,
+                                      GArray **ret1,
+                                      GArray **ret2,
+                                      GError **error)
 {
-  return gabble_group_mixin_get_all_members (G_OBJECT (obj), ret, ret1, ret2, error);
+  return gabble_group_mixin_get_all_members (G_OBJECT (self), ret, ret1, ret2,
+      error);
 }
 
 
 /**
  * gabble_media_channel_get_channel_type
  *
- * Implements DBus method GetChannelType
+ * Implements D-Bus method GetChannelType
  * on interface org.freedesktop.Telepathy.Channel
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_channel_get_channel_type (GabbleMediaChannel *obj, gchar ** ret, GError **error)
+gboolean
+gabble_media_channel_get_channel_type (GabbleMediaChannel *self,
+                                       gchar **ret,
+                                       GError **error)
 {
   *ret = g_strdup (TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA);
 
@@ -569,40 +589,47 @@ gboolean gabble_media_channel_get_channel_type (GabbleMediaChannel *obj, gchar *
 /**
  * gabble_media_channel_get_group_flags
  *
- * Implements DBus method GetGroupFlags
+ * Implements D-Bus method GetGroupFlags
  * on interface org.freedesktop.Telepathy.Channel.Interface.Group
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_channel_get_group_flags (GabbleMediaChannel *obj, guint* ret, GError **error)
+gboolean
+gabble_media_channel_get_group_flags (GabbleMediaChannel *self,
+                                      guint *ret,
+                                      GError **error)
 {
-  return gabble_group_mixin_get_group_flags (G_OBJECT (obj), ret, error);
+  return gabble_group_mixin_get_group_flags (G_OBJECT (self), ret, error);
 }
 
 
 /**
  * gabble_media_channel_get_handle
  *
- * Implements DBus method GetHandle
+ * Implements D-Bus method GetHandle
  * on interface org.freedesktop.Telepathy.Channel
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_channel_get_handle (GabbleMediaChannel *obj, guint* ret, guint* ret1, GError **error)
+gboolean
+gabble_media_channel_get_handle (GabbleMediaChannel *self,
+                                 guint *ret,
+                                 guint *ret1,
+                                 GError **error)
 {
   GabbleMediaChannelPrivate *priv;
 
-  g_assert (GABBLE_IS_MEDIA_CHANNEL (obj));
+  g_assert (GABBLE_IS_MEDIA_CHANNEL (self));
 
-  priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (obj);
+  priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
 
   *ret = 0;
   *ret1 = 0;
@@ -614,34 +641,42 @@ gboolean gabble_media_channel_get_handle (GabbleMediaChannel *obj, guint* ret, g
 /**
  * gabble_media_channel_get_handle_owners
  *
- * Implements DBus method GetHandleOwners
+ * Implements D-Bus method GetHandleOwners
  * on interface org.freedesktop.Telepathy.Channel.Interface.Group
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_channel_get_handle_owners (GabbleMediaChannel *obj, const GArray * handles, GArray ** ret, GError **error)
+gboolean
+gabble_media_channel_get_handle_owners (GabbleMediaChannel *self,
+                                        const GArray *handles,
+                                        GArray **ret,
+                                        GError **error)
 {
-  return gabble_group_mixin_get_handle_owners (G_OBJECT (obj), handles, ret, error);
+  return gabble_group_mixin_get_handle_owners (G_OBJECT (self), handles, ret,
+      error);
 }
 
 
 /**
  * gabble_media_channel_get_interfaces
  *
- * Implements DBus method GetInterfaces
+ * Implements D-Bus method GetInterfaces
  * on interface org.freedesktop.Telepathy.Channel
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_channel_get_interfaces (GabbleMediaChannel *obj, gchar *** ret, GError **error)
+gboolean
+gabble_media_channel_get_interfaces (GabbleMediaChannel *self,
+                                     gchar ***ret,
+                                     GError **error)
 {
   const gchar *interfaces[] = {
       TP_IFACE_CHANNEL_INTERFACE_GROUP,
@@ -658,94 +693,111 @@ gboolean gabble_media_channel_get_interfaces (GabbleMediaChannel *obj, gchar ***
 /**
  * gabble_media_channel_get_local_pending_members
  *
- * Implements DBus method GetLocalPendingMembers
+ * Implements D-Bus method GetLocalPendingMembers
  * on interface org.freedesktop.Telepathy.Channel.Interface.Group
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_channel_get_local_pending_members (GabbleMediaChannel *obj, GArray ** ret, GError **error)
+gboolean
+gabble_media_channel_get_local_pending_members (GabbleMediaChannel *self,
+                                                GArray **ret,
+                                                GError **error)
 {
-  return gabble_group_mixin_get_local_pending_members (G_OBJECT (obj), ret, error);
+  return gabble_group_mixin_get_local_pending_members (G_OBJECT (self), ret,
+      error);
 }
 
 
 /**
  * gabble_media_channel_get_members
  *
- * Implements DBus method GetMembers
+ * Implements D-Bus method GetMembers
  * on interface org.freedesktop.Telepathy.Channel.Interface.Group
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_channel_get_members (GabbleMediaChannel *obj, GArray ** ret, GError **error)
+gboolean
+gabble_media_channel_get_members (GabbleMediaChannel *self,
+                                  GArray **ret,
+                                  GError **error)
 {
-  return gabble_group_mixin_get_members (G_OBJECT (obj), ret, error);
+  return gabble_group_mixin_get_members (G_OBJECT (self), ret, error);
 }
 
 
 /**
  * gabble_media_channel_get_remote_pending_members
  *
- * Implements DBus method GetRemotePendingMembers
+ * Implements D-Bus method GetRemotePendingMembers
  * on interface org.freedesktop.Telepathy.Channel.Interface.Group
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_channel_get_remote_pending_members (GabbleMediaChannel *obj, GArray ** ret, GError **error)
+gboolean
+gabble_media_channel_get_remote_pending_members (GabbleMediaChannel *self,
+                                                 GArray **ret,
+                                                 GError **error)
 {
-  return gabble_group_mixin_get_remote_pending_members (G_OBJECT (obj), ret, error);
+  return gabble_group_mixin_get_remote_pending_members (G_OBJECT (self), ret,
+      error);
 }
 
 
 /**
  * gabble_media_channel_get_self_handle
  *
- * Implements DBus method GetSelfHandle
+ * Implements D-Bus method GetSelfHandle
  * on interface org.freedesktop.Telepathy.Channel.Interface.Group
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_channel_get_self_handle (GabbleMediaChannel *obj, guint* ret, GError **error)
+gboolean
+gabble_media_channel_get_self_handle (GabbleMediaChannel *self,
+                                      guint *ret,
+                                      GError **error)
 {
-  return gabble_group_mixin_get_self_handle (G_OBJECT (obj), ret, error);
+  return gabble_group_mixin_get_self_handle (G_OBJECT (self), ret, error);
 }
 
 
 /**
  * gabble_media_channel_get_session_handlers
  *
- * Implements DBus method GetSessionHandlers
+ * Implements D-Bus method GetSessionHandlers
  * on interface org.freedesktop.Telepathy.Channel.Interface.IceSignalling
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_channel_get_session_handlers (GabbleMediaChannel *obj, GPtrArray ** ret, GError **error)
+gboolean
+gabble_media_channel_get_session_handlers (GabbleMediaChannel *self,
+                                           GPtrArray **ret,
+                                           GError **error)
 {
   GabbleMediaChannelPrivate *priv;
 
-  g_assert (GABBLE_IS_MEDIA_CHANNEL (obj));
+  g_assert (GABBLE_IS_MEDIA_CHANNEL (self));
 
-  priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (obj);
+  priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
 
   if (priv->session)
     {
@@ -784,16 +836,19 @@ gboolean gabble_media_channel_get_session_handlers (GabbleMediaChannel *obj, GPt
 /**
  * gabble_media_channel_list_streams
  *
- * Implements DBus method ListStreams
+ * Implements D-Bus method ListStreams
  * on interface org.freedesktop.Telepathy.Channel.Type.StreamedMedia
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_channel_list_streams (GabbleMediaChannel *obj, GPtrArray ** ret, GError **error)
+gboolean
+gabble_media_channel_list_streams (GabbleMediaChannel *self,
+                                   GPtrArray **ret,
+                                   GError **error)
 {
 #if 0
   GabbleMediaChannelPrivate *priv;
@@ -855,47 +910,57 @@ gboolean gabble_media_channel_list_streams (GabbleMediaChannel *obj, GPtrArray *
 /**
  * gabble_media_channel_remove_members
  *
- * Implements DBus method RemoveMembers
+ * Implements D-Bus method RemoveMembers
  * on interface org.freedesktop.Telepathy.Channel.Interface.Group
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_channel_remove_members (GabbleMediaChannel *obj, const GArray * contacts, const gchar * message, GError **error)
+gboolean
+gabble_media_channel_remove_members (GabbleMediaChannel *self,
+                                     const GArray *contacts,
+                                     const gchar *message,
+                                     GError **error)
 {
-  return gabble_group_mixin_remove_members (G_OBJECT (obj), contacts, message, error);
+  return gabble_group_mixin_remove_members (G_OBJECT (self), contacts, message,
+      error);
 }
 
 
 /**
  * gabble_media_channel_request_streams
  *
- * Implements DBus method RequestStreams
+ * Implements D-Bus method RequestStreams
  * on interface org.freedesktop.Telepathy.Channel.Type.StreamedMedia
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
+ *         that occured, D-Bus will throw the error only if this
+ *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_channel_request_streams (GabbleMediaChannel *obj, guint contact_handle, const GArray * types, GArray ** ret, GError **error)
+gboolean
+gabble_media_channel_request_streams (GabbleMediaChannel *self,
+                                      guint contact_handle,
+                                      const GArray *types,
+                                      GArray **ret,
+                                      GError **error)
 {
   GabbleMediaChannelPrivate *priv;
 
-  g_assert (GABBLE_IS_MEDIA_CHANNEL (obj));
+  g_assert (GABBLE_IS_MEDIA_CHANNEL (self));
 
-  priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (obj);
+  priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
 
   if (!gabble_handle_is_valid (priv->conn->handles, TP_HANDLE_TYPE_CONTACT,
         contact_handle, error))
     return FALSE;
 
-  if (!handle_set_is_member (obj->group.members, contact_handle) &&
-      !handle_set_is_member (obj->group.remote_pending, contact_handle))
+  if (!handle_set_is_member (self->group.members, contact_handle) &&
+      !handle_set_is_member (self->group.remote_pending, contact_handle))
     {
       *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument, "given handle "
           "%u is not a member of the channel", contact_handle);

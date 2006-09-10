@@ -177,7 +177,7 @@ gabble_text_mixin_class_init (GObjectClass *obj_cls, glong offset)
                 G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                 0,
                 NULL, NULL,
-                text_mixin_marshal_VOID__INT_INT_INT_INT_INT_STRING,
+                text_mixin_marshal_VOID__UINT_UINT_UINT_UINT_UINT_STRING,
                 G_TYPE_NONE, 6, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING);
 
   mixin_cls->send_error_signal_id = g_signal_new ("send-error",
@@ -185,7 +185,7 @@ gabble_text_mixin_class_init (GObjectClass *obj_cls, glong offset)
                 G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                 0,
                 NULL, NULL,
-                text_mixin_marshal_VOID__INT_INT_INT_STRING,
+                text_mixin_marshal_VOID__UINT_UINT_UINT_STRING,
                 G_TYPE_NONE, 4, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING);
 
   mixin_cls->sent_signal_id = g_signal_new ("sent",
@@ -193,7 +193,7 @@ gabble_text_mixin_class_init (GObjectClass *obj_cls, glong offset)
                 G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                 0,
                 NULL, NULL,
-                text_mixin_marshal_VOID__INT_INT_STRING,
+                text_mixin_marshal_VOID__UINT_UINT_STRING,
                 G_TYPE_NONE, 3, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING);
 }
 
@@ -392,11 +392,11 @@ compare_pending_message (gconstpointer haystack,
 /**
  * gabble_text_mixin_acknowledge_pending_messages
  *
- * Implements DBus method AcknowledgePendingMessages
+ * Implements D-Bus method AcknowledgePendingMessages
  * on interface org.freedesktop.Telepathy.Channel.Type.Text
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
+ *         that occured, D-Bus will throw the error only if this
  *         function returns false.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -449,11 +449,11 @@ gboolean gabble_text_mixin_acknowledge_pending_messages (GObject *obj, const GAr
 /**
  * gabble_text_mixin_list_pending_messages
  *
- * Implements DBus method ListPendingMessages
+ * Implements D-Bus method ListPendingMessages
  * on interface org.freedesktop.Telepathy.Channel.Type.Text
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
+ *         that occured, D-Bus will throw the error only if this
  *         function returns false.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -500,11 +500,11 @@ gboolean gabble_text_mixin_list_pending_messages (GObject *obj, gboolean clear, 
 /**
  * gabble_text_mixin_send
  *
- * Implements DBus method Send
+ * Implements D-Bus method Send
  * on interface org.freedesktop.Telepathy.Channel.Type.Text
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
+ *         that occured, D-Bus will throw the error only if this
  *         function returns false.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.

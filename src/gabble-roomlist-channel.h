@@ -34,6 +34,8 @@ struct _GabbleRoomlistChannelClass {
 
 struct _GabbleRoomlistChannel {
     GObject parent;
+
+    gpointer priv;
 };
 
 GType gabble_roomlist_channel_get_type(void);
@@ -55,12 +57,35 @@ GType gabble_roomlist_channel_get_type(void);
 
 GabbleRoomlistChannel *_gabble_roomlist_channel_new (GabbleConnection *conn, const gchar *object_path, const gchar *conference_server);
 
-gboolean gabble_roomlist_channel_close (GabbleRoomlistChannel *obj, GError **error);
-gboolean gabble_roomlist_channel_get_channel_type (GabbleRoomlistChannel *obj, gchar ** ret, GError **error);
-gboolean gabble_roomlist_channel_get_handle (GabbleRoomlistChannel *obj, guint* ret, guint* ret1, GError **error);
-gboolean gabble_roomlist_channel_get_interfaces (GabbleRoomlistChannel *obj, gchar *** ret, GError **error);
-gboolean gabble_roomlist_channel_get_listing_rooms (GabbleRoomlistChannel *obj, gboolean* ret, GError **error);
-gboolean gabble_roomlist_channel_list_rooms (GabbleRoomlistChannel *obj, GError **error);
+gboolean
+gabble_roomlist_channel_close (GabbleRoomlistChannel *self,
+                               GError **error);
+
+gboolean
+gabble_roomlist_channel_get_channel_type (GabbleRoomlistChannel *self,
+                                          gchar **ret,
+                                          GError **error);
+
+gboolean
+gabble_roomlist_channel_get_handle (GabbleRoomlistChannel *self,
+                                    guint *ret,
+                                    guint *ret1,
+                                    GError **error);
+
+gboolean
+gabble_roomlist_channel_get_interfaces (GabbleRoomlistChannel *self,
+                                        gchar ***ret,
+                                        GError **error);
+
+gboolean
+gabble_roomlist_channel_get_listing_rooms (GabbleRoomlistChannel *self,
+                                           gboolean *ret,
+                                           GError **error);
+
+gboolean
+gabble_roomlist_channel_list_rooms (GabbleRoomlistChannel *self,
+                                    GError **error);
+
 
 
 G_END_DECLS

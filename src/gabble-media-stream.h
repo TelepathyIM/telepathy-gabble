@@ -26,6 +26,14 @@
 
 G_BEGIN_DECLS
 
+typedef enum {
+    JST_STATE_INVALID = 0,
+    JST_STATE_CREATED,
+    JST_STATE_INITIATED,
+    JST_STATE_PRE_ACCEPTED,
+    JST_STATE_ACCEPTED,
+} JingleStreamState;
+
 typedef struct _GabbleMediaStream GabbleMediaStream;
 typedef struct _GabbleMediaStreamClass GabbleMediaStreamClass;
 
@@ -135,8 +143,6 @@ gboolean _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream, LmM
 gboolean _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream, LmMessage *message, LmMessageNode *transport_node);
 void _gabble_media_stream_content_node_add_description (GabbleMediaStream *stream, LmMessageNode *content_node);
 LmMessageNode *_gabble_media_stream_content_node_add_transport (GabbleMediaStream *stream, LmMessageNode *content_node);
-
-void _gabble_media_stream_set_playing (GabbleMediaStream *stream, gboolean playing);
 
 G_END_DECLS
 

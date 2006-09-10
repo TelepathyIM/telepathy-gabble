@@ -91,7 +91,6 @@ struct _GabbleMediaSessionPrivate
   gchar *object_path;
 
   GHashTable *streams;
-  gint pending_stream_count;
 
   gchar *id;
   JingleInitiator initiator;
@@ -102,7 +101,6 @@ struct _GabbleMediaSessionPrivate
 
   gboolean ready;
   gboolean accepted;
-  gboolean got_active_candidate_pair;
 
   guint timer_id;
 
@@ -142,20 +140,12 @@ gabble_media_session_init (GabbleMediaSession *self)
 
 static void stream_destroy_cb (GabbleMediaStream *stream,
                                GabbleMediaSession *session);
-static void stream_new_active_candidate_pair_cb (GabbleMediaStream *stream,
-                                                 const gchar *native_candidate_id,
-                                                 const gchar *remote_candidate_id,
-                                                 GabbleMediaSession *session);
-static void stream_new_native_candidate_cb (GabbleMediaStream *stream,
-                                            const gchar *candidate_id,
-                                            const GPtrArray *transports,
-                                            GabbleMediaSession *session);
-static void stream_ready_cb (GabbleMediaStream *stream,
-                             const GPtrArray *codecs,
-                             GabbleMediaSession *session);
-static void stream_supported_codecs_cb (GabbleMediaStream *stream,
-                                        const GPtrArray *codecs,
-                                        GabbleMediaSession *session);
+static void stream_state_changed_cb (GabbleMediaStream *stream,
+                                     GParamSpec *param,
+                                     GabbleMediaSession *session);
+static void stream_got_codecs_changed_cb (GabbleMediaStream *stream,
+                                          GParamSpec *param,
+                                          GabbleMediaSession *session);
 
 static void
 _emit_new_stream (const gchar *name,
@@ -180,7 +170,7 @@ _emit_new_stream (const gchar *name,
   g_free (object_path);
 }
 
-static GabbleMediaStream *
+static guint
 create_media_stream (GabbleMediaSession *session,
                      const gchar *name,
                      JingleInitiator initiator,
@@ -226,29 +216,21 @@ create_media_stream (GabbleMediaSession *session,
   g_signal_connect (stream, "destroy",
                     (GCallback) stream_destroy_cb,
                     session);
-  g_signal_connect (stream, "new-active-candidate-pair",
-                    (GCallback) stream_new_active_candidate_pair_cb,
+  g_signal_connect (stream, "notify::state",
+                    (GCallback) stream_state_changed_cb,
                     session);
-  g_signal_connect (stream, "new-native-candidate",
-                    (GCallback) stream_new_native_candidate_cb,
-                    session);
-  g_signal_connect (stream, "ready",
-                    (GCallback) stream_ready_cb,
-                    session);
-  g_signal_connect (stream, "supported-codecs",
-                    (GCallback) stream_supported_codecs_cb,
+  g_signal_connect (stream, "notify::got-codecs",
+                    (GCallback) stream_got_codecs_changed_cb,
                     session);
 
   g_hash_table_insert (priv->streams, g_strdup (name), stream);
-
-  priv->pending_stream_count++;
 
   g_free (object_path);
 
   if (priv->ready)
     _emit_new_stream (name, stream, session);
 
-  return stream;
+  return id;
 }
 
 #if 0
@@ -712,12 +694,34 @@ _handle_create (GabbleMediaSession *session,
       return FALSE;
     }
 
-  create_media_stream (session, stream_name, INITIATOR_REMOTE,
-                       stream_type);
+  stream = create_media_stream (session, stream_name, INITIATOR_REMOTE,
+                                stream_type);
+
+  g_object_set (stream, "jingle-state", JST_STATE_PRE_ACCEPTED, NULL);
 
   return TRUE;
 }
 
+static gboolean
+_handle_accept (GabbleMediaSession *session,
+                LmMessage *message,
+                LmMessageNode *content_node,
+                const gchar *stream_name,
+                GabbleMediaStream *stream,
+                LmMessageNode *desc_node,
+                LmMessageNode *trans_node)
+{
+  if (stream == NULL)
+    {
+      GMS_DEBUG_WARNING (session, "unable to handle accept for unknown stream "
+          "\"%s\"", stream_name);
+      return FALSE;
+    }
+
+  g_object_set (stream, "jingle-state", JST_STATE_ACCEPTED, NULL);
+
+  return TRUE;
+}
 
 static gboolean
 _handle_codecs (GabbleMediaSession *session,
@@ -1112,24 +1116,6 @@ accept_msg_reply_cb (GabbleConnection *conn,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
-static void
-_set_streams_playing_one (const gchar *name,
-                          GabbleMediaStream *stream,
-                          GabbleMediaSession *session)
-{
-  GMS_DEBUG_INFO (session, "setting stream \"%s\" playing", name);
-
-  _gabble_media_stream_set_playing (stream, TRUE);
-}
-
-static void
-_set_streams_playing (GabbleMediaSession *session)
-{
-  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
-
-  g_hash_table_foreach (priv->streams, (GHFunc) _set_streams_playing_one, session);
-}
-
 typedef struct _AddDescriptionsData AddDescriptionsData;
 
 struct _AddDescriptionsData {
@@ -1189,9 +1175,6 @@ try_session_accept (GabbleMediaSession *session)
           "acceptance, active candidate pair or streams to become ready");
       return;
     }
-
-  /* Start the stream playing */
-  _set_streams_playing (session);
 
   if (priv->mode == MODE_GOOGLE)
     action = "accept";
@@ -1290,6 +1273,25 @@ stream_destroy_cb (GabbleMediaStream *stream,
 }
 
 static void
+stream_state_changed_cb (GabbleMediaStream *stream,
+                         GParamSpec *param,
+                         GabbleMediaSession *session)
+{
+  GabbleMediaSessionPrivate *priv;
+  TpMediaStreamState state;
+
+  g_assert (GABBLE_IS_MEDIA_SESSION (session));
+
+  priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+
+  g_object_get (stream, "state", &state, NULL);
+  if (state != TP_MEDIA_STREAM_STATE_CONNECTED)
+    return;
+
+  /* FIXME */
+}
+
+static void
 send_initiate_message (GabbleMediaSession *session)
 {
   GabbleMediaSessionPrivate *priv;
@@ -1319,63 +1321,30 @@ send_initiate_message (GabbleMediaSession *session)
 }
 
 static void
-stream_ready_cb (GabbleMediaStream *stream,
-                 const GPtrArray *codecs,
-                 GabbleMediaSession *session)
+stream_got_codecs_changed_cb (GabbleMediaStream *stream,
+                              GParamSpec *param,
+                              GabbleMediaSession *session)
 {
   GabbleMediaSessionPrivate *priv;
+  gboolean got_codecs;
+  JingleInitiator stream_initiator;
+  const gchar *action;
+  LmMessage *msg;
+  LmMessageNode *session_node;
 
   g_assert (GABBLE_IS_MEDIA_SESSION (session));
 
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+
+  g_object_get (stream, "got-codecs", &got_codecs,
+                "initiator", &stream_initiator,
+                NULL);
+  if (!got_codecs)
+    return;
 
   g_signal_emit (session, signals[STREAM_ADDED], 0, stream);
 
-  priv->pending_stream_count--;
-
-  /* any more streams pending to be signalled ready? */
-  if (priv->pending_stream_count > 0)
-    {
-      GMS_DEBUG_INFO (session, "holding our horses and badgers because there's "
-          "still %d stream%s waiting to be signalled ready",
-          priv->pending_stream_count,
-          (priv->pending_stream_count > 1) ? "s" : "");
-
-      return;
-    }
-
-  if (priv->initiator == priv->peer)
-    {
-      /* now we have the codecs, we can possibly send an accept if the session
-       * was initiated by the peer */
-      try_session_accept (session);
-    }
-  else
-    {
-      /* send an invitation if the session was initiated by us */
-      send_initiate_message (session);
-    }
-}
-
-static void
-stream_supported_codecs_cb (GabbleMediaStream *stream,
-                            const GPtrArray *codecs,
-                            GabbleMediaSession *session)
-{
-  GabbleMediaSessionPrivate *priv;
-  /*LmMessageNode *session_node;*/
-
-  g_assert (GABBLE_IS_MEDIA_SESSION (session));
-
-  priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
-
-  if (priv->initiator != priv->peer)
-    {
-      GMS_DEBUG_INFO (session, "%s: session not initiated by peer so we're "
-                      "not preparing an accept message",
-                      G_STRFUNC);
-      return;
-    }
+  /* FIXME */
 }
 
 static gchar *
@@ -1878,13 +1847,14 @@ _gabble_media_session_request_streams (GabbleMediaSession *session,
   for (idx = 0; idx < media_types->len; idx++)
     {
       guint media_type = g_array_index (media_types, guint, idx);
+      GabbleMediaStream *stream;
       const gchar *stream_name;
       GabbleMediaStream *stream;
 
       stream_name = _name_stream (session, media_type);
       stream_id = create_media_stream (session, stream_name, media_type);
 
-      g_ptr_array_add (*ret, stream);
+      g_array_append_val (*ret, stream_id);
     }
 
   return TRUE;

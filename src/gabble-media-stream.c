@@ -60,7 +60,6 @@ enum
 
     NEW_ACTIVE_CANDIDATE_PAIR,
     NEW_NATIVE_CANDIDATE,
-    READY,
     SUPPORTED_CODECS,
 
     LAST_SIGNAL
@@ -80,6 +79,8 @@ enum
   PROP_INITIATOR,
   PROP_MEDIA_TYPE,
   PROP_STATE,
+  PROP_JINGLE_STATE,
+  PROP_GOT_CODECS,
   LAST_PROPERTY
 };
 
@@ -96,9 +97,12 @@ struct _GabbleMediaStreamPrivate
   guint id;
   JingleInitiator initiator;
   guint media_type;
+
   TpMediaStreamState state;
 
-  gboolean ready;
+  JingleStreamState jingle_state;
+
+  gboolean got_codecs;
 
   gboolean playing;
 
@@ -156,10 +160,6 @@ gabble_media_stream_init (GabbleMediaStream *self)
       dbus_g_type_specialized_construct (TP_TYPE_CANDIDATE_LIST));
 }
 
-static void session_state_changed_cb (GabbleMediaSession *session,
-                                      GParamSpec *arg1,
-                                      GabbleMediaStream *stream);
-
 static GObject *
 gabble_media_stream_constructor (GType type, guint n_props,
                                  GObjectConstructParam *props)
@@ -172,9 +172,6 @@ gabble_media_stream_constructor (GType type, guint n_props,
   obj = G_OBJECT_CLASS (gabble_media_stream_parent_class)->
            constructor (type, n_props, props);
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (GABBLE_MEDIA_STREAM (obj));
-
-  g_signal_connect (priv->session, "notify::state",
-      (GCallback) session_state_changed_cb, obj);
 
   /* go for the bus */
   bus = tp_get_bus ();
@@ -220,11 +217,19 @@ gabble_media_stream_get_property (GObject    *object,
     case PROP_STATE:
       g_value_set_uint (value, priv->state);
       break;
+    case PROP_JINGLE_STATE:
+      g_value_set_uint (value, priv->jingle_state);
+      break;
+    case PROP_GOT_CODECS:
+      g_value_set_boolean (value, priv->got_codecs);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
   }
 }
+
+static void jingle_state_changed (GabbleMediaStream *stream, JingleStreamState prev_state, JingleStreamState new_state);
 
 static void
 gabble_media_stream_set_property (GObject      *object,
@@ -234,6 +239,7 @@ gabble_media_stream_set_property (GObject      *object,
 {
   GabbleMediaStream *stream = GABBLE_MEDIA_STREAM (object);
   GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
+  JingleStreamState prev_state;
 
   switch (property_id) {
     case PROP_CONNECTION:
@@ -264,6 +270,16 @@ gabble_media_stream_set_property (GObject      *object,
       break;
     case PROP_STATE:
       priv->state = g_value_get_uint (value);
+      break;
+    case PROP_JINGLE_STATE:
+      prev_state = priv->jingle_state;
+      priv->jingle_state = g_value_get_uint (value);
+
+      if (priv->jingle_state != prev_state)
+        jingle_state_changed (stream, prev_state, priv->jingle_state);
+      break;
+    case PROP_GOT_CODECS:
+      priv->got_codecs = g_value_get_boolean (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -375,27 +391,7 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_MEDIA_TYPE, param_spec);
 
-  param_spec = g_param_spec_uint ("state", "Stream state",
-                                  "An integer indicating which state the "
-                                  "stream is currently in.",
-                                  TP_MEDIA_STREAM_STATE_DISCONNECTED,
-                                  TP_MEDIA_STREAM_STATE_CONNECTED,
-                                  TP_MEDIA_STREAM_STATE_DISCONNECTED,
-                                  G_PARAM_READWRITE |
-                                  G_PARAM_STATIC_NAME |
-                                  G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_STATE, param_spec);
-
-  /* signals exported by D-Bus interface */
-  signals[DESTROY] =
-    g_signal_new ("destroy",
-                  G_OBJECT_CLASS_TYPE (gabble_media_stream_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  g_cclosure_marshal_VOID__VOID,
-                  G_TYPE_NONE, 0);
-
+  /* signals exported by DBus interface */
   signals[ADD_REMOTE_CANDIDATE] =
     g_signal_new ("add-remote-candidate",
                   G_OBJECT_CLASS_TYPE (gabble_media_stream_class),
@@ -459,15 +455,6 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                   NULL, NULL,
                   gabble_media_stream_marshal_VOID__STRING_BOXED,
                   G_TYPE_NONE, 2, G_TYPE_STRING, TP_TYPE_TRANSPORT_LIST);
-
-  signals[READY] =
-    g_signal_new ("ready",
-                  G_OBJECT_CLASS_TYPE (gabble_media_stream_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  g_cclosure_marshal_VOID__BOXED,
-                  G_TYPE_NONE, 1, TP_TYPE_CODEC_LIST);
 
   signals[SUPPORTED_CODECS] =
     g_signal_new ("supported-codecs",
@@ -536,25 +523,25 @@ gabble_media_stream_finalize (GObject *object)
 static void push_native_candidates (GabbleMediaStream *stream);
 static void push_remote_codecs (GabbleMediaStream *stream);
 static void push_remote_candidates (GabbleMediaStream *stream);
+static void _set_playing (GabbleMediaStream *stream, gboolean playing);
 
 static void
-session_state_changed_cb (GabbleMediaSession *session,
-                          GParamSpec *arg1,
-                          GabbleMediaStream *stream)
+jingle_state_changed (GabbleMediaStream *stream,
+                      JingleStreamState prev_state,
+                      JingleStreamState new_state)
 {
-  JingleSessionState state;
-
-  g_object_get (session, "state", &state, NULL);
-
-  if (state == JS_STATE_PENDING_INITIATED)
+  if (new_state == JST_STATE_PRE_ACCEPTED)
     {
       push_native_candidates (stream);
 
       push_remote_codecs (stream);
       push_remote_candidates (stream);
     }
+  else if (new_state == JST_STATE_ACCEPTED)
+    {
+      _set_playing (stream, TRUE);
+    }
 }
-
 
 /**
  * gabble_media_stream_codec_choice
@@ -767,20 +754,17 @@ gabble_media_stream_ready (GabbleMediaStream *self,
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
 
-  priv->ready = TRUE;
-
   GMS_DEBUG_INFO (priv->session, "putting list of all %d locally supported "
                   "codecs from voip-engine into cache", codecs->len);
 
   g_value_set_boxed (&priv->native_codecs, codecs);
 
-  g_signal_emit (self, signals[READY], 0, codecs);
+  g_signal_emit (obj, signals[READY], 0, codecs);
 
   push_remote_codecs (self);
   push_remote_candidates (self);
 
-  if (priv->playing)
-    g_signal_emit (self, signals[SET_STREAM_PLAYING], 0, priv->playing);
+  g_signal_emit (obj, signals[SET_STREAM_PLAYING], 0, priv->playing);
 
   return TRUE;
 }
@@ -1014,7 +998,6 @@ static void
 push_native_candidates (GabbleMediaStream *stream)
 {
   GabbleMediaStreamPrivate *priv;
-  JingleSessionState state;
   GPtrArray *candidates;
   guint i;
 
@@ -1022,11 +1005,8 @@ push_native_candidates (GabbleMediaStream *stream)
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
-  g_object_get (priv->session, "state", &state, NULL);
-  if (state < JS_STATE_PENDING_INITIATED)
+  if (priv->jingle_state < JST_STATE_PRE_ACCEPTED)
     return;
-
-  g_assert (state < JS_STATE_ENDED);
 
   candidates = g_value_get_boxed (&priv->native_candidates);
 
@@ -1165,21 +1145,14 @@ static void
 push_remote_codecs (GabbleMediaStream *stream)
 {
   GabbleMediaStreamPrivate *priv;
-  JingleSessionState state;
   GPtrArray *codecs;
 
   g_assert (GABBLE_IS_MEDIA_STREAM (stream));
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
-  if (!priv->ready)
+  if (!priv->got_codecs || priv->jingle_state < JST_STATE_PRE_ACCEPTED)
     return;
-
-  g_object_get (priv->session, "state", &state, NULL);
-  if (state < JS_STATE_PENDING_INITIATED)
-    return;
-
-  g_assert (state == JS_STATE_PENDING_INITIATED);
 
   codecs = g_value_get_boxed (&priv->remote_codecs);
   if (codecs->len == 0)
@@ -1401,14 +1374,8 @@ push_remote_candidates (GabbleMediaStream *stream)
   if (candidates->len == 0)
     return;
 
-  if (!priv->ready)
+  if (!priv->got_codecs || priv->jingle_state < JST_STATE_PRE_ACCEPTED)
     return;
-
-  g_object_get (priv->session, "state", &state, NULL);
-  if (state < JS_STATE_PENDING_INITIATED)
-    return;
-
-  g_assert (state < JS_STATE_ENDED);
 
   for (i = 0; i < candidates->len; i++)
     {
@@ -1596,15 +1563,17 @@ _gabble_media_stream_content_node_add_transport (GabbleMediaStream *stream,
   return node;
 }
 
-void
-_gabble_media_stream_set_playing (GabbleMediaStream *stream, gboolean playing)
+static void
+_set_playing (GabbleMediaStream *stream, gboolean playing)
 {
   GabbleMediaStreamPrivate *priv;
   g_assert (GABBLE_IS_MEDIA_STREAM (stream));
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
+  g_assert (priv->jingle_state == JST_STATE_ACCEPTED);
+
   DEBUG ("emitting SetStreamPlaying signal with %d", playing);
   priv->playing = playing;
-  if (priv->ready)
+  if (priv->got_codecs)
     g_signal_emit (stream, signals[SET_STREAM_PLAYING], 0, playing);
 }

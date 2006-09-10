@@ -309,7 +309,7 @@ request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
         {
           err = g_error_new (GABBLE_DISCO_ERROR,
                              GABBLE_DISCO_ERROR_UNKNOWN,
-                             "an unknown error occured");
+                             "an unknown error occurred");
         }
     }
   else if (NULL == query_node)

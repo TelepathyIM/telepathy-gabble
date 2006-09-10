@@ -566,7 +566,7 @@ gabble_media_session_finalize (GObject *object)
  * on interface org.freedesktop.Telepathy.Ice.SessionHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -592,7 +592,7 @@ gabble_media_session_error (GabbleMediaSession *self,
  * on interface org.freedesktop.Telepathy.Ice.SessionHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.

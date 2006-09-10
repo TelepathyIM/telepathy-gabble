@@ -326,7 +326,7 @@ gboolean _gabble_im_channel_receive (GabbleIMChannel *chan,
  * on interface org.freedesktop.Telepathy.Channel.Type.Text
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -350,7 +350,7 @@ gabble_im_channel_acknowledge_pending_messages (GabbleIMChannel *self,
  * on interface org.freedesktop.Telepathy.Channel
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -381,7 +381,7 @@ gabble_im_channel_close (GabbleIMChannel *self,
  * on interface org.freedesktop.Telepathy.Channel
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -404,7 +404,7 @@ gabble_im_channel_get_channel_type (GabbleIMChannel *self,
  * on interface org.freedesktop.Telepathy.Channel
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -435,7 +435,7 @@ gabble_im_channel_get_handle (GabbleIMChannel *self,
  * on interface org.freedesktop.Telepathy.Channel
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -460,7 +460,7 @@ gabble_im_channel_get_interfaces (GabbleIMChannel *self,
  * on interface org.freedesktop.Telepathy.Channel.Type.Text
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -481,7 +481,7 @@ gabble_im_channel_get_message_types (GabbleIMChannel *self,
  * on interface org.freedesktop.Telepathy.Channel.Type.Text
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -506,7 +506,7 @@ gabble_im_channel_list_pending_messages (GabbleIMChannel *self,
  * on interface org.freedesktop.Telepathy.Channel.Type.Text
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.

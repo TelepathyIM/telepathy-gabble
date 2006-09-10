@@ -396,7 +396,7 @@ compare_pending_message (gconstpointer haystack,
  * on interface org.freedesktop.Telepathy.Channel.Type.Text
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns false.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -453,7 +453,7 @@ gboolean gabble_text_mixin_acknowledge_pending_messages (GObject *obj, const GAr
  * on interface org.freedesktop.Telepathy.Channel.Type.Text
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns false.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -504,7 +504,7 @@ gboolean gabble_text_mixin_list_pending_messages (GObject *obj, gboolean clear, 
  * on interface org.freedesktop.Telepathy.Channel.Type.Text
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns false.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.

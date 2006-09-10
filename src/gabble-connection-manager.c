@@ -477,7 +477,7 @@ _gabble_connection_manager_register (GabbleConnectionManager *self)
  * on interface org.freedesktop.Telepathy.ConnectionManager
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -529,7 +529,7 @@ gabble_connection_manager_get_parameters (GabbleConnectionManager *self,
  * on interface org.freedesktop.Telepathy.ConnectionManager
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -561,7 +561,7 @@ gabble_connection_manager_list_protocols (GabbleConnectionManager *self,
  * on interface org.freedesktop.Telepathy.ConnectionManager
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.

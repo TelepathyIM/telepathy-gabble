@@ -172,7 +172,7 @@ gabble_connection_finalize (GObject *object)
  * on interface org.freedesktop.Telepathy.Connection.Interface.Presence
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -194,7 +194,7 @@ gabble_connection_add_status (GabbleConnection *self,
  * on interface org.freedesktop.Telepathy.Connection.Interface.Presence
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -214,7 +214,7 @@ gabble_connection_clear_status (GabbleConnection *self,
  * on interface org.freedesktop.Telepathy.Connection
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -234,7 +234,7 @@ gabble_connection_connect (GabbleConnection *self,
  * on interface org.freedesktop.Telepathy.Connection
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -254,7 +254,7 @@ gabble_connection_disconnect (GabbleConnection *self,
  * on interface org.freedesktop.Telepathy.Connection.Interface.Aliasing
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -275,7 +275,7 @@ gabble_connection_get_alias_flags (GabbleConnection *self,
  * on interface org.freedesktop.Telepathy.Connection
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -296,7 +296,7 @@ gabble_connection_get_interfaces (GabbleConnection *self,
  * on interface org.freedesktop.Telepathy.Properties
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -318,7 +318,7 @@ gabble_connection_get_properties (GabbleConnection *self,
  * on interface org.freedesktop.Telepathy.Connection
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -339,7 +339,7 @@ gabble_connection_get_protocol (GabbleConnection *self,
  * on interface org.freedesktop.Telepathy.Connection
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -360,7 +360,7 @@ gabble_connection_get_self_handle (GabbleConnection *self,
  * on interface org.freedesktop.Telepathy.Connection
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -381,7 +381,7 @@ gabble_connection_get_status (GabbleConnection *self,
  * on interface org.freedesktop.Telepathy.Connection.Interface.Presence
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -440,7 +440,7 @@ gabble_connection_inspect_handles (GabbleConnection *self,
  * on interface org.freedesktop.Telepathy.Connection
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -461,7 +461,7 @@ gabble_connection_list_channels (GabbleConnection *self,
  * on interface org.freedesktop.Telepathy.Properties
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -501,7 +501,7 @@ gabble_connection_release_handles (GabbleConnection *self,
  * on interface org.freedesktop.Telepathy.Connection.Interface.Presence
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -522,7 +522,7 @@ gabble_connection_remove_status (GabbleConnection *self,
  * on interface org.freedesktop.Telepathy.Connection.Interface.Aliasing
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -584,7 +584,7 @@ gabble_connection_request_handles (GabbleConnection *self,
  * on interface org.freedesktop.Telepathy.Connection.Interface.Presence
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -605,7 +605,7 @@ gabble_connection_request_presence (GabbleConnection *self,
  * on interface org.freedesktop.Telepathy.Connection.Interface.Aliasing
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -626,7 +626,7 @@ gabble_connection_set_aliases (GabbleConnection *self,
  * on interface org.freedesktop.Telepathy.Connection.Interface.Presence
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -665,7 +665,7 @@ gabble_connection_set_properties (GabbleConnection *self,
  * on interface org.freedesktop.Telepathy.Connection.Interface.Presence
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.

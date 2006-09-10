@@ -142,7 +142,7 @@ gabble_roster_channel_finalize (GObject *object)
  * on interface org.freedesktop.Telepathy.Channel.Interface.Group
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -164,7 +164,7 @@ gabble_roster_channel_add_members (GabbleRosterChannel *self,
  * on interface org.freedesktop.Telepathy.Channel
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -184,7 +184,7 @@ gabble_roster_channel_close (GabbleRosterChannel *self,
  * on interface org.freedesktop.Telepathy.Channel.Interface.Group
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -207,7 +207,7 @@ gabble_roster_channel_get_all_members (GabbleRosterChannel *self,
  * on interface org.freedesktop.Telepathy.Channel
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -228,7 +228,7 @@ gabble_roster_channel_get_channel_type (GabbleRosterChannel *self,
  * on interface org.freedesktop.Telepathy.Channel.Interface.Group
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -249,7 +249,7 @@ gabble_roster_channel_get_group_flags (GabbleRosterChannel *self,
  * on interface org.freedesktop.Telepathy.Channel
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -271,7 +271,7 @@ gabble_roster_channel_get_handle (GabbleRosterChannel *self,
  * on interface org.freedesktop.Telepathy.Channel.Interface.Group
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -293,7 +293,7 @@ gabble_roster_channel_get_handle_owners (GabbleRosterChannel *self,
  * on interface org.freedesktop.Telepathy.Channel
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -314,7 +314,7 @@ gabble_roster_channel_get_interfaces (GabbleRosterChannel *self,
  * on interface org.freedesktop.Telepathy.Channel.Interface.Group
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -335,7 +335,7 @@ gabble_roster_channel_get_local_pending_members (GabbleRosterChannel *self,
  * on interface org.freedesktop.Telepathy.Channel.Interface.Group
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -356,7 +356,7 @@ gabble_roster_channel_get_members (GabbleRosterChannel *self,
  * on interface org.freedesktop.Telepathy.Channel.Interface.Group
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -377,7 +377,7 @@ gabble_roster_channel_get_remote_pending_members (GabbleRosterChannel *self,
  * on interface org.freedesktop.Telepathy.Channel.Interface.Group
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -398,7 +398,7 @@ gabble_roster_channel_get_self_handle (GabbleRosterChannel *self,
  * on interface org.freedesktop.Telepathy.Channel.Interface.Group
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.

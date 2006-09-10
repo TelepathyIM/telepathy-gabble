@@ -142,7 +142,7 @@ gabble_roomlist_channel_finalize (GObject *object)
  * on interface org.freedesktop.Telepathy.Channel
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -162,7 +162,7 @@ gabble_roomlist_channel_close (GabbleRoomlistChannel *self,
  * on interface org.freedesktop.Telepathy.Channel
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -183,7 +183,7 @@ gabble_roomlist_channel_get_channel_type (GabbleRoomlistChannel *self,
  * on interface org.freedesktop.Telepathy.Channel
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -205,7 +205,7 @@ gabble_roomlist_channel_get_handle (GabbleRoomlistChannel *self,
  * on interface org.freedesktop.Telepathy.Channel
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -226,7 +226,7 @@ gabble_roomlist_channel_get_interfaces (GabbleRoomlistChannel *self,
  * on interface org.freedesktop.Telepathy.Channel.Type.RoomList
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -247,7 +247,7 @@ gabble_roomlist_channel_get_listing_rooms (GabbleRoomlistChannel *self,
  * on interface org.freedesktop.Telepathy.Channel.Type.RoomList
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.

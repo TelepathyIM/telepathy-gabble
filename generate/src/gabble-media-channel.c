@@ -182,7 +182,7 @@ gabble_media_channel_finalize (GObject *object)
  * on interface org.freedesktop.Telepathy.Channel.Interface.Group
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -204,7 +204,7 @@ gabble_media_channel_add_members (GabbleMediaChannel *self,
  * on interface org.freedesktop.Telepathy.Channel
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -224,7 +224,7 @@ gabble_media_channel_close (GabbleMediaChannel *self,
  * on interface org.freedesktop.Telepathy.Channel.Interface.Group
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -247,7 +247,7 @@ gabble_media_channel_get_all_members (GabbleMediaChannel *self,
  * on interface org.freedesktop.Telepathy.Channel
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -268,7 +268,7 @@ gabble_media_channel_get_channel_type (GabbleMediaChannel *self,
  * on interface org.freedesktop.Telepathy.Channel.Interface.Group
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -289,7 +289,7 @@ gabble_media_channel_get_group_flags (GabbleMediaChannel *self,
  * on interface org.freedesktop.Telepathy.Channel
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -311,7 +311,7 @@ gabble_media_channel_get_handle (GabbleMediaChannel *self,
  * on interface org.freedesktop.Telepathy.Channel.Interface.Group
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -333,7 +333,7 @@ gabble_media_channel_get_handle_owners (GabbleMediaChannel *self,
  * on interface org.freedesktop.Telepathy.Channel
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -354,7 +354,7 @@ gabble_media_channel_get_interfaces (GabbleMediaChannel *self,
  * on interface org.freedesktop.Telepathy.Channel.Interface.Group
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -375,7 +375,7 @@ gabble_media_channel_get_local_pending_members (GabbleMediaChannel *self,
  * on interface org.freedesktop.Telepathy.Channel.Interface.Group
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -396,7 +396,7 @@ gabble_media_channel_get_members (GabbleMediaChannel *self,
  * on interface org.freedesktop.Telepathy.Channel.Interface.Group
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -417,7 +417,7 @@ gabble_media_channel_get_remote_pending_members (GabbleMediaChannel *self,
  * on interface org.freedesktop.Telepathy.Channel.Interface.Group
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -438,7 +438,7 @@ gabble_media_channel_get_self_handle (GabbleMediaChannel *self,
  * on interface org.freedesktop.Telepathy.Channel.Interface.IceSignalling
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -459,7 +459,7 @@ gabble_media_channel_get_session_handlers (GabbleMediaChannel *self,
  * on interface org.freedesktop.Telepathy.Channel.Type.StreamedMedia
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -480,7 +480,7 @@ gabble_media_channel_list_streams (GabbleMediaChannel *self,
  * on interface org.freedesktop.Telepathy.Channel.Interface.Group
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -502,7 +502,7 @@ gabble_media_channel_remove_members (GabbleMediaChannel *self,
  * on interface org.freedesktop.Telepathy.Channel.Type.StreamedMedia
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.

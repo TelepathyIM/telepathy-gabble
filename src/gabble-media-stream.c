@@ -501,7 +501,7 @@ session_state_changed_cb (GabbleMediaSession *session,
  * on interface org.freedesktop.Telepathy.Ice.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -528,7 +528,7 @@ gabble_media_stream_codec_choice (GabbleMediaStream *self,
  * on interface org.freedesktop.Telepathy.Ice.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -560,7 +560,7 @@ gabble_media_stream_error (GabbleMediaStream *self,
  * on interface org.freedesktop.Telepathy.Ice.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -586,7 +586,7 @@ gabble_media_stream_native_candidates_prepared (GabbleMediaStream *self,
  * on interface org.freedesktop.Telepathy.Ice.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -617,7 +617,7 @@ gabble_media_stream_new_active_candidate_pair (GabbleMediaStream *self,
  * on interface org.freedesktop.Telepathy.Ice.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -689,7 +689,7 @@ gabble_media_stream_new_native_candidate (GabbleMediaStream *self,
  * on interface org.freedesktop.Telepathy.Ice.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -730,7 +730,7 @@ gabble_media_stream_ready (GabbleMediaStream *self,
  * on interface org.freedesktop.Telepathy.Ice.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
@@ -758,7 +758,7 @@ gabble_media_stream_stream_state (GabbleMediaStream *self,
  * on interface org.freedesktop.Telepathy.Ice.StreamHandler
  *
  * @error: Used to return a pointer to a GError detailing any error
- *         that occured, D-Bus will throw the error only if this
+ *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.

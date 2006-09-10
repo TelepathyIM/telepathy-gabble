@@ -876,7 +876,7 @@ static Handler handlers[] = {
     { "accept", "session-accept", NULL },
     JS_STATE_PENDING_INITIATED,
     JS_STATE_PENDING_INITIATED,
-    { _handle_codecs, NULL },
+    { _handle_codecs, _handle_accept, NULL },
     JS_STATE_ACTIVE
   },
   {

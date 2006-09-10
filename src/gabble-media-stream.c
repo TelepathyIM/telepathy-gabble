@@ -1361,7 +1361,6 @@ static void
 push_remote_candidates (GabbleMediaStream *stream)
 {
   GabbleMediaStreamPrivate *priv;
-  JingleSessionState state;
   GPtrArray *candidates;
   guint i;
 

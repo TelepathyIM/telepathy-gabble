@@ -177,9 +177,7 @@ create_session (GabbleMediaChannel *channel, GabbleHandle peer, const gchar *pee
   GabbleMediaChannelPrivate *priv;
   GabbleMediaSession *session;
   gchar *object_path;
-  GabbleHandle initiator;
-
-  DEBUG ("called");
+  JingleInitiator initiator;
 
   g_assert (GABBLE_IS_MEDIA_CHANNEL (channel));
 
@@ -191,12 +189,12 @@ create_session (GabbleMediaChannel *channel, GabbleHandle peer, const gchar *pee
 
   if (sid == NULL)
     {
-      initiator = priv->conn->self_handle;
+      initiator = INITIATOR_LOCAL;
       sid = _gabble_media_factory_allocate_sid (priv->factory, channel);
     }
   else
     {
-      initiator = peer;
+      initiator = INITIATOR_REMOTE;
       _gabble_media_factory_register_sid (priv->factory, sid, channel);
     }
 

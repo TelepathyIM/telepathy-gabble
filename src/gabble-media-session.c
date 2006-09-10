@@ -94,7 +94,7 @@ struct _GabbleMediaSessionPrivate
   gint pending_stream_count;
 
   gchar *id;
-  GabbleHandle initiator;
+  JingleInitiator initiator;
   GabbleHandle peer;
   gchar *peer_resource;
 
@@ -450,9 +450,11 @@ gabble_media_session_class_init (GabbleMediaSessionClass *gabble_media_session_c
   g_object_class_install_property (object_class, PROP_SESSION_ID, param_spec);
 
   param_spec = g_param_spec_uint ("initiator", "Session initiator",
-                                  "The GabbleHandle representing the contact "
-                                  "who initiated the session.",
-                                  0, G_MAXUINT32, 0,
+                                  "An enum signifying which end initiated "
+                                  "the session.",
+                                  INITIATOR_LOCAL,
+                                  INITIATOR_REMOTE,
+                                  INITIATOR_LOCAL,
                                   G_PARAM_CONSTRUCT_ONLY |
                                   G_PARAM_READWRITE |
                                   G_PARAM_STATIC_NAME |
@@ -468,7 +470,6 @@ gabble_media_session_class_init (GabbleMediaSessionClass *gabble_media_session_c
                                   G_PARAM_STATIC_NAME |
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_PEER, param_spec);
-
 
   param_spec = g_param_spec_string ("peer-resource",
                                     "Session peer's resource",
@@ -1346,6 +1347,7 @@ _gabble_media_session_message_new (GabbleMediaSession *session,
   LmMessage *msg;
   LmMessageNode *iq_node, *node;
   gchar *peer_jid, *initiator_jid;
+  GabbleHandle initiator_handle;
   const gchar *element, *xmlns;
 
   g_assert (GABBLE_IS_MEDIA_SESSION (session));
@@ -1368,8 +1370,13 @@ _gabble_media_session_message_new (GabbleMediaSession *session,
   else
     element = "jingle";
 
+  if (priv->initiator == INITIATOR_LOCAL)
+    initiator_handle = GABBLE_GROUP_MIXIN (session)->self_handle;
+  else
+    initiator_handle = priv->peer;
+
   node = lm_message_node_add_child (iq_node, element, NULL);
-  initiator_jid = get_jid_for_contact (session, priv->initiator);
+  initiator_jid = get_jid_for_contact (session, initiator_handle);
 
   lm_message_node_set_attributes (node,
       (priv->mode == MODE_GOOGLE) ? "id" : "sid", priv->id,
@@ -1479,7 +1486,7 @@ _gabble_media_session_terminate (GabbleMediaSession *session)
   /* Jingle doesn't have a "reject" action; a termination before an acceptance
    * indicates that the call has been declined */
 
-  if (priv->initiator == priv->peer &&
+  if (priv->initiator == INITIATOR_REMOTE &&
       priv->state == JS_STATE_PENDING_INITIATED &&
       priv->mode == MODE_GOOGLE)
     {

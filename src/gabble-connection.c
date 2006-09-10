@@ -2974,6 +2974,34 @@ gboolean gabble_connection_disconnect (GabbleConnection *obj, GError **error)
 }
 
 
+/**
+ * gabble_connection_get_alias_flags
+ *
+ * Implements DBus method GetAliasFlags
+ * on interface org.freedesktop.Telepathy.Connection.Interface.Aliasing
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_connection_get_alias_flags (GabbleConnection *obj, guint* ret, GError **error)
+{
+  GabbleConnectionPrivate *priv;
+
+  g_assert (GABBLE_IS_CONNECTION (obj));
+
+  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
+
+  ERROR_IF_NOT_CONNECTED (obj, *error)
+
+  *ret = TP_CONN_ALIAS_FLAG_USER_SET;
+
+  return TRUE;
+}
+
+
 #if 0
 /**
  * gabble_connection_get_capabilities
@@ -3020,34 +3048,6 @@ gboolean gabble_connection_get_capabilities (GabbleConnection *obj, guint handle
   return TRUE;
 }
 #endif
-
-
-/**
- * gabble_connection_get_alias_flags
- *
- * Implements DBus method GetAliasFlags
- * on interface org.freedesktop.Telepathy.Connection.Interface.Aliasing
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean gabble_connection_get_alias_flags (GabbleConnection *obj, guint* ret, GError **error)
-{
-  GabbleConnectionPrivate *priv;
-
-  g_assert (GABBLE_IS_CONNECTION (obj));
-
-  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
-
-  ERROR_IF_NOT_CONNECTED (obj, *error)
-
-  *ret = TP_CONN_ALIAS_FLAG_USER_SET;
-
-  return TRUE;
-}
 
 
 /**

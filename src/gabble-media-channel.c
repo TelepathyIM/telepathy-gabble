@@ -560,7 +560,7 @@ gabble_media_channel_close (GabbleMediaChannel *self,
       _gabble_media_session_terminate (priv->session);
     }
 
-  g_signal_emit (self, signals[CLOSED], 0);
+  g_signal_emit(obj, signals[CLOSED], 0);
 
   return TRUE;
 }

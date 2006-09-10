@@ -473,7 +473,15 @@ gabble_media_channel_dispose (GObject *object)
   g_assert (priv->closed && priv->session==NULL);
 
   if (priv->streams != NULL)
-    g_ptr_array_free (priv->streams, TRUE);
+    {
+      GPtrArray *tmp = priv->streams;
+
+      /* move priv->streams aside so that the stream_destroy_cb
+       * doesn't double unref */
+      priv->streams = NULL;
+      g_ptr_array_foreach (tmp, (GFunc) g_object_unref, NULL);
+      g_ptr_array_free (tmp, TRUE);
+    }
 
   if (G_OBJECT_CLASS (gabble_media_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_media_channel_parent_class)->dispose (object);
@@ -1218,11 +1226,15 @@ stream_destroy_cb (GabbleMediaStream *stream,
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
   guint id;
 
-  g_ptr_array_remove (priv->streams, stream);
-
   g_object_get (stream, "id", &id, NULL);
 
   g_signal_emit (chan, signals[STREAM_REMOVED], id);
+
+  if (priv->streams != NULL)
+    {
+      g_ptr_array_remove (priv->streams, stream);
+      g_object_unref (stream);
+    }
 }
 
 static void
@@ -1248,6 +1260,7 @@ session_stream_added_cb (GabbleMediaSession *session,
   guint id, handle, type;
 
   /* keep track of the stream */
+  g_object_ref (stream);
   g_ptr_array_add (priv->streams, stream);
 
   g_signal_connect (stream, "destroy",

@@ -63,28 +63,119 @@ GType gabble_media_channel_get_type(void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_MEDIA_CHANNEL, GabbleMediaChannelClass))
 
 
-gboolean gabble_media_channel_add_members (GabbleMediaChannel *obj, const GArray * contacts, const gchar * message, GError **error);
-gboolean gabble_media_channel_close (GabbleMediaChannel *obj, GError **error);
-gboolean gabble_media_channel_get_all_members (GabbleMediaChannel *obj, GArray ** ret, GArray ** ret1, GArray ** ret2, GError **error);
-gboolean gabble_media_channel_get_channel_type (GabbleMediaChannel *obj, gchar ** ret, GError **error);
-gboolean gabble_media_channel_get_group_flags (GabbleMediaChannel *obj, guint* ret, GError **error);
-gboolean gabble_media_channel_get_handle (GabbleMediaChannel *obj, guint* ret, guint* ret1, GError **error);
-gboolean gabble_media_channel_get_handle_owners (GabbleMediaChannel *obj, const GArray * handles, GArray ** ret, GError **error);
-gboolean gabble_media_channel_get_interfaces (GabbleMediaChannel *obj, gchar *** ret, GError **error);
-gboolean gabble_media_channel_get_local_pending_members (GabbleMediaChannel *obj, GArray ** ret, GError **error);
-gboolean gabble_media_channel_get_members (GabbleMediaChannel *obj, GArray ** ret, GError **error);
-gboolean gabble_media_channel_get_remote_pending_members (GabbleMediaChannel *obj, GArray ** ret, GError **error);
-gboolean gabble_media_channel_get_self_handle (GabbleMediaChannel *obj, guint* ret, GError **error);
-gboolean gabble_media_channel_get_session_handlers (GabbleMediaChannel *obj, GPtrArray ** ret, GError **error);
-gboolean gabble_media_channel_list_streams (GabbleMediaChannel *obj, GPtrArray ** ret, GError **error);
-gboolean gabble_media_channel_remove_members (GabbleMediaChannel *obj, const GArray * contacts, const gchar * message, GError **error);
-gboolean gabble_media_channel_request_streams (GabbleMediaChannel *obj, guint contact_handle, const GArray * types, GArray ** ret, GError **error);
+gboolean
+gabble_media_channel_add_members (GabbleMediaChannel *self,
+                                  const GArray *contacts,
+                                  const gchar *message,
+                                  GError **error);
 
-void _gabble_media_channel_dispatch_session_action (GabbleMediaChannel *chan, GabbleHandle peer, const gchar *peer_resource, const gchar *sid, LmMessage *message, LmMessageNode *session_node, const gchar *action);
+gboolean
+gabble_media_channel_close (GabbleMediaChannel *self,
+                            GError **error);
 
-void _gabble_media_channel_stream_state (GabbleMediaChannel *chan, guint state);
+gboolean
+gabble_media_channel_get_all_members (GabbleMediaChannel *self,
+                                      GArray **ret,
+                                      GArray **ret1,
+                                      GArray **ret2,
+                                      GError **error);
 
-guint _gabble_media_channel_get_stream_id (GabbleMediaChannel *chan);
+gboolean
+gabble_media_channel_get_channel_type (GabbleMediaChannel *self,
+                                       gchar **ret,
+                                       GError **error);
+
+gboolean
+gabble_media_channel_get_group_flags (GabbleMediaChannel *self,
+                                      guint *ret,
+                                      GError **error);
+
+gboolean
+gabble_media_channel_get_handle (GabbleMediaChannel *self,
+                                 guint *ret,
+                                 guint *ret1,
+                                 GError **error);
+
+gboolean
+gabble_media_channel_get_handle_owners (GabbleMediaChannel *self,
+                                        const GArray *handles,
+                                        GArray **ret,
+                                        GError **error);
+
+gboolean
+gabble_media_channel_get_interfaces (GabbleMediaChannel *self,
+                                     gchar ***ret,
+                                     GError **error);
+
+gboolean
+gabble_media_channel_get_local_pending_members (GabbleMediaChannel *self,
+                                                GArray **ret,
+                                                GError **error);
+
+gboolean
+gabble_media_channel_get_members (GabbleMediaChannel *self,
+                                  GArray **ret,
+                                  GError **error);
+
+gboolean
+gabble_media_channel_get_remote_pending_members (GabbleMediaChannel *self,
+                                                 GArray **ret,
+                                                 GError **error);
+
+gboolean
+gabble_media_channel_get_self_handle (GabbleMediaChannel *self,
+                                      guint *ret,
+                                      GError **error);
+
+gboolean
+gabble_media_channel_get_session_handlers (GabbleMediaChannel *self,
+                                           GPtrArray **ret,
+                                           GError **error);
+
+gboolean
+gabble_media_channel_list_streams (GabbleMediaChannel *self,
+                                   GPtrArray **ret,
+                                   GError **error);
+
+gboolean
+gabble_media_channel_remove_members (GabbleMediaChannel *self,
+                                     const GArray *contacts,
+                                     const gchar *message,
+                                     GError **error);
+
+gboolean
+gabble_media_channel_remove_streams (GabbleMediaChannel *self,
+                                     const GArray *streams,
+                                     GError **error);
+
+gboolean
+gabble_media_channel_request_stream_direction (GabbleMediaChannel *self,
+                                               guint stream_id,
+                                               guint stream_direction,
+                                               GError **error);
+
+gboolean
+gabble_media_channel_request_streams (GabbleMediaChannel *self,
+                                      guint contact_handle,
+                                      const GArray *types,
+                                      GPtrArray **ret,
+                                      GError **error);
+
+void
+_gabble_media_channel_dispatch_session_action (GabbleMediaChannel *chan,
+                                               GabbleHandle peer,
+                                               const gchar *peer_resource,
+                                               const gchar *sid,
+                                               LmMessage *message,
+                                               LmMessageNode *session_node,
+                                               const gchar *action);
+
+void
+_gabble_media_channel_stream_state (GabbleMediaChannel *chan,
+                                    guint state);
+
+guint
+_gabble_media_channel_get_stream_id (GabbleMediaChannel *chan);
 
 G_END_DECLS
 

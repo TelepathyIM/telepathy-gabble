@@ -51,6 +51,7 @@ enum
     DESTROY,
 
     ADD_REMOTE_CANDIDATE,
+    CLOSE,
     REMOVE_REMOTE_CANDIDATE,
     SET_ACTIVE_CANDIDATE_PAIR,
     SET_REMOTE_CANDIDATE_LIST,
@@ -391,7 +392,48 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_MEDIA_TYPE, param_spec);
 
-  /* signals exported by DBus interface */
+  param_spec = g_param_spec_uint ("state", "Stream state",
+                                  "An integer indicating which state the "
+                                  "stream is currently in.",
+                                  TP_MEDIA_STREAM_STATE_DISCONNECTED,
+                                  TP_MEDIA_STREAM_STATE_CONNECTED,
+                                  TP_MEDIA_STREAM_STATE_DISCONNECTED,
+                                  G_PARAM_READWRITE |
+                                  G_PARAM_STATIC_NAME |
+                                  G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_STATE, param_spec);
+
+  param_spec = g_param_spec_uint ("jingle-state", "Jingle stream state",
+                                  "The jingle (signalling) state that the "
+                                  "stream is currently in.",
+                                  JST_STATE_INVALID,
+                                  JST_STATE_ACCEPTED,
+                                  JST_STATE_CREATED,
+                                  G_PARAM_READWRITE |
+                                  G_PARAM_STATIC_NAME |
+                                  G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_JINGLE_STATE,
+                                   param_spec);
+
+  param_spec = g_param_spec_boolean ("got-codecs", "Whether we've got codecs",
+                                     "A boolean signifying whether we've got "
+                                     "locally supported codecs from the user.",
+                                     FALSE,
+                                     G_PARAM_READWRITE |
+                                     G_PARAM_STATIC_NAME |
+                                     G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_GOT_CODECS, param_spec);
+
+  /* signals exported by D-Bus interface */
+  signals[DESTROY] =
+    g_signal_new ("destroy",
+                  G_OBJECT_CLASS_TYPE (gabble_media_stream_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  g_cclosure_marshal_VOID__VOID,
+                  G_TYPE_NONE, 0);
+
   signals[ADD_REMOTE_CANDIDATE] =
     g_signal_new ("add-remote-candidate",
                   G_OBJECT_CLASS_TYPE (gabble_media_stream_class),
@@ -400,6 +442,15 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                   NULL, NULL,
                   gabble_media_stream_marshal_VOID__STRING_BOXED,
                   G_TYPE_NONE, 2, G_TYPE_STRING, TP_TYPE_TRANSPORT_LIST);
+
+  signals[CLOSE] =
+    g_signal_new ("close",
+                  G_OBJECT_CLASS_TYPE (gabble_media_stream_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  g_cclosure_marshal_VOID__VOID,
+                  G_TYPE_NONE, 0);
 
   signals[REMOVE_REMOTE_CANDIDATE] =
     g_signal_new ("remove-remote-candidate",
@@ -759,12 +810,22 @@ gabble_media_stream_ready (GabbleMediaStream *self,
 
   g_value_set_boxed (&priv->native_codecs, codecs);
 
-  g_signal_emit (obj, signals[READY], 0, codecs);
+  g_object_set (self, "got-codecs", TRUE, NULL);
 
   push_remote_codecs (self);
   push_remote_candidates (self);
 
-  g_signal_emit (obj, signals[SET_STREAM_PLAYING], 0, priv->playing);
+  if (priv->playing)
+    {
+      GMS_DEBUG_INFO (priv->session, "Media.StreamHandler::Ready called -- "
+          "emitting playing now");
+      g_signal_emit (self, signals[SET_STREAM_PLAYING], 0, TRUE);
+    }
+  else
+    {
+      GMS_DEBUG_INFO (priv->session, "Media.StreamHandler::Ready called -- "
+          "emitting playing later");
+    }
 
   return TRUE;
 }
@@ -1571,8 +1632,13 @@ _set_playing (GabbleMediaStream *stream, gboolean playing)
 
   g_assert (priv->jingle_state == JST_STATE_ACCEPTED);
 
-  DEBUG ("emitting SetStreamPlaying signal with %d", playing);
   priv->playing = playing;
+
   if (priv->got_codecs)
-    g_signal_emit (stream, signals[SET_STREAM_PLAYING], 0, playing);
+    {
+      GMS_DEBUG_INFO (priv->session, "stream %s emitting SetStreamPlaying "
+          "signal with %d", priv->name, playing);
+
+      g_signal_emit (stream, signals[SET_STREAM_PLAYING], 0, playing);
+    }
 }

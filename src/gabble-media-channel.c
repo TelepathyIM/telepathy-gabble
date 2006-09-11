@@ -560,7 +560,7 @@ gabble_media_channel_close (GabbleMediaChannel *self,
       _gabble_media_session_terminate (priv->session);
     }
 
-  g_signal_emit(obj, signals[CLOSED], 0);
+  g_signal_emit (self, signals[CLOSED], 0);
 
   return TRUE;
 }
@@ -963,6 +963,106 @@ gabble_media_channel_remove_members (GabbleMediaChannel *self,
 {
   return gabble_group_mixin_remove_members (G_OBJECT (self), contacts, message,
       error);
+}
+
+
+static GabbleMediaStream *
+_find_stream_by_id (GabbleMediaChannel *chan, guint stream_id)
+{
+  GabbleMediaChannelPrivate *priv;
+  guint i;
+
+  g_assert (GABBLE_IS_MEDIA_CHANNEL (chan));
+
+  priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
+
+  for (i = 0; i < priv->streams->len; i++)
+    {
+      GabbleMediaStream *stream = g_ptr_array_index (priv->streams, i);
+      guint id;
+
+      g_object_get (stream, "id", &id, NULL);
+      if (id == stream_id)
+        return stream;
+    }
+
+  return NULL;
+}
+
+/**
+ * gabble_media_channel_remove_streams
+ *
+ * Implements DBus method RemoveStreams
+ * on interface org.freedesktop.Telepathy.Channel.Type.StreamedMedia
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occured, DBus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean gabble_media_channel_remove_streams (GabbleMediaChannel *obj, const GArray * streams, GError **error)
+{
+  GabbleMediaChannelPrivate *priv;
+  GPtrArray *stream_objs;
+  guint i;
+
+  g_assert (GABBLE_IS_MEDIA_CHANNEL (obj));
+
+  priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (obj);
+
+  *error = NULL;
+
+  stream_objs = g_ptr_array_sized_new (streams->len);
+
+  /* check that all stream ids are valid and at the same time build an array
+   * of stream objects so we don't have to look them up again after verifying
+   * all stream identifiers. */
+  for (i = 0; i < streams->len; i++)
+    {
+      guint id = g_array_index (streams, guint, i);
+      GabbleMediaStream *stream;
+
+      stream = _find_stream_by_id (obj, id);
+      if (stream == NULL)
+        {
+          *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+              "given stream id %u does not exist", id);
+          goto OUT;
+        }
+
+      g_ptr_array_add (stream_objs, stream);
+    }
+
+  /* groovy, it's all good dude, let's remove them */
+  _gabble_media_session_remove_streams (priv->session, stream_objs);
+
+OUT:
+  g_ptr_array_free (stream_objs, TRUE);
+
+  return (*error == NULL);
+}
+
+
+/**
+ * gabble_media_channel_request_stream_direction
+ *
+ * Implements D-Bus method RequestStreamDirection
+ * on interface org.freedesktop.Telepathy.Channel.Type.StreamedMedia
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occurred, D-Bus will throw the error only if this
+ *         function returns FALSE.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean
+gabble_media_channel_request_stream_direction (GabbleMediaChannel *self,
+                                               guint stream_id,
+                                               guint stream_direction,
+                                               GError **error)
+{
+  return TRUE;
 }
 
 

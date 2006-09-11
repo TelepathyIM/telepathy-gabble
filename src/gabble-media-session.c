@@ -177,7 +177,7 @@ _emit_new_stream (const gchar *name,
   g_free (object_path);
 }
 
-static guint
+static GabbleMediaStream *
 create_media_stream (GabbleMediaSession *session,
                      const gchar *name,
                      guint media_type)
@@ -240,7 +240,7 @@ create_media_stream (GabbleMediaSession *session,
   if (priv->ready)
     _emit_new_stream (name, stream, session);
 
-  return id;
+  return stream;
 }
 
 #if 0
@@ -1590,7 +1590,7 @@ _name_stream (GabbleMediaSession *session,
 gboolean
 _gabble_media_session_request_streams (GabbleMediaSession *session,
                                        const GArray *media_types,
-                                       GArray **ret,
+                                       GPtrArray **ret,
                                        GError **error)
 {
   static GabblePresenceCapabilities google_audio_caps =
@@ -1742,18 +1742,18 @@ _gabble_media_session_request_streams (GabbleMediaSession *session,
 
   /* if we've got here, we're good to make the streams */
 
-  *ret = g_array_new (FALSE, FALSE, sizeof (guint));
+  *ret = g_ptr_array_sized_new (media_types->len);
 
   for (idx = 0; idx < media_types->len; idx++)
     {
       guint media_type = g_array_index (media_types, guint, idx);
       const gchar *stream_name;
-      guint stream_id;
+      GabbleMediaStream *stream;
 
       stream_name = _name_stream (session, media_type);
-      stream_id = create_media_stream (session, stream_name, media_type);
+      stream = create_media_stream (session, stream_name, media_type);
 
-      g_array_append_val (*ret, stream_id);
+      g_ptr_array_add (*ret, stream);
     }
 
   return TRUE;

@@ -74,6 +74,9 @@
     <method name="ListStreams">
       <arg direction="out" type="a(uuuuuu)"/>
     </method>
+    <method name="RemoveStreams">
+      <arg direction="in" name="streams" type="au"/>
+    </method>
     <method name="RequestStreamDirection">
       <arg direction="in" name="stream_id" type="u"/>
       <arg direction="in" name="stream_direction" type="u"/>
@@ -81,7 +84,7 @@
     <method name="RequestStreams">
       <arg direction="in" name="contact_handle" type="u"/>
       <arg direction="in" name="types" type="au"/>
-      <arg direction="out" type="au"/>
+      <arg direction="out" type="a(uuuuuu)"/>
     </method>
     <signal name="StreamAdded">
       <arg name="stream_id" type="u"/>

@@ -144,6 +144,11 @@ gabble_media_channel_remove_members (GabbleMediaChannel *self,
                                      GError **error);
 
 gboolean
+gabble_media_channel_remove_streams (GabbleMediaChannel *self,
+                                     const GArray *streams,
+                                     GError **error);
+
+gboolean
 gabble_media_channel_request_stream_direction (GabbleMediaChannel *self,
                                                guint stream_id,
                                                guint stream_direction,
@@ -153,7 +158,7 @@ gboolean
 gabble_media_channel_request_streams (GabbleMediaChannel *self,
                                       guint contact_handle,
                                       const GArray *types,
-                                      GArray **ret,
+                                      GPtrArray **ret,
                                       GError **error);
 
 

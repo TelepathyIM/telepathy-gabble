@@ -5,6 +5,7 @@
       <arg name="candidate_id" type="s"/>
       <arg name="transports" type="a(usuussduss)"/>
     </signal>
+    <signal name="Close"/>
     <method name="CodecChoice">
       <arg direction="in" name="codec_id" type="u"/>
     </method>

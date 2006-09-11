@@ -116,7 +116,7 @@ void _gabble_media_session_terminate (GabbleMediaSession *session);
 
 gboolean _gabble_media_session_request_streams (GabbleMediaSession *session,
                                                 const GArray *types,
-                                                GArray **ret,
+                                                GPtrArray **ret,
                                                 GError **error);
 
 #ifndef _GMS_DEBUG_LEVEL

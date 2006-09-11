@@ -862,39 +862,19 @@ gabble_media_channel_get_session_handlers (GabbleMediaChannel *self,
 }
 
 
-/**
- * gabble_media_channel_list_streams
- *
- * Implements D-Bus method ListStreams
- * on interface org.freedesktop.Telepathy.Channel.Type.StreamedMedia
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_media_channel_list_streams (GabbleMediaChannel *self,
-                                   GPtrArray **ret,
-                                   GError **error)
+GPtrArray *
+make_stream_list (GabbleMediaChannel *self,
+                  GPtrArray *streams)
 {
-  GabbleMediaChannelPrivate *priv;
+  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
+  GPtrArray *ret;
   guint i;
 
-  g_assert (GABBLE_IS_MEDIA_CHANNEL (self));
+  ret = g_ptr_array_sized_new (streams->len);
 
-  priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
-
-  *ret = g_ptr_array_sized_new (priv->streams->len);
-
-  /* no session yet? return an empty array */
-  if (priv->session == NULL)
-    return TRUE;
-
-  for (i = 0; i < priv->streams->len; i++)
+  for (i = 0; i < streams->len; i++)
     {
-      GabbleMediaStream *stream = g_ptr_array_index (*ret, i);
+      GabbleMediaStream *stream = g_ptr_array_index (streams, i);
       GValue entry = { 0, };
       guint id;
       GabbleHandle peer;
@@ -922,8 +902,44 @@ gabble_media_channel_list_streams (GabbleMediaChannel *self,
           5, pending,
           G_MAXUINT);
 
-      g_ptr_array_add (*ret, g_value_get_boxed (&entry));
+      g_ptr_array_add (ret, g_value_get_boxed (&entry));
     }
+
+  return ret;
+}
+
+/**
+ * gabble_media_channel_list_streams
+ *
+ * Implements D-Bus method ListStreams
+ * on interface org.freedesktop.Telepathy.Channel.Type.StreamedMedia
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occurred, D-Bus will throw the error only if this
+ *         function returns FALSE.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean
+gabble_media_channel_list_streams (GabbleMediaChannel *self,
+                                   GPtrArray **ret,
+                                   GError **error)
+{
+  GabbleMediaChannelPrivate *priv;
+
+  g_assert (GABBLE_IS_MEDIA_CHANNEL (self));
+
+  priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
+
+  /* no session yet? return an empty array */
+  if (priv->session == NULL)
+    {
+      *ret = g_ptr_array_new ();
+
+      return TRUE;
+    }
+
+  *ret = make_stream_list (self, priv->streams);
 
   return TRUE;
 }
@@ -949,6 +965,27 @@ gabble_media_channel_remove_members (GabbleMediaChannel *self,
 {
   return gabble_group_mixin_remove_members (G_OBJECT (self), contacts, message,
       error);
+}
+
+
+/**
+ * gabble_media_channel_remove_streams
+ *
+ * Implements D-Bus method RemoveStreams
+ * on interface org.freedesktop.Telepathy.Channel.Type.StreamedMedia
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occurred, D-Bus will throw the error only if this
+ *         function returns FALSE.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean
+gabble_media_channel_remove_streams (GabbleMediaChannel *self,
+                                     const GArray *streams,
+                                     GError **error)
+{
+  return TRUE;
 }
 
 
@@ -990,10 +1027,11 @@ gboolean
 gabble_media_channel_request_streams (GabbleMediaChannel *self,
                                       guint contact_handle,
                                       const GArray *types,
-                                      GArray **ret,
+                                      GPtrArray **ret,
                                       GError **error)
 {
   GabbleMediaChannelPrivate *priv;
+  GPtrArray *streams;
 
   g_assert (GABBLE_IS_MEDIA_CHANNEL (self));
 
@@ -1014,8 +1052,15 @@ gabble_media_channel_request_streams (GabbleMediaChannel *self,
   /* if the person is a channel member, we should have a session */
   g_assert (priv->session != NULL);
 
-  return _gabble_media_session_request_streams (priv->session, types, ret,
-      error);
+  if (!_gabble_media_session_request_streams (priv->session, types, &streams,
+        error))
+    return FALSE;
+
+  *ret = make_stream_list (self, streams);
+
+  g_ptr_array_free (streams, TRUE);
+
+  return TRUE;
 }
 
 

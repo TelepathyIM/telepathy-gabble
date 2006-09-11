@@ -1160,9 +1160,9 @@ accept_msg_reply_cb (GabbleConnection *conn,
 }
 
 static gboolean
-_find_unacceptable_stream (const gchar *name,
-                           GabbleMediaStream *stream,
-                           GabbleMediaSession *session)
+_stream_not_ready_for_accept (const gchar *name,
+                              GabbleMediaStream *stream,
+                              GabbleMediaSession *session)
 {
   TpMediaStreamState state;
   gboolean got_codecs;
@@ -1204,7 +1204,7 @@ try_session_accept (GabbleMediaSession *session)
       return;
     }
 
-  if (g_hash_table_find (priv->streams, (GHRFunc) _find_unacceptable_stream,
+  if (g_hash_table_find (priv->streams, (GHRFunc) _stream_not_ready_for_accept,
         session) != NULL)
     {
       GMS_DEBUG_INFO (session, "not sending accept yet, found a stream "
@@ -1248,9 +1248,9 @@ initiate_msg_reply_cb (GabbleConnection *conn,
 }
 
 static gboolean
-_find_uninitiatable_stream (const gchar *name,
-                            GabbleMediaStream *stream,
-                            GabbleMediaSession *session)
+_stream_not_ready_for_initiate (const gchar *name,
+                                GabbleMediaStream *stream,
+                                GabbleMediaSession *session)
 {
   gboolean got_codecs;
 
@@ -1276,8 +1276,8 @@ try_session_initiate (GabbleMediaSession *session)
   LmMessageNode *session_node;
   const gchar *action;
 
-  if (g_hash_table_find (priv->streams, (GHRFunc) _find_uninitiatable_stream,
-        session) != NULL)
+  if (g_hash_table_find (priv->streams,
+        (GHRFunc) _stream_not_ready_for_initiate, session) != NULL)
     {
       GMS_DEBUG_INFO (session, "not sending initiate yet, found a stream "
           "which was missing codecs");

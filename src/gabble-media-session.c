@@ -230,6 +230,8 @@ create_media_stream (GabbleMediaSession *session,
   if (priv->ready)
     _emit_new_stream (name, stream, session);
 
+  g_signal_emit (session, signals[STREAM_ADDED], 0, stream);
+
   return stream;
 }
 
@@ -1427,8 +1429,6 @@ stream_got_codecs_changed_cb (GabbleMediaStream *stream,
 
   GMS_DEBUG_INFO (session, "stream %s has got codecs", name);
   g_free (name);
-
-  g_signal_emit (session, signals[STREAM_ADDED], 0, stream);
 
   /* FIXME */
   if (priv->initiator == INITIATOR_REMOTE)

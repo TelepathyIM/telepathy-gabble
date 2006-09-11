@@ -769,7 +769,8 @@ gabble_media_stream_ready (GabbleMediaStream *self,
   push_remote_codecs (self);
   push_remote_candidates (self);
 
-  g_signal_emit (self, signals[SET_STREAM_PLAYING], 0, priv->playing);
+  if (priv->playing)
+    g_signal_emit (self, signals[SET_STREAM_PLAYING], 0, priv->playing);
 
   return TRUE;
 }

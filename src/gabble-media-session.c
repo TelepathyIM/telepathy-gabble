@@ -1960,6 +1960,8 @@ _gabble_media_session_request_streams (GabbleMediaSession *session,
       stream = create_media_stream (session, stream_name, INITIATOR_LOCAL,
                                     media_type);
 
+      g_object_set (stream, "jingle-state", JST_STATE_PRE_ACCEPTED, NULL);
+
       g_ptr_array_add (*ret, stream);
     }
 

@@ -471,18 +471,7 @@ gabble_media_channel_dispose (GObject *object)
   if (!priv->closed)
     gabble_media_channel_close (self, NULL);
 
-  g_assert (priv->closed && priv->session==NULL);
-
-  if (priv->streams != NULL)
-    {
-      GPtrArray *tmp = priv->streams;
-
-      /* move priv->streams aside so that the stream_destroy_cb
-       * doesn't double unref */
-      priv->streams = NULL;
-      g_ptr_array_foreach (tmp, (GFunc) g_object_unref, NULL);
-      g_ptr_array_free (tmp, TRUE);
-    }
+  g_assert (priv->closed && priv->session == NULL && priv->streams == NULL);
 
   if (G_OBJECT_CLASS (gabble_media_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_media_channel_parent_class)->dispose (object);
@@ -1311,6 +1300,18 @@ session_state_changed_cb (GabbleMediaSession *session,
       g_object_get (priv->session, "session-id", &sid, NULL);
       _gabble_media_factory_free_sid (priv->factory, sid);
       g_free (sid);
+
+      /* unref streams */
+      if (priv->streams != NULL)
+        {
+          GPtrArray *tmp = priv->streams;
+
+          /* move priv->streams aside so that the stream_destroy_cb
+           * doesn't double unref */
+          priv->streams = NULL;
+          g_ptr_array_foreach (tmp, (GFunc) g_object_unref, NULL);
+          g_ptr_array_free (tmp, TRUE);
+        }
 
       /* remove the session */
       g_object_unref (priv->session);

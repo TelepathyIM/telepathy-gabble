@@ -103,7 +103,7 @@ struct _GabbleMediaStreamPrivate
 
   JingleStreamState jingle_state;
 
-  gboolean got_codecs;
+  gboolean got_local_codecs;
 
   gboolean playing;
 
@@ -222,7 +222,7 @@ gabble_media_stream_get_property (GObject    *object,
       g_value_set_uint (value, priv->jingle_state);
       break;
     case PROP_GOT_CODECS:
-      g_value_set_boolean (value, priv->got_codecs);
+      g_value_set_boolean (value, priv->got_local_codecs);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -280,7 +280,7 @@ gabble_media_stream_set_property (GObject      *object,
         jingle_state_changed (stream, prev_state, priv->jingle_state);
       break;
     case PROP_GOT_CODECS:
-      priv->got_codecs = g_value_get_boolean (value);
+      priv->got_local_codecs = g_value_get_boolean (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -415,9 +415,9 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
   g_object_class_install_property (object_class, PROP_JINGLE_STATE,
                                    param_spec);
 
-  param_spec = g_param_spec_boolean ("got-codecs", "Whether we've got codecs",
+  param_spec = g_param_spec_boolean ("got-local-codecs", "Got local codecs?",
                                      "A boolean signifying whether we've got "
-                                     "locally supported codecs from the user.",
+                                     "the locally supported codecs from the user.",
                                      FALSE,
                                      G_PARAM_READWRITE |
                                      G_PARAM_STATIC_NAME |
@@ -810,7 +810,7 @@ gabble_media_stream_ready (GabbleMediaStream *self,
 
   g_value_set_boxed (&priv->native_codecs, codecs);
 
-  g_object_set (self, "got-codecs", TRUE, NULL);
+  g_object_set (self, "got-local-codecs", TRUE, NULL);
 
   push_remote_codecs (self);
   push_remote_candidates (self);
@@ -1212,7 +1212,7 @@ push_remote_codecs (GabbleMediaStream *stream)
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
-  if (!priv->got_codecs || priv->jingle_state < JST_STATE_PRE_ACCEPTED)
+  if (!priv->got_local_codecs || priv->jingle_state < JST_STATE_PRE_ACCEPTED)
     return;
 
   codecs = g_value_get_boxed (&priv->remote_codecs);
@@ -1434,7 +1434,7 @@ push_remote_candidates (GabbleMediaStream *stream)
   if (candidates->len == 0)
     return;
 
-  if (!priv->got_codecs || priv->jingle_state < JST_STATE_PRE_ACCEPTED)
+  if (!priv->got_local_codecs || priv->jingle_state < JST_STATE_PRE_ACCEPTED)
     return;
 
   for (i = 0; i < candidates->len; i++)
@@ -1634,7 +1634,7 @@ _set_playing (GabbleMediaStream *stream, gboolean playing)
 
   priv->playing = playing;
 
-  if (priv->got_codecs)
+  if (priv->got_local_codecs)
     {
       GMS_DEBUG_INFO (priv->session, "stream %s emitting SetStreamPlaying "
           "signal with %d", priv->name, playing);

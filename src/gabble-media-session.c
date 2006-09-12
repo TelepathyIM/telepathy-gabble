@@ -143,9 +143,9 @@ static void stream_destroy_cb (GabbleMediaStream *stream,
 static void stream_state_changed_cb (GabbleMediaStream *stream,
                                      GParamSpec *param,
                                      GabbleMediaSession *session);
-static void stream_got_codecs_changed_cb (GabbleMediaStream *stream,
-                                          GParamSpec *param,
-                                          GabbleMediaSession *session);
+static void stream_got_local_codecs_changed_cb (GabbleMediaStream *stream,
+                                                GParamSpec *param,
+                                                GabbleMediaSession *session);
 
 static void
 _emit_new_stream (const gchar *name,
@@ -219,8 +219,8 @@ create_media_stream (GabbleMediaSession *session,
   g_signal_connect (stream, "notify::state",
                     (GCallback) stream_state_changed_cb,
                     session);
-  g_signal_connect (stream, "notify::got-codecs",
-                    (GCallback) stream_got_codecs_changed_cb,
+  g_signal_connect (stream, "notify::got-local-codecs",
+                    (GCallback) stream_got_local_codecs_changed_cb,
                     session);
 
   g_hash_table_insert (priv->streams, g_strdup (name), stream);
@@ -1167,16 +1167,17 @@ _stream_not_ready_for_accept (const gchar *name,
                               GabbleMediaSession *session)
 {
   TpMediaStreamState state;
-  gboolean got_codecs;
+  gboolean got_local_codecs;
 
   g_object_get (stream,
-                "got-codecs", &got_codecs,
+                "got-local-codecs", &got_local_codecs,
                 "state", &state,
                 NULL);
 
-  if (!got_codecs)
+  if (!got_local_codecs)
     {
-      GMS_DEBUG_INFO (session, "stream %s does not yet have codecs", name);
+      GMS_DEBUG_INFO (session, "stream %s does not yet have local codecs",
+          name);
 
       return TRUE;
     }
@@ -1210,7 +1211,7 @@ try_session_accept (GabbleMediaSession *session)
         session) != NULL)
     {
       GMS_DEBUG_INFO (session, "not sending accept yet, found a stream "
-          "which was disconnected or missing codecs");
+          "which was disconnected or missing local codecs");
       return;
     }
 
@@ -1254,15 +1255,16 @@ _stream_not_ready_for_initiate (const gchar *name,
                                 GabbleMediaStream *stream,
                                 GabbleMediaSession *session)
 {
-  gboolean got_codecs;
+  gboolean got_local_codecs;
 
   g_object_get (stream,
-                "got-codecs", &got_codecs,
+                "got-local-codecs", &got_local_codecs,
                 NULL);
 
-  if (!got_codecs)
+  if (!got_local_codecs)
     {
-      GMS_DEBUG_INFO (session, "stream %s does not yet have codecs", name);
+      GMS_DEBUG_INFO (session, "stream %s does not yet have local codecs",
+          name);
 
       return TRUE;
     }
@@ -1282,7 +1284,7 @@ try_session_initiate (GabbleMediaSession *session)
         (GHRFunc) _stream_not_ready_for_initiate, session) != NULL)
     {
       GMS_DEBUG_INFO (session, "not sending initiate yet, found a stream "
-          "which was missing codecs");
+          "which was missing local codecs");
       return;
     }
 
@@ -1405,12 +1407,12 @@ stream_state_changed_cb (GabbleMediaStream *stream,
 }
 
 static void
-stream_got_codecs_changed_cb (GabbleMediaStream *stream,
-                              GParamSpec *param,
-                              GabbleMediaSession *session)
+stream_got_local_codecs_changed_cb (GabbleMediaStream *stream,
+                                    GParamSpec *param,
+                                    GabbleMediaSession *session)
 {
   GabbleMediaSessionPrivate *priv;
-  gboolean got_codecs;
+  gboolean got_local_codecs;
   JingleInitiator stream_initiator;
   gchar *name;
 
@@ -1419,15 +1421,15 @@ stream_got_codecs_changed_cb (GabbleMediaStream *stream,
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
 
   g_object_get (stream,
-                "got-codecs", &got_codecs,
+                "got-local-codecs", &got_local_codecs,
                 "initiator", &stream_initiator,
                 "name", &name,
                 NULL);
 
-  if (!got_codecs)
+  if (!got_local_codecs)
     return;
 
-  GMS_DEBUG_INFO (session, "stream %s has got codecs", name);
+  GMS_DEBUG_INFO (session, "stream %s has got local codecs", name);
   g_free (name);
 
   /* FIXME */

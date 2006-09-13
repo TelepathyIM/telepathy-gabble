@@ -1089,7 +1089,7 @@ session_state_changed (GabbleMediaSession *session,
    * end initiated), set the timer. If, OTOH, we're the end which just sent an
    * initiate, set the timer.
    */
-  if ((prev_state != JS_STATE_PENDING_INITIATE_SENT &&
+  if ((prev_state == JS_STATE_PENDING_CREATED &&
        new_state == JS_STATE_PENDING_INITIATED) ||
       (new_state == JS_STATE_PENDING_INITIATE_SENT))
     {

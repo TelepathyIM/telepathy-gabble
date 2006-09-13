@@ -1204,7 +1204,7 @@ try_session_accept (GabbleMediaSession *session)
   if (!priv->accepted)
     {
       GMS_DEBUG_INFO (session, "not sending accept yet, waiting for "
-          "local acceptance");
+          "local user to accept call");
       return;
     }
 
@@ -1403,7 +1403,7 @@ stream_connection_state_changed_cb (GabbleMediaStream *stream,
   else
     {
       GMS_DEBUG_INFO (session, "session initiated by us, so we're not going "
-          "to consider accepting");
+          "to consider sending an accept");
     }
 }
 

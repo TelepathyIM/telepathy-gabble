@@ -1636,8 +1636,8 @@ _set_playing (GabbleMediaStream *stream, gboolean playing)
 
   if (priv->got_local_codecs)
     {
-      GMS_DEBUG_INFO (priv->session, "stream %s emitting SetStreamPlaying "
-          "signal with %d", priv->name, playing);
+      GMS_DEBUG_INFO (priv->session, "stream %s emitting SetStreamPlaying(%s)",
+          priv->name, playing ? "true" : "false");
 
       g_signal_emit (stream, signals[SET_STREAM_PLAYING], 0, playing);
     }

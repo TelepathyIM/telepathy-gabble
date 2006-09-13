@@ -79,7 +79,7 @@ enum
   PROP_ID,
   PROP_INITIATOR,
   PROP_MEDIA_TYPE,
-  PROP_STATE,
+  PROP_CONNECTION_STATE,
   PROP_JINGLE_STATE,
   PROP_GOT_CODECS,
   LAST_PROPERTY
@@ -99,7 +99,7 @@ struct _GabbleMediaStreamPrivate
   JingleInitiator initiator;
   guint media_type;
 
-  TpMediaStreamState state;
+  TpMediaStreamState connection_state;
 
   JingleStreamState jingle_state;
 
@@ -215,8 +215,8 @@ gabble_media_stream_get_property (GObject    *object,
     case PROP_MEDIA_TYPE:
       g_value_set_uint (value, priv->media_type);
       break;
-    case PROP_STATE:
-      g_value_set_uint (value, priv->state);
+    case PROP_CONNECTION_STATE:
+      g_value_set_uint (value, priv->connection_state);
       break;
     case PROP_JINGLE_STATE:
       g_value_set_uint (value, priv->jingle_state);
@@ -269,8 +269,8 @@ gabble_media_stream_set_property (GObject      *object,
     case PROP_MEDIA_TYPE:
       priv->media_type = g_value_get_uint (value);
       break;
-    case PROP_STATE:
-      priv->state = g_value_get_uint (value);
+    case PROP_CONNECTION_STATE:
+      priv->connection_state = g_value_get_uint (value);
       break;
     case PROP_JINGLE_STATE:
       prev_state = priv->jingle_state;
@@ -392,16 +392,16 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_MEDIA_TYPE, param_spec);
 
-  param_spec = g_param_spec_uint ("state", "Stream state",
-                                  "An integer indicating which state the "
-                                  "stream is currently in.",
+  param_spec = g_param_spec_uint ("connection-state", "Stream connection state",
+                                  "An integer indicating the state of the"
+                                  "stream's connection.",
                                   TP_MEDIA_STREAM_STATE_DISCONNECTED,
                                   TP_MEDIA_STREAM_STATE_CONNECTED,
                                   TP_MEDIA_STREAM_STATE_DISCONNECTED,
                                   G_PARAM_READWRITE |
                                   G_PARAM_STATIC_NAME |
                                   G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_STATE, param_spec);
+  g_object_class_install_property (object_class, PROP_CONNECTION_STATE, param_spec);
 
   param_spec = g_param_spec_uint ("jingle-state", "Jingle stream state",
                                   "The jingle (signalling) state that the "
@@ -845,12 +845,12 @@ gabble_media_stream_ready (GabbleMediaStream *self,
  */
 gboolean
 gabble_media_stream_stream_state (GabbleMediaStream *self,
-                                  guint state,
+                                  guint connection_state,
                                   GError **error)
 {
   g_assert (GABBLE_IS_MEDIA_STREAM (self));
 
-  g_object_set (self, "state", state, NULL);
+  g_object_set (self, "connection-state", connection_state, NULL);
 
   return TRUE;
 }

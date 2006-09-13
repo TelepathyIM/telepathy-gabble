@@ -140,9 +140,9 @@ gabble_media_session_init (GabbleMediaSession *self)
 
 static void stream_destroy_cb (GabbleMediaStream *stream,
                                GabbleMediaSession *session);
-static void stream_state_changed_cb (GabbleMediaStream *stream,
-                                     GParamSpec *param,
-                                     GabbleMediaSession *session);
+static void stream_connection_state_changed_cb (GabbleMediaStream *stream,
+                                                GParamSpec *param,
+                                                GabbleMediaSession *session);
 static void stream_got_local_codecs_changed_cb (GabbleMediaStream *stream,
                                                 GParamSpec *param,
                                                 GabbleMediaSession *session);
@@ -216,8 +216,8 @@ create_media_stream (GabbleMediaSession *session,
   g_signal_connect (stream, "destroy",
                     (GCallback) stream_destroy_cb,
                     session);
-  g_signal_connect (stream, "notify::state",
-                    (GCallback) stream_state_changed_cb,
+  g_signal_connect (stream, "notify::connection-state",
+                    (GCallback) stream_connection_state_changed_cb,
                     session);
   g_signal_connect (stream, "notify::got-local-codecs",
                     (GCallback) stream_got_local_codecs_changed_cb,
@@ -1166,12 +1166,12 @@ _stream_not_ready_for_accept (const gchar *name,
                               GabbleMediaStream *stream,
                               GabbleMediaSession *session)
 {
-  TpMediaStreamState state;
+  TpMediaStreamState connection_state;
   gboolean got_local_codecs;
 
   g_object_get (stream,
                 "got-local-codecs", &got_local_codecs,
-                "state", &state,
+                "connection-state", &connection_state,
                 NULL);
 
   if (!got_local_codecs)
@@ -1182,7 +1182,7 @@ _stream_not_ready_for_accept (const gchar *name,
       return TRUE;
     }
 
-  if (state != TP_MEDIA_STREAM_STATE_CONNECTED)
+  if (connection_state != TP_MEDIA_STREAM_STATE_CONNECTED)
     {
       GMS_DEBUG_INFO (session, "stream %s is not yet connected", name);
 
@@ -1369,12 +1369,12 @@ stream_destroy_cb (GabbleMediaStream *stream,
 }
 
 static void
-stream_state_changed_cb (GabbleMediaStream *stream,
-                         GParamSpec *param,
-                         GabbleMediaSession *session)
+stream_connection_state_changed_cb (GabbleMediaStream *stream,
+                                    GParamSpec *param,
+                                    GabbleMediaSession *session)
 {
   GabbleMediaSessionPrivate *priv;
-  TpMediaStreamState state;
+  TpMediaStreamState connection_state;
   gchar *name;
 
   g_assert (GABBLE_IS_MEDIA_SESSION (session));
@@ -1382,11 +1382,11 @@ stream_state_changed_cb (GabbleMediaStream *stream,
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
 
   g_object_get (stream,
-                "state", &state,
+                "connection-state", &connection_state,
                 "name", &name,
                 NULL);
 
-  if (state != TP_MEDIA_STREAM_STATE_CONNECTED)
+  if (connection_state != TP_MEDIA_STREAM_STATE_CONNECTED)
     return;
 
   GMS_DEBUG_INFO (session, "stream %s has gone connected", name);

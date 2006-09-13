@@ -804,7 +804,7 @@ _handle_candidates (GabbleMediaSession *session,
 
 
 static gboolean
-_handle_reduce (GabbleMediaSession *session,
+_handle_remove (GabbleMediaSession *session,
                 LmMessage *message,
                 LmMessageNode *content_node,
                 const gchar *stream_name,
@@ -816,12 +816,13 @@ _handle_reduce (GabbleMediaSession *session,
 
   if (stream == NULL)
     {
-      GMS_DEBUG_WARNING (session, "unable to handle session-reduce for "
+      GMS_DEBUG_WARNING (session, "unable to handle content-remove for "
           "unknown stream \"%s\"", stream_name);
       return FALSE;
     }
 
-  /* this shouldn't happen */
+  /* reducing a session to contain 0 streams is invalid; instead the peer
+   * should terminate the session. I guess we'll do it for them... */
   if (g_hash_table_size (priv->streams) == 1)
     {
       return FALSE;
@@ -861,10 +862,10 @@ static Handler handlers[] = {
     JS_STATE_PENDING_INITIATED
   },
   {
-    { "session-reduce", NULL },
+    { "content-remove", NULL },
     JS_STATE_PENDING_INITIATED,
     JS_STATE_ACTIVE,
-    { _handle_reduce, NULL },
+    { _handle_remove, NULL },
     JS_STATE_INVALID
   },
   {
@@ -1589,14 +1590,14 @@ _gabble_media_session_remove_streams (GabbleMediaSession *session,
       return;
     }
 
-  /* construct a reduce message */
-  msg = _gabble_media_session_message_new (session, "session-reduce",
+  /* construct a remove message */
+  msg = _gabble_media_session_message_new (session, "content-remove",
                                            &session_node);
 
-  GMS_DEBUG_INFO (session, "sending jingle session action \"session-reduce\" "
+  GMS_DEBUG_INFO (session, "sending jingle session action \"content-remove\" "
                   "to peer");
 
-  /* right, reduce it */
+  /* right, remove it */
   for (i = 0; i < streams->len; i++)
     {
       GabbleMediaStream *stream = g_ptr_array_index (streams, i);
@@ -1614,7 +1615,7 @@ _gabble_media_session_remove_streams (GabbleMediaSession *session,
       _gabble_media_stream_close (stream);
     }
 
-    /* send the reduce message */
+    /* send the remove message */
     _gabble_connection_send_with_reply (priv->conn, msg, ignore_reply_cb,
                                         G_OBJECT (session), NULL, NULL);
 

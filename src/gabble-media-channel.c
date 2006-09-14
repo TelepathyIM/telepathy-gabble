@@ -866,13 +866,13 @@ make_stream_list (GabbleMediaChannel *self,
       guint id;
       GabbleHandle peer;
       TpCodecMediaType type;
-      TpMediaStreamState state;
+      TpMediaStreamState connection_state;
       TpMediaStreamDirection direction =
         TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL; /* FIXME */
       TpMediaStreamPendingSend pending = TP_MEDIA_STREAM_PENDING_NONE;
 
       g_object_get (stream, "id", &id, "media-type", &type,
-                    "state", &state, NULL);
+                    "connection-state", &connection_state, NULL);
 
       g_object_get (priv->session, "peer", &peer, NULL);
 
@@ -884,7 +884,7 @@ make_stream_list (GabbleMediaChannel *self,
           0, id,
           1, peer,
           2, type,
-          3, state,
+          3, connection_state,
           4, direction,
           5, pending,
           G_MAXUINT);
@@ -1353,11 +1353,11 @@ stream_state_changed_cb (GabbleMediaStream *stream,
                          GabbleMediaChannel *chan)
 {
   guint id;
-  TpMediaStreamState state;
+  TpMediaStreamState connection_state;
 
-  g_object_get (stream, "id", &id, "state", &state, NULL);
+  g_object_get (stream, "id", &id, "connection-state", &connection_state, NULL);
 
-  g_signal_emit (chan, signals[STREAM_STATE_CHANGED], 0, id, state);
+  g_signal_emit (chan, signals[STREAM_STATE_CHANGED], 0, id, connection_state);
 }
 
 static void
@@ -1375,7 +1375,7 @@ session_stream_added_cb (GabbleMediaSession *session,
 
   g_signal_connect (stream, "destroy",
                     (GCallback) stream_destroy_cb, chan);
-  g_signal_connect (stream, "notify::state",
+  g_signal_connect (stream, "notify::connection-state",
                     (GCallback) stream_state_changed_cb, chan);
 
   /* emit StreamAdded */

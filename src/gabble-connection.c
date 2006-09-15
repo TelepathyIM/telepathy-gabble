@@ -1384,9 +1384,8 @@ _gabble_connection_connect (GabbleConnection *conn,
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   char *jid;
-#if 0
+  const Feature *feat;
   GabblePresence *presence;
-#endif
 
   g_assert (priv->port > 0 && priv->port <= G_MAXUINT16);
   g_assert (priv->stream_server != NULL);
@@ -1417,14 +1416,18 @@ _gabble_connection_connect (GabbleConnection *conn,
       priv->resource, GABBLE_PRESENCE_AVAILABLE, NULL, priv->priority);
   emit_one_presence_update (conn, conn->self_handle);
 
-#if 0
   /* set initial capabilities */
-  /* TODO: get these from AdvertiseCapabilities  */
   presence = gabble_presence_cache_get (conn->presence_cache, conn->self_handle);
-  g_assert (presence);
-  gabble_presence_set_capabilities (presence, priv->resource,
-      PRESENCE_CAP_JINGLE_VOICE | PRESENCE_CAP_GOOGLE_VOICE);
-#endif
+
+  for (feat = self_advertised_features; NULL != feat->ns; feat++)
+    {
+      if (NULL == feat->bundle)
+          /* NULL bundle means a fixed feature, which we always advertise */
+          gabble_presence_set_capabilities (presence,
+                                            priv->resource,
+                                            feat->caps,
+                                            0);
+    }
 
   /* always override server and port if one was forced upon us */
   if (priv->connect_server != NULL)

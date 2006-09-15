@@ -57,6 +57,7 @@
 #include "namespaces.h"
 #include "roster.h"
 #include "util.h"
+#include "bundles.h"
 
 #include "gabble-media-channel.h"
 #include "gabble-roomlist-channel.h"
@@ -191,6 +192,40 @@ const GabblePropertySignature connection_property_signatures[NUM_CONN_PROPS] = {
       { "stun-relay-username",          G_TYPE_STRING },
       { "stun-relay-password",          G_TYPE_STRING },
 };
+
+typedef struct _Feature Feature;
+
+struct _Feature
+{
+  const gchar *bundle;
+  const gchar *ns;
+  GabblePresenceCapabilities caps;
+};
+
+static const Feature self_advertised_features[] =
+{
+  { NULL, NS_GOOGLE_FEAT_SESSION, 0},
+  { NULL, NS_GOOGLE_TRANSPORT_P2P, PRESENCE_CAP_GOOGLE_TRANSPORT_P2P},
+  { NULL, NS_JINGLE, PRESENCE_CAP_JINGLE},
+
+  { BUNDLE_VOICE_V1, NS_GOOGLE_FEAT_VOICE, PRESENCE_CAP_GOOGLE_VOICE},
+  { BUNDLE_JINGLE_AUDIO, NS_JINGLE_DESCRIPTION_AUDIO, PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO},
+  { BUNDLE_JINGLE_VIDEO, NS_JINGLE_DESCRIPTION_VIDEO, PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO},
+  { NULL, NULL, 0}
+};
+
+static GSList *
+get_features (GabblePresenceCapabilities caps)
+{
+  GSList *features = NULL;
+  const Feature *i;
+
+  for (i = self_advertised_features; NULL != i->ns; i++)
+    if ((i->caps & caps) == i->caps)
+      features = g_slist_append (features, (gpointer) i);
+
+  return features;
+}
 
 /* private structure */
 typedef struct _GabbleConnectionPrivate GabbleConnectionPrivate;
@@ -2083,6 +2118,8 @@ signal_own_presence (GabbleConnection *self, GError **error)
   LmMessage *message = gabble_presence_as_message (presence, priv->resource);
   LmMessageNode *node = lm_message_get_node (message);
   gboolean ret;
+  gchar *ext_string = g_strdup("");
+  GSList *features, *i;
 
   if (presence->status == GABBLE_PRESENCE_HIDDEN)
     {
@@ -2090,20 +2127,37 @@ signal_own_presence (GabbleConnection *self, GError **error)
         lm_message_node_set_attribute (node, "type", "invisible");
     }
 
-  /* TODO: determine which feature bundles to advertise based on
-   * which capabilities of ours are turned on. */
+  features = get_features (presence->caps);
+
+  for (i = features; NULL != i; i = i->next)
+    {
+      const Feature *feat = (const Feature *) i->data;
+
+      if (NULL != feat->bundle)
+        {
+          gchar *tmp = ext_string;
+          ext_string = g_strdup_printf ("%s %s", ext_string, feat->bundle);
+          g_free (tmp);
+        }
+    }
+
   node = lm_message_node_add_child (node, "c", NULL);
   lm_message_node_set_attributes (
     node,
     "xmlns", NS_CAPS,
     "node",  NS_GABBLE_CAPS,
     "ver",   VERSION,
-    "ext",   "voice-v1 jingle-audio jingle-video",
     NULL);
+
+  if (0 != strlen(ext_string))
+      lm_message_node_set_attribute (node, "ext", ext_string);
 
   ret = _gabble_connection_send (self, message, error);
 
   lm_message_unref (message);
+
+  g_free (ext_string);
+  g_slist_free (features);
 
   return ret;
 }
@@ -2202,53 +2256,6 @@ _lm_iq_message_make_result (LmMessage *iq_message)
   return result;
 }
 
-typedef struct _Feature Feature;
-
-struct _Feature
-{
-  const gchar *bundle;
-  const gchar *ns;
-};
-
-static Feature *
-feature_new (const gchar *bundle, const gchar *ns)
-{
-  Feature *feature;
-
-  feature = g_new0 (Feature, 1);
-  feature->bundle = bundle;
-  feature->ns = ns;
-  return feature;
-}
-
-static GSList *
-get_features (void)
-{
-  static GSList *features = NULL;
-
-  /* TODO: this list should be generated from our own capability flags
-   * using a table that equates disco features to the flags, which can
-   * be used when parsing too */
-  if (NULL == features)
-    {
-      features = g_slist_append (features,
-        feature_new (NULL, NS_GOOGLE_FEAT_SESSION));
-      features = g_slist_append (features,
-        feature_new (NULL, NS_GOOGLE_TRANSPORT_P2P));
-      features = g_slist_append (features,
-        feature_new (NULL, NS_JINGLE));
-
-      features = g_slist_append (features,
-        feature_new ("jingle-audio", NS_JINGLE_DESCRIPTION_AUDIO));
-      features = g_slist_append (features,
-        feature_new ("jingle-video", NS_JINGLE_DESCRIPTION_VIDEO));
-      features = g_slist_append (features,
-        feature_new ("voice-v1", NS_GOOGLE_FEAT_VOICE));
-    }
-
-  return features;
-}
-
 /**
  * connection_iq_disco_cb
  *
@@ -2265,7 +2272,9 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   LmMessage *result;
   LmMessageNode *iq, *result_iq, *query, *result_query;
   const gchar *node, *suffix;
+  GSList *features;
   GSList *i;
+  GabblePresence *pres;
 
   if (lm_message_get_sub_type (message) != LM_MESSAGE_SUB_TYPE_GET)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
@@ -2302,9 +2311,12 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   result_query = lm_message_node_add_child (result_iq, "query", NULL);
   lm_message_node_set_attribute (result_query, "xmlns", NS_DISCO_INFO);
 
-  for (i = get_features (); NULL != i; i = i->next)
+  pres = gabble_presence_cache_get (conn->presence_cache, conn->self_handle);
+  features = get_features (pres->caps);
+
+  for (i = features; NULL != i; i = i->next)
     {
-      Feature *feature = (Feature *) i->data;
+      const Feature *feature = (const Feature *) i->data;
 
       if (NULL == node || !g_strdiff (suffix, feature->bundle))
         {
@@ -2318,6 +2330,8 @@ connection_iq_disco_cb (LmMessageHandler *handler,
 
   if (!lm_connection_send (conn->lmconn, result, NULL))
     DEBUG ("sending disco response failed");
+
+  g_slist_free (features);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }

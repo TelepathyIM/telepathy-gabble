@@ -149,12 +149,11 @@ gabble_presence_resource_has_caps (GabblePresence *presence,
 }
 
 void
-gabble_presence_set_capabilities (GabblePresence *presence,
-                                  const gchar *resource,
-                                  GabblePresenceCapabilities caps)
+gabble_presence_set_capabilities (GabblePresence *presence, const gchar *resource, GabblePresenceCapabilities caps)
 {
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
   GSList *i;
+  GabblePresenceCapabilities total_caps = 0;
 
   for (i = priv->resources; NULL != i; i = i->next)
     {
@@ -162,11 +161,19 @@ gabble_presence_set_capabilities (GabblePresence *presence,
 
       if (0 == strcmp (tmp->name, resource))
         {
+          if (tmp->caps == 0 || tmp->caps_serial != serial)
+            {
+              tmp->caps = 0;
+              tmp->caps_serial = serial;
+            }
           tmp->caps |= caps;
           presence->caps |= caps;
-          break;
         }
+
+      total_caps |= tmp->caps;
     }
+
+  presence->caps = total_caps;
 }
 
 static Resource *

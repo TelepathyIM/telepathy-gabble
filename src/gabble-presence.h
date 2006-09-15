@@ -83,7 +83,7 @@ GabblePresence* gabble_presence_new (void);
 
 gboolean gabble_presence_update (GabblePresence *presence, const gchar *resource, GabblePresenceId status, const gchar *status_message, gint8 priority);
 
-void gabble_presence_set_capabilities (GabblePresence *presence, const gchar *resource, GabblePresenceCapabilities caps);
+void gabble_presence_set_capabilities (GabblePresence *presence, const gchar *resource, GabblePresenceCapabilities caps, guint serial);
 
 const gchar *gabble_presence_pick_resource_by_caps (GabblePresence *presence, GabblePresenceCapabilities caps);
 

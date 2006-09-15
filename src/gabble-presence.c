@@ -117,7 +117,7 @@ gabble_presence_pick_resource_by_caps (
       Resource *res = (Resource *) i->data;
 
       if ((res->priority >= 0) &&
-          (res->caps & caps) &&
+          ((res->caps & caps) == caps) &&
           (NULL == chosen || res->priority > chosen->priority))
         chosen = res;
     }

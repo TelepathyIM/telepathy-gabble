@@ -620,7 +620,9 @@ _caps_disco_cb (GabbleDisco *disco,
       presence = gabble_presence_cache_get (cache, waiter->handle);
 
       if (presence)
-        gabble_presence_set_capabilities (presence, waiter->resource, caps, waiter->serial);
+        gabble_presence_set_capabilities (presence,
+                                          waiter->resource,caps,
+                                          waiter->serial);
     }
 
   g_hash_table_remove (priv->disco_pending, node);

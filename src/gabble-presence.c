@@ -34,6 +34,7 @@ typedef struct _Resource Resource;
 struct _Resource {
     gchar *name;
     GabblePresenceCapabilities caps;
+    guint caps_serial;
     GabblePresenceId status;
     gchar *status_message;
     gint8 priority;

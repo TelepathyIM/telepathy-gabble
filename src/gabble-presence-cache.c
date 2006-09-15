@@ -67,6 +67,7 @@ struct _GabblePresenceCachePrivate
 
   GHashTable *capabilities;
   GHashTable *disco_pending;
+  guint caps_serial;
 
   gboolean dispose_has_run;
 };
@@ -78,6 +79,7 @@ struct _DiscoWaiter
   GabbleHandleRepo *repo;
   GabbleHandle handle;
   gchar *resource;
+  guint serial;
   gboolean disco_requested;
 };
 
@@ -85,7 +87,7 @@ struct _DiscoWaiter
  * disco_waiter_new ()
  */
 static DiscoWaiter *
-disco_waiter_new (GabbleHandleRepo *repo, GabbleHandle handle, const gchar *resource)
+disco_waiter_new (GabbleHandleRepo *repo, GabbleHandle handle, const gchar *resource, guint serial)
 {
   DiscoWaiter *waiter;
 
@@ -93,11 +95,12 @@ disco_waiter_new (GabbleHandleRepo *repo, GabbleHandle handle, const gchar *reso
   gabble_handle_ref (repo, TP_HANDLE_TYPE_CONTACT, handle);
 
   waiter = g_new0 (DiscoWaiter, 1);
+  waiter->repo = repo;
   waiter->handle = handle;
   waiter->resource = g_strdup (resource);
-  waiter->repo = repo;
+  waiter->serial = serial;
 
-  DEBUG ("created waiter %p for handle %u", waiter, handle);
+  DEBUG ("created waiter %p for handle %u with serial %u", waiter, handle, serial);
 
   return waiter;
 }
@@ -107,7 +110,7 @@ disco_waiter_free (DiscoWaiter *waiter)
 {
   g_assert (NULL != waiter);
 
-  DEBUG ("freeing waiter %p for handle %u", waiter, waiter->handle);
+  DEBUG ("freeing waiter %p for handle %u with serial %u", waiter, waiter->handle, waiter->serial);
 
   gabble_handle_unref (waiter->repo, TP_HANDLE_TYPE_CONTACT, waiter->handle);
 
@@ -617,7 +620,7 @@ _caps_disco_cb (GabbleDisco *disco,
       presence = gabble_presence_cache_get (cache, waiter->handle);
 
       if (presence)
-        gabble_presence_set_capabilities (presence, waiter->resource, caps);
+        gabble_presence_set_capabilities (presence, waiter->resource, caps, waiter->serial);
     }
 
   g_hash_table_remove (priv->disco_pending, node);
@@ -628,7 +631,8 @@ _process_caps_uri (GabblePresenceCache *cache,
                    const gchar *from,
                    const gchar *uri,
                    GabbleHandle handle,
-                   const gchar *resource)
+                   const gchar *resource,
+                   guint serial)
 {
   gpointer value;
   GabblePresenceCachePrivate *priv;
@@ -644,7 +648,7 @@ _process_caps_uri (GabblePresenceCache *cache,
 
       if (presence)
         gabble_presence_set_capabilities (presence, resource,
-          GPOINTER_TO_INT (value));
+          GPOINTER_TO_INT (value), serial);
     }
   else
     {
@@ -662,7 +666,7 @@ _process_caps_uri (GabblePresenceCache *cache,
         g_hash_table_steal (priv->disco_pending, uri);
 
       waiters = (GSList *) value;
-      waiter = disco_waiter_new (priv->conn->handles, handle, resource);
+      waiter = disco_waiter_new (priv->conn->handles, handle, resource, serial);
       waiters = g_slist_prepend (waiters, waiter);
       g_hash_table_insert (priv->disco_pending, g_strdup (uri), waiters);
 
@@ -686,8 +690,10 @@ _process_caps (GabblePresenceCache *cache,
   gchar *resource;
   GSList *uris, *i;
   GabblePresenceCachePrivate *priv;
+  guint serial;
 
   priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
+  serial = priv->caps_serial++;
 
   gabble_decode_jid (from, NULL, NULL, &resource);
 
@@ -697,7 +703,7 @@ _process_caps (GabblePresenceCache *cache,
   uris = _extract_cap_bundles (lm_node);
 
   for (i = uris; NULL != i; i = i->next)
-    _process_caps_uri (cache, from, (gchar *) i->data, handle, resource);
+    _process_caps_uri (cache, from, (gchar *) i->data, handle, resource, serial);
 
   g_free (resource);
   g_slist_free (uris);

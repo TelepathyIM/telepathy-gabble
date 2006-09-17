@@ -302,6 +302,7 @@ gabble_connection_init (GabbleConnection *self)
   GabbleConnectionPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
       GABBLE_TYPE_CONNECTION, GabbleConnectionPrivate);
   guint i;
+  const Feature *feat;
   GValue val = { 0, };
 
   self->priv = priv;
@@ -315,6 +316,23 @@ gabble_connection_init (GabbleConnection *self)
       (connection_nickname_update_cb), self);
   g_signal_connect (self->presence_cache, "presence-update", G_CALLBACK
       (connection_presence_update_cb), self);
+
+  /* fill presence cache with the known feature nodes */
+  for (feat = self_advertised_features; NULL != feat->ns; feat++)
+    {
+      const gchar *suffix;
+      gchar *node;
+
+      if (NULL != feat->bundle)
+        suffix = feat->bundle;
+      else
+        suffix = VERSION;
+
+      node = g_strconcat (NS_GABBLE_CAPS "#", suffix, NULL);
+      gabble_presence_cache_add_bundle_caps (self->presence_cache,
+          node, feat->caps);
+      g_free (node);
+    }
 
   self->roster = gabble_roster_new (self);
   g_signal_connect (self->roster, "nickname-update", G_CALLBACK

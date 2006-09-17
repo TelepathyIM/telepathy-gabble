@@ -76,6 +76,8 @@ void gabble_presence_cache_update (GabblePresenceCache *cache,
     const gchar *status_message, gint8 priority);
 void gabble_presence_cache_maybe_remove (GabblePresenceCache *cache,
     GabbleHandle handle);
+void gabble_presence_cache_add_bundle_caps (GabblePresenceCache *cache,
+    const gchar *node, GabblePresenceCapabilities caps);
 
 G_END_DECLS
 

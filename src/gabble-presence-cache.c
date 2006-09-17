@@ -204,14 +204,6 @@ gabble_presence_cache_init (GabblePresenceCache *cache)
   priv->capabilities = g_hash_table_new (g_str_hash, g_str_equal);
   priv->disco_pending = g_hash_table_new_full (g_str_hash, g_str_equal,
     g_free, (GDestroyNotify) disco_waiter_list_free);
-
-#if 0
-  /* TODO: initialise our cache from a lookup table of capabilities
-   * and flags */
-  g_hash_table_insert (priv->capabilities,
-    NS_GABBLE_CAPS "#jingle",
-    GINT_TO_POINTER (PRESENCE_CAP_GOOGLE_VOICE | PRESENCE_CAP_JINGLE_VOICE));
-#endif
 }
 
 static GObject *
@@ -966,5 +958,17 @@ gabble_presence_cache_update (
     g_signal_emit (cache, signals[PRESENCE_UPDATE], 0, handle);
 
   gabble_presence_cache_maybe_remove (cache, handle);
+}
+
+void gabble_presence_cache_add_bundle_caps (GabblePresenceCache *cache,
+    const gchar *node, GabblePresenceCapabilities new_caps)
+{
+  GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
+  GabblePresenceCapabilities caps;
+
+  caps = GPOINTER_TO_UINT (g_hash_table_lookup (priv->capabilities, node));
+  caps |= new_caps;
+  g_hash_table_insert (priv->capabilities, g_strdup (node),
+      GUINT_TO_POINTER (caps));
 }
 

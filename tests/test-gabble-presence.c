@@ -70,14 +70,13 @@ int main(int argc, char **argv)
   /* give voice cap to second resource, but make priority negative */
   g_assert (FALSE == gabble_presence_update(presence, "bar",
     GABBLE_PRESENCE_AVAILABLE, "dingoes", -1));
-  gabble_presence_set_capabilities (presence, "bar", PRESENCE_CAP_GOOGLE_VOICE);
+  gabble_presence_set_capabilities (presence, "bar", PRESENCE_CAP_GOOGLE_VOICE, 0);
 
   /* no resource with non-negative priority has the Google voice cap */
   resource = gabble_presence_pick_resource_by_caps (presence,
     PRESENCE_CAP_GOOGLE_VOICE);
   g_assert (NULL == resource);
 
-  /* give voice cap to first resource */
   gabble_presence_set_capabilities (presence, "foo", PRESENCE_CAP_GOOGLE_VOICE);
 
   /* resource has voice cap */

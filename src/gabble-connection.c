@@ -205,9 +205,9 @@ struct _Feature
 
 static const Feature self_advertised_features[] =
 {
-  { NULL, NS_GOOGLE_FEAT_SESSION, 0},
-  { NULL, NS_GOOGLE_TRANSPORT_P2P, PRESENCE_CAP_GOOGLE_TRANSPORT_P2P},
-  { NULL, NS_JINGLE, PRESENCE_CAP_JINGLE},
+  { VERSION, NS_GOOGLE_FEAT_SESSION, 0},
+  { VERSION, NS_GOOGLE_TRANSPORT_P2P, PRESENCE_CAP_GOOGLE_TRANSPORT_P2P},
+  { VERSION, NS_JINGLE, PRESENCE_CAP_JINGLE},
 
   { BUNDLE_VOICE_V1, NS_GOOGLE_FEAT_VOICE, PRESENCE_CAP_GOOGLE_VOICE},
   { BUNDLE_JINGLE_AUDIO, NS_JINGLE_DESCRIPTION_AUDIO, PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO},
@@ -320,15 +320,7 @@ gabble_connection_init (GabbleConnection *self)
   /* fill presence cache with the known feature nodes */
   for (feat = self_advertised_features; NULL != feat->ns; feat++)
     {
-      const gchar *suffix;
-      gchar *node;
-
-      if (NULL != feat->bundle)
-        suffix = feat->bundle;
-      else
-        suffix = VERSION;
-
-      node = g_strconcat (NS_GABBLE_CAPS "#", suffix, NULL);
+      gchar *node = g_strconcat (NS_GABBLE_CAPS "#", feat->bundle, NULL);
       gabble_presence_cache_add_bundle_caps (self->presence_cache,
           node, feat->caps);
       g_free (node);
@@ -1449,8 +1441,8 @@ _gabble_connection_connect (GabbleConnection *conn,
 
   for (feat = self_advertised_features; NULL != feat->ns; feat++)
     {
-      if (NULL == feat->bundle)
-          /* NULL bundle means a fixed feature, which we always advertise */
+      if (g_str_equal (feat->bundle, VERSION))
+          /* VERSION == bundle means a fixed feature, which we always advertise */
           gabble_presence_set_capabilities (presence,
                                             priv->resource,
                                             feat->caps,
@@ -2164,7 +2156,7 @@ signal_own_presence (GabbleConnection *self, GError **error)
     {
       const Feature *feat = (const Feature *) i->data;
 
-      if (NULL != feat->bundle)
+      if ((NULL != feat->bundle) && g_strdiff (VERSION, feat->bundle))
         {
           gchar *tmp = ext_string;
           ext_string = g_strdup_printf ("%s %s", ext_string, feat->bundle);

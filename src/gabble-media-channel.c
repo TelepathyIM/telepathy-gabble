@@ -1439,3 +1439,38 @@ _gabble_media_channel_get_stream_id (GabbleMediaChannel *chan)
 
   return priv->next_stream_id++;
 }
+
+#define AUDIO_CAPS \
+  ( PRESENCE_CAP_GOOGLE_VOICE | PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO )
+
+#define VIDEO_CAPS \
+  ( PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO )
+
+GabblePresenceCapabilities
+_gabble_media_channel_typeflags_to_caps (TpChannelMediaCapabilities flags)
+{
+  GabblePresenceCapabilities caps = 0;
+
+  if (flags & TP_CHANNEL_MEDIA_CAPABILITY_AUDIO)
+    caps |= AUDIO_CAPS;
+
+  if (flags & TP_CHANNEL_MEDIA_CAPABILITY_VIDEO)
+    caps |= VIDEO_CAPS;
+
+  return caps;
+}
+
+TpChannelMediaCapabilities
+_gabble_media_channel_caps_to_typeflags (GabblePresenceCapabilities caps)
+{
+  TpChannelMediaCapabilities typeflags = 0;
+
+  if (caps & AUDIO_CAPS)
+    typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_AUDIO;
+
+  if (caps & VIDEO_CAPS)
+    typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_VIDEO;
+
+  return typeflags;
+}
+

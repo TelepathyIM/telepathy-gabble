@@ -26,6 +26,7 @@
 #include "gabble-media-session.h"
 #include "group-mixin.h"
 #include "handles.h"
+#include "gabble-presence.h"
 
 G_BEGIN_DECLS
 
@@ -176,6 +177,12 @@ _gabble_media_channel_stream_state (GabbleMediaChannel *chan,
 
 guint
 _gabble_media_channel_get_stream_id (GabbleMediaChannel *chan);
+
+GabblePresenceCapabilities
+_gabble_media_channel_typeflags_to_caps (TpChannelMediaCapabilities flags);
+
+TpChannelMediaCapabilities
+_gabble_media_channel_caps_to_typeflags (GabblePresenceCapabilities caps);
 
 G_END_DECLS
 

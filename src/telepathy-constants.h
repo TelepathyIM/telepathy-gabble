@@ -34,6 +34,11 @@ TP_CHANNEL_GROUP_CHANGE_REASON_BANNED = 5
 } TpChannelGroupChangeReason;
 
 typedef enum {
+TP_CHANNEL_MEDIA_CAPABILITY_AUDIO = 1,
+TP_CHANNEL_MEDIA_CAPABILITY_VIDEO = 2
+} TpChannelMediaCapabilities;
+
+typedef enum {
 TP_CONN_ALIAS_FLAG_USER_SET = 1
 } TpConnAliasFlags;
 

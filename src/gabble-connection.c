@@ -2791,6 +2791,23 @@ gboolean gabble_connection_advertise_capabilities (GabbleConnection *obj, const 
 }
 #endif
 
+typedef GabblePresenceCapabilities (*TypeFlagsToCapsFunc) (guint typeflags);
+typedef guint (*CapsToTypeFlagsFunc) (GabblePresenceCapabilities caps);
+
+typedef struct _AdvertiseConversionData AdvertiseConversionData;
+
+struct _AdvertiseConversionData
+{
+  const gchar *iface;
+  TypeFlagsToCapsFunc tf2c_fn;
+  CapsToTypeFlagsFunc c2tf_fn;
+};
+
+const static AdvertiseConversionData advertise_conversions[] =
+{
+  { TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA, _gabble_media_channel_typeflags_to_caps, _gabble_media_channel_caps_to_typeflags },
+  { NULL, NULL, NULL}
+};
 
 /**
  * gabble_connection_advertise_capabilities
@@ -2811,9 +2828,75 @@ gabble_connection_advertise_capabilities (GabbleConnection *self,
                                           GPtrArray **ret,
                                           GError **error)
 {
+  guint i;
+  GabblePresence *pres;
+  GabblePresenceCapabilities add_caps = 0, remove_caps = 0, caps;
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
+  const AdvertiseConversionData *adc;
+
+  ERROR_IF_NOT_CONNECTED (self, *error);
+
+  pres = gabble_presence_cache_get (self->presence_cache, self->self_handle);
+
+  for (i = 0; i < add->len; i++)
+    {
+      GValue iface_flags_pair = {0, };
+      gchar *iface;
+      guint flags;
+
+      g_value_init (&iface_flags_pair, TP_CAPABILITY_PAIR_TYPE);
+      g_value_set_static_boxed (&iface_flags_pair, g_ptr_array_index (add, i));
+
+      dbus_g_type_struct_get (&iface_flags_pair,
+                              0, &iface,
+                              1, &flags,
+                              G_MAXUINT);
+
+      for (adc = advertise_conversions; NULL != adc->iface; adc++)
+          if (g_str_equal (iface, adc->iface))
+            add_caps |= adc->tf2c_fn (flags);
+    }
+
+  for (i = 0; NULL != remove[i]; i++)
+    {
+      for (adc = advertise_conversions; NULL != adc->iface; adc++)
+          if (g_str_equal (remove[i], adc->iface))
+            remove_caps |= adc->c2tf_fn (~0);
+    }
+
+  pres = gabble_presence_cache_get (self->presence_cache, self->self_handle);
+  caps = pres->caps;
+
+  caps |= add_caps;
+  caps ^= (caps & remove_caps);
+
+  /* override old capabilities entirely */
+  gabble_presence_set_capabilities (pres, priv->resource, 0, 1);
+  gabble_presence_set_capabilities (pres, priv->resource, caps, 0);
+
+  *ret = g_ptr_array_new ();
+
+  for (adc = advertise_conversions; NULL != adc->iface; adc++)
+    {
+      if (adc->c2tf_fn (pres->caps))
+        {
+          GValue iface_flags_pair = {0, };
+
+          g_value_init (&iface_flags_pair, TP_CAPABILITY_PAIR_TYPE);
+          g_value_take_boxed (&iface_flags_pair,
+              dbus_g_type_specialized_construct (TP_CAPABILITY_PAIR_TYPE));
+
+          dbus_g_type_struct_set (&iface_flags_pair,
+                                  0, adc->iface,
+                                  1, adc->c2tf_fn (pres->caps),
+                                  NULL);
+
+          g_ptr_array_add (*ret, g_value_get_boxed (&iface_flags_pair));
+        }
+    }
+
   return TRUE;
 }
-
 
 /**
  * gabble_connection_clear_status

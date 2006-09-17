@@ -122,6 +122,7 @@ static const StatusInfo gabble_statuses[LAST_GABBLE_PRESENCE] = {
 enum
 {
     ALIASES_CHANGED,
+    CAPABILITIES_CHANGED,
     NEW_CHANNEL,
     PRESENCE_UPDATE,
     STATUS_CHANGED,
@@ -793,6 +794,15 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
                   NULL, NULL,
                   g_cclosure_marshal_VOID__BOXED,
                   G_TYPE_NONE, 1, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_UINT, G_TYPE_STRING, G_TYPE_INVALID)))));
+
+  signals[CAPABILITIES_CHANGED] =
+    g_signal_new ("capabilities-changed",
+                  G_OBJECT_CLASS_TYPE (gabble_connection_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  g_cclosure_marshal_VOID__BOXED,
+                  G_TYPE_NONE, 1, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_UINT, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_INVALID)))));
 
   signals[NEW_CHANNEL] =
     g_signal_new ("new-channel",
@@ -2773,6 +2783,29 @@ gboolean gabble_connection_advertise_capabilities (GabbleConnection *obj, const 
 
 
 /**
+ * gabble_connection_advertise_capabilities
+ *
+ * Implements D-Bus method AdvertiseCapabilities
+ * on interface org.freedesktop.Telepathy.Connection.Interface.Capabilities
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occurred, D-Bus will throw the error only if this
+ *         function returns FALSE.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean
+gabble_connection_advertise_capabilities (GabbleConnection *self,
+                                          const GPtrArray *add,
+                                          const gchar **remove,
+                                          GPtrArray **ret,
+                                          GError **error)
+{
+  return TRUE;
+}
+
+
+/**
  * gabble_connection_clear_status
  *
  * Implements D-Bus method ClearStatus
@@ -2933,6 +2966,28 @@ gboolean gabble_connection_get_capabilities (GabbleConnection *obj, guint handle
   return TRUE;
 }
 #endif
+
+
+/**
+ * gabble_connection_get_capabilities
+ *
+ * Implements D-Bus method GetCapabilities
+ * on interface org.freedesktop.Telepathy.Connection.Interface.Capabilities
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occurred, D-Bus will throw the error only if this
+ *         function returns FALSE.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean
+gabble_connection_get_capabilities (GabbleConnection *self,
+                                    const GArray *handles,
+                                    GPtrArray **ret,
+                                    GError **error)
+{
+  return TRUE;
+}
 
 
 /**

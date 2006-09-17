@@ -62,6 +62,13 @@ gabble_connection_add_status (GabbleConnection *self,
                               GError **error);
 
 gboolean
+gabble_connection_advertise_capabilities (GabbleConnection *self,
+                                          const GPtrArray *add,
+                                          const gchar **remove,
+                                          GPtrArray **ret,
+                                          GError **error);
+
+gboolean
 gabble_connection_clear_status (GabbleConnection *self,
                                 GError **error);
 
@@ -77,6 +84,12 @@ gboolean
 gabble_connection_get_alias_flags (GabbleConnection *self,
                                    guint *ret,
                                    GError **error);
+
+gboolean
+gabble_connection_get_capabilities (GabbleConnection *self,
+                                    const GArray *handles,
+                                    GPtrArray **ret,
+                                    GError **error);
 
 gboolean
 gabble_connection_get_interfaces (GabbleConnection *self,

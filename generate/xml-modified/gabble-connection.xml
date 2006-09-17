@@ -75,6 +75,20 @@
       <arg direction="in" name="aliases" type="a{us}"/>
     </method>
   </interface>
+  <interface name="org.freedesktop.Telepathy.Connection.Interface.Capabilities">
+    <method name="AdvertiseCapabilities">
+      <arg direction="in" name="add" type="a(su)"/>
+      <arg direction="in" name="remove" type="as"/>
+      <arg direction="out" type="a(su)"/>
+    </method>
+    <signal name="CapabilitiesChanged">
+      <arg name="caps" type="a(usuuuu)"/>
+    </signal>
+    <method name="GetCapabilities">
+      <arg direction="in" name="handles" type="au"/>
+      <arg direction="out" type="a(usuu)"/>
+    </method>
+  </interface>
   <interface name="org.freedesktop.Telepathy.Connection.Interface.Presence">
     <method name="AddStatus">
       <arg direction="in" name="status" type="s"/>

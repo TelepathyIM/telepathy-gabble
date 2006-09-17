@@ -1,5 +1,5 @@
 gabble-connection-manager.xml	GabbleConnectionManager	ConnectionManager
-gabble-connection.xml	GabbleConnection	Connection, ConnectionInterfaceAliasing, ConnectionInterfacePresence, PropertiesInterface
+gabble-connection.xml	GabbleConnection	Connection, ConnectionInterfaceAliasing, ConnectionInterfacePresence, PropertiesInterface, ConnectionInterfaceCapabilities
 gabble-im-channel.xml	GabbleIMChannel	ChannelTypeText
 gabble-muc-channel.xml	GabbleMucChannel	ChannelTypeText, ChannelInterfaceGroup, ChannelInterfacePassword, PropertiesInterface
 gabble-roster-channel.xml	GabbleRosterChannel	ChannelTypeContactList, ChannelInterfaceGroup

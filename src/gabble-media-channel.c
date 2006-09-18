@@ -1338,7 +1338,7 @@ stream_destroy_cb (GabbleMediaStream *stream,
 
   g_object_get (stream, "id", &id, NULL);
 
-  g_signal_emit (chan, signals[STREAM_REMOVED], id);
+  g_signal_emit (chan, signals[STREAM_REMOVED], 0, id);
 
   if (priv->streams != NULL)
     {
@@ -1382,7 +1382,7 @@ session_stream_added_cb (GabbleMediaSession *session,
   g_object_get (session, "peer", &handle, NULL);
   g_object_get (stream, "id", &id, "media-type", &type, NULL);
 
-  g_signal_emit (chan, signals[STREAM_ADDED], id, handle, type);
+  g_signal_emit (chan, signals[STREAM_ADDED], 0, id, handle, type);
 }
 
 guint

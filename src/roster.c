@@ -719,7 +719,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
       GIntSet *empty, *pub_add, *pub_rem,
               *sub_add, *sub_rem, *sub_rp,
               *known_add, *known_rem,
-              *block_add, *block_rem;
+              *deny_add, *deny_rem;
       GabbleHandle handle;
       GabbleRosterChannel *chan;
 
@@ -738,13 +738,13 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
 
       if (google_roster)
         {
-          block_add = g_intset_new ();
-          block_rem = g_intset_new ();
+          deny_add = g_intset_new ();
+          deny_rem = g_intset_new ();
         }
       else
         {
-          block_add = NULL;
-          block_rem = NULL;
+          deny_add = NULL;
+          deny_rem = NULL;
         }
 
       /* get the publish channel first because we need it when processing */
@@ -849,7 +849,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
               g_assert_not_reached ();
             }
 
-          /* handle block list changes */
+          /* handle deny list changes */
           if (google_roster)
             {
               switch (item->subscription)
@@ -859,12 +859,12 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
                 case GABBLE_ROSTER_SUBSCRIPTION_FROM:
                 case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
                   if (item->blocked)
-                    g_intset_add (block_add, handle);
+                    g_intset_add (deny_add, handle);
                   else
-                    g_intset_add (block_rem, handle);
+                    g_intset_add (deny_rem, handle);
                   break;
                 case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
-                  g_intset_add (block_rem, handle);
+                  g_intset_add (deny_rem, handle);
                   break;
                 default:
                   g_assert_not_reached ();
@@ -898,15 +898,15 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
 
       if (google_roster)
         {
-          handle = GABBLE_LIST_HANDLE_BLOCK;
+          handle = GABBLE_LIST_HANDLE_DENY;
           chan = _gabble_roster_get_channel (roster, handle);
 
-          DEBUG ("calling change members on block channel");
+          DEBUG ("calling change members on deny channel");
           gabble_group_mixin_change_members (G_OBJECT (chan),
-              "", block_add, block_rem, empty, empty, 0, 0);
+              "", deny_add, deny_rem, empty, empty, 0, 0);
 
-          g_intset_destroy (block_add);
-          g_intset_destroy (block_rem);
+          g_intset_destroy (deny_add);
+          g_intset_destroy (deny_rem);
         }
 
       g_intset_destroy (empty);

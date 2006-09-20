@@ -33,7 +33,7 @@ typedef enum
   GABBLE_LIST_HANDLE_PUBLISH = 1,
   GABBLE_LIST_HANDLE_SUBSCRIBE,
   GABBLE_LIST_HANDLE_KNOWN,
-  GABBLE_LIST_HANDLE_BLOCK
+  GABBLE_LIST_HANDLE_DENY
 } GabbleListHandle;
 
 gboolean gabble_handle_jid_is_valid (TpHandleType type, const gchar *jid, GError **error);

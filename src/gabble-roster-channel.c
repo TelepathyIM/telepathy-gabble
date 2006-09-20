@@ -145,7 +145,7 @@ gabble_roster_channel_constructor (GType type, guint n_props,
           TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
           0);
     }
-  else if (GABBLE_LIST_HANDLE_BLOCK == priv->handle)
+  else if (GABBLE_LIST_HANDLE_DENY == priv->handle)
     {
       gabble_group_mixin_change_flags (obj,
           TP_CHANNEL_GROUP_FLAG_CAN_ADD |
@@ -379,8 +379,8 @@ _gabble_roster_channel_add_member_cb (GObject *obj,
       ret = _gabble_roster_channel_send_presence (GABBLE_ROSTER_CHANNEL (obj),
           LM_MESSAGE_SUB_TYPE_SUBSCRIBE, handle, message, error);
     }
-  /* block list */
-  else if (GABBLE_LIST_HANDLE_BLOCK == priv->handle)
+  /* deny list */
+  else if (GABBLE_LIST_HANDLE_DENY == priv->handle)
     {
       /* block contact */
       ret = gabble_roster_handle_set_blocked (priv->conn->roster, handle, TRUE,
@@ -437,8 +437,8 @@ _gabble_roster_channel_remove_member_cb (GObject *obj,
       /* send roster subscription=remove IQ */
       ret = gabble_roster_handle_remove (priv->conn->roster, handle, error);
     }
-  /* block list */
-  else if (GABBLE_LIST_HANDLE_BLOCK == priv->handle)
+  /* deny list */
+  else if (GABBLE_LIST_HANDLE_DENY == priv->handle)
     {
       /* unblock contact */
       ret = gabble_roster_handle_set_blocked (priv->conn->roster, handle, FALSE,

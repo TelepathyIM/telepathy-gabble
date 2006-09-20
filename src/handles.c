@@ -87,12 +87,12 @@ struct _GabbleHandleRepo
   DBusGProxy *bus_service_proxy;
 };
 
-static const char *list_handle_strings[GABBLE_LIST_HANDLE_BLOCK] =
+static const char *list_handle_strings[GABBLE_LIST_HANDLE_DENY] =
 {
     "publish",      /* GABBLE_LIST_HANDLE_PUBLISH */
     "subscribe",    /* GABBLE_LIST_HANDLE_SUBSCRIBE */
     "known",        /* GABBLE_LIST_HANDLE_KNOWN */
-    "block"         /* GABBLE_LIST_HANDLE_BLOCK */
+    "deny"          /* GABBLE_LIST_HANDLE_DENY */
 };
 
 /* private functions */
@@ -312,7 +312,7 @@ GabbleHandleRepo *
 gabble_handle_repo_new ()
 {
   GabbleHandleRepo *repo;
-  GabbleHandle publish, subscribe, known, block;
+  GabbleHandle publish, subscribe, known, deny;
 
   repo = g_new0 (GabbleHandleRepo, 1);
 
@@ -343,8 +343,8 @@ gabble_handle_repo_new ()
   g_datalist_id_set_data_full (&repo->list_handles, (GQuark) known,
       handle_priv_new(), (GDestroyNotify) handle_priv_free);
 
-  block = GABBLE_LIST_HANDLE_BLOCK;
-  g_datalist_id_set_data_full (&repo->list_handles, (GQuark) block,
+  deny = GABBLE_LIST_HANDLE_DENY;
+  g_datalist_id_set_data_full (&repo->list_handles, (GQuark) deny,
       handle_priv_new(), (GDestroyNotify) handle_priv_free);
 
   g_datalist_init (&repo->client_contact_handle_sets);
@@ -522,7 +522,7 @@ gabble_handle_ref (GabbleHandleRepo *repo,
 
   if (type == TP_HANDLE_TYPE_LIST)
     {
-      if (handle >= GABBLE_LIST_HANDLE_PUBLISH && handle <= GABBLE_LIST_HANDLE_BLOCK)
+      if (handle >= GABBLE_LIST_HANDLE_PUBLISH && handle <= GABBLE_LIST_HANDLE_DENY)
         return TRUE;
       else
         return FALSE;
@@ -549,7 +549,7 @@ gabble_handle_unref (GabbleHandleRepo *repo,
 
   if (type == TP_HANDLE_TYPE_LIST)
     {
-      if (handle >= GABBLE_LIST_HANDLE_PUBLISH && handle <= GABBLE_LIST_HANDLE_BLOCK)
+      if (handle >= GABBLE_LIST_HANDLE_PUBLISH && handle <= GABBLE_LIST_HANDLE_DENY)
         return TRUE;
       else
         return FALSE;
@@ -582,7 +582,7 @@ gabble_handle_inspect (GabbleHandleRepo *repo,
   if (type == TP_HANDLE_TYPE_LIST)
     {
       g_assert (handle >= GABBLE_LIST_HANDLE_PUBLISH
-                  && handle <= GABBLE_LIST_HANDLE_BLOCK);
+                  && handle <= GABBLE_LIST_HANDLE_DENY);
       return list_handle_strings[handle-1];
     }
 
@@ -756,7 +756,7 @@ gabble_handle_for_list (GabbleHandleRepo *repo,
   g_assert (repo != NULL);
   g_assert (list != NULL);
 
-  for (i = 0; i < GABBLE_LIST_HANDLE_BLOCK; i++)
+  for (i = 0; i < GABBLE_LIST_HANDLE_DENY; i++)
     {
       if (0 == strcmp (list_handle_strings[i], list))
         handle = (GabbleHandle) i + 1;

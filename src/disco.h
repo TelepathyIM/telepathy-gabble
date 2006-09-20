@@ -96,6 +96,30 @@ GabbleDiscoRequest *gabble_disco_request_with_timeout (GabbleDisco *self,
 
 void gabble_disco_cancel_request (GabbleDisco *, GabbleDiscoRequest *);
 
+/* Pipelines */
+
+gpointer
+gabble_disco_pipeline_run (GabbleDisco *disco,
+                           const char *server,
+                           GFunc callback,
+                           gpointer user_data);
+
+void
+gabble_disco_pipeline_cancel (gpointer self);
+
+void
+gabble_disco_services_discovery (GabbleDisco *disco, const char *server);
+
+/* Service discovery */
+
+void
+gabble_disco_services_foreach (GabbleDisco *disco,
+                               const char *key,
+                               const char *value,
+                               GFunc callback,
+                               gpointer user_data);
+
+
 G_END_DECLS
 
 #endif

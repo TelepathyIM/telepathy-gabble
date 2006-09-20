@@ -36,8 +36,10 @@
 #include "gabble-error.h"
 #include "namespaces.h"
 #include "telepathy-helpers.h"
+#include "util.h"
 
 #define DEFAULT_REQUEST_TIMEOUT 20000
+#define DISCO_PIPELINE_SIZE 10
 
 /* Properties */
 enum
@@ -52,6 +54,7 @@ typedef struct _GabbleDiscoPrivate GabbleDiscoPrivate;
 struct _GabbleDiscoPrivate
 {
   GabbleConnection *connection;
+  GPtrArray *service_cache;
   GList *requests;
   gboolean dispose_has_run;
 };
@@ -86,7 +89,8 @@ gabble_disco_init (GabbleDisco *obj)
   GabbleDiscoPrivate *priv =
      G_TYPE_INSTANCE_GET_PRIVATE (obj, GABBLE_TYPE_DISCO, GabbleDiscoPrivate);
   obj->priv = priv;
-
+  
+  priv->service_cache = g_ptr_array_new ();
 }
 
 static void gabble_disco_set_property (GObject *object, guint property_id,
@@ -161,6 +165,13 @@ gabble_disco_set_property (GObject     *object,
 
 static void cancel_request (GabbleDiscoRequest *request);
 
+static void
+gabble_disco_cache_remove_one (gpointer item, gpointer user_data)
+{
+  GHashTable *keys = (GHashTable *) item;
+  g_hash_table_destroy (keys);
+}
+
 void
 gabble_disco_dispose (GObject *object)
 {
@@ -180,6 +191,10 @@ gabble_disco_dispose (GObject *object)
   while (priv->requests)
     cancel_request (priv->requests->data);
 
+  g_ptr_array_foreach (priv->service_cache, gabble_disco_cache_remove_one, NULL);
+  g_ptr_array_free (priv->service_cache, TRUE);
+  priv->service_cache = NULL;
+  
   if (G_OBJECT_CLASS (gabble_disco_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_disco_parent_class)->dispose (object);
 }
@@ -460,4 +475,361 @@ gabble_disco_cancel_request (GabbleDisco *disco, GabbleDiscoRequest *request)
   g_return_if_fail (NULL != g_list_find (priv->requests, request));
 
   cancel_request (request);
+}
+
+/* Disco pipeline */
+
+
+typedef struct _GabbleDiscoPipeline GabbleDiscoPipeline;
+struct _GabbleDiscoPipeline {
+    GabbleDisco *disco;
+    gpointer user_data;
+    GFunc callback;
+    GPtrArray *disco_pipeline;
+    GHashTable *remaining_items;
+    gboolean running;
+};
+
+static void
+gabble_disco_fill_pipeline (GabbleDisco *disco, GabbleDiscoPipeline *pipeline);
+static void
+gabble_disco_pipeline_destroy (GabbleDiscoPipeline *pipeline);
+
+static void
+item_info_cb (GabbleDisco *disco,
+              GabbleDiscoRequest *request,
+              const gchar *jid,
+              const gchar *node,
+              LmMessageNode *result,
+              GError *error,
+              gpointer user_data)
+{
+  LmMessageNode *identity, *feature, *field, *value_node;
+  const char *category, *type, *var, *name, *value;
+  GHashTable *keys;
+
+  GabbleDiscoPipeline *pipeline = (GabbleDiscoPipeline *) user_data;
+
+  g_ptr_array_remove_fast (pipeline->disco_pipeline, request);
+
+  if (error)
+    {
+      DEBUG ("got error %s", error->message);
+      goto done;
+    }
+
+  identity = lm_message_node_get_child (result, "identity");
+  if (NULL == identity)
+    goto done;
+
+  name = lm_message_node_get_attribute (identity, "name");
+  if (NULL == name)
+    goto done;
+
+  category = lm_message_node_get_attribute (identity, "category");
+  if (NULL == category)
+    goto done;
+
+  type = lm_message_node_get_attribute (identity, "type");
+  if (NULL == type)
+    goto done;
+
+  DEBUG ("got item identity, name=%s, category=%s, type=%s", name, category, type);
+
+  keys = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+
+  g_hash_table_insert (keys, "name", g_strdup (name));
+  g_hash_table_insert (keys, "category", g_strdup (category));
+  g_hash_table_insert (keys, "type", g_strdup (type));
+  
+  for (feature = result->children; feature; feature = feature->next)
+    {
+      if (0 == strcmp (feature->name, "feature"))
+        {
+          var = lm_message_node_get_attribute (feature, "var");
+          if (var)
+            g_hash_table_insert (keys, g_strdup (var), NULL);
+        }
+      else if (0 == strcmp (feature->name, "x"))
+        {
+          if (lm_message_node_has_namespace (feature, NS_X_DATA))
+            {
+              for (field = feature->children;
+                   field; field = field->next)
+                {
+                  if (0 != strcmp (field->name, "field"))
+                    continue;
+
+                  var = lm_message_node_get_attribute (field, "var");
+                  if (NULL == var)
+                    continue;
+
+                  value_node = lm_message_node_get_child (field, "value");
+                  if (NULL == value_node)
+                    continue;
+
+                  value = lm_message_node_get_value (value_node);
+                  if (NULL == value)
+                    continue;
+
+                  g_hash_table_insert (keys, g_strdup (var), g_strdup (value));
+                }
+            }
+        }
+    }
+
+  pipeline->callback (keys, pipeline->user_data);
+  
+done:
+  gabble_disco_fill_pipeline (disco, pipeline);
+
+  return;
+}
+
+
+static gboolean
+return_true (gpointer key, gpointer value, gpointer data)
+{
+  return TRUE;
+}
+
+static void
+gabble_disco_fill_pipeline (GabbleDisco *disco, GabbleDiscoPipeline *pipeline)
+{
+  if (!pipeline->running)
+    {
+      DEBUG ("pipeline is cancelled, not refilling");
+      gabble_disco_pipeline_destroy (pipeline);
+    }
+  else
+    {
+      /* send disco requests for the JIDs in the remaining_items hash table
+       * until there are DISCO_PIPELINE_SIZE requests in progress */
+      while (pipeline->disco_pipeline->len < DISCO_PIPELINE_SIZE)
+        {
+          gchar *jid;
+          GabbleDiscoRequest *request;
+
+          jid = (gchar *) g_hash_table_find (pipeline->remaining_items,
+              return_true, NULL);
+          if (NULL == jid)
+            break;
+
+          request = gabble_disco_request (disco,
+              GABBLE_DISCO_TYPE_INFO, jid, NULL, item_info_cb, pipeline,
+              G_OBJECT(disco), NULL);
+
+          g_ptr_array_add (pipeline->disco_pipeline, request);
+
+          /* frees jid */
+          g_hash_table_remove (pipeline->remaining_items, jid);
+        }
+
+      if (0 == pipeline->disco_pipeline->len)
+        {
+          /* signal that the pipeline has finished */
+          pipeline->running = FALSE;
+          pipeline->callback (NULL, pipeline->user_data);
+          gabble_disco_pipeline_destroy (pipeline);
+        }
+    }
+}
+
+
+static void
+items_cb (GabbleDisco *disco,
+          GabbleDiscoRequest *request,
+          const gchar *jid,
+          const gchar *node,
+          LmMessageNode *result,
+          GError *error,
+          gpointer user_data)
+{
+  LmMessageNode *iter;
+  const char *item_jid;
+  gpointer key, value;
+  GabbleDiscoPipeline *pipeline = (GabbleDiscoPipeline *) user_data;
+
+  if (error)
+    {
+      DEBUG ("got error %s", error->message);
+      goto out;
+    }
+
+  iter = result->children;
+
+  for (; iter; iter = iter->next)
+    {
+      if (0 != strcmp (iter->name, "item"))
+        continue;
+
+      item_jid = lm_message_node_get_attribute (iter, "jid");
+
+      if (NULL != item_jid &&
+          !g_hash_table_lookup_extended (pipeline->remaining_items, item_jid, &key, &value))
+        {
+          gchar *tmp = g_strdup (item_jid);
+          g_hash_table_insert (pipeline->remaining_items, tmp, tmp);
+        }
+    }
+
+out:
+  gabble_disco_fill_pipeline (disco, pipeline);
+}
+
+static void
+gabble_disco_pipeline_destroy (GabbleDiscoPipeline *pipeline)
+{
+  g_assert (pipeline != NULL);
+  g_assert (pipeline->running == FALSE);
+  
+  g_hash_table_destroy (pipeline->remaining_items);
+  g_ptr_array_free (pipeline->disco_pipeline, TRUE);
+  g_free (pipeline);  
+}
+
+/**
+ * gabble_disco_pipeline_run:
+ * @disco: disco object to use in the pipeline
+ * @server: server to query
+ * @callback: GFunc to call on request fullfilment
+ * @user_data: the usual
+ *
+ * Makes ITEMS request on the server, and afterwards queries for INFO
+ * on each item. INFO queries are pipelined. The item properties are stored
+ * in hash table parameter to the callback function. The user is responsible
+ * for destroying the hash table after it's done with.
+ *
+ * Upon returning all the results, the callback is called again with
+ * NULL as the result, which signalls that the pipeline has finished.
+ * The pipeline is automatically destroyed.
+ *
+ * GabbleDiscoPipeline is opaque structure for the user.
+ */
+gpointer
+gabble_disco_pipeline_run (GabbleDisco *disco,
+                           const char *server,
+                           GFunc callback,
+                           gpointer user_data)
+{
+  GabbleDiscoPipeline *pipeline = g_new (GabbleDiscoPipeline, 1);
+  pipeline->user_data = user_data;
+  pipeline->callback = callback;
+  pipeline->disco_pipeline = g_ptr_array_sized_new (DISCO_PIPELINE_SIZE);
+  pipeline->remaining_items = g_hash_table_new_full (g_str_hash, g_str_equal,
+      g_free, NULL);
+  pipeline->running = TRUE;
+  pipeline->disco = disco;
+    
+  gabble_disco_request (disco, GABBLE_DISCO_TYPE_ITEMS,
+                        server, NULL,
+                        items_cb, pipeline, G_OBJECT (disco), NULL);
+                        
+  return pipeline;
+}
+
+static void
+gabble_disco_pipeline_flush_one (gpointer data, gpointer user_data)
+{
+  GabbleDiscoRequest *request = (GabbleDiscoRequest *) data;
+  GabbleDisco *disco = GABBLE_DISCO (user_data);
+
+  gabble_disco_cancel_request (disco, request);
+}
+
+/**
+ * gabble_disco_pipeline_cancel:
+ * @pipeline: pipeline to cancel
+ *
+ * Flushes the pipeline (cancels all pending disco requests) and
+ * destroys it.
+ */
+void
+gabble_disco_pipeline_cancel (gpointer self)
+{
+  GabbleDiscoPipeline *pipeline = (GabbleDiscoPipeline *) self;
+
+  pipeline->running = FALSE;
+  
+  g_ptr_array_foreach (pipeline->disco_pipeline,
+      gabble_disco_pipeline_flush_one, pipeline->disco);
+      
+  gabble_disco_pipeline_destroy (pipeline);
+}
+
+
+/* Services discovery */
+static void
+services_cb (gpointer data, gpointer user_data)
+{
+  GabbleDisco *disco = GABBLE_DISCO (user_data);
+  GabbleDiscoPrivate *priv = GABBLE_DISCO_GET_PRIVATE (disco);
+
+  if (data != NULL)
+    {
+      GHashTable *item = (GHashTable *) data;
+      g_ptr_array_add (priv->service_cache, item);
+    }
+  else
+    {
+      /* FIXME - service discovery done - signal that somehow */
+    }
+}
+
+void
+gabble_disco_services_discovery (GabbleDisco *disco, const char *server)
+{
+  gabble_disco_pipeline_run (disco, server, services_cb, disco);
+}
+
+
+struct ServicesForeachParams {
+    const char *key;
+    const char *value;
+    GFunc callback;
+    gpointer user_data;
+};
+
+static void
+services_foreach_one (gpointer data, gpointer user_data)
+{
+  GHashTable *item = (GHashTable *) data;
+  struct ServicesForeachParams *params = (struct ServicesForeachParams *) user_data;
+
+  if (params->key)
+    {
+      gpointer k, v;
+      
+      if (!g_hash_table_lookup_extended (data, params->key, &k, &v))
+          return;
+      
+      if (params->value)
+        {
+          if (0 != strcmp (params->value, v))
+              return;
+        }
+    }
+    
+    params->callback (item, user_data);
+}
+
+void
+gabble_disco_services_foreach (GabbleDisco *disco,
+                               const char *key,
+                               const char *value,
+                               GFunc callback,
+                               gpointer user_data)
+{
+  GabbleDiscoPrivate *priv;
+  struct ServicesForeachParams params;
+    
+  g_assert (GABBLE_IS_DISCO (disco));
+  priv = GABBLE_DISCO_GET_PRIVATE (disco);
+
+  params.key = key;
+  params.value = value;
+  params.callback = callback;
+  params.user_data = user_data;
+  
+  g_ptr_array_foreach (priv->service_cache, services_foreach_one, &params);
 }

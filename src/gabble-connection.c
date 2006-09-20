@@ -229,10 +229,8 @@ struct _GabbleConnectionPrivate
   gint8 priority;
   gchar *alias;
 
-  GabbleRoomlistChannel *roomlist_channel;
-
-  /* server services */
-  GList *conference_servers;
+  /* reference to conference server name */
+  gchar *conference_server;
 
   /* channel factories */
   GPtrArray *channel_factories;
@@ -898,8 +896,6 @@ gabble_connection_finalize (GObject *object)
   g_free (priv->https_proxy_server);
   g_free (priv->fallback_conference_server);
 
-  g_free (priv->alias);
-
   g_list_free (priv->conference_servers);
 
   gabble_properties_mixin_finalize (object);
@@ -1251,8 +1247,6 @@ static void connection_status_change (GabbleConnection *, TpConnectionStatus, Tp
 
 static void channel_request_cancel (gpointer data, gpointer user_data);
 
-static void close_all_channels (GabbleConnection *conn);
-static void discover_services (GabbleConnection *conn);
 static void emit_one_presence_update (GabbleConnection *self, GabbleHandle handle);
 
 
@@ -1536,9 +1530,6 @@ connection_status_change (GabbleConnection        *conn,
                 priv->channel_requests->len);
             }
 
-          /* the old way */
-          close_all_channels (conn);
-
           /* unref our self handle */
           gabble_handle_unref (conn->handles, TP_HANDLE_TYPE_CONTACT,
               conn->self_handle);
@@ -1593,25 +1584,6 @@ connection_status_change (GabbleConnection        *conn,
     {
       g_warning ("%s: attempted to re-emit the current status %u reason %u",
           G_STRFUNC, status, reason);
-    }
-}
-
-/**
- * close_all_channels:
- * @conn: A #GabbleConnection object
- *
- * Closes all channels owned by @conn.
- */
-static void
-close_all_channels (GabbleConnection *conn)
-{
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-
-  if (priv->roomlist_channel)
-    {
-      GObject *tmp = G_OBJECT (priv->roomlist_channel);
-      priv->roomlist_channel = NULL;
-      g_object_unref (tmp);
     }
 }
 
@@ -2687,7 +2659,8 @@ connection_disco_cb (GabbleDisco *disco,
   /* go go gadget on-line */
   connection_status_change (conn, TP_CONN_STATUS_CONNECTED, TP_CONN_STATUS_REASON_REQUESTED);
 
-  discover_services (conn);
+  /* FIXME - the old way */
+  gabble_disco_services_discovery (conn->disco, priv->stream_server);
 
   if (conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_JINGLE_INFO)
     {
@@ -2707,164 +2680,6 @@ ERROR:
   return;
 }
 
-static void
-roomlist_channel_closed_cb (GabbleRoomlistChannel *chan, gpointer data)
-{
-  GabbleConnection *conn = data;
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-
-  if (priv->roomlist_channel)
-    {
-      g_object_unref (priv->roomlist_channel);
-      priv->roomlist_channel = NULL;
-    }
-}
-
-static void
-make_roomlist_channel (GabbleConnection *conn, gboolean suppress_handler)
-{
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-
-  if (!priv->roomlist_channel)
-    {
-      gchar *server, *object_path;
-
-      if (priv->conference_servers)
-        {
-          server = priv->conference_servers->data;
-        }
-      else if (priv->fallback_conference_server)
-        {
-          server = priv->fallback_conference_server;
-        }
-      else
-        {
-          g_assert_not_reached ();
-          return;
-        }
-
-      object_path = g_strdup_printf ("%s/RoomlistChannel", conn->object_path);
-
-      priv->roomlist_channel = _gabble_roomlist_channel_new (conn, object_path,
-          server);
-
-      g_signal_connect (priv->roomlist_channel, "closed",
-                        (GCallback) roomlist_channel_closed_cb, conn);
-
-      g_signal_emit (conn, signals[NEW_CHANNEL], 0,
-                     object_path, TP_IFACE_CHANNEL_TYPE_ROOM_LIST,
-                     0, 0,
-                     suppress_handler);
-
-      g_free (object_path);
-    }
-}
-
-static void
-service_info_cb (GabbleDisco *disco,
-                 GabbleDiscoRequest *request,
-                 const gchar *jid,
-                 const gchar *node,
-                 LmMessageNode *result,
-                 GError *error,
-                 gpointer user_data)
-{
-  LmMessageNode *identity, *feature;
-  gboolean is_muc = FALSE;
-  const char *category, *type, *var;
-  GabbleConnection *conn = user_data;
-  GabbleConnectionPrivate *priv;
-
-  g_assert (GABBLE_IS_CONNECTION (conn));
-  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-
-  if (error)
-    {
-      DEBUG ("got error: %s", error->message);
-      return;
-    }
-
-  identity = lm_message_node_get_child (result, "identity");
-  if (identity)
-    {
-      category = lm_message_node_get_attribute (identity, "category");
-      type = lm_message_node_get_attribute (identity, "type");
-      DEBUG ("got identity, category=%s, type=%s", category, type);
-      if (category && 0 == strcmp (category, "conference") &&
-          type && 0 == strcmp (type, "text"))
-        {
-          for (feature = result->children; feature; feature = feature->next)
-            {
-              NODE_DEBUG (feature, "got child");
-
-              if (0 == strcmp (feature->name, "feature"))
-                {
-                  var = lm_message_node_get_attribute (feature, "var");
-                  if (var && 0 == strcmp (var, NS_MUC))
-                    {
-                      is_muc = TRUE;
-                      break;
-                    }
-                }
-            }
-          if (is_muc)
-            {
-              DEBUG ("Adding conference server %s", jid);
-              priv->conference_servers =
-                g_list_append (priv->conference_servers, g_strdup (jid));
-            }
-        }
-    }
-}
-
-static void
-services_discover_cb (GabbleDisco *disco,
-                      GabbleDiscoRequest *request,
-                      const gchar *jid,
-                      const gchar *node,
-                      LmMessageNode *result,
-                      GError *error,
-                      gpointer user_data)
-{
-  LmMessageNode *iter;
-  GabbleConnection *conn = user_data;
-  GabbleConnectionPrivate *priv;
-  const char *item_jid;
-  g_assert (GABBLE_IS_CONNECTION (conn));
-  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-
-  if (error)
-    {
-      DEBUG ("got error: %s", error->message);
-      return;
-    }
-
-  iter = result->children;
-
-  for (; iter; iter = iter->next)
-    {
-      if (0 == strcmp (iter->name, "item"))
-        {
-          item_jid = lm_message_node_get_attribute (iter, "jid");
-          if (item_jid)
-            gabble_disco_request (conn->disco, GABBLE_DISCO_TYPE_INFO,
-                                  item_jid, NULL,
-                                  service_info_cb, conn, G_OBJECT (conn), NULL);
-        }
-    }
-}
-
-static void
-discover_services (GabbleConnection *conn)
-{
-  GabbleConnectionPrivate *priv;
-  g_assert (GABBLE_IS_CONNECTION (conn));
-  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-
-  gabble_disco_request (conn->disco, GABBLE_DISCO_TYPE_ITEMS,
-                        priv->stream_server, NULL,
-                        services_discover_cb, conn, G_OBJECT(conn), NULL);
-}
 
 static GHashTable *
 get_statuses_arguments()
@@ -3520,12 +3335,6 @@ gabble_connection_list_channels (GabbleConnection *self,
           list_channel_factory_foreach_one, channels);
     }
 
-  if (priv->roomlist_channel)
-    {
-      list_channel_factory_foreach_one (TP_CHANNEL_IFACE
-          (priv->roomlist_channel), channels);
-    }
-
   *ret = channels;
 
   return TRUE;
@@ -3649,41 +3458,6 @@ gabble_connection_remove_status (GabbleConnection *self,
     }
 }
 
-static gboolean
-_gabble_connection_request_channel_deprecated (GabbleConnection *self,
-                                               const gchar *type,
-                                               guint handle_type,
-                                               guint handle,
-                                               gboolean suppress_handler,
-                                               gchar **ret,
-                                               GError **error)
-{
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
-
-  if (!strcmp (type, TP_IFACE_CHANNEL_TYPE_ROOM_LIST))
-    {
-      if (NULL == priv->conference_servers &&
-          NULL == priv->fallback_conference_server)
-        {
-          DEBUG ("no conference server available for roomlist request");
-
-          *error = g_error_new (TELEPATHY_ERRORS, NotAvailable, "unable to "
-              "list rooms because we have not discovered any local conference "
-              "servers and no fallback was provided");
-
-          return FALSE;
-        }
-      make_roomlist_channel (self, suppress_handler);
-      g_object_get (priv->roomlist_channel, "object-path", ret, NULL);
-    }
-  else
-    {
-      return FALSE;
-    }
-
-  return TRUE;
-}
-
 
 /**
  * gabble_connection_request_aliases
@@ -3800,18 +3574,6 @@ gabble_connection_request_channel (GabbleConnection *self,
           if (cur_status > status)
             status = cur_status;
         }
-    }
-
-  /* TODO: delete this bit */
-  if (_gabble_connection_request_channel_deprecated (self, type, handle_type,
-        handle, suppress_handler, &object_path, &error))
-    {
-      g_assert (NULL != object_path);
-      goto OUT;
-    }
-  else if (NULL != error)
-    {
-      goto OUT;
     }
 
   switch (status)
@@ -3985,29 +3747,64 @@ hold_and_return_handles (DBusGMethodInvocation *context,
   dbus_g_method_return (context, handles);
 }
 
-static gchar *
-room_name_to_canonical (GabbleConnection *conn,
-                        const gchar *name)
+
+static void
+find_conference_server_slave (gpointer data, gpointer user_data)
+{
+  GHashTable *item = (GHashTable *) data;
+  const char **server = (const char **) user_data;
+  
+  if (!*server)
+    {
+      *server = g_hash_table_lookup (item, "name");
+    }
+}
+
+const char *
+gabble_connection_find_conference_server (GabbleConnection *conn)
 {
   GabbleConnectionPrivate *priv;
-  const gchar *server;
 
   g_assert (GABBLE_IS_CONNECTION (conn));
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
+  if (!priv->conference_server)
+    {
+      /* Find first server that has NS_MUC feature */
+      gabble_disco_services_foreach (conn->disco,
+                                     NS_MUC, NULL,
+                                     find_conference_server_slave,
+                                     &(priv->conference_server));
+    }
+  
+  if (!priv->conference_server)
+    {
+      priv->conference_server = priv->fallback_conference_server;
+    }
+  
+  return priv->conference_server;
+}
+
+
+gchar *
+gabble_connection_get_canonical_room_name (GabbleConnection *conn,
+                                           const gchar *name)
+{
+  const gchar *server;
+  
+  g_assert (GABBLE_IS_CONNECTION (conn));
+
   if (index (name, '@'))
     return g_strdup (name);
 
-  if (priv->conference_servers)
-    server = priv->conference_servers->data;
-  else if (priv->fallback_conference_server)
-    server = priv->fallback_conference_server;
-  else
+  server = gabble_connection_find_conference_server (conn);
+  if (!server)
     return NULL;
-
+    
   return g_strdup_printf ("%s@%s", name, server);
 }
+
 
 typedef struct _RoomVerifyContext RoomVerifyContext;
 
@@ -4086,7 +3883,7 @@ room_verify_batch_new (GabbleConnection *conn,
       batch->contexts[i].index = i;
       batch->contexts[i].batch = batch;
 
-      qualified_name = room_name_to_canonical(conn, name);
+      qualified_name = gabble_connection_get_canonical_room_name (conn, name);
 
       if (!qualified_name)
         {

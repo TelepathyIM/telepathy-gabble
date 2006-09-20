@@ -51,7 +51,6 @@ GType gabble_muc_factory_get_type(void);
 #define GABBLE_MUC_FACTORY_GET_CLASS(obj) \
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_MUC_FACTORY, GabbleMucFactoryClass))
 
-
 G_END_DECLS
 
 #endif /* #ifndef __MUC_FACTORY_H__ */

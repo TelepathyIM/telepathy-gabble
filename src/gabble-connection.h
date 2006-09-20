@@ -276,6 +276,14 @@ gabble_connection_set_status (GabbleConnection *self,
                               GHashTable *statuses,
                               GError **error);
 
+
+const char *
+gabble_connection_find_conference_server (GabbleConnection *conn);
+
+gchar *
+gabble_connection_get_canonical_room_name (GabbleConnection *conn,
+                                           const gchar *name);
+
 G_END_DECLS
 
 #endif /* #ifndef __GABBLE_CONNECTION_H__*/

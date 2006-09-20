@@ -1306,7 +1306,7 @@ session_state_changed_cb (GabbleMediaSession *session,
         {
           GPtrArray *tmp = priv->streams;
 
-          /* move priv->streams aside so that the stream_destroy_cb
+          /* move priv->streams aside so that the stream_close_cb
            * doesn't double unref */
           priv->streams = NULL;
           g_ptr_array_foreach (tmp, (GFunc) g_object_unref, NULL);
@@ -1330,8 +1330,8 @@ session_state_changed_cb (GabbleMediaSession *session,
 }
 
 static void
-stream_destroy_cb (GabbleMediaStream *stream,
-                   GabbleMediaChannel *chan)
+stream_close_cb (GabbleMediaStream *stream,
+                 GabbleMediaChannel *chan)
 {
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
   guint id;
@@ -1373,8 +1373,8 @@ session_stream_added_cb (GabbleMediaSession *session,
   g_object_ref (stream);
   g_ptr_array_add (priv->streams, stream);
 
-  g_signal_connect (stream, "destroy",
-                    (GCallback) stream_destroy_cb, chan);
+  g_signal_connect (stream, "close",
+                    (GCallback) stream_close_cb, chan);
   g_signal_connect (stream, "notify::connection-state",
                     (GCallback) stream_state_changed_cb, chan);
 

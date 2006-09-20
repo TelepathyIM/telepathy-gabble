@@ -138,8 +138,8 @@ gabble_media_session_init (GabbleMediaSession *self)
       g_object_unref);
 }
 
-static void stream_destroy_cb (GabbleMediaStream *stream,
-                               GabbleMediaSession *session);
+static void stream_close_cb (GabbleMediaStream *stream,
+                             GabbleMediaSession *session);
 static void stream_connection_state_changed_cb (GabbleMediaStream *stream,
                                                 GParamSpec *param,
                                                 GabbleMediaSession *session);
@@ -213,8 +213,8 @@ create_media_stream (GabbleMediaSession *session,
                          "media-type", media_type,
                          NULL);
 
-  g_signal_connect (stream, "destroy",
-                    (GCallback) stream_destroy_cb,
+  g_signal_connect (stream, "close",
+                    (GCallback) stream_close_cb,
                     session);
   g_signal_connect (stream, "notify::connection-state",
                     (GCallback) stream_connection_state_changed_cb,
@@ -559,7 +559,7 @@ gabble_media_session_error (GabbleMediaSession *self,
                             const gchar *message,
                             GError **error)
 {
-  GMS_DEBUG_INFO (self, "Media.SessionHandler::Error called -- terminating session");
+  GMS_DEBUG_INFO (self, "Media.SessionHandler::Error called, error %u (%s) -- terminating session", errno, message);
 
   _gabble_media_session_terminate (self);
 
@@ -1352,8 +1352,8 @@ stream_new_native_candidate_cb (GabbleMediaStream *stream,
 #endif
 
 static void
-stream_destroy_cb (GabbleMediaStream *stream,
-                   GabbleMediaSession *session)
+stream_close_cb (GabbleMediaStream *stream,
+                 GabbleMediaSession *session)
 {
   GabbleMediaSessionPrivate *priv;
   gchar *name;

@@ -115,6 +115,7 @@ struct _GabbleMediaStreamPrivate
 
   guint remote_candidate_count;
 
+  gboolean closed;
   gboolean dispose_has_run;
 };
 
@@ -546,6 +547,8 @@ gabble_media_stream_dispose (GObject *object)
   if (priv->dispose_has_run)
     return;
 
+  _gabble_media_stream_close (self);
+
   g_signal_emit (self, signals[DESTROY], 0);
 
   priv->dispose_has_run = TRUE;
@@ -645,7 +648,9 @@ gabble_media_stream_error (GabbleMediaStream *self,
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
 
-  GMS_DEBUG_WARNING (priv->session, "Media.StreamHandler::Error called -- terminating session");
+  GMS_DEBUG_WARNING (priv->session, "Media.StreamHandler::Error called, error %u (%s) -- terminating session", errno, message);
+
+  _gabble_media_stream_close (self);
 
   _gabble_media_session_terminate (priv->session);
 
@@ -1087,7 +1092,11 @@ _gabble_media_stream_close (GabbleMediaStream *stream)
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
-  g_signal_emit (stream, signals[CLOSE], 0);
+  if (!priv->closed)
+    {
+      g_signal_emit (stream, signals[CLOSE], 0);
+      priv->closed = TRUE;
+    }
 }
 
 gboolean

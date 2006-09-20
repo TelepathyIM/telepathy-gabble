@@ -200,7 +200,7 @@ create_media_stream (GabbleMediaSession *session,
       media_type == TP_MEDIA_STREAM_TYPE_AUDIO ? "audio" : "video",
       name, id);
 
-  object_path = g_strdup_printf ("%s/IceStream%u", priv->object_path, id);
+  object_path = g_strdup_printf ("%s/MediaStream%u", priv->object_path, id);
 
   stream = g_object_new (GABBLE_TYPE_MEDIA_STREAM,
                          "connection", priv->conn,

@@ -50,8 +50,6 @@
 #define TP_TYPE_ROOM_LIST (dbus_g_type_get_collection ("GPtrArray", \
       TP_TYPE_ROOM_STRUCT))
 
-#define DISCO_PIPELINE_SIZE 10
-
 G_DEFINE_TYPE_WITH_CODE (GabbleRoomlistChannel, gabble_roomlist_channel,
     G_TYPE_OBJECT, G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL));
 
@@ -90,8 +88,7 @@ struct _GabbleRoomlistChannelPrivate
   gboolean closed;
   gboolean listing;
 
-  GPtrArray *disco_pipeline;
-  GHashTable *remaining_rooms;
+  gpointer disco_pipeline;
   GabbleHandleSet *signalled_rooms;
 
   gboolean dispose_has_run;
@@ -107,10 +104,6 @@ gabble_roomlist_channel_init (GabbleRoomlistChannel *self)
       GABBLE_TYPE_ROOMLIST_CHANNEL, GabbleRoomlistChannelPrivate);
 
   self->priv = priv;
-
-  priv->disco_pipeline = g_ptr_array_sized_new (DISCO_PIPELINE_SIZE);
-  priv->remaining_rooms = g_hash_table_new_full (g_str_hash, g_str_equal,
-      g_free, NULL);
 }
 
 
@@ -285,24 +278,6 @@ gabble_roomlist_channel_class_init (GabbleRoomlistChannelClass *gabble_roomlist_
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_roomlist_channel_class), &dbus_glib_gabble_roomlist_channel_object_info);
 }
 
-static void
-room_list_flush_disco_pipeline_one (gpointer item, gpointer data)
-{
-  GabbleDiscoRequest *request = (GabbleDiscoRequest *) item;
-  GabbleDisco *disco = GABBLE_DISCO (data);
-
-  gabble_disco_cancel_request (disco, request);
-}
-
-void
-room_list_flush_disco_pipeline (GabbleRoomlistChannel *self)
-{
-  GabbleRoomlistChannelPrivate *priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (self);
-
-  g_ptr_array_foreach (priv->disco_pipeline, (GFunc)
-      room_list_flush_disco_pipeline_one, priv->conn->disco);
-}
-
 void
 gabble_roomlist_channel_dispose (GObject *object)
 {
@@ -326,7 +301,11 @@ gabble_roomlist_channel_dispose (GObject *object)
       priv->closed = TRUE;
     }
 
-  room_list_flush_disco_pipeline (self);
+  if (priv->disco_pipeline)
+    {
+      gabble_disco_pipeline_destroy (priv->disco_pipeline);
+      priv->disco_pipeline = NULL;
+    }
 
   if (G_OBJECT_CLASS (gabble_roomlist_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_roomlist_channel_parent_class)->dispose (object);
@@ -342,9 +321,6 @@ gabble_roomlist_channel_finalize (GObject *object)
 
   g_free (priv->object_path);
   g_free (priv->conference_server);
-
-  g_ptr_array_free (priv->disco_pipeline, TRUE);
-  g_hash_table_destroy (priv->remaining_rooms);
 
   if (priv->signalled_rooms)
     handle_set_destroy (priv->signalled_rooms);
@@ -368,56 +344,6 @@ _gabble_roomlist_channel_new (GabbleConnection *conn,
                     "conference-server", conference_server, NULL));
 }
 
-static void room_info_cb (GabbleDisco *, GabbleDiscoRequest *, const gchar *,
-    const gchar *, LmMessageNode *, GError *, gpointer);
-
-static gboolean
-return_true (gpointer key, gpointer value, gpointer data)
-{
-  return TRUE;
-}
-
-static void
-room_list_fill_disco_pipeline (GabbleRoomlistChannel *chan)
-{
-  GabbleRoomlistChannelPrivate *priv =
-    GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (chan);
-
-  if (priv->closed)
-    {
-      DEBUG ("not refilling pipeline, channel is closed");
-    }
-  else
-    {
-      /* send disco requests for the JIDs in the remaining_rooms hash table
-       * until there are DISCO_PIPELINE_SIZE requests in progress */
-      while (priv->disco_pipeline->len < DISCO_PIPELINE_SIZE)
-        {
-          gchar *jid;
-          GabbleDiscoRequest *request;
-
-          jid = (gchar *) g_hash_table_find (priv->remaining_rooms,
-              return_true, NULL);
-          if (NULL == jid)
-            break;
-
-          request = gabble_disco_request (priv->conn->disco,
-              GABBLE_DISCO_TYPE_INFO, jid, NULL, room_info_cb, chan,
-              G_OBJECT(chan), NULL);
-
-          g_ptr_array_add (priv->disco_pipeline, request);
-
-          /* frees jid */
-          g_hash_table_remove (priv->remaining_rooms, jid);
-        }
-
-      if (0 == priv->disco_pipeline->len)
-        {
-          priv->listing = FALSE;
-          g_signal_emit (chan, signals [LISTING_ROOMS], 0, FALSE);
-        }
-    }
-}
 
 /**
  * destroy_value:
@@ -433,25 +359,19 @@ destroy_value (GValue *value)
 }
 
 static void
-room_info_cb (GabbleDisco *disco,
-              GabbleDiscoRequest *request,
-              const gchar *jid,
-              const gchar *node,
-              LmMessageNode *result,
-              GError *error,
-              gpointer user_data)
+room_info_cb (gpointer data, gpointer user_data)
 {
   GabbleRoomlistChannel *chan = user_data;
   GabbleRoomlistChannelPrivate *priv;
-  LmMessageNode *identity, *feature, *field, *value_node;
-  const char *category, *type, *var, *name, *value;
+  const char *jid, *category, *type, *var, *name;
   GabbleHandle handle;
   GHashTable *keys;
   GValue room = {0,};
   GPtrArray *rooms ;
   GValue *tmp;
-  gboolean is_muc;
-
+  GHashTable *result = (GHashTable *) data;
+  gpointer k, v;
+  
   #define INSERT_KEY(hash, name, type, type2, value) \
     do {\
       tmp = g_new0 (GValue, 1); \
@@ -463,33 +383,20 @@ room_info_cb (GabbleDisco *disco,
   g_assert (GABBLE_IS_ROOMLIST_CHANNEL (chan));
   priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (chan);
 
-  g_ptr_array_remove_fast (priv->disco_pipeline, request);
-
-  if (error)
-    {
-      DEBUG ("got error %s", error->message);
-      goto done;
-    }
-
-  identity = lm_message_node_get_child (result, "identity");
-  if (NULL == identity)
-    goto done;
-
-  name = lm_message_node_get_attribute (identity, "name");
-  if (NULL == name)
-    goto done;
-
-  category = lm_message_node_get_attribute (identity, "category");
-  if (NULL == category)
-    goto done;
-
-  type = lm_message_node_get_attribute (identity, "type");
-  if (NULL == type)
-    goto done;
+  jid = g_hash_table_lookup (result, "jid");
+  name = g_hash_table_lookup (result, "name");
+  category = g_hash_table_lookup (result, "category");
+  type = g_hash_table_lookup (result, "type");
 
   if (0 != strcmp (category, "conference") ||
       0 != strcmp (type, "text"))
     goto done;
+
+  if (!g_hash_table_lookup_extended (result, "http://jabber.org/protocol/muc", &k, &v))
+    {
+      /* not muc */
+      goto done;
+    }
 
   DEBUG ("got room identity, name=%s, category=%s, type=%s", name, category, type);
 
@@ -498,9 +405,41 @@ room_info_cb (GabbleDisco *disco,
 
   INSERT_KEY (keys, "name", G_TYPE_STRING, string, name);
 
-  is_muc = FALSE;
-
-  for (feature = result->children; feature; feature = feature->next)
+  if (g_hash_table_lookup_extended (result, "muc_membersonly", &k, &v))
+    INSERT_KEY (keys, "invite-only", G_TYPE_BOOLEAN, boolean, TRUE);
+  if (g_hash_table_lookup_extended (result, "muc_open", &k, &v))
+    INSERT_KEY (keys, "invite-only", G_TYPE_BOOLEAN, boolean, FALSE);
+  if (g_hash_table_lookup_extended (result, "muc_passwordprotected", &k, &v))
+    INSERT_KEY (keys, "password", G_TYPE_BOOLEAN, boolean, TRUE);
+  if (g_hash_table_lookup_extended (result, "muc_unsecure", &k, &v))
+    INSERT_KEY (keys, "password", G_TYPE_BOOLEAN, boolean, FALSE);
+  if (g_hash_table_lookup_extended (result, "muc_unsecured", &k, &v))
+    INSERT_KEY (keys, "password", G_TYPE_BOOLEAN, boolean, FALSE);
+  if (g_hash_table_lookup_extended (result, "muc_hidden", &k, &v))
+    INSERT_KEY (keys, "hidden", G_TYPE_BOOLEAN, boolean, TRUE);
+  if (g_hash_table_lookup_extended (result, "muc_public", &k, &v))
+    INSERT_KEY (keys, "hidden", G_TYPE_BOOLEAN, boolean, FALSE);
+  if (g_hash_table_lookup_extended (result, "muc_membersonly", &k, &v))
+    INSERT_KEY (keys, "members-only", G_TYPE_BOOLEAN, boolean, TRUE);
+  if (g_hash_table_lookup_extended (result, "muc_open", &k, &v))
+    INSERT_KEY (keys, "members-only", G_TYPE_BOOLEAN, boolean, FALSE);
+  if (g_hash_table_lookup_extended (result, "muc_moderated", &k, &v))
+    INSERT_KEY (keys, "moderated", G_TYPE_BOOLEAN, boolean, TRUE);
+  if (g_hash_table_lookup_extended (result, "muc_unmoderated", &k, &v))
+    INSERT_KEY (keys, "moderated", G_TYPE_BOOLEAN, boolean, FALSE);
+  if (g_hash_table_lookup_extended (result, "muc_nonanonymous", &k, &v))
+    INSERT_KEY (keys, "anonymous", G_TYPE_BOOLEAN, boolean, FALSE);
+  if (g_hash_table_lookup_extended (result, "muc_anonymous", &k, &v))
+    INSERT_KEY (keys, "anonymous", G_TYPE_BOOLEAN, boolean, TRUE);
+  if (g_hash_table_lookup_extended (result, "muc_semianonymous", &k, &v))
+    INSERT_KEY (keys, "anonymous", G_TYPE_BOOLEAN, boolean, FALSE);
+  if (g_hash_table_lookup_extended (result, "muc_persistent", &k, &v))
+    INSERT_KEY (keys, "persistent", G_TYPE_BOOLEAN, boolean, TRUE);
+  if (g_hash_table_lookup_extended (result, "muc_temporary", &k, &v))
+    INSERT_KEY (keys, "persistent", G_TYPE_BOOLEAN, boolean, FALSE);
+  
+  var = g_hash_table_lookup (result, "muc#roominfo_description");
+  if (var)
     {
       if (0 == strcmp (feature->name, "feature"))
         {
@@ -546,7 +485,7 @@ room_info_cb (GabbleDisco *disco,
         }
       else if (0 == strcmp (feature->name, "x"))
         {
-          if (lm_message_node_has_namespace (feature, NS_X_DATA, NULL))
+          if (lm_message_node_has_namespace (feature, NS_X_DATA))
             {
               for (field = feature->children;
                    field; field = field->next)
@@ -566,104 +505,54 @@ room_info_cb (GabbleDisco *disco,
                   if (NULL == value)
                     continue;
 
-                  if (0 == strcmp (var, "muc#roominfo_description"))
-                    {
-                      INSERT_KEY (keys, "description",
-                                  G_TYPE_STRING, string, value);
-                    }
-                  else if (0 == strcmp (var, "muc#roominfo_occupants"))
-                    {
-                      INSERT_KEY (keys, "members", G_TYPE_UINT, uint,
-                        (guint) g_ascii_strtoull (value, NULL, 10));
-                    }
-                  else if (0 == strcmp (var, "muc#roominfo_lang"))
-                    {
-                      INSERT_KEY (keys, "language", G_TYPE_STRING,
-                                  string, value);
-                    }
-                }
-            }
-        }
-    }
-
-  if (is_muc)
+  var = g_hash_table_lookup (result, "muc#roominfo_occupants");
+  if (var)
     {
-      DEBUG ("emitting new room signal for %s", jid);
+      INSERT_KEY (keys, "members", G_TYPE_UINT, uint,
+                  (guint) g_ascii_strtoull (var, NULL, 10));
+    }  
 
-      handle = gabble_handle_for_room (priv->conn->handles, jid);
+  var = g_hash_table_lookup (result, "muc#roominfo_lang");
+  if (var)
+    {
+      INSERT_KEY (keys, "language", G_TYPE_STRING,
+                  string, var);
+    }  
 
-      handle_set_add (priv->signalled_rooms, handle);
+  DEBUG ("emitting new room signal for %s", jid);
 
-      g_value_init (&room, TP_TYPE_ROOM_STRUCT);
-      g_value_take_boxed (&room,
-          dbus_g_type_specialized_construct (TP_TYPE_ROOM_STRUCT));
+  handle = gabble_handle_for_room (priv->conn->handles, jid);
 
-      dbus_g_type_struct_set (&room,
-          0, handle,
-          1, "org.freedesktop.Telepathy.Channel.Type.Text",
-          2, keys,
-          G_MAXUINT);
+  handle_set_add (priv->signalled_rooms, handle);
 
-      rooms = g_ptr_array_sized_new (1);
-      g_ptr_array_add (rooms, g_value_get_boxed (&room));
-      g_signal_emit (chan, signals[GOT_ROOMS], 0, rooms);
-      g_ptr_array_free (rooms, TRUE);
-      g_value_unset (&room);
-    }
+  g_value_init (&room, TP_TYPE_ROOM_STRUCT);
+  g_value_take_boxed (&room,
+      dbus_g_type_specialized_construct (TP_TYPE_ROOM_STRUCT));
+
+  dbus_g_type_struct_set (&room,
+      0, handle,
+      1, "org.freedesktop.Telepathy.Channel.Type.Text",
+      2, keys,
+      G_MAXUINT);
+
+  rooms = g_ptr_array_sized_new (1);
+  g_ptr_array_add (rooms, g_value_get_boxed (&room));
+  g_signal_emit (chan, signals[GOT_ROOMS], 0, rooms);
+  g_ptr_array_free (rooms, TRUE);
+  g_value_unset (&room);
 
   g_hash_table_destroy (keys);
 
 done:
-  room_list_fill_disco_pipeline (chan);
-
-  return;
+  g_hash_table_destroy (result);
 }
 
 static void
-rooms_cb (GabbleDisco *disco,
-          GabbleDiscoRequest *request,
-          const gchar *jid,
-          const gchar *node,
-          LmMessageNode *result,
-          GError *error,
-          gpointer user_data)
+rooms_end_cb (gpointer data, gpointer user_data)
 {
-  LmMessageNode *iter;
-  GabbleRoomlistChannel *chan = user_data;
-  GabbleRoomlistChannelPrivate *priv;
-  const char *item_jid;
-  gpointer key, value;
-
-  g_assert (GABBLE_IS_ROOMLIST_CHANNEL (chan));
-
-  priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (chan);
-
-  if (error)
-    {
-      DEBUG ("got error %s", error->message);
-      goto out;
-    }
-
-  iter = result->children;
-
-  for (; iter; iter = iter->next)
-    {
-      if (0 != strcmp (iter->name, "item"))
-        continue;
-
-      item_jid = lm_message_node_get_attribute (iter, "jid");
-
-      if (NULL != item_jid &&
-          !g_hash_table_lookup_extended (priv->remaining_rooms, item_jid, &key, &value))
-        {
-          gchar *tmp = g_strdup (item_jid);
-          g_hash_table_insert (priv->remaining_rooms, tmp, tmp);
-        }
-    }
-
-out:
-  room_list_fill_disco_pipeline (chan);
+  /* do nothing */
 }
+
 
 /************************* D-Bus Method definitions **************************/
 
@@ -818,9 +707,15 @@ gabble_roomlist_channel_list_rooms (GabbleRoomlistChannel *self,
 
   priv->listing = TRUE;
   g_signal_emit (self, signals[LISTING_ROOMS], 0, TRUE);
-  gabble_disco_request (priv->conn->disco, GABBLE_DISCO_TYPE_ITEMS,
-                        priv->conference_server, NULL,
-                        rooms_cb, self, G_OBJECT(self), NULL);
+  
+  if (!priv->disco_pipeline)
+    {
+      priv->disco_pipeline = gabble_disco_pipeline_init (priv->conn->disco,
+                                                        room_info_cb,
+                                                        rooms_end_cb,
+                                                        self);
+    }
+  gabble_disco_pipeline_run (priv->disco_pipeline, priv->conference_server);
   return TRUE;
 }
 

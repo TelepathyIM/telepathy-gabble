@@ -62,6 +62,7 @@ enum
     NEW_ACTIVE_CANDIDATE_PAIR,
     NEW_NATIVE_CANDIDATE,
     SUPPORTED_CODECS,
+    ERROR,
 
     LAST_SIGNAL
 };
@@ -535,6 +536,15 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                   g_cclosure_marshal_VOID__BOOLEAN,
                   G_TYPE_NONE, 1, G_TYPE_BOOLEAN);
 
+  signals[ERROR] =
+    g_signal_new ("error",
+                  G_OBJECT_CLASS_TYPE (gabble_media_stream_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_media_stream_marshal_VOID__UINT_STRING,
+                  G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_STRING);
+
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_media_stream_class), &dbus_glib_gabble_media_stream_object_info);
 }
 
@@ -648,11 +658,9 @@ gabble_media_stream_error (GabbleMediaStream *self,
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
 
-  GMS_DEBUG_WARNING (priv->session, "Media.StreamHandler::Error called, error %u (%s) -- terminating session", errno, message);
+  GMS_DEBUG_WARNING (priv->session, "Media.StreamHandler::Error called, error %u (%s) -- emitting signal", errno, message);
 
-  _gabble_media_stream_close (self);
-
-  _gabble_media_session_terminate (priv->session);
+  g_signal_emit (self, signals[ERROR], 0, errno, message);
 
   return TRUE;
 }

@@ -162,6 +162,9 @@ struct _GabbleParams {
   guint stun_port;
   gboolean ignore_ssl_errors;
   gchar *alias;
+  gchar *auth_identity;
+  gchar *auth_secret;
+  gchar *auth_type;
 };
 
 enum {
@@ -181,6 +184,9 @@ enum {
     JABBER_PARAM_STUN_PORT,
     JABBER_PARAM_IGNORE_SSL_ERRORS,
     JABBER_PARAM_ALIAS,
+    JABBER_PARAM_AUTH_IDENTITY,
+    JABBER_PARAM_AUTH_SECRET,
+    JABBER_PARAM_AUTH_TYPE,
     LAST_JABBER_PARAM
 };
 
@@ -201,6 +207,9 @@ static const GabbleParamSpec jabber_params[] = {
   { "stun-port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT, TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_STUN_PORT), G_STRUCT_OFFSET(GabbleParams, stun_port) },
   { "ignore-ssl-errors", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN, TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(FALSE), G_STRUCT_OFFSET(GabbleParams, ignore_ssl_errors) },
   { "alias", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, 0, NULL, G_STRUCT_OFFSET(GabbleParams, alias) },
+  { "auth-identity", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, 0, NULL, G_STRUCT_OFFSET(GabbleParams, auth_identity) },
+  { "auth-secret", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, 0, NULL, G_STRUCT_OFFSET(GabbleParams, auth_secret) },
+  { "auth-type", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, 0, NULL, G_STRUCT_OFFSET(GabbleParams, auth_type) },
   { NULL, NULL, 0, 0, NULL, 0 }
 };
 
@@ -416,6 +425,9 @@ free_params (GabbleParams *params)
   g_free (params->fallback_conference_server);
   g_free (params->stun_server);
   g_free (params->alias);
+  g_free (params->auth_identity);
+  g_free (params->auth_secret);
+  g_free (params->auth_type);
 }
 
 /**
@@ -635,6 +647,12 @@ gabble_connection_manager_request_connection (GabbleConnectionManager *self,
                               JABBER_PARAM_IGNORE_SSL_ERRORS,
                               params.ignore_ssl_errors);
   SET_PROPERTY_IF_PARAM_SET ("alias", JABBER_PARAM_ALIAS, params.alias);
+  SET_PROPERTY_IF_PARAM_SET ("auth-identity", JABBER_PARAM_AUTH_IDENTITY,
+                             params.auth_identity);
+  SET_PROPERTY_IF_PARAM_SET ("auth-secret", JABBER_PARAM_AUTH_SECRET,
+                             params.auth_secret);
+  SET_PROPERTY_IF_PARAM_SET ("auth-type", JABBER_PARAM_AUTH_TYPE,
+                             params.auth_type);
 
   /* split up account into username, stream-server and resource */
   if (!_gabble_connection_set_properties_from_account (conn, params.account, error))

@@ -3131,6 +3131,12 @@ gboolean gabble_connection_get_capabilities (GabbleConnection *obj, guint handle
 }
 #endif
 
+static const gchar *assumed_caps[] =
+{
+  TP_IFACE_CHANNEL_TYPE_TEXT,
+  TP_IFACE_CHANNEL_INTERFACE_GROUP,
+  NULL
+};
 
 /**
  * gabble_connection_get_capabilities
@@ -3171,6 +3177,7 @@ gabble_connection_get_capabilities (GabbleConnection *self,
       GabblePresence *pres;
       const CapabilityConversionData *ccd;
       guint typeflags;
+      const gchar **assumed;
 
       if (0 == handle)
         {
@@ -3202,6 +3209,25 @@ gabble_connection_get_capabilities (GabbleConnection *self,
 
               g_ptr_array_add (*ret, g_value_get_boxed (&monster));
             }
+        }
+
+      for (assumed = assumed_caps; NULL != *assumed; assumed++)
+        {
+          GValue monster = {0, };
+
+          g_value_init (&monster, TP_GET_CAPABILITIES_MONSTER_TYPE);
+          g_value_take_boxed (&monster,
+              dbus_g_type_specialized_construct (TP_GET_CAPABILITIES_MONSTER_TYPE));
+
+          dbus_g_type_struct_set (&monster,
+              0, handle,
+              1, *assumed,
+              2, TP_CONN_CAPABILITY_FLAG_CREATE |
+                  TP_CONN_CAPABILITY_FLAG_INVITE,
+              3, 0,
+              G_MAXUINT);
+
+          g_ptr_array_add (*ret, g_value_get_boxed (&monster));
         }
     }
 

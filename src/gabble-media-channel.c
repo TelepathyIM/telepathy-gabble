@@ -1358,6 +1358,19 @@ stream_close_cb (GabbleMediaStream *stream,
 }
 
 static void
+stream_error_cb (GabbleMediaStream *stream,
+                 TpMediaStreamError errno,
+                 const gchar *message,
+                 GabbleMediaChannel *chan)
+{
+  guint id;
+
+  g_object_get (stream, "id", &id, NULL);
+
+  g_signal_emit (chan, signals[STREAM_ERROR], 0, id, errno, message);
+}
+
+static void
 stream_state_changed_cb (GabbleMediaStream *stream,
                          GParamSpec *pspec,
                          GabbleMediaChannel *chan)
@@ -1385,6 +1398,8 @@ session_stream_added_cb (GabbleMediaSession *session,
 
   g_signal_connect (stream, "close",
                     (GCallback) stream_close_cb, chan);
+  g_signal_connect (stream, "error",
+                    (GCallback) stream_error_cb, chan);
   g_signal_connect (stream, "notify::connection-state",
                     (GCallback) stream_state_changed_cb, chan);
 

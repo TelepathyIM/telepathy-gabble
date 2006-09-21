@@ -598,7 +598,10 @@ gabble_media_session_error (GabbleMediaSession *self,
       GabbleMediaStream *stream = g_ptr_array_index (streams, i);
 
       if (!gabble_media_stream_error (stream, errno, message, error))
-        return FALSE;
+        {
+          g_ptr_array_free (streams, TRUE);
+          return FALSE;
+        }
     }
 
   g_ptr_array_free (streams, TRUE);

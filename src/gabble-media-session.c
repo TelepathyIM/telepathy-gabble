@@ -1615,11 +1615,11 @@ _gabble_media_session_remove_streams (GabbleMediaSession *session,
       _gabble_media_stream_close (stream);
     }
 
-    /* send the remove message */
-    _gabble_connection_send_with_reply (priv->conn, msg, ignore_reply_cb,
-                                        G_OBJECT (session), NULL, NULL);
+  /* send the remove message */
+  _gabble_connection_send_with_reply (priv->conn, msg, ignore_reply_cb,
+                                      G_OBJECT (session), NULL, NULL);
 
-    lm_message_unref (msg);
+  lm_message_unref (msg);
 }
 
 static void

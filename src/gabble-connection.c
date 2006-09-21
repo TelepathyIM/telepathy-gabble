@@ -157,6 +157,7 @@ enum
     PROP_STUN_RELAY_USERNAME,
     PROP_STUN_RELAY_PASSWORD,
     PROP_IGNORE_SSL_ERRORS,
+    PROP_ALIAS,
 
     LAST_PROPERTY
 };
@@ -226,6 +227,7 @@ struct _GabbleConnectionPrivate
   gchar *password;
   gchar *resource;
   gint8 priority;
+  gchar *alias;
 
   GabbleRoomlistChannel *roomlist_channel;
 
@@ -391,6 +393,9 @@ gabble_connection_get_property (GObject    *object,
     case PROP_IGNORE_SSL_ERRORS:
       g_value_set_boolean (value, priv->ignore_ssl_errors);
       break;
+    case PROP_ALIAS:
+      g_value_set_string (value, priv->alias);
+      break;
     default:
       param_name = g_param_spec_get_name (pspec);
 
@@ -476,6 +481,10 @@ gabble_connection_set_property (GObject      *object,
       break;
     case PROP_IGNORE_SSL_ERRORS:
       priv->ignore_ssl_errors = g_value_get_boolean (value);
+      break;
+   case PROP_ALIAS:
+      g_free (priv->alias);
+      priv->alias = g_value_dup_string (value);
       break;
     default:
       param_name = g_param_spec_get_name (pspec);
@@ -732,6 +741,15 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
                                      G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_IGNORE_SSL_ERRORS, param_spec);
 
+  param_spec = g_param_spec_string ("alias",
+                                    "Alias/nick for local user",
+                                    "Alias/nick for local user",
+                                    NULL,
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_STATIC_NAME |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_ALIAS, param_spec);
+
   /* signal definitions */
 
   signals[ALIASES_CHANGED] =
@@ -879,6 +897,8 @@ gabble_connection_finalize (GObject *object)
 
   g_free (priv->https_proxy_server);
   g_free (priv->fallback_conference_server);
+
+  g_free (priv->alias);
 
   g_list_free (priv->conference_servers);
 
@@ -1790,6 +1810,8 @@ _gabble_connection_get_cached_alias (GabbleConnection *conn,
                                      GabbleHandle handle,
                                      gchar **alias)
 {
+  GabbleConnectionPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (conn,
+      GABBLE_TYPE_CONNECTION, GabbleConnectionPrivate);
   GabbleConnectionAliasSource ret = GABBLE_CONNECTION_ALIAS_NONE;
   GabblePresence *pres;
   const gchar *tmp;
@@ -1823,6 +1845,17 @@ _gabble_connection_get_cached_alias (GabbleConnection *conn,
     }
 
   /* todo: vcard */
+
+  /* if it's our own handle, use alias passed to the connmgr, if any */
+  if (handle == conn->self_handle && priv->alias != NULL)
+    {
+      ret = GABBLE_CONNECTION_ALIAS_FROM_CONNMGR;
+
+      if (NULL != alias)
+        *alias = g_strdup (priv->alias);
+
+      goto OUT;
+    }
 
   /* fallback to JID */
   tmp = gabble_handle_inspect (conn->handles, TP_HANDLE_TYPE_CONTACT, handle);

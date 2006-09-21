@@ -2850,10 +2850,10 @@ _emit_capabilities_changed (GabbleConnection *conn,
               0, handle,
               1, ccd->iface,
               2, old_tpflags ?
-                TP_CONN_CAPABILITY_TYPE_CREATE | TP_CONN_CAPABILITY_TYPE_INVITE :
+                TP_CONN_CAPABILITY_FLAG_CREATE | TP_CONN_CAPABILITY_FLAG_INVITE :
                 0,
               3, new_tpflags ?
-                TP_CONN_CAPABILITY_TYPE_CREATE | TP_CONN_CAPABILITY_TYPE_INVITE :
+                TP_CONN_CAPABILITY_FLAG_CREATE | TP_CONN_CAPABILITY_FLAG_INVITE :
                 0,
               4, old_tpflags,
               5, new_tpflags,

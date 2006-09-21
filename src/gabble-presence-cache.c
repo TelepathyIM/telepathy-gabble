@@ -32,6 +32,8 @@
 
 #include "gabble-presence-cache.h"
 
+#include "gabble-presence-cache-signals-marshal.h"
+
 G_DEFINE_TYPE (GabblePresenceCache, gabble_presence_cache, G_TYPE_OBJECT);
 
 /* properties */
@@ -46,6 +48,7 @@ enum
 {
   PRESENCE_UPDATE,
   NICKNAME_UPDATE,
+  CAPABILITIES_UPDATE,
   LAST_SIGNAL
 };
 
@@ -190,6 +193,13 @@ gabble_presence_cache_class_init (GabblePresenceCacheClass *klass)
     0,
     NULL, NULL,
     g_cclosure_marshal_VOID__UINT, G_TYPE_NONE, 1, G_TYPE_UINT);
+  signals[CAPABILITIES_UPDATE] = g_signal_new (
+    "capabilities-update",
+    G_TYPE_FROM_CLASS (klass),
+    G_SIGNAL_RUN_LAST,
+    0,
+    NULL, NULL,
+    gabble_presence_cache_marshal_VOID__UINT_UINT, G_TYPE_NONE, 1, G_TYPE_UINT);
 }
 
 static void
@@ -612,9 +622,14 @@ _caps_disco_cb (GabbleDisco *disco,
       presence = gabble_presence_cache_get (cache, waiter->handle);
 
       if (presence)
-        gabble_presence_set_capabilities (presence,
-                                          waiter->resource,caps,
-                                          waiter->serial);
+        {
+          GabblePresenceCapabilities save_caps = presence->caps;
+          gabble_presence_set_capabilities (presence,
+                                            waiter->resource,caps,
+                                            waiter->serial);
+          g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0,
+              waiter->handle, save_caps, presence->caps);
+        }
     }
 
   g_hash_table_remove (priv->disco_pending, node);
@@ -641,8 +656,13 @@ _process_caps_uri (GabblePresenceCache *cache,
       GabblePresence *presence = gabble_presence_cache_get (cache, handle);
 
       if (presence)
-        gabble_presence_set_capabilities (presence, resource,
-          GPOINTER_TO_INT (value), serial);
+        {
+          GabblePresenceCapabilities save_caps = presence->caps;
+          gabble_presence_set_capabilities (presence, resource,
+            GPOINTER_TO_INT (value), serial);
+          g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0,
+              handle, save_caps, presence->caps);
+        }
     }
   else
     {

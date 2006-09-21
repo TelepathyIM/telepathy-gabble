@@ -24,6 +24,8 @@ BUILT_SOURCES = \
     gabble-media-stream-glue.h \
     gabble-media-stream-signals-marshal.h \
     gabble-media-stream-signals-marshal.c \
+	gabble-presence-cache-signals-marshal.h \
+	gabble-presence-cache-signals-marshal.c \
     gabble-roster-channel-glue.h \
     gabble-roster-channel-signals-marshal.h \
     gabble-roster-channel-signals-marshal.c \

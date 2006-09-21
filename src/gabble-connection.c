@@ -72,6 +72,9 @@
 #define TP_CAPABILITIES_CHANGED_MONSTER_TYPE (dbus_g_type_get_struct \
     ("GValueArray", G_TYPE_UINT, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT, \
                     G_TYPE_UINT, G_TYPE_UINT, G_TYPE_INVALID))
+#define TP_GET_CAPABILITIES_MONSTER_TYPE (dbus_g_type_get_struct \
+    ("GValueArray", G_TYPE_UINT, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT, \
+                    G_TYPE_INVALID))
 #define TP_CHANNEL_LIST_ENTRY_TYPE (dbus_g_type_get_struct ("GValueArray", \
       DBUS_TYPE_G_OBJECT_PATH, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT, \
       G_TYPE_INVALID))
@@ -3132,6 +3135,61 @@ gabble_connection_get_capabilities (GabbleConnection *self,
                                     GPtrArray **ret,
                                     GError **error)
 {
+  int i;
+
+  ERROR_IF_NOT_CONNECTED (self, *error);
+
+  if (!gabble_handles_are_valid (self->handles,
+                                 TP_HANDLE_TYPE_CONTACT,
+                                 handles,
+                                 TRUE,
+                                 error))
+    {
+      return FALSE;
+    }
+
+  *ret = g_ptr_array_new ();
+
+  for (i = 0; i < handles->len; i++)
+    {
+      GabbleHandle handle = g_array_index (handles, guint, i);
+      GabblePresence *pres;
+      const CapabilityConversionData *ccd;
+      guint typeflags;
+
+      if (0 == handle)
+        {
+          /* FIXME report the magical channel types available on the connection itself */
+          continue;
+        }
+
+      pres = gabble_presence_cache_get (self->presence_cache, handle);
+
+      for (ccd = capability_conversions; NULL != ccd->iface; ccd++)
+        {
+          typeflags = ccd->c2tf_fn (pres->caps);
+
+          if (typeflags)
+            {
+              GValue monster = {0, };
+
+              g_value_init (&monster, TP_GET_CAPABILITIES_MONSTER_TYPE);
+              g_value_take_boxed (&monster,
+                  dbus_g_type_specialized_construct (TP_GET_CAPABILITIES_MONSTER_TYPE));
+
+              dbus_g_type_struct_set (&monster,
+                  0, handle,
+                  1, ccd->iface,
+                  2, TP_CONN_CAPABILITY_FLAG_CREATE |
+                      TP_CONN_CAPABILITY_FLAG_INVITE,
+                  3, typeflags,
+                  G_MAXUINT);
+
+              g_ptr_array_add (*ret, g_value_get_boxed (&monster));
+            }
+        }
+    }
+
   return TRUE;
 }
 

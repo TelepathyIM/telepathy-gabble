@@ -301,6 +301,7 @@ static void connection_new_channel_cb (TpChannelFactoryIface *, GObject *, gpoin
 static void connection_channel_error_cb (TpChannelFactoryIface *, GObject *, GError *, gpointer);
 static void connection_nickname_update_cb (GObject *, GabbleHandle, gpointer);
 static void connection_presence_update_cb (GabblePresenceCache *, GabbleHandle, gpointer);
+static void connection_capabilities_update_cb (GabblePresenceCache *, GabbleHandle, GabblePresenceCapabilities, GabblePresenceCapabilities, gpointer);
 
 static void
 gabble_connection_init (GabbleConnection *self)
@@ -322,6 +323,8 @@ gabble_connection_init (GabbleConnection *self)
       (connection_nickname_update_cb), self);
   g_signal_connect (self->presence_cache, "presence-update", G_CALLBACK
       (connection_presence_update_cb), self);
+  g_signal_connect (self->presence_cache, "capabilities-update", G_CALLBACK
+      (connection_capabilities_update_cb), self);
 
   /* fill presence cache with the known feature nodes */
   for (feat = self_advertised_features; NULL != feat->ns; feat++)
@@ -2861,6 +2864,18 @@ _emit_capabilities_changed (GabbleConnection *conn,
     }
 
   g_signal_emit (conn, signals[CAPABILITIES_CHANGED], 0, caps_arr);
+}
+
+static void
+connection_capabilities_update_cb (GabblePresenceCache *cache,
+                                   GabbleHandle handle,
+                                   GabblePresenceCapabilities old_caps,
+                                   GabblePresenceCapabilities new_caps,
+                                   gpointer user_data)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+
+  _emit_capabilities_changed (conn, handle, old_caps, new_caps);
 }
 
 /**

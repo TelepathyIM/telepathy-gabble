@@ -541,6 +541,14 @@ gabble_media_session_finalize (GObject *object)
 }
 
 
+static void
+_steal_one_stream (const gchar *name,
+                   GabbleMediaStream *stream,
+                   GPtrArray **arr)
+{
+  g_ptr_array_add (*arr, stream);
+}
+
 /**
  * gabble_media_session_error
  *
@@ -559,9 +567,41 @@ gabble_media_session_error (GabbleMediaSession *self,
                             const gchar *message,
                             GError **error)
 {
-  GMS_DEBUG_INFO (self, "Media.SessionHandler::Error called, error %u (%s) -- terminating session", errno, message);
+  GabbleMediaSessionPrivate *priv;
+  GPtrArray *streams;
+  guint i;
 
-  _gabble_media_session_terminate (self);
+  g_assert (GABBLE_IS_MEDIA_SESSION (self));
+
+  priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (self);
+
+  GMS_DEBUG_INFO (self, "Media.SessionHandler::Error called, error %u (%s) -- "
+      "emitting error on each stream", errno, message);
+
+  if (priv->state == JS_STATE_ENDED)
+    {
+      return TRUE;
+    }
+  else if (priv->state == JS_STATE_PENDING_CREATED)
+    {
+      g_object_set (self, "state", JS_STATE_ENDED, NULL);
+      return TRUE;
+    }
+
+  g_assert (priv->streams != NULL);
+
+  streams = g_ptr_array_sized_new (g_hash_table_size (priv->streams));
+  g_hash_table_foreach (priv->streams, (GHFunc) _steal_one_stream, &streams);
+
+  for (i = 0; i < streams->len; i++)
+    {
+      GabbleMediaStream *stream = g_ptr_array_index (streams, i);
+
+      if (!gabble_media_stream_error (stream, errno, message, error))
+        return FALSE;
+    }
+
+  g_ptr_array_free (streams, TRUE);
 
   return TRUE;
 }

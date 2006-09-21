@@ -1102,8 +1102,8 @@ _gabble_media_stream_close (GabbleMediaStream *stream)
 
   if (!priv->closed)
     {
-      g_signal_emit (stream, signals[CLOSE], 0);
       priv->closed = TRUE;
+      g_signal_emit (stream, signals[CLOSE], 0);
     }
 }
 

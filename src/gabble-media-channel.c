@@ -69,6 +69,7 @@ enum
     NEW_SESSION_HANDLER,
     STREAM_ADDED,
     STREAM_DIRECTION_CHANGED,
+    STREAM_ERROR,
     STREAM_REMOVED,
     STREAM_STATE_CHANGED,
     LAST_SIGNAL
@@ -431,6 +432,15 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
                   NULL, NULL,
                   gabble_media_channel_marshal_VOID__UINT_UINT_UINT,
                   G_TYPE_NONE, 3, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT);
+
+  signals[STREAM_ERROR] =
+    g_signal_new ("stream-error",
+                  G_OBJECT_CLASS_TYPE (gabble_media_channel_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_media_channel_marshal_VOID__UINT_UINT_STRING,
+                  G_TYPE_NONE, 3, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING);
 
   signals[STREAM_REMOVED] =
     g_signal_new ("stream-removed",

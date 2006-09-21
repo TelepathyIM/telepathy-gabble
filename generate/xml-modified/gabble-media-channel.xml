@@ -96,6 +96,11 @@
       <arg name="stream_direction" type="u"/>
       <arg name="pending_flags" type="u"/>
     </signal>
+    <signal name="StreamError">
+      <arg name="stream_id" type="u"/>
+      <arg name="errno" type="u"/>
+      <arg name="message" type="s"/>
+    </signal>
     <signal name="StreamRemoved">
       <arg name="stream_id" type="u"/>
     </signal>

@@ -1,6 +1,7 @@
 # Boring file regexps:
 \.hi$
 \.o$
+\.lo$
 \.o\.cmd$
 \.ko$
 \.ko\.cmd$

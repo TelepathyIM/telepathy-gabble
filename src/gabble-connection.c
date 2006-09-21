@@ -165,6 +165,9 @@ enum
     PROP_STUN_RELAY_PASSWORD,
     PROP_IGNORE_SSL_ERRORS,
     PROP_ALIAS,
+    PROP_AUTH_IDENTITY,
+    PROP_AUTH_SECRET,
+    PROP_AUTH_TYPE,
 
     LAST_PROPERTY
 };
@@ -233,6 +236,9 @@ struct _GabbleConnectionPrivate
   gchar *resource;
   gint8 priority;
   gchar *alias;
+  gchar *auth_identity;
+  gchar *auth_secret;
+  gchar *auth_type;
 
   /* reference to conference server name */
   const gchar *conference_server;
@@ -411,6 +417,15 @@ gabble_connection_get_property (GObject    *object,
     case PROP_ALIAS:
       g_value_set_string (value, priv->alias);
       break;
+    case PROP_AUTH_IDENTITY:
+      g_value_set_string (value, priv->auth_identity);
+      break;
+    case PROP_AUTH_SECRET:
+      g_value_set_string (value, priv->auth_secret);
+      break;
+    case PROP_AUTH_TYPE:
+      g_value_set_string (value, priv->auth_type);
+      break;
     default:
       param_name = g_param_spec_get_name (pspec);
 
@@ -496,6 +511,18 @@ gabble_connection_set_property (GObject      *object,
    case PROP_ALIAS:
       g_free (priv->alias);
       priv->alias = g_value_dup_string (value);
+      break;
+   case PROP_AUTH_IDENTITY:
+      g_free (priv->auth_identity);
+      priv->auth_identity = g_value_dup_string (value);
+      break;
+   case PROP_AUTH_SECRET:
+      g_free (priv->auth_secret);
+      priv->auth_secret = g_value_dup_string (value);
+      break;
+   case PROP_AUTH_TYPE:
+      g_free (priv->auth_type);
+      priv->auth_type = g_value_dup_string (value);
       break;
     default:
       param_name = g_param_spec_get_name (pspec);
@@ -773,6 +800,37 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_ALIAS, param_spec);
 
+  param_spec = g_param_spec_string ("auth-identity",
+                                    "Identifier for custom auth schemes",
+                                    "A username, public key, or whatever "
+                                    "for use in custom auth schemes",
+                                    NULL,
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_STATIC_NAME |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_AUTH_IDENTITY, param_spec);
+
+  param_spec = g_param_spec_string ("auth-secret",
+                                    "Secret for custom auth schemes",
+                                    "A password or other secret "
+                                    "corresponding to auth-identity",
+                                    NULL,
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_STATIC_NAME |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_AUTH_SECRET, param_spec);
+
+  param_spec = g_param_spec_string ("auth-type",
+                                    "Custom auth mechanism",
+                                    "A name identifying the mechanism "
+                                    "auth-identity and auth-secret are to "
+                                    "be used with",
+                                    NULL,
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_STATIC_NAME |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_AUTH_TYPE, param_spec);
+
   /* signal definitions */
 
   signals[ALIASES_CHANGED] =
@@ -915,7 +973,15 @@ gabble_connection_finalize (GObject *object)
   g_free (priv->https_proxy_server);
   g_free (priv->fallback_conference_server);
 
-  g_free (priv->alias);
+  g_list_free (priv->conference_servers);
+
+  tp_properties_mixin_finalize (object);
+
+  for (i = 0; i <= LAST_TP_HANDLE_TYPE; i++)
+    {
+      if (self->handle_repos[i])
+        g_object_unref((GObject *)self->handle_repos[i]);
+    }
 
   G_OBJECT_CLASS (gabble_connection_parent_class)->finalize (object);
 }

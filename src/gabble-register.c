@@ -36,6 +36,10 @@
 #include "gabble-register-signals-marshal.h"
 #include "namespaces.h"
 #include "util.h"
+#include "libmd5-rfc/md5.h"
+
+#define NS_NOKIA_IV "about:placeholder-xmlns-for-nokia-iv"
+#define AUTH_TYPE_NOKIA_IV "nokia-iv"
 
 /* signal enum */
 enum
@@ -191,12 +195,161 @@ gabble_register_new (GabbleConnection *conn)
 }
 
 static LmHandlerResult
+nokia_iv_set_reply_cb (GabbleConnection *conn,
+                       LmMessage *sent_msg,
+                       LmMessage *reply_msg,
+                       GObject *object,
+                       gpointer user_data)
+{
+  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
+    {
+      LmMessageNode *node;
+      gint code = NotAvailable;
+      GString *msg;
+
+      msg = g_string_sized_new (30);
+      g_string_append (msg, "Request failed");
+
+      node = lm_message_node_get_child (reply_msg->node, "error");
+      if (node)
+        {
+          GabbleXmppError error;
+
+          error = gabble_xmpp_error_from_node (node);
+
+          if (error != INVALID_XMPP_ERROR)
+            {
+              g_string_append_printf (msg, ": %s",
+                  gabble_xmpp_error_string (error));
+            }
+        }
+
+      g_signal_emit (object, signals[FINISHED], 0, FALSE, code, msg->str);
+      g_string_free (msg, TRUE);
+    }
+  else
+    {
+      g_signal_emit (object, signals[FINISHED], 0, TRUE, -1, NULL);
+    }
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
+static LmHandlerResult
+nokia_iv_get_reply_cb (GabbleConnection *conn,
+                       LmMessage *sent_msg,
+                       LmMessage *reply_msg,
+                       GObject *object,
+                       gpointer user_data)
+{
+  GabbleRegister *reg = GABBLE_REGISTER (object);
+  GabbleRegisterPrivate *priv = GABBLE_REGISTER_GET_PRIVATE (reg);
+  GError *error = NULL;
+  gint err_code = -1;
+  const gchar *err_msg = NULL;
+  LmMessage *msg = NULL;
+  LmMessageNode *query_node, *challenge_node;
+  gchar *auth_identity, *auth_secret;
+  const gchar *challenge;
+  gchar response[33];
+  gint i;
+  md5_byte_t digest[16];
+  md5_state_t calculator;
+  static const char *xdigits = "0123456789abcdef";
+
+  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
+    {
+      /* We tried, but the server doesn't seem to support it. Never mind,
+      let's try to log in anyway and see what happens. */
+      g_signal_emit (object, signals[FINISHED], 0, TRUE, -1, NULL);
+      goto OUT;
+    }
+
+  /* sanity check the reply to some degree ... */
+  query_node = lm_message_node_get_child_with_namespace (reply_msg->node,
+      "query", NS_NOKIA_IV);
+
+  if (query_node == NULL)
+    goto ERROR_MALFORMED_REPLY;
+
+  challenge_node = lm_message_node_get_child (query_node, "challenge");
+  if (!challenge_node)
+    goto ERROR_MALFORMED_REPLY;
+  challenge = lm_message_node_get_value(challenge_node);
+  if (!challenge)
+    goto ERROR_MALFORMED_REPLY;
+
+  /* craft a reply */
+  msg = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
+                                      LM_MESSAGE_SUB_TYPE_SET);
+
+  query_node = lm_message_node_add_child (msg->node, "query", NULL);
+  lm_message_node_set_attribute (query_node, "xmlns", NS_NOKIA_IV);
+
+  g_object_get (priv->conn,
+      "auth-identity", &auth_identity,
+      "auth-secret", &auth_secret,
+      NULL);
+
+  md5_init(&calculator);
+  md5_append(&calculator, (const md5_byte_t *)auth_secret,
+             strlen(auth_secret));
+  md5_append(&calculator, (const md5_byte_t *)":", 1);
+  md5_append(&calculator, (const md5_byte_t *)challenge, strlen(challenge));
+  md5_finish(&calculator, digest);
+
+  for (i = 0; i < 16; i++)
+    {
+      response[i*2] = xdigits[(digest[i] >> 4) & 0xf];
+      response[i*2+1] = xdigits[digest[i] & 0xf];
+    }
+  response[32] = '\0';
+
+  lm_message_node_add_child (query_node, "mac", auth_identity);
+  lm_message_node_add_child (query_node, "response", response);
+
+  g_free (auth_identity);
+  g_free (auth_secret);
+
+  if (!_gabble_connection_send_with_reply (priv->conn, msg,
+                                           nokia_iv_set_reply_cb,
+                                           G_OBJECT (reg), NULL, &error))
+    {
+      err_code = error->code;
+      err_msg = error->message;
+    }
+
+  goto OUT;
+
+ERROR_MALFORMED_REPLY:
+  err_code = NotAvailable;
+  err_msg = "Malformed reply";
+
+OUT:
+  if (err_code != -1)
+    {
+      g_signal_emit (reg, signals[FINISHED], 0, FALSE, err_code, err_msg);
+    }
+
+  if (msg)
+    lm_message_unref (msg);
+
+  if (error)
+    g_error_free (error);
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
+static LmHandlerResult
 set_reply_cb (GabbleConnection *conn,
               LmMessage *sent_msg,
               LmMessage *reply_msg,
               GObject *object,
               gpointer user_data)
 {
+  GabbleRegister *reg = GABBLE_REGISTER (object);
+  GabbleRegisterPrivate *priv = GABBLE_REGISTER_GET_PRIVATE (reg);
+
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
       LmMessageNode *node;
@@ -229,7 +382,39 @@ set_reply_cb (GabbleConnection *conn,
     }
   else
     {
-      g_signal_emit (object, signals[FINISHED], 0, TRUE, -1, NULL);
+      gchar *auth_type;
+
+      g_object_get (priv->conn, "auth-type", &auth_type, NULL);
+
+      if (auth_type && !g_strdiff(auth_type, AUTH_TYPE_NOKIA_IV))
+        {
+          LmMessage *msg;
+          LmMessageNode *node;
+          GError *error;
+
+          msg = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
+                                              LM_MESSAGE_SUB_TYPE_GET);
+
+          node = lm_message_node_add_child (msg->node, "query", NULL);
+          lm_message_node_set_attribute (node, "xmlns", NS_NOKIA_IV);
+
+          if (!_gabble_connection_send_with_reply (priv->conn, msg,
+                                                   nokia_iv_get_reply_cb,
+                                                   G_OBJECT (reg), NULL,
+                                                   &error))
+            {
+              g_signal_emit (reg, signals[FINISHED], 0, FALSE, error->code,
+                             error->message);
+              g_error_free (error);
+            }
+        }
+      else
+        {
+          /* We don't have the necessary info, so let's hope it's not
+          necessary */
+          g_signal_emit (object, signals[FINISHED], 0, TRUE, -1, NULL);
+        }
+      g_free(auth_type);
     }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;

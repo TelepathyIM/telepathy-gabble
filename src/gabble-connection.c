@@ -2818,7 +2818,7 @@ const static CapabilityConversionData capability_conversions[] =
   { NULL, NULL, NULL}
 };
 
-void
+static void
 _emit_capabilities_changed (GabbleConnection *conn,
                             GabbleHandle handle,
                             GabblePresenceCapabilities old_caps,

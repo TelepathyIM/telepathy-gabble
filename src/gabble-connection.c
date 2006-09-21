@@ -2958,7 +2958,7 @@ gabble_connection_advertise_capabilities (GabbleConnection *self,
           dbus_g_type_struct_set (&iface_flags_pair,
                                   0, ccd->iface,
                                   1, ccd->c2tf_fn (pres->caps),
-                                  NULL);
+                                  G_MAXUINT);
 
           g_ptr_array_add (*ret, g_value_get_boxed (&iface_flags_pair));
         }

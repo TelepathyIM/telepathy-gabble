@@ -1677,6 +1677,14 @@ send_terminate_message (GabbleMediaSession *session)
   lm_message_unref (msg);
 }
 
+static void
+_close_one_stream (const gchar *name,
+                   GabbleMediaStream *stream,
+                   GabbleMediaSession *session)
+{
+  _gabble_media_stream_close (stream);
+}
+
 void
 _gabble_media_session_terminate (GabbleMediaSession *session)
 {
@@ -1696,6 +1704,8 @@ _gabble_media_session_terminate (GabbleMediaSession *session)
     }
 
   send_terminate_message (session);
+
+  g_hash_table_foreach (priv->streams, (GHFunc) _close_one_stream, session);
 
   g_object_set (session, "state", JS_STATE_ENDED, NULL);
 }

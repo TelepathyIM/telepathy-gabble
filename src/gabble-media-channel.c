@@ -1363,11 +1363,21 @@ stream_error_cb (GabbleMediaStream *stream,
                  const gchar *message,
                  GabbleMediaChannel *chan)
 {
+  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
   guint id;
+  GPtrArray *streams;
 
+  /* emit signal */
   g_object_get (stream, "id", &id, NULL);
-
   g_signal_emit (chan, signals[STREAM_ERROR], 0, id, errno, message);
+
+  /* remove stream from session */
+  streams = g_ptr_array_sized_new (1);
+  g_ptr_array_add (streams, stream);
+
+  _gabble_media_session_remove_streams (priv->session, streams);
+
+  g_ptr_array_free (streams, TRUE);
 }
 
 static void

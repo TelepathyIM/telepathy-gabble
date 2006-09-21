@@ -27,8 +27,7 @@
 #include "gabble-connection-manager.h"
 
 static gchar *
-mgr_file_contents (const char *name,
-                   const char *busname,
+mgr_file_contents (const char *busname,
                    const char *objpath,
                    const GabbleProtocolSpec *protocols,
                    GError **error)
@@ -37,7 +36,6 @@ mgr_file_contents (const char *name,
   const GabbleProtocolSpec *protocol;
   const GabbleParamSpec *row;
 
-  g_key_file_set_string(f, "ConnectionManager", "Name", name);
   g_key_file_set_string(f, "ConnectionManager", "BusName", busname);
   g_key_file_set_string(f, "ConnectionManager", "ObjectPath", objpath);
 
@@ -90,7 +88,7 @@ main (void)
 {
   GError *error = NULL;
 
-  gchar *s = mgr_file_contents("gabble", GABBLE_CONN_MGR_BUS_NAME,
+  gchar *s = mgr_file_contents(GABBLE_CONN_MGR_BUS_NAME,
                                GABBLE_CONN_MGR_OBJECT_PATH,
                                gabble_protocols, &error);
   if (!s)

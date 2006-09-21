@@ -2,3 +2,9 @@ Robert McQueen <robert.mcqueen@collabora.co.uk>
 Rob Taylor <rob.taylor@collabora.co.uk>
 Ole André <ole.andre.ravnaas@collabora.co.uk>
 Ross Burton <ross@burtonini.com>
+Simon McVittie <simon.mcvittie@collabora.co.uk>
+
+The Gabble source distribution includes the following third-party code:
+
+* src/libmd5-rfc by L. Peter Deutsch <ghost@aladdin.com>, taken from
+  <http://sourceforge.net/projects/libmd5-rfc/>

@@ -98,9 +98,26 @@ void gabble_disco_cancel_request (GabbleDisco *, GabbleDiscoRequest *);
 
 /* Pipelines */
 
+typedef struct _GabbleDiscoItem GabbleDiscoItem;
+
+struct _GabbleDiscoItem {
+    const gchar *jid;
+    const char *name;
+    const char *type;
+    const char *category;
+    GHashTable *features;
+};
+
+typedef void (*GabbleDiscoPipelineCb)(gpointer pipeline,
+                                      GabbleDiscoItem *item,
+                                      gpointer user_data);
+
+typedef void (*GabbleDiscoEndCb)(gpointer pipeline,
+                                 gpointer user_data);
+                                                                             
 gpointer gabble_disco_pipeline_init (GabbleDisco *disco,
-                                     GFunc callback,
-                                     GFunc end_callback,
+                                     GabbleDiscoPipelineCb callback,
+                                     GabbleDiscoEndCb end_callback,
                                      gpointer user_data);
 
 void gabble_disco_pipeline_run (gpointer self, const char *server);
@@ -108,13 +125,12 @@ void gabble_disco_pipeline_destroy (gpointer self);
 
 /* Service discovery */
 
-void gabble_disco_services_discovery (GabbleDisco *disco, const char *server);
-void gabble_disco_services_foreach (GabbleDisco *disco,
-                                    const char *key,
-                                    const char *value,
-                                    GFunc callback,
-                                    gpointer user_data);
-
+void gabble_disco_service_discovery (GabbleDisco *disco, const char *server);
+const GabbleDiscoItem *
+gabble_disco_service_find (GabbleDisco *disco,
+                           const char *type,
+                           const char *category,
+                           const char *feature);
 
 G_END_DECLS
 

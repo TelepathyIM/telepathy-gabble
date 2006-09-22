@@ -230,7 +230,7 @@ struct _GabbleConnectionPrivate
   gchar *alias;
 
   /* reference to conference server name */
-  gchar *conference_server;
+  const gchar *conference_server;
 
   /* channel factories */
   GPtrArray *channel_factories;
@@ -2659,9 +2659,6 @@ connection_disco_cb (GabbleDisco *disco,
   /* go go gadget on-line */
   connection_status_change (conn, TP_CONN_STATUS_CONNECTED, TP_CONN_STATUS_REASON_REQUESTED);
 
-  /* FIXME - the old way */
-  gabble_disco_services_discovery (conn->disco, priv->stream_server);
-
   if (conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_JINGLE_INFO)
     {
       jingle_info_discover_servers (conn);
@@ -3748,18 +3745,6 @@ hold_and_return_handles (DBusGMethodInvocation *context,
 }
 
 
-static void
-find_conference_server_slave (gpointer data, gpointer user_data)
-{
-  GHashTable *item = (GHashTable *) data;
-  const char **server = (const char **) user_data;
-  
-  if (!*server)
-    {
-      *server = g_hash_table_lookup (item, "name");
-    }
-}
-
 const char *
 gabble_connection_find_conference_server (GabbleConnection *conn)
 {
@@ -3772,10 +3757,12 @@ gabble_connection_find_conference_server (GabbleConnection *conn)
   if (!priv->conference_server)
     {
       /* Find first server that has NS_MUC feature */
-      gabble_disco_services_foreach (conn->disco,
-                                     NS_MUC, NULL,
-                                     find_conference_server_slave,
-                                     &(priv->conference_server));
+      const GabbleDiscoItem *item = gabble_disco_service_find (conn->disco,
+          NULL, NULL, NS_MUC);
+      if (item)
+        {
+          priv->conference_server = item->jid;
+        }
     }
   
   if (!priv->conference_server)

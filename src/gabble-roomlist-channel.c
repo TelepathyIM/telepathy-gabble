@@ -359,7 +359,7 @@ destroy_value (GValue *value)
 }
 
 static void
-room_info_cb (gpointer data, gpointer user_data)
+room_info_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
 {
   GabbleRoomlistChannel *chan = user_data;
   GabbleRoomlistChannelPrivate *priv;
@@ -369,7 +369,6 @@ room_info_cb (gpointer data, gpointer user_data)
   GValue room = {0,};
   GPtrArray *rooms ;
   GValue *tmp;
-  GHashTable *result = (GHashTable *) data;
   gpointer k, v;
   
   #define INSERT_KEY(hash, name, type, type2, value) \
@@ -383,19 +382,19 @@ room_info_cb (gpointer data, gpointer user_data)
   g_assert (GABBLE_IS_ROOMLIST_CHANNEL (chan));
   priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (chan);
 
-  jid = g_hash_table_lookup (result, "jid");
-  name = g_hash_table_lookup (result, "name");
-  category = g_hash_table_lookup (result, "category");
-  type = g_hash_table_lookup (result, "type");
+  jid = item->jid;
+  name = item->name;
+  category = item->category;
+  type = item->type;
 
   if (0 != strcmp (category, "conference") ||
       0 != strcmp (type, "text"))
-    goto done;
+    return;
 
-  if (!g_hash_table_lookup_extended (result, "http://jabber.org/protocol/muc", &k, &v))
+  if (!g_hash_table_lookup_extended (item->features, "http://jabber.org/protocol/muc", &k, &v))
     {
       /* not muc */
-      goto done;
+      return;
     }
 
   DEBUG ("got room identity, name=%s, category=%s, type=%s", name, category, type);
@@ -405,40 +404,40 @@ room_info_cb (gpointer data, gpointer user_data)
 
   INSERT_KEY (keys, "name", G_TYPE_STRING, string, name);
 
-  if (g_hash_table_lookup_extended (result, "muc_membersonly", &k, &v))
+  if (g_hash_table_lookup_extended (item->features, "muc_membersonly", &k, &v))
     INSERT_KEY (keys, "invite-only", G_TYPE_BOOLEAN, boolean, TRUE);
-  if (g_hash_table_lookup_extended (result, "muc_open", &k, &v))
+  if (g_hash_table_lookup_extended (item->features, "muc_open", &k, &v))
     INSERT_KEY (keys, "invite-only", G_TYPE_BOOLEAN, boolean, FALSE);
-  if (g_hash_table_lookup_extended (result, "muc_passwordprotected", &k, &v))
+  if (g_hash_table_lookup_extended (item->features, "muc_passwordprotected", &k, &v))
     INSERT_KEY (keys, "password", G_TYPE_BOOLEAN, boolean, TRUE);
-  if (g_hash_table_lookup_extended (result, "muc_unsecure", &k, &v))
+  if (g_hash_table_lookup_extended (item->features, "muc_unsecure", &k, &v))
     INSERT_KEY (keys, "password", G_TYPE_BOOLEAN, boolean, FALSE);
-  if (g_hash_table_lookup_extended (result, "muc_unsecured", &k, &v))
+  if (g_hash_table_lookup_extended (item->features, "muc_unsecured", &k, &v))
     INSERT_KEY (keys, "password", G_TYPE_BOOLEAN, boolean, FALSE);
-  if (g_hash_table_lookup_extended (result, "muc_hidden", &k, &v))
+  if (g_hash_table_lookup_extended (item->features, "muc_hidden", &k, &v))
     INSERT_KEY (keys, "hidden", G_TYPE_BOOLEAN, boolean, TRUE);
-  if (g_hash_table_lookup_extended (result, "muc_public", &k, &v))
+  if (g_hash_table_lookup_extended (item->features, "muc_public", &k, &v))
     INSERT_KEY (keys, "hidden", G_TYPE_BOOLEAN, boolean, FALSE);
-  if (g_hash_table_lookup_extended (result, "muc_membersonly", &k, &v))
+  if (g_hash_table_lookup_extended (item->features, "muc_membersonly", &k, &v))
     INSERT_KEY (keys, "members-only", G_TYPE_BOOLEAN, boolean, TRUE);
-  if (g_hash_table_lookup_extended (result, "muc_open", &k, &v))
+  if (g_hash_table_lookup_extended (item->features, "muc_open", &k, &v))
     INSERT_KEY (keys, "members-only", G_TYPE_BOOLEAN, boolean, FALSE);
-  if (g_hash_table_lookup_extended (result, "muc_moderated", &k, &v))
+  if (g_hash_table_lookup_extended (item->features, "muc_moderated", &k, &v))
     INSERT_KEY (keys, "moderated", G_TYPE_BOOLEAN, boolean, TRUE);
-  if (g_hash_table_lookup_extended (result, "muc_unmoderated", &k, &v))
+  if (g_hash_table_lookup_extended (item->features, "muc_unmoderated", &k, &v))
     INSERT_KEY (keys, "moderated", G_TYPE_BOOLEAN, boolean, FALSE);
-  if (g_hash_table_lookup_extended (result, "muc_nonanonymous", &k, &v))
+  if (g_hash_table_lookup_extended (item->features, "muc_nonanonymous", &k, &v))
     INSERT_KEY (keys, "anonymous", G_TYPE_BOOLEAN, boolean, FALSE);
-  if (g_hash_table_lookup_extended (result, "muc_anonymous", &k, &v))
+  if (g_hash_table_lookup_extended (item->features, "muc_anonymous", &k, &v))
     INSERT_KEY (keys, "anonymous", G_TYPE_BOOLEAN, boolean, TRUE);
-  if (g_hash_table_lookup_extended (result, "muc_semianonymous", &k, &v))
+  if (g_hash_table_lookup_extended (item->features, "muc_semianonymous", &k, &v))
     INSERT_KEY (keys, "anonymous", G_TYPE_BOOLEAN, boolean, FALSE);
-  if (g_hash_table_lookup_extended (result, "muc_persistent", &k, &v))
+  if (g_hash_table_lookup_extended (item->features, "muc_persistent", &k, &v))
     INSERT_KEY (keys, "persistent", G_TYPE_BOOLEAN, boolean, TRUE);
-  if (g_hash_table_lookup_extended (result, "muc_temporary", &k, &v))
+  if (g_hash_table_lookup_extended (item->features, "muc_temporary", &k, &v))
     INSERT_KEY (keys, "persistent", G_TYPE_BOOLEAN, boolean, FALSE);
   
-  var = g_hash_table_lookup (result, "muc#roominfo_description");
+  var = g_hash_table_lookup (item->features, "muc#roominfo_description");
   if (var)
     {
       if (0 == strcmp (feature->name, "feature"))
@@ -505,14 +504,14 @@ room_info_cb (gpointer data, gpointer user_data)
                   if (NULL == value)
                     continue;
 
-  var = g_hash_table_lookup (result, "muc#roominfo_occupants");
+  var = g_hash_table_lookup (item->features, "muc#roominfo_occupants");
   if (var)
     {
       INSERT_KEY (keys, "members", G_TYPE_UINT, uint,
                   (guint) g_ascii_strtoull (var, NULL, 10));
     }  
 
-  var = g_hash_table_lookup (result, "muc#roominfo_lang");
+  var = g_hash_table_lookup (item->features, "muc#roominfo_lang");
   if (var)
     {
       INSERT_KEY (keys, "language", G_TYPE_STRING,
@@ -542,9 +541,6 @@ room_info_cb (gpointer data, gpointer user_data)
   g_value_unset (&room);
 
   g_hash_table_destroy (keys);
-
-done:
-  g_hash_table_destroy (result);
 }
 
 static void

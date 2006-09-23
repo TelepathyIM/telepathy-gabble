@@ -199,7 +199,7 @@ gabble_presence_cache_class_init (GabblePresenceCacheClass *klass)
     G_SIGNAL_RUN_LAST,
     0,
     NULL, NULL,
-    gabble_presence_cache_marshal_VOID__UINT_UINT, G_TYPE_NONE, 1, G_TYPE_UINT);
+    gabble_presence_cache_marshal_VOID__UINT_UINT_UINT, G_TYPE_NONE, 3, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT);
 }
 
 static void

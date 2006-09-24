@@ -481,7 +481,7 @@ _extract_cap_bundles (LmMessageNode *lm_node)
   GSList *uris = NULL;
   LmMessageNode *cap_node;
 
-  cap_node = lm_message_node_find_child (lm_node, "c");
+  cap_node = lm_message_node_get_child_with_namespace (lm_node, "c", NS_CAPS);
 
   if (NULL == cap_node)
     return NULL;

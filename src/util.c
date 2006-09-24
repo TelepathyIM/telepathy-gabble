@@ -87,14 +87,24 @@ lm_message_node_steal_children (LmMessageNode *snatcher,
 
 gboolean
 lm_message_node_has_namespace (LmMessageNode *node,
-                               const gchar *ns)
+                               const gchar *ns,
+                               const gchar *tag)
 {
-  const gchar *node_ns = lm_message_node_get_attribute (node, "xmlns");
+  gchar *attribute = NULL;
+  const gchar *node_ns;
+  gboolean ret;
 
-  if (!node_ns)
-    return FALSE;
+  if (tag != NULL)
+    attribute = g_strconcat ("xmlns:", tag, NULL);
 
-  return 0 == strcmp (ns, node_ns);
+  node_ns = lm_message_node_get_attribute (node,
+      tag != NULL ? attribute : "xmlns");
+
+  ret = !g_strdiff (node_ns, ns);
+
+  g_free (attribute);
+
+  return ret;
 }
 
 LmMessageNode *
@@ -111,7 +121,7 @@ lm_message_node_get_child_with_namespace (LmMessageNode *node,
       if (g_strdiff (tmp->name, name))
         continue;
 
-      if (lm_message_node_has_namespace (tmp, ns))
+      if (lm_message_node_has_namespace (tmp, ns, NULL))
         return tmp;
     }
 

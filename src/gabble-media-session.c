@@ -684,19 +684,19 @@ _handle_create (GabbleMediaSession *session,
     }
 
   if (lm_message_node_has_namespace (desc_node,
-        NS_GOOGLE_SESSION_PHONE))
+        NS_GOOGLE_SESSION_PHONE, NULL))
     {
       session_mode = MODE_GOOGLE;
       stream_type = TP_MEDIA_STREAM_TYPE_AUDIO;
     }
   else if (lm_message_node_has_namespace (desc_node,
-        NS_JINGLE_DESCRIPTION_AUDIO))
+        NS_JINGLE_DESCRIPTION_AUDIO, NULL))
     {
       session_mode = MODE_JINGLE;
       stream_type = TP_MEDIA_STREAM_TYPE_AUDIO;
     }
   else if (lm_message_node_has_namespace (desc_node,
-        NS_JINGLE_DESCRIPTION_VIDEO))
+        NS_JINGLE_DESCRIPTION_VIDEO, NULL))
     {
       session_mode = MODE_JINGLE;
       stream_type = TP_MEDIA_STREAM_TYPE_VIDEO;
@@ -986,7 +986,7 @@ _call_handlers_on_streams (GabbleMediaSession *session,
                            LmMessageNode *session_node,
                            StreamHandlerFunc *func)
 {
-  if (lm_message_node_has_namespace (session_node, NS_GOOGLE_SESSION))
+  if (lm_message_node_has_namespace (session_node, NS_GOOGLE_SESSION, NULL))
     {
       if (!_call_handlers_on_stream (session, message, session_node,
             GTALK_STREAM_NAME, func))

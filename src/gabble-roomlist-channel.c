@@ -546,7 +546,7 @@ room_info_cb (GabbleDisco *disco,
         }
       else if (0 == strcmp (feature->name, "x"))
         {
-          if (lm_message_node_has_namespace (feature, NS_X_DATA))
+          if (lm_message_node_has_namespace (feature, NS_X_DATA, NULL))
             {
               for (field = feature->children;
                    field; field = field->next)

@@ -531,6 +531,7 @@ _caps_disco_cb (GabbleDisco *disco,
   LmMessageNode *child;
   GabblePresenceCache *cache;
   GabblePresenceCachePrivate *priv;
+  gchar *full_jid = NULL;
   GabblePresenceCapabilities caps = 0;
 
   cache = GABBLE_PRESENCE_CACHE (user_data);
@@ -547,7 +548,6 @@ _caps_disco_cb (GabbleDisco *disco,
   if (NULL != error)
     {
       DiscoWaiter *waiter = NULL;
-      gchar *full_jid = NULL;
 
       DEBUG ("disco query failed: %s", error->message);
 
@@ -582,7 +582,7 @@ _caps_disco_cb (GabbleDisco *disco,
           g_hash_table_remove (priv->disco_pending, node);
         }
 
-      return;
+      goto OUT;
     }
 
   for (child = query_result->children; NULL != child; child = child->next)
@@ -633,6 +633,10 @@ _caps_disco_cb (GabbleDisco *disco,
     }
 
   g_hash_table_remove (priv->disco_pending, node);
+
+OUT:
+
+  g_free (full_jid);
 }
 
 static void

@@ -118,10 +118,31 @@ lm_message_node_get_child_with_namespace (LmMessageNode *node,
        tmp != NULL;
        tmp = tmp->next)
     {
-      if (g_strdiff (tmp->name, name))
-        continue;
+      gchar *tag = NULL;
+      gboolean found;
 
-      if (lm_message_node_has_namespace (tmp, ns, NULL))
+      if (g_strdiff (tmp->name, name))
+        {
+          const gchar *suffix;
+
+          suffix = strchr (tmp->name, ':');
+
+          if (suffix == NULL)
+            continue;
+          else
+            suffix++;
+
+          if (g_strdiff (suffix, name))
+            continue;
+
+          tag = g_strndup (tmp->name, suffix - tmp->name - 1);
+        }
+
+      found = lm_message_node_has_namespace (tmp, ns, tag);
+
+      g_free (tag);
+
+      if (found)
         return tmp;
     }
 

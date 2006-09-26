@@ -1262,6 +1262,11 @@ gabble_roster_factory_iface_request (TpChannelFactoryIface *iface,
                                NULL))
     return TP_CHANNEL_FACTORY_REQUEST_STATUS_INVALID_HANDLE;
 
+  /* disallow "deny" channels if we don't have google:roster support */
+  if (handle == GABBLE_LIST_HANDLE_DENY &&
+      !(priv->conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER))
+    return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_AVAILABLE;
+
   if (priv->roster_received)
     {
       GabbleRosterChannel *chan;

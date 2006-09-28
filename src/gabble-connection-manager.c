@@ -363,7 +363,12 @@ parse_parameters (const GabbleParamSpec *paramspec,
       else
         {
           if (!set_param_from_value (&paramspec[i], value, params, error))
-            return FALSE;
+            {
+              *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+                                    "invalid value for parameter %s",
+                                    paramspec[i].name);
+              return FALSE;
+            }
 
           params->set_mask |= 1 << i;
 

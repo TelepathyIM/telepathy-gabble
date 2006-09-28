@@ -57,7 +57,6 @@
 #include "namespaces.h"
 #include "roster.h"
 #include "util.h"
-#include "capabilities.h"
 
 #include "gabble-media-channel.h"
 #include "gabble-roomlist-channel.h"
@@ -282,6 +281,7 @@ gabble_connection_init (GabbleConnection *self)
   self->status = TP_CONN_STATUS_DISCONNECTED;
   self->handles = gabble_handle_repo_new ();
   self->disco = gabble_disco_new (self);
+  self->vcard_lookup = gabble_vcard_lookup_new (self);
 
   self->presence_cache = gabble_presence_cache_new (self);
   g_signal_connect (self->presence_cache, "nickname-update", G_CALLBACK
@@ -868,6 +868,9 @@ gabble_connection_dispose (GObject *object)
 
   g_object_unref (self->disco);
   self->disco = NULL;
+
+  g_object_unref (self->vcard_lookup);
+  self->vcard_lookup = NULL;
 
   g_object_unref (self->presence_cache);
   self->presence_cache = NULL;

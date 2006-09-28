@@ -123,6 +123,8 @@ CORE_SOURCES = \
     util.c \
     vcard.h \
     vcard.c \
+    vcard-lookup.h \
+    vcard-lookup.c \
     $(BUILT_SOURCES)
 
 libgabble_convenience_la_SOURCES = \

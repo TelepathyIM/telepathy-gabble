@@ -24,6 +24,7 @@
 
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -255,7 +256,6 @@ nokia_iv_get_reply_cb (GabbleConnection *conn,
   gint i;
   md5_byte_t digest[16];
   md5_state_t calculator;
-  static const char *xdigits = "0123456789abcdef";
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
@@ -300,10 +300,8 @@ nokia_iv_get_reply_cb (GabbleConnection *conn,
 
   for (i = 0; i < 16; i++)
     {
-      response[i*2] = xdigits[(digest[i] >> 4) & 0xf];
-      response[i*2+1] = xdigits[digest[i] & 0xf];
+      sprintf(response + i*2, "%02x",digest[i]);
     }
-  response[32] = '\0';
 
   lm_message_node_add_child (query_node, "mac", auth_mac);
   lm_message_node_add_child (query_node, "response", response);

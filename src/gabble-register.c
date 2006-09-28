@@ -249,7 +249,7 @@ nokia_iv_get_reply_cb (GabbleConnection *conn,
   const gchar *err_msg = NULL;
   LmMessage *msg = NULL;
   LmMessageNode *query_node, *challenge_node;
-  gchar *auth_identity, *auth_secret;
+  gchar *auth_mac, *auth_btid;
   const gchar *challenge;
   gchar response[33];
   gint i;
@@ -287,13 +287,13 @@ nokia_iv_get_reply_cb (GabbleConnection *conn,
   lm_message_node_set_attribute (query_node, "xmlns", NS_NOKIA_IV);
 
   g_object_get (priv->conn,
-      "auth-identity", &auth_identity,
-      "auth-secret", &auth_secret,
+      "auth-mac", &auth_mac,
+      "auth-btid", &auth_btid,
       NULL);
 
   md5_init(&calculator);
-  md5_append(&calculator, (const md5_byte_t *)auth_secret,
-             strlen(auth_secret));
+  md5_append(&calculator, (const md5_byte_t *)auth_btid,
+             strlen(auth_btid));
   md5_append(&calculator, (const md5_byte_t *)":", 1);
   md5_append(&calculator, (const md5_byte_t *)challenge, strlen(challenge));
   md5_finish(&calculator, digest);
@@ -305,11 +305,11 @@ nokia_iv_get_reply_cb (GabbleConnection *conn,
     }
   response[32] = '\0';
 
-  lm_message_node_add_child (query_node, "mac", auth_identity);
+  lm_message_node_add_child (query_node, "mac", auth_mac);
   lm_message_node_add_child (query_node, "response", response);
 
-  g_free (auth_identity);
-  g_free (auth_secret);
+  g_free (auth_mac);
+  g_free (auth_btid);
 
   if (!_gabble_connection_send_with_reply (priv->conn, msg,
                                            nokia_iv_set_reply_cb,
@@ -382,11 +382,11 @@ set_reply_cb (GabbleConnection *conn,
     }
   else
     {
-      gchar *auth_type;
+      gchar *auth_mac;
 
-      g_object_get (priv->conn, "auth-type", &auth_type, NULL);
+      g_object_get (priv->conn, "auth-mac", &auth_mac, NULL);
 
-      if (auth_type && !g_strdiff(auth_type, AUTH_TYPE_NOKIA_IV))
+      if (auth_mac)
         {
           LmMessage *msg;
           LmMessageNode *node;
@@ -414,7 +414,7 @@ set_reply_cb (GabbleConnection *conn,
           necessary */
           g_signal_emit (object, signals[FINISHED], 0, TRUE, -1, NULL);
         }
-      g_free(auth_type);
+      g_free(auth_mac);
     }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;

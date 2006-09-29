@@ -2333,11 +2333,6 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   else
     suffix = node + strlen (NS_GABBLE_CAPS) + 1;
 
-  /* if the suffix is our version number, look up features with a NULL bundle */
-
-  if (suffix != NULL && 0 == strcmp (suffix, VERSION))
-    suffix = NULL;
-
   result = _lm_iq_message_make_result (message);
   result_iq = lm_message_get_node (result);
   result_query = lm_message_node_add_child (result_iq, "query", NULL);

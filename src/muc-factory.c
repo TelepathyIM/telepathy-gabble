@@ -653,6 +653,9 @@ make_roomlist_channel (GabbleMucFactory *fac)
 
       object_path = g_strdup_printf ("%s/RoomlistChannel", priv->conn->object_path);
 
+      /* roomlist wants to own this string, but _find_conference_server just lent it to us */
+      server = g_strdup (server);
+      
       priv->roomlist_channel = _gabble_roomlist_channel_new (priv->conn,
           object_path, server);
 

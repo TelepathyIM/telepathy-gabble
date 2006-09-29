@@ -440,69 +440,8 @@ room_info_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
   var = g_hash_table_lookup (item->features, "muc#roominfo_description");
   if (var)
     {
-      if (0 == strcmp (feature->name, "feature"))
-        {
-          var = lm_message_node_get_attribute (feature, "var");
-          if (!var)
-            continue;
-          if (0 == strcmp (var, "http://jabber.org/protocol/muc"))
-            is_muc = TRUE;
-          else if (0 == strcmp (var, "muc_membersonly"))
-            INSERT_KEY (keys, "invite-only", G_TYPE_BOOLEAN, boolean, TRUE);
-          else if (0 == strcmp (var, "muc_open"))
-            INSERT_KEY (keys, "invite-only", G_TYPE_BOOLEAN, boolean, FALSE);
-          else if (0 == strcmp (var, "muc_passwordprotected"))
-            INSERT_KEY (keys, "password", G_TYPE_BOOLEAN, boolean, TRUE);
-          else if (0 == strcmp (var, "muc_unsecure"))
-            INSERT_KEY (keys, "password", G_TYPE_BOOLEAN, boolean, FALSE);
-          else if (0 == strcmp (var, "muc_unsecured"))
-            INSERT_KEY (keys, "password", G_TYPE_BOOLEAN, boolean, FALSE);
-          else if (0 == strcmp (var, "muc_hidden"))
-            INSERT_KEY (keys, "hidden", G_TYPE_BOOLEAN, boolean, TRUE);
-          else if (0 == strcmp (var, "muc_public"))
-            INSERT_KEY (keys, "hidden", G_TYPE_BOOLEAN, boolean, FALSE);
-          else if (0 == strcmp (var, "muc_membersonly"))
-            INSERT_KEY (keys, "members-only", G_TYPE_BOOLEAN, boolean, TRUE);
-          else if (0 == strcmp (var, "muc_open"))
-            INSERT_KEY (keys, "members-only", G_TYPE_BOOLEAN, boolean, FALSE);
-          else if (0 == strcmp (var, "muc_moderated"))
-            INSERT_KEY (keys, "moderated", G_TYPE_BOOLEAN, boolean, TRUE);
-          else if (0 == strcmp (var, "muc_unmoderated"))
-            INSERT_KEY (keys, "moderated", G_TYPE_BOOLEAN, boolean, FALSE);
-          else if (0 == strcmp (var, "muc_nonanonymous"))
-            INSERT_KEY (keys, "anonymous", G_TYPE_BOOLEAN, boolean, FALSE);
-          else if (0 == strcmp (var, "muc_anonymous"))
-            INSERT_KEY (keys, "anonymous", G_TYPE_BOOLEAN, boolean, TRUE);
-          else if (0 == strcmp (var, "muc_semianonymous"))
-            INSERT_KEY (keys, "anonymous", G_TYPE_BOOLEAN, boolean, FALSE);
-          else if (0 == strcmp (var, "muc_persistent"))
-            INSERT_KEY (keys, "persistent", G_TYPE_BOOLEAN, boolean, TRUE);
-          else if (0 == strcmp (var, "muc_temporary"))
-            INSERT_KEY (keys, "persistent", G_TYPE_BOOLEAN, boolean, FALSE);
-          else
-            NODE_DEBUG (feature, "got unknown feature");
-        }
-      else if (0 == strcmp (feature->name, "x"))
-        {
-          if (lm_message_node_has_namespace (feature, NS_X_DATA))
-            {
-              for (field = feature->children;
-                   field; field = field->next)
-                {
-                  if (0 != strcmp (field->name, "field"))
-                    continue;
-
-                  var = lm_message_node_get_attribute (field, "var");
-                  if (NULL == var)
-                    continue;
-
-                  value_node = lm_message_node_get_child (field, "value");
-                  if (NULL == value_node)
-                    continue;
-
-                  value = lm_message_node_get_value (value_node);
-                  if (NULL == value)
-                    continue;
+      INSERT_KEY (keys, "description", G_TYPE_STRING, string, var);
+    }  
 
   var = g_hash_table_lookup (item->features, "muc#roominfo_occupants");
   if (var)

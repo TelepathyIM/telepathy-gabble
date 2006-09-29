@@ -896,7 +896,7 @@ gabble_connection_finalize (GObject *object)
   g_free (priv->https_proxy_server);
   g_free (priv->fallback_conference_server);
 
-  g_list_free (priv->conference_servers);
+  g_free (priv->alias);
 
   gabble_properties_mixin_finalize (object);
 

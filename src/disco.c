@@ -167,8 +167,6 @@ gabble_disco_set_property (GObject     *object,
   switch (property_id) {
     case PROP_CONNECTION:
       priv->connection = g_value_get_object (value);
-      g_signal_connect (priv->connection, "status-changed",
-          G_CALLBACK (gabble_disco_conn_status_changed_cb), chan);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -235,8 +233,17 @@ gabble_disco_finalize (GObject *object)
 GabbleDisco *
 gabble_disco_new (GabbleConnection *conn)
 {
+  GabbleDisco *disco;
+  GabbleDiscoPrivate *priv;
+    
   g_return_val_if_fail (GABBLE_IS_CONNECTION (conn), NULL);
-  return GABBLE_DISCO (g_object_new (GABBLE_TYPE_DISCO, "connection", conn, NULL));
+  
+  disco = GABBLE_DISCO (g_object_new (GABBLE_TYPE_DISCO, "connection", conn, NULL));
+  priv = GABBLE_DISCO_GET_PRIVATE (disco);
+  g_signal_connect (priv->connection, "status-changed",
+      G_CALLBACK (gabble_disco_conn_status_changed_cb), disco);
+      
+  return disco;
 }
 
 
@@ -551,7 +558,8 @@ item_info_cb (GabbleDisco *disco,
   if (NULL == type)
     goto done;
 
-  DEBUG ("got item identity, name=%s, category=%s, type=%s", name, category, type);
+  DEBUG ("got item identity, jid=%s, name=%s, category=%s, type=%s",
+      jid, name, category, type);
 
   keys = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
 
@@ -565,7 +573,7 @@ item_info_cb (GabbleDisco *disco,
         }
       else if (0 == strcmp (feature->name, "x"))
         {
-          if (lm_message_node_has_namespace (feature, NS_X_DATA))
+          if (lm_message_node_has_namespace (feature, NS_X_DATA, NULL))
             {
               for (field = feature->children;
                    field; field = field->next)
@@ -655,7 +663,7 @@ gabble_disco_fill_pipeline (GabbleDisco *disco, GabbleDiscoPipeline *pipeline)
 
 
 static void
-items_cb (GabbleDisco *disco,
+disco_items_cb (GabbleDisco *disco,
           GabbleDiscoRequest *request,
           const gchar *jid,
           const gchar *node,
@@ -670,7 +678,7 @@ items_cb (GabbleDisco *disco,
 
   if (error)
     {
-      DEBUG ("got error %s", error->message);
+      DEBUG ("Got error on items request: %s", error->message);
       goto out;
     }
 
@@ -687,6 +695,7 @@ items_cb (GabbleDisco *disco,
           !g_hash_table_lookup_extended (pipeline->remaining_items, item_jid, &key, &value))
         {
           gchar *tmp = g_strdup (item_jid);
+          DEBUG ("discovered service item: %s", tmp);
           g_hash_table_insert (pipeline->remaining_items, tmp, tmp);
         }
     }
@@ -745,7 +754,7 @@ gabble_disco_pipeline_run (gpointer self, const char *server)
   pipeline->running = TRUE;
   gabble_disco_request (pipeline->disco, GABBLE_DISCO_TYPE_ITEMS,
                         server, NULL,
-                        items_cb, pipeline, G_OBJECT (pipeline->disco), NULL);
+                        disco_items_cb, pipeline, G_OBJECT (pipeline->disco), NULL);
 
 }
 
@@ -788,7 +797,7 @@ service_feature_copy_one (gpointer k, gpointer v, gpointer user_data)
   char *value = (char *) v;
 
   GHashTable *target = (GHashTable *) user_data;
-  g_hash_table_insert (target, key, value);
+  g_hash_table_insert (target, g_strdup (key), g_strdup (value));
 }
 
 /* Service discovery */
@@ -798,14 +807,14 @@ services_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
   GabbleDisco *disco = GABBLE_DISCO (user_data);
   GabbleDiscoPrivate *priv = GABBLE_DISCO_GET_PRIVATE (disco);
   GabbleDiscoItem *my_item = g_new0 (GabbleDiscoItem, 1);
-  
+
   my_item->jid = g_strdup (item->jid);
   my_item->name = g_strdup (item->name);
   my_item->type = g_strdup (item->type);
   my_item->category = g_strdup (item->category);
 
   my_item->features = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
-  g_hash_table_foreach  (item->features, service_feature_copy_one, &my_item->features);
+  g_hash_table_foreach  (item->features, service_feature_copy_one, my_item->features);
   
   priv->service_cache = g_slist_prepend (priv->service_cache, my_item);
 }

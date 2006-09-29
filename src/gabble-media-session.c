@@ -1340,6 +1340,7 @@ stream_connection_state_changed_cb (GabbleMediaStream *stream,
 {
   GabbleMediaSessionPrivate *priv;
   TpMediaStreamState connection_state;
+  JingleStreamState jingle_state;
   gchar *name;
 
   g_assert (GABBLE_IS_MEDIA_SESSION (session));
@@ -1348,6 +1349,7 @@ stream_connection_state_changed_cb (GabbleMediaStream *stream,
 
   g_object_get (stream,
                 "connection-state", &connection_state,
+                "jingle-state", &jingle_state,
                 "name", &name,
                 NULL);
 
@@ -1357,7 +1359,11 @@ stream_connection_state_changed_cb (GabbleMediaStream *stream,
   GMS_DEBUG_INFO (session, "stream %s has gone connected", name);
   g_free (name);
 
-  /* FIXME: make this safe against going CONNECTED twice */
+  if (jingle_state == JST_STATE_ACCEPTED)
+    {
+      GMS_DEBUG_INFO (session, "doing nothing, stream is already accepted");
+      return;
+    }
 
   /* send a session accept if the session was initiated by the peer */
   if (priv->initiator == INITIATOR_REMOTE)

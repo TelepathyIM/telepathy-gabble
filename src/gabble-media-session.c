@@ -711,6 +711,7 @@ _handle_create (GabbleMediaSession *session,
   return TRUE;
 }
 
+
 static gboolean
 _handle_accept (GabbleMediaSession *session,
                 LmMessage *message,
@@ -731,6 +732,7 @@ _handle_accept (GabbleMediaSession *session,
 
   return TRUE;
 }
+
 
 static gboolean
 _handle_codecs (GabbleMediaSession *session,
@@ -869,20 +871,6 @@ static Handler handlers[] = {
     JS_STATE_PENDING_INITIATED
   },
   {
-    { "content-remove", NULL },
-    JS_STATE_PENDING_INITIATED,
-    JS_STATE_ACTIVE,
-    { _handle_remove, NULL },
-    JS_STATE_INVALID
-  },
-  {
-    { "candidates", "transport-info", NULL },
-    JS_STATE_PENDING_INITIATED,
-    JS_STATE_ACTIVE,
-    { _handle_candidates, NULL },
-    JS_STATE_INVALID
-  },
-  {
     { "accept", "session-accept", NULL },
     JS_STATE_PENDING_INITIATED,
     JS_STATE_PENDING_INITIATED,
@@ -902,6 +890,41 @@ static Handler handlers[] = {
     JS_STATE_ENDED,
     { NULL },
     JS_STATE_ENDED
+  },
+  {
+    { "candidates", "transport-info", NULL },
+    JS_STATE_PENDING_INITIATED,
+    JS_STATE_ACTIVE,
+    { _handle_candidates, NULL },
+    JS_STATE_INVALID
+  },
+  {
+    { "content-add", NULL },
+    JS_STATE_ACTIVE,
+    JS_STATE_ACTIVE,
+    { _handle_create, _handle_codecs, NULL },
+    JS_STATE_INVALID,
+  },
+  {
+    { "content-remove", NULL },
+    JS_STATE_PENDING_INITIATED,
+    JS_STATE_ACTIVE,
+    { _handle_remove, NULL },
+    JS_STATE_INVALID
+  },
+  {
+    { "content-accept", NULL },
+    JS_STATE_PENDING_INITIATED,
+    JS_STATE_ACTIVE,
+    { _handle_codecs, _handle_accept, NULL },
+    JS_STATE_INVALID
+  },
+  {
+    { "content-remove", NULL },
+    JS_STATE_PENDING_INITIATED,
+    JS_STATE_ACTIVE,
+    { _handle_remove, NULL },
+    JS_STATE_INVALID
   },
   {
     { NULL },

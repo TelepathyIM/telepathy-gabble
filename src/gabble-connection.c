@@ -2932,7 +2932,7 @@ gabble_connection_advertise_capabilities (GabbleConnection *self,
     {
       for (ccd = capability_conversions; NULL != ccd->iface; ccd++)
           if (g_str_equal (remove[i], ccd->iface))
-            remove_caps |= ccd->c2tf_fn (~0);
+            remove_caps |= ccd->tf2c_fn (~0);
     }
 
   pres = gabble_presence_cache_get (self->presence_cache, self->self_handle);

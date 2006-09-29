@@ -77,7 +77,9 @@ int main(int argc, char **argv)
     PRESENCE_CAP_GOOGLE_VOICE);
   g_assert (NULL == resource);
 
+  /* give voice cap to first resource */
   gabble_presence_set_capabilities (presence, "foo", PRESENCE_CAP_GOOGLE_VOICE);
+  gabble_presence_set_capabilities (presence, "foo", PRESENCE_CAP_GOOGLE_VOICE, 0);
 
   /* resource has voice cap */
   resource = gabble_presence_pick_resource_by_caps (presence,

@@ -149,7 +149,10 @@ gabble_presence_resource_has_caps (GabblePresence *presence,
 }
 
 void
-gabble_presence_set_capabilities (GabblePresence *presence, const gchar *resource, GabblePresenceCapabilities caps)
+gabble_presence_set_capabilities (GabblePresence *presence,
+                                  const gchar *resource,
+                                  GabblePresenceCapabilities caps,
+                                  guint serial)
 {
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
   GSList *i;

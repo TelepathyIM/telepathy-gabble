@@ -23,12 +23,30 @@
 #define __GABBLE_VCARD_LOOKUP_H__
 
 #include <glib-object.h>
+#include <loudmouth/loudmouth.h>
 
 #include "gabble-types.h"
 
 G_BEGIN_DECLS
 
 typedef struct _GabbleVCardLookupClass GabbleVCardLookupClass;
+typedef struct _GabbleVCardLookupRequest GabbleVCardLookupRequest;
+
+/**
+ * GabbleVCardLookupError:
+ * @GABBLE_VCARD_LOOKUP_ERROR_CANCELLED: The vCard request was cancelled
+ * @GABBLE_VCARD_LOOKUP_ERROR_TIMEOUT: The vCard request timed out
+ * @GABBLE_VCARD_LOOKUP_ERROR_UNKNOWN: An unknown error occured
+ */
+typedef enum
+{
+  GABBLE_VCARD_LOOKUP_ERROR_CANCELLED,
+  GABBLE_VCARD_LOOKUP_ERROR_TIMEOUT,
+  GABBLE_VCARD_LOOKUP_ERROR_UNKNOWN
+} GabbleVCardLookupError;
+
+GQuark gabble_vcard_lookup_error_quark (void);
+#define GABBLE_VCARD_LOOKUP_ERROR gabble_vcard_lookup_error_quark ()
 
 GType gabble_vcard_lookup_get_type(void);
 
@@ -55,7 +73,47 @@ struct _GabbleVCardLookup {
     gpointer priv;
 };
 
+typedef void (*GabbleVCardLookupCb)(GabbleVCardLookup *self,
+                                    GabbleVCardLookupRequest *request,
+                                    GabbleHandle handle,
+                                    LmMessageNode *vcard,
+                                    GError *error,
+                                    gpointer user_data);
+
 GabbleVCardLookup *gabble_vcard_lookup_new (GabbleConnection *);
+
+GQuark gabble_vcard_lookup_cache_quark (void);
+
+const gchar *gabble_vcard_lookup_get_cached_alias (GabbleVCardLookup *,
+                                                   GabbleHandle);
+
+GabbleVCardLookupRequest *gabble_vcard_lookup_request (GabbleVCardLookup *,
+                                                       GabbleHandle,
+                                                       guint timeout,
+                                                       GabbleVCardLookupCb,
+                                                       gpointer user_data,
+                                                       GObject *object,
+                                                       GError **error);
+
+GabbleVCardLookupRequest *gabble_vcard_lookup_replace (GabbleVCardLookup *,
+                                                       LmMessageNode *,
+                                                       guint timeout,
+                                                       GabbleVCardLookupCb,
+                                                       gpointer user_data,
+                                                       GObject *object,
+                                                       GError **error);
+
+GabbleVCardLookupRequest *gabble_vcard_lookup_edit (GabbleVCardLookup *,
+                                                    guint timeout,
+                                                    GabbleVCardLookupCb,
+                                                    gpointer user_data,
+                                                    GObject *object,
+                                                    GError **error,
+                                                    ...)
+                                                   G_GNUC_NULL_TERMINATED;
+
+const gchar *gabble_vcard_lookup_get_cached_alias (GabbleVCardLookup *,
+                                                   GabbleHandle);
 
 G_END_DECLS
 

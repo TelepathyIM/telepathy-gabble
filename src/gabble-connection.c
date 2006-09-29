@@ -2833,7 +2833,16 @@ _emit_capabilities_changed (GabbleConnection *conn,
         {
           GValue caps_monster_struct = {0, };
           guint old_tpflags = ccd->c2tf_fn (old_caps);
+          guint old_caps = old_tpflags ?
+            TP_CONN_CAPABILITY_FLAG_CREATE |
+            TP_CONN_CAPABILITY_FLAG_INVITE : 0;
           guint new_tpflags = ccd->c2tf_fn (new_caps);
+          guint new_caps = new_tpflags ?
+            TP_CONN_CAPABILITY_FLAG_CREATE |
+            TP_CONN_CAPABILITY_FLAG_INVITE : 0;
+
+          if (0 == (old_tpflags ^ new_tpflags))
+            continue;
 
           g_value_init (&caps_monster_struct,
               TP_CAPABILITIES_CHANGED_MONSTER_TYPE);
@@ -2844,12 +2853,8 @@ _emit_capabilities_changed (GabbleConnection *conn,
           dbus_g_type_struct_set (&caps_monster_struct,
               0, handle,
               1, ccd->iface,
-              2, old_tpflags ?
-                TP_CONN_CAPABILITY_FLAG_CREATE | TP_CONN_CAPABILITY_FLAG_INVITE :
-                0,
-              3, new_tpflags ?
-                TP_CONN_CAPABILITY_FLAG_CREATE | TP_CONN_CAPABILITY_FLAG_INVITE :
-                0,
+              2, old_caps,
+              3, new_caps,
               4, old_tpflags,
               5, new_tpflags,
               G_MAXUINT);
@@ -2858,7 +2863,8 @@ _emit_capabilities_changed (GabbleConnection *conn,
         }
     }
 
-  g_signal_emit (conn, signals[CAPABILITIES_CHANGED], 0, caps_arr);
+  if (caps_arr->len)
+    g_signal_emit (conn, signals[CAPABILITIES_CHANGED], 0, caps_arr);
 }
 
 static void

@@ -2150,7 +2150,7 @@ signal_own_presence (GabbleConnection *self, GError **error)
   LmMessage *message = gabble_presence_as_message (presence, priv->resource);
   LmMessageNode *node = lm_message_get_node (message);
   gboolean ret;
-  gchar *ext_string = NULL;
+  gchar *ext_string = g_strdup("");
   GSList *features, *i;
 
   if (presence->status == GABBLE_PRESENCE_HIDDEN)
@@ -2167,16 +2167,9 @@ signal_own_presence (GabbleConnection *self, GError **error)
 
       if ((NULL != feat->bundle) && g_strdiff (VERSION, feat->bundle))
         {
-          if (NULL != ext_string)
-            {
-              gchar *tmp = ext_string;
-              ext_string = g_strdup_printf ("%s %s", ext_string, feat->bundle);
-              g_free (tmp);
-            }
-          else
-            {
-              ext_string = g_strdup (feat->bundle);
-            }
+          gchar *tmp = ext_string;
+          ext_string = g_strdup_printf ("%s %s", ext_string, feat->bundle);
+          g_free (tmp);
         }
     }
 
@@ -2188,7 +2181,7 @@ signal_own_presence (GabbleConnection *self, GError **error)
     "ver",   VERSION,
     NULL);
 
-  if (0 != strlen(ext_string))
+  if (NULL != ext_string)
       lm_message_node_set_attribute (node, "ext", ext_string);
 
   ret = _gabble_connection_send (self, message, error);

@@ -235,42 +235,6 @@ create_media_stream (GabbleMediaSession *session,
   return stream;
 }
 
-#if 0
-static gboolean
-_get_peer_resource (GabblePresence *presence, gchar **peer_resource,
-                     GabbleMediaSessionMode *mode)
-{
-  const gchar *resource;
-
-  resource = gabble_presence_pick_resource_by_caps (presence,
-      PRESENCE_CAP_JINGLE);
-
-  if (resource)
-    {
-      DEBUG ("using Jingle-capable resource %s\n", resource);
-      *peer_resource = g_strdup (resource);
-      *mode = MODE_JINGLE;
-      return TRUE;
-    }
-
-  resource = gabble_presence_pick_resource_by_caps (presence,
-      PRESENCE_CAP_GOOGLE_VOICE);
-
-  if (resource)
-    {
-      DEBUG ("using GTalk-capable resource %s\n", resource);
-      *peer_resource = g_strdup (resource);
-      if (g_getenv ("GABBLE_JINGLE_FORCE"))
-        *mode = MODE_JINGLE;
-      else
-        *mode = MODE_GOOGLE;
-      return TRUE;
-    }
-
-  return FALSE;
-}
-#endif
-
 static GObject *
 gabble_media_session_constructor (GType type, guint n_props,
                                   GObjectConstructParam *props)
@@ -1350,51 +1314,6 @@ try_session_initiate (GabbleMediaSession *session)
 
   g_object_set (session, "state", JS_STATE_PENDING_INITIATE_SENT, NULL);
 }
-
-#if 0
-static void
-stream_new_active_candidate_pair_cb (GabbleMediaStream *stream,
-                                     const gchar *native_candidate_id,
-                                     const gchar *remote_candidate_id,
-                                     GabbleMediaSession *session)
-{
-  GabbleMediaSessionPrivate *priv;
-
-  g_assert (GABBLE_IS_MEDIA_SESSION (session));
-
-  priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
-
-  GMS_DEBUG_INFO (session, "voip-engine reported a new active candidate pair [\"%s\" - \"%s\"]",
-                  native_candidate_id, remote_candidate_id);
-
-  if (priv->got_active_candidate_pair)
-    {
-      GMS_DEBUG_INFO (session, "not doing anything, already got an active candidate pair");
-      return;
-    }
-
-  priv->got_active_candidate_pair = TRUE;
-
-  /* send a session accept if the session was initiated by the peer */
-  if (priv->initiator == priv->peer)
-    {
-      try_session_accept (session);
-    }
-  else
-    {
-      GMS_DEBUG_INFO (session, "session initiated by us, so we're not going to send an accept");
-      _set_streams_playing (session);
-    }
-}
-
-static void
-stream_new_native_candidate_cb (GabbleMediaStream *stream,
-                                const gchar *candidate_id,
-                                const GPtrArray *transports,
-                                GabbleMediaSession *session)
-{
-}
-#endif
 
 static void
 stream_close_cb (GabbleMediaStream *stream,

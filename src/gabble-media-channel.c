@@ -1132,22 +1132,6 @@ gabble_media_channel_add_member (GObject *obj, GabbleHandle handle, const gchar 
       /* yes: invite the peer */
 
       GIntSet *empty, *set;
-#if 0
-      GabblePresence *presence;
-
-      presence = gabble_presence_cache_get (priv->conn->presence_cache, handle);
-
-      if (NULL == presence ||
-          0 == (presence->caps & PRESENCE_CAP_GOOGLE_VOICE))
-        {
-          DEBUG ("handle %u doesn't support voice", handle);
-
-          *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
-                                "handle %u doesn't support voice", handle);
-
-          return FALSE;
-        }
-#endif
 
       /* create a new session */
       create_session (chan, handle, NULL, NULL);

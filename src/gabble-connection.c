@@ -2934,9 +2934,12 @@ gabble_connection_advertise_capabilities (GabbleConnection *self,
   caps |= add_caps;
   caps ^= (caps & remove_caps);
 
-  /* override old capabilities entirely */
-  gabble_presence_set_capabilities (pres, priv->resource, 0, 1);
-  gabble_presence_set_capabilities (pres, priv->resource, caps, 0);
+  if (caps ^ save_caps)
+    {
+      /* override old capabilities entirely */
+      gabble_presence_set_capabilities (pres, priv->resource, 0, 1);
+      gabble_presence_set_capabilities (pres, priv->resource, caps, 0);
+    }
 
   *ret = g_ptr_array_new ();
 
@@ -2959,10 +2962,13 @@ gabble_connection_advertise_capabilities (GabbleConnection *self,
         }
     }
 
-  if (!signal_own_presence (self, error))
-    return FALSE;
+  if (caps ^ save_caps)
+    {
+      if (!signal_own_presence (self, error))
+        return FALSE;
 
-  _emit_capabilities_changed (self, self->self_handle, save_caps, caps);
+      _emit_capabilities_changed (self, self->self_handle, save_caps, caps);
+    }
 
   return TRUE;
 }

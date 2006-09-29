@@ -1242,6 +1242,12 @@ try_session_accept (GabbleMediaSession *session)
   lm_message_unref (msg);
 }
 
+static void
+try_content_accept (GabbleMediaSession *session,
+                    GabbleMediaStream *stream)
+{
+}
+
 static LmHandlerResult
 initiate_msg_reply_cb (GabbleConnection *conn,
                        LmMessage *sent_msg,
@@ -1313,6 +1319,12 @@ try_session_initiate (GabbleMediaSession *session)
   lm_message_unref (msg);
 
   g_object_set (session, "state", JS_STATE_PENDING_INITIATE_SENT, NULL);
+}
+
+static void
+try_content_add (GabbleMediaSession *session,
+                 GabbleMediaStream *stream)
+{
 }
 
 static void
@@ -1403,14 +1415,28 @@ stream_got_local_codecs_changed_cb (GabbleMediaStream *stream,
   GMS_DEBUG_INFO (session, "stream %s has got local codecs", name);
   g_free (name);
 
-  /* FIXME */
-  if (priv->initiator == INITIATOR_REMOTE)
+  /* after session is active, we do things per-stream with content-* actions */
+  if (priv->state < JS_STATE_ACTIVE)
     {
-      try_session_accept (session);
+      if (priv->initiator == INITIATOR_REMOTE)
+        {
+          try_session_accept (session);
+        }
+      else
+        {
+          try_session_initiate (session);
+        }
     }
   else
     {
-      try_session_initiate (session);
+      if (stream_initiator == INITIATOR_REMOTE)
+        {
+          try_content_accept (session, stream);
+        }
+      else
+        {
+          try_content_add (session, stream);
+        }
     }
 }
 

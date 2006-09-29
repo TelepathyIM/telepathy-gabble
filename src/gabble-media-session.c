@@ -1271,7 +1271,6 @@ try_content_accept (GabbleMediaSession *session,
   LmMessageNode *session_node;
   AddDescriptionsData data;
 
-  g_assert (priv->accepted);
   g_assert (priv->state == JS_STATE_ACTIVE);
   g_assert (priv->mode == MODE_JINGLE);
 
@@ -1409,7 +1408,6 @@ do_content_add (GabbleMediaSession *session,
   LmMessageNode *session_node;
   AddDescriptionsData data;
 
-  g_assert (priv->accepted);
   g_assert (priv->state == JS_STATE_ACTIVE);
   g_assert (priv->mode == MODE_JINGLE);
 

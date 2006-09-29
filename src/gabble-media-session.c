@@ -1466,6 +1466,7 @@ stream_connection_state_changed_cb (GabbleMediaStream *stream,
 {
   GabbleMediaSessionPrivate *priv;
   TpMediaStreamState connection_state;
+  JingleInitiator stream_initiator;
   JingleStreamState stream_state;
   gchar *name;
 
@@ -1475,6 +1476,7 @@ stream_connection_state_changed_cb (GabbleMediaStream *stream,
 
   g_object_get (stream,
                 "connection-state", &connection_state,
+                "initiator", &stream_initiator,
                 "jingle-state", &stream_state,
                 "name", &name,
                 NULL);
@@ -1491,15 +1493,32 @@ stream_connection_state_changed_cb (GabbleMediaStream *stream,
       return;
     }
 
-  /* send a session accept if the session was initiated by the peer */
-  if (priv->initiator == INITIATOR_REMOTE)
+  /* after session is active, we do things per-stream with content-* actions */
+  if (priv->state < JS_STATE_ACTIVE)
     {
-      try_session_accept (session);
+      /* send a session accept if the session was initiated by the peer */
+      if (priv->initiator == INITIATOR_REMOTE)
+        {
+          try_session_accept (session);
+        }
+      else
+        {
+          GMS_DEBUG_INFO (session, "session initiated by us, so we're not "
+              "going to consider sending an accept");
+        }
     }
   else
     {
-      GMS_DEBUG_INFO (session, "session initiated by us, so we're not going "
-          "to consider sending an accept");
+      /* send a content accept if the stream was added by the peer */
+      if (stream_initiator == INITIATOR_REMOTE)
+        {
+          try_content_accept (session, stream);
+        }
+      else
+        {
+          GMS_DEBUG_INFO (session, "stream added by us, so we're not going "
+              "to send an accept");
+        }
     }
 }
 

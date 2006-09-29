@@ -1574,9 +1574,25 @@ connection_status_change (GabbleConnection        *conn,
         }
       else if (status == TP_CONN_STATUS_CONNECTED)
         {
+          gchar *alias;
+          GabbleConnectionAliasSource alias_src;
+
           /* trigger connected on all channel factories */
           g_ptr_array_foreach (priv->channel_factories, (GFunc)
               tp_channel_factory_iface_connected, NULL);
+
+          /* if we have an alias, patch it into our vCard on the server */
+          alias_src = _gabble_connection_get_cached_alias (conn,
+                                                           conn->self_handle,
+                                                           &alias);
+          if (alias_src > GABBLE_CONNECTION_ALIAS_FROM_VCARD)
+            {
+              /* ignore errors, just kick off the request in the background */
+              gabble_vcard_manager_edit (conn->vcard_manager,
+                                         0, NULL, NULL, G_OBJECT(conn), NULL,
+                                         "NICKNAME", alias, NULL);
+            }
+          g_free (alias);
         }
       else if (status == TP_CONN_STATUS_DISCONNECTED)
         {

@@ -24,6 +24,9 @@
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
 
+#define DEBUG_FLAG GABBLE_DEBUG_VCARD
+
+#include "debug.h"
 #include "gabble-connection.h"
 #include "namespaces.h"
 #include "telepathy-helpers.h"

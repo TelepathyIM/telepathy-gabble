@@ -23,6 +23,7 @@ typedef enum
   GABBLE_DEBUG_CONNECTION    = 1 << 8,
   GABBLE_DEBUG_IM            = 1 << 9,
   GABBLE_DEBUG_PERSIST       = 1 << 10,
+  GABBLE_DEBUG_VCARD         = 1 << 11,
 } GabbleDebugFlags;
 
 void gabble_debug_set_flags_from_env ();

@@ -20,6 +20,7 @@ GDebugKey keys[] = {
   { "muc",           GABBLE_DEBUG_MUC },
   { "connection",    GABBLE_DEBUG_CONNECTION },
   { "persist",       GABBLE_DEBUG_PERSIST },
+  { "vcard",         GABBLE_DEBUG_VCARD },
   { 0, },
 };
 

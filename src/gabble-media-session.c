@@ -1347,6 +1347,8 @@ try_session_initiate (GabbleMediaSession *session)
                                       G_OBJECT (session), NULL, NULL);
 
   lm_message_unref (msg);
+
+  g_object_set (session, "state", JS_STATE_PENDING_INITIATE_SENT, NULL);
 }
 
 #if 0

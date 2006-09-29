@@ -1242,6 +1242,25 @@ try_session_accept (GabbleMediaSession *session)
   lm_message_unref (msg);
 }
 
+static LmHandlerResult
+content_accept_msg_reply_cb (GabbleConnection *conn,
+                             LmMessage *sent_msg,
+                             LmMessage *reply_msg,
+                             GObject *object,
+                             gpointer user_data)
+{
+//  GabbleMediaSession *session = GABBLE_MEDIA_SESSION (user_data);
+//  GabbleMediaStream *stream = GABBLE_MEDIA_STREAM (object);
+
+//  MSG_REPLY_CB_END_SESSION_IF_NOT_SUCCESSFUL (session, "accept failed");
+
+//  g_object_set (session, "state", JS_STATE_ACTIVE, NULL);
+
+  /* TODO: something clever here */
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
 static void
 try_content_accept (GabbleMediaSession *session,
                     GabbleMediaStream *stream)
@@ -1253,6 +1272,7 @@ try_content_accept (GabbleMediaSession *session,
   AddDescriptionsData data;
 
   g_assert (priv->accepted);
+  g_assert (priv->state == JS_STATE_ACTIVE);
   g_assert (priv->mode == MODE_JINGLE);
 
   g_object_get (stream, "name", &name, NULL);
@@ -1281,8 +1301,8 @@ try_content_accept (GabbleMediaSession *session,
 
   g_free (name);
 
-  _gabble_connection_send_with_reply (priv->conn, msg, accept_msg_reply_cb,
-                                      G_OBJECT (session), NULL, NULL);
+  _gabble_connection_send_with_reply (priv->conn, msg,
+      content_accept_msg_reply_cb, G_OBJECT (stream), session, NULL);
 
   lm_message_unref (msg);
 }

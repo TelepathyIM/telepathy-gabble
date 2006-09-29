@@ -4523,6 +4523,17 @@ setaliases_foreach (gpointer key, gpointer value, gpointer user_data)
       data->retval = FALSE;
     }
 
+  if (data->conn->self_handle == handle)
+    {
+      /* User has done SetAliases on themselves - patch their vCard.
+       * FIXME: because SetAliases is currently synchronous, we ignore errors
+       * here, and just let the request happen in the background
+       */
+      gabble_vcard_manager_edit (data->conn->vcard_manager,
+                                 0, NULL, NULL, G_OBJECT(data->conn), NULL,
+                                 "NICKNAME", alias, NULL);
+    }
+
   if (NULL != error)
     {
       if (NULL == *(data->error))

@@ -30,6 +30,7 @@
 #include "gabble-connection.h"
 #include "namespaces.h"
 #include "telepathy-helpers.h"
+#include "util.h"
 #include "vcard-manager.h"
 
 #define DEFAULT_REQUEST_TIMEOUT 20000
@@ -64,6 +65,7 @@ struct _GabbleVCardManagerRequest
 {
   GabbleVCardManager *manager;
   guint timer_id;
+  guint timeout;
 
   GabbleHandle handle;
   gchar **edit_args;
@@ -236,6 +238,8 @@ delete_request (GabbleVCardManagerRequest *request)
   GabbleVCardManager *manager = request->manager;
   GabbleVCardManagerPrivate *priv;
 
+  DEBUG ("Discarding request %p", request);
+
   g_assert (NULL != request);
   g_assert (GABBLE_IS_VCARD_MANAGER (manager));
 
@@ -255,6 +259,10 @@ delete_request (GabbleVCardManagerRequest *request)
       g_source_remove (request->timer_id);
     }
 
+  gabble_handle_unref (priv->connection->handles, TP_HANDLE_TYPE_CONTACT,
+                       request->handle);
+  g_strfreev (request->edit_args);
+
   g_free (request);
 }
 
@@ -267,8 +275,13 @@ timeout_request (gpointer data)
 
   err = g_error_new (GABBLE_VCARD_MANAGER_ERROR, GABBLE_VCARD_MANAGER_ERROR_TIMEOUT,
       "Request timed out");
-  (request->callback)(request->manager, request, request->handle,
-                      NULL, err, request->user_data);
+  DEBUG ("Request %p timed out, notifying callback %p",
+         request, request->callback);
+  if (request->callback)
+    {
+      (request->callback)(request->manager, request, request->handle,
+                          NULL, err, request->user_data);
+    }
   g_error_free (err);
 
   request->timer_id = 0;
@@ -285,8 +298,13 @@ cancel_request (GabbleVCardManagerRequest *request)
 
   err = g_error_new (GABBLE_VCARD_MANAGER_ERROR, GABBLE_VCARD_MANAGER_ERROR_CANCELLED,
       "Request cancelled");
-  (request->callback)(request->manager, request, request->handle,
-                      NULL, err, request->user_data);
+  DEBUG ("Request %p cancelled, notifying callback %p",
+         request, request->callback);
+  if (request->callback)
+    {
+      (request->callback)(request->manager, request, request->handle,
+                          NULL, err, request->user_data);
+    }
   g_error_free (err);
 
   delete_request (request);
@@ -299,9 +317,14 @@ observe_vcard (GabbleConnection *conn, GabbleVCardManager *manager,
   LmMessageNode *nick_node = lm_message_node_get_child (vcard_node,
                                                         "NICKNAME");
 
+  DEBUG ("Observing vCard for %u", handle);
+  NODE_DEBUG(vcard_node, "their vCard is");
+
   if (nick_node)
     {
       const gchar *nick = lm_message_node_get_value (nick_node);
+
+      DEBUG ("%u has <NICKNAME> \"%s\"", handle, nick ? nick : "(null)");
 
       if (nick && *nick)
         {
@@ -312,6 +335,8 @@ observe_vcard (GabbleConnection *conn, GabbleVCardManager *manager,
             {
               gchar *alias = g_strdup (bits[0]);
 
+              DEBUG ("... using \"%s\" as their alias", alias);
+
               g_signal_emit (G_OBJECT (manager), signals[NICKNAME_UPDATE],
                              0, handle);
               if (!gabble_handle_set_qdata (conn->handles,
@@ -320,13 +345,105 @@ observe_vcard (GabbleConnection *conn, GabbleVCardManager *manager,
                                             gabble_vcard_manager_cache_quark(),
                                             alias, g_free))
                 {
+                  DEBUG ("failed to cache their alias");
                   g_free(alias);
                 }
+
             }
 
           g_strfreev (bits);
         }
     }
+  else
+    {
+      const gchar *fn;
+      /* let's see if they have a FN (formatted name) instead */
+      nick_node = lm_message_node_get_child (vcard_node, "FN");
+      fn = lm_message_node_get_value (nick_node);
+      DEBUG ("%u has no <NICKNAME>, but has <FN> \"%s\"", handle,
+             fn ? fn : "(null)");
+      if (fn && *fn)
+        {
+          gchar *alias = g_strdup(fn);
+
+          DEBUG ("... using \"%s\" as their alias", alias);
+
+          g_signal_emit (G_OBJECT (manager), signals[NICKNAME_UPDATE],
+                         0, handle);
+          if (!gabble_handle_set_qdata (conn->handles,
+                                        TP_HANDLE_TYPE_CONTACT,
+                                        handle,
+                                        gabble_vcard_manager_cache_quark(),
+                                        alias, g_free))
+            {
+              DEBUG ("failed to cache their alias");
+              g_free(alias);
+            }
+        }
+    }
+}
+
+static GabbleVCardManagerRequest *request_send (GabbleVCardManagerRequest *,
+                                                LmMessageNode *replacement,
+                                                const gchar *jid,
+                                                GError **);
+
+static LmHandlerResult
+replace_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
+                  LmMessage *reply_msg, GObject *object, gpointer user_data)
+{
+  GabbleVCardManagerRequest *request = (GabbleVCardManagerRequest*) user_data;
+  GabbleVCardManager *manager = GABBLE_VCARD_MANAGER (object);
+  GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (manager);
+  LmMessageNode *vcard_node;
+  GError *err = NULL;
+
+  g_assert (request);
+
+  DEBUG ("Replace request got a reply: conn@%p, sent_msg@%p, reply_msg@%p, "
+         "bound object@%p, request@%p", conn, sent_msg, reply_msg, object,
+         user_data);
+
+  if (!g_list_find (priv->requests, request))
+    {
+      DEBUG ("I don't care about that request any more");
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    }
+
+  vcard_node = lm_message_node_get_child (sent_msg->node, "vCard");
+
+  if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_ERROR)
+    {
+      LmMessageNode *error_node;
+
+      error_node = lm_message_node_get_child (reply_msg->node, "error");
+      if (error_node)
+        {
+          err = gabble_xmpp_error_to_g_error (
+              gabble_xmpp_error_from_node (error_node));
+        }
+
+      if (err == NULL)
+        {
+          err = g_error_new (GABBLE_VCARD_MANAGER_ERROR,
+                             GABBLE_VCARD_MANAGER_ERROR_UNKNOWN,
+                             "an unknown error occurred");
+        }
+    }
+
+  DEBUG ("Request %p %s, notifying callback %p", request,
+         err ? "failed" : "succeeded", request->callback);
+  if (request->callback)
+    {
+      request->callback (request->manager, request, request->handle,
+                         vcard_node, err, request->user_data);
+    }
+  delete_request (request);
+
+  if (err)
+    g_error_free (err);
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static LmHandlerResult
@@ -341,8 +458,15 @@ request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 
   g_assert (request);
 
+  DEBUG ("Fetch request got a reply: conn@%p, sent_msg@%p, reply_msg@%p, "
+         "bound object@%p, request@%p", conn, sent_msg, reply_msg, object,
+         user_data);
+
   if (!g_list_find (priv->requests, request))
-    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    {
+      DEBUG ("I don't care about that request any more");
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    }
 
   vcard_node = lm_message_node_get_child (reply_msg->node, "vCard");
 
@@ -369,13 +493,65 @@ request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
       err = g_error_new (GABBLE_VCARD_MANAGER_ERROR, GABBLE_VCARD_MANAGER_ERROR_UNKNOWN,
           "vCard lookup response contained no <vCard> node");
     }
-
-  observe_vcard (conn, manager, request->handle, vcard_node);
-
-  if (request->callback)
+  else
     {
-      request->callback (request->manager, request, request->handle,
-                         vcard_node, err, request->user_data);
+      observe_vcard (conn, manager, request->handle, vcard_node);
+    }
+
+  if (vcard_node && request->edit_args)
+    {
+      gchar **ptr;
+      for (ptr = request->edit_args; *ptr; ptr++)
+        {
+          gchar *key = *ptr;
+          gchar *value = *(++ptr);
+          LmMessageNode *node;
+
+          if (!value)
+            {
+              /* oops, someone passed in an odd number of args. */
+              g_assert_not_reached ();
+              break;
+            }
+
+          node = lm_message_node_get_child (vcard_node, key);
+          if (node)
+            {
+              lm_message_node_set_value (node, value);
+            }
+          else
+            {
+              node = lm_message_node_add_child (vcard_node, key, value);
+            }
+        }
+      request_send (request, vcard_node, NULL, &err);
+      
+      if (err)
+        {
+          DEBUG ("Request %p failed, notifying callback %p",
+                 request, request->callback);
+          if (request->callback)
+          {
+            request->callback (request->manager, request, request->handle,
+                               NULL, err, request->user_data);
+          }
+        }
+      else
+        {
+          DEBUG ("Request %p fetch succeeded", request);
+          /* early return to avoid deleting the request */
+          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+        }
+    }
+  else
+    {
+      DEBUG ("Request %p %s, notifying callback %p",
+             request, err ? "failed" : "succeeded", request->callback);
+      if (request->callback)
+        {
+          request->callback (request->manager, request, request->handle,
+                             vcard_node, err, request->user_data);
+        }
     }
   delete_request (request);
 
@@ -383,6 +559,55 @@ request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
     g_error_free (err);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
+/* If @replacement is NULL sends a request, calling request_reply_cb when
+ * it returns.
+ *
+ * Otherwise steals its children and sends an update, calling
+ * replace_reply_cb when it returns.
+ *
+ * Frees the @request on error, returns it on success. */
+static GabbleVCardManagerRequest *
+request_send (GabbleVCardManagerRequest *request,
+              LmMessageNode *replacement, const gchar *jid, GError **error)
+{
+  GabbleVCardManager *self = request->manager;
+  GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (self);
+  LmMessage *msg;
+  LmMessageNode *lm_node;
+
+  DEBUG ("Sending off request %p to %s for %s", request,
+         replacement ? "replace vCard" : "retrieve vCard",
+         jid ? jid : "myself");
+  msg = lm_message_new_with_sub_type (jid, LM_MESSAGE_TYPE_IQ,
+                                           (replacement
+                                                ? LM_MESSAGE_SUB_TYPE_SET
+                                                : LM_MESSAGE_SUB_TYPE_GET));
+  lm_node = lm_message_node_add_child (msg->node, "vCard", NULL);
+  lm_message_node_set_attribute (lm_node, "xmlns", NS_VCARD_TEMP);
+
+  if (replacement)
+    lm_message_node_steal_children (lm_node, replacement);
+
+  if (! _gabble_connection_send_with_reply (priv->connection, msg,
+        (replacement ? replace_reply_cb : request_reply_cb),
+        G_OBJECT(self), request, error))
+    {
+      delete_request (request);
+      lm_message_unref (msg);
+      return NULL;
+    }
+  else
+    {
+      if (0 == request->timer_id)
+        {
+          request->timer_id =
+              g_timeout_add (request->timeout, timeout_request, request);
+        }
+      lm_message_unref (msg);
+      return request;
+    }
 }
 
 static void
@@ -393,6 +618,12 @@ notify_delete_request (gpointer data, GObject *obj)
   delete_request (request);
 }
 
+/* Request the vCard for the given handle. When it arrives, call the given
+ * callback.
+ *
+ * The callback may be NULL if you just want the side-effect of this
+ * operation, which is to update the cached alias.
+ */
 GabbleVCardManagerRequest *
 gabble_vcard_manager_request (GabbleVCardManager *self, GabbleHandle handle,
                              guint timeout,
@@ -401,14 +632,17 @@ gabble_vcard_manager_request (GabbleVCardManager *self, GabbleHandle handle,
 {
   GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (self);
   GabbleVCardManagerRequest *request;
-  LmMessage *msg;
-  LmMessageNode *lm_node;
   const gchar *jid;
 
   if (timeout == 0) timeout = DEFAULT_REQUEST_TIMEOUT;
 
   request = g_new0 (GabbleVCardManagerRequest, 1);
+  DEBUG ("Created request %p to retrieve <%u>'s vCard",
+         request, handle);
+  request->timeout = timeout;
   request->manager = self;
+  gabble_handle_ref (priv->connection->handles, TP_HANDLE_TYPE_CONTACT,
+                     handle);
   request->handle = handle;
   request->callback = callback;
   request->user_data = user_data;
@@ -427,25 +661,8 @@ gabble_vcard_manager_request (GabbleVCardManager *self, GabbleHandle handle,
       jid = gabble_handle_inspect (priv->connection->handles,
                                    TP_HANDLE_TYPE_CONTACT, handle);
     }
-  msg = lm_message_new_with_sub_type (jid, LM_MESSAGE_TYPE_IQ,
-                                           LM_MESSAGE_SUB_TYPE_GET);
-  lm_node = lm_message_node_add_child (msg->node, "query", NULL);
-  lm_message_node_set_attribute (lm_node, "xmlns", NS_VCARD_TEMP);
 
-  if (! _gabble_connection_send_with_reply (priv->connection, msg,
-        request_reply_cb, G_OBJECT(self), request, error))
-    {
-      delete_request (request);
-      lm_message_unref (msg);
-      return NULL;
-    }
-  else
-    {
-      request->timer_id =
-          g_timeout_add (timeout, timeout_request, request);
-      lm_message_unref (msg);
-      return request;
-    }
+  return request_send (request, NULL, jid, error);
 }
 
 GabbleVCardManagerRequest *
@@ -454,7 +671,29 @@ gabble_vcard_manager_replace (GabbleVCardManager *self,
                              GabbleVCardManagerCb callback, gpointer user_data,
                              GObject *object, GError **error)
 {
-  return NULL;
+  GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (self);
+  GabbleVCardManagerRequest *request;
+
+  if (timeout == 0) timeout = DEFAULT_REQUEST_TIMEOUT;
+
+  request = g_new0 (GabbleVCardManagerRequest, 1);
+  DEBUG ("Created request %p to replace my vCard",
+         request);
+  request->timeout = timeout;
+  request->manager = self;
+  gabble_handle_ref (priv->connection->handles, TP_HANDLE_TYPE_CONTACT,
+                     priv->connection->self_handle);
+  request->handle = priv->connection->self_handle;
+  request->callback = callback;
+  request->user_data = user_data;
+  request->bound_object = object;
+
+  if (NULL != object)
+    g_object_weak_ref (object, notify_delete_request, request);
+
+  priv->requests = g_list_prepend (priv->requests, request);
+
+  return request_send (request, replacement, NULL, error);
 }
 
 GabbleVCardManagerRequest *
@@ -466,9 +705,26 @@ gabble_vcard_manager_edit (GabbleVCardManager *self,
 {
   va_list ap;
   size_t i, argc;
+  GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (self);
   GabbleVCardManagerRequest *request;
 
+  if (timeout == 0) timeout = DEFAULT_REQUEST_TIMEOUT;
+
   request = g_new0 (GabbleVCardManagerRequest, 1);
+  DEBUG ("Created request %p to edit my vCard", request);
+  request->timeout = timeout;
+  request->manager = self;
+  gabble_handle_ref (priv->connection->handles, TP_HANDLE_TYPE_CONTACT,
+                     priv->connection->self_handle);
+  request->handle = priv->connection->self_handle;
+  request->callback = callback;
+  request->user_data = user_data;
+  request->bound_object = object;
+
+  if (NULL != object)
+    g_object_weak_ref (object, notify_delete_request, request);
+
+  priv->requests = g_list_prepend (priv->requests, request);
 
   argc = 0;
   va_start (ap, error);
@@ -477,6 +733,7 @@ gabble_vcard_manager_edit (GabbleVCardManager *self,
       argc++;
     }
   va_end (ap);
+  g_assert(argc % 2 == 0);
 
   request->edit_args = g_new (gchar *, argc + 1);
 
@@ -488,8 +745,7 @@ gabble_vcard_manager_edit (GabbleVCardManager *self,
   request->edit_args[argc] = NULL;
   va_end (ap);
 
-  g_free (request);
-  return NULL;
+  return request_send (request, NULL, NULL, error);
 }
 
 void
@@ -517,13 +773,17 @@ gabble_vcard_manager_get_cached_alias (GabbleVCardManager *manager,
                                       GabbleHandle handle)
 {
   GabbleVCardManagerPrivate *priv;
+  const gchar *s;
 
   g_return_val_if_fail (GABBLE_IS_VCARD_MANAGER (manager), NULL);
 
   priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (manager);
 
-  return gabble_handle_get_qdata (priv->connection->handles,
-                                  TP_HANDLE_TYPE_CONTACT,
-                                  handle,
-                                  gabble_vcard_manager_cache_quark());
+  s = gabble_handle_get_qdata (priv->connection->handles,
+                               TP_HANDLE_TYPE_CONTACT,
+                               handle,
+                               gabble_vcard_manager_cache_quark());
+  DEBUG ("Cached alias for %u is \"%s\"",
+         handle, s ? s : "(null)");
+  return s;
 }

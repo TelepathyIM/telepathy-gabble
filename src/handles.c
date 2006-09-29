@@ -497,7 +497,7 @@ gabble_handles_are_valid (GabbleHandleRepo *repo,
     {
       GabbleHandle handle = g_array_index (array, GabbleHandle, i);
 
-      if ((handle == 0 && !allow_zero) ||
+      if (!(handle != 0 || allow_zero) &&
           (handle_priv_lookup (repo, type, handle) == NULL))
         {
           if (error != NULL)

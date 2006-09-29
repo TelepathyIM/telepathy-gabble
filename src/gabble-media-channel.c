@@ -1314,7 +1314,8 @@ session_state_changed_cb (GabbleMediaSession *session,
       /* close the channel */
       if (!gabble_media_channel_close (channel, &error))
         {
-          g_warning ("%s: failed to close media channel: %s", G_STRFUNC, error->message);
+          g_warning ("%s: failed to close media channel: %s", G_STRFUNC,
+              error->message);
         }
     }
 

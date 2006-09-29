@@ -1635,36 +1635,55 @@ _gabble_media_session_remove_streams (GabbleMediaSession *session,
       return;
     }
 
-  /* construct a remove message */
-  msg = _gabble_media_session_message_new (session, "content-remove",
-                                           &session_node);
+  /* construct a remove message if we're in a state greater than CREATED (ie
+   * something has been sent/received about this session) */
+  if (priv->state > JS_STATE_PENDING_CREATED)
+    {
+      msg = _gabble_media_session_message_new (session, "content-remove",
+                                               &session_node);
 
-  GMS_DEBUG_INFO (session, "sending jingle session action \"content-remove\" "
-                  "to peer");
+      GMS_DEBUG_INFO (session, "sending jingle session action "
+          "\"content-remove\" to peer");
+    }
+  else
+    {
+      msg = NULL;
+
+      GMS_DEBUG_INFO (session, "not sending jingle session action "
+          "\"content-remove\" to peer, no initiates have been sent");
+    }
 
   /* right, remove it */
   for (i = 0; i < streams->len; i++)
     {
       GabbleMediaStream *stream = g_ptr_array_index (streams, i);
-      gchar *name;
-      LmMessageNode *content_node;
 
-      g_object_get (stream, "name", &name, NULL);
+      if (msg != NULL)
+        {
+          gchar *name;
+          LmMessageNode *content_node;
 
-      content_node = lm_message_node_add_child (session_node, "content", NULL);
-      lm_message_node_set_attribute (content_node, "name", name);
+          g_object_get (stream, "name", &name, NULL);
 
-      g_free (name);
+          content_node = lm_message_node_add_child (session_node, "content",
+              NULL);
+          lm_message_node_set_attribute (content_node, "name", name);
+
+          g_free (name);
+        }
 
       /* close the stream */
       _gabble_media_stream_close (stream);
     }
 
   /* send the remove message */
-  _gabble_connection_send_with_reply (priv->conn, msg, ignore_reply_cb,
-                                      G_OBJECT (session), NULL, NULL);
+  if (msg != NULL)
+    {
+      _gabble_connection_send_with_reply (priv->conn, msg, ignore_reply_cb,
+                                          G_OBJECT (session), NULL, NULL);
 
-  lm_message_unref (msg);
+      lm_message_unref (msg);
+    }
 }
 
 static void

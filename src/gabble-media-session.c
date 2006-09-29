@@ -1352,7 +1352,7 @@ stream_connection_state_changed_cb (GabbleMediaStream *stream,
 {
   GabbleMediaSessionPrivate *priv;
   TpMediaStreamState connection_state;
-  JingleStreamState jingle_state;
+  JingleStreamState stream_state;
   gchar *name;
 
   g_assert (GABBLE_IS_MEDIA_SESSION (session));
@@ -1361,7 +1361,7 @@ stream_connection_state_changed_cb (GabbleMediaStream *stream,
 
   g_object_get (stream,
                 "connection-state", &connection_state,
-                "jingle-state", &jingle_state,
+                "jingle-state", &stream_state,
                 "name", &name,
                 NULL);
 
@@ -1371,7 +1371,7 @@ stream_connection_state_changed_cb (GabbleMediaStream *stream,
   GMS_DEBUG_INFO (session, "stream %s has gone connected", name);
   g_free (name);
 
-  if (jingle_state == JST_STATE_ACCEPTED)
+  if (stream_state == JST_STATE_ACCEPTED)
     {
       GMS_DEBUG_INFO (session, "doing nothing, stream is already accepted");
       return;
@@ -1397,6 +1397,7 @@ stream_got_local_codecs_changed_cb (GabbleMediaStream *stream,
   GabbleMediaSessionPrivate *priv;
   gboolean got_local_codecs;
   JingleInitiator stream_initiator;
+  JingleStreamState stream_state;
   gchar *name;
 
   g_assert (GABBLE_IS_MEDIA_SESSION (session));
@@ -1406,6 +1407,7 @@ stream_got_local_codecs_changed_cb (GabbleMediaStream *stream,
   g_object_get (stream,
                 "got-local-codecs", &got_local_codecs,
                 "initiator", &stream_initiator,
+                "jingle-state", &stream_state,
                 "name", &name,
                 NULL);
 
@@ -1414,6 +1416,14 @@ stream_got_local_codecs_changed_cb (GabbleMediaStream *stream,
 
   GMS_DEBUG_INFO (session, "stream %s has got local codecs", name);
   g_free (name);
+
+  if (stream_state == JST_STATE_ACCEPTED)
+    {
+      GMS_DEBUG_ERROR (session, "stream was already accepted and we got local "
+          "codecs. what?!");
+      g_assert_not_reached ();
+      return;
+    }
 
   /* after session is active, we do things per-stream with content-* actions */
   if (priv->state < JS_STATE_ACTIVE)

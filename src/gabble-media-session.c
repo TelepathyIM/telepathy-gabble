@@ -1380,10 +1380,67 @@ try_session_initiate (GabbleMediaSession *session)
   g_object_set (session, "state", JS_STATE_PENDING_INITIATE_SENT, NULL);
 }
 
-static void
-try_content_add (GabbleMediaSession *session,
-                 GabbleMediaStream *stream)
+static LmHandlerResult
+content_add_msg_reply_cb (GabbleConnection *conn,
+                          LmMessage *sent_msg,
+                          LmMessage *reply_msg,
+                          GObject *object,
+                          gpointer user_data)
 {
+//   GabbleMediaSession *session = GABBLE_MEDIA_SESSION (user_data);
+//   GabbleMediaStream *stream = GABBLE_MEDIA_STREAM (object);
+
+//  MSG_REPLY_CB_END_SESSION_IF_NOT_SUCCESSFUL (session, "initiate failed");
+
+//  g_object_set (session, "state", JS_STATE_PENDING_INITIATED, NULL);
+
+  /* TODO: something clever here */
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
+static void
+do_content_add (GabbleMediaSession *session,
+                GabbleMediaStream *stream)
+{
+  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+  gchar *name;
+  LmMessage *msg;
+  LmMessageNode *session_node;
+  AddDescriptionsData data;
+
+  g_assert (priv->accepted);
+  g_assert (priv->state == JS_STATE_ACTIVE);
+  g_assert (priv->mode == MODE_JINGLE);
+
+  g_object_get (stream, "name", &name, NULL);
+
+  if (!_stream_not_ready_for_initiate (name, stream, session))
+    {
+      GMS_DEBUG_ERROR (session, "trying to send content-add for stream %s "
+          "but we have no local codecs. what?!", name);
+      g_free (name);
+      g_assert_not_reached ();
+      return;
+    }
+
+  msg = _gabble_media_session_message_new (session, "content-add",
+      &session_node);
+
+  data.session = session;
+  data.session_node = session_node;
+
+  _add_content_descriptions_one (name, stream, &data);
+
+  GMS_DEBUG_INFO (session, "sending jingle action \"content-add\" to peer for "
+      "stream %s", name);
+
+  g_free (name);
+
+  _gabble_connection_send_with_reply (priv->conn, msg,
+      content_add_msg_reply_cb, G_OBJECT (stream), session, NULL);
+
+  lm_message_unref (msg);
 }
 
 static void
@@ -1504,7 +1561,7 @@ stream_got_local_codecs_changed_cb (GabbleMediaStream *stream,
         }
       else
         {
-          try_content_add (session, stream);
+          do_content_add (session, stream);
         }
     }
 }

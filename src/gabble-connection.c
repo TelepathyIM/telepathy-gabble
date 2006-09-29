@@ -2959,6 +2959,9 @@ gabble_connection_advertise_capabilities (GabbleConnection *self,
         }
     }
 
+  if (!signal_own_presence (self, error))
+    return FALSE;
+
   _emit_capabilities_changed (self, self->self_handle, save_caps, caps);
 
   return TRUE;

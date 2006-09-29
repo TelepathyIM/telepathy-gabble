@@ -30,7 +30,7 @@ typedef struct _GabbleHandleRepo GabbleHandleRepo;
 typedef struct _GabblePresenceCache GabblePresenceCache;
 typedef struct _GabbleRoster GabbleRoster;
 typedef struct _GabbleRosterChannel GabbleRosterChannel;
-typedef struct _GabbleVCardLookup GabbleVCardLookup;
+typedef struct _GabbleVCardManager GabbleVCardManager;
 typedef guint32 GabbleHandle;
 
 G_END_DECLS

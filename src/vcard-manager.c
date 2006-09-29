@@ -1,5 +1,5 @@
 /*
- * vcard-lookup.c - Source for Gabble vCard lookup helper
+ * vcard-manager.c - Source for Gabble vCard lookup helper
  *
  * Copyright (C) 2006 Collabora Ltd.
  * Copyright (C) 2006 Nokia Corporation
@@ -27,7 +27,7 @@
 #include "gabble-connection.h"
 #include "namespaces.h"
 #include "telepathy-helpers.h"
-#include "vcard-lookup.h"
+#include "vcard-manager.h"
 
 #define DEFAULT_REQUEST_TIMEOUT 20000
 
@@ -47,78 +47,78 @@ enum
   LAST_PROPERTY
 };
 
-G_DEFINE_TYPE(GabbleVCardLookup, gabble_vcard_lookup, G_TYPE_OBJECT);
+G_DEFINE_TYPE(GabbleVCardManager, gabble_vcard_manager, G_TYPE_OBJECT);
 
-typedef struct _GabbleVCardLookupPrivate GabbleVCardLookupPrivate;
-struct _GabbleVCardLookupPrivate
+typedef struct _GabbleVCardManagerPrivate GabbleVCardManagerPrivate;
+struct _GabbleVCardManagerPrivate
 {
   GabbleConnection *connection;
   GList *requests;
   gboolean dispose_has_run;
 };
 
-struct _GabbleVCardLookupRequest
+struct _GabbleVCardManagerRequest
 {
-  GabbleVCardLookup *lookup;
+  GabbleVCardManager *manager;
   guint timer_id;
 
   GabbleHandle handle;
   gchar **edit_args;
 
-  GabbleVCardLookupCb callback;
+  GabbleVCardManagerCb callback;
   gpointer user_data;
   GObject *bound_object;
 };
 
 GQuark
-gabble_vcard_lookup_error_quark (void)
+gabble_vcard_manager_error_quark (void)
 {
   static GQuark quark = 0;
   if (!quark)
-    quark = g_quark_from_static_string ("gabble-vcard-lookup-error");
+    quark = g_quark_from_static_string ("gabble-vcard-manager-error");
   return quark;
 }
 
 GQuark
-gabble_vcard_lookup_cache_quark (void)
+gabble_vcard_manager_cache_quark (void)
 {
   static GQuark quark = 0;
   if (!quark)
-    quark = g_quark_from_static_string ("gabble-vcard-lookup-cache");
+    quark = g_quark_from_static_string ("gabble-vcard-manager-cache");
   return quark;
 }
 
-#define GABBLE_VCARD_LOOKUP_GET_PRIVATE(o)     ((GabbleVCardLookupPrivate*)((o)->priv));
+#define GABBLE_VCARD_MANAGER_GET_PRIVATE(o)     ((GabbleVCardManagerPrivate*)((o)->priv));
 
 static void
-gabble_vcard_lookup_init (GabbleVCardLookup *obj)
+gabble_vcard_manager_init (GabbleVCardManager *obj)
 {
-  GabbleVCardLookupPrivate *priv =
-     G_TYPE_INSTANCE_GET_PRIVATE (obj, GABBLE_TYPE_VCARD_LOOKUP, GabbleVCardLookupPrivate);
+  GabbleVCardManagerPrivate *priv =
+     G_TYPE_INSTANCE_GET_PRIVATE (obj, GABBLE_TYPE_VCARD_MANAGER, GabbleVCardManagerPrivate);
   obj->priv = priv;
 
 }
 
-static void gabble_vcard_lookup_set_property (GObject *object, guint property_id,
+static void gabble_vcard_manager_set_property (GObject *object, guint property_id,
     const GValue *value, GParamSpec *pspec);
-static void gabble_vcard_lookup_get_property (GObject *object, guint property_id,
+static void gabble_vcard_manager_get_property (GObject *object, guint property_id,
     GValue *value, GParamSpec *pspec);
-static void gabble_vcard_lookup_dispose (GObject *object);
-static void gabble_vcard_lookup_finalize (GObject *object);
+static void gabble_vcard_manager_dispose (GObject *object);
+static void gabble_vcard_manager_finalize (GObject *object);
 
 static void
-gabble_vcard_lookup_class_init (GabbleVCardLookupClass *gabble_vcard_lookup_class)
+gabble_vcard_manager_class_init (GabbleVCardManagerClass *gabble_vcard_manager_class)
 {
-  GObjectClass *object_class = G_OBJECT_CLASS (gabble_vcard_lookup_class);
+  GObjectClass *object_class = G_OBJECT_CLASS (gabble_vcard_manager_class);
   GParamSpec *param_spec;
 
-  g_type_class_add_private (gabble_vcard_lookup_class, sizeof (GabbleVCardLookupPrivate));
+  g_type_class_add_private (gabble_vcard_manager_class, sizeof (GabbleVCardManagerPrivate));
 
-  object_class->get_property = gabble_vcard_lookup_get_property;
-  object_class->set_property = gabble_vcard_lookup_set_property;
+  object_class->get_property = gabble_vcard_manager_get_property;
+  object_class->set_property = gabble_vcard_manager_set_property;
 
-  object_class->dispose = gabble_vcard_lookup_dispose;
-  object_class->finalize = gabble_vcard_lookup_finalize;
+  object_class->dispose = gabble_vcard_manager_dispose;
+  object_class->finalize = gabble_vcard_manager_finalize;
 
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
                                     "Gabble connection object that owns this "
@@ -134,7 +134,7 @@ gabble_vcard_lookup_class_init (GabbleVCardLookupClass *gabble_vcard_lookup_clas
 
   signals[NICKNAME_UPDATE] =
     g_signal_new ("nickname-update",
-                  G_TYPE_FROM_CLASS (gabble_vcard_lookup_class),
+                  G_TYPE_FROM_CLASS (gabble_vcard_manager_class),
                   G_SIGNAL_RUN_LAST,
                   0,
                   NULL, NULL,
@@ -144,13 +144,13 @@ gabble_vcard_lookup_class_init (GabbleVCardLookupClass *gabble_vcard_lookup_clas
 }
 
 static void
-gabble_vcard_lookup_get_property (GObject    *object,
+gabble_vcard_manager_get_property (GObject    *object,
                                   guint       property_id,
                                   GValue     *value,
                                   GParamSpec *pspec)
 {
-  GabbleVCardLookup *chan = GABBLE_VCARD_LOOKUP (object);
-  GabbleVCardLookupPrivate *priv = GABBLE_VCARD_LOOKUP_GET_PRIVATE (chan);
+  GabbleVCardManager *chan = GABBLE_VCARD_MANAGER (object);
+  GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (chan);
 
   switch (property_id) {
     case PROP_CONNECTION:
@@ -163,13 +163,13 @@ gabble_vcard_lookup_get_property (GObject    *object,
 }
 
 static void
-gabble_vcard_lookup_set_property (GObject     *object,
+gabble_vcard_manager_set_property (GObject     *object,
                                   guint        property_id,
                                   const GValue *value,
                                   GParamSpec   *pspec)
 {
-  GabbleVCardLookup *chan = GABBLE_VCARD_LOOKUP (object);
-  GabbleVCardLookupPrivate *priv = GABBLE_VCARD_LOOKUP_GET_PRIVATE (chan);
+  GabbleVCardManager *chan = GABBLE_VCARD_MANAGER (object);
+  GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (chan);
 
   switch (property_id) {
     case PROP_CONNECTION:
@@ -181,13 +181,13 @@ gabble_vcard_lookup_set_property (GObject     *object,
   }
 }
 
-static void cancel_request (GabbleVCardLookupRequest *request);
+static void cancel_request (GabbleVCardManagerRequest *request);
 
 void
-gabble_vcard_lookup_dispose (GObject *object)
+gabble_vcard_manager_dispose (GObject *object)
 {
-  GabbleVCardLookup *self = GABBLE_VCARD_LOOKUP (object);
-  GabbleVCardLookupPrivate *priv = GABBLE_VCARD_LOOKUP_GET_PRIVATE (self);
+  GabbleVCardManager *self = GABBLE_VCARD_MANAGER (object);
+  GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (self);
   DBusGProxy *bus_proxy;
   bus_proxy = tp_get_bus_proxy ();
 
@@ -200,43 +200,43 @@ gabble_vcard_lookup_dispose (GObject *object)
   while (priv->requests)
     cancel_request (priv->requests->data);
 
-  if (G_OBJECT_CLASS (gabble_vcard_lookup_parent_class)->dispose)
-    G_OBJECT_CLASS (gabble_vcard_lookup_parent_class)->dispose (object);
+  if (G_OBJECT_CLASS (gabble_vcard_manager_parent_class)->dispose)
+    G_OBJECT_CLASS (gabble_vcard_manager_parent_class)->dispose (object);
 }
 
 void
-gabble_vcard_lookup_finalize (GObject *object)
+gabble_vcard_manager_finalize (GObject *object)
 {
-  G_OBJECT_CLASS (gabble_vcard_lookup_parent_class)->finalize (object);
+  G_OBJECT_CLASS (gabble_vcard_manager_parent_class)->finalize (object);
 }
 
 
 /**
- * gabble_vcard_lookup_new:
+ * gabble_vcard_manager_new:
  * @conn: The #GabbleConnection to use for vCard lookup
  *
  * Creates an object to use for Jabber vCard lookup (JEP 0054).
  * There should be one of these per connection
  */
-GabbleVCardLookup *
-gabble_vcard_lookup_new (GabbleConnection *conn)
+GabbleVCardManager *
+gabble_vcard_manager_new (GabbleConnection *conn)
 {
   g_return_val_if_fail (GABBLE_IS_CONNECTION (conn), NULL);
-  return GABBLE_VCARD_LOOKUP (g_object_new (GABBLE_TYPE_VCARD_LOOKUP, "connection", conn, NULL));
+  return GABBLE_VCARD_MANAGER (g_object_new (GABBLE_TYPE_VCARD_MANAGER, "connection", conn, NULL));
 }
 
 static void notify_delete_request (gpointer data, GObject *obj);
 
 static void
-delete_request (GabbleVCardLookupRequest *request)
+delete_request (GabbleVCardManagerRequest *request)
 {
-  GabbleVCardLookup *lookup = request->lookup;
-  GabbleVCardLookupPrivate *priv;
+  GabbleVCardManager *manager = request->manager;
+  GabbleVCardManagerPrivate *priv;
 
   g_assert (NULL != request);
-  g_assert (GABBLE_IS_VCARD_LOOKUP (lookup));
+  g_assert (GABBLE_IS_VCARD_MANAGER (manager));
 
-  priv = GABBLE_VCARD_LOOKUP_GET_PRIVATE (lookup);
+  priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (manager);
 
   g_assert (NULL != g_list_find (priv->requests, request));
 
@@ -258,13 +258,13 @@ delete_request (GabbleVCardLookupRequest *request)
 static gboolean
 timeout_request (gpointer data)
 {
-  GabbleVCardLookupRequest *request = (GabbleVCardLookupRequest*) data;
+  GabbleVCardManagerRequest *request = (GabbleVCardManagerRequest*) data;
   GError *err;
   g_return_val_if_fail (data != NULL, FALSE);
 
-  err = g_error_new (GABBLE_VCARD_LOOKUP_ERROR, GABBLE_VCARD_LOOKUP_ERROR_TIMEOUT,
+  err = g_error_new (GABBLE_VCARD_MANAGER_ERROR, GABBLE_VCARD_MANAGER_ERROR_TIMEOUT,
       "Request timed out");
-  (request->callback)(request->lookup, request, request->handle,
+  (request->callback)(request->manager, request, request->handle,
                       NULL, err, request->user_data);
   g_error_free (err);
 
@@ -274,15 +274,15 @@ timeout_request (gpointer data)
 }
 
 static void
-cancel_request (GabbleVCardLookupRequest *request)
+cancel_request (GabbleVCardManagerRequest *request)
 {
   GError *err;
 
   g_assert (request != NULL);
 
-  err = g_error_new (GABBLE_VCARD_LOOKUP_ERROR, GABBLE_VCARD_LOOKUP_ERROR_CANCELLED,
+  err = g_error_new (GABBLE_VCARD_MANAGER_ERROR, GABBLE_VCARD_MANAGER_ERROR_CANCELLED,
       "Request cancelled");
-  (request->callback)(request->lookup, request, request->handle,
+  (request->callback)(request->manager, request, request->handle,
                       NULL, err, request->user_data);
   g_error_free (err);
 
@@ -290,7 +290,7 @@ cancel_request (GabbleVCardLookupRequest *request)
 }
 
 static void
-observe_vcard (GabbleConnection *conn, GabbleVCardLookup *lookup,
+observe_vcard (GabbleConnection *conn, GabbleVCardManager *manager,
                GabbleHandle handle, LmMessageNode *vcard_node)
 {
   LmMessageNode *nick_node = lm_message_node_get_child (vcard_node,
@@ -309,12 +309,12 @@ observe_vcard (GabbleConnection *conn, GabbleVCardLookup *lookup,
             {
               gchar *alias = g_strdup (bits[0]);
 
-              g_signal_emit (G_OBJECT (lookup), signals[NICKNAME_UPDATE],
+              g_signal_emit (G_OBJECT (manager), signals[NICKNAME_UPDATE],
                              0, handle);
               if (!gabble_handle_set_qdata (conn->handles,
                                             TP_HANDLE_TYPE_CONTACT,
                                             handle,
-                                            gabble_vcard_lookup_cache_quark(),
+                                            gabble_vcard_manager_cache_quark(),
                                             alias, g_free))
                 {
                   g_free(alias);
@@ -330,9 +330,9 @@ static LmHandlerResult
 request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
                   LmMessage *reply_msg, GObject *object, gpointer user_data)
 {
-  GabbleVCardLookupRequest *request = (GabbleVCardLookupRequest*) user_data;
-  GabbleVCardLookup *lookup = GABBLE_VCARD_LOOKUP (object);
-  GabbleVCardLookupPrivate *priv = GABBLE_VCARD_LOOKUP_GET_PRIVATE (lookup);
+  GabbleVCardManagerRequest *request = (GabbleVCardManagerRequest*) user_data;
+  GabbleVCardManager *manager = GABBLE_VCARD_MANAGER (object);
+  GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (manager);
   LmMessageNode *vcard_node;
   GError *err = NULL;
 
@@ -356,22 +356,22 @@ request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 
       if (err == NULL)
         {
-          err = g_error_new (GABBLE_VCARD_LOOKUP_ERROR,
-                             GABBLE_VCARD_LOOKUP_ERROR_UNKNOWN,
+          err = g_error_new (GABBLE_VCARD_MANAGER_ERROR,
+                             GABBLE_VCARD_MANAGER_ERROR_UNKNOWN,
                              "an unknown error occurred");
         }
     }
   else if (NULL == vcard_node)
     {
-      err = g_error_new (GABBLE_VCARD_LOOKUP_ERROR, GABBLE_VCARD_LOOKUP_ERROR_UNKNOWN,
+      err = g_error_new (GABBLE_VCARD_MANAGER_ERROR, GABBLE_VCARD_MANAGER_ERROR_UNKNOWN,
           "vCard lookup response contained no <vCard> node");
     }
 
-  observe_vcard (conn, lookup, request->handle, vcard_node);
+  observe_vcard (conn, manager, request->handle, vcard_node);
 
   if (request->callback)
     {
-      request->callback (request->lookup, request, request->handle,
+      request->callback (request->manager, request, request->handle,
                          vcard_node, err, request->user_data);
     }
   delete_request (request);
@@ -385,27 +385,27 @@ request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 static void
 notify_delete_request (gpointer data, GObject *obj)
 {
-  GabbleVCardLookupRequest *request = (GabbleVCardLookupRequest *) data;
+  GabbleVCardManagerRequest *request = (GabbleVCardManagerRequest *) data;
   request->bound_object = NULL;
   delete_request (request);
 }
 
-GabbleVCardLookupRequest *
-gabble_vcard_lookup_request (GabbleVCardLookup *self, GabbleHandle handle,
+GabbleVCardManagerRequest *
+gabble_vcard_manager_request (GabbleVCardManager *self, GabbleHandle handle,
                              guint timeout,
-                             GabbleVCardLookupCb callback, gpointer user_data,
+                             GabbleVCardManagerCb callback, gpointer user_data,
                              GObject *object, GError **error)
 {
-  GabbleVCardLookupPrivate *priv = GABBLE_VCARD_LOOKUP_GET_PRIVATE (self);
-  GabbleVCardLookupRequest *request;
+  GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (self);
+  GabbleVCardManagerRequest *request;
   LmMessage *msg;
   LmMessageNode *lm_node;
   const gchar *jid;
 
   if (timeout == 0) timeout = DEFAULT_REQUEST_TIMEOUT;
 
-  request = g_new0 (GabbleVCardLookupRequest, 1);
-  request->lookup = self;
+  request = g_new0 (GabbleVCardManagerRequest, 1);
+  request->manager = self;
   request->handle = handle;
   request->callback = callback;
   request->user_data = user_data;
@@ -445,27 +445,27 @@ gabble_vcard_lookup_request (GabbleVCardLookup *self, GabbleHandle handle,
     }
 }
 
-GabbleVCardLookupRequest *
-gabble_vcard_lookup_replace (GabbleVCardLookup *self,
+GabbleVCardManagerRequest *
+gabble_vcard_manager_replace (GabbleVCardManager *self,
                              LmMessageNode *replacement, guint timeout,
-                             GabbleVCardLookupCb callback, gpointer user_data,
+                             GabbleVCardManagerCb callback, gpointer user_data,
                              GObject *object, GError **error)
 {
   return NULL;
 }
 
-GabbleVCardLookupRequest *
-gabble_vcard_lookup_edit (GabbleVCardLookup *self,
+GabbleVCardManagerRequest *
+gabble_vcard_manager_edit (GabbleVCardManager *self,
                           guint timeout,
-                          GabbleVCardLookupCb callback, gpointer user_data,
+                          GabbleVCardManagerCb callback, gpointer user_data,
                           GObject *object, GError **error,
                           ...)
 {
   va_list ap;
   size_t i, argc;
-  GabbleVCardLookupRequest *request;
+  GabbleVCardManagerRequest *request;
 
-  request = g_new0 (GabbleVCardLookupRequest, 1);
+  request = g_new0 (GabbleVCardManagerRequest, 1);
 
   argc = 0;
   va_start (ap, error);
@@ -490,15 +490,15 @@ gabble_vcard_lookup_edit (GabbleVCardLookup *self,
 }
 
 void
-gabble_vcard_lookup_cancel_request (GabbleVCardLookup *lookup,
-                                    GabbleVCardLookupRequest *request)
+gabble_vcard_manager_cancel_request (GabbleVCardManager *manager,
+                                    GabbleVCardManagerRequest *request)
 {
-  GabbleVCardLookupPrivate *priv;
+  GabbleVCardManagerPrivate *priv;
 
-  g_return_if_fail (GABBLE_IS_VCARD_LOOKUP (lookup));
+  g_return_if_fail (GABBLE_IS_VCARD_MANAGER (manager));
   g_return_if_fail (NULL != request);
 
-  priv = GABBLE_VCARD_LOOKUP_GET_PRIVATE (lookup);
+  priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (manager);
 
   g_return_if_fail (NULL != g_list_find (priv->requests, request));
 
@@ -510,17 +510,17 @@ gabble_vcard_lookup_cancel_request (GabbleVCardLookup *lookup,
  * if any. If there is no cached alias, return NULL.
  */
 const gchar *
-gabble_vcard_lookup_get_cached_alias (GabbleVCardLookup *lookup,
+gabble_vcard_manager_get_cached_alias (GabbleVCardManager *manager,
                                       GabbleHandle handle)
 {
-  GabbleVCardLookupPrivate *priv;
+  GabbleVCardManagerPrivate *priv;
 
-  g_return_val_if_fail (GABBLE_IS_VCARD_LOOKUP (lookup), NULL);
+  g_return_val_if_fail (GABBLE_IS_VCARD_MANAGER (manager), NULL);
 
-  priv = GABBLE_VCARD_LOOKUP_GET_PRIVATE (lookup);
+  priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (manager);
 
   return gabble_handle_get_qdata (priv->connection->handles,
                                   TP_HANDLE_TYPE_CONTACT,
                                   handle,
-                                  gabble_vcard_lookup_cache_quark());
+                                  gabble_vcard_manager_cache_quark());
 }

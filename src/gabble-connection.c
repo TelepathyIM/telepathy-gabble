@@ -281,8 +281,8 @@ gabble_connection_init (GabbleConnection *self)
   self->status = TP_CONN_STATUS_DISCONNECTED;
   self->handles = gabble_handle_repo_new ();
   self->disco = gabble_disco_new (self);
-  self->vcard_lookup = gabble_vcard_lookup_new (self);
-  g_signal_connect (self->vcard_lookup, "nickname-update", G_CALLBACK
+  self->vcard_manager = gabble_vcard_manager_new (self);
+  g_signal_connect (self->vcard_manager, "nickname-update", G_CALLBACK
       (connection_nickname_update_cb), self);
 
   self->presence_cache = gabble_presence_cache_new (self);
@@ -871,8 +871,8 @@ gabble_connection_dispose (GObject *object)
   g_object_unref (self->disco);
   self->disco = NULL;
 
-  g_object_unref (self->vcard_lookup);
-  self->vcard_lookup = NULL;
+  g_object_unref (self->vcard_manager);
+  self->vcard_manager = NULL;
 
   g_object_unref (self->presence_cache);
   self->presence_cache = NULL;
@@ -1850,7 +1850,7 @@ _gabble_connection_get_cached_alias (GabbleConnection *conn,
     }
 
   /* if we've seen a nickname in their vCard, use that */
-  tmp = gabble_vcard_lookup_get_cached_alias (conn->vcard_lookup, handle);
+  tmp = gabble_vcard_manager_get_cached_alias (conn->vcard_manager, handle);
   if (NULL != tmp)
     {
       ret = GABBLE_CONNECTION_ALIAS_FROM_VCARD;
@@ -1920,7 +1920,7 @@ connection_nickname_update_cb (GObject *object,
     {
       signal_source = GABBLE_CONNECTION_ALIAS_FROM_PRESENCE;
     }
-   else if (object == G_OBJECT (conn->vcard_lookup))
+   else if (object == G_OBJECT (conn->vcard_manager))
      {
        signal_source = GABBLE_CONNECTION_ALIAS_FROM_VCARD;
      }

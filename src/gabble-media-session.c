@@ -1246,6 +1246,45 @@ static void
 try_content_accept (GabbleMediaSession *session,
                     GabbleMediaStream *stream)
 {
+  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+  gchar *name;
+  LmMessage *msg;
+  LmMessageNode *session_node;
+  AddDescriptionsData data;
+
+  g_assert (priv->accepted);
+  g_assert (priv->mode == MODE_JINGLE);
+
+  g_object_get (stream, "name", &name, NULL);
+
+  /* TODO: check for stream being accepted locally, assume yes atm */
+
+  if (_stream_not_ready_for_accept (name, stream, session))
+    {
+      GMS_DEBUG_INFO (session, "not sending content-accept yet, stream %s "
+          "is disconnected or missing local codecs", name);
+      g_free (name);
+      return;
+    }
+
+  /* send a content acceptance message */
+  msg = _gabble_media_session_message_new (session, "content-accept",
+      &session_node);
+
+  data.session = session;
+  data.session_node = session_node;
+
+  _add_content_descriptions_one (name, stream, &data);
+
+  GMS_DEBUG_INFO (session, "sending jingle session action \"content-accept\" "
+      "to peer for stream %s", name);
+
+  g_free (name);
+
+  _gabble_connection_send_with_reply (priv->conn, msg, accept_msg_reply_cb,
+                                      G_OBJECT (session), NULL, NULL);
+
+  lm_message_unref (msg);
 }
 
 static LmHandlerResult

@@ -1044,25 +1044,29 @@ push_candidate (GabbleMediaStream *stream, GValueArray *candidate)
   GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
   LmMessage *msg;
   LmMessageNode *content_node, *transport_node;
+  const gchar *action;
+
+  if (priv->mode == MODE_GOOGLE)
+    action = "candidates";
+  else
+    action = "transport-info";
 
   /* construct a base message */
-  msg = _gabble_media_stream_message_new (stream,
-      (priv->mode == MODE_GOOGLE) ? "candidates" : "transport-info",
-      &content_node);
+  msg = _gabble_media_stream_message_new (stream, action, &content_node);
 
   /* for jingle, add a transport */
-  transport_node = _gabble_media_stream_content_node_add_transport (
-      stream, content_node);
+  transport_node = _gabble_media_stream_content_node_add_transport (stream,
+      content_node);
 
   /* add transport info to it */
   _add_rtp_candidate_node (priv->session, transport_node, candidate);
 
-  GMS_DEBUG_INFO (priv->session,
-    "sending jingle session action \"candidates\" to peer");
+  GMS_DEBUG_INFO (priv->session, "sending jingle session action \"%s\" to "
+      "peer", action);
 
   /* send it */
-  _gabble_connection_send_with_reply (priv->conn, msg,
-    candidates_msg_reply_cb, G_OBJECT (stream), NULL, NULL);
+  _gabble_connection_send_with_reply (priv->conn, msg, candidates_msg_reply_cb,
+      G_OBJECT (stream), NULL, NULL);
 
   /* clean up */
   lm_message_unref (msg);

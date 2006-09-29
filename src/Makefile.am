@@ -121,8 +121,6 @@ CORE_SOURCES = \
     tp-channel-factory-iface.c \
     util.h \
     util.c \
-    vcard.h \
-    vcard.c \
     vcard-manager.h \
     vcard-manager.c \
     $(BUILT_SOURCES)

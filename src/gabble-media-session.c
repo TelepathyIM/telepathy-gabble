@@ -1413,7 +1413,7 @@ do_content_add (GabbleMediaSession *session,
 
   g_object_get (stream, "name", &name, NULL);
 
-  if (!_stream_not_ready_for_initiate (name, stream, session))
+  if (_stream_not_ready_for_initiate (name, stream, session))
     {
       GMS_DEBUG_ERROR (session, "trying to send content-add for stream %s "
           "but we have no local codecs. what?!", name);

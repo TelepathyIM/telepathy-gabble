@@ -53,6 +53,7 @@ GabbleHandle gabble_handle_for_contact (GabbleHandleRepo *repo, const char *jid,
 gboolean gabble_handle_for_room_exists (GabbleHandleRepo *repo, const gchar *jid, gboolean ignore_nick);
 GabbleHandle gabble_handle_for_room (GabbleHandleRepo *repo, const gchar *jid);
 GabbleHandle gabble_handle_for_list (GabbleHandleRepo *repo, const gchar *list);
+GabbleHandle gabble_handle_for_group (GabbleHandleRepo *repo, const gchar *group);
 
 gboolean gabble_handle_set_qdata (GabbleHandleRepo *repo, TpHandleType type,
     GabbleHandle handle, GQuark key_id, gpointer data, GDestroyNotify destroy);

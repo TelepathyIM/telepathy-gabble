@@ -74,16 +74,25 @@ struct _GabbleHandlePriv
 struct _GabbleHandleRepo
 {
   GHashTable *contact_handles;
-  GHashTable *room_handles;
-  GData *list_handles;
   GHashTable *contact_strings;
-  GHashTable *room_strings;
   GHeap *free_contact_handles;
-  GHeap *free_room_handles;
   guint contact_serial;
-  guint room_serial;
   GData *client_contact_handle_sets;
+
+  GHashTable *room_handles;
+  GHashTable *room_strings;
+  GHeap *free_room_handles;
+  guint room_serial;
   GData *client_room_handle_sets;
+
+  GHashTable *group_handles;
+  GHashTable *group_strings;
+  GHeap *free_group_handles;
+  guint group_serial;
+  GData *client_group_handle_sets;
+
+  GData *list_handles;
+
   DBusGProxy *bus_service_proxy;
 };
 
@@ -143,6 +152,9 @@ handle_priv_lookup (GabbleHandleRepo *repo,
     case TP_HANDLE_TYPE_LIST:
       priv = g_datalist_id_get_data (&repo->list_handles, handle);
       break;
+    case TP_HANDLE_TYPE_GROUP:
+      priv = g_hash_table_lookup (repo->group_handles, GINT_TO_POINTER (handle));
+      break;
     default:
       g_assert_not_reached();
     }
@@ -170,6 +182,12 @@ gabble_handle_alloc (GabbleHandleRepo *repo, TpHandleType type)
         ret = GPOINTER_TO_UINT (g_heap_extract_first (repo->free_room_handles));
       else
         ret = repo->room_serial++;
+      break;
+    case TP_HANDLE_TYPE_GROUP:
+      if (g_heap_size (repo->free_group_handles))
+        ret = GPOINTER_TO_UINT (g_heap_extract_first (repo->free_group_handles));
+      else
+        ret = repo->group_serial++;
       break;
     default:
       g_assert_not_reached();
@@ -225,6 +243,14 @@ handle_priv_remove (GabbleHandleRepo *repo,
     case TP_HANDLE_TYPE_LIST:
       g_dataset_id_remove_data (&repo->list_handles, handle);
       break;
+    case TP_HANDLE_TYPE_GROUP:
+      g_hash_table_remove (repo->group_strings, string);
+      g_hash_table_remove (repo->group_handles, GINT_TO_POINTER (handle));
+      if (handle == repo->group_serial-1)
+        repo->group_serial--;
+      else
+        g_heap_add (repo->free_group_handles, GUINT_TO_POINTER (handle));
+      break;
     default:
       g_assert_not_reached ();
     }
@@ -245,6 +271,7 @@ handles_name_owner_changed_cb (DBusGProxy *proxy,
         {
           g_datalist_remove_data (&repo->client_contact_handle_sets, old_owner);
           g_datalist_remove_data (&repo->client_room_handle_sets, old_owner);
+          g_datalist_remove_data (&repo->client_group_handle_sets, old_owner);
         }
     }
 }
@@ -289,7 +316,7 @@ gabble_handle_type_is_valid (TpHandleType type, GError **error)
 {
   gboolean ret;
 
-  if (type > TP_HANDLE_TYPE_NONE && type <= TP_HANDLE_TYPE_LIST)
+  if (type > TP_HANDLE_TYPE_NONE && type <= LAST_TP_HANDLE_TYPE)
     {
       ret = TRUE;
     }
@@ -311,18 +338,24 @@ gabble_handle_repo_new ()
 
   repo = g_new0 (GabbleHandleRepo, 1);
 
-  repo->contact_handles = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL, (GDestroyNotify) handle_priv_free);
-
-  repo->room_handles = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL, (GDestroyNotify) handle_priv_free);
+  repo->contact_handles = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+      NULL, (GDestroyNotify) handle_priv_free);
+  repo->room_handles = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+      NULL, (GDestroyNotify) handle_priv_free);
+  repo->group_handles = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+      NULL, (GDestroyNotify) handle_priv_free);
 
   repo->contact_strings = g_hash_table_new (g_str_hash, g_str_equal);
   repo->room_strings = g_hash_table_new (g_str_hash, g_str_equal);
+  repo->group_strings = g_hash_table_new (g_str_hash, g_str_equal);
 
   repo->free_contact_handles = g_heap_new (handle_compare_func);
   repo->free_room_handles = g_heap_new (handle_compare_func);
+  repo->free_group_handles = g_heap_new (handle_compare_func);
 
   repo->contact_serial = 1;
   repo->room_serial = 1;
+  repo->group_serial = 1;
 
   g_datalist_init (&repo->list_handles);
 
@@ -344,6 +377,7 @@ gabble_handle_repo_new ()
 
   g_datalist_init (&repo->client_contact_handle_sets);
   g_datalist_init (&repo->client_room_handle_sets);
+  g_datalist_init (&repo->client_group_handle_sets);
 
   repo->bus_service_proxy = dbus_g_proxy_new_for_name (tp_get_bus(),
                                                        DBUS_SERVICE_DBUS,
@@ -401,6 +435,8 @@ handle_leak_debug_print_report (GabbleHandleRepo *repo)
   g_hash_table_foreach (repo->contact_handles, handle_leak_debug_printhandles_foreach, NULL);
   printf ("The following room handles were not freed:\n");
   g_hash_table_foreach (repo->room_handles, handle_leak_debug_printhandles_foreach, NULL);
+  printf ("The following group handles were not freed:\n");
+  g_hash_table_foreach (repo->group_handles, handle_leak_debug_printhandles_foreach, NULL);
 }
 
 static HandleLeakTrace *
@@ -430,11 +466,14 @@ gabble_handle_repo_destroy (GabbleHandleRepo *repo)
   g_assert (repo != NULL);
   g_assert (repo->contact_handles);
   g_assert (repo->room_handles);
+  g_assert (repo->group_handles);
   g_assert (repo->contact_strings);
   g_assert (repo->room_strings);
+  g_assert (repo->group_strings);
 
   g_datalist_clear (&repo->client_contact_handle_sets);
   g_datalist_clear (&repo->client_room_handle_sets);
+  g_datalist_clear (&repo->client_group_handle_sets);
 
 #ifdef ENABLE_HANDLE_LEAK_DEBUG
   handle_leak_debug_print_report (repo);
@@ -442,10 +481,13 @@ gabble_handle_repo_destroy (GabbleHandleRepo *repo)
 
   g_hash_table_destroy (repo->contact_handles);
   g_hash_table_destroy (repo->room_handles);
+  g_hash_table_destroy (repo->group_handles);
   g_hash_table_destroy (repo->contact_strings);
   g_hash_table_destroy (repo->room_strings);
+  g_hash_table_destroy (repo->group_strings);
   g_heap_destroy (repo->free_contact_handles);
   g_heap_destroy (repo->free_room_handles);
+  g_heap_destroy (repo->free_group_handles);
   g_datalist_clear (&repo->list_handles);
 
   dbus_g_proxy_disconnect_signal (repo->bus_service_proxy,
@@ -767,6 +809,32 @@ gabble_handle_for_list (GabbleHandleRepo *repo,
   return handle;
 }
 
+GabbleHandle
+gabble_handle_for_group (GabbleHandleRepo *repo,
+                         const gchar *group)
+{
+  GabbleHandle handle;
+
+  g_assert (repo != NULL);
+  g_assert (group != NULL);
+  g_assert (*group != '\0');
+
+  handle = GPOINTER_TO_UINT (g_hash_table_lookup (repo->group_strings, group));
+
+  if (handle == 0)
+    {
+      GabbleHandlePriv *priv;
+      handle = gabble_handle_alloc (repo, TP_HANDLE_TYPE_GROUP);
+      priv = handle_priv_new ();
+      priv->string = g_strdup (group);
+      g_hash_table_insert (repo->group_handles, GUINT_TO_POINTER (handle), priv);
+      g_hash_table_insert (repo->group_strings, priv->string, GUINT_TO_POINTER (handle));
+      HANDLE_LEAK_DEBUG_DO (priv->traces);
+    }
+
+  return handle;
+}
+
 /**
  * gabble_handle_set_qdata:
  * @repo: A #GabbleHandleRepo
@@ -855,6 +923,9 @@ gabble_handle_client_hold (GabbleHandleRepo *repo,
     case TP_HANDLE_TYPE_LIST:
       /* no-op */
       return TRUE;
+    case TP_HANDLE_TYPE_GROUP:
+      handle_set_list = &repo->client_group_handle_sets;
+      break;
     default:
       g_critical ("%s: called with invalid handle type %u", G_STRFUNC, type);
       g_set_error (error, TELEPATHY_ERRORS, InvalidArgument,
@@ -921,6 +992,9 @@ gabble_handle_client_release (GabbleHandleRepo *repo,
     case TP_HANDLE_TYPE_LIST:
       /* no-op */
       return TRUE;
+    case TP_HANDLE_TYPE_GROUP:
+      handle_set_list = &repo->client_group_handle_sets;
+      break;
     default:
       g_critical ("%s: called with invalid handle type %u", G_STRFUNC, type);
       g_set_error (error, TELEPATHY_ERRORS, InvalidArgument,

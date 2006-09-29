@@ -146,7 +146,9 @@ gabble_presence_resource_has_caps (GabblePresence *presence,
 }
 
 void
-gabble_presence_set_capabilities (GabblePresence *presence, const gchar *resource, GabblePresenceCapabilities caps)
+gabble_presence_set_capabilities (GabblePresence *presence,
+                                  const gchar *resource,
+                                  GabblePresenceCapabilities caps)
 {
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
   GSList *i;
@@ -182,7 +184,11 @@ _find_resource (GabblePresence *presence, const gchar *resource)
 }
 
 gboolean
-gabble_presence_update (GabblePresence *presence, const gchar *resource, GabblePresenceId status, const gchar *status_message, gint8 priority)
+gabble_presence_update (GabblePresence *presence,
+                        const gchar *resource,
+                        GabblePresenceId status,
+                        const gchar *status_message,
+                        gint8 priority)
 {
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
   Resource *res;
@@ -230,7 +236,8 @@ gabble_presence_update (GabblePresence *presence, const gchar *resource, GabbleP
       res->priority = priority;
     }
 
-  /* select the most preferable Resource and update presence->* based on our choice */
+  /* select the most preferable Resource and update presence->* based on our
+   * choice */
   presence->caps = 0;
   presence->status = GABBLE_PRESENCE_OFFLINE;
 

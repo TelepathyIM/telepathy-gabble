@@ -1272,14 +1272,28 @@ content_accept_msg_reply_cb (GabbleConnection *conn,
                              GObject *object,
                              gpointer user_data)
 {
-//  GabbleMediaSession *session = GABBLE_MEDIA_SESSION (user_data);
-//  GabbleMediaStream *stream = GABBLE_MEDIA_STREAM (object);
+  GabbleMediaSession *session = GABBLE_MEDIA_SESSION (user_data);
+  GabbleMediaStream *stream = GABBLE_MEDIA_STREAM (object);
 
-//  MSG_REPLY_CB_END_SESSION_IF_NOT_SUCCESSFUL (session, "accept failed");
+  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
+    {
+      GPtrArray *streams;
 
-//  g_object_set (session, "state", JS_STATE_ACTIVE, NULL);
+      GMS_DEBUG_ERROR (session, "content-accept failed; removing stream");
+      NODE_DEBUG (sent_msg->node, "message sent");
+      NODE_DEBUG (reply_msg->node, "message reply");
 
-  /* TODO: something clever here */
+      streams = g_ptr_array_sized_new (1);
+      g_ptr_array_add (streams, stream);
+      _gabble_media_session_remove_streams (session, streams);
+      g_ptr_array_free (streams, TRUE);
+
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    }
+
+  GMS_DEBUG_INFO (session, "content-accept succeeded; marking stream accepted");
+
+  g_object_set (stream, "jingle-state", JST_STATE_ACCEPTED, NULL);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
@@ -1409,14 +1423,24 @@ content_add_msg_reply_cb (GabbleConnection *conn,
                           GObject *object,
                           gpointer user_data)
 {
-//   GabbleMediaSession *session = GABBLE_MEDIA_SESSION (user_data);
-//   GabbleMediaStream *stream = GABBLE_MEDIA_STREAM (object);
+  GabbleMediaSession *session = GABBLE_MEDIA_SESSION (user_data);
+  GabbleMediaStream *stream = GABBLE_MEDIA_STREAM (object);
 
-//  MSG_REPLY_CB_END_SESSION_IF_NOT_SUCCESSFUL (session, "initiate failed");
+  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
+    {
+      GPtrArray *streams;
 
-//  g_object_set (session, "state", JS_STATE_PENDING_INITIATED, NULL);
+      GMS_DEBUG_ERROR (session, "content-add failed; removing stream");
+      NODE_DEBUG (sent_msg->node, "message sent");
+      NODE_DEBUG (reply_msg->node, "message reply");
 
-  /* TODO: something clever here */
+      streams = g_ptr_array_sized_new (1);
+      g_ptr_array_add (streams, stream);
+      _gabble_media_session_remove_streams (session, streams);
+      g_ptr_array_free (streams, TRUE);
+
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }

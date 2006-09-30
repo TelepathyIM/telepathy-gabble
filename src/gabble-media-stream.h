@@ -26,14 +26,6 @@
 
 G_BEGIN_DECLS
 
-typedef enum {
-    JST_STATE_INVALID = 0,
-    JST_STATE_CREATED,
-    JST_STATE_INITIATED,
-    JST_STATE_PRE_ACCEPTED,
-    JST_STATE_ACCEPTED,
-} JingleStreamState;
-
 typedef struct _GabbleMediaStream GabbleMediaStream;
 typedef struct _GabbleMediaStreamClass GabbleMediaStreamClass;
 

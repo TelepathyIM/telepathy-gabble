@@ -81,8 +81,9 @@ enum
   PROP_INITIATOR,
   PROP_MEDIA_TYPE,
   PROP_CONNECTION_STATE,
-  PROP_JINGLE_STATE,
   PROP_GOT_CODECS,
+  PROP_ACCEPTED,
+  PROP_PLAYING,
   LAST_PROPERTY
 };
 
@@ -102,10 +103,8 @@ struct _GabbleMediaStreamPrivate
 
   TpMediaStreamState connection_state;
 
-  JingleStreamState jingle_state;
-
   gboolean got_local_codecs;
-
+  gboolean accepted;
   gboolean playing;
 
   GValue native_codecs;     /* intersected codec list */
@@ -220,11 +219,14 @@ gabble_media_stream_get_property (GObject    *object,
     case PROP_CONNECTION_STATE:
       g_value_set_uint (value, priv->connection_state);
       break;
-    case PROP_JINGLE_STATE:
-      g_value_set_uint (value, priv->jingle_state);
-      break;
     case PROP_GOT_CODECS:
       g_value_set_boolean (value, priv->got_local_codecs);
+      break;
+    case PROP_ACCEPTED:
+      g_value_set_boolean (value, priv->accepted);
+      break;
+    case PROP_PLAYING:
+      g_value_set_boolean (value, priv->playing);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -232,7 +234,7 @@ gabble_media_stream_get_property (GObject    *object,
   }
 }
 
-static void jingle_state_changed (GabbleMediaStream *stream, JingleStreamState prev_state, JingleStreamState new_state);
+static void _set_playing (GabbleMediaStream *stream, gboolean playing);
 
 static void
 gabble_media_stream_set_property (GObject      *object,
@@ -242,7 +244,6 @@ gabble_media_stream_set_property (GObject      *object,
 {
   GabbleMediaStream *stream = GABBLE_MEDIA_STREAM (object);
   GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
-  JingleStreamState prev_state;
 
   switch (property_id) {
     case PROP_CONNECTION:
@@ -274,15 +275,14 @@ gabble_media_stream_set_property (GObject      *object,
     case PROP_CONNECTION_STATE:
       priv->connection_state = g_value_get_uint (value);
       break;
-    case PROP_JINGLE_STATE:
-      prev_state = priv->jingle_state;
-      priv->jingle_state = g_value_get_uint (value);
-
-      if (priv->jingle_state != prev_state)
-        jingle_state_changed (stream, prev_state, priv->jingle_state);
-      break;
     case PROP_GOT_CODECS:
       priv->got_local_codecs = g_value_get_boolean (value);
+      break;
+    case PROP_ACCEPTED:
+      priv->accepted = g_value_get_boolean (value);
+      break;
+    case PROP_PLAYING:
+      _set_playing (stream, g_value_get_boolean (value));
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -405,18 +405,6 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_CONNECTION_STATE, param_spec);
 
-  param_spec = g_param_spec_uint ("jingle-state", "Jingle stream state",
-                                  "The jingle (signalling) state that the "
-                                  "stream is currently in.",
-                                  JST_STATE_INVALID,
-                                  JST_STATE_ACCEPTED,
-                                  JST_STATE_CREATED,
-                                  G_PARAM_READWRITE |
-                                  G_PARAM_STATIC_NAME |
-                                  G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_JINGLE_STATE,
-                                   param_spec);
-
   param_spec = g_param_spec_boolean ("got-local-codecs", "Got local codecs?",
                                      "A boolean signifying whether we've got "
                                      "the locally supported codecs from the user.",
@@ -425,6 +413,24 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                                      G_PARAM_STATIC_NAME |
                                      G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_GOT_CODECS, param_spec);
+
+  param_spec = g_param_spec_boolean ("accepted", "Got local acceptance?",
+                                     "A boolean signifying whether we've got "
+                                     "an OK for this stream from the user",
+                                     FALSE,
+                                     G_PARAM_READWRITE |
+                                     G_PARAM_STATIC_NAME |
+                                     G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_ACCEPTED, param_spec);
+
+  param_spec = g_param_spec_boolean ("playing", "Set playing",
+                                     "A boolean signifying whether the stream "
+                                     "has been set playing yet.",
+                                     FALSE,
+                                     G_PARAM_READWRITE |
+                                     G_PARAM_STATIC_NAME |
+                                     G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_PLAYING, param_spec);
 
   /* signals exported by D-Bus interface */
   signals[DESTROY] =
@@ -587,25 +593,6 @@ gabble_media_stream_finalize (GObject *object)
 static void push_native_candidates (GabbleMediaStream *stream);
 static void push_remote_codecs (GabbleMediaStream *stream);
 static void push_remote_candidates (GabbleMediaStream *stream);
-static void _set_playing (GabbleMediaStream *stream, gboolean playing);
-
-static void
-jingle_state_changed (GabbleMediaStream *stream,
-                      JingleStreamState prev_state,
-                      JingleStreamState new_state)
-{
-  if (new_state == JST_STATE_PRE_ACCEPTED)
-    {
-      push_native_candidates (stream);
-
-      push_remote_codecs (stream);
-      push_remote_candidates (stream);
-    }
-  else if (new_state == JST_STATE_ACCEPTED)
-    {
-      _set_playing (stream, TRUE);
-    }
-}
 
 /**
  * gabble_media_stream_codec_choice
@@ -1083,9 +1070,6 @@ push_native_candidates (GabbleMediaStream *stream)
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
-  if (priv->jingle_state < JST_STATE_PRE_ACCEPTED)
-    return;
-
   candidates = g_value_get_boxed (&priv->native_candidates);
 
   for (i = 0; i < candidates->len; i++)
@@ -1233,7 +1217,7 @@ push_remote_codecs (GabbleMediaStream *stream)
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
-  if (!priv->got_local_codecs || priv->jingle_state < JST_STATE_PRE_ACCEPTED)
+  if (!priv->got_local_codecs)
     return;
 
   codecs = g_value_get_boxed (&priv->remote_codecs);
@@ -1455,7 +1439,7 @@ push_remote_candidates (GabbleMediaStream *stream)
   if (candidates->len == 0)
     return;
 
-  if (!priv->got_local_codecs || priv->jingle_state < JST_STATE_PRE_ACCEPTED)
+  if (!priv->got_local_codecs)
     return;
 
   for (i = 0; i < candidates->len; i++)
@@ -1650,8 +1634,6 @@ _set_playing (GabbleMediaStream *stream, gboolean playing)
   GabbleMediaStreamPrivate *priv;
   g_assert (GABBLE_IS_MEDIA_STREAM (stream));
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
-
-  g_assert (priv->jingle_state == JST_STATE_ACCEPTED);
 
   priv->playing = playing;
 

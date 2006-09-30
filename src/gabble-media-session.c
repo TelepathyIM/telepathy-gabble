@@ -100,7 +100,6 @@ struct _GabbleMediaSessionPrivate
   JingleSessionState state;
 
   gboolean ready;
-  gboolean accepted;
 
   guint timer_id;
 
@@ -706,7 +705,13 @@ _handle_create (GabbleMediaSession *session,
   stream = create_media_stream (session, stream_name, INITIATOR_REMOTE,
                                 stream_type);
 
-  g_object_set (stream, "jingle-state", JST_STATE_PRE_ACCEPTED, NULL);
+  if (priv->state == JS_STATE_ACTIVE)
+    {
+      GMS_DEBUG_INFO (session, "automatically marking stream %s as locally "
+          "accepted", stream_name);
+
+      g_object_set (stream, "accepted", TRUE, NULL);
+    }
 
   return TRUE;
 }
@@ -728,7 +733,7 @@ _handle_accept (GabbleMediaSession *session,
       return FALSE;
     }
 
-  g_object_set (stream, "jingle-state", JST_STATE_ACCEPTED, NULL);
+  g_object_set (stream, "playing", TRUE, NULL);
 
   return TRUE;
 }
@@ -1133,6 +1138,25 @@ session_state_changed (GabbleMediaSession *session,
     }
 }
 
+static void
+_set_streams_playing_one (const gchar *name,
+                          GabbleMediaStream *stream,
+                          GabbleMediaSession *session)
+{
+  GMS_DEBUG_INFO (session, "setting stream %s as playing", name);
+
+  g_object_set (stream, "playing", TRUE, NULL);
+}
+
+void
+_set_streams_playing (GabbleMediaSession *session)
+{
+  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+
+  g_hash_table_foreach (priv->streams, (GHFunc) _set_streams_playing_one,
+      session);
+}
+
 typedef struct _AddDescriptionsData AddDescriptionsData;
 
 struct _AddDescriptionsData {
@@ -1198,11 +1222,14 @@ _stream_not_ready_for_accept (const gchar *name,
                               GabbleMediaSession *session)
 {
   TpMediaStreamState connection_state;
-  gboolean got_local_codecs;
+  JingleInitiator stream_initiator;
+  gboolean got_local_codecs, accepted;
 
   g_object_get (stream,
                 "got-local-codecs", &got_local_codecs,
+                "accepted", &accepted,
                 "connection-state", &connection_state,
+                "initiator", &stream_initiator,
                 NULL);
 
   if (!got_local_codecs)
@@ -1220,6 +1247,14 @@ _stream_not_ready_for_accept (const gchar *name,
       return TRUE;
     }
 
+  if (stream_initiator == INITIATOR_REMOTE && !accepted)
+    {
+      GMS_DEBUG_INFO (session, "stream %s was initiated remotely, but has not "
+          "yet been accepted locally", name);
+
+      return TRUE;
+    }
+
   return FALSE;
 }
 
@@ -1231,18 +1266,12 @@ try_session_accept (GabbleMediaSession *session)
   LmMessageNode *session_node;
   const gchar *action;
 
-  if (!priv->accepted)
-    {
-      GMS_DEBUG_INFO (session, "not sending accept yet, waiting for "
-          "local user to accept call");
-      return;
-    }
-
   if (g_hash_table_find (priv->streams, (GHRFunc) _stream_not_ready_for_accept,
         session) != NULL)
     {
-      GMS_DEBUG_INFO (session, "not sending accept yet, found a stream "
-          "which was disconnected or missing local codecs");
+      GMS_DEBUG_INFO (session, "not sending accept yet, found a stream which "
+          "was not yet connected, missing local codecs or not locally "
+          "accepted");
       return;
     }
 
@@ -1256,13 +1285,17 @@ try_session_accept (GabbleMediaSession *session)
 
   _add_content_descriptions (session, session_node);
 
-  GMS_DEBUG_INFO (session, "sending jingle session action \"%s\" to peer", action);
+  GMS_DEBUG_INFO (session, "sending jingle session action \"%s\" to peer",
+      action);
 
   /* send the final acceptance message */
   _gabble_connection_send_with_reply (priv->conn, msg, accept_msg_reply_cb,
                                       G_OBJECT (session), NULL, NULL);
 
   lm_message_unref (msg);
+
+  /* set streams playing */
+  _set_streams_playing (session);
 }
 
 static LmHandlerResult
@@ -1291,10 +1324,6 @@ content_accept_msg_reply_cb (GabbleConnection *conn,
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 
-  GMS_DEBUG_INFO (session, "content-accept succeeded; marking stream accepted");
-
-  g_object_set (stream, "jingle-state", JST_STATE_ACCEPTED, NULL);
-
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
@@ -1312,8 +1341,6 @@ try_content_accept (GabbleMediaSession *session,
   g_assert (priv->mode == MODE_JINGLE);
 
   g_object_get (stream, "name", &name, NULL);
-
-  /* TODO: check for stream being accepted locally, assume yes atm */
 
   if (_stream_not_ready_for_accept (name, stream, session))
     {
@@ -1341,6 +1368,9 @@ try_content_accept (GabbleMediaSession *session,
       content_accept_msg_reply_cb, G_OBJECT (stream), session, NULL);
 
   lm_message_unref (msg);
+
+  /* set stream playing */
+  g_object_set (stream, "playing", TRUE, NULL);
 }
 
 static LmHandlerResult
@@ -1514,8 +1544,8 @@ stream_connection_state_changed_cb (GabbleMediaStream *stream,
   GabbleMediaSessionPrivate *priv;
   TpMediaStreamState connection_state;
   JingleInitiator stream_initiator;
-  JingleStreamState stream_state;
   gchar *name;
+  gboolean playing;
 
   g_assert (GABBLE_IS_MEDIA_SESSION (session));
 
@@ -1524,8 +1554,8 @@ stream_connection_state_changed_cb (GabbleMediaStream *stream,
   g_object_get (stream,
                 "connection-state", &connection_state,
                 "initiator", &stream_initiator,
-                "jingle-state", &stream_state,
                 "name", &name,
+                "playing", &playing,
                 NULL);
 
   if (connection_state != TP_MEDIA_STREAM_STATE_CONNECTED)
@@ -1534,9 +1564,9 @@ stream_connection_state_changed_cb (GabbleMediaStream *stream,
   GMS_DEBUG_INFO (session, "stream %s has gone connected", name);
   g_free (name);
 
-  if (stream_state == JST_STATE_ACCEPTED)
+  if (playing)
     {
-      GMS_DEBUG_INFO (session, "doing nothing, stream is already accepted");
+      GMS_DEBUG_INFO (session, "doing nothing, stream is already playing");
       return;
     }
 
@@ -1575,9 +1605,8 @@ stream_got_local_codecs_changed_cb (GabbleMediaStream *stream,
                                     GabbleMediaSession *session)
 {
   GabbleMediaSessionPrivate *priv;
-  gboolean got_local_codecs;
+  gboolean got_local_codecs, playing;
   JingleInitiator stream_initiator;
-  JingleStreamState stream_state;
   gchar *name;
 
   g_assert (GABBLE_IS_MEDIA_SESSION (session));
@@ -1587,8 +1616,8 @@ stream_got_local_codecs_changed_cb (GabbleMediaStream *stream,
   g_object_get (stream,
                 "got-local-codecs", &got_local_codecs,
                 "initiator", &stream_initiator,
-                "jingle-state", &stream_state,
                 "name", &name,
+                "playing", &playing,
                 NULL);
 
   if (!got_local_codecs)
@@ -1597,9 +1626,9 @@ stream_got_local_codecs_changed_cb (GabbleMediaStream *stream,
   GMS_DEBUG_INFO (session, "stream %s has got local codecs", name);
   g_free (name);
 
-  if (stream_state == JST_STATE_ACCEPTED)
+  if (playing)
     {
-      GMS_DEBUG_ERROR (session, "stream was already accepted and we got local "
+      GMS_DEBUG_ERROR (session, "stream was already playing and we got local "
           "codecs. what?!");
       g_assert_not_reached ();
       return;
@@ -1727,9 +1756,9 @@ _local_accept_stream (const gchar *name,
                       GabbleMediaStream *stream,
                       GabbleMediaSession *session)
 {
-  GMS_DEBUG_INFO (session, "marking stream %s as accepted", name);
+  GMS_DEBUG_INFO (session, "marking stream %s as locally accepted", name);
 
-  g_object_set (stream, "jingle-state", JST_STATE_ACCEPTED, NULL);
+  g_object_set (stream, "accepted", TRUE, NULL);
 }
 
 void
@@ -1737,11 +1766,9 @@ _gabble_media_session_accept (GabbleMediaSession *session)
 {
   GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
 
-  priv->accepted = TRUE;
+  g_hash_table_foreach (priv->streams, (GHFunc) _local_accept_stream, session);
 
   try_session_accept (session);
-
-  g_hash_table_foreach (priv->streams, (GHFunc) _local_accept_stream, session);
 }
 
 /* for when you want the reply to be removed from
@@ -2177,8 +2204,6 @@ _gabble_media_session_request_streams (GabbleMediaSession *session,
       stream_name = _name_stream (session, media_type);
       stream = create_media_stream (session, stream_name, INITIATOR_LOCAL,
                                     media_type);
-
-      g_object_set (stream, "jingle-state", JST_STATE_PRE_ACCEPTED, NULL);
 
       g_ptr_array_add (*ret, stream);
     }

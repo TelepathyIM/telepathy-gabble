@@ -215,6 +215,34 @@ gabble_vcard_manager_finalize (GObject *object)
   G_OBJECT_CLASS (gabble_vcard_manager_parent_class)->finalize (object);
 }
 
+static void
+status_changed_cb (GObject *object,
+                   guint status,
+                   guint reason,
+                   gpointer user_data)
+{
+  GabbleVCardManager *self = GABBLE_VCARD_MANAGER (user_data);
+  GabbleConnection *conn = GABBLE_CONNECTION (object);
+
+  if (status == TP_CONN_STATUS_CONNECTED)
+    {
+      gchar *alias;
+      GabbleConnectionAliasSource alias_src;
+
+      /* if we have an alias, patch it into our vCard on the server */
+      alias_src = _gabble_connection_get_cached_alias (conn,
+                                                       conn->self_handle,
+                                                       &alias);
+      if (alias_src > GABBLE_CONNECTION_ALIAS_FROM_VCARD)
+        {
+          /* ignore errors, just kick off the request in the background */
+          gabble_vcard_manager_edit (self, 0, NULL, NULL, G_OBJECT (conn),
+                                     NULL, "NICKNAME", alias, NULL);
+        }
+
+      g_free(alias);
+    }
+}
 
 /**
  * gabble_vcard_manager_new:
@@ -226,8 +254,14 @@ gabble_vcard_manager_finalize (GObject *object)
 GabbleVCardManager *
 gabble_vcard_manager_new (GabbleConnection *conn)
 {
+  GabbleVCardManager *self;
+
   g_return_val_if_fail (GABBLE_IS_CONNECTION (conn), NULL);
-  return GABBLE_VCARD_MANAGER (g_object_new (GABBLE_TYPE_VCARD_MANAGER, "connection", conn, NULL));
+
+  self = GABBLE_VCARD_MANAGER (g_object_new (GABBLE_TYPE_VCARD_MANAGER, "connection", conn, NULL));
+  g_signal_connect (conn, "status-changed",
+                    G_CALLBACK (status_changed_cb), self);
+  return self;
 }
 
 static void notify_delete_request (gpointer data, GObject *obj);

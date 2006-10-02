@@ -39,9 +39,6 @@
 #include "util.h"
 #include "libmd5-rfc/md5.h"
 
-#define NS_NOKIA_IV "about:placeholder-xmlns-for-nokia-iv"
-#define AUTH_TYPE_NOKIA_IV "nokia-iv"
-
 /* signal enum */
 enum
 {

@@ -229,7 +229,7 @@ status_changed_cb (GObject *object,
       gchar *alias;
       GabbleConnectionAliasSource alias_src;
 
-      /* if we have an alias, patch it into our vCard on the server */
+      /* if we have a better alias, patch it into our vCard on the server */
       alias_src = _gabble_connection_get_cached_alias (conn,
                                                        conn->self_handle,
                                                        &alias);
@@ -238,6 +238,14 @@ status_changed_cb (GObject *object,
           /* ignore errors, just kick off the request in the background */
           gabble_vcard_manager_edit (self, 0, NULL, NULL, G_OBJECT (conn),
                                      NULL, "NICKNAME", alias, NULL);
+        }
+      else
+        {
+          /* find out our own alias, so it's in the cache; again,
+           * there's nothing useful we can do with errors really
+           */
+          gabble_vcard_manager_request (self, conn->self_handle,
+                                        0, NULL, NULL, NULL, NULL);
         }
 
       g_free(alias);

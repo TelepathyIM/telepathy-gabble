@@ -4501,6 +4501,18 @@ setaliases_foreach (gpointer key, gpointer value, gpointer user_data)
     {
       data->retval = FALSE;
     }
+  else if (data->conn->self_handle == handle)
+    {
+      /* only alter the roster if we're already there, e.g. because someone
+       * added us with another client
+       */
+      if (gabble_roster_handle_has_entry (data->conn->roster, handle)
+          && !gabble_roster_handle_set_name (data->conn->roster, handle,
+                                             alias, data->error))
+        {
+          data->retval = FALSE;
+        }
+    }
   else if (!gabble_roster_handle_set_name (data->conn->roster, handle, alias,
         data->error))
     {

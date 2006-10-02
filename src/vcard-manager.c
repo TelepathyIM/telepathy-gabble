@@ -150,9 +150,9 @@ gabble_vcard_manager_class_init (GabbleVCardManagerClass *gabble_vcard_manager_c
 
 static void
 gabble_vcard_manager_get_property (GObject    *object,
-                                  guint       property_id,
-                                  GValue     *value,
-                                  GParamSpec *pspec)
+                                   guint       property_id,
+                                   GValue     *value,
+                                   GParamSpec *pspec)
 {
   GabbleVCardManager *chan = GABBLE_VCARD_MANAGER (object);
   GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (chan);
@@ -169,9 +169,9 @@ gabble_vcard_manager_get_property (GObject    *object,
 
 static void
 gabble_vcard_manager_set_property (GObject     *object,
-                                  guint        property_id,
-                                  const GValue *value,
-                                  GParamSpec   *pspec)
+                                   guint        property_id,
+                                   const GValue *value,
+                                   GParamSpec   *pspec)
 {
   GabbleVCardManager *chan = GABBLE_VCARD_MANAGER (object);
   GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (chan);
@@ -447,8 +447,11 @@ replace_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 }
 
 static LmHandlerResult
-request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
-                  LmMessage *reply_msg, GObject *object, gpointer user_data)
+request_reply_cb (GabbleConnection *conn,
+                  LmMessage *sent_msg,
+                  LmMessage *reply_msg,
+                  GObject *object,
+                  gpointer user_data)
 {
   GabbleVCardManagerRequest *request = (GabbleVCardManagerRequest*) user_data;
   GabbleVCardManager *manager = GABBLE_VCARD_MANAGER (object);
@@ -570,7 +573,9 @@ request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
  * Frees the @request on error, returns it on success. */
 static GabbleVCardManagerRequest *
 request_send (GabbleVCardManagerRequest *request,
-              LmMessageNode *replacement, const gchar *jid, GError **error)
+              LmMessageNode *replacement,
+              const gchar *jid,
+              GError **error)
 {
   GabbleVCardManager *self = request->manager;
   GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (self);
@@ -625,16 +630,20 @@ notify_delete_request (gpointer data, GObject *obj)
  * operation, which is to update the cached alias.
  */
 GabbleVCardManagerRequest *
-gabble_vcard_manager_request (GabbleVCardManager *self, GabbleHandle handle,
-                             guint timeout,
-                             GabbleVCardManagerCb callback, gpointer user_data,
-                             GObject *object, GError **error)
+gabble_vcard_manager_request (GabbleVCardManager *self,
+                              GabbleHandle handle,
+                              guint timeout,
+                              GabbleVCardManagerCb callback,
+                              gpointer user_data,
+                              GObject *object,
+                              GError **error)
 {
   GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (self);
   GabbleVCardManagerRequest *request;
   const gchar *jid;
 
-  if (timeout == 0) timeout = DEFAULT_REQUEST_TIMEOUT;
+  if (timeout == 0)
+    timeout = DEFAULT_REQUEST_TIMEOUT;
 
   request = g_new0 (GabbleVCardManagerRequest, 1);
   DEBUG ("Created request %p to retrieve <%u>'s vCard",
@@ -667,14 +676,18 @@ gabble_vcard_manager_request (GabbleVCardManager *self, GabbleHandle handle,
 
 GabbleVCardManagerRequest *
 gabble_vcard_manager_replace (GabbleVCardManager *self,
-                             LmMessageNode *replacement, guint timeout,
-                             GabbleVCardManagerCb callback, gpointer user_data,
-                             GObject *object, GError **error)
+                              LmMessageNode *replacement,
+                              guint timeout,
+                              GabbleVCardManagerCb callback,
+                              gpointer user_data,
+                              GObject *object,
+                              GError **error)
 {
   GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (self);
   GabbleVCardManagerRequest *request;
 
-  if (timeout == 0) timeout = DEFAULT_REQUEST_TIMEOUT;
+  if (timeout == 0)
+    timeout = DEFAULT_REQUEST_TIMEOUT;
 
   request = g_new0 (GabbleVCardManagerRequest, 1);
   DEBUG ("Created request %p to replace my vCard",
@@ -698,17 +711,20 @@ gabble_vcard_manager_replace (GabbleVCardManager *self,
 
 GabbleVCardManagerRequest *
 gabble_vcard_manager_edit (GabbleVCardManager *self,
-                          guint timeout,
-                          GabbleVCardManagerCb callback, gpointer user_data,
-                          GObject *object, GError **error,
-                          ...)
+                           guint timeout,
+                           GabbleVCardManagerCb callback,
+                           gpointer user_data,
+                           GObject *object,
+                           GError **error,
+                           ...)
 {
   va_list ap;
   size_t i, argc;
   GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (self);
   GabbleVCardManagerRequest *request;
 
-  if (timeout == 0) timeout = DEFAULT_REQUEST_TIMEOUT;
+  if (timeout == 0)
+    timeout = DEFAULT_REQUEST_TIMEOUT;
 
   request = g_new0 (GabbleVCardManagerRequest, 1);
   DEBUG ("Created request %p to edit my vCard", request);
@@ -750,7 +766,7 @@ gabble_vcard_manager_edit (GabbleVCardManager *self,
 
 void
 gabble_vcard_manager_cancel_request (GabbleVCardManager *manager,
-                                    GabbleVCardManagerRequest *request)
+                                     GabbleVCardManagerRequest *request)
 {
   GabbleVCardManagerPrivate *priv;
 
@@ -770,7 +786,7 @@ gabble_vcard_manager_cancel_request (GabbleVCardManager *manager,
  */
 const gchar *
 gabble_vcard_manager_get_cached_alias (GabbleVCardManager *manager,
-                                      GabbleHandle handle)
+                                       GabbleHandle handle)
 {
   GabbleVCardManagerPrivate *priv;
   const gchar *s;

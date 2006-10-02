@@ -84,9 +84,6 @@ GabbleVCardManager *gabble_vcard_manager_new (GabbleConnection *);
 
 GQuark gabble_vcard_manager_cache_quark (void);
 
-const gchar *gabble_vcard_manager_get_cached_alias (GabbleVCardManager *,
-                                                   GabbleHandle);
-
 GabbleVCardManagerRequest *gabble_vcard_manager_request (GabbleVCardManager *,
                                                        GabbleHandle,
                                                        guint timeout,

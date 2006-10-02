@@ -733,7 +733,7 @@ gabble_vcard_manager_edit (GabbleVCardManager *self,
       argc++;
     }
   va_end (ap);
-  g_assert(argc % 2 == 0);
+  g_return_val_if_fail (argc % 2 == 0, NULL);
 
   request->edit_args = g_new (gchar *, argc + 1);
 

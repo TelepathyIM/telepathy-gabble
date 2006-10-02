@@ -710,7 +710,7 @@ _handle_create (GabbleMediaSession *session,
       GMS_DEBUG_INFO (session, "automatically marking stream %s as locally "
           "accepted", stream_name);
 
-      g_object_set (stream, "accepted", TRUE, NULL);
+      g_object_set (stream, "locally-accepted", TRUE, NULL);
     }
 
   return TRUE;
@@ -1223,11 +1223,11 @@ _stream_not_ready_for_accept (const gchar *name,
 {
   TpMediaStreamState connection_state;
   JingleInitiator stream_initiator;
-  gboolean got_local_codecs, accepted;
+  gboolean got_local_codecs, locally_accepted;
 
   g_object_get (stream,
                 "got-local-codecs", &got_local_codecs,
-                "accepted", &accepted,
+                "locally-accepted", &locally_accepted,
                 "connection-state", &connection_state,
                 "initiator", &stream_initiator,
                 NULL);
@@ -1247,7 +1247,7 @@ _stream_not_ready_for_accept (const gchar *name,
       return TRUE;
     }
 
-  if (stream_initiator == INITIATOR_REMOTE && !accepted)
+  if (stream_initiator == INITIATOR_REMOTE && !locally_accepted)
     {
       GMS_DEBUG_INFO (session, "stream %s was initiated remotely, but has not "
           "yet been accepted locally", name);
@@ -1758,7 +1758,7 @@ _local_accept_stream (const gchar *name,
 {
   GMS_DEBUG_INFO (session, "marking stream %s as locally accepted", name);
 
-  g_object_set (stream, "accepted", TRUE, NULL);
+  g_object_set (stream, "locally-accepted", TRUE, NULL);
 }
 
 void

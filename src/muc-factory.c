@@ -62,6 +62,7 @@ struct _GabbleMucFactoryPrivate
   LmMessageHandler *presence_cb;
 
   GHashTable *channels;
+  GHashTable *disco_requests;
 
   gboolean dispose_has_run;
 };
@@ -77,6 +78,9 @@ gabble_muc_factory_init (GabbleMucFactory *fac)
 
   priv->channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
                                           NULL, g_object_unref);
+
+  priv->disco_requests = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+                                                NULL, NULL);
 
   priv->message_cb = NULL;
   priv->presence_cb = NULL;
@@ -99,6 +103,14 @@ gabble_muc_factory_constructor (GType type, guint n_props,
   return obj;
 }
 
+static void
+cancel_disco_request (gpointer key, gpointer value, gpointer user_data)
+{
+  GabbleDisco *disco = GABBLE_DISCO (user_data);
+  GabbleDiscoRequest *request = (GabbleDiscoRequest *) key;
+
+  gabble_disco_cancel_request (disco, request);
+}
 
 static void
 gabble_muc_factory_dispose (GObject *object)
@@ -113,6 +125,9 @@ gabble_muc_factory_dispose (GObject *object)
   priv->dispose_has_run = TRUE;
 
   tp_channel_factory_iface_close_all (TP_CHANNEL_FACTORY_IFACE (object));
+
+  g_hash_table_foreach (priv->disco_requests, cancel_disco_request, priv->conn->disco);
+  g_hash_table_destroy (priv->disco_requests);
 
   if (G_OBJECT_CLASS (gabble_muc_factory_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_muc_factory_parent_class)->dispose (object);
@@ -297,6 +312,73 @@ new_muc_channel (GabbleMucFactory *fac, GabbleHandle handle)
 }
 
 
+struct DiscoInviteData {
+    GabbleMucFactory *factory;
+    gchar *reason;
+    GabbleHandle inviter;
+};
+
+/**
+ * obsolete_invite_disco_cb:
+ *
+ * Callback for disco request we fired upon encountering obsolete disco.
+ * If the object is in fact MUC room, create a channel for it.
+ */
+void obsolete_invite_disco_cb (GabbleDisco *self,
+                               GabbleDiscoRequest *request,
+                               const gchar *jid,
+                               const gchar *node,
+                               LmMessageNode *query_result,
+                               GError* error,
+                               gpointer user_data)
+{
+  struct DiscoInviteData *data = (struct DiscoInviteData *) user_data;
+
+  GabbleMucFactory *fac = GABBLE_MUC_FACTORY (data->factory);
+  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
+  LmMessageNode *identity;
+  const char *category, *type;
+  GabbleHandle handle;
+
+  g_hash_table_remove (priv->disco_requests, request);
+
+  identity = lm_message_node_get_child (query_result, "identity");
+  if (NULL == identity)
+    return;
+
+  category = lm_message_node_get_attribute (identity, "category");
+  if (NULL == category)
+    return;
+
+  type = lm_message_node_get_attribute (identity, "type");
+  if (NULL == type)
+    return;
+
+  if (0 != strcmp (category, "conference") ||
+      0 != strcmp (type, "text"))
+    {
+      g_debug ("obsolete invite request specified invalid jid '%s', ignoring", jid);
+    }
+
+  /* OK, it's MUC after all, create a new channel */
+  handle = gabble_handle_for_room (priv->conn->handles, jid);
+
+  if (g_hash_table_lookup (priv->channels, GINT_TO_POINTER (handle)) == NULL)
+    {
+      GabbleMucChannel *chan;
+      chan = new_muc_channel (fac, handle);
+      _gabble_muc_channel_handle_invited (chan, data->inviter, data->reason);
+    }
+  else
+    {
+      g_debug ("ignoring invite to a room '%s' we're already in", jid);
+    }
+
+  g_free (data->reason);
+  g_free (data);
+}
+
+
 /**
  * muc_factory_message_cb:
  *
@@ -383,6 +465,51 @@ muc_factory_message_cb (LmMessageHandler *handler,
           return LM_HANDLER_RESULT_REMOVE_MESSAGE;
         }
     }
+  else
+    {
+      GabbleHandle inviter_handle;
+      GabbleDiscoRequest *request;
+      const gchar *reason;
+      struct DiscoInviteData *disco_udata;
+
+      /* check for obsolete invite method */
+      for (node = message->node->children; node; node = node->next)
+        if (strcmp (node->name, "x") == 0)
+          if (_lm_message_node_has_namespace (node, NS_CONFERENCE))
+            break;
+
+      if (!node)
+        return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+
+      /* the room JID is in x */
+      from = lm_message_node_get_attribute (node, "jid");
+      if (!from)
+        return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+
+      /* the inviter JID is in "from" */
+      inviter_handle = gabble_handle_for_contact (priv->conn->handles,
+                                                  from, FALSE);
+
+      /* reason is the body */
+      reason = body;
+
+      disco_udata = g_new0 (struct DiscoInviteData, 1);
+      disco_udata->factory = fac;
+      disco_udata->reason = g_strdup (reason);
+      disco_udata->inviter = inviter_handle;
+
+      HANDLER_DEBUG (message->node, "received obsolete invite method");
+      /* FIXME should we keep track of these so we can cancel/invalidate
+       * them in dispose? */
+
+      request = gabble_disco_request (priv->conn->disco, GABBLE_DISCO_TYPE_INFO,
+          from, NULL, obsolete_invite_disco_cb, disco_udata, G_OBJECT (fac), NULL);
+
+      if (request)
+        g_hash_table_insert (priv->disco_requests, request, NULL);
+
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  }
 
   /* check if a room with the jid exists */
   if (!gabble_handle_for_room_exists (priv->conn->handles, from, TRUE))

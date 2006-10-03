@@ -2240,7 +2240,7 @@ gabble_muc_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *m
   GabbleGroupMixin *mixin;
   const gchar *jid;
   LmMessage *msg;
-  LmMessageNode *x_node, *invite_node, *old_invite_node;
+  LmMessageNode *x_node, *invite_node;
   gboolean result;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (obj));
@@ -2322,11 +2322,6 @@ gabble_muc_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *m
                                TP_HANDLE_TYPE_CONTACT, handle);
 
   lm_message_node_set_attribute (invite_node, "to", jid);
-
-  /* support for older style of invitation */
-  old_invite_node = lm_message_node_add_child (msg->node, "x", NULL);
-  lm_message_node_set_attribute (old_invite_node, "xmlns", NS_CONFERENCE);
-  lm_message_node_set_attribute (old_invite_node, "jid", jid);
 
   if (*message != '\0')
     {

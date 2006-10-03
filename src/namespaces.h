@@ -49,6 +49,7 @@
 #define NS_VCARD_TEMP           "vcard-temp"
 #define NS_X_DATA               "jabber:x:data"
 #define NS_X_DELAY              "jabber:x:delay"
+#define NS_X_CONFERENCE         "jabber:x:conference"
 #define NS_XMPP_STANZAS         "urn:ietf:params:xml:ns:xmpp-stanzas"
 
 #endif /* __GABBLE_NAMESPACES__H__ */

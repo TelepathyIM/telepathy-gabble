@@ -70,6 +70,18 @@ int main(int argc, char **argv)
     PRESENCE_CAP_GOOGLE_VOICE);
   g_assert (0 == strcmp ("foo", resource));
 
+  /* presence turns up from null resource; it trumps other presence regardless
+   * of whether status is more present or not */
+  g_assert (TRUE == gabble_presence_update (presence, NULL,
+    GABBLE_PRESENCE_OFFLINE, "gone", 0));
+  g_assert (GABBLE_PRESENCE_OFFLINE == presence->status);
+  g_assert (0 == strcmp("gone", presence->status_message));
+
+  /* caps are gone too */
+  resource = gabble_presence_pick_resource_by_caps (presence,
+    PRESENCE_CAP_GOOGLE_VOICE);
+  g_assert (NULL == resource);
+
   return 0;
 }
 

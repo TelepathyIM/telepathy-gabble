@@ -42,6 +42,7 @@ struct _Resource {
 typedef struct _GabblePresencePrivate GabblePresencePrivate;
 
 struct _GabblePresencePrivate {
+    gchar *no_resource_status_message;
     GSList *resources;
 };
 
@@ -76,6 +77,7 @@ gabble_presence_finalize (GObject *object)
 
   g_slist_free (priv->resources);
   g_free (presence->nickname);
+  g_free (priv->no_resource_status_message);
 }
 
 static void
@@ -172,13 +174,32 @@ gabble_presence_update (GabblePresence *presence, const gchar *resource, GabbleP
   guint8 prio;
   gboolean ret = FALSE;
 
-  g_assert (NULL != resource);
-
-  res = _find_resource (presence, resource);
-
   /* save our current state */
   old_status = presence->status;
   old_status_message = g_strdup (presence->status_message);
+
+  if (NULL == resource)
+    {
+      /* presence from a JID with no resource: free all resources and set
+       * presence directly */
+
+      for (i = priv->resources; i; i = i->next)
+        _resource_free (i->data);
+
+      g_slist_free (priv->resources);
+      priv->resources = NULL;
+
+      if (g_strdiff (priv->no_resource_status_message, status_message))
+        {
+          g_free (priv->no_resource_status_message);
+          priv->no_resource_status_message = g_strdup (status_message);
+        }
+
+      presence->status = status;
+      presence->status_message = priv->no_resource_status_message;
+    }
+
+  res = _find_resource (presence, resource);
 
   /* remove, create or update a Resource as appropriate */
   if (GABBLE_PRESENCE_OFFLINE == status &&

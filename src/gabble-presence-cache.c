@@ -420,12 +420,6 @@ _parse_presence_message (GabblePresenceCache *cache,
 
   gabble_handle_decode_jid (from, NULL, NULL, &resource);
 
-  if (resource == NULL)
-    {
-      HANDLER_DEBUG (presence_node, "ignoring presence with no resource");
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-    }
-
   presence = gabble_presence_cache_get (cache, handle);
 
   if (NULL != presence)

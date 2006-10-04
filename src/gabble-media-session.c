@@ -2201,7 +2201,11 @@ _gabble_media_session_request_streams (GabbleMediaSession *session,
       GabbleMediaStream *stream;
       const gchar *stream_name;
 
-      stream_name = _name_stream (session, media_type);
+      if (priv->mode == MODE_GOOGLE)
+        stream_name = GTALK_STREAM_NAME;
+      else
+        stream_name = _name_stream (session, media_type);
+
       stream = create_media_stream (session, stream_name, INITIATOR_LOCAL,
                                     media_type);
 

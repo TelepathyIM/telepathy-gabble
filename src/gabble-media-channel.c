@@ -1382,6 +1382,28 @@ stream_state_changed_cb (GabbleMediaStream *stream,
 }
 
 static void
+stream_direction_changed_cb (GabbleMediaStream *stream,
+                             GParamSpec *pspec,
+                             GabbleMediaChannel *chan)
+{
+  guint id;
+  CombinedStreamDirection combined;
+  TpMediaStreamDirection direction;
+  TpMediaStreamPendingSend pending_send;
+
+  g_object_get (stream,
+      "id", &id,
+      "combined-direction", &combined,
+      NULL);
+
+  direction = COMBINED_DIRECTION_GET_DIRECTION (combined);
+  pending_send = COMBINED_DIRECTION_GET_PENDING_SEND (pending_send);
+
+  g_signal_emit (chan, signals[STREAM_DIRECTION_CHANGED], 0, id, direction,
+      pending_send);
+}
+
+static void
 session_stream_added_cb (GabbleMediaSession *session,
                          GabbleMediaStream  *stream,
                          GabbleMediaChannel *chan)
@@ -1400,6 +1422,8 @@ session_stream_added_cb (GabbleMediaSession *session,
                     (GCallback) stream_error_cb, chan);
   g_signal_connect (stream, "notify::connection-state",
                     (GCallback) stream_state_changed_cb, chan);
+  g_signal_connect (stream, "notify::combined-direction",
+                    (GCallback) stream_direction_changed_cb, chan);
 
   /* emit StreamAdded */
   g_object_get (session, "peer", &handle, NULL);

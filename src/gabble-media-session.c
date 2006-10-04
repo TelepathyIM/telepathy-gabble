@@ -185,10 +185,17 @@ create_media_stream (GabbleMediaSession *session,
 
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
 
-  /* assert that we only try to make one audio stream in google mode */
+  /* assert that if we're in google mode:
+   *  - we only try to make one stream
+   *  - it's an audio stream
+   *  - it's called GTALK_STREAM_NAME */
   g_assert (priv->mode != MODE_GOOGLE ||
-      (media_type == TP_MEDIA_STREAM_TYPE_AUDIO &&
-       g_hash_table_size (priv->streams) == 0));
+      g_hash_table_size (priv->streams) == 0);
+  g_assert (priv->mode != MODE_GOOGLE ||
+      media_type == TP_MEDIA_STREAM_TYPE_AUDIO);
+  g_assert (priv->mode != MODE_GOOGLE ||
+      !g_strdiff (name, GTALK_STREAM_NAME));
+
   g_assert (g_hash_table_size (priv->streams) < MAX_STREAMS);
   g_assert (g_hash_table_lookup (priv->streams, name) == NULL);
 

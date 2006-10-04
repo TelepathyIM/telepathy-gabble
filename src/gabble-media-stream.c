@@ -84,6 +84,7 @@ enum
   PROP_GOT_LOCAL_CODECS,
   PROP_LOCALLY_ACCEPTED,
   PROP_PLAYING,
+  PROP_COMBINED_DIRECTION,
   LAST_PROPERTY
 };
 
@@ -106,6 +107,8 @@ struct _GabbleMediaStreamPrivate
   gboolean got_local_codecs;
   gboolean locally_accepted;
   gboolean playing;
+
+  CombinedStreamDirection combined_direction;
 
   GValue native_codecs;     /* intersected codec list */
   GValue native_candidates;
@@ -228,6 +231,9 @@ gabble_media_stream_get_property (GObject    *object,
     case PROP_PLAYING:
       g_value_set_boolean (value, priv->playing);
       break;
+    case PROP_COMBINED_DIRECTION:
+      g_value_set_uint (value, priv->combined_direction);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -283,6 +289,9 @@ gabble_media_stream_set_property (GObject      *object,
       break;
     case PROP_PLAYING:
       _set_playing (stream, g_value_get_boolean (value));
+      break;
+    case PROP_COMBINED_DIRECTION:
+      priv->combined_direction = g_value_get_uint (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -400,6 +409,7 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                                   TP_MEDIA_STREAM_STATE_DISCONNECTED,
                                   TP_MEDIA_STREAM_STATE_CONNECTED,
                                   TP_MEDIA_STREAM_STATE_DISCONNECTED,
+                                  G_PARAM_CONSTRUCT |
                                   G_PARAM_READWRITE |
                                   G_PARAM_STATIC_NAME |
                                   G_PARAM_STATIC_BLURB);
@@ -409,6 +419,7 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                                      "A boolean signifying whether we've got "
                                      "the locally supported codecs from the user.",
                                      FALSE,
+                                     G_PARAM_CONSTRUCT |
                                      G_PARAM_READWRITE |
                                      G_PARAM_STATIC_NAME |
                                      G_PARAM_STATIC_BLURB);
@@ -418,6 +429,7 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                                      "A boolean signifying whether we've got "
                                      "an OK for this stream from the user.",
                                      FALSE,
+                                     G_PARAM_CONSTRUCT |
                                      G_PARAM_READWRITE |
                                      G_PARAM_STATIC_NAME |
                                      G_PARAM_STATIC_BLURB);
@@ -427,10 +439,25 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                                      "A boolean signifying whether the stream "
                                      "has been set playing yet.",
                                      FALSE,
+                                     G_PARAM_CONSTRUCT |
                                      G_PARAM_READWRITE |
                                      G_PARAM_STATIC_NAME |
                                      G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_PLAYING, param_spec);
+
+  param_spec = g_param_spec_uint ("combined-direction",
+      "Combined direction",
+      "An integer indicating the directions the stream currently sends in, "
+      "and the peers who have been asked to send.",
+      TP_MEDIA_STREAM_DIRECTION_NONE,
+      MAKE_COMBINED_DIRECTION (TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL,
+        TP_MEDIA_STREAM_PENDING_LOCAL_SEND |
+        TP_MEDIA_STREAM_PENDING_REMOTE_SEND),
+      TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL,
+      G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_NAME |
+      G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_COMBINED_DIRECTION,
+      param_spec);
 
   /* signals exported by D-Bus interface */
   signals[DESTROY] =

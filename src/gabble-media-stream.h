@@ -87,6 +87,15 @@ GType gabble_media_stream_get_type(void);
 #define TP_TYPE_CODEC_LIST (dbus_g_type_get_collection ("GPtrArray", \
       TP_TYPE_CODEC_STRUCT))
 
+#define COMBINED_DIRECTION_GET_DIRECTION(d) \
+    ((TpMediaStreamDirection) ((d) & TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL))
+#define COMBINED_DIRECTION_GET_PENDING_SEND(d) \
+    ((TpMediaStreamPendingSend) ((d) >> 2))
+#define MAKE_COMBINED_DIRECTION(d, p) \
+    ((CombinedStreamDirection) ((d) | ((p) << 2)))
+
+typedef guint32 CombinedStreamDirection;
+
 gboolean
 gabble_media_stream_codec_choice (GabbleMediaStream *self,
                                   guint codec_id,

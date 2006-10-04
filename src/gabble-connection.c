@@ -998,7 +998,7 @@ _gabble_connection_register (GabbleConnection *conn,
   safe_proto = g_strdup (priv->protocol);
   g_strcanon (safe_proto, allowed_chars, '_');
 
-  unique_name = g_strdup_printf ("%s_%s_%s",
+  unique_name = g_strdup_printf ("_%s_%s_%s",
                                  priv->username,
                                  priv->stream_server,
                                  priv->resource);

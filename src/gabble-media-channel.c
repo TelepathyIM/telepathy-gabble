@@ -42,6 +42,7 @@
 #include "gabble-media-channel-glue.h"
 
 #include "gabble-media-session.h"
+#include "gabble-media-stream.h"
 
 #include "media-factory.h"
 
@@ -877,12 +878,14 @@ make_stream_list (GabbleMediaChannel *self,
       GabbleHandle peer;
       TpCodecMediaType type;
       TpMediaStreamState connection_state;
-      TpMediaStreamDirection direction =
-        TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL; /* FIXME */
-      TpMediaStreamPendingSend pending = TP_MEDIA_STREAM_PENDING_NONE;
+      CombinedStreamDirection combined_direction;
 
-      g_object_get (stream, "id", &id, "media-type", &type,
-                    "connection-state", &connection_state, NULL);
+      g_object_get (stream,
+          "id", &id,
+          "media-type", &type,
+          "connection-state", &connection_state,
+          "combined-direction", &combined_direction,
+          NULL);
 
       g_object_get (priv->session, "peer", &peer, NULL);
 
@@ -895,8 +898,8 @@ make_stream_list (GabbleMediaChannel *self,
           1, peer,
           2, type,
           3, connection_state,
-          4, direction,
-          5, pending,
+          4, COMBINED_DIRECTION_GET_DIRECTION (combined_direction),
+          5, COMBINED_DIRECTION_GET_PENDING_SEND (combined_direction),
           G_MAXUINT);
 
       g_ptr_array_add (ret, g_value_get_boxed (&entry));

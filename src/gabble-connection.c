@@ -3271,6 +3271,7 @@ gabble_connection_get_interfaces (GabbleConnection *self,
 {
   const char *interfaces[] = {
       TP_IFACE_CONN_INTERFACE_ALIASING,
+      TP_IFACE_CONN_INTERFACE_CAPABILITIES,
       TP_IFACE_CONN_INTERFACE_PRESENCE,
       TP_IFACE_PROPERTIES,
       NULL };

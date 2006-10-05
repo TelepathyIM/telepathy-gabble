@@ -126,6 +126,11 @@ gboolean _gabble_media_session_request_streams (GabbleMediaSession *session,
                                                 GPtrArray **ret,
                                                 GError **error);
 
+gboolean _gabble_media_session_request_stream_direction (GabbleMediaSession *,
+                                                         GabbleMediaStream *,
+                                                         TpMediaStreamDirection,
+                                                         GError **);
+
 #ifndef _GMS_DEBUG_LEVEL
 #define _GMS_DEBUG_LEVEL 2
 #endif

@@ -2223,3 +2223,52 @@ _gabble_media_session_request_streams (GabbleMediaSession *session,
   return TRUE;
 }
 
+gboolean
+_gabble_media_session_request_stream_direction (GabbleMediaSession *session,
+                                                GabbleMediaStream *stream,
+                                                TpMediaStreamDirection requested_dir,
+                                                GError **error)
+{
+  GabbleMediaSessionPrivate *priv;
+  CombinedStreamDirection combined_dir;
+  TpMediaStreamDirection current_dir;
+  TpMediaStreamPendingSend pending_send;
+
+  priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+
+  g_object_get (stream, "combined-direction", &combined_dir, NULL);
+
+  current_dir = COMBINED_DIRECTION_GET_DIRECTION (combined_dir);
+  pending_send = COMBINED_DIRECTION_GET_PENDING_SEND (combined_dir);
+
+  if (priv->mode == MODE_GOOGLE)
+    {
+      g_assert (current_dir == TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL);
+
+      if (requested_dir == TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL)
+        return TRUE;
+
+      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable, "google talk "
+          "calls can only be bi-directional");
+      return FALSE;
+    }
+
+  if (requested_dir == TP_MEDIA_STREAM_DIRECTION_NONE)
+    {
+      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable, "jingle calls "
+          "cannot have no senders");
+      return FALSE;
+    }
+
+  if (pending_send & TP_MEDIA_STREAM_PENDING_LOCAL_SEND)
+    {
+      /* FIXME */
+      g_assert_not_reached ();
+      return FALSE;
+    }
+
+  
+
+  return TRUE;
+}
+

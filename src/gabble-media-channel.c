@@ -1064,7 +1064,29 @@ gabble_media_channel_request_stream_direction (GabbleMediaChannel *self,
                                                guint stream_direction,
                                                GError **error)
 {
-  return TRUE;
+  GabbleMediaStream *stream;
+
+  if (stream_direction < TP_MEDIA_STREAM_DIRECTION_NONE ||
+      stream_direction > TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL)
+    {
+      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+          "given stream direction %u is not valid", stream_direction);
+      return FALSE;
+    }
+
+  stream = _find_stream_by_id (self, stream_id);
+  if (stream == NULL)
+    {
+      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+          "given stream id %u does not exist", stream_id);
+      return FALSE;
+    }
+
+  /* streams with no session? I think not... */
+  g_assert (priv->session != NULL);
+
+  return _gabble_media_session_request_stream_direction (priv->session, stream,
+      stream_direction, error);
 }
 
 

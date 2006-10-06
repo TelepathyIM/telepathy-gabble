@@ -1397,7 +1397,7 @@ stream_direction_changed_cb (GabbleMediaStream *stream,
       NULL);
 
   direction = COMBINED_DIRECTION_GET_DIRECTION (combined);
-  pending_send = COMBINED_DIRECTION_GET_PENDING_SEND (pending_send);
+  pending_send = COMBINED_DIRECTION_GET_PENDING_SEND (combined);
 
   g_signal_emit (chan, signals[STREAM_DIRECTION_CHANGED], 0, id, direction,
       pending_send);

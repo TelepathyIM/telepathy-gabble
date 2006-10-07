@@ -346,7 +346,7 @@ void obsolete_invite_disco_cb (GabbleDisco *self,
   if (0 != strcmp (category, "conference") ||
       0 != strcmp (type, "text"))
     {
-      g_debug ("obsolete invite request specified invalid jid '%s', ignoring", jid);
+      DEBUG ("obsolete invite request specified invalid jid '%s', ignoring", jid);
     }
 
   /* OK, it's MUC after all, create a new channel */
@@ -360,7 +360,7 @@ void obsolete_invite_disco_cb (GabbleDisco *self,
     }
   else
     {
-      g_debug ("ignoring invite to a room '%s' we're already in", jid);
+      DEBUG ("ignoring invite to a room '%s' we're already in", jid);
     }
 
   g_free (data->reason);
@@ -491,8 +491,6 @@ muc_factory_message_cb (LmMessageHandler *handler,
       disco_udata->inviter = inviter_handle;
 
       NODE_DEBUG (message->node, "received obsolete invite method");
-      /* FIXME should we keep track of these so we can cancel/invalidate
-       * them in dispose? */
 
       request = gabble_disco_request (priv->conn->disco, GABBLE_DISCO_TYPE_INFO,
           from, NULL, obsolete_invite_disco_cb, disco_udata, G_OBJECT (fac), NULL);

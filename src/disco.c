@@ -852,7 +852,8 @@ gabble_disco_conn_status_changed_cb (GabbleConnection *conn,
 
   if (status == TP_CONN_STATUS_CONNECTED)
     {
-      const char *server;
+      char *server;
+
       g_object_get (priv->connection, "stream-server", &server, NULL);
       
       g_assert (server != NULL);
@@ -861,6 +862,8 @@ gabble_disco_conn_status_changed_cb (GabbleConnection *conn,
       gpointer pipeline = gabble_disco_pipeline_init (disco, services_cb,
           end_cb, disco);
       gabble_disco_pipeline_run (pipeline, server);
+
+      g_free (server);
     }
 }
 

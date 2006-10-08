@@ -770,14 +770,6 @@ gabble_disco_pipeline_run (gpointer self, const char *server)
 
 }
 
-static void
-gabble_disco_pipeline_flush_one (gpointer data, gpointer user_data)
-{
-  GabbleDiscoRequest *request = (GabbleDiscoRequest *) data;
-  GabbleDisco *disco = GABBLE_DISCO (user_data);
-
-  gabble_disco_cancel_request (disco, request);
-}
 
 /**
  * gabble_disco_pipeline_cancel:
@@ -792,9 +784,15 @@ gabble_disco_pipeline_destroy (gpointer self)
   GabbleDiscoPipeline *pipeline = (GabbleDiscoPipeline *) self;
 
   pipeline->running = FALSE;
-  
-  g_ptr_array_foreach (pipeline->disco_pipeline,
-      gabble_disco_pipeline_flush_one, pipeline->disco);
+
+  /* iterate using a while loop otherwise we're modifying
+   * the array as we iterate it, and miss things! */
+  while (pipeline->disco_pipeline->len > 0)
+    {
+      GabbleDiscoRequest *request =
+        g_ptr_array_index (pipeline->disco_pipeline, 0);
+      gabble_disco_cancel_request (pipeline->disco, request);
+    }
 
   g_hash_table_destroy (pipeline->remaining_items);
   g_ptr_array_free (pipeline->disco_pipeline, TRUE);

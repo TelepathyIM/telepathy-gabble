@@ -89,7 +89,6 @@ gabble_disco_init (GabbleDisco *obj)
   GabbleDiscoPrivate *priv =
      G_TYPE_INSTANCE_GET_PRIVATE (obj, GABBLE_TYPE_DISCO, GabbleDiscoPrivate);
   obj->priv = priv;
-  
 }
 
 static GObject *gabble_disco_constructor (GType type, guint n_props,
@@ -216,14 +215,14 @@ gabble_disco_dispose (GObject *object)
       g_free ((char *) item->jid);
       g_free ((char *) item->name);
       g_free ((char *) item->type);
-      g_free ((char *) item->category);      
+      g_free ((char *) item->category);
       g_hash_table_destroy (item->features);
-      g_free (item);      
+      g_free (item);
     }
-    
+
   g_slist_free (priv->service_cache);
   priv->service_cache = NULL;
-  
+
   if (G_OBJECT_CLASS (gabble_disco_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_disco_parent_class)->dispose (object);
 }
@@ -235,7 +234,6 @@ gabble_disco_finalize (GObject *object)
 
   G_OBJECT_CLASS (gabble_disco_parent_class)->finalize (object);
 }
-
 
 /**
  * gabble_disco_new:
@@ -543,7 +541,7 @@ item_info_cb (GabbleDisco *disco,
   const char *category, *type, *var, *name, *value;
   GHashTable *keys;
   GabbleDiscoItem item;
-  
+
   GabbleDiscoPipeline *pipeline = (GabbleDiscoPipeline *) user_data;
 
   g_ptr_array_remove_fast (pipeline->disco_pipeline, request);
@@ -614,12 +612,12 @@ item_info_cb (GabbleDisco *disco,
   item.jid = jid;
   item.name = name;
   item.category = category;
-  item.type = type;  
+  item.type = type;
   item.features = keys;
-  
+
   pipeline->callback (pipeline, &item, pipeline->user_data);
   g_hash_table_destroy (keys);
-  
+
 done:
   gabble_disco_fill_pipeline (disco, pipeline);
 
@@ -762,12 +760,11 @@ void
 gabble_disco_pipeline_run (gpointer self, const char *server)
 {
   GabbleDiscoPipeline *pipeline = (GabbleDiscoPipeline *) self;
-  
-  pipeline->running = TRUE;
-  gabble_disco_request (pipeline->disco, GABBLE_DISCO_TYPE_ITEMS,
-                        server, NULL,
-                        disco_items_cb, pipeline, G_OBJECT (pipeline->disco), NULL);
 
+  pipeline->running = TRUE;
+
+  gabble_disco_request (pipeline->disco, GABBLE_DISCO_TYPE_ITEMS, server, NULL,
+      disco_items_cb, pipeline, G_OBJECT (pipeline->disco), NULL);
 }
 
 
@@ -796,7 +793,7 @@ gabble_disco_pipeline_destroy (gpointer self)
 
   g_hash_table_destroy (pipeline->remaining_items);
   g_ptr_array_free (pipeline->disco_pipeline, TRUE);
-  g_free (pipeline);  
+  g_free (pipeline);
 }
 
 
@@ -825,7 +822,7 @@ services_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
 
   my_item->features = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
   g_hash_table_foreach  (item->features, service_feature_copy_one, my_item->features);
-  
+
   priv->service_cache = g_slist_prepend (priv->service_cache, my_item);
 }
 
@@ -837,7 +834,7 @@ end_cb (gpointer pipeline, gpointer user_data)
 
   gabble_disco_pipeline_destroy (pipeline);
   priv->service_cache = g_slist_reverse (priv->service_cache);
-  
+
   /* FIXME - service discovery done - signal that somehow */
 }
 
@@ -855,9 +852,9 @@ gabble_disco_conn_status_changed_cb (GabbleConnection *conn,
       char *server;
 
       g_object_get (priv->connection, "stream-server", &server, NULL);
-      
+
       g_assert (server != NULL);
-      
+
       DEBUG ("connected, initiating service discovery on %s", server);
       gpointer pipeline = gabble_disco_pipeline_init (disco, services_cb,
           end_cb, disco);
@@ -875,31 +872,30 @@ gabble_disco_service_find (GabbleDisco *disco,
 {
   GabbleDiscoPrivate *priv;
   GSList *l;
-      
+
   g_assert (GABBLE_IS_DISCO (disco));
   priv = GABBLE_DISCO_GET_PRIVATE (disco);
 
   for (l = priv->service_cache; l; l = g_slist_next (l))
     {
-      gboolean selected = TRUE;
       GabbleDiscoItem *item = (GabbleDiscoItem *) l->data;
-      
-      if (type)
-        {
-          if (!item->type || strcmp (type, item->type)) selected = FALSE;
-        }
-      if (category)
-        {
-          if (!item->category || strcmp (category, item->category)) selected = TRUE;
-        }
-      if (feature)
+      gboolean selected = TRUE;
+
+      if (type != NULL && g_strdiff (type, item->type))
+        selected = FALSE;
+
+      if (category != NULL && g_strdiff (category, item->category))
+        selected = FALSE;
+
+      if (feature != NULL)
         {
           gpointer k, v;
-          if (g_hash_table_lookup_extended (item->features, feature, &k, &v))
-              selected = FALSE;
+          if (!g_hash_table_lookup_extended (item->features, feature, &k, &v))
+            selected = FALSE;
         }
-                
-      if (selected) return item;
+
+      if (selected)
+        return item;
     }
 
   return NULL;

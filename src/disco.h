@@ -114,7 +114,7 @@ typedef void (*GabbleDiscoPipelineCb)(gpointer pipeline,
 
 typedef void (*GabbleDiscoEndCb)(gpointer pipeline,
                                  gpointer user_data);
-                                                                             
+
 gpointer gabble_disco_pipeline_init (GabbleDisco *disco,
                                      GabbleDiscoPipelineCb callback,
                                      GabbleDiscoEndCb end_callback,

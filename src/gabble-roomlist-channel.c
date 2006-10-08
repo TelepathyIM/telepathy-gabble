@@ -181,7 +181,7 @@ gabble_roomlist_channel_set_property (GObject     *object,
     case PROP_CONNECTION:
       priv->conn = g_value_get_object (value);
       new_signalled_rooms = handle_set_new (priv->conn->handles, TP_HANDLE_TYPE_ROOM);
-      if (priv->signalled_rooms)
+      if (priv->signalled_rooms != NULL)
         {
           const GIntSet *add;
           GIntSet *tmp;
@@ -301,7 +301,7 @@ gabble_roomlist_channel_dispose (GObject *object)
       priv->closed = TRUE;
     }
 
-  if (priv->disco_pipeline)
+  if (priv->disco_pipeline != NULL)
     {
       gabble_disco_pipeline_destroy (priv->disco_pipeline);
       priv->disco_pipeline = NULL;
@@ -322,7 +322,7 @@ gabble_roomlist_channel_finalize (GObject *object)
   g_free (priv->object_path);
   g_free (priv->conference_server);
 
-  if (priv->signalled_rooms)
+  if (priv->signalled_rooms != NULL)
     handle_set_destroy (priv->signalled_rooms);
 
   G_OBJECT_CLASS (gabble_roomlist_channel_parent_class)->finalize (object);
@@ -370,7 +370,7 @@ room_info_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
   GPtrArray *rooms ;
   GValue *tmp;
   gpointer k, v;
-  
+
   #define INSERT_KEY(hash, name, type, type2, value) \
     do {\
       tmp = g_new0 (GValue, 1); \
@@ -436,26 +436,19 @@ room_info_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
     INSERT_KEY (keys, "persistent", G_TYPE_BOOLEAN, boolean, TRUE);
   if (g_hash_table_lookup_extended (item->features, "muc_temporary", &k, &v))
     INSERT_KEY (keys, "persistent", G_TYPE_BOOLEAN, boolean, FALSE);
-  
+
   var = g_hash_table_lookup (item->features, "muc#roominfo_description");
-  if (var)
-    {
-      INSERT_KEY (keys, "description", G_TYPE_STRING, string, var);
-    }  
+  if (var != NULL)
+    INSERT_KEY (keys, "description", G_TYPE_STRING, string, var);
 
   var = g_hash_table_lookup (item->features, "muc#roominfo_occupants");
-  if (var)
-    {
-      INSERT_KEY (keys, "members", G_TYPE_UINT, uint,
-                  (guint) g_ascii_strtoull (var, NULL, 10));
-    }  
+  if (var != NULL)
+    INSERT_KEY (keys, "members", G_TYPE_UINT, uint,
+                (guint) g_ascii_strtoull (var, NULL, 10));
 
   var = g_hash_table_lookup (item->features, "muc#roominfo_lang");
-  if (var)
-    {
-      INSERT_KEY (keys, "language", G_TYPE_STRING,
-                  string, var);
-    }  
+  if (var != NULL)
+    INSERT_KEY (keys, "language", G_TYPE_STRING, string, var);
 
   DEBUG ("emitting new room signal for %s", jid);
 
@@ -642,15 +635,13 @@ gabble_roomlist_channel_list_rooms (GabbleRoomlistChannel *self,
 
   priv->listing = TRUE;
   g_signal_emit (self, signals[LISTING_ROOMS], 0, TRUE);
-  
-  if (!priv->disco_pipeline)
-    {
-      priv->disco_pipeline = gabble_disco_pipeline_init (priv->conn->disco,
-                                                        room_info_cb,
-                                                        rooms_end_cb,
-                                                        self);
-    }
+
+  if (priv->disco_pipeline == NULL)
+    priv->disco_pipeline = gabble_disco_pipeline_init (priv->conn->disco,
+        room_info_cb, rooms_end_cb, self);
+
   gabble_disco_pipeline_run (priv->disco_pipeline, priv->conference_server);
+
   return TRUE;
 }
 

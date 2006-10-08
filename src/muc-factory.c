@@ -67,6 +67,9 @@ struct _GabbleMucFactoryPrivate
   LmMessageHandler *presence_cb;
 
   GHashTable *channels;
+  GabbleRoomlistChannel *roomlist_channel;
+
+  GHashTable *disco_requests;
 
   gboolean dispose_has_run;
 };

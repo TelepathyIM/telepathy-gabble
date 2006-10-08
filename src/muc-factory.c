@@ -650,22 +650,20 @@ make_roomlist_channel (GabbleMucFactory *fac)
       const gchar *server;
       gchar *object_path;
 
-      server = gabble_connection_find_conference_server (priv->conn);
+      server = _gabble_connection_find_conference_server (priv->conn);
 
-      g_assert (server != NULL);
+      if (server == NULL)
+        return FALSE;
 
       object_path = g_strdup_printf ("%s/RoomlistChannel", priv->conn->object_path);
 
-      /* roomlist wants to own this string, but _find_conference_server just lent it to us */
-      server = g_strdup (server);
-      
       priv->roomlist_channel = _gabble_roomlist_channel_new (priv->conn,
           object_path, server);
 
       g_signal_connect (priv->roomlist_channel, "closed",
                         (GCallback) roomlist_channel_closed_cb, fac);
 
-      g_signal_emit_by_name (fac, "new-channel");
+      g_signal_emit_by_name (fac, "new-channel", priv->roomlist_channel);
 
       g_free (object_path);
     }

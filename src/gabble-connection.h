@@ -144,6 +144,8 @@ void _gabble_connection_send_iq_error (GabbleConnection *conn, LmMessage *messag
 
 GabbleConnectionAliasSource _gabble_connection_get_cached_alias (GabbleConnection *, GabbleHandle, gchar **);
 
+const char *_gabble_connection_find_conference_server (GabbleConnection *);
+
 gboolean
 gabble_connection_add_status (GabbleConnection *self,
                               const gchar *status,
@@ -275,14 +277,6 @@ gboolean
 gabble_connection_set_status (GabbleConnection *self,
                               GHashTable *statuses,
                               GError **error);
-
-
-const char *
-gabble_connection_find_conference_server (GabbleConnection *conn);
-
-gchar *
-gabble_connection_get_canonical_room_name (GabbleConnection *conn,
-                                           const gchar *name);
 
 G_END_DECLS
 

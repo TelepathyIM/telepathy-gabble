@@ -3746,7 +3746,7 @@ hold_and_return_handles (DBusGMethodInvocation *context,
 
 
 const char *
-gabble_connection_find_conference_server (GabbleConnection *conn)
+_gabble_connection_find_conference_server (GabbleConnection *conn)
 {
   GabbleConnectionPrivate *priv;
 
@@ -3754,41 +3754,38 @@ gabble_connection_find_conference_server (GabbleConnection *conn)
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
-  if (!priv->conference_server)
+  if (priv->conference_server == NULL)
     {
       /* Find first server that has NS_MUC feature */
       const GabbleDiscoItem *item = gabble_disco_service_find (conn->disco,
           NULL, NULL, NS_MUC);
-      if (item)
-        {
-          priv->conference_server = item->jid;
-        }
+      if (item != NULL)
+        priv->conference_server = item->jid;
     }
-  
-  if (!priv->conference_server)
-    {
-      priv->conference_server = priv->fallback_conference_server;
-    }
-  
+
+  if (priv->conference_server == NULL)
+    priv->conference_server = priv->fallback_conference_server;
+
   return priv->conference_server;
 }
 
 
 gchar *
-gabble_connection_get_canonical_room_name (GabbleConnection *conn,
+_gabble_connection_get_canonical_room_name (GabbleConnection *conn,
                                            const gchar *name)
 {
   const gchar *server;
-  
+
   g_assert (GABBLE_IS_CONNECTION (conn));
 
   if (index (name, '@'))
     return g_strdup (name);
 
-  server = gabble_connection_find_conference_server (conn);
-  if (!server)
+  server = _gabble_connection_find_conference_server (conn);
+
+  if (server == NULL)
     return NULL;
-    
+
   return g_strdup_printf ("%s@%s", name, server);
 }
 
@@ -3870,7 +3867,7 @@ room_verify_batch_new (GabbleConnection *conn,
       batch->contexts[i].index = i;
       batch->contexts[i].batch = batch;
 
-      qualified_name = gabble_connection_get_canonical_room_name (conn, name);
+      qualified_name = _gabble_connection_get_canonical_room_name (conn, name);
 
       if (!qualified_name)
         {

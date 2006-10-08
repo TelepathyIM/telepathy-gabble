@@ -84,12 +84,6 @@ gabble_disco_error_quark (void)
 #define GABBLE_DISCO_GET_PRIVATE(o)     ((GabbleDiscoPrivate*)((o)->priv));
 
 static void
-gabble_disco_conn_status_changed_cb (GabbleConnection *conn,
-                                     TpConnectionStatus status,
-                                     TpConnectionStatusReason reason,
-                                     gpointer data);
-                                     
-static void
 gabble_disco_init (GabbleDisco *obj)
 {
   GabbleDiscoPrivate *priv =
@@ -98,6 +92,8 @@ gabble_disco_init (GabbleDisco *obj)
   
 }
 
+static GObject *gabble_disco_constructor (GType type, guint n_props,
+    GObjectConstructParam *props);
 static void gabble_disco_set_property (GObject *object, guint property_id,
     const GValue *value, GParamSpec *pspec);
 static void gabble_disco_get_property (GObject *object, guint property_id,
@@ -106,18 +102,14 @@ static void gabble_disco_dispose (GObject *object);
 static void gabble_disco_finalize (GObject *object);
 
 static void
-gabble_disco_conn_status_changed_cb (GabbleConnection *conn,
-                                     TpConnectionStatus status,
-                                     TpConnectionStatusReason reason,
-                                     gpointer data);
-                                     
-static void
 gabble_disco_class_init (GabbleDiscoClass *gabble_disco_class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_disco_class);
   GParamSpec *param_spec;
 
   g_type_class_add_private (gabble_disco_class, sizeof (GabbleDiscoPrivate));
+
+  object_class->constructor = gabble_disco_constructor;
 
   object_class->get_property = gabble_disco_get_property;
   object_class->set_property = gabble_disco_set_property;
@@ -172,6 +164,28 @@ gabble_disco_set_property (GObject     *object,
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
   }
+}
+
+static void gabble_disco_conn_status_changed_cb (GabbleConnection *conn,
+    TpConnectionStatus status, TpConnectionStatusReason reason, gpointer data);
+
+static GObject *
+gabble_disco_constructor (GType type, guint n_props,
+                          GObjectConstructParam *props)
+{
+  GObject *obj;
+  GabbleDisco *disco;
+  GabbleDiscoPrivate *priv;
+
+  obj = G_OBJECT_CLASS (gabble_disco_parent_class)-> constructor (type,
+      n_props, props);
+  disco = GABBLE_DISCO (obj);
+  priv = GABBLE_DISCO_GET_PRIVATE (disco);
+
+  g_signal_connect (priv->connection, "status-changed",
+      G_CALLBACK (gabble_disco_conn_status_changed_cb), disco);
+
+  return obj;
 }
 
 static void cancel_request (GabbleDiscoRequest *request);
@@ -234,15 +248,13 @@ GabbleDisco *
 gabble_disco_new (GabbleConnection *conn)
 {
   GabbleDisco *disco;
-  GabbleDiscoPrivate *priv;
-    
+
   g_return_val_if_fail (GABBLE_IS_CONNECTION (conn), NULL);
-  
-  disco = GABBLE_DISCO (g_object_new (GABBLE_TYPE_DISCO, "connection", conn, NULL));
-  priv = GABBLE_DISCO_GET_PRIVATE (disco);
-  g_signal_connect (priv->connection, "status-changed",
-      G_CALLBACK (gabble_disco_conn_status_changed_cb), disco);
-      
+
+  disco = GABBLE_DISCO (g_object_new (GABBLE_TYPE_DISCO,
+        "connection", conn,
+        NULL));
+
   return disco;
 }
 

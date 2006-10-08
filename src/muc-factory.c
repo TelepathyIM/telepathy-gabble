@@ -235,7 +235,7 @@ muc_channel_closed_cb (GabbleMucChannel *chan, gpointer user_data)
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
   GabbleHandle room_handle;
 
-  if (priv->channels)
+  if (priv->channels != NULL)
     {
       g_object_get (chan, "handle", &room_handle, NULL);
 
@@ -402,11 +402,11 @@ muc_factory_message_cb (LmMessageHandler *handler,
   /* does it have a muc subnode? */
   node = lm_message_node_get_child_with_namespace (message->node, "x",
       NS_MUC_USER);
-  if (node)
+  if (node != NULL)
     {
       /* and an invitation? */
       node = lm_message_node_get_child (node, "invite");
-      if (node)
+      if (node != NULL)
         {
           LmMessageNode *reason_node;
           const gchar *invite_from, *reason;
@@ -434,7 +434,7 @@ muc_factory_message_cb (LmMessageHandler *handler,
                                                       invite_from, FALSE);
 
           reason_node = lm_message_node_get_child (node, "reason");
-          if (reason_node)
+          if (reason_node != NULL)
             {
               reason = lm_message_node_get_value (reason_node);
             }
@@ -468,17 +468,17 @@ muc_factory_message_cb (LmMessageHandler *handler,
       struct DiscoInviteData *disco_udata;
 
       /* check for obsolete invite method */
-      for (node = message->node->children; node; node = node->next)
+      for (node = message->node->children; node != NULL; node = node->next)
         if (strcmp (node->name, "x") == 0)
           if (lm_message_node_has_namespace (node, NS_X_CONFERENCE, NULL))
             break;
 
-      if (!node)
+      if (node == NULL)
         return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
       /* the room JID is in x */
       from = lm_message_node_get_attribute (node, "jid");
-      if (!from)
+      if (from == NULL)
         return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
       /* the inviter JID is in "from" */
@@ -498,7 +498,7 @@ muc_factory_message_cb (LmMessageHandler *handler,
       request = gabble_disco_request (priv->conn->disco, GABBLE_DISCO_TYPE_INFO,
           from, NULL, obsolete_invite_disco_cb, disco_udata, G_OBJECT (fac), NULL);
 
-      if (request)
+      if (request != NULL)
         g_hash_table_insert (priv->disco_requests, request, NULL);
 
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
@@ -515,7 +515,7 @@ muc_factory_message_cb (LmMessageHandler *handler,
   /* find the MUC channel */
   chan = g_hash_table_lookup (priv->channels, GUINT_TO_POINTER (room_handle));
 
-  if (!chan)
+  if (chan == NULL)
     {
       g_warning ("%s: ignoring groupchat message from known handle with "
                  "no MUC channel", G_STRFUNC);
@@ -599,7 +599,7 @@ muc_factory_presence_cb (LmMessageHandler *handler,
   x_node = lm_message_node_get_child_with_namespace (msg->node, "x", NS_MUC_USER);
 
   /* is it a MUC member presence? */
-  if (x_node)
+  if (x_node != NULL)
     {
       if (muc_chan != NULL)
         {
@@ -633,7 +633,7 @@ roomlist_channel_closed_cb (GabbleRoomlistChannel *chan, gpointer data)
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (data);
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
 
-  if (priv->roomlist_channel)
+  if (priv->roomlist_channel != NULL)
     {
       g_object_unref (priv->roomlist_channel);
       priv->roomlist_channel = NULL;
@@ -645,7 +645,7 @@ make_roomlist_channel (GabbleMucFactory *fac)
 {
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
 
-  if (!priv->roomlist_channel)
+  if (priv->roomlist_channel == NULL)
     {
       const gchar *server;
       gchar *object_path;
@@ -681,18 +681,18 @@ gabble_muc_factory_iface_close_all (TpChannelFactoryIface *iface)
 
   DEBUG ("closing channels");
 
-  if (priv->channels)
+  if (priv->channels != NULL)
     {
       GHashTable *tmp = priv->channels;
       priv->channels = NULL;
       g_hash_table_destroy (tmp);
     }
-    
-  if (priv->roomlist_channel)
+
+  if (priv->roomlist_channel != NULL)
     {
       GObject *tmp = G_OBJECT (priv->roomlist_channel);
       priv->roomlist_channel = NULL;
-      g_object_unref (tmp);      
+      g_object_unref (tmp);
     }
 }
 
@@ -773,11 +773,9 @@ gabble_muc_factory_iface_foreach (TpChannelFactoryIface *iface, TpChannelFunc fo
   data.foreach = foreach;
 
   g_hash_table_foreach (priv->channels, _foreach_slave, &data);
-  
-  if (priv->roomlist_channel)
-    {
-      foreach (TP_CHANNEL_IFACE (priv->roomlist_channel), user_data);
-    }
+
+  if (priv->roomlist_channel != NULL)
+    foreach (TP_CHANNEL_IFACE (priv->roomlist_channel), user_data);
 }
 
 static TpChannelFactoryRequestStatus
@@ -794,7 +792,7 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
   GError *error;
   gboolean retval;
 
-  if (!strcmp (chan_type, TP_IFACE_CHANNEL_TYPE_ROOM_LIST))
+  if (!g_strdiff (chan_type, TP_IFACE_CHANNEL_TYPE_ROOM_LIST))
     {
       /* FIXME - delay if services aren't discovered yet? */
       if (!make_roomlist_channel (fac))
@@ -805,7 +803,7 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
       *ret = TP_CHANNEL_IFACE (priv->roomlist_channel);
       return TP_CHANNEL_FACTORY_REQUEST_STATUS_DONE;
     }
-    
+
   if (strcmp (chan_type, TP_IFACE_CHANNEL_TYPE_TEXT))
     return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_IMPLEMENTED;
 

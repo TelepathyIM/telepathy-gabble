@@ -81,6 +81,7 @@ enum
   PROP_INITIATOR,
   PROP_MEDIA_TYPE,
   PROP_CONNECTION_STATE,
+  PROP_READY,
   PROP_GOT_LOCAL_CODECS,
   PROP_LOCALLY_ACCEPTED,
   PROP_PLAYING,
@@ -104,6 +105,7 @@ struct _GabbleMediaStreamPrivate
 
   TpMediaStreamState connection_state;
 
+  gboolean ready;
   gboolean got_local_codecs;
   gboolean locally_accepted;
   gboolean playing;
@@ -139,6 +141,11 @@ static const char *tp_transports[] = {
 };
 #endif
 #endif
+
+static void push_native_candidates (GabbleMediaStream *stream);
+static void push_remote_codecs (GabbleMediaStream *stream);
+static void push_remote_candidates (GabbleMediaStream *stream);
+static void push_playing (GabbleMediaStream *stream);
 
 static void
 gabble_media_stream_init (GabbleMediaStream *self)
@@ -222,6 +229,9 @@ gabble_media_stream_get_property (GObject    *object,
     case PROP_CONNECTION_STATE:
       g_value_set_uint (value, priv->connection_state);
       break;
+    case PROP_READY:
+      g_value_set_boolean (value, priv->ready);
+      break;
     case PROP_GOT_LOCAL_CODECS:
       g_value_set_boolean (value, priv->got_local_codecs);
       break;
@@ -239,8 +249,6 @@ gabble_media_stream_get_property (GObject    *object,
       break;
   }
 }
-
-static void _set_playing (GabbleMediaStream *stream, gboolean playing);
 
 static void
 gabble_media_stream_set_property (GObject      *object,
@@ -281,6 +289,9 @@ gabble_media_stream_set_property (GObject      *object,
     case PROP_CONNECTION_STATE:
       priv->connection_state = g_value_get_uint (value);
       break;
+    case PROP_READY:
+      priv->ready = g_value_get_boolean (value);
+      break;
     case PROP_GOT_LOCAL_CODECS:
       priv->got_local_codecs = g_value_get_boolean (value);
       break;
@@ -288,7 +299,12 @@ gabble_media_stream_set_property (GObject      *object,
       priv->locally_accepted = g_value_get_boolean (value);
       break;
     case PROP_PLAYING:
-      _set_playing (stream, g_value_get_boolean (value));
+        {
+          gboolean old = priv->playing;
+          priv->playing = g_value_get_boolean (value);
+          if (priv->playing != old)
+            push_playing (stream);
+        }
       break;
     case PROP_COMBINED_DIRECTION:
       priv->combined_direction = g_value_get_uint (value);
@@ -414,6 +430,17 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                                   G_PARAM_STATIC_NAME |
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_CONNECTION_STATE, param_spec);
+
+  param_spec = g_param_spec_boolean ("ready", "Ready?",
+                                     "A boolean signifying whether the user "
+                                     "is ready to handle signals from this "
+                                     "object.",
+                                     FALSE,
+                                     G_PARAM_CONSTRUCT |
+                                     G_PARAM_READWRITE |
+                                     G_PARAM_STATIC_NAME |
+                                     G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_READY, param_spec);
 
   param_spec = g_param_spec_boolean ("got-local-codecs", "Got local codecs?",
                                      "A boolean signifying whether we've got "
@@ -616,10 +643,6 @@ gabble_media_stream_finalize (GObject *object)
 
   G_OBJECT_CLASS (gabble_media_stream_parent_class)->finalize (object);
 }
-
-static void push_native_candidates (GabbleMediaStream *stream);
-static void push_remote_codecs (GabbleMediaStream *stream);
-static void push_remote_candidates (GabbleMediaStream *stream);
 
 /**
  * gabble_media_stream_codec_choice
@@ -1244,7 +1267,7 @@ push_remote_codecs (GabbleMediaStream *stream)
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
-  if (!priv->got_local_codecs)
+  if (!priv->ready)
     return;
 
   codecs = g_value_get_boxed (&priv->remote_codecs);
@@ -1259,8 +1282,6 @@ push_remote_codecs (GabbleMediaStream *stream)
   g_value_take_boxed (&priv->remote_codecs,
       dbus_g_type_specialized_construct (TP_TYPE_CODEC_LIST));
 }
-
-static void push_remote_candidates (GabbleMediaStream *stream);
 
 gboolean
 _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
@@ -1466,7 +1487,7 @@ push_remote_candidates (GabbleMediaStream *stream)
   if (candidates->len == 0)
     return;
 
-  if (!priv->got_local_codecs)
+  if (!priv->ready)
     return;
 
   for (i = 0; i < candidates->len; i++)
@@ -1487,6 +1508,24 @@ push_remote_candidates (GabbleMediaStream *stream)
 
   g_value_take_boxed (&priv->remote_candidates,
       dbus_g_type_specialized_construct (TP_TYPE_CANDIDATE_LIST));
+}
+
+static void
+push_playing (GabbleMediaStream *stream)
+{
+  GabbleMediaStreamPrivate *priv;
+
+  g_assert (GABBLE_IS_MEDIA_STREAM (stream));
+
+  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
+
+  if (!priv->ready)
+    return;
+
+  GMS_DEBUG_INFO (priv->session, "stream %s emitting SetStreamPlaying(%s)",
+      priv->name, priv->playing ? "true" : "false");
+
+  g_signal_emit (stream, signals[SET_STREAM_PLAYING], 0, priv->playing);
 }
 
 /*
@@ -1655,20 +1694,3 @@ _gabble_media_stream_content_node_add_transport (GabbleMediaStream *stream,
   return node;
 }
 
-static void
-_set_playing (GabbleMediaStream *stream, gboolean playing)
-{
-  GabbleMediaStreamPrivate *priv;
-  g_assert (GABBLE_IS_MEDIA_STREAM (stream));
-  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
-
-  priv->playing = playing;
-
-  if (priv->got_local_codecs)
-    {
-      GMS_DEBUG_INFO (priv->session, "stream %s emitting SetStreamPlaying(%s)",
-          priv->name, playing ? "true" : "false");
-
-      g_signal_emit (stream, signals[SET_STREAM_PLAYING], 0, playing);
-    }
-}

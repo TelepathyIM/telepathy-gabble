@@ -314,6 +314,27 @@ gabble_media_stream_ready (GabbleMediaStream *self,
 
 
 /**
+ * gabble_media_stream_set_local_codecs
+ *
+ * Implements D-Bus method SetLocalCodecs
+ * on interface org.freedesktop.Telepathy.Media.StreamHandler
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occurred, D-Bus will throw the error only if this
+ *         function returns FALSE.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean
+gabble_media_stream_set_local_codecs (GabbleMediaStream *self,
+                                      const GPtrArray *codecs,
+                                      GError **error)
+{
+  return TRUE;
+}
+
+
+/**
  * gabble_media_stream_stream_state
  *
  * Implements D-Bus method StreamState

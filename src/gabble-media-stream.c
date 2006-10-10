@@ -855,27 +855,47 @@ gabble_media_stream_ready (GabbleMediaStream *self,
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
 
+  GMS_DEBUG_INFO (priv->session, "ready called");
+
+  g_object_set (self, "ready", TRUE, NULL);
+
+  push_remote_codecs (self);
+  push_remote_candidates (self);
+  push_playing (self);
+
+  return gabble_media_stream_set_local_codecs (self, codecs, error);
+}
+
+
+/**
+ * gabble_media_stream_set_local_codecs
+ *
+ * Implements D-Bus method SetLocalCodecs
+ * on interface org.freedesktop.Telepathy.Media.StreamHandler
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occurred, D-Bus will throw the error only if this
+ *         function returns FALSE.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean
+gabble_media_stream_set_local_codecs (GabbleMediaStream *self,
+                                      const GPtrArray *codecs,
+                                      GError **error)
+{
+  GabbleMediaStreamPrivate *priv;
+
+  g_assert (GABBLE_IS_MEDIA_STREAM (self));
+
+  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
+
   GMS_DEBUG_INFO (priv->session, "putting list of all %d locally supported "
                   "codecs from stream-engine into cache", codecs->len);
 
   g_value_set_boxed (&priv->native_codecs, codecs);
 
   g_object_set (self, "got-local-codecs", TRUE, NULL);
-
-  push_remote_codecs (self);
-  push_remote_candidates (self);
-
-  if (priv->playing)
-    {
-      GMS_DEBUG_INFO (priv->session, "Media.StreamHandler::Ready called -- "
-          "emitting playing now");
-      g_signal_emit (self, signals[SET_STREAM_PLAYING], 0, TRUE);
-    }
-  else
-    {
-      GMS_DEBUG_INFO (priv->session, "Media.StreamHandler::Ready called -- "
-          "emitting playing later");
-    }
 
   return TRUE;
 }

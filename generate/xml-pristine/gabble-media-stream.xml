@@ -32,6 +32,9 @@
       <arg name="native_candidate_id" type="s"/>
       <arg name="remote_candidate_id" type="s"/>
     </signal>
+    <method name="SetLocalCodecs">
+      <arg direction="in" name="codecs" type="a(usuuua{ss})"/>
+    </method>
     <signal name="SetRemoteCandidateList">
       <arg name="remote_candidates" type="a(sa(usuussduss))"/>
     </signal>

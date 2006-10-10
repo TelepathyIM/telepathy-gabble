@@ -129,6 +129,11 @@ gabble_media_stream_ready (GabbleMediaStream *self,
                            GError **error);
 
 gboolean
+gabble_media_stream_set_local_codecs (GabbleMediaStream *self,
+                                      const GPtrArray *codecs,
+                                      GError **error);
+
+gboolean
 gabble_media_stream_stream_state (GabbleMediaStream *self,
                                   guint state,
                                   GError **error);

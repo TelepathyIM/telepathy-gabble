@@ -725,6 +725,96 @@ _handle_create (GabbleMediaSession *session,
 }
 
 
+static TpMediaStreamDirection
+_senders_to_direction (GabbleMediaSession *session,
+                       const gchar *senders)
+{
+  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+  TpMediaStreamDirection ret = TP_MEDIA_STREAM_DIRECTION_NONE;
+
+  if (!g_strdiff (senders, "initiator"))
+    {
+      if (priv->initiator == INITIATOR_LOCAL)
+        ret = TP_MEDIA_STREAM_DIRECTION_SEND;
+      else
+        ret = TP_MEDIA_STREAM_DIRECTION_RECEIVE;
+    }
+  else if (!g_strdiff (senders, "responder"))
+    {
+      if (priv->initiator == INITIATOR_REMOTE)
+        ret = TP_MEDIA_STREAM_DIRECTION_SEND;
+      else
+        ret = TP_MEDIA_STREAM_DIRECTION_RECEIVE;
+    }
+  else if (!g_strdiff (senders, "both"))
+    {
+      ret = TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL;
+    }
+
+  return ret;
+}
+
+
+static gboolean
+_handle_direction (GabbleMediaSession *session,
+                   LmMessage *message,
+                   LmMessageNode *content_node,
+                   const gchar *stream_name,
+                   GabbleMediaStream *stream,
+                   LmMessageNode *desc_node,
+                   LmMessageNode *trans_node)
+{
+  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+  const gchar *senders;
+  CombinedStreamDirection combined_dir;
+  TpMediaStreamDirection requested_dir, current_dir;
+  TpMediaStreamPendingSend pending_send;
+
+  if (priv->mode == MODE_GOOGLE)
+    return TRUE;
+
+  if (stream == NULL)
+    {
+      GMS_DEBUG_WARNING (session, "unable to handle direction for unknown "
+          "stream \"%s\"", stream_name);
+      return FALSE;
+    }
+
+  senders = lm_message_node_get_attribute (content_node, "senders");
+  if (senders == NULL)
+    return TRUE;
+
+  requested_dir = _senders_to_direction (session, senders);
+  if (requested_dir == TP_MEDIA_STREAM_DIRECTION_NONE)
+    {
+      GMS_DEBUG_WARNING (session, "received invalid content senders value "
+          "\"%s\" on stream \"%s\"; rejecting", senders, stream_name);
+      return FALSE;
+    }
+
+  g_object_get (stream, "combined-direction", &combined_dir, NULL);
+
+  current_dir = COMBINED_DIRECTION_GET_DIRECTION (combined_dir);
+  pending_send = COMBINED_DIRECTION_GET_PENDING_SEND (combined_dir);
+
+  if (requested_dir == current_dir)
+    {
+      GMS_DEBUG_INFO (session, "received request for senders \"%s\" on "
+          "stream \"%s\" but this is already the case; ignoring",
+          senders, stream_name);
+      return TRUE;
+    }
+
+  GMS_DEBUG_INFO (session, "received request for senders \"%s\" on stream "
+      "\"%s\"", senders, stream_name);
+
+  g_object_set (stream, "combined-direction", MAKE_COMBINED_DIRECTION
+      (requested_dir, pending_send), NULL);
+
+  return TRUE;
+}
+
+
 static gboolean
 _handle_accept (GabbleMediaSession *session,
                 LmMessage *message,

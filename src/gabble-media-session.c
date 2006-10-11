@@ -1025,13 +1025,6 @@ static Handler handlers[] = {
     JS_STATE_INVALID,
   },
   {
-    { "content-remove", NULL },
-    JS_STATE_PENDING_INITIATED,
-    JS_STATE_ACTIVE,
-    { _handle_remove, NULL },
-    JS_STATE_INVALID
-  },
-  {
     { "content-modify", NULL },
     JS_STATE_PENDING_INITIATED,
     JS_STATE_ACTIVE,

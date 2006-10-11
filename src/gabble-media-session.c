@@ -2372,7 +2372,7 @@ direction_msg_reply_cb (GabbleConnection *conn,
 {
   GabbleMediaSession *session = GABBLE_MEDIA_SESSION (object);
 
-  MSG_REPLY_CB_END_SESSION_IF_NOT_SUCCESSFUL (session, "modify failed");
+  MSG_REPLY_CB_END_SESSION_IF_NOT_SUCCESSFUL (session, "direction change failed");
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }

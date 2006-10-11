@@ -2320,6 +2320,93 @@ _gabble_media_session_request_streams (GabbleMediaSession *session,
   return TRUE;
 }
 
+static const gchar*
+_direction_to_senders (GabbleMediaSession *session,
+                       TpMediaStreamDirection dir)
+{
+  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+  const gchar *ret = NULL;
+
+  switch (dir)
+    {
+      case TP_MEDIA_STREAM_DIRECTION_NONE:
+        g_assert_not_reached ();
+        break;
+      case TP_MEDIA_STREAM_DIRECTION_SEND:
+        if (priv->initiator == INITIATOR_LOCAL)
+          ret = "initiator";
+        else
+          ret = "responder";
+        break;
+      case TP_MEDIA_STREAM_DIRECTION_RECEIVE:
+        if (priv->initiator == INITIATOR_REMOTE)
+          ret = "initiator";
+        else
+          ret = "responder";
+        break;
+      case TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL:
+        ret = "both";
+        break;
+    }
+
+  g_assert (ret != NULL);
+
+  return ret;
+}
+
+static LmHandlerResult
+direction_msg_reply_cb (GabbleConnection *conn,
+                        LmMessage *sent_msg,
+                        LmMessage *reply_msg,
+                        GObject *object,
+                        gpointer user_data)
+{
+  GabbleMediaSession *session = GABBLE_MEDIA_SESSION (object);
+
+  MSG_REPLY_CB_END_SESSION_IF_NOT_SUCCESSFUL (session, "modify failed");
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
+static gboolean
+send_direction_change (GabbleMediaSession *session,
+                       GabbleMediaStream *stream,
+                       TpMediaStreamDirection dir,
+                       GError **error)
+{
+  GabbleMediaSessionPrivate *priv;
+  const gchar *senders;
+  gchar *name;
+  LmMessage *msg;
+  LmMessageNode *session_node, *content_node;
+  gboolean ret;
+
+  priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+  senders = _direction_to_senders (session, dir);
+  g_object_get (stream, "name", &name, NULL);
+
+  GMS_DEBUG_INFO (session, "sending jingle session action \"content-modify\" "
+      "to peer for stream %s (senders=%s)", name, senders);
+
+  msg = _gabble_media_session_message_new (session, "content-modify",
+      &session_node);
+  content_node = lm_message_node_add_child (session_node, "content", NULL);
+
+  lm_message_node_set_attributes (content_node,
+      "name", name,
+      "senders", senders,
+      NULL);
+
+  g_free (name);
+
+  ret = _gabble_connection_send_with_reply (priv->conn, msg,
+      direction_msg_reply_cb, G_OBJECT (session), NULL, error);
+
+  lm_message_unref (msg);
+
+  return ret;
+}
+
 gboolean
 _gabble_media_session_request_stream_direction (GabbleMediaSession *session,
                                                 GabbleMediaStream *stream,
@@ -2330,6 +2417,7 @@ _gabble_media_session_request_stream_direction (GabbleMediaSession *session,
   CombinedStreamDirection combined_dir;
   TpMediaStreamDirection current_dir;
   TpMediaStreamPendingSend pending_send;
+  gboolean start_receiving, stop_receiving;
 
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
 
@@ -2350,6 +2438,9 @@ _gabble_media_session_request_stream_direction (GabbleMediaSession *session,
       return FALSE;
     }
 
+  if (requested_dir == current_dir)
+    return TRUE;
+
   if (requested_dir == TP_MEDIA_STREAM_DIRECTION_NONE)
     {
       *error = g_error_new (TELEPATHY_ERRORS, NotAvailable, "jingle calls "
@@ -2357,15 +2448,36 @@ _gabble_media_session_request_stream_direction (GabbleMediaSession *session,
       return FALSE;
     }
 
-  if (pending_send & TP_MEDIA_STREAM_PENDING_LOCAL_SEND)
+  if (((current_dir & TP_MEDIA_STREAM_DIRECTION_RECEIVE) == 0) &&
+      ((requested_dir & TP_MEDIA_STREAM_DIRECTION_RECEIVE) != 0))
+    {
+      start_receiving = TRUE;
+      stop_receiving = FALSE;
+    }
+  else if (((current_dir & TP_MEDIA_STREAM_DIRECTION_RECEIVE) != 0) &&
+      ((requested_dir & TP_MEDIA_STREAM_DIRECTION_RECEIVE) == 0))
+    {
+      start_receiving = FALSE;
+      stop_receiving = TRUE;
+    }
+  else
+    {
+      start_receiving = FALSE;
+      stop_receiving = FALSE;
+    }
+
+  if ((pending_send & TP_MEDIA_STREAM_PENDING_LOCAL_SEND) != 0)
     {
       /* FIXME */
       g_assert_not_reached ();
       return FALSE;
     }
 
-  
+  /* make change */
+  g_object_set (stream, "combined-direction", MAKE_COMBINED_DIRECTION
+      (requested_dir, pending_send), NULL);
 
-  return TRUE;
+  /* send message */
+  return send_direction_change (session, stream, requested_dir, error);
 }
 

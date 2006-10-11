@@ -754,6 +754,8 @@ _senders_to_direction (GabbleMediaSession *session,
   return ret;
 }
 
+static gboolean send_direction_change (GabbleMediaSession *session,
+    GabbleMediaStream *stream, TpMediaStreamDirection dir, GError **error);
 
 static gboolean
 _handle_direction (GabbleMediaSession *session,
@@ -766,7 +768,7 @@ _handle_direction (GabbleMediaSession *session,
 {
   GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
   const gchar *senders;
-  CombinedStreamDirection combined_dir;
+  CombinedStreamDirection combined_dir, new_combined_dir;
   TpMediaStreamDirection requested_dir, current_dir;
   TpMediaStreamPendingSend pending_send;
 
@@ -780,11 +782,12 @@ _handle_direction (GabbleMediaSession *session,
       return FALSE;
     }
 
-  senders = lm_message_node_get_attribute (content_node, "senders");
-  if (senders == NULL)
-    return TRUE;
+  requested_dir = TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL;
 
-  requested_dir = _senders_to_direction (session, senders);
+  senders = lm_message_node_get_attribute (content_node, "senders");
+  if (senders != NULL)
+    requested_dir = _senders_to_direction (session, senders);
+
   if (requested_dir == TP_MEDIA_STREAM_DIRECTION_NONE)
     {
       GMS_DEBUG_WARNING (session, "received invalid content senders value "
@@ -797,19 +800,32 @@ _handle_direction (GabbleMediaSession *session,
   current_dir = COMBINED_DIRECTION_GET_DIRECTION (combined_dir);
   pending_send = COMBINED_DIRECTION_GET_PENDING_SEND (combined_dir);
 
-  if (requested_dir == current_dir)
-    {
-      GMS_DEBUG_INFO (session, "received request for senders \"%s\" on "
-          "stream \"%s\" but this is already the case; ignoring",
-          senders, stream_name);
-      return TRUE;
-    }
-
   GMS_DEBUG_INFO (session, "received request for senders \"%s\" on stream "
       "\"%s\"", senders, stream_name);
 
-  g_object_set (stream, "combined-direction", MAKE_COMBINED_DIRECTION
-      (requested_dir, pending_send), NULL);
+  /* if local sending has been added, remove it,
+   * and set the pending local send flag */
+  if (((current_dir & TP_MEDIA_STREAM_DIRECTION_SEND) == 0) &&
+    ((requested_dir & TP_MEDIA_STREAM_DIRECTION_SEND) != 0))
+    {
+      GMS_DEBUG_INFO (session, "setting pending local send flag");
+      requested_dir &= ~TP_MEDIA_STREAM_DIRECTION_SEND;
+      pending_send |= TP_MEDIA_STREAM_PENDING_LOCAL_SEND;
+    }
+
+#if 0
+  /* clear any pending remote send */
+  if ((pending_send & TP_MEDIA_STREAM_PENDING_REMOTE_SEND) != 0)
+    {
+      GMS_DEBUG_INFO (session, "setting pending local send flag");
+      pending_send &= ~TP_MEDIA_STREAM_PENDING_REMOTE_SEND;
+    }
+#endif
+
+  /* make any necessary changes */
+  new_combined_dir = MAKE_COMBINED_DIRECTION (requested_dir, pending_send);
+  if (new_combined_dir != combined_dir)
+    g_object_set (stream, "combined-direction", new_combined_dir, NULL);
 
   return TRUE;
 }

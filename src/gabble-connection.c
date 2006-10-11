@@ -45,18 +45,20 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
 
+#include "capabilities.h"
 #include "debug.h"
 #include "disco.h"
 #include "gabble-presence-cache.h"
 #include "gabble-presence.h"
-#include "jingle-info.h"
 #include "gabble-register.h"
 #include "im-factory.h"
+#include "jingle-info.h"
 #include "media-factory.h"
 #include "muc-factory.h"
 #include "namespaces.h"
 #include "roster.h"
 #include "util.h"
+#include "vcard-manager.h"
 
 #include "gabble-media-channel.h"
 #include "gabble-roomlist-channel.h"

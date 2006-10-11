@@ -2752,24 +2752,6 @@ gboolean gabble_connection_advertise_capabilities (GabbleConnection *obj, const 
 }
 #endif
 
-typedef GabblePresenceCapabilities (*TypeFlagsToCapsFunc) (guint typeflags);
-typedef guint (*CapsToTypeFlagsFunc) (GabblePresenceCapabilities caps);
-
-typedef struct _CapabilityConversionData CapabilityConversionData;
-
-struct _CapabilityConversionData
-{
-  const gchar *iface;
-  TypeFlagsToCapsFunc tf2c_fn;
-  CapsToTypeFlagsFunc c2tf_fn;
-};
-
-const static CapabilityConversionData capability_conversions[] =
-{
-  { TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA, _gabble_media_channel_typeflags_to_caps, _gabble_media_channel_caps_to_typeflags },
-  { NULL, NULL, NULL}
-};
-
 static void
 _emit_capabilities_changed (GabbleConnection *conn,
                             GabbleHandle handle,
@@ -2784,7 +2766,7 @@ _emit_capabilities_changed (GabbleConnection *conn,
 
   caps_arr = g_ptr_array_new ();
 
-  for (ccd = capability_conversions; NULL != ccd->iface; ccd++)
+  for (ccd = capabilities_conversions; NULL != ccd->iface; ccd++)
     {
       if (ccd->c2tf_fn (old_caps | new_caps))
         {
@@ -2879,14 +2861,14 @@ gabble_connection_advertise_capabilities (GabbleConnection *self,
                               1, &flags,
                               G_MAXUINT);
 
-      for (ccd = capability_conversions; NULL != ccd->iface; ccd++)
+      for (ccd = capabilities_conversions; NULL != ccd->iface; ccd++)
           if (g_str_equal (iface, ccd->iface))
             add_caps |= ccd->tf2c_fn (flags);
     }
 
   for (i = 0; NULL != remove[i]; i++)
     {
-      for (ccd = capability_conversions; NULL != ccd->iface; ccd++)
+      for (ccd = capabilities_conversions; NULL != ccd->iface; ccd++)
           if (g_str_equal (remove[i], ccd->iface))
             remove_caps |= ccd->tf2c_fn (~0);
     }
@@ -2906,7 +2888,7 @@ gabble_connection_advertise_capabilities (GabbleConnection *self,
 
   *ret = g_ptr_array_new ();
 
-  for (ccd = capability_conversions; NULL != ccd->iface; ccd++)
+  for (ccd = capabilities_conversions; NULL != ccd->iface; ccd++)
     {
       if (ccd->c2tf_fn (pres->caps))
         {
@@ -3154,7 +3136,7 @@ gabble_connection_get_capabilities (GabbleConnection *self,
 
       pres = gabble_presence_cache_get (self->presence_cache, handle);
 
-      for (ccd = capability_conversions; NULL != ccd->iface; ccd++)
+      for (ccd = capabilities_conversions; NULL != ccd->iface; ccd++)
         {
           typeflags = ccd->c2tf_fn (pres->caps);
 

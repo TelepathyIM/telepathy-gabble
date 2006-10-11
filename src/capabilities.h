@@ -63,5 +63,19 @@ capabilities_fill_cache (GabblePresenceCache *cache);
 GabblePresenceCapabilities
 capabilities_get_initial_caps ();
 
+typedef GabblePresenceCapabilities (*TypeFlagsToCapsFunc) (guint typeflags);
+typedef guint (*CapsToTypeFlagsFunc) (GabblePresenceCapabilities caps);
+
+typedef struct _CapabilityConversionData CapabilityConversionData;
+
+struct _CapabilityConversionData
+{
+  const gchar *iface;
+  TypeFlagsToCapsFunc tf2c_fn;
+  CapsToTypeFlagsFunc c2tf_fn;
+};
+
+extern const CapabilityConversionData capabilities_conversions[];
 
 #endif  /* __GABBLE_CAPABILITIES__H__ */
+

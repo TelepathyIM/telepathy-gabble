@@ -961,7 +961,7 @@ struct _Handler {
   const gchar *actions[3];
   JingleSessionState min_allowed_state;
   JingleSessionState max_allowed_state;
-  StreamHandlerFunc stream_handlers[3];
+  StreamHandlerFunc stream_handlers[4];
   JingleSessionState new_state;
 };
 
@@ -970,14 +970,14 @@ static Handler handlers[] = {
     { "initiate", "session-initiate", NULL },
     JS_STATE_PENDING_CREATED,
     JS_STATE_PENDING_CREATED,
-    { _handle_create, _handle_codecs, NULL },
+    { _handle_create, _handle_direction, _handle_codecs, NULL },
     JS_STATE_PENDING_INITIATED
   },
   {
     { "accept", "session-accept", NULL },
     JS_STATE_PENDING_INITIATED,
     JS_STATE_PENDING_INITIATED,
-    { _handle_codecs, _handle_accept, NULL },
+    { _handle_direction, _handle_codecs, _handle_accept, NULL },
     JS_STATE_ACTIVE
   },
   {
@@ -1005,7 +1005,7 @@ static Handler handlers[] = {
     { "content-add", NULL },
     JS_STATE_ACTIVE,
     JS_STATE_ACTIVE,
-    { _handle_create, _handle_codecs, NULL },
+    { _handle_create, _handle_direction, _handle_codecs, NULL },
     JS_STATE_INVALID,
   },
   {
@@ -1016,10 +1016,17 @@ static Handler handlers[] = {
     JS_STATE_INVALID
   },
   {
+    { "content-modify", NULL },
+    JS_STATE_PENDING_INITIATED,
+    JS_STATE_ACTIVE,
+    { _handle_direction, NULL },
+    JS_STATE_INVALID
+  },
+  {
     { "content-accept", NULL },
     JS_STATE_PENDING_INITIATED,
     JS_STATE_ACTIVE,
-    { _handle_codecs, _handle_accept, NULL },
+    { _handle_direction, _handle_codecs, _handle_accept, NULL },
     JS_STATE_INVALID
   },
   {

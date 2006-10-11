@@ -109,6 +109,7 @@ struct _GabbleMediaStreamPrivate
   gboolean got_local_codecs;
   gboolean locally_accepted;
   gboolean playing;
+  gboolean sending;
 
   CombinedStreamDirection combined_direction;
 
@@ -146,6 +147,7 @@ static void push_native_candidates (GabbleMediaStream *stream);
 static void push_remote_codecs (GabbleMediaStream *stream);
 static void push_remote_candidates (GabbleMediaStream *stream);
 static void push_playing (GabbleMediaStream *stream);
+static void push_sending (GabbleMediaStream *stream);
 
 static void
 gabble_media_stream_init (GabbleMediaStream *self)
@@ -307,7 +309,17 @@ gabble_media_stream_set_property (GObject      *object,
         }
       break;
     case PROP_COMBINED_DIRECTION:
-      priv->combined_direction = g_value_get_uint (value);
+        {
+          gboolean new_sending;
+          priv->combined_direction = g_value_get_uint (value);
+          new_sending = ((priv->combined_direction &
+                TP_MEDIA_STREAM_DIRECTION_SEND) != 0);
+          if (priv->sending != new_sending)
+            {
+              priv->sending = new_sending;
+              push_sending (stream);
+            }
+        }
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -862,6 +874,7 @@ gabble_media_stream_ready (GabbleMediaStream *self,
   push_remote_codecs (self);
   push_remote_candidates (self);
   push_playing (self);
+  push_sending (self);
 
   return gabble_media_stream_set_local_codecs (self, codecs, error);
 }
@@ -1546,6 +1559,24 @@ push_playing (GabbleMediaStream *stream)
       priv->name, priv->playing ? "true" : "false");
 
   g_signal_emit (stream, signals[SET_STREAM_PLAYING], 0, priv->playing);
+}
+
+static void
+push_sending (GabbleMediaStream *stream)
+{
+  GabbleMediaStreamPrivate *priv;
+
+  g_assert (GABBLE_IS_MEDIA_STREAM (stream));
+
+  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
+
+  if (!priv->ready)
+    return;
+
+  GMS_DEBUG_INFO (priv->session, "stream %s emitting SetStreamSending(%s)",
+      priv->name, priv->sending ? "true" : "false");
+
+  g_signal_emit (stream, signals[SET_STREAM_SENDING], 0, priv->sending);
 }
 
 /*

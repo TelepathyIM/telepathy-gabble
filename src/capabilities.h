@@ -1,5 +1,5 @@
 /*
- * bundles.h - JEP-0015 feature bundle constants
+ * capabilities.h - Connection.Interface.Capabilities constants and utilities
  * Copyright (C) 2005 Collabora Ltd.
  * Copyright (C) 2005 Nokia Corporation
  *
@@ -18,11 +18,11 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef __GABBLE_BUNDLES__H__
-#define __GABBLE_BUNDLES__H__
+#ifndef __GABBLE_CAPABILITIES__H__
+#define __GABBLE_CAPABILITIES__H__
 
 #define BUNDLE_VOICE_V1         "voice-v1"
 #define BUNDLE_JINGLE_AUDIO     "jingle-audio"
 #define BUNDLE_JINGLE_VIDEO     "jingle-video"
 
-#endif  /* __GABBLE_BUNDLES__H__ */
+#endif  /* __GABBLE_CAPABILITIES__H__ */

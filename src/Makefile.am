@@ -51,7 +51,8 @@ noinst_PROGRAMS = write-mgr-file
 
 CORE_SOURCES = \
     ansi.h \
-	bundles.h \
+	capabilities.h \
+	capabilities.c \
     debug.h \
     debug.c \
     disco.h \

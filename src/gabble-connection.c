@@ -57,7 +57,7 @@
 #include "namespaces.h"
 #include "roster.h"
 #include "util.h"
-#include "bundles.h"
+#include "capabilities.h"
 
 #include "gabble-media-channel.h"
 #include "gabble-roomlist-channel.h"

@@ -1064,7 +1064,12 @@ gabble_media_channel_request_stream_direction (GabbleMediaChannel *self,
                                                guint stream_direction,
                                                GError **error)
 {
+  GabbleMediaChannelPrivate *priv;
   GabbleMediaStream *stream;
+
+  g_assert (GABBLE_IS_MEDIA_CHANNEL (self));
+
+  priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
 
   if (stream_direction < TP_MEDIA_STREAM_DIRECTION_NONE ||
       stream_direction > TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL)

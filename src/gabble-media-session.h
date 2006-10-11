@@ -24,6 +24,7 @@
 #include <glib-object.h>
 #include <loudmouth/loudmouth.h>
 #include "gabble-media-stream.h"
+#include "telepathy-constants.h"
 
 G_BEGIN_DECLS
 

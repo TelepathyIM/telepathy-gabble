@@ -200,40 +200,6 @@ const GabblePropertySignature connection_property_signatures[NUM_CONN_PROPS] = {
       { "stun-relay-password",          G_TYPE_STRING },
 };
 
-typedef struct _Feature Feature;
-
-struct _Feature
-{
-  const gchar *bundle;
-  const gchar *ns;
-  GabblePresenceCapabilities caps;
-};
-
-static const Feature self_advertised_features[] =
-{
-  { VERSION, NS_GOOGLE_FEAT_SESSION, 0},
-  { VERSION, NS_GOOGLE_TRANSPORT_P2P, PRESENCE_CAP_GOOGLE_TRANSPORT_P2P},
-  { VERSION, NS_JINGLE, PRESENCE_CAP_JINGLE},
-
-  { BUNDLE_VOICE_V1, NS_GOOGLE_FEAT_VOICE, PRESENCE_CAP_GOOGLE_VOICE},
-  { BUNDLE_JINGLE_AUDIO, NS_JINGLE_DESCRIPTION_AUDIO, PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO},
-  { BUNDLE_JINGLE_VIDEO, NS_JINGLE_DESCRIPTION_VIDEO, PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO},
-  { NULL, NULL, 0}
-};
-
-static GSList *
-get_features (GabblePresenceCapabilities caps)
-{
-  GSList *features = NULL;
-  const Feature *i;
-
-  for (i = self_advertised_features; NULL != i->ns; i++)
-    if ((i->caps & caps) == i->caps)
-      features = g_slist_append (features, (gpointer) i);
-
-  return features;
-}
-
 /* private structure */
 typedef struct _GabbleConnectionPrivate GabbleConnectionPrivate;
 
@@ -309,7 +275,6 @@ gabble_connection_init (GabbleConnection *self)
   GabbleConnectionPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
       GABBLE_TYPE_CONNECTION, GabbleConnectionPrivate);
   guint i;
-  const Feature *feat;
   GValue val = { 0, };
 
   self->priv = priv;
@@ -326,14 +291,7 @@ gabble_connection_init (GabbleConnection *self)
   g_signal_connect (self->presence_cache, "capabilities-update", G_CALLBACK
       (connection_capabilities_update_cb), self);
 
-  /* fill presence cache with the known feature nodes */
-  for (feat = self_advertised_features; NULL != feat->ns; feat++)
-    {
-      gchar *node = g_strconcat (NS_GABBLE_CAPS "#", feat->bundle, NULL);
-      gabble_presence_cache_add_bundle_caps (self->presence_cache,
-          node, feat->caps);
-      g_free (node);
-    }
+  capabilities_fill_cache (self->presence_cache);
 
   self->roster = gabble_roster_new (self);
   g_signal_connect (self->roster, "nickname-update", G_CALLBACK
@@ -1413,7 +1371,6 @@ _gabble_connection_connect (GabbleConnection *conn,
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   char *jid;
-  const Feature *feat;
   GabblePresence *presence;
 
   g_assert (priv->port > 0 && priv->port <= G_MAXUINT16);
@@ -1448,15 +1405,8 @@ _gabble_connection_connect (GabbleConnection *conn,
   /* set initial capabilities */
   presence = gabble_presence_cache_get (conn->presence_cache, conn->self_handle);
 
-  for (feat = self_advertised_features; NULL != feat->ns; feat++)
-    {
-      if (g_str_equal (feat->bundle, VERSION))
-          /* VERSION == bundle means a fixed feature, which we always advertise */
-          gabble_presence_set_capabilities (presence,
-                                            priv->resource,
-                                            feat->caps,
-                                            0);
-    }
+  gabble_presence_set_capabilities (presence, priv->resource,
+      capabilities_get_initial_caps (), 0);
 
   /* always override server and port if one was forced upon us */
   if (priv->connect_server != NULL)
@@ -2159,7 +2109,7 @@ signal_own_presence (GabbleConnection *self, GError **error)
         lm_message_node_set_attribute (node, "type", "invisible");
     }
 
-  features = get_features (presence->caps);
+  features = capabilities_get_features (presence->caps);
 
   for (i = features; NULL != i; i = i->next)
     {
@@ -2346,7 +2296,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   lm_message_node_set_attribute (result_query, "xmlns", NS_DISCO_INFO);
 
   pres = gabble_presence_cache_get (conn->presence_cache, conn->self_handle);
-  features = get_features (pres->caps);
+  features = capabilities_get_features (pres->caps);
 
   for (i = features; NULL != i; i = i->next)
     {

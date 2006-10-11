@@ -21,8 +21,47 @@
 #ifndef __GABBLE_CAPABILITIES__H__
 #define __GABBLE_CAPABILITIES__H__
 
+#include <glib-object.h>
+
+#include "gabble-presence.h"
+
 #define BUNDLE_VOICE_V1         "voice-v1"
 #define BUNDLE_JINGLE_AUDIO     "jingle-audio"
 #define BUNDLE_JINGLE_VIDEO     "jingle-video"
+
+typedef struct _Feature Feature;
+
+struct _Feature
+{
+  const gchar *bundle;
+  const gchar *ns;
+  GabblePresenceCapabilities caps;
+};
+
+/*
+ * capabilities_get_features
+ *
+ * Return a linked list of const Feature structs corresponding to the given
+ * GabblePresenceCapabilities.
+ */
+GSList *
+capabilities_get_features (GabblePresenceCapabilities caps);
+
+/*
+ * capabilities_fill_cache
+ *
+ * Fill up the given GabblePresenceCache with known feature nodes
+ */
+void
+capabilities_fill_cache (GabblePresenceCache *cache);
+
+/*
+ * capabilities_get_initial_caps
+ *
+ * Return the GabblePresenceCapabilities we always have
+ */
+GabblePresenceCapabilities
+capabilities_get_initial_caps ();
+
 
 #endif  /* __GABBLE_CAPABILITIES__H__ */

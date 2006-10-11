@@ -2423,10 +2423,9 @@ _gabble_media_session_request_stream_direction (GabbleMediaSession *session,
                                                 GError **error)
 {
   GabbleMediaSessionPrivate *priv;
-  CombinedStreamDirection combined_dir;
-  TpMediaStreamDirection current_dir;
+  CombinedStreamDirection combined_dir, new_combined_dir;
+  TpMediaStreamDirection current_dir; //, new_dir;
   TpMediaStreamPendingSend pending_send;
-  gboolean start_receiving, stop_receiving;
 
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
 
@@ -2447,9 +2446,6 @@ _gabble_media_session_request_stream_direction (GabbleMediaSession *session,
       return FALSE;
     }
 
-  if (requested_dir == current_dir)
-    return TRUE;
-
   if (requested_dir == TP_MEDIA_STREAM_DIRECTION_NONE)
     {
       *error = g_error_new (TELEPATHY_ERRORS, NotAvailable, "jingle calls "
@@ -2457,36 +2453,39 @@ _gabble_media_session_request_stream_direction (GabbleMediaSession *session,
       return FALSE;
     }
 
-  if (((current_dir & TP_MEDIA_STREAM_DIRECTION_RECEIVE) == 0) &&
-      ((requested_dir & TP_MEDIA_STREAM_DIRECTION_RECEIVE) != 0))
-    {
-      start_receiving = TRUE;
-      stop_receiving = FALSE;
-    }
-  else if (((current_dir & TP_MEDIA_STREAM_DIRECTION_RECEIVE) != 0) &&
-      ((requested_dir & TP_MEDIA_STREAM_DIRECTION_RECEIVE) == 0))
-    {
-      start_receiving = FALSE;
-      stop_receiving = TRUE;
-    }
-  else
-    {
-      start_receiving = FALSE;
-      stop_receiving = FALSE;
-    }
-
+  /* if we're awaiting a local decision on sending... */
   if ((pending_send & TP_MEDIA_STREAM_PENDING_LOCAL_SEND) != 0)
     {
-      /* FIXME */
-      g_assert_not_reached ();
-      return FALSE;
+      /* clear the flag */
+      pending_send &= ~TP_MEDIA_STREAM_PENDING_LOCAL_SEND;
+
+      /* make our current_dir match what other end thinks (he thinks we're
+       * bidirectional) so that we send the correct transitions */
+      current_dir ^= TP_MEDIA_STREAM_DIRECTION_SEND;
     }
 
-  /* make change */
-  g_object_set (stream, "combined-direction", MAKE_COMBINED_DIRECTION
-      (requested_dir, pending_send), NULL);
+#if 0
+  /* if we're asking the remote end to start sending, set the pending flag and
+   * don't change our directionality just yet */
+  new_dir = requested_dir;
+  if (((current_dir & TP_MEDIA_STREAM_DIRECTION_RECEIVE) == 0) &&
+      ((new_dir & TP_MEDIA_STREAM_DIRECTION_RECEIVE) != 0))
+    {
+      pending_send ^= TP_MEDIA_STREAM_PENDING_REMOTE_SEND;
+      new_dir &= ~TP_MEDIA_STREAM_DIRECTION_RECEIVE;
+    }
+#endif
 
-  /* send message */
+  /* make any necessary changes */
+  new_combined_dir = MAKE_COMBINED_DIRECTION (requested_dir, pending_send);
+  if (new_combined_dir != combined_dir)
+    g_object_set (stream, "combined-direction", new_combined_dir, NULL);
+
+  /* short-circuit sending a request if we're not asking for anything new */
+  if (current_dir == requested_dir)
+    return TRUE;
+
+  /* send request */
   return send_direction_change (session, stream, requested_dir, error);
 }
 

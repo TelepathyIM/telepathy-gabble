@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/errors.h>
@@ -248,7 +249,7 @@ nokia_iv_get_reply_cb (GabbleConnection *conn,
   LmMessage *msg = NULL;
   LmMessageNode *query_node, *challenge_node;
   gchar *auth_mac, *auth_btid;
-  const gchar *challenge;
+  gchar *challenge;
   gchar response[33];
   gint i;
   md5_byte_t digest[16];
@@ -272,7 +273,7 @@ nokia_iv_get_reply_cb (GabbleConnection *conn,
   challenge_node = lm_message_node_get_child (query_node, "challenge");
   if (!challenge_node)
     goto ERROR_MALFORMED_REPLY;
-  challenge = lm_message_node_get_value(challenge_node);
+  challenge = g_strdup (lm_message_node_get_value (challenge_node));
   if (!challenge)
     goto ERROR_MALFORMED_REPLY;
 
@@ -287,6 +288,12 @@ nokia_iv_get_reply_cb (GabbleConnection *conn,
       "auth-mac", &auth_mac,
       "auth-btid", &auth_btid,
       NULL);
+
+  for (i = 0; i < strlen (auth_btid); i++)
+    auth_btid[i] = tolower (auth_btid[i]);
+
+  for (i = 0; i < strlen (challenge); i++)
+    challenge[i] = tolower (challenge[i]);
 
   md5_init(&calculator);
   md5_append(&calculator, (const md5_byte_t *)auth_btid,
@@ -305,6 +312,7 @@ nokia_iv_get_reply_cb (GabbleConnection *conn,
 
   g_free (auth_mac);
   g_free (auth_btid);
+  g_free (challenge);
 
   if (!_gabble_connection_send_with_reply (priv->conn, msg,
                                            nokia_iv_set_reply_cb,

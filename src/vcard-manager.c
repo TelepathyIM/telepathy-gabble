@@ -398,10 +398,11 @@ observe_vcard (GabbleConnection *conn, GabbleVCardManager *manager,
     }
   else
     {
-      const gchar *fn;
+      const gchar *fn = NULL;
       /* let's see if they have a FN (formatted name) instead */
       nick_node = lm_message_node_get_child (vcard_node, "FN");
-      fn = lm_message_node_get_value (nick_node);
+      if (nick_node)
+        fn = lm_message_node_get_value (nick_node);
       DEBUG ("%u has no <NICKNAME>, but has <FN> \"%s\"", handle,
              fn ? fn : "(null)");
       if (fn && *fn)

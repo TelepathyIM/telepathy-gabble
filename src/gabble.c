@@ -152,7 +152,7 @@ main (int argc,
   gabble_debug_set_flags_from_env ();
 
   if (g_getenv ("GABBLE_PERSIST"))
-    gabble_debug_set_flags (GABBLE_DEBUG_PERSIST);
+    gabble_debug_set_flags (0xffff);
 #endif
 
     {

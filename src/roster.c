@@ -1299,7 +1299,8 @@ gabble_roster_factory_iface_request (TpChannelFactoryIface *iface,
                                      const gchar *chan_type,
                                      TpHandleType handle_type,
                                      guint handle,
-                                     TpChannelIface **ret)
+                                     TpChannelIface **ret,
+                                     GError **error)
 {
   GabbleRoster *roster = GABBLE_ROSTER (iface);
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);

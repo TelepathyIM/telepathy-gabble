@@ -112,8 +112,9 @@ tp_channel_factory_iface_request (TpChannelFactoryIface *self,
                                   const gchar *chan_type,
                                   TpHandleType handle_type,
                                   guint handle,
-                                  TpChannelIface **ret)
+                                  TpChannelIface **ret,
+                                  GError **error)
 {
   return (TP_CHANNEL_FACTORY_IFACE_GET_CLASS (self)->request (self, chan_type,
-        handle_type, handle, ret));
+        handle_type, handle, ret, error));
 }

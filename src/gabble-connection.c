@@ -3831,7 +3831,7 @@ gabble_connection_request_channel (GabbleConnection *self,
       priv->suppress_next_handler = suppress_handler;
 
       cur_status = tp_channel_factory_iface_request (factory, type,
-          (TpHandleType) handle_type, handle, &chan);
+          (TpHandleType) handle_type, handle, &chan, &error);
 
       priv->suppress_next_handler = FALSE;
 
@@ -3849,6 +3849,9 @@ gabble_connection_request_channel (GabbleConnection *self,
               suppress_handler);
           g_ptr_array_add (priv->channel_requests, request);
           return;
+        case TP_CHANNEL_FACTORY_REQUEST_STATUS_ERROR:
+          /* pass through error */
+          goto OUT;
         default:
           /* always return the most specific error */
           if (cur_status > status)

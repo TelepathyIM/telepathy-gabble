@@ -58,6 +58,7 @@ typedef enum {
   TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_IMPLEMENTED = 0,
   TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_AVAILABLE,
   TP_CHANNEL_FACTORY_REQUEST_STATUS_INVALID_HANDLE,
+  TP_CHANNEL_FACTORY_REQUEST_STATUS_ERROR,
   TP_CHANNEL_FACTORY_REQUEST_STATUS_DONE,
   TP_CHANNEL_FACTORY_REQUEST_STATUS_QUEUED
 } TpChannelFactoryRequestStatus;
@@ -70,7 +71,7 @@ struct _TpChannelFactoryIfaceClass {
   void (*connected) (TpChannelFactoryIface *);
   void (*disconnected) (TpChannelFactoryIface *);
   void (*foreach) (TpChannelFactoryIface *, TpChannelFunc func, gpointer data);
-  TpChannelFactoryRequestStatus (*request) (TpChannelFactoryIface *, const gchar *chan_type, TpHandleType handle_type, guint handle, TpChannelIface **ret);
+  TpChannelFactoryRequestStatus (*request) (TpChannelFactoryIface *, const gchar *chan_type, TpHandleType handle_type, guint handle, TpChannelIface **ret, GError **error);
 };
 
 GType tp_channel_factory_iface_get_type (void);
@@ -80,7 +81,7 @@ void tp_channel_factory_iface_connecting (TpChannelFactoryIface *);
 void tp_channel_factory_iface_connected (TpChannelFactoryIface *);
 void tp_channel_factory_iface_disconnected (TpChannelFactoryIface *);
 void tp_channel_factory_iface_foreach (TpChannelFactoryIface *, TpChannelFunc func, gpointer data);
-TpChannelFactoryRequestStatus tp_channel_factory_iface_request (TpChannelFactoryIface *, const gchar *chan_type, TpHandleType handle_type, guint handle, TpChannelIface **ret);
+TpChannelFactoryRequestStatus tp_channel_factory_iface_request (TpChannelFactoryIface *, const gchar *chan_type, TpHandleType handle_type, guint handle, TpChannelIface **ret, GError **error);
 
 G_END_DECLS
 

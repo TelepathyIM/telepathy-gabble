@@ -628,12 +628,12 @@ gabble_media_factory_iface_request (TpChannelFactoryIface *iface,
                                     const gchar *chan_type,
                                     TpHandleType handle_type,
                                     guint handle,
-                                    TpChannelIface **ret)
+                                    TpChannelIface **ret,
+                                    GError **error)
 {
   GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (iface);
   GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
   GabbleMediaChannel *chan = NULL;
-  GError *error;
 
   if (strcmp (chan_type, TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA))
     return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_IMPLEMENTED;
@@ -664,15 +664,17 @@ gabble_media_factory_iface_request (TpChannelFactoryIface *iface,
           members = g_array_sized_new (FALSE, FALSE, sizeof (GabbleHandle), 1);
           g_array_append_val (members, handle);
 
-          ret = gabble_group_mixin_add_members (G_OBJECT (chan), members, "", &error);
+          ret = gabble_group_mixin_add_members (G_OBJECT (chan), members, "", error);
 
           g_array_free (members, TRUE);
 
           if (!ret)
             {
-              g_error_free (error);
-              gabble_media_channel_close (chan, NULL);
-              return TP_CHANNEL_FACTORY_REQUEST_STATUS_INVALID_HANDLE;
+              gboolean close_ret;
+
+              close_ret = gabble_media_channel_close (chan, NULL);
+              g_assert (close_ret);
+              return TP_CHANNEL_FACTORY_REQUEST_STATUS_ERROR;
             }
         }
     }

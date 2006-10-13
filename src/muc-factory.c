@@ -783,13 +783,13 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
                                   const gchar *chan_type,
                                   TpHandleType handle_type,
                                   guint handle,
-                                  TpChannelIface **ret)
+                                  TpChannelIface **ret,
+                                  GError **error)
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (iface);
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
   GabbleMucChannel *chan;
   GArray *members;
-  GError *error;
   gboolean retval;
 
   if (!g_strdiff (chan_type, TP_IFACE_CHANNEL_TYPE_ROOM_LIST))
@@ -821,21 +821,19 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
       members = g_array_sized_new (FALSE, FALSE, sizeof (GabbleHandle), 1);
       g_array_append_val (members, priv->conn->self_handle);
 
-      retval = gabble_group_mixin_add_members (G_OBJECT (chan), members, "", &error);
+      retval = gabble_group_mixin_add_members (G_OBJECT (chan), members, "", error);
 
       g_array_free (members, TRUE);
 
       if (!retval)
         {
-          GError *close_err;
+          gboolean retval;
 
-          if (!gabble_muc_channel_close (GABBLE_MUC_CHANNEL (chan), &close_err))
-            {
-              g_error_free (close_err);
-            }
+          retval = gabble_muc_channel_close (GABBLE_MUC_CHANNEL (chan), NULL);
+          g_assert (retval);
 
           DEBUG ("error while adding self to group mixin");
-          return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_AVAILABLE;
+          return TP_CHANNEL_FACTORY_REQUEST_STATUS_ERROR;
         }
 
       return TP_CHANNEL_FACTORY_REQUEST_STATUS_QUEUED;

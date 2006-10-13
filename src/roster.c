@@ -69,12 +69,20 @@ struct _GabbleRosterPrivate
   gboolean dispose_has_run;
 };
 
+typedef enum
+{
+  GOOGLE_ITEM_TYPE_NORMAL = 0,
+  GOOGLE_ITEM_TYPE_BLOCKED,
+  GOOGLE_ITEM_TYPE_HIDDEN,
+  GOOGLE_ITEM_TYPE_PINNED
+} GoogleItemType;
+
 typedef struct _GabbleRosterItem GabbleRosterItem;
 struct _GabbleRosterItem
 {
   GabbleRosterSubscription subscription;
   gboolean ask_subscribe;
-  gboolean blocked;
+  GoogleItemType google_type;
   gchar *name;
   gchar **groups;
 };
@@ -333,6 +341,49 @@ _parse_item_groups (LmMessageNode *item_node)
   return (gchar **) g_ptr_array_free (strv, FALSE);
 }
 
+static const gchar *
+_google_item_type_to_string (GoogleItemType google_type)
+{
+  switch (google_type)
+    {
+      case GOOGLE_ITEM_TYPE_NORMAL:
+        return NULL;
+      case GOOGLE_ITEM_TYPE_BLOCKED:
+        return "B";
+      case GOOGLE_ITEM_TYPE_HIDDEN:
+        return "H";
+      case GOOGLE_ITEM_TYPE_PINNED:
+        return "P";
+    }
+
+  g_assert_not_reached ();
+
+  return NULL;
+}
+
+static GoogleItemType
+_parse_google_item_type (LmMessageNode *item_node)
+{
+  const gchar *google_type;
+
+  g_assert (item_node != NULL);
+
+  google_type = lm_message_node_get_attribute (item_node, "gr:t");
+
+  if (NULL == google_type)
+    return GOOGLE_ITEM_TYPE_NORMAL;
+  else if (!g_strdiff (google_type, "B"))
+    return GOOGLE_ITEM_TYPE_BLOCKED;
+  else if (!g_strdiff (google_type, "H"))
+    return GOOGLE_ITEM_TYPE_HIDDEN;
+  else if (!g_strdiff (google_type, "P"))
+    return GOOGLE_ITEM_TYPE_PINNED;
+
+  NODE_DEBUG (item_node, "got unexpected google contact type value");
+
+  return GOOGLE_ITEM_TYPE_NORMAL;
+}
+
 static GabbleRosterItem *
 _gabble_roster_item_get (GabbleRoster *roster,
                          GabbleHandle handle)
@@ -379,7 +430,7 @@ _gabble_roster_item_update (GabbleRoster *roster,
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
   GabbleRosterItem *item;
-  const gchar *ask, *block, *name;
+  const gchar *ask, *name;
 
   g_assert (roster != NULL);
   g_assert (GABBLE_IS_ROSTER (roster));
@@ -397,11 +448,7 @@ _gabble_roster_item_update (GabbleRoster *roster,
   else
     item->ask_subscribe = FALSE;
 
-  block = lm_message_node_get_attribute (node, "gr:t");
-  if (!g_strdiff (block, "B"))
-    item->blocked = TRUE;
-  else
-    item->blocked = FALSE;
+  item->google_type = _parse_google_item_type (node);
 
   name = lm_message_node_get_attribute (node, "name");
   if (g_strdiff (item->name, name))
@@ -436,8 +483,9 @@ _gabble_roster_item_dump (GabbleRosterItem *item)
   if (item->ask_subscribe)
     g_string_append (str, ", ask: subscribe");
 
-  if (item->blocked)
-    g_string_append (str, ", blocked");
+  if (item->google_type != GOOGLE_ITEM_TYPE_NORMAL)
+    g_string_append_printf (str, ", google_type: %s",
+        _google_item_type_to_string (item->google_type));
 
   if (item->name)
     g_string_append_printf (str, ", name: %s", item->name);
@@ -534,8 +582,9 @@ _gabble_roster_item_to_message (GabbleRoster *roster,
     goto DONE;
 
   if ((priv->conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER) &&
-      item->blocked)
-    lm_message_node_set_attribute (item_node, "gr:t", "B");
+      item->google_type != GOOGLE_ITEM_TYPE_NORMAL)
+    lm_message_node_set_attribute (item_node, "gr:t",
+        _google_item_type_to_string (GOOGLE_ITEM_TYPE_NORMAL));
 
   if (item->ask_subscribe)
     lm_message_node_set_attribute (item_node, "ask", "subscribe");
@@ -858,7 +907,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
                 case GABBLE_ROSTER_SUBSCRIPTION_TO:
                 case GABBLE_ROSTER_SUBSCRIPTION_FROM:
                 case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
-                  if (item->blocked)
+                  if (item->google_type == GOOGLE_ITEM_TYPE_BLOCKED)
                     g_intset_add (deny_add, handle);
                   else
                     g_intset_add (deny_rem, handle);
@@ -1334,8 +1383,9 @@ gabble_roster_handle_set_blocked (GabbleRoster *roster,
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
   GabbleRosterItem *item;
+  GoogleItemType orig_type;
   LmMessage *message;
-  gboolean orig_blocked, ret;
+  gboolean ret;
 
   g_return_val_if_fail (roster != NULL, FALSE);
   g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
@@ -1345,15 +1395,18 @@ gabble_roster_handle_set_blocked (GabbleRoster *roster,
       GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER, FALSE);
 
   item = _gabble_roster_item_get (roster, handle);
-  orig_blocked = item->blocked;
+  orig_type = item->google_type;
 
-  if (blocked == orig_blocked)
+  if (blocked == (orig_type == GOOGLE_ITEM_TYPE_BLOCKED))
     return TRUE;
 
   /* temporarily set the desired block state and generate a message */
-  item->blocked = blocked;
+  if (blocked)
+    item->google_type = GOOGLE_ITEM_TYPE_BLOCKED;
+  else
+    item->google_type = GOOGLE_ITEM_TYPE_NORMAL;
   message = _gabble_roster_item_to_message (roster, handle, NULL);
-  item->blocked = orig_blocked;
+  item->google_type = orig_type;
 
   ret = _gabble_connection_send (priv->conn, message, error);
 

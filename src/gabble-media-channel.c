@@ -1159,6 +1159,21 @@ gabble_media_channel_add_member (GObject *obj, GabbleHandle handle, const gchar 
   if (priv->creator == mixin->self_handle &&
       handle != mixin->self_handle)
     {
+      GabblePresence *presence;
+
+      /* yes: check the peer's capabilities */
+
+      presence = gabble_presence_cache_get (priv->conn->presence_cache, handle);
+
+      if (!(presence->caps & PRESENCE_CAP_GOOGLE_VOICE ||
+            presence->caps & PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO ||
+            presence->caps & PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO))
+        {
+          *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                                "handle %u has no media capabilities", handle);
+          return FALSE;
+        }
+
       /* yes: invite the peer */
 
       GIntSet *empty, *set;

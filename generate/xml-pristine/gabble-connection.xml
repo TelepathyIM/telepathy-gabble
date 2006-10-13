@@ -70,6 +70,48 @@
       <arg direction="in" name="aliases" type="a{us}"/>
     </method>
   </interface>
+  <interface name="org.freedesktop.Telepathy.Connection.Interface.Avatars">
+    <signal name="AvatarUpdated">
+      <arg name="contact" type="u"/>
+      <arg name="new_avatar_token" type="s"/>
+    </signal>
+    <method name="GetAvatarRequirements">
+      <arg direction="out" type="as"/>
+      <arg direction="out" type="q"/>
+      <arg direction="out" type="q"/>
+      <arg direction="out" type="q"/>
+      <arg direction="out" type="q"/>
+      <arg direction="out" type="u"/>
+    </method>
+    <method name="GetAvatarTokens">
+      <arg direction="in" name="contacts" type="au"/>
+      <arg direction="out" type="as"/>
+    </method>
+    <method name="RequestAvatar">
+      <arg direction="in" name="contact" type="u"/>
+      <arg direction="out" type="ay"/>
+      <arg direction="out" type="s"/>
+    </method>
+    <method name="SetAvatar">
+      <arg direction="in" name="avatar" type="ay"/>
+      <arg direction="in" name="mime_type" type="s"/>
+      <arg direction="out" type="s"/>
+    </method>
+  </interface>
+  <interface name="org.freedesktop.Telepathy.Connection.Interface.Capabilities">
+    <method name="AdvertiseCapabilities">
+      <arg direction="in" name="add" type="a(su)"/>
+      <arg direction="in" name="remove" type="as"/>
+      <arg direction="out" type="a(su)"/>
+    </method>
+    <signal name="CapabilitiesChanged">
+      <arg name="caps" type="a(usuuuu)"/>
+    </signal>
+    <method name="GetCapabilities">
+      <arg direction="in" name="handles" type="au"/>
+      <arg direction="out" type="a(usuu)"/>
+    </method>
+  </interface>
   <interface name="org.freedesktop.Telepathy.Connection.Interface.Presence">
     <method name="AddStatus">
       <arg direction="in" name="status" type="s"/>

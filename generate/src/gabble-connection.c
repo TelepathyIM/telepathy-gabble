@@ -33,6 +33,7 @@ G_DEFINE_TYPE(GabbleConnection, gabble_connection, G_TYPE_OBJECT)
 enum
 {
     ALIASES_CHANGED,
+    AVATAR_UPDATED,
     CAPABILITIES_CHANGED,
     NEW_CHANNEL,
     PRESENCE_UPDATE,
@@ -87,6 +88,15 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
                   NULL, NULL,
                   g_cclosure_marshal_VOID__BOXED,
                   G_TYPE_NONE, 1, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_UINT, G_TYPE_STRING, G_TYPE_INVALID)))));
+
+  signals[AVATAR_UPDATED] =
+    g_signal_new ("avatar-updated",
+                  G_OBJECT_CLASS_TYPE (gabble_connection_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_connection_marshal_VOID__UINT_STRING,
+                  G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_STRING);
 
   signals[CAPABILITIES_CHANGED] =
     g_signal_new ("capabilities-changed",
@@ -298,6 +308,50 @@ gabble_connection_get_alias_flags (GabbleConnection *self,
                                    GError **error)
 {
   return TRUE;
+}
+
+
+/**
+ * gabble_connection_get_avatar_requirements
+ *
+ * Implements D-Bus method GetAvatarRequirements
+ * on interface org.freedesktop.Telepathy.Connection.Interface.Avatars
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occurred, D-Bus will throw the error only if this
+ *         function returns FALSE.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean
+gabble_connection_get_avatar_requirements (GabbleConnection *self,
+                                           gchar ***ret,
+                                           guint *ret1,
+                                           guint *ret2,
+                                           guint *ret3,
+                                           guint *ret4,
+                                           guint *ret5,
+                                           GError **error)
+{
+  return TRUE;
+}
+
+
+/**
+ * gabble_connection_get_avatar_tokens
+ *
+ * Implements D-Bus method GetAvatarTokens
+ * on interface org.freedesktop.Telepathy.Connection.Interface.Avatars
+ *
+ * @context: The D-Bus invocation context to use to return values
+ *           or throw an error.
+ */
+void
+gabble_connection_get_avatar_tokens (GabbleConnection *self,
+                                     const GArray *contacts,
+                                     DBusGMethodInvocation *context)
+{
+  return;
 }
 
 
@@ -607,6 +661,24 @@ gabble_connection_request_aliases (GabbleConnection *self,
 
 
 /**
+ * gabble_connection_request_avatar
+ *
+ * Implements D-Bus method RequestAvatar
+ * on interface org.freedesktop.Telepathy.Connection.Interface.Avatars
+ *
+ * @context: The D-Bus invocation context to use to return values
+ *           or throw an error.
+ */
+void
+gabble_connection_request_avatar (GabbleConnection *self,
+                                  guint contact,
+                                  DBusGMethodInvocation *context)
+{
+  return;
+}
+
+
+/**
  * gabble_connection_request_channel
  *
  * Implements D-Bus method RequestChannel
@@ -683,6 +755,29 @@ gboolean
 gabble_connection_set_aliases (GabbleConnection *self,
                                GHashTable *aliases,
                                GError **error)
+{
+  return TRUE;
+}
+
+
+/**
+ * gabble_connection_set_avatar
+ *
+ * Implements D-Bus method SetAvatar
+ * on interface org.freedesktop.Telepathy.Connection.Interface.Avatars
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occurred, D-Bus will throw the error only if this
+ *         function returns FALSE.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean
+gabble_connection_set_avatar (GabbleConnection *self,
+                              const GArray *avatar,
+                              const gchar *mime_type,
+                              gchar **ret,
+                              GError **error)
 {
   return TRUE;
 }

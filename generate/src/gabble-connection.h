@@ -86,6 +86,21 @@ gabble_connection_get_alias_flags (GabbleConnection *self,
                                    GError **error);
 
 gboolean
+gabble_connection_get_avatar_requirements (GabbleConnection *self,
+                                           gchar ***ret,
+                                           guint *ret1,
+                                           guint *ret2,
+                                           guint *ret3,
+                                           guint *ret4,
+                                           guint *ret5,
+                                           GError **error);
+
+void
+gabble_connection_get_avatar_tokens (GabbleConnection *self,
+                                     const GArray *contacts,
+                                     DBusGMethodInvocation *context);
+
+gboolean
 gabble_connection_get_capabilities (GabbleConnection *self,
                                     const GArray *handles,
                                     GPtrArray **ret,
@@ -166,6 +181,11 @@ gabble_connection_request_aliases (GabbleConnection *self,
                                    DBusGMethodInvocation *context);
 
 void
+gabble_connection_request_avatar (GabbleConnection *self,
+                                  guint contact,
+                                  DBusGMethodInvocation *context);
+
+void
 gabble_connection_request_channel (GabbleConnection *self,
                                    const gchar *type,
                                    guint handle_type,
@@ -188,6 +208,13 @@ gboolean
 gabble_connection_set_aliases (GabbleConnection *self,
                                GHashTable *aliases,
                                GError **error);
+
+gboolean
+gabble_connection_set_avatar (GabbleConnection *self,
+                              const GArray *avatar,
+                              const gchar *mime_type,
+                              gchar **ret,
+                              GError **error);
 
 gboolean
 gabble_connection_set_last_activity_time (GabbleConnection *self,

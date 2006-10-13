@@ -472,7 +472,10 @@ _gabble_connection_manager_register (GabbleConnectionManager *self)
     g_error ("Failed to request bus name: %s", error->message);
 
   if (request_name_result == DBUS_REQUEST_NAME_REPLY_EXISTS)
-    g_error ("Failed to acquire bus name, connection manager already running?");
+    {
+      g_warning ("Failed to acquire bus name, connection manager already running?");
+      exit (1);
+    }
 
   dbus_g_connection_register_g_object (bus, GABBLE_CONN_MGR_OBJECT_PATH, G_OBJECT (self));
 }

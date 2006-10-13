@@ -2472,9 +2472,16 @@ _gabble_media_session_request_stream_direction (GabbleMediaSession *session,
 
   if (requested_dir == TP_MEDIA_STREAM_DIRECTION_NONE)
     {
-      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable, "jingle calls "
-          "cannot have no senders");
-      return FALSE;
+      GPtrArray *streams;
+
+      GMS_DEBUG_INFO (session, "request for NONE direction; removing stream");
+
+      streams = g_ptr_array_sized_new (1);
+      g_ptr_array_add (streams, stream);
+      _gabble_media_session_remove_streams (session, streams);
+      g_ptr_array_free (streams, TRUE);
+
+      return TRUE;
     }
 
   /* if we're awaiting a local decision on sending... */

@@ -193,6 +193,12 @@ gabble_register_new (GabbleConnection *conn)
         "connection", conn, NULL));
 }
 
+static LmHandlerResult get_reply_cb (GabbleConnection *,
+                                     LmMessage *,
+                                     LmMessage *,
+                                     GObject *,
+                                     gpointer);
+
 static LmHandlerResult
 nokia_iv_set_reply_cb (GabbleConnection *conn,
                        LmMessage *sent_msg,
@@ -228,7 +234,25 @@ nokia_iv_set_reply_cb (GabbleConnection *conn,
     }
   else
     {
-      g_signal_emit (object, signals[FINISHED], 0, TRUE, -1, NULL);
+      /* IV pre-authorization finished - move on to account registration */
+
+      LmMessage *msg = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
+                                                     LM_MESSAGE_SUB_TYPE_GET);
+      LmMessageNode *node = lm_message_node_add_child (msg->node, "query",
+                                                       NULL);
+      GError *error;
+
+      lm_message_node_set_attribute (node, "xmlns", NS_REGISTER);
+
+      if (!_gabble_connection_send_with_reply (conn, msg, get_reply_cb,
+                                               object, NULL, &error))
+        {
+          g_signal_emit (object, signals[FINISHED], 0, FALSE,
+                         error->code, error->message);
+          g_error_free (error);
+        }
+
+      lm_message_unref (msg);
     }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
@@ -350,9 +374,6 @@ set_reply_cb (GabbleConnection *conn,
               GObject *object,
               gpointer user_data)
 {
-  GabbleRegister *reg = GABBLE_REGISTER (object);
-  GabbleRegisterPrivate *priv = GABBLE_REGISTER_GET_PRIVATE (reg);
-
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
       LmMessageNode *node;
@@ -385,39 +406,7 @@ set_reply_cb (GabbleConnection *conn,
     }
   else
     {
-      gchar *auth_mac;
-
-      g_object_get (priv->conn, "auth-mac", &auth_mac, NULL);
-
-      if (auth_mac)
-        {
-          LmMessage *msg;
-          LmMessageNode *node;
-          GError *error;
-
-          msg = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
-                                              LM_MESSAGE_SUB_TYPE_GET);
-
-          node = lm_message_node_add_child (msg->node, "query", NULL);
-          lm_message_node_set_attribute (node, "xmlns", NS_NOKIA_IV);
-
-          if (!_gabble_connection_send_with_reply (priv->conn, msg,
-                                                   nokia_iv_get_reply_cb,
-                                                   G_OBJECT (reg), NULL,
-                                                   &error))
-            {
-              g_signal_emit (reg, signals[FINISHED], 0, FALSE, error->code,
-                             error->message);
-              g_error_free (error);
-            }
-        }
-      else
-        {
-          /* We don't have the necessary info, so let's hope it's not
-          necessary */
-          g_signal_emit (object, signals[FINISHED], 0, TRUE, -1, NULL);
-        }
-      g_free(auth_mac);
+      g_signal_emit (object, signals[FINISHED], 0, TRUE, -1, NULL);
     }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
@@ -519,14 +508,36 @@ void gabble_register_start (GabbleRegister *reg)
   LmMessage *msg;
   LmMessageNode *node;
   GError *error;
+  gchar *auth_mac, *auth_btid;
+  GabbleConnectionMsgReplyFunc handler;
+
+  g_object_get (priv->conn, "auth-mac", &auth_mac, NULL);
+  g_object_get (priv->conn, "auth-btid", &auth_btid, NULL);
 
   msg = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
                                       LM_MESSAGE_SUB_TYPE_GET);
 
   node = lm_message_node_add_child (msg->node, "query", NULL);
-  lm_message_node_set_attribute (node, "xmlns", NS_REGISTER);
+  if (auth_mac && auth_btid)
+    {
+      g_debug ("%s: performing privileged device authorization", G_STRFUNC);
+      lm_message_node_set_attribute (node, "xmlns", NS_NOKIA_IV);
+      handler = nokia_iv_get_reply_cb;
+    }
+  else
+    {
+      if (auth_mac || auth_btid)
+        {
+          g_warning ("Only one of 'mac', 'btid' supplied - not performing "
+                     "privileged device authorization");
+        }
+      lm_message_node_set_attribute (node, "xmlns", NS_REGISTER);
+      handler = get_reply_cb;
+    }
+  g_free (auth_mac);
+  g_free (auth_btid);
 
-  if (!_gabble_connection_send_with_reply (priv->conn, msg, get_reply_cb,
+  if (!_gabble_connection_send_with_reply (priv->conn, msg, handler,
                                            G_OBJECT (reg), NULL, &error))
     {
       g_signal_emit (reg, signals[FINISHED], 0, FALSE, error->code,

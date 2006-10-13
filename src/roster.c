@@ -838,6 +838,11 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
             }
 #endif
 
+          /* skip hidden google roster items, these are usually e-mail
+           * addresses from the address book, not actually JIDs! */
+          if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN)
+            continue;
+
           /* handle publish list changes */
           switch (item->subscription)
             {

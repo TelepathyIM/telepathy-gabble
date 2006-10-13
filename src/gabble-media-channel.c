@@ -1165,7 +1165,8 @@ gabble_media_channel_add_member (GObject *obj, GabbleHandle handle, const gchar 
 
       presence = gabble_presence_cache_get (priv->conn->presence_cache, handle);
 
-      if (!(presence->caps & PRESENCE_CAP_GOOGLE_VOICE ||
+      if (presence == NULL ||
+          !(presence->caps & PRESENCE_CAP_GOOGLE_VOICE ||
             presence->caps & PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO ||
             presence->caps & PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO))
         {

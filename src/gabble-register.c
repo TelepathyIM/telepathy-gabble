@@ -193,11 +193,8 @@ gabble_register_new (GabbleConnection *conn)
         "connection", conn, NULL));
 }
 
-static LmHandlerResult get_reply_cb (GabbleConnection *,
-                                     LmMessage *,
-                                     LmMessage *,
-                                     GObject *,
-                                     gpointer);
+typedef enum { STAGE_NOKIA_IV, STAGE_REGISTER } RegistrationStage;
+static void send_registration (GabbleRegister *, RegistrationStage);
 
 static LmHandlerResult
 nokia_iv_set_reply_cb (GabbleConnection *conn,
@@ -235,24 +232,7 @@ nokia_iv_set_reply_cb (GabbleConnection *conn,
   else
     {
       /* IV pre-authorization finished - move on to account registration */
-
-      LmMessage *msg = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
-                                                     LM_MESSAGE_SUB_TYPE_GET);
-      LmMessageNode *node = lm_message_node_add_child (msg->node, "query",
-                                                       NULL);
-      GError *error;
-
-      lm_message_node_set_attribute (node, "xmlns", NS_REGISTER);
-
-      if (!_gabble_connection_send_with_reply (conn, msg, get_reply_cb,
-                                               object, NULL, &error))
-        {
-          g_signal_emit (object, signals[FINISHED], 0, FALSE,
-                         error->code, error->message);
-          g_error_free (error);
-        }
-
-      lm_message_unref (msg);
+      send_registration (GABBLE_REGISTER (object), STAGE_REGISTER);
     }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
@@ -495,48 +475,28 @@ OUT:
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
-/**
- * gabble_register_start:
- *
- * Start account registration.
- *
- * @reg: The #GabbleRegister object performing the registration
- */
-void gabble_register_start (GabbleRegister *reg)
+static void
+send_registration (GabbleRegister *reg, RegistrationStage stage)
 {
   GabbleRegisterPrivate *priv = GABBLE_REGISTER_GET_PRIVATE (reg);
   LmMessage *msg;
   LmMessageNode *node;
   GError *error;
-  gchar *auth_mac, *auth_btid;
   GabbleConnectionMsgReplyFunc handler;
-
-  g_object_get (priv->conn, "auth-mac", &auth_mac, NULL);
-  g_object_get (priv->conn, "auth-btid", &auth_btid, NULL);
 
   msg = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
                                       LM_MESSAGE_SUB_TYPE_GET);
-
   node = lm_message_node_add_child (msg->node, "query", NULL);
-  if (auth_mac && auth_btid)
+  if (stage == STAGE_NOKIA_IV)
     {
-      g_debug ("%s: performing privileged device authorization", G_STRFUNC);
       lm_message_node_set_attribute (node, "xmlns", NS_NOKIA_IV);
       handler = nokia_iv_get_reply_cb;
     }
   else
     {
-      if (auth_mac || auth_btid)
-        {
-          g_warning ("Only one of 'mac', 'btid' supplied - not performing "
-                     "privileged device authorization");
-        }
       lm_message_node_set_attribute (node, "xmlns", NS_REGISTER);
       handler = get_reply_cb;
     }
-  g_free (auth_mac);
-  g_free (auth_btid);
-
   if (!_gabble_connection_send_with_reply (priv->conn, msg, handler,
                                            G_OBJECT (reg), NULL, &error))
     {
@@ -548,3 +508,34 @@ void gabble_register_start (GabbleRegister *reg)
   lm_message_unref (msg);
 }
 
+/**
+ * gabble_register_start:
+ *
+ * Start account registration.
+ *
+ * @reg: The #GabbleRegister object performing the registration
+ */
+void gabble_register_start (GabbleRegister *reg)
+{
+  GabbleRegisterPrivate *priv = GABBLE_REGISTER_GET_PRIVATE (reg);
+  gchar *auth_mac, *auth_btid;
+
+  g_object_get (priv->conn, "auth-mac", &auth_mac, NULL);
+  g_object_get (priv->conn, "auth-btid", &auth_btid, NULL);
+
+  if (auth_mac && auth_btid)
+    {
+      send_registration (reg, STAGE_NOKIA_IV);
+    }
+  else
+    {
+      if (auth_mac || auth_btid)
+        {
+          g_warning ("Only one of 'mac', 'btid' supplied - not performing "
+                     "privileged device authorization");
+        }
+      send_registration (reg, STAGE_REGISTER);
+    }
+  g_free (auth_mac);
+  g_free (auth_btid);
+}

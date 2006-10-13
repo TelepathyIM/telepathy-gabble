@@ -18,6 +18,7 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include <stdlib.h>
 #include <dbus/dbus-glib.h>
 #include "telepathy-helpers.h"
 
@@ -33,7 +34,10 @@ tp_get_bus ()
       bus = dbus_g_bus_get (DBUS_BUS_STARTER, &error);
 
       if (bus == NULL)
-        g_error ("Failed to connect to starter bus: %s", error->message);
+        {
+          g_warning ("Failed to connect to starter bus: %s", error->message);
+          exit (1);
+        }
     }
 
   return bus;

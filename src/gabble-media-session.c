@@ -1877,7 +1877,24 @@ _local_accept_stream (const gchar *name,
                       GabbleMediaStream *stream,
                       GabbleMediaSession *session)
 {
+  CombinedStreamDirection combined_dir;
+  TpMediaStreamDirection current_dir;
+  TpMediaStreamPendingSend pending_send;
+
   GMS_DEBUG_INFO (session, "marking stream %s as locally accepted", name);
+
+  g_object_get (stream, "combined-direction", &combined_dir, NULL);
+
+  current_dir = COMBINED_DIRECTION_GET_DIRECTION (combined_dir);
+  pending_send = COMBINED_DIRECTION_GET_PENDING_SEND (combined_dir);
+
+  if ((pending_send & TP_MEDIA_STREAM_PENDING_LOCAL_SEND) != 0)
+    {
+      current_dir |= TP_MEDIA_STREAM_DIRECTION_SEND;
+      pending_send &= ~TP_MEDIA_STREAM_PENDING_LOCAL_SEND;
+      combined_dir = MAKE_COMBINED_DIRECTION (current_dir, pending_send);
+      g_object_set (stream, "combined-direction", combined_dir, NULL);
+    }
 
   g_object_set (stream, "locally-accepted", TRUE, NULL);
 }

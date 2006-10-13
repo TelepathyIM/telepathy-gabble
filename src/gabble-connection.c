@@ -1396,10 +1396,9 @@ _gabble_connection_connect (GabbleConnection *conn,
 
   if (conn->self_handle == 0)
     {
-      /* FIXME: check this sooner and return an error to the user
-       * this will be when we implement Connect() in spec 0.13 */
-      g_error ("%s: invalid jid %s@%s", G_STRFUNC, priv->username,
-          priv->stream_server);
+      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+                            "Invalid JID: %s@%s",
+                            priv->username, priv->stream_server);
       return FALSE;
     }
 

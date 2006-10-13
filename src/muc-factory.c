@@ -474,7 +474,7 @@ muc_factory_message_cb (LmMessageHandler *handler,
             break;
 
       if (node == NULL)
-        return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+        goto HANDLE_MESSAGE;
 
       /* the room JID is in x */
       from = lm_message_node_get_attribute (node, "jid");
@@ -503,6 +503,8 @@ muc_factory_message_cb (LmMessageHandler *handler,
 
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
   }
+
+HANDLE_MESSAGE:
 
   /* check if a room with the jid exists */
   if (!gabble_handle_for_room_exists (priv->conn->handles, from, TRUE))

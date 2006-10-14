@@ -67,6 +67,7 @@ struct _GabblePresence {
     GabblePresenceId status;
     gchar *status_message;
     gchar *nickname;
+    gchar *avatar_sha1;
     gboolean keep_unavailable;
     gpointer priv;
 };

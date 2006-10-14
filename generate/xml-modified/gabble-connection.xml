@@ -101,6 +101,7 @@
       <arg direction="out" type="s"/>
     </method>
     <method name="SetAvatar">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value=""/>
       <arg direction="in" name="avatar" type="ay"/>
       <arg direction="in" name="mime_type" type="s"/>
       <arg direction="out" type="s"/>

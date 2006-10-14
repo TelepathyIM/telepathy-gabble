@@ -209,12 +209,11 @@ gabble_connection_set_aliases (GabbleConnection *self,
                                GHashTable *aliases,
                                GError **error);
 
-gboolean
+void
 gabble_connection_set_avatar (GabbleConnection *self,
                               const GArray *avatar,
                               const gchar *mime_type,
-                              gchar **ret,
-                              GError **error);
+                              DBusGMethodInvocation *context);
 
 gboolean
 gabble_connection_set_last_activity_time (GabbleConnection *self,

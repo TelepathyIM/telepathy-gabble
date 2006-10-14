@@ -766,20 +766,16 @@ gabble_connection_set_aliases (GabbleConnection *self,
  * Implements D-Bus method SetAvatar
  * on interface org.freedesktop.Telepathy.Connection.Interface.Avatars
  *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
+ * @context: The D-Bus invocation context to use to return values
+ *           or throw an error.
  */
-gboolean
+void
 gabble_connection_set_avatar (GabbleConnection *self,
                               const GArray *avatar,
                               const gchar *mime_type,
-                              gchar **ret,
-                              GError **error)
+                              DBusGMethodInvocation *context)
 {
-  return TRUE;
+  return;
 }
 
 

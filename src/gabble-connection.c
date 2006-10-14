@@ -45,6 +45,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
 
+#include "base64.h"
 #include "capabilities.h"
 #include "debug.h"
 #include "disco.h"
@@ -4108,6 +4109,78 @@ gabble_connection_request_aliases (GabbleConnection *self,
 }
 
 
+void
+_request_avatar_cb (GabbleVCardManager *self,
+                    GabbleVCardManagerRequest *request,
+                    GabbleHandle handle,
+                    LmMessageNode *vcard,
+                    GError *vcard_error,
+                    gpointer user_data)
+{
+  DBusGMethodInvocation *context = (DBusGMethodInvocation *) user_data;
+  LmMessageNode *photo_node, *type_node, *binval_node;
+  const gchar *mime_type;
+  GArray *arr;
+  GError *error = NULL;
+  GString *avatar;
+
+  if (NULL != vcard_error)
+    {
+      dbus_g_method_return_error (context, vcard_error);
+      return;
+    }
+
+  photo_node = lm_message_node_get_child (vcard, "PHOTO");
+
+  if (NULL == photo_node)
+    {
+      g_set_error (&error, TELEPATHY_ERRORS, NotAvailable,
+        "contact vCard has no photo");
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return;
+    }
+
+  type_node = lm_message_node_get_child (photo_node, "TYPE");
+
+  if (NULL == type_node)
+    {
+      g_set_error (&error, TELEPATHY_ERRORS, NotAvailable,
+        "contact avatar is missing type node");
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return;
+    }
+
+  binval_node = lm_message_node_get_child (photo_node, "BINVAL");
+
+  if (NULL == binval_node)
+    {
+      g_set_error (&error, TELEPATHY_ERRORS, NotAvailable,
+        "contact avatar is missing binval node");
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return;
+    }
+
+  avatar = base64_decode (lm_message_node_get_value (binval_node));
+
+  if (NULL == avatar)
+    {
+      g_set_error (&error, TELEPATHY_ERRORS, NotAvailable,
+        "failed to decode avatar from base64");
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return;
+    }
+
+  mime_type = lm_message_node_get_value (type_node);
+  arr = g_array_new (FALSE, FALSE, sizeof (gchar));
+  g_array_append_vals (arr, avatar->str, avatar->len);
+  dbus_g_method_return (context, arr, mime_type);
+  g_array_free (arr, TRUE);
+}
+
 /**
  * gabble_connection_request_avatar
  *
@@ -4122,7 +4195,8 @@ gabble_connection_request_avatar (GabbleConnection *self,
                                   guint contact,
                                   DBusGMethodInvocation *context)
 {
-  return;
+  gabble_vcard_manager_request (
+    self->vcard_manager, contact, 0, _request_avatar_cb, context, NULL, NULL);
 }
 
 

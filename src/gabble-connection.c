@@ -4229,8 +4229,14 @@ room_jid_disco_cb (GabbleDisco *disco,
   if (error != NULL)
     {
       DEBUG ("disco reply error %s", error->message);
-      room_verify_batch_raise_error(batch, error);
-      goto OUT;
+
+      /* disco will free the old error, _raise_error will free the new one */
+      error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+        "can't retrieve room info: %s", error->message);
+
+      room_verify_batch_raise_error (batch, error);
+
+      return;
     }
 
   for (lm_node = query_result->children; lm_node; lm_node = lm_node->next)

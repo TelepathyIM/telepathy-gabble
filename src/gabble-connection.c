@@ -3207,7 +3207,36 @@ gabble_connection_get_avatar_tokens (GabbleConnection *self,
                                      const GArray *contacts,
                                      DBusGMethodInvocation *context)
 {
-  return;
+  guint i;
+  gchar **ret;
+  GError *err;
+
+  if (!gabble_handles_are_valid (
+      self->handles, TP_HANDLE_TYPE_CONTACT, contacts, FALSE, &err))
+    {
+      dbus_g_method_return_error (context, err);
+      g_error_free (err);
+      return;
+    }
+
+  ret = g_new0 (gchar *, contacts->len + 1);
+
+  for (i = 0; i < contacts->len; i++)
+    {
+      GabbleHandle handle;
+      GabblePresence *presence;
+
+      handle = g_array_index (contacts, GabbleHandle, i);
+      presence = gabble_presence_cache_get (self->presence_cache, handle);
+
+      if (NULL != presence && NULL != presence->avatar_sha1)
+          ret[i] = presence->avatar_sha1;
+      else
+          ret[i] = "";
+    }
+
+  dbus_g_method_return (context, ret);
+  g_free (ret);
 }
 
 

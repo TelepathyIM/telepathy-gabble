@@ -3180,6 +3180,15 @@ gabble_connection_get_avatar_requirements (GabbleConnection *self,
                                            guint *ret5,
                                            GError **error)
 {
+  /* empty list: Jabber prescribes no MIME type for avatars */
+  *ret = g_malloc0 (sizeof (gchar *));
+  /* Jabber has no min/max width/height or max size */
+  *ret1 = 0;
+  *ret2 = 0;
+  *ret3 = 0;
+  *ret4 = 0;
+  *ret5 = 0;
+
   return TRUE;
 }
 

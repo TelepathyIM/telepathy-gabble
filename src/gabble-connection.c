@@ -4424,8 +4424,16 @@ room_jid_disco_cb (GabbleDisco *disco,
 
   if (error != NULL)
     {
+      GError *tp_error;
+
       g_debug ("%s: disco reply error %s", G_STRFUNC, error->message);
-      dbus_g_method_return_error (rvctx->context, error);
+
+      tp_error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+        "can't retrieve room info: %s", error->message);
+
+      g_error_free (error);
+      dbus_g_method_return_error (rvctx->context, tp_error);
+      g_error_free (tp_error);
 
       goto OUT;
     }

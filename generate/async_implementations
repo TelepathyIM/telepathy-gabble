@@ -1,3 +1,6 @@
+GabbleConnection org.freedesktop.Telepathy.Connection.Interface.Avatars GetAvatarTokens
+GabbleConnection org.freedesktop.Telepathy.Connection.Interface.Avatars RequestAvatar
+GabbleConnection org.freedesktop.Telepathy.Connection.Interface.Avatars SetAvatar
 GabbleConnection org.freedesktop.Telepathy.Connection HoldHandles
 GabbleConnection org.freedesktop.Telepathy.Connection InspectHandles
 GabbleConnection org.freedesktop.Telepathy.Connection ReleaseHandles

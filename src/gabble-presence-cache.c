@@ -52,6 +52,7 @@ enum
   PRESENCE_UPDATE,
   NICKNAME_UPDATE,
   CAPABILITIES_UPDATE,
+  AVATAR_UPDATE,
   LAST_SIGNAL
 };
 
@@ -270,6 +271,13 @@ gabble_presence_cache_class_init (GabblePresenceCacheClass *klass)
     0,
     NULL, NULL,
     gabble_presence_cache_marshal_VOID__UINT_UINT_UINT, G_TYPE_NONE, 3, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT);
+  signals[AVATAR_UPDATE] = g_signal_new (
+    "avatar-update",
+    G_TYPE_FROM_CLASS (klass),
+    G_SIGNAL_RUN_LAST,
+    0,
+    NULL, NULL,
+    g_cclosure_marshal_VOID__UINT, G_TYPE_NONE, 1, G_TYPE_UINT);
 }
 
 static void
@@ -547,6 +555,44 @@ _grab_nickname (GabblePresenceCache *cache,
 
       presence->nickname = g_strdup (nickname);
       g_signal_emit (cache, signals[NICKNAME_UPDATE], 0, handle);
+    }
+}
+
+static void
+_grab_avatar_sha1 (GabblePresenceCache *cache,
+                      GabbleHandle handle,
+                      const gchar *from,
+                      LmMessageNode *node)
+{
+  const gchar *sha1;
+  LmMessageNode *x_node, *photo_node;
+  GabblePresence *presence;
+
+  presence = gabble_presence_cache_get (cache, handle);
+
+  if (NULL == presence)
+    return;
+
+  x_node = lm_message_node_get_child (node, "x");
+
+  if (NULL == x_node)
+    return;
+
+  if (!lm_message_node_has_namespace (x_node, NS_VCARD_TEMP_UPDATE, NULL))
+    return;
+
+  photo_node = lm_message_node_get_child (x_node, "photo");
+
+  if (NULL == photo_node)
+    return;
+
+  sha1 = lm_message_node_get_value (photo_node);
+
+  if (g_strdiff (presence->avatar_sha1, sha1))
+    {
+      g_free (presence->avatar_sha1);
+      presence->avatar_sha1 = g_strdup (sha1);
+      g_signal_emit (cache, signals[AVATAR_UPDATE], 0, handle);
     }
 }
 
@@ -944,6 +990,7 @@ _parse_presence_message (GabblePresenceCache *cache,
     }
 
   _grab_nickname (cache, handle, from, presence_node);
+  _grab_avatar_sha1 (cache, handle, from, presence_node);
   _process_caps (cache, handle, from, presence_node);
 
   g_free (resource);
@@ -971,6 +1018,7 @@ _parse_message_message (GabblePresenceCache *cache,
   node = lm_message_get_node (message);
 
   _grab_nickname (cache, handle, from, node);
+  _grab_avatar_sha1 (cache, handle, from, node);
   _process_caps (cache, handle, from, node);
 
   return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;

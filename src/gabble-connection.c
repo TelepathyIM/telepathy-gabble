@@ -4124,7 +4124,7 @@ _request_avatar_cb (GabbleVCardManager *self,
   GError *error = NULL;
   GString *avatar;
 
-  if (NULL != vcard_error)
+  if (NULL == vcard)
     {
       dbus_g_method_return_error (context, vcard_error);
       return;

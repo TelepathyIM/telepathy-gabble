@@ -4915,6 +4915,102 @@ gabble_connection_set_aliases (GabbleConnection *self,
 }
 
 
+struct _set_avatar_ctx {
+  DBusGMethodInvocation *invocation;
+  LmMessage *new_vcard_msg;
+  GString *avatar;
+  gchar *mime_type;
+};
+
+
+void
+_set_avatar_ctx_free (struct _set_avatar_ctx *ctx)
+{
+  lm_message_unref (ctx->new_vcard_msg);
+  g_string_free (ctx->avatar, TRUE);
+  g_free (ctx->mime_type);
+  g_free (ctx);
+}
+
+
+void
+_set_avatar_cb2 (GabbleVCardManager *manager,
+                 GabbleVCardManagerRequest *request,
+                 GabbleHandle handle,
+                 LmMessageNode *vcard,
+                 GError *vcard_error,
+                 gpointer user_data)
+{
+  struct _set_avatar_ctx *ctx = (struct _set_avatar_ctx *) user_data;
+
+  if (NULL == vcard)
+    dbus_g_method_return_error (ctx->invocation, vcard_error);
+  else
+    /* FIXME: lm_sha_hash is not null-safe */
+    dbus_g_method_return (ctx->invocation, lm_sha_hash (ctx->avatar->str));
+
+  /* FIXME: update self presence and push it to server here */
+
+  _set_avatar_ctx_free (ctx);
+}
+
+
+void
+_set_avatar_cb1 (GabbleVCardManager *manager,
+                 GabbleVCardManagerRequest *request,
+                 GabbleHandle handle,
+                 LmMessageNode *vcard,
+                 GError *vcard_error,
+                 gpointer user_data)
+{
+  struct _set_avatar_ctx *ctx = (struct _set_avatar_ctx *) user_data;
+  LmMessageNode *new_vcard, *photo_node, *type_node, *binval_node, *i;
+  gchar *encoded;
+
+  if (NULL == vcard)
+    {
+      dbus_g_method_return_error (ctx->invocation, vcard_error);
+      _set_avatar_ctx_free (ctx);
+      return;
+    }
+
+  ctx->new_vcard_msg = lm_message_new (NULL, LM_MESSAGE_TYPE_UNKNOWN);
+  new_vcard = lm_message_node_add_child (ctx->new_vcard_msg->node, "vCard", "");
+  lm_message_node_set_attribute (new_vcard, "xmlns", NS_VCARD_TEMP);
+  lm_message_node_steal_children (new_vcard, vcard);
+
+  for (i = new_vcard->children; i; i = i->next)
+    {
+      if (0 == strcmp (i->name, "PHOTO"))
+        i->prev->next = i->next;
+    }
+
+  photo_node = lm_message_node_get_child (new_vcard, "PHOTO");
+
+  if (NULL == photo_node)
+    photo_node = lm_message_node_add_child (new_vcard, "PHOTO", "");
+
+  type_node = lm_message_node_get_child (photo_node, "TYPE");
+
+  if (NULL == type_node)
+    type_node = lm_message_node_add_child (photo_node, "TYPE", "");
+
+  lm_message_node_set_value (type_node, ctx->mime_type);
+
+  binval_node = lm_message_node_get_child (photo_node, "BINVAL");
+
+  if (NULL == binval_node)
+    binval_node = lm_message_node_add_child (photo_node, "BINVAL", "");
+
+  encoded = base64_encode (ctx->avatar);
+  lm_message_node_set_value (binval_node, encoded);
+  g_free (encoded);
+
+  gabble_vcard_manager_replace (
+    manager, new_vcard, 0, _set_avatar_cb2, ctx, NULL, NULL);
+}
+
+
 /**
  * gabble_connection_set_avatar
  *
@@ -4930,6 +5026,16 @@ gabble_connection_set_avatar (GabbleConnection *self,
                               const gchar *mime_type,
                               DBusGMethodInvocation *context)
 {
+  struct _set_avatar_ctx *ctx = g_new0 (struct _set_avatar_ctx, 1);
+
+  ctx->invocation = context;
+  ctx->avatar = g_string_new_len (avatar->data, avatar->len);
+  ctx->mime_type = g_strdup (mime_type);
+
+  gabble_vcard_manager_request (
+    self->vcard_manager, self->self_handle, 0, _set_avatar_cb1, ctx, NULL,
+    NULL);
+
   return;
 }
 

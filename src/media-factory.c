@@ -573,7 +573,7 @@ gabble_media_factory_iface_request (TpChannelFactoryIface *iface,
       /* create an empty channel */
       chan = new_media_channel (fac, priv->conn->self_handle);
     }
-  else if (handle_type != TP_HANDLE_TYPE_CONTACT)
+  else if (handle_type == TP_HANDLE_TYPE_CONTACT)
     {
       GArray *members;
       gboolean ret;

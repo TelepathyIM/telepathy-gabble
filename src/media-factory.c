@@ -303,6 +303,7 @@ media_factory_jingle_cb (LmMessageHandler *handler,
       DEBUG ("creating media channel");
 
       chan = new_media_channel (fac, handle);
+      g_signal_emit_by_name (fac, "new-channel", chan);
     }
 
   g_assert (chan != NULL);
@@ -459,80 +460,9 @@ new_media_channel (GabbleMediaFactory *fac, GabbleHandle creator)
 
   g_ptr_array_add (priv->channels, chan);
 
-  g_signal_emit_by_name (fac, "new-channel", chan);
-
   g_free (object_path);
 
   return chan;
-}
-
-
-static GabbleMediaChannel *
-find_media_channel_with_handle (GabbleMediaFactory *fac, GabbleHandle handle)
-{
-  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
-  guint i, j;
-
-  for (i = 0; i < priv->channels->len; i++)
-    {
-      GArray *arr;
-      GError *err;
-
-      GabbleMediaChannel *chan = g_ptr_array_index (priv->channels, i);
-
-      /* search members */
-      if (!gabble_group_mixin_get_members (G_OBJECT (chan), &arr, &err))
-        {
-          DEBUG ("get_members failed: %s", err->message);
-          g_error_free (err);
-          continue;
-        }
-
-      for (j = 0; j < arr->len; j++)
-        if (g_array_index (arr, guint32, i) == handle)
-          {
-            g_array_free (arr, TRUE);
-            return chan;
-          }
-
-      g_array_free (arr, TRUE);
-
-      /* search local pending */
-      if (!gabble_group_mixin_get_local_pending_members (G_OBJECT (chan), &arr, &err))
-        {
-          DEBUG ("get_local_pending_members failed: %s", err->message);
-          g_error_free (err);
-          continue;
-        }
-
-      for (j = 0; j < arr->len; j++)
-        if (g_array_index (arr, guint32, i) == handle)
-          {
-            g_array_free (arr, TRUE);
-            return chan;
-          }
-
-      g_array_free (arr, TRUE);
-
-      /* search remote pending */
-      if (!gabble_group_mixin_get_remote_pending_members (G_OBJECT (chan), &arr, &err))
-        {
-          DEBUG ("get_remote_pending_members failed: %s", err->message);
-          g_error_free (err);
-          continue;
-        }
-
-      for (j = 0; j < arr->len; j++)
-        if (g_array_index (arr, guint32, i) == handle)
-          {
-            g_array_free (arr, TRUE);
-            return chan;
-          }
-
-      g_array_free (arr, TRUE);
-    }
-
-  return NULL;
 }
 
 
@@ -643,41 +573,37 @@ gabble_media_factory_iface_request (TpChannelFactoryIface *iface,
       /* create an empty channel */
       chan = new_media_channel (fac, priv->conn->self_handle);
     }
-  else
+  else if (handle_type != TP_HANDLE_TYPE_CONTACT)
     {
-      if (handle_type != TP_HANDLE_TYPE_CONTACT)
-      {
-        return TP_CHANNEL_FACTORY_REQUEST_STATUS_INVALID_HANDLE;
-      }
+      GArray *members;
+      gboolean ret;
 
-      /* have we already got a channel with this handle? */
-      chan = find_media_channel_with_handle (fac, handle);
+      chan = new_media_channel (fac, priv->conn->self_handle);
 
-      /* no: create it and add the peer to it */
-      if (!chan)
+      members = g_array_sized_new (FALSE, FALSE, sizeof (GabbleHandle), 1);
+      g_array_append_val (members, handle);
+
+      ret = gabble_group_mixin_add_members (G_OBJECT (chan), members, "", error);
+
+      g_array_free (members, TRUE);
+
+      if (!ret)
         {
-          GArray *members;
-          gboolean ret;
+          gboolean close_ret;
 
-          chan = new_media_channel (fac, priv->conn->self_handle);
+          close_ret = gabble_media_channel_close (chan, NULL);
+          g_assert (close_ret);
 
-          members = g_array_sized_new (FALSE, FALSE, sizeof (GabbleHandle), 1);
-          g_array_append_val (members, handle);
-
-          ret = gabble_group_mixin_add_members (G_OBJECT (chan), members, "", error);
-
-          g_array_free (members, TRUE);
-
-          if (!ret)
-            {
-              gboolean close_ret;
-
-              close_ret = gabble_media_channel_close (chan, NULL);
-              g_assert (close_ret);
-              return TP_CHANNEL_FACTORY_REQUEST_STATUS_ERROR;
-            }
+          return TP_CHANNEL_FACTORY_REQUEST_STATUS_ERROR;
         }
     }
+  else
+    {
+      return TP_CHANNEL_FACTORY_REQUEST_STATUS_INVALID_HANDLE;
+    }
+
+  g_assert (chan != NULL);
+  g_signal_emit_by_name (fac, "new-channel", chan);
 
   *ret = TP_CHANNEL_IFACE (chan);
   return TP_CHANNEL_FACTORY_REQUEST_STATUS_DONE;

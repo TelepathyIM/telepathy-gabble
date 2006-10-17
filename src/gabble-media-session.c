@@ -2196,6 +2196,7 @@ _gabble_media_session_request_streams (GabbleMediaSession *session,
   gboolean want_audio, want_video;
   GabblePresenceCapabilities jingle_desired_caps;
   guint idx;
+  gchar *dump;
 
   g_assert (GABBLE_IS_MEDIA_SESSION (session));
 
@@ -2211,6 +2212,10 @@ _gabble_media_session_request_streams (GabbleMediaSession *session,
 
       return FALSE;
     }
+
+  dump = gabble_presence_dump (presence);
+  GMS_DEBUG_INFO (session, "presence for peer %d:\n%s", priv->peer, dump);
+  g_free (dump);
 
   want_audio = want_video = FALSE;
 
@@ -2242,6 +2247,9 @@ _gabble_media_session_request_streams (GabbleMediaSession *session,
 
   if (want_video)
     jingle_desired_caps |= jingle_video_caps;
+
+  GMS_DEBUG_INFO (session, "want audio: %s; want video: %s",
+    want_audio ? "yes" : "no", want_video ? "yes" : "no");
 
   /* existing call; the recipient and the mode has already been decided */
   if (priv->peer_resource)
@@ -2281,12 +2289,17 @@ _gabble_media_session_request_streams (GabbleMediaSession *session,
 
       if (resource == NULL)
         {
+          GMS_DEBUG_INFO (session, "contact is not fully jingle-capable");
+
           /* ok, no problem. see if we can do just what's wanted with jingle */
           resource = gabble_presence_pick_resource_by_caps (presence,
               jingle_desired_caps);
 
           if (resource == NULL && want_audio && !want_video)
             {
+              GMS_DEBUG_INFO (session,
+                "contact doesn't have desired Jingle capabilities");
+
               /* last ditch... if we want only audio and not video, we can make
                * do with google talk */
               resource = gabble_presence_pick_resource_by_caps (presence,
@@ -2297,21 +2310,32 @@ _gabble_media_session_request_streams (GabbleMediaSession *session,
                   /* only one stream possible with google */
                   if (media_types->len == 1)
                     {
+                      GMS_DEBUG_INFO (session,
+                        "contact has no Jingle capaabilities; "
+                        " falling back to Google audio call");
                       priv->mode = MODE_GOOGLE;
                     }
                   else
                     {
                       *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
-                          "google talk calls may only contain one stream");
+                          "Google Talk calls may only contain one stream");
 
                       return FALSE;
                     }
+                }
+              else
+                {
+                  GMS_DEBUG_INFO (session,
+                    "contact doesn't have desired Google capabilities");
                 }
             }
         }
 
       if (resource == NULL)
         {
+          GMS_DEBUG_INFO (session,
+            "contact doesn't have a resource with suitable capabilities");
+
           *error = g_error_new (TELEPATHY_ERRORS, NotAvailable, "member does "
               "not have the desired audio/video capabilities");
 

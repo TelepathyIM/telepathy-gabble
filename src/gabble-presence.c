@@ -234,6 +234,7 @@ gabble_presence_update (GabblePresence *presence,
 
       presence->status = status;
       presence->status_message = priv->no_resource_status_message;
+      goto OUT;
     }
 
   res = _find_resource (presence, resource);
@@ -296,6 +297,7 @@ gabble_presence_update (GabblePresence *presence,
         }
     }
 
+OUT:
   /* detect changes */
   if (presence->status != old_status ||
       g_strdiff (presence->status_message, old_status_message))

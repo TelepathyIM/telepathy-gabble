@@ -50,18 +50,22 @@ tp_channel_iface_base_init (gpointer klass)
                                       G_PARAM_STATIC_BLURB);
     g_object_interface_install_property (klass, param_spec);
 
-    param_spec = g_param_spec_uint ("handle-type", "Contact handle type",
-                                    "The TpHandleType representing a "
-                                    "contact handle.",
+    param_spec = g_param_spec_uint ("handle-type", "Handle type",
+                                    "The TpHandleType of this channel's "
+                                    "associated handle.",
                                     0, G_MAXUINT32, 0,
-                                    G_PARAM_READABLE |
+                                    G_PARAM_CONSTRUCT_ONLY |
+                                    G_PARAM_READWRITE |
                                     G_PARAM_STATIC_NAME |
                                     G_PARAM_STATIC_BLURB);
     g_object_interface_install_property (klass, param_spec);
 
-    param_spec = g_param_spec_uint ("handle", "Contact handle",
-                                    "The GabbleHandle representing the contact "
-                                    "with whom this channel communicates.",
+    param_spec = g_param_spec_uint ("handle", "Handle",
+                                    "The GabbleHandle representing the "
+                                    "contact, group, etc. with which "
+                                    "this channel communicates, whose "
+                                    "type is given by the handle-type "
+                                    "property.",
                                     0, G_MAXUINT32, 0,
                                     G_PARAM_CONSTRUCT_ONLY |
                                     G_PARAM_READWRITE |

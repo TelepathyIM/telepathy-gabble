@@ -62,7 +62,8 @@ struct _GabbleRosterPrivate
   LmMessageHandler *iq_cb;
   LmMessageHandler *presence_cb;
 
-  GHashTable *channels;
+  GHashTable *list_channels;
+  GHashTable *group_channels;
   GHashTable *items;
 
   gboolean roster_received;
@@ -149,10 +150,15 @@ gabble_roster_init (GabbleRoster *obj)
 
   obj->priv = priv;
 
-  priv->channels = g_hash_table_new_full (g_direct_hash,
-                                          g_direct_equal,
-                                          NULL,
-                                          g_object_unref);
+  priv->list_channels = g_hash_table_new_full (g_direct_hash,
+                                               g_direct_equal,
+                                               NULL,
+                                               g_object_unref);
+
+  priv->group_channels = g_hash_table_new_full (g_direct_hash,
+                                                g_direct_equal,
+                                                NULL,
+                                                g_object_unref);
 
   priv->items = g_hash_table_new_full (g_direct_hash,
                                        g_direct_equal,
@@ -191,7 +197,8 @@ gabble_roster_dispose (GObject *object)
   g_assert (priv->presence_cb == NULL);
 
   tp_channel_factory_iface_close_all (TP_CHANNEL_FACTORY_IFACE (object));
-  g_assert (priv->channels == NULL);
+  g_assert (priv->group_channels == NULL);
+  g_assert (priv->list_channels == NULL);
 
   if (G_OBJECT_CLASS (gabble_roster_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_roster_parent_class)->dispose (object);
@@ -452,6 +459,11 @@ _gabble_roster_item_remove (GabbleRoster *roster,
   gabble_handle_unref (priv->conn->handles, TP_HANDLE_TYPE_CONTACT, handle);
 }
 
+static GabbleRosterChannel *_gabble_roster_get_channel (GabbleRoster *,
+                                                        guint,
+                                                        GabbleHandle);
+
+
 static GabbleRosterItem *
 _gabble_roster_item_update (GabbleRoster *roster,
                             GabbleHandle handle,
@@ -460,7 +472,7 @@ _gabble_roster_item_update (GabbleRoster *roster,
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
   GabbleRosterItem *item;
-  const gchar *ask, *name;
+  const gchar *ask, *block, *name;
 
   g_assert (roster != NULL);
   g_assert (GABBLE_IS_ROSTER (roster));
@@ -511,8 +523,93 @@ _gabble_roster_item_update (GabbleRoster *roster,
       g_signal_emit (G_OBJECT (roster), signals[NICKNAME_UPDATE], 0, handle);
     }
 
-  g_strfreev (item->groups);
-  item->groups = _parse_item_groups (node);
+  old_groups = item->groups;
+  new_groups = _parse_item_groups (node);
+  item->groups = new_groups;
+
+  /* argh, why are empty string vectors special-cased?! */
+  if (!old_groups)
+    old_groups = &empty_strv;
+  if (!new_groups)
+    new_groups = &empty_strv;
+
+  /* don't bother diffing (O(n^2)) unless the groups have changed -
+  we assume the server will generally use the same order at least in the
+  case where the groups are the same */
+  for (old_group = old_groups, new_group = item->groups;
+       *old_group || *new_group;
+       old_group++, new_group++)
+    {
+      if (!*old_group || !*new_group ||
+          strcmp(*old_group, *new_group))
+        {
+          /* they differ - do the updates and break out of the loop.
+          We've already gone through a prefix that's the same in each case,
+          so ignore that. */
+          GIntSet *empty = g_intset_new ();
+          gchar **changed_old_groups = old_group;
+          gchar **changed_new_groups = new_group;
+
+          for (old_group = changed_old_groups; *old_group; old_group++)
+            {
+              gboolean still_has_it = FALSE;
+
+              for (new_group = changed_new_groups; *new_group; new_group++)
+                {
+                  if (!strcmp (*new_group, *old_group))
+                    {
+                      still_has_it = TRUE;
+                    }
+                }
+              if (!still_has_it)
+                {
+                  GIntSet *removed = g_intset_new ();
+                  GabbleHandle group_handle = gabble_handle_for_group (
+                      priv->conn->handles, *old_group);
+                  GabbleRosterChannel *channel = _gabble_roster_get_channel (
+                      roster, TP_HANDLE_TYPE_GROUP, group_handle);
+
+                  g_intset_add (removed, handle);
+                  gabble_group_mixin_change_members ((GObject *)channel, "",
+                                                     empty, removed,
+                                                     empty, empty,
+                                                     0, 0);
+                }
+            }
+
+          for (new_group = changed_new_groups; *new_group; new_group++)
+            {
+              gboolean had_it_before = FALSE;
+
+              for (old_group = changed_old_groups; *old_group; old_group++)
+                {
+                  if (!strcmp (*new_group, *old_group))
+                    {
+                      had_it_before = TRUE;
+                    }
+                }
+              if (!had_it_before)
+                {
+                  GIntSet *added = g_intset_new ();
+                  GabbleHandle group_handle = gabble_handle_for_group (
+                      priv->conn->handles, *new_group);
+                  GabbleRosterChannel *channel = _gabble_roster_get_channel (
+                      roster, TP_HANDLE_TYPE_GROUP, group_handle);
+
+                  g_intset_add (added, handle);
+                  gabble_group_mixin_change_members ((GObject *)channel, "",
+                                                     added, empty,
+                                                     empty, empty,
+                                                     0, 0);
+                }
+            }
+
+          break;
+        }
+    }
+
+  if (old_groups != &empty_strv)
+    g_strfreev (old_groups);
 
   return item;
 }
@@ -657,35 +754,88 @@ DONE:
   return message;
 }
 
+/* Escape a string in the same way as URI escaping, but with underscore
+ * instead of percent:
+ *
+ * 'abc_xyz\x01\xff' -> 'abc_5fxyz_01_ff'
+ *
+ * Minuses and leading digits get the same escaping.
+ */
+static char *
+_gabble_roster_make_object_path (const gchar *name)
+{
+  /* optimistically assume we won't need any escaping */
+  GString *op = g_string_sized_new (strlen (name));
+  const gchar *ptr, *first_ok;
+
+  first_ok = name;
+  for (ptr = name; *ptr; ptr++)
+    {
+      if ((*ptr < 'a' || *ptr > 'z') &&
+          (*ptr < 'A' || *ptr > 'Z') &&
+          (*ptr < '0' || *ptr > '9' || ptr != name))
+        {
+          if (first_ok < ptr)
+            {
+              g_string_append_len (op, first_ok, ptr - first_ok);
+            }
+          g_string_append_printf (op, "_%02x", (unsigned char)(*ptr));
+          first_ok = ptr + 1;
+        }
+    }
+  if (first_ok < ptr)
+    {
+      g_string_append_len (op, first_ok, ptr - first_ok);
+    }
+  return g_string_free (op, FALSE);
+}
+
 static GabbleRosterChannel *
 _gabble_roster_create_channel (GabbleRoster *roster,
+                               guint handle_type,
                                GabbleHandle handle)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
   GabbleRosterChannel *chan;
   const char *name;
+  char *mangled_name;
   char *object_path;
+  GHashTable *channels = (handle_type == TP_HANDLE_TYPE_LIST
+                          ? priv->list_channels
+                          : priv->group_channels);
 
-  g_assert (priv->channels != NULL);
-  g_assert (g_hash_table_lookup (priv->channels, GINT_TO_POINTER (handle)) == NULL);
+  g_assert (handle_type == TP_HANDLE_TYPE_LIST ||
+            handle_type == TP_HANDLE_TYPE_GROUP);
+  g_assert (channels != NULL);
+  g_assert (g_hash_table_lookup (channels, GINT_TO_POINTER (handle)) == NULL);
 
-  name = gabble_handle_inspect (priv->conn->handles, TP_HANDLE_TYPE_LIST, handle);
-  object_path = g_strdup_printf ("%s/RosterChannel/%s", priv->conn->object_path, name);
+  name = gabble_handle_inspect (priv->conn->handles, handle_type, handle);
+  DEBUG ("Instantiating channel %u:%u \"%s\"", handle_type, handle, name);
+  mangled_name = _gabble_roster_make_object_path (name);
+  object_path = g_strdup_printf ("%s/RosterChannel/%s/%s",
+                                 priv->conn->object_path,
+                                 handle_type == TP_HANDLE_TYPE_LIST ? "List"
+                                                                    : "Group",
+                                 name);
+  g_free (mangled_name);
+  mangled_name = NULL;
+
   chan = g_object_new (GABBLE_TYPE_ROSTER_CHANNEL,
                        "connection", priv->conn,
                        "object-path", object_path,
                        "handle", handle,
+                       "handle-type", handle_type,
                        NULL);
 
   DEBUG ("created %s", object_path);
   g_free (object_path);
 
-  g_hash_table_insert (priv->channels, GINT_TO_POINTER (handle), chan);
+  g_hash_table_insert (channels, GINT_TO_POINTER (handle), chan);
 
   if (priv->roster_received)
     {
-      DEBUG ("roster already received, emitting signal for %s list channel",
-          name);
+      DEBUG ("roster already received, emitting signal for %s",
+             object_path);
 
       g_signal_emit_by_name (roster, "new-channel", chan);
     }
@@ -700,18 +850,24 @@ _gabble_roster_create_channel (GabbleRoster *roster,
 
 static GabbleRosterChannel *
 _gabble_roster_get_channel (GabbleRoster *roster,
+                            guint handle_type,
                             GabbleHandle handle)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
   GabbleRosterChannel *chan;
+  GHashTable *channels = (handle_type == TP_HANDLE_TYPE_LIST
+                          ? priv->list_channels
+                          : priv->group_channels);
 
-  g_assert (priv->channels != NULL);
-  g_assert (gabble_handle_is_valid (priv->conn->handles, TP_HANDLE_TYPE_LIST, handle, NULL));
+  g_assert (channels != NULL);
+  g_assert (gabble_handle_is_valid (priv->conn->handles, handle_type, handle, NULL));
 
-  chan = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (handle));
+  DEBUG ("Looking up channel %u:%u \"%s\"", handle_type, handle,
+         gabble_handle_inspect (priv->conn->handles, handle_type, handle));
+  chan = g_hash_table_lookup (channels, GINT_TO_POINTER (handle));
 
   if (chan == NULL)
-    chan = _gabble_roster_create_channel (roster, handle);
+    chan = _gabble_roster_create_channel (roster, handle_type, handle);
 
   return chan;
 }
@@ -740,13 +896,14 @@ _gabble_roster_received (GabbleRoster *roster)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
 
-  g_assert (priv->channels != NULL);
+  g_assert (priv->list_channels != NULL);
 
   if (!priv->roster_received)
     {
       priv->roster_received = TRUE;
 
-      g_hash_table_foreach (priv->channels, _gabble_roster_emit_one, roster);
+      g_hash_table_foreach (priv->list_channels, _gabble_roster_emit_one, roster);
+      g_hash_table_foreach (priv->group_channels, _gabble_roster_emit_one, roster);
     }
 }
 
@@ -772,7 +929,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
 
   g_assert (lmconn == priv->conn->lmconn);
 
-  if (priv->channels == NULL)
+  if (priv->list_channels == NULL)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
   iq_node = lm_message_get_node (message);
@@ -851,7 +1008,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
 
       /* get the publish channel first because we need it when processing */
       handle = GABBLE_LIST_HANDLE_PUBLISH;
-      chan = _gabble_roster_get_channel (roster, handle);
+      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle);
 
       /* iterate every sub-node, which we expect to be <item>s */
       for (item_node = query_node->children;
@@ -991,14 +1148,14 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
             "", pub_add, pub_rem, NULL, NULL, 0, 0);
 
       handle = GABBLE_LIST_HANDLE_SUBSCRIBE;
-      chan = _gabble_roster_get_channel (roster, handle);
+      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle);
 
       DEBUG ("calling change members on subscribe channel");
       gabble_group_mixin_change_members (G_OBJECT (chan),
             "", sub_add, sub_rem, NULL, sub_rp, 0, 0);
 
       handle = GABBLE_LIST_HANDLE_KNOWN;
-      chan = _gabble_roster_get_channel (roster, handle);
+      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle);
 
       DEBUG ("calling change members on known channel");
       gabble_group_mixin_change_members (G_OBJECT (chan),
@@ -1007,7 +1164,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
       if (google_roster)
         {
           handle = GABBLE_LIST_HANDLE_DENY;
-          chan = _gabble_roster_get_channel (roster, handle);
+          chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle);
 
           DEBUG ("calling change members on deny channel");
           gabble_group_mixin_change_members (G_OBJECT (chan),
@@ -1123,7 +1280,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
 
   g_assert (lmconn == priv->conn->lmconn);
 
-  if (priv->channels == NULL)
+  if (priv->list_channels == NULL)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
   pres_node = lm_message_get_node (message);
@@ -1168,7 +1325,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
       g_intset_add (tmp, handle);
 
       handle = GABBLE_LIST_HANDLE_PUBLISH;
-      chan = _gabble_roster_get_channel (roster, handle);
+      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle);
       gabble_group_mixin_change_members (G_OBJECT (chan), status_message,
           NULL, NULL, tmp, NULL, 0, 0);
 
@@ -1183,7 +1340,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
       g_intset_add (tmp, handle);
 
       handle = GABBLE_LIST_HANDLE_PUBLISH;
-      chan = _gabble_roster_get_channel (roster, handle);
+      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle);
       changed = gabble_group_mixin_change_members (G_OBJECT (chan),
           status_message, NULL, tmp, NULL, NULL, 0, 0);
 
@@ -1200,7 +1357,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
       g_intset_add (tmp, handle);
 
       handle = GABBLE_LIST_HANDLE_SUBSCRIBE;
-      chan = _gabble_roster_get_channel (roster, handle);
+      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle);
       changed = gabble_group_mixin_change_members (G_OBJECT (chan),
           status_message, tmp, NULL, NULL, NULL, 0, 0);
 
@@ -1217,7 +1374,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
       g_intset_add (tmp, handle);
 
       handle = GABBLE_LIST_HANDLE_SUBSCRIBE;
-      chan = _gabble_roster_get_channel (roster, handle);
+      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle);
       changed = gabble_group_mixin_change_members (G_OBJECT (chan),
           status_message, NULL, tmp, NULL, NULL, 0, 0);
 
@@ -1239,10 +1396,16 @@ gabble_roster_factory_iface_close_all (TpChannelFactoryIface *iface)
 
   DEBUG ("closing channels");
 
-  if (priv->channels)
+  if (priv->group_channels)
     {
-      g_hash_table_destroy (priv->channels);
-      priv->channels = NULL;
+      g_hash_table_destroy (priv->group_channels);
+      priv->group_channels = NULL;
+    }
+
+  if (priv->list_channels)
+    {
+      g_hash_table_destroy (priv->list_channels);
+      priv->list_channels = NULL;
     }
 }
 
@@ -1340,7 +1503,9 @@ gabble_roster_factory_iface_foreach (TpChannelFactoryIface *iface,
   foreach.func = func;
   foreach.data = data;
 
-  g_hash_table_foreach (priv->channels,
+  g_hash_table_foreach (priv->group_channels,
+      _gabble_roster_factory_iface_foreach_one, &foreach);
+  g_hash_table_foreach (priv->list_channels,
       _gabble_roster_factory_iface_foreach_one, &foreach);
 }
 
@@ -1375,7 +1540,7 @@ gabble_roster_factory_iface_request (TpChannelFactoryIface *iface,
   if (priv->roster_received)
     {
       GabbleRosterChannel *chan;
-      chan = _gabble_roster_get_channel (roster, handle);
+      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle);
       *ret = TP_CHANNEL_IFACE (chan);
       return TP_CHANNEL_FACTORY_REQUEST_STATUS_DONE;
     }
@@ -1561,43 +1726,6 @@ gabble_roster_handle_remove (GabbleRoster *roster,
   lm_message_unref (message);
 
   item->subscription = subscription;
-
-  return ret;
-}
-
-gboolean
-gabble_roster_handle_add (GabbleRoster *roster,
-                          GabbleHandle handle,
-                          GError **error)
-{
-  GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
-  GabbleRosterItem *item;
-  LmMessage *message;
-  gboolean do_add = FALSE;
-  gboolean ret;
-
-  g_return_val_if_fail (roster != NULL, FALSE);
-  g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
-  g_return_val_if_fail (gabble_handle_is_valid (priv->conn->handles,
-      TP_HANDLE_TYPE_CONTACT, handle, NULL), FALSE);
-
-  if (!gabble_roster_handle_has_entry (roster, handle))
-      do_add = TRUE;
-
-  item = _gabble_roster_item_get (roster, handle);
-
-  if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN)
-    {
-      item->google_type = GOOGLE_ITEM_TYPE_NORMAL;
-      do_add = TRUE;
-    }
-
-  if (!do_add)
-      return TRUE;
-
-  message = _gabble_roster_item_to_message (roster, handle, NULL);
-  ret = _gabble_connection_send (priv->conn, message, error);
-  lm_message_unref (message);
 
   return ret;
 }

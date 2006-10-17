@@ -74,6 +74,14 @@ gboolean gabble_roster_handle_set_name (GabbleRoster *, GabbleHandle, const gcha
 gboolean gabble_roster_handle_remove (GabbleRoster *, GabbleHandle, GError **);
 gboolean gabble_roster_handle_add (GabbleRoster *, GabbleHandle, GError **);
 gboolean gabble_roster_handle_has_entry (GabbleRoster *, GabbleHandle);
+gboolean gabble_roster_handle_add_to_group (GabbleRoster *roster,
+                                            GabbleHandle handle,
+                                            GabbleHandle group,
+                                            GError **error);
+gboolean gabble_roster_handle_remove_from_group (GabbleRoster *roster,
+                                                 GabbleHandle handle,
+                                                 GabbleHandle group,
+                                                 GError **error);
 
 G_END_DECLS
 

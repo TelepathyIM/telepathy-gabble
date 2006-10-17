@@ -2214,7 +2214,7 @@ _gabble_media_session_request_streams (GabbleMediaSession *session,
     }
 
   dump = gabble_presence_dump (presence);
-  GMS_DEBUG_INFO (session, "presence for peer %d:\n%s", priv->peer, dump);
+  GMS_DEBUG_DUMP (session, "presence for peer %d:\n%s", priv->peer, dump);
   g_free (dump);
 
   want_audio = want_video = FALSE;

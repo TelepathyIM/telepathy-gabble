@@ -362,3 +362,38 @@ gabble_presence_as_message (GabblePresence *presence, const gchar *resource)
   return message;
 }
 
+gchar *
+gabble_presence_dump (GabblePresence *presence)
+{
+  GSList *i;
+  GString *ret = g_string_new ("");
+  GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
+
+  g_string_append_printf (ret,
+    "nickname: %s\n"
+    "accumulated status: %d\n"
+    "accumulated status msg: %s\n"
+    "accumulated capabilities: %d\n"
+    "kept while unavailable: %d\n"
+    "resources:\n", presence->nickname, presence->status,
+    presence->status_message, presence->caps,
+    presence->keep_unavailable);
+
+  for (i = priv->resources; i; i = i->next)
+    {
+      Resource *res = (Resource *) i->data;
+
+      g_string_append_printf(ret,
+        "  %s\n"
+        "    capabilities: %d\n"
+        "    status: %d\n"
+        "    status msg: %s\n"
+        "    priority: %d\n", res->name, res->caps, res->status,
+        res->status_message, res->priority);
+    }
+
+  if (priv->resources == NULL)
+    g_string_append_printf(ret, "  (none)\n");
+
+  return g_string_free (ret, FALSE);
+}

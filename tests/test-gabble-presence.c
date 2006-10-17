@@ -7,6 +7,7 @@
 int main(int argc, char **argv)
 {
   const gchar *resource;
+  gchar *dump;
   GabblePresence *presence;
 
   g_type_init();
@@ -72,6 +73,26 @@ int main(int argc, char **argv)
     GABBLE_PRESENCE_AVAILABLE, "dingoes", -1));
   gabble_presence_set_capabilities (presence, "bar", PRESENCE_CAP_GOOGLE_VOICE, 0);
 
+  dump = gabble_presence_dump (presence);
+  g_assert (0 == strcmp (dump,
+    "nickname: (null)\n"
+    "accumulated status: 6\n"
+    "accumulated status msg: status message\n"
+    "accumulated capabilities: 2\n"
+    "kept while unavailable: 0\n"
+    "resources:\n"
+    "  foo\n"
+    "    capabilities: 0\n"
+    "    status: 6\n"
+    "    status msg: status message\n"
+    "    priority: 0\n"
+    "  bar\n"
+    "    capabilities: 2\n"
+    "    status: 5\n"
+    "    status msg: dingoes\n"
+    "    priority: -1\n"));
+  g_free (dump);
+
   /* no resource with non-negative priority has the Google voice cap */
   resource = gabble_presence_pick_resource_by_caps (presence,
     PRESENCE_CAP_GOOGLE_VOICE);
@@ -96,6 +117,18 @@ int main(int argc, char **argv)
   resource = gabble_presence_pick_resource_by_caps (presence,
     PRESENCE_CAP_GOOGLE_VOICE);
   g_assert (NULL == resource);
+
+  dump = gabble_presence_dump (presence);
+  g_assert (0 == strcmp (dump,
+    "nickname: (null)\n"
+    "accumulated status: 0\n"
+    "accumulated status msg: gone\n"
+    "accumulated capabilities: 2\n"
+    "kept while unavailable: 0\n"
+    "resources:\n"
+    "  (none)\n"));
+  g_free (dump);
+
 
   return 0;
 }

@@ -472,7 +472,9 @@ _gabble_roster_item_update (GabbleRoster *roster,
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
   GabbleRosterItem *item;
-  const gchar *ask, *block, *name;
+  const gchar *ask, *name;
+  gchar **old_groups, **old_group, **new_groups, **new_group;
+  static gchar *empty_strv = NULL;
 
   g_assert (roster != NULL);
   g_assert (GABBLE_IS_ROSTER (roster));

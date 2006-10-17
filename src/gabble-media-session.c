@@ -2257,6 +2257,8 @@ _gabble_media_session_request_streams (GabbleMediaSession *session,
       /* is a google call... we have no other option */
       if (priv->mode == MODE_GOOGLE)
         {
+          GMS_DEBUG_INFO (session, "already in Google mode; can't add new stream");
+
           g_assert (g_hash_table_size (priv->streams) == 1);
 
           *error = g_error_new (TELEPATHY_ERRORS, NotAvailable, "google talk "
@@ -2268,11 +2270,17 @@ _gabble_media_session_request_streams (GabbleMediaSession *session,
       if (!gabble_presence_resource_has_caps (presence, priv->peer_resource,
             jingle_desired_caps))
         {
+          GMS_DEBUG_INFO (session,
+            "in Jingle mode but have insufficient caps for requested streams");
+
           *error = g_error_new (TELEPATHY_ERRORS, NotAvailable, "existing "
               "call member doesn't support all requested media types");
 
           return FALSE;
         }
+
+      GMS_DEBUG_INFO (session,
+        "in Jingle mode, and have necessary caps");
     }
 
   /* no existing call; we should choose a recipient and a mode */

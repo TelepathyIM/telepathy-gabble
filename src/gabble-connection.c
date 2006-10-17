@@ -26,6 +26,7 @@
 #include <dbus/dbus-glib-lowlevel.h>
 #include <glib-object.h>
 #include <loudmouth/loudmouth.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -58,6 +59,7 @@
 #include "muc-factory.h"
 #include "namespaces.h"
 #include "roster.h"
+#include "sha1/sha1.h"
 #include "util.h"
 #include "vcard-manager.h"
 
@@ -4942,12 +4944,24 @@ _set_avatar_cb2 (GabbleVCardManager *manager,
                  gpointer user_data)
 {
   struct _set_avatar_ctx *ctx = (struct _set_avatar_ctx *) user_data;
+  SHA1Context sc;
+  uint8_t hash[SHA1_HASH_SIZE];
+  gchar hex_hash[SHA1_HASH_SIZE*2 + 1];
+  int i;
 
   if (NULL == vcard)
     dbus_g_method_return_error (ctx->invocation, vcard_error);
   else
-    /* FIXME: lm_sha_hash is not null-safe */
-    dbus_g_method_return (ctx->invocation, lm_sha_hash (ctx->avatar->str));
+    {
+      SHA1Init (&sc);
+      SHA1Update (&sc, ctx->avatar->str, ctx->avatar->len);
+      SHA1Final (&sc, hash);
+      for (i = 0; i < SHA1_HASH_SIZE; i++)
+        {
+          sprintf (hex_hash + i*2, "%02x", hash[i]);
+        }
+      dbus_g_method_return (ctx->invocation, hex_hash);
+    }
 
   /* FIXME: update self presence and push it to server here */
 

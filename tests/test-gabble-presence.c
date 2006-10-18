@@ -18,10 +18,10 @@ int main(int argc, char **argv)
 
   /* offline presence from unknown resource: no change */
   g_assert (FALSE == gabble_presence_update (presence, "foo",
-    GABBLE_PRESENCE_OFFLINE, NULL, 0));
+    GABBLE_PRESENCE_OFFLINE, NULL, 0, FALSE));
   /* available presence from unknown resource: change */
   g_assert (TRUE == gabble_presence_update (presence, "foo",
-    GABBLE_PRESENCE_AVAILABLE, NULL, 0));
+    GABBLE_PRESENCE_AVAILABLE, NULL, 0, FALSE));
 
   /* accumulated presence has changed; status message unchanged */
   g_assert (GABBLE_PRESENCE_AVAILABLE == presence->status);
@@ -29,10 +29,10 @@ int main(int argc, char **argv)
 
   /* available presence again; no change */
   g_assert (FALSE == gabble_presence_update (presence, "foo",
-    GABBLE_PRESENCE_AVAILABLE, NULL, 0));
+    GABBLE_PRESENCE_AVAILABLE, NULL, 0, FALSE));
   /* available presence again, but with status message: change */
   g_assert (TRUE == gabble_presence_update (presence, "foo",
-    GABBLE_PRESENCE_AVAILABLE, "status message", 0));
+    GABBLE_PRESENCE_AVAILABLE, "status message", 0, FALSE));
 
   /* accumulated presence unchanged; status message changed */
   g_assert (GABBLE_PRESENCE_AVAILABLE == presence->status);
@@ -40,25 +40,25 @@ int main(int argc, char **argv)
 
   /* same presence again; no change */
   g_assert (FALSE == gabble_presence_update (presence, "foo",
-    GABBLE_PRESENCE_AVAILABLE, "status message", 0));
+    GABBLE_PRESENCE_AVAILABLE, "status message", 0, FALSE));
 
   /* presence from different resource, but equal present-ness; unchanged */
   g_assert (FALSE == gabble_presence_update (presence, "bar",
-    GABBLE_PRESENCE_AVAILABLE, "dingoes", 0));
+    GABBLE_PRESENCE_AVAILABLE, "dingoes", 0, FALSE));
 
   g_assert (GABBLE_PRESENCE_AVAILABLE == presence->status);
   g_assert (0 == strcmp ("status message", presence->status_message));
 
   /* presence with higher priority; presence and message changed */
   g_assert (TRUE == gabble_presence_update (presence, "bar",
-    GABBLE_PRESENCE_AVAILABLE, "dingoes", 1));
+    GABBLE_PRESENCE_AVAILABLE, "dingoes", 1, FALSE));
 
   g_assert (GABBLE_PRESENCE_AVAILABLE == presence->status);
   g_assert (0 == strcmp ("dingoes", presence->status_message));
 
   /* presence from first resource with greated present-ness: change */
   g_assert (TRUE == gabble_presence_update (presence, "foo",
-    GABBLE_PRESENCE_CHAT, "status message", 0));
+    GABBLE_PRESENCE_CHAT, "status message", 0, FALSE));
 
   g_assert (GABBLE_PRESENCE_CHAT == presence->status);
   g_assert (0 == strcmp ("status message", presence->status_message));
@@ -70,7 +70,7 @@ int main(int argc, char **argv)
 
   /* give voice cap to second resource, but make priority negative */
   g_assert (FALSE == gabble_presence_update(presence, "bar",
-    GABBLE_PRESENCE_AVAILABLE, "dingoes", -1));
+    GABBLE_PRESENCE_AVAILABLE, "dingoes", -1, FALSE));
   gabble_presence_set_capabilities (presence, "bar", PRESENCE_CAP_GOOGLE_VOICE, 0);
 
   dump = gabble_presence_dump (presence);
@@ -109,7 +109,7 @@ int main(int argc, char **argv)
   /* presence turns up from null resource; it trumps other presence regardless
    * of whether status is more present or not */
   g_assert (TRUE == gabble_presence_update (presence, NULL,
-    GABBLE_PRESENCE_OFFLINE, "gone", 0));
+    GABBLE_PRESENCE_OFFLINE, "gone", 0, FALSE));
   g_assert (GABBLE_PRESENCE_OFFLINE == presence->status);
   g_assert (0 == strcmp("gone", presence->status_message));
 

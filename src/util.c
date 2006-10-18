@@ -19,13 +19,37 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include "config.h"
+
 #include <glib.h>
+#include <stdio.h>
 #include <string.h>
 
+#include "sha1/sha1.h"
 #include "namespaces.h"
 #include "gabble-connection.h"
 
 #include "util.h"
+
+gchar *
+sha1_hex (const gchar *bytes, guint len)
+{
+  SHA1Context sc;
+  uint8_t hash[SHA1_HASH_SIZE];
+  gchar *hex_hash = g_malloc (SHA1_HASH_SIZE*2 + 1);
+  int i;
+
+  SHA1Init (&sc);
+  SHA1Update (&sc, bytes, len);
+  SHA1Final (&sc, hash);
+
+  for (i = 0; i < SHA1_HASH_SIZE; i++)
+    {
+      sprintf(hex_hash + 2*i, "%02x", (unsigned int)hash[i]);
+    }
+
+  return hex_hash;
+}
 
 gboolean
 g_strdiff (const gchar *left, const gchar *right)

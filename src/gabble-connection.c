@@ -4955,27 +4955,17 @@ _set_avatar_cb2 (GabbleVCardManager *manager,
     dbus_g_method_return_error (ctx->invocation, vcard_error);
   else
     {
-      SHA1Context sc;
-      uint8_t hash[SHA1_HASH_SIZE];
-      gchar hex_hash[SHA1_HASH_SIZE*2 + 1];
-      int i;
       GabblePresence *presence;
       GError *error;
 
-      SHA1Init (&sc);
-      SHA1Update (&sc, ctx->avatar->str, ctx->avatar->len);
-      SHA1Final (&sc, hash);
-      for (i = 0; i < SHA1_HASH_SIZE; i++)
-        {
-          sprintf(hex_hash + 2*i, "%02x", (unsigned int)hash[i]);
-        }
       presence = gabble_presence_cache_get (ctx->conn->presence_cache,
                                             ctx->conn->self_handle);
       g_free (presence->avatar_sha1);
-      presence->avatar_sha1 = hex_hash;
+      presence->avatar_sha1 = sha1_hex (ctx->avatar->str,
+                                        ctx->avatar->len);
       if (signal_own_presence (ctx->conn, &error))
         {
-          dbus_g_method_return (ctx->invocation, hex_hash);
+          dbus_g_method_return (ctx->invocation, presence->avatar_sha1);
         }
       else
         {

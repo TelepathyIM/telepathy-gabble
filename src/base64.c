@@ -1,3 +1,5 @@
+#define DEBUG_FLAG GABBLE_DEBUG_VCARD
+#include "debug.h"
 
 #include <ctype.h>
 #include <string.h>
@@ -117,21 +119,29 @@ GString *base64_decode (const gchar *str)
   len = strlen (str);
 
   for (i = 0; i < len; i++)
-    if (str[i] != 'A' &&
-        str[i] != '=' &&
-        !isspace(str[i]) &&
-        decoding[(guchar) str[i]] == 0)
-      return NULL;
+    {
+      if (str[i] != 'A' &&
+          str[i] != '=' &&
+          !isspace(str[i]) &&
+          decoding[(guchar) str[i]] == 0)
+        {
+          DEBUG ("bad character %x at byte %u", (guchar)str[i], i);
+          return NULL;
+        }
+    }
 
   tmp = g_string_new ("");
 
   for (i = 0; i < len; i += 4)
     {
-      if (isspace(str[i]))
+      while (isspace(str[i]))
         i++;
+      if (str[i] == '\0')
+        break;
 
       if (len - i < 4)
         {
+          DEBUG ("insufficient padding at byte %u", i);
           g_string_free (tmp, TRUE);
           return NULL;
         }

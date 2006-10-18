@@ -288,6 +288,11 @@ initial_request_cb (GabbleVCardManager *self,
               DEBUG ("Successfully decoded PHOTO.BINVAL, SHA-1 %s", sha1);
               g_signal_emit (self, signals[GOT_SELF_INITIAL_AVATAR], 0, sha1);
             }
+          else
+            {
+              DEBUG ("Avatar is in garbled Base64, ignoring it:\n%s",
+                     lm_message_node_get_value (binval));
+            }
         }
     }
 

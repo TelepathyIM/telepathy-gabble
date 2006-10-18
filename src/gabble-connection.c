@@ -280,7 +280,7 @@ gabble_connection_init (GabbleConnection *self)
 
   self->priv = priv;
   self->lmconn = lm_connection_new (NULL);
-  self->status = TP_CONN_STATUS_DISCONNECTED;
+  self->status = TP_CONN_STATUS_NEW;
   self->handles = gabble_handle_repo_new ();
   self->disco = gabble_disco_new (self);
   self->vcard_manager = gabble_vcard_manager_new (self);
@@ -1530,8 +1530,19 @@ connection_status_change (GabbleConnection        *conn,
 
   DEBUG ("status %u reason %u", status, reason);
 
+  g_assert (status != TP_CONN_STATUS_NEW);
+
   if (conn->status != status)
     {
+      if ((status == TP_CONN_STATUS_DISCONNECTED) &&
+          (conn->status == TP_CONN_STATUS_NEW))
+        {
+          conn->status = status;
+          DEBUG ("new connection closed; emitting DISCONNECTED");
+          g_signal_emit (conn, signals[DISCONNECTED], 0);
+          return;
+        }
+
       conn->status = status;
 
       if (status == TP_CONN_STATUS_DISCONNECTED)
@@ -2980,7 +2991,7 @@ gabble_connection_connect (GabbleConnection *self,
 {
   g_assert(GABBLE_IS_CONNECTION (self));
 
-  if (self->status == TP_CONN_STATUS_DISCONNECTED)
+  if (self->status == TP_CONN_STATUS_NEW)
     return _gabble_connection_connect (self, error);
 
   return TRUE;
@@ -3340,7 +3351,14 @@ gabble_connection_get_status (GabbleConnection *self,
 {
   g_assert (GABBLE_IS_CONNECTION (self));
 
-  *ret = self->status;
+  if (self->status == TP_CONN_STATUS_NEW)
+    {
+      *ret = TP_CONN_STATUS_DISCONNECTED;
+    }
+  else
+    {
+      *ret = self->status;
+    }
 
   return TRUE;
 }

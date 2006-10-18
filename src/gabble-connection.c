@@ -4923,6 +4923,7 @@ gabble_connection_set_aliases (GabbleConnection *self,
 
 
 struct _set_avatar_ctx {
+  GabbleConnection *conn;
   DBusGMethodInvocation *invocation;
   LmMessage *new_vcard_msg;
   GString *avatar;
@@ -4949,26 +4950,35 @@ _set_avatar_cb2 (GabbleVCardManager *manager,
                  gpointer user_data)
 {
   struct _set_avatar_ctx *ctx = (struct _set_avatar_ctx *) user_data;
-  SHA1Context sc;
-  uint8_t hash[SHA1_HASH_SIZE];
-  gchar hex_hash[SHA1_HASH_SIZE*2 + 1];
-  int i;
 
   if (NULL == vcard)
     dbus_g_method_return_error (ctx->invocation, vcard_error);
   else
     {
+      SHA1Context sc;
+      uint8_t hash[SHA1_HASH_SIZE];
+      gchar *b64_hash;
+      GabblePresence *presence;
+      GError *error;
+
       SHA1Init (&sc);
       SHA1Update (&sc, ctx->avatar->str, ctx->avatar->len);
       SHA1Final (&sc, hash);
-      for (i = 0; i < SHA1_HASH_SIZE; i++)
+      b64_hash = base64_encode ((gchar *)hash, SHA1_HASH_SIZE);
+      presence = gabble_presence_cache_get (ctx->conn->presence_cache,
+                                            ctx->conn->self_handle);
+      g_free (presence->avatar_sha1);
+      presence->avatar_sha1 = b64_hash;
+      if (signal_own_presence (ctx->conn, &error))
         {
-          sprintf (hex_hash + i*2, "%02x", hash[i]);
+          dbus_g_method_return (ctx->invocation, b64_hash);
         }
-      dbus_g_method_return (ctx->invocation, hex_hash);
+      else
+        {
+          dbus_g_method_return_error (ctx->invocation, error);
+          g_error_free (error);
+        }
     }
-
-  /* FIXME: update self presence and push it to server here */
 
   _set_avatar_ctx_free (ctx);
 }
@@ -5047,6 +5057,7 @@ gabble_connection_set_avatar (GabbleConnection *self,
 {
   struct _set_avatar_ctx *ctx = g_new0 (struct _set_avatar_ctx, 1);
 
+  ctx->conn = self;
   ctx->invocation = context;
   ctx->avatar = g_string_new_len (avatar->data, avatar->len);
   ctx->mime_type = g_strdup (mime_type);

@@ -119,7 +119,7 @@ GString *base64_decode (const gchar *str)
   for (i = 0; i < len; i++)
     if (str[i] != 'A' &&
         str[i] != '=' &&
-        str[i] != '\n' &&
+        !isspace(str[i]) &&
         decoding[(guchar) str[i]] == 0)
       return NULL;
 
@@ -127,7 +127,7 @@ GString *base64_decode (const gchar *str)
 
   for (i = 0; i < len; i += 4)
     {
-      if (str[i] == '\n')
+      if (isspace(str[i]))
         i++;
 
       if (len - i < 4)

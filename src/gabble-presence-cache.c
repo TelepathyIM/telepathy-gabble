@@ -567,6 +567,7 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
   const gchar *sha1;
   LmMessageNode *x_node, *photo_node;
   GabblePresence *presence;
+  GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
 
   presence = gabble_presence_cache_get (cache, handle);
 
@@ -575,11 +576,18 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
 
   x_node = lm_message_node_get_child (node, "x");
 
-  if (NULL == x_node)
-    return;
-
-  if (!lm_message_node_has_namespace (x_node, NS_VCARD_TEMP_UPDATE, NULL))
-    return;
+  if (NULL == x_node ||
+      !lm_message_node_has_namespace (x_node, NS_VCARD_TEMP_UPDATE, NULL))
+    {
+      if (handle == priv->conn->self_handle)
+        {
+          /* One of my other resources does not support XEP-0153. As per that
+           * XEP, I MUST stop advertising the image hash, at least until all
+           * instances of non-conforming resources have gone offline. */
+          presence->avatar_sha1 = NULL;
+        }
+      return;
+    }
 
   photo_node = lm_message_node_get_child (x_node, "photo");
 

@@ -1170,6 +1170,8 @@ gabble_media_channel_add_member (GObject *obj, GabbleHandle handle, const gchar 
             presence->caps & PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO ||
             presence->caps & PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO))
         {
+          DEBUG ("failed to add contact %d to media channel: "
+                "caps %x aren't sufficient", handle, presence->caps);
           *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
                                 "handle %u has no media capabilities", handle);
           return FALSE;

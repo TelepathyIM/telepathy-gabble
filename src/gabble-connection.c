@@ -2323,7 +2323,10 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   lm_message_node_set_attribute (result_query, "xmlns", NS_DISCO_INFO);
 
   pres = gabble_presence_cache_get (conn->presence_cache, conn->self_handle);
+  DEBUG ("got disco request for bundle %s, caps are %x", node, pres->caps);
   features = capabilities_get_features (pres->caps);
+
+  g_debug("%s: caps now %u", G_STRFUNC, pres->caps);
 
   for (i = features; NULL != i; i = i->next)
     {
@@ -2875,6 +2878,7 @@ gabble_connection_advertise_capabilities (GabbleConnection *self,
   ERROR_IF_NOT_CONNECTED (self, *error);
 
   pres = gabble_presence_cache_get (self->presence_cache, self->self_handle);
+  DEBUG ("caps before: %x", pres->caps);
 
   for (i = 0; i < add->len; i++)
     {
@@ -2908,11 +2912,18 @@ gabble_connection_advertise_capabilities (GabbleConnection *self,
   caps |= add_caps;
   caps ^= (caps & remove_caps);
 
+  DEBUG ("caps to add: %x", add_caps);
+  DEBUG ("caps to remove: %x", remove_caps);
+  DEBUG ("caps after: %x", caps);
+
   if (caps ^ save_caps)
     {
+      DEBUG ("before != after, changing");
       /* override old capabilities entirely */
       gabble_presence_set_capabilities (pres, priv->resource, 0, 1);
+      DEBUG ("zeroed caps: %x", pres->caps);
       gabble_presence_set_capabilities (pres, priv->resource, caps, 0);
+      DEBUG ("set caps: %x", pres->caps);
     }
 
   *ret = g_ptr_array_new ();

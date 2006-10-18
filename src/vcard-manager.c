@@ -282,9 +282,9 @@ initial_request_cb (GabbleVCardManager *self,
           gchar *sha1;
 
           avatar = base64_decode (lm_message_node_get_value (binval));
-          sha1 = sha1_hex (avatar->str, avatar->len);
           if (avatar)
             {
+              sha1 = sha1_hex (avatar->str, avatar->len);
               DEBUG ("Successfully decoded PHOTO.BINVAL, SHA-1 %s", sha1);
               g_signal_emit (self, signals[GOT_SELF_INITIAL_AVATAR], 0, sha1);
             }

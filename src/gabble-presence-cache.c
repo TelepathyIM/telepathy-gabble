@@ -187,12 +187,17 @@ capability_info_recvd (GabblePresenceCache *cache, const gchar *node,
   if (info->caps != caps)
     {
       g_intset_destroy (info->guys);
-      info->guys = NULL;
+      info->trust = 0;
       return 0;
     }
 
-  g_intset_add (info->guys, handle);
-  return g_intset_size (info->guys);
+  if (!g_intset_is_member(info->guys, handle))
+    {
+      g_intset_add (info->guys, handle);
+      info->trust++;
+    }
+
+  return info->trust;
 }
 
 static guint
@@ -204,7 +209,7 @@ get_caps_trust (GabblePresenceCache *cache, const gchar *node,
 
   if (NULL != info)
     {
-      guint trust = g_intset_size (info->guys);
+      guint trust = info->trust;
 
       if (g_intset_is_member (info->guys, handle))
         trust = CAPABILITY_BUNDLE_ENOUGH_TRUST;

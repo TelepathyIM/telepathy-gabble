@@ -853,7 +853,8 @@ gabble_connection_dispose (GObject *object)
 
   DEBUG ("called");
 
-  g_assert (self->status == TP_CONN_STATUS_DISCONNECTED);
+  g_assert ((self->status == TP_CONN_STATUS_DISCONNECTED) ||
+            (self->status == TP_CONN_STATUS_NEW));
   g_assert (self->self_handle == 0);
 
   if (priv->channel_requests)

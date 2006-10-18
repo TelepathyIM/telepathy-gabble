@@ -62,6 +62,10 @@ capabilities_fill_cache (GabblePresenceCache *cache)
           node, feat->caps);
       g_free (node);
     }
+
+  gabble_presence_cache_add_bundle_caps (cache,
+    "http://www.google.com/xmpp/client/caps#voice-v1",
+    PRESENCE_CAP_GOOGLE_VOICE);
 }
 
 GabblePresenceCapabilities

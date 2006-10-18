@@ -4246,19 +4246,30 @@ room_jid_disco_cb (GabbleDisco *disco,
       const gchar *var;
 
       if (g_strdiff (lm_node->name, "feature"))
-        break;
+        continue;
 
       var = lm_message_node_get_attribute (lm_node, "var");
 
+      /* for servers who consider schema compliance to be an optional bonus */
+      if (var == NULL)
+        var = lm_message_node_get_attribute (lm_node, "type");
+
       if (!g_strdiff (var, NS_MUC))
-        found = TRUE;
+        {
+          found = TRUE;
+          break;
+        }
     }
 
   if (!found)
     {
+      DEBUG ("no MUC support for service name in jid %s", rvctx->jid);
+
       error = g_error_new (TELEPATHY_ERRORS, NotAvailable, "specified server "
           "doesn't support MUC");
+
       room_verify_batch_raise_error (batch, error);
+
       return;
     }
 

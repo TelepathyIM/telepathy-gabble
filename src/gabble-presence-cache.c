@@ -594,6 +594,20 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
     {
       g_free (presence->avatar_sha1);
       presence->avatar_sha1 = g_strdup (sha1);
+
+      if (handle == priv->conn->self_handle)
+        {
+          /* that would be us, then. According to XEP-0153, we MUST
+           * immediately send a presence update with an empty update child
+           * element (no photo node), then re-download our own vCard;
+           * when that arrives, we may start setting the photo node in our
+           * presence again.
+           *
+           * TODO: For the moment I'm going to ignore that requirement and
+           * trust that our other resource is getting its sha1 right!
+           */
+        }
+
       g_signal_emit (cache, signals[AVATAR_UPDATE], 0, handle);
     }
 }

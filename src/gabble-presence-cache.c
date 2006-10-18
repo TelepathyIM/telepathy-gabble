@@ -137,22 +137,19 @@ disco_waiter_list_free (GSList *list)
   g_slist_free (list);
 }
 
-static void
-_inc_requests (gpointer data, gpointer user_data)
-{
-  DiscoWaiter *waiter = (DiscoWaiter *) data;
-  guint *c = (guint *) user_data;
-
-  if (waiter->disco_requested)
-    (*c)++;
-}
-
 static guint
 disco_waiter_list_get_request_count (GSList *list)
 {
-  guint c;
+  guint c = 0;
+  GSList *i;
 
-  g_slist_foreach (list, _inc_requests, &c);
+  for (i = list; i; i = i->next)
+    {
+      DiscoWaiter *waiter = (DiscoWaiter *) i->data;
+
+      if (waiter->disco_requested)
+        c++;
+    }
 
   return c;
 }

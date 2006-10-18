@@ -3175,22 +3175,26 @@ gabble_connection_get_alias_flags (GabbleConnection *self,
  */
 gboolean
 gabble_connection_get_avatar_requirements (GabbleConnection *self,
-                                           gchar ***ret,
-                                           guint *ret1,
-                                           guint *ret2,
-                                           guint *ret3,
-                                           guint *ret4,
-                                           guint *ret5,
+                                           gchar ***types,
+                                           guint *min_width,
+                                           guint *min_height,
+                                           guint *max_width,
+                                           guint *max_height,
+                                           guint *max_bytes,
                                            GError **error)
 {
-  /* empty list: Jabber prescribes no MIME type for avatars */
-  *ret = g_malloc0 (sizeof (gchar *));
-  /* Jabber has no min/max width/height or max size */
-  *ret1 = 0;
-  *ret2 = 0;
-  *ret3 = 0;
-  *ret4 = 0;
-  *ret5 = 0;
+  /* Jabber prescribes no MIME type for avatars, but XEP-0153 says support
+   * for image/png is REQUIRED, with image/jpeg and image/gif RECOMMENDED */
+  static char *mimetypes[] = { "image/png", "image/jpeg", "image/gif", NULL };
+
+  *types = g_strdupv (mimetypes);
+  /* Jabber has no min/max width/height or max size, but XEP-0153 says
+   * you SHOULD use 32-96px either way, and no more than 8K of data */
+  *min_width = 32;
+  *min_height = 32;
+  *max_width = 96;
+  *max_height = 96;
+  *max_bytes = 8192;
 
   return TRUE;
 }

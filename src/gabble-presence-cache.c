@@ -958,7 +958,7 @@ _parse_presence_message (GabblePresenceCache *cache,
     case LM_MESSAGE_SUB_TYPE_AVAILABLE:
       presence_id = _presence_node_get_status (presence_node);
       gabble_presence_cache_update (cache, handle, resource, presence_id,
-          status_message, priority);
+          status_message, priority, FALSE);
 
 #if 0
       if (_presence_node_has_google_voice (presence_node))
@@ -980,7 +980,7 @@ _parse_presence_message (GabblePresenceCache *cache,
 
     case LM_MESSAGE_SUB_TYPE_UNAVAILABLE:
       gabble_presence_cache_update (cache, handle, resource,
-          GABBLE_PRESENCE_OFFLINE, status_message, priority);
+          GABBLE_PRESENCE_OFFLINE, status_message, priority, FALSE);
 
       ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
       break;
@@ -1149,7 +1149,8 @@ gabble_presence_cache_update (
     const gchar *resource,
     GabblePresenceId presence_id,
     const gchar *status_message,
-    gint8 priority)
+    gint8 priority,
+    gboolean set_locally)
 {
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
   const gchar *jid;
@@ -1157,8 +1158,9 @@ gabble_presence_cache_update (
 
   jid = gabble_handle_inspect (priv->conn->handles, TP_HANDLE_TYPE_CONTACT,
       handle);
-  DEBUG ("%s (%d) resource %s prio %d presence %d message \"%s\"",
-      jid, handle, resource, priority, presence_id, status_message);
+  DEBUG ("%s (%d) resource %s prio %d presence %d message \"%s\"%s",
+      jid, handle, resource, priority, presence_id, status_message,
+      set_locally ? " set locally" : "");
 
   presence = gabble_presence_cache_get (cache, handle);
 
@@ -1166,7 +1168,7 @@ gabble_presence_cache_update (
     presence = _cache_insert (cache, handle);
 
   if (gabble_presence_update (presence, resource, presence_id, status_message,
-        priority))
+        priority, set_locally))
     g_signal_emit (cache, signals[PRESENCE_UPDATE], 0, handle);
 
   gabble_presence_cache_maybe_remove (cache, handle);

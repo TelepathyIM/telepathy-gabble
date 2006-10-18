@@ -4216,6 +4216,8 @@ room_jid_disco_cb (GabbleDisco *disco,
   RoomVerifyContext *rvctx = user_data;
   RoomVerifyBatch *batch = rvctx->batch;
   LmMessageNode *lm_node;
+  gboolean found = FALSE;
+  GabbleHandle handle;
 
   /* stop the request getting cancelled after it's already finished */
   rvctx->request = NULL;
@@ -4241,35 +4243,31 @@ room_jid_disco_cb (GabbleDisco *disco,
 
   for (lm_node = query_result->children; lm_node; lm_node = lm_node->next)
     {
-      if (strcmp (lm_node->name, "feature") == 0)
-        {
-          const gchar *name;
+      const gchar *var;
 
-          name = lm_message_node_get_attribute (lm_node, "var");
-          if (name != NULL)
-            {
-              if (strcmp (name, NS_MUC) == 0)
-                {
-                  GabbleHandle handle;
+      if (g_strdiff (lm_node->name, "feature"))
+        break;
 
-                  handle = gabble_handle_for_room (batch->conn->handles, rvctx->jid);
-                  g_assert (handle != 0);
+      var = lm_message_node_get_attribute (lm_node, "var");
 
-                  DEBUG ("disco reported MUC support for service name in jid %s", rvctx->jid);
-                  g_array_index(batch->handles, GabbleHandle, rvctx->index) = handle;
-
-                  goto OUT;
-                }
-            }
-        }
+      if (!g_strdiff (var, NS_MUC))
+        found = TRUE;
     }
 
-  error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
-                      "specified server doesn't support MUC");
-  room_verify_batch_raise_error (batch, error);
-  return;
+  if (!found)
+    {
+      error = g_error_new (TELEPATHY_ERRORS, NotAvailable, "specified server "
+          "doesn't support MUC");
+      room_verify_batch_raise_error (batch, error);
+      return;
+    }
 
-OUT:
+  handle = gabble_handle_for_room (batch->conn->handles, rvctx->jid);
+  g_assert (handle != 0);
+
+  DEBUG ("disco reported MUC support for service name in jid %s", rvctx->jid);
+  g_array_index (batch->handles, GabbleHandle, rvctx->index) = handle;
+
   /* if this was the last callback to be run, send off the result */
   room_verify_batch_try_return (batch);
 }

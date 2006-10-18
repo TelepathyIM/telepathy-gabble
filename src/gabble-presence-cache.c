@@ -1120,7 +1120,7 @@ void gabble_presence_cache_add_bundle_caps (GabblePresenceCache *cache,
   if (NULL == info)
     {
       info = g_new0 (CapabilityInfo, 1);
-      info->trust = 1;
+      info->trust = CAPABILITY_BUNDLE_ENOUGH_TRUST;
       info->guys = g_intset_new ();
       g_intset_add (info->guys, priv->conn->self_handle);
       g_hash_table_insert (priv->capabilities, g_strdup (node), info);

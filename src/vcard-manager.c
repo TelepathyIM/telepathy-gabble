@@ -26,6 +26,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_VCARD
 
+#include "base64.h"
 #include "debug.h"
 #include "gabble-connection.h"
 #include "namespaces.h"
@@ -41,6 +42,7 @@ static const gchar *NO_ALIAS = "none";
 enum
 {
     NICKNAME_UPDATE,
+    GOT_SELF_INITIAL_AVATAR,
     LAST_SIGNAL
 };
 
@@ -148,6 +150,14 @@ gabble_vcard_manager_class_init (GabbleVCardManagerClass *gabble_vcard_manager_c
                   g_cclosure_marshal_VOID__UINT,
                   G_TYPE_NONE, 1, G_TYPE_UINT);
 
+  signals[GOT_SELF_INITIAL_AVATAR] =
+    g_signal_new ("got-self-initial-avatar",
+                  G_TYPE_FROM_CLASS (gabble_vcard_manager_class),
+                  G_SIGNAL_RUN_LAST,
+                  0,
+                  NULL, NULL,
+                  g_cclosure_marshal_VOID__STRING,
+                  G_TYPE_NONE, 1, G_TYPE_STRING);
 }
 
 static void
@@ -217,6 +227,73 @@ gabble_vcard_manager_finalize (GObject *object)
   G_OBJECT_CLASS (gabble_vcard_manager_parent_class)->finalize (object);
 }
 
+/* Called during connection. */
+static void
+initial_request_cb (GabbleVCardManager *self,
+                    GabbleVCardManagerRequest *request,
+                    GabbleHandle handle,
+                    LmMessageNode *vcard,
+                    GError *error,
+                    gpointer user_data)
+{
+  GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (self);
+  gchar *alias = (gchar *)user_data;
+  LmMessageNode *node;
+
+  if (!vcard)
+    {
+      g_free (alias);
+      return;
+    }
+
+  /* try to patch the alias, if one was provided */
+  if (alias)
+    {
+      DEBUG ("Patching our vCard to have alias \"%s\"", alias);
+      node = lm_message_node_get_child (vcard, "NICKNAME");
+      if (node)
+        {
+          lm_message_node_set_value (node, alias);
+        }
+      else
+        {
+          lm_message_node_add_child (vcard, "NICKNAME", alias);
+        }
+
+      /* basically ignore error here, there's not a lot we can do about it */
+      gabble_vcard_manager_replace (self, vcard, 0, NULL, NULL,
+                                    G_OBJECT (priv->connection), NULL);
+    }
+
+  /* Do we have an avatar already? If so, the presence cache ought to be
+   * told (anyone else's avatar SHA-1 we'd get from their presence, 
+   * but unless we have another XEP-0153 resource connected, we never
+   * see our own presence)
+   */
+  node = lm_message_node_get_child (vcard, "PHOTO");
+  if (node)
+    {
+      DEBUG ("Our vCard has a PHOTO %p", node);
+      GString *avatar = NULL;
+      LmMessageNode *binval = lm_message_node_get_child (node, "BINVAL");
+
+      if (binval)
+        {
+          gchar *sha1;
+
+          avatar = base64_decode (lm_message_node_get_value (binval));
+          sha1 = sha1_hex (avatar->str, avatar->len);
+          if (avatar)
+            {
+              DEBUG ("Successfully decoded PHOTO.BINVAL, SHA-1 %s", sha1);
+              g_signal_emit (self, signals[GOT_SELF_INITIAL_AVATAR], 0, sha1);
+            }
+        }
+    }
+
+  g_free (alias);
+}
+
 static void
 status_changed_cb (GObject *object,
                    guint status,
@@ -235,22 +312,17 @@ status_changed_cb (GObject *object,
       alias_src = _gabble_connection_get_cached_alias (conn,
                                                        conn->self_handle,
                                                        &alias);
-      if (alias_src > GABBLE_CONNECTION_ALIAS_FROM_VCARD)
+      if (alias_src < GABBLE_CONNECTION_ALIAS_FROM_VCARD)
         {
-          /* ignore errors, just kick off the request in the background */
-          gabble_vcard_manager_edit (self, 0, NULL, NULL, G_OBJECT (conn),
-                                     NULL, "NICKNAME", alias, NULL);
-        }
-      else
-        {
-          /* find out our own alias, so it's in the cache; again,
-           * there's nothing useful we can do with errors really
-           */
-          gabble_vcard_manager_request (self, conn->self_handle,
-                                        0, NULL, NULL, NULL, NULL);
+          /* this alias isn't reliable enough to want to patch it in */
+          g_free (alias);
+          alias = NULL;
         }
 
-      g_free(alias);
+      /* fetch our vCard, and possibly patch it to include our new alias */
+      gabble_vcard_manager_request (self, conn->self_handle, 0,
+                                    initial_request_cb, alias,
+                                    G_OBJECT (conn), NULL);
     }
 }
 

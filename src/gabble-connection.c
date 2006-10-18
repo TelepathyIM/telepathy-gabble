@@ -277,6 +277,7 @@ static void connection_channel_error_cb (TpChannelFactoryIface *, GObject *, GEr
 static void connection_nickname_update_cb (GObject *, GabbleHandle, gpointer);
 static void connection_presence_update_cb (GabblePresenceCache *, GabbleHandle, gpointer);
 static void connection_capabilities_update_cb (GabblePresenceCache *, GabbleHandle, GabblePresenceCapabilities, GabblePresenceCapabilities, gpointer);
+static void connection_got_self_initial_avatar_cb (GObject *, gchar *, gpointer);
 
 static void
 gabble_connection_init (GabbleConnection *self)
@@ -294,6 +295,8 @@ gabble_connection_init (GabbleConnection *self)
   self->vcard_manager = gabble_vcard_manager_new (self);
   g_signal_connect (self->vcard_manager, "nickname-update", G_CALLBACK
       (connection_nickname_update_cb), self);
+  g_signal_connect (self->vcard_manager, "got-self-initial-avatar", G_CALLBACK
+      (connection_got_self_initial_avatar_cb), self);
 
   self->presence_cache = gabble_presence_cache_new (self);
   g_signal_connect (self->presence_cache, "nickname-update", G_CALLBACK
@@ -2019,6 +2022,21 @@ connection_nickname_update_cb (GObject *object,
 
 OUT:
   g_free (alias);
+}
+
+/* Called when our vCard is first fetched, so we can start putting the
+ * SHA-1 of an existing avatar in our presence. */
+static void
+connection_got_self_initial_avatar_cb (GObject *obj,
+                                       gchar *sha1,
+                                       gpointer user_data)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION(user_data);
+  GabblePresence *presence = gabble_presence_cache_get (conn->presence_cache,
+                                                        conn->self_handle);
+
+  g_free (presence->avatar_sha1);
+  presence->avatar_sha1 = g_strdup (sha1);
 }
 
 /**

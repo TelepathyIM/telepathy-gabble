@@ -4116,7 +4116,7 @@ gabble_connection_request_aliases (GabbleConnection *self,
 }
 
 
-void
+static void
 _request_avatar_cb (GabbleVCardManager *self,
                     GabbleVCardManagerRequest *request,
                     GabbleHandle handle,
@@ -4931,7 +4931,7 @@ struct _set_avatar_ctx {
 };
 
 
-void
+static void
 _set_avatar_ctx_free (struct _set_avatar_ctx *ctx)
 {
   lm_message_unref (ctx->new_vcard_msg);
@@ -4941,7 +4941,7 @@ _set_avatar_ctx_free (struct _set_avatar_ctx *ctx)
 }
 
 
-void
+static void
 _set_avatar_cb2 (GabbleVCardManager *manager,
                  GabbleVCardManagerRequest *request,
                  GabbleHandle handle,
@@ -4988,7 +4988,7 @@ _set_avatar_cb2 (GabbleVCardManager *manager,
 }
 
 
-void
+static void
 _set_avatar_cb1 (GabbleVCardManager *manager,
                  GabbleVCardManagerRequest *request,
                  GabbleHandle handle,

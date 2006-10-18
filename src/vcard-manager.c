@@ -470,6 +470,7 @@ replace_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
     {
       LmMessageNode *error_node;
 
+      vcard_node = NULL;
       error_node = lm_message_node_get_child (reply_msg->node, "error");
       if (error_node)
         {
@@ -533,6 +534,8 @@ request_reply_cb (GabbleConnection *conn,
   if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_ERROR)
     {
       LmMessageNode *error_node;
+
+      vcard_node = NULL;
 
       error_node = lm_message_node_get_child (reply_msg->node, "error");
       if (error_node)

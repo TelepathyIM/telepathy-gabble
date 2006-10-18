@@ -583,6 +583,8 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
 
   photo_node = lm_message_node_get_child (x_node, "photo");
 
+  /* If there is no photo node, the resource supports XEP-0153, but has
+   * nothing in particular to say about the avatar. */
   if (NULL == photo_node)
     return;
 

@@ -155,7 +155,8 @@ gabble_presence_set_capabilities (GabblePresence *presence,
 {
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
   GSList *i;
-  GabblePresenceCapabilities total_caps = 0;
+
+  presence->caps = 0;
 
   for (i = priv->resources; NULL != i; i = i->next)
     {
@@ -169,13 +170,10 @@ gabble_presence_set_capabilities (GabblePresence *presence,
               tmp->caps_serial = serial;
             }
           tmp->caps |= caps;
-          presence->caps |= caps;
         }
 
-      total_caps |= tmp->caps;
+      presence->caps |= tmp->caps;
     }
-
-  presence->caps = total_caps;
 }
 
 static Resource *

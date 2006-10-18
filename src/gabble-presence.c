@@ -23,6 +23,7 @@
 
 #include "gabble-presence-cache.h"
 #include "gabble-presence.h"
+#include "namespaces.h"
 #include "util.h"
 
 #include "config.h"
@@ -332,7 +333,7 @@ LmMessage *
 gabble_presence_as_message (GabblePresence *presence, const gchar *resource)
 {
   LmMessage *message;
-  LmMessageNode *node;
+  LmMessageNode *node, *subnode;
   LmMessageSubType subtype;
   Resource *res = _find_resource (presence, resource);
 
@@ -378,6 +379,14 @@ gabble_presence_as_message (GabblePresence *presence, const gchar *resource)
       gchar *priority = g_strdup_printf ("%d", res->priority);
       lm_message_node_add_child (node, "priority", priority);
       g_free (priority);
+    }
+
+  subnode = lm_message_node_add_child (node, "x", "");
+  lm_message_node_set_attribute (subnode, "xmlns", NS_VCARD_TEMP_UPDATE);
+  /* NULL means we make no particular assertion about the avatar. */
+  if (presence->avatar_sha1 != NULL)
+    {
+      lm_message_node_add_child (subnode, "photo", presence->avatar_sha1);
     }
 
   return message;

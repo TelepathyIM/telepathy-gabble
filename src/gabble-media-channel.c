@@ -1367,9 +1367,8 @@ session_state_changed_cb (GabbleMediaSession *session,
         }
     }
 
-    g_intset_destroy (empty);
-    g_intset_destroy (set);
-
+  g_intset_destroy (empty);
+  g_intset_destroy (set);
 }
 
 static void

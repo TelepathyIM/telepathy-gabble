@@ -562,6 +562,8 @@ gabble_media_session_error (GabbleMediaSession *self,
     }
   else if (priv->state == JS_STATE_PENDING_CREATED)
     {
+      /* shortcut to prevent sending remove actions if we haven't sent an
+       * initiate yet */
       g_object_set (self, "state", JS_STATE_ENDED, NULL);
       return TRUE;
     }

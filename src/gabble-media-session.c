@@ -1086,7 +1086,7 @@ _call_handlers_on_stream (GabbleMediaSession *session,
 
        if (!(*tmp) (session, message, content_node, stream_name, stream,
              desc_node, trans_node))
-       return FALSE;
+         return FALSE;
     }
 
   return TRUE;

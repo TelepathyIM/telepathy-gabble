@@ -5005,7 +5005,7 @@ _set_avatar_cb1 (GabbleVCardManager *manager,
                  gpointer user_data)
 {
   struct _set_avatar_ctx *ctx = (struct _set_avatar_ctx *) user_data;
-  LmMessageNode *new_vcard, *photo_node, *type_node, *binval_node, *i;
+  LmMessageNode *new_vcard, *photo_node, *type_node, *binval_node, *i, *next;
   gchar *encoded;
 
   if (NULL == vcard)
@@ -5020,16 +5020,17 @@ _set_avatar_cb1 (GabbleVCardManager *manager,
   lm_message_node_set_attribute (new_vcard, "xmlns", NS_VCARD_TEMP);
   lm_message_node_steal_children (new_vcard, vcard);
 
-  for (i = new_vcard->children; i; i = i->next)
+  for (i = new_vcard->children; i; i = next)
     {
+      next = i->next;
       if (0 == strcmp (i->name, "PHOTO"))
-        i->prev->next = i->next;
+        {
+          lm_message_node_unlink (i);
+          lm_message_node_unref (i);
+        }
     }
 
-  photo_node = lm_message_node_get_child (new_vcard, "PHOTO");
-
-  if (NULL == photo_node)
-    photo_node = lm_message_node_add_child (new_vcard, "PHOTO", "");
+  photo_node = lm_message_node_add_child (new_vcard, "PHOTO", "");
 
   type_node = lm_message_node_get_child (photo_node, "TYPE");
 

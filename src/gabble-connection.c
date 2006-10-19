@@ -5078,8 +5078,6 @@ gabble_connection_set_avatar (GabbleConnection *self,
   gabble_vcard_manager_request (
     self->vcard_manager, self->self_handle, 0, _set_avatar_cb1, ctx, NULL,
     NULL);
-
-  return;
 }
 
 

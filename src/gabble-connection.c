@@ -2212,7 +2212,8 @@ _gabble_connection_acknowledge_set_iq (GabbleConnection *conn,
 void
 _gabble_connection_send_iq_error (GabbleConnection *conn,
                                   LmMessage *message,
-                                  GabbleXmppError error)
+                                  GabbleXmppError error,
+                                  const gchar *errmsg)
 {
   const gchar *to, *id;
   LmMessage *msg;
@@ -2235,7 +2236,7 @@ _gabble_connection_send_iq_error (GabbleConnection *conn,
 
   lm_message_node_steal_children (msg->node, iq_node);
 
-  gabble_xmpp_error_to_node (error, msg->node);
+  gabble_xmpp_error_to_node (error, msg->node, errmsg);
 
   _gabble_connection_send (conn, msg, NULL);
 
@@ -2374,7 +2375,7 @@ connection_iq_unknown_cb (LmMessageHandler *handler,
     case LM_MESSAGE_SUB_TYPE_GET:
     case LM_MESSAGE_SUB_TYPE_SET:
       _gabble_connection_send_iq_error (conn, message,
-          XMPP_ERROR_SERVICE_UNAVAILABLE);
+          XMPP_ERROR_SERVICE_UNAVAILABLE, NULL);
       break;
     default:
       break;

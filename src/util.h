@@ -30,6 +30,7 @@
 gchar *sha1_hex (const gchar *bytes, guint len);
 gboolean g_strdiff (const gchar *left, const gchar *right);
 void lm_message_node_add_own_nick (LmMessageNode *node, GabbleConnection *conn);
+void lm_message_node_unlink (LmMessageNode *orphan);
 void lm_message_node_steal_children (LmMessageNode *snatcher, LmMessageNode *mum);
 gboolean lm_message_node_has_namespace (LmMessageNode *node, const gchar *ns, const gchar *tag);
 LmMessageNode *lm_message_node_get_child_with_namespace (LmMessageNode *node, const gchar *name, const gchar *ns);

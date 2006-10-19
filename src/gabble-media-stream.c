@@ -1285,7 +1285,8 @@ FAILURE:
                   ANSI_BOLD_OFF, xml, ANSI_BOLD_ON);
   g_free (xml);
 
-  _gabble_connection_send_iq_error (priv->conn, message, XMPP_ERROR_NOT_ALLOWED);
+  _gabble_connection_send_iq_error (
+    priv->conn, message, XMPP_ERROR_NOT_ALLOWED, NULL);
 
   return FALSE;
 }
@@ -1499,7 +1500,8 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
   return TRUE;
 
 FAILURE:
-  _gabble_connection_send_iq_error (priv->conn, message, XMPP_ERROR_BAD_REQUEST);
+  _gabble_connection_send_iq_error (
+    priv->conn, message, XMPP_ERROR_BAD_REQUEST, NULL);
 
   return FALSE;
 }

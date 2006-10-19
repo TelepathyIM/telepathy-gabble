@@ -72,7 +72,7 @@ GQuark gabble_xmpp_error_quark (void);
 
 GabbleXmppError gabble_xmpp_error_from_node (LmMessageNode *error_node);
 GError *gabble_xmpp_error_to_g_error (GabbleXmppError error);
-LmMessageNode *gabble_xmpp_error_to_node (GabbleXmppError error, LmMessageNode *parent_node);
+LmMessageNode *gabble_xmpp_error_to_node (GabbleXmppError error, LmMessageNode *parent_node, const gchar *errmsg);
 const gchar *gabble_xmpp_error_string (GabbleXmppError error);
 const gchar *gabble_xmpp_error_description (GabbleXmppError error);
 

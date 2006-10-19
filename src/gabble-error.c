@@ -271,7 +271,8 @@ gabble_xmpp_error_to_g_error (GabbleXmppError error)
 
 LmMessageNode *
 gabble_xmpp_error_to_node (GabbleXmppError error,
-                           LmMessageNode *parent_node)
+                           LmMessageNode *parent_node,
+                           const gchar *errmsg)
 {
   const XmppErrorSpec *spec;
   LmMessageNode *error_node, *node;
@@ -294,6 +295,9 @@ gabble_xmpp_error_to_node (GabbleXmppError error,
 
   node = lm_message_node_add_child (error_node, spec->name, NULL);
   lm_message_node_set_attribute (node, "xmlns", NS_XMPP_STANZAS);
+
+  if (NULL != errmsg)
+    lm_message_node_set_value (error_node, errmsg);
 
   return error_node;
 }

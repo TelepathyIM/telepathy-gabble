@@ -143,7 +143,7 @@ gboolean _gabble_connection_connect (GabbleConnection *conn, GError **error);
 gboolean _gabble_connection_send (GabbleConnection *conn, LmMessage *msg, GError **error);
 gboolean _gabble_connection_send_with_reply (GabbleConnection *conn, LmMessage *msg, GabbleConnectionMsgReplyFunc reply_func, GObject *object, gpointer user_data, GError **error);
 void _gabble_connection_acknowledge_set_iq (GabbleConnection *conn, LmMessage *iq);
-void _gabble_connection_send_iq_error (GabbleConnection *conn, LmMessage *message, GabbleXmppError error);
+void _gabble_connection_send_iq_error (GabbleConnection *conn, LmMessage *message, GabbleXmppError error, const gchar *errmsg);
 
 GabbleConnectionAliasSource _gabble_connection_get_cached_alias (GabbleConnection *, GabbleHandle, gchar **);
 

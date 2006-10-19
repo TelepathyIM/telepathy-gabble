@@ -319,7 +319,8 @@ media_factory_jingle_cb (LmMessageHandler *handler,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
 BAD_REQUEST:
-  _gabble_connection_send_iq_error (priv->conn, message, XMPP_ERROR_BAD_REQUEST);
+  _gabble_connection_send_iq_error (
+    priv->conn, message, XMPP_ERROR_BAD_REQUEST, NULL);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }

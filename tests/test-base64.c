@@ -68,6 +68,14 @@ main (void)
   g_string_free (tmp1, TRUE);
   g_string_free (tmp2, TRUE);
 
+  /* test string with misc whitespace */
+  tmp1 = base64_decode ("bW F\r6\r\ndW\nxlbQ==\r\n");
+  tmp2 = g_string_new ("mazulem");
+  g_assert (tmp1);
+  g_assert (g_string_equal (tmp1, tmp2));
+  g_string_free (tmp1, TRUE);
+  g_string_free (tmp2, TRUE);
+
   /* test string with embedded NULL */
   tmp1 = base64_decode ("Zm9vAGJhcg==");
   tmp2 = g_string_new_len ("foo\0bar", 7);

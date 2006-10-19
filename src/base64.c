@@ -113,12 +113,11 @@ gchar *base64_encode (const GString *str)
 GString *base64_decode (const gchar *str)
 {
   guint i;
-  guint len;
   GString *tmp;
+  char group[4];
+  guint filled = 0;
 
-  len = strlen (str);
-
-  for (i = 0; i < len; i++)
+  for (i = 0; str[i]; i++)
     {
       if (str[i] != 'A' &&
           str[i] != '=' &&
@@ -132,38 +131,42 @@ GString *base64_decode (const gchar *str)
 
   tmp = g_string_new ("");
 
-  for (i = 0; i < len; i += 4)
+  for (i = 0; str[i]; i++)
     {
-      while (isspace(str[i]))
-        i++;
-      if (str[i] == '\0')
-        break;
+      if (isspace(str[i]))
+        continue;
 
-      if (len - i < 4)
-        {
-          DEBUG ("insufficient padding at byte %u", i);
-          g_string_free (tmp, TRUE);
-          return NULL;
-        }
+      group[filled++] = str[i];
 
-      if (str[i+3] == '=')
+      if (filled == 4)
         {
-          if (str[i+2] == '=')
+          if (group[3] == '=')
             {
-              g_string_append_c (tmp, GET_BYTE_0(str + i));
-            }
-          else
+              if (group[2] == '=')
+                {
+                  g_string_append_c (tmp, GET_BYTE_0(group));
+                }
+              else
+                {
+                  g_string_append_c (tmp, GET_BYTE_0(group));
+                  g_string_append_c (tmp, GET_BYTE_1(group));
+                }
+             }
+           else
             {
-              g_string_append_c (tmp, GET_BYTE_0(str + i));
-              g_string_append_c (tmp, GET_BYTE_1(str + i));
+              g_string_append_c (tmp, GET_BYTE_0(group));
+              g_string_append_c (tmp, GET_BYTE_1(group));
+              g_string_append_c (tmp, GET_BYTE_2(group));
             }
-         }
-       else
-        {
-          g_string_append_c (tmp, GET_BYTE_0(str + i));
-          g_string_append_c (tmp, GET_BYTE_1(str + i));
-          g_string_append_c (tmp, GET_BYTE_2(str + i));
+          filled = 0;
         }
+    }
+
+  if (filled)
+    {
+      DEBUG ("insufficient padding at end of base64 string:\n%s", str);
+      g_string_free (tmp, TRUE);
+      return NULL;
     }
 
   return tmp;

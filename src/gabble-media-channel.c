@@ -482,7 +482,9 @@ gabble_media_channel_dispose (GObject *object)
   if (!priv->closed)
     gabble_media_channel_close (self, NULL);
 
-  g_assert (priv->closed && priv->session == NULL && priv->streams == NULL);
+  g_assert (priv->closed);
+  g_assert (priv->session == NULL);
+  g_assert (priv->streams == NULL);
 
   if (G_OBJECT_CLASS (gabble_media_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_media_channel_parent_class)->dispose (object);

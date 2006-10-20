@@ -483,7 +483,7 @@ gabble_media_session_class_init (GabbleMediaSessionClass *gabble_media_session_c
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_media_session_class), &dbus_glib_gabble_media_session_object_info);
 }
 
-void
+static void
 gabble_media_session_dispose (GObject *object)
 {
   GabbleMediaSession *self = GABBLE_MEDIA_SESSION (object);
@@ -506,7 +506,7 @@ gabble_media_session_dispose (GObject *object)
     G_OBJECT_CLASS (gabble_media_session_parent_class)->dispose (object);
 }
 
-void
+static void
 gabble_media_session_finalize (GObject *object)
 {
   GabbleMediaSession *self = GABBLE_MEDIA_SESSION (object);

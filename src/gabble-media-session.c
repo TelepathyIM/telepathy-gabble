@@ -61,6 +61,7 @@ enum
 {
     NEW_STREAM_HANDLER,
     STREAM_ADDED,
+    TERMINATED,
     LAST_SIGNAL
 };
 
@@ -104,6 +105,7 @@ struct _GabbleMediaSessionPrivate
   guint timer_id;
 
   gboolean dispose_has_run;
+  gboolean emitted_terminated;
 };
 
 #define GABBLE_MEDIA_SESSION_GET_PRIVATE(obj) \
@@ -135,6 +137,8 @@ gabble_media_session_init (GabbleMediaSession *self)
   priv->state = JS_STATE_PENDING_CREATED;
   priv->streams = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
       g_object_unref);
+  /* HACK */
+  priv->emitted_terminated = TRUE;
 }
 
 static void stream_close_cb (GabbleMediaStream *stream,
@@ -350,6 +354,9 @@ gabble_media_session_set_property (GObject      *object,
       prev_state = priv->state;
       priv->state = g_value_get_uint (value);
 
+      if (priv->state == JS_STATE_ENDED)
+        g_assert (priv->emitted_terminated);
+
       if (priv->state != prev_state)
         session_state_changed (session, prev_state, priv->state);
 
@@ -480,6 +487,15 @@ gabble_media_session_class_init (GabbleMediaSessionClass *gabble_media_session_c
                   g_cclosure_marshal_VOID__OBJECT,
                   G_TYPE_NONE, 1, G_TYPE_OBJECT);
 
+  signals[TERMINATED] =
+    g_signal_new ("terminated",
+                  G_OBJECT_CLASS_TYPE (gabble_media_session_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_media_session_marshal_VOID__UINT_UINT,
+                  G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_UINT);
+
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_media_session_class), &dbus_glib_gabble_media_session_object_info);
 }
 
@@ -494,7 +510,7 @@ gabble_media_session_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  _gabble_media_session_terminate (self);
+  _gabble_media_session_terminate (self, INITIATOR_LOCAL, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
 
   if (priv->timer_id != 0)
     g_source_remove (priv->timer_id);
@@ -972,6 +988,21 @@ _handle_remove (GabbleMediaSession *session,
 }
 
 
+static gboolean
+_handle_terminate (GabbleMediaSession *session,
+                   LmMessage *message,
+                   LmMessageNode *content_node,
+                   const gchar *stream_name,
+                   GabbleMediaStream *stream,
+                   LmMessageNode *desc_node,
+                   LmMessageNode *trans_node)
+{
+  _gabble_media_session_terminate (session, INITIATOR_REMOTE, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
+
+  return TRUE;
+}
+
+
 typedef gboolean (*StreamHandlerFunc)(GabbleMediaSession *session,
                                       LmMessage *message,
                                       LmMessageNode *content_node,
@@ -1016,7 +1047,7 @@ static Handler handlers[] = {
     { "terminate", "session-terminate", NULL },
     JS_STATE_PENDING_INITIATED,
     JS_STATE_ENDED,
-    { NULL },
+    { _handle_terminate, NULL },
     JS_STATE_ENDED
   },
   {
@@ -1216,7 +1247,7 @@ FUNC_ERROR:
 ACK_FAILURE:
   _gabble_connection_send_iq_error (priv->conn, message,
                                     XMPP_ERROR_NOT_ALLOWED, NULL);
-  _gabble_media_session_terminate (session);
+  _gabble_media_session_terminate (session, INITIATOR_LOCAL, TP_CHANNEL_GROUP_CHANGE_REASON_ERROR);
 }
 
 static gboolean
@@ -1226,7 +1257,7 @@ timeout_session (gpointer data)
 
   DEBUG ("session timed out");
 
-  _gabble_media_session_terminate (session);
+  _gabble_media_session_terminate (session, INITIATOR_LOCAL, TP_CHANNEL_GROUP_CHANGE_REASON_ERROR);
 
   return FALSE;
 }
@@ -1939,7 +1970,7 @@ _gabble_media_session_remove_streams (GabbleMediaSession *session,
   /* end the session if there'd be no streams left after reducing it */
   if (streams->len == g_hash_table_size (priv->streams))
     {
-      _gabble_media_session_terminate (session);
+      _gabble_media_session_terminate (session, INITIATOR_LOCAL, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
       return;
     }
 
@@ -2053,9 +2084,12 @@ _close_one_stream (const gchar *name,
 }
 
 void
-_gabble_media_session_terminate (GabbleMediaSession *session)
+_gabble_media_session_terminate (GabbleMediaSession *session,
+                                 JingleInitiator who,
+                                 TpChannelGroupChangeReason why)
 {
   GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+  GabbleHandle actor;
 
   if (priv->state == JS_STATE_ENDED)
     return;
@@ -2080,6 +2114,13 @@ _gabble_media_session_terminate (GabbleMediaSession *session)
   g_hash_table_foreach (priv->streams, (GHFunc) _close_one_stream, session);
 
   g_object_set (session, "state", JS_STATE_ENDED, NULL);
+
+  if (who == INITIATOR_LOCAL)
+    actor = priv->conn->self_handle;
+  else
+    actor = priv->peer;
+
+  g_signal_emit (session, signals[TERMINATED], 0, actor, why);
 }
 
 #if _GMS_DEBUG_LEVEL

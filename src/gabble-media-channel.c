@@ -1368,16 +1368,16 @@ session_state_changed_cb (GabbleMediaSession *session,
   GabbleHandle peer;
   GIntSet *empty, *set;
 
+  g_object_get (session,
+                "state", &state,
+                "peer", &peer,
+                NULL);
+
   if (state != JS_STATE_ACTIVE)
     return;
 
   if (priv->creator != mixin->self_handle)
     return;
-
-  g_object_get (session,
-                "state", &state,
-                "peer", &peer,
-                NULL);
 
   empty = g_intset_new ();
   set = g_intset_new ();

@@ -99,9 +99,7 @@ struct _GabbleMediaSessionPrivate
   gchar *peer_resource;
 
   JingleSessionState state;
-
   gboolean ready;
-  gboolean terminated;
 
   guint timer_id;
 
@@ -737,14 +735,6 @@ _handle_create (GabbleMediaSession *session,
 
   stream = create_media_stream (session, stream_name, INITIATOR_REMOTE,
                                 stream_type);
-
-  if (priv->state == JS_STATE_ACTIVE)
-    {
-      GMS_DEBUG_INFO (session, "automatically marking stream %s as locally "
-          "accepted", stream_name);
-
-      g_object_set (stream, "locally-accepted", TRUE, NULL);
-    }
 
   return TRUE;
 }
@@ -1385,11 +1375,10 @@ _stream_not_ready_for_accept (const gchar *name,
 {
   TpMediaStreamState connection_state;
   JingleInitiator stream_initiator;
-  gboolean got_local_codecs, locally_accepted;
+  gboolean got_local_codecs;
 
   g_object_get (stream,
                 "got-local-codecs", &got_local_codecs,
-                "locally-accepted", &locally_accepted,
                 "connection-state", &connection_state,
                 "initiator", &stream_initiator,
                 NULL);
@@ -1409,14 +1398,6 @@ _stream_not_ready_for_accept (const gchar *name,
       return TRUE;
     }
 
-  if (stream_initiator == INITIATOR_REMOTE && !locally_accepted)
-    {
-      GMS_DEBUG_INFO (session, "stream %s was initiated remotely, but has not "
-          "yet been accepted locally", name);
-
-      return TRUE;
-    }
-
   return FALSE;
 }
 
@@ -1428,12 +1409,18 @@ try_session_accept (GabbleMediaSession *session)
   LmMessageNode *session_node;
   const gchar *action;
 
+  if (priv->state < JS_STATE_ACTIVE && !priv->locally_accepted)
+    {
+      GMS_DEBUG_INFO (session, "not sending accept yet, waiting for local "
+          "user to accept call");
+      return;
+    }
+
   if (g_hash_table_find (priv->streams, (GHRFunc) _stream_not_ready_for_accept,
         session) != NULL)
     {
       GMS_DEBUG_INFO (session, "not sending accept yet, found a stream which "
-          "was not yet connected, missing local codecs or not locally "
-          "accepted");
+          "was not yet connected or was missing local codecs");
       return;
     }
 
@@ -1914,15 +1901,13 @@ _gabble_media_session_message_new (GabbleMediaSession *session,
 }
 
 static void
-_local_accept_stream (const gchar *name,
-                      GabbleMediaStream *stream,
-                      GabbleMediaSession *session)
+_accept_local_pending_send (const gchar *name,
+                            GabbleMediaStream *stream,
+                            GabbleMediaSession *session)
 {
   CombinedStreamDirection combined_dir;
   TpMediaStreamDirection current_dir;
   TpMediaStreamPendingSend pending_send;
-
-  GMS_DEBUG_INFO (session, "marking stream %s as locally accepted", name);
 
   g_object_get (stream, "combined-direction", &combined_dir, NULL);
 
@@ -1931,13 +1916,14 @@ _local_accept_stream (const gchar *name,
 
   if ((pending_send & TP_MEDIA_STREAM_PENDING_LOCAL_SEND) != 0)
     {
+      GMS_DEBUG_INFO (session, "accepting pending local send on stream %s",
+          name);
+
       current_dir |= TP_MEDIA_STREAM_DIRECTION_SEND;
       pending_send &= ~TP_MEDIA_STREAM_PENDING_LOCAL_SEND;
       combined_dir = MAKE_COMBINED_DIRECTION (current_dir, pending_send);
       g_object_set (stream, "combined-direction", combined_dir, NULL);
     }
-
-  g_object_set (stream, "locally-accepted", TRUE, NULL);
 }
 
 void
@@ -1945,7 +1931,10 @@ _gabble_media_session_accept (GabbleMediaSession *session)
 {
   GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
 
-  g_hash_table_foreach (priv->streams, (GHFunc) _local_accept_stream, session);
+  priv->locally_accepted = TRUE;
+
+  g_hash_table_foreach (priv->streams, (GHFunc) _accept_local_pending_send,
+      session);
 
   try_session_accept (session);
 }

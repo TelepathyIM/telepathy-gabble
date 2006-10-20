@@ -23,6 +23,8 @@
 
 #include <glib-object.h>
 #include <loudmouth/loudmouth.h>
+
+#include "gabble-types.h"
 #include "gabble-media-stream.h"
 #include "telepathy-constants.h"
 
@@ -93,7 +95,7 @@ GType gabble_media_session_get_type(void);
       GMS_DEBUG_ERROR (s, m); \
       NODE_DEBUG (sent_msg->node, "message sent"); \
       NODE_DEBUG (reply_msg->node, "message reply"); \
-      _gabble_media_session_terminate (s); \
+      _gabble_media_session_terminate (s, INITIATOR_LOCAL, TP_CHANNEL_GROUP_CHANGE_REASON_ERROR); \
       return LM_HANDLER_RESULT_REMOVE_MESSAGE; \
     } \
   } G_STMT_END
@@ -120,7 +122,7 @@ LmMessage *_gabble_media_session_message_new (GabbleMediaSession *session,
 
 void _gabble_media_session_accept (GabbleMediaSession *session);
 void _gabble_media_session_remove_streams (GabbleMediaSession *session, const GPtrArray *streams);
-void _gabble_media_session_terminate (GabbleMediaSession *session);
+void _gabble_media_session_terminate (GabbleMediaSession *session, JingleInitiator who, TpChannelGroupChangeReason why);
 
 gboolean _gabble_media_session_request_streams (GabbleMediaSession *session,
                                                 const GArray *types,

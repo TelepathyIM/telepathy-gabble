@@ -1048,7 +1048,7 @@ static Handler handlers[] = {
     JS_STATE_PENDING_INITIATED,
     JS_STATE_ENDED,
     { _handle_terminate, NULL },
-    JS_STATE_ENDED
+    JS_STATE_INVALID
   },
   {
     { "candidates", "transport-info", NULL },

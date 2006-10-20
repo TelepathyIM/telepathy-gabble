@@ -997,6 +997,8 @@ _handle_terminate (GabbleMediaSession *session,
                    LmMessageNode *desc_node,
                    LmMessageNode *trans_node)
 {
+  DEBUG ("called for %s", stream_name);
+
   _gabble_media_session_terminate (session, INITIATOR_REMOTE, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
 
   return TRUE;
@@ -1103,18 +1105,21 @@ _call_handlers_on_stream (GabbleMediaSession *session,
                           StreamHandlerFunc *func)
 {
   GabbleMediaStream *stream = NULL;
-  LmMessageNode *desc_node, *trans_node;
+  LmMessageNode *desc_node = NULL, *trans_node = NULL;
   StreamHandlerFunc *tmp;
 
-  desc_node = lm_message_node_get_child (content_node, "description");
+  if (content_node != NULL)
+    {
+      desc_node = lm_message_node_get_child (content_node, "description");
 
-  trans_node = lm_message_node_get_child_with_namespace (content_node,
-      "transport", NS_GOOGLE_TRANSPORT_P2P);
+      trans_node = lm_message_node_get_child_with_namespace (content_node,
+          "transport", NS_GOOGLE_TRANSPORT_P2P);
+    }
 
   for (tmp = func; *tmp != NULL; tmp++)
     {
        /* handlers may create the stream */
-       if (stream == NULL)
+       if (stream == NULL && stream_name != NULL)
          stream = _lookup_stream_by_name (session, stream_name);
 
        if (!(*tmp) (session, message, content_node, stream_name, stream,
@@ -1141,6 +1146,9 @@ _call_handlers_on_streams (GabbleMediaSession *session,
   else
     {
       LmMessageNode *content_node;
+
+      if (session_node->children == NULL)
+        return _call_handlers_on_stream (session, message, NULL, NULL, func);
 
       for (content_node = session_node->children;
            NULL != content_node;

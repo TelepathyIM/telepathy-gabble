@@ -101,11 +101,11 @@ struct _GabbleMediaSessionPrivate
   JingleSessionState state;
 
   gboolean ready;
+  gboolean terminated;
 
   guint timer_id;
 
   gboolean dispose_has_run;
-  gboolean emitted_terminated;
 };
 
 #define GABBLE_MEDIA_SESSION_GET_PRIVATE(obj) \
@@ -137,8 +137,6 @@ gabble_media_session_init (GabbleMediaSession *self)
   priv->state = JS_STATE_PENDING_CREATED;
   priv->streams = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
       g_object_unref);
-  /* HACK */
-  priv->emitted_terminated = TRUE;
 }
 
 static void stream_close_cb (GabbleMediaStream *stream,
@@ -355,7 +353,7 @@ gabble_media_session_set_property (GObject      *object,
       priv->state = g_value_get_uint (value);
 
       if (priv->state == JS_STATE_ENDED)
-        g_assert (priv->emitted_terminated);
+        g_assert (priv->terminated);
 
       if (priv->state != prev_state)
         session_state_changed (session, prev_state, priv->state);
@@ -504,6 +502,8 @@ gabble_media_session_dispose (GObject *object)
 {
   GabbleMediaSession *self = GABBLE_MEDIA_SESSION (object);
   GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (self);
+
+  DEBUG ("called");
 
   if (priv->dispose_has_run)
     return;
@@ -2102,32 +2102,38 @@ _gabble_media_session_terminate (GabbleMediaSession *session,
   if (priv->state == JS_STATE_ENDED)
     return;
 
-  /* Jingle doesn't have a "reject" action; a termination before an acceptance
-   * indicates that the call has been declined */
-
-  if (priv->initiator == INITIATOR_REMOTE &&
-      priv->state == JS_STATE_PENDING_INITIATED &&
-      priv->mode == MODE_GOOGLE)
+  if (who == INITIATOR_REMOTE)
     {
-      send_reject_message (session);
+      actor = priv->peer;
     }
-
-  /* if we're still in CREATED, then we've not sent or received any messages
-   * about this session yet, so no terminate is necessary */
-  if (priv->state > JS_STATE_PENDING_CREATED)
-    {
-      send_terminate_message (session);
-    }
-
-  g_hash_table_foreach (priv->streams, (GHFunc) _close_one_stream, session);
-
-  g_object_set (session, "state", JS_STATE_ENDED, NULL);
-
-  if (who == INITIATOR_LOCAL)
-    actor = priv->conn->self_handle;
   else
-    actor = priv->peer;
+    {
+      actor = priv->conn->self_handle;
 
+      /* Need to tell them that it's all over. */
+
+      /* Jingle doesn't have a "reject" action; a termination before an
+       * acceptance indicates that the call has been declined */
+
+      if (priv->initiator == INITIATOR_REMOTE &&
+          priv->state == JS_STATE_PENDING_INITIATED &&
+          priv->mode == MODE_GOOGLE)
+        {
+          send_reject_message (session);
+        }
+
+      /* if we're still in CREATED, then we've not sent or received any
+       * messages about this session yet, so no terminate is necessary */
+      if (priv->state > JS_STATE_PENDING_CREATED)
+        {
+          send_terminate_message (session);
+        }
+
+      g_hash_table_foreach (priv->streams, (GHFunc) _close_one_stream, session);
+    }
+
+  priv->terminated = TRUE;
+  g_object_set (session, "state", JS_STATE_ENDED, NULL);
   g_signal_emit (session, signals[TERMINATED], 0, actor, why);
 }
 

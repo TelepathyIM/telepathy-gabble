@@ -605,7 +605,6 @@ _caps_disco_cb (GabbleDisco *disco,
   GabblePresenceCapabilities caps = 0;
   guint trust;
   GabbleHandle handle;
-  gboolean removed = FALSE;
 
   cache = GABBLE_PRESENCE_CACHE (user_data);
   priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
@@ -686,11 +685,10 @@ _caps_disco_cb (GabbleDisco *disco,
   handle = gabble_handle_for_contact (priv->conn->handles, jid, FALSE);
   trust = capability_info_recvd (cache, node, handle, caps);
 
-  for (i = waiters; NULL != i; i = removed ? i : i->next)
+  for (i = waiters; NULL != i;)
     {
       DiscoWaiter *waiter;
       GabblePresence *presence;
-      removed = FALSE;
 
       waiter = (DiscoWaiter *) i->data;
 
@@ -713,12 +711,13 @@ _caps_disco_cb (GabbleDisco *disco,
 
           tmp = i;
           i = i->next;
+
+          waiters = g_slist_delete_link (waiters, tmp);
+
           g_hash_table_steal (priv->disco_pending, node);
-          g_hash_table_insert (priv->disco_pending, g_strdup (node),
-            (waiters = g_slist_delete_link (waiters, tmp)));
+          g_hash_table_insert (priv->disco_pending, g_strdup (node), waiters);
 
           disco_waiter_free (waiter);
-          removed = TRUE;
         }
       else if (trust + disco_waiter_list_get_request_count (waiters) - 1
         < CAPABILITY_BUNDLE_ENOUGH_TRUST)
@@ -742,10 +741,13 @@ _caps_disco_cb (GabbleDisco *disco,
               g_free (full_jid);
               full_jid = NULL;
             }
+
+          i = i->next;
         }
       else
         {
           /* trust level still uncertain, don't do nothing */
+          i = i->next;
         }
     }
 

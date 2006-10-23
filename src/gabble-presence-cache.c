@@ -846,7 +846,10 @@ _process_caps (GabblePresenceCache *cache,
   uris = _extract_cap_bundles (lm_node);
 
   for (i = uris; NULL != i; i = i->next)
-    _process_caps_uri (cache, from, (gchar *) i->data, handle, resource, serial);
+    {
+      _process_caps_uri (cache, from, (gchar *) i->data, handle, resource, serial);
+      g_free (i->data);
+    }
 
   g_free (resource);
   g_slist_free (uris);

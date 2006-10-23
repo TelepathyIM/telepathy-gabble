@@ -2831,6 +2831,8 @@ _emit_capabilities_changed (GabbleConnection *conn,
 
   if (caps_arr->len)
     g_signal_emit (conn, signals[CAPABILITIES_CHANGED], 0, caps_arr);
+
+  g_ptr_array_free (caps_arr, TRUE);
 }
 
 static void

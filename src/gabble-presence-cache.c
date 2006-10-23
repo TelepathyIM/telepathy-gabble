@@ -163,9 +163,9 @@ struct _CapabilityInfo
   guint trust;
 };
 
-static guint
-capability_info_recvd (GabblePresenceCache *cache, const gchar *node,
-        GabbleHandle handle, GabblePresenceCapabilities caps)
+static CapabilityInfo *
+capability_info_get (GabblePresenceCache *cache, const gchar *node,
+    GabblePresenceCapabilities caps)
 {
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
   CapabilityInfo *info = g_hash_table_lookup (priv->capabilities, node);
@@ -177,52 +177,31 @@ capability_info_recvd (GabblePresenceCache *cache, const gchar *node,
       info->guys = g_intset_new ();
       g_hash_table_insert (priv->capabilities, g_strdup (node), info);
     }
-  else if (NULL == info->guys)
-    {
-      /* We have previously detected inconsistencies in this cap */
-      return 0;
-    }
+
+  return info;
+}
+
+static guint
+capability_info_recvd (GabblePresenceCache *cache, const gchar *node,
+        GabbleHandle handle, GabblePresenceCapabilities caps)
+{
+  CapabilityInfo *info = capability_info_get (cache, node, caps);
 
   /* Detect inconsistency in reported caps */
   if (info->caps != caps)
     {
-      g_intset_destroy (info->guys);
+      g_intset_clear (info->guys);
+      info->caps = caps;
       info->trust = 0;
-      return 0;
     }
 
-  if (!g_intset_is_member(info->guys, handle))
+  if (!g_intset_is_member (info->guys, handle))
     {
       g_intset_add (info->guys, handle);
       info->trust++;
     }
 
   return info->trust;
-}
-
-static guint
-get_caps_trust (GabblePresenceCache *cache, const gchar *node,
-    GabbleHandle handle, GabblePresenceCapabilities *ret)
-{
-  GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
-  CapabilityInfo *info = g_hash_table_lookup (priv->capabilities, node);
-
-  if (NULL != info)
-    {
-      guint trust = info->trust;
-
-      if (g_intset_is_member (info->guys, handle))
-        trust = CAPABILITY_BUNDLE_ENOUGH_TRUST;
-
-      if (trust >= CAPABILITY_BUNDLE_ENOUGH_TRUST)
-        {
-          *ret = info->caps;
-        }
-
-      return trust;
-    }
-
-  return 0;
 }
 
 static void gabble_presence_cache_init (GabblePresenceCache *presence_cache);
@@ -727,6 +706,7 @@ _caps_disco_cb (GabbleDisco *disco,
             DEBUG ("setting caps for %d (%s) to %d", handle, jid, caps);
             gabble_presence_set_capabilities (presence, waiter->resource,caps,
               waiter->serial);
+            DEBUG ("caps for %d (%s) now %d", handle, jid, presence->caps);
             g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0,
               waiter->handle, save_caps, presence->caps);
           }
@@ -735,28 +715,33 @@ _caps_disco_cb (GabbleDisco *disco,
           i = i->next;
           g_hash_table_steal (priv->disco_pending, node);
           g_hash_table_insert (priv->disco_pending, g_strdup (node),
-            g_slist_delete_link (waiters, tmp));
+            (waiters = g_slist_delete_link (waiters, tmp)));
 
           disco_waiter_free (waiter);
           removed = TRUE;
         }
-      else if (trust == 0 && !waiter->disco_requested)
+      else if (trust + disco_waiter_list_get_request_count (waiters) - 1
+        < CAPABILITY_BUNDLE_ENOUGH_TRUST)
         {
-          /* poison in roster's veins, don't trust anybody except for their
-           * own caps (ask them all) */
+          /* if the possible trust, not counting this guy, is too low,
+           * we have been poisoned and reset our trust meters - disco
+           * anybody we still haven't to be able to get more trusted replies */
 
-          const gchar *jid;
+          if (!waiter->disco_requested)
+            {
+              const gchar *jid;
 
-          jid = gabble_handle_inspect (priv->conn->handles,
-            TP_HANDLE_TYPE_CONTACT, waiter->handle);
-          full_jid = g_strdup_printf ("%s/%s", jid, waiter->resource);
+              jid = gabble_handle_inspect (priv->conn->handles,
+                TP_HANDLE_TYPE_CONTACT, waiter->handle);
+              full_jid = g_strdup_printf ("%s/%s", jid, waiter->resource);
 
-          gabble_disco_request (disco, GABBLE_DISCO_TYPE_INFO, full_jid, node,
-            _caps_disco_cb, cache, G_OBJECT(cache), NULL);
-          waiter->disco_requested = TRUE;
+              gabble_disco_request (disco, GABBLE_DISCO_TYPE_INFO, full_jid,
+                  node, _caps_disco_cb, cache, G_OBJECT(cache), NULL);
+              waiter->disco_requested = TRUE;
 
-          g_free (full_jid);
-          full_jid = NULL;
+              g_free (full_jid);
+              full_jid = NULL;
+            }
         }
       else
         {
@@ -780,15 +765,15 @@ _process_caps_uri (GabblePresenceCache *cache,
                    const gchar *resource,
                    guint serial)
 {
-  GabblePresenceCapabilities caps;
+  CapabilityInfo *info;
   gpointer value;
   GabblePresenceCachePrivate *priv;
-  guint trust;
 
   priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
-  trust = get_caps_trust (cache, uri, handle, &caps);
+  info = capability_info_get (cache, uri, 0);
 
-  if (trust >= CAPABILITY_BUNDLE_ENOUGH_TRUST)
+  if (info->trust >= CAPABILITY_BUNDLE_ENOUGH_TRUST
+      || g_intset_is_member (info->guys, handle))
     {
       /* we already have enough trust for this node; apply the cached value to
        * the (handle, resource) */
@@ -800,9 +785,10 @@ _process_caps_uri (GabblePresenceCache *cache,
       if (presence)
         {
           GabblePresenceCapabilities save_caps = presence->caps;
-          gabble_presence_set_capabilities (presence, resource, caps, serial);
+          gabble_presence_set_capabilities (presence, resource, info->caps, serial);
           g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0,
               handle, save_caps, presence->caps);
+          DEBUG ("caps for %d (%s) now %d", handle, from, presence->caps);
         }
       else
         {
@@ -832,11 +818,11 @@ _process_caps_uri (GabblePresenceCache *cache,
 
       possible_trust = disco_waiter_list_get_request_count (waiters);
 
-      if (!value || trust+possible_trust < CAPABILITY_BUNDLE_ENOUGH_TRUST)
+      if (!value || info->trust + possible_trust < CAPABILITY_BUNDLE_ENOUGH_TRUST)
         {
           /* DISCO */
           DEBUG ("only %u trust out of %u possible thus far, sending disco for URI %s",
-              trust+possible_trust, CAPABILITY_BUNDLE_ENOUGH_TRUST, uri);
+              info->trust + possible_trust, CAPABILITY_BUNDLE_ENOUGH_TRUST, uri);
           gabble_disco_request (priv->conn->disco, GABBLE_DISCO_TYPE_INFO,
               from, uri, _caps_disco_cb, cache, G_OBJECT (cache), NULL);
           /* enough DISCO for you, buddy */
@@ -1136,20 +1122,10 @@ gabble_presence_cache_update (
 void gabble_presence_cache_add_bundle_caps (GabblePresenceCache *cache,
     const gchar *node, GabblePresenceCapabilities new_caps)
 {
-  GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
   CapabilityInfo *info;
 
-  info = g_hash_table_lookup (priv->capabilities, node);
-
-  if (NULL == info)
-    {
-      info = g_new0 (CapabilityInfo, 1);
-      info->trust = CAPABILITY_BUNDLE_ENOUGH_TRUST;
-      info->guys = g_intset_new ();
-      g_intset_add (info->guys, priv->conn->self_handle);
-      g_hash_table_insert (priv->capabilities, g_strdup (node), info);
-    }
-
+  info = capability_info_get (cache, node, 0);
+  info->trust = CAPABILITY_BUNDLE_ENOUGH_TRUST;
   info->caps |= new_caps;
 }
 

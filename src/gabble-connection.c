@@ -4551,6 +4551,7 @@ gabble_connection_request_handles (GabbleConnection *self,
       break;
 
     case TP_HANDLE_TYPE_LIST:
+    case TP_HANDLE_TYPE_GROUP:
       handles = g_array_sized_new(FALSE, FALSE, sizeof(GabbleHandle), count);
 
       for (i = 0; i < count; i++)
@@ -4558,14 +4559,21 @@ gabble_connection_request_handles (GabbleConnection *self,
           GabbleHandle handle;
           const gchar *name = names[i];
 
-          handle = gabble_handle_for_list (self->handles, name);
+          if (handle_type == TP_HANDLE_TYPE_LIST)
+            handle = gabble_handle_for_list (self->handles, name);
+          else
+            handle = gabble_handle_for_group (self->handles, name);
 
           if (handle == 0)
             {
-              DEBUG ("requested list channel %s not available", name);
+              DEBUG ("requested %s channel %s not available", 
+                     handle_type == TP_HANDLE_TYPE_LIST ? "list" : "group",
+                     name);
 
               error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
-                                   "requested list channel %s not available",
+                                   "requested %s channel %s not available",
+                                   handle_type == TP_HANDLE_TYPE_LIST ? "list"
+                                                                      : "group",
                                    name);
               dbus_g_method_return_error (context, error);
               g_error_free (error);

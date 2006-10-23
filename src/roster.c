@@ -831,7 +831,6 @@ _gabble_roster_create_channel (GabbleRoster *roster,
                        NULL);
 
   DEBUG ("created %s", object_path);
-  g_free (object_path);
 
   g_hash_table_insert (channels, GINT_TO_POINTER (handle), chan);
 
@@ -847,6 +846,7 @@ _gabble_roster_create_channel (GabbleRoster *roster,
       DEBUG ("roster not yet received, not emitting signal for %s list channel",
           name);
     }
+  g_free (object_path);
 
   return chan;
 }

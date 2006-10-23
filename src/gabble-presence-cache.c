@@ -782,6 +782,8 @@ _process_caps_uri (GabblePresenceCache *cache,
        * the (handle, resource) */
 
       GabblePresence *presence = gabble_presence_cache_get (cache, handle);
+      DEBUG ("enough trust for URI %s, setting caps for %u (%s) to %u",
+          uri, handle, from, info->caps);
 
       if (presence)
         {
@@ -789,6 +791,10 @@ _process_caps_uri (GabblePresenceCache *cache,
           gabble_presence_set_capabilities (presence, resource, caps, serial);
           g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0,
               handle, save_caps, presence->caps);
+        }
+      else
+        {
+          DEBUG ("presence not found");
         }
     }
   else
@@ -801,7 +807,7 @@ _process_caps_uri (GabblePresenceCache *cache,
       DiscoWaiter *waiter;
       guint possible_trust;
 
-      DEBUG ("caps cache miss: %s", uri);
+      DEBUG ("not enough trust for URI %s", uri);
       value = g_hash_table_lookup (priv->disco_pending, uri);
 
       if (value)
@@ -817,6 +823,8 @@ _process_caps_uri (GabblePresenceCache *cache,
       if (!value || trust+possible_trust < CAPABILITY_BUNDLE_ENOUGH_TRUST)
         {
           /* DISCO */
+          DEBUG ("only %u trust out of %u possible thus far, sending disco for URI %s",
+              trust+possible_trust, CAPABILITY_BUNDLE_ENOUGH_TRUST, uri);
           gabble_disco_request (priv->conn->disco, GABBLE_DISCO_TYPE_INFO,
               from, uri, _caps_disco_cb, cache, G_OBJECT (cache), NULL);
           /* enough DISCO for you, buddy */

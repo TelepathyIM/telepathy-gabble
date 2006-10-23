@@ -584,7 +584,7 @@ _gabble_roster_item_to_message (GabbleRoster *roster,
   if ((priv->conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER) &&
       item->google_type != GOOGLE_ITEM_TYPE_NORMAL)
     lm_message_node_set_attribute (item_node, "gr:t",
-        _google_item_type_to_string (GOOGLE_ITEM_TYPE_NORMAL));
+        _google_item_type_to_string (item->google_type));
 
   if (item->ask_subscribe)
     lm_message_node_set_attribute (item_node, "ask", "subscribe");

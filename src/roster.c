@@ -819,7 +819,7 @@ _gabble_roster_create_channel (GabbleRoster *roster,
                                  priv->conn->object_path,
                                  handle_type == TP_HANDLE_TYPE_LIST ? "List"
                                                                     : "Group",
-                                 name);
+                                 mangled_name);
   g_free (mangled_name);
   mangled_name = NULL;
 

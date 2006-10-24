@@ -4143,11 +4143,16 @@ _request_avatar_cb (GabbleVCardManager *self,
                     gpointer user_data)
 {
   DBusGMethodInvocation *context = (DBusGMethodInvocation *) user_data;
+  GabbleConnection *conn;
   LmMessageNode *photo_node, *type_node, *binval_node;
   const gchar *mime_type;
   GArray *arr;
   GError *error = NULL;
   GString *avatar;
+  GabblePresence *presence;
+  gchar *sha1;
+
+  g_object_get (self, "connection", &conn, NULL);
 
   if (NULL == vcard)
     {
@@ -4198,6 +4203,23 @@ _request_avatar_cb (GabbleVCardManager *self,
       g_error_free (error);
       return;
     }
+
+  presence = gabble_presence_cache_get (conn->presence_cache, handle);
+  g_return_if_fail (presence != NULL);
+  sha1 = sha1_hex (avatar->str, avatar->len);
+  if (g_strdiff (presence->avatar_sha1, sha1))
+    {
+      g_set_error (&error, TELEPATHY_ERRORS, NotAvailable,
+        "avatar hash in presence does not match avatar in vCard");
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      error = NULL;
+      g_free (presence->avatar_sha1);
+      presence->avatar_sha1 = sha1;
+      g_signal_emit (conn, signals[AVATAR_UPDATED], 0, handle, sha1);
+      return;
+    }
+  g_free (sha1);
 
   mime_type = lm_message_node_get_value (type_node);
   arr = g_array_new (FALSE, FALSE, sizeof (gchar));

@@ -26,6 +26,13 @@
 
 G_BEGIN_DECLS
 
+typedef enum
+{
+  STREAM_SIG_STATE_NEW,
+  STREAM_SIG_STATE_SENT,
+  STREAM_SIG_STATE_ACKNOWLEDGED
+} StreamSignallingState;
+
 typedef struct _GabbleMediaStream GabbleMediaStream;
 typedef struct _GabbleMediaStreamClass GabbleMediaStreamClass;
 

@@ -720,7 +720,7 @@ _caps_disco_cb (GabbleDisco *disco,
           disco_waiter_free (waiter);
         }
       else if (trust + disco_waiter_list_get_request_count (waiters) - 1
-        < CAPABILITY_BUNDLE_ENOUGH_TRUST)
+          < CAPABILITY_BUNDLE_ENOUGH_TRUST)
         {
           /* if the possible trust, not counting this guy, is too low,
            * we have been poisoned and reset our trust meters - disco

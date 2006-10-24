@@ -2376,8 +2376,8 @@ _gabble_media_session_request_streams (GabbleMediaSession *session,
                   if (media_types->len == 1)
                     {
                       GMS_DEBUG_INFO (session,
-                        "contact has no Jingle capaabilities; "
-                        " falling back to Google audio call");
+                        "contact has no Jingle capabilities; "
+                        "falling back to Google audio call");
                       priv->mode = MODE_GOOGLE;
                     }
                   else

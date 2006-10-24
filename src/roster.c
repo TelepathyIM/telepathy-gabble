@@ -535,6 +535,7 @@ _gabble_roster_message_new (GabbleRoster *roster,
       lm_message_node_set_attributes (query_node,
           "xmlns:gr", NS_GOOGLE_ROSTER,
           "gr:ext", GOOGLE_ROSTER_VERSION,
+          "gr:include", "all",
           NULL);
     }
 

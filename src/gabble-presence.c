@@ -25,6 +25,10 @@
 #include "gabble-presence.h"
 #include "util.h"
 
+#include "config.h"
+#define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
+#include "debug.h"
+
 G_DEFINE_TYPE (GabblePresence, gabble_presence, G_TYPE_OBJECT);
 
 #define GABBLE_PRESENCE_PRIV(account) ((GabblePresencePrivate *)account->priv)
@@ -159,24 +163,37 @@ gabble_presence_set_capabilities (GabblePresence *presence,
 
   presence->caps = 0;
 
+  DEBUG ("about to add caps %u to resource %s with serial %u", caps, resource,
+    serial);
+
   for (i = priv->resources; NULL != i; i = i->next)
     {
       Resource *tmp = (Resource *) i->data;
 
       if (0 == strcmp (tmp->name, resource))
         {
+          DEBUG ("found resource %s", resource);
+
           if (serial > tmp->caps_serial)
             {
+              DEBUG ("new serial %u, old %u, clearing caps", serial,
+                tmp->caps_serial);
               tmp->caps = 0;
               tmp->caps_serial = serial;
             }
 
           if (serial >= tmp->caps_serial)
-            tmp->caps |= caps;
+            {
+              DEBUG ("adding caps %u to resource %s", caps, resource);
+              tmp->caps |= caps;
+              DEBUG ("resource %s caps now %u", resource, tmp->caps);
+            }
         }
 
       presence->caps |= tmp->caps;
     }
+
+  DEBUG ("total caps now %u", presence->caps);
 }
 
 static Resource *

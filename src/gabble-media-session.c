@@ -100,6 +100,8 @@ struct _GabbleMediaSessionPrivate
 
   JingleSessionState state;
   gboolean ready;
+  gboolean locally_accepted;
+  gboolean terminated;
 
   guint timer_id;
 

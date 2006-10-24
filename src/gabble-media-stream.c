@@ -83,7 +83,7 @@ enum
   PROP_CONNECTION_STATE,
   PROP_READY,
   PROP_GOT_LOCAL_CODECS,
-  PROP_LOCALLY_ACCEPTED,
+  PROP_SIGNALLING_STATE,
   PROP_PLAYING,
   PROP_COMBINED_DIRECTION,
   LAST_PROPERTY
@@ -104,10 +104,10 @@ struct _GabbleMediaStreamPrivate
   guint media_type;
 
   TpMediaStreamState connection_state;
+  StreamSignallingState signalling_state;
 
   gboolean ready;
   gboolean got_local_codecs;
-  gboolean locally_accepted;
   gboolean playing;
   gboolean sending;
 
@@ -237,8 +237,8 @@ gabble_media_stream_get_property (GObject    *object,
     case PROP_GOT_LOCAL_CODECS:
       g_value_set_boolean (value, priv->got_local_codecs);
       break;
-    case PROP_LOCALLY_ACCEPTED:
-      g_value_set_boolean (value, priv->locally_accepted);
+    case PROP_SIGNALLING_STATE:
+      g_value_set_uint (value, priv->signalling_state);
       break;
     case PROP_PLAYING:
       g_value_set_boolean (value, priv->playing);
@@ -297,8 +297,8 @@ gabble_media_stream_set_property (GObject      *object,
     case PROP_GOT_LOCAL_CODECS:
       priv->got_local_codecs = g_value_get_boolean (value);
       break;
-    case PROP_LOCALLY_ACCEPTED:
-      priv->locally_accepted = g_value_get_boolean (value);
+    case PROP_SIGNALLING_STATE:
+      priv->signalling_state = g_value_get_uint (value);
       break;
     case PROP_PLAYING:
         {
@@ -464,15 +464,17 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                                      G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_GOT_LOCAL_CODECS, param_spec);
 
-  param_spec = g_param_spec_boolean ("locally-accepted", "Got local acceptance?",
-                                     "A boolean signifying whether we've got "
-                                     "an OK for this stream from the user.",
-                                     FALSE,
-                                     G_PARAM_CONSTRUCT |
-                                     G_PARAM_READWRITE |
-                                     G_PARAM_STATIC_NAME |
-                                     G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_LOCALLY_ACCEPTED, param_spec);
+  param_spec = g_param_spec_uint ("signalling-state", "Signalling state",
+                                  "Whether the stream is newly created, "
+                                  "sent to the peer, or acknowledged.",
+                                  STREAM_SIG_STATE_NEW,
+                                  STREAM_SIG_STATE_ACKNOWLEDGED,
+                                  STREAM_SIG_STATE_NEW,
+                                  G_PARAM_CONSTRUCT |
+                                  G_PARAM_READWRITE |
+                                  G_PARAM_STATIC_NAME |
+                                  G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_SIGNALLING_STATE, param_spec);
 
   param_spec = g_param_spec_boolean ("playing", "Set playing",
                                      "A boolean signifying whether the stream "

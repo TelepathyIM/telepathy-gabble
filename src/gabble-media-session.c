@@ -2124,7 +2124,7 @@ _gabble_media_session_terminate (GabbleMediaSession *session,
 
       /* if we're still in CREATED, then we've not sent or received any
        * messages about this session yet, so no terminate is necessary */
-      if (priv->state > JS_STATE_PENDING_CREATED)
+      else if (priv->state > JS_STATE_PENDING_CREATED)
         {
           send_terminate_message (session);
         }

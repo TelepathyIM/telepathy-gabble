@@ -579,13 +579,19 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
   if (NULL == x_node ||
       !lm_message_node_has_namespace (x_node, NS_VCARD_TEMP_UPDATE, NULL))
     {
+#if 0
       if (handle == priv->conn->self_handle)
         {
           /* One of my other resources does not support XEP-0153. As per that
            * XEP, I MUST stop advertising the image hash, at least until all
-           * instances of non-conforming resources have gone offline. */
+           * instances of non-conforming resources have gone offline.
+           * However, we're going to ignore this requirement and hope that
+           * non-conforming clients won't alter the <PHOTO>, which should
+           * in practice be true.
+           */
           presence->avatar_sha1 = NULL;
         }
+#endif
       return;
     }
 
@@ -603,6 +609,7 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
       g_free (presence->avatar_sha1);
       presence->avatar_sha1 = g_strdup (sha1);
 
+#if 0
       if (handle == priv->conn->self_handle)
         {
           /* that would be us, then. According to XEP-0153, we MUST
@@ -611,10 +618,11 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
            * when that arrives, we may start setting the photo node in our
            * presence again.
            *
-           * TODO: For the moment I'm going to ignore that requirement and
+           * For the moment I'm going to ignore that requirement and
            * trust that our other resource is getting its sha1 right!
            */
         }
+#endif
 
       g_signal_emit (cache, signals[AVATAR_UPDATE], 0, handle);
     }

@@ -783,7 +783,7 @@ _process_caps_uri (GabblePresenceCache *cache,
 
       GabblePresence *presence = gabble_presence_cache_get (cache, handle);
       DEBUG ("enough trust for URI %s, setting caps for %u (%s) to %u",
-          uri, handle, from, caps);
+          uri, handle, from, info->caps);
 
       if (presence)
         {

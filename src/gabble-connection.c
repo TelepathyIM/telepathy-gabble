@@ -3218,6 +3218,29 @@ gabble_connection_get_avatar_requirements (GabbleConnection *self,
 }
 
 
+typedef struct {
+  DBusGMethodInvocation *invocation;
+  gchar **ret;
+  guint my_index;
+  gulong signal_conn;
+} GetAvatarTokensContext;
+
+
+static void
+_got_self_avatar_for_get_avatar_tokens (GObject *obj,
+                                        gchar *sha1,
+                                        gpointer user_data)
+{
+  GetAvatarTokensContext *context = (GetAvatarTokensContext *)user_data;
+
+  g_signal_handler_disconnect (obj, context->signal_conn);
+  context->ret[context->my_index] = g_strdup(sha1);
+  dbus_g_method_return (context->invocation, context->ret);
+  g_strfreev (context->ret);
+  g_free (context);
+}
+
+
 /**
  * gabble_connection_get_avatar_tokens
  *
@@ -3230,16 +3253,17 @@ gabble_connection_get_avatar_requirements (GabbleConnection *self,
 void
 gabble_connection_get_avatar_tokens (GabbleConnection *self,
                                      const GArray *contacts,
-                                     DBusGMethodInvocation *context)
+                                     DBusGMethodInvocation *invocation)
 {
-  guint i;
+  gboolean my_handle_requested = FALSE;
+  guint i, my_index = 0;
   gchar **ret;
   GError *err;
 
   if (!gabble_handles_are_valid (
       self->handles, TP_HANDLE_TYPE_CONTACT, contacts, FALSE, &err))
     {
-      dbus_g_method_return_error (context, err);
+      dbus_g_method_return_error (invocation, err);
       g_error_free (err);
       return;
     }
@@ -3255,13 +3279,40 @@ gabble_connection_get_avatar_tokens (GabbleConnection *self,
       presence = gabble_presence_cache_get (self->presence_cache, handle);
 
       if (NULL != presence && NULL != presence->avatar_sha1)
-          ret[i] = presence->avatar_sha1;
+          ret[i] = g_strdup(presence->avatar_sha1);
       else
-          ret[i] = "";
+          ret[i] = g_strdup("");
+
+      if (self->self_handle == handle)
+        {
+          my_handle_requested = TRUE;
+          my_index = i;
+        }
+    }
+  if (my_handle_requested)
+    {
+      gboolean have_self_avatar;
+
+      g_object_get (self->vcard_manager,
+                    "have-self-avatar", &have_self_avatar,
+                    NULL);
+      if (!have_self_avatar)
+        {
+          GetAvatarTokensContext *context = g_new (GetAvatarTokensContext, 1);
+
+          context->invocation = invocation;
+          context->my_index = my_index;
+          context->ret = ret;
+          context->signal_conn = g_signal_connect (self->vcard_manager,
+              "got-self-initial-avatar",
+              G_CALLBACK (_got_self_avatar_for_get_avatar_tokens),
+              context);
+          return;
+        }
     }
 
-  dbus_g_method_return (context, ret);
-  g_free (ret);
+  dbus_g_method_return (invocation, ret);
+  g_strfreev (ret);
 }
 
 

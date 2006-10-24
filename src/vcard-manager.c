@@ -52,6 +52,7 @@ static guint signals[LAST_SIGNAL] = {0};
 enum
 {
   PROP_CONNECTION = 1,
+  PROP_HAVE_SELF_AVATAR,
   LAST_PROPERTY
 };
 
@@ -62,6 +63,7 @@ struct _GabbleVCardManagerPrivate
 {
   GabbleConnection *connection;
   GList *requests;
+  gboolean have_self_avatar;
   gboolean dispose_has_run;
 };
 
@@ -139,6 +141,17 @@ gabble_vcard_manager_class_init (GabbleVCardManagerClass *gabble_vcard_manager_c
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 
+  param_spec = g_param_spec_boolean ("have-self-avatar", "Have our own avatar",
+                                     "TRUE after the local user's own vCard "
+                                     "has been retrieved in order to get"
+                                     "their initial avatar.",
+                                     FALSE,
+                                     G_PARAM_READABLE |
+                                     G_PARAM_STATIC_NICK |
+                                     G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_HAVE_SELF_AVATAR,
+                                   param_spec);
+
   /* signal definitions */
 
   signals[NICKNAME_UPDATE] =
@@ -172,6 +185,9 @@ gabble_vcard_manager_get_property (GObject    *object,
   switch (property_id) {
     case PROP_CONNECTION:
       g_value_set_object (value, priv->connection);
+      break;
+    case PROP_HAVE_SELF_AVATAR:
+      g_value_set_boolean (value, priv->have_self_avatar);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -245,6 +261,11 @@ initial_request_cb (GabbleVCardManager *self,
       g_free (alias);
       return;
     }
+
+  /* We now have our own avatar (or lack thereof) so can answer
+   * GetAvatarTokens([self_handle])
+   */
+  priv->have_self_avatar = TRUE;
 
   /* try to patch the alias, if one was provided */
   if (alias)

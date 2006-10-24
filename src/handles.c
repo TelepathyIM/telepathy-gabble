@@ -502,12 +502,8 @@ gabble_handles_are_valid (GabbleHandleRepo *repo,
 
       if (handle_priv_lookup (repo, type, handle) == NULL)
         {
-          if (error != NULL)
-            {
-              *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                  "invalid handle %u", handle);
-            }
-
+          g_set_error (error, TELEPATHY_ERRORS, InvalidArgument,
+              "invalid handle %u", handle);
           return FALSE;
         }
     }

@@ -122,7 +122,7 @@ handle_priv_free (GabbleHandlePriv *priv)
   g_free (priv);
 }
 
-GabbleHandlePriv *
+static GabbleHandlePriv *
 handle_priv_lookup (GabbleHandleRepo *repo,
                     TpHandleType type,
                     GabbleHandle handle)

@@ -1042,8 +1042,8 @@ static Handler handlers[] = {
     { "reject", NULL },
     JS_STATE_PENDING_INITIATED,
     JS_STATE_PENDING_INITIATED,
-    { NULL },
-    JS_STATE_ENDED
+    { _handle_terminate, NULL },
+    JS_STATE_INVALID
   },
   {
     { "terminate", "session-terminate", NULL },

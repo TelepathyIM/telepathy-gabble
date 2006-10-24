@@ -56,6 +56,7 @@ _resource_new (gchar *name)
   new->status = GABBLE_PRESENCE_OFFLINE;
   new->status_message = NULL;
   new->priority = 0;
+  new->caps_serial = 0;
   return new;
 }
 
@@ -164,12 +165,14 @@ gabble_presence_set_capabilities (GabblePresence *presence,
 
       if (0 == strcmp (tmp->name, resource))
         {
-          if (tmp->caps == 0 || tmp->caps_serial != serial)
+          if (serial > tmp->caps_serial)
             {
               tmp->caps = 0;
               tmp->caps_serial = serial;
             }
-          tmp->caps |= caps;
+
+          if (serial >= tmp->caps_serial)
+            tmp->caps |= caps;
         }
 
       presence->caps |= tmp->caps;

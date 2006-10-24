@@ -246,6 +246,9 @@ struct _GabbleConnectionPrivate
   GPtrArray *channel_requests;
   gboolean suppress_next_handler;
 
+  /* serial number of current advertised caps */
+  guint caps_serial;
+
   /* gobject housekeeping */
   gboolean dispose_has_run;
 };
@@ -349,6 +352,8 @@ gabble_connection_init (GabbleConnection *self)
                                         TP_PROPERTY_FLAG_READ, 0, NULL);
 
   g_value_unset (&val);
+
+  priv->caps_serial = 1;
 }
 
 static void
@@ -1413,7 +1418,7 @@ _gabble_connection_connect (GabbleConnection *conn,
   presence = gabble_presence_cache_get (conn->presence_cache, conn->self_handle);
 
   gabble_presence_set_capabilities (presence, priv->resource,
-      capabilities_get_initial_caps (), 0);
+      capabilities_get_initial_caps (), priv->caps_serial++);
 
   /* always override server and port if one was forced upon us */
   if (priv->connect_server != NULL)
@@ -2920,10 +2925,7 @@ gabble_connection_advertise_capabilities (GabbleConnection *self,
   if (caps ^ save_caps)
     {
       DEBUG ("before != after, changing");
-      /* override old capabilities entirely */
-      gabble_presence_set_capabilities (pres, priv->resource, 0, 1);
-      DEBUG ("zeroed caps: %x", pres->caps);
-      gabble_presence_set_capabilities (pres, priv->resource, caps, 0);
+      gabble_presence_set_capabilities (pres, priv->resource, caps, priv->caps_serial++);
       DEBUG ("set caps: %x", pres->caps);
     }
 

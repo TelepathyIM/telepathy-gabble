@@ -284,6 +284,7 @@ gabble_presence_cache_init (GabblePresenceCache *cache)
   priv->capabilities = g_hash_table_new (g_str_hash, g_str_equal);
   priv->disco_pending = g_hash_table_new_full (g_str_hash, g_str_equal,
     g_free, (GDestroyNotify) disco_waiter_list_free);
+  priv->caps_serial = 1;
 }
 
 static GObject *

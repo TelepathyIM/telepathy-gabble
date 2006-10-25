@@ -298,7 +298,12 @@ gabble_media_stream_set_property (GObject      *object,
       priv->got_local_codecs = g_value_get_boolean (value);
       break;
     case PROP_SIGNALLING_STATE:
-      priv->signalling_state = g_value_get_uint (value);
+        {
+          StreamSignallingState old = priv->signalling_state;
+          priv->signalling_state = g_value_get_uint (value);
+          if (priv->signalling_state != old)
+            push_native_candidates (stream);
+        }
       break;
     case PROP_PLAYING:
         {
@@ -1154,6 +1159,9 @@ push_native_candidates (GabbleMediaStream *stream)
   g_assert (GABBLE_IS_MEDIA_STREAM (stream));
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
+
+  if (priv->signalling_state == STREAM_SIG_STATE_NEW)
+    return;
 
   candidates = g_value_get_boxed (&priv->native_candidates);
 

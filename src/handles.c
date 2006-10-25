@@ -497,8 +497,17 @@ gabble_handles_are_valid (GabbleHandleRepo *repo,
     {
       GabbleHandle handle = g_array_index (array, GabbleHandle, i);
 
-      if ((handle == 0) && allow_zero)
-          continue;
+      if (handle == 0)
+        {
+          if (allow_zero)
+              continue;
+
+          g_debug ("someone tried to validate handle zero");
+
+          *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+              "invalid handle %u", handle);
+          return FALSE;
+        }
 
       if (handle_priv_lookup (repo, type, handle) == NULL)
         {

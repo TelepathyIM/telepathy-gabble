@@ -1439,6 +1439,10 @@ _stream_not_ready_for_accept (const gchar *name,
                 "initiator", &stream_initiator,
                 NULL);
 
+  /* locally initiated streams shouldn't delay acceptance */
+  if (stream_initiator == INITIATOR_LOCAL)
+    return FALSE;
+
   if (!got_local_codecs)
     {
       GMS_DEBUG_INFO (session, "stream %s does not yet have local codecs",

@@ -1463,6 +1463,8 @@ try_session_accept (GabbleMediaSession *session)
 
   /* set streams playing */
   _set_streams_playing (session);
+
+  g_object_set (session, "state", JS_STATE_PENDING_ACCEPT_SENT, NULL);
 }
 
 static LmHandlerResult
@@ -1808,11 +1810,27 @@ stream_got_local_codecs_changed_cb (GabbleMediaStream *stream,
     {
       if (priv->initiator == INITIATOR_REMOTE)
         {
-          try_session_accept (session);
+          if (priv->state < JS_STATE_PENDING_ACCEPT_SENT)
+            {
+              try_session_accept (session);
+            }
+          else
+            {
+              GMS_DEBUG_INFO (session, "stream added after sending accept; "
+                  "not doing content-add until remote end acknowledges");
+            }
         }
       else
         {
-          try_session_initiate (session);
+          if (priv->state < JS_STATE_PENDING_INITIATE_SENT)
+            {
+              try_session_initiate (session);
+            }
+          else
+            {
+              GMS_DEBUG_INFO (session, "stream added after sending initiate; "
+                  "not doing content-add until remote end accepts");
+            }
         }
     }
   else

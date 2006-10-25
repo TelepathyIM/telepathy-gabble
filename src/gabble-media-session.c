@@ -121,6 +121,7 @@ static const SessionStateDescription session_states[] =
     { "JS_STATE_PENDING_CREATED",       ANSI_BOLD_ON ANSI_FG_BLACK ANSI_BG_WHITE   },
     { "JS_STATE_PENDING_INITIATE_SENT", ANSI_BOLD_ON               ANSI_BG_CYAN    },
     { "JS_STATE_PENDING_INITIATED",     ANSI_BOLD_ON               ANSI_BG_MAGENTA },
+    { "JS_STATE_PENDING_ACCEPT_SENT",   ANSI_BOLD_ON               ANSI_BG_CYAN    },
     { "JS_STATE_ACTIVE",                ANSI_BOLD_ON               ANSI_BG_BLUE    },
     { "JS_STATE_ENDED",                                            ANSI_BG_RED     }
 };

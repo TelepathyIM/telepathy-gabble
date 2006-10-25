@@ -1294,22 +1294,55 @@ session_state_changed (GabbleMediaSession *session,
 }
 
 static void
-_set_streams_playing_one (const gchar *name,
-                          GabbleMediaStream *stream,
-                          GabbleMediaSession *session)
+_mark_local_streams_sent_one (const gchar *name,
+                              GabbleMediaStream *stream,
+                              GabbleMediaSession *session)
 {
-  GMS_DEBUG_INFO (session, "setting stream %s as playing", name);
+  JingleInitiator initiator;
+
+  g_object_get (stream, "initiator", &initiator, NULL);
+
+  if (initiator == INITIATOR_REMOTE)
+    return;
+
+  GMS_DEBUG_INFO (session, "marking local stream %s as signalled", name);
+
+  g_object_set (stream, "signalling-state", STREAM_SIG_STATE_SENT, NULL);
+}
+
+void
+_mark_local_streams_sent (GabbleMediaSession *session)
+{
+  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+
+  g_hash_table_foreach (priv->streams, (GHFunc) _mark_local_streams_sent_one,
+      session);
+}
+
+static void
+_set_remote_streams_playing_one (const gchar *name,
+                                 GabbleMediaStream *stream,
+                                 GabbleMediaSession *session)
+{
+  JingleInitiator initiator;
+
+  g_object_get (stream, "initiator", &initiator, NULL);
+
+  if (initiator == INITIATOR_LOCAL)
+    return;
+
+  GMS_DEBUG_INFO (session, "setting remote stream %s as playing", name);
 
   g_object_set (stream, "playing", TRUE, NULL);
 }
 
 void
-_set_streams_playing (GabbleMediaSession *session)
+_set_remote_streams_playing (GabbleMediaSession *session)
 {
   GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
 
-  g_hash_table_foreach (priv->streams, (GHFunc) _set_streams_playing_one,
-      session);
+  g_hash_table_foreach (priv->streams,
+      (GHFunc) _set_remote_streams_playing_one, session);
 }
 
 typedef struct _AddDescriptionsData AddDescriptionsData;
@@ -1462,8 +1495,8 @@ try_session_accept (GabbleMediaSession *session)
 
   lm_message_unref (msg);
 
-  /* set streams playing */
-  _set_streams_playing (session);
+  /* set remote streams playing */
+  _set_remote_streams_playing (session);
 
   g_object_set (session, "state", JS_STATE_PENDING_ACCEPT_SENT, NULL);
 }
@@ -1613,6 +1646,9 @@ try_session_initiate (GabbleMediaSession *session)
                                       G_OBJECT (session), NULL, NULL);
 
   lm_message_unref (msg);
+
+  /* mark local streams as sent (so that eg candidates will be sent) */
+  _mark_local_streams_sent (session);
 
   g_object_set (session, "state", JS_STATE_PENDING_INITIATE_SENT, NULL);
 }

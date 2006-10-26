@@ -1254,7 +1254,6 @@ FUNC_ERROR:
 ACK_FAILURE:
   _gabble_connection_send_iq_error (priv->conn, message,
                                     XMPP_ERROR_NOT_ALLOWED, NULL);
-  _gabble_media_session_terminate (session, INITIATOR_LOCAL, TP_CHANNEL_GROUP_CHANGE_REASON_ERROR);
 }
 
 static gboolean

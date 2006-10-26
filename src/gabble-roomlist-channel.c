@@ -478,7 +478,11 @@ room_info_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
 static void
 rooms_end_cb (gpointer data, gpointer user_data)
 {
-  /* do nothing */
+  GabbleRoomlistChannel *chan = user_data;
+  GabbleRoomlistChannelPrivate *priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (chan);
+
+  priv->listing = FALSE;
+  g_signal_emit (chan, signals[LISTING_ROOMS], 0, FALSE);
 }
 
 

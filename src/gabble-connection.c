@@ -3444,6 +3444,7 @@ gabble_connection_get_interfaces (GabbleConnection *self,
       TP_IFACE_CONN_INTERFACE_ALIASING,
       TP_IFACE_CONN_INTERFACE_CAPABILITIES,
       TP_IFACE_CONN_INTERFACE_PRESENCE,
+      TP_IFACE_CONN_INTERFACE_AVATARS,
       TP_IFACE_PROPERTIES,
       NULL };
   GabbleConnectionPrivate *priv;

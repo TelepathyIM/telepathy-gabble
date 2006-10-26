@@ -567,7 +567,6 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
   const gchar *sha1;
   LmMessageNode *x_node, *photo_node;
   GabblePresence *presence;
-  GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
 
   presence = gabble_presence_cache_get (cache, handle);
 

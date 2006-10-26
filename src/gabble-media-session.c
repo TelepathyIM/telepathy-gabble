@@ -1734,6 +1734,9 @@ do_content_add (GabbleMediaSession *session,
       content_add_msg_reply_cb, G_OBJECT (stream), session, NULL);
 
   lm_message_unref (msg);
+
+  /* mark stream as sent */
+  g_object_set (stream, "signalling-state", STREAM_SIG_STATE_SENT, NULL);
 }
 
 static void

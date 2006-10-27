@@ -62,6 +62,9 @@ _resource_new (gchar *name)
   new->status = GABBLE_PRESENCE_OFFLINE;
   new->status_message = NULL;
   new->priority = 0;
+  new->caps_serial = 0;
+  new->set_locally = FALSE;
+
   return new;
 }
 

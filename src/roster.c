@@ -826,7 +826,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
   switch (sub_type)
     {
       LmMessageNode *item_node;
-      GIntSet *empty, *pub_add, *pub_rem,
+      GIntSet *pub_add, *pub_rem,
               *sub_add, *sub_rem, *sub_rp,
               *known_add, *known_rem,
               *deny_add, *deny_rem;
@@ -839,7 +839,6 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
     case LM_MESSAGE_SUB_TYPE_SET:
       /* asymmetry is because we don't get locally pending subscription
        * requests via <roster>, we get it via <presence> */
-      empty = g_intset_new ();
       pub_add = g_intset_new ();
       pub_rem = g_intset_new ();
       sub_add = g_intset_new ();
@@ -996,21 +995,21 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
 
       DEBUG ("calling change members on publish channel");
       gabble_group_mixin_change_members (G_OBJECT (chan),
-            "", pub_add, pub_rem, empty, empty, 0, 0);
+            "", pub_add, pub_rem, NULL, NULL, 0, 0);
 
       handle = GABBLE_LIST_HANDLE_SUBSCRIBE;
       chan = _gabble_roster_get_channel (roster, handle);
 
       DEBUG ("calling change members on subscribe channel");
       gabble_group_mixin_change_members (G_OBJECT (chan),
-            "", sub_add, sub_rem, empty, sub_rp, 0, 0);
+            "", sub_add, sub_rem, NULL, sub_rp, 0, 0);
 
       handle = GABBLE_LIST_HANDLE_KNOWN;
       chan = _gabble_roster_get_channel (roster, handle);
 
       DEBUG ("calling change members on known channel");
       gabble_group_mixin_change_members (G_OBJECT (chan),
-            "", known_add, known_rem, empty, empty, 0, 0);
+            "", known_add, known_rem, NULL, NULL, 0, 0);
 
       if (google_roster)
         {
@@ -1019,15 +1018,11 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
 
           DEBUG ("calling change members on deny channel");
           gabble_group_mixin_change_members (G_OBJECT (chan),
-              "", deny_add, deny_rem, empty, empty, 0, 0);
+              "", deny_add, deny_rem, NULL, NULL, 0, 0);
 
           g_intset_destroy (deny_add);
           g_intset_destroy (deny_rem);
         }
-
-      for (i = 0; i < removed->len; i++)
-          _gabble_roster_item_remove (roster,
-              g_array_index (removed, GabbleHandle, i));
 
       g_intset_destroy (empty);
       g_intset_destroy (pub_add);
@@ -1124,7 +1119,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
   LmMessageNode *pres_node, *child_node;
   const char *from;
   LmMessageSubType sub_type;
-  GIntSet *empty, *tmp;
+  GIntSet *tmp;
   GabbleHandle handle;
   const gchar *status_message = NULL;
   GabbleRosterChannel *chan = NULL;
@@ -1173,16 +1168,14 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
       DEBUG ("making %s (handle %u) local pending on the publish channel",
           from, handle);
 
-      empty = g_intset_new ();
       tmp = g_intset_new ();
       g_intset_add (tmp, handle);
 
       handle = GABBLE_LIST_HANDLE_PUBLISH;
       chan = _gabble_roster_get_channel (roster, handle);
       gabble_group_mixin_change_members (G_OBJECT (chan), status_message,
-          empty, empty, tmp, empty, 0, 0);
+          NULL, NULL, tmp, NULL, 0, 0);
 
-      g_intset_destroy (empty);
       g_intset_destroy (tmp);
 
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
@@ -1190,18 +1183,16 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
       DEBUG ("removing %s (handle %u) from the publish channel",
           from, handle);
 
-      empty = g_intset_new ();
       tmp = g_intset_new ();
       g_intset_add (tmp, handle);
 
       handle = GABBLE_LIST_HANDLE_PUBLISH;
       chan = _gabble_roster_get_channel (roster, handle);
       changed = gabble_group_mixin_change_members (G_OBJECT (chan),
-          status_message, empty, tmp, empty, empty, 0, 0);
+          status_message, NULL, tmp, NULL, NULL, 0, 0);
 
       _gabble_roster_send_presence_ack (roster, from, sub_type, changed);
 
-      g_intset_destroy (empty);
       g_intset_destroy (tmp);
 
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
@@ -1209,18 +1200,16 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
       DEBUG ("adding %s (handle %u) to the subscribe channel",
           from, handle);
 
-      empty = g_intset_new ();
       tmp = g_intset_new ();
       g_intset_add (tmp, handle);
 
       handle = GABBLE_LIST_HANDLE_SUBSCRIBE;
       chan = _gabble_roster_get_channel (roster, handle);
       changed = gabble_group_mixin_change_members (G_OBJECT (chan),
-          status_message, tmp, empty, empty, empty, 0, 0);
+          status_message, tmp, NULL, NULL, NULL, 0, 0);
 
       _gabble_roster_send_presence_ack (roster, from, sub_type, changed);
 
-      g_intset_destroy (empty);
       g_intset_destroy (tmp);
 
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
@@ -1228,18 +1217,16 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
       DEBUG ("removing %s (handle %u) from the subscribe channel",
           from, handle);
 
-      empty = g_intset_new ();
       tmp = g_intset_new ();
       g_intset_add (tmp, handle);
 
       handle = GABBLE_LIST_HANDLE_SUBSCRIBE;
       chan = _gabble_roster_get_channel (roster, handle);
       changed = gabble_group_mixin_change_members (G_OBJECT (chan),
-          status_message, empty, tmp, empty, empty, 0, 0);
+          status_message, NULL, tmp, NULL, NULL, 0, 0);
 
       _gabble_roster_send_presence_ack (roster, from, sub_type, changed);
 
-      g_intset_destroy (empty);
       g_intset_destroy (tmp);
 
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;

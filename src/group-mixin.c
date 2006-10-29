@@ -59,6 +59,22 @@ struct _GabbleGroupMixinPrivate {
     GHashTable *handle_owners;
 };
 
+/*
+ * get_empty_set ()
+ *
+ * Returns: a statically allocated empty GIntSet.
+ */
+static GIntSet *
+get_empty_set ()
+{
+  static GIntSet *empty = NULL;
+
+  if (G_UNLIKELY (empty == NULL))
+    empty = g_intset_new ();
+
+  return empty;
+}
+
 /**
  * gabble_group_mixin_class_get_offset_quark:
  *
@@ -569,10 +585,17 @@ gabble_group_mixin_change_members (GObject *obj,
           *new_remote_pending, *tmp, *tmp2;
   gboolean ret;
 
-  g_assert (add != NULL);
-  g_assert (remove != NULL);
-  g_assert (local_pending != NULL);
-  g_assert (remote_pending != NULL);
+  if (add == NULL)
+    add = get_empty_set ();
+
+  if (remove == NULL)
+    remove = get_empty_set ();
+
+  if (local_pending == NULL)
+    local_pending = get_empty_set ();
+
+  if (remote_pending == NULL)
+    remote_pending = get_empty_set ();
 
   /* members + add */
   new_add = handle_set_update (mixin->members, add);

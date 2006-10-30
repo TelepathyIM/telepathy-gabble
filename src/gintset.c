@@ -237,10 +237,10 @@ g_intset_from_array (GArray *array)
   return set;
 }
 
-int
-g_intset_size(const GIntSet *set)
+guint
+g_intset_size (const GIntSet *set)
 {
-  int i, count = 0;
+  guint i, count = 0;
   guint32 n;
 
   g_return_val_if_fail (set != NULL, 0);
@@ -251,6 +251,7 @@ g_intset_size(const GIntSet *set)
       n = n - ((n >> 1) & 033333333333) - ((n >> 2) & 011111111111);
       count += ((n + (n >> 3)) & 030707070707) % 63;
     }
+
   return count;
 }
 
@@ -258,7 +259,7 @@ gboolean
 g_intset_is_equal (const GIntSet *left, const GIntSet *right)
 {
   const GIntSet *large, *small;
-  int i;
+  guint i;
 
   g_return_val_if_fail (left != NULL, FALSE);
   g_return_val_if_fail (right != NULL, FALSE);
@@ -307,7 +308,7 @@ g_intset_intersection (const GIntSet *left, const GIntSet *right)
 {
   const GIntSet *large, *small;
   GIntSet *ret;
-  int i;
+  guint i;
 
   g_return_val_if_fail (left != NULL, NULL);
   g_return_val_if_fail (right != NULL, NULL);
@@ -338,7 +339,7 @@ g_intset_union (const GIntSet *left, const GIntSet *right)
 {
   const GIntSet *large, *small;
   GIntSet *ret;
-  int i;
+  guint i;
 
   g_return_val_if_fail (left != NULL, NULL);
   g_return_val_if_fail (right != NULL, NULL);
@@ -368,7 +369,7 @@ GIntSet *
 g_intset_difference (const GIntSet *left, const GIntSet *right)
 {
   GIntSet *ret;
-  int i;
+  guint i;
 
   g_return_val_if_fail (left != NULL, NULL);
   g_return_val_if_fail (right != NULL, NULL);
@@ -388,7 +389,7 @@ g_intset_symmetric_difference (const GIntSet *left, const GIntSet *right)
 {
   const GIntSet *large, *small;
   GIntSet *ret;
-  int i;
+  guint i;
 
   g_return_val_if_fail (left != NULL, NULL);
   g_return_val_if_fail (right != NULL, NULL);

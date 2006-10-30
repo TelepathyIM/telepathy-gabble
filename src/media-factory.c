@@ -480,7 +480,7 @@ gabble_media_factory_iface_close_all (TpChannelFactoryIface *iface)
       GPtrArray *tmp = priv->channels;
       priv->channels = NULL;
 
-      int i;
+      guint i;
 
       for (i = 0; i < tmp->len; i++)
         {
@@ -546,7 +546,7 @@ gabble_media_factory_iface_foreach (TpChannelFactoryIface *iface, TpChannelFunc 
 {
   GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (iface);
   GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
-  int i;
+  guint i;
 
   for (i = 0; i < priv->channels->len; i++)
     {

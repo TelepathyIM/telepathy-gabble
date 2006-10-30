@@ -272,7 +272,7 @@ muc_join_error_cb (GabbleMucChannel *chan,
  * new_muc_channel
  */
 static GabbleMucChannel *
-new_muc_channel (GabbleMucFactory *fac, GabbleHandle handle)
+new_muc_channel (GabbleMucFactory *fac, GabbleHandle handle, gboolean invite_self)
 {
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
   GabbleMucChannel *chan;
@@ -288,6 +288,7 @@ new_muc_channel (GabbleMucFactory *fac, GabbleHandle handle)
                        "connection", priv->conn,
                        "object-path", object_path,
                        "handle", handle,
+                       "invite-self", invite_self,
                        NULL);
 
   g_signal_connect (chan, "closed", (GCallback) muc_channel_closed_cb, fac);
@@ -358,7 +359,7 @@ void obsolete_invite_disco_cb (GabbleDisco *self,
   if (g_hash_table_lookup (priv->channels, GINT_TO_POINTER (handle)) == NULL)
     {
       GabbleMucChannel *chan;
-      chan = new_muc_channel (fac, handle);
+      chan = new_muc_channel (fac, handle, FALSE);
       _gabble_muc_channel_handle_invited (chan, data->inviter, data->reason);
     }
   else
@@ -449,7 +450,7 @@ muc_factory_message_cb (LmMessageHandler *handler,
 
           if (g_hash_table_lookup (priv->channels, GINT_TO_POINTER (handle)) == NULL)
             {
-              chan = new_muc_channel (fac, handle);
+              chan = new_muc_channel (fac, handle, FALSE);
               _gabble_muc_channel_handle_invited (chan, inviter_handle, reason);
             }
           else
@@ -791,8 +792,6 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (iface);
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
   GabbleMucChannel *chan;
-  GArray *members;
-  gboolean retval;
 
   if (!g_strdiff (chan_type, TP_IFACE_CHANNEL_TYPE_ROOM_LIST))
     {
@@ -818,26 +817,7 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
   chan = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (handle));
   if (!chan)
     {
-      chan = new_muc_channel (fac, handle);
-
-      members = g_array_sized_new (FALSE, FALSE, sizeof (GabbleHandle), 1);
-      g_array_append_val (members, priv->conn->self_handle);
-
-      retval = gabble_group_mixin_add_members (G_OBJECT (chan), members, "", error);
-
-      g_array_free (members, TRUE);
-
-      if (!retval)
-        {
-          gboolean retval;
-
-          retval = gabble_muc_channel_close (GABBLE_MUC_CHANNEL (chan), NULL);
-          g_assert (retval);
-
-          DEBUG ("error while adding self to group mixin");
-          return TP_CHANNEL_FACTORY_REQUEST_STATUS_ERROR;
-        }
-
+      chan = new_muc_channel (fac, handle, TRUE);
       return TP_CHANNEL_FACTORY_REQUEST_STATUS_QUEUED;
     }
 

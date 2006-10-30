@@ -75,6 +75,7 @@ enum
   PROP_HANDLE,
   PROP_CONNECTION,
   PROP_STATE,
+  PROP_INVITE_SELF,
   LAST_PROPERTY
 };
 
@@ -206,6 +207,8 @@ struct _GabbleMucChannelPrivate
 
   gboolean closed;
   gboolean dispose_has_run;
+
+  gboolean invite_self;
 };
 
 #define GABBLE_MUC_CHANNEL_GET_PRIVATE(o)     (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_MUC_CHANNEL, GabbleMucChannelPrivate))
@@ -247,6 +250,9 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   contact_handle_to_room_identity (GABBLE_MUC_CHANNEL (obj), priv->conn->self_handle,
                                    &self_handle, &priv->self_jid);
 
+  valid = gabble_handle_ref (handles, TP_HANDLE_TYPE_CONTACT, self_handle);
+  g_assert (valid);
+
   /* initialize our own role and affiliation */
   priv->self_role = ROLE_NONE;
   priv->self_affil = AFFILIATION_NONE;
@@ -277,6 +283,16 @@ gabble_muc_channel_constructor (GType type, guint n_props,
       TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION,
       G_MAXUINT);
 
+  /* add ourselves to group mixin if needed */
+  if (priv->invite_self)
+    {
+      GError *error = NULL;
+      GArray *members = g_array_sized_new (FALSE, FALSE, sizeof (GabbleHandle), 1);
+      g_array_append_val (members, self_handle);
+      gabble_group_mixin_add_members (obj, members, "", &error);
+      g_assert (error == NULL);
+      g_array_free (members, TRUE);
+    }
   return obj;
 }
 
@@ -710,6 +726,9 @@ gabble_muc_channel_set_property (GObject     *object,
         channel_state_changed (chan, prev_state, priv->state);
 
       break;
+    case PROP_INVITE_SELF:
+      priv->invite_self = g_value_get_boolean (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -760,6 +779,15 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                                   G_PARAM_STATIC_NAME |
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_STATE, param_spec);
+
+  param_spec = g_param_spec_boolean ("invite-self", "Invite self",
+                                     "Whether the user should be added to members list.",
+                                     FALSE,
+                                     G_PARAM_CONSTRUCT_ONLY |
+                                     G_PARAM_WRITABLE |
+                                     G_PARAM_STATIC_NAME |
+                                     G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_INVITE_SELF, param_spec);
 
   signals[READY] =
     g_signal_new ("ready",
@@ -1823,6 +1851,7 @@ _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
                                     const gchar *message)
 {
   GabbleMucChannelPrivate *priv;
+  GabbleHandle self_handle;
   GIntSet *empty, *set_members, *set_pending;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
@@ -1835,7 +1864,11 @@ _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
   set_pending = g_intset_new ();
 
   g_intset_add (set_members, inviter);
-  g_intset_add (set_pending, priv->conn->self_handle);
+
+  /* get our own identity in the room */
+  contact_handle_to_room_identity (chan, priv->conn->self_handle,
+                                   &self_handle, &priv->self_jid);
+  g_intset_add (set_pending, self_handle);
 
   gabble_group_mixin_change_members (G_OBJECT (chan), message, set_members,
                                      empty, set_pending, empty, inviter,
@@ -2363,7 +2396,7 @@ gabble_muc_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *m
 
   mixin = GABBLE_GROUP_MIXIN (obj);
 
-  if (handle == priv->conn->self_handle)
+  if (handle == mixin->self_handle)
     {
       GIntSet *set_empty, *set_members, *set_pending;
       GArray *arr_members;

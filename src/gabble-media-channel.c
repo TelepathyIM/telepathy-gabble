@@ -1076,8 +1076,7 @@ gabble_media_channel_request_stream_direction (GabbleMediaChannel *self,
 
   priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
 
-  if (stream_direction < TP_MEDIA_STREAM_DIRECTION_NONE ||
-      stream_direction > TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL)
+  if (stream_direction > TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL)
     {
       *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
           "given stream direction %u is not valid", stream_direction);

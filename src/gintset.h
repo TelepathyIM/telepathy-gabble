@@ -37,7 +37,7 @@ void g_intset_foreach (const GIntSet *set, GIntFunc func, gpointer userdata);
 GArray *g_intset_to_array (GIntSet *set);
 GIntSet *g_intset_from_array (GArray *array);
 
-int g_intset_size(const GIntSet *set);
+guint g_intset_size (const GIntSet *set);
 
 gboolean g_intset_is_equal (const GIntSet *left, const GIntSet *right);
 

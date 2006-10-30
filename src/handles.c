@@ -485,7 +485,7 @@ gabble_handles_are_valid (GabbleHandleRepo *repo,
                           gboolean allow_zero,
                           GError **error)
 {
-  int i;
+  guint i;
 
   g_return_val_if_fail (repo != NULL, FALSE);
   g_return_val_if_fail (array != NULL, FALSE);

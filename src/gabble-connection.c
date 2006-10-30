@@ -3148,7 +3148,7 @@ gabble_connection_get_capabilities (GabbleConnection *self,
                                     GPtrArray **ret,
                                     GError **error)
 {
-  int i;
+  guint i;
 
   ERROR_IF_NOT_CONNECTED (self, *error);
 
@@ -3521,7 +3521,7 @@ gabble_connection_inspect_handles (GabbleConnection *self,
   GabbleConnectionPrivate *priv;
   GError *error = NULL;
   const gchar **ret;
-  int i;
+  guint i;
 
   g_assert (GABBLE_IS_CONNECTION (self));
 
@@ -3791,7 +3791,7 @@ gabble_connection_request_aliases (GabbleConnection *self,
                                    gchar ***ret,
                                    GError **error)
 {
-  int i;
+  guint i;
   gchar **aliases;
 
   g_assert (GABBLE_IS_CONNECTION (self));
@@ -3846,7 +3846,7 @@ gabble_connection_request_channel (GabbleConnection *self,
     TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_IMPLEMENTED;
   gchar *object_path = NULL;
   GError *error = NULL;
-  int i;
+  guint i;
 
   g_assert (GABBLE_IS_CONNECTION (self));
 

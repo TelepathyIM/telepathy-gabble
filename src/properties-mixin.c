@@ -439,7 +439,7 @@ gabble_properties_context_return (GabblePropertiesContext *ctx, GError *error)
 {
   GObject *obj = ctx->mixin->priv->object;
   GArray *changed_props_val, *changed_props_flags;
-  int i;
+  guint i;
 
   DEBUG ("%s", (error) ? "failure" : "success");
 
@@ -631,7 +631,7 @@ gabble_properties_mixin_change_flags (GObject *obj, guint prop_id,
 
   if (props)
     {
-      gint i;
+      guint i;
 
       if (*props == NULL)
         {

@@ -1029,6 +1029,7 @@ gboolean gabble_media_channel_remove_streams (GabbleMediaChannel *obj, const GAr
     {
       guint id = g_array_index (streams, guint, i);
       GabbleMediaStream *stream;
+      guint j;
 
       stream = _find_stream_by_id (obj, id);
       if (stream == NULL)
@@ -1038,11 +1039,26 @@ gboolean gabble_media_channel_remove_streams (GabbleMediaChannel *obj, const GAr
           goto OUT;
         }
 
-      g_ptr_array_add (stream_objs, stream);
+      /* make sure we don't allow the client to repeatedly remove the same stream */
+      for (j = 0; j < stream_objs->len; j++)
+        {
+          GabbleMediaStream *tmp = g_ptr_array_index (stream_objs, j);
+
+          if (tmp == stream)
+            {
+              stream = NULL;
+              break;
+            }
+        }
+
+      if (stream != NULL)
+        g_ptr_array_add (stream_objs, stream);
     }
 
   /* groovy, it's all good dude, let's remove them */
-  _gabble_media_session_remove_streams (priv->session, stream_objs);
+  if (stream_objs->len > 0)
+    _gabble_media_session_remove_streams (priv->session, (GabbleMediaStream **) stream_objs->pdata,
+        stream_objs->len);
 
 OUT:
   g_ptr_array_free (stream_objs, TRUE);
@@ -1432,19 +1448,13 @@ stream_error_cb (GabbleMediaStream *stream,
 {
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
   guint id;
-  GPtrArray *streams;
 
   /* emit signal */
   g_object_get (stream, "id", &id, NULL);
   g_signal_emit (chan, signals[STREAM_ERROR], 0, id, errno, message);
 
   /* remove stream from session */
-  streams = g_ptr_array_sized_new (1);
-  g_ptr_array_add (streams, stream);
-
-  _gabble_media_session_remove_streams (priv->session, streams);
-
-  g_ptr_array_free (streams, TRUE);
+  _gabble_media_session_remove_streams (priv->session, &stream, 1);
 }
 
 static void

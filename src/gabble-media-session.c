@@ -1271,6 +1271,48 @@ timeout_session (gpointer data)
   return FALSE;
 }
 
+static void do_content_add (GabbleMediaSession *, GabbleMediaStream *);
+
+static void
+_add_ready_new_streams_one (const gchar *name,
+                            GabbleMediaStream *stream,
+                            GabbleMediaSession *session)
+{
+  gboolean got_local_codecs;
+  JingleInitiator initiator;
+  StreamSignallingState sig_state;
+
+  g_object_get (stream,
+      "got-local-codecs", &got_local_codecs,
+      "initiator", &initiator,
+      "signalling-state", &sig_state,
+      NULL);
+
+  GMS_DEBUG_DUMP (session, "pondering accept-time add for stream: %s, got local: %s, initiator: %s, state: %d", name, got_local_codecs ? "true" : "false", initiator == INITIATOR_LOCAL ? "local" : "remote", sig_state);
+
+  if (got_local_codecs == FALSE)
+    return;
+
+  if (initiator == INITIATOR_REMOTE)
+    return;
+
+  if (sig_state > STREAM_SIG_STATE_NEW)
+    return;
+
+  GMS_DEBUG_INFO (session, "adding new, ready & local stream %s", name);
+
+  do_content_add (session, stream);
+}
+
+void
+_add_ready_new_streams (GabbleMediaSession *session)
+{
+  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+
+  g_hash_table_foreach (priv->streams, (GHFunc) _add_ready_new_streams_one,
+      session);
+}
+
 static void
 session_state_changed (GabbleMediaSession *session,
                        JingleSessionState prev_state,
@@ -1298,6 +1340,10 @@ session_state_changed (GabbleMediaSession *session,
     {
       g_source_remove (priv->timer_id);
       priv->timer_id = 0;
+
+      /* signal any streams to the remote end which were added locally & became
+       * ready before the session was accepted, so havn't been mentioned yet */
+      _add_ready_new_streams (session);
     }
 }
 

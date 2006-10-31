@@ -108,7 +108,7 @@ static void gabble_allocator_free (GabbleAllocator *alloc, gpointer thing)
 
 /* pending message */
 #define MAX_PENDING_MESSAGES 256
-#define MAX_MESSAGE_SIZE 8*1024 - 1
+#define MAX_MESSAGE_SIZE 1024 - 1
 
 typedef struct _GabblePendingMessage GabblePendingMessage;
 struct _GabblePendingMessage

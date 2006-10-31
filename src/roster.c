@@ -411,7 +411,24 @@ _google_roster_item_is_valid_contact (LmMessageNode *item_node)
   if (attr != NULL)
     return FALSE;
 
-  return TRUE;
+  /* allow items that have rejected a subscription */
+  attr = lm_message_node_get_attribute (item_node, "gr:rejected");
+
+  if (!g_strdiff (attr, "true"))
+    return TRUE;
+
+  /* allow items that we've requested a subscription from */
+  attr = lm_message_node_get_attribute (item_node, "ask");
+
+  if (!g_strdiff (attr, "subscription"))
+    return TRUE;
+
+  /* allow items that have some form of subscrption */
+  if (_parse_item_subscription (item_node) != GABBLE_ROSTER_SUBSCRIPTION_NONE)
+    return TRUE;
+
+  /* discard anything else */
+  return FALSE;
 }
 
 static GabbleRosterItem *

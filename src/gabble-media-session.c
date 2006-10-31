@@ -2092,7 +2092,8 @@ _gabble_media_session_remove_streams (GabbleMediaSession *session,
                                       const GPtrArray *streams)
 {
   GabbleMediaSessionPrivate *priv;
-  LmMessage *msg;
+  LmMessage *msg = NULL;
+  gboolean signal = FALSE;
   LmMessageNode *session_node;
   guint i;
 
@@ -2113,16 +2114,6 @@ _gabble_media_session_remove_streams (GabbleMediaSession *session,
     {
       msg = _gabble_media_session_message_new (session, "content-remove",
                                                &session_node);
-
-      GMS_DEBUG_INFO (session, "sending jingle session action "
-          "\"content-remove\" to peer");
-    }
-  else
-    {
-      msg = NULL;
-
-      GMS_DEBUG_INFO (session, "not sending jingle session action "
-          "\"content-remove\" to peer, no initiates have been sent");
     }
 
   /* right, remove it */
@@ -2133,13 +2124,23 @@ _gabble_media_session_remove_streams (GabbleMediaSession *session,
       if (msg != NULL)
         {
           gchar *name;
-          LmMessageNode *content_node;
+          StreamSignallingState sig_state;
 
-          g_object_get (stream, "name", &name, NULL);
-
-          content_node = lm_message_node_add_child (session_node, "content",
+          g_object_get (stream,
+              "name", &name,
+              "signalling-state", &sig_state,
               NULL);
-          lm_message_node_set_attribute (content_node, "name", name);
+
+          if (sig_state > STREAM_SIG_STATE_NEW)
+            {
+              LmMessageNode *content_node;
+
+              content_node = lm_message_node_add_child (session_node, "content",
+                NULL);
+              lm_message_node_set_attribute (content_node, "name", name);
+
+              signal = TRUE;
+            }
 
           g_free (name);
         }
@@ -2148,13 +2149,25 @@ _gabble_media_session_remove_streams (GabbleMediaSession *session,
       _gabble_media_stream_close (stream);
     }
 
-  /* send the remove message */
+  /* send the remove message if necessary */
   if (msg != NULL)
     {
-      _gabble_connection_send_with_reply (priv->conn, msg, ignore_reply_cb,
-                                          G_OBJECT (session), NULL, NULL);
+      if (signal)
+        {
+          GMS_DEBUG_INFO (session, "sending jingle session action "
+              "\"content-remove\" to peer");
+
+          _gabble_connection_send_with_reply (priv->conn, msg, ignore_reply_cb,
+              G_OBJECT (session), NULL, NULL);
+        }
 
       lm_message_unref (msg);
+    }
+  else
+    {
+      GMS_DEBUG_INFO (session, "not sending jingle session action "
+          "\"content-remove\" to peer, no initiates or adds sent for "
+          "this stream");
     }
 }
 

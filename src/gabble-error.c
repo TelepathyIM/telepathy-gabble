@@ -261,7 +261,7 @@ gabble_xmpp_error_from_node (LmMessageNode *error_node)
 GError *
 gabble_xmpp_error_to_g_error (GabbleXmppError error)
 {
-  if (error < 0 || error >= NUM_XMPP_ERRORS)
+  if (error >= NUM_XMPP_ERRORS)
     return NULL;
 
   return g_error_new (GABBLE_XMPP_ERROR,
@@ -278,7 +278,7 @@ gabble_xmpp_error_to_node (GabbleXmppError error,
   LmMessageNode *error_node, *node;
   gchar str[6];
 
-  if (error < 0 || error >= NUM_XMPP_ERRORS)
+  if (error >= NUM_XMPP_ERRORS)
     return NULL;
 
   spec = &xmpp_errors[error];
@@ -305,7 +305,7 @@ gabble_xmpp_error_to_node (GabbleXmppError error,
 const gchar *
 gabble_xmpp_error_string (GabbleXmppError error)
 {
-  if (error >= 0 && error < NUM_XMPP_ERRORS)
+  if (error < NUM_XMPP_ERRORS)
     return xmpp_errors[error].name;
   else
     return NULL;
@@ -314,7 +314,7 @@ gabble_xmpp_error_string (GabbleXmppError error)
 const gchar *
 gabble_xmpp_error_description (GabbleXmppError error)
 {
-  if (error >= 0 && error < NUM_XMPP_ERRORS)
+  if (error < NUM_XMPP_ERRORS)
     return xmpp_errors[error].description;
   else
     return NULL;

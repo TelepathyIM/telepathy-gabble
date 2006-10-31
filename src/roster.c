@@ -885,8 +885,8 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
               continue;
             }
 
-          item = _gabble_roster_item_update (
-            roster, handle, item_node, google_roster);
+          item = _gabble_roster_item_update (roster, handle, item_node,
+                                             google_roster);
 
 #ifdef ENABLE_DEBUG
           if (DEBUGGING)

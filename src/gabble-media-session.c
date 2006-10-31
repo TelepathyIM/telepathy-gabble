@@ -2642,13 +2642,26 @@ send_direction_change (GabbleMediaSession *session,
   GabbleMediaSessionPrivate *priv;
   const gchar *senders;
   gchar *name;
+  StreamSignallingState sig_state;
   LmMessage *msg;
   LmMessageNode *session_node, *content_node;
   gboolean ret;
 
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
   senders = _direction_to_senders (session, dir);
-  g_object_get (stream, "name", &name, NULL);
+
+  g_object_get (stream,
+      "name", &name,
+      "signalling-state", &sig_state,
+      NULL);
+
+  if (sig_state == STREAM_SIG_STATE_NEW)
+    {
+      GMS_DEBUG_INFO (session, "not sending content-modify for new stream %s",
+          name);
+      g_free (name);
+      return TRUE;
+    }
 
   GMS_DEBUG_INFO (session, "sending jingle session action \"content-modify\" "
       "to peer for stream %s (senders=%s)", name, senders);

@@ -2009,7 +2009,7 @@ _gabble_media_session_message_new (GabbleMediaSession *session,
     element = "jingle";
 
   if (priv->initiator == INITIATOR_LOCAL)
-    initiator_handle = GABBLE_GROUP_MIXIN (session)->self_handle;
+    initiator_handle = priv->conn->self_handle;
   else
     initiator_handle = priv->peer;
 

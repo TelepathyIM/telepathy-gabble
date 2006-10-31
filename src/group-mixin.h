@@ -25,6 +25,7 @@
 
 #include "handles.h"
 #include "handle-set.h"
+#include "util.h"
 
 G_BEGIN_DECLS
 
@@ -59,11 +60,11 @@ struct _GabbleGroupMixin {
 /* TYPE MACROS */
 #define GABBLE_GROUP_MIXIN_CLASS_OFFSET_QUARK (gabble_group_mixin_class_get_offset_quark())
 #define GABBLE_GROUP_MIXIN_CLASS_OFFSET(o) (GPOINTER_TO_UINT (g_type_get_qdata (G_OBJECT_CLASS_TYPE (o), GABBLE_GROUP_MIXIN_CLASS_OFFSET_QUARK)))
-#define GABBLE_GROUP_MIXIN_CLASS(o) ((GabbleGroupMixinClass *)((guchar *) o + GABBLE_GROUP_MIXIN_CLASS_OFFSET (o)))
+#define GABBLE_GROUP_MIXIN_CLASS(o) ((GabbleGroupMixinClass *) gabble_mixin_offset_cast (o, GABBLE_GROUP_MIXIN_CLASS_OFFSET (o)))
 
 #define GABBLE_GROUP_MIXIN_OFFSET_QUARK (gabble_group_mixin_get_offset_quark())
 #define GABBLE_GROUP_MIXIN_OFFSET(o) (GPOINTER_TO_UINT (g_type_get_qdata (G_OBJECT_TYPE (o), GABBLE_GROUP_MIXIN_OFFSET_QUARK)))
-#define GABBLE_GROUP_MIXIN(o) ((GabbleGroupMixin *)((guchar *) o + GABBLE_GROUP_MIXIN_OFFSET (o)))
+#define GABBLE_GROUP_MIXIN(o) ((GabbleGroupMixin *) gabble_mixin_offset_cast (o, GABBLE_GROUP_MIXIN_OFFSET(o)))
 
 GQuark gabble_group_mixin_class_get_offset_quark (void);
 GQuark gabble_group_mixin_get_offset_quark (void);

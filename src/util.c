@@ -234,3 +234,13 @@ gabble_decode_jid (const gchar *jid,
   g_free (tmp_jid);
 }
 
+/* extend a pointer by an offset, provided the offset is not 0 */
+gpointer
+gabble_mixin_offset_cast (gpointer instance,
+                          guint offset)
+{
+  g_return_val_if_fail (offset != 0, NULL);
+
+  return ((guchar *) instance + offset);
+}
+

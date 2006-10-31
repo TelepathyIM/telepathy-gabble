@@ -37,4 +37,6 @@ LmMessageNode *lm_message_node_get_child_with_namespace (LmMessageNode *node, co
 /* format: a@b/c */
 void gabble_decode_jid (const gchar *jid, gchar **a, gchar **b, gchar **c);
 
+gpointer gabble_mixin_offset_cast (gpointer instance, guint offset);
+
 #endif /* __GABBLE_UTIL_H__ */

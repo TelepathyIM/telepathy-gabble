@@ -1214,7 +1214,7 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
           priv->state > i->max_allowed_state)
         {
           GMS_DEBUG_ERROR (session, "action \"%s\" not allowed in current "
-              "state; terminating session", action);
+              "state; rejecting", action);
           goto ACK_FAILURE;
         }
 
@@ -1228,7 +1228,7 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
   if (NULL == funcs)
     {
       GMS_DEBUG_ERROR (session, "received unrecognised action \"%s\"; "
-          "terminating session", action);
+          "rejecting", action);
       goto ACK_FAILURE;
     }
 
@@ -1249,7 +1249,7 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
 
 FUNC_ERROR:
   GMS_DEBUG_ERROR (session, "error encountered with action \"%s\" in current "
-      "state; terminating session", action);
+      "state; rejecting", action);
 
 ACK_FAILURE:
   _gabble_connection_send_iq_error (priv->conn, message,

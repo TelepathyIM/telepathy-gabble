@@ -826,8 +826,10 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
               *sub_add, *sub_rem, *sub_rp,
               *known_add, *known_rem,
               *deny_add, *deny_rem;
+      GArray *removed;
       GabbleHandle handle;
       GabbleRosterChannel *chan;
+      guint i;
 
     case LM_MESSAGE_SUB_TYPE_RESULT:
     case LM_MESSAGE_SUB_TYPE_SET:
@@ -841,6 +843,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
       sub_rp = g_intset_new ();
       known_add = g_intset_new ();
       known_rem = g_intset_new ();
+      removed = g_array_new (FALSE, FALSE, sizeof (GabbleHandle));
 
       if (google_roster)
         {
@@ -979,9 +982,10 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
                 }
             }
 
-          /* remove item last to avoid dereferencing freed memory */
+          /* delay removing items from roster until signals have been emitted;
+           * otherwise handles go out of scope! */
           if (GABBLE_ROSTER_SUBSCRIPTION_REMOVE == item->subscription)
-            _gabble_roster_item_remove (roster, handle);
+            g_array_append_val (removed, handle);
         }
 
       /* chan was initialised to the publish channel before the for loop */
@@ -1017,6 +1021,10 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
           g_intset_destroy (deny_rem);
         }
 
+      for (i = 0; i < removed->len; i++)
+          _gabble_roster_item_remove (roster,
+              g_array_index (removed, GabbleHandle, i));
+
       g_intset_destroy (empty);
       g_intset_destroy (pub_add);
       g_intset_destroy (pub_rem);
@@ -1025,6 +1033,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
       g_intset_destroy (sub_rp);
       g_intset_destroy (known_add);
       g_intset_destroy (known_rem);
+      g_array_free (removed, TRUE);
       break;
     default:
        NODE_DEBUG (iq_node, "unhandled roster IQ");

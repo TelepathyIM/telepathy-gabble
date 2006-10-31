@@ -778,9 +778,6 @@ _senders_to_direction (GabbleMediaSession *session,
   return ret;
 }
 
-static gboolean send_direction_change (GabbleMediaSession *session,
-    GabbleMediaStream *stream, TpMediaStreamDirection dir, GError **error);
-
 static gboolean
 _handle_direction (GabbleMediaSession *session,
                    LmMessage *message,
@@ -1407,6 +1404,9 @@ struct _AddDescriptionsData {
   JingleInitiator initiator;
 };
 
+static const gchar * _direction_to_senders (GabbleMediaSession *,
+    TpMediaStreamDirection);
+
 static void
 _add_content_descriptions_one (const gchar *name,
                                GabbleMediaStream *stream,
@@ -1432,8 +1432,26 @@ _add_content_descriptions_one (const gchar *name,
     }
   else
     {
-      content_node = lm_message_node_add_child (data->session_node, "content", NULL);
+      CombinedStreamDirection combined_dir;
+      TpMediaStreamDirection direction;
+
+      content_node = lm_message_node_add_child (data->session_node, "content",
+          NULL);
       lm_message_node_set_attribute (content_node, "name", name);
+
+      g_object_get (stream, "combined-direction", &combined_dir, NULL);
+      direction = COMBINED_DIRECTION_GET_DIRECTION (combined_dir);
+
+      /* we don't need to consider pending local send because it can only
+       * happen as a result of remote requests, which can't happen for
+       * new locally-created streams. we don't need to consider pending
+       * remote send because it doesn't happen in Jingle */
+      if (direction != TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL)
+        {
+          const gchar *senders;
+          senders = _direction_to_senders (data->session, direction);
+          lm_message_node_set_attribute (content_node, "senders", senders);
+        }
     }
 
   _gabble_media_stream_content_node_add_description (stream, content_node);
@@ -2585,7 +2603,7 @@ _gabble_media_session_request_streams (GabbleMediaSession *session,
   return TRUE;
 }
 
-static const gchar*
+static const gchar *
 _direction_to_senders (GabbleMediaSession *session,
                        TpMediaStreamDirection dir)
 {

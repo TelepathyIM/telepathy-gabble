@@ -500,7 +500,11 @@ _gabble_roster_item_update (GabbleRoster *roster,
 
       /* discard roster item if strange */
       if (!_google_roster_item_should_keep (node, item))
-        item->subscription = GABBLE_ROSTER_SUBSCRIPTION_REMOVE;
+        {
+          DEBUG ("Google roster: discarding odd contact %d (%s)", handle,
+              lm_message_node_get_attribute (node, "jid"));
+          item->subscription = GABBLE_ROSTER_SUBSCRIPTION_REMOVE;
+        }
     }
 
   if (item->subscription == GABBLE_ROSTER_SUBSCRIPTION_REMOVE)

@@ -1571,16 +1571,11 @@ content_accept_msg_reply_cb (GabbleConnection *conn,
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
-      GPtrArray *streams;
-
       GMS_DEBUG_ERROR (session, "content-accept failed; removing stream");
       NODE_DEBUG (sent_msg->node, "message sent");
       NODE_DEBUG (reply_msg->node, "message reply");
 
-      streams = g_ptr_array_sized_new (1);
-      g_ptr_array_add (streams, stream);
-      _gabble_media_session_remove_streams (session, streams);
-      g_ptr_array_free (streams, TRUE);
+      _gabble_media_session_remove_streams (session, &stream, 1);
 
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
@@ -1723,16 +1718,11 @@ content_add_msg_reply_cb (GabbleConnection *conn,
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
-      GPtrArray *streams;
-
       GMS_DEBUG_ERROR (session, "content-add failed; removing stream");
       NODE_DEBUG (sent_msg->node, "message sent");
       NODE_DEBUG (reply_msg->node, "message reply");
 
-      streams = g_ptr_array_sized_new (1);
-      g_ptr_array_add (streams, stream);
-      _gabble_media_session_remove_streams (session, streams);
-      g_ptr_array_free (streams, TRUE);
+      _gabble_media_session_remove_streams (session, &stream, 1);
 
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
@@ -2089,7 +2079,8 @@ ignore_reply_cb (GabbleConnection *conn,
 
 void
 _gabble_media_session_remove_streams (GabbleMediaSession *session,
-                                      const GPtrArray *streams)
+                                      GabbleMediaStream **streams,
+                                      guint len)
 {
   GabbleMediaSessionPrivate *priv;
   LmMessage *msg = NULL;
@@ -2102,7 +2093,7 @@ _gabble_media_session_remove_streams (GabbleMediaSession *session,
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
 
   /* end the session if there'd be no streams left after reducing it */
-  if (streams->len == g_hash_table_size (priv->streams))
+  if (len == g_hash_table_size (priv->streams))
     {
       _gabble_media_session_terminate (session, INITIATOR_LOCAL, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
       return;
@@ -2116,10 +2107,10 @@ _gabble_media_session_remove_streams (GabbleMediaSession *session,
                                                &session_node);
     }
 
-  /* right, remove it */
-  for (i = 0; i < streams->len; i++)
+  /* right, remove them */
+  for (i = 0; i < len; i++)
     {
-      GabbleMediaStream *stream = g_ptr_array_index (streams, i);
+      GabbleMediaStream *stream = streams[i];
 
       if (msg != NULL)
         {
@@ -2699,14 +2690,9 @@ _gabble_media_session_request_stream_direction (GabbleMediaSession *session,
 
   if (requested_dir == TP_MEDIA_STREAM_DIRECTION_NONE)
     {
-      GPtrArray *streams;
-
       GMS_DEBUG_INFO (session, "request for NONE direction; removing stream");
 
-      streams = g_ptr_array_sized_new (1);
-      g_ptr_array_add (streams, stream);
-      _gabble_media_session_remove_streams (session, streams);
-      g_ptr_array_free (streams, TRUE);
+      _gabble_media_session_remove_streams (session, &stream, 1);
 
       return TRUE;
     }

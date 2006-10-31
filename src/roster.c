@@ -389,6 +389,10 @@ _google_roster_item_is_valid_contact (LmMessageNode *item_node)
 {
   const gchar *attr;
 
+  /* skip hidden items */
+  if (_parse_google_item_type (item_node) == GOOGLE_ITEM_TYPE_HIDDEN)
+    return FALSE;
+
   /* skip automatically subscribed Google roster iterms */
   attr = lm_message_node_get_attribute (item_node, "gr:autosub");
 
@@ -480,8 +484,7 @@ _gabble_roster_item_update (GabbleRoster *roster,
       item->google_type = _parse_google_item_type (node);
 
       /* discard odd stuff that Google throws our way */
-      if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN ||
-          !_google_roster_item_is_valid_contact(node))
+      if (!_google_roster_item_is_valid_contact(node))
         item->subscription = GABBLE_ROSTER_SUBSCRIPTION_REMOVE;
     }
 

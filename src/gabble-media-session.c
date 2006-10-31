@@ -2065,15 +2065,17 @@ _gabble_media_session_accept (GabbleMediaSession *session)
   try_session_accept (session);
 }
 
-/* for when you want the reply to be removed from
- * the handler chain, but don't care what it is */
 static LmHandlerResult
-ignore_reply_cb (GabbleConnection *conn,
+remove_reply_cb (GabbleConnection *conn,
                  LmMessage *sent_msg,
                  LmMessage *reply_msg,
                  GObject *object,
                  gpointer user_data)
 {
+  GabbleMediaSession *session = GABBLE_MEDIA_SESSION (object);
+
+  MSG_REPLY_CB_END_SESSION_IF_NOT_SUCCESSFUL (session, "stream removal failed");
+
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
@@ -2148,7 +2150,7 @@ _gabble_media_session_remove_streams (GabbleMediaSession *session,
           GMS_DEBUG_INFO (session, "sending jingle session action "
               "\"content-remove\" to peer");
 
-          _gabble_connection_send_with_reply (priv->conn, msg, ignore_reply_cb,
+          _gabble_connection_send_with_reply (priv->conn, msg, remove_reply_cb,
               G_OBJECT (session), NULL, NULL);
         }
 
@@ -2160,6 +2162,18 @@ _gabble_media_session_remove_streams (GabbleMediaSession *session,
           "\"content-remove\" to peer, no initiates or adds sent for "
           "this stream");
     }
+}
+
+/* for when you want the reply to be removed from
+ * the handler chain, but don't care what it is */
+static LmHandlerResult
+ignore_reply_cb (GabbleConnection *conn,
+                 LmMessage *sent_msg,
+                 LmMessage *reply_msg,
+                 GObject *object,
+                 gpointer user_data)
+{
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static void

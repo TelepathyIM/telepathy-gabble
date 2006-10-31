@@ -475,6 +475,16 @@ _gabble_roster_item_update (GabbleRoster *roster,
   else
     item->ask_subscribe = FALSE;
 
+  if (google_roster_mode)
+    {
+      item->google_type = _parse_google_item_type (node);
+
+      /* discard odd stuff that Google throws our way */
+      if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN ||
+          !_google_roster_item_is_valid_contact(node))
+        item->subscription = GABBLE_ROSTER_SUBSCRIPTION_REMOVE;
+    }
+
   name = lm_message_node_get_attribute (node, "name");
   if (g_strdiff (item->name, name))
     {
@@ -487,16 +497,6 @@ _gabble_roster_item_update (GabbleRoster *roster,
 
   g_strfreev (item->groups);
   item->groups = _parse_item_groups (node);
-
-  if (google_roster_mode)
-    {
-      item->google_type = _parse_google_item_type (node);
-
-      /* discard odd stuff that Google throws our way */
-      if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN ||
-          !_google_roster_item_is_valid_contact(node))
-        item->subscription = GABBLE_ROSTER_SUBSCRIPTION_REMOVE;
-    }
 
   return item;
 }

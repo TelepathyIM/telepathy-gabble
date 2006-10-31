@@ -385,15 +385,12 @@ _parse_google_item_type (LmMessageNode *item_node)
 }
 
 static gboolean
-_google_roster_item_is_valid_contact (LmMessageNode *item_node)
+_google_roster_item_should_keep (LmMessageNode *item_node,
+                                 GabbleRosterItem *item)
 {
   const gchar *attr;
 
-  /* skip hidden items */
-  if (_parse_google_item_type (item_node) == GOOGLE_ITEM_TYPE_HIDDEN)
-    return FALSE;
-
-  /* skip automatically subscribed Google roster iterms */
+  /* skip automatically subscribed Google roster items */
   attr = lm_message_node_get_attribute (item_node, "gr:autosub");
 
   if (!g_strdiff (attr, "true"))
@@ -411,6 +408,10 @@ _google_roster_item_is_valid_contact (LmMessageNode *item_node)
   if (attr != NULL)
     return FALSE;
 
+  /* skip hidden items */
+  if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN)
+    return FALSE;
+
   /* allow items that have rejected a subscription */
   attr = lm_message_node_get_attribute (item_node, "gr:rejected");
 
@@ -418,13 +419,10 @@ _google_roster_item_is_valid_contact (LmMessageNode *item_node)
     return TRUE;
 
   /* allow items that we've requested a subscription from */
-  attr = lm_message_node_get_attribute (item_node, "ask");
-
-  if (!g_strdiff (attr, "subscription"))
+  if (item->ask_subscribe)
     return TRUE;
 
-  /* allow items that have some form of subscrption */
-  if (_parse_item_subscription (item_node) != GABBLE_ROSTER_SUBSCRIPTION_NONE)
+  if (item->subscription != GABBLE_ROSTER_SUBSCRIPTION_NONE)
     return TRUE;
 
   /* discard anything else */
@@ -500,8 +498,8 @@ _gabble_roster_item_update (GabbleRoster *roster,
     {
       item->google_type = _parse_google_item_type (node);
 
-      /* discard odd stuff that Google throws our way */
-      if (!_google_roster_item_is_valid_contact(node))
+      /* discard roster item if strange */
+      if (!_google_roster_item_should_keep (node, item))
         item->subscription = GABBLE_ROSTER_SUBSCRIPTION_REMOVE;
     }
 

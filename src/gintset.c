@@ -413,3 +413,23 @@ g_intset_symmetric_difference (const GIntSet *left, const GIntSet *right)
 
   return ret;
 }
+
+static void
+_dump_foreach (guint i, gpointer data)
+{
+   GString *tmp = (GString *) data;
+
+  if (tmp->len == 0)
+    g_string_append_printf (tmp, "%d", i);
+  else
+    g_string_append_printf (tmp, " %d", i);
+}
+
+gchar *
+g_intset_dump (const GIntSet *set)
+{
+  GString *tmp = g_string_new ("");
+
+  g_intset_foreach (set, _dump_foreach, tmp);
+  return g_string_free (tmp, FALSE);
+}

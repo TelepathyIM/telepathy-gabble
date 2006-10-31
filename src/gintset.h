@@ -47,4 +47,6 @@ GIntSet *g_intset_union (const GIntSet *left, const GIntSet *right);
 GIntSet *g_intset_difference (const GIntSet *left, const GIntSet *right);
 GIntSet *g_intset_symmetric_difference (const GIntSet *left, const GIntSet *right);
 
+gchar *g_intset_dump (const GIntSet *set);
+
 #endif /*__G_INTSET_H__*/

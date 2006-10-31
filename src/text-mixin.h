@@ -23,6 +23,7 @@
 
 #include "handles.h"
 #include "handle-set.h"
+#include "util.h"
 
 typedef enum {
     CHANNEL_TEXT_SEND_ERROR_UNKNOWN = 0,
@@ -62,11 +63,11 @@ GType gabble_text_mixin_get_type(void);
 /* TYPE MACROS */
 #define GABBLE_TEXT_MIXIN_CLASS_OFFSET_QUARK (gabble_text_mixin_class_get_offset_quark())
 #define GABBLE_TEXT_MIXIN_CLASS_OFFSET(o) (GPOINTER_TO_UINT (g_type_get_qdata (G_OBJECT_CLASS_TYPE (o), GABBLE_TEXT_MIXIN_CLASS_OFFSET_QUARK)))
-#define GABBLE_TEXT_MIXIN_CLASS(o) ((GabbleTextMixinClass *)((guchar *) o + GABBLE_TEXT_MIXIN_CLASS_OFFSET (o)))
+#define GABBLE_TEXT_MIXIN_CLASS(o) ((GabbleTextMixinClass *) gabble_mixin_offset_cast (o, GABBLE_TEXT_MIXIN_CLASS_OFFSET (o)))
 
 #define GABBLE_TEXT_MIXIN_OFFSET_QUARK (gabble_text_mixin_get_offset_quark())
 #define GABBLE_TEXT_MIXIN_OFFSET(o) (GPOINTER_TO_UINT (g_type_get_qdata (G_OBJECT_TYPE (o), GABBLE_TEXT_MIXIN_OFFSET_QUARK)))
-#define GABBLE_TEXT_MIXIN(o) ((GabbleTextMixin *)((guchar *) o + GABBLE_TEXT_MIXIN_OFFSET (o)))
+#define GABBLE_TEXT_MIXIN(o) ((GabbleTextMixin *) gabble_mixin_offset_cast (o, GABBLE_TEXT_MIXIN_OFFSET (o)))
 
 GQuark gabble_text_mixin_class_get_offset_quark (void);
 GQuark gabble_text_mixin_get_offset_quark (void);

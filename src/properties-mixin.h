@@ -25,6 +25,7 @@
 
 #include "handles.h"
 #include "handle-set.h"
+#include "util.h"
 
 G_BEGIN_DECLS
 
@@ -70,11 +71,11 @@ typedef struct _GabblePropertiesMixin GabblePropertiesMixin;
 /* TYPE MACROS */
 #define GABBLE_PROPERTIES_MIXIN_CLASS_OFFSET_QUARK (gabble_properties_mixin_class_get_offset_quark())
 #define GABBLE_PROPERTIES_MIXIN_CLASS_OFFSET(o) (GPOINTER_TO_UINT (g_type_get_qdata (G_OBJECT_CLASS_TYPE (o), GABBLE_PROPERTIES_MIXIN_CLASS_OFFSET_QUARK)))
-#define GABBLE_PROPERTIES_MIXIN_CLASS(o) ((GabblePropertiesMixinClass *)((guchar *) o + GABBLE_PROPERTIES_MIXIN_CLASS_OFFSET (o)))
+#define GABBLE_PROPERTIES_MIXIN_CLASS(o) ((GabblePropertiesMixinClass *) gabble_mixin_offset_cast (o, GABBLE_PROPERTIES_MIXIN_CLASS_OFFSET (o)))
 
 #define GABBLE_PROPERTIES_MIXIN_OFFSET_QUARK (gabble_properties_mixin_get_offset_quark())
 #define GABBLE_PROPERTIES_MIXIN_OFFSET(o) (GPOINTER_TO_UINT (g_type_get_qdata (G_OBJECT_TYPE (o), GABBLE_PROPERTIES_MIXIN_OFFSET_QUARK)))
-#define GABBLE_PROPERTIES_MIXIN(o) ((GabblePropertiesMixin *)((guchar *) o + GABBLE_PROPERTIES_MIXIN_OFFSET (o)))
+#define GABBLE_PROPERTIES_MIXIN(o) ((GabblePropertiesMixin *) gabble_mixin_offset_cast (o, GABBLE_PROPERTIES_MIXIN_OFFSET (o)))
 
 #define TP_TYPE_PROPERTY_INFO_STRUCT (dbus_g_type_get_struct ("GValueArray", \
       G_TYPE_UINT, \

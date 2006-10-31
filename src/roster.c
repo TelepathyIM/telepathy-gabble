@@ -485,7 +485,11 @@ _gabble_roster_item_update (GabbleRoster *roster,
         item->subscription = GABBLE_ROSTER_SUBSCRIPTION_REMOVE;
     }
 
-  name = lm_message_node_get_attribute (node, "name");
+  if (item->subscription == GABBLE_ROSTER_SUBSCRIPTION_REMOVE)
+    name = NULL;
+  else
+    name = lm_message_node_get_attribute (node, "name");
+
   if (g_strdiff (item->name, name))
     {
       g_free (item->name);

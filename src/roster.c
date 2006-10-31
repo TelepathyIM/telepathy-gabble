@@ -384,6 +384,32 @@ _parse_google_item_type (LmMessageNode *item_node)
   return GOOGLE_ITEM_TYPE_NORMAL;
 }
 
+static gboolean
+_google_roster_item_is_valid_contact (LmMessageNode *item_node)
+{
+  const gchar *attr;
+
+  /* skip automatically subscribed Google roster iterms */
+  attr = lm_message_node_get_attribute (item_node, "gr:autosub");
+
+  if (!g_strdiff (attr, "true"))
+    return FALSE;
+
+  /* skip email addresses the user has invited */
+  attr = lm_message_node_get_attribute (item_node, "gr:inv");
+
+  if (!g_strdiff (attr, "A"))
+    return FALSE;
+
+  /* skip email addresses that replied to an invite */
+  attr = lm_message_node_get_attribute (item_node, "gr:alias-for");
+
+  if (attr != NULL)
+    return FALSE;
+
+  return TRUE;
+}
+
 static GabbleRosterItem *
 _gabble_roster_item_get (GabbleRoster *roster,
                          GabbleHandle handle)
@@ -426,7 +452,8 @@ _gabble_roster_item_remove (GabbleRoster *roster,
 static GabbleRosterItem *
 _gabble_roster_item_update (GabbleRoster *roster,
                             GabbleHandle handle,
-                            LmMessageNode *node)
+                            LmMessageNode *node,
+                            gboolean google_roster_mode)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
   GabbleRosterItem *item;
@@ -456,13 +483,18 @@ _gabble_roster_item_update (GabbleRoster *roster,
       g_free (item->name);
       item->name = g_strdup (name);
 
-      DEBUG ("name for handle %d changed to %s", handle,
-          name);
+      DEBUG ("name for handle %d changed to %s", handle, name);
       g_signal_emit (G_OBJECT (roster), signals[NICKNAME_UPDATE], 0, handle);
     }
 
   g_strfreev (item->groups);
   item->groups = _parse_item_groups (node);
+
+  /* discard odd stuff that Google throws our way */
+  if (google_roster_mode &&
+      (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN ||
+        !_google_roster_item_is_valid_contact(node)))
+    item->subscription = GABBLE_ROSTER_SUBSCRIPTION_REMOVE;
 
   return item;
 }
@@ -829,7 +861,9 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
               continue;
             }
 
-          item = _gabble_roster_item_update (roster, handle, item_node);
+          item = _gabble_roster_item_update (
+            roster, handle, item_node, google_roster);
+
 #ifdef ENABLE_DEBUG
           if (DEBUGGING)
             {
@@ -838,11 +872,6 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
               g_free (dump);
             }
 #endif
-
-          /* skip hidden google roster items, these are usually e-mail
-           * addresses from the address book, not actually JIDs! */
-          if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN)
-            continue;
 
           /* handle publish list changes */
           switch (item->subscription)

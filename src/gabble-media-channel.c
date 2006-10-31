@@ -1057,8 +1057,8 @@ gboolean gabble_media_channel_remove_streams (GabbleMediaChannel *obj, const GAr
 
   /* groovy, it's all good dude, let's remove them */
   if (stream_objs->len > 0)
-    _gabble_media_session_remove_streams (priv->session, (GabbleMediaStream **) stream_objs->pdata,
-        stream_objs->len);
+    _gabble_media_session_remove_streams (priv->session, (GabbleMediaStream **)
+        stream_objs->pdata, stream_objs->len);
 
 OUT:
   g_ptr_array_free (stream_objs, TRUE);

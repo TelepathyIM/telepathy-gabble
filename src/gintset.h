@@ -33,7 +33,7 @@ void g_intset_add (GIntSet *set, guint element);
 gboolean g_intset_remove (GIntSet *set, guint element);
 gboolean g_intset_is_member (const GIntSet *set, guint element);
 
-void g_intset_foreach (GIntSet *set, GIntFunc func, gpointer userdata);
+void g_intset_foreach (const GIntSet *set, GIntFunc func, gpointer userdata);
 GArray *g_intset_to_array (GIntSet *set);
 GIntSet *g_intset_from_array (GArray *array);
 

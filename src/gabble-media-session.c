@@ -1239,11 +1239,14 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
         goto FUNC_ERROR;
     }
 
+  /* acknowledge the IQ before changing the state because the new state
+   * could perform some actions which the other end will only accept
+   * if this action has been acknowledged */
+  _gabble_connection_acknowledge_set_iq (priv->conn, message);
+
   /* if the action specified a new state to go to, set it */
   if (JS_STATE_INVALID != new_state)
     g_object_set (session, "state", new_state, NULL);
-
-  _gabble_connection_acknowledge_set_iq (priv->conn, message);
 
   return;
 

@@ -164,7 +164,7 @@ g_intset_is_member (const GIntSet *set, guint element)
  */
 
 void
-g_intset_foreach (GIntSet *set, GIntFunc func, gpointer userdata)
+g_intset_foreach (const GIntSet *set, GIntFunc func, gpointer userdata)
 {
   guint i, j;
 

@@ -223,19 +223,6 @@ create_media_stream (GabbleMediaSession *session,
                          "media-type", media_type,
                          NULL);
 
-  /* for incoming jingle streams, set the direction to none, so that the
-   * direction handler adds the right flags */
-  if (priv->mode == MODE_JINGLE && initiator == INITIATOR_REMOTE)
-    g_object_set (stream,
-        "combined-direction", TP_MEDIA_STREAM_DIRECTION_NONE,
-        NULL);
-
-  /* for incoming streams, set the signalling state to ACKNOWLEDGED */
-  if (initiator == INITIATOR_REMOTE)
-    g_object_set (stream,
-        "signalling-state", STREAM_SIG_STATE_ACKNOWLEDGED,
-        NULL);
-
   g_signal_connect (stream, "close",
                     (GCallback) stream_close_cb,
                     session);
@@ -750,6 +737,18 @@ _handle_create (GabbleMediaSession *session,
 
   stream = create_media_stream (session, stream_name, INITIATOR_REMOTE,
                                 stream_type);
+
+  /* set the signalling state to ACKNOWLEDGED */
+  g_object_set (stream,
+      "signalling-state", STREAM_SIG_STATE_ACKNOWLEDGED,
+      NULL);
+
+  /* for jingle streams, set the direction to none, so that the
+   * direction handler adds the right flags */
+  if (priv->mode == MODE_JINGLE)
+    g_object_set (stream,
+        "combined-direction", TP_MEDIA_STREAM_DIRECTION_NONE,
+        NULL);
 
   return TRUE;
 }

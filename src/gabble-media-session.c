@@ -1404,7 +1404,7 @@ struct _AddDescriptionsData {
   JingleInitiator initiator;
 };
 
-static const gchar * _direction_to_senders (GabbleMediaSession *,
+static const gchar *_direction_to_senders (GabbleMediaSession *,
     TpMediaStreamDirection);
 
 static void
@@ -1434,6 +1434,7 @@ _add_content_descriptions_one (const gchar *name,
     {
       CombinedStreamDirection combined_dir;
       TpMediaStreamDirection direction;
+      TpMediaStreamPendingSend pending_send;
 
       content_node = lm_message_node_add_child (data->session_node, "content",
           NULL);
@@ -1441,11 +1442,17 @@ _add_content_descriptions_one (const gchar *name,
 
       g_object_get (stream, "combined-direction", &combined_dir, NULL);
       direction = COMBINED_DIRECTION_GET_DIRECTION (combined_dir);
+      pending_send = COMBINED_DIRECTION_GET_PENDING_SEND (combined_dir);
 
-      /* we don't need to consider pending local send because it can only
-       * happen as a result of remote requests, which can't happen for
-       * new locally-created streams. we don't need to consider pending
-       * remote send because it doesn't happen in Jingle */
+      /* if we have a pending local send flag set, the signalled (ie understood
+       * by both ends) direction of the stream is assuming that we are actually
+       * sending, so we should OR that into the direction before deciding what
+       * to signal the stream with. we don't need to consider pending remote
+       * send because it doesn't happen in Jingle */
+
+      if ((pending_send & TP_MEDIA_STREAM_PENDING_LOCAL_SEND) != 0)
+        direction |= TP_MEDIA_STREAM_DIRECTION_SEND;
+
       if (direction != TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL)
         {
           const gchar *senders;

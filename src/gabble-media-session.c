@@ -517,7 +517,8 @@ gabble_media_session_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  _gabble_media_session_terminate (self, INITIATOR_LOCAL, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
+  _gabble_media_session_terminate (self, INITIATOR_LOCAL,
+      TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
 
   if (priv->timer_id != 0)
     g_source_remove (priv->timer_id);
@@ -1002,7 +1003,8 @@ _handle_terminate (GabbleMediaSession *session,
 {
   DEBUG ("called for %s", stream_name);
 
-  _gabble_media_session_terminate (session, INITIATOR_REMOTE, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
+  _gabble_media_session_terminate (session, INITIATOR_REMOTE,
+      TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
 
   return TRUE;
 }
@@ -1291,7 +1293,8 @@ timeout_session (gpointer data)
 
   DEBUG ("session timed out");
 
-  _gabble_media_session_terminate (session, INITIATOR_LOCAL, TP_CHANNEL_GROUP_CHANGE_REASON_ERROR);
+  _gabble_media_session_terminate (session, INITIATOR_LOCAL,
+      TP_CHANNEL_GROUP_CHANGE_REASON_ERROR);
 
   return FALSE;
 }
@@ -1313,7 +1316,11 @@ _add_ready_new_streams_one (const gchar *name,
       "signalling-state", &sig_state,
       NULL);
 
-  GMS_DEBUG_DUMP (session, "pondering accept-time add for stream: %s, got local: %s, initiator: %s, state: %d", name, got_local_codecs ? "true" : "false", initiator == INITIATOR_LOCAL ? "local" : "remote", sig_state);
+  GMS_DEBUG_DUMP (session, "pondering accept-time add for stream: %s, got "
+      "local codecs: %s, initiator: %s, signalling state: %d", name,
+      got_local_codecs ? "true" : "false",
+      initiator == INITIATOR_LOCAL ? "local" : "remote",
+      sig_state);
 
   if (got_local_codecs == FALSE)
     return;
@@ -1323,8 +1330,6 @@ _add_ready_new_streams_one (const gchar *name,
 
   if (sig_state > STREAM_SIG_STATE_NEW)
     return;
-
-  GMS_DEBUG_INFO (session, "adding new, ready & local stream %s", name);
 
   do_content_add (session, stream);
 }
@@ -1506,7 +1511,8 @@ _add_content_descriptions (GabbleMediaSession *session,
   data.session_node = session_node;
   data.initiator = stream_initiator;
 
-  g_hash_table_foreach (priv->streams, (GHFunc) _add_content_descriptions_one, &data);
+  g_hash_table_foreach (priv->streams, (GHFunc) _add_content_descriptions_one,
+      &data);
 }
 
 static LmHandlerResult
@@ -2000,7 +2006,8 @@ get_jid_for_contact (GabbleMediaSession *session,
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
   self = priv->conn->self_handle;
 
-  base_jid = gabble_handle_inspect (priv->conn->handles, TP_HANDLE_TYPE_CONTACT, handle);
+  base_jid = gabble_handle_inspect (priv->conn->handles,
+      TP_HANDLE_TYPE_CONTACT, handle);
   g_assert (base_jid != NULL);
 
   if (handle == self)
@@ -2150,7 +2157,8 @@ _gabble_media_session_remove_streams (GabbleMediaSession *session,
   /* end the session if there'd be no streams left after reducing it */
   if (len == g_hash_table_size (priv->streams))
     {
-      _gabble_media_session_terminate (session, INITIATOR_LOCAL, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
+      _gabble_media_session_terminate (session, INITIATOR_LOCAL,
+          TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
       return;
     }
 
@@ -2270,7 +2278,8 @@ send_terminate_message (GabbleMediaSession *session)
 
   msg = _gabble_media_session_message_new (session, action, &session_node);
 
-  GMS_DEBUG_INFO (session, "sending jingle session action \"%s\" to peer", action);
+  GMS_DEBUG_INFO (session, "sending jingle session action \"%s\" to peer",
+      action);
 
   /* send it */
   _gabble_connection_send_with_reply (priv->conn, msg, ignore_reply_cb,
@@ -2325,7 +2334,8 @@ _gabble_media_session_terminate (GabbleMediaSession *session,
           send_terminate_message (session);
         }
 
-      g_hash_table_foreach (priv->streams, (GHFunc) _close_one_stream, session);
+      g_hash_table_foreach (priv->streams, (GHFunc) _close_one_stream,
+          session);
     }
 
   priv->terminated = TRUE;
@@ -2510,7 +2520,8 @@ _gabble_media_session_request_streams (GabbleMediaSession *session,
       /* is a google call... we have no other option */
       if (priv->mode == MODE_GOOGLE)
         {
-          GMS_DEBUG_INFO (session, "already in Google mode; can't add new stream");
+          GMS_DEBUG_INFO (session, "already in Google mode; can't add new "
+              "stream");
 
           g_assert (g_hash_table_size (priv->streams) == 1);
 

@@ -1339,7 +1339,7 @@ session_state_changed (GabbleMediaSession *session,
       priv->timer_id = 0;
 
       /* signal any streams to the remote end which were added locally & became
-       * ready before the session was accepted, so havn't been mentioned yet */
+       * ready before the session was accepted, so haven't been mentioned yet */
       _add_ready_new_streams (session);
     }
 }

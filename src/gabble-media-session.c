@@ -1403,6 +1403,41 @@ _mark_local_streams_sent (GabbleMediaSession *session)
 }
 
 static void
+_mark_local_streams_acked_one (const gchar *name,
+                               GabbleMediaStream *stream,
+                               GabbleMediaSession *session)
+{
+  JingleInitiator initiator;
+  StreamSignallingState sig_state;
+
+  g_object_get (stream,
+      "initiator", &initiator,
+      "signalling-state", &sig_state,
+      NULL);
+
+  if (initiator == INITIATOR_REMOTE)
+    return;
+
+  if (sig_state != STREAM_SIG_STATE_SENT)
+    return;
+
+  GMS_DEBUG_INFO (session, "marking local stream %s as acknowledged", name);
+
+  g_object_set (stream,
+      "signalling-state", STREAM_SIG_STATE_ACKNOWLEDGED,
+      NULL);
+}
+
+void
+_mark_local_streams_acked (GabbleMediaSession *session)
+{
+  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+
+  g_hash_table_foreach (priv->streams, (GHFunc) _mark_local_streams_acked_one,
+      session);
+}
+
+static void
 _set_remote_streams_playing_one (const gchar *name,
                                  GabbleMediaStream *stream,
                                  GabbleMediaSession *session)
@@ -1701,6 +1736,9 @@ initiate_msg_reply_cb (GabbleConnection *conn,
 
   g_object_set (session, "state", JS_STATE_PENDING_INITIATED, NULL);
 
+  /* mark all of the streams that we sent in the initiate as acknowledged */
+  _mark_local_streams_acked (session);
+
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
@@ -1781,8 +1819,29 @@ content_add_msg_reply_cb (GabbleConnection *conn,
       NODE_DEBUG (reply_msg->node, "message reply");
 
       _gabble_media_session_remove_streams (session, &stream, 1);
+    }
+  else
+    {
+      StreamSignallingState sig_state;
 
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      g_object_get (stream,
+          "signalling-state", &sig_state,
+          NULL);
+
+      if (sig_state == STREAM_SIG_STATE_SENT)
+        {
+          GMS_DEBUG_INFO (session, "content-add succeeded, marking stream as "
+              "ACKNOWLEDGED");
+
+          g_object_set (stream,
+              "signalling-state", STREAM_SIG_STATE_ACKNOWLEDGED,
+              NULL);
+        }
+      else
+        {
+          GMS_DEBUG_INFO (session, "content-add succeeded, but not marking"
+              "stream as ACKNOWLEDGED, it's not marked as SENT");
+        }
     }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;

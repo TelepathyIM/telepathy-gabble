@@ -1197,6 +1197,8 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
   Handler *i;
   const gchar **tmp;
   GError *error = NULL;
+  guint xmpp_error = XMPP_ERROR_NOT_ALLOWED;
+  gchar *error_message = NULL;
 
   g_assert (GABBLE_IS_MEDIA_SESSION (session));
 
@@ -1261,12 +1263,24 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
   return;
 
 FUNC_ERROR:
-  GMS_DEBUG_ERROR (session, "error encountered with action \"%s\" in current "
-      "state; rejecting", action);
+  if (error != NULL)
+    {
+      xmpp_error = error->code;
+      error_message = error->message;
+
+      GMS_DEBUG_ERROR (session, error->message);
+    }
+  else
+    {
+      GMS_DEBUG_ERROR (session,
+          "error encountered with action \"%s\" in current state; rejecting",
+          action);
+    }
 
 ACK_FAILURE:
-  _gabble_connection_send_iq_error (priv->conn, message,
-                                    XMPP_ERROR_NOT_ALLOWED, NULL);
+  _gabble_connection_send_iq_error (priv->conn, message, xmpp_error,
+      error_message);
+  g_error_free (error);
 }
 
 static gboolean

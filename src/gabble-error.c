@@ -31,6 +31,8 @@ typedef struct {
     const gchar *name;
     const gchar *description;
     const gchar *type;
+    guint specialises;
+    const gchar *namespace;
     const guint16 legacy_errors[MAX_LEGACY_ERRORS];
 } XmppErrorSpec;
 
@@ -41,6 +43,8 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "the recipient or server is redirecting requests for this information "
       "to another entity",
       "modify",
+      0,
+      NULL,
       { 302, 0, },
     },
 
@@ -48,6 +52,8 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "gone",
       "the recipient or server can no longer be contacted at this address",
       "modify",
+      0,
+      NULL,
       { 302, 0, },
     },
 
@@ -55,6 +61,8 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "bad-request",
       "the sender has sent XML that is malformed or that cannot be processed",
       "modify",
+      0,
+      NULL,
       { 400, 0, },
     },
     {
@@ -62,6 +70,8 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "the recipient or server understood the request but was not expecting "
       "it at this time",
       "wait",
+      0,
+      NULL,
       { 400, 0, },
     },
     {
@@ -70,6 +80,8 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "aspect thereof (e.g., a resource identifier) that does not adhere "
       "to the syntax defined in Addressing Scheme (Section 3)",
       "modify",
+      0,
+      NULL,
       { 400, 0, },
     },
 
@@ -78,6 +90,8 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "the sender must provide proper credentials before being allowed to "
       "perform the action, or has provided improper credentials",
       "auth",
+      0,
+      NULL,
       { 401, 0, },
     },
 
@@ -86,6 +100,8 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "the requesting entity is not authorized to access the requested "
       "service because payment is required",
       "auth",
+      0,
+      NULL,
       { 402, 0, },
     },
 
@@ -94,6 +110,8 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "the requesting entity does not possess the required permissions to "
       "perform the action",
       "auth",
+      0,
+      NULL,
       { 403, 0, },
     },
 
@@ -101,12 +119,16 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "item-not-found",
       "the addressed JID or item requested cannot be found",
       "cancel",
+      0,
+      NULL,
       { 404, 0, },
     },
     {
       "recipient-unavailable",
       "the intended recipient is temporarily unavailable",
       "wait",
+      0,
+      NULL,
       { 404, 0, },
     },
     {
@@ -115,6 +137,8 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "intended recipient (or required to fulfill a request) could not be "
       "contacted within a reasonable amount of time",
       "cancel",
+      0,
+      NULL,
       { 404, 0, },
     },
 
@@ -122,6 +146,8 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "not-allowed",
       "the recipient or server does not allow any entity to perform the action",
       "cancel",
+      0,
+      NULL,
       { 405, 0, },
     },
 
@@ -131,6 +157,8 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "process it because it does not meet criteria defined by the recipient "
       "or server (e.g., a local policy regarding acceptable words in messages)",
       "modify",
+      0,
+      NULL,
       { 406, 0, },
     },
 
@@ -139,6 +167,8 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "the requesting entity is not authorized to access the requested service "
       "because registration is required",
       "auth",
+      0,
+      NULL,
       { 407, 0, },
     },
     {
@@ -146,6 +176,8 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "the requesting entity is not authorized to access the requested service "
       "because a subscription is required",
       "auth",
+      0,
+      NULL,
       { 407, 0, },
     },
 
@@ -155,6 +187,8 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "intended recipient (or required to fulfill a request) could not be "
       "contacted within a reasonable amount of time",
       "wait",
+      0,
+      NULL,
       { 408, 504, 0, },
     },
 
@@ -163,6 +197,8 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "access cannot be granted because an existing resource or session exists "
       "with the same name or address",
       "cancel",
+      0,
+      NULL,
       { 409, 0, },
     },
 
@@ -171,11 +207,15 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "the server could not process the stanza because of a misconfiguration "
       "or an otherwise-undefined internal server error",
       "wait",
+      0,
+      NULL,
       { 500, 0, },
     },
     {
       "undefined-condition",
       "application-specific condition",
+      NULL,
+      0,
       NULL,
       { 500, 0, },
     },
@@ -184,6 +224,8 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "the server or recipient lacks the system resources necessary to service "
       "the request",
       "wait",
+      0,
+      NULL,
       { 500, 0, },
     },
 
@@ -192,6 +234,8 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "the feature requested is not implemented by the recipient or server and "
       "therefore cannot be processed",
       "cancel",
+      0,
+      NULL,
       { 501, 0, },
     },
 
@@ -200,7 +244,48 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "the server or recipient does not currently provide the requested "
       "service",
       "cancel",
+      0,
+      NULL,
       { 502, 503, 510, },
+    },
+
+    {
+      "out-of-order",
+      "the request cannot occur at this point in the state machine",
+      "cancel",
+      XMPP_ERROR_UNEXPECTED_REQUEST,
+      NS_JINGLE_ERRORS,
+      { 0, },
+    },
+
+    {
+      "unknown-session",
+      "the 'sid' attribute specifies a session that is unknown to the "
+      "recipient",
+      "cancel",
+      XMPP_ERROR_BAD_REQUEST,
+      NS_JINGLE_ERRORS,
+      { 0, },
+    },
+
+    {
+      "unsupported-transports",
+      "the recipient does not support any of the desired content transport "
+      "methods",
+      "cancel",
+      XMPP_ERROR_FEATURE_NOT_IMPLEMENTED,
+      NS_JINGLE_ERRORS,
+      { 0, },
+    },
+
+    {
+      "unsupported-content",
+      "the recipient does not support any of the desired content description"
+      "formats",
+      "cancel",
+      XMPP_ERROR_FEATURE_NOT_IMPLEMENTED,
+      NS_JINGLE_ERRORS,
+      { 0, },
     },
 };
 
@@ -277,14 +362,23 @@ gabble_xmpp_error_to_node (GabbleXmppError error,
                            LmMessageNode *parent_node,
                            const gchar *errmsg)
 {
-  const XmppErrorSpec *spec;
+  const XmppErrorSpec *spec, *extra;
   LmMessageNode *error_node, *node;
   gchar str[6];
 
   if (error >= NUM_XMPP_ERRORS)
     return NULL;
 
-  spec = &xmpp_errors[error];
+  if (xmpp_errors[error].specialises)
+    {
+      extra = &xmpp_errors[error];
+      spec = &xmpp_errors[extra->specialises];
+    }
+  else
+    {
+      extra = NULL;
+      spec = &xmpp_errors[error];
+    }
 
   error_node = lm_message_node_add_child (parent_node, "error", NULL);
 
@@ -298,6 +392,12 @@ gabble_xmpp_error_to_node (GabbleXmppError error,
 
   node = lm_message_node_add_child (error_node, spec->name, NULL);
   lm_message_node_set_attribute (node, "xmlns", NS_XMPP_STANZAS);
+
+  if (extra != NULL)
+    {
+      node = lm_message_node_add_child (error_node, extra->name, NULL);
+      lm_message_node_set_attribute (node, "xmlns", extra->namespace);
+    }
 
   if (NULL != errmsg)
     lm_message_node_add_child (error_node, "text", errmsg);

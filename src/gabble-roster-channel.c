@@ -423,6 +423,21 @@ _gabble_roster_channel_remove_member_cb (GObject *obj,
       /* send <presence type="unsubscribed"> */
       ret = _gabble_roster_channel_send_presence (GABBLE_ROSTER_CHANNEL (obj),
           LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED, handle, message, error);
+
+      /* remove it from local_pending here, because roster callback doesn't
+         know if it can (subscription='none' is used both during request and
+         when it's rejected) */
+      if (handle_set_is_member (GABBLE_ROSTER_CHANNEL (obj)->group.local_pending, handle))
+        {
+          GIntSet *rem = g_intset_new ();
+          GIntSet *empty = g_intset_new();
+
+          g_intset_add (rem, handle);
+          gabble_group_mixin_change_members (obj, "", empty, rem, empty, empty, 0, 0);
+
+          g_intset_destroy (empty);
+          g_intset_destroy (rem);
+        }
     }
   /* subscribe list */
   else if (GABBLE_LIST_HANDLE_SUBSCRIBE == priv->handle)

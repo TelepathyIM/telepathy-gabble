@@ -269,6 +269,9 @@ gabble_xmpp_error_to_g_error (GabbleXmppError error)
                       xmpp_errors[error].description);
 }
 
+/*
+ * See RFC 3920: 4.7 Stream Errors, 9.3 Stanza Errors.
+ */
 LmMessageNode *
 gabble_xmpp_error_to_node (GabbleXmppError error,
                            LmMessageNode *parent_node,
@@ -297,7 +300,7 @@ gabble_xmpp_error_to_node (GabbleXmppError error,
   lm_message_node_set_attribute (node, "xmlns", NS_XMPP_STANZAS);
 
   if (NULL != errmsg)
-    lm_message_node_set_value (error_node, errmsg);
+    lm_message_node_add_child (error_node, "text", errmsg);
 
   return error_node;
 }

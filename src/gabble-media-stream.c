@@ -1319,7 +1319,8 @@ push_remote_codecs (GabbleMediaStream *stream)
 gboolean
 _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
                                              LmMessage *message,
-                                             LmMessageNode *transport_node)
+                                             LmMessageNode *transport_node,
+                                             GError **error)
 {
   GabbleMediaStreamPrivate *priv;
   LmMessageNode *node;
@@ -1499,8 +1500,7 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
   return TRUE;
 
 FAILURE:
-  _gabble_connection_send_iq_error (
-    priv->conn, message, XMPP_ERROR_BAD_REQUEST, NULL);
+  g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST, NULL);
 
   return FALSE;
 }

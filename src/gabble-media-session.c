@@ -1227,7 +1227,7 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
       if (priv->state < i->min_allowed_state ||
           priv->state > i->max_allowed_state)
         {
-          g_set_error (error, GABBLE_XMPP_ERROR,
+          g_set_error (&error, GABBLE_XMPP_ERROR,
               XMPP_ERROR_JINGLE_OUT_OF_ORDER,
               "action \"%s\" not allowed in current state; rejecting", action);
           goto ACK_FAILURE;
@@ -1242,7 +1242,7 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
   /* pointer is not NULL if we found a matching action */
   if (NULL == funcs)
     {
-      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_NOT_ALLOWED,
+      g_set_error (&error, GABBLE_XMPP_ERROR, XMPP_ERROR_NOT_ALLOWED,
           "received unrecognised action \"%s\"; rejecting", action);
       goto ACK_FAILURE;
     }

@@ -727,8 +727,8 @@ _handle_create (GabbleMediaSession *session,
     {
       if (g_hash_table_size (priv->streams) > 0)
         {
-          GMS_DEBUG_WARNING (session, "refusing to change mode because "
-              "streams already exist");
+          g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_NOT_ALLOWED,
+              "refusing to change mode because streams already exist");
           return FALSE;
         }
       else
@@ -741,8 +741,9 @@ _handle_create (GabbleMediaSession *session,
 
   if (g_hash_table_size (priv->streams) == MAX_STREAMS)
     {
-      GMS_DEBUG_WARNING (session, "refusing to create more than "
-          G_STRINGIFY (MAX_STREAMS) " streams");
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_RESOURCE_CONSTRAINT,
+          "refusing to create more than " G_STRINGIFY (MAX_STREAMS)
+          " streams");
       return FALSE;
     }
 
@@ -803,8 +804,8 @@ _handle_direction (GabbleMediaSession *session,
 
   if (stream == NULL)
     {
-      GMS_DEBUG_WARNING (session, "unable to handle direction for unknown "
-          "stream \"%s\"", stream_name);
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_ITEM_NOT_FOUND,
+          "unable to handle direction for unknown stream \"%s\"", stream_name);
       return FALSE;
     }
 
@@ -816,8 +817,9 @@ _handle_direction (GabbleMediaSession *session,
 
   if (requested_dir == TP_MEDIA_STREAM_DIRECTION_NONE)
     {
-      GMS_DEBUG_WARNING (session, "received invalid content senders value "
-          "\"%s\" on stream \"%s\"; rejecting", senders, stream_name);
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_NOT_ALLOWED,
+          "received invalid content senders value \"%s\" on stream \"%s\"; "
+          "rejecting", senders, stream_name);
       return FALSE;
     }
 
@@ -869,8 +871,8 @@ _handle_accept (GabbleMediaSession *session,
 {
   if (stream == NULL)
     {
-      GMS_DEBUG_WARNING (session, "unable to handle accept for unknown stream "
-          "\"%s\"", stream_name);
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_ITEM_NOT_FOUND,
+          "unable to handle accept for unknown stream \"%s\"", stream_name);
       return FALSE;
     }
 
@@ -892,24 +894,21 @@ _handle_codecs (GabbleMediaSession *session,
 {
   if (stream == NULL)
     {
-      GMS_DEBUG_WARNING (session, "unable to handle codecs for unknown stream "
-          "\"%s\"", stream_name);
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_ITEM_NOT_FOUND,
+          "unable to handle codecs for unknown stream \"%s\"", stream_name);
       return FALSE;
     }
 
   if (desc_node == NULL)
     {
-      GMS_DEBUG_WARNING (session, "unable to handle codecs without a content "
-          "description node");
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_NOT_ALLOWED,
+          "unable to handle codecs without a content description node");
       return FALSE;
     }
 
-  if (!_gabble_media_stream_post_remote_codecs (stream, message, desc_node))
-    {
-      GMS_DEBUG_INFO (session, "_gabble_media_stream_post_remote_codecs "
-          "failed");
-      return FALSE;
-    }
+  if (!_gabble_media_stream_post_remote_codecs (stream, message, desc_node,
+        error))
+    return FALSE;
 
   return TRUE;
 }
@@ -929,8 +928,9 @@ _handle_candidates (GabbleMediaSession *session,
 
   if (stream == NULL)
     {
-      GMS_DEBUG_WARNING (session, "unable to handle candidates for unknown "
-          "stream \"%s\"", stream_name);
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_ITEM_NOT_FOUND,
+          "unable to handle candidates for unknown stream \"%s\"",
+          stream_name);
       return FALSE;
     }
 
@@ -942,19 +942,15 @@ _handle_candidates (GabbleMediaSession *session,
         }
       else
         {
-          GMS_DEBUG_WARNING (session, "unable to handle candidates without a "
-              "transport node");
+          g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_NOT_ALLOWED,
+              "unable to handle candidates without a transport node");
           return FALSE;
         }
     }
 
   if (!_gabble_media_stream_post_remote_candidates (stream, message,
-        trans_node))
-    {
-      GMS_DEBUG_INFO (session, "_gabble_media_stream_post_remote_candidates "
-          "failed");
-      return FALSE;
-    }
+        trans_node, error))
+    return FALSE;
 
   return TRUE;
 }
@@ -974,8 +970,9 @@ _handle_remove (GabbleMediaSession *session,
 
   if (stream == NULL)
     {
-      GMS_DEBUG_WARNING (session, "unable to handle content-remove for "
-          "unknown stream \"%s\"", stream_name);
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_ITEM_NOT_FOUND,
+          "unable to handle content-remove for unknown stream \"%s\"",
+          stream_name);
       return FALSE;
     }
 

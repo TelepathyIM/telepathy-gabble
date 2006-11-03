@@ -1191,12 +1191,12 @@ _gabble_media_stream_close (GabbleMediaStream *stream)
 gboolean
 _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream,
                                          LmMessage *message,
-                                         LmMessageNode *desc_node)
+                                         LmMessageNode *desc_node,
+                                         GError **error)
 {
   GabbleMediaStreamPrivate *priv;
   LmMessageNode *node;
   GPtrArray *codecs;
-  gchar *xml;
 
   g_assert (GABBLE_IS_MEDIA_STREAM (stream));
 
@@ -1218,9 +1218,9 @@ _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream,
       str = lm_message_node_get_attribute (node, "id");
       if (str == NULL)
         {
-          GMS_DEBUG_ERROR (priv->session, "_gabble_media_stream_post_remote_codecs "
-                           "failed: failed to get attribute \"id\"");
-          goto FAILURE;
+          g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+              "description has no ID");
+          return FALSE;
         }
 
       id = atoi(str);
@@ -1288,17 +1288,6 @@ _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream,
   push_remote_codecs (stream);
 
   return TRUE;
-
-FAILURE:
-  xml = lm_message_node_to_string (node);
-  GMS_DEBUG_DUMP (priv->session, "  node: [%s%s%s]",
-                  ANSI_BOLD_OFF, xml, ANSI_BOLD_ON);
-  g_free (xml);
-
-  _gabble_connection_send_iq_error (
-    priv->conn, message, XMPP_ERROR_NOT_ALLOWED, NULL);
-
-  return FALSE;
 }
 
 static void

@@ -666,7 +666,8 @@ _handle_create (GabbleMediaSession *session,
                 const gchar *stream_name,
                 GabbleMediaStream *stream,
                 LmMessageNode *desc_node,
-                LmMessageNode *trans_node)
+                LmMessageNode *trans_node,
+                GError **error)
 {
   GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
   GabbleMediaSessionMode session_mode;
@@ -785,7 +786,8 @@ _handle_direction (GabbleMediaSession *session,
                    const gchar *stream_name,
                    GabbleMediaStream *stream,
                    LmMessageNode *desc_node,
-                   LmMessageNode *trans_node)
+                   LmMessageNode *trans_node,
+                   GError **error)
 {
   GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
   const gchar *senders;
@@ -859,7 +861,8 @@ _handle_accept (GabbleMediaSession *session,
                 const gchar *stream_name,
                 GabbleMediaStream *stream,
                 LmMessageNode *desc_node,
-                LmMessageNode *trans_node)
+                LmMessageNode *trans_node,
+                GError **error)
 {
   if (stream == NULL)
     {
@@ -881,7 +884,8 @@ _handle_codecs (GabbleMediaSession *session,
                 const gchar *stream_name,
                 GabbleMediaStream *stream,
                 LmMessageNode *desc_node,
-                LmMessageNode *trans_node)
+                LmMessageNode *trans_node,
+                GError **error)
 {
   if (stream == NULL)
     {
@@ -915,7 +919,8 @@ _handle_candidates (GabbleMediaSession *session,
                     const gchar *stream_name,
                     GabbleMediaStream *stream,
                     LmMessageNode *desc_node,
-                    LmMessageNode *trans_node)
+                    LmMessageNode *trans_node,
+                    GError **error)
 {
   GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
 
@@ -959,7 +964,8 @@ _handle_remove (GabbleMediaSession *session,
                 const gchar *stream_name,
                 GabbleMediaStream *stream,
                 LmMessageNode *desc_node,
-                LmMessageNode *trans_node)
+                LmMessageNode *trans_node,
+                GError **error)
 {
   GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
 
@@ -991,7 +997,8 @@ _handle_terminate (GabbleMediaSession *session,
                    const gchar *stream_name,
                    GabbleMediaStream *stream,
                    LmMessageNode *desc_node,
-                   LmMessageNode *trans_node)
+                   LmMessageNode *trans_node,
+                   GError **error)
 {
   DEBUG ("called for %s", stream_name);
 
@@ -1007,7 +1014,8 @@ typedef gboolean (*StreamHandlerFunc)(GabbleMediaSession *session,
                                       const gchar *stream_name,
                                       GabbleMediaStream *stream,
                                       LmMessageNode *desc_node,
-                                      LmMessageNode *trans_node);
+                                      LmMessageNode *trans_node,
+                                      GError **error);
 
 typedef struct _Handler Handler;
 
@@ -1098,7 +1106,8 @@ _call_handlers_on_stream (GabbleMediaSession *session,
                           LmMessage *message,
                           LmMessageNode *content_node,
                           const gchar *stream_name,
-                          StreamHandlerFunc *func)
+                          StreamHandlerFunc *func,
+                          GError **error)
 {
   GabbleMediaStream *stream = NULL;
   LmMessageNode *desc_node = NULL, *trans_node = NULL;
@@ -1119,7 +1128,7 @@ _call_handlers_on_stream (GabbleMediaSession *session,
          stream = _lookup_stream_by_name (session, stream_name);
 
        if (!(*tmp) (session, message, content_node, stream_name, stream,
-             desc_node, trans_node))
+             desc_node, trans_node, error))
          return FALSE;
     }
 
@@ -1131,12 +1140,13 @@ static gboolean
 _call_handlers_on_streams (GabbleMediaSession *session,
                            LmMessage *message,
                            LmMessageNode *session_node,
-                           StreamHandlerFunc *func)
+                           StreamHandlerFunc *func,
+                           GError **error)
 {
   if (lm_message_node_has_namespace (session_node, NS_GOOGLE_SESSION, NULL))
     {
       if (!_call_handlers_on_stream (session, message, session_node,
-            GTALK_STREAM_NAME, func))
+            GTALK_STREAM_NAME, func, error))
         return FALSE;
     }
   else
@@ -1144,7 +1154,8 @@ _call_handlers_on_streams (GabbleMediaSession *session,
       LmMessageNode *content_node;
 
       if (session_node->children == NULL)
-        return _call_handlers_on_stream (session, message, NULL, NULL, func);
+        return _call_handlers_on_stream (session, message, NULL, NULL, func,
+            error);
 
       for (content_node = session_node->children;
            NULL != content_node;
@@ -1165,7 +1176,7 @@ _call_handlers_on_streams (GabbleMediaSession *session,
             }
 
           if (!_call_handlers_on_stream (session, message, content_node,
-                stream_name, func))
+                stream_name, func, error))
             return FALSE;
         }
     }
@@ -1185,6 +1196,7 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
   JingleSessionState new_state = JS_STATE_INVALID;
   Handler *i;
   const gchar **tmp;
+  GError *error = NULL;
 
   g_assert (GABBLE_IS_MEDIA_SESSION (session));
 
@@ -1232,7 +1244,8 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
   /* call handlers if there are any (NULL-terminated array) */
   if (NULL != *funcs)
     {
-      if (!_call_handlers_on_streams (session, message, session_node, funcs))
+      if (!_call_handlers_on_streams (session, message, session_node, funcs,
+            &error))
         goto FUNC_ERROR;
     }
 

@@ -675,15 +675,16 @@ _handle_create (GabbleMediaSession *session,
 
   if (stream != NULL)
     {
-      GMS_DEBUG_WARNING (session, "can't create new stream called \"%s\", it "
-          "already exists; rejecting", stream_name);
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_NOT_ALLOWED,
+          "can't create new stream called \"%s\", it already exists, "
+          "rejecting", stream_name);
       return FALSE;
     }
 
   if (desc_node == NULL)
     {
-      GMS_DEBUG_WARNING (session, "unable to create stream without a "
-          "content description");
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_NOT_ALLOWED,
+          "unable to create stream without a content description");
       return FALSE;
     }
 
@@ -707,16 +708,18 @@ _handle_create (GabbleMediaSession *session,
     }
   else
     {
-      GMS_DEBUG_WARNING (session, "refusing to create stream for "
-          "unsupported content description");
+      g_set_error (error, GABBLE_XMPP_ERROR,
+          XMPP_ERROR_JINGLE_UNSUPPORTED_CONTENT,
+          "refusing to create stream for unsupported content description");
       return FALSE;
     }
 
   /* MODE_GOOGLE is allowed to have a null transport node */
   if (session_mode == MODE_JINGLE && trans_node == NULL)
     {
-      GMS_DEBUG_WARNING (session, "refusing to create stream for "
-          "unsupported transport");
+      g_set_error (error, GABBLE_XMPP_ERROR,
+          XMPP_ERROR_JINGLE_UNSUPPORTED_TRANSPORT,
+          "refusing to create stream for unsupported transport");
       return FALSE;
     }
 
@@ -1224,8 +1227,9 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
       if (priv->state < i->min_allowed_state ||
           priv->state > i->max_allowed_state)
         {
-          GMS_DEBUG_ERROR (session, "action \"%s\" not allowed in current "
-              "state; rejecting", action);
+          g_set_error (error, GABBLE_XMPP_ERROR,
+              XMPP_ERROR_JINGLE_OUT_OF_ORDER,
+              "action \"%s\" not allowed in current state; rejecting", action);
           goto ACK_FAILURE;
         }
 
@@ -1238,8 +1242,8 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
   /* pointer is not NULL if we found a matching action */
   if (NULL == funcs)
     {
-      GMS_DEBUG_ERROR (session, "received unrecognised action \"%s\"; "
-          "rejecting", action);
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_NOT_ALLOWED,
+          "received unrecognised action \"%s\"; rejecting", action);
       goto ACK_FAILURE;
     }
 

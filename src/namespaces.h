@@ -36,6 +36,7 @@
 #define NS_JINGLE               "http://jabber.org/protocol/jingle"
 #define NS_JINGLE_DESCRIPTION_AUDIO "http://jabber.org/protocol/jingle/description/audio"
 #define NS_JINGLE_DESCRIPTION_VIDEO "http://jabber.org/protocol/jingle/description/video"
+#define NS_JINGLE_ERRORS            "http://jabber.org/protocol/jingle#errors"
 #define NS_JINGLE_TRANSPORT_ICE     "http://jabber.org/protocol/jingle/transport/ice"
 #define NS_MUC                  "http://jabber.org/protocol/muc"
 #define NS_MUC_USER             "http://jabber.org/protocol/muc#user"

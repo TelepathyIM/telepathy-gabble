@@ -660,12 +660,12 @@ _handle_create (GabbleMediaSession *session,
   GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
   GabbleMediaSessionMode session_mode;
   TpMediaStreamType stream_type;
+  gboolean override_existing = FALSE;
 
   if (stream != NULL)
     {
-      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_NOT_ALLOWED,
-          "can't create new stream called \"%s\", it already exists, "
-          "rejecting", stream_name);
+      GMS_DEBUG_WARNING (session, "can't create new stream called \"%s\", it "
+          "already exists; rejecting", stream_name);
       return FALSE;
     }
 
@@ -725,6 +725,20 @@ _handle_create (GabbleMediaSession *session,
               session_mode == MODE_GOOGLE ? "google" : "jingle");
           priv->mode = session_mode;
         }
+    }
+
+  if (override_existing)
+    {
+      GMS_DEBUG_INFO (session, "removing our unacknowledged stream \"%s\" "
+          "in favour of the session initiator's", stream_name);
+
+      /* set state to removing so we don't signal the removal */
+      g_object_set (stream, "signalling-state", STREAM_SIG_STATE_REMOVING,
+          NULL);
+
+      _gabble_media_session_remove_streams (session, &stream, 1);
+
+      stream = NULL;
     }
 
   if (g_hash_table_size (priv->streams) == MAX_STREAMS)

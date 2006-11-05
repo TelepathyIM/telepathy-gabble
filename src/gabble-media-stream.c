@@ -1160,7 +1160,8 @@ push_native_candidates (GabbleMediaStream *stream)
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
-  if (priv->signalling_state == STREAM_SIG_STATE_NEW)
+  if (priv->signalling_state == STREAM_SIG_STATE_NEW ||
+      priv->signalling_state == STREAM_SIG_STATE_REMOVING)
     return;
 
   candidates = g_value_get_boxed (&priv->native_candidates);

@@ -1840,7 +1840,7 @@ content_add_msg_reply_cb (GabbleConnection *conn,
       else
         {
           GMS_DEBUG_INFO (session, "content-add succeeded, but not marking"
-              "stream as ACKNOWLEDGED, it's not marked as SENT");
+              "stream as ACKNOWLEDGED, it's in state %d", sig_state);
         }
     }
 
@@ -2243,7 +2243,8 @@ _gabble_media_session_remove_streams (GabbleMediaSession *session,
               "signalling-state", &sig_state,
               NULL);
 
-          if (sig_state > STREAM_SIG_STATE_NEW)
+          if (sig_state > STREAM_SIG_STATE_NEW &&
+              sig_state < STREAM_SIG_STATE_REMOVING)
             {
               LmMessageNode *content_node;
 
@@ -2778,10 +2779,11 @@ send_direction_change (GabbleMediaSession *session,
       "signalling-state", &sig_state,
       NULL);
 
-  if (sig_state == STREAM_SIG_STATE_NEW)
+  if (sig_state == STREAM_SIG_STATE_NEW ||
+      sig_state == STREAM_SIG_STATE_REMOVING)
     {
-      GMS_DEBUG_INFO (session, "not sending content-modify for new stream %s",
-          name);
+      GMS_DEBUG_INFO (session, "not sending content-modify for %s stream %s",
+          sig_state == STREAM_SIG_STATE_NEW ? "new" : "removing", name);
       g_free (name);
       return TRUE;
     }

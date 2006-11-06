@@ -664,9 +664,30 @@ _handle_create (GabbleMediaSession *session,
 
   if (stream != NULL)
     {
-      GMS_DEBUG_WARNING (session, "can't create new stream called \"%s\", it "
-          "already exists; rejecting", stream_name);
-      return FALSE;
+      StreamSignallingState sig_state;
+
+      g_object_get (stream, "signalling-state", &sig_state, NULL);
+
+      /* streams added by the session initiator may replace similarly-named
+       * streams which we are trying to add (but havn't had acknowledged) */
+      if (sig_state == STREAM_SIG_STATE_SENT)
+        {
+          if (priv->initiator == INITIATOR_REMOTE)
+            {
+              override_existing = TRUE;
+            }
+          else
+            {
+              /* FIXME: ignore the request, or error out? */
+            }
+        }
+      else
+        {
+          g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_NOT_ALLOWED,
+              "can't create new stream called \"%s\", it already exists, "
+              "rejecting", stream_name);
+          return FALSE;
+        }
     }
 
   if (desc_node == NULL)

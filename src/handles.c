@@ -267,9 +267,8 @@ gabble_handle_jid_is_valid (TpHandleType type, const gchar *jid, GError **error)
         {
           g_debug ("%s: jid %s has no @", G_STRFUNC, jid);
 
-          if (error)
-            *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                                  "jid %s has no @", jid);
+          g_set_error (error, TELEPATHY_ERRORS, InvalidArgument,
+                       "jid %s has no @", jid);
 
           return FALSE;
         }
@@ -296,12 +295,8 @@ gabble_handle_type_is_valid (TpHandleType type, GError **error)
     }
   else
     {
-      if (error != NULL)
-        {
-          *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                                "invalid handle type %u", type);
-        }
-
+      g_set_error (error, TELEPATHY_ERRORS, InvalidArgument,
+                   "invalid handle type %u", type);
       ret = FALSE;
     }
 
@@ -504,7 +499,7 @@ gabble_handles_are_valid (GabbleHandleRepo *repo,
 
           g_debug ("someone tried to validate handle zero");
 
-          *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+          g_set_error (error, TELEPATHY_ERRORS, InvalidArgument,
               "invalid handle %u", handle);
           return FALSE;
         }
@@ -862,14 +857,14 @@ gabble_handle_client_hold (GabbleHandleRepo *repo,
       return TRUE;
     default:
       g_critical ("%s: called with invalid handle type %u", G_STRFUNC, type);
-      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument, "invalid handle type %u", type);
+      g_set_error (error, TELEPATHY_ERRORS, InvalidArgument, "invalid handle type %u", type);
       return FALSE;
     }
 
   if (!client_name || *client_name == '\0')
     {
       g_critical ("%s: called with invalid client name", G_STRFUNC);
-      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument, "invalid client name");
+      g_set_error (error, TELEPATHY_ERRORS, InvalidArgument, "invalid client name");
       return FALSE;
     }
 
@@ -926,14 +921,14 @@ gabble_handle_client_release (GabbleHandleRepo *repo,
       return TRUE;
     default:
       g_critical ("%s: called with invalid handle type %u", G_STRFUNC, type);
-      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument, "invalid handle type %u", type);
+      g_set_error (error, TELEPATHY_ERRORS, InvalidArgument, "invalid handle type %u", type);
       return FALSE;
     }
 
   if (!client_name || *client_name == '\0')
     {
       g_critical ("%s: called with invalid client name", G_STRFUNC);
-      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument, "invalid client name");
+      g_set_error (error, TELEPATHY_ERRORS, InvalidArgument, "invalid client name");
       return FALSE;
     }
 
@@ -942,18 +937,18 @@ gabble_handle_client_release (GabbleHandleRepo *repo,
   if (!handle_set)
     {
       g_critical ("%s: no handle set found for the given client %s", G_STRFUNC, client_name);
-      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
-                            "the given client %s wasn't holding any handles",
-                            client_name);
+      g_set_error (error, TELEPATHY_ERRORS, NotAvailable,
+                          "the given client %s wasn't holding any handles",
+                          client_name);
       return FALSE;
     }
 
   if (!handle_set_remove (handle_set, handle))
     {
       g_critical ("%s: the client %s wasn't holding the handle %u", G_STRFUNC, client_name, handle);
-      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
-                            "the given client %s wasn't holding the handle %u",
-                            client_name, handle);
+      g_set_error (error, TELEPATHY_ERRORS, NotAvailable,
+                   "the given client %s wasn't holding the handle %u",
+                   client_name, handle);
       return FALSE;
     }
 

@@ -1825,23 +1825,31 @@ content_add_msg_reply_cb (GabbleConnection *conn,
 {
   GabbleMediaSession *session = GABBLE_MEDIA_SESSION (user_data);
   GabbleMediaStream *stream = GABBLE_MEDIA_STREAM (object);
+  StreamSignallingState sig_state;
+
+  g_object_get (stream,
+      "signalling-state", &sig_state,
+      NULL);
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
-      GMS_DEBUG_ERROR (session, "content-add failed; removing stream");
-      NODE_DEBUG (sent_msg->node, "message sent");
-      NODE_DEBUG (reply_msg->node, "message reply");
+      if (priv->initiator == INITIATOR_REMOTE &&
+          sig_state == STREAM_SIG_STATE_ACKNOWLEDGED)
+        {
+          GMS_DEBUG_INFO (session, "ignoring content-add failure, stream has "
+              "been successfully created by the session initiator");
+        }
+      else
+        {
+          GMS_DEBUG_ERROR (session, "content-add failed; removing stream");
+          NODE_DEBUG (sent_msg->node, "message sent");
+          NODE_DEBUG (reply_msg->node, "message reply");
 
-      _gabble_media_session_remove_streams (session, &stream, 1);
+          _gabble_media_session_remove_streams (session, &stream, 1);
+        }
     }
   else
     {
-      StreamSignallingState sig_state;
-
-      g_object_get (stream,
-          "signalling-state", &sig_state,
-          NULL);
-
       if (sig_state == STREAM_SIG_STATE_SENT)
         {
           GMS_DEBUG_INFO (session, "content-add succeeded, marking stream as "

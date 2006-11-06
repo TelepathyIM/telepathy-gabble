@@ -1162,13 +1162,28 @@ _call_handlers_on_stream (GabbleMediaSession *session,
 
   for (tmp = func; *tmp != NULL; tmp++)
     {
-       /* handlers may create the stream */
-       if (stream == NULL && stream_name != NULL)
-         stream = _lookup_stream_by_name (session, stream_name);
+      /* handlers may create the stream */
+      if (stream == NULL && stream_name != NULL)
+        stream = _lookup_stream_by_name (session, stream_name);
 
-       if (!(*tmp) (session, message, content_node, stream_name, stream,
-             desc_node, trans_node, error))
-         return FALSE;
+      /* don't do anything with actions on streams which have not been
+       * acknowledged, or that we're trying to remove, to deal with
+       * adding/removing race conditions (actions sent by the other end
+       * before they're aware that we've added or removed a stream) */
+      if (stream != NULL)
+        {
+          StreamSignallingState sig_state;
+
+          g_object_get (stream, "signalling-state", &sig_state, NULL);
+
+          if (sig_state == STREAM_SIG_STATE_SENT ||
+              sig_state == STREAM_SIG_STATE_REMOVING)
+            return TRUE;
+        }
+
+      if (!(*tmp) (session, message, content_node, stream_name, stream,
+            desc_node, trans_node, error))
+        return FALSE;
     }
 
   return TRUE;

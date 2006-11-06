@@ -1402,6 +1402,7 @@ _gabble_connection_connect (GabbleConnection *conn,
           "Invalid JID: %s@%s", priv->username, priv->stream_server);
       return FALSE;
     }
+  gabble_handle_ref (conn->handles, TP_HANDLE_TYPE_CONTACT, conn->self_handle);
 
   /* set initial presence */
   /* TODO: some way for the user to set this */
@@ -1539,6 +1540,15 @@ connection_status_change (GabbleConnection        *conn,
           (conn->status == TP_CONN_STATUS_NEW))
         {
           conn->status = status;
+
+          /* unref our self handle if it's set */
+          if (conn->self_handle != 0)
+            {
+              gabble_handle_unref (conn->handles, TP_HANDLE_TYPE_CONTACT,
+                  conn->self_handle);
+              conn->self_handle = 0;
+            }
+
           DEBUG ("new connection closed; emitting DISCONNECTED");
           g_signal_emit (conn, signals[DISCONNECTED], 0);
           return;

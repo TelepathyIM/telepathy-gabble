@@ -678,7 +678,10 @@ _handle_create (GabbleMediaSession *session,
             }
           else
             {
-              /* FIXME: ignore the request, or error out? */
+              g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_CONFLICT,
+                  "session initiator is creating a stream named \"%s\" already",
+                  stream_name);
+              return FALSE;
             }
         }
       else

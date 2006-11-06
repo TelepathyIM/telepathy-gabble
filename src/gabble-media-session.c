@@ -1848,6 +1848,7 @@ content_add_msg_reply_cb (GabbleConnection *conn,
                           gpointer user_data)
 {
   GabbleMediaSession *session = GABBLE_MEDIA_SESSION (user_data);
+  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
   GabbleMediaStream *stream = GABBLE_MEDIA_STREAM (object);
   StreamSignallingState sig_state;
 

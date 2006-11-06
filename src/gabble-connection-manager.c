@@ -223,8 +223,8 @@ get_parameters (const char *proto, const GabbleParamSpec **params, GError **erro
     {
       g_debug ("%s: unknown protocol %s", G_STRFUNC, proto);
 
-      *error = g_error_new (TELEPATHY_ERRORS, NotImplemented,
-                            "unknown protocol %s", proto);
+      g_set_error (error, TELEPATHY_ERRORS, NotImplemented,
+          "unknown protocol %s", proto);
 
       return FALSE;
     }
@@ -283,10 +283,10 @@ set_param_from_value (const GabbleParamSpec *paramspec,
                G_STRFUNC,
                g_type_name (paramspec->gtype), paramspec->name,
                G_VALUE_TYPE_NAME (value));
-      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                            "expected type %s for account parameter %s, got %s",
-                            g_type_name (paramspec->gtype), paramspec->name,
-                            G_VALUE_TYPE_NAME (value));
+      g_set_error (error, TELEPATHY_ERRORS, InvalidArgument,
+          "expected type %s for account parameter %s, got %s",
+          g_type_name (paramspec->gtype), paramspec->name,
+          G_VALUE_TYPE_NAME (value));
       return FALSE;
     }
 
@@ -349,9 +349,8 @@ parse_parameters (const GabbleParamSpec *paramspec,
             {
               g_debug ("%s: missing mandatory param %s",
                        G_STRFUNC, paramspec[i].name);
-              *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                                    "missing mandatory account parameter %s",
-                                    paramspec[i].name);
+              g_set_error (error, TELEPATHY_ERRORS, InvalidArgument,
+                  "missing mandatory account parameter %s", paramspec[i].name);
               return FALSE;
             }
           else
@@ -364,9 +363,8 @@ parse_parameters (const GabbleParamSpec *paramspec,
         {
           if (!set_param_from_value (&paramspec[i], value, params, error))
             {
-              *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                                    "invalid value for parameter %s",
-                                    paramspec[i].name);
+              g_set_error (error, TELEPATHY_ERRORS, InvalidArgument,
+                  "invalid value for parameter %s", paramspec[i].name);
               return FALSE;
             }
 
@@ -399,8 +397,8 @@ parse_parameters (const GabbleParamSpec *paramspec,
   if (unhandled)
     {
       g_debug ("%s: unknown argument name provided", G_STRFUNC);
-      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                            "unknown argument name provided");
+      g_set_error (error, TELEPATHY_ERRORS, InvalidArgument,
+          "unknown argument name provided");
       return FALSE;
     }
 

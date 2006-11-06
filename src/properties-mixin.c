@@ -239,8 +239,8 @@ gabble_properties_mixin_get_properties (GObject *obj, const GArray *properties, 
       /* Valid? */
       if (prop_id >= mixin_cls->num_props)
         {
-          *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                                "invalid property identifier %d", prop_id);
+          g_set_error (error, TELEPATHY_ERRORS, InvalidArgument,
+              "invalid property identifier %d", prop_id);
 
           return FALSE;
         }
@@ -248,8 +248,8 @@ gabble_properties_mixin_get_properties (GObject *obj, const GArray *properties, 
       /* Permitted? */
       if (!gabble_properties_mixin_is_readable (obj, prop_id))
         {
-          *error = g_error_new (TELEPATHY_ERRORS, PermissionDenied,
-                                "permission denied for property identifier %d", prop_id);
+          g_set_error (error, TELEPATHY_ERRORS, PermissionDenied,
+              "permission denied for property identifier %d", prop_id);
 
           return FALSE;
         }

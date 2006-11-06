@@ -1966,8 +1966,8 @@ gabble_muc_channel_close (GabbleMucChannel *self,
     {
       DEBUG ("channel already closed");
 
-      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
-                            "Channel already closed");
+      g_set_error (error, TELEPATHY_ERRORS, NotAvailable,
+          "Channel already closed");
 
       return FALSE;
     }
@@ -2405,8 +2405,8 @@ gabble_muc_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *m
       if (handle_set_is_member (mixin->members, handle) ||
           handle_set_is_member (mixin->remote_pending, handle))
         {
-          *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
-                                "already a member or in remote pending");
+          g_set_error (error, TELEPATHY_ERRORS, NotAvailable,
+              "already a member or in remote pending");
 
           return FALSE;
         }
@@ -2453,8 +2453,8 @@ gabble_muc_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *m
   /* check that we're indeed a member when attempting to invite others */
   if (priv->state < MUC_STATE_JOINED)
     {
-      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
-                            "channel membership is required for inviting others");
+      g_set_error (error, TELEPATHY_ERRORS, NotAvailable,
+          "channel membership is required for inviting others");
 
       return FALSE;
     }

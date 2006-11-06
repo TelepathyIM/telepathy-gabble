@@ -84,8 +84,8 @@
   if ((CONN)->status != TP_CONN_STATUS_CONNECTED) \
     { \
       DEBUG ("rejected request as disconnected"); \
-      (ERROR) = g_error_new(TELEPATHY_ERRORS, NotAvailable, \
-                            "Connection is disconnected"); \
+      g_set_error (ERROR, TELEPATHY_ERRORS, NotAvailable, \
+          "Connection is disconnected"); \
       return FALSE; \
     }
 
@@ -93,8 +93,8 @@
   if ((CONN)->status != TP_CONN_STATUS_CONNECTED) \
     { \
       DEBUG ("rejected request as disconnected"); \
-      (ERROR) = g_error_new(TELEPATHY_ERRORS, NotAvailable, \
-                            "Connection is disconnected"); \
+      (ERROR) = g_error_new (TELEPATHY_ERRORS, NotAvailable, \
+          "Connection is disconnected"); \
       dbus_g_method_return_error ((CONTEXT), (ERROR)); \
       g_error_free ((ERROR)); \
       return; \
@@ -974,8 +974,8 @@ _gabble_connection_set_properties_from_account (GabbleConnection *conn,
   if (username == NULL || server == NULL ||
       *username == '\0' || *server == '\0')
     {
-      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                            "unable to get username and server from account");
+      g_set_error (error, TELEPATHY_ERRORS, InvalidArgument,
+          "unable to get username and server from account");
       result = FALSE;
       goto OUT;
     }
@@ -1052,8 +1052,9 @@ _gabble_connection_register (GabbleConnection *conn,
                           G_TYPE_UINT, &request_name_result,
                           G_TYPE_INVALID))
     {
-      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable, "Error acquiring "
-          "bus name %s: %s", conn->bus_name, request_error->message);
+      g_set_error (error, TELEPATHY_ERRORS, NotAvailable,
+          "Error acquiring bus name %s: %s", conn->bus_name,
+          request_error->message);
 
       g_error_free (request_error);
 
@@ -1082,8 +1083,8 @@ _gabble_connection_register (GabbleConnection *conn,
           msg = "Unknown error return from ReleaseName";
         }
 
-      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable, "Error acquiring "
-          "bus name %s: %s", conn->bus_name, msg);
+      g_set_error (error, TELEPATHY_ERRORS, NotAvailable,
+          "Error acquiring bus name %s: %s", conn->bus_name, msg);
 
       g_free (conn->bus_name);
       conn->bus_name = NULL;
@@ -1123,11 +1124,8 @@ _gabble_connection_send (GabbleConnection *conn, LmMessage *msg, GError **error)
     {
       DEBUG ("failed: %s", lmerror->message);
 
-      if (error)
-        {
-          *error = g_error_new (TELEPATHY_ERRORS, NetworkError,
-                                "message send failed: %s", lmerror->message);
-        }
+      g_set_error (error, TELEPATHY_ERRORS, NetworkError,
+          "message send failed: %s", lmerror->message);
 
       g_error_free (lmerror);
 
@@ -1259,8 +1257,8 @@ _gabble_connection_send_with_reply (GabbleConnection *conn,
 
       if (error)
         {
-          *error = g_error_new (TELEPATHY_ERRORS, NetworkError,
-                                "message send failed: %s", lmerror->message);
+          g_set_error (error, TELEPATHY_ERRORS, NetworkError,
+              "message send failed: %s", lmerror->message);
         }
 
       g_error_free (lmerror);
@@ -1297,10 +1295,8 @@ do_connect (GabbleConnection *conn, GError **error)
     {
       DEBUG ("lm_connection_open failed %s", lmerror->message);
 
-      if (error)
-        *error = g_error_new (TELEPATHY_ERRORS, NetworkError,
-                              "lm_connection_open failed: %s",
-                              lmerror->message);
+      g_set_error (error, TELEPATHY_ERRORS, NetworkError,
+          "lm_connection_open failed: %s", lmerror->message);
 
       g_error_free (lmerror);
 
@@ -1402,9 +1398,8 @@ _gabble_connection_connect (GabbleConnection *conn,
 
   if (conn->self_handle == 0)
     {
-      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                            "Invalid JID: %s@%s",
-                            priv->username, priv->stream_server);
+      g_set_error (error, TELEPATHY_ERRORS, InvalidArgument,
+          "Invalid JID: %s@%s", priv->username, priv->stream_server);
       return FALSE;
     }
 
@@ -2753,9 +2748,9 @@ gabble_connection_add_status (GabbleConnection *self,
 {
   g_assert (GABBLE_IS_CONNECTION (self));
 
-  ERROR_IF_NOT_CONNECTED (self, *error);
+  ERROR_IF_NOT_CONNECTED (self, error);
 
-  *error = g_error_new (TELEPATHY_ERRORS, NotImplemented,
+  g_set_error (error, TELEPATHY_ERRORS, NotImplemented,
       "Only one status is possible at a time with this protocol");
 
   return FALSE;
@@ -2779,7 +2774,7 @@ gboolean gabble_connection_advertise_capabilities (GabbleConnection *obj, const 
 {
   g_assert (GABBLE_IS_CONNECTION (obj));
 
-  ERROR_IF_NOT_CONNECTED (obj, *error);
+  ERROR_IF_NOT_CONNECTED (obj, error);
 
   add = NULL;
   remove = NULL;
@@ -2881,7 +2876,7 @@ gabble_connection_advertise_capabilities (GabbleConnection *self,
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
   const CapabilityConversionData *ccd;
 
-  ERROR_IF_NOT_CONNECTED (self, *error);
+  ERROR_IF_NOT_CONNECTED (self, error);
 
   pres = gabble_presence_cache_get (self->presence_cache, self->self_handle);
   DEBUG ("caps before: %x", pres->caps);
@@ -2982,7 +2977,7 @@ gabble_connection_clear_status (GabbleConnection *self,
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
-  ERROR_IF_NOT_CONNECTED (self, *error);
+  ERROR_IF_NOT_CONNECTED (self, error);
 
   gabble_presence_cache_update (self->presence_cache, self->self_handle,
       priv->resource, GABBLE_PRESENCE_AVAILABLE, NULL, priv->priority);
@@ -3068,7 +3063,7 @@ gabble_connection_get_alias_flags (GabbleConnection *self,
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
-  ERROR_IF_NOT_CONNECTED (self, *error)
+  ERROR_IF_NOT_CONNECTED (self, error)
 
   *ret = TP_CONN_ALIAS_FLAG_USER_SET;
 
@@ -3098,7 +3093,7 @@ gboolean gabble_connection_get_capabilities (GabbleConnection *obj, guint handle
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
 
-  ERROR_IF_NOT_CONNECTED (obj, *error);
+  ERROR_IF_NOT_CONNECTED (obj, error);
 
   if (!gabble_handle_is_valid (obj->handles,
                                TP_HANDLE_TYPE_CONTACT,
@@ -3150,7 +3145,7 @@ gabble_connection_get_capabilities (GabbleConnection *self,
 {
   guint i;
 
-  ERROR_IF_NOT_CONNECTED (self, *error);
+  ERROR_IF_NOT_CONNECTED (self, error);
 
   if (!gabble_handles_are_valid (self->handles,
                                  TP_HANDLE_TYPE_CONTACT,
@@ -3256,7 +3251,7 @@ gabble_connection_get_interfaces (GabbleConnection *self,
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
-  ERROR_IF_NOT_CONNECTED (self, *error)
+  ERROR_IF_NOT_CONNECTED (self, error)
 
   *ret = g_strdupv ((gchar **) interfaces);
 
@@ -3310,7 +3305,7 @@ gabble_connection_get_protocol (GabbleConnection *self,
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
-  ERROR_IF_NOT_CONNECTED (self, *error)
+  ERROR_IF_NOT_CONNECTED (self, error)
 
   *ret = g_strdup (priv->protocol);
 
@@ -3341,7 +3336,7 @@ gabble_connection_get_self_handle (GabbleConnection *self,
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
-  ERROR_IF_NOT_CONNECTED (self, *error)
+  ERROR_IF_NOT_CONNECTED (self, error)
 
   *ret = self->self_handle;
 
@@ -3406,7 +3401,7 @@ gabble_connection_get_statuses (GabbleConnection *self,
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
-  ERROR_IF_NOT_CONNECTED (self, *error)
+  ERROR_IF_NOT_CONNECTED (self, error)
 
   DEBUG ("called.");
 
@@ -3636,7 +3631,7 @@ gabble_connection_list_channels (GabbleConnection *self,
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
-  ERROR_IF_NOT_CONNECTED (self, *error)
+  ERROR_IF_NOT_CONNECTED (self, error)
 
   /* I think on average, each factory will have 2 channels :D */
   channels = g_ptr_array_sized_new (priv->channel_factories->len * 2);
@@ -3752,7 +3747,7 @@ gabble_connection_remove_status (GabbleConnection *self,
 
   g_assert (GABBLE_IS_CONNECTION (self));
 
-  ERROR_IF_NOT_CONNECTED (self, *error)
+  ERROR_IF_NOT_CONNECTED (self, error)
 
   presence = gabble_presence_cache_get (self->presence_cache,
       self->self_handle);
@@ -3766,8 +3761,8 @@ gabble_connection_remove_status (GabbleConnection *self,
     }
   else
     {
-      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                            "Attempting to remove non-existent presence.");
+      g_set_error (error, TELEPATHY_ERRORS, InvalidArgument,
+          "Attempting to remove non-existent presence.");
       return FALSE;
     }
 }
@@ -3796,7 +3791,7 @@ gabble_connection_request_aliases (GabbleConnection *self,
 
   g_assert (GABBLE_IS_CONNECTION (self));
 
-  ERROR_IF_NOT_CONNECTED (self, *error)
+  ERROR_IF_NOT_CONNECTED (self, error)
 
   if (!gabble_handles_are_valid (self->handles, TP_HANDLE_TYPE_CONTACT,
         contacts, FALSE, error))
@@ -4521,7 +4516,7 @@ gabble_connection_request_presence (GabbleConnection *self,
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
-  ERROR_IF_NOT_CONNECTED (self, *error)
+  ERROR_IF_NOT_CONNECTED (self, error)
 
   if (!gabble_handles_are_valid (self->handles, TP_HANDLE_TYPE_CONTACT,
         contacts, FALSE, error))
@@ -4621,7 +4616,7 @@ gabble_connection_set_aliases (GabbleConnection *self,
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
-  ERROR_IF_NOT_CONNECTED (self, *error)
+  ERROR_IF_NOT_CONNECTED (self, error)
 
   data.conn = self;
   data.error = error;
@@ -4655,7 +4650,7 @@ gabble_connection_set_last_activity_time (GabbleConnection *self,
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
-  ERROR_IF_NOT_CONNECTED (self, *error)
+  ERROR_IF_NOT_CONNECTED (self, error)
 
   return TRUE;
 }
@@ -4687,9 +4682,9 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
       if (!status_is_available (data->conn, i))
         {
           DEBUG ("requested status %s is not available", (const gchar *) key);
-          *(data->error) = g_error_new (TELEPATHY_ERRORS, NotAvailable,
-                             "requested status '%s' is not available on this connection",
-                             (const gchar *) key);
+          g_set_error (data->error, TELEPATHY_ERRORS, NotAvailable,
+              "requested status '%s' is not available on this connection",
+              (const gchar *) key);
           data->retval = FALSE;
           return;
         }
@@ -4699,8 +4694,8 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
           if (!G_VALUE_HOLDS_STRING (message))
             {
               DEBUG ("got a status message which was not a string");
-              *(data->error) = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                                 "Status argument 'message' requires a string");
+              g_set_error (data->error, TELEPATHY_ERRORS, InvalidArgument,
+                  "Status argument 'message' requires a string");
               data->retval = FALSE;
               return;
             }
@@ -4712,8 +4707,8 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
           if (!G_VALUE_HOLDS_INT (priority))
             {
               DEBUG ("got a priority value which was not a signed integer");
-              *(data->error) = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                                 "Status argument 'priority' requires a signed integer");
+              g_set_error (data->error, TELEPATHY_ERRORS, InvalidArgument,
+                   "Status argument 'priority' requires a signed integer");
               data->retval = FALSE;
               return;
             }
@@ -4727,9 +4722,8 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
   else
     {
       DEBUG ("got unknown status identifier %s", (const gchar *) key);
-      *(data->error) = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                                    "unknown status identifier: %s",
-                                    (const gchar *) key);
+      g_set_error (data->error, TELEPATHY_ERRORS, InvalidArgument,
+          "unknown status identifier: %s", (const gchar *) key);
       data->retval = FALSE;
     }
 }
@@ -4775,13 +4769,13 @@ gabble_connection_set_status (GabbleConnection *self,
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
-  ERROR_IF_NOT_CONNECTED (self, *error)
+  ERROR_IF_NOT_CONNECTED (self, error)
 
   if (g_hash_table_size (statuses) != 1)
     {
       DEBUG ("got more than one status");
-      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
-                 "Only one status may be set at a time in this protocol");
+      g_set_error (error, TELEPATHY_ERRORS, InvalidArgument,
+          "Only one status may be set at a time in this protocol");
       return FALSE;
     }
 

@@ -2460,8 +2460,8 @@ _gabble_media_session_request_streams (GabbleMediaSession *session,
 
   if (presence == NULL)
     {
-      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable, "member has no "
-          "audio/video capabilities");
+      g_set_error (error, TELEPATHY_ERRORS, NotAvailable,
+          "member has no audio/video capabilities");
 
       return FALSE;
     }
@@ -2486,8 +2486,8 @@ _gabble_media_session_request_streams (GabbleMediaSession *session,
         }
       else
         {
-          *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument, "given "
-            "media type %u is invalid", media_type);
+          g_set_error (error, TELEPATHY_ERRORS, InvalidArgument,
+              "given media type %u is invalid", media_type);
           return FALSE;
         }
     }
@@ -2514,8 +2514,8 @@ _gabble_media_session_request_streams (GabbleMediaSession *session,
 
           g_assert (g_hash_table_size (priv->streams) == 1);
 
-          *error = g_error_new (TELEPATHY_ERRORS, NotAvailable, "google talk "
-              "calls may only contain one stream");
+          g_set_error (error, TELEPATHY_ERRORS, NotAvailable,
+              "Google Talk calls may only contain one stream");
 
           return FALSE;
         }
@@ -2526,8 +2526,9 @@ _gabble_media_session_request_streams (GabbleMediaSession *session,
           GMS_DEBUG_INFO (session,
             "in Jingle mode but have insufficient caps for requested streams");
 
-          *error = g_error_new (TELEPATHY_ERRORS, NotAvailable, "existing "
-              "call member doesn't support all requested media types");
+          g_set_error (error, TELEPATHY_ERRORS, NotAvailable,
+              "existing call member doesn't support all requested media"
+              " types");
 
           return FALSE;
         }
@@ -2578,7 +2579,7 @@ _gabble_media_session_request_streams (GabbleMediaSession *session,
                     }
                   else
                     {
-                      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
+                      g_set_error (error, TELEPATHY_ERRORS, NotAvailable,
                           "Google Talk calls may only contain one stream");
 
                       return FALSE;
@@ -2597,8 +2598,8 @@ _gabble_media_session_request_streams (GabbleMediaSession *session,
           GMS_DEBUG_INFO (session,
             "contact doesn't have a resource with suitable capabilities");
 
-          *error = g_error_new (TELEPATHY_ERRORS, NotAvailable, "member does "
-              "not have the desired audio/video capabilities");
+          g_set_error (error, TELEPATHY_ERRORS, NotAvailable,
+              "member does not have the desired audio/video capabilities");
 
           return FALSE;
         }
@@ -2609,8 +2610,8 @@ _gabble_media_session_request_streams (GabbleMediaSession *session,
   /* check it's not a ridiculous number of streams */
   if ((g_hash_table_size (priv->streams) + media_types->len) > MAX_STREAMS)
     {
-      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable, "I think that's "
-          "quite enough streams already");
+      g_set_error (error, TELEPATHY_ERRORS, NotAvailable,
+          "I think that's quite enough streams already");
       return FALSE;
     }
 
@@ -2763,8 +2764,8 @@ _gabble_media_session_request_stream_direction (GabbleMediaSession *session,
       if (requested_dir == TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL)
         return TRUE;
 
-      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable, "google talk "
-          "calls can only be bi-directional");
+      g_set_error (error, TELEPATHY_ERRORS, NotAvailable,
+          "Google Talk calls can only be bi-directional");
       return FALSE;
     }
 

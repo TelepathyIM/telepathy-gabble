@@ -1034,7 +1034,7 @@ gboolean gabble_media_channel_remove_streams (GabbleMediaChannel *obj, const GAr
       stream = _find_stream_by_id (obj, id);
       if (stream == NULL)
         {
-          *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+          g_set_error (error, TELEPATHY_ERRORS, InvalidArgument,
               "given stream id %u does not exist", id);
           goto OUT;
         }
@@ -1094,7 +1094,7 @@ gabble_media_channel_request_stream_direction (GabbleMediaChannel *self,
 
   if (stream_direction > TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL)
     {
-      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+      g_set_error (error, TELEPATHY_ERRORS, InvalidArgument,
           "given stream direction %u is not valid", stream_direction);
       return FALSE;
     }
@@ -1102,7 +1102,7 @@ gabble_media_channel_request_stream_direction (GabbleMediaChannel *self,
   stream = _find_stream_by_id (self, stream_id);
   if (stream == NULL)
     {
-      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument,
+      g_set_error (error, TELEPATHY_ERRORS, InvalidArgument,
           "given stream id %u does not exist", stream_id);
       return FALSE;
     }
@@ -1148,8 +1148,8 @@ gabble_media_channel_request_streams (GabbleMediaChannel *self,
   if (!handle_set_is_member (self->group.members, contact_handle) &&
       !handle_set_is_member (self->group.remote_pending, contact_handle))
     {
-      *error = g_error_new (TELEPATHY_ERRORS, InvalidArgument, "given handle "
-          "%u is not a member of the channel", contact_handle);
+      g_set_error (error, TELEPATHY_ERRORS, InvalidArgument,
+          "given handle %u is not a member of the channel", contact_handle);
       return FALSE;
     }
 
@@ -1202,8 +1202,8 @@ gabble_media_channel_add_member (GObject *obj, GabbleHandle handle, const gchar 
                      TP_HANDLE_TYPE_CONTACT, handle),
                    presence->caps);
 
-          *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
-                                "handle %u has no media capabilities", handle);
+          g_set_error (error, TELEPATHY_ERRORS, NotAvailable,
+              "handle %u has no media capabilities", handle);
           return FALSE;
         }
 
@@ -1265,8 +1265,8 @@ gabble_media_channel_add_member (GObject *obj, GabbleHandle handle, const gchar 
         }
     }
 
-  *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
-                        "handle %u cannot be added in the current state", handle);
+  g_set_error (error, TELEPATHY_ERRORS, NotAvailable,
+      "handle %u cannot be added in the current state", handle);
   return FALSE;
 }
 
@@ -1280,9 +1280,8 @@ gabble_media_channel_remove_member (GObject *obj, GabbleHandle handle, const gch
 
   if (priv->session == NULL)
     {
-      *error = g_error_new (TELEPATHY_ERRORS, NotAvailable,
-                            "handle %u cannot be removed in the current state",
-                            handle);
+      g_set_error (error, TELEPATHY_ERRORS, NotAvailable,
+          "handle %u cannot be removed in the current state", handle);
 
       return FALSE;
     }
@@ -1290,10 +1289,9 @@ gabble_media_channel_remove_member (GObject *obj, GabbleHandle handle, const gch
   if (priv->creator != mixin->self_handle &&
       handle != mixin->self_handle)
     {
-      *error = g_error_new (TELEPATHY_ERRORS, PermissionDenied,
-                            "handle %u cannot be removed because you are "
-                            "not the creator of the channel",
-                            handle);
+      g_set_error (error, TELEPATHY_ERRORS, PermissionDenied,
+          "handle %u cannot be removed because you are not the creator of the"
+          " channel", handle);
 
       return FALSE;
     }

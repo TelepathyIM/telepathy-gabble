@@ -2027,37 +2027,30 @@ destroy_the_bastard (GValue *value)
   g_free (value);
 }
 
-/**
- * emit_presence_update:
- * @self: A #GabbleConnection
- * @contact_handles: A zero-terminated array of #GabbleHandle for
- *                    the contacts to emit presence for
- *
- * Emits the Telepathy PresenceUpdate signal with the current
- * stored presence information for the given contact.
- */
-static void
-emit_presence_update (GabbleConnection *self,
-                      const GArray *contact_handles)
+static GHashTable *
+construct_presence_hash (GabbleConnection *self,
+                         const GArray *contact_handles)
 {
-  GHashTable *presence_hash;
-  GValueArray *vals;
-  GHashTable *contact_status, *parameters;
-  guint timestamp = 0; /* this is never set at the moment*/
   guint i;
+  GabbleHandle handle;
+  GHashTable *presence_hash, *contact_status, *parameters;
+  GValueArray *vals;
+  GValue *message;
+  GabblePresence *presence;
+  GabblePresenceId status;
+  const gchar *status_message;
+  /* this is never set at the moment*/
+  guint timestamp = 0;
 
   presence_hash = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
-                                    (GDestroyNotify) g_value_array_free);
+      (GDestroyNotify) g_value_array_free);
 
   for (i = 0; i < contact_handles->len; i++)
     {
-      GabbleHandle handle = g_array_index (contact_handles, GabbleHandle, i);
-      GValue *message;
-      GabblePresence *presence = gabble_presence_cache_get (self->presence_cache, handle);
-      GabblePresenceId status;
-      const gchar *status_message;
-
-      g_assert (gabble_handle_is_valid (self->handles, TP_HANDLE_TYPE_CONTACT, handle, NULL));
+      handle = g_array_index (contact_handles, GabbleHandle, i);
+      g_assert (gabble_handle_is_valid (self->handles, TP_HANDLE_TYPE_CONTACT,
+            handle, NULL));
+      presence = gabble_presence_cache_get (self->presence_cache, handle);
 
       if (presence)
         {
@@ -2074,18 +2067,15 @@ emit_presence_update (GabbleConnection *self,
       g_value_init (message, G_TYPE_STRING);
       g_value_set_static_string (message, status_message);
 
-      parameters =
-        g_hash_table_new_full (g_str_hash, g_str_equal,
-                               NULL, (GDestroyNotify) destroy_the_bastard);
+      parameters = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
+          (GDestroyNotify) destroy_the_bastard);
 
       g_hash_table_insert (parameters, "message", message);
 
-      contact_status =
-        g_hash_table_new_full (g_str_hash, g_str_equal,
-                               NULL, (GDestroyNotify) g_hash_table_destroy);
-      g_hash_table_insert (
-        contact_status, (gchar *) gabble_statuses[status].name,
-        parameters);
+      contact_status = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
+          (GDestroyNotify) g_hash_table_destroy);
+      g_hash_table_insert (contact_status,
+          (gchar *) gabble_statuses[status].name, parameters);
 
       vals = g_value_array_new (2);
 
@@ -2099,10 +2089,28 @@ emit_presence_update (GabbleConnection *self,
             dbus_g_type_get_map ("GHashTable", G_TYPE_STRING, G_TYPE_VALUE)));
       g_value_take_boxed (g_value_array_get_nth (vals, 1), contact_status);
 
-      g_hash_table_insert (presence_hash, GINT_TO_POINTER (handle),
-                           vals);
+      g_hash_table_insert (presence_hash, GINT_TO_POINTER (handle), vals);
     }
 
+  return presence_hash;
+}
+
+/**
+ * emit_presence_update:
+ * @self: A #GabbleConnection
+ * @contact_handles: A zero-terminated array of #GabbleHandle for
+ *                    the contacts to emit presence for
+ *
+ * Emits the Telepathy PresenceUpdate signal with the current
+ * stored presence information for the given contact.
+ */
+static void
+emit_presence_update (GabbleConnection *self,
+                      const GArray *contact_handles)
+{
+  GHashTable *presence_hash;
+
+  presence_hash = construct_presence_hash (self, contact_handles);
   g_signal_emit (self, signals[PRESENCE_UPDATE], 0, presence_hash);
   g_hash_table_destroy (presence_hash);
 }

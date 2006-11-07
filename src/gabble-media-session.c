@@ -840,13 +840,6 @@ _handle_direction (GabbleMediaSession *session,
   if (priv->mode == MODE_GOOGLE)
     return TRUE;
 
-  if (stream == NULL)
-    {
-      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_ITEM_NOT_FOUND,
-          "unable to handle direction for unknown stream \"%s\"", stream_name);
-      return FALSE;
-    }
-
   requested_dir = TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL;
 
   senders = lm_message_node_get_attribute (content_node, "senders");
@@ -907,13 +900,6 @@ _handle_accept (GabbleMediaSession *session,
                 LmMessageNode *trans_node,
                 GError **error)
 {
-  if (stream == NULL)
-    {
-      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_ITEM_NOT_FOUND,
-          "unable to handle accept for unknown stream \"%s\"", stream_name);
-      return FALSE;
-    }
-
   g_object_set (stream, "playing", TRUE, NULL);
 
   return TRUE;
@@ -930,13 +916,6 @@ _handle_codecs (GabbleMediaSession *session,
                 LmMessageNode *trans_node,
                 GError **error)
 {
-  if (stream == NULL)
-    {
-      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_ITEM_NOT_FOUND,
-          "unable to handle codecs for unknown stream \"%s\"", stream_name);
-      return FALSE;
-    }
-
   if (desc_node == NULL)
     {
       g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
@@ -963,14 +942,6 @@ _handle_candidates (GabbleMediaSession *session,
                     GError **error)
 {
   GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
-
-  if (stream == NULL)
-    {
-      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_ITEM_NOT_FOUND,
-          "unable to handle candidates for unknown stream \"%s\"",
-          stream_name);
-      return FALSE;
-    }
 
   if (trans_node == NULL)
     {
@@ -1005,14 +976,6 @@ _handle_remove (GabbleMediaSession *session,
                 GError **error)
 {
   GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
-
-  if (stream == NULL)
-    {
-      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_ITEM_NOT_FOUND,
-          "unable to handle content-remove for unknown stream \"%s\"",
-          stream_name);
-      return FALSE;
-    }
 
   /* reducing a session to contain 0 streams is invalid; instead the peer
    * should terminate the session. I guess we'll do it for them... */
@@ -1166,19 +1129,33 @@ _call_handlers_on_stream (GabbleMediaSession *session,
       if (stream == NULL && stream_name != NULL)
         stream = _lookup_stream_by_name (session, stream_name);
 
-      /* don't do anything with actions on streams which have not been
-       * acknowledged, or that we're trying to remove, to deal with
-       * adding/removing race conditions (actions sent by the other end
-       * before they're aware that we've added or removed a stream) */
-      if (stream != NULL)
+      /* the create handler is able to check whether or not the stream
+       * exists, and act accordingly (sometimes it will replace an existing
+       * stream, sometimes it will reject). the termination handler
+       * also requires no stream to do it's job. */
+      if (*tmp != _handle_create && *tmp != _handle_terminate)
         {
-          StreamSignallingState sig_state;
+          /* all other handlers require the stream to exist */
+          if (stream == NULL)
+            {
+              g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_ITEM_NOT_FOUND,
+                  "unable to handle action for unknown stream \"%s\"",
+                  stream_name);
+              return FALSE;
+            }
+          else
+            {
+              StreamSignallingState sig_state;
 
-          g_object_get (stream, "signalling-state", &sig_state, NULL);
+              g_object_get (stream, "signalling-state", &sig_state, NULL);
 
-          if (sig_state == STREAM_SIG_STATE_SENT ||
-              sig_state == STREAM_SIG_STATE_REMOVING)
-            return TRUE;
+              /* don't do anything with actions on streams which have not been
+               * acknowledged, or that we're trying to remove, to deal with
+               * adding/removing race conditions (actions sent by the other end
+               * before they're aware that we've added or removed a stream) */
+              if (sig_state != STREAM_SIG_STATE_ACKNOWLEDGED)
+                return TRUE;
+            }
         }
 
       if (!(*tmp) (session, message, content_node, stream_name, stream,

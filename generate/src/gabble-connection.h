@@ -96,6 +96,11 @@ gabble_connection_get_interfaces (GabbleConnection *self,
                                   gchar ***ret,
                                   GError **error);
 
+void
+gabble_connection_get_presence (GabbleConnection *self,
+                                const GArray *contacts,
+                                DBusGMethodInvocation *context);
+
 gboolean
 gabble_connection_get_properties (GabbleConnection *self,
                                   const GArray *properties,

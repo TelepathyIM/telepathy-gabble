@@ -301,6 +301,8 @@ gabble_media_stream_set_property (GObject      *object,
         {
           StreamSignallingState old = priv->signalling_state;
           priv->signalling_state = g_value_get_uint (value);
+          GMS_DEBUG_INFO (priv->session, "stream %s sig_state %d->%d",
+              priv->name, old, priv->signalling_state);
           if (priv->signalling_state != old)
             push_native_candidates (stream);
         }
@@ -473,7 +475,7 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                                   "Whether the stream is newly created, "
                                   "sent to the peer, or acknowledged.",
                                   STREAM_SIG_STATE_NEW,
-                                  STREAM_SIG_STATE_ACKNOWLEDGED,
+                                  STREAM_SIG_STATE_REMOVING,
                                   STREAM_SIG_STATE_NEW,
                                   G_PARAM_CONSTRUCT |
                                   G_PARAM_READWRITE |

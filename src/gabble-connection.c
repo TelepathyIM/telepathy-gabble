@@ -2042,14 +2042,15 @@ construct_presence_hash (GabbleConnection *self,
   /* this is never set at the moment*/
   guint timestamp = 0;
 
+  g_assert (gabble_handles_are_valid (self->handles, TP_HANDLE_TYPE_CONTACT,
+        contact_handles, TRUE, NULL));
+
   presence_hash = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
       (GDestroyNotify) g_value_array_free);
 
   for (i = 0; i < contact_handles->len; i++)
     {
       handle = g_array_index (contact_handles, GabbleHandle, i);
-      g_assert (gabble_handle_is_valid (self->handles, TP_HANDLE_TYPE_CONTACT,
-            handle, NULL));
       presence = gabble_presence_cache_get (self->presence_cache, handle);
 
       if (presence)

@@ -1620,6 +1620,9 @@ connection_status_change (GabbleConnection        *conn,
             }
           else
             {
+              /* lm_connection_is_open() returns FALSE if LmConnection is in the
+               * middle of connecting, so call this just in case */
+              lm_connection_cancel_open (conn->lmconn);
               DEBUG ("closed; emitting DISCONNECTED");
               g_signal_emit (conn, signals[DISCONNECTED], 0);
             }
@@ -2493,6 +2496,12 @@ registration_finished_cb (GabbleRegister *reg,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
 
+  if (conn->status != TP_CONN_STATUS_CONNECTING)
+    {
+      g_assert (conn->status == TP_CONN_STATUS_DISCONNECTED);
+      return;
+    }
+
   DEBUG ("%s", (success) ? "succeeded" : "failed");
 
   g_object_unref (reg);
@@ -2541,6 +2550,12 @@ connection_open_cb (LmConnection *lmconn,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (data);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+
+  if (conn->status != TP_CONN_STATUS_CONNECTING)
+    {
+      g_assert (conn->status == TP_CONN_STATUS_DISCONNECTED);
+      return;
+    }
 
   g_assert (priv);
   g_assert (lmconn == conn->lmconn);
@@ -2601,6 +2616,12 @@ connection_auth_cb (LmConnection *lmconn,
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   GError *error = NULL;
 
+  if (conn->status != TP_CONN_STATUS_CONNECTING)
+    {
+      g_assert (conn->status == TP_CONN_STATUS_DISCONNECTED);
+      return;
+    }
+
   g_assert (priv);
   g_assert (lmconn == conn->lmconn);
 
@@ -2651,6 +2672,12 @@ connection_disco_cb (GabbleDisco *disco,
   GabbleConnection *conn = user_data;
   GabbleConnectionPrivate *priv;
   GError *error;
+
+  if (conn->status != TP_CONN_STATUS_CONNECTING)
+    {
+      g_assert (conn->status == TP_CONN_STATUS_DISCONNECTED);
+      return;
+    }
 
   g_assert (GABBLE_IS_CONNECTION (conn));
   priv = GABBLE_CONNECTION_GET_PRIVATE (conn);

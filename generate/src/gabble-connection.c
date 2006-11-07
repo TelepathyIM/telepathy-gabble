@@ -345,6 +345,24 @@ gabble_connection_get_interfaces (GabbleConnection *self,
 
 
 /**
+ * gabble_connection_get_presence
+ *
+ * Implements D-Bus method GetPresence
+ * on interface org.freedesktop.Telepathy.Connection.Interface.Presence
+ *
+ * @context: The D-Bus invocation context to use to return values
+ *           or throw an error.
+ */
+void
+gabble_connection_get_presence (GabbleConnection *self,
+                                const GArray *contacts,
+                                DBusGMethodInvocation *context)
+{
+  return;
+}
+
+
+/**
  * gabble_connection_get_properties
  *
  * Implements D-Bus method GetProperties

@@ -672,6 +672,10 @@ gabble_text_mixin_parse_incoming_message (LmMessage *message,
                 *send_error = CHANNEL_TEXT_SEND_ERROR_TOO_LONG;
                 break;
 
+              case XMPP_ERROR_FEATURE_NOT_IMPLEMENTED:
+                *send_error = CHANNEL_TEXT_SEND_ERROR_NOT_IMPLEMENTED;
+                break;
+
               default:
                 *send_error = CHANNEL_TEXT_SEND_ERROR_UNKNOWN;
             }

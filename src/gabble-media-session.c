@@ -686,7 +686,7 @@ _handle_create (GabbleMediaSession *session,
         }
       else
         {
-          g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_NOT_ALLOWED,
+          g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_CONFLICT,
               "can't create new stream called \"%s\", it already exists, "
               "rejecting", stream_name);
           return FALSE;
@@ -695,7 +695,7 @@ _handle_create (GabbleMediaSession *session,
 
   if (desc_node == NULL)
     {
-      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_NOT_ALLOWED,
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
           "unable to create stream without a content description");
       return FALSE;
     }
@@ -739,7 +739,7 @@ _handle_create (GabbleMediaSession *session,
     {
       if (g_hash_table_size (priv->streams) > 0)
         {
-          g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_NOT_ALLOWED,
+          g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_UNEXPECTED_REQUEST,
               "refusing to change mode because streams already exist");
           return FALSE;
         }
@@ -774,7 +774,7 @@ _handle_create (GabbleMediaSession *session,
     }
 
   stream = create_media_stream (session, stream_name, INITIATOR_REMOTE,
-                                stream_type);
+      stream_type);
 
   /* set the signalling state to ACKNOWLEDGED */
   g_object_set (stream,
@@ -855,7 +855,7 @@ _handle_direction (GabbleMediaSession *session,
 
   if (requested_dir == TP_MEDIA_STREAM_DIRECTION_NONE)
     {
-      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_NOT_ALLOWED,
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
           "received invalid content senders value \"%s\" on stream \"%s\"; "
           "rejecting", senders, stream_name);
       return FALSE;
@@ -939,7 +939,7 @@ _handle_codecs (GabbleMediaSession *session,
 
   if (desc_node == NULL)
     {
-      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_NOT_ALLOWED,
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
           "unable to handle codecs without a content description node");
       return FALSE;
     }
@@ -980,7 +980,7 @@ _handle_candidates (GabbleMediaSession *session,
         }
       else
         {
-          g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_NOT_ALLOWED,
+          g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
               "unable to handle candidates without a transport node");
           return FALSE;
         }
@@ -1224,8 +1224,8 @@ _call_handlers_on_streams (GabbleMediaSession *session,
 
           if (stream_name == NULL)
             {
-              GMS_DEBUG_WARNING (session, "rejecting content node with no "
-                  "name");
+              g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+                  "rejecting content node with no name");
               return FALSE;
             }
 
@@ -1293,7 +1293,7 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
   /* pointer is not NULL if we found a matching action */
   if (NULL == funcs)
     {
-      g_set_error (&error, GABBLE_XMPP_ERROR, XMPP_ERROR_NOT_ALLOWED,
+      g_set_error (&error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
           "received unrecognised action \"%s\"; rejecting", action);
       goto ACK_FAILURE;
     }

@@ -3318,7 +3318,11 @@ gabble_connection_get_presence (GabbleConnection *self,
                                 const GArray *contacts,
                                 DBusGMethodInvocation *context)
 {
-  return;
+  GHashTable *presence_hash;
+
+  presence_hash = construct_presence_hash (self, contacts);
+  dbus_g_method_return (context, presence_hash);
+  g_hash_table_destroy (presence_hash);
 }
 
 

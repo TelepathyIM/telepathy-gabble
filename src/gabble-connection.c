@@ -3324,7 +3324,10 @@ gabble_connection_get_presence (GabbleConnection *self,
 
   if (!gabble_handles_are_valid (self->handles, TP_HANDLE_TYPE_CONTACT,
         contacts, FALSE, &error))
+    {
       dbus_g_method_return_error (context, error);
+      g_error_free (error);
+    }
 
   presence_hash = construct_presence_hash (self, contacts);
   dbus_g_method_return (context, presence_hash);

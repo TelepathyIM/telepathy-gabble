@@ -1834,12 +1834,19 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
 
       return TRUE;
     }
-  else if (sender == chan->group.self_handle)
+  else if ((sender == chan->group.self_handle) && (timestamp == 0))
     {
+      /* If we sent the message and it's not delayed, just emit the sent signal */
+      timestamp = time (NULL);
       gabble_text_mixin_emit_sent (G_OBJECT (chan), timestamp, msg_type, text);
 
       return TRUE;
     }
+
+  /* Receive messages from other contacts and our own if they're delayed, and
+   * set the timestamp for non-delayed messages */
+  if (timestamp == 0)
+      timestamp = time (NULL);
 
   return gabble_text_mixin_receive (G_OBJECT (chan), msg_type, sender,
       timestamp, text);

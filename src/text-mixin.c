@@ -696,7 +696,8 @@ gabble_text_mixin_parse_incoming_message (LmMessage *message,
   type = lm_message_node_get_attribute (message->node, "type");
 
   /*
-   * Parse timestamp of delayed messages.
+   * Parse timestamp of delayed messages. For non-delayed, it's
+   * 0 and the channel code should set the current timestamp.
    */
   *stamp = 0;
 
@@ -722,10 +723,6 @@ gabble_text_mixin_parse_incoming_message (LmMessage *message,
             }
         }
     }
-
-  if (*stamp == 0)
-    *stamp = time (NULL);
-
 
   /*
    * Parse body if it exists.

@@ -37,7 +37,11 @@ AS_COMPILER_FLAG(-Wall, ERROR_CFLAGS="-Wall", ERROR_CFLAGS="")
 
 ifelse(gabble_nano_version, 0,
     [],
-    [AS_COMPILER_FLAG(-Werror,ERROR_CFLAGS="$ERROR_CFLAGS -Werror -Wextra -Wno-unused-parameter -Wno-missing-field-initializers ",ERROR_CFLAGS="$ERROR_CFLAGS")
+    [
+        AS_COMPILER_FLAG(-Werror,ERROR_CFLAGS="$ERROR_CFLAGS -Werror",[])
+        AS_COMPILER_FLAG(-Wextra,ERROR_CFLAGS="$ERROR_CFLAGS -Wextra",[])
+        AS_COMPILER_FLAG(-Wno-missing-field-initializers,ERROR_CFLAGS="$ERROR_CFLAGS -Wno-missing-field-initializers",[])
+        AS_COMPILER_FLAG(-Wno-unused-parameter,ERROR_CFLAGS="$ERROR_CFLAGS -Wno-unused-parameter",[])
     ])
 AC_SUBST(ERROR_CFLAGS)
 

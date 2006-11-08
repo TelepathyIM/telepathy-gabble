@@ -34,15 +34,21 @@ AM_PROG_AS
 
 dnl decide error flags
 AS_COMPILER_FLAG(-Wall, ERROR_CFLAGS="-Wall", ERROR_CFLAGS="")
+AS_COMPILER_FLAG(-Werror, werror=yes, werror=no)
+AS_COMPILER_FLAG(-Wextra, wextra=yes, wextra=no)
+AS_COMPILER_FLAG(-Wno-missing-field-initializers, wno_missing_field_initializers=yes, wno_missing_field_initializers=no)
+AS_COMPILER_FLAG(-Wno-unused-parameter, wno_unused_parameter=yes, wno_unused_parameter=no)
 
-ifelse(gabble_nano_version, 0,
-    [],
+ifelse(gabble_nano_version, 0, [],
     [
-        AS_COMPILER_FLAG(-Werror,ERROR_CFLAGS="$ERROR_CFLAGS -Werror",[])
-        AS_COMPILER_FLAG(-Wextra,ERROR_CFLAGS="$ERROR_CFLAGS -Wextra",[])
-        AS_COMPILER_FLAG(-Wno-missing-field-initializers,ERROR_CFLAGS="$ERROR_CFLAGS -Wno-missing-field-initializers",[])
-        AS_COMPILER_FLAG(-Wno-unused-parameter,ERROR_CFLAGS="$ERROR_CFLAGS -Wno-unused-parameter",[])
+        if test x$werror = xyes; then
+            ERROR_CFLAGS="$ERROR_CFLAGS -Werror"
+        fi
+        if test x$wextra = xyes -a x$wno_missing_field_initializers = xyes -a x$wno_unused_parameter = xyes; then
+            ERROR_CFLAGS="$ERROR_CFLAGS -Wextra -Wno-missing-field-initializers -Wno-unused-parameter"
+        fi
     ])
+
 AC_SUBST(ERROR_CFLAGS)
 
 AC_ARG_ENABLE(debug,

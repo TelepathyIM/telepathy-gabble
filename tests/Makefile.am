@@ -1,4 +1,4 @@
-noinst_PROGRAMS = test-intset test-gabble-presence test-heap
+noinst_PROGRAMS = test-intset test-gabble-presence test-heap test-handles
 
 test_intset_SOURCES = \
     test-intset.c
@@ -16,6 +16,12 @@ test_heap_SOURCES = \
     test-heap.c
 
 test_heap_LDADD = \
+    $(top_builddir)/src/libgabble-convenience.la
+
+test_handles_SOURCES = \
+    test-handles.c
+
+test_handles_LDADD = \
     $(top_builddir)/src/libgabble-convenience.la
 
 AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @LOUDMOUTH_CFLAGS@ \

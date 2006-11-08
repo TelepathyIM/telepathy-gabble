@@ -316,6 +316,9 @@ gboolean _gabble_im_channel_receive (GabbleIMChannel *chan,
       priv->peer_jid = g_strdup (from);
     }
 
+  if (timestamp == 0)
+      timestamp = time (NULL);
+
   return gabble_text_mixin_receive (G_OBJECT (chan), type, sender, timestamp, text);
 }
 

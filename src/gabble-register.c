@@ -293,6 +293,9 @@ nokia_iv_get_reply_cb (GabbleConnection *conn,
       "auth-btid", &auth_btid,
       NULL);
 
+  for (i = 0; i < strlen (auth_mac); i++)
+    auth_mac[i] = tolower (auth_mac[i]);
+
   for (i = 0; i < strlen (auth_btid); i++)
     auth_btid[i] = tolower (auth_btid[i]);
 

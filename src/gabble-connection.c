@@ -2043,7 +2043,7 @@ construct_presence_hash (GabbleConnection *self,
   guint timestamp = 0;
 
   g_assert (gabble_handles_are_valid (self->handles, TP_HANDLE_TYPE_CONTACT,
-        contact_handles, TRUE, NULL));
+        contact_handles, FALSE, NULL));
 
   presence_hash = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
       (GDestroyNotify) g_value_array_free);

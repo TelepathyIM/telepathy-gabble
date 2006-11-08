@@ -522,6 +522,7 @@ struct _GabbleDiscoPipeline {
     GabbleDiscoEndCb end_callback;
     GPtrArray *disco_pipeline;
     GHashTable *remaining_items;
+    GabbleDiscoRequest *list_request;
     gboolean running;
 };
 
@@ -686,6 +687,8 @@ disco_items_cb (GabbleDisco *disco,
   gpointer key, value;
   GabbleDiscoPipeline *pipeline = (GabbleDiscoPipeline *) user_data;
 
+  pipeline->list_request = NULL;
+
   if (error)
     {
       DEBUG ("Got error on items request: %s", error->message);
@@ -763,8 +766,9 @@ gabble_disco_pipeline_run (gpointer self, const char *server)
 
   pipeline->running = TRUE;
 
-  gabble_disco_request (pipeline->disco, GABBLE_DISCO_TYPE_ITEMS, server, NULL,
-      disco_items_cb, pipeline, G_OBJECT (pipeline->disco), NULL);
+  pipeline->list_request = gabble_disco_request (pipeline->disco,
+      GABBLE_DISCO_TYPE_ITEMS, server, NULL, disco_items_cb, pipeline,
+      G_OBJECT (pipeline->disco), NULL);
 }
 
 
@@ -781,6 +785,12 @@ gabble_disco_pipeline_destroy (gpointer self)
   GabbleDiscoPipeline *pipeline = (GabbleDiscoPipeline *) self;
 
   pipeline->running = FALSE;
+
+  if (pipeline->list_request != NULL)
+    {
+      gabble_disco_cancel_request (pipeline->disco, pipeline->list_request);
+      pipeline->list_request = NULL;
+    }
 
   /* iterate using a while loop otherwise we're modifying
    * the array as we iterate it, and miss things! */

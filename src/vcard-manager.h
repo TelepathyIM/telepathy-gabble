@@ -109,6 +109,9 @@ GabbleVCardManagerRequest *gabble_vcard_manager_edit (GabbleVCardManager *,
                                                     ...)
                                                    G_GNUC_NULL_TERMINATED;
 
+void gabble_vcard_manager_cancel_request (GabbleVCardManager *manager,
+                                          GabbleVCardManagerRequest *request);
+
 const gchar *gabble_vcard_manager_get_cached_alias (GabbleVCardManager *,
                                                    GabbleHandle);
 

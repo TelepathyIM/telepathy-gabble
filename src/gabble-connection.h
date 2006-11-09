@@ -254,11 +254,10 @@ gabble_connection_remove_status (GabbleConnection *self,
                                  const gchar *status,
                                  GError **error);
 
-gboolean
+void
 gabble_connection_request_aliases (GabbleConnection *self,
                                    const GArray *contacts,
-                                   gchar ***ret,
-                                   GError **error);
+                                   DBusGMethodInvocation *context);
 
 void
 gabble_connection_request_channel (GabbleConnection *self,

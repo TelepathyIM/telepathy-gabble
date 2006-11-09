@@ -3772,54 +3772,184 @@ gabble_connection_remove_status (GabbleConnection *self,
 }
 
 
+typedef struct _AliasesRequest AliasesRequest;
+
+struct _AliasesRequest
+{
+  GabbleConnection *conn;
+  DBusGMethodInvocation *request_call;
+  guint pending_vcard_requests;
+  GArray *contacts;
+  GabbleVCardManagerRequest **vcard_requests;
+  gchar **aliases;
+};
+
+
+static AliasesRequest *
+aliases_request_new (GabbleConnection *conn,
+                     DBusGMethodInvocation *request_call,
+                     const GArray *contacts)
+{
+  AliasesRequest *request;
+
+  request = g_slice_new0 (AliasesRequest);
+  request->conn = conn;
+  request->request_call = request_call;
+  request->contacts = g_array_new (FALSE, FALSE, sizeof (GabbleHandle));
+  g_array_insert_vals (request->contacts, 0, contacts->data, contacts->len);
+  request->vcard_requests =
+    g_new0 (GabbleVCardManagerRequest *, contacts->len);
+  request->aliases = g_new0 (gchar *, contacts->len + 1);
+  return request;
+}
+
+
+static void
+aliases_request_free (AliasesRequest *request)
+{
+  guint i;
+
+  for (i = 0; i < request->contacts->len; i++)
+    {
+      if (request->vcard_requests[i] != NULL)
+        gabble_vcard_manager_cancel_request (request->conn->vcard_manager,
+            request->vcard_requests[i]);
+    }
+
+  g_array_free (request->contacts, TRUE);
+  g_free (request->vcard_requests);
+  g_slice_free (AliasesRequest, request);
+  g_strfreev (request->aliases);
+}
+
+
+static gboolean
+aliases_request_try_return (AliasesRequest *request)
+{
+  if (request->pending_vcard_requests == 0)
+    {
+      dbus_g_method_return (request->request_call, request->aliases);
+      return TRUE;
+    }
+
+  return FALSE;
+}
+
+
+static void
+aliases_request_vcard_cb (GabbleVCardManager *manager,
+                          GabbleVCardManagerRequest *request,
+                          GabbleHandle handle,
+                          LmMessageNode *vcard,
+                          GError *error,
+                          gpointer user_data)
+{
+  AliasesRequest *aliases_request = (AliasesRequest *) user_data;
+  GabbleConnectionAliasSource source;
+  guint i;
+  gboolean found = FALSE;
+  gchar *alias = NULL;
+
+  g_assert (aliases_request->pending_vcard_requests > 0);
+
+  /* The index of the vCard request in the vCard request array is the
+   * index of the contact/alias in their respective arrays. */
+
+  for (i = 0; i < aliases_request->contacts->len; i++)
+    if (aliases_request->vcard_requests[i] == request)
+      {
+        found = TRUE;
+        break;
+      }
+
+  g_assert (found);
+  source = _gabble_connection_get_cached_alias (aliases_request->conn,
+      g_array_index (aliases_request->contacts, GabbleHandle, i), &alias);
+  g_assert (source != GABBLE_CONNECTION_ALIAS_NONE);
+  g_assert (NULL != alias);
+
+  aliases_request->pending_vcard_requests--;
+  aliases_request->vcard_requests[i] = NULL;
+  aliases_request->aliases[i] = alias;
+
+  if (aliases_request_try_return (aliases_request))
+    aliases_request_free (aliases_request);
+}
+
+
 /**
  * gabble_connection_request_aliases
  *
  * Implements D-Bus method RequestAliases
  * on interface org.freedesktop.Telepathy.Connection.Interface.Aliasing
  *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
+ * @context: The D-Bus invocation context to use to return values
+ *           or throw an error.
  */
-gboolean
+void
 gabble_connection_request_aliases (GabbleConnection *self,
                                    const GArray *contacts,
-                                   gchar ***ret,
-                                   GError **error)
+                                   DBusGMethodInvocation *context)
 {
   guint i;
-  gchar **aliases;
+  AliasesRequest *request;
+  GError *error = NULL;
 
   g_assert (GABBLE_IS_CONNECTION (self));
 
-  ERROR_IF_NOT_CONNECTED (self, error)
+  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
 
   if (!gabble_handles_are_valid (self->handles, TP_HANDLE_TYPE_CONTACT,
-        contacts, FALSE, error))
-    return FALSE;
+        contacts, FALSE, &error))
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return;
+    }
 
-  aliases = g_new0 (gchar *, contacts->len + 1);
+  request = aliases_request_new (self, context, contacts);
 
   for (i = 0; i < contacts->len; i++)
     {
       GabbleHandle handle = g_array_index (contacts, GabbleHandle, i);
       GabbleConnectionAliasSource source;
+      GabbleVCardManagerRequest *vcard_request;
       gchar *alias;
 
       source = _gabble_connection_get_cached_alias (self, handle, &alias);
-
       g_assert (source != GABBLE_CONNECTION_ALIAS_NONE);
       g_assert (NULL != alias);
 
-      aliases[i] = alias;
+      if (source >= GABBLE_CONNECTION_ALIAS_FROM_VCARD)
+        {
+          request->aliases[i] = alias;
+        }
+      else
+        {
+          DEBUG ("requesting vCard for alias of contact %s",
+                gabble_handle_inspect (self->handles, TP_HANDLE_TYPE_CONTACT,
+                  handle));
+
+          g_free (alias);
+          vcard_request = gabble_vcard_manager_request (self->vcard_manager,
+              handle, 0, aliases_request_vcard_cb, request, G_OBJECT (self),
+              &error);
+
+          if (NULL != error)
+            {
+              dbus_g_method_return_error (context, error);
+              g_error_free (error);
+              aliases_request_free (request);
+              return;
+            }
+
+          request->vcard_requests[i] = vcard_request;
+          request->pending_vcard_requests++;
+        }
     }
 
-  *ret = aliases;
-
-  return TRUE;
+  if (aliases_request_try_return (request))
+    aliases_request_free (request);
 }
 
 

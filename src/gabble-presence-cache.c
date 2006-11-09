@@ -1013,6 +1013,13 @@ gabble_presence_cache_lm_message_cb (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
+  if (handle == priv->conn->self_handle)
+    {
+      NODE_DEBUG (message->node,
+        "ignoring message from ourselves on another resource");
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    }
+
   switch (lm_message_get_type (message))
     {
     case LM_MESSAGE_TYPE_PRESENCE:

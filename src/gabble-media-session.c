@@ -1240,14 +1240,16 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
 
   /* do the state machine dance */
 
-  if (priv->initiator == INITIATOR_LOCAL) {
-      if (!strcmp (action, "initiate") || !strcmp (action, "session-initiate")) {
-              DEBUG ("we're calling ourselves, rejecting with busy");
-              _gabble_media_session_terminate (session, INITIATOR_REMOTE,
-                              TP_CHANNEL_GROUP_CHANGE_REASON_BUSY);
+  if (priv->initiator == INITIATOR_LOCAL)
+    {
+      if (!strcmp (action, "initiate") || !strcmp (action, "session-initiate"))
+        {
+          DEBUG ("we're calling ourselves, rejecting with busy");
+          _gabble_media_session_terminate (session, INITIATOR_REMOTE,
+              TP_CHANNEL_GROUP_CHANGE_REASON_BUSY);
               return;
-      }
-  }
+        }
+    }
 
   /* search the table of handlers for the action */
   for (i = handlers; NULL != i->actions[0]; i++)

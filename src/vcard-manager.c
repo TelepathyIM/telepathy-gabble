@@ -360,7 +360,7 @@ observe_vcard (GabbleConnection *conn, GabbleVCardManager *manager,
                                                         "NICKNAME");
 
   DEBUG ("Observing vCard for %u", handle);
-  NODE_DEBUG(vcard_node, "their vCard is");
+  //NODE_DEBUG(vcard_node, "their vCard is");
 
   if (nick_node)
     {

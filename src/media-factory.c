@@ -584,7 +584,7 @@ gabble_media_factory_iface_request (TpChannelFactoryIface *iface,
       members = g_array_sized_new (FALSE, FALSE, sizeof (GabbleHandle), 1);
       g_array_append_val (members, handle);
 
-      ret = gabble_group_mixin_add_members (G_OBJECT (chan), members, "", error);
+      ret = gabble_media_channel_add_remote (G_OBJECT (chan), handle, error);
 
       g_array_free (members, TRUE);
 

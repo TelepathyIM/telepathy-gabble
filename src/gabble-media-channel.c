@@ -1176,8 +1176,7 @@ gabble_media_channel_add_member (GObject *obj, GabbleHandle handle, const gchar 
   GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
 
   /* did we create this channel? */
-  if (priv->creator == mixin->self_handle &&
-      handle != mixin->self_handle)
+  if (priv->creator == mixin->self_handle)
     {
       GabblePresence *presence;
 
@@ -1316,6 +1315,11 @@ gabble_media_channel_remove_member (GObject *obj, GabbleHandle handle, const gch
   return TRUE;
 }
 
+gboolean
+gabble_media_channel_add_remote (GObject *obj, GabbleHandle handle, GError **error)
+{
+    return gabble_media_channel_add_member (obj, handle, "", error);
+}
 
 static void
 session_terminated_cb (GabbleMediaSession *session,

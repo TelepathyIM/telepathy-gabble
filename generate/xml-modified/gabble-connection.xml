@@ -68,6 +68,7 @@
       <arg direction="out" type="u"/>
     </method>
     <method name="RequestAliases">
+      <annotation name="org.freedesktop.DBus.GLib.Async" value=""/>
       <arg direction="in" name="contacts" type="au"/>
       <arg direction="out" type="as"/>
     </method>

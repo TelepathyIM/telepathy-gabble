@@ -63,6 +63,8 @@ GType gabble_media_channel_get_type(void);
 #define GABBLE_MEDIA_CHANNEL_GET_CLASS(obj) \
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_MEDIA_CHANNEL, GabbleMediaChannelClass))
 
+gboolean
+gabble_media_channel_add_remote (GObject *obj, GabbleHandle handle, GError **error);
 
 gboolean
 gabble_media_channel_add_members (GabbleMediaChannel *self,

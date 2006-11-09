@@ -2803,32 +2803,6 @@ gabble_connection_add_status (GabbleConnection *self,
 }
 
 
-#if 0
-/**
- * gabble_connection_advertise_capabilities
- *
- * Implements D-Bus method AdvertiseCapabilities
- * on interface org.freedesktop.Telepathy.Connection.Interface.Capabilities
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean gabble_connection_advertise_capabilities (GabbleConnection *obj, const gchar ** add, const gchar ** remove, GError **error)
-{
-  g_assert (GABBLE_IS_CONNECTION (obj));
-
-  ERROR_IF_NOT_CONNECTED (obj, error);
-
-  add = NULL;
-  remove = NULL;
-
-  return TRUE;
-}
-#endif
-
 static void
 _emit_capabilities_changed (GabbleConnection *conn,
                             GabbleHandle handle,
@@ -3117,59 +3091,13 @@ gabble_connection_get_alias_flags (GabbleConnection *self,
 }
 
 
-#if 0
-/**
- * gabble_connection_get_capabilities
- *
- * Implements D-Bus method GetCapabilities
- * on interface org.freedesktop.Telepathy.Connection.Interface.Capabilities
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean gabble_connection_get_capabilities (GabbleConnection *obj, guint handle, GPtrArray ** ret, GError **error)
-{
-  GValue vals ={0.};
-  GabbleConnectionPrivate *priv;
-
-  g_assert (GABBLE_IS_CONNECTION (obj));
-
-  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
-
-  ERROR_IF_NOT_CONNECTED (obj, error);
-
-  if (!gabble_handle_is_valid (obj->handles,
-                               TP_HANDLE_TYPE_CONTACT,
-                               handle,
-                               error))
-    return FALSE;
-
-  *ret = g_ptr_array_sized_new (1);
-
-  g_value_init (&vals, TP_CAPABILITY_PAIR_TYPE);
-  g_value_take_boxed (&vals,
-    dbus_g_type_specialized_construct (TP_CAPABILITY_PAIR_TYPE));
-
-  dbus_g_type_struct_set (&vals,
-                        0, TP_IFACE_CHANNEL_TYPE_TEXT,
-                        1, TP_CONN_CAPABILITY_TYPE_CREATE,
-                        G_MAXUINT);
-
-  g_ptr_array_add (*ret, g_value_get_boxed (&vals));
-
-  return TRUE;
-}
-#endif
-
 static const gchar *assumed_caps[] =
 {
   TP_IFACE_CHANNEL_TYPE_TEXT,
   TP_IFACE_CHANNEL_INTERFACE_GROUP,
   NULL
 };
+
 
 /**
  * gabble_connection_get_capabilities
@@ -4010,107 +3938,6 @@ OUT:
   g_free (object_path);
 }
 
-
-#if 0
-static LmHandlerResult
-contact_info_got_vcard (GabbleConnection *conn, LmMessage *sent_msg,
-                        LmMessage *reply_msg, GObject *object,
-                        gpointer user_data)
-{
-  GabbleConnectionPrivate *priv;
-  GabbleHandle contact = GPOINTER_TO_INT (user_data);
-  LmMessageNode *node, *child;
-  node = lm_message_node_get_child (reply_msg->node, "vCard");
-  GString *vcard = g_string_new("");
-  gchar *str;
-
-  g_assert (GABBLE_IS_CONNECTION (object));
-
-  priv = GABBLE_CONNECTION_GET_PRIVATE (object);
-
-  if (!node)
-    {
-      DEBUG ("request to %s returned with no contact info",
-               gabble_handle_inspect (conn->handles, TP_HANDLE_TYPE_CONTACT, contact));
-      g_signal_emit (conn, signals[GOT_CONTACT_INFO], 0, contact, "");
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-    }
-
- DEBUG ("request to %s returned contact info:",
-               gabble_handle_inspect (conn->handles, TP_HANDLE_TYPE_CONTACT, contact));
-  child = node->children;
-  for (;child; child = child->next)
-    {
-      str = lm_message_node_to_string (child);
-      //DEBUG ("%s", str);
-      if (0 != strcmp (child->name, "PHOTO")
-       && 0 != strcmp (child->name, "photo"))
-        {
-          g_string_append_printf (vcard, "  %s", str);
-        }
-      g_free (str);
-    }
-
-  g_signal_emit (conn, signals[GOT_CONTACT_INFO], 0, contact, vcard->str);
-
-  g_string_free (vcard, TRUE);
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-}
-
-/**
- * gabble_connection_request_contact_info
- *
- * Implements D-Bus method RequestContactInfo
- * on interface org.freedesktop.Telepathy.Connection.Interface.ContactInfo
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean gabble_connection_request_contact_info (GabbleConnection *obj, guint contact, GError **error)
-{
-  GabbleConnectionPrivate *priv;
-  LmMessage *msg;
-  LmMessageNode *vcard_node;
-  const char *contact_jid;
-
-  g_assert (GABBLE_IS_CONNECTION (obj));
-
-  priv = GABBLE_CONNECTION_GET_PRIVATE (obj);
-
-  if (!gabble_handle_is_valid (obj->handles,
-                               TP_HANDLE_TYPE_CONTACT,
-                               contact,
-                               error))
-    return FALSE;
-
-  contact_jid = gabble_handle_inspect (obj->handles, TP_HANDLE_TYPE_CONTACT,
-                                       contact);
-
-  /* build the message */
-  msg = lm_message_new_with_sub_type (contact_jid, LM_MESSAGE_TYPE_IQ,
-                                     LM_MESSAGE_SUB_TYPE_GET);
-
-  vcard_node = lm_message_node_add_child (msg->node, "vCard", NULL);
-
-  lm_message_node_set_attribute (vcard_node, "xmlns", NS_VCARD_TEMP);
-
-
-  if (!_gabble_connection_send_with_reply (obj, msg, contact_info_got_vcard,
-                                           G_OBJECT(obj), GINT_TO_POINTER (contact),
-                                           error))
-    {
-      return FALSE;
-    }
-  else
-    {
-      return TRUE;
-    }
-}
-#endif
 
 static void
 hold_and_return_handles (DBusGMethodInvocation *context,

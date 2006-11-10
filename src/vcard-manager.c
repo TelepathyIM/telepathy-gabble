@@ -861,3 +861,24 @@ gabble_vcard_manager_get_cached_alias (GabbleVCardManager *manager,
          handle, s ? s : "(null)");
   return s;
 }
+
+/**
+ * Return TRUE if we've tried looking up an alias for this handle before.
+ */
+gboolean
+gabble_vcard_manager_has_cached_alias (GabbleVCardManager *manager,
+                                       GabbleHandle handle)
+{
+  GabbleVCardManagerPrivate *priv;
+  gpointer p;
+
+  g_return_val_if_fail (GABBLE_IS_VCARD_MANAGER (manager), FALSE);
+
+  priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (manager);
+  p = gabble_handle_get_qdata (priv->connection->handles,
+                               TP_HANDLE_TYPE_CONTACT,
+                               handle,
+                               gabble_vcard_manager_cache_quark());
+  return p != NULL;
+}
+

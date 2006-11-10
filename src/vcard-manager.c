@@ -423,6 +423,17 @@ observe_vcard (GabbleConnection *conn, GabbleVCardManager *manager,
               g_free (alias);
             }
         }
+      else
+        {
+          /* remember that they don't have an alias */
+          if (!gabble_handle_set_qdata (conn->handles,
+                                        TP_HANDLE_TYPE_CONTACT,
+                                        handle,
+                                        gabble_vcard_manager_cache_quark (),
+                                        GINT_TO_POINTER (-1), g_free))
+            DEBUG ("failed to cache their lack of vcard alias");
+        }
+
     }
 }
 
@@ -842,6 +853,10 @@ gabble_vcard_manager_get_cached_alias (GabbleVCardManager *manager,
                                TP_HANDLE_TYPE_CONTACT,
                                handle,
                                gabble_vcard_manager_cache_quark());
+
+  if (GPOINTER_TO_INT (s) == -1)
+    s = NULL;
+
   DEBUG ("Cached alias for %u is \"%s\"",
          handle, s ? s : "(null)");
   return s;

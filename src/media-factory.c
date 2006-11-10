@@ -576,19 +576,9 @@ gabble_media_factory_iface_request (TpChannelFactoryIface *iface,
     }
   else if (handle_type == TP_HANDLE_TYPE_CONTACT)
     {
-      GArray *members;
-      gboolean ret;
-
       chan = new_media_channel (fac, priv->conn->self_handle);
 
-      members = g_array_sized_new (FALSE, FALSE, sizeof (GabbleHandle), 1);
-      g_array_append_val (members, handle);
-
-      ret = _gabble_media_channel_add_member (G_OBJECT (chan), handle, "", error);
-
-      g_array_free (members, TRUE);
-
-      if (!ret)
+      if (!_gabble_media_channel_add_member (G_OBJECT (chan), handle, "", error))
         {
           gboolean close_ret;
 

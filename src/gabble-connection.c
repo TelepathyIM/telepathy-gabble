@@ -3920,8 +3920,12 @@ gabble_connection_request_aliases (GabbleConnection *self,
       g_assert (source != GABBLE_CONNECTION_ALIAS_NONE);
       g_assert (NULL != alias);
 
-      if (source >= GABBLE_CONNECTION_ALIAS_FROM_VCARD)
+      if (source >= GABBLE_CONNECTION_ALIAS_FROM_VCARD ||
+          gabble_vcard_manager_has_cached_alias (self->vcard_manager, handle))
         {
+          /* Either the alias we got was from a vCard or better, or we already
+           * tried getting an alias from a vcard and failed, so there's no
+           * point trying again. */
           request->aliases[i] = alias;
         }
       else

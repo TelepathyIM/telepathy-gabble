@@ -92,6 +92,7 @@ struct _GabbleMediaSessionPrivate
   gchar *object_path;
 
   GHashTable *streams;
+  GPtrArray *remove_requests;
 
   gchar *id;
   JingleInitiator initiator;
@@ -138,6 +139,7 @@ gabble_media_session_init (GabbleMediaSession *self)
   priv->state = JS_STATE_PENDING_CREATED;
   priv->streams = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
       g_object_unref);
+  priv->remove_requests = g_ptr_array_new ();
 }
 
 static void stream_close_cb (GabbleMediaStream *stream,
@@ -496,6 +498,7 @@ gabble_media_session_dispose (GObject *object)
 {
   GabbleMediaSession *self = GABBLE_MEDIA_SESSION (object);
   GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (self);
+  guint i;
 
   DEBUG ("called");
 
@@ -512,6 +515,11 @@ gabble_media_session_dispose (GObject *object)
 
   g_hash_table_destroy (priv->streams);
   priv->streams = NULL;
+
+  for (i = 0; i < priv->remove_requests->len; i++)
+    g_ptr_array_free (g_ptr_array_index (priv->remove_requests, i), TRUE);
+  g_ptr_array_free (priv->remove_requests, TRUE);
+  priv->remove_requests = NULL;
 
   if (G_OBJECT_CLASS (gabble_media_session_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_media_session_parent_class)->dispose (object);
@@ -766,11 +774,8 @@ _handle_create (GabbleMediaSession *session,
       GMS_DEBUG_INFO (session, "removing our unacknowledged stream \"%s\" "
           "in favour of the session initiator's", stream_name);
 
-      /* set state to removing so we don't signal the removal */
-      g_object_set (stream, "signalling-state", STREAM_SIG_STATE_REMOVING,
-          NULL);
-
-      _gabble_media_session_remove_streams (session, &stream, 1);
+      /* disappear this stream */
+      _gabble_media_stream_close (stream);
 
       stream = NULL;
     }
@@ -2233,15 +2238,25 @@ _gabble_media_session_accept (GabbleMediaSession *session)
 }
 
 static LmHandlerResult
-remove_reply_cb (GabbleConnection *conn,
-                 LmMessage *sent_msg,
-                 LmMessage *reply_msg,
-                 GObject *object,
-                 gpointer user_data)
+content_remove_msg_reply_cb (GabbleConnection *conn,
+                             LmMessage *sent_msg,
+                             LmMessage *reply_msg,
+                             GObject *object,
+                             gpointer user_data)
 {
   GabbleMediaSession *session = GABBLE_MEDIA_SESSION (object);
+  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+  GPtrArray *removing = (GPtrArray *) user_data;
+  guint i;
 
   MSG_REPLY_CB_END_SESSION_IF_NOT_SUCCESSFUL (session, "stream removal failed");
+
+  for (i = 0; i < removing->len; i++)
+    _gabble_media_stream_close (GABBLE_MEDIA_STREAM (g_ptr_array_index
+        (removing, i)));
+
+  g_ptr_array_remove_fast (priv->remove_requests, removing);
+  g_ptr_array_free (removing, TRUE);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
@@ -2253,8 +2268,8 @@ _gabble_media_session_remove_streams (GabbleMediaSession *session,
 {
   GabbleMediaSessionPrivate *priv;
   LmMessage *msg = NULL;
-  gboolean signal = FALSE;
   LmMessageNode *session_node;
+  GPtrArray *removing = NULL;
   guint i;
 
   g_assert (GABBLE_IS_MEDIA_SESSION (session));
@@ -2274,53 +2289,69 @@ _gabble_media_session_remove_streams (GabbleMediaSession *session,
   if (priv->state > JS_STATE_PENDING_CREATED)
     {
       msg = _gabble_media_session_message_new (session, "content-remove",
-                                               &session_node);
+          &session_node);
+      removing = g_ptr_array_sized_new (len);
     }
 
   /* right, remove them */
   for (i = 0; i < len; i++)
     {
       GabbleMediaStream *stream = streams[i];
+      StreamSignallingState sig_state;
 
-      if (msg != NULL)
+      g_object_get (stream, "signalling-state", &sig_state, NULL);
+
+      switch (sig_state)
         {
-          gchar *name;
-          StreamSignallingState sig_state;
+        case STREAM_SIG_STATE_NEW:
+          _gabble_media_stream_close (stream);
+          break;
+        case STREAM_SIG_STATE_SENT:
+        case STREAM_SIG_STATE_ACKNOWLEDGED:
+          {
+            LmMessageNode *content_node;
+            gchar *name;
 
-          g_object_get (stream,
-              "name", &name,
-              "signalling-state", &sig_state,
+            g_assert (msg != NULL);
+            g_assert (removing != NULL);
+
+            g_object_get (stream, "name", &name, NULL);
+
+            content_node = lm_message_node_add_child (session_node, "content",
               NULL);
+            lm_message_node_set_attribute (content_node, "name", name);
 
-          if (sig_state > STREAM_SIG_STATE_NEW &&
-              sig_state < STREAM_SIG_STATE_REMOVING)
-            {
-              LmMessageNode *content_node;
+            g_free (name);
 
-              content_node = lm_message_node_add_child (session_node, "content",
+            g_object_set (stream,
+                "playing", FALSE,
+                "signalling-state", STREAM_SIG_STATE_REMOVING,
                 NULL);
-              lm_message_node_set_attribute (content_node, "name", name);
 
-              signal = TRUE;
-            }
-
-          g_free (name);
+            g_ptr_array_add (removing, stream);
+          }
+          break;
+        case STREAM_SIG_STATE_REMOVING:
+          break;
         }
-
-      /* close the stream */
-      _gabble_media_stream_close (stream);
     }
 
   /* send the remove message if necessary */
   if (msg != NULL)
     {
-      if (signal)
+      if (removing->len > 0)
         {
           GMS_DEBUG_INFO (session, "sending jingle session action "
               "\"content-remove\" to peer");
 
-          _gabble_connection_send_with_reply (priv->conn, msg, remove_reply_cb,
-              G_OBJECT (session), NULL, NULL);
+          _gabble_connection_send_with_reply (priv->conn, msg,
+              content_remove_msg_reply_cb, G_OBJECT (session), removing, NULL);
+
+          g_ptr_array_add (priv->remove_requests, removing);
+        }
+      else
+        {
+          g_ptr_array_free (removing, TRUE);
         }
 
       lm_message_unref (msg);
@@ -2329,7 +2360,7 @@ _gabble_media_session_remove_streams (GabbleMediaSession *session,
     {
       GMS_DEBUG_INFO (session, "not sending jingle session action "
           "\"content-remove\" to peer, no initiates or adds sent for "
-          "this stream");
+          "these streams");
     }
 }
 

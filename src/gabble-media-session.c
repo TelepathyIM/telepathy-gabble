@@ -662,6 +662,16 @@ _handle_create (GabbleMediaSession *session,
   TpMediaStreamType stream_type;
   gboolean override_existing = FALSE;
 
+  if ((priv->state == JS_STATE_PENDING_CREATED) &&
+      (priv->initiator == INITIATOR_LOCAL))
+    {
+      DEBUG ("we're trying to call ourselves, rejecting with busy");
+      _gabble_media_session_terminate (session, INITIATOR_REMOTE,
+          TP_CHANNEL_GROUP_CHANGE_REASON_BUSY);
+          return FALSE;
+    }
+
+
   if (stream != NULL)
     {
       StreamSignallingState sig_state;
@@ -1239,17 +1249,6 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
                   action);
 
   /* do the state machine dance */
-
-  if (priv->initiator == INITIATOR_LOCAL)
-    {
-      if (!strcmp (action, "initiate") || !strcmp (action, "session-initiate"))
-        {
-          DEBUG ("we're calling ourselves, rejecting with busy");
-          _gabble_media_session_terminate (session, INITIATOR_REMOTE,
-              TP_CHANNEL_GROUP_CHANGE_REASON_BUSY);
-              return;
-        }
-    }
 
   /* search the table of handlers for the action */
   for (i = handlers; NULL != i->actions[0]; i++)

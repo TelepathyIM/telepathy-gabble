@@ -343,7 +343,6 @@ gabble_media_channel_set_property (GObject     *object,
 
 static void gabble_media_channel_dispose (GObject *object);
 static void gabble_media_channel_finalize (GObject *object);
-static gboolean gabble_media_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *message, GError **error);
 static gboolean gabble_media_channel_remove_member (GObject *obj, GabbleHandle handle, const gchar *message, GError **error);
 
 static void
@@ -364,7 +363,7 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
 
   gabble_group_mixin_class_init (object_class,
                                  G_STRUCT_OFFSET (GabbleMediaChannelClass, group_class),
-                                 gabble_media_channel_add_member,
+                                 _gabble_media_channel_add_member,
                                  gabble_media_channel_remove_member);
 
   g_object_class_override_property (object_class, PROP_OBJECT_PATH, "object-path");
@@ -1168,8 +1167,8 @@ gabble_media_channel_request_streams (GabbleMediaChannel *self,
 }
 
 
-static gboolean
-gabble_media_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *message, GError **error)
+gboolean
+_gabble_media_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *message, GError **error)
 {
   GabbleMediaChannel *chan = GABBLE_MEDIA_CHANNEL (obj);
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
@@ -1313,12 +1312,6 @@ gabble_media_channel_remove_member (GObject *obj, GabbleHandle handle, const gch
                                    TP_CHANNEL_GROUP_FLAG_CAN_RESCIND);
 
   return TRUE;
-}
-
-gboolean
-gabble_media_channel_add_remote (GObject *obj, GabbleHandle handle, GError **error)
-{
-    return gabble_media_channel_add_member (obj, handle, "", error);
 }
 
 static void

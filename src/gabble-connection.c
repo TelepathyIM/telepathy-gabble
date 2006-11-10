@@ -3927,8 +3927,8 @@ gabble_connection_request_aliases (GabbleConnection *self,
       else
         {
           DEBUG ("requesting vCard for alias of contact %s",
-                gabble_handle_inspect (self->handles, TP_HANDLE_TYPE_CONTACT,
-                  handle));
+              gabble_handle_inspect (self->handles, TP_HANDLE_TYPE_CONTACT,
+                handle));
 
           g_free (alias);
           vcard_request = gabble_vcard_manager_request (self->vcard_manager,

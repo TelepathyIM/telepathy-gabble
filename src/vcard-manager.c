@@ -388,7 +388,7 @@ observe_vcard (GabbleConnection *conn, GabbleVCardManager *manager,
                                             alias, g_free))
                 {
                   DEBUG ("failed to cache their alias");
-                  g_free(alias);
+                  g_free (alias);
                 }
 
             }
@@ -407,7 +407,7 @@ observe_vcard (GabbleConnection *conn, GabbleVCardManager *manager,
              fn ? fn : "(null)");
       if (fn && *fn)
         {
-          gchar *alias = g_strdup(fn);
+          gchar *alias = g_strdup (fn);
 
           DEBUG ("... using \"%s\" as their alias", alias);
 
@@ -420,7 +420,7 @@ observe_vcard (GabbleConnection *conn, GabbleVCardManager *manager,
                                         alias, g_free))
             {
               DEBUG ("failed to cache their alias");
-              g_free(alias);
+              g_free (alias);
             }
         }
     }

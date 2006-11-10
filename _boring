@@ -69,3 +69,4 @@
 (^|/)cscope\.out$
 (^|/)core$
 ^debian($|/)
+^tags$

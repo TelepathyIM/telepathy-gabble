@@ -114,6 +114,8 @@ void gabble_vcard_manager_cancel_request (GabbleVCardManager *manager,
 
 const gchar *gabble_vcard_manager_get_cached_alias (GabbleVCardManager *,
                                                    GabbleHandle);
+gboolean gabble_vcard_manager_has_cached_alias (GabbleVCardManager *manager,
+                                                GabbleHandle handle);
 
 G_END_DECLS
 

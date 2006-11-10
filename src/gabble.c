@@ -91,6 +91,7 @@ no_more_connections (GabbleConnectionManager *conn)
   timeout_id = g_timeout_add (DIE_TIME, kill_connection_manager, NULL);
 }
 
+#ifdef ENABLE_BACKTRACE
 static void
 print_backtrace (void)
 {
@@ -130,12 +131,14 @@ segv_handler (int sig)
 }
 #endif /* HAVE_SIGNAL */
 
+#endif /* ENABLE_BACKTRACE */
+
 static void
 add_signal_handlers (void)
 {
-#ifdef HAVE_SIGNAL
+#if defined(HAVE_SIGNAL) && defined(ENABLE_BACKTRACE)
   signal (SIGSEGV, segv_handler);
-#endif /* HAVE_SIGNAL */
+#endif /* HAVE_SIGNAL && ENABLE_BACKTRACE */
 }
 
 int
@@ -162,6 +165,7 @@ main (int argc,
       fatal_mask |= G_LOG_LEVEL_CRITICAL;
       g_log_set_always_fatal (fatal_mask);
 
+#ifdef ENABLE_BACKTRACE
       g_log_set_handler ("GLib-GObject",
           G_LOG_LEVEL_CRITICAL | G_LOG_LEVEL_ERROR |
           G_LOG_FLAG_FATAL | G_LOG_FLAG_RECURSION,
@@ -174,6 +178,7 @@ main (int argc,
           G_LOG_LEVEL_CRITICAL | G_LOG_LEVEL_ERROR |
           G_LOG_FLAG_FATAL | G_LOG_FLAG_RECURSION,
           critical_handler, NULL);
+#endif /* ENABLE_BACKTRACE */
     }
 
   mainloop = g_main_loop_new (NULL, FALSE);

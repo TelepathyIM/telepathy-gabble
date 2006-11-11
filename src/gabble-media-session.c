@@ -1429,7 +1429,7 @@ _mark_local_streams_acked (GabbleMediaSession *session)
     {
       GabbleMediaStream *stream = g_ptr_array_index (priv->streams, i);
 
-      if (stream->initiator == INITIATOR_LOCAL)
+      if (stream->initiator == INITIATOR_REMOTE)
         continue;
 
       if (stream->signalling_state != STREAM_SIG_STATE_SENT)

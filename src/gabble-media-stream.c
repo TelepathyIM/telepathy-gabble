@@ -1217,6 +1217,9 @@ _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream,
       GHashTable *params;
       GValue codec = { 0, };
 
+      if (g_strdiff (node->name, "payload-type"))
+        continue;
+
       /* id of codec */
       str = lm_message_node_get_attribute (node, "id");
       if (str == NULL)
@@ -1351,6 +1354,8 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
       GValue transport = { 0, };
       gchar *xml;
 
+      if (g_strdiff (node->name, "candidate"))
+        continue;
 
       /*
        * Candidate

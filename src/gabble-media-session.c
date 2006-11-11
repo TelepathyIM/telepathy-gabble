@@ -971,6 +971,22 @@ _handle_candidates (GabbleMediaSession *session,
   return TRUE;
 }
 
+static guint
+_count_non_removing_streams (GabbleMediaSession *session)
+{
+  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+  guint i, ret = 0;
+
+  for (i = 0; i < priv->streams->len; i++)
+    {
+      GabbleMediaStream *stream = g_ptr_array_index (priv->streams, i);
+
+      if (stream->signalling_state < STREAM_SIG_STATE_REMOVING)
+        ret++;
+    }
+
+  return ret;
+}
 
 static gboolean
 _handle_remove (GabbleMediaSession *session,
@@ -982,11 +998,9 @@ _handle_remove (GabbleMediaSession *session,
                 LmMessageNode *trans_node,
                 GError **error)
 {
-  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
-
   /* reducing a session to contain 0 streams is invalid; instead the peer
    * should terminate the session. I guess we'll do it for them... */
-  if (priv->streams->len == 1)
+  if (_count_non_removing_streams (session) == 1)
     {
       g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
           "unable to remove the last stream in a Jingle call");
@@ -1881,7 +1895,7 @@ stream_close_cb (GabbleMediaStream *stream,
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
 
   if (priv->streams != NULL)
-      g_ptr_array_remove_fast (priv->streams, stream);
+    g_ptr_array_remove_fast (priv->streams, stream);
 
   g_hash_table_remove (priv->streams_by_name, stream->name);
 }
@@ -2169,7 +2183,7 @@ _gabble_media_session_remove_streams (GabbleMediaSession *session,
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
 
   /* end the session if there'd be no streams left after reducing it */
-  if (priv->streams->len == len)
+  if (_count_non_removing_streams (session) == len)
     {
       _gabble_media_session_terminate (session, INITIATOR_LOCAL,
           TP_CHANNEL_GROUP_CHANGE_REASON_NONE);

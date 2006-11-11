@@ -24,6 +24,9 @@
 #include <glib-object.h>
 #include <loudmouth/loudmouth.h>
 
+#include "gabble-types.h"
+#include "telepathy-constants.h"
+
 G_BEGIN_DECLS
 
 typedef enum
@@ -34,6 +37,8 @@ typedef enum
   STREAM_SIG_STATE_REMOVING
 } StreamSignallingState;
 
+typedef guint32 CombinedStreamDirection;
+
 typedef struct _GabbleMediaStream GabbleMediaStream;
 typedef struct _GabbleMediaStreamClass GabbleMediaStreamClass;
 
@@ -43,6 +48,16 @@ struct _GabbleMediaStreamClass {
 
 struct _GabbleMediaStream {
     GObject parent;
+
+    const gchar *name;
+
+    JingleInitiator initiator;
+    TpMediaStreamState connection_state;
+    StreamSignallingState signalling_state;
+
+    CombinedStreamDirection combined_direction;
+    gboolean got_local_codecs;
+    gboolean playing;
 
     gpointer priv;
 };
@@ -101,8 +116,6 @@ GType gabble_media_stream_get_type(void);
     ((TpMediaStreamPendingSend) ((d) >> 2))
 #define MAKE_COMBINED_DIRECTION(d, p) \
     ((CombinedStreamDirection) ((d) | ((p) << 2)))
-
-typedef guint32 CombinedStreamDirection;
 
 gboolean
 gabble_media_stream_codec_choice (GabbleMediaStream *self,

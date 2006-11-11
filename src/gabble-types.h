@@ -33,6 +33,11 @@ typedef struct _GabbleRosterChannel GabbleRosterChannel;
 typedef struct _GabbleVCardManager GabbleVCardManager;
 typedef guint32 GabbleHandle;
 
+typedef enum {
+    INITIATOR_LOCAL,
+    INITIATOR_REMOTE,
+} JingleInitiator;
+
 G_END_DECLS
 
 #endif

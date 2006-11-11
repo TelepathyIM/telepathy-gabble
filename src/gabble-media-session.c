@@ -1168,6 +1168,11 @@ _call_handlers_on_stream (GabbleMediaSession *session,
       if (!(*tmp) (session, message, content_node, stream_name, stream,
             desc_node, trans_node, error))
         return FALSE;
+
+      /* force a stream lookup after the create handler, even if we already had
+       * one (it has replacement semantics in certain situations) */
+      if (*tmp == _handle_create)
+        stream = NULL;
     }
 
   return TRUE;

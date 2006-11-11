@@ -564,6 +564,7 @@ gabble_media_session_error (GabbleMediaSession *self,
                             GError **error)
 {
   GabbleMediaSessionPrivate *priv;
+  GPtrArray *tmp;
   guint i;
 
   g_assert (GABBLE_IS_MEDIA_SESSION (self));
@@ -587,15 +588,17 @@ gabble_media_session_error (GabbleMediaSession *self,
 
   g_assert (priv->streams != NULL);
 
-  for (i = 0; i < priv->streams->len; i++)
+  tmp = priv->streams;
+  priv->streams = NULL;
+
+  for (i = 0; i < tmp->len; i++)
     {
       GabbleMediaStream *stream = g_ptr_array_index (priv->streams, i);
 
-      if (!gabble_media_stream_error (stream, errno, message, error))
-        {
-          return FALSE;
-        }
+      gabble_media_stream_error (stream, errno, message, NULL);
     }
+
+  g_ptr_array_free (tmp, TRUE);
 
   return TRUE;
 }

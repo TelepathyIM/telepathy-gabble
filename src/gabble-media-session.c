@@ -688,7 +688,7 @@ _handle_create (GabbleMediaSession *session,
 
       /* streams added by the session initiator may replace similarly-named
        * streams which we are trying to add (but havn't had acknowledged) */
-      if (sig_state == STREAM_SIG_STATE_SENT)
+      if (sig_state < STREAM_SIG_STATE_ACKNOWLEDGED)
         {
           if (priv->initiator == INITIATOR_REMOTE)
             {

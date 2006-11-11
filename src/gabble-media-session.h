@@ -37,11 +37,6 @@ typedef enum
 } GabbleMediaSessionMode;
 
 typedef enum {
-    INITIATOR_LOCAL,
-    INITIATOR_REMOTE,
-} JingleInitiator;
-
-typedef enum {
     JS_STATE_INVALID = -1,
     JS_STATE_PENDING_CREATED = 0,
     JS_STATE_PENDING_INITIATE_SENT,

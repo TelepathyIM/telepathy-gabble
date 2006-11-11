@@ -98,20 +98,11 @@ struct _GabbleMediaStreamPrivate
   GabbleMediaSession *session;
   GabbleMediaSessionMode mode;
   gchar *object_path;
-  gchar *name;
   guint id;
-  JingleInitiator initiator;
   guint media_type;
 
-  TpMediaStreamState connection_state;
-  StreamSignallingState signalling_state;
-
   gboolean ready;
-  gboolean got_local_codecs;
-  gboolean playing;
   gboolean sending;
-
-  CombinedStreamDirection combined_direction;
 
   GValue native_codecs;     /* intersected codec list */
   GValue native_candidates;
@@ -217,34 +208,34 @@ gabble_media_stream_get_property (GObject    *object,
       g_value_set_enum (value, priv->mode);
       break;
     case PROP_NAME:
-      g_value_set_string (value, priv->name);
+      g_value_set_string (value, stream->name);
       break;
     case PROP_ID:
       g_value_set_uint (value, priv->id);
       break;
     case PROP_INITIATOR:
-      g_value_set_uint (value, priv->initiator);
+      g_value_set_uint (value, stream->initiator);
       break;
     case PROP_MEDIA_TYPE:
       g_value_set_uint (value, priv->media_type);
       break;
     case PROP_CONNECTION_STATE:
-      g_value_set_uint (value, priv->connection_state);
+      g_value_set_uint (value, stream->connection_state);
       break;
     case PROP_READY:
       g_value_set_boolean (value, priv->ready);
       break;
     case PROP_GOT_LOCAL_CODECS:
-      g_value_set_boolean (value, priv->got_local_codecs);
+      g_value_set_boolean (value, stream->got_local_codecs);
       break;
     case PROP_SIGNALLING_STATE:
-      g_value_set_uint (value, priv->signalling_state);
+      g_value_set_uint (value, stream->signalling_state);
       break;
     case PROP_PLAYING:
-      g_value_set_boolean (value, priv->playing);
+      g_value_set_boolean (value, stream->playing);
       break;
     case PROP_COMBINED_DIRECTION:
-      g_value_set_uint (value, priv->combined_direction);
+      g_value_set_uint (value, stream->combined_direction);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -276,50 +267,50 @@ gabble_media_stream_set_property (GObject      *object,
       priv->mode = g_value_get_enum (value);
       break;
     case PROP_NAME:
-      g_free (priv->name);
-      priv->name = g_value_dup_string (value);
+      g_free ((gchar *) stream->name);
+      stream->name = g_value_dup_string (value);
       break;
     case PROP_ID:
       priv->id = g_value_get_uint (value);
       break;
     case PROP_INITIATOR:
-      priv->initiator = g_value_get_uint (value);
+      stream->initiator = g_value_get_uint (value);
       break;
     case PROP_MEDIA_TYPE:
       priv->media_type = g_value_get_uint (value);
       break;
     case PROP_CONNECTION_STATE:
-      priv->connection_state = g_value_get_uint (value);
+      stream->connection_state = g_value_get_uint (value);
       break;
     case PROP_READY:
       priv->ready = g_value_get_boolean (value);
       break;
     case PROP_GOT_LOCAL_CODECS:
-      priv->got_local_codecs = g_value_get_boolean (value);
+      stream->got_local_codecs = g_value_get_boolean (value);
       break;
     case PROP_SIGNALLING_STATE:
         {
-          StreamSignallingState old = priv->signalling_state;
-          priv->signalling_state = g_value_get_uint (value);
+          StreamSignallingState old = stream->signalling_state;
+          stream->signalling_state = g_value_get_uint (value);
           GMS_DEBUG_INFO (priv->session, "stream %s sig_state %d->%d",
-              priv->name, old, priv->signalling_state);
-          if (priv->signalling_state != old)
+              stream->name, old, stream->signalling_state);
+          if (stream->signalling_state != old)
             push_native_candidates (stream);
         }
       break;
     case PROP_PLAYING:
         {
-          gboolean old = priv->playing;
-          priv->playing = g_value_get_boolean (value);
-          if (priv->playing != old)
+          gboolean old = stream->playing;
+          stream->playing = g_value_get_boolean (value);
+          if (stream->playing != old)
             push_playing (stream);
         }
       break;
     case PROP_COMBINED_DIRECTION:
         {
           gboolean new_sending;
-          priv->combined_direction = g_value_get_uint (value);
-          new_sending = ((priv->combined_direction &
+          stream->combined_direction = g_value_get_uint (value);
+          new_sending = ((stream->combined_direction &
                 TP_MEDIA_STREAM_DIRECTION_SEND) != 0);
           if (priv->sending != new_sending)
             {
@@ -1109,7 +1100,7 @@ _gabble_media_stream_message_new (GabbleMediaStream *stream,
       LmMessageNode *node;
 
       node = lm_message_node_add_child (*content_node, "content", NULL);
-      lm_message_node_set_attribute (node, "name", priv->name);
+      lm_message_node_set_attribute (node, "name", stream->name);
 
       *content_node = node;
     }
@@ -1162,8 +1153,8 @@ push_native_candidates (GabbleMediaStream *stream)
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
-  if (priv->signalling_state == STREAM_SIG_STATE_NEW ||
-      priv->signalling_state == STREAM_SIG_STATE_REMOVING)
+  if (stream->signalling_state == STREAM_SIG_STATE_NEW ||
+      stream->signalling_state == STREAM_SIG_STATE_REMOVING)
     return;
 
   candidates = g_value_get_boxed (&priv->native_candidates);
@@ -1566,9 +1557,9 @@ push_playing (GabbleMediaStream *stream)
     return;
 
   GMS_DEBUG_INFO (priv->session, "stream %s emitting SetStreamPlaying(%s)",
-      priv->name, priv->playing ? "true" : "false");
+      stream->name, stream->playing ? "true" : "false");
 
-  g_signal_emit (stream, signals[SET_STREAM_PLAYING], 0, priv->playing);
+  g_signal_emit (stream, signals[SET_STREAM_PLAYING], 0, stream->playing);
 }
 
 static void
@@ -1584,7 +1575,7 @@ push_sending (GabbleMediaStream *stream)
     return;
 
   GMS_DEBUG_INFO (priv->session, "stream %s emitting SetStreamSending(%s)",
-      priv->name, priv->sending ? "true" : "false");
+      stream->name, priv->sending ? "true" : "false");
 
   g_signal_emit (stream, signals[SET_STREAM_SENDING], 0, priv->sending);
 }

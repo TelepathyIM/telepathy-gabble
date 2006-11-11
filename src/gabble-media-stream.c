@@ -280,6 +280,8 @@ gabble_media_stream_set_property (GObject      *object,
       priv->media_type = g_value_get_uint (value);
       break;
     case PROP_CONNECTION_STATE:
+      GMS_DEBUG_INFO (priv->session, "stream %s connection state %d",
+          stream->name, stream->connection_state);
       stream->connection_state = g_value_get_uint (value);
       break;
     case PROP_READY:

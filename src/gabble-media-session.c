@@ -1156,7 +1156,12 @@ _call_handlers_on_stream (GabbleMediaSession *session,
                * adding/removing race conditions (actions sent by the other end
                * before they're aware that we've added or removed a stream) */
               if (stream->signalling_state != STREAM_SIG_STATE_ACKNOWLEDGED)
-                return TRUE;
+                {
+                  GMS_DEBUG_WARNING (session, "ignoring action because stream "
+                      "%s is in state %d, not ACKNOWLEDGED", stream->name,
+                      stream->signalling_state);
+                  return TRUE;
+                }
             }
         }
 

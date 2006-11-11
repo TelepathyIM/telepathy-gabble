@@ -1503,7 +1503,8 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
   return TRUE;
 
 FAILURE:
-  g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST, NULL);
+  g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+      "unable to parse candidate");
 
   return FALSE;
 }

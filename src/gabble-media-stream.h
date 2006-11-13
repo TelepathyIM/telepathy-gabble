@@ -49,7 +49,7 @@ struct _GabbleMediaStreamClass {
 struct _GabbleMediaStream {
     GObject parent;
 
-    const gchar *name;
+    gchar *name;
 
     JingleInitiator initiator;
     TpMediaStreamState connection_state;

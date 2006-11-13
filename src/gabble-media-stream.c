@@ -267,7 +267,7 @@ gabble_media_stream_set_property (GObject      *object,
       priv->mode = g_value_get_enum (value);
       break;
     case PROP_NAME:
-      g_free ((gchar *) stream->name);
+      g_free (stream->name);
       stream->name = g_value_dup_string (value);
       break;
     case PROP_ID:

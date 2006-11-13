@@ -219,6 +219,8 @@ media_factory_jingle_cb (LmMessageHandler *handler,
   gchar *resource;
   GabbleHandle handle;
   GabbleMediaChannel *chan = NULL;
+  gboolean chan_is_new = FALSE;
+  GError *error = NULL;
 
   g_assert (lmconn == priv->conn->lmconn);
 
@@ -303,7 +305,7 @@ media_factory_jingle_cb (LmMessageHandler *handler,
       DEBUG ("creating media channel");
 
       chan = new_media_channel (fac, handle);
-      g_signal_emit_by_name (fac, "new-channel", chan);
+      chan_is_new = TRUE;
     }
 
   g_assert (chan != NULL);
@@ -311,8 +313,23 @@ media_factory_jingle_cb (LmMessageHandler *handler,
   DEBUG ("dispatching to session %s", sid);
   g_object_ref (chan);
   gabble_decode_jid (from, NULL, NULL, &resource);
-  _gabble_media_channel_dispatch_session_action (chan, handle, resource,
-      sid, message, session_node, action);
+
+  if (_gabble_media_channel_dispatch_session_action (chan, handle, resource,
+        sid, message, session_node, action, &error))
+    {
+      if (chan_is_new)
+        g_signal_emit_by_name (fac, "new-channel", chan);
+    }
+  else
+    {
+      if (chan_is_new)
+        gabble_media_channel_close (chan, NULL);
+
+      g_assert (error != NULL);
+      _gabble_connection_send_iq_error (priv->conn, message, error->code,
+          error->message);
+    }
+
   g_object_unref (chan);
   g_free (resource);
 

@@ -209,6 +209,7 @@ struct _GabbleConnectionPrivate
   LmMessageHandler *iq_jingle_info_cb;
   LmMessageHandler *iq_disco_cb;
   LmMessageHandler *iq_unknown_cb;
+  LmMessageHandler *stream_error_cb;
 
   /* telepathy properties */
   gchar *protocol;
@@ -891,6 +892,7 @@ gabble_connection_dispose (GObject *object)
   g_assert (priv->iq_jingle_info_cb == NULL);
   g_assert (priv->iq_disco_cb == NULL);
   g_assert (priv->iq_unknown_cb == NULL);
+  g_assert (priv->stream_error_cb == NULL);
 
   /*
    * The Loudmouth connection can't be unref'd immediately because this
@@ -1271,6 +1273,7 @@ _gabble_connection_send_with_reply (GabbleConnection *conn,
 
 static LmHandlerResult connection_iq_disco_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmHandlerResult connection_iq_unknown_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
+static LmHandlerResult connection_stream_error_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
 static LmSSLResponse connection_ssl_cb (LmSSL*, LmSSLStatus, gpointer);
 static void connection_open_cb (LmConnection*, gboolean, gpointer);
 static void connection_auth_cb (LmConnection*, gboolean, gpointer);
@@ -1314,6 +1317,7 @@ connect_callbacks (GabbleConnection *conn)
   g_assert (priv->iq_jingle_info_cb == NULL);
   g_assert (priv->iq_disco_cb == NULL);
   g_assert (priv->iq_unknown_cb == NULL);
+  g_assert (priv->stream_error_cb == NULL);
 
   priv->iq_jingle_info_cb = lm_message_handler_new (jingle_info_iq_callback,
                                                     conn, NULL);
@@ -1333,6 +1337,12 @@ connect_callbacks (GabbleConnection *conn)
   lm_connection_register_message_handler (conn->lmconn, priv->iq_unknown_cb,
                                           LM_MESSAGE_TYPE_IQ,
                                           LM_HANDLER_PRIORITY_LAST);
+
+  priv->stream_error_cb = lm_message_handler_new (connection_stream_error_cb,
+                                            conn, NULL);
+  lm_connection_register_message_handler (conn->lmconn, priv->stream_error_cb,
+                                          LM_MESSAGE_TYPE_STREAM_ERROR,
+                                          LM_HANDLER_PRIORITY_LAST);
 }
 
 static void
@@ -1343,6 +1353,7 @@ disconnect_callbacks (GabbleConnection *conn)
   g_assert (priv->iq_jingle_info_cb != NULL);
   g_assert (priv->iq_disco_cb != NULL);
   g_assert (priv->iq_unknown_cb != NULL);
+  g_assert (priv->stream_error_cb != NULL);
 
   lm_connection_unregister_message_handler (conn->lmconn, priv->iq_jingle_info_cb,
                                             LM_MESSAGE_TYPE_IQ);
@@ -1358,6 +1369,11 @@ disconnect_callbacks (GabbleConnection *conn)
                                             LM_MESSAGE_TYPE_IQ);
   lm_message_handler_unref (priv->iq_unknown_cb);
   priv->iq_unknown_cb = NULL;
+
+  lm_connection_unregister_message_handler (conn->lmconn, priv->stream_error_cb,
+                                            LM_MESSAGE_TYPE_STREAM_ERROR);
+  lm_message_handler_unref (priv->stream_error_cb);
+  priv->stream_error_cb = NULL;
 }
 
 /**
@@ -2404,6 +2420,42 @@ connection_iq_unknown_cb (LmMessageHandler *handler,
     }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
+/**
+ * connection_stream_error_cb
+ *
+ * Called by loudmouth when we get stream error, which means that
+ * we're about to close the connection. The message contains the reason
+ * for the connection hangup.
+ */
+static LmHandlerResult
+connection_stream_error_cb (LmMessageHandler *handler,
+                            LmConnection *connection,
+                            LmMessage *message,
+                            gpointer user_data)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+  LmMessageNode *conflict_node;
+
+  g_assert (connection == conn->lmconn);
+
+  NODE_DEBUG (message->node, "got stream error");
+
+  conflict_node = lm_message_node_get_child (message->node, "conflict");
+  if (conflict_node)
+    {
+      DEBUG ("found conflict node, emiting status change");
+
+      /* Another client with the same resource just
+       * appeared, we're going down. */
+        connection_status_change (conn,
+            TP_CONN_STATUS_DISCONNECTED,
+            TP_CONN_STATUS_REASON_NAME_IN_USE);
+        return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    }
+
+  return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 }
 
 

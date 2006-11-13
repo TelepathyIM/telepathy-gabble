@@ -430,12 +430,11 @@ _gabble_roster_channel_remove_member_cb (GObject *obj,
       if (handle_set_is_member (GABBLE_ROSTER_CHANNEL (obj)->group.local_pending, handle))
         {
           GIntSet *rem = g_intset_new ();
-          GIntSet *empty = g_intset_new();
 
           g_intset_add (rem, handle);
-          gabble_group_mixin_change_members (obj, "", empty, rem, empty, empty, 0, 0);
+          gabble_group_mixin_change_members (obj, "", NULL, rem, NULL, NULL,
+              0, 0);
 
-          g_intset_destroy (empty);
           g_intset_destroy (rem);
         }
     }

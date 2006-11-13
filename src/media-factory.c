@@ -348,7 +348,7 @@ _gabble_media_factory_get_unique_sid (GabbleMediaFactory *fac)
   return sid;
 }
 
-gboolean
+static gboolean
 _gabble_media_factory_sid_in_use (GabbleMediaFactory *fac, const gchar *sid)
 {
   GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);

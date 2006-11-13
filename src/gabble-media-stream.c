@@ -994,7 +994,7 @@ candidates_msg_reply_cb (GabbleConnection *conn,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
-void
+static void
 _add_rtp_candidate_node (GabbleMediaSession *session, LmMessageNode *parent,
                          GValueArray *candidate)
 {

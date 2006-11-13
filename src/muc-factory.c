@@ -317,13 +317,14 @@ struct DiscoInviteData {
  * Callback for disco request we fired upon encountering obsolete disco.
  * If the object is in fact MUC room, create a channel for it.
  */
-void obsolete_invite_disco_cb (GabbleDisco *self,
-                               GabbleDiscoRequest *request,
-                               const gchar *jid,
-                               const gchar *node,
-                               LmMessageNode *query_result,
-                               GError* error,
-                               gpointer user_data)
+static void
+obsolete_invite_disco_cb (GabbleDisco *self,
+                          GabbleDiscoRequest *request,
+                          const gchar *jid,
+                          const gchar *node,
+                          LmMessageNode *query_result,
+                          GError* error,
+                          gpointer user_data)
 {
   struct DiscoInviteData *data = (struct DiscoInviteData *) user_data;
 

@@ -1390,7 +1390,7 @@ disconnect_callbacks (GabbleConnection *conn)
  * Stage 4 is connection_disco_cb advertising initial presence, requesting
  *   the roster and setting the CONNECTED state
  */
-gboolean
+static gboolean
 _gabble_connection_connect (GabbleConnection *conn,
                             GError          **error)
 {
@@ -4174,7 +4174,7 @@ _gabble_connection_find_conference_server (GabbleConnection *conn)
 }
 
 
-gchar *
+static gchar *
 _gabble_connection_get_canonical_room_name (GabbleConnection *conn,
                                            const gchar *name)
 {

@@ -1418,6 +1418,23 @@ session_state_changed (GabbleMediaSession *session,
 }
 
 static void
+_mark_local_streams_sent_one (const gchar *name,
+                              GabbleMediaStream *stream,
+                              GabbleMediaSession *session)
+{
+  JingleInitiator initiator;
+
+  g_object_get (stream, "initiator", &initiator, NULL);
+
+  if (initiator == INITIATOR_REMOTE)
+    return;
+
+  GMS_DEBUG_INFO (session, "marking local stream %s as signalled", name);
+
+  g_object_set (stream, "signalling-state", STREAM_SIG_STATE_SENT, NULL);
+}
+
+void
 _mark_local_streams_sent (GabbleMediaSession *session)
 {
   GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);

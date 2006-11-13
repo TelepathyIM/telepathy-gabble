@@ -187,7 +187,7 @@ handle_compare_func (gconstpointer a, gconstpointer b)
   return (first == second) ? 0 : ((first < second) ? -1 : 1);
 }
 
-void
+static void
 handle_priv_remove (GabbleHandleRepo *repo,
                     TpHandleType type,
                     GabbleHandle handle)
@@ -230,7 +230,7 @@ handle_priv_remove (GabbleHandleRepo *repo,
     }
 }
 
-void
+static void
 handles_name_owner_changed_cb (DBusGProxy *proxy,
                                const gchar *name,
                                const gchar *old_owner,

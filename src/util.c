@@ -40,7 +40,7 @@ g_strdiff (const gchar *left, const gchar *right)
     return (0 != strcmp (left, right));
 }
 
-void
+static void
 lm_message_node_add_nick (LmMessageNode *node, const gchar *nick)
 {
   LmMessageNode *nick_node;

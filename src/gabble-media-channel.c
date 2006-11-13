@@ -865,7 +865,7 @@ gabble_media_channel_get_session_handlers (GabbleMediaChannel *self,
 }
 
 
-GPtrArray *
+static GPtrArray *
 make_stream_list (GabbleMediaChannel *self,
                   GPtrArray *streams)
 {

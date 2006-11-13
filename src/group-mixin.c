@@ -59,21 +59,6 @@ struct _GabbleGroupMixinPrivate {
     GHashTable *handle_owners;
 };
 
-/*
- * get_empty_set ()
- *
- * Returns: a statically allocated empty GIntSet.
- */
-static GIntSet *
-get_empty_set ()
-{
-  static GIntSet *empty = NULL;
-
-  if (G_UNLIKELY (empty == NULL))
-    empty = g_intset_new ();
-
-  return empty;
-}
 
 /**
  * gabble_group_mixin_class_get_offset_quark:
@@ -582,20 +567,22 @@ gabble_group_mixin_change_members (GObject *obj,
   GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
   GabbleGroupMixinClass *mixin_cls = GABBLE_GROUP_MIXIN_CLASS (G_OBJECT_GET_CLASS (obj));
   GIntSet *new_add, *new_remove, *new_local_pending,
-          *new_remote_pending, *tmp, *tmp2;
+          *new_remote_pending, *tmp, *tmp2, *empty;
   gboolean ret;
 
+  empty = g_intset_new ();
+
   if (add == NULL)
-    add = get_empty_set ();
+    add = empty;
 
   if (remove == NULL)
-    remove = get_empty_set ();
+    remove = empty;
 
   if (local_pending == NULL)
-    local_pending = get_empty_set ();
+    local_pending = empty;
 
   if (remote_pending == NULL)
-    remote_pending = get_empty_set ();
+    remote_pending = empty;
 
   /* members + add */
   new_add = handle_set_update (mixin->members, add);
@@ -724,6 +711,7 @@ gabble_group_mixin_change_members (GObject *obj,
   g_intset_destroy (new_remove);
   g_intset_destroy (new_local_pending);
   g_intset_destroy (new_remote_pending);
+  g_intset_destroy (empty);
 
   return ret;
 }

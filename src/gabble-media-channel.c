@@ -254,7 +254,8 @@ _gabble_media_channel_dispatch_session_action (GabbleMediaChannel *chan,
       set = g_intset_new ();
       g_intset_add (set, mixin->self_handle);
 
-      gabble_group_mixin_change_members (G_OBJECT (chan), "", empty, empty, set, empty, 0, 0);
+      gabble_group_mixin_change_members (G_OBJECT (chan), "", NULL, NULL, set,
+          NULL, 0, 0);
 
       g_intset_destroy (set);
 

@@ -1854,7 +1854,8 @@ _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
                                     const gchar *message)
 {
   GabbleMucChannelPrivate *priv;
-  GIntSet *empty, *set_members, *set_pending;
+  GabbleHandle self_handle;
+  GIntSet *set_members, *set_pending;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 

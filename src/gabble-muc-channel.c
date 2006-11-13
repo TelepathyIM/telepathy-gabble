@@ -921,7 +921,7 @@ change_password_flags (GabbleMucChannel *chan,
                        TpChannelPasswordFlags remove)
 {
   GabbleMucChannelPrivate *priv;
-  TpChannelGroupFlags added, removed;
+  TpChannelPasswordFlags added, removed;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 

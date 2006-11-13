@@ -107,10 +107,12 @@ gabble_media_session_ready (GabbleMediaSession *self,
                             GError **error);
 
 
-void _gabble_media_session_handle_action (GabbleMediaSession *session,
-                                          LmMessage *message,
-                                          LmMessageNode *session_node,
-                                          const gchar *action);
+gboolean
+_gabble_media_session_handle_action (GabbleMediaSession *session,
+                                     LmMessage *message,
+                                     LmMessageNode *session_node,
+                                     const gchar *action,
+                                     GError **error);
 
 LmMessage *_gabble_media_session_message_new (GabbleMediaSession *session,
                                               const gchar *action,

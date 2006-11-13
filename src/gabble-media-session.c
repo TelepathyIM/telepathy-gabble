@@ -1257,18 +1257,18 @@ _call_handlers_on_streams (GabbleMediaSession *session,
 }
 
 
-void
+gboolean
 _gabble_media_session_handle_action (GabbleMediaSession *session,
                                      LmMessage *message,
                                      LmMessageNode *session_node,
-                                     const gchar *action)
+                                     const gchar *action,
+                                     GError **error)
 {
   GabbleMediaSessionPrivate *priv;
   StreamHandlerFunc *funcs = NULL;
   JingleSessionState new_state = JS_STATE_INVALID;
   Handler *i;
   const gchar **tmp;
-  GError *error = NULL;
 
   g_assert (GABBLE_IS_MEDIA_SESSION (session));
 
@@ -1294,7 +1294,7 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
       if (priv->state < i->min_allowed_state ||
           priv->state > i->max_allowed_state)
         {
-          g_set_error (&error, GABBLE_XMPP_ERROR,
+          g_set_error (error, GABBLE_XMPP_ERROR,
               XMPP_ERROR_JINGLE_OUT_OF_ORDER,
               "action \"%s\" not allowed in current state", action);
           goto ERROR;
@@ -1309,7 +1309,7 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
   /* pointer is not NULL if we found a matching action */
   if (NULL == funcs)
     {
-      g_set_error (&error, GABBLE_XMPP_ERROR,
+      g_set_error (error, GABBLE_XMPP_ERROR,
           XMPP_ERROR_FEATURE_NOT_IMPLEMENTED, "action \"%s\" not implemented",
           action);
       goto ERROR;
@@ -1319,10 +1319,10 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
   if (NULL != *funcs)
     {
       if (!_call_handlers_on_streams (session, message, session_node, funcs,
-            &error))
+            error))
         {
-          if (error == NULL)
-            g_set_error (&error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+          if (*error == NULL)
+            g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
                 "unknown error encountered with action \"%s\"",
                 action);
 
@@ -1339,16 +1339,12 @@ _gabble_media_session_handle_action (GabbleMediaSession *session,
   if (JS_STATE_INVALID != new_state)
     g_object_set (session, "state", new_state, NULL);
 
-  return;
+  return TRUE;
 
 ERROR:
   g_assert (error != NULL);
-  GMS_DEBUG_ERROR (session, error->message);
-
-  _gabble_connection_send_iq_error (priv->conn, message, error->code,
-      error->message);
-
-  g_error_free (error);
+  GMS_DEBUG_ERROR (session, (*error)->message);
+  return FALSE;
 }
 
 static gboolean

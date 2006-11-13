@@ -1024,7 +1024,10 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
           g_intset_destroy (deny_rem);
         }
 
-      g_intset_destroy (empty);
+      for (i = 0; i < removed->len; i++)
+          _gabble_roster_item_remove (roster,
+              g_array_index (removed, GabbleHandle, i));
+
       g_intset_destroy (pub_add);
       g_intset_destroy (pub_rem);
       g_intset_destroy (sub_add);

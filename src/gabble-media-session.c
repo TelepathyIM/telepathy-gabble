@@ -1137,6 +1137,7 @@ _call_handlers_on_stream (GabbleMediaSession *session,
   GabbleMediaStream *stream = NULL;
   LmMessageNode *desc_node = NULL, *trans_node = NULL;
   StreamHandlerFunc *tmp;
+  gboolean stream_created = FALSE;
 
   if (content_node != NULL)
     {
@@ -1184,12 +1185,23 @@ _call_handlers_on_stream (GabbleMediaSession *session,
 
       if (!(*tmp) (session, message, content_node, stream_name, stream,
             desc_node, trans_node, error))
-        return FALSE;
+        {
+          /* if we successfully created the stream but failed to do something
+           * with it later, remove it */
+          if (stream_created)
+            _gabble_media_stream_close (stream);
 
-      /* force a stream lookup after the create handler, even if we already had
-       * one (it has replacement semantics in certain situations) */
+          return FALSE;
+        }
+
       if (*tmp == _handle_create)
-        stream = NULL;
+        {
+          stream_created = TRUE;
+          /* force a stream lookup after the create handler, even if we
+           * already had one (it has replacement semantics in certain
+           * situations) */
+          stream = NULL;
+        }
     }
 
   return TRUE;

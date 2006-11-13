@@ -167,14 +167,15 @@ gabble_media_channel_request_streams (GabbleMediaChannel *self,
                                       GPtrArray **ret,
                                       GError **error);
 
-void
+gboolean
 _gabble_media_channel_dispatch_session_action (GabbleMediaChannel *chan,
                                                GabbleHandle peer,
                                                const gchar *peer_resource,
                                                const gchar *sid,
                                                LmMessage *message,
                                                LmMessageNode *session_node,
-                                               const gchar *action);
+                                               const gchar *action,
+                                               GError **error);
 
 void
 _gabble_media_channel_stream_state (GabbleMediaChannel *chan,

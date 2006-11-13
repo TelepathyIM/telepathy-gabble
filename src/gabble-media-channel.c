@@ -230,17 +230,19 @@ create_session (GabbleMediaChannel *channel, GabbleHandle peer, const gchar *pee
   return session;
 }
 
-void
+gboolean
 _gabble_media_channel_dispatch_session_action (GabbleMediaChannel *chan,
                                                GabbleHandle peer,
                                                const gchar *peer_resource,
                                                const gchar *sid,
                                                LmMessage *message,
                                                LmMessageNode *session_node,
-                                               const gchar *action)
+                                               const gchar *action,
+                                               GError **error)
 {
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
   GabbleMediaSession *session = priv->session;
+  gboolean session_is_new = FALSE;
 
   if (session == NULL)
     {
@@ -248,6 +250,7 @@ _gabble_media_channel_dispatch_session_action (GabbleMediaChannel *chan,
       GIntSet *empty, *set;
 
       session = create_session (chan, peer, peer_resource, sid);
+      session_is_new = TRUE;
 
       /* make us local pending */
       empty = g_intset_new ();
@@ -268,8 +271,22 @@ _gabble_media_channel_dispatch_session_action (GabbleMediaChannel *chan,
     }
 
   g_object_ref (session);
-  _gabble_media_session_handle_action (session, message, session_node, action);
-  g_object_unref (session);
+
+  if (_gabble_media_session_handle_action (session, message, session_node,
+        action, error))
+    {
+      g_object_unref (session);
+      return TRUE;
+    }
+  else
+    {
+      if (session_is_new)
+        _gabble_media_session_terminate (session, INITIATOR_LOCAL,
+            TP_CHANNEL_GROUP_CHANGE_REASON_ERROR);
+
+      g_object_unref (session);
+      return FALSE;
+    }
 }
 
 static void

@@ -1069,7 +1069,7 @@ static Handler handlers[] = {
   },
   {
     { "reject", NULL },
-    JS_STATE_PENDING_INITIATED,
+    JS_STATE_PENDING_INITIATE_SENT,
     JS_STATE_PENDING_INITIATED,
     { _handle_terminate, NULL },
     JS_STATE_INVALID

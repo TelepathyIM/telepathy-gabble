@@ -897,7 +897,10 @@ _handle_direction (GabbleMediaSession *session,
   /* make any necessary changes */
   new_combined_dir = MAKE_COMBINED_DIRECTION (requested_dir, pending_send);
   if (new_combined_dir != stream->combined_direction)
-    g_object_set (stream, "combined-direction", new_combined_dir, NULL);
+    {
+      g_object_set (stream, "combined-direction", new_combined_dir, NULL);
+      _gabble_media_stream_update_sending (stream, FALSE);
+    }
 
   return TRUE;
 }
@@ -914,6 +917,8 @@ _handle_accept (GabbleMediaSession *session,
                 GError **error)
 {
   g_object_set (stream, "playing", TRUE, NULL);
+
+  _gabble_media_stream_update_sending (stream, TRUE);
 
   return TRUE;
 }
@@ -1584,8 +1589,20 @@ accept_msg_reply_cb (GabbleConnection *conn,
                      gpointer user_data)
 {
   GabbleMediaSession *session = GABBLE_MEDIA_SESSION (object);
+  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+  guint i;
 
   MSG_REPLY_CB_END_SESSION_IF_NOT_SUCCESSFUL (session, "accept failed");
+
+  for (i = 0; i < priv->streams->len; i++)
+    {
+      GabbleMediaStream *stream = g_ptr_array_index (priv->streams, i);
+
+      if (stream->initiator == INITIATOR_LOCAL)
+        continue;
+
+      _gabble_media_stream_update_sending (stream, TRUE);
+    }
 
   g_object_set (session, "state", JS_STATE_ACTIVE, NULL);
 
@@ -1689,6 +1706,8 @@ content_accept_msg_reply_cb (GabbleConnection *conn,
 
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
+
+  _gabble_media_stream_update_sending (stream, TRUE);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
@@ -2135,6 +2154,7 @@ _gabble_media_session_accept (GabbleMediaSession *session)
           pending_send &= ~TP_MEDIA_STREAM_PENDING_LOCAL_SEND;
           combined_dir = MAKE_COMBINED_DIRECTION (current_dir, pending_send);
           g_object_set (stream, "combined-direction", combined_dir, NULL);
+          _gabble_media_stream_update_sending (stream, FALSE);
         }
     }
 
@@ -2722,9 +2742,15 @@ direction_msg_reply_cb (GabbleConnection *conn,
                         GObject *object,
                         gpointer user_data)
 {
-  GabbleMediaSession *session = GABBLE_MEDIA_SESSION (object);
+  GabbleMediaSession *session = GABBLE_MEDIA_SESSION (user_data);
+  GabbleMediaStream *stream = GABBLE_MEDIA_STREAM (object);
 
   MSG_REPLY_CB_END_SESSION_IF_NOT_SUCCESSFUL (session, "direction change failed");
+
+  if (stream->playing)
+    {
+      _gabble_media_stream_update_sending (stream, TRUE);
+    }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
@@ -2766,7 +2792,7 @@ send_direction_change (GabbleMediaSession *session,
       NULL);
 
   ret = _gabble_connection_send_with_reply (priv->conn, msg,
-      direction_msg_reply_cb, G_OBJECT (session), NULL, error);
+      direction_msg_reply_cb, G_OBJECT (stream), session, error);
 
   lm_message_unref (msg);
 
@@ -2837,7 +2863,10 @@ _gabble_media_session_request_stream_direction (GabbleMediaSession *session,
   /* make any necessary changes */
   new_combined_dir = MAKE_COMBINED_DIRECTION (requested_dir, pending_send);
   if (new_combined_dir != stream->combined_direction)
-    g_object_set (stream, "combined-direction", new_combined_dir, NULL);
+    {
+      g_object_set (stream, "combined-direction", new_combined_dir, NULL);
+      _gabble_media_stream_update_sending (stream, FALSE);
+    }
 
   /* short-circuit sending a request if we're not asking for anything new */
   if (current_dir == requested_dir)

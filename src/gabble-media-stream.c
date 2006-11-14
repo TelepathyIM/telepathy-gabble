@@ -309,17 +309,7 @@ gabble_media_stream_set_property (GObject      *object,
         }
       break;
     case PROP_COMBINED_DIRECTION:
-        {
-          gboolean new_sending;
-          stream->combined_direction = g_value_get_uint (value);
-          new_sending = ((stream->combined_direction &
-                TP_MEDIA_STREAM_DIRECTION_SEND) != 0);
-          if (priv->sending != new_sending)
-            {
-              priv->sending = new_sending;
-              push_sending (stream);
-            }
-        }
+      stream->combined_direction = g_value_get_uint (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -1746,5 +1736,29 @@ _gabble_media_stream_content_node_add_transport (GabbleMediaStream *stream,
   lm_message_node_set_attribute (node, "xmlns", NS_GOOGLE_TRANSPORT_P2P);
 
   return node;
+}
+
+void
+_gabble_media_stream_update_sending (GabbleMediaStream *stream,
+                                     gboolean start_sending)
+{
+  GabbleMediaStreamPrivate *priv;
+  gboolean new_sending;
+
+  g_assert (GABBLE_IS_MEDIA_STREAM (stream));
+
+  priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
+
+  new_sending =
+    ((stream->combined_direction & TP_MEDIA_STREAM_DIRECTION_SEND) != 0);
+
+  if (priv->sending == new_sending)
+    return;
+
+  if (new_sending && !start_sending)
+    return;
+
+  priv->sending = new_sending;
+  push_sending (stream);
 }
 

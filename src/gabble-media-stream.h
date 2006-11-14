@@ -170,6 +170,7 @@ gboolean _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream, LmM
 gboolean _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream, LmMessage *message, LmMessageNode *transport_node, GError **error);
 void _gabble_media_stream_content_node_add_description (GabbleMediaStream *stream, LmMessageNode *content_node);
 LmMessageNode *_gabble_media_stream_content_node_add_transport (GabbleMediaStream *stream, LmMessageNode *content_node);
+void _gabble_media_stream_update_sending (GabbleMediaStream *stream, gboolean start_sending);
 
 G_END_DECLS
 

@@ -1826,7 +1826,7 @@ content_add_msg_reply_cb (GabbleConnection *conn,
           NODE_DEBUG (sent_msg->node, "message sent");
           NODE_DEBUG (reply_msg->node, "message reply");
 
-          _gabble_media_session_remove_streams (session, &stream, 1);
+          _gabble_media_stream_close (stream);
         }
     }
   else

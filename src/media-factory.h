@@ -56,7 +56,6 @@ GType gabble_media_factory_get_type(void);
 const gchar * _gabble_media_factory_allocate_sid (GabbleMediaFactory *fac, GabbleMediaChannel *chan);
 const gchar * _gabble_media_factory_register_sid (GabbleMediaFactory *fac, const gchar *sid, GabbleMediaChannel *chan);
 void _gabble_media_factory_free_sid (GabbleMediaFactory *fac, const gchar *sid);
-gboolean _gabble_media_factory_sid_in_use (GabbleMediaFactory *fac, const gchar *sid);
 
 G_END_DECLS
 

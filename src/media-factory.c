@@ -196,6 +196,7 @@ gabble_media_factory_class_init (GabbleMediaFactoryClass *gabble_media_factory_c
 
 }
 
+static gboolean _gabble_media_factory_sid_in_use (GabbleMediaFactory *fac, const gchar *sid);
 static GabbleMediaChannel *new_media_channel (GabbleMediaFactory *fac, GabbleHandle handle);
 static void media_channel_closed_cb (GabbleMediaChannel *chan, gpointer user_data);
 

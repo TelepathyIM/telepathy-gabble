@@ -375,6 +375,9 @@ _gabble_roster_channel_add_member_cb (GObject *obj,
   /* subscribe list */
   else if (GABBLE_LIST_HANDLE_SUBSCRIBE == priv->handle)
     {
+      /* add item to the roster (GTalk depends on this, clearing the H flag) */
+      gabble_roster_handle_add (priv->conn->roster, handle, NULL);
+
       /* send <presence type="subscribe"> */
       ret = _gabble_roster_channel_send_presence (GABBLE_ROSTER_CHANNEL (obj),
           LM_MESSAGE_SUB_TYPE_SUBSCRIBE, handle, message, error);

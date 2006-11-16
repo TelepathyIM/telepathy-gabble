@@ -28,7 +28,6 @@
 #define __GABBLE_UTIL_H__
 
 gboolean g_strdiff (const gchar *left, const gchar *right);
-void lm_message_node_add_nick (LmMessageNode *node, const gchar *nick);
 void lm_message_node_add_own_nick (LmMessageNode *node, GabbleConnection *conn);
 void lm_message_node_steal_children (LmMessageNode *snatcher, LmMessageNode *mum);
 gboolean lm_message_node_has_namespace (LmMessageNode *node, const gchar *ns, const gchar *tag);

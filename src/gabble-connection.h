@@ -139,7 +139,6 @@ GType gabble_connection_get_type(void);
 
 gboolean _gabble_connection_set_properties_from_account (GabbleConnection *conn, const gchar *account, GError **error);
 gboolean _gabble_connection_register (GabbleConnection *conn, char **bus_name, char **object_path, GError **error);
-gboolean _gabble_connection_connect (GabbleConnection *conn, GError **error);
 gboolean _gabble_connection_send (GabbleConnection *conn, LmMessage *msg, GError **error);
 gboolean _gabble_connection_send_with_reply (GabbleConnection *conn, LmMessage *msg, GabbleConnectionMsgReplyFunc reply_func, GObject *object, gpointer user_data, GError **error);
 void _gabble_connection_acknowledge_set_iq (GabbleConnection *conn, LmMessage *iq);

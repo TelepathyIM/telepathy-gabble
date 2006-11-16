@@ -408,10 +408,6 @@ _google_roster_item_should_keep (LmMessageNode *item_node,
   if (attr != NULL)
     return FALSE;
 
-  /* skip hidden items */
-  if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN)
-    return FALSE;
-
   /* allow items that have rejected a subscription */
   attr = lm_message_node_get_attribute (item_node, "gr:rejected");
 
@@ -498,8 +494,14 @@ _gabble_roster_item_update (GabbleRoster *roster,
     {
       item->google_type = _parse_google_item_type (node);
 
-      /* discard roster item if strange */
-      if (!_google_roster_item_should_keep (node, item))
+      /* discard roster item if strange, just hide it if it's hidden */
+      if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN)
+        {
+          DEBUG ("Google roster: caching hidden contact %d (%s)", handle,
+              lm_message_node_get_attribute (node, "jid"));
+          item->subscription = GABBLE_ROSTER_SUBSCRIPTION_NONE;
+        }
+      else if (!_google_roster_item_should_keep (node, item))
         {
           DEBUG ("Google roster: discarding odd contact %d (%s)", handle,
               lm_message_node_get_attribute (node, "jid"));
@@ -954,7 +956,10 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
             case GABBLE_ROSTER_SUBSCRIPTION_TO:
             case GABBLE_ROSTER_SUBSCRIPTION_FROM:
             case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
-              g_intset_add (known_add, handle);
+              if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN)
+                  g_intset_add (known_rem, handle);
+              else
+                  g_intset_add (known_add, handle);
               break;
             case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
               g_intset_add (known_rem, handle);
@@ -1568,6 +1573,43 @@ gabble_roster_handle_remove (GabbleRoster *roster,
   lm_message_unref (message);
 
   item->subscription = subscription;
+
+  return ret;
+}
+
+gboolean
+gabble_roster_handle_add (GabbleRoster *roster,
+                          GabbleHandle handle,
+                          GError **error)
+{
+  GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
+  GabbleRosterItem *item;
+  LmMessage *message;
+  gboolean do_add = FALSE;
+  gboolean ret;
+
+  g_return_val_if_fail (roster != NULL, FALSE);
+  g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
+  g_return_val_if_fail (gabble_handle_is_valid (priv->conn->handles,
+      TP_HANDLE_TYPE_CONTACT, handle, NULL), FALSE);
+
+  if (!gabble_roster_handle_has_entry (roster, handle))
+      do_add = TRUE;
+
+  item = _gabble_roster_item_get (roster, handle);
+
+  if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN)
+    {
+      item->google_type = GOOGLE_ITEM_TYPE_NORMAL;
+      do_add = TRUE;
+    }
+
+  if (!do_add)
+      return TRUE;
+
+  message = _gabble_roster_item_to_message (roster, handle, NULL);
+  ret = _gabble_connection_send (priv->conn, message, error);
+  lm_message_unref (message);
 
   return ret;
 }

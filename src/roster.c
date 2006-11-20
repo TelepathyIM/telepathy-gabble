@@ -408,12 +408,6 @@ _google_roster_item_should_keep (LmMessageNode *item_node,
   if (attr != NULL)
     return FALSE;
 
-  /* allow items that have rejected a subscription */
-  attr = lm_message_node_get_attribute (item_node, "gr:rejected");
-
-  if (!g_strdiff (attr, "true"))
-    return TRUE;
-
   /* allow items that we've requested a subscription from */
   if (item->ask_subscribe)
     return TRUE;

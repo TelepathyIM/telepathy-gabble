@@ -144,8 +144,6 @@ gabble_media_session_init (GabbleMediaSession *self)
   priv->remove_requests = g_ptr_array_new ();
 }
 
-static void stream_close_cb (GabbleMediaStream *stream,
-                             GabbleMediaSession *session);
 static void stream_connection_state_changed_cb (GabbleMediaStream *stream,
                                                 GParamSpec *param,
                                                 GabbleMediaSession *session);
@@ -225,9 +223,6 @@ create_media_stream (GabbleMediaSession *session,
                          "media-type", media_type,
                          NULL);
 
-  g_signal_connect (stream, "close",
-                    (GCallback) stream_close_cb,
-                    session);
   g_signal_connect (stream, "notify::connection-state",
                     (GCallback) stream_connection_state_changed_cb,
                     session);
@@ -1890,22 +1885,6 @@ do_content_add (GabbleMediaSession *session,
 
   /* mark stream as sent */
   g_object_set (stream, "signalling-state", STREAM_SIG_STATE_SENT, NULL);
-}
-
-static void
-stream_close_cb (GabbleMediaStream *stream,
-                 GabbleMediaSession *session)
-{
-  GabbleMediaSessionPrivate *priv;
-
-  g_assert (GABBLE_IS_MEDIA_SESSION (session));
-
-  priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
-
-  if (priv->streams != NULL)
-    g_ptr_array_remove_fast (priv->streams, stream);
-
-  g_hash_table_remove (priv->streams_by_name, stream->name);
 }
 
 static void

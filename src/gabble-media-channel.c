@@ -173,7 +173,10 @@ static void session_terminated_cb (GabbleMediaSession *session, guint terminator
  * GabbleMediaSession is set to our own handle.
  */
 static GabbleMediaSession*
-create_session (GabbleMediaChannel *channel, GabbleHandle peer, const gchar *peer_resource, const gchar *sid)
+create_session (GabbleMediaChannel *channel,
+                GabbleHandle peer,
+                const gchar *peer_resource,
+                const gchar *sid)
 {
   GabbleMediaChannelPrivate *priv;
   GabbleMediaSession *session;

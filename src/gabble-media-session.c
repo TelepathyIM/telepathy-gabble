@@ -774,6 +774,7 @@ _handle_create (GabbleMediaSession *session,
 
       /* disappear this stream */
       _gabble_media_stream_close (stream);
+      forget_media_stream (session, stream);
 
       stream = NULL;
     }
@@ -1014,6 +1015,7 @@ _handle_remove (GabbleMediaSession *session,
 
   /* close the stream */
   _gabble_media_stream_close (stream);
+  forget_media_stream (session, stream);
 
   return TRUE;
 }
@@ -1194,7 +1196,10 @@ _call_handlers_on_stream (GabbleMediaSession *session,
           /* if we successfully created the stream but failed to do something
            * with it later, remove it */
           if (stream_created)
-            _gabble_media_stream_close (stream);
+            {
+              _gabble_media_stream_close (stream);
+              forget_media_stream (session, stream);
+            }
 
           return FALSE;
         }
@@ -2155,8 +2160,8 @@ content_remove_msg_reply_cb (GabbleConnection *conn,
   MSG_REPLY_CB_END_SESSION_IF_NOT_SUCCESSFUL (session, "stream removal failed");
 
   for (i = 0; i < removing->len; i++)
-    _gabble_media_stream_close (GABBLE_MEDIA_STREAM (g_ptr_array_index
-        (removing, i)));
+    forget_media_stream (session,
+        GABBLE_MEDIA_STREAM (g_ptr_array_index (removing, i)));
 
   g_ptr_array_remove_fast (priv->remove_requests, removing);
   g_ptr_array_free (removing, TRUE);
@@ -2205,6 +2210,7 @@ _gabble_media_session_remove_streams (GabbleMediaSession *session,
         {
         case STREAM_SIG_STATE_NEW:
           _gabble_media_stream_close (stream);
+          forget_media_stream (session, stream);
           break;
         case STREAM_SIG_STATE_SENT:
         case STREAM_SIG_STATE_ACKNOWLEDGED:
@@ -2223,6 +2229,10 @@ _gabble_media_session_remove_streams (GabbleMediaSession *session,
                 "signalling-state", STREAM_SIG_STATE_REMOVING,
                 NULL);
 
+            /* close the stream now, but don't forget about it until the
+             * removal message is acknowledged, since we need to be able to
+             * detect content-remove cross-talk */
+            _gabble_media_stream_close (stream);
             g_ptr_array_add (removing, stream);
           }
           break;

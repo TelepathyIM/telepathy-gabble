@@ -2344,9 +2344,6 @@ _gabble_media_session_terminate (GabbleMediaSession *session,
     }
   else
     {
-      guint i;
-      GPtrArray *tmp;
-
       actor = priv->conn->self_handle;
 
       /* Need to tell them that it's all over. */
@@ -2368,16 +2365,8 @@ _gabble_media_session_terminate (GabbleMediaSession *session,
           send_terminate_message (session);
         }
 
-      tmp = priv->streams;
-      priv->streams = NULL;
-
-      for (i = 0; i < tmp->len; i++)
-        {
-          GabbleMediaStream *stream = g_ptr_array_index (tmp, i);
-          _gabble_media_stream_close (stream);
-        }
-
-      g_ptr_array_free (tmp, TRUE);
+      while (priv->streams->len > 0)
+        destroy_media_stream (session, g_ptr_array_index (priv->streams, 0));
     }
 
   priv->terminated = TRUE;

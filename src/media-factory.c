@@ -297,9 +297,11 @@ media_factory_jingle_cb (LmMessageHandler *handler,
   if (chan == NULL)
     {
       /* if the session is unknown, the only allowed action is "initiate" */
-      if (g_strdiff (action, "initiate") && g_strdiff (action, "session-initiate"))
+      if (g_strdiff (action, "initiate") &&
+          g_strdiff (action, "session-initiate"))
         {
-          NODE_DEBUG (iq_node, "action is not \"initiate\" or \"session-initiate\", rejecting");
+          NODE_DEBUG (iq_node,
+              "action is not \"initiate\" or \"session-initiate\", rejecting");
           goto BAD_REQUEST;
         }
 

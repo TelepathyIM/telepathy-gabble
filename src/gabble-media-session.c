@@ -243,6 +243,16 @@ create_media_stream (GabbleMediaSession *session,
   return stream;
 }
 
+static void
+forget_media_stream (GabbleMediaSession *session,
+                     GabbleMediaStream *stream)
+{
+  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+
+  g_ptr_array_remove_fast (priv->streams, stream);
+  g_hash_table_remove (priv->streams_by_name, stream->name);
+}
+
 static GObject *
 gabble_media_session_constructor (GType type, guint n_props,
                                   GObjectConstructParam *props)

@@ -3200,29 +3200,31 @@ gabble_connection_get_capabilities (GabbleConnection *self,
 
       pres = gabble_presence_cache_get (self->presence_cache, handle);
 
-      for (ccd = capabilities_conversions; NULL != ccd->iface; ccd++)
-        {
-          typeflags = ccd->c2tf_fn (pres->caps);
+      if (NULL != pres)
+        for (ccd = capabilities_conversions; NULL != ccd->iface; ccd++)
+          {
+            typeflags = ccd->c2tf_fn (pres->caps);
 
-          if (typeflags)
-            {
-              GValue monster = {0, };
+            if (typeflags)
+              {
+                GValue monster = {0, };
 
-              g_value_init (&monster, TP_GET_CAPABILITIES_MONSTER_TYPE);
-              g_value_take_boxed (&monster,
-                  dbus_g_type_specialized_construct (TP_GET_CAPABILITIES_MONSTER_TYPE));
+                g_value_init (&monster, TP_GET_CAPABILITIES_MONSTER_TYPE);
+                g_value_take_boxed (&monster,
+                    dbus_g_type_specialized_construct (
+                      TP_GET_CAPABILITIES_MONSTER_TYPE));
 
-              dbus_g_type_struct_set (&monster,
-                  0, handle,
-                  1, ccd->iface,
-                  2, TP_CONN_CAPABILITY_FLAG_CREATE |
-                      TP_CONN_CAPABILITY_FLAG_INVITE,
-                  3, typeflags,
-                  G_MAXUINT);
+                dbus_g_type_struct_set (&monster,
+                    0, handle,
+                    1, ccd->iface,
+                    2, TP_CONN_CAPABILITY_FLAG_CREATE |
+                        TP_CONN_CAPABILITY_FLAG_INVITE,
+                    3, typeflags,
+                    G_MAXUINT);
 
-              g_ptr_array_add (*ret, g_value_get_boxed (&monster));
-            }
-        }
+                g_ptr_array_add (*ret, g_value_get_boxed (&monster));
+              }
+          }
 
       for (assumed = assumed_caps; NULL != *assumed; assumed++)
         {

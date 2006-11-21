@@ -249,6 +249,7 @@ destroy_media_stream (GabbleMediaSession *session,
 {
   GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
 
+  _gabble_media_stream_close (stream);
   g_ptr_array_remove_fast (priv->streams, stream);
   g_hash_table_remove (priv->streams_by_name, stream->name);
 }
@@ -773,7 +774,6 @@ _handle_create (GabbleMediaSession *session,
           "in favour of the session initiator's", stream_name);
 
       /* disappear this stream */
-      _gabble_media_stream_close (stream);
       destroy_media_stream (session, stream);
 
       stream = NULL;
@@ -1014,7 +1014,6 @@ _handle_remove (GabbleMediaSession *session,
     }
 
   /* close the stream */
-  _gabble_media_stream_close (stream);
   destroy_media_stream (session, stream);
 
   return TRUE;
@@ -1196,10 +1195,7 @@ _call_handlers_on_stream (GabbleMediaSession *session,
           /* if we successfully created the stream but failed to do something
            * with it later, remove it */
           if (stream_created)
-            {
-              _gabble_media_stream_close (stream);
-              destroy_media_stream (session, stream);
-            }
+            destroy_media_stream (session, stream);
 
           return FALSE;
         }
@@ -2209,7 +2205,6 @@ _gabble_media_session_remove_streams (GabbleMediaSession *session,
       switch (stream->signalling_state)
         {
         case STREAM_SIG_STATE_NEW:
-          _gabble_media_stream_close (stream);
           destroy_media_stream (session, stream);
           break;
         case STREAM_SIG_STATE_SENT:

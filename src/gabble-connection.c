@@ -1306,6 +1306,12 @@ do_connect (GabbleConnection *conn, GError **error)
       return FALSE;
     }
 
+  /* Sometimes lm_connection_open returns fine but dies later, in which
+   * case connection_open_cb will set the state to disconnected already,
+   * so we have to test for this case. */
+  if (conn->status == TP_CONN_STATUS_DISCONNECTED)
+      return FALSE;
+
   return TRUE;
 }
 
@@ -2612,7 +2618,8 @@ connection_open_cb (LmConnection *lmconn,
   GabbleConnection *conn = GABBLE_CONNECTION (data);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
-  if (conn->status != TP_CONN_STATUS_CONNECTING)
+  if ((conn->status != TP_CONN_STATUS_CONNECTING) &&
+      (conn->status != TP_CONN_STATUS_NEW))
     {
       g_assert (conn->status == TP_CONN_STATUS_DISCONNECTED);
       return;

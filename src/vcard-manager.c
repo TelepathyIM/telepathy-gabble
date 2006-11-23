@@ -586,8 +586,9 @@ request_reply_cb (GabbleConnection *conn,
               node = lm_message_node_add_child (vcard_node, key, value);
             }
         }
+
       request_send (request, vcard_node, NULL, &err);
-      
+
       if (err)
         {
           DEBUG ("Request %p failed, notifying callback %p",
@@ -615,6 +616,7 @@ request_reply_cb (GabbleConnection *conn,
                              vcard_node, err, request->user_data);
         }
     }
+
   delete_request (request);
 
   if (err)

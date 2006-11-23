@@ -451,7 +451,7 @@ replace_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
   GabbleVCardManagerRequest *request = (GabbleVCardManagerRequest*) user_data;
   GabbleVCardManager *manager = GABBLE_VCARD_MANAGER (object);
   GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (manager);
-  LmMessageNode *vcard_node;
+  LmMessageNode *vcard_node = NULL;
   GError *err = NULL;
 
   g_assert (request);
@@ -465,8 +465,6 @@ replace_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
       DEBUG ("I don't care about that request any more");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
-
-  vcard_node = lm_message_node_get_child (sent_msg->node, "vCard");
 
   if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_ERROR)
     {
@@ -485,6 +483,10 @@ replace_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
                              GABBLE_VCARD_MANAGER_ERROR_UNKNOWN,
                              "an unknown error occurred");
         }
+    }
+  else
+    {
+      vcard_node = lm_message_node_get_child (sent_msg->node, "vCard");
     }
 
   DEBUG ("Request %p %s, notifying callback %p", request,
@@ -512,7 +514,7 @@ request_reply_cb (GabbleConnection *conn,
   GabbleVCardManagerRequest *request = (GabbleVCardManagerRequest*) user_data;
   GabbleVCardManager *manager = GABBLE_VCARD_MANAGER (object);
   GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (manager);
-  LmMessageNode *vcard_node;
+  LmMessageNode *vcard_node = NULL;
   GError *err = NULL;
 
   g_assert (request);
@@ -527,7 +529,6 @@ request_reply_cb (GabbleConnection *conn,
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
-  vcard_node = lm_message_node_get_child (reply_msg->node, "vCard");
 
   if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_ERROR)
     {
@@ -547,16 +548,20 @@ request_reply_cb (GabbleConnection *conn,
                              "an unknown error occurred");
         }
     }
-  else if (NULL == vcard_node)
+  else
     {
-      DEBUG ("lookup response contained no <vCard> node, making an empty one");
+      vcard_node = lm_message_node_get_child (reply_msg->node, "vCard");
 
-      vcard_node = lm_message_node_add_child (reply_msg->node, "vCard", NULL);
-      lm_message_node_set_attribute (vcard_node, "xmlns", NS_VCARD_TEMP);
-    }
+      if (NULL == vcard_node)
+        {
+          DEBUG ("successful lookup response contained no <vCard> node, "
+              "creating an empty one");
 
-  if (vcard_node != NULL)
-    {
+          vcard_node = lm_message_node_add_child (reply_msg->node, "vCard",
+              NULL);
+          lm_message_node_set_attribute (vcard_node, "xmlns", NS_VCARD_TEMP);
+        }
+
       observe_vcard (conn, manager, request->handle, vcard_node);
     }
 

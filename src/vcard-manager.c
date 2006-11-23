@@ -549,10 +549,13 @@ request_reply_cb (GabbleConnection *conn,
     }
   else if (NULL == vcard_node)
     {
-      err = g_error_new (GABBLE_VCARD_MANAGER_ERROR, GABBLE_VCARD_MANAGER_ERROR_UNKNOWN,
-          "vCard lookup response contained no <vCard> node");
+      DEBUG ("lookup response contained no <vCard> node, making an empty one");
+
+      vcard_node = lm_message_node_add_child (reply_msg->node, "vCard", NULL);
+      lm_message_node_set_attribute (vcard_node, "xmlns", NS_VCARD_TEMP);
     }
-  else
+
+  if (vcard_node != NULL)
     {
       observe_vcard (conn, manager, request->handle, vcard_node);
     }

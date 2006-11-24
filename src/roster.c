@@ -556,13 +556,15 @@ _gabble_roster_item_update (GabbleRoster *roster,
       /* discard roster item if strange, just hide it if it's hidden */
       if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN)
         {
-          DEBUG ("Google roster: caching hidden contact %d (%s)", handle,
+          DEBUG ("Google roster: caching hidden contact %d (%s)",
+              contact_handle,
               lm_message_node_get_attribute (node, "jid"));
           item->subscription = GABBLE_ROSTER_SUBSCRIPTION_NONE;
         }
       else if (!_google_roster_item_should_keep (node, item))
         {
-          DEBUG ("Google roster: discarding odd contact %d (%s)", handle,
+          DEBUG ("Google roster: discarding odd contact %d (%s)",
+              contact_handle,
               lm_message_node_get_attribute (node, "jid"));
           item->subscription = GABBLE_ROSTER_SUBSCRIPTION_REMOVE;
         }

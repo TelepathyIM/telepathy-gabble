@@ -1833,7 +1833,6 @@ gabble_roster_handle_add_to_group (GabbleRoster *roster,
   GabbleRosterItem *item;
   LmMessage *message;
   gboolean ret;
-  LmMessageNode *query_node, *item_node;
 
   g_return_val_if_fail (roster != NULL, FALSE);
   g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
@@ -1844,21 +1843,10 @@ gabble_roster_handle_add_to_group (GabbleRoster *roster,
 
   item = _gabble_roster_item_get (roster, handle);
 
+  handle_set_add (item->groups, group);
   message = _gabble_roster_item_to_message (roster, handle, NULL);
   NODE_DEBUG (message->node, "Roster item as message");
-
-  query_node = lm_message_node_get_child (message->node, "query");
-
-  g_assert (query_node);
-  g_assert (!g_strdiff (lm_message_node_get_attribute (query_node, "xmlns"),
-                        NS_ROSTER));
-  item_node = lm_message_node_get_child (query_node, "item");
-  g_assert (item_node);
-
-  lm_message_node_add_child (item_node, "group",
-                             gabble_handle_inspect (priv->conn->handles,
-                                                    TP_HANDLE_TYPE_GROUP,
-                                                    group));
+  handle_set_remove (item->groups, group);
 
   ret = _gabble_connection_send (priv->conn, message, error);
   lm_message_unref (message);
@@ -1875,9 +1863,8 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
   GabbleRosterItem *item;
   LmMessage *message;
-  gboolean ret;
+  gboolean ret, was_in_group;
   const gchar *name;
-  LmMessageNode *query_node, *item_node, *node;
 
   g_return_val_if_fail (roster != NULL, FALSE);
   g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
@@ -1890,33 +1877,20 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
 
   name = gabble_handle_inspect (priv->conn->handles, TP_HANDLE_TYPE_GROUP,
                                 group);
+
+  /* temporarily remove the handle from the set (taking a reference),
+   * make the message, and put it back afterwards
+   */
+  g_return_val_if_fail (gabble_handle_ref (priv->conn->handles,
+          TP_HANDLE_TYPE_GROUP, group),
+      FALSE);
+  was_in_group = handle_set_remove (item->groups, group);
   message = _gabble_roster_item_to_message (roster, handle, NULL);
-
-  query_node = lm_message_node_get_child (message->node, "query");
-
-  g_assert (query_node);
-  g_assert (!g_strdiff (lm_message_node_get_attribute (query_node, "xmlns"),
-                        NS_ROSTER));
-  item_node = lm_message_node_get_child (query_node, "item");
-  g_assert (item_node);
-
-  /* delete the node representing the group we don't want (there should only
-  be one, but program defensively) */
-  for (node = item_node->children; node; node = node->next)
-    {
-      if (!strcmp(node->name, "group") &&
-          !strcmp(node->value, name) &&
-          lm_message_node_get_attribute (node, "xmlns") == NULL)
-        {
-          if (node == item_node->children)
-            item_node->children = node->next;
-          if (node->prev)
-            node->prev->next = node->next;
-          if (node->next)
-            node->next->prev = node->prev;
-          lm_message_node_unref (node);
-        }
-    }
+  if (was_in_group)
+    handle_set_add (item->groups, group);
+  g_return_val_if_fail (gabble_handle_unref (priv->conn->handles,
+          TP_HANDLE_TYPE_GROUP, group),
+      FALSE);
 
   ret = _gabble_connection_send (priv->conn, message, error);
   lm_message_unref (message);

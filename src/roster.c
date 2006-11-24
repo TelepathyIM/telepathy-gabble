@@ -522,8 +522,10 @@ _update_remove_from_group (guint group_handle, gpointer user_data)
 
 static GabbleRosterItem *
 _gabble_roster_item_update (GabbleRoster *roster,
-                            GabbleHandle handle,
-                            LmMessageNode *node)
+                            GabbleHandle contact_handle,
+                            LmMessageNode *node,
+                            GHashTable *group_updates,
+                            gboolean google_roster_mode)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
   GabbleRosterItem *item;
@@ -576,7 +578,7 @@ _gabble_roster_item_update (GabbleRoster *roster,
       g_free (item->name);
       item->name = g_strdup (name);
 
-      DEBUG ("name for handle %d changed to %s", handle,
+      DEBUG ("name for contact#%u changed to %s", contact_handle,
           name);
       g_signal_emit (G_OBJECT (roster), signals[NICKNAME_UPDATE], 0, contact_handle);
     }
@@ -1024,6 +1026,8 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
       GArray *removed;
       GabbleHandle handle;
       GabbleRosterChannel *chan;
+      GHashTable *group_update_table;
+      guint i;
 
     case LM_MESSAGE_SUB_TYPE_RESULT:
     case LM_MESSAGE_SUB_TYPE_SET:
@@ -1036,6 +1040,9 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
       sub_rp = g_intset_new ();
       known_add = g_intset_new ();
       known_rem = g_intset_new ();
+      group_update_table = g_hash_table_new_full (NULL, NULL, NULL,
+          (GDestroyNotify)_group_mem_update_destroy);
+      removed = g_array_new (FALSE, FALSE, sizeof (GabbleHandle));
 
       if (google_roster)
         {
@@ -1080,7 +1087,9 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
               continue;
             }
 
-          item = _gabble_roster_item_update (roster, handle, item_node);
+          item = _gabble_roster_item_update (roster, handle, item_node,
+                                             group_update_table,
+                                             google_roster);
 #ifdef ENABLE_DEBUG
           if (DEBUGGING)
             {
@@ -1771,6 +1780,144 @@ gabble_roster_handle_remove (GabbleRoster *roster,
   lm_message_unref (message);
 
   item->subscription = subscription;
+
+  return ret;
+}
+
+gboolean
+gabble_roster_handle_add (GabbleRoster *roster,
+                          GabbleHandle handle,
+                          GError **error)
+{
+  GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
+  GabbleRosterItem *item;
+  LmMessage *message;
+  gboolean do_add = FALSE;
+  gboolean ret;
+
+  g_return_val_if_fail (roster != NULL, FALSE);
+  g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
+  g_return_val_if_fail (gabble_handle_is_valid (priv->conn->handles,
+      TP_HANDLE_TYPE_CONTACT, handle, NULL), FALSE);
+
+  if (!gabble_roster_handle_has_entry (roster, handle))
+      do_add = TRUE;
+
+  item = _gabble_roster_item_get (roster, handle);
+
+  if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN)
+    {
+      item->google_type = GOOGLE_ITEM_TYPE_NORMAL;
+      do_add = TRUE;
+    }
+
+  if (!do_add)
+      return TRUE;
+
+  message = _gabble_roster_item_to_message (roster, handle, NULL);
+  ret = _gabble_connection_send (priv->conn, message, error);
+  lm_message_unref (message);
+
+  return ret;
+}
+
+gboolean
+gabble_roster_handle_add_to_group (GabbleRoster *roster,
+                                   GabbleHandle handle,
+                                   GabbleHandle group,
+                                   GError **error)
+{
+  GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
+  GabbleRosterItem *item;
+  LmMessage *message;
+  gboolean ret;
+  LmMessageNode *query_node, *item_node;
+
+  g_return_val_if_fail (roster != NULL, FALSE);
+  g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
+  g_return_val_if_fail (gabble_handle_is_valid (priv->conn->handles,
+      TP_HANDLE_TYPE_CONTACT, handle, NULL), FALSE);
+  g_return_val_if_fail (gabble_handle_is_valid (priv->conn->handles,
+      TP_HANDLE_TYPE_GROUP, group, NULL), FALSE);
+
+  item = _gabble_roster_item_get (roster, handle);
+
+  message = _gabble_roster_item_to_message (roster, handle, NULL);
+  NODE_DEBUG (message->node, "Roster item as message");
+
+  query_node = lm_message_node_get_child (message->node, "query");
+
+  g_assert (query_node);
+  g_assert (!g_strdiff (lm_message_node_get_attribute (query_node, "xmlns"),
+                        NS_ROSTER));
+  item_node = lm_message_node_get_child (query_node, "item");
+  g_assert (item_node);
+
+  lm_message_node_add_child (item_node, "group",
+                             gabble_handle_inspect (priv->conn->handles,
+                                                    TP_HANDLE_TYPE_GROUP,
+                                                    group));
+
+  ret = _gabble_connection_send (priv->conn, message, error);
+  lm_message_unref (message);
+
+  return ret;
+}
+
+gboolean
+gabble_roster_handle_remove_from_group (GabbleRoster *roster,
+                                        GabbleHandle handle,
+                                        GabbleHandle group,
+                                        GError **error)
+{
+  GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
+  GabbleRosterItem *item;
+  LmMessage *message;
+  gboolean ret;
+  const gchar *name;
+  LmMessageNode *query_node, *item_node, *node;
+
+  g_return_val_if_fail (roster != NULL, FALSE);
+  g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
+  g_return_val_if_fail (gabble_handle_is_valid (priv->conn->handles,
+      TP_HANDLE_TYPE_CONTACT, handle, NULL), FALSE);
+  g_return_val_if_fail (gabble_handle_is_valid (priv->conn->handles,
+      TP_HANDLE_TYPE_GROUP, group, NULL), FALSE);
+
+  item = _gabble_roster_item_get (roster, handle);
+
+  name = gabble_handle_inspect (priv->conn->handles, TP_HANDLE_TYPE_GROUP,
+                                group);
+  message = _gabble_roster_item_to_message (roster, handle, NULL);
+
+  query_node = lm_message_node_get_child (message->node, "query");
+
+  g_assert (query_node);
+  g_assert (!g_strdiff (lm_message_node_get_attribute (query_node, "xmlns"),
+                        NS_ROSTER));
+  item_node = lm_message_node_get_child (query_node, "item");
+  g_assert (item_node);
+
+  /* delete the node representing the group we don't want (there should only
+  be one, but program defensively) */
+  for (node = item_node->children; node; node = node->next)
+    {
+      if (!strcmp(node->name, "group") &&
+          !strcmp(node->value, name) &&
+          lm_message_node_get_attribute (node, "xmlns") == NULL)
+        {
+          if (node == item_node->children)
+            item_node->children = node->next;
+          if (node->prev)
+            node->prev->next = node->next;
+          if (node->next)
+            node->next->prev = node->prev;
+          lm_message_node_unref (node);
+        }
+    }
+
+  ret = _gabble_connection_send (priv->conn, message, error);
+  lm_message_unref (message);
 
   return ret;
 }

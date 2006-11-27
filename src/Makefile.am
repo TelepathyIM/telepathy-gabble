@@ -24,8 +24,8 @@ BUILT_SOURCES = \
     gabble-media-stream-glue.h \
     gabble-media-stream-signals-marshal.h \
     gabble-media-stream-signals-marshal.c \
-	gabble-presence-cache-signals-marshal.h \
-	gabble-presence-cache-signals-marshal.c \
+    gabble-presence-cache-signals-marshal.h \
+    gabble-presence-cache-signals-marshal.c \
     gabble-roster-channel-glue.h \
     gabble-roster-channel-signals-marshal.h \
     gabble-roster-channel-signals-marshal.c \
@@ -51,8 +51,8 @@ noinst_PROGRAMS = write-mgr-file
 
 CORE_SOURCES = \
     ansi.h \
-	capabilities.h \
-	capabilities.c \
+    capabilities.h \
+    capabilities.c \
     debug.h \
     debug.c \
     disco.h \
@@ -124,6 +124,23 @@ CORE_SOURCES = \
     vcard-manager.h \
     vcard-manager.c \
     $(BUILT_SOURCES)
+
+EXTRA_DIST = \
+    gabble-connection-manager-signals-marshal.list \
+    gabble-connection-signals-marshal.list \
+    gabble-im-channel-signals-marshal.list \
+    gabble-media-channel-signals-marshal.list \
+    gabble-media-session-signals-marshal.list \
+    gabble-media-stream-signals-marshal.list \
+    gabble-muc-channel-signals-marshal.list \
+    gabble-presence-cache-signals-marshal.list \
+    gabble-register-signals-marshal.list \
+    gabble-roomlist-channel-signals-marshal.list \
+    gabble-roster-channel-signals-marshal.list \
+    group-mixin-signals-marshal.list \
+    properties-mixin-signals-marshal.list \
+    text-mixin-signals-marshal.list \
+    tp-channel-factory-iface-signals-marshal.list
 
 libgabble_convenience_la_SOURCES = \
     $(CORE_SOURCES)

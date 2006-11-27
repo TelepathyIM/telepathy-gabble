@@ -24,8 +24,8 @@ BUILT_SOURCES = \
     gabble-media-stream-glue.h \
     gabble-media-stream-signals-marshal.h \
     gabble-media-stream-signals-marshal.c \
-	gabble-presence-cache-signals-marshal.h \
-	gabble-presence-cache-signals-marshal.c \
+    gabble-presence-cache-signals-marshal.h \
+    gabble-presence-cache-signals-marshal.c \
     gabble-roster-channel-glue.h \
     gabble-roster-channel-signals-marshal.h \
     gabble-roster-channel-signals-marshal.c \
@@ -50,8 +50,10 @@ noinst_PROGRAMS = write-mgr-file
 
 libgabble_convenience_la_SOURCES = \
     ansi.h \
-	capabilities.h \
-	capabilities.c \
+    base64.h \
+    base64.c \
+    capabilities.h \
+    capabilities.c \
     debug.h \
     debug.c \
     disco.h \

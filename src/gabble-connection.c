@@ -2857,10 +2857,9 @@ gabble_connection_add_status (GabbleConnection *self,
 
 
 static void
-unset_each_gvalue (gpointer ptr, gpointer user_data)
+unset_each_gvalue (gpointer data, gpointer user_data)
 {
-    GValue *value = (GValue *) ptr;
-    g_value_unset (value);
+    g_boxed_free (TP_CAPABILITIES_CHANGED_MONSTER_TYPE, data);
 }
 
 static void

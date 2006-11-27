@@ -1439,7 +1439,7 @@ _gabble_connection_connect (GabbleConnection *conn,
   /* set initial presence */
   /* TODO: some way for the user to set this */
   gabble_presence_cache_update (conn->presence_cache, conn->self_handle,
-      priv->resource, GABBLE_PRESENCE_AVAILABLE, NULL, priv->priority, TRUE);
+      priv->resource, GABBLE_PRESENCE_AVAILABLE, NULL, priv->priority);
   emit_one_presence_update (conn, conn->self_handle);
 
   /* set initial capabilities */
@@ -3089,7 +3089,7 @@ gabble_connection_clear_status (GabbleConnection *self,
   ERROR_IF_NOT_CONNECTED (self, error);
 
   gabble_presence_cache_update (self->presence_cache, self->self_handle,
-      priv->resource, GABBLE_PRESENCE_AVAILABLE, NULL, priv->priority, TRUE);
+      priv->resource, GABBLE_PRESENCE_AVAILABLE, NULL, priv->priority);
   emit_one_presence_update (self, self->self_handle);
   return signal_own_presence (self, error);
 }
@@ -3987,8 +3987,7 @@ gabble_connection_remove_status (GabbleConnection *self,
   if (strcmp (status, gabble_statuses[presence->status].name) == 0)
     {
       gabble_presence_cache_update (self->presence_cache, self->self_handle,
-          priv->resource, GABBLE_PRESENCE_AVAILABLE, NULL, priv->priority,
-          TRUE);
+          priv->resource, GABBLE_PRESENCE_AVAILABLE, NULL, priv->priority);
       emit_one_presence_update (self, self->self_handle);
       return signal_own_presence (self, error);
     }
@@ -5248,7 +5247,7 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
           prio = CLAMP (g_value_get_int (priority), G_MININT8, G_MAXINT8);
         }
 
-      gabble_presence_cache_update (data->conn->presence_cache, data->conn->self_handle, priv->resource, i, status, prio, TRUE);
+      gabble_presence_cache_update (data->conn->presence_cache, data->conn->self_handle, priv->resource, i, status, prio);
       emit_one_presence_update (data->conn, data->conn->self_handle);
       data->retval = signal_own_presence (data->conn, data->error);
     }

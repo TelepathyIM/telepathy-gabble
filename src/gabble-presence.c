@@ -43,7 +43,6 @@ struct _Resource {
     GabblePresenceId status;
     gchar *status_message;
     gint8 priority;
-    gboolean set_locally;
 };
 
 typedef struct _GabblePresencePrivate GabblePresencePrivate;
@@ -63,7 +62,6 @@ _resource_new (gchar *name)
   new->status_message = NULL;
   new->priority = 0;
   new->caps_serial = 0;
-  new->set_locally = FALSE;
 
   return new;
 }
@@ -127,7 +125,6 @@ gabble_presence_pick_resource_by_caps (
 
       if ((res->priority >= 0) &&
           ((res->caps & caps) == caps) &&
-          (NULL == chosen || res->set_locally || !chosen->set_locally) &&
           (NULL == chosen || res->priority > chosen->priority))
         chosen = res;
     }
@@ -223,15 +220,14 @@ gabble_presence_update (GabblePresence *presence,
                         const gchar *resource,
                         GabblePresenceId status,
                         const gchar *status_message,
-                        gint8 priority,
-                        gboolean set_locally)
+                        gint8 priority)
 {
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
   Resource *res;
   GabblePresenceId old_status;
   gchar *old_status_message;
   GSList *i;
-  gint prio;
+  guint8 prio;
   gboolean ret = FALSE;
 
   /* save our current state */
@@ -290,7 +286,6 @@ gabble_presence_update (GabblePresence *presence,
         }
 
       res->priority = priority;
-      res->set_locally = set_locally;
     }
 
   /* select the most preferable Resource and update presence->* based on our
@@ -307,18 +302,17 @@ gabble_presence_update (GabblePresence *presence,
   for (i = priv->resources; NULL != i; i = i->next)
     {
       Resource *res = (Resource *) i->data;
-      gint adjusted_res_prio = res->priority + 1000*res->set_locally;
 
       presence->caps |= res->caps;
 
       /* trump existing status & message if it's more present
        * or has the same presence and a higher priority */
       if (res->status > presence->status ||
-          (res->status == presence->status && adjusted_res_prio > prio))
+          (res->status == presence->status && res->priority > prio))
         {
           presence->status = res->status;
           presence->status_message = res->status_message;
-          prio = adjusted_res_prio;
+          prio = res->priority;
         }
     }
 

@@ -572,7 +572,7 @@ item_info_cb (GabbleDisco *disco,
   DEBUG ("got item identity, jid=%s, name=%s, category=%s, type=%s",
       jid, name, category, type);
 
-  keys = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+  keys = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
 
   for (feature = result->children; feature; feature = feature->next)
     {

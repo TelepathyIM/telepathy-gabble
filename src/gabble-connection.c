@@ -2857,6 +2857,13 @@ gabble_connection_add_status (GabbleConnection *self,
 
 
 static void
+unset_each_gvalue (gpointer ptr, gpointer user_data)
+{
+    GValue *value = (GValue *) ptr;
+    g_value_unset (value);
+}
+
+static void
 _emit_capabilities_changed (GabbleConnection *conn,
                             GabbleHandle handle,
                             GabblePresenceCapabilities old_caps,
@@ -2909,6 +2916,7 @@ _emit_capabilities_changed (GabbleConnection *conn,
   if (caps_arr->len)
     g_signal_emit (conn, signals[CAPABILITIES_CHANGED], 0, caps_arr);
 
+  g_ptr_array_foreach (caps_arr, unset_each_gvalue, NULL);
   g_ptr_array_free (caps_arr, TRUE);
 }
 

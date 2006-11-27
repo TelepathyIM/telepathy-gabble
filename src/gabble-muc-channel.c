@@ -573,10 +573,8 @@ contact_handle_to_room_identity (GabbleMucChannel *chan, GabbleHandle main_handl
     {
       *room_jid = g_string_new (jid);
     }
-  else
-    {
-      g_free (jid);
-    }
+
+  g_free (jid);
 }
 
 static gboolean

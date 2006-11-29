@@ -396,12 +396,6 @@ _google_roster_item_should_keep (LmMessageNode *item_node,
   if (!g_strdiff (attr, "true"))
     return FALSE;
 
-  /* skip email addresses the user has invited */
-  attr = lm_message_node_get_attribute (item_node, "gr:inv");
-
-  if (!g_strdiff (attr, "A"))
-    return FALSE;
-
   /* skip email addresses that replied to an invite */
   attr = lm_message_node_get_attribute (item_node, "gr:alias-for");
 

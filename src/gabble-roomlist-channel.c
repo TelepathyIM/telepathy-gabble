@@ -91,11 +91,18 @@ struct _GabbleRoomlistChannelPrivate
   gpointer disco_pipeline;
   GabbleHandleSet *signalled_rooms;
 
+  GPtrArray *pending_room_signals;
+  guint timer_source_id;
+
   gboolean dispose_has_run;
 };
 
 #define GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE(obj) \
     ((GabbleRoomlistChannelPrivate *)obj->priv)
+
+#define ROOM_SIGNAL_INTERVAL 100
+
+static gboolean emit_room_signal (gpointer data);
 
 static void
 gabble_roomlist_channel_init (GabbleRoomlistChannel *self)
@@ -104,6 +111,8 @@ gabble_roomlist_channel_init (GabbleRoomlistChannel *self)
       GABBLE_TYPE_ROOMLIST_CHANNEL, GabbleRoomlistChannelPrivate);
 
   self->priv = priv;
+
+  priv->pending_room_signals = g_ptr_array_new ();
 }
 
 
@@ -291,6 +300,7 @@ gabble_roomlist_channel_dispose (GObject *object)
 
   if (priv->listing)
     {
+      emit_room_signal (object);
       g_signal_emit (object, signals [LISTING_ROOMS], 0, FALSE);
       priv->listing = FALSE;
     }
@@ -306,6 +316,17 @@ gabble_roomlist_channel_dispose (GObject *object)
       gabble_disco_pipeline_destroy (priv->disco_pipeline);
       priv->disco_pipeline = NULL;
     }
+
+  if (priv->timer_source_id)
+    {
+      g_source_remove (priv->timer_source_id);
+      priv->timer_source_id = 0;
+    }
+
+  g_assert (priv->pending_room_signals != NULL);
+  g_assert (priv->pending_room_signals->len == 0);
+  g_ptr_array_free (priv->pending_room_signals, TRUE);
+  priv->pending_room_signals = NULL;
 
   if (G_OBJECT_CLASS (gabble_roomlist_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_roomlist_channel_parent_class)->dispose (object);
@@ -344,6 +365,29 @@ _gabble_roomlist_channel_new (GabbleConnection *conn,
                     "conference-server", conference_server, NULL));
 }
 
+static gboolean
+emit_room_signal (gpointer data)
+{
+  GabbleRoomlistChannel *chan = data;
+  GabbleRoomlistChannelPrivate *priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (chan);
+
+  if (!priv->listing)
+      return FALSE;
+
+  if (priv->pending_room_signals->len == 0)
+      return TRUE;
+
+  g_signal_emit (chan, signals[GOT_ROOMS], 0, priv->pending_room_signals);
+
+  while (priv->pending_room_signals->len != 0)
+    {
+      gpointer boxed = g_ptr_array_index (priv->pending_room_signals, 0);
+      g_boxed_free (TP_TYPE_ROOM_STRUCT, boxed);
+      g_ptr_array_remove_index_fast (priv->pending_room_signals, 0);
+    }
+
+  return TRUE;
+}
 
 /**
  * destroy_value:
@@ -367,7 +411,6 @@ room_info_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
   GabbleHandle handle;
   GHashTable *keys;
   GValue room = {0,};
-  GPtrArray *rooms ;
   GValue *tmp;
   gpointer k, v;
 
@@ -450,8 +493,6 @@ room_info_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
   if (var != NULL)
     INSERT_KEY (keys, "language", G_TYPE_STRING, string, var);
 
-  DEBUG ("emitting new room signal for %s", jid);
-
   handle = gabble_handle_for_room (priv->conn->handles, jid);
 
   handle_set_add (priv->signalled_rooms, handle);
@@ -466,12 +507,8 @@ room_info_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
       2, keys,
       G_MAXUINT);
 
-  rooms = g_ptr_array_sized_new (1);
-  g_ptr_array_add (rooms, g_value_get_boxed (&room));
-  g_signal_emit (chan, signals[GOT_ROOMS], 0, rooms);
-  g_ptr_array_free (rooms, TRUE);
-  g_value_unset (&room);
-
+  g_debug ("adding new room signal data to pending: %s", jid);
+  g_ptr_array_add (priv->pending_room_signals, g_value_get_boxed (&room));
   g_hash_table_destroy (keys);
 }
 
@@ -481,8 +518,13 @@ rooms_end_cb (gpointer data, gpointer user_data)
   GabbleRoomlistChannel *chan = user_data;
   GabbleRoomlistChannelPrivate *priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (chan);
 
+  emit_room_signal (chan);
+
   priv->listing = FALSE;
   g_signal_emit (chan, signals[LISTING_ROOMS], 0, FALSE);
+
+  g_source_remove (priv->timer_source_id);
+  priv->timer_source_id = 0;
 }
 
 
@@ -645,6 +687,9 @@ gabble_roomlist_channel_list_rooms (GabbleRoomlistChannel *self,
         room_info_cb, rooms_end_cb, self);
 
   gabble_disco_pipeline_run (priv->disco_pipeline, priv->conference_server);
+
+  priv->timer_source_id = g_timeout_add (ROOM_SIGNAL_INTERVAL,
+      emit_room_signal, self);
 
   return TRUE;
 }

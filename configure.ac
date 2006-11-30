@@ -16,35 +16,42 @@ m4_define([gabble_nano_version], [1])
 m4_define([gabble_base_version],
           [gabble_major_version.gabble_minor_version.gabble_micro_version])
 m4_define([gabble_version],
-          [m4_if(gabble_nano_version, 0, [gabble_base_version], [gabble_base_version].[gabble_nano_version])])dnl
+          [m4_if(gabble_nano_version, 0, [gabble_base_version],
+              [gabble_base_version].[gabble_nano_version])])
 
-AC_INIT([Telepathy Gabble], [gabble_version], [https://bugs.freedesktop.org/enter_bug.cgi?product=Telepathy])
-
+AC_INIT([Telepathy Gabble], [gabble_version],
+        [https://bugs.freedesktop.org/enter_bug.cgi?product=Telepathy])
 
 AC_CONFIG_MACRO_DIR([m4])
 
 AM_INIT_AUTOMAKE([1.8])
-AM_PROG_LIBTOOL
 AM_CONFIG_HEADER(config.h)
 
 dnl check for tools
 AC_PROG_CC
 AC_PROG_CC_STDC
-AM_PROG_AS
+AC_PROG_INSTALL
+AC_PROG_LIBTOOL
 
 dnl decide error flags
 AS_COMPILER_FLAG(-Wall, ERROR_CFLAGS="-Wall", ERROR_CFLAGS="")
 AS_COMPILER_FLAG(-Werror, werror=yes, werror=no)
 AS_COMPILER_FLAG(-Wextra, wextra=yes, wextra=no)
-AS_COMPILER_FLAG(-Wno-missing-field-initializers, wno_missing_field_initializers=yes, wno_missing_field_initializers=no)
-AS_COMPILER_FLAG(-Wno-unused-parameter, wno_unused_parameter=yes, wno_unused_parameter=no)
+AS_COMPILER_FLAG(-Wno-missing-field-initializers,
+        wno_missing_field_initializers=yes,
+        wno_missing_field_initializers=no)
+AS_COMPILER_FLAG(-Wno-unused-parameter,
+        wno_unused_parameter=yes,
+        wno_unused_parameter=no)
 
 ifelse(gabble_nano_version, 0, [],
     [
         if test x$werror = xyes; then
             ERROR_CFLAGS="$ERROR_CFLAGS -Werror"
         fi
-        if test x$wextra = xyes -a x$wno_missing_field_initializers = xyes -a x$wno_unused_parameter = xyes; then
+        if test x$wextra = xyes -a \
+            x$wno_missing_field_initializers = xyes -a \
+            x$wno_unused_parameter = xyes; then
             ERROR_CFLAGS="$ERROR_CFLAGS -Wextra -Wno-missing-field-initializers -Wno-unused-parameter"
         fi
     ])
@@ -78,9 +85,6 @@ fi
 
 AC_SUBST(HANDLE_LEAK_DEBUG_CFLAGS)
 
-AC_HEADER_STDC([])
-AC_C_INLINE
-
 dnl GTK docs
 GTK_DOC_CHECK
 
@@ -111,7 +115,6 @@ AC_ARG_ENABLE(loudmouth-versioning,
                  [Stops configure checking the version of loudmouth to use.]),
                  enable_loudmouth_versioning=$enableval,
                  enable_loudmouth_versioning=yes)
-                 
 
 if test x$enable_loudmouth_versioning = xyes; then
   LOUDMOUTH_VERSION_STR=" >= 1.1.1"

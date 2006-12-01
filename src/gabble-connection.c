@@ -2855,13 +2855,6 @@ gabble_connection_add_status (GabbleConnection *self,
   return FALSE;
 }
 
-
-static void
-unset_each_gvalue (gpointer data, gpointer user_data)
-{
-    g_boxed_free (TP_CAPABILITIES_CHANGED_MONSTER_TYPE, data);
-}
-
 static void
 _emit_capabilities_changed (GabbleConnection *conn,
                             GabbleHandle handle,
@@ -2870,6 +2863,7 @@ _emit_capabilities_changed (GabbleConnection *conn,
 {
   GPtrArray *caps_arr;
   const CapabilityConversionData *ccd;
+  guint i;
 
   if (old_caps == new_caps)
     return;
@@ -2915,7 +2909,11 @@ _emit_capabilities_changed (GabbleConnection *conn,
   if (caps_arr->len)
     g_signal_emit (conn, signals[CAPABILITIES_CHANGED], 0, caps_arr);
 
-  g_ptr_array_foreach (caps_arr, unset_each_gvalue, NULL);
+  for (i = 0; i < caps_arr->len; i++)
+    {
+      g_boxed_free (TP_CAPABILITIES_CHANGED_MONSTER_TYPE,
+          g_ptr_array_index (caps_arr, i));
+    }
   g_ptr_array_free (caps_arr, TRUE);
 }
 

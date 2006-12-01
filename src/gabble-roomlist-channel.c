@@ -100,7 +100,7 @@ struct _GabbleRoomlistChannelPrivate
 #define GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE(obj) \
     ((GabbleRoomlistChannelPrivate *)obj->priv)
 
-#define ROOM_SIGNAL_INTERVAL 100
+#define ROOM_SIGNAL_INTERVAL 300
 
 static gboolean emit_room_signal (gpointer data);
 
@@ -507,7 +507,7 @@ room_info_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
       2, keys,
       G_MAXUINT);
 
-  g_debug ("adding new room signal data to pending: %s", jid);
+  DEBUG ("adding new room signal data to pending: %s", jid);
   g_ptr_array_add (priv->pending_room_signals, g_value_get_boxed (&room));
   g_hash_table_destroy (keys);
 }

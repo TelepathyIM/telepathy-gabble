@@ -96,7 +96,6 @@ struct _GabbleMediaSessionPrivate
   GPtrArray *remove_requests;
 
   gchar *id;
-  JingleInitiator initiator;
   GabbleHandle peer;
   gchar *peer_resource;
 
@@ -295,7 +294,7 @@ gabble_media_session_get_property (GObject    *object,
       g_value_set_string (value, priv->id);
       break;
     case PROP_INITIATOR:
-      g_value_set_uint (value, priv->initiator);
+      g_value_set_uint (value, session->initiator);
       break;
     case PROP_PEER:
       g_value_set_uint (value, priv->peer);
@@ -342,7 +341,7 @@ gabble_media_session_set_property (GObject      *object,
       priv->id = g_value_dup_string (value);
       break;
     case PROP_INITIATOR:
-      priv->initiator = g_value_get_uint (value);
+      session->initiator = g_value_get_uint (value);
       break;
     case PROP_PEER:
       priv->peer = g_value_get_uint (value);
@@ -674,7 +673,7 @@ _handle_create (GabbleMediaSession *session,
   gboolean override_existing = FALSE;
 
   if ((priv->state == JS_STATE_PENDING_CREATED) &&
-      (priv->initiator == INITIATOR_LOCAL))
+      (session->initiator == INITIATOR_LOCAL))
     {
       DEBUG ("we're trying to call ourselves, rejecting with busy");
       _gabble_media_session_terminate (session, INITIATOR_REMOTE,
@@ -689,7 +688,7 @@ _handle_create (GabbleMediaSession *session,
        * streams which we are trying to add (but havn't had acknowledged) */
       if (stream->signalling_state < STREAM_SIG_STATE_ACKNOWLEDGED)
         {
-          if (priv->initiator == INITIATOR_REMOTE)
+          if (session->initiator == INITIATOR_REMOTE)
             {
               override_existing = TRUE;
             }
@@ -810,19 +809,18 @@ static TpMediaStreamDirection
 _senders_to_direction (GabbleMediaSession *session,
                        const gchar *senders)
 {
-  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
   TpMediaStreamDirection ret = TP_MEDIA_STREAM_DIRECTION_NONE;
 
   if (!g_strdiff (senders, "initiator"))
     {
-      if (priv->initiator == INITIATOR_LOCAL)
+      if (session->initiator == INITIATOR_LOCAL)
         ret = TP_MEDIA_STREAM_DIRECTION_SEND;
       else
         ret = TP_MEDIA_STREAM_DIRECTION_RECEIVE;
     }
   else if (!g_strdiff (senders, "responder"))
     {
-      if (priv->initiator == INITIATOR_REMOTE)
+      if (session->initiator == INITIATOR_REMOTE)
         ret = TP_MEDIA_STREAM_DIRECTION_SEND;
       else
         ret = TP_MEDIA_STREAM_DIRECTION_RECEIVE;
@@ -1834,12 +1832,11 @@ content_add_msg_reply_cb (GabbleConnection *conn,
                           gpointer user_data)
 {
   GabbleMediaSession *session = GABBLE_MEDIA_SESSION (user_data);
-  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
   GabbleMediaStream *stream = GABBLE_MEDIA_STREAM (object);
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
-      if (priv->initiator == INITIATOR_REMOTE &&
+      if (session->initiator == INITIATOR_REMOTE &&
           stream->signalling_state == STREAM_SIG_STATE_ACKNOWLEDGED)
         {
           GMS_DEBUG_INFO (session, "ignoring content-add failure, stream has "
@@ -1943,7 +1940,7 @@ stream_connection_state_changed_cb (GabbleMediaStream *stream,
   if (priv->state < JS_STATE_ACTIVE)
     {
       /* send a session accept if the session was initiated by the peer */
-      if (priv->initiator == INITIATOR_REMOTE)
+      if (session->initiator == INITIATOR_REMOTE)
         {
           try_session_accept (session);
         }
@@ -1995,7 +1992,7 @@ stream_got_local_codecs_changed_cb (GabbleMediaStream *stream,
   /* after session is active, we do things per-stream with content-* actions */
   if (priv->state < JS_STATE_ACTIVE)
     {
-      if (priv->initiator == INITIATOR_REMOTE)
+      if (session->initiator == INITIATOR_REMOTE)
         {
           if (priv->state < JS_STATE_PENDING_ACCEPT_SENT)
             {
@@ -2098,7 +2095,7 @@ _gabble_media_session_message_new (GabbleMediaSession *session,
   else
     element = "jingle";
 
-  if (priv->initiator == INITIATOR_LOCAL)
+  if (session->initiator == INITIATOR_LOCAL)
     initiator_handle = priv->conn->self_handle;
   else
     initiator_handle = priv->peer;
@@ -2371,7 +2368,7 @@ _gabble_media_session_terminate (GabbleMediaSession *session,
       /* Jingle doesn't have a "reject" action; a termination before an
        * acceptance indicates that the call has been declined */
 
-      if (priv->initiator == INITIATOR_REMOTE &&
+      if (session->initiator == INITIATOR_REMOTE &&
           priv->state == JS_STATE_PENDING_INITIATED &&
           priv->mode == MODE_GOOGLE)
         {
@@ -2705,7 +2702,6 @@ static const gchar *
 _direction_to_senders (GabbleMediaSession *session,
                        TpMediaStreamDirection dir)
 {
-  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
   const gchar *ret = NULL;
 
   switch (dir)
@@ -2714,13 +2710,13 @@ _direction_to_senders (GabbleMediaSession *session,
         g_assert_not_reached ();
         break;
       case TP_MEDIA_STREAM_DIRECTION_SEND:
-        if (priv->initiator == INITIATOR_LOCAL)
+        if (session->initiator == INITIATOR_LOCAL)
           ret = "initiator";
         else
           ret = "responder";
         break;
       case TP_MEDIA_STREAM_DIRECTION_RECEIVE:
-        if (priv->initiator == INITIATOR_REMOTE)
+        if (session->initiator == INITIATOR_REMOTE)
           ret = "initiator";
         else
           ret = "responder";

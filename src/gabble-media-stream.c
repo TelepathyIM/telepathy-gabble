@@ -1094,6 +1094,11 @@ _gabble_media_stream_message_new (GabbleMediaStream *stream,
       node = lm_message_node_add_child (*content_node, "content", NULL);
       lm_message_node_set_attribute (node, "name", stream->name);
 
+      if (priv->session->initiator == stream->initiator)
+        lm_message_node_set_attribute (node, "creator", "initiator");
+      else
+        lm_message_node_set_attribute (node, "creator", "responder");
+
       *content_node = node;
     }
 

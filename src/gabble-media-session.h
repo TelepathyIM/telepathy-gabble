@@ -64,6 +64,8 @@ struct _GabbleMediaSessionClass {
 struct _GabbleMediaSession {
     GObject parent;
 
+    JingleInitiator initiator;
+
     gpointer priv;
 };
 

@@ -43,13 +43,12 @@ BUILT_SOURCES = \
     tp-channel-factory-iface-signals-marshal.h \
     tp-channel-factory-iface-signals-marshal.c
 
-# correctly clean the generated source files
 CLEANFILES = $(BUILT_SOURCES)
 
 bin_PROGRAMS=telepathy-gabble
 noinst_PROGRAMS = write-mgr-file
 
-CORE_SOURCES = \
+libgabble_convenience_la_SOURCES = \
     ansi.h \
     capabilities.h \
     capabilities.c \
@@ -123,9 +122,6 @@ CORE_SOURCES = \
     util.c \
     vcard-manager.h \
     vcard-manager.c \
-    $(BUILT_SOURCES)
-
-EXTRA_DIST = \
     gabble-connection-manager-signals-marshal.list \
     gabble-connection-signals-marshal.list \
     gabble-im-channel-signals-marshal.list \
@@ -142,8 +138,8 @@ EXTRA_DIST = \
     text-mixin-signals-marshal.list \
     tp-channel-factory-iface-signals-marshal.list
 
-libgabble_convenience_la_SOURCES = \
-    $(CORE_SOURCES)
+nodist_libgabble_convenience_la_SOURCES = \
+    $(BUILT_SOURCES)
 
 write_mgr_file_SOURCES = write-mgr-file.c
 

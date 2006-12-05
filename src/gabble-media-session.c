@@ -171,6 +171,32 @@ _emit_new_stream (GabbleMediaSession *session,
   g_free (object_path);
 }
 
+
+static GabbleMediaStream *
+_lookup_stream_by_name_and_initiator (GabbleMediaSession *session,
+                                      const gchar *stream_name,
+                                      JingleInitiator stream_initiator)
+{
+  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+  guint i;
+
+  for (i = 0; i < priv->streams->len; i++)
+    {
+      GabbleMediaStream *stream = g_ptr_array_index (priv->streams, i);
+
+      if (g_strdiff (stream->name, stream_name))
+        continue;
+
+      if (stream->initiator != stream_initiator)
+        continue;
+
+      return stream;
+    }
+
+  return NULL;
+}
+
+
 static GabbleMediaStream *
 create_media_stream (GabbleMediaSession *session,
                      const gchar *name,
@@ -199,7 +225,8 @@ create_media_stream (GabbleMediaSession *session,
     }
 
   g_assert (priv->streams->len < MAX_STREAMS);
-  g_assert (g_hash_table_lookup (priv->streams_by_name, name) == NULL);
+  g_assert (_lookup_stream_by_name_and_initiator (session, name, initiator) ==
+      NULL);
 
   id = _gabble_media_channel_get_stream_id (priv->channel);
 

@@ -1180,7 +1180,7 @@ _call_handlers_on_stream (GabbleMediaSession *session,
           /* all other handlers require the stream to exist */
           if (stream == NULL)
             {
-              const gchar *created = NULL;
+              const gchar *created = "";
 
               if (stream_creator == INITIATOR_LOCAL)
                 created = "locally-created ";

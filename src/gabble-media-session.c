@@ -92,7 +92,6 @@ struct _GabbleMediaSessionPrivate
   gchar *object_path;
 
   GPtrArray *streams;
-  GHashTable *streams_by_name;
   GPtrArray *remove_requests;
 
   gchar *id;
@@ -138,8 +137,6 @@ gabble_media_session_init (GabbleMediaSession *self)
   priv->mode = MODE_JINGLE;
   priv->state = JS_STATE_PENDING_CREATED;
   priv->streams = g_ptr_array_new ();
-  priv->streams_by_name = g_hash_table_new_full (g_str_hash, g_str_equal,
-      g_free, g_object_unref);
   priv->remove_requests = g_ptr_array_new ();
 }
 
@@ -257,7 +254,6 @@ create_media_stream (GabbleMediaSession *session,
                     session);
 
   g_ptr_array_add (priv->streams, stream);
-  g_hash_table_insert (priv->streams_by_name, g_strdup (name), stream);
 
   g_free (object_path);
 
@@ -271,13 +267,13 @@ create_media_stream (GabbleMediaSession *session,
 
 static void
 destroy_media_stream (GabbleMediaSession *session,
-                     GabbleMediaStream *stream)
+                      GabbleMediaStream *stream)
 {
   GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
 
   _gabble_media_stream_close (stream);
   g_ptr_array_remove_fast (priv->streams, stream);
-  g_hash_table_remove (priv->streams_by_name, stream->name);
+  g_object_unref (stream);
 }
 
 static GObject *
@@ -548,12 +544,11 @@ gabble_media_session_dispose (GObject *object)
 
   if (priv->streams != NULL)
     {
+      for (i = 0; i < priv->streams->len; i++)
+        g_object_unref (g_ptr_array_index (priv->streams, i));
       g_ptr_array_free (priv->streams, TRUE);
       priv->streams = NULL;
     }
-
-  g_hash_table_destroy (priv->streams_by_name);
-  priv->streams_by_name = NULL;
 
   for (i = 0; i < priv->remove_requests->len; i++)
     g_ptr_array_free (g_ptr_array_index (priv->remove_requests, i), TRUE);

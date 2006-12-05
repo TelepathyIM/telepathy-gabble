@@ -641,19 +641,32 @@ gabble_media_session_ready (GabbleMediaSession *self,
 }
 
 static GabbleMediaStream *
-_lookup_stream_by_name (GabbleMediaSession *session,
-                        const gchar *stream_name)
+_lookup_stream_by_name_and_creator (GabbleMediaSession *session,
+                                    const gchar *stream_name,
+                                    const gchar *stream_creator)
 {
-  GabbleMediaSessionPrivate *priv;
-  GabbleMediaStream *stream;
+  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+  guint i;
 
-  g_assert (GABBLE_IS_MEDIA_SESSION (session));
+  for (i = 0; i < priv->streams->len; i++)
+    {
+      GabbleMediaStream *stream = g_ptr_array_index (priv->streams, i);
 
-  priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
+      if (g_strdiff (stream->name, stream_name))
+        continue;
 
-  stream = g_hash_table_lookup (priv->streams_by_name, stream_name);
+      if (!g_strdiff (stream_creator, "initiator") &&
+          session->initiator != stream->initiator)
+        continue;
 
-  return stream;
+      if (!g_strdiff (stream_creator, "responder") &&
+          session->initiator == stream->initiator)
+        continue;
+
+      return stream;
+    }
+
+  return NULL;
 }
 
 
@@ -1140,6 +1153,7 @@ _call_handlers_on_stream (GabbleMediaSession *session,
                           LmMessage *message,
                           LmMessageNode *content_node,
                           const gchar *stream_name,
+                          const gchar *stream_creator,
                           StreamHandlerFunc *func,
                           GError **error)
 {
@@ -1160,7 +1174,8 @@ _call_handlers_on_stream (GabbleMediaSession *session,
     {
       /* handlers may create the stream */
       if (stream == NULL && stream_name != NULL)
-        stream = _lookup_stream_by_name (session, stream_name);
+        stream = _lookup_stream_by_name_and_creator (session, stream_name,
+            stream_creator);
 
       /* the create handler is able to check whether or not the stream
        * exists, and act accordingly (sometimes it will replace an existing
@@ -1172,8 +1187,9 @@ _call_handlers_on_stream (GabbleMediaSession *session,
           if (stream == NULL)
             {
               g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_ITEM_NOT_FOUND,
-                  "unable to handle action for unknown stream \"%s\"",
-                  stream_name);
+                  "unable to handle action for unknown stream \"%s\" "
+                  "(apparently created by %s)", stream_name,
+                  stream_creator ? stream_creator : "either");
               return FALSE;
             }
           else
@@ -1229,18 +1245,18 @@ _call_handlers_on_streams (GabbleMediaSession *session,
   if (lm_message_node_has_namespace (session_node, NS_GOOGLE_SESSION, NULL))
     {
       return _call_handlers_on_stream (session, message, session_node,
-          GTALK_STREAM_NAME, func, error);
+          GTALK_STREAM_NAME, NULL, func, error);
     }
 
   if (session_node->children == NULL)
-    return _call_handlers_on_stream (session, message, NULL, NULL, func,
+    return _call_handlers_on_stream (session, message, NULL, NULL, NULL, func,
         error);
 
   for (content_node = session_node->children;
        NULL != content_node;
        content_node = content_node->next)
     {
-      const gchar *stream_name;
+      const gchar *stream_name, *stream_creator;
 
       if (g_strdiff (content_node->name, "content"))
         continue;
@@ -1254,8 +1270,10 @@ _call_handlers_on_streams (GabbleMediaSession *session,
           return FALSE;
         }
 
+      stream_creator = lm_message_node_get_attribute (content_node, "creator");
+
       if (!_call_handlers_on_stream (session, message, content_node,
-            stream_name, func, error))
+            stream_name, stream_creator, func, error))
         return FALSE;
     }
 

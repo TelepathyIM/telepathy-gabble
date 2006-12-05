@@ -1533,9 +1533,8 @@ _add_content_descriptions_one (const gchar *name,
       TpMediaStreamDirection direction;
       TpMediaStreamPendingSend pending_send;
 
-      content_node = lm_message_node_add_child (data->session_node, "content",
-          NULL);
-      lm_message_node_set_attribute (content_node, "name", name);
+      content_node = _gabble_media_stream_add_content_node (stream,
+          data->session_node);
 
       direction = COMBINED_DIRECTION_GET_DIRECTION (stream->combined_direction);
       pending_send = COMBINED_DIRECTION_GET_PENDING_SEND
@@ -2232,9 +2231,8 @@ _gabble_media_session_remove_streams (GabbleMediaSession *session,
             g_assert (msg != NULL);
             g_assert (removing != NULL);
 
-            content_node = lm_message_node_add_child (session_node, "content",
-              NULL);
-            lm_message_node_set_attribute (content_node, "name", stream->name);
+            content_node = _gabble_media_stream_add_content_node (stream,
+                session_node);
 
             g_object_set (stream,
                 "playing", FALSE,
@@ -2780,12 +2778,9 @@ send_direction_change (GabbleMediaSession *session,
 
   msg = _gabble_media_session_message_new (session, "content-modify",
       &session_node);
-  content_node = lm_message_node_add_child (session_node, "content", NULL);
+  content_node = _gabble_media_stream_add_content_node (stream, session_node);
 
-  lm_message_node_set_attributes (content_node,
-      "name", stream->name,
-      "senders", senders,
-      NULL);
+  lm_message_node_set_attribute (content_node, "senders", senders);
 
   ret = _gabble_connection_send_with_reply (priv->conn, msg,
       direction_msg_reply_cb, G_OBJECT (stream), session, error);

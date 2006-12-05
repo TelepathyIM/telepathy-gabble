@@ -1811,14 +1811,13 @@ initiate_msg_reply_cb (GabbleConnection *conn,
 }
 
 static gboolean
-_stream_not_ready_for_initiate (const gchar *name,
-                                GabbleMediaStream *stream,
-                                GabbleMediaSession *session)
+_stream_not_ready_for_initiate (GabbleMediaSession *session,
+                                GabbleMediaStream *stream)
 {
   if (!stream->got_local_codecs)
     {
       GMS_DEBUG_INFO (session, "stream %s does not yet have local codecs",
-          name);
+          stream->name);
 
       return TRUE;
     }
@@ -1833,13 +1832,18 @@ try_session_initiate (GabbleMediaSession *session)
   LmMessage *msg;
   LmMessageNode *session_node;
   const gchar *action;
+  guint i;
 
-  if (g_hash_table_find (priv->streams_by_name,
-        (GHRFunc) _stream_not_ready_for_initiate, session) != NULL)
+  for (i = 0; i < priv->streams->len; i++)
     {
-      GMS_DEBUG_INFO (session, "not sending initiate yet, found a stream "
-          "which was missing local codecs");
-      return;
+      GabbleMediaStream *stream = g_ptr_array_index (priv->streams, i);
+
+      if (_stream_not_ready_for_initiate (session, stream))
+        {
+          GMS_DEBUG_INFO (session, "not sending initiate yet, found a stream "
+            "which was missing local codecs");
+          return;
+        }
     }
 
   if (priv->mode == MODE_GOOGLE)
@@ -1925,7 +1929,7 @@ do_content_add (GabbleMediaSession *session,
   g_assert (priv->state == JS_STATE_ACTIVE);
   g_assert (priv->mode == MODE_JINGLE);
 
-  if (_stream_not_ready_for_initiate (stream->name, stream, session))
+  if (_stream_not_ready_for_initiate (session, stream))
     {
       GMS_DEBUG_ERROR (session, "trying to send content-add for stream %s "
           "but we have no local codecs. what?!", stream->name);

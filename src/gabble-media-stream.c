@@ -1081,29 +1081,18 @@ _gabble_media_stream_message_new (GabbleMediaStream *stream,
 {
   GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
   LmMessage *msg;
+  LmMessageNode *session_node = NULL;
 
   /* construct a session message */
   msg = _gabble_media_session_message_new (priv->session, action,
-                                           content_node);
+      &session_node);
 
-  /* add our content node to it if in jingle mode */
-  if (priv->mode == MODE_JINGLE)
-    {
-      LmMessageNode *node;
-
-      node = lm_message_node_add_child (*content_node, "content", NULL);
-      lm_message_node_set_attribute (node, "name", stream->name);
-
-      if (priv->session->initiator == stream->initiator)
-        lm_message_node_set_attribute (node, "creator", "initiator");
-      else
-        lm_message_node_set_attribute (node, "creator", "responder");
-
-      *content_node = node;
-    }
+  /* add our content node to it if necessary */
+  *content_node = _gabble_media_stream_add_content_node (stream, session_node);
 
   return msg;
 }
+
 
 static void
 push_candidate (GabbleMediaStream *stream, GValueArray *candidate)
@@ -1633,6 +1622,28 @@ codec_params_from_tp_foreach (gpointer key, gpointer value, gpointer user_data)
   DEBUG ("ignoring %s=%s for %s %s stream", pname, pvalue,
       (priv->mode == MODE_JINGLE) ? "jingle" : "google",
       (priv->media_type == TP_CODEC_MEDIA_TYPE_AUDIO) ? "audio" : "video");
+}
+
+LmMessageNode *
+_gabble_media_stream_add_content_node (GabbleMediaStream *stream,
+                                       LmMessageNode *session_node)
+{
+  GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
+  LmMessageNode *node = session_node;
+
+  /* add our content node to it if in jingle mode */
+  if (priv->mode == MODE_JINGLE)
+    {
+      node = lm_message_node_add_child (session_node, "content", NULL);
+      lm_message_node_set_attribute (node, "name", stream->name);
+
+      if (priv->session->initiator == stream->initiator)
+        lm_message_node_set_attribute (node, "creator", "initiator");
+      else
+        lm_message_node_set_attribute (node, "creator", "responder");
+    }
+
+  return node;
 }
 
 void

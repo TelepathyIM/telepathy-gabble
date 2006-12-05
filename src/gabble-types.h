@@ -34,7 +34,8 @@ typedef struct _GabbleVCardManager GabbleVCardManager;
 typedef guint32 GabbleHandle;
 
 typedef enum {
-    INITIATOR_LOCAL,
+    INITIATOR_INVALID = -1,
+    INITIATOR_LOCAL = 0,
     INITIATOR_REMOTE,
 } JingleInitiator;
 

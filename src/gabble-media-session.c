@@ -1533,37 +1533,20 @@ _set_remote_streams_playing (GabbleMediaSession *session)
     }
 }
 
-typedef struct _AddDescriptionsData AddDescriptionsData;
-
-struct _AddDescriptionsData {
-  GabbleMediaSession *session;
-  LmMessageNode *session_node;
-  JingleInitiator initiator;
-};
-
 static const gchar *_direction_to_senders (GabbleMediaSession *,
     TpMediaStreamDirection);
 
 static void
-_add_content_descriptions_one (const gchar *name,
+_add_content_descriptions_one (GabbleMediaSession *session,
                                GabbleMediaStream *stream,
-                               AddDescriptionsData *data)
+                               LmMessageNode *session_node)
 {
-  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (data->session);
+  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
   LmMessageNode *content_node;
-
-  if (stream->initiator != data->initiator)
-    {
-      GMS_DEBUG_INFO (data->session,
-          "not adding content description for %s stream %s",
-          stream->initiator == INITIATOR_LOCAL ? "local" : "remote",
-          name);
-      return;
-    }
 
   if (priv->mode == MODE_GOOGLE)
     {
-      content_node = data->session_node;
+      content_node = session_node;
     }
   else
     {
@@ -1571,7 +1554,7 @@ _add_content_descriptions_one (const gchar *name,
       TpMediaStreamPendingSend pending_send;
 
       content_node = _gabble_media_stream_add_content_node (stream,
-          data->session_node);
+          session_node);
 
       direction = COMBINED_DIRECTION_GET_DIRECTION (stream->combined_direction);
       pending_send = COMBINED_DIRECTION_GET_PENDING_SEND
@@ -1589,7 +1572,7 @@ _add_content_descriptions_one (const gchar *name,
       if (direction != TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL)
         {
           const gchar *senders;
-          senders = _direction_to_senders (data->session, direction);
+          senders = _direction_to_senders (session, direction);
           lm_message_node_set_attribute (content_node, "senders", senders);
         }
     }
@@ -1605,14 +1588,23 @@ _add_content_descriptions (GabbleMediaSession *session,
                            JingleInitiator stream_initiator)
 {
   GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
-  AddDescriptionsData data;
+  guint i;
 
-  data.session = session;
-  data.session_node = session_node;
-  data.initiator = stream_initiator;
+  for (i = 0; i < priv->streams->len; i++)
+    {
+      GabbleMediaStream *stream = g_ptr_array_index (priv->streams, i);
 
-  g_hash_table_foreach (priv->streams_by_name,
-      (GHFunc) _add_content_descriptions_one, &data);
+      if (stream->initiator != stream_initiator)
+        {
+          GMS_DEBUG_INFO (session,
+              "not adding content description for %s stream %s",
+              stream->initiator == INITIATOR_LOCAL ? "local" : "remote",
+              stream->name);
+          continue;
+        }
+
+      _add_content_descriptions_one (session, stream, session_node);
+    }
 }
 
 static LmHandlerResult
@@ -1757,7 +1749,6 @@ try_content_accept (GabbleMediaSession *session,
   GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
   LmMessage *msg;
   LmMessageNode *session_node;
-  AddDescriptionsData data;
 
   g_assert (priv->state == JS_STATE_ACTIVE);
   g_assert (priv->mode == MODE_JINGLE);
@@ -1773,11 +1764,7 @@ try_content_accept (GabbleMediaSession *session,
   msg = _gabble_media_session_message_new (session, "content-accept",
       &session_node);
 
-  data.session = session;
-  data.session_node = session_node;
-  data.initiator = INITIATOR_REMOTE;
-
-  _add_content_descriptions_one (stream->name, stream, &data);
+  _add_content_descriptions_one (session, stream, session_node);
 
   GMS_DEBUG_INFO (session, "sending jingle session action \"content-accept\" "
       "to peer for stream %s", stream->name);
@@ -1924,7 +1911,6 @@ do_content_add (GabbleMediaSession *session,
   GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
   LmMessage *msg;
   LmMessageNode *session_node;
-  AddDescriptionsData data;
 
   g_assert (priv->state == JS_STATE_ACTIVE);
   g_assert (priv->mode == MODE_JINGLE);
@@ -1940,11 +1926,7 @@ do_content_add (GabbleMediaSession *session,
   msg = _gabble_media_session_message_new (session, "content-add",
       &session_node);
 
-  data.session = session;
-  data.session_node = session_node;
-  data.initiator = INITIATOR_LOCAL;
-
-  _add_content_descriptions_one (stream->name, stream, &data);
+  _add_content_descriptions_one (session, stream, session_node);
 
   GMS_DEBUG_INFO (session, "sending jingle action \"content-add\" to peer for "
       "stream %s", stream->name);

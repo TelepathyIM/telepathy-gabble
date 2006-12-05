@@ -1644,9 +1644,8 @@ accept_msg_reply_cb (GabbleConnection *conn,
 }
 
 static gboolean
-_stream_not_ready_for_accept (const gchar *name,
-                              GabbleMediaStream *stream,
-                              GabbleMediaSession *session)
+_stream_not_ready_for_accept (GabbleMediaSession *session,
+                              GabbleMediaStream *stream)
 {
   /* locally initiated streams shouldn't delay acceptance */
   if (stream->initiator == INITIATOR_LOCAL)
@@ -1655,14 +1654,14 @@ _stream_not_ready_for_accept (const gchar *name,
   if (!stream->got_local_codecs)
     {
       GMS_DEBUG_INFO (session, "stream %s does not yet have local codecs",
-          name);
+          stream->name);
 
       return TRUE;
     }
 
   if (stream->connection_state != TP_MEDIA_STREAM_STATE_CONNECTED)
     {
-      GMS_DEBUG_INFO (session, "stream %s is not yet connected", name);
+      GMS_DEBUG_INFO (session, "stream %s is not yet connected", stream->name);
 
       return TRUE;
     }
@@ -1677,6 +1676,7 @@ try_session_accept (GabbleMediaSession *session)
   LmMessage *msg;
   LmMessageNode *session_node;
   const gchar *action;
+  guint i;
 
   if (priv->state < JS_STATE_ACTIVE && !priv->locally_accepted)
     {
@@ -1685,12 +1685,16 @@ try_session_accept (GabbleMediaSession *session)
       return;
     }
 
-  if (g_hash_table_find (priv->streams_by_name,
-        (GHRFunc) _stream_not_ready_for_accept, session) != NULL)
+  for (i = 0; i < priv->streams->len; i++)
     {
-      GMS_DEBUG_INFO (session, "not sending accept yet, found a stream which "
-          "was not yet connected or was missing local codecs");
-      return;
+      GabbleMediaStream *stream = g_ptr_array_index (priv->streams, i);
+
+      if (_stream_not_ready_for_accept (session, stream))
+        {
+          GMS_DEBUG_INFO (session, "not sending accept yet, found a stream "
+              "which was not yet connected or was missing local codecs");
+          return;
+        }
     }
 
   if (priv->mode == MODE_GOOGLE)
@@ -1758,7 +1762,7 @@ try_content_accept (GabbleMediaSession *session,
   g_assert (priv->state == JS_STATE_ACTIVE);
   g_assert (priv->mode == MODE_JINGLE);
 
-  if (_stream_not_ready_for_accept (stream->name, stream, session))
+  if (_stream_not_ready_for_accept (session, stream))
     {
       GMS_DEBUG_INFO (session, "not sending content-accept yet, stream %s "
           "is disconnected or missing local codecs", stream->name);

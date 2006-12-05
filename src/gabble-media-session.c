@@ -1224,42 +1224,39 @@ _call_handlers_on_streams (GabbleMediaSession *session,
                            StreamHandlerFunc *func,
                            GError **error)
 {
+  LmMessageNode *content_node;
+
   if (lm_message_node_has_namespace (session_node, NS_GOOGLE_SESSION, NULL))
     {
-      if (!_call_handlers_on_stream (session, message, session_node,
-            GTALK_STREAM_NAME, func, error))
-        return FALSE;
+      return _call_handlers_on_stream (session, message, session_node,
+          GTALK_STREAM_NAME, func, error);
     }
-  else
+
+  if (session_node->children == NULL)
+    return _call_handlers_on_stream (session, message, NULL, NULL, func,
+        error);
+
+  for (content_node = session_node->children;
+       NULL != content_node;
+       content_node = content_node->next)
     {
-      LmMessageNode *content_node;
+      const gchar *stream_name;
 
-      if (session_node->children == NULL)
-        return _call_handlers_on_stream (session, message, NULL, NULL, func,
-            error);
+      if (g_strdiff (content_node->name, "content"))
+        continue;
 
-      for (content_node = session_node->children;
-           NULL != content_node;
-           content_node = content_node->next)
+      stream_name = lm_message_node_get_attribute (content_node, "name");
+
+      if (stream_name == NULL)
         {
-          const gchar *stream_name;
-
-          if (g_strdiff (content_node->name, "content"))
-            continue;
-
-          stream_name = lm_message_node_get_attribute (content_node, "name");
-
-          if (stream_name == NULL)
-            {
-              g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
-                  "rejecting content node with no name");
-              return FALSE;
-            }
-
-          if (!_call_handlers_on_stream (session, message, content_node,
-                stream_name, func, error))
-            return FALSE;
+          g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+              "rejecting content node with no name");
+          return FALSE;
         }
+
+      if (!_call_handlers_on_stream (session, message, content_node,
+            stream_name, func, error))
+        return FALSE;
     }
 
   return TRUE;

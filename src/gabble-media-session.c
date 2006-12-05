@@ -184,7 +184,8 @@ _lookup_stream_by_name_and_initiator (GabbleMediaSession *session,
       if (g_strdiff (stream->name, stream_name))
         continue;
 
-      if (stream->initiator != stream_initiator)
+      if (stream_initiator != INITIATOR_INVALID &&
+          stream_initiator != stream->initiator)
         continue;
 
       return stream;
@@ -660,35 +661,6 @@ gabble_media_session_ready (GabbleMediaSession *self,
     _emit_new_stream (self, g_ptr_array_index (priv->streams, i));
 
   return TRUE;
-}
-
-static GabbleMediaStream *
-_lookup_stream_by_name_and_creator (GabbleMediaSession *session,
-                                    const gchar *stream_name,
-                                    const gchar *stream_creator)
-{
-  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
-  guint i;
-
-  for (i = 0; i < priv->streams->len; i++)
-    {
-      GabbleMediaStream *stream = g_ptr_array_index (priv->streams, i);
-
-      if (g_strdiff (stream->name, stream_name))
-        continue;
-
-      if (!g_strdiff (stream_creator, "initiator") &&
-          session->initiator != stream->initiator)
-        continue;
-
-      if (!g_strdiff (stream_creator, "responder") &&
-          session->initiator == stream->initiator)
-        continue;
-
-      return stream;
-    }
-
-  return NULL;
 }
 
 

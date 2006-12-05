@@ -2515,7 +2515,10 @@ _name_stream (GabbleMediaSession *session,
               media_type == TP_MEDIA_STREAM_TYPE_AUDIO ? "audio" : "video",
               i++);
 
-          if (g_hash_table_lookup (priv->streams_by_name, ret) != NULL)
+          /* even though we now have seperate namespaces for local and remote,
+           * actually check in both so that we can still support clients which
+           * have 1 namespace (such as our older selves :D) */
+          if (_lookup_stream_by_name_and_creator (session, ret, NULL) != NULL)
             {
               ret[0] = '\0';
             }

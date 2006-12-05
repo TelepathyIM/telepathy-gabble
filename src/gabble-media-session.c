@@ -1147,7 +1147,7 @@ _call_handlers_on_stream (GabbleMediaSession *session,
                           LmMessage *message,
                           LmMessageNode *content_node,
                           const gchar *stream_name,
-                          const gchar *stream_creator,
+                          JingleInitiator stream_creator,
                           StreamHandlerFunc *func,
                           GError **error)
 {
@@ -1168,7 +1168,7 @@ _call_handlers_on_stream (GabbleMediaSession *session,
     {
       /* handlers may create the stream */
       if (stream == NULL && stream_name != NULL)
-        stream = _lookup_stream_by_name_and_creator (session, stream_name,
+        stream = _lookup_stream_by_name_and_initiator (session, stream_name,
             stream_creator);
 
       /* the create handler is able to check whether or not the stream
@@ -1180,10 +1180,17 @@ _call_handlers_on_stream (GabbleMediaSession *session,
           /* all other handlers require the stream to exist */
           if (stream == NULL)
             {
+              const gchar *created = NULL;
+
+              if (stream_creator == INITIATOR_LOCAL)
+                created = "locally-created ";
+              else if (stream_creator == INITIATOR_REMOTE)
+                created = "remotely-created ";
+
               g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_ITEM_NOT_FOUND,
-                  "unable to handle action for unknown stream \"%s\" "
-                  "(apparently created by %s)", stream_name,
-                  stream_creator ? stream_creator : "either");
+                  "unable to handle action for unknown %sstream \"%s\" ",
+                  created, stream_name);
+
               return FALSE;
             }
           else
@@ -1227,6 +1234,28 @@ _call_handlers_on_stream (GabbleMediaSession *session,
 }
 
 
+static JingleInitiator
+_creator_to_initiator (GabbleMediaSession *session, const gchar *creator)
+{
+  if (!g_strdiff (creator, "initiator"))
+    {
+      if (session->initiator == INITIATOR_LOCAL)
+        return INITIATOR_LOCAL;
+      else
+        return INITIATOR_REMOTE;
+    }
+  else if (!g_strdiff (creator, "responder"))
+    {
+      if (session->initiator == INITIATOR_LOCAL)
+        return INITIATOR_REMOTE;
+      else
+        return INITIATOR_LOCAL;
+    }
+  else
+    return INITIATOR_INVALID;
+}
+
+
 static gboolean
 _call_handlers_on_streams (GabbleMediaSession *session,
                            LmMessage *message,
@@ -1237,20 +1266,19 @@ _call_handlers_on_streams (GabbleMediaSession *session,
   LmMessageNode *content_node;
 
   if (lm_message_node_has_namespace (session_node, NS_GOOGLE_SESSION, NULL))
-    {
-      return _call_handlers_on_stream (session, message, session_node,
-          GTALK_STREAM_NAME, NULL, func, error);
-    }
+    return _call_handlers_on_stream (session, message, session_node,
+        GTALK_STREAM_NAME, INITIATOR_INVALID, func, error);
 
   if (session_node->children == NULL)
-    return _call_handlers_on_stream (session, message, NULL, NULL, NULL, func,
-        error);
+    return _call_handlers_on_stream (session, message, NULL, NULL,
+        INITIATOR_INVALID, func, error);
 
   for (content_node = session_node->children;
        NULL != content_node;
        content_node = content_node->next)
     {
       const gchar *stream_name, *stream_creator;
+      JingleInitiator stream_initiator;
 
       if (g_strdiff (content_node->name, "content"))
         continue;
@@ -1265,9 +1293,19 @@ _call_handlers_on_streams (GabbleMediaSession *session,
         }
 
       stream_creator = lm_message_node_get_attribute (content_node, "creator");
+      stream_initiator = _creator_to_initiator (session, stream_creator);
+
+      /* we allow NULL creator to mean INITIATOR_INVALID for backwards
+       * compatibility with clients that don't put a creator attribute in */
+      if (stream_creator != NULL && stream_initiator == INITIATOR_INVALID)
+        {
+          g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+              "rejecting content node with invalid creators value");
+          return FALSE;
+        }
 
       if (!_call_handlers_on_stream (session, message, content_node,
-            stream_name, stream_creator, func, error))
+            stream_name, stream_initiator, func, error))
         return FALSE;
     }
 
@@ -2476,7 +2514,8 @@ _name_stream (GabbleMediaSession *session,
           /* even though we now have seperate namespaces for local and remote,
            * actually check in both so that we can still support clients which
            * have 1 namespace (such as our older selves :D) */
-          if (_lookup_stream_by_name_and_creator (session, ret, NULL) != NULL)
+          if (_lookup_stream_by_name_and_initiator (session, ret,
+                INITIATOR_INVALID) != NULL)
             {
               ret[0] = '\0';
             }

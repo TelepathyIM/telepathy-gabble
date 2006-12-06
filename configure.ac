@@ -85,8 +85,8 @@ fi
 
 AC_SUBST(HANDLE_LEAK_DEBUG_CFLAGS)
 
-AC_HEADER_STDC([])
-AC_C_INLINE
+dnl Endianness (for the sha1 implementation)
+AC_C_BIGENDIAN
 
 dnl GTK docs
 GTK_DOC_CHECK

@@ -105,6 +105,7 @@ struct _GabbleConnection {
 
     /* presence */
     GabblePresenceCache *presence_cache;
+    GabblePresence *self_presence;
 
     /* vCard lookup helper */
     GabbleVCardManager *vcard_manager;

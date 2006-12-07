@@ -899,6 +899,9 @@ gabble_connection_dispose (GObject *object)
   g_object_unref (self->vcard_manager);
   self->vcard_manager = NULL;
 
+  g_object_unref (self->self_presence);
+  self->self_presence = NULL;
+
   g_object_unref (self->presence_cache);
   self->presence_cache = NULL;
 
@@ -1437,10 +1440,9 @@ _gabble_connection_connect (GabbleConnection *conn,
   gabble_handle_ref (conn->handles, TP_HANDLE_TYPE_CONTACT, conn->self_handle);
 
   /* set initial presence */
-  /* TODO: some way for the user to set this */
-  gabble_presence_cache_update (conn->presence_cache, conn->self_handle,
-      priv->resource, GABBLE_PRESENCE_AVAILABLE, NULL, priv->priority);
-  emit_one_presence_update (conn, conn->self_handle);
+  conn->self_presence = gabble_presence_new ();
+  gabble_presence_update (conn->self_presence, priv->resource,
+      GABBLE_PRESENCE_AVAILABLE, NULL, priv->priority);
 
   /* set initial capabilities */
   presence = gabble_presence_cache_get (conn->presence_cache, conn->self_handle);

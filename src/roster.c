@@ -719,10 +719,13 @@ _gabble_roster_item_put_group_in_message (guint handle, gpointer user_data)
 }
 
 /* Return a message representing the current state of the item for contact
- * @handle on the roster @roster. If item_return is not NULL, populate it
- * with the <item/> node. If item is not NULL, assume it is the current
- * state of the contact's roster item and don't consult the roster to
- * find out their actual state.
+ * @handle on the roster @roster.
+ *
+ * If item_return is not NULL, populate it with the <item/> node.
+ * 
+ * If item is not NULL, it represents the state we would like the contact's
+ * roster item to have - use it instead of the contact's actual roster item
+ * when composing the message.
  */
 static LmMessage *
 _gabble_roster_item_to_message (GabbleRoster *roster,
@@ -1688,16 +1691,11 @@ static LmHandlerResult roster_edited_cb (GabbleConnection *conn,
                                          GObject *roster_obj,
                                          gpointer user_data);
 
-/* Apply the unsent edits to the given roster item. The parameters
- * are rather redundant just because we've probably already extracted all of
- * them, so can save some method calls.
+/* Apply the unsent edits to the given roster item.
  *
  * \param roster The roster
  * \param contact The contact handle
  * \param item contact's roster item on roster
- * \param context If not NULL, pointer to a g_slice_new0-allocated
- *                RosterEditedContext containing { roster, contact } which is
- *                consumed by this function. If NULL, a new one is allocated
  */
 static void
 roster_item_apply_edits (GabbleRoster *roster,

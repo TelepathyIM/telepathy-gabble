@@ -72,17 +72,17 @@ struct _GabbleRosterPrivate
 
 typedef enum
 {
+  GOOGLE_ITEM_TYPE_INVALID = -1,
   GOOGLE_ITEM_TYPE_NORMAL = 0,
   GOOGLE_ITEM_TYPE_BLOCKED,
   GOOGLE_ITEM_TYPE_HIDDEN,
   GOOGLE_ITEM_TYPE_PINNED,
-  GOOGLE_ITEM_TYPE_NOT_CHANGED
 } GoogleItemType;
 
 typedef struct _GabbleRosterItemEdit GabbleRosterItemEdit;
 struct _GabbleRosterItemEdit
 {
-  /* if these are ..._NOT_CHANGED, that means don't edit */
+  /* if these are ..._INVALID, that means don't edit */
   GabbleRosterSubscription new_subscription;
   GoogleItemType new_google_type;
   /* owned by the item; if NULL, that means don't edit */
@@ -378,8 +378,8 @@ _google_item_type_to_string (GoogleItemType google_type)
         return "H";
       case GOOGLE_ITEM_TYPE_PINNED:
         return "P";
-      case GOOGLE_ITEM_TYPE_NOT_CHANGED:
-        /* shouldn't happen */
+      case GOOGLE_ITEM_TYPE_INVALID:
+        g_assert_not_reached ();
         return NULL;
     }
 
@@ -1663,8 +1663,8 @@ static GabbleRosterItemEdit *
 item_edit_new (void)
 {
   GabbleRosterItemEdit *self = g_slice_new0 (GabbleRosterItemEdit);
-  self->new_subscription = GABBLE_ROSTER_SUBSCRIPTION_NOT_CHANGED;
-  self->new_google_type = GOOGLE_ITEM_TYPE_NOT_CHANGED;
+  self->new_subscription = GABBLE_ROSTER_SUBSCRIPTION_INVALID;
+  self->new_google_type = GOOGLE_ITEM_TYPE_INVALID;
   return self;
 }
 
@@ -1726,7 +1726,7 @@ roster_item_apply_edits (GabbleRoster *roster,
     }
 #endif
 
-  if (edits->new_subscription != GABBLE_ROSTER_SUBSCRIPTION_NOT_CHANGED
+  if (edits->new_subscription != GABBLE_ROSTER_SUBSCRIPTION_INVALID
       && edits->new_subscription != item->subscription)
     {
       DEBUG ("Changing subscription from %d to %d",
@@ -1742,7 +1742,7 @@ roster_item_apply_edits (GabbleRoster *roster,
       edited_item.name = edits->new_name;
     }
 
-  if (edits->new_google_type != GOOGLE_ITEM_TYPE_NOT_CHANGED
+  if (edits->new_google_type != GOOGLE_ITEM_TYPE_INVALID
       && edits->new_google_type != item->google_type)
     {
       DEBUG ("Changing Google type from %d to %d", item->google_type,

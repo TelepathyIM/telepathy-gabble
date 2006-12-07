@@ -1820,6 +1820,9 @@ roster_item_apply_edits (GabbleRoster *roster,
 
   if (!altered)
     {
+      DEBUG ("Contact#%u not actually changed - nothing to do", contact);
+      item_edit_free (item->unsent_edits);
+      item->unsent_edits = NULL;
       return;
     }
 

@@ -2183,6 +2183,10 @@ gabble_roster_handle_add_to_group (GabbleRoster *roster,
               priv->conn->handles, TP_HANDLE_TYPE_GROUP);
         }
       handle_set_add (item->unsent_edits->add_to_groups, group);
+      if (item->unsent_edits->remove_from_groups)
+        {
+          handle_set_remove (item->unsent_edits->remove_from_groups, group);
+        }
       return TRUE;
     }
   else
@@ -2237,6 +2241,10 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
               priv->conn->handles, TP_HANDLE_TYPE_GROUP);
         }
       handle_set_add (item->unsent_edits->remove_from_groups, group);
+      if (item->unsent_edits->add_to_groups)
+        {
+          handle_set_remove (item->unsent_edits->add_to_groups, group);
+        }
       return TRUE;
     }
   else

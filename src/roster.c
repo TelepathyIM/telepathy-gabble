@@ -1704,26 +1704,40 @@ roster_item_apply_edits (GabbleRoster *roster,
                          GabbleHandle contact,
                          GabbleRosterItem *item)
 {
-  gboolean altered, ret;
+  gboolean altered = FALSE, ret;
   GabbleRosterItem edited_item;
   GIntSet *intset;
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
   GabbleRosterItemEdit *edits = item->unsent_edits;
   LmMessage *message;
 
+  DEBUG ("Applying edits to contact#%u", contact);
+
   g_return_if_fail (item->unsent_edits);
 
   memcpy (&edited_item, item, sizeof(GabbleRosterItem));
 
+#ifdef ENABLE_DEBUG
+  if (DEBUGGING)
+    {
+      gchar *dump = _gabble_roster_item_dump (&edited_item);
+      DEBUG ("Before, contact#%u: %s", contact, dump);
+      g_free (dump);
+    }
+#endif
+
   if (edits->new_subscription != GABBLE_ROSTER_SUBSCRIPTION_NOT_CHANGED
       && edits->new_subscription != item->subscription)
     {
+      DEBUG ("Changing subscription from %d to %d",
+             item->subscription, edits->new_subscription);
       altered = TRUE;
       edited_item.subscription = edits->new_subscription;
     }
 
   if (edits->new_name != NULL && g_strdiff(item->name, edits->new_name))
     {
+      DEBUG ("Changing name from %s to %s", item->name, edits->new_name);
       altered = TRUE;
       edited_item.name = edits->new_name;
     }
@@ -1731,12 +1745,41 @@ roster_item_apply_edits (GabbleRoster *roster,
   if (edits->new_google_type != GOOGLE_ITEM_TYPE_NOT_CHANGED
       && edits->new_google_type != item->google_type)
     {
+      DEBUG ("Changing Google type from %d to %d", item->google_type,
+             edits->new_google_type);
       altered = TRUE;
       edited_item.google_type = edits->new_google_type;
     }
 
   if (edits->add_to_groups || edits->remove_from_groups)
     {
+#ifdef ENABLE_DEBUG
+      if (DEBUGGING)
+        {
+          if (edits->add_to_groups)
+            {
+              GString *str = g_string_new ("Adding to groups: ");
+              g_intset_foreach (handle_set_peek (edits->add_to_groups),
+                                _gabble_roster_item_dump_group, str);
+              DEBUG("%s", g_string_free (str, FALSE));
+            }
+          else
+            {
+              DEBUG ("Not adding to any groups");
+            }
+          if (edits->remove_from_groups)
+            {
+              GString *str = g_string_new ("Removing from groups: ");
+              g_intset_foreach (handle_set_peek (edits->remove_from_groups),
+                                _gabble_roster_item_dump_group, str);
+              DEBUG("%s", g_string_free (str, FALSE));
+            }
+          else
+            {
+              DEBUG ("Not removing from any groups");
+            }
+        }
+#endif
       edited_item.groups = handle_set_new (priv->conn->handles,
           TP_HANDLE_TYPE_GROUP);
       intset = handle_set_update (edited_item.groups,
@@ -1765,6 +1808,15 @@ roster_item_apply_edits (GabbleRoster *roster,
           g_intset_destroy (intset);
         }
     }
+
+#ifdef ENABLE_DEBUG
+  if (DEBUGGING)
+    {
+      gchar *dump = _gabble_roster_item_dump (&edited_item);
+      DEBUG ("After, contact#%u: %s", contact, dump);
+      g_free (dump);
+    }
+#endif
 
   if (!altered)
     {
@@ -1862,6 +1914,8 @@ gabble_roster_handle_set_blocked (GabbleRoster *roster,
 
   if (item->unsent_edits)
     {
+      DEBUG ("queue edit to contact#%u - change subscription to blocked=%d",
+             handle, blocked);
       /* an edit is pending - make the change afterwards and
        * assume it'll be OK
        */
@@ -1960,6 +2014,8 @@ gabble_roster_handle_set_name (GabbleRoster *roster,
 
   if (item->unsent_edits)
     {
+      DEBUG ("queue edit to contact#%u - change name to \"%s\"",
+             handle, name);
       /* an edit is pending - make the change afterwards and
        * assume it'll be OK
        */
@@ -1969,6 +2025,8 @@ gabble_roster_handle_set_name (GabbleRoster *roster,
     }
   else
     {
+      DEBUG ("immediate edit to contact#%u - change name to \"%s\"",
+             handle, name);
       item->unsent_edits = item_edit_new ();
     }
 
@@ -2005,6 +2063,8 @@ gabble_roster_handle_remove (GabbleRoster *roster,
 
   if (item->unsent_edits)
     {
+      DEBUG ("queue edit to contact#%u - change subscription to REMOVE",
+             handle);
       /* an edit is pending - make the change afterwards and
        * assume it'll be OK
        */
@@ -2013,6 +2073,8 @@ gabble_roster_handle_remove (GabbleRoster *roster,
     }
   else
     {
+      DEBUG ("immediate edit to contact#%u - change subscription to REMOVE",
+             handle);
       item->unsent_edits = item_edit_new ();
     }
 
@@ -2059,6 +2121,8 @@ gabble_roster_handle_add (GabbleRoster *roster,
 
   if (item->unsent_edits)
     {
+      DEBUG ("queue edit to contact#%u - change google type to NORMAL",
+             handle);
       /* an edit is pending - make the change afterwards and
        * assume it'll be OK.
        */
@@ -2068,6 +2132,8 @@ gabble_roster_handle_add (GabbleRoster *roster,
     }
   else
     {
+      DEBUG ("immediate edit to contact#%u - change google type to NORMAL",
+             handle);
       if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN)
         item->google_type = GOOGLE_ITEM_TYPE_NORMAL;
       item->unsent_edits = item_edit_new ();
@@ -2104,6 +2170,7 @@ gabble_roster_handle_add_to_group (GabbleRoster *roster,
 
   if (item->unsent_edits)
     {
+      DEBUG ("queue edit to contact#%u - add to group#%u", handle, group);
       /* an edit is pending - make the change afterwards and
        * assume it'll be OK
        */
@@ -2117,6 +2184,7 @@ gabble_roster_handle_add_to_group (GabbleRoster *roster,
     }
   else
     {
+      DEBUG ("immediate edit to contact#%u - add to group#%u", handle, group);
       item->unsent_edits = item_edit_new ();
     }
 
@@ -2156,6 +2224,7 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
 
   if (item->unsent_edits)
     {
+      DEBUG ("queue edit to contact#%u - remove from group#%u", handle, group);
       /* an edit is pending - make the change afterwards and
        * assume it'll be OK
        */
@@ -2169,6 +2238,7 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
     }
   else
     {
+      DEBUG ("immediate edit to contact#%u - remove from group#%u", handle, group);
       item->unsent_edits = item_edit_new ();
     }
 

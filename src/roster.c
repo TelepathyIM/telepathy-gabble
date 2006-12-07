@@ -2129,8 +2129,7 @@ gabble_roster_handle_add (GabbleRoster *roster,
       /* an edit is pending - make the change afterwards and
        * assume it'll be OK.
        */
-      if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN)
-        item->unsent_edits->new_google_type = GOOGLE_ITEM_TYPE_NORMAL;
+      item->unsent_edits->new_google_type = GOOGLE_ITEM_TYPE_NORMAL;
       return TRUE;
     }
   else

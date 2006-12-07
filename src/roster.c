@@ -718,14 +718,19 @@ _gabble_roster_item_put_group_in_message (guint handle, gpointer user_data)
   lm_message_node_add_child (ctx->item_node, "group", name);
 }
 
-
+/* Return a message representing the current state of the item for contact
+ * @handle on the roster @roster. If item_return is not NULL, populate it
+ * with the <item/> node. If item is not NULL, assume it is the current
+ * state of the contact's roster item and don't consult the roster to
+ * find out their actual state.
+ */
 static LmMessage *
 _gabble_roster_item_to_message (GabbleRoster *roster,
                                 GabbleHandle handle,
-                                LmMessageNode **item_return)
+                                LmMessageNode **item_return,
+                                GabbleRosterItem *item)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
-  GabbleRosterItem *item;
   LmMessage *message;
   LmMessageNode *query_node, *item_node;
   const gchar *jid;
@@ -738,7 +743,8 @@ _gabble_roster_item_to_message (GabbleRoster *roster,
   g_assert (gabble_handle_is_valid (priv->conn->handles,
         TP_HANDLE_TYPE_CONTACT, handle, NULL));
 
-  item = _gabble_roster_item_get (roster, handle);
+  if (!item)
+    item = _gabble_roster_item_get (roster, handle);
 
   message = _gabble_roster_message_new (roster, LM_MESSAGE_SUB_TYPE_SET,
       &query_node);
@@ -1765,7 +1771,8 @@ roster_item_apply_edits (GabbleRoster *roster,
       return;
     }
 
-  message = _gabble_roster_item_to_message (roster, contact, NULL);
+  DEBUG ("Contact#%u did change, sending message", contact);
+  message = _gabble_roster_item_to_message (roster, contact, NULL, &edited_item);
   ret = _gabble_connection_send_with_reply (priv->conn,
       message, roster_edited_cb, G_OBJECT (roster),
       GUINT_TO_POINTER(contact), NULL);
@@ -1881,7 +1888,7 @@ gabble_roster_handle_set_blocked (GabbleRoster *roster,
     item->google_type = GOOGLE_ITEM_TYPE_BLOCKED;
   else
     item->google_type = GOOGLE_ITEM_TYPE_NORMAL;
-  message = _gabble_roster_item_to_message (roster, handle, NULL);
+  message = _gabble_roster_item_to_message (roster, handle, NULL, NULL);
   item->google_type = orig_type;
 
   ret = _gabble_connection_send_with_reply (priv->conn,
@@ -1965,7 +1972,7 @@ gabble_roster_handle_set_name (GabbleRoster *roster,
       item->unsent_edits = item_edit_new ();
     }
 
-  message = _gabble_roster_item_to_message (roster, handle, &item_node);
+  message = _gabble_roster_item_to_message (roster, handle, &item_node, NULL);
 
   lm_message_node_set_attribute (item_node, "name", name);
 
@@ -2012,7 +2019,7 @@ gabble_roster_handle_remove (GabbleRoster *roster,
   subscription = item->subscription;
   item->subscription = GABBLE_ROSTER_SUBSCRIPTION_REMOVE;
 
-  message = _gabble_roster_item_to_message (roster, handle, NULL);
+  message = _gabble_roster_item_to_message (roster, handle, NULL, NULL);
   ret = _gabble_connection_send_with_reply (priv->conn,
       message, roster_edited_cb, G_OBJECT (roster),
       GUINT_TO_POINTER(handle), error);
@@ -2066,7 +2073,7 @@ gabble_roster_handle_add (GabbleRoster *roster,
       item->unsent_edits = item_edit_new ();
     }
 
-  message = _gabble_roster_item_to_message (roster, handle, NULL);
+  message = _gabble_roster_item_to_message (roster, handle, NULL, NULL);
   ret = _gabble_connection_send_with_reply (priv->conn,
       message, roster_edited_cb, G_OBJECT (roster),
       GUINT_TO_POINTER(handle), error);
@@ -2114,7 +2121,7 @@ gabble_roster_handle_add_to_group (GabbleRoster *roster,
     }
 
   handle_set_add (item->groups, group);
-  message = _gabble_roster_item_to_message (roster, handle, NULL);
+  message = _gabble_roster_item_to_message (roster, handle, NULL, NULL);
   NODE_DEBUG (message->node, "Roster item as message");
   handle_set_remove (item->groups, group);
 
@@ -2175,7 +2182,7 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
           TP_HANDLE_TYPE_GROUP, group),
       FALSE);
   was_in_group = handle_set_remove (item->groups, group);
-  message = _gabble_roster_item_to_message (roster, handle, NULL);
+  message = _gabble_roster_item_to_message (roster, handle, NULL, NULL);
   if (was_in_group)
     handle_set_add (item->groups, group);
   g_return_val_if_fail (gabble_handle_unref (priv->conn->handles,

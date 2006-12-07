@@ -75,8 +75,21 @@ typedef enum
   GOOGLE_ITEM_TYPE_NORMAL = 0,
   GOOGLE_ITEM_TYPE_BLOCKED,
   GOOGLE_ITEM_TYPE_HIDDEN,
-  GOOGLE_ITEM_TYPE_PINNED
+  GOOGLE_ITEM_TYPE_PINNED,
+  GOOGLE_ITEM_TYPE_NOT_CHANGED
 } GoogleItemType;
+
+typedef struct _GabbleRosterItemEdit GabbleRosterItemEdit;
+struct _GabbleRosterItemEdit
+{
+  /* if these are ..._NOT_CHANGED, that means don't edit */
+  GabbleRosterSubscription new_subscription;
+  GoogleItemType new_google_type;
+  /* owned by the item; if NULL, that means don't edit */
+  gchar *new_name;
+  GabbleHandleSet *add_to_groups;
+  GabbleHandleSet *remove_from_groups;
+};
 
 typedef struct _GabbleRosterItem GabbleRosterItem;
 struct _GabbleRosterItem
@@ -86,6 +99,11 @@ struct _GabbleRosterItem
   GoogleItemType google_type;
   gchar *name;
   GabbleHandleSet *groups;
+  /* if not NULL, an edit attempt is already "in-flight" so instead of
+   * sending off another, store required edits here until the one we
+   * already sent is acknowledged - this prevents some race conditions
+   */
+  GabbleRosterItemEdit *unsent_edits;
 };
 
 static void gabble_roster_factory_iface_init ();
@@ -99,6 +117,7 @@ static void gabble_roster_get_property (GObject *object, guint property_id,
     GValue *value, GParamSpec *pspec);
 
 static void _gabble_roster_item_free (GabbleRosterItem *item);
+static void item_edit_free (GabbleRosterItemEdit *edits);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleRoster, gabble_roster, G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_FACTORY_IFACE, gabble_roster_factory_iface_init));
@@ -271,6 +290,7 @@ _gabble_roster_item_free (GabbleRosterItem *item)
   g_assert (item != NULL);
 
   handle_set_destroy (item->groups);
+  item_edit_free (item->unsent_edits);
   g_free (item->name);
   g_free (item);
 }
@@ -358,6 +378,9 @@ _google_item_type_to_string (GoogleItemType google_type)
         return "H";
       case GOOGLE_ITEM_TYPE_PINNED:
         return "P";
+      case GOOGLE_ITEM_TYPE_NOT_CHANGED:
+        /* shouldn't happen */
+        return NULL;
     }
 
   g_assert_not_reached ();
@@ -1630,6 +1653,162 @@ gabble_roster_new (GabbleConnection *conn)
                        NULL);
 }
 
+static GabbleRosterItemEdit *
+item_edit_new (void)
+{
+  GabbleRosterItemEdit *self = g_slice_new0 (GabbleRosterItemEdit);
+  self->new_subscription = GABBLE_ROSTER_SUBSCRIPTION_NOT_CHANGED;
+  self->new_google_type = GOOGLE_ITEM_TYPE_NOT_CHANGED;
+  return self;
+}
+
+static void
+item_edit_free (GabbleRosterItemEdit *edits)
+{
+  if (!edits)
+    return;
+
+  if (edits->add_to_groups)
+    handle_set_destroy (edits->add_to_groups);
+  if (edits->remove_from_groups)
+    handle_set_destroy (edits->remove_from_groups);
+  g_free (edits->new_name);
+  g_slice_free (GabbleRosterItemEdit, edits);
+}
+
+static LmHandlerResult roster_edited_cb (GabbleConnection *conn,
+                                         LmMessage *sent_msg,
+                                         LmMessage *reply_msg,
+                                         GObject *roster_obj,
+                                         gpointer user_data);
+
+/* Apply the unsent edits to the given roster item. The parameters
+ * are rather redundant just because we've probably already extracted all of
+ * them, so can save some method calls.
+ *
+ * \param roster The roster
+ * \param contact The contact handle
+ * \param item contact's roster item on roster
+ * \param context If not NULL, pointer to a g_slice_new0-allocated
+ *                RosterEditedContext containing { roster, contact } which is
+ *                consumed by this function. If NULL, a new one is allocated
+ */
+static void
+roster_item_apply_edits (GabbleRoster *roster,
+                         GabbleHandle contact,
+                         GabbleRosterItem *item)
+{
+  gboolean altered, ret;
+  GabbleRosterItem edited_item;
+  GIntSet *intset;
+  GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
+  GabbleRosterItemEdit *edits = item->unsent_edits;
+  LmMessage *message;
+
+  g_return_if_fail (item->unsent_edits);
+
+  memcpy (&edited_item, item, sizeof(GabbleRosterItem));
+
+  if (edits->new_subscription != GABBLE_ROSTER_SUBSCRIPTION_NOT_CHANGED
+      && edits->new_subscription != item->subscription)
+    {
+      altered = TRUE;
+      edited_item.subscription = edits->new_subscription;
+    }
+
+  if (edits->new_name != NULL && g_strdiff(item->name, edits->new_name))
+    {
+      altered = TRUE;
+      edited_item.name = edits->new_name;
+    }
+
+  if (edits->new_google_type != GOOGLE_ITEM_TYPE_NOT_CHANGED
+      && edits->new_google_type != item->google_type)
+    {
+      altered = TRUE;
+      edited_item.google_type = edits->new_google_type;
+    }
+
+  if (edits->add_to_groups || edits->remove_from_groups)
+    {
+      edited_item.groups = handle_set_new (priv->conn->handles,
+          TP_HANDLE_TYPE_GROUP);
+      intset = handle_set_update (edited_item.groups,
+          handle_set_peek (item->groups));
+      g_intset_destroy (intset);
+
+      if (edits->add_to_groups)
+        {
+          intset = handle_set_update (edited_item.groups,
+              handle_set_peek (edits->add_to_groups));
+          if (g_intset_size (intset) > 0)
+            {
+              altered = TRUE;
+            }
+          g_intset_destroy (intset);
+        }
+
+      if (edits->remove_from_groups)
+        {
+          intset = handle_set_difference_update (edited_item.groups,
+              handle_set_peek (edits->remove_from_groups));
+          if (g_intset_size (intset) > 0)
+            {
+              altered = TRUE;
+            }
+          g_intset_destroy (intset);
+        }
+    }
+
+  if (!altered)
+    {
+      return;
+    }
+
+  message = _gabble_roster_item_to_message (roster, contact, NULL);
+  ret = _gabble_connection_send_with_reply (priv->conn,
+      message, roster_edited_cb, G_OBJECT (roster),
+      GUINT_TO_POINTER(contact), NULL);
+  if (ret)
+    {
+      /* assume everything will be OK */
+      item_edit_free (item->unsent_edits);
+      item->unsent_edits = NULL;
+    }
+  else
+    {
+      /* FIXME: somehow have another try at it later? leave the
+       * edits in unsent_edits for this purpose, anyway
+       */
+    }
+
+  if (edited_item.groups != item->groups)
+    {
+      handle_set_destroy (edited_item.groups);
+    }
+}
+
+/* Called when an edit to the roster item has either succeeded or failed. */
+static LmHandlerResult
+roster_edited_cb (GabbleConnection *conn,
+                  LmMessage *sent_msg,
+                  LmMessage *reply_msg,
+                  GObject *roster_obj,
+                  gpointer user_data)
+{
+  GabbleRoster *roster = GABBLE_ROSTER (roster_obj);
+  GabbleHandle contact = GPOINTER_TO_UINT(user_data);
+  GabbleRosterItem *item = _gabble_roster_item_get (roster, contact);
+
+  if (item->unsent_edits)
+    {
+      /* more edits have been queued since we sent this batch */
+      roster_item_apply_edits (roster, contact, item);
+    }
+
+  return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+}
+
 GabbleRosterSubscription
 gabble_roster_handle_get_subscription (GabbleRoster *roster,
                                        GabbleHandle handle)
@@ -1674,6 +1853,26 @@ gabble_roster_handle_set_blocked (GabbleRoster *roster,
   item = _gabble_roster_item_get (roster, handle);
   orig_type = item->google_type;
 
+  if (item->unsent_edits)
+    {
+      /* an edit is pending - make the change afterwards and
+       * assume it'll be OK
+       */
+      if (blocked)
+        {
+          item->unsent_edits->new_google_type = GOOGLE_ITEM_TYPE_BLOCKED;
+        }
+      else
+        {
+          item->unsent_edits->new_google_type = GOOGLE_ITEM_TYPE_NORMAL;
+        }
+      return TRUE;
+    }
+  else
+    {
+      item->unsent_edits = item_edit_new ();
+    }
+
   if (blocked == (orig_type == GOOGLE_ITEM_TYPE_BLOCKED))
     return TRUE;
 
@@ -1685,7 +1884,9 @@ gabble_roster_handle_set_blocked (GabbleRoster *roster,
   message = _gabble_roster_item_to_message (roster, handle, NULL);
   item->google_type = orig_type;
 
-  ret = _gabble_connection_send (priv->conn, message, error);
+  ret = _gabble_connection_send_with_reply (priv->conn,
+      message, roster_edited_cb, G_OBJECT (roster),
+      GUINT_TO_POINTER(handle), error);
 
   lm_message_unref (message);
 
@@ -1736,6 +1937,7 @@ gabble_roster_handle_set_name (GabbleRoster *roster,
                                GError **error)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
+  GabbleRosterItem *item;
   LmMessage *message;
   LmMessageNode *item_node;
   gboolean ret;
@@ -1746,11 +1948,30 @@ gabble_roster_handle_set_name (GabbleRoster *roster,
       TP_HANDLE_TYPE_CONTACT, handle, NULL), FALSE);
   g_return_val_if_fail (name != NULL, FALSE);
 
+  item = _gabble_roster_item_get (roster, handle);
+  g_return_val_if_fail (item != NULL, FALSE);
+
+  if (item->unsent_edits)
+    {
+      /* an edit is pending - make the change afterwards and
+       * assume it'll be OK
+       */
+      g_free (item->unsent_edits->new_name);
+      item->unsent_edits->new_name = g_strdup (name);
+      return TRUE;
+    }
+  else
+    {
+      item->unsent_edits = item_edit_new ();
+    }
+
   message = _gabble_roster_item_to_message (roster, handle, &item_node);
 
   lm_message_node_set_attribute (item_node, "name", name);
 
-  ret = _gabble_connection_send (priv->conn, message, error);
+  ret = _gabble_connection_send_with_reply (priv->conn,
+      message, roster_edited_cb, G_OBJECT (roster),
+      GUINT_TO_POINTER(handle), error);
 
   lm_message_unref (message);
 
@@ -1774,11 +1995,27 @@ gabble_roster_handle_remove (GabbleRoster *roster,
       TP_HANDLE_TYPE_CONTACT, handle, NULL), FALSE);
 
   item = _gabble_roster_item_get (roster, handle);
+
+  if (item->unsent_edits)
+    {
+      /* an edit is pending - make the change afterwards and
+       * assume it'll be OK
+       */
+      item->unsent_edits->new_subscription = GABBLE_ROSTER_SUBSCRIPTION_REMOVE;
+      return TRUE;
+    }
+  else
+    {
+      item->unsent_edits = item_edit_new ();
+    }
+
   subscription = item->subscription;
   item->subscription = GABBLE_ROSTER_SUBSCRIPTION_REMOVE;
 
   message = _gabble_roster_item_to_message (roster, handle, NULL);
-  ret = _gabble_connection_send (priv->conn, message, error);
+  ret = _gabble_connection_send_with_reply (priv->conn,
+      message, roster_edited_cb, G_OBJECT (roster),
+      GUINT_TO_POINTER(handle), error);
   lm_message_unref (message);
 
   item->subscription = subscription;
@@ -1808,16 +2045,31 @@ gabble_roster_handle_add (GabbleRoster *roster,
   item = _gabble_roster_item_get (roster, handle);
 
   if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN)
-    {
-      item->google_type = GOOGLE_ITEM_TYPE_NORMAL;
-      do_add = TRUE;
-    }
+    do_add = TRUE;
 
   if (!do_add)
       return TRUE;
 
+  if (item->unsent_edits)
+    {
+      /* an edit is pending - make the change afterwards and
+       * assume it'll be OK.
+       */
+      if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN)
+        item->unsent_edits->new_google_type = GOOGLE_ITEM_TYPE_NORMAL;
+      return TRUE;
+    }
+  else
+    {
+      if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN)
+        item->google_type = GOOGLE_ITEM_TYPE_NORMAL;
+      item->unsent_edits = item_edit_new ();
+    }
+
   message = _gabble_roster_item_to_message (roster, handle, NULL);
-  ret = _gabble_connection_send (priv->conn, message, error);
+  ret = _gabble_connection_send_with_reply (priv->conn,
+      message, roster_edited_cb, G_OBJECT (roster),
+      GUINT_TO_POINTER(handle), error);
   lm_message_unref (message);
 
   return ret;
@@ -1843,12 +2095,32 @@ gabble_roster_handle_add_to_group (GabbleRoster *roster,
 
   item = _gabble_roster_item_get (roster, handle);
 
+  if (item->unsent_edits)
+    {
+      /* an edit is pending - make the change afterwards and
+       * assume it'll be OK
+       */
+      if (!item->unsent_edits->add_to_groups)
+        {
+          item->unsent_edits->add_to_groups = handle_set_new (
+              priv->conn->handles, TP_HANDLE_TYPE_GROUP);
+        }
+      handle_set_add (item->unsent_edits->add_to_groups, group);
+      return TRUE;
+    }
+  else
+    {
+      item->unsent_edits = item_edit_new ();
+    }
+
   handle_set_add (item->groups, group);
   message = _gabble_roster_item_to_message (roster, handle, NULL);
   NODE_DEBUG (message->node, "Roster item as message");
   handle_set_remove (item->groups, group);
 
-  ret = _gabble_connection_send (priv->conn, message, error);
+  ret = _gabble_connection_send_with_reply (priv->conn,
+      message, roster_edited_cb, G_OBJECT (roster),
+      GUINT_TO_POINTER(handle), error);
   lm_message_unref (message);
 
   return ret;
@@ -1875,6 +2147,24 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
 
   item = _gabble_roster_item_get (roster, handle);
 
+  if (item->unsent_edits)
+    {
+      /* an edit is pending - make the change afterwards and
+       * assume it'll be OK
+       */
+      if (!item->unsent_edits->remove_from_groups)
+        {
+          item->unsent_edits->remove_from_groups = handle_set_new (
+              priv->conn->handles, TP_HANDLE_TYPE_GROUP);
+        }
+      handle_set_add (item->unsent_edits->remove_from_groups, group);
+      return TRUE;
+    }
+  else
+    {
+      item->unsent_edits = item_edit_new ();
+    }
+
   name = gabble_handle_inspect (priv->conn->handles, TP_HANDLE_TYPE_GROUP,
                                 group);
 
@@ -1892,7 +2182,9 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
           TP_HANDLE_TYPE_GROUP, group),
       FALSE);
 
-  ret = _gabble_connection_send (priv->conn, message, error);
+  ret = _gabble_connection_send_with_reply (priv->conn,
+      message, roster_edited_cb, G_OBJECT (roster),
+      GUINT_TO_POINTER(handle), error);
   lm_message_unref (message);
 
   return ret;

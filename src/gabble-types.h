@@ -27,6 +27,7 @@ G_BEGIN_DECLS
 typedef struct _GabbleConnection GabbleConnection;
 typedef struct _GabbleDisco GabbleDisco;
 typedef struct _GabbleHandleRepo GabbleHandleRepo;
+typedef struct _GabblePresence GabblePresence;
 typedef struct _GabblePresenceCache GabblePresenceCache;
 typedef struct _GabbleRoster GabbleRoster;
 typedef struct _GabbleRosterChannel GabbleRosterChannel;

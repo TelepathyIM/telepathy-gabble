@@ -631,7 +631,7 @@ _gabble_roster_item_update (GabbleRoster *roster,
 static void
 _gabble_roster_item_dump_group (guint handle, gpointer user_data)
 {
-  g_string_append_printf ((GString *)user_data, "#%i ", handle);
+  g_string_append_printf ((GString *)user_data, "group#%u ", handle);
 }
 
 static gchar *

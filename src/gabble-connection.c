@@ -2411,13 +2411,12 @@ connection_iq_disco_cb (LmMessageHandler *handler,
                         LmMessage *message,
                         gpointer user_data)
 {
-  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+  GabbleConnection *self = GABBLE_CONNECTION (user_data);
   LmMessage *result;
   LmMessageNode *iq, *result_iq, *query, *result_query;
   const gchar *node, *suffix;
   GSList *features;
   GSList *i;
-  GabblePresence *pres;
 
   if (lm_message_get_sub_type (message) != LM_MESSAGE_SUB_TYPE_GET)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
@@ -2449,11 +2448,10 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   result_query = lm_message_node_add_child (result_iq, "query", NULL);
   lm_message_node_set_attribute (result_query, "xmlns", NS_DISCO_INFO);
 
-  pres = gabble_presence_cache_get (conn->presence_cache, conn->self_handle);
-  DEBUG ("got disco request for bundle %s, caps are %x", node, pres->caps);
-  features = capabilities_get_features (pres->caps);
+  DEBUG ("got disco request for bundle %s, caps are %x", node, self->self_presence->caps);
+  features = capabilities_get_features (self->self_presence->caps);
 
-  g_debug("%s: caps now %u", G_STRFUNC, pres->caps);
+  g_debug("%s: caps now %u", G_STRFUNC, self->self_presence->caps);
 
   for (i = features; NULL != i; i = i->next)
     {
@@ -2469,7 +2467,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
 
   NODE_DEBUG (result_iq, "sending disco response");
 
-  if (!lm_connection_send (conn->lmconn, result, NULL))
+  if (!lm_connection_send (self->lmconn, result, NULL))
     DEBUG ("sending disco response failed");
 
   g_slist_free (features);
@@ -3039,14 +3037,13 @@ gabble_connection_advertise_capabilities (GabbleConnection *self,
                                           GError **error)
 {
   guint i;
-  GabblePresence *pres;
+  GabblePresence *pres = self->self_presence;
   GabblePresenceCapabilities add_caps = 0, remove_caps = 0, caps, save_caps;
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
   const CapabilityConversionData *ccd;
 
   ERROR_IF_NOT_CONNECTED (self, error);
 
-  pres = gabble_presence_cache_get (self->presence_cache, self->self_handle);
   DEBUG ("caps before: %x", pres->caps);
 
   for (i = 0; i < add->len; i++)
@@ -3075,7 +3072,6 @@ gabble_connection_advertise_capabilities (GabbleConnection *self,
             remove_caps |= ccd->tf2c_fn (~0);
     }
 
-  pres = gabble_presence_cache_get (self->presence_cache, self->self_handle);
   save_caps = caps = pres->caps;
 
   caps |= add_caps;
@@ -3430,7 +3426,10 @@ gabble_connection_get_capabilities (GabbleConnection *self,
           continue;
         }
 
-      pres = gabble_presence_cache_get (self->presence_cache, handle);
+      if (handle == self->self_handle)
+        pres = self->self_presence;
+      else
+        pres = gabble_presence_cache_get (self->presence_cache, handle);
 
       if (NULL != pres)
         for (ccd = capabilities_conversions; NULL != ccd->iface; ccd++)
@@ -4042,8 +4041,8 @@ gabble_connection_remove_status (GabbleConnection *self,
 
   if (strcmp (status, gabble_statuses[presence->status].name) == 0)
     {
-      gabble_presence_cache_update (self->presence_cache, self->self_handle,
-          priv->resource, GABBLE_PRESENCE_AVAILABLE, NULL, priv->priority);
+      gabble_presence_update (presence, priv->resource,
+          GABBLE_PRESENCE_AVAILABLE, NULL, priv->priority);
       emit_one_presence_update (self, self->self_handle);
       return signal_own_presence (self, error);
     }

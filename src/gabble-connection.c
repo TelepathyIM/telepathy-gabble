@@ -3289,11 +3289,12 @@ _got_self_avatar_for_get_avatar_tokens (GObject *obj,
                                         gchar *sha1,
                                         gpointer user_data)
 {
-  GetAvatarTokensContext *context = (GetAvatarTokensContext *)user_data;
+  GetAvatarTokensContext *context = (GetAvatarTokensContext *) user_data;
 
   g_signal_handler_disconnect (obj, context->signal_conn);
   g_free (context->ret[context->my_index]);
   context->ret[context->my_index] = g_strdup(sha1);
+
   dbus_g_method_return (context->invocation, context->ret);
   g_strfreev (context->ret);
 
@@ -3320,8 +3321,8 @@ gabble_connection_get_avatar_tokens (GabbleConnection *self,
   gchar **ret;
   GError *err;
 
-  if (!gabble_handles_are_valid (
-      self->handles, TP_HANDLE_TYPE_CONTACT, contacts, FALSE, &err))
+  if (!gabble_handles_are_valid (self->handles, TP_HANDLE_TYPE_CONTACT,
+        contacts, FALSE, &err))
     {
       dbus_g_method_return_error (invocation, err);
       g_error_free (err);
@@ -3342,9 +3343,9 @@ gabble_connection_get_avatar_tokens (GabbleConnection *self,
        * we return the method, then we don't need to strdup the strings we're
        * returning. */
       if (NULL != presence && NULL != presence->avatar_sha1)
-          ret[i] = g_strdup(presence->avatar_sha1);
+          ret[i] = g_strdup (presence->avatar_sha1);
       else
-          ret[i] = g_strdup("");
+          ret[i] = g_strdup ("");
 
       if (self->self_handle == handle)
         {
@@ -3352,13 +3353,15 @@ gabble_connection_get_avatar_tokens (GabbleConnection *self,
           my_index = i;
         }
     }
+
   if (my_handle_requested)
     {
       gboolean have_self_avatar;
 
       g_object_get (self->vcard_manager,
-                    "have-self-avatar", &have_self_avatar,
-                    NULL);
+          "have-self-avatar", &have_self_avatar,
+          NULL);
+
       if (!have_self_avatar)
         {
           GetAvatarTokensContext *context = g_slice_new (GetAvatarTokensContext);
@@ -3370,6 +3373,7 @@ gabble_connection_get_avatar_tokens (GabbleConnection *self,
               "got-self-initial-avatar",
               G_CALLBACK (_got_self_avatar_for_get_avatar_tokens),
               context);
+
           return;
         }
     }
@@ -4327,7 +4331,7 @@ _request_avatar_cb (GabbleVCardManager *self,
       if (g_strdiff (presence->avatar_sha1, sha1))
         {
           g_set_error (&error, TELEPATHY_ERRORS, NotAvailable,
-            "avatar hash in presence does not match avatar in vCard");
+              "avatar hash in presence does not match avatar in vCard");
           dbus_g_method_return_error (context, error);
           g_error_free (error);
           error = NULL;
@@ -4361,8 +4365,8 @@ gabble_connection_request_avatar (GabbleConnection *self,
                                   guint contact,
                                   DBusGMethodInvocation *context)
 {
-  gabble_vcard_manager_request (
-    self->vcard_manager, contact, 0, _request_avatar_cb, context, NULL, NULL);
+  gabble_vcard_manager_request (self->vcard_manager, contact, 0,
+      _request_avatar_cb, context, NULL, NULL);
 }
 
 
@@ -5028,9 +5032,8 @@ setaliases_foreach (gpointer key, gpointer value, gpointer user_data)
        * FIXME: because SetAliases is currently synchronous, we ignore errors
        * here, and just let the request happen in the background
        */
-      gabble_vcard_manager_edit (data->conn->vcard_manager,
-                                 0, NULL, NULL, G_OBJECT(data->conn), NULL,
-                                 "NICKNAME", alias, NULL);
+      gabble_vcard_manager_edit (data->conn->vcard_manager, 0, NULL, NULL,
+          G_OBJECT(data->conn), NULL, "NICKNAME", alias, NULL);
     }
 
   if (NULL != error)
@@ -5111,7 +5114,9 @@ _set_avatar_cb2 (GabbleVCardManager *manager,
   struct _set_avatar_ctx *ctx = (struct _set_avatar_ctx *) user_data;
 
   if (NULL == vcard)
-    dbus_g_method_return_error (ctx->invocation, vcard_error);
+    {
+      dbus_g_method_return_error (ctx->invocation, vcard_error);
+    }
   else
     {
       GabblePresence *presence;
@@ -5122,6 +5127,7 @@ _set_avatar_cb2 (GabbleVCardManager *manager,
       g_free (presence->avatar_sha1);
       presence->avatar_sha1 = sha1_hex (ctx->avatar->str,
                                         ctx->avatar->len);
+
       if (signal_own_presence (ctx->conn, &error))
         {
           dbus_g_method_return (ctx->invocation, presence->avatar_sha1);
@@ -5216,9 +5222,8 @@ gabble_connection_set_avatar (GabbleConnection *self,
   ctx->avatar = g_string_new_len (avatar->data, avatar->len);
   ctx->mime_type = g_strdup (mime_type);
 
-  gabble_vcard_manager_request (
-    self->vcard_manager, self->self_handle, 0, _set_avatar_cb1, ctx, NULL,
-    NULL);
+  gabble_vcard_manager_request (self->vcard_manager, self->self_handle, 0,
+      _set_avatar_cb1, ctx, NULL, NULL);
 }
 
 

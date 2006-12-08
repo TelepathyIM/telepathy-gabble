@@ -4321,7 +4321,11 @@ _request_avatar_cb (GabbleVCardManager *self,
       return;
     }
 
-  presence = gabble_presence_cache_get (conn->presence_cache, handle);
+  if (handle == conn->self_handle)
+    presence = conn->self_presence;
+  else
+    presence = gabble_presence_cache_get (conn->presence_cache, handle);
+
   if (presence != NULL)
     {
       gchar *sha1;
@@ -4330,14 +4334,31 @@ _request_avatar_cb (GabbleVCardManager *self,
 
       if (g_strdiff (presence->avatar_sha1, sha1))
         {
+          /* the thinking here is that we have to return an error, because we
+           * can't give the user the vcard they're expecting, which has the
+           * hash from the time that they requested it. */
+          DEBUG ("treason uncloaked! avatar hash in presence does not match "
+              "avatar in vCard for handle %u", handle);
+
           g_set_error (&error, TELEPATHY_ERRORS, NotAvailable,
               "avatar hash in presence does not match avatar in vCard");
           dbus_g_method_return_error (context, error);
           g_error_free (error);
           error = NULL;
-          g_free (presence->avatar_sha1);
-          presence->avatar_sha1 = sha1;
-          g_signal_emit (conn, signals[AVATAR_UPDATED], 0, handle, sha1);
+
+          if (handle == conn->self_handle)
+            {
+              update_own_avatar_sha1 (conn, sha1, NULL);
+              g_free (sha1);
+            }
+          else
+            {
+              g_free (presence->avatar_sha1);
+              presence->avatar_sha1 = sha1; /* take ownership */
+
+              g_signal_emit (conn, signals[AVATAR_UPDATED], 0, handle, sha1);
+            }
+
           return;
         }
 

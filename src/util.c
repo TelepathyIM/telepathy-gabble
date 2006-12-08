@@ -45,7 +45,7 @@ sha1_hex (const gchar *bytes, guint len)
 
   for (i = 0; i < SHA1_HASH_SIZE; i++)
     {
-      sprintf(hex_hash + 2*i, "%02x", (unsigned int)hash[i]);
+      sprintf (hex_hash + 2 * i, "%02x", (unsigned int) hash[i]);
     }
 
   return hex_hash;

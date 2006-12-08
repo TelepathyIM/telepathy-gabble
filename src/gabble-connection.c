@@ -2087,12 +2087,9 @@ connection_got_self_initial_avatar_cb (GObject *obj,
                                        gchar *sha1,
                                        gpointer user_data)
 {
-  GabbleConnection *conn = GABBLE_CONNECTION(user_data);
-  GabblePresence *presence = gabble_presence_cache_get (conn->presence_cache,
-                                                        conn->self_handle);
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
 
-  g_free (presence->avatar_sha1);
-  presence->avatar_sha1 = g_strdup (sha1);
+  update_own_avatar_sha1 (conn, sha1, NULL);
 }
 
 /**

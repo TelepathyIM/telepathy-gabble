@@ -3292,10 +3292,12 @@ _got_self_avatar_for_get_avatar_tokens (GObject *obj,
   GetAvatarTokensContext *context = (GetAvatarTokensContext *)user_data;
 
   g_signal_handler_disconnect (obj, context->signal_conn);
+  g_free (context->ret[context->my_index]);
   context->ret[context->my_index] = g_strdup(sha1);
   dbus_g_method_return (context->invocation, context->ret);
   g_strfreev (context->ret);
-  g_free (context);
+
+  g_slice_free (GetAvatarTokensContext, context);
 }
 
 
@@ -3359,7 +3361,7 @@ gabble_connection_get_avatar_tokens (GabbleConnection *self,
                     NULL);
       if (!have_self_avatar)
         {
-          GetAvatarTokensContext *context = g_new (GetAvatarTokensContext, 1);
+          GetAvatarTokensContext *context = g_slice_new (GetAvatarTokensContext);
 
           context->invocation = invocation;
           context->my_index = my_index;

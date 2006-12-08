@@ -1898,6 +1898,7 @@ _gabble_connection_get_cached_alias (GabbleConnection *conn,
       goto OUT;
     }
 
+  /* XXX: should this be more important than the ones from presence? */
   /* if it's our own handle, use alias passed to the connmgr, if any */
   if (handle == conn->self_handle && priv->alias != NULL)
     {
@@ -2262,6 +2263,7 @@ signal_own_presence (GabbleConnection *self, GError **error)
         lm_message_node_set_attribute (node, "type", "invisible");
     }
 
+  /* TODO: why is this not part of presence -> msg? */
   features = capabilities_get_features (presence->caps);
 
   for (i = features; NULL != i; i = i->next)
@@ -2864,6 +2866,7 @@ connection_disco_cb (GabbleDisco *disco,
     }
 
   /* send presence to the server to indicate availability */
+  /* TODO: some way for the user to set this */
   if (!signal_own_presence (conn, &error))
     {
       DEBUG ("sending initial presence failed: %s", error->message);
@@ -3333,6 +3336,9 @@ gabble_connection_get_avatar_tokens (GabbleConnection *self,
       handle = g_array_index (contacts, GabbleHandle, i);
       presence = gabble_presence_cache_get (self->presence_cache, handle);
 
+      /* TODO: always call the callback so we can defer presence lookups until
+       * we return the method, then we don't need to strdup the strings we're
+       * returning. */
       if (NULL != presence && NULL != presence->avatar_sha1)
           ret[i] = g_strdup(presence->avatar_sha1);
       else

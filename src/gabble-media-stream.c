@@ -38,6 +38,7 @@
 
 #include "telepathy-helpers.h"
 #include "telepathy-constants.h"
+#include "telepathy-errors.h"
 
 #include "gabble-media-stream.h"
 #include "gabble-media-stream-signals-marshal.h"
@@ -813,6 +814,16 @@ gabble_media_stream_new_native_candidate (GabbleMediaStream *self,
       0, candidate_id,
       1, transports,
       G_MAXUINT);
+
+  if (transports->len != 1)
+    {
+      GMS_DEBUG_WARNING (priv->session, "%s: number of transports was not 1; "
+          "rejecting", G_STRFUNC);
+      g_set_error (error, TELEPATHY_ERRORS, NotImplemented, "google p2p "
+          "connections only support the concept of one transport per "
+          "candidate");
+      return FALSE;
+    }
 
   transport = g_ptr_array_index (transports, 0);
   addr = g_value_get_string (g_value_array_get_nth (transport, 1));

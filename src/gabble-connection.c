@@ -2097,7 +2097,11 @@ construct_presence_hash (GabbleConnection *self,
   for (i = 0; i < contact_handles->len; i++)
     {
       handle = g_array_index (contact_handles, GabbleHandle, i);
-      presence = gabble_presence_cache_get (self->presence_cache, handle);
+
+      if (handle == self->self_handle)
+        presence = self->self_presence;
+      else
+        presence = gabble_presence_cache_get (self->presence_cache, handle);
 
       if (presence)
         {
@@ -2191,7 +2195,7 @@ static gboolean
 signal_own_presence (GabbleConnection *self, GError **error)
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
-  GabblePresence *presence = gabble_presence_cache_get (self->presence_cache, self->self_handle);
+  GabblePresence *presence = self->self_presence;
   LmMessage *message = gabble_presence_as_message (presence, priv->resource);
   LmMessageNode *node = lm_message_get_node (message);
   gboolean ret;
@@ -2817,6 +2821,8 @@ connection_disco_cb (GabbleDisco *disco,
   /* go go gadget on-line */
   connection_status_change (conn, TP_CONN_STATUS_CONNECTED, TP_CONN_STATUS_REASON_REQUESTED);
 
+  emit_one_presence_update (conn, conn->self_handle);
+
   if (conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_JINGLE_INFO)
     {
       jingle_info_discover_servers (conn);
@@ -3087,8 +3093,8 @@ gabble_connection_clear_status (GabbleConnection *self,
 
   ERROR_IF_NOT_CONNECTED (self, error);
 
-  gabble_presence_cache_update (self->presence_cache, self->self_handle,
-      priv->resource, GABBLE_PRESENCE_AVAILABLE, NULL, priv->priority);
+  gabble_presence_update (self->self_presence, priv->resource,
+      GABBLE_PRESENCE_AVAILABLE, NULL, priv->priority);
   emit_one_presence_update (self, self->self_handle);
   return signal_own_presence (self, error);
 }
@@ -3973,15 +3979,12 @@ gabble_connection_remove_status (GabbleConnection *self,
                                  const gchar *status,
                                  GError **error)
 {
-  GabblePresence *presence;
+  GabblePresence *presence = self->self_presence;
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
   g_assert (GABBLE_IS_CONNECTION (self));
 
   ERROR_IF_NOT_CONNECTED (self, error)
-
-  presence = gabble_presence_cache_get (self->presence_cache,
-      self->self_handle);
 
   if (strcmp (status, gabble_statuses[presence->status].name) == 0)
     {
@@ -5246,7 +5249,7 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
           prio = CLAMP (g_value_get_int (priority), G_MININT8, G_MAXINT8);
         }
 
-      gabble_presence_cache_update (data->conn->presence_cache, data->conn->self_handle, priv->resource, i, status, prio);
+      gabble_presence_update (data->conn->self_presence, priv->resource, i, status, prio);
       emit_one_presence_update (data->conn, data->conn->self_handle);
       data->retval = signal_own_presence (data->conn, data->error);
     }

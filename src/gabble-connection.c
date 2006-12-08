@@ -5140,11 +5140,9 @@ _set_avatar_cb2 (GabbleVCardManager *manager,
     }
   else
     {
-      GabblePresence *presence;
+      GabblePresence *presence = ctx->conn->self_presence;
       GError *error;
 
-      presence = gabble_presence_cache_get (ctx->conn->presence_cache,
-                                            ctx->conn->self_handle);
       g_free (presence->avatar_sha1);
       presence->avatar_sha1 = sha1_hex (ctx->avatar->str,
                                         ctx->avatar->len);
@@ -5152,6 +5150,8 @@ _set_avatar_cb2 (GabbleVCardManager *manager,
       if (signal_own_presence (ctx->conn, &error))
         {
           dbus_g_method_return (ctx->invocation, presence->avatar_sha1);
+          g_signal_emit (ctx->conn, signals[AVATAR_UPDATED], 0,
+              ctx->conn->self_handle, presence->avatar_sha1);
         }
       else
         {

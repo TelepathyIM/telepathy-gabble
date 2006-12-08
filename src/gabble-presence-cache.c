@@ -462,7 +462,6 @@ gabble_presence_cache_status_changed_cb (GabbleConnection *conn,
                                               LM_HANDLER_PRIORITY_FIRST);
       break;
     case TP_CONN_STATUS_CONNECTED:
-      /* TODO: emit self presence */
       break;
     case TP_CONN_STATUS_DISCONNECTED:
       g_assert (priv->lm_message_cb != NULL);
@@ -560,9 +559,9 @@ _grab_nickname (GabblePresenceCache *cache,
 
 static void
 _grab_avatar_sha1 (GabblePresenceCache *cache,
-                      GabbleHandle handle,
-                      const gchar *from,
-                      LmMessageNode *node)
+                   GabbleHandle handle,
+                   const gchar *from,
+                   LmMessageNode *node)
 {
   const gchar *sha1;
   LmMessageNode *x_node, *photo_node;
@@ -620,6 +619,7 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
            * For the moment I'm going to ignore that requirement and
            * trust that our other resource is getting its sha1 right!
            */
+          /* TODO: I don't trust anyone to get XMPP right, so let's do this. :D */
         }
 #endif
 

@@ -1415,7 +1415,6 @@ _gabble_connection_connect (GabbleConnection *conn,
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   char *jid;
-  GabblePresence *presence;
 
   g_assert (priv->port > 0 && priv->port <= G_MAXUINT16);
   g_assert (priv->stream_server != NULL);
@@ -1445,9 +1444,7 @@ _gabble_connection_connect (GabbleConnection *conn,
       GABBLE_PRESENCE_AVAILABLE, NULL, priv->priority);
 
   /* set initial capabilities */
-  presence = gabble_presence_cache_get (conn->presence_cache, conn->self_handle);
-
-  gabble_presence_set_capabilities (presence, priv->resource,
+  gabble_presence_set_capabilities (conn->self_presence, priv->resource,
       capabilities_get_initial_caps (), priv->caps_serial++);
 
   /* always override server and port if one was forced upon us */

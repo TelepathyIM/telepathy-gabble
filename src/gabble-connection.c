@@ -276,6 +276,7 @@ static void connection_new_channel_cb (TpChannelFactoryIface *, GObject *, gpoin
 static void connection_channel_error_cb (TpChannelFactoryIface *, GObject *, GError *, gpointer);
 static void connection_nickname_update_cb (GObject *, GabbleHandle, gpointer);
 static void connection_presence_update_cb (GabblePresenceCache *, GabbleHandle, gpointer);
+static void connection_avatar_update_cb (GabblePresenceCache *, GabbleHandle, gpointer);
 static void connection_capabilities_update_cb (GabblePresenceCache *, GabbleHandle, GabblePresenceCapabilities, GabblePresenceCapabilities, gpointer);
 static void connection_got_self_initial_avatar_cb (GObject *, gchar *, gpointer);
 
@@ -303,6 +304,8 @@ gabble_connection_init (GabbleConnection *self)
       (connection_nickname_update_cb), self);
   g_signal_connect (self->presence_cache, "presence-update", G_CALLBACK
       (connection_presence_update_cb), self);
+  g_signal_connect (self->presence_cache, "avatar-update", G_CALLBACK
+      (connection_avatar_update_cb), self);
   g_signal_connect (self->presence_cache, "capabilities-update", G_CALLBACK
       (connection_capabilities_update_cb), self);
 
@@ -2021,6 +2024,60 @@ connection_nickname_update_cb (GObject *object,
 
 OUT:
   g_free (alias);
+}
+
+static gboolean signal_own_presence (GabbleConnection *self, GError **error);
+
+/* If the SHA1 has changed, this function will copy it to self_presence,
+ * emit a signal and push it to the server. */
+static gboolean
+update_own_avatar_sha1 (GabbleConnection *conn,
+                        const gchar *sha1,
+                        GError **out_error)
+{
+  GError *error = NULL;
+
+  if (!g_strdiff (sha1, conn->self_presence->avatar_sha1))
+    return TRUE;
+
+  g_signal_emit (conn, signals[AVATAR_UPDATED], 0, conn->self_handle, sha1);
+
+  g_free (conn->self_presence->avatar_sha1);
+  conn->self_presence->avatar_sha1 = g_strdup (sha1);
+
+  if (!signal_own_presence (conn, &error))
+    {
+      if (out_error == NULL)
+        {
+          DEBUG ("failed to signal changed avatar sha1 to the server: %s",
+              error->message);
+          g_error_free (error);
+        }
+
+      g_propagate_error (out_error, error);
+
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
+static void
+connection_avatar_update_cb (GabblePresenceCache *cache,
+                             GabbleHandle handle,
+                             gpointer user_data)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+  GabblePresence *presence;
+
+  presence = gabble_presence_cache_get (conn->presence_cache, handle);
+
+  g_assert (presence != NULL);
+
+  if (handle == conn->self_handle)
+    update_own_avatar_sha1 (conn, presence->avatar_sha1, NULL);
+  else
+    g_signal_emit (conn, signals[AVATAR_UPDATED], 0, handle, presence->avatar_sha1);
 }
 
 /* Called when our vCard is first fetched, so we can start putting the

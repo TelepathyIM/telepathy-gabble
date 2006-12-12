@@ -255,7 +255,7 @@ nokia_iv_get_reply_cb (GabbleConnection *conn,
   gchar *auth_mac, *auth_btid;
   gchar *challenge;
   gchar response[33];
-  gint i;
+  guint i;
   md5_byte_t digest[16];
   md5_state_t calculator;
 

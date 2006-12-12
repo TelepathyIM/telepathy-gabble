@@ -98,7 +98,7 @@ libgabble_convenience_la_SOURCES = \
     vcard-manager.h \
     vcard-manager.c \
     libmd5-rfc/md5.c \
-    libmd5-rfc/md5.h \
+    libmd5-rfc/md5.h
 
 EXTRA_DIST = \
     gabble-connection-manager-signals-marshal.list \

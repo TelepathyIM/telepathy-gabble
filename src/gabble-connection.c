@@ -902,7 +902,8 @@ gabble_connection_dispose (GObject *object)
   g_object_unref (self->vcard_manager);
   self->vcard_manager = NULL;
 
-  g_object_unref (self->self_presence);
+  if (self->self_presence != NULL)
+    g_object_unref (self->self_presence);
   self->self_presence = NULL;
 
   g_object_unref (self->presence_cache);

@@ -30,5 +30,5 @@ AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @LOUDMOUTH_CFLAGS@ \
     -I $(top_srcdir)/src -I $(top_builddir)/src
 AM_LDFLAGS = @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@
 
-TESTS = $(noinst_PROGRAMS)
+TESTS = $(noinst_PROGRAMS) test-basic-connect.sh
 

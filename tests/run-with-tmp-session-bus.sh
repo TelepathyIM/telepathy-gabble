@@ -17,12 +17,14 @@ die()
 ## convenient to be able to ctrl+C without leaking the message bus process
 trap 'die "Received SIGINT"' INT
 
+CONFIG_FILE=./run-with-tmp-session-bus.conf
+
 unset DBUS_SESSION_BUS_ADDRESS
 unset DBUS_SESSION_BUS_PID
 
-echo "Running dbus-launch --sh-syntax" >&2
+echo "Running dbus-launch --sh-syntax --config-file=$CONFIG_FILE" >&2
 
-eval `dbus-launch --sh-syntax`
+eval `dbus-launch --sh-syntax --config-file=$CONFIG_FILE`
 
 if test -z "$DBUS_SESSION_BUS_PID" ; then
     die "Failed to launch message bus for test script to run"
@@ -30,18 +32,13 @@ fi
 
 echo "Started bus pid $DBUS_SESSION_BUS_PID at $DBUS_SESSION_BUS_ADDRESS" >&2
 
-# Start gabble
-../src/telepathy-gabble &
-
-sleep 1
-
 # Execute wrapped script
 echo "Running $WRAPPED_SCRIPT $@" >&2
 $WRAPPED_SCRIPT "$@" || die "script \"$WRAPPED_SCRIPT\" failed"
 
 kill -TERM $DBUS_SESSION_BUS_PID || die "Message bus vanished! should not have happened" && echo "Killed daemon $DBUS_SESSION_BUS_PID" >&2
 
-sleep 1
+sleep 0.1
 
 ## be sure it really died 
 kill -9 $DBUS_SESSION_BUS_PID > /dev/null 2>&1 || true

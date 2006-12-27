@@ -32,6 +32,9 @@ fi
 
 echo "Started bus pid $DBUS_SESSION_BUS_PID at $DBUS_SESSION_BUS_ADDRESS" >&2
 
+#Uncomment the following for debugging
+#GABBLE_DEBUG=all ../src/telepathy-gabble &
+
 # Execute wrapped script
 echo "Running $WRAPPED_SCRIPT $@" >&2
 $WRAPPED_SCRIPT "$@" || die "script \"$WRAPPED_SCRIPT\" failed"

@@ -10,7 +10,7 @@
 
   <listen>unix:tmpdir=/tmp</listen>
 
-  <servicedir>@abs_top_srcdir@/tests</servicedir>
+  <servicedir>@abs_top_builddir@/tests</servicedir>
 
   <policy context="default">
     <!-- Allow everything to be sent -->

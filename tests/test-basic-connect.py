@@ -11,7 +11,7 @@ class BasicConnectTest(ClientTestCase):
 		conn, obj = self[nick]["RequestConnection"].call(proto, params)
 		# register connection as self.nick_conn
 		self[nick+"_conn"] = (conn, obj, "org.freedesktop.Telepathy.Connection")
-		self[nick+"_conn"]["Connect"].call()
+		self[nick+"_conn"]["Connect"].call(timeout=30000)
 		
 		# Retrieve connection status, and wait until connected
 		self[nick+"_conn"]["StatusChanged"].listen()

@@ -2119,7 +2119,7 @@ gabble_muc_channel_get_interfaces (GabbleMucChannel *self,
   const gchar *interfaces[] = {
       TP_IFACE_CHANNEL_INTERFACE_GROUP,
       TP_IFACE_CHANNEL_INTERFACE_PASSWORD,
-      TP_IFACE_PROPERTIES,
+      TP_IFACE_PROPERTIES_INTERFACE,
       NULL
   };
 

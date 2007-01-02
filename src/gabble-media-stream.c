@@ -1332,7 +1332,7 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
       gchar *candidate_id;
       const gchar *name, *addr;
       guint16 port;
-      TpMediaStreamProto proto;
+      TpMediaStreamBaseProto proto;
       gdouble pref;
       TpMediaStreamTransportType type;
       const gchar *user, *pass;

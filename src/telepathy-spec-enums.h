@@ -141,12 +141,12 @@ typedef enum {
 } TpMediaStreamDirection;
 
 
-/* TpMediaStreamPendingFlags (bitfield/set of flags, 0 for none) */
+/* TpMediaStreamPendingSend (bitfield/set of flags, 0 for none) */
 
 typedef enum {
     TP_MEDIA_STREAM_PENDING_LOCAL_SEND = 1,
     TP_MEDIA_STREAM_PENDING_REMOTE_SEND = 2,
-} TpMediaStreamPendingFlags;
+} TpMediaStreamPendingSend;
 
 
 /* TpChannelMediaCapabilities (bitfield/set of flags, 0 for none) */

@@ -84,7 +84,7 @@
       G_TYPE_INVALID))
 
 #define ERROR_IF_NOT_CONNECTED(CONN, ERROR) \
-  if ((CONN)->status != TP_CONN_STATUS_CONNECTED) \
+  if ((CONN)->status != TP_CONNECTION_STATUS_CONNECTED) \
     { \
       DEBUG ("rejected request as disconnected"); \
       g_set_error (ERROR, TELEPATHY_ERRORS, NotAvailable, \
@@ -93,7 +93,7 @@
     }
 
 #define ERROR_IF_NOT_CONNECTED_ASYNC(CONN, ERROR, CONTEXT) \
-  if ((CONN)->status != TP_CONN_STATUS_CONNECTED) \
+  if ((CONN)->status != TP_CONNECTION_STATUS_CONNECTED) \
     { \
       DEBUG ("rejected request as disconnected"); \
       (ERROR) = g_error_new (TELEPATHY_ERRORS, NotAvailable, \
@@ -119,13 +119,13 @@ struct _StatusInfo
 /* order must match PresenceId enum in gabble-connection.h */
 /* in increasing order of presence */
 static const StatusInfo gabble_statuses[LAST_GABBLE_PRESENCE] = {
- { "offline",   TP_CONN_PRESENCE_TYPE_OFFLINE,       TRUE, TRUE },
- { "hidden",    TP_CONN_PRESENCE_TYPE_HIDDEN,        TRUE, TRUE },
- { "xa",        TP_CONN_PRESENCE_TYPE_EXTENDED_AWAY, TRUE, TRUE },
- { "away",      TP_CONN_PRESENCE_TYPE_AWAY,          TRUE, TRUE },
- { "dnd",       TP_CONN_PRESENCE_TYPE_AWAY,          TRUE, TRUE },
- { "available", TP_CONN_PRESENCE_TYPE_AVAILABLE,     TRUE, TRUE },
- { "chat",      TP_CONN_PRESENCE_TYPE_AVAILABLE,     TRUE, TRUE }
+ { "offline",   TP_CONNECTION_PRESENCE_TYPE_OFFLINE,       TRUE, TRUE },
+ { "hidden",    TP_CONNECTION_PRESENCE_TYPE_HIDDEN,        TRUE, TRUE },
+ { "xa",        TP_CONNECTION_PRESENCE_TYPE_EXTENDED_AWAY, TRUE, TRUE },
+ { "away",      TP_CONNECTION_PRESENCE_TYPE_AWAY,          TRUE, TRUE },
+ { "dnd",       TP_CONNECTION_PRESENCE_TYPE_AWAY,          TRUE, TRUE },
+ { "available", TP_CONNECTION_PRESENCE_TYPE_AVAILABLE,     TRUE, TRUE },
+ { "chat",      TP_CONNECTION_PRESENCE_TYPE_AVAILABLE,     TRUE, TRUE }
 };
 
 /* signal enum */
@@ -290,7 +290,7 @@ gabble_connection_init (GabbleConnection *self)
 
   self->priv = priv;
   self->lmconn = lm_connection_new (NULL);
-  self->status = TP_CONN_STATUS_NEW;
+  self->status = TP_CONNECTION_STATUS_NEW;
   self->handles = gabble_handle_repo_new ();
   self->disco = gabble_disco_new (self);
   self->vcard_manager = gabble_vcard_manager_new (self);
@@ -878,8 +878,8 @@ gabble_connection_dispose (GObject *object)
 
   DEBUG ("called");
 
-  g_assert ((self->status == TP_CONN_STATUS_DISCONNECTED) ||
-            (self->status == TP_CONN_STATUS_NEW));
+  g_assert ((self->status == TP_CONNECTION_STATUS_DISCONNECTED) ||
+            (self->status == TP_CONNECTION_STATUS_NEW));
   g_assert (self->self_handle == 0);
 
   if (priv->channel_requests)
@@ -1497,8 +1497,8 @@ _gabble_connection_connect (GabbleConnection *conn,
       gboolean valid;
 
       connection_status_change (conn,
-          TP_CONN_STATUS_CONNECTING,
-          TP_CONN_STATUS_REASON_REQUESTED);
+          TP_CONNECTION_STATUS_CONNECTING,
+          TP_CONNECTION_STATUS_REASON_REQUESTED);
 
       valid = gabble_handle_ref (conn->handles,
                                  TP_HANDLE_TYPE_CONTACT,
@@ -1530,7 +1530,7 @@ connection_disconnected_cb (LmConnection *lmconn,
    * the connection manager to unref us. otherwise it's a network error
    * or some other screw up we didn't expect, so we emit the status
    * change */
-  if (conn->status == TP_CONN_STATUS_DISCONNECTED)
+  if (conn->status == TP_CONNECTION_STATUS_DISCONNECTED)
     {
       DEBUG ("expected; emitting DISCONNECTED");
       g_signal_emit (conn, signals[DISCONNECTED], 0);
@@ -1539,8 +1539,8 @@ connection_disconnected_cb (LmConnection *lmconn,
     {
       DEBUG ("unexpected; calling connection_status_change");
       connection_status_change (conn,
-          TP_CONN_STATUS_DISCONNECTED,
-          TP_CONN_STATUS_REASON_NETWORK_ERROR);
+          TP_CONNECTION_STATUS_DISCONNECTED,
+          TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
     }
 }
 
@@ -1567,12 +1567,12 @@ connection_status_change (GabbleConnection        *conn,
 
   DEBUG ("status %u reason %u", status, reason);
 
-  g_assert (status != TP_CONN_STATUS_NEW);
+  g_assert (status != TP_CONNECTION_STATUS_NEW);
 
   if (conn->status != status)
     {
-      if ((status == TP_CONN_STATUS_DISCONNECTED) &&
-          (conn->status == TP_CONN_STATUS_NEW))
+      if ((status == TP_CONNECTION_STATUS_DISCONNECTED) &&
+          (conn->status == TP_CONNECTION_STATUS_NEW))
         {
           conn->status = status;
 
@@ -1591,7 +1591,7 @@ connection_status_change (GabbleConnection        *conn,
 
       conn->status = status;
 
-      if (status == TP_CONN_STATUS_DISCONNECTED)
+      if (status == TP_CONNECTION_STATUS_DISCONNECTED)
         {
           /* remove the channels so we don't get any race conditions where
            * method calls are delivered to a channel after we've started
@@ -1621,7 +1621,7 @@ connection_status_change (GabbleConnection        *conn,
 
       g_signal_emit (conn, signals[STATUS_CHANGED], 0, status, reason);
 
-      if (status == TP_CONN_STATUS_CONNECTING)
+      if (status == TP_CONNECTION_STATUS_CONNECTING)
         {
           /* add our callbacks */
           connect_callbacks (conn);
@@ -1630,13 +1630,13 @@ connection_status_change (GabbleConnection        *conn,
           g_ptr_array_foreach (priv->channel_factories, (GFunc)
               tp_channel_factory_iface_connecting, NULL);
         }
-      else if (status == TP_CONN_STATUS_CONNECTED)
+      else if (status == TP_CONNECTION_STATUS_CONNECTED)
         {
           /* trigger connected on all channel factories */
           g_ptr_array_foreach (priv->channel_factories, (GFunc)
               tp_channel_factory_iface_connected, NULL);
         }
-      else if (status == TP_CONN_STATUS_DISCONNECTED)
+      else if (status == TP_CONNECTION_STATUS_DISCONNECTED)
         {
           /* remove our callbacks */
           disconnect_callbacks (conn);
@@ -2109,7 +2109,7 @@ status_is_available (GabbleConnection *conn, int status)
   g_assert (status < LAST_GABBLE_PRESENCE);
   priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
-  if (gabble_statuses[status].presence_type == TP_CONN_PRESENCE_TYPE_HIDDEN &&
+  if (gabble_statuses[status].presence_type == TP_CONNECTION_PRESENCE_TYPE_HIDDEN &&
       (conn->features & GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE) == 0)
     return FALSE;
   else
@@ -2539,8 +2539,8 @@ connection_stream_error_cb (LmMessageHandler *handler,
       /* Another client with the same resource just
        * appeared, we're going down. */
         connection_status_change (conn,
-            TP_CONN_STATUS_DISCONNECTED,
-            TP_CONN_STATUS_REASON_NAME_IN_USE);
+            TP_CONNECTION_STATUS_DISCONNECTED,
+            TP_CONNECTION_STATUS_REASON_NAME_IN_USE);
         return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 
@@ -2567,36 +2567,36 @@ connection_ssl_cb (LmSSL      *lmssl,
   switch (status) {
     case LM_SSL_STATUS_NO_CERT_FOUND:
       reason = "The server doesn't provide a certificate.";
-      tp_reason = TP_CONN_STATUS_REASON_CERT_NOT_PROVIDED;
+      tp_reason = TP_CONNECTION_STATUS_REASON_CERT_NOT_PROVIDED;
       break;
     case LM_SSL_STATUS_UNTRUSTED_CERT:
       reason = "The certificate can not be trusted.";
-      tp_reason = TP_CONN_STATUS_REASON_CERT_UNTRUSTED;
+      tp_reason = TP_CONNECTION_STATUS_REASON_CERT_UNTRUSTED;
       break;
     case LM_SSL_STATUS_CERT_EXPIRED:
       reason = "The certificate has expired.";
-      tp_reason = TP_CONN_STATUS_REASON_CERT_EXPIRED;
+      tp_reason = TP_CONNECTION_STATUS_REASON_CERT_EXPIRED;
       break;
     case LM_SSL_STATUS_CERT_NOT_ACTIVATED:
       reason = "The certificate has not been activated.";
-      tp_reason = TP_CONN_STATUS_REASON_CERT_NOT_ACTIVATED;
+      tp_reason = TP_CONNECTION_STATUS_REASON_CERT_NOT_ACTIVATED;
       break;
     case LM_SSL_STATUS_CERT_HOSTNAME_MISMATCH:
       reason = "The server hostname doesn't match the one in the certificate.";
-      tp_reason = TP_CONN_STATUS_REASON_CERT_HOSTNAME_MISMATCH;
+      tp_reason = TP_CONNECTION_STATUS_REASON_CERT_HOSTNAME_MISMATCH;
       break;
     case LM_SSL_STATUS_CERT_FINGERPRINT_MISMATCH:
       reason = "The fingerprint doesn't match the expected value.";
-      tp_reason = TP_CONN_STATUS_REASON_CERT_FINGERPRINT_MISMATCH;
+      tp_reason = TP_CONNECTION_STATUS_REASON_CERT_FINGERPRINT_MISMATCH;
       break;
     case LM_SSL_STATUS_GENERIC_ERROR:
       reason = "An unknown SSL error occurred.";
-      tp_reason = TP_CONN_STATUS_REASON_CERT_OTHER_ERROR;
+      tp_reason = TP_CONNECTION_STATUS_REASON_CERT_OTHER_ERROR;
       break;
     default:
       g_assert_not_reached();
       reason = "Unknown SSL error code from Loudmouth.";
-      tp_reason = TP_CONN_STATUS_REASON_ENCRYPTION_ERROR;
+      tp_reason = TP_CONNECTION_STATUS_REASON_ENCRYPTION_ERROR;
       break;
   }
 
@@ -2632,8 +2632,8 @@ do_auth (GabbleConnection *conn)
       /* the reason this function can fail is through network errors,
        * authentication failures are reported to our auth_cb */
       connection_status_change (conn,
-          TP_CONN_STATUS_DISCONNECTED,
-          TP_CONN_STATUS_REASON_NETWORK_ERROR);
+          TP_CONNECTION_STATUS_DISCONNECTED,
+          TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
     }
 }
 
@@ -2646,9 +2646,9 @@ registration_finished_cb (GabbleRegister *reg,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
 
-  if (conn->status != TP_CONN_STATUS_CONNECTING)
+  if (conn->status != TP_CONNECTION_STATUS_CONNECTING)
     {
-      g_assert (conn->status == TP_CONN_STATUS_DISCONNECTED);
+      g_assert (conn->status == TP_CONNECTION_STATUS_DISCONNECTED);
       return;
     }
 
@@ -2666,9 +2666,10 @@ registration_finished_cb (GabbleRegister *reg,
                err_code, err_msg);
 
       connection_status_change (conn,
-          TP_CONN_STATUS_DISCONNECTED,
-          (err_code == InvalidArgument) ? TP_CONN_STATUS_REASON_NAME_IN_USE :
-            TP_CONN_STATUS_REASON_AUTHENTICATION_FAILED);
+          TP_CONNECTION_STATUS_DISCONNECTED,
+          (err_code == InvalidArgument) ?
+            TP_CONNECTION_STATUS_REASON_NAME_IN_USE :
+            TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED);
     }
 }
 
@@ -2701,10 +2702,10 @@ connection_open_cb (LmConnection *lmconn,
   GabbleConnection *conn = GABBLE_CONNECTION (data);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
-  if ((conn->status != TP_CONN_STATUS_CONNECTING) &&
-      (conn->status != TP_CONN_STATUS_NEW))
+  if ((conn->status != TP_CONNECTION_STATUS_CONNECTING) &&
+      (conn->status != TP_CONNECTION_STATUS_NEW))
     {
-      g_assert (conn->status == TP_CONN_STATUS_DISCONNECTED);
+      g_assert (conn->status == TP_CONNECTION_STATUS_DISCONNECTED);
       return;
     }
 
@@ -2732,14 +2733,14 @@ connection_open_cb (LmConnection *lmconn,
       if (priv->ssl_error)
         {
           connection_status_change (conn,
-            TP_CONN_STATUS_DISCONNECTED,
+            TP_CONNECTION_STATUS_DISCONNECTED,
             priv->ssl_error);
         }
       else
         {
           connection_status_change (conn,
-              TP_CONN_STATUS_DISCONNECTED,
-              TP_CONN_STATUS_REASON_NETWORK_ERROR);
+              TP_CONNECTION_STATUS_DISCONNECTED,
+              TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
         }
 
       return;
@@ -2767,9 +2768,9 @@ connection_auth_cb (LmConnection *lmconn,
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   GError *error = NULL;
 
-  if (conn->status != TP_CONN_STATUS_CONNECTING)
+  if (conn->status != TP_CONNECTION_STATUS_CONNECTING)
     {
-      g_assert (conn->status == TP_CONN_STATUS_DISCONNECTED);
+      g_assert (conn->status == TP_CONNECTION_STATUS_DISCONNECTED);
       return;
     }
 
@@ -2781,8 +2782,8 @@ connection_auth_cb (LmConnection *lmconn,
       DEBUG ("failed");
 
       connection_status_change (conn,
-          TP_CONN_STATUS_DISCONNECTED,
-          TP_CONN_STATUS_REASON_AUTHENTICATION_FAILED);
+          TP_CONNECTION_STATUS_DISCONNECTED,
+          TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED);
 
       return;
     }
@@ -2798,8 +2799,8 @@ connection_auth_cb (LmConnection *lmconn,
       g_error_free (error);
 
       connection_status_change (conn,
-          TP_CONN_STATUS_DISCONNECTED,
-          TP_CONN_STATUS_REASON_NETWORK_ERROR);
+          TP_CONNECTION_STATUS_DISCONNECTED,
+          TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
     }
 }
 
@@ -2824,9 +2825,9 @@ connection_disco_cb (GabbleDisco *disco,
   GabbleConnectionPrivate *priv;
   GError *error;
 
-  if (conn->status != TP_CONN_STATUS_CONNECTING)
+  if (conn->status != TP_CONNECTION_STATUS_CONNECTING)
     {
-      g_assert (conn->status == TP_CONN_STATUS_DISCONNECTED);
+      g_assert (conn->status == TP_CONNECTION_STATUS_DISCONNECTED);
       return;
     }
 
@@ -2875,7 +2876,8 @@ connection_disco_cb (GabbleDisco *disco,
     }
 
   /* go go gadget on-line */
-  connection_status_change (conn, TP_CONN_STATUS_CONNECTED, TP_CONN_STATUS_REASON_REQUESTED);
+  connection_status_change (conn, TP_CONNECTION_STATUS_CONNECTED,
+      TP_CONNECTION_STATUS_REASON_REQUESTED);
 
   emit_one_presence_update (conn, conn->self_handle);
 
@@ -2891,8 +2893,8 @@ ERROR:
     g_error_free (error);
 
   connection_status_change (conn,
-      TP_CONN_STATUS_DISCONNECTED,
-      TP_CONN_STATUS_REASON_NETWORK_ERROR);
+      TP_CONNECTION_STATUS_DISCONNECTED,
+      TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
 
   return;
 }
@@ -2969,12 +2971,12 @@ _emit_capabilities_changed (GabbleConnection *conn,
           GValue caps_monster_struct = {0, };
           guint old_tpflags = ccd->c2tf_fn (old_caps);
           guint old_caps = old_tpflags ?
-            TP_CONN_CAPABILITY_FLAG_CREATE |
-            TP_CONN_CAPABILITY_FLAG_INVITE : 0;
+            TP_CONNECTION_CAPABILITY_FLAG_CREATE |
+            TP_CONNECTION_CAPABILITY_FLAG_INVITE : 0;
           guint new_tpflags = ccd->c2tf_fn (new_caps);
           guint new_caps = new_tpflags ?
-            TP_CONN_CAPABILITY_FLAG_CREATE |
-            TP_CONN_CAPABILITY_FLAG_INVITE : 0;
+            TP_CONNECTION_CAPABILITY_FLAG_CREATE |
+            TP_CONNECTION_CAPABILITY_FLAG_INVITE : 0;
 
           if (0 == (old_tpflags ^ new_tpflags))
             continue;
@@ -3171,7 +3173,7 @@ gabble_connection_connect (GabbleConnection *self,
 {
   g_assert(GABBLE_IS_CONNECTION (self));
 
-  if (self->status == TP_CONN_STATUS_NEW)
+  if (self->status == TP_CONNECTION_STATUS_NEW)
     return _gabble_connection_connect (self, error);
 
   return TRUE;
@@ -3201,8 +3203,8 @@ gabble_connection_disconnect (GabbleConnection *self,
   priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
   connection_status_change (self,
-      TP_CONN_STATUS_DISCONNECTED,
-      TP_CONN_STATUS_REASON_REQUESTED);
+      TP_CONNECTION_STATUS_DISCONNECTED,
+      TP_CONNECTION_STATUS_REASON_REQUESTED);
 
   return TRUE;
 }
@@ -3233,7 +3235,7 @@ gabble_connection_get_alias_flags (GabbleConnection *self,
 
   ERROR_IF_NOT_CONNECTED (self, error)
 
-  *ret = TP_CONN_ALIAS_FLAG_USER_SET;
+  *ret = TP_CONNECTION_ALIAS_FLAG_USER_SET;
 
   return TRUE;
 }
@@ -3461,8 +3463,8 @@ gabble_connection_get_capabilities (GabbleConnection *self,
                 dbus_g_type_struct_set (&monster,
                     0, handle,
                     1, ccd->iface,
-                    2, TP_CONN_CAPABILITY_FLAG_CREATE |
-                        TP_CONN_CAPABILITY_FLAG_INVITE,
+                    2, TP_CONNECTION_CAPABILITY_FLAG_CREATE |
+                        TP_CONNECTION_CAPABILITY_FLAG_INVITE,
                     3, typeflags,
                     G_MAXUINT);
 
@@ -3481,8 +3483,8 @@ gabble_connection_get_capabilities (GabbleConnection *self,
           dbus_g_type_struct_set (&monster,
               0, handle,
               1, *assumed,
-              2, TP_CONN_CAPABILITY_FLAG_CREATE |
-                  TP_CONN_CAPABILITY_FLAG_INVITE,
+              2, TP_CONNECTION_CAPABILITY_FLAG_CREATE |
+                  TP_CONNECTION_CAPABILITY_FLAG_INVITE,
               3, 0,
               G_MAXUINT);
 
@@ -3666,9 +3668,9 @@ gabble_connection_get_status (GabbleConnection *self,
 {
   g_assert (GABBLE_IS_CONNECTION (self));
 
-  if (self->status == TP_CONN_STATUS_NEW)
+  if (self->status == TP_CONNECTION_STATUS_NEW)
     {
-      *ret = TP_CONN_STATUS_DISCONNECTED;
+      *ret = TP_CONNECTION_STATUS_DISCONNECTED;
     }
   else
     {

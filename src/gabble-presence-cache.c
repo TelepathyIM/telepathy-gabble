@@ -447,7 +447,7 @@ gabble_presence_cache_status_changed_cb (GabbleConnection *conn,
 
   switch (status)
     {
-    case TP_CONN_STATUS_CONNECTING:
+    case TP_CONNECTION_STATUS_CONNECTING:
       g_assert (priv->lm_message_cb == NULL);
 
       priv->lm_message_cb = lm_message_handler_new (gabble_presence_cache_lm_message_cb,
@@ -461,9 +461,9 @@ gabble_presence_cache_status_changed_cb (GabbleConnection *conn,
                                               LM_MESSAGE_TYPE_MESSAGE,
                                               LM_HANDLER_PRIORITY_FIRST);
       break;
-    case TP_CONN_STATUS_CONNECTED:
+    case TP_CONNECTION_STATUS_CONNECTED:
       break;
-    case TP_CONN_STATUS_DISCONNECTED:
+    case TP_CONNECTION_STATUS_DISCONNECTED:
       g_assert (priv->lm_message_cb != NULL);
 
       lm_connection_unregister_message_handler (conn->lmconn,

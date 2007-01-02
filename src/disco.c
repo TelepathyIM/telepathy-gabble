@@ -857,7 +857,7 @@ gabble_disco_conn_status_changed_cb (GabbleConnection *conn,
   GabbleDisco *disco = GABBLE_DISCO (data);
   GabbleDiscoPrivate *priv = GABBLE_DISCO_GET_PRIVATE (disco);
 
-  if (status == TP_CONN_STATUS_CONNECTED)
+  if (status == TP_CONNECTION_STATUS_CONNECTED)
     {
       char *server;
 

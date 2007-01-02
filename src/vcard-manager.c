@@ -329,7 +329,7 @@ status_changed_cb (GObject *object,
   GabbleVCardManager *self = GABBLE_VCARD_MANAGER (user_data);
   GabbleConnection *conn = GABBLE_CONNECTION (object);
 
-  if (status == TP_CONN_STATUS_CONNECTED)
+  if (status == TP_CONNECTION_STATUS_CONNECTED)
     {
       gchar *alias;
       GabbleConnectionAliasSource alias_src;

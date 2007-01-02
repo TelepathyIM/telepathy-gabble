@@ -38,7 +38,7 @@ typedef enum {
 } TpConnMgrParamFlags;
 
 
-/* TpConnectionHandleType (enum) */
+/* TpHandleType (enum) */
 
 typedef enum {
     TP_HANDLE_TYPE_NONE = 0,
@@ -52,7 +52,7 @@ typedef enum {
     TP_HANDLE_TYPE_GROUP = 4,
 #   define TP_HANDLE_TYPE_GROUP (TP_HANDLE_TYPE_GROUP)
 #   define LAST_TP_HANDLE_TYPE (4)
-} TpConnectionHandleType;
+} TpHandleType;
 
 
 /* TpConnectionStatus (enum) */

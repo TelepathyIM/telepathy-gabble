@@ -123,8 +123,8 @@ struct _GabbleMediaStreamPrivate
 #ifdef ENABLE_DEBUG
 #if _GMS_DEBUG_LEVEL > 1
 static const char *tp_protocols[] = {
-  "TP_MEDIA_STREAM_PROTO_UDP (0)",
-  "TP_MEDIA_STREAM_PROTO_TCP (1)"
+  "TP_MEDIA_STREAM_BASE_PROTO_UDP (0)",
+  "TP_MEDIA_STREAM_BASE_PROTO_TCP (1)"
 };
 
 static const char *tp_transports[] = {
@@ -1009,7 +1009,7 @@ _add_rtp_candidate_node (GabbleMediaSession *session, LmMessageNode *parent,
   const gchar *candidate_id;
   guint port;
   gdouble pref;
-  TpMediaStreamProto proto;
+  TpMediaStreamBaseProto proto;
   TpMediaStreamTransportType type;
   const GPtrArray *transports;
   GValue transport = { 0, };
@@ -1061,7 +1061,7 @@ _add_rtp_candidate_node (GabbleMediaSession *session, LmMessageNode *parent,
       "username", user,
       "password", pass,
       "preference", pref_str,
-      "protocol", (proto == TP_MEDIA_STREAM_PROTO_UDP) ? "udp" : "tcp",
+      "protocol", (proto == TP_MEDIA_STREAM_BASE_PROTO_UDP) ? "udp" : "tcp",
       "type", type_str,
       "network", "0",
       "generation", "0",
@@ -1377,11 +1377,11 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
 
       if (strcmp (str, "udp") == 0)
         {
-          proto = TP_MEDIA_STREAM_PROTO_UDP;
+          proto = TP_MEDIA_STREAM_BASE_PROTO_UDP;
         }
       else if (strcmp (str, "tcp") == 0)
         {
-          proto = TP_MEDIA_STREAM_PROTO_TCP;
+          proto = TP_MEDIA_STREAM_BASE_PROTO_TCP;
         }
       else if (strcmp (str, "ssltcp") == 0)
         {

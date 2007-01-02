@@ -70,12 +70,6 @@ G_BEGIN_DECLS
 #define TP_MEDIA_STREAM_PROTO_TCP TP_MEDIA_STREAM_BASE_PROTO_TCP
 #define TpMediaStreamProto TpMediaStreamBaseProto
 
-/* Happens to coincide with TpMediaStreamType */
-typedef enum {
-TP_CODEC_MEDIA_TYPE_AUDIO = 0,
-TP_CODEC_MEDIA_TYPE_VIDEO = 1,
-} TpCodecMediaType;
-
 G_END_DECLS
 
 

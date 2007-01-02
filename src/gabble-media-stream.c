@@ -1267,7 +1267,7 @@ _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream,
       dbus_g_type_struct_set (&codec,
           0, id,
           1, name,
-          2, TP_CODEC_MEDIA_TYPE_AUDIO,
+          2, TP_MEDIA_STREAM_TYPE_AUDIO,
           3, clockrate,
           4, channels,
           5, params,
@@ -1608,7 +1608,7 @@ codec_params_from_tp_foreach (gpointer key, gpointer value, gpointer user_data)
   GabbleMediaStreamPrivate *priv = ctx->priv;
   const gchar *pname = key, *pvalue = value;
 
-  if (priv->media_type == TP_CODEC_MEDIA_TYPE_AUDIO)
+  if (priv->media_type == TP_MEDIA_STREAM_TYPE_AUDIO)
     {
       if (priv->mode == MODE_GOOGLE && strcmp (pname, "bitrate") == 0)
         {
@@ -1632,7 +1632,7 @@ codec_params_from_tp_foreach (gpointer key, gpointer value, gpointer user_data)
 
   DEBUG ("ignoring %s=%s for %s %s stream", pname, pvalue,
       (priv->mode == MODE_JINGLE) ? "jingle" : "google",
-      (priv->media_type == TP_CODEC_MEDIA_TYPE_AUDIO) ? "audio" : "video");
+      (priv->media_type == TP_MEDIA_STREAM_TYPE_AUDIO) ? "audio" : "video");
 }
 
 LmMessageNode *
@@ -1677,7 +1677,7 @@ _gabble_media_stream_content_node_add_description (GabbleMediaStream *stream,
 
   if (priv->mode == MODE_GOOGLE)
     xmlns = NS_GOOGLE_SESSION_PHONE;
-  else if (priv->media_type == TP_CODEC_MEDIA_TYPE_VIDEO)
+  else if (priv->media_type == TP_MEDIA_STREAM_TYPE_VIDEO)
     xmlns = NS_JINGLE_DESCRIPTION_VIDEO;
   else
     xmlns = NS_JINGLE_DESCRIPTION_AUDIO;

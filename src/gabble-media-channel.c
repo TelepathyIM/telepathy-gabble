@@ -897,7 +897,7 @@ make_stream_list (GabbleMediaChannel *self,
       GValue entry = { 0, };
       guint id;
       GabbleHandle peer;
-      TpCodecMediaType type;
+      TpMediaStreamType type;
       TpMediaStreamState connection_state;
       CombinedStreamDirection combined_direction;
 

@@ -23,37 +23,9 @@
 
 #include <glib-object.h>
 
-G_BEGIN_DECLS
+#include "telepathy-spec-errors.h"
 
-typedef enum
-{
-  ChannelBanned,     /** You are banned from the channel.
-                      */
-  ChannelFull,       /** The channel is full.
-                      */
-  ChannelInviteOnly, /** The requested channel is invite only.
-                      */
-  Disconnected,      /** The connection is not currently connected and cannot
-                      *  be used.
-                      */
-  InvalidArgument,   /** Raised when one of the provided arguments is invalid.
-                      */
-  InvalidHandle,     /** The contact name specified is unknown on this channel
-                      *  or connection.
-                      */
-  NetworkError,      /** Raised when there is an error reading from or writing
-                      *  to the network.
-                      */
-  NotAvailable,      /** Raised when the requested functionality is temporarily
-                      *  unavailable.
-                      */
-  NotImplemented,    /** Raised when the requested method, channel, etc is not
-                      *  available on this connection.
-                      */
-  PermissionDenied,  /** The user is not permitted to perform the requested
-                      *  operation.
-                      */
-} TelepathyErrors;
+G_BEGIN_DECLS
 
 GQuark telepathy_errors_quark (void);
 #define TELEPATHY_ERRORS telepathy_errors_quark ()

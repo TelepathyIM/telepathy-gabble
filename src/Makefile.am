@@ -36,8 +36,8 @@ BUILT_SOURCES = \
     group-mixin-signals-marshal.c \
     properties-mixin-signals-marshal.h \
     properties-mixin-signals-marshal.c \
-    telepathy-errors-enumtypes.h \
-    telepathy-errors-enumtypes.c \
+    telepathy-spec-errors-enumtypes.h \
+    telepathy-spec-errors-enumtypes.c \
     text-mixin-signals-marshal.h \
     text-mixin-signals-marshal.c \
     tp-channel-factory-iface-signals-marshal.h \
@@ -189,7 +189,7 @@ AM_LDFLAGS = @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@
 
 %-enumtypes.c: %.h Makefile.in
 	glib-mkenums \
-	--fhead "#include <$*.h>" \
+	--fhead "#include <$*.h>\n#include <$*-enumtypes.h>" \
 	--fprod "\n/* enumerations from \"@filename@\" */" \
 	--vhead "GType\n@enum_name@_get_type (void)\n{\n  static GType etype = 0;\n  if (etype == 0) {\n    static const G@Type@Value values[] = {"     \
 	--vprod "      { @VALUENAME@, \"@VALUENAME@\", \"@VALUENAME@\" }," \

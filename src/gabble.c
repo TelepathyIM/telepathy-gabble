@@ -36,7 +36,7 @@
 #include "debug.h"
 #include "gabble-connection-manager.h"
 #include "telepathy-errors.h"
-#include "telepathy-errors-enumtypes.h"
+#include "telepathy-spec-errors-enumtypes.h"
 
 GSource *timeout = NULL;
 GMainLoop *mainloop = NULL;

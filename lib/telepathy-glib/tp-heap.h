@@ -1,5 +1,5 @@
 /*
- * Header file for GHeap
+ * Header file for TpHeap - a heap queue
  *
  * Copyright (C) 2006 Nokia Corporation. All rights reserved.
  *
@@ -20,21 +20,21 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef __G_HEAP_H__
-#define __G_HEAP_H__
+#ifndef __TP_HEAP_H__
+#define __TP_HEAP_H__
 
 #include <glib.h>
 
-typedef struct _GHeap GHeap;
+typedef struct _TpHeap TpHeap;
 
-GHeap *g_heap_new (GCompareFunc comparator);
-void g_heap_destroy (GHeap *);
-void g_heap_clear (GHeap *);
+TpHeap *tp_heap_new (GCompareFunc comparator);
+void tp_heap_destroy (TpHeap *);
+void tp_heap_clear (TpHeap *);
 
-void g_heap_add (GHeap *heap, gpointer element);
-gpointer g_heap_peek_first (GHeap *heap);
-gpointer g_heap_extract_first (GHeap *heap);
+void tp_heap_add (TpHeap *heap, gpointer element);
+gpointer tp_heap_peek_first (TpHeap *heap);
+gpointer tp_heap_extract_first (TpHeap *heap);
 
-guint g_heap_size (GHeap *heap);
+guint tp_heap_size (TpHeap *heap);
 
 #endif

@@ -1,5 +1,5 @@
 /*
- * Header file for GHeap
+ * TpHeap - a heap queue
  *
  * Copyright (C) 2006 Nokia Corporation. All rights reserved.
  *
@@ -21,20 +21,20 @@
  */
 
 #include <glib.h>
-#include "gheap.h"
+#include "telepathy-glib/tp-heap.h"
 
 #define DEFAULT_SIZE 64
 
-struct _GHeap
+struct _TpHeap
 {
   GPtrArray *data;
   GCompareFunc comparator;
 };
 
-GHeap *
-g_heap_new (GCompareFunc comparator)
+TpHeap *
+tp_heap_new (GCompareFunc comparator)
 {
-  GHeap *ret = g_slice_new (GHeap);
+  TpHeap *ret = g_slice_new (TpHeap);
   g_assert (comparator != NULL);
 
   ret->data = g_ptr_array_sized_new (DEFAULT_SIZE);
@@ -44,16 +44,16 @@ g_heap_new (GCompareFunc comparator)
 }
 
 void
-g_heap_destroy (GHeap * heap)
+tp_heap_destroy (TpHeap * heap)
 {
   g_return_if_fail (heap != NULL);
 
   g_ptr_array_free (heap->data, TRUE);
-  g_slice_free (GHeap, heap);
+  g_slice_free (TpHeap, heap);
 }
 
 void
-g_heap_clear (GHeap *heap)
+tp_heap_clear (TpHeap *heap)
 {
   g_return_if_fail (heap != NULL);
 
@@ -64,7 +64,7 @@ g_heap_clear (GHeap *heap)
 #define HEAP_INDEX(heap, index) (g_ptr_array_index ((heap)->data, (index)-1))
 
 void
-g_heap_add (GHeap *heap, gpointer element)
+tp_heap_add (TpHeap *heap, gpointer element)
 {
   guint m;
 
@@ -88,7 +88,7 @@ g_heap_add (GHeap *heap, gpointer element)
 }
 
 gpointer
-g_heap_peek_first (GHeap *heap)
+tp_heap_peek_first (TpHeap *heap)
 {
   g_return_val_if_fail (heap != NULL, NULL);
 
@@ -99,7 +99,7 @@ g_heap_peek_first (GHeap *heap)
 }
 
 gpointer
-g_heap_extract_first (GHeap * heap)
+tp_heap_extract_first (TpHeap * heap)
 {
   gpointer ret;
 
@@ -145,7 +145,7 @@ g_heap_extract_first (GHeap * heap)
 }
 
 guint
-g_heap_size (GHeap *heap)
+tp_heap_size (TpHeap *heap)
 {
   g_return_val_if_fail (heap != NULL, 0);
 

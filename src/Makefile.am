@@ -85,8 +85,6 @@ libgabble_convenience_la_SOURCES = \
     gabble-roomlist-channel.h \
     gabble-roomlist-channel.c \
     gabble-types.h \
-    gheap.h \
-    gheap.c \
     group-mixin.h \
     group-mixin.c \
     handles.h \

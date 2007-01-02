@@ -1,5 +1,6 @@
 #include <telepathy-glib/tp-intset.h>
-#include <gheap.h>
+#include <telepathy-glib/tp-heap.h>
+
 #include <stdlib.h>
 #include <time.h>
 #include <stdio.h>
@@ -11,7 +12,7 @@ static gint comparator_fn(gconstpointer a, gconstpointer b)
 
 int main()
 {
-	GHeap *heap = g_heap_new(comparator_fn);
+	TpHeap *heap = tp_heap_new(comparator_fn);
 	guint prev = 0;
 	guint i;
 
@@ -19,13 +20,13 @@ int main()
 
 	for (i=0; i<10000; i++)
 	{
-		g_heap_add(heap, GUINT_TO_POINTER(rand()));
+		tp_heap_add(heap, GUINT_TO_POINTER(rand()));
 	}
 
-	while (g_heap_size(heap))
+	while (tp_heap_size(heap))
 	{
-		guint elem = GPOINTER_TO_INT(g_heap_peek_first(heap));
-		g_assert(elem == GPOINTER_TO_UINT(g_heap_extract_first(heap)));
+		guint elem = GPOINTER_TO_INT(tp_heap_peek_first(heap));
+		g_assert(elem == GPOINTER_TO_UINT(tp_heap_extract_first(heap)));
 		g_assert(prev <= elem);
 		prev = elem;
 	}

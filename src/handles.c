@@ -22,7 +22,8 @@
 #include <dbus/dbus-glib.h>
 #include <string.h>
 
-#include "gheap.h"
+#include <telepathy-glib/tp-heap.h>
+
 #include "handles.h"
 #include "handle-set.h"
 #include "telepathy-errors.h"
@@ -75,19 +76,19 @@ struct _GabbleHandleRepo
 {
   GHashTable *contact_handles;
   GHashTable *contact_strings;
-  GHeap *free_contact_handles;
+  TpHeap *free_contact_handles;
   guint contact_serial;
   GData *client_contact_handle_sets;
 
   GHashTable *room_handles;
   GHashTable *room_strings;
-  GHeap *free_room_handles;
+  TpHeap *free_room_handles;
   guint room_serial;
   GData *client_room_handle_sets;
 
   GHashTable *group_handles;
   GHashTable *group_strings;
-  GHeap *free_group_handles;
+  TpHeap *free_group_handles;
   guint group_serial;
   GData *client_group_handle_sets;
 
@@ -172,20 +173,20 @@ gabble_handle_alloc (GabbleHandleRepo *repo, TpHandleType type)
 
   switch (type) {
     case TP_HANDLE_TYPE_CONTACT:
-      if (g_heap_size (repo->free_contact_handles))
-        ret = GPOINTER_TO_UINT (g_heap_extract_first (repo->free_contact_handles));
+      if (tp_heap_size (repo->free_contact_handles))
+        ret = GPOINTER_TO_UINT (tp_heap_extract_first (repo->free_contact_handles));
       else
         ret = repo->contact_serial++;
       break;
     case TP_HANDLE_TYPE_ROOM:
-      if (g_heap_size (repo->free_room_handles))
-        ret = GPOINTER_TO_UINT (g_heap_extract_first (repo->free_room_handles));
+      if (tp_heap_size (repo->free_room_handles))
+        ret = GPOINTER_TO_UINT (tp_heap_extract_first (repo->free_room_handles));
       else
         ret = repo->room_serial++;
       break;
     case TP_HANDLE_TYPE_GROUP:
-      if (g_heap_size (repo->free_group_handles))
-        ret = GPOINTER_TO_UINT (g_heap_extract_first (repo->free_group_handles));
+      if (tp_heap_size (repo->free_group_handles))
+        ret = GPOINTER_TO_UINT (tp_heap_extract_first (repo->free_group_handles));
       else
         ret = repo->group_serial++;
       break;
@@ -230,7 +231,7 @@ handle_priv_remove (GabbleHandleRepo *repo,
       if (handle == repo->contact_serial-1)
         repo->contact_serial--;
       else
-        g_heap_add (repo->free_contact_handles, GUINT_TO_POINTER (handle));
+        tp_heap_add (repo->free_contact_handles, GUINT_TO_POINTER (handle));
       break;
     case TP_HANDLE_TYPE_ROOM:
       g_hash_table_remove (repo->room_strings, string);
@@ -238,7 +239,7 @@ handle_priv_remove (GabbleHandleRepo *repo,
       if (handle == repo->room_serial-1)
         repo->room_serial--;
       else
-        g_heap_add (repo->free_room_handles, GUINT_TO_POINTER (handle));
+        tp_heap_add (repo->free_room_handles, GUINT_TO_POINTER (handle));
       break;
     case TP_HANDLE_TYPE_LIST:
       g_dataset_id_remove_data (&repo->list_handles, handle);
@@ -249,7 +250,7 @@ handle_priv_remove (GabbleHandleRepo *repo,
       if (handle == repo->group_serial-1)
         repo->group_serial--;
       else
-        g_heap_add (repo->free_group_handles, GUINT_TO_POINTER (handle));
+        tp_heap_add (repo->free_group_handles, GUINT_TO_POINTER (handle));
       break;
     default:
       g_assert_not_reached ();
@@ -349,9 +350,9 @@ gabble_handle_repo_new ()
   repo->room_strings = g_hash_table_new (g_str_hash, g_str_equal);
   repo->group_strings = g_hash_table_new (g_str_hash, g_str_equal);
 
-  repo->free_contact_handles = g_heap_new (handle_compare_func);
-  repo->free_room_handles = g_heap_new (handle_compare_func);
-  repo->free_group_handles = g_heap_new (handle_compare_func);
+  repo->free_contact_handles = tp_heap_new (handle_compare_func);
+  repo->free_room_handles = tp_heap_new (handle_compare_func);
+  repo->free_group_handles = tp_heap_new (handle_compare_func);
 
   repo->contact_serial = 1;
   repo->room_serial = 1;
@@ -485,9 +486,9 @@ gabble_handle_repo_destroy (GabbleHandleRepo *repo)
   g_hash_table_destroy (repo->contact_strings);
   g_hash_table_destroy (repo->room_strings);
   g_hash_table_destroy (repo->group_strings);
-  g_heap_destroy (repo->free_contact_handles);
-  g_heap_destroy (repo->free_room_handles);
-  g_heap_destroy (repo->free_group_handles);
+  tp_heap_destroy (repo->free_contact_handles);
+  tp_heap_destroy (repo->free_room_handles);
+  tp_heap_destroy (repo->free_group_handles);
   g_datalist_clear (&repo->list_handles);
 
   dbus_g_proxy_disconnect_signal (repo->bus_service_proxy,

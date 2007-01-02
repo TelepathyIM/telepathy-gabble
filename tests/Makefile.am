@@ -23,7 +23,7 @@ test_heap_SOURCES = \
     test-heap.c
 
 test_heap_LDADD = \
-    $(top_builddir)/src/libgabble-convenience.la
+    $(top_builddir)/lib/libtelepathy-glib.la
 
 test_base64_SOURCES = \
     test-base64.c

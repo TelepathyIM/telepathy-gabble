@@ -342,11 +342,11 @@ _parse_item_subscription (LmMessageNode *item_node)
     }
 }
 
-static GIntSet *
+static TpIntSet *
 _parse_item_groups (LmMessageNode *item_node, GabbleConnection *conn)
 {
   LmMessageNode *group_node;
-  GIntSet *groups = g_intset_new ();
+  TpIntSet *groups = tp_intset_new ();
 
   for (group_node = item_node->children;
       NULL != group_node;
@@ -358,7 +358,7 @@ _parse_item_groups (LmMessageNode *item_node, GabbleConnection *conn)
       if (NULL == group_node->value)
         continue;
 
-      g_intset_add (groups, gabble_handle_for_group (
+      tp_intset_add (groups, gabble_handle_for_group (
             conn->handles, group_node->value));
     }
 
@@ -493,8 +493,8 @@ typedef struct
 
 typedef struct
 {
-  GIntSet *contacts_added;
-  GIntSet *contacts_removed;
+  TpIntSet *contacts_added;
+  TpIntSet *contacts_removed;
 #ifdef ENABLE_DEBUG
   guint group_handle;
 #endif
@@ -513,8 +513,8 @@ group_mem_update_ensure (GroupsUpdateContext *ctx, GabbleHandle group_handle)
 #ifdef ENABLE_DEBUG
   update->group_handle = group_handle;
 #endif
-  update->contacts_added = g_intset_new ();
-  update->contacts_removed = g_intset_new ();
+  update->contacts_added = tp_intset_new ();
+  update->contacts_removed = tp_intset_new ();
   g_hash_table_insert (ctx->group_mem_updates,
                        GUINT_TO_POINTER (group_handle),
                        update);
@@ -529,7 +529,7 @@ _update_add_to_group (guint group_handle, gpointer user_data)
 
   DEBUG ("- contact#%u added to group#%u", ctx->contact_handle,
          group_handle);
-  g_intset_add (update->contacts_added, ctx->contact_handle);
+  tp_intset_add (update->contacts_added, ctx->contact_handle);
 }
 
 static void
@@ -540,7 +540,7 @@ _update_remove_from_group (guint group_handle, gpointer user_data)
 
   DEBUG ("- contact#%u removed from group#%u", ctx->contact_handle,
          group_handle);
-  g_intset_add (update->contacts_removed, ctx->contact_handle);
+  tp_intset_add (update->contacts_removed, ctx->contact_handle);
 }
 
 static GabbleRosterItem *
@@ -553,7 +553,7 @@ _gabble_roster_item_update (GabbleRoster *roster,
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
   GabbleRosterItem *item;
   const gchar *ask, *name;
-  GIntSet *old_groups, *new_groups, *added_to, *removed_from;
+  TpIntSet *old_groups, *new_groups, *added_to, *removed_from;
   GroupsUpdateContext ctx = { group_updates, contact_handle };
 
   g_assert (roster != NULL);
@@ -611,17 +611,17 @@ _gabble_roster_item_update (GabbleRoster *roster,
   old_groups = handle_set_peek (item->groups);    /* borrowed */
   new_groups = _parse_item_groups (node, priv->conn);
 
-  removed_from = g_intset_difference (old_groups, new_groups);
+  removed_from = tp_intset_difference (old_groups, new_groups);
   added_to = handle_set_update (item->groups, new_groups);
   handle_set_difference_update (item->groups, removed_from);
 
   DEBUG ("Checking which groups contact#%u was just added to:", contact_handle);
-  g_intset_foreach (added_to, _update_add_to_group, &ctx);
+  tp_intset_foreach (added_to, _update_add_to_group, &ctx);
   DEBUG ("Checking which groups contact#%u was just removed from:", contact_handle);
-  g_intset_foreach (removed_from, _update_remove_from_group, &ctx);
+  tp_intset_foreach (removed_from, _update_remove_from_group, &ctx);
 
-  g_intset_destroy (added_to);
-  g_intset_destroy (removed_from);
+  tp_intset_destroy (added_to);
+  tp_intset_destroy (removed_from);
 
   return item;
 }
@@ -657,8 +657,8 @@ _gabble_roster_item_dump (GabbleRosterItem *item)
 
   if (item->groups)
     {
-      g_intset_foreach (handle_set_peek (item->groups),
-                        _gabble_roster_item_dump_group, str);
+      tp_intset_foreach (handle_set_peek (item->groups),
+                         _gabble_roster_item_dump_group, str);
     }
 
   return g_string_free (str, FALSE);
@@ -784,9 +784,9 @@ _gabble_roster_item_to_message (GabbleRoster *roster,
 
   if (item->groups)
     {
-      g_intset_foreach (handle_set_peek (item->groups),
-                        _gabble_roster_item_put_group_in_message,
-                        (void *)&ctx);
+      tp_intset_foreach (handle_set_peek (item->groups),
+                         _gabble_roster_item_put_group_in_message,
+                         (void *)&ctx);
     }
 
 DONE:
@@ -958,8 +958,8 @@ _gabble_roster_received (GabbleRoster *roster)
 static void
 _group_mem_update_destroy (GroupMembershipUpdate *update)
 {
-  g_intset_destroy (update->contacts_added);
-  g_intset_destroy (update->contacts_removed);
+  tp_intset_destroy (update->contacts_added);
+  tp_intset_destroy (update->contacts_removed);
   g_free (update);
 }
 
@@ -971,7 +971,7 @@ _update_group (gpointer key, gpointer value, gpointer user_data)
   GroupMembershipUpdate *update = (GroupMembershipUpdate *)value;
   GabbleRosterChannel *group_channel = _gabble_roster_get_channel (
       roster, TP_HANDLE_TYPE_GROUP, group_handle);
-  GIntSet *empty = g_intset_new ();
+  TpIntSet *empty = tp_intset_new ();
 
 #ifdef ENABLE_DEBUG
   g_assert (group_handle == update->group_handle);
@@ -982,7 +982,7 @@ _update_group (gpointer key, gpointer value, gpointer user_data)
       "", update->contacts_added, update->contacts_removed, empty, empty,
       0, 0);
 
-  g_intset_destroy (empty);
+  tp_intset_destroy (empty);
 
   return TRUE;
 }
@@ -1053,10 +1053,10 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
   switch (sub_type)
     {
       LmMessageNode *item_node;
-      GIntSet *pub_add, *pub_rem,
-              *sub_add, *sub_rem, *sub_rp,
-              *known_add, *known_rem,
-              *deny_add, *deny_rem;
+      TpIntSet *pub_add, *pub_rem,
+               *sub_add, *sub_rem, *sub_rp,
+               *known_add, *known_rem,
+               *deny_add, *deny_rem;
       GArray *removed;
       GabbleHandle handle;
       GabbleRosterChannel *chan;
@@ -1067,21 +1067,21 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
     case LM_MESSAGE_SUB_TYPE_SET:
       /* asymmetry is because we don't get locally pending subscription
        * requests via <roster>, we get it via <presence> */
-      pub_add = g_intset_new ();
-      pub_rem = g_intset_new ();
-      sub_add = g_intset_new ();
-      sub_rem = g_intset_new ();
-      sub_rp = g_intset_new ();
-      known_add = g_intset_new ();
-      known_rem = g_intset_new ();
+      pub_add = tp_intset_new ();
+      pub_rem = tp_intset_new ();
+      sub_add = tp_intset_new ();
+      sub_rem = tp_intset_new ();
+      sub_rp = tp_intset_new ();
+      known_add = tp_intset_new ();
+      known_rem = tp_intset_new ();
       group_update_table = g_hash_table_new_full (NULL, NULL, NULL,
           (GDestroyNotify)_group_mem_update_destroy);
       removed = g_array_new (FALSE, FALSE, sizeof (GabbleHandle));
 
       if (google_roster)
         {
-          deny_add = g_intset_new ();
-          deny_rem = g_intset_new ();
+          deny_add = tp_intset_new ();
+          deny_rem = tp_intset_new ();
         }
       else
         {
@@ -1138,7 +1138,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
             {
             case GABBLE_ROSTER_SUBSCRIPTION_FROM:
             case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
-              g_intset_add (pub_add, handle);
+              tp_intset_add (pub_add, handle);
               break;
             case GABBLE_ROSTER_SUBSCRIPTION_NONE:
             case GABBLE_ROSTER_SUBSCRIPTION_TO:
@@ -1149,7 +1149,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
                * already local_pending in our publish channel */
               if (!handle_set_is_member (chan->group.local_pending, handle))
                 {
-                  g_intset_add (pub_rem, handle);
+                  tp_intset_add (pub_rem, handle);
                 }
               break;
             default:
@@ -1161,17 +1161,17 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
             {
             case GABBLE_ROSTER_SUBSCRIPTION_TO:
             case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
-              g_intset_add (sub_add, handle);
+              tp_intset_add (sub_add, handle);
               break;
             case GABBLE_ROSTER_SUBSCRIPTION_NONE:
             case GABBLE_ROSTER_SUBSCRIPTION_FROM:
               if (item->ask_subscribe)
-                g_intset_add (sub_rp, handle);
+                tp_intset_add (sub_rp, handle);
               else
-                g_intset_add (sub_rem, handle);
+                tp_intset_add (sub_rem, handle);
               break;
             case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
-              g_intset_add (sub_rem, handle);
+              tp_intset_add (sub_rem, handle);
               break;
             default:
               g_assert_not_reached ();
@@ -1185,12 +1185,12 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
             case GABBLE_ROSTER_SUBSCRIPTION_FROM:
             case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
               if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN)
-                  g_intset_add (known_rem, handle);
+                  tp_intset_add (known_rem, handle);
               else
-                  g_intset_add (known_add, handle);
+                  tp_intset_add (known_add, handle);
               break;
             case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
-              g_intset_add (known_rem, handle);
+              tp_intset_add (known_rem, handle);
               break;
             default:
               g_assert_not_reached ();
@@ -1206,12 +1206,12 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
                 case GABBLE_ROSTER_SUBSCRIPTION_FROM:
                 case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
                   if (item->google_type == GOOGLE_ITEM_TYPE_BLOCKED)
-                    g_intset_add (deny_add, handle);
+                    tp_intset_add (deny_add, handle);
                   else
-                    g_intset_add (deny_rem, handle);
+                    tp_intset_add (deny_rem, handle);
                   break;
                 case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
-                  g_intset_add (deny_rem, handle);
+                  tp_intset_add (deny_rem, handle);
                   break;
                 default:
                   g_assert_not_reached ();
@@ -1256,21 +1256,21 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
           gabble_group_mixin_change_members (G_OBJECT (chan),
               "", deny_add, deny_rem, NULL, NULL, 0, 0);
 
-          g_intset_destroy (deny_add);
-          g_intset_destroy (deny_rem);
+          tp_intset_destroy (deny_add);
+          tp_intset_destroy (deny_rem);
         }
 
       for (i = 0; i < removed->len; i++)
           _gabble_roster_item_remove (roster,
               g_array_index (removed, GabbleHandle, i));
 
-      g_intset_destroy (pub_add);
-      g_intset_destroy (pub_rem);
-      g_intset_destroy (sub_add);
-      g_intset_destroy (sub_rem);
-      g_intset_destroy (sub_rp);
-      g_intset_destroy (known_add);
-      g_intset_destroy (known_rem);
+      tp_intset_destroy (pub_add);
+      tp_intset_destroy (pub_rem);
+      tp_intset_destroy (sub_add);
+      tp_intset_destroy (sub_rem);
+      tp_intset_destroy (sub_rp);
+      tp_intset_destroy (known_add);
+      tp_intset_destroy (known_rem);
       g_array_free (removed, TRUE);
       break;
     default:
@@ -1358,7 +1358,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
   LmMessageNode *pres_node, *child_node;
   const char *from;
   LmMessageSubType sub_type;
-  GIntSet *tmp;
+  TpIntSet *tmp;
   GabbleHandle handle;
   const gchar *status_message = NULL;
   GabbleRosterChannel *chan = NULL;
@@ -1407,23 +1407,23 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
       DEBUG ("making %s (handle %u) local pending on the publish channel",
           from, handle);
 
-      tmp = g_intset_new ();
-      g_intset_add (tmp, handle);
+      tmp = tp_intset_new ();
+      tp_intset_add (tmp, handle);
 
       handle = GABBLE_LIST_HANDLE_PUBLISH;
       chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle);
       gabble_group_mixin_change_members (G_OBJECT (chan), status_message,
           NULL, NULL, tmp, NULL, 0, 0);
 
-      g_intset_destroy (tmp);
+      tp_intset_destroy (tmp);
 
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     case LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE:
       DEBUG ("removing %s (handle %u) from the publish channel",
           from, handle);
 
-      tmp = g_intset_new ();
-      g_intset_add (tmp, handle);
+      tmp = tp_intset_new ();
+      tp_intset_add (tmp, handle);
 
       handle = GABBLE_LIST_HANDLE_PUBLISH;
       chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle);
@@ -1432,15 +1432,15 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
 
       _gabble_roster_send_presence_ack (roster, from, sub_type, changed);
 
-      g_intset_destroy (tmp);
+      tp_intset_destroy (tmp);
 
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     case LM_MESSAGE_SUB_TYPE_SUBSCRIBED:
       DEBUG ("adding %s (handle %u) to the subscribe channel",
           from, handle);
 
-      tmp = g_intset_new ();
-      g_intset_add (tmp, handle);
+      tmp = tp_intset_new ();
+      tp_intset_add (tmp, handle);
 
       handle = GABBLE_LIST_HANDLE_SUBSCRIBE;
       chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle);
@@ -1449,15 +1449,15 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
 
       _gabble_roster_send_presence_ack (roster, from, sub_type, changed);
 
-      g_intset_destroy (tmp);
+      tp_intset_destroy (tmp);
 
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     case LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED:
       DEBUG ("removing %s (handle %u) from the subscribe channel",
           from, handle);
 
-      tmp = g_intset_new ();
-      g_intset_add (tmp, handle);
+      tmp = tp_intset_new ();
+      tp_intset_add (tmp, handle);
 
       handle = GABBLE_LIST_HANDLE_SUBSCRIBE;
       chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle);
@@ -1466,7 +1466,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
 
       _gabble_roster_send_presence_ack (roster, from, sub_type, changed);
 
-      g_intset_destroy (tmp);
+      tp_intset_destroy (tmp);
 
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     default:
@@ -1704,7 +1704,7 @@ roster_item_apply_edits (GabbleRoster *roster,
 {
   gboolean altered = FALSE, ret;
   GabbleRosterItem edited_item;
-  GIntSet *intset;
+  TpIntSet *intset;
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
   GabbleRosterItemEdit *edits = item->unsent_edits;
   LmMessage *message;
@@ -1757,8 +1757,8 @@ roster_item_apply_edits (GabbleRoster *roster,
           if (edits->add_to_groups)
             {
               GString *str = g_string_new ("Adding to groups: ");
-              g_intset_foreach (handle_set_peek (edits->add_to_groups),
-                                _gabble_roster_item_dump_group, str);
+              tp_intset_foreach (handle_set_peek (edits->add_to_groups),
+                                 _gabble_roster_item_dump_group, str);
               DEBUG("%s", g_string_free (str, FALSE));
             }
           else
@@ -1768,8 +1768,8 @@ roster_item_apply_edits (GabbleRoster *roster,
           if (edits->remove_from_groups)
             {
               GString *str = g_string_new ("Removing from groups: ");
-              g_intset_foreach (handle_set_peek (edits->remove_from_groups),
-                                _gabble_roster_item_dump_group, str);
+              tp_intset_foreach (handle_set_peek (edits->remove_from_groups),
+                                 _gabble_roster_item_dump_group, str);
               DEBUG("%s", g_string_free (str, FALSE));
             }
           else
@@ -1782,28 +1782,28 @@ roster_item_apply_edits (GabbleRoster *roster,
           TP_HANDLE_TYPE_GROUP);
       intset = handle_set_update (edited_item.groups,
           handle_set_peek (item->groups));
-      g_intset_destroy (intset);
+      tp_intset_destroy (intset);
 
       if (edits->add_to_groups)
         {
           intset = handle_set_update (edited_item.groups,
               handle_set_peek (edits->add_to_groups));
-          if (g_intset_size (intset) > 0)
+          if (tp_intset_size (intset) > 0)
             {
               altered = TRUE;
             }
-          g_intset_destroy (intset);
+          tp_intset_destroy (intset);
         }
 
       if (edits->remove_from_groups)
         {
           intset = handle_set_difference_update (edited_item.groups,
               handle_set_peek (edits->remove_from_groups));
-          if (g_intset_size (intset) > 0)
+          if (tp_intset_size (intset) > 0)
             {
               altered = TRUE;
             }
-          g_intset_destroy (intset);
+          tp_intset_destroy (intset);
         }
     }
 

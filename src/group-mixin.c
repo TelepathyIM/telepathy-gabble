@@ -557,20 +557,20 @@ static void remove_handle_owners_if_exist (GObject *obj, GArray *array);
 gboolean
 gabble_group_mixin_change_members (GObject *obj,
                                    const gchar *message,
-                                   GIntSet *add,
-                                   GIntSet *remove,
-                                   GIntSet *local_pending,
-                                   GIntSet *remote_pending,
+                                   TpIntSet *add,
+                                   TpIntSet *remove,
+                                   TpIntSet *local_pending,
+                                   TpIntSet *remote_pending,
                                    GabbleHandle actor,
                                    guint reason)
 {
   GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
   GabbleGroupMixinClass *mixin_cls = GABBLE_GROUP_MIXIN_CLASS (G_OBJECT_GET_CLASS (obj));
-  GIntSet *new_add, *new_remove, *new_local_pending,
-          *new_remote_pending, *tmp, *tmp2, *empty;
+  TpIntSet *new_add, *new_remove, *new_local_pending,
+           *new_remote_pending, *tmp, *tmp2, *empty;
   gboolean ret;
 
-  empty = g_intset_new ();
+  empty = tp_intset_new ();
 
   if (add == NULL)
     add = empty;
@@ -592,11 +592,11 @@ gabble_group_mixin_change_members (GObject *obj,
 
   /* members - local_pending */
   tmp = handle_set_difference_update (mixin->members, local_pending);
-  g_intset_destroy (tmp);
+  tp_intset_destroy (tmp);
 
   /* members - remote_pending */
   tmp = handle_set_difference_update (mixin->members, remote_pending);
-  g_intset_destroy (tmp);
+  tp_intset_destroy (tmp);
 
 
   /* local pending + local_pending */
@@ -604,18 +604,18 @@ gabble_group_mixin_change_members (GObject *obj,
 
   /* local pending - add */
   tmp = handle_set_difference_update (mixin->local_pending, add);
-  g_intset_destroy (tmp);
+  tp_intset_destroy (tmp);
 
   /* local pending - remove */
   tmp = handle_set_difference_update (mixin->local_pending, remove);
-  tmp2 = g_intset_union (new_remove, tmp);
-  g_intset_destroy (new_remove);
-  g_intset_destroy (tmp);
+  tmp2 = tp_intset_union (new_remove, tmp);
+  tp_intset_destroy (new_remove);
+  tp_intset_destroy (tmp);
   new_remove = tmp2;
 
   /* local pending - remote_pending */
   tmp = handle_set_difference_update (mixin->local_pending, remote_pending);
-  g_intset_destroy (tmp);
+  tp_intset_destroy (tmp);
 
 
   /* remote pending + remote_pending */
@@ -623,32 +623,32 @@ gabble_group_mixin_change_members (GObject *obj,
 
   /* remote pending - add */
   tmp = handle_set_difference_update (mixin->remote_pending, add);
-  g_intset_destroy (tmp);
+  tp_intset_destroy (tmp);
 
   /* remote pending - remove */
   tmp = handle_set_difference_update (mixin->remote_pending, remove);
-  tmp2 = g_intset_union (new_remove, tmp);
-  g_intset_destroy (new_remove);
-  g_intset_destroy (tmp);
+  tmp2 = tp_intset_union (new_remove, tmp);
+  tp_intset_destroy (new_remove);
+  tp_intset_destroy (tmp);
   new_remove = tmp2;
 
   /* remote pending - local_pending */
   tmp = handle_set_difference_update (mixin->remote_pending, local_pending);
-  g_intset_destroy (tmp);
+  tp_intset_destroy (tmp);
 
-  if (g_intset_size (new_add) > 0 ||
-      g_intset_size (new_remove) > 0 ||
-      g_intset_size (new_local_pending) > 0 ||
-      g_intset_size (new_remote_pending) > 0)
+  if (tp_intset_size (new_add) > 0 ||
+      tp_intset_size (new_remove) > 0 ||
+      tp_intset_size (new_local_pending) > 0 ||
+      tp_intset_size (new_remote_pending) > 0)
     {
       GArray *arr_add, *arr_remove, *arr_local, *arr_remote;
       gchar *add_str, *rem_str, *local_str, *remote_str;
 
       /* translate intsets to arrays */
-      arr_add = g_intset_to_array (new_add);
-      arr_remove = g_intset_to_array (new_remove);
-      arr_local = g_intset_to_array (new_local_pending);
-      arr_remote = g_intset_to_array (new_remote_pending);
+      arr_add = tp_intset_to_array (new_add);
+      arr_remove = tp_intset_to_array (new_remove);
+      arr_local = tp_intset_to_array (new_local_pending);
+      arr_remote = tp_intset_to_array (new_remote_pending);
 
       /* remove any handle owner mappings */
       remove_handle_owners_if_exist (obj, arr_remove);
@@ -707,11 +707,11 @@ gabble_group_mixin_change_members (GObject *obj,
     }
 
   /* free intsets */
-  g_intset_destroy (new_add);
-  g_intset_destroy (new_remove);
-  g_intset_destroy (new_local_pending);
-  g_intset_destroy (new_remote_pending);
-  g_intset_destroy (empty);
+  tp_intset_destroy (new_add);
+  tp_intset_destroy (new_remove);
+  tp_intset_destroy (new_local_pending);
+  tp_intset_destroy (new_remote_pending);
+  tp_intset_destroy (empty);
 
   return ret;
 }

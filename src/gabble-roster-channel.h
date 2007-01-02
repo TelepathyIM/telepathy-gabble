@@ -22,7 +22,7 @@
 #define __GABBLE_ROSTER_CHANNEL_H__
 
 #include <glib-object.h>
-#include "gintset.h"
+#include <telepathy-glib/tp-intset.h>
 
 #include "gabble-types.h"
 #include "group-mixin.h"

@@ -87,8 +87,6 @@ libgabble_convenience_la_SOURCES = \
     gabble-types.h \
     gheap.h \
     gheap.c \
-    gintset.h \
-    gintset.c \
     group-mixin.h \
     group-mixin.c \
     handles.h \
@@ -141,6 +139,8 @@ libgabble_convenience_la_SOURCES = \
     properties-mixin-signals-marshal.list \
     text-mixin-signals-marshal.list \
     tp-channel-factory-iface-signals-marshal.list
+
+libgabble_convenience_la_LIBADD = ../lib/libtelepathy-glib.la
 
 nodist_libgabble_convenience_la_SOURCES = \
     $(BUILT_SOURCES)

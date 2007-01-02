@@ -21,7 +21,7 @@
  *
  */
 #include <glib.h>
-#include "gintset.h"
+#include "telepathy-glib/tp-intset.h"
 #include "handles.h"
 
 #include "handle-set.h"
@@ -29,7 +29,7 @@
 struct _GabbleHandleSet
 {
   GabbleHandleRepo *repo;
-  GIntSet *intset;
+  TpIntSet *intset;
   TpHandleType type;
 };
 
@@ -45,7 +45,7 @@ GabbleHandleSet *
 handle_set_new (GabbleHandleRepo *repo, TpHandleType type)
 {
   GabbleHandleSet *set = g_new(GabbleHandleSet, 1);
-  set->intset = g_intset_new();
+  set->intset = tp_intset_new();
   set->repo = repo;
   set->type = type;
 
@@ -68,7 +68,7 @@ void
 handle_set_destroy (GabbleHandleSet *set)
 {
   handle_set_foreach (set, freer, NULL);
-  g_intset_destroy (set->intset);
+  tp_intset_destroy (set->intset);
   g_free (set);
 }
 
@@ -76,9 +76,9 @@ handle_set_destroy (GabbleHandleSet *set)
  * handle_set_peek:
  * @set:#GabbleHandleSet to peek at
  *
- * Get the underlying GIntSet used by this GabbleHandleSet
+ * Get the underlying TpIntSet used by this GabbleHandleSet
  */
-GIntSet *
+TpIntSet *
 handle_set_peek (GabbleHandleSet *set)
 {
   return set->intset;
@@ -99,11 +99,11 @@ handle_set_add (GabbleHandleSet *set, GabbleHandle handle)
   g_return_if_fail (set != NULL);
   g_return_if_fail (handle != 0);
 
-  if (!g_intset_is_member(set->intset, handle))
+  if (!tp_intset_is_member(set->intset, handle))
     {
       g_return_if_fail (gabble_handle_ref (set->repo, set->type, handle));
 
-      g_intset_add (set->intset, handle);
+      tp_intset_add (set->intset, handle);
     }
 }
 
@@ -125,11 +125,11 @@ handle_set_remove (GabbleHandleSet *set, GabbleHandle handle)
   g_return_val_if_fail (set != NULL, FALSE);
   g_return_val_if_fail (handle != 0, FALSE);
 
-  if (g_intset_is_member(set->intset, handle))
+  if (tp_intset_is_member(set->intset, handle))
     {
       g_return_val_if_fail (gabble_handle_unref (set->repo, set->type, handle), FALSE);
 
-      g_intset_remove (set->intset, handle);
+      tp_intset_remove (set->intset, handle);
       return TRUE;
     }
 
@@ -150,7 +150,7 @@ handle_set_remove (GabbleHandleSet *set, GabbleHandle handle)
 gboolean
 handle_set_is_member (GabbleHandleSet *set, GabbleHandle handle)
 {
-  return g_intset_is_member(set->intset, handle);
+  return tp_intset_is_member(set->intset, handle);
 }
 
 typedef struct __foreach_data
@@ -175,20 +175,20 @@ handle_set_foreach (GabbleHandleSet *set, GabbleHandleFunc func, gpointer userda
   data.set = set;
   data.func = func;
   data.userdata = userdata;
-  g_intset_foreach (set->intset, foreach_helper, &data);
+  tp_intset_foreach (set->intset, foreach_helper, &data);
 }
 
 int
 handle_set_size (GabbleHandleSet *set)
 {
-  return g_intset_size (set->intset);
+  return tp_intset_size (set->intset);
 }
 
 GArray *handle_set_to_array (GabbleHandleSet *set)
 {
   g_return_val_if_fail (set != NULL, NULL);
 
-  return g_intset_to_array (set->intset);
+  return tp_intset_to_array (set->intset);
 }
 
 static void
@@ -201,28 +201,28 @@ ref_one (guint handle, gpointer data)
 /**
  * handle_set_update:
  * @set: a #GabbleHandleSet to update
- * @add: a #GIntSet of handles to add
+ * @add: a #TpIntSet of handles to add
  *
  * Add a set of handles to a handle set, referencing those which are not
- * already members. The GIntSet returned must be freed with g_intset_destroy.
+ * already members. The TpIntSet returned must be freed with tp_intset_destroy.
  *
  * Returns: the handles which were added
  */
-GIntSet *
-handle_set_update (GabbleHandleSet *set, const GIntSet *add)
+TpIntSet *
+handle_set_update (GabbleHandleSet *set, const TpIntSet *add)
 {
-  GIntSet *ret, *tmp;
+  TpIntSet *ret, *tmp;
 
   g_return_val_if_fail (set != NULL, NULL);
   g_return_val_if_fail (add != NULL, NULL);
 
   /* reference each of ADD - CURRENT */
-  ret = g_intset_difference (add, set->intset);
-  g_intset_foreach (ret, ref_one, set);
+  ret = tp_intset_difference (add, set->intset);
+  tp_intset_foreach (ret, ref_one, set);
 
   /* update CURRENT to be the union of CURRENT and ADD */
-  tmp = g_intset_union (add, set->intset);
-  g_intset_destroy (set->intset);
+  tmp = tp_intset_union (add, set->intset);
+  tp_intset_destroy (set->intset);
   set->intset = tmp;
 
   return ret;
@@ -238,28 +238,28 @@ unref_one (guint handle, gpointer data)
 /**
  * handle_set_difference_update:
  * @set: a #GabbleHandleSet to update
- * @remove: a #GIntSet of handles to remove
+ * @remove: a #TpIntSet of handles to remove
  *
  * Remove a set of handles from a handle set, dereferencing those which are
- * members. The GIntSet returned must be freed with g_intset_destroy.
+ * members. The TpIntSet returned must be freed with tp_intset_destroy.
  *
  * Returns: the handles which were removed
  */
-GIntSet *
-handle_set_difference_update (GabbleHandleSet *set, const GIntSet *remove)
+TpIntSet *
+handle_set_difference_update (GabbleHandleSet *set, const TpIntSet *remove)
 {
-  GIntSet *ret, *tmp;
+  TpIntSet *ret, *tmp;
 
   g_return_val_if_fail (set != NULL, NULL);
   g_return_val_if_fail (remove != NULL, NULL);
 
   /* dereference each of REMOVE n CURRENT */
-  ret = g_intset_intersection (remove, set->intset);
-  g_intset_foreach (ret, unref_one, set);
+  ret = tp_intset_intersection (remove, set->intset);
+  tp_intset_foreach (ret, unref_one, set);
 
   /* update CURRENT to be CURRENT - REMOVE */
-  tmp = g_intset_difference (set->intset, remove);
-  g_intset_destroy (set->intset);
+  tmp = tp_intset_difference (set->intset, remove);
+  tp_intset_destroy (set->intset);
   set->intset = tmp;
 
   return ret;

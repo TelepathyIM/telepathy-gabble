@@ -131,7 +131,7 @@ gabble_media_channel_constructor (GType type, guint n_props,
   GObject *obj;
   GabbleMediaChannelPrivate *priv;
   DBusGConnection *bus;
-  GIntSet *set;
+  TpIntSet *set;
 
   obj = G_OBJECT_CLASS (gabble_media_channel_parent_class)->
            constructor (type, n_props, props);
@@ -146,12 +146,12 @@ gabble_media_channel_constructor (GType type, guint n_props,
                            priv->conn->handles, priv->conn->self_handle);
 
   /* automatically add creator to channel */
-  set = g_intset_new ();
-  g_intset_add (set, priv->creator);
+  set = tp_intset_new ();
+  tp_intset_add (set, priv->creator);
 
   gabble_group_mixin_change_members (obj, "", set, NULL, NULL, NULL, 0, 0);
 
-  g_intset_destroy (set);
+  tp_intset_destroy (set);
 
   /* allow member adding */
   gabble_group_mixin_change_flags (obj, TP_CHANNEL_GROUP_FLAG_CAN_ADD, 0);
@@ -248,19 +248,19 @@ _gabble_media_channel_dispatch_session_action (GabbleMediaChannel *chan,
   if (session == NULL)
     {
       GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (chan);
-      GIntSet *set;
+      TpIntSet *set;
 
       session = create_session (chan, peer, peer_resource, sid);
       session_is_new = TRUE;
 
       /* make us local pending */
-      set = g_intset_new ();
-      g_intset_add (set, mixin->self_handle);
+      set = tp_intset_new ();
+      tp_intset_add (set, mixin->self_handle);
 
       gabble_group_mixin_change_members (G_OBJECT (chan), "", NULL, NULL, set,
           NULL, 0, 0);
 
-      g_intset_destroy (set);
+      tp_intset_destroy (set);
 
       /* and update flags accordingly */
       gabble_group_mixin_change_flags (G_OBJECT (chan),
@@ -1224,18 +1224,18 @@ _gabble_media_channel_add_member (GObject *obj, GabbleHandle handle, const gchar
 
       /* yes: invite the peer */
 
-      GIntSet *set;
+      TpIntSet *set;
 
       /* create a new session */
       create_session (chan, handle, NULL, NULL);
 
       /* make the peer remote pending */
-      set = g_intset_new ();
-      g_intset_add (set, handle);
+      set = tp_intset_new ();
+      tp_intset_add (set, handle);
 
       gabble_group_mixin_change_members (obj, "", NULL, NULL, NULL, set, 0, 0);
 
-      g_intset_destroy (set);
+      tp_intset_destroy (set);
 
       /* and update flags accordingly */
       gabble_group_mixin_change_flags (obj,
@@ -1256,15 +1256,15 @@ _gabble_media_channel_add_member (GObject *obj, GabbleHandle handle, const gchar
         {
           /* yes: accept the request */
 
-          GIntSet *set;
+          TpIntSet *set;
 
           /* make us a member */
-          set = g_intset_new ();
-          g_intset_add (set, handle);
+          set = tp_intset_new ();
+          tp_intset_add (set, handle);
 
           gabble_group_mixin_change_members (obj, "", set, NULL, NULL, NULL, 0, 0);
 
-          g_intset_destroy (set);
+          tp_intset_destroy (set);
 
           /* update flags */
           gabble_group_mixin_change_flags (obj, 0, TP_CHANNEL_GROUP_FLAG_CAN_ADD);
@@ -1287,7 +1287,7 @@ gabble_media_channel_remove_member (GObject *obj, GabbleHandle handle, const gch
   GabbleMediaChannel *chan = GABBLE_MEDIA_CHANNEL (obj);
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
   GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
-  GIntSet *set;
+  TpIntSet *set;
 
   if (priv->session == NULL)
     {
@@ -1310,12 +1310,12 @@ gabble_media_channel_remove_member (GObject *obj, GabbleHandle handle, const gch
   _gabble_media_session_terminate (priv->session, INITIATOR_LOCAL, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
 
   /* remove the member */
-  set = g_intset_new ();
-  g_intset_add (set, handle);
+  set = tp_intset_new ();
+  tp_intset_add (set, handle);
 
   gabble_group_mixin_change_members (obj, "", NULL, set, NULL, NULL, 0, 0);
 
-  g_intset_destroy (set);
+  tp_intset_destroy (set);
 
   /* and update flags accordingly */
   gabble_group_mixin_change_flags (obj, TP_CHANNEL_GROUP_FLAG_CAN_ADD,
@@ -1338,18 +1338,18 @@ session_terminated_cb (GabbleMediaSession *session,
   gchar *sid;
   JingleSessionState state;
   GabbleHandle peer;
-  GIntSet *set;
+  TpIntSet *set;
 
   g_object_get (session,
                 "state", &state,
                 "peer", &peer,
                 NULL);
 
-  set = g_intset_new ();
+  set = tp_intset_new ();
 
   /* remove us and the peer from the member list */
-  g_intset_add (set, mixin->self_handle);
-  g_intset_add (set, peer);
+  tp_intset_add (set, mixin->self_handle);
+  tp_intset_add (set, peer);
 
   gabble_group_mixin_change_members (G_OBJECT (channel), "", NULL, set, NULL, NULL, terminator, reason);
 
@@ -1396,7 +1396,7 @@ session_state_changed_cb (GabbleMediaSession *session,
   GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (channel);
   JingleSessionState state;
   GabbleHandle peer;
-  GIntSet *set;
+  TpIntSet *set;
 
   g_object_get (session,
                 "state", &state,
@@ -1409,10 +1409,10 @@ session_state_changed_cb (GabbleMediaSession *session,
   if (priv->creator != mixin->self_handle)
     return;
 
-  set = g_intset_new ();
+  set = tp_intset_new ();
 
   /* add the peer to the member list */
-  g_intset_add (set, peer);
+  tp_intset_add (set, peer);
 
   gabble_group_mixin_change_members (G_OBJECT (channel), "", set, NULL, NULL, NULL, 0, 0);
 
@@ -1422,7 +1422,7 @@ session_state_changed_cb (GabbleMediaSession *session,
       TP_CHANNEL_GROUP_FLAG_CAN_ADD |
       TP_CHANNEL_GROUP_FLAG_CAN_RESCIND);
 
-  g_intset_destroy (set);
+  tp_intset_destroy (set);
 }
 
 static void

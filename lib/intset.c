@@ -1,4 +1,5 @@
-/* gintset.c - Source for a Glib-link set of integers
+/* intset.c - Source for a set of unsigned integers (implemented as a
+ * variable length bitfield)
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -19,56 +20,57 @@
 
 #include <string.h>
 #include <glib.h>
-#include "gintset.h"
+
+#include "telepathy-glib/tp-intset.h"
 
 #define DEFAULT_SIZE 16
 #define DEFAULT_INCREMENT 8
 #define DEFAULT_INCREMENT_LOG2 3
 
-struct _GIntSet
+struct _TpIntSet
 {
   guint32 *bits;
   guint size;
 };
 
-static GIntSet *
-_g_intset_new_with_size (guint size)
+static TpIntSet *
+_tp_intset_new_with_size (guint size)
 {
-  GIntSet *set = g_new (GIntSet, 1);
+  TpIntSet *set = g_slice_new (TpIntSet);
   set->size = MAX (size, DEFAULT_SIZE);
   set->bits = g_new0 (guint32, set->size);
   return set;
 }
 
-GIntSet *
-g_intset_new ()
+TpIntSet *
+tp_intset_new ()
 {
-  return _g_intset_new_with_size (DEFAULT_SIZE);
+  return _tp_intset_new_with_size (DEFAULT_SIZE);
 }
 
 /**
- * g_intset_destroy:
+ * tp_intset_destroy:
  * @set: set
  *
  * delete the set
  */
 void
-g_intset_destroy (GIntSet *set)
+tp_intset_destroy (TpIntSet *set)
 {
   g_return_if_fail (set != NULL);
 
   g_free (set->bits);
-  g_free (set);
+  g_slice_free (TpIntSet, set);
 }
 
 /**
- * g_intset_clear:
+ * tp_intset_clear:
  * @set : set
  *
  * Unset every integer in the set.
  */
 void
-g_intset_clear (GIntSet *set)
+tp_intset_clear (TpIntSet *set)
 {
   g_return_if_fail (set != NULL);
 
@@ -76,14 +78,14 @@ g_intset_clear (GIntSet *set)
 }
 
 /**
- * g_intset_add:
+ * tp_intset_add:
  * @set: set
  * @element: integer to add
  *
- * Add an integer into a GIntSet
+ * Add an integer into a TpIntSet
  */
 void
-g_intset_add (GIntSet *set, guint element)
+tp_intset_add (TpIntSet *set, guint element)
 {
   guint offset;
   guint newsize;
@@ -104,15 +106,15 @@ g_intset_add (GIntSet *set, guint element)
 }
 
 /**
- * g_intset_remove:
+ * tp_intset_remove:
  * @set: set
  * @element: integer to add
  *
- * Remove an integer from a GIntSet
+ * Remove an integer from a TpIntSet
  * Returns: TRUE if element was in set
  */
 gboolean
-g_intset_remove (GIntSet *set, guint element)
+tp_intset_remove (TpIntSet *set, guint element)
 {
   guint offset;
   guint mask;
@@ -133,7 +135,7 @@ g_intset_remove (GIntSet *set, guint element)
 }
 
 /**
- * g_intset_is_member:
+ * tp_intset_is_member:
  * @set: set
  * @element: integer to test
  *
@@ -141,7 +143,7 @@ g_intset_remove (GIntSet *set, guint element)
  * Returns: TRUE if element was in set
  */
 gboolean
-g_intset_is_member (const GIntSet *set, guint element)
+tp_intset_is_member (const TpIntSet *set, guint element)
 {
   guint offset;
 
@@ -155,16 +157,16 @@ g_intset_is_member (const GIntSet *set, guint element)
 }
 
 /**
- * g_intset_foreach:
+ * tp_intset_foreach:
  * @set: set
- * @func: @GIntFunc to use to iterate the set
+ * @func: @TpIntFunc to use to iterate the set
  * @userdata: user data to pass to each call of @func
  *
  * Iterates every member of the set calling @func
  */
 
 void
-g_intset_foreach (const GIntSet *set, GIntFunc func, gpointer userdata)
+tp_intset_foreach (const TpIntSet *set, TpIntFunc func, gpointer userdata)
 {
   guint i, j;
 
@@ -191,13 +193,13 @@ addint (guint32 i, gpointer data)
 }
 
 /**
- * g_intset_to_array:
+ * tp_intset_to_array:
  * @set: set to convert
- * Convert a gintset to an array, allocates the array for you, hence you
- * must free it after use.
+ * Convert a TpIntSet to an array, which must be freed with g_array_free by
+ * the caller.
  */
 GArray *
-g_intset_to_array (GIntSet *set)
+tp_intset_to_array (TpIntSet *set)
 {
   GArray *array;
 
@@ -205,15 +207,15 @@ g_intset_to_array (GIntSet *set)
 
   array = g_array_new (FALSE, TRUE, sizeof (guint32));
 
-  g_intset_foreach (set, addint, array);
+  tp_intset_foreach (set, addint, array);
 
   return array;
 }
 
-GIntSet *
-g_intset_from_array (GArray *array)
+TpIntSet *
+tp_intset_from_array (GArray *array)
 {
-  GIntSet *set;
+  TpIntSet *set;
   guint32 max, i;
 
   g_return_val_if_fail (array != NULL, NULL);
@@ -227,18 +229,18 @@ g_intset_from_array (GArray *array)
     max = MAX (max, g_array_index (array, guint32, array->len - 1));
   if (array->len > 2)
     max = MAX (max, g_array_index (array, guint32, (array->len - 1) >> 1));
-  set = _g_intset_new_with_size (1 + (max >> 5));
+  set = _tp_intset_new_with_size (1 + (max >> 5));
 
   for (i = 0; i < array->len; i++)
     {
-      g_intset_add (set, g_array_index (array, guint32, i));
+      tp_intset_add (set, g_array_index (array, guint32, i));
     }
 
   return set;
 }
 
 guint
-g_intset_size (const GIntSet *set)
+tp_intset_size (const TpIntSet *set)
 {
   guint i, count = 0;
   guint32 n;
@@ -256,9 +258,9 @@ g_intset_size (const GIntSet *set)
 }
 
 gboolean
-g_intset_is_equal (const GIntSet *left, const GIntSet *right)
+tp_intset_is_equal (const TpIntSet *left, const TpIntSet *right)
 {
-  const GIntSet *large, *small;
+  const TpIntSet *large, *small;
   guint i;
 
   g_return_val_if_fail (left != NULL, FALSE);
@@ -290,24 +292,24 @@ g_intset_is_equal (const GIntSet *left, const GIntSet *right)
   return TRUE;
 }
 
-GIntSet *
-g_intset_copy (const GIntSet *orig)
+TpIntSet *
+tp_intset_copy (const TpIntSet *orig)
 {
-  GIntSet *ret;
+  TpIntSet *ret;
 
   g_return_val_if_fail (orig != NULL, NULL);
 
-  ret = _g_intset_new_with_size (orig->size);
+  ret = _tp_intset_new_with_size (orig->size);
   memcpy (ret->bits, orig->bits, (ret->size * sizeof (guint32)));
 
   return ret;
 }
 
-GIntSet *
-g_intset_intersection (const GIntSet *left, const GIntSet *right)
+TpIntSet *
+tp_intset_intersection (const TpIntSet *left, const TpIntSet *right)
 {
-  const GIntSet *large, *small;
-  GIntSet *ret;
+  const TpIntSet *large, *small;
+  TpIntSet *ret;
   guint i;
 
   g_return_val_if_fail (left != NULL, NULL);
@@ -324,7 +326,7 @@ g_intset_intersection (const GIntSet *left, const GIntSet *right)
       small = left;
     }
 
-  ret = g_intset_copy (small);
+  ret = tp_intset_copy (small);
 
   for (i = 0; i < ret->size; i++)
     {
@@ -334,11 +336,11 @@ g_intset_intersection (const GIntSet *left, const GIntSet *right)
   return ret;
 }
 
-GIntSet *
-g_intset_union (const GIntSet *left, const GIntSet *right)
+TpIntSet *
+tp_intset_union (const TpIntSet *left, const TpIntSet *right)
 {
-  const GIntSet *large, *small;
-  GIntSet *ret;
+  const TpIntSet *large, *small;
+  TpIntSet *ret;
   guint i;
 
   g_return_val_if_fail (left != NULL, NULL);
@@ -355,7 +357,7 @@ g_intset_union (const GIntSet *left, const GIntSet *right)
       small = left;
     }
 
-  ret = g_intset_copy (large);
+  ret = tp_intset_copy (large);
 
   for (i = 0; i < small->size; i++)
     {
@@ -365,16 +367,16 @@ g_intset_union (const GIntSet *left, const GIntSet *right)
   return ret;
 }
 
-GIntSet *
-g_intset_difference (const GIntSet *left, const GIntSet *right)
+TpIntSet *
+tp_intset_difference (const TpIntSet *left, const TpIntSet *right)
 {
-  GIntSet *ret;
+  TpIntSet *ret;
   guint i;
 
   g_return_val_if_fail (left != NULL, NULL);
   g_return_val_if_fail (right != NULL, NULL);
 
-  ret = g_intset_copy (left);
+  ret = tp_intset_copy (left);
 
   for (i = 0; i < MIN (right->size, left->size); i++)
     {
@@ -384,11 +386,11 @@ g_intset_difference (const GIntSet *left, const GIntSet *right)
   return ret;
 }
 
-GIntSet *
-g_intset_symmetric_difference (const GIntSet *left, const GIntSet *right)
+TpIntSet *
+tp_intset_symmetric_difference (const TpIntSet *left, const TpIntSet *right)
 {
-  const GIntSet *large, *small;
-  GIntSet *ret;
+  const TpIntSet *large, *small;
+  TpIntSet *ret;
   guint i;
 
   g_return_val_if_fail (left != NULL, NULL);
@@ -405,7 +407,7 @@ g_intset_symmetric_difference (const GIntSet *left, const GIntSet *right)
       small = left;
     }
 
-  ret = g_intset_copy (large);
+  ret = tp_intset_copy (large);
 
   for (i = 0; i < small->size; i++)
     {
@@ -427,10 +429,10 @@ _dump_foreach (guint i, gpointer data)
 }
 
 gchar *
-g_intset_dump (const GIntSet *set)
+Tp_intset_dump (const TpIntSet *set)
 {
   GString *tmp = g_string_new ("");
 
-  g_intset_foreach (set, _dump_foreach, tmp);
+  tp_intset_foreach (set, _dump_foreach, tmp);
   return g_string_free (tmp, FALSE);
 }

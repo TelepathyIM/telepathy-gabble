@@ -1,7 +1,7 @@
 #include <string.h>
 #include <glib.h>
 #include <glib-object.h>
-#include <gintset.h>
+#include <telepathy-glib/tp-intset.h>
 #include <handles.h>
 #include <handle-set.h>
 #include <telepathy-constants.h>
@@ -13,7 +13,7 @@ int main (int argc, char **argv)
 
   GabbleHandleRepo *repo = NULL;
   GabbleHandleSet *set = NULL;
-  GIntSet *iset = NULL;
+  TpIntSet *iset = NULL;
 
   GabbleHandle h1, h2, h3, h4;
 
@@ -44,31 +44,31 @@ int main (int argc, char **argv)
   g_assert (handle_set_remove (set, h2) == FALSE);
 
   /* Add some members via _update() */
-  iset = g_intset_new ();
-  g_intset_add (iset, h1);
-  g_intset_add (iset, h2);
-  g_intset_add (iset, h3);
+  iset = tp_intset_new ();
+  tp_intset_add (iset, h1);
+  tp_intset_add (iset, h2);
+  tp_intset_add (iset, h3);
   iset = handle_set_update (set, iset);
   
   /* h2 and h3 should be added, and h1 not */
-  g_assert (!g_intset_is_member (iset, h1));
-  g_assert (g_intset_is_member (iset, h2));
-  g_assert (g_intset_is_member (iset, h3));
-  g_intset_destroy (iset);
+  g_assert (!tp_intset_is_member (iset, h1));
+  g_assert (tp_intset_is_member (iset, h2));
+  g_assert (tp_intset_is_member (iset, h3));
+  tp_intset_destroy (iset);
   
   g_assert (handle_set_is_member (set, h2));
   g_assert (handle_set_is_member (set, h3));
   
   /* Remove some members via _update_difference() */
-  iset = g_intset_new ();
-  g_intset_add (iset, h1);
-  g_intset_add (iset, h4);
+  iset = tp_intset_new ();
+  tp_intset_add (iset, h1);
+  tp_intset_add (iset, h4);
   iset = handle_set_difference_update (set, iset);
   
   /* h1 should be removed, h4 not */
-  g_assert (g_intset_is_member (iset, h1));
-  g_assert (!g_intset_is_member (iset, h4));
-  g_intset_destroy (iset);
+  g_assert (tp_intset_is_member (iset, h1));
+  g_assert (!tp_intset_is_member (iset, h4));
+  tp_intset_destroy (iset);
   
   /* Removing a member should succeed */
   g_assert (handle_set_remove (set, h2) == TRUE);

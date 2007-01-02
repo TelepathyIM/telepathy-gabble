@@ -24,7 +24,7 @@
 #ifndef __HANDLE_SET_H__
 #define __HANDLE_SET_H__
 
-#include "gintset.h"
+#include "telepathy-glib/tp-intset.h"
 
 G_BEGIN_DECLS
 
@@ -34,7 +34,7 @@ typedef void (*GabbleHandleFunc)(GabbleHandleSet *set, GabbleHandle handle, gpoi
 GabbleHandleSet * handle_set_new (GabbleHandleRepo *, TpHandleType type);
 void handle_set_destroy (GabbleHandleSet *);
 
-GIntSet *handle_set_peek (GabbleHandleSet *set);
+TpIntSet *handle_set_peek (GabbleHandleSet *set);
 
 void handle_set_add (GabbleHandleSet *set, GabbleHandle handle);
 gboolean handle_set_remove (GabbleHandleSet *set, GabbleHandle handle);
@@ -45,8 +45,8 @@ void handle_set_foreach (GabbleHandleSet *set, GabbleHandleFunc func, gpointer u
 int handle_set_size (GabbleHandleSet *set);
 GArray *handle_set_to_array (GabbleHandleSet *set);
 
-GIntSet *handle_set_update (GabbleHandleSet *set, const GIntSet *add);
-GIntSet *handle_set_difference_update (GabbleHandleSet *set, const GIntSet *remove);
+TpIntSet *handle_set_update (GabbleHandleSet *set, const TpIntSet *add);
+TpIntSet *handle_set_difference_update (GabbleHandleSet *set, const TpIntSet *remove);
 
 G_END_DECLS
 

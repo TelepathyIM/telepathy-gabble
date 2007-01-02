@@ -1043,7 +1043,7 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
                gboolean inform_muc, GabbleHandle actor, guint reason_code)
 {
   GabbleMucChannelPrivate *priv;
-  GIntSet *set;
+  TpIntSet *set;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
@@ -1055,15 +1055,15 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
   priv->closed = TRUE;
 
   /* Remove us from member list */
-  set = g_intset_new ();
-  g_intset_add (set, GABBLE_GROUP_MIXIN (chan)->self_handle);
+  set = tp_intset_new ();
+  tp_intset_add (set, GABBLE_GROUP_MIXIN (chan)->self_handle);
 
   gabble_group_mixin_change_members (G_OBJECT (chan),
                                      (reason != NULL) ? reason : "",
                                      NULL, set, NULL, NULL, actor,
                                      reason_code);
 
-  g_intset_destroy (set);
+  tp_intset_destroy (set);
 
   /* Inform the MUC if requested */
   if (inform_muc && priv->state >= MUC_STATE_INITIATED)
@@ -1519,7 +1519,7 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
                                              LmMessageNode *x_node)
 {
   GabbleMucChannelPrivate *priv;
-  GIntSet *set;
+  TpIntSet *set;
   GabbleGroupMixin *mixin;
   LmMessageNode *item_node, *node;
   const gchar *affil, *role, *owner_jid, *status_code;
@@ -1556,8 +1556,8 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
   owner_jid = lm_message_node_get_attribute (item_node, "jid");
 
   /* update channel members according to presence */
-  set = g_intset_new ();
-  g_intset_add (set, handle);
+  set = tp_intset_new ();
+  tp_intset_add (set, handle);
 
   if (lm_message_get_sub_type (message) != LM_MESSAGE_SUB_TYPE_UNAVAILABLE)
     {
@@ -1692,7 +1692,7 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
     }
 
 OUT:
-  g_intset_destroy (set);
+  tp_intset_destroy (set);
 }
 
 
@@ -1853,29 +1853,29 @@ _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
 {
   GabbleMucChannelPrivate *priv;
   GabbleHandle self_handle;
-  GIntSet *set_members, *set_pending;
+  TpIntSet *set_members, *set_pending;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
 
   /* add ourself to local pending and the inviter to members */
-  set_members = g_intset_new ();
-  set_pending = g_intset_new ();
+  set_members = tp_intset_new ();
+  set_pending = tp_intset_new ();
 
-  g_intset_add (set_members, inviter);
+  tp_intset_add (set_members, inviter);
 
   /* get our own identity in the room */
   contact_handle_to_room_identity (chan, priv->conn->self_handle,
                                    &self_handle, &priv->self_jid);
-  g_intset_add (set_pending, self_handle);
+  tp_intset_add (set_pending, self_handle);
 
   gabble_group_mixin_change_members (G_OBJECT (chan), message, set_members,
                                      NULL, set_pending, NULL, inviter,
                                      TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
 
-  g_intset_destroy (set_members);
-  g_intset_destroy (set_pending);
+  tp_intset_destroy (set_members);
+  tp_intset_destroy (set_pending);
 
   /* queue the message */
   if (message && (message[0] != '\0'))
@@ -2397,7 +2397,7 @@ gabble_muc_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *m
 
   if (handle == mixin->self_handle)
     {
-      GIntSet *set_empty, *set_members, *set_pending;
+      TpIntSet *set_empty, *set_members, *set_pending;
       GArray *arr_members;
 
       /* are we already a member or in remote pending? */
@@ -2412,26 +2412,26 @@ gabble_muc_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *m
 
       /* add ourself to remote pending and remove the inviter's
        * main jid from the member list */
-      set_empty = g_intset_new ();
-      set_members = g_intset_new ();
-      set_pending = g_intset_new ();
+      set_empty = tp_intset_new ();
+      set_members = tp_intset_new ();
+      set_pending = tp_intset_new ();
 
       arr_members = handle_set_to_array (mixin->members);
       if (arr_members->len > 0)
         {
-          g_intset_add (set_members, g_array_index (arr_members, guint32, 0));
+          tp_intset_add (set_members, g_array_index (arr_members, guint32, 0));
         }
       g_array_free (arr_members, TRUE);
 
-      g_intset_add (set_pending, handle);
+      tp_intset_add (set_pending, handle);
 
       gabble_group_mixin_change_members (obj, "", set_empty, set_members,
                                          set_empty, set_pending, 0,
                                          TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
 
-      g_intset_destroy (set_empty);
-      g_intset_destroy (set_members);
-      g_intset_destroy (set_pending);
+      tp_intset_destroy (set_empty);
+      tp_intset_destroy (set_members);
+      tp_intset_destroy (set_pending);
 
       /* seek to enter the room */
       result = send_join_request (GABBLE_MUC_CHANNEL (obj), NULL, error);

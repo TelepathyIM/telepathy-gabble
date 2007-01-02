@@ -1,4 +1,4 @@
-#include <gintset.h>
+#include <telepathy-glib/tp-intset.h>
 #include <gheap.h>
 #include <stdlib.h>
 #include <time.h>

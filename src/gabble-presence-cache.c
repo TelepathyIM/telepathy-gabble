@@ -25,13 +25,14 @@
 #define CAPABILITY_BUNDLE_ENOUGH_TRUST 5
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 
+#include <telepathy-glib/tp-intset.h>
+
 #include "debug.h"
 #include "disco.h" /* \o\ \o/ /o/ */
 #include "gabble-presence.h"
 #include "namespaces.h"
 #include "util.h"
 #include "handle-set.h"
-#include "gintset.h"
 
 #include "gabble-presence-cache.h"
 
@@ -160,7 +161,7 @@ typedef struct _CapabilityInfo CapabilityInfo;
 struct _CapabilityInfo
 {
   GabblePresenceCapabilities caps;
-  GIntSet *guys;
+  TpIntSet *guys;
   guint trust;
 };
 
@@ -175,7 +176,7 @@ capability_info_get (GabblePresenceCache *cache, const gchar *node,
     {
       info = g_new0 (CapabilityInfo, 1);
       info->caps = caps;
-      info->guys = g_intset_new ();
+      info->guys = tp_intset_new ();
       g_hash_table_insert (priv->capabilities, g_strdup (node), info);
     }
 
@@ -191,14 +192,14 @@ capability_info_recvd (GabblePresenceCache *cache, const gchar *node,
   /* Detect inconsistency in reported caps */
   if (info->caps != caps)
     {
-      g_intset_clear (info->guys);
+      tp_intset_clear (info->guys);
       info->caps = caps;
       info->trust = 0;
     }
 
-  if (!g_intset_is_member (info->guys, handle))
+  if (!tp_intset_is_member (info->guys, handle))
     {
-      g_intset_add (info->guys, handle);
+      tp_intset_add (info->guys, handle);
       info->trust++;
     }
 
@@ -383,12 +384,12 @@ gabble_presence_cache_set_property (GObject     *object,
 
       if (priv->presence_handles)
         {
-          const GIntSet *add;
-          GIntSet *tmp;
+          const TpIntSet *add;
+          TpIntSet *tmp;
           add = handle_set_peek (priv->presence_handles);
           tmp = handle_set_update (new_presence_handles, add);
           handle_set_destroy (priv->presence_handles);
-          g_intset_destroy (tmp);
+          tp_intset_destroy (tmp);
         }
       priv->presence_handles = new_presence_handles;
       break;
@@ -853,7 +854,7 @@ _process_caps_uri (GabblePresenceCache *cache,
   info = capability_info_get (cache, uri, 0);
 
   if (info->trust >= CAPABILITY_BUNDLE_ENOUGH_TRUST
-      || g_intset_is_member (info->guys, handle))
+      || tp_intset_is_member (info->guys, handle))
     {
       /* we already have enough trust for this node; apply the cached value to
        * the (handle, resource) */

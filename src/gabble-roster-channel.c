@@ -26,7 +26,6 @@
 
 #include "debug.h"
 #include "gabble-connection.h"
-#include "gintset.h"
 #include "group-mixin.h"
 #include "handle-set.h"
 #include "roster.h"
@@ -471,13 +470,13 @@ _gabble_roster_channel_remove_member_cb (GObject *obj,
          when it's rejected) */
       if (handle_set_is_member (GABBLE_ROSTER_CHANNEL (obj)->group.local_pending, handle))
         {
-          GIntSet *rem = g_intset_new ();
+          TpIntSet *rem = tp_intset_new ();
 
-          g_intset_add (rem, handle);
+          tp_intset_add (rem, handle);
           gabble_group_mixin_change_members (obj, "", NULL, rem, NULL, NULL,
               0, 0);
 
-          g_intset_destroy (rem);
+          tp_intset_destroy (rem);
         }
     }
   /* subscribe list */

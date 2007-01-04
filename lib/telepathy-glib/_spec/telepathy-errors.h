@@ -29,52 +29,52 @@ typedef enum {
     /* org.freedesktop.Telepathy.Error.NetworkError
     Raised when there is an error reading from or writing to the network.
      */
-    NetworkError,
+    TpError_NetworkError,
 
     /* org.freedesktop.Telepathy.Error.NotImplemented
     Raised when the requested method, channel, etc is not available on this connection.
      */
-    NotImplemented,
+    TpError_NotImplemented,
 
     /* org.freedesktop.Telepathy.Error.InvalidArgument
     Raised when one of the provided arguments is invalid.
      */
-    InvalidArgument,
+    TpError_InvalidArgument,
 
     /* org.freedesktop.Telepathy.Error.NotAvailable
     Raised when the requested functionality is temporarily unavailable.
      */
-    NotAvailable,
+    TpError_NotAvailable,
 
     /* org.freedesktop.Telepathy.Error.PermissionDenied
     The user is not permitted to perform the requested operation.
      */
-    PermissionDenied,
+    TpError_PermissionDenied,
 
     /* org.freedesktop.Telepathy.Error.Disconnected
     The connection is not currently connected and cannot be used.
      */
-    Disconnected,
+    TpError_Disconnected,
 
     /* org.freedesktop.Telepathy.Error.InvalidHandle
     The contact name specified is unknown on this channel or connection.
      */
-    InvalidHandle,
+    TpError_InvalidHandle,
 
     /* org.freedesktop.Telepathy.Error.Channel.Banned
     You are banned from the channel.
      */
-    ChannelBanned,
+    TpError_ChannelBanned,
 
     /* org.freedesktop.Telepathy.Error.Channel.Full
     The channel is full.
      */
-    ChannelFull,
+    TpError_ChannelFull,
 
     /* org.freedesktop.Telepathy.Error.Channel.InviteOnly
     The requested channel is invite-only.
      */
-    ChannelInviteOnly,
+    TpError_ChannelInviteOnly,
 } TelepathyErrors;
 
 #ifdef __cplusplus

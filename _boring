@@ -36,6 +36,7 @@
 ^aclocal.m4$
 ^autom4te.cache($|/)
 ^config.guess$
+^config.cache$
 ^config.h$
 ^config.h.in$
 ^config.log$
@@ -62,13 +63,16 @@
 ^data/gabble.manager$
 ^data/org.freedesktop.Telepathy.ConnectionManager.gabble.service$
 ^src/telepathy-gabble$
+^lib/_gen($|/)
+^lib/telepathy-glib/_gen($|/)
 ^src/write-mgr-file$
+^tests/test-base64$
+^tests/test-gabble-presence$
+^tests/test-handles$
+^tests/test-handle-set$
 ^tests/test-heap$
 ^tests/test-intset$
 ^tests/test-gabble-presence$
-^tests/test-base64$
-^tests/test-handles$
-^tests/test-handle-set$
 (^|/)cscope\.out$
 (^|/)core$
 ^debian($|/)

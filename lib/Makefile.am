@@ -9,11 +9,11 @@ tpginclude_HEADERS = \
     telepathy-glib/tp-channel-factory-iface.h \
     telepathy-glib/tp-enums.h \
     telepathy-glib/tp-errors.h \
+    telepathy-glib/tp-handle.h
     telepathy-glib/tp-heap.h \
     telepathy-glib/tp-helpers.h \
     telepathy-glib/tp-interfaces.h \
-    telepathy-glib/tp-intset.h \
-    telepathy-glib/tp-types.h
+    telepathy-glib/tp-intset.h
 
 specinclude_HEADERS = \
     telepathy-glib/_spec/telepathy-enums.h \

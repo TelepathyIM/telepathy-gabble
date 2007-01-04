@@ -26,7 +26,7 @@
 
 #include "handles.h"
 #include "handle-set.h"
-#include "telepathy-errors.h"
+#include <telepathy-glib/tp-errors.h>
 #include "telepathy-helpers.h"
 #include "util.h"
 

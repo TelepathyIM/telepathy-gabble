@@ -34,9 +34,9 @@
 #include "handles.h"
 #include "roster.h"
 #include "telepathy-constants.h"
-#include "telepathy-errors.h"
+#include <telepathy-glib/tp-errors.h>
 #include "telepathy-helpers.h"
-#include "telepathy-interfaces.h"
+#include <telepathy-glib/tp-interfaces.h>
 #include "tp-channel-iface.h"
 
 #include "gabble-im-channel.h"

@@ -41,7 +41,7 @@
 #include "handles.h"
 #include "muc-factory.h"
 #include "namespaces.h"
-#include "telepathy-interfaces.h"
+#include <telepathy-glib/tp-interfaces.h>
 #include "text-mixin.h"
 #include "tp-channel-factory-iface.h"
 #include "util.h"

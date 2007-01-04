@@ -29,9 +29,9 @@
 #include "group-mixin.h"
 #include "handle-set.h"
 #include "roster.h"
-#include "telepathy-errors.h"
+#include <telepathy-glib/tp-errors.h>
 #include "telepathy-helpers.h"
-#include "telepathy-interfaces.h"
+#include <telepathy-glib/tp-interfaces.h>
 #include "tp-channel-iface.h"
 #include "util.h"
 

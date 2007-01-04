@@ -30,7 +30,7 @@
 #include "debug.h"
 #include "properties-mixin.h"
 #include "properties-mixin-signals-marshal.h"
-#include "telepathy-errors.h"
+#include <telepathy-glib/tp-errors.h>
 
 struct _GabblePropertiesContext {
     GabblePropertiesMixinClass *mixin_cls;

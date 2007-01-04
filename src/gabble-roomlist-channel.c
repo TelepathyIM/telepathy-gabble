@@ -31,7 +31,7 @@
 #include "handles.h"
 #include "handle-set.h"
 #include "telepathy-constants.h"
-#include "telepathy-interfaces.h"
+#include <telepathy-glib/tp-interfaces.h>
 #include "telepathy-helpers.h"
 #include "tp-channel-iface.h"
 #include "namespaces.h"

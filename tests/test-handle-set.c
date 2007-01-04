@@ -5,8 +5,8 @@
 #include <handles.h>
 #include <handle-set.h>
 #include <telepathy-constants.h>
-#include <telepathy-interfaces.h>
-#include <telepathy-errors.h>
+#include <telepathy-glib/tp-interfaces.h>
+#include <telepathy-glib/tp-errors.h>
 
 int main (int argc, char **argv)
 {

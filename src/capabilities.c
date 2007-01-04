@@ -23,7 +23,7 @@
 #include "namespaces.h"
 #include "config.h"
 #include "gabble-presence-cache.h"
-#include "telepathy-interfaces.h"
+#include <telepathy-glib/tp-interfaces.h>
 #include "gabble-media-channel.h"
 
 static const Feature self_advertised_features[] =

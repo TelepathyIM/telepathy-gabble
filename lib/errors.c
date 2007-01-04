@@ -19,7 +19,7 @@
  */
 
 #include <glib.h>
-#include "telepathy-errors.h"
+#include <telepathy-glib/tp-errors.h>
 
 GQuark
 telepathy_errors_quark (void)

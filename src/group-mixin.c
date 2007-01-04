@@ -25,7 +25,7 @@
 
 #include "ansi.h"
 
-#include "telepathy-errors.h"
+#include <telepathy-glib/tp-errors.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_GROUPS
 

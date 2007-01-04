@@ -28,6 +28,7 @@ BUILT_SOURCES = $(nodist_geninclude_HEADERS)
 CLEANFILES = $(BUILT_SOURCES) $(nodist_libtelepathy_glib_la_SOURCES)
 
 libtelepathy_glib_la_SOURCES = \
+    errors.c \
     heap.c \
     intset.c
 

@@ -408,7 +408,7 @@ room_info_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
   GabbleRoomlistChannel *chan = user_data;
   GabbleRoomlistChannelPrivate *priv;
   const char *jid, *category, *type, *var, *name;
-  GabbleHandle handle;
+  TpHandle handle;
   GHashTable *keys;
   GValue room = {0,};
   GValue *tmp;

@@ -11,7 +11,7 @@ void test_handles (guint handle_type)
   GabbleHandleRepo *repo = NULL;
   GError *error = NULL;
 
-  GabbleHandle handle = 0;
+  TpHandle handle = 0;
   const gchar *jid = "handle.test@foobar";
   const gchar *return_jid;
 

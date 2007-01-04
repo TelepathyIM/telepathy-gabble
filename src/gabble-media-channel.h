@@ -65,7 +65,7 @@ GType gabble_media_channel_get_type(void);
 
 gboolean
 _gabble_media_channel_add_member (GObject *obj,
-                                  GabbleHandle handle,
+                                  TpHandle handle,
                                   const gchar *message,
                                   GError **error);
 
@@ -169,7 +169,7 @@ gabble_media_channel_request_streams (GabbleMediaChannel *self,
 
 gboolean
 _gabble_media_channel_dispatch_session_action (GabbleMediaChannel *chan,
-                                               GabbleHandle peer,
+                                               TpHandle peer,
                                                const gchar *peer_resource,
                                                const gchar *sid,
                                                LmMessage *message,

@@ -191,7 +191,7 @@ struct _GabbleMucChannelPrivate
   DBusGMethodInvocation *password_ctx;
   gchar *password;
 
-  GabbleHandle handle;
+  TpHandle handle;
   const gchar *jid;
 
   guint nick_retry_count;
@@ -219,7 +219,7 @@ gabble_muc_channel_init (GabbleMucChannel *obj)
   /* do nothing? */
 }
 
-static void contact_handle_to_room_identity (GabbleMucChannel *, GabbleHandle, GabbleHandle *, GString **);
+static void contact_handle_to_room_identity (GabbleMucChannel *, TpHandle, TpHandle *, GString **);
 
 static GObject *
 gabble_muc_channel_constructor (GType type, guint n_props,
@@ -229,7 +229,7 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   GabbleMucChannelPrivate *priv;
   DBusGConnection *bus;
   GabbleHandleRepo *handles;
-  GabbleHandle self_handle;
+  TpHandle self_handle;
   gboolean valid;
 
   obj = G_OBJECT_CLASS (gabble_muc_channel_parent_class)->
@@ -287,7 +287,7 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   if (priv->invite_self)
     {
       GError *error = NULL;
-      GArray *members = g_array_sized_new (FALSE, FALSE, sizeof (GabbleHandle), 1);
+      GArray *members = g_array_sized_new (FALSE, FALSE, sizeof (TpHandle), 1);
       g_array_append_val (members, self_handle);
       gabble_group_mixin_add_members (obj, members, "", &error);
       g_assert (error == NULL);
@@ -541,8 +541,8 @@ room_properties_update (GabbleMucChannel *chan)
 }
 
 static void
-contact_handle_to_room_identity (GabbleMucChannel *chan, GabbleHandle main_handle,
-                                 GabbleHandle *room_handle, GString **room_jid)
+contact_handle_to_room_identity (GabbleMucChannel *chan, TpHandle main_handle,
+                                 TpHandle *room_handle, GString **room_jid)
 {
   GabbleMucChannelPrivate *priv;
   GabbleHandleRepo *handles;
@@ -735,8 +735,8 @@ gabble_muc_channel_set_property (GObject     *object,
 
 static void gabble_muc_channel_dispose (GObject *object);
 static void gabble_muc_channel_finalize (GObject *object);
-static gboolean gabble_muc_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *message, GError **error);
-static gboolean gabble_muc_channel_remove_member (GObject *obj, GabbleHandle handle, const gchar *message, GError **error);
+static gboolean gabble_muc_channel_add_member (GObject *obj, TpHandle handle, const gchar *message, GError **error);
+static gboolean gabble_muc_channel_remove_member (GObject *obj, TpHandle handle, const gchar *message, GError **error);
 static gboolean gabble_muc_channel_do_set_properties (GObject *obj, GabblePropertiesContext *ctx, GError **error);
 
 static void
@@ -957,7 +957,7 @@ provide_password_return_if_pending (GabbleMucChannel *chan, gboolean success)
     }
 }
 
-static void close_channel (GabbleMucChannel *chan, const gchar *reason, gboolean inform_muc, GabbleHandle actor, guint reason_code);
+static void close_channel (GabbleMucChannel *chan, const gchar *reason, gboolean inform_muc, TpHandle actor, guint reason_code);
 
 static gboolean
 timeout_join (gpointer data)
@@ -1040,7 +1040,7 @@ channel_state_changed (GabbleMucChannel *chan,
 
 static void
 close_channel (GabbleMucChannel *chan, const gchar *reason,
-               gboolean inform_muc, GabbleHandle actor, guint reason_code)
+               gboolean inform_muc, TpHandle actor, guint reason_code)
 {
   GabbleMucChannelPrivate *priv;
   TpIntSet *set;
@@ -1100,7 +1100,7 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
   GabbleMucChannelPrivate *priv;
   LmMessageNode *error_node;
   GabbleXmppError error;
-  GabbleHandle actor = 0;
+  TpHandle actor = 0;
   guint reason_code = TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
@@ -1514,7 +1514,7 @@ update_permissions (GabbleMucChannel *chan)
  */
 void
 _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
-                                             GabbleHandle handle,
+                                             TpHandle handle,
                                              LmMessage *message,
                                              LmMessageNode *x_node)
 {
@@ -1523,7 +1523,7 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
   GabbleGroupMixin *mixin;
   LmMessageNode *item_node, *node;
   const gchar *affil, *role, *owner_jid, *status_code;
-  GabbleHandle actor = 0;
+  TpHandle actor = 0;
   guint reason_code = TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
 
   DEBUG ("called");
@@ -1568,7 +1568,7 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
 
           if (owner_jid != NULL)
             {
-              GabbleHandle owner_handle;
+              TpHandle owner_handle;
 
               owner_handle = gabble_handle_for_contact (
                   chan->group.handle_repo, owner_jid, FALSE);
@@ -1703,7 +1703,7 @@ gboolean
 _gabble_muc_channel_receive (GabbleMucChannel *chan,
                              TpChannelTextMessageType msg_type,
                              TpHandleType handle_type,
-                             GabbleHandle sender,
+                             TpHandle sender,
                              time_t timestamp,
                              const gchar *text,
                              LmMessage *msg)
@@ -1848,11 +1848,11 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
 
 void
 _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
-                                    GabbleHandle inviter,
+                                    TpHandle inviter,
                                     const gchar *message)
 {
   GabbleMucChannelPrivate *priv;
-  GabbleHandle self_handle;
+  TpHandle self_handle;
   TpIntSet *set_members, *set_pending;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
@@ -2382,7 +2382,7 @@ gabble_muc_channel_send (GabbleMucChannel *self,
 
 
 static gboolean
-gabble_muc_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *message, GError **error)
+gabble_muc_channel_add_member (GObject *obj, TpHandle handle, const gchar *message, GError **error)
 {
   GabbleMucChannelPrivate *priv;
   GabbleGroupMixin *mixin;
@@ -2499,7 +2499,7 @@ kick_request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 }
 
 static gboolean
-gabble_muc_channel_remove_member (GObject *obj, GabbleHandle handle, const gchar *message, GError **error)
+gabble_muc_channel_remove_member (GObject *obj, TpHandle handle, const gchar *message, GError **error)
 {
   GabbleMucChannelPrivate *priv;
   LmMessage *msg;

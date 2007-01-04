@@ -61,7 +61,7 @@ tp_channel_iface_base_init (gpointer klass)
     g_object_interface_install_property (klass, param_spec);
 
     param_spec = g_param_spec_uint ("handle", "Handle",
-                                    "The GabbleHandle representing the "
+                                    "The TpHandle representing the "
                                     "contact, group, etc. with which "
                                     "this channel communicates, whose "
                                     "type is given by the handle-type "

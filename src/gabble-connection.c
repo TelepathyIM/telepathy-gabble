@@ -274,10 +274,10 @@ struct _ChannelRequest
 
 static void connection_new_channel_cb (TpChannelFactoryIface *, GObject *, gpointer);
 static void connection_channel_error_cb (TpChannelFactoryIface *, GObject *, GError *, gpointer);
-static void connection_nickname_update_cb (GObject *, GabbleHandle, gpointer);
-static void connection_presence_update_cb (GabblePresenceCache *, GabbleHandle, gpointer);
-static void connection_avatar_update_cb (GabblePresenceCache *, GabbleHandle, gpointer);
-static void connection_capabilities_update_cb (GabblePresenceCache *, GabbleHandle, GabblePresenceCapabilities, GabblePresenceCapabilities, gpointer);
+static void connection_nickname_update_cb (GObject *, TpHandle, gpointer);
+static void connection_presence_update_cb (GabblePresenceCache *, TpHandle, gpointer);
+static void connection_avatar_update_cb (GabblePresenceCache *, TpHandle, gpointer);
+static void connection_capabilities_update_cb (GabblePresenceCache *, TpHandle, GabblePresenceCapabilities, GabblePresenceCapabilities, gpointer);
 static void connection_got_self_initial_avatar_cb (GObject *, gchar *, gpointer);
 
 static void
@@ -1306,7 +1306,7 @@ static void connection_status_change (GabbleConnection *, TpConnectionStatus, Tp
 
 static void channel_request_cancel (gpointer data, gpointer user_data);
 
-static void emit_one_presence_update (GabbleConnection *self, GabbleHandle handle);
+static void emit_one_presence_update (GabbleConnection *self, TpHandle handle);
 
 
 static gboolean
@@ -1853,7 +1853,7 @@ connection_channel_error_cb (TpChannelFactoryIface *factory,
 }
 
 static void
-connection_presence_update_cb (GabblePresenceCache *cache, GabbleHandle handle, gpointer user_data)
+connection_presence_update_cb (GabblePresenceCache *cache, TpHandle handle, gpointer user_data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
 
@@ -1862,7 +1862,7 @@ connection_presence_update_cb (GabblePresenceCache *cache, GabbleHandle handle, 
 
 GabbleConnectionAliasSource
 _gabble_connection_get_cached_alias (GabbleConnection *conn,
-                                     GabbleHandle handle,
+                                     TpHandle handle,
                                      gchar **alias)
 {
   GabbleConnectionPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (conn,
@@ -1965,7 +1965,7 @@ OUT:
 
 static void
 connection_nickname_update_cb (GObject *object,
-                               GabbleHandle handle,
+                               TpHandle handle,
                                gpointer user_data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
@@ -2066,7 +2066,7 @@ update_own_avatar_sha1 (GabbleConnection *conn,
 
 static void
 connection_avatar_update_cb (GabblePresenceCache *cache,
-                             GabbleHandle handle,
+                             TpHandle handle,
                              gpointer user_data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
@@ -2134,7 +2134,7 @@ construct_presence_hash (GabbleConnection *self,
                          const GArray *contact_handles)
 {
   guint i;
-  GabbleHandle handle;
+  TpHandle handle;
   GHashTable *presence_hash, *contact_status, *parameters;
   GValueArray *vals;
   GValue *message;
@@ -2152,7 +2152,7 @@ construct_presence_hash (GabbleConnection *self,
 
   for (i = 0; i < contact_handles->len; i++)
     {
-      handle = g_array_index (contact_handles, GabbleHandle, i);
+      handle = g_array_index (contact_handles, TpHandle, i);
 
       if (handle == self->self_handle)
         presence = self->self_presence;
@@ -2205,7 +2205,7 @@ construct_presence_hash (GabbleConnection *self,
 /**
  * emit_presence_update:
  * @self: A #GabbleConnection
- * @contact_handles: A zero-terminated array of #GabbleHandle for
+ * @contact_handles: A zero-terminated array of #TpHandle for
  *                    the contacts to emit presence for
  *
  * Emits the Telepathy PresenceUpdate signal with the current
@@ -2229,9 +2229,9 @@ emit_presence_update (GabbleConnection *self,
 
 static void
 emit_one_presence_update (GabbleConnection *self,
-                          GabbleHandle handle)
+                          TpHandle handle)
 {
-  GArray *handles = g_array_sized_new (FALSE, FALSE, sizeof (GabbleHandle), 1);
+  GArray *handles = g_array_sized_new (FALSE, FALSE, sizeof (TpHandle), 1);
 
   g_array_insert_val (handles, 0, handle);
   emit_presence_update (self, handles);
@@ -2951,7 +2951,7 @@ gabble_connection_add_status (GabbleConnection *self,
 
 static void
 _emit_capabilities_changed (GabbleConnection *conn,
-                            GabbleHandle handle,
+                            TpHandle handle,
                             GabblePresenceCapabilities old_caps,
                             GabblePresenceCapabilities new_caps)
 {
@@ -3013,7 +3013,7 @@ _emit_capabilities_changed (GabbleConnection *conn,
 
 static void
 connection_capabilities_update_cb (GabblePresenceCache *cache,
-                                   GabbleHandle handle,
+                                   TpHandle handle,
                                    GabblePresenceCapabilities old_caps,
                                    GabblePresenceCapabilities new_caps,
                                    gpointer user_data)
@@ -3336,10 +3336,10 @@ gabble_connection_get_avatar_tokens (GabbleConnection *self,
 
   for (i = 0; i < contacts->len; i++)
     {
-      GabbleHandle handle;
+      TpHandle handle;
       GabblePresence *presence;
 
-      handle = g_array_index (contacts, GabbleHandle, i);
+      handle = g_array_index (contacts, TpHandle, i);
       presence = gabble_presence_cache_get (self->presence_cache, handle);
 
       /* TODO: always call the callback so we can defer presence lookups until
@@ -3429,7 +3429,7 @@ gabble_connection_get_capabilities (GabbleConnection *self,
 
   for (i = 0; i < handles->len; i++)
     {
-      GabbleHandle handle = g_array_index (handles, guint, i);
+      TpHandle handle = g_array_index (handles, guint, i);
       GabblePresence *pres;
       const CapabilityConversionData *ccd;
       guint typeflags;
@@ -3790,7 +3790,7 @@ gabble_connection_hold_handles (GabbleConnection *self,
   sender = dbus_g_method_get_sender (context);
   for (i = 0; i < handles->len; i++)
     {
-      GabbleHandle handle = g_array_index (handles, GabbleHandle, i);
+      TpHandle handle = g_array_index (handles, TpHandle, i);
       if (!gabble_handle_client_hold (self->handles, sender, handle,
             handle_type, &error))
         {
@@ -3846,10 +3846,10 @@ gabble_connection_inspect_handles (GabbleConnection *self,
 
   for (i = 0; i < handles->len; i++)
     {
-      GabbleHandle handle;
+      TpHandle handle;
       const gchar *tmp;
 
-      handle = g_array_index (handles, GabbleHandle, i);
+      handle = g_array_index (handles, TpHandle, i);
       tmp = gabble_handle_inspect (self->handles, handle_type, handle);
       g_assert (tmp != NULL);
 
@@ -4016,7 +4016,7 @@ gabble_connection_release_handles (GabbleConnection *self,
   sender = dbus_g_method_get_sender (context);
   for (i = 0; i < handles->len; i++)
     {
-      GabbleHandle handle = g_array_index (handles, GabbleHandle, i);
+      TpHandle handle = g_array_index (handles, TpHandle, i);
       if (!gabble_handle_client_release (self->handles, sender, handle,
             handle_type, &error))
         {
@@ -4093,7 +4093,7 @@ aliases_request_new (GabbleConnection *conn,
   request = g_slice_new0 (AliasesRequest);
   request->conn = conn;
   request->request_call = request_call;
-  request->contacts = g_array_new (FALSE, FALSE, sizeof (GabbleHandle));
+  request->contacts = g_array_new (FALSE, FALSE, sizeof (TpHandle));
   g_array_insert_vals (request->contacts, 0, contacts->data, contacts->len);
   request->vcard_requests =
     g_new0 (GabbleVCardManagerRequest *, contacts->len);
@@ -4137,7 +4137,7 @@ aliases_request_try_return (AliasesRequest *request)
 static void
 aliases_request_vcard_cb (GabbleVCardManager *manager,
                           GabbleVCardManagerRequest *request,
-                          GabbleHandle handle,
+                          TpHandle handle,
                           LmMessageNode *vcard,
                           GError *error,
                           gpointer user_data)
@@ -4162,7 +4162,7 @@ aliases_request_vcard_cb (GabbleVCardManager *manager,
 
   g_assert (found);
   source = _gabble_connection_get_cached_alias (aliases_request->conn,
-      g_array_index (aliases_request->contacts, GabbleHandle, i), &alias);
+      g_array_index (aliases_request->contacts, TpHandle, i), &alias);
   g_assert (source != GABBLE_CONNECTION_ALIAS_NONE);
   g_assert (NULL != alias);
 
@@ -4209,7 +4209,7 @@ gabble_connection_request_aliases (GabbleConnection *self,
 
   for (i = 0; i < contacts->len; i++)
     {
-      GabbleHandle handle = g_array_index (contacts, GabbleHandle, i);
+      TpHandle handle = g_array_index (contacts, TpHandle, i);
       GabbleConnectionAliasSource source;
       GabbleVCardManagerRequest *vcard_request;
       gchar *alias;
@@ -4258,7 +4258,7 @@ gabble_connection_request_aliases (GabbleConnection *self,
 static void
 _request_avatar_cb (GabbleVCardManager *self,
                     GabbleVCardManagerRequest *request,
-                    GabbleHandle handle,
+                    TpHandle handle,
                     LmMessageNode *vcard,
                     GError *vcard_error,
                     gpointer user_data)
@@ -4525,7 +4525,7 @@ hold_and_return_handles (DBusGMethodInvocation *context,
 
   for (i = 0; i < handles->len; i++)
     {
-      GabbleHandle handle = (GabbleHandle) g_array_index (handles, guint, i);
+      TpHandle handle = (TpHandle) g_array_index (handles, guint, i);
       if (!gabble_handle_client_hold (conn->handles, sender, handle, handle_type, &error))
         {
           dbus_g_method_return_error (context, error);
@@ -4648,13 +4648,13 @@ room_verify_batch_new (GabbleConnection *conn,
   batch->conn = conn;
   batch->invocation = invocation;
   batch->count = count;
-  batch->handles = g_array_sized_new(FALSE, FALSE, sizeof(GabbleHandle), count);
+  batch->handles = g_array_sized_new(FALSE, FALSE, sizeof(TpHandle), count);
   batch->contexts = g_new0(RoomVerifyContext, count);
   for (i = 0; i < count; i++)
     {
       const gchar *name = jids[i];
       gchar *qualified_name;
-      GabbleHandle handle;
+      TpHandle handle;
 
       batch->contexts[i].index = i;
       batch->contexts[i].batch = batch;
@@ -4699,7 +4699,7 @@ room_verify_batch_try_return (RoomVerifyBatch *batch)
 
   for (i = 0; i < batch->count; i++)
     {
-      if (!g_array_index(batch->handles, GabbleHandle, i))
+      if (!g_array_index(batch->handles, TpHandle, i))
         {
           /* we're not ready yet */
           return FALSE;
@@ -4724,7 +4724,7 @@ room_jid_disco_cb (GabbleDisco *disco,
   RoomVerifyBatch *batch = rvctx->batch;
   LmMessageNode *lm_node;
   gboolean found = FALSE;
-  GabbleHandle handle;
+  TpHandle handle;
 
   /* stop the request getting cancelled after it's already finished */
   rvctx->request = NULL;
@@ -4784,7 +4784,7 @@ room_jid_disco_cb (GabbleDisco *disco,
   g_assert (handle != 0);
 
   DEBUG ("disco reported MUC support for service name in jid %s", rvctx->jid);
-  g_array_index (batch->handles, GabbleHandle, rvctx->index) = handle;
+  g_array_index (batch->handles, TpHandle, rvctx->index) = handle;
 
   /* if this was the last callback to be run, send off the result */
   room_verify_batch_try_return (batch);
@@ -4866,11 +4866,11 @@ gabble_connection_request_handles (GabbleConnection *self,
   switch (handle_type)
     {
     case TP_HANDLE_TYPE_CONTACT:
-      handles = g_array_sized_new(FALSE, FALSE, sizeof(GabbleHandle), count);
+      handles = g_array_sized_new(FALSE, FALSE, sizeof(TpHandle), count);
 
       for (i = 0; i < count; i++)
         {
-          GabbleHandle handle;
+          TpHandle handle;
           const gchar *name = names[i];
 
           if (!gabble_handle_jid_is_valid (handle_type, name, &error))
@@ -4932,11 +4932,11 @@ gabble_connection_request_handles (GabbleConnection *self,
 
     case TP_HANDLE_TYPE_LIST:
     case TP_HANDLE_TYPE_GROUP:
-      handles = g_array_sized_new(FALSE, FALSE, sizeof(GabbleHandle), count);
+      handles = g_array_sized_new(FALSE, FALSE, sizeof(TpHandle), count);
 
       for (i = 0; i < count; i++)
         {
-          GabbleHandle handle;
+          TpHandle handle;
           const gchar *name = names[i];
 
           if (handle_type == TP_HANDLE_TYPE_LIST)
@@ -5026,7 +5026,7 @@ setaliases_foreach (gpointer key, gpointer value, gpointer user_data)
 {
   struct _i_hate_g_hash_table_foreach *data =
     (struct _i_hate_g_hash_table_foreach *) user_data;
-  GabbleHandle handle = GPOINTER_TO_INT (key);
+  TpHandle handle = GPOINTER_TO_INT (key);
   gchar *alias = (gchar *) value;
   GError *error = NULL;
 
@@ -5133,7 +5133,7 @@ _set_avatar_ctx_free (struct _set_avatar_ctx *ctx)
 static void
 _set_avatar_cb2 (GabbleVCardManager *manager,
                  GabbleVCardManagerRequest *request,
-                 GabbleHandle handle,
+                 TpHandle handle,
                  LmMessageNode *vcard,
                  GError *vcard_error,
                  gpointer user_data)
@@ -5173,7 +5173,7 @@ _set_avatar_cb2 (GabbleVCardManager *manager,
 static void
 _set_avatar_cb1 (GabbleVCardManager *manager,
                  GabbleVCardManagerRequest *request,
-                 GabbleHandle handle,
+                 TpHandle handle,
                  LmMessageNode *vcard,
                  GError *vcard_error,
                  gpointer user_data)

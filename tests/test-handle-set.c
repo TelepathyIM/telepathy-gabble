@@ -15,7 +15,7 @@ int main (int argc, char **argv)
   GabbleHandleSet *set = NULL;
   TpIntSet *iset = NULL;
 
-  GabbleHandle h1, h2, h3, h4;
+  TpHandle h1, h2, h3, h4;
 
   g_type_init ();
 

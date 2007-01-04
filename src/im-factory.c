@@ -181,7 +181,7 @@ gabble_im_factory_class_init (GabbleImFactoryClass *gabble_im_factory_class)
 
 }
 
-static GabbleIMChannel *new_im_channel (GabbleImFactory *fac, GabbleHandle handle);
+static GabbleIMChannel *new_im_channel (GabbleImFactory *fac, TpHandle handle);
 
 static void im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data);
 
@@ -203,7 +203,7 @@ im_factory_message_cb (LmMessageHandler *handler,
   const gchar *from, *body, *body_offset;
   time_t stamp;
   TpChannelTextMessageType msgtype;
-  GabbleHandle handle;
+  TpHandle handle;
   GabbleIMChannel *chan;
   GabbleTextMixinSendError send_error;
 
@@ -266,7 +266,7 @@ im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
 {
   GabbleImFactory *conn = GABBLE_IM_FACTORY (user_data);
   GabbleImFactoryPrivate *priv = GABBLE_IM_FACTORY_GET_PRIVATE (conn);
-  GabbleHandle contact_handle;
+  TpHandle contact_handle;
 
   if (priv->channels)
     {
@@ -282,7 +282,7 @@ im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
  * new_im_channel
  */
 static GabbleIMChannel *
-new_im_channel (GabbleImFactory *fac, GabbleHandle handle)
+new_im_channel (GabbleImFactory *fac, TpHandle handle)
 {
   GabbleImFactoryPrivate *priv;
   GabbleIMChannel *chan;

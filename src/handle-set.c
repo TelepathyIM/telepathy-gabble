@@ -53,7 +53,7 @@ handle_set_new (GabbleHandleRepo *repo, TpHandleType type)
 }
 
 static void
-freer (GabbleHandleSet *set, GabbleHandle handle, gpointer userdata)
+freer (GabbleHandleSet *set, TpHandle handle, gpointer userdata)
 {
   handle_set_remove (set, handle);
 }
@@ -94,7 +94,7 @@ handle_set_peek (GabbleHandleSet *set)
  *
  */
 void
-handle_set_add (GabbleHandleSet *set, GabbleHandle handle)
+handle_set_add (GabbleHandleSet *set, TpHandle handle)
 {
   g_return_if_fail (set != NULL);
   g_return_if_fail (handle != 0);
@@ -120,7 +120,7 @@ handle_set_add (GabbleHandleSet *set, GabbleHandle handle)
  */
 
 gboolean
-handle_set_remove (GabbleHandleSet *set, GabbleHandle handle)
+handle_set_remove (GabbleHandleSet *set, TpHandle handle)
 {
   g_return_val_if_fail (set != NULL, FALSE);
   g_return_val_if_fail (handle != 0, FALSE);
@@ -148,7 +148,7 @@ handle_set_remove (GabbleHandleSet *set, GabbleHandle handle)
  *
  */
 gboolean
-handle_set_is_member (GabbleHandleSet *set, GabbleHandle handle)
+handle_set_is_member (GabbleHandleSet *set, TpHandle handle)
 {
   return tp_intset_is_member(set->intset, handle);
 }

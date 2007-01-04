@@ -29,16 +29,16 @@
 G_BEGIN_DECLS
 
 typedef struct _GabbleHandleSet GabbleHandleSet;
-typedef void (*GabbleHandleFunc)(GabbleHandleSet *set, GabbleHandle handle, gpointer userdata);
+typedef void (*GabbleHandleFunc)(GabbleHandleSet *set, TpHandle handle, gpointer userdata);
 
 GabbleHandleSet * handle_set_new (GabbleHandleRepo *, TpHandleType type);
 void handle_set_destroy (GabbleHandleSet *);
 
 TpIntSet *handle_set_peek (GabbleHandleSet *set);
 
-void handle_set_add (GabbleHandleSet *set, GabbleHandle handle);
-gboolean handle_set_remove (GabbleHandleSet *set, GabbleHandle handle);
-gboolean handle_set_is_member (GabbleHandleSet *set, GabbleHandle handle);
+void handle_set_add (GabbleHandleSet *set, TpHandle handle);
+gboolean handle_set_remove (GabbleHandleSet *set, TpHandle handle);
+gboolean handle_set_is_member (GabbleHandleSet *set, TpHandle handle);
 
 void handle_set_foreach (GabbleHandleSet *set, GabbleHandleFunc func, gpointer userdata);
 

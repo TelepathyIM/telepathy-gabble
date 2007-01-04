@@ -75,7 +75,7 @@ struct _GabbleVCardManager {
 
 typedef void (*GabbleVCardManagerCb)(GabbleVCardManager *self,
                                     GabbleVCardManagerRequest *request,
-                                    GabbleHandle handle,
+                                    TpHandle handle,
                                     LmMessageNode *vcard,
                                     GError *error,
                                     gpointer user_data);
@@ -85,7 +85,7 @@ GabbleVCardManager *gabble_vcard_manager_new (GabbleConnection *);
 GQuark gabble_vcard_manager_cache_quark (void);
 
 GabbleVCardManagerRequest *gabble_vcard_manager_request (GabbleVCardManager *,
-                                                       GabbleHandle,
+                                                       TpHandle,
                                                        guint timeout,
                                                        GabbleVCardManagerCb,
                                                        gpointer user_data,
@@ -113,9 +113,9 @@ void gabble_vcard_manager_cancel_request (GabbleVCardManager *manager,
                                           GabbleVCardManagerRequest *request);
 
 const gchar *gabble_vcard_manager_get_cached_alias (GabbleVCardManager *,
-                                                   GabbleHandle);
+                                                   TpHandle);
 gboolean gabble_vcard_manager_has_cached_alias (GabbleVCardManager *manager,
-                                                GabbleHandle handle);
+                                                TpHandle handle);
 
 G_END_DECLS
 

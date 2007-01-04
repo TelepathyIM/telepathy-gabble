@@ -73,7 +73,7 @@ struct _GabbleIMChannelPrivate
 {
   GabbleConnection *conn;
   char *object_path;
-  GabbleHandle handle;
+  TpHandle handle;
 
   gchar *peer_jid;
 
@@ -299,7 +299,7 @@ gabble_im_channel_finalize (GObject *object)
  */
 gboolean _gabble_im_channel_receive (GabbleIMChannel *chan,
                                      TpChannelTextMessageType type,
-                                     GabbleHandle sender,
+                                     TpHandle sender,
                                      const char *from,
                                      time_t timestamp,
                                      const char *text)

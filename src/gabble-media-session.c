@@ -95,7 +95,7 @@ struct _GabbleMediaSessionPrivate
   GPtrArray *remove_requests;
 
   gchar *id;
-  GabbleHandle peer;
+  TpHandle peer;
   gchar *peer_resource;
 
   JingleSessionState state;
@@ -463,7 +463,7 @@ gabble_media_session_class_init (GabbleMediaSessionClass *gabble_media_session_c
   g_object_class_install_property (object_class, PROP_INITIATOR, param_spec);
 
   param_spec = g_param_spec_uint ("peer", "Session peer",
-                                  "The GabbleHandle representing the contact "
+                                  "The TpHandle representing the contact "
                                   "with whom this session communicates.",
                                   0, G_MAXUINT32, 0,
                                   G_PARAM_CONSTRUCT_ONLY |
@@ -2068,11 +2068,11 @@ stream_got_local_codecs_changed_cb (GabbleMediaStream *stream,
 
 static gchar *
 get_jid_for_contact (GabbleMediaSession *session,
-                     GabbleHandle handle)
+                     TpHandle handle)
 {
   GabbleMediaSessionPrivate *priv;
   const gchar *base_jid;
-  GabbleHandle self;
+  TpHandle self;
 
   g_assert (GABBLE_IS_MEDIA_SESSION (session));
 
@@ -2108,7 +2108,7 @@ _gabble_media_session_message_new (GabbleMediaSession *session,
   LmMessage *msg;
   LmMessageNode *iq_node, *node;
   gchar *peer_jid, *initiator_jid;
-  GabbleHandle initiator_handle;
+  TpHandle initiator_handle;
   const gchar *element, *xmlns;
 
   g_assert (GABBLE_IS_MEDIA_SESSION (session));
@@ -2385,7 +2385,7 @@ _gabble_media_session_terminate (GabbleMediaSession *session,
                                  TpChannelGroupChangeReason why)
 {
   GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
-  GabbleHandle actor;
+  TpHandle actor;
 
   if (priv->state == JS_STATE_ENDED)
     return;

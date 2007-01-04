@@ -98,7 +98,7 @@ struct _GabbleMediaChannelPrivate
 {
   GabbleConnection *conn;
   gchar *object_path;
-  GabbleHandle creator;
+  TpHandle creator;
 
   GabbleMediaFactory *factory;
   GabbleMediaSession *session;
@@ -174,7 +174,7 @@ static void session_terminated_cb (GabbleMediaSession *session, guint terminator
  */
 static GabbleMediaSession*
 create_session (GabbleMediaChannel *channel,
-                GabbleHandle peer,
+                TpHandle peer,
                 const gchar *peer_resource,
                 const gchar *sid)
 {
@@ -233,7 +233,7 @@ create_session (GabbleMediaChannel *channel,
 
 gboolean
 _gabble_media_channel_dispatch_session_action (GabbleMediaChannel *chan,
-                                               GabbleHandle peer,
+                                               TpHandle peer,
                                                const gchar *peer_resource,
                                                const gchar *sid,
                                                LmMessage *message,
@@ -360,7 +360,7 @@ gabble_media_channel_set_property (GObject     *object,
 
 static void gabble_media_channel_dispose (GObject *object);
 static void gabble_media_channel_finalize (GObject *object);
-static gboolean gabble_media_channel_remove_member (GObject *obj, GabbleHandle handle, const gchar *message, GError **error);
+static gboolean gabble_media_channel_remove_member (GObject *obj, TpHandle handle, const gchar *message, GError **error);
 
 static void
 gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_class)
@@ -399,7 +399,7 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 
   param_spec = g_param_spec_uint ("creator", "Channel creator",
-                                  "The GabbleHandle representing the contact "
+                                  "The TpHandle representing the contact "
                                   "who created the channel.",
                                   0, G_MAXUINT32, 0,
                                   G_PARAM_CONSTRUCT_ONLY |
@@ -850,7 +850,7 @@ gabble_media_channel_get_session_handlers (GabbleMediaChannel *self,
   if (priv->session)
     {
       GValue handler = { 0, };
-      GabbleHandle member;
+      TpHandle member;
       gchar *path;
 
       g_value_init (&handler, TP_SESSION_HANDLER_SET_TYPE);
@@ -896,7 +896,7 @@ make_stream_list (GabbleMediaChannel *self,
       GabbleMediaStream *stream = g_ptr_array_index (streams, i);
       GValue entry = { 0, };
       guint id;
-      GabbleHandle peer;
+      TpHandle peer;
       TpMediaStreamType type;
       TpMediaStreamState connection_state;
       CombinedStreamDirection combined_direction;
@@ -1185,7 +1185,7 @@ gabble_media_channel_request_streams (GabbleMediaChannel *self,
 
 
 gboolean
-_gabble_media_channel_add_member (GObject *obj, GabbleHandle handle, const gchar *message, GError **error)
+_gabble_media_channel_add_member (GObject *obj, TpHandle handle, const gchar *message, GError **error)
 {
   GabbleMediaChannel *chan = GABBLE_MEDIA_CHANNEL (obj);
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
@@ -1282,7 +1282,7 @@ _gabble_media_channel_add_member (GObject *obj, GabbleHandle handle, const gchar
 }
 
 static gboolean
-gabble_media_channel_remove_member (GObject *obj, GabbleHandle handle, const gchar *message, GError **error)
+gabble_media_channel_remove_member (GObject *obj, TpHandle handle, const gchar *message, GError **error)
 {
   GabbleMediaChannel *chan = GABBLE_MEDIA_CHANNEL (obj);
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
@@ -1337,7 +1337,7 @@ session_terminated_cb (GabbleMediaSession *session,
   GError *error;
   gchar *sid;
   JingleSessionState state;
-  GabbleHandle peer;
+  TpHandle peer;
   TpIntSet *set;
 
   g_object_get (session,
@@ -1395,7 +1395,7 @@ session_state_changed_cb (GabbleMediaSession *session,
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (channel);
   GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (channel);
   JingleSessionState state;
-  GabbleHandle peer;
+  TpHandle peer;
   TpIntSet *set;
 
   g_object_get (session,

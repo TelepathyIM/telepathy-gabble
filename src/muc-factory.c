@@ -208,7 +208,7 @@ static GabbleMucChannel *
 get_muc_from_jid (GabbleMucFactory *fac, const gchar *jid)
 {
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
-  GabbleHandle handle;
+  TpHandle handle;
   GabbleMucChannel *chan = NULL;
 
   if (gabble_handle_for_room_exists (priv->conn->handles, jid, TRUE))
@@ -233,7 +233,7 @@ muc_channel_closed_cb (GabbleMucChannel *chan, gpointer user_data)
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (user_data);
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
-  GabbleHandle room_handle;
+  TpHandle room_handle;
 
   if (priv->channels != NULL)
     {
@@ -272,7 +272,7 @@ muc_join_error_cb (GabbleMucChannel *chan,
  * new_muc_channel
  */
 static GabbleMucChannel *
-new_muc_channel (GabbleMucFactory *fac, GabbleHandle handle, gboolean invite_self)
+new_muc_channel (GabbleMucFactory *fac, TpHandle handle, gboolean invite_self)
 {
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
   GabbleMucChannel *chan;
@@ -308,7 +308,7 @@ new_muc_channel (GabbleMucFactory *fac, GabbleHandle handle, gboolean invite_sel
 struct DiscoInviteData {
     GabbleMucFactory *factory;
     gchar *reason;
-    GabbleHandle inviter;
+    TpHandle inviter;
 };
 
 /**
@@ -332,7 +332,7 @@ obsolete_invite_disco_cb (GabbleDisco *self,
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
   LmMessageNode *identity;
   const char *category, *type;
-  GabbleHandle handle;
+  TpHandle handle;
 
   g_hash_table_remove (priv->disco_requests, request);
 
@@ -393,7 +393,7 @@ muc_factory_message_cb (LmMessageHandler *handler,
   TpChannelTextMessageType msgtype;
   LmMessageNode *node;
   TpHandleType handle_type;
-  GabbleHandle room_handle, handle;
+  TpHandle room_handle, handle;
   GabbleMucChannel *chan;
   GabbleTextMixinSendError send_error;
 
@@ -412,7 +412,7 @@ muc_factory_message_cb (LmMessageHandler *handler,
         {
           LmMessageNode *reason_node;
           const gchar *invite_from, *reason;
-          GabbleHandle inviter_handle;
+          TpHandle inviter_handle;
 
           if (send_error != CHANNEL_TEXT_SEND_NO_ERROR)
             {
@@ -464,7 +464,7 @@ muc_factory_message_cb (LmMessageHandler *handler,
     }
   else
     {
-      GabbleHandle inviter_handle;
+      TpHandle inviter_handle;
       GabbleDiscoRequest *request;
       const gchar *reason;
       struct DiscoInviteData *disco_udata;
@@ -607,7 +607,7 @@ muc_factory_presence_cb (LmMessageHandler *handler,
     {
       if (muc_chan != NULL)
         {
-          GabbleHandle handle;
+          TpHandle handle;
 
           handle = gabble_handle_for_contact (priv->conn->handles, from, TRUE);
           if (handle == 0)

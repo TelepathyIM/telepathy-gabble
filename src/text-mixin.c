@@ -115,7 +115,7 @@ struct _GabblePendingMessage
 {
   guint id;
   time_t timestamp;
-  GabbleHandle sender;
+  TpHandle sender;
   TpChannelTextMessageType type;
   char *text;
   guint flags;
@@ -296,7 +296,7 @@ static void _gabble_pending_free (GabblePendingMessage *msg)
  */
 gboolean gabble_text_mixin_receive (GObject *obj,
                                      TpChannelTextMessageType type,
-                                     GabbleHandle sender,
+                                     TpHandle sender,
                                      time_t timestamp,
                                      const char *text)
 {

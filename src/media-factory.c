@@ -197,7 +197,7 @@ gabble_media_factory_class_init (GabbleMediaFactoryClass *gabble_media_factory_c
 }
 
 static gboolean _gabble_media_factory_sid_in_use (GabbleMediaFactory *fac, const gchar *sid);
-static GabbleMediaChannel *new_media_channel (GabbleMediaFactory *fac, GabbleHandle handle);
+static GabbleMediaChannel *new_media_channel (GabbleMediaFactory *fac, TpHandle handle);
 static void media_channel_closed_cb (GabbleMediaChannel *chan, gpointer user_data);
 
 /**
@@ -218,7 +218,7 @@ media_factory_jingle_cb (LmMessageHandler *handler,
   LmMessageNode *iq_node, *session_node;
   const gchar *from, *id, *action, *sid;
   gchar *resource;
-  GabbleHandle handle;
+  TpHandle handle;
   GabbleMediaChannel *chan = NULL;
   gboolean chan_is_new = FALSE;
   GError *error = NULL;
@@ -454,7 +454,7 @@ media_channel_closed_cb (GabbleMediaChannel *chan, gpointer user_data)
  * Creates a new empty GabbleMediaChannel.
  */
 static GabbleMediaChannel *
-new_media_channel (GabbleMediaFactory *fac, GabbleHandle creator)
+new_media_channel (GabbleMediaFactory *fac, TpHandle creator)
 {
   GabbleMediaFactoryPrivate *priv;
   GabbleMediaChannel *chan;

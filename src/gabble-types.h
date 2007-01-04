@@ -35,8 +35,6 @@ typedef struct _GabbleRoster GabbleRoster;
 typedef struct _GabbleRosterChannel GabbleRosterChannel;
 typedef struct _GabbleVCardManager GabbleVCardManager;
 
-#define GabbleHandle TpHandle
-
 typedef enum {
     INITIATOR_INVALID = -1,
     INITIATOR_LOCAL = 0,

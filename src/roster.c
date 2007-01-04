@@ -226,7 +226,7 @@ gabble_roster_dispose (GObject *object)
 static void
 item_handle_unref_foreach (gpointer key, gpointer data, gpointer user_data)
 {
-  GabbleHandle handle = (GabbleHandle) key;
+  TpHandle handle = (TpHandle) key;
   GabbleRosterPrivate *priv = (GabbleRosterPrivate *) user_data;
 
   gabble_handle_unref (priv->conn->handles, TP_HANDLE_TYPE_CONTACT, handle);
@@ -442,7 +442,7 @@ _google_roster_item_should_keep (LmMessageNode *item_node,
 
 static GabbleRosterItem *
 _gabble_roster_item_get (GabbleRoster *roster,
-                         GabbleHandle handle)
+                         TpHandle handle)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
   GabbleRosterItem *item;
@@ -468,7 +468,7 @@ _gabble_roster_item_get (GabbleRoster *roster,
 
 static void
 _gabble_roster_item_remove (GabbleRoster *roster,
-                            GabbleHandle handle)
+                            TpHandle handle)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
 
@@ -483,7 +483,7 @@ _gabble_roster_item_remove (GabbleRoster *roster,
 
 static GabbleRosterChannel *_gabble_roster_get_channel (GabbleRoster *,
                                                         guint,
-                                                        GabbleHandle);
+                                                        TpHandle);
 
 typedef struct
 {
@@ -501,7 +501,7 @@ typedef struct
 } GroupMembershipUpdate;
 
 static GroupMembershipUpdate *
-group_mem_update_ensure (GroupsUpdateContext *ctx, GabbleHandle group_handle)
+group_mem_update_ensure (GroupsUpdateContext *ctx, TpHandle group_handle)
 {
   GroupMembershipUpdate *update = g_hash_table_lookup (ctx->group_mem_updates,
       GUINT_TO_POINTER (group_handle));
@@ -545,7 +545,7 @@ _update_remove_from_group (guint group_handle, gpointer user_data)
 
 static GabbleRosterItem *
 _gabble_roster_item_update (GabbleRoster *roster,
-                            GabbleHandle contact_handle,
+                            TpHandle contact_handle,
                             LmMessageNode *node,
                             GHashTable *group_updates,
                             gboolean google_roster_mode)
@@ -729,7 +729,7 @@ _gabble_roster_item_put_group_in_message (guint handle, gpointer user_data)
  */
 static LmMessage *
 _gabble_roster_item_to_message (GabbleRoster *roster,
-                                GabbleHandle handle,
+                                TpHandle handle,
                                 LmMessageNode **item_return,
                                 GabbleRosterItem *item)
 {
@@ -832,7 +832,7 @@ _gabble_roster_make_object_path (const gchar *name)
 static GabbleRosterChannel *
 _gabble_roster_create_channel (GabbleRoster *roster,
                                guint handle_type,
-                               GabbleHandle handle)
+                               TpHandle handle)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
   GabbleRosterChannel *chan;
@@ -890,7 +890,7 @@ _gabble_roster_create_channel (GabbleRoster *roster,
 static GabbleRosterChannel *
 _gabble_roster_get_channel (GabbleRoster *roster,
                             guint handle_type,
-                            GabbleHandle handle)
+                            TpHandle handle)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
   GabbleRosterChannel *chan;
@@ -926,7 +926,7 @@ _gabble_roster_emit_one (gpointer key,
   GabbleRosterChannel *chan = GABBLE_ROSTER_CHANNEL (value);
 #ifdef ENABLE_DEBUG
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
-  GabbleHandle handle = GPOINTER_TO_INT (key);
+  TpHandle handle = GPOINTER_TO_INT (key);
   const gchar *name = gabble_handle_inspect (priv->conn->handles, data_struct->handle_type, handle);
 
   DEBUG ("roster now received, emitting signal signal for %s list channel",
@@ -1023,7 +1023,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
 
   if (from != NULL)
     {
-      GabbleHandle sender;
+      TpHandle sender;
 
       sender = gabble_handle_for_contact (priv->conn->handles,
           from, FALSE);
@@ -1058,7 +1058,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
                *known_add, *known_rem,
                *deny_add, *deny_rem;
       GArray *removed;
-      GabbleHandle handle;
+      TpHandle handle;
       GabbleRosterChannel *chan;
       GHashTable *group_update_table;
       guint i;
@@ -1076,7 +1076,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
       known_rem = tp_intset_new ();
       group_update_table = g_hash_table_new_full (NULL, NULL, NULL,
           (GDestroyNotify)_group_mem_update_destroy);
-      removed = g_array_new (FALSE, FALSE, sizeof (GabbleHandle));
+      removed = g_array_new (FALSE, FALSE, sizeof (TpHandle));
 
       if (google_roster)
         {
@@ -1262,7 +1262,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
 
       for (i = 0; i < removed->len; i++)
           _gabble_roster_item_remove (roster,
-              g_array_index (removed, GabbleHandle, i));
+              g_array_index (removed, TpHandle, i));
 
       tp_intset_destroy (pub_add);
       tp_intset_destroy (pub_rem);
@@ -1359,7 +1359,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
   const char *from;
   LmMessageSubType sub_type;
   TpIntSet *tmp;
-  GabbleHandle handle;
+  TpHandle handle;
   const gchar *status_message = NULL;
   GabbleRosterChannel *chan = NULL;
   gboolean changed;
@@ -1699,7 +1699,7 @@ static LmHandlerResult roster_edited_cb (GabbleConnection *conn,
  */
 static void
 roster_item_apply_edits (GabbleRoster *roster,
-                         GabbleHandle contact,
+                         TpHandle contact,
                          GabbleRosterItem *item)
 {
   gboolean altered = FALSE, ret;
@@ -1857,7 +1857,7 @@ roster_edited_cb (GabbleConnection *conn,
                   gpointer user_data)
 {
   GabbleRoster *roster = GABBLE_ROSTER (roster_obj);
-  GabbleHandle contact = GPOINTER_TO_UINT(user_data);
+  TpHandle contact = GPOINTER_TO_UINT(user_data);
   GabbleRosterItem *item = _gabble_roster_item_get (roster, contact);
 
   if (item->unsent_edits)
@@ -1871,7 +1871,7 @@ roster_edited_cb (GabbleConnection *conn,
 
 GabbleRosterSubscription
 gabble_roster_handle_get_subscription (GabbleRoster *roster,
-                                       GabbleHandle handle)
+                                       TpHandle handle)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
   GabbleRosterItem *item;
@@ -1893,7 +1893,7 @@ gabble_roster_handle_get_subscription (GabbleRoster *roster,
 
 gboolean
 gabble_roster_handle_set_blocked (GabbleRoster *roster,
-                                  GabbleHandle handle,
+                                  TpHandle handle,
                                   gboolean blocked,
                                   GError **error)
 {
@@ -1957,7 +1957,7 @@ gabble_roster_handle_set_blocked (GabbleRoster *roster,
 
 gboolean
 gabble_roster_handle_has_entry (GabbleRoster *roster,
-                                GabbleHandle handle)
+                                TpHandle handle)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
   GabbleRosterItem *item;
@@ -1974,7 +1974,7 @@ gabble_roster_handle_has_entry (GabbleRoster *roster,
 
 const gchar *
 gabble_roster_handle_get_name (GabbleRoster *roster,
-                               GabbleHandle handle)
+                               TpHandle handle)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
   GabbleRosterItem *item;
@@ -1994,7 +1994,7 @@ gabble_roster_handle_get_name (GabbleRoster *roster,
 
 gboolean
 gabble_roster_handle_set_name (GabbleRoster *roster,
-                               GabbleHandle handle,
+                               TpHandle handle,
                                const gchar *name,
                                GError **error)
 {
@@ -2046,7 +2046,7 @@ gabble_roster_handle_set_name (GabbleRoster *roster,
 
 gboolean
 gabble_roster_handle_remove (GabbleRoster *roster,
-                             GabbleHandle handle,
+                             TpHandle handle,
                              GError **error)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
@@ -2095,7 +2095,7 @@ gabble_roster_handle_remove (GabbleRoster *roster,
 
 gboolean
 gabble_roster_handle_add (GabbleRoster *roster,
-                          GabbleHandle handle,
+                          TpHandle handle,
                           GError **error)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
@@ -2150,8 +2150,8 @@ gabble_roster_handle_add (GabbleRoster *roster,
 
 gboolean
 gabble_roster_handle_add_to_group (GabbleRoster *roster,
-                                   GabbleHandle handle,
-                                   GabbleHandle group,
+                                   TpHandle handle,
+                                   TpHandle group,
                                    GError **error)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
@@ -2207,8 +2207,8 @@ gabble_roster_handle_add_to_group (GabbleRoster *roster,
 
 gboolean
 gabble_roster_handle_remove_from_group (GabbleRoster *roster,
-                                        GabbleHandle handle,
-                                        GabbleHandle group,
+                                        TpHandle handle,
+                                        TpHandle group,
                                         GError **error)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);

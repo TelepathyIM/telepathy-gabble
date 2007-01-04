@@ -135,7 +135,7 @@ handle_priv_free (GabbleHandlePriv *priv)
 static GabbleHandlePriv *
 handle_priv_lookup (GabbleHandleRepo *repo,
                     TpHandleType type,
-                    GabbleHandle handle)
+                    TpHandle handle)
 {
   GabbleHandlePriv *priv = NULL;
 
@@ -163,10 +163,10 @@ handle_priv_lookup (GabbleHandleRepo *repo,
   return priv;
 }
 
-static GabbleHandle
+static TpHandle
 gabble_handle_alloc (GabbleHandleRepo *repo, TpHandleType type)
 {
-  GabbleHandle ret = 0;
+  TpHandle ret = 0;
 
   g_assert (repo != NULL);
   g_assert (gabble_handle_type_is_valid (type, NULL));
@@ -200,8 +200,8 @@ gabble_handle_alloc (GabbleHandleRepo *repo, TpHandleType type)
 static gint
 handle_compare_func (gconstpointer a, gconstpointer b)
 {
-  GabbleHandle first = GPOINTER_TO_UINT (a);
-  GabbleHandle second = GPOINTER_TO_UINT (b);
+  TpHandle first = GPOINTER_TO_UINT (a);
+  TpHandle second = GPOINTER_TO_UINT (b);
 
   return (first == second) ? 0 : ((first < second) ? -1 : 1);
 }
@@ -209,7 +209,7 @@ handle_compare_func (gconstpointer a, gconstpointer b)
 static void
 handle_priv_remove (GabbleHandleRepo *repo,
                     TpHandleType type,
-                    GabbleHandle handle)
+                    TpHandle handle)
 {
   GabbleHandlePriv *priv;
   const gchar *string;
@@ -335,7 +335,7 @@ GabbleHandleRepo *
 gabble_handle_repo_new ()
 {
   GabbleHandleRepo *repo;
-  GabbleHandle publish, subscribe, known, deny;
+  TpHandle publish, subscribe, known, deny;
 
   repo = g_new0 (GabbleHandleRepo, 1);
 
@@ -419,7 +419,7 @@ handle_leak_debug_printbt_foreach (gpointer data, gpointer user_data)
 static void
 handle_leak_debug_printhandles_foreach (gpointer key, gpointer value, gpointer ignore)
 {
-  GabbleHandle handle = GPOINTER_TO_UINT (key);
+  TpHandle handle = GPOINTER_TO_UINT (key);
   GabbleHandlePriv *priv = (GabbleHandlePriv *) value;
 
   printf ("\t%5u: %s (%u refs), traces:\n", handle, priv->string, priv->refcount);
@@ -501,12 +501,12 @@ gabble_handle_repo_destroy (GabbleHandleRepo *repo)
 }
 
 gboolean
-gabble_handle_is_valid (GabbleHandleRepo *repo, TpHandleType type, GabbleHandle handle, GError **error)
+gabble_handle_is_valid (GabbleHandleRepo *repo, TpHandleType type, TpHandle handle, GError **error)
 {
   GArray *arr;
   gboolean ret;
 
-  arr = g_array_new (FALSE, FALSE, sizeof (GabbleHandle));
+  arr = g_array_new (FALSE, FALSE, sizeof (TpHandle));
   g_array_insert_val (arr, 0, handle);
 
   ret = gabble_handles_are_valid (repo, type, arr, FALSE, error);
@@ -533,7 +533,7 @@ gabble_handles_are_valid (GabbleHandleRepo *repo,
 
   for (i = 0; i < array->len; i++)
     {
-      GabbleHandle handle = g_array_index (array, GabbleHandle, i);
+      TpHandle handle = g_array_index (array, TpHandle, i);
 
       if (handle == 0)
         {
@@ -561,7 +561,7 @@ gabble_handles_are_valid (GabbleHandleRepo *repo,
 gboolean
 gabble_handle_ref (GabbleHandleRepo *repo,
                    TpHandleType type,
-                   GabbleHandle handle)
+                   TpHandle handle)
 {
   GabbleHandlePriv *priv;
 
@@ -588,7 +588,7 @@ gabble_handle_ref (GabbleHandleRepo *repo,
 gboolean
 gabble_handle_unref (GabbleHandleRepo *repo,
                      TpHandleType type,
-                     GabbleHandle handle)
+                     TpHandle handle)
 {
   GabbleHandlePriv *priv;
 
@@ -620,7 +620,7 @@ gabble_handle_unref (GabbleHandleRepo *repo,
 const char *
 gabble_handle_inspect (GabbleHandleRepo *repo,
                        TpHandleType type,
-                       GabbleHandle handle)
+                       TpHandle handle)
 {
   GabbleHandlePriv *priv;
 
@@ -639,11 +639,11 @@ gabble_handle_inspect (GabbleHandleRepo *repo,
     return priv->string;
 }
 
-static GabbleHandle
+static TpHandle
 _handle_lookup_by_jid (GabbleHandleRepo *repo,
                        const gchar *jid)
 {
-  GabbleHandle handle;
+  TpHandle handle;
 
   handle = GPOINTER_TO_UINT (g_hash_table_lookup (repo->contact_strings, jid));
 
@@ -653,7 +653,7 @@ _handle_lookup_by_jid (GabbleHandleRepo *repo,
   return handle;
 }
 
-GabbleHandle
+TpHandle
 gabble_handle_for_contact (GabbleHandleRepo *repo,
                            const char *jid,
                            gboolean with_resource)
@@ -662,7 +662,7 @@ gabble_handle_for_contact (GabbleHandleRepo *repo,
   char *server = NULL;
   char *resource = NULL;
   char *clean_jid = NULL;
-  GabbleHandle handle = 0;
+  TpHandle handle = 0;
   GabbleHandlePriv *priv;
 
   g_assert (repo != NULL);
@@ -719,7 +719,7 @@ gabble_handle_for_room_exists (GabbleHandleRepo *repo,
                                const gchar *jid,
                                gboolean ignore_nick)
 {
-  GabbleHandle handle;
+  TpHandle handle;
   gchar *room, *service, *nick;
   gchar *clean_jid;
 
@@ -747,11 +747,11 @@ gabble_handle_for_room_exists (GabbleHandleRepo *repo,
   return (handle_priv_lookup (repo, TP_HANDLE_TYPE_ROOM, handle) != NULL);
 }
 
-GabbleHandle
+TpHandle
 gabble_handle_for_room (GabbleHandleRepo *repo,
                         const gchar *jid)
 {
-  GabbleHandle handle;
+  TpHandle handle;
   gchar *room, *service, *clean_jid;
 
   g_assert (repo != NULL);
@@ -791,11 +791,11 @@ gabble_handle_for_room (GabbleHandleRepo *repo,
   return handle;
 }
 
-GabbleHandle
+TpHandle
 gabble_handle_for_list (GabbleHandleRepo *repo,
                         const gchar *list)
 {
-  GabbleHandle handle = 0;
+  TpHandle handle = 0;
   int i;
 
   g_assert (repo != NULL);
@@ -804,17 +804,17 @@ gabble_handle_for_list (GabbleHandleRepo *repo,
   for (i = 0; i < GABBLE_LIST_HANDLE_DENY; i++)
     {
       if (0 == strcmp (list_handle_strings[i], list))
-        handle = (GabbleHandle) i + 1;
+        handle = (TpHandle) i + 1;
     }
 
   return handle;
 }
 
-GabbleHandle
+TpHandle
 gabble_handle_for_group (GabbleHandleRepo *repo,
                          const gchar *group)
 {
-  GabbleHandle handle;
+  TpHandle handle;
 
   g_assert (repo != NULL);
   g_assert (group != NULL);
@@ -853,7 +853,7 @@ gabble_handle_for_group (GabbleHandleRepo *repo,
 
 gboolean
 gabble_handle_set_qdata (GabbleHandleRepo *repo,
-                         TpHandleType type, GabbleHandle handle,
+                         TpHandleType type, TpHandle handle,
                          GQuark key_id, gpointer data, GDestroyNotify destroy)
 {
   GabbleHandlePriv *priv;
@@ -877,7 +877,7 @@ gabble_handle_set_qdata (GabbleHandleRepo *repo,
  */
 gpointer
 gabble_handle_get_qdata (GabbleHandleRepo *repo,
-                         TpHandleType type, GabbleHandle handle,
+                         TpHandleType type, TpHandle handle,
                          GQuark key_id)
 {
   GabbleHandlePriv *priv;
@@ -904,7 +904,7 @@ gabble_handle_get_qdata (GabbleHandleRepo *repo,
 gboolean
 gabble_handle_client_hold (GabbleHandleRepo *repo,
                            const gchar *client_name,
-                           GabbleHandle handle,
+                           TpHandle handle,
                            TpHandleType type,
                            GError **error)
 {
@@ -973,7 +973,7 @@ gabble_handle_client_hold (GabbleHandleRepo *repo,
 gboolean
 gabble_handle_client_release (GabbleHandleRepo *repo,
                            const gchar *client_name,
-                           GabbleHandle handle,
+                           TpHandle handle,
                            TpHandleType type,
                            GError **error)
 {

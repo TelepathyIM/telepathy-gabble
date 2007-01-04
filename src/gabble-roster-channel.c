@@ -71,7 +71,7 @@ struct _GabbleRosterChannelPrivate
 {
   GabbleConnection *conn;
   char *object_path;
-  GabbleHandle handle;
+  TpHandle handle;
   guint handle_type;
 
   gboolean dispose_has_run;
@@ -100,7 +100,7 @@ gabble_roster_channel_constructor (GType type, guint n_props,
   DBusGConnection *bus;
   GabbleHandleRepo *handles;
   gboolean valid;
-  GabbleHandle self_handle;
+  TpHandle self_handle;
   guint handle_type;
 
   obj = G_OBJECT_CLASS (gabble_roster_channel_parent_class)->
@@ -236,8 +236,8 @@ gabble_roster_channel_set_property (GObject     *object,
 static void gabble_roster_channel_dispose (GObject *object);
 static void gabble_roster_channel_finalize (GObject *object);
 
-static gboolean _gabble_roster_channel_add_member_cb (GObject *obj, GabbleHandle handle, const gchar *message, GError **error);
-static gboolean _gabble_roster_channel_remove_member_cb (GObject *obj, GabbleHandle handle, const gchar *message, GError **error);
+static gboolean _gabble_roster_channel_add_member_cb (GObject *obj, TpHandle handle, const gchar *message, GError **error);
+static gboolean _gabble_roster_channel_remove_member_cb (GObject *obj, TpHandle handle, const gchar *message, GError **error);
 
 static void
 gabble_roster_channel_class_init (GabbleRosterChannelClass *gabble_roster_channel_class)
@@ -327,7 +327,7 @@ gabble_roster_channel_finalize (GObject *object)
 static gboolean
 _gabble_roster_channel_send_presence (GabbleRosterChannel *chan,
                                       LmMessageSubType sub_type,
-                                      GabbleHandle handle,
+                                      TpHandle handle,
                                       const gchar *status,
                                       GError **error)
 {
@@ -366,7 +366,7 @@ _gabble_roster_channel_send_presence (GabbleRosterChannel *chan,
  */
 static gboolean
 _gabble_roster_channel_add_member_cb (GObject *obj,
-                                      GabbleHandle handle,
+                                      TpHandle handle,
                                       const gchar *message,
                                       GError **error)
 {
@@ -432,7 +432,7 @@ _gabble_roster_channel_add_member_cb (GObject *obj,
  */
 static gboolean
 _gabble_roster_channel_remove_member_cb (GObject *obj,
-                                         GabbleHandle handle,
+                                         TpHandle handle,
                                          const gchar *message,
                                          GError **error)
 {

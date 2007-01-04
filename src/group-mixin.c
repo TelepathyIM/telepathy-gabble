@@ -128,7 +128,7 @@ void gabble_group_mixin_class_init (GObjectClass *obj_cls,
 void gabble_group_mixin_init (GObject *obj,
                               glong offset,
                               GabbleHandleRepo *handle_repo,
-                              GabbleHandle self_handle)
+                              TpHandle self_handle)
 {
   GabbleGroupMixin *mixin;
 
@@ -221,7 +221,7 @@ gabble_group_mixin_add_members (GObject *obj, const GArray *contacts, const gcha
   GabbleGroupMixinClass *mixin_cls = GABBLE_GROUP_MIXIN_CLASS (G_OBJECT_GET_CLASS (obj));
   GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
   guint i;
-  GabbleHandle handle;
+  TpHandle handle;
 
   /* reject invalid handles */
   if (!gabble_handles_are_valid (mixin->handle_repo,
@@ -234,7 +234,7 @@ gabble_group_mixin_add_members (GObject *obj, const GArray *contacts, const gcha
   /* check that adding is allowed by flags */
   for (i = 0; i < contacts->len; i++)
     {
-      handle = g_array_index (contacts, GabbleHandle, i);
+      handle = g_array_index (contacts, TpHandle, i);
 
       if ((mixin->group_flags & TP_CHANNEL_GROUP_FLAG_CAN_ADD) == 0 &&
           !handle_set_is_member (mixin->local_pending, handle))
@@ -253,7 +253,7 @@ gabble_group_mixin_add_members (GObject *obj, const GArray *contacts, const gcha
   /* add handle by handle */
   for (i = 0; i < contacts->len; i++)
     {
-      handle = g_array_index (contacts, GabbleHandle, i);
+      handle = g_array_index (contacts, TpHandle, i);
 
       if (handle_set_is_member (mixin->members, handle))
         {
@@ -277,7 +277,7 @@ gabble_group_mixin_remove_members (GObject *obj, const GArray *contacts, const g
   GabbleGroupMixinClass *mixin_cls = GABBLE_GROUP_MIXIN_CLASS (G_OBJECT_GET_CLASS (obj));
   GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
   guint i;
-  GabbleHandle handle;
+  TpHandle handle;
 
   /* reject invalid handles */
   if (!gabble_handles_are_valid (mixin->handle_repo,
@@ -290,7 +290,7 @@ gabble_group_mixin_remove_members (GObject *obj, const GArray *contacts, const g
   /* check removing is allowed by flags */
   for (i = 0; i < contacts->len; i++)
     {
-      handle = g_array_index (contacts, GabbleHandle, i);
+      handle = g_array_index (contacts, TpHandle, i);
 
       if (handle_set_is_member (mixin->members, handle))
         {
@@ -335,7 +335,7 @@ gabble_group_mixin_remove_members (GObject *obj, const GArray *contacts, const g
   /* remove handle by handle */
   for (i = 0; i < contacts->len; i++)
     {
-      handle = g_array_index (contacts, GabbleHandle, i);
+      handle = g_array_index (contacts, TpHandle, i);
 
       if (!mixin_cls->remove_member (obj, handle, message, error))
         {
@@ -413,12 +413,12 @@ gabble_group_mixin_get_handle_owners (GObject *obj,
       return FALSE;
     }
 
-  *ret = g_array_sized_new (FALSE, FALSE, sizeof (GabbleHandle), handles->len);
+  *ret = g_array_sized_new (FALSE, FALSE, sizeof (TpHandle), handles->len);
 
   for (i = 0; i < handles->len; i++)
     {
-      GabbleHandle local_handle = g_array_index (handles, GabbleHandle, i);
-      GabbleHandle owner_handle;
+      TpHandle local_handle = g_array_index (handles, TpHandle, i);
+      TpHandle owner_handle;
 
       if (!handle_set_is_member (mixin->members, local_handle))
         {
@@ -530,7 +530,7 @@ member_array_to_string (GabbleHandleRepo *repo, const GArray *array)
 
   for (i = 0; i < array->len; i++)
     {
-      GabbleHandle handle;
+      TpHandle handle;
       const gchar *handle_str;
 
       handle = g_array_index (array, guint32, i);
@@ -561,7 +561,7 @@ gabble_group_mixin_change_members (GObject *obj,
                                    TpIntSet *remove,
                                    TpIntSet *local_pending,
                                    TpIntSet *remote_pending,
-                                   GabbleHandle actor,
+                                   TpHandle actor,
                                    guint reason)
 {
   GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
@@ -718,8 +718,8 @@ gabble_group_mixin_change_members (GObject *obj,
 
 void
 gabble_group_mixin_add_handle_owner (GObject *obj,
-                                     GabbleHandle local_handle,
-                                     GabbleHandle owner_handle)
+                                     TpHandle local_handle,
+                                     TpHandle owner_handle)
 {
   GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
   GabbleGroupMixinPrivate *priv = mixin->priv;
@@ -742,7 +742,7 @@ remove_handle_owners_if_exist (GObject *obj, GArray *array)
 
   for (i = 0; i < array->len; i++)
     {
-      GabbleHandle handle = g_array_index (array, guint32, i);
+      TpHandle handle = g_array_index (array, guint32, i);
       gpointer local_handle, owner_handle;
 
       if (g_hash_table_lookup_extended (priv->handle_owners,

@@ -85,7 +85,7 @@ typedef struct _DiscoWaiter DiscoWaiter;
 struct _DiscoWaiter
 {
   GabbleHandleRepo *repo;
-  GabbleHandle handle;
+  TpHandle handle;
   gchar *resource;
   guint serial;
   gboolean disco_requested;
@@ -95,7 +95,7 @@ struct _DiscoWaiter
  * disco_waiter_new ()
  */
 static DiscoWaiter *
-disco_waiter_new (GabbleHandleRepo *repo, GabbleHandle handle, const gchar *resource, guint serial)
+disco_waiter_new (GabbleHandleRepo *repo, TpHandle handle, const gchar *resource, guint serial)
 {
   DiscoWaiter *waiter;
 
@@ -185,7 +185,7 @@ capability_info_get (GabblePresenceCache *cache, const gchar *node,
 
 static guint
 capability_info_recvd (GabblePresenceCache *cache, const gchar *node,
-        GabbleHandle handle, GabblePresenceCapabilities caps)
+        TpHandle handle, GabblePresenceCapabilities caps)
 {
   CapabilityInfo *info = capability_info_get (cache, node, caps);
 
@@ -216,7 +216,7 @@ static void gabble_presence_cache_set_property (GObject *object, guint
 static void gabble_presence_cache_get_property (GObject *object, guint
     property_id, GValue *value, GParamSpec *pspec);
 static GabblePresence *_cache_insert (GabblePresenceCache *cache,
-    GabbleHandle handle);
+    TpHandle handle);
 
 static void gabble_presence_cache_status_changed_cb (GabbleConnection *,
     TpConnectionStatus, TpConnectionStatusReason, gpointer);
@@ -528,7 +528,7 @@ _presence_node_get_status (LmMessageNode *pres_node)
 
 static void
 _grab_nickname (GabblePresenceCache *cache,
-                GabbleHandle handle,
+                TpHandle handle,
                 const gchar *from,
                 LmMessageNode *node)
 {
@@ -560,7 +560,7 @@ _grab_nickname (GabblePresenceCache *cache,
 
 static void
 _grab_avatar_sha1 (GabblePresenceCache *cache,
-                   GabbleHandle handle,
+                   TpHandle handle,
                    const gchar *from,
                    LmMessageNode *node)
 {
@@ -683,7 +683,7 @@ _caps_disco_cb (GabbleDisco *disco,
   gchar *full_jid = NULL;
   GabblePresenceCapabilities caps = 0;
   guint trust;
-  GabbleHandle handle;
+  TpHandle handle;
 
   cache = GABBLE_PRESENCE_CACHE (user_data);
   priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
@@ -842,7 +842,7 @@ static void
 _process_caps_uri (GabblePresenceCache *cache,
                    const gchar *from,
                    const gchar *uri,
-                   GabbleHandle handle,
+                   TpHandle handle,
                    const gchar *resource,
                    guint serial)
 {
@@ -914,7 +914,7 @@ _process_caps_uri (GabblePresenceCache *cache,
 
 static void
 _process_caps (GabblePresenceCache *cache,
-               GabbleHandle handle,
+               TpHandle handle,
                const gchar *from,
                LmMessageNode *lm_node)
 {
@@ -945,7 +945,7 @@ _process_caps (GabblePresenceCache *cache,
 
 static LmHandlerResult
 _parse_presence_message (GabblePresenceCache *cache,
-                         GabbleHandle handle,
+                         TpHandle handle,
                          const gchar *from,
                          LmMessage *message)
 {
@@ -1021,7 +1021,7 @@ _parse_presence_message (GabblePresenceCache *cache,
 
 static LmHandlerResult
 _parse_message_message (GabblePresenceCache *cache,
-                        GabbleHandle handle,
+                        TpHandle handle,
                         const gchar *from,
                         LmMessage *message)
 {
@@ -1064,7 +1064,7 @@ gabble_presence_cache_lm_message_cb (LmMessageHandler *handler,
   GabblePresenceCache *cache = GABBLE_PRESENCE_CACHE (user_data);
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
   const char *from;
-  GabbleHandle handle;
+  TpHandle handle;
 
   g_assert (lmconn == priv->conn->lmconn);
 
@@ -1105,7 +1105,7 @@ gabble_presence_cache_new (GabbleConnection *conn)
 }
 
 GabblePresence *
-gabble_presence_cache_get (GabblePresenceCache *cache, GabbleHandle handle)
+gabble_presence_cache_get (GabblePresenceCache *cache, TpHandle handle)
 {
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
 
@@ -1118,7 +1118,7 @@ gabble_presence_cache_get (GabblePresenceCache *cache, GabbleHandle handle)
 void
 gabble_presence_cache_maybe_remove (
     GabblePresenceCache *cache,
-    GabbleHandle handle)
+    TpHandle handle)
 {
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
   GabblePresence *presence;
@@ -1145,7 +1145,7 @@ gabble_presence_cache_maybe_remove (
 static GabblePresence *
 _cache_insert (
     GabblePresenceCache *cache,
-    GabbleHandle handle)
+    TpHandle handle)
 {
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
   GabblePresence *presence;
@@ -1159,7 +1159,7 @@ _cache_insert (
 void
 gabble_presence_cache_update (
     GabblePresenceCache *cache,
-    GabbleHandle handle,
+    TpHandle handle,
     const gchar *resource,
     GabblePresenceId presence_id,
     const gchar *status_message,

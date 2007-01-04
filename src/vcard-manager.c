@@ -73,7 +73,7 @@ struct _GabbleVCardManagerRequest
   guint timer_id;
   guint timeout;
 
-  GabbleHandle handle;
+  TpHandle handle;
   gchar **edit_args;
 
   GabbleVCardManagerCb callback;
@@ -247,7 +247,7 @@ gabble_vcard_manager_finalize (GObject *object)
 static void
 initial_request_cb (GabbleVCardManager *self,
                     GabbleVCardManagerRequest *request,
-                    GabbleHandle handle,
+                    TpHandle handle,
                     LmMessageNode *vcard,
                     GError *error,
                     gpointer user_data)
@@ -454,7 +454,7 @@ cancel_request (GabbleVCardManagerRequest *request)
 
 static void
 observe_vcard (GabbleConnection *conn, GabbleVCardManager *manager,
-               GabbleHandle handle, LmMessageNode *vcard_node)
+               TpHandle handle, LmMessageNode *vcard_node)
 {
   LmMessageNode *nick_node = lm_message_node_get_child (vcard_node,
                                                         "NICKNAME");
@@ -798,7 +798,7 @@ notify_delete_request (gpointer data, GObject *obj)
  */
 GabbleVCardManagerRequest *
 gabble_vcard_manager_request (GabbleVCardManager *self,
-                              GabbleHandle handle,
+                              TpHandle handle,
                               guint timeout,
                               GabbleVCardManagerCb callback,
                               gpointer user_data,
@@ -953,7 +953,7 @@ gabble_vcard_manager_cancel_request (GabbleVCardManager *manager,
  */
 const gchar *
 gabble_vcard_manager_get_cached_alias (GabbleVCardManager *manager,
-                                       GabbleHandle handle)
+                                       TpHandle handle)
 {
   GabbleVCardManagerPrivate *priv;
   const gchar *s;
@@ -979,7 +979,7 @@ gabble_vcard_manager_get_cached_alias (GabbleVCardManager *manager,
  */
 gboolean
 gabble_vcard_manager_has_cached_alias (GabbleVCardManager *manager,
-                                       GabbleHandle handle)
+                                       TpHandle handle)
 {
   GabbleVCardManagerPrivate *priv;
   gpointer p;

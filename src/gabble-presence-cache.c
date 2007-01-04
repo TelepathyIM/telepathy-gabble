@@ -987,13 +987,13 @@ _parse_presence_message (GabblePresenceCache *cache,
     {
     case LM_MESSAGE_SUB_TYPE_NOT_SET:
     case LM_MESSAGE_SUB_TYPE_AVAILABLE:
-      _grab_nickname (cache, handle, from, presence_node);
-      _grab_avatar_sha1 (cache, handle, from, presence_node);
-      _process_caps (cache, handle, from, presence_node);
-
       presence_id = _presence_node_get_status (presence_node);
       gabble_presence_cache_update (cache, handle, resource, presence_id,
           status_message, priority);
+
+      _grab_nickname (cache, handle, from, presence_node);
+      _grab_avatar_sha1 (cache, handle, from, presence_node);
+      _process_caps (cache, handle, from, presence_node);
 
       ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
       break;

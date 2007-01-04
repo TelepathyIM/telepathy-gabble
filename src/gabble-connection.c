@@ -4856,7 +4856,7 @@ gabble_connection_request_handles (GabbleConnection *self,
 
   ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
 
-  if (!gabble_handle_type_is_valid (handle_type, &error))
+  if (!tp_handle_type_is_valid (handle_type, &error))
     {
       dbus_g_method_return_error (context, error);
       g_error_free (error);

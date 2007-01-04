@@ -1,7 +1,8 @@
 /*
- * tp-types.h - Header for basic Telepathy-GLib type definitions
+ * tp-handle.h - Header for basic Telepathy-GLib handle functionality
  *
- * Copyright (C) 2007 Collabora Ltd.
+ * Copyright (C) 2005, 2007 Collabora Ltd.
+ * Copyright (C) 2005, 2007 Nokia Corporation
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -18,16 +19,36 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef __TP_TYPES_H__
-#define __TP_TYPES_H__
+#ifndef __TP_HANDLE_H__
+#define __TP_HANDLE_H__
 
 #include <glib.h>
+#include <telepathy-glib/tp-enums.h>
+#include <telepathy-glib/tp-errors.h>
 
 G_BEGIN_DECLS
 
 typedef guint32 TpHandle;
 
+static inline gboolean
+tp_handle_type_is_valid (TpHandleType type, GError **error)
+{
+  gboolean ret;
+
+  if (type > TP_HANDLE_TYPE_NONE && type <= LAST_TP_HANDLE_TYPE)
+    {
+      ret = TRUE;
+    }
+  else
+    {
+      g_set_error (error, TELEPATHY_ERRORS, TpError_InvalidArgument,
+          "invalid handle type %u", type);
+      ret = FALSE;
+    }
+
+  return ret;
+}
+
 G_END_DECLS
 
 #endif
-

@@ -140,7 +140,7 @@ handle_priv_lookup (GabbleHandleRepo *repo,
   GabbleHandlePriv *priv = NULL;
 
   g_assert (repo != NULL);
-  g_assert (gabble_handle_type_is_valid (type, NULL));
+  g_assert (tp_handle_type_is_valid (type, NULL));
   g_assert (handle != 0);
 
   switch (type) {
@@ -169,7 +169,7 @@ gabble_handle_alloc (GabbleHandleRepo *repo, TpHandleType type)
   TpHandle ret = 0;
 
   g_assert (repo != NULL);
-  g_assert (gabble_handle_type_is_valid (type, NULL));
+  g_assert (tp_handle_type_is_valid (type, NULL));
 
   switch (type) {
     case TP_HANDLE_TYPE_CONTACT:
@@ -214,7 +214,7 @@ handle_priv_remove (GabbleHandleRepo *repo,
   GabbleHandlePriv *priv;
   const gchar *string;
 
-  g_assert (gabble_handle_type_is_valid (type, NULL));
+  g_assert (tp_handle_type_is_valid (type, NULL));
   g_assert (handle != 0);
   g_assert (repo != NULL);
 
@@ -310,25 +310,6 @@ gabble_handle_jid_is_valid (TpHandleType type, const gchar *jid, GError **error)
     }
 
   return TRUE;
-}
-
-gboolean
-gabble_handle_type_is_valid (TpHandleType type, GError **error)
-{
-  gboolean ret;
-
-  if (type > TP_HANDLE_TYPE_NONE && type <= LAST_TP_HANDLE_TYPE)
-    {
-      ret = TRUE;
-    }
-  else
-    {
-      g_set_error (error, TELEPATHY_ERRORS, TpError_InvalidArgument,
-          "invalid handle type %u", type);
-      ret = FALSE;
-    }
-
-  return ret;
 }
 
 GabbleHandleRepo *
@@ -528,7 +509,7 @@ gabble_handles_are_valid (GabbleHandleRepo *repo,
   g_return_val_if_fail (repo != NULL, FALSE);
   g_return_val_if_fail (array != NULL, FALSE);
 
-  if (!gabble_handle_type_is_valid (type, error))
+  if (!tp_handle_type_is_valid (type, error))
     return FALSE;
 
   for (i = 0; i < array->len; i++)

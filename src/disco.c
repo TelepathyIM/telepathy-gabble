@@ -35,7 +35,7 @@
 #include "gabble-connection.h"
 #include "gabble-error.h"
 #include "namespaces.h"
-#include "telepathy-helpers.h"
+#include <telepathy-glib/tp-helpers.h>
 #include "util.h"
 
 #define DEFAULT_REQUEST_TIMEOUT 20000

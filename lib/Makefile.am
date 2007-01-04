@@ -8,6 +8,7 @@ tpginclude_HEADERS = \
     telepathy-glib/tp-enums.h \
     telepathy-glib/tp-errors.h \
     telepathy-glib/tp-heap.h \
+    telepathy-glib/tp-helpers.h \
     telepathy-glib/tp-interfaces.h \
     telepathy-glib/tp-intset.h \
     telepathy-glib/tp-types.h
@@ -30,6 +31,7 @@ CLEANFILES = $(BUILT_SOURCES) $(nodist_libtelepathy_glib_la_SOURCES)
 libtelepathy_glib_la_SOURCES = \
     errors.c \
     heap.c \
+    helpers.c \
     intset.c
 
 AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @HANDLE_LEAK_DEBUG_CFLAGS@

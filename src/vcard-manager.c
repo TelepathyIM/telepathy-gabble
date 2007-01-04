@@ -30,7 +30,7 @@
 #include "debug.h"
 #include "gabble-connection.h"
 #include "namespaces.h"
-#include "telepathy-helpers.h"
+#include <telepathy-glib/tp-helpers.h>
 #include "util.h"
 #include "vcard-manager.h"
 

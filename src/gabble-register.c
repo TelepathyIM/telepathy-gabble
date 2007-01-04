@@ -27,7 +27,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "telepathy-helpers.h"
+#include <telepathy-glib/tp-helpers.h>
 #include <telepathy-glib/tp-errors.h>
 
 #include "gabble-connection.h"

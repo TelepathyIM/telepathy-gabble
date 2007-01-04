@@ -34,7 +34,7 @@
 #include "util.h"
 
 #include <telepathy-glib/tp-errors.h>
-#include "telepathy-helpers.h"
+#include <telepathy-glib/tp-helpers.h>
 
 #include "gabble-connection.h"
 #include "gabble-media-channel.h"

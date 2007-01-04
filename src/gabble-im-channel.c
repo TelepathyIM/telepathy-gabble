@@ -35,7 +35,7 @@
 #include "roster.h"
 #include <telepathy-glib/tp-enums.h>
 #include <telepathy-glib/tp-errors.h>
-#include "telepathy-helpers.h"
+#include <telepathy-glib/tp-helpers.h>
 #include <telepathy-glib/tp-interfaces.h>
 #include "tp-channel-iface.h"
 

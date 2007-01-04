@@ -20,7 +20,7 @@
 
 #include <stdlib.h>
 #include <dbus/dbus-glib.h>
-#include "telepathy-helpers.h"
+#include <telepathy-glib/tp-helpers.h>
 
 DBusGConnection *
 tp_get_bus ()

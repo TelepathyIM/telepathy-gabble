@@ -104,8 +104,6 @@ libgabble_convenience_la_SOURCES = \
     roster.c \
     sha1/sha1.h \
     sha1/sha1.c \
-    telepathy-helpers.h \
-    telepathy-helpers.c \
     text-mixin.h \
     text-mixin.c \
     tp-channel-iface.h \

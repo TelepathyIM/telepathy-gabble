@@ -29,7 +29,6 @@
 #include "disco.h"
 #include "gabble-connection.h"
 #include "handles.h"
-#include "handle-set.h"
 #include <telepathy-glib/tp-enums.h>
 #include <telepathy-glib/tp-interfaces.h>
 #include <telepathy-glib/tp-helpers.h>
@@ -89,7 +88,7 @@ struct _GabbleRoomlistChannelPrivate
   gboolean listing;
 
   gpointer disco_pipeline;
-  GabbleHandleSet *signalled_rooms;
+  TpHandleSet *signalled_rooms;
 
   GPtrArray *pending_room_signals;
   guint timer_source_id;
@@ -176,7 +175,7 @@ gabble_roomlist_channel_set_property (GObject     *object,
 {
   GabbleRoomlistChannel *chan = GABBLE_ROOMLIST_CHANNEL (object);
   GabbleRoomlistChannelPrivate *priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (chan);
-  GabbleHandleSet *new_signalled_rooms;
+  TpHandleSet *new_signalled_rooms;
 
   switch (property_id) {
     case PROP_OBJECT_PATH:
@@ -198,9 +197,9 @@ gabble_roomlist_channel_set_property (GObject     *object,
         {
           const TpIntSet *add;
           TpIntSet *tmp;
-          add = handle_set_peek (priv->signalled_rooms);
-          tmp = handle_set_update (new_signalled_rooms, add);
-          handle_set_destroy (priv->signalled_rooms);
+          add = tp_handle_set_peek (priv->signalled_rooms);
+          tmp = tp_handle_set_update (new_signalled_rooms, add);
+          tp_handle_set_destroy (priv->signalled_rooms);
           tp_intset_destroy (tmp);
         }
       priv->signalled_rooms = new_signalled_rooms;
@@ -348,7 +347,7 @@ gabble_roomlist_channel_finalize (GObject *object)
   g_free (priv->conference_server);
 
   if (priv->signalled_rooms != NULL)
-    handle_set_destroy (priv->signalled_rooms);
+    tp_handle_set_destroy (priv->signalled_rooms);
 
   G_OBJECT_CLASS (gabble_roomlist_channel_parent_class)->finalize (object);
 }
@@ -499,7 +498,7 @@ room_info_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
 
   handle = gabble_handle_for_room (priv->conn->handles, jid);
 
-  handle_set_add (priv->signalled_rooms, handle);
+  tp_handle_set_add (priv->signalled_rooms, handle);
 
   g_value_init (&room, TP_TYPE_ROOM_STRUCT);
   g_value_take_boxed (&room,

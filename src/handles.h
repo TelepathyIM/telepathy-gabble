@@ -23,6 +23,8 @@
 
 #include <glib.h>
 
+#include <telepathy-glib/tp-handle-repo.h>
+
 #include "gabble-types.h"
 #include <telepathy-glib/tp-enums.h>
 
@@ -35,6 +37,8 @@ typedef enum
   GABBLE_LIST_HANDLE_KNOWN,
   GABBLE_LIST_HANDLE_DENY
 } GabbleListHandle;
+
+TpHandleSet *handle_set_new (GabbleHandleRepo *repo, TpHandleType type);
 
 gboolean gabble_handle_jid_is_valid (TpHandleType type, const gchar *jid, GError **error);
 

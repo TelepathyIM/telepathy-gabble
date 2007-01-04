@@ -16,6 +16,9 @@ tpginclude_HEADERS = \
     telepathy-glib/tp-enums.h \
     telepathy-glib/tp-errors.h \
     telepathy-glib/tp-handle.h \
+    telepathy-glib/tp-handle-repo.h \
+    telepathy-glib/tp-handle-repo-static.h \
+    telepathy-glib/tp-handle-repo-dynamic.h \
     telepathy-glib/tp-heap.h \
     telepathy-glib/tp-helpers.h \
     telepathy-glib/tp-interfaces.h \
@@ -40,6 +43,10 @@ CLEANFILES = $(BUILT_SOURCES)
 
 libtelepathy_glib_la_SOURCES = \
     errors.c \
+    handle-repo.c \
+    handle-repo-dynamic.c \
+    handle-repo-static.c \
+    handle-set.c \
     heap.c \
     helpers.c \
     intset.c \

@@ -27,7 +27,6 @@
 #include "debug.h"
 #include "gabble-connection.h"
 #include "group-mixin.h"
-#include "handle-set.h"
 #include "roster.h"
 #include <telepathy-glib/tp-errors.h>
 #include <telepathy-glib/tp-helpers.h>
@@ -468,7 +467,7 @@ _gabble_roster_channel_remove_member_cb (GObject *obj,
       /* remove it from local_pending here, because roster callback doesn't
          know if it can (subscription='none' is used both during request and
          when it's rejected) */
-      if (handle_set_is_member (GABBLE_ROSTER_CHANNEL (obj)->group.local_pending, handle))
+      if (tp_handle_set_is_member (GABBLE_ROSTER_CHANNEL (obj)->group.local_pending, handle))
         {
           TpIntSet *rem = tp_intset_new ();
 

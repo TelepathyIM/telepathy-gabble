@@ -44,7 +44,7 @@ void test_handles (guint handle_type)
           handle = gabble_handle_for_room (repo, jid);
           break;
       case TP_HANDLE_TYPE_LIST:
-          jid = "known";
+          jid = "deny";
           handle = gabble_handle_for_list (repo, jid);
           break;
     }

@@ -24,7 +24,6 @@
 #define __GABBLE_GROUP_MIXIN_H__
 
 #include "handles.h"
-#include "handle-set.h"
 #include "util.h"
 
 G_BEGIN_DECLS
@@ -50,9 +49,9 @@ struct _GabbleGroupMixin {
 
   TpChannelGroupFlags group_flags;
 
-  GabbleHandleSet *members;
-  GabbleHandleSet *local_pending;
-  GabbleHandleSet *remote_pending;
+  TpHandleSet *members;
+  TpHandleSet *local_pending;
+  TpHandleSet *remote_pending;
 
   GabbleGroupMixinPrivate *priv;
 };

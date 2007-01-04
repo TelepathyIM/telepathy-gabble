@@ -1165,8 +1165,8 @@ gabble_media_channel_request_streams (GabbleMediaChannel *self,
         contact_handle, error))
     return FALSE;
 
-  if (!handle_set_is_member (self->group.members, contact_handle) &&
-      !handle_set_is_member (self->group.remote_pending, contact_handle))
+  if (!tp_handle_set_is_member (self->group.members, contact_handle) &&
+      !tp_handle_set_is_member (self->group.remote_pending, contact_handle))
     {
       g_set_error (error, TELEPATHY_ERRORS, TpError_InvalidArgument,
           "given handle %u is not a member of the channel", contact_handle);
@@ -1256,7 +1256,7 @@ _gabble_media_channel_add_member (GObject *obj, TpHandle handle, const gchar *me
 
       if (priv->session &&
           handle == mixin->self_handle &&
-          handle_set_is_member (mixin->local_pending, handle))
+          tp_handle_set_is_member (mixin->local_pending, handle))
         {
           /* yes: accept the request */
 

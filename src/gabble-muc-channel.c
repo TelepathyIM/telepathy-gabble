@@ -1566,7 +1566,7 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
 
   if (lm_message_get_sub_type (message) != LM_MESSAGE_SUB_TYPE_UNAVAILABLE)
     {
-      if (!handle_set_is_member (mixin->members, handle))
+      if (!tp_handle_set_is_member (mixin->members, handle))
         {
           gabble_group_mixin_change_members (G_OBJECT (chan), "", set, NULL,
                                              NULL, NULL, 0, 0);
@@ -2406,8 +2406,8 @@ gabble_muc_channel_add_member (GObject *obj, TpHandle handle, const gchar *messa
       GArray *arr_members;
 
       /* are we already a member or in remote pending? */
-      if (handle_set_is_member (mixin->members, handle) ||
-          handle_set_is_member (mixin->remote_pending, handle))
+      if (tp_handle_set_is_member (mixin->members, handle) ||
+          tp_handle_set_is_member (mixin->remote_pending, handle))
         {
           g_set_error (error, TELEPATHY_ERRORS, TpError_NotAvailable,
               "already a member or in remote pending");
@@ -2421,7 +2421,7 @@ gabble_muc_channel_add_member (GObject *obj, TpHandle handle, const gchar *messa
       set_members = tp_intset_new ();
       set_pending = tp_intset_new ();
 
-      arr_members = handle_set_to_array (mixin->members);
+      arr_members = tp_handle_set_to_array (mixin->members);
       if (arr_members->len > 0)
         {
           tp_intset_add (set_members, g_array_index (arr_members, guint32, 0));

@@ -32,7 +32,6 @@
 #include "gabble-presence.h"
 #include "namespaces.h"
 #include "util.h"
-#include "handle-set.h"
 
 #include "gabble-presence-cache.h"
 
@@ -71,7 +70,7 @@ struct _GabblePresenceCachePrivate
   LmMessageHandler *lm_message_cb;
 
   GHashTable *presence;
-  GabbleHandleSet *presence_handles;
+  TpHandleSet *presence_handles;
 
   GHashTable *capabilities;
   GHashTable *disco_pending;
@@ -333,7 +332,7 @@ gabble_presence_cache_dispose (GObject *object)
   g_hash_table_destroy (priv->presence);
   priv->presence = NULL;
 
-  handle_set_destroy (priv->presence_handles);
+  tp_handle_set_destroy (priv->presence_handles);
   priv->presence_handles = NULL;
 
   if (G_OBJECT_CLASS (gabble_presence_cache_parent_class)->dispose)
@@ -375,7 +374,7 @@ gabble_presence_cache_set_property (GObject     *object,
 {
   GabblePresenceCache *cache = GABBLE_PRESENCE_CACHE (object);
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
-  GabbleHandleSet *new_presence_handles;
+  TpHandleSet *new_presence_handles;
 
   switch (property_id) {
     case PROP_CONNECTION:
@@ -386,9 +385,9 @@ gabble_presence_cache_set_property (GObject     *object,
         {
           const TpIntSet *add;
           TpIntSet *tmp;
-          add = handle_set_peek (priv->presence_handles);
-          tmp = handle_set_update (new_presence_handles, add);
-          handle_set_destroy (priv->presence_handles);
+          add = tp_handle_set_peek (priv->presence_handles);
+          tmp = tp_handle_set_update (new_presence_handles, add);
+          tp_handle_set_destroy (priv->presence_handles);
           tp_intset_destroy (tmp);
         }
       priv->presence_handles = new_presence_handles;
@@ -1138,7 +1137,7 @@ gabble_presence_cache_maybe_remove (
           handle);
       DEBUG ("discarding cached presence for unavailable jid %s", jid);
       g_hash_table_remove (priv->presence, GINT_TO_POINTER (handle));
-      handle_set_remove (priv->presence_handles, handle);
+      tp_handle_set_remove (priv->presence_handles, handle);
     }
 }
 
@@ -1152,7 +1151,7 @@ _cache_insert (
 
   presence = gabble_presence_new ();
   g_hash_table_insert (priv->presence, GINT_TO_POINTER (handle), presence);
-  handle_set_add (priv->presence_handles, handle);
+  tp_handle_set_add (priv->presence_handles, handle);
   return presence;
 }
 

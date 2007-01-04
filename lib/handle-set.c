@@ -1,8 +1,8 @@
 /*
  * handle-set.c - a set which refs a handle when inserted
  *
- * Copyright (C) 2005,2006 Collabora Ltd.
- * Copyright (C) 2005,2006 Nokia Corporation
+ * Copyright (C) 2005,2006,2007 Collabora Ltd.
+ * Copyright (C) 2005,2006,2007 Nokia Corporation
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
@@ -22,112 +22,107 @@
  */
 #include <glib.h>
 #include "telepathy-glib/tp-intset.h"
-#include "handles.h"
+#include "telepathy-glib/tp-handle-repo.h"
 
-#include "handle-set.h"
-
-struct _GabbleHandleSet
+struct _TpHandleSet
 {
-  GabbleHandleRepo *repo;
+  TpHandleRepoIface *repo;
   TpIntSet *intset;
-  TpHandleType type;
 };
 
 /**
- * handle_set_new:
- * @repo: #GabbleHandleRepo that holds the handles to be reffed by this set
+ * tp_handle_set_new:
+ * @repo: #TpHandleRepo that holds the handles to be reffed by this set
  *
- * Creates a new #GabbleHandleSet
+ * Creates a new #TpHandleSet
  *
- * Returns: A new #GabbleHandleSet
+ * Returns: A new #TpHandleSet
  */
-GabbleHandleSet *
-handle_set_new (GabbleHandleRepo *repo, TpHandleType type)
+TpHandleSet *
+tp_handle_set_new (TpHandleRepoIface *repo)
 {
-  GabbleHandleSet *set = g_new(GabbleHandleSet, 1);
+  TpHandleSet *set = g_new(TpHandleSet, 1);
   set->intset = tp_intset_new();
   set->repo = repo;
-  set->type = type;
 
   return set;
 }
 
 static void
-freer (GabbleHandleSet *set, TpHandle handle, gpointer userdata)
+freer (TpHandleSet *set, TpHandle handle, gpointer userdata)
 {
-  handle_set_remove (set, handle);
+  tp_handle_set_remove (set, handle);
 }
 
 /**
- * handle_set_destroy:
- * @set:#GabbleHandleSet to destroy
+ * tp_handle_set_destroy:
+ * @set:#TpHandleSet to destroy
  *
- * Delete a #GabbleHandleSet and unreference any handles that it holds
+ * Delete a #TpHandleSet and unreference any handles that it holds
  */
 void
-handle_set_destroy (GabbleHandleSet *set)
+tp_handle_set_destroy (TpHandleSet *set)
 {
-  handle_set_foreach (set, freer, NULL);
+  tp_handle_set_foreach (set, freer, NULL);
   tp_intset_destroy (set->intset);
   g_free (set);
 }
 
 /**
- * handle_set_peek:
- * @set:#GabbleHandleSet to peek at
+ * tp_handle_set_peek:
+ * @set:#TpHandleSet to peek at
  *
- * Get the underlying TpIntSet used by this GabbleHandleSet
+ * Get the underlying TpIntSet used by this TpHandleSet
  */
 TpIntSet *
-handle_set_peek (GabbleHandleSet *set)
+tp_handle_set_peek (TpHandleSet *set)
 {
   return set->intset;
 }
 
 /**
- * handle_set_add:
- * @set: #GabbleHandleSet to add this handle to
+ * tp_handle_set_add:
+ * @set: #TpHandleSet to add this handle to
  * @handle: handle to add
  *
- * Add a handle to a #GabbleHandleSet,and reference it in the attched
- * #GabbleHandleRepo
+ * Add a handle to a #TpHandleSet,and reference it in the attched
+ * #TpHandleRepo
  *
  */
 void
-handle_set_add (GabbleHandleSet *set, TpHandle handle)
+tp_handle_set_add (TpHandleSet *set, TpHandle handle)
 {
   g_return_if_fail (set != NULL);
   g_return_if_fail (handle != 0);
 
   if (!tp_intset_is_member(set->intset, handle))
     {
-      g_return_if_fail (gabble_handle_ref (set->repo, set->type, handle));
+      g_return_if_fail (tp_handle_ref (set->repo, handle));
 
       tp_intset_add (set->intset, handle);
     }
 }
 
 /**
- * handle_set_remove:
- * @set: #GabbleHandleSet to remove this handle from
+ * tp_handle_set_remove:
+ * @set: #TpHandleSet to remove this handle from
  * @handle: handle to remove
- * @type: type of handle
  *
- * Remove a handle to a #GabbleHandleSet,and unreference it in the attched
- * #GabbleHandleRepo
+ * Remove a handle to a #TpHandleSet,and unreference it in the attched
+ * #TpHandleRepo
  *
- * Returns: FALSE if the (handle,type) pair was invalid, or was not in this set
+ * Returns: FALSE if the handle was invalid, or was not in this set
  */
 
 gboolean
-handle_set_remove (GabbleHandleSet *set, TpHandle handle)
+tp_handle_set_remove (TpHandleSet *set, TpHandle handle)
 {
   g_return_val_if_fail (set != NULL, FALSE);
   g_return_val_if_fail (handle != 0, FALSE);
 
   if (tp_intset_is_member(set->intset, handle))
     {
-      g_return_val_if_fail (gabble_handle_unref (set->repo, set->type, handle), FALSE);
+      g_return_val_if_fail (tp_handle_unref (set->repo, handle), FALSE);
 
       tp_intset_remove (set->intset, handle);
       return TRUE;
@@ -137,26 +132,25 @@ handle_set_remove (GabbleHandleSet *set, TpHandle handle)
 }
 
 /**
- * handle_set_is_member:
- * @set: A #GabbleHandleSet
+ * tp_handle_set_is_member:
+ * @set: A #TpHandleSet
  * @handle: handle to check
- * @type: type of handle
  *
- * Check if the (handle,type) pair is in this set
+ * Check if the handle is in this set
  *
- * Returns: TRUE if the (handle,type) pair is in this repo
+ * Returns: TRUE if the handle is in this set
  *
  */
 gboolean
-handle_set_is_member (GabbleHandleSet *set, TpHandle handle)
+tp_handle_set_is_member (TpHandleSet *set, TpHandle handle)
 {
   return tp_intset_is_member(set->intset, handle);
 }
 
 typedef struct __foreach_data
 {
-  GabbleHandleSet *set;
-  GabbleHandleFunc func;
+  TpHandleSet *set;
+  TpHandleSetMemberFunc func;
   gpointer userdata;
 } _foreach_data;
 
@@ -169,7 +163,8 @@ foreach_helper(guint i, gpointer userdata)
 }
 
 void
-handle_set_foreach (GabbleHandleSet *set, GabbleHandleFunc func, gpointer userdata)
+tp_handle_set_foreach (TpHandleSet *set, TpHandleSetMemberFunc func,
+    gpointer userdata)
 {
   _foreach_data data = {set, func, userdata};
   data.set = set;
@@ -179,12 +174,13 @@ handle_set_foreach (GabbleHandleSet *set, GabbleHandleFunc func, gpointer userda
 }
 
 int
-handle_set_size (GabbleHandleSet *set)
+tp_handle_set_size (TpHandleSet *set)
 {
   return tp_intset_size (set->intset);
 }
 
-GArray *handle_set_to_array (GabbleHandleSet *set)
+GArray *
+tp_handle_set_to_array (TpHandleSet *set)
 {
   g_return_val_if_fail (set != NULL, NULL);
 
@@ -194,13 +190,13 @@ GArray *handle_set_to_array (GabbleHandleSet *set)
 static void
 ref_one (guint handle, gpointer data)
 {
-  GabbleHandleSet *set = (GabbleHandleSet *) data;
-  gabble_handle_ref (set->repo, set->type, handle);
+  TpHandleSet *set = (TpHandleSet *) data;
+  tp_handle_ref (set->repo, handle);
 }
 
 /**
- * handle_set_update:
- * @set: a #GabbleHandleSet to update
+ * tp_handle_set_update:
+ * @set: a #TpHandleSet to update
  * @add: a #TpIntSet of handles to add
  *
  * Add a set of handles to a handle set, referencing those which are not
@@ -209,7 +205,7 @@ ref_one (guint handle, gpointer data)
  * Returns: the handles which were added
  */
 TpIntSet *
-handle_set_update (GabbleHandleSet *set, const TpIntSet *add)
+tp_handle_set_update (TpHandleSet *set, const TpIntSet *add)
 {
   TpIntSet *ret, *tmp;
 
@@ -231,13 +227,13 @@ handle_set_update (GabbleHandleSet *set, const TpIntSet *add)
 static void
 unref_one (guint handle, gpointer data)
 {
-  GabbleHandleSet *set = (GabbleHandleSet *) data;
-  gabble_handle_unref (set->repo, set->type, handle);
+  TpHandleSet *set = (TpHandleSet *) data;
+  tp_handle_unref (set->repo, handle);
 }
 
 /**
- * handle_set_difference_update:
- * @set: a #GabbleHandleSet to update
+ * tp_handle_set_difference_update:
+ * @set: a #TpHandleSet to update
  * @remove: a #TpIntSet of handles to remove
  *
  * Remove a set of handles from a handle set, dereferencing those which are
@@ -246,7 +242,7 @@ unref_one (guint handle, gpointer data)
  * Returns: the handles which were removed
  */
 TpIntSet *
-handle_set_difference_update (GabbleHandleSet *set, const TpIntSet *remove)
+tp_handle_set_difference_update (TpHandleSet *set, const TpIntSet *remove)
 {
   TpIntSet *ret, *tmp;
 

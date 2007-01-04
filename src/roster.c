@@ -87,8 +87,8 @@ struct _GabbleRosterItemEdit
   GoogleItemType new_google_type;
   /* owned by the item; if NULL, that means don't edit */
   gchar *new_name;
-  GabbleHandleSet *add_to_groups;
-  GabbleHandleSet *remove_from_groups;
+  TpHandleSet *add_to_groups;
+  TpHandleSet *remove_from_groups;
 };
 
 typedef struct _GabbleRosterItem GabbleRosterItem;
@@ -98,7 +98,7 @@ struct _GabbleRosterItem
   gboolean ask_subscribe;
   GoogleItemType google_type;
   gchar *name;
-  GabbleHandleSet *groups;
+  TpHandleSet *groups;
   /* if not NULL, an edit attempt is already "in-flight" so instead of
    * sending off another, store required edits here until the one we
    * already sent is acknowledged - this prevents some race conditions
@@ -289,7 +289,7 @@ _gabble_roster_item_free (GabbleRosterItem *item)
 {
   g_assert (item != NULL);
 
-  handle_set_destroy (item->groups);
+  tp_handle_set_destroy (item->groups);
   item_edit_free (item->unsent_edits);
   g_free (item->name);
   g_free (item);
@@ -608,12 +608,12 @@ _gabble_roster_item_update (GabbleRoster *roster,
       g_signal_emit (G_OBJECT (roster), signals[NICKNAME_UPDATE], 0, contact_handle);
     }
 
-  old_groups = handle_set_peek (item->groups);    /* borrowed */
+  old_groups = tp_handle_set_peek (item->groups);    /* borrowed */
   new_groups = _parse_item_groups (node, priv->conn);
 
   removed_from = tp_intset_difference (old_groups, new_groups);
-  added_to = handle_set_update (item->groups, new_groups);
-  handle_set_difference_update (item->groups, removed_from);
+  added_to = tp_handle_set_update (item->groups, new_groups);
+  tp_handle_set_difference_update (item->groups, removed_from);
 
   DEBUG ("Checking which groups contact#%u was just added to:", contact_handle);
   tp_intset_foreach (added_to, _update_add_to_group, &ctx);
@@ -657,7 +657,7 @@ _gabble_roster_item_dump (GabbleRosterItem *item)
 
   if (item->groups)
     {
-      tp_intset_foreach (handle_set_peek (item->groups),
+      tp_intset_foreach (tp_handle_set_peek (item->groups),
                          _gabble_roster_item_dump_group, str);
     }
 
@@ -784,7 +784,7 @@ _gabble_roster_item_to_message (GabbleRoster *roster,
 
   if (item->groups)
     {
-      tp_intset_foreach (handle_set_peek (item->groups),
+      tp_intset_foreach (tp_handle_set_peek (item->groups),
                          _gabble_roster_item_put_group_in_message,
                          (void *)&ctx);
     }
@@ -1147,7 +1147,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
                * if someone is awaiting our approval - we get this via presence
                * type=subscribe, so we have to not remove them if they're
                * already local_pending in our publish channel */
-              if (!handle_set_is_member (chan->group.local_pending, handle))
+              if (!tp_handle_set_is_member (chan->group.local_pending, handle))
                 {
                   tp_intset_add (pub_rem, handle);
                 }
@@ -1678,9 +1678,9 @@ item_edit_free (GabbleRosterItemEdit *edits)
     return;
 
   if (edits->add_to_groups)
-    handle_set_destroy (edits->add_to_groups);
+    tp_handle_set_destroy (edits->add_to_groups);
   if (edits->remove_from_groups)
-    handle_set_destroy (edits->remove_from_groups);
+    tp_handle_set_destroy (edits->remove_from_groups);
   g_free (edits->new_name);
   g_slice_free (GabbleRosterItemEdit, edits);
 }
@@ -1757,7 +1757,7 @@ roster_item_apply_edits (GabbleRoster *roster,
           if (edits->add_to_groups)
             {
               GString *str = g_string_new ("Adding to groups: ");
-              tp_intset_foreach (handle_set_peek (edits->add_to_groups),
+              tp_intset_foreach (tp_handle_set_peek (edits->add_to_groups),
                                  _gabble_roster_item_dump_group, str);
               DEBUG("%s", g_string_free (str, FALSE));
             }
@@ -1768,7 +1768,7 @@ roster_item_apply_edits (GabbleRoster *roster,
           if (edits->remove_from_groups)
             {
               GString *str = g_string_new ("Removing from groups: ");
-              tp_intset_foreach (handle_set_peek (edits->remove_from_groups),
+              tp_intset_foreach (tp_handle_set_peek (edits->remove_from_groups),
                                  _gabble_roster_item_dump_group, str);
               DEBUG("%s", g_string_free (str, FALSE));
             }
@@ -1780,14 +1780,14 @@ roster_item_apply_edits (GabbleRoster *roster,
 #endif
       edited_item.groups = handle_set_new (priv->conn->handles,
           TP_HANDLE_TYPE_GROUP);
-      intset = handle_set_update (edited_item.groups,
-          handle_set_peek (item->groups));
+      intset = tp_handle_set_update (edited_item.groups,
+          tp_handle_set_peek (item->groups));
       tp_intset_destroy (intset);
 
       if (edits->add_to_groups)
         {
-          intset = handle_set_update (edited_item.groups,
-              handle_set_peek (edits->add_to_groups));
+          intset = tp_handle_set_update (edited_item.groups,
+              tp_handle_set_peek (edits->add_to_groups));
           if (tp_intset_size (intset) > 0)
             {
               altered = TRUE;
@@ -1797,8 +1797,8 @@ roster_item_apply_edits (GabbleRoster *roster,
 
       if (edits->remove_from_groups)
         {
-          intset = handle_set_difference_update (edited_item.groups,
-              handle_set_peek (edits->remove_from_groups));
+          intset = tp_handle_set_difference_update (edited_item.groups,
+              tp_handle_set_peek (edits->remove_from_groups));
           if (tp_intset_size (intset) > 0)
             {
               altered = TRUE;
@@ -1844,7 +1844,7 @@ roster_item_apply_edits (GabbleRoster *roster,
 
   if (edited_item.groups != item->groups)
     {
-      handle_set_destroy (edited_item.groups);
+      tp_handle_set_destroy (edited_item.groups);
     }
 }
 
@@ -2179,10 +2179,10 @@ gabble_roster_handle_add_to_group (GabbleRoster *roster,
           item->unsent_edits->add_to_groups = handle_set_new (
               priv->conn->handles, TP_HANDLE_TYPE_GROUP);
         }
-      handle_set_add (item->unsent_edits->add_to_groups, group);
+      tp_handle_set_add (item->unsent_edits->add_to_groups, group);
       if (item->unsent_edits->remove_from_groups)
         {
-          handle_set_remove (item->unsent_edits->remove_from_groups, group);
+          tp_handle_set_remove (item->unsent_edits->remove_from_groups, group);
         }
       return TRUE;
     }
@@ -2192,10 +2192,10 @@ gabble_roster_handle_add_to_group (GabbleRoster *roster,
       item->unsent_edits = item_edit_new ();
     }
 
-  handle_set_add (item->groups, group);
+  tp_handle_set_add (item->groups, group);
   message = _gabble_roster_item_to_message (roster, handle, NULL, NULL);
   NODE_DEBUG (message->node, "Roster item as message");
-  handle_set_remove (item->groups, group);
+  tp_handle_set_remove (item->groups, group);
 
   ret = _gabble_connection_send_with_reply (priv->conn,
       message, roster_edited_cb, G_OBJECT (roster),
@@ -2237,10 +2237,10 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
           item->unsent_edits->remove_from_groups = handle_set_new (
               priv->conn->handles, TP_HANDLE_TYPE_GROUP);
         }
-      handle_set_add (item->unsent_edits->remove_from_groups, group);
+      tp_handle_set_add (item->unsent_edits->remove_from_groups, group);
       if (item->unsent_edits->add_to_groups)
         {
-          handle_set_remove (item->unsent_edits->add_to_groups, group);
+          tp_handle_set_remove (item->unsent_edits->add_to_groups, group);
         }
       return TRUE;
     }
@@ -2259,10 +2259,10 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
   g_return_val_if_fail (gabble_handle_ref (priv->conn->handles,
           TP_HANDLE_TYPE_GROUP, group),
       FALSE);
-  was_in_group = handle_set_remove (item->groups, group);
+  was_in_group = tp_handle_set_remove (item->groups, group);
   message = _gabble_roster_item_to_message (roster, handle, NULL, NULL);
   if (was_in_group)
-    handle_set_add (item->groups, group);
+    tp_handle_set_add (item->groups, group);
   g_return_val_if_fail (gabble_handle_unref (priv->conn->handles,
           TP_HANDLE_TYPE_GROUP, group),
       FALSE);

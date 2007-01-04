@@ -23,259 +23,29 @@
 #include <string.h>
 
 #include <telepathy-glib/tp-heap.h>
+#include <telepathy-glib/tp-handle-repo.h>
+#include <telepathy-glib/tp-handle-repo-dynamic.h>
+#include <telepathy-glib/tp-handle-repo-static.h>
 
-#include "handles.h"
-#include "handle-set.h"
 #include <telepathy-glib/tp-errors.h>
 #include <telepathy-glib/tp-helpers.h>
 #include "util.h"
 
 #include "config.h"
 
-#ifdef ENABLE_HANDLE_LEAK_DEBUG
-#include <stdlib.h>
-#include <stdio.h>
-#include <execinfo.h>
-
-typedef struct _HandleLeakTrace HandleLeakTrace;
-
-struct _HandleLeakTrace
-{
-  char **trace;
-  int len;
-};
-
-static void
-handle_leak_trace_free (HandleLeakTrace *hltrace)
-{
-  free (hltrace->trace);
-  g_free (hltrace);
-}
-
-static void
-handle_leak_trace_free_gfunc (gpointer data, gpointer user_data)
-{
-  return handle_leak_trace_free ((HandleLeakTrace *) data);
-}
-
-#endif /* ENABLE_HANDLE_LEAK_DEBUG */
-
-typedef struct _GabbleHandlePriv GabbleHandlePriv;
-
-struct _GabbleHandlePriv
-{
-  guint refcount;
-  gchar *string;
-#ifdef ENABLE_HANDLE_LEAK_DEBUG
-  GSList *traces;
-#endif /* ENABLE_HANDLE_LEAK_DEBUG */
-  GData *datalist;
-};
-
 struct _GabbleHandleRepo
 {
-  GHashTable *contact_handles;
-  GHashTable *contact_strings;
-  TpHeap *free_contact_handles;
-  guint contact_serial;
-  GData *client_contact_handle_sets;
-
-  GHashTable *room_handles;
-  GHashTable *room_strings;
-  TpHeap *free_room_handles;
-  guint room_serial;
-  GData *client_room_handle_sets;
-
-  GHashTable *group_handles;
-  GHashTable *group_strings;
-  TpHeap *free_group_handles;
-  guint group_serial;
-  GData *client_group_handle_sets;
-
-  GData *list_handles;
-
-  DBusGProxy *bus_service_proxy;
+  TpHandleRepoIface *repos[LAST_TP_HANDLE_TYPE + 1];
 };
 
-static const char *list_handle_strings[GABBLE_LIST_HANDLE_DENY] =
+static const char *list_handle_strings[] =
 {
     "publish",      /* GABBLE_LIST_HANDLE_PUBLISH */
     "subscribe",    /* GABBLE_LIST_HANDLE_SUBSCRIBE */
     "known",        /* GABBLE_LIST_HANDLE_KNOWN */
-    "deny"          /* GABBLE_LIST_HANDLE_DENY */
+    "deny",         /* GABBLE_LIST_HANDLE_DENY */
+    NULL
 };
-
-/* private functions */
-
-static GabbleHandlePriv *
-handle_priv_new ()
-{
-  GabbleHandlePriv *priv;
-
-  priv = g_new0 (GabbleHandlePriv, 1);
-
-  g_datalist_init (&(priv->datalist));
-  return priv;
-}
-
-static void
-handle_priv_free (GabbleHandlePriv *priv)
-{
-  g_assert (priv != NULL);
-
-  g_free(priv->string);
-  g_datalist_clear (&(priv->datalist));
-#ifdef ENABLE_HANDLE_LEAK_DEBUG
-  g_slist_foreach (priv->traces, handle_leak_trace_free_gfunc, NULL);
-  g_slist_free (priv->traces);
-#endif /* ENABLE_HANDLE_LEAK_DEBUG */
-  g_free (priv);
-}
-
-static GabbleHandlePriv *
-handle_priv_lookup (GabbleHandleRepo *repo,
-                    TpHandleType type,
-                    TpHandle handle)
-{
-  GabbleHandlePriv *priv = NULL;
-
-  g_assert (repo != NULL);
-  g_assert (tp_handle_type_is_valid (type, NULL));
-  g_assert (handle != 0);
-
-  switch (type) {
-    case TP_HANDLE_TYPE_CONTACT:
-      priv = g_hash_table_lookup (repo->contact_handles, GINT_TO_POINTER (handle));
-      break;
-    case TP_HANDLE_TYPE_ROOM:
-      priv = g_hash_table_lookup (repo->room_handles, GINT_TO_POINTER (handle));
-      break;
-    case TP_HANDLE_TYPE_LIST:
-      priv = g_datalist_id_get_data (&repo->list_handles, handle);
-      break;
-    case TP_HANDLE_TYPE_GROUP:
-      priv = g_hash_table_lookup (repo->group_handles, GINT_TO_POINTER (handle));
-      break;
-    default:
-      g_assert_not_reached();
-    }
-
-  return priv;
-}
-
-static TpHandle
-gabble_handle_alloc (GabbleHandleRepo *repo, TpHandleType type)
-{
-  TpHandle ret = 0;
-
-  g_assert (repo != NULL);
-  g_assert (tp_handle_type_is_valid (type, NULL));
-
-  switch (type) {
-    case TP_HANDLE_TYPE_CONTACT:
-      if (tp_heap_size (repo->free_contact_handles))
-        ret = GPOINTER_TO_UINT (tp_heap_extract_first (repo->free_contact_handles));
-      else
-        ret = repo->contact_serial++;
-      break;
-    case TP_HANDLE_TYPE_ROOM:
-      if (tp_heap_size (repo->free_room_handles))
-        ret = GPOINTER_TO_UINT (tp_heap_extract_first (repo->free_room_handles));
-      else
-        ret = repo->room_serial++;
-      break;
-    case TP_HANDLE_TYPE_GROUP:
-      if (tp_heap_size (repo->free_group_handles))
-        ret = GPOINTER_TO_UINT (tp_heap_extract_first (repo->free_group_handles));
-      else
-        ret = repo->group_serial++;
-      break;
-    default:
-      g_assert_not_reached();
-    }
-
-  return ret;
-}
-
-static gint
-handle_compare_func (gconstpointer a, gconstpointer b)
-{
-  TpHandle first = GPOINTER_TO_UINT (a);
-  TpHandle second = GPOINTER_TO_UINT (b);
-
-  return (first == second) ? 0 : ((first < second) ? -1 : 1);
-}
-
-static void
-handle_priv_remove (GabbleHandleRepo *repo,
-                    TpHandleType type,
-                    TpHandle handle)
-{
-  GabbleHandlePriv *priv;
-  const gchar *string;
-
-  g_assert (tp_handle_type_is_valid (type, NULL));
-  g_assert (handle != 0);
-  g_assert (repo != NULL);
-
-  priv = handle_priv_lookup (repo, type, handle);
-
-  g_assert (priv != NULL);
-
-  string = priv->string;
-
-  switch (type) {
-    case TP_HANDLE_TYPE_CONTACT:
-      g_hash_table_remove (repo->contact_strings, string);
-      g_hash_table_remove (repo->contact_handles, GINT_TO_POINTER (handle));
-      if (handle == repo->contact_serial-1)
-        repo->contact_serial--;
-      else
-        tp_heap_add (repo->free_contact_handles, GUINT_TO_POINTER (handle));
-      break;
-    case TP_HANDLE_TYPE_ROOM:
-      g_hash_table_remove (repo->room_strings, string);
-      g_hash_table_remove (repo->room_handles, GINT_TO_POINTER (handle));
-      if (handle == repo->room_serial-1)
-        repo->room_serial--;
-      else
-        tp_heap_add (repo->free_room_handles, GUINT_TO_POINTER (handle));
-      break;
-    case TP_HANDLE_TYPE_LIST:
-      g_dataset_id_remove_data (&repo->list_handles, handle);
-      break;
-    case TP_HANDLE_TYPE_GROUP:
-      g_hash_table_remove (repo->group_strings, string);
-      g_hash_table_remove (repo->group_handles, GINT_TO_POINTER (handle));
-      if (handle == repo->group_serial-1)
-        repo->group_serial--;
-      else
-        tp_heap_add (repo->free_group_handles, GUINT_TO_POINTER (handle));
-      break;
-    default:
-      g_assert_not_reached ();
-    }
-}
-
-static void
-handles_name_owner_changed_cb (DBusGProxy *proxy,
-                               const gchar *name,
-                               const gchar *old_owner,
-                               const gchar *new_owner,
-                               gpointer data)
-{
-  GabbleHandleRepo *repo = (GabbleHandleRepo *) data;
-
-  if (old_owner && strlen (old_owner))
-    {
-      if (!new_owner || !strlen (new_owner))
-        {
-          g_datalist_remove_data (&repo->client_contact_handle_sets, old_owner);
-          g_datalist_remove_data (&repo->client_room_handle_sets, old_owner);
-          g_datalist_remove_data (&repo->client_group_handle_sets, old_owner);
-        }
-    }
-}
 
 /* public API */
 
@@ -316,170 +86,62 @@ GabbleHandleRepo *
 gabble_handle_repo_new ()
 {
   GabbleHandleRepo *repo;
-  TpHandle publish, subscribe, known, deny;
 
   repo = g_new0 (GabbleHandleRepo, 1);
 
-  repo->contact_handles = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-      NULL, (GDestroyNotify) handle_priv_free);
-  repo->room_handles = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-      NULL, (GDestroyNotify) handle_priv_free);
-  repo->group_handles = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-      NULL, (GDestroyNotify) handle_priv_free);
-
-  repo->contact_strings = g_hash_table_new (g_str_hash, g_str_equal);
-  repo->room_strings = g_hash_table_new (g_str_hash, g_str_equal);
-  repo->group_strings = g_hash_table_new (g_str_hash, g_str_equal);
-
-  repo->free_contact_handles = tp_heap_new (handle_compare_func);
-  repo->free_room_handles = tp_heap_new (handle_compare_func);
-  repo->free_group_handles = tp_heap_new (handle_compare_func);
-
-  repo->contact_serial = 1;
-  repo->room_serial = 1;
-  repo->group_serial = 1;
-
-  g_datalist_init (&repo->list_handles);
-
-  publish = GABBLE_LIST_HANDLE_PUBLISH;
-  g_datalist_id_set_data_full (&repo->list_handles, (GQuark) publish,
-      handle_priv_new(), (GDestroyNotify) handle_priv_free);
-
-  subscribe = GABBLE_LIST_HANDLE_SUBSCRIBE;
-  g_datalist_id_set_data_full (&repo->list_handles, (GQuark) subscribe,
-      handle_priv_new(), (GDestroyNotify) handle_priv_free);
-
-  known = GABBLE_LIST_HANDLE_KNOWN;
-  g_datalist_id_set_data_full (&repo->list_handles, (GQuark) known,
-      handle_priv_new(), (GDestroyNotify) handle_priv_free);
-
-  deny = GABBLE_LIST_HANDLE_DENY;
-  g_datalist_id_set_data_full (&repo->list_handles, (GQuark) deny,
-      handle_priv_new(), (GDestroyNotify) handle_priv_free);
-
-  g_datalist_init (&repo->client_contact_handle_sets);
-  g_datalist_init (&repo->client_room_handle_sets);
-  g_datalist_init (&repo->client_group_handle_sets);
-
-  repo->bus_service_proxy = dbus_g_proxy_new_for_name (tp_get_bus(),
-                                                       DBUS_SERVICE_DBUS,
-                                                       DBUS_PATH_DBUS,
-                                                       DBUS_INTERFACE_DBUS);
-
-  dbus_g_proxy_add_signal (repo->bus_service_proxy,
-                           "NameOwnerChanged",
-                           G_TYPE_STRING,
-                           G_TYPE_STRING,
-                           G_TYPE_STRING,
-                           G_TYPE_INVALID);
-  dbus_g_proxy_connect_signal (repo->bus_service_proxy,
-                               "NameOwnerChanged",
-                               G_CALLBACK (handles_name_owner_changed_cb),
-                               repo,
-                               NULL);
+  repo->repos[TP_HANDLE_TYPE_CONTACT] =
+      (TpHandleRepoIface *)g_object_new (TP_TYPE_DYNAMIC_HANDLE_REPO,
+          "handle-type", TP_HANDLE_TYPE_CONTACT, NULL);
+  repo->repos[TP_HANDLE_TYPE_ROOM] =
+      (TpHandleRepoIface *)g_object_new (TP_TYPE_DYNAMIC_HANDLE_REPO,
+          "handle-type", TP_HANDLE_TYPE_ROOM, NULL);
+  repo->repos[TP_HANDLE_TYPE_GROUP] =
+      (TpHandleRepoIface *)g_object_new (TP_TYPE_DYNAMIC_HANDLE_REPO,
+          "handle-type", TP_HANDLE_TYPE_GROUP, NULL);
+  repo->repos[TP_HANDLE_TYPE_LIST] =
+      (TpHandleRepoIface *)g_object_new (TP_TYPE_STATIC_HANDLE_REPO,
+          "handle-type", TP_HANDLE_TYPE_LIST,
+          "handle-names", list_handle_strings, NULL);
 
   return repo;
 }
 
-#ifdef ENABLE_HANDLE_LEAK_DEBUG
-
-static void
-handle_leak_debug_printbt_foreach (gpointer data, gpointer user_data)
+TpHandleSet *
+handle_set_new (GabbleHandleRepo *repo, TpHandleType type)
 {
-  HandleLeakTrace *hltrace = (HandleLeakTrace *) data;
-  int i;
+  if (!tp_handle_type_is_valid (type, NULL))
+    return NULL;
 
-  for (i = 1; i < hltrace->len; i++)
+  if (!repo->repos[type])
     {
-      printf ("\t\t%s\n", hltrace->trace[i]);
+      return NULL;
     }
 
-  printf ("\n");
+  return tp_handle_set_new (repo->repos[type]);
 }
-
-static void
-handle_leak_debug_printhandles_foreach (gpointer key, gpointer value, gpointer ignore)
-{
-  TpHandle handle = GPOINTER_TO_UINT (key);
-  GabbleHandlePriv *priv = (GabbleHandlePriv *) value;
-
-  printf ("\t%5u: %s (%u refs), traces:\n", handle, priv->string, priv->refcount);
-  
-  g_slist_foreach (priv->traces, handle_leak_debug_printbt_foreach, NULL);
-}
-
-static void
-handle_leak_debug_print_report (GabbleHandleRepo *repo)
-{
-  g_assert (repo != NULL);
-
-  printf ("The following contact handles were not freed:\n");
-  g_hash_table_foreach (repo->contact_handles, handle_leak_debug_printhandles_foreach, NULL);
-  printf ("The following room handles were not freed:\n");
-  g_hash_table_foreach (repo->room_handles, handle_leak_debug_printhandles_foreach, NULL);
-  printf ("The following group handles were not freed:\n");
-  g_hash_table_foreach (repo->group_handles, handle_leak_debug_printhandles_foreach, NULL);
-}
-
-static HandleLeakTrace *
-handle_leak_debug_bt ()
-{
-  void *bt_addresses[16];
-  HandleLeakTrace *ret = g_new0 (HandleLeakTrace, 1);
-  
-  ret->len = backtrace (bt_addresses, 16);
-  ret->trace = backtrace_symbols (bt_addresses, ret->len);
-
-  return ret;
-}
-
-#define HANDLE_LEAK_DEBUG_DO(traces_slist) \
-  { (traces_slist) =  g_slist_append ((traces_slist), handle_leak_debug_bt ()); }
-
-#else /* !ENABLE_HANDLE_LEAK_DEBUG */
-
-#define HANDLE_LEAK_DEBUG_DO(traces_slist) {}
-
-#endif /* ENABLE_HANDLE_LEAK_DEBUG */
 
 void
 gabble_handle_repo_destroy (GabbleHandleRepo *repo)
 {
+  TpHandleType i;
+
   g_assert (repo != NULL);
-  g_assert (repo->contact_handles);
-  g_assert (repo->room_handles);
-  g_assert (repo->group_handles);
-  g_assert (repo->contact_strings);
-  g_assert (repo->room_strings);
-  g_assert (repo->group_strings);
 
-  g_datalist_clear (&repo->client_contact_handle_sets);
-  g_datalist_clear (&repo->client_room_handle_sets);
-  g_datalist_clear (&repo->client_group_handle_sets);
-
-#ifdef ENABLE_HANDLE_LEAK_DEBUG
-  handle_leak_debug_print_report (repo);
-#endif /* ENABLE_HANDLE_LEAK_DEBUG */
-
-  g_hash_table_destroy (repo->contact_handles);
-  g_hash_table_destroy (repo->room_handles);
-  g_hash_table_destroy (repo->group_handles);
-  g_hash_table_destroy (repo->contact_strings);
-  g_hash_table_destroy (repo->room_strings);
-  g_hash_table_destroy (repo->group_strings);
-  tp_heap_destroy (repo->free_contact_handles);
-  tp_heap_destroy (repo->free_room_handles);
-  tp_heap_destroy (repo->free_group_handles);
-  g_datalist_clear (&repo->list_handles);
-
-  dbus_g_proxy_disconnect_signal (repo->bus_service_proxy,
-                                  "NameOwnerChanged",
-                                  G_CALLBACK (handles_name_owner_changed_cb),
-                                  repo);
-  g_object_unref (G_OBJECT (repo->bus_service_proxy));
+  for (i = 1; i <= LAST_TP_HANDLE_TYPE; i++)
+    {
+      if (repo->repos[i])
+        g_object_unref ((GObject *)repo->repos[i]);
+    }
 
   g_free (repo);
 }
+
+gboolean
+gabble_handles_are_valid (GabbleHandleRepo *repo,
+                          TpHandleType type,
+                          const GArray *array,
+                          gboolean allow_zero,
+                          GError **error);
 
 gboolean
 gabble_handle_is_valid (GabbleHandleRepo *repo, TpHandleType type, TpHandle handle, GError **error)
@@ -504,39 +166,18 @@ gabble_handles_are_valid (GabbleHandleRepo *repo,
                           gboolean allow_zero,
                           GError **error)
 {
-  guint i;
-
-  g_return_val_if_fail (repo != NULL, FALSE);
-  g_return_val_if_fail (array != NULL, FALSE);
-
   if (!tp_handle_type_is_valid (type, error))
     return FALSE;
 
-  for (i = 0; i < array->len; i++)
+  if (!repo->repos[type])
     {
-      TpHandle handle = g_array_index (array, TpHandle, i);
-
-      if (handle == 0)
-        {
-          if (allow_zero)
-              continue;
-
-          g_debug ("someone tried to validate handle zero");
-
-          g_set_error (error, TELEPATHY_ERRORS, TpError_InvalidArgument,
-              "invalid handle %u", handle);
-          return FALSE;
-        }
-
-      if (handle_priv_lookup (repo, type, handle) == NULL)
-        {
-          g_set_error (error, TELEPATHY_ERRORS, TpError_InvalidArgument,
-              "invalid handle %u", handle);
-          return FALSE;
-        }
+      g_set_error (error, TELEPATHY_ERRORS, TpError_InvalidArgument,
+          "unsupported handle type %u", type);
+      return FALSE;
     }
 
-  return TRUE;
+  return tp_handles_are_valid (repo->repos[type], array, 
+      allow_zero, error);
 }
 
 gboolean
@@ -544,26 +185,13 @@ gabble_handle_ref (GabbleHandleRepo *repo,
                    TpHandleType type,
                    TpHandle handle)
 {
-  GabbleHandlePriv *priv;
-
-  if (type == TP_HANDLE_TYPE_LIST)
-    {
-      if (handle >= GABBLE_LIST_HANDLE_PUBLISH && handle <= GABBLE_LIST_HANDLE_DENY)
-        return TRUE;
-      else
-        return FALSE;
-    }
-
-  priv = handle_priv_lookup (repo, type, handle);
-
-  if (priv == NULL)
+  if (!tp_handle_type_is_valid (type, NULL))
     return FALSE;
 
-  priv->refcount++;
+  if (!repo->repos[type])
+    return FALSE;
 
-  HANDLE_LEAK_DEBUG_DO (priv->traces);
-
-  return TRUE;
+  return tp_handle_ref (repo->repos[type], handle);
 }
 
 gboolean
@@ -571,31 +199,13 @@ gabble_handle_unref (GabbleHandleRepo *repo,
                      TpHandleType type,
                      TpHandle handle)
 {
-  GabbleHandlePriv *priv;
-
-  if (type == TP_HANDLE_TYPE_LIST)
-    {
-      if (handle >= GABBLE_LIST_HANDLE_PUBLISH && handle <= GABBLE_LIST_HANDLE_DENY)
-        return TRUE;
-      else
-        return FALSE;
-    }
-
-  priv = handle_priv_lookup (repo, type, handle);
-
-  if (priv == NULL)
+  if (!tp_handle_type_is_valid (type, NULL))
     return FALSE;
 
-  HANDLE_LEAK_DEBUG_DO (priv->traces);
+  if (!repo->repos[type])
+    return FALSE;
 
-  g_assert (priv->refcount > 0);
-
-  priv->refcount--;
-
-  if (priv->refcount == 0)
-    handle_priv_remove (repo, type, handle);
-
-  return TRUE;
+  return tp_handle_unref (repo->repos[type], handle);
 }
 
 const char *
@@ -603,35 +213,13 @@ gabble_handle_inspect (GabbleHandleRepo *repo,
                        TpHandleType type,
                        TpHandle handle)
 {
-  GabbleHandlePriv *priv;
-
-  if (type == TP_HANDLE_TYPE_LIST)
-    {
-      g_assert (handle >= GABBLE_LIST_HANDLE_PUBLISH
-                  && handle <= GABBLE_LIST_HANDLE_DENY);
-      return list_handle_strings[handle-1];
-    }
-
-  priv = handle_priv_lookup (repo, type, handle);
-
-  if (priv == NULL)
+  if (!tp_handle_type_is_valid (type, NULL))
     return NULL;
-  else
-    return priv->string;
-}
 
-static TpHandle
-_handle_lookup_by_jid (GabbleHandleRepo *repo,
-                       const gchar *jid)
-{
-  TpHandle handle;
+  if (!repo->repos[type])
+    return NULL;
 
-  handle = GPOINTER_TO_UINT (g_hash_table_lookup (repo->contact_strings, jid));
-
-  if (0 == handle)
-    return 0;
-
-  return handle;
+  return tp_handle_inspect (repo->repos[type], handle);
 }
 
 TpHandle
@@ -644,9 +232,9 @@ gabble_handle_for_contact (GabbleHandleRepo *repo,
   char *resource = NULL;
   char *clean_jid = NULL;
   TpHandle handle = 0;
-  GabbleHandlePriv *priv;
 
   g_assert (repo != NULL);
+  g_assert (repo->repos[TP_HANDLE_TYPE_CONTACT] != NULL);
   g_assert (jid != NULL);
   g_assert (*jid != '\0');
 
@@ -661,7 +249,8 @@ gabble_handle_for_contact (GabbleHandleRepo *repo,
   if (NULL != resource)
     {
       clean_jid = g_strdup_printf ("%s@%s/%s", username, server, resource);
-      handle = _handle_lookup_by_jid (repo, clean_jid);
+      handle = tp_handle_request (
+          repo->repos[TP_HANDLE_TYPE_CONTACT], clean_jid, FALSE);
 
       if (0 != handle)
         goto OUT;
@@ -671,21 +260,15 @@ gabble_handle_for_contact (GabbleHandleRepo *repo,
     {
       g_free (clean_jid);
       clean_jid = g_strdup_printf ("%s@%s", username, server);
-      handle = _handle_lookup_by_jid (repo, clean_jid);
+      handle = tp_handle_request (
+          repo->repos[TP_HANDLE_TYPE_CONTACT], clean_jid, FALSE);
 
       if (0 != handle)
         goto OUT;
     }
 
-  handle = gabble_handle_alloc (repo, TP_HANDLE_TYPE_CONTACT);
-  priv = handle_priv_new ();
-  priv->string = clean_jid;
-  clean_jid = NULL;
-  g_hash_table_insert (repo->contact_handles, GINT_TO_POINTER (handle), priv);
-  g_hash_table_insert (repo->contact_strings, priv->string, GUINT_TO_POINTER (handle));
-
-  HANDLE_LEAK_DEBUG_DO (priv->traces);
-
+  handle = tp_handle_request (
+      repo->repos[TP_HANDLE_TYPE_CONTACT], clean_jid, TRUE);
 OUT:
 
   g_free (clean_jid);
@@ -704,6 +287,8 @@ gabble_handle_for_room_exists (GabbleHandleRepo *repo,
   gchar *room, *service, *nick;
   gchar *clean_jid;
 
+  g_assert (repo->repos[TP_HANDLE_TYPE_ROOM] != NULL);
+
   gabble_decode_jid (jid, &room, &service, &nick);
 
   if (!room || !service || room[0] == '\0')
@@ -714,8 +299,9 @@ gabble_handle_for_room_exists (GabbleHandleRepo *repo,
   else
     clean_jid = g_strdup_printf ("%s@%s/%s", room, service, nick);
 
-  handle = GPOINTER_TO_UINT (g_hash_table_lookup (repo->room_strings,
-                                                  clean_jid));
+  /* FIXME: how can the version *with* a nick possibly be added? */
+  handle = tp_handle_request (
+      repo->repos[TP_HANDLE_TYPE_ROOM], clean_jid, FALSE);
   
   g_free (clean_jid);
   g_free (room);
@@ -725,7 +311,9 @@ gabble_handle_for_room_exists (GabbleHandleRepo *repo,
   if (handle == 0)
     return FALSE;
 
-  return (handle_priv_lookup (repo, TP_HANDLE_TYPE_ROOM, handle) != NULL);
+  /* FIXME: how can this possibly fail if it's there? */
+  return (tp_handle_is_valid (repo->repos[TP_HANDLE_TYPE_ROOM],
+      handle, NULL));
 }
 
 TpHandle
@@ -736,6 +324,7 @@ gabble_handle_for_room (GabbleHandleRepo *repo,
   gchar *room, *service, *clean_jid;
 
   g_assert (repo != NULL);
+  g_assert (repo->repos[TP_HANDLE_TYPE_ROOM] != NULL);
   g_assert (jid != NULL);
   g_assert (*jid != '\0');
 
@@ -748,22 +337,9 @@ gabble_handle_for_room (GabbleHandleRepo *repo,
     {
       clean_jid = g_strdup_printf ("%s@%s", room, service);
 
-      handle = GPOINTER_TO_UINT (g_hash_table_lookup (repo->room_strings, clean_jid));
-
-      if (handle == 0)
-        {
-          GabbleHandlePriv *priv;
-          handle = gabble_handle_alloc (repo, TP_HANDLE_TYPE_ROOM);
-          priv = handle_priv_new ();
-          priv->string = clean_jid;
-          g_hash_table_insert (repo->room_handles, GUINT_TO_POINTER (handle), priv);
-          g_hash_table_insert (repo->room_strings, clean_jid, GUINT_TO_POINTER (handle));
-          HANDLE_LEAK_DEBUG_DO (priv->traces);
-        }
-      else
-        {
-          g_free (clean_jid);
-        }
+      handle = tp_handle_request (
+          repo->repos[TP_HANDLE_TYPE_ROOM], clean_jid, TRUE);
+      g_free (clean_jid);
     }
 
   g_free (room);
@@ -776,45 +352,25 @@ TpHandle
 gabble_handle_for_list (GabbleHandleRepo *repo,
                         const gchar *list)
 {
-  TpHandle handle = 0;
-  int i;
-
   g_assert (repo != NULL);
   g_assert (list != NULL);
+  g_assert (repo->repos[TP_HANDLE_TYPE_LIST] != NULL);
 
-  for (i = 0; i < GABBLE_LIST_HANDLE_DENY; i++)
-    {
-      if (0 == strcmp (list_handle_strings[i], list))
-        handle = (TpHandle) i + 1;
-    }
-
-  return handle;
+  return tp_handle_request (
+      repo->repos[TP_HANDLE_TYPE_LIST], list, FALSE);
 }
 
 TpHandle
 gabble_handle_for_group (GabbleHandleRepo *repo,
                          const gchar *group)
 {
-  TpHandle handle;
-
   g_assert (repo != NULL);
   g_assert (group != NULL);
   g_assert (*group != '\0');
+  g_assert (repo->repos[TP_HANDLE_TYPE_GROUP] != NULL);
 
-  handle = GPOINTER_TO_UINT (g_hash_table_lookup (repo->group_strings, group));
-
-  if (handle == 0)
-    {
-      GabbleHandlePriv *priv;
-      handle = gabble_handle_alloc (repo, TP_HANDLE_TYPE_GROUP);
-      priv = handle_priv_new ();
-      priv->string = g_strdup (group);
-      g_hash_table_insert (repo->group_handles, GUINT_TO_POINTER (handle), priv);
-      g_hash_table_insert (repo->group_strings, priv->string, GUINT_TO_POINTER (handle));
-      HANDLE_LEAK_DEBUG_DO (priv->traces);
-    }
-
-  return handle;
+  return tp_handle_request (
+      repo->repos[TP_HANDLE_TYPE_GROUP], group, TRUE);
 }
 
 /**
@@ -837,14 +393,12 @@ gabble_handle_set_qdata (GabbleHandleRepo *repo,
                          TpHandleType type, TpHandle handle,
                          GQuark key_id, gpointer data, GDestroyNotify destroy)
 {
-  GabbleHandlePriv *priv;
-  priv = handle_priv_lookup (repo, type, handle);
-
-  if (!priv)
+  if (repo->repos[type] == NULL || !TP_IS_DYNAMIC_HANDLE_REPO (repo->repos[type]))
     return FALSE;
 
-  g_datalist_id_set_data_full (&priv->datalist, key_id, data, destroy);
-  return TRUE;
+  return tp_dynamic_handle_repo_set_qdata (
+      (TpDynamicHandleRepo *)repo->repos[type], handle,
+      key_id, data, destroy);
 }
 
 /**
@@ -861,13 +415,11 @@ gabble_handle_get_qdata (GabbleHandleRepo *repo,
                          TpHandleType type, TpHandle handle,
                          GQuark key_id)
 {
-  GabbleHandlePriv *priv;
-  priv = handle_priv_lookup (repo, type, handle);
-
-  if (!priv)
+  if (repo->repos[type] == NULL || !TP_IS_DYNAMIC_HANDLE_REPO (repo->repos[type]))
     return NULL;
 
-  return g_datalist_id_get_data(&priv->datalist, key_id);
+  return tp_dynamic_handle_repo_get_qdata (
+      (TpDynamicHandleRepo *)repo->repos[type], handle, key_id);
 }
 
 /**
@@ -889,54 +441,18 @@ gabble_handle_client_hold (GabbleHandleRepo *repo,
                            TpHandleType type,
                            GError **error)
 {
-  GData **handle_set_list;
-  GabbleHandleSet *handle_set;
+  if (!tp_handle_type_is_valid (type, error))
+    return FALSE;
 
-  g_assert (repo != NULL);
-
-  switch (type)
+  if (!repo->repos[type])
     {
-    case TP_HANDLE_TYPE_CONTACT:
-      handle_set_list = &repo->client_contact_handle_sets;
-      break;
-    case TP_HANDLE_TYPE_ROOM:
-      handle_set_list = &repo->client_room_handle_sets;
-      break;
-    case TP_HANDLE_TYPE_LIST:
-      /* no-op */
-      return TRUE;
-    case TP_HANDLE_TYPE_GROUP:
-      handle_set_list = &repo->client_group_handle_sets;
-      break;
-    default:
-      g_critical ("%s: called with invalid handle type %u", G_STRFUNC, type);
       g_set_error (error, TELEPATHY_ERRORS, TpError_InvalidArgument,
-          "invalid handle type %u", type);
+          "unsupported handle type %u", type);
       return FALSE;
     }
 
-  if (!client_name || *client_name == '\0')
-    {
-      g_critical ("%s: called with invalid client name", G_STRFUNC);
-      g_set_error (error, TELEPATHY_ERRORS, TpError_InvalidArgument,
-          "invalid client name");
-      return FALSE;
-    }
-
-  handle_set = (GabbleHandleSet*) g_datalist_get_data (handle_set_list, client_name);
-
-  if (!handle_set)
-    {
-      handle_set = handle_set_new (repo, type);
-      g_datalist_set_data_full (handle_set_list,
-                                client_name,
-                                handle_set,
-                                (GDestroyNotify) handle_set_destroy);
-    }
-
-  handle_set_add (handle_set, handle);
-
-  return TRUE;
+  return tp_handle_client_hold (repo->repos[type],
+      client_name, handle, error);
 }
 
 /**
@@ -958,60 +474,16 @@ gabble_handle_client_release (GabbleHandleRepo *repo,
                            TpHandleType type,
                            GError **error)
 {
-  GData **handle_set_list;
-  GabbleHandleSet *handle_set;
+  if (!tp_handle_type_is_valid (type, error))
+    return FALSE;
 
-  g_assert (repo != NULL);
-
-  switch (type)
+  if (!repo->repos[type])
     {
-    case TP_HANDLE_TYPE_CONTACT:
-      handle_set_list = &repo->client_contact_handle_sets;
-      break;
-    case TP_HANDLE_TYPE_ROOM:
-      handle_set_list = &repo->client_room_handle_sets;
-      break;
-    case TP_HANDLE_TYPE_LIST:
-      /* no-op */
-      return TRUE;
-    case TP_HANDLE_TYPE_GROUP:
-      handle_set_list = &repo->client_group_handle_sets;
-      break;
-    default:
-      g_critical ("%s: called with invalid handle type %u", G_STRFUNC, type);
       g_set_error (error, TELEPATHY_ERRORS, TpError_InvalidArgument,
-          "invalid handle type %u", type);
+          "unsupported handle type %u", type);
       return FALSE;
     }
 
-  if (!client_name || *client_name == '\0')
-    {
-      g_critical ("%s: called with invalid client name", G_STRFUNC);
-      g_set_error (error, TELEPATHY_ERRORS, TpError_InvalidArgument,
-          "invalid client name");
-      return FALSE;
-    }
-
-  handle_set = (GabbleHandleSet*) g_datalist_get_data (handle_set_list, client_name);
-
-  if (!handle_set)
-    {
-      g_critical ("%s: no handle set found for the given client %s", G_STRFUNC, client_name);
-      g_set_error (error, TELEPATHY_ERRORS, TpError_NotAvailable,
-          "the given client %s wasn't holding any handles", client_name);
-      return FALSE;
-    }
-
-  if (!handle_set_remove (handle_set, handle))
-    {
-      g_critical ("%s: the client %s wasn't holding the handle %u", G_STRFUNC,
-          client_name, handle);
-      g_set_error (error, TELEPATHY_ERRORS, TpError_NotAvailable,
-          "the given client %s wasn't holding the handle %u", client_name,
-          handle);
-      return FALSE;
-    }
-
-  return TRUE;
+  return tp_handle_client_release (repo->repos[type],
+      client_name, handle, error);
 }
-

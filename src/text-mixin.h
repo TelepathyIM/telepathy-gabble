@@ -22,7 +22,6 @@
 #define __GABBLE_TEXT_MIXIN_H__
 
 #include "handles.h"
-#include "handle-set.h"
 #include "util.h"
 
 typedef enum {

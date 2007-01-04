@@ -31,7 +31,6 @@
 #include <string.h>
 
 #include "handles.h"
-#include "handle-set.h"
 #include <telepathy-glib/tp-enums.h>
 #include <telepathy-glib/tp-errors.h>
 #include <telepathy-glib/tp-helpers.h>

@@ -24,7 +24,6 @@
 #define __GABBLE_PROPERTIES_MIXIN_H__
 
 #include "handles.h"
-#include "handle-set.h"
 #include "util.h"
 
 G_BEGIN_DECLS

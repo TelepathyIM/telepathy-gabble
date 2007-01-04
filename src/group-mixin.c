@@ -55,7 +55,7 @@ static const char *group_change_reason_str(guint reason)
 }
 
 struct _GabbleGroupMixinPrivate {
-    GabbleHandleSet *actors;
+    TpHandleSet *actors;
     GHashTable *handle_owners;
 };
 
@@ -171,7 +171,7 @@ void gabble_group_mixin_finalize (GObject *obj)
 {
   GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
 
-  handle_set_destroy (mixin->priv->actors);
+  tp_handle_set_destroy (mixin->priv->actors);
 
   g_hash_table_foreach (mixin->priv->handle_owners,
                         handle_owners_foreach_unref,
@@ -181,9 +181,9 @@ void gabble_group_mixin_finalize (GObject *obj)
 
   g_free (mixin->priv);
 
-  handle_set_destroy (mixin->members);
-  handle_set_destroy (mixin->local_pending);
-  handle_set_destroy (mixin->remote_pending);
+  tp_handle_set_destroy (mixin->members);
+  tp_handle_set_destroy (mixin->local_pending);
+  tp_handle_set_destroy (mixin->remote_pending);
 }
 
 gboolean
@@ -191,9 +191,9 @@ gabble_group_mixin_get_self_handle (GObject *obj, guint *ret, GError **error)
 {
   GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
 
-  if (handle_set_is_member (mixin->members, mixin->self_handle) ||
-      handle_set_is_member (mixin->local_pending, mixin->self_handle) ||
-      handle_set_is_member (mixin->remote_pending, mixin->self_handle))
+  if (tp_handle_set_is_member (mixin->members, mixin->self_handle) ||
+      tp_handle_set_is_member (mixin->local_pending, mixin->self_handle) ||
+      tp_handle_set_is_member (mixin->remote_pending, mixin->self_handle))
     {
       *ret = mixin->self_handle;
     }
@@ -237,7 +237,7 @@ gabble_group_mixin_add_members (GObject *obj, const GArray *contacts, const gcha
       handle = g_array_index (contacts, TpHandle, i);
 
       if ((mixin->group_flags & TP_CHANNEL_GROUP_FLAG_CAN_ADD) == 0 &&
-          !handle_set_is_member (mixin->local_pending, handle))
+          !tp_handle_set_is_member (mixin->local_pending, handle))
         {
           DEBUG ("handle %u cannot be added to members without GROUP_FLAG_CAN_ADD",
               handle);
@@ -255,7 +255,7 @@ gabble_group_mixin_add_members (GObject *obj, const GArray *contacts, const gcha
     {
       handle = g_array_index (contacts, TpHandle, i);
 
-      if (handle_set_is_member (mixin->members, handle))
+      if (tp_handle_set_is_member (mixin->members, handle))
         {
           DEBUG ("handle %u is already a member, skipping", handle);
 
@@ -292,7 +292,7 @@ gabble_group_mixin_remove_members (GObject *obj, const GArray *contacts, const g
     {
       handle = g_array_index (contacts, TpHandle, i);
 
-      if (handle_set_is_member (mixin->members, handle))
+      if (tp_handle_set_is_member (mixin->members, handle))
         {
           if ((mixin->group_flags & TP_CHANNEL_GROUP_FLAG_CAN_REMOVE) == 0)
             {
@@ -306,7 +306,7 @@ gabble_group_mixin_remove_members (GObject *obj, const GArray *contacts, const g
               return FALSE;
             }
         }
-      else if (handle_set_is_member (mixin->remote_pending, handle))
+      else if (tp_handle_set_is_member (mixin->remote_pending, handle))
         {
           if ((mixin->group_flags & TP_CHANNEL_GROUP_FLAG_CAN_RESCIND) == 0)
             {
@@ -320,7 +320,7 @@ gabble_group_mixin_remove_members (GObject *obj, const GArray *contacts, const g
               return FALSE;
             }
         }
-      else if (!handle_set_is_member (mixin->local_pending, handle))
+      else if (!tp_handle_set_is_member (mixin->local_pending, handle))
         {
           DEBUG ("handle %u is not a current or pending member",
                    handle);
@@ -351,7 +351,7 @@ gabble_group_mixin_get_members (GObject *obj, GArray **ret, GError **error)
 {
   GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
 
-  *ret = handle_set_to_array (mixin->members);
+  *ret = tp_handle_set_to_array (mixin->members);
 
   return TRUE;
 }
@@ -361,7 +361,7 @@ gabble_group_mixin_get_local_pending_members (GObject *obj, GArray **ret, GError
 {
   GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
 
-  *ret = handle_set_to_array (mixin->local_pending);
+  *ret = tp_handle_set_to_array (mixin->local_pending);
 
   return TRUE;
 }
@@ -371,7 +371,7 @@ gabble_group_mixin_get_remote_pending_members (GObject *obj, GArray **ret, GErro
 {
   GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
 
-  *ret = handle_set_to_array (mixin->remote_pending);
+  *ret = tp_handle_set_to_array (mixin->remote_pending);
 
   return TRUE;
 }
@@ -381,9 +381,9 @@ gabble_group_mixin_get_all_members (GObject *obj, GArray **ret, GArray **ret1, G
 {
   GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
 
-  *ret = handle_set_to_array (mixin->members);
-  *ret1 = handle_set_to_array (mixin->local_pending);
-  *ret2 = handle_set_to_array (mixin->remote_pending);
+  *ret = tp_handle_set_to_array (mixin->members);
+  *ret1 = tp_handle_set_to_array (mixin->local_pending);
+  *ret2 = tp_handle_set_to_array (mixin->remote_pending);
 
   return TRUE;
 }
@@ -420,7 +420,7 @@ gabble_group_mixin_get_handle_owners (GObject *obj,
       TpHandle local_handle = g_array_index (handles, TpHandle, i);
       TpHandle owner_handle;
 
-      if (!handle_set_is_member (mixin->members, local_handle))
+      if (!tp_handle_set_is_member (mixin->members, local_handle))
         {
           g_set_error (error, TELEPATHY_ERRORS, TpError_InvalidArgument,
               "handle %u is not a member", local_handle);
@@ -585,55 +585,55 @@ gabble_group_mixin_change_members (GObject *obj,
     remote_pending = empty;
 
   /* members + add */
-  new_add = handle_set_update (mixin->members, add);
+  new_add = tp_handle_set_update (mixin->members, add);
 
   /* members - remove */
-  new_remove = handle_set_difference_update (mixin->members, remove);
+  new_remove = tp_handle_set_difference_update (mixin->members, remove);
 
   /* members - local_pending */
-  tmp = handle_set_difference_update (mixin->members, local_pending);
+  tmp = tp_handle_set_difference_update (mixin->members, local_pending);
   tp_intset_destroy (tmp);
 
   /* members - remote_pending */
-  tmp = handle_set_difference_update (mixin->members, remote_pending);
+  tmp = tp_handle_set_difference_update (mixin->members, remote_pending);
   tp_intset_destroy (tmp);
 
 
   /* local pending + local_pending */
-  new_local_pending = handle_set_update (mixin->local_pending, local_pending);
+  new_local_pending = tp_handle_set_update (mixin->local_pending, local_pending);
 
   /* local pending - add */
-  tmp = handle_set_difference_update (mixin->local_pending, add);
+  tmp = tp_handle_set_difference_update (mixin->local_pending, add);
   tp_intset_destroy (tmp);
 
   /* local pending - remove */
-  tmp = handle_set_difference_update (mixin->local_pending, remove);
+  tmp = tp_handle_set_difference_update (mixin->local_pending, remove);
   tmp2 = tp_intset_union (new_remove, tmp);
   tp_intset_destroy (new_remove);
   tp_intset_destroy (tmp);
   new_remove = tmp2;
 
   /* local pending - remote_pending */
-  tmp = handle_set_difference_update (mixin->local_pending, remote_pending);
+  tmp = tp_handle_set_difference_update (mixin->local_pending, remote_pending);
   tp_intset_destroy (tmp);
 
 
   /* remote pending + remote_pending */
-  new_remote_pending = handle_set_update (mixin->remote_pending, remote_pending);
+  new_remote_pending = tp_handle_set_update (mixin->remote_pending, remote_pending);
 
   /* remote pending - add */
-  tmp = handle_set_difference_update (mixin->remote_pending, add);
+  tmp = tp_handle_set_difference_update (mixin->remote_pending, add);
   tp_intset_destroy (tmp);
 
   /* remote pending - remove */
-  tmp = handle_set_difference_update (mixin->remote_pending, remove);
+  tmp = tp_handle_set_difference_update (mixin->remote_pending, remove);
   tmp2 = tp_intset_union (new_remove, tmp);
   tp_intset_destroy (new_remove);
   tp_intset_destroy (tmp);
   new_remove = tmp2;
 
   /* remote pending - local_pending */
-  tmp = handle_set_difference_update (mixin->remote_pending, local_pending);
+  tmp = tp_handle_set_difference_update (mixin->remote_pending, local_pending);
   tp_intset_destroy (tmp);
 
   if (tp_intset_size (new_add) > 0 ||
@@ -682,7 +682,7 @@ gabble_group_mixin_change_members (GObject *obj,
 
       if (actor)
         {
-          handle_set_add (mixin->priv->actors, actor);
+          tp_handle_set_add (mixin->priv->actors, actor);
         }
       /* emit signal */
       g_signal_emit(obj, mixin_cls->members_changed_signal_id, 0,

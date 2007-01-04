@@ -2,7 +2,7 @@
 #include <glib.h>
 #include <glib-object.h>
 #include <handles.h>
-#include <telepathy-constants.h>
+#include <telepathy-glib/tp-enums.h>
 #include <telepathy-glib/tp-interfaces.h>
 #include <telepathy-glib/tp-errors.h>
 

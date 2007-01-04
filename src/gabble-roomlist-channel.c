@@ -30,7 +30,7 @@
 #include "gabble-connection.h"
 #include "handles.h"
 #include "handle-set.h"
-#include "telepathy-constants.h"
+#include <telepathy-glib/tp-enums.h>
 #include <telepathy-glib/tp-interfaces.h>
 #include "telepathy-helpers.h"
 #include "tp-channel-iface.h"

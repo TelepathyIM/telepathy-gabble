@@ -4,7 +4,7 @@
 #include <telepathy-glib/tp-intset.h>
 #include <handles.h>
 #include <handle-set.h>
-#include <telepathy-constants.h>
+#include <telepathy-glib/tp-enums.h>
 #include <telepathy-glib/tp-interfaces.h>
 #include <telepathy-glib/tp-errors.h>
 

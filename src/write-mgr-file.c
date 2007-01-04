@@ -23,7 +23,7 @@
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-protocol.h>
 
-#include "telepathy-constants.h"
+#include <telepathy-glib/tp-enums.h>
 #include "gabble-connection-manager.h"
 
 static gchar *

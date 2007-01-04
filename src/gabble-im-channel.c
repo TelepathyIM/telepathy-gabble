@@ -33,7 +33,7 @@
 #include "gabble-presence-cache.h"
 #include "handles.h"
 #include "roster.h"
-#include "telepathy-constants.h"
+#include <telepathy-glib/tp-enums.h>
 #include <telepathy-glib/tp-errors.h>
 #include "telepathy-helpers.h"
 #include <telepathy-glib/tp-interfaces.h>

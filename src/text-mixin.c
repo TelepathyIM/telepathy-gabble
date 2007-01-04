@@ -30,7 +30,7 @@
 #include <string.h>
 #include <time.h>
 
-#include "telepathy-constants.h"
+#include <telepathy-glib/tp-enums.h>
 #include <telepathy-glib/tp-errors.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_IM

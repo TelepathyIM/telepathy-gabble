@@ -24,7 +24,7 @@
 #include <glib.h>
 
 #include "gabble-types.h"
-#include "telepathy-constants.h"
+#include <telepathy-glib/tp-enums.h>
 
 G_BEGIN_DECLS
 

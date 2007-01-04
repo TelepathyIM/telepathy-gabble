@@ -25,7 +25,7 @@
 #include <time.h>
 
 #include "handles.h"
-#include "telepathy-constants.h"
+#include <telepathy-glib/tp-enums.h>
 #include "text-mixin.h"
 
 G_BEGIN_DECLS

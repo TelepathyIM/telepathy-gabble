@@ -37,7 +37,7 @@
 #include "gabble-media-session-enumtypes.h"
 
 #include "telepathy-helpers.h"
-#include "telepathy-constants.h"
+#include <telepathy-glib/tp-enums.h>
 #include <telepathy-glib/tp-errors.h>
 
 #include "gabble-media-stream.h"

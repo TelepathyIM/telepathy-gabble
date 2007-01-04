@@ -32,7 +32,7 @@
 
 #include "handles.h"
 #include "handle-set.h"
-#include "telepathy-constants.h"
+#include <telepathy-glib/tp-enums.h>
 #include <telepathy-glib/tp-errors.h>
 #include "telepathy-helpers.h"
 #include <telepathy-glib/tp-interfaces.h>
@@ -290,7 +290,7 @@ gabble_connection_init (GabbleConnection *self)
 
   self->priv = priv;
   self->lmconn = lm_connection_new (NULL);
-  self->status = TP_CONNECTION_STATUS_NEW;
+  self->status = GABBLE_TP_CONNECTION_STATUS_NEW;
   self->handles = gabble_handle_repo_new ();
   self->disco = gabble_disco_new (self);
   self->vcard_manager = gabble_vcard_manager_new (self);
@@ -879,7 +879,7 @@ gabble_connection_dispose (GObject *object)
   DEBUG ("called");
 
   g_assert ((self->status == TP_CONNECTION_STATUS_DISCONNECTED) ||
-            (self->status == TP_CONNECTION_STATUS_NEW));
+            (self->status == GABBLE_TP_CONNECTION_STATUS_NEW));
   g_assert (self->self_handle == 0);
 
   if (priv->channel_requests)
@@ -1567,12 +1567,12 @@ connection_status_change (GabbleConnection        *conn,
 
   DEBUG ("status %u reason %u", status, reason);
 
-  g_assert (status != TP_CONNECTION_STATUS_NEW);
+  g_assert (status != GABBLE_TP_CONNECTION_STATUS_NEW);
 
   if (conn->status != status)
     {
       if ((status == TP_CONNECTION_STATUS_DISCONNECTED) &&
-          (conn->status == TP_CONNECTION_STATUS_NEW))
+          (conn->status == GABBLE_TP_CONNECTION_STATUS_NEW))
         {
           conn->status = status;
 
@@ -2703,7 +2703,7 @@ connection_open_cb (LmConnection *lmconn,
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
   if ((conn->status != TP_CONNECTION_STATUS_CONNECTING) &&
-      (conn->status != TP_CONNECTION_STATUS_NEW))
+      (conn->status != GABBLE_TP_CONNECTION_STATUS_NEW))
     {
       g_assert (conn->status == TP_CONNECTION_STATUS_DISCONNECTED);
       return;
@@ -3173,7 +3173,7 @@ gabble_connection_connect (GabbleConnection *self,
 {
   g_assert(GABBLE_IS_CONNECTION (self));
 
-  if (self->status == TP_CONNECTION_STATUS_NEW)
+  if (self->status == GABBLE_TP_CONNECTION_STATUS_NEW)
     return _gabble_connection_connect (self, error);
 
   return TRUE;
@@ -3668,7 +3668,7 @@ gabble_connection_get_status (GabbleConnection *self,
 {
   g_assert (GABBLE_IS_CONNECTION (self));
 
-  if (self->status == TP_CONNECTION_STATUS_NEW)
+  if (self->status == GABBLE_TP_CONNECTION_STATUS_NEW)
     {
       *ret = TP_CONNECTION_STATUS_DISCONNECTED;
     }

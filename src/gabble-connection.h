@@ -28,7 +28,7 @@
 #include "gabble-types.h"
 #include "gabble-error.h"
 #include "properties-mixin.h"
-#include "telepathy-constants.h"
+#include <telepathy-glib/tp-enums.h>
 
 G_BEGIN_DECLS
 
@@ -87,7 +87,9 @@ struct _GabbleConnection {
     /* loudmouth connection */
     LmConnection *lmconn;
 
-    /* connection status */
+#   define GABBLE_TP_CONNECTION_STATUS_NEW ((TpConnectionStatus)(LAST_TP_CONNECTION_STATUS + 1))
+    /* connection status - may either be a TpConnectionStatus or
+     * GABBLE_TP_CONNECTION_STATUS_NEW */
     TpConnectionStatus status;
 
     /* handles */

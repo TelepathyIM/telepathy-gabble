@@ -547,7 +547,7 @@ gboolean
 gabble_roster_channel_close (GabbleRosterChannel *self,
                              GError **error)
 {
-  g_set_error (error, TELEPATHY_ERRORS, NotImplemented,
+  g_set_error (error, TELEPATHY_ERRORS, TpError_NotImplemented,
       "you may not close contact list channels");
 
   return FALSE;

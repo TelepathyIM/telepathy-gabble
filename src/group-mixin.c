@@ -242,7 +242,7 @@ gabble_group_mixin_add_members (GObject *obj, const GArray *contacts, const gcha
           DEBUG ("handle %u cannot be added to members without GROUP_FLAG_CAN_ADD",
               handle);
 
-          g_set_error (error, TELEPATHY_ERRORS, PermissionDenied,
+          g_set_error (error, TELEPATHY_ERRORS, TpError_PermissionDenied,
               "handle %u cannot be added to members without GROUP_FLAG_CAN_ADD",
               handle);
 
@@ -299,7 +299,7 @@ gabble_group_mixin_remove_members (GObject *obj, const GArray *contacts, const g
               DEBUG ("handle %u cannot be removed from members without GROUP_FLAG_CAN_REMOVE",
                   handle);
 
-              g_set_error (error, TELEPATHY_ERRORS, PermissionDenied,
+              g_set_error (error, TELEPATHY_ERRORS, TpError_PermissionDenied,
                   "handle %u cannot be removed from members without GROUP_FLAG_CAN_REMOVE",
                   handle);
 
@@ -313,7 +313,7 @@ gabble_group_mixin_remove_members (GObject *obj, const GArray *contacts, const g
               DEBUG ("handle %u cannot be removed from remote pending without GROUP_FLAG_CAN_RESCIND",
                   handle);
 
-              g_set_error (error, TELEPATHY_ERRORS, PermissionDenied,
+              g_set_error (error, TELEPATHY_ERRORS, TpError_PermissionDenied,
                   "handle %u cannot be removed from remote pending without GROUP_FLAG_CAN_RESCIND",
                   handle);
 
@@ -325,7 +325,7 @@ gabble_group_mixin_remove_members (GObject *obj, const GArray *contacts, const g
           DEBUG ("handle %u is not a current or pending member",
                    handle);
 
-          g_set_error (error, TELEPATHY_ERRORS, NotAvailable,
+          g_set_error (error, TELEPATHY_ERRORS, TpError_NotAvailable,
               "handle %u is not a current or pending member", handle);
 
           return FALSE;
@@ -401,7 +401,7 @@ gabble_group_mixin_get_handle_owners (GObject *obj,
   if ((mixin->group_flags &
         TP_CHANNEL_GROUP_FLAG_CHANNEL_SPECIFIC_HANDLES) == 0)
     {
-      g_set_error (error, TELEPATHY_ERRORS, NotAvailable,
+      g_set_error (error, TELEPATHY_ERRORS, TpError_NotAvailable,
           "channel doesn't have channel specific handles");
 
       return FALSE;
@@ -422,7 +422,7 @@ gabble_group_mixin_get_handle_owners (GObject *obj,
 
       if (!handle_set_is_member (mixin->members, local_handle))
         {
-          g_set_error (error, TELEPATHY_ERRORS, InvalidArgument,
+          g_set_error (error, TELEPATHY_ERRORS, TpError_InvalidArgument,
               "handle %u is not a member", local_handle);
 
           g_array_free (*ret, TRUE);

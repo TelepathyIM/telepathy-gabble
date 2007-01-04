@@ -422,7 +422,7 @@ gboolean gabble_text_mixin_acknowledge_pending_messages (GObject *obj, const GAr
         {
           DEBUG ("invalid message id %u", id);
 
-          g_set_error (error, TELEPATHY_ERRORS, InvalidArgument,
+          g_set_error (error, TELEPATHY_ERRORS, TpError_InvalidArgument,
               "invalid message id %u", id);
 
           g_free(nodes);
@@ -523,7 +523,7 @@ gboolean gabble_text_mixin_send (GObject *obj, guint type, guint subtype,
     {
       DEBUG ("invalid message type %u", type);
 
-      g_set_error (error, TELEPATHY_ERRORS, InvalidArgument,
+      g_set_error (error, TELEPATHY_ERRORS, TpError_InvalidArgument,
           "invalid message type: %u", type);
 
       return FALSE;

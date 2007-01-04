@@ -819,7 +819,7 @@ gabble_media_stream_new_native_candidate (GabbleMediaStream *self,
     {
       GMS_DEBUG_WARNING (priv->session, "%s: number of transports was not 1; "
           "rejecting", G_STRFUNC);
-      g_set_error (error, TELEPATHY_ERRORS, NotImplemented, "google p2p "
+      g_set_error (error, TELEPATHY_ERRORS, TpError_NotImplemented, "google p2p "
           "connections only support the concept of one transport per "
           "candidate");
       return FALSE;

@@ -200,7 +200,7 @@ set_reply_cb (GabbleConnection *conn,
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
       LmMessageNode *node;
-      gint code = NotAvailable;
+      gint code = TpError_NotAvailable;
       GString *msg;
 
       msg = g_string_sized_new (30);
@@ -214,7 +214,7 @@ set_reply_cb (GabbleConnection *conn,
           error = gabble_xmpp_error_from_node (node);
           if (error == XMPP_ERROR_CONFLICT)
             {
-              code = InvalidArgument;
+              code = TpError_InvalidArgument;
             }
 
           if (error != INVALID_XMPP_ERROR)
@@ -253,7 +253,7 @@ get_reply_cb (GabbleConnection *conn,
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
-      err_code = NotAvailable;
+      err_code = TpError_NotAvailable;
       err_msg = "Server doesn't support " NS_REGISTER;
 
       goto OUT;
@@ -300,7 +300,7 @@ get_reply_cb (GabbleConnection *conn,
   goto OUT;
 
 ERROR_MALFORMED_REPLY:
-  err_code = NotAvailable;
+  err_code = TpError_NotAvailable;
   err_msg = "Malformed reply";
 
 OUT:

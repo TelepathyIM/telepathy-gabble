@@ -223,7 +223,7 @@ get_parameters (const char *proto, const GabbleParamSpec **params, GError **erro
     {
       g_debug ("%s: unknown protocol %s", G_STRFUNC, proto);
 
-      g_set_error (error, TELEPATHY_ERRORS, NotImplemented,
+      g_set_error (error, TELEPATHY_ERRORS, TpError_NotImplemented,
           "unknown protocol %s", proto);
 
       return FALSE;
@@ -283,7 +283,7 @@ set_param_from_value (const GabbleParamSpec *paramspec,
                G_STRFUNC,
                g_type_name (paramspec->gtype), paramspec->name,
                G_VALUE_TYPE_NAME (value));
-      g_set_error (error, TELEPATHY_ERRORS, InvalidArgument,
+      g_set_error (error, TELEPATHY_ERRORS, TpError_InvalidArgument,
           "expected type %s for account parameter %s, got %s",
           g_type_name (paramspec->gtype), paramspec->name,
           G_VALUE_TYPE_NAME (value));
@@ -349,7 +349,7 @@ parse_parameters (const GabbleParamSpec *paramspec,
             {
               g_debug ("%s: missing mandatory param %s",
                        G_STRFUNC, paramspec[i].name);
-              g_set_error (error, TELEPATHY_ERRORS, InvalidArgument,
+              g_set_error (error, TELEPATHY_ERRORS, TpError_InvalidArgument,
                   "missing mandatory account parameter %s", paramspec[i].name);
               return FALSE;
             }
@@ -363,7 +363,7 @@ parse_parameters (const GabbleParamSpec *paramspec,
         {
           if (!set_param_from_value (&paramspec[i], value, params, error))
             {
-              g_set_error (error, TELEPATHY_ERRORS, InvalidArgument,
+              g_set_error (error, TELEPATHY_ERRORS, TpError_InvalidArgument,
                   "invalid value for parameter %s", paramspec[i].name);
               return FALSE;
             }
@@ -397,7 +397,7 @@ parse_parameters (const GabbleParamSpec *paramspec,
   if (unhandled)
     {
       g_debug ("%s: unknown argument name provided", G_STRFUNC);
-      g_set_error (error, TELEPATHY_ERRORS, InvalidArgument,
+      g_set_error (error, TELEPATHY_ERRORS, TpError_InvalidArgument,
           "unknown argument name provided");
       return FALSE;
     }

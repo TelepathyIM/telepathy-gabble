@@ -1,7 +1,7 @@
 /*
- * telepathy-constants.h - constants used in telepathy
- * Copyright (C) 2005 Collabora Ltd.
- * Copyright (C) 2005 Nokia Corporation
+ * tp-types.h - Header for basic Telepathy-GLib type definitions
+ *
+ * Copyright (C) 2007 Collabora Ltd.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -18,12 +18,16 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef __TELEPATHY_CONSTANTS_H__
-#define __TELEPATHY_CONSTANTS_H__
+#ifndef __TP_TYPES_H__
+#define __TP_TYPES_H__
 
-#include <telepathy-glib/tp-enums.h>
+#include <glib.h>
 
-/* this is internal to Gabble and behaves like a member of TpConnectionStatus */
-#define TP_CONNECTION_STATUS_NEW ((TpConnectionStatus)(LAST_TP_CONNECTION_STATUS + 1))
+G_BEGIN_DECLS
+
+typedef guint32 TpHandle;
+
+G_END_DECLS
 
 #endif
+

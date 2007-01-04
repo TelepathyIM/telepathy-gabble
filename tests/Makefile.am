@@ -44,7 +44,8 @@ test_handle_set_LDADD = \
     $(top_builddir)/src/libgabble-convenience.la
 
 AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @LOUDMOUTH_CFLAGS@ \
-    -I $(top_srcdir)/lib -I $(top_srcdir)/src -I $(top_builddir)/src
+    -I $(top_srcdir)/lib -I $(top_builddir)/lib \
+    -I $(top_srcdir)/src -I $(top_builddir)/src
 AM_LDFLAGS = @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@
 
 TESTS = $(noinst_PROGRAMS)

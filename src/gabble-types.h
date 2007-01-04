@@ -22,6 +22,8 @@
 #ifndef __GABBLE_TYPES_H__
 #define __GABBLE_TYPES_H__
 
+#include <telepathy-glib/tp-types.h>
+
 G_BEGIN_DECLS
 
 typedef struct _GabbleConnection GabbleConnection;
@@ -32,7 +34,8 @@ typedef struct _GabblePresenceCache GabblePresenceCache;
 typedef struct _GabbleRoster GabbleRoster;
 typedef struct _GabbleRosterChannel GabbleRosterChannel;
 typedef struct _GabbleVCardManager GabbleVCardManager;
-typedef guint32 GabbleHandle;
+
+#define GabbleHandle TpHandle
 
 typedef enum {
     INITIATOR_INVALID = -1,

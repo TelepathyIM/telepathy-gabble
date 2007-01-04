@@ -1,7 +1,7 @@
 /*
- * telepathy-constants.h - constants used in telepathy
- * Copyright (C) 2005 Collabora Ltd.
- * Copyright (C) 2005 Nokia Corporation
+ * tp-errors.h - Header for Telepathy error types
+ * Copyright (C) 2005, 2007 Collabora Ltd.
+ * Copyright (C) 2005, 2007 Nokia Corporation
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -18,12 +18,19 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef __TELEPATHY_CONSTANTS_H__
-#define __TELEPATHY_CONSTANTS_H__
+#ifndef __TP_ERRORS_H__
+#define __TP_ERRORS_H__
 
-#include <telepathy-glib/tp-enums.h>
+#include <glib-object.h>
 
-/* this is internal to Gabble and behaves like a member of TpConnectionStatus */
-#define TP_CONNECTION_STATUS_NEW ((TpConnectionStatus)(LAST_TP_CONNECTION_STATUS + 1))
+#include <telepathy-glib/_spec/telepathy-errors.h>
+#include <telepathy-glib/_gen/enumtypes-spec-telepathy-errors.h>
+
+G_BEGIN_DECLS
+
+GQuark telepathy_errors_quark (void);
+#define TELEPATHY_ERRORS telepathy_errors_quark ()
+
+G_END_DECLS
 
 #endif

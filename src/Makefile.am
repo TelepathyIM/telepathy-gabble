@@ -36,8 +36,6 @@ BUILT_SOURCES = \
     group-mixin-signals-marshal.c \
     properties-mixin-signals-marshal.h \
     properties-mixin-signals-marshal.c \
-    telepathy-spec-errors-enumtypes.h \
-    telepathy-spec-errors-enumtypes.c \
     text-mixin-signals-marshal.h \
     text-mixin-signals-marshal.c \
     tp-channel-factory-iface-signals-marshal.h \
@@ -155,7 +153,7 @@ telepathy_gabble_LDADD = libgabble-convenience.la
 
 noinst_LTLIBRARIES = libgabble-convenience.la
 
-AM_CFLAGS = $(ERROR_CFLAGS) -I$(top_srcdir)/lib @DBUS_CFLAGS@ @GLIB_CFLAGS@ @LOUDMOUTH_CFLAGS@ @HANDLE_LEAK_DEBUG_CFLAGS@
+AM_CFLAGS = $(ERROR_CFLAGS) -I$(top_srcdir)/lib -I$(top_builddir)/lib @DBUS_CFLAGS@ @GLIB_CFLAGS@ @LOUDMOUTH_CFLAGS@ @HANDLE_LEAK_DEBUG_CFLAGS@
 AM_LDFLAGS = @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@
 
 

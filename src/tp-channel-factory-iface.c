@@ -23,7 +23,7 @@
 
 #include "tp-channel-factory-iface.h"
 #include "tp-channel-factory-iface-signals-marshal.h"
-#include "tp-channel-iface.h"
+#include <telepathy-glib/tp-channel-iface.h>
 
 static void
 tp_channel_factory_iface_base_init (gpointer klass)

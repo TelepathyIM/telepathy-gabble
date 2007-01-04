@@ -106,8 +106,6 @@ libgabble_convenience_la_SOURCES = \
     sha1/sha1.c \
     text-mixin.h \
     text-mixin.c \
-    tp-channel-iface.h \
-    tp-channel-iface.c \
     tp-channel-factory-iface.h \
     tp-channel-factory-iface.c \
     util.h \

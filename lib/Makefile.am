@@ -5,6 +5,7 @@ genincludedir=$(tpgincludedir)/_gen
 noinst_LTLIBRARIES = libtelepathy-glib.la
 
 tpginclude_HEADERS = \
+    telepathy-glib/tp-channel-iface.h \
     telepathy-glib/tp-enums.h \
     telepathy-glib/tp-errors.h \
     telepathy-glib/tp-heap.h \
@@ -32,7 +33,8 @@ libtelepathy_glib_la_SOURCES = \
     errors.c \
     heap.c \
     helpers.c \
-    intset.c
+    intset.c \
+    tp-channel-iface.c
 
 AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @HANDLE_LEAK_DEBUG_CFLAGS@
 AM_LDFLAGS = @DBUS_LIBS@ @GLIB_LIBS@

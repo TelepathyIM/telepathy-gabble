@@ -37,7 +37,7 @@
 #include <telepathy-glib/tp-helpers.h>
 #include <telepathy-glib/tp-interfaces.h>
 
-#include "tp-channel-iface.h"
+#include <telepathy-glib/tp-channel-iface.h>
 #include "tp-channel-factory-iface.h"
 
 #include "gabble-connection.h"

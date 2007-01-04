@@ -38,7 +38,7 @@
 #include <telepathy-glib/tp-errors.h>
 #include <telepathy-glib/tp-helpers.h>
 #include <telepathy-glib/tp-interfaces.h>
-#include "tp-channel-iface.h"
+#include <telepathy-glib/tp-channel-iface.h>
 
 #include "gabble-muc-channel.h"
 #include "gabble-muc-channel-signals-marshal.h"

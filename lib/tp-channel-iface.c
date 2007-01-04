@@ -19,7 +19,7 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#include "tp-channel-iface.h"
+#include <telepathy-glib/tp-channel-iface.h>
 
 static void
 tp_channel_iface_base_init (gpointer klass)

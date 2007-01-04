@@ -39,7 +39,7 @@
 #include "handles.h"
 #include <telepathy-glib/tp-interfaces.h>
 #include "text-mixin.h"
-#include "tp-channel-factory-iface.h"
+#include <telepathy-glib/tp-channel-factory-iface.h>
 
 #include "im-factory.h"
 

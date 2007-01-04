@@ -6,6 +6,7 @@ noinst_LTLIBRARIES = libtelepathy-glib.la
 
 tpginclude_HEADERS = \
     telepathy-glib/tp-channel-iface.h \
+    telepathy-glib/tp-channel-factory-iface.h \
     telepathy-glib/tp-enums.h \
     telepathy-glib/tp-errors.h \
     telepathy-glib/tp-heap.h \
@@ -20,24 +21,36 @@ specinclude_HEADERS = \
     telepathy-glib/_spec/telepathy-interfaces.h
 
 nodist_libtelepathy_glib_la_SOURCES = \
+    _gen/tp-channel-factory-iface-signals-marshal.c \
+    _gen/tp-channel-factory-iface-signals-marshal.h \
     _gen/enumtypes-spec-telepathy-errors.c
 
 nodist_geninclude_HEADERS = \
     telepathy-glib/_gen/enumtypes-spec-telepathy-errors.h
 
-# .c files don't need to go in BUILT_SOURCES
-BUILT_SOURCES = $(nodist_geninclude_HEADERS)
-CLEANFILES = $(BUILT_SOURCES) $(nodist_libtelepathy_glib_la_SOURCES)
+BUILT_SOURCES = $(nodist_geninclude_HEADERS) \
+		$(nodist_libtelepathy_glib_la_SOURCES)
+CLEANFILES = $(BUILT_SOURCES)
 
 libtelepathy_glib_la_SOURCES = \
     errors.c \
     heap.c \
     helpers.c \
     intset.c \
-    tp-channel-iface.c
+    tp-channel-iface.c \
+    tp-channel-factory-iface.c \
+    tp-channel-factory-iface-signals-marshal.list
 
 AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @HANDLE_LEAK_DEBUG_CFLAGS@
 AM_LDFLAGS = @DBUS_LIBS@ @GLIB_LIBS@
+
+_gen/%-signals-marshal.h: %-signals-marshal.list
+	$(INSTALL) -d _gen
+	glib-genmarshal --header --prefix=$(subst -,_,$*)_marshal $< > _gen/$*-signals-marshal.h
+
+_gen/%-signals-marshal.c: %-signals-marshal.list
+	$(INSTALL) -d _gen
+	glib-genmarshal --body --prefix=$(subst -,_,$*)_marshal $< > _gen/$*-signals-marshal.c
 
 _gen/enumtypes-spec-%.c: telepathy-glib/_spec/%.h Makefile.in
 	$(INSTALL) -d _gen

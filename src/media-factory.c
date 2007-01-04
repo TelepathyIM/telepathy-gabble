@@ -40,7 +40,7 @@
 #include "namespaces.h"
 #include <telepathy-glib/tp-interfaces.h>
 #include "text-mixin.h"
-#include "tp-channel-factory-iface.h"
+#include <telepathy-glib/tp-channel-factory-iface.h>
 #include "util.h"
 
 static void gabble_media_factory_iface_init (gpointer g_iface, gpointer iface_data);

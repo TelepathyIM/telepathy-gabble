@@ -21,8 +21,8 @@
 
 #include <glib-object.h>
 
-#include "tp-channel-factory-iface.h"
-#include "tp-channel-factory-iface-signals-marshal.h"
+#include <telepathy-glib/tp-channel-factory-iface.h>
+#include "_gen/tp-channel-factory-iface-signals-marshal.h"
 #include <telepathy-glib/tp-channel-iface.h>
 
 static void

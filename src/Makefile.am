@@ -37,9 +37,7 @@ BUILT_SOURCES = \
     properties-mixin-signals-marshal.h \
     properties-mixin-signals-marshal.c \
     text-mixin-signals-marshal.h \
-    text-mixin-signals-marshal.c \
-    tp-channel-factory-iface-signals-marshal.h \
-    tp-channel-factory-iface-signals-marshal.c
+    text-mixin-signals-marshal.c
 
 CLEANFILES = $(BUILT_SOURCES)
 
@@ -106,8 +104,6 @@ libgabble_convenience_la_SOURCES = \
     sha1/sha1.c \
     text-mixin.h \
     text-mixin.c \
-    tp-channel-factory-iface.h \
-    tp-channel-factory-iface.c \
     util.h \
     util.c \
     vcard-manager.h \
@@ -125,8 +121,7 @@ libgabble_convenience_la_SOURCES = \
     gabble-roster-channel-signals-marshal.list \
     group-mixin-signals-marshal.list \
     properties-mixin-signals-marshal.list \
-    text-mixin-signals-marshal.list \
-    tp-channel-factory-iface-signals-marshal.list
+    text-mixin-signals-marshal.list
 
 libgabble_convenience_la_LIBADD = ../lib/libtelepathy-glib.la
 

@@ -25,7 +25,7 @@
 #include <string.h>
 
 #include <telepathy-glib/tp-interfaces.h>
-#include "tp-channel-factory-iface.h"
+#include <telepathy-glib/tp-channel-factory-iface.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_ROSTER
 

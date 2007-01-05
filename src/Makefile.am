@@ -41,7 +41,6 @@ bin_PROGRAMS=telepathy-gabble
 noinst_PROGRAMS = write-mgr-file
 
 libgabble_convenience_la_SOURCES = \
-    ansi.h \
     base64.h \
     base64.c \
     capabilities.h \

@@ -1,7 +1,7 @@
 /* Generated from the Telepathy spec, version 0.14.0.1
 
-Copyright (C) 2005, 2006 Collabora Limited
-Copyright (C) 2005, 2006 Nokia Corporation
+Copyright (C) 2005, 2006, 2007 Collabora Limited
+Copyright (C) 2005, 2006, 2007 Nokia Corporation
 Copyright (C) 2006 INdT
 
 This library is free software; you can redistribute it and/or

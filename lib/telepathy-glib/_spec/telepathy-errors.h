@@ -1,7 +1,7 @@
 /* Generated from the Telepathy spec
 
-Copyright (C) 2005, 2006 Collabora Limited
-Copyright (C) 2005, 2006 Nokia Corporation
+Copyright (C) 2005, 2006, 2007 Collabora Limited
+Copyright (C) 2005, 2006, 2007 Nokia Corporation
 
 
 This library is free software; you can redistribute it and/or
@@ -29,53 +29,53 @@ typedef enum {
     /* org.freedesktop.Telepathy.Error.NetworkError
     Raised when there is an error reading from or writing to the network.
      */
-    TpError_NetworkError,
+    TP_ERROR_NETWORK_ERROR,
 
     /* org.freedesktop.Telepathy.Error.NotImplemented
     Raised when the requested method, channel, etc is not available on this connection.
      */
-    TpError_NotImplemented,
+    TP_ERROR_NOT_IMPLEMENTED,
 
     /* org.freedesktop.Telepathy.Error.InvalidArgument
     Raised when one of the provided arguments is invalid.
      */
-    TpError_InvalidArgument,
+    TP_ERROR_INVALID_ARGUMENT,
 
     /* org.freedesktop.Telepathy.Error.NotAvailable
     Raised when the requested functionality is temporarily unavailable.
      */
-    TpError_NotAvailable,
+    TP_ERROR_NOT_AVAILABLE,
 
     /* org.freedesktop.Telepathy.Error.PermissionDenied
     The user is not permitted to perform the requested operation.
      */
-    TpError_PermissionDenied,
+    TP_ERROR_PERMISSION_DENIED,
 
     /* org.freedesktop.Telepathy.Error.Disconnected
     The connection is not currently connected and cannot be used.
      */
-    TpError_Disconnected,
+    TP_ERROR_DISCONNECTED,
 
     /* org.freedesktop.Telepathy.Error.InvalidHandle
     The contact name specified is unknown on this channel or connection.
      */
-    TpError_InvalidHandle,
+    TP_ERROR_INVALID_HANDLE,
 
     /* org.freedesktop.Telepathy.Error.Channel.Banned
     You are banned from the channel.
      */
-    TpError_ChannelBanned,
+    TP_ERROR_CHANNEL_BANNED,
 
     /* org.freedesktop.Telepathy.Error.Channel.Full
     The channel is full.
      */
-    TpError_ChannelFull,
+    TP_ERROR_CHANNEL_FULL,
 
     /* org.freedesktop.Telepathy.Error.Channel.InviteOnly
     The requested channel is invite-only.
      */
-    TpError_ChannelInviteOnly,
-} TelepathyErrors;
+    TP_ERROR_CHANNEL_INVITE_ONLY,
+} TpError;
 
 #ifdef __cplusplus
 }

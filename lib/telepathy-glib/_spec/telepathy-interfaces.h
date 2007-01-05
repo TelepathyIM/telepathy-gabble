@@ -1,7 +1,7 @@
 /* Generated from the Telepathy spec
 
-Copyright (C) 2005, 2006 Collabora Limited
-Copyright (C) 2005, 2006 Nokia Corporation
+Copyright (C) 2005, 2006, 2007 Collabora Limited
+Copyright (C) 2005, 2006, 2007 Nokia Corporation
 Copyright (C) 2006 INdT
 
 

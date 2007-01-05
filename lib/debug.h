@@ -25,9 +25,9 @@ void _tp_debug (TpDebugFlags flag, const gchar *format, ...)
 #ifdef DEBUG_FLAG
 
 #define DEBUG(format, ...) \
-  tp_debug(DEBUG_FLAG, "%s: " format, G_STRFUNC, ##__VA_ARGS__)
+  _tp_debug(DEBUG_FLAG, "%s: " format, G_STRFUNC, ##__VA_ARGS__)
 
-#define DEBUGGING tp_debug_flag_is_set(DEBUG_FLAG)
+#define DEBUGGING _tp_debug_flag_is_set(DEBUG_FLAG)
 
 #endif /* DEBUG_FLAG */
 

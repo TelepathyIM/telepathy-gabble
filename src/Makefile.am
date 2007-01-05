@@ -32,10 +32,6 @@ BUILT_SOURCES = \
     gabble-roomlist-channel-glue.h \
     gabble-roomlist-channel-signals-marshal.h \
     gabble-roomlist-channel-signals-marshal.c \
-    group-mixin-signals-marshal.h \
-    group-mixin-signals-marshal.c \
-    properties-mixin-signals-marshal.h \
-    properties-mixin-signals-marshal.c \
     text-mixin-signals-marshal.h \
     text-mixin-signals-marshal.c
 
@@ -81,8 +77,6 @@ libgabble_convenience_la_SOURCES = \
     gabble-roomlist-channel.h \
     gabble-roomlist-channel.c \
     gabble-types.h \
-    group-mixin.h \
-    group-mixin.c \
     handles.h \
     handles.c \
     jingle-info.c \
@@ -94,8 +88,6 @@ libgabble_convenience_la_SOURCES = \
     muc-factory.h \
     muc-factory.c \
     namespaces.h \
-    properties-mixin.h \
-    properties-mixin.c \
     roster.h \
     roster.c \
     sha1/sha1.h \
@@ -117,8 +109,6 @@ libgabble_convenience_la_SOURCES = \
     gabble-register-signals-marshal.list \
     gabble-roomlist-channel-signals-marshal.list \
     gabble-roster-channel-signals-marshal.list \
-    group-mixin-signals-marshal.list \
-    properties-mixin-signals-marshal.list \
     text-mixin-signals-marshal.list
 
 libgabble_convenience_la_LIBADD = ../lib/libtelepathy-glib.la

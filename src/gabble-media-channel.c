@@ -141,19 +141,21 @@ gabble_media_channel_constructor (GType type, guint n_props,
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
 
-  gabble_group_mixin_init (obj, G_STRUCT_OFFSET (GabbleMediaChannel, group),
-                           priv->conn->handles, priv->conn->self_handle);
+  tp_group_mixin_init (obj, G_STRUCT_OFFSET (GabbleMediaChannel, group),
+      gabble_handle_repo_get_tp_repo (priv->conn->handles,
+        TP_HANDLE_TYPE_CONTACT),
+      priv->conn->self_handle);
 
   /* automatically add creator to channel */
   set = tp_intset_new ();
   tp_intset_add (set, priv->creator);
 
-  gabble_group_mixin_change_members (obj, "", set, NULL, NULL, NULL, 0, 0);
+  tp_group_mixin_change_members (obj, "", set, NULL, NULL, NULL, 0, 0);
 
   tp_intset_destroy (set);
 
   /* allow member adding */
-  gabble_group_mixin_change_flags (obj, TP_CHANNEL_GROUP_FLAG_CAN_ADD, 0);
+  tp_group_mixin_change_flags (obj, TP_CHANNEL_GROUP_FLAG_CAN_ADD, 0);
 
   return obj;
 }
@@ -246,7 +248,7 @@ _gabble_media_channel_dispatch_session_action (GabbleMediaChannel *chan,
 
   if (session == NULL)
     {
-      GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (chan);
+      TpGroupMixin *mixin = TP_GROUP_MIXIN (chan);
       TpIntSet *set;
 
       session = create_session (chan, peer, peer_resource, sid);
@@ -256,13 +258,13 @@ _gabble_media_channel_dispatch_session_action (GabbleMediaChannel *chan,
       set = tp_intset_new ();
       tp_intset_add (set, mixin->self_handle);
 
-      gabble_group_mixin_change_members (G_OBJECT (chan), "", NULL, NULL, set,
+      tp_group_mixin_change_members (G_OBJECT (chan), "", NULL, NULL, set,
           NULL, 0, 0);
 
       tp_intset_destroy (set);
 
       /* and update flags accordingly */
-      gabble_group_mixin_change_flags (G_OBJECT (chan),
+      tp_group_mixin_change_flags (G_OBJECT (chan),
                                        TP_CHANNEL_GROUP_FLAG_CAN_ADD |
                                        TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
                                        0);
@@ -381,7 +383,7 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
   object_class->dispose = gabble_media_channel_dispose;
   object_class->finalize = gabble_media_channel_finalize;
 
-  gabble_group_mixin_class_init (object_class,
+  tp_group_mixin_class_init (object_class,
                                  G_STRUCT_OFFSET (GabbleMediaChannelClass, group_class),
                                  _gabble_media_channel_add_member,
                                  gabble_media_channel_remove_member);
@@ -520,7 +522,7 @@ gabble_media_channel_finalize (GObject *object)
 
   g_free (priv->object_path);
 
-  gabble_group_mixin_finalize (object);
+  tp_group_mixin_finalize (object);
 
   G_OBJECT_CLASS (gabble_media_channel_parent_class)->finalize (object);
 }
@@ -545,7 +547,7 @@ gabble_media_channel_add_members (GabbleMediaChannel *self,
                                   const gchar *message,
                                   GError **error)
 {
-  return gabble_group_mixin_add_members (G_OBJECT (self), contacts, message,
+  return tp_group_mixin_add_members (G_OBJECT (self), contacts, message,
       error);
 }
 
@@ -609,7 +611,7 @@ gabble_media_channel_get_all_members (GabbleMediaChannel *self,
                                       GArray **ret2,
                                       GError **error)
 {
-  return gabble_group_mixin_get_all_members (G_OBJECT (self), ret, ret1, ret2,
+  return tp_group_mixin_get_all_members (G_OBJECT (self), ret, ret1, ret2,
       error);
 }
 
@@ -654,7 +656,7 @@ gabble_media_channel_get_group_flags (GabbleMediaChannel *self,
                                       guint *ret,
                                       GError **error)
 {
-  return gabble_group_mixin_get_group_flags (G_OBJECT (self), ret, error);
+  return tp_group_mixin_get_group_flags (G_OBJECT (self), ret, error);
 }
 
 
@@ -707,7 +709,7 @@ gabble_media_channel_get_handle_owners (GabbleMediaChannel *self,
                                         GArray **ret,
                                         GError **error)
 {
-  return gabble_group_mixin_get_handle_owners (G_OBJECT (self), handles, ret,
+  return tp_group_mixin_get_handle_owners (G_OBJECT (self), handles, ret,
       error);
 }
 
@@ -758,7 +760,7 @@ gabble_media_channel_get_local_pending_members (GabbleMediaChannel *self,
                                                 GArray **ret,
                                                 GError **error)
 {
-  return gabble_group_mixin_get_local_pending_members (G_OBJECT (self), ret,
+  return tp_group_mixin_get_local_pending_members (G_OBJECT (self), ret,
       error);
 }
 
@@ -780,7 +782,7 @@ gabble_media_channel_get_members (GabbleMediaChannel *self,
                                   GArray **ret,
                                   GError **error)
 {
-  return gabble_group_mixin_get_members (G_OBJECT (self), ret, error);
+  return tp_group_mixin_get_members (G_OBJECT (self), ret, error);
 }
 
 
@@ -801,7 +803,7 @@ gabble_media_channel_get_remote_pending_members (GabbleMediaChannel *self,
                                                  GArray **ret,
                                                  GError **error)
 {
-  return gabble_group_mixin_get_remote_pending_members (G_OBJECT (self), ret,
+  return tp_group_mixin_get_remote_pending_members (G_OBJECT (self), ret,
       error);
 }
 
@@ -823,7 +825,7 @@ gabble_media_channel_get_self_handle (GabbleMediaChannel *self,
                                       guint *ret,
                                       GError **error)
 {
-  return gabble_group_mixin_get_self_handle (G_OBJECT (self), ret, error);
+  return tp_group_mixin_get_self_handle (G_OBJECT (self), ret, error);
 }
 
 
@@ -987,7 +989,7 @@ gabble_media_channel_remove_members (GabbleMediaChannel *self,
                                      const gchar *message,
                                      GError **error)
 {
-  return gabble_group_mixin_remove_members (G_OBJECT (self), contacts, message,
+  return tp_group_mixin_remove_members (G_OBJECT (self), contacts, message,
       error);
 }
 
@@ -1192,7 +1194,7 @@ _gabble_media_channel_add_member (GObject *obj, TpHandle handle, const gchar *me
 {
   GabbleMediaChannel *chan = GABBLE_MEDIA_CHANNEL (obj);
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
-  GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
+  TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
 
   /* did we create this channel? */
   if (priv->creator == mixin->self_handle)
@@ -1236,12 +1238,12 @@ _gabble_media_channel_add_member (GObject *obj, TpHandle handle, const gchar *me
       set = tp_intset_new ();
       tp_intset_add (set, handle);
 
-      gabble_group_mixin_change_members (obj, "", NULL, NULL, NULL, set, 0, 0);
+      tp_group_mixin_change_members (obj, "", NULL, NULL, NULL, set, 0, 0);
 
       tp_intset_destroy (set);
 
       /* and update flags accordingly */
-      gabble_group_mixin_change_flags (obj,
+      tp_group_mixin_change_flags (obj,
                                        TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
                                        TP_CHANNEL_GROUP_FLAG_CAN_RESCIND,
                                        TP_CHANNEL_GROUP_FLAG_CAN_ADD);
@@ -1265,12 +1267,12 @@ _gabble_media_channel_add_member (GObject *obj, TpHandle handle, const gchar *me
           set = tp_intset_new ();
           tp_intset_add (set, handle);
 
-          gabble_group_mixin_change_members (obj, "", set, NULL, NULL, NULL, 0, 0);
+          tp_group_mixin_change_members (obj, "", set, NULL, NULL, NULL, 0, 0);
 
           tp_intset_destroy (set);
 
           /* update flags */
-          gabble_group_mixin_change_flags (obj, 0, TP_CHANNEL_GROUP_FLAG_CAN_ADD);
+          tp_group_mixin_change_flags (obj, 0, TP_CHANNEL_GROUP_FLAG_CAN_ADD);
 
           /* signal acceptance */
           _gabble_media_session_accept (priv->session);
@@ -1289,7 +1291,7 @@ gabble_media_channel_remove_member (GObject *obj, TpHandle handle, const gchar *
 {
   GabbleMediaChannel *chan = GABBLE_MEDIA_CHANNEL (obj);
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
-  GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
+  TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
   TpIntSet *set;
 
   if (priv->session == NULL)
@@ -1316,12 +1318,12 @@ gabble_media_channel_remove_member (GObject *obj, TpHandle handle, const gchar *
   set = tp_intset_new ();
   tp_intset_add (set, handle);
 
-  gabble_group_mixin_change_members (obj, "", NULL, set, NULL, NULL, 0, 0);
+  tp_group_mixin_change_members (obj, "", NULL, set, NULL, NULL, 0, 0);
 
   tp_intset_destroy (set);
 
   /* and update flags accordingly */
-  gabble_group_mixin_change_flags (obj, TP_CHANNEL_GROUP_FLAG_CAN_ADD,
+  tp_group_mixin_change_flags (obj, TP_CHANNEL_GROUP_FLAG_CAN_ADD,
                                    TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
                                    TP_CHANNEL_GROUP_FLAG_CAN_RESCIND);
 
@@ -1336,7 +1338,7 @@ session_terminated_cb (GabbleMediaSession *session,
 {
   GabbleMediaChannel *channel = (GabbleMediaChannel *) user_data;
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (channel);
-  GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (channel);
+  TpGroupMixin *mixin = TP_GROUP_MIXIN (channel);
   GError *error;
   gchar *sid;
   JingleSessionState state;
@@ -1354,10 +1356,10 @@ session_terminated_cb (GabbleMediaSession *session,
   tp_intset_add (set, mixin->self_handle);
   tp_intset_add (set, peer);
 
-  gabble_group_mixin_change_members (G_OBJECT (channel), "", NULL, set, NULL, NULL, terminator, reason);
+  tp_group_mixin_change_members (G_OBJECT (channel), "", NULL, set, NULL, NULL, terminator, reason);
 
   /* update flags accordingly -- allow adding, deny removal */
-  gabble_group_mixin_change_flags (G_OBJECT (channel), TP_CHANNEL_GROUP_FLAG_CAN_ADD,
+  tp_group_mixin_change_flags (G_OBJECT (channel), TP_CHANNEL_GROUP_FLAG_CAN_ADD,
                                    TP_CHANNEL_GROUP_FLAG_CAN_REMOVE);
 
   /* free the session ID */
@@ -1396,7 +1398,7 @@ session_state_changed_cb (GabbleMediaSession *session,
                           GabbleMediaChannel *channel)
 {
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (channel);
-  GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (channel);
+  TpGroupMixin *mixin = TP_GROUP_MIXIN (channel);
   JingleSessionState state;
   TpHandle peer;
   TpIntSet *set;
@@ -1417,10 +1419,10 @@ session_state_changed_cb (GabbleMediaSession *session,
   /* add the peer to the member list */
   tp_intset_add (set, peer);
 
-  gabble_group_mixin_change_members (G_OBJECT (channel), "", set, NULL, NULL, NULL, 0, 0);
+  tp_group_mixin_change_members (G_OBJECT (channel), "", set, NULL, NULL, NULL, 0, 0);
 
   /* update flags accordingly -- allow removal, deny adding and rescinding */
-  gabble_group_mixin_change_flags (G_OBJECT (channel),
+  tp_group_mixin_change_flags (G_OBJECT (channel),
       TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
       TP_CHANNEL_GROUP_FLAG_CAN_ADD |
       TP_CHANNEL_GROUP_FLAG_CAN_RESCIND);

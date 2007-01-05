@@ -27,6 +27,7 @@
 #include "debug.h"
 #include "jingle-info.h"
 #include "gabble-error.h"
+#include "handles.h"
 #include "namespaces.h"
 #include "util.h"
 

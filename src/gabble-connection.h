@@ -27,7 +27,7 @@
 
 #include "gabble-types.h"
 #include "gabble-error.h"
-#include "properties-mixin.h"
+#include <telepathy-glib/properties-mixin.h>
 #include <telepathy-glib/tp-enums.h>
 
 G_BEGIN_DECLS
@@ -72,13 +72,13 @@ typedef LmHandlerResult (*GabbleConnectionMsgReplyFunc) (GabbleConnection *conn,
 struct _GabbleConnectionClass {
     GObjectClass parent_class;
 
-    GabblePropertiesMixinClass properties_class;
+    TpPropertiesMixinClass properties_class;
 };
 
 struct _GabbleConnection {
     GObject parent;
 
-    GabblePropertiesMixin properties;
+    TpPropertiesMixin properties;
 
     /* dbus object location */
     gchar *bus_name;

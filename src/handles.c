@@ -26,9 +26,10 @@
 #include <telepathy-glib/tp-handle-repo.h>
 #include <telepathy-glib/tp-handle-repo-dynamic.h>
 #include <telepathy-glib/tp-handle-repo-static.h>
-
 #include <telepathy-glib/tp-errors.h>
 #include <telepathy-glib/tp-helpers.h>
+
+#include "handles.h"
 #include "util.h"
 
 #include "config.h"
@@ -109,6 +110,13 @@ gabble_handle_repo_new ()
 TpHandleSet *
 handle_set_new (GabbleHandleRepo *repo, TpHandleType type)
 {
+  return tp_handle_set_new (gabble_handle_repo_get_tp_repo (repo, type));
+}
+
+TpHandleRepoIface
+*gabble_handle_repo_get_tp_repo (GabbleHandleRepo *repo,
+                                 TpHandleType type)
+{
   if (!tp_handle_type_is_valid (type, NULL))
     return NULL;
 
@@ -117,7 +125,7 @@ handle_set_new (GabbleHandleRepo *repo, TpHandleType type)
       return NULL;
     }
 
-  return tp_handle_set_new (repo->repos[type]);
+  return repo->repos[type];
 }
 
 void

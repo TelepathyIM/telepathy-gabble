@@ -24,8 +24,8 @@
 
 #include <glib-object.h>
 
-#include "group-mixin.h"
-#include "properties-mixin.h"
+#include <telepathy-glib/group-mixin.h>
+#include <telepathy-glib/properties-mixin.h>
 #include "text-mixin.h"
 #include "handles.h"
 
@@ -37,16 +37,16 @@ typedef struct _GabbleMucChannelClass GabbleMucChannelClass;
 struct _GabbleMucChannelClass {
     GObjectClass parent_class;
 
-    GabbleGroupMixinClass group_class;
-    GabblePropertiesMixinClass properties_class;
+    TpGroupMixinClass group_class;
+    TpPropertiesMixinClass properties_class;
     GabbleTextMixinClass text_class;
 };
 
 struct _GabbleMucChannel {
     GObject parent;
 
-    GabbleGroupMixin group;
-    GabblePropertiesMixin properties;
+    TpGroupMixin group;
+    TpPropertiesMixin properties;
     GabbleTextMixin text;
 
     gpointer priv;

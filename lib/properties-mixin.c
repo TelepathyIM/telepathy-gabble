@@ -1,5 +1,5 @@
 /*
- * properties-mixin.c - Source for GabblePropertiesMixin
+ * properties-mixin.c - Source for TpPropertiesMixin
  * Copyright (C) 2006 Collabora Ltd.
  * Copyright (C) 2006 Nokia Corporation
  *   @author Ole Andre Vadla Ravnaas <ole.andre.ravnaas@collabora.co.uk>
@@ -24,35 +24,35 @@
 #include <stdio.h>
 #include <string.h>
 
-#define DEBUG_FLAG GABBLE_DEBUG_PROPERTIES
+#define DEBUG_FLAG TP_DEBUG_PROPERTIES
 
 #include <telepathy-glib/tp-debug-ansi.h>
 #include "debug.h"
-#include "properties-mixin.h"
-#include "properties-mixin-signals-marshal.h"
+#include "telepathy-glib/properties-mixin.h"
+#include "_gen/properties-mixin-signals-marshal.h"
 #include <telepathy-glib/tp-errors.h>
 
-struct _GabblePropertiesContext {
-    GabblePropertiesMixinClass *mixin_cls;
-    GabblePropertiesMixin *mixin;
+struct _TpPropertiesContext {
+    TpPropertiesMixinClass *mixin_cls;
+    TpPropertiesMixin *mixin;
 
     DBusGMethodInvocation *dbus_ctx;
     guint32 remaining;
     GValue **values;
 };
 
-struct _GabblePropertiesMixinPrivate {
+struct _TpPropertiesMixinPrivate {
     GObject *object;
-    GabblePropertiesContext context;
+    TpPropertiesContext context;
 };
 
 /**
- * gabble_properties_mixin_class_get_offset_quark:
+ * tp_properties_mixin_class_get_offset_quark:
  *
  * Returns: the quark used for storing mixin offset on a GObjectClass
  */
 GQuark
-gabble_properties_mixin_class_get_offset_quark ()
+tp_properties_mixin_class_get_offset_quark ()
 {
   static GQuark offset_quark = 0;
   if (!offset_quark)
@@ -61,12 +61,12 @@ gabble_properties_mixin_class_get_offset_quark ()
 }
 
 /**
- * gabble_properties_mixin_get_offset_quark:
+ * tp_properties_mixin_get_offset_quark:
  *
  * Returns: the quark used for storing mixin offset on a GObject
  */
 GQuark
-gabble_properties_mixin_get_offset_quark ()
+tp_properties_mixin_get_offset_quark ()
 {
   static GQuark offset_quark = 0;
   if (!offset_quark)
@@ -74,21 +74,21 @@ gabble_properties_mixin_get_offset_quark ()
   return offset_quark;
 }
 
-void gabble_properties_mixin_class_init (GObjectClass *obj_cls,
+void tp_properties_mixin_class_init (GObjectClass *obj_cls,
                                          glong offset,
-                                         const GabblePropertySignature *signatures,
+                                         const TpPropertySignature *signatures,
                                          guint num_properties,
-                                         GabblePropertiesSetFunc set_func)
+                                         TpPropertiesSetFunc set_func)
 {
-  GabblePropertiesMixinClass *mixin_cls;
+  TpPropertiesMixinClass *mixin_cls;
 
   g_assert (G_IS_OBJECT_CLASS (obj_cls));
 
   g_type_set_qdata (G_OBJECT_CLASS_TYPE (obj_cls),
-                    GABBLE_PROPERTIES_MIXIN_CLASS_OFFSET_QUARK,
+                    TP_PROPERTIES_MIXIN_CLASS_OFFSET_QUARK,
                     GINT_TO_POINTER (offset));
 
-  mixin_cls = GABBLE_PROPERTIES_MIXIN_CLASS (obj_cls);
+  mixin_cls = TP_PROPERTIES_MIXIN_CLASS (obj_cls);
 
   mixin_cls->signatures = signatures;
   mixin_cls->num_props = num_properties;
@@ -114,24 +114,24 @@ void gabble_properties_mixin_class_init (GObjectClass *obj_cls,
                   G_TYPE_NONE, 1, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_UINT, G_TYPE_UINT, G_TYPE_INVALID)))));
 }
 
-void gabble_properties_mixin_init (GObject *obj, glong offset)
+void tp_properties_mixin_init (GObject *obj, glong offset)
 {
-  GabblePropertiesMixinClass *mixin_cls;
-  GabblePropertiesMixin *mixin;
-  GabblePropertiesContext *ctx;
+  TpPropertiesMixinClass *mixin_cls;
+  TpPropertiesMixin *mixin;
+  TpPropertiesContext *ctx;
 
   g_assert (G_IS_OBJECT (obj));
 
   g_type_set_qdata (G_OBJECT_TYPE (obj),
-                    GABBLE_PROPERTIES_MIXIN_OFFSET_QUARK,
+                    TP_PROPERTIES_MIXIN_OFFSET_QUARK,
                     GINT_TO_POINTER (offset));
 
-  mixin = GABBLE_PROPERTIES_MIXIN (obj);
-  mixin_cls = GABBLE_PROPERTIES_MIXIN_CLASS (G_OBJECT_GET_CLASS (obj));
+  mixin = TP_PROPERTIES_MIXIN (obj);
+  mixin_cls = TP_PROPERTIES_MIXIN_CLASS (G_OBJECT_GET_CLASS (obj));
 
-  mixin->properties = g_new0 (GabbleProperty, mixin_cls->num_props);
+  mixin->properties = g_new0 (TpProperty, mixin_cls->num_props);
 
-  mixin->priv = g_new0 (GabblePropertiesMixinPrivate, 1);
+  mixin->priv = g_new0 (TpPropertiesMixinPrivate, 1);
   mixin->priv->object = obj;
 
   ctx = &mixin->priv->context;
@@ -140,17 +140,17 @@ void gabble_properties_mixin_init (GObject *obj, glong offset)
   ctx->values = g_new0 (GValue *, mixin_cls->num_props);
 }
 
-void gabble_properties_mixin_finalize (GObject *obj)
+void tp_properties_mixin_finalize (GObject *obj)
 {
-  GabblePropertiesMixin *mixin = GABBLE_PROPERTIES_MIXIN (obj);
-  GabblePropertiesMixinClass *mixin_cls = GABBLE_PROPERTIES_MIXIN_CLASS (
+  TpPropertiesMixin *mixin = TP_PROPERTIES_MIXIN (obj);
+  TpPropertiesMixinClass *mixin_cls = TP_PROPERTIES_MIXIN_CLASS (
                                             G_OBJECT_GET_CLASS (obj));
-  GabblePropertiesContext *ctx = &mixin->priv->context;
+  TpPropertiesContext *ctx = &mixin->priv->context;
   guint i;
 
   for (i = 0; i < mixin_cls->num_props; i++)
     {
-      GabbleProperty *prop = &mixin->properties[i];
+      TpProperty *prop = &mixin->properties[i];
 
       if (prop->value)
         {
@@ -172,10 +172,10 @@ void gabble_properties_mixin_finalize (GObject *obj)
 }
 
 gboolean
-gabble_properties_mixin_list_properties (GObject *obj, GPtrArray **ret, GError **error)
+tp_properties_mixin_list_properties (GObject *obj, GPtrArray **ret, GError **error)
 {
-  GabblePropertiesMixin *mixin = GABBLE_PROPERTIES_MIXIN (obj);
-  GabblePropertiesMixinClass *mixin_cls = GABBLE_PROPERTIES_MIXIN_CLASS (
+  TpPropertiesMixin *mixin = TP_PROPERTIES_MIXIN (obj);
+  TpPropertiesMixinClass *mixin_cls = TP_PROPERTIES_MIXIN_CLASS (
                                             G_OBJECT_GET_CLASS (obj));
   guint i;
 
@@ -183,8 +183,8 @@ gabble_properties_mixin_list_properties (GObject *obj, GPtrArray **ret, GError *
 
   for (i = 0; i < mixin_cls->num_props; i++)
     {
-      const GabblePropertySignature *sig = &mixin_cls->signatures[i];
-      GabbleProperty *prop = &mixin->properties[i];
+      const TpPropertySignature *sig = &mixin_cls->signatures[i];
+      TpProperty *prop = &mixin->properties[i];
       const gchar *dbus_sig;
       GValue val = { 0, };
 
@@ -224,10 +224,10 @@ gabble_properties_mixin_list_properties (GObject *obj, GPtrArray **ret, GError *
 }
 
 gboolean
-gabble_properties_mixin_get_properties (GObject *obj, const GArray *properties, GPtrArray **ret, GError **error)
+tp_properties_mixin_get_properties (GObject *obj, const GArray *properties, GPtrArray **ret, GError **error)
 {
-  GabblePropertiesMixin *mixin = GABBLE_PROPERTIES_MIXIN (obj);
-  GabblePropertiesMixinClass *mixin_cls = GABBLE_PROPERTIES_MIXIN_CLASS (
+  TpPropertiesMixin *mixin = TP_PROPERTIES_MIXIN (obj);
+  TpPropertiesMixinClass *mixin_cls = TP_PROPERTIES_MIXIN_CLASS (
                                             G_OBJECT_GET_CLASS (obj));
   guint i;
 
@@ -246,7 +246,7 @@ gabble_properties_mixin_get_properties (GObject *obj, const GArray *properties, 
         }
 
       /* Permitted? */
-      if (!gabble_properties_mixin_is_readable (obj, prop_id))
+      if (!tp_properties_mixin_is_readable (obj, prop_id))
         {
           g_set_error (error, TELEPATHY_ERRORS, TpError_PermissionDenied,
               "permission denied for property identifier %d", prop_id);
@@ -280,14 +280,14 @@ gabble_properties_mixin_get_properties (GObject *obj, const GArray *properties, 
 }
 
 void
-gabble_properties_mixin_set_properties (GObject *obj,
+tp_properties_mixin_set_properties (GObject *obj,
                                         const GPtrArray *properties,
                                         DBusGMethodInvocation *context)
 {
-  GabblePropertiesMixin *mixin = GABBLE_PROPERTIES_MIXIN (obj);
-  GabblePropertiesMixinClass *mixin_cls = GABBLE_PROPERTIES_MIXIN_CLASS (
+  TpPropertiesMixin *mixin = TP_PROPERTIES_MIXIN (obj);
+  TpPropertiesMixinClass *mixin_cls = TP_PROPERTIES_MIXIN_CLASS (
                                             G_OBJECT_GET_CLASS (obj));
-  GabblePropertiesContext *ctx = &mixin->priv->context;
+  TpPropertiesContext *ctx = &mixin->priv->context;
   GError *error;
   guint i;
 
@@ -332,7 +332,7 @@ gabble_properties_mixin_set_properties (GObject *obj,
       ctx->values[prop_id] = prop_val;
 
       /* Permitted? */
-      if (!gabble_properties_mixin_is_writable (obj, prop_id))
+      if (!tp_properties_mixin_is_writable (obj, prop_id))
         {
           error = g_error_new (TELEPATHY_ERRORS, TpError_PermissionDenied,
                                "permission denied for property identifier %d", prop_id);
@@ -357,19 +357,19 @@ gabble_properties_mixin_set_properties (GObject *obj,
     }
   else
     {
-      gabble_properties_context_return (ctx, NULL);
+      tp_properties_context_return (ctx, NULL);
       return;
     }
 
 ERROR:
-  gabble_properties_context_return (ctx, error);
+  tp_properties_context_return (ctx, error);
 }
 
 gboolean
-gabble_properties_mixin_has_property (GObject *obj, const gchar *name,
+tp_properties_mixin_has_property (GObject *obj, const gchar *name,
                                       guint *property)
 {
-  GabblePropertiesMixinClass *mixin_cls = GABBLE_PROPERTIES_MIXIN_CLASS (
+  TpPropertiesMixinClass *mixin_cls = TP_PROPERTIES_MIXIN_CLASS (
                                             G_OBJECT_GET_CLASS (obj));
   guint i;
 
@@ -388,7 +388,7 @@ gabble_properties_mixin_has_property (GObject *obj, const gchar *name,
 }
 
 gboolean
-gabble_properties_context_has (GabblePropertiesContext *ctx, guint property)
+tp_properties_context_has (TpPropertiesContext *ctx, guint property)
 {
   g_assert (property < ctx->mixin_cls->num_props);
 
@@ -396,7 +396,7 @@ gabble_properties_context_has (GabblePropertiesContext *ctx, guint property)
 }
 
 gboolean
-gabble_properties_context_has_other_than (GabblePropertiesContext *ctx, guint property)
+tp_properties_context_has_other_than (TpPropertiesContext *ctx, guint property)
 {
   g_assert (property < ctx->mixin_cls->num_props);
 
@@ -404,7 +404,7 @@ gabble_properties_context_has_other_than (GabblePropertiesContext *ctx, guint pr
 }
 
 const GValue *
-gabble_properties_context_get (GabblePropertiesContext *ctx, guint property)
+tp_properties_context_get (TpPropertiesContext *ctx, guint property)
 {
   g_assert (property < ctx->mixin_cls->num_props);
 
@@ -412,7 +412,7 @@ gabble_properties_context_get (GabblePropertiesContext *ctx, guint property)
 }
 
 guint
-gabble_properties_context_get_value_count (GabblePropertiesContext *ctx)
+tp_properties_context_get_value_count (TpPropertiesContext *ctx)
 {
   guint i, n;
 
@@ -427,7 +427,7 @@ gabble_properties_context_get_value_count (GabblePropertiesContext *ctx)
 }
 
 void
-gabble_properties_context_remove (GabblePropertiesContext *ctx, guint property)
+tp_properties_context_remove (TpPropertiesContext *ctx, guint property)
 {
   g_assert (property < ctx->mixin_cls->num_props);
 
@@ -435,7 +435,7 @@ gabble_properties_context_remove (GabblePropertiesContext *ctx, guint property)
 }
 
 void
-gabble_properties_context_return (GabblePropertiesContext *ctx, GError *error)
+tp_properties_context_return (TpPropertiesContext *ctx, GError *error)
 {
   GObject *obj = ctx->mixin->priv->object;
   GArray *changed_props_val, *changed_props_flags;
@@ -451,10 +451,10 @@ gabble_properties_context_return (GabblePropertiesContext *ctx, GError *error)
         {
           if (!error)
             {
-              gabble_properties_mixin_change_value (obj, i, ctx->values[i],
+              tp_properties_mixin_change_value (obj, i, ctx->values[i],
                                                     &changed_props_val);
 
-              gabble_properties_mixin_change_flags (obj, i,
+              tp_properties_mixin_change_flags (obj, i,
                   TP_PROPERTY_FLAG_READ, 0, &changed_props_flags);
             }
 
@@ -465,8 +465,8 @@ gabble_properties_context_return (GabblePropertiesContext *ctx, GError *error)
 
   if (!error)
     {
-      gabble_properties_mixin_emit_changed (obj, &changed_props_val);
-      gabble_properties_mixin_emit_flags (obj, &changed_props_flags);
+      tp_properties_mixin_emit_changed (obj, &changed_props_val);
+      tp_properties_mixin_emit_flags (obj, &changed_props_flags);
 
       dbus_g_method_return (ctx->dbus_ctx);
     }
@@ -481,11 +481,11 @@ gabble_properties_context_return (GabblePropertiesContext *ctx, GError *error)
 }
 
 gboolean
-gabble_properties_context_return_if_done (GabblePropertiesContext *ctx)
+tp_properties_context_return_if_done (TpPropertiesContext *ctx)
 {
   if (ctx->remaining == 0)
     {
-      gabble_properties_context_return (ctx, NULL);
+      tp_properties_context_return (ctx, NULL);
       return TRUE;
     }
 
@@ -551,14 +551,14 @@ values_are_equal (const GValue *v1, const GValue *v2)
 }
 
 void
-gabble_properties_mixin_change_value (GObject *obj, guint prop_id,
+tp_properties_mixin_change_value (GObject *obj, guint prop_id,
                                       const GValue *new_value,
                                       GArray **props)
 {
-  GabblePropertiesMixin *mixin = GABBLE_PROPERTIES_MIXIN (obj);
-  GabblePropertiesMixinClass *mixin_cls = GABBLE_PROPERTIES_MIXIN_CLASS (
+  TpPropertiesMixin *mixin = TP_PROPERTIES_MIXIN (obj);
+  TpPropertiesMixinClass *mixin_cls = TP_PROPERTIES_MIXIN_CLASS (
                                             G_OBJECT_GET_CLASS (obj));
-  GabbleProperty *prop;
+  TpProperty *prop;
 
   g_assert (prop_id < mixin_cls->num_props);
 
@@ -601,20 +601,20 @@ gabble_properties_mixin_change_value (GObject *obj, guint prop_id,
                                                  sizeof (guint), 1);
       g_array_append_val (changed_props, prop_id);
 
-      gabble_properties_mixin_emit_changed (obj, &changed_props);
+      tp_properties_mixin_emit_changed (obj, &changed_props);
     }
 }
 
 void
-gabble_properties_mixin_change_flags (GObject *obj, guint prop_id,
+tp_properties_mixin_change_flags (GObject *obj, guint prop_id,
                                       TpPropertyFlags add,
                                       TpPropertyFlags remove,
                                       GArray **props)
 {
-  GabblePropertiesMixin *mixin = GABBLE_PROPERTIES_MIXIN (obj);
-  GabblePropertiesMixinClass *mixin_cls = GABBLE_PROPERTIES_MIXIN_CLASS (
+  TpPropertiesMixin *mixin = TP_PROPERTIES_MIXIN (obj);
+  TpPropertiesMixinClass *mixin_cls = TP_PROPERTIES_MIXIN_CLASS (
                                             G_OBJECT_GET_CLASS (obj));
-  GabbleProperty *prop;
+  TpProperty *prop;
   guint prev_flags;
 
   g_assert (prop_id < mixin_cls->num_props);
@@ -653,15 +653,15 @@ gabble_properties_mixin_change_flags (GObject *obj, guint prop_id,
                                                  sizeof (guint), 1);
       g_array_append_val (changed_props, prop_id);
 
-      gabble_properties_mixin_emit_flags (obj, &changed_props);
+      tp_properties_mixin_emit_flags (obj, &changed_props);
     }
 }
 
 void
-gabble_properties_mixin_emit_changed (GObject *obj, GArray **props)
+tp_properties_mixin_emit_changed (GObject *obj, GArray **props)
 {
-  GabblePropertiesMixin *mixin = GABBLE_PROPERTIES_MIXIN (obj);
-  GabblePropertiesMixinClass *mixin_cls = GABBLE_PROPERTIES_MIXIN_CLASS (
+  TpPropertiesMixin *mixin = TP_PROPERTIES_MIXIN (obj);
+  TpPropertiesMixinClass *mixin_cls = TP_PROPERTIES_MIXIN_CLASS (
                                             G_OBJECT_GET_CLASS (obj));
   GPtrArray *prop_arr;
   GValue prop_list = { 0, };
@@ -717,10 +717,10 @@ gabble_properties_mixin_emit_changed (GObject *obj, GArray **props)
 }
 
 void
-gabble_properties_mixin_emit_flags (GObject *obj, GArray **props)
+tp_properties_mixin_emit_flags (GObject *obj, GArray **props)
 {
-  GabblePropertiesMixin *mixin = GABBLE_PROPERTIES_MIXIN (obj);
-  GabblePropertiesMixinClass *mixin_cls = GABBLE_PROPERTIES_MIXIN_CLASS (
+  TpPropertiesMixin *mixin = TP_PROPERTIES_MIXIN (obj);
+  TpPropertiesMixinClass *mixin_cls = TP_PROPERTIES_MIXIN_CLASS (
                                             G_OBJECT_GET_CLASS (obj));
   GPtrArray *prop_arr;
   GValue prop_list = { 0, };
@@ -786,10 +786,10 @@ gabble_properties_mixin_emit_flags (GObject *obj, GArray **props)
 }
 
 gboolean
-gabble_properties_mixin_is_readable (GObject *obj, guint prop_id)
+tp_properties_mixin_is_readable (GObject *obj, guint prop_id)
 {
-  GabblePropertiesMixin *mixin = GABBLE_PROPERTIES_MIXIN (obj);
-  GabblePropertiesMixinClass *mixin_cls = GABBLE_PROPERTIES_MIXIN_CLASS (
+  TpPropertiesMixin *mixin = TP_PROPERTIES_MIXIN (obj);
+  TpPropertiesMixinClass *mixin_cls = TP_PROPERTIES_MIXIN_CLASS (
                                             G_OBJECT_GET_CLASS (obj));
 
   if (prop_id >= mixin_cls->num_props)
@@ -799,10 +799,10 @@ gabble_properties_mixin_is_readable (GObject *obj, guint prop_id)
 }
 
 gboolean
-gabble_properties_mixin_is_writable (GObject *obj, guint prop_id)
+tp_properties_mixin_is_writable (GObject *obj, guint prop_id)
 {
-  GabblePropertiesMixin *mixin = GABBLE_PROPERTIES_MIXIN (obj);
-  GabblePropertiesMixinClass *mixin_cls = GABBLE_PROPERTIES_MIXIN_CLASS (
+  TpPropertiesMixin *mixin = TP_PROPERTIES_MIXIN (obj);
+  TpPropertiesMixinClass *mixin_cls = TP_PROPERTIES_MIXIN_CLASS (
                                             G_OBJECT_GET_CLASS (obj));
 
   if (prop_id >= mixin_cls->num_props)

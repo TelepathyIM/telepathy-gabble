@@ -1,5 +1,5 @@
 /*
- * group-mixin.c - Source for GabbleGroupMixin
+ * group-mixin.c - Source for TpGroupMixin
  * Copyright (C) 2006 Collabora Ltd.
  * Copyright (C) 2006 Nokia Corporation
  *   @author Ole Andre Vadla Ravnaas <ole.andre.ravnaas@collabora.co.uk>
@@ -23,15 +23,14 @@
 #include <dbus/dbus-glib.h>
 #include <stdio.h>
 
-#include <telepathy-glib/tp-debug-ansi.h>
+#include "telepathy-glib/tp-debug-ansi.h"
+#include "telepathy-glib/tp-errors.h"
+#include "telepathy-glib/group-mixin.h"
 
-#include <telepathy-glib/tp-errors.h>
-
-#define DEBUG_FLAG GABBLE_DEBUG_GROUPS
+#define DEBUG_FLAG TP_DEBUG_GROUPS
 
 #include "debug.h"
-#include "group-mixin.h"
-#include "group-mixin-signals-marshal.h"
+#include "_gen/group-mixin-signals-marshal.h"
 
 static const char *group_change_reason_str(guint reason)
 {
@@ -54,19 +53,19 @@ static const char *group_change_reason_str(guint reason)
     }
 }
 
-struct _GabbleGroupMixinPrivate {
+struct _TpGroupMixinPrivate {
     TpHandleSet *actors;
     GHashTable *handle_owners;
 };
 
 
 /**
- * gabble_group_mixin_class_get_offset_quark:
+ * tp_group_mixin_class_get_offset_quark:
  *
  * Returns: the quark used for storing mixin offset on a GObjectClass
  */
 GQuark
-gabble_group_mixin_class_get_offset_quark ()
+tp_group_mixin_class_get_offset_quark ()
 {
   static GQuark offset_quark = 0;
   if (!offset_quark)
@@ -75,12 +74,12 @@ gabble_group_mixin_class_get_offset_quark ()
 }
 
 /**
- * gabble_group_mixin_get_offset_quark:
+ * tp_group_mixin_get_offset_quark:
  *
  * Returns: the quark used for storing mixin offset on a GObject
  */
 GQuark
-gabble_group_mixin_get_offset_quark ()
+tp_group_mixin_get_offset_quark ()
 {
   static GQuark offset_quark = 0;
   if (!offset_quark)
@@ -88,20 +87,20 @@ gabble_group_mixin_get_offset_quark ()
   return offset_quark;
 }
 
-void gabble_group_mixin_class_init (GObjectClass *obj_cls,
+void tp_group_mixin_class_init (GObjectClass *obj_cls,
                                     glong offset,
-                                    GabbleGroupMixinAddMemberFunc add_func,
-                                    GabbleGroupMixinRemMemberFunc rem_func)
+                                    TpGroupMixinAddMemberFunc add_func,
+                                    TpGroupMixinRemMemberFunc rem_func)
 {
-  GabbleGroupMixinClass *mixin_cls;
+  TpGroupMixinClass *mixin_cls;
 
   g_assert (G_IS_OBJECT_CLASS (obj_cls));
 
   g_type_set_qdata (G_OBJECT_CLASS_TYPE (obj_cls),
-                    GABBLE_GROUP_MIXIN_CLASS_OFFSET_QUARK,
+                    TP_GROUP_MIXIN_CLASS_OFFSET_QUARK,
                     GINT_TO_POINTER (offset));
 
-  mixin_cls = GABBLE_GROUP_MIXIN_CLASS (obj_cls);
+  mixin_cls = TP_GROUP_MIXIN_CLASS (obj_cls);
 
   mixin_cls->add_member = add_func;
   mixin_cls->remove_member = rem_func;
@@ -125,33 +124,33 @@ void gabble_group_mixin_class_init (GObjectClass *obj_cls,
                   G_TYPE_NONE, 7, G_TYPE_STRING, DBUS_TYPE_G_UINT_ARRAY, DBUS_TYPE_G_UINT_ARRAY, DBUS_TYPE_G_UINT_ARRAY, DBUS_TYPE_G_UINT_ARRAY, G_TYPE_UINT, G_TYPE_UINT);
 }
 
-void gabble_group_mixin_init (GObject *obj,
-                              glong offset,
-                              GabbleHandleRepo *handle_repo,
-                              TpHandle self_handle)
+void tp_group_mixin_init (GObject *obj,
+                          glong offset,
+                          TpHandleRepoIface *handle_repo,
+                          TpHandle self_handle)
 {
-  GabbleGroupMixin *mixin;
+  TpGroupMixin *mixin;
 
   g_assert (G_IS_OBJECT (obj));
 
   g_type_set_qdata (G_OBJECT_TYPE (obj),
-                    GABBLE_GROUP_MIXIN_OFFSET_QUARK,
+                    TP_GROUP_MIXIN_OFFSET_QUARK,
                     GINT_TO_POINTER (offset));
 
-  mixin = GABBLE_GROUP_MIXIN (obj);
+  mixin = TP_GROUP_MIXIN (obj);
 
   mixin->handle_repo = handle_repo;
   mixin->self_handle = self_handle;
 
   mixin->group_flags = 0;
 
-  mixin->members = handle_set_new (handle_repo, TP_HANDLE_TYPE_CONTACT);
-  mixin->local_pending = handle_set_new (handle_repo, TP_HANDLE_TYPE_CONTACT);
-  mixin->remote_pending = handle_set_new (handle_repo, TP_HANDLE_TYPE_CONTACT);
+  mixin->members = tp_handle_set_new (handle_repo);
+  mixin->local_pending = tp_handle_set_new (handle_repo);
+  mixin->remote_pending = tp_handle_set_new (handle_repo);
 
-  mixin->priv = g_new0 (GabbleGroupMixinPrivate, 1);
+  mixin->priv = g_new0 (TpGroupMixinPrivate, 1);
   mixin->priv->handle_owners = g_hash_table_new (g_direct_hash, g_direct_equal);
-  mixin->priv->actors = handle_set_new (handle_repo, TP_HANDLE_TYPE_CONTACT);
+  mixin->priv->actors = tp_handle_set_new (handle_repo);
 }
 
 static void
@@ -159,17 +158,15 @@ handle_owners_foreach_unref (gpointer key,
                              gpointer value,
                              gpointer user_data)
 {
-  GabbleGroupMixin *mixin = user_data;
+  TpGroupMixin *mixin = user_data;
 
-  gabble_handle_unref (mixin->handle_repo, TP_HANDLE_TYPE_CONTACT,
-                       GPOINTER_TO_UINT (key));
-  gabble_handle_unref (mixin->handle_repo, TP_HANDLE_TYPE_CONTACT,
-                       GPOINTER_TO_UINT (value));
+  tp_handle_unref (mixin->handle_repo, GPOINTER_TO_UINT (key));
+  tp_handle_unref (mixin->handle_repo, GPOINTER_TO_UINT (value));
 }
 
-void gabble_group_mixin_finalize (GObject *obj)
+void tp_group_mixin_finalize (GObject *obj)
 {
-  GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
+  TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
 
   tp_handle_set_destroy (mixin->priv->actors);
 
@@ -187,9 +184,9 @@ void gabble_group_mixin_finalize (GObject *obj)
 }
 
 gboolean
-gabble_group_mixin_get_self_handle (GObject *obj, guint *ret, GError **error)
+tp_group_mixin_get_self_handle (GObject *obj, guint *ret, GError **error)
 {
-  GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
+  TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
 
   if (tp_handle_set_is_member (mixin->members, mixin->self_handle) ||
       tp_handle_set_is_member (mixin->local_pending, mixin->self_handle) ||
@@ -206,9 +203,9 @@ gabble_group_mixin_get_self_handle (GObject *obj, guint *ret, GError **error)
 }
 
 gboolean
-gabble_group_mixin_get_group_flags (GObject *obj, guint *ret, GError **error)
+tp_group_mixin_get_group_flags (GObject *obj, guint *ret, GError **error)
 {
-  GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
+  TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
 
   *ret = mixin->group_flags;
 
@@ -216,19 +213,15 @@ gabble_group_mixin_get_group_flags (GObject *obj, guint *ret, GError **error)
 }
 
 gboolean
-gabble_group_mixin_add_members (GObject *obj, const GArray *contacts, const gchar *message, GError **error)
+tp_group_mixin_add_members (GObject *obj, const GArray *contacts, const gchar *message, GError **error)
 {
-  GabbleGroupMixinClass *mixin_cls = GABBLE_GROUP_MIXIN_CLASS (G_OBJECT_GET_CLASS (obj));
-  GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
+  TpGroupMixinClass *mixin_cls = TP_GROUP_MIXIN_CLASS (G_OBJECT_GET_CLASS (obj));
+  TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
   guint i;
   TpHandle handle;
 
   /* reject invalid handles */
-  if (!gabble_handles_are_valid (mixin->handle_repo,
-                                 TP_HANDLE_TYPE_CONTACT,
-                                 contacts,
-                                 FALSE,
-                                 error))
+  if (!tp_handles_are_valid (mixin->handle_repo, contacts, FALSE, error))
     return FALSE;
 
   /* check that adding is allowed by flags */
@@ -272,19 +265,15 @@ gabble_group_mixin_add_members (GObject *obj, const GArray *contacts, const gcha
 }
 
 gboolean
-gabble_group_mixin_remove_members (GObject *obj, const GArray *contacts, const gchar *message, GError **error)
+tp_group_mixin_remove_members (GObject *obj, const GArray *contacts, const gchar *message, GError **error)
 {
-  GabbleGroupMixinClass *mixin_cls = GABBLE_GROUP_MIXIN_CLASS (G_OBJECT_GET_CLASS (obj));
-  GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
+  TpGroupMixinClass *mixin_cls = TP_GROUP_MIXIN_CLASS (G_OBJECT_GET_CLASS (obj));
+  TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
   guint i;
   TpHandle handle;
 
   /* reject invalid handles */
-  if (!gabble_handles_are_valid (mixin->handle_repo,
-                                 TP_HANDLE_TYPE_CONTACT,
-                                 contacts,
-                                 FALSE,
-                                 error))
+  if (!tp_handles_are_valid (mixin->handle_repo, contacts, FALSE, error))
     return FALSE;
 
   /* check removing is allowed by flags */
@@ -347,9 +336,9 @@ gabble_group_mixin_remove_members (GObject *obj, const GArray *contacts, const g
 }
 
 gboolean
-gabble_group_mixin_get_members (GObject *obj, GArray **ret, GError **error)
+tp_group_mixin_get_members (GObject *obj, GArray **ret, GError **error)
 {
-  GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
+  TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
 
   *ret = tp_handle_set_to_array (mixin->members);
 
@@ -357,9 +346,9 @@ gabble_group_mixin_get_members (GObject *obj, GArray **ret, GError **error)
 }
 
 gboolean
-gabble_group_mixin_get_local_pending_members (GObject *obj, GArray **ret, GError **error)
+tp_group_mixin_get_local_pending_members (GObject *obj, GArray **ret, GError **error)
 {
-  GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
+  TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
 
   *ret = tp_handle_set_to_array (mixin->local_pending);
 
@@ -367,9 +356,9 @@ gabble_group_mixin_get_local_pending_members (GObject *obj, GArray **ret, GError
 }
 
 gboolean
-gabble_group_mixin_get_remote_pending_members (GObject *obj, GArray **ret, GError **error)
+tp_group_mixin_get_remote_pending_members (GObject *obj, GArray **ret, GError **error)
 {
-  GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
+  TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
 
   *ret = tp_handle_set_to_array (mixin->remote_pending);
 
@@ -377,9 +366,9 @@ gabble_group_mixin_get_remote_pending_members (GObject *obj, GArray **ret, GErro
 }
 
 gboolean
-gabble_group_mixin_get_all_members (GObject *obj, GArray **ret, GArray **ret1, GArray **ret2, GError **error)
+tp_group_mixin_get_all_members (GObject *obj, GArray **ret, GArray **ret1, GArray **ret2, GError **error)
 {
-  GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
+  TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
 
   *ret = tp_handle_set_to_array (mixin->members);
   *ret1 = tp_handle_set_to_array (mixin->local_pending);
@@ -389,13 +378,13 @@ gabble_group_mixin_get_all_members (GObject *obj, GArray **ret, GArray **ret1, G
 }
 
 gboolean
-gabble_group_mixin_get_handle_owners (GObject *obj,
+tp_group_mixin_get_handle_owners (GObject *obj,
                                       const GArray *handles,
                                       GArray **ret,
                                       GError **error)
 {
-  GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
-  GabbleGroupMixinPrivate *priv = mixin->priv;
+  TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
+  TpGroupMixinPrivate *priv = mixin->priv;
   guint i;
 
   if ((mixin->group_flags &
@@ -407,8 +396,7 @@ gabble_group_mixin_get_handle_owners (GObject *obj,
       return FALSE;
     }
 
-  if (!gabble_handles_are_valid (mixin->handle_repo, TP_HANDLE_TYPE_CONTACT,
-                                 handles, FALSE, error))
+  if (!tp_handles_are_valid (mixin->handle_repo, handles, FALSE, error))
     {
       return FALSE;
     }
@@ -472,18 +460,18 @@ group_flags_to_string (TpChannelGroupFlags flags)
 }
 
 /**
- * gabble_group_mixin_change_flags:
+ * tp_group_mixin_change_flags:
  *
  * Request a change to be made to the flags. Emits the
  * signal with the changes which were made.
  */
 void
-gabble_group_mixin_change_flags (GObject *obj,
+tp_group_mixin_change_flags (GObject *obj,
                                  TpChannelGroupFlags add,
                                  TpChannelGroupFlags remove)
 {
-  GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
-  GabbleGroupMixinClass *mixin_cls = GABBLE_GROUP_MIXIN_CLASS (G_OBJECT_GET_CLASS (obj));
+  TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
+  TpGroupMixinClass *mixin_cls = TP_GROUP_MIXIN_CLASS (G_OBJECT_GET_CLASS (obj));
   TpChannelGroupFlags added, removed;
 
   added = add & ~mixin->group_flags;
@@ -521,7 +509,7 @@ gabble_group_mixin_change_flags (GObject *obj,
 }
 
 static gchar *
-member_array_to_string (GabbleHandleRepo *repo, const GArray *array)
+member_array_to_string (TpHandleRepoIface *repo, const GArray *array)
 {
   GString *str;
   guint i;
@@ -534,7 +522,7 @@ member_array_to_string (GabbleHandleRepo *repo, const GArray *array)
       const gchar *handle_str;
 
       handle = g_array_index (array, guint32, i);
-      handle_str = gabble_handle_inspect (repo, TP_HANDLE_TYPE_CONTACT, handle);
+      handle_str = tp_handle_inspect (repo, handle);
 
       g_string_append_printf (str, "%s%u (%s)",
           (i > 0) ? "\n              " : "",
@@ -549,13 +537,13 @@ member_array_to_string (GabbleHandleRepo *repo, const GArray *array)
 static void remove_handle_owners_if_exist (GObject *obj, GArray *array);
 
 /**
- * gabble_group_mixin_change_members:
+ * tp_group_mixin_change_members:
  *
  * Request members to be added, removed or marked as local or remote pending.
  * Changes member sets, references, and emits the MembersChanged signal.
  */
 gboolean
-gabble_group_mixin_change_members (GObject *obj,
+tp_group_mixin_change_members (GObject *obj,
                                    const gchar *message,
                                    TpIntSet *add,
                                    TpIntSet *remove,
@@ -564,8 +552,8 @@ gabble_group_mixin_change_members (GObject *obj,
                                    TpHandle actor,
                                    guint reason)
 {
-  GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
-  GabbleGroupMixinClass *mixin_cls = GABBLE_GROUP_MIXIN_CLASS (G_OBJECT_GET_CLASS (obj));
+  TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
+  TpGroupMixinClass *mixin_cls = TP_GROUP_MIXIN_CLASS (G_OBJECT_GET_CLASS (obj));
   TpIntSet *new_add, *new_remove, *new_local_pending,
            *new_remote_pending, *tmp, *tmp2, *empty;
   gboolean ret;
@@ -717,27 +705,25 @@ gabble_group_mixin_change_members (GObject *obj,
 }
 
 void
-gabble_group_mixin_add_handle_owner (GObject *obj,
+tp_group_mixin_add_handle_owner (GObject *obj,
                                      TpHandle local_handle,
                                      TpHandle owner_handle)
 {
-  GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
-  GabbleGroupMixinPrivate *priv = mixin->priv;
+  TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
+  TpGroupMixinPrivate *priv = mixin->priv;
 
   g_hash_table_insert (priv->handle_owners, GUINT_TO_POINTER (local_handle),
                        GUINT_TO_POINTER (owner_handle));
 
-  gabble_handle_ref (mixin->handle_repo, TP_HANDLE_TYPE_CONTACT,
-                     local_handle);
-  gabble_handle_ref (mixin->handle_repo, TP_HANDLE_TYPE_CONTACT,
-                     owner_handle);
+  tp_handle_ref (mixin->handle_repo, local_handle);
+  tp_handle_ref (mixin->handle_repo, owner_handle);
 }
 
 static void
 remove_handle_owners_if_exist (GObject *obj, GArray *array)
 {
-  GabbleGroupMixin *mixin = GABBLE_GROUP_MIXIN (obj);
-  GabbleGroupMixinPrivate *priv = mixin->priv;
+  TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
+  TpGroupMixinPrivate *priv = mixin->priv;
   guint i;
 
   for (i = 0; i < array->len; i++)
@@ -750,10 +736,8 @@ remove_handle_owners_if_exist (GObject *obj, GArray *array)
                                         &local_handle,
                                         &owner_handle))
         {
-          gabble_handle_unref (mixin->handle_repo, TP_HANDLE_TYPE_CONTACT,
-                               GPOINTER_TO_UINT (local_handle));
-          gabble_handle_unref (mixin->handle_repo, TP_HANDLE_TYPE_CONTACT,
-                               GPOINTER_TO_UINT (owner_handle));
+          tp_handle_unref (mixin->handle_repo, GPOINTER_TO_UINT (local_handle));
+          tp_handle_unref (mixin->handle_repo, GPOINTER_TO_UINT (owner_handle));
 
           g_hash_table_remove (priv->handle_owners, GUINT_TO_POINTER (handle));
         }

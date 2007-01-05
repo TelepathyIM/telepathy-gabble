@@ -192,7 +192,7 @@ enum
   INVALID_CONN_PROP,
 };
 
-const GabblePropertySignature connection_property_signatures[NUM_CONN_PROPS] = {
+const TpPropertySignature connection_property_signatures[NUM_CONN_PROPS] = {
       { "stun-server",                  G_TYPE_STRING },
       { "stun-port",                    G_TYPE_UINT   },
       { "stun-relay-magic-cookie",      G_TYPE_STRING },
@@ -350,15 +350,15 @@ gabble_connection_init (GabbleConnection *self)
   priv->https_proxy_port = GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_PORT;
 
   /* initialize properties mixin */
-  gabble_properties_mixin_init (G_OBJECT (self), G_STRUCT_OFFSET (
+  tp_properties_mixin_init (G_OBJECT (self), G_STRUCT_OFFSET (
         GabbleConnection, properties));
 
   g_value_init (&val, G_TYPE_UINT);
   g_value_set_uint (&val, GABBLE_PARAMS_DEFAULT_STUN_PORT);
 
-  gabble_properties_mixin_change_value (G_OBJECT (self), CONN_PROP_STUN_PORT,
+  tp_properties_mixin_change_value (G_OBJECT (self), CONN_PROP_STUN_PORT,
                                         &val, NULL);
-  gabble_properties_mixin_change_flags (G_OBJECT (self), CONN_PROP_STUN_PORT,
+  tp_properties_mixin_change_flags (G_OBJECT (self), CONN_PROP_STUN_PORT,
                                         TP_PROPERTY_FLAG_READ, 0, NULL);
 
   g_value_unset (&val);
@@ -429,7 +429,7 @@ gabble_connection_get_property (GObject    *object,
     default:
       param_name = g_param_spec_get_name (pspec);
 
-      if (gabble_properties_mixin_has_property (object, param_name,
+      if (tp_properties_mixin_has_property (object, param_name,
             &tp_property_id))
         {
           GValue *tp_property_value =
@@ -519,12 +519,12 @@ gabble_connection_set_property (GObject      *object,
     default:
       param_name = g_param_spec_get_name (pspec);
 
-      if (gabble_properties_mixin_has_property (object, param_name,
+      if (tp_properties_mixin_has_property (object, param_name,
             &tp_property_id))
         {
-          gabble_properties_mixin_change_value (object, tp_property_id, value,
+          tp_properties_mixin_change_value (object, tp_property_id, value,
                                                 NULL);
-          gabble_properties_mixin_change_flags (object, tp_property_id,
+          tp_properties_mixin_change_flags (object, tp_property_id,
                                                 TP_PROPERTY_FLAG_READ,
                                                 0, NULL);
 
@@ -847,7 +847,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
 
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_connection_class), &dbus_glib_gabble_connection_object_info);
 
-  gabble_properties_mixin_class_init (G_OBJECT_CLASS (gabble_connection_class),
+  tp_properties_mixin_class_init (G_OBJECT_CLASS (gabble_connection_class),
                                       G_STRUCT_OFFSET (GabbleConnectionClass, properties_class),
                                       connection_property_signatures, NUM_CONN_PROPS,
                                       NULL);
@@ -957,7 +957,7 @@ gabble_connection_finalize (GObject *object)
 
   g_free (priv->alias);
 
-  gabble_properties_mixin_finalize (object);
+  tp_properties_mixin_finalize (object);
 
   gabble_handle_repo_destroy (self->handles);
 
@@ -3585,7 +3585,7 @@ gabble_connection_get_properties (GabbleConnection *self,
                                   GPtrArray **ret,
                                   GError **error)
 {
-  return gabble_properties_mixin_get_properties (G_OBJECT (self), properties,
+  return tp_properties_mixin_get_properties (G_OBJECT (self), properties,
       ret, error);
 }
 
@@ -3975,7 +3975,7 @@ gabble_connection_list_properties (GabbleConnection *self,
                                    GPtrArray **ret,
                                    GError **error)
 {
-  return gabble_properties_mixin_list_properties (G_OBJECT (self), ret, error);
+  return tp_properties_mixin_list_properties (G_OBJECT (self), ret, error);
 }
 
 
@@ -5396,7 +5396,7 @@ gabble_connection_set_properties (GabbleConnection *self,
                                   const GPtrArray *properties,
                                   DBusGMethodInvocation *context)
 {
-  gabble_properties_mixin_set_properties (G_OBJECT (self), properties, context);
+  tp_properties_mixin_set_properties (G_OBJECT (self), properties, context);
 }
 
 /**

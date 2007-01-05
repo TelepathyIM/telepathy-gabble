@@ -22,10 +22,10 @@
 #define __GABBLE_ROSTER_CHANNEL_H__
 
 #include <glib-object.h>
+#include <telepathy-glib/group-mixin.h>
 #include <telepathy-glib/tp-intset.h>
 
 #include "gabble-types.h"
-#include "group-mixin.h"
 
 G_BEGIN_DECLS
 
@@ -34,13 +34,13 @@ typedef struct _GabbleRosterChannelClass GabbleRosterChannelClass;
 struct _GabbleRosterChannelClass {
     GObjectClass parent_class;
 
-    GabbleGroupMixinClass group_class;
+    TpGroupMixinClass group_class;
 };
 
 struct _GabbleRosterChannel {
     GObject parent;
 
-    GabbleGroupMixin group;
+    TpGroupMixin group;
 
     gpointer priv;
 };

@@ -17,6 +17,7 @@ tpginclude_HEADERS = \
     telepathy-glib/tp-debug-ansi.h \
     telepathy-glib/tp-enums.h \
     telepathy-glib/tp-errors.h \
+    telepathy-glib/group-mixin.h \
     telepathy-glib/tp-handle.h \
     telepathy-glib/tp-handle-repo.h \
     telepathy-glib/tp-handle-repo-static.h \
@@ -25,6 +26,7 @@ tpginclude_HEADERS = \
     telepathy-glib/tp-helpers.h \
     telepathy-glib/tp-interfaces.h \
     telepathy-glib/tp-intset.h \
+    telepathy-glib/properties-mixin.h \
     telepathy-glib/util.h
 
 specinclude_HEADERS = \
@@ -35,6 +37,10 @@ specinclude_HEADERS = \
 nodist_libtelepathy_glib_la_SOURCES = \
     _gen/tp-channel-factory-iface-signals-marshal.c \
     _gen/tp-channel-factory-iface-signals-marshal.h \
+    _gen/group-mixin-signals-marshal.c \
+    _gen/group-mixin-signals-marshal.h \
+    _gen/properties-mixin-signals-marshal.c \
+    _gen/properties-mixin-signals-marshal.h \
     _gen/enumtypes-spec-telepathy-errors.c
 
 nodist_geninclude_HEADERS = \
@@ -48,6 +54,8 @@ libtelepathy_glib_la_SOURCES = \
     debug.c \
     debug.h \
     errors.c \
+    group-mixin.c \
+    group-mixin-signals-marshal.list \
     handle-repo.c \
     handle-repo-dynamic.c \
     handle-repo-static.c \
@@ -58,6 +66,8 @@ libtelepathy_glib_la_SOURCES = \
     tp-channel-iface.c \
     tp-channel-factory-iface.c \
     tp-channel-factory-iface-signals-marshal.list \
+    properties-mixin.c \
+    properties-mixin-signals-marshal.list \
     util.c
 
 AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @HANDLE_LEAK_DEBUG_CFLAGS@

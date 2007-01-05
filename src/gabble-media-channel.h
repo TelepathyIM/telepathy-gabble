@@ -23,8 +23,9 @@
 
 #include <glib-object.h>
 
+#include <telepathy-glib/group-mixin.h>
+
 #include "gabble-media-session.h"
-#include "group-mixin.h"
 #include "handles.h"
 #include "gabble-presence.h"
 
@@ -36,13 +37,13 @@ typedef struct _GabbleMediaChannelClass GabbleMediaChannelClass;
 struct _GabbleMediaChannelClass {
     GObjectClass parent_class;
 
-    GabbleGroupMixinClass group_class;
+    TpGroupMixinClass group_class;
 };
 
 struct _GabbleMediaChannel {
     GObject parent;
 
-    GabbleGroupMixin group;
+    TpGroupMixin group;
 
     gpointer priv;
 };

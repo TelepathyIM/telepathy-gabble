@@ -26,7 +26,8 @@
 
 #include "debug.h"
 #include "gabble-connection.h"
-#include "group-mixin.h"
+#include <telepathy-glib/group-mixin.h>
+#include "handles.h"
 #include "roster.h"
 #include <telepathy-glib/tp-errors.h>
 #include <telepathy-glib/tp-helpers.h>
@@ -118,11 +119,13 @@ gabble_roster_channel_constructor (GType type, guint n_props,
   g_assert (valid);
 
   /* initialize group mixin */
-  gabble_group_mixin_init (obj, G_STRUCT_OFFSET (GabbleRosterChannel, group),
-                           handles, self_handle);
+  tp_group_mixin_init (obj, G_STRUCT_OFFSET (GabbleRosterChannel, group),
+      gabble_handle_repo_get_tp_repo (handles, TP_HANDLE_TYPE_CONTACT),
+      self_handle);
+
   if (handle_type == TP_HANDLE_TYPE_GROUP)
     {
-      gabble_group_mixin_change_flags (obj,
+      tp_group_mixin_change_flags (obj,
           TP_CHANNEL_GROUP_FLAG_CAN_ADD |
           TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
           0);
@@ -134,7 +137,7 @@ gabble_roster_channel_constructor (GType type, guint n_props,
   /* magic contact lists from here down... */
   else if (GABBLE_LIST_HANDLE_PUBLISH == priv->handle)
     {
-      gabble_group_mixin_change_flags (obj,
+      tp_group_mixin_change_flags (obj,
           TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
           TP_CHANNEL_GROUP_FLAG_MESSAGE_ACCEPT |
           TP_CHANNEL_GROUP_FLAG_MESSAGE_REMOVE,
@@ -142,7 +145,7 @@ gabble_roster_channel_constructor (GType type, guint n_props,
     }
   else if (GABBLE_LIST_HANDLE_SUBSCRIBE == priv->handle)
     {
-      gabble_group_mixin_change_flags (obj,
+      tp_group_mixin_change_flags (obj,
           TP_CHANNEL_GROUP_FLAG_CAN_ADD |
           TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
           TP_CHANNEL_GROUP_FLAG_CAN_RESCIND |
@@ -153,13 +156,13 @@ gabble_roster_channel_constructor (GType type, guint n_props,
     }
   else if (GABBLE_LIST_HANDLE_KNOWN == priv->handle)
     {
-      gabble_group_mixin_change_flags (obj,
+      tp_group_mixin_change_flags (obj,
           TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
           0);
     }
   else if (GABBLE_LIST_HANDLE_DENY == priv->handle)
     {
-      gabble_group_mixin_change_flags (obj,
+      tp_group_mixin_change_flags (obj,
           TP_CHANNEL_GROUP_FLAG_CAN_ADD |
           TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
           0);
@@ -278,7 +281,7 @@ gabble_roster_channel_class_init (GabbleRosterChannelClass *gabble_roster_channe
                   g_cclosure_marshal_VOID__VOID,
                   G_TYPE_NONE, 0);
 
-  gabble_group_mixin_class_init (object_class,
+  tp_group_mixin_class_init (object_class,
                                  G_STRUCT_OFFSET (GabbleRosterChannelClass, group_class),
                                  _gabble_roster_channel_add_member_cb,
                                  _gabble_roster_channel_remove_member_cb);
@@ -317,7 +320,7 @@ gabble_roster_channel_finalize (GObject *object)
 
   gabble_handle_unref (priv->conn->handles, priv->handle_type, priv->handle);
 
-  gabble_group_mixin_finalize (object);
+  tp_group_mixin_finalize (object);
 
   G_OBJECT_CLASS (gabble_roster_channel_parent_class)->finalize (object);
 }
@@ -472,7 +475,7 @@ _gabble_roster_channel_remove_member_cb (GObject *obj,
           TpIntSet *rem = tp_intset_new ();
 
           tp_intset_add (rem, handle);
-          gabble_group_mixin_change_members (obj, "", NULL, rem, NULL, NULL,
+          tp_group_mixin_change_members (obj, "", NULL, rem, NULL, NULL,
               0, 0);
 
           tp_intset_destroy (rem);
@@ -525,7 +528,7 @@ gabble_roster_channel_add_members (GabbleRosterChannel *self,
                                    const gchar *message,
                                    GError **error)
 {
-  return gabble_group_mixin_add_members (G_OBJECT (self), contacts, message,
+  return tp_group_mixin_add_members (G_OBJECT (self), contacts, message,
       error);
 }
 
@@ -572,7 +575,7 @@ gabble_roster_channel_get_all_members (GabbleRosterChannel *self,
                                        GArray **ret2,
                                        GError **error)
 {
-  return gabble_group_mixin_get_all_members (G_OBJECT (self), ret, ret1, ret2,
+  return tp_group_mixin_get_all_members (G_OBJECT (self), ret, ret1, ret2,
       error);
 }
 
@@ -617,7 +620,7 @@ gabble_roster_channel_get_group_flags (GabbleRosterChannel *self,
                                        guint *ret,
                                        GError **error)
 {
-  return gabble_group_mixin_get_group_flags (G_OBJECT (self), ret, error);
+  return tp_group_mixin_get_group_flags (G_OBJECT (self), ret, error);
 }
 
 
@@ -670,7 +673,7 @@ gabble_roster_channel_get_handle_owners (GabbleRosterChannel *self,
                                          GArray **ret,
                                          GError **error)
 {
-  return gabble_group_mixin_get_handle_owners (G_OBJECT (self), handles, ret,
+  return tp_group_mixin_get_handle_owners (G_OBJECT (self), handles, ret,
       error);
 }
 
@@ -717,7 +720,7 @@ gabble_roster_channel_get_local_pending_members (GabbleRosterChannel *self,
                                                  GArray **ret,
                                                  GError **error)
 {
-  return gabble_group_mixin_get_local_pending_members (G_OBJECT (self), ret,
+  return tp_group_mixin_get_local_pending_members (G_OBJECT (self), ret,
       error);
 }
 
@@ -739,7 +742,7 @@ gabble_roster_channel_get_members (GabbleRosterChannel *self,
                                    GArray **ret,
                                    GError **error)
 {
-  return gabble_group_mixin_get_members (G_OBJECT (self), ret, error);
+  return tp_group_mixin_get_members (G_OBJECT (self), ret, error);
 }
 
 
@@ -760,7 +763,7 @@ gabble_roster_channel_get_remote_pending_members (GabbleRosterChannel *self,
                                                   GArray **ret,
                                                   GError **error)
 {
-  return gabble_group_mixin_get_remote_pending_members (G_OBJECT (self), ret,
+  return tp_group_mixin_get_remote_pending_members (G_OBJECT (self), ret,
       error);
 }
 
@@ -782,7 +785,7 @@ gabble_roster_channel_get_self_handle (GabbleRosterChannel *self,
                                        guint *ret,
                                        GError **error)
 {
-  return gabble_group_mixin_get_self_handle (G_OBJECT (self), ret, error);
+  return tp_group_mixin_get_self_handle (G_OBJECT (self), ret, error);
 }
 
 
@@ -804,7 +807,7 @@ gabble_roster_channel_remove_members (GabbleRosterChannel *self,
                                       const gchar *message,
                                       GError **error)
 {
-  return gabble_group_mixin_remove_members (G_OBJECT (self), contacts, message,
+  return tp_group_mixin_remove_members (G_OBJECT (self), contacts, message,
       error);
 }
 

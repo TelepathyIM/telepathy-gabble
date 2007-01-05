@@ -25,7 +25,6 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
-#include "ansi.h"
 #include "debug.h"
 #include "gabble-connection.h"
 #include "gabble-media-session.h"

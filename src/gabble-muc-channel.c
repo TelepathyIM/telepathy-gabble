@@ -27,7 +27,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_MUC
 
-#include "ansi.h"
+#include <telepathy-glib/tp-debug-ansi.h>
 #include "debug.h"
 #include "disco.h"
 #include "gabble-connection.h"
@@ -2914,7 +2914,7 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 
   if (props_left != 0)
     {
-      printf (ANSI_BOLD_ON ANSI_FG_WHITE ANSI_BG_RED
+      printf (TP_ANSI_BOLD_ON TP_ANSI_FG_WHITE TP_ANSI_BG_RED
               "\n%s: the following properties were not substituted:\n",
               G_STRFUNC);
 
@@ -2928,7 +2928,7 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 
       printf ("\nthis is a MUC server compatibility bug in gabble, please "
               "report it with a full debug log attached (running gabble "
-              "with LM_DEBUG=net)" ANSI_RESET "\n\n");
+              "with LM_DEBUG=net)" TP_ANSI_RESET "\n\n");
       fflush (stdout);
 
       error = g_error_new (TELEPATHY_ERRORS, TpError_InvalidArgument,

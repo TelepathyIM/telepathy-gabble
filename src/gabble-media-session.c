@@ -27,7 +27,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
-#include "ansi.h"
+#include <telepathy-glib/tp-debug-ansi.h>
 #include "debug.h"
 #include "handles.h"
 #include "namespaces.h"
@@ -118,12 +118,12 @@ typedef struct {
 
 static const SessionStateDescription session_states[] =
 {
-    { "JS_STATE_PENDING_CREATED",       ANSI_BOLD_ON ANSI_FG_BLACK ANSI_BG_WHITE   },
-    { "JS_STATE_PENDING_INITIATE_SENT", ANSI_BOLD_ON               ANSI_BG_CYAN    },
-    { "JS_STATE_PENDING_INITIATED",     ANSI_BOLD_ON               ANSI_BG_MAGENTA },
-    { "JS_STATE_PENDING_ACCEPT_SENT",   ANSI_BOLD_ON               ANSI_BG_CYAN    },
-    { "JS_STATE_ACTIVE",                ANSI_BOLD_ON               ANSI_BG_BLUE    },
-    { "JS_STATE_ENDED",                                            ANSI_BG_RED     }
+    { "JS_STATE_PENDING_CREATED",       TP_ANSI_BOLD_ON TP_ANSI_FG_BLACK TP_ANSI_BG_WHITE   },
+    { "JS_STATE_PENDING_INITIATE_SENT", TP_ANSI_BOLD_ON               TP_ANSI_BG_CYAN    },
+    { "JS_STATE_PENDING_INITIATED",     TP_ANSI_BOLD_ON               TP_ANSI_BG_MAGENTA },
+    { "JS_STATE_PENDING_ACCEPT_SENT",   TP_ANSI_BOLD_ON               TP_ANSI_BG_CYAN    },
+    { "JS_STATE_ACTIVE",                TP_ANSI_BOLD_ON               TP_ANSI_BG_BLUE    },
+    { "JS_STATE_ENDED",                                            TP_ANSI_BG_RED     }
 };
 
 static void
@@ -2459,19 +2459,19 @@ _gabble_media_session_debug (GabbleMediaSession *session,
 
       switch (type) {
         case DEBUG_MSG_INFO:
-          type_str = ANSI_BOLD_ON ANSI_FG_WHITE;
+          type_str = TP_ANSI_BOLD_ON TP_ANSI_FG_WHITE;
           break;
         case DEBUG_MSG_DUMP:
-          type_str = ANSI_BOLD_ON ANSI_FG_GREEN;
+          type_str = TP_ANSI_BOLD_ON TP_ANSI_FG_GREEN;
           break;
         case DEBUG_MSG_WARNING:
-          type_str = ANSI_BOLD_ON ANSI_FG_YELLOW;
+          type_str = TP_ANSI_BOLD_ON TP_ANSI_FG_YELLOW;
           break;
         case DEBUG_MSG_ERROR:
-          type_str = ANSI_BOLD_ON ANSI_FG_WHITE ANSI_BG_RED;
+          type_str = TP_ANSI_BOLD_ON TP_ANSI_FG_WHITE TP_ANSI_BG_RED;
           break;
         case DEBUG_MSG_EVENT:
-          type_str = ANSI_BOLD_ON ANSI_FG_CYAN;
+          type_str = TP_ANSI_BOLD_ON TP_ANSI_FG_CYAN;
           break;
         default:
           g_assert_not_reached ();
@@ -2479,15 +2479,15 @@ _gabble_media_session_debug (GabbleMediaSession *session,
       }
 
       printf ("[%s%s%s] %s%-26s%s %s%s%s\n",
-          ANSI_BOLD_ON ANSI_FG_WHITE,
+          TP_ANSI_BOLD_ON TP_ANSI_FG_WHITE,
           stamp,
-          ANSI_RESET,
+          TP_ANSI_RESET,
           session_states[priv->state].attributes,
           session_states[priv->state].name,
-          ANSI_RESET,
+          TP_ANSI_RESET,
           type_str,
           buf,
-          ANSI_RESET);
+          TP_ANSI_RESET);
 
       fflush (stdout);
     }

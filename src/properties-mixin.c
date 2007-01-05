@@ -26,7 +26,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_PROPERTIES
 
-#include "ansi.h"
+#include <telepathy-glib/tp-debug-ansi.h>
 #include "debug.h"
 #include "properties-mixin.h"
 #include "properties-mixin-signals-marshal.h"
@@ -506,12 +506,12 @@ property_flags_to_string (TpPropertyFlags flags)
   gint i = 0;
   GString *str;
 
-  str = g_string_new ("[" ANSI_BOLD_OFF);
+  str = g_string_new ("[" TP_ANSI_BOLD_OFF);
 
   RPTS_APPEND_FLAG_IF_SET (TP_PROPERTY_FLAG_READ);
   RPTS_APPEND_FLAG_IF_SET (TP_PROPERTY_FLAG_WRITE);
 
-  g_string_append (str, ANSI_BOLD_ON "]");
+  g_string_append (str, TP_ANSI_BOLD_ON "]");
 
   return g_string_free (str, FALSE);
 }
@@ -676,7 +676,7 @@ gabble_properties_mixin_emit_changed (GObject *obj, GArray **props)
   prop_arr = g_ptr_array_sized_new ((*props)->len);
 
   if (DEBUGGING)
-    printf (ANSI_BOLD_ON ANSI_FG_CYAN
+    printf (TP_ANSI_BOLD_ON TP_ANSI_FG_CYAN
             "%s: emitting properties changed for propert%s:\n",
             G_STRFUNC, ((*props)->len > 1) ? "ies" : "y");
 
@@ -702,7 +702,7 @@ gabble_properties_mixin_emit_changed (GObject *obj, GArray **props)
 
   if (DEBUGGING)
     {
-      printf (ANSI_RESET);
+      printf (TP_ANSI_RESET);
       fflush (stdout);
     }
 
@@ -735,7 +735,7 @@ gabble_properties_mixin_emit_flags (GObject *obj, GArray **props)
   prop_arr = g_ptr_array_sized_new ((*props)->len);
 
   if (DEBUGGING)
-    printf (ANSI_BOLD_ON ANSI_FG_WHITE
+    printf (TP_ANSI_BOLD_ON TP_ANSI_FG_WHITE
             "%s: emitting properties flags changed for propert%s:\n",
             G_STRFUNC, ((*props)->len > 1) ? "ies" : "y");
 
@@ -771,7 +771,7 @@ gabble_properties_mixin_emit_flags (GObject *obj, GArray **props)
 
   if (DEBUGGING)
     {
-      printf (ANSI_RESET);
+      printf (TP_ANSI_RESET);
       fflush (stdout);
     }
 

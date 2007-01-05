@@ -35,6 +35,7 @@
 
 #include "debug.h"
 #include "gabble-connection-manager.h"
+#include <telepathy-glib/tp-debug.h>
 #include <telepathy-glib/tp-errors.h>
 
 GSource *timeout = NULL;
@@ -154,7 +155,10 @@ main (int argc,
   gabble_debug_set_flags_from_env ();
 
   if (g_getenv ("GABBLE_PERSIST"))
-    gabble_debug_set_flags (0xffff);
+    {
+      gabble_debug_set_flags (0xffff);
+      tp_debug_set_all_flags ();
+    }
 #endif
 
     {

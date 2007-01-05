@@ -1,15 +1,18 @@
+#include "config.h"
+
+#ifdef ENABLE_DEBUG
 
 #include <stdarg.h>
 
 #include <glib.h>
 
-#include "debug.h"
+#include <telepathy-glib/tp-debug.h>
 
-#ifdef ENABLE_DEBUG
+#include "debug.h"
 
 static GabbleDebugFlags flags = 0;
 
-GDebugKey keys[] = {
+static GDebugKey keys[] = {
   { "presence",      GABBLE_DEBUG_PRESENCE },
   { "groups",        GABBLE_DEBUG_GROUPS },
   { "roster",        GABBLE_DEBUG_ROSTER },
@@ -34,7 +37,10 @@ void gabble_debug_set_flags_from_env ()
   flags_string = g_getenv ("GABBLE_DEBUG");
 
   if (flags_string)
-    gabble_debug_set_flags (g_parse_debug_string (flags_string, keys, nkeys));
+    {
+      tp_debug_set_flags_from_env ("GABBLE_DEBUG");
+      gabble_debug_set_flags (g_parse_debug_string (flags_string, keys, nkeys));
+    }
 }
 
 void gabble_debug_set_flags (GabbleDebugFlags new_flags)

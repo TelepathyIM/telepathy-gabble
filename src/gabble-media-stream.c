@@ -26,7 +26,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
-#include "ansi.h"
+#include <telepathy-glib/tp-debug-ansi.h>
 #include "debug.h"
 #include "handles.h"
 #include "namespaces.h"
@@ -1071,11 +1071,11 @@ _add_rtp_candidate_node (GabbleMediaSession *session, LmMessageNode *parent,
   GMS_DEBUG_DUMP (session,
     "  from Telepathy D-Bus struct: [%s\"%s\", %s[%s1, \"%s\", %d, %s, "
     "\"%s\", \"%s\", %f, %s, \"%s\", \"%s\"%s]]",
-    ANSI_BOLD_OFF, candidate_id, ANSI_BOLD_ON, ANSI_BOLD_OFF, addr, port,
+    TP_ANSI_BOLD_OFF, candidate_id, TP_ANSI_BOLD_ON, TP_ANSI_BOLD_OFF, addr, port,
     tp_protocols[proto], "RTP", "AVP", pref, tp_transports[type], user, pass,
-    ANSI_BOLD_ON);
+    TP_ANSI_BOLD_ON);
   GMS_DEBUG_DUMP (session,
-    "  to Jingle XML: [%s%s%s]", ANSI_BOLD_OFF, xml, ANSI_BOLD_ON);
+    "  to Jingle XML: [%s%s%s]", TP_ANSI_BOLD_OFF, xml, TP_ANSI_BOLD_ON);
   g_free (xml);
 
   g_free (addr);
@@ -1481,10 +1481,10 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
       xml = lm_message_node_to_string (node);
       GMS_DEBUG_INFO (priv->session, "put 1 remote candidate from peer into cache");
       GMS_DEBUG_DUMP (priv->session, "  from Jingle XML: [%s%s%s]",
-                      ANSI_BOLD_OFF, xml, ANSI_BOLD_ON);
+                      TP_ANSI_BOLD_OFF, xml, TP_ANSI_BOLD_ON);
       GMS_DEBUG_DUMP (priv->session, "  to Telepathy D-Bus struct: [%s\"%s\", %s[%s1, \"%s\", %d, %s, \"%s\", \"%s\", %f, %s, \"%s\", \"%s\"%s]]",
-                      ANSI_BOLD_OFF, candidate_id, ANSI_BOLD_ON,
-                      ANSI_BOLD_OFF, addr, port, tp_protocols[proto], "RTP", "AVP", pref, tp_transports[type], user, pass, ANSI_BOLD_ON);
+                      TP_ANSI_BOLD_OFF, candidate_id, TP_ANSI_BOLD_ON,
+                      TP_ANSI_BOLD_OFF, addr, port, tp_protocols[proto], "RTP", "AVP", pref, tp_transports[type], user, pass, TP_ANSI_BOLD_ON);
       g_free (xml);
 
       g_free (candidate_id);

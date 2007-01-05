@@ -4,9 +4,9 @@
 
 #include "config.h"
 
-#include <glib.h>
-
 #ifdef ENABLE_DEBUG
+
+#include <glib.h>
 
 G_BEGIN_DECLS
 

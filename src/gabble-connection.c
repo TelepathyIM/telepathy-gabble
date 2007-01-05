@@ -870,6 +870,9 @@ gabble_connection_dispose (GObject *object)
       priv->channel_requests = NULL;
     }
 
+  g_object_unref (self->vcard_manager);
+  self->vcard_manager = NULL;
+
   g_ptr_array_foreach (priv->channel_factories, (GFunc) g_object_unref, NULL);
   g_ptr_array_free (priv->channel_factories, TRUE);
   priv->channel_factories = NULL;
@@ -879,9 +882,6 @@ gabble_connection_dispose (GObject *object)
 
   g_object_unref (self->disco);
   self->disco = NULL;
-
-  g_object_unref (self->vcard_manager);
-  self->vcard_manager = NULL;
 
   g_object_unref (self->presence_cache);
   self->presence_cache = NULL;

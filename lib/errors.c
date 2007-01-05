@@ -22,10 +22,10 @@
 #include <telepathy-glib/errors.h>
 
 GQuark
-telepathy_errors_quark (void)
+tp_errors_quark (void)
 {
   static GQuark quark = 0;
   if (!quark)
-    quark = g_quark_from_static_string ("telepathy_errors");
+    quark = g_quark_from_static_string ("tp_errors");
   return quark;
 }

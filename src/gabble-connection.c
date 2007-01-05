@@ -86,7 +86,7 @@
   if ((CONN)->status != TP_CONNECTION_STATUS_CONNECTED) \
     { \
       DEBUG ("rejected request as disconnected"); \
-      g_set_error (ERROR, TELEPATHY_ERRORS, TpError_NotAvailable, \
+      g_set_error (ERROR, TP_ERRORS, TP_ERROR_NOT_AVAILABLE, \
           "Connection is disconnected"); \
       return FALSE; \
     }
@@ -95,7 +95,7 @@
   if ((CONN)->status != TP_CONNECTION_STATUS_CONNECTED) \
     { \
       DEBUG ("rejected request as disconnected"); \
-      (ERROR) = g_error_new (TELEPATHY_ERRORS, TpError_NotAvailable, \
+      (ERROR) = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE, \
           "Connection is disconnected"); \
       dbus_g_method_return_error ((CONTEXT), (ERROR)); \
       g_error_free ((ERROR)); \
@@ -998,7 +998,7 @@ _gabble_connection_set_properties_from_account (GabbleConnection *conn,
   if (username == NULL || server == NULL ||
       *username == '\0' || *server == '\0')
     {
-      g_set_error (error, TELEPATHY_ERRORS, TpError_InvalidArgument,
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "unable to get username and server from account");
       result = FALSE;
       goto OUT;
@@ -1076,7 +1076,7 @@ _gabble_connection_register (GabbleConnection *conn,
                           G_TYPE_UINT, &request_name_result,
                           G_TYPE_INVALID))
     {
-      g_set_error (error, TELEPATHY_ERRORS, TpError_NotAvailable,
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
           "Error acquiring bus name %s: %s", conn->bus_name,
           request_error->message);
 
@@ -1107,7 +1107,7 @@ _gabble_connection_register (GabbleConnection *conn,
           msg = "Unknown error return from ReleaseName";
         }
 
-      g_set_error (error, TELEPATHY_ERRORS, TpError_NotAvailable,
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
           "Error acquiring bus name %s: %s", conn->bus_name, msg);
 
       g_free (conn->bus_name);
@@ -1148,7 +1148,7 @@ _gabble_connection_send (GabbleConnection *conn, LmMessage *msg, GError **error)
     {
       DEBUG ("failed: %s", lmerror->message);
 
-      g_set_error (error, TELEPATHY_ERRORS, TpError_NetworkError,
+      g_set_error (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
           "message send failed: %s", lmerror->message);
 
       g_error_free (lmerror);
@@ -1281,7 +1281,7 @@ _gabble_connection_send_with_reply (GabbleConnection *conn,
 
       if (error)
         {
-          g_set_error (error, TELEPATHY_ERRORS, TpError_NetworkError,
+          g_set_error (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
               "message send failed: %s", lmerror->message);
         }
 
@@ -1320,7 +1320,7 @@ do_connect (GabbleConnection *conn, GError **error)
     {
       DEBUG ("lm_connection_open failed %s", lmerror->message);
 
-      g_set_error (error, TELEPATHY_ERRORS, TpError_NetworkError,
+      g_set_error (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
           "lm_connection_open failed: %s", lmerror->message);
 
       g_error_free (lmerror);
@@ -1435,7 +1435,7 @@ _gabble_connection_connect (GabbleConnection *conn,
 
   if (conn->self_handle == 0)
     {
-      g_set_error (error, TELEPATHY_ERRORS, TpError_InvalidArgument,
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "Invalid JID: %s@%s", priv->username, priv->stream_server);
       return FALSE;
     }
@@ -1707,7 +1707,7 @@ channel_request_cancel (gpointer data, gpointer user_data)
 
   DEBUG ("cancelling request for %s/%d/%d", request->channel_type, request->handle_type, request->handle);
 
-  error = g_error_new (TELEPATHY_ERRORS, TpError_Disconnected, "unable to "
+  error = g_error_new (TP_ERRORS, TP_ERROR_DISCONNECTED, "unable to "
       "service this channel request, we're disconnecting!");
 
   dbus_g_method_return_error (request->context, error);
@@ -2670,7 +2670,7 @@ registration_finished_cb (GabbleRegister *reg,
 
       connection_status_change (conn,
           TP_CONNECTION_STATUS_DISCONNECTED,
-          (err_code == TpError_InvalidArgument) ?
+          (err_code == TP_ERROR_INVALID_ARGUMENT) ?
             TP_CONNECTION_STATUS_REASON_NAME_IN_USE :
             TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED);
     }
@@ -2946,7 +2946,7 @@ gabble_connection_add_status (GabbleConnection *self,
 
   ERROR_IF_NOT_CONNECTED (self, error);
 
-  g_set_error (error, TELEPATHY_ERRORS, TpError_NotImplemented,
+  g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
       "Only one status is possible at a time with this protocol");
 
   return FALSE;
@@ -4066,7 +4066,7 @@ gabble_connection_remove_status (GabbleConnection *self,
     }
   else
     {
-      g_set_error (error, TELEPATHY_ERRORS, TpError_InvalidArgument,
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "Attempting to remove non-existent presence.");
       return FALSE;
     }
@@ -4298,7 +4298,7 @@ _request_avatar_cb (GabbleVCardManager *self,
 
   if (NULL == photo_node)
     {
-      g_set_error (&error, TELEPATHY_ERRORS, TpError_NotAvailable,
+      g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
         "contact vCard has no photo");
       dbus_g_method_return_error (context, error);
       g_error_free (error);
@@ -4309,7 +4309,7 @@ _request_avatar_cb (GabbleVCardManager *self,
 
   if (NULL == type_node)
     {
-      g_set_error (&error, TELEPATHY_ERRORS, TpError_NotAvailable,
+      g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
         "contact avatar is missing type node");
       dbus_g_method_return_error (context, error);
       g_error_free (error);
@@ -4320,7 +4320,7 @@ _request_avatar_cb (GabbleVCardManager *self,
 
   if (NULL == binval_node)
     {
-      g_set_error (&error, TELEPATHY_ERRORS, TpError_NotAvailable,
+      g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
         "contact avatar is missing binval node");
       dbus_g_method_return_error (context, error);
       g_error_free (error);
@@ -4331,7 +4331,7 @@ _request_avatar_cb (GabbleVCardManager *self,
 
   if (NULL == avatar)
     {
-      g_set_error (&error, TELEPATHY_ERRORS, TpError_NotAvailable,
+      g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
         "failed to decode avatar from base64");
       dbus_g_method_return_error (context, error);
       g_error_free (error);
@@ -4357,7 +4357,7 @@ _request_avatar_cb (GabbleVCardManager *self,
           DEBUG ("treason uncloaked! avatar hash in presence does not match "
               "avatar in vCard for handle %u", handle);
 
-          g_set_error (&error, TELEPATHY_ERRORS, TpError_NotAvailable,
+          g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
               "avatar hash in presence does not match avatar in vCard");
           dbus_g_method_return_error (context, error);
           g_error_free (error);
@@ -4496,7 +4496,7 @@ gabble_connection_request_channel (GabbleConnection *self,
       case TP_CHANNEL_FACTORY_REQUEST_STATUS_INVALID_HANDLE:
         DEBUG ("invalid handle %u", handle);
 
-        error = g_error_new (TELEPATHY_ERRORS, TpError_InvalidHandle,
+        error = g_error_new (TP_ERRORS, TP_ERROR_INVALID_HANDLE,
                              "invalid handle %u", handle);
 
         break;
@@ -4505,7 +4505,7 @@ gabble_connection_request_channel (GabbleConnection *self,
         DEBUG ("requested channel is unavailable with "
                  "handle type %u", handle_type);
 
-        error = g_error_new (TELEPATHY_ERRORS, TpError_NotAvailable,
+        error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
                              "requested channel is not available with "
                              "handle type %u", handle_type);
 
@@ -4514,7 +4514,7 @@ gabble_connection_request_channel (GabbleConnection *self,
       case TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_IMPLEMENTED:
         DEBUG ("unsupported channel type %s", type);
 
-        error = g_error_new (TELEPATHY_ERRORS, TpError_NotImplemented,
+        error = g_error_new (TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
                              "unsupported channel type %s", type);
 
         break;
@@ -4691,7 +4691,7 @@ room_verify_batch_new (GabbleConnection *conn,
           GError *error;
           DEBUG ("requested handle %s contains no conference server",
                  name);
-          error = g_error_new (TELEPATHY_ERRORS, TpError_NotAvailable, "requested "
+          error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE, "requested "
                   "room handle %s does not specify a server, but we have not discovered "
                   "any local conference servers and no fallback was provided", name);
           room_verify_batch_raise_error (batch, error);
@@ -4765,7 +4765,7 @@ room_jid_disco_cb (GabbleDisco *disco,
       DEBUG ("disco reply error %s", error->message);
 
       /* disco will free the old error, _raise_error will free the new one */
-      error = g_error_new (TELEPATHY_ERRORS, TpError_NotAvailable,
+      error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
         "can't retrieve room info: %s", error->message);
 
       room_verify_batch_raise_error (batch, error);
@@ -4797,7 +4797,7 @@ room_jid_disco_cb (GabbleDisco *disco,
     {
       DEBUG ("no MUC support for service name in jid %s", rvctx->jid);
 
-      error = g_error_new (TELEPATHY_ERRORS, TpError_NotAvailable, "specified server "
+      error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE, "specified server "
           "doesn't support MUC");
 
       room_verify_batch_raise_error (batch, error);
@@ -4913,7 +4913,7 @@ gabble_connection_request_handles (GabbleConnection *self,
             {
               DEBUG ("requested handle %s was invalid", name);
 
-              error = g_error_new (TELEPATHY_ERRORS, TpError_NotAvailable,
+              error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
                                    "requested handle %s was invalid", name);
               dbus_g_method_return_error (context, error);
               g_error_free (error);
@@ -4975,7 +4975,7 @@ gabble_connection_request_handles (GabbleConnection *self,
                      handle_type == TP_HANDLE_TYPE_LIST ? "list" : "group",
                      name);
 
-              error = g_error_new (TELEPATHY_ERRORS, TpError_NotAvailable,
+              error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
                                    "requested %s channel %s not available",
                                    handle_type == TP_HANDLE_TYPE_LIST ? "list"
                                                                       : "group",
@@ -4995,7 +4995,7 @@ gabble_connection_request_handles (GabbleConnection *self,
     default:
       DEBUG ("unimplemented handle type %u", handle_type);
 
-      error = g_error_new (TELEPATHY_ERRORS, TpError_NotAvailable,
+      error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
                           "unimplemented handle type %u", handle_type);
       dbus_g_method_return_error (context, error);
       g_error_free (error);
@@ -5336,7 +5336,7 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
       if (!status_is_available (data->conn, i))
         {
           DEBUG ("requested status %s is not available", (const gchar *) key);
-          g_set_error (data->error, TELEPATHY_ERRORS, TpError_NotAvailable,
+          g_set_error (data->error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
               "requested status '%s' is not available on this connection",
               (const gchar *) key);
           data->retval = FALSE;
@@ -5348,7 +5348,7 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
           if (!G_VALUE_HOLDS_STRING (message))
             {
               DEBUG ("got a status message which was not a string");
-              g_set_error (data->error, TELEPATHY_ERRORS, TpError_InvalidArgument,
+              g_set_error (data->error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
                   "Status argument 'message' requires a string");
               data->retval = FALSE;
               return;
@@ -5361,7 +5361,7 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
           if (!G_VALUE_HOLDS_INT (priority))
             {
               DEBUG ("got a priority value which was not a signed integer");
-              g_set_error (data->error, TELEPATHY_ERRORS, TpError_InvalidArgument,
+              g_set_error (data->error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
                    "Status argument 'priority' requires a signed integer");
               data->retval = FALSE;
               return;
@@ -5376,7 +5376,7 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
   else
     {
       DEBUG ("got unknown status identifier %s", (const gchar *) key);
-      g_set_error (data->error, TELEPATHY_ERRORS, TpError_InvalidArgument,
+      g_set_error (data->error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "unknown status identifier: %s", (const gchar *) key);
       data->retval = FALSE;
     }
@@ -5428,7 +5428,7 @@ gabble_connection_set_status (GabbleConnection *self,
   if (g_hash_table_size (statuses) != 1)
     {
       DEBUG ("got more than one status");
-      g_set_error (error, TELEPATHY_ERRORS, TpError_InvalidArgument,
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "Only one status may be set at a time in this protocol");
       return FALSE;
     }

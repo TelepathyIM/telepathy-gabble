@@ -28,8 +28,8 @@
 
 G_BEGIN_DECLS
 
-GQuark telepathy_errors_quark (void);
-#define TELEPATHY_ERRORS telepathy_errors_quark ()
+GQuark tp_errors_quark (void);
+#define TP_ERRORS tp_errors_quark ()
 
 G_END_DECLS
 

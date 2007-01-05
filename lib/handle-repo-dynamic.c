@@ -381,7 +381,7 @@ dynamic_handle_is_valid (TpHandleRepoIface *irepo, TpHandle handle,
 
   if (handle_priv_lookup (self, handle) == NULL)
     {
-      g_set_error (error, TELEPATHY_ERRORS, TpError_InvalidArgument,
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "handle %u is not currently valid for handle type %u '%s'",
           handle, self->handle_type, "TODO: label handle types");
       return FALSE;
@@ -467,7 +467,7 @@ dynamic_client_hold_handle (TpHandleRepoIface *repo,
   if (!client_name || *client_name == '\0')
     {
       g_critical ("%s: called with invalid client name", G_STRFUNC);
-      g_set_error (error, TELEPATHY_ERRORS, TpError_InvalidArgument,
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "invalid client name");
       return FALSE;
     }
@@ -505,7 +505,7 @@ dynamic_client_release_handle (TpHandleRepoIface *repo,
   if (!client_name || *client_name == '\0')
     {
       g_critical ("%s: called with invalid client name", G_STRFUNC);
-      g_set_error (error, TELEPATHY_ERRORS, TpError_InvalidArgument,
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "invalid client name");
       return FALSE;
     }
@@ -517,7 +517,7 @@ dynamic_client_release_handle (TpHandleRepoIface *repo,
     {
       g_critical ("%s: no handle set found for the given client %s",
           G_STRFUNC, client_name);
-      g_set_error (error, TELEPATHY_ERRORS, TpError_NotAvailable,
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
           "the given client %s wasn't holding any handles", client_name);
       return FALSE;
     }
@@ -526,7 +526,7 @@ dynamic_client_release_handle (TpHandleRepoIface *repo,
     {
       g_critical ("%s: the client %s wasn't holding the handle %u", G_STRFUNC,
           client_name, handle);
-      g_set_error (error, TELEPATHY_ERRORS, TpError_NotAvailable,
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
           "the given client %s wasn't holding the handle %u", client_name,
           handle);
       return FALSE;

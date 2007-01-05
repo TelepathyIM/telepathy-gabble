@@ -66,7 +66,7 @@ gabble_handle_jid_is_valid (TpHandleType type, const gchar *jid, GError **error)
         {
           g_debug ("%s: jid %s has no @", G_STRFUNC, jid);
 
-          g_set_error (error, TELEPATHY_ERRORS, TpError_InvalidArgument,
+          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
               "jid %s has no @", jid);
 
           return FALSE;
@@ -179,7 +179,7 @@ gabble_handles_are_valid (GabbleHandleRepo *repo,
 
   if (!repo->repos[type])
     {
-      g_set_error (error, TELEPATHY_ERRORS, TpError_InvalidArgument,
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "unsupported handle type %u", type);
       return FALSE;
     }
@@ -454,7 +454,7 @@ gabble_handle_client_hold (GabbleHandleRepo *repo,
 
   if (!repo->repos[type])
     {
-      g_set_error (error, TELEPATHY_ERRORS, TpError_InvalidArgument,
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "unsupported handle type %u", type);
       return FALSE;
     }
@@ -487,7 +487,7 @@ gabble_handle_client_release (GabbleHandleRepo *repo,
 
   if (!repo->repos[type])
     {
-      g_set_error (error, TELEPATHY_ERRORS, TpError_InvalidArgument,
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "unsupported handle type %u", type);
       return FALSE;
     }

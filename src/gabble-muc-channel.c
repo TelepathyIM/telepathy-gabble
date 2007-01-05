@@ -1163,16 +1163,16 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
 
       switch (error) {
         case XMPP_ERROR_FORBIDDEN:
-          tp_error = g_error_new (TELEPATHY_ERRORS, TpError_ChannelBanned,
+          tp_error = g_error_new (TP_ERRORS, TP_ERROR_CHANNEL_BANNED,
                                   "banned from room");
           reason_code = TP_CHANNEL_GROUP_CHANGE_REASON_BANNED;
           break;
         case XMPP_ERROR_SERVICE_UNAVAILABLE:
-          tp_error = g_error_new (TELEPATHY_ERRORS, TpError_ChannelFull,
+          tp_error = g_error_new (TP_ERRORS, TP_ERROR_CHANNEL_FULL,
                                   "room is full");
           break;
         case XMPP_ERROR_REGISTRATION_REQUIRED:
-          tp_error = g_error_new (TELEPATHY_ERRORS, TpError_ChannelInviteOnly,
+          tp_error = g_error_new (TP_ERRORS, TP_ERROR_CHANNEL_INVITE_ONLY,
                                   "room is invite only");
           break;
         case XMPP_ERROR_CONFLICT:
@@ -1188,19 +1188,19 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
             }
           else
             {
-              tp_error = g_error_new (TELEPATHY_ERRORS, TpError_NotAvailable,
+              tp_error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
                   "nickname already in use and retry count exceeded");
             }
           break;
         default:
           if (error != INVALID_XMPP_ERROR)
             {
-              tp_error = g_error_new (TELEPATHY_ERRORS, TpError_NotAvailable,
+              tp_error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
                                       gabble_xmpp_error_description (error));
             }
           else
             {
-              tp_error = g_error_new (TELEPATHY_ERRORS, TpError_NotAvailable,
+              tp_error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
                                       "unknown error");
             }
           break;
@@ -1757,7 +1757,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
             {
               GError *error;
 
-              error = g_error_new (TELEPATHY_ERRORS, TpError_PermissionDenied,
+              error = g_error_new (TP_ERRORS, TP_ERROR_PERMISSION_DENIED,
                   (err_desc) ? err_desc : "failed to change subject");
 
               tp_properties_context_return (priv->properties_ctx, error);
@@ -1971,7 +1971,7 @@ gabble_muc_channel_close (GabbleMucChannel *self,
     {
       DEBUG ("channel already closed");
 
-      g_set_error (error, TELEPATHY_ERRORS, TpError_NotAvailable,
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
           "Channel already closed");
 
       return FALSE;
@@ -2320,7 +2320,7 @@ gabble_muc_channel_provide_password (GabbleMucChannel *self,
   if ((priv->password_flags & TP_CHANNEL_PASSWORD_FLAG_PROVIDE) == 0 ||
       priv->password_ctx != NULL)
     {
-      error = g_error_new (TELEPATHY_ERRORS, TpError_NotAvailable,
+      error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
                            "password cannot be provided in the current state");
       dbus_g_method_return_error (context, error);
       g_error_free (error);
@@ -2410,7 +2410,7 @@ gabble_muc_channel_add_member (GObject *obj, TpHandle handle, const gchar *messa
       if (tp_handle_set_is_member (mixin->members, handle) ||
           tp_handle_set_is_member (mixin->remote_pending, handle))
         {
-          g_set_error (error, TELEPATHY_ERRORS, TpError_NotAvailable,
+          g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
               "already a member or in remote pending");
 
           return FALSE;
@@ -2458,7 +2458,7 @@ gabble_muc_channel_add_member (GObject *obj, TpHandle handle, const gchar *messa
   /* check that we're indeed a member when attempting to invite others */
   if (priv->state < MUC_STATE_JOINED)
     {
-      g_set_error (error, TELEPATHY_ERRORS, TpError_NotAvailable,
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
           "channel membership is required for inviting others");
 
       return FALSE;
@@ -2686,7 +2686,7 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
-      error = g_error_new (TELEPATHY_ERRORS, TpError_PermissionDenied,
+      error = g_error_new (TP_ERRORS, TP_ERROR_PERMISSION_DENIED,
                            "request for configuration form denied");
 
       goto OUT;
@@ -2930,7 +2930,7 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
               "with LM_DEBUG=net)" TP_ANSI_RESET "\n\n");
       fflush (stdout);
 
-      error = g_error_new (TELEPATHY_ERRORS, TpError_InvalidArgument,
+      error = g_error_new (TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
                            "not all properties were substituted");
       goto OUT;
     }
@@ -2942,7 +2942,7 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
   goto OUT;
 
 PARSE_ERROR:
-  error = g_error_new (TELEPATHY_ERRORS, TpError_NotAvailable,
+  error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
                        "error parsing reply from server");
 
 OUT:
@@ -2971,7 +2971,7 @@ request_config_form_submit_reply_cb (GabbleConnection *conn, LmMessage *sent_msg
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
-      error = g_error_new (TELEPATHY_ERRORS, TpError_PermissionDenied,
+      error = g_error_new (TP_ERRORS, TP_ERROR_PERMISSION_DENIED,
                            "submitted configuration form was rejected");
     }
 

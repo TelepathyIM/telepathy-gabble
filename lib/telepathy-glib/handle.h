@@ -41,7 +41,7 @@ tp_handle_type_is_valid (TpHandleType type, GError **error)
     }
   else
     {
-      g_set_error (error, TELEPATHY_ERRORS, TpError_InvalidArgument,
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "invalid handle type %u", type);
       ret = FALSE;
     }

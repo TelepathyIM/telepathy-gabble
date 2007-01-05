@@ -20,14 +20,14 @@ void test_handles (guint handle_type)
 
   /* Handle zero is never valid */
   g_assert (gabble_handle_is_valid (repo, handle_type, 0, &error) == FALSE);
-  g_assert (error->code == TpError_InvalidArgument);
+  g_assert (error->code == TP_ERROR_INVALID_ARGUMENT);
 
   g_error_free (error);
   error = NULL;
 
   /* Properly return error when handle isn't in the repo */
   g_assert (gabble_handle_is_valid (repo, handle_type, 65536, &error) == FALSE);
-  g_assert (error->code == TpError_InvalidArgument);
+  g_assert (error->code == TP_ERROR_INVALID_ARGUMENT);
 
   g_error_free (error);
   error = NULL;

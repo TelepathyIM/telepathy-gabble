@@ -238,7 +238,7 @@ tp_properties_mixin_get_properties (GObject *obj, const GArray *properties, GPtr
       /* Valid? */
       if (prop_id >= mixin_cls->num_props)
         {
-          g_set_error (error, TELEPATHY_ERRORS, TpError_InvalidArgument,
+          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
               "invalid property identifier %d", prop_id);
 
           return FALSE;
@@ -247,7 +247,7 @@ tp_properties_mixin_get_properties (GObject *obj, const GArray *properties, GPtr
       /* Permitted? */
       if (!tp_properties_mixin_is_readable (obj, prop_id))
         {
-          g_set_error (error, TELEPATHY_ERRORS, TpError_PermissionDenied,
+          g_set_error (error, TP_ERRORS, TP_ERROR_PERMISSION_DENIED,
               "permission denied for property identifier %d", prop_id);
 
           return FALSE;
@@ -293,7 +293,7 @@ tp_properties_mixin_set_properties (GObject *obj,
   /* Is another SetProperties request already in progress? */
   if (ctx->dbus_ctx)
     {
-      error = g_error_new (TELEPATHY_ERRORS, TpError_NotAvailable,
+      error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
                            "A SetProperties request is already in progress");
       goto ERROR;
     }
@@ -321,7 +321,7 @@ tp_properties_mixin_set_properties (GObject *obj,
         {
           g_value_unset (prop_val);
 
-          error = g_error_new (TELEPATHY_ERRORS, TpError_InvalidArgument,
+          error = g_error_new (TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
                                "invalid property identifier %d", prop_id);
           goto ERROR;
         }
@@ -333,7 +333,7 @@ tp_properties_mixin_set_properties (GObject *obj,
       /* Permitted? */
       if (!tp_properties_mixin_is_writable (obj, prop_id))
         {
-          error = g_error_new (TELEPATHY_ERRORS, TpError_PermissionDenied,
+          error = g_error_new (TP_ERRORS, TP_ERROR_PERMISSION_DENIED,
                                "permission denied for property identifier %d", prop_id);
           goto ERROR;
         }
@@ -342,7 +342,7 @@ tp_properties_mixin_set_properties (GObject *obj,
       if (!g_value_type_compatible (G_VALUE_TYPE (prop_val),
                                     mixin_cls->signatures[prop_id].type))
         {
-          error = g_error_new (TELEPATHY_ERRORS, TpError_NotAvailable,
+          error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
                                "incompatible value type for property identifier %d",
                                prop_id);
           goto ERROR;

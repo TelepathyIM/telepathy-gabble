@@ -236,7 +236,7 @@ tp_group_mixin_add_members (GObject *obj, const GArray *contacts, const gchar *m
           DEBUG ("handle %u cannot be added to members without GROUP_FLAG_CAN_ADD",
               handle);
 
-          g_set_error (error, TELEPATHY_ERRORS, TpError_PermissionDenied,
+          g_set_error (error, TP_ERRORS, TP_ERROR_PERMISSION_DENIED,
               "handle %u cannot be added to members without GROUP_FLAG_CAN_ADD",
               handle);
 
@@ -289,7 +289,7 @@ tp_group_mixin_remove_members (GObject *obj, const GArray *contacts, const gchar
               DEBUG ("handle %u cannot be removed from members without GROUP_FLAG_CAN_REMOVE",
                   handle);
 
-              g_set_error (error, TELEPATHY_ERRORS, TpError_PermissionDenied,
+              g_set_error (error, TP_ERRORS, TP_ERROR_PERMISSION_DENIED,
                   "handle %u cannot be removed from members without GROUP_FLAG_CAN_REMOVE",
                   handle);
 
@@ -303,7 +303,7 @@ tp_group_mixin_remove_members (GObject *obj, const GArray *contacts, const gchar
               DEBUG ("handle %u cannot be removed from remote pending without GROUP_FLAG_CAN_RESCIND",
                   handle);
 
-              g_set_error (error, TELEPATHY_ERRORS, TpError_PermissionDenied,
+              g_set_error (error, TP_ERRORS, TP_ERROR_PERMISSION_DENIED,
                   "handle %u cannot be removed from remote pending without GROUP_FLAG_CAN_RESCIND",
                   handle);
 
@@ -315,7 +315,7 @@ tp_group_mixin_remove_members (GObject *obj, const GArray *contacts, const gchar
           DEBUG ("handle %u is not a current or pending member",
                    handle);
 
-          g_set_error (error, TELEPATHY_ERRORS, TpError_NotAvailable,
+          g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
               "handle %u is not a current or pending member", handle);
 
           return FALSE;
@@ -391,7 +391,7 @@ tp_group_mixin_get_handle_owners (GObject *obj,
   if ((mixin->group_flags &
         TP_CHANNEL_GROUP_FLAG_CHANNEL_SPECIFIC_HANDLES) == 0)
     {
-      g_set_error (error, TELEPATHY_ERRORS, TpError_NotAvailable,
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
           "channel doesn't have channel specific handles");
 
       return FALSE;
@@ -411,7 +411,7 @@ tp_group_mixin_get_handle_owners (GObject *obj,
 
       if (!tp_handle_set_is_member (mixin->members, local_handle))
         {
-          g_set_error (error, TELEPATHY_ERRORS, TpError_InvalidArgument,
+          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
               "handle %u is not a member", local_handle);
 
           g_array_free (*ret, TRUE);

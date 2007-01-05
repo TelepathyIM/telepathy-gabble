@@ -205,7 +205,11 @@ gabble_vcard_manager_dispose (GObject *object)
 
   /* cancel request removes the element from the list after cancelling */
   while (priv->requests)
-    cancel_request (priv->requests->data);
+    {
+      GabbleVCardManagerRequest *request = (GabbleVCardManagerRequest *) priv->requests->data;
+      request->callback = NULL;
+      cancel_request (request);
+    }
 
   if (G_OBJECT_CLASS (gabble_vcard_manager_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_vcard_manager_parent_class)->dispose (object);

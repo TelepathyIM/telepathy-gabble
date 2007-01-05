@@ -432,7 +432,7 @@ _dump_foreach (guint i, gpointer data)
 }
 
 gchar *
-Tp_intset_dump (const TpIntSet *set)
+tp_intset_dump (const TpIntSet *set)
 {
   GString *tmp = g_string_new ("");
 

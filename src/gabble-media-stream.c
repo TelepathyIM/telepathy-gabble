@@ -1205,7 +1205,7 @@ _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream,
       GHashTable *params;
       GValue codec = { 0, };
 
-      if (g_strdiff (node->name, "payload-type"))
+      if (tp_strdiff (node->name, "payload-type"))
         continue;
 
       /* id of codec */
@@ -1342,7 +1342,7 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
       GValue transport = { 0, };
       gchar *xml;
 
-      if (g_strdiff (node->name, "candidate"))
+      if (tp_strdiff (node->name, "candidate"))
         continue;
 
       /*

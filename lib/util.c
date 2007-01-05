@@ -1,5 +1,5 @@
 /*
- * util.h - Headers for Gabble utility functions
+ * util.c - Source for telepathy-glib utility functions
  * Copyright (C) 2006 Collabora Ltd.
  * Copyright (C) 2006 Nokia Corporation
  *   @author Robert McQueen <robert.mcqueen@collabora.co.uk>
@@ -19,23 +19,29 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef __GABBLE_UTIL_H__
-#define __GABBLE_UTIL_H__
-
 #include <glib.h>
-#include <telepathy-glib/util.h>
-#include <loudmouth/loudmouth.h>
+#include <string.h>
 
-#include "gabble-types.h"
+#include "telepathy-glib/util.h"
 
-gchar *sha1_hex (const gchar *bytes, guint len);
-void lm_message_node_add_own_nick (LmMessageNode *node, GabbleConnection *conn);
-void lm_message_node_unlink (LmMessageNode *orphan);
-void lm_message_node_steal_children (LmMessageNode *snatcher, LmMessageNode *mum);
-gboolean lm_message_node_has_namespace (LmMessageNode *node, const gchar *ns, const gchar *tag);
-LmMessageNode *lm_message_node_get_child_with_namespace (LmMessageNode *node, const gchar *name, const gchar *ns);
+gboolean
+tp_strdiff (const gchar *left, const gchar *right)
+{
+  if ((NULL == left) != (NULL == right))
+    return TRUE;
 
-/* format: a@b/c */
-void gabble_decode_jid (const gchar *jid, gchar **a, gchar **b, gchar **c);
+  else if (left == right)
+    return FALSE;
 
-#endif /* __GABBLE_UTIL_H__ */
+  else
+    return (0 != strcmp (left, right));
+}
+
+/* extend a pointer by an offset, provided the offset is not 0 */
+gpointer
+tp_mixin_offset_cast (gpointer instance, guint offset)
+{
+  g_return_val_if_fail (offset != 0, NULL);
+
+  return ((guchar *) instance + offset);
+}

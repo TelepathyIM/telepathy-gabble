@@ -794,7 +794,7 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
   GabbleMucChannel *chan;
 
-  if (!g_strdiff (chan_type, TP_IFACE_CHANNEL_TYPE_ROOM_LIST))
+  if (!tp_strdiff (chan_type, TP_IFACE_CHANNEL_TYPE_ROOM_LIST))
     {
       /* FIXME - delay if services aren't discovered yet? */
       if (!make_roomlist_channel (fac))

@@ -181,7 +181,7 @@ _lookup_stream_by_name_and_initiator (GabbleMediaSession *session,
     {
       GabbleMediaStream *stream = g_ptr_array_index (priv->streams, i);
 
-      if (g_strdiff (stream->name, stream_name))
+      if (tp_strdiff (stream->name, stream_name))
         continue;
 
       if (stream_initiator != INITIATOR_INVALID &&
@@ -219,7 +219,7 @@ create_media_stream (GabbleMediaSession *session,
     {
       g_assert (priv->streams->len == 0);
       g_assert (media_type == TP_MEDIA_STREAM_TYPE_AUDIO);
-      g_assert (!g_strdiff (name, GTALK_STREAM_NAME));
+      g_assert (!tp_strdiff (name, GTALK_STREAM_NAME));
     }
 
   g_assert (priv->streams->len < MAX_STREAMS);
@@ -818,21 +818,21 @@ _senders_to_direction (GabbleMediaSession *session,
 {
   TpMediaStreamDirection ret = TP_MEDIA_STREAM_DIRECTION_NONE;
 
-  if (!g_strdiff (senders, "initiator"))
+  if (!tp_strdiff (senders, "initiator"))
     {
       if (session->initiator == INITIATOR_LOCAL)
         ret = TP_MEDIA_STREAM_DIRECTION_SEND;
       else
         ret = TP_MEDIA_STREAM_DIRECTION_RECEIVE;
     }
-  else if (!g_strdiff (senders, "responder"))
+  else if (!tp_strdiff (senders, "responder"))
     {
       if (session->initiator == INITIATOR_REMOTE)
         ret = TP_MEDIA_STREAM_DIRECTION_SEND;
       else
         ret = TP_MEDIA_STREAM_DIRECTION_RECEIVE;
     }
-  else if (!g_strdiff (senders, "both"))
+  else if (!tp_strdiff (senders, "both"))
     {
       ret = TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL;
     }
@@ -1237,14 +1237,14 @@ _call_handlers_on_stream (GabbleMediaSession *session,
 static JingleInitiator
 _creator_to_initiator (GabbleMediaSession *session, const gchar *creator)
 {
-  if (!g_strdiff (creator, "initiator"))
+  if (!tp_strdiff (creator, "initiator"))
     {
       if (session->initiator == INITIATOR_LOCAL)
         return INITIATOR_LOCAL;
       else
         return INITIATOR_REMOTE;
     }
-  else if (!g_strdiff (creator, "responder"))
+  else if (!tp_strdiff (creator, "responder"))
     {
       if (session->initiator == INITIATOR_LOCAL)
         return INITIATOR_REMOTE;
@@ -1280,7 +1280,7 @@ _call_handlers_on_streams (GabbleMediaSession *session,
       const gchar *stream_name, *stream_creator;
       JingleInitiator stream_initiator;
 
-      if (g_strdiff (content_node->name, "content"))
+      if (tp_strdiff (content_node->name, "content"))
         continue;
 
       stream_name = lm_message_node_get_attribute (content_node, "name");

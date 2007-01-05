@@ -891,10 +891,10 @@ gabble_disco_service_find (GabbleDisco *disco,
       GabbleDiscoItem *item = (GabbleDiscoItem *) l->data;
       gboolean selected = TRUE;
 
-      if (type != NULL && g_strdiff (type, item->type))
+      if (type != NULL && tp_strdiff (type, item->type))
         selected = FALSE;
 
-      if (category != NULL && g_strdiff (category, item->category))
+      if (category != NULL && tp_strdiff (category, item->category))
         selected = FALSE;
 
       if (feature != NULL)

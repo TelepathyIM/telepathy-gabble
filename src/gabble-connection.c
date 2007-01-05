@@ -2038,7 +2038,7 @@ update_own_avatar_sha1 (GabbleConnection *conn,
 {
   GError *error = NULL;
 
-  if (!g_strdiff (sha1, conn->self_presence->avatar_sha1))
+  if (!tp_strdiff (sha1, conn->self_presence->avatar_sha1))
     return TRUE;
 
   g_signal_emit (conn, signals[AVATAR_UPDATED], 0, conn->self_handle, sha1);
@@ -2274,7 +2274,7 @@ signal_own_presence (GabbleConnection *self, GError **error)
     {
       const Feature *feat = (const Feature *) i->data;
 
-      if ((NULL != feat->bundle) && g_strdiff (VERSION, feat->bundle))
+      if ((NULL != feat->bundle) && tp_strdiff (VERSION, feat->bundle))
         {
           if (NULL != ext_string)
             {
@@ -2463,7 +2463,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
     {
       const Feature *feature = (const Feature *) i->data;
 
-      if (NULL == node || !g_strdiff (suffix, feature->bundle))
+      if (NULL == node || !tp_strdiff (suffix, feature->bundle))
         {
           LmMessageNode *node = lm_message_node_add_child (result_query,
               "feature", NULL);
@@ -4349,7 +4349,7 @@ _request_avatar_cb (GabbleVCardManager *self,
 
       sha1 = sha1_hex (avatar->str, avatar->len);
 
-      if (g_strdiff (presence->avatar_sha1, sha1))
+      if (tp_strdiff (presence->avatar_sha1, sha1))
         {
           /* the thinking here is that we have to return an error, because we
            * can't give the user the vcard they're expecting, which has the
@@ -4777,7 +4777,7 @@ room_jid_disco_cb (GabbleDisco *disco,
     {
       const gchar *var;
 
-      if (g_strdiff (lm_node->name, "feature"))
+      if (tp_strdiff (lm_node->name, "feature"))
         continue;
 
       var = lm_message_node_get_attribute (lm_node, "var");
@@ -4786,7 +4786,7 @@ room_jid_disco_cb (GabbleDisco *disco,
       if (var == NULL)
         var = lm_message_node_get_attribute (lm_node, "type");
 
-      if (!g_strdiff (var, NS_MUC))
+      if (!tp_strdiff (var, NS_MUC))
         {
           found = TRUE;
           break;

@@ -421,7 +421,7 @@ _presence_node_has_google_voice (LmMessageNode *pres_node)
 
   for (tmp = features; *tmp; tmp++)
     {
-      if (!g_strdiff (tmp, "voice-v1"))
+      if (!tp_strdiff (tmp, "voice-v1"))
         {
           found = TRUE;
           break;
@@ -547,7 +547,7 @@ _grab_nickname (GabblePresenceCache *cache,
   nickname = lm_message_node_get_value (node);
   DEBUG ("got nickname \"%s\" for %s", nickname, from);
 
-  if (g_strdiff (presence->nickname, nickname))
+  if (tp_strdiff (presence->nickname, nickname))
     {
       if (NULL != presence->nickname)
         g_free (presence->nickname);
@@ -602,7 +602,7 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
 
   sha1 = lm_message_node_get_value (photo_node);
 
-  if (g_strdiff (presence->avatar_sha1, sha1))
+  if (tp_strdiff (presence->avatar_sha1, sha1))
     {
       g_free (presence->avatar_sha1);
       presence->avatar_sha1 = g_strdup (sha1);

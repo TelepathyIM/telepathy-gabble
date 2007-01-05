@@ -24,7 +24,8 @@ tpginclude_HEADERS = \
     telepathy-glib/tp-heap.h \
     telepathy-glib/tp-helpers.h \
     telepathy-glib/tp-interfaces.h \
-    telepathy-glib/tp-intset.h
+    telepathy-glib/tp-intset.h \
+    telepathy-glib/util.h
 
 specinclude_HEADERS = \
     telepathy-glib/_spec/telepathy-enums.h \
@@ -56,7 +57,8 @@ libtelepathy_glib_la_SOURCES = \
     intset.c \
     tp-channel-iface.c \
     tp-channel-factory-iface.c \
-    tp-channel-factory-iface-signals-marshal.list
+    tp-channel-factory-iface-signals-marshal.list \
+    util.c
 
 AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @HANDLE_LEAK_DEBUG_CFLAGS@
 AM_LDFLAGS = @DBUS_LIBS@ @GLIB_LIBS@

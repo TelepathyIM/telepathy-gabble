@@ -51,19 +51,6 @@ sha1_hex (const gchar *bytes, guint len)
   return hex_hash;
 }
 
-gboolean
-g_strdiff (const gchar *left, const gchar *right)
-{
-  if ((NULL == left) != (NULL == right))
-    return TRUE;
-
-  else if (left == right)
-    return FALSE;
-
-  else
-    return (0 != strcmp (left, right));
-}
-
 static void
 lm_message_node_add_nick (LmMessageNode *node, const gchar *nick)
 {
@@ -135,7 +122,7 @@ lm_message_node_has_namespace (LmMessageNode *node,
   node_ns = lm_message_node_get_attribute (node,
       tag != NULL ? attribute : "xmlns");
 
-  ret = !g_strdiff (node_ns, ns);
+  ret = !tp_strdiff (node_ns, ns);
 
   g_free (attribute);
 
@@ -156,7 +143,7 @@ lm_message_node_get_child_with_namespace (LmMessageNode *node,
       gchar *tag = NULL;
       gboolean found;
 
-      if (g_strdiff (tmp->name, name))
+      if (tp_strdiff (tmp->name, name))
         {
           const gchar *suffix;
 
@@ -167,7 +154,7 @@ lm_message_node_get_child_with_namespace (LmMessageNode *node,
           else
             suffix++;
 
-          if (g_strdiff (suffix, name))
+          if (tp_strdiff (suffix, name))
             continue;
 
           tag = g_strndup (tmp->name, suffix - tmp->name - 1);
@@ -268,14 +255,3 @@ gabble_decode_jid (const gchar *jid,
   /* free our working copy */
   g_free (tmp_jid);
 }
-
-/* extend a pointer by an offset, provided the offset is not 0 */
-gpointer
-gabble_mixin_offset_cast (gpointer instance,
-                          guint offset)
-{
-  g_return_val_if_fail (offset != 0, NULL);
-
-  return ((guchar *) instance + offset);
-}
-

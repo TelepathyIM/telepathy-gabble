@@ -147,7 +147,7 @@ gabble_presence_resource_has_caps (GabblePresence *presence,
     {
       Resource *res = (Resource *) i->data;
 
-      if (!g_strdiff (res->name, resource) && (res->caps & caps))
+      if (!tp_strdiff (res->name, resource) && (res->caps & caps))
         return TRUE;
     }
 
@@ -245,7 +245,7 @@ gabble_presence_update (GabblePresence *presence,
       g_slist_free (priv->resources);
       priv->resources = NULL;
 
-      if (g_strdiff (priv->no_resource_status_message, status_message))
+      if (tp_strdiff (priv->no_resource_status_message, status_message))
         {
           g_free (priv->no_resource_status_message);
           priv->no_resource_status_message = g_strdup (status_message);
@@ -279,7 +279,7 @@ gabble_presence_update (GabblePresence *presence,
 
       res->status = status;
 
-      if (g_strdiff (res->status_message, status_message))
+      if (tp_strdiff (res->status_message, status_message))
         {
           g_free (res->status_message);
           res->status_message = g_strdup (status_message);
@@ -319,7 +319,7 @@ gabble_presence_update (GabblePresence *presence,
 OUT:
   /* detect changes */
   if (presence->status != old_status ||
-      g_strdiff (presence->status_message, old_status_message))
+      tp_strdiff (presence->status_message, old_status_message))
     ret = TRUE;
 
   g_free (old_status_message);

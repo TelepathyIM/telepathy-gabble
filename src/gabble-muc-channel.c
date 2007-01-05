@@ -2726,7 +2726,7 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
           if (!lm_message_node_has_namespace (node, NS_X_DATA, NULL))
             continue;
 
-          if (g_strdiff (type, "form"))
+          if (tp_strdiff (type, "form"))
             continue;
 
           form_node = node;

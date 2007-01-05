@@ -399,11 +399,11 @@ _parse_google_item_type (LmMessageNode *item_node)
 
   if (NULL == google_type)
     return GOOGLE_ITEM_TYPE_NORMAL;
-  else if (!g_strdiff (google_type, "B"))
+  else if (!tp_strdiff (google_type, "B"))
     return GOOGLE_ITEM_TYPE_BLOCKED;
-  else if (!g_strdiff (google_type, "H"))
+  else if (!tp_strdiff (google_type, "H"))
     return GOOGLE_ITEM_TYPE_HIDDEN;
-  else if (!g_strdiff (google_type, "P"))
+  else if (!tp_strdiff (google_type, "P"))
     return GOOGLE_ITEM_TYPE_PINNED;
 
   NODE_DEBUG (item_node, "got unexpected google contact type value");
@@ -420,7 +420,7 @@ _google_roster_item_should_keep (LmMessageNode *item_node,
   /* skip automatically subscribed Google roster items */
   attr = lm_message_node_get_attribute (item_node, "gr:autosub");
 
-  if (!g_strdiff (attr, "true"))
+  if (!tp_strdiff (attr, "true"))
     return FALSE;
 
   /* skip email addresses that replied to an invite */
@@ -598,7 +598,7 @@ _gabble_roster_item_update (GabbleRoster *roster,
   else
     name = lm_message_node_get_attribute (node, "name");
 
-  if (g_strdiff (item->name, name))
+  if (tp_strdiff (item->name, name))
     {
       g_free (item->name);
       item->name = g_strdup (name);
@@ -1042,7 +1042,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
 
       gr_ext = lm_message_node_get_attribute (query_node, "gr:ext");
 
-      if (!g_strdiff (gr_ext, GOOGLE_ROSTER_VERSION))
+      if (!tp_strdiff (gr_ext, GOOGLE_ROSTER_VERSION))
         google_roster = TRUE;
     }
 
@@ -1733,7 +1733,7 @@ roster_item_apply_edits (GabbleRoster *roster,
       edited_item.subscription = edits->new_subscription;
     }
 
-  if (edits->new_name != NULL && g_strdiff(item->name, edits->new_name))
+  if (edits->new_name != NULL && tp_strdiff(item->name, edits->new_name))
     {
       DEBUG ("Changing name from %s to %s", item->name, edits->new_name);
       altered = TRUE;

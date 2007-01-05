@@ -1,5 +1,6 @@
 /*
- * util.h - Headers for Gabble utility functions
+ * util.h - Headers for telepathy-glib utility functions
+ *
  * Copyright (C) 2006 Collabora Ltd.
  * Copyright (C) 2006 Nokia Corporation
  *   @author Robert McQueen <robert.mcqueen@collabora.co.uk>
@@ -19,23 +20,13 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef __GABBLE_UTIL_H__
-#define __GABBLE_UTIL_H__
-
 #include <glib.h>
-#include <telepathy-glib/util.h>
-#include <loudmouth/loudmouth.h>
 
-#include "gabble-types.h"
+#ifndef __TP_UTIL_H__
+#define __TP_UTIL_H__
 
-gchar *sha1_hex (const gchar *bytes, guint len);
-void lm_message_node_add_own_nick (LmMessageNode *node, GabbleConnection *conn);
-void lm_message_node_unlink (LmMessageNode *orphan);
-void lm_message_node_steal_children (LmMessageNode *snatcher, LmMessageNode *mum);
-gboolean lm_message_node_has_namespace (LmMessageNode *node, const gchar *ns, const gchar *tag);
-LmMessageNode *lm_message_node_get_child_with_namespace (LmMessageNode *node, const gchar *name, const gchar *ns);
+gboolean tp_strdiff (const gchar *left, const gchar *right);
 
-/* format: a@b/c */
-void gabble_decode_jid (const gchar *jid, gchar **a, gchar **b, gchar **c);
+gpointer tp_mixin_offset_cast (gpointer instance, guint offset);
 
 #endif /* __GABBLE_UTIL_H__ */

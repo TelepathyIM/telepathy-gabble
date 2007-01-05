@@ -24,8 +24,8 @@
 
 #include <glib-object.h>
 
-#include <telepathy-glib/tp-enums.h>
-#include <telepathy-glib/tp-channel-iface.h>
+#include <telepathy-glib/enums.h>
+#include <telepathy-glib/channel-iface.h>
 
 G_BEGIN_DECLS
 

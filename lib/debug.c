@@ -6,7 +6,7 @@
 
 #include <glib.h>
 
-#include <telepathy-glib/tp-debug.h>
+#include <telepathy-glib/debug.h>
 
 #include "debug.h"
 

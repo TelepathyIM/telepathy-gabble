@@ -31,13 +31,13 @@
 #include <string.h>
 
 #include "handles.h"
-#include <telepathy-glib/tp-enums.h>
-#include <telepathy-glib/tp-errors.h>
-#include <telepathy-glib/tp-helpers.h>
-#include <telepathy-glib/tp-interfaces.h>
+#include <telepathy-glib/enums.h>
+#include <telepathy-glib/errors.h>
+#include <telepathy-glib/helpers.h>
+#include <telepathy-glib/interfaces.h>
 
-#include <telepathy-glib/tp-channel-iface.h>
-#include <telepathy-glib/tp-channel-factory-iface.h>
+#include <telepathy-glib/channel-iface.h>
+#include <telepathy-glib/channel-factory-iface.h>
 
 #include "gabble-connection.h"
 #include "gabble-connection-glue.h"

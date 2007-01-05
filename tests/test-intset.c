@@ -1,5 +1,5 @@
 #include <glib.h>
-#include <telepathy-glib/tp-intset.h>
+#include <telepathy-glib/intset.h>
 
 int main (int argc, char **argv)
 {

@@ -23,7 +23,7 @@
 #ifndef __TP_GROUP_MIXIN_H__
 #define __TP_GROUP_MIXIN_H__
 
-#include "telepathy-glib/tp-handle-repo.h"
+#include <telepathy-glib/handle-repo.h>
 #include "telepathy-glib/util.h"
 
 G_BEGIN_DECLS

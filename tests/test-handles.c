@@ -2,9 +2,9 @@
 #include <glib.h>
 #include <glib-object.h>
 #include <handles.h>
-#include <telepathy-glib/tp-enums.h>
-#include <telepathy-glib/tp-interfaces.h>
-#include <telepathy-glib/tp-errors.h>
+#include <telepathy-glib/enums.h>
+#include <telepathy-glib/interfaces.h>
+#include <telepathy-glib/errors.h>
 
 void test_handles (guint handle_type)
 {

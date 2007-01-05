@@ -21,8 +21,8 @@
  *
  */
 #include <glib.h>
-#include "telepathy-glib/tp-intset.h"
-#include "telepathy-glib/tp-handle-repo.h"
+#include <telepathy-glib/intset.h>
+#include <telepathy-glib/handle-repo.h>
 
 struct _TpHandleSet
 {

@@ -23,10 +23,10 @@
 
 #include <glib.h>
 
-#include <telepathy-glib/tp-handle-repo.h>
+#include <telepathy-glib/handle-repo.h>
 
 #include "gabble-types.h"
-#include <telepathy-glib/tp-enums.h>
+#include <telepathy-glib/enums.h>
 
 G_BEGIN_DECLS
 

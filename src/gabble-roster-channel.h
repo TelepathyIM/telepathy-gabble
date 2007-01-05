@@ -23,7 +23,7 @@
 
 #include <glib-object.h>
 #include <telepathy-glib/group-mixin.h>
-#include <telepathy-glib/tp-intset.h>
+#include <telepathy-glib/intset.h>
 
 #include "gabble-types.h"
 

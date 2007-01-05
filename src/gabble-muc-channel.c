@@ -27,7 +27,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_MUC
 
-#include <telepathy-glib/tp-debug-ansi.h>
+#include <telepathy-glib/debug-ansi.h>
 #include "debug.h"
 #include "disco.h"
 #include "gabble-connection.h"
@@ -35,10 +35,10 @@
 #include "namespaces.h"
 #include "util.h"
 
-#include <telepathy-glib/tp-errors.h>
-#include <telepathy-glib/tp-helpers.h>
-#include <telepathy-glib/tp-interfaces.h>
-#include <telepathy-glib/tp-channel-iface.h>
+#include <telepathy-glib/errors.h>
+#include <telepathy-glib/helpers.h>
+#include <telepathy-glib/interfaces.h>
+#include <telepathy-glib/channel-iface.h>
 
 #include "gabble-muc-channel.h"
 #include "gabble-muc-channel-signals-marshal.h"

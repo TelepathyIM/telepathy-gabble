@@ -24,8 +24,8 @@
 #include <dbus/dbus-glib.h>
 #include <string.h>
 
-#include <telepathy-glib/tp-interfaces.h>
-#include <telepathy-glib/tp-channel-factory-iface.h>
+#include <telepathy-glib/interfaces.h>
+#include <telepathy-glib/channel-factory-iface.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_ROSTER
 

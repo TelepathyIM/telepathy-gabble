@@ -31,10 +31,10 @@
 #include "gabble-presence.h"
 #include "gabble-presence-cache.h"
 
-#include <telepathy-glib/tp-errors.h>
-#include <telepathy-glib/tp-helpers.h>
-#include <telepathy-glib/tp-interfaces.h>
-#include <telepathy-glib/tp-channel-iface.h>
+#include <telepathy-glib/errors.h>
+#include <telepathy-glib/helpers.h>
+#include <telepathy-glib/interfaces.h>
+#include <telepathy-glib/channel-iface.h>
 
 #include "gabble-media-channel.h"
 #include "gabble-media-channel-signals-marshal.h"

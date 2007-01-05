@@ -27,14 +27,14 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
-#include <telepathy-glib/tp-debug-ansi.h>
+#include <telepathy-glib/debug-ansi.h>
 #include "debug.h"
 #include "handles.h"
 #include "namespaces.h"
 #include "util.h"
 
-#include <telepathy-glib/tp-errors.h>
-#include <telepathy-glib/tp-helpers.h>
+#include <telepathy-glib/errors.h>
+#include <telepathy-glib/helpers.h>
 
 #include "gabble-connection.h"
 #include "gabble-media-channel.h"

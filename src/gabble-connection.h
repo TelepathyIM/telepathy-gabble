@@ -28,7 +28,7 @@
 #include "gabble-types.h"
 #include "gabble-error.h"
 #include <telepathy-glib/properties-mixin.h>
-#include <telepathy-glib/tp-enums.h>
+#include <telepathy-glib/enums.h>
 
 G_BEGIN_DECLS
 

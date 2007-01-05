@@ -22,12 +22,12 @@
 #include <dbus/dbus-glib.h>
 #include <string.h>
 
-#include <telepathy-glib/tp-heap.h>
-#include <telepathy-glib/tp-handle-repo.h>
-#include <telepathy-glib/tp-handle-repo-dynamic.h>
-#include <telepathy-glib/tp-handle-repo-static.h>
-#include <telepathy-glib/tp-errors.h>
-#include <telepathy-glib/tp-helpers.h>
+#include <telepathy-glib/heap.h>
+#include <telepathy-glib/handle-repo.h>
+#include <telepathy-glib/handle-repo-dynamic.h>
+#include <telepathy-glib/handle-repo-static.h>
+#include <telepathy-glib/errors.h>
+#include <telepathy-glib/helpers.h>
 
 #include "handles.h"
 #include "util.h"

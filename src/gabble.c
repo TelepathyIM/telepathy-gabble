@@ -35,8 +35,8 @@
 
 #include "debug.h"
 #include "gabble-connection-manager.h"
-#include <telepathy-glib/tp-debug.h>
-#include <telepathy-glib/tp-errors.h>
+#include <telepathy-glib/debug.h>
+#include <telepathy-glib/errors.h>
 
 GSource *timeout = NULL;
 GMainLoop *mainloop = NULL;

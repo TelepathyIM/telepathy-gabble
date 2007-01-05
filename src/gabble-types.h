@@ -22,7 +22,7 @@
 #ifndef __GABBLE_TYPES_H__
 #define __GABBLE_TYPES_H__
 
-#include <telepathy-glib/tp-handle.h>
+#include <telepathy-glib/handle.h>
 
 G_BEGIN_DECLS
 

@@ -23,8 +23,8 @@
 #include <dbus/dbus-glib.h>
 #include <stdio.h>
 
-#include "telepathy-glib/tp-debug-ansi.h"
-#include "telepathy-glib/tp-errors.h"
+#include <telepathy-glib/debug-ansi.h>
+#include <telepathy-glib/errors.h>
 #include "telepathy-glib/group-mixin.h"
 
 #define DEBUG_FLAG TP_DEBUG_GROUPS

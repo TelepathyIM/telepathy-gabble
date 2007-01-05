@@ -26,7 +26,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
-#include <telepathy-glib/tp-debug-ansi.h>
+#include <telepathy-glib/debug-ansi.h>
 #include "debug.h"
 #include "handles.h"
 #include "namespaces.h"
@@ -36,9 +36,9 @@
 #include "gabble-media-session.h"
 #include "gabble-media-session-enumtypes.h"
 
-#include <telepathy-glib/tp-helpers.h>
-#include <telepathy-glib/tp-enums.h>
-#include <telepathy-glib/tp-errors.h>
+#include <telepathy-glib/helpers.h>
+#include <telepathy-glib/enums.h>
+#include <telepathy-glib/errors.h>
 
 #include "gabble-media-stream.h"
 #include "gabble-media-stream-signals-marshal.h"

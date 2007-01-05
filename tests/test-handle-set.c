@@ -1,12 +1,12 @@
 #include <string.h>
 #include <glib.h>
 #include <glib-object.h>
-#include <telepathy-glib/tp-intset.h>
-#include <telepathy-glib/tp-handle-repo.h>
-#include <telepathy-glib/tp-handle-repo-dynamic.h>
-#include <telepathy-glib/tp-enums.h>
-#include <telepathy-glib/tp-interfaces.h>
-#include <telepathy-glib/tp-errors.h>
+#include <telepathy-glib/intset.h>
+#include <telepathy-glib/handle-repo.h>
+#include <telepathy-glib/handle-repo-dynamic.h>
+#include <telepathy-glib/enums.h>
+#include <telepathy-glib/interfaces.h>
+#include <telepathy-glib/errors.h>
 
 int main (int argc, char **argv)
 {

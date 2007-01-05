@@ -21,7 +21,7 @@
  */
 
 #include <glib.h>
-#include "telepathy-glib/tp-heap.h"
+#include <telepathy-glib/heap.h>
 
 #define DEFAULT_SIZE 64
 

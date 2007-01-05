@@ -23,7 +23,7 @@
 #ifndef __TP_HANDLE_REPO_DYNAMIC_H__
 #define __TP_HANDLE_REPO_DYNAMIC_H__
 
-#include <telepathy-glib/tp-handle-repo.h>
+#include <telepathy-glib/handle-repo.h>
 
 G_BEGIN_DECLS
 

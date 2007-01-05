@@ -1,5 +1,5 @@
-#include <telepathy-glib/tp-intset.h>
-#include <telepathy-glib/tp-heap.h>
+#include <telepathy-glib/intset.h>
+#include <telepathy-glib/heap.h>
 
 #include <stdlib.h>
 #include <time.h>

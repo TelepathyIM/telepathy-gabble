@@ -20,7 +20,7 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#include <telepathy-glib/tp-handle-repo-static.h>
+#include <telepathy-glib/handle-repo-static.h>
 #include <string.h>
 
 enum

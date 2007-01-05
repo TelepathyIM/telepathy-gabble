@@ -11,21 +11,21 @@ genincludedir=$(tpgincludedir)/_gen
 noinst_LTLIBRARIES = libtelepathy-glib.la
 
 tpginclude_HEADERS = \
-    telepathy-glib/tp-channel-iface.h \
-    telepathy-glib/tp-channel-factory-iface.h \
-    telepathy-glib/tp-debug.h \
-    telepathy-glib/tp-debug-ansi.h \
-    telepathy-glib/tp-enums.h \
-    telepathy-glib/tp-errors.h \
+    telepathy-glib/channel-iface.h \
+    telepathy-glib/channel-factory-iface.h \
+    telepathy-glib/debug.h \
+    telepathy-glib/debug-ansi.h \
+    telepathy-glib/enums.h \
+    telepathy-glib/errors.h \
     telepathy-glib/group-mixin.h \
-    telepathy-glib/tp-handle.h \
-    telepathy-glib/tp-handle-repo.h \
-    telepathy-glib/tp-handle-repo-static.h \
-    telepathy-glib/tp-handle-repo-dynamic.h \
-    telepathy-glib/tp-heap.h \
-    telepathy-glib/tp-helpers.h \
-    telepathy-glib/tp-interfaces.h \
-    telepathy-glib/tp-intset.h \
+    telepathy-glib/handle.h \
+    telepathy-glib/handle-repo.h \
+    telepathy-glib/handle-repo-static.h \
+    telepathy-glib/handle-repo-dynamic.h \
+    telepathy-glib/heap.h \
+    telepathy-glib/helpers.h \
+    telepathy-glib/interfaces.h \
+    telepathy-glib/intset.h \
     telepathy-glib/properties-mixin.h \
     telepathy-glib/util.h
 
@@ -58,8 +58,8 @@ libtelepathy_glib_la_SOURCES = \
     heap.c \
     helpers.c \
     intset.c \
-    tp-channel-iface.c \
-    tp-channel-factory-iface.c \
+    channel-iface.c \
+    channel-factory-iface.c \
     properties-mixin.c \
     signals-marshal.list \
     util.c

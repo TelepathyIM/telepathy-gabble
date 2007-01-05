@@ -26,10 +26,10 @@
 
 #define DEBUG_FLAG TP_DEBUG_PROPERTIES
 
-#include <telepathy-glib/tp-debug-ansi.h>
+#include <telepathy-glib/debug-ansi.h>
 #include "debug.h"
 #include "telepathy-glib/properties-mixin.h"
-#include <telepathy-glib/tp-errors.h>
+#include <telepathy-glib/errors.h>
 
 struct _TpPropertiesContext {
     TpPropertiesMixinClass *mixin_cls;

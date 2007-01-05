@@ -23,7 +23,7 @@
 #ifndef __TP_PROPERTIES_MIXIN_H__
 #define __TP_PROPERTIES_MIXIN_H__
 
-#include "telepathy-glib/tp-enums.h"
+#include <telepathy-glib/enums.h>
 #include "telepathy-glib/util.h"
 
 G_BEGIN_DECLS

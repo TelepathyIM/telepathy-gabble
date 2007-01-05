@@ -20,7 +20,7 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#include <telepathy-glib/tp-handle-repo.h>
+#include <telepathy-glib/handle-repo.h>
 
 static void
 repo_base_init (gpointer klass)

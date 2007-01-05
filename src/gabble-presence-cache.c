@@ -25,7 +25,7 @@
 #define CAPABILITY_BUNDLE_ENOUGH_TRUST 5
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 
-#include <telepathy-glib/tp-intset.h>
+#include <telepathy-glib/intset.h>
 
 #include "debug.h"
 #include "disco.h" /* \o\ \o/ /o/ */

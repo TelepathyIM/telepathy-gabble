@@ -26,8 +26,8 @@
 
 #include <glib-object.h>
 
-#include <telepathy-glib/tp-intset.h>
-#include <telepathy-glib/tp-handle.h>
+#include <telepathy-glib/intset.h>
+#include <telepathy-glib/handle.h>
 
 G_BEGIN_DECLS
 

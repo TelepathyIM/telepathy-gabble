@@ -37,9 +37,9 @@
 #include "gabble-connection.h"
 #include "gabble-im-channel.h"
 #include "handles.h"
-#include <telepathy-glib/tp-interfaces.h>
+#include <telepathy-glib/interfaces.h>
 #include "text-mixin.h"
-#include <telepathy-glib/tp-channel-factory-iface.h>
+#include <telepathy-glib/channel-factory-iface.h>
 
 #include "im-factory.h"
 

@@ -21,8 +21,8 @@
 
 #include <glib-object.h>
 
-#include <telepathy-glib/tp-channel-factory-iface.h>
-#include <telepathy-glib/tp-channel-iface.h>
+#include <telepathy-glib/channel-factory-iface.h>
+#include <telepathy-glib/channel-iface.h>
 
 #include "_gen/signals-marshal.h"
 

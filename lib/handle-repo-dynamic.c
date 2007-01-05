@@ -22,9 +22,9 @@
 
 #include <dbus/dbus-glib.h>
 
-#include <telepathy-glib/tp-handle-repo-dynamic.h>
-#include <telepathy-glib/tp-heap.h>
-#include <telepathy-glib/tp-helpers.h>
+#include <telepathy-glib/handle-repo-dynamic.h>
+#include <telepathy-glib/heap.h>
+#include <telepathy-glib/helpers.h>
 
 /* Handle leak tracing */
 

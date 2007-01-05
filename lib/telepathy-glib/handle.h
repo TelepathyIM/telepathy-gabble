@@ -23,8 +23,8 @@
 #define __TP_HANDLE_H__
 
 #include <glib.h>
-#include <telepathy-glib/tp-enums.h>
-#include <telepathy-glib/tp-errors.h>
+#include <telepathy-glib/enums.h>
+#include <telepathy-glib/errors.h>
 
 G_BEGIN_DECLS
 

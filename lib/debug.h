@@ -7,7 +7,7 @@
 
 #include <glib.h>
 
-#include "telepathy-glib/tp-debug.h"
+#include <telepathy-glib/debug.h>
 
 G_BEGIN_DECLS
 

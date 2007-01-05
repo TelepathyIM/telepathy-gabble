@@ -31,7 +31,7 @@
 #include "gabble-connection.h"
 #include "handles.h"
 #include "namespaces.h"
-#include <telepathy-glib/tp-helpers.h>
+#include <telepathy-glib/helpers.h>
 #include <telepathy-glib/tp-heap.h>
 #include "handles.h"
 #include "util.h"

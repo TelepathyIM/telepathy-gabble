@@ -29,10 +29,10 @@
 #include <telepathy-glib/group-mixin.h>
 #include "handles.h"
 #include "roster.h"
-#include <telepathy-glib/tp-errors.h>
-#include <telepathy-glib/tp-helpers.h>
-#include <telepathy-glib/tp-interfaces.h>
-#include <telepathy-glib/tp-channel-iface.h>
+#include <telepathy-glib/errors.h>
+#include <telepathy-glib/helpers.h>
+#include <telepathy-glib/interfaces.h>
+#include <telepathy-glib/channel-iface.h>
 #include "util.h"
 
 #include "gabble-roster-channel.h"

@@ -72,7 +72,6 @@
 ^tests/test-handle-set$
 ^tests/test-heap$
 ^tests/test-intset$
-^tests/test-gabble-presence$
 (^|/)cscope\.out$
 (^|/)core$
 ^debian($|/)

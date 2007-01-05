@@ -1,6 +1,9 @@
 /* intset.c - Source for a set of unsigned integers (implemented as a
  * variable length bitfield)
  *
+ * Copyright (C) 2005, 2006 Collabora Ltd. <http://www.collabora.co.uk/>
+ * Copyright (C) 2005, 2006 Nokia Corporation
+ *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public License
  * as published by the Free Software Foundation; either version 2.1 of

@@ -2,7 +2,8 @@
  * handle-repo-dynamic.c - mechanism to store and retrieve handles on a connection
  * (general implementation with dynamic handle allocation and recycling)
  *
- * Copyright (C) 2007 Collabora Ltd.
+ * Copyright (C) 2007 Collabora Ltd. <http://www.collabora.co.uk/>
+ * Copyright (C) 2007 Nokia Corporation
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public

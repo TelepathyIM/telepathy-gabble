@@ -302,6 +302,15 @@ gabble_properties_mixin_set_properties (GObject *obj,
   ctx->dbus_ctx = context;
   error = NULL;
 
+  if (properties->len == 0)
+    {
+      DEBUG ("immediately returning from SetProperties with 0 properties");
+      gabble_properties_context_return (ctx, NULL);
+      return;
+    }
+
+  DEBUG ("set properties called (len == %d), dbus context is %p", properties->len, context);
+
   /* Check input property identifiers */
   for (i = 0; i < properties->len; i++)
     {

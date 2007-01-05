@@ -30,7 +30,8 @@
 #define DEBUG_FLAG TP_DEBUG_GROUPS
 
 #include "debug.h"
-#include "_gen/group-mixin-signals-marshal.h"
+
+#include "_gen/signals-marshal.h"
 
 static const char *group_change_reason_str(guint reason)
 {
@@ -111,7 +112,7 @@ void tp_group_mixin_class_init (GObjectClass *obj_cls,
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  group_mixin_marshal_VOID__UINT_UINT,
+                  _tp_marshal_VOID__UINT_UINT,
                   G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_UINT);
 
   mixin_cls->members_changed_signal_id =
@@ -120,7 +121,7 @@ void tp_group_mixin_class_init (GObjectClass *obj_cls,
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  group_mixin_marshal_VOID__STRING_BOXED_BOXED_BOXED_BOXED_UINT_UINT,
+                  _tp_marshal_VOID__STRING_BOXED_BOXED_BOXED_BOXED_UINT_UINT,
                   G_TYPE_NONE, 7, G_TYPE_STRING, DBUS_TYPE_G_UINT_ARRAY, DBUS_TYPE_G_UINT_ARRAY, DBUS_TYPE_G_UINT_ARRAY, DBUS_TYPE_G_UINT_ARRAY, G_TYPE_UINT, G_TYPE_UINT);
 }
 

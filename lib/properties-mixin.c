@@ -29,7 +29,6 @@
 #include <telepathy-glib/tp-debug-ansi.h>
 #include "debug.h"
 #include "telepathy-glib/properties-mixin.h"
-#include "_gen/properties-mixin-signals-marshal.h"
 #include <telepathy-glib/tp-errors.h>
 
 struct _TpPropertiesContext {

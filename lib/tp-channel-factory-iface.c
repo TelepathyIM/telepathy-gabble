@@ -22,8 +22,9 @@
 #include <glib-object.h>
 
 #include <telepathy-glib/tp-channel-factory-iface.h>
-#include "_gen/tp-channel-factory-iface-signals-marshal.h"
 #include <telepathy-glib/tp-channel-iface.h>
+
+#include "_gen/signals-marshal.h"
 
 static void
 tp_channel_factory_iface_base_init (gpointer klass)
@@ -46,7 +47,7 @@ tp_channel_factory_iface_base_init (gpointer klass)
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  tp_channel_factory_iface_marshal_VOID__OBJECT_POINTER,
+                  _tp_marshal_VOID__OBJECT_POINTER,
                   G_TYPE_NONE, 2, G_TYPE_OBJECT, G_TYPE_POINTER);
   }
 }

@@ -35,12 +35,8 @@ specinclude_HEADERS = \
     telepathy-glib/_spec/telepathy-interfaces.h
 
 nodist_libtelepathy_glib_la_SOURCES = \
-    _gen/tp-channel-factory-iface-signals-marshal.c \
-    _gen/tp-channel-factory-iface-signals-marshal.h \
-    _gen/group-mixin-signals-marshal.c \
-    _gen/group-mixin-signals-marshal.h \
-    _gen/properties-mixin-signals-marshal.c \
-    _gen/properties-mixin-signals-marshal.h \
+    _gen/signals-marshal.c \
+    _gen/signals-marshal.h \
     _gen/enumtypes-spec-telepathy-errors.c
 
 nodist_geninclude_HEADERS = \
@@ -55,7 +51,6 @@ libtelepathy_glib_la_SOURCES = \
     debug.h \
     errors.c \
     group-mixin.c \
-    group-mixin-signals-marshal.list \
     handle-repo.c \
     handle-repo-dynamic.c \
     handle-repo-static.c \
@@ -65,21 +60,20 @@ libtelepathy_glib_la_SOURCES = \
     intset.c \
     tp-channel-iface.c \
     tp-channel-factory-iface.c \
-    tp-channel-factory-iface-signals-marshal.list \
     properties-mixin.c \
-    properties-mixin-signals-marshal.list \
+    signals-marshal.list \
     util.c
 
 AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @HANDLE_LEAK_DEBUG_CFLAGS@
 AM_LDFLAGS = @DBUS_LIBS@ @GLIB_LIBS@
 
-_gen/%-signals-marshal.h: %-signals-marshal.list
+_gen/signals-marshal.h: signals-marshal.list
 	$(INSTALL) -d _gen
-	glib-genmarshal --header --prefix=$(subst -,_,$*)_marshal $< > _gen/$*-signals-marshal.h
+	glib-genmarshal --header --prefix=_tp_marshal $< > $@
 
-_gen/%-signals-marshal.c: %-signals-marshal.list
+_gen/signals-marshal.c: signals-marshal.list
 	$(INSTALL) -d _gen
-	glib-genmarshal --body --prefix=$(subst -,_,$*)_marshal $< > _gen/$*-signals-marshal.c
+	glib-genmarshal --body --prefix=_tp_marshal $< > $@
 
 _gen/enumtypes-spec-%.c: telepathy-glib/_spec/%.h Makefile.in
 	$(INSTALL) -d _gen

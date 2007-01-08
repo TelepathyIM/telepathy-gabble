@@ -398,7 +398,7 @@ muc_factory_message_cb (LmMessageHandler *handler,
   TpHandleType handle_type;
   TpHandle room_handle, handle;
   GabbleMucChannel *chan;
-  GabbleTextMixinSendError send_error;
+  TpChannelTextSendError send_error;
 
   if (!gabble_text_mixin_parse_incoming_message (message, &from, &stamp,
         &msgtype, &body, &body_offset, &send_error))
@@ -417,7 +417,7 @@ muc_factory_message_cb (LmMessageHandler *handler,
           const gchar *invite_from, *reason;
           TpHandle inviter_handle;
 
-          if (send_error != CHANNEL_TEXT_SEND_NO_ERROR)
+          if (send_error != GABBLE_CHANNEL_SEND_NO_ERROR)
             {
               NODE_DEBUG (message->node, "got a MUC invitation message "
                              "with a send error; ignoring");
@@ -549,9 +549,9 @@ HANDLE_MESSAGE:
           priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT], from, TRUE);
     }
 
-  if (send_error != CHANNEL_TEXT_SEND_NO_ERROR)
+  if (send_error != GABBLE_CHANNEL_SEND_NO_ERROR)
     {
-      _gabble_text_mixin_send_error_signal (G_OBJECT (chan), send_error, stamp,
+      _tp_text_mixin_send_error_signal (G_OBJECT (chan), send_error, stamp,
           msgtype, body_offset);
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }

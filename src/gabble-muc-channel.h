@@ -39,7 +39,7 @@ struct _GabbleMucChannelClass {
 
     TpGroupMixinClass group_class;
     TpPropertiesMixinClass properties_class;
-    GabbleTextMixinClass text_class;
+    TpTextMixinClass text_class;
 };
 
 struct _GabbleMucChannel {
@@ -47,7 +47,7 @@ struct _GabbleMucChannel {
 
     TpGroupMixin group;
     TpPropertiesMixin properties;
-    GabbleTextMixin text;
+    TpTextMixin text;
 
     gpointer priv;
 };

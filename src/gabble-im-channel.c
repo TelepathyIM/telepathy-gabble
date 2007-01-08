@@ -122,11 +122,11 @@ gabble_im_channel_constructor (GType type, guint n_props,
   else
     send_nick = TRUE;
 
-  gabble_text_mixin_init (obj, G_STRUCT_OFFSET (GabbleIMChannel, text),
+  tp_text_mixin_init (obj, G_STRUCT_OFFSET (GabbleIMChannel, text),
       priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT],
       send_nick);
 
-  gabble_text_mixin_set_message_types (obj,
+  tp_text_mixin_set_message_types (obj,
       TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL,
       TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION,
       TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE,
@@ -239,7 +239,7 @@ gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
                   g_cclosure_marshal_VOID__VOID,
                   G_TYPE_NONE, 0);
 
-  gabble_text_mixin_class_init (object_class, G_STRUCT_OFFSET (GabbleIMChannelClass, text_class));
+  tp_text_mixin_class_init (object_class, G_STRUCT_OFFSET (GabbleIMChannelClass, text_class));
 
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_im_channel_class), &dbus_glib_gabble_im_channel_object_info);
 }
@@ -295,7 +295,7 @@ gabble_im_channel_finalize (GObject *object)
   g_free (priv->object_path);
   g_free (priv->peer_jid);
 
-  gabble_text_mixin_finalize (object);
+  tp_text_mixin_finalize (object);
 
   G_OBJECT_CLASS (gabble_im_channel_parent_class)->finalize (object);
 }
@@ -326,7 +326,7 @@ gboolean _gabble_im_channel_receive (GabbleIMChannel *chan,
   if (timestamp == 0)
       timestamp = time (NULL);
 
-  return gabble_text_mixin_receive (G_OBJECT (chan), type, sender, timestamp, text);
+  return tp_text_mixin_receive (G_OBJECT (chan), type, sender, timestamp, text);
 }
 
 /**
@@ -348,7 +348,7 @@ gabble_im_channel_acknowledge_pending_messages (GabbleIMChannel *self,
 {
   g_assert (GABBLE_IS_IM_CHANNEL (self));
 
-  return gabble_text_mixin_acknowledge_pending_messages (G_OBJECT (self), ids,
+  return tp_text_mixin_acknowledge_pending_messages (G_OBJECT (self), ids,
       error);
 }
 
@@ -480,7 +480,7 @@ gabble_im_channel_get_message_types (GabbleIMChannel *self,
                                      GArray **ret,
                                      GError **error)
 {
-  return gabble_text_mixin_get_message_types (G_OBJECT (self), ret, error);
+  return tp_text_mixin_get_message_types (G_OBJECT (self), ret, error);
 }
 
 
@@ -504,7 +504,7 @@ gabble_im_channel_list_pending_messages (GabbleIMChannel *self,
 {
   g_assert (GABBLE_IS_IM_CHANNEL (self));
 
-  return gabble_text_mixin_list_pending_messages (G_OBJECT (self), clear, ret,
+  return tp_text_mixin_list_pending_messages (G_OBJECT (self), clear, ret,
       error);
 }
 

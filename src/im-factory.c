@@ -205,7 +205,7 @@ im_factory_message_cb (LmMessageHandler *handler,
   TpChannelTextMessageType msgtype;
   TpHandle handle;
   GabbleIMChannel *chan;
-  GabbleTextMixinSendError send_error;
+  TpChannelTextSendError send_error;
 
   if (!gabble_text_mixin_parse_incoming_message (message, &from, &stamp, &msgtype, &body, &body_offset, &send_error))
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
@@ -231,7 +231,7 @@ im_factory_message_cb (LmMessageHandler *handler,
 
   if (chan == NULL)
     {
-      if (send_error != CHANNEL_TEXT_SEND_NO_ERROR)
+      if (send_error != GABBLE_CHANNEL_SEND_NO_ERROR)
         {
           DEBUG ("ignoring message error; no sending channel");
           return LM_HANDLER_RESULT_REMOVE_MESSAGE;
@@ -242,9 +242,9 @@ im_factory_message_cb (LmMessageHandler *handler,
       chan = new_im_channel (fac, handle);
     }
 
-  if (send_error != CHANNEL_TEXT_SEND_NO_ERROR)
+  if (send_error != GABBLE_CHANNEL_SEND_NO_ERROR)
     {
-      _gabble_text_mixin_send_error_signal (G_OBJECT (chan), send_error, stamp,
+      _tp_text_mixin_send_error_signal (G_OBJECT (chan), send_error, stamp,
           msgtype, body_offset);
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }

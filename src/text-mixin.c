@@ -55,19 +55,18 @@
 
 /* allocator */
 
-typedef struct _GabbleAllocator GabbleAllocator;
-struct _GabbleAllocator
+typedef struct
 {
   gulong size;
   guint limit;
   guint count;
-};
+} _Allocator;
 
-#define ga_new0(alloc, type) \
-    ((type *) gabble_allocator_alloc0 (alloc))
+#define _new0(alloc, type) \
+    ((type *) _allocator_alloc0 (alloc))
 
 static void
-gabble_allocator_init (GabbleAllocator *alloc, gulong size, guint limit)
+_allocator_init (_Allocator *alloc, gulong size, guint limit)
 {
   g_assert (alloc != NULL);
   g_assert (size > 0);
@@ -77,7 +76,7 @@ gabble_allocator_init (GabbleAllocator *alloc, gulong size, guint limit)
   alloc->limit = limit;
 }
 
-static gpointer gabble_allocator_alloc0 (GabbleAllocator *alloc)
+static gpointer _allocator_alloc0 (_Allocator *alloc)
 {
   gpointer ret;
 
@@ -97,7 +96,7 @@ static gpointer gabble_allocator_alloc0 (GabbleAllocator *alloc)
   return ret;
 }
 
-static void gabble_allocator_free (GabbleAllocator *alloc, gpointer thing)
+static void _allocator_free (_Allocator *alloc, gpointer thing)
 {
   g_assert (alloc != NULL);
   g_assert (thing != NULL);
@@ -110,8 +109,7 @@ static void gabble_allocator_free (GabbleAllocator *alloc, gpointer thing)
 #define MAX_PENDING_MESSAGES 256
 #define MAX_MESSAGE_SIZE 1024 - 1
 
-typedef struct _GabblePendingMessage GabblePendingMessage;
-struct _GabblePendingMessage
+typedef struct
 {
   guint id;
   time_t timestamp;
@@ -119,50 +117,50 @@ struct _GabblePendingMessage
   TpChannelTextMessageType type;
   char *text;
   guint flags;
-};
+} _PendingMessage;
 
 /**
- * gabble_text_mixin_class_get_offset_quark:
+ * tp_text_mixin_class_get_offset_quark:
  *
  * Returns: the quark used for storing mixin offset on a GObjectClass
  */
 GQuark
-gabble_text_mixin_class_get_offset_quark ()
+tp_text_mixin_class_get_offset_quark ()
 {
   static GQuark offset_quark = 0;
   if (!offset_quark)
-    offset_quark = g_quark_from_static_string("TextMixinClassOffsetQuark");
+    offset_quark = g_quark_from_static_string("TpTextMixinClassOffsetQuark");
   return offset_quark;
 }
 
 /**
- * gabble_text_mixin_get_offset_quark:
+ * tp_text_mixin_get_offset_quark:
  *
  * Returns: the quark used for storing mixin offset on a GObject
  */
 GQuark
-gabble_text_mixin_get_offset_quark ()
+tp_text_mixin_get_offset_quark ()
 {
   static GQuark offset_quark = 0;
   if (!offset_quark)
-    offset_quark = g_quark_from_static_string("TextMixinOffsetQuark");
+    offset_quark = g_quark_from_static_string("TpTextMixinOffsetQuark");
   return offset_quark;
 }
 
 
-/* GabbleTextMixin */
+/* TpTextMixin */
 void
-gabble_text_mixin_class_init (GObjectClass *obj_cls, glong offset)
+tp_text_mixin_class_init (GObjectClass *obj_cls, glong offset)
 {
-  GabbleTextMixinClass *mixin_cls;
+  TpTextMixinClass *mixin_cls;
 
   g_assert (G_IS_OBJECT_CLASS (obj_cls));
 
   g_type_set_qdata (G_OBJECT_CLASS_TYPE (obj_cls),
-      GABBLE_TEXT_MIXIN_CLASS_OFFSET_QUARK,
+      TP_TEXT_MIXIN_CLASS_OFFSET_QUARK,
       GINT_TO_POINTER (offset));
 
-  mixin_cls = GABBLE_TEXT_MIXIN_CLASS (obj_cls);
+  mixin_cls = TP_TEXT_MIXIN_CLASS (obj_cls);
 
   mixin_cls->lost_message_signal_id = g_signal_new ("lost-message",
                 G_OBJECT_CLASS_TYPE (obj_cls),
@@ -198,20 +196,20 @@ gabble_text_mixin_class_init (GObjectClass *obj_cls, glong offset)
 }
 
 void
-gabble_text_mixin_init (GObject *obj,
-                        glong offset,
-                        TpHandleRepoIface *contacts_repo,
-                        gboolean send_nick)
+tp_text_mixin_init (GObject *obj,
+                    glong offset,
+                    TpHandleRepoIface *contacts_repo,
+                    gboolean send_nick)
 {
-  GabbleTextMixin *mixin;
+  TpTextMixin *mixin;
 
   g_assert (G_IS_OBJECT (obj));
 
   g_type_set_qdata (G_OBJECT_TYPE (obj),
-                    GABBLE_TEXT_MIXIN_OFFSET_QUARK,
+                    TP_TEXT_MIXIN_OFFSET_QUARK,
                     GINT_TO_POINTER (offset));
 
-  mixin = GABBLE_TEXT_MIXIN (obj);
+  mixin = TP_TEXT_MIXIN (obj);
 
   mixin->pending = g_queue_new ();
   mixin->contacts_repo = contacts_repo;
@@ -222,10 +220,10 @@ gabble_text_mixin_init (GObject *obj,
 }
 
 void
-gabble_text_mixin_set_message_types (GObject *obj,
-                                     ...)
+tp_text_mixin_set_message_types (GObject *obj,
+                                 ...)
 {
-  GabbleTextMixin *mixin = GABBLE_TEXT_MIXIN (obj);
+  TpTextMixin *mixin = TP_TEXT_MIXIN (obj);
   va_list args;
   guint type;
 
@@ -237,21 +235,21 @@ gabble_text_mixin_set_message_types (GObject *obj,
   va_end (args);
 }
 
-static void _gabble_pending_free (GabblePendingMessage *msg);
-static GabbleAllocator * _gabble_pending_get_alloc ();
+static void _pending_free (_PendingMessage *msg);
+static _Allocator * _pending_get_alloc ();
 
 void
-gabble_text_mixin_finalize (GObject *obj)
+tp_text_mixin_finalize (GObject *obj)
 {
-  GabbleTextMixin *mixin = GABBLE_TEXT_MIXIN (obj);
-  GabblePendingMessage *msg;
+  TpTextMixin *mixin = TP_TEXT_MIXIN (obj);
+  _PendingMessage *msg;
 
   /* free any data held directly by the object here */
 
   while ((msg = g_queue_pop_head(mixin->pending)))
     {
       tp_handle_unref (mixin->contacts_repo, msg->sender);
-      _gabble_pending_free (msg);
+      _pending_free (msg);
     }
 
   g_queue_free (mixin->pending);
@@ -260,54 +258,55 @@ gabble_text_mixin_finalize (GObject *obj)
 }
 
 /**
- * _gabble_pending_get_alloc
+ * _pending_get_alloc
  *
- * Returns a GabbleAllocator for creating up to 256 pending messages, but no
+ * Returns an Allocator for creating up to 256 pending messages, but no
  * more.
  */
-static GabbleAllocator *
-_gabble_pending_get_alloc ()
+static _Allocator *
+_pending_get_alloc ()
 {
-  static GabbleAllocator alloc = { 0, };
+  static _Allocator alloc = { 0, };
 
   if (0 == alloc.size)
-    gabble_allocator_init (&alloc, sizeof(GabblePendingMessage), MAX_PENDING_MESSAGES);
+    _allocator_init (&alloc, sizeof(_PendingMessage), MAX_PENDING_MESSAGES);
 
   return &alloc;
 }
 
-#define _gabble_pending_new0() \
-  (ga_new0 (_gabble_pending_get_alloc (), GabblePendingMessage))
+#define _pending_new0() \
+  (_new0 (_pending_get_alloc (), _PendingMessage))
 
 /**
- * _gabble_pending_free
+ * _pending_free
  *
- * Free up a GabblePendingMessage struct.
+ * Free up a _PendingMessage struct.
  */
-static void _gabble_pending_free (GabblePendingMessage *msg)
+static void _pending_free (_PendingMessage *msg)
 {
   g_free (msg->text);
-  gabble_allocator_free (_gabble_pending_get_alloc (), msg);
+  _allocator_free (_pending_get_alloc (), msg);
 }
 
 /**
  * _gabble_text_mixin_receive
  *
  */
-gboolean gabble_text_mixin_receive (GObject *obj,
-                                     TpChannelTextMessageType type,
-                                     TpHandle sender,
-                                     time_t timestamp,
-                                     const char *text)
+gboolean
+tp_text_mixin_receive (GObject *obj,
+                       TpChannelTextMessageType type,
+                       TpHandle sender,
+                       time_t timestamp,
+                       const char *text)
 {
-  GabbleTextMixin *mixin = GABBLE_TEXT_MIXIN (obj);
-  GabbleTextMixinClass *mixin_cls = GABBLE_TEXT_MIXIN_CLASS (G_OBJECT_GET_CLASS (obj));
+  TpTextMixin *mixin = TP_TEXT_MIXIN (obj);
+  TpTextMixinClass *mixin_cls = TP_TEXT_MIXIN_CLASS (G_OBJECT_GET_CLASS (obj));
 
   gchar *end;
-  GabblePendingMessage *msg;
+  _PendingMessage *msg;
   gsize len;
 
-  msg = _gabble_pending_new0 ();
+  msg = _pending_new0 ();
 
   if (msg == NULL)
     {
@@ -349,7 +348,7 @@ gboolean gabble_text_mixin_receive (GObject *obj,
           mixin->message_lost = TRUE;
         }
 
-      _gabble_pending_free (msg);
+      _pending_free (msg);
 
       return FALSE;
     }
@@ -383,14 +382,14 @@ static gint
 compare_pending_message (gconstpointer haystack,
                          gconstpointer needle)
 {
-  GabblePendingMessage *msg = (GabblePendingMessage *) haystack;
+  _PendingMessage *msg = (_PendingMessage *) haystack;
   guint id = GPOINTER_TO_INT (needle);
 
   return (msg->id != id);
 }
 
 /**
- * gabble_text_mixin_acknowledge_pending_messages
+ * tp_text_mixin_acknowledge_pending_messages
  *
  * Implements D-Bus method AcknowledgePendingMessages
  * on interface org.freedesktop.Telepathy.Channel.Type.Text
@@ -401,11 +400,12 @@ compare_pending_message (gconstpointer haystack,
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_text_mixin_acknowledge_pending_messages (GObject *obj, const GArray * ids, GError **error)
+gboolean
+tp_text_mixin_acknowledge_pending_messages (GObject *obj, const GArray * ids, GError **error)
 {
-  GabbleTextMixin *mixin = GABBLE_TEXT_MIXIN (obj);
+  TpTextMixin *mixin = TP_TEXT_MIXIN (obj);
   GList **nodes;
-  GabblePendingMessage *msg;
+  _PendingMessage *msg;
   guint i;
 
   nodes = g_new(GList *, ids->len);
@@ -432,14 +432,14 @@ gboolean gabble_text_mixin_acknowledge_pending_messages (GObject *obj, const GAr
 
   for (i = 0; i < ids->len; i++)
     {
-      msg = (GabblePendingMessage *) nodes[i]->data;
+      msg = (_PendingMessage *) nodes[i]->data;
 
       DEBUG ("acknowleding message id %u", msg->id);
 
       g_queue_remove (mixin->pending, msg);
 
       tp_handle_unref (mixin->contacts_repo, msg->sender);
-      _gabble_pending_free (msg);
+      _pending_free (msg);
     }
 
   g_free(nodes);
@@ -447,7 +447,7 @@ gboolean gabble_text_mixin_acknowledge_pending_messages (GObject *obj, const GAr
 }
 
 /**
- * gabble_text_mixin_list_pending_messages
+ * tp_text_mixin_list_pending_messages
  *
  * Implements D-Bus method ListPendingMessages
  * on interface org.freedesktop.Telepathy.Channel.Type.Text
@@ -458,9 +458,10 @@ gboolean gabble_text_mixin_acknowledge_pending_messages (GObject *obj, const GAr
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_text_mixin_list_pending_messages (GObject *obj, gboolean clear, GPtrArray ** ret, GError **error)
+gboolean
+tp_text_mixin_list_pending_messages (GObject *obj, gboolean clear, GPtrArray ** ret, GError **error)
 {
-  GabbleTextMixin *mixin = GABBLE_TEXT_MIXIN (obj);
+  TpTextMixin *mixin = TP_TEXT_MIXIN (obj);
   guint count;
   GPtrArray *messages;
   GList *cur;
@@ -474,7 +475,7 @@ gboolean gabble_text_mixin_list_pending_messages (GObject *obj, gboolean clear, 
        cur = (clear ? g_queue_pop_head_link(mixin->pending)
                     : cur->next))
     {
-      GabblePendingMessage *msg = (GabblePendingMessage *) cur->data;
+      _PendingMessage *msg = (_PendingMessage *) cur->data;
       GValue val = { 0, };
 
       g_value_init (&val, TP_TYPE_PENDING_MESSAGE_STRUCT);
@@ -514,7 +515,7 @@ gboolean gabble_text_mixin_send (GObject *obj, guint type, guint subtype,
                                  GabbleConnection *conn, gboolean emit_signal,
                                  GError **error)
 {
-  GabbleTextMixin *mixin = GABBLE_TEXT_MIXIN (obj);
+  TpTextMixin *mixin = TP_TEXT_MIXIN (obj);
   LmMessage *msg;
   gboolean result;
   time_t timestamp;
@@ -573,19 +574,19 @@ gboolean gabble_text_mixin_send (GObject *obj, guint type, guint subtype,
     {
       timestamp = time (NULL);
 
-      gabble_text_mixin_emit_sent (obj, timestamp, type, text);
+      tp_text_mixin_emit_sent (obj, timestamp, type, text);
     }
 
   return TRUE;
 }
 
 void
-gabble_text_mixin_emit_sent (GObject *obj,
-                             time_t timestamp,
-                             guint type,
-                             const char *text)
+tp_text_mixin_emit_sent (GObject *obj,
+                         time_t timestamp,
+                         guint type,
+                         const char *text)
 {
-  GabbleTextMixinClass *mixin_cls = GABBLE_TEXT_MIXIN_CLASS (G_OBJECT_GET_CLASS
+  TpTextMixinClass *mixin_cls = TP_TEXT_MIXIN_CLASS (G_OBJECT_GET_CLASS
       (obj));
 
   g_signal_emit (obj, mixin_cls->sent_signal_id, 0,
@@ -595,9 +596,9 @@ gabble_text_mixin_emit_sent (GObject *obj,
 }
 
 gboolean
-gabble_text_mixin_get_message_types (GObject *obj, GArray **ret, GError **error)
+tp_text_mixin_get_message_types (GObject *obj, GArray **ret, GError **error)
 {
-  GabbleTextMixin *mixin = GABBLE_TEXT_MIXIN (obj);
+  TpTextMixin *mixin = TP_TEXT_MIXIN (obj);
   guint i;
 
   *ret = g_array_sized_new (FALSE, FALSE, sizeof (guint),
@@ -613,15 +614,15 @@ gabble_text_mixin_get_message_types (GObject *obj, GArray **ret, GError **error)
 
 
 void
-gabble_text_mixin_clear (GObject *obj)
+tp_text_mixin_clear (GObject *obj)
 {
-  GabbleTextMixin *mixin = GABBLE_TEXT_MIXIN (obj);
-  GabblePendingMessage *msg;
+  TpTextMixin *mixin = TP_TEXT_MIXIN (obj);
+  _PendingMessage *msg;
 
   while ((msg = g_queue_pop_head(mixin->pending)))
     {
       tp_handle_unref (mixin->contacts_repo, msg->sender);
-      _gabble_pending_free (msg);
+      _pending_free (msg);
     }
 }
 
@@ -632,12 +633,12 @@ gabble_text_mixin_parse_incoming_message (LmMessage *message,
                         TpChannelTextMessageType *msgtype,
                         const gchar **body,
                         const gchar **body_offset,
-                        GabbleTextMixinSendError *send_error)
+                        TpChannelTextSendError *send_error)
 {
   const gchar *type;
   LmMessageNode *node;
 
-  *send_error = CHANNEL_TEXT_SEND_NO_ERROR;
+  *send_error = GABBLE_CHANNEL_SEND_NO_ERROR;
 
   if (lm_message_get_sub_type (message) == LM_MESSAGE_SUB_TYPE_ERROR)
     {
@@ -655,34 +656,34 @@ gabble_text_mixin_parse_incoming_message (LmMessage *message,
             {
               case XMPP_ERROR_SERVICE_UNAVAILABLE:
               case XMPP_ERROR_RECIPIENT_UNAVAILABLE:
-                *send_error = CHANNEL_TEXT_SEND_ERROR_OFFLINE;
+                *send_error = TP_CHANNEL_SEND_ERROR_OFFLINE;
                 break;
 
               case XMPP_ERROR_ITEM_NOT_FOUND:
               case XMPP_ERROR_JID_MALFORMED:
               case XMPP_ERROR_REMOTE_SERVER_TIMEOUT:
-                *send_error = CHANNEL_TEXT_SEND_ERROR_INVALID_CONTACT;
+                *send_error = TP_CHANNEL_SEND_ERROR_INVALID_CONTACT;
                 break;
 
               case XMPP_ERROR_FORBIDDEN:
-                *send_error = CHANNEL_TEXT_SEND_ERROR_PERMISSION_DENIED;
+                *send_error = TP_CHANNEL_SEND_ERROR_PERMISSION_DENIED;
                 break;
 
               case XMPP_ERROR_RESOURCE_CONSTRAINT:
-                *send_error = CHANNEL_TEXT_SEND_ERROR_TOO_LONG;
+                *send_error = TP_CHANNEL_SEND_ERROR_TOO_LONG;
                 break;
 
               case XMPP_ERROR_FEATURE_NOT_IMPLEMENTED:
-                *send_error = CHANNEL_TEXT_SEND_ERROR_NOT_IMPLEMENTED;
+                *send_error = TP_CHANNEL_SEND_ERROR_NOT_IMPLEMENTED;
                 break;
 
               default:
-                *send_error = CHANNEL_TEXT_SEND_ERROR_UNKNOWN;
+                *send_error = TP_CHANNEL_SEND_ERROR_UNKNOWN;
             }
         }
       else
         {
-          *send_error = CHANNEL_TEXT_SEND_ERROR_UNKNOWN;
+          *send_error = TP_CHANNEL_SEND_ERROR_UNKNOWN;
         }
     }
 
@@ -766,13 +767,13 @@ gabble_text_mixin_parse_incoming_message (LmMessage *message,
 }
 
 void
-_gabble_text_mixin_send_error_signal (GObject *obj,
-                                      GabbleTextMixinSendError error,
-                                      time_t timestamp,
-                                      TpChannelTextMessageType type,
-                                      const gchar *text)
+_tp_text_mixin_send_error_signal (GObject *obj,
+                                  TpChannelTextSendError error,
+                                  time_t timestamp,
+                                  TpChannelTextMessageType type,
+                                  const gchar *text)
 {
-  GabbleTextMixinClass *mixin_cls = GABBLE_TEXT_MIXIN_CLASS (G_OBJECT_GET_CLASS (obj));
+  TpTextMixinClass *mixin_cls = TP_TEXT_MIXIN_CLASS (G_OBJECT_GET_CLASS (obj));
 
   g_signal_emit (obj, mixin_cls->send_error_signal_id, 0, error, timestamp, type, text, 0);
 }

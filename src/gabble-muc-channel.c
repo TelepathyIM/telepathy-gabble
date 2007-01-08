@@ -277,10 +277,10 @@ gabble_muc_channel_constructor (GType type, guint n_props,
         GabbleMucChannel, properties));
 
   /* initialize text mixin */
-  gabble_text_mixin_init (obj, G_STRUCT_OFFSET (GabbleMucChannel, text),
+  tp_text_mixin_init (obj, G_STRUCT_OFFSET (GabbleMucChannel, text),
       contact_handles, FALSE);
 
-  gabble_text_mixin_set_message_types (obj,
+  tp_text_mixin_set_message_types (obj,
       TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL,
       TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION,
       TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE,
@@ -838,7 +838,7 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                                       room_property_signatures, NUM_ROOM_PROPS,
                                       gabble_muc_channel_do_set_properties);
 
-  gabble_text_mixin_class_init (object_class, G_STRUCT_OFFSET (GabbleMucChannelClass, text_class));
+  tp_text_mixin_class_init (object_class, G_STRUCT_OFFSET (GabbleMucChannelClass, text_class));
 
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_muc_channel_class), &dbus_glib_gabble_muc_channel_object_info);
 }
@@ -890,7 +890,7 @@ gabble_muc_channel_finalize (GObject *object)
 
   tp_group_mixin_finalize (object);
 
-  gabble_text_mixin_finalize (object);
+  tp_text_mixin_finalize (object);
 
   G_OBJECT_CLASS (gabble_muc_channel_parent_class)->finalize (object);
 }
@@ -1839,7 +1839,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
     {
       /* If we sent the message and it's not delayed, just emit the sent signal */
       timestamp = time (NULL);
-      gabble_text_mixin_emit_sent (G_OBJECT (chan), timestamp, msg_type, text);
+      tp_text_mixin_emit_sent (G_OBJECT (chan), timestamp, msg_type, text);
 
       return TRUE;
     }
@@ -1849,7 +1849,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
   if (timestamp == 0)
       timestamp = time (NULL);
 
-  return gabble_text_mixin_receive (G_OBJECT (chan), msg_type, sender,
+  return tp_text_mixin_receive (G_OBJECT (chan), msg_type, sender,
       timestamp, text);
 }
 
@@ -1887,8 +1887,8 @@ _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
   /* queue the message */
   if (message && (message[0] != '\0'))
     {
-      gabble_text_mixin_receive (G_OBJECT (chan), TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE, inviter,
-                                  time(NULL), message);
+      tp_text_mixin_receive (G_OBJECT (chan), TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE, inviter,
+                             time(NULL), message);
     }
 
   /* emit READY signal so NewChannel is emitted */
@@ -1916,7 +1916,7 @@ gabble_muc_channel_acknowledge_pending_messages (GabbleMucChannel *self,
 {
   g_assert (GABBLE_IS_MUC_CHANNEL (self));
 
-  return gabble_text_mixin_acknowledge_pending_messages (G_OBJECT (self), ids,
+  return tp_text_mixin_acknowledge_pending_messages (G_OBJECT (self), ids,
       error);
 }
 
@@ -2198,7 +2198,7 @@ gabble_muc_channel_get_message_types (GabbleMucChannel *self,
                                       GArray **ret,
                                       GError **error)
 {
-  return gabble_text_mixin_get_message_types (G_OBJECT (self), ret, error);
+  return tp_text_mixin_get_message_types (G_OBJECT (self), ret, error);
 }
 
 
@@ -2292,7 +2292,7 @@ gabble_muc_channel_list_pending_messages (GabbleMucChannel *self,
                                           GPtrArray **ret,
                                           GError **error)
 {
-  return gabble_text_mixin_list_pending_messages (G_OBJECT (self), clear, ret,
+  return tp_text_mixin_list_pending_messages (G_OBJECT (self), clear, ret,
       error);
 }
 
@@ -2451,7 +2451,7 @@ gabble_muc_channel_add_member (GObject *obj, TpHandle handle, const gchar *messa
       tp_group_mixin_change_flags (obj, 0, TP_CHANNEL_GROUP_FLAG_CAN_ADD);
 
       /* clear message queue (which might contain an invite reason) */
-      gabble_text_mixin_clear (G_OBJECT (obj));
+      tp_text_mixin_clear (G_OBJECT (obj));
 
       return result;
     }

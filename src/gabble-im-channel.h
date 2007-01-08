@@ -36,13 +36,13 @@ typedef struct _GabbleIMChannelClass GabbleIMChannelClass;
 struct _GabbleIMChannelClass {
     GObjectClass parent_class;
 
-    GabbleTextMixinClass text_class;
+    TpTextMixinClass text_class;
 };
 
 struct _GabbleIMChannel {
     GObject parent;
 
-    GabbleTextMixin text;
+    TpTextMixin text;
 
     gpointer priv;
 };

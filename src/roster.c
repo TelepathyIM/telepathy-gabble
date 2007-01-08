@@ -459,8 +459,8 @@ _gabble_roster_item_get (GabbleRoster *roster,
   if (NULL == item)
     {
       item = g_new0 (GabbleRosterItem, 1);
-      item->groups = handle_set_new (priv->conn->handles,
-                                     TP_HANDLE_TYPE_GROUP);
+      item->groups = tp_handle_set_new (
+          priv->conn->handle_repos[TP_HANDLE_TYPE_GROUP]);
       tp_handle_ref (priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT], handle);
       g_hash_table_insert (priv->items, GINT_TO_POINTER (handle), item);
     }
@@ -1792,8 +1792,8 @@ roster_item_apply_edits (GabbleRoster *roster,
             }
         }
 #endif
-      edited_item.groups = handle_set_new (priv->conn->handles,
-          TP_HANDLE_TYPE_GROUP);
+      edited_item.groups = tp_handle_set_new (
+          priv->conn->handle_repos[TP_HANDLE_TYPE_GROUP]);
       intset = tp_handle_set_update (edited_item.groups,
           tp_handle_set_peek (item->groups));
       tp_intset_destroy (intset);
@@ -2197,8 +2197,8 @@ gabble_roster_handle_add_to_group (GabbleRoster *roster,
        */
       if (!item->unsent_edits->add_to_groups)
         {
-          item->unsent_edits->add_to_groups = handle_set_new (
-              priv->conn->handles, TP_HANDLE_TYPE_GROUP);
+          item->unsent_edits->add_to_groups = tp_handle_set_new (
+              priv->conn->handle_repos[TP_HANDLE_TYPE_GROUP]);
         }
       tp_handle_set_add (item->unsent_edits->add_to_groups, group);
       if (item->unsent_edits->remove_from_groups)
@@ -2257,8 +2257,8 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
        */
       if (!item->unsent_edits->remove_from_groups)
         {
-          item->unsent_edits->remove_from_groups = handle_set_new (
-              priv->conn->handles, TP_HANDLE_TYPE_GROUP);
+          item->unsent_edits->remove_from_groups = tp_handle_set_new (
+              priv->conn->handle_repos[TP_HANDLE_TYPE_GROUP]);
         }
       tp_handle_set_add (item->unsent_edits->remove_from_groups, group);
       if (item->unsent_edits->add_to_groups)

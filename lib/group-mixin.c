@@ -70,7 +70,7 @@ tp_group_mixin_class_get_offset_quark ()
 {
   static GQuark offset_quark = 0;
   if (!offset_quark)
-    offset_quark = g_quark_from_static_string("GroupMixinClassOffsetQuark");
+    offset_quark = g_quark_from_static_string("TpGroupMixinClassOffsetQuark");
   return offset_quark;
 }
 
@@ -84,7 +84,7 @@ tp_group_mixin_get_offset_quark ()
 {
   static GQuark offset_quark = 0;
   if (!offset_quark)
-    offset_quark = g_quark_from_static_string("GroupMixinOffsetQuark");
+    offset_quark = g_quark_from_static_string("TpGroupMixinOffsetQuark");
   return offset_quark;
 }
 

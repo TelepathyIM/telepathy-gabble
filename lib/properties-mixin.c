@@ -55,7 +55,7 @@ tp_properties_mixin_class_get_offset_quark ()
 {
   static GQuark offset_quark = 0;
   if (!offset_quark)
-    offset_quark = g_quark_from_static_string("PropertiesMixinClassOffsetQuark");
+    offset_quark = g_quark_from_static_string("TpPropertiesMixinClassOffsetQuark");
   return offset_quark;
 }
 
@@ -69,7 +69,7 @@ tp_properties_mixin_get_offset_quark ()
 {
   static GQuark offset_quark = 0;
   if (!offset_quark)
-    offset_quark = g_quark_from_static_string("PropertiesMixinOffsetQuark");
+    offset_quark = g_quark_from_static_string("TpPropertiesMixinOffsetQuark");
   return offset_quark;
 }
 

@@ -211,9 +211,11 @@ get_muc_from_jid (GabbleMucFactory *fac, const gchar *jid)
   TpHandle handle;
   GabbleMucChannel *chan = NULL;
 
-  if (gabble_handle_for_room_exists (priv->conn->handles, jid, TRUE))
+  if (gabble_handle_for_room_exists (
+        priv->conn->handle_repos[TP_HANDLE_TYPE_ROOM], jid, TRUE))
     {
-      handle = gabble_handle_for_room (priv->conn->handles, jid);
+      handle = gabble_handle_for_room (
+          priv->conn->handle_repos[TP_HANDLE_TYPE_ROOM], jid);
 
       chan = g_hash_table_lookup (priv->channels, GUINT_TO_POINTER (handle));
     }
@@ -355,7 +357,8 @@ obsolete_invite_disco_cb (GabbleDisco *self,
     }
 
   /* OK, it's MUC after all, create a new channel */
-  handle = gabble_handle_for_room (priv->conn->handles, jid);
+  handle = gabble_handle_for_room (
+      priv->conn->handle_repos[TP_HANDLE_TYPE_ROOM], jid);
 
   if (g_hash_table_lookup (priv->channels, GINT_TO_POINTER (handle)) == NULL)
     {
@@ -432,8 +435,9 @@ muc_factory_message_cb (LmMessageHandler *handler,
               return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
             }
 
-          inviter_handle = gabble_handle_for_contact (priv->conn->handles,
-                                                      invite_from, FALSE);
+          inviter_handle = gabble_handle_for_contact (
+              priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT],
+              invite_from, FALSE);
 
           reason_node = lm_message_node_get_child (node, "reason");
           if (reason_node != NULL)
@@ -447,7 +451,8 @@ muc_factory_message_cb (LmMessageHandler *handler,
             }
 
           /* create the channel */
-          handle = gabble_handle_for_room (priv->conn->handles, from);
+          handle = gabble_handle_for_room (
+              priv->conn->handle_repos[TP_HANDLE_TYPE_ROOM], from);
 
           if (g_hash_table_lookup (priv->channels, GINT_TO_POINTER (handle)) == NULL)
             {
@@ -484,8 +489,8 @@ muc_factory_message_cb (LmMessageHandler *handler,
         return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
       /* the inviter JID is in "from" */
-      inviter_handle = gabble_handle_for_contact (priv->conn->handles,
-                                                  from, FALSE);
+      inviter_handle = gabble_handle_for_contact (
+          priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT], from, FALSE);
 
       /* reason is the body */
       reason = body;
@@ -509,12 +514,14 @@ muc_factory_message_cb (LmMessageHandler *handler,
 HANDLE_MESSAGE:
 
   /* check if a room with the jid exists */
-  if (!gabble_handle_for_room_exists (priv->conn->handles, from, TRUE))
+  if (!gabble_handle_for_room_exists (
+        priv->conn->handle_repos[TP_HANDLE_TYPE_ROOM], from, TRUE))
     {
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
-  room_handle = gabble_handle_for_room (priv->conn->handles, from);
+  room_handle = gabble_handle_for_room (
+      priv->conn->handle_repos[TP_HANDLE_TYPE_ROOM], from);
 
   /* find the MUC channel */
   chan = g_hash_table_lookup (priv->channels, GUINT_TO_POINTER (room_handle));
@@ -529,7 +536,8 @@ HANDLE_MESSAGE:
 
   /* get the handle of the sender, which is either the room
    * itself or one of its members */
-  if (gabble_handle_for_room_exists (priv->conn->handles, from, FALSE))
+  if (gabble_handle_for_room_exists (
+        priv->conn->handle_repos[TP_HANDLE_TYPE_ROOM], from, FALSE))
     {
       handle_type = TP_HANDLE_TYPE_ROOM;
       handle = room_handle;
@@ -537,7 +545,8 @@ HANDLE_MESSAGE:
   else
     {
       handle_type = TP_HANDLE_TYPE_CONTACT;
-      handle = gabble_handle_for_contact (priv->conn->handles, from, TRUE);
+      handle = gabble_handle_for_contact (
+          priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT], from, TRUE);
     }
 
   if (send_error != CHANNEL_TEXT_SEND_NO_ERROR)
@@ -609,7 +618,8 @@ muc_factory_presence_cb (LmMessageHandler *handler,
         {
           TpHandle handle;
 
-          handle = gabble_handle_for_contact (priv->conn->handles, from, TRUE);
+          handle = gabble_handle_for_contact (
+              priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT], from, TRUE);
           if (handle == 0)
             {
               NODE_DEBUG (msg->node, "discarding MUC presence from malformed jid");

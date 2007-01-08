@@ -548,17 +548,15 @@ contact_handle_to_room_identity (GabbleMucChannel *chan, TpHandle main_handle,
                                  TpHandle *room_handle, GString **room_jid)
 {
   GabbleMucChannelPrivate *priv;
-  GabbleHandleRepo *handles;
+  TpHandleRepoIface *contact_handles;
   const gchar *main_jid;
   gchar *username, *server;
   gchar *jid;
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  contact_handles = priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT];
 
-  handles = priv->conn->handles;
-
-  main_jid = tp_handle_inspect (
-      priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT], main_handle);
+  main_jid = tp_handle_inspect (contact_handles, main_handle);
 
   gabble_decode_jid (main_jid, &username, &server, NULL);
 
@@ -569,7 +567,7 @@ contact_handle_to_room_identity (GabbleMucChannel *chan, TpHandle main_handle,
 
   if (room_handle)
     {
-      *room_handle = gabble_handle_for_contact (handles, jid, TRUE);
+      *room_handle = gabble_handle_for_contact (contact_handles, jid, TRUE);
     }
 
   if (room_jid)
@@ -1577,7 +1575,8 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
               TpHandle owner_handle;
 
               owner_handle = gabble_handle_for_contact (
-                  priv->conn->handles, owner_jid, FALSE);
+                  priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT],
+                  owner_jid, FALSE);
 
               tp_group_mixin_add_handle_owner (G_OBJECT (chan), handle,
                                                    owner_handle);
@@ -1656,7 +1655,9 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
           actor_jid = lm_message_node_get_attribute (actor_node, "jid");
           if (actor_jid != NULL)
             {
-              actor = gabble_handle_for_contact(priv->conn->handles, actor_jid, FALSE);
+              actor = gabble_handle_for_contact(
+                  priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT],
+                  actor_jid, FALSE);
             }
         }
 

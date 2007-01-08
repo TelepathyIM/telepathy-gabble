@@ -216,7 +216,8 @@ im_factory_message_cb (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
-  handle = gabble_handle_for_contact (priv->conn->handles, from, FALSE);
+  handle = gabble_handle_for_contact (
+      priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT], from, FALSE);
   if (handle == 0)
     {
       NODE_DEBUG (message->node, "ignoring message node from malformed jid");

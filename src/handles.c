@@ -188,50 +188,8 @@ gabble_handles_are_valid (GabbleHandleRepo *repo,
       allow_zero, error);
 }
 
-gboolean
-gabble_handle_ref (GabbleHandleRepo *repo,
-                   TpHandleType type,
-                   TpHandle handle)
-{
-  if (!tp_handle_type_is_valid (type, NULL))
-    return FALSE;
-
-  if (!repo->repos[type])
-    return FALSE;
-
-  return tp_handle_ref (repo->repos[type], handle);
-}
-
-gboolean
-gabble_handle_unref (GabbleHandleRepo *repo,
-                     TpHandleType type,
-                     TpHandle handle)
-{
-  if (!tp_handle_type_is_valid (type, NULL))
-    return FALSE;
-
-  if (!repo->repos[type])
-    return FALSE;
-
-  return tp_handle_unref (repo->repos[type], handle);
-}
-
-const char *
-gabble_handle_inspect (GabbleHandleRepo *repo,
-                       TpHandleType type,
-                       TpHandle handle)
-{
-  if (!tp_handle_type_is_valid (type, NULL))
-    return NULL;
-
-  if (!repo->repos[type])
-    return NULL;
-
-  return tp_handle_inspect (repo->repos[type], handle);
-}
-
 TpHandle
-gabble_handle_for_contact (GabbleHandleRepo *repo,
+gabble_handle_for_contact (TpHandleRepoIface *repo,
                            const char *jid,
                            gboolean with_resource)
 {
@@ -242,7 +200,6 @@ gabble_handle_for_contact (GabbleHandleRepo *repo,
   TpHandle handle = 0;
 
   g_assert (repo != NULL);
-  g_assert (repo->repos[TP_HANDLE_TYPE_CONTACT] != NULL);
   g_assert (jid != NULL);
   g_assert (*jid != '\0');
 
@@ -257,8 +214,7 @@ gabble_handle_for_contact (GabbleHandleRepo *repo,
   if (NULL != resource)
     {
       clean_jid = g_strdup_printf ("%s@%s/%s", username, server, resource);
-      handle = tp_handle_request (
-          repo->repos[TP_HANDLE_TYPE_CONTACT], clean_jid, FALSE);
+      handle = tp_handle_request (repo, clean_jid, FALSE);
 
       if (0 != handle)
         goto OUT;
@@ -268,15 +224,13 @@ gabble_handle_for_contact (GabbleHandleRepo *repo,
     {
       g_free (clean_jid);
       clean_jid = g_strdup_printf ("%s@%s", username, server);
-      handle = tp_handle_request (
-          repo->repos[TP_HANDLE_TYPE_CONTACT], clean_jid, FALSE);
+      handle = tp_handle_request (repo, clean_jid, FALSE);
 
       if (0 != handle)
         goto OUT;
     }
 
-  handle = tp_handle_request (
-      repo->repos[TP_HANDLE_TYPE_CONTACT], clean_jid, TRUE);
+  handle = tp_handle_request (repo, clean_jid, TRUE);
 OUT:
 
   g_free (clean_jid);
@@ -287,7 +241,7 @@ OUT:
 }
 
 gboolean
-gabble_handle_for_room_exists (GabbleHandleRepo *repo,
+gabble_handle_for_room_exists (TpHandleRepoIface *repo,
                                const gchar *jid,
                                gboolean ignore_nick)
 {
@@ -295,7 +249,7 @@ gabble_handle_for_room_exists (GabbleHandleRepo *repo,
   gchar *room, *service, *nick;
   gchar *clean_jid;
 
-  g_assert (repo->repos[TP_HANDLE_TYPE_ROOM] != NULL);
+  g_assert (repo != NULL);
 
   gabble_decode_jid (jid, &room, &service, &nick);
 
@@ -308,8 +262,7 @@ gabble_handle_for_room_exists (GabbleHandleRepo *repo,
     clean_jid = g_strdup_printf ("%s@%s/%s", room, service, nick);
 
   /* FIXME: how can the version *with* a nick possibly be added? */
-  handle = tp_handle_request (
-      repo->repos[TP_HANDLE_TYPE_ROOM], clean_jid, FALSE);
+  handle = tp_handle_request (repo, clean_jid, FALSE);
   
   g_free (clean_jid);
   g_free (room);
@@ -320,19 +273,17 @@ gabble_handle_for_room_exists (GabbleHandleRepo *repo,
     return FALSE;
 
   /* FIXME: how can this possibly fail if it's there? */
-  return (tp_handle_is_valid (repo->repos[TP_HANDLE_TYPE_ROOM],
-      handle, NULL));
+  return (tp_handle_is_valid (repo, handle, NULL));
 }
 
 TpHandle
-gabble_handle_for_room (GabbleHandleRepo *repo,
+gabble_handle_for_room (TpHandleRepoIface *repo,
                         const gchar *jid)
 {
   TpHandle handle;
   gchar *room, *service, *clean_jid;
 
   g_assert (repo != NULL);
-  g_assert (repo->repos[TP_HANDLE_TYPE_ROOM] != NULL);
   g_assert (jid != NULL);
   g_assert (*jid != '\0');
 
@@ -345,8 +296,7 @@ gabble_handle_for_room (GabbleHandleRepo *repo,
     {
       clean_jid = g_strdup_printf ("%s@%s", room, service);
 
-      handle = tp_handle_request (
-          repo->repos[TP_HANDLE_TYPE_ROOM], clean_jid, TRUE);
+      handle = tp_handle_request (repo, clean_jid, TRUE);
       g_free (clean_jid);
     }
 

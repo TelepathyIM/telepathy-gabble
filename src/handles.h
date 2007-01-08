@@ -50,13 +50,9 @@ void gabble_handle_repo_destroy (GabbleHandleRepo *repo);
 gboolean gabble_handle_is_valid (GabbleHandleRepo *repo, TpHandleType type, TpHandle handle, GError **error);
 gboolean gabble_handles_are_valid (GabbleHandleRepo *repo, TpHandleType type, const GArray *array, gboolean allow_zero, GError **error);
 
-gboolean gabble_handle_ref (GabbleHandleRepo *repo, TpHandleType type, TpHandle handle);
-gboolean gabble_handle_unref (GabbleHandleRepo *repo, TpHandleType type, TpHandle handle);
-const char *gabble_handle_inspect (GabbleHandleRepo *repo, TpHandleType type, TpHandle handle);
-
-TpHandle gabble_handle_for_contact (GabbleHandleRepo *repo, const char *jid, gboolean with_resource);
-gboolean gabble_handle_for_room_exists (GabbleHandleRepo *repo, const gchar *jid, gboolean ignore_nick);
-TpHandle gabble_handle_for_room (GabbleHandleRepo *repo, const gchar *jid);
+TpHandle gabble_handle_for_contact (TpHandleRepoIface *repo, const char *jid, gboolean with_resource);
+gboolean gabble_handle_for_room_exists (TpHandleRepoIface *repo, const gchar *jid, gboolean ignore_nick);
+TpHandle gabble_handle_for_room (TpHandleRepoIface *repo, const gchar *jid);
 
 gboolean gabble_handle_set_qdata (GabbleHandleRepo *repo, TpHandleType type,
     TpHandle handle, GQuark key_id, gpointer data, GDestroyNotify destroy);

@@ -760,7 +760,8 @@ _caps_disco_cb (GabbleDisco *disco,
         caps |= PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO;
     }
 
-  handle = gabble_handle_for_contact (priv->conn->handles, jid, FALSE);
+  handle = gabble_handle_for_contact (
+      priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT], jid, FALSE);
   trust = capability_info_recvd (cache, node, handle, caps);
 
   for (i = waiters; NULL != i;)
@@ -1078,7 +1079,8 @@ gabble_presence_cache_lm_message_cb (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
-  handle = gabble_handle_for_contact (priv->conn->handles, from, FALSE);
+  handle = gabble_handle_for_contact (
+      priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT], from, FALSE);
 
   if (0 == handle)
     {

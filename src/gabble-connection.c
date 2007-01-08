@@ -1440,8 +1440,8 @@ _gabble_connection_connect (GabbleConnection *conn,
   jid = g_strdup_printf ("%s@%s", priv->username, priv->stream_server);
   lm_connection_set_jid (conn->lmconn, jid);
 
-  conn->self_handle = gabble_handle_for_contact (conn->handles,
-                                                 jid, FALSE);
+  conn->self_handle = gabble_handle_for_contact (
+      conn->handle_repos[TP_HANDLE_TYPE_CONTACT], jid, FALSE);
   g_free (jid);
 
   if (conn->self_handle == 0)
@@ -3861,7 +3861,7 @@ gabble_connection_inspect_handles (GabbleConnection *self,
       const gchar *tmp;
 
       handle = g_array_index (handles, TpHandle, i);
-      tmp = gabble_handle_inspect (self->handles, handle_type, handle);
+      tmp = tp_handle_inspect (self->handle_repos[handle_type], handle);
       g_assert (tmp != NULL);
 
       ret[i] = tmp;
@@ -4240,7 +4240,7 @@ gabble_connection_request_aliases (GabbleConnection *self,
       else
         {
           DEBUG ("requesting vCard for alias of contact %s",
-              gabble_handle_inspect (self->handles, TP_HANDLE_TYPE_CONTACT,
+              tp_handle_inspect (self->handle_repos[TP_HANDLE_TYPE_CONTACT],
                 handle));
 
           g_free (alias);
@@ -4709,9 +4709,11 @@ room_verify_batch_new (GabbleConnection *conn,
       batch->contexts[i].jid = qualified_name;
 
       /* has the handle been verified before? */
-      if (gabble_handle_for_room_exists (conn->handles, qualified_name, FALSE))
+      if (gabble_handle_for_room_exists (
+            conn->handle_repos[TP_HANDLE_TYPE_ROOM], qualified_name, FALSE))
         {
-          handle = gabble_handle_for_room (conn->handles, qualified_name);
+          handle = gabble_handle_for_room (
+              conn->handle_repos[TP_HANDLE_TYPE_ROOM], qualified_name);
         }
       else
         {
@@ -4813,7 +4815,8 @@ room_jid_disco_cb (GabbleDisco *disco,
       return;
     }
 
-  handle = gabble_handle_for_room (batch->conn->handles, rvctx->jid);
+  handle = gabble_handle_for_room (
+      batch->conn->handle_repos[TP_HANDLE_TYPE_ROOM], rvctx->jid);
   g_assert (handle != 0);
 
   DEBUG ("disco reported MUC support for service name in jid %s", rvctx->jid);
@@ -4915,7 +4918,8 @@ gabble_connection_request_handles (GabbleConnection *self,
               return;
             }
 
-          handle = gabble_handle_for_contact (self->handles, name, FALSE);
+          handle = gabble_handle_for_contact (
+              self->handle_repos[TP_HANDLE_TYPE_CONTACT], name, FALSE);
 
           if (handle == 0)
             {

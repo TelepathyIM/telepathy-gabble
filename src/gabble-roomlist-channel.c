@@ -496,7 +496,8 @@ room_info_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
   if (var != NULL)
     INSERT_KEY (keys, "language", G_TYPE_STRING, string, var);
 
-  handle = gabble_handle_for_room (priv->conn->handles, jid);
+  handle = gabble_handle_for_room (
+      priv->conn->handle_repos[TP_HANDLE_TYPE_ROOM], jid);
 
   tp_handle_set_add (priv->signalled_rooms, handle);
 

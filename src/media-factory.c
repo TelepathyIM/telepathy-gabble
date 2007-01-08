@@ -262,7 +262,8 @@ media_factory_jingle_cb (LmMessageHandler *handler,
       goto BAD_REQUEST;
     }
 
-  handle = gabble_handle_for_contact (priv->conn->handles, from, FALSE);
+  handle = gabble_handle_for_contact (
+      priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT], from, FALSE);
   if (handle == 0)
     {
       NODE_DEBUG (iq_node, "unable to get handle for sender");

@@ -1038,7 +1038,8 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
     {
       TpHandle sender;
 
-      sender = gabble_handle_for_contact (priv->conn->handles,
+      sender = gabble_handle_for_contact (
+          priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT],
           from, FALSE);
 
       if (sender != priv->conn->self_handle)
@@ -1127,7 +1128,8 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
               continue;
             }
 
-          handle = gabble_handle_for_contact (priv->conn->handles, jid, FALSE);
+          handle = gabble_handle_for_contact (
+              priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT], jid, FALSE);
           if (handle == 0)
             {
                NODE_DEBUG (item_node, "item jid is malformed, skipping");
@@ -1394,7 +1396,8 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
 
   sub_type = lm_message_get_sub_type (message);
 
-  handle = gabble_handle_for_contact (priv->conn->handles, from, FALSE);
+  handle = gabble_handle_for_contact (
+      priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT], from, FALSE);
 
   if (handle == 0)
     {

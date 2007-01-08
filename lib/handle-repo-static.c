@@ -197,7 +197,8 @@ static_inspect_handle (TpHandleRepoIface *irepo, TpHandle handle)
 {
   TpStaticHandleRepo *self = TP_STATIC_HANDLE_REPO (irepo);
 
-  g_assert (handle > 0 && handle <= self->last_handle);
+  if (handle <= 0 || handle > self->last_handle)
+    return NULL;
 
   return self->handle_names[handle-1];
 }

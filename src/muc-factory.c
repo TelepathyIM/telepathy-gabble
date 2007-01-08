@@ -417,7 +417,7 @@ muc_factory_message_cb (LmMessageHandler *handler,
           const gchar *invite_from, *reason;
           TpHandle inviter_handle;
 
-          if (send_error != GABBLE_CHANNEL_SEND_NO_ERROR)
+          if (send_error != TP_CHANNEL_SEND_NO_ERROR)
             {
               NODE_DEBUG (message->node, "got a MUC invitation message "
                              "with a send error; ignoring");
@@ -549,7 +549,7 @@ HANDLE_MESSAGE:
           priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT], from, TRUE);
     }
 
-  if (send_error != GABBLE_CHANNEL_SEND_NO_ERROR)
+  if (send_error != TP_CHANNEL_SEND_NO_ERROR)
     {
       _tp_text_mixin_send_error_signal (G_OBJECT (chan), send_error, stamp,
           msgtype, body_offset);

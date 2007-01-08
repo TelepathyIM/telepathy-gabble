@@ -38,6 +38,7 @@
 #include <telepathy-glib/helpers.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/channel-iface.h>
+#include "text-mixin.h"
 
 #include "gabble-im-channel.h"
 #include "gabble-im-channel-glue.h"

@@ -24,9 +24,8 @@
 #include <glib-object.h>
 #include <time.h>
 
-#include "handles.h"
 #include <telepathy-glib/enums.h>
-#include "text-mixin.h"
+#include <telepathy-glib/text-mixin.h>
 
 G_BEGIN_DECLS
 

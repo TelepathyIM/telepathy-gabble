@@ -27,6 +27,7 @@ tpginclude_HEADERS = \
     telepathy-glib/interfaces.h \
     telepathy-glib/intset.h \
     telepathy-glib/properties-mixin.h \
+    telepathy-glib/text-mixin.h \
     telepathy-glib/util.h
 
 specinclude_HEADERS = \
@@ -62,6 +63,7 @@ libtelepathy_glib_la_SOURCES = \
     channel-factory-iface.c \
     properties-mixin.c \
     signals-marshal.list \
+    text-mixin.c \
     util.c
 
 AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @HANDLE_LEAK_DEBUG_CFLAGS@

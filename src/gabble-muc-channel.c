@@ -33,6 +33,7 @@
 #include "gabble-connection.h"
 #include "gabble-error.h"
 #include "namespaces.h"
+#include "text-mixin.h"
 #include "util.h"
 
 #include <telepathy-glib/errors.h>

@@ -107,12 +107,6 @@ gabble_handle_repo_new ()
   return repo;
 }
 
-TpHandleSet *
-handle_set_new (GabbleHandleRepo *repo, TpHandleType type)
-{
-  return tp_handle_set_new (gabble_handle_repo_get_tp_repo (repo, type));
-}
-
 TpHandleRepoIface
 *gabble_handle_repo_get_tp_repo (GabbleHandleRepo *repo,
                                  TpHandleType type)

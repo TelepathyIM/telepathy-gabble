@@ -192,7 +192,8 @@ gabble_roomlist_channel_set_property (GObject     *object,
       break;
     case PROP_CONNECTION:
       priv->conn = g_value_get_object (value);
-      new_signalled_rooms = handle_set_new (priv->conn->handles, TP_HANDLE_TYPE_ROOM);
+      new_signalled_rooms = tp_handle_set_new (
+          priv->conn->handle_repos[TP_HANDLE_TYPE_ROOM]);
       if (priv->signalled_rooms != NULL)
         {
           const TpIntSet *add;

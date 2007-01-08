@@ -38,7 +38,6 @@ typedef enum
   GABBLE_LIST_HANDLE_DENY
 } GabbleListHandle;
 
-TpHandleSet *handle_set_new (GabbleHandleRepo *repo, TpHandleType type);
 TpHandleRepoIface *gabble_handle_repo_get_tp_repo (GabbleHandleRepo *repo,
     TpHandleType type);
 

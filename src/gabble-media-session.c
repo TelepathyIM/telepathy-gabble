@@ -33,8 +33,8 @@
 #include "namespaces.h"
 #include "util.h"
 
+#include <telepathy-glib/dbus.h>
 #include <telepathy-glib/errors.h>
-#include <telepathy-glib/helpers.h>
 
 #include "gabble-connection.h"
 #include "gabble-media-channel.h"

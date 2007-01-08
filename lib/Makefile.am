@@ -13,6 +13,7 @@ noinst_LTLIBRARIES = libtelepathy-glib.la
 tpginclude_HEADERS = \
     telepathy-glib/channel-iface.h \
     telepathy-glib/channel-factory-iface.h \
+    telepathy-glib/dbus.h \
     telepathy-glib/debug.h \
     telepathy-glib/debug-ansi.h \
     telepathy-glib/enums.h \
@@ -23,7 +24,6 @@ tpginclude_HEADERS = \
     telepathy-glib/handle-repo-static.h \
     telepathy-glib/handle-repo-dynamic.h \
     telepathy-glib/heap.h \
-    telepathy-glib/helpers.h \
     telepathy-glib/interfaces.h \
     telepathy-glib/intset.h \
     telepathy-glib/properties-mixin.h \
@@ -48,6 +48,7 @@ BUILT_SOURCES = $(nodist_geninclude_HEADERS) \
 CLEANFILES = $(BUILT_SOURCES)
 
 libtelepathy_glib_la_SOURCES = \
+    dbus.c \
     debug.c \
     debug.h \
     errors.c \
@@ -57,7 +58,6 @@ libtelepathy_glib_la_SOURCES = \
     handle-repo-static.c \
     handle-set.c \
     heap.c \
-    helpers.c \
     intset.c \
     channel-iface.c \
     channel-factory-iface.c \

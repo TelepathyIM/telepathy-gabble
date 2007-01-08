@@ -1,5 +1,5 @@
 /*
- * telepathy-helpers.c - Source for some Telepathy D-Bus helper functions
+ * dbus.c - Source for some Telepathy D-Bus helper functions
  * Copyright (C) 2005 Collabora Ltd.
  * Copyright (C) 2005 Nokia Corporation
  *
@@ -20,7 +20,7 @@
 
 #include <stdlib.h>
 #include <dbus/dbus-glib.h>
-#include <telepathy-glib/helpers.h>
+#include <telepathy-glib/dbus.h>
 
 DBusGConnection *
 tp_get_bus ()

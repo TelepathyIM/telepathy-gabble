@@ -36,8 +36,8 @@
 #include "text-mixin.h"
 #include "util.h"
 
+#include <telepathy-glib/dbus.h>
 #include <telepathy-glib/errors.h>
-#include <telepathy-glib/helpers.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/channel-iface.h>
 

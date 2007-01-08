@@ -24,7 +24,7 @@
 
 #include <telepathy-glib/handle-repo-dynamic.h>
 #include <telepathy-glib/heap.h>
-#include <telepathy-glib/helpers.h>
+#include <telepathy-glib/dbus.h>
 
 /* Handle leak tracing */
 

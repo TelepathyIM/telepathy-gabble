@@ -25,9 +25,8 @@
 #include <string.h>
 
 #include "gabble-connection.h"
-#include <telepathy-glib/enums.h>
+#include <telepathy-glib/dbus.h>
 #include <telepathy-glib/errors.h>
-#include <telepathy-glib/helpers.h>
 
 #include "gabble-connection-manager.h"
 #include "gabble-connection-manager-glue.h"

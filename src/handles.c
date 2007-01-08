@@ -19,7 +19,6 @@
  */
 
 #include <glib.h>
-#include <dbus/dbus-glib.h>
 #include <string.h>
 
 #include <telepathy-glib/heap.h>
@@ -27,7 +26,6 @@
 #include <telepathy-glib/handle-repo-dynamic.h>
 #include <telepathy-glib/handle-repo-static.h>
 #include <telepathy-glib/errors.h>
-#include <telepathy-glib/helpers.h>
 
 #include "handles.h"
 #include "util.h"

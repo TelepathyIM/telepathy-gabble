@@ -19,10 +19,7 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#define DBUS_API_SUBJECT_TO_CHANGE
-
-#include <dbus/dbus-glib.h>
-#include <dbus/dbus-glib-lowlevel.h>
+#include <telepathy-glib/dbus.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_VCARD
 
@@ -32,8 +29,6 @@
 #include "handles.h"
 #include "namespaces.h"
 #include <telepathy-glib/helpers.h>
-#include <telepathy-glib/heap.h>
-#include "handles.h"
 #include "util.h"
 #include "vcard-manager.h"
 

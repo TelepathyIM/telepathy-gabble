@@ -48,7 +48,7 @@ struct _GabbleTextMixinClass {
 };
 
 struct _GabbleTextMixin {
-  GabbleHandleRepo *handle_repo;
+  TpHandleRepoIface *contacts_repo;
   guint recv_id;
   gboolean send_nick;
   gboolean message_lost;
@@ -73,7 +73,7 @@ GQuark gabble_text_mixin_class_get_offset_quark (void);
 GQuark gabble_text_mixin_get_offset_quark (void);
 
 void gabble_text_mixin_class_init (GObjectClass *obj_cls, glong offset);
-void gabble_text_mixin_init (GObject *obj, glong offset, GabbleHandleRepo *handle_repo, gboolean send_nick);
+void gabble_text_mixin_init (GObject *obj, glong offset, TpHandleRepoIface *contacts_repo, gboolean send_nick);
 void gabble_text_mixin_set_message_types (GObject *obj, ...);
 void gabble_text_mixin_finalize (GObject *obj);
 

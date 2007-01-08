@@ -277,7 +277,8 @@ gabble_muc_channel_constructor (GType type, guint n_props,
         GabbleMucChannel, properties));
 
   /* initialize text mixin */
-  gabble_text_mixin_init (obj, G_STRUCT_OFFSET (GabbleMucChannel, text), handles, FALSE);
+  gabble_text_mixin_init (obj, G_STRUCT_OFFSET (GabbleMucChannel, text),
+      gabble_handle_repo_get_tp_repo (handles, TP_HANDLE_TYPE_CONTACT), FALSE);
 
   gabble_text_mixin_set_message_types (obj,
       TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL,

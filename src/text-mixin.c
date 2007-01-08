@@ -200,7 +200,7 @@ gabble_text_mixin_class_init (GObjectClass *obj_cls, glong offset)
 void
 gabble_text_mixin_init (GObject *obj,
                         glong offset,
-                        GabbleHandleRepo *handle_repo,
+                        TpHandleRepoIface *contacts_repo,
                         gboolean send_nick)
 {
   GabbleTextMixin *mixin;
@@ -214,7 +214,7 @@ gabble_text_mixin_init (GObject *obj,
   mixin = GABBLE_TEXT_MIXIN (obj);
 
   mixin->pending = g_queue_new ();
-  mixin->handle_repo = handle_repo;
+  mixin->contacts_repo = contacts_repo;
   mixin->recv_id = 0;
   mixin->msg_types = g_array_sized_new (FALSE, FALSE, sizeof (guint), 4);
 
@@ -250,7 +250,7 @@ gabble_text_mixin_finalize (GObject *obj)
 
   while ((msg = g_queue_pop_head(mixin->pending)))
     {
-      gabble_handle_unref (mixin->handle_repo, TP_HANDLE_TYPE_CONTACT, msg->sender);
+      tp_handle_unref (mixin->contacts_repo, msg->sender);
       _gabble_pending_free (msg);
     }
 
@@ -361,7 +361,7 @@ gboolean gabble_text_mixin_receive (GObject *obj,
   msg->sender = sender;
   msg->type = type;
 
-  gabble_handle_ref (mixin->handle_repo, TP_HANDLE_TYPE_CONTACT, msg->sender);
+  tp_handle_ref (mixin->contacts_repo, msg->sender);
   g_queue_push_tail (mixin->pending, msg);
 
   g_signal_emit (obj, mixin_cls->received_signal_id, 0,
@@ -438,7 +438,7 @@ gboolean gabble_text_mixin_acknowledge_pending_messages (GObject *obj, const GAr
 
       g_queue_remove (mixin->pending, msg);
 
-      gabble_handle_unref (mixin->handle_repo, TP_HANDLE_TYPE_CONTACT, msg->sender);
+      tp_handle_unref (mixin->contacts_repo, msg->sender);
       _gabble_pending_free (msg);
     }
 
@@ -620,7 +620,7 @@ gabble_text_mixin_clear (GObject *obj)
 
   while ((msg = g_queue_pop_head(mixin->pending)))
     {
-      gabble_handle_unref (mixin->handle_repo, TP_HANDLE_TYPE_CONTACT, msg->sender);
+      tp_handle_unref (mixin->contacts_repo, msg->sender);
       _gabble_pending_free (msg);
     }
 }

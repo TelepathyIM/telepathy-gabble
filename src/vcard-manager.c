@@ -725,11 +725,9 @@ observe_vcard (GabbleConnection *conn, GabbleVCardManager *manager,
 
               g_signal_emit (G_OBJECT (manager), signals[NICKNAME_UPDATE],
                              0, handle);
-              if (!gabble_handle_set_qdata (conn->handles,
-                                            TP_HANDLE_TYPE_CONTACT,
-                                            handle,
-                                            gabble_vcard_manager_cache_quark(),
-                                            alias, g_free))
+              if (!tp_handle_set_qdata (
+                    conn->handle_repos[TP_HANDLE_TYPE_CONTACT], handle,
+                    gabble_vcard_manager_cache_quark(), alias, g_free))
                 {
                   DEBUG ("failed to cache their alias");
                   g_free (alias);
@@ -757,11 +755,8 @@ observe_vcard (GabbleConnection *conn, GabbleVCardManager *manager,
 
           g_signal_emit (G_OBJECT (manager), signals[NICKNAME_UPDATE],
                          0, handle);
-          if (!gabble_handle_set_qdata (conn->handles,
-                                        TP_HANDLE_TYPE_CONTACT,
-                                        handle,
-                                        gabble_vcard_manager_cache_quark(),
-                                        alias, g_free))
+          if (!tp_handle_set_qdata (conn->handle_repos[TP_HANDLE_TYPE_CONTACT],
+                handle, gabble_vcard_manager_cache_quark(), alias, g_free))
             {
               DEBUG ("failed to cache their alias");
               g_free (alias);
@@ -770,11 +765,9 @@ observe_vcard (GabbleConnection *conn, GabbleVCardManager *manager,
       else
         {
           /* remember that they don't have an alias */
-          if (!gabble_handle_set_qdata (conn->handles,
-                                        TP_HANDLE_TYPE_CONTACT,
-                                        handle,
-                                        gabble_vcard_manager_cache_quark (),
-                                        (gchar *) NO_ALIAS, NULL))
+          if (!tp_handle_set_qdata (conn->handle_repos[TP_HANDLE_TYPE_CONTACT],
+                handle, gabble_vcard_manager_cache_quark (),
+                (gchar *) NO_ALIAS, NULL))
             DEBUG ("failed to cache their lack of vcard alias");
         }
 
@@ -1246,10 +1239,9 @@ gabble_vcard_manager_get_cached_alias (GabbleVCardManager *manager,
 
   priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (manager);
 
-  s = gabble_handle_get_qdata (priv->connection->handles,
-                               TP_HANDLE_TYPE_CONTACT,
-                               handle,
-                               gabble_vcard_manager_cache_quark());
+  s = tp_handle_get_qdata (
+      priv->connection->handle_repos[TP_HANDLE_TYPE_CONTACT],
+      handle, gabble_vcard_manager_cache_quark());
 
   if (s == NO_ALIAS)
     s = NULL;
@@ -1271,10 +1263,9 @@ gabble_vcard_manager_has_cached_alias (GabbleVCardManager *manager,
   g_return_val_if_fail (GABBLE_IS_VCARD_MANAGER (manager), FALSE);
 
   priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (manager);
-  p = gabble_handle_get_qdata (priv->connection->handles,
-                               TP_HANDLE_TYPE_CONTACT,
-                               handle,
-                               gabble_vcard_manager_cache_quark());
+  p = tp_handle_get_qdata (
+      priv->connection->handle_repos[TP_HANDLE_TYPE_CONTACT], handle,
+      gabble_vcard_manager_cache_quark());
   return p != NULL;
 }
 

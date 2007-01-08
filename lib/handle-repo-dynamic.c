@@ -572,10 +572,11 @@ dynamic_request_handle (TpHandleRepoIface *irepo, const char *id,
   return handle;
 }
 
-gboolean
-tp_dynamic_handle_repo_set_qdata (TpDynamicHandleRepo *self, TpHandle handle,
+static gboolean
+dynamic_set_qdata (TpHandleRepoIface *repo, TpHandle handle,
     GQuark key_id, gpointer data, GDestroyNotify destroy)
 {
+  TpDynamicHandleRepo *self = TP_DYNAMIC_HANDLE_REPO (repo);
   TpHandlePriv *priv = handle_priv_lookup (self, handle);
   if (priv == NULL)
     return FALSE;
@@ -583,10 +584,11 @@ tp_dynamic_handle_repo_set_qdata (TpDynamicHandleRepo *self, TpHandle handle,
   return TRUE;
 }
 
-gpointer
-tp_dynamic_handle_repo_get_qdata (TpDynamicHandleRepo *self, TpHandle handle,
+static gpointer
+dynamic_get_qdata (TpHandleRepoIface *repo, TpHandle handle,
     GQuark key_id)
 {
+  TpDynamicHandleRepo *self = TP_DYNAMIC_HANDLE_REPO (repo);
   TpHandlePriv *priv = handle_priv_lookup (self, handle);
   if (priv == NULL)
     return NULL;
@@ -607,6 +609,8 @@ dynamic_repo_iface_init (gpointer g_iface,
   klass->client_release_handle = dynamic_client_release_handle;
   klass->inspect_handle = dynamic_inspect_handle;
   klass->request_handle = dynamic_request_handle;
+  klass->set_qdata = dynamic_set_qdata;
+  klass->get_qdata = dynamic_get_qdata;
 }
 
 TpDynamicHandleRepo *

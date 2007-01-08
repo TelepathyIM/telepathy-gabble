@@ -139,3 +139,42 @@ tp_handle_request (TpHandleRepoIface *self,
   return TP_HANDLE_REPO_IFACE_GET_CLASS (self)->request_handle (self,
       id, may_create);
 }
+
+/**
+ * tp_handle_set_qdata:
+ * @repo: A #TpHandleRepo
+ * @handle: A handle to set data on
+ * @key_id: Key id to associate data with
+ * @data: data to associate with handle
+ * @destroy: A #GDestroyNotify to call to detroy the data,
+ *           or NULL if not needed.
+ *
+ * Associates a blob of data with a given handle and a given key
+ *
+ * If @destroy is set, then the data is freed when the handle is freed.
+ */
+
+gboolean
+tp_handle_set_qdata (TpHandleRepoIface *repo, TpHandle handle,
+                     GQuark key_id, gpointer data, GDestroyNotify destroy)
+{
+  return TP_HANDLE_REPO_IFACE_GET_CLASS (repo)->set_qdata (repo,
+      handle, key_id, data, destroy);
+}
+
+/**
+ * tp_handle_get_qdata:
+ * @repo: A #TpHandleRepo
+ * @type: The handle type
+ * @handle: A handle to get data from
+ * @key_id: Key id of data to fetch
+ *
+ * Gets the data associated with a given key on a given handle
+ */
+gpointer
+tp_handle_get_qdata (TpHandleRepoIface *repo, TpHandle handle,
+                     GQuark key_id)
+{
+  return TP_HANDLE_REPO_IFACE_GET_CLASS (repo)->get_qdata (repo,
+      handle, key_id);
+}

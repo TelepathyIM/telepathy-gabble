@@ -301,55 +301,6 @@ gabble_handle_for_room (TpHandleRepoIface *repo,
 }
 
 /**
- * gabble_handle_set_qdata:
- * @repo: A #GabbleHandleRepo
- * @type: The handle type
- * @handle: A handle to set data on
- * @key_id: Key id to associate data with
- * @data: data to associate with handle
- * @destroy: A #GDestroyNotify to call to detroy the data,
- *           or NULL if not needed.
- *
- * Associates a blob of data with a given handle and a given key
- *
- * If @destroy is set, then the data is freed when the handle is freed.
- */
-
-gboolean
-gabble_handle_set_qdata (GabbleHandleRepo *repo,
-                         TpHandleType type, TpHandle handle,
-                         GQuark key_id, gpointer data, GDestroyNotify destroy)
-{
-  if (repo->repos[type] == NULL || !TP_IS_DYNAMIC_HANDLE_REPO (repo->repos[type]))
-    return FALSE;
-
-  return tp_dynamic_handle_repo_set_qdata (
-      (TpDynamicHandleRepo *)repo->repos[type], handle,
-      key_id, data, destroy);
-}
-
-/**
- * gabble_handle_get_qdata:
- * @repo: A #GabbleHandleRepo
- * @type: The handle type
- * @handle: A handle to get data from
- * @key_id: Key id of data to fetch
- *
- * Gets the data associated with a given key on a given handle
- */
-gpointer
-gabble_handle_get_qdata (GabbleHandleRepo *repo,
-                         TpHandleType type, TpHandle handle,
-                         GQuark key_id)
-{
-  if (repo->repos[type] == NULL || !TP_IS_DYNAMIC_HANDLE_REPO (repo->repos[type]))
-    return NULL;
-
-  return tp_dynamic_handle_repo_get_qdata (
-      (TpDynamicHandleRepo *)repo->repos[type], handle, key_id);
-}
-
-/**
  * gabble_handle_client_hold:
  * @repo: a #GabbleHandleRepo
  * @client_name: D-Bus bus name of client to hold the handle for

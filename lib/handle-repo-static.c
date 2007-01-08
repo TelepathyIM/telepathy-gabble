@@ -218,6 +218,20 @@ static_request_handle (TpHandleRepoIface *irepo, const char *id,
   return 0;
 }
 
+static gboolean
+static_set_qdata (TpHandleRepoIface *repo, TpHandle handle,
+    GQuark key_id, gpointer data, GDestroyNotify destroy)
+{
+  return FALSE;
+}
+
+static gpointer
+static_get_qdata (TpHandleRepoIface *repo, TpHandle handle,
+    GQuark key_id)
+{
+  return NULL;
+}
+
 static void
 static_repo_iface_init (gpointer g_iface,
     gpointer iface_data)
@@ -232,6 +246,8 @@ static_repo_iface_init (gpointer g_iface,
   klass->client_release_handle = static_client_hold_or_release_handle;
   klass->inspect_handle = static_inspect_handle;
   klass->request_handle = static_request_handle;
+  klass->set_qdata = static_set_qdata;
+  klass->get_qdata = static_get_qdata;
 }
 
 TpStaticHandleRepo *

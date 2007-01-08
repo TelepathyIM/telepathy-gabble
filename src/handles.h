@@ -53,12 +53,6 @@ TpHandle gabble_handle_for_contact (TpHandleRepoIface *repo, const char *jid, gb
 gboolean gabble_handle_for_room_exists (TpHandleRepoIface *repo, const gchar *jid, gboolean ignore_nick);
 TpHandle gabble_handle_for_room (TpHandleRepoIface *repo, const gchar *jid);
 
-gboolean gabble_handle_set_qdata (GabbleHandleRepo *repo, TpHandleType type,
-    TpHandle handle, GQuark key_id, gpointer data, GDestroyNotify destroy);
-
-gpointer gabble_handle_get_qdata (GabbleHandleRepo *repo, TpHandleType type,
-    TpHandle handle, GQuark key_id);
-
 gboolean gabble_handle_client_hold (GabbleHandleRepo *repo, const gchar *client_name, TpHandle handle, TpHandleType type, GError **error);
 
 gboolean gabble_handle_client_release (GabbleHandleRepo *repo, const gchar *client_name, TpHandle handle, TpHandleType type, GError **error);

@@ -3802,8 +3802,8 @@ gabble_connection_hold_handles (GabbleConnection *self,
   for (i = 0; i < handles->len; i++)
     {
       TpHandle handle = g_array_index (handles, TpHandle, i);
-      if (!gabble_handle_client_hold (self->handles, sender, handle,
-            handle_type, &error))
+      if (!tp_handle_client_hold (self->handle_repos[handle_type], sender,
+            handle, &error))
         {
           dbus_g_method_return_error (context, error);
           g_error_free (error);
@@ -4028,8 +4028,8 @@ gabble_connection_release_handles (GabbleConnection *self,
   for (i = 0; i < handles->len; i++)
     {
       TpHandle handle = g_array_index (handles, TpHandle, i);
-      if (!gabble_handle_client_release (self->handles, sender, handle,
-            handle_type, &error))
+      if (!tp_handle_client_release (self->handle_repos[handle_type],
+            sender, handle, &error))
         {
           dbus_g_method_return_error (context, error);
           g_error_free (error);
@@ -4548,9 +4548,8 @@ OUT:
 
 static void
 hold_and_return_handles (DBusGMethodInvocation *context,
-                         GabbleConnection *conn,
-                         GArray *handles,
-                         guint handle_type)
+                         TpHandleRepoIface *repo,
+                         GArray *handles)
 {
   GError *error;
   gchar *sender = dbus_g_method_get_sender(context);
@@ -4559,7 +4558,7 @@ hold_and_return_handles (DBusGMethodInvocation *context,
   for (i = 0; i < handles->len; i++)
     {
       TpHandle handle = (TpHandle) g_array_index (handles, guint, i);
-      if (!gabble_handle_client_hold (conn->handles, sender, handle, handle_type, &error))
+      if (!tp_handle_client_hold (repo, sender, handle, &error))
         {
           dbus_g_method_return_error (context, error);
           g_error_free (error);
@@ -4741,7 +4740,8 @@ room_verify_batch_try_return (RoomVerifyBatch *batch)
         }
     }
 
-  hold_and_return_handles (batch->invocation, batch->conn, batch->handles, TP_HANDLE_TYPE_ROOM);
+  hold_and_return_handles (batch->invocation,
+      batch->conn->handle_repos[TP_HANDLE_TYPE_ROOM], batch->handles);
   room_verify_batch_free (batch);
   return TRUE;
 }
@@ -4936,7 +4936,8 @@ gabble_connection_request_handles (GabbleConnection *self,
 
           g_array_append_val(handles, handle);
         }
-      hold_and_return_handles (context, self, handles, handle_type);
+      hold_and_return_handles (context,
+          self->handle_repos[TP_HANDLE_TYPE_CONTACT],handles);
       g_array_free(handles, TRUE);
       break;
 
@@ -4998,7 +4999,8 @@ gabble_connection_request_handles (GabbleConnection *self,
             }
           g_array_append_val(handles, handle);
         }
-      hold_and_return_handles (context, self, handles, handle_type);
+      hold_and_return_handles (context, self->handle_repos[handle_type],
+          handles);
       g_array_free(handles, TRUE);
       break;
 

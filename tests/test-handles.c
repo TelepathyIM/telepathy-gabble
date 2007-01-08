@@ -62,7 +62,7 @@ void test_handles (guint handle_type)
   if (handle_type != TP_HANDLE_TYPE_LIST)
     {
       /* Hold the handle */
-      g_assert (gabble_handle_client_hold (repo, "TestSuite", handle, handle_type, NULL) == TRUE);
+      g_assert (tp_handle_client_hold (tp_repo, "TestSuite", handle, NULL) == TRUE);
 
       /* Now unref it */
       g_assert (tp_handle_unref (tp_repo, handle) == TRUE);
@@ -74,7 +74,7 @@ void test_handles (guint handle_type)
       g_assert (tp_handle_ref (tp_repo, handle) == TRUE);
 
       /* Client releases it */
-      g_assert (gabble_handle_client_release (repo, "TestSuite", handle, handle_type, NULL) == TRUE);
+      g_assert (tp_handle_client_release (tp_repo, "TestSuite", handle, NULL) == TRUE);
     }
 
   /* Now unref it */

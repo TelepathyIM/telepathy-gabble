@@ -134,6 +134,30 @@ GArray *tp_handle_set_to_array (TpHandleSet *set);
 TpIntSet *tp_handle_set_update (TpHandleSet *set, const TpIntSet *add);
 TpIntSet *tp_handle_set_difference_update (TpHandleSet *set, const TpIntSet *remove);
 
+/* static inline because it relies on LAST_TP_HANDLE_TYPE */
+/**
+ * Return TRUE if the given handle type is supported (i.e. repos[handle_type]
+ * is a repository) and the given handles are all valid in that repository.
+ * If not, set the GError and return FALSE.
+ *
+ * If allow_zero is TRUE, treat handle == 0 as valid.
+ */
+static inline gboolean
+tp_handles_supported_and_valid (TpHandleRepoIface *repos[LAST_TP_HANDLE_TYPE+1],
+    TpHandleType handle_type, const GArray *handles, gboolean allow_zero,
+    GError **error)
+{
+  if (!tp_handle_type_is_valid (handle_type, error))
+    return FALSE;
+
+  if (!repos[handle_type])
+    {
+      tp_g_set_error_unsupported_handle_type (handle_type, error);
+      return FALSE;
+    }
+  return tp_handles_are_valid (repos[handle_type], handles, allow_zero, error);
+}
+
 G_END_DECLS
 
 #endif /*__HANDLE_SET_H__*/

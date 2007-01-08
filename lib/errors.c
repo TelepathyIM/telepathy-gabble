@@ -21,6 +21,20 @@
 #include <glib.h>
 #include <telepathy-glib/errors.h>
 
+void
+tp_g_set_error_invalid_handle_type (guint type, GError **error)
+{
+  g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      "invalid handle type %u", type);
+}
+
+void
+tp_g_set_error_unsupported_handle_type (guint type, GError **error)
+{
+  g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      "unsupported handle type %u", type);
+}
+
 GQuark
 tp_errors_quark (void)
 {

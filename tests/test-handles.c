@@ -8,35 +8,35 @@
 
 void test_handles (guint handle_type)
 {
-  GabbleHandleRepo *repo = NULL;
+  TpHandleRepoIface *repos[LAST_TP_HANDLE_TYPE+1];
   TpHandleRepoIface *tp_repo = NULL;
   GError *error = NULL;
+  guint i;
 
   TpHandle handle = 0;
   const gchar *jid = "handle.test@foobar";
   const gchar *return_jid;
 
-  repo = gabble_handle_repo_new ();
-  g_assert (repo != NULL);
-  tp_repo = gabble_handle_repo_get_tp_repo (repo, handle_type);
+  gabble_handle_repos_init (repos);
+  tp_repo = repos[handle_type];
   g_assert (tp_repo != NULL);
 
   /* Handle zero is never valid */
-  g_assert (gabble_handle_is_valid (repo, handle_type, 0, &error) == FALSE);
+  g_assert (tp_handle_is_valid (tp_repo, 0, &error) == FALSE);
   g_assert (error->code == TP_ERROR_INVALID_ARGUMENT);
 
   g_error_free (error);
   error = NULL;
 
   /* Properly return error when handle isn't in the repo */
-  g_assert (gabble_handle_is_valid (repo, handle_type, 65536, &error) == FALSE);
+  g_assert (tp_handle_is_valid (tp_repo, 65536, &error) == FALSE);
   g_assert (error->code == TP_ERROR_INVALID_ARGUMENT);
 
   g_error_free (error);
   error = NULL;
 
   /* Properly return when error out argument isn't provided */
-  g_assert (gabble_handle_is_valid (repo, handle_type, 65536, NULL) == FALSE);
+  g_assert (tp_handle_is_valid (tp_repo, 65536, NULL) == FALSE);
 
   switch (handle_type)
     {
@@ -68,7 +68,7 @@ void test_handles (guint handle_type)
       g_assert (tp_handle_unref (tp_repo, handle) == TRUE);
 
       /* Validate it, should be all healthy because client holds it still */
-      g_assert (gabble_handle_is_valid (repo, handle_type, handle, NULL) == TRUE);
+      g_assert (tp_handle_is_valid (tp_repo, handle, NULL) == TRUE);
 
       /* Ref it again */
       g_assert (tp_handle_ref (tp_repo, handle) == TRUE);
@@ -86,7 +86,11 @@ void test_handles (guint handle_type)
       g_assert (tp_handle_unref (tp_repo, handle) == FALSE);
     }
 
-  gabble_handle_repo_destroy (repo);
+  for (i = 0; i <= LAST_TP_HANDLE_TYPE; i++)
+    {
+      if (repos[i])
+        g_object_unref((GObject *)repos[i]);
+    }
 }
 
 int main (int argc, char **argv)

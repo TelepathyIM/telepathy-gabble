@@ -31,6 +31,9 @@ G_BEGIN_DECLS
 GQuark tp_errors_quark (void);
 #define TP_ERRORS tp_errors_quark ()
 
+void tp_g_set_error_invalid_handle_type (guint type, GError **);
+void tp_g_set_error_unsupported_handle_type (guint type, GError **);
+
 G_END_DECLS
 
 #endif

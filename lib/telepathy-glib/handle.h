@@ -30,23 +30,23 @@ G_BEGIN_DECLS
 
 typedef guint32 TpHandle;
 
+/* Must be static inline because it references LAST_TP_HANDLE_TYPE -
+ * if it wasn't inlined, a newer libtelepathy-glib with a larger number
+ * of handle types might accept handle types that won't fit in the
+ * connection manager's array of length LAST_TP_HANDLE_TYPE+1
+ */
+/**
+ * If the given handle type is valid, return TRUE. If not, set the GError
+ * and return FALSE.
+ */
 static inline gboolean
 tp_handle_type_is_valid (TpHandleType type, GError **error)
 {
-  gboolean ret;
-
   if (type > TP_HANDLE_TYPE_NONE && type <= LAST_TP_HANDLE_TYPE)
-    {
-      ret = TRUE;
-    }
-  else
-    {
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "invalid handle type %u", type);
-      ret = FALSE;
-    }
+    return TRUE;
 
-  return ret;
+  tp_g_set_error_invalid_handle_type (type, error);
+  return FALSE;
 }
 
 G_END_DECLS

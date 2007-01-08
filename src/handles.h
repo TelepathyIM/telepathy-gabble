@@ -38,16 +38,9 @@ typedef enum
   GABBLE_LIST_HANDLE_DENY
 } GabbleListHandle;
 
-TpHandleRepoIface *gabble_handle_repo_get_tp_repo (GabbleHandleRepo *repo,
-    TpHandleType type);
-
 gboolean gabble_handle_jid_is_valid (TpHandleType type, const gchar *jid, GError **error);
 
-GabbleHandleRepo *gabble_handle_repo_new ();
-void gabble_handle_repo_destroy (GabbleHandleRepo *repo);
-
-gboolean gabble_handle_is_valid (GabbleHandleRepo *repo, TpHandleType type, TpHandle handle, GError **error);
-gboolean gabble_handles_are_valid (GabbleHandleRepo *repo, TpHandleType type, const GArray *array, gboolean allow_zero, GError **error);
+void gabble_handle_repos_init (TpHandleRepoIface *repos[LAST_TP_HANDLE_TYPE+1]);
 
 TpHandle gabble_handle_for_contact (TpHandleRepoIface *repo, const char *jid, gboolean with_resource);
 gboolean gabble_handle_for_room_exists (TpHandleRepoIface *repo, const gchar *jid, gboolean ignore_nick);

@@ -94,7 +94,6 @@ struct _GabbleConnection {
     TpConnectionStatus status;
 
     /* handles */
-    GabbleHandleRepo *handles;
     TpHandleRepoIface *handle_repos[LAST_TP_HANDLE_TYPE + 1];
     TpHandle self_handle;
 

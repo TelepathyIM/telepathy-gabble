@@ -34,11 +34,6 @@
 
 #include "config.h"
 
-struct _GabbleHandleRepo
-{
-  TpHandleRepoIface *repos[LAST_TP_HANDLE_TYPE + 1];
-};
-
 static const char *list_handle_strings[] =
 {
     "publish",      /* GABBLE_LIST_HANDLE_PUBLISH */
@@ -83,103 +78,29 @@ gabble_handle_jid_is_valid (TpHandleType type, const gchar *jid, GError **error)
   return TRUE;
 }
 
-GabbleHandleRepo *
-gabble_handle_repo_new ()
+void
+gabble_handle_repos_init (TpHandleRepoIface *repos[LAST_TP_HANDLE_TYPE+1])
 {
-  GabbleHandleRepo *repo;
+  guint i;
 
-  repo = g_new0 (GabbleHandleRepo, 1);
+  for (i = 0; i <= LAST_TP_HANDLE_TYPE; i++)
+    {
+      repos[i] = NULL;
+    }
 
-  repo->repos[TP_HANDLE_TYPE_CONTACT] =
+  repos[TP_HANDLE_TYPE_CONTACT] =
       (TpHandleRepoIface *)g_object_new (TP_TYPE_DYNAMIC_HANDLE_REPO,
           "handle-type", TP_HANDLE_TYPE_CONTACT, NULL);
-  repo->repos[TP_HANDLE_TYPE_ROOM] =
+  repos[TP_HANDLE_TYPE_ROOM] =
       (TpHandleRepoIface *)g_object_new (TP_TYPE_DYNAMIC_HANDLE_REPO,
           "handle-type", TP_HANDLE_TYPE_ROOM, NULL);
-  repo->repos[TP_HANDLE_TYPE_GROUP] =
+  repos[TP_HANDLE_TYPE_GROUP] =
       (TpHandleRepoIface *)g_object_new (TP_TYPE_DYNAMIC_HANDLE_REPO,
           "handle-type", TP_HANDLE_TYPE_GROUP, NULL);
-  repo->repos[TP_HANDLE_TYPE_LIST] =
+  repos[TP_HANDLE_TYPE_LIST] =
       (TpHandleRepoIface *)g_object_new (TP_TYPE_STATIC_HANDLE_REPO,
           "handle-type", TP_HANDLE_TYPE_LIST,
           "handle-names", list_handle_strings, NULL);
-
-  return repo;
-}
-
-TpHandleRepoIface
-*gabble_handle_repo_get_tp_repo (GabbleHandleRepo *repo,
-                                 TpHandleType type)
-{
-  if (!tp_handle_type_is_valid (type, NULL))
-    return NULL;
-
-  if (!repo->repos[type])
-    {
-      return NULL;
-    }
-
-  return repo->repos[type];
-}
-
-void
-gabble_handle_repo_destroy (GabbleHandleRepo *repo)
-{
-  TpHandleType i;
-
-  g_assert (repo != NULL);
-
-  for (i = 1; i <= LAST_TP_HANDLE_TYPE; i++)
-    {
-      if (repo->repos[i])
-        g_object_unref ((GObject *)repo->repos[i]);
-    }
-
-  g_free (repo);
-}
-
-gboolean
-gabble_handles_are_valid (GabbleHandleRepo *repo,
-                          TpHandleType type,
-                          const GArray *array,
-                          gboolean allow_zero,
-                          GError **error);
-
-gboolean
-gabble_handle_is_valid (GabbleHandleRepo *repo, TpHandleType type, TpHandle handle, GError **error)
-{
-  GArray *arr;
-  gboolean ret;
-
-  arr = g_array_new (FALSE, FALSE, sizeof (TpHandle));
-  g_array_insert_val (arr, 0, handle);
-
-  ret = gabble_handles_are_valid (repo, type, arr, FALSE, error);
-
-  g_array_free (arr, TRUE);
-
-  return ret;
-}
-
-gboolean
-gabble_handles_are_valid (GabbleHandleRepo *repo,
-                          TpHandleType type,
-                          const GArray *array,
-                          gboolean allow_zero,
-                          GError **error)
-{
-  if (!tp_handle_type_is_valid (type, error))
-    return FALSE;
-
-  if (!repo->repos[type])
-    {
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "unsupported handle type %u", type);
-      return FALSE;
-    }
-
-  return tp_handles_are_valid (repo->repos[type], array, 
-      allow_zero, error);
 }
 
 TpHandle

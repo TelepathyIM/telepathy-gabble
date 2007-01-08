@@ -440,12 +440,9 @@ _gabble_roster_channel_remove_member_cb (GObject *obj,
                                          GError **error)
 {
   GabbleRosterChannelPrivate *priv;
-  GabbleHandleRepo *repo;
   gboolean ret = FALSE;
 
   priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (GABBLE_ROSTER_CHANNEL (obj));
-
-  repo = priv->conn->handles;
 
   DEBUG ("called on %s with handle %u (%s) \"%s\"", tp_handle_inspect (
         priv->conn->handle_repos[priv->handle_type], priv->handle), handle,

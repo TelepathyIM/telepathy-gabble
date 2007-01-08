@@ -291,12 +291,7 @@ gabble_connection_init (GabbleConnection *self)
   self->lmconn = lm_connection_new (NULL);
   self->status = GABBLE_TP_CONNECTION_STATUS_NEW;
 
-  self->handles = gabble_handle_repo_new ();
-  for (i = 1; i <= LAST_TP_HANDLE_TYPE; i++)
-    {
-      self->handle_repos[i] = gabble_handle_repo_get_tp_repo (self->handles,
-          i);
-    }
+  gabble_handle_repos_init (self->handle_repos);
   g_assert (self->handle_repos[TP_HANDLE_TYPE_CONTACT] != NULL);
   g_assert (self->handle_repos[TP_HANDLE_TYPE_ROOM] != NULL);
   g_assert (self->handle_repos[TP_HANDLE_TYPE_GROUP] != NULL);
@@ -948,6 +943,7 @@ gabble_connection_dispose (GObject *object)
 void
 gabble_connection_finalize (GObject *object)
 {
+  guint i;
   GabbleConnection *self = GABBLE_CONNECTION (object);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
@@ -970,7 +966,11 @@ gabble_connection_finalize (GObject *object)
 
   tp_properties_mixin_finalize (object);
 
-  gabble_handle_repo_destroy (self->handles);
+  for (i = 0; i <= LAST_TP_HANDLE_TYPE; i++)
+    {
+      if (self->handle_repos[i])
+        g_object_unref((GObject *)self->handle_repos[i]);
+    }
 
   G_OBJECT_CLASS (gabble_connection_parent_class)->finalize (object);
 }
@@ -3787,11 +3787,8 @@ gabble_connection_hold_handles (GabbleConnection *self,
 
   ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
 
-  if (!gabble_handles_are_valid (self->handles,
-                                 handle_type,
-                                 handles,
-                                 FALSE,
-                                 &error))
+  if (!tp_handles_supported_and_valid (self->handle_repos,
+        handle_type, handles, FALSE, &error))
     {
       dbus_g_method_return_error (context, error);
       g_error_free (error);
@@ -3840,11 +3837,8 @@ gabble_connection_inspect_handles (GabbleConnection *self,
 
   ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context);
 
-  if (!gabble_handles_are_valid (self->handles,
-                                 handle_type,
-                                 handles,
-                                 FALSE,
-                                 &error))
+  if (!tp_handles_supported_and_valid (self->handle_repos,
+        handle_type, handles, FALSE, &error))
     {
       dbus_g_method_return_error (context, error);
 
@@ -4013,11 +4007,8 @@ gabble_connection_release_handles (GabbleConnection *self,
 
   ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
 
-  if (!gabble_handles_are_valid (self->handles,
-                                 handle_type,
-                                 handles,
-                                 FALSE,
-                                 &error))
+  if (!tp_handles_supported_and_valid (self->handle_repos,
+        handle_type, handles, FALSE, &error))
     {
       dbus_g_method_return_error (context, error);
       g_error_free (error);
@@ -5067,7 +5058,7 @@ setaliases_foreach (gpointer key, gpointer value, gpointer user_data)
   gchar *alias = (gchar *) value;
   GError *error = NULL;
 
-  if (!gabble_handle_is_valid (data->conn->handles, TP_HANDLE_TYPE_CONTACT,
+  if (!tp_handle_is_valid (data->conn->handle_repos[TP_HANDLE_TYPE_CONTACT],
         handle, &error))
     {
       data->retval = FALSE;

@@ -40,12 +40,12 @@ void test_handles (guint handle_type)
       case TP_HANDLE_TYPE_CONTACT:
           handle = gabble_handle_for_contact (repo, jid, FALSE);
           break;
-      case TP_HANDLE_TYPE_ROOM:
-          handle = gabble_handle_for_room (repo, jid);
-          break;
       case TP_HANDLE_TYPE_LIST:
           jid = "deny";
-          handle = gabble_handle_for_list (repo, jid);
+          /* fall through */
+      case TP_HANDLE_TYPE_ROOM:
+          handle = tp_handle_request (
+              gabble_handle_repo_get_tp_repo(repo, handle_type), jid, TRUE);
           break;
     }
   g_assert (handle != 0);

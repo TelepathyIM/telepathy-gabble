@@ -359,8 +359,9 @@ _parse_item_groups (LmMessageNode *item_node, GabbleConnection *conn)
       if (NULL == group_node->value)
         continue;
 
-      tp_intset_add (groups, gabble_handle_for_group (
-            conn->handles, group_node->value));
+      tp_intset_add (groups, tp_handle_request (
+            conn->handle_repos[TP_HANDLE_TYPE_GROUP], group_node->value,
+            TRUE));
     }
 
   return groups;

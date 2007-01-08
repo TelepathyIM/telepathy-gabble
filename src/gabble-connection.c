@@ -4972,10 +4972,8 @@ gabble_connection_request_handles (GabbleConnection *self,
           TpHandle handle;
           const gchar *name = names[i];
 
-          if (handle_type == TP_HANDLE_TYPE_LIST)
-            handle = gabble_handle_for_list (self->handles, name);
-          else
-            handle = gabble_handle_for_group (self->handles, name);
+          handle = tp_handle_request (self->handle_repos[handle_type],
+              name, TRUE);
 
           if (handle == 0)
             {

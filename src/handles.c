@@ -356,31 +356,6 @@ gabble_handle_for_room (GabbleHandleRepo *repo,
   return handle;
 }
 
-TpHandle
-gabble_handle_for_list (GabbleHandleRepo *repo,
-                        const gchar *list)
-{
-  g_assert (repo != NULL);
-  g_assert (list != NULL);
-  g_assert (repo->repos[TP_HANDLE_TYPE_LIST] != NULL);
-
-  return tp_handle_request (
-      repo->repos[TP_HANDLE_TYPE_LIST], list, FALSE);
-}
-
-TpHandle
-gabble_handle_for_group (GabbleHandleRepo *repo,
-                         const gchar *group)
-{
-  g_assert (repo != NULL);
-  g_assert (group != NULL);
-  g_assert (*group != '\0');
-  g_assert (repo->repos[TP_HANDLE_TYPE_GROUP] != NULL);
-
-  return tp_handle_request (
-      repo->repos[TP_HANDLE_TYPE_GROUP], group, TRUE);
-}
-
 /**
  * gabble_handle_set_qdata:
  * @repo: A #GabbleHandleRepo

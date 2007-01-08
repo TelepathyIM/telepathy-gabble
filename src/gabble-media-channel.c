@@ -142,8 +142,7 @@ gabble_media_channel_constructor (GType type, guint n_props,
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
 
   tp_group_mixin_init (obj, G_STRUCT_OFFSET (GabbleMediaChannel, group),
-      gabble_handle_repo_get_tp_repo (priv->conn->handles,
-        TP_HANDLE_TYPE_CONTACT),
+      priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT],
       priv->conn->self_handle);
 
   /* automatically add creator to channel */
@@ -1162,7 +1161,7 @@ gabble_media_channel_request_streams (GabbleMediaChannel *self,
 
   priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
 
-  if (!gabble_handle_is_valid (priv->conn->handles, TP_HANDLE_TYPE_CONTACT,
+  if (!tp_handle_is_valid (priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT],
         contact_handle, error))
     return FALSE;
 
@@ -1213,13 +1212,13 @@ _gabble_media_channel_add_member (GObject *obj, TpHandle handle, const gchar *me
           if (presence == NULL)
             DEBUG ("failed to add contact %d (%s) to media channel: "
                    "no presence available", handle,
-                   gabble_handle_inspect (priv->conn->handles,
-                     TP_HANDLE_TYPE_CONTACT, handle));
+                   tp_handle_inspect (
+                    priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT], handle));
           else
             DEBUG ("failed to add contact %d (%s) to media channel: "
                    "caps %x aren't sufficient", handle,
-                   gabble_handle_inspect (priv->conn->handles,
-                     TP_HANDLE_TYPE_CONTACT, handle),
+                   tp_handle_inspect (
+                     priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT], handle),
                    presence->caps);
 
           g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,

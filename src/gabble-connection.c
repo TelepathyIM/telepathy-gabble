@@ -290,7 +290,18 @@ gabble_connection_init (GabbleConnection *self)
   self->priv = priv;
   self->lmconn = lm_connection_new (NULL);
   self->status = GABBLE_TP_CONNECTION_STATUS_NEW;
+
   self->handles = gabble_handle_repo_new ();
+  for (i = 1; i <= LAST_TP_HANDLE_TYPE; i++)
+    {
+      self->handle_repos[i] = gabble_handle_repo_get_tp_repo (self->handles,
+          i);
+    }
+  g_assert (self->handle_repos[TP_HANDLE_TYPE_CONTACT] != NULL);
+  g_assert (self->handle_repos[TP_HANDLE_TYPE_ROOM] != NULL);
+  g_assert (self->handle_repos[TP_HANDLE_TYPE_GROUP] != NULL);
+  g_assert (self->handle_repos[TP_HANDLE_TYPE_LIST] != NULL);
+
   self->disco = gabble_disco_new (self);
   self->vcard_manager = gabble_vcard_manager_new (self);
   g_signal_connect (self->vcard_manager, "nickname-update", G_CALLBACK
@@ -1439,7 +1450,7 @@ _gabble_connection_connect (GabbleConnection *conn,
           "Invalid JID: %s@%s", priv->username, priv->stream_server);
       return FALSE;
     }
-  gabble_handle_ref (conn->handles, TP_HANDLE_TYPE_CONTACT, conn->self_handle);
+  tp_handle_ref (conn->handle_repos[TP_HANDLE_TYPE_CONTACT], conn->self_handle);
 
   /* set initial presence */
   conn->self_presence = gabble_presence_new ();
@@ -1499,9 +1510,8 @@ _gabble_connection_connect (GabbleConnection *conn,
           TP_CONNECTION_STATUS_CONNECTING,
           TP_CONNECTION_STATUS_REASON_REQUESTED);
 
-      valid = gabble_handle_ref (conn->handles,
-                                 TP_HANDLE_TYPE_CONTACT,
-                                 conn->self_handle);
+      valid = tp_handle_ref (conn->handle_repos[TP_HANDLE_TYPE_CONTACT],
+          conn->self_handle);
       g_assert (valid);
     }
   else
@@ -1578,7 +1588,7 @@ connection_status_change (GabbleConnection        *conn,
           /* unref our self handle if it's set */
           if (conn->self_handle != 0)
             {
-              gabble_handle_unref (conn->handles, TP_HANDLE_TYPE_CONTACT,
+              tp_handle_unref (conn->handle_repos[TP_HANDLE_TYPE_CONTACT],
                   conn->self_handle);
               conn->self_handle = 0;
             }
@@ -1610,7 +1620,7 @@ connection_status_change (GabbleConnection        *conn,
             }
 
           /* unref our self handle */
-          gabble_handle_unref (conn->handles, TP_HANDLE_TYPE_CONTACT,
+          tp_handle_unref (conn->handle_repos[TP_HANDLE_TYPE_CONTACT],
               conn->self_handle);
           conn->self_handle = 0;
         }
@@ -1873,8 +1883,9 @@ _gabble_connection_get_cached_alias (GabbleConnection *conn,
 
   g_return_val_if_fail (NULL != conn, GABBLE_CONNECTION_ALIAS_NONE);
   g_return_val_if_fail (GABBLE_IS_CONNECTION (conn), GABBLE_CONNECTION_ALIAS_NONE);
-  g_return_val_if_fail (gabble_handle_is_valid (conn->handles,
-        TP_HANDLE_TYPE_CONTACT, handle, NULL), GABBLE_CONNECTION_ALIAS_NONE);
+  g_return_val_if_fail (tp_handle_is_valid (
+        conn->handle_repos[TP_HANDLE_TYPE_CONTACT], handle, NULL),
+      GABBLE_CONNECTION_ALIAS_NONE);
 
   tmp = gabble_roster_handle_get_name (conn->roster, handle);
   if (NULL != tmp)
@@ -1923,7 +1934,7 @@ _gabble_connection_get_cached_alias (GabbleConnection *conn,
     }
 
   /* fallback to JID */
-  tmp = gabble_handle_inspect (conn->handles, TP_HANDLE_TYPE_CONTACT, handle);
+  tmp = tp_handle_inspect (conn->handle_repos[TP_HANDLE_TYPE_CONTACT], handle);
   g_assert (NULL != tmp);
 
   gabble_decode_jid (tmp, &user, NULL, &resource);
@@ -2145,7 +2156,7 @@ construct_presence_hash (GabbleConnection *self,
   /* this is never set at the moment*/
   guint timestamp = 0;
 
-  g_assert (gabble_handles_are_valid (self->handles, TP_HANDLE_TYPE_CONTACT,
+  g_assert (tp_handles_are_valid (self->handle_repos[TP_HANDLE_TYPE_CONTACT],
         contact_handles, FALSE, NULL));
 
   presence_hash = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
@@ -3327,7 +3338,7 @@ gabble_connection_get_avatar_tokens (GabbleConnection *self,
   gchar **ret;
   GError *err;
 
-  if (!gabble_handles_are_valid (self->handles, TP_HANDLE_TYPE_CONTACT,
+  if (!tp_handles_are_valid (self->handle_repos[TP_HANDLE_TYPE_CONTACT],
         contacts, FALSE, &err))
     {
       dbus_g_method_return_error (invocation, err);
@@ -3419,11 +3430,8 @@ gabble_connection_get_capabilities (GabbleConnection *self,
 
   ERROR_IF_NOT_CONNECTED (self, error);
 
-  if (!gabble_handles_are_valid (self->handles,
-                                 TP_HANDLE_TYPE_CONTACT,
-                                 handles,
-                                 TRUE,
-                                 error))
+  if (!tp_handles_are_valid (self->handle_repos[TP_HANDLE_TYPE_CONTACT],
+                             handles, TRUE, error))
     {
       return FALSE;
     }
@@ -3554,7 +3562,7 @@ gabble_connection_get_presence (GabbleConnection *self,
   GHashTable *presence_hash;
   GError *error = NULL;
 
-  if (!gabble_handles_are_valid (self->handles, TP_HANDLE_TYPE_CONTACT,
+  if (!tp_handles_are_valid (self->handle_repos[TP_HANDLE_TYPE_CONTACT],
         contacts, FALSE, &error))
     {
       dbus_g_method_return_error (context, error);
@@ -4200,7 +4208,7 @@ gabble_connection_request_aliases (GabbleConnection *self,
 
   ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
 
-  if (!gabble_handles_are_valid (self->handles, TP_HANDLE_TYPE_CONTACT,
+  if (!tp_handles_are_valid (self->handle_repos[TP_HANDLE_TYPE_CONTACT],
         contacts, FALSE, &error))
     {
       dbus_g_method_return_error (context, error);
@@ -5028,7 +5036,7 @@ gabble_connection_request_presence (GabbleConnection *self,
 
   ERROR_IF_NOT_CONNECTED (self, error)
 
-  if (!gabble_handles_are_valid (self->handles, TP_HANDLE_TYPE_CONTACT,
+  if (!tp_handles_are_valid (self->handle_repos[TP_HANDLE_TYPE_CONTACT],
         contacts, FALSE, error))
     return FALSE;
 

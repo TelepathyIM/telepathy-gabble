@@ -415,7 +415,8 @@ gabble_im_factory_iface_request (TpChannelFactoryIface *iface,
   if (handle_type != TP_HANDLE_TYPE_CONTACT)
     return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_AVAILABLE;
 
-  if (!gabble_handle_is_valid (priv->conn->handles, handle_type, handle, error))
+  if (!tp_handle_is_valid (priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT],
+        handle, error))
     return TP_CHANNEL_FACTORY_REQUEST_STATUS_ERROR;
 
   chan = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (handle));

@@ -27,6 +27,7 @@
 
 #include "gabble-types.h"
 #include "gabble-error.h"
+#include <telepathy-glib/handle-repo.h>
 #include <telepathy-glib/properties-mixin.h>
 #include <telepathy-glib/enums.h>
 
@@ -94,6 +95,7 @@ struct _GabbleConnection {
 
     /* handles */
     GabbleHandleRepo *handles;
+    TpHandleRepoIface *handle_repos[LAST_TP_HANDLE_TYPE + 1];
     TpHandle self_handle;
 
     /* roster */

@@ -45,7 +45,8 @@ jingle_info_discover_servers (GabbleConnection *conn)
   LmMessageNode *node;
   GError *error = NULL;
   TpHandle handle = conn->self_handle;
-  const gchar *jid = gabble_handle_inspect (conn->handles, TP_HANDLE_TYPE_CONTACT, handle);
+  const gchar *jid = tp_handle_inspect (
+      conn->handle_repos[TP_HANDLE_TYPE_CONTACT], handle);
 
   msg = lm_message_new_with_sub_type (jid, LM_MESSAGE_TYPE_IQ,
                                       LM_MESSAGE_SUB_TYPE_GET);

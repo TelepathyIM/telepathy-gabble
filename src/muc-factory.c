@@ -812,7 +812,8 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
   if (handle_type != TP_HANDLE_TYPE_ROOM)
     return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_AVAILABLE;
 
-  if (!gabble_handle_is_valid (priv->conn->handles, TP_HANDLE_TYPE_ROOM, handle, NULL))
+  if (!tp_handle_is_valid (priv->conn->handle_repos[TP_HANDLE_TYPE_ROOM],
+        handle, NULL))
     return TP_CHANNEL_FACTORY_REQUEST_STATUS_INVALID_HANDLE;
 
   chan = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (handle));

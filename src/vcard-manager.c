@@ -643,7 +643,7 @@ delete_request (GabbleVCardManagerRequest *request)
       g_source_remove (request->timer_id);
     }
 
-  gabble_handle_unref (priv->connection->handles, TP_HANDLE_TYPE_CONTACT,
+  tp_handle_unref (priv->connection->handle_repos[TP_HANDLE_TYPE_CONTACT],
                        request->handle);
 
   entry = g_hash_table_lookup (priv->cache, GUINT_TO_POINTER (request->handle));
@@ -1048,7 +1048,7 @@ gabble_vcard_manager_request (GabbleVCardManager *self,
   DEBUG ("Created request %p to retrieve <%u>'s vCard", request, handle);
   request->timeout = timeout;
   request->manager = self;
-  gabble_handle_ref (priv->connection->handles, TP_HANDLE_TYPE_CONTACT,
+  tp_handle_ref (priv->connection->handle_repos[TP_HANDLE_TYPE_CONTACT],
                      handle);
   request->handle = handle;
   request->callback = callback;
@@ -1065,8 +1065,8 @@ gabble_vcard_manager_request (GabbleVCardManager *self,
     }
   else
     {
-      jid = gabble_handle_inspect (priv->connection->handles,
-                                   TP_HANDLE_TYPE_CONTACT, handle);
+      jid = tp_handle_inspect (
+          priv->connection->handle_repos[TP_HANDLE_TYPE_CONTACT], handle);
     }
 
   entry = cache_entry_get (self, handle);
@@ -1123,8 +1123,8 @@ gabble_vcard_manager_replace (GabbleVCardManager *self,
          request, callback);
   request->timeout = timeout;
   request->manager = self;
-  gabble_handle_ref (priv->connection->handles, TP_HANDLE_TYPE_CONTACT,
-                     priv->connection->self_handle);
+  tp_handle_ref (priv->connection->handle_repos[TP_HANDLE_TYPE_CONTACT],
+      priv->connection->self_handle);
   request->handle = priv->connection->self_handle;
   request->callback = callback;
   request->user_data = user_data;
@@ -1161,8 +1161,8 @@ gabble_vcard_manager_edit (GabbleVCardManager *self,
   DEBUG ("Created request %p to edit my vCard", request);
   request->timeout = timeout;
   request->manager = self;
-  gabble_handle_ref (priv->connection->handles, TP_HANDLE_TYPE_CONTACT,
-                     priv->connection->self_handle);
+  tp_handle_ref (priv->connection->handle_repos[TP_HANDLE_TYPE_CONTACT],
+      priv->connection->self_handle);
   request->handle = priv->connection->self_handle;
   request->callback = callback;
   request->user_data = user_data;

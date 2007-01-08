@@ -2079,8 +2079,8 @@ get_jid_for_contact (GabbleMediaSession *session,
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
   self = priv->conn->self_handle;
 
-  base_jid = gabble_handle_inspect (priv->conn->handles,
-      TP_HANDLE_TYPE_CONTACT, handle);
+  base_jid = tp_handle_inspect (
+      priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT], handle);
   g_assert (base_jid != NULL);
 
   if (handle == self)

@@ -228,7 +228,7 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   GObject *obj;
   GabbleMucChannelPrivate *priv;
   DBusGConnection *bus;
-  GabbleHandleRepo *handles;
+  TpHandleRepoIface *room_handles, *contact_handles;
   TpHandle self_handle;
   gboolean valid;
 
@@ -237,20 +237,21 @@ gabble_muc_channel_constructor (GType type, guint n_props,
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
 
-  handles = priv->conn->handles;
+  room_handles = priv->conn->handle_repos[TP_HANDLE_TYPE_ROOM];
+  contact_handles = priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT];
 
   /* ref our room handle */
-  valid = gabble_handle_ref (handles, TP_HANDLE_TYPE_ROOM, priv->handle);
+  valid = tp_handle_ref (room_handles, priv->handle);
   g_assert (valid);
 
   /* get the room's jid */
-  priv->jid = gabble_handle_inspect (handles, TP_HANDLE_TYPE_ROOM, priv->handle);
+  priv->jid = tp_handle_inspect (room_handles, priv->handle);
 
   /* get our own identity in the room */
   contact_handle_to_room_identity (GABBLE_MUC_CHANNEL (obj), priv->conn->self_handle,
                                    &self_handle, &priv->self_jid);
 
-  valid = gabble_handle_ref (handles, TP_HANDLE_TYPE_CONTACT, self_handle);
+  valid = tp_handle_ref (contact_handles, self_handle);
   g_assert (valid);
 
   /* initialize our own role and affiliation */
@@ -263,8 +264,7 @@ gabble_muc_channel_constructor (GType type, guint n_props,
 
   /* initialize group mixin */
   tp_group_mixin_init (obj, G_STRUCT_OFFSET (GabbleMucChannel, group),
-      gabble_handle_repo_get_tp_repo (handles, TP_HANDLE_TYPE_CONTACT),
-      self_handle);
+      contact_handles, self_handle);
 
   /* set initial group flags */
   tp_group_mixin_change_flags (obj,
@@ -278,7 +278,7 @@ gabble_muc_channel_constructor (GType type, guint n_props,
 
   /* initialize text mixin */
   gabble_text_mixin_init (obj, G_STRUCT_OFFSET (GabbleMucChannel, text),
-      gabble_handle_repo_get_tp_repo (handles, TP_HANDLE_TYPE_CONTACT), FALSE);
+      contact_handles, FALSE);
 
   gabble_text_mixin_set_message_types (obj,
       TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL,
@@ -557,8 +557,8 @@ contact_handle_to_room_identity (GabbleMucChannel *chan, TpHandle main_handle,
 
   handles = priv->conn->handles;
 
-  main_jid = gabble_handle_inspect (handles, TP_HANDLE_TYPE_CONTACT,
-      main_handle);
+  main_jid = tp_handle_inspect (
+      priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT], main_handle);
 
   gabble_decode_jid (main_jid, &username, &server, NULL);
 
@@ -873,12 +873,11 @@ gabble_muc_channel_finalize (GObject *object)
 {
   GabbleMucChannel *self = GABBLE_MUC_CHANNEL (object);
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
-  GabbleHandleRepo *handles = priv->conn->handles;
 
   DEBUG ("called");
 
   /* free any data held directly by the object here */
-  gabble_handle_unref (handles, TP_HANDLE_TYPE_ROOM, priv->handle);
+  tp_handle_unref (priv->conn->handle_repos[TP_HANDLE_TYPE_ROOM], priv->handle);
 
   g_free (priv->object_path);
 

@@ -98,7 +98,6 @@ gabble_roster_channel_constructor (GType type, guint n_props,
   GObject *obj;
   GabbleRosterChannelPrivate *priv;
   DBusGConnection *bus;
-  GabbleHandleRepo *handles;
   gboolean valid;
   TpHandle self_handle;
   guint handle_type;
@@ -107,20 +106,22 @@ gabble_roster_channel_constructor (GType type, guint n_props,
            constructor (type, n_props, props);
   priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (GABBLE_ROSTER_CHANNEL (obj));
   handle_type = priv->handle_type;
-  handles = priv->conn->handles;
   self_handle = priv->conn->self_handle;
 
   /* register object on the bus */
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
 
+  g_assert (handle_type == TP_HANDLE_TYPE_GROUP
+      || handle_type == TP_HANDLE_TYPE_LIST);
+
   /* ref our list handle */
-  valid = gabble_handle_ref (handles, handle_type, priv->handle);
+  valid = tp_handle_ref (priv->conn->handle_repos[handle_type], priv->handle);
   g_assert (valid);
 
   /* initialize group mixin */
   tp_group_mixin_init (obj, G_STRUCT_OFFSET (GabbleRosterChannel, group),
-      gabble_handle_repo_get_tp_repo (handles, TP_HANDLE_TYPE_CONTACT),
+      priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT],
       self_handle);
 
   if (handle_type == TP_HANDLE_TYPE_GROUP)
@@ -318,7 +319,7 @@ gabble_roster_channel_finalize (GObject *object)
 
   g_free (priv->object_path);
 
-  gabble_handle_unref (priv->conn->handles, priv->handle_type, priv->handle);
+  tp_handle_unref (priv->conn->handle_repos[priv->handle_type], priv->handle);
 
   tp_group_mixin_finalize (object);
 
@@ -334,14 +335,14 @@ _gabble_roster_channel_send_presence (GabbleRosterChannel *chan,
                                       GError **error)
 {
   GabbleRosterChannelPrivate *priv;
-  GabbleHandleRepo *repo;
+  TpHandleRepoIface *repo;
   const char *contact;
   LmMessage *message;
   gboolean result;
 
   priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (chan);
-  repo = priv->conn->handles;
-  contact = gabble_handle_inspect (repo, TP_HANDLE_TYPE_CONTACT, handle);
+  repo = priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT];
+  contact = tp_handle_inspect (repo, handle);
 
   message = lm_message_new_with_sub_type (contact,
       LM_MESSAGE_TYPE_PRESENCE,
@@ -373,15 +374,15 @@ _gabble_roster_channel_add_member_cb (GObject *obj,
                                       GError **error)
 {
   GabbleRosterChannelPrivate *priv;
-  GabbleHandleRepo *repo;
   gboolean ret = FALSE;
 
   priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (GABBLE_ROSTER_CHANNEL (obj));
 
-  repo = priv->conn->handles;
-
-  DEBUG ("called on %s with handle %u (%s) \"%s\"", gabble_handle_inspect (repo, priv->handle_type, priv->handle), handle,
-      gabble_handle_inspect (repo, TP_HANDLE_TYPE_CONTACT, handle), message);
+  DEBUG ("called on %s with handle %u (%s) \"%s\"",
+      tp_handle_inspect (priv->conn->handle_repos[priv->handle_type],
+        priv->handle), handle,
+      tp_handle_inspect (priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT],
+        handle), message);
 
   if (TP_HANDLE_TYPE_GROUP == priv->handle_type)
     {
@@ -446,8 +447,10 @@ _gabble_roster_channel_remove_member_cb (GObject *obj,
 
   repo = priv->conn->handles;
 
-  DEBUG ("called on %s with handle %u (%s) \"%s\"", gabble_handle_inspect (repo, priv->handle_type, priv->handle), handle,
-      gabble_handle_inspect (repo, TP_HANDLE_TYPE_CONTACT, handle), message);
+  DEBUG ("called on %s with handle %u (%s) \"%s\"", tp_handle_inspect (
+        priv->conn->handle_repos[priv->handle_type], priv->handle), handle,
+      tp_handle_inspect (priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT],
+        handle), message);
 
   if (TP_HANDLE_TYPE_GROUP == priv->handle_type)
     {

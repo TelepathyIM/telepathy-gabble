@@ -75,7 +75,7 @@ void tp_text_mixin_emit_sent (GObject *obj, time_t timestamp, guint type, const 
 gboolean tp_text_mixin_get_message_types (GObject *obj, GArray **ret, GError **error);
 void tp_text_mixin_clear (GObject *obj);
 
-void _tp_text_mixin_send_error_signal (GObject *obj, TpChannelTextSendError error, time_t timestamp, TpChannelTextMessageType type, const gchar *text);
+void tp_text_mixin_emit_send_error (GObject *obj, TpChannelTextSendError error, time_t timestamp, TpChannelTextMessageType type, const gchar *text);
 
 G_END_DECLS
 

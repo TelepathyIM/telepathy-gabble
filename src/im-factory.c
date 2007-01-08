@@ -244,7 +244,7 @@ im_factory_message_cb (LmMessageHandler *handler,
 
   if (send_error != TP_CHANNEL_SEND_NO_ERROR)
     {
-      _tp_text_mixin_send_error_signal (G_OBJECT (chan), send_error, stamp,
+      tp_text_mixin_emit_send_error (G_OBJECT (chan), send_error, stamp,
           msgtype, body_offset);
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }

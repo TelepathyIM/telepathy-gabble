@@ -535,11 +535,11 @@ tp_text_mixin_clear (GObject *obj)
 }
 
 void
-_tp_text_mixin_send_error_signal (GObject *obj,
-                                  TpChannelTextSendError error,
-                                  time_t timestamp,
-                                  TpChannelTextMessageType type,
-                                  const gchar *text)
+tp_text_mixin_emit_send_error (GObject *obj,
+                               TpChannelTextSendError error,
+                               time_t timestamp,
+                               TpChannelTextMessageType type,
+                               const gchar *text)
 {
   TpTextMixinClass *mixin_cls = TP_TEXT_MIXIN_CLASS (G_OBJECT_GET_CLASS (obj));
 

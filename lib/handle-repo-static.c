@@ -38,6 +38,7 @@ struct _TpStaticHandleRepo {
   TpHandleType handle_type;
   TpHandle last_handle;
   gchar **handle_names;
+  GData **datalists;
 };
 
 static void static_repo_iface_init (gpointer g_iface,
@@ -53,14 +54,25 @@ tp_static_handle_repo_init (TpStaticHandleRepo *self)
   self->handle_type = 0;
   self->last_handle = 0;
   self->handle_names = NULL;
+  self->datalists = NULL;
 }
 
 static void
 static_finalize (GObject *object)
 {
   TpStaticHandleRepo *self = TP_STATIC_HANDLE_REPO (object);
+  guint i;
+
+  if (self->datalists)
+    {
+      for (i = 0; i < self->last_handle; i++)
+        {
+          g_datalist_clear (self->datalists + i);
+        }
+    }
 
   g_strfreev (self->handle_names);
+
   G_OBJECT_CLASS (tp_static_handle_repo_parent_class)->finalize (object);
 }
 
@@ -100,7 +112,17 @@ static_set_property (GObject *object,
     case PROP_HANDLE_TYPE:
       self->handle_type = g_value_get_uint (value);
       break;
+
     case PROP_HANDLE_NAMES:
+
+      if (self->datalists)
+        {
+          for (i = 0; i < self->last_handle; i++)
+            {
+              g_datalist_clear (self->datalists + i);
+            }
+        }
+
       g_strfreev (self->handle_names);
       self->handle_names = g_strdupv (g_value_get_boxed (value));
       i = 0;
@@ -109,7 +131,12 @@ static_set_property (GObject *object,
           i++;
         }
       self->last_handle = i;
+
+      g_free (self->datalists);
+      self->datalists = NULL;
+
       break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -223,6 +250,24 @@ static gboolean
 static_set_qdata (TpHandleRepoIface *repo, TpHandle handle,
     GQuark key_id, gpointer data, GDestroyNotify destroy)
 {
+  TpStaticHandleRepo *self = TP_STATIC_HANDLE_REPO (repo);
+  guint i;
+
+  if (handle <= 0 || handle > self->last_handle)
+    return FALSE;
+
+  if (!self->datalists)
+    {
+      self->datalists = g_new (GData *, self->last_handle);
+      for (i = 0; i < self->last_handle; i++)
+        {
+          g_datalist_init (self->datalists + i);
+        }
+    }
+
+  g_datalist_id_set_data_full (self->datalists + handle - 1, key_id, data,
+      destroy);
+
   return FALSE;
 }
 
@@ -230,7 +275,15 @@ static gpointer
 static_get_qdata (TpHandleRepoIface *repo, TpHandle handle,
     GQuark key_id)
 {
-  return NULL;
+  TpStaticHandleRepo *self = TP_STATIC_HANDLE_REPO (repo);
+
+  if (handle <= 0 || handle > self->last_handle)
+    return NULL;
+
+  if (!self->datalists)
+    return NULL;
+
+  return g_datalist_id_get_data (self->datalists + handle - 1, key_id);
 }
 
 static void

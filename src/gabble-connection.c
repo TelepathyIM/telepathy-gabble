@@ -1047,11 +1047,9 @@ _gabble_connection_register (GabbleConnection *conn,
   DBusGConnection *bus;
   DBusGProxy *bus_proxy;
   GabbleConnectionPrivate *priv;
-  const char *allowed_chars = "_1234567890"
-                              "abcdefghijklmnopqrstuvwxyz"
-                              "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   char *safe_proto;
   char *unique_name;
+  char *tmp;
   guint request_name_result;
   GError *request_error;
 
@@ -1061,14 +1059,14 @@ _gabble_connection_register (GabbleConnection *conn,
   bus_proxy = tp_get_bus_proxy ();
   priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
-  safe_proto = g_strdup (priv->protocol);
-  g_strcanon (safe_proto, allowed_chars, '_');
+  safe_proto = tp_escape_as_identifier (priv->protocol);
 
-  unique_name = g_strdup_printf ("_%s_%s_%s",
-                                 priv->username,
-                                 priv->stream_server,
-                                 priv->resource);
-  g_strcanon (unique_name, allowed_chars, '_');
+  tmp = g_strdup_printf ("%s@%s/%s",
+                         priv->username,
+                         priv->stream_server,
+                         priv->resource);
+  unique_name = tp_escape_as_identifier (tmp);
+  g_free (tmp);
 
   conn->bus_name = g_strdup_printf (BUS_NAME ".%s.%s",
                                     safe_proto,

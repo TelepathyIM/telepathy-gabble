@@ -796,42 +796,6 @@ DONE:
   return message;
 }
 
-/* Escape a string in the same way as URI escaping, but with underscore
- * instead of percent:
- *
- * 'abc_xyz\x01\xff' -> 'abc_5fxyz_01_ff'
- *
- * Minuses and leading digits get the same escaping.
- */
-static char *
-_gabble_roster_make_object_path (const gchar *name)
-{
-  /* optimistically assume we won't need any escaping */
-  GString *op = g_string_sized_new (strlen (name));
-  const gchar *ptr, *first_ok;
-
-  first_ok = name;
-  for (ptr = name; *ptr; ptr++)
-    {
-      if ((*ptr < 'a' || *ptr > 'z') &&
-          (*ptr < 'A' || *ptr > 'Z') &&
-          (*ptr < '0' || *ptr > '9' || ptr != name))
-        {
-          if (first_ok < ptr)
-            {
-              g_string_append_len (op, first_ok, ptr - first_ok);
-            }
-          g_string_append_printf (op, "_%02x", (unsigned char)(*ptr));
-          first_ok = ptr + 1;
-        }
-    }
-  if (first_ok < ptr)
-    {
-      g_string_append_len (op, first_ok, ptr - first_ok);
-    }
-  return g_string_free (op, FALSE);
-}
-
 static GabbleRosterChannel *
 _gabble_roster_create_channel (GabbleRoster *roster,
                                guint handle_type,
@@ -854,7 +818,7 @@ _gabble_roster_create_channel (GabbleRoster *roster,
 
   name = tp_handle_inspect (priv->conn->handle_repos[handle_type], handle);
   DEBUG ("Instantiating channel %u:%u \"%s\"", handle_type, handle, name);
-  mangled_name = _gabble_roster_make_object_path (name);
+  mangled_name = tp_escape_as_identifier (name);
   object_path = g_strdup_printf ("%s/RosterChannel/%s/%s",
                                  priv->conn->object_path,
                                  handle_type == TP_HANDLE_TYPE_LIST ? "List"

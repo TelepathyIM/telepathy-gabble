@@ -29,4 +29,6 @@ gboolean tp_strdiff (const gchar *left, const gchar *right);
 
 gpointer tp_mixin_offset_cast (gpointer instance, guint offset);
 
+gchar *tp_escape_as_identifier (const gchar *name);
+
 #endif /* __GABBLE_UTIL_H__ */

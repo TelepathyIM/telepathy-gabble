@@ -380,7 +380,7 @@ gabble_presence_cache_set_property (GObject     *object,
     case PROP_CONNECTION:
       priv->conn = g_value_get_object (value);
       new_presence_handles = tp_handle_set_new (
-          priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT]);
+          priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT]);
 
       if (priv->presence_handles)
         {
@@ -579,7 +579,7 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
       !lm_message_node_has_namespace (x_node, NS_VCARD_TEMP_UPDATE, NULL))
     {
 #if 0
-      if (handle == priv->conn->self_handle)
+      if (handle == priv->conn->parent.self_handle)
         {
           /* One of my other resources does not support XEP-0153. As per that
            * XEP, I MUST stop advertising the image hash, at least until all
@@ -609,7 +609,7 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
       presence->avatar_sha1 = g_strdup (sha1);
 
 #if 0
-      if (handle == priv->conn->self_handle)
+      if (handle == priv->conn->parent.self_handle)
         {
           /* that would be us, then. According to XEP-0153, we MUST
            * immediately send a presence update with an empty update child
@@ -711,7 +711,7 @@ _caps_disco_cb (GabbleDisco *disco,
               const gchar *jid;
 
               jid = tp_handle_inspect (
-                  priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT],
+                  priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT],
                   waiter->handle);
               full_jid = g_strdup_printf ("%s/%s", jid, waiter->resource);
 
@@ -762,7 +762,7 @@ _caps_disco_cb (GabbleDisco *disco,
     }
 
   handle = gabble_handle_for_contact (
-      priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT], jid, FALSE);
+      priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT], jid, FALSE);
   trust = capability_info_recvd (cache, node, handle, caps);
 
   for (i = waiters; NULL != i;)
@@ -811,7 +811,7 @@ _caps_disco_cb (GabbleDisco *disco,
               const gchar *jid;
 
               jid = tp_handle_inspect (
-                  priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT],
+                  priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT],
                   waiter->handle);
               full_jid = g_strdup_printf ("%s/%s", jid, waiter->resource);
 
@@ -896,7 +896,7 @@ _process_caps_uri (GabblePresenceCache *cache,
 
       waiters = (GSList *) value;
       waiter = disco_waiter_new (
-          priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT], handle,
+          priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT], handle,
           resource, serial);
       waiters = g_slist_prepend (waiters, waiter);
       g_hash_table_insert (priv->disco_pending, g_strdup (uri), waiters);
@@ -1081,7 +1081,7 @@ gabble_presence_cache_lm_message_cb (LmMessageHandler *handler,
     }
 
   handle = gabble_handle_for_contact (
-      priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT], from, FALSE);
+      priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT], from, FALSE);
 
   if (0 == handle)
     {
@@ -1115,7 +1115,7 @@ gabble_presence_cache_get (GabblePresenceCache *cache, TpHandle handle)
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
 
   g_assert (tp_handle_is_valid (
-        priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT], handle, NULL));
+        priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT], handle, NULL));
 
   return g_hash_table_lookup (priv->presence, GINT_TO_POINTER (handle));
 }
@@ -1139,7 +1139,7 @@ gabble_presence_cache_maybe_remove (
     {
       const gchar *jid;
 
-      jid = tp_handle_inspect (priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT],
+      jid = tp_handle_inspect (priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT],
           handle);
       DEBUG ("discarding cached presence for unavailable jid %s", jid);
       g_hash_table_remove (priv->presence, GINT_TO_POINTER (handle));
@@ -1174,7 +1174,7 @@ gabble_presence_cache_update (
   const gchar *jid;
   GabblePresence *presence;
 
-  jid = tp_handle_inspect (priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT],
+  jid = tp_handle_inspect (priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT],
       handle);
   DEBUG ("%s (%d) resource %s prio %d presence %d message \"%s\"",
       jid, handle, resource, priority, presence_id, status_message);

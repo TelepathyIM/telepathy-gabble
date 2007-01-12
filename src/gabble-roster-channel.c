@@ -106,7 +106,7 @@ gabble_roster_channel_constructor (GType type, guint n_props,
            constructor (type, n_props, props);
   priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (GABBLE_ROSTER_CHANNEL (obj));
   handle_type = priv->handle_type;
-  self_handle = priv->conn->self_handle;
+  self_handle = priv->conn->parent.self_handle;
 
   /* register object on the bus */
   bus = tp_get_bus ();
@@ -116,12 +116,12 @@ gabble_roster_channel_constructor (GType type, guint n_props,
       || handle_type == TP_HANDLE_TYPE_LIST);
 
   /* ref our list handle */
-  valid = tp_handle_ref (priv->conn->handle_repos[handle_type], priv->handle);
+  valid = tp_handle_ref (priv->conn->parent.handles[handle_type], priv->handle);
   g_assert (valid);
 
   /* initialize group mixin */
   tp_group_mixin_init (obj, G_STRUCT_OFFSET (GabbleRosterChannel, group),
-      priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT],
+      priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT],
       self_handle);
 
   if (handle_type == TP_HANDLE_TYPE_GROUP)
@@ -319,7 +319,7 @@ gabble_roster_channel_finalize (GObject *object)
 
   g_free (priv->object_path);
 
-  tp_handle_unref (priv->conn->handle_repos[priv->handle_type], priv->handle);
+  tp_handle_unref (priv->conn->parent.handles[priv->handle_type], priv->handle);
 
   tp_group_mixin_finalize (object);
 
@@ -341,7 +341,7 @@ _gabble_roster_channel_send_presence (GabbleRosterChannel *chan,
   gboolean result;
 
   priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (chan);
-  repo = priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT];
+  repo = priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT];
   contact = tp_handle_inspect (repo, handle);
 
   message = lm_message_new_with_sub_type (contact,
@@ -379,9 +379,9 @@ _gabble_roster_channel_add_member_cb (GObject *obj,
   priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (GABBLE_ROSTER_CHANNEL (obj));
 
   DEBUG ("called on %s with handle %u (%s) \"%s\"",
-      tp_handle_inspect (priv->conn->handle_repos[priv->handle_type],
+      tp_handle_inspect (priv->conn->parent.handles[priv->handle_type],
         priv->handle), handle,
-      tp_handle_inspect (priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT],
+      tp_handle_inspect (priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT],
         handle), message);
 
   if (TP_HANDLE_TYPE_GROUP == priv->handle_type)
@@ -445,8 +445,8 @@ _gabble_roster_channel_remove_member_cb (GObject *obj,
   priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (GABBLE_ROSTER_CHANNEL (obj));
 
   DEBUG ("called on %s with handle %u (%s) \"%s\"", tp_handle_inspect (
-        priv->conn->handle_repos[priv->handle_type], priv->handle), handle,
-      tp_handle_inspect (priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT],
+        priv->conn->parent.handles[priv->handle_type], priv->handle), handle,
+      tp_handle_inspect (priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT],
         handle), message);
 
   if (TP_HANDLE_TYPE_GROUP == priv->handle_type)

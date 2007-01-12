@@ -2077,10 +2077,10 @@ get_jid_for_contact (GabbleMediaSession *session,
   g_assert (GABBLE_IS_MEDIA_SESSION (session));
 
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
-  self = priv->conn->self_handle;
+  self = priv->conn->parent.self_handle;
 
   base_jid = tp_handle_inspect (
-      priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT], handle);
+      priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT], handle);
   g_assert (base_jid != NULL);
 
   if (handle == self)
@@ -2132,7 +2132,7 @@ _gabble_media_session_message_new (GabbleMediaSession *session,
     element = "jingle";
 
   if (session->initiator == INITIATOR_LOCAL)
-    initiator_handle = priv->conn->self_handle;
+    initiator_handle = priv->conn->parent.self_handle;
   else
     initiator_handle = priv->peer;
 
@@ -2396,7 +2396,7 @@ _gabble_media_session_terminate (GabbleMediaSession *session,
     }
   else
     {
-      actor = priv->conn->self_handle;
+      actor = priv->conn->parent.self_handle;
 
       /* Need to tell them that it's all over. */
 

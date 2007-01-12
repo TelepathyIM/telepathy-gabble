@@ -16,6 +16,7 @@ typedef enum
   TP_DEBUG_GROUPS        = 1 << 1,
   TP_DEBUG_PROPERTIES    = 1 << 2,
   TP_DEBUG_IM            = 1 << 3,
+  TP_DEBUG_CONNECTION    = 1 << 4,
 } TpDebugFlags;
 
 gboolean _tp_debug_flag_is_set (TpDebugFlags flag);

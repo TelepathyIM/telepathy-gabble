@@ -11,6 +11,7 @@ genincludedir=$(tpgincludedir)/_gen
 noinst_LTLIBRARIES = libtelepathy-glib.la
 
 tpginclude_HEADERS = \
+    telepathy-glib/base-connection.h \
     telepathy-glib/channel-iface.h \
     telepathy-glib/channel-factory-iface.h \
     telepathy-glib/dbus.h \
@@ -48,6 +49,7 @@ BUILT_SOURCES = $(nodist_geninclude_HEADERS) \
 CLEANFILES = $(BUILT_SOURCES)
 
 libtelepathy_glib_la_SOURCES = \
+    base-connection.c \
     dbus.c \
     debug.c \
     debug.h \

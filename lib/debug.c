@@ -21,6 +21,7 @@ tp_debug_set_all_flags (void)
 static GDebugKey keys[] = {
   { "groups",        TP_DEBUG_GROUPS },
   { "properties",    TP_DEBUG_PROPERTIES },
+  { "connection",    TP_DEBUG_CONNECTION },
   { 0, },
 };
 

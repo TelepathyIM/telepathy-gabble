@@ -27,9 +27,7 @@
 
 #include "gabble-types.h"
 #include "gabble-error.h"
-#include <telepathy-glib/handle-repo.h>
-#include <telepathy-glib/properties-mixin.h>
-#include <telepathy-glib/enums.h>
+#include <telepathy-glib/base-connection.h>
 
 G_BEGIN_DECLS
 
@@ -71,31 +69,16 @@ typedef LmHandlerResult (*GabbleConnectionMsgReplyFunc) (GabbleConnection *conn,
                                                          gpointer user_data);
 
 struct _GabbleConnectionClass {
-    GObjectClass parent_class;
+    TpBaseConnectionClass parent_class;
 
     TpPropertiesMixinClass properties_class;
 };
 
 struct _GabbleConnection {
-    GObject parent;
-
-    TpPropertiesMixin properties;
-
-    /* dbus object location */
-    gchar *bus_name;
-    gchar *object_path;
+    TpBaseConnection parent;
 
     /* loudmouth connection */
     LmConnection *lmconn;
-
-#   define GABBLE_TP_CONNECTION_STATUS_NEW ((TpConnectionStatus)(LAST_TP_CONNECTION_STATUS + 1))
-    /* connection status - may either be a TpConnectionStatus or
-     * GABBLE_TP_CONNECTION_STATUS_NEW */
-    TpConnectionStatus status;
-
-    /* handles */
-    TpHandleRepoIface *handle_repos[LAST_TP_HANDLE_TYPE + 1];
-    TpHandle self_handle;
 
     /* roster */
     GabbleRoster *roster;
@@ -142,7 +125,6 @@ GType gabble_connection_get_type(void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_CONNECTION, GabbleConnectionClass))
 
 gboolean _gabble_connection_set_properties_from_account (GabbleConnection *conn, const gchar *account, GError **error);
-gboolean _gabble_connection_register (GabbleConnection *conn, char **bus_name, char **object_path, GError **error);
 gboolean _gabble_connection_send (GabbleConnection *conn, LmMessage *msg, GError **error);
 gboolean _gabble_connection_send_with_reply (GabbleConnection *conn, LmMessage *msg, GabbleConnectionMsgReplyFunc reply_func, GObject *object, gpointer user_data, GError **error);
 void _gabble_connection_acknowledge_set_iq (GabbleConnection *conn, LmMessage *iq);

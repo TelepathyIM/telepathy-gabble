@@ -107,12 +107,12 @@ gabble_im_channel_constructor (GType type, guint n_props,
            constructor (type, n_props, props);
   priv = GABBLE_IM_CHANNEL_GET_PRIVATE (GABBLE_IM_CHANNEL (obj));
 
-  valid = tp_handle_ref (priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT],
+  valid = tp_handle_ref (priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT],
       priv->handle);
   g_assert (valid);
 
   priv->peer_jid = g_strdup (tp_handle_inspect (
-        priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT], priv->handle));
+        priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT], priv->handle));
 
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
@@ -124,7 +124,7 @@ gabble_im_channel_constructor (GType type, guint n_props,
     send_nick = TRUE;
 
   tp_text_mixin_init (obj, G_STRUCT_OFFSET (GabbleIMChannel, text),
-      priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT],
+      priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT],
       send_nick);
 
   tp_text_mixin_set_message_types (obj,
@@ -290,7 +290,7 @@ gabble_im_channel_finalize (GObject *object)
 
   /* free any data held directly by the object here */
 
-  tp_handle_unref (priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT],
+  tp_handle_unref (priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT],
       priv->handle);
 
   g_free (priv->object_path);

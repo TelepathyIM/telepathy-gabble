@@ -217,7 +217,7 @@ im_factory_message_cb (LmMessageHandler *handler,
     }
 
   handle = gabble_handle_for_contact (
-      priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT], from, FALSE);
+      priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT], from, FALSE);
   if (handle == 0)
     {
       NODE_DEBUG (message->node, "ignoring message node from malformed jid");
@@ -293,7 +293,8 @@ new_im_channel (GabbleImFactory *fac, TpHandle handle)
 
   priv = GABBLE_IM_FACTORY_GET_PRIVATE (fac);
 
-  object_path = g_strdup_printf ("%s/ImChannel%u", priv->conn->object_path, handle);
+  object_path = g_strdup_printf ("%s/ImChannel%u",
+      priv->conn->parent.object_path, handle);
 
   chan = g_object_new (GABBLE_TYPE_IM_CHANNEL,
                        "connection", priv->conn,
@@ -416,7 +417,7 @@ gabble_im_factory_iface_request (TpChannelFactoryIface *iface,
   if (handle_type != TP_HANDLE_TYPE_CONTACT)
     return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_AVAILABLE;
 
-  if (!tp_handle_is_valid (priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT],
+  if (!tp_handle_is_valid (priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT],
         handle, error))
     return TP_CHANNEL_FACTORY_REQUEST_STATUS_ERROR;
 

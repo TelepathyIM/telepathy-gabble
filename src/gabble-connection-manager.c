@@ -645,7 +645,8 @@ gabble_connection_manager_request_connection (GabbleConnectionManager *self,
   free_params(&params);
 
   /* register on bus and save bus name and object path */
-  if (!_gabble_connection_register (conn, bus_name, object_path, error))
+  if (!tp_base_connection_register ((TpBaseConnection *)conn,
+        bus_name, object_path, error))
     {
       g_debug ("%s failed: %s", G_STRFUNC, (*error)->message);
 

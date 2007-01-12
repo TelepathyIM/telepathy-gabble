@@ -17,6 +17,10 @@ void test_handles (guint handle_type)
   const gchar *jid = "handle.test@foobar";
   const gchar *return_jid;
 
+  for (i = 0; i <= LAST_TP_HANDLE_TYPE; i++)
+    {
+      repos[i] = NULL;
+    }
   gabble_handle_repos_init (repos);
   tp_repo = repos[handle_type];
   g_assert (tp_repo != NULL);

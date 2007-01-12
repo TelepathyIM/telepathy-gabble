@@ -193,7 +193,7 @@ gabble_roomlist_channel_set_property (GObject     *object,
     case PROP_CONNECTION:
       priv->conn = g_value_get_object (value);
       new_signalled_rooms = tp_handle_set_new (
-          priv->conn->handle_repos[TP_HANDLE_TYPE_ROOM]);
+          priv->conn->parent.handles[TP_HANDLE_TYPE_ROOM]);
       if (priv->signalled_rooms != NULL)
         {
           const TpIntSet *add;
@@ -498,7 +498,7 @@ room_info_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
     INSERT_KEY (keys, "language", G_TYPE_STRING, string, var);
 
   handle = gabble_handle_for_room (
-      priv->conn->handle_repos[TP_HANDLE_TYPE_ROOM], jid);
+      priv->conn->parent.handles[TP_HANDLE_TYPE_ROOM], jid);
 
   tp_handle_set_add (priv->signalled_rooms, handle);
 

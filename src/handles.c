@@ -79,13 +79,6 @@ gabble_handle_jid_is_valid (TpHandleType type, const gchar *jid, GError **error)
 void
 gabble_handle_repos_init (TpHandleRepoIface *repos[LAST_TP_HANDLE_TYPE+1])
 {
-  guint i;
-
-  for (i = 0; i <= LAST_TP_HANDLE_TYPE; i++)
-    {
-      repos[i] = NULL;
-    }
-
   repos[TP_HANDLE_TYPE_CONTACT] =
       (TpHandleRepoIface *)g_object_new (TP_TYPE_DYNAMIC_HANDLE_REPO,
           "handle-type", TP_HANDLE_TYPE_CONTACT, NULL);

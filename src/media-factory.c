@@ -263,7 +263,7 @@ media_factory_jingle_cb (LmMessageHandler *handler,
     }
 
   handle = gabble_handle_for_contact (
-      priv->conn->handle_repos[TP_HANDLE_TYPE_CONTACT], from, FALSE);
+      priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT], from, FALSE);
   if (handle == 0)
     {
       NODE_DEBUG (iq_node, "unable to get handle for sender");
@@ -465,8 +465,8 @@ new_media_channel (GabbleMediaFactory *fac, TpHandle creator)
 
   priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
 
-  object_path = g_strdup_printf ("%s/MediaChannel%u", priv->conn->object_path,
-                                 priv->channel_index);
+  object_path = g_strdup_printf ("%s/MediaChannel%u",
+      priv->conn->parent.object_path, priv->channel_index);
   priv->channel_index += 1;
 
   chan = g_object_new (GABBLE_TYPE_MEDIA_CHANNEL,
@@ -593,11 +593,11 @@ gabble_media_factory_iface_request (TpChannelFactoryIface *iface,
   if (handle_type == 0)
     {
       /* create an empty channel */
-      chan = new_media_channel (fac, priv->conn->self_handle);
+      chan = new_media_channel (fac, priv->conn->parent.self_handle);
     }
   else if (handle_type == TP_HANDLE_TYPE_CONTACT)
     {
-      chan = new_media_channel (fac, priv->conn->self_handle);
+      chan = new_media_channel (fac, priv->conn->parent.self_handle);
 
       if (!_gabble_media_channel_add_member (G_OBJECT (chan), handle, "", error))
         {

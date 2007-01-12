@@ -575,7 +575,7 @@ status_changed_cb (GObject *object,
 
       /* if we have a better alias, patch it into our vCard on the server */
       alias_src = _gabble_connection_get_cached_alias (conn,
-                                                       conn->self_handle,
+                                                       conn->parent.self_handle,
                                                        &alias);
       if (alias_src < GABBLE_CONNECTION_ALIAS_FROM_VCARD)
         {
@@ -585,7 +585,7 @@ status_changed_cb (GObject *object,
         }
 
       /* fetch our vCard, and possibly patch it to include our new alias */
-      gabble_vcard_manager_request (self, conn->self_handle, 0,
+      gabble_vcard_manager_request (self, conn->parent.self_handle, 0,
                                     initial_request_cb, alias,
                                     G_OBJECT (conn), NULL);
     }
@@ -641,7 +641,7 @@ delete_request (GabbleVCardManagerRequest *request)
       g_source_remove (request->timer_id);
     }
 
-  tp_handle_unref (priv->connection->handle_repos[TP_HANDLE_TYPE_CONTACT],
+  tp_handle_unref (priv->connection->parent.handles[TP_HANDLE_TYPE_CONTACT],
                        request->handle);
 
   entry = g_hash_table_lookup (priv->cache, GUINT_TO_POINTER (request->handle));
@@ -724,7 +724,7 @@ observe_vcard (GabbleConnection *conn, GabbleVCardManager *manager,
               g_signal_emit (G_OBJECT (manager), signals[NICKNAME_UPDATE],
                              0, handle);
               if (!tp_handle_set_qdata (
-                    conn->handle_repos[TP_HANDLE_TYPE_CONTACT], handle,
+                    conn->parent.handles[TP_HANDLE_TYPE_CONTACT], handle,
                     gabble_vcard_manager_cache_quark(), alias, g_free))
                 {
                   DEBUG ("failed to cache their alias");
@@ -753,7 +753,8 @@ observe_vcard (GabbleConnection *conn, GabbleVCardManager *manager,
 
           g_signal_emit (G_OBJECT (manager), signals[NICKNAME_UPDATE],
                          0, handle);
-          if (!tp_handle_set_qdata (conn->handle_repos[TP_HANDLE_TYPE_CONTACT],
+          if (!tp_handle_set_qdata (
+                conn->parent.handles[TP_HANDLE_TYPE_CONTACT],
                 handle, gabble_vcard_manager_cache_quark(), alias, g_free))
             {
               DEBUG ("failed to cache their alias");
@@ -763,7 +764,8 @@ observe_vcard (GabbleConnection *conn, GabbleVCardManager *manager,
       else
         {
           /* remember that they don't have an alias */
-          if (!tp_handle_set_qdata (conn->handle_repos[TP_HANDLE_TYPE_CONTACT],
+          if (!tp_handle_set_qdata (
+                conn->parent.handles[TP_HANDLE_TYPE_CONTACT],
                 handle, gabble_vcard_manager_cache_quark (),
                 (gchar *) NO_ALIAS, NULL))
             DEBUG ("failed to cache their lack of vcard alias");
@@ -1039,7 +1041,7 @@ gabble_vcard_manager_request (GabbleVCardManager *self,
   DEBUG ("Created request %p to retrieve <%u>'s vCard", request, handle);
   request->timeout = timeout;
   request->manager = self;
-  tp_handle_ref (priv->connection->handle_repos[TP_HANDLE_TYPE_CONTACT],
+  tp_handle_ref (priv->connection->parent.handles[TP_HANDLE_TYPE_CONTACT],
                      handle);
   request->handle = handle;
   request->callback = callback;
@@ -1050,14 +1052,14 @@ gabble_vcard_manager_request (GabbleVCardManager *self,
     g_object_weak_ref (object, notify_delete_request, request);
 
   priv->requests = g_slist_prepend (priv->requests, request);
-  if (handle == priv->connection->self_handle) 
+  if (handle == priv->connection->parent.self_handle) 
     {
       jid = NULL;
     }
   else
     {
       jid = tp_handle_inspect (
-          priv->connection->handle_repos[TP_HANDLE_TYPE_CONTACT], handle);
+          priv->connection->parent.handles[TP_HANDLE_TYPE_CONTACT], handle);
     }
 
   entry = cache_entry_get (self, handle);
@@ -1114,9 +1116,9 @@ gabble_vcard_manager_replace (GabbleVCardManager *self,
          request, callback);
   request->timeout = timeout;
   request->manager = self;
-  tp_handle_ref (priv->connection->handle_repos[TP_HANDLE_TYPE_CONTACT],
-      priv->connection->self_handle);
-  request->handle = priv->connection->self_handle;
+  tp_handle_ref (priv->connection->parent.handles[TP_HANDLE_TYPE_CONTACT],
+      priv->connection->parent.self_handle);
+  request->handle = priv->connection->parent.self_handle;
   request->callback = callback;
   request->user_data = user_data;
   request->bound_object = object;
@@ -1152,9 +1154,9 @@ gabble_vcard_manager_edit (GabbleVCardManager *self,
   DEBUG ("Created request %p to edit my vCard", request);
   request->timeout = timeout;
   request->manager = self;
-  tp_handle_ref (priv->connection->handle_repos[TP_HANDLE_TYPE_CONTACT],
-      priv->connection->self_handle);
-  request->handle = priv->connection->self_handle;
+  tp_handle_ref (priv->connection->parent.handles[TP_HANDLE_TYPE_CONTACT],
+      priv->connection->parent.self_handle);
+  request->handle = priv->connection->parent.self_handle;
   request->callback = callback;
   request->user_data = user_data;
   request->bound_object = object;
@@ -1238,7 +1240,7 @@ gabble_vcard_manager_get_cached_alias (GabbleVCardManager *manager,
   priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (manager);
 
   s = tp_handle_get_qdata (
-      priv->connection->handle_repos[TP_HANDLE_TYPE_CONTACT],
+      priv->connection->parent.handles[TP_HANDLE_TYPE_CONTACT],
       handle, gabble_vcard_manager_cache_quark());
 
   if (s == NO_ALIAS)
@@ -1262,7 +1264,7 @@ gabble_vcard_manager_has_cached_alias (GabbleVCardManager *manager,
 
   priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (manager);
   p = tp_handle_get_qdata (
-      priv->connection->handle_repos[TP_HANDLE_TYPE_CONTACT], handle,
+      priv->connection->parent.handles[TP_HANDLE_TYPE_CONTACT], handle,
       gabble_vcard_manager_cache_quark());
   return p != NULL;
 }

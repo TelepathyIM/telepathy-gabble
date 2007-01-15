@@ -4286,7 +4286,7 @@ _request_avatar_cb (GabbleVCardManager *self,
         "contact vCard has no photo");
       dbus_g_method_return_error (context, error);
       g_error_free (error);
-            goto out;
+      goto out;
     }
 
   type_node = lm_message_node_get_child (photo_node, "TYPE");
@@ -4319,7 +4319,7 @@ _request_avatar_cb (GabbleVCardManager *self,
         "failed to decode avatar from base64");
       dbus_g_method_return_error (context, error);
       g_error_free (error);
-      return;
+      goto out;
     }
 
   if (handle == conn->self_handle)

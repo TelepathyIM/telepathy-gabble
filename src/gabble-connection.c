@@ -4275,7 +4275,7 @@ _request_avatar_cb (GabbleVCardManager *self,
   if (NULL == vcard)
     {
       dbus_g_method_return_error (context, vcard_error);
-      return;
+      goto out;
     }
 
   photo_node = lm_message_node_get_child (vcard, "PHOTO");
@@ -4286,7 +4286,7 @@ _request_avatar_cb (GabbleVCardManager *self,
         "contact vCard has no photo");
       dbus_g_method_return_error (context, error);
       g_error_free (error);
-      return;
+            goto out;
     }
 
   type_node = lm_message_node_get_child (photo_node, "TYPE");
@@ -4297,7 +4297,7 @@ _request_avatar_cb (GabbleVCardManager *self,
         "contact avatar is missing type node");
       dbus_g_method_return_error (context, error);
       g_error_free (error);
-      return;
+      goto out;
     }
 
   binval_node = lm_message_node_get_child (photo_node, "BINVAL");
@@ -4308,7 +4308,7 @@ _request_avatar_cb (GabbleVCardManager *self,
         "contact avatar is missing binval node");
       dbus_g_method_return_error (context, error);
       g_error_free (error);
-      return;
+      goto out;
     }
 
   avatar = base64_decode (lm_message_node_get_value (binval_node));
@@ -4360,7 +4360,7 @@ _request_avatar_cb (GabbleVCardManager *self,
               g_signal_emit (conn, signals[AVATAR_UPDATED], 0, handle, sha1);
             }
 
-          return;
+          goto out;
         }
 
       g_free (sha1);
@@ -4371,6 +4371,9 @@ _request_avatar_cb (GabbleVCardManager *self,
   g_array_append_vals (arr, avatar->str, avatar->len);
   dbus_g_method_return (context, arr, mime_type);
   g_array_free (arr, TRUE);
+
+out:
+  g_object_unref (conn);
 }
 
 /**

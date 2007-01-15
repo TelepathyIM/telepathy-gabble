@@ -1,3 +1,9 @@
+# temporary hack to not install the headers until telepathy-glib is
+# releasable separately - using noinst_HEADERS seemed to
+# cause build problems.
+install:
+	@echo Not installing headers until telepathy-glib is stable
+
 tpgincludedir=$(includedir)/telepathy-1.0/telepathy-glib
 specincludedir=$(tpgincludedir)/_spec
 genincludedir=$(tpgincludedir)/_gen

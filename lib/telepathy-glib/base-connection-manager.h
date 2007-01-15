@@ -24,6 +24,7 @@
 
 #include <dbus/dbus-glib.h>
 #include <glib-object.h>
+#include <telepathy-glib/base-connection.h>
 
 G_BEGIN_DECLS
 
@@ -32,6 +33,10 @@ typedef struct _TpBaseConnectionManagerClass TpBaseConnectionManagerClass;
 
 struct _TpBaseConnectionManagerClass {
     GObjectClass parent_class;
+
+    /* pure-virtual */
+    TpBaseConnection *(*new_connection)(TpBaseConnectionManager *self,
+        const gchar *proto, GHashTable *parameters, GError **error);
 };
 
 struct _TpBaseConnectionManager {
@@ -41,6 +46,10 @@ struct _TpBaseConnectionManager {
 };
 
 GType tp_base_connection_manager_get_type(void);
+
+gboolean tp_base_connection_manager_request_connection (
+    TpBaseConnectionManager *self, const gchar *proto, GHashTable *parameters,
+    gchar **bus_name, gchar **object_path, GError **error);
 
 /* TYPE MACROS */
 #define TP_TYPE_BASE_CONNECTION_MANAGER \

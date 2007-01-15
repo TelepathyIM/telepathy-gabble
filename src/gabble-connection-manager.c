@@ -39,7 +39,7 @@
       G_TYPE_VALUE, \
       G_TYPE_INVALID))
 
-G_DEFINE_TYPE(GabbleConnectionManager, gabble_connection_manager, G_TYPE_OBJECT)
+G_DEFINE_TYPE(GabbleConnectionManager, gabble_connection_manager, TP_TYPE_BASE_CONNECTION_MANAGER)
 
 /* signal enum */
 enum

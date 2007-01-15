@@ -12,6 +12,7 @@ noinst_LTLIBRARIES = libtelepathy-glib.la
 
 tpginclude_HEADERS = \
     telepathy-glib/base-connection.h \
+    telepathy-glib/base-connection-manager.h \
     telepathy-glib/channel-iface.h \
     telepathy-glib/channel-factory-iface.h \
     telepathy-glib/dbus.h \
@@ -50,6 +51,7 @@ CLEANFILES = $(BUILT_SOURCES)
 
 libtelepathy_glib_la_SOURCES = \
     base-connection.c \
+    base-connection-manager.c \
     dbus.c \
     debug.c \
     debug.h \

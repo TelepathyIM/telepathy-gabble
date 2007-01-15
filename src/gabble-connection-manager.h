@@ -22,6 +22,7 @@
 #define __GABBLE_CONNECTION_MANAGER_H__
 
 #include <glib-object.h>
+#include <telepathy-glib/base-connection-manager.h>
 
 #define GABBLE_CONN_MGR_BUS_NAME        "org.freedesktop.Telepathy.ConnectionManager.gabble"
 #define GABBLE_CONN_MGR_OBJECT_PATH     "/org/freedesktop/Telepathy/ConnectionManager/gabble"
@@ -32,11 +33,11 @@ typedef struct _GabbleConnectionManager GabbleConnectionManager;
 typedef struct _GabbleConnectionManagerClass GabbleConnectionManagerClass;
 
 struct _GabbleConnectionManagerClass {
-    GObjectClass parent_class;
+    TpBaseConnectionManagerClass parent_class;
 };
 
 struct _GabbleConnectionManager {
-    GObject parent;
+    TpBaseConnectionManager parent;
 
     gpointer priv;
 };

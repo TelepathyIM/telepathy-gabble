@@ -204,25 +204,6 @@ tp_base_connection_finalize (GObject *object)
   G_OBJECT_CLASS (tp_base_connection_parent_class)->finalize (object);
 }
 
-static void
-tp_base_connection_class_init (TpBaseConnectionClass *klass)
-{
-  GObjectClass *object_class = G_OBJECT_CLASS (klass);
-
-  g_type_class_add_private (klass, sizeof (TpBaseConnectionPrivate));
-  object_class->dispose = tp_base_connection_dispose;
-  object_class->finalize = tp_base_connection_finalize;
-
-  signals[NEW_CHANNEL] =
-    g_signal_new ("new-channel",
-                  G_OBJECT_CLASS_TYPE (klass),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  _tp_marshal_VOID__STRING_STRING_UINT_UINT_BOOLEAN,
-                  G_TYPE_NONE, 5, DBUS_TYPE_G_OBJECT_PATH, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_BOOLEAN);
-}
-
 static GPtrArray *
 find_matching_channel_requests (TpBaseConnection *conn,
                                 const gchar *channel_type,
@@ -357,6 +338,70 @@ connection_channel_error_cb (TpChannelFactoryIface *factory,
   g_free (channel_type);
 }
 
+static GObject *
+tp_base_connection_constructor (GType type, guint n_construct_properties,
+    GObjectConstructParam *construct_params)
+{
+  guint i;
+  TpBaseConnection *self = TP_BASE_CONNECTION (
+      G_OBJECT_CLASS (tp_base_connection_parent_class)->constructor (
+        type, n_construct_properties, construct_params));
+  TpBaseConnectionPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
+      TP_TYPE_BASE_CONNECTION, TpBaseConnectionPrivate);
+  TpBaseConnectionClass *cls = TP_BASE_CONNECTION_GET_CLASS (self);
+
+  DEBUG("Post-construction: (TpBaseConnection *)%p of class "
+        "(TpBaseConnectionClass *)%p", self, cls);
+
+  g_assert(cls->init_handle_repos != NULL);
+  (cls->init_handle_repos) (self->handles);
+  
+  if (DEBUGGING)
+    {
+      for (i = 0; i <= LAST_TP_HANDLE_TYPE; i++)
+      {
+        DEBUG("Handle repo for type #%u at %p", i, self->handles[i]);
+      }
+    }
+
+  g_assert (cls->create_channel_factories);
+  priv->channel_factories = cls->create_channel_factories (self);
+
+  for (i = 0; i < priv->channel_factories->len; i++)
+    {
+      GObject *factory = g_ptr_array_index (priv->channel_factories, i);
+      DEBUG("Channel factory #%u at %p", i, factory);
+      g_signal_connect (factory, "new-channel", G_CALLBACK
+          (connection_new_channel_cb), self);
+      g_signal_connect (factory, "channel-error", G_CALLBACK
+          (connection_channel_error_cb), self);
+    }
+
+  return (GObject *)self;
+}
+
+static void
+tp_base_connection_class_init (TpBaseConnectionClass *klass)
+{
+  GObjectClass *object_class = G_OBJECT_CLASS (klass);
+
+  DEBUG("Initializing (TpBaseConnectionClass *)%p", klass);
+
+  g_type_class_add_private (klass, sizeof (TpBaseConnectionPrivate));
+  object_class->dispose = tp_base_connection_dispose;
+  object_class->finalize = tp_base_connection_finalize;
+  object_class->constructor = tp_base_connection_constructor;
+
+  signals[NEW_CHANNEL] =
+    g_signal_new ("new-channel",
+                  G_OBJECT_CLASS_TYPE (klass),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  _tp_marshal_VOID__STRING_STRING_UINT_UINT_BOOLEAN,
+                  G_TYPE_NONE, 5, DBUS_TYPE_G_OBJECT_PATH, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_BOOLEAN);
+}
+
 static void
 tp_base_connection_init (TpBaseConnection *self)
 {
@@ -364,6 +409,8 @@ tp_base_connection_init (TpBaseConnection *self)
       TP_TYPE_BASE_CONNECTION, TpBaseConnectionPrivate);
   TpBaseConnectionClass *cls = TP_BASE_CONNECTION_GET_CLASS (self);
   guint i;
+
+  DEBUG("Initializing (TpBaseConnection *)%p of class %p", self, cls);
 
   self->priv = priv;
 
@@ -373,26 +420,8 @@ tp_base_connection_init (TpBaseConnection *self)
     {
       self->handles[i] = NULL;
     }
-  (cls->init_handle_repos) (self->handles);
-
-  /* initialize properties mixin */
-  tp_properties_mixin_init (G_OBJECT (self), G_STRUCT_OFFSET (
-        TpBaseConnection, properties));
 
   priv->channel_requests = g_ptr_array_new();
-
-  g_assert (cls->create_channel_factories);
-
-  priv->channel_factories = cls->create_channel_factories (self);
-
-  for (i = 0; i < priv->channel_factories->len; i++)
-    {
-      GObject *factory = g_ptr_array_index (priv->channel_factories, i);
-      g_signal_connect (factory, "new-channel", G_CALLBACK
-          (connection_new_channel_cb), self);
-      g_signal_connect (factory, "channel-error", G_CALLBACK
-          (connection_channel_error_cb), self);
-    }
 }
 
 /**

@@ -291,15 +291,16 @@ _gabble_connection_create_channel_factories (TpBaseConnection *conn)
   return channel_factories;
 }
 
-static void
-gabble_connection_init (GabbleConnection *self)
+static GObject *
+gabble_connection_constructor (GType type,
+                               guint n_construct_properties,
+                               GObjectConstructParam *construct_params)
 {
-  GabbleConnectionPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
-      GABBLE_TYPE_CONNECTION, GabbleConnectionPrivate);
-  GValue val = { 0, };
+  GabbleConnection *self = GABBLE_CONNECTION (
+      G_OBJECT_CLASS (gabble_connection_parent_class)->constructor (
+        type, n_construct_properties, construct_params));
 
-  self->priv = priv;
-  self->lmconn = lm_connection_new (NULL);
+  DEBUG("Post-construction: (GabbleConnection *)%p", self);
 
   self->disco = gabble_disco_new (self);
   self->vcard_manager = gabble_vcard_manager_new (self);
@@ -320,6 +321,21 @@ gabble_connection_init (GabbleConnection *self)
 
   capabilities_fill_cache (self->presence_cache);
 
+  return (GObject *)self;
+}
+
+static void
+gabble_connection_init (GabbleConnection *self)
+{
+  GabbleConnectionPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
+      GABBLE_TYPE_CONNECTION, GabbleConnectionPrivate);
+  GValue val = { 0, };
+
+  DEBUG("Initializing (GabbleConnection *)%p", self);
+
+  self->priv = priv;
+  self->lmconn = lm_connection_new (NULL);
+
   /* Set default parameters for optional parameters */
   priv->resource = g_strdup (GABBLE_PARAMS_DEFAULT_RESOURCE);
   priv->port = GABBLE_PARAMS_DEFAULT_PORT;
@@ -327,6 +343,10 @@ gabble_connection_init (GabbleConnection *self)
 
   g_value_init (&val, G_TYPE_UINT);
   g_value_set_uint (&val, GABBLE_PARAMS_DEFAULT_STUN_PORT);
+
+  /* initialize properties mixin */
+  tp_properties_mixin_init (G_OBJECT (self), G_STRUCT_OFFSET (
+        GabbleConnection, parent.properties));
 
   tp_properties_mixin_change_value (G_OBJECT (self), CONN_PROP_STUN_PORT,
                                         &val, NULL);
@@ -540,14 +560,17 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
       gabble_connection_class);
   GParamSpec *param_spec;
 
+  DEBUG("Initializing (GabbleConnectionClass *)%p", gabble_connection_class);
+
+  object_class->get_property = gabble_connection_get_property;
+  object_class->set_property = gabble_connection_set_property;
+  object_class->constructor = gabble_connection_constructor;
+
   parent_class->init_handle_repos = gabble_handle_repos_init;
   parent_class->get_unique_connection_name = gabble_connection_get_unique_name;
   parent_class->get_protocol = _gabble_connection_get_protocol;
   parent_class->cm_dbus_name = "gabble";
   parent_class->create_channel_factories = _gabble_connection_create_channel_factories;
-
-  object_class->get_property = gabble_connection_get_property;
-  object_class->set_property = gabble_connection_set_property;
 
   g_type_class_add_private (gabble_connection_class, sizeof (GabbleConnectionPrivate));
 
@@ -840,7 +863,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_connection_class), &dbus_glib_gabble_connection_object_info);
 
   tp_properties_mixin_class_init (G_OBJECT_CLASS (gabble_connection_class),
-                                      G_STRUCT_OFFSET (GabbleConnectionClass, properties_class),
+                                      G_STRUCT_OFFSET (GabbleConnectionClass, parent_class.properties_class),
                                       connection_property_signatures, NUM_CONN_PROPS,
                                       NULL);
 }

@@ -70,8 +70,6 @@ typedef LmHandlerResult (*GabbleConnectionMsgReplyFunc) (GabbleConnection *conn,
 
 struct _GabbleConnectionClass {
     TpBaseConnectionClass parent_class;
-
-    TpPropertiesMixinClass properties_class;
 };
 
 struct _GabbleConnection {

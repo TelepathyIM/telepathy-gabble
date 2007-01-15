@@ -41,7 +41,10 @@ struct _TpHandleSet
 TpHandleSet *
 tp_handle_set_new (TpHandleRepoIface *repo)
 {
-  TpHandleSet *set = g_new(TpHandleSet, 1);
+  TpHandleSet *set;
+  g_assert (repo != NULL);
+
+  set = g_new(TpHandleSet, 1);
   set->intset = tp_intset_new();
   set->repo = repo;
 

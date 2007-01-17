@@ -197,7 +197,10 @@ main (int argc,
   g_signal_connect (manager, "no-more-connections",
       (GCallback) no_more_connections, NULL);
 
-  _gabble_connection_manager_register (manager);
+  if (!tp_base_connection_manager_register ((TpBaseConnectionManager *)manager))
+    {
+      exit(1);
+    }
 
   g_debug ("started version " VERSION);
 

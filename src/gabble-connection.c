@@ -569,7 +569,6 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
   parent_class->init_handle_repos = gabble_handle_repos_init;
   parent_class->get_unique_connection_name = gabble_connection_get_unique_name;
   parent_class->get_protocol = _gabble_connection_get_protocol;
-  parent_class->cm_dbus_name = "gabble";
   parent_class->create_channel_factories = _gabble_connection_create_channel_factories;
 
   g_type_class_add_private (gabble_connection_class, sizeof (GabbleConnectionPrivate));

@@ -58,6 +58,8 @@ gabble_connection_manager_class_init (GabbleConnectionManagerClass *gabble_conne
   gabble_connection_manager_class->parent_class.new_connection =
     _gabble_connection_manager_new_connection;
 
+  gabble_connection_manager_class->parent_class.cm_dbus_name = "gabble";
+
   dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_connection_manager_class), &dbus_glib_gabble_connection_manager_object_info);
 }
 
@@ -338,38 +340,6 @@ free_params (GabbleParams *params)
   g_free (params->fallback_conference_server);
   g_free (params->stun_server);
   g_free (params->alias);
-}
-
-/* public methods */
-
-void
-_gabble_connection_manager_register (GabbleConnectionManager *self)
-{
-  DBusGConnection *bus;
-  DBusGProxy *bus_proxy;
-  GError *error = NULL;
-  guint request_name_result;
-
-  g_assert (GABBLE_IS_CONNECTION_MANAGER (self));
-
-  bus = tp_get_bus ();
-  bus_proxy = tp_get_bus_proxy ();
-
-  if (!dbus_g_proxy_call (bus_proxy, "RequestName", &error,
-                          G_TYPE_STRING, GABBLE_CONN_MGR_BUS_NAME,
-                          G_TYPE_UINT, DBUS_NAME_FLAG_DO_NOT_QUEUE,
-                          G_TYPE_INVALID,
-                          G_TYPE_UINT, &request_name_result,
-                          G_TYPE_INVALID))
-    g_error ("Failed to request bus name: %s", error->message);
-
-  if (request_name_result == DBUS_REQUEST_NAME_REPLY_EXISTS)
-    {
-      g_warning ("Failed to acquire bus name, connection manager already running?");
-      exit (1);
-    }
-
-  dbus_g_connection_register_g_object (bus, GABBLE_CONN_MGR_OBJECT_PATH, G_OBJECT (self));
 }
 
 /* dbus-exported methods */

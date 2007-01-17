@@ -20,10 +20,11 @@
  */
 
 #include <telepathy-glib/base-connection-manager.h>
+#include <telepathy-glib/dbus.h>
 #include "_gen/signals-marshal.h"
 
-#define BUS_NAME_BASE    "org.freedesktop.Telepathy.ConnectionManager"
-#define OBJECT_PATH_BASE "/org/freedesktop/Telepathy/ConnectionManager"
+#define BUS_NAME_BASE    "org.freedesktop.Telepathy.ConnectionManager."
+#define OBJECT_PATH_BASE "/org/freedesktop/Telepathy/ConnectionManager/"
 
 G_DEFINE_ABSTRACT_TYPE(TpBaseConnectionManager, tp_base_connection_manager, G_TYPE_OBJECT)
 
@@ -171,11 +172,12 @@ tp_base_connection_manager_request_connection (TpBaseConnectionManager *self,
   TpBaseConnection *conn;
 
   g_assert (cls->new_connection);
+  g_assert (cls->cm_dbus_name);
   conn = (cls->new_connection)(self, proto, parameters, error);
 
   /* register on bus and save bus name and object path */
   if (!tp_base_connection_register ((TpBaseConnection *)conn,
-        bus_name, object_path, error))
+        cls->cm_dbus_name, bus_name, object_path, error))
     {
       g_debug ("%s failed: %s", G_STRFUNC, (*error)->message);
 
@@ -200,4 +202,49 @@ ERROR:
     g_object_unref (G_OBJECT (conn));
 
   return FALSE;
+}
+
+gboolean
+tp_base_connection_manager_register (TpBaseConnectionManager *self)
+{
+  DBusGConnection *bus;
+  DBusGProxy *bus_proxy;
+  GError *error = NULL;
+  guint request_name_result;
+  TpBaseConnectionManagerClass *cls;
+  GString *string;
+
+  g_assert (TP_IS_BASE_CONNECTION_MANAGER (self));
+  cls = TP_BASE_CONNECTION_MANAGER_GET_CLASS (self);
+  g_assert (cls->cm_dbus_name);
+
+  bus = tp_get_bus ();
+  bus_proxy = tp_get_bus_proxy ();
+
+  string = g_string_new (BUS_NAME_BASE);
+  g_string_append (string, cls->cm_dbus_name);
+
+  if (!dbus_g_proxy_call (bus_proxy, "RequestName", &error,
+                          G_TYPE_STRING, string->str,
+                          G_TYPE_UINT, DBUS_NAME_FLAG_DO_NOT_QUEUE,
+                          G_TYPE_INVALID,
+                          G_TYPE_UINT, &request_name_result,
+                          G_TYPE_INVALID))
+    g_error ("Failed to request bus name: %s", error->message);
+
+  if (request_name_result == DBUS_REQUEST_NAME_REPLY_EXISTS)
+    {
+      g_warning ("Failed to acquire bus name, connection manager already running?");
+
+      g_string_free (string, TRUE);
+      return FALSE;
+    }
+
+  g_string_assign (string, OBJECT_PATH_BASE);
+  g_string_append (string, cls->cm_dbus_name);
+  dbus_g_connection_register_g_object (bus, string->str, G_OBJECT (self));
+
+  g_string_free (string, TRUE);
+
+  return TRUE;
 }

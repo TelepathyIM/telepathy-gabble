@@ -34,6 +34,7 @@ typedef struct _TpBaseConnectionManagerClass TpBaseConnectionManagerClass;
 struct _TpBaseConnectionManagerClass {
     GObjectClass parent_class;
 
+    const char *cm_dbus_name;
     /* pure-virtual */
     TpBaseConnection *(*new_connection)(TpBaseConnectionManager *self,
         const gchar *proto, GHashTable *parameters, GError **error);
@@ -46,6 +47,8 @@ struct _TpBaseConnectionManager {
 };
 
 GType tp_base_connection_manager_get_type(void);
+
+gboolean tp_base_connection_manager_register (TpBaseConnectionManager *self);
 
 gboolean tp_base_connection_manager_request_connection (
     TpBaseConnectionManager *self, const gchar *proto, GHashTable *parameters,
@@ -67,4 +70,4 @@ gboolean tp_base_connection_manager_request_connection (
 
 G_END_DECLS
 
-#endif /* #ifndef __TP_BASE_CONNECTION_H__*/
+#endif /* #ifndef __TP_BASE_CONNECTION_MANAGER_H__*/

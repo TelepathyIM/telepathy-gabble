@@ -39,8 +39,6 @@ struct _TpBaseConnectionClass {
 
     TpPropertiesMixinClass properties_class;
 
-    const gchar *cm_dbus_name;
-
     /* pure-virtual methods */
     void (*init_handle_repos) (TpHandleRepoIface *[LAST_TP_HANDLE_TYPE+1]);
     GPtrArray *(*create_channel_factories) (TpBaseConnection *self);
@@ -73,7 +71,8 @@ struct _TpBaseConnection {
 GType tp_base_connection_get_type(void);
 
 gboolean tp_base_connection_register (TpBaseConnection *self,
-    gchar **bus_name, gchar **object_path, GError **error);
+    const gchar *cm_name, gchar **bus_name, gchar **object_path,
+    GError **error);
 
 void tp_base_connection_close_all_channels (TpBaseConnection *self);
 void tp_base_connection_disconnected (TpBaseConnection *self);

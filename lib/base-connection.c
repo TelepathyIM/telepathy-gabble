@@ -33,8 +33,8 @@
 #include "debug.h"
 #include "_gen/signals-marshal.h"
 
-#define BUS_NAME_BASE    "org.freedesktop.Telepathy.Connection"
-#define OBJECT_PATH_BASE "/org/freedesktop/Telepathy/Connection"
+#define BUS_NAME_BASE    "org.freedesktop.Telepathy.Connection."
+#define OBJECT_PATH_BASE "/org/freedesktop/Telepathy/Connection/"
 
 G_DEFINE_ABSTRACT_TYPE(TpBaseConnection, tp_base_connection, G_TYPE_OBJECT)
 
@@ -432,6 +432,7 @@ tp_base_connection_init (TpBaseConnection *self)
  */
 gboolean
 tp_base_connection_register (TpBaseConnection *self,
+    const gchar *cm_name,
     gchar **bus_name,
     gchar **object_path,
     GError **error)
@@ -447,7 +448,6 @@ tp_base_connection_register (TpBaseConnection *self,
 
   g_return_val_if_fail (cls->get_protocol, FALSE);
   g_return_val_if_fail (cls->get_unique_connection_name, FALSE);
-  g_return_val_if_fail (cls->cm_dbus_name, FALSE);
 
   tmp = cls->get_protocol (self);
   safe_proto = tp_escape_as_identifier (tmp);
@@ -460,10 +460,10 @@ tp_base_connection_register (TpBaseConnection *self,
   bus = tp_get_bus ();
   bus_proxy = tp_get_bus_proxy ();
 
-  self->bus_name = g_strdup_printf (BUS_NAME_BASE ".%s.%s.%s",
-      cls->cm_dbus_name, safe_proto, unique_name);
-  self->object_path = g_strdup_printf (OBJECT_PATH_BASE "/%s/%s/%s",
-      cls->cm_dbus_name, safe_proto, unique_name);
+  self->bus_name = g_strdup_printf (BUS_NAME_BASE "%s.%s.%s",
+      cm_name, safe_proto, unique_name);
+  self->object_path = g_strdup_printf (OBJECT_PATH_BASE "%s/%s/%s",
+      cm_name, safe_proto, unique_name);
 
   if (!dbus_g_proxy_call (bus_proxy, "RequestName", &request_error,
                           G_TYPE_STRING, self->bus_name,

@@ -31,7 +31,7 @@ typedef enum
                       */
   ChannelFull,       /** The channel is full.
                       */
-  ChannelInviteOnly, /** The requested channel is invite only.
+  ChannelInviteOnly, /** The requested channel is invite-only.
                       */
   Disconnected,      /** The connection is not currently connected and cannot
                       *  be used.

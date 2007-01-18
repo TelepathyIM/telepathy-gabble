@@ -118,6 +118,10 @@
       <arg direction="in" name="parms" type="a{sv}"/>
     </method>
     <method name="ClearStatus"/>
+    <method name="GetPresence">
+      <arg direction="in" name="contacts" type="au"/>
+      <arg direction="out" type="a{u(ua{sa{sv}})}"/>
+    </method>
     <method name="GetStatuses">
       <arg direction="out" type="a{s(ubba{ss})}"/>
     </method>

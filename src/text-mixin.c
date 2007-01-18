@@ -154,34 +154,34 @@ gabble_text_mixin_parse_incoming_message (LmMessage *message,
             {
               case XMPP_ERROR_SERVICE_UNAVAILABLE:
               case XMPP_ERROR_RECIPIENT_UNAVAILABLE:
-                *send_error = TP_CHANNEL_SEND_ERROR_OFFLINE;
+                *send_error = TP_CHANNEL_TEXT_SEND_ERROR_OFFLINE;
                 break;
 
               case XMPP_ERROR_ITEM_NOT_FOUND:
               case XMPP_ERROR_JID_MALFORMED:
               case XMPP_ERROR_REMOTE_SERVER_TIMEOUT:
-                *send_error = TP_CHANNEL_SEND_ERROR_INVALID_CONTACT;
+                *send_error = TP_CHANNEL_TEXT_SEND_ERROR_INVALID_CONTACT;
                 break;
 
               case XMPP_ERROR_FORBIDDEN:
-                *send_error = TP_CHANNEL_SEND_ERROR_PERMISSION_DENIED;
+                *send_error = TP_CHANNEL_TEXT_SEND_ERROR_PERMISSION_DENIED;
                 break;
 
               case XMPP_ERROR_RESOURCE_CONSTRAINT:
-                *send_error = TP_CHANNEL_SEND_ERROR_TOO_LONG;
+                *send_error = TP_CHANNEL_TEXT_SEND_ERROR_TOO_LONG;
                 break;
 
               case XMPP_ERROR_FEATURE_NOT_IMPLEMENTED:
-                *send_error = TP_CHANNEL_SEND_ERROR_NOT_IMPLEMENTED;
+                *send_error = TP_CHANNEL_TEXT_SEND_ERROR_NOT_IMPLEMENTED;
                 break;
 
               default:
-                *send_error = TP_CHANNEL_SEND_ERROR_UNKNOWN;
+                *send_error = TP_CHANNEL_TEXT_SEND_ERROR_UNKNOWN;
             }
         }
       else
         {
-          *send_error = TP_CHANNEL_SEND_ERROR_UNKNOWN;
+          *send_error = TP_CHANNEL_TEXT_SEND_ERROR_UNKNOWN;
         }
     }
 

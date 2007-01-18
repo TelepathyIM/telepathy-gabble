@@ -343,6 +343,10 @@ gabble_media_channel_set_property (GObject     *object,
       /* this property is writable in the interface, but not actually
        * meaningfully changable on this channel, so we do nothing */
       break;
+    case PROP_HANDLE_TYPE:
+      /* this property is writable in the interface, but not actually
+       * meaningfully changable on this channel, so we do nothing */
+      break;
     case PROP_CONNECTION:
       priv->conn = g_value_get_object (value);
       break;

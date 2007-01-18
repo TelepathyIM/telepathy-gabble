@@ -187,6 +187,10 @@ gabble_roomlist_channel_set_property (GObject     *object,
       /* this property is writable in the interface, but not actually
        * meaningfully changable on this channel, so we do nothing */
       break;
+    case PROP_HANDLE_TYPE:
+      /* this property is writable in the interface, but not actually
+       * meaningfully changable on this channel, so we do nothing */
+      break;
     case PROP_CONNECTION:
       priv->conn = g_value_get_object (value);
       new_signalled_rooms = handle_set_new (priv->conn->handles, TP_HANDLE_TYPE_ROOM);

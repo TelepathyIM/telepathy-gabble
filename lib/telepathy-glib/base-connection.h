@@ -43,7 +43,6 @@ struct _TpBaseConnectionClass {
     void (*init_handle_repos) (TpHandleRepoIface *[LAST_TP_HANDLE_TYPE+1]);
     GPtrArray *(*create_channel_factories) (TpBaseConnection *self);
     gchar *(*get_unique_connection_name) (TpBaseConnection *self);
-    gchar *(*get_protocol) (TpBaseConnection *self);
 };
 
 struct _TpBaseConnection {
@@ -64,7 +63,6 @@ struct _TpBaseConnection {
     TpHandleRepoIface *handles[LAST_TP_HANDLE_TYPE + 1];
     TpHandle self_handle;
 
-    /* currently unused */
     gpointer priv;
 };
 
@@ -78,6 +76,10 @@ void tp_base_connection_close_all_channels (TpBaseConnection *self);
 void tp_base_connection_disconnected (TpBaseConnection *self);
 void tp_base_connection_connecting (TpBaseConnection *self);
 void tp_base_connection_connected (TpBaseConnection *self);
+gboolean tp_base_connection_get_protocol (TpBaseConnection *self,
+    gchar **ret, GError **error);
+gboolean tp_base_connection_get_self_handle (TpBaseConnection *self,
+    guint *ret, GError **error);
 gboolean tp_base_connection_get_status (TpBaseConnection *self,
     guint *ret, GError **error);
 void tp_base_connection_hold_handles (TpBaseConnection *self,

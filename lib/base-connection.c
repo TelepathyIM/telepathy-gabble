@@ -38,6 +38,11 @@
 
 G_DEFINE_ABSTRACT_TYPE(TpBaseConnection, tp_base_connection, G_TYPE_OBJECT)
 
+enum
+{
+    PROP_PROTOCOL = 1,
+};
+
 #define TP_BASE_CONNECTION_GET_PRIVATE(obj) \
     ((TpBaseConnectionPrivate *)obj->priv)
 
@@ -134,6 +139,9 @@ channel_request_cancel (gpointer data, gpointer user_data)
 
 typedef struct _TpBaseConnectionPrivate
 {
+  /* Telepathy properties */
+  gchar *protocol;
+
   /* if TRUE, the object has gone away */
   gboolean dispose_has_run;
   /* array of (TpChannelFactoryIface *) */
@@ -144,6 +152,46 @@ typedef struct _TpBaseConnectionPrivate
    * the CM being non-reentrant - FIXME */
   gboolean suppress_next_handler;
 } TpBaseConnectionPrivate;
+
+static void
+tp_base_connection_get_property (GObject *object,
+                                 guint property_id,
+                                 GValue *value,
+                                 GParamSpec *pspec)
+{
+  TpBaseConnection *self = (TpBaseConnection *) object;
+  TpBaseConnectionPrivate *priv = TP_BASE_CONNECTION_GET_PRIVATE (self);
+
+  switch (property_id) {
+    case PROP_PROTOCOL:
+      g_value_set_string (value, priv->protocol);
+      break;
+
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+      break;
+  }
+}
+
+static void
+tp_base_connection_set_property (GObject      *object,
+                                 guint         property_id,
+                                 const GValue *value,
+                                 GParamSpec   *pspec)
+{
+  TpBaseConnection *self = (TpBaseConnection *) object;
+  TpBaseConnectionPrivate *priv = TP_BASE_CONNECTION_GET_PRIVATE (self);
+
+  switch (property_id) {
+    case PROP_PROTOCOL:
+      g_free (priv->protocol);
+      priv->protocol = g_value_dup_string (value);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+      break;
+  }
+}
 
 static void
 tp_base_connection_dispose (GObject *object)
@@ -195,7 +243,9 @@ static void
 tp_base_connection_finalize (GObject *object)
 {
   TpBaseConnection *self = TP_BASE_CONNECTION (object);
+  TpBaseConnectionPrivate *priv = TP_BASE_CONNECTION_GET_PRIVATE (self);
 
+  g_free (priv->protocol);
   g_free (self->bus_name);
   g_free (self->object_path);
 
@@ -383,6 +433,7 @@ tp_base_connection_constructor (GType type, guint n_construct_properties,
 static void
 tp_base_connection_class_init (TpBaseConnectionClass *klass)
 {
+  GParamSpec *param_spec;
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
   DEBUG("Initializing (TpBaseConnectionClass *)%p", klass);
@@ -391,6 +442,18 @@ tp_base_connection_class_init (TpBaseConnectionClass *klass)
   object_class->dispose = tp_base_connection_dispose;
   object_class->finalize = tp_base_connection_finalize;
   object_class->constructor = tp_base_connection_constructor;
+  object_class->get_property = tp_base_connection_get_property;
+  object_class->set_property = tp_base_connection_set_property;
+
+  param_spec = g_param_spec_string ("protocol", "Telepathy identifier for protocol",
+                                    "Identifier string used when the protocol "
+                                    "name is required. Unused internally.",
+                                    NULL,
+                                    G_PARAM_CONSTRUCT_ONLY |
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_STATIC_NAME |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_PROTOCOL, param_spec);
 
   signals[NEW_CHANNEL] =
     g_signal_new ("new-channel",
@@ -438,6 +501,7 @@ tp_base_connection_register (TpBaseConnection *self,
     GError **error)
 {
   TpBaseConnectionClass *cls = TP_BASE_CONNECTION_GET_CLASS (self);
+  TpBaseConnectionPrivate *priv = TP_BASE_CONNECTION_GET_PRIVATE (self);
   DBusGConnection *bus;
   DBusGProxy *bus_proxy;
   gchar *tmp;
@@ -446,12 +510,9 @@ tp_base_connection_register (TpBaseConnection *self,
   guint request_name_result;
   GError *request_error;
 
-  g_return_val_if_fail (cls->get_protocol, FALSE);
   g_return_val_if_fail (cls->get_unique_connection_name, FALSE);
 
-  tmp = cls->get_protocol (self);
-  safe_proto = tp_escape_as_identifier (tmp);
-  g_free (tmp);
+  safe_proto = tp_escape_as_identifier (priv->protocol);
 
   tmp = cls->get_unique_connection_name (self);
   unique_name = tp_escape_as_identifier (tmp);
@@ -571,6 +632,65 @@ tp_base_connection_disconnected (TpBaseConnection *self)
       tp_channel_factory_iface_disconnected, NULL);
 }
 
+/* D-Bus methods on Connection interface ----------------------------*/
+
+/* Missing: Connect */
+
+/* Missing: Disconnect */
+
+/* Missing: GetInterfaces, but could implement in a cunning generic way? */
+
+/**
+ * tp_base_connection_get_protocol
+ *
+ * Implements D-Bus method GetProtocol
+ * on interface org.freedesktop.Telepathy.Connection
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occurred, D-Bus will throw the error only if this
+ *         function returns FALSE.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean
+tp_base_connection_get_protocol (TpBaseConnection *self,
+                                 gchar **ret,
+                                 GError **error)
+{
+  g_assert (TP_IS_BASE_CONNECTION (self));
+
+  ERROR_IF_NOT_CONNECTED (self, error)
+
+  g_object_get ((GObject *)self, "protocol", ret, NULL);
+
+  return TRUE;
+}
+
+/**
+ * tp_base_connection_get_self_handle
+ *
+ * Implements D-Bus method GetSelfHandle
+ * on interface org.freedesktop.Telepathy.Connection
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occurred, D-Bus will throw the error only if this
+ *         function returns FALSE.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+gboolean
+tp_base_connection_get_self_handle (TpBaseConnection *self,
+                                    guint *ret,
+                                    GError **error)
+{
+  g_assert (TP_IS_BASE_CONNECTION (self));
+
+  ERROR_IF_NOT_CONNECTED (self, error)
+
+  *ret = self->self_handle;
+
+  return TRUE;
+}
 
 /**
  * tp_base_connection_get_status
@@ -949,3 +1069,5 @@ tp_base_connection_release_handles (TpBaseConnection *self,
 
   dbus_g_method_return (context);
 }
+
+/* Missing: RequestHandles (need to verify them) */

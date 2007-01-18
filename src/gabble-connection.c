@@ -141,8 +141,7 @@ static guint signals[LAST_SIGNAL] = {0};
 /* properties */
 enum
 {
-    PROP_PROTOCOL = 1,
-    PROP_CONNECT_SERVER,
+    PROP_CONNECT_SERVER = 1,
     PROP_PORT,
     PROP_OLD_SSL,
     PROP_REGISTER,
@@ -209,9 +208,6 @@ struct _GabbleConnectionPrivate
   LmMessageHandler *iq_disco_cb;
   LmMessageHandler *iq_unknown_cb;
   LmMessageHandler *stream_error_cb;
-
-  /* telepathy properties */
-  gchar *protocol;
 
   /* connection properties */
   gchar *connect_server;
@@ -370,9 +366,6 @@ gabble_connection_get_property (GObject    *object,
   guint tp_property_id;
 
   switch (property_id) {
-    case PROP_PROTOCOL:
-      g_value_set_string (value, priv->protocol);
-      break;
     case PROP_CONNECT_SERVER:
       g_value_set_string (value, priv->connect_server);
       break;
@@ -451,10 +444,6 @@ gabble_connection_set_property (GObject      *object,
   guint tp_property_id;
 
   switch (property_id) {
-    case PROP_PROTOCOL:
-      g_free (priv->protocol);
-      priv->protocol = g_value_dup_string (value);
-      break;
     case PROP_CONNECT_SERVER:
       g_free (priv->connect_server);
       priv->connect_server = g_value_dup_string (value);
@@ -531,15 +520,6 @@ gabble_connection_set_property (GObject      *object,
 static void gabble_connection_dispose (GObject *object);
 static void gabble_connection_finalize (GObject *object);
 
-static gchar *
-_gabble_connection_get_protocol (TpBaseConnection *self)
-{
-  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (
-      GABBLE_CONNECTION (self));
-
-  return g_strdup (priv->protocol);
-}
-
 gchar *
 gabble_connection_get_unique_name (TpBaseConnection *self)
 {
@@ -568,22 +548,12 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
 
   parent_class->init_handle_repos = gabble_handle_repos_init;
   parent_class->get_unique_connection_name = gabble_connection_get_unique_name;
-  parent_class->get_protocol = _gabble_connection_get_protocol;
   parent_class->create_channel_factories = _gabble_connection_create_channel_factories;
 
   g_type_class_add_private (gabble_connection_class, sizeof (GabbleConnectionPrivate));
 
   object_class->dispose = gabble_connection_dispose;
   object_class->finalize = gabble_connection_finalize;
-
-  param_spec = g_param_spec_string ("protocol", "Telepathy identifier for protocol",
-                                    "Identifier string used when the protocol "
-                                    "name is required. Unused internally.",
-                                    NULL,
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_PROTOCOL, param_spec);
 
   param_spec = g_param_spec_string ("connect-server", "Hostname or IP of Jabber server",
                                     "The server used when establishing a connection.",
@@ -936,7 +906,6 @@ gabble_connection_finalize (GObject *object)
 
   DEBUG ("called with %p", object);
 
-  g_free (priv->protocol);
   g_free (priv->connect_server);
   g_free (priv->stream_server);
   g_free (priv->username);
@@ -3292,17 +3261,7 @@ gabble_connection_get_protocol (GabbleConnection *self,
                                 gchar **ret,
                                 GError **error)
 {
-  GabbleConnectionPrivate *priv;
-
-  g_assert (GABBLE_IS_CONNECTION (self));
-
-  priv = GABBLE_CONNECTION_GET_PRIVATE (self);
-
-  ERROR_IF_NOT_CONNECTED (self, error)
-
-  *ret = g_strdup (priv->protocol);
-
-  return TRUE;
+  return tp_base_connection_get_protocol ((TpBaseConnection *)self, ret, error);
 }
 
 
@@ -3323,17 +3282,8 @@ gabble_connection_get_self_handle (GabbleConnection *self,
                                    guint *ret,
                                    GError **error)
 {
-  GabbleConnectionPrivate *priv;
-
-  g_assert (GABBLE_IS_CONNECTION (self));
-
-  priv = GABBLE_CONNECTION_GET_PRIVATE (self);
-
-  ERROR_IF_NOT_CONNECTED (self, error)
-
-  *ret = self->parent.self_handle;
-
-  return TRUE;
+  return tp_base_connection_get_self_handle ((TpBaseConnection *)self, ret,
+      error);
 }
 
 

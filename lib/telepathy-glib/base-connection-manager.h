@@ -25,6 +25,7 @@
 #include <dbus/dbus-glib.h>
 #include <glib-object.h>
 #include <telepathy-glib/base-connection.h>
+#include <telepathy-glib/connection-manager-service-iface.h>
 
 G_BEGIN_DECLS
 
@@ -50,9 +51,9 @@ GType tp_base_connection_manager_get_type(void);
 
 gboolean tp_base_connection_manager_register (TpBaseConnectionManager *self);
 
-gboolean tp_base_connection_manager_request_connection (
-    TpBaseConnectionManager *self, const gchar *proto, GHashTable *parameters,
-    gchar **bus_name, gchar **object_path, GError **error);
+void tp_base_connection_manager_request_connection (
+    TpConnectionManagerServiceIface *self, const gchar *proto, GHashTable *parameters,
+    DBusGMethodInvocation *context);
 
 /* TYPE MACROS */
 #define TP_TYPE_BASE_CONNECTION_MANAGER \

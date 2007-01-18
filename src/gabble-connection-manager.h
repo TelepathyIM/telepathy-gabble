@@ -74,27 +74,6 @@ GType gabble_connection_manager_get_type(void);
 #define GABBLE_CONNECTION_MANAGER_GET_CLASS(obj) \
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_CONNECTION_MANAGER, GabbleConnectionManagerClass))
 
-gboolean
-gabble_connection_manager_get_parameters (GabbleConnectionManager *self,
-                                          const gchar *proto,
-                                          GPtrArray **ret,
-                                          GError **error);
-
-gboolean
-gabble_connection_manager_list_protocols (GabbleConnectionManager *self,
-                                          gchar ***ret,
-                                          GError **error);
-
-gboolean
-gabble_connection_manager_request_connection (GabbleConnectionManager *self,
-                                              const gchar *proto,
-                                              GHashTable *parameters,
-                                              gchar **ret,
-                                              gchar **ret1,
-                                              GError **error);
-
-
-
 G_END_DECLS
 
 #endif /* #ifndef __GABBLE_CONNECTION_MANAGER_H__*/

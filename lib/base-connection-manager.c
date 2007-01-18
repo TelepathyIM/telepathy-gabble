@@ -20,13 +20,20 @@
  */
 
 #include <telepathy-glib/base-connection-manager.h>
+#include <telepathy-glib/connection-manager-service-iface.h>
 #include <telepathy-glib/dbus.h>
 #include "_gen/signals-marshal.h"
 
 #define BUS_NAME_BASE    "org.freedesktop.Telepathy.ConnectionManager."
 #define OBJECT_PATH_BASE "/org/freedesktop/Telepathy/ConnectionManager/"
 
-G_DEFINE_ABSTRACT_TYPE(TpBaseConnectionManager, tp_base_connection_manager, G_TYPE_OBJECT)
+static void service_iface_init (gpointer, gpointer);
+
+G_DEFINE_ABSTRACT_TYPE_WITH_CODE(TpBaseConnectionManager,
+    tp_base_connection_manager,
+    G_TYPE_OBJECT,
+    G_IMPLEMENT_INTERFACE(TP_TYPE_CONNECTION_MANAGER_SERVICE_IFACE,
+        service_iface_init))
 
 #define TP_BASE_CONNECTION_MANAGER_GET_PRIVATE(obj) \
     ((TpBaseConnectionManagerPrivate *)obj->priv)
@@ -145,6 +152,27 @@ connection_disconnected_cb (TpBaseConnection        *conn,
     }
 }
 
+static void
+tp_base_connection_manager_get_parameters (TpConnectionManagerServiceIface *self,
+                                           const gchar *proto,
+                                           DBusGMethodInvocation *context)
+{
+  GError *error;
+
+  g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED, "Not implemented");
+  dbus_g_method_return_error(context, error);
+}
+
+static void
+tp_base_connection_manager_list_protocols (TpConnectionManagerServiceIface *self,
+                                           DBusGMethodInvocation *context)
+{
+  GError *error;
+
+  g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED, "Not implemented");
+  dbus_g_method_return_error(context, error);
+}
+
 /**
  * tp_base_connection_manager_request_connection
  *
@@ -157,31 +185,40 @@ connection_disconnected_cb (TpBaseConnection        *conn,
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-tp_base_connection_manager_request_connection (TpBaseConnectionManager *self,
+void
+tp_base_connection_manager_request_connection (TpConnectionManagerServiceIface *iface,
                                                const gchar *proto,
                                                GHashTable *parameters,
-                                               gchar **bus_name,
-                                               gchar **object_path,
-                                               GError **error)
+                                               DBusGMethodInvocation *context)
 {
+  TpBaseConnectionManager *self = TP_BASE_CONNECTION_MANAGER (iface);
   TpBaseConnectionManagerClass *cls =
     TP_BASE_CONNECTION_MANAGER_GET_CLASS (self);
   TpBaseConnectionManagerPrivate *priv =
     TP_BASE_CONNECTION_MANAGER_GET_PRIVATE (self);
   TpBaseConnection *conn;
+  gchar *bus_name;
+  gchar *object_path;
+  GError *error = NULL;
 
   g_assert (cls->new_connection);
   g_assert (cls->cm_dbus_name);
-  conn = (cls->new_connection)(self, proto, parameters, error);
+  conn = (cls->new_connection)(self, proto, parameters, &error);
+  if (!conn)
+    {
+      dbus_g_method_return_error (context, error);
+      return;
+    }
 
   /* register on bus and save bus name and object path */
   if (!tp_base_connection_register ((TpBaseConnection *)conn,
-        cls->cm_dbus_name, bus_name, object_path, error))
+        cls->cm_dbus_name, &bus_name, &object_path, &error))
     {
-      g_debug ("%s failed: %s", G_STRFUNC, (*error)->message);
+      g_debug ("%s failed: %s", G_STRFUNC, error->message);
 
-      goto ERROR;
+      g_object_unref (G_OBJECT (conn));
+      dbus_g_method_return_error (context, error);
+      return;
     }
 
   /* bind to status change signals from the connection object */
@@ -193,15 +230,10 @@ tp_base_connection_manager_request_connection (TpBaseConnectionManager *self,
   g_hash_table_insert (priv->connections, conn, GINT_TO_POINTER(TRUE));
 
   /* emit the new connection signal */
-  g_signal_emit (self, signals[NEW_CONNECTION], 0, *bus_name, *object_path, proto);
+  g_signal_emit (self, signals[NEW_CONNECTION], 0, bus_name, object_path, proto);
 
-  return TRUE;
-
-ERROR:
-  if (conn)
-    g_object_unref (G_OBJECT (conn));
-
-  return FALSE;
+  tp_connection_manager_service_iface_return_from_request_connection (
+      context, bus_name, object_path);
 }
 
 gboolean
@@ -247,4 +279,14 @@ tp_base_connection_manager_register (TpBaseConnectionManager *self)
   g_string_free (string, TRUE);
 
   return TRUE;
+}
+
+static void
+service_iface_init(gpointer g_iface, gpointer iface_data)
+{
+  TpConnectionManagerServiceIfaceClass *klass = (TpConnectionManagerServiceIfaceClass *)g_iface;
+
+  klass->get_parameters = tp_base_connection_manager_get_parameters;
+  klass->list_protocols = tp_base_connection_manager_list_protocols;
+  klass->request_connection = tp_base_connection_manager_request_connection;
 }

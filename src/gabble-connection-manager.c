@@ -29,8 +29,6 @@
 #include <telepathy-glib/errors.h>
 
 #include "gabble-connection-manager.h"
-#include "gabble-connection-manager-glue.h"
-#include "gabble-connection-manager-signals-marshal.h"
 
 #define TP_TYPE_PARAM (dbus_g_type_get_struct ("GValueArray", \
       G_TYPE_STRING, \
@@ -39,7 +37,13 @@
       G_TYPE_VALUE, \
       G_TYPE_INVALID))
 
-G_DEFINE_TYPE(GabbleConnectionManager, gabble_connection_manager, TP_TYPE_BASE_CONNECTION_MANAGER)
+static void cm_service_iface_init (gpointer, gpointer);
+
+G_DEFINE_TYPE_WITH_CODE(GabbleConnectionManager,
+    gabble_connection_manager,
+    TP_TYPE_BASE_CONNECTION_MANAGER,
+    G_IMPLEMENT_INTERFACE(TP_TYPE_CONNECTION_MANAGER_SERVICE_IFACE,
+      cm_service_iface_init))
 
 /* type definition stuff */
 
@@ -59,8 +63,6 @@ gabble_connection_manager_class_init (GabbleConnectionManagerClass *gabble_conne
     _gabble_connection_manager_new_connection;
 
   gabble_connection_manager_class->parent_class.cm_dbus_name = "gabble";
-
-  dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_connection_manager_class), &dbus_glib_gabble_connection_manager_object_info);
 }
 
 /* private data */
@@ -364,19 +366,23 @@ free_params (GabbleParams *params)
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_connection_manager_get_parameters (GabbleConnectionManager *self,
+static void
+gabble_connection_manager_get_parameters (TpConnectionManagerServiceIface *iface,
                                           const gchar *proto,
-                                          GPtrArray **ret,
-                                          GError **error)
+                                          DBusGMethodInvocation *context)
 {
+  GPtrArray *ret;
+  GError *error;
   const GabbleParamSpec *params = NULL;
   int i;
 
-  if (!get_parameters (proto, &params, error))
-    return FALSE;
+  if (!get_parameters (proto, &params, &error))
+    {
+      dbus_g_method_return_error (context, error);
+      return;
+    }
 
-  *ret = g_ptr_array_new ();
+  ret = g_ptr_array_new ();
 
   for (i = 0; params[i].name; i++)
     {
@@ -397,10 +403,11 @@ gabble_connection_manager_get_parameters (GabbleConnectionManager *self,
       g_value_unset(def_value);
       g_free(def_value);
 
-      g_ptr_array_add (*ret, g_value_get_boxed (&param));
+      g_ptr_array_add (ret, g_value_get_boxed (&param));
     }
 
-  return TRUE;
+  tp_connection_manager_service_iface_return_from_get_parameters (
+      context, ret);
 }
 
 
@@ -416,16 +423,14 @@ gabble_connection_manager_get_parameters (GabbleConnectionManager *self,
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_connection_manager_list_protocols (GabbleConnectionManager *self,
-                                          gchar ***ret,
-                                          GError **error)
+static void
+gabble_connection_manager_list_protocols (TpConnectionManagerServiceIface *iface,
+                                          DBusGMethodInvocation *context)
 {
   const char *protocols[] = { "jabber", NULL };
 
-  *ret = g_strdupv ((gchar **)protocols);
-
-  return TRUE;
+  tp_connection_manager_service_iface_return_from_list_protocols (
+      context, g_strdupv ((gchar **)protocols));
 }
 
 
@@ -508,27 +513,11 @@ _gabble_connection_manager_new_connection (TpBaseConnectionManager *self,
   return (TpBaseConnection *)conn;
 }
 
-/**
- * gabble_connection_manager_request_connection
- *
- * Implements D-Bus method RequestConnection
- * on interface org.freedesktop.Telepathy.ConnectionManager
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_connection_manager_request_connection (GabbleConnectionManager *self,
-                                              const gchar *proto,
-                                              GHashTable *parameters,
-                                              gchar **bus_name,
-                                              gchar **object_path,
-                                              GError **error)
+static void
+cm_service_iface_init(gpointer g_iface, gpointer iface_data)
 {
-  return tp_base_connection_manager_request_connection (
-      (TpBaseConnectionManager *)self, proto, parameters,
-      bus_name, object_path, error);
+  TpConnectionManagerServiceIfaceClass *klass = (TpConnectionManagerServiceIfaceClass *)g_iface;
+
+  klass->get_parameters = gabble_connection_manager_get_parameters;
+  klass->list_protocols = gabble_connection_manager_list_protocols;
 }

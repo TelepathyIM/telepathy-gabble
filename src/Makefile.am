@@ -131,7 +131,7 @@ telepathy_gabble_LDADD = libgabble-convenience.la
 
 noinst_LTLIBRARIES = libgabble-convenience.la
 
-AM_CFLAGS = $(ERROR_CFLAGS) -I$(top_srcdir)/lib -I$(top_builddir)/lib @DBUS_CFLAGS@ @GLIB_CFLAGS@ @LOUDMOUTH_CFLAGS@ @HANDLE_LEAK_DEBUG_CFLAGS@
+AM_CFLAGS = $(ERROR_CFLAGS) -I$(top_srcdir)/lib -I$(top_builddir)/lib -I$(top_srcdir)/lib/_spec @DBUS_CFLAGS@ @GLIB_CFLAGS@ @LOUDMOUTH_CFLAGS@ @HANDLE_LEAK_DEBUG_CFLAGS@
 AM_LDFLAGS = @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@
 
 

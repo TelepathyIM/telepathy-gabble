@@ -140,6 +140,7 @@ AC_CHECK_HEADERS(signal.h)
 
 AC_OUTPUT( Makefile \
 	   lib/Makefile \
+	   lib/_spec/Makefile \
            src/Makefile \
            m4/Makefile \
            data/Makefile \

@@ -4,11 +4,23 @@
 install:
 	@echo Not installing headers until telepathy-glib is stable
 
+SUBDIRS = _spec
+
+.PHONY: maintainer-update-from-spec
+maintainer-update-from-spec:
+	@test z. = z$(srcdir) || \
+		{ echo "maintainer-update-from-spec doesn't work in an"\
+		"out of tree build"; \
+		exit 1; }
+	$(MAKE) -C _spec -f ../update-from-spec.mk
+
 tpgincludedir=$(includedir)/telepathy-1.0/telepathy-glib
 specincludedir=$(tpgincludedir)/_spec
 genincludedir=$(tpgincludedir)/_gen
 
 noinst_LTLIBRARIES = libtelepathy-glib.la
+
+libtelepathy_glib_la_LIBADD = _spec/libtelepathy-glib-_spec.la
 
 tpginclude_HEADERS = \
     telepathy-glib/base-connection.h \
@@ -31,11 +43,6 @@ tpginclude_HEADERS = \
     telepathy-glib/properties-mixin.h \
     telepathy-glib/text-mixin.h \
     telepathy-glib/util.h
-
-specinclude_HEADERS = \
-    telepathy-glib/_spec/telepathy-enums.h \
-    telepathy-glib/_spec/telepathy-errors.h \
-    telepathy-glib/_spec/telepathy-interfaces.h
 
 nodist_libtelepathy_glib_la_SOURCES = \
     _gen/signals-marshal.c \
@@ -70,7 +77,7 @@ libtelepathy_glib_la_SOURCES = \
     text-mixin.c \
     util.c
 
-AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @HANDLE_LEAK_DEBUG_CFLAGS@
+AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @HANDLE_LEAK_DEBUG_CFLAGS@ -I$(srcdir)/_spec
 AM_LDFLAGS = @DBUS_LIBS@ @GLIB_LIBS@
 
 _gen/signals-marshal.h: signals-marshal.list
@@ -81,7 +88,7 @@ _gen/signals-marshal.c: signals-marshal.list
 	$(INSTALL) -d _gen
 	glib-genmarshal --body --prefix=_tp_marshal $< > $@
 
-_gen/enumtypes-spec-%.c: telepathy-glib/_spec/%.h Makefile.in
+_gen/enumtypes-spec-%.c: _spec/telepathy-glib/_spec/%.h Makefile.in
 	$(INSTALL) -d _gen
 	glib-mkenums \
 	--fhead "#include <telepathy-glib/_spec/$*.h>\n#include <telepathy-glib/_gen/enumtypes-spec-$*.h>" \
@@ -91,7 +98,7 @@ _gen/enumtypes-spec-%.c: telepathy-glib/_spec/%.h Makefile.in
 	--vtail "      { 0, NULL, NULL }\n    };\n    etype = g_@type@_register_static (\"@EnumName@\", values);\n  }\n  return etype;\n}\n" \
         $< > $@
 
-telepathy-glib/_gen/enumtypes-spec-%.h: telepathy-glib/_spec/%.h Makefile.in
+telepathy-glib/_gen/enumtypes-spec-%.h: _spec/telepathy-glib/_spec/%.h Makefile.in
 	$(INSTALL) -d telepathy-glib/_gen
 	glib-mkenums \
 	--fhead "#ifndef __$(shell echo $* | tr [:lower:]- [:upper:]_)_ENUM_TYPES_H__\n#define __$(shell echo $* | tr [:lower:]- [:upper:]_)_ENUM_TYPES_H__\n\n#include <glib-object.h>\n\nG_BEGIN_DECLS\n" \

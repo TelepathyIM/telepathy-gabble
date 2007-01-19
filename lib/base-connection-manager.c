@@ -22,7 +22,6 @@
 #include <telepathy-glib/base-connection-manager.h>
 #include <telepathy-glib/connection-manager-service-iface.h>
 #include <telepathy-glib/dbus.h>
-#include "_gen/signals-marshal.h"
 
 #define BUS_NAME_BASE    "org.freedesktop.Telepathy.ConnectionManager."
 #define OBJECT_PATH_BASE "/org/freedesktop/Telepathy/ConnectionManager/"
@@ -49,7 +48,6 @@ typedef struct _TpBaseConnectionManagerPrivate
 /* signal enum */
 enum
 {
-    NEW_CONNECTION,
     NO_MORE_CONNECTIONS,
     N_SIGNALS
 };
@@ -89,15 +87,6 @@ tp_base_connection_manager_class_init (TpBaseConnectionManagerClass *klass)
   g_type_class_add_private (klass, sizeof (TpBaseConnectionManagerPrivate));
   object_class->dispose = tp_base_connection_manager_dispose;
   object_class->finalize = tp_base_connection_manager_finalize;
-
-  signals[NEW_CONNECTION] =
-    g_signal_new ("new-connection",
-                  G_OBJECT_CLASS_TYPE (klass),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  _tp_marshal_VOID__STRING_STRING_STRING,
-                  G_TYPE_NONE, 3, G_TYPE_STRING, DBUS_TYPE_G_OBJECT_PATH, G_TYPE_STRING);
 
   signals[NO_MORE_CONNECTIONS] =
     g_signal_new ("no-more-connections",
@@ -181,7 +170,7 @@ tp_base_connection_manager_list_protocols (TpConnectionManagerServiceIface *self
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-void
+static void
 tp_base_connection_manager_request_connection (TpConnectionManagerServiceIface *iface,
                                                const gchar *proto,
                                                GHashTable *parameters,
@@ -228,7 +217,8 @@ tp_base_connection_manager_request_connection (TpConnectionManagerServiceIface *
   g_hash_table_insert (priv->connections, conn, GINT_TO_POINTER(TRUE));
 
   /* emit the new connection signal */
-  g_signal_emit (self, signals[NEW_CONNECTION], 0, bus_name, object_path, proto);
+  tp_connection_manager_service_iface_emit_new_connection (
+      iface, bus_name, object_path, proto);
 
   tp_connection_manager_service_iface_return_from_request_connection (
       context, bus_name, object_path);

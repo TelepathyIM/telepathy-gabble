@@ -51,10 +51,6 @@ GType tp_base_connection_manager_get_type(void);
 
 gboolean tp_base_connection_manager_register (TpBaseConnectionManager *self);
 
-void tp_base_connection_manager_request_connection (
-    TpConnectionManagerServiceIface *self, const gchar *proto, GHashTable *parameters,
-    DBusGMethodInvocation *context);
-
 /* TYPE MACROS */
 #define TP_TYPE_BASE_CONNECTION_MANAGER \
   (tp_base_connection_manager_get_type())

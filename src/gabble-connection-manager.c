@@ -379,6 +379,7 @@ gabble_connection_manager_get_parameters (TpConnectionManagerServiceIface *iface
   if (!get_parameters (proto, &params, &error))
     {
       dbus_g_method_return_error (context, error);
+      g_error_free (error);
       return;
     }
 
@@ -408,6 +409,7 @@ gabble_connection_manager_get_parameters (TpConnectionManagerServiceIface *iface
 
   tp_connection_manager_service_iface_return_from_get_parameters (
       context, ret);
+  g_ptr_array_free (ret, TRUE);
 }
 
 
@@ -430,7 +432,7 @@ gabble_connection_manager_list_protocols (TpConnectionManagerServiceIface *iface
   const char *protocols[] = { "jabber", NULL };
 
   tp_connection_manager_service_iface_return_from_list_protocols (
-      context, g_strdupv ((gchar **)protocols));
+      context, protocols);
 }
 
 

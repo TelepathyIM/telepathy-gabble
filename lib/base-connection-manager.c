@@ -157,20 +157,16 @@ tp_base_connection_manager_get_parameters (TpConnectionManagerServiceIface *self
                                            const gchar *proto,
                                            DBusGMethodInvocation *context)
 {
-  GError *error;
-
-  g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED, "Not implemented");
-  dbus_g_method_return_error(context, error);
+  GError error = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED, "Not implemented" };
+  dbus_g_method_return_error(context, &error);
 }
 
 static void
 tp_base_connection_manager_list_protocols (TpConnectionManagerServiceIface *self,
                                            DBusGMethodInvocation *context)
 {
-  GError *error;
-
-  g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED, "Not implemented");
-  dbus_g_method_return_error(context, error);
+  GError error = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED, "Not implemented" };
+  dbus_g_method_return_error(context, &error);
 }
 
 /**
@@ -207,6 +203,7 @@ tp_base_connection_manager_request_connection (TpConnectionManagerServiceIface *
   if (!conn)
     {
       dbus_g_method_return_error (context, error);
+      g_error_free (error);
       return;
     }
 
@@ -218,6 +215,7 @@ tp_base_connection_manager_request_connection (TpConnectionManagerServiceIface *
 
       g_object_unref (G_OBJECT (conn));
       dbus_g_method_return_error (context, error);
+      g_error_free (error);
       return;
     }
 
@@ -234,6 +232,8 @@ tp_base_connection_manager_request_connection (TpConnectionManagerServiceIface *
 
   tp_connection_manager_service_iface_return_from_request_connection (
       context, bus_name, object_path);
+  g_free (bus_name);
+  g_free (object_path);
 }
 
 gboolean

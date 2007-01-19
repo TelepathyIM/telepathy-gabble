@@ -27,7 +27,7 @@
 #include <dbus/dbus-glib.h>
 
 #include <telepathy-glib/enums.h>
-#include <telepathy-glib/properties-interface-service-iface.h>
+#include <telepathy-glib/svc-properties-interface.h>
 #include <telepathy-glib/util.h>
 
 G_BEGIN_DECLS

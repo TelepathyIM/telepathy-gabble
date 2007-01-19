@@ -39,12 +39,12 @@
 #include <telepathy-glib/channel-iface.h>
 #include <telepathy-glib/channel-factory-iface.h>
 
-#include <telepathy-glib/connection-service-iface.h>
-#include <telepathy-glib/connection-interface-aliasing-service-iface.h>
-#include <telepathy-glib/connection-interface-avatars-service-iface.h>
-#include <telepathy-glib/connection-interface-capabilities-service-iface.h>
-#include <telepathy-glib/connection-interface-presence-service-iface.h>
-#include <telepathy-glib/properties-interface-service-iface.h>
+#include <telepathy-glib/svc-connection.h>
+#include <telepathy-glib/svc-connection-interface-aliasing.h>
+#include <telepathy-glib/svc-connection-interface-avatars.h>
+#include <telepathy-glib/svc-connection-interface-capabilities.h>
+#include <telepathy-glib/svc-connection-interface-presence.h>
+#include <telepathy-glib/svc-properties-interface.h>
 
 #include "gabble-connection.h"
 
@@ -105,17 +105,17 @@ static void presence_service_iface_init(gpointer, gpointer);
 G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
     gabble_connection,
     TP_TYPE_BASE_CONNECTION,
-    G_IMPLEMENT_INTERFACE (TP_TYPE_CONNECTION_SERVICE_IFACE,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION,
       conn_service_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_CONNECTION_INTERFACE_ALIASING_SERVICE_IFACE,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_ALIASING,
       aliasing_service_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_CONNECTION_INTERFACE_AVATARS_SERVICE_IFACE,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_AVATARS,
       avatars_service_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_CONNECTION_INTERFACE_CAPABILITIES_SERVICE_IFACE,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CAPABILITIES,
       capabilities_service_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_CONNECTION_INTERFACE_PRESENCE_SERVICE_IFACE,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_PRESENCE,
       presence_service_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_PROPERTIES_INTERFACE_SERVICE_IFACE,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_PROPERTIES_INTERFACE,
       tp_properties_mixin_iface_init)
     )
 
@@ -1461,8 +1461,8 @@ connection_status_change (GabbleConnection        *conn,
       DEBUG ("emitting status-changed with status %u reason %u",
                status, reason);
 
-      tp_connection_service_iface_emit_status_changed (
-          (TpConnectionServiceIface *)conn, status, reason);
+      tp_svc_connection_emit_status_changed (
+          (TpSvcConnection *)conn, status, reason);
 
       if (status == TP_CONNECTION_STATUS_CONNECTING)
         {
@@ -1680,8 +1680,8 @@ connection_nickname_update_cb (GObject *object,
   g_ptr_array_add (aliases, g_value_get_boxed (&entry));
 
 
-  tp_connection_interface_aliasing_service_iface_emit_aliases_changed (
-      (TpConnectionInterfaceAliasingServiceIface *)conn, aliases);
+  tp_svc_connection_interface_aliasing_emit_aliases_changed (
+      (TpSvcConnectionInterfaceAliasing *)conn, aliases);
 
   g_value_unset (&entry);
   g_ptr_array_free (aliases, TRUE);
@@ -1704,8 +1704,8 @@ update_own_avatar_sha1 (GabbleConnection *conn,
   if (!tp_strdiff (sha1, conn->self_presence->avatar_sha1))
     return TRUE;
 
-  tp_connection_interface_avatars_service_iface_emit_avatar_updated (
-      (TpConnectionInterfaceAvatarsServiceIface *)conn,
+  tp_svc_connection_interface_avatars_emit_avatar_updated (
+      (TpSvcConnectionInterfaceAvatars *)conn,
       conn->parent.self_handle, sha1);
 
   g_free (conn->self_presence->avatar_sha1);
@@ -1745,8 +1745,8 @@ connection_avatar_update_cb (GabblePresenceCache *cache,
   if (handle == conn->parent.self_handle)
     update_own_avatar_sha1 (conn, presence->avatar_sha1, NULL);
   else
-    tp_connection_interface_avatars_service_iface_emit_avatar_updated (
-        (TpConnectionInterfaceAvatarsServiceIface *)conn,
+    tp_svc_connection_interface_avatars_emit_avatar_updated (
+        (TpSvcConnectionInterfaceAvatars *)conn,
         handle, presence->avatar_sha1);
 }
 
@@ -1888,8 +1888,8 @@ emit_presence_update (GabbleConnection *self,
   GHashTable *presence_hash;
 
   presence_hash = construct_presence_hash (self, contact_handles);
-  tp_connection_interface_presence_service_iface_emit_presence_update (
-      (TpConnectionInterfacePresenceServiceIface *)self, presence_hash);
+  tp_svc_connection_interface_presence_emit_presence_update (
+      (TpSvcConnectionInterfacePresence *)self, presence_hash);
   g_hash_table_destroy (presence_hash);
 }
 
@@ -2605,7 +2605,7 @@ get_statuses_arguments()
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 static void
-gabble_connection_add_status (TpConnectionInterfacePresenceServiceIface *iface,
+gabble_connection_add_status (TpSvcConnectionInterfacePresence *iface,
                               const gchar *status,
                               GHashTable *parms,
                               DBusGMethodInvocation *context)
@@ -2672,8 +2672,8 @@ _emit_capabilities_changed (GabbleConnection *conn,
     }
 
   if (caps_arr->len)
-    tp_connection_interface_capabilities_service_iface_emit_capabilities_changed (
-        (TpConnectionInterfaceCapabilitiesServiceIface *)conn, caps_arr);
+    tp_svc_connection_interface_capabilities_emit_capabilities_changed (
+        (TpSvcConnectionInterfaceCapabilities *)conn, caps_arr);
 
 
   for (i = 0; i < caps_arr->len; i++)
@@ -2709,7 +2709,7 @@ connection_capabilities_update_cb (GabblePresenceCache *cache,
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 static void
-gabble_connection_advertise_capabilities (TpConnectionInterfaceCapabilitiesServiceIface *iface,
+gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *iface,
                                           const GPtrArray *add,
                                           const gchar **remove,
                                           DBusGMethodInvocation *context)
@@ -2802,7 +2802,7 @@ gabble_connection_advertise_capabilities (TpConnectionInterfaceCapabilitiesServi
           save_caps, caps);
     }
 
-  tp_connection_interface_capabilities_service_iface_return_from_advertise_capabilities (
+  tp_svc_connection_interface_capabilities_return_from_advertise_capabilities (
       context, ret);
   g_ptr_array_free (ret, TRUE);
 }
@@ -2820,7 +2820,7 @@ gabble_connection_advertise_capabilities (TpConnectionInterfaceCapabilitiesServi
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 static void
-gabble_connection_clear_status (TpConnectionInterfacePresenceServiceIface *iface,
+gabble_connection_clear_status (TpSvcConnectionInterfacePresence *iface,
                                 DBusGMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
@@ -2846,7 +2846,7 @@ gabble_connection_clear_status (TpConnectionInterfacePresenceServiceIface *iface
       return;
     }
 
-  tp_connection_interface_presence_service_iface_return_from_clear_status (
+  tp_svc_connection_interface_presence_return_from_clear_status (
       context);
 }
 
@@ -2863,7 +2863,7 @@ gabble_connection_clear_status (TpConnectionInterfacePresenceServiceIface *iface
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 static void
-gabble_connection_connect (TpConnectionServiceIface *iface,
+gabble_connection_connect (TpSvcConnection *iface,
                            DBusGMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
@@ -2882,7 +2882,7 @@ gabble_connection_connect (TpConnectionServiceIface *iface,
         }
     }
 
-  tp_connection_service_iface_return_from_connect (context);
+  tp_svc_connection_return_from_connect (context);
 }
 
 
@@ -2899,7 +2899,7 @@ gabble_connection_connect (TpConnectionServiceIface *iface,
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 static void
-gabble_connection_disconnect (TpConnectionServiceIface *iface,
+gabble_connection_disconnect (TpSvcConnection *iface,
                               DBusGMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
@@ -2913,7 +2913,7 @@ gabble_connection_disconnect (TpConnectionServiceIface *iface,
       TP_CONNECTION_STATUS_DISCONNECTED,
       TP_CONNECTION_STATUS_REASON_REQUESTED);
 
-  tp_connection_service_iface_return_from_disconnect (context);
+  tp_svc_connection_return_from_disconnect (context);
 }
 
 
@@ -2930,7 +2930,7 @@ gabble_connection_disconnect (TpConnectionServiceIface *iface,
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 static void
-gabble_connection_get_alias_flags (TpConnectionInterfaceAliasingServiceIface *iface,
+gabble_connection_get_alias_flags (TpSvcConnectionInterfaceAliasing *iface,
                                    DBusGMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
@@ -2940,7 +2940,7 @@ gabble_connection_get_alias_flags (TpConnectionInterfaceAliasingServiceIface *if
 
   ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
 
-  tp_connection_interface_aliasing_service_iface_return_from_get_alias_flags (
+  tp_svc_connection_interface_aliasing_return_from_get_alias_flags (
       context, TP_CONNECTION_ALIAS_FLAG_USER_SET);
 }
 
@@ -2957,7 +2957,7 @@ gabble_connection_get_alias_flags (TpConnectionInterfaceAliasingServiceIface *if
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 static void
-gabble_connection_get_avatar_requirements (TpConnectionInterfaceAvatarsServiceIface *iface,
+gabble_connection_get_avatar_requirements (TpSvcConnectionInterfaceAvatars *iface,
                                            DBusGMethodInvocation *context)
 {
   /* Jabber prescribes no MIME type for avatars, but XEP-0153 says support
@@ -2968,7 +2968,7 @@ gabble_connection_get_avatar_requirements (TpConnectionInterfaceAvatarsServiceIf
   /* Jabber has no min/max width/height or max size, but XEP-0153 says
    * you SHOULD use 32-96px either way, and no more than 8K of data */
 
-  tp_connection_interface_avatars_service_iface_return_from_get_avatar_requirements (
+  tp_svc_connection_interface_avatars_return_from_get_avatar_requirements (
       context, mimetypes, 32, 32, 96, 96, 8192);
 }
 
@@ -2994,7 +2994,7 @@ _got_self_avatar_for_get_avatar_tokens (GObject *obj,
 
   /* FIXME: I'm not entirely sure why gcc warns without this cast from
    * (gchar **) to (const gchar **) */
-  tp_connection_interface_avatars_service_iface_return_from_get_avatar_tokens (
+  tp_svc_connection_interface_avatars_return_from_get_avatar_tokens (
       context->invocation, (const gchar **)context->ret);
   g_strfreev (context->ret);
 
@@ -3012,7 +3012,7 @@ _got_self_avatar_for_get_avatar_tokens (GObject *obj,
  *           or throw an error.
  */
 static void
-gabble_connection_get_avatar_tokens (TpConnectionInterfaceAvatarsServiceIface *iface,
+gabble_connection_get_avatar_tokens (TpSvcConnectionInterfaceAvatars *iface,
                                      const GArray *contacts,
                                      DBusGMethodInvocation *invocation)
 {
@@ -3081,7 +3081,7 @@ gabble_connection_get_avatar_tokens (TpConnectionInterfaceAvatarsServiceIface *i
 
   /* FIXME: I'm not entirely sure why gcc warns without this cast from
    * (gchar **) to (const gchar **) */
-  tp_connection_interface_avatars_service_iface_return_from_get_avatar_tokens (
+  tp_svc_connection_interface_avatars_return_from_get_avatar_tokens (
       invocation, (const gchar **)ret);
   g_strfreev (ret);
 }
@@ -3108,7 +3108,7 @@ static const gchar *assumed_caps[] =
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 static void
-gabble_connection_get_capabilities (TpConnectionInterfaceCapabilitiesServiceIface *iface,
+gabble_connection_get_capabilities (TpSvcConnectionInterfaceCapabilities *iface,
                                     const GArray *handles,
                                     DBusGMethodInvocation *context)
 {
@@ -3193,7 +3193,7 @@ gabble_connection_get_capabilities (TpConnectionInterfaceCapabilitiesServiceIfac
         }
     }
 
-  tp_connection_interface_capabilities_service_iface_return_from_get_capabilities (
+  tp_svc_connection_interface_capabilities_return_from_get_capabilities (
       context, ret);
   g_ptr_array_free (ret, TRUE);
 }
@@ -3212,7 +3212,7 @@ gabble_connection_get_capabilities (TpConnectionInterfaceCapabilitiesServiceIfac
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 static void
-gabble_connection_get_interfaces (TpConnectionServiceIface *iface,
+gabble_connection_get_interfaces (TpSvcConnection *iface,
                                   DBusGMethodInvocation *context)
 {
   const char *interfaces[] = {
@@ -3232,7 +3232,7 @@ gabble_connection_get_interfaces (TpConnectionServiceIface *iface,
 
   ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
 
-  tp_connection_service_iface_return_from_get_interfaces(
+  tp_svc_connection_return_from_get_interfaces(
       context, interfaces);
 }
 
@@ -3247,7 +3247,7 @@ gabble_connection_get_interfaces (TpConnectionServiceIface *iface,
  *           or throw an error.
  */
 static void
-gabble_connection_get_presence (TpConnectionInterfacePresenceServiceIface *iface,
+gabble_connection_get_presence (TpSvcConnectionInterfacePresence *iface,
                                 const GArray *contacts,
                                 DBusGMethodInvocation *context)
 {
@@ -3263,7 +3263,7 @@ gabble_connection_get_presence (TpConnectionInterfacePresenceServiceIface *iface
     }
 
   presence_hash = construct_presence_hash (self, contacts);
-  tp_connection_interface_presence_service_iface_return_from_get_presence (
+  tp_svc_connection_interface_presence_return_from_get_presence (
       context, presence_hash);
   g_hash_table_destroy (presence_hash);
 }
@@ -3282,7 +3282,7 @@ gabble_connection_get_presence (TpConnectionInterfacePresenceServiceIface *iface
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 static void
-gabble_connection_get_statuses (TpConnectionInterfacePresenceServiceIface *iface,
+gabble_connection_get_statuses (TpSvcConnectionInterfacePresence *iface,
                                 DBusGMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
@@ -3336,7 +3336,7 @@ gabble_connection_get_statuses (TpConnectionInterfacePresenceServiceIface *iface
       g_hash_table_insert (ret, (gchar*) gabble_statuses[i].name, status);
     }
 
-  tp_connection_interface_presence_service_iface_return_from_get_statuses (
+  tp_svc_connection_interface_presence_return_from_get_statuses (
       context, ret);
   g_hash_table_destroy (ret);
 }
@@ -3355,7 +3355,7 @@ gabble_connection_get_statuses (TpConnectionInterfacePresenceServiceIface *iface
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 static void
-gabble_connection_remove_status (TpConnectionInterfacePresenceServiceIface *iface,
+gabble_connection_remove_status (TpSvcConnectionInterfacePresence *iface,
                                  const gchar *status,
                                  DBusGMethodInvocation *context)
 {
@@ -3375,7 +3375,7 @@ gabble_connection_remove_status (TpConnectionInterfacePresenceServiceIface *ifac
       emit_one_presence_update (self, self->parent.self_handle);
       if (signal_own_presence (self, &error))
         {
-          tp_connection_interface_presence_service_iface_return_from_remove_status (
+          tp_svc_connection_interface_presence_return_from_remove_status (
               context);
         }
       else
@@ -3451,7 +3451,7 @@ aliases_request_try_return (AliasesRequest *request)
     {
       /* FIXME: I'm not entirely sure why gcc warns without this cast from
        * (gchar **) to (const gchar **) */
-      tp_connection_interface_aliasing_service_iface_return_from_request_aliases (
+      tp_svc_connection_interface_aliasing_return_from_request_aliases (
           request->request_call, (const gchar **)request->aliases);
       return TRUE;
     }
@@ -3511,7 +3511,7 @@ aliases_request_vcard_cb (GabbleVCardManager *manager,
  *           or throw an error.
  */
 static void
-gabble_connection_request_aliases (TpConnectionInterfaceAliasingServiceIface *iface,
+gabble_connection_request_aliases (TpSvcConnectionInterfaceAliasing *iface,
                                    const GArray *contacts,
                                    DBusGMethodInvocation *context)
 {
@@ -3697,8 +3697,8 @@ _request_avatar_cb (GabbleVCardManager *self,
               g_free (presence->avatar_sha1);
               presence->avatar_sha1 = sha1; /* take ownership */
 
-              tp_connection_interface_avatars_service_iface_emit_avatar_updated (
-                  (TpConnectionInterfaceAvatarsServiceIface *)conn,
+              tp_svc_connection_interface_avatars_emit_avatar_updated (
+                  (TpSvcConnectionInterfaceAvatars *)conn,
                   handle, sha1);
             }
 
@@ -3711,7 +3711,7 @@ _request_avatar_cb (GabbleVCardManager *self,
   mime_type = lm_message_node_get_value (type_node);
   arr = g_array_new (FALSE, FALSE, sizeof (gchar));
   g_array_append_vals (arr, avatar->str, avatar->len);
-  tp_connection_interface_avatars_service_iface_return_from_request_avatar (
+  tp_svc_connection_interface_avatars_return_from_request_avatar (
       context, arr, mime_type);
   g_array_free (arr, TRUE);
 
@@ -3729,7 +3729,7 @@ out:
  *           or throw an error.
  */
 static void
-gabble_connection_request_avatar (TpConnectionInterfaceAvatarsServiceIface *iface,
+gabble_connection_request_avatar (TpSvcConnectionInterfaceAvatars *iface,
                                   guint contact,
                                   DBusGMethodInvocation *context)
 {
@@ -4066,7 +4066,7 @@ room_jid_verify (RoomVerifyBatch *batch,
  *           or throw an error.
  */
 static void
-gabble_connection_request_handles (TpConnectionServiceIface *iface,
+gabble_connection_request_handles (TpSvcConnection *iface,
                                    guint handle_type,
                                    const gchar **names,
                                    DBusGMethodInvocation *context)
@@ -4217,7 +4217,7 @@ gabble_connection_request_handles (TpConnectionServiceIface *iface,
  * on interface org.freedesktop.Telepathy.Connection.Interface.Presence
  */
 static void
-gabble_connection_request_presence (TpConnectionInterfacePresenceServiceIface *iface,
+gabble_connection_request_presence (TpSvcConnectionInterfacePresence *iface,
                                     const GArray *contacts,
                                     DBusGMethodInvocation *context)
 {
@@ -4241,7 +4241,7 @@ gabble_connection_request_presence (TpConnectionInterfacePresenceServiceIface *i
   if (contacts->len)
     emit_presence_update (self, contacts);
 
-  tp_connection_interface_presence_service_iface_return_from_request_presence (
+  tp_svc_connection_interface_presence_return_from_request_presence (
       context);
 }
 
@@ -4315,7 +4315,7 @@ setaliases_foreach (gpointer key, gpointer value, gpointer user_data)
  * on interface org.freedesktop.Telepathy.Connection.Interface.Aliasing
  */
 static void
-gabble_connection_set_aliases (TpConnectionInterfaceAliasingServiceIface *iface,
+gabble_connection_set_aliases (TpSvcConnectionInterfaceAliasing *iface,
                                GHashTable *aliases,
                                DBusGMethodInvocation *context)
 {
@@ -4337,7 +4337,7 @@ gabble_connection_set_aliases (TpConnectionInterfaceAliasingServiceIface *iface,
 
   if (data.retval)
     {
-      tp_connection_interface_aliasing_service_iface_return_from_set_aliases (
+      tp_svc_connection_interface_aliasing_return_from_set_aliases (
           context);
     }
   else
@@ -4392,10 +4392,10 @@ _set_avatar_cb2 (GabbleVCardManager *manager,
 
       if (signal_own_presence (ctx->conn, &error))
         {
-          tp_connection_interface_avatars_service_iface_return_from_set_avatar (
+          tp_svc_connection_interface_avatars_return_from_set_avatar (
               ctx->invocation, presence->avatar_sha1);
-          tp_connection_interface_avatars_service_iface_emit_avatar_updated (
-              (TpConnectionInterfaceAvatarsServiceIface *)(ctx->conn),
+          tp_svc_connection_interface_avatars_emit_avatar_updated (
+              (TpSvcConnectionInterfaceAvatars *)(ctx->conn),
               ctx->conn->parent.self_handle, presence->avatar_sha1);
         }
       else
@@ -4476,7 +4476,7 @@ _set_avatar_cb1 (GabbleVCardManager *manager,
  *           or throw an error.
  */
 static void
-gabble_connection_set_avatar (TpConnectionInterfaceAvatarsServiceIface *iface,
+gabble_connection_set_avatar (TpSvcConnectionInterfaceAvatars *iface,
                               const GArray *avatar,
                               const gchar *mime_type,
                               DBusGMethodInvocation *context)
@@ -4504,7 +4504,7 @@ gabble_connection_set_avatar (TpConnectionInterfaceAvatarsServiceIface *iface,
  * on interface org.freedesktop.Telepathy.Connection.Interface.Presence
  */
 static void
-gabble_connection_set_last_activity_time (TpConnectionInterfacePresenceServiceIface *iface,
+gabble_connection_set_last_activity_time (TpSvcConnectionInterfacePresence *iface,
                                           guint time,
                                           DBusGMethodInvocation *context)
 {
@@ -4518,7 +4518,7 @@ gabble_connection_set_last_activity_time (TpConnectionInterfacePresenceServiceIf
 
   ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
 
-  tp_connection_interface_presence_service_iface_return_from_set_last_activity_time (
+  tp_svc_connection_interface_presence_return_from_set_last_activity_time (
       context);
 }
 
@@ -4608,7 +4608,7 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 static void
-gabble_connection_set_status (TpConnectionInterfacePresenceServiceIface *iface,
+gabble_connection_set_status (TpSvcConnectionInterfacePresence *iface,
                               GHashTable *statuses,
                               DBusGMethodInvocation *context)
 {
@@ -4638,7 +4638,7 @@ gabble_connection_set_status (TpConnectionInterfacePresenceServiceIface *iface,
 
   if (data.retval)
     {
-      tp_connection_interface_presence_service_iface_return_from_set_status (
+      tp_svc_connection_interface_presence_return_from_set_status (
           context);
     }
   else
@@ -4651,7 +4651,7 @@ gabble_connection_set_status (TpConnectionInterfacePresenceServiceIface *iface,
 static void
 conn_service_iface_init(gpointer g_iface, gpointer iface_data)
 {
-  TpConnectionServiceIfaceClass *klass = (TpConnectionServiceIfaceClass *)g_iface;
+  TpSvcConnectionClass *klass = (TpSvcConnectionClass *)g_iface;
 
   klass->connect = gabble_connection_connect;
   klass->disconnect = gabble_connection_disconnect;
@@ -4662,7 +4662,7 @@ conn_service_iface_init(gpointer g_iface, gpointer iface_data)
 static void
 aliasing_service_iface_init(gpointer g_iface, gpointer iface_data)
 {
-  TpConnectionInterfaceAliasingServiceIfaceClass *klass = (TpConnectionInterfaceAliasingServiceIfaceClass *)g_iface;
+  TpSvcConnectionInterfaceAliasingClass *klass = (TpSvcConnectionInterfaceAliasingClass *)g_iface;
 
   klass->get_alias_flags = gabble_connection_get_alias_flags;
   klass->request_aliases = gabble_connection_request_aliases;
@@ -4672,7 +4672,7 @@ aliasing_service_iface_init(gpointer g_iface, gpointer iface_data)
 static void
 avatars_service_iface_init(gpointer g_iface, gpointer iface_data)
 {
-  TpConnectionInterfaceAvatarsServiceIfaceClass *klass = (TpConnectionInterfaceAvatarsServiceIfaceClass *)g_iface;
+  TpSvcConnectionInterfaceAvatarsClass *klass = (TpSvcConnectionInterfaceAvatarsClass *)g_iface;
 
   klass->get_avatar_requirements = gabble_connection_get_avatar_requirements;
   klass->get_avatar_tokens = gabble_connection_get_avatar_tokens;
@@ -4683,7 +4683,7 @@ avatars_service_iface_init(gpointer g_iface, gpointer iface_data)
 static void
 capabilities_service_iface_init(gpointer g_iface, gpointer iface_data)
 {
-  TpConnectionInterfaceCapabilitiesServiceIfaceClass *klass = (TpConnectionInterfaceCapabilitiesServiceIfaceClass *)g_iface;
+  TpSvcConnectionInterfaceCapabilitiesClass *klass = (TpSvcConnectionInterfaceCapabilitiesClass *)g_iface;
 
   klass->advertise_capabilities = gabble_connection_advertise_capabilities;
   klass->get_capabilities = gabble_connection_get_capabilities;
@@ -4692,7 +4692,7 @@ capabilities_service_iface_init(gpointer g_iface, gpointer iface_data)
 static void
 presence_service_iface_init(gpointer g_iface, gpointer iface_data)
 {
-  TpConnectionInterfacePresenceServiceIfaceClass *klass = (TpConnectionInterfacePresenceServiceIfaceClass *)g_iface;
+  TpSvcConnectionInterfacePresenceClass *klass = (TpSvcConnectionInterfacePresenceClass *)g_iface;
 
   klass->add_status = gabble_connection_add_status;
   klass->clear_status = gabble_connection_clear_status;

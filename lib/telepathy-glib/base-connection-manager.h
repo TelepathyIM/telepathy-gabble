@@ -25,7 +25,7 @@
 #include <dbus/dbus-glib.h>
 #include <glib-object.h>
 #include <telepathy-glib/base-connection.h>
-#include <telepathy-glib/connection-manager-service-iface.h>
+#include <telepathy-glib/svc-connection-manager.h>
 
 G_BEGIN_DECLS
 

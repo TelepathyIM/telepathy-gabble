@@ -20,7 +20,6 @@
  */
 
 #include <telepathy-glib/base-connection-manager.h>
-#include <telepathy-glib/connection-manager-service-iface.h>
 #include <telepathy-glib/dbus.h>
 
 #define BUS_NAME_BASE    "org.freedesktop.Telepathy.ConnectionManager."
@@ -31,7 +30,7 @@ static void service_iface_init (gpointer, gpointer);
 G_DEFINE_ABSTRACT_TYPE_WITH_CODE(TpBaseConnectionManager,
     tp_base_connection_manager,
     G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE(TP_TYPE_CONNECTION_MANAGER_SERVICE_IFACE,
+    G_IMPLEMENT_INTERFACE(TP_TYPE_SVC_CONNECTION_MANAGER,
         service_iface_init))
 
 #define TP_BASE_CONNECTION_MANAGER_GET_PRIVATE(obj) \
@@ -142,7 +141,7 @@ connection_disconnected_cb (TpBaseConnection        *conn,
 }
 
 static void
-tp_base_connection_manager_get_parameters (TpConnectionManagerServiceIface *self,
+tp_base_connection_manager_get_parameters (TpSvcConnectionManager *self,
                                            const gchar *proto,
                                            DBusGMethodInvocation *context)
 {
@@ -151,7 +150,7 @@ tp_base_connection_manager_get_parameters (TpConnectionManagerServiceIface *self
 }
 
 static void
-tp_base_connection_manager_list_protocols (TpConnectionManagerServiceIface *self,
+tp_base_connection_manager_list_protocols (TpSvcConnectionManager *self,
                                            DBusGMethodInvocation *context)
 {
   GError error = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED, "Not implemented" };
@@ -171,7 +170,7 @@ tp_base_connection_manager_list_protocols (TpConnectionManagerServiceIface *self
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 static void
-tp_base_connection_manager_request_connection (TpConnectionManagerServiceIface *iface,
+tp_base_connection_manager_request_connection (TpSvcConnectionManager *iface,
                                                const gchar *proto,
                                                GHashTable *parameters,
                                                DBusGMethodInvocation *context)
@@ -217,10 +216,10 @@ tp_base_connection_manager_request_connection (TpConnectionManagerServiceIface *
   g_hash_table_insert (priv->connections, conn, GINT_TO_POINTER(TRUE));
 
   /* emit the new connection signal */
-  tp_connection_manager_service_iface_emit_new_connection (
+  tp_svc_connection_manager_emit_new_connection (
       iface, bus_name, object_path, proto);
 
-  tp_connection_manager_service_iface_return_from_request_connection (
+  tp_svc_connection_manager_return_from_request_connection (
       context, bus_name, object_path);
   g_free (bus_name);
   g_free (object_path);
@@ -274,7 +273,7 @@ tp_base_connection_manager_register (TpBaseConnectionManager *self)
 static void
 service_iface_init(gpointer g_iface, gpointer iface_data)
 {
-  TpConnectionManagerServiceIfaceClass *klass = (TpConnectionManagerServiceIfaceClass *)g_iface;
+  TpSvcConnectionManagerClass *klass = (TpSvcConnectionManagerClass *)g_iface;
 
   klass->get_parameters = tp_base_connection_manager_get_parameters;
   klass->list_protocols = tp_base_connection_manager_list_protocols;

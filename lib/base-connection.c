@@ -26,7 +26,7 @@
 #include <dbus/dbus-glib-lowlevel.h>
 
 #include <telepathy-glib/channel-factory-iface.h>
-#include <telepathy-glib/connection-service-iface.h>
+#include <telepathy-glib/svc-connection.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/enums.h>
 
@@ -41,7 +41,7 @@ static void service_iface_init(gpointer, gpointer);
 G_DEFINE_ABSTRACT_TYPE_WITH_CODE(TpBaseConnection,
     tp_base_connection,
     G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE (TP_TYPE_CONNECTION_SERVICE_IFACE,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION,
       service_iface_init))
 
 enum
@@ -303,8 +303,8 @@ connection_new_channel_cb (TpChannelFactoryIface *factory,
   tmp = find_matching_channel_requests (conn, channel_type, handle_type,
                                         handle, &suppress_handler);
 
-  tp_connection_service_iface_emit_new_channel (
-      (TpConnectionServiceIface *)conn, object_path, channel_type,
+  tp_svc_connection_emit_new_channel (
+      (TpSvcConnection *)conn, object_path, channel_type,
       handle_type, handle, suppress_handler);
 
   for (i = 0; i < tmp->len; i++)
@@ -632,7 +632,7 @@ tp_base_connection_disconnected (TpBaseConnection *self)
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 static void
-tp_base_connection_get_protocol (TpConnectionServiceIface *iface,
+tp_base_connection_get_protocol (TpSvcConnection *iface,
                                  DBusGMethodInvocation *context)
 {
   TpBaseConnection *self = TP_BASE_CONNECTION (iface);
@@ -645,7 +645,7 @@ tp_base_connection_get_protocol (TpConnectionServiceIface *iface,
 
   priv = TP_BASE_CONNECTION_GET_PRIVATE (self);
 
-  tp_connection_service_iface_return_from_get_protocol (context, priv->protocol);
+  tp_svc_connection_return_from_get_protocol (context, priv->protocol);
 }
 
 /**
@@ -655,7 +655,7 @@ tp_base_connection_get_protocol (TpConnectionServiceIface *iface,
  * on interface org.freedesktop.Telepathy.Connection
  */
 static void
-tp_base_connection_get_self_handle (TpConnectionServiceIface *iface,
+tp_base_connection_get_self_handle (TpSvcConnection *iface,
                                     DBusGMethodInvocation *context)
 {
   TpBaseConnection *self = TP_BASE_CONNECTION (iface);
@@ -665,7 +665,7 @@ tp_base_connection_get_self_handle (TpConnectionServiceIface *iface,
 
   ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
 
-  tp_connection_service_iface_return_from_get_self_handle (
+  tp_svc_connection_return_from_get_self_handle (
       context, self->self_handle);
 }
 
@@ -676,19 +676,19 @@ tp_base_connection_get_self_handle (TpConnectionServiceIface *iface,
  * on interface org.freedesktop.Telepathy.Connection
  */
 static void
-tp_base_connection_get_status (TpConnectionServiceIface *iface,
+tp_base_connection_get_status (TpSvcConnection *iface,
                                DBusGMethodInvocation *context)
 {
   TpBaseConnection *self = TP_BASE_CONNECTION (iface);
 
   if (self->status == TP_INTERNAL_CONNECTION_STATUS_NEW)
     {
-      tp_connection_service_iface_return_from_get_status(
+      tp_svc_connection_return_from_get_status(
           context, TP_CONNECTION_STATUS_DISCONNECTED);
     }
   else
     {
-      tp_connection_service_iface_return_from_get_status(
+      tp_svc_connection_return_from_get_status(
           context, self->status);
     }
 }
@@ -704,7 +704,7 @@ tp_base_connection_get_status (TpConnectionServiceIface *iface,
  *           or throw an error.
  */
 static void
-tp_base_connection_hold_handles (TpConnectionServiceIface *iface,
+tp_base_connection_hold_handles (TpSvcConnection *iface,
                                  guint handle_type,
                                  const GArray *handles,
                                  DBusGMethodInvocation *context)
@@ -742,7 +742,7 @@ tp_base_connection_hold_handles (TpConnectionServiceIface *iface,
         }
     }
 
-  tp_connection_service_iface_return_from_hold_handles (context);
+  tp_svc_connection_return_from_hold_handles (context);
 }
 
 /**
@@ -754,7 +754,7 @@ tp_base_connection_hold_handles (TpConnectionServiceIface *iface,
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 static void
-tp_base_connection_inspect_handles (TpConnectionServiceIface *iface,
+tp_base_connection_inspect_handles (TpSvcConnection *iface,
                                     guint handle_type,
                                     const GArray *handles,
                                     DBusGMethodInvocation *context)
@@ -794,7 +794,7 @@ tp_base_connection_inspect_handles (TpConnectionServiceIface *iface,
 
   ret[i] = NULL;
 
-  tp_connection_service_iface_return_from_inspect_handles (context, ret);
+  tp_svc_connection_return_from_inspect_handles (context, ret);
 
   g_free (ret);
 }
@@ -848,7 +848,7 @@ list_channel_factory_foreach_one (TpChannelIface *chan,
 }
 
 static void
-tp_base_connection_list_channels (TpConnectionServiceIface *iface,
+tp_base_connection_list_channels (TpSvcConnection *iface,
                                   DBusGMethodInvocation *context)
 {
   TpBaseConnection *self = TP_BASE_CONNECTION (iface);
@@ -874,7 +874,7 @@ tp_base_connection_list_channels (TpConnectionServiceIface *iface,
           list_channel_factory_foreach_one, channels);
     }
 
-  tp_connection_service_iface_return_from_list_channels (context, channels);
+  tp_svc_connection_return_from_list_channels (context, channels);
   g_ptr_array_free (channels, TRUE);
 }
 
@@ -889,7 +889,7 @@ tp_base_connection_list_channels (TpConnectionServiceIface *iface,
  *           or throw an error.
  */
 static void
-tp_base_connection_request_channel (TpConnectionServiceIface *iface,
+tp_base_connection_request_channel (TpSvcConnection *iface,
                                     const gchar *type,
                                     guint handle_type,
                                     guint handle,
@@ -991,7 +991,7 @@ OUT:
     }
 
   g_assert (NULL != object_path);
-  tp_connection_service_iface_return_from_request_channel (context,
+  tp_svc_connection_return_from_request_channel (context,
       object_path);
   g_free (object_path);
 }
@@ -1007,7 +1007,7 @@ OUT:
  *           or throw an error.
  */
 static void
-tp_base_connection_release_handles (TpConnectionServiceIface *iface,
+tp_base_connection_release_handles (TpSvcConnection *iface,
                                     guint handle_type,
                                     const GArray * handles,
                                     DBusGMethodInvocation *context)
@@ -1042,7 +1042,7 @@ tp_base_connection_release_handles (TpConnectionServiceIface *iface,
         }
     }
 
-  tp_connection_service_iface_return_from_release_handles (context);
+  tp_svc_connection_return_from_release_handles (context);
 }
 
 /* Missing: RequestHandles (need to verify them) */
@@ -1050,7 +1050,7 @@ tp_base_connection_release_handles (TpConnectionServiceIface *iface,
 static void
 service_iface_init(gpointer g_iface, gpointer iface_data)
 {
-  TpConnectionServiceIfaceClass *klass = (TpConnectionServiceIfaceClass *)g_iface;
+  TpSvcConnectionClass *klass = (TpSvcConnectionClass *)g_iface;
 
   klass->connect = NULL; /* tp_base_connection_connect; */
   klass->disconnect = NULL; /* tp_base_connection_disconnect; */

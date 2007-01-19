@@ -104,7 +104,7 @@ void tp_properties_mixin_init (GObject *obj, glong offset)
 
   g_assert (G_IS_OBJECT (obj));
 
-  g_assert (TP_IS_PROPERTIES_INTERFACE_SERVICE_IFACE (obj));
+  g_assert (TP_IS_SVC_PROPERTIES_INTERFACE (obj));
 
   g_type_set_qdata (G_OBJECT_TYPE (obj),
                     TP_PROPERTIES_MIXIN_OFFSET_QUARK,
@@ -690,8 +690,8 @@ tp_properties_mixin_emit_changed (GObject *obj, GArray **props)
       fflush (stdout);
     }
 
-  tp_properties_interface_service_iface_emit_properties_changed (
-      (TpPropertiesInterfaceServiceIface *)obj, prop_arr);
+  tp_svc_properties_interface_emit_properties_changed (
+      (TpSvcPropertiesInterface *)obj, prop_arr);
 
   g_value_init (&prop_list, TP_TYPE_PROPERTY_VALUE_LIST);
   g_value_take_boxed (&prop_list, prop_arr);
@@ -760,8 +760,8 @@ tp_properties_mixin_emit_flags (GObject *obj, GArray **props)
       fflush (stdout);
     }
 
-  tp_properties_interface_service_iface_emit_property_flags_changed (
-      (TpPropertiesInterfaceServiceIface *)obj, prop_arr);
+  tp_svc_properties_interface_emit_property_flags_changed (
+      (TpSvcPropertiesInterface *)obj, prop_arr);
 
   g_value_init (&prop_list, TP_TYPE_PROPERTY_FLAGS_LIST);
   g_value_take_boxed (&prop_list, prop_arr);
@@ -810,7 +810,7 @@ tp_properties_mixin_is_writable (GObject *obj, guint prop_id)
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 static void
-get_properties (TpPropertiesInterfaceServiceIface *iface,
+get_properties (TpSvcPropertiesInterface *iface,
                 const GArray *properties,
                 DBusGMethodInvocation *context)
 {
@@ -824,7 +824,7 @@ get_properties (TpPropertiesInterfaceServiceIface *iface,
       g_error_free (error);
       return;
     }
-  tp_properties_interface_service_iface_return_from_get_properties (
+  tp_svc_properties_interface_return_from_get_properties (
       context, ret);
   g_ptr_array_free (ret, TRUE);
 }
@@ -843,7 +843,7 @@ get_properties (TpPropertiesInterfaceServiceIface *iface,
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 static void
-list_properties (TpPropertiesInterfaceServiceIface *iface,
+list_properties (TpSvcPropertiesInterface *iface,
                  DBusGMethodInvocation *context)
 {
   GPtrArray *ret;
@@ -855,7 +855,7 @@ list_properties (TpPropertiesInterfaceServiceIface *iface,
       dbus_g_method_return_error (context, error);
       g_error_free (error);
     }
-  tp_properties_interface_service_iface_return_from_list_properties (
+  tp_svc_properties_interface_return_from_list_properties (
       context, ret);
   g_ptr_array_free (ret, TRUE);
 }
@@ -871,7 +871,7 @@ list_properties (TpPropertiesInterfaceServiceIface *iface,
  *           or throw an error.
  */
 static void
-set_properties (TpPropertiesInterfaceServiceIface *iface,
+set_properties (TpSvcPropertiesInterface *iface,
                 const GPtrArray *properties,
                 DBusGMethodInvocation *context)
 {
@@ -882,7 +882,7 @@ set_properties (TpPropertiesInterfaceServiceIface *iface,
 void
 tp_properties_mixin_iface_init(gpointer g_iface, gpointer iface_data)
 {
-  TpPropertiesInterfaceServiceIfaceClass *klass = (TpPropertiesInterfaceServiceIfaceClass *)g_iface;
+  TpSvcPropertiesInterfaceClass *klass = (TpSvcPropertiesInterfaceClass *)g_iface;
 
   klass->get_properties = get_properties;
   klass->list_properties = list_properties;

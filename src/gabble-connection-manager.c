@@ -42,7 +42,7 @@ static void cm_service_iface_init (gpointer, gpointer);
 G_DEFINE_TYPE_WITH_CODE(GabbleConnectionManager,
     gabble_connection_manager,
     TP_TYPE_BASE_CONNECTION_MANAGER,
-    G_IMPLEMENT_INTERFACE(TP_TYPE_CONNECTION_MANAGER_SERVICE_IFACE,
+    G_IMPLEMENT_INTERFACE(TP_TYPE_SVC_CONNECTION_MANAGER,
       cm_service_iface_init))
 
 /* type definition stuff */
@@ -367,7 +367,7 @@ free_params (GabbleParams *params)
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 static void
-gabble_connection_manager_get_parameters (TpConnectionManagerServiceIface *iface,
+gabble_connection_manager_get_parameters (TpSvcConnectionManager *iface,
                                           const gchar *proto,
                                           DBusGMethodInvocation *context)
 {
@@ -407,7 +407,7 @@ gabble_connection_manager_get_parameters (TpConnectionManagerServiceIface *iface
       g_ptr_array_add (ret, g_value_get_boxed (&param));
     }
 
-  tp_connection_manager_service_iface_return_from_get_parameters (
+  tp_svc_connection_manager_return_from_get_parameters (
       context, ret);
   g_ptr_array_free (ret, TRUE);
 }
@@ -426,12 +426,12 @@ gabble_connection_manager_get_parameters (TpConnectionManagerServiceIface *iface
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 static void
-gabble_connection_manager_list_protocols (TpConnectionManagerServiceIface *iface,
+gabble_connection_manager_list_protocols (TpSvcConnectionManager *iface,
                                           DBusGMethodInvocation *context)
 {
   const char *protocols[] = { "jabber", NULL };
 
-  tp_connection_manager_service_iface_return_from_list_protocols (
+  tp_svc_connection_manager_return_from_list_protocols (
       context, protocols);
 }
 
@@ -518,7 +518,7 @@ _gabble_connection_manager_new_connection (TpBaseConnectionManager *self,
 static void
 cm_service_iface_init(gpointer g_iface, gpointer iface_data)
 {
-  TpConnectionManagerServiceIfaceClass *klass = (TpConnectionManagerServiceIfaceClass *)g_iface;
+  TpSvcConnectionManagerClass *klass = (TpSvcConnectionManagerClass *)g_iface;
 
   klass->get_parameters = gabble_connection_manager_get_parameters;
   klass->list_protocols = gabble_connection_manager_list_protocols;

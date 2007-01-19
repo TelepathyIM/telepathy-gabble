@@ -37,10 +37,10 @@ INTERFACES_LC = $(shell cat $(INTERFACES:%=$(TELEPATHY_SPEC)/tmp/%.name.lower))
 INTERFACES_DASH = $(subst _,-,$(INTERFACES_LC))
 INTERFACES_UC = $(shell cat $(INTERFACES:%=$(TELEPATHY_SPEC)/tmp/%.name.upper))
 
-GLUE = $(INTERFACES_DASH:%=%-service-iface-glue.h)
-SIGNALS_MARSHAL_LISTS = $(INTERFACES_DASH:%=%-service-iface-signals-marshal.list)
-IMPLS = $(INTERFACES_DASH:%=%-service-iface.c)
-HEADERS = $(INTERFACES_DASH:%=telepathy-glib/%-service-iface.h)
+GLUE = $(INTERFACES_DASH:%=svc-%-glue.h)
+SIGNALS_MARSHAL_LISTS = $(INTERFACES_DASH:%=svc-%-signals-marshal.list)
+IMPLS = $(INTERFACES_DASH:%=svc-%.c)
+HEADERS = $(INTERFACES_DASH:%=telepathy-glib/svc-%.h)
 
 SIMPLE_HEADERS = telepathy-glib/_spec/telepathy-enums.h \
 	         telepathy-glib/_spec/telepathy-errors.h \

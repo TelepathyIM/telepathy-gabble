@@ -39,9 +39,14 @@
 #include <telepathy-glib/channel-iface.h>
 #include <telepathy-glib/channel-factory-iface.h>
 
+#include <telepathy-glib/connection-service-iface.h>
+#include <telepathy-glib/connection-interface-aliasing-service-iface.h>
+#include <telepathy-glib/connection-interface-avatars-service-iface.h>
+#include <telepathy-glib/connection-interface-capabilities-service-iface.h>
+#include <telepathy-glib/connection-interface-presence-service-iface.h>
+#include <telepathy-glib/properties-interface-service-iface.h>
+
 #include "gabble-connection.h"
-#include "gabble-connection-glue.h"
-#include "gabble-connection-signals-marshal.h"
 
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
 
@@ -79,15 +84,6 @@
     ("GValueArray", G_TYPE_UINT, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT, \
                     G_TYPE_INVALID))
 
-#define ERROR_IF_NOT_CONNECTED(CONN, ERROR) \
-  if ((CONN)->parent.status != TP_CONNECTION_STATUS_CONNECTED) \
-    { \
-      DEBUG ("rejected request as disconnected"); \
-      g_set_error (ERROR, TP_ERRORS, TP_ERROR_NOT_AVAILABLE, \
-          "Connection is disconnected"); \
-      return FALSE; \
-    }
-
 #define ERROR_IF_NOT_CONNECTED_ASYNC(CONN, ERROR, CONTEXT) \
   if ((CONN)->parent.status != TP_CONNECTION_STATUS_CONNECTED) \
     { \
@@ -100,7 +96,28 @@
     }
 
 
-G_DEFINE_TYPE(GabbleConnection, gabble_connection, TP_TYPE_BASE_CONNECTION)
+static void conn_service_iface_init(gpointer, gpointer);
+static void aliasing_service_iface_init(gpointer, gpointer);
+static void avatars_service_iface_init(gpointer, gpointer);
+static void capabilities_service_iface_init(gpointer, gpointer);
+static void presence_service_iface_init(gpointer, gpointer);
+
+G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
+    gabble_connection,
+    TP_TYPE_BASE_CONNECTION,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_CONNECTION_SERVICE_IFACE,
+      conn_service_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_CONNECTION_INTERFACE_ALIASING_SERVICE_IFACE,
+      aliasing_service_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_CONNECTION_INTERFACE_AVATARS_SERVICE_IFACE,
+      avatars_service_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_CONNECTION_INTERFACE_CAPABILITIES_SERVICE_IFACE,
+      capabilities_service_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_CONNECTION_INTERFACE_PRESENCE_SERVICE_IFACE,
+      presence_service_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_PROPERTIES_INTERFACE_SERVICE_IFACE,
+      tp_properties_mixin_iface_init)
+    )
 
 typedef struct _StatusInfo StatusInfo;
 
@@ -127,16 +144,12 @@ static const StatusInfo gabble_statuses[LAST_GABBLE_PRESENCE] = {
 /* signal enum */
 enum
 {
-    ALIASES_CHANGED,
-    AVATAR_UPDATED,
-    CAPABILITIES_CHANGED,
-    PRESENCE_UPDATE,
-    STATUS_CHANGED,
+    INVALID_SIGNAL,
     DISCONNECTED,
-    LAST_SIGNAL
+    N_SIGNALS
 };
 
-static guint signals[LAST_SIGNAL] = {0};
+static guint signals[N_SIGNALS] = {0};
 
 /* properties */
 enum
@@ -811,51 +824,6 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
 
   /* signal definitions */
 
-  signals[ALIASES_CHANGED] =
-    g_signal_new ("aliases-changed",
-                  G_OBJECT_CLASS_TYPE (gabble_connection_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  g_cclosure_marshal_VOID__BOXED,
-                  G_TYPE_NONE, 1, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_UINT, G_TYPE_STRING, G_TYPE_INVALID)))));
-
-  signals[AVATAR_UPDATED] =
-    g_signal_new ("avatar-updated",
-                  G_OBJECT_CLASS_TYPE (gabble_connection_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  gabble_connection_marshal_VOID__UINT_STRING,
-                  G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_STRING);
-
-  signals[CAPABILITIES_CHANGED] =
-    g_signal_new ("capabilities-changed",
-                  G_OBJECT_CLASS_TYPE (gabble_connection_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  g_cclosure_marshal_VOID__BOXED,
-                  G_TYPE_NONE, 1, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_UINT, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_INVALID)))));
-
-  signals[PRESENCE_UPDATE] =
-    g_signal_new ("presence-update",
-                  G_OBJECT_CLASS_TYPE (gabble_connection_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  g_cclosure_marshal_VOID__BOXED,
-                  G_TYPE_NONE, 1, (dbus_g_type_get_map ("GHashTable", G_TYPE_UINT, (dbus_g_type_get_struct ("GValueArray", G_TYPE_UINT, (dbus_g_type_get_map ("GHashTable", G_TYPE_STRING, (dbus_g_type_get_map ("GHashTable", G_TYPE_STRING, G_TYPE_VALUE)))), G_TYPE_INVALID)))));
-
-  signals[STATUS_CHANGED] =
-    g_signal_new ("status-changed",
-                  G_OBJECT_CLASS_TYPE (gabble_connection_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  gabble_connection_marshal_VOID__UINT_UINT,
-                  G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_UINT);
-
   signals[DISCONNECTED] =
     g_signal_new ("disconnected",
                   G_OBJECT_CLASS_TYPE (gabble_connection_class),
@@ -864,8 +832,6 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
                   NULL, NULL,
                   g_cclosure_marshal_VOID__VOID,
                   G_TYPE_NONE, 0);
-
-  dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_connection_class), &dbus_glib_gabble_connection_object_info);
 
   tp_properties_mixin_class_init (G_OBJECT_CLASS (gabble_connection_class),
                                       G_STRUCT_OFFSET (GabbleConnectionClass, parent_class.properties_class),
@@ -882,7 +848,7 @@ _unref_lm_connection (gpointer data)
   return FALSE;
 }
 
-void
+static void
 gabble_connection_dispose (GObject *object)
 {
   GabbleConnection *self = GABBLE_CONNECTION (object);
@@ -934,7 +900,7 @@ gabble_connection_dispose (GObject *object)
     G_OBJECT_CLASS (gabble_connection_parent_class)->dispose (object);
 }
 
-void
+static void
 gabble_connection_finalize (GObject *object)
 {
   GabbleConnection *self = GABBLE_CONNECTION (object);
@@ -1495,7 +1461,8 @@ connection_status_change (GabbleConnection        *conn,
       DEBUG ("emitting status-changed with status %u reason %u",
                status, reason);
 
-      g_signal_emit (conn, signals[STATUS_CHANGED], 0, status, reason);
+      tp_connection_service_iface_emit_status_changed (
+          (TpConnectionServiceIface *)conn, status, reason);
 
       if (status == TP_CONNECTION_STATUS_CONNECTING)
         {
@@ -1712,7 +1679,9 @@ connection_nickname_update_cb (GObject *object,
   aliases = g_ptr_array_sized_new (1);
   g_ptr_array_add (aliases, g_value_get_boxed (&entry));
 
-  g_signal_emit (conn, signals[ALIASES_CHANGED], 0, aliases);
+
+  tp_connection_interface_aliasing_service_iface_emit_aliases_changed (
+      (TpConnectionInterfaceAliasingServiceIface *)conn, aliases);
 
   g_value_unset (&entry);
   g_ptr_array_free (aliases, TRUE);
@@ -1735,8 +1704,9 @@ update_own_avatar_sha1 (GabbleConnection *conn,
   if (!tp_strdiff (sha1, conn->self_presence->avatar_sha1))
     return TRUE;
 
-  g_signal_emit (conn, signals[AVATAR_UPDATED], 0, conn->parent.self_handle,
-      sha1);
+  tp_connection_interface_avatars_service_iface_emit_avatar_updated (
+      (TpConnectionInterfaceAvatarsServiceIface *)conn,
+      conn->parent.self_handle, sha1);
 
   g_free (conn->self_presence->avatar_sha1);
   conn->self_presence->avatar_sha1 = g_strdup (sha1);
@@ -1775,7 +1745,9 @@ connection_avatar_update_cb (GabblePresenceCache *cache,
   if (handle == conn->parent.self_handle)
     update_own_avatar_sha1 (conn, presence->avatar_sha1, NULL);
   else
-    g_signal_emit (conn, signals[AVATAR_UPDATED], 0, handle, presence->avatar_sha1);
+    tp_connection_interface_avatars_service_iface_emit_avatar_updated (
+        (TpConnectionInterfaceAvatarsServiceIface *)conn,
+        handle, presence->avatar_sha1);
 }
 
 /* Called when our vCard is first fetched, so we can start putting the
@@ -1916,7 +1888,8 @@ emit_presence_update (GabbleConnection *self,
   GHashTable *presence_hash;
 
   presence_hash = construct_presence_hash (self, contact_handles);
-  g_signal_emit (self, signals[PRESENCE_UPDATE], 0, presence_hash);
+  tp_connection_interface_presence_service_iface_emit_presence_update (
+      (TpConnectionInterfacePresenceServiceIface *)self, presence_hash);
   g_hash_table_destroy (presence_hash);
 }
 
@@ -2631,20 +2604,20 @@ get_statuses_arguments()
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_connection_add_status (GabbleConnection *self,
+static void
+gabble_connection_add_status (TpConnectionInterfacePresenceServiceIface *iface,
                               const gchar *status,
                               GHashTable *parms,
-                              GError **error)
+                              DBusGMethodInvocation *context)
 {
-  g_assert (GABBLE_IS_CONNECTION (self));
+  GabbleConnection *self = GABBLE_CONNECTION (iface);
+  GError *error;
+  GError unimpl = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+    "Only one status is possible at a time with this protocol" };
 
-  ERROR_IF_NOT_CONNECTED (self, error);
+  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context);
 
-  g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
-      "Only one status is possible at a time with this protocol");
-
-  return FALSE;
+  dbus_g_method_return_error (context, &unimpl);
 }
 
 static void
@@ -2699,7 +2672,9 @@ _emit_capabilities_changed (GabbleConnection *conn,
     }
 
   if (caps_arr->len)
-    g_signal_emit (conn, signals[CAPABILITIES_CHANGED], 0, caps_arr);
+    tp_connection_interface_capabilities_service_iface_emit_capabilities_changed (
+        (TpConnectionInterfaceCapabilitiesServiceIface *)conn, caps_arr);
+
 
   for (i = 0; i < caps_arr->len; i++)
     {
@@ -2733,20 +2708,22 @@ connection_capabilities_update_cb (GabblePresenceCache *cache,
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_connection_advertise_capabilities (GabbleConnection *self,
+static void
+gabble_connection_advertise_capabilities (TpConnectionInterfaceCapabilitiesServiceIface *iface,
                                           const GPtrArray *add,
                                           const gchar **remove,
-                                          GPtrArray **ret,
-                                          GError **error)
+                                          DBusGMethodInvocation *context)
 {
+  GabbleConnection *self = GABBLE_CONNECTION (iface);
   guint i;
   GabblePresence *pres = self->self_presence;
   GabblePresenceCapabilities add_caps = 0, remove_caps = 0, caps, save_caps;
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
   const CapabilityConversionData *ccd;
+  GPtrArray *ret;
+  GError *error;
 
-  ERROR_IF_NOT_CONNECTED (self, error);
+  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context);
 
   DEBUG ("caps before: %x", pres->caps);
 
@@ -2792,7 +2769,7 @@ gabble_connection_advertise_capabilities (GabbleConnection *self,
       DEBUG ("set caps: %x", pres->caps);
     }
 
-  *ret = g_ptr_array_new ();
+  ret = g_ptr_array_new ();
 
   for (ccd = capabilities_conversions; NULL != ccd->iface; ccd++)
     {
@@ -2809,20 +2786,25 @@ gabble_connection_advertise_capabilities (GabbleConnection *self,
                                   1, ccd->c2tf_fn (pres->caps),
                                   G_MAXUINT);
 
-          g_ptr_array_add (*ret, g_value_get_boxed (&iface_flags_pair));
+          g_ptr_array_add (ret, g_value_get_boxed (&iface_flags_pair));
         }
     }
 
   if (caps ^ save_caps)
     {
-      if (!signal_own_presence (self, error))
-        return FALSE;
+      if (!signal_own_presence (self, &error))
+        {
+          dbus_g_method_return_error (context, error);
+          return;
+        }
 
       _emit_capabilities_changed (self, self->parent.self_handle,
           save_caps, caps);
     }
 
-  return TRUE;
+  tp_connection_interface_capabilities_service_iface_return_from_advertise_capabilities (
+      context, ret);
+  g_ptr_array_free (ret, TRUE);
 }
 
 /**
@@ -2837,21 +2819,35 @@ gabble_connection_advertise_capabilities (GabbleConnection *self,
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_connection_clear_status (GabbleConnection *self,
-                                GError **error)
+static void
+gabble_connection_clear_status (TpConnectionInterfacePresenceServiceIface *iface,
+                                DBusGMethodInvocation *context)
 {
+  GabbleConnection *self = GABBLE_CONNECTION (iface);
+  GError *error;
   GabbleConnectionPrivate *priv;
+  gboolean ok;
+
   g_assert (GABBLE_IS_CONNECTION (self));
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
-  ERROR_IF_NOT_CONNECTED (self, error);
+  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context);
 
   gabble_presence_update (self->self_presence, priv->resource,
       GABBLE_PRESENCE_AVAILABLE, NULL, priv->priority);
   emit_one_presence_update (self, self->parent.self_handle);
-  return signal_own_presence (self, error);
+  ok = signal_own_presence (self, &error);
+
+  if (!ok)
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return;
+    }
+
+  tp_connection_interface_presence_service_iface_return_from_clear_status (
+      context);
 }
 
 
@@ -2866,16 +2862,27 @@ gabble_connection_clear_status (GabbleConnection *self,
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_connection_connect (GabbleConnection *self,
-                           GError **error)
+static void
+gabble_connection_connect (TpConnectionServiceIface *iface,
+                           DBusGMethodInvocation *context)
 {
+  GabbleConnection *self = GABBLE_CONNECTION (iface);
+  GError *error;
+
   g_assert(GABBLE_IS_CONNECTION (self));
 
   if (self->parent.status == TP_INTERNAL_CONNECTION_STATUS_NEW)
-    return _gabble_connection_connect (self, error);
+    {
+      gboolean ok = _gabble_connection_connect (self, &error);
+      if (!ok)
+        {
+          dbus_g_method_return_error (context, error);
+          g_error_free (error);
+          return;
+        }
+    }
 
-  return TRUE;
+  tp_connection_service_iface_return_from_connect (context);
 }
 
 
@@ -2891,10 +2898,11 @@ gabble_connection_connect (GabbleConnection *self,
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_connection_disconnect (GabbleConnection *self,
-                              GError **error)
+static void
+gabble_connection_disconnect (TpConnectionServiceIface *iface,
+                              DBusGMethodInvocation *context)
 {
+  GabbleConnection *self = GABBLE_CONNECTION (iface);
   GabbleConnectionPrivate *priv;
 
   g_assert (GABBLE_IS_CONNECTION (self));
@@ -2905,7 +2913,7 @@ gabble_connection_disconnect (GabbleConnection *self,
       TP_CONNECTION_STATUS_DISCONNECTED,
       TP_CONNECTION_STATUS_REASON_REQUESTED);
 
-  return TRUE;
+  tp_connection_service_iface_return_from_disconnect (context);
 }
 
 
@@ -2921,22 +2929,19 @@ gabble_connection_disconnect (GabbleConnection *self,
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_connection_get_alias_flags (GabbleConnection *self,
-                                   guint *ret,
-                                   GError **error)
+static void
+gabble_connection_get_alias_flags (TpConnectionInterfaceAliasingServiceIface *iface,
+                                   DBusGMethodInvocation *context)
 {
-  GabbleConnectionPrivate *priv;
+  GabbleConnection *self = GABBLE_CONNECTION (iface);
+  GError *error;
 
   g_assert (GABBLE_IS_CONNECTION (self));
 
-  priv = GABBLE_CONNECTION_GET_PRIVATE (self);
+  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
 
-  ERROR_IF_NOT_CONNECTED (self, error)
-
-  *ret = TP_CONNECTION_ALIAS_FLAG_USER_SET;
-
-  return TRUE;
+  tp_connection_interface_aliasing_service_iface_return_from_get_alias_flags (
+      context, TP_CONNECTION_ALIAS_FLAG_USER_SET);
 }
 
 /**
@@ -2951,30 +2956,20 @@ gabble_connection_get_alias_flags (GabbleConnection *self,
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_connection_get_avatar_requirements (GabbleConnection *self,
-                                           gchar ***types,
-                                           guint *min_width,
-                                           guint *min_height,
-                                           guint *max_width,
-                                           guint *max_height,
-                                           guint *max_bytes,
-                                           GError **error)
+static void
+gabble_connection_get_avatar_requirements (TpConnectionInterfaceAvatarsServiceIface *iface,
+                                           DBusGMethodInvocation *context)
 {
   /* Jabber prescribes no MIME type for avatars, but XEP-0153 says support
    * for image/png is REQUIRED, with image/jpeg and image/gif RECOMMENDED */
-  static char *mimetypes[] = { "image/png", "image/jpeg", "image/gif", NULL };
+  static const char *mimetypes[] = { 
+      "image/png", "image/jpeg", "image/gif", NULL };
 
-  *types = g_strdupv (mimetypes);
   /* Jabber has no min/max width/height or max size, but XEP-0153 says
    * you SHOULD use 32-96px either way, and no more than 8K of data */
-  *min_width = 32;
-  *min_height = 32;
-  *max_width = 96;
-  *max_height = 96;
-  *max_bytes = 8192;
 
-  return TRUE;
+  tp_connection_interface_avatars_service_iface_return_from_get_avatar_requirements (
+      context, mimetypes, 32, 32, 96, 96, 8192);
 }
 
 
@@ -2997,7 +2992,10 @@ _got_self_avatar_for_get_avatar_tokens (GObject *obj,
   g_free (context->ret[context->my_index]);
   context->ret[context->my_index] = g_strdup(sha1);
 
-  dbus_g_method_return (context->invocation, context->ret);
+  /* FIXME: I'm not entirely sure why gcc warns without this cast from
+   * (gchar **) to (const gchar **) */
+  tp_connection_interface_avatars_service_iface_return_from_get_avatar_tokens (
+      context->invocation, (const gchar **)context->ret);
   g_strfreev (context->ret);
 
   g_slice_free (GetAvatarTokensContext, context);
@@ -3013,11 +3011,12 @@ _got_self_avatar_for_get_avatar_tokens (GObject *obj,
  * @context: The D-Bus invocation context to use to return values
  *           or throw an error.
  */
-void
-gabble_connection_get_avatar_tokens (GabbleConnection *self,
+static void
+gabble_connection_get_avatar_tokens (TpConnectionInterfaceAvatarsServiceIface *iface,
                                      const GArray *contacts,
                                      DBusGMethodInvocation *invocation)
 {
+  GabbleConnection *self = GABBLE_CONNECTION (iface);
   gboolean my_handle_requested = FALSE;
   guint i, my_index = 0;
   gchar **ret;
@@ -3080,7 +3079,10 @@ gabble_connection_get_avatar_tokens (GabbleConnection *self,
         }
     }
 
-  dbus_g_method_return (invocation, ret);
+  /* FIXME: I'm not entirely sure why gcc warns without this cast from
+   * (gchar **) to (const gchar **) */
+  tp_connection_interface_avatars_service_iface_return_from_get_avatar_tokens (
+      invocation, (const gchar **)ret);
   g_strfreev (ret);
 }
 
@@ -3105,23 +3107,26 @@ static const gchar *assumed_caps[] =
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_connection_get_capabilities (GabbleConnection *self,
+static void
+gabble_connection_get_capabilities (TpConnectionInterfaceCapabilitiesServiceIface *iface,
                                     const GArray *handles,
-                                    GPtrArray **ret,
-                                    GError **error)
+                                    DBusGMethodInvocation *context)
 {
+  GabbleConnection *self = GABBLE_CONNECTION (iface);
   guint i;
+  GPtrArray *ret;
+  GError *error;
 
-  ERROR_IF_NOT_CONNECTED (self, error);
+  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context);
 
   if (!tp_handles_are_valid (self->parent.handles[TP_HANDLE_TYPE_CONTACT],
-                             handles, TRUE, error))
+                             handles, TRUE, &error))
     {
-      return FALSE;
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
     }
 
-  *ret = g_ptr_array_new ();
+  ret = g_ptr_array_new ();
 
   for (i = 0; i < handles->len; i++)
     {
@@ -3164,7 +3169,7 @@ gabble_connection_get_capabilities (GabbleConnection *self,
                     3, typeflags,
                     G_MAXUINT);
 
-                g_ptr_array_add (*ret, g_value_get_boxed (&monster));
+                g_ptr_array_add (ret, g_value_get_boxed (&monster));
               }
           }
 
@@ -3184,11 +3189,13 @@ gabble_connection_get_capabilities (GabbleConnection *self,
               3, 0,
               G_MAXUINT);
 
-          g_ptr_array_add (*ret, g_value_get_boxed (&monster));
+          g_ptr_array_add (ret, g_value_get_boxed (&monster));
         }
     }
 
-  return TRUE;
+  tp_connection_interface_capabilities_service_iface_return_from_get_capabilities (
+      context, ret);
+  g_ptr_array_free (ret, TRUE);
 }
 
 
@@ -3204,10 +3211,9 @@ gabble_connection_get_capabilities (GabbleConnection *self,
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_connection_get_interfaces (GabbleConnection *self,
-                                  gchar ***ret,
-                                  GError **error)
+static void
+gabble_connection_get_interfaces (TpConnectionServiceIface *iface,
+                                  DBusGMethodInvocation *context)
 {
   const char *interfaces[] = {
       TP_IFACE_CONN_INTERFACE_ALIASING,
@@ -3216,17 +3222,18 @@ gabble_connection_get_interfaces (GabbleConnection *self,
       TP_IFACE_CONN_INTERFACE_AVATARS,
       TP_IFACE_PROPERTIES_INTERFACE,
       NULL };
+  GabbleConnection *self = GABBLE_CONNECTION (iface);
   GabbleConnectionPrivate *priv;
+  GError *error;
 
   g_assert (GABBLE_IS_CONNECTION (self));
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
-  ERROR_IF_NOT_CONNECTED (self, error)
+  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
 
-  *ret = g_strdupv ((gchar **) interfaces);
-
-  return TRUE;
+  tp_connection_service_iface_return_from_get_interfaces(
+      context, interfaces);
 }
 
 
@@ -3239,11 +3246,12 @@ gabble_connection_get_interfaces (GabbleConnection *self,
  * @context: The D-Bus invocation context to use to return values
  *           or throw an error.
  */
-void
-gabble_connection_get_presence (GabbleConnection *self,
+static void
+gabble_connection_get_presence (TpConnectionInterfacePresenceServiceIface *iface,
                                 const GArray *contacts,
                                 DBusGMethodInvocation *context)
 {
+  GabbleConnection *self = GABBLE_CONNECTION (iface);
   GHashTable *presence_hash;
   GError *error = NULL;
 
@@ -3255,95 +3263,9 @@ gabble_connection_get_presence (GabbleConnection *self,
     }
 
   presence_hash = construct_presence_hash (self, contacts);
-  dbus_g_method_return (context, presence_hash);
+  tp_connection_interface_presence_service_iface_return_from_get_presence (
+      context, presence_hash);
   g_hash_table_destroy (presence_hash);
-}
-
-
-/**
- * gabble_connection_get_properties
- *
- * Implements D-Bus method GetProperties
- * on interface org.freedesktop.Telepathy.Properties
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_connection_get_properties (GabbleConnection *self,
-                                  const GArray *properties,
-                                  GPtrArray **ret,
-                                  GError **error)
-{
-  return tp_properties_mixin_get_properties (G_OBJECT (self), properties,
-      ret, error);
-}
-
-
-/**
- * gabble_connection_get_protocol
- *
- * Implements D-Bus method GetProtocol
- * on interface org.freedesktop.Telepathy.Connection
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_connection_get_protocol (GabbleConnection *self,
-                                gchar **ret,
-                                GError **error)
-{
-  return tp_base_connection_get_protocol ((TpBaseConnection *)self, ret, error);
-}
-
-
-/**
- * gabble_connection_get_self_handle
- *
- * Implements D-Bus method GetSelfHandle
- * on interface org.freedesktop.Telepathy.Connection
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_connection_get_self_handle (GabbleConnection *self,
-                                   guint *ret,
-                                   GError **error)
-{
-  return tp_base_connection_get_self_handle ((TpBaseConnection *)self, ret,
-      error);
-}
-
-
-/**
- * gabble_connection_get_status
- *
- * Implements D-Bus method GetStatus
- * on interface org.freedesktop.Telepathy.Connection
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_connection_get_status (GabbleConnection *self,
-                              guint *ret,
-                              GError **error)
-{
-  return tp_base_connection_get_status ((TpBaseConnection *)self, ret, error);
 }
 
 
@@ -3359,11 +3281,13 @@ gabble_connection_get_status (GabbleConnection *self,
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_connection_get_statuses (GabbleConnection *self,
-                                GHashTable **ret,
-                                GError **error)
+static void
+gabble_connection_get_statuses (TpConnectionInterfacePresenceServiceIface *iface,
+                                DBusGMethodInvocation *context)
 {
+  GabbleConnection *self = GABBLE_CONNECTION (iface);
+  GHashTable *ret;
+  GError *error;
   GabbleConnectionPrivate *priv;
   GValueArray *status;
   int i;
@@ -3372,12 +3296,12 @@ gabble_connection_get_statuses (GabbleConnection *self,
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
-  ERROR_IF_NOT_CONNECTED (self, error)
+  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
 
   DEBUG ("called.");
 
-  *ret = g_hash_table_new_full (g_str_hash, g_str_equal,
-                                NULL, (GDestroyNotify) g_value_array_free);
+  ret = g_hash_table_new_full (g_str_hash, g_str_equal,
+                               NULL, (GDestroyNotify) g_value_array_free);
 
   for (i=0; i < LAST_GABBLE_PRESENCE; i++)
     {
@@ -3409,142 +3333,12 @@ gabble_connection_get_statuses (GabbleConnection *self,
       g_value_set_static_boxed (g_value_array_get_nth (status, 3),
           get_statuses_arguments());
 
-      g_hash_table_insert (*ret, (gchar*) gabble_statuses[i].name, status);
+      g_hash_table_insert (ret, (gchar*) gabble_statuses[i].name, status);
     }
 
-  return TRUE;
-}
-
-
-/**
- * gabble_connection_hold_handles
- *
- * Implements D-Bus method HoldHandles
- * on interface org.freedesktop.Telepathy.Connection
- *
- * @context: The D-Bus invocation context to use to return values
- *           or throw an error.
- */
-void
-gabble_connection_hold_handles (GabbleConnection *self,
-                                guint handle_type,
-                                const GArray *handles,
-                                DBusGMethodInvocation *context)
-{
-  tp_base_connection_hold_handles ((TpBaseConnection *)self, handle_type,
-      handles, context);
-}
-
-
-/**
- * gabble_connection_inspect_handles
- *
- * Implements D-Bus method InspectHandles
- * on interface org.freedesktop.Telepathy.Connection
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-void
-gabble_connection_inspect_handles (GabbleConnection *self,
-                                   guint handle_type,
-                                   const GArray *handles,
-                                   DBusGMethodInvocation *context)
-{
-  tp_base_connection_inspect_handles ((TpBaseConnection *)self, handle_type,
-      handles, context);
-}
-
-/**
- * gabble_connection_list_channels
- *
- * Implements D-Bus method ListChannels
- * on interface org.freedesktop.Telepathy.Connection
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_connection_list_channels (GabbleConnection *self,
-                                 GPtrArray **ret,
-                                 GError **error)
-{
-  return tp_base_connection_list_channels ((TpBaseConnection *)self,
-      ret, error);
-}
-
-
-/**
- * gabble_connection_list_properties
- *
- * Implements D-Bus method ListProperties
- * on interface org.freedesktop.Telepathy.Properties
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_connection_list_properties (GabbleConnection *self,
-                                   GPtrArray **ret,
-                                   GError **error)
-{
-  return tp_properties_mixin_list_properties (G_OBJECT (self), ret, error);
-}
-
-
-/**
- * gabble_connection_release_handles
- *
- * Implements D-Bus method ReleaseHandles
- * on interface org.freedesktop.Telepathy.Connection
- *
- * @context: The D-Bus invocation context to use to return values
- *           or throw an error.
- */
-void
-gabble_connection_release_handles (GabbleConnection *self,
-                                   guint handle_type,
-                                   const GArray * handles,
-                                   DBusGMethodInvocation *context)
-{
-  GabbleConnectionPrivate *priv;
-  char *sender;
-  GError *error = NULL;
-  guint i;
-
-  g_assert (GABBLE_IS_CONNECTION (self));
-
-  priv = GABBLE_CONNECTION_GET_PRIVATE (self);
-
-  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
-
-  if (!tp_handles_supported_and_valid (self->parent.handles,
-        handle_type, handles, FALSE, &error))
-    {
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-      return;
-    }
-
-  sender = dbus_g_method_get_sender (context);
-  for (i = 0; i < handles->len; i++)
-    {
-      TpHandle handle = g_array_index (handles, TpHandle, i);
-      if (!tp_handle_client_release (self->parent.handles[handle_type],
-            sender, handle, &error))
-        {
-          dbus_g_method_return_error (context, error);
-          g_error_free (error);
-          return;
-        }
-    }
-
-  dbus_g_method_return (context);
+  tp_connection_interface_presence_service_iface_return_from_get_statuses (
+      context, ret);
+  g_hash_table_destroy (ret);
 }
 
 
@@ -3560,30 +3354,41 @@ gabble_connection_release_handles (GabbleConnection *self,
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_connection_remove_status (GabbleConnection *self,
+static void
+gabble_connection_remove_status (TpConnectionInterfacePresenceServiceIface *iface,
                                  const gchar *status,
-                                 GError **error)
+                                 DBusGMethodInvocation *context)
 {
+  GabbleConnection *self = GABBLE_CONNECTION (iface);
   GabblePresence *presence = self->self_presence;
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
+  GError *error;
 
   g_assert (GABBLE_IS_CONNECTION (self));
 
-  ERROR_IF_NOT_CONNECTED (self, error)
+  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
 
   if (strcmp (status, gabble_statuses[presence->status].name) == 0)
     {
       gabble_presence_update (presence, priv->resource,
           GABBLE_PRESENCE_AVAILABLE, NULL, priv->priority);
       emit_one_presence_update (self, self->parent.self_handle);
-      return signal_own_presence (self, error);
+      if (signal_own_presence (self, &error))
+        {
+          tp_connection_interface_presence_service_iface_return_from_remove_status (
+              context);
+        }
+      else
+        {
+          dbus_g_method_return_error (context, error);
+          g_error_free (error);
+        }
     }
   else
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "Attempting to remove non-existent presence.");
-      return FALSE;
+      GError nonexistent = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Attempting to remove non-existent presence." };
+      dbus_g_method_return_error (context, &nonexistent);
     }
 }
 
@@ -3644,7 +3449,10 @@ aliases_request_try_return (AliasesRequest *request)
 {
   if (request->pending_vcard_requests == 0)
     {
-      dbus_g_method_return (request->request_call, request->aliases);
+      /* FIXME: I'm not entirely sure why gcc warns without this cast from
+       * (gchar **) to (const gchar **) */
+      tp_connection_interface_aliasing_service_iface_return_from_request_aliases (
+          request->request_call, (const gchar **)request->aliases);
       return TRUE;
     }
 
@@ -3702,11 +3510,12 @@ aliases_request_vcard_cb (GabbleVCardManager *manager,
  * @context: The D-Bus invocation context to use to return values
  *           or throw an error.
  */
-void
-gabble_connection_request_aliases (GabbleConnection *self,
+static void
+gabble_connection_request_aliases (TpConnectionInterfaceAliasingServiceIface *iface,
                                    const GArray *contacts,
                                    DBusGMethodInvocation *context)
 {
+  GabbleConnection *self = GABBLE_CONNECTION (iface);
   guint i;
   AliasesRequest *request;
   GError *error = NULL;
@@ -3888,7 +3697,9 @@ _request_avatar_cb (GabbleVCardManager *self,
               g_free (presence->avatar_sha1);
               presence->avatar_sha1 = sha1; /* take ownership */
 
-              g_signal_emit (conn, signals[AVATAR_UPDATED], 0, handle, sha1);
+              tp_connection_interface_avatars_service_iface_emit_avatar_updated (
+                  (TpConnectionInterfaceAvatarsServiceIface *)conn,
+                  handle, sha1);
             }
 
           goto out;
@@ -3900,7 +3711,8 @@ _request_avatar_cb (GabbleVCardManager *self,
   mime_type = lm_message_node_get_value (type_node);
   arr = g_array_new (FALSE, FALSE, sizeof (gchar));
   g_array_append_vals (arr, avatar->str, avatar->len);
-  dbus_g_method_return (context, arr, mime_type);
+  tp_connection_interface_avatars_service_iface_return_from_request_avatar (
+      context, arr, mime_type);
   g_array_free (arr, TRUE);
 
 out:
@@ -3916,37 +3728,13 @@ out:
  * @context: The D-Bus invocation context to use to return values
  *           or throw an error.
  */
-void
-gabble_connection_request_avatar (GabbleConnection *self,
+static void
+gabble_connection_request_avatar (TpConnectionInterfaceAvatarsServiceIface *iface,
                                   guint contact,
                                   DBusGMethodInvocation *context)
 {
-  LmMessageNode *vcard_node =
-      gabble_vcard_manager_get_cached (self->vcard_manager, contact);
-
-  if (vcard_node)
-    {
-      _request_avatar_cb (self->vcard_manager, NULL, contact, vcard_node, NULL,
-          context);
-    }
-  else
-    {
-      gabble_vcard_manager_request (self->vcard_manager, contact, 0,
-          _request_avatar_cb, context, NULL, NULL);
-    }
-}
-
-
-void
-gabble_connection_request_channel (GabbleConnection *self,
-                                   const gchar *type,
-                                   guint handle_type,
-                                   guint handle,
-                                   gboolean suppress_handler,
-                                   DBusGMethodInvocation *context)
-{
-  tp_base_connection_request_channel ((TpBaseConnection *)self,
-      type, handle_type, handle, suppress_handler, context);
+  gabble_vcard_manager_request (self->vcard_manager, contact, 0,
+      _request_avatar_cb, context, NULL, NULL);
 }
 
 
@@ -4277,12 +4065,13 @@ room_jid_verify (RoomVerifyBatch *batch,
  * @context: The D-Bus invocation context to use to return values
  *           or throw an error.
  */
-void
-gabble_connection_request_handles (GabbleConnection *self,
+static void
+gabble_connection_request_handles (TpConnectionServiceIface *iface,
                                    guint handle_type,
                                    const gchar **names,
                                    DBusGMethodInvocation *context)
 {
+  GabbleConnection *self = GABBLE_CONNECTION (iface);
   guint count = 0, i;
   const gchar **cur_name;
   GError *error = NULL;
@@ -4426,34 +4215,34 @@ gabble_connection_request_handles (GabbleConnection *self,
  *
  * Implements D-Bus method RequestPresence
  * on interface org.freedesktop.Telepathy.Connection.Interface.Presence
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_connection_request_presence (GabbleConnection *self,
+static void
+gabble_connection_request_presence (TpConnectionInterfacePresenceServiceIface *iface,
                                     const GArray *contacts,
-                                    GError **error)
+                                    DBusGMethodInvocation *context)
 {
+  GabbleConnection *self = GABBLE_CONNECTION (iface);
   GabbleConnectionPrivate *priv;
+  GError *error;
 
   g_assert (GABBLE_IS_CONNECTION (self));
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
-  ERROR_IF_NOT_CONNECTED (self, error)
+  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
 
   if (!tp_handles_are_valid (self->parent.handles[TP_HANDLE_TYPE_CONTACT],
-        contacts, FALSE, error))
-    return FALSE;
+        contacts, FALSE, &error))
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+    }
 
   if (contacts->len)
     emit_presence_update (self, contacts);
 
-  return TRUE;
+  tp_connection_interface_presence_service_iface_return_from_request_presence (
+      context);
 }
 
 
@@ -4524,18 +4313,14 @@ setaliases_foreach (gpointer key, gpointer value, gpointer user_data)
  *
  * Implements D-Bus method SetAliases
  * on interface org.freedesktop.Telepathy.Connection.Interface.Aliasing
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_connection_set_aliases (GabbleConnection *self,
+static void
+gabble_connection_set_aliases (TpConnectionInterfaceAliasingServiceIface *iface,
                                GHashTable *aliases,
-                               GError **error)
+                               DBusGMethodInvocation *context)
 {
+  GabbleConnection *self = GABBLE_CONNECTION (iface);
+  GError *error;
   GabbleConnectionPrivate *priv;
   struct _i_hate_g_hash_table_foreach data = { NULL, NULL, TRUE };
 
@@ -4543,14 +4328,23 @@ gabble_connection_set_aliases (GabbleConnection *self,
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
-  ERROR_IF_NOT_CONNECTED (self, error)
+  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
 
   data.conn = self;
-  data.error = error;
+  data.error = &error;
 
   g_hash_table_foreach (aliases, setaliases_foreach, &data);
 
-  return data.retval;
+  if (data.retval)
+    {
+      tp_connection_interface_aliasing_service_iface_return_from_set_aliases (
+          context);
+    }
+  else
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+    }
 }
 
 
@@ -4598,8 +4392,10 @@ _set_avatar_cb2 (GabbleVCardManager *manager,
 
       if (signal_own_presence (ctx->conn, &error))
         {
-          dbus_g_method_return (ctx->invocation, presence->avatar_sha1);
-          g_signal_emit (ctx->conn, signals[AVATAR_UPDATED], 0,
+          tp_connection_interface_avatars_service_iface_return_from_set_avatar (
+              ctx->invocation, presence->avatar_sha1);
+          tp_connection_interface_avatars_service_iface_emit_avatar_updated (
+              (TpConnectionInterfaceAvatarsServiceIface *)(ctx->conn),
               ctx->conn->parent.self_handle, presence->avatar_sha1);
         }
       else
@@ -4679,12 +4475,13 @@ _set_avatar_cb1 (GabbleVCardManager *manager,
  * @context: The D-Bus invocation context to use to return values
  *           or throw an error.
  */
-void
-gabble_connection_set_avatar (GabbleConnection *self,
+static void
+gabble_connection_set_avatar (TpConnectionInterfaceAvatarsServiceIface *iface,
                               const GArray *avatar,
                               const gchar *mime_type,
                               DBusGMethodInvocation *context)
 {
+  GabbleConnection *self = GABBLE_CONNECTION (iface);
   struct _set_avatar_ctx *ctx = g_new0 (struct _set_avatar_ctx, 1);
 
   ctx->conn = self;
@@ -4705,27 +4502,24 @@ gabble_connection_set_avatar (GabbleConnection *self,
  *
  * Implements D-Bus method SetLastActivityTime
  * on interface org.freedesktop.Telepathy.Connection.Interface.Presence
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_connection_set_last_activity_time (GabbleConnection *self,
+static void
+gabble_connection_set_last_activity_time (TpConnectionInterfacePresenceServiceIface *iface,
                                           guint time,
-                                          GError **error)
+                                          DBusGMethodInvocation *context)
 {
+  GabbleConnection *self = GABBLE_CONNECTION (iface);
   GabbleConnectionPrivate *priv;
+  GError *error;
 
   g_assert (GABBLE_IS_CONNECTION (self));
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
-  ERROR_IF_NOT_CONNECTED (self, error)
+  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
 
-  return TRUE;
+  tp_connection_interface_presence_service_iface_return_from_set_last_activity_time (
+      context);
 }
 
 
@@ -4802,23 +4596,6 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
 }
 
 /**
- * gabble_connection_set_properties
- *
- * Implements D-Bus method SetProperties
- * on interface org.freedesktop.Telepathy.Properties
- *
- * @context: The D-Bus invocation context to use to return values
- *           or throw an error.
- */
-void
-gabble_connection_set_properties (GabbleConnection *self,
-                                  const GPtrArray *properties,
-                                  DBusGMethodInvocation *context)
-{
-  tp_properties_mixin_set_properties (G_OBJECT (self), properties, context);
-}
-
-/**
  * gabble_connection_set_status
  *
  * Implements D-Bus method SetStatus
@@ -4830,32 +4607,99 @@ gabble_connection_set_properties (GabbleConnection *self,
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_connection_set_status (GabbleConnection *self,
+static void
+gabble_connection_set_status (TpConnectionInterfacePresenceServiceIface *iface,
                               GHashTable *statuses,
-                              GError **error)
+                              DBusGMethodInvocation *context)
 {
+  GabbleConnection *self = GABBLE_CONNECTION (iface);
   GabbleConnectionPrivate *priv;
   struct _i_hate_g_hash_table_foreach data = { NULL, NULL, TRUE };
+  GError *error;
 
   g_assert (GABBLE_IS_CONNECTION (self));
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
-  ERROR_IF_NOT_CONNECTED (self, error)
+  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
 
   if (g_hash_table_size (statuses) != 1)
     {
+      GError invalid = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Only one status may be set at a time in this protocol" };
       DEBUG ("got more than one status");
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "Only one status may be set at a time in this protocol");
-      return FALSE;
+      dbus_g_method_return_error (context, &invalid);
+      return;
     }
 
   data.conn = self;
-  data.error = error;
+  data.error = &error;
   g_hash_table_foreach (statuses, setstatuses_foreach, &data);
 
-  return data.retval;
+  if (data.retval)
+    {
+      tp_connection_interface_presence_service_iface_return_from_set_status (
+          context);
+    }
+  else
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+    }
 }
 
+static void
+conn_service_iface_init(gpointer g_iface, gpointer iface_data)
+{
+  TpConnectionServiceIfaceClass *klass = (TpConnectionServiceIfaceClass *)g_iface;
+
+  klass->connect = gabble_connection_connect;
+  klass->disconnect = gabble_connection_disconnect;
+  klass->get_interfaces = gabble_connection_get_interfaces;
+  klass->request_handles = gabble_connection_request_handles;
+}
+
+static void
+aliasing_service_iface_init(gpointer g_iface, gpointer iface_data)
+{
+  TpConnectionInterfaceAliasingServiceIfaceClass *klass = (TpConnectionInterfaceAliasingServiceIfaceClass *)g_iface;
+
+  klass->get_alias_flags = gabble_connection_get_alias_flags;
+  klass->request_aliases = gabble_connection_request_aliases;
+  klass->set_aliases = gabble_connection_set_aliases;
+}
+
+static void
+avatars_service_iface_init(gpointer g_iface, gpointer iface_data)
+{
+  TpConnectionInterfaceAvatarsServiceIfaceClass *klass = (TpConnectionInterfaceAvatarsServiceIfaceClass *)g_iface;
+
+  klass->get_avatar_requirements = gabble_connection_get_avatar_requirements;
+  klass->get_avatar_tokens = gabble_connection_get_avatar_tokens;
+  klass->request_avatar = gabble_connection_request_avatar;
+  klass->set_avatar = gabble_connection_set_avatar;
+}
+
+static void
+capabilities_service_iface_init(gpointer g_iface, gpointer iface_data)
+{
+  TpConnectionInterfaceCapabilitiesServiceIfaceClass *klass = (TpConnectionInterfaceCapabilitiesServiceIfaceClass *)g_iface;
+
+  klass->advertise_capabilities = gabble_connection_advertise_capabilities;
+  klass->get_capabilities = gabble_connection_get_capabilities;
+}
+
+static void
+presence_service_iface_init(gpointer g_iface, gpointer iface_data)
+{
+  TpConnectionInterfacePresenceServiceIfaceClass *klass = (TpConnectionInterfacePresenceServiceIfaceClass *)g_iface;
+
+  klass->add_status = gabble_connection_add_status;
+  klass->clear_status = gabble_connection_clear_status;
+  klass->get_presence = gabble_connection_get_presence;
+  klass->get_statuses = gabble_connection_get_statuses;
+  klass->remove_status = gabble_connection_remove_status;
+  klass->request_presence = gabble_connection_request_presence;
+  klass->set_last_activity_time = gabble_connection_set_last_activity_time;
+  klass->set_status = gabble_connection_set_status;
+}

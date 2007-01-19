@@ -1,7 +1,7 @@
 /*
  * properties-mixin.c - Source for TpPropertiesMixin
- * Copyright (C) 2006 Collabora Ltd.
- * Copyright (C) 2006 Nokia Corporation
+ * Copyright (C) 2006-2007 Collabora Ltd.
+ * Copyright (C) 2006-2007 Nokia Corporation
  *   @author Ole Andre Vadla Ravnaas <ole.andre.ravnaas@collabora.co.uk>
  *   @author Robert McQueen <robert.mcqueen@collabora.co.uk>
  *
@@ -20,6 +20,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include "telepathy-glib/properties-mixin.h"
+
 #include <dbus/dbus-glib.h>
 #include <stdio.h>
 #include <string.h>
@@ -28,7 +30,6 @@
 
 #include <telepathy-glib/debug-ansi.h>
 #include "debug.h"
-#include "telepathy-glib/properties-mixin.h"
 #include <telepathy-glib/errors.h>
 
 struct _TpPropertiesContext {
@@ -93,24 +94,6 @@ void tp_properties_mixin_class_init (GObjectClass *obj_cls,
   mixin_cls->num_props = num_properties;
 
   mixin_cls->set_properties = set_func;
-
-  mixin_cls->properties_changed_signal_id =
-    g_signal_new ("properties-changed",
-                  G_OBJECT_CLASS_TYPE (obj_cls),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  g_cclosure_marshal_VOID__BOXED,
-                  G_TYPE_NONE, 1, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_UINT, G_TYPE_VALUE, G_TYPE_INVALID)))));
-
-  mixin_cls->property_flags_changed_signal_id =
-    g_signal_new ("property-flags-changed",
-                  G_OBJECT_CLASS_TYPE (obj_cls),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  g_cclosure_marshal_VOID__BOXED,
-                  G_TYPE_NONE, 1, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_UINT, G_TYPE_UINT, G_TYPE_INVALID)))));
 }
 
 void tp_properties_mixin_init (GObject *obj, glong offset)
@@ -120,6 +103,8 @@ void tp_properties_mixin_init (GObject *obj, glong offset)
   TpPropertiesContext *ctx;
 
   g_assert (G_IS_OBJECT (obj));
+
+  g_assert (TP_IS_PROPERTIES_INTERFACE_SERVICE_IFACE (obj));
 
   g_type_set_qdata (G_OBJECT_TYPE (obj),
                     TP_PROPERTIES_MIXIN_OFFSET_QUARK,
@@ -705,7 +690,8 @@ tp_properties_mixin_emit_changed (GObject *obj, GArray **props)
       fflush (stdout);
     }
 
-  g_signal_emit (obj, mixin_cls->properties_changed_signal_id, 0, prop_arr);
+  tp_properties_interface_service_iface_emit_properties_changed (
+      (TpPropertiesInterfaceServiceIface *)obj, prop_arr);
 
   g_value_init (&prop_list, TP_TYPE_PROPERTY_VALUE_LIST);
   g_value_take_boxed (&prop_list, prop_arr);
@@ -774,7 +760,8 @@ tp_properties_mixin_emit_flags (GObject *obj, GArray **props)
       fflush (stdout);
     }
 
-  g_signal_emit (obj, mixin_cls->property_flags_changed_signal_id, 0, prop_arr);
+  tp_properties_interface_service_iface_emit_property_flags_changed (
+      (TpPropertiesInterfaceServiceIface *)obj, prop_arr);
 
   g_value_init (&prop_list, TP_TYPE_PROPERTY_FLAGS_LIST);
   g_value_take_boxed (&prop_list, prop_arr);
@@ -810,3 +797,94 @@ tp_properties_mixin_is_writable (GObject *obj, guint prop_id)
   return ((mixin->properties[prop_id].flags & TP_PROPERTY_FLAG_WRITE) != 0);
 }
 
+/**
+ * get_properties
+ *
+ * Implements D-Bus method GetProperties
+ * on interface org.freedesktop.Telepathy.Properties
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occurred, D-Bus will throw the error only if this
+ *         function returns FALSE.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+static void
+get_properties (TpPropertiesInterfaceServiceIface *iface,
+                const GArray *properties,
+                DBusGMethodInvocation *context)
+{
+  GPtrArray *ret;
+  GError *error;
+  gboolean ok = tp_properties_mixin_get_properties (G_OBJECT (iface), properties,
+      &ret, &error);
+  if (!ok)
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return;
+    }
+  tp_properties_interface_service_iface_return_from_get_properties (
+      context, ret);
+  g_ptr_array_free (ret, TRUE);
+}
+
+
+/**
+ * list_properties
+ *
+ * Implements D-Bus method ListProperties
+ * on interface org.freedesktop.Telepathy.Properties
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occurred, D-Bus will throw the error only if this
+ *         function returns false.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+static void
+list_properties (TpPropertiesInterfaceServiceIface *iface,
+                 DBusGMethodInvocation *context)
+{
+  GPtrArray *ret;
+  GError *error;
+  gboolean ok = tp_properties_mixin_list_properties (G_OBJECT (iface), &ret,
+      &error);
+  if (!ok)
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+    }
+  tp_properties_interface_service_iface_return_from_list_properties (
+      context, ret);
+  g_ptr_array_free (ret, TRUE);
+}
+
+
+/**
+ * set_properties
+ *
+ * Implements D-Bus method SetProperties
+ * on interface org.freedesktop.Telepathy.Properties
+ *
+ * @context: The D-Bus invocation context to use to return values
+ *           or throw an error.
+ */
+static void
+set_properties (TpPropertiesInterfaceServiceIface *iface,
+                const GPtrArray *properties,
+                DBusGMethodInvocation *context)
+{
+  tp_properties_mixin_set_properties (G_OBJECT (iface), properties, context);
+}
+
+
+void
+tp_properties_mixin_iface_init(gpointer g_iface, gpointer iface_data)
+{
+  TpPropertiesInterfaceServiceIfaceClass *klass = (TpPropertiesInterfaceServiceIfaceClass *)g_iface;
+
+  klass->get_properties = get_properties;
+  klass->list_properties = list_properties;
+  klass->set_properties = set_properties;
+}

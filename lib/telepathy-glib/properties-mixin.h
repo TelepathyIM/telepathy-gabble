@@ -23,8 +23,12 @@
 #ifndef __TP_PROPERTIES_MIXIN_H__
 #define __TP_PROPERTIES_MIXIN_H__
 
+#include <glib-object.h>
+#include <dbus/dbus-glib.h>
+
 #include <telepathy-glib/enums.h>
-#include "telepathy-glib/util.h"
+#include <telepathy-glib/properties-interface-service-iface.h>
+#include <telepathy-glib/util.h>
 
 G_BEGIN_DECLS
 
@@ -50,9 +54,6 @@ struct _TpPropertiesMixinClass {
   guint num_props;
 
   TpPropertiesSetFunc set_properties;
-
-  guint property_flags_changed_signal_id;
-  guint properties_changed_signal_id;
 };
 
 typedef struct _TpPropertiesMixinClass TpPropertiesMixinClass;
@@ -128,6 +129,8 @@ void tp_properties_mixin_emit_flags (GObject *obj, GArray **props);
 
 gboolean tp_properties_mixin_is_readable (GObject *obj, guint prop_id);
 gboolean tp_properties_mixin_is_writable (GObject *obj, guint prop_id);
+
+void tp_properties_mixin_iface_init(gpointer g_iface, gpointer iface_data);
 
 G_END_DECLS
 

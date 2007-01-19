@@ -26,17 +26,23 @@
 #include <dbus/dbus-glib-lowlevel.h>
 
 #include <telepathy-glib/channel-factory-iface.h>
+#include <telepathy-glib/connection-service-iface.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/enums.h>
 
 #define DEBUG_FLAG TP_DEBUG_CONNECTION
 #include "debug.h"
-#include "_gen/signals-marshal.h"
 
 #define BUS_NAME_BASE    "org.freedesktop.Telepathy.Connection."
 #define OBJECT_PATH_BASE "/org/freedesktop/Telepathy/Connection/"
 
-G_DEFINE_ABSTRACT_TYPE(TpBaseConnection, tp_base_connection, G_TYPE_OBJECT)
+static void service_iface_init(gpointer, gpointer);
+
+G_DEFINE_ABSTRACT_TYPE_WITH_CODE(TpBaseConnection,
+    tp_base_connection,
+    G_TYPE_OBJECT,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_CONNECTION_SERVICE_IFACE,
+      service_iface_init))
 
 enum
 {
@@ -50,15 +56,6 @@ enum
       DBUS_TYPE_G_OBJECT_PATH, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT, \
       G_TYPE_INVALID))
 
-#define ERROR_IF_NOT_CONNECTED(CONN, ERROR) \
-  if ((CONN)->status != TP_CONNECTION_STATUS_CONNECTED) \
-    { \
-      DEBUG ("rejected request as disconnected"); \
-      g_set_error (ERROR, TP_ERRORS, TP_ERROR_NOT_AVAILABLE, \
-          "Connection is disconnected"); \
-      return FALSE; \
-    }
-
 #define ERROR_IF_NOT_CONNECTED_ASYNC(CONN, ERROR, CONTEXT) \
   if ((CONN)->status != TP_CONNECTION_STATUS_CONNECTED) \
     { \
@@ -69,14 +66,6 @@ enum
       g_error_free ((ERROR)); \
       return; \
     }
-
-enum
-{
-  NEW_CHANNEL,
-  N_SIGNALS
-};
-
-static guint signals[N_SIGNALS] = {0};
 
 typedef struct _ChannelRequest ChannelRequest;
 
@@ -314,10 +303,9 @@ connection_new_channel_cb (TpChannelFactoryIface *factory,
   tmp = find_matching_channel_requests (conn, channel_type, handle_type,
                                         handle, &suppress_handler);
 
-  g_signal_emit (conn, signals[NEW_CHANNEL], 0,
-                 object_path, channel_type,
-                 handle_type, handle,
-                 suppress_handler);
+  tp_connection_service_iface_emit_new_channel (
+      (TpConnectionServiceIface *)conn, object_path, channel_type,
+      handle_type, handle, suppress_handler);
 
   for (i = 0; i < tmp->len; i++)
     {
@@ -454,15 +442,6 @@ tp_base_connection_class_init (TpBaseConnectionClass *klass)
                                     G_PARAM_STATIC_NAME |
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_PROTOCOL, param_spec);
-
-  signals[NEW_CHANNEL] =
-    g_signal_new ("new-channel",
-                  G_OBJECT_CLASS_TYPE (klass),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  _tp_marshal_VOID__STRING_STRING_UINT_UINT_BOOLEAN,
-                  G_TYPE_NONE, 5, DBUS_TYPE_G_OBJECT_PATH, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_BOOLEAN);
 }
 
 static void
@@ -652,18 +631,21 @@ tp_base_connection_disconnected (TpBaseConnection *self)
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-tp_base_connection_get_protocol (TpBaseConnection *self,
-                                 gchar **ret,
-                                 GError **error)
+static void
+tp_base_connection_get_protocol (TpConnectionServiceIface *iface,
+                                 DBusGMethodInvocation *context)
 {
+  TpBaseConnection *self = TP_BASE_CONNECTION (iface);
+  TpBaseConnectionPrivate *priv;
+  GError *error;
+
   g_assert (TP_IS_BASE_CONNECTION (self));
 
-  ERROR_IF_NOT_CONNECTED (self, error)
+  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
 
-  g_object_get ((GObject *)self, "protocol", ret, NULL);
+  priv = TP_BASE_CONNECTION_GET_PRIVATE (self);
 
-  return TRUE;
+  tp_connection_service_iface_return_from_get_protocol (context, priv->protocol);
 }
 
 /**
@@ -671,25 +653,20 @@ tp_base_connection_get_protocol (TpBaseConnection *self,
  *
  * Implements D-Bus method GetSelfHandle
  * on interface org.freedesktop.Telepathy.Connection
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-tp_base_connection_get_self_handle (TpBaseConnection *self,
-                                    guint *ret,
-                                    GError **error)
+static void
+tp_base_connection_get_self_handle (TpConnectionServiceIface *iface,
+                                    DBusGMethodInvocation *context)
 {
+  TpBaseConnection *self = TP_BASE_CONNECTION (iface);
+  GError *error;
+
   g_assert (TP_IS_BASE_CONNECTION (self));
 
-  ERROR_IF_NOT_CONNECTED (self, error)
+  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
 
-  *ret = self->self_handle;
-
-  return TRUE;
+  tp_connection_service_iface_return_from_get_self_handle (
+      context, self->self_handle);
 }
 
 /**
@@ -697,30 +674,23 @@ tp_base_connection_get_self_handle (TpBaseConnection *self,
  *
  * Implements D-Bus method GetStatus
  * on interface org.freedesktop.Telepathy.Connection
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-tp_base_connection_get_status (TpBaseConnection *self,
-                               guint *ret,
-                               GError **error)
+static void
+tp_base_connection_get_status (TpConnectionServiceIface *iface,
+                               DBusGMethodInvocation *context)
 {
-  g_assert (TP_IS_BASE_CONNECTION (self));
+  TpBaseConnection *self = TP_BASE_CONNECTION (iface);
 
   if (self->status == TP_INTERNAL_CONNECTION_STATUS_NEW)
     {
-      *ret = TP_CONNECTION_STATUS_DISCONNECTED;
+      tp_connection_service_iface_return_from_get_status(
+          context, TP_CONNECTION_STATUS_DISCONNECTED);
     }
   else
     {
-      *ret = self->status;
+      tp_connection_service_iface_return_from_get_status(
+          context, self->status);
     }
-
-  return TRUE;
 }
 
 
@@ -733,12 +703,13 @@ tp_base_connection_get_status (TpBaseConnection *self,
  * @context: The D-Bus invocation context to use to return values
  *           or throw an error.
  */
-void
-tp_base_connection_hold_handles (TpBaseConnection *self,
+static void
+tp_base_connection_hold_handles (TpConnectionServiceIface *iface,
                                  guint handle_type,
                                  const GArray *handles,
                                  DBusGMethodInvocation *context)
 {
+  TpBaseConnection *self = TP_BASE_CONNECTION (iface);
   TpBaseConnectionPrivate *priv;
   GError *error = NULL;
   gchar *sender;
@@ -771,7 +742,7 @@ tp_base_connection_hold_handles (TpBaseConnection *self,
         }
     }
 
-  dbus_g_method_return (context);
+  tp_connection_service_iface_return_from_hold_handles (context);
 }
 
 /**
@@ -782,12 +753,13 @@ tp_base_connection_hold_handles (TpBaseConnection *self,
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-void
-tp_base_connection_inspect_handles (TpBaseConnection *self,
+static void
+tp_base_connection_inspect_handles (TpConnectionServiceIface *iface,
                                     guint handle_type,
                                     const GArray *handles,
                                     DBusGMethodInvocation *context)
 {
+  TpBaseConnection *self = TP_BASE_CONNECTION (iface);
   GError *error = NULL;
   const gchar **ret;
   guint i;
@@ -822,7 +794,7 @@ tp_base_connection_inspect_handles (TpBaseConnection *self,
 
   ret[i] = NULL;
 
-  dbus_g_method_return (context, ret);
+  tp_connection_service_iface_return_from_inspect_handles (context, ret);
 
   g_free (ret);
 }
@@ -875,12 +847,13 @@ list_channel_factory_foreach_one (TpChannelIface *chan,
   g_free (type);
 }
 
-gboolean
-tp_base_connection_list_channels (TpBaseConnection *self,
-    GPtrArray **ret,
-    GError **error)
+static void
+tp_base_connection_list_channels (TpConnectionServiceIface *iface,
+                                  DBusGMethodInvocation *context)
 {
+  TpBaseConnection *self = TP_BASE_CONNECTION (iface);
   TpBaseConnectionPrivate *priv;
+  GError *error;
   GPtrArray *channels;
   guint i;
 
@@ -888,7 +861,7 @@ tp_base_connection_list_channels (TpBaseConnection *self,
 
   priv = TP_BASE_CONNECTION_GET_PRIVATE (self);
 
-  ERROR_IF_NOT_CONNECTED (self, error)
+  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
 
   /* I think on average, each factory will have 2 channels :D */
   channels = g_ptr_array_sized_new (priv->channel_factories->len * 2);
@@ -901,9 +874,8 @@ tp_base_connection_list_channels (TpBaseConnection *self,
           list_channel_factory_foreach_one, channels);
     }
 
-  *ret = channels;
-
-  return TRUE;
+  tp_connection_service_iface_return_from_list_channels (context, channels);
+  g_ptr_array_free (channels, TRUE);
 }
 
 
@@ -916,14 +888,15 @@ tp_base_connection_list_channels (TpBaseConnection *self,
  * @context: The D-Bus invocation context to use to return values
  *           or throw an error.
  */
-void
-tp_base_connection_request_channel (TpBaseConnection *self,
+static void
+tp_base_connection_request_channel (TpConnectionServiceIface *iface,
                                     const gchar *type,
                                     guint handle_type,
                                     guint handle,
                                     gboolean suppress_handler,
                                     DBusGMethodInvocation *context)
 {
+  TpBaseConnection *self = TP_BASE_CONNECTION (iface);
   TpBaseConnectionPrivate *priv;
   TpChannelFactoryRequestStatus status =
     TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_IMPLEMENTED;
@@ -1018,7 +991,8 @@ OUT:
     }
 
   g_assert (NULL != object_path);
-  dbus_g_method_return (context, object_path);
+  tp_connection_service_iface_return_from_request_channel (context,
+      object_path);
   g_free (object_path);
 }
 
@@ -1032,12 +1006,13 @@ OUT:
  * @context: The D-Bus invocation context to use to return values
  *           or throw an error.
  */
-void
-tp_base_connection_release_handles (TpBaseConnection *self,
+static void
+tp_base_connection_release_handles (TpConnectionServiceIface *iface,
                                     guint handle_type,
                                     const GArray * handles,
                                     DBusGMethodInvocation *context)
 {
+  TpBaseConnection *self = TP_BASE_CONNECTION (iface);
   char *sender;
   GError *error = NULL;
   guint i;
@@ -1067,7 +1042,26 @@ tp_base_connection_release_handles (TpBaseConnection *self,
         }
     }
 
-  dbus_g_method_return (context);
+  tp_connection_service_iface_return_from_release_handles (context);
 }
 
 /* Missing: RequestHandles (need to verify them) */
+
+static void
+service_iface_init(gpointer g_iface, gpointer iface_data)
+{
+  TpConnectionServiceIfaceClass *klass = (TpConnectionServiceIfaceClass *)g_iface;
+
+  klass->connect = NULL; /* tp_base_connection_connect; */
+  klass->disconnect = NULL; /* tp_base_connection_disconnect; */
+  klass->get_interfaces = NULL; /* tp_base_connection_get_interfaces; */
+  klass->get_protocol = tp_base_connection_get_protocol;
+  klass->get_self_handle = tp_base_connection_get_self_handle;
+  klass->get_status = tp_base_connection_get_status;
+  klass->hold_handles = tp_base_connection_hold_handles;
+  klass->inspect_handles = tp_base_connection_inspect_handles;
+  klass->list_channels = tp_base_connection_list_channels;
+  klass->request_channel = tp_base_connection_request_channel;
+  klass->release_handles = tp_base_connection_release_handles;
+  klass->request_handles = NULL; /* tp_base_connection_request_handles; */
+}

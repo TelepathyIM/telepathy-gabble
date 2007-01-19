@@ -1,7 +1,4 @@
 BUILT_SOURCES = \
-    gabble-connection-glue.h \
-    gabble-connection-signals-marshal.h \
-    gabble-connection-signals-marshal.c \
     gabble-register-signals-marshal.h \
     gabble-register-signals-marshal.c \
     gabble-im-channel-glue.h \

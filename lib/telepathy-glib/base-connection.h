@@ -76,25 +76,6 @@ void tp_base_connection_close_all_channels (TpBaseConnection *self);
 void tp_base_connection_disconnected (TpBaseConnection *self);
 void tp_base_connection_connecting (TpBaseConnection *self);
 void tp_base_connection_connected (TpBaseConnection *self);
-gboolean tp_base_connection_get_protocol (TpBaseConnection *self,
-    gchar **ret, GError **error);
-gboolean tp_base_connection_get_self_handle (TpBaseConnection *self,
-    guint *ret, GError **error);
-gboolean tp_base_connection_get_status (TpBaseConnection *self,
-    guint *ret, GError **error);
-void tp_base_connection_hold_handles (TpBaseConnection *self,
-    guint handle_type, const GArray *handles, DBusGMethodInvocation *context);
-void tp_base_connection_inspect_handles (TpBaseConnection *self,
-    guint handle_type, const GArray *handles, DBusGMethodInvocation *context);
-gboolean tp_base_connection_list_channels (TpBaseConnection *self,
-    GPtrArray **ret, GError **error);
-void tp_base_connection_release_handles (TpBaseConnection *self,
-    guint handle_type, const GArray *handles, DBusGMethodInvocation *context);
-void tp_base_connection_request_channel (TpBaseConnection *self,
-    const gchar *type, guint handle_type, guint handle,
-    gboolean suppress_handler, DBusGMethodInvocation *context);
-void tp_base_connection_release_handles (TpBaseConnection *self,
-    guint handle_type, const GArray *handles, DBusGMethodInvocation *context);
 
 /* TYPE MACROS */
 #define TP_TYPE_BASE_CONNECTION \

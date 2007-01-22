@@ -117,53 +117,8 @@ GType gabble_media_stream_get_type(void);
 #define MAKE_COMBINED_DIRECTION(d, p) \
     ((CombinedStreamDirection) ((d) | ((p) << 2)))
 
-gboolean
-gabble_media_stream_codec_choice (GabbleMediaStream *self,
-                                  guint codec_id,
-                                  GError **error);
-
-gboolean
-gabble_media_stream_error (GabbleMediaStream *self,
-                           guint errno,
-                           const gchar *message,
-                           GError **error);
-
-gboolean
-gabble_media_stream_native_candidates_prepared (GabbleMediaStream *self,
-                                                GError **error);
-
-gboolean
-gabble_media_stream_new_active_candidate_pair (GabbleMediaStream *self,
-                                               const gchar *native_candidate_id,
-                                               const gchar *remote_candidate_id,
-                                               GError **error);
-
-gboolean
-gabble_media_stream_new_native_candidate (GabbleMediaStream *self,
-                                          const gchar *candidate_id,
-                                          const GPtrArray *transports,
-                                          GError **error);
-
-gboolean
-gabble_media_stream_ready (GabbleMediaStream *self,
-                           const GPtrArray *codecs,
-                           GError **error);
-
-gboolean
-gabble_media_stream_set_local_codecs (GabbleMediaStream *self,
-                                      const GPtrArray *codecs,
-                                      GError **error);
-
-gboolean
-gabble_media_stream_stream_state (GabbleMediaStream *self,
-                                  guint state,
-                                  GError **error);
-
-gboolean
-gabble_media_stream_supported_codecs (GabbleMediaStream *self,
-                                      const GPtrArray *codecs,
-                                      GError **error);
-
+gboolean gabble_media_stream_error (GabbleMediaStream *self, guint errno,
+    const gchar *message, GError **error);
 
 void _gabble_media_stream_close (GabbleMediaStream *close);
 gboolean _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream, LmMessage *message, LmMessageNode *desc_node, GError **error);

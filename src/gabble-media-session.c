@@ -35,6 +35,7 @@
 
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/errors.h>
+#include <telepathy-glib/svc-media-session-handler.h>
 
 #include "gabble-connection.h"
 #include "gabble-media-channel.h"
@@ -44,9 +45,15 @@
 
 #include "gabble-media-session.h"
 #include "gabble-media-session-signals-marshal.h"
-#include "gabble-media-session-glue.h"
 
-G_DEFINE_TYPE(GabbleMediaSession, gabble_media_session, G_TYPE_OBJECT)
+static void session_handler_iface_init (gpointer, gpointer);
+
+G_DEFINE_TYPE_WITH_CODE(GabbleMediaSession,
+    gabble_media_session,
+    G_TYPE_OBJECT,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_MEDIA_SESSION_HANDLER,
+      session_handler_iface_init)
+    )
 
 #define DEFAULT_SESSION_TIMEOUT 50000
 
@@ -59,7 +66,6 @@ G_DEFINE_TYPE(GabbleMediaSession, gabble_media_session, G_TYPE_OBJECT)
 /* signal enum */
 enum
 {
-    NEW_STREAM_HANDLER,
     STREAM_ADDED,
     TERMINATED,
     LAST_SIGNAL
@@ -162,7 +168,8 @@ _emit_new_stream (GabbleMediaSession *session,
 
   /* all of the streams are bidirectional from farsight's point of view, it's
    * just in the signalling they change */
-  g_signal_emit (session, signals[NEW_STREAM_HANDLER], 0, object_path, id,
+  tp_svc_media_session_handler_emit_new_stream_handler (
+      (TpSvcMediaSessionHandler *)session, object_path, id,
       media_type, TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL);
 
   g_free (object_path);
@@ -493,15 +500,6 @@ gabble_media_session_class_init (GabbleMediaSessionClass *gabble_media_session_c
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_STATE, param_spec);
 
-  signals[NEW_STREAM_HANDLER] =
-    g_signal_new ("new-stream-handler",
-                  G_OBJECT_CLASS_TYPE (gabble_media_session_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  gabble_media_session_marshal_VOID__STRING_UINT_UINT_UINT,
-                  G_TYPE_NONE, 4, DBUS_TYPE_G_OBJECT_PATH, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT);
-
   signals[STREAM_ADDED] =
     g_signal_new ("stream-added",
                   G_OBJECT_CLASS_TYPE (gabble_media_session_class),
@@ -519,8 +517,6 @@ gabble_media_session_class_init (GabbleMediaSessionClass *gabble_media_session_c
                   NULL, NULL,
                   gabble_media_session_marshal_VOID__UINT_UINT,
                   G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_UINT);
-
-  dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_media_session_class), &dbus_glib_gabble_media_session_object_info);
 }
 
 static void
@@ -578,19 +574,14 @@ gabble_media_session_finalize (GObject *object)
  *
  * Implements D-Bus method Error
  * on interface org.freedesktop.Telepathy.Media.SessionHandler
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_media_session_error (GabbleMediaSession *self,
+static void
+gabble_media_session_error (TpSvcMediaSessionHandler *iface,
                             guint errno,
                             const gchar *message,
-                            GError **error)
+                            DBusGMethodInvocation *context)
 {
+  GabbleMediaSession *self = GABBLE_MEDIA_SESSION (iface);
   GabbleMediaSessionPrivate *priv;
   GPtrArray *tmp;
   guint i;
@@ -604,14 +595,16 @@ gabble_media_session_error (GabbleMediaSession *self,
 
   if (priv->state == JS_STATE_ENDED)
     {
-      return TRUE;
+      tp_svc_media_session_handler_return_from_error (context);
+      return;
     }
   else if (priv->state == JS_STATE_PENDING_CREATED)
     {
       /* shortcut to prevent sending remove actions if we haven't sent an
        * initiate yet */
       g_object_set (self, "state", JS_STATE_ENDED, NULL);
-      return TRUE;
+      tp_svc_media_session_handler_return_from_error (context);
+      return;
     }
 
   g_assert (priv->streams != NULL);
@@ -628,7 +621,7 @@ gabble_media_session_error (GabbleMediaSession *self,
 
   g_ptr_array_free (tmp, TRUE);
 
-  return TRUE;
+  tp_svc_media_session_handler_return_from_error (context);
 }
 
 
@@ -637,17 +630,12 @@ gabble_media_session_error (GabbleMediaSession *self,
  *
  * Implements D-Bus method Ready
  * on interface org.freedesktop.Telepathy.Media.SessionHandler
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_media_session_ready (GabbleMediaSession *self,
-                            GError **error)
+static void
+gabble_media_session_ready (TpSvcMediaSessionHandler *iface,
+                            DBusGMethodInvocation *context)
 {
+  GabbleMediaSession *self = GABBLE_MEDIA_SESSION (iface);
   GabbleMediaSessionPrivate *priv;
   guint i;
 
@@ -660,7 +648,7 @@ gabble_media_session_ready (GabbleMediaSession *self,
   for (i = 0; i < priv->streams->len; i++)
     _emit_new_stream (self, g_ptr_array_index (priv->streams, i));
 
-  return TRUE;
+  tp_svc_media_session_handler_return_from_ready (context);
 }
 
 
@@ -2908,3 +2896,11 @@ _gabble_media_session_request_stream_direction (GabbleMediaSession *session,
   return send_direction_change (session, stream, requested_dir, error);
 }
 
+static void
+session_handler_iface_init (gpointer g_iface, gpointer iface_data)
+{
+  TpSvcMediaSessionHandlerClass *klass = (TpSvcMediaSessionHandlerClass *)g_iface;
+
+  klass->error = gabble_media_session_error;
+  klass->ready = gabble_media_session_ready;
+}

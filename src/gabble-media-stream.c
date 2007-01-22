@@ -39,26 +39,24 @@
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/enums.h>
 #include <telepathy-glib/errors.h>
+#include <telepathy-glib/svc-media-stream-handler.h>
 
 #include "gabble-media-stream.h"
 #include "gabble-media-stream-signals-marshal.h"
-#include "gabble-media-stream-glue.h"
 
-G_DEFINE_TYPE(GabbleMediaStream, gabble_media_stream, G_TYPE_OBJECT)
+static void stream_handler_iface_init (gpointer, gpointer);
+
+G_DEFINE_TYPE_WITH_CODE(GabbleMediaStream,
+    gabble_media_stream,
+    G_TYPE_OBJECT,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_MEDIA_STREAM_HANDLER,
+      stream_handler_iface_init)
+    )
 
 /* signal enum */
 enum
 {
     DESTROY,
-
-    ADD_REMOTE_CANDIDATE,
-    CLOSE,
-    REMOVE_REMOTE_CANDIDATE,
-    SET_ACTIVE_CANDIDATE_PAIR,
-    SET_REMOTE_CANDIDATE_LIST,
-    SET_REMOTE_CODECS,
-    SET_STREAM_PLAYING,
-    SET_STREAM_SENDING,
 
     NEW_ACTIVE_CANDIDATE_PAIR,
     NEW_NATIVE_CANDIDATE,
@@ -491,7 +489,7 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
   g_object_class_install_property (object_class, PROP_COMBINED_DIRECTION,
       param_spec);
 
-  /* signals exported by D-Bus interface */
+  /* signals not exported by D-Bus interface */
   signals[DESTROY] =
     g_signal_new ("destroy",
                   G_OBJECT_CLASS_TYPE (gabble_media_stream_class),
@@ -501,61 +499,6 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                   g_cclosure_marshal_VOID__VOID,
                   G_TYPE_NONE, 0);
 
-  signals[ADD_REMOTE_CANDIDATE] =
-    g_signal_new ("add-remote-candidate",
-                  G_OBJECT_CLASS_TYPE (gabble_media_stream_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  gabble_media_stream_marshal_VOID__STRING_BOXED,
-                  G_TYPE_NONE, 2, G_TYPE_STRING, TP_TYPE_TRANSPORT_LIST);
-
-  signals[CLOSE] =
-    g_signal_new ("close",
-                  G_OBJECT_CLASS_TYPE (gabble_media_stream_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  g_cclosure_marshal_VOID__VOID,
-                  G_TYPE_NONE, 0);
-
-  signals[REMOVE_REMOTE_CANDIDATE] =
-    g_signal_new ("remove-remote-candidate",
-                  G_OBJECT_CLASS_TYPE (gabble_media_stream_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  g_cclosure_marshal_VOID__STRING,
-                  G_TYPE_NONE, 1, G_TYPE_STRING);
-
-  signals[SET_ACTIVE_CANDIDATE_PAIR] =
-    g_signal_new ("set-active-candidate-pair",
-                  G_OBJECT_CLASS_TYPE (gabble_media_stream_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  gabble_media_stream_marshal_VOID__STRING_STRING,
-                  G_TYPE_NONE, 2, G_TYPE_STRING, G_TYPE_STRING);
-
-  signals[SET_REMOTE_CANDIDATE_LIST] =
-    g_signal_new ("set-remote-candidate-list",
-                  G_OBJECT_CLASS_TYPE (gabble_media_stream_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  g_cclosure_marshal_VOID__BOXED,
-                  G_TYPE_NONE, 1, TP_TYPE_CANDIDATE_LIST);
-
-  signals[SET_REMOTE_CODECS] =
-    g_signal_new ("set-remote-codecs",
-                  G_OBJECT_CLASS_TYPE (gabble_media_stream_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  g_cclosure_marshal_VOID__BOXED,
-                  G_TYPE_NONE, 1, TP_TYPE_CODEC_LIST);
-
-  /* signals not exported by D-Bus interface */
   signals[NEW_ACTIVE_CANDIDATE_PAIR] =
     g_signal_new ("new-active-candidate-pair",
                   G_OBJECT_CLASS_TYPE (gabble_media_stream_class),
@@ -583,24 +526,6 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                   g_cclosure_marshal_VOID__BOXED,
                   G_TYPE_NONE, 1, TP_TYPE_CODEC_LIST);
 
-  signals[SET_STREAM_PLAYING] =
-    g_signal_new ("set-stream-playing",
-                  G_OBJECT_CLASS_TYPE (gabble_media_stream_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  g_cclosure_marshal_VOID__BOOLEAN,
-                  G_TYPE_NONE, 1, G_TYPE_BOOLEAN);
-
-  signals[SET_STREAM_SENDING] =
-    g_signal_new ("set-stream-sending",
-                  G_OBJECT_CLASS_TYPE (gabble_media_stream_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  g_cclosure_marshal_VOID__BOOLEAN,
-                  G_TYPE_NONE, 1, G_TYPE_BOOLEAN);
-
   signals[ERROR] =
     g_signal_new ("error",
                   G_OBJECT_CLASS_TYPE (gabble_media_stream_class),
@@ -609,8 +534,6 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                   NULL, NULL,
                   gabble_media_stream_marshal_VOID__UINT_STRING,
                   G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_STRING);
-
-  dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_media_stream_class), &dbus_glib_gabble_media_stream_object_info);
 }
 
 void
@@ -654,40 +577,23 @@ gabble_media_stream_finalize (GObject *object)
  *
  * Implements D-Bus method CodecChoice
  * on interface org.freedesktop.Telepathy.Media.StreamHandler
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_media_stream_codec_choice (GabbleMediaStream *self,
+static void
+gabble_media_stream_codec_choice (TpSvcMediaStreamHandler *iface,
                                   guint codec_id,
-                                  GError **error)
+                                  DBusGMethodInvocation *context)
 {
+  GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
   GabbleMediaStreamPrivate *priv;
 
   g_assert (GABBLE_IS_MEDIA_STREAM (self));
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
 
-  return TRUE;
+  tp_svc_media_stream_handler_return_from_codec_choice (context);
 }
 
 
-/**
- * gabble_media_stream_error
- *
- * Implements D-Bus method Error
- * on interface org.freedesktop.Telepathy.Media.StreamHandler
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
 gboolean
 gabble_media_stream_error (GabbleMediaStream *self,
                            guint errno,
@@ -709,28 +615,50 @@ gabble_media_stream_error (GabbleMediaStream *self,
 
 
 /**
+ * gabble_media_stream_error
+ *
+ * Implements D-Bus method Error
+ * on interface org.freedesktop.Telepathy.Media.StreamHandler
+ */
+static void
+gabble_media_stream_error_async (TpSvcMediaStreamHandler *iface,
+                                 guint errno,
+                                 const gchar *message,
+                                 DBusGMethodInvocation *context)
+{
+  GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
+  GError *error;
+
+  if (gabble_media_stream_error (self, errno, message, &error))
+    {
+      tp_svc_media_stream_handler_return_from_error (context);
+    }
+  else
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+    }
+}
+
+
+/**
  * gabble_media_stream_native_candidates_prepared
  *
  * Implements D-Bus method NativeCandidatesPrepared
  * on interface org.freedesktop.Telepathy.Media.StreamHandler
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_media_stream_native_candidates_prepared (GabbleMediaStream *self,
-                                                GError **error)
+static void
+gabble_media_stream_native_candidates_prepared (TpSvcMediaStreamHandler *iface,
+                                                DBusGMethodInvocation *context)
 {
+  GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
   GabbleMediaStreamPrivate *priv;
 
   g_assert (GABBLE_IS_MEDIA_STREAM (self));
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
 
-  return TRUE;
+  tp_svc_media_stream_handler_return_from_native_candidates_prepared (context);
 }
 
 
@@ -739,19 +667,14 @@ gabble_media_stream_native_candidates_prepared (GabbleMediaStream *self,
  *
  * Implements D-Bus method NewActiveCandidatePair
  * on interface org.freedesktop.Telepathy.Media.StreamHandler
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_media_stream_new_active_candidate_pair (GabbleMediaStream *self,
+static void
+gabble_media_stream_new_active_candidate_pair (TpSvcMediaStreamHandler *iface,
                                                const gchar *native_candidate_id,
                                                const gchar *remote_candidate_id,
-                                               GError **error)
+                                               DBusGMethodInvocation *context)
 {
+  GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
   GabbleMediaStreamPrivate *priv;
 
   g_assert (GABBLE_IS_MEDIA_STREAM (self));
@@ -761,7 +684,7 @@ gabble_media_stream_new_active_candidate_pair (GabbleMediaStream *self,
   g_signal_emit (self, signals[NEW_ACTIVE_CANDIDATE_PAIR], 0,
                  native_candidate_id, remote_candidate_id);
 
-  return TRUE;
+  tp_svc_media_stream_handler_return_from_new_active_candidate_pair (context);
 }
 
 
@@ -770,19 +693,14 @@ gabble_media_stream_new_active_candidate_pair (GabbleMediaStream *self,
  *
  * Implements D-Bus method NewNativeCandidate
  * on interface org.freedesktop.Telepathy.Media.StreamHandler
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_media_stream_new_native_candidate (GabbleMediaStream *self,
+static void
+gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
                                           const gchar *candidate_id,
                                           const GPtrArray *transports,
-                                          GError **error)
+                                          DBusGMethodInvocation *context)
 {
+  GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
   GabbleMediaStreamPrivate *priv;
   JingleSessionState state;
   GPtrArray *candidates;
@@ -801,7 +719,8 @@ gabble_media_stream_new_native_candidate (GabbleMediaStream *self,
   if (state > JS_STATE_ACTIVE)
     {
       DEBUG ("state > JS_STATE_ACTIVE, doing nothing");
-      return TRUE;
+      tp_svc_media_stream_handler_return_from_new_native_candidate (context);
+      return;
     }
 
   candidates = g_value_get_boxed (&priv->native_candidates);
@@ -817,12 +736,13 @@ gabble_media_stream_new_native_candidate (GabbleMediaStream *self,
 
   if (transports->len != 1)
     {
+      GError only_one = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED, "google p2p "
+          "connections only support the concept of one transport per "
+          "candidate" };
       GMS_DEBUG_WARNING (priv->session, "%s: number of transports was not 1; "
           "rejecting", G_STRFUNC);
-      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED, "google p2p "
-          "connections only support the concept of one transport per "
-          "candidate");
-      return FALSE;
+      dbus_g_method_return_error (context, &only_one);
+      return;
     }
 
   transport = g_ptr_array_index (transports, 0);
@@ -831,7 +751,8 @@ gabble_media_stream_new_native_candidate (GabbleMediaStream *self,
     {
       GMS_DEBUG_WARNING (priv->session, "%s: ignoring native localhost candidate",
                          G_STRFUNC);
-      return TRUE;
+      tp_svc_media_stream_handler_return_from_new_native_candidate (context);
+      return;
     }
 
   g_ptr_array_add (candidates, g_value_get_boxed (&candidate));
@@ -843,27 +764,24 @@ gabble_media_stream_new_native_candidate (GabbleMediaStream *self,
   g_signal_emit (self, signals[NEW_NATIVE_CANDIDATE], 0,
                  candidate_id, transports);
 
-  return TRUE;
+  tp_svc_media_stream_handler_return_from_new_native_candidate (context);
 }
 
+static void gabble_media_stream_set_local_codecs (TpSvcMediaStreamHandler *,
+    const GPtrArray *codecs, DBusGMethodInvocation *);
 
 /**
  * gabble_media_stream_ready
  *
  * Implements D-Bus method Ready
  * on interface org.freedesktop.Telepathy.Media.StreamHandler
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_media_stream_ready (GabbleMediaStream *self,
+static void
+gabble_media_stream_ready (TpSvcMediaStreamHandler *iface,
                            const GPtrArray *codecs,
-                           GError **error)
+                           DBusGMethodInvocation *context)
 {
+  GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
   GabbleMediaStreamPrivate *priv;
 
   g_assert (GABBLE_IS_MEDIA_STREAM (self));
@@ -879,7 +797,8 @@ gabble_media_stream_ready (GabbleMediaStream *self,
   push_playing (self);
   push_sending (self);
 
-  return gabble_media_stream_set_local_codecs (self, codecs, error);
+  /* set_local_codecs and ready return the same thing, so we can do... */
+  gabble_media_stream_set_local_codecs (iface, codecs, context);
 }
 
 
@@ -888,18 +807,13 @@ gabble_media_stream_ready (GabbleMediaStream *self,
  *
  * Implements D-Bus method SetLocalCodecs
  * on interface org.freedesktop.Telepathy.Media.StreamHandler
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_media_stream_set_local_codecs (GabbleMediaStream *self,
+static void
+gabble_media_stream_set_local_codecs (TpSvcMediaStreamHandler *iface,
                                       const GPtrArray *codecs,
-                                      GError **error)
+                                      DBusGMethodInvocation *context)
 {
+  GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
   GabbleMediaStreamPrivate *priv;
 
   g_assert (GABBLE_IS_MEDIA_STREAM (self));
@@ -913,7 +827,7 @@ gabble_media_stream_set_local_codecs (GabbleMediaStream *self,
 
   g_object_set (self, "got-local-codecs", TRUE, NULL);
 
-  return TRUE;
+  tp_svc_media_stream_handler_return_from_set_local_codecs (context);
 }
 
 
@@ -922,23 +836,18 @@ gabble_media_stream_set_local_codecs (GabbleMediaStream *self,
  *
  * Implements D-Bus method StreamState
  * on interface org.freedesktop.Telepathy.Media.StreamHandler
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_media_stream_stream_state (GabbleMediaStream *self,
+static void
+gabble_media_stream_stream_state (TpSvcMediaStreamHandler *iface,
                                   guint connection_state,
-                                  GError **error)
+                                  DBusGMethodInvocation *context)
 {
+  GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
   g_assert (GABBLE_IS_MEDIA_STREAM (self));
 
   g_object_set (self, "connection-state", connection_state, NULL);
 
-  return TRUE;
+  tp_svc_media_stream_handler_return_from_stream_state (context);
 }
 
 
@@ -947,18 +856,13 @@ gabble_media_stream_stream_state (GabbleMediaStream *self,
  *
  * Implements D-Bus method SupportedCodecs
  * on interface org.freedesktop.Telepathy.Media.StreamHandler
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_media_stream_supported_codecs (GabbleMediaStream *self,
+static void
+gabble_media_stream_supported_codecs (TpSvcMediaStreamHandler *iface,
                                       const GPtrArray *codecs,
-                                      GError **error)
+                                      DBusGMethodInvocation *context)
 {
+  GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
   GabbleMediaStreamPrivate *priv;
 
   g_assert (GABBLE_IS_MEDIA_STREAM (self));
@@ -973,7 +877,7 @@ gabble_media_stream_supported_codecs (GabbleMediaStream *self,
 
   g_signal_emit (self, signals[SUPPORTED_CODECS], 0, codecs);
 
-  return TRUE;
+  tp_svc_media_stream_handler_return_from_supported_codecs (context);
 }
 
 static LmHandlerResult
@@ -1175,7 +1079,7 @@ _gabble_media_stream_close (GabbleMediaStream *stream)
   if (!priv->closed)
     {
       priv->closed = TRUE;
-      g_signal_emit (stream, signals[CLOSE], 0);
+      tp_svc_media_stream_handler_emit_close ((TpSvcMediaStreamHandler *)stream);
     }
 }
 
@@ -1304,7 +1208,8 @@ push_remote_codecs (GabbleMediaStream *stream)
   GMS_DEBUG_EVENT (priv->session, "passing %d remote codecs to stream-engine",
                    codecs->len);
 
-  g_signal_emit (stream, signals[SET_REMOTE_CODECS], 0, codecs);
+  tp_svc_media_stream_handler_emit_set_remote_codecs (
+      (TpSvcMediaStreamHandler *)stream, codecs);
 
   g_value_take_boxed (&priv->remote_codecs,
       dbus_g_type_specialized_construct (TP_TYPE_CODEC_LIST));
@@ -1533,8 +1438,8 @@ push_remote_candidates (GabbleMediaStream *stream)
       GMS_DEBUG_EVENT (priv->session, "passing 1 remote candidate "
                        "to stream-engine");
 
-      g_signal_emit (stream, signals[ADD_REMOTE_CANDIDATE], 0,
-                     candidate_id, transports);
+      tp_svc_media_stream_handler_emit_add_remote_candidate (
+          (TpSvcMediaStreamHandler *)stream, candidate_id, transports);
     }
 
   g_value_take_boxed (&priv->remote_candidates,
@@ -1556,7 +1461,8 @@ push_playing (GabbleMediaStream *stream)
   GMS_DEBUG_INFO (priv->session, "stream %s emitting SetStreamPlaying(%s)",
       stream->name, stream->playing ? "true" : "false");
 
-  g_signal_emit (stream, signals[SET_STREAM_PLAYING], 0, stream->playing);
+  tp_svc_media_stream_handler_emit_set_stream_playing (
+      (TpSvcMediaStreamHandler *)stream, stream->playing);
 }
 
 static void
@@ -1574,7 +1480,8 @@ push_sending (GabbleMediaStream *stream)
   GMS_DEBUG_INFO (priv->session, "stream %s emitting SetStreamSending(%s)",
       stream->name, priv->sending ? "true" : "false");
 
-  g_signal_emit (stream, signals[SET_STREAM_SENDING], 0, priv->sending);
+  tp_svc_media_stream_handler_emit_set_stream_sending (
+      (TpSvcMediaStreamHandler *)stream, priv->sending);
 }
 
 /*
@@ -1789,3 +1696,18 @@ _gabble_media_stream_update_sending (GabbleMediaStream *stream,
   push_sending (stream);
 }
 
+static void
+stream_handler_iface_init (gpointer g_iface, gpointer iface_data)
+{
+  TpSvcMediaStreamHandlerClass *klass = (TpSvcMediaStreamHandlerClass *)g_iface;
+
+  klass->codec_choice = gabble_media_stream_codec_choice;
+  klass->error = gabble_media_stream_error_async;
+  klass->native_candidates_prepared = gabble_media_stream_native_candidates_prepared;
+  klass->new_active_candidate_pair = gabble_media_stream_new_active_candidate_pair;
+  klass->new_native_candidate = gabble_media_stream_new_native_candidate;
+  klass->ready = gabble_media_stream_ready;
+  klass->set_local_codecs = gabble_media_stream_set_local_codecs;
+  klass->stream_state = gabble_media_stream_stream_state;
+  klass->supported_codecs = gabble_media_stream_supported_codecs;
+}

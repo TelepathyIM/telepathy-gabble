@@ -99,17 +99,6 @@ GType gabble_media_session_get_type(void);
   } G_STMT_END
 
 gboolean
-gabble_media_session_error (GabbleMediaSession *self,
-                            guint errno,
-                            const gchar *message,
-                            GError **error);
-
-gboolean
-gabble_media_session_ready (GabbleMediaSession *self,
-                            GError **error);
-
-
-gboolean
 _gabble_media_session_handle_action (GabbleMediaSession *session,
                                      LmMessage *message,
                                      LmMessageNode *session_node,

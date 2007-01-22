@@ -18,9 +18,6 @@ BUILT_SOURCES = \
     gabble-roster-channel-glue.h \
     gabble-roster-channel-signals-marshal.h \
     gabble-roster-channel-signals-marshal.c \
-    gabble-roomlist-channel-glue.h \
-    gabble-roomlist-channel-signals-marshal.h \
-    gabble-roomlist-channel-signals-marshal.c \
     text-mixin-signals-marshal.h \
     text-mixin-signals-marshal.c
 

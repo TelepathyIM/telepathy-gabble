@@ -33,12 +33,12 @@
 #include <telepathy-glib/enums.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/channel-iface.h>
+#include <telepathy-glib/svc-channel.h>
+#include <telepathy-glib/svc-channel-type-room-list.h>
 #include "namespaces.h"
 #include "util.h"
 
 #include "gabble-roomlist-channel.h"
-#include "gabble-roomlist-channel-glue.h"
-#include "gabble-roomlist-channel-signals-marshal.h"
 
 #define TP_TYPE_ROOM_STRUCT (dbus_g_type_get_struct ("GValueArray", \
       G_TYPE_UINT, \
@@ -49,19 +49,16 @@
 #define TP_TYPE_ROOM_LIST (dbus_g_type_get_collection ("GPtrArray", \
       TP_TYPE_ROOM_STRUCT))
 
+static void channel_iface_init (gpointer, gpointer);
+static void roomlist_iface_init (gpointer, gpointer);
+
 G_DEFINE_TYPE_WITH_CODE (GabbleRoomlistChannel, gabble_roomlist_channel,
-    G_TYPE_OBJECT, G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL));
-
-/* signal enum */
-enum
-{
-    CLOSED,
-    GOT_ROOMS,
-    LISTING_ROOMS,
-    LAST_SIGNAL
-};
-
-static guint signals[LAST_SIGNAL] = {0};
+    G_TYPE_OBJECT,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_ROOM_LIST,
+      roomlist_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL)
+    );
 
 /* properties */
 enum
@@ -260,35 +257,6 @@ gabble_roomlist_channel_class_init (GabbleRoomlistChannelClass *gabble_roomlist_
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_CONFERENCE_SERVER,
                                    param_spec);
-
-  signals[CLOSED] =
-    g_signal_new ("closed",
-                  G_OBJECT_CLASS_TYPE (gabble_roomlist_channel_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  g_cclosure_marshal_VOID__VOID,
-                  G_TYPE_NONE, 0);
-
-  signals[GOT_ROOMS] =
-    g_signal_new ("got-rooms",
-                  G_OBJECT_CLASS_TYPE (gabble_roomlist_channel_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  g_cclosure_marshal_VOID__BOXED,
-                  G_TYPE_NONE, 1, (dbus_g_type_get_collection ("GPtrArray", (dbus_g_type_get_struct ("GValueArray", G_TYPE_UINT, G_TYPE_STRING, (dbus_g_type_get_map ("GHashTable", G_TYPE_STRING, G_TYPE_VALUE)), G_TYPE_INVALID)))));
-
-  signals[LISTING_ROOMS] =
-    g_signal_new ("listing-rooms",
-                  G_OBJECT_CLASS_TYPE (gabble_roomlist_channel_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  g_cclosure_marshal_VOID__BOOLEAN,
-                  G_TYPE_NONE, 1, G_TYPE_BOOLEAN);
-
-  dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_roomlist_channel_class), &dbus_glib_gabble_roomlist_channel_object_info);
 }
 
 void
@@ -305,13 +273,14 @@ gabble_roomlist_channel_dispose (GObject *object)
   if (priv->listing)
     {
       emit_room_signal (object);
-      g_signal_emit (object, signals [LISTING_ROOMS], 0, FALSE);
+      tp_svc_channel_type_room_list_emit_listing_rooms (
+          (TpSvcChannelTypeRoomList *)object, FALSE);
       priv->listing = FALSE;
     }
 
   if (!priv->closed)
     {
-      g_signal_emit (object, signals[CLOSED], 0);
+      tp_svc_channel_emit_closed ((TpSvcChannel *)object);
       priv->closed = TRUE;
     }
 
@@ -381,7 +350,8 @@ emit_room_signal (gpointer data)
   if (priv->pending_room_signals->len == 0)
       return TRUE;
 
-  g_signal_emit (chan, signals[GOT_ROOMS], 0, priv->pending_room_signals);
+  tp_svc_channel_type_room_list_emit_got_rooms (
+      (TpSvcChannelTypeRoomList *)chan, priv->pending_room_signals);
 
   while (priv->pending_room_signals->len != 0)
     {
@@ -526,7 +496,8 @@ rooms_end_cb (gpointer data, gpointer user_data)
   emit_room_signal (chan);
 
   priv->listing = FALSE;
-  g_signal_emit (chan, signals[LISTING_ROOMS], 0, FALSE);
+  tp_svc_channel_type_room_list_emit_listing_rooms (
+      (TpSvcChannelTypeRoomList *)chan, FALSE);
 
   g_source_remove (priv->timer_source_id);
   priv->timer_source_id = 0;
@@ -540,24 +511,19 @@ rooms_end_cb (gpointer data, gpointer user_data)
  *
  * Implements D-Bus method Close
  * on interface org.freedesktop.Telepathy.Channel
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_roomlist_channel_close (GabbleRoomlistChannel *self,
-                               GError **error)
+static void
+gabble_roomlist_channel_close (TpSvcChannel *iface,
+                               DBusGMethodInvocation *context)
 {
+  GabbleRoomlistChannel *self = GABBLE_ROOMLIST_CHANNEL (iface);
   g_assert (GABBLE_IS_ROOMLIST_CHANNEL (self));
 
   DEBUG ("called on %p", self);
 
   g_object_run_dispose (G_OBJECT (self));
 
-  return TRUE;
+  tp_svc_channel_return_from_close (context);
 }
 
 
@@ -566,20 +532,13 @@ gabble_roomlist_channel_close (GabbleRoomlistChannel *self,
  *
  * Implements D-Bus method GetChannelType
  * on interface org.freedesktop.Telepathy.Channel
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_roomlist_channel_get_channel_type (GabbleRoomlistChannel *self,
-                                          gchar **ret,
-                                          GError **error)
+static void
+gabble_roomlist_channel_get_channel_type (TpSvcChannel *iface,
+                                          DBusGMethodInvocation *context)
 {
-  *ret = g_strdup (TP_IFACE_CHANNEL_TYPE_ROOM_LIST);
-  return TRUE;
+  tp_svc_channel_return_from_get_channel_type (context,
+      TP_IFACE_CHANNEL_TYPE_ROOM_LIST);
 }
 
 
@@ -588,25 +547,12 @@ gabble_roomlist_channel_get_channel_type (GabbleRoomlistChannel *self,
  *
  * Implements D-Bus method GetHandle
  * on interface org.freedesktop.Telepathy.Channel
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_roomlist_channel_get_handle (GabbleRoomlistChannel *self,
-                                    guint *ret,
-                                    guint *ret1,
-                                    GError **error)
+static void
+gabble_roomlist_channel_get_handle (TpSvcChannel *self,
+                                    DBusGMethodInvocation *context)
 {
-  g_assert (GABBLE_IS_ROOMLIST_CHANNEL (self));
-
-  *ret = 0;
-  *ret1 = 0;
-
-  return TRUE;
+  tp_svc_channel_return_from_get_handle (context, 0, 0);
 }
 
 
@@ -615,23 +561,14 @@ gabble_roomlist_channel_get_handle (GabbleRoomlistChannel *self,
  *
  * Implements D-Bus method GetInterfaces
  * on interface org.freedesktop.Telepathy.Channel
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_roomlist_channel_get_interfaces (GabbleRoomlistChannel *self,
-                                        gchar ***ret,
-                                        GError **error)
+static void
+gabble_roomlist_channel_get_interfaces (TpSvcChannel *iface,
+                                        DBusGMethodInvocation *context)
 {
   const char *interfaces[] = { NULL };
 
-  *ret = g_strdupv ((gchar **) interfaces);
-
-  return TRUE;
+  tp_svc_channel_return_from_get_interfaces (context, interfaces);
 }
 
 
@@ -647,18 +584,18 @@ gabble_roomlist_channel_get_interfaces (GabbleRoomlistChannel *self,
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_roomlist_channel_get_listing_rooms (GabbleRoomlistChannel *self,
-                                           gboolean *ret,
-                                           GError **error)
+static void
+gabble_roomlist_channel_get_listing_rooms (TpSvcChannelTypeRoomList *iface,
+                                           DBusGMethodInvocation *context)
 {
+  GabbleRoomlistChannel *self = GABBLE_ROOMLIST_CHANNEL (iface);
   GabbleRoomlistChannelPrivate *priv;
 
   g_assert (GABBLE_IS_ROOMLIST_CHANNEL (self));
 
   priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (self);
-  *ret = priv->listing;
-  return TRUE;
+  tp_svc_channel_type_room_list_return_from_get_listing_rooms (
+      context, priv->listing);
 }
 
 
@@ -674,10 +611,11 @@ gabble_roomlist_channel_get_listing_rooms (GabbleRoomlistChannel *self,
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_roomlist_channel_list_rooms (GabbleRoomlistChannel *self,
-                                    GError **error)
+static void
+gabble_roomlist_channel_list_rooms (TpSvcChannelTypeRoomList *iface,
+                                    DBusGMethodInvocation *context)
 {
+  GabbleRoomlistChannel *self = GABBLE_ROOMLIST_CHANNEL (iface);
   GabbleRoomlistChannelPrivate *priv;
 
   g_assert (GABBLE_IS_ROOMLIST_CHANNEL (self));
@@ -685,7 +623,7 @@ gabble_roomlist_channel_list_rooms (GabbleRoomlistChannel *self,
   priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (self);
 
   priv->listing = TRUE;
-  g_signal_emit (self, signals[LISTING_ROOMS], 0, TRUE);
+  tp_svc_channel_type_room_list_emit_listing_rooms (iface, TRUE);
 
   if (priv->disco_pipeline == NULL)
     priv->disco_pipeline = gabble_disco_pipeline_init (priv->conn->disco,
@@ -696,6 +634,25 @@ gabble_roomlist_channel_list_rooms (GabbleRoomlistChannel *self,
   priv->timer_source_id = g_timeout_add (ROOM_SIGNAL_INTERVAL,
       emit_room_signal, self);
 
-  return TRUE;
+  tp_svc_channel_type_room_list_return_from_list_rooms (context);
 }
 
+static void
+channel_iface_init(gpointer g_iface, gpointer iface_data)
+{
+  TpSvcChannelClass *klass = (TpSvcChannelClass *)g_iface;
+
+  klass->close = gabble_roomlist_channel_close;
+  klass->get_channel_type = gabble_roomlist_channel_get_channel_type;
+  klass->get_handle = gabble_roomlist_channel_get_handle;
+  klass->get_interfaces = gabble_roomlist_channel_get_interfaces;
+}
+
+static void
+roomlist_iface_init(gpointer g_iface, gpointer iface_data)
+{
+  TpSvcChannelTypeRoomListClass *klass = (TpSvcChannelTypeRoomListClass *)g_iface;
+
+  klass->get_listing_rooms = gabble_roomlist_channel_get_listing_rooms;
+  klass->list_rooms = gabble_roomlist_channel_list_rooms;
+}

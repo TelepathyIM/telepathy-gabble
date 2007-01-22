@@ -38,23 +38,19 @@
 #include <telepathy-glib/errors.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/channel-iface.h>
+#include <telepathy-glib/svc-channel.h>
+#include <telepathy-glib/svc-channel-type-text.h>
 #include "text-mixin.h"
 
 #include "gabble-im-channel.h"
-#include "gabble-im-channel-glue.h"
-#include "gabble-im-channel-signals-marshal.h"
+
+static void channel_iface_init (gpointer, gpointer);
+static void text_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleIMChannel, gabble_im_channel, G_TYPE_OBJECT,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_TEXT, text_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL));
-
-/* signal enum */
-enum
-{
-    CLOSED,
-    LAST_SIGNAL
-};
-
-static guint signals[LAST_SIGNAL] = {0};
 
 /* properties */
 enum
@@ -231,18 +227,7 @@ gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 
-  signals[CLOSED] =
-    g_signal_new ("closed",
-                  G_OBJECT_CLASS_TYPE (gabble_im_channel_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  g_cclosure_marshal_VOID__VOID,
-                  G_TYPE_NONE, 0);
-
   tp_text_mixin_class_init (object_class, G_STRUCT_OFFSET (GabbleIMChannelClass, text_class));
-
-  dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_im_channel_class), &dbus_glib_gabble_im_channel_object_info);
 }
 
 void
@@ -276,7 +261,7 @@ gabble_im_channel_dispose (GObject *object)
     }
 
   if (!priv->closed)
-    g_signal_emit(self, signals[CLOSED], 0);
+    tp_svc_channel_emit_closed ((TpSvcChannel *)self);
 
   if (G_OBJECT_CLASS (gabble_im_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_im_channel_parent_class)->dispose (object);
@@ -335,22 +320,27 @@ gboolean _gabble_im_channel_receive (GabbleIMChannel *chan,
  *
  * Implements D-Bus method AcknowledgePendingMessages
  * on interface org.freedesktop.Telepathy.Channel.Type.Text
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_im_channel_acknowledge_pending_messages (GabbleIMChannel *self,
+static void
+gabble_im_channel_acknowledge_pending_messages (TpSvcChannelTypeText *iface,
                                                 const GArray *ids,
-                                                GError **error)
+                                                DBusGMethodInvocation *context)
 {
+  GabbleIMChannel *self = GABBLE_IM_CHANNEL (iface);
   g_assert (GABBLE_IS_IM_CHANNEL (self));
+  GError *error;
 
-  return tp_text_mixin_acknowledge_pending_messages (G_OBJECT (self), ids,
-      error);
+  if (tp_text_mixin_acknowledge_pending_messages (G_OBJECT (self), ids,
+      &error))
+    {
+      tp_svc_channel_type_text_return_from_acknowledge_pending_messages (
+          context);
+    }
+  else
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+    }
 }
 
 
@@ -366,10 +356,11 @@ gabble_im_channel_acknowledge_pending_messages (GabbleIMChannel *self,
  *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_im_channel_close (GabbleIMChannel *self,
-                         GError **error)
+static void
+gabble_im_channel_close (TpSvcChannel *iface,
+                         DBusGMethodInvocation *context)
 {
+  GabbleIMChannel *self = GABBLE_IM_CHANNEL (iface);
   GabbleIMChannelPrivate *priv;
 
   g_assert (GABBLE_IS_IM_CHANNEL (self));
@@ -379,9 +370,9 @@ gabble_im_channel_close (GabbleIMChannel *self,
   priv = GABBLE_IM_CHANNEL_GET_PRIVATE (self);
   priv->closed = TRUE;
 
-  g_signal_emit (self, signals[CLOSED], 0);
+  tp_svc_channel_emit_closed ((TpSvcChannel *)self);
 
-  return TRUE;
+  tp_svc_channel_return_from_close (context);
 }
 
 
@@ -390,21 +381,13 @@ gabble_im_channel_close (GabbleIMChannel *self,
  *
  * Implements D-Bus method GetChannelType
  * on interface org.freedesktop.Telepathy.Channel
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_im_channel_get_channel_type (GabbleIMChannel *self,
-                                    gchar **ret,
-                                    GError **error)
+static void
+gabble_im_channel_get_channel_type (TpSvcChannel *iface,
+                                    DBusGMethodInvocation *context)
 {
-  *ret = g_strdup (TP_IFACE_CHANNEL_TYPE_TEXT);
-
-  return TRUE;
+  tp_svc_channel_return_from_get_channel_type (context,
+      TP_IFACE_CHANNEL_TYPE_TEXT);
 }
 
 
@@ -413,29 +396,19 @@ gabble_im_channel_get_channel_type (GabbleIMChannel *self,
  *
  * Implements D-Bus method GetHandle
  * on interface org.freedesktop.Telepathy.Channel
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_im_channel_get_handle (GabbleIMChannel *self,
-                              guint *ret,
-                              guint *ret1,
-                              GError **error)
+static void
+gabble_im_channel_get_handle (TpSvcChannel *iface,
+                              DBusGMethodInvocation *context)
 {
+  GabbleIMChannel *self = GABBLE_IM_CHANNEL (iface);
   GabbleIMChannelPrivate *priv;
 
   g_assert (GABBLE_IS_IM_CHANNEL (self));
-
   priv = GABBLE_IM_CHANNEL_GET_PRIVATE (self);
 
-  *ret = TP_HANDLE_TYPE_CONTACT;
-  *ret1 = priv->handle;
-
-  return TRUE;
+  tp_svc_channel_return_from_get_handle (context, TP_HANDLE_TYPE_CONTACT,
+      priv->handle);
 }
 
 
@@ -444,23 +417,14 @@ gabble_im_channel_get_handle (GabbleIMChannel *self,
  *
  * Implements D-Bus method GetInterfaces
  * on interface org.freedesktop.Telepathy.Channel
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_im_channel_get_interfaces (GabbleIMChannel *self,
-                                  gchar ***ret,
-                                  GError **error)
+static void
+gabble_im_channel_get_interfaces (TpSvcChannel *iface,
+                                  DBusGMethodInvocation *context)
 {
   const char *interfaces[] = { NULL };
 
-  *ret = g_strdupv ((gchar **) interfaces);
-
-  return TRUE;
+  tp_svc_channel_return_from_get_interfaces (context, interfaces);
 }
 
 
@@ -469,19 +433,24 @@ gabble_im_channel_get_interfaces (GabbleIMChannel *self,
  *
  * Implements D-Bus method GetMessageTypes
  * on interface org.freedesktop.Telepathy.Channel.Type.Text
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_im_channel_get_message_types (GabbleIMChannel *self,
-                                     GArray **ret,
-                                     GError **error)
+static void
+gabble_im_channel_get_message_types (TpSvcChannelTypeText *iface,
+                                     DBusGMethodInvocation *context)
 {
-  return tp_text_mixin_get_message_types (G_OBJECT (self), ret, error);
+  GArray *ret;
+  GError *error;
+
+  if (tp_text_mixin_get_message_types (G_OBJECT (iface), &ret, &error))
+    {
+      tp_svc_channel_type_text_return_from_get_message_types (context, ret);
+      g_array_free (ret, TRUE);
+    }
+  else
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+    }
 }
 
 
@@ -490,23 +459,29 @@ gabble_im_channel_get_message_types (GabbleIMChannel *self,
  *
  * Implements D-Bus method ListPendingMessages
  * on interface org.freedesktop.Telepathy.Channel.Type.Text
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_im_channel_list_pending_messages (GabbleIMChannel *self,
+static void
+gabble_im_channel_list_pending_messages (TpSvcChannelTypeText *iface,
                                          gboolean clear,
-                                         GPtrArray **ret,
-                                         GError **error)
+                                         DBusGMethodInvocation *context)
 {
+  GabbleIMChannel *self = GABBLE_IM_CHANNEL (iface);
   g_assert (GABBLE_IS_IM_CHANNEL (self));
+  GPtrArray *ret;
+  GError *error;
 
-  return tp_text_mixin_list_pending_messages (G_OBJECT (self), clear, ret,
-      error);
+  if (tp_text_mixin_list_pending_messages (G_OBJECT (self), clear, &ret,
+      &error))
+    {
+      tp_svc_channel_type_text_return_from_list_pending_messages (
+          context, ret);
+      g_ptr_array_free (ret, TRUE);
+    }
+  else
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+    }
 }
 
 
@@ -515,25 +490,51 @@ gabble_im_channel_list_pending_messages (GabbleIMChannel *self,
  *
  * Implements D-Bus method Send
  * on interface org.freedesktop.Telepathy.Channel.Type.Text
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_im_channel_send (GabbleIMChannel *self,
+static void
+gabble_im_channel_send (TpSvcChannelTypeText *iface,
                         guint type,
                         const gchar *text,
-                        GError **error)
+                        DBusGMethodInvocation *context)
 {
+  GabbleIMChannel *self = GABBLE_IM_CHANNEL (iface);
   GabbleIMChannelPrivate *priv;
+  GError *error;
 
   g_assert (GABBLE_IS_IM_CHANNEL (self));
   priv = GABBLE_IM_CHANNEL_GET_PRIVATE (self);
 
-  return gabble_text_mixin_send (G_OBJECT (self), type, 0, priv->peer_jid,
-      text, priv->conn, TRUE /* emit_signal */, error);
+  if (gabble_text_mixin_send (G_OBJECT (self), type, 0, priv->peer_jid,
+      text, priv->conn, TRUE /* emit_signal */, &error))
+    {
+      tp_svc_channel_type_text_return_from_send (context);
+    }
+  else
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+    }
 }
 
+
+static void
+channel_iface_init(gpointer g_iface, gpointer iface_data)
+{
+  TpSvcChannelClass *klass = (TpSvcChannelClass *)g_iface;
+
+  klass->close = gabble_im_channel_close;
+  klass->get_channel_type = gabble_im_channel_get_channel_type;
+  klass->get_handle = gabble_im_channel_get_handle;
+  klass->get_interfaces = gabble_im_channel_get_interfaces;
+}
+
+static void
+text_iface_init(gpointer g_iface, gpointer iface_data)
+{
+  TpSvcChannelTypeTextClass *klass = (TpSvcChannelTypeTextClass *)g_iface;
+
+  klass->acknowledge_pending_messages = gabble_im_channel_acknowledge_pending_messages;
+  klass->get_message_types = gabble_im_channel_get_message_types;
+  klass->list_pending_messages = gabble_im_channel_list_pending_messages;
+  klass->send = gabble_im_channel_send;
+}

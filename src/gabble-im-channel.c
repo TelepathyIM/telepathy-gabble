@@ -315,34 +315,6 @@ gboolean _gabble_im_channel_receive (GabbleIMChannel *chan,
   return tp_text_mixin_receive (G_OBJECT (chan), type, sender, timestamp, text);
 }
 
-/**
- * gabble_im_channel_acknowledge_pending_messages
- *
- * Implements D-Bus method AcknowledgePendingMessages
- * on interface org.freedesktop.Telepathy.Channel.Type.Text
- */
-static void
-gabble_im_channel_acknowledge_pending_messages (TpSvcChannelTypeText *iface,
-                                                const GArray *ids,
-                                                DBusGMethodInvocation *context)
-{
-  GabbleIMChannel *self = GABBLE_IM_CHANNEL (iface);
-  g_assert (GABBLE_IS_IM_CHANNEL (self));
-  GError *error = NULL;
-
-  if (tp_text_mixin_acknowledge_pending_messages (G_OBJECT (self), ids,
-      &error))
-    {
-      tp_svc_channel_type_text_return_from_acknowledge_pending_messages (
-          context);
-    }
-  else
-    {
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-    }
-}
-
 
 /**
  * gabble_im_channel_close
@@ -423,63 +395,6 @@ gabble_im_channel_get_interfaces (TpSvcChannel *iface,
 
 
 /**
- * gabble_im_channel_get_message_types
- *
- * Implements D-Bus method GetMessageTypes
- * on interface org.freedesktop.Telepathy.Channel.Type.Text
- */
-static void
-gabble_im_channel_get_message_types (TpSvcChannelTypeText *iface,
-                                     DBusGMethodInvocation *context)
-{
-  GArray *ret;
-  GError *error = NULL;
-
-  if (tp_text_mixin_get_message_types (G_OBJECT (iface), &ret, &error))
-    {
-      tp_svc_channel_type_text_return_from_get_message_types (context, ret);
-      g_array_free (ret, TRUE);
-    }
-  else
-    {
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-    }
-}
-
-
-/**
- * gabble_im_channel_list_pending_messages
- *
- * Implements D-Bus method ListPendingMessages
- * on interface org.freedesktop.Telepathy.Channel.Type.Text
- */
-static void
-gabble_im_channel_list_pending_messages (TpSvcChannelTypeText *iface,
-                                         gboolean clear,
-                                         DBusGMethodInvocation *context)
-{
-  GabbleIMChannel *self = GABBLE_IM_CHANNEL (iface);
-  g_assert (GABBLE_IS_IM_CHANNEL (self));
-  GPtrArray *ret;
-  GError *error = NULL;
-
-  if (tp_text_mixin_list_pending_messages (G_OBJECT (self), clear, &ret,
-      &error))
-    {
-      tp_svc_channel_type_text_return_from_list_pending_messages (
-          context, ret);
-      g_ptr_array_free (ret, TRUE);
-    }
-  else
-    {
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-    }
-}
-
-
-/**
  * gabble_im_channel_send
  *
  * Implements D-Bus method Send
@@ -527,8 +442,6 @@ text_iface_init(gpointer g_iface, gpointer iface_data)
 {
   TpSvcChannelTypeTextClass *klass = (TpSvcChannelTypeTextClass *)g_iface;
 
-  klass->acknowledge_pending_messages = gabble_im_channel_acknowledge_pending_messages;
-  klass->get_message_types = gabble_im_channel_get_message_types;
-  klass->list_pending_messages = gabble_im_channel_list_pending_messages;
+  tp_text_mixin_iface_init (g_iface, iface_data);
   klass->send = gabble_im_channel_send;
 }

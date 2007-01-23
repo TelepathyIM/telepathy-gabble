@@ -889,6 +889,9 @@ gabble_connection_dispose (GObject *object)
       priv->channel_requests = NULL;
     }
 
+  g_object_unref (self->vcard_manager);
+  self->vcard_manager = NULL;
+
   g_ptr_array_foreach (priv->channel_factories, (GFunc) g_object_unref, NULL);
   g_ptr_array_free (priv->channel_factories, TRUE);
   priv->channel_factories = NULL;
@@ -898,9 +901,6 @@ gabble_connection_dispose (GObject *object)
 
   g_object_unref (self->disco);
   self->disco = NULL;
-
-  g_object_unref (self->vcard_manager);
-  self->vcard_manager = NULL;
 
   if (self->self_presence != NULL)
     g_object_unref (self->self_presence);
@@ -2075,6 +2075,8 @@ connection_avatar_update_cb (GabblePresenceCache *cache,
   presence = gabble_presence_cache_get (conn->presence_cache, handle);
 
   g_assert (presence != NULL);
+
+  gabble_vcard_manager_invalidate_cache (conn->vcard_manager, handle);
 
   if (handle == conn->self_handle)
     update_own_avatar_sha1 (conn, presence->avatar_sha1, NULL);
@@ -4235,6 +4237,17 @@ gabble_connection_request_aliases (GabbleConnection *self,
                 handle));
 
           g_free (alias);
+
+          if (gabble_vcard_manager_get_cached (self->vcard_manager, handle))
+            {
+                GabbleConnectionAliasSource source;
+                source = _gabble_connection_get_cached_alias (self, handle, &alias);
+                request->vcard_requests[i] = NULL;
+                request->aliases[i] = alias;
+                request->pending_vcard_requests++;
+                continue;
+            }
+
           vcard_request = gabble_vcard_manager_request (self->vcard_manager,
               handle, 0, aliases_request_vcard_cb, request, G_OBJECT (self),
               &error);
@@ -4394,8 +4407,19 @@ gabble_connection_request_avatar (GabbleConnection *self,
                                   guint contact,
                                   DBusGMethodInvocation *context)
 {
-  gabble_vcard_manager_request (self->vcard_manager, contact, 0,
-      _request_avatar_cb, context, NULL, NULL);
+  LmMessageNode *vcard_node =
+      gabble_vcard_manager_get_cached (self->vcard_manager, contact);
+
+  if (vcard_node)
+    {
+      _request_avatar_cb (self->vcard_manager, NULL, contact, vcard_node, NULL,
+          context);
+    }
+  else
+    {
+      gabble_vcard_manager_request (self->vcard_manager, contact, 0,
+          _request_avatar_cb, context, NULL, NULL);
+    }
 }
 
 
@@ -5251,6 +5275,8 @@ gabble_connection_set_avatar (GabbleConnection *self,
   ctx->avatar = g_string_new_len (avatar->data, avatar->len);
   ctx->mime_type = g_strdup (mime_type);
 
+  DEBUG ("called");
+  gabble_vcard_manager_invalidate_cache (self->vcard_manager, self->self_handle);
   gabble_vcard_manager_request (self->vcard_manager, self->self_handle, 0,
       _set_avatar_cb1, ctx, NULL, NULL);
 }

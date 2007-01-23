@@ -71,6 +71,7 @@ struct _GabbleRosterChannelPrivate
   guint handle_type;
 
   gboolean dispose_has_run;
+  gboolean closed;
 };
 
 #define GABBLE_ROSTER_CHANNEL_GET_PRIVATE(obj) \
@@ -287,7 +288,8 @@ gabble_roster_channel_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  tp_svc_channel_emit_closed ((TpSvcChannel *)object);
+  if (!priv->closed)
+    tp_svc_channel_emit_closed ((TpSvcChannel *)object);
 
   /* release any references held by the object here */
 
@@ -506,13 +508,41 @@ static void
 gabble_roster_channel_close (TpSvcChannel *iface,
                              DBusGMethodInvocation *context)
 {
-  /* FIXME: this ought to raise NotAvailable on nonempty groups, succeed
-   * on empty groups and only raise NotImplemented on lists */
+  GabbleRosterChannel *self = GABBLE_ROSTER_CHANNEL (iface);
+  GabbleRosterChannelPrivate *priv;
 
-  GError e = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
-      "you may not close contact list channels" };
+  g_assert (GABBLE_IS_ROSTER_CHANNEL (self));
 
-  dbus_g_method_return_error (context, &e);
+  priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (self);
+
+  if (priv->handle_type == TP_HANDLE_TYPE_LIST)
+    {
+      GError e = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+          "you may not close contact list channels" };
+
+      dbus_g_method_return_error (context, &e);
+    }
+  else /* TP_HANDLE_TYPE_GROUP */
+    {
+      if (tp_handle_set_size (self->group.members) == 0)
+        {
+          /* deleting groups isn't a concept that exists on XMPP,
+           * so just close the channel */
+
+          priv->closed = TRUE;
+          tp_svc_channel_emit_closed ((TpSvcChannel *)self);
+          tp_svc_channel_return_from_close (context);
+          return;
+        }
+
+      else
+        {
+          GError e = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+              "you may not close this group, because it's not empty" };
+
+          dbus_g_method_return_error (context, &e);
+        }
+    }
 }
 
 

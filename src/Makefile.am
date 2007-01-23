@@ -3,8 +3,6 @@ BUILT_SOURCES = \
     gabble-register-signals-marshal.c \
     gabble-muc-channel-signals-marshal.h \
     gabble-muc-channel-signals-marshal.c \
-    gabble-media-channel-signals-marshal.h \
-    gabble-media-channel-signals-marshal.c \
     gabble-media-session-signals-marshal.h \
     gabble-media-session-signals-marshal.c \
     gabble-media-session-enumtypes.h \
@@ -12,11 +10,7 @@ BUILT_SOURCES = \
     gabble-media-stream-signals-marshal.h \
     gabble-media-stream-signals-marshal.c \
     gabble-presence-cache-signals-marshal.h \
-    gabble-presence-cache-signals-marshal.c \
-    gabble-roster-channel-signals-marshal.h \
-    gabble-roster-channel-signals-marshal.c \
-    text-mixin-signals-marshal.h \
-    text-mixin-signals-marshal.c
+    gabble-presence-cache-signals-marshal.c
 
 CLEANFILES = $(BUILT_SOURCES)
 

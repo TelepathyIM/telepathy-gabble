@@ -272,7 +272,7 @@ tp_properties_mixin_set_properties (GObject *obj,
   TpPropertiesMixinClass *mixin_cls = TP_PROPERTIES_MIXIN_CLASS (
                                             G_OBJECT_GET_CLASS (obj));
   TpPropertiesContext *ctx = &mixin->priv->context;
-  GError *error;
+  GError *error = NULL;
   guint i;
 
   /* Is another SetProperties request already in progress? */
@@ -815,7 +815,7 @@ get_properties (TpSvcPropertiesInterface *iface,
                 DBusGMethodInvocation *context)
 {
   GPtrArray *ret;
-  GError *error;
+  GError *error = NULL;
   gboolean ok = tp_properties_mixin_get_properties (G_OBJECT (iface), properties,
       &ret, &error);
   if (!ok)
@@ -847,7 +847,7 @@ list_properties (TpSvcPropertiesInterface *iface,
                  DBusGMethodInvocation *context)
 {
   GPtrArray *ret;
-  GError *error;
+  GError *error = NULL;
   gboolean ok = tp_properties_mixin_list_properties (G_OBJECT (iface), &ret,
       &error);
   if (!ok)

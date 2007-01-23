@@ -328,7 +328,7 @@ gabble_im_channel_acknowledge_pending_messages (TpSvcChannelTypeText *iface,
 {
   GabbleIMChannel *self = GABBLE_IM_CHANNEL (iface);
   g_assert (GABBLE_IS_IM_CHANNEL (self));
-  GError *error;
+  GError *error = NULL;
 
   if (tp_text_mixin_acknowledge_pending_messages (G_OBJECT (self), ids,
       &error))
@@ -349,12 +349,6 @@ gabble_im_channel_acknowledge_pending_messages (TpSvcChannelTypeText *iface,
  *
  * Implements D-Bus method Close
  * on interface org.freedesktop.Telepathy.Channel
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 static void
 gabble_im_channel_close (TpSvcChannel *iface,
@@ -439,7 +433,7 @@ gabble_im_channel_get_message_types (TpSvcChannelTypeText *iface,
                                      DBusGMethodInvocation *context)
 {
   GArray *ret;
-  GError *error;
+  GError *error = NULL;
 
   if (tp_text_mixin_get_message_types (G_OBJECT (iface), &ret, &error))
     {
@@ -468,7 +462,7 @@ gabble_im_channel_list_pending_messages (TpSvcChannelTypeText *iface,
   GabbleIMChannel *self = GABBLE_IM_CHANNEL (iface);
   g_assert (GABBLE_IS_IM_CHANNEL (self));
   GPtrArray *ret;
-  GError *error;
+  GError *error = NULL;
 
   if (tp_text_mixin_list_pending_messages (G_OBJECT (self), clear, &ret,
       &error))
@@ -499,7 +493,7 @@ gabble_im_channel_send (TpSvcChannelTypeText *iface,
 {
   GabbleIMChannel *self = GABBLE_IM_CHANNEL (iface);
   GabbleIMChannelPrivate *priv;
-  GError *error;
+  GError *error = NULL;
 
   g_assert (GABBLE_IS_IM_CHANNEL (self));
   priv = GABBLE_IM_CHANNEL_GET_PRIVATE (self);

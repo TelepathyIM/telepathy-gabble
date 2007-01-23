@@ -44,7 +44,7 @@
 #include "gabble-presence.h"
 
 #include "gabble-media-session.h"
-#include "gabble-media-session-signals-marshal.h"
+#include "gabble-signals-marshal.h"
 
 static void session_handler_iface_init (gpointer, gpointer);
 
@@ -515,7 +515,7 @@ gabble_media_session_class_init (GabbleMediaSessionClass *gabble_media_session_c
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_media_session_marshal_VOID__UINT_UINT,
+                  gabble_marshal_VOID__UINT_UINT,
                   G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_UINT);
 }
 

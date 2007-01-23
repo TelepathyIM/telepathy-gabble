@@ -35,7 +35,7 @@
 
 #include "gabble-presence-cache.h"
 
-#include "gabble-presence-cache-signals-marshal.h"
+#include "gabble-signals-marshal.h"
 
 G_DEFINE_TYPE (GabblePresenceCache, gabble_presence_cache, G_TYPE_OBJECT);
 
@@ -270,7 +270,7 @@ gabble_presence_cache_class_init (GabblePresenceCacheClass *klass)
     G_SIGNAL_RUN_LAST,
     0,
     NULL, NULL,
-    gabble_presence_cache_marshal_VOID__UINT_UINT_UINT, G_TYPE_NONE, 3, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT);
+    gabble_marshal_VOID__UINT_UINT_UINT, G_TYPE_NONE, 3, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT);
   signals[AVATAR_UPDATE] = g_signal_new (
     "avatar-update",
     G_TYPE_FROM_CLASS (klass),

@@ -35,7 +35,7 @@
 #include "gabble-connection.h"
 #include "gabble-error.h"
 #include "gabble-register.h"
-#include "gabble-register-signals-marshal.h"
+#include "gabble-signals-marshal.h"
 #include "namespaces.h"
 #include "util.h"
 #include "libmd5-rfc/md5.h"
@@ -111,7 +111,7 @@ gabble_register_class_init (GabbleRegisterClass *gabble_register_class)
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_register_marshal_VOID__BOOLEAN_INT_STRING,
+                  gabble_marshal_VOID__BOOLEAN_INT_STRING,
                   G_TYPE_NONE, 3, G_TYPE_BOOLEAN, G_TYPE_INT, G_TYPE_STRING);
 }
 

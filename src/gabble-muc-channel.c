@@ -45,7 +45,6 @@
 #include <telepathy-glib/svc-channel-interface-password.h>
 
 #include "gabble-muc-channel.h"
-#include "gabble-muc-channel-signals-marshal.h"
 
 #define DEFAULT_JOIN_TIMEOUT (180 * 1000)
 #define MAX_NICK_RETRIES 3

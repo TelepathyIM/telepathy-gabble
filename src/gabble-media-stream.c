@@ -42,7 +42,7 @@
 #include <telepathy-glib/svc-media-stream-handler.h>
 
 #include "gabble-media-stream.h"
-#include "gabble-media-stream-signals-marshal.h"
+#include "gabble-signals-marshal.h"
 
 static void stream_handler_iface_init (gpointer, gpointer);
 
@@ -505,7 +505,7 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_media_stream_marshal_VOID__STRING_STRING,
+                  gabble_marshal_VOID__STRING_STRING,
                   G_TYPE_NONE, 2, G_TYPE_STRING, G_TYPE_STRING);
 
   signals[NEW_NATIVE_CANDIDATE] =
@@ -514,7 +514,7 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_media_stream_marshal_VOID__STRING_BOXED,
+                  gabble_marshal_VOID__STRING_BOXED,
                   G_TYPE_NONE, 2, G_TYPE_STRING, TP_TYPE_TRANSPORT_LIST);
 
   signals[SUPPORTED_CODECS] =
@@ -532,7 +532,7 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_media_stream_marshal_VOID__UINT_STRING,
+                  gabble_marshal_VOID__UINT_STRING,
                   G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_STRING);
 }
 

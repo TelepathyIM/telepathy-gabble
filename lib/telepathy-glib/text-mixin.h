@@ -75,6 +75,8 @@ gboolean tp_text_mixin_list_pending_messages (GObject *obj, gboolean clear, GPtr
 gboolean tp_text_mixin_get_message_types (GObject *obj, GArray **ret, GError **error);
 void tp_text_mixin_clear (GObject *obj);
 
+void tp_text_mixin_iface_init (gpointer g_iface, gpointer iface_data);
+
 G_END_DECLS
 
 #endif /* #ifndef __TP_TEXT_MIXIN_H__ */

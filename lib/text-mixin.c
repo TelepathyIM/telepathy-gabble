@@ -405,6 +405,26 @@ tp_text_mixin_acknowledge_pending_messages (GObject *obj, const GArray * ids, GE
   return TRUE;
 }
 
+static void
+tp_text_mixin_acknowledge_pending_messages_async (TpSvcChannelTypeText *iface,
+                                                  const GArray *ids,
+                                                  DBusGMethodInvocation *context)
+{
+  GError *error = NULL;
+
+  if (tp_text_mixin_acknowledge_pending_messages (G_OBJECT (iface), ids,
+      &error))
+    {
+      tp_svc_channel_type_text_return_from_acknowledge_pending_messages (
+          context);
+    }
+  else
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+    }
+}
+
 /**
  * tp_text_mixin_list_pending_messages
  *
@@ -457,6 +477,28 @@ tp_text_mixin_list_pending_messages (GObject *obj, gboolean clear, GPtrArray ** 
   return TRUE;
 }
 
+static void
+tp_text_mixin_list_pending_messages_async (TpSvcChannelTypeText *iface,
+                                           gboolean clear,
+                                           DBusGMethodInvocation *context)
+{
+  GPtrArray *ret;
+  GError *error = NULL;
+
+  if (tp_text_mixin_list_pending_messages (G_OBJECT (iface), clear, &ret,
+      &error))
+    {
+      tp_svc_channel_type_text_return_from_list_pending_messages (
+          context, ret);
+      g_ptr_array_free (ret, TRUE);
+    }
+  else
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+    }
+}
+
 gboolean
 tp_text_mixin_get_message_types (GObject *obj, GArray **ret, GError **error)
 {
@@ -475,6 +517,26 @@ tp_text_mixin_get_message_types (GObject *obj, GArray **ret, GError **error)
 }
 
 
+static void
+tp_text_mixin_get_message_types_async (TpSvcChannelTypeText *iface,
+                                       DBusGMethodInvocation *context)
+{
+  GArray *ret;
+  GError *error = NULL;
+
+  if (tp_text_mixin_get_message_types (G_OBJECT (iface), &ret, &error))
+    {
+      tp_svc_channel_type_text_return_from_get_message_types (context, ret);
+      g_array_free (ret, TRUE);
+    }
+  else
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+    }
+}
+
+
 void
 tp_text_mixin_clear (GObject *obj)
 {
@@ -486,4 +548,15 @@ tp_text_mixin_clear (GObject *obj)
       tp_handle_unref (mixin->contacts_repo, msg->sender);
       _pending_free (msg);
     }
+}
+
+void
+tp_text_mixin_iface_init (gpointer g_iface, gpointer iface_data)
+{
+  TpSvcChannelTypeTextClass *klass = (TpSvcChannelTypeTextClass *)g_iface;
+
+  klass->acknowledge_pending_messages = tp_text_mixin_acknowledge_pending_messages_async;
+  klass->get_message_types = tp_text_mixin_get_message_types_async;
+  klass->list_pending_messages = tp_text_mixin_list_pending_messages_async;
+  klass->send = NULL; /* tp_text_mixin_send_async; */
 }

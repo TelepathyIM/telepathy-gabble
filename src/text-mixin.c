@@ -118,7 +118,8 @@ gboolean gabble_text_mixin_send (GObject *obj, guint type, guint subtype,
     {
       timestamp = time (NULL);
 
-      tp_text_mixin_emit_sent (obj, timestamp, type, text);
+      tp_svc_channel_type_text_emit_sent ((TpSvcChannelTypeText *)obj,
+          timestamp, type, text);
     }
 
   return TRUE;

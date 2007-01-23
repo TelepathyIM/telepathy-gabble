@@ -1,10 +1,8 @@
 BUILT_SOURCES = \
     gabble-register-signals-marshal.h \
     gabble-register-signals-marshal.c \
-    gabble-muc-channel-glue.h \
     gabble-muc-channel-signals-marshal.h \
     gabble-muc-channel-signals-marshal.c \
-    gabble-media-channel-glue.h \
     gabble-media-channel-signals-marshal.h \
     gabble-media-channel-signals-marshal.c \
     gabble-media-session-signals-marshal.h \
@@ -15,7 +13,6 @@ BUILT_SOURCES = \
     gabble-media-stream-signals-marshal.c \
     gabble-presence-cache-signals-marshal.h \
     gabble-presence-cache-signals-marshal.c \
-    gabble-roster-channel-glue.h \
     gabble-roster-channel-signals-marshal.h \
     gabble-roster-channel-signals-marshal.c \
     text-mixin-signals-marshal.h \
@@ -120,10 +117,6 @@ noinst_LTLIBRARIES = libgabble-convenience.la
 AM_CFLAGS = $(ERROR_CFLAGS) -I$(top_srcdir)/lib -I$(top_builddir)/lib -I$(top_srcdir)/lib/_spec @DBUS_CFLAGS@ @GLIB_CFLAGS@ @LOUDMOUTH_CFLAGS@ @HANDLE_LEAK_DEBUG_CFLAGS@
 AM_LDFLAGS = @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@
 
-
-# rule to generate the binding headers
-%-glue.h: ../generate/xml-modified/%.xml
-	dbus-binding-tool --mode=glib-server --output=$@ --prefix=$(subst -,_,$*) $<
 
 %-signals-marshal.h: %-signals-marshal.list
 	glib-genmarshal --header --prefix=$(subst -,_,$*)_marshal $< > $*-signals-marshal.h

@@ -40,11 +40,12 @@
 #include <telepathy-glib/errors.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/channel-iface.h>
+#include <telepathy-glib/svc-channel.h>
+#include <telepathy-glib/svc-channel-type-text.h>
+#include <telepathy-glib/svc-channel-interface-password.h>
 
 #include "gabble-muc-channel.h"
 #include "gabble-muc-channel-signals-marshal.h"
-
-#include "gabble-muc-channel-glue.h"
 
 #define DEFAULT_JOIN_TIMEOUT (180 * 1000)
 #define MAX_NICK_RETRIES 3
@@ -52,11 +53,23 @@
 #define PROPS_POLL_INTERVAL_LOW  (60 * 1000 * 5)
 #define PROPS_POLL_INTERVAL_HIGH (60 * 1000)
 
+static void channel_iface_init (gpointer, gpointer);
+static void password_iface_init (gpointer, gpointer);
+static void text_iface_init (gpointer, gpointer);
+
 G_DEFINE_TYPE_WITH_CODE (GabbleMucChannel, gabble_muc_channel,
     G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL,
+      channel_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_PROPERTIES_INTERFACE,
-      tp_properties_mixin_iface_init)
+      tp_properties_mixin_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
+      tp_group_mixin_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_PASSWORD,
+      password_iface_init)
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_TEXT,
+      text_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL)
     )
 
 /* signal enum */
@@ -64,8 +77,6 @@ enum
 {
     READY,
     JOIN_ERROR,
-    CLOSED,
-    PASSWORD_FLAGS_CHANGED,
     LAST_SIGNAL
 };
 
@@ -268,11 +279,12 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
 
   /* initialize group mixin */
-  tp_group_mixin_init (obj, G_STRUCT_OFFSET (GabbleMucChannel, group),
+  tp_group_mixin_init ((TpSvcChannelInterfaceGroup *)obj,
+      G_STRUCT_OFFSET (GabbleMucChannel, group),
       contact_handles, self_handle);
 
   /* set initial group flags */
-  tp_group_mixin_change_flags (obj,
+  tp_group_mixin_change_flags ((TpSvcChannelInterfaceGroup *)obj,
       TP_CHANNEL_GROUP_FLAG_CHANNEL_SPECIFIC_HANDLES |
       TP_CHANNEL_GROUP_FLAG_CAN_ADD,
       0);
@@ -297,7 +309,8 @@ gabble_muc_channel_constructor (GType type, guint n_props,
       GError *error = NULL;
       GArray *members = g_array_sized_new (FALSE, FALSE, sizeof (TpHandle), 1);
       g_array_append_val (members, self_handle);
-      tp_group_mixin_add_members (obj, members, "", &error);
+      tp_group_mixin_add_members ((TpSvcChannelInterfaceGroup *)obj, members,
+          "", &error);
       g_assert (error == NULL);
       g_array_free (members, TRUE);
     }
@@ -533,7 +546,7 @@ static void
 room_properties_update (GabbleMucChannel *chan)
 {
   GabbleMucChannelPrivate *priv;
-  GError *error;
+  GError *error = NULL;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
@@ -631,7 +644,7 @@ send_leave_message (GabbleMucChannel *channel,
 {
   GabbleMucChannelPrivate *priv;
   LmMessage *msg;
-  GError *error;
+  GError *error = NULL;
   gboolean ret;
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (channel);
@@ -745,8 +758,8 @@ gabble_muc_channel_set_property (GObject     *object,
 
 static void gabble_muc_channel_dispose (GObject *object);
 static void gabble_muc_channel_finalize (GObject *object);
-static gboolean gabble_muc_channel_add_member (GObject *obj, TpHandle handle, const gchar *message, GError **error);
-static gboolean gabble_muc_channel_remove_member (GObject *obj, TpHandle handle, const gchar *message, GError **error);
+static gboolean gabble_muc_channel_add_member (TpSvcChannelInterfaceGroup *obj, TpHandle handle, const gchar *message, GError **error);
+static gboolean gabble_muc_channel_remove_member (TpSvcChannelInterfaceGroup *obj, TpHandle handle, const gchar *message, GError **error);
 static gboolean gabble_muc_channel_do_set_properties (GObject *obj, TpPropertiesContext *ctx, GError **error);
 
 static void
@@ -815,25 +828,7 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   g_cclosure_marshal_VOID__POINTER,
                   G_TYPE_NONE, 1, G_TYPE_POINTER);
 
-  signals[CLOSED] =
-    g_signal_new ("closed",
-                  G_OBJECT_CLASS_TYPE (gabble_muc_channel_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  g_cclosure_marshal_VOID__VOID,
-                  G_TYPE_NONE, 0);
-
-  signals[PASSWORD_FLAGS_CHANGED] =
-    g_signal_new ("password-flags-changed",
-                  G_OBJECT_CLASS_TYPE (gabble_muc_channel_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  gabble_muc_channel_marshal_VOID__UINT_UINT,
-                  G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_UINT);
-
-  tp_group_mixin_class_init (object_class,
+  tp_group_mixin_class_init ((TpSvcChannelInterfaceGroupClass *)object_class,
                                  G_STRUCT_OFFSET (GabbleMucChannelClass, group_class),
                                  gabble_muc_channel_add_member,
                                  gabble_muc_channel_remove_member);
@@ -844,8 +839,6 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                                       gabble_muc_channel_do_set_properties);
 
   tp_text_mixin_class_init (object_class, G_STRUCT_OFFSET (GabbleMucChannelClass, text_class));
-
-  dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_muc_channel_class), &dbus_glib_gabble_muc_channel_object_info);
 }
 
 static void clear_join_timer (GabbleMucChannel *chan);
@@ -893,7 +886,7 @@ gabble_muc_channel_finalize (GObject *object)
 
   tp_properties_mixin_finalize (object);
 
-  tp_group_mixin_finalize (object);
+  tp_group_mixin_finalize ((TpSvcChannelInterfaceGroup *)object);
 
   tp_text_mixin_finalize (object);
 
@@ -945,7 +938,8 @@ change_password_flags (GabbleMucChannel *chan,
       DEBUG ("emitting password flags changed, added 0x%X, removed 0x%X",
               added, removed);
 
-      g_signal_emit (chan, signals[PASSWORD_FLAGS_CHANGED], 0, added, removed);
+      tp_svc_channel_interface_password_emit_password_flags_changed (
+          (TpSvcChannelInterfacePassword *)chan, added, removed);
     }
 }
 
@@ -1067,7 +1061,7 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
   set = tp_intset_new ();
   tp_intset_add (set, TP_GROUP_MIXIN (chan)->self_handle);
 
-  tp_group_mixin_change_members (G_OBJECT (chan),
+  tp_group_mixin_change_members ((TpSvcChannelInterfaceGroup *)chan,
                                      (reason != NULL) ? reason : "",
                                      NULL, set, NULL, NULL, actor,
                                      reason_code);
@@ -1083,7 +1077,7 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
   /* Update state and emit Closed signal */
   g_object_set (chan, "state", MUC_STATE_ENDED, NULL);
 
-  g_signal_emit (chan, signals[CLOSED], 0);
+  tp_svc_channel_emit_closed ((TpSvcChannel *)chan);
 }
 
 gboolean
@@ -1396,8 +1390,8 @@ update_permissions (GabbleMucChannel *chan)
                        TP_CHANNEL_GROUP_FLAG_MESSAGE_REMOVE;
     }
 
-  tp_group_mixin_change_flags (G_OBJECT (chan), grp_flags_add,
-                                   grp_flags_rem);
+  tp_group_mixin_change_flags ((TpSvcChannelInterfaceGroup *) chan,
+      grp_flags_add, grp_flags_rem);
 
 
   /*
@@ -1483,7 +1477,7 @@ update_permissions (GabbleMucChannel *chan)
        * is writable by us in this room. sigh. GO MUC!!! */
       LmMessage *msg;
       LmMessageNode *node;
-      GError *error;
+      GError *error = NULL;
       gboolean success;
 
       msg = lm_message_new_with_sub_type (priv->jid,
@@ -1573,7 +1567,7 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
     {
       if (!tp_handle_set_is_member (mixin->members, handle))
         {
-          tp_group_mixin_change_members (G_OBJECT (chan), "", set, NULL,
+          tp_group_mixin_change_members ((TpSvcChannelInterfaceGroup *)chan, "", set, NULL,
                                              NULL, NULL, 0, 0);
 
           if (owner_jid != NULL)
@@ -1584,7 +1578,7 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
                   priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT],
                   owner_jid, FALSE);
 
-              tp_group_mixin_add_handle_owner (G_OBJECT (chan), handle,
+              tp_group_mixin_add_handle_owner ((TpSvcChannelInterfaceGroup *)chan, handle,
                                                    owner_handle);
             }
 
@@ -1604,7 +1598,7 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
           if (status_code && strcmp (status_code, "201") == 0)
             {
               LmMessage *msg;
-              GError *error;
+              GError *error = NULL;
 
               msg = lm_message_new_with_sub_type (priv->jid, LM_MESSAGE_TYPE_IQ,
                                                   LM_MESSAGE_SUB_TYPE_SET);
@@ -1694,7 +1688,7 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
 
       if (handle != mixin->self_handle)
         {
-          tp_group_mixin_change_members (G_OBJECT (chan), reason,
+          tp_group_mixin_change_members ((TpSvcChannelInterfaceGroup *)chan, reason,
                                              NULL, set, NULL, NULL,
                                              actor, reason_code);
         }
@@ -1762,7 +1756,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
 
           if (priv->properties_ctx)
             {
-              GError *error;
+              GError *error = NULL;
 
               error = g_error_new (TP_ERRORS, TP_ERROR_PERMISSION_DENIED,
                   (err_desc) ? err_desc : "failed to change subject");
@@ -1845,7 +1839,8 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
     {
       /* If we sent the message and it's not delayed, just emit the sent signal */
       timestamp = time (NULL);
-      tp_text_mixin_emit_sent (G_OBJECT (chan), timestamp, msg_type, text);
+      tp_svc_channel_type_text_emit_sent ((TpSvcChannelTypeText *)chan,
+          timestamp, msg_type, text);
 
       return TRUE;
     }
@@ -1883,7 +1878,7 @@ _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
                                    &self_handle, &priv->self_jid);
   tp_intset_add (set_pending, self_handle);
 
-  tp_group_mixin_change_members (G_OBJECT (chan), message, set_members,
+  tp_group_mixin_change_members ((TpSvcChannelInterfaceGroup *)chan, message, set_members,
                                      NULL, set_pending, NULL, inviter,
                                      TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
 
@@ -1908,45 +1903,27 @@ _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
  *
  * Implements D-Bus method AcknowledgePendingMessages
  * on interface org.freedesktop.Telepathy.Channel.Type.Text
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_muc_channel_acknowledge_pending_messages (GabbleMucChannel *self,
+static void
+gabble_muc_channel_acknowledge_pending_messages (TpSvcChannelTypeText *iface,
                                                  const GArray *ids,
-                                                 GError **error)
+                                                 DBusGMethodInvocation *context)
 {
+  GabbleMucChannel *self = GABBLE_MUC_CHANNEL (iface);
   g_assert (GABBLE_IS_MUC_CHANNEL (self));
+  GError *error = NULL;
 
-  return tp_text_mixin_acknowledge_pending_messages (G_OBJECT (self), ids,
-      error);
-}
-
-
-/**
- * gabble_muc_channel_add_members
- *
- * Implements D-Bus method AddMembers
- * on interface org.freedesktop.Telepathy.Channel.Interface.Group
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_muc_channel_add_members (GabbleMucChannel *self,
-                                const GArray *contacts,
-                                const gchar *message,
-                                GError **error)
-{
-  return tp_group_mixin_add_members (G_OBJECT (self), contacts, message,
-      error);
+  if (tp_text_mixin_acknowledge_pending_messages (G_OBJECT (self), ids,
+      &error))
+    {
+      tp_svc_channel_type_text_return_from_acknowledge_pending_messages (
+          context);
+    }
+  else
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+    }
 }
 
 
@@ -1955,17 +1932,12 @@ gabble_muc_channel_add_members (GabbleMucChannel *self,
  *
  * Implements D-Bus method Close
  * on interface org.freedesktop.Telepathy.Channel
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_muc_channel_close (GabbleMucChannel *self,
-                          GError **error)
+static void
+gabble_muc_channel_close (TpSvcChannel *iface,
+                          DBusGMethodInvocation *context)
 {
+  GabbleMucChannel *self = GABBLE_MUC_CHANNEL (iface);
   GabbleMucChannelPrivate *priv;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (self));
@@ -1976,41 +1948,17 @@ gabble_muc_channel_close (GabbleMucChannel *self,
 
   if (priv->closed)
     {
+      GError already = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "Channel already closed"};
       DEBUG ("channel already closed");
 
-      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-          "Channel already closed");
-
-      return FALSE;
+      dbus_g_method_return_error (context, &already);
+      return;
     }
 
   close_channel (self, NULL, TRUE, 0, 0);
 
-  return TRUE;
-}
-
-
-/**
- * gabble_muc_channel_get_all_members
- *
- * Implements D-Bus method GetAllMembers
- * on interface org.freedesktop.Telepathy.Channel.Interface.Group
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_muc_channel_get_all_members (GabbleMucChannel *self,
-                                    GArray **ret,
-                                    GArray **ret1,
-                                    GArray **ret2,
-                                    GError **error)
-{
-  return tp_group_mixin_get_all_members (G_OBJECT (self), ret, ret1, ret2,
-      error);
+  tp_svc_channel_return_from_close (context);
 }
 
 
@@ -2019,42 +1967,13 @@ gabble_muc_channel_get_all_members (GabbleMucChannel *self,
  *
  * Implements D-Bus method GetChannelType
  * on interface org.freedesktop.Telepathy.Channel
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_muc_channel_get_channel_type (GabbleMucChannel *self,
-                                     gchar **ret,
-                                     GError **error)
+static void
+gabble_muc_channel_get_channel_type (TpSvcChannel *iface,
+                                     DBusGMethodInvocation *context)
 {
-  *ret = g_strdup (TP_IFACE_CHANNEL_TYPE_TEXT);
-
-  return TRUE;
-}
-
-
-/**
- * gabble_muc_channel_get_group_flags
- *
- * Implements D-Bus method GetGroupFlags
- * on interface org.freedesktop.Telepathy.Channel.Interface.Group
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_muc_channel_get_group_flags (GabbleMucChannel *self,
-                                    guint *ret,
-                                    GError **error)
-{
-  return tp_group_mixin_get_group_flags (G_OBJECT (self), ret, error);
+  tp_svc_channel_return_from_get_channel_type (context,
+      TP_IFACE_CHANNEL_TYPE_TEXT);
 }
 
 
@@ -2063,52 +1982,20 @@ gabble_muc_channel_get_group_flags (GabbleMucChannel *self,
  *
  * Implements D-Bus method GetHandle
  * on interface org.freedesktop.Telepathy.Channel
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_muc_channel_get_handle (GabbleMucChannel *self,
-                               guint *ret,
-                               guint *ret1,
-                               GError **error)
+static void
+gabble_muc_channel_get_handle (TpSvcChannel *iface,
+                               DBusGMethodInvocation *context)
 {
+  GabbleMucChannel *self = GABBLE_MUC_CHANNEL (iface);
   GabbleMucChannelPrivate *priv;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (self));
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
 
-  *ret = TP_HANDLE_TYPE_ROOM;
-  *ret1 = priv->handle;
-
-  return TRUE;
-}
-
-
-/**
- * gabble_muc_channel_get_handle_owners
- *
- * Implements D-Bus method GetHandleOwners
- * on interface org.freedesktop.Telepathy.Channel.Interface.Group
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_muc_channel_get_handle_owners (GabbleMucChannel *self,
-                                      const GArray *handles,
-                                      GArray **ret,
-                                      GError **error)
-{
-  return tp_group_mixin_get_handle_owners (G_OBJECT (self), handles, ret,
-      error);
+  tp_svc_channel_return_from_get_handle (context, TP_HANDLE_TYPE_ROOM,
+      priv->handle);
 }
 
 
@@ -2117,17 +2004,10 @@ gabble_muc_channel_get_handle_owners (GabbleMucChannel *self,
  *
  * Implements D-Bus method GetInterfaces
  * on interface org.freedesktop.Telepathy.Channel
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_muc_channel_get_interfaces (GabbleMucChannel *self,
-                                   gchar ***ret,
-                                   GError **error)
+static void
+gabble_muc_channel_get_interfaces (TpSvcChannel *iface,
+                                   DBusGMethodInvocation *context)
 {
   const gchar *interfaces[] = {
       TP_IFACE_CHANNEL_INTERFACE_GROUP,
@@ -2136,75 +2016,32 @@ gabble_muc_channel_get_interfaces (GabbleMucChannel *self,
       NULL
   };
 
-  *ret = g_strdupv ((gchar **) interfaces);
-
-  return TRUE;
+  tp_svc_channel_return_from_get_interfaces (context, interfaces);
 }
-
-
-/**
- * gabble_muc_channel_get_local_pending_members
- *
- * Implements D-Bus method GetLocalPendingMembers
- * on interface org.freedesktop.Telepathy.Channel.Interface.Group
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_muc_channel_get_local_pending_members (GabbleMucChannel *self,
-                                              GArray **ret,
-                                              GError **error)
-{
-  return tp_group_mixin_get_local_pending_members (G_OBJECT (self), ret,
-      error);
-}
-
-
-/**
- * gabble_muc_channel_get_members
- *
- * Implements D-Bus method GetMembers
- * on interface org.freedesktop.Telepathy.Channel.Interface.Group
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_muc_channel_get_members (GabbleMucChannel *self,
-                                GArray **ret,
-                                GError **error)
-{
-  return tp_group_mixin_get_members (G_OBJECT (self), ret, error);
-}
-
-
-
 
 /**
  * gabble_muc_channel_get_message_types
  *
  * Implements D-Bus method GetMessageTypes
  * on interface org.freedesktop.Telepathy.Channel.Type.Text
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_muc_channel_get_message_types (GabbleMucChannel *self,
-                                      GArray **ret,
-                                      GError **error)
+static void
+gabble_muc_channel_get_message_types (TpSvcChannelTypeText *iface,
+                                      DBusGMethodInvocation *context)
 {
-  return tp_text_mixin_get_message_types (G_OBJECT (self), ret, error);
+  GArray *ret;
+  GError *error = NULL;
+
+  if (tp_text_mixin_get_message_types (G_OBJECT (iface), &ret, &error))
+    {
+      tp_svc_channel_type_text_return_from_get_message_types (context, ret);
+      g_array_free (ret, TRUE);
+    }
+  else
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+    }
 }
 
 
@@ -2213,70 +2050,20 @@ gabble_muc_channel_get_message_types (GabbleMucChannel *self,
  *
  * Implements D-Bus method GetPasswordFlags
  * on interface org.freedesktop.Telepathy.Channel.Interface.Password
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_muc_channel_get_password_flags (GabbleMucChannel *self,
-                                       guint *ret,
-                                       GError **error)
+static void
+gabble_muc_channel_get_password_flags (TpSvcChannelInterfacePassword *iface,
+                                       DBusGMethodInvocation *context)
 {
+  GabbleMucChannel *self = GABBLE_MUC_CHANNEL (iface);
   GabbleMucChannelPrivate *priv;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (self));
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
 
-  *ret = priv->password_flags;
-
-  return TRUE;
-}
-
-
-/**
- * gabble_muc_channel_get_remote_pending_members
- *
- * Implements D-Bus method GetRemotePendingMembers
- * on interface org.freedesktop.Telepathy.Channel.Interface.Group
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_muc_channel_get_remote_pending_members (GabbleMucChannel *self,
-                                               GArray **ret,
-                                               GError **error)
-{
-  return tp_group_mixin_get_remote_pending_members (G_OBJECT (self), ret,
-      error);
-}
-
-
-/**
- * gabble_muc_channel_get_self_handle
- *
- * Implements D-Bus method GetSelfHandle
- * on interface org.freedesktop.Telepathy.Channel.Interface.Group
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_muc_channel_get_self_handle (GabbleMucChannel *self,
-                                    guint *ret,
-                                    GError **error)
-{
-  return tp_group_mixin_get_self_handle (G_OBJECT (self), ret, error);
+  tp_svc_channel_interface_password_return_from_get_password_flags (context,
+      priv->password_flags);
 }
 
 
@@ -2285,21 +2072,29 @@ gabble_muc_channel_get_self_handle (GabbleMucChannel *self,
  *
  * Implements D-Bus method ListPendingMessages
  * on interface org.freedesktop.Telepathy.Channel.Type.Text
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_muc_channel_list_pending_messages (GabbleMucChannel *self,
+static void
+gabble_muc_channel_list_pending_messages (TpSvcChannelTypeText *iface,
                                           gboolean clear,
-                                          GPtrArray **ret,
-                                          GError **error)
+                                          DBusGMethodInvocation *context)
 {
-  return tp_text_mixin_list_pending_messages (G_OBJECT (self), clear, ret,
-      error);
+  GabbleMucChannel *self = GABBLE_MUC_CHANNEL (iface);
+  g_assert (GABBLE_IS_MUC_CHANNEL (self));
+  GPtrArray *ret;
+  GError *error = NULL;
+
+  if (tp_text_mixin_list_pending_messages (G_OBJECT (self), clear, &ret,
+      &error))
+    {
+      tp_svc_channel_type_text_return_from_list_pending_messages (
+          context, ret);
+      g_ptr_array_free (ret, TRUE);
+    }
+  else
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+    }
 }
 
 
@@ -2312,12 +2107,13 @@ gabble_muc_channel_list_pending_messages (GabbleMucChannel *self,
  * @context: The D-Bus invocation context to use to return values
  *           or throw an error.
  */
-void
-gabble_muc_channel_provide_password (GabbleMucChannel *self,
+static void
+gabble_muc_channel_provide_password (TpSvcChannelInterfacePassword *iface,
                                      const gchar *password,
                                      DBusGMethodInvocation *context)
 {
-  GError *error;
+  GabbleMucChannel *self = GABBLE_MUC_CHANNEL (iface);
+  GError *error = NULL;
   GabbleMucChannelPrivate *priv;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (self));
@@ -2348,54 +2144,41 @@ gabble_muc_channel_provide_password (GabbleMucChannel *self,
 
 
 /**
- * gabble_muc_channel_remove_members
- *
- * Implements D-Bus method RemoveMembers
- * on interface org.freedesktop.Telepathy.Channel.Interface.Group
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean gabble_muc_channel_remove_members (GabbleMucChannel *obj, const GArray * contacts, const gchar * message, GError **error)
-{
-  return tp_group_mixin_remove_members (G_OBJECT (obj), contacts, message, error);
-}
-
-/**
  * gabble_muc_channel_send
  *
  * Implements D-Bus method Send
  * on interface org.freedesktop.Telepathy.Channel.Type.Text
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_muc_channel_send (GabbleMucChannel *self,
+static void
+gabble_muc_channel_send (TpSvcChannelTypeText *iface,
                          guint type,
                          const gchar *text,
-                         GError **error)
+                         DBusGMethodInvocation *context)
 {
+  GabbleMucChannel *self = GABBLE_MUC_CHANNEL (iface);
   GabbleMucChannelPrivate *priv;
+  GError *error = NULL;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (self));
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
 
-  return gabble_text_mixin_send (G_OBJECT (self), type,
-      LM_MESSAGE_SUB_TYPE_GROUPCHAT, priv->jid, text, priv->conn,
-      FALSE /* emit_signal */, error);
+  if (gabble_text_mixin_send (G_OBJECT (self), type,
+          LM_MESSAGE_SUB_TYPE_GROUPCHAT, priv->jid, text, priv->conn,
+          FALSE /* emit_signal */, &error))
+    {
+      tp_svc_channel_type_text_return_from_send (context);
+    }
+  else
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+    }
 }
 
 
 static gboolean
-gabble_muc_channel_add_member (GObject *obj, TpHandle handle, const gchar *message, GError **error)
+gabble_muc_channel_add_member (TpSvcChannelInterfaceGroup *obj, TpHandle handle, const gchar *message, GError **error)
 {
   GabbleMucChannelPrivate *priv;
   TpGroupMixin *mixin;
@@ -2511,7 +2294,7 @@ kick_request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 }
 
 static gboolean
-gabble_muc_channel_remove_member (GObject *obj, TpHandle handle, const gchar *message, GError **error)
+gabble_muc_channel_remove_member (TpSvcChannelInterfaceGroup *obj, TpHandle handle, const gchar *message, GError **error)
 {
   GabbleMucChannelPrivate *priv;
   LmMessage *msg;
@@ -2550,7 +2333,7 @@ gabble_muc_channel_remove_member (GObject *obj, TpHandle handle, const gchar *me
 
   result = _gabble_connection_send_with_reply (priv->conn, msg,
                                                kick_request_reply_cb,
-                                               obj, (gpointer) jid,
+                                               (GObject *)obj, (gpointer) jid,
                                                error);
 
   lm_message_unref (msg);
@@ -2558,67 +2341,6 @@ gabble_muc_channel_remove_member (GObject *obj, TpHandle handle, const gchar *me
   return result;
 }
 
-
-/**
- * gabble_muc_channel_list_properties
- *
- * Implements D-Bus method ListProperties
- * on interface org.freedesktop.Telepathy.Properties
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_muc_channel_list_properties (GabbleMucChannel *self,
-                                    GPtrArray **ret,
-                                    GError **error)
-{
-  return tp_properties_mixin_list_properties (G_OBJECT (self), ret, error);
-}
-
-
-/**
- * gabble_muc_channel_get_properties
- *
- * Implements D-Bus method GetProperties
- * on interface org.freedesktop.Telepathy.Properties
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_muc_channel_get_properties (GabbleMucChannel *self,
-                                   const GArray *properties,
-                                   GPtrArray **ret,
-                                   GError **error)
-{
-  return tp_properties_mixin_get_properties (G_OBJECT (self), properties,
-      ret, error);
-}
-
-/**
- * gabble_muc_channel_set_properties
- *
- * Implements D-Bus method SetProperties
- * on interface org.freedesktop.Telepathy.Properties
- *
- * @context: The D-Bus invocation context to use to return values
- *           or throw an error.
- */
-void
-gabble_muc_channel_set_properties (GabbleMucChannel *self,
-                                   const GPtrArray *properties,
-                                   DBusGMethodInvocation *context)
-{
-  tp_properties_mixin_set_properties (G_OBJECT (self), properties,
-      context);
-}
 
 static LmHandlerResult request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg, LmMessage *reply_msg, GObject *object, gpointer user_data);
 
@@ -2982,3 +2704,34 @@ request_config_form_submit_reply_cb (GabbleConnection *conn, LmMessage *sent_msg
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
+
+static void
+channel_iface_init(gpointer g_iface, gpointer iface_data)
+{
+  TpSvcChannelClass *klass = (TpSvcChannelClass *)g_iface;
+
+  klass->close = gabble_muc_channel_close;
+  klass->get_channel_type = gabble_muc_channel_get_channel_type;
+  klass->get_handle = gabble_muc_channel_get_handle;
+  klass->get_interfaces = gabble_muc_channel_get_interfaces;
+}
+
+static void
+text_iface_init(gpointer g_iface, gpointer iface_data)
+{
+  TpSvcChannelTypeTextClass *klass = (TpSvcChannelTypeTextClass *)g_iface;
+
+  klass->acknowledge_pending_messages = gabble_muc_channel_acknowledge_pending_messages;
+  klass->get_message_types = gabble_muc_channel_get_message_types;
+  klass->list_pending_messages = gabble_muc_channel_list_pending_messages;
+  klass->send = gabble_muc_channel_send;
+}
+
+static void
+password_iface_init(gpointer g_iface, gpointer iface_data)
+{
+  TpSvcChannelInterfacePasswordClass *klass = (TpSvcChannelInterfacePasswordClass *)g_iface;
+
+  klass->get_password_flags = gabble_muc_channel_get_password_flags;
+  klass->provide_password = gabble_muc_channel_provide_password;
+}

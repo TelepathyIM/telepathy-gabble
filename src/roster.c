@@ -955,7 +955,7 @@ _update_group (gpointer key, gpointer value, gpointer user_data)
 #endif
 
   DEBUG ("Updating group channel %u now message has been received", group_handle);
-  tp_group_mixin_change_members (G_OBJECT (group_channel),
+  tp_group_mixin_change_members (TP_SVC_CHANNEL_INTERFACE_GROUP (group_channel),
       "", update->contacts_added, update->contacts_removed, empty, empty,
       0, 0);
 
@@ -1206,21 +1206,21 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
       /* chan was initialised to the publish channel before the for loop */
 
       DEBUG ("calling change members on publish channel");
-      tp_group_mixin_change_members (G_OBJECT (chan),
+      tp_group_mixin_change_members ((TpSvcChannelInterfaceGroup *)chan,
             "", pub_add, pub_rem, NULL, NULL, 0, 0);
 
       handle = GABBLE_LIST_HANDLE_SUBSCRIBE;
       chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle);
 
       DEBUG ("calling change members on subscribe channel");
-      tp_group_mixin_change_members (G_OBJECT (chan),
+      tp_group_mixin_change_members ((TpSvcChannelInterfaceGroup *)chan,
             "", sub_add, sub_rem, NULL, sub_rp, 0, 0);
 
       handle = GABBLE_LIST_HANDLE_KNOWN;
       chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle);
 
       DEBUG ("calling change members on known channel");
-      tp_group_mixin_change_members (G_OBJECT (chan),
+      tp_group_mixin_change_members ((TpSvcChannelInterfaceGroup *)chan,
             "", known_add, known_rem, NULL, NULL, 0, 0);
 
       DEBUG ("calling change members on any group channels");
@@ -1232,7 +1232,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
           chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle);
 
           DEBUG ("calling change members on deny channel");
-          tp_group_mixin_change_members (G_OBJECT (chan),
+          tp_group_mixin_change_members ((TpSvcChannelInterfaceGroup *)chan,
               "", deny_add, deny_rem, NULL, NULL, 0, 0);
 
           tp_intset_destroy (deny_add);
@@ -1392,7 +1392,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
 
       handle = GABBLE_LIST_HANDLE_PUBLISH;
       chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle);
-      tp_group_mixin_change_members (G_OBJECT (chan), status_message,
+      tp_group_mixin_change_members (TP_SVC_CHANNEL_INTERFACE_GROUP (chan), status_message,
           NULL, NULL, tmp, NULL, 0, 0);
 
       tp_intset_destroy (tmp);
@@ -1407,7 +1407,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
 
       handle = GABBLE_LIST_HANDLE_PUBLISH;
       chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle);
-      changed = tp_group_mixin_change_members (G_OBJECT (chan),
+      changed = tp_group_mixin_change_members (TP_SVC_CHANNEL_INTERFACE_GROUP (chan),
           status_message, NULL, tmp, NULL, NULL, 0, 0);
 
       _gabble_roster_send_presence_ack (roster, from, sub_type, changed);
@@ -1424,7 +1424,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
 
       handle = GABBLE_LIST_HANDLE_SUBSCRIBE;
       chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle);
-      changed = tp_group_mixin_change_members (G_OBJECT (chan),
+      changed = tp_group_mixin_change_members (TP_SVC_CHANNEL_INTERFACE_GROUP (chan),
           status_message, tmp, NULL, NULL, NULL, 0, 0);
 
       _gabble_roster_send_presence_ack (roster, from, sub_type, changed);
@@ -1441,7 +1441,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
 
       handle = GABBLE_LIST_HANDLE_SUBSCRIBE;
       chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle);
-      changed = tp_group_mixin_change_members (G_OBJECT (chan),
+      changed = tp_group_mixin_change_members (TP_SVC_CHANNEL_INTERFACE_GROUP (chan),
           status_message, NULL, tmp, NULL, NULL, 0, 0);
 
       _gabble_roster_send_presence_ack (roster, from, sub_type, changed);

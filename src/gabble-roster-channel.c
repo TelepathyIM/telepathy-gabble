@@ -33,25 +33,21 @@
 #include <telepathy-glib/errors.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/channel-iface.h>
+#include <telepathy-glib/svc-channel.h>
+#include <telepathy-glib/svc-channel-type-contact-list.h>
 #include "util.h"
 
 #include "gabble-roster-channel.h"
-#include "gabble-roster-channel-glue.h"
-#include "gabble-roster-channel-signals-marshal.h"
+
+static void channel_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleRosterChannel, gabble_roster_channel,
-    G_TYPE_OBJECT, G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL));
-
-/* signal enum */
-enum
-{
-    CLOSED,
-    GROUP_FLAGS_CHANGED,
-    MEMBERS_CHANGED,
-    LAST_SIGNAL
-};
-
-static guint signals[LAST_SIGNAL] = {0};
+    G_TYPE_OBJECT,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
+      tp_group_mixin_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_CONTACT_LIST, NULL);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL));
 
 /* properties */
 enum
@@ -120,13 +116,14 @@ gabble_roster_channel_constructor (GType type, guint n_props,
   g_assert (valid);
 
   /* initialize group mixin */
-  tp_group_mixin_init (obj, G_STRUCT_OFFSET (GabbleRosterChannel, group),
+  tp_group_mixin_init ((TpSvcChannelInterfaceGroup *)obj,
+      G_STRUCT_OFFSET (GabbleRosterChannel, group),
       priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT],
       self_handle);
 
   if (handle_type == TP_HANDLE_TYPE_GROUP)
     {
-      tp_group_mixin_change_flags (obj,
+      tp_group_mixin_change_flags ((TpSvcChannelInterfaceGroup *)obj,
           TP_CHANNEL_GROUP_FLAG_CAN_ADD |
           TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
           0);
@@ -138,7 +135,7 @@ gabble_roster_channel_constructor (GType type, guint n_props,
   /* magic contact lists from here down... */
   else if (GABBLE_LIST_HANDLE_PUBLISH == priv->handle)
     {
-      tp_group_mixin_change_flags (obj,
+      tp_group_mixin_change_flags ((TpSvcChannelInterfaceGroup *)obj,
           TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
           TP_CHANNEL_GROUP_FLAG_MESSAGE_ACCEPT |
           TP_CHANNEL_GROUP_FLAG_MESSAGE_REMOVE,
@@ -146,7 +143,7 @@ gabble_roster_channel_constructor (GType type, guint n_props,
     }
   else if (GABBLE_LIST_HANDLE_SUBSCRIBE == priv->handle)
     {
-      tp_group_mixin_change_flags (obj,
+      tp_group_mixin_change_flags ((TpSvcChannelInterfaceGroup *)obj,
           TP_CHANNEL_GROUP_FLAG_CAN_ADD |
           TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
           TP_CHANNEL_GROUP_FLAG_CAN_RESCIND |
@@ -157,13 +154,13 @@ gabble_roster_channel_constructor (GType type, guint n_props,
     }
   else if (GABBLE_LIST_HANDLE_KNOWN == priv->handle)
     {
-      tp_group_mixin_change_flags (obj,
+      tp_group_mixin_change_flags ((TpSvcChannelInterfaceGroup *)obj,
           TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
           0);
     }
   else if (GABBLE_LIST_HANDLE_DENY == priv->handle)
     {
-      tp_group_mixin_change_flags (obj,
+      tp_group_mixin_change_flags ((TpSvcChannelInterfaceGroup *)obj,
           TP_CHANNEL_GROUP_FLAG_CAN_ADD |
           TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
           0);
@@ -239,8 +236,8 @@ gabble_roster_channel_set_property (GObject     *object,
 static void gabble_roster_channel_dispose (GObject *object);
 static void gabble_roster_channel_finalize (GObject *object);
 
-static gboolean _gabble_roster_channel_add_member_cb (GObject *obj, TpHandle handle, const gchar *message, GError **error);
-static gboolean _gabble_roster_channel_remove_member_cb (GObject *obj, TpHandle handle, const gchar *message, GError **error);
+static gboolean _gabble_roster_channel_add_member_cb (TpSvcChannelInterfaceGroup *obj, TpHandle handle, const gchar *message, GError **error);
+static gboolean _gabble_roster_channel_remove_member_cb (TpSvcChannelInterfaceGroup *obj, TpHandle handle, const gchar *message, GError **error);
 
 static void
 gabble_roster_channel_class_init (GabbleRosterChannelClass *gabble_roster_channel_class)
@@ -273,21 +270,10 @@ gabble_roster_channel_class_init (GabbleRosterChannelClass *gabble_roster_channe
   g_object_class_override_property (object_class, PROP_HANDLE_TYPE, "handle-type");
   g_object_class_override_property (object_class, PROP_HANDLE, "handle");
 
-  signals[CLOSED] =
-    g_signal_new ("closed",
-                  G_OBJECT_CLASS_TYPE (gabble_roster_channel_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  g_cclosure_marshal_VOID__VOID,
-                  G_TYPE_NONE, 0);
-
-  tp_group_mixin_class_init (object_class,
-                                 G_STRUCT_OFFSET (GabbleRosterChannelClass, group_class),
-                                 _gabble_roster_channel_add_member_cb,
-                                 _gabble_roster_channel_remove_member_cb);
-
-  dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_roster_channel_class), &dbus_glib_gabble_roster_channel_object_info);
+  tp_group_mixin_class_init ((TpSvcChannelInterfaceGroupClass *)object_class,
+                             G_STRUCT_OFFSET (GabbleRosterChannelClass, group_class),
+                             _gabble_roster_channel_add_member_cb,
+                             _gabble_roster_channel_remove_member_cb);
 }
 
 void
@@ -301,7 +287,7 @@ gabble_roster_channel_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  g_signal_emit(self, signals[CLOSED], 0);
+  tp_svc_channel_emit_closed ((TpSvcChannel *)object);
 
   /* release any references held by the object here */
 
@@ -321,7 +307,7 @@ gabble_roster_channel_finalize (GObject *object)
 
   tp_handle_unref (priv->conn->parent.handles[priv->handle_type], priv->handle);
 
-  tp_group_mixin_finalize (object);
+  tp_group_mixin_finalize ((TpSvcChannelInterfaceGroup *)object);
 
   G_OBJECT_CLASS (gabble_roster_channel_parent_class)->finalize (object);
 }
@@ -368,7 +354,7 @@ _gabble_roster_channel_send_presence (GabbleRosterChannel *chan,
  * Called by the group mixin to add one member.
  */
 static gboolean
-_gabble_roster_channel_add_member_cb (GObject *obj,
+_gabble_roster_channel_add_member_cb (TpSvcChannelInterfaceGroup *obj,
                                       TpHandle handle,
                                       const gchar *message,
                                       GError **error)
@@ -434,7 +420,7 @@ _gabble_roster_channel_add_member_cb (GObject *obj,
  * Called by the group mixin to remove one member.
  */
 static gboolean
-_gabble_roster_channel_remove_member_cb (GObject *obj,
+_gabble_roster_channel_remove_member_cb (TpSvcChannelInterfaceGroup *obj,
                                          TpHandle handle,
                                          const gchar *message,
                                          GError **error)
@@ -511,72 +497,22 @@ _gabble_roster_channel_remove_member_cb (GObject *obj,
 
 
 /**
- * gabble_roster_channel_add_members
- *
- * Implements D-Bus method AddMembers
- * on interface org.freedesktop.Telepathy.Channel.Interface.Group
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_roster_channel_add_members (GabbleRosterChannel *self,
-                                   const GArray *contacts,
-                                   const gchar *message,
-                                   GError **error)
-{
-  return tp_group_mixin_add_members (G_OBJECT (self), contacts, message,
-      error);
-}
-
-
-/**
  * gabble_roster_channel_close
  *
  * Implements D-Bus method Close
  * on interface org.freedesktop.Telepathy.Channel
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_roster_channel_close (GabbleRosterChannel *self,
-                             GError **error)
+static void
+gabble_roster_channel_close (TpSvcChannel *iface,
+                             DBusGMethodInvocation *context)
 {
-  g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
-      "you may not close contact list channels");
+  /* FIXME: this ought to raise NotAvailable on nonempty groups, succeed
+   * on empty groups and only raise NotImplemented on lists */
 
-  return FALSE;
-}
+  GError e = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+      "you may not close contact list channels" };
 
-
-/**
- * gabble_roster_channel_get_all_members
- *
- * Implements D-Bus method GetAllMembers
- * on interface org.freedesktop.Telepathy.Channel.Interface.Group
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_roster_channel_get_all_members (GabbleRosterChannel *self,
-                                       GArray **ret,
-                                       GArray **ret1,
-                                       GArray **ret2,
-                                       GError **error)
-{
-  return tp_group_mixin_get_all_members (G_OBJECT (self), ret, ret1, ret2,
-      error);
+  dbus_g_method_return_error (context, &e);
 }
 
 
@@ -585,42 +521,13 @@ gabble_roster_channel_get_all_members (GabbleRosterChannel *self,
  *
  * Implements D-Bus method GetChannelType
  * on interface org.freedesktop.Telepathy.Channel
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_roster_channel_get_channel_type (GabbleRosterChannel *self,
-                                        gchar **ret,
-                                        GError **error)
+static void
+gabble_roster_channel_get_channel_type (TpSvcChannel *iface,
+                                        DBusGMethodInvocation *context)
 {
-  *ret = g_strdup (TP_IFACE_CHANNEL_TYPE_CONTACT_LIST);
-
-  return TRUE;
-}
-
-
-/**
- * gabble_roster_channel_get_group_flags
- *
- * Implements D-Bus method GetGroupFlags
- * on interface org.freedesktop.Telepathy.Channel.Interface.Group
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_roster_channel_get_group_flags (GabbleRosterChannel *self,
-                                       guint *ret,
-                                       GError **error)
-{
-  return tp_group_mixin_get_group_flags (G_OBJECT (self), ret, error);
+  tp_svc_channel_return_from_get_channel_type (context,
+      TP_IFACE_CHANNEL_TYPE_CONTACT_LIST);
 }
 
 
@@ -629,52 +536,20 @@ gabble_roster_channel_get_group_flags (GabbleRosterChannel *self,
  *
  * Implements D-Bus method GetHandle
  * on interface org.freedesktop.Telepathy.Channel
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_roster_channel_get_handle (GabbleRosterChannel *self,
-                                  guint *ret,
-                                  guint *ret1,
-                                  GError **error)
+static void
+gabble_roster_channel_get_handle (TpSvcChannel *iface,
+                                  DBusGMethodInvocation *context)
 {
+  GabbleRosterChannel *self = GABBLE_ROSTER_CHANNEL (iface);
   GabbleRosterChannelPrivate *priv;
 
   g_assert (GABBLE_IS_ROSTER_CHANNEL (self));
 
   priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (self);
 
-  *ret = priv->handle_type;
-  *ret1 = priv->handle;
-
-  return TRUE;
-}
-
-
-/**
- * gabble_roster_channel_get_handle_owners
- *
- * Implements D-Bus method GetHandleOwners
- * on interface org.freedesktop.Telepathy.Channel.Interface.Group
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_roster_channel_get_handle_owners (GabbleRosterChannel *self,
-                                         const GArray *handles,
-                                         GArray **ret,
-                                         GError **error)
-{
-  return tp_group_mixin_get_handle_owners (G_OBJECT (self), handles, ret,
-      error);
+  tp_svc_channel_return_from_get_handle (context, priv->handle_type,
+      priv->handle);
 }
 
 
@@ -683,131 +558,24 @@ gabble_roster_channel_get_handle_owners (GabbleRosterChannel *self,
  *
  * Implements D-Bus method GetInterfaces
  * on interface org.freedesktop.Telepathy.Channel
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_roster_channel_get_interfaces (GabbleRosterChannel *self,
-                                      gchar ***ret,
-                                      GError **error)
+static void
+gabble_roster_channel_get_interfaces (TpSvcChannel *self,
+                                      DBusGMethodInvocation *context)
 {
   const char *interfaces[] = { TP_IFACE_CHANNEL_INTERFACE_GROUP, NULL };
 
-  *ret = g_strdupv ((gchar **) interfaces);
-
-  return TRUE;
+  tp_svc_channel_return_from_get_interfaces (context, interfaces);
 }
 
 
-/**
- * gabble_roster_channel_get_local_pending_members
- *
- * Implements D-Bus method GetLocalPendingMembers
- * on interface org.freedesktop.Telepathy.Channel.Interface.Group
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_roster_channel_get_local_pending_members (GabbleRosterChannel *self,
-                                                 GArray **ret,
-                                                 GError **error)
+static void
+channel_iface_init(gpointer g_iface, gpointer iface_data)
 {
-  return tp_group_mixin_get_local_pending_members (G_OBJECT (self), ret,
-      error);
+  TpSvcChannelClass *klass = (TpSvcChannelClass *)g_iface;
+
+  klass->close = gabble_roster_channel_close;
+  klass->get_channel_type = gabble_roster_channel_get_channel_type;
+  klass->get_handle = gabble_roster_channel_get_handle;
+  klass->get_interfaces = gabble_roster_channel_get_interfaces;
 }
-
-
-/**
- * gabble_roster_channel_get_members
- *
- * Implements D-Bus method GetMembers
- * on interface org.freedesktop.Telepathy.Channel.Interface.Group
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_roster_channel_get_members (GabbleRosterChannel *self,
-                                   GArray **ret,
-                                   GError **error)
-{
-  return tp_group_mixin_get_members (G_OBJECT (self), ret, error);
-}
-
-
-/**
- * gabble_roster_channel_get_remote_pending_members
- *
- * Implements D-Bus method GetRemotePendingMembers
- * on interface org.freedesktop.Telepathy.Channel.Interface.Group
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_roster_channel_get_remote_pending_members (GabbleRosterChannel *self,
-                                                  GArray **ret,
-                                                  GError **error)
-{
-  return tp_group_mixin_get_remote_pending_members (G_OBJECT (self), ret,
-      error);
-}
-
-
-/**
- * gabble_roster_channel_get_self_handle
- *
- * Implements D-Bus method GetSelfHandle
- * on interface org.freedesktop.Telepathy.Channel.Interface.Group
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_roster_channel_get_self_handle (GabbleRosterChannel *self,
-                                       guint *ret,
-                                       GError **error)
-{
-  return tp_group_mixin_get_self_handle (G_OBJECT (self), ret, error);
-}
-
-
-/**
- * gabble_roster_channel_remove_members
- *
- * Implements D-Bus method RemoveMembers
- * on interface org.freedesktop.Telepathy.Channel.Interface.Group
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_roster_channel_remove_members (GabbleRosterChannel *self,
-                                      const GArray *contacts,
-                                      const gchar *message,
-                                      GError **error)
-{
-  return tp_group_mixin_remove_members (G_OBJECT (self), contacts, message,
-      error);
-}
-

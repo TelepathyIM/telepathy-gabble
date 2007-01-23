@@ -35,10 +35,11 @@
 #include <telepathy-glib/errors.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/channel-iface.h>
+#include <telepathy-glib/svc-channel.h>
+#include <telepathy-glib/svc-channel-type-streamed-media.h>
+#include <telepathy-glib/svc-channel-interface-media-signalling.h>
 
 #include "gabble-media-channel.h"
-#include "gabble-media-channel-signals-marshal.h"
-#include "gabble-media-channel-glue.h"
 
 #include "gabble-media-session.h"
 #include "gabble-media-stream.h"
@@ -59,23 +60,20 @@
       G_TYPE_UINT, \
       G_TYPE_INVALID))
 
+static void channel_iface_init (gpointer, gpointer);
+static void media_signalling_iface_init (gpointer, gpointer);
+static void streamed_media_iface_init (gpointer, gpointer);
+
 G_DEFINE_TYPE_WITH_CODE (GabbleMediaChannel, gabble_media_channel,
-    G_TYPE_OBJECT, G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL));
-
-/* signal enum */
-enum
-{
-    CLOSED,
-    NEW_SESSION_HANDLER,
-    STREAM_ADDED,
-    STREAM_DIRECTION_CHANGED,
-    STREAM_ERROR,
-    STREAM_REMOVED,
-    STREAM_STATE_CHANGED,
-    LAST_SIGNAL
-};
-
-static guint signals[LAST_SIGNAL] = {0};
+    G_TYPE_OBJECT,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
+      tp_group_mixin_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_MEDIA_SIGNALLING,
+      media_signalling_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_STREAMED_MEDIA,
+      streamed_media_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL));
 
 /* properties */
 enum
@@ -141,7 +139,8 @@ gabble_media_channel_constructor (GType type, guint n_props,
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
 
-  tp_group_mixin_init (obj, G_STRUCT_OFFSET (GabbleMediaChannel, group),
+  tp_group_mixin_init ((TpSvcChannelInterfaceGroup *)obj,
+      G_STRUCT_OFFSET (GabbleMediaChannel, group),
       priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT],
       priv->conn->parent.self_handle);
 
@@ -149,12 +148,14 @@ gabble_media_channel_constructor (GType type, guint n_props,
   set = tp_intset_new ();
   tp_intset_add (set, priv->creator);
 
-  tp_group_mixin_change_members (obj, "", set, NULL, NULL, NULL, 0, 0);
+  tp_group_mixin_change_members ((TpSvcChannelInterfaceGroup *)obj,
+      "", set, NULL, NULL, NULL, 0, 0);
 
   tp_intset_destroy (set);
 
   /* allow member adding */
-  tp_group_mixin_change_flags (obj, TP_CHANNEL_GROUP_FLAG_CAN_ADD, 0);
+  tp_group_mixin_change_flags ((TpSvcChannelInterfaceGroup *)obj,
+      TP_CHANNEL_GROUP_FLAG_CAN_ADD, 0);
 
   return obj;
 }
@@ -223,8 +224,8 @@ create_session (GabbleMediaChannel *channel,
 
   priv->streams = g_ptr_array_sized_new (1);
 
-  g_signal_emit (channel, signals[NEW_SESSION_HANDLER], 0,
-                 object_path, "rtp");
+  tp_svc_channel_interface_media_signalling_emit_new_session_handler (
+      (TpSvcChannelInterfaceMediaSignalling *)channel, object_path, "rtp");
 
   g_free (object_path);
 
@@ -257,16 +258,15 @@ _gabble_media_channel_dispatch_session_action (GabbleMediaChannel *chan,
       set = tp_intset_new ();
       tp_intset_add (set, mixin->self_handle);
 
-      tp_group_mixin_change_members (G_OBJECT (chan), "", NULL, NULL, set,
-          NULL, 0, 0);
+      tp_group_mixin_change_members ((TpSvcChannelInterfaceGroup *)chan,
+          "", NULL, NULL, set, NULL, 0, 0);
 
       tp_intset_destroy (set);
 
       /* and update flags accordingly */
-      tp_group_mixin_change_flags (G_OBJECT (chan),
-                                       TP_CHANNEL_GROUP_FLAG_CAN_ADD |
-                                       TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
-                                       0);
+      tp_group_mixin_change_flags ((TpSvcChannelInterfaceGroup *)chan,
+          TP_CHANNEL_GROUP_FLAG_CAN_ADD | TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
+          0);
     }
 
   g_object_ref (session);
@@ -364,7 +364,7 @@ gabble_media_channel_set_property (GObject     *object,
 
 static void gabble_media_channel_dispose (GObject *object);
 static void gabble_media_channel_finalize (GObject *object);
-static gboolean gabble_media_channel_remove_member (GObject *obj, TpHandle handle, const gchar *message, GError **error);
+static gboolean gabble_media_channel_remove_member (TpSvcChannelInterfaceGroup *obj, TpHandle handle, const gchar *message, GError **error);
 
 static void
 gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_class)
@@ -382,7 +382,7 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
   object_class->dispose = gabble_media_channel_dispose;
   object_class->finalize = gabble_media_channel_finalize;
 
-  tp_group_mixin_class_init (object_class,
+  tp_group_mixin_class_init ((TpSvcChannelInterfaceGroupClass *)object_class,
                                  G_STRUCT_OFFSET (GabbleMediaChannelClass, group_class),
                                  _gabble_media_channel_add_member,
                                  gabble_media_channel_remove_member);
@@ -420,71 +420,6 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
                                     G_PARAM_STATIC_NICK |
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_FACTORY, param_spec);
-
-  signals[CLOSED] =
-    g_signal_new ("closed",
-                  G_OBJECT_CLASS_TYPE (gabble_media_channel_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  g_cclosure_marshal_VOID__VOID,
-                  G_TYPE_NONE, 0);
-
-  signals[NEW_SESSION_HANDLER] =
-    g_signal_new ("new-session-handler",
-                  G_OBJECT_CLASS_TYPE (gabble_media_channel_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  gabble_media_channel_marshal_VOID__STRING_STRING,
-                  G_TYPE_NONE, 2, DBUS_TYPE_G_OBJECT_PATH, G_TYPE_STRING);
-
-  signals[STREAM_ADDED] =
-    g_signal_new ("stream-added",
-                  G_OBJECT_CLASS_TYPE (gabble_media_channel_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  gabble_media_channel_marshal_VOID__UINT_UINT_UINT,
-                  G_TYPE_NONE, 3, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT);
-
-  signals[STREAM_DIRECTION_CHANGED] =
-    g_signal_new ("stream-direction-changed",
-                  G_OBJECT_CLASS_TYPE (gabble_media_channel_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  gabble_media_channel_marshal_VOID__UINT_UINT_UINT,
-                  G_TYPE_NONE, 3, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT);
-
-  signals[STREAM_ERROR] =
-    g_signal_new ("stream-error",
-                  G_OBJECT_CLASS_TYPE (gabble_media_channel_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  gabble_media_channel_marshal_VOID__UINT_UINT_STRING,
-                  G_TYPE_NONE, 3, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING);
-
-  signals[STREAM_REMOVED] =
-    g_signal_new ("stream-removed",
-                  G_OBJECT_CLASS_TYPE (gabble_media_channel_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  g_cclosure_marshal_VOID__UINT,
-                  G_TYPE_NONE, 1, G_TYPE_UINT);
-
-  signals[STREAM_STATE_CHANGED] =
-    g_signal_new ("stream-state-changed",
-                  G_OBJECT_CLASS_TYPE (gabble_media_channel_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  gabble_media_channel_marshal_VOID__UINT_UINT,
-                  G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_UINT);
-
-  dbus_g_object_type_install_info (G_TYPE_FROM_CLASS (gabble_media_channel_class), &dbus_glib_gabble_media_channel_object_info);
 }
 
 void
@@ -503,7 +438,7 @@ gabble_media_channel_dispose (GObject *object)
    */
 
   if (!priv->closed)
-    gabble_media_channel_close (self, NULL);
+    gabble_media_channel_close (self);
 
   g_assert (priv->closed);
   g_assert (priv->session == NULL);
@@ -521,33 +456,9 @@ gabble_media_channel_finalize (GObject *object)
 
   g_free (priv->object_path);
 
-  tp_group_mixin_finalize (object);
+  tp_group_mixin_finalize ((TpSvcChannelInterfaceGroup *)object);
 
   G_OBJECT_CLASS (gabble_media_channel_parent_class)->finalize (object);
-}
-
-
-
-/**
- * gabble_media_channel_add_members
- *
- * Implements D-Bus method AddMembers
- * on interface org.freedesktop.Telepathy.Channel.Interface.Group
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_media_channel_add_members (GabbleMediaChannel *self,
-                                  const GArray *contacts,
-                                  const gchar *message,
-                                  GError **error)
-{
-  return tp_group_mixin_add_members (G_OBJECT (self), contacts, message,
-      error);
 }
 
 
@@ -556,16 +467,19 @@ gabble_media_channel_add_members (GabbleMediaChannel *self,
  *
  * Implements D-Bus method Close
  * on interface org.freedesktop.Telepathy.Channel
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_media_channel_close (GabbleMediaChannel *self,
-                            GError **error)
+static void
+gabble_media_channel_close_async (TpSvcChannel *iface,
+                                  DBusGMethodInvocation *context)
+{
+  GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
+
+  gabble_media_channel_close (self);
+  tp_svc_channel_return_from_close (context);
+}
+
+void
+gabble_media_channel_close (GabbleMediaChannel *self)
 {
   GabbleMediaChannelPrivate *priv;
 
@@ -576,7 +490,9 @@ gabble_media_channel_close (GabbleMediaChannel *self,
   priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
 
   if (priv->closed)
-    return TRUE;
+    {
+      return;
+    }
 
   priv->closed = TRUE;
 
@@ -585,33 +501,7 @@ gabble_media_channel_close (GabbleMediaChannel *self,
       _gabble_media_session_terminate (priv->session, INITIATOR_LOCAL, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
     }
 
-  g_signal_emit (self, signals[CLOSED], 0);
-
-  return TRUE;
-}
-
-
-/**
- * gabble_media_channel_get_all_members
- *
- * Implements D-Bus method GetAllMembers
- * on interface org.freedesktop.Telepathy.Channel.Interface.Group
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_media_channel_get_all_members (GabbleMediaChannel *self,
-                                      GArray **ret,
-                                      GArray **ret1,
-                                      GArray **ret2,
-                                      GError **error)
-{
-  return tp_group_mixin_get_all_members (G_OBJECT (self), ret, ret1, ret2,
-      error);
+  tp_svc_channel_emit_closed ((TpSvcChannel *)self);
 }
 
 
@@ -620,42 +510,13 @@ gabble_media_channel_get_all_members (GabbleMediaChannel *self,
  *
  * Implements D-Bus method GetChannelType
  * on interface org.freedesktop.Telepathy.Channel
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_media_channel_get_channel_type (GabbleMediaChannel *self,
-                                       gchar **ret,
-                                       GError **error)
+static void
+gabble_media_channel_get_channel_type (TpSvcChannel *iface,
+                                       DBusGMethodInvocation *context)
 {
-  *ret = g_strdup (TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA);
-
-  return TRUE;
-}
-
-
-/**
- * gabble_media_channel_get_group_flags
- *
- * Implements D-Bus method GetGroupFlags
- * on interface org.freedesktop.Telepathy.Channel.Interface.Group
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_media_channel_get_group_flags (GabbleMediaChannel *self,
-                                      guint *ret,
-                                      GError **error)
-{
-  return tp_group_mixin_get_group_flags (G_OBJECT (self), ret, error);
+  tp_svc_channel_return_from_get_channel_type (context,
+      TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA);
 }
 
 
@@ -664,52 +525,12 @@ gabble_media_channel_get_group_flags (GabbleMediaChannel *self,
  *
  * Implements D-Bus method GetHandle
  * on interface org.freedesktop.Telepathy.Channel
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_media_channel_get_handle (GabbleMediaChannel *self,
-                                 guint *ret,
-                                 guint *ret1,
-                                 GError **error)
+static void
+gabble_media_channel_get_handle (TpSvcChannel *iface,
+                                 DBusGMethodInvocation *context)
 {
-  GabbleMediaChannelPrivate *priv;
-
-  g_assert (GABBLE_IS_MEDIA_CHANNEL (self));
-
-  priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
-
-  *ret = 0;
-  *ret1 = 0;
-
-  return TRUE;
-}
-
-
-/**
- * gabble_media_channel_get_handle_owners
- *
- * Implements D-Bus method GetHandleOwners
- * on interface org.freedesktop.Telepathy.Channel.Interface.Group
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_media_channel_get_handle_owners (GabbleMediaChannel *self,
-                                        const GArray *handles,
-                                        GArray **ret,
-                                        GError **error)
-{
-  return tp_group_mixin_get_handle_owners (G_OBJECT (self), handles, ret,
-      error);
+  tp_svc_channel_return_from_get_handle (context, 0, 0);
 }
 
 
@@ -718,17 +539,10 @@ gabble_media_channel_get_handle_owners (GabbleMediaChannel *self,
  *
  * Implements D-Bus method GetInterfaces
  * on interface org.freedesktop.Telepathy.Channel
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_media_channel_get_interfaces (GabbleMediaChannel *self,
-                                     gchar ***ret,
-                                     GError **error)
+static void
+gabble_media_channel_get_interfaces (TpSvcChannel *iface,
+                                     DBusGMethodInvocation *context)
 {
   const gchar *interfaces[] = {
       TP_IFACE_CHANNEL_INTERFACE_GROUP,
@@ -736,95 +550,7 @@ gabble_media_channel_get_interfaces (GabbleMediaChannel *self,
       NULL
   };
 
-  *ret = g_strdupv ((gchar **) interfaces);
-
-  return TRUE;
-}
-
-
-/**
- * gabble_media_channel_get_local_pending_members
- *
- * Implements D-Bus method GetLocalPendingMembers
- * on interface org.freedesktop.Telepathy.Channel.Interface.Group
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_media_channel_get_local_pending_members (GabbleMediaChannel *self,
-                                                GArray **ret,
-                                                GError **error)
-{
-  return tp_group_mixin_get_local_pending_members (G_OBJECT (self), ret,
-      error);
-}
-
-
-/**
- * gabble_media_channel_get_members
- *
- * Implements D-Bus method GetMembers
- * on interface org.freedesktop.Telepathy.Channel.Interface.Group
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_media_channel_get_members (GabbleMediaChannel *self,
-                                  GArray **ret,
-                                  GError **error)
-{
-  return tp_group_mixin_get_members (G_OBJECT (self), ret, error);
-}
-
-
-/**
- * gabble_media_channel_get_remote_pending_members
- *
- * Implements D-Bus method GetRemotePendingMembers
- * on interface org.freedesktop.Telepathy.Channel.Interface.Group
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_media_channel_get_remote_pending_members (GabbleMediaChannel *self,
-                                                 GArray **ret,
-                                                 GError **error)
-{
-  return tp_group_mixin_get_remote_pending_members (G_OBJECT (self), ret,
-      error);
-}
-
-
-/**
- * gabble_media_channel_get_self_handle
- *
- * Implements D-Bus method GetSelfHandle
- * on interface org.freedesktop.Telepathy.Channel.Interface.Group
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_media_channel_get_self_handle (GabbleMediaChannel *self,
-                                      guint *ret,
-                                      GError **error)
-{
-  return tp_group_mixin_get_self_handle (G_OBJECT (self), ret, error);
+  tp_svc_channel_return_from_get_interfaces (context, interfaces);
 }
 
 
@@ -833,19 +559,14 @@ gabble_media_channel_get_self_handle (GabbleMediaChannel *self,
  *
  * Implements D-Bus method GetSessionHandlers
  * on interface org.freedesktop.Telepathy.Channel.Interface.MediaSignalling
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_media_channel_get_session_handlers (GabbleMediaChannel *self,
-                                           GPtrArray **ret,
-                                           GError **error)
+static void
+gabble_media_channel_get_session_handlers (TpSvcChannelInterfaceMediaSignalling *iface,
+                                           DBusGMethodInvocation *context)
 {
+  GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
   GabbleMediaChannelPrivate *priv;
+  GPtrArray *ret;
 
   g_assert (GABBLE_IS_MEDIA_CHANNEL (self));
 
@@ -873,15 +594,17 @@ gabble_media_channel_get_session_handlers (GabbleMediaChannel *self,
 
       g_free (path);
 
-      *ret = g_ptr_array_sized_new (1);
-      g_ptr_array_add (*ret, g_value_get_boxed (&handler));
+      ret = g_ptr_array_sized_new (1);
+      g_ptr_array_add (ret, g_value_get_boxed (&handler));
     }
   else
     {
-      *ret = g_ptr_array_sized_new (0);
+      ret = g_ptr_array_sized_new (0);
     }
 
-  return TRUE;
+  tp_svc_channel_interface_media_signalling_return_from_get_session_handlers (
+      context, ret);
+  g_ptr_array_free (ret, TRUE);
 }
 
 
@@ -938,19 +661,14 @@ make_stream_list (GabbleMediaChannel *self,
  *
  * Implements D-Bus method ListStreams
  * on interface org.freedesktop.Telepathy.Channel.Type.StreamedMedia
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_media_channel_list_streams (GabbleMediaChannel *self,
-                                   GPtrArray **ret,
-                                   GError **error)
+static void
+gabble_media_channel_list_streams (TpSvcChannelTypeStreamedMedia *iface,
+                                   DBusGMethodInvocation *context)
 {
+  GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
   GabbleMediaChannelPrivate *priv;
+  GPtrArray *ret;
 
   g_assert (GABBLE_IS_MEDIA_CHANNEL (self));
 
@@ -959,37 +677,15 @@ gabble_media_channel_list_streams (GabbleMediaChannel *self,
   /* no session yet? return an empty array */
   if (priv->session == NULL)
     {
-      *ret = g_ptr_array_new ();
-
-      return TRUE;
+      ret = g_ptr_array_new ();
+    }
+  else
+    {
+      ret = make_stream_list (self, priv->streams);
     }
 
-  *ret = make_stream_list (self, priv->streams);
-
-  return TRUE;
-}
-
-
-/**
- * gabble_media_channel_remove_members
- *
- * Implements D-Bus method RemoveMembers
- * on interface org.freedesktop.Telepathy.Channel.Interface.Group
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-gboolean
-gabble_media_channel_remove_members (GabbleMediaChannel *self,
-                                     const GArray *contacts,
-                                     const gchar *message,
-                                     GError **error)
-{
-  return tp_group_mixin_remove_members (G_OBJECT (self), contacts, message,
-      error);
+  tp_svc_channel_type_streamed_media_return_from_list_streams (context, ret);
+  g_ptr_array_free (ret, TRUE);
 }
 
 
@@ -1021,24 +717,21 @@ _find_stream_by_id (GabbleMediaChannel *chan, guint stream_id)
  *
  * Implements DBus method RemoveStreams
  * on interface org.freedesktop.Telepathy.Channel.Type.StreamedMedia
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occured, DBus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean gabble_media_channel_remove_streams (GabbleMediaChannel *obj, const GArray * streams, GError **error)
+static void
+gabble_media_channel_remove_streams (TpSvcChannelTypeStreamedMedia *iface,
+                                     const GArray * streams,
+                                     DBusGMethodInvocation *context)
 {
+  GabbleMediaChannel *obj = GABBLE_MEDIA_CHANNEL (iface);
   GabbleMediaChannelPrivate *priv;
   GPtrArray *stream_objs;
+  GError *error = NULL;
   guint i;
 
   g_assert (GABBLE_IS_MEDIA_CHANNEL (obj));
 
   priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (obj);
-
-  *error = NULL;
 
   stream_objs = g_ptr_array_sized_new (streams->len);
 
@@ -1054,7 +747,7 @@ gboolean gabble_media_channel_remove_streams (GabbleMediaChannel *obj, const GAr
       stream = _find_stream_by_id (obj, id);
       if (stream == NULL)
         {
-          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
               "given stream id %u does not exist", id);
           goto OUT;
         }
@@ -1083,7 +776,15 @@ gboolean gabble_media_channel_remove_streams (GabbleMediaChannel *obj, const GAr
 OUT:
   g_ptr_array_free (stream_objs, TRUE);
 
-  return (*error == NULL);
+  if (error)
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+    }
+  else
+    {
+      tp_svc_channel_type_streamed_media_return_from_remove_streams (context);
+    }
 }
 
 
@@ -1092,21 +793,17 @@ OUT:
  *
  * Implements D-Bus method RequestStreamDirection
  * on interface org.freedesktop.Telepathy.Channel.Type.StreamedMedia
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_media_channel_request_stream_direction (GabbleMediaChannel *self,
+static void
+gabble_media_channel_request_stream_direction (TpSvcChannelTypeStreamedMedia *iface,
                                                guint stream_id,
                                                guint stream_direction,
-                                               GError **error)
+                                               DBusGMethodInvocation *context)
 {
+  GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
   GabbleMediaChannelPrivate *priv;
   GabbleMediaStream *stream;
+  GError *error = NULL;
 
   g_assert (GABBLE_IS_MEDIA_CHANNEL (self));
 
@@ -1114,24 +811,37 @@ gabble_media_channel_request_stream_direction (GabbleMediaChannel *self,
 
   if (stream_direction > TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL)
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "given stream direction %u is not valid", stream_direction);
-      return FALSE;
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return;
     }
 
   stream = _find_stream_by_id (self, stream_id);
   if (stream == NULL)
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "given stream id %u does not exist", stream_id);
-      return FALSE;
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return;
     }
 
   /* streams with no session? I think not... */
   g_assert (priv->session != NULL);
 
-  return _gabble_media_session_request_stream_direction (priv->session, stream,
-      stream_direction, error);
+  if (_gabble_media_session_request_stream_direction (priv->session, stream,
+        stream_direction, &error))
+    {
+      tp_svc_channel_type_streamed_media_return_from_request_stream_direction (
+          context);
+    }
+  else
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+    }
 }
 
 
@@ -1140,56 +850,66 @@ gabble_media_channel_request_stream_direction (GabbleMediaChannel *self,
  *
  * Implements D-Bus method RequestStreams
  * on interface org.freedesktop.Telepathy.Channel.Type.StreamedMedia
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
-gboolean
-gabble_media_channel_request_streams (GabbleMediaChannel *self,
+static void
+gabble_media_channel_request_streams (TpSvcChannelTypeStreamedMedia *iface,
                                       guint contact_handle,
                                       const GArray *types,
-                                      GPtrArray **ret,
-                                      GError **error)
+                                      DBusGMethodInvocation *context)
 {
+  GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
   GabbleMediaChannelPrivate *priv;
   GPtrArray *streams;
+  GError *error = NULL;
+  GPtrArray *ret;
 
   g_assert (GABBLE_IS_MEDIA_CHANNEL (self));
 
   priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
 
   if (!tp_handle_is_valid (priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT],
-        contact_handle, error))
-    return FALSE;
+        contact_handle, &error))
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return;
+    }
 
   if (!tp_handle_set_is_member (self->group.members, contact_handle) &&
       !tp_handle_set_is_member (self->group.remote_pending, contact_handle))
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "given handle %u is not a member of the channel", contact_handle);
-      return FALSE;
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return;
     }
 
   /* if the person is a channel member, we should have a session */
   g_assert (priv->session != NULL);
 
   if (!_gabble_media_session_request_streams (priv->session, types, &streams,
-        error))
-    return FALSE;
+        &error))
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return;
+    }
 
-  *ret = make_stream_list (self, streams);
+  ret = make_stream_list (self, streams);
 
   g_ptr_array_free (streams, TRUE);
 
-  return TRUE;
+  tp_svc_channel_type_streamed_media_return_from_request_streams (context, ret);
+  g_ptr_array_free (ret, TRUE);
 }
 
 
 gboolean
-_gabble_media_channel_add_member (GObject *obj, TpHandle handle, const gchar *message, GError **error)
+_gabble_media_channel_add_member (TpSvcChannelInterfaceGroup *obj,
+                                  TpHandle handle,
+                                  const gchar *message,
+                                  GError **error)
 {
   GabbleMediaChannel *chan = GABBLE_MEDIA_CHANNEL (obj);
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
@@ -1243,9 +963,8 @@ _gabble_media_channel_add_member (GObject *obj, TpHandle handle, const gchar *me
 
       /* and update flags accordingly */
       tp_group_mixin_change_flags (obj,
-                                       TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
-                                       TP_CHANNEL_GROUP_FLAG_CAN_RESCIND,
-                                       TP_CHANNEL_GROUP_FLAG_CAN_ADD);
+          TP_CHANNEL_GROUP_FLAG_CAN_REMOVE | TP_CHANNEL_GROUP_FLAG_CAN_RESCIND,
+          TP_CHANNEL_GROUP_FLAG_CAN_ADD);
 
       return TRUE;
     }
@@ -1266,12 +985,14 @@ _gabble_media_channel_add_member (GObject *obj, TpHandle handle, const gchar *me
           set = tp_intset_new ();
           tp_intset_add (set, handle);
 
-          tp_group_mixin_change_members (obj, "", set, NULL, NULL, NULL, 0, 0);
+          tp_group_mixin_change_members (obj,
+              "", set, NULL, NULL, NULL, 0, 0);
 
           tp_intset_destroy (set);
 
           /* update flags */
-          tp_group_mixin_change_flags (obj, 0, TP_CHANNEL_GROUP_FLAG_CAN_ADD);
+          tp_group_mixin_change_flags (obj,
+              0, TP_CHANNEL_GROUP_FLAG_CAN_ADD);
 
           /* signal acceptance */
           _gabble_media_session_accept (priv->session);
@@ -1286,7 +1007,7 @@ _gabble_media_channel_add_member (GObject *obj, TpHandle handle, const gchar *me
 }
 
 static gboolean
-gabble_media_channel_remove_member (GObject *obj, TpHandle handle, const gchar *message, GError **error)
+gabble_media_channel_remove_member (TpSvcChannelInterfaceGroup *obj, TpHandle handle, const gchar *message, GError **error)
 {
   GabbleMediaChannel *chan = GABBLE_MEDIA_CHANNEL (obj);
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
@@ -1323,8 +1044,7 @@ gabble_media_channel_remove_member (GObject *obj, TpHandle handle, const gchar *
 
   /* and update flags accordingly */
   tp_group_mixin_change_flags (obj, TP_CHANNEL_GROUP_FLAG_CAN_ADD,
-                                   TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
-                                   TP_CHANNEL_GROUP_FLAG_CAN_RESCIND);
+      TP_CHANNEL_GROUP_FLAG_CAN_REMOVE | TP_CHANNEL_GROUP_FLAG_CAN_RESCIND);
 
   return TRUE;
 }
@@ -1338,7 +1058,6 @@ session_terminated_cb (GabbleMediaSession *session,
   GabbleMediaChannel *channel = (GabbleMediaChannel *) user_data;
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (channel);
   TpGroupMixin *mixin = TP_GROUP_MIXIN (channel);
-  GError *error;
   gchar *sid;
   JingleSessionState state;
   TpHandle peer;
@@ -1355,11 +1074,13 @@ session_terminated_cb (GabbleMediaSession *session,
   tp_intset_add (set, mixin->self_handle);
   tp_intset_add (set, peer);
 
-  tp_group_mixin_change_members (G_OBJECT (channel), "", NULL, set, NULL, NULL, terminator, reason);
+  tp_group_mixin_change_members ((TpSvcChannelInterfaceGroup *)channel,
+      "", NULL, set, NULL, NULL, terminator, reason);
 
   /* update flags accordingly -- allow adding, deny removal */
-  tp_group_mixin_change_flags (G_OBJECT (channel), TP_CHANNEL_GROUP_FLAG_CAN_ADD,
-                                   TP_CHANNEL_GROUP_FLAG_CAN_REMOVE);
+  tp_group_mixin_change_flags ((TpSvcChannelInterfaceGroup *)channel,
+      TP_CHANNEL_GROUP_FLAG_CAN_ADD,
+      TP_CHANNEL_GROUP_FLAG_CAN_REMOVE);
 
   /* free the session ID */
   g_object_get (priv->session, "session-id", &sid, NULL);
@@ -1383,11 +1104,7 @@ session_terminated_cb (GabbleMediaSession *session,
   priv->session = NULL;
 
   /* close the channel */
-  if (!gabble_media_channel_close (channel, &error))
-    {
-      g_warning ("%s: failed to close media channel: %s", G_STRFUNC,
-          error->message);
-    }
+  gabble_media_channel_close (channel);
 }
 
 
@@ -1418,13 +1135,13 @@ session_state_changed_cb (GabbleMediaSession *session,
   /* add the peer to the member list */
   tp_intset_add (set, peer);
 
-  tp_group_mixin_change_members (G_OBJECT (channel), "", set, NULL, NULL, NULL, 0, 0);
+  tp_group_mixin_change_members ((TpSvcChannelInterfaceGroup *)channel,
+      "", set, NULL, NULL, NULL, 0, 0);
 
   /* update flags accordingly -- allow removal, deny adding and rescinding */
-  tp_group_mixin_change_flags (G_OBJECT (channel),
+  tp_group_mixin_change_flags ((TpSvcChannelInterfaceGroup *)channel,
       TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
-      TP_CHANNEL_GROUP_FLAG_CAN_ADD |
-      TP_CHANNEL_GROUP_FLAG_CAN_RESCIND);
+      TP_CHANNEL_GROUP_FLAG_CAN_ADD | TP_CHANNEL_GROUP_FLAG_CAN_RESCIND);
 
   tp_intset_destroy (set);
 }
@@ -1438,7 +1155,8 @@ stream_close_cb (GabbleMediaStream *stream,
 
   g_object_get (stream, "id", &id, NULL);
 
-  g_signal_emit (chan, signals[STREAM_REMOVED], 0, id);
+  tp_svc_channel_type_streamed_media_emit_stream_removed (
+      (TpSvcChannelTypeStreamedMedia *)chan, id);
 
   if (priv->streams != NULL)
     {
@@ -1458,7 +1176,8 @@ stream_error_cb (GabbleMediaStream *stream,
 
   /* emit signal */
   g_object_get (stream, "id", &id, NULL);
-  g_signal_emit (chan, signals[STREAM_ERROR], 0, id, errno, message);
+  tp_svc_channel_type_streamed_media_emit_stream_error (
+      (TpSvcChannelTypeStreamedMedia *)chan, id, errno, message);
 
   /* remove stream from session */
   _gabble_media_session_remove_streams (priv->session, &stream, 1);
@@ -1474,7 +1193,8 @@ stream_state_changed_cb (GabbleMediaStream *stream,
 
   g_object_get (stream, "id", &id, "connection-state", &connection_state, NULL);
 
-  g_signal_emit (chan, signals[STREAM_STATE_CHANGED], 0, id, connection_state);
+  tp_svc_channel_type_streamed_media_emit_stream_state_changed (
+      (TpSvcChannelTypeStreamedMedia *)chan, id, connection_state);
 }
 
 static void
@@ -1495,8 +1215,8 @@ stream_direction_changed_cb (GabbleMediaStream *stream,
   direction = COMBINED_DIRECTION_GET_DIRECTION (combined);
   pending_send = COMBINED_DIRECTION_GET_PENDING_SEND (combined);
 
-  g_signal_emit (chan, signals[STREAM_DIRECTION_CHANGED], 0, id, direction,
-      pending_send);
+  tp_svc_channel_type_streamed_media_emit_stream_direction_changed (
+      (TpSvcChannelTypeStreamedMedia *)chan, id, direction, pending_send);
 }
 
 static void
@@ -1525,7 +1245,8 @@ session_stream_added_cb (GabbleMediaSession *session,
   g_object_get (session, "peer", &handle, NULL);
   g_object_get (stream, "id", &id, "media-type", &type, NULL);
 
-  g_signal_emit (chan, signals[STREAM_ADDED], 0, id, handle, type);
+  tp_svc_channel_type_streamed_media_emit_stream_added (
+      (TpSvcChannelTypeStreamedMedia *)chan, id, handle, type);
 }
 
 guint
@@ -1570,3 +1291,33 @@ _gabble_media_channel_caps_to_typeflags (GabblePresenceCapabilities caps)
   return typeflags;
 }
 
+
+static void
+channel_iface_init(gpointer g_iface, gpointer iface_data)
+{
+  TpSvcChannelClass *klass = (TpSvcChannelClass *)g_iface;
+
+  klass->close = gabble_media_channel_close_async;
+  klass->get_channel_type = gabble_media_channel_get_channel_type;
+  klass->get_handle = gabble_media_channel_get_handle;
+  klass->get_interfaces = gabble_media_channel_get_interfaces;
+}
+
+static void
+streamed_media_iface_init(gpointer g_iface, gpointer iface_data)
+{
+  TpSvcChannelTypeStreamedMediaClass *klass = (TpSvcChannelTypeStreamedMediaClass *)g_iface;
+
+  klass->list_streams = gabble_media_channel_list_streams;
+  klass->remove_streams = gabble_media_channel_remove_streams;
+  klass->request_stream_direction = gabble_media_channel_request_stream_direction;
+  klass->request_streams = gabble_media_channel_request_streams;
+}
+
+static void
+media_signalling_iface_init(gpointer g_iface, gpointer iface_data)
+{
+  TpSvcChannelInterfaceMediaSignallingClass *klass = (TpSvcChannelInterfaceMediaSignallingClass *)g_iface;
+
+  klass->get_session_handlers = gabble_media_channel_get_session_handlers;
+}

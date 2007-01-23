@@ -151,38 +151,6 @@ tp_text_mixin_class_init (GObjectClass *obj_cls, glong offset)
       GINT_TO_POINTER (offset));
 
   mixin_cls = TP_TEXT_MIXIN_CLASS (obj_cls);
-
-  mixin_cls->lost_message_signal_id = g_signal_new ("lost-message",
-                G_OBJECT_CLASS_TYPE (obj_cls),
-                G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                0,
-                NULL, NULL,
-                g_cclosure_marshal_VOID__VOID,
-                G_TYPE_NONE, 0);
-
-  mixin_cls->received_signal_id = g_signal_new ("received",
-                G_OBJECT_CLASS_TYPE (obj_cls),
-                G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                0,
-                NULL, NULL,
-                _tp_marshal_VOID__UINT_UINT_UINT_UINT_UINT_STRING,
-                G_TYPE_NONE, 6, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING);
-
-  mixin_cls->send_error_signal_id = g_signal_new ("send-error",
-                G_OBJECT_CLASS_TYPE (obj_cls),
-                G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                0,
-                NULL, NULL,
-                _tp_marshal_VOID__UINT_UINT_UINT_STRING,
-                G_TYPE_NONE, 4, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING);
-
-  mixin_cls->sent_signal_id = g_signal_new ("sent",
-                G_OBJECT_CLASS_TYPE (obj_cls),
-                G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                0,
-                NULL, NULL,
-                _tp_marshal_VOID__UINT_UINT_STRING,
-                G_TYPE_NONE, 3, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING);
 }
 
 void
@@ -290,7 +258,6 @@ tp_text_mixin_receive (GObject *obj,
                        const char *text)
 {
   TpTextMixin *mixin = TP_TEXT_MIXIN (obj);
-  TpTextMixinClass *mixin_cls = TP_TEXT_MIXIN_CLASS (G_OBJECT_GET_CLASS (obj));
 
   gchar *end;
   _PendingMessage *msg;
@@ -304,7 +271,8 @@ tp_text_mixin_receive (GObject *obj,
 
       if (!mixin->message_lost)
         {
-          g_signal_emit (obj, mixin_cls->lost_message_signal_id, 0);
+          tp_svc_channel_type_text_emit_lost_message (
+              (TpSvcChannelTypeText *)obj);
           mixin->message_lost = TRUE;
         }
 
@@ -334,7 +302,8 @@ tp_text_mixin_receive (GObject *obj,
 
       if (!mixin->message_lost)
         {
-          g_signal_emit (obj, mixin_cls->lost_message_signal_id, 0);
+          tp_svc_channel_type_text_emit_lost_message (
+              (TpSvcChannelTypeText *)obj);
           mixin->message_lost = TRUE;
         }
 
@@ -353,7 +322,7 @@ tp_text_mixin_receive (GObject *obj,
   tp_handle_ref (mixin->contacts_repo, msg->sender);
   g_queue_push_tail (mixin->pending, msg);
 
-  g_signal_emit (obj, mixin_cls->received_signal_id, 0,
+  tp_svc_channel_type_text_emit_received ((TpSvcChannelTypeText *)obj,
                  msg->id,
                  msg->timestamp,
                  msg->sender,
@@ -488,21 +457,6 @@ tp_text_mixin_list_pending_messages (GObject *obj, gboolean clear, GPtrArray ** 
   return TRUE;
 }
 
-void
-tp_text_mixin_emit_sent (GObject *obj,
-                         time_t timestamp,
-                         guint type,
-                         const char *text)
-{
-  TpTextMixinClass *mixin_cls = TP_TEXT_MIXIN_CLASS (G_OBJECT_GET_CLASS
-      (obj));
-
-  g_signal_emit (obj, mixin_cls->sent_signal_id, 0,
-                 timestamp,
-                 type,
-                 text);
-}
-
 gboolean
 tp_text_mixin_get_message_types (GObject *obj, GArray **ret, GError **error)
 {
@@ -532,16 +486,4 @@ tp_text_mixin_clear (GObject *obj)
       tp_handle_unref (mixin->contacts_repo, msg->sender);
       _pending_free (msg);
     }
-}
-
-void
-tp_text_mixin_emit_send_error (GObject *obj,
-                               TpChannelTextSendError error,
-                               time_t timestamp,
-                               TpChannelTextMessageType type,
-                               const gchar *text)
-{
-  TpTextMixinClass *mixin_cls = TP_TEXT_MIXIN_CLASS (G_OBJECT_GET_CLASS (obj));
-
-  g_signal_emit (obj, mixin_cls->send_error_signal_id, 0, error, timestamp, type, text, 0);
 }

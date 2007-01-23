@@ -327,7 +327,7 @@ media_factory_jingle_cb (LmMessageHandler *handler,
   else
     {
       if (chan_is_new)
-        gabble_media_channel_close (chan, NULL);
+        gabble_media_channel_close (chan);
 
       g_assert (error != NULL);
       _gabble_connection_send_iq_error (priv->conn, message, error->code,
@@ -599,12 +599,10 @@ gabble_media_factory_iface_request (TpChannelFactoryIface *iface,
     {
       chan = new_media_channel (fac, priv->conn->parent.self_handle);
 
-      if (!_gabble_media_channel_add_member (G_OBJECT (chan), handle, "", error))
+      if (!_gabble_media_channel_add_member (
+            TP_SVC_CHANNEL_INTERFACE_GROUP (chan), handle, "", error))
         {
-          gboolean close_ret;
-
-          close_ret = gabble_media_channel_close (chan, NULL);
-          g_assert (close_ret);
+          gabble_media_channel_close (chan);
 
           return TP_CHANNEL_FACTORY_REQUEST_STATUS_ERROR;
         }

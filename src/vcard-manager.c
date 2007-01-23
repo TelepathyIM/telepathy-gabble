@@ -321,8 +321,11 @@ cache_entry_timeout (gpointer data)
       g_hash_table_remove (priv->cache, GUINT_TO_POINTER (entry->handle));
     }
 
+  priv->cache_timer = 0;
+
   if (entry)
     {
+      DEBUG ("rescheduling reaper");
       priv->cache_timer = g_timeout_add (
           1000 * (entry->received + VCARD_CACHE_ENTRY_TTL - time(NULL)),
           cache_entry_timeout, manager);
@@ -343,6 +346,8 @@ gabble_vcard_manager_invalidate_cache (GabbleVCardManager *manager, TpHandle han
   if (!entry)
       return;
 
+  DEBUG ("called for entry %p", entry);
+
   tp_heap_remove (priv->timed_cache, entry);
 
   if (entry->message)
@@ -351,34 +356,10 @@ gabble_vcard_manager_invalidate_cache (GabbleVCardManager *manager, TpHandle han
       entry->message = NULL;
     }
     
-  if (entry->requests)
+  if (!entry->requests)
     {
-      GError *err = NULL;
-      const gchar *jid = NULL;
-
-      if (handle == priv->connection->self_handle) 
-        {
-          jid = NULL;
-        }
-      else
-        {
-          jid = gabble_handle_inspect (priv->connection->handles,
-                                       TP_HANDLE_TYPE_CONTACT, handle);
-        }
-
-      request_send (entry->requests->data, NULL, jid, &err);
-      if (err)
-        {
-          invoke_request_callback (entry->requests->data, NULL, err, FALSE);
-          delete_request (entry->requests->data);
-        }
+      g_hash_table_remove (priv->cache, GUINT_TO_POINTER (entry->handle));
     }
-  else
-    {
-      g_slist_free (entry->requests);
-      g_hash_table_remove (priv->cache, GUINT_TO_POINTER (handle));
-    }
-        
 }
 
 static void cancel_request (GabbleVCardManagerRequest *request);
@@ -399,12 +380,12 @@ gabble_vcard_manager_dispose (GObject *object)
   if (priv->cache_timer)
       g_source_remove (priv->cache_timer);
 
-  tp_heap_destroy (priv->timed_cache);
-  g_hash_table_destroy (priv->cache);
-
   /* cancel request removes the element from the list after cancelling */
   while (priv->requests)
     cancel_request (priv->requests->data);
+
+  tp_heap_destroy (priv->timed_cache);
+  g_hash_table_destroy (priv->cache);
 
   if (G_OBJECT_CLASS (gabble_vcard_manager_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_vcard_manager_parent_class)->dispose (object);
@@ -601,10 +582,13 @@ invoke_request_callback (GabbleVCardManagerRequest *request, LmMessage *msg,
   GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (manager);
   GabbleVCardCacheEntry *entry = NULL;
   LmMessageNode *vcard_node = NULL;
+  TpHandle handle = request->handle;
 
   if (cache_this && !err)
     {
-      entry = cache_entry_get (manager, request->handle);
+      entry = cache_entry_get (manager, handle);
+
+      DEBUG ("caching vcard for handle %u (entry %p)", handle, entry);
 
       g_assert (entry->message == NULL);
       entry->message = lm_message_new ("", LM_MESSAGE_TYPE_IQ);
@@ -627,7 +611,7 @@ invoke_request_callback (GabbleVCardManagerRequest *request, LmMessage *msg,
   else
     {
       /* just try to invoke callbacks */
-      entry = g_hash_table_lookup (priv->cache, GUINT_TO_POINTER (request->handle));
+      entry = g_hash_table_lookup (priv->cache, GUINT_TO_POINTER (handle));
     }
 
   if (!err && !vcard_node)
@@ -638,12 +622,19 @@ invoke_request_callback (GabbleVCardManagerRequest *request, LmMessage *msg,
       while (entry->requests)
         {
           GabbleVCardManagerRequest *req = entry->requests->data;
+
           if (req->callback)
             {
-              (req->callback)(req->manager, req, req->handle,
+              DEBUG ("invoking callback %p for pending request %p (handle %u)",
+                  req->callback, req, handle);
+              (req->callback)(req->manager, req, handle,
                                   vcard_node, err, req->user_data);
             }
           delete_request (req);
+        }
+      if (!entry->message)
+        {
+          gabble_vcard_manager_invalidate_cache (manager, handle);
         }
     }
   else
@@ -651,7 +642,9 @@ invoke_request_callback (GabbleVCardManagerRequest *request, LmMessage *msg,
 
       if (request->callback)
         {
-          (request->callback)(request->manager, request, request->handle,
+          DEBUG ("invoking callback %p for request %p (handle %u)",
+              request->callback, request, handle);
+          (request->callback)(request->manager, request, handle,
                               vcard_node, err, request->user_data);
         }
       delete_request (request);
@@ -922,7 +915,6 @@ request_reply_cb (GabbleConnection *conn,
       if (err)
         {
           invoke_request_callback (request, NULL, err, FALSE);
-          delete_request (request);
         }
       else
         {
@@ -992,7 +984,8 @@ notify_delete_request (gpointer data, GObject *obj)
 {
   GabbleVCardManagerRequest *request = (GabbleVCardManagerRequest *) data;
   request->bound_object = NULL;
-  delete_request (request);
+  /* better safe than leaking */
+  gabble_vcard_manager_invalidate_cache (request->manager, request->handle);
 }
 
 /* Request the vCard for the given handle. When it arrives, call the given
@@ -1047,10 +1040,12 @@ gabble_vcard_manager_request (GabbleVCardManager *self,
   entry = cache_entry_get (self, handle);
   if (entry->requests)
     {
+      DEBUG ("adding pending request to existing cache entry %p", entry);
       entry->requests = g_slist_prepend (entry->requests, request);
     }
   else
     {
+      DEBUG ("adding the request to new entry %p and sending the request", entry);
       entry->requests = g_slist_prepend (entry->requests, request);
       request = request_send (request, NULL, jid, error);
     }
@@ -1074,8 +1069,8 @@ gabble_vcard_manager_replace (GabbleVCardManager *self,
     timeout = DEFAULT_REQUEST_TIMEOUT;
 
   request = g_new0 (GabbleVCardManagerRequest, 1);
-  DEBUG ("Created request %p to replace my vCard",
-         request);
+  DEBUG ("Created request %p to replace my vCard, callback = %p",
+         request, callback);
   request->timeout = timeout;
   request->manager = self;
   gabble_handle_ref (priv->connection->handles, TP_HANDLE_TYPE_CONTACT,
@@ -1089,6 +1084,8 @@ gabble_vcard_manager_replace (GabbleVCardManager *self,
     g_object_weak_ref (object, notify_delete_request, request);
 
   priv->requests = g_slist_prepend (priv->requests, request);
+
+  gabble_vcard_manager_invalidate_cache (self, request->handle);
 
   return request_send (request, replacement, NULL, error);
 }

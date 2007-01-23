@@ -98,8 +98,8 @@ tp_heap_peek_first (TpHeap *heap)
     return NULL;
 }
 
-gpointer
-tp_heap_extract_first (TpHeap * heap)
+static gpointer
+extract_element (TpHeap * heap, int index)
 {
   gpointer ret;
 
@@ -109,9 +109,9 @@ tp_heap_extract_first (TpHeap * heap)
     {
       guint m = heap->data->len;
       guint i = 1, j;
-      ret = HEAP_INDEX (heap, 1);
+      ret = HEAP_INDEX (heap, index);
 
-      HEAP_INDEX (heap, 1) = HEAP_INDEX (heap, m);
+      HEAP_INDEX (heap, index) = HEAP_INDEX (heap, m);
 
       while (i * 2 <= m)
         {
@@ -142,6 +142,34 @@ tp_heap_extract_first (TpHeap * heap)
     ret = NULL;
 
   return ret;
+}
+
+void
+tp_heap_remove (TpHeap *heap, gpointer element)
+{
+    guint i;
+
+    g_return_if_fail (heap != NULL);
+
+    for (i = 1; i <= heap->data->len; i++)
+      {
+          if (element == HEAP_INDEX (heap, i))
+            {
+              extract_element (heap, i);
+              break;
+            }
+      }
+}
+
+gpointer
+tp_heap_extract_first (TpHeap * heap)
+{
+  g_return_val_if_fail (heap != NULL, NULL);
+
+  if (heap->data->len == 0)
+      return NULL;
+
+  return extract_element (heap, 1);
 }
 
 guint

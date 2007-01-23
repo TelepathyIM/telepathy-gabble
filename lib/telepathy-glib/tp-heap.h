@@ -32,6 +32,7 @@ void tp_heap_destroy (TpHeap *);
 void tp_heap_clear (TpHeap *);
 
 void tp_heap_add (TpHeap *heap, gpointer element);
+void tp_heap_remove (TpHeap *heap, gpointer element);
 gpointer tp_heap_peek_first (TpHeap *heap);
 gpointer tp_heap_extract_first (TpHeap *heap);
 

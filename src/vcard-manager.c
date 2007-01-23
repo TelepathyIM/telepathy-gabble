@@ -365,6 +365,9 @@ gabble_vcard_manager_invalidate_cache (GabbleVCardManager *manager, TpHandle han
 
   DEBUG ("called for entry %p", entry);
 
+  if (!entry)
+      return;
+
   tp_heap_remove (priv->timed_cache, entry);
 
   if (entry->message)
@@ -948,6 +951,8 @@ request_reply_cb (GabbleConnection *conn,
 
       if (entry)
         {
+          DEBUG ("entry == %p, entry->request == %p, request == %p",
+              entry, entry->request, request);
           g_assert (entry->request == request);
 
           entry->request = NULL;
@@ -1019,9 +1024,12 @@ static void
 notify_delete_request (gpointer data, GObject *obj)
 {
   GabbleVCardManagerRequest *request = (GabbleVCardManagerRequest *) data;
+  GabbleVCardManager *manager = request->manager;
+  TpHandle handle = request->handle;
+
   request->bound_object = NULL;
-  /* better safe than leaking */
-  gabble_vcard_manager_invalidate_cache (request->manager, request->handle);
+  delete_request (request);
+  cache_entry_attempt_to_free (manager, handle);
 }
 
 /* Request the vCard for the given handle. When it arrives, call the given
@@ -1089,10 +1097,11 @@ gabble_vcard_manager_request (GabbleVCardManager *self,
 
       entry->pending_requests = g_slist_prepend (entry->pending_requests, request);
       DEBUG ("adding the request to new entry %p and sending the request", entry);
-      request_send (entry->request, NULL, jid, error);
 
-      if (error)
+      if (!request_send (entry->request, NULL, jid, NULL))
         {
+          DEBUG ("some kind of error happened");
+
           delete_request (entry->request);
           entry->request = NULL;
           gabble_vcard_manager_invalidate_cache (self, entry->handle);

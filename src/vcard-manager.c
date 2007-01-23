@@ -1098,7 +1098,7 @@ gabble_vcard_manager_request (GabbleVCardManager *self,
       entry->pending_requests = g_slist_prepend (entry->pending_requests, request);
       DEBUG ("adding the request to new entry %p and sending the request", entry);
 
-      if (!request_send (entry->request, NULL, jid, NULL))
+      if (!request_send (entry->request, NULL, jid, error))
         {
           DEBUG ("some kind of error happened");
 

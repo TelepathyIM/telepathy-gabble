@@ -2170,14 +2170,16 @@ construct_presence_hash (GabbleConnection *self,
           status_message = NULL;
         }
 
-      message = g_new0 (GValue, 1);
-      g_value_init (message, G_TYPE_STRING);
-      g_value_set_static_string (message, status_message);
-
       parameters = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
           (GDestroyNotify) destroy_the_bastard);
+      if (status_message != NULL) {
+        message = g_new0 (GValue, 1);
+        g_value_init (message, G_TYPE_STRING);
+        g_value_set_static_string (message, status_message);
 
-      g_hash_table_insert (parameters, "message", message);
+
+        g_hash_table_insert (parameters, "message", message);
+      }
 
       contact_status = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
           (GDestroyNotify) g_hash_table_destroy);

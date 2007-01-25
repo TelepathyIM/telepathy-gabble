@@ -3216,10 +3216,10 @@ gabble_connection_get_interfaces (TpSvcConnection *iface,
                                   DBusGMethodInvocation *context)
 {
   const char *interfaces[] = {
-      TP_IFACE_CONN_INTERFACE_ALIASING,
-      TP_IFACE_CONN_INTERFACE_CAPABILITIES,
-      TP_IFACE_CONN_INTERFACE_PRESENCE,
-      TP_IFACE_CONN_INTERFACE_AVATARS,
+      TP_IFACE_CONNECTION_INTERFACE_ALIASING,
+      TP_IFACE_CONNECTION_INTERFACE_CAPABILITIES,
+      TP_IFACE_CONNECTION_INTERFACE_PRESENCE,
+      TP_IFACE_CONNECTION_INTERFACE_AVATARS,
       TP_IFACE_PROPERTIES_INTERFACE,
       NULL };
   GabbleConnection *self = GABBLE_CONNECTION (iface);

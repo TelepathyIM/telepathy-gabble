@@ -18,9 +18,19 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#include <stdlib.h>
-#include <dbus/dbus-glib.h>
 #include <telepathy-glib/dbus.h>
+
+#include <stdlib.h>
+
+#include <telepathy-glib/errors.h>
+
+void
+tp_dbus_g_method_return_not_implemented (DBusGMethodInvocation *context)
+{
+  GError e = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED, "Not implemented" };
+
+  dbus_g_method_return_error (context, &e);
+}
 
 DBusGConnection *
 tp_get_bus ()

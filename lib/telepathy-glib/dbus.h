@@ -28,8 +28,9 @@
 
 G_BEGIN_DECLS
 
-DBusGConnection * tp_get_bus ();
-DBusGProxy * tp_get_bus_proxy ();
+void tp_dbus_g_method_return_not_implemented (DBusGMethodInvocation *);
+DBusGConnection * tp_get_bus (void);
+DBusGProxy * tp_get_bus_proxy (void);
 
 G_END_DECLS
 

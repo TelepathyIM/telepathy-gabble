@@ -140,23 +140,6 @@ connection_disconnected_cb (TpBaseConnection        *conn,
     }
 }
 
-static void
-tp_base_connection_manager_get_parameters (TpSvcConnectionManager *self,
-                                           const gchar *proto,
-                                           DBusGMethodInvocation *context)
-{
-  GError error = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED, "Not implemented" };
-  dbus_g_method_return_error(context, &error);
-}
-
-static void
-tp_base_connection_manager_list_protocols (TpSvcConnectionManager *self,
-                                           DBusGMethodInvocation *context)
-{
-  GError error = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED, "Not implemented" };
-  dbus_g_method_return_error(context, &error);
-}
-
 /**
  * tp_base_connection_manager_request_connection
  *
@@ -277,8 +260,6 @@ service_iface_init(gpointer g_iface, gpointer iface_data)
 
 #define IMPLEMENT(x) tp_svc_connection_manager_implement_##x (klass, \
     tp_base_connection_manager_##x)
-  IMPLEMENT(get_parameters);
-  IMPLEMENT(list_protocols);
   IMPLEMENT(request_connection);
 #undef IMPLEMENT
 }

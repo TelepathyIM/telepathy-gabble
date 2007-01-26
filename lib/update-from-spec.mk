@@ -4,10 +4,8 @@
 
 TELEPATHY_SPEC = $(CURDIR)/../../../telepathy-spec
 
-# Exclude ChannelInterfaceDTMF for now, it causes odd behaviour in the
-# camel-case-to-lower-case algorithms and we don't need it yet.
-
 INTERFACES = \
+	     ChannelInterfaceDTMF \
 	     ChannelInterfaceGroup \
 	     ChannelInterfaceHold \
 	     ChannelInterfaceMediaSignalling \

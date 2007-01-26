@@ -408,21 +408,12 @@ gabble_im_channel_send (TpSvcChannelTypeText *iface,
 {
   GabbleIMChannel *self = GABBLE_IM_CHANNEL (iface);
   GabbleIMChannelPrivate *priv;
-  GError *error = NULL;
 
   g_assert (GABBLE_IS_IM_CHANNEL (self));
   priv = GABBLE_IM_CHANNEL_GET_PRIVATE (self);
 
-  if (gabble_text_mixin_send (G_OBJECT (self), type, 0, priv->peer_jid,
-      text, priv->conn, TRUE /* emit_signal */, &error))
-    {
-      tp_svc_channel_type_text_return_from_send (context);
-    }
-  else
-    {
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-    }
+  gabble_text_mixin_send (G_OBJECT (self), type, 0, priv->peer_jid,
+      text, priv->conn, TRUE /* emit_signal */, context);
 }
 
 

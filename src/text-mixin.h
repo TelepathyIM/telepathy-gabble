@@ -27,7 +27,10 @@
 
 G_BEGIN_DECLS
 
-gboolean gabble_text_mixin_send (GObject *obj, guint type, guint subtype, const char * recipient, const gchar * text, GabbleConnection *conn, gboolean emit_signal, GError **error);
+void gabble_text_mixin_send (GObject *obj, guint type, guint subtype,
+    const char *recipient, const gchar *text, GabbleConnection *conn,
+    gboolean emit_signal, DBusGMethodInvocation *context);
+
 gboolean gabble_text_mixin_parse_incoming_message (LmMessage *message, const gchar **from, time_t *stamp, TpChannelTextMessageType *msgtype, const gchar **body, const gchar **body_offset, TpChannelTextSendError *send_error);
 
 G_END_DECLS

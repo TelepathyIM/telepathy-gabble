@@ -45,33 +45,44 @@
 /**
  * gabble_text_mixin_send
  *
- * Implements D-Bus method Send
- * on interface org.freedesktop.Telepathy.Channel.Type.Text
+ * Indirectly, implements D-Bus method Send
+ * on interface org.freedesktop.Telepathy.Channel.Type.Text.
  *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns false.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
+ * @param type The Telepathy message type
+ * @param subtype The Loudmouth message subtype
+ * @param recipient The recipient's JID
+ * @param text The text of the message
+ * @param conn The Connection
+ * @param emit_signal If true, emit Sent; if false, assume we'll get an
+ *                    echo of the message and will emit Sent at that point
+ * @param context The D-Bus method invocation context
  */
-gboolean gabble_text_mixin_send (GObject *obj, guint type, guint subtype,
-                                 const char *recipient, const gchar *text,
-                                 GabbleConnection *conn, gboolean emit_signal,
-                                 GError **error)
+void
+gabble_text_mixin_send (GObject *obj,
+                        guint type,
+                        guint subtype,
+                        const char *recipient,
+                        const gchar *text,
+                        GabbleConnection *conn,
+                        gboolean emit_signal,
+                        DBusGMethodInvocation *context)
 {
   TpTextMixin *mixin = TP_TEXT_MIXIN (obj);
   LmMessage *msg;
   gboolean result;
   time_t timestamp;
+  GError *error;
 
   if (type > TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE)
     {
       DEBUG ("invalid message type %u", type);
 
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "invalid message type: %u", type);
 
-      return FALSE;
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return;
     }
 
   if (!subtype)
@@ -108,11 +119,15 @@ gboolean gabble_text_mixin_send (GObject *obj, guint type, guint subtype,
       lm_message_node_add_child (msg->node, "body", text);
     }
 
-  result = _gabble_connection_send (conn, msg, error);
+  result = _gabble_connection_send (conn, msg, &error);
   lm_message_unref (msg);
 
   if (!result)
-    return FALSE;
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return;
+    }
 
   if (emit_signal)
     {
@@ -122,7 +137,7 @@ gboolean gabble_text_mixin_send (GObject *obj, guint type, guint subtype,
           timestamp, type, text);
     }
 
-  return TRUE;
+  tp_svc_channel_type_text_return_from_send (context);
 }
 
 gboolean

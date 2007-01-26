@@ -2071,23 +2071,14 @@ gabble_muc_channel_send (TpSvcChannelTypeText *iface,
 {
   GabbleMucChannel *self = GABBLE_MUC_CHANNEL (iface);
   GabbleMucChannelPrivate *priv;
-  GError *error = NULL;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (self));
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
 
-  if (gabble_text_mixin_send (G_OBJECT (self), type,
+  gabble_text_mixin_send (G_OBJECT (self), type,
           LM_MESSAGE_SUB_TYPE_GROUPCHAT, priv->jid, text, priv->conn,
-          FALSE /* emit_signal */, &error))
-    {
-      tp_svc_channel_type_text_return_from_send (context);
-    }
-  else
-    {
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-    }
+          FALSE /* emit_signal */, context);
 }
 
 

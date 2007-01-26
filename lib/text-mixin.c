@@ -555,8 +555,11 @@ tp_text_mixin_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcChannelTypeTextClass *klass = (TpSvcChannelTypeTextClass *)g_iface;
 
-  klass->acknowledge_pending_messages = tp_text_mixin_acknowledge_pending_messages_async;
-  klass->get_message_types = tp_text_mixin_get_message_types_async;
-  klass->list_pending_messages = tp_text_mixin_list_pending_messages_async;
-  klass->send = NULL; /* tp_text_mixin_send_async; */
+#define IMPLEMENT(x) tp_svc_channel_type_text_implement_##x (klass,\
+    tp_text_mixin_##x##_async)
+  IMPLEMENT(acknowledge_pending_messages);
+  IMPLEMENT(get_message_types);
+  IMPLEMENT(list_pending_messages);
+  /* send not implemented here */
+#undef IMPLEMENT
 }

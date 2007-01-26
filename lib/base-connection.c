@@ -1052,16 +1052,20 @@ service_iface_init(gpointer g_iface, gpointer iface_data)
 {
   TpSvcConnectionClass *klass = (TpSvcConnectionClass *)g_iface;
 
-  klass->connect = NULL; /* tp_base_connection_connect; */
-  klass->disconnect = NULL; /* tp_base_connection_disconnect; */
-  klass->get_interfaces = NULL; /* tp_base_connection_get_interfaces; */
-  klass->get_protocol = tp_base_connection_get_protocol;
-  klass->get_self_handle = tp_base_connection_get_self_handle;
-  klass->get_status = tp_base_connection_get_status;
-  klass->hold_handles = tp_base_connection_hold_handles;
-  klass->inspect_handles = tp_base_connection_inspect_handles;
-  klass->list_channels = tp_base_connection_list_channels;
-  klass->request_channel = tp_base_connection_request_channel;
-  klass->release_handles = tp_base_connection_release_handles;
-  klass->request_handles = NULL; /* tp_base_connection_request_handles; */
+  tp_svc_connection_implement_get_protocol (klass,
+      tp_base_connection_get_protocol);
+  tp_svc_connection_implement_get_self_handle (klass,
+      tp_base_connection_get_self_handle);
+  tp_svc_connection_implement_get_status (klass,
+      tp_base_connection_get_status);
+  tp_svc_connection_implement_hold_handles (klass,
+      tp_base_connection_hold_handles);
+  tp_svc_connection_implement_inspect_handles (klass,
+      tp_base_connection_inspect_handles);
+  tp_svc_connection_implement_list_channels (klass,
+      tp_base_connection_list_channels);
+  tp_svc_connection_implement_request_channel (klass,
+      tp_base_connection_request_channel);
+  tp_svc_connection_implement_release_handles (klass,
+      tp_base_connection_release_handles);
 }

@@ -275,7 +275,10 @@ service_iface_init(gpointer g_iface, gpointer iface_data)
 {
   TpSvcConnectionManagerClass *klass = (TpSvcConnectionManagerClass *)g_iface;
 
-  klass->get_parameters = tp_base_connection_manager_get_parameters;
-  klass->list_protocols = tp_base_connection_manager_list_protocols;
-  klass->request_connection = tp_base_connection_manager_request_connection;
+#define IMPLEMENT(x) tp_svc_connection_manager_implement_##x (klass, \
+    tp_base_connection_manager_##x)
+  IMPLEMENT(get_parameters);
+  IMPLEMENT(list_protocols);
+  IMPLEMENT(request_connection);
+#undef IMPLEMENT
 }

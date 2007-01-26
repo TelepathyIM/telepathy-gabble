@@ -884,7 +884,9 @@ tp_properties_mixin_iface_init(gpointer g_iface, gpointer iface_data)
 {
   TpSvcPropertiesInterfaceClass *klass = (TpSvcPropertiesInterfaceClass *)g_iface;
 
-  klass->get_properties = get_properties;
-  klass->list_properties = list_properties;
-  klass->set_properties = set_properties;
+#define IMPLEMENT(x) tp_svc_properties_interface_implement_##x (klass, x)
+  IMPLEMENT(get_properties);
+  IMPLEMENT(list_properties);
+  IMPLEMENT(set_properties);
+#undef IMPLEMENT
 }

@@ -906,13 +906,16 @@ void tp_group_mixin_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcChannelInterfaceGroupClass *klass = (TpSvcChannelInterfaceGroupClass *)g_iface;
 
-  klass->add_members = tp_group_mixin_add_members_async;
-  klass->get_all_members = tp_group_mixin_get_all_members_async;
-  klass->get_group_flags = tp_group_mixin_get_group_flags_async;
-  klass->get_handle_owners = tp_group_mixin_get_handle_owners_async;
-  klass->get_local_pending_members = tp_group_mixin_get_local_pending_members_async;
-  klass->get_members = tp_group_mixin_get_members_async;
-  klass->get_remote_pending_members = tp_group_mixin_get_remote_pending_members_async;
-  klass->get_self_handle = tp_group_mixin_get_self_handle_async;
-  klass->remove_members = tp_group_mixin_remove_members_async;
+#define IMPLEMENT(x) tp_svc_channel_interface_group_implement_##x (klass,\
+    tp_group_mixin_##x##_async)
+  IMPLEMENT(add_members);
+  IMPLEMENT(get_all_members);
+  IMPLEMENT(get_group_flags);
+  IMPLEMENT(get_handle_owners);
+  IMPLEMENT(get_local_pending_members);
+  IMPLEMENT(get_members);
+  IMPLEMENT(get_remote_pending_members);
+  IMPLEMENT(get_self_handle);
+  IMPLEMENT(remove_members);
+#undef IMPLEMENT
 }

@@ -431,10 +431,13 @@ channel_iface_init(gpointer g_iface, gpointer iface_data)
 {
   TpSvcChannelClass *klass = (TpSvcChannelClass *)g_iface;
 
-  klass->close = gabble_im_channel_close;
-  klass->get_channel_type = gabble_im_channel_get_channel_type;
-  klass->get_handle = gabble_im_channel_get_handle;
-  klass->get_interfaces = gabble_im_channel_get_interfaces;
+#define IMPLEMENT(x) tp_svc_channel_implement_##x (\
+    klass, gabble_im_channel_##x)
+  IMPLEMENT(close);
+  IMPLEMENT(get_channel_type);
+  IMPLEMENT(get_handle);
+  IMPLEMENT(get_interfaces);
+#undef IMPLEMENT
 }
 
 static void
@@ -443,5 +446,8 @@ text_iface_init(gpointer g_iface, gpointer iface_data)
   TpSvcChannelTypeTextClass *klass = (TpSvcChannelTypeTextClass *)g_iface;
 
   tp_text_mixin_iface_init (g_iface, iface_data);
-  klass->send = gabble_im_channel_send;
+#define IMPLEMENT(x) tp_svc_channel_type_text_implement_##x (\
+    klass, gabble_im_channel_##x)
+  IMPLEMENT(send);
+#undef IMPLEMENT
 }

@@ -4653,10 +4653,13 @@ conn_service_iface_init(gpointer g_iface, gpointer iface_data)
 {
   TpSvcConnectionClass *klass = (TpSvcConnectionClass *)g_iface;
 
-  klass->connect = gabble_connection_connect;
-  klass->disconnect = gabble_connection_disconnect;
-  klass->get_interfaces = gabble_connection_get_interfaces;
-  klass->request_handles = gabble_connection_request_handles;
+#define IMPLEMENT(x) tp_svc_connection_implement_##x (klass, \
+    gabble_connection_##x)
+  IMPLEMENT(connect);
+  IMPLEMENT(disconnect);
+  IMPLEMENT(get_interfaces);
+  IMPLEMENT(request_handles);
+#undef IMPLEMENT
 }
 
 static void
@@ -4664,9 +4667,12 @@ aliasing_service_iface_init(gpointer g_iface, gpointer iface_data)
 {
   TpSvcConnectionInterfaceAliasingClass *klass = (TpSvcConnectionInterfaceAliasingClass *)g_iface;
 
-  klass->get_alias_flags = gabble_connection_get_alias_flags;
-  klass->request_aliases = gabble_connection_request_aliases;
-  klass->set_aliases = gabble_connection_set_aliases;
+#define IMPLEMENT(x) tp_svc_connection_interface_aliasing_implement_##x (\
+    klass, gabble_connection_##x)
+  IMPLEMENT(get_alias_flags);
+  IMPLEMENT(request_aliases);
+  IMPLEMENT(set_aliases);
+#undef IMPLEMENT
 }
 
 static void
@@ -4674,10 +4680,13 @@ avatars_service_iface_init(gpointer g_iface, gpointer iface_data)
 {
   TpSvcConnectionInterfaceAvatarsClass *klass = (TpSvcConnectionInterfaceAvatarsClass *)g_iface;
 
-  klass->get_avatar_requirements = gabble_connection_get_avatar_requirements;
-  klass->get_avatar_tokens = gabble_connection_get_avatar_tokens;
-  klass->request_avatar = gabble_connection_request_avatar;
-  klass->set_avatar = gabble_connection_set_avatar;
+#define IMPLEMENT(x) tp_svc_connection_interface_avatars_implement_##x (\
+    klass, gabble_connection_##x)
+  IMPLEMENT(get_avatar_requirements);
+  IMPLEMENT(get_avatar_tokens);
+  IMPLEMENT(request_avatar);
+  IMPLEMENT(set_avatar);
+#undef IMPLEMENT
 }
 
 static void
@@ -4685,8 +4694,11 @@ capabilities_service_iface_init(gpointer g_iface, gpointer iface_data)
 {
   TpSvcConnectionInterfaceCapabilitiesClass *klass = (TpSvcConnectionInterfaceCapabilitiesClass *)g_iface;
 
-  klass->advertise_capabilities = gabble_connection_advertise_capabilities;
-  klass->get_capabilities = gabble_connection_get_capabilities;
+#define IMPLEMENT(x) tp_svc_connection_interface_capabilities_implement_##x (\
+    klass, gabble_connection_##x)
+  IMPLEMENT(advertise_capabilities);
+  IMPLEMENT(get_capabilities);
+#undef IMPLEMENT
 }
 
 static void
@@ -4694,12 +4706,15 @@ presence_service_iface_init(gpointer g_iface, gpointer iface_data)
 {
   TpSvcConnectionInterfacePresenceClass *klass = (TpSvcConnectionInterfacePresenceClass *)g_iface;
 
-  klass->add_status = gabble_connection_add_status;
-  klass->clear_status = gabble_connection_clear_status;
-  klass->get_presence = gabble_connection_get_presence;
-  klass->get_statuses = gabble_connection_get_statuses;
-  klass->remove_status = gabble_connection_remove_status;
-  klass->request_presence = gabble_connection_request_presence;
-  klass->set_last_activity_time = gabble_connection_set_last_activity_time;
-  klass->set_status = gabble_connection_set_status;
+#define IMPLEMENT(x) tp_svc_connection_interface_presence_implement_##x (\
+    klass, gabble_connection_##x)
+  IMPLEMENT(add_status);
+  IMPLEMENT(clear_status);
+  IMPLEMENT(get_presence);
+  IMPLEMENT(get_statuses);
+  IMPLEMENT(remove_status);
+  IMPLEMENT(request_presence);
+  IMPLEMENT(set_last_activity_time);
+  IMPLEMENT(set_status);
+#undef IMPLEMENT
 }

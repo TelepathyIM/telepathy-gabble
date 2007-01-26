@@ -2901,6 +2901,9 @@ session_handler_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcMediaSessionHandlerClass *klass = (TpSvcMediaSessionHandlerClass *)g_iface;
 
-  klass->error = gabble_media_session_error;
-  klass->ready = gabble_media_session_ready;
+#define IMPLEMENT(x) tp_svc_media_session_handler_implement_##x (\
+    klass, gabble_media_session_##x)
+  IMPLEMENT(error);
+  IMPLEMENT(ready);
+#undef IMPLEMENT
 }

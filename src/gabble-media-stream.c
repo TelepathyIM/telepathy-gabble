@@ -1701,13 +1701,16 @@ stream_handler_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcMediaStreamHandlerClass *klass = (TpSvcMediaStreamHandlerClass *)g_iface;
 
-  klass->codec_choice = gabble_media_stream_codec_choice;
-  klass->error = gabble_media_stream_error_async;
-  klass->native_candidates_prepared = gabble_media_stream_native_candidates_prepared;
-  klass->new_active_candidate_pair = gabble_media_stream_new_active_candidate_pair;
-  klass->new_native_candidate = gabble_media_stream_new_native_candidate;
-  klass->ready = gabble_media_stream_ready;
-  klass->set_local_codecs = gabble_media_stream_set_local_codecs;
-  klass->stream_state = gabble_media_stream_stream_state;
-  klass->supported_codecs = gabble_media_stream_supported_codecs;
+#define IMPLEMENT(x,suffix) tp_svc_media_stream_handler_implement_##x (\
+    klass, gabble_media_stream_##x##suffix)
+  IMPLEMENT(codec_choice,);
+  IMPLEMENT(error,_async);
+  IMPLEMENT(native_candidates_prepared,);
+  IMPLEMENT(new_active_candidate_pair,);
+  IMPLEMENT(new_native_candidate,);
+  IMPLEMENT(ready,);
+  IMPLEMENT(set_local_codecs,);
+  IMPLEMENT(stream_state,);
+  IMPLEMENT(supported_codecs,);
+#undef IMPLEMENT
 }

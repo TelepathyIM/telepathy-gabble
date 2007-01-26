@@ -1297,10 +1297,13 @@ channel_iface_init(gpointer g_iface, gpointer iface_data)
 {
   TpSvcChannelClass *klass = (TpSvcChannelClass *)g_iface;
 
-  klass->close = gabble_media_channel_close_async;
-  klass->get_channel_type = gabble_media_channel_get_channel_type;
-  klass->get_handle = gabble_media_channel_get_handle;
-  klass->get_interfaces = gabble_media_channel_get_interfaces;
+#define IMPLEMENT(x, suffix) tp_svc_channel_implement_##x (\
+    klass, gabble_media_channel_##x##suffix)
+  IMPLEMENT(close,_async);
+  IMPLEMENT(get_channel_type,);
+  IMPLEMENT(get_handle,);
+  IMPLEMENT(get_interfaces,);
+#undef IMPLEMENT
 }
 
 static void
@@ -1308,10 +1311,13 @@ streamed_media_iface_init(gpointer g_iface, gpointer iface_data)
 {
   TpSvcChannelTypeStreamedMediaClass *klass = (TpSvcChannelTypeStreamedMediaClass *)g_iface;
 
-  klass->list_streams = gabble_media_channel_list_streams;
-  klass->remove_streams = gabble_media_channel_remove_streams;
-  klass->request_stream_direction = gabble_media_channel_request_stream_direction;
-  klass->request_streams = gabble_media_channel_request_streams;
+#define IMPLEMENT(x) tp_svc_channel_type_streamed_media_implement_##x (\
+    klass, gabble_media_channel_##x)
+  IMPLEMENT(list_streams);
+  IMPLEMENT(remove_streams);
+  IMPLEMENT(request_stream_direction);
+  IMPLEMENT(request_streams);
+#undef IMPLEMENT
 }
 
 static void
@@ -1319,5 +1325,8 @@ media_signalling_iface_init(gpointer g_iface, gpointer iface_data)
 {
   TpSvcChannelInterfaceMediaSignallingClass *klass = (TpSvcChannelInterfaceMediaSignallingClass *)g_iface;
 
-  klass->get_session_handlers = gabble_media_channel_get_session_handlers;
+#define IMPLEMENT(x) tp_svc_channel_interface_media_signalling_implement_##x (\
+    klass, gabble_media_channel_##x)
+  IMPLEMENT(get_session_handlers);
+#undef IMPLEMENT
 }

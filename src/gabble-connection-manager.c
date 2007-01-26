@@ -520,6 +520,9 @@ cm_service_iface_init(gpointer g_iface, gpointer iface_data)
 {
   TpSvcConnectionManagerClass *klass = (TpSvcConnectionManagerClass *)g_iface;
 
-  klass->get_parameters = gabble_connection_manager_get_parameters;
-  klass->list_protocols = gabble_connection_manager_list_protocols;
+#define IMPLEMENT(x) tp_svc_connection_manager_implement_##x (klass, \
+    gabble_connection_manager_##x)
+  IMPLEMENT(get_parameters); 
+  IMPLEMENT(list_protocols);
+#undef IMPLEMENT
 }

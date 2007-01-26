@@ -604,8 +604,11 @@ channel_iface_init(gpointer g_iface, gpointer iface_data)
 {
   TpSvcChannelClass *klass = (TpSvcChannelClass *)g_iface;
 
-  klass->close = gabble_roster_channel_close;
-  klass->get_channel_type = gabble_roster_channel_get_channel_type;
-  klass->get_handle = gabble_roster_channel_get_handle;
-  klass->get_interfaces = gabble_roster_channel_get_interfaces;
+#define IMPLEMENT(x) tp_svc_channel_implement_##x (\
+    klass, gabble_roster_channel_##x)
+  IMPLEMENT(close);
+  IMPLEMENT(get_channel_type);
+  IMPLEMENT(get_handle);
+  IMPLEMENT(get_interfaces);
+#undef IMPLEMENT
 }

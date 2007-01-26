@@ -642,10 +642,13 @@ channel_iface_init(gpointer g_iface, gpointer iface_data)
 {
   TpSvcChannelClass *klass = (TpSvcChannelClass *)g_iface;
 
-  klass->close = gabble_roomlist_channel_close;
-  klass->get_channel_type = gabble_roomlist_channel_get_channel_type;
-  klass->get_handle = gabble_roomlist_channel_get_handle;
-  klass->get_interfaces = gabble_roomlist_channel_get_interfaces;
+#define IMPLEMENT(x) tp_svc_channel_implement_##x (\
+    klass, gabble_roomlist_channel_##x)
+  IMPLEMENT(close);
+  IMPLEMENT(get_channel_type);
+  IMPLEMENT(get_handle);
+  IMPLEMENT(get_interfaces);
+#undef IMPLEMENT
 }
 
 static void
@@ -653,6 +656,9 @@ roomlist_iface_init(gpointer g_iface, gpointer iface_data)
 {
   TpSvcChannelTypeRoomListClass *klass = (TpSvcChannelTypeRoomListClass *)g_iface;
 
-  klass->get_listing_rooms = gabble_roomlist_channel_get_listing_rooms;
-  klass->list_rooms = gabble_roomlist_channel_list_rooms;
+#define IMPLEMENT(x) tp_svc_channel_type_room_list_implement_##x (\
+    klass, gabble_roomlist_channel_##x)
+  IMPLEMENT(get_listing_rooms);
+  IMPLEMENT(list_rooms);
+#undef IMPLEMENT
 }

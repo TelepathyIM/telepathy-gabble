@@ -281,6 +281,7 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   gabble_text_mixin_set_message_types (obj,
       TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL,
       TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION,
+      TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE,
       G_MAXUINT);
 
   /* add ourselves to group mixin if needed */

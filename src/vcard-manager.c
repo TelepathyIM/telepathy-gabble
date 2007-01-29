@@ -28,7 +28,9 @@
 #include "gabble-connection.h"
 #include "handles.h"
 #include "namespaces.h"
-#include <telepathy-glib/helpers.h>
+#include <telepathy-glib/dbus.h>
+#include <telepathy-glib/heap.h>
+#include "handles.h"
 #include "util.h"
 #include "vcard-manager.h"
 

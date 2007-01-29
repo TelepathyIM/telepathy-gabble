@@ -51,7 +51,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
 <xi:include href="Media_Session_Handler.xml"/>
 <xi:include href="Media_Stream_Handler.xml"/>
 
-<xi:include href="Properties.xml"/>
+<xi:include href="Properties_Interface.xml"/>
 
 <xi:include href="errors.xml"/>
 

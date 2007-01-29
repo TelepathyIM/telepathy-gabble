@@ -1,0 +1,37 @@
+<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
+  xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0"
+  exclude-result-prefixes="tp">
+
+  <xsl:output method="text" indent="no" encoding="ascii"/>
+
+  <xsl:template match="tp:error">
+    /* <xsl:value-of select="concat(../@namespace, '.', translate(@name, ' ', ''))"/>
+<xsl:value-of select="tp:docstring"/> */
+<xsl:text>    TP_ERROR_</xsl:text><xsl:value-of select="translate(@name, 'abcdefghijklmnopqrstuvwxyz .', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ__')"/>,
+</xsl:template>
+
+  <xsl:template match="text()"/>
+
+  <xsl:template match="/tp:errors">/* Generated from the Telepathy spec
+
+<xsl:for-each select="tp:copyright">
+<xsl:value-of select="."/><xsl:text>
+</xsl:text></xsl:for-each><xsl:text>
+</xsl:text><xsl:value-of select="tp:license"/>
+*/
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef enum {
+<xsl:apply-templates select="tp:error"/>} TpError;
+
+#ifdef __cplusplus
+}
+#endif
+</xsl:template>
+
+</xsl:stylesheet>
+
+<!-- vim:set sw=2 sts=2 et noai noci: -->

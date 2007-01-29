@@ -1,0 +1,243 @@
+<?xml version="1.0" ?>
+<node name="/Connection_Manager" xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+  <tp:copyright>Copyright (C) 2005, 2006 Collabora Limited</tp:copyright>
+  <tp:copyright>Copyright (C) 2005, 2006 Nokia Corporation</tp:copyright>
+  <tp:copyright>Copyright (C) 2006 INdT</tp:copyright>
+  <tp:license xmlns="http://www.w3.org/1999/xhtml">
+    <p>This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.</p>
+
+<p>This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Library General Public License for more details.</p>
+
+<p>You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
+  </tp:license>
+  <interface name="org.freedesktop.Telepathy.ConnectionManager">
+    <tp:flags name="Conn_Mgr_Param_Flags" value-prefix="Conn_Mgr_Param_Flag">
+      <tp:flag suffix="Required" value="1">
+        <tp:docstring>
+          This parameter is required for connecting to the server.
+        </tp:docstring>
+      </tp:flag>
+      <tp:flag suffix="Register" value="2">
+        <tp:docstring>
+          This parameter is required for registering an account on the
+          server.
+        </tp:docstring>
+      </tp:flag>
+      <tp:flag suffix="Has_Default" value="4">
+        <tp:docstring>
+          This parameter has a default value, which is returned in
+          GetParameters; not providing this parameter is equivalent to
+          providing the default.
+        </tp:docstring>
+      </tp:flag>
+    </tp:flags>
+    <method name="GetParameters">
+      <arg direction="in" name="proto" type="s">
+        <tp:docstring>
+          The required protocol name
+        </tp:docstring>
+      </arg>
+      <arg direction="out" type="a(susv)">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          An array of structs containing:
+          <ul>
+            <li>a string parameter name</li>
+            <li>a bitwise OR of the parameter flags (as defined above)</li>
+            <li>a string D-Bus type signature</li>
+            <li>a variant boxed default value (if the HAS_DEFAULT flag is not
+            present, there is no default and this takes some dummy value)</li>
+          </ul>
+        </tp:docstring>
+      </arg>
+      <tp:docstring>
+        Get a list of the parameters which must or may be provided to the
+        RequestConnection method when connecting to the given protocol,
+        or registering (the boolean &quot;register&quot; parameter is available,
+        and set to true).
+      </tp:docstring>
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.NotImplemented">
+          The requested protocol is not supported by this manager
+        </tp:error>
+      </tp:possible-errors>
+    </method>
+    <method name="ListProtocols">
+      <arg direction="out" type="as">
+        <tp:docstring>
+          A array of string protocol identifiers supported by this manager
+        </tp:docstring>
+      </arg>
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+        Get a list of protocol identifiers that are implemented by this
+        connection manager. The following well-known values should be used
+        when applicable:
+        <ul>
+          <li>aim - AOL Instant Messenger</li>
+          <li>gadugadu - Gadu-Gadu</li>
+          <li>groupwise - Novell Groupwise</li>
+          <li>icq - ICQ</li>
+          <li>irc - Internet Relay Chat</li>
+          <li>jabber - Jabber (XMPP)</li>
+          <li>msn - MSN Messenger</li>
+          <li>napster - Napster</li>
+          <li>silc - SILC</li>
+          <li>sip - Session Initiation Protocol (SIP)</li>
+          <li>trepia - Trepia</li>
+          <li>yahoo - Yahoo! Messenger</li>
+          <li>zephyr - Zephyr</li>
+       </ul>
+      </tp:docstring>
+    </method>
+    <signal name="NewConnection">
+      <arg name="bus_name" type="s">
+        <tp:docstring>
+          The D-Bus service where the connection object can be found
+        </tp:docstring>
+      </arg>
+      <arg name="object_path" type="o">
+        <tp:docstring>
+          The object path of the Connection object on this service
+        </tp:docstring>
+      </arg>
+      <arg name="proto" type="s">
+        <tp:docstring>
+          The identifier for the protocol this connection uses
+        </tp:docstring>
+      </arg>
+      <tp:docstring>
+        Emitted when a new Connection object is created.
+      </tp:docstring>
+    </signal>
+    <method name="RequestConnection">
+      <arg direction="in" name="proto" type="s">
+        <tp:docstring>
+          The protocol identifier
+        </tp:docstring>
+      </arg>
+      <arg direction="in" name="parameters" type="a{sv}">
+        <tp:docstring>
+          A dictionary mapping parameter name to the variant boxed value
+        </tp:docstring>
+      </arg>
+      <arg direction="out" type="s">
+        <tp:docstring>
+          A D-Bus service name where the new Connection object can be found
+        </tp:docstring>
+      </arg>
+      <arg direction="out" type="o">
+        <tp:docstring>
+          The D-Bus object path to the Connection on this service
+        </tp:docstring>
+      </arg>
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+        <p>Request a Connection object representing a given account on a given
+        protocol with the given parameters. The method returns the bus name
+        and the object path where the new Connection object can be found, which
+        should have the status of CONNECTION_STATUS_DISCONNECTED, to allow
+        signal handlers to be attached before connecting is started with the
+        Connect method.</p>
+
+        <p>In order to allow Connection objects to be discovered by new clients,
+        the object path and bus name must be of the form:</p>
+        <pre>/org/freedesktop/Telepathy/Connection/manager/proto/account</pre>
+        <p>And:</p>
+        <pre>org.freedesktop.Telepathy.Connection.manager.proto.account</pre>
+        <p>Where manager and proto are the identifiers for this manager and this
+        protocol, and account is a series of elements formed such that any
+        valid distinct connection instance on this protocol has a distinct
+        name. This might be formed by including the server name followed by the
+        user name, or on protocols where connecting multiple times is
+        permissable, a per-connection identifier is also necessary to ensure
+        uniqueness.</p>
+
+        <p>The parameters which must and may be provided in the parameters
+        dictionary can be discovered with the GetParameters method. These
+        parameters, their types, and their default values may be cached
+        in files so that all available connection managers do not need to be
+        started to discover which protocols are available.</p>
+
+        <p>To request values for these parameters from the user, a client must
+        have prior knowledge of the meaning of the parameter names, so the
+        following well-known names and types should be used where appropriate:</p>
+
+        <dl>
+          <dt>s:account</dt>
+          <dd>The identifier for the user's account on the server</dd>
+
+          <dt>s:server</dt><dd>A fully qualified domain name or numeric IPv4 or IPv6
+        address. Using the fully-qualified domain name form is recommended
+        whenever possible. If this parameter is specified and the account
+        for that protocol also specifies a server, this parameter should
+        override that in the user id.</dd>
+
+      <dt>q:port</dt><dd>A TCP or UDP port number. If this parameter is specified
+        and the account for that protocol also specifies a port, this
+        parameter should override that in the account.</dd>
+
+      <dt>s:password</dt><dd>A password associated with the account.</dd>
+
+      <dt>b:require-encryption</dt><dd>Require encryption for this connection. A
+        connection should fail to connect if require-encryption is set
+        and an encrypted connection is not possible.</dd>
+
+      <dt>b:register</dt><dd>This account should be created on the server if it
+        does not already exist.</dd>
+
+      <dt>s:ident</dt><dd>The local username to report to the server if
+        necessary, such as in IRC.</dd>
+
+      <dt>s:fullname</dt><dd>The user's full name if the service requires this
+        when authenticating or registering.</dd>
+        </dl>
+
+        <p>Every successful RequestConnection call will cause the emission of a
+        NewConnection signal for the same newly created connection. The
+        requester can use the returned object path and service name
+        independently of the emission of that signal. In that case this signal
+        emission is most useful for, e.g. other processes that are monitoring
+        the creation of new connections.</p>
+      </tp:docstring>
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.NetworkError"/>
+        <tp:error name="org.freedesktop.Telepathy.Error.NotImplemented">
+          The requested protocol is not supported by this manager
+        </tp:error>
+        <tp:error name="org.freedesktop.Telepathy.Error.NotAvailable">
+          The requested connection already appears to exist
+        </tp:error>
+        <tp:error name="org.freedesktop.Telepathy.Error.InvalidArgument">
+          Unrecognised connection parameters
+        </tp:error>
+      </tp:possible-errors>
+    </method>
+    <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+    <p>A D-Bus service which allows connections to be created. The manager
+    processes are intended to be started by D-Bus service activation.  The
+    names of these services, the protocols they support, and the parameters
+    understood by that protocol are intended to be discovered by reading files
+    on disk which are provided along with the connection manager. These are
+    documented elsewhere.</p>
+
+    <p>Once a connection manager service has been activated, the object
+    path of the manager object implementing this interface is always
+     /org/freedesktop/Telepathy/ConnectionManager/name
+     Where name is the identifier for the connection manager.</p>
+
+    <p>It is not required that a connection manager be able to support multiple
+    protocols, or even multiple connections. When a connection is made, a
+    service name where the connection object can be found is returned. A
+    manager which can only make one connection may then remove itself from its
+    well-known bus name, causing a new connection manager to be activated when
+    somebody attempts to make a new connection.</p>
+    </tp:docstring>
+  </interface>
+</node>
+<!-- vim:set sw=2 sts=2 et ft=xml: -->

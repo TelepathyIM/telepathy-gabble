@@ -279,8 +279,6 @@ cache_entry_free (void *data)
   gabble_handle_unref (priv->connection->handles, TP_HANDLE_TYPE_CONTACT,
       entry->handle);
 
-  DEBUG ("cache entry %p (handle %u) freed", entry, entry->handle);
-
   g_free (entry);
 }
 
@@ -302,8 +300,6 @@ cache_entry_get (GabbleVCardManager *manager, TpHandle handle)
       TP_HANDLE_TYPE_CONTACT, handle);
   g_hash_table_insert (priv->cache, GUINT_TO_POINTER (handle), entry);
 
-  DEBUG ("new cache entry %p (handle %u) created", entry, handle);
-
   return entry;
 }
 
@@ -314,7 +310,6 @@ cache_entry_timeout (gpointer data)
   GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (manager);
   GabbleVCardCacheEntry *entry;
 
-  DEBUG ("time to reap some cache items");
   time_t now = time(NULL);
 
   while (NULL != (entry = tp_heap_peek_first (priv->timed_cache)))
@@ -332,11 +327,11 @@ cache_entry_timeout (gpointer data)
 
   if (entry)
     {
-      DEBUG ("rescheduling reaper");
       priv->cache_timer = g_timeout_add (
           1000 * (entry->received + VCARD_CACHE_ENTRY_TTL - time(NULL)),
           cache_entry_timeout, manager);
     }
+
   return FALSE;
 }
 
@@ -350,8 +345,6 @@ cache_entry_attempt_to_free (GabbleVCardManager *manager, TpHandle handle)
   if (!entry || entry->message || entry->pending_requests)
       return;
 
-  DEBUG ("releasing cache entry %p (handle %u)", entry, handle);
-
   tp_heap_remove (priv->timed_cache, entry);
 
   g_hash_table_remove (priv->cache, GUINT_TO_POINTER (entry->handle));
@@ -363,8 +356,6 @@ gabble_vcard_manager_invalidate_cache (GabbleVCardManager *manager, TpHandle han
   GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (manager);
   GabbleVCardCacheEntry *entry = g_hash_table_lookup (priv->cache, GUINT_TO_POINTER (handle));
 
-  DEBUG ("called for entry %p", entry);
-
   if (!entry)
       return;
 
@@ -375,7 +366,7 @@ gabble_vcard_manager_invalidate_cache (GabbleVCardManager *manager, TpHandle han
       lm_message_unref (entry->message);
       entry->message = NULL;
     }
-    
+
   cache_entry_attempt_to_free (manager, handle);
 }
 
@@ -388,8 +379,6 @@ cache_entry_fill (GabbleVCardManager *manager, LmMessage *msg, TpHandle handle)
   /* the upstream request should be finished by now */
   g_assert (entry->request == NULL);
 
-  DEBUG ("caching vcard for handle %u (entry %p)", handle, entry);
-
   g_assert (entry->message == NULL);
   entry->message = lm_message_new ("", LM_MESSAGE_TYPE_IQ);
   lm_message_node_steal_children (entry->message->node, msg->node);
@@ -399,7 +388,6 @@ cache_entry_fill (GabbleVCardManager *manager, LmMessage *msg, TpHandle handle)
   if (priv->cache_timer == 0)
     {
       GabbleVCardCacheEntry *first = tp_heap_peek_first (priv->timed_cache);
-      DEBUG ("scheduling new cache timeout timer for %p", first);
       priv->cache_timer = g_timeout_add ((first->received +
           VCARD_CACHE_ENTRY_TTL - time(NULL)) * 1000, cache_entry_timeout, manager);
     }

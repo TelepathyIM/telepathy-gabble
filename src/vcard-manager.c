@@ -32,7 +32,7 @@
 #include "handles.h"
 #include "namespaces.h"
 #include <telepathy-glib/helpers.h>
-#include <telepathy-glib/tp-heap.h>
+#include <telepathy-glib/heap.h>
 #include "handles.h"
 #include "util.h"
 #include "vcard-manager.h"

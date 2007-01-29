@@ -26,7 +26,6 @@
 #include <telepathy-glib/debug-ansi.h>
 #include <telepathy-glib/errors.h>
 #include "telepathy-glib/group-mixin.h"
-#include <telepathy-glib/svc-channel-interface-group.h>
 
 #define DEBUG_FLAG TP_DEBUG_GROUPS
 

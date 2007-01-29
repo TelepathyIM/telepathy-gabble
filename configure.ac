@@ -117,6 +117,16 @@ AC_CHECK_PROGS([XSLTPROC], [xsltproc])
 if test -z "$XSLTPROC"; then
   AC_MSG_ERROR([xsltproc (from the libxslt source package) is required])
 fi
+DBUS_BINDING_TOOL=
+AC_CHECK_PROGS([DBUS_BINDING_TOOL], [dbus-binding-tool])
+if test -z "$DBUS_BINDING_TOOL"; then
+  AC_MSG_ERROR([dbus-binding-tool (from dbus-glib) is required])
+fi
+PYTHON=
+AC_CHECK_PROGS([PYTHON], [python2.4 python2.5 python])
+if test -z "$PYTHON"; then
+  AC_MSG_ERROR([Python is required to compile this package])
+fi
 
 dnl Check for Loudmouth
 AC_ARG_ENABLE(loudmouth-versioning,
@@ -146,7 +156,6 @@ AC_CHECK_HEADERS(signal.h)
 
 AC_OUTPUT( Makefile \
 	   lib/Makefile \
-	   lib/_spec/Makefile \
            src/Makefile \
            m4/Makefile \
            data/Makefile \

@@ -24,7 +24,7 @@
 #define __TP_GROUP_MIXIN_H__
 
 #include <telepathy-glib/handle-repo.h>
-#include <telepathy-glib/svc-channel-interface-group.h>
+#include <telepathy-glib/svc-channel.h>
 #include <telepathy-glib/util.h>
 
 G_BEGIN_DECLS

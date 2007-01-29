@@ -22,7 +22,7 @@
 #define __TP_TEXT_MIXIN_H__
 
 #include <telepathy-glib/handle-repo.h>
-#include <telepathy-glib/svc-channel-type-text.h>
+#include <telepathy-glib/svc-channel.h>
 #include "util.h"
 
 G_BEGIN_DECLS

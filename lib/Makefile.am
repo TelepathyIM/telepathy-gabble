@@ -4,23 +4,45 @@
 install:
 	@echo Not installing headers until telepathy-glib is stable
 
-SUBDIRS = _spec
-
-.PHONY: maintainer-update-from-spec
-maintainer-update-from-spec:
-	@test z. = z$(srcdir) || \
-		{ echo "maintainer-update-from-spec doesn't work in an"\
-		"out of tree build"; \
-		exit 1; }
-	$(MAKE) -C _spec -f ../update-from-spec.mk
-
 tpgincludedir=$(includedir)/telepathy-1.0/telepathy-glib
-specincludedir=$(tpgincludedir)/_spec
 genincludedir=$(tpgincludedir)/_gen
+
+# This is a derived file but must be checked-in to Darcs anyway.
+spec-gen.am: Makefile.am spec/all.xml $(SPEC_INTERFACE_XMLS) \
+	tools/ls-interfaces.xsl
+	$(XSLTPROC) $(XSLTPROCFLAGS) --xinclude \
+		$(srcdir)/tools/ls-interfaces.xsl \
+		$(srcdir)/spec/all.xml > spec-gen.tmp
+	@echo Interfaces to be generated are:
+	@cat spec-gen.tmp ; echo
+	@echo end of interfaces list
+	(\
+	echo SPEC_INTERFACES = `cat spec-gen.tmp` && \
+	echo SPEC_INTERFACE_XMLS = `sed -e 's,[A-Za-z_][A-Za-z_]*,spec/&.xml,g' spec-gen.tmp` && \
+	echo SPEC_GENERATED_CS = `sed -e 's,[A-Za-z_][A-Za-z_]*,_gen/svc-&.c,g' spec-gen.tmp` && \
+	echo SPEC_GENERATED_HS = `sed -e 's,[A-Za-z_][A-Za-z_]*,_gen/svc-&.h,g' spec-gen.tmp` && \
+	echo SPEC_GLUE_HS = `sed -e 's,[A-Za-z_][A-Za-z_]*,_gen/svc-&-glue.h,g' spec-gen.tmp` && \
+	echo SPEC_COPIED_HS = `sed -e 's,[A-Za-z_][A-Za-z_]*,telepathy-glib/_gen/svc-&.h,g' spec-gen.tmp` && \
+	echo SPEC_GENERATED_LISTS = `sed -e 's,[A-Za-z_][A-Za-z_]*,_gen/svc-&-signals-marshal.list,g' spec-gen.tmp` \
+	) > spec-gen.am
+	rm -f spec-gen.tmp
+
+include spec-gen.am
+
+SPEC_GENERATED_SOURCES = $(SPEC_GENERATED_CS) $(SPEC_GENERATED_HS) \
+			 $(SPEC_GENERATED_LISTS) $(SPEC_GLUE_HS) \
+			 $(SPEC_COPIED_HS)
 
 noinst_LTLIBRARIES = libtelepathy-glib.la
 
-libtelepathy_glib_la_LIBADD = _spec/libtelepathy-glib-_spec.la
+TESTS = check_self_contained
+
+check_PROGRAMS = check_self_contained
+check_self_contained_SOURCES = _gen/main.c
+check_self_contained_LDADD = $(noinst_LTLIBRARIES)
+
+_gen/main.c: Makefile.in
+	echo 'int main (void) { return 0; }' > $@
 
 tpginclude_HEADERS = \
     telepathy-glib/base-connection.h \
@@ -47,13 +69,16 @@ tpginclude_HEADERS = \
 nodist_libtelepathy_glib_la_SOURCES = \
     _gen/signals-marshal.c \
     _gen/signals-marshal.h \
-    _gen/enumtypes-spec-telepathy-errors.c
+    _gen/signals-marshal.list \
+    _gen/enumtypes-spec-telepathy-errors.c \
+    $(SPEC_GENERATED_SOURCES)
 
 nodist_geninclude_HEADERS = \
     telepathy-glib/_gen/telepathy-enums.h \
     telepathy-glib/_gen/telepathy-interfaces.h \
     telepathy-glib/_gen/telepathy-errors.h \
-    telepathy-glib/_gen/enumtypes-spec-telepathy-errors.h
+    telepathy-glib/_gen/enumtypes-spec-telepathy-errors.h \
+    $(SPEC_COPIED_HS)
 
 BUILT_SOURCES = $(nodist_geninclude_HEADERS) \
 		$(nodist_libtelepathy_glib_la_SOURCES)
@@ -80,53 +105,76 @@ libtelepathy_glib_la_SOURCES = \
     text-mixin.c \
     util.c
 
-AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @HANDLE_LEAK_DEBUG_CFLAGS@ -I$(srcdir)/_spec
+AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @HANDLE_LEAK_DEBUG_CFLAGS@
 AM_LDFLAGS = @DBUS_LIBS@ @GLIB_LIBS@
-
-include spec.am
 
 # Generated stuff
 
-XSLTPROCFLAGS = --nonet
+DROP_NAMESPACE = sed -e 's@xmlns:tp="http://telepathy\.freedesktop\.org/wiki/DbusSpec.extensions-v0"@@g'
+XSLTPROCFLAGS = --nonet --novalid
+
+_gen/.exists:
+	$(INSTALL) -d _gen
+	touch $@
+telepathy-glib/_gen/.exists:
+	$(INSTALL) -d telepathy-glib/_gen
+	touch $@
 
 telepathy-glib/_gen/telepathy-enums.h: spec/all.xml \
-	$(SPEC_INTERFACE_XMLS) tools/c-constants-generator.xsl
-	$(INSTALL) -d telepathy-glib/_gen
+	$(SPEC_INTERFACE_XMLS) tools/c-constants-generator.xsl \
+	telepathy-glib/_gen/.exists
 	$(XSLTPROC) --xinclude $(XSLTPROCFLAGS) tools/c-constants-generator.xsl \
 		spec/all.xml > $@
 
 telepathy-glib/_gen/telepathy-interfaces.h: spec/all.xml \
-	$(SPEC_INTERFACE_XMLS) tools/c-interfaces-generator.xsl
-	$(INSTALL) -d telepathy-glib/_gen
+	$(SPEC_INTERFACE_XMLS) tools/c-interfaces-generator.xsl \
+	telepathy-glib/_gen/.exists
 	$(XSLTPROC) --xinclude $(XSLTPROCFLAGS) tools/c-interfaces-generator.xsl \
 		spec/all.xml > $@
 
 telepathy-glib/_gen/telepathy-errors.h: spec/errors.xml \
-	tools/c-errors-enum-generator.xsl
-	$(INSTALL) -d telepathy-glib/_gen
+	tools/c-errors-enum-generator.xsl telepathy-glib/_gen/.exists
 	$(XSLTPROC) $(XSLTPROCFLAGS) tools/c-errors-enum-generator.xsl \
 		$< > $@
 
-_gen/signals-marshal.h: signals-marshal.list
-	$(INSTALL) -d _gen
-	glib-genmarshal --header --prefix=_tp_marshal $< > $@
+_gen/%.xml: spec/%.xml tools/spec-to-introspect.xsl telepathy-glib/_gen/.exists
+	$(XSLTPROC) $(XSLTPROCFLAGS) tools/spec-to-introspect.xsl $< \
+		| $(DROP_NAMESPACE) > $@
 
-_gen/signals-marshal.c: signals-marshal.list
-	$(INSTALL) -d _gen
-	glib-genmarshal --body --prefix=_tp_marshal $< > $@
+_gen/async-%.xml: _gen/%.xml tools/make-all-async.xsl _gen/.exists
+	$(XSLTPROC) $(XSLTPROCFLAGS) tools/make-all-async.xsl $< > $@
 
-_gen/enumtypes-spec-%.c: telepathy-glib/_gen/%.h Makefile.in
-	$(INSTALL) -d _gen
+_gen/svc-%-glue.h: _gen/async-%.xml _gen/.exists
+	$(DBUS_BINDING_TOOL) --mode=glib-server --output=$@ \
+		--prefix=tp_svc_`echo $* | tr A-Z a-z` $<
+
+_gen/svc-%.c _gen/svc-%.h: spec/%.xml tools/genginterface.py
+	$(PYTHON) $(srcdir)/tools/genginterface.py $< \
+	TpSvc`echo $* | tr -d _` _gen/svc-$* _tp
+
+telepathy-glib/_gen/svc-%.h: _gen/svc-%.h
+	cp $< $@
+
+_gen/signals-marshal.list: signals-marshal.list $(SPEC_GENERATED_LISTS)
+	sort $^ | uniq > $@
+
+_gen/signals-marshal.h: _gen/signals-marshal.list _gen/.exists
+	$(GLIB_GENMARSHAL) --header --prefix=_tp_marshal $< > $@
+
+_gen/signals-marshal.c: _gen/signals-marshal.list _gen/.exists
+	$(GLIB_GENMARSHAL) --body --prefix=_tp_marshal $< > $@
+
+_gen/enumtypes-spec-%.c: telepathy-glib/_gen/%.h Makefile.in _gen/.exists
 	glib-mkenums \
-	--fhead "#include <telepathy-glib/_spec/$*.h>\n#include <telepathy-glib/_gen/enumtypes-spec-$*.h>" \
+	--fhead "#include <telepathy-glib/_gen/$*.h>\n#include <telepathy-glib/_gen/enumtypes-spec-$*.h>" \
 	--fprod "\n/* enumerations from \"@filename@\" */" \
 	--vhead "GType\n@enum_name@_get_type (void)\n{\n  static GType etype = 0;\n  if (etype == 0) {\n    static const G@Type@Value values[] = {"     \
 	--vprod "      { @VALUENAME@, \"@VALUENAME@\", \"@VALUENAME@\" }," \
 	--vtail "      { 0, NULL, NULL }\n    };\n    etype = g_@type@_register_static (\"@EnumName@\", values);\n  }\n  return etype;\n}\n" \
         $< > $@
 
-telepathy-glib/_gen/enumtypes-spec-%.h: telepathy-glib/_gen/%.h Makefile.in
-	$(INSTALL) -d telepathy-glib/_gen
+telepathy-glib/_gen/enumtypes-spec-%.h: telepathy-glib/_gen/%.h Makefile.in \
+	telepathy-glib/_gen/.exists
 	glib-mkenums \
 	--fhead "#ifndef __$(shell echo $* | tr [:lower:]- [:upper:]_)_ENUM_TYPES_H__\n#define __$(shell echo $* | tr [:lower:]- [:upper:]_)_ENUM_TYPES_H__\n\n#include <glib-object.h>\n\nG_BEGIN_DECLS\n" \
 	--fprod "/* enumerations from \"@filename@\" */\n" \

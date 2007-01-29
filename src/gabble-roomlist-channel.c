@@ -34,7 +34,6 @@
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/channel-iface.h>
 #include <telepathy-glib/svc-channel.h>
-#include <telepathy-glib/svc-channel-type-room-list.h>
 #include "namespaces.h"
 #include "util.h"
 

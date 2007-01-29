@@ -40,9 +40,6 @@
 #include <telepathy-glib/errors.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/channel-iface.h>
-#include <telepathy-glib/svc-channel.h>
-#include <telepathy-glib/svc-channel-type-text.h>
-#include <telepathy-glib/svc-channel-interface-password.h>
 
 #include "gabble-muc-channel.h"
 

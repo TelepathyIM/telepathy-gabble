@@ -39,7 +39,7 @@
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/enums.h>
 #include <telepathy-glib/errors.h>
-#include <telepathy-glib/svc-media-stream-handler.h>
+#include <telepathy-glib/svc-media-interfaces.h>
 
 #include "gabble-media-stream.h"
 #include "gabble-signals-marshal.h"

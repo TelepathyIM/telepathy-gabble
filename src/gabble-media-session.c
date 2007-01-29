@@ -35,7 +35,7 @@
 
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/errors.h>
-#include <telepathy-glib/svc-media-session-handler.h>
+#include <telepathy-glib/svc-media-interfaces.h>
 
 #include "gabble-connection.h"
 #include "gabble-media-channel.h"

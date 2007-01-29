@@ -34,7 +34,6 @@
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/channel-iface.h>
 #include <telepathy-glib/svc-channel.h>
-#include <telepathy-glib/svc-channel-type-contact-list.h>
 #include "util.h"
 
 #include "gabble-roster-channel.h"

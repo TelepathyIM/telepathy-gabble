@@ -40,10 +40,6 @@
 #include <telepathy-glib/channel-factory-iface.h>
 
 #include <telepathy-glib/svc-connection.h>
-#include <telepathy-glib/svc-connection-interface-aliasing.h>
-#include <telepathy-glib/svc-connection-interface-avatars.h>
-#include <telepathy-glib/svc-connection-interface-capabilities.h>
-#include <telepathy-glib/svc-connection-interface-presence.h>
 #include <telepathy-glib/svc-properties-interface.h>
 
 #include "gabble-connection.h"

@@ -65,6 +65,7 @@
 ^data/org.freedesktop.Telepathy.ConnectionManager.gabble.service$
 ^src/telepathy-gabble$
 ^lib/_gen($|/)
+^lib/check_self_contained$
 ^lib/telepathy-glib/_gen($|/)
 ^src/write-mgr-file$
 ^tests/test-base64$

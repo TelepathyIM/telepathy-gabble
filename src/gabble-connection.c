@@ -890,20 +890,12 @@ gabble_connection_dispose (GObject *object)
 
   DEBUG ("called");
 
-  g_assert ((self->status == TP_CONNECTION_STATUS_DISCONNECTED) ||
-            (self->status == GABBLE_TP_CONNECTION_STATUS_NEW));
-  g_assert (self->self_handle == 0);
+  g_assert ((self->parent.status == TP_CONNECTION_STATUS_DISCONNECTED) ||
+            (self->parent.status == TP_INTERNAL_CONNECTION_STATUS_NEW));
+  g_assert (self->parent.self_handle == 0);
 
-  if (priv->channel_requests)
-    {
-      g_assert (priv->channel_requests->len == 0);
-      g_ptr_array_free (priv->channel_requests, TRUE);
-      priv->channel_requests = NULL;
-    }
-
-  g_ptr_array_foreach (priv->channel_factories, (GFunc) g_object_unref, NULL);
-  g_ptr_array_free (priv->channel_factories, TRUE);
-  priv->channel_factories = NULL;
+  g_object_unref (self->vcard_manager);
+  self->vcard_manager = NULL;
 
   /* unreffing channel factories frees the roster */
   self->roster = NULL;
@@ -1771,7 +1763,9 @@ connection_avatar_update_cb (GabblePresenceCache *cache,
 
   g_assert (presence != NULL);
 
-  if (handle == conn->self_handle)
+  gabble_vcard_manager_invalidate_cache (conn->vcard_manager, handle);
+
+  if (handle == conn->parent.self_handle)
     update_own_avatar_sha1 (conn, presence->avatar_sha1, NULL);
   else
     g_signal_emit (conn, signals[AVATAR_UPDATED], 0, handle, presence->avatar_sha1);
@@ -4710,8 +4704,11 @@ gabble_connection_set_avatar (GabbleConnection *self,
   ctx->avatar = g_string_new_len (avatar->data, avatar->len);
   ctx->mime_type = g_strdup (mime_type);
 
-  gabble_vcard_manager_request (self->vcard_manager, self->self_handle, 0,
-      _set_avatar_cb1, ctx, NULL, NULL);
+  DEBUG ("called");
+  gabble_vcard_manager_invalidate_cache (self->vcard_manager,
+      self->parent.self_handle);
+  gabble_vcard_manager_request (self->vcard_manager,
+      self->parent.self_handle, 0, _set_avatar_cb1, ctx, NULL, NULL);
 }
 
 

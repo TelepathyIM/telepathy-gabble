@@ -275,7 +275,7 @@ cache_entry_free (void *data)
 
   priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (entry->manager);
 
-  tp_handle_unref (priv->connection->handle_repos[TP_HANDLE_TYPE_CONTACT],
+  tp_handle_unref (priv->connection->parent.handles[TP_HANDLE_TYPE_CONTACT],
       entry->handle);
 
   g_free (entry);
@@ -295,7 +295,7 @@ cache_entry_get (GabbleVCardManager *manager, TpHandle handle)
 
   entry->manager = manager;
   entry->handle = handle;
-  tp_handle_ref (priv->connection->handle_repos[TP_HANDLE_TYPE_CONTACT],
+  tp_handle_ref (priv->connection->parent.handles[TP_HANDLE_TYPE_CONTACT],
       handle);
   g_hash_table_insert (priv->cache, GUINT_TO_POINTER (handle), entry);
 
@@ -1073,7 +1073,7 @@ gabble_vcard_manager_request (GabbleVCardManager *self,
       entry->request = g_new0 (GabbleVCardManagerRequest, 1);
       entry->request->manager = self;
       entry->request->handle = handle;
-      tp_handle_ref (priv->connection->handle_repos[TP_HANDLE_TYPE_CONTACT],
+      tp_handle_ref (priv->connection->parent.handles[TP_HANDLE_TYPE_CONTACT],
           handle);
       priv->requests = g_slist_prepend (priv->requests, entry->request);
 

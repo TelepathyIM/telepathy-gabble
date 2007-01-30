@@ -3729,8 +3729,21 @@ gabble_connection_request_avatar (TpSvcConnectionInterfaceAvatars *iface,
                                   guint contact,
                                   DBusGMethodInvocation *context)
 {
-  gabble_vcard_manager_request (self->vcard_manager, contact, 0,
-      _request_avatar_cb, context, NULL, NULL);
+  GabbleConnection *self = GABBLE_CONNECTION (iface);
+
+  LmMessageNode *vcard_node =
+      gabble_vcard_manager_get_cached (self->vcard_manager, contact);
+
+  if (vcard_node)
+    {
+      _request_avatar_cb (self->vcard_manager, NULL, contact, vcard_node, NULL,
+          context);
+    }
+  else
+    {
+      gabble_vcard_manager_request (self->vcard_manager, contact, 0,
+          _request_avatar_cb, context, NULL, NULL);
+    }
 }
 
 

@@ -26,12 +26,12 @@
 #include <dbus/dbus-glib-lowlevel.h>
 
 #include <telepathy-glib/channel-factory-iface.h>
-#include <telepathy-glib/svc-connection.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/enums.h>
+#include <telepathy-glib/svc-connection.h>
 
 #define DEBUG_FLAG TP_DEBUG_CONNECTION
-#include "debug.h"
+#include "internal-debug.h"
 
 #define BUS_NAME_BASE    "org.freedesktop.Telepathy.Connection."
 #define OBJECT_PATH_BASE "/org/freedesktop/Telepathy/Connection/"

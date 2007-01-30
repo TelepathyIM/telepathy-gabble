@@ -19,10 +19,10 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include <telepathy-glib/util.h>
+
 #include <glib.h>
 #include <string.h>
-
-#include "telepathy-glib/util.h"
 
 gboolean
 tp_strdiff (const gchar *left, const gchar *right)

@@ -18,8 +18,9 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#include <glib.h>
 #include <telepathy-glib/errors.h>
+
+#include <glib.h>
 
 void
 tp_g_set_error_invalid_handle_type (guint type, GError **error)

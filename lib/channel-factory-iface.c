@@ -19,9 +19,10 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include <telepathy-glib/channel-factory-iface.h>
+
 #include <glib-object.h>
 
-#include <telepathy-glib/channel-factory-iface.h>
 #include <telepathy-glib/channel-iface.h>
 
 #include "_gen/signals-marshal.h"

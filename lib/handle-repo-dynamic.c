@@ -20,11 +20,12 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include <telepathy-glib/handle-repo-dynamic.h>
+
 #include <dbus/dbus-glib.h>
 
-#include <telepathy-glib/handle-repo-dynamic.h>
-#include <telepathy-glib/heap.h>
 #include <telepathy-glib/dbus.h>
+#include <telepathy-glib/heap.h>
 
 /* Handle leak tracing */
 

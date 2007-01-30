@@ -21,6 +21,7 @@
  */
 
 #include <telepathy-glib/handle-repo-static.h>
+
 #include <string.h>
 
 enum

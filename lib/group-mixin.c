@@ -25,11 +25,11 @@
 
 #include <telepathy-glib/debug-ansi.h>
 #include <telepathy-glib/errors.h>
-#include "telepathy-glib/group-mixin.h"
+#include <telepathy-glib/group-mixin.h>
 
 #define DEBUG_FLAG TP_DEBUG_GROUPS
 
-#include "debug.h"
+#include "internal-debug.h"
 
 #include "_gen/signals-marshal.h"
 

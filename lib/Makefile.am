@@ -96,7 +96,7 @@ libtelepathy_glib_la_SOURCES = \
     base-connection-manager.c \
     dbus.c \
     debug.c \
-    debug.h \
+    internal-debug.h \
     errors.c \
     group-mixin.c \
     handle-repo.c \

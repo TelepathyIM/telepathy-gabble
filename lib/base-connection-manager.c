@@ -20,6 +20,7 @@
  */
 
 #include <telepathy-glib/base-connection-manager.h>
+
 #include <telepathy-glib/dbus.h>
 
 #define BUS_NAME_BASE    "org.freedesktop.Telepathy.ConnectionManager."

@@ -20,9 +20,11 @@
  * 02110-1301 USA
  *
  */
-#include <glib.h>
-#include <telepathy-glib/intset.h>
 #include <telepathy-glib/handle-repo.h>
+
+#include <glib.h>
+
+#include <telepathy-glib/intset.h>
 
 struct _TpHandleSet
 {

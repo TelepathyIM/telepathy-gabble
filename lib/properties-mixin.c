@@ -20,17 +20,18 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#include "telepathy-glib/properties-mixin.h"
+#include <telepathy-glib/properties-mixin.h>
 
 #include <dbus/dbus-glib.h>
 #include <stdio.h>
 #include <string.h>
 
+#include <telepathy-glib/debug-ansi.h>
+#include <telepathy-glib/errors.h>
+
 #define DEBUG_FLAG TP_DEBUG_PROPERTIES
 
-#include <telepathy-glib/debug-ansi.h>
-#include "debug.h"
-#include <telepathy-glib/errors.h>
+#include "internal-debug.h"
 
 struct _TpPropertiesContext {
     TpPropertiesMixinClass *mixin_cls;

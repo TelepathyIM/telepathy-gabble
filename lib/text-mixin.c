@@ -21,6 +21,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include <telepathy-glib/text-mixin.h>
+
 #include <dbus/dbus-glib.h>
 #include <string.h>
 
@@ -29,10 +31,7 @@
 
 #define DEBUG_FLAG TP_DEBUG_IM
 
-#include "debug.h"
-
-#include "telepathy-glib/text-mixin.h"
-#include "_gen/signals-marshal.h"
+#include "internal-debug.h"
 
 #define TP_TYPE_PENDING_MESSAGE_STRUCT (dbus_g_type_get_struct ("GValueArray", \
       G_TYPE_UINT, \

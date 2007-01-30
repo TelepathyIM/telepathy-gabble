@@ -1,5 +1,7 @@
 #include "config.h"
 
+#include "internal-debug.h"
+
 #ifdef ENABLE_DEBUG
 
 #include <stdarg.h>
@@ -7,8 +9,6 @@
 #include <glib.h>
 
 #include <telepathy-glib/debug.h>
-
-#include "debug.h"
 
 static TpDebugFlags flags = 0;
 

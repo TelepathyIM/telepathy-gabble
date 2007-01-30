@@ -21,10 +21,10 @@
  *
  */
 
+#include <telepathy-glib/intset.h>
+
 #include <string.h>
 #include <glib.h>
-
-#include <telepathy-glib/intset.h>
 
 #define DEFAULT_SIZE 16
 #define DEFAULT_INCREMENT 8

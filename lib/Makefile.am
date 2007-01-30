@@ -86,7 +86,8 @@ nodist_geninclude_HEADERS = \
     $(SPEC_COPIED_HS)
 
 BUILT_SOURCES = $(nodist_geninclude_HEADERS) \
-		$(nodist_libtelepathy_glib_la_SOURCES)
+		$(nodist_libtelepathy_glib_la_SOURCES) \
+		_gen/main.c
 CLEANFILES = $(BUILT_SOURCES) _gen/.exists telepathy-glib/_gen/.exists
 clean-local:
 	-rmdir _gen telepathy-glib/_gen

@@ -951,15 +951,10 @@ gabble_connection_finalize (GObject *object)
   g_free (priv->https_proxy_server);
   g_free (priv->fallback_conference_server);
 
-  g_list_free (priv->conference_servers);
+  g_free (priv->alias);
 
-  tp_properties_mixin_finalize (object);
-
-  for (i = 0; i <= LAST_TP_HANDLE_TYPE; i++)
-    {
-      if (self->handle_repos[i])
-        g_object_unref((GObject *)self->handle_repos[i]);
-    }
+  g_free (priv->auth_mac);
+  g_free (priv->auth_btid);
 
   G_OBJECT_CLASS (gabble_connection_parent_class)->finalize (object);
 }

@@ -31,6 +31,7 @@
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/heap.h>
 #include "handles.h"
+#include "time.h"
 #include "util.h"
 #include "vcard-manager.h"
 

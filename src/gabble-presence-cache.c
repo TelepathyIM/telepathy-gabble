@@ -573,10 +573,10 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
   if (NULL == presence)
     return;
 
-  x_node = lm_message_node_get_child (node, "x");
+  x_node = lm_message_node_get_child_with_namespace (node, "x",
+      NS_VCARD_TEMP_UPDATE);
 
-  if (NULL == x_node ||
-      !lm_message_node_has_namespace (x_node, NS_VCARD_TEMP_UPDATE, NULL))
+  if (NULL == x_node)
     {
 #if 0
       if (handle == priv->conn->parent.self_handle)

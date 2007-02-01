@@ -1287,21 +1287,22 @@ config_form_get_form_node (LmMessage *msg)
   /* then the form node */
   for (node = node->children; node; node = node->next)
     {
-      if (strcmp (node->name, "x") == 0)
+      if (tp_strdiff (node->name, "x"))
         {
-          if (!lm_message_node_has_namespace (node, NS_X_DATA, NULL))
-            {
-              continue;
-            }
-
-          if (strcmp (lm_message_node_get_attribute (node, "type"),
-                      "form") != 0)
-            {
-              continue;
-            }
-
-          return node;
+          continue;
         }
+
+      if (!lm_message_node_has_namespace (node, NS_X_DATA, NULL))
+        {
+          continue;
+        }
+
+      if (tp_strdiff (lm_message_node_get_attribute (node, "type"), "form"))
+        {
+          continue;
+        }
+
+      return node;
     }
 
   return NULL;
@@ -2683,7 +2684,7 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
   TpPropertiesContext *ctx = priv->properties_ctx;
   GError *error = NULL;
   LmMessage *msg = NULL;
-  LmMessageNode *submit_node, *form_node, *node, *query_node;
+  LmMessageNode *submit_node, *form_node, *node;
   guint i, props_left;
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
@@ -2710,33 +2711,6 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
                                   "xmlns", NS_X_DATA,
                                   "type", "submit",
                                   NULL);
-
-  /* find the query node */
-  query_node = lm_message_node_get_child (reply_msg->node, "query");
-  if (query_node == NULL)
-    goto PARSE_ERROR;
-
-  /* then the form node */
-  form_node = NULL;
-  for (node = query_node->children; node; node = node->next)
-    {
-      if (strcmp (node->name, "x") == 0)
-        {
-          const gchar *type = lm_message_node_get_attribute (node, "type");
-
-          if (!lm_message_node_has_namespace (node, NS_X_DATA, NULL))
-            continue;
-
-          if (tp_strdiff (type, "form"))
-            continue;
-
-          form_node = node;
-          break;
-        }
-    }
-
-  if (form_node == NULL)
-    goto PARSE_ERROR;
 
   props_left = 0;
   for (i = 0; i < NUM_ROOM_PROPS; i++)

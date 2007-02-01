@@ -476,11 +476,8 @@ muc_factory_message_cb (LmMessageHandler *handler,
       struct DiscoInviteData *disco_udata;
 
       /* check for obsolete invite method */
-      for (node = message->node->children; node != NULL; node = node->next)
-        if (strcmp (node->name, "x") == 0)
-          if (lm_message_node_has_namespace (node, NS_X_CONFERENCE, NULL))
-            break;
-
+      node = lm_message_node_get_child_with_namespace (message->node, "x",
+          NS_X_CONFERENCE);
       if (node == NULL)
         goto HANDLE_MESSAGE;
 

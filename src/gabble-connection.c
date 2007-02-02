@@ -167,8 +167,6 @@ enum
     PROP_STUN_RELAY_PASSWORD,
     PROP_IGNORE_SSL_ERRORS,
     PROP_ALIAS,
-    PROP_AUTH_MAC,
-    PROP_AUTH_BTID,
 
     LAST_PROPERTY
 };
@@ -240,8 +238,6 @@ struct _GabbleConnectionPrivate
   gchar *resource;
   gint8 priority;
   gchar *alias;
-  gchar *auth_mac;
-  gchar *auth_btid;
 
   /* reference to conference server name */
   const gchar *conference_server;
@@ -421,12 +417,6 @@ gabble_connection_get_property (GObject    *object,
     case PROP_ALIAS:
       g_value_set_string (value, priv->alias);
       break;
-    case PROP_AUTH_MAC:
-      g_value_set_string (value, priv->auth_mac);
-      break;
-    case PROP_AUTH_BTID:
-      g_value_set_string (value, priv->auth_btid);
-      break;
     default:
       param_name = g_param_spec_get_name (pspec);
 
@@ -494,7 +484,11 @@ gabble_connection_set_property (GObject      *object,
       break;
     case PROP_RESOURCE:
       g_free (priv->resource);
-      priv->resource = g_value_dup_string (value);
+      if (priv->randomize_resource)
+          priv->resource = g_strdup_printf ("%s.%u", g_value_get_string (value),
+              g_random_int_range(1000000, 9999999));
+      else
+          priv->resource = g_value_dup_string (value);
       break;
     case PROP_PRIORITY:
       priv->priority = CLAMP (g_value_get_int (value), G_MININT8, G_MAXINT8);
@@ -513,17 +507,9 @@ gabble_connection_set_property (GObject      *object,
     case PROP_IGNORE_SSL_ERRORS:
       priv->ignore_ssl_errors = g_value_get_boolean (value);
       break;
-   case PROP_ALIAS:
+    case PROP_ALIAS:
       g_free (priv->alias);
       priv->alias = g_value_dup_string (value);
-      break;
-   case PROP_AUTH_MAC:
-      g_free (priv->auth_mac);
-      priv->auth_mac = g_value_dup_string (value);
-      break;
-   case PROP_AUTH_BTID:
-      g_free (priv->auth_btid);
-      priv->auth_btid = g_value_dup_string (value);
       break;
     default:
       param_name = g_param_spec_get_name (pspec);
@@ -788,24 +774,6 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
                                     G_PARAM_STATIC_NAME |
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_ALIAS, param_spec);
-
-  param_spec = g_param_spec_string ("auth-mac",
-                                    "MAC for authorization",
-                                    "MAC for authorization",
-                                    NULL,
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_AUTH_MAC, param_spec);
-
-  param_spec = g_param_spec_string ("auth-btid",
-                                    "BTID for authorization",
-                                    "BTID for authorization",
-                                    NULL,
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_AUTH_BTID, param_spec);
 
   /* signal definitions */
 
@@ -2816,15 +2784,15 @@ connection_disco_cb (GabbleDisco *disco,
       DEBUG ("set features flags to %d", conn->features);
     }
 
+  /* go go gadget on-line */
+  connection_status_change (conn, TP_CONN_STATUS_CONNECTED, TP_CONN_STATUS_REASON_REQUESTED);
+
   /* send presence to the server to indicate availability */
   if (!signal_own_presence (conn, &error))
     {
       DEBUG ("sending initial presence failed: %s", error->message);
       goto ERROR;
     }
-
-  /* go go gadget on-line */
-  connection_status_change (conn, TP_CONN_STATUS_CONNECTED, TP_CONN_STATUS_REASON_REQUESTED);
 
   if (conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_JINGLE_INFO)
     {

@@ -167,6 +167,9 @@ enum
     PROP_STUN_RELAY_PASSWORD,
     PROP_IGNORE_SSL_ERRORS,
     PROP_ALIAS,
+    PROP_AUTH_MAC,
+    PROP_AUTH_BTID,
+    PROP_RANDOMIZE_RESOURCE,
 
     LAST_PROPERTY
 };
@@ -238,6 +241,9 @@ struct _GabbleConnectionPrivate
   gchar *resource;
   gint8 priority;
   gchar *alias;
+  gchar *auth_mac;
+  gchar *auth_btid;
+  gboolean randomize_resource;
 
   /* reference to conference server name */
   const gchar *conference_server;
@@ -417,6 +423,15 @@ gabble_connection_get_property (GObject    *object,
     case PROP_ALIAS:
       g_value_set_string (value, priv->alias);
       break;
+    case PROP_AUTH_MAC:
+      g_value_set_string (value, priv->auth_mac);
+      break;
+    case PROP_AUTH_BTID:
+      g_value_set_string (value, priv->auth_btid);
+      break;
+    case PROP_RANDOMIZE_RESOURCE:
+      g_value_set_boolean (value, priv->randomize_resource);
+      break;
     default:
       param_name = g_param_spec_get_name (pspec);
 
@@ -510,6 +525,27 @@ gabble_connection_set_property (GObject      *object,
     case PROP_ALIAS:
       g_free (priv->alias);
       priv->alias = g_value_dup_string (value);
+      break;
+   case PROP_AUTH_MAC:
+      g_free (priv->auth_mac);
+      priv->auth_mac = g_value_dup_string (value);
+      break;
+   case PROP_AUTH_BTID:
+      g_free (priv->auth_btid);
+      priv->auth_btid = g_value_dup_string (value);
+      break;
+    case PROP_RANDOMIZE_RESOURCE:
+      {
+        gboolean new_val = g_value_get_boolean (value);
+        if (new_val && !priv->randomize_resource)
+          {
+            gchar *old_resource = priv->resource;
+            priv->resource = g_strdup_printf ("%s.%u",
+              old_resource, g_random_int_range(1000000, 9999999));
+            g_free (old_resource);
+          }
+        priv->randomize_resource = new_val;
+      }
       break;
     default:
       param_name = g_param_spec_get_name (pspec);
@@ -774,6 +810,33 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
                                     G_PARAM_STATIC_NAME |
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_ALIAS, param_spec);
+
+  param_spec = g_param_spec_string ("auth-mac",
+                                    "MAC for authorization",
+                                    "MAC for authorization",
+                                    NULL,
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_STATIC_NAME |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_AUTH_MAC, param_spec);
+
+  param_spec = g_param_spec_string ("auth-btid",
+                                    "BTID for authorization",
+                                    "BTID for authorization",
+                                    NULL,
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_STATIC_NAME |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_AUTH_BTID, param_spec);
+
+  param_spec = g_param_spec_boolean ("randomize-resource", "Randomize resource",
+                                     "Randomize resource portion of the JID to "
+                                     "avoid resource conflicts.",
+                                     FALSE,
+                                     G_PARAM_READWRITE |
+                                     G_PARAM_STATIC_NAME |
+                                     G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_RANDOMIZE_RESOURCE, param_spec);
 
   /* signal definitions */
 

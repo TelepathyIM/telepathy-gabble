@@ -162,6 +162,9 @@ struct _GabbleParams {
   guint stun_port;
   gboolean ignore_ssl_errors;
   gchar *alias;
+  gchar *auth_mac;
+  gchar *auth_btid;
+  gboolean randomize_resource;
 };
 
 enum {
@@ -181,6 +184,9 @@ enum {
     JABBER_PARAM_STUN_PORT,
     JABBER_PARAM_IGNORE_SSL_ERRORS,
     JABBER_PARAM_ALIAS,
+    JABBER_PARAM_AUTH_MAC,
+    JABBER_PARAM_AUTH_BTID,
+    JABBER_PARAM_RANDOMIZE_RESOURCE,
     LAST_JABBER_PARAM
 };
 
@@ -201,6 +207,9 @@ static const GabbleParamSpec jabber_params[] = {
   { "stun-port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT, TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_STUN_PORT), G_STRUCT_OFFSET(GabbleParams, stun_port) },
   { "ignore-ssl-errors", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN, TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(FALSE), G_STRUCT_OFFSET(GabbleParams, ignore_ssl_errors) },
   { "alias", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, 0, NULL, G_STRUCT_OFFSET(GabbleParams, alias) },
+  { "mac", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, 0, NULL, G_STRUCT_OFFSET(GabbleParams, auth_mac) },
+  { "btid", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, 0, NULL, G_STRUCT_OFFSET(GabbleParams, auth_btid) },
+  { "randomize-resource", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN, TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(FALSE), G_STRUCT_OFFSET(GabbleParams, randomize_resource) },
   { NULL, NULL, 0, 0, NULL, 0 }
 };
 
@@ -637,6 +646,13 @@ gabble_connection_manager_request_connection (GabbleConnectionManager *self,
                               JABBER_PARAM_IGNORE_SSL_ERRORS,
                               params.ignore_ssl_errors);
   SET_PROPERTY_IF_PARAM_SET ("alias", JABBER_PARAM_ALIAS, params.alias);
+  SET_PROPERTY_IF_PARAM_SET ("auth-mac", JABBER_PARAM_AUTH_MAC,
+                             params.auth_mac);
+  SET_PROPERTY_IF_PARAM_SET ("auth-btid", JABBER_PARAM_AUTH_BTID,
+                             params.auth_btid);
+  SET_PROPERTY_IF_PARAM_SET ("randomize-resource",
+                              JABBER_PARAM_RANDOMIZE_RESOURCE,
+                              params.randomize_resource);
 
   /* split up account into username, stream-server and resource */
   if (!_gabble_connection_set_properties_from_account (conn, params.account, error))

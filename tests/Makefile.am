@@ -60,9 +60,9 @@ $(service_files): $(service_in_files) Makefile
 
 ## copy tests to builddir so that generated tests and static tests 
 ## are all in one place.
-all-local:
+all-local: $(service_files)
 	if ! (test $(srcdir) = . || test $(srcdir) -ef .) ; then								\
-		FILES='$(python_tests_pythonfiles) $(python_tests_shfiles) $(service_files)' ;					\
+		FILES='$(python_tests_pythonfiles) $(python_tests_shfiles)' ;					\
 	        for F in $$FILES; do								\
 			SRC=$(srcdir)/$$F ;							\
 			DEST=$(top_builddir)/tests/$$F ;						\
@@ -79,3 +79,13 @@ all-local:
 	
 #	chmod u+w $(top_builddir)/test/data/valid-config-files/*.conf || exit 1
 
+## this doesn't clean generated test data files when srcdir=builddir
+clean-local:
+	if test $(srcdir) != . ; then                                   \
+		FILES='$(python_tests_pythonfiles) $(python_tests_shfiles) run-with-tmp-session-bus.sh dbustesting.py dbustesting.pyc' ;					\
+                for F in $$FILES; do                                    \
+                        DEST=$(top_builddir)/tests/$$F ;                 \
+                        echo '-- Deleting test file '$$F ;              \
+                        rm -f $$DEST || exit 1 ;                           \
+                done ;                                                  \
+        fi

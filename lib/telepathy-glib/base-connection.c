@@ -206,13 +206,6 @@ tp_base_connection_dispose (GObject *object)
                                   G_TYPE_INVALID);
     }
 
-  for (i = 0; i <= LAST_TP_HANDLE_TYPE; i++)
-    {
-      if (self->handles[i])
-        g_object_unref((GObject *)self->handles[i]);
-        self->handles[i] = NULL;
-    }
-
   g_ptr_array_foreach (priv->channel_factories, (GFunc) g_object_unref, NULL);
   g_ptr_array_free (priv->channel_factories, TRUE);
   priv->channel_factories = NULL;
@@ -222,6 +215,13 @@ tp_base_connection_dispose (GObject *object)
       g_assert (priv->channel_requests->len == 0);
       g_ptr_array_free (priv->channel_requests, TRUE);
       priv->channel_requests = NULL;
+    }
+
+  for (i = 0; i <= LAST_TP_HANDLE_TYPE; i++)
+    {
+      if (self->handles[i])
+        g_object_unref((GObject *)self->handles[i]);
+        self->handles[i] = NULL;
     }
 
   if (G_OBJECT_CLASS (tp_base_connection_parent_class)->dispose)

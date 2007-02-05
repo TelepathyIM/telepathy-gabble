@@ -64,11 +64,18 @@ libgabble_convenience_la_SOURCES = \
     text-mixin.c \
     util.h \
     util.c \
-    vcard-manager.h \
-    vcard-manager.c \
-    libmd5-rfc/md5.c \
-    libmd5-rfc/md5.h \
-    gabble-signals-marshal.list
+    $(BUILT_SOURCES)
+
+EXTRA_DIST = \
+    gabble-connection-manager-signals-marshal.list \
+    gabble-connection-signals-marshal.list \
+    gabble-im-channel-signals-marshal.list \
+    gabble-media-channel-signals-marshal.list \
+    gabble-media-session-signals-marshal.list \
+    gabble-media-stream-signals-marshal.list \
+    gabble-muc-channel-signals-marshal.list \
+    gabble-presence-cache-signals-marshal.list \
+    gabble-register-signals-marshal.list
 
 libgabble_convenience_la_LIBADD = ../lib/libtelepathy-glib.la
 

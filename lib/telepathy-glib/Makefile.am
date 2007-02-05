@@ -25,7 +25,6 @@ include spec-gen.am
 
 SPEC_GENERATED_SOURCES = $(SPEC_GENERATED_CS) $(SPEC_GENERATED_HS) \
 			 $(SPEC_GENERATED_LISTS) $(SPEC_GLUE_HS)
-			 $(SPEC_COPIED_HS)
 
 lib_LTLIBRARIES = libtelepathy-glib.la
 
@@ -168,7 +167,7 @@ _gen/enumtypes-spec-%.c: _gen/%.h Makefile.am _gen/.exists
 	--vtail "      { 0, NULL, NULL }\n    };\n    etype = g_@type@_register_static (\"@EnumName@\", values);\n  }\n  return etype;\n}\n" \
         $< > $@
 
-_gen/enumtypes-spec-%.h: _gen/%.h Makefile.in _gen/.exists
+_gen/enumtypes-spec-%.h: _gen/%.h Makefile.am _gen/.exists
 	glib-mkenums \
 	--fhead "#ifndef __$(shell echo $* | tr [:lower:]- [:upper:]_)_ENUM_TYPES_H__\n#define __$(shell echo $* | tr [:lower:]- [:upper:]_)_ENUM_TYPES_H__\n\n#include <glib-object.h>\n\nG_BEGIN_DECLS\n" \
 	--fprod "/* enumerations from \"@filename@\" */\n" \

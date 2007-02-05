@@ -70,7 +70,7 @@
 ^src/write-mgr-file$
 ^tests/test-base64$
 ^tests/test-gabble-presence$
-^lib/tests/test-handles$
+^tests/test-handles$
 ^lib/tests/test-handle-set$
 ^lib/tests/test-heap$
 ^lib/tests/test-intset$

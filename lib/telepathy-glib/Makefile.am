@@ -116,20 +116,19 @@ _gen/.exists:
 	$(INSTALL) -d _gen
 	touch $@
 
-telepathy-glib/_gen/telepathy-enums.h: spec/all.xml \
-	$(SPEC_INTERFACE_XMLS) tools/c-constants-generator.xsl \
-	telepathy-glib/_gen/.exists
+_gen/telepathy-enums.h: ../spec/all.xml \
+	$(SPEC_INTERFACE_XMLS) ../tools/c-constants-generator.xsl _gen/.exists
 	$(XSLTPROC) --xinclude $(XSLTPROCFLAGS) \
 		$(srcdir)/../tools/c-constants-generator.xsl \
 		$(srcdir)/../spec/all.xml > $@
 
-telepathy-glib/_gen/telepathy-interfaces.h: ../spec/all.xml \
+_gen/telepathy-interfaces.h: ../spec/all.xml \
 	$(SPEC_INTERFACE_XMLS) ../tools/c-interfaces-generator.xsl _gen/.exists
 	$(XSLTPROC) --xinclude $(XSLTPROCFLAGS) \
 		$(srcdir)/../tools/c-interfaces-generator.xsl \
 		$(srcdir)/../spec/all.xml > $@
 
-telepathy-glib/_gen/telepathy-errors.h: ../spec/errors.xml \
+_gen/telepathy-errors.h: ../spec/errors.xml \
 	../tools/c-errors-enum-generator.xsl _gen/.exists
 	$(XSLTPROC) $(XSLTPROCFLAGS) \
 		$(srcdir)/../tools/c-errors-enum-generator.xsl \

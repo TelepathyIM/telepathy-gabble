@@ -2863,7 +2863,7 @@ gabble_connection_connect (TpSvcConnection *iface,
                            DBusGMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
-  GError *error;
+  GError *error = NULL;
 
   g_assert(GABBLE_IS_CONNECTION (self));
 

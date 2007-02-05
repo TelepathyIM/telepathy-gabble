@@ -1,9 +1,3 @@
-# temporary hack to not install the headers until telepathy-glib is
-# releasable separately - using noinst_HEADERS seemed to
-# cause build problems.
-install:
-	@echo Not installing headers until telepathy-glib is stable
-
 tpgincludedir=$(includedir)/telepathy-1.0/telepathy-glib
 genincludedir=$(tpgincludedir)/_gen
 
@@ -33,7 +27,14 @@ SPEC_GENERATED_SOURCES = $(SPEC_GENERATED_CS) $(SPEC_GENERATED_HS) \
 			 $(SPEC_GENERATED_LISTS) $(SPEC_GLUE_HS)
 			 $(SPEC_COPIED_HS)
 
-noinst_LTLIBRARIES = libtelepathy-glib.la
+lib_LTLIBRARIES = libtelepathy-glib.la
+
+# when it becomes stable enough to have a shared library:
+#libtelepathy_glib_la_LDFLAGS = \
+#    -version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \
+#    -export-symbols-regex '^tp_'
+# but for now:
+libtelepathy_glib_la_LDFLAGS = -static
 
 tpginclude_HEADERS = \
     base-connection.h \

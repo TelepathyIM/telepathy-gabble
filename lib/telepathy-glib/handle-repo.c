@@ -146,7 +146,7 @@ tp_handle_request (TpHandleRepoIface *self,
  * @handle: A handle to set data on
  * @key_id: Key id to associate data with
  * @data: data to associate with handle
- * @destroy: A #GDestroyNotify to call to detroy the data,
+ * @destroy: A #GDestroyNotify to call to destroy the data,
  *           or NULL if not needed.
  *
  * Associates a blob of data with a given handle and a given key

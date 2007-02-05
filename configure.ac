@@ -156,6 +156,7 @@ AC_CHECK_HEADERS(signal.h)
 
 AC_OUTPUT( Makefile \
 	   lib/Makefile \
+	   lib/telepathy-glib/Makefile \
            src/Makefile \
            m4/Makefile \
            data/Makefile \

@@ -70,10 +70,10 @@
 ^src/write-mgr-file$
 ^tests/test-base64$
 ^tests/test-gabble-presence$
-^tests/test-handles$
-^tests/test-handle-set$
-^tests/test-heap$
-^tests/test-intset$
+^lib/tests/test-handles$
+^lib/tests/test-handle-set$
+^lib/tests/test-heap$
+^lib/tests/test-intset$
 (^|/)cscope\.out$
 (^|/)core$
 ^debian($|/)

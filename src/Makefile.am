@@ -70,7 +70,7 @@ libgabble_convenience_la_SOURCES = \
     libmd5-rfc/md5.h \
     gabble-signals-marshal.list
 
-libgabble_convenience_la_LIBADD = ../lib/libtelepathy-glib.la
+libgabble_convenience_la_LIBADD = ../lib/telepathy-glib/libtelepathy-glib.la
 
 nodist_libgabble_convenience_la_SOURCES = \
     $(BUILT_SOURCES)
@@ -87,7 +87,7 @@ telepathy_gabble_LDADD = libgabble-convenience.la
 
 noinst_LTLIBRARIES = libgabble-convenience.la
 
-AM_CFLAGS = $(ERROR_CFLAGS) -I$(top_srcdir)/lib -I$(top_builddir)/lib -I$(top_srcdir)/lib/_spec @DBUS_CFLAGS@ @GLIB_CFLAGS@ @LOUDMOUTH_CFLAGS@ @HANDLE_LEAK_DEBUG_CFLAGS@
+AM_CFLAGS = $(ERROR_CFLAGS) -I$(top_srcdir)/lib -I$(top_builddir)/lib @DBUS_CFLAGS@ @GLIB_CFLAGS@ @LOUDMOUTH_CFLAGS@ @HANDLE_LEAK_DEBUG_CFLAGS@
 AM_LDFLAGS = @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@
 
 

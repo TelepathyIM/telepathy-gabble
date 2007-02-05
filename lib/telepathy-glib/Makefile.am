@@ -145,7 +145,7 @@ _gen/svc-%-glue.h: _gen/async-%.xml _gen/.exists
 	$(DBUS_BINDING_TOOL) --mode=glib-server --output=$@ \
 		--prefix=tp_svc_`echo $* | tr A-Z a-z` $<
 
-_gen/svc-%.c _gen/svc-%.h: ../spec/%.xml ../tools/genginterface.py _gen/.exists
+_gen/svc-%.c _gen/svc-%.h _gen/svc-%-signals-marshal.list: ../spec/%.xml ../tools/genginterface.py _gen/.exists
 	$(PYTHON) $(srcdir)/../tools/genginterface.py $< \
 	TpSvc`echo $* | tr -d _` _gen/svc-$* _tp
 

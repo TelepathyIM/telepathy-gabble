@@ -220,8 +220,10 @@ tp_base_connection_dispose (GObject *object)
   for (i = 0; i <= LAST_TP_HANDLE_TYPE; i++)
     {
       if (self->handles[i])
-        g_object_unref((GObject *)self->handles[i]);
-        self->handles[i] = NULL;
+        {
+          g_object_unref((GObject *)self->handles[i]);
+          self->handles[i] = NULL;
+        }
     }
 
   if (G_OBJECT_CLASS (tp_base_connection_parent_class)->dispose)

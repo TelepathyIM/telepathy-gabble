@@ -912,6 +912,9 @@ _parse_presence_message (GabblePresenceCache *cache,
       gabble_presence_cache_update (cache, handle, resource, presence_id,
           status_message, priority);
 
+      _grab_nickname (cache, handle, from, presence_node);
+      _process_caps (cache, handle, from, presence_node);
+
 #if 0
       if (_presence_node_has_google_voice (presence_node))
         {
@@ -940,9 +943,6 @@ _parse_presence_message (GabblePresenceCache *cache,
     default:
       break;
     }
-
-  _grab_nickname (cache, handle, from, presence_node);
-  _process_caps (cache, handle, from, presence_node);
 
   g_free (resource);
 

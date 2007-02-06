@@ -3,7 +3,6 @@
 import sys
 import os.path
 import xml.dom.minidom
-import dbus
 
 def cmdline_error():
     print "usage: gen-ginterface xmlfile classname [output_basename]"
@@ -48,6 +47,66 @@ def camelcase_to_lower(s):
 
 def camelcase_to_upper(s):
     return camelcase_to_lower(s).upper()
+
+class SignatureIter:
+    """Iterator over a D-Bus signature. Copied from dbus-python 0.71 so we
+    can run genginterface in a limited environment with only Python
+    (like Scratchbox).
+    """
+    def __init__(self, string):
+        self.remaining = string
+
+    def next(self):
+        if self.remaining == '':
+            raise StopIteration
+
+        signature = self.remaining
+        block_depth = 0
+        block_type = None
+        end = len(signature)
+
+        for marker in range(0, end):
+            cur_sig = signature[marker]
+
+            if cur_sig == 'a':
+                pass
+            elif cur_sig == '{' or cur_sig == '(':
+                if block_type == None:
+                    block_type = cur_sig
+
+                if block_type == cur_sig:
+                    block_depth = block_depth + 1
+
+            elif cur_sig == '}':
+                if block_type == '{':
+                    block_depth = block_depth - 1
+
+                if block_depth == 0:
+                    end = marker
+                    break
+
+            elif cur_sig == ')':
+                if block_type == '(':
+                    block_depth = block_depth - 1
+
+                if block_depth == 0:
+                    end = marker
+                    break
+
+            else:
+                if block_depth == 0:
+                    end = marker
+                    break
+
+        end = end + 1
+        self.remaining = signature[end:]
+        return Signature(signature[0:end])
+
+
+class Signature(str):
+    def __iter__(self):
+        return SignatureIter(self)
+
 
 def type_to_gtype(s):
     if s == 'y': #byte
@@ -105,7 +164,7 @@ def type_to_gtype(s):
         return ("GHashTable *", "(dbus_g_type_get_map (\"GHashTable\", " + first[1] + ", " + second[1] + "))", "BOXED", False)
     elif s[:1] == '(': #struct
         gtype = "(dbus_g_type_get_struct (\"GValueArray\", "
-        for subsig in dbus.Signature(s[1:-1]):
+        for subsig in Signature(s[1:-1]):
             gtype = gtype + type_to_gtype(subsig)[1] + ", "
         gtype = gtype + "G_TYPE_INVALID))"
         return ("GValueArray *", gtype, "BOXED", True)

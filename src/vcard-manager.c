@@ -1207,8 +1207,8 @@ gabble_vcard_manager_cancel_request (GabbleVCardManager *manager,
 /**
  * Return cached message for the handle's VCard if it's available.
  */
-LmMessageNode *
-gabble_vcard_manager_get_cached (GabbleVCardManager *self, TpHandle handle
+gboolean
+gabble_vcard_manager_get_cached (GabbleVCardManager *self, TpHandle handle,
     LmMessageNode **node)
 {
   GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (self);

@@ -3557,7 +3557,7 @@ gabble_connection_request_aliases (TpSvcConnectionInterfaceAliasing *iface,
 
           g_free (alias);
 
-          if (gabble_vcard_manager_get_cached (self->vcard_manager, handle))
+          if (gabble_vcard_manager_get_cached (self->vcard_manager, handle, NULL))
             {
                 GabbleConnectionAliasSource source;
                 source = _gabble_connection_get_cached_alias (self, handle, &alias);
@@ -3730,11 +3730,10 @@ gabble_connection_request_avatar (TpSvcConnectionInterfaceAvatars *iface,
                                   DBusGMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
+  LmMessageNode *vcard_node;
 
-  LmMessageNode *vcard_node =
-      gabble_vcard_manager_get_cached (self->vcard_manager, contact);
-
-  if (vcard_node)
+  if (gabble_vcard_manager_get_cached (self->vcard_manager,
+      contact, &vcard_node))
     {
       _request_avatar_cb (self->vcard_manager, NULL, contact, vcard_node, NULL,
           context);

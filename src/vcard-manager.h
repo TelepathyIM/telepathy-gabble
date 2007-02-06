@@ -117,7 +117,9 @@ const gchar *gabble_vcard_manager_get_cached_alias (GabbleVCardManager *,
 gboolean gabble_vcard_manager_has_cached_alias (GabbleVCardManager *manager,
                                                 TpHandle handle);
 
-LmMessageNode *gabble_vcard_manager_get_cached (GabbleVCardManager *, TpHandle);
+LmMessageNode *gabble_vcard_manager_get_cached (GabbleVCardManager *,
+                                                TpHandle,
+                                                LmMessageNode **);
 void gabble_vcard_manager_invalidate_cache (GabbleVCardManager *, TpHandle);
 
 G_END_DECLS

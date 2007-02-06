@@ -1208,20 +1208,22 @@ gabble_vcard_manager_cancel_request (GabbleVCardManager *manager,
  * Return cached message for the handle's VCard if it's available.
  */
 LmMessageNode *
-gabble_vcard_manager_get_cached (GabbleVCardManager *self, TpHandle handle)
+gabble_vcard_manager_get_cached (GabbleVCardManager *self, TpHandle handle
+    LmMessageNode **node)
 {
   GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (self);
   GabbleVCardCacheEntry *entry = g_hash_table_lookup (priv->cache, GUINT_TO_POINTER (handle));
-  LmMessageNode *node;
 
   DEBUG ("looking for handle %u vcard", handle);
 
   if ((entry == NULL) || (entry->message == NULL))
-      return NULL;
+      return FALSE;
 
   DEBUG ("cached vcard for %u found, returning", handle);
-  node = lm_message_node_get_child (entry->message->node, "vCard");
-  return node;
+  if (node)
+      *node = lm_message_node_get_child (entry->message->node, "vCard");
+
+  return TRUE;
 }
 
 /**

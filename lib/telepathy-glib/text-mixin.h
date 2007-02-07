@@ -21,6 +21,8 @@
 #ifndef __TP_TEXT_MIXIN_H__
 #define __TP_TEXT_MIXIN_H__
 
+#include <time.h>
+
 #include <telepathy-glib/handle-repo.h>
 #include <telepathy-glib/svc-channel.h>
 #include "util.h"

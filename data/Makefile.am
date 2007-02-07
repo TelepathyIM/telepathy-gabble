@@ -17,8 +17,6 @@ EXTRA_DIST = $(service_in_files)
 $(service_DATA): $(service_in_files) Makefile
 	@sed -e "s|\@bindir\@|$(bindir)|" $< > $@
 
-$(manager_DATA): always-build
+$(manager_DATA): ../src/gabble-connection-manager.c ../src/write-mgr-file.c
 	$(MAKE) -C ../src write-mgr-file
 	../src/write-mgr-file > $@
-
-.PHONY: always-build

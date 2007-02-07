@@ -318,6 +318,11 @@ def print_class_definition(stream, prefix, classname, methods):
     stream.write ("};\n\n")
 
 
+def cmp_by_name(node1, node2):
+    return cmp(node1.getAttributeNode("name").nodeValue,
+               node2.getAttributeNode("name").nodeValue)
+
+
 def do_method(method):
     # DoStuff (s -> u)
     dbus_method_name = method.getAttributeNode("name").nodeValue
@@ -495,9 +500,9 @@ if __name__ == '__main__':
         cmdline_error()
 
     signals = dom.getElementsByTagName("signal")
-    signals.sort(key=lambda n: n.getAttributeNode("name").nodeValue)
+    signals.sort(cmp_by_name)
     methods = dom.getElementsByTagName("method")
-    methods.sort(key=lambda n: n.getAttributeNode("name").nodeValue)
+    methods.sort(cmp_by_name)
 
     print_license(header, outname_header, "Header for " + classname, dom)
     print_license(body, outname_body, "Source for " + classname, dom)

@@ -32,6 +32,8 @@ gboolean gabble_debug_flag_is_set (GabbleDebugFlags flag);
 void gabble_debug (GabbleDebugFlags flag, const gchar *format, ...)
     G_GNUC_PRINTF (2, 3);
 
+G_END_DECLS
+
 #ifdef DEBUG_FLAG
 
 #define DEBUG(format, ...) \
@@ -62,7 +64,5 @@ G_STMT_START { \
 
 #endif /* ENABLE_DEBUG */
 
-G_END_DECLS
-
-#endif
+#endif /* __DEBUG_H__ */
 

@@ -24,6 +24,8 @@ void _tp_debug_set_flags (TpDebugFlags flags);
 void _tp_debug (TpDebugFlags flag, const gchar *format, ...)
     G_GNUC_PRINTF (2, 3);
 
+G_END_DECLS
+
 #ifdef DEBUG_FLAG
 
 #define DEBUG(format, ...) \
@@ -47,6 +49,4 @@ void _tp_debug (TpDebugFlags flag, const gchar *format, ...)
 
 #endif /* ENABLE_DEBUG */
 
-G_END_DECLS
-
-#endif
+#endif /* __DEBUG_H__ */

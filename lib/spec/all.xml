@@ -2,7 +2,7 @@
   xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0"
   xmlns:xi="http://www.w3.org/2001/XInclude">
 
-<tp:version>0.14.1</tp:version>
+<tp:version>0.14.1.1</tp:version>
 
 <tp:copyright>Copyright (C) 2005, 2006, 2007 Collabora Limited</tp:copyright>
 <tp:copyright>Copyright (C) 2005, 2006, 2007 Nokia Corporation</tp:copyright>

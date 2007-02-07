@@ -203,6 +203,40 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
         <tp:error name="org.freedesktop.Telepathy.Error.NetworkError"/>
       </tp:possible-errors>
     </method>
+    <method name="GetLocalPendingMembersWithInfo">
+      <tp:added version="0.15.0" />
+      <tp:docstring>
+        Returns an array of structs containing handles representing contacts
+        requesting channel membership and awaiting local approval with
+        AddMembers.  
+      </tp:docstring>
+      <arg direction="out" type="a(uuus)">
+        <tp:docstring>
+          An array of structs containing:
+          <ul>
+            <li>
+              A handle representing the contact requesting channel membership
+            </li>
+            <li>
+              A handle representing the contact making the request, or 0 if
+              unknown
+            </li>
+            <li>
+              The reason for the request: one of the values of
+              ChannelGroupChangeReason
+            </li>
+            <li> 
+              A string message containing the reason for the request if any (or
+              blank if none)
+            </li>
+          </ul>
+        </tp:docstring>
+      </arg>
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.Disconnected"/>
+        <tp:error name="org.freedesktop.Telepathy.Error.NetworkError"/>
+      </tp:possible-errors>
+    </method>
     <method name="GetMembers">
       <arg direction="out" type="au"/>
       <tp:docstring>
@@ -289,6 +323,16 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
       <tp:enumvalue suffix="Error" value="6">
         <tp:docstring>
             The change is due to an error occurring.
+        </tp:docstring>
+      </tp:enumvalue>
+      <tp:enumvalue suffix="Invalid_Contact" value="7">
+        <tp:docstring>
+            The change is because the requested contact does not exist.
+        </tp:docstring>
+      </tp:enumvalue>
+      <tp:enumvalue suffix="No_Answer" value="8">
+        <tp:docstring>
+            The change is because the requested contact did not respond.
         </tp:docstring>
       </tp:enumvalue>
     </tp:enum>

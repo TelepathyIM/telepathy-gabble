@@ -79,6 +79,7 @@ gboolean tp_group_mixin_remove_members (TpSvcChannelInterfaceGroup *obj, const G
 
 gboolean tp_group_mixin_get_members (TpSvcChannelInterfaceGroup *obj, GArray **ret, GError **error);
 gboolean tp_group_mixin_get_local_pending_members (TpSvcChannelInterfaceGroup *obj, GArray **ret, GError **error);
+gboolean tp_group_mixin_get_local_pending_members_with_info (TpSvcChannelInterfaceGroup *obj, GPtrArray **ret, GError **error);
 gboolean tp_group_mixin_get_remote_pending_members (TpSvcChannelInterfaceGroup *obj, GArray **ret, GError **error);
 gboolean tp_group_mixin_get_all_members (TpSvcChannelInterfaceGroup *obj, GArray **ret, GArray **ret1, GArray **ret2, GError **error);
 

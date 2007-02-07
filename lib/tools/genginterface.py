@@ -187,10 +187,10 @@ def signal_to_marshal_type(signal):
     return mtype
 
 def signal_to_marshal_name(signal, prefix):
-    glib_marshallers = set(['VOID', 'BOOLEAN', 'CHAR', 'UCHAR', 'INT',
+    glib_marshallers = ['VOID', 'BOOLEAN', 'CHAR', 'UCHAR', 'INT',
             'STRING', 'UINT', 'LONG', 'ULONG', 'ENUM', 'FLAGS', 'FLOAT',
             'DOUBLE', 'STRING', 'PARAM', 'BOXED', 'POINTER', 'OBJECT',
-            'UINT_POINTER'])
+            'UINT_POINTER']
 
     mtype = signal_to_marshal_type(signal)
     if len(mtype):
@@ -557,7 +557,7 @@ static void
 
     header.write("\n")
 
-    marshallers = set()
+    marshallers = {}
     for signal in signals:
         dbus_name = signal.getAttributeNode("name").nodeValue
         gtypelist = signal_to_gtype_list(signal)
@@ -581,7 +581,7 @@ static void
         if not marshal_name.startswith('g_cclosure_marshal_VOID__'):
             mtype = signal_to_marshal_type(signal)
             assert(len(mtype))
-            marshallers.add(','.join(mtype))
+            marshallers[','.join(mtype)] = True
 
     for marshaller in marshallers:
         signal_marshal.write("VOID:"+marshaller+"\n")

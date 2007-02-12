@@ -4369,7 +4369,8 @@ static void
 _set_avatar_ctx_free (struct _set_avatar_ctx *ctx)
 {
   lm_message_unref (ctx->new_vcard_msg);
-  g_string_free (ctx->avatar, TRUE);
+  if (ctx->avatar)
+      g_string_free (ctx->avatar, TRUE);
   g_free (ctx->mime_type);
   g_free (ctx);
 }
@@ -4395,8 +4396,15 @@ _set_avatar_cb2 (GabbleVCardManager *manager,
       GError *error;
 
       g_free (presence->avatar_sha1);
-      presence->avatar_sha1 = sha1_hex (ctx->avatar->str,
-                                        ctx->avatar->len);
+      if (ctx->avatar)
+        {
+          presence->avatar_sha1 = sha1_hex (ctx->avatar->str,
+                                            ctx->avatar->len);
+        }
+      else
+        {
+          presence->avatar_sha1 = NULL;
+        }
 
       if (signal_own_presence (ctx->conn, &error))
         {
@@ -4453,21 +4461,25 @@ _set_avatar_cb1 (GabbleVCardManager *manager,
 
   photo_node = lm_message_node_add_child (new_vcard, "PHOTO", "");
 
-  type_node = lm_message_node_get_child (photo_node, "TYPE");
+  if (ctx->avatar)
+    {
 
-  if (NULL == type_node)
-    type_node = lm_message_node_add_child (photo_node, "TYPE", "");
+      type_node = lm_message_node_get_child (photo_node, "TYPE");
 
-  lm_message_node_set_value (type_node, ctx->mime_type);
+      if (NULL == type_node)
+        type_node = lm_message_node_add_child (photo_node, "TYPE", "");
 
-  binval_node = lm_message_node_get_child (photo_node, "BINVAL");
+      lm_message_node_set_value (type_node, ctx->mime_type);
 
-  if (NULL == binval_node)
-    binval_node = lm_message_node_add_child (photo_node, "BINVAL", "");
+      binval_node = lm_message_node_get_child (photo_node, "BINVAL");
 
-  encoded = base64_encode (ctx->avatar);
-  lm_message_node_set_value (binval_node, encoded);
-  g_free (encoded);
+      if (NULL == binval_node)
+        binval_node = lm_message_node_add_child (photo_node, "BINVAL", "");
+
+      encoded = base64_encode (ctx->avatar);
+      lm_message_node_set_value (binval_node, encoded);
+      g_free (encoded);
+    }
 
   gabble_vcard_manager_replace (
     manager, new_vcard, 0, _set_avatar_cb2, ctx, NULL, NULL);
@@ -4494,14 +4506,33 @@ gabble_connection_set_avatar (TpSvcConnectionInterfaceAvatars *iface,
 
   ctx->conn = self;
   ctx->invocation = context;
-  ctx->avatar = g_string_new_len (avatar->data, avatar->len);
-  ctx->mime_type = g_strdup (mime_type);
+  if (avatar)
+    {
+      ctx->avatar = g_string_new_len (avatar->data, avatar->len);
+      ctx->mime_type = g_strdup (mime_type);
+    }
 
   DEBUG ("called");
   gabble_vcard_manager_invalidate_cache (self->vcard_manager,
       self->parent.self_handle);
   gabble_vcard_manager_request (self->vcard_manager,
       self->parent.self_handle, 0, _set_avatar_cb1, ctx, NULL, NULL);
+}
+
+/**
+ * gabble_connection_clear_avatar
+ *
+ * Implements D-Bus method ClearAvatar
+ * on interface org.freedesktop.Telepathy.Connection.Interface.Avatars
+ *
+ * @context: The D-Bus invocation context to use to return values
+ *           or throw an error.
+ */
+void
+gabble_connection_clear_avatar (TpSvcConnectionInterfaceAvatars *iface,
+                                DBusGMethodInvocation *context)
+{
+  gabble_connection_set_avatar (iface, NULL, NULL, context);
 }
 
 
@@ -4694,6 +4725,7 @@ avatars_service_iface_init(gpointer g_iface, gpointer iface_data)
   IMPLEMENT(get_avatar_tokens);
   IMPLEMENT(request_avatar);
   IMPLEMENT(set_avatar);
+  IMPLEMENT(clear_avatar);
 #undef IMPLEMENT
 }
 

@@ -161,6 +161,16 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
         <tp:error name="org.freedesktop.Telepathy.Error.NotAvailable"/>
       </tp:possible-errors>
     </method>
+    <method name="ClearAvatar">
+      <tp:added version="0.15.0" />
+      <tp:docstring>
+        Remove the avatar image for this connection.
+      </tp:docstring>
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.Disconnected"/>
+        <tp:error name="org.freedesktop.Telepathy.Error.NetworkError"/>
+      </tp:possible-errors>
+    </method>
     <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
       <p>An interface for requesting avatars for contacts on a given connection,
     receiving notification when avatars are changed, and publishing your own
@@ -188,6 +198,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
     connection, clients should inspect the avatar token of the connection's
     self handle, and set the avatar if it is an empty string (and may
     optionally replace it if the token corresponds to a different avatar).</p>
+
+    <p>To remove the published avatar on protocols which have persistent avatars,
+    a client should use the ClearAvatar method. This method can safely be used
+    even if there is no avatar for this connection.</p>
     </tp:docstring>
   </interface>
 </node>

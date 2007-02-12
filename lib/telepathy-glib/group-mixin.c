@@ -33,6 +33,11 @@
 
 #include "_gen/signals-marshal.h"
 
+#define TP_CHANNEL_GROUP_LOCAL_PENDING_WITH_INFO_ENTRY_TYPE \
+    (dbus_g_type_get_struct ("GValueArray", \
+        G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING, \
+        G_TYPE_INVALID))
+
 static const char *group_change_reason_str(guint reason)
 {
   switch (reason)
@@ -502,28 +507,24 @@ local_pending_members_with_info_foreach(TpHandleSet *set,
   TpGroupMixin *mixin = (TpGroupMixin *) data[0];
   TpGroupMixinPrivate *priv = mixin->priv;
   GPtrArray *array = (GPtrArray *)data[1];
-  GValueArray *varray = g_value_array_new (4);
+  GValue entry = { 0, };
   LocalPendingInfo *info = g_hash_table_lookup (priv->local_pending_info, 
                                                 GUINT_TO_POINTER(i));
   g_assert(info != NULL);
 
-  g_value_array_append (varray, NULL);
-  g_value_init (g_value_array_get_nth (varray, 0), G_TYPE_UINT);
-  g_value_set_uint (g_value_array_get_nth (varray, 0), i);
+  g_value_init(&entry, TP_CHANNEL_GROUP_LOCAL_PENDING_WITH_INFO_ENTRY_TYPE);
+  g_value_take_boxed(&entry, 
+      dbus_g_type_specialized_construct(
+          TP_CHANNEL_GROUP_LOCAL_PENDING_WITH_INFO_ENTRY_TYPE));
 
-  g_value_array_append (varray, NULL);
-  g_value_init (g_value_array_get_nth (varray, 1), G_TYPE_UINT);
-  g_value_set_uint (g_value_array_get_nth (varray, 1), info->actor);
+  dbus_g_type_struct_set(&entry,
+      0, i,
+      1, info->actor,
+      2, info->reason,
+      3, info->message);
 
-  g_value_array_append (varray, NULL);
-  g_value_init (g_value_array_get_nth (varray, 2), G_TYPE_UINT);
-  g_value_set_uint (g_value_array_get_nth (varray, 2), info->reason);
 
-  g_value_array_append (varray, NULL);
-  g_value_init (g_value_array_get_nth (varray, 3), G_TYPE_STRING);
-  g_value_set_string (g_value_array_get_nth (varray, 3), info->message);
-
-  g_ptr_array_add (array, varray);
+  g_ptr_array_add (array, g_value_get_boxed (&entry));
 }
 
 gboolean 
@@ -539,7 +540,7 @@ tp_group_mixin_get_local_pending_members_with_info (
   data[1] = *ret;
 
   tp_handle_set_foreach (mixin->local_pending, 
-                        local_pending_members_with_info_foreach , data);
+                        local_pending_members_with_info_foreach, data);
 
   return TRUE;
 }
@@ -549,14 +550,18 @@ tp_group_mixin_get_local_pending_members_with_info_async (
                                                 TpSvcChannelInterfaceGroup *obj,
                                                 DBusGMethodInvocation *context)
 {
-  GArray *ret;
+  GPtrArray *ret;
   GError *error = NULL;
 
   if (tp_group_mixin_get_local_pending_members_with_info (obj, &ret, &error))
     {
+      guint i;
       tp_svc_channel_interface_group_return_from_get_local_pending_members_with_info (
           context, ret);
-      g_array_free (ret, TRUE);
+      for (i = 0 ; i < ret->len; i++) {
+        g_value_array_free (g_ptr_array_index (ret,i));
+      }
+      g_ptr_array_free (ret, TRUE);
     }
   else
     {

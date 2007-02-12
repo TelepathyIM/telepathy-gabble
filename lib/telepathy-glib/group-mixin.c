@@ -540,7 +540,7 @@ tp_group_mixin_get_local_pending_members_with_info (
   data[1] = *ret;
 
   tp_handle_set_foreach (mixin->local_pending, 
-                        local_pending_members_with_info_foreach, data);
+      local_pending_members_with_info_foreach, data);
 
   return TRUE;
 }
@@ -824,9 +824,9 @@ local_pending_added_foreach(guint i,
   LocalPendingInfo *info = (LocalPendingInfo *)data[1];
 
   g_hash_table_insert (priv->local_pending_info, 
-                       GUINT_TO_POINTER (i), 
-                       local_pending_info_new (mixin->handle_repo,
-                       info->actor, info->reason, info->message));
+      GUINT_TO_POINTER (i), 
+      local_pending_info_new (mixin->handle_repo,
+      info->actor, info->reason, info->message));
 }
 
 static void

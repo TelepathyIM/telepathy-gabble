@@ -67,7 +67,7 @@ typedef struct {
 } LocalPendingInfo;
 
 static LocalPendingInfo *
-new_local_pending_info(TpHandleRepoIface *repo, 
+local_pending_info_new(TpHandleRepoIface *repo, 
                        TpHandle actor, 
                        guint reason, 
                        const gchar *message) 
@@ -83,7 +83,7 @@ new_local_pending_info(TpHandleRepoIface *repo,
 }
 
 static void
-free_local_pending_info(LocalPendingInfo *info) 
+local_pending_info_free(LocalPendingInfo *info) 
 {
   g_free ((gchar *)info->message);
   tp_handle_unref (info->repo, info->actor);
@@ -175,7 +175,7 @@ void tp_group_mixin_init (TpSvcChannelInterfaceGroup *obj,
                                                      g_direct_equal,
                                                      NULL,
                                                      (GDestroyNotify)
-                                                       free_local_pending_info);
+                                                       local_pending_info_free);
   mixin->priv->actors = tp_handle_set_new (handle_repo);
 }
 
@@ -825,7 +825,7 @@ local_pending_added_foreach(guint i,
 
   g_hash_table_insert (priv->local_pending_info, 
                        GUINT_TO_POINTER (i), 
-                       new_local_pending_info (mixin->handle_repo,
+                       local_pending_info_new (mixin->handle_repo,
                        info->actor, info->reason, info->message));
 }
 

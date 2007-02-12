@@ -521,8 +521,8 @@ local_pending_members_with_info_foreach(TpHandleSet *set,
       0, i,
       1, info->actor,
       2, info->reason,
-      3, info->message);
-
+      3, info->message,
+      G_MAXUINT);
 
   g_ptr_array_add (array, g_value_get_boxed (&entry));
 }

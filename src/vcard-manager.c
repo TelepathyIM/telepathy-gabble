@@ -37,6 +37,7 @@
 
 #define DEFAULT_REQUEST_TIMEOUT 20000
 #define VCARD_CACHE_ENTRY_TTL 30
+#define VCARD_PIPELINE_SIZE 3
 
 static const gchar *NO_ALIAS = "none";
 
@@ -67,6 +68,8 @@ struct _GabbleVCardManagerPrivate
 {
   GabbleConnection *connection;
   GSList *requests;
+  GSList *request_pipeline;
+  GSList *reqs_in_flight;
 
   GHashTable *cache;
   TpHeap *timed_cache;
@@ -98,6 +101,13 @@ struct _GabbleVCardCacheEntry
   GSList *pending_requests;
   time_t received;
   LmMessage *message;
+};
+
+typedef struct _GabbleVCardPipelineItem GabbleVCardPipelineItem;
+struct _GabbleVCardPipelineItem {
+    GabbleVCardManagerRequest *request;
+    LmMessage *msg;
+    gpointer callback;
 };
 
 GQuark
@@ -475,6 +485,10 @@ gabble_vcard_manager_dispose (GObject *object)
   tp_heap_destroy (priv->timed_cache);
   g_hash_table_destroy (priv->cache);
 
+  /* should've been cleared by delete_request already */
+  g_assert (priv->reqs_in_flight == NULL);
+  g_assert (priv->request_pipeline == NULL);
+
   if (G_OBJECT_CLASS (gabble_vcard_manager_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_vcard_manager_parent_class)->dispose (object);
 }
@@ -619,6 +633,7 @@ gabble_vcard_manager_new (GabbleConnection *conn)
 }
 
 static void notify_delete_request (gpointer data, GObject *obj);
+static void vcard_pipeline_go (GabbleVCardManager *manager);
 
 static void
 delete_request (GabbleVCardManagerRequest *request)
@@ -627,6 +642,7 @@ delete_request (GabbleVCardManagerRequest *request)
   GabbleVCardManagerPrivate *priv;
   TpBaseConnection *connection;
   GabbleVCardCacheEntry *entry;
+  GSList *l;
 
   DEBUG ("Discarding request %p", request);
 
@@ -639,6 +655,24 @@ delete_request (GabbleVCardManagerRequest *request)
   g_assert (NULL != g_slist_find (priv->requests, request));
 
   priv->requests = g_slist_remove (priv->requests, request);
+
+  for (l = priv->request_pipeline; l; l = g_slist_next (l))
+    {
+      GabbleVCardPipelineItem *item = l->data;
+      if (item->request == request)
+        {
+          priv->request_pipeline = g_slist_remove (priv->request_pipeline, item);
+          lm_message_unref (item->msg);
+          g_free (item);
+          break;
+        }
+    }
+
+  if (g_slist_find (priv->reqs_in_flight, request))
+    {
+        priv->reqs_in_flight = g_slist_remove (priv->reqs_in_flight, request);
+        vcard_pipeline_go (manager);
+    }
 
   if (NULL != request->bound_object)
     {
@@ -699,7 +733,7 @@ cancel_request (GabbleVCardManagerRequest *request)
       "Request cancelled");
   DEBUG ("Request %p cancelled, notifying callback %p",
          request, request->callback);
-  
+
   complete_one_request (request, NULL, err);
 }
 
@@ -952,7 +986,6 @@ request_reply_cb (GabbleConnection *conn,
           entry->request = NULL;
           cache_entry_fill (manager, reply_msg, request->handle);
           complete_pending_requests (manager, request->handle, err);
-
           delete_request (request);
         }
       else
@@ -962,6 +995,82 @@ request_reply_cb (GabbleConnection *conn,
     }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
+static void
+vcard_pipeline_send_next_request (GabbleVCardManager *manager)
+{
+  GError *error = NULL;
+  GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (manager);
+
+  if (priv->request_pipeline == NULL)
+      return;
+
+  GabbleVCardPipelineItem *item = priv->request_pipeline->data;
+  priv->request_pipeline = g_slist_remove (priv->request_pipeline, item);
+
+  DEBUG ("launching request %p", item->request);
+
+  if (!_gabble_connection_send_with_reply (priv->connection, item->msg,
+      item->callback, G_OBJECT(manager), item->request, &error))
+    {
+      GabbleVCardCacheEntry *entry =
+          g_hash_table_lookup (priv->cache, GUINT_TO_POINTER (item->request->handle));
+      if (entry && entry->request == item->request)
+        {
+          entry->request = NULL;
+          complete_pending_requests (manager, item->request->handle, error);
+          delete_request (item->request);
+        }
+      else
+        {
+          complete_one_request (item->request, NULL, error);
+        }
+      vcard_pipeline_send_next_request (manager);
+    }
+  else
+    {
+      priv->reqs_in_flight = g_slist_prepend (priv->reqs_in_flight, item->request);
+    }
+
+  lm_message_unref (item->msg);
+  g_free (item);
+}
+
+static void
+vcard_pipeline_go (GabbleVCardManager *manager)
+{
+  GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (manager);
+
+  DEBUG ("called");
+
+  while (priv->request_pipeline &&
+      (g_slist_length (priv->reqs_in_flight) < VCARD_PIPELINE_SIZE))
+    {
+      vcard_pipeline_send_next_request (manager);
+    }
+}
+
+static void
+vcard_pipeline_enqueue (GabbleVCardManagerRequest *request, LmMessage *msg,
+    gpointer callback)
+{
+  GabbleVCardManager *self = request->manager;
+  GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (self);
+  GabbleVCardPipelineItem *item = g_new0 (GabbleVCardPipelineItem, 1);
+
+  item->request = request;
+  item->msg = msg;
+  item->callback = callback;
+
+  DEBUG ("enqueue request %p", request);
+
+  priv->request_pipeline = g_slist_append (priv->request_pipeline, item);
+  if (request->timeout && (0 == request->timer_id))
+    {
+      request->timer_id =
+          g_timeout_add (request->timeout, timeout_request, request);
+    }
 }
 
 /* If @replacement is NULL sends a request, calling request_reply_cb when
@@ -978,7 +1087,6 @@ request_send (GabbleVCardManagerRequest *request,
               GError **error)
 {
   GabbleVCardManager *self = request->manager;
-  GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (self);
   LmMessage *msg;
   LmMessageNode *lm_node;
 
@@ -995,23 +1103,12 @@ request_send (GabbleVCardManagerRequest *request,
   if (replacement)
     lm_message_node_steal_children (lm_node, replacement);
 
-  if (! _gabble_connection_send_with_reply (priv->connection, msg,
-        (replacement ? replace_reply_cb : request_reply_cb),
-        G_OBJECT(self), request, error))
-    {
-      lm_message_unref (msg);
-      return NULL;
-    }
-  else
-    {
-      if (request->timeout && (0 == request->timer_id))
-        {
-          request->timer_id =
-              g_timeout_add (request->timeout, timeout_request, request);
-        }
-      lm_message_unref (msg);
-      return request;
-    }
+  vcard_pipeline_enqueue (request, msg,
+      (replacement ? replace_reply_cb : request_reply_cb));
+
+  vcard_pipeline_go (self);
+
+  return request;
 }
 
 static void

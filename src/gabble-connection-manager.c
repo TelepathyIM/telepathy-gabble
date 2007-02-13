@@ -255,7 +255,9 @@ static void
 report_unknown_param (gpointer key, gpointer value, gpointer user_data)
 {
   const char *arg = (const char *) key;
-  g_debug ("%s: unknown argument provided: %s", G_STRFUNC, arg);
+  GString **error_str = (GString **) user_data;
+  *error_str = g_string_append_c (*error_str, ' ');
+  *error_str = g_string_append (*error_str, arg);
 }
 
 static gboolean
@@ -333,9 +335,16 @@ parse_parameters (const GabbleParamSpec *paramspec,
 
   if (g_hash_table_size (provided) != 0)
     {
-      g_hash_table_foreach (provided, report_unknown_param, NULL);
+      gchar *error_txt;
+      GString *error_str = g_string_new ("unknown parameters provided:");
+
+      g_hash_table_foreach (provided, report_unknown_param, &error_str);
+      error_txt = g_string_free (error_str, FALSE);
+
+      g_debug ("%s: %s", G_STRFUNC, error_txt);
       g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "unknown argument name provided");
+          error_txt);
+      g_free (error_txt);
       return FALSE;
     }
 

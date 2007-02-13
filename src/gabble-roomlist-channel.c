@@ -258,6 +258,8 @@ gabble_roomlist_channel_class_init (GabbleRoomlistChannelClass *gabble_roomlist_
                                    param_spec);
 }
 
+static void stop_listing (GabbleRoomlistChannel *self);
+
 void
 gabble_roomlist_channel_dispose (GObject *object)
 {
@@ -269,30 +271,12 @@ gabble_roomlist_channel_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  if (priv->listing)
-    {
-      emit_room_signal (object);
-      tp_svc_channel_type_room_list_emit_listing_rooms (
-          (TpSvcChannelTypeRoomList *)object, FALSE);
-      priv->listing = FALSE;
-    }
+  stop_listing (self);
 
   if (!priv->closed)
     {
       tp_svc_channel_emit_closed ((TpSvcChannel *)object);
       priv->closed = TRUE;
-    }
-
-  if (priv->disco_pipeline != NULL)
-    {
-      gabble_disco_pipeline_destroy (priv->disco_pipeline);
-      priv->disco_pipeline = NULL;
-    }
-
-  if (priv->timer_source_id)
-    {
-      g_source_remove (priv->timer_source_id);
-      priv->timer_source_id = 0;
     }
 
   g_assert (priv->pending_room_signals != NULL);
@@ -502,6 +486,34 @@ rooms_end_cb (gpointer data, gpointer user_data)
   priv->timer_source_id = 0;
 }
 
+static void
+stop_listing (GabbleRoomlistChannel *self)
+{
+  GabbleRoomlistChannelPrivate *priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (self);
+
+  if (priv->listing)
+    {
+      emit_room_signal (self);
+      priv->listing = FALSE;
+      tp_svc_channel_type_room_list_emit_listing_rooms (
+          (TpSvcChannelTypeRoomList *)self, FALSE);
+    }
+
+  if (priv->disco_pipeline != NULL)
+    {
+      gabble_disco_pipeline_destroy (priv->disco_pipeline);
+      priv->disco_pipeline = NULL;
+    }
+
+  if (priv->timer_source_id)
+    {
+      g_source_remove (priv->timer_source_id);
+      priv->timer_source_id = 0;
+    }
+
+  g_assert (priv->pending_room_signals->len == 0);
+}
+
 
 /************************* D-Bus Method definitions **************************/
 
@@ -636,6 +648,23 @@ gabble_roomlist_channel_list_rooms (TpSvcChannelTypeRoomList *iface,
   tp_svc_channel_type_room_list_return_from_list_rooms (context);
 }
 
+/**
+ * gabble_roomlist_channel_stop_listing
+ *
+ * Implements D-Bus method StopListing
+ * on interface org.freedesktop.Telepathy.Channel.Type.RoomList
+ */
+static void
+gabble_roomlist_channel_stop_listing (TpSvcChannelTypeRoomList *iface,
+                                      DBusGMethodInvocation *context)
+{
+  GabbleRoomlistChannel *self = GABBLE_ROOMLIST_CHANNEL (iface);
+
+  g_assert (GABBLE_IS_ROOMLIST_CHANNEL (self));
+
+  stop_listing (self);
+}
+
 static void
 channel_iface_init(gpointer g_iface, gpointer iface_data)
 {
@@ -659,5 +688,6 @@ roomlist_iface_init(gpointer g_iface, gpointer iface_data)
     klass, gabble_roomlist_channel_##x)
   IMPLEMENT(get_listing_rooms);
   IMPLEMENT(list_rooms);
+  IMPLEMENT(stop_listing);
 #undef IMPLEMENT
 }

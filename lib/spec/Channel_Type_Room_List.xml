@@ -73,6 +73,12 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
         <tp:error name="org.freedesktop.Telepathy.Error.PermissionDenied"/>
       </tp:possible-errors>
     </method>
+    <method name="StopListing">
+      <tp:docstring>
+        Stop the room listing if it's in progress, but don't close the channel.
+        The ListingRooms signal should be emitted when the listing stops.
+      </tp:docstring>
+    </method>
     <signal name="ListingRooms">
       <arg name="listing" type="b">
         <tp:docstring>A boolean indicating if room listing is in progress</tp:docstring>

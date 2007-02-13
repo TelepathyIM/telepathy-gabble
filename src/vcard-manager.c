@@ -778,7 +778,9 @@ observe_vcard (GabbleConnection *conn, GabbleVCardManager *manager,
                 base->handles[TP_HANDLE_TYPE_CONTACT],
                 handle, gabble_vcard_manager_cache_quark (),
                 (gchar *) NO_ALIAS, NULL))
-            DEBUG ("failed to cache their lack of vcard alias");
+            {
+              DEBUG ("failed to cache their lack of vcard alias");
+            }
         }
 
     }

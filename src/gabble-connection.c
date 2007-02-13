@@ -2017,7 +2017,9 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   NODE_DEBUG (result_iq, "sending disco response");
 
   if (!lm_connection_send (self->lmconn, result, NULL))
-    DEBUG ("sending disco response failed");
+    {
+      DEBUG ("sending disco response failed");
+    }
 
   g_slist_free (features);
 

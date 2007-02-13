@@ -1032,13 +1032,21 @@ _gabble_media_channel_add_member (TpSvcChannelInterfaceGroup *obj,
   if (priv->creator == mixin->self_handle)
     {
       GabblePresence *presence;
+      TpIntSet *set;
 
       /* yes: check the peer's capabilities */
 
       presence = gabble_presence_cache_get (priv->conn->presence_cache, handle);
 
-      if (presence == NULL ||
-          !(presence->caps & PRESENCE_CAP_GOOGLE_VOICE ||
+      if (presence == NULL)
+        {
+          DEBUG ("failed to add contact %d (%s) to media channel: "
+              "no presence available", handle, tp_handle_inspect (
+                priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT], handle));
+          goto NO_CAPS;
+        }
+
+      if (!(presence->caps & PRESENCE_CAP_GOOGLE_VOICE ||
             presence->caps & PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO ||
             presence->caps & PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO))
         {
@@ -1046,12 +1054,12 @@ _gabble_media_channel_add_member (TpSvcChannelInterfaceGroup *obj,
             DEBUG ("failed to add contact %d (%s) to media channel: "
                    "no presence available", handle,
                    tp_handle_inspect (
-                    conn->handles[TP_HANDLE_TYPE_CONTACT], handle));
+                    priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT], handle));
           else
             DEBUG ("failed to add contact %d (%s) to media channel: "
                    "caps %x aren't sufficient", handle,
                    tp_handle_inspect (
-                     conn->handles[TP_HANDLE_TYPE_CONTACT], handle),
+                     priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT], handle),
                    presence->caps);
 
           g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
@@ -1060,8 +1068,6 @@ _gabble_media_channel_add_member (TpSvcChannelInterfaceGroup *obj,
         }
 
       /* yes: invite the peer */
-
-      TpIntSet *set;
 
       /* create a new session */
       create_session (chan, handle, NULL, NULL);
@@ -1116,6 +1122,11 @@ _gabble_media_channel_add_member (TpSvcChannelInterfaceGroup *obj,
 
   g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
       "handle %u cannot be added in the current state", handle);
+  return FALSE;
+
+NO_CAPS:
+  g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+      "handle %u has no media capabilities", handle);
   return FALSE;
 }
 

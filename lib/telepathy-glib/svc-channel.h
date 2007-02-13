@@ -1,6 +1,7 @@
 #ifndef __TP_META_SVC_CHANNEL_H__
 #define __TP_META_SVC_CHANNEL_H__
 
+#include <telepathy-glib/_gen/svc-Channel_Interface_Chat_State.h>
 #include <telepathy-glib/_gen/svc-Channel_Interface_DTMF.h>
 #include <telepathy-glib/_gen/svc-Channel_Interface_Group.h>
 #include <telepathy-glib/_gen/svc-Channel_Interface_Hold.h>

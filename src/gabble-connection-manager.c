@@ -251,18 +251,22 @@ set_param_from_value (const GabbleParamSpec *paramspec,
   return TRUE;
 }
 
+static void
+report_unknown_param (gpointer key, gpointer value, gpointer user_data)
+{
+  const char *arg = (const char *) key;
+  g_debug ("%s: unknown argument provided: %s", G_STRFUNC, arg);
+}
+
 static gboolean
 parse_parameters (const GabbleParamSpec *paramspec,
                   GHashTable            *provided,
                   GabbleParams          *params,
                   GError               **error)
 {
-  int unhandled;
   int i;
   guint mandatory_flag = TP_CONN_MGR_PARAM_FLAG_REQUIRED;
   GValue *value;
-
-  unhandled = g_hash_table_size (provided);
 
   value = g_hash_table_lookup (provided, "register");
   if (value != NULL && G_VALUE_TYPE(value) == G_TYPE_BOOLEAN &&
@@ -302,7 +306,6 @@ parse_parameters (const GabbleParamSpec *paramspec,
 
           params->set_mask |= 1 << i;
 
-          unhandled--;
           if (paramspec[i].gtype == G_TYPE_STRING)
             {
               if (0 == strcmp (paramspec[i].name, "password"))
@@ -323,12 +326,14 @@ parse_parameters (const GabbleParamSpec *paramspec,
               g_debug ("%s: accepted value %u for param %s", G_STRFUNC,
                        *((guint *) ((void *)params + paramspec[i].offset)), paramspec[i].name);
             }
+
+          g_hash_table_remove (provided, paramspec[i].name);
         }
     }
 
-  if (unhandled)
+  if (g_hash_table_size (provided) != 0)
     {
-      g_debug ("%s: unknown argument name provided", G_STRFUNC);
+      g_hash_table_foreach (provided, report_unknown_param, NULL);
       g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "unknown argument name provided");
       return FALSE;

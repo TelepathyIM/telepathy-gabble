@@ -964,6 +964,7 @@ tp_base_connection_request_channel (TpSvcConnection *iface,
   
   request = channel_request_new (context, type, handle_type, handle,
       suppress_handler);
+  g_ptr_array_add (priv->channel_requests, request);
 
   for (i = 0; i < priv->channel_factories->len; i++)
     {
@@ -972,7 +973,6 @@ tp_base_connection_request_channel (TpSvcConnection *iface,
       TpChannelFactoryRequestStatus cur_status;
       TpChannelIface *chan = NULL;
 
-      g_ptr_array_add (priv->channel_requests, request);
       cur_status = tp_channel_factory_iface_request (factory, type,
           (TpHandleType) handle_type, handle, request, &chan, &error);
 

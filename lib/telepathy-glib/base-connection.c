@@ -270,6 +270,7 @@ find_matching_channel_requests (TpBaseConnection *conn,
        * satisfy the request for which it was returned as EXISTING).
        */
       g_assert (handle == 0);
+      g_assert (channel_request == NULL || tp_g_ptr_array_contains (priv->channel_requests, channel_request));
 
       if (channel_request)
         {

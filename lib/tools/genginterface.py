@@ -280,11 +280,14 @@ GType %(prefix)s_get_type(void);
  
 
 def signal_emit_stub(signal):
+    # for signal: org.freedesktop.Telepathy.Thing::StuffHappened (s, u)
+    # emit: void tp_svc_thing_emit_stuff_happened (gpointer instance,
+    #           const char *arg, guint arg2)
     dbus_name = signal.getAttributeNode("name").nodeValue
     c_emitter_name = prefix + '_emit_' + camelcase_to_lower(dbus_name)
     c_signal_const_name = 'SIGNAL_' + dbus_name
 
-    decl = 'void ' + c_emitter_name + ' (' + classname + ' *self'
+    decl = 'void ' + c_emitter_name + ' (gpointer instance'
     args = ''
 
     for i in signal.getElementsByTagName("arg"):
@@ -299,7 +302,7 @@ def signal_emit_stub(signal):
     decl += ')'
 
     header = decl + ';\n\n'
-    body = decl + ('\n{\n  g_signal_emit (self, signals[%s], 0%s);\n}\n\n'
+    body = decl + ('\n{\n  g_signal_emit (instance, signals[%s], 0%s);\n}\n\n'
                    % (c_signal_const_name, args))
 
     return header, body

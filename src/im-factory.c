@@ -308,7 +308,7 @@ new_im_channel (GabbleImFactory *fac, TpHandle handle)
 
   g_hash_table_insert (priv->channels, GINT_TO_POINTER (handle), chan);
 
-  g_signal_emit_by_name (fac, "new-channel", chan);
+  tp_channel_factory_iface_emit_new_channel (fac, (TpChannelIface *)chan, NULL);
 
   g_free (object_path);
 
@@ -404,12 +404,14 @@ gabble_im_factory_iface_request (TpChannelFactoryIface *iface,
                                  const gchar *chan_type,
                                  TpHandleType handle_type,
                                  guint handle,
+                                 gpointer request,
                                  TpChannelIface **ret,
                                  GError **error)
 {
   GabbleImFactory *fac = GABBLE_IM_FACTORY (iface);
   GabbleImFactoryPrivate *priv = GABBLE_IM_FACTORY_GET_PRIVATE (fac);
   GabbleIMChannel *chan;
+  TpChannelFactoryRequestStatus status;
 
   if (strcmp (chan_type, TP_IFACE_CHANNEL_TYPE_TEXT))
     return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_IMPLEMENTED;
@@ -423,12 +425,16 @@ gabble_im_factory_iface_request (TpChannelFactoryIface *iface,
 
   chan = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (handle));
 
+  status = TP_CHANNEL_FACTORY_REQUEST_STATUS_EXISTING;
   if (!chan)
-    chan = new_im_channel (fac, handle);
+    {
+      status = TP_CHANNEL_FACTORY_REQUEST_STATUS_CREATED;
+      chan = new_im_channel (fac, handle);
+    }
 
   g_assert (chan);
   *ret = TP_CHANNEL_IFACE (chan);
-  return TP_CHANNEL_FACTORY_REQUEST_STATUS_DONE;
+  return status;
 }
 
 static void

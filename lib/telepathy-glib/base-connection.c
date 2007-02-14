@@ -137,9 +137,6 @@ typedef struct _TpBaseConnectionPrivate
   GPtrArray *channel_factories;
   /* array of (ChannelRequest *) */
   GPtrArray *channel_requests;
-  /* if TRUE, suppress the next handler. This is strange and relies on
-   * the CM being non-reentrant - FIXME */
-  gboolean suppress_next_handler;
 } TpBaseConnectionPrivate;
 
 static void
@@ -250,6 +247,7 @@ find_matching_channel_requests (TpBaseConnection *conn,
                                 const gchar *channel_type,
                                 guint handle_type,
                                 guint handle,
+                                ChannelRequest *channel_request,
                                 gboolean *suppress_handler)
 {
   TpBaseConnectionPrivate *priv = TP_BASE_CONNECTION_GET_PRIVATE (conn);
@@ -258,6 +256,29 @@ find_matching_channel_requests (TpBaseConnection *conn,
 
   requests = g_ptr_array_sized_new (1);
 
+  if (handle_type == 0)
+    {
+      /* It's an anonymous channel, which can only satisfy the request for
+       * which it was created (or if it's returned as EXISTING, it can only
+       * satisfy the request for which it was returned as EXISTING).
+       */
+      g_assert (handle == 0);
+
+      if (channel_request)
+        {
+          g_ptr_array_add (requests, channel_request);
+
+          if (suppress_handler && channel_request->suppress_handler)
+            *suppress_handler = TRUE;
+        }
+
+      /* whether we've put any matches in requests or not */
+      return requests;
+    }
+
+  /* for identifiable channels (those which are to a particular handle),
+   * satisfy any queued requests.
+   */
   for (i = 0; i < priv->channel_requests->len; i++)
     {
       ChannelRequest *request = g_ptr_array_index (priv->channel_requests, i);
@@ -277,19 +298,26 @@ find_matching_channel_requests (TpBaseConnection *conn,
       g_ptr_array_add (requests, request);
     }
 
+  /* if this channel was created or returned as a result of a particular
+   * request, that request had better be among the matching ones in the queue
+   */
+  if (channel_request)
+    g_assert (tp_g_ptr_array_contains (requests, channel_request));
+
   return requests;
 }
 
 static void
-connection_new_channel_cb (TpChannelFactoryIface *factory,
-                           GObject *chan,
-                           gpointer data)
+satisfy_requests (TpBaseConnection *conn,
+                  TpChannelFactoryIface *factory,
+                  TpChannelIface *chan,
+                  ChannelRequest *channel_request,
+                  gboolean is_new)
 {
-  TpBaseConnection *conn = TP_BASE_CONNECTION (data);
   TpBaseConnectionPrivate *priv = TP_BASE_CONNECTION_GET_PRIVATE (conn);
   gchar *object_path = NULL, *channel_type = NULL;
   guint handle_type = 0, handle = 0;
-  gboolean suppress_handler = priv->suppress_next_handler;
+  gboolean suppress_handler = FALSE;
   GPtrArray *tmp;
   guint i;
 
@@ -303,11 +331,13 @@ connection_new_channel_cb (TpChannelFactoryIface *factory,
   DEBUG ("called for %s", object_path);
 
   tmp = find_matching_channel_requests (conn, channel_type, handle_type,
-                                        handle, &suppress_handler);
+                                        handle, channel_request,
+                                        &suppress_handler);
 
-  tp_svc_connection_emit_new_channel (
-      (TpSvcConnection *)conn, object_path, channel_type,
-      handle_type, handle, suppress_handler);
+  if (is_new)
+    tp_svc_connection_emit_new_channel (
+        (TpSvcConnection *)conn, object_path, channel_type,
+        handle_type, handle, suppress_handler);
 
   for (i = 0; i < tmp->len; i++)
     {
@@ -317,7 +347,8 @@ connection_new_channel_cb (TpChannelFactoryIface *factory,
           "handle=%u, suppress_handler=%u", request->channel_type,
           request->handle_type, request->handle, request->suppress_handler);
 
-      dbus_g_method_return (request->context, object_path);
+      tp_svc_connection_return_from_request_channel (request->context,
+          object_path);
       request->context = NULL;
 
       g_ptr_array_remove (priv->channel_requests, request);
@@ -332,8 +363,19 @@ connection_new_channel_cb (TpChannelFactoryIface *factory,
 }
 
 static void
+connection_new_channel_cb (TpChannelFactoryIface *factory,
+                           GObject *chan,
+                           ChannelRequest *channel_request,
+                           gpointer data)
+{
+  satisfy_requests (TP_BASE_CONNECTION (data), factory,
+      TP_CHANNEL_IFACE (chan), channel_request, TRUE);
+}
+
+static void
 connection_channel_error_cb (TpChannelFactoryIface *factory,
                              GObject *chan,
+                             ChannelRequest *channel_request,
                              GError *error,
                              gpointer data)
 {
@@ -355,7 +397,7 @@ connection_channel_error_cb (TpChannelFactoryIface *factory,
       NULL);
 
   tmp = find_matching_channel_requests (conn, channel_type, handle_type,
-                                        handle, NULL);
+                                        handle, channel_request, NULL);
 
   for (i = 0; i < tmp->len; i++)
     {
@@ -902,15 +944,18 @@ tp_base_connection_request_channel (TpSvcConnection *iface,
   TpBaseConnectionPrivate *priv;
   TpChannelFactoryRequestStatus status =
     TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_IMPLEMENTED;
-  gchar *object_path = NULL;
   GError *error = NULL;
   guint i;
+  ChannelRequest *request;
 
   g_assert (TP_IS_BASE_CONNECTION (self));
 
   priv = TP_BASE_CONNECTION_GET_PRIVATE (self);
 
   ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context);
+  
+  request = channel_request_new (context, type, handle_type, handle,
+      suppress_handler);
 
   for (i = 0; i < priv->channel_factories->len; i++)
     {
@@ -918,32 +963,35 @@ tp_base_connection_request_channel (TpSvcConnection *iface,
         (priv->channel_factories, i);
       TpChannelFactoryRequestStatus cur_status;
       TpChannelIface *chan = NULL;
-      ChannelRequest *request = NULL;
 
-      priv->suppress_next_handler = suppress_handler;
-
+      g_ptr_array_add (priv->channel_requests, request);
       cur_status = tp_channel_factory_iface_request (factory, type,
-          (TpHandleType) handle_type, handle, &chan, &error);
-
-      priv->suppress_next_handler = FALSE;
+          (TpHandleType) handle_type, handle, request, &chan, &error);
 
       switch (cur_status)
         {
-        case TP_CHANNEL_FACTORY_REQUEST_STATUS_DONE:
+        case TP_CHANNEL_FACTORY_REQUEST_STATUS_EXISTING:
+          {
+            g_assert (NULL != chan);
+            satisfy_requests (self, factory, chan, request, FALSE);
+            /* satisfy_requests should remove the request */
+            g_assert (!tp_g_ptr_array_contains (priv->channel_requests, request));
+            return;
+          }
+        case TP_CHANNEL_FACTORY_REQUEST_STATUS_CREATED:
           g_assert (NULL != chan);
-          g_object_get (chan, "object-path", &object_path, NULL);
-          goto OUT;
+          /* the signal handler should have completed the queued request
+           * and freed the ChannelRequest already */
+          g_assert (!tp_g_ptr_array_contains (priv->channel_requests, request));
+          return;
         case TP_CHANNEL_FACTORY_REQUEST_STATUS_QUEUED:
-          DEBUG ("queueing request, channel_type=%s, handle_type=%u, "
+          DEBUG ("queued request, channel_type=%s, handle_type=%u, "
               "handle=%u, suppress_handler=%u", type, handle_type,
               handle, suppress_handler);
-          request = channel_request_new (context, type, handle_type, handle,
-              suppress_handler);
-          g_ptr_array_add (priv->channel_requests, request);
           return;
         case TP_CHANNEL_FACTORY_REQUEST_STATUS_ERROR:
           /* pass through error */
-          goto OUT;
+          goto ERROR;
         default:
           /* always return the most specific error */
           if (cur_status > status)
@@ -983,19 +1031,13 @@ tp_base_connection_request_channel (TpSvcConnection *iface,
         g_assert_not_reached ();
     }
 
-OUT:
-  if (NULL != error)
-    {
-      g_assert (NULL == object_path);
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-      return;
-    }
+ERROR:
+  g_ptr_array_remove (priv->channel_requests, request);
+  channel_request_free (request);
 
-  g_assert (NULL != object_path);
-  tp_svc_connection_return_from_request_channel (context,
-      object_path);
-  g_free (object_path);
+  g_assert (error != NULL);
+  dbus_g_method_return_error (context, error);
+  g_error_free (error);
 }
 
 

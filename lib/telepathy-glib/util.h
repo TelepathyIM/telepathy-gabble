@@ -25,6 +25,8 @@
 #ifndef __TP_UTIL_H__
 #define __TP_UTIL_H__
 
+gboolean tp_g_ptr_array_contains (GPtrArray *haystack, gpointer needle);
+
 gboolean tp_strdiff (const gchar *left, const gchar *right);
 
 gpointer tp_mixin_offset_cast (gpointer instance, guint offset);

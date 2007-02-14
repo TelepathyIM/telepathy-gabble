@@ -255,7 +255,7 @@ muc_ready_cb (GabbleMucChannel *chan,
 
   DEBUG ("chan=%p", chan);
 
-  g_signal_emit_by_name (fac, "new-channel", chan);
+  tp_channel_factory_iface_emit_new_channel (fac, (TpChannelIface *)chan, NULL);
 }
 
 static void
@@ -267,7 +267,8 @@ muc_join_error_cb (GabbleMucChannel *chan,
 
   DEBUG ("error->code=%u, error->message=\"%s\"", error->code, error->message);
 
-  g_signal_emit_by_name (fac, "channel-error", chan, error);
+  tp_channel_factory_iface_emit_channel_error (fac, (TpChannelIface *)chan,
+      error, NULL);
 }
 
 /**
@@ -677,7 +678,8 @@ make_roomlist_channel (GabbleMucFactory *fac)
       g_signal_connect (priv->roomlist_channel, "closed",
                         (GCallback) roomlist_channel_closed_cb, fac);
 
-      g_signal_emit_by_name (fac, "new-channel", priv->roomlist_channel);
+      tp_channel_factory_iface_emit_new_channel (fac, 
+          (TpChannelIface *)priv->roomlist_channel, NULL);
 
       g_free (object_path);
     }
@@ -797,6 +799,7 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
                                   const gchar *chan_type,
                                   TpHandleType handle_type,
                                   guint handle,
+                                  gpointer request,
                                   TpChannelIface **ret,
                                   GError **error)
 {
@@ -806,6 +809,12 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
 
   if (!tp_strdiff (chan_type, TP_IFACE_CHANNEL_TYPE_ROOM_LIST))
     {
+      if (priv->roomlist_channel != NULL)
+        {
+          *ret = TP_CHANNEL_IFACE (priv->roomlist_channel);
+          return TP_CHANNEL_FACTORY_REQUEST_STATUS_EXISTING;
+        }
+
       /* FIXME - delay if services aren't discovered yet? */
       if (!make_roomlist_channel (fac))
         {
@@ -813,7 +822,7 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
           return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_AVAILABLE;
         }
       *ret = TP_CHANNEL_IFACE (priv->roomlist_channel);
-      return TP_CHANNEL_FACTORY_REQUEST_STATUS_DONE;
+      return TP_CHANNEL_FACTORY_REQUEST_STATUS_CREATED;
     }
 
   if (strcmp (chan_type, TP_IFACE_CHANNEL_TYPE_TEXT))
@@ -836,7 +845,7 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
   if (_gabble_muc_channel_is_ready (chan))
     {
       *ret = TP_CHANNEL_IFACE (chan);
-      return TP_CHANNEL_FACTORY_REQUEST_STATUS_DONE;
+      return TP_CHANNEL_FACTORY_REQUEST_STATUS_EXISTING;
     }
   else
     {

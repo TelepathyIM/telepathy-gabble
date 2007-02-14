@@ -485,8 +485,7 @@ _gabble_roster_item_remove (GabbleRoster *roster,
 
 /* the TpHandleType must be GROUP or LIST */
 static GabbleRosterChannel *_gabble_roster_get_channel (GabbleRoster *,
-                                                        TpHandleType,
-                                                        TpHandle);
+    TpHandleType, TpHandle, gboolean *created);
 
 typedef struct
 {
@@ -843,7 +842,7 @@ _gabble_roster_create_channel (GabbleRoster *roster,
       DEBUG ("roster already received, emitting signal for %s",
              object_path);
 
-      g_signal_emit_by_name (roster, "new-channel", chan);
+      g_signal_emit_by_name (roster, "new-channel", chan, NULL);
     }
   else
     {
@@ -858,7 +857,8 @@ _gabble_roster_create_channel (GabbleRoster *roster,
 static GabbleRosterChannel *
 _gabble_roster_get_channel (GabbleRoster *roster,
                             guint handle_type,
-                            TpHandle handle)
+                            TpHandle handle,
+                            gboolean *created)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
   GabbleRosterChannel *chan;
@@ -878,7 +878,16 @@ _gabble_roster_get_channel (GabbleRoster *roster,
   chan = g_hash_table_lookup (channels, GINT_TO_POINTER (handle));
 
   if (chan == NULL)
-    chan = _gabble_roster_create_channel (roster, handle_type, handle);
+    {
+      if (created)
+        *created = TRUE;
+      chan = _gabble_roster_create_channel (roster, handle_type, handle);
+    }
+  else
+    {
+      if (created)
+        *created = FALSE;
+    }
 
   return chan;
 }
@@ -910,7 +919,7 @@ _gabble_roster_emit_one (gpointer key,
       name);
 #endif
 
-  g_signal_emit_by_name (roster, "new-channel", chan);
+  g_signal_emit_by_name (roster, "new-channel", chan, NULL);
 }
 
 static void
@@ -947,7 +956,7 @@ _update_group (gpointer key, gpointer value, gpointer user_data)
   GabbleRoster *roster = GABBLE_ROSTER (user_data);
   GroupMembershipUpdate *update = (GroupMembershipUpdate *)value;
   GabbleRosterChannel *group_channel = _gabble_roster_get_channel (
-      roster, TP_HANDLE_TYPE_GROUP, group_handle);
+      roster, TP_HANDLE_TYPE_GROUP, group_handle, NULL);
   TpIntSet *empty = tp_intset_new ();
 
 #ifdef ENABLE_DEBUG
@@ -1069,7 +1078,8 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
 
       /* get the publish channel first because we need it when processing */
       handle = GABBLE_LIST_HANDLE_PUBLISH;
-      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle);
+      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle,
+          NULL);
 
       /* iterate every sub-node, which we expect to be <item>s */
       for (item_node = query_node->children;
@@ -1210,14 +1220,16 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
             "", pub_add, pub_rem, NULL, NULL, 0, 0);
 
       handle = GABBLE_LIST_HANDLE_SUBSCRIBE;
-      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle);
+      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle,
+          NULL);
 
       DEBUG ("calling change members on subscribe channel");
       tp_group_mixin_change_members ((TpSvcChannelInterfaceGroup *)chan,
             "", sub_add, sub_rem, NULL, sub_rp, 0, 0);
 
       handle = GABBLE_LIST_HANDLE_KNOWN;
-      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle);
+      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle,
+          NULL);
 
       DEBUG ("calling change members on known channel");
       tp_group_mixin_change_members ((TpSvcChannelInterfaceGroup *)chan,
@@ -1229,7 +1241,8 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
       if (google_roster)
         {
           handle = GABBLE_LIST_HANDLE_DENY;
-          chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle);
+          chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
+              handle, NULL);
 
           DEBUG ("calling change members on deny channel");
           tp_group_mixin_change_members ((TpSvcChannelInterfaceGroup *)chan,
@@ -1391,7 +1404,8 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
       tp_intset_add (tmp, handle);
 
       handle = GABBLE_LIST_HANDLE_PUBLISH;
-      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle);
+      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle,
+          NULL);
       tp_group_mixin_change_members (TP_SVC_CHANNEL_INTERFACE_GROUP (chan), status_message,
           NULL, NULL, tmp, NULL, 0, 0);
 
@@ -1406,7 +1420,8 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
       tp_intset_add (tmp, handle);
 
       handle = GABBLE_LIST_HANDLE_PUBLISH;
-      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle);
+      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle,
+          NULL);
       changed = tp_group_mixin_change_members (TP_SVC_CHANNEL_INTERFACE_GROUP (chan),
           status_message, NULL, tmp, NULL, NULL, 0, 0);
 
@@ -1423,7 +1438,8 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
       tp_intset_add (tmp, handle);
 
       handle = GABBLE_LIST_HANDLE_SUBSCRIBE;
-      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle);
+      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle,
+          NULL);
       changed = tp_group_mixin_change_members (TP_SVC_CHANNEL_INTERFACE_GROUP (chan),
           status_message, tmp, NULL, NULL, NULL, 0, 0);
 
@@ -1440,7 +1456,8 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
       tp_intset_add (tmp, handle);
 
       handle = GABBLE_LIST_HANDLE_SUBSCRIBE;
-      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle);
+      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle,
+          NULL);
       changed = tp_group_mixin_change_members (TP_SVC_CHANNEL_INTERFACE_GROUP (chan),
           status_message, NULL, tmp, NULL, NULL, 0, 0);
 
@@ -1580,11 +1597,13 @@ gabble_roster_factory_iface_request (TpChannelFactoryIface *iface,
                                      const gchar *chan_type,
                                      TpHandleType handle_type,
                                      guint handle,
+                                     gpointer request,
                                      TpChannelIface **ret,
                                      GError **error)
 {
   GabbleRoster *roster = GABBLE_ROSTER (iface);
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
+  gboolean created;
 
   if (strcmp (chan_type, TP_IFACE_CHANNEL_TYPE_CONTACT_LIST))
     return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_IMPLEMENTED;
@@ -1606,9 +1625,11 @@ gabble_roster_factory_iface_request (TpChannelFactoryIface *iface,
   if (priv->roster_received)
     {
       GabbleRosterChannel *chan;
-      chan = _gabble_roster_get_channel (roster, handle_type, handle);
+      chan = _gabble_roster_get_channel (roster, handle_type, handle,
+          &created);
       *ret = TP_CHANNEL_IFACE (chan);
-      return TP_CHANNEL_FACTORY_REQUEST_STATUS_DONE;
+      return created ? TP_CHANNEL_FACTORY_REQUEST_STATUS_CREATED
+                     : TP_CHANNEL_FACTORY_REQUEST_STATUS_EXISTING;
     }
   else
     {

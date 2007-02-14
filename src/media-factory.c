@@ -322,7 +322,8 @@ media_factory_jingle_cb (LmMessageHandler *handler,
         sid, message, session_node, action, &error))
     {
       if (chan_is_new)
-        g_signal_emit_by_name (fac, "new-channel", chan);
+        tp_channel_factory_iface_emit_new_channel (fac,
+            (TpChannelIface *)chan, NULL);
     }
   else
     {
@@ -580,6 +581,7 @@ gabble_media_factory_iface_request (TpChannelFactoryIface *iface,
                                     const gchar *chan_type,
                                     TpHandleType handle_type,
                                     guint handle,
+                                    gpointer request,
                                     TpChannelIface **ret,
                                     GError **error)
 {
@@ -613,10 +615,11 @@ gabble_media_factory_iface_request (TpChannelFactoryIface *iface,
     }
 
   g_assert (chan != NULL);
-  g_signal_emit_by_name (fac, "new-channel", chan);
+  tp_channel_factory_iface_emit_new_channel (fac, (TpChannelIface *)chan,
+      request);
 
   *ret = TP_CHANNEL_IFACE (chan);
-  return TP_CHANNEL_FACTORY_REQUEST_STATUS_DONE;
+  return TP_CHANNEL_FACTORY_REQUEST_STATUS_CREATED;
 }
 
 static void

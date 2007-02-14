@@ -25,6 +25,20 @@
 #include <string.h>
 
 gboolean
+tp_g_ptr_array_contains (GPtrArray *haystack, gpointer needle)
+{
+  guint i;
+
+  for (i = 0; i < haystack->len; i++)
+    {
+      if (g_ptr_array_index (haystack, i) == needle)
+        return TRUE;
+    }
+
+  return FALSE;
+}
+
+gboolean
 tp_strdiff (const gchar *left, const gchar *right)
 {
   if ((NULL == left) != (NULL == right))

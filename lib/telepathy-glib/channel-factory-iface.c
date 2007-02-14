@@ -27,6 +27,14 @@
 
 #include "_gen/signals-marshal.h"
 
+enum {
+    NEW_CHANNEL,
+    CHANNEL_ERROR,
+    N_SIGNALS
+};
+
+static guint signals[N_SIGNALS] = {0};
+
 static void
 tp_channel_factory_iface_base_init (gpointer klass)
 {
@@ -35,21 +43,22 @@ tp_channel_factory_iface_base_init (gpointer klass)
   if (!initialized) {
     initialized = TRUE;
 
-    g_signal_new ("new-channel",
-                  G_OBJECT_CLASS_TYPE (klass),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  g_cclosure_marshal_VOID__OBJECT,
-                  G_TYPE_NONE, 1, G_TYPE_OBJECT);
-
-    g_signal_new ("channel-error",
+    signals[NEW_CHANNEL] = g_signal_new ("new-channel",
                   G_OBJECT_CLASS_TYPE (klass),
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
                   _tp_marshal_VOID__OBJECT_POINTER,
                   G_TYPE_NONE, 2, G_TYPE_OBJECT, G_TYPE_POINTER);
+
+    signals[CHANNEL_ERROR] = g_signal_new ("channel-error",
+                  G_OBJECT_CLASS_TYPE (klass),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  _tp_marshal_VOID__OBJECT_POINTER_POINTER,
+                  G_TYPE_NONE,
+                  3, G_TYPE_OBJECT, G_TYPE_POINTER, G_TYPE_POINTER);
   }
 }
 
@@ -114,9 +123,27 @@ tp_channel_factory_iface_request (TpChannelFactoryIface *self,
                                   const gchar *chan_type,
                                   TpHandleType handle_type,
                                   guint handle,
+                                  gpointer request,
                                   TpChannelIface **ret,
                                   GError **error)
 {
   return (TP_CHANNEL_FACTORY_IFACE_GET_CLASS (self)->request (self, chan_type,
-        handle_type, handle, ret, error));
+        handle_type, handle, request, ret, error));
+}
+
+void
+tp_channel_factory_iface_emit_new_channel (gpointer instance,
+                                           TpChannelIface *channel,
+                                           gpointer context)
+{
+  g_signal_emit (instance, signals[NEW_CHANNEL], 0, channel, context);
+}
+
+void
+tp_channel_factory_iface_emit_channel_error (gpointer instance,
+                                             TpChannelIface *channel,
+                                             GError *error,
+                                             gpointer context)
+{
+  g_signal_emit (instance, signals[CHANNEL_ERROR], 0, channel, error, context);
 }

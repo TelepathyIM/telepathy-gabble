@@ -52,6 +52,7 @@
 static void channel_iface_init (gpointer, gpointer);
 static void password_iface_init (gpointer, gpointer);
 static void text_iface_init (gpointer, gpointer);
+static void chat_state_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleMucChannel, gabble_muc_channel,
     G_TYPE_OBJECT,
@@ -62,10 +63,11 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMucChannel, gabble_muc_channel,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
       tp_group_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_PASSWORD,
-      password_iface_init)
+      password_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_TEXT,
       text_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL)
+    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CHAT_STATE, chat_state_iface_init)
     )
 
 /* signal enum */
@@ -1901,6 +1903,25 @@ _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
   priv->ready_emitted = TRUE;
 }
 
+/**
+ * _gabble_muc_channel_state_receive
+ *			      
+ * Send the D-BUS signal ChatStateChanged
+ * on org.freedesktop.Telepathy.Channel.Interface.ChatState
+ */
+
+void
+_gabble_muc_channel_state_receive (GabbleMucChannel *chan, guint state)
+{
+  GabbleMucChannelPrivate *priv;
+
+  g_assert (state <= LAST_TP_CHANNEL_CHAT_STATE);
+  g_assert (GABBLE_IS_MUC_CHANNEL (chan));
+  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+
+  tp_svc_channel_interface_chat_state_emit_chat_state_changed ((TpSvcChannelInterfaceChatState*)chan,
+      priv->handle, state);
+}
 
 /**
  * gabble_muc_channel_close
@@ -1988,6 +2009,7 @@ gabble_muc_channel_get_interfaces (TpSvcChannel *iface,
       TP_IFACE_CHANNEL_INTERFACE_GROUP,
       TP_IFACE_CHANNEL_INTERFACE_PASSWORD,
       TP_IFACE_PROPERTIES_INTERFACE,
+      TP_IFACE_CHANNEL_INTERFACE_CHAT_STATE,
       NULL
   };
 
@@ -2614,6 +2636,28 @@ request_config_form_submit_reply_cb (GabbleConnection *conn, LmMessage *sent_msg
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
+/**
+ * gabble_muc_channel_set_chat_state
+ *
+ * Implements D-Bus method SetChatState
+ * on interface org.freedesktop.Telepathy.Channel.Interface.ChatState
+ */
+static void
+gabble_muc_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
+				   guint state,
+				   DBusGMethodInvocation *context)
+{
+  GabbleMucChannel *self = GABBLE_MUC_CHANNEL (iface);
+  GabbleMucChannelPrivate *priv;
+
+  g_assert (GABBLE_IS_MUC_CHANNEL (self));
+
+  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
+
+  gabble_text_mixin_set_chat_state (G_OBJECT (self), state,
+          LM_MESSAGE_SUB_TYPE_GROUPCHAT, priv->jid, priv->conn,
+          FALSE /* emit_signal */, context);
+}
 
 static void
 channel_iface_init(gpointer g_iface, gpointer iface_data)
@@ -2650,5 +2694,15 @@ password_iface_init(gpointer g_iface, gpointer iface_data)
     klass, gabble_muc_channel_##x)
   IMPLEMENT(get_password_flags);
   IMPLEMENT(provide_password);
+#undef IMPLEMENT
+}
+
+static void
+chat_state_iface_init(gpointer g_iface, gpointer iface_data)
+{
+  TpSvcChannelInterfaceChatStateClass *klass = (TpSvcChannelInterfaceChatStateClass *)g_iface;
+#define IMPLEMENT(x) tp_svc_channel_interface_chat_state_implement_##x (\
+    klass, gabble_muc_channel_##x)
+  IMPLEMENT(set_chat_state);
 #undef IMPLEMENT
 }

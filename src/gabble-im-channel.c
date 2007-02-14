@@ -45,11 +45,14 @@
 
 static void channel_iface_init (gpointer, gpointer);
 static void text_iface_init (gpointer, gpointer);
+static void chat_state_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleIMChannel, gabble_im_channel, G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_TEXT, text_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL));
+    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CHAT_STATE, chat_state_iface_init));
+
 
 /* properties */
 enum
@@ -317,6 +320,26 @@ gboolean _gabble_im_channel_receive (GabbleIMChannel *chan,
   return tp_text_mixin_receive (G_OBJECT (chan), type, sender, timestamp, text);
 }
 
+/**
+ * _gabble_im_channel_state_receive
+ *			      
+ * Send the D-BUS signal ChatStateChanged
+ * on org.freedesktop.Telepathy.Channel.Interface.ChatState
+ */
+
+void
+_gabble_im_channel_state_receive (GabbleIMChannel *chan,
+				 guint state)
+{
+  GabbleIMChannelPrivate *priv;
+
+  g_assert (state <= LAST_TP_CHANNEL_CHAT_STATE);
+  g_assert (GABBLE_IS_IM_CHANNEL (chan));
+  priv = GABBLE_IM_CHANNEL_GET_PRIVATE (chan);
+
+  tp_svc_channel_interface_chat_state_emit_chat_state_changed ((TpSvcChannelInterfaceChatState*)chan,
+      priv->handle, state);
+}
 
 /**
  * gabble_im_channel_close
@@ -390,7 +413,9 @@ static void
 gabble_im_channel_get_interfaces (TpSvcChannel *iface,
                                   DBusGMethodInvocation *context)
 {
-  const char *interfaces[] = { NULL };
+  const char *interfaces[] = {
+      TP_IFACE_CHANNEL_INTERFACE_CHAT_STATE, 
+      NULL };
 
   tp_svc_channel_return_from_get_interfaces (context, interfaces);
 }
@@ -418,6 +443,26 @@ gabble_im_channel_send (TpSvcChannelTypeText *iface,
       text, priv->conn, TRUE /* emit_signal */, context);
 }
 
+/**
+ * gabble_im_channel_set_chat_state
+ *
+ * Implements D-Bus method SetChatState
+ * on interface org.freedesktop.Telepathy.Channel.Interface.ChatState
+ */
+static void
+gabble_im_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
+				  guint state,
+	                          DBusGMethodInvocation *context)
+{
+  GabbleIMChannel *self = GABBLE_IM_CHANNEL (iface);
+  GabbleIMChannelPrivate *priv;
+
+  g_assert (GABBLE_IS_IM_CHANNEL (self));
+  priv = GABBLE_IM_CHANNEL_GET_PRIVATE (self);
+
+  gabble_text_mixin_set_chat_state (G_OBJECT (self), state, 0, priv->peer_jid,
+      priv->conn, TRUE /* emit_signal */, context);
+}
 
 static void
 channel_iface_init(gpointer g_iface, gpointer iface_data)
@@ -443,4 +488,17 @@ text_iface_init(gpointer g_iface, gpointer iface_data)
     klass, gabble_im_channel_##x)
   IMPLEMENT(send);
 #undef IMPLEMENT
+}
+
+static void
+chat_state_iface_init(gpointer g_iface, gpointer iface_data)
+{
+  TpSvcChannelInterfaceChatStateClass *klass = (TpSvcChannelInterfaceChatStateClass *)g_iface;
+#define IMPLEMENT(x) tp_svc_channel_interface_chat_state_implement_##x (\
+    klass, gabble_im_channel_##x)
+  IMPLEMENT(set_chat_state);
+#undef IMPLEMENT
+  //TODO : service discovery !!!!
+  //TODO : gone when chan is closed ?
+  //TODO : timer on composing state ?
 }

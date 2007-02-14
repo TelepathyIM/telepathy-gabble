@@ -404,10 +404,11 @@ muc_factory_message_cb (LmMessageHandler *handler,
   TpHandleType handle_type;
   TpHandle room_handle, handle;
   GabbleMucChannel *chan;
+  gint state;
   TpChannelTextSendError send_error;
 
   if (!gabble_text_mixin_parse_incoming_message (message, &from, &stamp,
-        &msgtype, &body, &body_offset, &send_error))
+        &msgtype, &body, &body_offset, &state, &send_error))
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
   /* does it have a muc subnode? */
@@ -559,6 +560,9 @@ HANDLE_MESSAGE:
           body_offset);
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
+
+  if (state != -1)
+	  _gabble_muc_channel_state_receive (chan, state);
 
   if (_gabble_muc_channel_receive (chan, msgtype, handle_type, handle, stamp,
                                    body_offset, message))

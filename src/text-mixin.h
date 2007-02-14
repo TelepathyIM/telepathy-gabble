@@ -31,7 +31,11 @@ void gabble_text_mixin_send (GObject *obj, guint type, guint subtype,
     const char *recipient, const gchar *text, GabbleConnection *conn,
     gboolean emit_signal, DBusGMethodInvocation *context);
 
-gboolean gabble_text_mixin_parse_incoming_message (LmMessage *message, const gchar **from, time_t *stamp, TpChannelTextMessageType *msgtype, const gchar **body, const gchar **body_offset, TpChannelTextSendError *send_error);
+void gabble_text_mixin_set_chat_state (GObject *obj, guint state, guint subtype,
+    const char *recipient, GabbleConnection *conn,
+    gboolean emit_signal, DBusGMethodInvocation *context);
+
+gboolean gabble_text_mixin_parse_incoming_message (LmMessage *message, const gchar **from, time_t *stamp, TpChannelTextMessageType *msgtype, const gchar **body, const gchar **body_offset, gint *state, TpChannelTextSendError *send_error);
 
 G_END_DECLS
 

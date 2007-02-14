@@ -206,12 +206,13 @@ im_factory_message_cb (LmMessageHandler *handler,
   TpChannelTextMessageType msgtype;
   TpHandle handle;
   GabbleIMChannel *chan;
+  gint state;
   TpChannelTextSendError send_error;
 
-  if (!gabble_text_mixin_parse_incoming_message (message, &from, &stamp, &msgtype, &body, &body_offset, &send_error))
+  if (!gabble_text_mixin_parse_incoming_message (message, &from, &stamp, &msgtype, &body, &body_offset, &state, &send_error))
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
-  if (body == NULL)
+  if (body == NULL && state == -1)
     {
       NODE_DEBUG (message->node, "got a message without a body field, ignoring");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
@@ -250,7 +251,10 @@ im_factory_message_cb (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 
-  if (_gabble_im_channel_receive (chan, msgtype, handle, from,
+  if (state != -1)
+    _gabble_im_channel_state_receive (chan, state);
+
+  if (body != NULL && _gabble_im_channel_receive (chan, msgtype, handle, from,
                                   stamp, body_offset))
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 

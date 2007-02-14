@@ -342,8 +342,7 @@ satisfy_requests (TpBaseConnection *conn,
                                         &suppress_handler);
 
   if (is_new)
-    tp_svc_connection_emit_new_channel (
-        (TpSvcConnection *)conn, object_path, channel_type,
+    tp_svc_connection_emit_new_channel (conn, object_path, channel_type,
         handle_type, handle, suppress_handler);
 
   for (i = 0; i < tmp->len; i++)

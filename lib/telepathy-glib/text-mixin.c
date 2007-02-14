@@ -270,8 +270,7 @@ tp_text_mixin_receive (GObject *obj,
 
       if (!mixin->message_lost)
         {
-          tp_svc_channel_type_text_emit_lost_message (
-              (TpSvcChannelTypeText *)obj);
+          tp_svc_channel_type_text_emit_lost_message (obj);
           mixin->message_lost = TRUE;
         }
 
@@ -301,8 +300,7 @@ tp_text_mixin_receive (GObject *obj,
 
       if (!mixin->message_lost)
         {
-          tp_svc_channel_type_text_emit_lost_message (
-              (TpSvcChannelTypeText *)obj);
+          tp_svc_channel_type_text_emit_lost_message (obj);
           mixin->message_lost = TRUE;
         }
 
@@ -321,7 +319,7 @@ tp_text_mixin_receive (GObject *obj,
   tp_handle_ref (mixin->contacts_repo, msg->sender);
   g_queue_push_tail (mixin->pending, msg);
 
-  tp_svc_channel_type_text_emit_received ((TpSvcChannelTypeText *)obj,
+  tp_svc_channel_type_text_emit_received (obj,
                  msg->id,
                  msg->timestamp,
                  msg->sender,

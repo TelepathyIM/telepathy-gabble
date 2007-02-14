@@ -1457,8 +1457,7 @@ connection_status_change (GabbleConnection        *conn,
       DEBUG ("emitting status-changed with status %u reason %u",
                status, reason);
 
-      tp_svc_connection_emit_status_changed (
-          (TpSvcConnection *)conn, status, reason);
+      tp_svc_connection_emit_status_changed (conn, status, reason);
 
       if (status == TP_CONNECTION_STATUS_CONNECTING)
         {
@@ -1676,8 +1675,7 @@ connection_nickname_update_cb (GObject *object,
   g_ptr_array_add (aliases, g_value_get_boxed (&entry));
 
 
-  tp_svc_connection_interface_aliasing_emit_aliases_changed (
-      (TpSvcConnectionInterfaceAliasing *)conn, aliases);
+  tp_svc_connection_interface_aliasing_emit_aliases_changed (conn, aliases);
 
   g_value_unset (&entry);
   g_ptr_array_free (aliases, TRUE);
@@ -1700,8 +1698,7 @@ update_own_avatar_sha1 (GabbleConnection *conn,
   if (!tp_strdiff (sha1, conn->self_presence->avatar_sha1))
     return TRUE;
 
-  tp_svc_connection_interface_avatars_emit_avatar_updated (
-      (TpSvcConnectionInterfaceAvatars *)conn,
+  tp_svc_connection_interface_avatars_emit_avatar_updated (conn,
       conn->parent.self_handle, sha1);
 
   g_free (conn->self_presence->avatar_sha1);
@@ -1741,8 +1738,7 @@ connection_avatar_update_cb (GabblePresenceCache *cache,
   if (handle == conn->parent.self_handle)
     update_own_avatar_sha1 (conn, presence->avatar_sha1, NULL);
   else
-    tp_svc_connection_interface_avatars_emit_avatar_updated (
-        (TpSvcConnectionInterfaceAvatars *)conn,
+    tp_svc_connection_interface_avatars_emit_avatar_updated (conn,
         handle, presence->avatar_sha1);
 }
 
@@ -1884,8 +1880,8 @@ emit_presence_update (GabbleConnection *self,
   GHashTable *presence_hash;
 
   presence_hash = construct_presence_hash (self, contact_handles);
-  tp_svc_connection_interface_presence_emit_presence_update (
-      (TpSvcConnectionInterfacePresence *)self, presence_hash);
+  tp_svc_connection_interface_presence_emit_presence_update (self,
+      presence_hash);
   g_hash_table_destroy (presence_hash);
 }
 
@@ -2669,7 +2665,7 @@ _emit_capabilities_changed (GabbleConnection *conn,
 
   if (caps_arr->len)
     tp_svc_connection_interface_capabilities_emit_capabilities_changed (
-        (TpSvcConnectionInterfaceCapabilities *)conn, caps_arr);
+        conn, caps_arr);
 
 
   for (i = 0; i < caps_arr->len; i++)
@@ -3694,8 +3690,7 @@ _request_avatar_cb (GabbleVCardManager *self,
               presence->avatar_sha1 = sha1; /* take ownership */
 
               tp_svc_connection_interface_avatars_emit_avatar_updated (
-                  (TpSvcConnectionInterfaceAvatars *)conn,
-                  handle, sha1);
+                  conn, handle, sha1);
             }
 
           goto out;
@@ -4411,8 +4406,7 @@ _set_avatar_cb2 (GabbleVCardManager *manager,
           tp_svc_connection_interface_avatars_return_from_set_avatar (
               ctx->invocation, presence->avatar_sha1);
           tp_svc_connection_interface_avatars_emit_avatar_updated (
-              (TpSvcConnectionInterfaceAvatars *)(ctx->conn),
-              ctx->conn->parent.self_handle, presence->avatar_sha1);
+              ctx->conn, ctx->conn->parent.self_handle, presence->avatar_sha1);
         }
       else
         {

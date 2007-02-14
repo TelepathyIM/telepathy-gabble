@@ -260,7 +260,7 @@ gabble_im_channel_dispose (GObject *object)
     }
 
   if (!priv->closed)
-    tp_svc_channel_emit_closed ((TpSvcChannel *)self);
+    tp_svc_channel_emit_closed (self);
 
   if (G_OBJECT_CLASS (gabble_im_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_im_channel_parent_class)->dispose (object);
@@ -335,7 +335,7 @@ gabble_im_channel_close (TpSvcChannel *iface,
   priv = GABBLE_IM_CHANNEL_GET_PRIVATE (self);
   priv->closed = TRUE;
 
-  tp_svc_channel_emit_closed ((TpSvcChannel *)self);
+  tp_svc_channel_emit_closed (self);
 
   tp_svc_channel_return_from_close (context);
 }

@@ -935,7 +935,7 @@ change_password_flags (GabbleMucChannel *chan,
               added, removed);
 
       tp_svc_channel_interface_password_emit_password_flags_changed (
-          (TpSvcChannelInterfacePassword *)chan, added, removed);
+          chan, added, removed);
     }
 }
 
@@ -1073,7 +1073,7 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
   /* Update state and emit Closed signal */
   g_object_set (chan, "state", MUC_STATE_ENDED, NULL);
 
-  tp_svc_channel_emit_closed ((TpSvcChannel *)chan);
+  tp_svc_channel_emit_closed (chan);
 }
 
 gboolean
@@ -1835,8 +1835,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
     {
       /* If we sent the message and it's not delayed, just emit the sent signal */
       timestamp = time (NULL);
-      tp_svc_channel_type_text_emit_sent ((TpSvcChannelTypeText *)chan,
-          timestamp, msg_type, text);
+      tp_svc_channel_type_text_emit_sent (chan, timestamp, msg_type, text);
 
       return TRUE;
     }

@@ -1079,7 +1079,7 @@ _gabble_media_stream_close (GabbleMediaStream *stream)
   if (!priv->closed)
     {
       priv->closed = TRUE;
-      tp_svc_media_stream_handler_emit_close ((TpSvcMediaStreamHandler *)stream);
+      tp_svc_media_stream_handler_emit_close (stream);
     }
 }
 
@@ -1208,8 +1208,7 @@ push_remote_codecs (GabbleMediaStream *stream)
   GMS_DEBUG_EVENT (priv->session, "passing %d remote codecs to stream-engine",
                    codecs->len);
 
-  tp_svc_media_stream_handler_emit_set_remote_codecs (
-      (TpSvcMediaStreamHandler *)stream, codecs);
+  tp_svc_media_stream_handler_emit_set_remote_codecs (stream, codecs);
 
   g_value_take_boxed (&priv->remote_codecs,
       dbus_g_type_specialized_construct (TP_TYPE_CODEC_LIST));
@@ -1439,7 +1438,7 @@ push_remote_candidates (GabbleMediaStream *stream)
                        "to stream-engine");
 
       tp_svc_media_stream_handler_emit_add_remote_candidate (
-          (TpSvcMediaStreamHandler *)stream, candidate_id, transports);
+          stream, candidate_id, transports);
     }
 
   g_value_take_boxed (&priv->remote_candidates,
@@ -1462,7 +1461,7 @@ push_playing (GabbleMediaStream *stream)
       stream->name, stream->playing ? "true" : "false");
 
   tp_svc_media_stream_handler_emit_set_stream_playing (
-      (TpSvcMediaStreamHandler *)stream, stream->playing);
+      stream, stream->playing);
 }
 
 static void
@@ -1481,7 +1480,7 @@ push_sending (GabbleMediaStream *stream)
       stream->name, priv->sending ? "true" : "false");
 
   tp_svc_media_stream_handler_emit_set_stream_sending (
-      (TpSvcMediaStreamHandler *)stream, priv->sending);
+      stream, priv->sending);
 }
 
 /*

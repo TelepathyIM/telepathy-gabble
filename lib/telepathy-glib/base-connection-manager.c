@@ -201,7 +201,7 @@ tp_base_connection_manager_request_connection (TpSvcConnectionManager *iface,
 
   /* emit the new connection signal */
   tp_svc_connection_manager_emit_new_connection (
-      iface, bus_name, object_path, proto);
+      conn, bus_name, object_path, proto);
 
   tp_svc_connection_manager_return_from_request_connection (
       context, bus_name, object_path);

@@ -223,7 +223,7 @@ create_session (GabbleMediaChannel *channel,
   priv->streams = g_ptr_array_sized_new (1);
 
   tp_svc_channel_interface_media_signalling_emit_new_session_handler (
-      (TpSvcChannelInterfaceMediaSignalling *)channel, object_path, "rtp");
+      channel, object_path, "rtp");
 
   g_free (object_path);
 
@@ -499,7 +499,7 @@ gabble_media_channel_close (GabbleMediaChannel *self)
       _gabble_media_session_terminate (priv->session, INITIATOR_LOCAL, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
     }
 
-  tp_svc_channel_emit_closed ((TpSvcChannel *)self);
+  tp_svc_channel_emit_closed (self);
 }
 
 
@@ -1153,8 +1153,7 @@ stream_close_cb (GabbleMediaStream *stream,
 
   g_object_get (stream, "id", &id, NULL);
 
-  tp_svc_channel_type_streamed_media_emit_stream_removed (
-      (TpSvcChannelTypeStreamedMedia *)chan, id);
+  tp_svc_channel_type_streamed_media_emit_stream_removed (chan, id);
 
   if (priv->streams != NULL)
     {
@@ -1174,8 +1173,8 @@ stream_error_cb (GabbleMediaStream *stream,
 
   /* emit signal */
   g_object_get (stream, "id", &id, NULL);
-  tp_svc_channel_type_streamed_media_emit_stream_error (
-      (TpSvcChannelTypeStreamedMedia *)chan, id, errno, message);
+  tp_svc_channel_type_streamed_media_emit_stream_error (chan, id, errno,
+      message);
 
   /* remove stream from session */
   _gabble_media_session_remove_streams (priv->session, &stream, 1);
@@ -1191,8 +1190,8 @@ stream_state_changed_cb (GabbleMediaStream *stream,
 
   g_object_get (stream, "id", &id, "connection-state", &connection_state, NULL);
 
-  tp_svc_channel_type_streamed_media_emit_stream_state_changed (
-      (TpSvcChannelTypeStreamedMedia *)chan, id, connection_state);
+  tp_svc_channel_type_streamed_media_emit_stream_state_changed (chan,
+      id, connection_state);
 }
 
 static void
@@ -1214,7 +1213,7 @@ stream_direction_changed_cb (GabbleMediaStream *stream,
   pending_send = COMBINED_DIRECTION_GET_PENDING_SEND (combined);
 
   tp_svc_channel_type_streamed_media_emit_stream_direction_changed (
-      (TpSvcChannelTypeStreamedMedia *)chan, id, direction, pending_send);
+      chan, id, direction, pending_send);
 }
 
 static void
@@ -1244,7 +1243,7 @@ session_stream_added_cb (GabbleMediaSession *session,
   g_object_get (stream, "id", &id, "media-type", &type, NULL);
 
   tp_svc_channel_type_streamed_media_emit_stream_added (
-      (TpSvcChannelTypeStreamedMedia *)chan, id, handle, type);
+      chan, id, handle, type);
 }
 
 guint

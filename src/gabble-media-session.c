@@ -168,9 +168,8 @@ _emit_new_stream (GabbleMediaSession *session,
 
   /* all of the streams are bidirectional from farsight's point of view, it's
    * just in the signalling they change */
-  tp_svc_media_session_handler_emit_new_stream_handler (
-      (TpSvcMediaSessionHandler *)session, object_path, id,
-      media_type, TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL);
+  tp_svc_media_session_handler_emit_new_stream_handler (session,
+      object_path, id, media_type, TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL);
 
   g_free (object_path);
 }

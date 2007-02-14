@@ -655,34 +655,33 @@ roomlist_channel_closed_cb (GabbleRoomlistChannel *chan, gpointer data)
 }
 
 static gboolean
-make_roomlist_channel (GabbleMucFactory *fac)
+make_roomlist_channel (GabbleMucFactory *fac, gpointer request)
 {
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
 
-  if (priv->roomlist_channel == NULL)
-    {
-      const gchar *server;
-      gchar *object_path;
+  const gchar *server;
+  gchar *object_path;
 
-      server = _gabble_connection_find_conference_server (priv->conn);
+  g_assert (priv->roomlist_channel == NULL);
 
-      if (server == NULL)
-        return FALSE;
+  server = _gabble_connection_find_conference_server (priv->conn);
 
-      object_path = g_strdup_printf ("%s/RoomlistChannel",
-          priv->conn->parent.object_path);
+  if (server == NULL)
+    return FALSE;
 
-      priv->roomlist_channel = _gabble_roomlist_channel_new (priv->conn,
-          object_path, server);
+  object_path = g_strdup_printf ("%s/RoomlistChannel",
+      priv->conn->parent.object_path);
 
-      g_signal_connect (priv->roomlist_channel, "closed",
-                        (GCallback) roomlist_channel_closed_cb, fac);
+  priv->roomlist_channel = _gabble_roomlist_channel_new (priv->conn,
+      object_path, server);
 
-      tp_channel_factory_iface_emit_new_channel (fac, 
-          (TpChannelIface *)priv->roomlist_channel, NULL);
+  g_signal_connect (priv->roomlist_channel, "closed",
+                    (GCallback) roomlist_channel_closed_cb, fac);
 
-      g_free (object_path);
-    }
+  tp_channel_factory_iface_emit_new_channel (fac, 
+      (TpChannelIface *)priv->roomlist_channel, request);
+
+  g_free (object_path);
 
   return TRUE;
 }
@@ -816,7 +815,7 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
         }
 
       /* FIXME - delay if services aren't discovered yet? */
-      if (!make_roomlist_channel (fac))
+      if (!make_roomlist_channel (fac, request))
         {
           DEBUG ("no conference server available for roomlist request");
           return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_AVAILABLE;

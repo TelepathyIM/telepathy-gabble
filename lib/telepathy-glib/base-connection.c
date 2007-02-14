@@ -1040,12 +1040,13 @@ tp_base_connection_request_channel (TpSvcConnection *iface,
     }
 
 ERROR:
+  g_assert (error != NULL);
+  dbus_g_method_return_error (request->context, error);
+  request->context = NULL;
+  g_error_free (error);
+
   g_ptr_array_remove (priv->channel_requests, request);
   channel_request_free (request);
-
-  g_assert (error != NULL);
-  dbus_g_method_return_error (context, error);
-  g_error_free (error);
 }
 
 

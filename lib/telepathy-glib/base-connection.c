@@ -97,6 +97,9 @@ channel_request_new (DBusGMethodInvocation *context,
   ret->handle = handle;
   ret->suppress_handler = suppress_handler;
 
+  DEBUG("New channel request at %p: ctype=%s htype=%d handle=%d suppress=%d",
+        ret, channel_type, handle_type, handle, suppress_handler);
+
   return ret;
 }
 
@@ -104,6 +107,9 @@ static void
 channel_request_free (ChannelRequest *request)
 {
   g_assert (NULL == request->context);
+  DEBUG("Freeing channel request at %p: ctype=%s htype=%d handle=%d "
+        "suppress=%d", request, request->channel_type, request->handle_type,
+        request->handle, request->suppress_handler);
   g_free (request->channel_type);
   g_free (request);
 }
@@ -114,7 +120,8 @@ channel_request_cancel (gpointer data, gpointer user_data)
   ChannelRequest *request = (ChannelRequest *) data;
   GError *error;
 
-  DEBUG ("cancelling request for %s/%d/%d", request->channel_type, request->handle_type, request->handle);
+  DEBUG ("cancelling request at %p for %s/%u/%u", request,
+      request->channel_type, request->handle_type, request->handle);
 
   error = g_error_new (TP_ERRORS, TP_ERROR_DISCONNECTED, "unable to "
       "service this channel request, we're disconnecting!");
@@ -343,8 +350,9 @@ satisfy_requests (TpBaseConnection *conn,
     {
       ChannelRequest *request = g_ptr_array_index (tmp, i);
 
-      DEBUG ("completing queued request, channel_type=%s, handle_type=%u, "
-          "handle=%u, suppress_handler=%u", request->channel_type,
+      DEBUG ("completing queued request %p with success, "
+          "channel_type=%s, handle_type=%u, "
+          "handle=%u, suppress_handler=%u", request, request->channel_type,
           request->handle_type, request->handle, request->suppress_handler);
 
       tp_svc_connection_return_from_request_channel (request->context,
@@ -403,7 +411,7 @@ connection_channel_error_cb (TpChannelFactoryIface *factory,
     {
       ChannelRequest *request = g_ptr_array_index (tmp, i);
 
-      DEBUG ("completing queued request %p, channel_type=%s, "
+      DEBUG ("completing queued request %p with error, channel_type=%s, "
           "handle_type=%u, handle=%u, suppress_handler=%u",
           request, request->channel_type,
           request->handle_type, request->handle, request->suppress_handler);

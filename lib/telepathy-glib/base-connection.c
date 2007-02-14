@@ -309,8 +309,7 @@ find_matching_channel_requests (TpBaseConnection *conn,
   /* if this channel was created or returned as a result of a particular
    * request, that request had better be among the matching ones in the queue
    */
-  if (channel_request)
-    g_assert (tp_g_ptr_array_contains (requests, channel_request));
+  g_assert (channel_request == NULL || tp_g_ptr_array_contains (requests, channel_request));
 
   return requests;
 }

@@ -842,7 +842,8 @@ _gabble_roster_create_channel (GabbleRoster *roster,
       DEBUG ("roster already received, emitting signal for %s",
              object_path);
 
-      tp_channel_factory_iface_emit_new_channel (roster, chan, NULL);
+      tp_channel_factory_iface_emit_new_channel (roster,
+          (TpChannelIface *)chan, NULL);
     }
   else
     {
@@ -919,7 +920,8 @@ _gabble_roster_emit_one (gpointer key,
       name);
 #endif
 
-  tp_channel_factory_iface_emit_new_channel (roster, chan, NULL);
+  tp_channel_factory_iface_emit_new_channel (roster, (TpChannelIface *)chan,
+      NULL);
 }
 
 static void

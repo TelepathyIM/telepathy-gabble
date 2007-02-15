@@ -45,14 +45,14 @@
 
 static void
 gabble_text_mixin_send_message (GObject *obj,
-				guint type,
-	                        guint subtype,
-				guint state,
-		                const char *recipient,
-			        const gchar *text,
-				GabbleConnection *conn,
-	                        gboolean emit_signal,
-		                DBusGMethodInvocation *context)
+                                guint type,
+                                guint subtype,
+                                guint state,
+                                const char *recipient,
+                                const gchar *text,
+                                GabbleConnection *conn,
+                                gboolean emit_signal,
+                                DBusGMethodInvocation *context)
 {
   TpTextMixin *mixin = TP_TEXT_MIXIN (obj);
   LmMessage *msg;
@@ -124,20 +124,20 @@ gabble_text_mixin_send_message (GObject *obj,
   switch (state)
     {
       case TP_CHANNEL_CHAT_STATE_GONE:
-	node = lm_message_node_add_child (msg->node, "gone", NULL);
-	break;
+        node = lm_message_node_add_child (msg->node, "gone", NULL);
+        break;
       case TP_CHANNEL_CHAT_STATE_INACTIVE:
-	node = lm_message_node_add_child (msg->node, "inactive", NULL);
-	break;
+        node = lm_message_node_add_child (msg->node, "inactive", NULL);
+        break;
       case TP_CHANNEL_CHAT_STATE_ACTIVE:
-	node = lm_message_node_add_child (msg->node, "active", NULL);
-	break;
+        node = lm_message_node_add_child (msg->node, "active", NULL);
+        break;
       case TP_CHANNEL_CHAT_STATE_PAUSED:
-	node = lm_message_node_add_child (msg->node, "paused", NULL);
-	break;
+        node = lm_message_node_add_child (msg->node, "paused", NULL);
+        break;
       case TP_CHANNEL_CHAT_STATE_COMPOSING:
-	node = lm_message_node_add_child (msg->node, "composing", NULL);
-	break;
+        node = lm_message_node_add_child (msg->node, "composing", NULL);
+        break;
     }
 
   if (node != NULL)
@@ -189,7 +189,7 @@ gabble_text_mixin_send (GObject *obj,
                         DBusGMethodInvocation *context)
 {
   gabble_text_mixin_send_message (obj, type, subtype, TP_CHANNEL_CHAT_STATE_ACTIVE, recipient, text,
-				  conn, emit_signal, context);
+                                  conn, emit_signal, context);
 
   tp_svc_channel_type_text_return_from_send (context);
 }
@@ -211,12 +211,12 @@ gabble_text_mixin_send (GObject *obj,
  */
 void
 gabble_text_mixin_set_chat_state (GObject *obj,
-				  guint state,
-	                          guint subtype,
-		                  const char *recipient,
-	                          GabbleConnection *conn,
-		                  gboolean emit_signal,
-			          DBusGMethodInvocation *context)
+                                  guint state,
+                                  guint subtype,
+                                  const char *recipient,
+                                  GabbleConnection *conn,
+                                  gboolean emit_signal,
+                                  DBusGMethodInvocation *context)
 {
   gabble_text_mixin_send_message (obj, TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE, subtype, state, recipient, "",
 				  conn, emit_signal, context);
@@ -232,7 +232,7 @@ gabble_text_mixin_parse_incoming_message (LmMessage *message,
                         TpChannelTextMessageType *msgtype,
                         const gchar **body,
                         const gchar **body_offset,
-			gint *state,
+                        gint *state,
                         TpChannelTextSendError *send_error)
 {
   const gchar *type;

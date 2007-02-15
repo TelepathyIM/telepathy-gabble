@@ -562,7 +562,7 @@ HANDLE_MESSAGE:
     }
 
   if (state != -1)
-	  _gabble_muc_channel_state_receive (chan, state);
+    _gabble_muc_channel_state_receive (chan, state);
 
   if (_gabble_muc_channel_receive (chan, msgtype, handle_type, handle, stamp,
                                    body_offset, message))

@@ -329,7 +329,7 @@ gboolean _gabble_im_channel_receive (GabbleIMChannel *chan,
 
 void
 _gabble_im_channel_state_receive (GabbleIMChannel *chan,
-				 guint state)
+                                  guint state)
 {
   GabbleIMChannelPrivate *priv;
 
@@ -451,8 +451,8 @@ gabble_im_channel_send (TpSvcChannelTypeText *iface,
  */
 static void
 gabble_im_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
-				  guint state,
-	                          DBusGMethodInvocation *context)
+                                  guint state,
+                                  DBusGMethodInvocation *context)
 {
   GabbleIMChannel *self = GABBLE_IM_CHANNEL (iface);
   GabbleIMChannelPrivate *priv;

@@ -2644,8 +2644,8 @@ request_config_form_submit_reply_cb (GabbleConnection *conn, LmMessage *sent_msg
  */
 static void
 gabble_muc_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
-				   guint state,
-				   DBusGMethodInvocation *context)
+                                   guint state,
+                                   DBusGMethodInvocation *context)
 {
   GabbleMucChannel *self = GABBLE_MUC_CHANNEL (iface);
   GabbleMucChannelPrivate *priv;

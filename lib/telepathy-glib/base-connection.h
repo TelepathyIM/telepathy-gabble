@@ -43,6 +43,25 @@ struct _TpBaseConnectionClass {
     void (*init_handle_repos) (TpHandleRepoIface *[LAST_TP_HANDLE_TYPE+1]);
     GPtrArray *(*create_channel_factories) (TpBaseConnection *self);
     gchar *(*get_unique_connection_name) (TpBaseConnection *self);
+
+    /** Called just after the state changes to CONNECTING. May be NULL if
+     * nothing special needs to happen. */
+    void (*connecting) (TpBaseConnection *self);
+    /** Called just after the state changes to CONNECTED. May be NULL if
+     * nothing special needs to happen. */
+    void (*connected) (TpBaseConnection *self);
+    /** Called just after the state changes to DISCONNECTED. May be NULL if
+     * nothing special needs to happen. */
+    void (*disconnected) (TpBaseConnection *self);
+
+    /** Called after the state has changed to DISCONNECTED, and also after
+     * disconnected(). Must start the shutdown process for the underlying
+     * network connection, and arrange for tp_base_connection_finish_shutdown()
+     * to be called after the underlying connection has been closed.
+     *
+     * May not be NULL.
+     */
+    void (*shut_down) (TpBaseConnection *self);
 };
 
 struct _TpBaseConnection {
@@ -72,12 +91,10 @@ gboolean tp_base_connection_register (TpBaseConnection *self,
     const gchar *cm_name, gchar **bus_name, gchar **object_path,
     GError **error);
 
-void tp_base_connection_close_all_channels (TpBaseConnection *self);
-void tp_base_connection_disconnected (TpBaseConnection *self);
-void tp_base_connection_connecting (TpBaseConnection *self);
-void tp_base_connection_connected (TpBaseConnection *self);
+void tp_base_connection_change_status (TpBaseConnection *self,
+    TpConnectionStatus status, TpConnectionStatusReason reason);
 
-void tp_base_connection_emit_disconnected (gpointer self);
+void tp_base_connection_finish_shutdown (TpBaseConnection *self);
 
 /* TYPE MACROS */
 #define TP_TYPE_BASE_CONNECTION \

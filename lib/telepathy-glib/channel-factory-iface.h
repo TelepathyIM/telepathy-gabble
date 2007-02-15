@@ -81,7 +81,9 @@ struct _TpChannelFactoryIfaceClass {
   GTypeInterface parent_class;
 
   /** Close all channels and shut down the channel factory. It is not expected
-   * to be usable afterwards.
+   * to be usable afterwards. This is called when the connection goes to
+   * disconnected state, before emitting the StatusChanged signal or calling
+   * disconnected(). May not be NULL.
    */
   void (*close_all) (TpChannelFactoryIface *);
   /** Called when the connection goes from disconnected to connecting state. */

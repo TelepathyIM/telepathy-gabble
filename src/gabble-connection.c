@@ -536,6 +536,9 @@ gabble_connection_set_property (GObject      *object,
 
 static void gabble_connection_dispose (GObject *object);
 static void gabble_connection_finalize (GObject *object);
+static void connect_callbacks (TpBaseConnection *base);
+static void disconnect_callbacks (TpBaseConnection *base);
+static void connection_shut_down (TpBaseConnection *base);
 
 gchar *
 gabble_connection_get_unique_name (TpBaseConnection *self)
@@ -565,7 +568,11 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
 
   parent_class->init_handle_repos = gabble_handle_repos_init;
   parent_class->get_unique_connection_name = gabble_connection_get_unique_name;
-  parent_class->create_channel_factories = _gabble_connection_create_channel_factories;
+  parent_class->create_channel_factories =
+    _gabble_connection_create_channel_factories;
+  parent_class->connecting = connect_callbacks;
+  parent_class->disconnected = disconnect_callbacks;
+  parent_class->shut_down = connection_shut_down;
 
   g_type_class_add_private (gabble_connection_class, sizeof (GabbleConnectionPrivate));
 
@@ -1130,7 +1137,6 @@ static void connection_open_cb (LmConnection*, gboolean, gpointer);
 static void connection_auth_cb (LmConnection*, gboolean, gpointer);
 static void connection_disco_cb (GabbleDisco *, GabbleDiscoRequest *, const gchar *, const gchar *, LmMessageNode *, GError *, gpointer);
 static void connection_disconnected_cb (LmConnection *, LmDisconnectReason, gpointer);
-static void connection_status_change (GabbleConnection *, TpConnectionStatus, TpConnectionStatusReason);
 
 static void emit_one_presence_update (GabbleConnection *self, TpHandle handle);
 
@@ -1159,8 +1165,9 @@ do_connect (GabbleConnection *conn, GError **error)
 }
 
 static void
-connect_callbacks (GabbleConnection *conn)
+connect_callbacks (TpBaseConnection *base)
 {
+  GabbleConnection *conn = GABBLE_CONNECTION (base);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
   g_assert (priv->iq_jingle_info_cb == NULL);
@@ -1195,8 +1202,9 @@ connect_callbacks (GabbleConnection *conn)
 }
 
 static void
-disconnect_callbacks (GabbleConnection *conn)
+disconnect_callbacks (TpBaseConnection *base)
 {
+  GabbleConnection *conn = GABBLE_CONNECTION (base);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
   g_assert (priv->iq_jingle_info_cb != NULL);
@@ -1323,7 +1331,7 @@ _gabble_connection_connect (GabbleConnection *conn,
     {
       gboolean valid;
 
-      connection_status_change (conn,
+      tp_base_connection_change_status ((TpBaseConnection *)conn,
           TP_CONNECTION_STATUS_CONNECTING,
           TP_CONNECTION_STATUS_REASON_REQUESTED);
 
@@ -1359,128 +1367,45 @@ connection_disconnected_cb (LmConnection *lmconn,
   if (conn->parent.status == TP_CONNECTION_STATUS_DISCONNECTED)
     {
       DEBUG ("expected; emitting DISCONNECTED");
-      tp_base_connection_emit_disconnected (conn);
+      tp_base_connection_finish_shutdown ((TpBaseConnection *)conn);
     }
   else
     {
-      DEBUG ("unexpected; calling connection_status_change");
-      connection_status_change (conn,
+      DEBUG ("unexpected; calling tp_base_connection_change_status");
+      tp_base_connection_change_status ((TpBaseConnection *)conn,
           TP_CONNECTION_STATUS_DISCONNECTED,
           TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
     }
 }
 
 
-/* FIXME: push into superclass? */
-/**
- * connection_status_change:
- * @conn: a #GabbleConnection
- * @status: new status to advertise
- * @reason: reason for new status
- *
- * Compares status with current status. If different, emits a signal
- * for the new status, and updates it in the #GabbleConnection.
- */
 static void
-connection_status_change (GabbleConnection        *conn,
-                          TpConnectionStatus       status,
-                          TpConnectionStatusReason reason)
+connection_shut_down (TpBaseConnection *base)
 {
-  GabbleConnectionPrivate *priv;
-  TpBaseConnection *base;
+  GabbleConnection *conn = GABBLE_CONNECTION (base);
 
   g_assert (GABBLE_IS_CONNECTION (conn));
 
-  priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-  base = (TpBaseConnection *)conn;
-
-  DEBUG ("status %u reason %u", status, reason);
-
-  g_assert (status != TP_INTERNAL_CONNECTION_STATUS_NEW);
-
-  if (conn->parent.status != status)
+  /* If we're shutting down by user request, we don't want to be
+   * unreffed until the LM connection actually closes; the event handler
+   * will tell the base class that shutdown has finished.
+   *
+   * On the other hand, if we're shutting down because the connection
+   * suffered a network error, the LM connection will already be closed,
+   * so just tell the base class to finish shutting down immediately.
+   */
+  if (lm_connection_is_open (conn->lmconn))
     {
-      if ((status == TP_CONNECTION_STATUS_DISCONNECTED) &&
-          (conn->parent.status == TP_INTERNAL_CONNECTION_STATUS_NEW))
-        {
-          conn->parent.status = status;
-
-          /* unref our self handle if it's set */
-          if (conn->parent.self_handle != 0)
-            {
-              tp_handle_unref (conn->parent.handles[TP_HANDLE_TYPE_CONTACT],
-                  conn->parent.self_handle);
-              conn->parent.self_handle = 0;
-            }
-
-          DEBUG ("new connection closed; emitting DISCONNECTED");
-          tp_base_connection_emit_disconnected (conn);
-          return;
-        }
-
-      base->status = status;
-
-      if (status == TP_CONNECTION_STATUS_DISCONNECTED)
-        {
-          /* remove the channels so we don't get any race conditions where
-           * method calls are delivered to a channel after we've started
-           * disconnecting */
-          tp_base_connection_close_all_channels ((TpBaseConnection *)conn);
-
-          /* unref our self handle */
-          tp_handle_unref (conn->parent.handles[TP_HANDLE_TYPE_CONTACT],
-              conn->parent.self_handle);
-          conn->parent.self_handle = 0;
-        }
-
-      DEBUG ("emitting status-changed with status %u reason %u",
-               status, reason);
-
-      tp_svc_connection_emit_status_changed (conn, status, reason);
-
-      if (status == TP_CONNECTION_STATUS_CONNECTING)
-        {
-          /* add our callbacks */
-          connect_callbacks (conn);
-
-          /* trigger connecting on all channel factories */
-          tp_base_connection_connecting ((TpBaseConnection *)conn);
-        }
-      else if (status == TP_CONNECTION_STATUS_CONNECTED)
-        {
-          /* trigger connected on all channel factories */
-          tp_base_connection_connected ((TpBaseConnection *)conn);
-        }
-      else if (status == TP_CONNECTION_STATUS_DISCONNECTED)
-        {
-          /* remove our callbacks */
-          disconnect_callbacks (conn);
-
-          /* trigger disconnected on all channel factories */
-          tp_base_connection_disconnected ((TpBaseConnection *)conn);
-
-          /* if the connection is open, this function will close it for you.
-           * if it's already closed (eg network error) then we're done, so
-           * can emit DISCONNECTED and have the connection manager unref us */
-          if (lm_connection_is_open (conn->lmconn))
-            {
-              DEBUG ("still open; calling lm_connection_close");
-              lm_connection_close (conn->lmconn, NULL);
-            }
-          else
-            {
-              /* lm_connection_is_open() returns FALSE if LmConnection is in the
-               * middle of connecting, so call this just in case */
-              lm_connection_cancel_open (conn->lmconn);
-              DEBUG ("closed; emitting DISCONNECTED");
-              tp_base_connection_emit_disconnected (conn);
-            }
-        }
+      DEBUG ("still open; calling lm_connection_close");
+      lm_connection_close (conn->lmconn, NULL);
     }
   else
     {
-      g_warning ("%s: attempted to re-emit the current status %u reason %u",
-          G_STRFUNC, status, reason);
+      /* lm_connection_is_open() returns FALSE if LmConnection is in the
+       * middle of connecting, so call this just in case */
+      lm_connection_cancel_open (conn->lmconn);
+      DEBUG ("closed; emitting DISCONNECTED");
+      tp_base_connection_finish_shutdown (base);
     }
 }
 
@@ -2180,7 +2105,7 @@ connection_stream_error_cb (LmMessageHandler *handler,
 
       /* Another client with the same resource just
        * appeared, we're going down. */
-        connection_status_change (conn,
+        tp_base_connection_change_status ((TpBaseConnection *)conn,
             TP_CONNECTION_STATUS_DISCONNECTED,
             TP_CONNECTION_STATUS_REASON_NAME_IN_USE);
         return LM_HANDLER_RESULT_REMOVE_MESSAGE;
@@ -2273,7 +2198,7 @@ do_auth (GabbleConnection *conn)
 
       /* the reason this function can fail is through network errors,
        * authentication failures are reported to our auth_cb */
-      connection_status_change (conn,
+      tp_base_connection_change_status ((TpBaseConnection *)conn,
           TP_CONNECTION_STATUS_DISCONNECTED,
           TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
     }
@@ -2307,7 +2232,7 @@ registration_finished_cb (GabbleRegister *reg,
       DEBUG ("err_code = %d, err_msg = '%s'",
                err_code, err_msg);
 
-      connection_status_change (conn,
+      tp_base_connection_change_status ((TpBaseConnection *)conn,
           TP_CONNECTION_STATUS_DISCONNECTED,
           (err_code == TP_ERROR_INVALID_ARGUMENT) ?
             TP_CONNECTION_STATUS_REASON_NAME_IN_USE :
@@ -2374,13 +2299,13 @@ connection_open_cb (LmConnection *lmconn,
 
       if (priv->ssl_error)
         {
-          connection_status_change (conn,
+          tp_base_connection_change_status ((TpBaseConnection *)conn,
             TP_CONNECTION_STATUS_DISCONNECTED,
             priv->ssl_error);
         }
       else
         {
-          connection_status_change (conn,
+          tp_base_connection_change_status ((TpBaseConnection *)conn,
               TP_CONNECTION_STATUS_DISCONNECTED,
               TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
         }
@@ -2423,7 +2348,7 @@ connection_auth_cb (LmConnection *lmconn,
     {
       DEBUG ("failed");
 
-      connection_status_change (conn,
+      tp_base_connection_change_status ((TpBaseConnection *)conn,
           TP_CONNECTION_STATUS_DISCONNECTED,
           TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED);
 
@@ -2440,7 +2365,7 @@ connection_auth_cb (LmConnection *lmconn,
 
       g_error_free (error);
 
-      connection_status_change (conn,
+      tp_base_connection_change_status ((TpBaseConnection *)conn,
           TP_CONNECTION_STATUS_DISCONNECTED,
           TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
     }
@@ -2518,8 +2443,8 @@ connection_disco_cb (GabbleDisco *disco,
     }
 
   /* go go gadget on-line */
-  connection_status_change (conn, TP_CONNECTION_STATUS_CONNECTED,
-      TP_CONNECTION_STATUS_REASON_REQUESTED);
+  tp_base_connection_change_status ((TpBaseConnection *)conn,
+      TP_CONNECTION_STATUS_CONNECTED, TP_CONNECTION_STATUS_REASON_REQUESTED);
 
   emit_one_presence_update (conn, conn->parent.self_handle);
 
@@ -2534,7 +2459,7 @@ ERROR:
   if (error)
     g_error_free (error);
 
-  connection_status_change (conn,
+  tp_base_connection_change_status ((TpBaseConnection *)conn,
       TP_CONNECTION_STATUS_DISCONNECTED,
       TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
 
@@ -2880,7 +2805,7 @@ gabble_connection_disconnect (TpSvcConnection *iface,
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
-  connection_status_change (self,
+  tp_base_connection_change_status ((TpBaseConnection *)self,
       TP_CONNECTION_STATUS_DISCONNECTED,
       TP_CONNECTION_STATUS_REASON_REQUESTED);
 

@@ -114,7 +114,7 @@ tp_base_connection_manager_init (TpBaseConnectionManager *self)
 }
 
 /**
- * connection_disconnected_cb:
+ * connection_shutdown_finished_cb:
  * @conn: #GabbleConnection
  * @data: data passed in callback
  *
@@ -123,8 +123,8 @@ tp_base_connection_manager_init (TpBaseConnectionManager *self)
  * them, and they will disappear from the bus.
  */
 static void
-connection_disconnected_cb (TpBaseConnection        *conn,
-                            gpointer                 data)
+connection_shutdown_finished_cb (TpBaseConnection *conn,
+                                 gpointer data)
 {
   TpBaseConnectionManager *self = TP_BASE_CONNECTION_MANAGER (data);
   TpBaseConnectionManagerPrivate *priv = TP_BASE_CONNECTION_MANAGER_GET_PRIVATE (self);
@@ -192,9 +192,9 @@ tp_base_connection_manager_request_connection (TpSvcConnectionManager *iface,
     }
 
   /* bind to status change signals from the connection object */
-  g_signal_connect (conn, "disconnected",
-                             G_CALLBACK (connection_disconnected_cb),
-                             self);
+  g_signal_connect (conn, "shutdown-finished",
+                    G_CALLBACK (connection_shutdown_finished_cb),
+                    self);
 
   /* store the connection, using a hash table as a set */
   g_hash_table_insert (priv->connections, conn, GINT_TO_POINTER(TRUE));

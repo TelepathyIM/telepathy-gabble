@@ -53,7 +53,7 @@ enum
 enum
 {
     INVALID_SIGNAL,
-    DISCONNECTED,
+    SHUTDOWN_FINISHED,
     N_SIGNALS
 };
 
@@ -506,8 +506,8 @@ tp_base_connection_class_init (TpBaseConnectionClass *klass)
 
   /* signal definitions */
 
-  signals[DISCONNECTED] =
-    g_signal_new ("disconnected",
+  signals[SHUTDOWN_FINISHED] =
+    g_signal_new ("shutdown-finished",
                   G_OBJECT_CLASS_TYPE (klass),
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
@@ -644,7 +644,7 @@ tp_base_connection_register (TpBaseConnection *self,
   return TRUE;
 }
 
-void
+static void
 tp_base_connection_close_all_channels (TpBaseConnection *self)
 {
   TpBaseConnectionPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
@@ -662,33 +662,6 @@ tp_base_connection_close_all_channels (TpBaseConnection *self)
       g_ptr_array_remove_range (priv->channel_requests, 0,
         priv->channel_requests->len);
     }
-}
-
-void
-tp_base_connection_connecting (TpBaseConnection *self)
-{
-  TpBaseConnectionPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
-      TP_TYPE_BASE_CONNECTION, TpBaseConnectionPrivate);
-  g_ptr_array_foreach (priv->channel_factories, (GFunc)
-      tp_channel_factory_iface_connecting, NULL);
-}
-
-void
-tp_base_connection_connected (TpBaseConnection *self)
-{
-  TpBaseConnectionPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
-      TP_TYPE_BASE_CONNECTION, TpBaseConnectionPrivate);
-  g_ptr_array_foreach (priv->channel_factories, (GFunc)
-      tp_channel_factory_iface_connected, NULL);
-}
-
-void
-tp_base_connection_disconnected (TpBaseConnection *self)
-{
-  TpBaseConnectionPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
-      TP_TYPE_BASE_CONNECTION, TpBaseConnectionPrivate);
-  g_ptr_array_foreach (priv->channel_factories, (GFunc)
-      tp_channel_factory_iface_disconnected, NULL);
 }
 
 /* D-Bus methods on Connection interface ----------------------------*/
@@ -1133,7 +1106,80 @@ tp_base_connection_release_handles (TpSvcConnection *iface,
  */
 void tp_base_connection_emit_disconnected (gpointer self)
 {
-  g_signal_emit (self, signals[DISCONNECTED], 0);
+  g_signal_emit (self, signals[SHUTDOWN_FINISHED], 0);
+}
+
+void
+tp_base_connection_change_status (TpBaseConnection *self,
+                                  TpConnectionStatus status,
+                                  TpConnectionStatusReason reason)
+{
+  TpBaseConnectionPrivate *priv;
+  TpBaseConnectionClass *klass;
+
+  g_assert (TP_IS_BASE_CONNECTION (self));
+
+  priv = TP_BASE_CONNECTION_GET_PRIVATE (self);
+  klass = TP_BASE_CONNECTION_GET_CLASS (self);
+
+  DEBUG("now %u, for reason %u", status, reason);
+  g_assert (status != TP_INTERNAL_CONNECTION_STATUS_NEW);
+
+  if (self->status == status)
+    {
+      g_warning ("%s: attempted to re-emit the current status %u, reason %u",
+          G_STRFUNC, status, reason);
+      return;
+    }
+
+  self->status = status;
+
+  if (status == TP_CONNECTION_STATUS_DISCONNECTED)
+    {
+      /* remove all channels and shut down all factories, so we don't get
+       * any race conditions where method calls are delivered to a channel
+       * after we've started disconnecting
+       */
+      tp_base_connection_close_all_channels (self);
+
+      tp_handle_unref (self->handles[TP_HANDLE_TYPE_CONTACT],
+          self->self_handle);
+      self->self_handle = 0;
+    }
+
+  DEBUG("emitting status-changed to %u, for reason %u", status, reason);
+  tp_svc_connection_emit_status_changed (self, status, reason);
+
+  /* tell subclass and factories about the state change. In the case of
+   * disconnection, shut down afterwards */
+  switch (status)
+    {
+    case TP_CONNECTION_STATUS_CONNECTING:
+      if (klass->connecting)
+        (klass->connecting) (self);
+      g_ptr_array_foreach (priv->channel_factories, (GFunc)
+          tp_channel_factory_iface_connecting, NULL);
+      break;
+
+    case TP_CONNECTION_STATUS_CONNECTED:
+      if (klass->connected)
+        (klass->connected) (self);
+      g_ptr_array_foreach (priv->channel_factories, (GFunc)
+          tp_channel_factory_iface_connected, NULL);
+      break;
+
+    case TP_CONNECTION_STATUS_DISCONNECTED:
+      if (klass->disconnected)
+        (klass->disconnected) (self);
+      g_ptr_array_foreach (priv->channel_factories, (GFunc)
+          tp_channel_factory_iface_disconnected, NULL);
+      g_assert (klass->shut_down);
+      (klass->shut_down) (self);
+      break;
+
+    default:
+      g_assert_not_reached ();
+    }
 }
 
 static void

@@ -89,25 +89,37 @@ tp_channel_factory_iface_get_type (void)
 void
 tp_channel_factory_iface_close_all (TpChannelFactoryIface *self)
 {
-  TP_CHANNEL_FACTORY_IFACE_GET_CLASS (self)->close_all (self);
+  void (*virtual_method)(TpChannelFactoryIface *) = 
+    TP_CHANNEL_FACTORY_IFACE_GET_CLASS (self)->close_all;
+  g_assert (virtual_method != NULL);
+  virtual_method (self);
 }
 
 void
 tp_channel_factory_iface_connecting (TpChannelFactoryIface *self)
 {
-  TP_CHANNEL_FACTORY_IFACE_GET_CLASS (self)->connecting (self);
+  void (*virtual_method)(TpChannelFactoryIface *) = 
+    TP_CHANNEL_FACTORY_IFACE_GET_CLASS (self)->connecting;
+  if (virtual_method)
+    virtual_method (self);
 }
 
 void
 tp_channel_factory_iface_connected (TpChannelFactoryIface *self)
 {
-  TP_CHANNEL_FACTORY_IFACE_GET_CLASS (self)->connected (self);
+  void (*virtual_method)(TpChannelFactoryIface *) = 
+    TP_CHANNEL_FACTORY_IFACE_GET_CLASS (self)->connected;
+  if (virtual_method)
+    virtual_method (self);
 }
 
 void
 tp_channel_factory_iface_disconnected (TpChannelFactoryIface *self)
 {
-  TP_CHANNEL_FACTORY_IFACE_GET_CLASS (self)->disconnected (self);
+  void (*virtual_method)(TpChannelFactoryIface *) = 
+    TP_CHANNEL_FACTORY_IFACE_GET_CLASS (self)->disconnected;
+  if (virtual_method)
+    virtual_method (self);
 }
 
 void
@@ -115,7 +127,10 @@ tp_channel_factory_iface_foreach (TpChannelFactoryIface *self,
                                   TpChannelFunc func,
                                   gpointer data)
 {
-  TP_CHANNEL_FACTORY_IFACE_GET_CLASS (self)->foreach (self, func, data);
+  void (*virtual_method)(TpChannelFactoryIface *, TpChannelFunc, gpointer) = 
+    TP_CHANNEL_FACTORY_IFACE_GET_CLASS (self)->foreach;
+  g_assert (virtual_method != NULL);
+  virtual_method (self, func, data);
 }
 
 TpChannelFactoryRequestStatus
@@ -127,8 +142,12 @@ tp_channel_factory_iface_request (TpChannelFactoryIface *self,
                                   TpChannelIface **ret,
                                   GError **error)
 {
-  return (TP_CHANNEL_FACTORY_IFACE_GET_CLASS (self)->request (self, chan_type,
-        handle_type, handle, request, ret, error));
+  TpChannelFactoryRequestStatus (*virtual_method) (TpChannelFactoryIface *,
+      const gchar *, TpHandleType, guint, gpointer, TpChannelIface **,
+      GError **) = TP_CHANNEL_FACTORY_IFACE_GET_CLASS (self)->request;
+  g_assert (virtual_method != NULL);
+  return virtual_method (self, chan_type, handle_type, handle, request,
+      ret, error);
 }
 
 void

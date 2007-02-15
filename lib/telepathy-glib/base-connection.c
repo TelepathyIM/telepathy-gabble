@@ -577,6 +577,9 @@ tp_base_connection_register (TpBaseConnection *self,
   self->object_path = g_strdup_printf (OBJECT_PATH_BASE "%s/%s/%s",
       cm_name, safe_proto, unique_name);
 
+  g_free (safe_proto);
+  g_free (unique_name);
+
   if (!dbus_g_proxy_call (bus_proxy, "RequestName", &request_error,
                           G_TYPE_STRING, self->bus_name,
                           G_TYPE_UINT, DBUS_NAME_FLAG_DO_NOT_QUEUE,

@@ -462,6 +462,10 @@ gabble_im_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
 
   gabble_text_mixin_set_chat_state (G_OBJECT (self), state, 0, priv->peer_jid,
       priv->conn, TRUE /* emit_signal */, context);
+
+  /* Send the ChatStateChanged signal for the local user */
+  tp_svc_channel_interface_chat_state_emit_chat_state_changed (iface,
+      priv->conn->parent.self_handle, state);
 }
 
 static void

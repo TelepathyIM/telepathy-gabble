@@ -561,13 +561,18 @@ tp_base_connection_register (TpBaseConnection *self,
   guint request_name_result;
   GError *request_error;
 
-  g_return_val_if_fail (cls->get_unique_connection_name, FALSE);
-
   safe_proto = tp_escape_as_identifier (priv->protocol);
 
-  tmp = cls->get_unique_connection_name (self);
-  unique_name = tp_escape_as_identifier (tmp);
-  g_free (tmp);
+  if (cls->get_unique_connection_name)
+    {
+      tmp = cls->get_unique_connection_name (self);
+      unique_name = tp_escape_as_identifier (tmp);
+      g_free (tmp);
+    }
+  else
+    {
+      unique_name = g_strdup_printf ("_%p", self);
+    }
 
   bus = tp_get_bus ();
   bus_proxy = tp_get_bus_proxy ();

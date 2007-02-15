@@ -502,7 +502,6 @@ chat_state_iface_init(gpointer g_iface, gpointer iface_data)
     klass, gabble_im_channel_##x)
   IMPLEMENT(set_chat_state);
 #undef IMPLEMENT
-  //TODO : service discovery !!!!
   //TODO : gone when chan is closed ?
   //TODO : timer on composing state ?
 }

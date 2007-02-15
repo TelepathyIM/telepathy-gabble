@@ -137,16 +137,6 @@ static const StatusInfo gabble_statuses[LAST_GABBLE_PRESENCE] = {
  { "chat",      TP_CONNECTION_PRESENCE_TYPE_AVAILABLE,     TRUE, TRUE }
 };
 
-/* signal enum */
-enum
-{
-    INVALID_SIGNAL,
-    DISCONNECTED,
-    N_SIGNALS
-};
-
-static guint signals[N_SIGNALS] = {0};
-
 /* properties */
 enum
 {
@@ -818,17 +808,6 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_AUTH_BTID, param_spec);
 
-  /* signal definitions */
-
-  signals[DISCONNECTED] =
-    g_signal_new ("disconnected",
-                  G_OBJECT_CLASS_TYPE (gabble_connection_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  g_cclosure_marshal_VOID__VOID,
-                  G_TYPE_NONE, 0);
-
   tp_properties_mixin_class_init (G_OBJECT_CLASS (gabble_connection_class),
                                       G_STRUCT_OFFSET (GabbleConnectionClass, parent_class.properties_class),
                                       connection_property_signatures, NUM_CONN_PROPS,
@@ -1380,7 +1359,7 @@ connection_disconnected_cb (LmConnection *lmconn,
   if (conn->parent.status == TP_CONNECTION_STATUS_DISCONNECTED)
     {
       DEBUG ("expected; emitting DISCONNECTED");
-      g_signal_emit (conn, signals[DISCONNECTED], 0);
+      tp_base_connection_emit_disconnected (conn);
     }
   else
     {
@@ -1435,7 +1414,7 @@ connection_status_change (GabbleConnection        *conn,
             }
 
           DEBUG ("new connection closed; emitting DISCONNECTED");
-          g_signal_emit (conn, signals[DISCONNECTED], 0);
+          tp_base_connection_emit_disconnected (conn);
           return;
         }
 
@@ -1494,7 +1473,7 @@ connection_status_change (GabbleConnection        *conn,
                * middle of connecting, so call this just in case */
               lm_connection_cancel_open (conn->lmconn);
               DEBUG ("closed; emitting DISCONNECTED");
-              g_signal_emit (conn, signals[DISCONNECTED], 0);
+              tp_base_connection_emit_disconnected (conn);
             }
         }
     }

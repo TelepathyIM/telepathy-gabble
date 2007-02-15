@@ -77,6 +77,8 @@ void tp_base_connection_disconnected (TpBaseConnection *self);
 void tp_base_connection_connecting (TpBaseConnection *self);
 void tp_base_connection_connected (TpBaseConnection *self);
 
+void tp_base_connection_emit_disconnected (gpointer self);
+
 /* TYPE MACROS */
 #define TP_TYPE_BASE_CONNECTION \
   (tp_base_connection_get_type())

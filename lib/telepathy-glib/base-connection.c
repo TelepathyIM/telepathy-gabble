@@ -49,6 +49,16 @@ enum
     PROP_PROTOCOL = 1,
 };
 
+/* signal enum */
+enum
+{
+    INVALID_SIGNAL,
+    DISCONNECTED,
+    N_SIGNALS
+};
+
+static guint signals[N_SIGNALS] = {0};
+
 #define TP_BASE_CONNECTION_GET_PRIVATE(obj) \
     ((TpBaseConnectionPrivate *)obj->priv)
 
@@ -493,6 +503,17 @@ tp_base_connection_class_init (TpBaseConnectionClass *klass)
                                     G_PARAM_STATIC_NAME |
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_PROTOCOL, param_spec);
+
+  /* signal definitions */
+
+  signals[DISCONNECTED] =
+    g_signal_new ("disconnected",
+                  G_OBJECT_CLASS_TYPE (klass),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  g_cclosure_marshal_VOID__VOID,
+                  G_TYPE_NONE, 0);
 }
 
 static void
@@ -1098,6 +1119,14 @@ tp_base_connection_release_handles (TpSvcConnection *iface,
 }
 
 /* Missing: RequestHandles (need to verify them) */
+
+/** Tell the connection manager that this Connection has been disconnected,
+ * has emitted StatusChanged and is ready to be removed from D-Bus.
+ */
+void tp_base_connection_emit_disconnected (gpointer self)
+{
+  g_signal_emit (self, signals[DISCONNECTED], 0);
+}
 
 static void
 service_iface_init(gpointer g_iface, gpointer iface_data)

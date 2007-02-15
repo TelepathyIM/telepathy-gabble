@@ -219,7 +219,7 @@ gabble_text_mixin_set_chat_state (GObject *obj,
                                   DBusGMethodInvocation *context)
 {
   gabble_text_mixin_send_message (obj, TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE, subtype, state, recipient, "",
-				  conn, emit_signal, context);
+                                  conn, emit_signal, context);
 
   tp_svc_channel_interface_chat_state_return_from_set_chat_state (context);
 }

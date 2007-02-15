@@ -86,15 +86,23 @@ struct _TpChannelFactoryIfaceClass {
    * disconnected(). May not be NULL.
    */
   void (*close_all) (TpChannelFactoryIface *);
-  /** Called when the connection goes from disconnected to connecting state. */
+
+  /** Called just after the connection goes from disconnected to connecting
+   * state. May be NULL if nothing special needs to happen. */
   void (*connecting) (TpChannelFactoryIface *);
-  /** Called when the connection goes from connecting to connected state. */
+
+  /** Called just after the connection goes from connecting to connected
+   * state. May be NULL if nothing special needs to happen. */
   void (*connected) (TpChannelFactoryIface *);
-  /** Called when the connection goes to disconnected state. */
+
+  /** Called just after the connection goes to disconnected state. This is
+   * always called after close_all(). May be NULL if nothing special needs to
+   * happen. */
   void (*disconnected) (TpChannelFactoryIface *);
-  /** Call func for each channel owned by this factory. */
+
+  /** Call func for each channel owned by this factory. May not be NULL. */
   void (*foreach) (TpChannelFactoryIface *, TpChannelFunc func, gpointer data);
-  /** Request a channel. */
+  /** Request a channel. May not be NULL. */
   TpChannelFactoryRequestStatus (*request) (TpChannelFactoryIface *,
       const gchar *chan_type, TpHandleType handle_type, guint handle,
       gpointer request, TpChannelIface **ret, GError **error);

@@ -40,8 +40,20 @@ struct _TpBaseConnectionClass {
     TpPropertiesMixinClass properties_class;
 
     /* pure-virtual methods */
+
+    /** Fill in suitable handle repositories in the given array for all those
+     * handle types this Connection supports. May not be NULL.
+     */
     void (*init_handle_repos) (TpHandleRepoIface *[LAST_TP_HANDLE_TYPE+1]);
+
+    /** Return a GPtrArray of channel factories which, between them,
+     * implement all channel types this Connection supports. May not be NULL.
+     */
     GPtrArray *(*create_channel_factories) (TpBaseConnection *self);
+
+    /** Return a name for this connection which will be unique within this
+     * connection manager process. If NULL, a unique name will be generated.
+     */
     gchar *(*get_unique_connection_name) (TpBaseConnection *self);
 
     /** Called just after the state changes to CONNECTING. May be NULL if

@@ -561,8 +561,13 @@ HANDLE_MESSAGE:
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 
-  if (state != -1)
-    _gabble_muc_channel_state_receive (chan, state);
+  if (state != -1) {
+    TpHandle from_handle;
+
+    from_handle = gabble_handle_for_contact (
+          priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT], from, FALSE);
+    _gabble_muc_channel_state_receive (chan, state, from_handle);
+  }
 
   if (_gabble_muc_channel_receive (chan, msgtype, handle_type, handle, stamp,
                                    body_offset, message))

@@ -74,7 +74,7 @@ void _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan, TpHand
 gboolean _gabble_muc_channel_receive (GabbleMucChannel *chan, TpChannelTextMessageType msg_type, TpHandleType handle_type, TpHandle sender, time_t timestamp, const gchar *text, LmMessage *msg);
 
 void _gabble_muc_channel_handle_invited (GabbleMucChannel *chan, TpHandle inviter, const gchar *message);
-void _gabble_muc_channel_state_receive (GabbleMucChannel *chan, guint state);
+void _gabble_muc_channel_state_receive (GabbleMucChannel *chan, guint state, guint from_handle);
 
 G_END_DECLS
 

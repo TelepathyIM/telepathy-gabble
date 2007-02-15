@@ -1911,7 +1911,7 @@ _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
  */
 
 void
-_gabble_muc_channel_state_receive (GabbleMucChannel *chan, guint state)
+_gabble_muc_channel_state_receive (GabbleMucChannel *chan, guint state, guint from_handle)
 {
   GabbleMucChannelPrivate *priv;
 
@@ -1920,7 +1920,7 @@ _gabble_muc_channel_state_receive (GabbleMucChannel *chan, guint state)
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
 
   tp_svc_channel_interface_chat_state_emit_chat_state_changed ((TpSvcChannelInterfaceChatState*)chan,
-      priv->handle, state);
+      from_handle, state);
 }
 
 /**

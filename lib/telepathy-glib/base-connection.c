@@ -1104,7 +1104,7 @@ tp_base_connection_release_handles (TpSvcConnection *iface,
 /** Tell the connection manager that this Connection has been disconnected,
  * has emitted StatusChanged and is ready to be removed from D-Bus.
  */
-void tp_base_connection_emit_disconnected (gpointer self)
+void tp_base_connection_finish_shutdown (TpBaseConnection *self)
 {
   g_signal_emit (self, signals[SHUTDOWN_FINISHED], 0);
 }

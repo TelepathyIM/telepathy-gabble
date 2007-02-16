@@ -27,13 +27,12 @@
 
 G_BEGIN_DECLS
 
-void gabble_text_mixin_send (GObject *obj, guint type, guint subtype,
+gboolean gabble_text_mixin_send (GObject *obj, guint type, guint subtype,
     const char *recipient, const gchar *text, GabbleConnection *conn,
-    gboolean emit_signal, DBusGMethodInvocation *context);
+    gboolean emit_signal, GError **error);
 
-void gabble_text_mixin_set_chat_state (GObject *obj, guint state, guint subtype,
-    const char *recipient, GabbleConnection *conn,
-    DBusGMethodInvocation *context);
+gboolean gabble_text_mixin_set_chat_state (GObject *obj, guint state, guint subtype,
+    const char *recipient, GabbleConnection *conn, GError **error);
 
 gboolean gabble_text_mixin_parse_incoming_message (LmMessage *message, const gchar **from, time_t *stamp, TpChannelTextMessageType *msgtype, const gchar **body, const gchar **body_offset, gint *state, TpChannelTextSendError *send_error);
 

@@ -2098,14 +2098,21 @@ gabble_muc_channel_send (TpSvcChannelTypeText *iface,
 {
   GabbleMucChannel *self = GABBLE_MUC_CHANNEL (iface);
   GabbleMucChannelPrivate *priv;
+  GError *error = NULL;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (self));
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
 
-  gabble_text_mixin_send (G_OBJECT (self), type,
+  if (!gabble_text_mixin_send (G_OBJECT (self), type,
           LM_MESSAGE_SUB_TYPE_GROUPCHAT, priv->jid, text, priv->conn,
-          FALSE /* emit_signal */, context);
+          FALSE /* emit_signal */, &error))
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+    }
+
+  tp_svc_channel_type_text_return_from_send (context);
 }
 
 
@@ -2649,14 +2656,20 @@ gabble_muc_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
 {
   GabbleMucChannel *self = GABBLE_MUC_CHANNEL (iface);
   GabbleMucChannelPrivate *priv;
+  GError *error = NULL;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (self));
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
 
-  gabble_text_mixin_set_chat_state (G_OBJECT (self), state,
-          LM_MESSAGE_SUB_TYPE_GROUPCHAT, priv->jid, priv->conn,
-          context);
+  if (!gabble_text_mixin_set_chat_state (G_OBJECT (self), state,
+          LM_MESSAGE_SUB_TYPE_GROUPCHAT, priv->jid, priv->conn, &error))
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+    }
+
+  tp_svc_channel_interface_chat_state_return_from_set_chat_state (context);
 }
 
 static void

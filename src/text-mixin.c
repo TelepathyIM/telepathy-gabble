@@ -43,7 +43,7 @@
 #include "text-mixin.h"
 
 
-static void
+static gboolean
 gabble_text_mixin_send_message (GObject *obj,
                                 guint type,
                                 guint subtype,
@@ -52,37 +52,32 @@ gabble_text_mixin_send_message (GObject *obj,
                                 const gchar *text,
                                 GabbleConnection *conn,
                                 gboolean emit_signal,
-                                DBusGMethodInvocation *context)
+                                GError **error)
 {
   TpTextMixin *mixin = TP_TEXT_MIXIN (obj);
   LmMessage *msg;
   LmMessageNode *node;
   gboolean result;
   time_t timestamp;
-  GError *error;
 
   if (type > TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE)
     {
       DEBUG ("invalid message type %u", type);
 
-      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "invalid message type: %u", type);
 
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-      return;
+      return FALSE;
     }
 
   if (state > TP_CHANNEL_CHAT_STATE_COMPOSING)
     {
       DEBUG ("invalid state %u", state);
 
-      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "invalid state: %u", state);
 
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-      return;
+      return FALSE;
     }
 
   if (!subtype)
@@ -148,14 +143,12 @@ gabble_text_mixin_send_message (GObject *obj,
       lm_message_node_set_attributes (node, "xmlns", "http://jabber.org/protocol/chatstates", NULL);
     }
 
-  result = _gabble_connection_send (conn, msg, &error);
+  result = _gabble_connection_send (conn, msg, error);
   lm_message_unref (msg);
 
   if (!result)
     {
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-      return;
+      return FALSE;
     }
 
   if (emit_signal && text != NULL)
@@ -164,6 +157,7 @@ gabble_text_mixin_send_message (GObject *obj,
 
       tp_svc_channel_type_text_emit_sent (obj, timestamp, type, text);
     }
+  return TRUE;
 }
 
 /**
@@ -181,7 +175,7 @@ gabble_text_mixin_send_message (GObject *obj,
  *                    echo of the message and will emit Sent at that point
  * @param context The D-Bus method invocation context
  */
-void
+gboolean
 gabble_text_mixin_send (GObject *obj,
                         guint type,
                         guint subtype,
@@ -189,12 +183,10 @@ gabble_text_mixin_send (GObject *obj,
                         const gchar *text,
                         GabbleConnection *conn,
                         gboolean emit_signal,
-                        DBusGMethodInvocation *context)
+                        GError **error)
 {
-  gabble_text_mixin_send_message (obj, type, subtype, TP_CHANNEL_CHAT_STATE_ACTIVE, recipient, text,
-                                  conn, emit_signal, context);
-
-  tp_svc_channel_type_text_return_from_send (context);
+  return gabble_text_mixin_send_message (obj, type, subtype, TP_CHANNEL_CHAT_STATE_ACTIVE, recipient, text,
+                                  conn, emit_signal, error);
 }
 
 
@@ -208,20 +200,18 @@ gabble_text_mixin_send (GObject *obj,
  * @param subtype The Loudmouth message subtype
  * @param recipient The recipient's JID
  * @param conn The Connection
- * @param context The D-Bus method invocation context
+ * @param error The GError
  */
-void
+gboolean
 gabble_text_mixin_set_chat_state (GObject *obj,
                                   guint state,
                                   guint subtype,
                                   const char *recipient,
                                   GabbleConnection *conn,
-                                  DBusGMethodInvocation *context)
+                                  GError **error)
 {
-  gabble_text_mixin_send_message (obj, TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE, subtype, state, recipient, NULL,
-                                  conn, FALSE, context);
-
-  tp_svc_channel_interface_chat_state_return_from_set_chat_state (context);
+  return gabble_text_mixin_send_message (obj, TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE, subtype, state,
+                                         recipient, NULL, conn, FALSE, error);
 }
 
 

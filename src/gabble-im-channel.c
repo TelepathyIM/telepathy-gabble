@@ -265,7 +265,7 @@ gabble_im_channel_dispose (GObject *object)
     }
 
   if (!priv->closed)
-    tp_svc_channel_emit_closed (self);
+    tp_svc_channel_emit_closed ((TpSvcChannel *)self);
 
   if (G_OBJECT_CLASS (gabble_im_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_im_channel_parent_class)->dispose (object);
@@ -359,7 +359,15 @@ gabble_im_channel_close (TpSvcChannel *iface,
   DEBUG ("called on %p", self);
 
   priv = GABBLE_IM_CHANNEL_GET_PRIVATE (self);
-  priv->closed = TRUE;
+
+  if (!priv->closed)
+    {
+      /* Set the chat state of the channel on gone (Channel.Interface.ChatState) */
+      gabble_text_mixin_set_chat_state (G_OBJECT (self), TP_CHANNEL_CHAT_STATE_GONE, 0, priv->peer_jid,
+                                        priv->conn, NULL);
+
+      priv->closed = TRUE;
+    }
 
   tp_svc_channel_emit_closed (self);
 
@@ -435,12 +443,19 @@ gabble_im_channel_send (TpSvcChannelTypeText *iface,
 {
   GabbleIMChannel *self = GABBLE_IM_CHANNEL (iface);
   GabbleIMChannelPrivate *priv;
+  GError *error = NULL;
 
   g_assert (GABBLE_IS_IM_CHANNEL (self));
   priv = GABBLE_IM_CHANNEL_GET_PRIVATE (self);
 
-  gabble_text_mixin_send (G_OBJECT (self), type, 0, priv->peer_jid,
-      text, priv->conn, TRUE /* emit_signal */, context);
+  if (!gabble_text_mixin_send (G_OBJECT (self), type, 0, priv->peer_jid,
+      text, priv->conn, TRUE /* emit_signal */, &error))
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+    }
+
+  tp_svc_channel_type_text_return_from_send (context);
 }
 
 /**
@@ -456,16 +471,23 @@ gabble_im_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
 {
   GabbleIMChannel *self = GABBLE_IM_CHANNEL (iface);
   GabbleIMChannelPrivate *priv;
+  GError *error = NULL;
 
   g_assert (GABBLE_IS_IM_CHANNEL (self));
   priv = GABBLE_IM_CHANNEL_GET_PRIVATE (self);
 
-  gabble_text_mixin_set_chat_state (G_OBJECT (self), state, 0, priv->peer_jid,
-      priv->conn, context);
+  if (!gabble_text_mixin_set_chat_state (G_OBJECT (self), state, 0, priv->peer_jid,
+      priv->conn, &error))
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+    }
 
   /* Send the ChatStateChanged signal for the local user */
   tp_svc_channel_interface_chat_state_emit_chat_state_changed (iface,
       priv->conn->parent.self_handle, state);
+
+  tp_svc_channel_interface_chat_state_return_from_set_chat_state (context);
 }
 
 static void

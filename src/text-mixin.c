@@ -107,16 +107,19 @@ gabble_text_mixin_send_message (GObject *obj,
       mixin->send_nick = FALSE;
     }
 
-  if (type == TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION)
+  if (text != NULL)
     {
-      gchar *tmp;
-      tmp = g_strconcat ("/me ", text, NULL);
-      lm_message_node_add_child (msg->node, "body", tmp);
-      g_free (tmp);
-    }
-  else
-    {
-      lm_message_node_add_child (msg->node, "body", text);
+      if (type == TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION)
+        {
+          gchar *tmp;
+          tmp = g_strconcat ("/me ", text, NULL);
+          lm_message_node_add_child (msg->node, "body", tmp);
+          g_free (tmp);
+        }
+      else
+        {
+          lm_message_node_add_child (msg->node, "body", text);
+        }
     }
 
   node = NULL;
@@ -155,7 +158,7 @@ gabble_text_mixin_send_message (GObject *obj,
       return;
     }
 
-  if (emit_signal)
+  if (emit_signal && text != NULL)
     {
       timestamp = time (NULL);
 
@@ -218,7 +221,7 @@ gabble_text_mixin_set_chat_state (GObject *obj,
                                   gboolean emit_signal,
                                   DBusGMethodInvocation *context)
 {
-  gabble_text_mixin_send_message (obj, TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE, subtype, state, recipient, "",
+  gabble_text_mixin_send_message (obj, TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE, subtype, state, recipient, NULL,
                                   conn, emit_signal, context);
 
   tp_svc_channel_interface_chat_state_return_from_set_chat_state (context);

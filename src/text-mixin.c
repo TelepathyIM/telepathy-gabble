@@ -60,7 +60,7 @@ gabble_text_mixin_send_message (GObject *obj,
   gboolean result;
   time_t timestamp;
 
-  if (type > TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE)
+  if (type > LAST_TP_CHANNEL_CHAT_STATE)
     {
       DEBUG ("invalid message type %u", type);
 

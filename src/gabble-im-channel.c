@@ -476,7 +476,16 @@ gabble_im_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
   g_assert (GABBLE_IS_IM_CHANNEL (self));
   priv = GABBLE_IM_CHANNEL_GET_PRIVATE (self);
 
-  if (!gabble_text_mixin_set_chat_state (G_OBJECT (self), state, 0, priv->peer_jid,
+  if (state == TP_CHANNEL_CHAT_STATE_GONE)
+    {
+      /* We cannot explicitely set the Gone state */
+      DEBUG ("invalid state %u", state);
+
+      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "invalid state: %u", state);
+    }
+
+  if (error != NULL || !gabble_text_mixin_set_chat_state (G_OBJECT (self), state, 0, priv->peer_jid,
       priv->conn, &error))
     {
       dbus_g_method_return_error (context, error);

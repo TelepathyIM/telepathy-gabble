@@ -2662,7 +2662,16 @@ gabble_muc_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
 
-  if (!gabble_text_mixin_set_chat_state (G_OBJECT (self), state,
+  if (state == TP_CHANNEL_CHAT_STATE_GONE)
+    {
+      /* We cannot use the Gone set in multi-users chat */
+      DEBUG ("invalid state %u", state);
+
+      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "invalid state: %u", state);
+    }
+
+  if (error != NULL || !gabble_text_mixin_set_chat_state (G_OBJECT (self), state,
           LM_MESSAGE_SUB_TYPE_GROUPCHAT, priv->jid, priv->conn, &error))
     {
       dbus_g_method_return_error (context, error);

@@ -208,8 +208,6 @@ gabble_text_mixin_send (GObject *obj,
  * @param subtype The Loudmouth message subtype
  * @param recipient The recipient's JID
  * @param conn The Connection
- * @param emit_signal If true, emit Sent; if false, assume we'll get an
- *                    echo of the message and will emit Sent at that point
  * @param context The D-Bus method invocation context
  */
 void
@@ -218,11 +216,10 @@ gabble_text_mixin_set_chat_state (GObject *obj,
                                   guint subtype,
                                   const char *recipient,
                                   GabbleConnection *conn,
-                                  gboolean emit_signal,
                                   DBusGMethodInvocation *context)
 {
   gabble_text_mixin_send_message (obj, TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE, subtype, state, recipient, NULL,
-                                  conn, emit_signal, context);
+                                  conn, FALSE, context);
 
   tp_svc_channel_interface_chat_state_return_from_set_chat_state (context);
 }
@@ -373,7 +370,6 @@ gabble_text_mixin_parse_incoming_message (LmMessage *message,
   node = lm_message_node_get_child (message->node, "active");
   if (node)
     {
-      g_print ("active received\n");
       *state = TP_CHANNEL_CHAT_STATE_ACTIVE;
       return TRUE;
     }
@@ -382,7 +378,6 @@ gabble_text_mixin_parse_incoming_message (LmMessage *message,
   node = lm_message_node_get_child (message->node, "composing");
   if (node)
     {
-      g_print ("composing received\n");
       *state = TP_CHANNEL_CHAT_STATE_COMPOSING;
       return TRUE;
     }
@@ -390,7 +385,6 @@ gabble_text_mixin_parse_incoming_message (LmMessage *message,
   node = lm_message_node_get_child (message->node, "inactive");
   if (node)
     {
-      g_print ("inactive received\n");
       *state = TP_CHANNEL_CHAT_STATE_INACTIVE;
       return TRUE;
     }
@@ -398,7 +392,6 @@ gabble_text_mixin_parse_incoming_message (LmMessage *message,
   node = lm_message_node_get_child (message->node, "paused");
   if (node)
     {
-      g_print ("paused received\n");
       *state = TP_CHANNEL_CHAT_STATE_PAUSED;
       return TRUE;
     }
@@ -406,7 +399,6 @@ gabble_text_mixin_parse_incoming_message (LmMessage *message,
   node = lm_message_node_get_child (message->node, "gone");
   if (node)
     {
-      g_print ("gone received\n");
       *state = TP_CHANNEL_CHAT_STATE_GONE;
       return TRUE;
     }

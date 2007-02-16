@@ -2656,7 +2656,7 @@ gabble_muc_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
 
   gabble_text_mixin_set_chat_state (G_OBJECT (self), state,
           LM_MESSAGE_SUB_TYPE_GROUPCHAT, priv->jid, priv->conn,
-          FALSE /* emit_signal */, context);
+          context);
 }
 
 static void

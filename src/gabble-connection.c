@@ -537,7 +537,7 @@ static void connect_callbacks (TpBaseConnection *base);
 static void disconnect_callbacks (TpBaseConnection *base);
 static void connection_shut_down (TpBaseConnection *base);
 
-gchar *
+static gchar *
 gabble_connection_get_unique_name (TpBaseConnection *self)
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (

@@ -448,8 +448,7 @@ tp_base_connection_constructor (GType type, guint n_construct_properties,
       TP_TYPE_BASE_CONNECTION, TpBaseConnectionPrivate);
   TpBaseConnectionClass *cls = TP_BASE_CONNECTION_GET_CLASS (self);
 
-  DEBUG("Post-construction: (TpBaseConnection *)%p of class "
-        "(TpBaseConnectionClass *)%p", self, cls);
+  DEBUG("Post-construction: (TpBaseConnection *)%p", self);
 
   g_assert(cls->init_handle_repos != NULL);
   (cls->init_handle_repos) (self->handles);
@@ -520,10 +519,9 @@ tp_base_connection_init (TpBaseConnection *self)
 {
   TpBaseConnectionPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
       TP_TYPE_BASE_CONNECTION, TpBaseConnectionPrivate);
-  TpBaseConnectionClass *cls = TP_BASE_CONNECTION_GET_CLASS (self);
   guint i;
 
-  DEBUG("Initializing (TpBaseConnection *)%p of class %p", self, cls);
+  DEBUG("Initializing (TpBaseConnection *)%p", self);
 
   self->priv = priv;
 

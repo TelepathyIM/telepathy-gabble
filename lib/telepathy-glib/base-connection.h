@@ -71,6 +71,12 @@ struct _TpBaseConnectionClass {
      * May not be NULL.
      */
     void (*shut_down) (TpBaseConnection *self);
+
+    /** Asynchronously start connecting. May assume that the connection
+     * is in the NEW state. Must calculate and ref the self_handle.
+     * After this runs, the state will be set to CONNECTING.
+     */
+    gboolean (*start_connecting) (TpBaseConnection *, GError **);
 };
 
 struct _TpBaseConnection {

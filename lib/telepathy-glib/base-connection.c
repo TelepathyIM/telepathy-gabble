@@ -663,9 +663,86 @@ tp_base_connection_close_all_channels (TpBaseConnection *self)
 
 /* D-Bus methods on Connection interface ----------------------------*/
 
-/* Missing: Connect */
+/**
+ * tp_base_connection_connect
+ * Implements D-Bus method Connect
+ * on interface org.freedesktop.Telepathy.Connection
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occurred, D-Bus will throw the error only if this
+ *         function returns FALSE.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+static void
+tp_base_connection_connect (TpSvcConnection *iface,
+                            DBusGMethodInvocation *context)
+{
+  TpBaseConnection *self = TP_BASE_CONNECTION (iface);
+  TpBaseConnectionClass *cls = TP_BASE_CONNECTION_GET_CLASS (self);
+  GError *error = NULL;
 
-/* Missing: Disconnect */
+  g_assert(TP_IS_BASE_CONNECTION (self));
+
+  if (self->status == TP_INTERNAL_CONNECTION_STATUS_NEW)
+    {
+      gboolean ok = cls->start_connecting (self, &error);
+      if (ok)
+        {
+          gboolean valid;
+
+          tp_base_connection_change_status (self,
+              TP_CONNECTION_STATUS_CONNECTING,
+              TP_CONNECTION_STATUS_REASON_REQUESTED);
+
+          /* the start_connecting implementation should have ensured
+           * we have a self_handle */
+
+          g_assert (self->self_handle != 0);
+          /* FIXME: what's going on here? start_connecting already ref'd the
+           * self handle */
+          valid = tp_handle_ref (self->handles[TP_HANDLE_TYPE_CONTACT],
+              self->self_handle);
+          g_assert (valid);
+        }
+      else
+        {
+          dbus_g_method_return_error (context, error);
+          g_error_free (error);
+          return;
+        }
+    }
+
+  tp_svc_connection_return_from_connect (context);
+}
+
+
+/**
+ * tp_base_connection_disconnect
+ *
+ * Implements D-Bus method Disconnect
+ * on interface org.freedesktop.Telepathy.Connection
+ *
+ * @error: Used to return a pointer to a GError detailing any error
+ *         that occurred, D-Bus will throw the error only if this
+ *         function returns FALSE.
+ *
+ * Returns: TRUE if successful, FALSE if an error was thrown.
+ */
+static void
+tp_base_connection_disconnect (TpSvcConnection *iface,
+                               DBusGMethodInvocation *context)
+{
+  TpBaseConnection *self = TP_BASE_CONNECTION (iface);
+
+  g_assert (TP_IS_BASE_CONNECTION (self));
+
+  tp_base_connection_change_status (self,
+      TP_CONNECTION_STATUS_DISCONNECTED,
+      TP_CONNECTION_STATUS_REASON_REQUESTED);
+
+  tp_svc_connection_return_from_disconnect (context);
+}
 
 /* Missing: GetInterfaces, but could implement in a cunning generic way? */
 
@@ -1184,20 +1261,19 @@ service_iface_init(gpointer g_iface, gpointer iface_data)
 {
   TpSvcConnectionClass *klass = (TpSvcConnectionClass *)g_iface;
 
-  tp_svc_connection_implement_get_protocol (klass,
-      tp_base_connection_get_protocol);
-  tp_svc_connection_implement_get_self_handle (klass,
-      tp_base_connection_get_self_handle);
-  tp_svc_connection_implement_get_status (klass,
-      tp_base_connection_get_status);
-  tp_svc_connection_implement_hold_handles (klass,
-      tp_base_connection_hold_handles);
-  tp_svc_connection_implement_inspect_handles (klass,
-      tp_base_connection_inspect_handles);
-  tp_svc_connection_implement_list_channels (klass,
-      tp_base_connection_list_channels);
-  tp_svc_connection_implement_request_channel (klass,
-      tp_base_connection_request_channel);
-  tp_svc_connection_implement_release_handles (klass,
-      tp_base_connection_release_handles);
+#define IMPLEMENT(x) tp_svc_connection_implement_##x (klass, \
+    tp_base_connection_##x)
+  IMPLEMENT(connect);
+  IMPLEMENT(disconnect);
+  /* IMPLEMENT(get_interfaces); */
+  IMPLEMENT(get_protocol);
+  IMPLEMENT(get_self_handle);
+  IMPLEMENT(get_status);
+  IMPLEMENT(hold_handles);
+  IMPLEMENT(inspect_handles);
+  IMPLEMENT(list_channels);
+  IMPLEMENT(request_channel);
+  IMPLEMENT(release_handles);
+  /* IMPLEMENT(request_handles); */
+#undef IMPLEMENT
 }

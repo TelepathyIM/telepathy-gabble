@@ -536,6 +536,8 @@ static void gabble_connection_finalize (GObject *object);
 static void connect_callbacks (TpBaseConnection *base);
 static void disconnect_callbacks (TpBaseConnection *base);
 static void connection_shut_down (TpBaseConnection *base);
+static gboolean _gabble_connection_connect (TpBaseConnection *base,
+    GError **error);
 
 static gchar *
 gabble_connection_get_unique_name (TpBaseConnection *self)
@@ -570,6 +572,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
   parent_class->connecting = connect_callbacks;
   parent_class->disconnected = disconnect_callbacks;
   parent_class->shut_down = connection_shut_down;
+  parent_class->start_connecting = _gabble_connection_connect;
 
   g_type_class_add_private (gabble_connection_class, sizeof (GabbleConnectionPrivate));
 
@@ -1247,9 +1250,10 @@ disconnect_callbacks (TpBaseConnection *base)
  *   the roster and setting the CONNECTED state
  */
 static gboolean
-_gabble_connection_connect (GabbleConnection *conn,
-                            GError          **error)
+_gabble_connection_connect (TpBaseConnection *base,
+                            GError **error)
 {
+  GabbleConnection *conn = GABBLE_CONNECTION (base);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   char *jid;
 
@@ -1325,24 +1329,7 @@ _gabble_connection_connect (GabbleConnection *conn,
                                          conn,
                                          NULL);
 
-  if (do_connect (conn, error))
-    {
-      gboolean valid;
-
-      tp_base_connection_change_status ((TpBaseConnection *)conn,
-          TP_CONNECTION_STATUS_CONNECTING,
-          TP_CONNECTION_STATUS_REASON_REQUESTED);
-
-      valid = tp_handle_ref (conn->parent.handles[TP_HANDLE_TYPE_CONTACT],
-          conn->parent.self_handle);
-      g_assert (valid);
-    }
-  else
-    {
-      return FALSE;
-    }
-
-  return TRUE;
+  return do_connect (conn, error);
 }
 
 
@@ -2755,72 +2742,6 @@ gabble_connection_clear_status (TpSvcConnectionInterfacePresence *iface,
 
   tp_svc_connection_interface_presence_return_from_clear_status (
       context);
-}
-
-
-/**
- * gabble_connection_connect
- * Implements D-Bus method Connect
- * on interface org.freedesktop.Telepathy.Connection
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-static void
-gabble_connection_connect (TpSvcConnection *iface,
-                           DBusGMethodInvocation *context)
-{
-  GabbleConnection *self = GABBLE_CONNECTION (iface);
-  GError *error = NULL;
-
-  g_assert(GABBLE_IS_CONNECTION (self));
-
-  if (self->parent.status == TP_INTERNAL_CONNECTION_STATUS_NEW)
-    {
-      gboolean ok = _gabble_connection_connect (self, &error);
-      if (!ok)
-        {
-          dbus_g_method_return_error (context, error);
-          g_error_free (error);
-          return;
-        }
-    }
-
-  tp_svc_connection_return_from_connect (context);
-}
-
-
-/**
- * gabble_connection_disconnect
- *
- * Implements D-Bus method Disconnect
- * on interface org.freedesktop.Telepathy.Connection
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-static void
-gabble_connection_disconnect (TpSvcConnection *iface,
-                              DBusGMethodInvocation *context)
-{
-  GabbleConnection *self = GABBLE_CONNECTION (iface);
-  GabbleConnectionPrivate *priv;
-
-  g_assert (GABBLE_IS_CONNECTION (self));
-
-  priv = GABBLE_CONNECTION_GET_PRIVATE (self);
-
-  tp_base_connection_change_status ((TpBaseConnection *)self,
-      TP_CONNECTION_STATUS_DISCONNECTED,
-      TP_CONNECTION_STATUS_REASON_REQUESTED);
-
-  tp_svc_connection_return_from_disconnect (context);
 }
 
 
@@ -4622,8 +4543,6 @@ conn_service_iface_init(gpointer g_iface, gpointer iface_data)
 
 #define IMPLEMENT(x) tp_svc_connection_implement_##x (klass, \
     gabble_connection_##x)
-  IMPLEMENT(connect);
-  IMPLEMENT(disconnect);
   IMPLEMENT(get_interfaces);
   IMPLEMENT(request_handles);
 #undef IMPLEMENT

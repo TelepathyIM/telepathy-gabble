@@ -77,8 +77,8 @@
     ("GValueArray", G_TYPE_UINT, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT, \
                     G_TYPE_INVALID))
 
-#define ERROR_IF_NOT_CONNECTED_ASYNC(CONN, ERROR, CONTEXT) \
-  if ((CONN)->parent.status != TP_CONNECTION_STATUS_CONNECTED) \
+#define ERROR_IF_NOT_CONNECTED_ASYNC(BASE, ERROR, CONTEXT) \
+  if ((BASE)->status != TP_CONNECTION_STATUS_CONNECTED) \
     { \
       DEBUG ("rejected request as disconnected"); \
       (ERROR) = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE, \
@@ -1595,13 +1595,14 @@ update_own_avatar_sha1 (GabbleConnection *conn,
                         const gchar *sha1,
                         GError **out_error)
 {
+  TpBaseConnection *base = (TpBaseConnection *)conn;
   GError *error = NULL;
 
   if (!tp_strdiff (sha1, conn->self_presence->avatar_sha1))
     return TRUE;
 
   tp_svc_connection_interface_avatars_emit_avatar_updated (conn,
-      conn->parent.self_handle, sha1);
+      base->self_handle, sha1);
 
   g_free (conn->self_presence->avatar_sha1);
   conn->self_presence->avatar_sha1 = g_strdup (sha1);
@@ -1629,6 +1630,7 @@ connection_avatar_update_cb (GabblePresenceCache *cache,
                              gpointer user_data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+  TpBaseConnection *base = (TpBaseConnection *)conn;
   GabblePresence *presence;
 
   presence = gabble_presence_cache_get (conn->presence_cache, handle);
@@ -1637,7 +1639,7 @@ connection_avatar_update_cb (GabblePresenceCache *cache,
 
   gabble_vcard_manager_invalidate_cache (conn->vcard_manager, handle);
 
-  if (handle == conn->parent.self_handle)
+  if (handle == base->self_handle)
     update_own_avatar_sha1 (conn, presence->avatar_sha1, NULL);
   else
     tp_svc_connection_interface_avatars_emit_avatar_updated (conn,
@@ -1695,6 +1697,7 @@ static GHashTable *
 construct_presence_hash (GabbleConnection *self,
                          const GArray *contact_handles)
 {
+  TpBaseConnection *base = (TpBaseConnection *)self;
   guint i;
   TpHandle handle;
   GHashTable *presence_hash, *contact_status, *parameters;
@@ -1716,7 +1719,7 @@ construct_presence_hash (GabbleConnection *self,
     {
       handle = g_array_index (contact_handles, TpHandle, i);
 
-      if (handle == self->parent.self_handle)
+      if (handle == base->self_handle)
         presence = self->self_presence;
       else
         presence = gabble_presence_cache_get (self->presence_cache, handle);
@@ -2390,12 +2393,13 @@ connection_disco_cb (GabbleDisco *disco,
                      gpointer user_data)
 {
   GabbleConnection *conn = user_data;
+  TpBaseConnection *base = (TpBaseConnection *)conn;
   GabbleConnectionPrivate *priv;
   GError *error;
 
-  if (conn->parent.status != TP_CONNECTION_STATUS_CONNECTING)
+  if (base->status != TP_CONNECTION_STATUS_CONNECTING)
     {
-      g_assert (conn->parent.status == TP_CONNECTION_STATUS_DISCONNECTED);
+      g_assert (base->status == TP_CONNECTION_STATUS_DISCONNECTED);
       return;
     }
 
@@ -2444,10 +2448,10 @@ connection_disco_cb (GabbleDisco *disco,
     }
 
   /* go go gadget on-line */
-  tp_base_connection_change_status ((TpBaseConnection *)conn,
+  tp_base_connection_change_status (base,
       TP_CONNECTION_STATUS_CONNECTED, TP_CONNECTION_STATUS_REASON_REQUESTED);
 
-  emit_one_presence_update (conn, conn->parent.self_handle);
+  emit_one_presence_update (conn, base->self_handle);
 
   if (conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_JINGLE_INFO)
     {
@@ -2460,7 +2464,7 @@ ERROR:
   if (error)
     g_error_free (error);
 
-  tp_base_connection_change_status ((TpBaseConnection *)conn,
+  tp_base_connection_change_status (base,
       TP_CONNECTION_STATUS_DISCONNECTED,
       TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
 
@@ -2507,7 +2511,7 @@ gabble_connection_add_status (TpSvcConnectionInterfacePresence *iface,
                               GHashTable *parms,
                               DBusGMethodInvocation *context)
 {
-  GabbleConnection *self = GABBLE_CONNECTION (iface);
+  TpBaseConnection *self = TP_BASE_CONNECTION (iface);
   GError *error;
   GError unimpl = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
     "Only one status is possible at a time with this protocol" };
@@ -2612,6 +2616,7 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
                                           DBusGMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
+  TpBaseConnection *base = (TpBaseConnection *)self;
   guint i;
   GabblePresence *pres = self->self_presence;
   GabblePresenceCapabilities add_caps = 0, remove_caps = 0, caps, save_caps;
@@ -2620,7 +2625,7 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
   GPtrArray *ret;
   GError *error;
 
-  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context);
+  ERROR_IF_NOT_CONNECTED_ASYNC (base, error, context);
 
   DEBUG ("caps before: %x", pres->caps);
 
@@ -2695,7 +2700,7 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
           return;
         }
 
-      _emit_capabilities_changed (self, self->parent.self_handle,
+      _emit_capabilities_changed (self, base->self_handle,
           save_caps, caps);
     }
 
@@ -2721,6 +2726,7 @@ gabble_connection_clear_status (TpSvcConnectionInterfacePresence *iface,
                                 DBusGMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
+  TpBaseConnection *base = (TpBaseConnection *)self;
   GError *error;
   GabbleConnectionPrivate *priv;
   gboolean ok;
@@ -2729,11 +2735,11 @@ gabble_connection_clear_status (TpSvcConnectionInterfacePresence *iface,
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
-  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context);
+  ERROR_IF_NOT_CONNECTED_ASYNC (base, error, context);
 
   gabble_presence_update (self->self_presence, priv->resource,
       GABBLE_PRESENCE_AVAILABLE, NULL, priv->priority);
-  emit_one_presence_update (self, self->parent.self_handle);
+  emit_one_presence_update (self, base->self_handle);
   ok = signal_own_presence (self, &error);
 
   if (!ok)
@@ -2830,12 +2836,12 @@ static void
 gabble_connection_get_alias_flags (TpSvcConnectionInterfaceAliasing *iface,
                                    DBusGMethodInvocation *context)
 {
-  GabbleConnection *self = GABBLE_CONNECTION (iface);
+  TpBaseConnection *base = TP_BASE_CONNECTION (iface);
   GError *error;
 
-  g_assert (GABBLE_IS_CONNECTION (self));
+  g_assert (GABBLE_IS_CONNECTION (base));
 
-  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
+  ERROR_IF_NOT_CONNECTED_ASYNC (base, error, context)
 
   tp_svc_connection_interface_aliasing_return_from_get_alias_flags (
       context, TP_CONNECTION_ALIAS_FLAG_USER_SET);
@@ -2914,12 +2920,13 @@ gabble_connection_get_avatar_tokens (TpSvcConnectionInterfaceAvatars *iface,
                                      DBusGMethodInvocation *invocation)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
+  TpBaseConnection *base = (TpBaseConnection *)self;
   gboolean my_handle_requested = FALSE;
   guint i, my_index = 0;
   gchar **ret;
   GError *err;
 
-  if (!tp_handles_are_valid (self->parent.handles[TP_HANDLE_TYPE_CONTACT],
+  if (!tp_handles_are_valid (base->handles[TP_HANDLE_TYPE_CONTACT],
         contacts, FALSE, &err))
     {
       dbus_g_method_return_error (invocation, err);
@@ -2945,7 +2952,7 @@ gabble_connection_get_avatar_tokens (TpSvcConnectionInterfaceAvatars *iface,
       else
           ret[i] = g_strdup ("");
 
-      if (self->parent.self_handle == handle)
+      if (base->self_handle == handle)
         {
           my_handle_requested = TRUE;
           my_index = i;
@@ -3010,13 +3017,14 @@ gabble_connection_get_capabilities (TpSvcConnectionInterfaceCapabilities *iface,
                                     DBusGMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
+  TpBaseConnection *base = (TpBaseConnection *)self;
   guint i;
   GPtrArray *ret;
   GError *error;
 
-  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context);
+  ERROR_IF_NOT_CONNECTED_ASYNC (base, error, context);
 
-  if (!tp_handles_are_valid (self->parent.handles[TP_HANDLE_TYPE_CONTACT],
+  if (!tp_handles_are_valid (base->handles[TP_HANDLE_TYPE_CONTACT],
                              handles, TRUE, &error))
     {
       dbus_g_method_return_error (context, error);
@@ -3039,7 +3047,7 @@ gabble_connection_get_capabilities (TpSvcConnectionInterfaceCapabilities *iface,
           continue;
         }
 
-      if (handle == self->parent.self_handle)
+      if (handle == base->self_handle)
         pres = self->self_presence;
       else
         pres = gabble_presence_cache_get (self->presence_cache, handle);
@@ -3120,6 +3128,7 @@ gabble_connection_get_interfaces (TpSvcConnection *iface,
       TP_IFACE_PROPERTIES_INTERFACE,
       NULL };
   GabbleConnection *self = GABBLE_CONNECTION (iface);
+  TpBaseConnection *base = (TpBaseConnection *)self;
   GabbleConnectionPrivate *priv;
   GError *error;
 
@@ -3127,7 +3136,7 @@ gabble_connection_get_interfaces (TpSvcConnection *iface,
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
-  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
+  ERROR_IF_NOT_CONNECTED_ASYNC (base, error, context)
 
   tp_svc_connection_return_from_get_interfaces(
       context, interfaces);
@@ -3149,10 +3158,11 @@ gabble_connection_get_presence (TpSvcConnectionInterfacePresence *iface,
                                 DBusGMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
+  TpBaseConnection *base = (TpBaseConnection *)self;
   GHashTable *presence_hash;
   GError *error = NULL;
 
-  if (!tp_handles_are_valid (self->parent.handles[TP_HANDLE_TYPE_CONTACT],
+  if (!tp_handles_are_valid (base->handles[TP_HANDLE_TYPE_CONTACT],
         contacts, FALSE, &error))
     {
       dbus_g_method_return_error (context, error);
@@ -3183,6 +3193,7 @@ gabble_connection_get_statuses (TpSvcConnectionInterfacePresence *iface,
                                 DBusGMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
+  TpBaseConnection *base = (TpBaseConnection *)self;
   GHashTable *ret;
   GError *error;
   GabbleConnectionPrivate *priv;
@@ -3193,7 +3204,7 @@ gabble_connection_get_statuses (TpSvcConnectionInterfacePresence *iface,
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
-  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
+  ERROR_IF_NOT_CONNECTED_ASYNC (base, error, context)
 
   DEBUG ("called.");
 
@@ -3257,19 +3268,20 @@ gabble_connection_remove_status (TpSvcConnectionInterfacePresence *iface,
                                  DBusGMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
+  TpBaseConnection *base = (TpBaseConnection *)self;
   GabblePresence *presence = self->self_presence;
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
   GError *error;
 
   g_assert (GABBLE_IS_CONNECTION (self));
 
-  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
+  ERROR_IF_NOT_CONNECTED_ASYNC (base, error, context)
 
   if (strcmp (status, gabble_statuses[presence->status].name) == 0)
     {
       gabble_presence_update (presence, priv->resource,
           GABBLE_PRESENCE_AVAILABLE, NULL, priv->priority);
-      emit_one_presence_update (self, self->parent.self_handle);
+      emit_one_presence_update (self, base->self_handle);
       if (signal_own_presence (self, &error))
         {
           tp_svc_connection_interface_presence_return_from_remove_status (
@@ -3413,15 +3425,16 @@ gabble_connection_request_aliases (TpSvcConnectionInterfaceAliasing *iface,
                                    DBusGMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
+  TpBaseConnection *base = (TpBaseConnection *)self;
   guint i;
   AliasesRequest *request;
   GError *error = NULL;
 
   g_assert (GABBLE_IS_CONNECTION (self));
 
-  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
+  ERROR_IF_NOT_CONNECTED_ASYNC (base, error, context)
 
-  if (!tp_handles_are_valid (self->parent.handles[TP_HANDLE_TYPE_CONTACT],
+  if (!tp_handles_are_valid (base->handles[TP_HANDLE_TYPE_CONTACT],
         contacts, FALSE, &error))
     {
       dbus_g_method_return_error (context, error);
@@ -3453,7 +3466,7 @@ gabble_connection_request_aliases (TpSvcConnectionInterfaceAliasing *iface,
       else
         {
           DEBUG ("requesting vCard for alias of contact %s",
-              tp_handle_inspect (self->parent.handles[TP_HANDLE_TYPE_CONTACT],
+              tp_handle_inspect (base->handles[TP_HANDLE_TYPE_CONTACT],
                 handle));
 
           g_free (alias);
@@ -3500,6 +3513,7 @@ _request_avatar_cb (GabbleVCardManager *self,
 {
   DBusGMethodInvocation *context = (DBusGMethodInvocation *) user_data;
   GabbleConnection *conn;
+  TpBaseConnection *base;
   LmMessageNode *photo_node, *type_node, *binval_node;
   const gchar *mime_type;
   GArray *arr;
@@ -3508,6 +3522,7 @@ _request_avatar_cb (GabbleVCardManager *self,
   GabblePresence *presence;
 
   g_object_get (self, "connection", &conn, NULL);
+  base = TP_BASE_CONNECTION (conn);
 
   if (NULL == vcard)
     {
@@ -3559,7 +3574,7 @@ _request_avatar_cb (GabbleVCardManager *self,
       goto out;
     }
 
-  if (handle == conn->parent.self_handle)
+  if (handle == base->self_handle)
     presence = conn->self_presence;
   else
     presence = gabble_presence_cache_get (conn->presence_cache, handle);
@@ -3584,7 +3599,7 @@ _request_avatar_cb (GabbleVCardManager *self,
           g_error_free (error);
           error = NULL;
 
-          if (handle == conn->parent.self_handle)
+          if (handle == base->self_handle)
             {
               update_own_avatar_sha1 (conn, sha1, NULL);
               g_free (sha1);
@@ -3773,6 +3788,7 @@ room_verify_batch_new (GabbleConnection *conn,
                        guint count,
                        const gchar **jids)
 {
+  TpBaseConnection *base = (TpBaseConnection *)conn;
   RoomVerifyBatch *batch = g_new(RoomVerifyBatch, 1);
   guint i;
 
@@ -3809,10 +3825,10 @@ room_verify_batch_new (GabbleConnection *conn,
 
       /* has the handle been verified before? */
       if (gabble_handle_for_room_exists (
-            conn->parent.handles[TP_HANDLE_TYPE_ROOM], qualified_name, FALSE))
+            base->handles[TP_HANDLE_TYPE_ROOM], qualified_name, FALSE))
         {
           handle = gabble_handle_for_room (
-              conn->parent.handles[TP_HANDLE_TYPE_ROOM], qualified_name);
+              base->handles[TP_HANDLE_TYPE_ROOM], qualified_name);
         }
       else
         {
@@ -3980,6 +3996,7 @@ gabble_connection_request_handles (TpSvcConnection *iface,
                                    DBusGMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
+  TpBaseConnection *base = (TpBaseConnection *)self;
   guint count = 0, i;
   const gchar **cur_name;
   GError *error = NULL;
@@ -3993,7 +4010,7 @@ gabble_connection_request_handles (TpSvcConnection *iface,
 
   g_assert (GABBLE_IS_CONNECTION (self));
 
-  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
+  ERROR_IF_NOT_CONNECTED_ASYNC (base, error, context)
 
   if (!tp_handle_type_is_valid (handle_type, &error))
     {
@@ -4022,7 +4039,7 @@ gabble_connection_request_handles (TpSvcConnection *iface,
             }
 
           handle = gabble_handle_for_contact (
-              self->parent.handles[TP_HANDLE_TYPE_CONTACT], name, FALSE);
+              base->handles[TP_HANDLE_TYPE_CONTACT], name, FALSE);
 
           if (handle == 0)
             {
@@ -4040,7 +4057,7 @@ gabble_connection_request_handles (TpSvcConnection *iface,
           g_array_append_val(handles, handle);
         }
       hold_and_return_handles (context,
-          self->parent.handles[TP_HANDLE_TYPE_CONTACT],handles);
+          base->handles[TP_HANDLE_TYPE_CONTACT],handles);
       g_array_free(handles, TRUE);
       break;
 
@@ -4080,7 +4097,7 @@ gabble_connection_request_handles (TpSvcConnection *iface,
           TpHandle handle;
           const gchar *name = names[i];
 
-          handle = tp_handle_request (self->parent.handles[handle_type],
+          handle = tp_handle_request (base->handles[handle_type],
               name, TRUE);
 
           if (handle == 0)
@@ -4102,7 +4119,7 @@ gabble_connection_request_handles (TpSvcConnection *iface,
             }
           g_array_append_val(handles, handle);
         }
-      hold_and_return_handles (context, self->parent.handles[handle_type],
+      hold_and_return_handles (context, base->handles[handle_type],
           handles);
       g_array_free(handles, TRUE);
       break;
@@ -4130,6 +4147,7 @@ gabble_connection_request_presence (TpSvcConnectionInterfacePresence *iface,
                                     DBusGMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
+  TpBaseConnection *base = (TpBaseConnection *)self;
   GabbleConnectionPrivate *priv;
   GError *error;
 
@@ -4137,9 +4155,9 @@ gabble_connection_request_presence (TpSvcConnectionInterfacePresence *iface,
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
-  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
+  ERROR_IF_NOT_CONNECTED_ASYNC (base, error, context)
 
-  if (!tp_handles_are_valid (self->parent.handles[TP_HANDLE_TYPE_CONTACT],
+  if (!tp_handles_are_valid (base->handles[TP_HANDLE_TYPE_CONTACT],
         contacts, FALSE, &error))
     {
       dbus_g_method_return_error (context, error);
@@ -4169,13 +4187,14 @@ setaliases_foreach (gpointer key, gpointer value, gpointer user_data)
   TpHandle handle = GPOINTER_TO_INT (key);
   gchar *alias = (gchar *) value;
   GError *error = NULL;
+  TpBaseConnection *base = (TpBaseConnection *)data->conn;
 
-  if (!tp_handle_is_valid (data->conn->parent.handles[TP_HANDLE_TYPE_CONTACT],
+  if (!tp_handle_is_valid (base->handles[TP_HANDLE_TYPE_CONTACT],
         handle, &error))
     {
       data->retval = FALSE;
     }
-  else if (data->conn->parent.self_handle == handle)
+  else if (base->self_handle == handle)
     {
       /* only alter the roster if we're already there, e.g. because someone
        * added us with another client
@@ -4193,7 +4212,7 @@ setaliases_foreach (gpointer key, gpointer value, gpointer user_data)
       data->retval = FALSE;
     }
 
-  if (data->conn->parent.self_handle == handle)
+  if (base->self_handle == handle)
     {
       /* User has done SetAliases on themselves - patch their vCard.
        * FIXME: because SetAliases is currently synchronous, we ignore errors
@@ -4228,6 +4247,7 @@ gabble_connection_set_aliases (TpSvcConnectionInterfaceAliasing *iface,
                                DBusGMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
+  TpBaseConnection *base = (TpBaseConnection *)self;
   GError *error;
   GabbleConnectionPrivate *priv;
   struct _i_hate_g_hash_table_foreach data = { NULL, NULL, TRUE };
@@ -4236,7 +4256,7 @@ gabble_connection_set_aliases (TpSvcConnectionInterfaceAliasing *iface,
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
-  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
+  ERROR_IF_NOT_CONNECTED_ASYNC (base, error, context)
 
   data.conn = self;
   data.error = &error;
@@ -4285,6 +4305,7 @@ _set_avatar_cb2 (GabbleVCardManager *manager,
                  gpointer user_data)
 {
   struct _set_avatar_ctx *ctx = (struct _set_avatar_ctx *) user_data;
+  TpBaseConnection *base = (TpBaseConnection *)ctx->conn;
 
   if (NULL == vcard)
     {
@@ -4311,7 +4332,7 @@ _set_avatar_cb2 (GabbleVCardManager *manager,
           tp_svc_connection_interface_avatars_return_from_set_avatar (
               ctx->invocation, presence->avatar_sha1);
           tp_svc_connection_interface_avatars_emit_avatar_updated (
-              ctx->conn, ctx->conn->parent.self_handle, presence->avatar_sha1);
+              ctx->conn, base->self_handle, presence->avatar_sha1);
         }
       else
         {
@@ -4401,6 +4422,7 @@ gabble_connection_set_avatar (TpSvcConnectionInterfaceAvatars *iface,
                               DBusGMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
+  TpBaseConnection *base = (TpBaseConnection *)self;
   struct _set_avatar_ctx *ctx = g_new0 (struct _set_avatar_ctx, 1);
 
   ctx->conn = self;
@@ -4413,9 +4435,9 @@ gabble_connection_set_avatar (TpSvcConnectionInterfaceAvatars *iface,
 
   DEBUG ("called");
   gabble_vcard_manager_invalidate_cache (self->vcard_manager,
-      self->parent.self_handle);
+      base->self_handle);
   gabble_vcard_manager_request (self->vcard_manager,
-      self->parent.self_handle, 0, _set_avatar_cb1, ctx, NULL, NULL);
+      base->self_handle, 0, _set_avatar_cb1, ctx, NULL, NULL);
 }
 
 /**
@@ -4447,6 +4469,7 @@ gabble_connection_set_last_activity_time (TpSvcConnectionInterfacePresence *ifac
                                           DBusGMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
+  TpBaseConnection *base = (TpBaseConnection *)self;
   GabbleConnectionPrivate *priv;
   GError *error;
 
@@ -4454,7 +4477,7 @@ gabble_connection_set_last_activity_time (TpSvcConnectionInterfacePresence *ifac
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
-  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
+  ERROR_IF_NOT_CONNECTED_ASYNC (base, error, context)
 
   tp_svc_connection_interface_presence_return_from_set_last_activity_time (
       context);
@@ -4466,6 +4489,7 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
 {
   struct _i_hate_g_hash_table_foreach *data =
     (struct _i_hate_g_hash_table_foreach*) user_data;
+  TpBaseConnection *base = (TpBaseConnection *)data->conn;
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (data->conn);
 
   int i;
@@ -4521,7 +4545,7 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
         }
 
       gabble_presence_update (data->conn->self_presence, priv->resource, i, status, prio);
-      emit_one_presence_update (data->conn, data->conn->parent.self_handle);
+      emit_one_presence_update (data->conn, base->self_handle);
       data->retval = signal_own_presence (data->conn, data->error);
     }
   else
@@ -4551,6 +4575,7 @@ gabble_connection_set_status (TpSvcConnectionInterfacePresence *iface,
                               DBusGMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
+  TpBaseConnection *base = (TpBaseConnection *)self;
   GabbleConnectionPrivate *priv;
   struct _i_hate_g_hash_table_foreach data = { NULL, NULL, TRUE };
   GError *error;
@@ -4559,7 +4584,7 @@ gabble_connection_set_status (TpSvcConnectionInterfacePresence *iface,
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
-  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
+  ERROR_IF_NOT_CONNECTED_ASYNC (base, error, context)
 
   if (g_hash_table_size (statuses) != 1)
     {

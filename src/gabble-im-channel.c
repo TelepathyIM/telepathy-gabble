@@ -265,7 +265,13 @@ gabble_im_channel_dispose (GObject *object)
     }
 
   if (!priv->closed)
-    tp_svc_channel_emit_closed ((TpSvcChannel *)self);
+      {
+        /* Set the chat state of the channel on gone (Channel.Interface.ChatState) */
+        gabble_text_mixin_set_chat_state (G_OBJECT (self), TP_CHANNEL_CHAT_STATE_GONE, 0, priv->peer_jid,
+                                        priv->conn, NULL);
+
+        tp_svc_channel_emit_closed (self);
+      }
 
   if (G_OBJECT_CLASS (gabble_im_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_im_channel_parent_class)->dispose (object);

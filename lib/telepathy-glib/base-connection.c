@@ -29,6 +29,7 @@
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/enums.h>
 #include <telepathy-glib/svc-connection.h>
+#include <telepathy-glib/util.h>
 
 #define DEBUG_FLAG TP_DEBUG_CONNECTION
 #include "internal-debug.h"
@@ -253,8 +254,6 @@ tp_base_connection_finalize (GObject *object)
   g_free (priv->protocol);
   g_free (self->bus_name);
   g_free (self->object_path);
-
-  tp_properties_mixin_finalize (object);
 
   G_OBJECT_CLASS (tp_base_connection_parent_class)->finalize (object);
 }

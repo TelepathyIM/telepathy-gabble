@@ -342,7 +342,7 @@ gabble_connection_init (GabbleConnection *self)
 
   /* initialize properties mixin */
   tp_properties_mixin_init (G_OBJECT (self), G_STRUCT_OFFSET (
-        GabbleConnection, parent.properties));
+        GabbleConnection, properties));
 
   tp_properties_mixin_change_value (G_OBJECT (self), CONN_PROP_STUN_PORT,
                                         &val, NULL);
@@ -424,7 +424,7 @@ gabble_connection_get_property (GObject    *object,
             &tp_property_id))
         {
           GValue *tp_property_value =
-            self->parent.properties.properties[tp_property_id].value;
+            self->properties.properties[tp_property_id].value;
 
           if (tp_property_value)
             {
@@ -813,9 +813,8 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
   g_object_class_install_property (object_class, PROP_AUTH_BTID, param_spec);
 
   tp_properties_mixin_class_init (G_OBJECT_CLASS (gabble_connection_class),
-                                      G_STRUCT_OFFSET (GabbleConnectionClass, parent_class.properties_class),
-                                      connection_property_signatures, NUM_CONN_PROPS,
-                                      NULL);
+      G_STRUCT_OFFSET (GabbleConnectionClass, properties_class),
+      connection_property_signatures, NUM_CONN_PROPS, NULL);
 }
 
 static gboolean
@@ -900,6 +899,8 @@ gabble_connection_finalize (GObject *object)
 
   g_free (priv->auth_mac);
   g_free (priv->auth_btid);
+
+  tp_properties_mixin_finalize (object);
 
   G_OBJECT_CLASS (gabble_connection_parent_class)->finalize (object);
 }

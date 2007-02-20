@@ -28,6 +28,7 @@
 #include "gabble-types.h"
 #include "gabble-error.h"
 #include <telepathy-glib/base-connection.h>
+#include <telepathy-glib/properties-mixin.h>
 
 G_BEGIN_DECLS
 
@@ -70,6 +71,8 @@ typedef LmHandlerResult (*GabbleConnectionMsgReplyFunc) (GabbleConnection *conn,
 
 struct _GabbleConnectionClass {
     TpBaseConnectionClass parent_class;
+
+    TpPropertiesMixinClass properties_class;
 };
 
 struct _GabbleConnection {
@@ -93,6 +96,8 @@ struct _GabbleConnection {
 
     /* vCard lookup helper */
     GabbleVCardManager *vcard_manager;
+
+    TpPropertiesMixin properties;
 
     gpointer priv;
 };

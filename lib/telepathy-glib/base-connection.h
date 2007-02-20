@@ -26,7 +26,6 @@
 #include <glib-object.h>
 
 #include <telepathy-glib/handle-repo.h>
-#include <telepathy-glib/properties-mixin.h>
 #include <telepathy-glib/enums.h>
 
 G_BEGIN_DECLS
@@ -36,8 +35,6 @@ typedef struct _TpBaseConnectionClass TpBaseConnectionClass;
 
 struct _TpBaseConnectionClass {
     GObjectClass parent_class;
-
-    TpPropertiesMixinClass properties_class;
 
     /* pure-virtual methods */
 
@@ -78,8 +75,6 @@ struct _TpBaseConnectionClass {
 
 struct _TpBaseConnection {
     GObject parent;
-
-    TpPropertiesMixin properties;
 
     /* dbus object location */
     gchar *bus_name;

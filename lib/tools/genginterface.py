@@ -287,6 +287,8 @@ def signal_emit_stub(signal):
     c_emitter_name = prefix + '_emit_' + camelcase_to_lower(dbus_name)
     c_signal_const_name = 'SIGNAL_' + dbus_name
 
+    macro_prefix = prefix.upper().split('_',1)
+
     decl = 'void ' + c_emitter_name + ' (gpointer instance'
     args = ''
 
@@ -302,8 +304,12 @@ def signal_emit_stub(signal):
     decl += ')'
 
     header = decl + ';\n\n'
-    body = decl + ('\n{\n  g_signal_emit (instance, signals[%s], 0%s);\n}\n\n'
-                   % (c_signal_const_name, args))
+    body = decl + ('\n{\n'
+                   '  g_assert (%s_IS_%s (instance));\n'
+                   '  g_signal_emit (instance, signals[%s], 0%s);\n'
+                   '}\n\n'
+                   % (macro_prefix[0], macro_prefix[1], c_signal_const_name,
+                      args))
 
     return header, body
 

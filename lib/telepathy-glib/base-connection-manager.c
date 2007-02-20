@@ -227,6 +227,12 @@ set_param_from_value (const TpCMParamSpec *paramspec,
                       void *params,
                       GError **error)
 {
+  if (paramspec->offset == G_MAXSIZE)
+    {
+      /* quietly ignore an obsolete param */
+      return TRUE;
+    }
+
   if (G_VALUE_TYPE (value) != paramspec->gtype)
     {
       g_debug ("%s: expected type %s for parameter %s, got %s",

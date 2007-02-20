@@ -29,6 +29,29 @@
 
 G_BEGIN_DECLS
 
+typedef struct {
+    /** Name as passed over D-Bus */
+    const gchar *name;
+    /** D-Bus type signature */
+    const gchar *dtype;
+    /** GLib type */
+    const GType gtype;
+    /** Some combination of TP_CONN_MGR_PARAM_FLAG_foo */
+    guint flags;
+    /** Default - gchar * or GINT_TO_POINTER */ 
+    const gpointer def;
+    /** Offset in structure, internal use only. GMAXSIZE means the parameter
+     * is just thrown away. */
+    const gsize offset;
+} TpCMParamSpec;
+
+typedef struct {
+    const gchar *name;
+    const TpCMParamSpec *parameters;       /* terminated by a NULL name */
+    void *(*params_new) (void);
+    void (*params_free) (void *);
+} TpCMProtocolSpec;
+
 typedef struct _TpBaseConnectionManager TpBaseConnectionManager;
 typedef struct _TpBaseConnectionManagerClass TpBaseConnectionManagerClass;
 
@@ -36,9 +59,13 @@ struct _TpBaseConnectionManagerClass {
     GObjectClass parent_class;
 
     const char *cm_dbus_name;
+    const TpCMProtocolSpec *protocol_params; /* terminated by a NULL name */
+
     /* pure-virtual */
+
     TpBaseConnection *(*new_connection)(TpBaseConnectionManager *self,
-        const gchar *proto, GHashTable *parameters, GError **error);
+        const gchar *proto, GHashTable *parameters,
+        TpIntSet *params_present, void *parsed_params, GError **error);
 };
 
 struct _TpBaseConnectionManager {

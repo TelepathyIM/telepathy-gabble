@@ -21,6 +21,10 @@
 
 #include <telepathy-glib/base-connection-manager.h>
 
+#include <string.h>
+
+#include <dbus/dbus-protocol.h>
+
 #include <telepathy-glib/dbus.h>
 
 #define BUS_NAME_BASE    "org.freedesktop.Telepathy.ConnectionManager."
@@ -53,6 +57,13 @@ enum
 };
 
 static guint signals[N_SIGNALS] = {0};
+
+#define TP_TYPE_PARAM (dbus_g_type_get_struct ("GValueArray", \
+      G_TYPE_STRING, \
+      G_TYPE_UINT, \
+      G_TYPE_STRING, \
+      G_TYPE_VALUE, \
+      G_TYPE_INVALID))
 
 static void
 tp_base_connection_manager_dispose (GObject *object)
@@ -141,6 +152,312 @@ connection_shutdown_finished_cb (TpBaseConnection *conn,
     }
 }
 
+/* Parameter parsing */
+
+static gboolean
+get_parameters (const TpCMProtocolSpec *protos,
+                const char *proto,
+                const TpCMProtocolSpec **ret,
+                GError **error)
+{
+  guint i;
+
+  for (i = 0; protos[i].name; i++)
+    {
+      if (!strcmp (proto, protos[i].name))
+        {
+          *ret = protos + i;
+          return TRUE;
+        }
+    }
+
+  g_debug ("%s: unknown protocol %s", G_STRFUNC, proto);
+
+  g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+      "unknown protocol %s", proto);
+
+  return FALSE;
+}
+
+static GValue *
+param_default_value (const TpCMParamSpec *params, int i)
+{
+  GValue *value;
+
+  value = g_new0(GValue, 1);
+  g_value_init(value, params[i].gtype);
+
+  /* TODO: this check could be stricter if we knew whether register
+  was true. In practice REQUIRED and REGISTER always go together in
+  the Gabble params, though */
+  if (params[i].flags & TP_CONN_MGR_PARAM_FLAG_REQUIRED & TP_CONN_MGR_PARAM_FLAG_REGISTER)
+    {
+      g_assert(params[i].def == NULL);
+      goto OUT;
+    }
+
+  switch (params[i].dtype[0])
+    {
+      case DBUS_TYPE_STRING:
+        g_value_set_static_string (value, (const gchar*) params[i].def);
+        break;
+      case DBUS_TYPE_INT16:
+      case DBUS_TYPE_INT32:
+        g_value_set_int (value, GPOINTER_TO_INT (params[i].def));
+        break;
+      case DBUS_TYPE_UINT16:
+      case DBUS_TYPE_UINT32:
+        g_value_set_uint (value, GPOINTER_TO_UINT (params[i].def));
+        break;
+      case DBUS_TYPE_BOOLEAN:
+        g_value_set_boolean (value, GPOINTER_TO_INT (params[i].def));
+        break;
+      default:
+        g_error("parameter_defaults: encountered unknown type %s on argument %s",
+                params[i].dtype, params[i].name);
+    }
+
+OUT:
+  return value;
+}
+
+static gboolean
+set_param_from_value (const TpCMParamSpec *paramspec,
+                      GValue *value,
+                      void *params,
+                      GError **error)
+{
+  if (G_VALUE_TYPE (value) != paramspec->gtype)
+    {
+      g_debug ("%s: expected type %s for parameter %s, got %s",
+               G_STRFUNC,
+               g_type_name (paramspec->gtype), paramspec->name,
+               G_VALUE_TYPE_NAME (value));
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "expected type %s for account parameter %s, got %s",
+          g_type_name (paramspec->gtype), paramspec->name,
+          G_VALUE_TYPE_NAME (value));
+      return FALSE;
+    }
+
+  switch (paramspec->dtype[0])
+    {
+      case DBUS_TYPE_STRING:
+        {
+          const char *str = g_value_get_string (value);
+          /* FIXME: is there a missing g_set_error here? */
+          if (!str || *str == '\0')
+            return FALSE;
+          else
+            *((char **) (params + paramspec->offset)) = g_value_dup_string (value);
+        }
+        break;
+      case DBUS_TYPE_INT16:
+        *((gint *) (params + paramspec->offset)) = g_value_get_int (value);
+        break;
+      case DBUS_TYPE_UINT16:
+        *((guint *) (params + paramspec->offset)) = g_value_get_uint (value);
+        break;
+      case DBUS_TYPE_BOOLEAN:
+        *((gboolean *) (params + paramspec->offset)) = g_value_get_boolean (value);
+        break;
+      default:
+        g_error ("set_param_from_value: encountered unknown type %s on argument %s",
+                 paramspec->dtype, paramspec->name);
+        /* FIXME: should be a g_set_error too? */
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
+static void
+report_unknown_param (gpointer key, gpointer value, gpointer user_data)
+{
+  const char *arg = (const char *) key;
+  GString **error_str = (GString **) user_data;
+  *error_str = g_string_append_c (*error_str, ' ');
+  *error_str = g_string_append (*error_str, arg);
+}
+
+static gboolean
+parse_parameters (const TpCMParamSpec *paramspec,
+                  GHashTable *provided,
+                  TpIntSet *params_present,
+                  void *params,
+                  GError **error)
+{
+  int i;
+  guint mandatory_flag = TP_CONN_MGR_PARAM_FLAG_REQUIRED;
+  GValue *value;
+
+  value = g_hash_table_lookup (provided, "register");
+  if (value != NULL && G_VALUE_TYPE(value) == G_TYPE_BOOLEAN &&
+      g_value_get_boolean(value))
+    {
+      mandatory_flag = TP_CONN_MGR_PARAM_FLAG_REGISTER;
+    }
+
+  for (i = 0; paramspec[i].name; i++)
+    {
+      value = g_hash_table_lookup (provided, paramspec[i].name);
+
+      if (value == NULL)
+        {
+          if (paramspec[i].flags & mandatory_flag)
+            {
+              g_debug ("%s: missing mandatory param %s",
+                       G_STRFUNC, paramspec[i].name);
+              g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+                  "missing mandatory account parameter %s", paramspec[i].name);
+              return FALSE;
+            }
+          else
+            {
+              g_debug ("%s: using default value for param %s",
+                       G_STRFUNC, paramspec[i].name);
+            }
+        }
+      else
+        {
+          if (!set_param_from_value (&paramspec[i], value, params, error))
+            {
+              g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+                  "invalid value for parameter %s", paramspec[i].name);
+              return FALSE;
+            }
+
+          tp_intset_add (params_present, i);
+
+          if (paramspec[i].gtype == G_TYPE_STRING)
+            {
+              if (0 == strcmp (paramspec[i].name, "password"))
+                {
+                  g_debug ("%s: accepted value <hidden> for param password",
+                      G_STRFUNC);
+                }
+              else
+                {
+                  g_debug ("%s: accepted value %s for param %s",
+                      G_STRFUNC,
+                      *((char **) (params + paramspec[i].offset)),
+                      paramspec[i].name);
+                }
+            }
+          else
+            {
+              g_debug ("%s: accepted value %u for param %s", G_STRFUNC,
+                       *((guint *) (params + paramspec[i].offset)), paramspec[i].name);
+            }
+
+          g_hash_table_remove (provided, paramspec[i].name);
+        }
+    }
+
+  if (g_hash_table_size (provided) != 0)
+    {
+      gchar *error_txt;
+      GString *error_str = g_string_new ("unknown parameters provided:");
+
+      g_hash_table_foreach (provided, report_unknown_param, &error_str);
+      error_txt = g_string_free (error_str, FALSE);
+
+      g_debug ("%s: %s", G_STRFUNC, error_txt);
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          error_txt);
+      g_free (error_txt);
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
+
+/**
+ * tp_base_connection_manager_get_parameters
+ *
+ * Implements D-Bus method GetParameters
+ * on interface org.freedesktop.Telepathy.ConnectionManager
+ */
+static void
+tp_base_connection_manager_get_parameters (TpSvcConnectionManager *iface,
+                                           const gchar *proto,
+                                           DBusGMethodInvocation *context)
+{
+  GPtrArray *ret;
+  GError *error;
+  const TpCMProtocolSpec *protospec = NULL;
+  TpBaseConnectionManager *self = TP_BASE_CONNECTION_MANAGER (iface);
+  TpBaseConnectionManagerClass *cls = TP_BASE_CONNECTION_MANAGER_CLASS (self);
+  int i;
+
+  if (!get_parameters (cls->protocol_params, proto, &protospec, &error))
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return;
+    }
+
+  ret = g_ptr_array_new ();
+
+  for (i = 0; protospec->parameters[i].name; i++)
+    {
+      GValue *def_value;
+      GValue param = { 0, };
+
+      g_value_init (&param, TP_TYPE_PARAM);
+      g_value_set_static_boxed (&param,
+        dbus_g_type_specialized_construct (TP_TYPE_PARAM));
+      
+      def_value = param_default_value (protospec->parameters, i);
+      dbus_g_type_struct_set (&param,
+        0, protospec->parameters[i].name,
+        1, protospec->parameters[i].flags,
+        2, protospec->parameters[i].dtype,
+        3, def_value,
+        G_MAXUINT);
+      g_value_unset(def_value);
+      g_free(def_value);
+
+      g_ptr_array_add (ret, g_value_get_boxed (&param));
+    }
+
+  tp_svc_connection_manager_return_from_get_parameters (context, ret);
+  g_ptr_array_free (ret, TRUE);
+}
+
+
+/**
+ * tp_base_connection_manager_list_protocols
+ *
+ * Implements D-Bus method ListProtocols
+ * on interface org.freedesktop.Telepathy.ConnectionManager
+ */
+static void
+tp_base_connection_manager_list_protocols (TpSvcConnectionManager *iface,
+                                           DBusGMethodInvocation *context)
+{
+  TpBaseConnectionManager *self = TP_BASE_CONNECTION_MANAGER (iface);
+  TpBaseConnectionManagerClass *cls = TP_BASE_CONNECTION_MANAGER_CLASS (self);
+  const char **protocols;
+  guint i = 0;
+
+  while (cls->protocol_params[i].name)
+    i++;
+
+  protocols = g_new0 (const char *, i);
+  for (i = 0; cls->protocol_params[i].name; i++)
+    {
+      protocols[i] = cls->protocol_params[i].name;
+    }
+  g_assert (protocols[i] == NULL);
+
+  tp_svc_connection_manager_return_from_list_protocols (
+      context, protocols);
+  g_free (protocols);
+}
+
+
 /**
  * tp_base_connection_manager_request_connection
  *
@@ -168,15 +485,35 @@ tp_base_connection_manager_request_connection (TpSvcConnectionManager *iface,
   gchar *bus_name;
   gchar *object_path;
   GError *error = NULL;
+  void *params = NULL;
+  TpIntSet *params_present = NULL;
+  const TpCMProtocolSpec *protospec = NULL;
 
-  g_assert (cls->new_connection);
-  g_assert (cls->cm_dbus_name);
-  conn = (cls->new_connection)(self, proto, parameters, &error);
+  g_assert (cls->new_connection != NULL);
+  g_assert (cls->cm_dbus_name != NULL);
+
+  if (!get_parameters (cls->protocol_params, proto, &protospec, &error))
+    {
+      goto ERROR;
+    }
+
+  g_assert (protospec->params_new != NULL);
+  g_assert (protospec->params_free != NULL);
+
+  params_present = tp_intset_new ();
+  params = protospec->params_new ();
+
+  if (!parse_parameters (protospec->parameters, parameters, params_present,
+        params, &error))
+    {
+      goto ERROR;
+    }
+
+  conn = (cls->new_connection)(self, proto, parameters, params_present,
+      params, &error);
   if (!conn)
     {
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-      return;
+      goto ERROR;
     }
 
   /* register on bus and save bus name and object path */
@@ -186,9 +523,7 @@ tp_base_connection_manager_request_connection (TpSvcConnectionManager *iface,
       g_debug ("%s failed: %s", G_STRFUNC, error->message);
 
       g_object_unref (G_OBJECT (conn));
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-      return;
+      goto ERROR;
     }
 
   /* bind to status change signals from the connection object */
@@ -205,8 +540,18 @@ tp_base_connection_manager_request_connection (TpSvcConnectionManager *iface,
 
   tp_svc_connection_manager_return_from_request_connection (
       context, bus_name, object_path);
+
   g_free (bus_name);
   g_free (object_path);
+  return;
+
+ERROR:
+  if (params_present)
+    tp_intset_destroy (params_present);
+  if (params)
+    protospec->params_free (params);
+  dbus_g_method_return_error (context, error);
+  g_error_free (error);
 }
 
 gboolean
@@ -261,6 +606,8 @@ service_iface_init(gpointer g_iface, gpointer iface_data)
 
 #define IMPLEMENT(x) tp_svc_connection_manager_implement_##x (klass, \
     tp_base_connection_manager_##x)
+  IMPLEMENT(get_parameters);
+  IMPLEMENT(list_protocols);
   IMPLEMENT(request_connection);
 #undef IMPLEMENT
 }

@@ -29,12 +29,12 @@
 static gchar *
 mgr_file_contents (const char *busname,
                    const char *objpath,
-                   const GabbleProtocolSpec *protocols,
+                   const TpCMProtocolSpec *protocols,
                    GError **error)
 {
   GKeyFile *f = g_key_file_new();
-  const GabbleProtocolSpec *protocol;
-  const GabbleParamSpec *row;
+  const TpCMProtocolSpec *protocol;
+  const TpCMParamSpec *row;
 
   g_key_file_set_string(f, "ConnectionManager", "BusName", busname);
   g_key_file_set_string(f, "ConnectionManager", "ObjectPath", objpath);

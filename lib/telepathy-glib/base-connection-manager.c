@@ -515,8 +515,7 @@ tp_base_connection_manager_request_connection (TpSvcConnectionManager *iface,
       goto ERROR;
     }
 
-  conn = (cls->new_connection)(self, proto, parameters, params_present,
-      params, &error);
+  conn = (cls->new_connection)(self, proto, params_present, params, &error);
   if (!conn)
     {
       goto ERROR;

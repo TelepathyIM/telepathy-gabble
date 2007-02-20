@@ -42,7 +42,7 @@ gabble_connection_manager_init (GabbleConnectionManager *self)
 }
 
 static TpBaseConnection *_gabble_connection_manager_new_connection (
-    TpBaseConnectionManager *self, const gchar *proto, GHashTable *parameters,
+    TpBaseConnectionManager *self, const gchar *proto,
     TpIntSet *params_present, void *parsed_params, GError **error);
 
 static void
@@ -170,7 +170,6 @@ const TpCMProtocolSpec *gabble_protocols = _gabble_protocols;
 static TpBaseConnection *
 _gabble_connection_manager_new_connection (TpBaseConnectionManager *self,
                                            const gchar *proto,
-                                           GHashTable *parameters,
                                            TpIntSet *params_present,
                                            void *parsed_params,
                                            GError **error)

@@ -64,8 +64,8 @@ struct _TpBaseConnectionManagerClass {
     /* pure-virtual */
 
     TpBaseConnection *(*new_connection)(TpBaseConnectionManager *self,
-        const gchar *proto, GHashTable *parameters,
-        TpIntSet *params_present, void *parsed_params, GError **error);
+        const gchar *proto, TpIntSet *params_present, void *parsed_params,
+        GError **error);
 };
 
 struct _TpBaseConnectionManager {

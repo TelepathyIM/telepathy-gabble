@@ -182,6 +182,13 @@ capability_info_get (GabblePresenceCache *cache, const gchar *node,
   return info;
 }
 
+static void
+capability_info_free (CapabilityInfo *info)
+{
+  tp_intset_destroy (info->guys);
+  g_free (info);
+}
+
 static guint
 capability_info_recvd (GabblePresenceCache *cache, const gchar *node,
         TpHandle handle, GabblePresenceCapabilities caps)
@@ -289,7 +296,8 @@ gabble_presence_cache_init (GabblePresenceCache *cache)
   cache->priv = priv;
 
   priv->presence = g_hash_table_new_full (NULL, NULL, NULL, g_object_unref);
-  priv->capabilities = g_hash_table_new (g_str_hash, g_str_equal);
+  priv->capabilities = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
+      (GDestroyNotify) capability_info_free);
   priv->disco_pending = g_hash_table_new_full (g_str_hash, g_str_equal,
     g_free, (GDestroyNotify) disco_waiter_list_free);
   priv->caps_serial = 1;
@@ -331,6 +339,12 @@ gabble_presence_cache_dispose (GObject *object)
 
   g_hash_table_destroy (priv->presence);
   priv->presence = NULL;
+
+  g_hash_table_destroy (priv->capabilities);
+  priv->capabilities = NULL;
+
+  g_hash_table_destroy (priv->disco_pending);
+  priv->disco_pending = NULL;
 
   tp_handle_set_destroy (priv->presence_handles);
   priv->presence_handles = NULL;

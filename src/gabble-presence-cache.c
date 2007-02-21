@@ -789,6 +789,9 @@ _caps_disco_cb (GabbleDisco *disco,
       if (trust >= CAPABILITY_BUNDLE_ENOUGH_TRUST || waiter->handle == handle)
         {
           GSList *tmp;
+          gpointer key;
+          gpointer value;
+
           /* trusted reply */
           presence = gabble_presence_cache_get (cache, waiter->handle);
 
@@ -808,8 +811,12 @@ _caps_disco_cb (GabbleDisco *disco,
 
           waiters = g_slist_delete_link (waiters, tmp);
 
+          if (!g_hash_table_lookup_extended (priv->disco_pending, node, &key,
+                &value))
+            g_assert_not_reached ();
+
           g_hash_table_steal (priv->disco_pending, node);
-          g_hash_table_insert (priv->disco_pending, g_strdup (node), waiters);
+          g_hash_table_insert (priv->disco_pending, key, waiters);
 
           disco_waiter_free (waiter);
         }

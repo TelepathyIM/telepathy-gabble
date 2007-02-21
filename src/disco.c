@@ -285,6 +285,7 @@ delete_request (GabbleDiscoRequest *request)
     }
 
   g_free (request->jid);
+  g_free (request->node);
   g_free (request);
 }
 

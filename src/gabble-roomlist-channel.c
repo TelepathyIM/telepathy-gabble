@@ -171,6 +171,7 @@ gabble_roomlist_channel_set_property (GObject     *object,
 {
   GabbleRoomlistChannel *chan = GABBLE_ROOMLIST_CHANNEL (object);
   GabbleRoomlistChannelPrivate *priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (chan);
+  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
   TpHandleSet *new_signalled_rooms;
 
   switch (property_id) {
@@ -189,7 +190,7 @@ gabble_roomlist_channel_set_property (GObject     *object,
     case PROP_CONNECTION:
       priv->conn = g_value_get_object (value);
       new_signalled_rooms = tp_handle_set_new (
-          priv->conn->parent.handles[TP_HANDLE_TYPE_ROOM]);
+          conn->handles[TP_HANDLE_TYPE_ROOM]);
       if (priv->signalled_rooms != NULL)
         {
           const TpIntSet *add;
@@ -364,6 +365,7 @@ room_info_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
 {
   GabbleRoomlistChannel *chan = user_data;
   GabbleRoomlistChannelPrivate *priv;
+  TpBaseConnection *conn;
   const char *jid, *category, *type, *var, *name;
   TpHandle handle;
   GHashTable *keys;
@@ -381,6 +383,7 @@ room_info_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
 
   g_assert (GABBLE_IS_ROOMLIST_CHANNEL (chan));
   priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (chan);
+  conn = (TpBaseConnection *)priv->conn;
 
   jid = item->jid;
   name = item->name;
@@ -451,7 +454,7 @@ room_info_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
     INSERT_KEY (keys, "language", G_TYPE_STRING, string, var);
 
   handle = gabble_handle_for_room (
-      priv->conn->parent.handles[TP_HANDLE_TYPE_ROOM], jid);
+      conn->handles[TP_HANDLE_TYPE_ROOM], jid);
 
   tp_handle_set_add (priv->signalled_rooms, handle);
 

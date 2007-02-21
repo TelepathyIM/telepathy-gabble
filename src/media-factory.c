@@ -215,6 +215,7 @@ media_factory_jingle_cb (LmMessageHandler *handler,
 {
   GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (user_data);
   GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
+  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
   LmMessageNode *iq_node, *session_node;
   const gchar *from, *id, *action, *sid;
   gchar *resource;
@@ -263,7 +264,7 @@ media_factory_jingle_cb (LmMessageHandler *handler,
     }
 
   handle = gabble_handle_for_contact (
-      priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT], from, FALSE);
+      conn->handles[TP_HANDLE_TYPE_CONTACT], from, FALSE);
   if (handle == 0)
     {
       NODE_DEBUG (iq_node, "unable to get handle for sender");
@@ -459,15 +460,17 @@ static GabbleMediaChannel *
 new_media_channel (GabbleMediaFactory *fac, TpHandle creator)
 {
   GabbleMediaFactoryPrivate *priv;
+  TpBaseConnection *conn;
   GabbleMediaChannel *chan;
   gchar *object_path;
 
   g_assert (GABBLE_IS_MEDIA_FACTORY (fac));
 
   priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
+  conn = (TpBaseConnection *)priv->conn;
 
   object_path = g_strdup_printf ("%s/MediaChannel%u",
-      priv->conn->parent.object_path, priv->channel_index);
+      conn->object_path, priv->channel_index);
   priv->channel_index += 1;
 
   chan = g_object_new (GABBLE_TYPE_MEDIA_CHANNEL,
@@ -587,6 +590,7 @@ gabble_media_factory_iface_request (TpChannelFactoryIface *iface,
 {
   GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (iface);
   GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
+  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
   GabbleMediaChannel *chan = NULL;
 
   if (strcmp (chan_type, TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA))
@@ -595,11 +599,11 @@ gabble_media_factory_iface_request (TpChannelFactoryIface *iface,
   if (handle_type == 0)
     {
       /* create an empty channel */
-      chan = new_media_channel (fac, priv->conn->parent.self_handle);
+      chan = new_media_channel (fac, conn->self_handle);
     }
   else if (handle_type == TP_HANDLE_TYPE_CONTACT)
     {
-      chan = new_media_channel (fac, priv->conn->parent.self_handle);
+      chan = new_media_channel (fac, conn->self_handle);
 
       if (!_gabble_media_channel_add_member (
             TP_SVC_CHANNEL_INTERFACE_GROUP (chan), handle, "", error))

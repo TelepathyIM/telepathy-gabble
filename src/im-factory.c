@@ -199,6 +199,7 @@ im_factory_message_cb (LmMessageHandler *handler,
 {
   GabbleImFactory *fac = GABBLE_IM_FACTORY (user_data);
   GabbleImFactoryPrivate *priv = GABBLE_IM_FACTORY_GET_PRIVATE (fac);
+  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
 
   const gchar *from, *body, *body_offset;
   time_t stamp;
@@ -217,7 +218,7 @@ im_factory_message_cb (LmMessageHandler *handler,
     }
 
   handle = gabble_handle_for_contact (
-      priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT], from, FALSE);
+      conn->handles[TP_HANDLE_TYPE_CONTACT], from, FALSE);
   if (handle == 0)
     {
       NODE_DEBUG (message->node, "ignoring message node from malformed jid");
@@ -286,15 +287,17 @@ static GabbleIMChannel *
 new_im_channel (GabbleImFactory *fac, TpHandle handle)
 {
   GabbleImFactoryPrivate *priv;
+  TpBaseConnection *conn;
   GabbleIMChannel *chan;
   char *object_path;
 
   g_assert (GABBLE_IS_IM_FACTORY (fac));
 
   priv = GABBLE_IM_FACTORY_GET_PRIVATE (fac);
+  conn = (TpBaseConnection *)priv->conn;
 
   object_path = g_strdup_printf ("%s/ImChannel%u",
-      priv->conn->parent.object_path, handle);
+      conn->object_path, handle);
 
   chan = g_object_new (GABBLE_TYPE_IM_CHANNEL,
                        "connection", priv->conn,
@@ -410,6 +413,7 @@ gabble_im_factory_iface_request (TpChannelFactoryIface *iface,
 {
   GabbleImFactory *fac = GABBLE_IM_FACTORY (iface);
   GabbleImFactoryPrivate *priv = GABBLE_IM_FACTORY_GET_PRIVATE (fac);
+  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
   GabbleIMChannel *chan;
   TpChannelFactoryRequestStatus status;
 
@@ -419,7 +423,7 @@ gabble_im_factory_iface_request (TpChannelFactoryIface *iface,
   if (handle_type != TP_HANDLE_TYPE_CONTACT)
     return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_AVAILABLE;
 
-  if (!tp_handle_is_valid (priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT],
+  if (!tp_handle_is_valid (conn->handles[TP_HANDLE_TYPE_CONTACT],
         handle, error))
     return TP_CHANNEL_FACTORY_REQUEST_STATUS_ERROR;
 

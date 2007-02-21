@@ -94,6 +94,7 @@ gabble_roster_channel_constructor (GType type, guint n_props,
   GObject *obj;
   GabbleRosterChannelPrivate *priv;
   DBusGConnection *bus;
+  TpBaseConnection *conn;
   gboolean valid;
   TpHandle self_handle;
   guint handle_type;
@@ -101,8 +102,9 @@ gabble_roster_channel_constructor (GType type, guint n_props,
   obj = G_OBJECT_CLASS (gabble_roster_channel_parent_class)->
            constructor (type, n_props, props);
   priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (GABBLE_ROSTER_CHANNEL (obj));
+  conn = (TpBaseConnection *)priv->conn;
   handle_type = priv->handle_type;
-  self_handle = priv->conn->parent.self_handle;
+  self_handle = conn->self_handle;
 
   /* register object on the bus */
   bus = tp_get_bus ();
@@ -112,13 +114,13 @@ gabble_roster_channel_constructor (GType type, guint n_props,
       || handle_type == TP_HANDLE_TYPE_LIST);
 
   /* ref our list handle */
-  valid = tp_handle_ref (priv->conn->parent.handles[handle_type], priv->handle);
+  valid = tp_handle_ref (conn->handles[handle_type], priv->handle);
   g_assert (valid);
 
   /* initialize group mixin */
   tp_group_mixin_init ((TpSvcChannelInterfaceGroup *)obj,
       G_STRUCT_OFFSET (GabbleRosterChannel, group),
-      priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT],
+      conn->handles[TP_HANDLE_TYPE_CONTACT],
       self_handle);
 
   if (handle_type == TP_HANDLE_TYPE_GROUP)
@@ -301,12 +303,13 @@ gabble_roster_channel_finalize (GObject *object)
 {
   GabbleRosterChannel *self = GABBLE_ROSTER_CHANNEL (object);
   GabbleRosterChannelPrivate *priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (self);
+  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
 
   /* free any data held directly by the object here */
 
   g_free (priv->object_path);
 
-  tp_handle_unref (priv->conn->parent.handles[priv->handle_type], priv->handle);
+  tp_handle_unref (conn->handles[priv->handle_type], priv->handle);
 
   tp_group_mixin_finalize ((TpSvcChannelInterfaceGroup *)object);
 
@@ -322,13 +325,15 @@ _gabble_roster_channel_send_presence (GabbleRosterChannel *chan,
                                       GError **error)
 {
   GabbleRosterChannelPrivate *priv;
+  TpBaseConnection *conn;
   TpHandleRepoIface *repo;
   const char *contact;
   LmMessage *message;
   gboolean result;
 
   priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (chan);
-  repo = priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT];
+  conn = (TpBaseConnection *)priv->conn;
+  repo = conn->handles[TP_HANDLE_TYPE_CONTACT];
   contact = tp_handle_inspect (repo, handle);
 
   message = lm_message_new_with_sub_type (contact,
@@ -361,14 +366,16 @@ _gabble_roster_channel_add_member_cb (TpSvcChannelInterfaceGroup *obj,
                                       GError **error)
 {
   GabbleRosterChannelPrivate *priv;
+  TpBaseConnection *conn;
   gboolean ret = FALSE;
 
   priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (GABBLE_ROSTER_CHANNEL (obj));
+  conn = (TpBaseConnection *)priv->conn;
 
   DEBUG ("called on %s with handle %u (%s) \"%s\"",
-      tp_handle_inspect (priv->conn->parent.handles[priv->handle_type],
+      tp_handle_inspect (conn->handles[priv->handle_type],
         priv->handle), handle,
-      tp_handle_inspect (priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT],
+      tp_handle_inspect (conn->handles[TP_HANDLE_TYPE_CONTACT],
         handle), message);
 
   if (TP_HANDLE_TYPE_GROUP == priv->handle_type)
@@ -427,13 +434,15 @@ _gabble_roster_channel_remove_member_cb (TpSvcChannelInterfaceGroup *obj,
                                          GError **error)
 {
   GabbleRosterChannelPrivate *priv;
+  TpBaseConnection *conn;
   gboolean ret = FALSE;
 
   priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (GABBLE_ROSTER_CHANNEL (obj));
+  conn = (TpBaseConnection *)priv->conn;
 
   DEBUG ("called on %s with handle %u (%s) \"%s\"", tp_handle_inspect (
-        priv->conn->parent.handles[priv->handle_type], priv->handle), handle,
-      tp_handle_inspect (priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT],
+         conn->handles[priv->handle_type], priv->handle), handle,
+      tp_handle_inspect (conn->handles[TP_HANDLE_TYPE_CONTACT],
         handle), message);
 
   if (TP_HANDLE_TYPE_GROUP == priv->handle_type)

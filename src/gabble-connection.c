@@ -830,6 +830,7 @@ static void
 gabble_connection_dispose (GObject *object)
 {
   GabbleConnection *self = GABBLE_CONNECTION (object);
+  TpBaseConnection *base = (TpBaseConnection *)self;
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
   if (priv->dispose_has_run)
@@ -839,9 +840,9 @@ gabble_connection_dispose (GObject *object)
 
   DEBUG ("called");
 
-  g_assert ((self->parent.status == TP_CONNECTION_STATUS_DISCONNECTED) ||
-            (self->parent.status == TP_INTERNAL_CONNECTION_STATUS_NEW));
-  g_assert (self->parent.self_handle == 0);
+  g_assert ((base->status == TP_CONNECTION_STATUS_DISCONNECTED) ||
+            (base->status == TP_INTERNAL_CONNECTION_STATUS_NEW));
+  g_assert (base->self_handle == 0);
 
   g_object_unref (self->vcard_manager);
   self->vcard_manager = NULL;
@@ -1262,18 +1263,17 @@ _gabble_connection_connect (GabbleConnection *conn,
   jid = g_strdup_printf ("%s@%s", priv->username, priv->stream_server);
   lm_connection_set_jid (conn->lmconn, jid);
 
-  conn->parent.self_handle = gabble_handle_for_contact (
-      conn->parent.handles[TP_HANDLE_TYPE_CONTACT], jid, FALSE);
+  base->self_handle = gabble_handle_for_contact (
+      base->handles[TP_HANDLE_TYPE_CONTACT], jid, FALSE);
   g_free (jid);
 
-  if (conn->parent.self_handle == 0)
+  if (base->self_handle == 0)
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "Invalid JID: %s@%s", priv->username, priv->stream_server);
       return FALSE;
     }
-  tp_handle_ref (conn->parent.handles[TP_HANDLE_TYPE_CONTACT],
-      conn->parent.self_handle);
+  tp_handle_ref (base->handles[TP_HANDLE_TYPE_CONTACT], base->self_handle);
 
   /* set initial presence */
   conn->self_presence = gabble_presence_new ();
@@ -1353,6 +1353,7 @@ connection_disconnected_cb (LmConnection *lmconn,
                             gpointer user_data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+  TpBaseConnection *base = (TpBaseConnection *)user_data;
 
   g_assert (conn->lmconn == lmconn);
 
@@ -1362,7 +1363,7 @@ connection_disconnected_cb (LmConnection *lmconn,
    * the connection manager to unref us. otherwise it's a network error
    * or some other screw up we didn't expect, so we emit the status
    * change */
-  if (conn->parent.status == TP_CONNECTION_STATUS_DISCONNECTED)
+  if (base->status == TP_CONNECTION_STATUS_DISCONNECTED)
     {
       DEBUG ("expected; emitting DISCONNECTED");
       tp_base_connection_finish_shutdown ((TpBaseConnection *)conn);
@@ -1458,7 +1459,7 @@ _gabble_connection_get_cached_alias (GabbleConnection *conn,
 
   /* XXX: should this be more important than the ones from presence? */
   /* if it's our own handle, use alias passed to the connmgr, if any */
-  if (handle == conn->parent.self_handle && priv->alias != NULL)
+  if (handle == base->self_handle && priv->alias != NULL)
     {
       ret = GABBLE_CONNECTION_ALIAS_FROM_CONNMGR;
 
@@ -1709,7 +1710,7 @@ construct_presence_hash (GabbleConnection *self,
   /* this is never set at the moment*/
   guint timestamp = 0;
 
-  g_assert (tp_handles_are_valid (self->parent.handles[TP_HANDLE_TYPE_CONTACT],
+  g_assert (tp_handles_are_valid (base->handles[TP_HANDLE_TYPE_CONTACT],
         contact_handles, FALSE, NULL));
 
   presence_hash = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
@@ -2216,10 +2217,11 @@ registration_finished_cb (GabbleRegister *reg,
                           gpointer user_data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+  TpBaseConnection *base = (TpBaseConnection *)conn;
 
-  if (conn->parent.status != TP_CONNECTION_STATUS_CONNECTING)
+  if (base->status != TP_CONNECTION_STATUS_CONNECTING)
     {
-      g_assert (conn->parent.status == TP_CONNECTION_STATUS_DISCONNECTED);
+      g_assert (base->status == TP_CONNECTION_STATUS_DISCONNECTED);
       return;
     }
 
@@ -2272,11 +2274,12 @@ connection_open_cb (LmConnection *lmconn,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (data);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
+  TpBaseConnection *base = (TpBaseConnection *)conn;
 
-  if ((conn->parent.status != TP_CONNECTION_STATUS_CONNECTING) &&
-      (conn->parent.status != TP_INTERNAL_CONNECTION_STATUS_NEW))
+  if ((base->status != TP_CONNECTION_STATUS_CONNECTING) &&
+      (base->status != TP_INTERNAL_CONNECTION_STATUS_NEW))
     {
-      g_assert (conn->parent.status == TP_CONNECTION_STATUS_DISCONNECTED);
+      g_assert (base->status == TP_CONNECTION_STATUS_DISCONNECTED);
       return;
     }
 
@@ -2336,12 +2339,13 @@ connection_auth_cb (LmConnection *lmconn,
                     gpointer      data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (data);
+  TpBaseConnection *base = (TpBaseConnection *)conn;
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   GError *error = NULL;
 
-  if (conn->parent.status != TP_CONNECTION_STATUS_CONNECTING)
+  if (base->status != TP_CONNECTION_STATUS_CONNECTING)
     {
-      g_assert (conn->parent.status == TP_CONNECTION_STATUS_DISCONNECTED);
+      g_assert (base->status == TP_CONNECTION_STATUS_DISCONNECTED);
       return;
     }
 

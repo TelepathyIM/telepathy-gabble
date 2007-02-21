@@ -41,12 +41,13 @@
 void
 jingle_info_discover_servers (GabbleConnection *conn)
 {
+  TpBaseConnection *base = (TpBaseConnection *)conn;
   LmMessage *msg = NULL;
   LmMessageNode *node;
   GError *error = NULL;
-  TpHandle handle = conn->parent.self_handle;
+  TpHandle handle = base->self_handle;
   const gchar *jid = tp_handle_inspect (
-      conn->parent.handles[TP_HANDLE_TYPE_CONTACT], handle);
+      base->handles[TP_HANDLE_TYPE_CONTACT], handle);
 
   msg = lm_message_new_with_sub_type (jid, LM_MESSAGE_TYPE_IQ,
                                       LM_MESSAGE_SUB_TYPE_GET);

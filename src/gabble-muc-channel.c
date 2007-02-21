@@ -239,6 +239,7 @@ gabble_muc_channel_constructor (GType type, guint n_props,
 {
   GObject *obj;
   GabbleMucChannelPrivate *priv;
+  TpBaseConnection *conn;
   DBusGConnection *bus;
   TpHandleRepoIface *room_handles, *contact_handles;
   TpHandle self_handle;
@@ -248,9 +249,10 @@ gabble_muc_channel_constructor (GType type, guint n_props,
            constructor (type, n_props, props);
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
+  conn = (TpBaseConnection *)priv->conn;
 
-  room_handles = priv->conn->parent.handles[TP_HANDLE_TYPE_ROOM];
-  contact_handles = priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT];
+  room_handles = conn->handles[TP_HANDLE_TYPE_ROOM];
+  contact_handles = conn->handles[TP_HANDLE_TYPE_CONTACT];
 
   /* ref our room handle */
   valid = tp_handle_ref (room_handles, priv->handle);
@@ -261,7 +263,7 @@ gabble_muc_channel_constructor (GType type, guint n_props,
 
   /* get our own identity in the room */
   contact_handle_to_room_identity (GABBLE_MUC_CHANNEL (obj),
-      priv->conn->parent.self_handle, &self_handle, &priv->self_jid);
+      conn->self_handle, &self_handle, &priv->self_jid);
 
   valid = tp_handle_ref (contact_handles, self_handle);
   g_assert (valid);
@@ -562,13 +564,15 @@ contact_handle_to_room_identity (GabbleMucChannel *chan, TpHandle main_handle,
                                  TpHandle *room_handle, GString **room_jid)
 {
   GabbleMucChannelPrivate *priv;
+  TpBaseConnection *conn;
   TpHandleRepoIface *contact_handles;
   const gchar *main_jid;
   gchar *username, *server;
   gchar *jid;
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
-  contact_handles = priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT];
+  conn = (TpBaseConnection *)priv->conn;
+  contact_handles = conn->handles[TP_HANDLE_TYPE_CONTACT];
 
   main_jid = tp_handle_inspect (contact_handles, main_handle);
 
@@ -865,11 +869,12 @@ gabble_muc_channel_finalize (GObject *object)
 {
   GabbleMucChannel *self = GABBLE_MUC_CHANNEL (object);
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
+  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
 
   DEBUG ("called");
 
   /* free any data held directly by the object here */
-  tp_handle_unref (priv->conn->parent.handles[TP_HANDLE_TYPE_ROOM], priv->handle);
+  tp_handle_unref (conn->handles[TP_HANDLE_TYPE_ROOM], priv->handle);
 
   g_free (priv->object_path);
 
@@ -1519,6 +1524,7 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
                                              LmMessageNode *x_node)
 {
   GabbleMucChannelPrivate *priv;
+  TpBaseConnection *conn;
   TpIntSet *set;
   TpGroupMixin *mixin;
   LmMessageNode *item_node, *node;
@@ -1531,6 +1537,7 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  conn = (TpBaseConnection *)priv->conn;
 
   mixin = TP_GROUP_MIXIN (chan);
 
@@ -1571,7 +1578,7 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
               TpHandle owner_handle;
 
               owner_handle = gabble_handle_for_contact (
-                  priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT],
+                  conn->handles[TP_HANDLE_TYPE_CONTACT],
                   owner_jid, FALSE);
 
               tp_group_mixin_add_handle_owner ((TpSvcChannelInterfaceGroup *)chan, handle,
@@ -1652,7 +1659,7 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
           if (actor_jid != NULL)
             {
               actor = gabble_handle_for_contact(
-                  priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT],
+                  conn->handles[TP_HANDLE_TYPE_CONTACT],
                   actor_jid, FALSE);
             }
         }
@@ -1855,12 +1862,14 @@ _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
                                     const gchar *message)
 {
   GabbleMucChannelPrivate *priv;
+  TpBaseConnection *conn;
   TpHandle self_handle;
   TpIntSet *set_members, *set_pending;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  conn = (TpBaseConnection *)priv->conn;
 
   /* add ourself to local pending and the inviter to members */
   set_members = tp_intset_new ();
@@ -1869,7 +1878,7 @@ _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
   tp_intset_add (set_members, inviter);
 
   /* get our own identity in the room */
-  contact_handle_to_room_identity (chan, priv->conn->parent.self_handle,
+  contact_handle_to_room_identity (chan, conn->self_handle,
                                    &self_handle, &priv->self_jid);
   tp_intset_add (set_pending, self_handle);
 

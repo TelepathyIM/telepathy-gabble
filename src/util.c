@@ -66,9 +66,10 @@ lm_message_node_add_own_nick (LmMessageNode *node,
 {
   gchar *nick;
   GabbleConnectionAliasSource source;
+  TpBaseConnection *base = (TpBaseConnection *)connection;
 
   source = _gabble_connection_get_cached_alias (connection,
-        connection->parent.self_handle, &nick);
+        base->self_handle, &nick);
 
   if (source > GABBLE_CONNECTION_ALIAS_FROM_JID)
     lm_message_node_add_nick (node, nick);

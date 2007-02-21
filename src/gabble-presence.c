@@ -69,6 +69,7 @@ _resource_new (gchar *name)
 static void
 _resource_free (Resource *resource)
 {
+  g_free (resource->name);
   g_free (resource->status_message);
   g_free (resource);
 }

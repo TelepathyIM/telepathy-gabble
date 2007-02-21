@@ -554,6 +554,8 @@ initial_request_cb (GabbleVCardManager *self,
               DEBUG ("Avatar is in garbled Base64, ignoring it:\n%s",
                      lm_message_node_get_value (binval));
             }
+
+          g_string_free (avatar, TRUE);
         }
     }
 

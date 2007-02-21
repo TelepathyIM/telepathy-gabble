@@ -625,6 +625,7 @@ _gabble_roster_item_update (GabbleRoster *roster,
 
   tp_intset_destroy (added_to);
   tp_intset_destroy (removed_from);
+  tp_intset_destroy (new_groups);
 
   return item;
 }

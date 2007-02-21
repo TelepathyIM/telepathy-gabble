@@ -870,7 +870,6 @@ _process_caps_uri (GabblePresenceCache *cache,
                    guint serial)
 {
   CapabilityInfo *info;
-  gpointer value;
   GabblePresenceCachePrivate *priv;
 
   priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
@@ -908,19 +907,32 @@ _process_caps_uri (GabblePresenceCache *cache,
       GSList *waiters;
       DiscoWaiter *waiter;
       guint possible_trust;
+      gpointer key;
+      gpointer value = NULL;
 
       DEBUG ("not enough trust for URI %s", uri);
-      value = g_hash_table_lookup (priv->disco_pending, uri);
 
-      if (value)
-        g_hash_table_steal (priv->disco_pending, uri);
+      /* If the URI is in the hash table, steal it and its value; we can
+       * reuse the same URI for the following insertion. Otherwise, make a
+       * copy of the URI for use as a key.
+       */
+
+      if (g_hash_table_lookup_extended (priv->disco_pending, uri, &key,
+            &value))
+        {
+          g_hash_table_steal (priv->disco_pending, key);
+        }
+      else
+        {
+          key = g_strdup (uri);
+        }
 
       waiters = (GSList *) value;
       waiter = disco_waiter_new (
           priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT], handle,
           resource, serial);
       waiters = g_slist_prepend (waiters, waiter);
-      g_hash_table_insert (priv->disco_pending, g_strdup (uri), waiters);
+      g_hash_table_insert (priv->disco_pending, key, waiters);
 
       possible_trust = disco_waiter_list_get_request_count (waiters);
 

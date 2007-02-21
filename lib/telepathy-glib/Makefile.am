@@ -66,14 +66,13 @@ nodist_libtelepathy_glib_la_SOURCES = \
     _gen/signals-marshal.c \
     _gen/signals-marshal.h \
     _gen/signals-marshal.list \
-    _gen/enumtypes-spec-telepathy-errors.c \
+    _gen/telepathy-errors.c \
     $(SPEC_GENERATED_SOURCES)
 
 nodist_geninclude_HEADERS = \
     _gen/telepathy-enums.h \
     _gen/telepathy-interfaces.h \
     _gen/telepathy-errors.h \
-    _gen/enumtypes-spec-telepathy-errors.h \
     $(SPEC_GENERATED_HS)
 
 BUILT_SOURCES = $(nodist_geninclude_HEADERS) \
@@ -127,10 +126,16 @@ _gen/telepathy-interfaces.h: ../spec/all.xml \
 		$(srcdir)/../tools/c-interfaces-generator.xsl \
 		$(srcdir)/../spec/all.xml > $@
 
-_gen/telepathy-errors.h: ../spec/errors.xml \
-	../tools/c-errors-enum-generator.xsl _gen/.exists
+_gen/telepathy-errors.c: ../spec/errors.xml \
+	../tools/glib-errors-enum-body.xsl _gen/.exists
 	$(XSLTPROC) $(XSLTPROCFLAGS) \
-		$(srcdir)/../tools/c-errors-enum-generator.xsl \
+		$(srcdir)/../tools/glib-errors-enum-body.xsl \
+		$< > $@
+
+_gen/telepathy-errors.h: ../spec/errors.xml \
+	../tools/glib-errors-enum-header.xsl _gen/.exists
+	$(XSLTPROC) $(XSLTPROCFLAGS) \
+		$(srcdir)/../tools/glib-errors-enum-header.xsl \
 		$< > $@
 
 _gen/%.xml: ../spec/%.xml ../tools/spec-to-introspect.xsl _gen/.exists
@@ -157,20 +162,3 @@ _gen/signals-marshal.h: _gen/signals-marshal.list _gen/.exists
 
 _gen/signals-marshal.c: _gen/signals-marshal.list _gen/.exists
 	$(GLIB_GENMARSHAL) --body --prefix=_tp_marshal $< > $@
-
-_gen/enumtypes-spec-%.c: _gen/%.h Makefile.am _gen/.exists
-	glib-mkenums \
-	--fhead '#include "_gen/$*.h"\n#include "_gen/enumtypes-spec-$*.h"' \
-	--fprod "\n/* enumerations from \"@filename@\" */" \
-	--vhead "GType\n@enum_name@_get_type (void)\n{\n  static GType etype = 0;\n  if (etype == 0) {\n    static const G@Type@Value values[] = {"     \
-	--vprod "      { @VALUENAME@, \"@VALUENAME@\", \"@VALUENAME@\" }," \
-	--vtail "      { 0, NULL, NULL }\n    };\n    etype = g_@type@_register_static (\"@EnumName@\", values);\n  }\n  return etype;\n}\n" \
-        $< > $@
-
-_gen/enumtypes-spec-%.h: _gen/%.h Makefile.am _gen/.exists
-	glib-mkenums \
-	--fhead "#ifndef __$(shell echo $* | tr [:lower:]- [:upper:]_)_ENUM_TYPES_H__\n#define __$(shell echo $* | tr [:lower:]- [:upper:]_)_ENUM_TYPES_H__\n\n#include <glib-object.h>\n\nG_BEGIN_DECLS\n" \
-	--fprod "/* enumerations from \"@filename@\" */\n" \
-	--vhead "GType @enum_name@_get_type (void);\n#define TP_TYPE_@ENUMSHORT@ (@enum_name@_get_type())\n"         \
-	--ftail "G_END_DECLS\n\n#endif /* __$(shell echo $* | tr [:lower:]- [:upper:]_)_ENUM_TYPES_H__ */" \
-        $< > $@

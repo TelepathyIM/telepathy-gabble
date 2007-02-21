@@ -24,7 +24,6 @@
 #include <glib-object.h>
 
 #include <telepathy-glib/_gen/telepathy-errors.h>
-#include <telepathy-glib/_gen/enumtypes-spec-telepathy-errors.h>
 
 G_BEGIN_DECLS
 

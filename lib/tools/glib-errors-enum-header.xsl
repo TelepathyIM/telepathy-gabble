@@ -20,16 +20,17 @@
 </xsl:text><xsl:value-of select="tp:license"/>
 */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include &lt;glib-object.h&gt;
+
+G_BEGIN_DECLS
+
+GType tp_error_get_type (void);
+#define TP_TYPE_ERROR (tp_error_get_type())
 
 typedef enum {
 <xsl:apply-templates select="tp:error"/>} TpError;
 
-#ifdef __cplusplus
-}
-#endif
+G_END_DECLS
 </xsl:template>
 
 </xsl:stylesheet>

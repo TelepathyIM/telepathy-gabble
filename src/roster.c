@@ -555,7 +555,7 @@ _gabble_roster_item_update (GabbleRoster *roster,
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
   GabbleRosterItem *item;
   const gchar *ask, *name;
-  TpIntSet *old_groups, *new_groups, *added_to, *removed_from;
+  TpIntSet *old_groups, *new_groups, *added_to, *removed_from, *removed_from2;
   GroupsUpdateContext ctx = { group_updates, contact_handle };
 
   g_assert (roster != NULL);
@@ -616,7 +616,7 @@ _gabble_roster_item_update (GabbleRoster *roster,
 
   removed_from = tp_intset_difference (old_groups, new_groups);
   added_to = tp_handle_set_update (item->groups, new_groups);
-  tp_handle_set_difference_update (item->groups, removed_from);
+  removed_from2 = tp_handle_set_difference_update (item->groups, removed_from);
 
   DEBUG ("Checking which groups contact#%u was just added to:", contact_handle);
   tp_intset_foreach (added_to, _update_add_to_group, &ctx);
@@ -625,6 +625,7 @@ _gabble_roster_item_update (GabbleRoster *roster,
 
   tp_intset_destroy (added_to);
   tp_intset_destroy (removed_from);
+  tp_intset_destroy (removed_from2);
   tp_intset_destroy (new_groups);
 
   return item;

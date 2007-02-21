@@ -391,11 +391,14 @@ tp_base_connection_manager_get_parameters (TpSvcConnectionManager *iface,
                                            DBusGMethodInvocation *context)
 {
   GPtrArray *ret;
-  GError *error;
+  GError *error = NULL;
   const TpCMProtocolSpec *protospec = NULL;
   TpBaseConnectionManager *self = TP_BASE_CONNECTION_MANAGER (iface);
-  TpBaseConnectionManagerClass *cls = TP_BASE_CONNECTION_MANAGER_CLASS (self);
+  TpBaseConnectionManagerClass *cls = TP_BASE_CONNECTION_MANAGER_GET_CLASS (self);
   int i;
+
+  g_assert (TP_IS_BASE_CONNECTION_MANAGER (iface));
+  g_assert (cls->protocol_params != NULL);
 
   if (!get_parameters (cls->protocol_params, proto, &protospec, &error))
     {
@@ -444,7 +447,7 @@ tp_base_connection_manager_list_protocols (TpSvcConnectionManager *iface,
                                            DBusGMethodInvocation *context)
 {
   TpBaseConnectionManager *self = TP_BASE_CONNECTION_MANAGER (iface);
-  TpBaseConnectionManagerClass *cls = TP_BASE_CONNECTION_MANAGER_CLASS (self);
+  TpBaseConnectionManagerClass *cls = TP_BASE_CONNECTION_MANAGER_GET_CLASS (self);
   const char **protocols;
   guint i = 0;
 
@@ -495,8 +498,10 @@ tp_base_connection_manager_request_connection (TpSvcConnectionManager *iface,
   TpIntSet *params_present = NULL;
   const TpCMProtocolSpec *protospec = NULL;
 
+  g_assert (TP_IS_BASE_CONNECTION_MANAGER (iface));
   g_assert (cls->new_connection != NULL);
   g_assert (cls->cm_dbus_name != NULL);
+  g_assert (cls->protocol_params != NULL);
 
   if (!get_parameters (cls->protocol_params, proto, &protospec, &error))
     {

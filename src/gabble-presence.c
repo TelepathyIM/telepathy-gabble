@@ -86,6 +86,7 @@ gabble_presence_finalize (GObject *object)
 
   g_slist_free (priv->resources);
   g_free (presence->nickname);
+  g_free (presence->avatar_sha1);
   g_free (priv->no_resource_status_message);
 }
 

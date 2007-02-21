@@ -1268,6 +1268,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
       tp_intset_destroy (known_add);
       tp_intset_destroy (known_rem);
       g_array_free (removed, TRUE);
+      g_hash_table_destroy (group_update_table);
       break;
     default:
        NODE_DEBUG (iq_node, "unhandled roster IQ");

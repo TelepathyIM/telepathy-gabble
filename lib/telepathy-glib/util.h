@@ -20,12 +20,14 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#include <glib.h>
+#include <glib-object.h>
 
 #ifndef __TP_UTIL_H__
 #define __TP_UTIL_H__
 
 gboolean tp_g_ptr_array_contains (GPtrArray *haystack, gpointer needle);
+
+void tp_g_value_slice_free (GValue *value);
 
 gboolean tp_strdiff (const gchar *left, const gchar *right);
 

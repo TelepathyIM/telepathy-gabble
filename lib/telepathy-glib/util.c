@@ -21,7 +21,6 @@
 
 #include <telepathy-glib/util.h>
 
-#include <glib.h>
 #include <string.h>
 
 gboolean
@@ -36,6 +35,13 @@ tp_g_ptr_array_contains (GPtrArray *haystack, gpointer needle)
     }
 
   return FALSE;
+}
+
+void
+tp_g_value_slice_free (GValue *value)
+{
+  g_value_unset (value);
+  g_slice_free (GValue, value);
 }
 
 gboolean

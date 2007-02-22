@@ -1973,7 +1973,21 @@ connection_disco_cb (GabbleDisco *disco,
 
       for (iter = result->children; iter != NULL; iter = iter->next)
         {
-          if (0 == strcmp (iter->name, "feature"))
+          if (0 == strcmp (iter->name, "identity"))
+            {
+              const gchar *category = lm_message_node_get_attribute (iter,
+                  "category");
+              const gchar *type = lm_message_node_get_attribute (iter, "type");
+
+              if (type == NULL || category == NULL)
+                continue;
+
+              if (0 == strcmp (category, "pubsub") &&
+                  0 == strcmp (type, "pep"))
+                /* XXX: should we also check for specific PubSub <feature>s? */
+                conn->features |= GABBLE_CONNECTION_FEATURES_PEP;
+            }
+          else if (0 == strcmp (iter->name, "feature"))
             {
               const gchar *var = lm_message_node_get_attribute (iter, "var");
 

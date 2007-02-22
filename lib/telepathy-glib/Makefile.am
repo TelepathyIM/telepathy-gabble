@@ -54,6 +54,7 @@ tpginclude_HEADERS = \
     interfaces.h \
     intset.h \
     properties-mixin.h \
+    run.h \
     svc-channel.h \
     svc-connection.h \
     svc-connection-manager.h \
@@ -98,6 +99,7 @@ libtelepathy_glib_la_SOURCES = \
     channel-iface.c \
     channel-factory-iface.c \
     properties-mixin.c \
+    run.c \
     signals-marshal.list \
     text-mixin.c \
     util.c

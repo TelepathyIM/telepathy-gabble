@@ -394,6 +394,8 @@ gabble_presence_cache_set_property (GObject     *object,
   switch (property_id) {
     case PROP_CONNECTION:
       priv->conn = g_value_get_object (value);
+      conn = (TpBaseConnection *)priv->conn;
+
       new_presence_handles = tp_handle_set_new (
           conn->handles[TP_HANDLE_TYPE_CONTACT]);
 

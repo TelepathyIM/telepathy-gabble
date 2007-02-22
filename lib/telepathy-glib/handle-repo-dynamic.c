@@ -46,7 +46,7 @@ static void
 handle_leak_trace_free (HandleLeakTrace *hltrace)
 {
   free (hltrace->trace);
-  g_free (hltrace);
+  g_slice_free (HandleLeakTrace, hltrace);
 }
 
 static void
@@ -78,7 +78,7 @@ handle_priv_new ()
 {
   TpHandlePriv *priv;
 
-  priv = g_new0 (TpHandlePriv, 1);
+  priv = g_slice_new0 (TpHandlePriv);
 
   g_datalist_init (&(priv->datalist));
   return priv;
@@ -97,7 +97,7 @@ handle_priv_free (TpHandlePriv *priv)
   g_slist_foreach (priv->traces, handle_leak_trace_free_gfunc, NULL);
   g_slist_free (priv->traces);
 #endif /* ENABLE_HANDLE_LEAK_DEBUG */
-  g_free (priv);
+  g_slice_free (TpHandlePriv, priv);
 }
 
 enum
@@ -276,7 +276,7 @@ static HandleLeakTrace *
 handle_leak_debug_bt ()
 {
   void *bt_addresses[16];
-  HandleLeakTrace *ret = g_new0 (HandleLeakTrace, 1);
+  HandleLeakTrace *ret = g_slice_new0 (HandleLeakTrace);
   
   ret->len = backtrace (bt_addresses, 16);
   ret->trace = backtrace_symbols (bt_addresses, ret->len);

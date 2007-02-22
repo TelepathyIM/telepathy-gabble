@@ -101,7 +101,7 @@ channel_request_new (DBusGMethodInvocation *context,
   g_assert (NULL != context);
   g_assert (NULL != channel_type);
 
-  ret = g_new0 (ChannelRequest, 1);
+  ret = g_slice_new0 (ChannelRequest);
   ret->context = context;
   ret->channel_type = g_strdup (channel_type);
   ret->handle_type = handle_type;
@@ -122,7 +122,7 @@ channel_request_free (ChannelRequest *request)
         "suppress=%d", request, request->channel_type, request->handle_type,
         request->handle, request->suppress_handler);
   g_free (request->channel_type);
-  g_free (request);
+  g_slice_free (ChannelRequest, request);
 }
 
 static void

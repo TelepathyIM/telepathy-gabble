@@ -168,7 +168,7 @@ void tp_group_mixin_init (TpSvcChannelInterfaceGroup *obj,
   mixin->local_pending = tp_handle_set_new (handle_repo);
   mixin->remote_pending = tp_handle_set_new (handle_repo);
 
-  mixin->priv = g_new0 (TpGroupMixinPrivate, 1);
+  mixin->priv = g_slice_new0 (TpGroupMixinPrivate);
   mixin->priv->handle_owners = g_hash_table_new (g_direct_hash, g_direct_equal);
   mixin->priv->local_pending_info = g_hash_table_new_full (
                                                      g_direct_hash, 
@@ -203,7 +203,7 @@ void tp_group_mixin_finalize (TpSvcChannelInterfaceGroup *obj)
   g_hash_table_destroy (mixin->priv->handle_owners);
   g_hash_table_destroy (mixin->priv->local_pending_info);
 
-  g_free (mixin->priv);
+  g_slice_free (TpGroupMixinPrivate, mixin->priv);
 
   tp_handle_set_destroy (mixin->members);
   tp_handle_set_destroy (mixin->local_pending);

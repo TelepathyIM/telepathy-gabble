@@ -116,7 +116,7 @@ void tp_properties_mixin_init (GObject *obj, glong offset)
 
   mixin->properties = g_new0 (TpProperty, mixin_cls->num_props);
 
-  mixin->priv = g_new0 (TpPropertiesMixinPrivate, 1);
+  mixin->priv = g_slice_new0 (TpPropertiesMixinPrivate);
   mixin->priv->object = obj;
 
   ctx = &mixin->priv->context;
@@ -140,7 +140,7 @@ void tp_properties_mixin_finalize (GObject *obj)
       if (prop->value)
         {
           g_value_unset (prop->value);
-          g_free (prop->value);
+          g_slice_free (GValue, prop->value);
         }
 
       if (ctx->values[i])
@@ -151,7 +151,7 @@ void tp_properties_mixin_finalize (GObject *obj)
 
   g_free (ctx->values);
 
-  g_free (mixin->priv);
+  g_slice_free (TpPropertiesMixinPrivate, mixin->priv);
 
   g_free (mixin->properties);
 }
@@ -556,7 +556,7 @@ tp_properties_mixin_change_value (GObject *obj, guint prop_id,
     }
   else
     {
-      prop->value = g_new0 (GValue, 1);
+      prop->value = g_slice_new0 (GValue);
       g_value_init (prop->value, mixin_cls->signatures[prop_id].type);
     }
 

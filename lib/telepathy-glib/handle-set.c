@@ -49,7 +49,7 @@ tp_handle_set_new (TpHandleRepoIface *repo)
   TpHandleSet *set;
   g_assert (repo != NULL);
 
-  set = g_new(TpHandleSet, 1);
+  set = g_slice_new0 (TpHandleSet);
   set->intset = tp_intset_new();
   set->repo = repo;
 
@@ -73,7 +73,7 @@ tp_handle_set_destroy (TpHandleSet *set)
 {
   tp_handle_set_foreach (set, freer, NULL);
   tp_intset_destroy (set->intset);
-  g_free (set);
+  g_slice_free (TpHandleSet, set);
 }
 
 /**

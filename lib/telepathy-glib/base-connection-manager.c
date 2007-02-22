@@ -184,7 +184,7 @@ param_default_value (const TpCMParamSpec *params, int i)
 {
   GValue *value;
 
-  value = g_new0(GValue, 1);
+  value = g_slice_new0 (GValue);
   g_value_init(value, params[i].gtype);
 
   /* TODO: this check could be stricter if we knew whether register
@@ -425,8 +425,8 @@ tp_base_connection_manager_get_parameters (TpSvcConnectionManager *iface,
         2, protospec->parameters[i].dtype,
         3, def_value,
         G_MAXUINT);
-      g_value_unset(def_value);
-      g_free(def_value);
+      g_value_unset (def_value);
+      g_slice_free (GValue, def_value);
 
       g_ptr_array_add (ret, g_value_get_boxed (&param));
     }

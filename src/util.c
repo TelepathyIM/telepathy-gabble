@@ -172,6 +172,97 @@ lm_message_node_get_child_with_namespace (LmMessageNode *node,
   return NULL;
 }
 
+enum {
+    BUILD_END = '\0',
+    BUILD_ATTRIBUTE = '@',
+    BUILD_CHILD = '(',
+    BUILD_CHILD_END = ')',
+};
+
+/**
+ * lm_message_build:
+ *
+ * Build an LmMessageNode from a list of arguments employing an
+ * S-expression-like notation. Example:
+ *
+ * lm_message_build (LM_MESSAGE_TYPE_IQ, "bob@jabber.org",
+ *   '(', 'query', 'lala',
+ *      '@', 'xmlns', 'http://jabber.org/protocol/foo',
+ *   ')',
+ *   NULL);
+ *
+ * --> <iq to="bob@jabber.org">
+ *        <query xmlns="http://jabber.org/protocol/foo">lala</query>
+ *     </iq>
+ */
+G_GNUC_NULL_TERMINATED
+LmMessage *
+lm_message_build (const gchar *to, LmMessageType type, ...)
+{
+  LmMessage *msg;
+  va_list ap;
+  GSList *stack = NULL;
+
+  msg = lm_message_new (to, type);
+  stack = g_slist_prepend (stack, msg->node);
+
+  va_start (ap, type);
+
+  for (;;)
+    {
+      guint arg;
+
+      arg = va_arg (ap, guint);
+
+      switch (arg)
+        {
+        case '\0':
+          goto END;
+
+        case BUILD_ATTRIBUTE:
+          {
+            gchar *key = va_arg (ap, gchar *);
+            gchar *value = va_arg (ap, gchar *);
+
+            lm_message_node_set_attribute (stack->data, key, value);
+          }
+          break;
+
+        case BUILD_CHILD:
+          {
+            gchar *name = va_arg (ap, gchar *);
+            gchar *value = va_arg (ap, gchar *);
+            LmMessageNode *child;
+
+            child = lm_message_node_add_child (stack->data, name, value);
+            stack = g_slist_prepend (stack, child);
+          }
+          break;
+
+        case BUILD_CHILD_END:
+          {
+            GSList *tmp;
+
+            tmp = stack;
+            stack = stack->next;
+            tmp->next = NULL;
+            g_slist_free (tmp);
+          }
+          break;
+
+        default:
+          g_assert_not_reached ();
+        }
+    }
+
+  va_end (ap);
+
+END:
+  g_slist_free (stack);
+
+  return msg;
+}
+
 /**
  * gabble_decode_jid
  *

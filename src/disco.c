@@ -286,7 +286,7 @@ delete_request (GabbleDiscoRequest *request)
 
   g_free (request->jid);
   g_free (request->node);
-  g_free (request);
+  g_slice_free (GabbleDiscoRequest, request);
 }
 
 static gboolean
@@ -441,7 +441,7 @@ gabble_disco_request_with_timeout (GabbleDisco *self, GabbleDiscoType type,
   LmMessageNode *lm_node;
   const gchar *xmlns;
 
-  request = g_new0 (GabbleDiscoRequest, 1);
+  request = g_slice_new0 (GabbleDiscoRequest);
   request->disco = self;
   request->type = type;
   request->jid = g_strdup (jid);

@@ -349,19 +349,6 @@ emit_room_signal (gpointer data)
   return TRUE;
 }
 
-/**
- * destroy_value:
- * @data: a GValue to destroy
- *
- * destroys a GValue allocated on the heap
- */
-static void
-destroy_value (GValue *value)
-{
-  g_value_unset (value);
-  g_free (value);
-}
-
 static void
 room_info_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
 {
@@ -377,7 +364,7 @@ room_info_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
 
   #define INSERT_KEY(hash, name, type, type2, value) \
     do {\
-      tmp = g_new0 (GValue, 1); \
+      tmp = g_slice_new0 (GValue); \
       g_value_init (tmp, (type)); \
       g_value_set_##type2 (tmp, (value)); \
       g_hash_table_insert (hash, (name), tmp); \
@@ -405,7 +392,7 @@ room_info_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
   DEBUG ("got room identity, name=%s, category=%s, type=%s", name, category, type);
 
   keys = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
-                                (GDestroyNotify) destroy_value);
+                                (GDestroyNotify) tp_g_value_slice_free);
 
   INSERT_KEY (keys, "name", G_TYPE_STRING, string, name);
 

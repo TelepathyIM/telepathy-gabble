@@ -294,7 +294,7 @@ _gabble_roster_item_free (GabbleRosterItem *item)
   tp_handle_set_destroy (item->groups);
   item_edit_free (item->unsent_edits);
   g_free (item->name);
-  g_free (item);
+  g_slice_free (GabbleRosterItem, item);
 }
 
 static const gchar *
@@ -460,7 +460,7 @@ _gabble_roster_item_get (GabbleRoster *roster,
 
   if (NULL == item)
     {
-      item = g_new0 (GabbleRosterItem, 1);
+      item = g_slice_new0 (GabbleRosterItem);
       item->groups = tp_handle_set_new (
           conn->handles[TP_HANDLE_TYPE_GROUP]);
       tp_handle_ref (conn->handles[TP_HANDLE_TYPE_CONTACT], handle);
@@ -514,7 +514,7 @@ group_mem_update_ensure (GroupsUpdateContext *ctx, TpHandle group_handle)
   if (update) return update;
 
   DEBUG ("Creating new hash table entry for group#%u", group_handle);
-  update = g_new (GroupMembershipUpdate, 1);
+  update = g_slice_new0 (GroupMembershipUpdate);
 #ifdef ENABLE_DEBUG
   update->group_handle = group_handle;
 #endif
@@ -958,7 +958,7 @@ _group_mem_update_destroy (GroupMembershipUpdate *update)
 {
   tp_intset_destroy (update->contacts_added);
   tp_intset_destroy (update->contacts_removed);
-  g_free (update);
+  g_slice_free (GroupMembershipUpdate, update);
 }
 
 static gboolean

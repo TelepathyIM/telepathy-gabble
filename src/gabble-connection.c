@@ -1063,7 +1063,7 @@ message_send_handler_destroy_cb (gpointer data)
                            handler_data);
     }
 
-  g_free (handler_data);
+  g_slice_free (GabbleMsgHandlerData, handler_data);
 }
 
 /**
@@ -1094,7 +1094,7 @@ _gabble_connection_send_with_reply (GabbleConnection *conn,
 
   lm_message_ref (msg);
 
-  handler_data = g_new (GabbleMsgHandlerData, 1);
+  handler_data = g_slice_new (GabbleMsgHandlerData);
   handler_data->reply_func = reply_func;
   handler_data->conn = conn;
   handler_data->sent_msg = msg;
@@ -1668,19 +1668,6 @@ status_is_available (GabbleConnection *conn, int status)
     return TRUE;
 }
 
-/**
- * destroy_the_bastard:
- * @data: a GValue to destroy
- *
- * destroys a GValue allocated on the heap
- */
-static void
-destroy_the_bastard (GValue *value)
-{
-  g_value_unset (value);
-  g_free (value);
-}
-
 static GHashTable *
 construct_presence_hash (GabbleConnection *self,
                          const GArray *contact_handles)
@@ -1724,9 +1711,9 @@ construct_presence_hash (GabbleConnection *self,
         }
 
       parameters = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
-          (GDestroyNotify) destroy_the_bastard);
+          (GDestroyNotify) tp_g_value_slice_free);
       if (status_message != NULL) {
-        message = g_new0 (GValue, 1);
+        message = g_slice_new0 (GValue);
         g_value_init (message, G_TYPE_STRING);
         g_value_set_static_string (message, status_message);
 
@@ -3683,7 +3670,7 @@ room_verify_batch_free (RoomVerifyBatch *batch)
       g_free(batch->contexts[i].jid);
     }
   g_free (batch->contexts);
-  g_free (batch);
+  g_slice_free (RoomVerifyBatch, batch);
 }
 
 /* Frees the error and the batch. */
@@ -3714,7 +3701,7 @@ room_verify_batch_new (GabbleConnection *conn,
                        const gchar **jids)
 {
   TpBaseConnection *base = (TpBaseConnection *)conn;
-  RoomVerifyBatch *batch = g_new(RoomVerifyBatch, 1);
+  RoomVerifyBatch *batch = g_slice_new (RoomVerifyBatch);
   guint i;
 
   batch->errored = FALSE;

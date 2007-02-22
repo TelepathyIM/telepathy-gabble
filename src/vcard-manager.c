@@ -280,7 +280,7 @@ cache_entry_free (void *data)
   tp_handle_unref (conn->handles[TP_HANDLE_TYPE_CONTACT],
       entry->handle);
 
-  g_free (entry);
+  g_slice_free (GabbleVCardCacheEntry, entry);
 }
 
 static GabbleVCardCacheEntry *
@@ -294,7 +294,7 @@ cache_entry_get (GabbleVCardManager *manager, TpHandle handle)
   if (entry)
      return entry;
 
-  entry  = g_new0 (GabbleVCardCacheEntry, 1);
+  entry  = g_slice_new0 (GabbleVCardCacheEntry);
 
   entry->manager = manager;
   entry->handle = handle;
@@ -668,7 +668,7 @@ delete_request (GabbleVCardManagerRequest *request)
 
   g_strfreev (request->edit_args);
 
-  g_free (request);
+  g_slice_free (GabbleVCardManagerRequest, request);
 }
 
 static gboolean
@@ -1048,7 +1048,7 @@ gabble_vcard_manager_request (GabbleVCardManager *self,
   if (timeout == 0)
     timeout = DEFAULT_REQUEST_TIMEOUT;
 
-  request = g_new0 (GabbleVCardManagerRequest, 1);
+  request = g_slice_new0 (GabbleVCardManagerRequest);
   DEBUG ("Created request %p to retrieve <%u>'s vCard", request, handle);
   request->timeout = timeout;
   request->manager = self;
@@ -1081,7 +1081,7 @@ gabble_vcard_manager_request (GabbleVCardManager *self,
     }
   else
     {
-      entry->request = g_new0 (GabbleVCardManagerRequest, 1);
+      entry->request = g_slice_new0 (GabbleVCardManagerRequest);
       entry->request->manager = self;
       entry->request->handle = handle;
       tp_handle_ref (connection->handles[TP_HANDLE_TYPE_CONTACT],
@@ -1123,7 +1123,7 @@ gabble_vcard_manager_replace (GabbleVCardManager *self,
   if (timeout == 0)
     timeout = DEFAULT_REQUEST_TIMEOUT;
 
-  request = g_new0 (GabbleVCardManagerRequest, 1);
+  request = g_slice_new0 (GabbleVCardManagerRequest);
   DEBUG ("Created request %p to replace my vCard, callback = %p",
          request, callback);
   request->timeout = timeout;
@@ -1163,7 +1163,7 @@ gabble_vcard_manager_edit (GabbleVCardManager *self,
   if (timeout == 0)
     timeout = DEFAULT_REQUEST_TIMEOUT;
 
-  request = g_new0 (GabbleVCardManagerRequest, 1);
+  request = g_slice_new0 (GabbleVCardManagerRequest);
   DEBUG ("Created request %p to edit my vCard", request);
   request->timeout = timeout;
   request->manager = self;

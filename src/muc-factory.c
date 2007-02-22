@@ -377,7 +377,7 @@ obsolete_invite_disco_cb (GabbleDisco *self,
     }
 
   g_free (data->reason);
-  g_free (data);
+  g_slice_free (struct DiscoInviteData, data);
 }
 
 
@@ -498,7 +498,7 @@ muc_factory_message_cb (LmMessageHandler *handler,
       /* reason is the body */
       reason = body;
 
-      disco_udata = g_new0 (struct DiscoInviteData, 1);
+      disco_udata = g_slice_new0 (struct DiscoInviteData);
       disco_udata->factory = fac;
       disco_udata->reason = g_strdup (reason);
       disco_udata->inviter = inviter_handle;

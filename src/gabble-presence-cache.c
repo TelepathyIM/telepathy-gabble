@@ -101,7 +101,7 @@ disco_waiter_new (TpHandleRepoIface *repo, TpHandle handle, const gchar *resourc
   g_assert (repo);
   tp_handle_ref (repo, handle);
 
-  waiter = g_new0 (DiscoWaiter, 1);
+  waiter = g_slice_new0 (DiscoWaiter);
   waiter->repo = repo;
   waiter->handle = handle;
   waiter->resource = g_strdup (resource);
@@ -122,7 +122,7 @@ disco_waiter_free (DiscoWaiter *waiter)
   tp_handle_unref (waiter->repo, waiter->handle);
 
   g_free (waiter->resource);
-  g_free (waiter);
+  g_slice_free (DiscoWaiter, waiter);
 }
 
 static void
@@ -173,7 +173,7 @@ capability_info_get (GabblePresenceCache *cache, const gchar *node,
 
   if (NULL == info)
     {
-      info = g_new0 (CapabilityInfo, 1);
+      info = g_slice_new0 (CapabilityInfo);
       info->caps = caps;
       info->guys = tp_intset_new ();
       g_hash_table_insert (priv->capabilities, g_strdup (node), info);
@@ -186,7 +186,7 @@ static void
 capability_info_free (CapabilityInfo *info)
 {
   tp_intset_destroy (info->guys);
-  g_free (info);
+  g_slice_free (CapabilityInfo, info);
 }
 
 static guint

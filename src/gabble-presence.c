@@ -55,7 +55,7 @@ struct _GabblePresencePrivate {
 static Resource *
 _resource_new (gchar *name)
 {
-  Resource *new = g_new (Resource, 1);
+  Resource *new = g_slice_new (Resource);
   new->name = name;
   new->caps = PRESENCE_CAP_NONE;
   new->status = GABBLE_PRESENCE_OFFLINE;
@@ -71,7 +71,7 @@ _resource_free (Resource *resource)
 {
   g_free (resource->name);
   g_free (resource->status_message);
-  g_free (resource);
+  g_slice_free (Resource, resource);
 }
 
 static void

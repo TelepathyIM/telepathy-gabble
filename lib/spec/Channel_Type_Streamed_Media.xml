@@ -309,6 +309,17 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
           The handle is capable of using video streams within a media channel.
         </tp:docstring>
       </tp:flag>
+      <tp:flag suffix="NAT_Traversal_STUN" value="4">
+        <tp:docstring>
+          The handle is capable of performing STUN to traverse NATs.
+        </tp:docstring>
+      </tp:flag>
+      <tp:flag suffix="NAT_Traversal_GTalk_P2P" value="8">
+        <tp:docstring>
+          The handle is capable of establishing Google Talk peer-to-peer
+          connections (as implemented in libjingle 0.3) to traverse NATs.
+        </tp:docstring>
+      </tp:flag>
     </tp:flags>
   </interface>
 </node>

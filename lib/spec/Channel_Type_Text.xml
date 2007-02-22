@@ -252,6 +252,80 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
         </tp:docstring>
       </tp:flag>
     </tp:flags>
+    <tp:property name="anonymous" type="b">
+      <tp:docstring>
+      True if people may join the channel without other members being made
+      aware of their identity.
+      </tp:docstring>
+    </tp:property>
+    <tp:property name="invite-only" type="b">
+      <tp:docstring>
+      True if people may not join the channel until they have been invited.
+      </tp:docstring>
+    </tp:property>
+    <tp:property name="limit" type="u">
+      <tp:docstring>
+      The limit to the number of members, if limited is true.
+      </tp:docstring>
+    </tp:property>
+    <tp:property name="limited" type="b">
+      <tp:docstring>
+      True if there is a limit to the number of channel members.
+      </tp:docstring>
+    </tp:property>
+    <tp:property name="moderated" type="b">
+      <tp:docstring>
+      True if channel membership is not sufficient to allow participation.
+      </tp:docstring>
+    </tp:property>
+    <tp:property name="name" type="s">
+      <tp:docstring>
+      A human-visible name for the channel, if it differs from the string
+      version of the channel's handle.
+      </tp:docstring>
+    </tp:property>
+    <tp:property name="description" type="s">
+      <tp:docstring>
+      A human-readable description of the channel's overall purpose.
+      </tp:docstring>
+    </tp:property>
+    <tp:property name="password" type="s">
+      <tp:docstring>
+      The password required to enter the channel if password-required is true.
+      </tp:docstring>
+    </tp:property>
+    <tp:property name="password-required" type="b">
+      <tp:docstring>
+      True if a password must be provided to enter the channel.
+      </tp:docstring>
+    </tp:property>
+    <tp:property name="persistent" type="b">
+      <tp:docstring>
+      True if the channel will remain in existence on the server after all
+      members have left it.
+      </tp:docstring>
+    </tp:property>
+    <tp:property name="private" type="b">
+      <tp:docstring>
+      True if the channel is not visible to non-members.
+      </tp:docstring>
+    </tp:property>
+    <tp:property name="subject" type="s">
+      <tp:docstring>
+      A human-readable description of the current subject of conversation in
+      the channel, similar to /topic in IRC.
+      </tp:docstring>
+    </tp:property>
+    <tp:property name="subject-contact" type="u">
+      <tp:docstring>
+      A contact handle representing who last modified the subject.
+      </tp:docstring>
+    </tp:property>
+    <tp:property name="subject-timestamp" type="u">
+      <tp:docstring>
+      A unix timestamp indicating when the subject was last modified.
+      </tp:docstring>
+    </tp:property>
     <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
       <p>A channel type for sending and receiving messages in plain text, with no
         formatting.</p>

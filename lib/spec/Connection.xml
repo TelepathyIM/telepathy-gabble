@@ -241,12 +241,15 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
       </arg>
       <arg direction="in" name="handle" type="u">
         <tp:docstring>
-          An integer handle representing a contact, room or list, or zero
+          A nonzero integer handle representing a contact, room, list etc.
+          according to handle_type, or zero if the handle_type is zero
         </tp:docstring>
       </arg>
       <arg direction="in" name="suppress_handler" type="b">
         <tp:docstring>
-          A boolean indicating that the requesting client intends to take responsibility for displaying the channel to the user, so that no other handler needs to be launched
+          If true, the requesting client intends to take responsibility for
+          displaying the channel to the user, so no other handler needs to
+          be launched
         </tp:docstring>
       </arg>
       <arg direction="out" type="o">
@@ -254,13 +257,34 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
           The D-Bus object path for the channel created or retrieved
         </tp:docstring>
       </arg>
-      <tp:docstring>
-        Request a channel satisfying the specified type and communicating with
-        the contact, room or list indicated by the given handle. The handle may
-        be zero to request the creation of a new, empty channel, which may or
-        may not be available depending on the protocol and channel type. May
-        return an existing channel object, create a new channel, or fail if the
-        request cannot be satisfied.
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+        <p>Request a channel satisfying the specified type and communicating
+          with the contact, room, list etc. indicated by the given
+          handle_type and handle. The handle_type and handle may both be
+          zero to request the creation of a new, empty channel, which may
+          or may not be possible, depending on the protocol and channel
+          type.</p>
+
+        <p>On success, the returned channel will always be of the requested
+          type (i.e. implement the requested channel-type interface).</p>
+
+        <p>If a new, empty channel is requested, on success the returned
+          channel will always be an "anonymous" channel for which the type
+          and handle are both zero.</p>
+
+        <p>If a channel to a contact, room etc. is requested, on success, the
+          returned channel may either be a new or existing channel to
+          the requested entity (i.e. its GetHandle() returns the
+          requested handle type and handle), or a newly created "anonymous"
+          channel associated with the requested handle in some
+          implementation-specific way.</p>
+
+        <p>For example, for a contact handle, the returned channel
+          might be "anonymous", but implement the groups interface and have
+          the requested contact already present among the members.</p>
+
+        <p>If the request cannot be satisfied, an error is raised and no
+          channel is created.</p>
       </tp:docstring>
       <tp:possible-errors>
         <tp:error name="org.freedesktop.Telepathy.Error.Disconnected"/>
@@ -288,7 +312,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
     <tp:enum name="Handle_Type">
       <tp:enumvalue suffix="None" value="0">
         <tp:docstring>
-          A "null" handle type used to indicate the absence of a handle
+          A "null" handle type used to indicate the absence of a handle.
+          When a handle type and a handle appear as a pair, if the handle
+          type is zero, the handle must also be zero.
         </tp:docstring>
       </tp:enumvalue>
       <tp:enumvalue suffix="Contact" value="1">
@@ -479,10 +505,15 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
 
     <p>Contacts, rooms, and server-stored lists (such as subscribed contacts,
     block lists, or allow lists) on a service are all represented by
-    immutable handles, which are unsigned non-zero integers which are valid
-    only for the lifetime of the connection object, and are used throughout the
-    protocol where these entities are represented, allowing simple testing of
-    equality within clients. Handles have per-type uniqueness, meaning that
+    immutable <em>handles</em>, which are unsigned non-zero integers which are
+    valid only for the lifetime of the connection object, and are used
+    throughout the protocol where these entities are represented, allowing
+    simple testing of equality within clients.</p>
+
+    <p>Zero as a handle value is sometimes used as a "null" value to mean
+    the absence of a contact, room, etc.</p>
+  
+    <p>Handles have per-type uniqueness, meaning that
     every (handle type, handle number) tuple is guaranteed to be unique within
     a connection and that a handle alone (without its type) is meaningless or
     ambiguous. Connection manager implementations should reference count these

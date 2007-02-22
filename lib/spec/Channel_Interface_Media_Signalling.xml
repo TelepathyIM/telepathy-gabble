@@ -44,6 +44,42 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
         within.
       </tp:docstring>
     </signal>
+    <tp:property name="nat-traversal" type="s">
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+      <p>A string indicating the NAT traversal techniques employed by the
+      streams within this channel. Can be protocol-specific values, but the
+      following values should be used if appropriate:</p>
+
+      <dl>
+        <dt>none</dt>
+        <dd>No attempt should be made at NAT traversal.</dd>
+
+        <dt>stun</dt>
+        <dd>If appropriate, a STUN request should be made to the given server
+        to open a UDP port mapping and determine the external IP.</dd>
+
+        <dt>gtalk-p2p</dt>
+        <dd>Google Talk peer-to-peer connectivity establishment should be used,
+        as implemented in libjingle 0.3.</dd>
+      </dl>
+      </tp:docstring>
+    </tp:property>
+    <tp:property name="stun-server" type="s">
+      <tp:docstring>
+      The IP address or hostname of the STUN server to use for NAT traversal.
+      </tp:docstring>
+    </tp:property>
+    <tp:property name="stun-port" type="q">
+      <tp:docstring>
+      The UDP port number to use on the provided STUN server.
+      </tp:docstring>
+    </tp:property>
+    <tp:property name="gtalk-p2p-relay-token" type="s">
+      <tp:docstring>
+      The authentication token for use with the Google Talk peer-to-peer relay
+      server.
+      </tp:docstring>
+    </tp:property>
     <tp:docstring>
       An interface for signalling a channel containing synchronised media
     sessions which can contain an arbitrary number of streams. The negotiation

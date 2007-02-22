@@ -36,6 +36,7 @@
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/channel-iface.h>
 #include <telepathy-glib/svc-channel.h>
+#include <telepathy-glib/svc-properties-interface.h>
 
 #include "gabble-media-channel.h"
 
@@ -71,6 +72,8 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMediaChannel, gabble_media_channel,
       media_signalling_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_STREAMED_MEDIA,
       streamed_media_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_PROPERTIES_INTERFACE,
+      tp_properties_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL));
 
 /* properties */
@@ -83,7 +86,39 @@ enum
   PROP_CONNECTION,
   PROP_CREATOR,
   PROP_FACTORY,
+  /* TP properties (see also below) */
+  PROP_NAT_TRAVERSAL,
+/* FIXME: these should be supported too */
+#if 0
+  PROP_STUN_SERVER,
+  PROP_STUN_PORT,
+  PROP_GTALK_P2P_RELAY_TOKEN,
+#endif
   LAST_PROPERTY
+};
+
+/* TP properties */
+enum
+{
+  CHAN_PROP_NAT_TRAVERSAL = 0,
+/* FIXME: we should support these too */
+#if 0
+  CHAN_PROP_STUN_SERVER,
+  CHAN_PROP_STUN_PORT,
+  CHAN_PROP_GTALK_P2P_RELAY_TOKEN,
+#endif
+  NUM_CHAN_PROPS,
+  INVALID_CHAN_PROP
+};
+
+const TpPropertySignature channel_property_signatures[NUM_CHAN_PROPS] = {
+      { "nat-traversal",          G_TYPE_STRING },
+/* FIXME: we should support these too */
+#if 0
+      { "stun-server",            G_TYPE_STRING },
+      { "stun-port",              G_TYPE_UINT   },
+      { "gtalk-p2p-relay-token",  G_TYPE_STRING },
+#endif
 };
 
 /* private structure */
@@ -113,10 +148,39 @@ gabble_media_channel_init (GabbleMediaChannel *self)
 {
   GabbleMediaChannelPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
       GABBLE_TYPE_MEDIA_CHANNEL, GabbleMediaChannelPrivate);
+  GValue val = { 0, };
 
   self->priv = priv;
 
   priv->next_stream_id = 1;
+
+  /* initialize properties mixin */
+  tp_properties_mixin_init (G_OBJECT (self), G_STRUCT_OFFSET (
+        GabbleMediaChannel, properties));
+
+#if 0
+  FIXME: reinstate STUN port eventually
+
+  g_value_init (&val, G_TYPE_UINT);
+  g_value_set_uint (&val, GABBLE_PARAMS_DEFAULT_STUN_PORT);
+
+  tp_properties_mixin_change_value (G_OBJECT (self), CHAN_PROP_STUN_PORT,
+      &val, NULL);
+  tp_properties_mixin_change_flags (G_OBJECT (self), CHAN_PROP_STUN_PORT,
+      TP_PROPERTY_FLAG_READ, 0, NULL);
+
+  g_value_unset (&val);
+#endif
+
+  g_value_init (&val, G_TYPE_STRING);
+  g_value_set_string (&val, "gtalk-p2p");
+
+  tp_properties_mixin_change_value (G_OBJECT (self), CHAN_PROP_NAT_TRAVERSAL,
+      &val, NULL);
+  tp_properties_mixin_change_flags (G_OBJECT (self), CHAN_PROP_NAT_TRAVERSAL,
+      TP_PROPERTY_FLAG_READ, 0, NULL);
+
+  g_value_unset (&val);
 }
 
 static GObject *
@@ -296,6 +360,8 @@ gabble_media_channel_get_property (GObject    *object,
 {
   GabbleMediaChannel *chan = GABBLE_MEDIA_CHANNEL (object);
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
+  const gchar *param_name;
+  guint tp_property_id;
 
   switch (property_id) {
     case PROP_OBJECT_PATH:
@@ -320,6 +386,21 @@ gabble_media_channel_get_property (GObject    *object,
       g_value_set_object (value, priv->factory);
       break;
     default:
+      param_name = g_param_spec_get_name (pspec);
+
+      if (tp_properties_mixin_has_property (object, param_name,
+            &tp_property_id))
+        {
+          GValue *tp_property_value =
+            chan->properties.properties[tp_property_id].value;
+
+          if (tp_property_value)
+            {
+              g_value_copy (tp_property_value, value);
+              return;
+            }
+        }
+
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
   }
@@ -333,6 +414,8 @@ gabble_media_channel_set_property (GObject     *object,
 {
   GabbleMediaChannel *chan = GABBLE_MEDIA_CHANNEL (object);
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
+  const gchar *param_name;
+  guint tp_property_id;
 
   switch (property_id) {
     case PROP_OBJECT_PATH:
@@ -357,6 +440,20 @@ gabble_media_channel_set_property (GObject     *object,
       priv->factory = g_value_get_object (value);
       break;
     default:
+      param_name = g_param_spec_get_name (pspec);
+
+      if (tp_properties_mixin_has_property (object, param_name,
+            &tp_property_id))
+        {
+          tp_properties_mixin_change_value (object, tp_property_id, value,
+                                                NULL);
+          tp_properties_mixin_change_flags (object, tp_property_id,
+                                                TP_PROPERTY_FLAG_READ,
+                                                0, NULL);
+
+          return;
+        }
+
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
   }
@@ -420,6 +517,19 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
                                     G_PARAM_STATIC_NICK |
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_FACTORY, param_spec);
+
+  param_spec = g_param_spec_string ("nat-traversal",
+                                    "NAT traversal",
+                                    "NAT traversal mechanism.",
+                                    NULL,
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_STATIC_NAME |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_STUN_SERVER, param_spec);
+
+  tp_properties_mixin_class_init (object_class,
+      G_STRUCT_OFFSET (GabbleMediaChannelClass, properties_class),
+      channel_property_signatures, NUM_CHAN_PROPS, NULL);
 }
 
 void

@@ -38,12 +38,14 @@ struct _GabbleMediaChannelClass {
     GObjectClass parent_class;
 
     TpGroupMixinClass group_class;
+    TpPropertiesMixinClass properties_class;
 };
 
 struct _GabbleMediaChannel {
     GObject parent;
 
     TpGroupMixin group;
+    TpPropertiesMixin properties;
 
     gpointer priv;
 };

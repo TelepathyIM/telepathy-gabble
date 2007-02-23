@@ -2016,6 +2016,9 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   result_query = lm_message_node_add_child (result_iq, "query", NULL);
   lm_message_node_set_attribute (result_query, "xmlns", NS_DISCO_INFO);
 
+  if (node)
+    lm_message_node_set_attribute (result_query, "node", node);
+
   DEBUG ("got disco request for bundle %s, caps are %x", node, self->self_presence->caps);
   features = capabilities_get_features (self->self_presence->caps);
 

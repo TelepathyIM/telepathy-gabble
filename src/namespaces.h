@@ -45,6 +45,8 @@
 #define NS_MUC_OWNER            "http://jabber.org/protocol/muc#owner"
 #define NS_NICK                 "http://jabber.org/protocol/nick"
 #define NS_NOKIA_IV             "http://videovoip.tableteer.nokia.com/xmpp/privilege"
+#define NS_OLPC_BUDDY_PROPS     "http://laptop.org/xmpp/buddy-properties"
+#define NS_OLPC_ACTIVITIES      "http://laptop.org/xmpp/buddy-activities"
 #define NS_PUBSUB               "http://jabber.org/protocol/pubsub"
 #define NS_PRESENCE_INVISIBLE   "presence-invisible"
 #define NS_PRIVACY              "jabber:iq:privacy"

@@ -1025,8 +1025,10 @@ _gabble_media_channel_add_member (TpSvcChannelInterfaceGroup *obj,
 {
   GabbleMediaChannel *chan = GABBLE_MEDIA_CHANNEL (obj);
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
-  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
   TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
+#ifdef ENABLE_DEBUG
+  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+#endif
 
   /* did we create this channel? */
   if (priv->creator == mixin->self_handle)

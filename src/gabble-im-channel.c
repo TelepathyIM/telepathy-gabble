@@ -267,8 +267,8 @@ gabble_im_channel_dispose (GObject *object)
   if (!priv->closed)
       {
         /* Set the chat state of the channel on gone (Channel.Interface.ChatState) */
-        gabble_text_mixin_set_chat_state (G_OBJECT (self), TP_CHANNEL_CHAT_STATE_GONE, 0, priv->peer_jid,
-                                        priv->conn, NULL);
+        gabble_text_mixin_send (G_OBJECT (self), TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE, 0,
+              TP_CHANNEL_CHAT_STATE_GONE, priv->peer_jid, NULL, priv->conn, FALSE /* emit_signal */, NULL);
 
         tp_svc_channel_emit_closed (self);
       }
@@ -369,8 +369,8 @@ gabble_im_channel_close (TpSvcChannel *iface,
   if (!priv->closed)
     {
       /* Set the chat state of the channel on gone (Channel.Interface.ChatState) */
-      gabble_text_mixin_set_chat_state (G_OBJECT (self), TP_CHANNEL_CHAT_STATE_GONE, 0, priv->peer_jid,
-                                        priv->conn, NULL);
+      gabble_text_mixin_send (G_OBJECT (self), TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE, 0, TP_CHANNEL_CHAT_STATE_GONE,
+            priv->peer_jid, NULL, priv->conn, FALSE /* emit_signal */, NULL);
 
       priv->closed = TRUE;
     }
@@ -454,8 +454,8 @@ gabble_im_channel_send (TpSvcChannelTypeText *iface,
   g_assert (GABBLE_IS_IM_CHANNEL (self));
   priv = GABBLE_IM_CHANNEL_GET_PRIVATE (self);
 
-  if (!gabble_text_mixin_send (G_OBJECT (self), type, 0, priv->peer_jid,
-      text, priv->conn, TRUE /* emit_signal */, &error))
+  if (!gabble_text_mixin_send (G_OBJECT (self), type, 0, TP_CHANNEL_CHAT_STATE_ACTIVE,
+      priv->peer_jid, text, priv->conn, TRUE /* emit_signal */, &error))
     {
       dbus_g_method_return_error (context, error);
       g_error_free (error);
@@ -491,8 +491,8 @@ gabble_im_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
           "invalid state: %u", state);
     }
 
-  if (error != NULL || !gabble_text_mixin_set_chat_state (G_OBJECT (self), state, 0, priv->peer_jid,
-      priv->conn, &error))
+  if (error != NULL || !gabble_text_mixin_send (G_OBJECT (self), TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE, 0,
+              state, priv->peer_jid, NULL, priv->conn, FALSE /* emit_signal */, &error))
     {
       dbus_g_method_return_error (context, error);
       g_error_free (error);

@@ -2105,8 +2105,8 @@ gabble_muc_channel_send (TpSvcChannelTypeText *iface,
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
 
   if (!gabble_text_mixin_send (G_OBJECT (self), type,
-          LM_MESSAGE_SUB_TYPE_GROUPCHAT, priv->jid, text, priv->conn,
-          FALSE /* emit_signal */, &error))
+          LM_MESSAGE_SUB_TYPE_GROUPCHAT, TP_CHANNEL_CHAT_STATE_ACTIVE, priv->jid, text,
+          priv->conn, FALSE /* emit_signal */, &error))
     {
       dbus_g_method_return_error (context, error);
       g_error_free (error);
@@ -2671,8 +2671,8 @@ gabble_muc_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
           "invalid state: %u", state);
     }
 
-  if (error != NULL || !gabble_text_mixin_set_chat_state (G_OBJECT (self), state,
-          LM_MESSAGE_SUB_TYPE_GROUPCHAT, priv->jid, priv->conn, &error))
+  if (error != NULL || gabble_text_mixin_send (G_OBJECT (self), TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE,
+            LM_MESSAGE_SUB_TYPE_GROUPCHAT, state, priv->jid, NULL, priv->conn, FALSE /* emit_signal */, &error))
     {
       dbus_g_method_return_error (context, error);
       g_error_free (error);

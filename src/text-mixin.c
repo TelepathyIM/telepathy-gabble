@@ -42,17 +42,32 @@
 
 #include "text-mixin.h"
 
-
-static gboolean
-gabble_text_mixin_send_message (GObject *obj,
-                                guint type,
-                                guint subtype,
-                                guint state,
-                                const char *recipient,
-                                const gchar *text,
-                                GabbleConnection *conn,
-                                gboolean emit_signal,
-                                GError **error)
+/**
+ * gabble_text_mixin_send
+ *
+ * Indirectly, implements D-Bus method Send
+ * on interface org.freedesktop.Telepathy.Channel.Type.Text.
+ *
+ * @param type The Telepathy message type
+ * @param subtype The Loudmouth message subtype
+ * @param state The Telepathy chat state type
+ * @param recipient The recipient's JID
+ * @param text The text of the message (if NULL, the message won't have body)
+ * @param conn The Connection
+ * @param emit_signal If true, emit Sent; if false, assume we'll get an
+ *                    echo of the message and will emit Sent at that point
+ * @param error The GError
+ */
+gboolean
+gabble_text_mixin_send (GObject *obj,
+                        guint type,
+                        guint subtype,
+                        guint state,
+                        const char *recipient,
+                        const gchar *text,
+                        GabbleConnection *conn,
+                        gboolean emit_signal,
+                        GError **error)
 {
   TpTextMixin *mixin = TP_TEXT_MIXIN (obj);
   LmMessage *msg;
@@ -60,7 +75,7 @@ gabble_text_mixin_send_message (GObject *obj,
   gboolean result;
   time_t timestamp;
 
-  if (type > LAST_TP_CHANNEL_CHAT_STATE)
+  if (type > LAST_TP_CHANNEL_TEXT_MESSAGE_TYPE)
     {
       DEBUG ("invalid message type %u", type);
 
@@ -70,7 +85,7 @@ gabble_text_mixin_send_message (GObject *obj,
       return FALSE;
     }
 
-  if (state > TP_CHANNEL_CHAT_STATE_COMPOSING)
+  if (state > LAST_TP_CHANNEL_CHAT_STATE)
     {
       DEBUG ("invalid state %u", state);
 
@@ -140,7 +155,7 @@ gabble_text_mixin_send_message (GObject *obj,
 
   if (node != NULL)
     {
-      lm_message_node_set_attributes (node, "xmlns", "http://jabber.org/protocol/chatstates", NULL);
+      lm_message_node_set_attributes (node, "xmlns", NS_CHAT_STATES, NULL);
     }
 
   result = _gabble_connection_send (conn, msg, error);
@@ -159,61 +174,6 @@ gabble_text_mixin_send_message (GObject *obj,
     }
   return TRUE;
 }
-
-/**
- * gabble_text_mixin_send
- *
- * Indirectly, implements D-Bus method Send
- * on interface org.freedesktop.Telepathy.Channel.Type.Text.
- *
- * @param type The Telepathy message type
- * @param subtype The Loudmouth message subtype
- * @param recipient The recipient's JID
- * @param text The text of the message
- * @param conn The Connection
- * @param emit_signal If true, emit Sent; if false, assume we'll get an
- *                    echo of the message and will emit Sent at that point
- * @param context The D-Bus method invocation context
- */
-gboolean
-gabble_text_mixin_send (GObject *obj,
-                        guint type,
-                        guint subtype,
-                        const char *recipient,
-                        const gchar *text,
-                        GabbleConnection *conn,
-                        gboolean emit_signal,
-                        GError **error)
-{
-  return gabble_text_mixin_send_message (obj, type, subtype, TP_CHANNEL_CHAT_STATE_ACTIVE, recipient, text,
-                                  conn, emit_signal, error);
-}
-
-
-/**
- * gabble_text_mixin_set_chat_state
- *
- * Indirectly, implements D-Bus method SetChatState
- * on interface org.freedesktop.Telepathy.Channel.Interface.ChatState
- *
- * @param state The Telepathy chat state type
- * @param subtype The Loudmouth message subtype
- * @param recipient The recipient's JID
- * @param conn The Connection
- * @param error The GError
- */
-gboolean
-gabble_text_mixin_set_chat_state (GObject *obj,
-                                  guint state,
-                                  guint subtype,
-                                  const char *recipient,
-                                  GabbleConnection *conn,
-                                  GError **error)
-{
-  return gabble_text_mixin_send_message (obj, TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE, subtype, state,
-                                         recipient, NULL, conn, FALSE, error);
-}
-
 
 gboolean
 gabble_text_mixin_parse_incoming_message (LmMessage *message,
@@ -357,7 +317,7 @@ gabble_text_mixin_parse_incoming_message (LmMessage *message,
    * Parse chat state if it exists.
    */
 
-  node = lm_message_node_get_child (message->node, "active");
+  node = lm_message_node_get_child_with_namespace (message->node, "active", NS_CHAT_STATES);
   if (node)
     {
       *state = TP_CHANNEL_CHAT_STATE_ACTIVE;
@@ -365,28 +325,28 @@ gabble_text_mixin_parse_incoming_message (LmMessage *message,
     }
 
 
-  node = lm_message_node_get_child (message->node, "composing");
+  node = lm_message_node_get_child_with_namespace  (message->node, "composing", NS_CHAT_STATES);
   if (node)
     {
       *state = TP_CHANNEL_CHAT_STATE_COMPOSING;
       return TRUE;
     }
 
-  node = lm_message_node_get_child (message->node, "inactive");
+  node = lm_message_node_get_child_with_namespace  (message->node, "inactive", NS_CHAT_STATES);
   if (node)
     {
       *state = TP_CHANNEL_CHAT_STATE_INACTIVE;
       return TRUE;
     }
 
-  node = lm_message_node_get_child (message->node, "paused");
+  node = lm_message_node_get_child_with_namespace  (message->node, "paused", NS_CHAT_STATES);
   if (node)
     {
       *state = TP_CHANNEL_CHAT_STATE_PAUSED;
       return TRUE;
     }
 
-  node = lm_message_node_get_child (message->node, "gone");
+  node = lm_message_node_get_child_with_namespace  (message->node, "gone", NS_CHAT_STATES);
   if (node)
     {
       *state = TP_CHANNEL_CHAT_STATE_GONE;

@@ -41,6 +41,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
 <xi:include href="Channel_Type_Streamed_Media.xml"/>
 <xi:include href="Channel_Type_Room_List.xml"/>
 <xi:include href="Channel_Type_Text.xml"/>
+<xi:include href="Channel_Interface_Chat_State.xml"/>
 <xi:include href="Channel_Interface_DTMF.xml"/>
 <xi:include href="Channel_Interface_Group.xml"/>
 <xi:include href="Channel_Interface_Hold.xml"/>

@@ -171,16 +171,6 @@ gabble_media_channel_init (GabbleMediaChannel *self)
 
   g_value_unset (&val);
 #endif
-
-  g_value_init (&val, G_TYPE_STRING);
-  g_value_set_string (&val, "gtalk-p2p");
-
-  tp_properties_mixin_change_value (G_OBJECT (self), CHAN_PROP_NAT_TRAVERSAL,
-      &val, NULL);
-  tp_properties_mixin_change_flags (G_OBJECT (self), CHAN_PROP_NAT_TRAVERSAL,
-      TP_PROPERTY_FLAG_READ, 0, NULL);
-
-  g_value_unset (&val);
 }
 
 static GObject *
@@ -521,7 +511,8 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
   param_spec = g_param_spec_string ("nat-traversal",
                                     "NAT traversal",
                                     "NAT traversal mechanism.",
-                                    NULL,
+                                    "gtalk-p2p",
+                                    G_PARAM_CONSTRUCT |
                                     G_PARAM_READWRITE |
                                     G_PARAM_STATIC_NAME |
                                     G_PARAM_STATIC_BLURB);

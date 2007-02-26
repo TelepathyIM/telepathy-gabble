@@ -525,7 +525,7 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
                                     G_PARAM_READWRITE |
                                     G_PARAM_STATIC_NAME |
                                     G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_STUN_SERVER, param_spec);
+  g_object_class_install_property (object_class, PROP_NAT_TRAVERSAL, param_spec);
 
   tp_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleMediaChannelClass, properties_class),

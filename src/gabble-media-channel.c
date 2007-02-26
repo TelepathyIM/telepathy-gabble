@@ -88,12 +88,9 @@ enum
   PROP_FACTORY,
   /* TP properties (see also below) */
   PROP_NAT_TRAVERSAL,
-/* FIXME: these should be supported too */
-#if 0
   PROP_STUN_SERVER,
   PROP_STUN_PORT,
   PROP_GTALK_P2P_RELAY_TOKEN,
-#endif
   LAST_PROPERTY
 };
 
@@ -101,24 +98,18 @@ enum
 enum
 {
   CHAN_PROP_NAT_TRAVERSAL = 0,
-/* FIXME: we should support these too */
-#if 0
   CHAN_PROP_STUN_SERVER,
   CHAN_PROP_STUN_PORT,
   CHAN_PROP_GTALK_P2P_RELAY_TOKEN,
-#endif
   NUM_CHAN_PROPS,
   INVALID_CHAN_PROP
 };
 
 const TpPropertySignature channel_property_signatures[NUM_CHAN_PROPS] = {
       { "nat-traversal",          G_TYPE_STRING },
-/* FIXME: we should support these too */
-#if 0
       { "stun-server",            G_TYPE_STRING },
       { "stun-port",              G_TYPE_UINT   },
-      { "gtalk-p2p-relay-token",  G_TYPE_STRING },
-#endif
+      { "gtalk-p2p-relay-token",  G_TYPE_STRING }
 };
 
 /* private structure */
@@ -157,20 +148,6 @@ gabble_media_channel_init (GabbleMediaChannel *self)
   /* initialize properties mixin */
   tp_properties_mixin_init (G_OBJECT (self), G_STRUCT_OFFSET (
         GabbleMediaChannel, properties));
-
-#if 0
-  FIXME: reinstate STUN port eventually
-
-  g_value_init (&val, G_TYPE_UINT);
-  g_value_set_uint (&val, GABBLE_PARAMS_DEFAULT_STUN_PORT);
-
-  tp_properties_mixin_change_value (G_OBJECT (self), CHAN_PROP_STUN_PORT,
-      &val, NULL);
-  tp_properties_mixin_change_flags (G_OBJECT (self), CHAN_PROP_STUN_PORT,
-      TP_PROPERTY_FLAG_READ, 0, NULL);
-
-  g_value_unset (&val);
-#endif
 }
 
 static GObject *
@@ -517,6 +494,34 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
                                     G_PARAM_STATIC_NAME |
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_NAT_TRAVERSAL, param_spec);
+
+  param_spec = g_param_spec_string ("stun-server",
+                                    "STUN server",
+                                    "IP or address of STUN server.",
+                                    NULL,
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_STATIC_NAME |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_STUN_SERVER, param_spec);
+
+  param_spec = g_param_spec_uint ("stun-port",
+                                  "STUN port",
+                                  "UDP port of STUN server.",
+                                  0, G_MAXUINT16, 0,
+                                  G_PARAM_READWRITE |
+                                  G_PARAM_STATIC_NAME |
+                                  G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_STUN_PORT, param_spec);
+
+  param_spec = g_param_spec_string ("gtalk-p2p-relay-token",
+                                    "GTalk P2P Relay Token",
+                                    "Magic token to authenticate with the "
+                                    "Google Talk relay server.",
+                                    NULL,
+                                    G_PARAM_READWRITE |
+                                    G_PARAM_STATIC_NAME |
+                                    G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_GTALK_P2P_RELAY_TOKEN, param_spec);
 
   tp_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleMediaChannelClass, properties_class),

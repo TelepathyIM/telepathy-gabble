@@ -1042,7 +1042,7 @@ _gabble_media_channel_add_member (TpSvcChannelInterfaceGroup *obj,
         {
           DEBUG ("failed to add contact %d (%s) to media channel: "
               "no presence available", handle, tp_handle_inspect (
-                priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT], handle));
+                conn->handles[TP_HANDLE_TYPE_CONTACT], handle));
           goto NO_CAPS;
         }
 
@@ -1050,21 +1050,11 @@ _gabble_media_channel_add_member (TpSvcChannelInterfaceGroup *obj,
             presence->caps & PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO ||
             presence->caps & PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO))
         {
-          if (presence == NULL)
-            DEBUG ("failed to add contact %d (%s) to media channel: "
-                   "no presence available", handle,
-                   tp_handle_inspect (
-                    priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT], handle));
-          else
-            DEBUG ("failed to add contact %d (%s) to media channel: "
-                   "caps %x aren't sufficient", handle,
-                   tp_handle_inspect (
-                     priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT], handle),
-                   presence->caps);
-
-          g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-              "handle %u has no media capabilities", handle);
-          return FALSE;
+          DEBUG ("failed to add contact %d (%s) to media channel: "
+              "caps %x aren't sufficient", handle, tp_handle_inspect (
+                conn->handles[TP_HANDLE_TYPE_CONTACT], handle),
+              presence->caps);
+          goto NO_CAPS;
         }
 
       /* yes: invite the peer */

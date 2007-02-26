@@ -54,7 +54,6 @@
 #include "gabble-presence.h"
 #include "gabble-register.h"
 #include "im-factory.h"
-#include "jingle-info.h"
 #include "media-factory.h"
 #include "muc-factory.h"
 #include "namespaces.h"
@@ -202,7 +201,6 @@ typedef struct _GabbleConnectionPrivate GabbleConnectionPrivate;
 
 struct _GabbleConnectionPrivate
 {
-  LmMessageHandler *iq_jingle_info_cb;
   LmMessageHandler *iq_disco_cb;
   LmMessageHandler *iq_unknown_cb;
   LmMessageHandler *stream_error_cb;
@@ -866,7 +864,6 @@ gabble_connection_dispose (GObject *object)
   /* if this is not already the case, we'll crash anyway */
   g_assert (!lm_connection_is_open (self->lmconn));
 
-  g_assert (priv->iq_jingle_info_cb == NULL);
   g_assert (priv->iq_disco_cb == NULL);
   g_assert (priv->iq_unknown_cb == NULL);
   g_assert (priv->stream_error_cb == NULL);
@@ -1172,17 +1169,9 @@ connect_callbacks (TpBaseConnection *base)
   GabbleConnection *conn = GABBLE_CONNECTION (base);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
-  g_assert (priv->iq_jingle_info_cb == NULL);
   g_assert (priv->iq_disco_cb == NULL);
   g_assert (priv->iq_unknown_cb == NULL);
   g_assert (priv->stream_error_cb == NULL);
-
-  priv->iq_jingle_info_cb = lm_message_handler_new (jingle_info_iq_callback,
-                                                    conn, NULL);
-  lm_connection_register_message_handler (conn->lmconn,
-                                          priv->iq_jingle_info_cb,
-                                          LM_MESSAGE_TYPE_IQ,
-                                          LM_HANDLER_PRIORITY_NORMAL);
 
   priv->iq_disco_cb = lm_message_handler_new (connection_iq_disco_cb,
                                               conn, NULL);
@@ -1209,15 +1198,9 @@ disconnect_callbacks (TpBaseConnection *base)
   GabbleConnection *conn = GABBLE_CONNECTION (base);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
 
-  g_assert (priv->iq_jingle_info_cb != NULL);
   g_assert (priv->iq_disco_cb != NULL);
   g_assert (priv->iq_unknown_cb != NULL);
   g_assert (priv->stream_error_cb != NULL);
-
-  lm_connection_unregister_message_handler (conn->lmconn, priv->iq_jingle_info_cb,
-                                            LM_MESSAGE_TYPE_IQ);
-  lm_message_handler_unref (priv->iq_jingle_info_cb);
-  priv->iq_jingle_info_cb = NULL;
 
   lm_connection_unregister_message_handler (conn->lmconn, priv->iq_disco_cb,
                                             LM_MESSAGE_TYPE_IQ);
@@ -2432,11 +2415,6 @@ connection_disco_cb (GabbleDisco *disco,
       TP_CONNECTION_STATUS_CONNECTED, TP_CONNECTION_STATUS_REASON_REQUESTED);
 
   emit_one_presence_update (conn, base->self_handle);
-
-  if (conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_JINGLE_INFO)
-    {
-      jingle_info_discover_servers (conn);
-    }
 
   return;
 

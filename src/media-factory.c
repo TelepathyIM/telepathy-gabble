@@ -61,6 +61,7 @@ struct _GabbleMediaFactoryPrivate
 {
   GabbleConnection *conn;
   LmMessageHandler *jingle_cb;
+  LmMessageHandler *jingle_info_cb;
 
   GPtrArray *channels;
   guint channel_index;
@@ -87,6 +88,7 @@ gabble_media_factory_init (GabbleMediaFactory *fac)
   priv->channel_index = 0;
 
   priv->jingle_cb = NULL;
+  priv->jingle_info_cb = NULL;
 
   priv->conn = NULL;
   priv->dispose_has_run = FALSE;
@@ -121,6 +123,9 @@ gabble_media_factory_dispose (GObject *object)
 
   DEBUG ("dispose called");
   priv->dispose_has_run = TRUE;
+
+  g_assert (priv->jingle_cb == NULL);
+  g_assert (priv->jingle_info_cb == NULL);
 
   tp_channel_factory_iface_close_all (TP_CHANNEL_FACTORY_IFACE (object));
   g_assert (priv->channels == NULL);
@@ -513,6 +518,142 @@ new_media_channel (GabbleMediaFactory *fac, TpHandle creator)
 
 
 static void
+jingle_info_send_request (GabbleMediaFactory *fac)
+{
+  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
+  TpBaseConnection *base = (TpBaseConnection *) priv->conn;
+  LmMessage *msg;
+  LmMessageNode *node;
+  const gchar *jid;
+  GError *error = NULL;
+
+  jid = tp_handle_inspect (base->handles[TP_HANDLE_TYPE_CONTACT],
+      base->self_handle);
+  msg = lm_message_new_with_sub_type (jid, LM_MESSAGE_TYPE_IQ,
+      LM_MESSAGE_SUB_TYPE_GET);
+
+  node = lm_message_node_add_child (msg->node, "query", NULL);
+  lm_message_node_set_attribute (node, "xmlns", NS_GOOGLE_JINGLE_INFO);
+
+  if (!_gabble_connection_send (priv->conn, msg, &error))
+    {
+      DEBUG ("jingle infoe send failed: %s\n", error->message);
+      g_error_free (error);
+    }
+
+  lm_message_unref (msg);
+}
+
+
+/**
+ * jingle_info_iq_callback
+ *
+ * Called by loudmouth when we get an incoming <iq>. This handler
+ * is concerned only with Jingle info queries.
+ */
+LmHandlerResult
+jingle_info_iq_callback (LmMessageHandler *handler,
+                         LmConnection *lmconn,
+                         LmMessage *message,
+                         gpointer user_data)
+{
+  GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (user_data);
+  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
+  LmMessageSubType sub_type;
+  LmMessageNode *query_node, *node;
+
+  query_node = lm_message_node_get_child_with_namespace (message->node,
+      "query", NS_GOOGLE_JINGLE_INFO);
+
+  if (query_node == NULL)
+    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+
+  sub_type = lm_message_get_sub_type (message);
+
+  if (sub_type == LM_MESSAGE_SUB_TYPE_ERROR)
+    {
+      GabbleXmppError xmpp_error = INVALID_XMPP_ERROR;
+
+      node = lm_message_node_get_child (message->node, "error");
+      if (node != NULL)
+        {
+          xmpp_error = gabble_xmpp_error_from_node (node);
+        }
+
+      DEBUG ("jingle info error: %s", xmpp_error == INVALID_XMPP_ERROR,
+          "unknown error", gabble_xmpp_error_string (xmpp_error));
+
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    }
+
+  if (sub_type != LM_MESSAGE_SUB_TYPE_RESULT &&
+      sub_type != LM_MESSAGE_SUB_TYPE_SET)
+    {
+      DEBUG ("jingle info: unexpected IQ type, ignoring");
+
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    }
+
+  node = lm_message_node_get_child (query_node, "stun");
+
+  if (node != NULL)
+    {
+      node = lm_message_node_get_child (query_node, "server");
+
+      if (node != NULL)
+        {
+          const gchar *server;
+          const gchar *port;
+
+          server = lm_message_node_get_attribute (node, "host");
+          port = lm_message_node_get_attribute (node, "udp");
+
+          if (server != NULL)
+            {
+              DEBUG ("jingle info: got stun server %s", server);
+              g_free (priv->stun_server);
+              priv->stun_server = g_strdup (server);
+            }
+
+          if (port != NULL)
+            {
+              DEBUG ("jingle info: got stun port %s", port);
+              priv->stun_port = atoi (port);
+            }
+        }
+    }
+
+  node = lm_message_node_get_child (query_node, "relay");
+
+  if (node != NULL)
+    {
+      node = lm_message_node_get_child (query_node, "token");
+
+      if (node != NULL)
+        {
+          const gchar *token;
+
+          token = lm_message_node_get_value (node);
+
+          if (token != NULL)
+            {
+              DEBUG ("jingle info: got relay token %s", token);
+              g_free (priv->relay_token);
+              priv->relay_token = g_strdup (token);
+            }
+        }
+    }
+
+  if (sub_type == LM_MESSAGE_SUB_TYPE_SET)
+    {
+      _gabble_connection_acknowledge_set_iq (priv->conn, message);
+    }
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
+
+static void
 gabble_media_factory_iface_close_all (TpChannelFactoryIface *iface)
 {
   GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (iface);
@@ -558,8 +699,18 @@ gabble_media_factory_iface_connecting (TpChannelFactoryIface *iface)
 
   DEBUG ("adding callbacks");
 
+  g_assert (priv->jingle_cb == NULL);
+  g_assert (priv->jingle_info_cb == NULL);
+
   priv->jingle_cb = lm_message_handler_new (media_factory_jingle_cb, fac, NULL);
   lm_connection_register_message_handler (priv->conn->lmconn, priv->jingle_cb,
+                                          LM_MESSAGE_TYPE_IQ,
+                                          LM_HANDLER_PRIORITY_NORMAL);
+
+  priv->jingle_info_cb = lm_message_handler_new (jingle_info_iq_callback, fac,
+      NULL);
+  lm_connection_register_message_handler (priv->conn->lmconn,
+                                          priv->jingle_info_cb,
                                           LM_MESSAGE_TYPE_IQ,
                                           LM_HANDLER_PRIORITY_NORMAL);
 }
@@ -567,7 +718,13 @@ gabble_media_factory_iface_connecting (TpChannelFactoryIface *iface)
 static void
 gabble_media_factory_iface_connected (TpChannelFactoryIface *iface)
 {
-  /* nothing to do */
+  GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (iface);
+  GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
+
+  if (priv->conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_JINGLE_INFO)
+    {
+      jingle_info_send_request (fac);
+    }
 }
 
 static void
@@ -576,14 +733,21 @@ gabble_media_factory_iface_disconnected (TpChannelFactoryIface *iface)
   GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (iface);
   GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
 
-  g_assert (priv->jingle_cb != NULL);
-
   DEBUG ("removing callbacks");
+
+  g_assert (priv->jingle_cb != NULL);
+  g_assert (priv->jingle_info_cb != NULL);
 
   lm_connection_unregister_message_handler (priv->conn->lmconn, priv->jingle_cb,
                                             LM_MESSAGE_TYPE_IQ);
   lm_message_handler_unref (priv->jingle_cb);
   priv->jingle_cb = NULL;
+
+  lm_connection_unregister_message_handler (priv->conn->lmconn, priv->jingle_info_cb,
+                                            LM_MESSAGE_TYPE_IQ);
+  lm_message_handler_unref (priv->jingle_info_cb);
+  priv->jingle_info_cb = NULL;
+
 }
 
 static void

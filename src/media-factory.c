@@ -537,7 +537,7 @@ jingle_info_send_request (GabbleMediaFactory *fac)
 
   if (!_gabble_connection_send (priv->conn, msg, &error))
     {
-      DEBUG ("jingle infoe send failed: %s\n", error->message);
+      DEBUG ("jingle info send failed: %s\n", error->message);
       g_error_free (error);
     }
 
@@ -580,8 +580,8 @@ jingle_info_iq_callback (LmMessageHandler *handler,
           xmpp_error = gabble_xmpp_error_from_node (node);
         }
 
-      DEBUG ("jingle info error: %s", xmpp_error == INVALID_XMPP_ERROR,
-          "unknown error", gabble_xmpp_error_string (xmpp_error));
+      DEBUG ("jingle info error: %s", xmpp_error == INVALID_XMPP_ERROR ?
+          "unknown error" : gabble_xmpp_error_string (xmpp_error));
 
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
@@ -598,7 +598,7 @@ jingle_info_iq_callback (LmMessageHandler *handler,
 
   if (node != NULL)
     {
-      node = lm_message_node_get_child (query_node, "server");
+      node = lm_message_node_get_child (node, "server");
 
       if (node != NULL)
         {
@@ -627,7 +627,7 @@ jingle_info_iq_callback (LmMessageHandler *handler,
 
   if (node != NULL)
     {
-      node = lm_message_node_get_child (query_node, "token");
+      node = lm_message_node_get_child (node, "token");
 
       if (node != NULL)
         {

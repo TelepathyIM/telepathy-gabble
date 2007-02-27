@@ -503,7 +503,7 @@ new_media_channel (GabbleMediaFactory *fac, TpHandle creator)
 
   if (priv->relay_token != NULL)
     {
-      g_object_set ((GObject *) chan, "relay-token", priv->relay_token, NULL);
+      g_object_set ((GObject *) chan, "gtalk-p2p-relay-token", priv->relay_token, NULL);
     }
 
   DEBUG ("object path %s", object_path);
@@ -738,7 +738,7 @@ gabble_media_factory_iface_connected (TpChannelFactoryIface *iface)
     }
   else
     {
-      g_free (stun_server);
+      g_free (priv->stun_server);
       priv->stun_server = stun_server;
       priv->stun_port = stun_port;
     }

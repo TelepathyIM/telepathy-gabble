@@ -47,8 +47,6 @@ libgabble_convenience_la_SOURCES = \
     gabble-types.h \
     handles.h \
     handles.c \
-    jingle-info.c \
-    jingle-info.h \
     im-factory.h \
     im-factory.c \
     media-factory.h \

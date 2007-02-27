@@ -68,6 +68,7 @@ struct _GabbleMediaFactoryPrivate
 
   GHashTable *session_chans;
 
+  gboolean get_stun_from_jingle;
   gchar *stun_server;
   guint16 stun_port;
   gchar *relay_token;
@@ -594,7 +595,10 @@ jingle_info_iq_callback (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
-  node = lm_message_node_get_child (query_node, "stun");
+  if (priv->get_stun_from_jingle)
+    node = lm_message_node_get_child (query_node, "stun");
+  else
+    node = NULL;
 
   if (node != NULL)
     {
@@ -720,6 +724,24 @@ gabble_media_factory_iface_connected (TpChannelFactoryIface *iface)
 {
   GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (iface);
   GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
+  gchar *stun_server = NULL;
+  guint stun_port = 0;
+
+  g_object_get (priv->conn,
+      "stun-server", &stun_server,
+      "stun-port", &stun_port,
+      NULL);
+
+  if (stun_server == NULL)
+    {
+      priv->get_stun_from_jingle = TRUE;
+    }
+  else
+    {
+      g_free (stun_server);
+      priv->stun_server = stun_server;
+      priv->stun_port = stun_port;
+    }
 
   if (priv->conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_JINGLE_INFO)
     {

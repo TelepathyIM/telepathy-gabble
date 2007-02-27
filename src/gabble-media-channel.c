@@ -139,7 +139,6 @@ gabble_media_channel_init (GabbleMediaChannel *self)
 {
   GabbleMediaChannelPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
       GABBLE_TYPE_MEDIA_CHANNEL, GabbleMediaChannelPrivate);
-  GValue val = { 0, };
 
   self->priv = priv;
 

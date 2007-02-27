@@ -40,7 +40,6 @@
 #include <telepathy-glib/channel-factory-iface.h>
 
 #include <telepathy-glib/svc-connection.h>
-#include <telepathy-glib/svc-properties-interface.h>
 
 #include "gabble-connection.h"
 
@@ -107,8 +106,6 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
       capabilities_service_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_PRESENCE,
       presence_service_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_PROPERTIES_INTERFACE,
-      tp_properties_mixin_iface_init)
     )
 
 typedef struct _StatusInfo StatusInfo;
@@ -151,49 +148,12 @@ enum
     PROP_FALLBACK_CONFERENCE_SERVER,
     PROP_STUN_SERVER,
     PROP_STUN_PORT,
-    PROP_STUN_RELAY_MAGIC_COOKIE,
-    PROP_STUN_RELAY_SERVER,
-    PROP_STUN_RELAY_UDP_PORT,
-    PROP_STUN_RELAY_TCP_PORT,
-    PROP_STUN_RELAY_SSLTCP_PORT,
-    PROP_STUN_RELAY_USERNAME,
-    PROP_STUN_RELAY_PASSWORD,
     PROP_IGNORE_SSL_ERRORS,
     PROP_ALIAS,
     PROP_AUTH_MAC,
     PROP_AUTH_BTID,
 
     LAST_PROPERTY
-};
-
-/* TP properties */
-enum
-{
-  CONN_PROP_STUN_SERVER = 0,
-  CONN_PROP_STUN_PORT,
-  CONN_PROP_STUN_RELAY_MAGIC_COOKIE,
-  CONN_PROP_STUN_RELAY_SERVER,
-  CONN_PROP_STUN_RELAY_UDP_PORT,
-  CONN_PROP_STUN_RELAY_TCP_PORT,
-  CONN_PROP_STUN_RELAY_SSLTCP_PORT,
-  CONN_PROP_STUN_RELAY_USERNAME,
-  CONN_PROP_STUN_RELAY_PASSWORD,
-
-  NUM_CONN_PROPS,
-
-  INVALID_CONN_PROP,
-};
-
-const TpPropertySignature connection_property_signatures[NUM_CONN_PROPS] = {
-      { "stun-server",                  G_TYPE_STRING },
-      { "stun-port",                    G_TYPE_UINT   },
-      { "stun-relay-magic-cookie",      G_TYPE_STRING },
-      { "stun-relay-server",            G_TYPE_STRING },
-      { "stun-relay-udp-port",          G_TYPE_UINT   },
-      { "stun-relay-tcp-port",          G_TYPE_UINT   },
-      { "stun-relay-ssltcp-port",       G_TYPE_UINT   },
-      { "stun-relay-username",          G_TYPE_STRING },
-      { "stun-relay-password",          G_TYPE_STRING },
 };
 
 /* private structure */
@@ -218,7 +178,10 @@ struct _GabbleConnectionPrivate
   gboolean low_bandwidth;
 
   gchar *https_proxy_server;
-  guint https_proxy_port;
+  guint16 https_proxy_port;
+
+  gchar *stun_server;
+  guint16 stun_port;
 
   gchar *fallback_conference_server;
 
@@ -323,7 +286,6 @@ gabble_connection_init (GabbleConnection *self)
 {
   GabbleConnectionPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
       GABBLE_TYPE_CONNECTION, GabbleConnectionPrivate);
-  GValue val = { 0, };
 
   DEBUG("Initializing (GabbleConnection *)%p", self);
 
@@ -332,22 +294,6 @@ gabble_connection_init (GabbleConnection *self)
 
   /* Set default parameters for optional parameters */
   priv->resource = g_strdup (GABBLE_PARAMS_DEFAULT_RESOURCE);
-  priv->port = GABBLE_PARAMS_DEFAULT_PORT;
-  priv->https_proxy_port = GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_PORT;
-
-  g_value_init (&val, G_TYPE_UINT);
-  g_value_set_uint (&val, GABBLE_PARAMS_DEFAULT_STUN_PORT);
-
-  /* initialize properties mixin */
-  tp_properties_mixin_init (G_OBJECT (self), G_STRUCT_OFFSET (
-        GabbleConnection, properties));
-
-  tp_properties_mixin_change_value (G_OBJECT (self), CONN_PROP_STUN_PORT,
-                                        &val, NULL);
-  tp_properties_mixin_change_flags (G_OBJECT (self), CONN_PROP_STUN_PORT,
-                                        TP_PROPERTY_FLAG_READ, 0, NULL);
-
-  g_value_unset (&val);
 
   priv->caps_serial = 1;
 }
@@ -360,8 +306,6 @@ gabble_connection_get_property (GObject    *object,
 {
   GabbleConnection *self = (GabbleConnection *) object;
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
-  const gchar *param_name;
-  guint tp_property_id;
 
   switch (property_id) {
     case PROP_CONNECT_SERVER:
@@ -415,22 +359,13 @@ gabble_connection_get_property (GObject    *object,
     case PROP_AUTH_BTID:
       g_value_set_string (value, priv->auth_btid);
       break;
+    case PROP_STUN_SERVER:
+      g_value_set_string (value, priv->stun_server);
+      break;
+    case PROP_STUN_PORT:
+      g_value_set_uint (value, priv->stun_port);
+      break;
     default:
-      param_name = g_param_spec_get_name (pspec);
-
-      if (tp_properties_mixin_has_property (object, param_name,
-            &tp_property_id))
-        {
-          GValue *tp_property_value =
-            self->properties.properties[tp_property_id].value;
-
-          if (tp_property_value)
-            {
-              g_value_copy (tp_property_value, value);
-              return;
-            }
-        }
-
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
   }
@@ -444,8 +379,6 @@ gabble_connection_set_property (GObject      *object,
 {
   GabbleConnection *self = (GabbleConnection *) object;
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
-  const gchar *param_name;
-  guint tp_property_id;
 
   switch (property_id) {
     case PROP_CONNECT_SERVER:
@@ -497,33 +430,26 @@ gabble_connection_set_property (GObject      *object,
     case PROP_IGNORE_SSL_ERRORS:
       priv->ignore_ssl_errors = g_value_get_boolean (value);
       break;
-   case PROP_ALIAS:
+    case PROP_ALIAS:
       g_free (priv->alias);
       priv->alias = g_value_dup_string (value);
       break;
-   case PROP_AUTH_MAC:
+    case PROP_AUTH_MAC:
       g_free (priv->auth_mac);
       priv->auth_mac = g_value_dup_string (value);
       break;
-   case PROP_AUTH_BTID:
+    case PROP_AUTH_BTID:
       g_free (priv->auth_btid);
       priv->auth_btid = g_value_dup_string (value);
       break;
+    case PROP_STUN_SERVER:
+      g_free (priv->stun_server);
+      priv->stun_server = g_value_dup_string (value);
+      break;
+    case PROP_STUN_PORT:
+      priv->stun_port = g_value_get_uint (value);
+      break;
     default:
-      param_name = g_param_spec_get_name (pspec);
-
-      if (tp_properties_mixin_has_property (object, param_name,
-            &tp_property_id))
-        {
-          tp_properties_mixin_change_value (object, tp_property_id, value,
-                                                NULL);
-          tp_properties_mixin_change_flags (object, tp_property_id,
-                                                TP_PROPERTY_FLAG_READ,
-                                                0, NULL);
-
-          return;
-        }
-
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
   }
@@ -588,6 +514,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
   param_spec = g_param_spec_uint ("port", "Jabber server port",
                                   "The port used when establishing a connection.",
                                   0, G_MAXUINT16, GABBLE_PARAMS_DEFAULT_PORT,
+                                  G_PARAM_CONSTRUCT |
                                   G_PARAM_READWRITE |
                                   G_PARAM_STATIC_NAME |
                                   G_PARAM_STATIC_BLURB);
@@ -672,7 +599,8 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
 
   param_spec = g_param_spec_uint ("https-proxy-port", "The HTTP proxy server "
                                   "port", "The HTTP proxy server port.",
-                                  0, G_MAXUINT16, 0,
+                                  0, G_MAXUINT16, GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_PORT,
+                                  G_PARAM_CONSTRUCT |
                                   G_PARAM_READWRITE |
                                   G_PARAM_STATIC_NAME |
                                   G_PARAM_STATIC_BLURB);
@@ -701,81 +629,12 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
   param_spec = g_param_spec_uint ("stun-port",
                                   "STUN port",
                                   "STUN port.",
-                                  0, G_MAXUINT16, 0,
+                                  0, G_MAXUINT16, GABBLE_PARAMS_DEFAULT_STUN_PORT,
+                                  G_PARAM_CONSTRUCT |
                                   G_PARAM_READWRITE |
                                   G_PARAM_STATIC_NAME |
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_STUN_PORT, param_spec);
-
-  param_spec = g_param_spec_string ("stun-relay-magic-cookie",
-                                    "STUN relay magic cookie",
-                                    "STUN relay magic cookie.",
-                                    NULL,
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_STUN_RELAY_MAGIC_COOKIE,
-                                   param_spec);
-
-  param_spec = g_param_spec_string ("stun-relay-server",
-                                    "STUN relay server",
-                                    "STUN relay server.",
-                                    NULL,
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_STUN_RELAY_SERVER,
-                                   param_spec);
-
-  param_spec = g_param_spec_uint ("stun-relay-udp-port",
-                                  "STUN relay UDP port",
-                                  "STUN relay UDP port.",
-                                  0, G_MAXUINT16, 0,
-                                  G_PARAM_READWRITE |
-                                  G_PARAM_STATIC_NAME |
-                                  G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_STUN_RELAY_UDP_PORT,
-                                   param_spec);
-
-  param_spec = g_param_spec_uint ("stun-relay-tcp-port",
-                                  "STUN relay TCP port",
-                                  "STUN relay TCP port.",
-                                  0, G_MAXUINT16, 0,
-                                  G_PARAM_READWRITE |
-                                  G_PARAM_STATIC_NAME |
-                                  G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_STUN_RELAY_TCP_PORT,
-                                   param_spec);
-
-  param_spec = g_param_spec_uint ("stun-relay-ssltcp-port",
-                                  "STUN relay SSL-TCP port",
-                                  "STUN relay SSL-TCP port.",
-                                  0, G_MAXUINT16, 0,
-                                  G_PARAM_READWRITE |
-                                  G_PARAM_STATIC_NAME |
-                                  G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_STUN_RELAY_SSLTCP_PORT,
-                                   param_spec);
-
-  param_spec = g_param_spec_string ("stun-relay-username",
-                                    "STUN relay username",
-                                    "STUN relay username.",
-                                    NULL,
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_STUN_RELAY_USERNAME,
-                                   param_spec);
-
-  param_spec = g_param_spec_string ("stun-relay-password",
-                                    "STUN relay password",
-                                    "STUN relay password.",
-                                    NULL,
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_STUN_RELAY_PASSWORD,
-                                   param_spec);
 
   param_spec = g_param_spec_boolean ("ignore-ssl-errors", "Ignore SSL errors",
                                      "Continue connecting even if the server's "
@@ -812,10 +671,6 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
                                     G_PARAM_STATIC_NAME |
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_AUTH_BTID, param_spec);
-
-  tp_properties_mixin_class_init (G_OBJECT_CLASS (gabble_connection_class),
-      G_STRUCT_OFFSET (GabbleConnectionClass, properties_class),
-      connection_property_signatures, NUM_CONN_PROPS, NULL);
 }
 
 static gboolean
@@ -894,14 +749,13 @@ gabble_connection_finalize (GObject *object)
   g_free (priv->resource);
 
   g_free (priv->https_proxy_server);
+  g_free (priv->stun_server);
   g_free (priv->fallback_conference_server);
 
   g_free (priv->alias);
 
   g_free (priv->auth_mac);
   g_free (priv->auth_btid);
-
-  tp_properties_mixin_finalize (object);
 
   G_OBJECT_CLASS (gabble_connection_parent_class)->finalize (object);
 }
@@ -3017,7 +2871,6 @@ gabble_connection_get_interfaces (TpSvcConnection *iface,
       TP_IFACE_CONNECTION_INTERFACE_CAPABILITIES,
       TP_IFACE_CONNECTION_INTERFACE_PRESENCE,
       TP_IFACE_CONNECTION_INTERFACE_AVATARS,
-      TP_IFACE_PROPERTIES_INTERFACE,
       NULL };
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *)self;

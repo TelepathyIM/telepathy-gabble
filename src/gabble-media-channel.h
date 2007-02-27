@@ -24,6 +24,7 @@
 #include <glib-object.h>
 
 #include <telepathy-glib/group-mixin.h>
+#include <telepathy-glib/properties-mixin.h>
 
 #include "gabble-media-session.h"
 #include "handles.h"

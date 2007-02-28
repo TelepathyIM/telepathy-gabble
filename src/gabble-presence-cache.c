@@ -778,6 +778,8 @@ _caps_disco_cb (GabbleDisco *disco,
         caps |= PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO;
       else if (0 == strcmp (var, NS_JINGLE_DESCRIPTION_VIDEO))
         caps |= PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO;
+      else if (0 == strcmp (var, NS_CHAT_STATES))
+        caps |= PRESENCE_CAP_CHAT_STATES;
     }
 
   handle = gabble_handle_for_contact (

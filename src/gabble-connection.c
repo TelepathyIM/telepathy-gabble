@@ -2458,6 +2458,8 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
       for (ccd = capabilities_conversions; NULL != ccd->iface; ccd++)
           if (g_str_equal (iface, ccd->iface))
             add_caps |= ccd->tf2c_fn (flags);
+
+      g_free (iface);
     }
 
   for (i = 0; NULL != remove[i]; i++)

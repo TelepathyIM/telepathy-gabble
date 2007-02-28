@@ -3422,10 +3422,12 @@ hold_and_return_handles (DBusGMethodInvocation *context,
         {
           dbus_g_method_return_error (context, error);
           g_error_free (error);
+          g_free (sender);
           return;
         }
     }
   dbus_g_method_return (context, handles);
+  g_free (sender);
 }
 
 

@@ -62,7 +62,7 @@ gboolean
 gabble_text_mixin_send (GObject *obj,
                         guint type,
                         guint subtype,
-                        guint state,
+                        gint state,
                         const char *recipient,
                         const gchar *text,
                         GabbleConnection *conn,
@@ -81,16 +81,6 @@ gabble_text_mixin_send (GObject *obj,
 
       g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "invalid message type: %u", type);
-
-      return FALSE;
-    }
-
-  if (state > LAST_TP_CHANNEL_CHAT_STATE)
-    {
-      DEBUG ("invalid state %u", state);
-
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "invalid state: %u", state);
 
       return FALSE;
     }

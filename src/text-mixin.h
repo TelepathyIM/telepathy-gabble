@@ -27,7 +27,7 @@
 
 G_BEGIN_DECLS
 
-gboolean gabble_text_mixin_send (GObject *obj, guint type, guint subtype, guint state,
+gboolean gabble_text_mixin_send (GObject *obj, guint type, guint subtype, gint state,
     const char *recipient, const gchar *text, GabbleConnection *conn,
     gboolean emit_signal, GError **error);
 

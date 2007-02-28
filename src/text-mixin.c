@@ -317,7 +317,8 @@ gabble_text_mixin_parse_incoming_message (LmMessage *message,
    * Parse chat state if it exists.
    */
 
-  node = lm_message_node_get_child_with_namespace (message->node, "active", NS_CHAT_STATES);
+  node = lm_message_node_get_child_with_namespace (message->node, "active",
+      NS_CHAT_STATES);
   if (node)
     {
       *state = TP_CHANNEL_CHAT_STATE_ACTIVE;
@@ -325,28 +326,32 @@ gabble_text_mixin_parse_incoming_message (LmMessage *message,
     }
 
 
-  node = lm_message_node_get_child_with_namespace  (message->node, "composing", NS_CHAT_STATES);
+  node = lm_message_node_get_child_with_namespace  (message->node, "composing",
+      NS_CHAT_STATES);
   if (node)
     {
       *state = TP_CHANNEL_CHAT_STATE_COMPOSING;
       return TRUE;
     }
 
-  node = lm_message_node_get_child_with_namespace  (message->node, "inactive", NS_CHAT_STATES);
+  node = lm_message_node_get_child_with_namespace  (message->node, "inactive",
+      NS_CHAT_STATES);
   if (node)
     {
       *state = TP_CHANNEL_CHAT_STATE_INACTIVE;
       return TRUE;
     }
 
-  node = lm_message_node_get_child_with_namespace  (message->node, "paused", NS_CHAT_STATES);
+  node = lm_message_node_get_child_with_namespace  (message->node, "paused",
+      NS_CHAT_STATES);
   if (node)
     {
       *state = TP_CHANNEL_CHAT_STATE_PAUSED;
       return TRUE;
     }
 
-  node = lm_message_node_get_child_with_namespace  (message->node, "gone", NS_CHAT_STATES);
+  node = lm_message_node_get_child_with_namespace  (message->node, "gone",
+      NS_CHAT_STATES);
   if (node)
     {
       *state = TP_CHANNEL_CHAT_STATE_GONE;

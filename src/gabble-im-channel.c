@@ -266,9 +266,11 @@ gabble_im_channel_dispose (GObject *object)
 
   if (!priv->closed)
       {
-        /* Set the chat state of the channel on gone (Channel.Interface.ChatState) */
-        gabble_text_mixin_send (G_OBJECT (self), TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE, 0,
-              TP_CHANNEL_CHAT_STATE_GONE, priv->peer_jid, NULL, priv->conn, FALSE /* emit_signal */, NULL);
+        /* Set the chat state of the channel on gone 
+         * (Channel.Interface.ChatState) */
+        gabble_text_mixin_send (G_OBJECT (self),
+            TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE, 0, TP_CHANNEL_CHAT_STATE_GONE,
+            priv->peer_jid, NULL, priv->conn, FALSE /* emit_signal */, NULL);
 
         tp_svc_channel_emit_closed (self);
       }
@@ -343,7 +345,8 @@ _gabble_im_channel_state_receive (GabbleIMChannel *chan,
   g_assert (GABBLE_IS_IM_CHANNEL (chan));
   priv = GABBLE_IM_CHANNEL_GET_PRIVATE (chan);
 
-  tp_svc_channel_interface_chat_state_emit_chat_state_changed ((TpSvcChannelInterfaceChatState*)chan,
+  tp_svc_channel_interface_chat_state_emit_chat_state_changed (
+      (TpSvcChannelInterfaceChatState*)chan,
       priv->handle, state);
 }
 
@@ -368,9 +371,11 @@ gabble_im_channel_close (TpSvcChannel *iface,
 
   if (!priv->closed)
     {
-      /* Set the chat state of the channel on gone (Channel.Interface.ChatState) */
-      gabble_text_mixin_send (G_OBJECT (self), TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE, 0, TP_CHANNEL_CHAT_STATE_GONE,
-            priv->peer_jid, NULL, priv->conn, FALSE /* emit_signal */, NULL);
+      /* Set the chat state of the channel on gone
+       * (Channel.Interface.ChatState) */
+      gabble_text_mixin_send (G_OBJECT (self),
+          TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE, 0, TP_CHANNEL_CHAT_STATE_GONE,
+          priv->peer_jid, NULL, priv->conn, FALSE /* emit_signal */, NULL);
 
       priv->closed = TRUE;
     }
@@ -454,11 +459,14 @@ gabble_im_channel_send (TpSvcChannelTypeText *iface,
   g_assert (GABBLE_IS_IM_CHANNEL (self));
   priv = GABBLE_IM_CHANNEL_GET_PRIVATE (self);
 
-  if (!gabble_text_mixin_send (G_OBJECT (self), type, 0, TP_CHANNEL_CHAT_STATE_ACTIVE,
-      priv->peer_jid, text, priv->conn, TRUE /* emit_signal */, &error))
+  if (!gabble_text_mixin_send (G_OBJECT (self), type, 0,
+      TP_CHANNEL_CHAT_STATE_ACTIVE, priv->peer_jid, text, priv->conn,
+      TRUE /* emit_signal */, &error))
     {
       dbus_g_method_return_error (context, error);
       g_error_free (error);
+
+      return;
     }
 
   tp_svc_channel_type_text_return_from_send (context);
@@ -482,20 +490,31 @@ gabble_im_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
   g_assert (GABBLE_IS_IM_CHANNEL (self));
   priv = GABBLE_IM_CHANNEL_GET_PRIVATE (self);
 
-  if (state == TP_CHANNEL_CHAT_STATE_GONE)
+  if (state > LAST_TP_CHANNEL_CHAT_STATE)
     {
-      /* We cannot explicitely set the Gone state */
       DEBUG ("invalid state %u", state);
 
       g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "invalid state: %u", state);
     }
 
-  if (error != NULL || !gabble_text_mixin_send (G_OBJECT (self), TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE, 0,
-              state, priv->peer_jid, NULL, priv->conn, FALSE /* emit_signal */, &error))
+  if (state == TP_CHANNEL_CHAT_STATE_GONE)
+    {
+      /* We cannot explicitly set the Gone state */
+      DEBUG ("you may not explicitly set the Gone state");
+
+      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "you may not explicitly set the Gone state");
+    }
+
+  if (error != NULL || !gabble_text_mixin_send (G_OBJECT (self),
+      TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE, 0, state, priv->peer_jid, NULL,
+      priv->conn, FALSE /* emit_signal */, &error))
     {
       dbus_g_method_return_error (context, error);
       g_error_free (error);
+
+      return;
     }
 
   /* Send the ChatStateChanged signal for the local user */

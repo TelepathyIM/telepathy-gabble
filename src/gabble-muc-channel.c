@@ -67,7 +67,8 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMucChannel, gabble_muc_channel,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_TEXT,
       text_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CHAT_STATE, chat_state_iface_init)
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CHAT_STATE,
+      chat_state_iface_init)
     )
 
 /* signal enum */
@@ -1909,7 +1910,6 @@ _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
  * Send the D-BUS signal ChatStateChanged
  * on org.freedesktop.Telepathy.Channel.Interface.ChatState
  */
-
 void
 _gabble_muc_channel_state_receive (GabbleMucChannel *chan, guint state, guint from_handle)
 {
@@ -2105,11 +2105,13 @@ gabble_muc_channel_send (TpSvcChannelTypeText *iface,
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
 
   if (!gabble_text_mixin_send (G_OBJECT (self), type,
-          LM_MESSAGE_SUB_TYPE_GROUPCHAT, TP_CHANNEL_CHAT_STATE_ACTIVE, priv->jid, text,
-          priv->conn, FALSE /* emit_signal */, &error))
+      LM_MESSAGE_SUB_TYPE_GROUPCHAT, TP_CHANNEL_CHAT_STATE_ACTIVE, priv->jid,
+      text, priv->conn, FALSE /* emit_signal */, &error))
     {
       dbus_g_method_return_error (context, error);
       g_error_free (error);
+
+      return;
     }
 
   tp_svc_channel_type_text_return_from_send (context);
@@ -2662,20 +2664,31 @@ gabble_muc_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
 
-  if (state == TP_CHANNEL_CHAT_STATE_GONE)
+  if (state > LAST_TP_CHANNEL_CHAT_STATE)
     {
-      /* We cannot use the Gone set in multi-users chat */
       DEBUG ("invalid state %u", state);
 
       g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "invalid state: %u", state);
     }
 
-  if (error != NULL || gabble_text_mixin_send (G_OBJECT (self), TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE,
-            LM_MESSAGE_SUB_TYPE_GROUPCHAT, state, priv->jid, NULL, priv->conn, FALSE /* emit_signal */, &error))
+  if (state == TP_CHANNEL_CHAT_STATE_GONE)
+    {
+      /* We cannot explicitly set the Gone state */
+      DEBUG ("you may not explicitly set the Gone state");
+
+      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "you may not explicitly set the Gone state");
+    }
+
+  if (error != NULL || !gabble_text_mixin_send (G_OBJECT (self),
+        TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE, LM_MESSAGE_SUB_TYPE_GROUPCHAT,
+        state, priv->jid, NULL, priv->conn, FALSE /* emit_signal */, &error))
     {
       dbus_g_method_return_error (context, error);
       g_error_free (error);
+
+      return;
     }
 
   tp_svc_channel_interface_chat_state_return_from_set_chat_state (context);

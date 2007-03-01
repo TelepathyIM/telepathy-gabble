@@ -598,7 +598,7 @@ gabble_connection_clear_avatar (TpSvcConnectionInterfaceAvatars *iface,
 
 
 void
-conn_init_avatars (GabbleConnection *conn)
+conn_avatars_init (GabbleConnection *conn)
 {
   g_signal_connect (conn->vcard_manager, "got-self-initial-avatar", G_CALLBACK
       (connection_got_self_initial_avatar_cb), conn);
@@ -608,7 +608,7 @@ conn_init_avatars (GabbleConnection *conn)
 
 
 void
-avatars_service_iface_init (gpointer g_iface, gpointer iface_data)
+conn_avatars_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcConnectionInterfaceAvatarsClass *klass = (TpSvcConnectionInterfaceAvatarsClass *) g_iface;
 

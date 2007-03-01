@@ -670,7 +670,7 @@ void conn_init_presence (GabbleConnection *conn)
 
 
 void
-presence_service_iface_init (gpointer g_iface, gpointer iface_data)
+conn_presence_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcConnectionInterfacePresenceClass *klass =
       (TpSvcConnectionInterfacePresenceClass *) g_iface;

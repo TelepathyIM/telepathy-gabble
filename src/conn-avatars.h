@@ -25,8 +25,8 @@
 
 G_BEGIN_DECLS
 
-void conn_init_avatars (GabbleConnection *conn);
-void avatars_service_iface_init (gpointer g_iface, gpointer iface_data);
+void conn_avatars_init (GabbleConnection *conn);
+void conn_avatars_iface_init (gpointer g_iface, gpointer iface_data);
 
 G_END_DECLS
 

@@ -87,11 +87,11 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_ALIASING,
       aliasing_service_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_AVATARS,
-      avatars_service_iface_init);
+      conn_avatars_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CAPABILITIES,
       capabilities_service_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_PRESENCE,
-      presence_service_iface_init);
+      conn_presence_iface_init);
     )
 
 /* properties */
@@ -233,8 +233,8 @@ gabble_connection_constructor (GType type,
 
   capabilities_fill_cache (self->presence_cache);
 
-  conn_init_avatars (self);
-  conn_init_presence (self);
+  conn_avatars_init (self);
+  conn_presence_init (self);
 
   return (GObject *)self;
 }

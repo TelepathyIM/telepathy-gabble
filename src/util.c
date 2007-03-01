@@ -177,6 +177,7 @@ enum {
     BUILD_ATTRIBUTE = '@',
     BUILD_CHILD = '(',
     BUILD_CHILD_END = ')',
+    BUILD_POINTER = '*',
 };
 
 /**
@@ -247,6 +248,14 @@ lm_message_build (const gchar *to, LmMessageType type, ...)
             stack = stack->next;
             tmp->next = NULL;
             g_slist_free (tmp);
+          }
+          break;
+
+        case BUILD_POINTER:
+          {
+            LmMessageNode **node = va_arg (ap, LmMessageNode **);
+
+            *node = stack->data;
           }
           break;
 

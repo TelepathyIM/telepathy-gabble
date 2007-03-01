@@ -22,7 +22,7 @@
 #include <glib.h>
 
 #include "gabble-presence-cache.h"
-#include "gabble-presence.h"
+#include "presence.h"
 #include "namespaces.h"
 #include "util.h"
 

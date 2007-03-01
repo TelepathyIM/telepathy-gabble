@@ -28,7 +28,7 @@
 
 #include "gabble-media-session.h"
 #include "handles.h"
-#include "gabble-presence.h"
+#include "presence.h"
 
 G_BEGIN_DECLS
 

@@ -29,7 +29,7 @@
 #include "debug.h"
 #include "disco.h"
 #include "gabble-connection.h"
-#include "gabble-presence.h"
+#include "presence.h"
 #include "gabble-presence-cache.h"
 #include "handles.h"
 #include "roster.h"

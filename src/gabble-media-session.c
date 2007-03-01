@@ -41,7 +41,7 @@
 #include "gabble-media-channel.h"
 #include "gabble-media-stream.h"
 #include "gabble-presence-cache.h"
-#include "gabble-presence.h"
+#include "presence.h"
 
 #include "gabble-media-session.h"
 #include "gabble-signals-marshal.h"

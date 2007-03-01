@@ -23,7 +23,7 @@
 
 #include <glib-object.h>
 
-#include "gabble-presence.h"
+#include "presence.h"
 #include "handles.h"
 
 G_BEGIN_DECLS

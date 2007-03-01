@@ -23,7 +23,7 @@
 
 #include <glib-object.h>
 
-#include "gabble-presence.h"
+#include "presence.h"
 
 #define BUNDLE_VOICE_V1         "voice-v1"
 #define BUNDLE_JINGLE_AUDIO     "jingle-audio"

@@ -28,7 +28,7 @@
 #include "debug.h"
 #include "gabble-connection.h"
 #include "gabble-media-session.h"
-#include "gabble-presence.h"
+#include "presence.h"
 #include "gabble-presence-cache.h"
 
 #include <telepathy-glib/dbus.h>

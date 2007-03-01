@@ -51,7 +51,7 @@
 #include "debug.h"
 #include "disco.h"
 #include "gabble-presence-cache.h"
-#include "gabble-presence.h"
+#include "presence.h"
 #include "gabble-register.h"
 #include "im-factory.h"
 #include "media-factory.h"

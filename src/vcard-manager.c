@@ -765,8 +765,6 @@ observe_vcard (GabbleConnection *conn, GabbleVCardManager *manager,
 
               DEBUG ("... using \"%s\" as their alias", alias);
 
-              g_signal_emit (G_OBJECT (manager), signals[NICKNAME_UPDATE],
-                             0, handle);
               if (!tp_handle_set_qdata (
                     base->handles[TP_HANDLE_TYPE_CONTACT], handle,
                     gabble_vcard_manager_cache_quark(), alias, g_free))
@@ -775,6 +773,8 @@ observe_vcard (GabbleConnection *conn, GabbleVCardManager *manager,
                   g_free (alias);
                 }
 
+              g_signal_emit (G_OBJECT (manager), signals[NICKNAME_UPDATE],
+                             0, handle);
             }
 
           g_strfreev (bits);

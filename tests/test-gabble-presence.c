@@ -2,7 +2,7 @@
 #include <string.h>
 
 #include <glib.h>
-#include <gabble-presence.h>
+#include <presence.h>
 
 int main(int argc, char **argv)
 {

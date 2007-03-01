@@ -25,6 +25,7 @@ test_handles_LDADD = \
     $(top_builddir)/lib/telepathy-glib/libtelepathy-glib.la
 
 AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @LOUDMOUTH_CFLAGS@ \
+    @COVERAGE_CFLAGS@ \
     -I $(top_srcdir)/lib -I $(top_builddir)/lib \
     -I $(top_srcdir)/src -I $(top_builddir)/src
 AM_LDFLAGS = @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@

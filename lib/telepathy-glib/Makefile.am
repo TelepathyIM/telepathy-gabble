@@ -104,7 +104,7 @@ libtelepathy_glib_la_SOURCES = \
     text-mixin.c \
     util.c
 
-AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @HANDLE_LEAK_DEBUG_CFLAGS@ -I.. -I$(srcdir)/..
+AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @HANDLE_LEAK_DEBUG_CFLAGS@ @COVERAGE_CFLAGS@ -I.. -I$(srcdir)/..
 AM_LDFLAGS = @DBUS_LIBS@ @GLIB_LIBS@
 
 # Generated stuff

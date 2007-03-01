@@ -18,8 +18,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef __AVATARS_H__
-#define __AVATARS_H__
+#ifndef __CONN_AVATARS_H__
+#define __CONN_AVATARS_H__
 
 #include "gabble-connection.h"
 
@@ -30,5 +30,5 @@ void conn_avatars_iface_init (gpointer g_iface, gpointer iface_data);
 
 G_END_DECLS
 
-#endif /* __AVATARS_H__ */
+#endif /* __CONN_AVATARS_H__ */
 

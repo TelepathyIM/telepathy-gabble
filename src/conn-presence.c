@@ -159,7 +159,7 @@ emit_presence_update (GabbleConnection *self,
  * Convenience function for calling emit_presence_update with one handle.
  */
 
-void
+static void
 emit_one_presence_update (GabbleConnection *self,
                           TpHandle handle)
 {

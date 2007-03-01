@@ -16,6 +16,8 @@ libgabble_convenience_la_SOURCES = \
     base64.c \
     capabilities.h \
     capabilities.c \
+    conn-presence.h \
+    conn-presence.c \
     debug.h \
     debug.c \
     disco.h \

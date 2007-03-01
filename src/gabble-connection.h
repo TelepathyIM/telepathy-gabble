@@ -37,7 +37,7 @@ G_BEGIN_DECLS
 #define GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_PORT           443
 #define GABBLE_PARAMS_DEFAULT_STUN_PORT                  3478
 
-/* order must match array of statuses in gabble-connection.c */
+/* order must match array of statuses in conn-presence.c */
 /* in increasing order of presence */
 typedef enum
 {
@@ -132,6 +132,19 @@ GabbleConnectionAliasSource _gabble_connection_get_cached_alias (GabbleConnectio
 
 const char *_gabble_connection_find_conference_server (GabbleConnection *);
 gboolean _gabble_connection_signal_own_presence (GabbleConnection *, GError **);
+
+
+#define ERROR_IF_NOT_CONNECTED_ASYNC(BASE, ERROR, CONTEXT) \
+  if ((BASE)->status != TP_CONNECTION_STATUS_CONNECTED) \
+    { \
+      DEBUG ("rejected request as disconnected"); \
+      (ERROR) = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE, \
+          "Connection is disconnected"); \
+      dbus_g_method_return_error ((CONTEXT), (ERROR)); \
+      g_error_free ((ERROR)); \
+      return; \
+    }
+
 
 G_END_DECLS
 

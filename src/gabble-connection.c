@@ -1351,7 +1351,7 @@ connection_nickname_update_cb (GObject *object,
                                gpointer user_data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
-  GabbleConnectionAliasSource signal_source, real_source;
+  GabbleConnectionAliasSource signal_source, current_source;
   gchar *alias = NULL;
   GPtrArray *aliases;
   GValue entry = { 0, };
@@ -1374,18 +1374,18 @@ connection_nickname_update_cb (GObject *object,
       return;
     }
 
-  real_source = _gabble_connection_get_cached_alias (conn, handle, &alias);
+  current_source = _gabble_connection_get_cached_alias (conn, handle, &alias);
 
-  g_assert (real_source != GABBLE_CONNECTION_ALIAS_NONE);
+  g_assert (current_source != GABBLE_CONNECTION_ALIAS_NONE);
 
   /* if the active alias for this handle is already known and from
    * a higher priority, this signal is not interesting so we do
    * nothing */
-  if (real_source > signal_source)
+  if (signal_source < current_source)
     {
       DEBUG ("ignoring boring alias change for handle %u, signal from %u "
           "but source %u has alias \"%s\"", handle, signal_source,
-          real_source, alias);
+          current_source, alias);
       goto OUT;
     }
 

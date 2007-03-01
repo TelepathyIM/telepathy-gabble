@@ -251,26 +251,35 @@ set_param_from_value (const TpCMParamSpec *paramspec,
       case DBUS_TYPE_STRING:
         {
           const char *str = g_value_get_string (value);
-          /* FIXME: is there a missing g_set_error here? */
+          /* FIXME: why don't we allow the client to provide empty strings? */
           if (!str || *str == '\0')
-            return FALSE;
+            {
+              g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+                  "empty string values are not allowed for account "
+                  "parameter %s", paramspec->name);
+              return FALSE;
+            }
           else
             *((char **) (params + paramspec->offset)) = g_value_dup_string (value);
         }
         break;
       case DBUS_TYPE_INT16:
+      case DBUS_TYPE_INT32:
         *((gint *) (params + paramspec->offset)) = g_value_get_int (value);
         break;
       case DBUS_TYPE_UINT16:
+      case DBUS_TYPE_UINT32:
         *((guint *) (params + paramspec->offset)) = g_value_get_uint (value);
         break;
       case DBUS_TYPE_BOOLEAN:
         *((gboolean *) (params + paramspec->offset)) = g_value_get_boolean (value);
         break;
       default:
-        g_error ("set_param_from_value: encountered unknown type %s on argument %s",
-                 paramspec->dtype, paramspec->name);
-        /* FIXME: should be a g_set_error too? */
+        g_error ("set_param_from_value: encountered unhandled D-Bus type %s "
+                 "on argument %s", paramspec->dtype, paramspec->name);
+        g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+            "encountered unhandled D-Bus type %s for account parameter %s",
+            paramspec->dtype, paramspec->name);
         return FALSE;
     }
 

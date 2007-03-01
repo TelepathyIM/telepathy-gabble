@@ -45,8 +45,8 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
 
-#include "avatars.h"
 #include "capabilities.h"
+#include "conn-avatars.h"
 #include "conn-presence.h"
 #include "debug.h"
 #include "disco.h"

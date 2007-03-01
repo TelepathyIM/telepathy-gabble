@@ -10,12 +10,12 @@ bin_PROGRAMS=telepathy-gabble
 noinst_PROGRAMS = write-mgr-file
 
 libgabble_convenience_la_SOURCES = \
-    avatars.h \
-    avatars.c \
     base64.h \
     base64.c \
     capabilities.h \
     capabilities.c \
+    conn-avatars.h \
+    conn-avatars.c \
     conn-presence.h \
     conn-presence.c \
     debug.h \

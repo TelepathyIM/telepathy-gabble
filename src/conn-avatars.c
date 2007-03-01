@@ -7,7 +7,6 @@
 
 #include <telepathy-glib/svc-connection.h>
 
-#include "avatars.h"
 #include "base64.h"
 #include "gabble-presence.h"
 #include "gabble-presence-cache.h"
@@ -15,6 +14,8 @@
 #include "sha1/sha1.h"
 #include "vcard-manager.h"
 #include "util.h"
+
+#include "conn-avatars.h"
 
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
 

@@ -2009,8 +2009,6 @@ connection_disco_cb (GabbleDisco *disco,
   tp_base_connection_change_status (base,
       TP_CONNECTION_STATUS_CONNECTED, TP_CONNECTION_STATUS_REASON_REQUESTED);
 
-  emit_one_presence_update (conn, base->self_handle);
-
   return;
 
 ERROR:

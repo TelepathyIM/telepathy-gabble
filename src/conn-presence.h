@@ -24,7 +24,6 @@
 G_BEGIN_DECLS
 
 void conn_presence_init (GabbleConnection *conn);
-void emit_one_presence_update (GabbleConnection *, TpHandle);
 void conn_presence_iface_init (gpointer g_iface, gpointer iface_data);
 
 G_END_DECLS

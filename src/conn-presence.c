@@ -662,10 +662,27 @@ connection_presence_update_cb (
 }
 
 
-void conn_init_presence (GabbleConnection *conn)
+static void
+connection_status_changed_cb (
+    GabbleConnection *conn,
+    TpConnectionStatus status,
+    TpConnectionStatusReason reason,
+    gpointer user_data)
 {
-  g_signal_connect (conn->presence_cache, "presence-update", G_CALLBACK
-      (connection_presence_update_cb), conn);
+  TpBaseConnection *base = (TpBaseConnection *) conn;
+
+  if (status == TP_CONNECTION_STATUS_CONNECTED)
+    emit_one_presence_update (conn, base->self_handle);
+}
+
+
+void
+conn_presence_init (GabbleConnection *conn)
+{
+  g_signal_connect (conn->presence_cache, "presence-update",
+      G_CALLBACK (connection_presence_update_cb), conn);
+  g_signal_connect (conn, "status-changed",
+      G_CALLBACK (connection_status_changed_cb), conn);
 }
 
 

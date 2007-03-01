@@ -448,6 +448,8 @@ gabble_connection_remove_status (TpSvcConnectionInterfacePresence *iface,
           "Attempting to remove non-existent presence." };
       dbus_g_method_return_error (context, &nonexistent);
     }
+
+  g_free (resource);
 }
 
 
@@ -551,7 +553,7 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
               "requested status '%s' is not available on this connection",
               (const gchar *) key);
           data->retval = FALSE;
-          return;
+          goto OUT;
         }
 
       if (message)
@@ -562,7 +564,7 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
               g_set_error (data->error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
                   "Status argument 'message' requires a string");
               data->retval = FALSE;
-              return;
+              goto OUT;
             }
           status = g_value_get_string (message);
         }

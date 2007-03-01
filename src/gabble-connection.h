@@ -131,6 +131,7 @@ void _gabble_connection_send_iq_error (GabbleConnection *conn, LmMessage *messag
 GabbleConnectionAliasSource _gabble_connection_get_cached_alias (GabbleConnection *, TpHandle, gchar **);
 
 const char *_gabble_connection_find_conference_server (GabbleConnection *);
+gboolean _gabble_connection_signal_own_presence (GabbleConnection *, GError **);
 
 G_END_DECLS
 

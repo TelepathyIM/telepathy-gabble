@@ -38,8 +38,6 @@ libgabble_convenience_la_SOURCES = \
     gabble-media-session.c \
     gabble-media-stream.h \
     gabble-media-stream.c \
-    gabble-presence-cache.h \
-    gabble-presence-cache.c \
     gabble-register.c \
     gabble-register.h \
     gabble-roster-channel.h \
@@ -58,6 +56,8 @@ libgabble_convenience_la_SOURCES = \
     namespaces.h \
     presence.h \
     presence.c \
+    presence-cache.h \
+    presence-cache.c \
     roster.h \
     roster.c \
     sha1/sha1.h \

@@ -40,7 +40,7 @@
 #include "gabble-connection.h"
 #include "gabble-media-channel.h"
 #include "gabble-media-stream.h"
-#include "gabble-presence-cache.h"
+#include "presence-cache.h"
 #include "presence.h"
 
 #include "gabble-media-session.h"

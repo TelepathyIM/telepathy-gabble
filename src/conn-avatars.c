@@ -28,7 +28,7 @@
 
 #include "base64.h"
 #include "presence.h"
-#include "gabble-presence-cache.h"
+#include "presence-cache.h"
 #include "namespaces.h"
 #include "sha1/sha1.h"
 #include "vcard-manager.h"

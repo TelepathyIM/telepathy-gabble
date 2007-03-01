@@ -50,7 +50,7 @@
 #include "conn-presence.h"
 #include "debug.h"
 #include "disco.h"
-#include "gabble-presence-cache.h"
+#include "presence-cache.h"
 #include "presence.h"
 #include "gabble-register.h"
 #include "im-factory.h"

@@ -35,7 +35,7 @@
 #include "debug.h"
 #include "disco.h"
 #include "gabble-connection.h"
-#include "gabble-presence-cache.h"
+#include "presence-cache.h"
 #include "gabble-muc-channel.h"
 #include "gabble-roomlist-channel.h"
 #include "handles.h"

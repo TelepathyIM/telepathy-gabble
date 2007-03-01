@@ -25,7 +25,7 @@
 
 #include "gabble-connection.h"
 #include "presence.h"
-#include "gabble-presence-cache.h"
+#include "presence-cache.h"
 
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
 

@@ -32,7 +32,7 @@
 #include "namespaces.h"
 #include "util.h"
 
-#include "gabble-presence-cache.h"
+#include "presence-cache.h"
 
 #include "gabble-signals-marshal.h"
 

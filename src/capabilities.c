@@ -22,7 +22,7 @@
 
 #include "namespaces.h"
 #include "config.h"
-#include "gabble-presence-cache.h"
+#include "presence-cache.h"
 #include <telepathy-glib/interfaces.h>
 #include "gabble-media-channel.h"
 

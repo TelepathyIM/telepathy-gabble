@@ -30,7 +30,7 @@
 #include "disco.h"
 #include "gabble-connection.h"
 #include "presence.h"
-#include "gabble-presence-cache.h"
+#include "presence-cache.h"
 #include "handles.h"
 #include "roster.h"
 #include <telepathy-glib/dbus.h>

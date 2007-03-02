@@ -162,9 +162,6 @@ struct _GabbleConnectionPrivate
   /* reference to conference server name */
   const gchar *conference_server;
 
-  /* channel factories */
-  gboolean suppress_next_handler;
-
   /* serial number of current advertised caps */
   guint caps_serial;
 

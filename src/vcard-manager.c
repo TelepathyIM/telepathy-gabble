@@ -961,6 +961,13 @@ request_reply_cb (GabbleConnection *conn,
             }
         }
 
+      /* XXX: Manually remove the request from the list of requests in flight,
+       * so that it's not in there twice when we send it a second time. The
+       * correct fix is to remove it from reqs_in_flight as soon as we get the
+       * result IQ.
+       */
+      priv->reqs_in_flight = g_slist_remove (priv->reqs_in_flight, request);
+
       request_send (request, vcard_node, NULL, &err);
 
       if (err)

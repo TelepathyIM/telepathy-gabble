@@ -88,8 +88,8 @@ main (void)
 {
   GError *error = NULL;
 
-  gchar *s = mgr_file_contents(GABBLE_CONN_MGR_BUS_NAME,
-                               GABBLE_CONN_MGR_OBJECT_PATH,
+  gchar *s = mgr_file_contents(TP_CM_BUS_NAME_BASE "gabble",
+                               TP_CM_OBJECT_PATH_BASE "gabble",
                                gabble_protocols, &error);
   if (!s)
     {

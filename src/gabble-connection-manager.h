@@ -24,9 +24,6 @@
 #include <glib-object.h>
 #include <telepathy-glib/base-connection-manager.h>
 
-#define GABBLE_CONN_MGR_BUS_NAME        "org.freedesktop.Telepathy.ConnectionManager.gabble"
-#define GABBLE_CONN_MGR_OBJECT_PATH     "/org/freedesktop/Telepathy/ConnectionManager/gabble"
-
 G_BEGIN_DECLS
 
 typedef struct _GabbleConnectionManager GabbleConnectionManager;

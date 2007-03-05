@@ -186,7 +186,8 @@ gabble_connection_get_avatar_tokens (TpSvcConnectionInterfaceAvatars *iface,
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *)self;
-  gboolean my_handle_requested = FALSE;
+  gboolean wait_for_self_avatar = FALSE;
+  gboolean have_self_avatar;
   guint i, my_index = 0;
   gchar **ret;
   GError *err;
@@ -199,53 +200,59 @@ gabble_connection_get_avatar_tokens (TpSvcConnectionInterfaceAvatars *iface,
       return;
     }
 
+  g_object_get (self->vcard_manager,
+      "have-self-avatar", &have_self_avatar,
+      NULL);
+
   ret = g_new0 (gchar *, contacts->len + 1);
+
+  /* TODO: always call the callback so we can defer presence lookups until
+   * we return the method, then we don't need to strdup the strings we're
+   * returning. */
 
   for (i = 0; i < contacts->len; i++)
     {
       TpHandle handle;
-      GabblePresence *presence;
+      GabblePresence *presence = NULL;
 
       handle = g_array_index (contacts, TpHandle, i);
-      presence = gabble_presence_cache_get (self->presence_cache, handle);
 
-      /* TODO: always call the callback so we can defer presence lookups until
-       * we return the method, then we don't need to strdup the strings we're
-       * returning. */
+      if (base->self_handle == handle)
+        {
+          if (have_self_avatar)
+            {
+              presence = self->self_presence;
+            }
+          else
+            {
+              wait_for_self_avatar = TRUE;
+              my_index = i;
+            }
+        }
+      else
+        {
+          presence = gabble_presence_cache_get (self->presence_cache, handle);
+        }
+
       if (NULL != presence && NULL != presence->avatar_sha1)
           ret[i] = g_strdup (presence->avatar_sha1);
       else
           ret[i] = g_strdup ("");
-
-      if (base->self_handle == handle)
-        {
-          my_handle_requested = TRUE;
-          my_index = i;
-        }
     }
 
-  if (my_handle_requested)
+  if (wait_for_self_avatar)
     {
-      gboolean have_self_avatar;
+      GetAvatarTokensContext *context = g_slice_new (GetAvatarTokensContext);
 
-      g_object_get (self->vcard_manager,
-          "have-self-avatar", &have_self_avatar,
-          NULL);
+      context->invocation = invocation;
+      context->my_index = my_index;
+      context->ret = ret;
+      context->signal_conn = g_signal_connect (self->vcard_manager,
+          "got-self-initial-avatar",
+          G_CALLBACK (_got_self_avatar_for_get_avatar_tokens),
+          context);
 
-      if (!have_self_avatar)
-        {
-          GetAvatarTokensContext *context = g_slice_new (GetAvatarTokensContext);
-
-          context->invocation = invocation;
-          context->my_index = my_index;
-          context->ret = ret;
-          context->signal_conn = g_signal_connect (self->vcard_manager,
-              "got-self-initial-avatar",
-              G_CALLBACK (_got_self_avatar_for_get_avatar_tokens),
-              context);
-
-          return;
-        }
+      return;
     }
 
   /* FIXME: I'm not entirely sure why gcc warns without this cast from

@@ -35,9 +35,16 @@ G_BEGIN_DECLS
 typedef struct {
     /** Name as passed over D-Bus */
     const gchar *name;
-    /** D-Bus type signature */
+    /** D-Bus type signature. We currently support:
+     * 16-bit integer (gtype is INT)
+     * 32-bit integer (gtype is INT)
+     * 16-bit unsigned (gtype is UINT)
+     * 32-bit unsigned (gtype is UINT)
+     * string (gtype is STRING)
+     * boolean (gtype is BOOLEAN)
+     * */
     const gchar *dtype;
-    /** GLib type */
+    /** GLib type, derived from dtype as above */
     const GType gtype;
     /** Some combination of TP_CONN_MGR_PARAM_FLAG_foo */
     guint flags;

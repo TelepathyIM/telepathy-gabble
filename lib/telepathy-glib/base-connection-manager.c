@@ -196,17 +196,21 @@ param_default_value (const TpCMParamSpec *params, int i)
   switch (params[i].dtype[0])
     {
       case DBUS_TYPE_STRING:
+        g_assert (params[i].gtype == G_TYPE_STRING);
         g_value_set_static_string (value, (const gchar*) params[i].def);
         break;
       case DBUS_TYPE_INT16:
       case DBUS_TYPE_INT32:
+        g_assert (params[i].gtype == G_TYPE_INT);
         g_value_set_int (value, GPOINTER_TO_INT (params[i].def));
         break;
       case DBUS_TYPE_UINT16:
       case DBUS_TYPE_UINT32:
+        g_assert (params[i].gtype == G_TYPE_UINT);
         g_value_set_uint (value, GPOINTER_TO_UINT (params[i].def));
         break;
       case DBUS_TYPE_BOOLEAN:
+        g_assert (params[i].gtype == G_TYPE_BOOLEAN);
         g_value_set_boolean (value, GPOINTER_TO_INT (params[i].def));
         break;
       default:
@@ -247,6 +251,7 @@ set_param_from_value (const TpCMParamSpec *paramspec,
     {
       case DBUS_TYPE_STRING:
         {
+          g_assert (paramspec->gtype == G_TYPE_STRING);
           const char *str = g_value_get_string (value);
           /* FIXME: why don't we allow the client to provide empty strings? */
           if (!str || *str == '\0')
@@ -262,13 +267,16 @@ set_param_from_value (const TpCMParamSpec *paramspec,
         break;
       case DBUS_TYPE_INT16:
       case DBUS_TYPE_INT32:
+        g_assert (paramspec->gtype == G_TYPE_INT);
         *((gint *) (params + paramspec->offset)) = g_value_get_int (value);
         break;
       case DBUS_TYPE_UINT16:
       case DBUS_TYPE_UINT32:
+        g_assert (paramspec->gtype == G_TYPE_UINT);
         *((guint *) (params + paramspec->offset)) = g_value_get_uint (value);
         break;
       case DBUS_TYPE_BOOLEAN:
+        g_assert (paramspec->gtype == G_TYPE_BOOLEAN);
         *((gboolean *) (params + paramspec->offset)) = g_value_get_boolean (value);
         break;
       default:

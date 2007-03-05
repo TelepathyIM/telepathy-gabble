@@ -152,11 +152,10 @@ free_params (void *p)
   g_slice_free (GabbleParams, params);
 }
 
-static const TpCMProtocolSpec _gabble_protocols[] = {
+const TpCMProtocolSpec gabble_protocols[] = {
   { "jabber", jabber_params, alloc_params, free_params },
   { NULL, NULL }
 };
-const TpCMProtocolSpec *gabble_protocols = _gabble_protocols;
 
 /* dbus-exported methods */
 

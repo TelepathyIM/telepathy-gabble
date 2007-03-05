@@ -29,7 +29,7 @@
 static gchar *
 mgr_file_contents (const char *busname,
                    const char *objpath,
-                   const TpCMProtocolSpec *protocols,
+                   const TpCMProtocolSpec protocols[],
                    GError **error)
 {
   GKeyFile *f = g_key_file_new();

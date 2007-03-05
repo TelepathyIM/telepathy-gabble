@@ -42,7 +42,7 @@ struct _GabbleConnectionManager {
     gpointer priv;
 };
 
-const TpCMProtocolSpec *gabble_protocols;
+extern const TpCMProtocolSpec gabble_protocols[];
 
 GType gabble_connection_manager_get_type(void);
 

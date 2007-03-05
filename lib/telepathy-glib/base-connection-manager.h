@@ -29,6 +29,9 @@
 
 G_BEGIN_DECLS
 
+#define TP_CM_BUS_NAME_BASE    "org.freedesktop.Telepathy.ConnectionManager."
+#define TP_CM_OBJECT_PATH_BASE "/org/freedesktop/Telepathy/ConnectionManager/"
+
 typedef struct {
     /** Name as passed over D-Bus */
     const gchar *name;

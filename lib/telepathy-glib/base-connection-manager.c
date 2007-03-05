@@ -27,9 +27,6 @@
 
 #include <telepathy-glib/dbus.h>
 
-#define BUS_NAME_BASE    "org.freedesktop.Telepathy.ConnectionManager."
-#define OBJECT_PATH_BASE "/org/freedesktop/Telepathy/ConnectionManager/"
-
 static void service_iface_init (gpointer, gpointer);
 
 G_DEFINE_ABSTRACT_TYPE_WITH_CODE(TpBaseConnectionManager,
@@ -592,7 +589,7 @@ tp_base_connection_manager_register (TpBaseConnectionManager *self)
   bus = tp_get_bus ();
   bus_proxy = tp_get_bus_proxy ();
 
-  string = g_string_new (BUS_NAME_BASE);
+  string = g_string_new (TP_CM_BUS_NAME_BASE);
   g_string_append (string, cls->cm_dbus_name);
 
   if (!dbus_g_proxy_call (bus_proxy, "RequestName", &error,
@@ -611,7 +608,7 @@ tp_base_connection_manager_register (TpBaseConnectionManager *self)
       return FALSE;
     }
 
-  g_string_assign (string, OBJECT_PATH_BASE);
+  g_string_assign (string, TP_CM_OBJECT_PATH_BASE);
   g_string_append (string, cls->cm_dbus_name);
   dbus_g_connection_register_g_object (bus, string->str, G_OBJECT (self));
 

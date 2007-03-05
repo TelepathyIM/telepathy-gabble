@@ -562,15 +562,17 @@ tp_base_connection_manager_request_connection (TpSvcConnectionManager *iface,
 
   g_free (bus_name);
   g_free (object_path);
-  return;
+  goto OUT;
 
 ERROR:
+  dbus_g_method_return_error (context, error);
+  g_error_free (error);
+
+OUT:
   if (params_present)
     tp_intset_destroy (params_present);
   if (params)
     protospec->params_free (params);
-  dbus_g_method_return_error (context, error);
-  g_error_free (error);
 }
 
 gboolean

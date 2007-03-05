@@ -61,8 +61,6 @@ gabble_connection_manager_class_init (GabbleConnectionManagerClass *klass)
 typedef struct _GabbleParams GabbleParams;
 
 struct _GabbleParams {
-  guint set_mask;
-
   gchar *account;
   gchar *password;
   gchar *server;

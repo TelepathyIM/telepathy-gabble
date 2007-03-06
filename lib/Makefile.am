@@ -1,4 +1,4 @@
-SUBDIRS = tools spec telepathy-glib tests
+SUBDIRS = tools spec telepathy-glib tests docs
 EXTRA_DIST = telepathy-glib.pc.in
 
 pkgconfigdir = ${libdir}/pkgconfig

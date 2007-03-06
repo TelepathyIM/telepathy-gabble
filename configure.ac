@@ -32,6 +32,9 @@ AC_PROG_CC
 AC_PROG_CC_STDC
 AC_PROG_INSTALL
 AC_PROG_LIBTOOL
+AM_PROG_LIBTOOL
+
+GTK_DOC_CHECK([1.5])
 
 dnl decide error flags
 AS_COMPILER_FLAG(-Wall, ERROR_CFLAGS="-Wall", ERROR_CFLAGS="")
@@ -96,9 +99,6 @@ AC_SUBST(COVERAGE_CFLAGS)
 
 dnl Endianness (for the sha1 implementation)
 AC_C_BIGENDIAN
-
-dnl GTK docs
-GTK_DOC_CHECK
 
 dnl Check for Glib 
 PKG_CHECK_MODULES(GLIB, [glib-2.0 >= 2.4, gobject-2.0 >= 2.4])
@@ -166,6 +166,8 @@ AC_CHECK_HEADERS(signal.h)
 AC_OUTPUT( Makefile \
 	   lib/telepathy-glib.pc \
 	   lib/Makefile \
+	   lib/docs/Makefile \
+	   lib/docs/reference/Makefile \
 	   lib/spec/Makefile \
 	   lib/telepathy-glib/Makefile \
 	   lib/tests/Makefile \

@@ -24,6 +24,13 @@
 
 #include <telepathy-glib/errors.h>
 
+/**
+ * tp_dbus_g_method_return_not_implemented:
+ * @context: The D-Bus method invocation context
+ *
+ * Return the Telepathy error NotImplemented from the method invocation
+ * given by @param context.
+ */
 void
 tp_dbus_g_method_return_not_implemented (DBusGMethodInvocation *context)
 {
@@ -32,6 +39,11 @@ tp_dbus_g_method_return_not_implemented (DBusGMethodInvocation *context)
   dbus_g_method_return_error (context, &e);
 }
 
+/**
+ * tp_get_bus:
+ *
+ * Returns: a connection to the starter or session D-Bus daemon.
+ */
 DBusGConnection *
 tp_get_bus ()
 {
@@ -53,6 +65,11 @@ tp_get_bus ()
   return bus;
 }
 
+/**
+ * tp_get_bus_proxy:
+ *
+ * Returns: a proxy for the bus daemon object on the starter or session bus.
+ */
 DBusGProxy *
 tp_get_bus_proxy ()
 {

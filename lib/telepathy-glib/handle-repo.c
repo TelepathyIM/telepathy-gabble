@@ -70,6 +70,17 @@ tp_handle_repo_iface_get_type (void)
   return type;
 }
 
+
+/**
+ * tp_handle_is_valid:
+ * @self: A handle repository implementation
+ * @handle: A handle of the type stored in the repository @param self
+ * @error: Set to InvalidHandle if %FALSE is returned
+ *
+ * Returns: %TRUE if the handle is nonzero and is present in the repository,
+ * else %FALSE
+ */
+
 gboolean
 tp_handle_is_valid (TpHandleRepoIface *self,
     TpHandle handle,
@@ -78,6 +89,18 @@ tp_handle_is_valid (TpHandleRepoIface *self,
   return TP_HANDLE_REPO_IFACE_GET_CLASS (self)->handle_is_valid (self,
       handle, error);
 }
+
+
+/**
+ * tp_handles_are_valid:
+ * @self: A handle repository implementation
+ * @handle: Array of TpHandle representing handles of the type stored in
+ *         the repository @param self
+ * @allow_zero: If %TRUE, zero is treated like a valid handle
+ * @error: Set to InvalidHandle if %FALSE is returned
+ *
+ * Returns: %TRUE if the handle is present in the repository, else %FALSE
+ */
 
 gboolean
 tp_handles_are_valid (TpHandleRepoIface *self,
@@ -89,6 +112,19 @@ tp_handles_are_valid (TpHandleRepoIface *self,
       handles, allow_zero, error);
 }
 
+
+/**
+ * tp_handle_ref:
+ * @self: A handle repository implementation
+ * @handle: A handle of the type stored in the repository
+ *
+ * Increase the reference count of the given handle, if present in the
+ * repository. For repository implementations which never free handles
+ * (like #TpStaticHandleRepo) this has no effect.
+ *
+ * Returns: %TRUE if the handle is present in the repository, else %FALSE
+ */
+
 gboolean
 tp_handle_ref (TpHandleRepoIface *self,
     TpHandle handle)
@@ -97,6 +133,21 @@ tp_handle_ref (TpHandleRepoIface *self,
       handle);
 }
 
+
+/**
+ * tp_handle_unref:
+ * @self: A handle repository implementation
+ * @handle: A handle of the type stored in the repository
+ *
+ * Decrease the reference count of the given handle, if present in the
+ * repository. If it reaches zero, delete the handle.
+ *
+ * For repository implementations which never free handles (like
+ * #TpStaticHandleRepo) this has no effect.
+ *
+ * Returns: %TRUE if the handle is present in the repository, else %FALSE
+ */
+
 gboolean
 tp_handle_unref (TpHandleRepoIface *self,
     TpHandle handle)
@@ -104,6 +155,24 @@ tp_handle_unref (TpHandleRepoIface *self,
   return TP_HANDLE_REPO_IFACE_GET_CLASS (self)->unref_handle (self,
       handle);
 }
+
+
+/**
+ * tp_handle_client_hold:
+ * @self: A handle repository implementation
+ * @client: The unique bus name of a D-Bus peer
+ * @handle: A handle of the type stored in the repository
+ * @error: Set if %FALSE is returned
+ *
+ * Take a reference to the given handle on behalf of the named client.
+ * If the client leaves the bus, the reference is automatically discarded.
+ *
+ * For repository implementations which never free handles (like
+ * #TpStaticHandleRepo) this has no effect.
+ *
+ * Returns: %TRUE if the handle is present in the repository and the client
+ * name is valid, else %FALSE
+ */
 
 gboolean
 tp_handle_client_hold (TpHandleRepoIface *self,
@@ -114,6 +183,24 @@ tp_handle_client_hold (TpHandleRepoIface *self,
       client, handle, error);
 }
 
+
+/**
+ * tp_handle_client_release:
+ * @self: A handle repository implementation
+ * @client: The unique bus name of a D-Bus peer
+ * @handle: A handle of the type stored in the repository
+ * @error: Set if %FALSE is returned
+ *
+ * If the named client has a reference to the given handle, release it.
+ * If this causes the reference count to become zero, delete the handle.
+ *
+ * For repository implementations which never free handles (like
+ * #TpStaticHandleRepo) this has no effect.
+ *
+ * Returns: %TRUE if the handle is present in the repository and the client
+ * name is valid, else %FALSE
+ */
+
 gboolean
 tp_handle_client_release (TpHandleRepoIface *self,
     const gchar *client,
@@ -123,6 +210,18 @@ tp_handle_client_release (TpHandleRepoIface *self,
       client, handle, error);
 }
 
+
+/**
+ * tp_handle_inspect:
+ * @self: A handle repository implementation
+ * @handle: A handle of the type stored in the repository
+ *
+ * Returns: the string represented by the given handle, or NULL if the
+ * handle is absent from the repository. The string is owned by the
+ * handle repository and will remain valid as long as a reference to
+ * the handle exists.
+ */
+
 const char *
 tp_handle_inspect (TpHandleRepoIface *self,
     TpHandle handle)
@@ -130,6 +229,25 @@ tp_handle_inspect (TpHandleRepoIface *self,
   return TP_HANDLE_REPO_IFACE_GET_CLASS (self)->inspect_handle (self,
       handle);
 }
+
+
+/**
+ * tp_handle_request:
+ * @self: A handle repository implementation
+ * @id: A string whose handle is required
+ * @may_create: If %TRUE and the requested handle does not exist, create it
+ * with a reference count of 1
+ *
+ * Construct or return the handle for the given string.
+ * Normalization is not currently performed here, but in a higher-level
+ * layer of the connection manager. FIXME: this should change.
+ *
+ * FIXME: should we ref the returned handle, to be consistent between
+ * the created and existing cases?
+ *
+ * Returns: the handle corresponding to the given string, or 0 if it
+ * does not exist and may_create is %FALSE, or if it is invalid
+ */
 
 TpHandle
 tp_handle_request (TpHandleRepoIface *self,
@@ -142,7 +260,7 @@ tp_handle_request (TpHandleRepoIface *self,
 
 /**
  * tp_handle_set_qdata:
- * @repo: A #TpHandleRepo
+ * @repo: A handle repository implementation
  * @handle: A handle to set data on
  * @key_id: Key id to associate data with
  * @data: data to associate with handle
@@ -152,6 +270,8 @@ tp_handle_request (TpHandleRepoIface *self,
  * Associates a blob of data with a given handle and a given key
  *
  * If @destroy is set, then the data is freed when the handle is freed.
+ *
+ * Returns: %TRUE on success, %FALSE if the handle does not exist
  */
 
 gboolean
@@ -164,12 +284,14 @@ tp_handle_set_qdata (TpHandleRepoIface *repo, TpHandle handle,
 
 /**
  * tp_handle_get_qdata:
- * @repo: A #TpHandleRepo
+ * @repo: A handle repository implementation
  * @type: The handle type
  * @handle: A handle to get data from
  * @key_id: Key id of data to fetch
  *
  * Gets the data associated with a given key on a given handle
+ *
+ * Returns: %TRUE on success, %FALSE if the handle does not exist
  */
 gpointer
 tp_handle_get_qdata (TpHandleRepoIface *repo, TpHandle handle,

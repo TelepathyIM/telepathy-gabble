@@ -141,8 +141,14 @@ add_signal_handlers (void)
 }
 
 /**
- * tp_run_connection_manager
- * 
+ * tp_run_connection_manager:
+ * @prog_name: The program name to be used in debug messages etc.
+ * @version: The program version
+ * @construct_cm: A function which will return the connection manager
+ *                object
+ * @argc: The number of arguments passed to the program
+ * @argv: The arguments passed to the program
+ *
  * Run the connection manager by initializing libraries, constructing
  * a main loop, instantiating a connection manager and running the main
  * loop. When this function returns, the program should exit.
@@ -154,12 +160,6 @@ add_signal_handlers (void)
  *
  * If registering the connection manager on D-Bus fails, return 1.
  *
- * @argument prog_name The program name to be used in debug messages etc.
- * @argument version The program version
- * @argument construct_cm A function which will return the connection manager
- *                        object
- * @argument argc The number of arguments passed to the program
- * @argument argv The arguments passed to the program
  */
 
 int

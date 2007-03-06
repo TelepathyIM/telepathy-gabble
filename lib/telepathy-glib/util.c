@@ -23,6 +23,15 @@
 
 #include <string.h>
 
+
+/**
+ * tp_g_ptr_array_contains:
+ * @haystack: The pointer array to be searched
+ * @needle: The pointer to look for
+ *
+ * Returns: %TRUE if @param needle is one of the elements of @param haystack
+ */
+
 gboolean
 tp_g_ptr_array_contains (GPtrArray *haystack, gpointer needle)
 {
@@ -37,12 +46,34 @@ tp_g_ptr_array_contains (GPtrArray *haystack, gpointer needle)
   return FALSE;
 }
 
+
+/**
+ * tp_g_value_slice_free:
+ * @value: A GValue which was allocated with the g_slice API
+ *
+ * Unset and free a slice-allocated GValue.
+ */
+
 void
 tp_g_value_slice_free (GValue *value)
 {
   g_value_unset (value);
   g_slice_free (GValue, value);
 }
+
+
+/**
+ * tp_strdiff:
+ * @left: The first string to compare (may be NULL)
+ * @right: The second string to compare (may be NULL)
+ *
+ * Return %TRUE if the given strings are different. Unlike #strcmp this
+ * function will handle null pointers, treating them as distinct from any
+ * string.
+ *
+ * Returns: %FALSE if @param left and @param right are both %NULL, or if
+ *          neither is %NULL and both have the same contents; %TRUE otherwise
+ */
 
 gboolean
 tp_strdiff (const gchar *left, const gchar *right)
@@ -57,7 +88,19 @@ tp_strdiff (const gchar *left, const gchar *right)
     return (0 != strcmp (left, right));
 }
 
-/* extend a pointer by an offset, provided the offset is not 0 */
+
+
+/**
+ * tp_mixin_offset_cast:
+ * @instance: A pointer to a structure
+ * @offset: The offset of a structure member in bytes, which must not be 0
+ *
+ * Extend a pointer by an offset, provided the offset is not 0.
+ * This is used to cast from an object instance to one of the telepathy-glib
+ * mixin classes.
+ *
+ * Returns: a pointer @param offset bytes beyond @param instance
+ */
 gpointer
 tp_mixin_offset_cast (gpointer instance, guint offset)
 {
@@ -74,7 +117,12 @@ _esc_ident_bad (gchar c, gboolean is_first)
           (c < '0' || c > '9' || is_first));
 }
 
-/** Escape an arbitrary string so it follows the rules for a C identifier,
+
+/**
+ * tp_escape_as_identifier:
+ * @name: The string to be escaped
+ *
+ * Escape an arbitrary string so it follows the rules for a C identifier,
  * and hence an object path component, interface element component,
  * bus name component or member name in D-Bus.
  *
@@ -89,6 +137,8 @@ _esc_ident_bad (gchar c, gboolean is_first)
  *
  * i.e. similar to URI encoding, but with _ taking the role of %, and a
  * smaller allowed set.
+ *
+ * Returns: the escaped string, which must be freed by the caller with #g_free
  */
 gchar *
 tp_escape_as_identifier (const gchar *name)

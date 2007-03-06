@@ -32,6 +32,13 @@
 G_BEGIN_DECLS
 
 /* Forward declaration because it's in the HandleRepo API */
+
+/**
+ * TpHandleSet:
+ *
+ * A set of handles. This is similar to a #TpIntSet (and implemented using
+ * one), but adding a handle to the set also references it.
+ */
 typedef struct _TpHandleSet TpHandleSet;
 
 /* Handle repository abstract interface */
@@ -58,6 +65,13 @@ typedef struct _TpHandleSet TpHandleSet;
     (G_TYPE_INSTANCE_GET_INTERFACE ((obj), \
     TP_TYPE_HANDLE_REPO_IFACE, TpHandleRepoIfaceClass))
 
+/**
+ * TpHandleRepoIface:
+ *
+ * Abstract interface of a repository for handles, supporting operations
+ * which include checking for validity, reference counting, lookup by
+ * string value and lookup by numeric value.
+ */
 typedef struct _TpHandleRepoIface TpHandleRepoIface;    /* dummy typedef */
 typedef struct _TpHandleRepoIfaceClass TpHandleRepoIfaceClass;
 
@@ -135,12 +149,18 @@ TpIntSet *tp_handle_set_update (TpHandleSet *set, const TpIntSet *add);
 TpIntSet *tp_handle_set_difference_update (TpHandleSet *set, const TpIntSet *remove);
 
 /* static inline because it relies on LAST_TP_HANDLE_TYPE */
-/**
- * Return TRUE if the given handle type is supported (i.e. repos[handle_type]
- * is a repository) and the given handles are all valid in that repository.
- * If not, set the GError and return FALSE.
+/** tp_handles_supported_and_valid:
+ * @repos: An array of possibly null pointers to handle repositories, indexed
+ *         by handle type, where a null pointer means an unsupported handle
+ *         type
+ * @handle_type: The handle type
+ * @handles: An array of handles of the given type
+ * @allow_zero: If %TRUE, zero is treated like a valid handle
+ * @error: Used to return an error if %FALSE is returned
  *
- * If allow_zero is TRUE, treat handle == 0 as valid.
+ * Return %TRUE if the given handle type is supported (i.e. repos[handle_type]
+ * is not %NULL) and the given handles are all valid in that repository.
+ * If not, set @param error and return %FALSE.
  */
 static inline gboolean
 tp_handles_supported_and_valid (TpHandleRepoIface *repos[LAST_TP_HANDLE_TYPE+1],

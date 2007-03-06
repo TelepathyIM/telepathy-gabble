@@ -50,7 +50,14 @@ G_BEGIN_DECLS
 
 typedef struct _TpChannelIface TpChannelIface;
 typedef struct _TpChannelIfaceClass TpChannelIfaceClass;
-typedef void (* TpChannelFunc) (TpChannelIface *, gpointer);
+
+/** TpChannelFunc:
+ * @self: An object implementing the channel interface
+ * @userdata: Arbitrary user-supplied data
+ *
+ * A callback for functions which act on channels.
+ */
+typedef void (* TpChannelFunc) (TpChannelIface *self, gpointer userdata);
 
 struct _TpChannelIfaceClass {
   GTypeInterface parent_class;

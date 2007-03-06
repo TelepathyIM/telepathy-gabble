@@ -610,10 +610,3 @@ dynamic_repo_iface_init (gpointer g_iface,
   klass->set_qdata = dynamic_set_qdata;
   klass->get_qdata = dynamic_get_qdata;
 }
-
-TpDynamicHandleRepo *
-tp_dynamic_handle_repo_new (void)
-{
-  return TP_DYNAMIC_HANDLE_REPO (g_object_new (TP_TYPE_DYNAMIC_HANDLE_REPO,
-        NULL));
-}

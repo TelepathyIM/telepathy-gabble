@@ -68,7 +68,7 @@ tp_intset_destroy (TpIntSet *set)
 
 /**
  * tp_intset_clear:
- * @set : set
+ * @set: set
  *
  * Unset every integer in the set.
  */
@@ -198,6 +198,7 @@ addint (guint32 i, gpointer data)
 /**
  * tp_intset_to_array:
  * @set: set to convert
+ *
  * Convert a TpIntSet to an array, which must be freed with g_array_free by
  * the caller.
  */

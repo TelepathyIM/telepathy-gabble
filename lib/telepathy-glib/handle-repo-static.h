@@ -28,6 +28,23 @@
 
 G_BEGIN_DECLS
 
+
+/**
+ * TpStaticHandleRepo:
+ *
+ * A static handle repository contains a fixed set of handles.
+ *
+ * As well as setting the #TpHandleRepoIface:handle-type property, code
+ * which creates a static handle repository must set the
+ * #TpStaticHandleRepo:handle-names construction property to a strv of
+ * valid handle names. All of these are preallocated; no more may be
+ * created, and attempts to do so will fail.
+ *
+ * This is intended for handles of type %TP_HANDLE_TYPE_CONTACT_LIST,
+ * for which the connection manager should only accept a static list of
+ * supported handle names.
+ */
+
 typedef struct _TpStaticHandleRepo TpStaticHandleRepo;
 typedef struct _TpStaticHandleRepoClass TpStaticHandleRepoClass;
 GType tp_static_handle_repo_get_type (void);
@@ -47,8 +64,6 @@ GType tp_static_handle_repo_get_type (void);
 #define TP_STATIC_HANDLE_REPO_GET_CLASS(obj) \
   (G_TYPE_INSTANCE_GET_CLASS ((obj), TP_TYPE_STATIC_HANDLE_REPO,\
   TpStaticHandleRepoClass))
-
-TpStaticHandleRepo *tp_static_handle_repo_new (void);
 
 G_END_DECLS
 

@@ -661,15 +661,12 @@ tp_base_connection_close_all_channels (TpBaseConnection *self)
 /* D-Bus methods on Connection interface ----------------------------*/
 
 /**
- * tp_base_connection_connect
+ * tp_base_connection_connect:
+ *
+ * @context: Used to return the result onto D-Bus.
+ *
  * Implements D-Bus method Connect
  * on interface org.freedesktop.Telepathy.Connection
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 static void
 tp_base_connection_connect (TpSvcConnection *iface,

@@ -304,10 +304,3 @@ static_repo_iface_init (gpointer g_iface,
   klass->set_qdata = static_set_qdata;
   klass->get_qdata = static_get_qdata;
 }
-
-TpStaticHandleRepo *
-tp_static_handle_repo_new (void)
-{
-  return TP_STATIC_HANDLE_REPO (g_object_new (TP_TYPE_STATIC_HANDLE_REPO,
-        NULL));
-}

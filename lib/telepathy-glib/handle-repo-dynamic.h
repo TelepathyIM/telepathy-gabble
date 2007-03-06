@@ -27,6 +27,20 @@
 
 G_BEGIN_DECLS
 
+
+/**
+ * TpDynamicHandleRepo:
+ *
+ * A dynamic handle repository will accept arbitrary handles, which can
+ * be created and destroyed at runtime.
+ * 
+ * The #TpHandleRepoIface:handle-type property must be set at construction
+ * time.
+ *
+ * Most connection managers will use this for all supported handle types
+ * except %TP_HANDLE_TYPE_CONTACT_LIST.
+ */
+
 typedef struct _TpDynamicHandleRepo TpDynamicHandleRepo;
 typedef struct _TpDynamicHandleRepoClass TpDynamicHandleRepoClass;
 GType tp_dynamic_handle_repo_get_type (void);
@@ -46,13 +60,6 @@ GType tp_dynamic_handle_repo_get_type (void);
 #define TP_DYNAMIC_HANDLE_REPO_GET_CLASS(obj) \
   (G_TYPE_INSTANCE_GET_CLASS ((obj), TP_TYPE_DYNAMIC_HANDLE_REPO,\
   TpDynamicHandleRepoClass))
-
-TpDynamicHandleRepo *tp_dynamic_handle_repo_new (void);
-
-gpointer tp_dynamic_handle_repo_get_qdata (TpDynamicHandleRepo *self, 
-    TpHandle handle, GQuark key_id);
-gboolean tp_dynamic_handle_repo_set_qdata (TpDynamicHandleRepo *self,
-    TpHandle handle, GQuark key_id, gpointer data, GDestroyNotify destroy);
 
 G_END_DECLS
 

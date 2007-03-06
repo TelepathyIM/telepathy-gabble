@@ -86,6 +86,15 @@ tp_channel_factory_iface_get_type (void)
   return type;
 }
 
+/**
+ * tp_channel_factory_iface_close_all:
+ * @self: An object implementing #TpChannelFactoryIface
+ *
+ * Close all channels and shut down the channel factory. It is not expected
+ * to be usable afterwards. This is called when the connection goes to
+ * disconnected state, before either emitting the StatusChanged signal or
+ * calling disconnected().
+ */
 void
 tp_channel_factory_iface_close_all (TpChannelFactoryIface *self)
 {
@@ -95,6 +104,13 @@ tp_channel_factory_iface_close_all (TpChannelFactoryIface *self)
   virtual_method (self);
 }
 
+/**
+ * tp_channel_factory_iface_connecting:
+ * @self: An object implementing #TpChannelFactoryIface
+ *
+ * Called just after the connection goes from disconnected to connecting
+ * state.
+ */
 void
 tp_channel_factory_iface_connecting (TpChannelFactoryIface *self)
 {

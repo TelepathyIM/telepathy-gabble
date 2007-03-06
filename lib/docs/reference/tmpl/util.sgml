@@ -1,0 +1,68 @@
+<!-- ##### SECTION Title ##### -->
+util
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### FUNCTION tp_g_ptr_array_contains ##### -->
+<para>
+
+</para>
+
+@haystack: 
+@needle: 
+@Returns: 
+
+
+<!-- ##### FUNCTION tp_g_value_slice_free ##### -->
+<para>
+
+</para>
+
+@value: 
+
+
+<!-- ##### FUNCTION tp_strdiff ##### -->
+<para>
+
+</para>
+
+@left: 
+@right: 
+@Returns: 
+
+
+<!-- ##### FUNCTION tp_mixin_offset_cast ##### -->
+<para>
+
+</para>
+
+@instance: 
+@offset: 
+@Returns: 
+
+
+<!-- ##### FUNCTION tp_escape_as_identifier ##### -->
+<para>
+
+</para>
+
+@name: 
+@Returns: 
+
+

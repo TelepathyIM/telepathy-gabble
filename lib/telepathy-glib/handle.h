@@ -28,6 +28,11 @@
 
 G_BEGIN_DECLS
 
+/**
+ * TpHandle:
+ *
+ * Type representing Telepathy handles within telepathy-glib
+ */
 typedef guint32 TpHandle;
 
 /* Must be static inline because it references LAST_TP_HANDLE_TYPE -
@@ -36,8 +41,14 @@ typedef guint32 TpHandle;
  * connection manager's array of length LAST_TP_HANDLE_TYPE+1
  */
 /**
+ * tp_handle_type_is_valid:
+ * @type: A handle type to be checked
+ * @error: Error indicator to be set if the handle type is invalid
+ *
  * If the given handle type is valid, return TRUE. If not, set the GError
  * and return FALSE.
+ *
+ * Returns: TRUE if the handle type is valid.
  */
 static inline gboolean
 tp_handle_type_is_valid (TpHandleType type, GError **error)

@@ -79,3 +79,10 @@
 ^debian($|/)
 ^tags$
 ^telepathy-gabble-0
+^lib/docs/reference/xml($|/)
+^lib/docs/reference/tmpl/.*\.sgml$
+^lib/docs/reference/tmpl/.*\.sgml$
+^lib/docs/reference/.*\.stamp$
+^lib/docs/reference/html($|/)
+^lib/docs/reference/telepathy-glib\.(args|hierarchy|interfaces|prerequisites|signals)$
+^lib/docs/reference/telepathy-glib-(undocumented|unused|decl|decl-list)\.txt$

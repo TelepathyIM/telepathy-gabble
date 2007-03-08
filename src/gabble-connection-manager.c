@@ -187,8 +187,6 @@ const TpCMProtocolSpec gabble_protocols[] = {
   { NULL, NULL }
 };
 
-/* dbus-exported methods */
-
 #define SET_PROPERTY_IF_PARAM_SET(prop, param, member) \
   if (tp_intset_is_member (params_present, param)) \
     { \

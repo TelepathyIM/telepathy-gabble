@@ -232,8 +232,8 @@ static_inspect_handle (TpHandleRepoIface *irepo, TpHandle handle)
 }
 
 static TpHandle
-static_request_handle (TpHandleRepoIface *irepo, const char *id,
-    gboolean may_create)
+static_lookup_handle (TpHandleRepoIface *irepo, const char *id,
+    gpointer context)
 {
   TpStaticHandleRepo *self = TP_STATIC_HANDLE_REPO (irepo);
   guint i;
@@ -245,6 +245,13 @@ static_request_handle (TpHandleRepoIface *irepo, const char *id,
     }
 
   return 0;
+}
+
+static TpHandle
+static_request_handle (TpHandleRepoIface *irepo, const char *id,
+    gboolean may_create)
+{
+  return static_lookup_handle (irepo, id, NULL);
 }
 
 static gboolean
@@ -301,6 +308,9 @@ static_repo_iface_init (gpointer g_iface,
   klass->client_release_handle = static_client_hold_or_release_handle;
   klass->inspect_handle = static_inspect_handle;
   klass->request_handle = static_request_handle;
+  /* this repo is static, so lookup and ensure are identical */
+  klass->lookup_handle = static_lookup_handle;
+  klass->ensure_handle = static_lookup_handle;
   klass->set_qdata = static_set_qdata;
   klass->get_qdata = static_get_qdata;
 }

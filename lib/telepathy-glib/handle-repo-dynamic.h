@@ -41,6 +41,9 @@ G_BEGIN_DECLS
  * except %TP_HANDLE_TYPE_CONTACT_LIST.
  */
 
+typedef gchar *(*TpDynamicHandleRepoNormalizeFunc)(const gchar *id,
+    gpointer context);
+
 typedef struct _TpDynamicHandleRepo TpDynamicHandleRepo;
 typedef struct _TpDynamicHandleRepoClass TpDynamicHandleRepoClass;
 GType tp_dynamic_handle_repo_get_type (void);
@@ -60,6 +63,9 @@ GType tp_dynamic_handle_repo_get_type (void);
 #define TP_DYNAMIC_HANDLE_REPO_GET_CLASS(obj) \
   (G_TYPE_INSTANCE_GET_CLASS ((obj), TP_TYPE_DYNAMIC_HANDLE_REPO,\
   TpDynamicHandleRepoClass))
+
+TpHandle tp_dynamic_handle_repo_lookup_exact (TpHandleRepoIface *irepo,
+    const char *id);
 
 G_END_DECLS
 

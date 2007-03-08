@@ -93,6 +93,10 @@ struct _TpHandleRepoIfaceClass {
     const char *(*inspect_handle) (TpHandleRepoIface *self, TpHandle handle);
     TpHandle (*request_handle) (TpHandleRepoIface *self, const char *id,
         gboolean may_create);
+    TpHandle (*ensure_handle) (TpHandleRepoIface *self, const char *id,
+        gpointer context);
+    TpHandle (*lookup_handle) (TpHandleRepoIface *self, const char *id,
+        gpointer context);
 
     gboolean (*set_qdata) (TpHandleRepoIface *repo, TpHandle handle,
         GQuark key_id, gpointer data, GDestroyNotify destroy);
@@ -121,6 +125,10 @@ const char *tp_handle_inspect (TpHandleRepoIface *self,
     TpHandle handle);
 TpHandle tp_handle_request (TpHandleRepoIface *self,
     const gchar *id, gboolean may_create);
+TpHandle tp_handle_lookup (TpHandleRepoIface *self,
+    const gchar *id, gpointer context);
+TpHandle tp_handle_ensure (TpHandleRepoIface *self,
+    const gchar *id, gpointer context);
 
 gboolean tp_handle_set_qdata (TpHandleRepoIface *repo, TpHandle handle,
     GQuark key_id, gpointer data, GDestroyNotify destroy);

@@ -104,6 +104,8 @@ handle_priv_free (TpHandlePriv *priv)
 enum
 {
   PROP_HANDLE_TYPE = 1,
+  PROP_NORMALIZE_FUNCTION,
+  PROP_DEFAULT_NORMALIZE_CONTEXT,
 };
 
 struct _TpDynamicHandleRepoClass {
@@ -125,6 +127,12 @@ struct _TpDynamicHandleRepo {
   guint next_handle;
   /* Map (client name) -> (TpHandleSet *): handles being held by that client */
   GData *holder_to_handle_set;
+  /* Normalization function */
+  TpDynamicHandleRepoNormalizeFunc normalize_function;
+  /* Context for normalization function if NULL is passed to _ensure or
+   * _lookup
+   */
+  gpointer default_normalize_context;
 
   /* To listen for NameOwnerChanged. FIXME: centralize this? */
   DBusGProxy *bus_service_proxy;
@@ -333,6 +341,12 @@ dynamic_get_property (GObject *object,
     case PROP_HANDLE_TYPE:
       g_value_set_uint (value, self->handle_type);
       break;
+    case PROP_NORMALIZE_FUNCTION:
+      g_value_set_pointer (value, self->normalize_function);
+      break;
+    case PROP_DEFAULT_NORMALIZE_CONTEXT:
+      g_value_set_pointer (value, self->default_normalize_context);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -352,6 +366,12 @@ dynamic_set_property (GObject *object,
     case PROP_HANDLE_TYPE:
       self->handle_type = g_value_get_uint (value);
       break;
+    case PROP_NORMALIZE_FUNCTION:
+      self->normalize_function = g_value_get_pointer (value);
+      break;
+    case PROP_DEFAULT_NORMALIZE_CONTEXT:
+      self->default_normalize_context = g_value_get_pointer (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -362,13 +382,33 @@ static void
 tp_dynamic_handle_repo_class_init (TpDynamicHandleRepoClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
+  GParamSpec *param_spec;
 
   object_class->finalize = dynamic_finalize;
 
   object_class->get_property = dynamic_get_property;
   object_class->set_property = dynamic_set_property;
 
-  g_object_class_override_property (object_class, PROP_HANDLE_TYPE, "handle-type");
+  g_object_class_override_property (object_class, PROP_HANDLE_TYPE,
+      "handle-type");
+
+  param_spec = g_param_spec_pointer ("normalize-function",
+      "Normalization function",
+      "A TpDynamicHandleRepoNormalizeFunc used to normalize handle IDs.",
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_NICK |
+      G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_NORMALIZE_FUNCTION,
+      param_spec);
+
+  param_spec = g_param_spec_pointer ("default-normalize-context",
+      "Default normalization context",
+      "The default context given to the normalize-function if NULL is passed "
+      "as context to the ensure or lookup function, e.g. when RequestHandle"
+      "is called via D-Bus.",
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_NICK |
+      G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class,
+      PROP_DEFAULT_NORMALIZE_CONTEXT, param_spec);
 }
 
 static gboolean
@@ -545,6 +585,85 @@ dynamic_inspect_handle (TpHandleRepoIface *irepo, TpHandle handle)
     return priv->string;
 }
 
+TpHandle
+tp_dynamic_handle_repo_lookup_exact (TpHandleRepoIface *irepo,
+                                     const char *id)
+{
+  TpDynamicHandleRepo *self = TP_DYNAMIC_HANDLE_REPO (irepo);
+
+  return GPOINTER_TO_UINT (g_hash_table_lookup (self->string_to_handle,
+        id));
+}
+
+static TpHandle
+dynamic_lookup_handle (TpHandleRepoIface *irepo, const char *id,
+    gpointer context)
+{
+  TpDynamicHandleRepo *self = TP_DYNAMIC_HANDLE_REPO (irepo);
+  TpHandle handle;
+  gchar *normal_id = NULL;
+
+  if (context == NULL)
+    context = self->default_normalize_context;
+
+  if (self->normalize_function)
+    {
+      normal_id = (self->normalize_function) (id, context);
+      id = normal_id;
+    }
+
+  handle = GPOINTER_TO_UINT (g_hash_table_lookup (self->string_to_handle,
+        id));
+
+  g_free (normal_id);
+  return handle;
+}
+
+static TpHandle
+dynamic_ensure_handle (TpHandleRepoIface *irepo, const char *id,
+    gpointer context)
+{
+  TpDynamicHandleRepo *self = TP_DYNAMIC_HANDLE_REPO (irepo);
+  TpHandle handle;
+  TpHandlePriv *priv;
+  gchar *normal_id = NULL;
+
+  if (context == NULL)
+    context = self->default_normalize_context;
+
+  if (self->normalize_function)
+    {
+      normal_id = (self->normalize_function) (id, context);
+      if (normal_id == NULL)
+        return 0;
+
+      id = normal_id;
+    }
+
+  handle = GPOINTER_TO_UINT (g_hash_table_lookup (self->string_to_handle,
+        id));
+  if (handle)
+    {
+      dynamic_ref_handle (irepo, handle);
+      g_free (normal_id);
+      return handle;
+    }
+
+  handle = handle_alloc (self);
+  priv = handle_priv_new ();
+
+  if (self->normalize_function)
+    priv->string = normal_id;
+  else
+    priv->string = g_strdup (id);
+
+  g_hash_table_insert (self->handle_to_priv, GUINT_TO_POINTER (handle), priv);
+  g_hash_table_insert (self->string_to_handle, priv->string,
+      GUINT_TO_POINTER (handle));
+  HANDLE_LEAK_DEBUG_DO (priv->traces);
+  return handle;
+}
+
 static TpHandle
 dynamic_request_handle (TpHandleRepoIface *irepo, const char *id,
     gboolean may_create)
@@ -610,6 +729,8 @@ dynamic_repo_iface_init (gpointer g_iface,
   klass->client_release_handle = dynamic_client_release_handle;
   klass->inspect_handle = dynamic_inspect_handle;
   klass->request_handle = dynamic_request_handle;
+  klass->lookup_handle = dynamic_lookup_handle;
+  klass->ensure_handle = dynamic_ensure_handle;
   klass->set_qdata = dynamic_set_qdata;
   klass->get_qdata = dynamic_get_qdata;
 }

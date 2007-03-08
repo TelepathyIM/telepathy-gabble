@@ -232,6 +232,52 @@ tp_handle_inspect (TpHandleRepoIface *self,
 
 
 /**
+ * tp_handle_ensure:
+ * @self: A handle repository implementation
+ * @id: A string whose handle is required
+ * @context: User data to be passed to the normalization callback
+ *
+ * Return a new reference to the handle for the given string. The handle
+ * is normalized, if possible. If no such handle exists it will be created.
+ *
+ * Returns: the handle corresponding to the given string, or 0 if it
+ * is invalid
+ */
+
+TpHandle
+tp_handle_ensure (TpHandleRepoIface *self,
+                  const gchar *id,
+                  gpointer context)
+{
+  return TP_HANDLE_REPO_IFACE_GET_CLASS (self)->ensure_handle (self,
+      id, context);
+}
+
+
+/**
+ * tp_handle_lookup:
+ * @self: A handle repository implementation
+ * @id: A string whose handle is required
+ * @context: User data to be passed to the normalization callback
+ *
+ * Return the handle for the given string, without incrementing its
+ * reference count. The handle is normalized if possible.
+ *
+ * Returns: the handle corresponding to the given string, or 0 if it
+ * does not exist or is invalid
+ */
+
+TpHandle
+tp_handle_lookup (TpHandleRepoIface *self,
+                  const gchar *id,
+                  gpointer context)
+{
+  return TP_HANDLE_REPO_IFACE_GET_CLASS (self)->lookup_handle (self,
+      id, context);
+}
+
+
+/**
  * tp_handle_request:
  * @self: A handle repository implementation
  * @id: A string whose handle is required

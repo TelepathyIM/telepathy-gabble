@@ -24,6 +24,7 @@ static GDebugKey keys[] = {
   { "connection",    GABBLE_DEBUG_CONNECTION },
   { "persist",       GABBLE_DEBUG_PERSIST },
   { "vcard",         GABBLE_DEBUG_VCARD },
+  { "jid",           GABBLE_DEBUG_JID },
   { 0, },
 };
 

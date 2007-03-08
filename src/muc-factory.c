@@ -219,7 +219,7 @@ get_muc_from_jid (GabbleMucFactory *fac, const gchar *jid)
   if (!room)
     return NULL;
 
-  handle = tp_handle_lookup (room_repo, room, NULL);
+  handle = tp_handle_lookup (room_repo, room, NULL, NULL);
   g_free (room);
   if (handle)
     chan = g_hash_table_lookup (priv->channels, GUINT_TO_POINTER (handle));
@@ -364,11 +364,19 @@ obsolete_invite_disco_cb (GabbleDisco *self,
   if (0 != strcmp (category, "conference") ||
       0 != strcmp (type, "text"))
     {
-      DEBUG ("obsolete invite request specified invalid jid '%s', ignoring", jid);
+      DEBUG ("obsolete invite request specified inappropriate jid '%s' "
+          "(not a text conference), ignoring", jid);
+      return;
     }
 
   /* OK, it's MUC after all, create a new channel */
-  handle = tp_handle_ensure (room_repo, jid, NULL);
+  handle = tp_handle_ensure (room_repo, jid, NULL, NULL);
+  if (handle == 0)
+    {
+      DEBUG ("obsolete invite request specified invalid jid '%s', "
+          "ignoring", jid);
+      return;
+    }
 
   if (g_hash_table_lookup (priv->channels, GINT_TO_POINTER (handle)) == NULL)
     {
@@ -455,7 +463,15 @@ muc_factory_message_cb (LmMessageHandler *handler,
               return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
             }
 
-          inviter_handle = tp_handle_ensure (contact_repo, invite_from, NULL);
+          inviter_handle = tp_handle_ensure (contact_repo, invite_from,
+              NULL, NULL);
+          if (inviter_handle == 0)
+            {
+              NODE_DEBUG (message->node, "got a MUC invitation message "
+                             "where the from field on the invite node "
+                             "was not a valid JID, ignoring");
+              return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+            }
 
           reason_node = lm_message_node_get_child (node, "reason");
           if (reason_node != NULL)
@@ -470,8 +486,14 @@ muc_factory_message_cb (LmMessageHandler *handler,
 
           /* create the channel */
           room = gabble_remove_resource (from);
-          handle = tp_handle_ensure (room_repo, from, NULL);
+          handle = tp_handle_ensure (room_repo, from, NULL, NULL);
           g_free (room);
+          if (handle == 0)
+            {
+              NODE_DEBUG (message->node, "got a MUC invitation message "
+                             "where the MUC was not a valid JID, ignoring");
+              return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+            }
 
           if (g_hash_table_lookup (priv->channels, GINT_TO_POINTER (handle)) == NULL)
             {
@@ -507,7 +529,13 @@ muc_factory_message_cb (LmMessageHandler *handler,
         return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
       /* the inviter JID is in "from" */
-      inviter_handle = tp_handle_ensure (contact_repo, from, NULL);
+      inviter_handle = tp_handle_ensure (contact_repo, from, NULL, NULL);
+      if (inviter_handle == 0)
+        {
+          NODE_DEBUG (message->node, "got an obsolete MUC invitation message "
+                         "where the inviter was not a valid JID, ignoring");
+          return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+        }
 
       /* reason is the body */
       reason = body;
@@ -532,7 +560,7 @@ HANDLE_MESSAGE:
 
   /* check if a room with the jid exists */
   room = gabble_remove_resource (from);
-  room_handle = tp_handle_lookup (room_repo, from, NULL);
+  room_handle = tp_handle_lookup (room_repo, from, NULL, NULL);
   g_free (room);
 
   if (room_handle == 0)
@@ -562,12 +590,10 @@ HANDLE_MESSAGE:
     }
   else
     {
-      GabbleNormalizeContactJIDContext context = { GABBLE_JID_ROOM_MEMBER,
-          contact_repo };
-
       handle_source = contact_repo;
       handle_type = TP_HANDLE_TYPE_CONTACT;
-      handle = tp_handle_ensure (contact_repo, from, &context);
+      handle = tp_handle_ensure (contact_repo, from,
+          GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
 
       if (handle == 0)
         {
@@ -657,10 +683,9 @@ muc_factory_presence_cb (LmMessageHandler *handler,
       if (muc_chan != NULL)
         {
           TpHandle handle;
-          GabbleNormalizeContactJIDContext context = { GABBLE_JID_ROOM_MEMBER,
-              contact_repo };
 
-          handle = tp_handle_ensure (contact_repo, from, &context);
+          handle = tp_handle_ensure (contact_repo, from,
+              GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
           if (handle == 0)
             {
               NODE_DEBUG (msg->node, "discarding MUC presence from malformed jid");

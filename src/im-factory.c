@@ -219,7 +219,7 @@ im_factory_message_cb (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
-  handle = tp_handle_ensure (contact_repo, from, NULL);
+  handle = tp_handle_ensure (contact_repo, from, NULL, NULL);
   if (handle == 0)
     {
       NODE_DEBUG (message->node, "ignoring message node from malformed jid");

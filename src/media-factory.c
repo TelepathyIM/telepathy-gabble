@@ -277,7 +277,7 @@ media_factory_jingle_cb (LmMessageHandler *handler,
       goto BAD_REQUEST;
     }
 
-  handle = tp_handle_ensure (contact_repo, from, NULL);
+  handle = tp_handle_ensure (contact_repo, from, NULL, NULL);
   if (handle == 0)
     {
       NODE_DEBUG (iq_node, "unable to get handle for sender");

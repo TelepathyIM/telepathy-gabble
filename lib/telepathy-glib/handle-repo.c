@@ -247,10 +247,11 @@ tp_handle_inspect (TpHandleRepoIface *self,
 TpHandle
 tp_handle_ensure (TpHandleRepoIface *self,
                   const gchar *id,
-                  gpointer context)
+                  gpointer context,
+                  GError **error)
 {
   return TP_HANDLE_REPO_IFACE_GET_CLASS (self)->ensure_handle (self,
-      id, context);
+      id, context, error);
 }
 
 
@@ -270,10 +271,11 @@ tp_handle_ensure (TpHandleRepoIface *self,
 TpHandle
 tp_handle_lookup (TpHandleRepoIface *self,
                   const gchar *id,
-                  gpointer context)
+                  gpointer context,
+                  GError **error)
 {
   return TP_HANDLE_REPO_IFACE_GET_CLASS (self)->lookup_handle (self,
-      id, context);
+      id, context, error);
 }
 
 

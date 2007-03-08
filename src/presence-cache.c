@@ -781,7 +781,7 @@ _caps_disco_cb (GabbleDisco *disco,
         caps |= PRESENCE_CAP_CHAT_STATES;
     }
 
-  handle = tp_handle_ensure (contact_repo, jid, NULL);
+  handle = tp_handle_ensure (contact_repo, jid, NULL, NULL);
   if (handle == 0)
     {
       DEBUG ("Ignoring presence from invalid JID %s", jid);
@@ -1127,7 +1127,7 @@ gabble_presence_cache_lm_message_cb (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
-  handle = tp_handle_ensure (contact_repo, from, NULL);
+  handle = tp_handle_ensure (contact_repo, from, NULL, NULL);
 
   if (0 == handle)
     {

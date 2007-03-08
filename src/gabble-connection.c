@@ -170,9 +170,6 @@ struct _GabbleConnectionPrivate
 
   /* gobject housekeeping */
   gboolean dispose_has_run;
-
-  /* used for JID normalization */
-  GabbleNormalizeContactJIDContext default_normalize_contact_ctx;
 };
 
 #define GABBLE_CONNECTION_GET_PRIVATE(obj) \
@@ -453,32 +450,12 @@ void
 _gabble_connection_create_handle_repos (TpBaseConnection *conn,
     TpHandleRepoIface *repos[LAST_TP_HANDLE_TYPE+1])
 {
-  GabbleConnection *self;
-  GabbleConnectionPrivate *priv = NULL;
-  GabbleNormalizeContactJIDContext *context;
-
-  if (conn != NULL)
-    {
-      self = GABBLE_CONNECTION (conn);
-      priv = GABBLE_CONNECTION_GET_PRIVATE (self);
-
-      context = &(priv->default_normalize_contact_ctx);
-    }
-  else
-    {
-      /* this should only happen in the unit test, so just leak the context */
-      context = g_new0 (GabbleNormalizeContactJIDContext, 1);
-    }
-
-  context->mode = GABBLE_JID_ANY;
   repos[TP_HANDLE_TYPE_CONTACT] =
       (TpHandleRepoIface *)g_object_new (TP_TYPE_DYNAMIC_HANDLE_REPO,
           "handle-type", TP_HANDLE_TYPE_CONTACT,
           "normalize-function", gabble_normalize_contact,
-          "default-normalize-context", context,
+          "default-normalize-context", GUINT_TO_POINTER (GABBLE_JID_ANY),
           NULL);
-  context->contacts = repos[TP_HANDLE_TYPE_CONTACT];
-
   repos[TP_HANDLE_TYPE_ROOM] =
       (TpHandleRepoIface *)g_object_new (TP_TYPE_DYNAMIC_HANDLE_REPO,
           "handle-type", TP_HANDLE_TYPE_ROOM,
@@ -723,8 +700,6 @@ gabble_connection_dispose (GObject *object)
 
   /* unreffing channel factories frees the roster */
   self->roster = NULL;
-  /* unreffing handle repos frees the one in the normalization context */
-  priv->default_normalize_contact_ctx.contacts = NULL;
 
   g_object_unref (self->disco);
   self->disco = NULL;
@@ -1124,13 +1099,11 @@ _gabble_connection_connect (TpBaseConnection *base,
   jid = g_strdup_printf ("%s@%s", priv->username, priv->stream_server);
   lm_connection_set_jid (conn->lmconn, jid);
 
-  base->self_handle = tp_handle_ensure (contact_handles, jid, NULL);
+  base->self_handle = tp_handle_ensure (contact_handles, jid, NULL, error);
   g_free (jid);
 
   if (base->self_handle == 0)
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "Invalid JID: %s@%s", priv->username, priv->stream_server);
       return FALSE;
     }
 
@@ -2625,7 +2598,7 @@ room_verify_batch_new (GabbleConnection *conn,
       batch->contexts[i].jid = qualified_name;
 
       /* has the handle been verified before? */
-      handle = tp_handle_lookup (room_handles, qualified_name, NULL);
+      handle = tp_handle_lookup (room_handles, qualified_name, NULL, NULL);
       if (handle)
         tp_handle_ref (room_handles, handle);
       g_array_append_val (batch->handles, handle);
@@ -2730,8 +2703,11 @@ room_jid_disco_cb (GabbleDisco *disco,
     }
 
   /* this refs the handle, so we're putting a ref in batch->handles */
-  handle = tp_handle_ensure (room_handles, rvctx->jid, NULL);
-  g_assert (handle != 0);
+  handle = tp_handle_ensure (room_handles, rvctx->jid, NULL, &error);
+  if (handle == 0)
+    {
+      room_verify_batch_raise_error (batch, error);
+    }
 
   DEBUG ("disco reported MUC support for service name in jid %s", rvctx->jid);
   g_array_index (batch->handles, TpHandle, rvctx->index) = handle;
@@ -2836,7 +2812,7 @@ gabble_connection_request_handles (TpSvcConnection *iface,
               return;
             }
 
-          handle = tp_handle_ensure (handle_repo, name, NULL);
+          handle = tp_handle_ensure (handle_repo, name, NULL, &error);
 
           if (handle == 0)
             {
@@ -2849,8 +2825,6 @@ gabble_connection_request_handles (TpSvcConnection *iface,
                       (TpHandle) g_array_index (handles, guint, i));
                 }
 
-              error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-                                   "requested handle %s was invalid", name);
               dbus_g_method_return_error (context, error);
               g_error_free (error);
 
@@ -2900,7 +2874,7 @@ gabble_connection_request_handles (TpSvcConnection *iface,
           TpHandle handle;
           const gchar *name = names[i];
 
-          handle = tp_handle_ensure (handle_repo, name, NULL);
+          handle = tp_handle_ensure (handle_repo, name, NULL, &error);
 
           if (handle == 0)
             {
@@ -2915,11 +2889,6 @@ gabble_connection_request_handles (TpSvcConnection *iface,
                       (TpHandle) g_array_index (handles, guint, i));
                 }
 
-              error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-                                   "requested %s channel %s not available",
-                                   handle_type == TP_HANDLE_TYPE_LIST ? "list"
-                                                                      : "group",
-                                   name);
               dbus_g_method_return_error (context, error);
               g_error_free (error);
 

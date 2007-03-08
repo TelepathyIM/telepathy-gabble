@@ -232,8 +232,10 @@ static_inspect_handle (TpHandleRepoIface *irepo, TpHandle handle)
 }
 
 static TpHandle
-static_lookup_handle (TpHandleRepoIface *irepo, const char *id,
-    gpointer context)
+static_lookup_handle (TpHandleRepoIface *irepo,
+                      const char *id,
+                      gpointer context,
+                      GError **error)
 {
   TpStaticHandleRepo *self = TP_STATIC_HANDLE_REPO (irepo);
   guint i;
@@ -244,6 +246,8 @@ static_lookup_handle (TpHandleRepoIface *irepo, const char *id,
         return (TpHandle) i + 1;
     }
 
+  g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+      "'%s' is not one of the valid handles", id);
   return 0;
 }
 
@@ -251,7 +255,7 @@ static TpHandle
 static_request_handle (TpHandleRepoIface *irepo, const char *id,
     gboolean may_create)
 {
-  return static_lookup_handle (irepo, id, NULL);
+  return static_lookup_handle (irepo, id, NULL, NULL);
 }
 
 static gboolean

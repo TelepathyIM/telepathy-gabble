@@ -1,8 +1,9 @@
 /*
  * util.c - Source for Gabble utility functions
- * Copyright (C) 2006 Collabora Ltd.
- * Copyright (C) 2006 Nokia Corporation
+ * Copyright (C) 2006-2007 Collabora Ltd.
+ * Copyright (C) 2006-2007 Nokia Corporation
  *   @author Robert McQueen <robert.mcqueen@collabora.co.uk>
+ *   @author Simon McVittie <simon.mcvittie@collabora.co.uk>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -32,6 +33,9 @@
 #include "gabble-connection.h"
 
 #include "util.h"
+
+#define DEBUG_FLAG GABBLE_DEBUG_JID
+#include "debug.h"
 
 gchar *
 sha1_hex (const gchar *bytes, guint len)
@@ -369,8 +373,17 @@ gabble_decode_jid (const gchar *jid,
   g_free (tmp_jid);
 }
 
+#define INVALID_ARGUMENT(e, f, ...) \
+  G_STMT_START { \
+  DEBUG (f, ##__VA_ARGS__); \
+  g_set_error (e, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, f, ##__VA_ARGS__);\
+  } G_STMT_END
+
 gchar *
-gabble_normalize_room (const gchar *jid, gpointer context)
+gabble_normalize_room (TpHandleRepoIface *repo,
+                       const gchar *jid,
+                       gpointer context,
+                       GError **error)
 {
   char *at = strchr (jid, '@');
   char *slash = strchr (jid, '/');
@@ -378,19 +391,22 @@ gabble_normalize_room (const gchar *jid, gpointer context)
   /* there'd better be an @ somewhere after the first character */
   if (at == NULL)
     {
-      g_debug ("invalid room JID %s: no @", jid);
+      INVALID_ARGUMENT (error,
+          "invalid room JID %s: does not contain '@'", jid);
       return NULL;
     }
   if (at == jid)
     {
-      g_debug ("invalid room JID %s: no username before @", jid);
+      INVALID_ARGUMENT (error,
+          "invalid room JID %s: room name before '@' may not be empty", jid);
       return NULL;
     }
 
   /* room names can't contain the nick part */
   if (slash != NULL)
     {
-      g_debug ("invalid room JID %s: contains nickname too", jid);
+      INVALID_ARGUMENT (error,
+          "invalid room JID %s: contains nickname part after '/' too", jid);
       return NULL;
     }
 
@@ -403,15 +419,8 @@ gabble_normalize_room (const gchar *jid, gpointer context)
 gchar *
 gabble_remove_resource (const gchar *jid)
 {
-  char *at = strchr (jid, '@');
   char *slash = strchr (jid, '/');
   gchar *buf;
-
-  if (at > slash)
-    {
-      g_debug ("invalid JID %s: first @ is later than first /", jid);
-      return NULL;
-    }
 
   if (slash == NULL)
     return g_strdup (jid);
@@ -425,9 +434,12 @@ gabble_remove_resource (const gchar *jid)
 }
 
 gchar *
-gabble_normalize_contact (const gchar *jid, gpointer userdata)
+gabble_normalize_contact (TpHandleRepoIface *repo,
+                          const gchar *jid,
+                          gpointer context,
+                          GError **error)
 {
-  GabbleNormalizeContactJIDContext *context = userdata;
+  guint mode = GPOINTER_TO_UINT (context);
   gchar *username = NULL, *server = NULL, *resource = NULL;
   gchar *ret = NULL;
 
@@ -435,24 +447,25 @@ gabble_normalize_contact (const gchar *jid, gpointer userdata)
 
   if (!username || !server || !username[0] || !server[0])
     {
-      g_debug ("%s: jid %s has invalid username or server", G_STRFUNC, jid);
+      INVALID_ARGUMENT (error,
+          "jid %s has invalid username or server", jid);
       goto OUT;
     }
 
-  if (context->mode == GABBLE_JID_ROOM_MEMBER && resource == NULL)
+  if (mode == GABBLE_JID_ROOM_MEMBER && resource == NULL)
     {
-      g_debug ("%s: jid %s can't be a room member, it has no resource",
-          G_STRFUNC, jid);
+      INVALID_ARGUMENT (error,
+          "jid %s can't be a room member - it has no resource", jid);
       goto OUT;
     }
 
-  if (context->mode != GABBLE_JID_GLOBAL && resource != NULL)
+  if (mode != GABBLE_JID_GLOBAL && resource != NULL)
     {
       ret = g_strdup_printf ("%s@%s/%s", username, server, resource);
 
-      if (context->mode == GABBLE_JID_ROOM_MEMBER
-          || (context->contacts != NULL
-              && tp_dynamic_handle_repo_lookup_exact (context->contacts, ret)))
+      if (mode == GABBLE_JID_ROOM_MEMBER
+          || (repo != NULL
+              && tp_dynamic_handle_repo_lookup_exact (repo, ret)))
         {
           /* either we know from context that it's a room member, or we
            * already saw that contact in a room. Use ret as our answer

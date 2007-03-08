@@ -569,18 +569,16 @@ contact_handle_to_room_identity (GabbleMucChannel *chan, TpHandle main_handle,
 {
   GabbleMucChannelPrivate *priv;
   TpBaseConnection *conn;
+  TpHandleRepoIface *contact_repo;
   const gchar *main_jid;
   gchar *username, *server;
   gchar *jid;
-  GabbleNormalizeContactJIDContext context;
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
   conn = (TpBaseConnection *)priv->conn;
-  context.mode = GABBLE_JID_ROOM_MEMBER;
-  context.contacts = tp_base_connection_get_handles (conn,
-      TP_HANDLE_TYPE_CONTACT);
+  contact_repo = tp_base_connection_get_handles (conn, TP_HANDLE_TYPE_CONTACT);
 
-  main_jid = tp_handle_inspect (context.contacts, main_handle);
+  main_jid = tp_handle_inspect (contact_repo, main_handle);
 
   gabble_decode_jid (main_jid, &username, &server, NULL);
 
@@ -591,7 +589,8 @@ contact_handle_to_room_identity (GabbleMucChannel *chan, TpHandle main_handle,
 
   if (room_handle)
     {
-      *room_handle = tp_handle_ensure (context.contacts, jid, &context);
+      *room_handle = tp_handle_ensure (contact_repo, jid,
+          GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
     }
 
   if (room_jid)
@@ -1586,15 +1585,21 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
           if (owner_jid != NULL)
             {
               TpHandle owner_handle;
-              GabbleNormalizeContactJIDContext ensure_context = {
-                  GABBLE_JID_GLOBAL, contact_handles };
 
               owner_handle = tp_handle_ensure (contact_handles, owner_jid,
-                  &ensure_context);
-
-              tp_group_mixin_add_handle_owner ((TpSvcChannelInterfaceGroup *)chan, handle,
-                                                   owner_handle);
-              tp_handle_unref (contact_handles, owner_handle);
+                  GUINT_TO_POINTER (GABBLE_JID_GLOBAL), NULL);
+              if (owner_handle == 0)
+                {
+                  DEBUG ("ignoring invalid owner JID %s in MUC presence",
+                      owner_jid);
+                }
+              else
+                {
+                  tp_group_mixin_add_handle_owner (
+                      (TpSvcChannelInterfaceGroup *)chan, handle,
+                      owner_handle);
+                  tp_handle_unref (contact_handles, owner_handle);
+                }
             }
 
           if (handle == mixin->self_handle)
@@ -1670,7 +1675,12 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
           actor_jid = lm_message_node_get_attribute (actor_node, "jid");
           if (actor_jid != NULL)
             {
-              actor = tp_handle_ensure (contact_handles, actor_jid, NULL);
+              actor = tp_handle_ensure (contact_handles, actor_jid, NULL,
+                  NULL);
+              if (actor == 0)
+                {
+                  DEBUG ("ignoring invalid actor JID %s", actor_jid);
+                }
             }
         }
 

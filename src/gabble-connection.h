@@ -84,18 +84,13 @@ typedef enum {
      * that it's a global JID (and remove the resource) unless we've seen
      * that JID in a MUC before.
      */
-    GABBLE_JID_ANY,
+    GABBLE_JID_ANY = 0,
     /* The JID is definitely global. Remove the resource. */
     GABBLE_JID_GLOBAL,
     /* The JID is definitely a room member. Assert that there is a "resource"
      * (nickname) and don't remove it. */
     GABBLE_JID_ROOM_MEMBER
 } GabbleNormalizeContactJIDMode;
-
-typedef struct {
-    GabbleNormalizeContactJIDMode mode;
-    TpHandleRepoIface *contacts;
-} GabbleNormalizeContactJIDContext;
 
 struct _GabbleConnectionClass {
     TpBaseConnectionClass parent_class;

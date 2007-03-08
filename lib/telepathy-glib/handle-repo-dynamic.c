@@ -612,8 +612,10 @@ tp_dynamic_handle_repo_lookup_exact (TpHandleRepoIface *irepo,
 }
 
 static TpHandle
-dynamic_lookup_handle (TpHandleRepoIface *irepo, const char *id,
-    gpointer context)
+dynamic_lookup_handle (TpHandleRepoIface *irepo,
+                       const char *id,
+                       gpointer context,
+                       GError **error)
 {
   TpDynamicHandleRepo *self = TP_DYNAMIC_HANDLE_REPO (irepo);
   TpHandle handle;
@@ -624,7 +626,7 @@ dynamic_lookup_handle (TpHandleRepoIface *irepo, const char *id,
 
   if (self->normalize_function)
     {
-      normal_id = (self->normalize_function) (id, context);
+      normal_id = (self->normalize_function) (irepo, id, context, error);
       if (normal_id == NULL)
         return 0;
       id = normal_id;
@@ -638,8 +640,10 @@ dynamic_lookup_handle (TpHandleRepoIface *irepo, const char *id,
 }
 
 static TpHandle
-dynamic_ensure_handle (TpHandleRepoIface *irepo, const char *id,
-    gpointer context)
+dynamic_ensure_handle (TpHandleRepoIface *irepo,
+                       const char *id,
+                       gpointer context,
+                       GError **error)
 {
   TpDynamicHandleRepo *self = TP_DYNAMIC_HANDLE_REPO (irepo);
   TpHandle handle;
@@ -651,7 +655,7 @@ dynamic_ensure_handle (TpHandleRepoIface *irepo, const char *id,
 
   if (self->normalize_function)
     {
-      normal_id = (self->normalize_function) (id, context);
+      normal_id = (self->normalize_function) (irepo, id, context, error);
       if (normal_id == NULL)
         return 0;
 

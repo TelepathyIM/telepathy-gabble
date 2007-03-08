@@ -23,6 +23,7 @@
 #define __GABBLE_UTIL_H__
 
 #include <glib.h>
+#include <telepathy-glib/handle-repo.h>
 #include <telepathy-glib/util.h>
 #include <loudmouth/loudmouth.h>
 
@@ -40,7 +41,9 @@ G_GNUC_NULL_TERMINATED LmMessage *lm_message_build (const gchar *to, LmMessageTy
 void gabble_decode_jid (const gchar *jid, gchar **a, gchar **b, gchar **c);
 
 gchar *gabble_remove_resource (const gchar *jid);
-gchar *gabble_normalize_contact (const gchar *jid, gpointer userdata);
-gchar *gabble_normalize_room (const gchar *jid, gpointer context);
+gchar *gabble_normalize_contact (TpHandleRepoIface *repo, const gchar *jid,
+    gpointer userdata, GError **error);
+gchar *gabble_normalize_room (TpHandleRepoIface *repo, const gchar *jid,
+    gpointer context, GError **error);
 
 #endif /* __GABBLE_UTIL_H__ */

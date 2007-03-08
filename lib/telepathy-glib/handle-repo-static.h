@@ -40,6 +40,13 @@ G_BEGIN_DECLS
  * valid handle names. All of these are preallocated; no more may be
  * created, and attempts to do so will fail.
  *
+ * Handles in this repository are 1 more than the index in the string
+ * vector of the handle's name, so the first name in the vector has
+ * handle 1 and so on. Connection managers which use a static repository
+ * may assume this to be true, and use an enumeration starting at 1, in the
+ * same order as the string vector, to avoid having to look up handles
+ * internally.
+ *
  * This is intended for handles of type %TP_HANDLE_TYPE_CONTACT_LIST,
  * for which the connection manager should only accept a static list of
  * supported handle names.

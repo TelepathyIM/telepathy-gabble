@@ -79,6 +79,7 @@ handle_priv_new ()
   TpHandlePriv *priv;
 
   priv = g_slice_new0 (TpHandlePriv);
+  priv->refcount = 1;
 
   g_datalist_init (&(priv->datalist));
   return priv;
@@ -562,6 +563,8 @@ dynamic_request_handle (TpHandleRepoIface *irepo, const char *id,
 
   handle = handle_alloc (self);
   priv = handle_priv_new ();
+  /* initial refcount of 0 is very strange, but is backwards compatible... */
+  priv->refcount = 0;
   priv->string = g_strdup (id);
   g_hash_table_insert (self->handle_to_priv, GUINT_TO_POINTER (handle), priv);
   g_hash_table_insert (self->string_to_handle, priv->string,

@@ -29,8 +29,8 @@ typedef struct _TpIntSet TpIntSet;
 typedef void (*TpIntFunc) (guint i, gpointer userdata);
 
 TpIntSet *tp_intset_new (void);
-void tp_intset_destroy (TpIntSet *);
-void tp_intset_clear (TpIntSet *);
+void tp_intset_destroy (TpIntSet *set);
+void tp_intset_clear (TpIntSet *set);
 
 void tp_intset_add (TpIntSet *set, guint element);
 gboolean tp_intset_remove (TpIntSet *set, guint element);

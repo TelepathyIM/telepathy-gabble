@@ -32,13 +32,6 @@ G_BEGIN_DECLS
 
 gboolean gabble_handle_jid_is_valid (TpHandleType type, const gchar *jid, GError **error);
 
-TpHandle gabble_handle_for_contact (TpHandleRepoIface *repo, const char *jid,
-    gboolean with_resource) G_GNUC_DEPRECATED;
-gboolean gabble_handle_for_room_exists (TpHandleRepoIface *repo,
-    const gchar *jid, gboolean ignore_nick) G_GNUC_DEPRECATED;
-TpHandle gabble_handle_for_room (TpHandleRepoIface *repo, const gchar *jid)
-  G_GNUC_DEPRECATED;
-
 G_END_DECLS
 
 #endif /* #ifndef __HANDLES_H__ */

@@ -585,6 +585,22 @@ dynamic_inspect_handle (TpHandleRepoIface *irepo, TpHandle handle)
     return priv->string;
 }
 
+/**
+ * tp_dynamic_handle_repo_lookup_exact:
+ * @irepo: The handle repository
+ * @id: The name to be looked up
+ *
+ * Look up a name in the repository, returning the corresponding handle if
+ * it is present in the repository, without creating a new reference.
+ *
+ * Unlike #tp_handle_lookup this function does not perform any normalization;
+ * it just looks for the literal string you requested. This can be useful to
+ * call from normalization callbacks (for instance, Gabble's contacts
+ * repository uses it to see whether we already know that a JID belongs
+ * to a multi-user chat room member).
+ *
+ * Returns: the handle corresponding to the given ID, or 0 if not present
+ */
 TpHandle
 tp_dynamic_handle_repo_lookup_exact (TpHandleRepoIface *irepo,
                                      const char *id)

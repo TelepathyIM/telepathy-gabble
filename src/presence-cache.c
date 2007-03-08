@@ -387,16 +387,16 @@ gabble_presence_cache_set_property (GObject     *object,
 {
   GabblePresenceCache *cache = GABBLE_PRESENCE_CACHE (object);
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
-  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *contact_repo;
   TpHandleSet *new_presence_handles;
 
   switch (property_id) {
     case PROP_CONNECTION:
       priv->conn = g_value_get_object (value);
-      conn = (TpBaseConnection *)priv->conn;
+      contact_repo = tp_base_connection_get_handles (
+          (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
 
-      new_presence_handles = tp_handle_set_new (
-          conn->handles[TP_HANDLE_TYPE_CONTACT]);
+      new_presence_handles = tp_handle_set_new (contact_repo);
 
       if (priv->presence_handles)
         {
@@ -697,15 +697,16 @@ _caps_disco_cb (GabbleDisco *disco,
   LmMessageNode *child;
   GabblePresenceCache *cache;
   GabblePresenceCachePrivate *priv;
-  TpBaseConnection *conn;
+  TpHandleRepoIface *contact_repo;
   gchar *full_jid = NULL;
   GabblePresenceCapabilities caps = 0;
   guint trust;
-  TpHandle handle;
+  TpHandle handle = 0;
 
   cache = GABBLE_PRESENCE_CACHE (user_data);
   priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
-  conn = (TpBaseConnection *)priv->conn;
+  contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
 
   if (NULL == node)
     {
@@ -729,9 +730,7 @@ _caps_disco_cb (GabbleDisco *disco,
             {
               const gchar *jid;
 
-              jid = tp_handle_inspect (
-                  conn->handles[TP_HANDLE_TYPE_CONTACT],
-                  waiter->handle);
+              jid = tp_handle_inspect (contact_repo, waiter->handle);
               full_jid = g_strdup_printf ("%s/%s", jid, waiter->resource);
 
               gabble_disco_request (disco, GABBLE_DISCO_TYPE_INFO, full_jid, node,
@@ -782,8 +781,12 @@ _caps_disco_cb (GabbleDisco *disco,
         caps |= PRESENCE_CAP_CHAT_STATES;
     }
 
-  handle = gabble_handle_for_contact (
-      conn->handles[TP_HANDLE_TYPE_CONTACT], jid, FALSE);
+  handle = tp_handle_ensure (contact_repo, jid, NULL);
+  if (handle == 0)
+    {
+      DEBUG ("Ignoring presence from invalid JID %s", jid);
+      goto OUT;
+    }
   trust = capability_info_recvd (cache, node, handle, caps);
 
   for (i = waiters; NULL != i;)
@@ -838,9 +841,7 @@ _caps_disco_cb (GabbleDisco *disco,
             {
               const gchar *jid;
 
-              jid = tp_handle_inspect (
-                  conn->handles[TP_HANDLE_TYPE_CONTACT],
-                  waiter->handle);
+              jid = tp_handle_inspect (contact_repo, waiter->handle);
               full_jid = g_strdup_printf ("%s/%s", jid, waiter->resource);
 
               gabble_disco_request (disco, GABBLE_DISCO_TYPE_INFO, full_jid,
@@ -865,6 +866,8 @@ _caps_disco_cb (GabbleDisco *disco,
 
 OUT:
 
+  if (handle)
+    tp_handle_unref (contact_repo, handle);
   g_free (full_jid);
 }
 
@@ -878,10 +881,11 @@ _process_caps_uri (GabblePresenceCache *cache,
 {
   CapabilityInfo *info;
   GabblePresenceCachePrivate *priv;
-  TpBaseConnection *conn;
+  TpHandleRepoIface *contact_repo;
 
   priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
-  conn = (TpBaseConnection *)priv->conn;
+  contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
   info = capability_info_get (cache, uri, 0);
 
   if (info->trust >= CAPABILITY_BUNDLE_ENOUGH_TRUST
@@ -937,9 +941,7 @@ _process_caps_uri (GabblePresenceCache *cache,
         }
 
       waiters = (GSList *) value;
-      waiter = disco_waiter_new (
-          conn->handles[TP_HANDLE_TYPE_CONTACT], handle,
-          resource, serial);
+      waiter = disco_waiter_new (contact_repo, handle, resource, serial);
       waiters = g_slist_prepend (waiters, waiter);
       g_hash_table_insert (priv->disco_pending, key, waiters);
 
@@ -1109,8 +1111,10 @@ gabble_presence_cache_lm_message_cb (LmMessageHandler *handler,
 {
   GabblePresenceCache *cache = GABBLE_PRESENCE_CACHE (user_data);
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
-  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
   const char *from;
+  LmHandlerResult ret;
   TpHandle handle;
 
   g_assert (lmconn == priv->conn->lmconn);
@@ -1123,8 +1127,7 @@ gabble_presence_cache_lm_message_cb (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
-  handle = gabble_handle_for_contact (
-      conn->handles[TP_HANDLE_TYPE_CONTACT], from, FALSE);
+  handle = tp_handle_ensure (contact_repo, from, NULL);
 
   if (0 == handle)
     {
@@ -1135,12 +1138,18 @@ gabble_presence_cache_lm_message_cb (LmMessageHandler *handler,
   switch (lm_message_get_type (message))
     {
     case LM_MESSAGE_TYPE_PRESENCE:
-      return _parse_presence_message (cache, handle, from, message);
+      ret = _parse_presence_message (cache, handle, from, message);
+      break;
     case LM_MESSAGE_TYPE_MESSAGE:
-      return _parse_message_message (cache, handle, from, message);
+      ret = _parse_message_message (cache, handle, from, message);
+      break;
     default:
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+      ret = LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+      break;
     }
+
+  tp_handle_unref (contact_repo, handle);
+  return ret;
 }
 
 
@@ -1156,10 +1165,10 @@ GabblePresence *
 gabble_presence_cache_get (GabblePresenceCache *cache, TpHandle handle)
 {
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
-  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
 
-  g_assert (tp_handle_is_valid (
-        conn->handles[TP_HANDLE_TYPE_CONTACT], handle, NULL));
+  g_assert (tp_handle_is_valid (contact_repo, handle, NULL));
 
   return g_hash_table_lookup (priv->presence, GINT_TO_POINTER (handle));
 }
@@ -1170,7 +1179,8 @@ gabble_presence_cache_maybe_remove (
     TpHandle handle)
 {
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
-  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
   GabblePresence *presence;
 
   presence = gabble_presence_cache_get (cache, handle);
@@ -1184,8 +1194,7 @@ gabble_presence_cache_maybe_remove (
     {
       const gchar *jid;
 
-      jid = tp_handle_inspect (conn->handles[TP_HANDLE_TYPE_CONTACT],
-          handle);
+      jid = tp_handle_inspect (contact_repo, handle);
       DEBUG ("discarding cached presence for unavailable jid %s", jid);
       g_hash_table_remove (priv->presence, GINT_TO_POINTER (handle));
       tp_handle_set_remove (priv->presence_handles, handle);
@@ -1216,12 +1225,12 @@ gabble_presence_cache_update (
     gint8 priority)
 {
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
-  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
   const gchar *jid;
   GabblePresence *presence;
 
-  jid = tp_handle_inspect (conn->handles[TP_HANDLE_TYPE_CONTACT],
-      handle);
+  jid = tp_handle_inspect (contact_repo, handle);
   DEBUG ("%s (%d) resource %s prio %d presence %d message \"%s\"",
       jid, handle, resource, priority, presence_id, status_message);
 

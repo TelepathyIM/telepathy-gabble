@@ -209,17 +209,20 @@ get_muc_from_jid (GabbleMucFactory *fac, const gchar *jid)
 {
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
   TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (conn,
+      TP_HANDLE_TYPE_ROOM);
   TpHandle handle;
   GabbleMucChannel *chan = NULL;
+  gchar *room;
+  
+  room = gabble_remove_resource (jid);
+  if (!room)
+    return NULL;
 
-  if (gabble_handle_for_room_exists (
-        conn->handles[TP_HANDLE_TYPE_ROOM], jid, TRUE))
-    {
-      handle = gabble_handle_for_room (
-          conn->handles[TP_HANDLE_TYPE_ROOM], jid);
-
-      chan = g_hash_table_lookup (priv->channels, GUINT_TO_POINTER (handle));
-    }
+  handle = tp_handle_lookup (room_repo, room, NULL);
+  g_free (room);
+  if (handle)
+    chan = g_hash_table_lookup (priv->channels, GUINT_TO_POINTER (handle));
 
   return chan;
 }
@@ -336,7 +339,10 @@ obsolete_invite_disco_cb (GabbleDisco *self,
 
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (data->factory);
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
-  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
+  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_ROOM);
   LmMessageNode *identity;
   const char *category, *type;
   TpHandle handle;
@@ -362,8 +368,7 @@ obsolete_invite_disco_cb (GabbleDisco *self,
     }
 
   /* OK, it's MUC after all, create a new channel */
-  handle = gabble_handle_for_room (
-      conn->handles[TP_HANDLE_TYPE_ROOM], jid);
+  handle = tp_handle_ensure (room_repo, jid, NULL);
 
   if (g_hash_table_lookup (priv->channels, GINT_TO_POINTER (handle)) == NULL)
     {
@@ -376,6 +381,8 @@ obsolete_invite_disco_cb (GabbleDisco *self,
       DEBUG ("ignoring invite to a room '%s' we're already in", jid);
     }
 
+  tp_handle_unref (room_repo, handle);
+  tp_handle_unref (contact_repo, data->inviter);
   g_free (data->reason);
   g_slice_free (struct DiscoInviteData, data);
 }
@@ -396,16 +403,22 @@ muc_factory_message_cb (LmMessageHandler *handler,
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (user_data);
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
   TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
+      TP_HANDLE_TYPE_CONTACT);
+  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (conn,
+      TP_HANDLE_TYPE_ROOM);
 
   const gchar *from, *body, *body_offset;
   time_t stamp;
   TpChannelTextMessageType msgtype;
   LmMessageNode *node;
+  TpHandleRepoIface *handle_source;
   TpHandleType handle_type;
   TpHandle room_handle, handle;
   GabbleMucChannel *chan;
   gint state;
   TpChannelTextSendError send_error;
+  gchar *room;
 
   if (!gabble_text_mixin_parse_incoming_message (message, &from, &stamp,
         &msgtype, &body, &body_offset, &state, &send_error))
@@ -442,9 +455,7 @@ muc_factory_message_cb (LmMessageHandler *handler,
               return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
             }
 
-          inviter_handle = gabble_handle_for_contact (
-              conn->handles[TP_HANDLE_TYPE_CONTACT],
-              invite_from, FALSE);
+          inviter_handle = tp_handle_ensure (contact_repo, invite_from, NULL);
 
           reason_node = lm_message_node_get_child (node, "reason");
           if (reason_node != NULL)
@@ -458,8 +469,9 @@ muc_factory_message_cb (LmMessageHandler *handler,
             }
 
           /* create the channel */
-          handle = gabble_handle_for_room (
-              conn->handles[TP_HANDLE_TYPE_ROOM], from);
+          room = gabble_remove_resource (from);
+          handle = tp_handle_ensure (room_repo, from, NULL);
+          g_free (room);
 
           if (g_hash_table_lookup (priv->channels, GINT_TO_POINTER (handle)) == NULL)
             {
@@ -470,6 +482,8 @@ muc_factory_message_cb (LmMessageHandler *handler,
             {
               NODE_DEBUG (message->node, "ignoring invite to a room we're already in");
             }
+          tp_handle_unref (contact_repo, inviter_handle);
+          tp_handle_unref (room_repo, handle);
 
           return LM_HANDLER_RESULT_REMOVE_MESSAGE;
         }
@@ -493,8 +507,7 @@ muc_factory_message_cb (LmMessageHandler *handler,
         return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
       /* the inviter JID is in "from" */
-      inviter_handle = gabble_handle_for_contact (
-          conn->handles[TP_HANDLE_TYPE_CONTACT], from, FALSE);
+      inviter_handle = tp_handle_ensure (contact_repo, from, NULL);
 
       /* reason is the body */
       reason = body;
@@ -518,14 +531,14 @@ muc_factory_message_cb (LmMessageHandler *handler,
 HANDLE_MESSAGE:
 
   /* check if a room with the jid exists */
-  if (!gabble_handle_for_room_exists (
-        conn->handles[TP_HANDLE_TYPE_ROOM], from, TRUE))
+  room = gabble_remove_resource (from);
+  room_handle = tp_handle_lookup (room_repo, from, NULL);
+  g_free (room);
+
+  if (room_handle == 0)
     {
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
-
-  room_handle = gabble_handle_for_room (
-      conn->handles[TP_HANDLE_TYPE_ROOM], from);
 
   /* find the MUC channel */
   chan = g_hash_table_lookup (priv->channels, GUINT_TO_POINTER (room_handle));
@@ -540,17 +553,28 @@ HANDLE_MESSAGE:
 
   /* get the handle of the sender, which is either the room
    * itself or one of its members */
-  if (gabble_handle_for_room_exists (
-        conn->handles[TP_HANDLE_TYPE_ROOM], from, FALSE))
+  if (strchr (from, '/') == NULL)
     {
+      handle_source = room_repo;
       handle_type = TP_HANDLE_TYPE_ROOM;
       handle = room_handle;
+      tp_handle_ref (room_repo, handle);
     }
   else
     {
+      GabbleNormalizeContactJIDContext context = { GABBLE_JID_ROOM_MEMBER,
+          contact_repo };
+
+      handle_source = contact_repo;
       handle_type = TP_HANDLE_TYPE_CONTACT;
-      handle = gabble_handle_for_contact (
-          conn->handles[TP_HANDLE_TYPE_CONTACT], from, TRUE);
+      handle = tp_handle_ensure (contact_repo, from, &context);
+
+      if (handle == 0)
+        {
+          g_warning ("%s: ignoring groupchat message from invalid JID %s",
+              G_STRFUNC, from);
+          return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+        }
     }
 
   if (send_error != TP_CHANNEL_SEND_NO_ERROR)
@@ -558,21 +582,22 @@ HANDLE_MESSAGE:
       tp_svc_channel_type_text_emit_send_error (
           (TpSvcChannelTypeText *)chan, send_error, stamp, msgtype,
           body_offset);
+      tp_handle_unref (handle_source, handle);
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 
-  if (state != -1) {
-    TpHandle from_handle;
-
-    from_handle = gabble_handle_for_contact (
-          priv->conn->parent.handles[TP_HANDLE_TYPE_CONTACT], from, FALSE);
-    _gabble_muc_channel_state_receive (chan, state, from_handle);
+  if (state != -1 && handle_type == TP_HANDLE_TYPE_CONTACT) {
+    _gabble_muc_channel_state_receive (chan, state, handle);
   }
 
   if (_gabble_muc_channel_receive (chan, msgtype, handle_type, handle, stamp,
                                    body_offset, message))
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    {
+      tp_handle_unref (handle_source, handle);
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    }
 
+  tp_handle_unref (handle_source, handle);
   return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 }
 
@@ -594,7 +619,8 @@ muc_factory_presence_cb (LmMessageHandler *handler,
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (user_data);
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
-  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
   const char *from;
   LmMessageSubType sub_type;
   GabbleMucChannel *muc_chan;
@@ -631,9 +657,10 @@ muc_factory_presence_cb (LmMessageHandler *handler,
       if (muc_chan != NULL)
         {
           TpHandle handle;
+          GabbleNormalizeContactJIDContext context = { GABBLE_JID_ROOM_MEMBER,
+              contact_repo };
 
-          handle = gabble_handle_for_contact (
-              conn->handles[TP_HANDLE_TYPE_CONTACT], from, TRUE);
+          handle = tp_handle_ensure (contact_repo, from, &context);
           if (handle == 0)
             {
               NODE_DEBUG (msg->node, "discarding MUC presence from malformed jid");
@@ -642,6 +669,7 @@ muc_factory_presence_cb (LmMessageHandler *handler,
 
           _gabble_muc_channel_member_presence_updated (muc_chan, handle,
                                                        msg, x_node);
+          tp_handle_unref (contact_repo, handle);
         }
       else
         {
@@ -819,7 +847,8 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (iface);
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
-  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_ROOM);
   GabbleMucChannel *chan;
 
   if (!tp_strdiff (chan_type, TP_IFACE_CHANNEL_TYPE_ROOM_LIST))
@@ -846,8 +875,7 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
   if (handle_type != TP_HANDLE_TYPE_ROOM)
     return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_AVAILABLE;
 
-  if (!tp_handle_is_valid (conn->handles[TP_HANDLE_TYPE_ROOM],
-        handle, NULL))
+  if (!tp_handle_is_valid (room_repo, handle, NULL))
     return TP_CHANNEL_FACTORY_REQUEST_STATUS_INVALID_HANDLE;
 
   chan = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (handle));

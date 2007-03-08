@@ -191,9 +191,10 @@ gabble_connection_get_avatar_tokens (TpSvcConnectionInterfaceAvatars *iface,
   guint i, my_index = 0;
   gchar **ret;
   GError *err;
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
 
-  if (!tp_handles_are_valid (base->handles[TP_HANDLE_TYPE_CONTACT],
-        contacts, FALSE, &err))
+  if (!tp_handles_are_valid (contact_handles, contacts, FALSE, &err))
     {
       dbus_g_method_return_error (invocation, err);
       g_error_free (err);

@@ -200,7 +200,8 @@ im_factory_message_cb (LmMessageHandler *handler,
   GabbleImFactory *fac = GABBLE_IM_FACTORY (user_data);
   GabbleImFactoryPrivate *priv = GABBLE_IM_FACTORY_GET_PRIVATE (fac);
   TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
-
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
+      TP_HANDLE_TYPE_CONTACT);
   const gchar *from, *body, *body_offset;
   time_t stamp;
   TpChannelTextMessageType msgtype;
@@ -218,8 +219,7 @@ im_factory_message_cb (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
-  handle = gabble_handle_for_contact (
-      conn->handles[TP_HANDLE_TYPE_CONTACT], from, FALSE);
+  handle = tp_handle_ensure (contact_repo, from, NULL);
   if (handle == 0)
     {
       NODE_DEBUG (message->node, "ignoring message node from malformed jid");
@@ -236,6 +236,7 @@ im_factory_message_cb (LmMessageHandler *handler,
       if (send_error != TP_CHANNEL_SEND_NO_ERROR)
         {
           DEBUG ("ignoring message error; no sending channel");
+          tp_handle_unref (contact_repo, handle);
           return LM_HANDLER_RESULT_REMOVE_MESSAGE;
         }
 
@@ -248,6 +249,7 @@ im_factory_message_cb (LmMessageHandler *handler,
     {
       tp_svc_channel_type_text_emit_send_error ((TpSvcChannelTypeText *)chan,
           send_error, stamp, msgtype, body_offset);
+      tp_handle_unref (contact_repo, handle);
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 
@@ -256,8 +258,12 @@ im_factory_message_cb (LmMessageHandler *handler,
 
   if (body != NULL && _gabble_im_channel_receive (chan, msgtype, handle, from,
                                   stamp, body_offset))
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    {
+      tp_handle_unref (contact_repo, handle);
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    }
 
+  tp_handle_unref (contact_repo, handle);
   return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 }
 
@@ -417,7 +423,8 @@ gabble_im_factory_iface_request (TpChannelFactoryIface *iface,
 {
   GabbleImFactory *fac = GABBLE_IM_FACTORY (iface);
   GabbleImFactoryPrivate *priv = GABBLE_IM_FACTORY_GET_PRIVATE (fac);
-  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
   GabbleIMChannel *chan;
   TpChannelFactoryRequestStatus status;
 
@@ -427,8 +434,7 @@ gabble_im_factory_iface_request (TpChannelFactoryIface *iface,
   if (handle_type != TP_HANDLE_TYPE_CONTACT)
     return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_AVAILABLE;
 
-  if (!tp_handle_is_valid (conn->handles[TP_HANDLE_TYPE_CONTACT],
-        handle, error))
+  if (!tp_handle_is_valid (contact_repo, handle, error))
     return TP_CHANNEL_FACTORY_REQUEST_STATUS_ERROR;
 
   chan = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (handle));

@@ -158,12 +158,15 @@ gabble_media_channel_constructor (GType type, guint n_props,
   TpBaseConnection *conn;
   DBusGConnection *bus;
   TpIntSet *set;
+  TpHandleRepoIface *contact_handles;
 
   obj = G_OBJECT_CLASS (gabble_media_channel_parent_class)->
            constructor (type, n_props, props);
 
   priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (GABBLE_MEDIA_CHANNEL (obj));
   conn = (TpBaseConnection *)priv->conn;
+  contact_handles = tp_base_connection_get_handles (conn,
+      TP_HANDLE_TYPE_CONTACT);
 
   /* register object on the bus */
   bus = tp_get_bus ();
@@ -171,8 +174,7 @@ gabble_media_channel_constructor (GType type, guint n_props,
 
   tp_group_mixin_init ((TpSvcChannelInterfaceGroup *)obj,
       G_STRUCT_OFFSET (GabbleMediaChannel, group),
-      conn->handles[TP_HANDLE_TYPE_CONTACT],
-      conn->self_handle);
+      contact_handles, conn->self_handle);
 
   /* automatically add creator to channel */
   set = tp_intset_new ();
@@ -969,14 +971,16 @@ gabble_media_channel_request_streams (TpSvcChannelTypeStreamedMedia *iface,
   GPtrArray *streams;
   GError *error = NULL;
   GPtrArray *ret;
+  TpHandleRepoIface *contact_handles;
 
   g_assert (GABBLE_IS_MEDIA_CHANNEL (self));
 
   priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
   conn = (TpBaseConnection *)priv->conn;
+  contact_handles = tp_base_connection_get_handles (conn,
+      TP_HANDLE_TYPE_CONTACT);
 
-  if (!tp_handle_is_valid (conn->handles[TP_HANDLE_TYPE_CONTACT],
-        contact_handle, &error))
+  if (!tp_handle_is_valid (contact_handles, contact_handle, &error))
     {
       dbus_g_method_return_error (context, error);
       g_error_free (error);
@@ -1024,6 +1028,8 @@ _gabble_media_channel_add_member (TpSvcChannelInterfaceGroup *obj,
   TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
 #ifdef ENABLE_DEBUG
   TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (conn,
+      TP_HANDLE_TYPE_CONTACT);
 #endif
 
   /* did we create this channel? */
@@ -1039,8 +1045,8 @@ _gabble_media_channel_add_member (TpSvcChannelInterfaceGroup *obj,
       if (presence == NULL)
         {
           DEBUG ("failed to add contact %d (%s) to media channel: "
-              "no presence available", handle, tp_handle_inspect (
-                conn->handles[TP_HANDLE_TYPE_CONTACT], handle));
+              "no presence available", handle,
+              tp_handle_inspect (contact_handles, handle));
           goto NO_CAPS;
         }
 
@@ -1049,8 +1055,8 @@ _gabble_media_channel_add_member (TpSvcChannelInterfaceGroup *obj,
             presence->caps & PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO))
         {
           DEBUG ("failed to add contact %d (%s) to media channel: "
-              "caps %x aren't sufficient", handle, tp_handle_inspect (
-                conn->handles[TP_HANDLE_TYPE_CONTACT], handle),
+              "caps %x aren't sufficient", handle,
+              tp_handle_inspect (contact_handles, handle),
               presence->caps);
           goto NO_CAPS;
         }

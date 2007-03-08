@@ -70,9 +70,10 @@ construct_presence_hash (GabbleConnection *self,
   const gchar *status_message;
   /* this is never set at the moment*/
   guint timestamp = 0;
+  TpHandleRepoIface *handle_repo = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
 
-  g_assert (tp_handles_are_valid (base->handles[TP_HANDLE_TYPE_CONTACT],
-        contact_handles, FALSE, NULL));
+  g_assert (tp_handles_are_valid (handle_repo, contact_handles, FALSE, NULL));
 
   presence_hash = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
       (GDestroyNotify) g_value_array_free);
@@ -290,9 +291,10 @@ gabble_connection_get_presence (TpSvcConnectionInterfacePresence *iface,
   TpBaseConnection *base = (TpBaseConnection *)self;
   GHashTable *presence_hash;
   GError *error = NULL;
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
 
-  if (!tp_handles_are_valid (base->handles[TP_HANDLE_TYPE_CONTACT],
-        contacts, FALSE, &error))
+  if (!tp_handles_are_valid (contact_handles, contacts, FALSE, &error))
     {
       dbus_g_method_return_error (context, error);
       g_error_free (error);
@@ -467,13 +469,14 @@ gabble_connection_request_presence (TpSvcConnectionInterfacePresence *iface,
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *)self;
   GError *error;
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
 
   g_assert (GABBLE_IS_CONNECTION (self));
 
   ERROR_IF_NOT_CONNECTED_ASYNC (base, error, context)
 
-  if (!tp_handles_are_valid (base->handles[TP_HANDLE_TYPE_CONTACT],
-        contacts, FALSE, &error))
+  if (!tp_handles_are_valid (contact_handles, contacts, FALSE, &error))
     {
       dbus_g_method_return_error (context, error);
       g_error_free (error);

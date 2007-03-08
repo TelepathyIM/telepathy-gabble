@@ -30,21 +30,14 @@
 
 G_BEGIN_DECLS
 
-typedef enum
-{
-  GABBLE_LIST_HANDLE_PUBLISH = 1,
-  GABBLE_LIST_HANDLE_SUBSCRIBE,
-  GABBLE_LIST_HANDLE_KNOWN,
-  GABBLE_LIST_HANDLE_DENY
-} GabbleListHandle;
-
 gboolean gabble_handle_jid_is_valid (TpHandleType type, const gchar *jid, GError **error);
 
-void gabble_handle_repos_init (TpHandleRepoIface *repos[LAST_TP_HANDLE_TYPE+1]);
-
-TpHandle gabble_handle_for_contact (TpHandleRepoIface *repo, const char *jid, gboolean with_resource);
-gboolean gabble_handle_for_room_exists (TpHandleRepoIface *repo, const gchar *jid, gboolean ignore_nick);
-TpHandle gabble_handle_for_room (TpHandleRepoIface *repo, const gchar *jid);
+TpHandle gabble_handle_for_contact (TpHandleRepoIface *repo, const char *jid,
+    gboolean with_resource) G_GNUC_DEPRECATED;
+gboolean gabble_handle_for_room_exists (TpHandleRepoIface *repo,
+    const gchar *jid, gboolean ignore_nick) G_GNUC_DEPRECATED;
+TpHandle gabble_handle_for_room (TpHandleRepoIface *repo, const gchar *jid)
+  G_GNUC_DEPRECATED;
 
 G_END_DECLS
 

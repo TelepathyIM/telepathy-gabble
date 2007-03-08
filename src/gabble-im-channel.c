@@ -101,18 +101,20 @@ gabble_im_channel_constructor (GType type, guint n_props,
   TpBaseConnection *conn;
   DBusGConnection *bus;
   gboolean valid, send_nick;
+  TpHandleRepoIface *contact_handles;
 
   obj = G_OBJECT_CLASS (gabble_im_channel_parent_class)->
            constructor (type, n_props, props);
   priv = GABBLE_IM_CHANNEL_GET_PRIVATE (GABBLE_IM_CHANNEL (obj));
   conn = (TpBaseConnection *)priv->conn;
+  contact_handles = tp_base_connection_get_handles (conn,
+      TP_HANDLE_TYPE_CONTACT);
 
-  valid = tp_handle_ref (conn->handles[TP_HANDLE_TYPE_CONTACT],
-      priv->handle);
+  valid = tp_handle_ref (contact_handles, priv->handle);
   g_assert (valid);
 
-  priv->peer_jid = g_strdup (tp_handle_inspect (
-        conn->handles[TP_HANDLE_TYPE_CONTACT], priv->handle));
+  priv->peer_jid = g_strdup (tp_handle_inspect (contact_handles,
+        priv->handle));
 
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
@@ -124,8 +126,7 @@ gabble_im_channel_constructor (GType type, guint n_props,
     send_nick = TRUE;
 
   tp_text_mixin_init (obj, G_STRUCT_OFFSET (GabbleIMChannel, text),
-      conn->handles[TP_HANDLE_TYPE_CONTACT],
-      send_nick);
+      contact_handles, send_nick);
 
   tp_text_mixin_set_message_types (obj,
       TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL,
@@ -293,11 +294,12 @@ gabble_im_channel_finalize (GObject *object)
   GabbleIMChannel *self = GABBLE_IM_CHANNEL (object);
   GabbleIMChannelPrivate *priv = GABBLE_IM_CHANNEL_GET_PRIVATE (self);
   TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (conn,
+      TP_HANDLE_TYPE_CONTACT);
 
   /* free any data held directly by the object here */
 
-  tp_handle_unref (conn->handles[TP_HANDLE_TYPE_CONTACT],
-      priv->handle);
+  tp_handle_unref (contact_handles, priv->handle);
 
   g_free (priv->object_path);
   g_free (priv->peer_jid);

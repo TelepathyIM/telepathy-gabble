@@ -25,6 +25,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <telepathy-glib/handle-repo-dynamic.c>
+
 #include "sha1/sha1.h"
 #include "namespaces.h"
 #include "gabble-connection.h"
@@ -365,4 +367,113 @@ gabble_decode_jid (const gchar *jid,
 
   /* free our working copy */
   g_free (tmp_jid);
+}
+
+gchar *
+gabble_normalize_room (const gchar *jid, gpointer context)
+{
+  char *at = strchr (jid, '@');
+  char *slash = strchr (jid, '/');
+
+  /* there'd better be an @ somewhere after the first character */
+  if (at == NULL)
+    {
+      g_debug ("invalid room JID %s: no @", jid);
+      return NULL;
+    }
+  if (at == jid)
+    {
+      g_debug ("invalid room JID %s: no username before @", jid);
+      return NULL;
+    }
+
+  /* room names can't contain the nick part */
+  if (slash != NULL)
+    {
+      g_debug ("invalid room JID %s: contains nickname too", jid);
+      return NULL;
+    }
+
+  /* the room and service parts are both case-insensitive, so lowercase
+   * them both; gabble_decode_jid is overkill here
+   */
+  return g_utf8_strdown (jid, -1);
+}
+
+gchar *
+gabble_remove_resource (const gchar *jid)
+{
+  char *at = strchr (jid, '@');
+  char *slash = strchr (jid, '/');
+  gchar *buf;
+
+  if (at > slash)
+    {
+      g_debug ("invalid JID %s: first @ is later than first /", jid);
+      return NULL;
+    }
+
+  if (slash == NULL)
+    return g_strdup (jid);
+
+  /* The user and domain parts can't contain '/', assuming it's valid */
+  buf = g_malloc(slash - jid + 1);
+  strncpy (buf, jid, slash - jid);
+  buf[slash - jid] = '\0';
+
+  return buf;
+}
+
+gchar *
+gabble_normalize_contact (const gchar *jid, gpointer userdata)
+{
+  GabbleNormalizeContactJIDContext *context = userdata;
+  gchar *username = NULL, *server = NULL, *resource = NULL;
+  gchar *ret = NULL;
+
+  gabble_decode_jid (jid, &username, &server, &resource);
+
+  if (!username || !server || !username[0] || !server[0])
+    {
+      g_debug ("%s: jid %s has invalid username or server", G_STRFUNC, jid);
+      goto OUT;
+    }
+
+  if (context->mode == GABBLE_JID_ROOM_MEMBER && resource == NULL)
+    {
+      g_debug ("%s: jid %s can't be a room member, it has no resource",
+          G_STRFUNC, jid);
+      goto OUT;
+    }
+
+  if (context->mode != GABBLE_JID_GLOBAL && resource != NULL)
+    {
+      ret = g_strdup_printf ("%s@%s/%s", username, server, resource);
+
+      if (context->mode == GABBLE_JID_ROOM_MEMBER
+          || (context->contacts != NULL
+              && tp_dynamic_handle_repo_lookup_exact (context->contacts, ret)))
+        {
+          /* either we know from context that it's a room member, or we
+           * already saw that contact in a room. Use ret as our answer
+           */
+          goto OUT;
+        }
+      else
+        {
+          g_free (ret);
+        }
+    }
+
+  /* if we get here, we suspect it's a global JID, either because the context
+   * says it is, or because the context isn't sure and we haven't seen it in
+   * use as a room member
+   */
+  ret = g_strdup_printf ("%s@%s", username, server);
+
+OUT:
+  g_free (username);
+  g_free (server);
+  g_free (resource);
+  return ret;
 }

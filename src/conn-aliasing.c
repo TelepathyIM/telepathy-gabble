@@ -182,6 +182,8 @@ gabble_connection_request_aliases (TpSvcConnectionInterfaceAliasing *iface,
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *)self;
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
   guint i;
   AliasesRequest *request;
   GError *error = NULL;
@@ -190,8 +192,7 @@ gabble_connection_request_aliases (TpSvcConnectionInterfaceAliasing *iface,
 
   ERROR_IF_NOT_CONNECTED_ASYNC (base, error, context)
 
-  if (!tp_handles_are_valid (base->handles[TP_HANDLE_TYPE_CONTACT],
-        contacts, FALSE, &error))
+  if (!tp_handles_are_valid (contact_handles, contacts, FALSE, &error))
     {
       dbus_g_method_return_error (context, error);
       g_error_free (error);
@@ -222,8 +223,7 @@ gabble_connection_request_aliases (TpSvcConnectionInterfaceAliasing *iface,
       else
         {
           DEBUG ("requesting vCard for alias of contact %s",
-              tp_handle_inspect (base->handles[TP_HANDLE_TYPE_CONTACT],
-                handle));
+              tp_handle_inspect (contact_handles, handle));
 
           g_free (alias);
 
@@ -275,9 +275,10 @@ setaliases_foreach (gpointer key, gpointer value, gpointer user_data)
   gchar *alias = (gchar *) value;
   GError *error = NULL;
   TpBaseConnection *base = (TpBaseConnection *)data->conn;
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
 
-  if (!tp_handle_is_valid (base->handles[TP_HANDLE_TYPE_CONTACT],
-        handle, &error))
+  if (!tp_handle_is_valid (contact_handles, handle, &error))
     {
       data->retval = FALSE;
     }

@@ -2061,15 +2061,17 @@ get_jid_for_contact (GabbleMediaSession *session,
   TpBaseConnection *conn;
   const gchar *base_jid;
   TpHandle self;
+  TpHandleRepoIface *contact_handles;
 
   g_assert (GABBLE_IS_MEDIA_SESSION (session));
 
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
   conn = (TpBaseConnection *)priv->conn;
+  contact_handles = tp_base_connection_get_handles (conn,
+      TP_HANDLE_TYPE_CONTACT);
   self = conn->self_handle;
 
-  base_jid = tp_handle_inspect (
-      conn->handles[TP_HANDLE_TYPE_CONTACT], handle);
+  base_jid = tp_handle_inspect (contact_handles, handle);
   g_assert (base_jid != NULL);
 
   if (handle == self)

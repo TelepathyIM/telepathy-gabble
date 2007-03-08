@@ -39,4 +39,8 @@ G_GNUC_NULL_TERMINATED LmMessage *lm_message_build (const gchar *to, LmMessageTy
 /* format: a@b/c */
 void gabble_decode_jid (const gchar *jid, gchar **a, gchar **b, gchar **c);
 
+gchar *gabble_remove_resource (const gchar *jid);
+gchar *gabble_normalize_contact (const gchar *jid, gpointer userdata);
+gchar *gabble_normalize_room (const gchar *jid, gpointer context);
+
 #endif /* __GABBLE_UTIL_H__ */

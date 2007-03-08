@@ -69,6 +69,34 @@ typedef LmHandlerResult (*GabbleConnectionMsgReplyFunc) (GabbleConnection *conn,
                                                          GObject *object,
                                                          gpointer user_data);
 
+/* must be in the same order as the list_handle_strings in
+ * gabble-connection.c */
+typedef enum
+{
+  GABBLE_LIST_HANDLE_PUBLISH = 1,
+  GABBLE_LIST_HANDLE_SUBSCRIBE,
+  GABBLE_LIST_HANDLE_KNOWN,
+  GABBLE_LIST_HANDLE_DENY
+} GabbleListHandle;
+
+typedef enum {
+    /* The JID could be a "global" JID, or a MUC room member. We'll assume
+     * that it's a global JID (and remove the resource) unless we've seen
+     * that JID in a MUC before.
+     */
+    GABBLE_JID_ANY,
+    /* The JID is definitely global. Remove the resource. */
+    GABBLE_JID_GLOBAL,
+    /* The JID is definitely a room member. Assert that there is a "resource"
+     * (nickname) and don't remove it. */
+    GABBLE_JID_ROOM_MEMBER
+} GabbleNormalizeContactJIDMode;
+
+typedef struct {
+    GabbleNormalizeContactJIDMode mode;
+    TpHandleRepoIface *contacts;
+} GabbleNormalizeContactJIDContext;
+
 struct _GabbleConnectionClass {
     TpBaseConnectionClass parent_class;
 };
@@ -134,6 +162,9 @@ GabbleConnectionAliasSource _gabble_connection_get_cached_alias (GabbleConnectio
 const char *_gabble_connection_find_conference_server (GabbleConnection *);
 gboolean _gabble_connection_signal_own_presence (GabbleConnection *, GError **);
 
+/* extern only for the benefit of the unit tests */
+void _gabble_connection_create_handle_repos (TpBaseConnection *conn,
+    TpHandleRepoIface *repos[LAST_TP_HANDLE_TYPE+1]);
 
 #define ERROR_IF_NOT_CONNECTED_ASYNC(BASE, ERROR, CONTEXT) \
   if ((BASE)->status != TP_CONNECTION_STATUS_CONNECTED) \

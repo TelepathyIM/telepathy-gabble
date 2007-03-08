@@ -228,11 +228,12 @@ media_factory_jingle_cb (LmMessageHandler *handler,
 {
   GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (user_data);
   GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
-  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
   LmMessageNode *iq_node, *session_node;
   const gchar *from, *id, *action, *sid;
   gchar *resource;
-  TpHandle handle;
+  TpHandle handle = 0;
   GabbleMediaChannel *chan = NULL;
   gboolean chan_is_new = FALSE;
   GError *error = NULL;
@@ -276,8 +277,7 @@ media_factory_jingle_cb (LmMessageHandler *handler,
       goto BAD_REQUEST;
     }
 
-  handle = gabble_handle_for_contact (
-      conn->handles[TP_HANDLE_TYPE_CONTACT], from, FALSE);
+  handle = tp_handle_ensure (contact_repo, from, NULL);
   if (handle == 0)
     {
       NODE_DEBUG (iq_node, "unable to get handle for sender");
@@ -351,6 +351,8 @@ media_factory_jingle_cb (LmMessageHandler *handler,
 
   g_object_unref (chan);
   g_free (resource);
+  if (handle)
+    tp_handle_unref (contact_repo, handle);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
@@ -358,6 +360,8 @@ BAD_REQUEST:
   _gabble_connection_send_iq_error (
     priv->conn, message, XMPP_ERROR_BAD_REQUEST, NULL);
 
+  if (handle)
+    tp_handle_unref (contact_repo, handle);
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
@@ -527,9 +531,10 @@ jingle_info_send_request (GabbleMediaFactory *fac)
   LmMessageNode *node;
   const gchar *jid;
   GError *error = NULL;
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
 
-  jid = tp_handle_inspect (base->handles[TP_HANDLE_TYPE_CONTACT],
-      base->self_handle);
+  jid = tp_handle_inspect (contact_handles, base->self_handle);
   msg = lm_message_new_with_sub_type (jid, LM_MESSAGE_TYPE_IQ,
       LM_MESSAGE_SUB_TYPE_GET);
 

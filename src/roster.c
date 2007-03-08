@@ -229,9 +229,10 @@ item_handle_unref_foreach (gpointer key, gpointer data, gpointer user_data)
 {
   TpHandle handle = (TpHandle) key;
   GabbleRosterPrivate *priv = (GabbleRosterPrivate *) user_data;
-  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
 
-  tp_handle_unref (conn->handles[TP_HANDLE_TYPE_CONTACT], handle);
+  tp_handle_unref (contact_repo, handle);
 }
 
 void
@@ -349,6 +350,8 @@ _parse_item_groups (LmMessageNode *item_node, TpBaseConnection *conn)
 {
   LmMessageNode *group_node;
   TpIntSet *groups = tp_intset_new ();
+  TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
+      conn, TP_HANDLE_TYPE_GROUP);
 
   for (group_node = item_node->children;
       NULL != group_node;
@@ -361,7 +364,7 @@ _parse_item_groups (LmMessageNode *item_node, TpBaseConnection *conn)
         continue;
 
       tp_intset_add (groups, tp_handle_request (
-            conn->handles[TP_HANDLE_TYPE_GROUP], group_node->value,
+            group_repo, group_node->value,
             TRUE));
     }
 
@@ -448,22 +451,23 @@ _gabble_roster_item_get (GabbleRoster *roster,
                          TpHandle handle)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
-  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
+  TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_GROUP);
   GabbleRosterItem *item;
 
   g_assert (roster != NULL);
   g_assert (GABBLE_IS_ROSTER (roster));
-  g_assert (tp_handle_is_valid (
-        conn->handles[TP_HANDLE_TYPE_CONTACT], handle, NULL));
+  g_assert (tp_handle_is_valid (contact_repo, handle, NULL));
 
   item = g_hash_table_lookup (priv->items, GINT_TO_POINTER (handle));
 
   if (NULL == item)
     {
       item = g_slice_new0 (GabbleRosterItem);
-      item->groups = tp_handle_set_new (
-          conn->handles[TP_HANDLE_TYPE_GROUP]);
-      tp_handle_ref (conn->handles[TP_HANDLE_TYPE_CONTACT], handle);
+      item->groups = tp_handle_set_new (group_repo);
+      tp_handle_ref (contact_repo, handle);
       g_hash_table_insert (priv->items, GINT_TO_POINTER (handle), item);
     }
 
@@ -475,15 +479,15 @@ _gabble_roster_item_remove (GabbleRoster *roster,
                             TpHandle handle)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
-  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
 
   g_assert (roster != NULL);
   g_assert (GABBLE_IS_ROSTER (roster));
-  g_assert (tp_handle_is_valid (
-        conn->handles[TP_HANDLE_TYPE_CONTACT], handle, NULL));
+  g_assert (tp_handle_is_valid (contact_repo, handle, NULL));
 
   g_hash_table_remove (priv->items, GINT_TO_POINTER (handle));
-  tp_handle_unref (conn->handles[TP_HANDLE_TYPE_CONTACT], handle);
+  tp_handle_unref (contact_repo, handle);
 }
 
 /* the TpHandleType must be GROUP or LIST */
@@ -556,7 +560,8 @@ _gabble_roster_item_update (GabbleRoster *roster,
                             gboolean google_roster_mode)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
-  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
   GabbleRosterItem *item;
   const gchar *ask, *name;
   TpIntSet *old_groups, *new_groups, *added_to, *removed_from, *removed_from2;
@@ -564,9 +569,7 @@ _gabble_roster_item_update (GabbleRoster *roster,
 
   g_assert (roster != NULL);
   g_assert (GABBLE_IS_ROSTER (roster));
-  g_assert (tp_handle_is_valid (
-        conn->handles[TP_HANDLE_TYPE_CONTACT], contact_handle,
-        NULL));
+  g_assert (tp_handle_is_valid (contact_repo, contact_handle, NULL));
   g_assert (node != NULL);
 
   item = _gabble_roster_item_get (roster, contact_handle);
@@ -720,8 +723,9 @@ static void
 _gabble_roster_item_put_group_in_message (guint handle, gpointer user_data)
 {
   struct _ItemToMessageContext *ctx = (struct _ItemToMessageContext *)user_data;
-  const char *name = tp_handle_inspect (
-      ctx->conn->handles[TP_HANDLE_TYPE_GROUP], handle);
+  TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
+      ctx->conn, TP_HANDLE_TYPE_GROUP);
+  const char *name = tp_handle_inspect (group_repo, handle);
 
   lm_message_node_add_child (ctx->item_node, "group", name);
 }
@@ -742,7 +746,8 @@ _gabble_roster_item_to_message (GabbleRoster *roster,
                                 GabbleRosterItem *item)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
-  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
   LmMessage *message;
   LmMessageNode *query_node, *item_node;
   const gchar *jid;
@@ -752,8 +757,7 @@ _gabble_roster_item_to_message (GabbleRoster *roster,
 
   g_assert (roster != NULL);
   g_assert (GABBLE_IS_ROSTER (roster));
-  g_assert (tp_handle_is_valid (
-        conn->handles[TP_HANDLE_TYPE_CONTACT], handle, NULL));
+  g_assert (tp_handle_is_valid (contact_repo, handle, NULL));
 
   if (!item)
     item = _gabble_roster_item_get (roster, handle);
@@ -767,8 +771,7 @@ _gabble_roster_item_to_message (GabbleRoster *roster,
   if (NULL != item_return)
     *item_return = item_node;
 
-  jid = tp_handle_inspect (conn->handles[TP_HANDLE_TYPE_CONTACT],
-      handle);
+  jid = tp_handle_inspect (contact_repo, handle);
   lm_message_node_set_attribute (item_node, "jid", jid);
 
   if (item->subscription != GABBLE_ROSTER_SUBSCRIPTION_NONE)
@@ -809,6 +812,8 @@ _gabble_roster_create_channel (GabbleRoster *roster,
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
   TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *handle_repo = tp_base_connection_get_handles (conn,
+      handle_type);
   GabbleRosterChannel *chan;
   const char *name;
   char *mangled_name;
@@ -823,7 +828,7 @@ _gabble_roster_create_channel (GabbleRoster *roster,
   g_assert (channels != NULL);
   g_assert (g_hash_table_lookup (channels, GINT_TO_POINTER (handle)) == NULL);
 
-  name = tp_handle_inspect (conn->handles[handle_type], handle);
+  name = tp_handle_inspect (handle_repo, handle);
   DEBUG ("Instantiating channel %u:%u \"%s\"", handle_type, handle, name);
   mangled_name = tp_escape_as_identifier (name);
   object_path = g_strdup_printf ("%s/RosterChannel/%s/%s",
@@ -870,7 +875,8 @@ _gabble_roster_get_channel (GabbleRoster *roster,
                             gboolean *created)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
-  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *handle_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, handle_type);
   GabbleRosterChannel *chan;
   GHashTable *channels = (handle_type == TP_HANDLE_TYPE_LIST
                           ? priv->list_channels
@@ -880,11 +886,10 @@ _gabble_roster_get_channel (GabbleRoster *roster,
   g_assert (handle_type == TP_HANDLE_TYPE_LIST ||
             handle_type == TP_HANDLE_TYPE_GROUP);
   g_assert (channels != NULL);
-  g_assert (tp_handle_is_valid (conn->handles[handle_type],
-        handle, NULL));
+  g_assert (tp_handle_is_valid (handle_repo, handle, NULL));
 
   DEBUG ("Looking up channel %u:%u \"%s\"", handle_type, handle,
-         tp_handle_inspect (conn->handles[handle_type], handle));
+         tp_handle_inspect (handle_repo, handle));
   chan = g_hash_table_lookup (channels, GINT_TO_POINTER (handle));
 
   if (chan == NULL)
@@ -917,14 +922,15 @@ _gabble_roster_emit_one (gpointer key,
   GabbleRosterChannel *chan = GABBLE_ROSTER_CHANNEL (value);
 #ifdef ENABLE_DEBUG
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
-  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *handle_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, data_struct->handle_type);
   TpHandle handle = GPOINTER_TO_INT (key);
   const gchar *name;
   
   g_assert (data_struct->handle_type == TP_HANDLE_TYPE_GROUP ||
       data_struct->handle_type == TP_HANDLE_TYPE_LIST);
-  name = tp_handle_inspect (
-      conn->handles[data_struct->handle_type], handle);
+  g_assert (handle_repo != NULL);
+  name = tp_handle_inspect (handle_repo, handle);
 
   DEBUG ("roster now received, emitting signal signal for %s list channel",
       name);
@@ -1001,6 +1007,8 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
   GabbleRoster *roster = GABBLE_ROSTER (user_data);
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
   TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
+      TP_HANDLE_TYPE_CONTACT);
   LmMessageNode *iq_node, *query_node;
   LmMessageSubType sub_type;
   const gchar *from;
@@ -1024,9 +1032,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
     {
       TpHandle sender;
 
-      sender = gabble_handle_for_contact (
-          conn->handles[TP_HANDLE_TYPE_CONTACT],
-          from, FALSE);
+      sender = tp_handle_lookup (contact_repo, from, NULL);
 
       if (sender != conn->self_handle)
         {
@@ -1057,6 +1063,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
                *sub_add, *sub_rem, *sub_rp,
                *known_add, *known_rem,
                *deny_add, *deny_rem;
+      TpHandleSet *referenced_handles;
       GArray *removed;
       TpHandle handle;
       GabbleRosterChannel *chan;
@@ -1077,6 +1084,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
       group_update_table = g_hash_table_new_full (NULL, NULL, NULL,
           (GDestroyNotify)_group_mem_update_destroy);
       removed = g_array_new (FALSE, FALSE, sizeof (TpHandle));
+      referenced_handles = tp_handle_set_new (contact_repo);
 
       if (google_roster)
         {
@@ -1104,24 +1112,26 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
 
           if (strcmp (item_node->name, "item"))
             {
-               NODE_DEBUG (item_node, "query sub-node is not item, skipping");
+              NODE_DEBUG (item_node, "query sub-node is not item, skipping");
               continue;
             }
 
           jid = lm_message_node_get_attribute (item_node, "jid");
           if (!jid)
             {
-               NODE_DEBUG (item_node, "item node has no jid, skipping");
+              NODE_DEBUG (item_node, "item node has no jid, skipping");
               continue;
             }
 
-          handle = gabble_handle_for_contact (
-              conn->handles[TP_HANDLE_TYPE_CONTACT], jid, FALSE);
+          handle = tp_handle_ensure (contact_repo, jid, NULL);
           if (handle == 0)
             {
-               NODE_DEBUG (item_node, "item jid is malformed, skipping");
+              NODE_DEBUG (item_node, "item jid is malformed, skipping");
               continue;
             }
+          /* transfer ownership of the reference to referenced_handles */
+          tp_handle_set_add (referenced_handles, handle);
+          tp_handle_unref (contact_repo, handle);
 
           item = _gabble_roster_item_update (roster, handle, item_node,
                                              group_update_table,
@@ -1221,7 +1231,9 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
             }
 
           /* delay removing items from roster until signals have been emitted;
-           * otherwise handles go out of scope! */
+           * otherwise handles go out of scope!
+           * FIXME: this probably isn't true any more because of
+           * referenced_handles */
           if (GABBLE_ROSTER_SUBSCRIPTION_REMOVE == item->subscription)
             g_array_append_val (removed, handle);
         }
@@ -1278,6 +1290,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
       tp_intset_destroy (known_rem);
       g_array_free (removed, TRUE);
       g_hash_table_destroy (group_update_table);
+      tp_handle_set_destroy (referenced_handles);
       break;
     default:
        NODE_DEBUG (iq_node, "unhandled roster IQ");
@@ -1362,14 +1375,17 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
   GabbleRoster *roster = GABBLE_ROSTER (user_data);
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
   TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
+      TP_HANDLE_TYPE_CONTACT);
   LmMessageNode *pres_node, *child_node;
   const char *from;
   LmMessageSubType sub_type;
   TpIntSet *tmp;
-  TpHandle handle;
+  TpHandle handle, list_handle;
   const gchar *status_message = NULL;
   GabbleRosterChannel *chan = NULL;
   gboolean changed;
+  LmHandlerResult ret;
 
   g_assert (lmconn == priv->conn->lmconn);
 
@@ -1388,8 +1404,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
 
   sub_type = lm_message_get_sub_type (message);
 
-  handle = gabble_handle_for_contact (
-      conn->handles[TP_HANDLE_TYPE_CONTACT], from, FALSE);
+  handle = tp_handle_ensure (contact_repo, from, NULL);
 
   if (handle == 0)
     {
@@ -1399,8 +1414,9 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
 
   if (handle == conn->self_handle)
     {
-       NODE_DEBUG (pres_node, "ignoring presence from ourselves on another resource");
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+      NODE_DEBUG (pres_node, "ignoring presence from ourselves on another resource");
+      ret = LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+      goto OUT;
     }
 
   g_assert (handle != 0);
@@ -1418,15 +1434,16 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
       tmp = tp_intset_new ();
       tp_intset_add (tmp, handle);
 
-      handle = GABBLE_LIST_HANDLE_PUBLISH;
-      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle,
-          NULL);
+      list_handle = GABBLE_LIST_HANDLE_PUBLISH;
+      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
+          list_handle, NULL);
       tp_group_mixin_change_members (TP_SVC_CHANNEL_INTERFACE_GROUP (chan), status_message,
           NULL, NULL, tmp, NULL, 0, 0);
 
       tp_intset_destroy (tmp);
 
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      break;
     case LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE:
       DEBUG ("removing %s (handle %u) from the publish channel",
           from, handle);
@@ -1434,9 +1451,9 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
       tmp = tp_intset_new ();
       tp_intset_add (tmp, handle);
 
-      handle = GABBLE_LIST_HANDLE_PUBLISH;
-      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle,
-          NULL);
+      list_handle = GABBLE_LIST_HANDLE_PUBLISH;
+      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
+          list_handle, NULL);
       changed = tp_group_mixin_change_members (TP_SVC_CHANNEL_INTERFACE_GROUP (chan),
           status_message, NULL, tmp, NULL, NULL, 0, 0);
 
@@ -1444,7 +1461,8 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
 
       tp_intset_destroy (tmp);
 
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      break;
     case LM_MESSAGE_SUB_TYPE_SUBSCRIBED:
       DEBUG ("adding %s (handle %u) to the subscribe channel",
           from, handle);
@@ -1452,9 +1470,9 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
       tmp = tp_intset_new ();
       tp_intset_add (tmp, handle);
 
-      handle = GABBLE_LIST_HANDLE_SUBSCRIBE;
-      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle,
-          NULL);
+      list_handle = GABBLE_LIST_HANDLE_SUBSCRIBE;
+      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
+          list_handle, NULL);
       changed = tp_group_mixin_change_members (TP_SVC_CHANNEL_INTERFACE_GROUP (chan),
           status_message, tmp, NULL, NULL, NULL, 0, 0);
 
@@ -1462,7 +1480,8 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
 
       tp_intset_destroy (tmp);
 
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      break;
     case LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED:
       DEBUG ("removing %s (handle %u) from the subscribe channel",
           from, handle);
@@ -1470,9 +1489,9 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
       tmp = tp_intset_new ();
       tp_intset_add (tmp, handle);
 
-      handle = GABBLE_LIST_HANDLE_SUBSCRIBE;
-      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle,
-          NULL);
+      list_handle = GABBLE_LIST_HANDLE_SUBSCRIBE;
+      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
+          list_handle, NULL);
       changed = tp_group_mixin_change_members (TP_SVC_CHANNEL_INTERFACE_GROUP (chan),
           status_message, NULL, tmp, NULL, NULL, 0, 0);
 
@@ -1480,10 +1499,15 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
 
       tp_intset_destroy (tmp);
 
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      break;
     default:
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+      ret = LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
+
+OUT:
+  tp_handle_unref (contact_repo, handle);
+  return ret;
 }
 
 static void
@@ -1618,7 +1642,8 @@ gabble_roster_factory_iface_request (TpChannelFactoryIface *iface,
 {
   GabbleRoster *roster = GABBLE_ROSTER (iface);
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
-  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *handle_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, handle_type);
   gboolean created;
 
   if (strcmp (chan_type, TP_IFACE_CHANNEL_TYPE_CONTACT_LIST))
@@ -1628,8 +1653,7 @@ gabble_roster_factory_iface_request (TpChannelFactoryIface *iface,
       handle_type != TP_HANDLE_TYPE_GROUP)
     return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_AVAILABLE;
 
-  if (!tp_handle_is_valid (conn->handles[handle_type],
-        handle, NULL))
+  if (!tp_handle_is_valid (handle_repo, handle, NULL))
     return TP_CHANNEL_FACTORY_REQUEST_STATUS_INVALID_HANDLE;
 
   /* disallow "deny" channels if we don't have google:roster support */
@@ -1721,7 +1745,8 @@ roster_item_apply_edits (GabbleRoster *roster,
   GabbleRosterItem edited_item;
   TpIntSet *intset;
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
-  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_GROUP);
   GabbleRosterItemEdit *edits = item->unsent_edits;
   LmMessage *message;
 
@@ -1794,8 +1819,7 @@ roster_item_apply_edits (GabbleRoster *roster,
             }
         }
 #endif
-      edited_item.groups = tp_handle_set_new (
-          conn->handles[TP_HANDLE_TYPE_GROUP]);
+      edited_item.groups = tp_handle_set_new (group_repo);
       intset = tp_handle_set_update (edited_item.groups,
           tp_handle_set_peek (item->groups));
       tp_intset_destroy (intset);
@@ -1890,14 +1914,14 @@ gabble_roster_handle_get_subscription (GabbleRoster *roster,
                                        TpHandle handle)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
-  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
   GabbleRosterItem *item;
 
   g_return_val_if_fail (roster != NULL, GABBLE_ROSTER_SUBSCRIPTION_NONE);
   g_return_val_if_fail (GABBLE_IS_ROSTER (roster),
       GABBLE_ROSTER_SUBSCRIPTION_NONE);
-  g_return_val_if_fail (tp_handle_is_valid (
-        conn->handles[TP_HANDLE_TYPE_CONTACT], handle, NULL),
+  g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
       GABBLE_ROSTER_SUBSCRIPTION_NONE);
 
   item = g_hash_table_lookup (priv->items, GINT_TO_POINTER (handle));
@@ -1915,7 +1939,8 @@ gabble_roster_handle_set_blocked (GabbleRoster *roster,
                                   GError **error)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
-  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
   GabbleRosterItem *item;
   GoogleItemType orig_type;
   LmMessage *message;
@@ -1923,8 +1948,8 @@ gabble_roster_handle_set_blocked (GabbleRoster *roster,
 
   g_return_val_if_fail (roster != NULL, FALSE);
   g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
-  g_return_val_if_fail (tp_handle_is_valid (
-        conn->handles[TP_HANDLE_TYPE_CONTACT], handle, NULL), FALSE);
+  g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
+      FALSE);
   g_return_val_if_fail (priv->conn->features &
       GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER, FALSE);
 
@@ -1978,14 +2003,14 @@ gabble_roster_handle_has_entry (GabbleRoster *roster,
                                 TpHandle handle)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
-  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
   GabbleRosterItem *item;
 
   g_return_val_if_fail (roster != NULL, FALSE);
   g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
-  g_return_val_if_fail (tp_handle_is_valid (
-        conn->handles[TP_HANDLE_TYPE_CONTACT],
-        handle, NULL), FALSE);
+  g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
+      FALSE);
 
   item = g_hash_table_lookup (priv->items, GINT_TO_POINTER (handle));
 
@@ -1997,13 +2022,13 @@ gabble_roster_handle_get_name (GabbleRoster *roster,
                                TpHandle handle)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
-  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
   GabbleRosterItem *item;
 
   g_return_val_if_fail (roster != NULL, NULL);
   g_return_val_if_fail (GABBLE_IS_ROSTER (roster), NULL);
-  g_return_val_if_fail (tp_handle_is_valid (
-        conn->handles[TP_HANDLE_TYPE_CONTACT], handle, NULL),
+  g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
       NULL);
 
   item = g_hash_table_lookup (priv->items, GINT_TO_POINTER (handle));
@@ -2021,7 +2046,8 @@ gabble_roster_handle_set_name (GabbleRoster *roster,
                                GError **error)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
-  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
   GabbleRosterItem *item;
   LmMessage *message;
   LmMessageNode *item_node;
@@ -2029,8 +2055,7 @@ gabble_roster_handle_set_name (GabbleRoster *roster,
 
   g_return_val_if_fail (roster != NULL, FALSE);
   g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
-  g_return_val_if_fail (tp_handle_is_valid (
-        conn->handles[TP_HANDLE_TYPE_CONTACT], handle, NULL),
+  g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
       FALSE);
   g_return_val_if_fail (name != NULL, FALSE);
 
@@ -2074,7 +2099,8 @@ gabble_roster_handle_remove (GabbleRoster *roster,
                              GError **error)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
-  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
   GabbleRosterItem *item;
   GabbleRosterSubscription subscription;
   LmMessage *message;
@@ -2082,8 +2108,7 @@ gabble_roster_handle_remove (GabbleRoster *roster,
 
   g_return_val_if_fail (roster != NULL, FALSE);
   g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
-  g_return_val_if_fail (tp_handle_is_valid (
-        conn->handles[TP_HANDLE_TYPE_CONTACT], handle, NULL),
+  g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
       FALSE);
 
   item = _gabble_roster_item_get (roster, handle);
@@ -2125,7 +2150,8 @@ gabble_roster_handle_add (GabbleRoster *roster,
                           GError **error)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
-  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
   GabbleRosterItem *item;
   LmMessage *message;
   gboolean do_add = FALSE;
@@ -2133,8 +2159,7 @@ gabble_roster_handle_add (GabbleRoster *roster,
 
   g_return_val_if_fail (roster != NULL, FALSE);
   g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
-  g_return_val_if_fail (tp_handle_is_valid (
-        conn->handles[TP_HANDLE_TYPE_CONTACT], handle, NULL),
+  g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
       FALSE);
 
   if (!gabble_roster_handle_has_entry (roster, handle))
@@ -2183,18 +2208,19 @@ gabble_roster_handle_add_to_group (GabbleRoster *roster,
                                    GError **error)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
-  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
+  TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_GROUP);
   GabbleRosterItem *item;
   LmMessage *message;
   gboolean ret;
 
   g_return_val_if_fail (roster != NULL, FALSE);
   g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
-  g_return_val_if_fail (tp_handle_is_valid (
-        conn->handles[TP_HANDLE_TYPE_CONTACT], handle, NULL),
+  g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
       FALSE);
-  g_return_val_if_fail (tp_handle_is_valid (
-        conn->handles[TP_HANDLE_TYPE_GROUP], group, NULL),
+  g_return_val_if_fail (tp_handle_is_valid (group_repo, group, NULL),
       FALSE);
 
   item = _gabble_roster_item_get (roster, handle);
@@ -2207,8 +2233,7 @@ gabble_roster_handle_add_to_group (GabbleRoster *roster,
        */
       if (!item->unsent_edits->add_to_groups)
         {
-          item->unsent_edits->add_to_groups = tp_handle_set_new (
-              conn->handles[TP_HANDLE_TYPE_GROUP]);
+          item->unsent_edits->add_to_groups = tp_handle_set_new (group_repo);
         }
       tp_handle_set_add (item->unsent_edits->add_to_groups, group);
       if (item->unsent_edits->remove_from_groups)
@@ -2243,7 +2268,10 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
                                         GError **error)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
-  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
+  TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_GROUP);
   GabbleRosterItem *item;
   LmMessage *message;
   gboolean ret, was_in_group;
@@ -2251,11 +2279,9 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
 
   g_return_val_if_fail (roster != NULL, FALSE);
   g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
-  g_return_val_if_fail (tp_handle_is_valid (
-        conn->handles[TP_HANDLE_TYPE_CONTACT], handle, NULL),
+  g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
       FALSE);
-  g_return_val_if_fail (tp_handle_is_valid (
-        conn->handles[TP_HANDLE_TYPE_GROUP], group, NULL),
+  g_return_val_if_fail (tp_handle_is_valid (group_repo, group, NULL),
       FALSE);
 
   item = _gabble_roster_item_get (roster, handle);
@@ -2269,7 +2295,7 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
       if (!item->unsent_edits->remove_from_groups)
         {
           item->unsent_edits->remove_from_groups = tp_handle_set_new (
-              conn->handles[TP_HANDLE_TYPE_GROUP]);
+              group_repo);
         }
       tp_handle_set_add (item->unsent_edits->remove_from_groups, group);
       if (item->unsent_edits->add_to_groups)
@@ -2284,20 +2310,18 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
       item->unsent_edits = item_edit_new ();
     }
 
-  name = tp_handle_inspect (conn->handles[TP_HANDLE_TYPE_GROUP], group);
+  name = tp_handle_inspect (group_repo, group);
 
   /* temporarily remove the handle from the set (taking a reference),
    * make the message, and put it back afterwards
    */
-  g_return_val_if_fail (tp_handle_ref (
-        conn->handles[TP_HANDLE_TYPE_GROUP], group),
+  g_return_val_if_fail (tp_handle_ref (group_repo, group),
       FALSE);
   was_in_group = tp_handle_set_remove (item->groups, group);
   message = _gabble_roster_item_to_message (roster, handle, NULL, NULL);
   if (was_in_group)
     tp_handle_set_add (item->groups, group);
-  g_return_val_if_fail (tp_handle_unref (
-        conn->handles[TP_HANDLE_TYPE_GROUP], group),
+  g_return_val_if_fail (tp_handle_unref (group_repo, group),
       FALSE);
 
   ret = _gabble_connection_send_with_reply (priv->conn,

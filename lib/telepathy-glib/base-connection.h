@@ -57,12 +57,26 @@ struct _TpBaseConnectionClass {
     /* pure-virtual methods */
 
     /**
+     * create_handle_repos:
+     * @self: The connection object
+     * @repos: An array of pointers to be filled in; the implementation
+     *         may assume all are initially NULL.
+     *
+     * Fill in suitable handle repositories in the given array for all those
+     * handle types this Connection supports. May not be NULL.
+     */
+    void (*create_handle_repos) (TpBaseConnection *self,
+        TpHandleRepoIface *repos[LAST_TP_HANDLE_TYPE+1]);
+
+    /**
      * init_handle_repos:
      * @repos: An array of pointers to be filled in; the implementation
      *         may assume all are initially NULL
      *
      * Fill in suitable handle repositories in the given array for all those
      * handle types this Connection supports. May not be NULL.
+     *
+     * Deprecated: use create_handle_repos instead.
      */
     void (*init_handle_repos) (TpHandleRepoIface *repos[LAST_TP_HANDLE_TYPE+1]);
 
@@ -208,6 +222,9 @@ struct _TpBaseConnection {
 };
 
 GType tp_base_connection_get_type(void);
+
+TpHandleRepoIface *tp_base_connection_get_handles (TpBaseConnection *self,
+    TpHandleType handle_type);
 
 gboolean tp_base_connection_register (TpBaseConnection *self,
     const gchar *cm_name, gchar **bus_name, gchar **object_path,

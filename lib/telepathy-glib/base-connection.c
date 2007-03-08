@@ -447,9 +447,16 @@ tp_base_connection_constructor (GType type, guint n_construct_properties,
 
   DEBUG("Post-construction: (TpBaseConnection *)%p", self);
 
-  g_assert(cls->init_handle_repos != NULL);
-  (cls->init_handle_repos) (self->handles);
-  
+  if (cls->create_handle_repos != NULL)
+    {
+      (cls->create_handle_repos) (self, self->handles);
+    }
+  else
+    {
+      g_assert(cls->init_handle_repos != NULL);
+      (cls->init_handle_repos) (self->handles);
+    }
+
   if (DEBUGGING)
     {
       for (i = 0; i <= LAST_TP_HANDLE_TYPE; i++)
@@ -1168,6 +1175,15 @@ tp_base_connection_release_handles (TpSvcConnection *iface,
 }
 
 /* Missing: RequestHandles (need to verify them) */
+
+TpHandleRepoIface *
+tp_base_connection_get_handles (TpBaseConnection *self,
+    TpHandleType handle_type)
+{
+  if (handle_type > LAST_TP_HANDLE_TYPE)
+    return NULL;
+  return self->handles[handle_type];
+}
 
 /** Tell the connection manager that this Connection has been disconnected,
  * has emitted StatusChanged and is ready to be removed from D-Bus.

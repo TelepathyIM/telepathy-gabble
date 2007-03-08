@@ -931,7 +931,12 @@ request_reply_cb (GabbleConnection *conn,
           lm_message_node_set_attribute (vcard_node, "xmlns", NS_VCARD_TEMP);
         }
 
-      observe_vcard (conn, manager, request->handle, vcard_node);
+      if (!request->edit_args)
+        {
+          /* We'll observe the vcard after its edition if we intend 
+           * to modify it */
+          observe_vcard (conn, manager, request->handle, vcard_node);
+        }
     }
 
   if (vcard_node && request->edit_args)
@@ -960,6 +965,8 @@ request_reply_cb (GabbleConnection *conn,
               node = lm_message_node_add_child (vcard_node, key, value);
             }
         }
+
+      observe_vcard (conn, manager, request->handle, vcard_node);
 
       /* XXX: Manually remove the request from the list of requests in flight,
        * so that it's not in there twice when we send it a second time. The

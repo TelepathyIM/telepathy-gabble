@@ -2625,7 +2625,7 @@ room_verify_batch_new (GabbleConnection *conn,
       batch->contexts[i].jid = qualified_name;
 
       /* has the handle been verified before? */
-      handle = tp_handle_lookup (room_handles, qualified_name, FALSE);
+      handle = tp_handle_lookup (room_handles, qualified_name, NULL);
       if (handle)
         tp_handle_ref (room_handles, handle);
       g_array_append_val (batch->handles, handle);

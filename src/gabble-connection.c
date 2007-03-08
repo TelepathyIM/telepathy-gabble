@@ -2739,7 +2739,7 @@ gabble_connection_request_handles (TpSvcConnection *iface,
   switch (handle_type)
     {
     case TP_HANDLE_TYPE_CONTACT:
-      handles = g_array_sized_new(FALSE, FALSE, sizeof(TpHandle), count);
+      handles = g_array_sized_new(FALSE, FALSE, sizeof(guint), count);
 
       for (i = 0; i < count; i++)
         {
@@ -2807,7 +2807,7 @@ gabble_connection_request_handles (TpSvcConnection *iface,
 
     case TP_HANDLE_TYPE_LIST:
     case TP_HANDLE_TYPE_GROUP:
-      handles = g_array_sized_new(FALSE, FALSE, sizeof(TpHandle), count);
+      handles = g_array_sized_new(FALSE, FALSE, sizeof(guint), count);
 
       for (i = 0; i < count; i++)
         {

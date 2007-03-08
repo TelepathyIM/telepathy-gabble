@@ -47,15 +47,18 @@ GType gabble_connection_manager_get_type(void);
 #define GABBLE_TYPE_CONNECTION_MANAGER \
   (gabble_connection_manager_get_type())
 #define GABBLE_CONNECTION_MANAGER(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_CONNECTION_MANAGER, GabbleConnectionManager))
+  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_CONNECTION_MANAGER, \
+                              GabbleConnectionManager))
 #define GABBLE_CONNECTION_MANAGER_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_CONNECTION_MANAGER, GabbleConnectionManagerClass))
+  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_CONNECTION_MANAGER, \
+                           GabbleConnectionManagerClass))
 #define GABBLE_IS_CONNECTION_MANAGER(obj) \
   (G_TYPE_CHECK_INSTANCE_TYPE((obj), GABBLE_TYPE_CONNECTION_MANAGER))
 #define GABBLE_IS_CONNECTION_MANAGER_CLASS(klass) \
   (G_TYPE_CHECK_CLASS_TYPE((klass), GABBLE_TYPE_CONNECTION_MANAGER))
 #define GABBLE_CONNECTION_MANAGER_GET_CLASS(obj) \
-  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_CONNECTION_MANAGER, GabbleConnectionManagerClass))
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_CONNECTION_MANAGER, \
+                              GabbleConnectionManagerClass))
 
 G_END_DECLS
 

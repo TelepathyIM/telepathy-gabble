@@ -609,6 +609,8 @@ dynamic_lookup_handle (TpHandleRepoIface *irepo, const char *id,
   if (self->normalize_function)
     {
       normal_id = (self->normalize_function) (id, context);
+      if (normal_id == NULL)
+        return 0;
       id = normal_id;
     }
 

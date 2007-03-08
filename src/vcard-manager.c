@@ -933,10 +933,10 @@ request_reply_cb (GabbleConnection *conn,
 
       if (!request->edit_args)
         {
-          /* We'll observe the vcard after its edition if we intend 
-           * to modify it */
           observe_vcard (conn, manager, request->handle, vcard_node);
         }
+      /* else we'll observe the vcard after editing it if we intend 
+       * to modify it */
     }
 
   if (vcard_node && request->edit_args)

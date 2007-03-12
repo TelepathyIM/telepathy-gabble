@@ -357,27 +357,15 @@ def do_method(method):
     # void tp_svc_thing_return_from_do_stuff (DBusGMethodInvocation *, guint);
     ret_method_name = prefix + '_return_from_' + lc_method_name
 
-    # force async to be true, we want everything async in practice
-    async=True
     ret_count=0
 
     header = ''
     body = ''
 
-    #for i in method.getElementsByTagName("annotation"):
-    #    if i.getAttribute("name") == "org.freedesktop.DBus.GLib.Async":
-    #        async=True
-
-    if async:
-        c_decl = "void\n"
-        method_decl = "typedef void (*" + c_impl_name + ') ('
-        ret_decl = 'static inline void\n'
-        ret_body = '{\n  dbus_g_method_return (dbus_context'
-    else:
-        c_decl = "gboolean\n"
-        method_decl = "typedef gboolean (*" + c_impl_name + ') ('
-        ret_decl = ''
-        ret_call = ''
+    c_decl = "void\n"
+    method_decl = "typedef void (*" + c_impl_name + ') ('
+    ret_decl = 'static inline void\n'
+    ret_body = '{\n  dbus_g_method_return (dbus_context'
 
     tmp = c_method_name+' ('
     pad = ' ' * len(tmp)
@@ -387,10 +375,9 @@ def do_method(method):
     method_decl += classname + ' *self'
     args = 'self'
 
-    if async:
-        tmp = ret_method_name+' ('
-        ret_pad = ' ' * len(tmp)
-        ret_decl += tmp+'DBusGMethodInvocation *dbus_context'
+    tmp = ret_method_name+' ('
+    ret_pad = ' ' * len(tmp)
+    ret_decl += tmp+'DBusGMethodInvocation *dbus_context'
 
     for i in method.getElementsByTagName("arg"):
         name =i.getAttribute("name")
@@ -405,12 +392,9 @@ def do_method(method):
             ret_count += 1
 
         gtype = type_to_gtype(type)[0]
-        if direction == "out" and not async:
-            gtype+='*'
-        else:
-            if type_to_gtype(type)[3]:
-                gtype="const "+gtype
-        if not async or direction != "out":
+        if type_to_gtype(type)[3]:
+            gtype="const "+gtype
+        if direction != "out":
             c_decl +=",\n"+pad+gtype+name
             method_decl +=",\n"+method_pad+gtype+name
             args += ', '+name
@@ -418,14 +402,9 @@ def do_method(method):
             ret_decl += ",\n"+ret_pad+gtype+name
             ret_body += ', '+name
 
-    if async:
-        c_decl += ",\n"+pad+"DBusGMethodInvocation *context)"
-        method_decl += ",\n"+method_pad+"DBusGMethodInvocation *context);\n"
-        args += ', context'
-    else:
-        c_decl += ",\n"+pad+"GError **error)"
-        method_decl += ",\n"+method_pad+"GError **error);\n"
-        args += ', error'
+    c_decl += ",\n"+pad+"DBusGMethodInvocation *context)"
+    method_decl += ",\n"+method_pad+"DBusGMethodInvocation *context);\n"
+    args += ', context'
 
     ret_doc = ("""\
 /**
@@ -439,62 +418,33 @@ def do_method(method):
 """ % ret_method_name)
 
     interface = method.parentNode.getAttribute("name");
-    if async:
-        ret_decl += ')\n'
-        ret_body += ');\n}\n'
-        header += (ret_doc + ret_decl + ret_body)
+    ret_decl += ')\n'
+    ret_body += ');\n}\n'
+    header += (ret_doc + ret_decl + ret_body)
     header += (c_decl+";\n\n")
     body += (
 """
 /**
- * %s
+ * %(c_method_name)s
  * @self: The object implementing this interface
-""" % c_method_name)
-    if async:
-        body += (
-"""\
  * @context: The D-Bus invocation context to use to return values
  *           or throw an error.
-""")
-    else:
-        body += (
-"""\
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
-""")
-    body += (
-"""\
  *
  * Implements D-Bus method %(method)s
  * on interface %(interface)s
  *
+ */
 """ % {'c_method_name':c_method_name, 'method':dbus_method_name, 'interface':interface})
 
-    if not async:
-        body += (
-"""\
- * Returns: TRUE on success, FALSE with @error set on error
- *
-""")
-
-    body += (
-"""\
-*/
-""")
-
-    if async:
-        body += c_decl+"\n{\n"
-        body += "  %s impl = (%s_GET_CLASS (self)->%s);\n" % (
-                c_impl_name, prefix.upper(), lc_method_name)
-        body += "  if (impl)\n"
-        body += "    (impl) (%s);\n" % args
-        body += "  else\n"
-        # FIXME: Telepathy-specific
-        body += "    tp_dbus_g_method_return_not_implemented (context);\n"
-        body += "}\n\n"
-    else:
-        body += (c_decl+"\n{\n  return TRUE;\n}\n\n")
+    body += c_decl+"\n{\n"
+    body += "  %s impl = (%s_GET_CLASS (self)->%s);\n" % (
+            c_impl_name, prefix.upper(), lc_method_name)
+    body += "  if (impl)\n"
+    body += "    (impl) (%s);\n" % args
+    body += "  else\n"
+    # FIXME: Telepathy-specific
+    body += "    tp_dbus_g_method_return_not_implemented (context);\n"
+    body += "}\n\n"
 
     dg_method_name = prefix + '_' + dbus_gutils_wincaps_to_uscore(dbus_method_name)
     if dg_method_name != c_method_name:

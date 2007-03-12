@@ -6,75 +6,28 @@
     <title>telepathy-glib Reference Manual</title>
   </bookinfo>
 
-  <chapter>
+  <chapter id="ch-dbus">
+    <title>D-Bus interfaces</title>
+    <xi:include href="xml/svc-properties-interface.xml"/>
+    <xi:include href="xml/svc-channel.xml"/>
+    <xi:include href="xml/svc-connection.xml"/>
+    <xi:include href="xml/svc-media-interfaces.xml"/>
+    <xi:include href="xml/svc-connection-manager.xml"/>
+  </chapter>
+  <chapter id="base-classes">
     <title>Connections and channels</title>
     <xi:include href="xml/channel-factory-iface.xml"/>
     <xi:include href="xml/channel-iface.xml"/>
     <xi:include href="xml/base-connection.xml"/>
     <xi:include href="xml/base-connection-manager.xml"/>
   </chapter>
-  <chapter>
+  <chapter id="ch-mixins">
     <title>Implementation mixins</title>
     <xi:include href="xml/properties-mixin.xml"/>
     <xi:include href="xml/group-mixin.xml"/>
     <xi:include href="xml/text-mixin.xml"/>
   </chapter>
-  <chapter>
-    <title>D-Bus interfaces</title>
-    <xi:include href="xml/svc-Properties_Interface.xml"/>
-    <xi:include href="xml/svc-Channel.xml"/>
-    <xi:include href="xml/svc-Channel_Interface_Hold.xml"/>
-    <xi:include href="xml/svc-Connection.xml"/>
-    <xi:include href="xml/svc-Channel_Type_Text.xml"/>
-    <xi:include href="xml/svc-Connection_Interface_Presence.xml"/>
-    <xi:include href="xml/svc-Connection_Interface_Avatars.xml"/>
-    <xi:include href="xml/svc-Channel_Interface_Password.xml"/>
-    <xi:include href="xml/svc-Connection_Interface_Renaming.xml"/>
-    <xi:include href="xml/svc-Channel_Type_Contact_Search.xml"/>
-    <xi:include href="xml/svc-Connection_Interface_Aliasing.xml"/>
-    <xi:include href="xml/svc-Channel_Interface_Transfer.xml"/>
-    <xi:include href="xml/svc-Channel_Type_Room_List.xml"/>
-    <xi:include href="xml/svc-Connection_Interface_Privacy.xml"/>
-    <xi:include href="xml/svc-Media_Session_Handler.xml"/>
-    <xi:include href="xml/svc-Channel_Type_Streamed_Media.xml"/>
-    <xi:include href="xml/svc-Channel_Interface_DTMF.xml"/>
-    <xi:include href="xml/svc-Channel_Type_Contact_List.xml"/>
-    <xi:include href="xml/svc-Connection_Interface_Contact_Info.xml"/>
-    <xi:include href="xml/svc-Channel_Interface_Group.xml"/>
-    <xi:include href="xml/svc-Media_Stream_Handler.xml"/>
-    <xi:include href="xml/svc-Channel_Interface_Media_Signalling.xml"/>
-    <xi:include href="xml/svc-Channel_Interface_Chat_State.xml"/>
-    <xi:include href="xml/svc-Connection_Interface_Forwarding.xml"/>
-    <xi:include href="xml/svc-Connection_Manager.xml"/>
-    <xi:include href="xml/svc-Connection_Interface_Capabilities.xml"/>
-    <xi:include href="xml/svc-Channel_Interface_Chat_State-glue.xml"/>
-    <xi:include href="xml/svc-Connection_Interface_Presence-glue.xml"/>
-    <xi:include href="xml/svc-Media_Session_Handler-glue.xml"/>
-    <xi:include href="xml/svc-Channel_Interface_Group-glue.xml"/>
-    <xi:include href="xml/svc-Connection-glue.xml"/>
-    <xi:include href="xml/svc-Connection_Interface_Forwarding-glue.xml"/>
-    <xi:include href="xml/svc-Connection_Interface_Privacy-glue.xml"/>
-    <xi:include href="xml/svc-Channel_Type_Streamed_Media-glue.xml"/>
-    <xi:include href="xml/svc-Connection_Interface_Capabilities-glue.xml"/>
-    <xi:include href="xml/svc-Channel_Type_Contact_List-glue.xml"/>
-    <xi:include href="xml/svc-Channel_Interface_Transfer-glue.xml"/>
-    <xi:include href="xml/svc-Channel-glue.xml"/>
-    <xi:include href="xml/svc-Connection_Interface_Aliasing-glue.xml"/>
-    <xi:include href="xml/svc-Connection_Interface_Avatars-glue.xml"/>
-    <xi:include href="xml/svc-Channel_Type_Text-glue.xml"/>
-    <xi:include href="xml/svc-Channel_Interface_Password-glue.xml"/>
-    <xi:include href="xml/svc-Properties_Interface-glue.xml"/>
-    <xi:include href="xml/svc-Channel_Interface_DTMF-glue.xml"/>
-    <xi:include href="xml/svc-Channel_Interface_Media_Signalling-glue.xml"/>
-    <xi:include href="xml/svc-Connection_Interface_Contact_Info-glue.xml"/>
-    <xi:include href="xml/svc-Connection_Interface_Renaming-glue.xml"/>
-    <xi:include href="xml/svc-Channel_Type_Room_List-glue.xml"/>
-    <xi:include href="xml/svc-Connection_Manager-glue.xml"/>
-    <xi:include href="xml/svc-Channel_Type_Contact_Search-glue.xml"/>
-    <xi:include href="xml/svc-Channel_Interface_Hold-glue.xml"/>
-    <xi:include href="xml/svc-Media_Stream_Handler-glue.xml"/>
-  </chapter>
-  <chapter>
+  <chapter id="ch-utilities">
     <title>Utilities</title>
     <xi:include href="xml/util.xml"/>
     <xi:include href="xml/run.xml"/>
@@ -85,12 +38,8 @@
     <xi:include href="xml/dbus.xml"/>
     <xi:include href="xml/errors.xml"/>
     <xi:include href="xml/heap.xml"/>
-    <xi:include href="xml/telepathy-enums.xml"/>
-    <xi:include href="xml/telepathy-interfaces.xml"/>
-    <xi:include href="xml/enumtypes-spec-telepathy-errors.xml"/>
-    <xi:include href="xml/telepathy-errors.xml"/>
   </chapter>
-  <chapter>
+  <chapter id="ch-handle-management">
     <title>Handle management</title>
     <xi:include href="xml/handle-repo-static.xml"/>
     <xi:include href="xml/handle-repo.xml"/>

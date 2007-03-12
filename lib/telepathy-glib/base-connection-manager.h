@@ -32,7 +32,8 @@ G_BEGIN_DECLS
 #define TP_CM_BUS_NAME_BASE    "org.freedesktop.Telepathy.ConnectionManager."
 #define TP_CM_OBJECT_PATH_BASE "/org/freedesktop/Telepathy/ConnectionManager/"
 
-/** TpCMParamSpec:
+/**
+ * TpCMParamSpec:
  *
  * Structure representing a connection manager parameter, as accepted by
  * RequestConnection.
@@ -40,16 +41,18 @@ G_BEGIN_DECLS
 typedef struct {
     /** Name as passed over D-Bus */
     const gchar *name;
-    /** dtype:
+    /** 
+     * dtype:
      *
      * D-Bus type signature. We currently support:
-     * 16-bit integer (gtype is INT)
-     * 32-bit integer (gtype is INT)
-     * 16-bit unsigned (gtype is UINT)
-     * 32-bit unsigned (gtype is UINT)
-     * string (gtype is STRING)
-     * boolean (gtype is BOOLEAN)
-     * */
+     *
+     * - 16-bit integer (gtype is INT)
+     * - 32-bit integer (gtype is INT)
+     * - 16-bit unsigned (gtype is UINT)
+     * - 32-bit unsigned (gtype is UINT)
+     * - string (gtype is STRING)
+     * - boolean (gtype is BOOLEAN)
+     */
     const gchar *dtype;
     /** gtype:
      *

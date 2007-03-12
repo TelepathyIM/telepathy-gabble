@@ -29,7 +29,7 @@
  * @haystack: The pointer array to be searched
  * @needle: The pointer to look for
  *
- * Returns: %TRUE if @param needle is one of the elements of @param haystack
+ * Returns: %TRUE if @needle is one of the elements of @haystack
  */
 
 gboolean
@@ -71,7 +71,7 @@ tp_g_value_slice_free (GValue *value)
  * function will handle null pointers, treating them as distinct from any
  * string.
  *
- * Returns: %FALSE if @param left and @param right are both %NULL, or if
+ * Returns: %FALSE if @left and @right are both %NULL, or if
  *          neither is %NULL and both have the same contents; %TRUE otherwise
  */
 
@@ -99,7 +99,7 @@ tp_strdiff (const gchar *left, const gchar *right)
  * This is used to cast from an object instance to one of the telepathy-glib
  * mixin classes.
  *
- * Returns: a pointer @param offset bytes beyond @param instance
+ * Returns: a pointer @offset bytes beyond @instance
  */
 gpointer
 tp_mixin_offset_cast (gpointer instance, guint offset)

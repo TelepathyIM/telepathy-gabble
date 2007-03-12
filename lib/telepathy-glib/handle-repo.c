@@ -74,7 +74,7 @@ tp_handle_repo_iface_get_type (void)
 /**
  * tp_handle_is_valid:
  * @self: A handle repository implementation
- * @handle: A handle of the type stored in the repository @param self
+ * @handle: A handle of the type stored in the repository @self
  * @error: Set to InvalidHandle if %FALSE is returned
  *
  * Returns: %TRUE if the handle is nonzero and is present in the repository,
@@ -95,7 +95,7 @@ tp_handle_is_valid (TpHandleRepoIface *self,
  * tp_handles_are_valid:
  * @self: A handle repository implementation
  * @handle: Array of TpHandle representing handles of the type stored in
- *         the repository @param self
+ *         the repository @self
  * @allow_zero: If %TRUE, zero is treated like a valid handle
  * @error: Set to InvalidHandle if %FALSE is returned
  *

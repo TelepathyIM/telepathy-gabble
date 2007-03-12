@@ -53,8 +53,8 @@ typedef struct _TpDynamicHandleRepoClass TpDynamicHandleRepoClass;
  * @error: Used to raise the Telepathy error InvalidHandle with an appropriate
  *         message if NULL is returned
  *
- * Returns: a normalized version of @param id (to be freed with g_free by the
- *          caller), or NULL if @param id is not valid for this repository
+ * Returns: a normalized version of @id (to be freed with g_free by the
+ *          caller), or NULL if @id is not valid for this repository
  */
 typedef gchar *(*TpDynamicHandleRepoNormalizeFunc)(TpHandleRepoIface *repo,
     const gchar *id, gpointer context, GError **error);

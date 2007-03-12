@@ -151,7 +151,7 @@ struct _TpChannelFactoryIfaceClass {
   /** foreach:
    * @self: An object implementing #TpChannelFactoryIface
    * @func: A function 
-   * @data: Arbitrary data to pass to @param func as the second argument
+   * @data: Arbitrary data to pass to @func as the second argument
    *
    * Call func(channel, data) for each channel managed by this factory.
    * May not be NULL. */
@@ -163,7 +163,7 @@ struct _TpChannelFactoryIfaceClass {
    * @chan_type: The channel type, e.g. %TP_IFACE_CHANNEL_TYPE_TEXT
    * @handle_type: The handle type of the channel's associated handle,
    *               or 0 if the channel has no associated handle
-   * @handle: The channel's associated handle, of type @param handle_type,
+   * @handle: The channel's associated handle, of type @handle_type,
    *          or 0 if the channel has no associated handle
    * @request: An opaque data structure representing the channel request;
    *           if this request is satisfied by a newly created channel,
@@ -221,7 +221,7 @@ void tp_channel_factory_iface_disconnected (TpChannelFactoryIface *self);
 /** tp_channel_factory_iface_disconnected:
  * @self: An implementation of the channel factory interface
  * @func: A callback to be called once per channel
- * @data: Extra data to be passed to @param func
+ * @data: Extra data to be passed to @func
  *
  * Call func(channel, data) for each channel managed by this factory.
  */
@@ -233,7 +233,7 @@ void tp_channel_factory_iface_foreach (TpChannelFactoryIface *self,
  * @chan_type: The channel type, e.g. %TP_IFACE_CHANNEL_TYPE_TEXT
  * @handle_type: The handle type of the channel's associated handle,
  *               or 0 if the channel has no associated handle
- * @handle: The channel's associated handle, of type @param handle_type,
+ * @handle: The channel's associated handle, of type @handle_type,
  *          or 0 if the channel has no associated handle
  * @request: An opaque data structure representing the channel request;
  *           if this request is satisfied by a newly created channel,

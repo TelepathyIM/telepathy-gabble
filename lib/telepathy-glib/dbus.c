@@ -29,7 +29,7 @@
  * @context: The D-Bus method invocation context
  *
  * Return the Telepathy error NotImplemented from the method invocation
- * given by @param context.
+ * given by @context.
  */
 void
 tp_dbus_g_method_return_not_implemented (DBusGMethodInvocation *context)

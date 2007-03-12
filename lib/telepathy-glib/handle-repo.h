@@ -156,7 +156,7 @@ GArray *tp_handle_set_to_array (TpHandleSet *set);
 TpIntSet *tp_handle_set_update (TpHandleSet *set, const TpIntSet *add);
 TpIntSet *tp_handle_set_difference_update (TpHandleSet *set, const TpIntSet *remove);
 
-/* static inline because it relies on LAST_TP_HANDLE_TYPE */
+/* static inline because it relies on NUM_TP_HANDLE_TYPES */
 /** tp_handles_supported_and_valid:
  * @repos: An array of possibly null pointers to handle repositories, indexed
  *         by handle type, where a null pointer means an unsupported handle
@@ -171,7 +171,7 @@ TpIntSet *tp_handle_set_difference_update (TpHandleSet *set, const TpIntSet *rem
  * If not, set @error and return %FALSE.
  */
 static inline gboolean
-tp_handles_supported_and_valid (TpHandleRepoIface *repos[LAST_TP_HANDLE_TYPE+1],
+tp_handles_supported_and_valid (TpHandleRepoIface *repos[NUM_TP_HANDLE_TYPES],
     TpHandleType handle_type, const GArray *handles, gboolean allow_zero,
     GError **error)
 {

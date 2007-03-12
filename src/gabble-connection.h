@@ -159,7 +159,7 @@ gboolean _gabble_connection_signal_own_presence (GabbleConnection *, GError **);
 
 /* extern only for the benefit of the unit tests */
 void _gabble_connection_create_handle_repos (TpBaseConnection *conn,
-    TpHandleRepoIface *repos[LAST_TP_HANDLE_TYPE+1]);
+    TpHandleRepoIface *repos[NUM_TP_HANDLE_TYPES]);
 
 #define ERROR_IF_NOT_CONNECTED_ASYNC(BASE, ERROR, CONTEXT) \
   if ((BASE)->status != TP_CONNECTION_STATUS_CONNECTED) \

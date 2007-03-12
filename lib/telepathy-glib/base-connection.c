@@ -229,7 +229,7 @@ tp_base_connection_dispose (GObject *object)
       priv->channel_requests = NULL;
     }
 
-  for (i = 0; i <= LAST_TP_HANDLE_TYPE; i++)
+  for (i = 0; i < NUM_TP_HANDLE_TYPES; i++)
     {
       if (self->handles[i])
         {
@@ -459,7 +459,7 @@ tp_base_connection_constructor (GType type, guint n_construct_properties,
 
   if (DEBUGGING)
     {
-      for (i = 0; i <= LAST_TP_HANDLE_TYPE; i++)
+      for (i = 0; i < NUM_TP_HANDLE_TYPES; i++)
       {
         DEBUG("Handle repo for type #%u at %p", i, self->handles[i]);
       }
@@ -531,7 +531,7 @@ tp_base_connection_init (TpBaseConnection *self)
 
   self->status = TP_INTERNAL_CONNECTION_STATUS_NEW;
 
-  for (i = 0; i <= LAST_TP_HANDLE_TYPE; i++)
+  for (i = 0; i < NUM_TP_HANDLE_TYPES; i++)
     {
       self->handles[i] = NULL;
     }
@@ -1180,7 +1180,7 @@ TpHandleRepoIface *
 tp_base_connection_get_handles (TpBaseConnection *self,
     TpHandleType handle_type)
 {
-  if (handle_type > LAST_TP_HANDLE_TYPE)
+  if (handle_type >= NUM_TP_HANDLE_TYPES)
     return NULL;
   return self->handles[handle_type];
 }

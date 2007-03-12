@@ -351,7 +351,7 @@ _gabble_im_channel_state_receive (GabbleIMChannel *chan,
 {
   GabbleIMChannelPrivate *priv;
 
-  g_assert (state <= LAST_TP_CHANNEL_CHAT_STATE);
+  g_assert (state < NUM_TP_CHANNEL_CHAT_STATES);
   g_assert (GABBLE_IS_IM_CHANNEL (chan));
   priv = GABBLE_IM_CHANNEL_GET_PRIVATE (chan);
 
@@ -523,7 +523,7 @@ gabble_im_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
 
   if (presence && (presence->caps & PRESENCE_CAP_CHAT_STATES))
     {
-      if (state > LAST_TP_CHANNEL_CHAT_STATE)
+      if (state >= NUM_TP_CHANNEL_CHAT_STATES)
         {
           DEBUG ("invalid state %u", state);
 

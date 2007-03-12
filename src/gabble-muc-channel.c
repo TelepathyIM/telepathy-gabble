@@ -1938,7 +1938,7 @@ _gabble_muc_channel_state_receive (GabbleMucChannel *chan, guint state, guint fr
 {
   GabbleMucChannelPrivate *priv;
 
-  g_assert (state <= LAST_TP_CHANNEL_CHAT_STATE);
+  g_assert (state < NUM_TP_CHANNEL_CHAT_STATES);
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
 
@@ -2687,7 +2687,7 @@ gabble_muc_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
 
-  if (state > LAST_TP_CHANNEL_CHAT_STATE)
+  if (state >= NUM_TP_CHANNEL_CHAT_STATES)
     {
       DEBUG ("invalid state %u", state);
 

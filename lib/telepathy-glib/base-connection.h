@@ -66,7 +66,7 @@ struct _TpBaseConnectionClass {
      * handle types this Connection supports. May not be NULL.
      */
     void (*create_handle_repos) (TpBaseConnection *self,
-        TpHandleRepoIface *repos[LAST_TP_HANDLE_TYPE+1]);
+        TpHandleRepoIface *repos[NUM_TP_HANDLE_TYPES]);
 
     /**
      * init_handle_repos:
@@ -78,7 +78,7 @@ struct _TpBaseConnectionClass {
      *
      * Deprecated: use create_handle_repos instead.
      */
-    void (*init_handle_repos) (TpHandleRepoIface *repos[LAST_TP_HANDLE_TYPE+1]);
+    void (*init_handle_repos) (TpHandleRepoIface *repos[NUM_TP_HANDLE_TYPES]);
 
     /** 
      * create_channel_factories:
@@ -208,7 +208,7 @@ struct _TpBaseConnection {
      *
      * handles[0] must always be %NULL; it's included for simplicity.
      */
-    TpHandleRepoIface *handles[LAST_TP_HANDLE_TYPE + 1];
+    TpHandleRepoIface *handles[NUM_TP_HANDLE_TYPES];
 
     /**
      * self_handle:

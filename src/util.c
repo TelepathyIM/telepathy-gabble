@@ -186,7 +186,7 @@ enum {
  * Build an LmMessageNode from a list of arguments employing an
  * S-expression-like notation. Example:
  *
- * lm_message_build (LM_MESSAGE_TYPE_IQ, "bob@jabber.org",
+ * lm_message_build ("bob@jabber.org", LM_MESSAGE_TYPE_IQ,
  *   '(', 'query', 'lala',
  *      '@', 'xmlns', 'http://jabber.org/protocol/foo',
  *   ')',

@@ -60,13 +60,30 @@ typedef enum {
         </xsl:otherwise>
       </xsl:choose>
     </xsl:variable>
+    <xsl:variable name="name-plural">
+      <xsl:choose>
+        <xsl:when test="@plural">
+          <xsl:value-of select="@plural"/>
+        </xsl:when>
+        <!-- hack, remove these next 3 lines when the spec gets plurals -->
+        <xsl:when test="@name = 'Connection_Status'">
+          <xsl:text>Connection_Statuses</xsl:text>
+        </xsl:when>
+        <xsl:otherwise>
+          <xsl:value-of select="@name"/><xsl:text>s</xsl:text>
+        </xsl:otherwise>
+      </xsl:choose>
+    </xsl:variable>
 /* <xsl:value-of select="translate(concat($mixed-case-prefix, @name), '_', '')"/> (enum) */
 <xsl:if test="tp:docstring">/* <xsl:value-of select="tp:docstring"/> */</xsl:if>
 typedef enum {
 <xsl:apply-templates>
   <xsl:with-param name="value-prefix" select="$value-prefix"/>
-</xsl:apply-templates>    LAST_<xsl:value-of select="translate(concat($upper-case-prefix, $value-prefix), $lower, $upper)"/> = <xsl:value-of select="tp:enumvalue[position() = last()]/@value"/>
+</xsl:apply-templates>    NUM_<xsl:value-of select="translate(concat($upper-case-prefix, $name-plural), $lower, $upper)"/>
 } <xsl:value-of select="translate(concat($mixed-case-prefix, @name), '_', '')"/>;
+#ifndef TELEPATHY_GLIB_DISABLE_DEPRECATED
+#define LAST_<xsl:value-of select="translate(concat($upper-case-prefix, $value-prefix), $lower, $upper)"/> (NUM_<xsl:value-of select="translate(concat($upper-case-prefix, $name-plural), $lower, $upper)"/>-1)
+#endif
 
 </xsl:template>
 

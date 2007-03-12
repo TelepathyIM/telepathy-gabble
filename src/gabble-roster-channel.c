@@ -371,7 +371,6 @@ _gabble_roster_channel_add_member_cb (TpSvcChannelInterfaceGroup *obj,
                                       GError **error)
 {
   GabbleRosterChannelPrivate *priv;
-  TpBaseConnection *conn;
   gboolean ret = FALSE;
 #ifdef ENABLE_DEBUG
   TpHandleRepoIface *handle_repo, *contact_repo;
@@ -379,9 +378,10 @@ _gabble_roster_channel_add_member_cb (TpSvcChannelInterfaceGroup *obj,
 
   priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (GABBLE_ROSTER_CHANNEL (obj));
 #ifdef ENABLE_DEBUG
-  conn = (TpBaseConnection *)priv->conn;
-  handle_repo = tp_base_connection_get_handles (conn, priv->handle_type);
-  contact_repo = tp_base_connection_get_handles (conn, TP_HANDLE_TYPE_CONTACT);
+  handle_repo = tp_base_connection_get_handles ((TpBaseConnection *)priv->conn,
+      priv->handle_type);
+  contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
 #endif
 
   DEBUG ("called on %s with handle %u (%s) \"%s\"",

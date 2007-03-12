@@ -306,8 +306,17 @@ def signal_emit_stub(signal):
         args += ', ' + name
     decl += ')'
 
+    doc = ("""\
+/**
+ * %s:
+ * @instance: An object implementing this interface
+ *
+ * Emit the %s D-Bus signal from @instance with the given arguments.
+ */
+""" % (c_emitter_name, dbus_name))
+
     header = decl + ';\n\n'
-    body = decl + ('\n{\n'
+    body = doc + decl + ('\n{\n'
                    '  g_assert (%s_IS_%s (instance));\n'
                    '  g_signal_emit (instance, signals[%s], 0%s);\n'
                    '}\n\n'
@@ -375,7 +384,7 @@ def do_method(method):
     c_decl += tmp+classname+' *self'
 
     method_pad = ' ' * len(method_decl)
-    method_decl += classname + ' *'
+    method_decl += classname + ' *self'
     args = 'self'
 
     if async:
@@ -411,43 +420,67 @@ def do_method(method):
 
     if async:
         c_decl += ",\n"+pad+"DBusGMethodInvocation *context)"
-        method_decl += ",\n"+method_pad+"DBusGMethodInvocation *);\n"
+        method_decl += ",\n"+method_pad+"DBusGMethodInvocation *context);\n"
         args += ', context'
     else:
         c_decl += ",\n"+pad+"GError **error)"
-        method_decl += ",\n"+method_pad+"GError **);\n"
+        method_decl += ",\n"+method_pad+"GError **error);\n"
         args += ', error'
+
+    ret_doc = ("""\
+/**
+ * %s:
+ * @dbus_context: The D-Bus method invocation context
+ *
+ * Return successfully by calling dbus_g_method_return (@dbus_context,
+ * ...). This inline function is just a type-safe wrapper for
+ * dbus_g_method_return.
+ */
+""" % ret_method_name)
 
     interface = method.parentNode.getAttribute("name");
     if async:
         ret_decl += ')\n'
         ret_body += ');\n}\n'
-        header += (ret_decl + ret_body)
+        header += (ret_doc + ret_decl + ret_body)
     header += (c_decl+";\n\n")
     body += (
 """
 /**
- * %(c_method_name)s
- *
- * Implements D-Bus method %(method)s
- * on interface %(interface)s
- *""" % {'c_method_name':c_method_name, 'method':dbus_method_name, 'interface':interface})
+ * %s
+ * @self: The object implementing this interface
+""" % c_method_name)
     if async:
         body += (
-"""
+"""\
  * @context: The D-Bus invocation context to use to return values
  *           or throw an error.
- */
 """)
     else:
         body += (
-"""
+"""\
  * @error: Used to return a pointer to a GError detailing any error
  *         that occurred, D-Bus will throw the error only if this
  *         function returns FALSE.
+""")
+    body += (
+"""\
  *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
+ * Implements D-Bus method %(method)s
+ * on interface %(interface)s
+ *
+""" % {'c_method_name':c_method_name, 'method':dbus_method_name, 'interface':interface})
+
+    if not async:
+        body += (
+"""\
+ * Returns: TRUE on success, FALSE with @error set on error
+ *
+""")
+
+    body += (
+"""\
+*/
 """)
 
     if async:
@@ -469,9 +502,20 @@ def do_method(method):
                    'dbus-binding-tool */\n')
         header += '#define %s %s\n\n' % (dg_method_name, c_method_name)
 
-    method_decl += 'void %s_implement_%s (%sClass *, %s);\n\n' \
+    method_decl += 'void %s_implement_%s (%sClass *klass, %s impl);\n\n' \
                    % (prefix, lc_method_name, classname, c_impl_name)
 
+    body += ("""\
+/**
+ * %s_implement_%s:
+ * @klass: A class whose instances implement this interface
+ * @impl: A callback used to implement the %s method
+ *
+ * Register an implementation for the %s method in the vtable of an
+ * implementation of this interface. To be called from the interface
+ * init function.
+ */
+""" % (prefix, lc_method_name, dbus_method_name, dbus_method_name))
     body += 'void\n%s_implement_%s (%sClass *klass, %s impl)\n{\n'\
             % (prefix, lc_method_name, classname, c_impl_name)
     body += '  klass->%s = impl;\n' % lc_method_name

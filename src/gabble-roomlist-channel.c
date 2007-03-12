@@ -391,6 +391,13 @@ room_info_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
       return;
     }
 
+  handle = tp_handle_ensure (room_handles, jid, NULL, NULL);
+  if (handle == 0)
+    {
+      DEBUG ("ignoring listed room with invalid JID '%s'", jid);
+      return;
+    }
+
   DEBUG ("got room identity, name=%s, category=%s, type=%s", name, category, type);
 
   keys = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
@@ -444,8 +451,7 @@ room_info_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
   if (var != NULL)
     INSERT_KEY (keys, "language", G_TYPE_STRING, string, var);
 
-  /* get the room handle and transfer the ref to signalled_rooms */
-  handle = tp_handle_ensure (room_handles, jid, NULL);
+  /* transfer the room handle ref to signalled_rooms */
   tp_handle_set_add (priv->signalled_rooms, handle);
   tp_handle_unref (room_handles, handle);
 

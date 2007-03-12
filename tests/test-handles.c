@@ -51,11 +51,11 @@ void test_handles (guint handle_type)
   else
     {
       /* It's not there to start with, unless we're using the static repo */
-      handle = tp_handle_lookup (tp_repo, jid, NULL);
+      handle = tp_handle_lookup (tp_repo, jid, NULL, NULL);
       g_assert (handle == 0);
     }
   /* ... but when we call tp_handle_ensure we get a new ref to it */
-  handle = tp_handle_ensure (tp_repo, jid, NULL);
+  handle = tp_handle_ensure (tp_repo, jid, NULL, NULL);
   g_assert (handle != 0);
 
   /* Try to inspect it */

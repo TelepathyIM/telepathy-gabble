@@ -20,6 +20,16 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+/**
+ * SECTION:group-mixin
+ * @title: TpGroupMixin
+ * @short_description: a mixin implementation of the groups interface
+ * @see_also: #TpSvcChannelInterfaceGroup
+ *
+ * This mixin can be added to a channel GObject class to implement the
+ * groups interface in a general way.
+ */
+
 #include <dbus/dbus-glib.h>
 #include <stdio.h>
 

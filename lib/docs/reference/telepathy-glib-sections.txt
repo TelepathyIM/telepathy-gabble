@@ -36,16 +36,17 @@ TP_BASE_CONNECTION_GET_CLASS
 </SECTION>
 
 <SECTION>
+<TITLE>TpBaseConnectionManager</TITLE>
 <INCLUDE>telepathy-glib/base-connection-manager.h</INCLUDE>
 <FILE>base-connection-manager</FILE>
-TP_CM_BUS_NAME_BASE
-TP_CM_OBJECT_PATH_BASE
 TpCMParamSpec
 TpCMProtocolSpec
-<TITLE>TpBaseConnectionManager</TITLE>
 TpBaseConnectionManager
 TpBaseConnectionManagerClass
+TpBaseConnectionManagerNewConnFunc
 tp_base_connection_manager_register
+TP_CM_BUS_NAME_BASE
+TP_CM_OBJECT_PATH_BASE
 <SUBSECTION Standard>
 TP_BASE_CONNECTION_MANAGER
 TP_IS_BASE_CONNECTION_MANAGER

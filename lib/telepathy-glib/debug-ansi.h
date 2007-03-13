@@ -1,4 +1,11 @@
-/* ANSI terminal colours, to highlight the debug log */
+/**
+ * SECTION:debug-ansi
+ * @title: ANSI codes for debug messages
+ * @short_description: used to colorize log messages for clarity
+ *
+ * This header provides some ANSI escapes you can use to make debug messages
+ * more colourful.
+ */
 
 #ifndef __TP_DEBUG_ANSI_H__
 #define __TP_DEBUG_ANSI_H__

@@ -19,6 +19,18 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+/**
+ * SECTION:base-connection-manager
+ * @title: TpBaseConnectionManager
+ * @short_description: base class for #TpSvcConnectionManager implementations
+ * @see_also: #TpBaseConnection, #TpSvcConnectionManager, #run
+ *
+ * This base class makes it easier to write #TpSvcConnectionManager
+ * implementations by managing the D-Bus object path and bus name,
+ * and maintaining a table of active connections. Subclasses should usually
+ * only need to override the members of the class data structure.
+ */
+
 #include <telepathy-glib/base-connection-manager.h>
 
 #include <string.h>

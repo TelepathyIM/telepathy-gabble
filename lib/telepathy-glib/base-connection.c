@@ -19,6 +19,18 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+/**
+ * SECTION:base-connection
+ * @title: TpBaseConnection
+ * @short_description: base class for #TpSvcConnection implementations
+ * @see_also: #TpBaseConnectionManager, #TpSvcConnection
+ *
+ * This base class makes it easier to write #TpSvcConnection implementations
+ * by managing connection status, channel factories and handle tracking.
+ * A subclass should usually only need to implement RequestHandles
+ * and GetInterfaces, plus any extra interfaces beyond #TpSvcConnection.
+ */
+
 #include <telepathy-glib/base-connection.h>
 
 #include <string.h>

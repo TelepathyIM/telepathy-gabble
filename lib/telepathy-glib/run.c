@@ -18,6 +18,20 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+/**
+ * SECTION:run
+ * @title: Connection manager life cycle
+ * @short_description: entry point for telepathy-glib connection managers
+ *
+ * #tp_run_connection_manager provides a convenient entry point for
+ * telepathy-glib connection managers. It initializes most of the
+ * functionality the CM will need, constructs a connection manager object
+ * and lets it run.
+ *
+ * This function also manages the connection manager's lifetime - if there
+ * are no new connections for a while, it times out and exits.
+ */
+
 #include "config.h"
 
 #include <dbus/dbus-glib.h>

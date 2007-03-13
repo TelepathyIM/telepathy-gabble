@@ -21,6 +21,18 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+/**
+ * SECTION:text-mixin
+ * @title: TpTextMixin
+ * @short_description: a mixin implementation of the text channel type
+ * @see_also: #TpSvcChannelTypeText
+ *
+ * This mixin can be added to a channel GObject class to implement the
+ * text channel type in a general way. It implements the pending message
+ * queue and GetMessageTypes, so the implementation should only need to
+ * implement Send.
+ */
+
 #include <telepathy-glib/text-mixin.h>
 
 #include <dbus/dbus-glib.h>
@@ -137,7 +149,18 @@ tp_text_mixin_get_offset_quark ()
 }
 
 
-/* TpTextMixin */
+/**
+ * tp_text_mixin_class_init:
+ * @obj_cls: The class of the implementation that uses this mixin
+ * @offset: The byte offset of the TpTextMixinClass within the class structure
+ *
+ * Initialize the text mixin. Should be called from the implementation's
+ * class_init function like so:
+ *
+ * tp_text_mixin_class_init ((GObjectClass *)klass,
+ *                           G_STRUCT_OFFSET (SomeClass, text_mixin));
+ */
+
 void
 tp_text_mixin_class_init (GObjectClass *obj_cls, glong offset)
 {

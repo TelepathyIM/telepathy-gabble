@@ -28,6 +28,13 @@
 G_BEGIN_DECLS
 
 GQuark tp_errors_quark (void);
+
+/**
+ * TP_ERRORS:
+ *
+ * The error domain for the D-Bus errors described in the Telepathy
+ * specification.
+ */
 #define TP_ERRORS tp_errors_quark ()
 
 void tp_g_set_error_invalid_handle_type (guint type, GError **);

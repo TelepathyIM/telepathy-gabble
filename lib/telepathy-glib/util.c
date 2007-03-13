@@ -19,6 +19,15 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+/**
+ * SECTION:util
+ * @title: Utilities
+ * @short_description: Non-Telepathy utility functions
+ *
+ * Some utility functions used in telepathy-glib which could have been in
+ * GLib, but aren't.
+ */
+
 #include <telepathy-glib/util.h>
 
 #include <string.h>

@@ -18,6 +18,14 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+/**
+ * SECTION:dbus
+ * @title: D-Bus utilities
+ * @short_description: some D-Bus utility functions
+ *
+ * D-Bus utility functions used in telepathy-glib.
+ */
+
 #include <telepathy-glib/dbus.h>
 
 #include <stdlib.h>

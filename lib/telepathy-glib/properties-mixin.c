@@ -20,6 +20,16 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+/**
+ * SECTION:properties-mixin
+ * @title: TpPropertiesMixin
+ * @short_description: a mixin implementation of the properties interface
+ * @see_also: #TpSvcPropertiesInterface
+ *
+ * This mixin can be added to any GObject class to implement the properties
+ * interface in a general way.
+ */
+
 #include <telepathy-glib/properties-mixin.h>
 
 #include <dbus/dbus-glib.h>

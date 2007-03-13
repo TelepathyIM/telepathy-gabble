@@ -5,7 +5,10 @@ import os.path
 import xml.dom.minidom
 
 def cmdline_error():
-    print "usage: gen-ginterface xmlfile classname [output_basename]"
+    print """\
+usage:
+gen-ginterface xmlfile classname [output_basename [signal_marshal_prefix]]
+"""
     sys.exit(1)
 
 def dbus_gutils_wincaps_to_uscore(s):

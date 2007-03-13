@@ -8,7 +8,7 @@
 
 void test_handles (guint handle_type)
 {
-  TpHandleRepoIface *repos[LAST_TP_HANDLE_TYPE+1];
+  TpHandleRepoIface *repos[NUM_TP_HANDLE_TYPES];
   TpHandleRepoIface *tp_repo = NULL;
   GError *error = NULL;
   guint i;
@@ -17,7 +17,7 @@ void test_handles (guint handle_type)
   const gchar *jid = "handle.test@foobar";
   const gchar *return_jid;
 
-  for (i = 0; i <= LAST_TP_HANDLE_TYPE; i++)
+  for (i = 0; i < NUM_TP_HANDLE_TYPES; i++)
     {
       repos[i] = NULL;
     }
@@ -90,7 +90,7 @@ void test_handles (guint handle_type)
       g_assert (tp_handle_unref (tp_repo, handle) == FALSE);
     }
 
-  for (i = 0; i <= LAST_TP_HANDLE_TYPE; i++)
+  for (i = 0; i < NUM_TP_HANDLE_TYPES; i++)
     {
       if (repos[i])
         g_object_unref((GObject *)repos[i]);

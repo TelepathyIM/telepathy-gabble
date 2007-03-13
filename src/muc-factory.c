@@ -560,7 +560,7 @@ HANDLE_MESSAGE:
 
   /* check if a room with the jid exists */
   room = gabble_remove_resource (from);
-  room_handle = tp_handle_lookup (room_repo, from, NULL, NULL);
+  room_handle = tp_handle_lookup (room_repo, room, NULL, NULL);
   g_free (room);
 
   if (room_handle == 0)

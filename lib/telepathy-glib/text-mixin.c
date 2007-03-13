@@ -158,7 +158,7 @@ tp_text_mixin_get_offset_quark ()
  * class_init function like so:
  *
  * tp_text_mixin_class_init ((GObjectClass *)klass,
- *                           G_STRUCT_OFFSET (SomeClass, text_mixin));
+ *                           G_STRUCT_OFFSET (SomeObjectClass, text_mixin));
  */
 
 void
@@ -174,6 +174,24 @@ tp_text_mixin_class_init (GObjectClass *obj_cls, glong offset)
 
   mixin_cls = TP_TEXT_MIXIN_CLASS (obj_cls);
 }
+
+
+/**
+ * tp_text_mixin_class_init:
+ * @obj_cls: The class of the implementation that uses this mixin
+ * @offset: The byte offset of the TpTextMixinClass within the class structure
+ *
+ * Initialize the text mixin. Should be called from the implementation's
+ * init function like so:
+ *
+ * tp_text_mixin_init ((GObject *)self,
+ *                     G_STRUCT_OFFSET (SomeObject, text_mixin),
+ *                     self->contact_repo,
+ *                     FALSE);
+ *
+ * FIXME: send_nick is XMPP-specific and shouldn't be here. We don't actually
+ * do anything with it here
+ */
 
 void
 tp_text_mixin_init (GObject *obj,

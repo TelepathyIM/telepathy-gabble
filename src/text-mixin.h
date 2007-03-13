@@ -27,6 +27,8 @@
 
 G_BEGIN_DECLS
 
+#define TP_CHANNEL_SEND_NO_ERROR ((TpChannelTextSendError)-1)
+
 gboolean gabble_text_mixin_send (GObject *obj, guint type, guint subtype, gint state,
     const char *recipient, const gchar *text, GabbleConnection *conn,
     gboolean emit_signal, GError **error);

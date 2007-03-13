@@ -29,8 +29,6 @@
 
 G_BEGIN_DECLS
 
-#define TP_CHANNEL_SEND_NO_ERROR ((TpChannelTextSendError)-1)
-
 typedef struct _TpTextMixinClass TpTextMixinClass;
 typedef struct _TpTextMixin TpTextMixin;
 

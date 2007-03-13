@@ -662,7 +662,11 @@ tp_properties_mixin_emit_changed (GObject *obj, GArray **props)
     return;
 
   if ((*props)->len == 0)
-    return;
+    {
+      g_array_free (*props, TRUE);
+      *props = NULL;
+      return;
+    }
 
   prop_arr = g_ptr_array_sized_new ((*props)->len);
 
@@ -722,7 +726,11 @@ tp_properties_mixin_emit_flags (GObject *obj, GArray **props)
     return;
 
   if ((*props)->len == 0)
-    return;
+    {
+      g_array_free (*props, TRUE);
+      *props = NULL;
+      return;
+    }
 
   prop_arr = g_ptr_array_sized_new ((*props)->len);
 

@@ -34,10 +34,10 @@ int
 main (int argc,
       char **argv)
 {
+#ifdef ENABLE_DEBUG
   gabble_debug_set_flags_from_env ();
 
   /* backwards compatibility */
-#ifdef ENABLE_DEBUG
   if (g_getenv ("GABBLE_PERSIST"))
     {
       gabble_debug_set_flags (0xffff);

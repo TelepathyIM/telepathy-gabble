@@ -79,10 +79,10 @@ typedef enum {
 typedef enum {
 <xsl:apply-templates>
   <xsl:with-param name="value-prefix" select="$value-prefix"/>
-</xsl:apply-templates>    NUM_<xsl:value-of select="translate(concat($upper-case-prefix, $name-plural), $lower, $upper)"/>
-} <xsl:value-of select="translate(concat($mixed-case-prefix, @name), '_', '')"/>;
+</xsl:apply-templates>} <xsl:value-of select="translate(concat($mixed-case-prefix, @name), '_', '')"/>;
+#define NUM_<xsl:value-of select="translate(concat($upper-case-prefix, $name-plural), $lower, $upper)"/> (<xsl:value-of select="tp:enumvalue[position() = last()]/@value"/>+1)
 #ifndef TELEPATHY_GLIB_DISABLE_DEPRECATED
-#define LAST_<xsl:value-of select="translate(concat($upper-case-prefix, $value-prefix), $lower, $upper)"/> (NUM_<xsl:value-of select="translate(concat($upper-case-prefix, $name-plural), $lower, $upper)"/>-1)
+#define LAST_<xsl:value-of select="translate(concat($upper-case-prefix, $value-prefix), $lower, $upper)"/><xsl:text> </xsl:text><xsl:value-of select="tp:enumvalue[position() = last()]/@value"/>
 #endif
 
 </xsl:template>

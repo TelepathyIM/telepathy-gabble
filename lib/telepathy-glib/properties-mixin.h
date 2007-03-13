@@ -47,6 +47,25 @@ struct _TpProperty {
 typedef struct _TpProperty TpProperty;
 
 typedef struct _TpPropertiesContext TpPropertiesContext;
+
+/** 
+ * TpPropertiesSetFunc:
+ * @obj: An object with the properties mixin
+ * @ctx: A properties context
+ * @error: Set to the error if %FALSE is returned
+ *
+ * A callback used to implement the SetProperties D-Bus method.
+ *
+ * The callback must either:
+ *
+ * * return %FALSE to indicate immediate failure
+ * * call #tp_properties_context_return with an error to indicate failure
+ * * call #tp_properties_context_remove to remove each property from the set
+ *   of pending properties, then call #tp_properties_context_return_if_done
+ *   or #tp_properties_context_return when all were set
+ *
+ * Returns: %FALSE on immediate failure, %TRUE otherwise
+ */
 typedef gboolean (*TpPropertiesSetFunc) (GObject *obj, TpPropertiesContext *ctx, GError **error);
 
 struct _TpPropertiesMixinClass {

@@ -76,11 +76,23 @@ tp_properties_mixin_get_offset_quark ()
   return offset_quark;
 }
 
-void tp_properties_mixin_class_init (GObjectClass *obj_cls,
-                                         glong offset,
-                                         const TpPropertySignature *signatures,
-                                         guint num_properties,
-                                         TpPropertiesSetFunc set_func)
+
+/**
+ * tp_properties_mixin_class_init:
+ * @obj_cls: The class of an object that has this mixin
+ * @offset: The offset of the TpPropertiesMixinClass structure in the class
+ *          structure
+ * @signatures: An array of property signatures
+ * @num_properties: The number of entries in @signatures
+ * @set_func: Callback used to set the properties
+ */
+
+void
+tp_properties_mixin_class_init (GObjectClass *obj_cls,
+                                glong offset,
+                                const TpPropertySignature *signatures,
+                                guint num_properties,
+                                TpPropertiesSetFunc set_func)
 {
   TpPropertiesMixinClass *mixin_cls;
 
@@ -97,6 +109,14 @@ void tp_properties_mixin_class_init (GObjectClass *obj_cls,
 
   mixin_cls->set_properties = set_func;
 }
+
+
+/**
+ * tp_properties_mixin_class_init:
+ * @obj: An object that has this mixin
+ * @offset: The offset of the TpPropertiesMixin structure in the object
+ *          structure
+ */
 
 void tp_properties_mixin_init (GObject *obj, glong offset)
 {
@@ -125,6 +145,13 @@ void tp_properties_mixin_init (GObject *obj, glong offset)
   ctx->mixin = mixin;
   ctx->values = g_new0 (GValue *, mixin_cls->num_props);
 }
+
+/**
+ * tp_properties_mixin_finalize:
+ * @obj: An object that has this mixin
+ *
+ * Free memory used by the TpPropertiesMixin.
+ */
 
 void tp_properties_mixin_finalize (GObject *obj)
 {
@@ -157,6 +184,19 @@ void tp_properties_mixin_finalize (GObject *obj)
   g_free (mixin->properties);
 }
 
+
+/**
+ * tp_properties_mixin_list_properties:
+ * @obj: An object with this mixin
+ * @ret: Output parameter which will be set to a GPtrArray of D-Bus structures
+ *       if %TRUE is returned
+ * @error: Set to the error if %FALSE is returned
+ *
+ * List all available properties and their flags, as in the ListProperties
+ * D-Bus method.
+ *
+ * Returns: %TRUE on success
+ */
 gboolean
 tp_properties_mixin_list_properties (GObject *obj, GPtrArray **ret, GError **error)
 {
@@ -209,6 +249,19 @@ tp_properties_mixin_list_properties (GObject *obj, GPtrArray **ret, GError **err
   return TRUE;
 }
 
+
+/**
+ * tp_properties_mixin_get_properties:
+ * @obj: An object with this mixin
+ * @properties: an array of integer property IDs
+ * @ret: set to an array of D-Bus structures if %TRUE is returned
+ * @error: Set to the error if %FALSE is returned
+ *
+ * Retrieve the values of the given properties, as in the GetProperties
+ * D-Bus method.
+ *
+ * Returns: %TRUE on success
+ */
 gboolean
 tp_properties_mixin_get_properties (GObject *obj, const GArray *properties, GPtrArray **ret, GError **error)
 {
@@ -265,10 +318,19 @@ tp_properties_mixin_get_properties (GObject *obj, const GArray *properties, GPtr
   return TRUE;
 }
 
+
+/**
+ * tp_properties_mixin_set_properties:
+ * @obj: An object with this mixin
+ * @properties: An array of D-Bus structures containing property ID and value
+ * @context: A D-Bus method invocation context for the SetProperties method
+ *
+ * Start to change properties in response to user request via D-Bus.
+ */
 void
 tp_properties_mixin_set_properties (GObject *obj,
-                                        const GPtrArray *properties,
-                                        DBusGMethodInvocation *context)
+                                    const GPtrArray *properties,
+                                    DBusGMethodInvocation *context)
 {
   TpPropertiesMixin *mixin = TP_PROPERTIES_MIXIN (obj);
   TpPropertiesMixinClass *mixin_cls = TP_PROPERTIES_MIXIN_CLASS (
@@ -352,6 +414,15 @@ ERROR:
   tp_properties_context_return (ctx, error);
 }
 
+/**
+ * tp_properties_mixin_has_property:
+ * @obj: an object with a properties mixin
+ * @name: the string name of the property
+ * @property: either %NULL, or a pointer to a location to receive the property
+ *            index
+ *
+ * Returns: %TRUE, setting @property, if @obj has a property of that name
+ */
 gboolean
 tp_properties_mixin_has_property (GObject *obj, const gchar *name,
                                       guint *property)
@@ -374,6 +445,17 @@ tp_properties_mixin_has_property (GObject *obj, const gchar *name,
   return FALSE;
 }
 
+
+/**
+ * tp_properties_context_has:
+ * @ctx: the properties context representing a SetProperties call
+ * @property: the property ID
+ *
+ * Returns: %TRUE if @ctx indicates that @property needs to be set on the
+ * server, or has already been set in this batch
+ *
+ * FIXME: bad semantics: should look in remaining instead
+ */
 gboolean
 tp_properties_context_has (TpPropertiesContext *ctx, guint property)
 {
@@ -382,6 +464,15 @@ tp_properties_context_has (TpPropertiesContext *ctx, guint property)
   return (ctx->values[property] != NULL);
 }
 
+
+/**
+ * tp_properties_context_has_other_than:
+ * @ctx: the properties context representing a SetProperties call
+ * @property: the property ID
+ *
+ * Returns: %TRUE if @ctx has properties other than @property that still
+ * need to be set on the server
+ */
 gboolean
 tp_properties_context_has_other_than (TpPropertiesContext *ctx, guint property)
 {
@@ -392,6 +483,15 @@ tp_properties_context_has_other_than (TpPropertiesContext *ctx, guint property)
   return (tp_intset_size (ctx->remaining) > (has ? 1 : 0));
 }
 
+
+/**
+ * tp_properties_context_get:
+ * @ctx: the properties context representing a SetProperties call
+ * @property: FIXME
+ *
+ * Returns: the value to be set on the server for the property @property
+ * in @ctx (whether it has been set already or not)
+ */
 const GValue *
 tp_properties_context_get (TpPropertiesContext *ctx, guint property)
 {
@@ -400,6 +500,15 @@ tp_properties_context_get (TpPropertiesContext *ctx, guint property)
   return ctx->values[property];
 }
 
+
+/**
+ * tp_properties_context_get_value_count:
+ * @ctx: the properties context representing a SetProperties call
+ * @property: FIXME
+ *
+ * Returns: the number of properties in @ctx which still need to be set on
+ *          the server
+ */
 guint
 tp_properties_context_get_value_count (TpPropertiesContext *ctx)
 {
@@ -415,6 +524,14 @@ tp_properties_context_get_value_count (TpPropertiesContext *ctx)
   return n;
 }
 
+
+/**
+ * tp_properties_context_remove:
+ * @ctx: the properties context representing a SetProperties call
+ * @property: a property ID
+ *
+ * Mark the given property as having been set successfully.
+ */
 void
 tp_properties_context_remove (TpPropertiesContext *ctx, guint property)
 {
@@ -423,6 +540,14 @@ tp_properties_context_remove (TpPropertiesContext *ctx, guint property)
   tp_intset_remove (ctx->remaining, property);
 }
 
+
+/**
+ * tp_properties_context_return
+ * @ctx: the properties context representing a SetProperties call
+ * @error: If %NULL, return successfully; otherwise return this error
+ *
+ * Commit the property changes and return from the pending D-Bus call.
+ */
 void
 tp_properties_context_return (TpPropertiesContext *ctx, GError *error)
 {
@@ -471,6 +596,16 @@ tp_properties_context_return (TpPropertiesContext *ctx, GError *error)
   /* The context itself is not freed - it's a static part of the mixin */
 }
 
+
+/**
+ * tp_properties_context_return_if_done:
+ * @ctx: the properties context representing a SetProperties call
+ *
+ * Return from the pending D-Bus call if there are no more properties to be
+ * dealt with.
+ *
+ * Returns: %TRUE if we returned from the D-Bus call.
+ */
 gboolean
 tp_properties_context_return_if_done (TpPropertiesContext *ctx)
 {
@@ -541,6 +676,32 @@ values_are_equal (const GValue *v1, const GValue *v2)
   return FALSE;
 }
 
+
+/**
+ * tp_properties_mixin_change_value:
+ * @obj: An object with the properties mixin
+ * @prop_id: A property ID on which to act
+ * @new_value: Property value
+ * @props: %NULL, or a pointer to %NULL, or a pointer to a pointer to a GArray
+ *         of guint: see below
+ *
+ * Change the value of the given property ID in response to a server state
+ * change.
+ *
+ * If the old and new values match, nothing happens; no signal is emitted and
+ * @props is ignored. Otherwise, the following applies.
+ *
+ * If @props is %NULL the PropertiesChanged signal is emitted for this one
+ * property.
+ *
+ * Otherwise, the property ID is appended to the GArray of uint indirectly
+ * pointed to by @props, if it's not already there, and the caller is
+ * responsible for calling #tp_properties_mixin_emit_flags once a batch of
+ * changes is complete.
+ *
+ * If @props is a pointer to %NULL, its value will be filled with a pointer
+ * to a new GArray of guint.
+ */
 void
 tp_properties_mixin_change_value (GObject *obj, guint prop_id,
                                       const GValue *new_value,
@@ -596,6 +757,33 @@ tp_properties_mixin_change_value (GObject *obj, guint prop_id,
     }
 }
 
+
+/**
+ * tp_properties_mixin_change_flags:
+ * @obj: An object with the properties mixin
+ * @prop_id: A property ID on which to act
+ * @add: Property flags to be added via bitwise OR
+ * @remove: Property flags to be removed via bitwise AND
+ * @props: %NULL, or a pointer to %NULL, or a pointer to a pointer to a GArray
+ *         of guint: see below
+ *
+ * Change the flags for the given property ID in response to a server state
+ * change.
+ *
+ * Flags removed by @remove override flags added by @add. This should not be
+ * relied upon.
+ *
+ * If @props is %NULL the PropertyFlagsChanged signal is emitted for this
+ * single property.
+ *
+ * Otherwise, the property ID is appended to the GArray of uint indirectly
+ * pointed to by @props, if it's not already there, and the caller is
+ * responsible for calling #tp_properties_mixin_emit_flags once a batch of
+ * changes is complete.
+ *
+ * If @props is a pointer to %NULL, its value will be filled with a pointer
+ * to a new GArray of guint.
+ */
 void
 tp_properties_mixin_change_flags (GObject *obj, guint prop_id,
                                       TpPropertyFlags add,
@@ -648,6 +836,16 @@ tp_properties_mixin_change_flags (GObject *obj, guint prop_id,
     }
 }
 
+/**
+ * tp_properties_mixin_emit_flags:
+ * @obj: an object with the properties mixin
+ * @props: a GArray of guint representing property IDs, which will be freed
+ *         and set to %NULL by this function
+ *
+ * Emit the PropertiesChanged signal to indicate that the values of the
+ * given property IDs have changed; the actual values are automatically
+ * added using their stored values.
+ */
 void
 tp_properties_mixin_emit_changed (GObject *obj, GArray **props)
 {
@@ -712,6 +910,17 @@ tp_properties_mixin_emit_changed (GObject *obj, GArray **props)
   *props = NULL;
 }
 
+
+/**
+ * tp_properties_mixin_emit_flags:
+ * @obj: an object with the properties mixin
+ * @props: a GArray of guint representing property IDs, which will be freed
+ *         and set to %NULL by this function
+ *
+ * Emit the PropertyFlagsChanged signal to indicate that the flags of the
+ * given property IDs have changed; the actual flags are automatically
+ * added using their stored values.
+ */
 void
 tp_properties_mixin_emit_flags (GObject *obj, GArray **props)
 {
@@ -786,6 +995,14 @@ tp_properties_mixin_emit_flags (GObject *obj, GArray **props)
   *props = NULL;
 }
 
+
+/**
+ * tp_properties_mixin_is_readable:
+ * @obj: an object with this mixin
+ * @prop_id: an integer property ID
+ *
+ * Returns: %TRUE if the given property has the READ flag
+ */
 gboolean
 tp_properties_mixin_is_readable (GObject *obj, guint prop_id)
 {
@@ -799,6 +1016,14 @@ tp_properties_mixin_is_readable (GObject *obj, guint prop_id)
   return ((mixin->properties[prop_id].flags & TP_PROPERTY_FLAG_READ) != 0);
 }
 
+
+/**
+ * tp_properties_mixin_is_writable:
+ * @obj: an object with this mixin
+ * @prop_id: an integer property ID
+ *
+ * Returns: %TRUE if the given property has the WRITE flag
+ */
 gboolean
 tp_properties_mixin_is_writable (GObject *obj, guint prop_id)
 {
@@ -812,7 +1037,8 @@ tp_properties_mixin_is_writable (GObject *obj, guint prop_id)
   return ((mixin->properties[prop_id].flags & TP_PROPERTY_FLAG_WRITE) != 0);
 }
 
-/**
+
+/*
  * get_properties
  *
  * Implements D-Bus method GetProperties
@@ -845,7 +1071,7 @@ get_properties (TpSvcPropertiesInterface *iface,
 }
 
 
-/**
+/*
  * list_properties
  *
  * Implements D-Bus method ListProperties
@@ -876,7 +1102,7 @@ list_properties (TpSvcPropertiesInterface *iface,
 }
 
 
-/**
+/*
  * set_properties
  *
  * Implements D-Bus method SetProperties

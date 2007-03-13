@@ -28,6 +28,7 @@
 
 #include <telepathy-glib/debug-ansi.h>
 #include <telepathy-glib/errors.h>
+#include <telepathy-glib/intset.h>
 
 #define DEBUG_FLAG TP_DEBUG_PROPERTIES
 
@@ -38,7 +39,7 @@ struct _TpPropertiesContext {
     TpPropertiesMixin *mixin;
 
     DBusGMethodInvocation *dbus_ctx;
-    guint32 remaining;
+    TpIntSet *remaining;
     GValue **values;
 };
 
@@ -285,6 +286,7 @@ tp_properties_mixin_set_properties (GObject *obj,
     }
 
   ctx->dbus_ctx = context;
+  ctx->remaining = tp_intset_new ();
   error = NULL;
 
   /* Check input property identifiers */
@@ -313,7 +315,7 @@ tp_properties_mixin_set_properties (GObject *obj,
         }
 
       /* Store the value in the context */
-      ctx->remaining |= 1 << prop_id;
+      tp_intset_add (ctx->remaining, prop_id);
       ctx->values[prop_id] = prop_val;
 
       /* Permitted? */
@@ -383,9 +385,11 @@ tp_properties_context_has (TpPropertiesContext *ctx, guint property)
 gboolean
 tp_properties_context_has_other_than (TpPropertiesContext *ctx, guint property)
 {
+  gboolean has = tp_intset_is_member (ctx->remaining, property);
+
   g_assert (property < ctx->mixin_cls->num_props);
 
-  return ((ctx->remaining & ~(1 << property)) != 0);
+  return (tp_intset_size (ctx->remaining) > (has ? 1 : 0));
 }
 
 const GValue *
@@ -416,7 +420,7 @@ tp_properties_context_remove (TpPropertiesContext *ctx, guint property)
 {
   g_assert (property < ctx->mixin_cls->num_props);
 
-  ctx->remaining &= ~(1 << property);
+  tp_intset_remove (ctx->remaining, property);
 }
 
 void
@@ -462,13 +466,15 @@ tp_properties_context_return (TpPropertiesContext *ctx, GError *error)
     }
 
   ctx->dbus_ctx = NULL;
-  ctx->remaining = 0;
+  tp_intset_destroy (ctx->remaining);
+  ctx->remaining = NULL;
+  /* The context itself is not freed - it's a static part of the mixin */
 }
 
 gboolean
 tp_properties_context_return_if_done (TpPropertiesContext *ctx)
 {
-  if (ctx->remaining == 0)
+  if (tp_intset_size (ctx->remaining) == 0)
     {
       tp_properties_context_return (ctx, NULL);
       return TRUE;

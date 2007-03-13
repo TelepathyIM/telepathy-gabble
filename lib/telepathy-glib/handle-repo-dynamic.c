@@ -260,16 +260,13 @@ handle_leak_debug_printhandles_foreach (gpointer key, gpointer value, gpointer i
 }
 
 static void
-handle_leak_debug_print_report (GabbleHandleRepo *repo)
+handle_leak_debug_print_report (TpDynamicHandleRepo *self)
 {
-  g_assert (repo != NULL);
+  g_assert (self != NULL);
 
-  printf ("The following contact handles were not freed:\n");
-  g_hash_table_foreach (repo->contact_handles, handle_leak_debug_printhandles_foreach, NULL);
-  printf ("The following room handles were not freed:\n");
-  g_hash_table_foreach (repo->room_handles, handle_leak_debug_printhandles_foreach, NULL);
-  printf ("The following group handles were not freed:\n");
-  g_hash_table_foreach (repo->group_handles, handle_leak_debug_printhandles_foreach, NULL);
+  printf ("The following handles were not freed from repo %p:\n", self);
+  g_hash_table_foreach (self->handle_to_priv,
+      handle_leak_debug_printhandles_foreach, NULL);
 }
 
 static HandleLeakTrace *

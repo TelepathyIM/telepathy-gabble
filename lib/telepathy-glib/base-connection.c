@@ -705,8 +705,6 @@ tp_base_connection_connect (TpSvcConnection *iface,
       gboolean ok = cls->start_connecting (self, &error);
       if (ok)
         {
-          gboolean valid;
-
           tp_base_connection_change_status (self,
               TP_CONNECTION_STATUS_CONNECTING,
               TP_CONNECTION_STATUS_REASON_REQUESTED);
@@ -715,11 +713,8 @@ tp_base_connection_connect (TpSvcConnection *iface,
            * we have a self_handle */
 
           g_assert (self->self_handle != 0);
-          /* FIXME: what's going on here? start_connecting already ref'd the
-           * self handle */
-          valid = tp_handle_ref (self->handles[TP_HANDLE_TYPE_CONTACT],
-              self->self_handle);
-          g_assert (valid);
+          g_assert (tp_handle_is_valid (self->handles[TP_HANDLE_TYPE_CONTACT],
+                self->self_handle, NULL));
         }
       else
         {

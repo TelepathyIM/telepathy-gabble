@@ -469,6 +469,9 @@ tp_base_connection_constructor (GType type, guint n_construct_properties,
       (cls->init_handle_repos) (self->handles);
     }
 
+  /* a connection that doesn't support contacts is no use to anyone */
+  g_assert (self->handles[TP_HANDLE_TYPE_CONTACT] != NULL);
+
   if (DEBUGGING)
     {
       for (i = 0; i < NUM_TP_HANDLE_TYPES; i++)

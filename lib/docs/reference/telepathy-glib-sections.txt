@@ -160,7 +160,7 @@ TP_STATIC_HANDLE_REPO_GET_CLASS
 <SECTION>
 <FILE>svc-properties-interface</FILE>
 <INCLUDE>telepathy-glib/svc-properties-interface.h</INCLUDE>
-<TITLE>Service-side Properties interface</TITLE>
+<TITLE>Service Properties interface</TITLE>
 TpSvcPropertiesInterface
 TpSvcPropertiesInterfaceClass
 tp_svc_properties_interface_get_properties_impl
@@ -191,7 +191,7 @@ dbus_glib_marshal_tp_svc_properties_interface_VOID__POINTER
 
 <SECTION>
 <INCLUDE>telepathy-glib/svc-channel.h</INCLUDE>
-<TITLE>Service-side Channel types and interfaces</TITLE>
+<TITLE>Channel service interfaces</TITLE>
 <FILE>svc-channel</FILE>
 TpSvcChannel
 TpSvcChannelClass
@@ -517,7 +517,7 @@ dbus_glib_marshal_tp_svc_channel_VOID__POINTER
 <SECTION>
 <FILE>svc-connection</FILE>
 <INCLUDE>telepathy-glib/svc-connection.h</INCLUDE>
-<TITLE>Service-side Connection types and interfaces</TITLE>
+<TITLE>Connection service interfaces</TITLE>
 TpSvcConnection
 TpSvcConnectionClass
 tp_svc_connection_connect_impl
@@ -787,7 +787,7 @@ dbus_glib_marshal_tp_svc_connection_VOID__UINT_BOXED_POINTER
 <SECTION>
 <FILE>svc-media-interfaces</FILE>
 <INCLUDE>telepathy-glib/svc-media-interfaces.h</INCLUDE>
-<TITLE>Service-side media streaming helper interfaces</TITLE>
+<TITLE>Media streaming service interfaces</TITLE>
 <SUBSECTION>
 TpSvcMediaSessionHandler
 TpSvcMediaSessionHandlerClass
@@ -874,7 +874,7 @@ dbus_glib_marshal_tp_svc_media_stream_handler_VOID__UINT_STRING_POINTER
 <SECTION>
 <FILE>svc-connection-manager</FILE>
 <INCLUDE>telepathy-glib/svc-connection-manager.h</INCLUDE>
-<TITLE>Service-side Connection Manager interface</TITLE>
+<TITLE>Connection Manager service interface</TITLE>
 TpSvcConnectionManager
 TpSvcConnectionManagerClass
 tp_svc_connection_manager_get_parameters_impl

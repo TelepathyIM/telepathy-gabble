@@ -34,9 +34,6 @@
 #define DEBUG_FLAG TP_DEBUG_CONNECTION
 #include "internal-debug.h"
 
-#define BUS_NAME_BASE    "org.freedesktop.Telepathy.Connection."
-#define OBJECT_PATH_BASE "/org/freedesktop/Telepathy/Connection/"
-
 static void service_iface_init(gpointer, gpointer);
 
 G_DEFINE_ABSTRACT_TYPE_WITH_CODE(TpBaseConnection,
@@ -574,9 +571,9 @@ tp_base_connection_register (TpBaseConnection *self,
   bus = tp_get_bus ();
   bus_proxy = tp_get_bus_proxy ();
 
-  self->bus_name = g_strdup_printf (BUS_NAME_BASE "%s.%s.%s",
+  self->bus_name = g_strdup_printf (TP_CONN_BUS_NAME_BASE "%s.%s.%s",
       cm_name, safe_proto, unique_name);
-  self->object_path = g_strdup_printf (OBJECT_PATH_BASE "%s/%s/%s",
+  self->object_path = g_strdup_printf (TP_CONN_OBJECT_PATH_BASE "%s/%s/%s",
       cm_name, safe_proto, unique_name);
 
   g_free (safe_proto);

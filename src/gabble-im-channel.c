@@ -234,7 +234,7 @@ gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
   tp_text_mixin_class_init (object_class, G_STRUCT_OFFSET (GabbleIMChannelClass, text_class));
 }
 
-void
+static void
 gabble_im_channel_dispose (GObject *object)
 {
   GabbleIMChannel *self = GABBLE_IM_CHANNEL (object);
@@ -287,7 +287,7 @@ gabble_im_channel_dispose (GObject *object)
     G_OBJECT_CLASS (gabble_im_channel_parent_class)->dispose (object);
 }
 
-void
+static void
 gabble_im_channel_finalize (GObject *object)
 {
   GabbleIMChannel *self = GABBLE_IM_CHANNEL (object);

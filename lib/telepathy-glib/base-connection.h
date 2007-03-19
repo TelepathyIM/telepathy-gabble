@@ -120,7 +120,6 @@ typedef gchar *(*TpBaseConnectionGetUniqueConnectionNameImpl) (
  *  given array for all those handle types this Connection supports.
  *  May not be NULL, and the function must create at least a CONTACT
  *  handle repository (failing to do so may cause a crash).
- * @init_handle_repos: Deprecated, use create_handle_repos instead.
  * @create_channel_factories: Create an array of channel factories for this
  *  Connection. May not be NULL.
  * @get_unique_connection_name: Construct a unique name for this connection
@@ -150,8 +149,6 @@ struct _TpBaseConnectionClass {
 
     TpBaseConnectionCreateHandleReposImpl create_handle_repos;
 
-    void (*init_handle_repos) (TpHandleRepoIface *repos[NUM_TP_HANDLE_TYPES]);
-
     TpBaseConnectionCreateChannelFactoriesImpl create_channel_factories;
 
     TpBaseConnectionGetUniqueConnectionNameImpl get_unique_connection_name;
@@ -172,13 +169,6 @@ struct _TpBaseConnectionClass {
  * @object_path: The object-path of this connection.
  * @status: Connection status - may either be a valid TpConnectionStatus or
  *  TP_INTERNAL_CONNECTION_STATUS_NEW.
- * @handles: An array of handle repositories indexed by a #TpHandleType. Null
- *  pointers in this array indicate unsupported handle types; requests
- *  for these types will fail with NotImplemented.
- *  Non-null pointers indicate supported handle types, and point to
- *  implementations of #TpHandleRepoIface used to store the handles of
- *  that type.
- *  handles[0] must always be %NULL; it's included for simplicity.
  * @self_handle: The handle of type %TP_HANDLE_TYPE_CONTACT representing the
  *  local user.
  * @priv: Pointer to opaque private data.
@@ -206,8 +196,6 @@ struct _TpBaseConnection {
     ((TpConnectionStatus)(-1))
 
     TpConnectionStatus status;
-
-    TpHandleRepoIface *handles[NUM_TP_HANDLE_TYPES];
 
     TpHandle self_handle;
 

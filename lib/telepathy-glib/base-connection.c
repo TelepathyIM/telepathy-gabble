@@ -164,6 +164,8 @@ typedef struct _TpBaseConnectionPrivate
   GPtrArray *channel_factories;
   /* array of (ChannelRequest *) */
   GPtrArray *channel_requests;
+
+  TpHandleRepoIface *handles[NUM_TP_HANDLE_TYPES];
 } TpBaseConnectionPrivate;
 
 static void
@@ -243,10 +245,10 @@ tp_base_connection_dispose (GObject *object)
 
   for (i = 0; i < NUM_TP_HANDLE_TYPES; i++)
     {
-      if (self->handles[i])
+      if (priv->handles[i])
         {
-          g_object_unref((GObject *)self->handles[i]);
-          self->handles[i] = NULL;
+          g_object_unref((GObject *)priv->handles[i]);
+          priv->handles[i] = NULL;
         }
     }
 
@@ -459,24 +461,17 @@ tp_base_connection_constructor (GType type, guint n_construct_properties,
 
   DEBUG("Post-construction: (TpBaseConnection *)%p", self);
 
-  if (cls->create_handle_repos != NULL)
-    {
-      (cls->create_handle_repos) (self, self->handles);
-    }
-  else
-    {
-      g_assert(cls->init_handle_repos != NULL);
-      (cls->init_handle_repos) (self->handles);
-    }
+  g_assert (cls->create_handle_repos != NULL);
+  (cls->create_handle_repos) (self, priv->handles);
 
   /* a connection that doesn't support contacts is no use to anyone */
-  g_assert (self->handles[TP_HANDLE_TYPE_CONTACT] != NULL);
+  g_assert (priv->handles[TP_HANDLE_TYPE_CONTACT] != NULL);
 
   if (DEBUGGING)
     {
       for (i = 0; i < NUM_TP_HANDLE_TYPES; i++)
       {
-        DEBUG("Handle repo for type #%u at %p", i, self->handles[i]);
+        DEBUG("Handle repo for type #%u at %p", i, priv->handles[i]);
       }
     }
 
@@ -556,7 +551,7 @@ tp_base_connection_init (TpBaseConnection *self)
 
   for (i = 0; i < NUM_TP_HANDLE_TYPES; i++)
     {
-      self->handles[i] = NULL;
+      priv->handles[i] = NULL;
     }
 
   priv->channel_requests = g_ptr_array_new();
@@ -704,6 +699,8 @@ tp_base_connection_connect (TpSvcConnection *iface,
 {
   TpBaseConnection *self = TP_BASE_CONNECTION (iface);
   TpBaseConnectionClass *cls = TP_BASE_CONNECTION_GET_CLASS (self);
+  TpBaseConnectionPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
+      TP_TYPE_BASE_CONNECTION, TpBaseConnectionPrivate);
   GError *error = NULL;
 
   g_assert(TP_IS_BASE_CONNECTION (self));
@@ -721,7 +718,7 @@ tp_base_connection_connect (TpSvcConnection *iface,
            * we have a self_handle */
 
           g_assert (self->self_handle != 0);
-          g_assert (tp_handle_is_valid (self->handles[TP_HANDLE_TYPE_CONTACT],
+          g_assert (tp_handle_is_valid (priv->handles[TP_HANDLE_TYPE_CONTACT],
                 self->self_handle, NULL));
         }
       else
@@ -867,7 +864,7 @@ tp_base_connection_hold_handles (TpSvcConnection *iface,
 
   ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
 
-  if (!tp_handles_supported_and_valid (self->handles,
+  if (!tp_handles_supported_and_valid (priv->handles,
         handle_type, handles, FALSE, &error))
     {
       dbus_g_method_return_error (context, error);
@@ -879,7 +876,7 @@ tp_base_connection_hold_handles (TpSvcConnection *iface,
   for (i = 0; i < handles->len; i++)
     {
       TpHandle handle = g_array_index (handles, TpHandle, i);
-      if (!tp_handle_client_hold (self->handles[handle_type], sender,
+      if (!tp_handle_client_hold (priv->handles[handle_type], sender,
             handle, &error))
         {
           dbus_g_method_return_error (context, error);
@@ -906,6 +903,8 @@ tp_base_connection_inspect_handles (TpSvcConnection *iface,
                                     DBusGMethodInvocation *context)
 {
   TpBaseConnection *self = TP_BASE_CONNECTION (iface);
+  TpBaseConnectionPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
+      TP_TYPE_BASE_CONNECTION, TpBaseConnectionPrivate);
   GError *error = NULL;
   const gchar **ret;
   guint i;
@@ -914,7 +913,7 @@ tp_base_connection_inspect_handles (TpSvcConnection *iface,
 
   ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context);
 
-  if (!tp_handles_supported_and_valid (self->handles,
+  if (!tp_handles_supported_and_valid (priv->handles,
         handle_type, handles, FALSE, &error))
     {
       dbus_g_method_return_error (context, error);
@@ -932,7 +931,7 @@ tp_base_connection_inspect_handles (TpSvcConnection *iface,
       const gchar *tmp;
 
       handle = g_array_index (handles, TpHandle, i);
-      tmp = tp_handle_inspect (self->handles[handle_type], handle);
+      tmp = tp_handle_inspect (priv->handles[handle_type], handle);
       g_assert (tmp != NULL);
 
       ret[i] = tmp;
@@ -1160,6 +1159,8 @@ tp_base_connection_release_handles (TpSvcConnection *iface,
                                     DBusGMethodInvocation *context)
 {
   TpBaseConnection *self = TP_BASE_CONNECTION (iface);
+  TpBaseConnectionPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
+      TP_TYPE_BASE_CONNECTION, TpBaseConnectionPrivate);
   char *sender;
   GError *error = NULL;
   guint i;
@@ -1168,7 +1169,7 @@ tp_base_connection_release_handles (TpSvcConnection *iface,
 
   ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
 
-  if (!tp_handles_supported_and_valid (self->handles,
+  if (!tp_handles_supported_and_valid (priv->handles,
         handle_type, handles, FALSE, &error))
     {
       dbus_g_method_return_error (context, error);
@@ -1180,7 +1181,7 @@ tp_base_connection_release_handles (TpSvcConnection *iface,
   for (i = 0; i < handles->len; i++)
     {
       TpHandle handle = g_array_index (handles, TpHandle, i);
-      if (!tp_handle_client_release (self->handles[handle_type],
+      if (!tp_handle_client_release (priv->handles[handle_type],
             sender, handle, &error))
         {
           dbus_g_method_return_error (context, error);
@@ -1198,9 +1199,12 @@ TpHandleRepoIface *
 tp_base_connection_get_handles (TpBaseConnection *self,
     TpHandleType handle_type)
 {
+  TpBaseConnectionPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
+      TP_TYPE_BASE_CONNECTION, TpBaseConnectionPrivate);
+
   if (handle_type >= NUM_TP_HANDLE_TYPES)
     return NULL;
-  return self->handles[handle_type];
+  return priv->handles[handle_type];
 }
 
 /** Tell the connection manager that this Connection has been disconnected,
@@ -1246,7 +1250,7 @@ tp_base_connection_change_status (TpBaseConnection *self,
        */
       tp_base_connection_close_all_channels (self);
 
-      tp_handle_unref (self->handles[TP_HANDLE_TYPE_CONTACT],
+      tp_handle_unref (priv->handles[TP_HANDLE_TYPE_CONTACT],
           self->self_handle);
       self->self_handle = 0;
     }

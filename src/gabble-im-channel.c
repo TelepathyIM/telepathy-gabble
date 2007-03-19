@@ -39,7 +39,6 @@
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/channel-iface.h>
 #include <telepathy-glib/svc-channel.h>
-#include "text-mixin.h"
 
 #include "gabble-im-channel.h"
 
@@ -125,7 +124,7 @@ gabble_im_channel_constructor (GType type, guint n_props,
   else
     send_nick = TRUE;
 
-  tp_text_mixin_init (obj, G_STRUCT_OFFSET (GabbleIMChannel, text),
+  gabble_text_mixin_init (obj, G_STRUCT_OFFSET (GabbleIMChannel, text),
       contact_handles, send_nick);
 
   tp_text_mixin_set_message_types (obj,

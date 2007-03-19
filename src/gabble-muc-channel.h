@@ -26,7 +26,7 @@
 
 #include <telepathy-glib/group-mixin.h>
 #include <telepathy-glib/properties-mixin.h>
-#include <telepathy-glib/text-mixin.h>
+#include "text-mixin.h"
 #include "handles.h"
 
 G_BEGIN_DECLS
@@ -39,7 +39,7 @@ struct _GabbleMucChannelClass {
 
     TpGroupMixinClass group_class;
     TpPropertiesMixinClass properties_class;
-    TpTextMixinClass text_class;
+    GabbleTextMixinClass text_class;
 };
 
 struct _GabbleMucChannel {
@@ -47,7 +47,7 @@ struct _GabbleMucChannel {
 
     TpGroupMixin group;
     TpPropertiesMixin properties;
-    TpTextMixin text;
+    GabbleTextMixin text;
 
     gpointer priv;
 };

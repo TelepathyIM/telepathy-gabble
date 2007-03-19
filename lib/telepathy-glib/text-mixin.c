@@ -106,6 +106,17 @@ static void _allocator_free (_Allocator *alloc, gpointer thing)
   alloc->count--;
 }
 
+struct _TpTextMixinPrivate
+{
+  TpHandleRepoIface *contacts_repo;
+  guint recv_id;
+  gboolean message_lost;
+
+  GQueue *pending;
+
+  GArray *msg_types;
+};
+
 /* pending message */
 
 /* some fairly arbitrary resource limits */
@@ -188,18 +199,13 @@ tp_text_mixin_class_init (GObjectClass *obj_cls, glong offset)
  *
  * tp_text_mixin_init ((GObject *)self,
  *                     G_STRUCT_OFFSET (SomeObject, text_mixin),
- *                     self->contact_repo,
- *                     FALSE);
- *
- * FIXME: send_nick is XMPP-specific and shouldn't be here. We don't actually
- * do anything with it here
+ *                     self->contact_repo);
  */
 
 void
 tp_text_mixin_init (GObject *obj,
                     glong offset,
-                    TpHandleRepoIface *contacts_repo,
-                    gboolean send_nick)
+                    TpHandleRepoIface *contacts_repo)
 {
   TpTextMixin *mixin;
 
@@ -211,12 +217,14 @@ tp_text_mixin_init (GObject *obj,
 
   mixin = TP_TEXT_MIXIN (obj);
 
-  mixin->pending = g_queue_new ();
-  mixin->contacts_repo = contacts_repo;
-  mixin->recv_id = 0;
-  mixin->msg_types = g_array_sized_new (FALSE, FALSE, sizeof (guint), 4);
+  mixin->priv = g_slice_new0 (TpTextMixinPrivate);
 
-  mixin->message_lost = FALSE;
+  mixin->priv->pending = g_queue_new ();
+  mixin->priv->contacts_repo = contacts_repo;
+  mixin->priv->recv_id = 0;
+  mixin->priv->msg_types = g_array_sized_new (FALSE, FALSE, sizeof (guint), 4);
+
+  mixin->priv->message_lost = FALSE;
 }
 
 void
@@ -230,7 +238,7 @@ tp_text_mixin_set_message_types (GObject *obj,
   va_start (args, obj);
 
   while ((type = va_arg (args, guint)) != G_MAXUINT)
-    g_array_append_val (mixin->msg_types, type);
+    g_array_append_val (mixin->priv->msg_types, type);
 
   va_end (args);
 }
@@ -246,15 +254,17 @@ tp_text_mixin_finalize (GObject *obj)
 
   /* free any data held directly by the object here */
 
-  while ((msg = g_queue_pop_head(mixin->pending)))
+  while ((msg = g_queue_pop_head(mixin->priv->pending)))
     {
-      tp_handle_unref (mixin->contacts_repo, msg->sender);
+      tp_handle_unref (mixin->priv->contacts_repo, msg->sender);
       _pending_free (msg);
     }
 
-  g_queue_free (mixin->pending);
+  g_queue_free (mixin->priv->pending);
 
-  g_array_free (mixin->msg_types, TRUE);
+  g_array_free (mixin->priv->msg_types, TRUE);
+
+  g_slice_free (TpTextMixinPrivate, mixin->priv);
 }
 
 /**
@@ -311,10 +321,10 @@ tp_text_mixin_receive (GObject *obj,
     {
       DEBUG ("no more pending messages available, giving up");
 
-      if (!mixin->message_lost)
+      if (!mixin->priv->message_lost)
         {
           tp_svc_channel_type_text_emit_lost_message (obj);
-          mixin->message_lost = TRUE;
+          mixin->priv->message_lost = TRUE;
         }
 
       return FALSE;
@@ -341,10 +351,10 @@ tp_text_mixin_receive (GObject *obj,
     {
       DEBUG ("unable to allocate message, giving up");
 
-      if (!mixin->message_lost)
+      if (!mixin->priv->message_lost)
         {
           tp_svc_channel_type_text_emit_lost_message (obj);
-          mixin->message_lost = TRUE;
+          mixin->priv->message_lost = TRUE;
         }
 
       _pending_free (msg);
@@ -354,13 +364,13 @@ tp_text_mixin_receive (GObject *obj,
 
   g_strlcpy (msg->text, text, len + 1);
 
-  msg->id = mixin->recv_id++;
+  msg->id = mixin->priv->recv_id++;
   msg->timestamp = timestamp;
   msg->sender = sender;
   msg->type = type;
 
-  tp_handle_ref (mixin->contacts_repo, msg->sender);
-  g_queue_push_tail (mixin->pending, msg);
+  tp_handle_ref (mixin->priv->contacts_repo, msg->sender);
+  g_queue_push_tail (mixin->priv->pending, msg);
 
   tp_svc_channel_type_text_emit_received (obj,
                  msg->id,
@@ -372,7 +382,7 @@ tp_text_mixin_receive (GObject *obj,
 
   DEBUG ("queued message %u", msg->id);
 
-  mixin->message_lost = FALSE;
+  mixin->priv->message_lost = FALSE;
 
   return TRUE;
 }
@@ -413,7 +423,7 @@ tp_text_mixin_acknowledge_pending_messages (GObject *obj, const GArray * ids, GE
     {
       guint id = g_array_index(ids, guint, i);
 
-      nodes[i] = g_queue_find_custom (mixin->pending,
+      nodes[i] = g_queue_find_custom (mixin->priv->pending,
                                       GINT_TO_POINTER (id),
                                       compare_pending_message);
 
@@ -435,9 +445,9 @@ tp_text_mixin_acknowledge_pending_messages (GObject *obj, const GArray * ids, GE
 
       DEBUG ("acknowleding message id %u", msg->id);
 
-      g_queue_remove (mixin->pending, msg);
+      g_queue_remove (mixin->priv->pending, msg);
 
-      tp_handle_unref (mixin->contacts_repo, msg->sender);
+      tp_handle_unref (mixin->priv->contacts_repo, msg->sender);
       _pending_free (msg);
     }
 
@@ -485,13 +495,13 @@ tp_text_mixin_list_pending_messages (GObject *obj, gboolean clear, GPtrArray ** 
   GPtrArray *messages;
   GList *cur;
 
-  count = g_queue_get_length (mixin->pending);
+  count = g_queue_get_length (mixin->priv->pending);
   messages = g_ptr_array_sized_new (count);
 
-  for (cur = (clear ? g_queue_pop_head_link(mixin->pending)
-                    : g_queue_peek_head_link(mixin->pending));
+  for (cur = (clear ? g_queue_pop_head_link(mixin->priv->pending)
+                    : g_queue_peek_head_link(mixin->priv->pending));
        cur != NULL;
-       cur = (clear ? g_queue_pop_head_link(mixin->pending)
+       cur = (clear ? g_queue_pop_head_link(mixin->priv->pending)
                     : cur->next))
     {
       _PendingMessage *msg = (_PendingMessage *) cur->data;
@@ -546,11 +556,12 @@ tp_text_mixin_get_message_types (GObject *obj, GArray **ret, GError **error)
   guint i;
 
   *ret = g_array_sized_new (FALSE, FALSE, sizeof (guint),
-                            mixin->msg_types->len);
+                            mixin->priv->msg_types->len);
 
-  for (i = 0; i < mixin->msg_types->len; i++)
+  for (i = 0; i < mixin->priv->msg_types->len; i++)
     {
-      g_array_append_val (*ret, g_array_index (mixin->msg_types, guint, i));
+      g_array_append_val (*ret, g_array_index (mixin->priv->msg_types, guint,
+            i));
     }
 
   return TRUE;
@@ -583,9 +594,9 @@ tp_text_mixin_clear (GObject *obj)
   TpTextMixin *mixin = TP_TEXT_MIXIN (obj);
   _PendingMessage *msg;
 
-  while ((msg = g_queue_pop_head(mixin->pending)))
+  while ((msg = g_queue_pop_head(mixin->priv->pending)))
     {
-      tp_handle_unref (mixin->contacts_repo, msg->sender);
+      tp_handle_unref (mixin->priv->contacts_repo, msg->sender);
       _pending_free (msg);
     }
 }

@@ -25,7 +25,7 @@
 #include <time.h>
 
 #include <telepathy-glib/enums.h>
-#include <telepathy-glib/text-mixin.h>
+#include "text-mixin.h"
 
 G_BEGIN_DECLS
 
@@ -35,13 +35,13 @@ typedef struct _GabbleIMChannelClass GabbleIMChannelClass;
 struct _GabbleIMChannelClass {
     GObjectClass parent_class;
 
-    TpTextMixinClass text_class;
+    GabbleTextMixinClass text_class;
 };
 
 struct _GabbleIMChannel {
     GObject parent;
 
-    TpTextMixin text;
+    GabbleTextMixin text;
 
     gpointer priv;
 };

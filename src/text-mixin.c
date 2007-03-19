@@ -43,6 +43,31 @@
 #include "text-mixin.h"
 
 /**
+ * gabble_text_mixin_init:
+ * @obj_cls: The class of the implementation that uses this mixin
+ * @offset: The offset of the GabbleTextMixinClass within the class structure
+ * @send_nick: %TRUE if the user's nick should be included in messages
+ *             sent through this channel
+ *
+ * Initialize the text mixin. Should be called instead of #tp_text_mixin_init
+ * from the implementation's init function.
+ */
+void
+gabble_text_mixin_init (GObject *obj,
+                        glong offset,
+                        TpHandleRepoIface *contacts_repo,
+                        gboolean send_nick)
+{
+  GabbleTextMixin *mixin;
+
+  tp_text_mixin_init (obj, offset, contacts_repo);
+
+  mixin = GABBLE_TEXT_MIXIN (obj);
+
+  mixin->send_nick = send_nick;
+}
+
+/**
  * gabble_text_mixin_send
  *
  * Indirectly, implements D-Bus method Send
@@ -69,7 +94,7 @@ gabble_text_mixin_send (GObject *obj,
                         gboolean emit_signal,
                         GError **error)
 {
-  TpTextMixin *mixin = TP_TEXT_MIXIN (obj);
+  GabbleTextMixin *mixin = GABBLE_TEXT_MIXIN (obj);
   LmMessage *msg;
   LmMessageNode *node;
   gboolean result;

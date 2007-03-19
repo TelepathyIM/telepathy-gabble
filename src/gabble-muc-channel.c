@@ -33,7 +33,6 @@
 #include "gabble-connection.h"
 #include "gabble-error.h"
 #include "namespaces.h"
-#include "text-mixin.h"
 #include "util.h"
 
 #include <telepathy-glib/dbus.h>
@@ -296,7 +295,7 @@ gabble_muc_channel_constructor (GType type, guint n_props,
         GabbleMucChannel, properties));
 
   /* initialize text mixin */
-  tp_text_mixin_init (obj, G_STRUCT_OFFSET (GabbleMucChannel, text),
+  gabble_text_mixin_init (obj, G_STRUCT_OFFSET (GabbleMucChannel, text),
       contact_handles, FALSE);
 
   tp_text_mixin_set_message_types (obj,

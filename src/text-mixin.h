@@ -27,14 +27,34 @@
 
 G_BEGIN_DECLS
 
+typedef struct _GabbleTextMixinClass GabbleTextMixinClass;
+struct _GabbleTextMixinClass
+{
+    TpTextMixinClass parent_class;
+};
+
+typedef struct _GabbleTextMixin GabbleTextMixin;
+struct _GabbleTextMixin
+{
+    TpTextMixin parent;
+    gboolean send_nick;
+};
+
+#define GABBLE_TEXT_MIXIN_CLASS(o) ((GabbleTextMixinClass *) tp_mixin_offset_cast (o, TP_TEXT_MIXIN_CLASS_OFFSET (o)))
+#define GABBLE_TEXT_MIXIN(o) ((GabbleTextMixin *) tp_mixin_offset_cast (o, TP_TEXT_MIXIN_OFFSET (o)))
+
 #define TP_CHANNEL_SEND_NO_ERROR ((TpChannelTextSendError)-1)
 
-gboolean gabble_text_mixin_send (GObject *obj, guint type, guint subtype, gint state,
-    const char *recipient, const gchar *text, GabbleConnection *conn,
-    gboolean emit_signal, GError **error);
+void gabble_text_mixin_init (GObject *obj, glong offset,
+    TpHandleRepoIface *contacts_repo, gboolean send_nick);
 
-gboolean gabble_text_mixin_parse_incoming_message (LmMessage *message, const gchar **from,
-    time_t *stamp, TpChannelTextMessageType *msgtype, const gchar **body, const gchar **body_offset,
+gboolean gabble_text_mixin_send (GObject *obj, guint type, guint subtype,
+    gint state, const char *recipient, const gchar *text, 
+    GabbleConnection *conn, gboolean emit_signal, GError **error);
+
+gboolean gabble_text_mixin_parse_incoming_message (LmMessage *message,
+    const gchar **from, time_t *stamp, TpChannelTextMessageType *msgtype,
+    const gchar **body, const gchar **body_offset,
     gint *state, TpChannelTextSendError *send_error);
 
 G_END_DECLS

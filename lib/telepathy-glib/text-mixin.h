@@ -31,6 +31,7 @@ G_BEGIN_DECLS
 
 typedef struct _TpTextMixinClass TpTextMixinClass;
 typedef struct _TpTextMixin TpTextMixin;
+typedef struct _TpTextMixinPrivate TpTextMixinPrivate;
 
 struct _TpTextMixinClass {
   guint lost_message_signal_id;
@@ -40,14 +41,7 @@ struct _TpTextMixinClass {
 };
 
 struct _TpTextMixin {
-  TpHandleRepoIface *contacts_repo;
-  guint recv_id;
-  gboolean send_nick;
-  gboolean message_lost;
-
-  GQueue *pending;
-
-  GArray *msg_types;
+  TpTextMixinPrivate *priv;
 };
 
 GType tp_text_mixin_get_type(void);
@@ -65,7 +59,8 @@ GQuark tp_text_mixin_class_get_offset_quark (void);
 GQuark tp_text_mixin_get_offset_quark (void);
 
 void tp_text_mixin_class_init (GObjectClass *obj_cls, glong offset);
-void tp_text_mixin_init (GObject *obj, glong offset, TpHandleRepoIface *contacts_repo, gboolean send_nick);
+void tp_text_mixin_init (GObject *obj, glong offset,
+    TpHandleRepoIface *contacts_repo);
 void tp_text_mixin_set_message_types (GObject *obj, ...);
 void tp_text_mixin_finalize (GObject *obj);
 

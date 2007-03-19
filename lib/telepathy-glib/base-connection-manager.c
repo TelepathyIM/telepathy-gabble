@@ -108,6 +108,13 @@ tp_base_connection_manager_class_init (TpBaseConnectionManagerClass *klass)
   object_class->dispose = tp_base_connection_manager_dispose;
   object_class->finalize = tp_base_connection_manager_finalize;
 
+  /**
+   * TpBaseConnectionManager::no-more-connections:
+   *
+   * Emitted when the table of active connections becomes empty.
+   * #tp_run_connection_manager uses this to detect when to shut down the
+   * connection manager.
+   */
   signals[NO_MORE_CONNECTIONS] =
     g_signal_new ("no-more-connections",
                   G_OBJECT_CLASS_TYPE (klass),

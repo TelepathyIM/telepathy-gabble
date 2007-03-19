@@ -523,6 +523,14 @@ tp_base_connection_class_init (TpBaseConnectionClass *klass)
 
   /* signal definitions */
 
+  /**
+   * TpBaseConnection::shutdown-finished:
+   *
+   * Emitted by #tp_base_connection_finish_shutdown when the underlying
+   * network connection has been closed; #TpBaseConnectionManager listens
+   * for this signal and removes connections from its table of active
+   * connections when it is received.
+   */
   signals[SHUTDOWN_FINISHED] =
     g_signal_new ("shutdown-finished",
                   G_OBJECT_CLASS_TYPE (klass),

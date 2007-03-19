@@ -106,6 +106,7 @@ typedef struct _TpBaseConnectionManager TpBaseConnectionManager;
 
 /** 
  * TpBaseConnectionManagerClass:
+ * @parent_class: The parent class
  * @cm_dbus_name: The name of this connection manager, as used to construct
  *  D-Bus object paths and bus names. Must contain only letters, digits
  *  and underscores, and may not start with a digit. Must be filled in by
@@ -131,6 +132,7 @@ typedef struct _TpBaseConnectionManagerClass TpBaseConnectionManagerClass;
  * @parsed_params: An opaque data structure as returned by the protocol's
  *                 params_new function, populated according to the
  *                 parameter specifications
+ * @error: if not %NULL, used to indicate the error if %NULL is returned
  *
  * A function that will return a new connection according to the
  * parsed parameters; used to implement RequestConnection.
@@ -138,6 +140,8 @@ typedef struct _TpBaseConnectionManagerClass TpBaseConnectionManagerClass;
  * The connection manager base class will register the bus name for the
  * new connection, and place a reference to it in its table of
  * connections until the connection's shutdown process finishes.
+ *
+ * Returns: the new connection object, or %NULL on error.
  */
 typedef TpBaseConnection *(*TpBaseConnectionManagerNewConnFunc)(
     TpBaseConnectionManager *self, const gchar *proto,

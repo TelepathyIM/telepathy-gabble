@@ -313,7 +313,7 @@ tp_text_mixin_receive (GObject *obj,
 
   gchar *end;
   _PendingMessage *msg;
-  gsize len;
+  size_t len;
 
   msg = _pending_new0 ();
 

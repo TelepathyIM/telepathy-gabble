@@ -1131,7 +1131,6 @@ tp_heap_size
 
 <SECTION>
 <FILE>text-mixin</FILE>
-TP_CHANNEL_SEND_NO_ERROR
 <INCLUDE>telepathy-glib/text-mixin.h</INCLUDE>
 <TITLE>TpTextMixin</TITLE>
 TpTextMixin

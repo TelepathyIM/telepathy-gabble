@@ -107,8 +107,10 @@ static void _allocator_free (_Allocator *alloc, gpointer thing)
 }
 
 /* pending message */
+
+/* some fairly arbitrary resource limits */
 #define MAX_PENDING_MESSAGES 256
-#define MAX_MESSAGE_SIZE 1024 - 1
+#define MAX_MESSAGE_SIZE 8191
 
 typedef struct
 {

@@ -273,7 +273,11 @@ handle_leak_debug_print_report (TpDynamicHandleRepo *self)
 {
   g_assert (self != NULL);
 
-  printf ("The following handles were not freed from repo %p:\n", self);
+  if (g_hash_table_size (self->handle_to_priv) == 0)
+    return;
+
+  printf ("HANDLE LEAK: The following handles were not freed from repo %p:\n",
+      self);
   g_hash_table_foreach (self->handle_to_priv,
       handle_leak_debug_printhandles_foreach, NULL);
 }

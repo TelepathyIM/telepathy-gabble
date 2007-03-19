@@ -19,6 +19,16 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+/**
+ * SECTION:channel-iface
+ * @title: TpChannelIface
+ * @short_description: interface representing basic channel properties
+ * @see_also: #TpSvcChannel, #TpChannelFactoryIface
+ *
+ * This interface defines a basic set of channel properties. It's mainly
+ * used in #TpChannelFactoryIface to represent the returned channel objects.
+ */
+
 #include <telepathy-glib/channel-iface.h>
 
 static void

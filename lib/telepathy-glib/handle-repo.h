@@ -139,8 +139,8 @@ gpointer tp_handle_get_qdata (TpHandleRepoIface *repo, TpHandle handle,
 
 typedef void (*TpHandleSetMemberFunc)(TpHandleSet *set, TpHandle handle, gpointer userdata);
 
-TpHandleSet * tp_handle_set_new (TpHandleRepoIface *);
-void tp_handle_set_destroy (TpHandleSet *);
+TpHandleSet * tp_handle_set_new (TpHandleRepoIface *repo);
+void tp_handle_set_destroy (TpHandleSet *set);
 
 TpIntSet *tp_handle_set_peek (TpHandleSet *set);
 
@@ -157,7 +157,8 @@ TpIntSet *tp_handle_set_update (TpHandleSet *set, const TpIntSet *add);
 TpIntSet *tp_handle_set_difference_update (TpHandleSet *set, const TpIntSet *remove);
 
 /* static inline because it relies on NUM_TP_HANDLE_TYPES */
-/** tp_handles_supported_and_valid:
+/**
+ * tp_handles_supported_and_valid:
  * @repos: An array of possibly null pointers to handle repositories, indexed
  *         by handle type, where a null pointer means an unsupported handle
  *         type

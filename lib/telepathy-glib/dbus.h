@@ -30,7 +30,7 @@
 
 G_BEGIN_DECLS
 
-void tp_dbus_g_method_return_not_implemented (DBusGMethodInvocation *);
+void tp_dbus_g_method_return_not_implemented (DBusGMethodInvocation *context);
 DBusGConnection * tp_get_bus (void);
 DBusGProxy * tp_get_bus_proxy (void);
 

@@ -51,126 +51,144 @@ G_BEGIN_DECLS
 typedef struct _TpBaseConnection TpBaseConnection;
 typedef struct _TpBaseConnectionClass TpBaseConnectionClass;
 
+/**
+ * TpBaseConnectionProc:
+ * @self: The connection object
+ *
+ * Signature of a virtual method on #TpBaseConnection that takes no
+ * additional parameters and returns nothing.
+ */
+typedef void (*TpBaseConnectionProc) (TpBaseConnection *self);
+
+/**
+ * TpBaseConnectionProcWithError:
+ * @self: The connection object
+ * @error: Set to the error if %FALSE is returned
+ *
+ * Signature of a virtual method on #TpBaseConnection that takes no
+ * additional parameters, but can fail and report an error.
+ *
+ * Returns: %TRUE on success
+ */
+typedef gboolean (*TpBaseConnectionProcWithError) (TpBaseConnection *self,
+    GError **error);
+
+/**
+ * TpBaseConnectionCreateHandleReposImpl:
+ * @self: The connection object
+ * @repos: An array of pointers to be filled in; the implementation
+ *         may assume all are initially NULL.
+ *
+ * Signature of an implementation of the create_handle_repos method
+ * of #TpBaseConnection.
+ */
+typedef void (*TpBaseConnectionCreateHandleReposImpl) (TpBaseConnection *self,
+    TpHandleRepoIface *repos[NUM_TP_HANDLE_TYPES]);
+
+/** 
+ * TpBaseConnectionCreateChannelFactoriesImpl:
+ * @self: The implementation, a subclass of TpBaseConnection
+ *
+ * Signature of an implementation of the create_handle_repos method
+ * of #TpBaseConnection.
+ *
+ * Returns: a GPtrArray of objects implementing #TpChannelFactoryIface
+ * which, between them, implement all channel types this Connection
+ * supports.
+ */
+typedef GPtrArray *(*TpBaseConnectionCreateChannelFactoriesImpl) (
+    TpBaseConnection *self);
+
+/** 
+ * TpBaseConnectionGetUniqueConnectionNameImpl:
+ * @self: The implementation, a subclass of TpBaseConnection
+ *
+ * Signature of the @get_unique_connection_name virtual method
+ * on #TpBaseConnection.
+ *
+ * Returns: a name for this connection which will be unique within this
+ * connection manager process, as a string which the caller must free
+ * with #g_free.
+ */
+typedef gchar *(*TpBaseConnectionGetUniqueConnectionNameImpl) (
+    TpBaseConnection *self);
+
+/**
+ * TpBaseConnectionClass:
+ * @parent_class: The superclass' structure
+ * @create_handle_repos: Fill in suitable handle repositories in the
+ *  given array for all those handle types this Connection supports.
+ *  May not be NULL, and the function must create at least a CONTACT
+ *  handle repository (failing to do so may cause a crash).
+ * @init_handle_repos: Deprecated, use create_handle_repos instead.
+ * @create_channel_factories: Create an array of channel factories for this
+ *  Connection. May not be NULL.
+ * @get_unique_connection_name: Construct a unique name for this connection
+ *  (for example using the protocol's format for usernames). If NULL, a
+ *  unique name will be generated.
+ * @connecting: Called just after the state changes to CONNECTING. May be NULL
+ *  if nothing special needs to happen.
+ * @connected: Called just after the state changes to CONNECTED. May be NULL
+ *  if nothing special needs to happen.
+ * @disconnected: Called just after the state changes to DISCONNECTED. May be
+ *  NULL if nothing special needs to happen.
+ * @shut_down: Called after the state has changed to DISCONNECTED, and also
+ *  after disconnected(). Must start the shutdown process for the underlying
+ *  network connection, and arrange for #tp_base_connection_finish_shutdown
+ *  to be called after the underlying connection has been closed. May not
+ *  be left as NULL.
+ * @start_connecting: Asynchronously start connecting. May assume that the
+ *  connection is in the NEW state. Must calculate and ref the self_handle.
+ *  After this runs, the state will be set to CONNECTING. If %TRUE is
+ *  returned, the connection may still fail, signalled by a state change
+ *  to DISCONNECTED.
+ *
+ * The class of a #TpBaseConnection.
+ */
 struct _TpBaseConnectionClass {
     GObjectClass parent_class;
 
-    /* pure-virtual methods */
+    TpBaseConnectionCreateHandleReposImpl create_handle_repos;
 
-    /**
-     * create_handle_repos:
-     * @self: The connection object
-     * @repos: An array of pointers to be filled in; the implementation
-     *         may assume all are initially NULL.
-     *
-     * Fill in suitable handle repositories in the given array for all those
-     * handle types this Connection supports. May not be NULL.
-     */
-    void (*create_handle_repos) (TpBaseConnection *self,
-        TpHandleRepoIface *repos[NUM_TP_HANDLE_TYPES]);
-
-    /**
-     * init_handle_repos:
-     * @repos: An array of pointers to be filled in; the implementation
-     *         may assume all are initially NULL
-     *
-     * Fill in suitable handle repositories in the given array for all those
-     * handle types this Connection supports. May not be NULL.
-     *
-     * Deprecated: use create_handle_repos instead.
-     */
     void (*init_handle_repos) (TpHandleRepoIface *repos[NUM_TP_HANDLE_TYPES]);
 
-    /** 
-     * create_channel_factories:
-     * @self: The implementation, a subclass of TpBaseConnection
-     *
-     * May not be NULL.
-     *
-     * Returns: a GPtrArray of objects implementing #TpChannelFactoryIface
-     * which, between them, implement all channel types this Connection
-     * supports.
-     */
-    GPtrArray *(*create_channel_factories) (TpBaseConnection *self);
+    TpBaseConnectionCreateChannelFactoriesImpl create_channel_factories;
 
-    /** 
-     * get_unique_connection_name:
-     * @self: The implementation, a subclass of TpBaseConnection
-     *
-     * Construct a unique name for this connection (for example using the
-     * protocol's format for usernames). If NULL, a unique name will be
-     * generated.
-     *
-     * Returns: a name for this connection which will be unique within this
-     * connection manager process, as a string which the caller must free
-     * with #g_free.
-     */
-    gchar *(*get_unique_connection_name) (TpBaseConnection *self);
+    TpBaseConnectionGetUniqueConnectionNameImpl get_unique_connection_name;
 
-    /**
-     * connecting:
-     * @self: The implementation, a subclass of TpBaseConnection
-     *
-     * Called just after the state changes to CONNECTING. May be NULL if
-     * nothing special needs to happen. */
-    void (*connecting) (TpBaseConnection *self);
-    /**
-     * connected:
-     * @self: The implementation, a subclass of TpBaseConnection
-     *
-     * Called just after the state changes to CONNECTED. May be NULL if
-     * nothing special needs to happen. */
-    void (*connected) (TpBaseConnection *self);
-    /**
-     * disconnected:
-     * @self: The implementation, a subclass of TpBaseConnection
-     *
-     * Called just after the state changes to DISCONNECTED. May be NULL if
-     * nothing special needs to happen. */
-    void (*disconnected) (TpBaseConnection *self);
+    TpBaseConnectionProc connecting;
+    TpBaseConnectionProc connected;
+    TpBaseConnectionProc disconnected;
 
-    /**
-     * shut_down:
-     * @self: The implementation, a subclass of TpBaseConnection
-     *
-     * Called after the state has changed to DISCONNECTED, and also after
-     * disconnected(). Must start the shutdown process for the underlying
-     * network connection, and arrange for #tp_base_connection_finish_shutdown
-     * to be called after the underlying connection has been closed.
-     *
-     * May not be NULL.
-     */
-    void (*shut_down) (TpBaseConnection *self);
+    TpBaseConnectionProc shut_down;
 
-    /** 
-     * start_connecting:
-     * @self: The implementation, a subclass of TpBaseConnection
-     * @error: Used to return an error if one occurs immediately
-     *
-     * Asynchronously start connecting. May assume that the connection
-     * is in the NEW state. Must calculate and ref the self_handle.
-     * After this runs, the state will be set to CONNECTING.
-     *
-     * Returns: TRUE if starting connection succeeds; FALSE with @error set
-     * if an error occurs immediately
-     */
-    gboolean (*start_connecting) (TpBaseConnection *self, GError **error);
+    TpBaseConnectionProcWithError start_connecting;
 };
 
+/**
+ * TpBaseConnection:
+ * @bus_name: D-Bus well-known bus name, owned by the connection manager
+ *  process and associated with this connection.
+ * @object_path: The object-path of this connection.
+ * @status: Connection status - may either be a valid TpConnectionStatus or
+ *  TP_INTERNAL_CONNECTION_STATUS_NEW.
+ * @handles: An array of handle repositories indexed by a #TpHandleType. Null
+ *  pointers in this array indicate unsupported handle types; requests
+ *  for these types will fail with NotImplemented.
+ *  Non-null pointers indicate supported handle types, and point to
+ *  implementations of #TpHandleRepoIface used to store the handles of
+ *  that type.
+ *  handles[0] must always be %NULL; it's included for simplicity.
+ * @self_handle: The handle of type %TP_HANDLE_TYPE_CONTACT representing the
+ *  local user.
+ * @priv: Pointer to opaque private data.
+ *
+ * Data structure representing a generic #TpSvcConnection implementation.
+ */
 struct _TpBaseConnection {
     GObject parent;
 
-    /**
-     * bus_name:
-     *
-     * D-Bus well-known bus name, owned by the connection manager process and
-     * associated with this connection.
-     */
     gchar *bus_name;
-    /**
-     * object_path:
-     *
-     * The object-path of this connection.
-     */
     gchar *object_path;
 
     /**
@@ -187,35 +205,10 @@ struct _TpBaseConnection {
 #   define TP_INTERNAL_CONNECTION_STATUS_NEW \
     ((TpConnectionStatus)(-1))
 
-    /**
-     * status:
-     *
-     * Connection status - may either be a valid TpConnectionStatus or
-     * TP_INTERNAL_CONNECTION_STATUS_NEW.
-     */
     TpConnectionStatus status;
 
-    /**
-     * handles:
-     *
-     * An array of handle repositories indexed by a #TpHandleType. Null
-     * pointers in this array indicate unsupported handle types; requests
-     * for these types will fail with NotImplemented.
-     *
-     * Non-null pointers indicate supported handle types, and point to
-     * implementations of #TpHandleRepoIface used to store the handles of
-     * that type.
-     *
-     * handles[0] must always be %NULL; it's included for simplicity.
-     */
     TpHandleRepoIface *handles[NUM_TP_HANDLE_TYPES];
 
-    /**
-     * self_handle:
-     *
-     * The handle of type %TP_HANDLE_TYPE_CONTACT representing the local
-     * user.
-     */
     TpHandle self_handle;
 
     gpointer priv;

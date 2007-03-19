@@ -94,8 +94,8 @@ tp_handle_is_valid (TpHandleRepoIface *self,
 /**
  * tp_handles_are_valid:
  * @self: A handle repository implementation
- * @handle: Array of TpHandle representing handles of the type stored in
- *         the repository @self
+ * @handles: Array of TpHandle representing handles of the type stored in
+ *           the repository @self
  * @allow_zero: If %TRUE, zero is treated like a valid handle
  * @error: Set to InvalidHandle if %FALSE is returned
  *
@@ -176,8 +176,9 @@ tp_handle_unref (TpHandleRepoIface *self,
 
 gboolean
 tp_handle_client_hold (TpHandleRepoIface *self,
-    const gchar *client,
-    TpHandle handle, GError **error)
+                       const gchar *client,
+                       TpHandle handle,
+                       GError **error)
 {
   return TP_HANDLE_REPO_IFACE_GET_CLASS (self)->client_hold_handle (self,
       client, handle, error);
@@ -203,8 +204,9 @@ tp_handle_client_hold (TpHandleRepoIface *self,
 
 gboolean
 tp_handle_client_release (TpHandleRepoIface *self,
-    const gchar *client,
-    TpHandle handle, GError **error)
+                          const gchar *client,
+                          TpHandle handle,
+                          GError **error)
 {
   return TP_HANDLE_REPO_IFACE_GET_CLASS (self)->client_release_handle (self,
       client, handle, error);
@@ -284,17 +286,15 @@ tp_handle_lookup (TpHandleRepoIface *self,
  * @self: A handle repository implementation
  * @id: A string whose handle is required
  * @may_create: If %TRUE and the requested handle does not exist, create it
- * with a reference count of 1
+ * (with a reference count of 0!)
  *
  * Construct or return the handle for the given string.
- * Normalization is not currently performed here, but in a higher-level
- * layer of the connection manager. FIXME: this should change.
- *
- * FIXME: should we ref the returned handle, to be consistent between
- * the created and existing cases?
+ * Normalization is not performed here.
  *
  * Returns: the handle corresponding to the given string, or 0 if it
  * does not exist and may_create is %FALSE, or if it is invalid
+ *
+ * Deprecated: use tp_handle_lookup or tp_handle_ensure instead.
  */
 
 TpHandle
@@ -333,7 +333,6 @@ tp_handle_set_qdata (TpHandleRepoIface *repo, TpHandle handle,
 /**
  * tp_handle_get_qdata:
  * @repo: A handle repository implementation
- * @type: The handle type
  * @handle: A handle to get data from
  * @key_id: Key id of data to fetch
  *

@@ -21,10 +21,17 @@ TP_CHANNEL_IFACE_GET_CLASS
 <TITLE>TpBaseConnection</TITLE>
 TpBaseConnection
 TpBaseConnectionClass
+TpBaseConnectionCreateChannelFactoriesImpl
+TpBaseConnectionCreateHandleReposImpl
+TpBaseConnectionGetUniqueConnectionNameImpl
+TpBaseConnectionProc
+TpBaseConnectionProcWithError
 tp_base_connection_register
 tp_base_connection_get_handles
 tp_base_connection_change_status
 tp_base_connection_finish_shutdown
+TP_CONN_BUS_NAME_BASE
+TP_CONN_OBJECT_PATH_BASE
 <SUBSECTION Standard>
 TP_BASE_CONNECTION
 TP_IS_BASE_CONNECTION
@@ -60,6 +67,9 @@ TP_BASE_CONNECTION_MANAGER_GET_CLASS
 <SECTION>
 <INCLUDE>telepathy-glib/channel-factory-iface.h</INCLUDE>
 <FILE>channel-factory-iface</FILE>
+TpChannelFactoryIfaceForeachImpl
+TpChannelFactoryIfaceProc
+TpChannelFactoryIfaceRequestImpl
 TpChannelFactoryRequestStatus
 <TITLE>TpChannelFactoryIface</TITLE>
 TpChannelFactoryIface
@@ -127,7 +137,7 @@ tp_handle_set_difference_update
 <SECTION>
 <INCLUDE>telepathy-glib/handle-repo-dynamic.h</INCLUDE>
 <FILE>handle-repo-dynamic</FILE>
-<TITLE>Dynamic handle repository implementation</TITLE>
+<TITLE>TpDynamicHandleRepo</TITLE>
 TpDynamicHandleRepo
 TpDynamicHandleRepoClass
 tp_dynamic_handle_repo_lookup_exact
@@ -145,7 +155,7 @@ TP_DYNAMIC_HANDLE_REPO_GET_CLASS
 <SECTION>
 <FILE>handle-repo-static</FILE>
 <INCLUDE>telepathy-glib/handle-repo-static.h</INCLUDE>
-<TITLE>Static handle repository implementation</TITLE>
+<TITLE>TpStaticHandleRepo</TITLE>
 TpStaticHandleRepo
 TpStaticHandleRepoClass
 <SUBSECTION Standard>
@@ -788,7 +798,7 @@ dbus_glib_marshal_tp_svc_connection_VOID__UINT_BOXED_POINTER
 <SECTION>
 <FILE>svc-media-interfaces</FILE>
 <INCLUDE>telepathy-glib/svc-media-interfaces.h</INCLUDE>
-<TITLE>Media streaming service interfaces</TITLE>
+<TITLE>Media streaming interfaces</TITLE>
 <SUBSECTION>
 TpSvcMediaSessionHandler
 TpSvcMediaSessionHandlerClass
@@ -1134,6 +1144,7 @@ tp_heap_size
 <INCLUDE>telepathy-glib/text-mixin.h</INCLUDE>
 <TITLE>TpTextMixin</TITLE>
 TpTextMixin
+TpTextMixinPrivate
 TpTextMixinClass
 tp_text_mixin_get_type
 TP_TEXT_MIXIN_CLASS_OFFSET_QUARK
@@ -1185,6 +1196,38 @@ TpMediaStreamError
 TpMediaStreamBaseProto
 TpMediaStreamTransportType
 TpPropertyFlags
+LAST_TP_CHANNEL_CHAT_STATE
+LAST_TP_CHANNEL_CONTACT_SEARCH_STATE
+LAST_TP_CHANNEL_GROUP_CHANGE_REASON
+LAST_TP_CHANNEL_HOLD_STATE
+LAST_TP_CHANNEL_TEXT_MESSAGE_TYPE
+LAST_TP_CHANNEL_TEXT_SEND_ERROR
+LAST_TP_CONNECTION_PRESENCE_TYPE
+LAST_TP_CONNECTION_STATUS
+LAST_TP_CONNECTION_STATUS_REASON
+LAST_TP_HANDLE_TYPE
+LAST_TP_MEDIA_STREAM_BASE_PROTO
+LAST_TP_MEDIA_STREAM_DIRECTION
+LAST_TP_MEDIA_STREAM_ERROR
+LAST_TP_MEDIA_STREAM_STATE
+LAST_TP_MEDIA_STREAM_TRANSPORT_TYPE
+LAST_TP_MEDIA_STREAM_TYPE
+NUM_TP_CHANNEL_CHAT_STATES
+NUM_TP_CHANNEL_CONTACT_SEARCH_STATES
+NUM_TP_CHANNEL_GROUP_CHANGE_REASONS
+NUM_TP_CHANNEL_HOLD_STATES
+NUM_TP_CHANNEL_TEXT_MESSAGE_TYPES
+NUM_TP_CHANNEL_TEXT_SEND_ERRORS
+NUM_TP_CONNECTION_PRESENCE_TYPES
+NUM_TP_CONNECTION_STATUSES
+NUM_TP_CONNECTION_STATUS_REASONS
+NUM_TP_HANDLE_TYPES
+NUM_TP_MEDIA_STREAM_BASE_PROTOS
+NUM_TP_MEDIA_STREAM_DIRECTIONS
+NUM_TP_MEDIA_STREAM_ERRORS
+NUM_TP_MEDIA_STREAM_STATES
+NUM_TP_MEDIA_STREAM_TRANSPORT_TYPES
+NUM_TP_MEDIA_STREAM_TYPES
 </SECTION>
 
 <SECTION>

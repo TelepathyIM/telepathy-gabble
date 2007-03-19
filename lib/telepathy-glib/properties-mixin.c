@@ -122,7 +122,7 @@ tp_properties_mixin_class_init (GObjectClass *obj_cls,
 
 
 /**
- * tp_properties_mixin_class_init:
+ * tp_properties_mixin_init:
  * @obj: An object that has this mixin
  * @offset: The offset of the TpPropertiesMixin structure in the object
  *          structure
@@ -514,7 +514,6 @@ tp_properties_context_get (TpPropertiesContext *ctx, guint property)
 /**
  * tp_properties_context_get_value_count:
  * @ctx: the properties context representing a SetProperties call
- * @property: FIXME
  *
  * Returns: the number of properties in @ctx which still need to be set on
  *          the server

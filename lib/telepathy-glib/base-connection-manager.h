@@ -163,11 +163,12 @@ struct _TpBaseConnectionManager {
 
 GType tp_base_connection_manager_get_type(void);
 
-/** tp_base_connection_manager_register:
+/**
+ * tp_base_connection_manager_register:
  * @self: The connection manager implementation
  *
  * Register the connection manager with an appropriate object path as
- * determined from its cm_dbus_name, and register the appropriate well-known
+ * determined from its @cm_dbus_name, and register the appropriate well-known
  * bus name.
  *
  * Returns: %TRUE on success, %FALSE (having emitted a warning to stderr)

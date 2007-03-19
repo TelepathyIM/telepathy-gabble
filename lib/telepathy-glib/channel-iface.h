@@ -48,10 +48,17 @@ G_BEGIN_DECLS
   (G_TYPE_INSTANCE_GET_INTERFACE ((obj), \
   TP_TYPE_CHANNEL_IFACE, TpChannelIfaceClass))
 
+/**
+ * TpChannelIface:
+ *
+ * Opaque typedef representing a channel.
+ */
 typedef struct _TpChannelIface TpChannelIface;
+
 typedef struct _TpChannelIfaceClass TpChannelIfaceClass;
 
-/** TpChannelFunc:
+/** 
+ * TpChannelFunc:
  * @self: An object implementing the channel interface
  * @userdata: Arbitrary user-supplied data
  *

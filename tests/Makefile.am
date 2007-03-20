@@ -1,14 +1,13 @@
 noinst_PROGRAMS = \
 	test-gabble-presence \
 	test-base64 \
-	test-handles \
-	test-handle-set
+	test-handles
 
-test_intset_SOURCES = \
-    test-intset.c
+python_tests = \
+	test-basic-connect.
 
-test_intset_LDADD = \
-    $(top_builddir)/lib/libtelepathy-glib.la
+python_tests_pythonfiles = $(python_tests:.=.py)
+python_tests_shfiles = $(python_tests:.=.sh)
 
 test_gabble_presence_SOURCES = \
     test-gabble-presence.c

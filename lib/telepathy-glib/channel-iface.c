@@ -41,6 +41,12 @@ tp_channel_iface_base_init (gpointer klass)
 
     initialized = TRUE;
 
+    /**
+     * TpChannelIface:object-path:
+     *
+     * The D-Bus object path used for this object on the bus. Read-only
+     * except during construction.
+     */
     param_spec = g_param_spec_string ("object-path", "D-Bus object path",
                                       "The D-Bus object path used for this "
                                       "object on the bus.",
@@ -51,6 +57,11 @@ tp_channel_iface_base_init (gpointer klass)
                                       G_PARAM_STATIC_BLURB);
     g_object_interface_install_property (klass, param_spec);
 
+    /**
+     * TpChannelIface:channel-type:
+     *
+     * The D-Bus interface representing the type of this channel. Read-only.
+     */
     param_spec = g_param_spec_string ("channel-type", "Telepathy channel type",
                                       "The D-Bus interface representing the "
                                       "type of this channel.",
@@ -59,6 +70,15 @@ tp_channel_iface_base_init (gpointer klass)
                                       G_PARAM_STATIC_NAME |
                                       G_PARAM_STATIC_BLURB);
     g_object_interface_install_property (klass, param_spec);
+
+    /**
+     * TpChannelIface:handle-type:
+     *
+     * The type (#TpHandleType) of this channel's associated
+     * handle, or 0 if there is no associated handle. Read-only except during
+     * construction (and depending on the channel type, attempts to set it
+     * during construction might also be ignored).
+     */
 
     param_spec = g_param_spec_uint ("handle-type", "Handle type",
                                     "The TpHandleType of this channel's "
@@ -69,6 +89,15 @@ tp_channel_iface_base_init (gpointer klass)
                                     G_PARAM_STATIC_NAME |
                                     G_PARAM_STATIC_BLURB);
     g_object_interface_install_property (klass, param_spec);
+
+    /**
+     * TpChannelIface:handle:
+     *
+     * This channel's associated
+     * handle, or 0 if there is no associated handle. Read-only except during
+     * construction (and depending on the channel type, attempts to set it
+     * during construction might also be ignored).
+     */
 
     param_spec = g_param_spec_uint ("handle", "Handle",
                                     "The TpHandle representing the "

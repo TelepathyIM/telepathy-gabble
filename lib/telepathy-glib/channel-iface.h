@@ -66,6 +66,12 @@ typedef struct _TpChannelIfaceClass TpChannelIfaceClass;
  */
 typedef void (* TpChannelFunc) (TpChannelIface *self, gpointer userdata);
 
+/**
+ * TpChannelIfaceClass:
+ * @parent_class: The parent interface
+ *
+ * The class of the #TpChannelIface interface.
+ */
 struct _TpChannelIfaceClass {
   GTypeInterface parent_class;
 };

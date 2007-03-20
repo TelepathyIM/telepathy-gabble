@@ -4,9 +4,12 @@
 
   <xsl:output method="text" indent="no" encoding="ascii"/>
 
+  <xsl:template match="tp:error" mode="gtkdoc">
+ * @TP_ERROR_<xsl:value-of select="translate(@name, 'abcdefghijklmnopqrstuvwxyz .', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ__')"/>: <xsl:value-of select="concat(../@namespace, '.', translate(@name, ' ', ''))"/>:
+ * <xsl:value-of select="translate(tp:docstring, '&#13;&#10;', '')"/>
+  </xsl:template>
+
   <xsl:template match="tp:error">
-    /* <xsl:value-of select="concat(../@namespace, '.', translate(@name, ' ', ''))"/>
-<xsl:value-of select="tp:docstring"/> */
 <xsl:text>    TP_ERROR_</xsl:text><xsl:value-of select="translate(@name, 'abcdefghijklmnopqrstuvwxyz .', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ__')"/>,
 </xsl:template>
 
@@ -25,8 +28,19 @@
 G_BEGIN_DECLS
 
 GType tp_error_get_type (void);
+
+/**
+ * TP_TYPE_ERROR:
+ *
+ * The GType of the Telepathy error enumeration.
+ */
 #define TP_TYPE_ERROR (tp_error_get_type())
 
+/**
+ * TpError:<xsl:apply-templates select="tp:error" mode="gtkdoc"/>
+ *
+ * Enumerated type representing the Telepathy D-Bus errors.
+ */
 typedef enum {
 <xsl:apply-templates select="tp:error"/>} TpError;
 

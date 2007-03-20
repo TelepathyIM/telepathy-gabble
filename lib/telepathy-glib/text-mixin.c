@@ -123,6 +123,17 @@ struct _TpTextMixinPrivate
 #define MAX_PENDING_MESSAGES 256
 #define MAX_MESSAGE_SIZE 8191
 
+/*
+ * _PendingMessage:
+ * @id: The message ID
+ * @timestamp: The Unix time at which the message was received
+ * @sender: The contact handle of the sender
+ * @type: The message type
+ * @text: The message itself
+ * @flags: The message's flags
+ *
+ * Represents a message in the pending messages queue.
+ */
 typedef struct
 {
   guint id;
@@ -197,9 +208,11 @@ tp_text_mixin_class_init (GObjectClass *obj_cls, glong offset)
  * Initialize the text mixin. Should be called from the implementation's
  * init function like so:
  *
+ * <informalexample><programlisting>
  * tp_text_mixin_init ((GObject *)self,
  *                     G_STRUCT_OFFSET (SomeObject, text_mixin),
  *                     self->contact_repo);
+ * </programlisting></informalexample>
  */
 
 void
@@ -227,6 +240,14 @@ tp_text_mixin_init (GObject *obj,
   mixin->priv->message_lost = FALSE;
 }
 
+/**
+ * tp_text_mixin_set_message_types:
+ * @obj: An object with this mixin
+ *
+ * Set the supported message types. The arguments must all be of type guint
+ * representing members of #TpChannelTextMessageType, and they must be
+ * terminated by %G_MAXUINT.
+ */
 void
 tp_text_mixin_set_message_types (GObject *obj,
                                  ...)
@@ -246,6 +267,12 @@ tp_text_mixin_set_message_types (GObject *obj,
 static void _pending_free (_PendingMessage *msg);
 static _Allocator * _pending_get_alloc ();
 
+/**
+ * tp_text_mixin_finalize:
+ * @obj: An object with this mixin.
+ *
+ * Free resources held by the text mixin.
+ */
 void
 tp_text_mixin_finalize (GObject *obj)
 {
@@ -299,8 +326,9 @@ static void _pending_free (_PendingMessage *msg)
 }
 
 /**
- * _gabble_text_mixin_receive
+ * tp_text_mixin_receive:
  *
+ * Add a message to the pending queue and emit Received.
  */
 gboolean
 tp_text_mixin_receive (GObject *obj,
@@ -398,19 +426,22 @@ compare_pending_message (gconstpointer haystack,
 }
 
 /**
- * tp_text_mixin_acknowledge_pending_messages
- *
- * Implements D-Bus method AcknowledgePendingMessages
- * on interface org.freedesktop.Telepathy.Channel.Type.Text
- *
+ * tp_text_mixin_acknowledge_pending_messages:
+ * @obj: An object with this mixin
+ * @ids: An array of guint representing message IDs
  * @error: Used to return a pointer to a GError detailing any error
  *         that occurred, D-Bus will throw the error only if this
  *         function returns false.
  *
+ * Implements D-Bus method AcknowledgePendingMessages
+ * on interface org.freedesktop.Telepathy.Channel.Type.Text
+ *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 gboolean
-tp_text_mixin_acknowledge_pending_messages (GObject *obj, const GArray * ids, GError **error)
+tp_text_mixin_acknowledge_pending_messages (GObject *obj,
+                                            const GArray *ids,
+                                            GError **error)
 {
   TpTextMixin *mixin = TP_TEXT_MIXIN (obj);
   GList **nodes;
@@ -476,19 +507,24 @@ tp_text_mixin_acknowledge_pending_messages_async (TpSvcChannelTypeText *iface,
 }
 
 /**
- * tp_text_mixin_list_pending_messages
- *
- * Implements D-Bus method ListPendingMessages
- * on interface org.freedesktop.Telepathy.Channel.Type.Text
- *
+ * tp_text_mixin_list_pending_messages:
+ * @obj: An object with this mixin
+ * @clear: If %TRUE, delete the pending messages from the queue
+ * @ret: Used to return a pointer to a new GPtrArray of D-Bus structures
  * @error: Used to return a pointer to a GError detailing any error
  *         that occurred, D-Bus will throw the error only if this
  *         function returns false.
  *
+ * Implements D-Bus method ListPendingMessages
+ * on interface org.freedesktop.Telepathy.Channel.Type.Text
+ *
  * Returns: TRUE if successful, FALSE if an error was thrown.
  */
 gboolean
-tp_text_mixin_list_pending_messages (GObject *obj, gboolean clear, GPtrArray ** ret, GError **error)
+tp_text_mixin_list_pending_messages (GObject *obj,
+                                     gboolean clear,
+                                     GPtrArray ** ret,
+                                     GError **error)
 {
   TpTextMixin *mixin = TP_TEXT_MIXIN (obj);
   guint count;
@@ -549,8 +585,21 @@ tp_text_mixin_list_pending_messages_async (TpSvcChannelTypeText *iface,
     }
 }
 
+/**
+ * tp_text_mixin_get_message_types:
+ * @obj: An object with this mixin
+ * @ret: A pointer to where a GArray of guint will be placed on success
+ * @error: A pointer to where an error will be placed on failure
+ *
+ * Return a newly allocated GArray of guint, representing message types
+ * taken from #TpChannelTextMessageType, through @ret.
+ *
+ * Returns: %TRUE on success
+ */
 gboolean
-tp_text_mixin_get_message_types (GObject *obj, GArray **ret, GError **error)
+tp_text_mixin_get_message_types (GObject *obj,
+                                 GArray **ret,
+                                 GError **error)
 {
   TpTextMixin *mixin = TP_TEXT_MIXIN (obj);
   guint i;
@@ -587,7 +636,12 @@ tp_text_mixin_get_message_types_async (TpSvcChannelTypeText *iface,
     }
 }
 
-
+/**
+ * tp_text_mixin_clear:
+ * @obj: An object with this mixin
+ *
+ * Clear the pending message queue, deleting all messages.
+ */
 void
 tp_text_mixin_clear (GObject *obj)
 {
@@ -601,6 +655,17 @@ tp_text_mixin_clear (GObject *obj)
     }
 }
 
+/**
+ * tp_text_mixin_iface_init:
+ * @g_iface: A pointer to the #TpSvcChannelTypeTextClass in an object class
+ * @iface_data: Ignored
+ *
+ * Fill in this mixin's AcknowledgePendingMessages, GetMessageTypes and
+ * ListPendingMessages implementations in the given interface vtable.
+ * In addition to calling this function during interface initialization, the
+ * implementor is expected to call tp_svc_channel_type_text_implement_send(),
+ * providing a Send implementation.
+ */
 void
 tp_text_mixin_iface_init (gpointer g_iface, gpointer iface_data)
 {

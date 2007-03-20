@@ -223,7 +223,7 @@ lm_message_build (const gchar *to, LmMessageType type, ...)
 
       switch (arg)
         {
-        case '\0':
+        case BUILD_END:
           goto END;
 
         case BUILD_ATTRIBUTE:

@@ -1979,11 +1979,8 @@ connection_disco_cb (GabbleDisco *disco,
                   "category");
               const gchar *type = lm_message_node_get_attribute (iter, "type");
 
-              if (type == NULL || category == NULL)
-                continue;
-
-              if (0 == strcmp (category, "pubsub") &&
-                  0 == strcmp (type, "pep"))
+              if (!tp_strdiff (category, "pubsub") &&
+                  !tp_strdiff (type, "pep"))
                 /* XXX: should we also check for specific PubSub <feature>s? */
                 conn->features |= GABBLE_CONNECTION_FEATURES_PEP;
             }

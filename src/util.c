@@ -172,6 +172,8 @@ lm_message_node_get_child_with_namespace (LmMessageNode *node,
   return NULL;
 }
 
+/* note: these are only used internally for readability, not part of the API
+ */
 enum {
     BUILD_END = '\0',
     BUILD_ATTRIBUTE = '@',
@@ -213,6 +215,10 @@ lm_message_build (const gchar *to, LmMessageType type, ...)
     {
       guint arg;
 
+      /* Note that we pull out an int-sized value here, whereas our sentinel,
+       * NULL, is pointer-sized. However, sizeof (void *) should always be >=
+       * sizeof (uint), so this shouldn't cause a problem.
+       */
       arg = va_arg (ap, guint);
 
       switch (arg)

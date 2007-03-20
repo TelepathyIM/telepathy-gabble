@@ -59,10 +59,10 @@ typedef struct _TpPropertiesContext TpPropertiesContext;
  * The callback must either:
  *
  * * return %FALSE to indicate immediate failure
- * * call #tp_properties_context_return with an error to indicate failure
- * * call #tp_properties_context_remove to remove each property from the set
- *   of pending properties, then call #tp_properties_context_return_if_done
- *   or #tp_properties_context_return when all were set
+ * * call tp_properties_context_return() with an error to indicate failure
+ * * call tp_properties_context_remove() to remove each property from the set
+ *   of pending properties, then call tp_properties_context_return_if_done()
+ *   or tp_properties_context_return() when all were set
  *
  * Returns: %FALSE on immediate failure, %TRUE otherwise
  */

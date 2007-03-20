@@ -597,7 +597,7 @@ dynamic_inspect_handle (TpHandleRepoIface *irepo, TpHandle handle)
  * Look up a name in the repository, returning the corresponding handle if
  * it is present in the repository, without creating a new reference.
  *
- * Unlike #tp_handle_lookup this function does not perform any normalization;
+ * Unlike tp_handle_lookup() this function does not perform any normalization;
  * it just looks for the literal string you requested. This can be useful to
  * call from normalization callbacks (for instance, Gabble's contacts
  * repository uses it to see whether we already know that a JID belongs

@@ -236,7 +236,7 @@ tp_channel_factory_iface_request (TpChannelFactoryIface *self,
  * tp_channel_factory_iface_emit_new_channel:
  * @instance: An object implementing #TpChannelFactoryIface
  * @channel: The new channel
- * @request: A request context as passed to #tp_channel_factory_iface_request,
+ * @request: A request context as passed to tp_channel_factory_iface_request(),
  *           or %NULL
  *
  * Signal that a new channel has been created (new-channel signal).

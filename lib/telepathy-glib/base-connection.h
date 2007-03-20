@@ -134,7 +134,7 @@ typedef gchar *(*TpBaseConnectionGetUniqueConnectionNameImpl) (
  *  NULL if nothing special needs to happen.
  * @shut_down: Called after the state has changed to DISCONNECTED, and also
  *  after disconnected(). Must start the shutdown process for the underlying
- *  network connection, and arrange for #tp_base_connection_finish_shutdown
+ *  network connection, and arrange for tp_base_connection_finish_shutdown()
  *  to be called after the underlying connection has been closed. May not
  *  be left as NULL.
  * @start_connecting: Asynchronously start connecting. May assume that the

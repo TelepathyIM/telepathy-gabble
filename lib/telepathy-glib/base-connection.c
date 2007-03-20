@@ -526,7 +526,7 @@ tp_base_connection_class_init (TpBaseConnectionClass *klass)
   /**
    * TpBaseConnection::shutdown-finished:
    *
-   * Emitted by #tp_base_connection_finish_shutdown when the underlying
+   * Emitted by tp_base_connection_finish_shutdown() when the underlying
    * network connection has been closed; #TpBaseConnectionManager listens
    * for this signal and removes connections from its table of active
    * connections when it is received.

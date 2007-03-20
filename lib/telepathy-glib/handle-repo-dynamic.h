@@ -45,11 +45,11 @@ typedef struct _TpDynamicHandleRepoClass TpDynamicHandleRepoClass;
 
 /**
  * TpDynamicHandleRepoNormalizeFunc:
- * @repo: The repository on which #tp_handle_lookup or #tp_handle_ensure
+ * @repo: The repository on which tp_handle_lookup() or tp_handle_ensure()
  *        was called
  * @id: The name to be normalized
- * @context: Arbitrary context passed to #tp_handle_lookup or
- *           #tp_handle_ensure
+ * @context: Arbitrary context passed to tp_handle_lookup() or
+ *           tp_handle_ensure()
  * @error: Used to raise the Telepathy error InvalidHandle with an appropriate
  *         message if NULL is returned
  *

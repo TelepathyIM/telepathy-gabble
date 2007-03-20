@@ -705,7 +705,7 @@ values_are_equal (const GValue *v1, const GValue *v2)
  *
  * Otherwise, the property ID is appended to the GArray of uint indirectly
  * pointed to by @props, if it's not already there, and the caller is
- * responsible for calling #tp_properties_mixin_emit_flags once a batch of
+ * responsible for calling tp_properties_mixin_emit_flags() once a batch of
  * changes is complete.
  *
  * If @props is a pointer to %NULL, its value will be filled with a pointer

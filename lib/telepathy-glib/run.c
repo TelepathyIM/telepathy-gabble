@@ -23,7 +23,7 @@
  * @title: Connection manager life cycle
  * @short_description: entry point for telepathy-glib connection managers
  *
- * #tp_run_connection_manager provides a convenient entry point for
+ * tp_run_connection_manager() provides a convenient entry point for
  * telepathy-glib connection managers. It initializes most of the
  * functionality the CM will need, constructs a connection manager object
  * and lets it run.

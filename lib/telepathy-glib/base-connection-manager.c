@@ -112,7 +112,7 @@ tp_base_connection_manager_class_init (TpBaseConnectionManagerClass *klass)
    * TpBaseConnectionManager::no-more-connections:
    *
    * Emitted when the table of active connections becomes empty.
-   * #tp_run_connection_manager uses this to detect when to shut down the
+   * tp_run_connection_manager() uses this to detect when to shut down the
    * connection manager.
    */
   signals[NO_MORE_CONNECTIONS] =

@@ -231,6 +231,8 @@ lm_message_build (const gchar *to, LmMessageType type, ...)
             gchar *key = va_arg (ap, gchar *);
             gchar *value = va_arg (ap, gchar *);
 
+            g_return_val_if_fail (key != NULL, NULL);
+            g_return_val_if_fail (value != NULL, NULL);
             lm_message_node_set_attribute (stack->data, key, value);
           }
           break;
@@ -241,6 +243,8 @@ lm_message_build (const gchar *to, LmMessageType type, ...)
             gchar *value = va_arg (ap, gchar *);
             LmMessageNode *child;
 
+            g_return_val_if_fail (name != NULL, NULL);
+            g_return_val_if_fail (value != NULL, NULL);
             child = lm_message_node_add_child (stack->data, name, value);
             stack = g_slist_prepend (stack, child);
           }
@@ -261,6 +265,7 @@ lm_message_build (const gchar *to, LmMessageType type, ...)
           {
             LmMessageNode **node = va_arg (ap, LmMessageNode **);
 
+            g_return_val_if_fail (node != NULL, NULL);
             *node = stack->data;
           }
           break;

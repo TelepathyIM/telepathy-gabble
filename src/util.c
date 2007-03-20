@@ -200,27 +200,20 @@ enum {
  */
 G_GNUC_NULL_TERMINATED
 LmMessage *
-lm_message_build (const gchar *to, LmMessageType type, ...)
+lm_message_build (const gchar *to, LmMessageType type, guint spec, ...)
 {
   LmMessage *msg;
   va_list ap;
   GSList *stack = NULL;
+  guint arg = spec;
 
   msg = lm_message_new (to, type);
   stack = g_slist_prepend (stack, msg->node);
 
-  va_start (ap, type);
+  va_start (ap, spec);
 
-  for (;;)
+  while (arg != BUILD_END)
     {
-      guint arg;
-
-      /* Note that we pull out an int-sized value here, whereas our sentinel,
-       * NULL, is pointer-sized. However, sizeof (void *) should always be >=
-       * sizeof (uint), so this shouldn't cause a problem.
-       */
-      arg = va_arg (ap, guint);
-
       switch (arg)
         {
         case BUILD_END:
@@ -273,6 +266,12 @@ lm_message_build (const gchar *to, LmMessageType type, ...)
         default:
           g_assert_not_reached ();
         }
+
+      /* Note that we pull out an int-sized value here, whereas our sentinel,
+       * NULL, is pointer-sized. However, sizeof (void *) should always be >=
+       * sizeof (uint), so this shouldn't cause a problem.
+       */
+      arg = va_arg (ap, guint);
     }
 
   va_end (ap);

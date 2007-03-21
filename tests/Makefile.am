@@ -4,10 +4,10 @@ noinst_PROGRAMS = \
 	test-handles
 
 python_tests = \
-	test-basic-connect.
+	test-basic-connect
 
-python_tests_pythonfiles = $(python_tests:.=.py)
-python_tests_shfiles = $(python_tests:.=.sh)
+python_tests_pythonfiles = $(python_tests:=.py)
+python_tests_shfiles = $(python_tests:=.sh)
 
 test_gabble_presence_LDADD = \
     $(top_builddir)/src/libgabble-convenience.la \

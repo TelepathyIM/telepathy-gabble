@@ -741,86 +741,96 @@ cancel_request (GabbleVCardManagerRequest *request)
   complete_one_request (request, NULL, err);
 }
 
-static void
-observe_vcard (GabbleConnection *conn, GabbleVCardManager *manager,
-               TpHandle handle, LmMessageNode *vcard_node)
+static gchar *
+extract_nickname (LmMessageNode *vcard_node)
 {
-  LmMessageNode *nick_node = lm_message_node_get_child (vcard_node,
-                                                        "NICKNAME");
-  TpBaseConnection *base = (TpBaseConnection *)conn;
-  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
+  LmMessageNode *node;
+  const gchar *nick;
+  gchar **bits;
+  gchar *ret;
 
-  DEBUG ("Observing vCard for %u", handle);
-  //NODE_DEBUG(vcard_node, "their vCard is");
+  node = lm_message_node_get_child (vcard_node, "NICKNAME");
 
-  if (nick_node)
+  if (node == NULL)
+    return NULL;
+
+  nick = lm_message_node_get_value (node);
+
+  /* nick is comma-separated, we want the first one. rule out corner cases of
+   * the entire string or the first value being empty before we g_strsplit */
+  if (nick == NULL || *nick == '\0' || *nick == ',')
+    return NULL;
+
+  bits = g_strsplit (nick, ",", 2);
+
+  ret = g_strdup (bits[0]);
+
+  g_strfreev (bits);
+
+  return ret;
+}
+
+static void
+observe_vcard (GabbleConnection *conn,
+               GabbleVCardManager *manager,
+               TpHandle handle,
+               LmMessageNode *vcard_node)
+{
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)conn, TP_HANDLE_TYPE_CONTACT);
+  const gchar *field = "<NICKNAME>";
+  gchar *alias;
+  const gchar *old_alias;
+
+  alias = extract_nickname (vcard_node);
+
+  if (alias == NULL)
     {
-      const gchar *nick = lm_message_node_get_value (nick_node);
+      LmMessageNode *fn_node = lm_message_node_get_child (vcard_node, "FN");
 
-      DEBUG ("%u has <NICKNAME> \"%s\"", handle, nick ? nick : "(null)");
-
-      if (nick && *nick)
+      if (fn_node != NULL)
         {
-          /* nicknames are comma-separated, let's use the first one */
-          gchar **bits = g_strsplit (nick, ",", 2);
+          const gchar *fn = lm_message_node_get_value (fn_node);
 
-          if (bits[0])
+          if (fn != NULL && *fn != '\0')
             {
-              gchar *alias = g_strdup (bits[0]);
-
-              DEBUG ("... using \"%s\" as their alias", alias);
-
-              if (!tp_handle_set_qdata (contact_handles, handle,
-                    gabble_vcard_manager_cache_quark(), alias, g_free))
-                {
-                  DEBUG ("failed to cache their alias");
-                  g_free (alias);
-                }
-
-              g_signal_emit (G_OBJECT (manager), signals[NICKNAME_UPDATE],
-                             0, handle);
+              field = "<FN>";
+              alias = g_strdup (fn);
             }
-
-          g_strfreev (bits);
         }
+    }
+
+  old_alias = gabble_vcard_manager_get_cached_alias (manager, handle);
+
+  if (!tp_strdiff (alias, old_alias))
+    {
+      if (alias != NULL)
+        DEBUG ("no change to vCard alias \"%s\" for handle %u", alias, handle);
+      else
+        DEBUG ("still no vCard alias for handle %u", handle);
+
+      g_free (alias);
+      return;
+    }
+
+  if (alias != NULL)
+    {
+      DEBUG ("got vCard alias \"%s\" for handle %u from %s", alias,
+          handle, field);
+
+      /* takes ownership of alias */
+      tp_handle_set_qdata (contact_repo, handle,
+          gabble_vcard_manager_cache_quark (), alias, g_free);
     }
   else
     {
-      const gchar *fn = NULL;
-      /* let's see if they have a FN (formatted name) instead */
-      nick_node = lm_message_node_get_child (vcard_node, "FN");
-      if (nick_node)
-        fn = lm_message_node_get_value (nick_node);
-      DEBUG ("%u has no <NICKNAME>, but has <FN> \"%s\"", handle,
-             fn ? fn : "(null)");
-      if (fn && *fn)
-        {
-          gchar *alias = g_strdup (fn);
+      DEBUG ("got no vCard alias for handle %u", handle);
 
-          DEBUG ("... using \"%s\" as their alias", alias);
-
-          g_signal_emit (G_OBJECT (manager), signals[NICKNAME_UPDATE],
-                         0, handle);
-          if (!tp_handle_set_qdata (contact_handles,
-                handle, gabble_vcard_manager_cache_quark(), alias, g_free))
-            {
-              DEBUG ("failed to cache their alias");
-              g_free (alias);
-            }
-        }
-      else
-        {
-          /* remember that they don't have an alias */
-          if (!tp_handle_set_qdata (contact_handles,
-                handle, gabble_vcard_manager_cache_quark (),
-                (gchar *) NO_ALIAS, NULL))
-            {
-              DEBUG ("failed to cache their lack of vcard alias");
-            }
-        }
-
+      tp_handle_set_qdata (contact_repo, handle,
+          gabble_vcard_manager_cache_quark (), (gchar *) NO_ALIAS, NULL);
     }
+
+  g_signal_emit (G_OBJECT (manager), signals[NICKNAME_UPDATE], 0, handle);
 }
 
 static LmHandlerResult
@@ -1399,7 +1409,6 @@ gabble_vcard_manager_get_cached_alias (GabbleVCardManager *manager,
   if (s == NO_ALIAS)
     s = NULL;
 
-  DEBUG ("Cached alias for %u is \"%s\"", handle, s ? s : "(null)");
   return s;
 }
 

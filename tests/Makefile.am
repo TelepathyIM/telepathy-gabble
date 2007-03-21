@@ -106,7 +106,10 @@ check-extra: $(service_files)
 
 run-with-tmp-session-bus.conf: run-with-tmp-session-bus.conf.in Makefile
 	@sed -e "s|\@abs_top_builddir\@|@abs_top_builddir@|" $< > $@
-	
+
+%.service: %.service.in
+	@sed -e "s|\@abs_top_builddir\@|@abs_top_builddir@|" $< > $@
+
 test-basic-connect.sh: run-with-tmp-session-bus.conf
 
 # Dbus service file for testing

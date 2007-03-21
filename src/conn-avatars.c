@@ -407,7 +407,18 @@ gabble_connection_request_avatar (TpSvcConnectionInterfaceAvatars *iface,
                                   DBusGMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
+  TpBaseConnection *base = (TpBaseConnection *)self;
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
+  GError *err = NULL;
   LmMessageNode *vcard_node;
+
+  if (!tp_handle_is_valid (contact_handles, contact, &err))
+    {
+      dbus_g_method_return_error (context, err);
+      g_error_free (err);
+      return;
+    }
 
   if (gabble_vcard_manager_get_cached (self->vcard_manager,
       contact, &vcard_node))

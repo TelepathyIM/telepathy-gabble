@@ -481,16 +481,17 @@ gabble_presence_cache_status_changed_cb (GabbleConnection *conn,
     case TP_CONNECTION_STATUS_CONNECTED:
       break;
     case TP_CONNECTION_STATUS_DISCONNECTED:
-      g_assert (priv->lm_message_cb != NULL);
-
-      lm_connection_unregister_message_handler (conn->lmconn,
-                                                priv->lm_message_cb,
-                                                LM_MESSAGE_TYPE_PRESENCE);
-      lm_connection_unregister_message_handler (conn->lmconn,
-                                                priv->lm_message_cb,
-                                                LM_MESSAGE_TYPE_MESSAGE);
-      lm_message_handler_unref (priv->lm_message_cb);
-      priv->lm_message_cb = NULL;
+      if (priv->lm_message_cb != NULL)
+        {
+          lm_connection_unregister_message_handler (conn->lmconn,
+                                                    priv->lm_message_cb,
+                                                    LM_MESSAGE_TYPE_PRESENCE);
+          lm_connection_unregister_message_handler (conn->lmconn,
+                                                    priv->lm_message_cb,
+                                                    LM_MESSAGE_TYPE_MESSAGE);
+          lm_message_handler_unref (priv->lm_message_cb);
+          priv->lm_message_cb = NULL;
+        }
       break;
     default:
       g_assert_not_reached ();

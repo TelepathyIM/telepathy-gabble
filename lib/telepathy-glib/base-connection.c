@@ -1190,13 +1190,14 @@ tp_base_connection_change_status (TpBaseConnection *self,
 {
   TpBaseConnectionPrivate *priv;
   TpBaseConnectionClass *klass;
+  TpConnectionStatus prev_status;
 
   g_assert (TP_IS_BASE_CONNECTION (self));
 
   priv = TP_BASE_CONNECTION_GET_PRIVATE (self);
   klass = TP_BASE_CONNECTION_GET_CLASS (self);
 
-  DEBUG("now %u, for reason %u", status, reason);
+  DEBUG("was %u, now %u, for reason %u", self->status, status, reason);
   g_assert (status != TP_INTERNAL_CONNECTION_STATUS_NEW);
 
   if (self->status == status)
@@ -1206,6 +1207,7 @@ tp_base_connection_change_status (TpBaseConnection *self,
       return;
     }
 
+  prev_status = self->status;
   self->status = status;
 
   if (status == TP_CONNECTION_STATUS_DISCONNECTED)
@@ -1243,11 +1245,14 @@ tp_base_connection_change_status (TpBaseConnection *self,
       break;
 
     case TP_CONNECTION_STATUS_DISCONNECTED:
-      if (klass->disconnected)
-        (klass->disconnected) (self);
-      g_ptr_array_foreach (priv->channel_factories, (GFunc)
-          tp_channel_factory_iface_disconnected, NULL);
-      g_assert (klass->shut_down);
+      if (prev_status != TP_INTERNAL_CONNECTION_STATUS_NEW)
+        {
+          if (klass->disconnected)
+            (klass->disconnected) (self);
+          g_ptr_array_foreach (priv->channel_factories, (GFunc)
+              tp_channel_factory_iface_disconnected, NULL);
+          g_assert (klass->shut_down);
+        }
       (klass->shut_down) (self);
       break;
 

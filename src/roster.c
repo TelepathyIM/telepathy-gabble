@@ -345,13 +345,14 @@ _parse_item_subscription (LmMessageNode *item_node)
     }
 }
 
-static TpIntSet *
+static TpHandleSet *
 _parse_item_groups (LmMessageNode *item_node, TpBaseConnection *conn)
 {
   LmMessageNode *group_node;
-  TpIntSet *groups = tp_intset_new ();
   TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
       conn, TP_HANDLE_TYPE_GROUP);
+  TpHandleSet *groups = tp_handle_set_new (group_repo);
+  TpHandle handle;
 
   for (group_node = item_node->children;
       NULL != group_node;
@@ -363,9 +364,11 @@ _parse_item_groups (LmMessageNode *item_node, TpBaseConnection *conn)
       if (NULL == group_node->value)
         continue;
 
-      tp_intset_add (groups, tp_handle_request (
-            group_repo, group_node->value,
-            TRUE));
+      handle = tp_handle_ensure (group_repo, group_node->value, NULL, NULL);
+      if (!handle)
+        continue;
+      tp_handle_set_add (groups, handle);
+      tp_handle_unref (group_repo, handle);
     }
 
   return groups;
@@ -565,6 +568,7 @@ _gabble_roster_item_update (GabbleRoster *roster,
   GabbleRosterItem *item;
   const gchar *ask, *name;
   TpIntSet *old_groups, *new_groups, *added_to, *removed_from, *removed_from2;
+  TpHandleSet *new_groups_handle_set;
   GroupsUpdateContext ctx = { group_updates, contact_handle };
 
   g_assert (roster != NULL);
@@ -619,7 +623,9 @@ _gabble_roster_item_update (GabbleRoster *roster,
     }
 
   old_groups = tp_handle_set_peek (item->groups);    /* borrowed */
-  new_groups = _parse_item_groups (node, (TpBaseConnection *)priv->conn);
+  new_groups_handle_set = _parse_item_groups (node,
+      (TpBaseConnection *)priv->conn);
+  new_groups = tp_handle_set_peek (new_groups_handle_set);
 
   removed_from = tp_intset_difference (old_groups, new_groups);
   added_to = tp_handle_set_update (item->groups, new_groups);
@@ -633,7 +639,8 @@ _gabble_roster_item_update (GabbleRoster *roster,
   tp_intset_destroy (added_to);
   tp_intset_destroy (removed_from);
   tp_intset_destroy (removed_from2);
-  tp_intset_destroy (new_groups);
+  new_groups = NULL;
+  tp_handle_set_destroy (new_groups_handle_set);
 
   return item;
 }

@@ -218,7 +218,7 @@ _gabble_connection_manager_new_connection (TpBaseConnectionManager *self,
   SET_PROPERTY_IF_PARAM_SET ("resource", JABBER_PARAM_RESOURCE,
                              params->resource);
   SET_PROPERTY_IF_PARAM_SET ("priority", JABBER_PARAM_PRIORITY,
-                             (char) CLAMP (params->priority, G_MININT8, G_MAXINT8));
+                             (gint8) CLAMP (params->priority, G_MININT8, G_MAXINT8));
   SET_PROPERTY_IF_PARAM_SET ("port", JABBER_PARAM_PORT, params->port);
   SET_PROPERTY_IF_PARAM_SET ("old-ssl", JABBER_PARAM_OLD_SSL, params->old_ssl);
   SET_PROPERTY_IF_PARAM_SET ("register", JABBER_PARAM_REGISTER,

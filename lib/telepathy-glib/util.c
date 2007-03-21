@@ -47,10 +47,8 @@ tp_g_value_slice_free (GValue *value)
 gboolean
 tp_strdiff (const gchar *left, const gchar *right)
 {
-  if ((NULL == left) || (NULL == right))
-    {
-      return ((NULL == left) != (NULL == right));
-    }
+  if ((NULL == left) != (NULL == right))
+    return TRUE;
 
   else if (left == right)
     return FALSE;

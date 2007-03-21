@@ -1,7 +1,8 @@
 noinst_PROGRAMS = \
     test-handle-set \
     test-heap \
-    test-intset
+    test-intset \
+    test-util
 
 TESTS = $(noinst_PROGRAMS)
 
@@ -13,6 +14,11 @@ test_handle_set_LDADD = \
 test_heap_SOURCES = \
     test-heap.c
 test_heap_LDADD = \
+    ../telepathy-glib/libtelepathy-glib.la
+
+test_util_SOURCES = \
+    test-util.c
+test_util_LDADD = \
     ../telepathy-glib/libtelepathy-glib.la
 
 test_intset_SOURCES = \

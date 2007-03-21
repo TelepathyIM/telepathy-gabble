@@ -31,6 +31,8 @@ TESTS = $(noinst_PROGRAMS)
 TESTSEXTRA = $(python_tests_shfiles)
 
 check-extra: $(service_files)
+	chmod +x run-with-tmp-session-bus.sh $(python_tests_shfiles) \
+		$(python_tests_pythonfiles)
 	$(MAKE) check TESTS="$(TESTSEXTRA)"
 
 run-with-tmp-session-bus.conf: run-with-tmp-session-bus.conf.in Makefile

@@ -41,8 +41,6 @@ check-extra: $(service_files)
 %.service: %.service.in
 	@sed -e "s|\@abs_top_builddir\@|@abs_top_builddir@|" $< > $@
 
-test-basic-connect.sh: run-with-tmp-session-bus.conf
-
 # Dbus service file for testing
 service_in_files = org.freedesktop.Telepathy.ConnectionManager.gabble.service.in
 service_files = $(service_in_files:.service.in=.service)

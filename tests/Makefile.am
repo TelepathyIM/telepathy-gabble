@@ -9,22 +9,13 @@ python_tests = \
 python_tests_pythonfiles = $(python_tests:.=.py)
 python_tests_shfiles = $(python_tests:.=.sh)
 
-test_gabble_presence_SOURCES = \
-    test-gabble-presence.c
-
 test_gabble_presence_LDADD = \
     $(top_builddir)/src/libgabble-convenience.la \
     $(top_builddir)/lib/telepathy-glib/libtelepathy-glib.la
 
-test_base64_SOURCES = \
-    test-base64.c
-
 test_base64_LDADD = \
     $(top_builddir)/src/libgabble-convenience.la \
     $(top_builddir)/lib/telepathy-glib/libtelepathy-glib.la
-
-test_handles_SOURCES = \
-    test-handles.c
 
 test_handles_LDADD = \
     $(top_builddir)/src/libgabble-convenience.la \

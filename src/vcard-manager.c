@@ -367,6 +367,10 @@ gabble_vcard_manager_invalidate_cache (GabbleVCardManager *manager, TpHandle han
 {
   GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (manager);
   GabbleVCardCacheEntry *entry = g_hash_table_lookup (priv->cache, GUINT_TO_POINTER (handle));
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->connection, TP_HANDLE_TYPE_CONTACT);
+
+  g_return_if_fail (tp_handle_is_valid (contact_repo, handle, NULL));
 
   if (!entry)
       return;
@@ -826,6 +830,8 @@ replace_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
   GabbleVCardManagerRequest *request = (GabbleVCardManagerRequest*) user_data;
   GabbleVCardManager *manager = GABBLE_VCARD_MANAGER (object);
   GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (manager);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)conn, TP_HANDLE_TYPE_CONTACT);
   GError *err = NULL;
 
   g_assert (request);
@@ -839,6 +845,8 @@ replace_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
       DEBUG ("I don't care about that request any more");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
+
+  g_assert (tp_handle_is_valid (contact_repo, request->handle, NULL));
 
   if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_ERROR)
     {
@@ -880,6 +888,8 @@ request_reply_cb (GabbleConnection *conn,
   GabbleVCardManagerRequest *request = (GabbleVCardManagerRequest*) user_data;
   GabbleVCardManager *manager = GABBLE_VCARD_MANAGER (object);
   GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (manager);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)conn, TP_HANDLE_TYPE_CONTACT);
   LmMessageNode *vcard_node = NULL;
   GError *err = NULL;
 
@@ -895,6 +905,7 @@ request_reply_cb (GabbleConnection *conn,
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
+  g_assert (tp_handle_is_valid (contact_repo, request->handle, NULL));
 
   if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_ERROR)
     {
@@ -1100,6 +1111,9 @@ request_send (GabbleVCardManagerRequest *request,
               GError **error)
 {
   GabbleVCardManager *self = request->manager;
+  GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (self);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->connection, TP_HANDLE_TYPE_CONTACT);
   LmMessage *msg;
   LmMessageNode *lm_node;
 
@@ -1115,6 +1129,8 @@ request_send (GabbleVCardManagerRequest *request,
 
   if (replacement)
     lm_message_node_steal_children (lm_node, replacement);
+
+  g_assert (tp_handle_is_valid (contact_repo, request->handle, NULL));
 
   vcard_pipeline_enqueue (request, msg,
       (replacement ? replace_reply_cb : request_reply_cb));
@@ -1158,6 +1174,8 @@ gabble_vcard_manager_request (GabbleVCardManager *self,
   GabbleVCardManagerRequest *request;
   GabbleVCardCacheEntry *entry;
   const gchar *jid;
+
+  g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL), NULL);
 
   if (timeout == 0)
     timeout = DEFAULT_REQUEST_TIMEOUT;
@@ -1338,15 +1356,18 @@ gabble_vcard_manager_get_cached (GabbleVCardManager *self, TpHandle handle,
     LmMessageNode **node)
 {
   GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (self);
-  GabbleVCardCacheEntry *entry = g_hash_table_lookup (priv->cache, GUINT_TO_POINTER (handle));
+  GabbleVCardCacheEntry *entry = g_hash_table_lookup (priv->cache,
+      GUINT_TO_POINTER (handle));
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->connection, TP_HANDLE_TYPE_CONTACT);
 
-  DEBUG ("looking for handle %u vcard", handle);
+  g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
+      FALSE);
 
   if ((entry == NULL) || (entry->message == NULL))
       return FALSE;
 
-  DEBUG ("cached vcard for %u found, returning", handle);
-  if (node)
+  if (node != NULL)
       *node = lm_message_node_get_child (entry->message->node, "vCard");
 
   return TRUE;
@@ -1369,6 +1390,8 @@ gabble_vcard_manager_get_cached_alias (GabbleVCardManager *manager,
   priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (manager);
   contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *)priv->connection, TP_HANDLE_TYPE_CONTACT);
+
+  g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL), NULL);
 
   s = tp_handle_get_qdata (contact_repo, handle,
       gabble_vcard_manager_cache_quark());
@@ -1396,8 +1419,13 @@ gabble_vcard_manager_has_cached_alias (GabbleVCardManager *manager,
   priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (manager);
   contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *)priv->connection, TP_HANDLE_TYPE_CONTACT);
+
+  g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
+      FALSE);
+
   p = tp_handle_get_qdata (contact_repo, handle,
       gabble_vcard_manager_cache_quark());
+
   return p != NULL;
 }
 

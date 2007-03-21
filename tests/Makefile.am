@@ -47,10 +47,9 @@ test-basic-connect.sh: run-with-tmp-session-bus.conf
 service_in_files = org.freedesktop.Telepathy.ConnectionManager.gabble.service.in
 service_files = $(service_in_files:.service.in=.service)
 
-BUILT_FILES = $(service_files) run-with-tmp-session-bus.conf
+BUILT_SOURCES = $(service_files) run-with-tmp-session-bus.conf
 
 EXTRA_DIST = 
 
-CLEANFILES = $(BUILT_FILES)
-
+CLEANFILES = $(BUILT_SOURCES)
 

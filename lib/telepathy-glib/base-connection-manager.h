@@ -64,6 +64,17 @@ G_BEGIN_DECLS
  * Structure representing a connection manager parameter, as accepted by
  * RequestConnection.
  */
+
+/* XXX: This should be driven by GTypes, but the GType is insufficiently
+ * descriptive: if it's UINT we can't tell whether the D-Bus type is
+ * UInt32, UInt16 or possibly even Byte. So we have the D-Bus type too.
+ *
+ * As it stands at the moment it could be driven by the *D-Bus* type, but
+ * in future we may want to have more than one possible GType for a D-Bus
+ * type, e.g. converting arrays of string into either a strv or a GPtrArray.
+ * So, we keep the redundancy for future expansion.
+ */
+
 typedef struct {
     const gchar *name;
     const gchar *dtype;

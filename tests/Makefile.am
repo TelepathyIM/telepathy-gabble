@@ -35,7 +35,7 @@ check-extra: $(service_files)
 		$(python_tests_pythonfiles)
 	$(MAKE) check TESTS="$(TESTSEXTRA)"
 
-run-with-tmp-session-bus.conf: run-with-tmp-session-bus.conf.in Makefile
+%.conf: %.conf.in
 	@sed -e "s|\@abs_top_builddir\@|@abs_top_builddir@|" $< > $@
 
 %.service: %.service.in
@@ -47,7 +47,10 @@ test-basic-connect.sh: run-with-tmp-session-bus.conf
 service_in_files = org.freedesktop.Telepathy.ConnectionManager.gabble.service.in
 service_files = $(service_in_files:.service.in=.service)
 
-BUILT_SOURCES = $(service_files) run-with-tmp-session-bus.conf
+conf_in_files = run-with-tmp-session-bus.conf.in
+conf_files = $(conf_in_files:.conf.in=.conf)
+
+BUILT_SOURCES = $(service_files) $(conf_files)
 
 EXTRA_DIST = $(service_in_files)
 

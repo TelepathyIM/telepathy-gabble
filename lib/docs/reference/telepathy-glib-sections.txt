@@ -885,7 +885,7 @@ dbus_glib_marshal_tp_svc_media_stream_handler_VOID__UINT_STRING_POINTER
 <SECTION>
 <FILE>svc-connection-manager</FILE>
 <INCLUDE>telepathy-glib/svc-connection-manager.h</INCLUDE>
-<TITLE>Connection Manager service interface</TITLE>
+<TITLE>Connection Manager service</TITLE>
 TpSvcConnectionManager
 TpSvcConnectionManagerClass
 tp_svc_connection_manager_get_parameters_impl

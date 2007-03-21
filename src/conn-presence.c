@@ -223,7 +223,7 @@ gabble_connection_clear_status (TpSvcConnectionInterfacePresence *iface,
   GError *error;
   gboolean ok;
   gchar *resource;
-  guint priority;
+  gint8 priority;
 
   g_assert (GABBLE_IS_CONNECTION (self));
 
@@ -415,7 +415,7 @@ gabble_connection_remove_status (TpSvcConnectionInterfacePresence *iface,
   GabblePresence *presence = self->self_presence;
   GError *error;
   gchar *resource;
-  guint priority;
+  gint8 priority;
 
   g_assert (GABBLE_IS_CONNECTION (self));
 

@@ -291,7 +291,7 @@ gabble_connection_get_property (GObject    *object,
       g_value_set_string (value, priv->resource);
       break;
     case PROP_PRIORITY:
-      g_value_set_int (value, priv->priority);
+      g_value_set_char (value, priv->priority);
       break;
     case PROP_HTTPS_PROXY_SERVER:
       g_value_set_string (value, priv->https_proxy_server);
@@ -369,7 +369,7 @@ gabble_connection_set_property (GObject      *object,
       priv->resource = g_value_dup_string (value);
       break;
     case PROP_PRIORITY:
-      priv->priority = CLAMP (g_value_get_int (value), G_MININT8, G_MAXINT8);
+      priv->priority = g_value_get_char (value);
       break;
     case PROP_HTTPS_PROXY_SERVER:
       g_free (priv->https_proxy_server);
@@ -534,12 +534,12 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_RESOURCE, param_spec);
 
-  param_spec = g_param_spec_int ("priority", "Jabber presence priority",
-                                 "The default priority used when reporting our presence.",
-                                 G_MININT8, G_MAXINT8, 0,
-                                 G_PARAM_READWRITE |
-                                 G_PARAM_STATIC_NAME |
-                                 G_PARAM_STATIC_BLURB);
+  param_spec = g_param_spec_char ("priority", "Jabber presence priority",
+                                  "The default priority used when reporting our presence.",
+                                  G_MININT8, G_MAXINT8, 0,
+                                  G_PARAM_READWRITE |
+                                  G_PARAM_STATIC_NAME |
+                                  G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_PRIORITY, param_spec);
 
   param_spec = g_param_spec_string ("https-proxy-server", "The server name "

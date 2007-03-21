@@ -364,6 +364,11 @@ parse_parameters (const TpCMParamSpec *paramspec,
                       paramspec[i].name);
                 }
             }
+          else if (paramspec[i].gtype == G_TYPE_INT)
+            {
+              g_debug ("%s: accepted value %d for param %s", G_STRFUNC,
+                       *((gint *) (params + paramspec[i].offset)), paramspec[i].name);
+            }
           else
             {
               g_debug ("%s: accepted value %u for param %s", G_STRFUNC,

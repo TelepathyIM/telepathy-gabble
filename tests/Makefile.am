@@ -52,7 +52,7 @@ conf_files = $(conf_in_files:.conf.in=.conf)
 
 BUILT_SOURCES = $(service_files) $(conf_files)
 
-EXTRA_DIST = $(service_in_files)
+EXTRA_DIST = $(service_in_files) $(conf_in_files)
 
 CLEANFILES = $(BUILT_SOURCES)
 

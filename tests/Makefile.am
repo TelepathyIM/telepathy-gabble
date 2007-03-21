@@ -28,12 +28,12 @@ AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @LOUDMOUTH_CFLAGS@ \
 AM_LDFLAGS = @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@
 
 TESTS = $(noinst_PROGRAMS)
-TESTSEXTRA = $(python_tests_shfiles)
+EXTRA_TESTS = $(python_tests_shfiles)
 
 check-extra: $(service_files)
 	chmod +x run-with-tmp-session-bus.sh $(python_tests_shfiles) \
 		$(python_tests_pythonfiles)
-	$(MAKE) check TESTS="$(TESTSEXTRA)"
+	$(MAKE) check TESTS="$(EXTRA_TESTS)"
 
 %.conf: %.conf.in
 	@sed -e "s|\@abs_top_builddir\@|@abs_top_builddir@|" $< > $@

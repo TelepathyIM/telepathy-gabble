@@ -49,7 +49,7 @@ service_files = $(service_in_files:.service.in=.service)
 
 BUILT_SOURCES = $(service_files) run-with-tmp-session-bus.conf
 
-EXTRA_DIST = 
+EXTRA_DIST = $(service_in_files)
 
 CLEANFILES = $(BUILT_SOURCES)
 

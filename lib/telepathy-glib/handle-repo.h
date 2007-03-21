@@ -91,8 +91,6 @@ struct _TpHandleRepoIfaceClass {
         const gchar *client, TpHandle handle, GError **error);
 
     const char *(*inspect_handle) (TpHandleRepoIface *self, TpHandle handle);
-    TpHandle (*request_handle) (TpHandleRepoIface *self, const char *id,
-        gboolean may_create);
     TpHandle (*ensure_handle) (TpHandleRepoIface *self, const char *id,
         gpointer context, GError **error);
     TpHandle (*lookup_handle) (TpHandleRepoIface *self, const char *id,
@@ -123,8 +121,6 @@ gboolean tp_handle_client_release (TpHandleRepoIface *self,
 
 const char *tp_handle_inspect (TpHandleRepoIface *self,
     TpHandle handle);
-TpHandle tp_handle_request (TpHandleRepoIface *self,
-    const gchar *id, gboolean may_create);
 TpHandle tp_handle_lookup (TpHandleRepoIface *self,
     const gchar *id, gpointer context, GError **error);
 TpHandle tp_handle_ensure (TpHandleRepoIface *self,

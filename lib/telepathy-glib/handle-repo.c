@@ -282,31 +282,6 @@ tp_handle_lookup (TpHandleRepoIface *self,
 
 
 /**
- * tp_handle_request:
- * @self: A handle repository implementation
- * @id: A string whose handle is required
- * @may_create: If %TRUE and the requested handle does not exist, create it
- * (with a reference count of 0!)
- *
- * Construct or return the handle for the given string.
- * Normalization is not performed here.
- *
- * Returns: the handle corresponding to the given string, or 0 if it
- * does not exist and may_create is %FALSE, or if it is invalid
- *
- * Deprecated: use tp_handle_lookup or tp_handle_ensure instead.
- */
-
-TpHandle
-tp_handle_request (TpHandleRepoIface *self,
-    const gchar *id,
-    gboolean may_create)
-{
-  return TP_HANDLE_REPO_IFACE_GET_CLASS (self)->request_handle (self,
-      id, may_create);
-}
-
-/**
  * tp_handle_set_qdata:
  * @repo: A handle repository implementation
  * @handle: A handle to set data on

@@ -747,7 +747,7 @@ dynamic_request_handle (TpHandleRepoIface *irepo, const char *id,
   g_hash_table_insert (self->handle_to_priv, GUINT_TO_POINTER (handle), priv);
   g_hash_table_insert (self->string_to_handle, priv->string,
       GUINT_TO_POINTER (handle));
-  HANDLE_LEAK_DEBUG_DO (priv->traces, irepo, handle, HL_CREATED_FLOATING)
+  HANDLE_LEAK_DEBUG_DO (priv->traces);
   return handle;
 }
 
@@ -787,7 +787,6 @@ dynamic_repo_iface_init (gpointer g_iface,
   klass->client_hold_handle = dynamic_client_hold_handle;
   klass->client_release_handle = dynamic_client_release_handle;
   klass->inspect_handle = dynamic_inspect_handle;
-  klass->request_handle = dynamic_request_handle;
   klass->lookup_handle = dynamic_lookup_handle;
   klass->ensure_handle = dynamic_ensure_handle;
   klass->set_qdata = dynamic_set_qdata;

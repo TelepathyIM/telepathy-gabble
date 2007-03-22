@@ -23,6 +23,7 @@ static GDebugKey keys[] = {
   { "properties",    TP_DEBUG_PROPERTIES },
   { "connection",    TP_DEBUG_CONNECTION },
   { "persist",       TP_DEBUG_PERSIST },
+  { "im",            TP_DEBUG_IM },
   { 0, },
 };
 

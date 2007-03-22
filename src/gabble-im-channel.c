@@ -182,6 +182,9 @@ gabble_im_channel_set_property (GObject     *object,
       priv->object_path = g_value_dup_string (value);
       break;
     case PROP_HANDLE:
+      /* we don't ref it here because we don't necessarily have access to the
+       * contact repo yet - instead we ref it in the constructor.
+       */
       priv->handle = g_value_get_uint (value);
       break;
     case PROP_HANDLE_TYPE:

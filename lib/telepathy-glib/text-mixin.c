@@ -264,7 +264,8 @@ tp_text_mixin_set_message_types (GObject *obj,
   va_end (args);
 }
 
-static void _pending_free (_PendingMessage *msg);
+static void _pending_free (_PendingMessage *msg,
+    TpHandleRepoIface *contacts_repo)
 static _Allocator * _pending_get_alloc ();
 
 /**
@@ -279,12 +280,13 @@ tp_text_mixin_finalize (GObject *obj)
   TpTextMixin *mixin = TP_TEXT_MIXIN (obj);
   _PendingMessage *msg;
 
+  DEBUG ("%p", obj);
+
   /* free any data held directly by the object here */
 
   while ((msg = g_queue_pop_head(mixin->priv->pending)))
     {
-      tp_handle_unref (mixin->priv->contacts_repo, msg->sender);
-      _pending_free (msg);
+      _pending_free (msg, mixin->priv->contacts_repo);
     }
 
   g_queue_free (mixin->priv->pending);
@@ -319,9 +321,11 @@ _pending_get_alloc ()
  *
  * Free up a _PendingMessage struct.
  */
-static void _pending_free (_PendingMessage *msg)
+static void _pending_free (_PendingMessage *msg,
+                           TpHandleRepoIface *contacts_repo)
 {
   g_free (msg->text);
+  tp_handle_unref (contacts_repo, msg->sender);
   _allocator_free (_pending_get_alloc (), msg);
 }
 
@@ -358,6 +362,12 @@ tp_text_mixin_receive (GObject *obj,
       return FALSE;
     }
 
+  tp_handle_ref (mixin->priv->contacts_repo, sender);
+  msg->sender = sender;
+  msg->id = mixin->priv->recv_id++;
+  msg->timestamp = timestamp;
+  msg->type = type;
+
   len = strlen (text);
 
   if (len > MAX_MESSAGE_SIZE)
@@ -385,19 +395,13 @@ tp_text_mixin_receive (GObject *obj,
           mixin->priv->message_lost = TRUE;
         }
 
-      _pending_free (msg);
+      _pending_free (msg, mixin->priv->contacts_repo);
 
       return FALSE;
     }
 
   g_strlcpy (msg->text, text, len + 1);
 
-  msg->id = mixin->priv->recv_id++;
-  msg->timestamp = timestamp;
-  msg->sender = sender;
-  msg->type = type;
-
-  tp_handle_ref (mixin->priv->contacts_repo, msg->sender);
   g_queue_push_tail (mixin->priv->pending, msg);
 
   tp_svc_channel_type_text_emit_received (obj,
@@ -478,8 +482,7 @@ tp_text_mixin_acknowledge_pending_messages (GObject *obj,
 
       g_queue_remove (mixin->priv->pending, msg);
 
-      tp_handle_unref (mixin->priv->contacts_repo, msg->sender);
-      _pending_free (msg);
+      _pending_free (msg, mixin->priv->contacts_repo);
     }
 
   g_free(nodes);
@@ -650,8 +653,7 @@ tp_text_mixin_clear (GObject *obj)
 
   while ((msg = g_queue_pop_head(mixin->priv->pending)))
     {
-      tp_handle_unref (mixin->priv->contacts_repo, msg->sender);
-      _pending_free (msg);
+      _pending_free (msg, mixin->priv->contacts_repo);
     }
 }
 

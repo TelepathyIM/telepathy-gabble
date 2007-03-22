@@ -244,12 +244,16 @@ im_factory_message_cb (LmMessageHandler *handler,
 
       chan = new_im_channel (fac, handle);
     }
+  g_assert (chan != NULL);
+  /* now the channel is referencing the handle, so if we unref it, that's
+   * not a problem
+   */
+  tp_handle_unref (contact_repo, handle);
 
   if (send_error != TP_CHANNEL_SEND_NO_ERROR)
     {
       tp_svc_channel_type_text_emit_send_error ((TpSvcChannelTypeText *)chan,
           send_error, stamp, msgtype, body_offset);
-      tp_handle_unref (contact_repo, handle);
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 
@@ -259,11 +263,9 @@ im_factory_message_cb (LmMessageHandler *handler,
   if (body != NULL && _gabble_im_channel_receive (chan, msgtype, handle, from,
                                   stamp, body_offset))
     {
-      tp_handle_unref (contact_repo, handle);
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 
-  tp_handle_unref (contact_repo, handle);
   return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 }
 

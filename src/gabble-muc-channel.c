@@ -346,9 +346,10 @@ properties_disco_cb (GabbleDisco *disco,
 
   NODE_DEBUG (query_result, "disco query result");
 
-  /* FIXME: preallocate some space? */
-  changed_props_val = g_array_sized_new (FALSE, FALSE, sizeof (guint), 0);
-  changed_props_flags = g_array_sized_new (FALSE, FALSE, sizeof (guint), 0);
+  changed_props_val = g_array_sized_new (FALSE, FALSE, sizeof (guint),
+      NUM_ROOM_PROPS);
+  changed_props_flags = g_array_sized_new (FALSE, FALSE, sizeof (guint),
+      NUM_ROOM_PROPS);
 
   /*
    * Update room definition.
@@ -1408,9 +1409,10 @@ update_permissions (GabbleMucChannel *chan)
    * and own role and affiliation.
    */
 
-  /* FIXME: preallocate some space? */
-  changed_props_val = g_array_sized_new (FALSE, FALSE, sizeof (guint), 0);
-  changed_props_flags = g_array_sized_new (FALSE, FALSE, sizeof (guint), 0);
+  changed_props_val = g_array_sized_new (FALSE, FALSE, sizeof (guint),
+      NUM_ROOM_PROPS);
+  changed_props_flags = g_array_sized_new (FALSE, FALSE, sizeof (guint),
+      NUM_ROOM_PROPS);
 
   /*
    * Subject
@@ -1802,9 +1804,10 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
           return TRUE;
         }
 
-      /* FIXME: preallocate some space? */
-      changed_values = g_array_sized_new (FALSE, FALSE, sizeof (guint), 0);
-      changed_flags = g_array_sized_new (FALSE, FALSE, sizeof (guint), 0);
+      changed_values = g_array_sized_new (FALSE, FALSE, sizeof (guint),
+          NUM_ROOM_PROPS);
+      changed_flags = g_array_sized_new (FALSE, FALSE, sizeof (guint),
+          NUM_ROOM_PROPS);
 
       /* ROOM_PROP_SUBJECT */
       g_value_init (&val, G_TYPE_STRING);

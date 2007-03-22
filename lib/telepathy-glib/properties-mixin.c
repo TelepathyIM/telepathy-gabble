@@ -566,9 +566,10 @@ tp_properties_context_return (TpPropertiesContext *ctx, GError *error)
 
   DEBUG ("%s", (error) ? "failure" : "success");
 
-  /* FIXME: preallocate some space? */
-  changed_props_val = g_array_sized_new (FALSE, FALSE, sizeof (guint), 0);
-  changed_props_flags = g_array_sized_new (FALSE, FALSE, sizeof (guint), 0);
+  changed_props_val = g_array_sized_new (FALSE, FALSE, sizeof (guint),
+      ctx->mixin_cls->num_props);
+  changed_props_flags = g_array_sized_new (FALSE, FALSE, sizeof (guint),
+      ctx->mixin_cls->num_props);
 
   for (i = 0; i < ctx->mixin_cls->num_props; i++)
     {

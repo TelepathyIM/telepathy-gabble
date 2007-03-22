@@ -559,6 +559,11 @@ tp_text_mixin_list_pending_messages (GObject *obj,
           G_MAXUINT);
 
       g_ptr_array_add (messages, g_value_get_boxed (&val));
+
+      if (clear)
+        {
+          _pending_free (msg, mixin->priv->contacts_repo);
+        }
     }
 
   *ret = messages;

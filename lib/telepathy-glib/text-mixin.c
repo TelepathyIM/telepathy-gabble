@@ -265,7 +265,7 @@ tp_text_mixin_set_message_types (GObject *obj,
 }
 
 static void _pending_free (_PendingMessage *msg,
-    TpHandleRepoIface *contacts_repo)
+    TpHandleRepoIface *contacts_repo);
 static _Allocator * _pending_get_alloc ();
 
 /**

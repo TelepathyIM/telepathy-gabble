@@ -743,12 +743,6 @@ tp_properties_mixin_change_value (GObject *obj, guint prop_id,
     {
       guint i;
 
-      if (*props == NULL)
-        {
-          *props = g_array_sized_new (FALSE, FALSE, sizeof (guint),
-                                      mixin_cls->num_props);
-        }
-
       for (i = 0; i < props->len; i++)
         {
           if (g_array_index (props, guint, i) == prop_id)

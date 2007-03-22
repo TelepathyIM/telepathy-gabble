@@ -20,6 +20,7 @@ static GDebugKey keys[] = {
   { "properties",    GABBLE_DEBUG_PROPERTIES },
   { "roomlist",      GABBLE_DEBUG_ROOMLIST },
   { "media-channel", GABBLE_DEBUG_MEDIA },
+  { "im",            GABBLE_DEBUG_IM },
   { "muc",           GABBLE_DEBUG_MUC },
   { "connection",    GABBLE_DEBUG_CONNECTION },
   { "persist",       GABBLE_DEBUG_PERSIST },

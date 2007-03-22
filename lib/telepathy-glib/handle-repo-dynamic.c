@@ -723,33 +723,6 @@ dynamic_ensure_handle (TpHandleRepoIface *irepo,
   return handle;
 }
 
-static TpHandle
-dynamic_request_handle (TpHandleRepoIface *irepo, const char *id,
-    gboolean may_create)
-{
-  TpDynamicHandleRepo *self = TP_DYNAMIC_HANDLE_REPO (irepo);
-  TpHandle handle;
-  TpHandlePriv *priv;
-
-  handle = GPOINTER_TO_UINT (g_hash_table_lookup (self->string_to_handle,
-        id));
-  if (handle)
-    return handle;
-
-  if (!may_create)
-    return 0;
-
-  handle = handle_alloc (self);
-  priv = handle_priv_new ();
-  /* initial refcount of 0 is very strange, but is backwards compatible... */
-  priv->refcount = 0;
-  priv->string = g_strdup (id);
-  g_hash_table_insert (self->handle_to_priv, GUINT_TO_POINTER (handle), priv);
-  g_hash_table_insert (self->string_to_handle, priv->string,
-      GUINT_TO_POINTER (handle));
-  HANDLE_LEAK_DEBUG_DO (priv->traces);
-  return handle;
-}
 
 static gboolean
 dynamic_set_qdata (TpHandleRepoIface *repo, TpHandle handle,

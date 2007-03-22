@@ -346,8 +346,9 @@ properties_disco_cb (GabbleDisco *disco,
 
   NODE_DEBUG (query_result, "disco query result");
 
-  changed_props_val = changed_props_flags = NULL;
-
+  /* FIXME: preallocate some space? */
+  changed_props_val = g_array_sized_new (FALSE, FALSE, sizeof (guint), 0);
+  changed_props_flags = g_array_sized_new (FALSE, FALSE, sizeof (guint), 0);
 
   /*
    * Update room definition.
@@ -371,11 +372,11 @@ properties_disco_cb (GabbleDisco *disco,
           g_value_set_string (&val, name);
 
           tp_properties_mixin_change_value (G_OBJECT (chan), ROOM_PROP_NAME,
-                                                &val, &changed_props_val);
+                                                &val, changed_props_val);
 
           tp_properties_mixin_change_flags (G_OBJECT (chan), ROOM_PROP_NAME,
                                                 TP_PROPERTY_FLAG_READ,
-                                                0, &changed_props_flags);
+                                                0, changed_props_flags);
 
           g_value_unset (&val);
         }
@@ -526,11 +527,11 @@ properties_disco_cb (GabbleDisco *disco,
       if (prop_id != INVALID_ROOM_PROP)
         {
           tp_properties_mixin_change_value (G_OBJECT (chan), prop_id, &val,
-                                                &changed_props_val);
+                                                changed_props_val);
 
           tp_properties_mixin_change_flags (G_OBJECT (chan), prop_id,
                                                 TP_PROPERTY_FLAG_READ,
-                                                0, &changed_props_flags);
+                                                0, changed_props_flags);
 
           g_value_unset (&val);
         }
@@ -539,8 +540,10 @@ properties_disco_cb (GabbleDisco *disco,
   /*
    * Emit signals.
    */
-  tp_properties_mixin_emit_changed (G_OBJECT (chan), &changed_props_val);
-  tp_properties_mixin_emit_flags (G_OBJECT (chan), &changed_props_flags);
+  tp_properties_mixin_emit_changed (G_OBJECT (chan), changed_props_val);
+  tp_properties_mixin_emit_flags (G_OBJECT (chan), changed_props_flags);
+  g_array_free (changed_props_val, TRUE);
+  g_array_free (changed_props_flags, TRUE);
 }
 
 static void
@@ -1405,7 +1408,9 @@ update_permissions (GabbleMucChannel *chan)
    * and own role and affiliation.
    */
 
-  changed_props_val = changed_props_flags = NULL;
+  /* FIXME: preallocate some space? */
+  changed_props_val = g_array_sized_new (FALSE, FALSE, sizeof (guint), 0);
+  changed_props_flags = g_array_sized_new (FALSE, FALSE, sizeof (guint), 0);
 
   /*
    * Subject
@@ -1427,7 +1432,7 @@ update_permissions (GabbleMucChannel *chan)
 
   tp_properties_mixin_change_flags (G_OBJECT (chan),
       ROOM_PROP_SUBJECT, prop_flags_add, prop_flags_rem,
-      &changed_props_flags);
+      changed_props_flags);
 
   /* Room definition */
   if (priv->self_affil == AFFILIATION_OWNER)
@@ -1443,39 +1448,39 @@ update_permissions (GabbleMucChannel *chan)
 
   tp_properties_mixin_change_flags (G_OBJECT (chan),
       ROOM_PROP_ANONYMOUS, prop_flags_add, prop_flags_rem,
-      &changed_props_flags);
+      changed_props_flags);
 
   tp_properties_mixin_change_flags (G_OBJECT (chan),
       ROOM_PROP_INVITE_ONLY, prop_flags_add, prop_flags_rem,
-      &changed_props_flags);
+      changed_props_flags);
 
   tp_properties_mixin_change_flags (G_OBJECT (chan),
       ROOM_PROP_MODERATED, prop_flags_add, prop_flags_rem,
-      &changed_props_flags);
+      changed_props_flags);
 
   tp_properties_mixin_change_flags (G_OBJECT (chan),
       ROOM_PROP_NAME, prop_flags_add, prop_flags_rem,
-      &changed_props_flags);
+      changed_props_flags);
 
   tp_properties_mixin_change_flags (G_OBJECT (chan),
       ROOM_PROP_PASSWORD, prop_flags_add, prop_flags_rem,
-      &changed_props_flags);
+      changed_props_flags);
 
   tp_properties_mixin_change_flags (G_OBJECT (chan),
       ROOM_PROP_PASSWORD_REQUIRED, prop_flags_add, prop_flags_rem,
-      &changed_props_flags);
+      changed_props_flags);
 
   tp_properties_mixin_change_flags (G_OBJECT (chan),
       ROOM_PROP_PERSISTENT, prop_flags_add, prop_flags_rem,
-      &changed_props_flags);
+      changed_props_flags);
 
   tp_properties_mixin_change_flags (G_OBJECT (chan),
       ROOM_PROP_PRIVATE, prop_flags_add, prop_flags_rem,
-      &changed_props_flags);
+      changed_props_flags);
 
   tp_properties_mixin_change_flags (G_OBJECT (chan),
       ROOM_PROP_SUBJECT, prop_flags_add, prop_flags_rem,
-      &changed_props_flags);
+      changed_props_flags);
 
   if (priv->self_affil == AFFILIATION_OWNER)
     {
@@ -1509,14 +1514,16 @@ update_permissions (GabbleMucChannel *chan)
       /* mark description unwritable if we're no longer an owner */
       tp_properties_mixin_change_flags (G_OBJECT (chan),
           ROOM_PROP_DESCRIPTION, 0, TP_PROPERTY_FLAG_WRITE,
-          &changed_props_flags);
+          changed_props_flags);
     }
 
   /*
    * Emit signals.
    */
-  tp_properties_mixin_emit_changed (G_OBJECT (chan), &changed_props_val);
-  tp_properties_mixin_emit_flags (G_OBJECT (chan), &changed_props_flags);
+  tp_properties_mixin_emit_changed (G_OBJECT (chan), changed_props_val);
+  tp_properties_mixin_emit_flags (G_OBJECT (chan), changed_props_flags);
+  g_array_free (changed_props_val, TRUE);
+  g_array_free (changed_props_flags, TRUE);
 }
 
 /**
@@ -1795,18 +1802,20 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
           return TRUE;
         }
 
-      changed_values = changed_flags = NULL;
+      /* FIXME: preallocate some space? */
+      changed_values = g_array_sized_new (FALSE, FALSE, sizeof (guint), 0);
+      changed_flags = g_array_sized_new (FALSE, FALSE, sizeof (guint), 0);
 
       /* ROOM_PROP_SUBJECT */
       g_value_init (&val, G_TYPE_STRING);
       g_value_set_string (&val, lm_message_node_get_value (subj_node));
 
       tp_properties_mixin_change_value (G_OBJECT (chan),
-          ROOM_PROP_SUBJECT, &val, &changed_values);
+          ROOM_PROP_SUBJECT, &val, changed_values);
 
       tp_properties_mixin_change_flags (G_OBJECT (chan),
           ROOM_PROP_SUBJECT, TP_PROPERTY_FLAG_READ, 0,
-          &changed_flags);
+          changed_flags);
 
       g_value_unset (&val);
 
@@ -1817,11 +1826,11 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
           g_value_set_uint (&val, sender);
 
           tp_properties_mixin_change_value (G_OBJECT (chan),
-              ROOM_PROP_SUBJECT_CONTACT, &val, &changed_values);
+              ROOM_PROP_SUBJECT_CONTACT, &val, changed_values);
 
           tp_properties_mixin_change_flags (G_OBJECT (chan),
               ROOM_PROP_SUBJECT_CONTACT, TP_PROPERTY_FLAG_READ, 0,
-              &changed_flags);
+              changed_flags);
 
           g_value_unset (&val);
         }
@@ -1831,17 +1840,19 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
       g_value_set_uint (&val, timestamp);
 
       tp_properties_mixin_change_value (G_OBJECT (chan),
-          ROOM_PROP_SUBJECT_TIMESTAMP, &val, &changed_values);
+          ROOM_PROP_SUBJECT_TIMESTAMP, &val, changed_values);
 
       tp_properties_mixin_change_flags (G_OBJECT (chan),
           ROOM_PROP_SUBJECT_TIMESTAMP, TP_PROPERTY_FLAG_READ, 0,
-          &changed_flags);
+          changed_flags);
 
       g_value_unset (&val);
 
       /* Emit signals */
-      tp_properties_mixin_emit_changed (G_OBJECT (chan), &changed_values);
-      tp_properties_mixin_emit_flags (G_OBJECT (chan), &changed_flags);
+      tp_properties_mixin_emit_changed (G_OBJECT (chan), changed_values);
+      tp_properties_mixin_emit_flags (G_OBJECT (chan), changed_flags);
+      g_array_free (changed_values, TRUE);
+      g_array_free (changed_flags, TRUE);
 
       if (priv->properties_ctx)
         {

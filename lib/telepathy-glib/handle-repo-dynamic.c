@@ -34,12 +34,20 @@
 #include <stdio.h>
 #include <execinfo.h>
 
+typedef enum {
+    HL_REFFED,
+    HL_CREATED,
+    HL_UNREFFED,
+    HL_CREATED_FLOATING
+} HandleLeakEvent;
+
 typedef struct _HandleLeakTrace HandleLeakTrace;
 
 struct _HandleLeakTrace
 {
   char **trace;
   int len;
+  HandleLeakEvent event;
 };
 
 static void
@@ -243,11 +251,31 @@ tp_dynamic_handle_repo_init (TpDynamicHandleRepo *self)
 
 #ifdef ENABLE_HANDLE_LEAK_DEBUG
 
+static const char *
+handle_leak_describe_event (HandleLeakEvent event)
+{
+  switch (event)
+    {
+    case HL_REFFED:
+      return "reffed";
+    case HL_UNREFFED:
+      return "unreffed";
+    case HL_CREATED:
+      return "created with 1 ref";
+    case HL_CREATED_FLOATING:
+      return "created with 0 refs";
+    }
+  g_assert_not_reached ();
+  return NULL;
+}
+
 static void
 handle_leak_debug_printbt_foreach (gpointer data, gpointer user_data)
 {
   HandleLeakTrace *hltrace = (HandleLeakTrace *) data;
   int i;
+
+  printf("\t    %s at:\n", handle_leak_describe_event (hltrace->event));
 
   for (i = 1; i < hltrace->len; i++)
     {
@@ -263,7 +291,7 @@ handle_leak_debug_printhandles_foreach (gpointer key, gpointer value, gpointer i
   TpHandle handle = GPOINTER_TO_UINT (key);
   TpHandlePriv *priv = (TpHandlePriv *) value;
 
-  printf ("\t%5u: %s (%u refs), traces:\n", handle, priv->string, priv->refcount);
+  printf ("\t%05u: %s (%u refs), traces:\n", handle, priv->string, priv->refcount);
   
   g_slist_foreach (priv->traces, handle_leak_debug_printbt_foreach, NULL);
 }
@@ -283,23 +311,28 @@ handle_leak_debug_print_report (TpDynamicHandleRepo *self)
 }
 
 static HandleLeakTrace *
-handle_leak_debug_bt ()
+handle_leak_debug_bt (HandleLeakEvent event)
 {
   void *bt_addresses[16];
   HandleLeakTrace *ret = g_slice_new0 (HandleLeakTrace);
-  
+
+  ret->event = event;
   ret->len = backtrace (bt_addresses, 16);
   ret->trace = backtrace_symbols (bt_addresses, ret->len);
 
   return ret;
 }
 
-#define HANDLE_LEAK_DEBUG_DO(traces_slist) \
-  { (traces_slist) =  g_slist_append ((traces_slist), handle_leak_debug_bt ()); }
+#define HANDLE_LEAK_DEBUG_DO(traces_slist, self, handle, event) \
+  { (traces_slist) =  g_slist_append ((traces_slist), \
+      handle_leak_debug_bt (event)); \
+    g_debug ("%p: handle %u %s", self, handle, \
+        handle_leak_describe_event (event)); \
+  }
 
 #else /* !ENABLE_HANDLE_LEAK_DEBUG */
 
-#define HANDLE_LEAK_DEBUG_DO(traces_slist) {}
+#define HANDLE_LEAK_DEBUG_DO(traces_slist, self, handle, event) {}
 
 #endif /* ENABLE_HANDLE_LEAK_DEBUG */
 
@@ -466,7 +499,7 @@ dynamic_unref_handle (TpHandleRepoIface *repo, TpHandle handle)
   if (priv == NULL)
     return FALSE;
 
-  HANDLE_LEAK_DEBUG_DO (priv->traces);
+  HANDLE_LEAK_DEBUG_DO (priv->traces, repo, handle, HL_UNREFFED)
 
   g_assert (priv->refcount > 0);
 
@@ -489,7 +522,7 @@ dynamic_ref_handle (TpHandleRepoIface *repo, TpHandle handle)
 
   priv->refcount++;
 
-  HANDLE_LEAK_DEBUG_DO (priv->traces);
+  HANDLE_LEAK_DEBUG_DO (priv->traces, repo, handle, HL_REFFED)
 
   return TRUE;
 }
@@ -686,7 +719,7 @@ dynamic_ensure_handle (TpHandleRepoIface *irepo,
   g_hash_table_insert (self->handle_to_priv, GUINT_TO_POINTER (handle), priv);
   g_hash_table_insert (self->string_to_handle, priv->string,
       GUINT_TO_POINTER (handle));
-  HANDLE_LEAK_DEBUG_DO (priv->traces);
+  HANDLE_LEAK_DEBUG_DO (priv->traces, irepo, handle, HL_CREATED)
   return handle;
 }
 
@@ -714,7 +747,7 @@ dynamic_request_handle (TpHandleRepoIface *irepo, const char *id,
   g_hash_table_insert (self->handle_to_priv, GUINT_TO_POINTER (handle), priv);
   g_hash_table_insert (self->string_to_handle, priv->string,
       GUINT_TO_POINTER (handle));
-  HANDLE_LEAK_DEBUG_DO (priv->traces);
+  HANDLE_LEAK_DEBUG_DO (priv->traces, irepo, handle, HL_CREATED_FLOATING)
   return handle;
 }
 

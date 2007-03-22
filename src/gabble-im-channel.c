@@ -298,6 +298,8 @@ gabble_im_channel_finalize (GObject *object)
 
   /* free any data held directly by the object here */
 
+  DEBUG ("%p", object);
+
   tp_handle_unref (contact_handles, priv->handle);
 
   g_free (priv->object_path);

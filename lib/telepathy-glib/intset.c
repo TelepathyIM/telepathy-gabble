@@ -559,9 +559,9 @@ _dump_foreach (guint i, gpointer data)
    GString *tmp = (GString *) data;
 
   if (tmp->len == 0)
-    g_string_append_printf (tmp, "%d", i);
+    g_string_append_printf (tmp, "%u", i);
   else
-    g_string_append_printf (tmp, " %d", i);
+    g_string_append_printf (tmp, " %u", i);
 }
 
 /**

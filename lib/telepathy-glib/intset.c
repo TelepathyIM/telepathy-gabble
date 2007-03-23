@@ -239,7 +239,7 @@ tp_intset_foreach (const TpIntSet *set, TpIntFunc func, gpointer userdata)
 
 
 static void
-addint (guint32 i, gpointer data)
+addint (guint i, gpointer data)
 {
   GArray *array = (GArray *) data;
   g_array_append_val (array, i);
@@ -249,9 +249,7 @@ addint (guint32 i, gpointer data)
  * tp_intset_to_array:
  * @set: set to convert
  *
- * FIXME: guint32?!
- *
- * Returns: a GArray of guint32 (which must be freed by the caller) containing
+ * Returns: a GArray of guint (which must be freed by the caller) containing
  * the same integers as @set.
  */
 GArray *
@@ -261,7 +259,7 @@ tp_intset_to_array (TpIntSet *set)
 
   g_return_val_if_fail (set != NULL, NULL);
 
-  array = g_array_new (FALSE, TRUE, sizeof (guint32));
+  array = g_array_new (FALSE, TRUE, sizeof (guint));
 
   tp_intset_foreach (set, addint, array);
 
@@ -271,9 +269,7 @@ tp_intset_to_array (TpIntSet *set)
 
 /**
  * tp_intset_from_array:
- * @array: An array of guint32
- *
- * FIXME: guint32?!
+ * @array: An array of guint
  *
  * Returns: A set containing the same integers as @array.
  */
@@ -282,7 +278,7 @@ TpIntSet *
 tp_intset_from_array (GArray *array)
 {
   TpIntSet *set;
-  guint32 max, i;
+  guint max, i;
 
   g_return_val_if_fail (array != NULL, NULL);
 
@@ -290,16 +286,16 @@ tp_intset_from_array (GArray *array)
    * approximation of the largest */
   max = 0;
   if (array->len > 0)
-    max = g_array_index (array, guint32, 0);
+    max = g_array_index (array, guint, 0);
   if (array->len > 1)
-    max = MAX (max, g_array_index (array, guint32, array->len - 1));
+    max = MAX (max, g_array_index (array, guint, array->len - 1));
   if (array->len > 2)
-    max = MAX (max, g_array_index (array, guint32, (array->len - 1) >> 1));
+    max = MAX (max, g_array_index (array, guint, (array->len - 1) >> 1));
   set = _tp_intset_new_with_size (1 + (max >> 5));
 
   for (i = 0; i < array->len; i++)
     {
-      tp_intset_add (set, g_array_index (array, guint32, i));
+      tp_intset_add (set, g_array_index (array, guint, i));
     }
 
   return set;

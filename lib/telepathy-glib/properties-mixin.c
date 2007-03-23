@@ -559,15 +559,13 @@ void
 tp_properties_context_return (TpPropertiesContext *ctx, GError *error)
 {
   GObject *obj = ctx->mixin->priv->object;
-  GArray *changed_props_val, *changed_props_flags;
+  TpIntSet *changed_props_val, *changed_props_flags;
   guint i;
 
   DEBUG ("%s", (error) ? "failure" : "success");
 
-  changed_props_val = g_array_sized_new (FALSE, FALSE, sizeof (guint),
-      ctx->mixin_cls->num_props);
-  changed_props_flags = g_array_sized_new (FALSE, FALSE, sizeof (guint),
-      ctx->mixin_cls->num_props);
+  changed_props_val = tp_intset_sized_new (ctx->mixin_cls->num_props);
+  changed_props_flags = tp_intset_sized_new (ctx->mixin_cls->num_props);
 
   for (i = 0; i < ctx->mixin_cls->num_props; i++)
     {
@@ -591,8 +589,8 @@ tp_properties_context_return (TpPropertiesContext *ctx, GError *error)
     {
       tp_properties_mixin_emit_changed (obj, changed_props_val);
       tp_properties_mixin_emit_flags (obj, changed_props_flags);
-      g_array_free (changed_props_val, TRUE);
-      g_array_free (changed_props_flags, TRUE);
+      tp_intset_destroy (changed_props_val);
+      tp_intset_destroy (changed_props_flags);
 
       dbus_g_method_return (ctx->dbus_ctx);
     }
@@ -694,7 +692,7 @@ values_are_equal (const GValue *v1, const GValue *v2)
  * @obj: An object with the properties mixin
  * @prop_id: A property ID on which to act
  * @new_value: Property value
- * @props: either %NULL, or a pointer to a GArray of guint: see below
+ * @props: either %NULL, or a pointer to a TpIntSet
  *
  * Change the value of the given property ID in response to a server state
  * change.
@@ -705,15 +703,15 @@ values_are_equal (const GValue *v1, const GValue *v2)
  * If @props is %NULL the PropertiesChanged signal is emitted for this one
  * property.
  *
- * Otherwise, the property ID is appended to the GArray of uint pointed to by
- * @props, if it's not already there, and the caller is responsible for
- * calling tp_properties_mixin_emit_flags() once a batch of changes is
- * complete.
+ * Otherwise, the property ID is added to the set; the caller is responsible
+ * for passing the set to tp_properties_mixin_emit_changed() once a batch of
+ * properties have been changed.
  */
 void
-tp_properties_mixin_change_value (GObject *obj, guint prop_id,
-                                      const GValue *new_value,
-                                      GArray *props)
+tp_properties_mixin_change_value (GObject *obj,
+                                  guint prop_id,
+                                  const GValue *new_value,
+                                  TpIntSet *props)
 {
   TpPropertiesMixin *mixin = TP_PROPERTIES_MIXIN (obj);
   TpPropertiesMixinClass *mixin_cls = TP_PROPERTIES_MIXIN_CLASS (
@@ -739,24 +737,15 @@ tp_properties_mixin_change_value (GObject *obj, guint prop_id,
 
   if (props)
     {
-      guint i;
-
-      for (i = 0; i < props->len; i++)
-        {
-          if (g_array_index (props, guint, i) == prop_id)
-            return;
-        }
-
-      g_array_append_val (props, prop_id);
+      tp_intset_add (props, prop_id);
     }
   else
     {
-      GArray *changed_props = g_array_sized_new (FALSE, FALSE,
-                                                 sizeof (guint), 1);
-      g_array_append_val (changed_props, prop_id);
+      TpIntSet *changed_props = tp_intset_sized_new (prop_id + 1);
 
+      tp_intset_add (changed_props, prop_id);
       tp_properties_mixin_emit_changed (obj, changed_props);
-      g_array_free (changed_props, TRUE);
+      tp_intset_destroy (changed_props);
     }
 }
 
@@ -767,7 +756,7 @@ tp_properties_mixin_change_value (GObject *obj, guint prop_id,
  * @prop_id: A property ID on which to act
  * @add: Property flags to be added via bitwise OR
  * @remove: Property flags to be removed via bitwise AND
- * @props: either %NULL, or a pointer to a GArray of guint: see below
+ * @props: either %NULL, or a pointer to a TpIntSet
  *
  * Change the flags for the given property ID in response to a server state
  * change.
@@ -778,15 +767,16 @@ tp_properties_mixin_change_value (GObject *obj, guint prop_id,
  * If @props is %NULL the PropertyFlagsChanged signal is emitted for this
  * single property.
  *
- * Otherwise, the property ID is appended to the GArray of uint pointed to by
- * @props, if it's not already there, and the caller is responsible for
- * calling #tp_properties_mixin_emit_flags once a batch of changes is complete.
+ * Otherwise, the property ID is added to the set; the caller is responsible
+ * for passing the set to tp_properties_mixin_emit_flags() once a batch of
+ * properties have been changed.
  */
 void
-tp_properties_mixin_change_flags (GObject *obj, guint prop_id,
-                                      TpPropertyFlags add,
-                                      TpPropertyFlags remove,
-                                      GArray *props)
+tp_properties_mixin_change_flags (GObject *obj,
+                                  guint prop_id,
+                                  TpPropertyFlags add,
+                                  TpPropertyFlags remove,
+                                  TpIntSet *props)
 {
   TpPropertiesMixin *mixin = TP_PROPERTIES_MIXIN (obj);
   TpPropertiesMixinClass *mixin_cls = TP_PROPERTIES_MIXIN_CLASS (
@@ -808,62 +798,54 @@ tp_properties_mixin_change_flags (GObject *obj, guint prop_id,
 
   if (props)
     {
-      guint i;
-
-      for (i = 0; i < props->len; i++)
-        {
-          if (g_array_index (props, guint, i) == prop_id)
-            return;
-        }
-
-      g_array_append_val (props, prop_id);
+      tp_intset_add (props, prop_id);
     }
   else
     {
-      GArray *changed_props = g_array_sized_new (FALSE, FALSE,
-                                                 sizeof (guint), 1);
-      g_array_append_val (changed_props, prop_id);
+      TpIntSet *changed_props = tp_intset_sized_new (prop_id + 1);
 
+      tp_intset_add (changed_props, prop_id);
       tp_properties_mixin_emit_flags (obj, changed_props);
-      g_array_free (changed_props, TRUE);
+      tp_intset_destroy (changed_props);
     }
 }
 
 /**
  * tp_properties_mixin_emit_changed:
  * @obj: an object with the properties mixin
- * @props: a GArray of guint representing property IDs
+ * @props: a set of property IDs
  *
  * Emit the PropertiesChanged signal to indicate that the values of the
  * given property IDs have changed; the actual values are automatically
  * added using their stored values.
  */
 void
-tp_properties_mixin_emit_changed (GObject *obj, const GArray *props)
+tp_properties_mixin_emit_changed (GObject *obj, const TpIntSet *props)
 {
   TpPropertiesMixin *mixin = TP_PROPERTIES_MIXIN (obj);
   TpPropertiesMixinClass *mixin_cls = TP_PROPERTIES_MIXIN_CLASS (
       G_OBJECT_GET_CLASS (obj));
   GPtrArray *prop_arr;
   GValue prop_list = { 0, };
-  guint i;
+  TpIntSetIter iter = TP_INTSET_ITER_INIT (props);
+  guint len = tp_intset_size (props);
 
-  if (props->len == 0)
+  if (len == 0)
     {
       return;
     }
 
-  prop_arr = g_ptr_array_sized_new (props->len);
+  prop_arr = g_ptr_array_sized_new (len);
 
   if (DEBUGGING)
     printf (TP_ANSI_BOLD_ON TP_ANSI_FG_CYAN
             "%s: emitting properties changed for propert%s:\n",
-            G_STRFUNC, (props->len > 1) ? "ies" : "y");
+            G_STRFUNC, (len > 1) ? "ies" : "y");
 
-  for (i = 0; i < props->len; i++)
+  while (tp_intset_iter_next (&iter))
     {
       GValue prop_val = { 0, };
-      guint prop_id = g_array_index (props, guint, i);
+      guint prop_id = iter.element;
 
       g_value_init (&prop_val, TP_TYPE_PROPERTY_VALUE_STRUCT);
       g_value_take_boxed (&prop_val,
@@ -898,38 +880,39 @@ tp_properties_mixin_emit_changed (GObject *obj, const GArray *props)
 /**
  * tp_properties_mixin_emit_flags:
  * @obj: an object with the properties mixin
- * @props: a GArray of guint representing property IDs
+ * @props: a set of property IDs
  *
  * Emit the PropertyFlagsChanged signal to indicate that the flags of the
  * given property IDs have changed; the actual flags are automatically
  * added using their stored values.
  */
 void
-tp_properties_mixin_emit_flags (GObject *obj, const GArray *props)
+tp_properties_mixin_emit_flags (GObject *obj, const TpIntSet *props)
 {
   TpPropertiesMixin *mixin = TP_PROPERTIES_MIXIN (obj);
   TpPropertiesMixinClass *mixin_cls = TP_PROPERTIES_MIXIN_CLASS (
       G_OBJECT_GET_CLASS (obj));
   GPtrArray *prop_arr;
   GValue prop_list = { 0, };
-  guint i;
+  TpIntSetIter iter = TP_INTSET_ITER_INIT (props);
+  guint len = tp_intset_size (props);
 
-  if (props->len == 0)
+  if (len == 0)
     {
       return;
     }
 
-  prop_arr = g_ptr_array_sized_new (props->len);
+  prop_arr = g_ptr_array_sized_new (len);
 
   if (DEBUGGING)
     printf (TP_ANSI_BOLD_ON TP_ANSI_FG_WHITE
             "%s: emitting properties flags changed for propert%s:\n",
-            G_STRFUNC, (props->len > 1) ? "ies" : "y");
+            G_STRFUNC, (len > 1) ? "ies" : "y");
 
-  for (i = 0; i < props->len; i++)
+  while (tp_intset_iter_next (&iter))
     {
       GValue prop_val = { 0, };
-      guint prop_id = g_array_index (props, guint, i);
+      guint prop_id = iter.element;
       guint prop_flags;
 
       prop_flags = mixin->properties[prop_id].flags;

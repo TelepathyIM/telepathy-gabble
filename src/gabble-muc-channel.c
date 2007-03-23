@@ -329,7 +329,7 @@ properties_disco_cb (GabbleDisco *disco,
 {
   GabbleMucChannel *chan = user_data;
   GabbleMucChannelPrivate *priv;
-  GArray *changed_props_val, *changed_props_flags;
+  TpIntSet *changed_props_val, *changed_props_flags;
   LmMessageNode *lm_node;
   const gchar *str;
   GValue val = { 0, };
@@ -346,10 +346,8 @@ properties_disco_cb (GabbleDisco *disco,
 
   NODE_DEBUG (query_result, "disco query result");
 
-  changed_props_val = g_array_sized_new (FALSE, FALSE, sizeof (guint),
-      NUM_ROOM_PROPS);
-  changed_props_flags = g_array_sized_new (FALSE, FALSE, sizeof (guint),
-      NUM_ROOM_PROPS);
+  changed_props_val = tp_intset_sized_new (NUM_ROOM_PROPS);
+  changed_props_flags = tp_intset_sized_new (NUM_ROOM_PROPS);
 
   /*
    * Update room definition.
@@ -543,8 +541,8 @@ properties_disco_cb (GabbleDisco *disco,
    */
   tp_properties_mixin_emit_changed (G_OBJECT (chan), changed_props_val);
   tp_properties_mixin_emit_flags (G_OBJECT (chan), changed_props_flags);
-  g_array_free (changed_props_val, TRUE);
-  g_array_free (changed_props_flags, TRUE);
+  tp_intset_destroy (changed_props_val);
+  tp_intset_destroy (changed_props_flags);
 }
 
 static void
@@ -1380,7 +1378,7 @@ update_permissions (GabbleMucChannel *chan)
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
   TpChannelGroupFlags grp_flags_add, grp_flags_rem;
   TpPropertyFlags prop_flags_add, prop_flags_rem;
-  GArray *changed_props_val, *changed_props_flags;
+  TpIntSet *changed_props_val, *changed_props_flags;
 
   /*
    * Update group flags.
@@ -1409,10 +1407,8 @@ update_permissions (GabbleMucChannel *chan)
    * and own role and affiliation.
    */
 
-  changed_props_val = g_array_sized_new (FALSE, FALSE, sizeof (guint),
-      NUM_ROOM_PROPS);
-  changed_props_flags = g_array_sized_new (FALSE, FALSE, sizeof (guint),
-      NUM_ROOM_PROPS);
+  changed_props_val = tp_intset_sized_new (NUM_ROOM_PROPS);
+  changed_props_flags = tp_intset_sized_new (NUM_ROOM_PROPS);
 
   /*
    * Subject
@@ -1524,8 +1520,8 @@ update_permissions (GabbleMucChannel *chan)
    */
   tp_properties_mixin_emit_changed (G_OBJECT (chan), changed_props_val);
   tp_properties_mixin_emit_flags (G_OBJECT (chan), changed_props_flags);
-  g_array_free (changed_props_val, TRUE);
-  g_array_free (changed_props_flags, TRUE);
+  tp_intset_destroy (changed_props_val);
+  tp_intset_destroy (changed_props_flags);
 }
 
 /**
@@ -1763,7 +1759,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
 
   if (subj_node)
     {
-      GArray *changed_values, *changed_flags;
+      TpIntSet *changed_values, *changed_flags;
 
       if (priv->properties_ctx)
         {
@@ -1804,10 +1800,8 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
           return TRUE;
         }
 
-      changed_values = g_array_sized_new (FALSE, FALSE, sizeof (guint),
-          NUM_ROOM_PROPS);
-      changed_flags = g_array_sized_new (FALSE, FALSE, sizeof (guint),
-          NUM_ROOM_PROPS);
+      changed_values = tp_intset_sized_new (NUM_ROOM_PROPS);
+      changed_flags = tp_intset_sized_new (NUM_ROOM_PROPS);
 
       /* ROOM_PROP_SUBJECT */
       g_value_init (&val, G_TYPE_STRING);
@@ -1854,8 +1848,8 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
       /* Emit signals */
       tp_properties_mixin_emit_changed (G_OBJECT (chan), changed_values);
       tp_properties_mixin_emit_flags (G_OBJECT (chan), changed_flags);
-      g_array_free (changed_values, TRUE);
-      g_array_free (changed_flags, TRUE);
+      tp_intset_destroy (changed_values);
+      tp_intset_destroy (changed_flags);
 
       if (priv->properties_ctx)
         {
@@ -2192,7 +2186,7 @@ gabble_muc_channel_add_member (TpSvcChannelInterfaceGroup *obj, TpHandle handle,
       arr_members = tp_handle_set_to_array (mixin->members);
       if (arr_members->len > 0)
         {
-          tp_intset_add (set_members, g_array_index (arr_members, guint32, 0));
+          tp_intset_add (set_members, g_array_index (arr_members, guint, 0));
         }
       g_array_free (arr_members, TRUE);
 
@@ -2371,7 +2365,6 @@ gabble_muc_channel_do_set_properties (GObject *obj, TpPropertiesContext *ctx, GE
     }
 
   priv->properties_ctx = ctx;
-
   return TRUE;
 }
 

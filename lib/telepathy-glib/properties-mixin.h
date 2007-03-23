@@ -27,6 +27,7 @@
 #include <dbus/dbus-glib.h>
 
 #include <telepathy-glib/enums.h>
+#include <telepathy-glib/intset.h>
 #include <telepathy-glib/svc-properties-interface.h>
 #include <telepathy-glib/util.h>
 
@@ -142,11 +143,11 @@ void tp_properties_context_return (TpPropertiesContext *ctx, GError *error);
 gboolean tp_properties_context_return_if_done (TpPropertiesContext *ctx);
 
 void tp_properties_mixin_change_value (GObject *obj, guint prop_id,
-    const GValue *new_value, GArray *props);
+    const GValue *new_value, TpIntSet *props);
 void tp_properties_mixin_change_flags (GObject *obj, guint prop_id,
-    TpPropertyFlags add, TpPropertyFlags remove, GArray *props);
-void tp_properties_mixin_emit_changed (GObject *obj, const GArray *props);
-void tp_properties_mixin_emit_flags (GObject *obj, const GArray *props);
+    TpPropertyFlags add, TpPropertyFlags remove, TpIntSet *props);
+void tp_properties_mixin_emit_changed (GObject *obj, const TpIntSet *props);
+void tp_properties_mixin_emit_flags (GObject *obj, const TpIntSet *props);
 
 gboolean tp_properties_mixin_is_readable (GObject *obj, guint prop_id);
 gboolean tp_properties_mixin_is_writable (GObject *obj, guint prop_id);

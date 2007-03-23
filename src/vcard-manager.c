@@ -804,10 +804,12 @@ observe_vcard (GabbleConnection *conn,
 
   if (!tp_strdiff (alias, old_alias))
     {
+#ifdef ENABLE_DEBUG
       if (alias != NULL)
         DEBUG ("no change to vCard alias \"%s\" for handle %u", alias, handle);
       else
         DEBUG ("still no vCard alias for handle %u", handle);
+#endif
 
       g_free (alias);
       return;

@@ -497,7 +497,7 @@ tp_properties_context_has_other_than (TpPropertiesContext *ctx, guint property)
 /**
  * tp_properties_context_get:
  * @ctx: the properties context representing a SetProperties call
- * @property: FIXME
+ * @property: a property ID
  *
  * Returns: the value to be set on the server for the property @property
  * in @ctx (whether it has been set already or not)
@@ -516,7 +516,7 @@ tp_properties_context_get (TpPropertiesContext *ctx, guint property)
  * @ctx: the properties context representing a SetProperties call
  *
  * Returns: the number of properties in @ctx which still need to be set on
- *          the server
+ *          the server, or have already been set
  */
 guint
 tp_properties_context_get_value_count (TpPropertiesContext *ctx)

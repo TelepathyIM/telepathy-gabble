@@ -1063,6 +1063,7 @@ tp_group_mixin_iface_init
 <TITLE>TpIntSet</TITLE>
 TpIntSet
 TpIntFunc
+tp_intset_sized_new
 tp_intset_new
 tp_intset_destroy
 tp_intset_clear
@@ -1080,6 +1081,9 @@ tp_intset_union
 tp_intset_difference
 tp_intset_symmetric_difference
 tp_intset_dump
+TP_INTSET_ITER_INIT
+TpIntSetIter
+tp_intset_iter_next
 </SECTION>
 
 <SECTION>

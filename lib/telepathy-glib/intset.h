@@ -25,10 +25,24 @@
 
 #include <glib-object.h>
 
+/**
+ * TpIntSet:
+ *
+ * Opaque type representing a set of unsigned integers.
+ */
 typedef struct _TpIntSet TpIntSet;
+
+/**
+ * TpIntFunc:
+ * @i: The relevant integer
+ * @userdata: Opaque user data
+ *
+ * A callback function acting on unsigned integers.
+ */
 typedef void (*TpIntFunc) (guint i, gpointer userdata);
 
 TpIntSet *tp_intset_new (void);
+TpIntSet *tp_intset_sized_new (guint size);
 void tp_intset_destroy (TpIntSet *set);
 void tp_intset_clear (TpIntSet *set);
 
@@ -51,5 +65,72 @@ TpIntSet *tp_intset_difference (const TpIntSet *left, const TpIntSet *right);
 TpIntSet *tp_intset_symmetric_difference (const TpIntSet *left, const TpIntSet *right);
 
 gchar *tp_intset_dump (const TpIntSet *set);
+
+typedef struct _TpIntSetIter TpIntSetIter;
+
+/**
+ * TpIntSetIter:
+ * @set: The set iterated over.
+ * @element: Must be (guint)(-1) before iteration starts. Set to the next
+ *  element in the set by tp_intset_iter_next(); undefined after
+ *  tp_intset_iter_next() returns %FALSE.
+ *
+ * A structure representing iteration over a set of integers. Must be
+ * initialized with either TP_INTSET_ITER_INIT() or tp_intset_iter_init().
+ */
+struct _TpIntSetIter
+{
+    const TpIntSet *set;
+    guint element;
+};
+
+/**
+ * TP_INTSET_ITER_INIT:
+ * @set: A set of integers
+ *
+ * A suitable static initializer for a #TpIntSetIter, to be used as follows:
+ *
+ * <informalexample><programlisting>
+ * void
+ * do_something (const TpIntSet *intset)
+ * {
+ *   TpIntSetIter iter = TP_INTSET_ITER_INIT (intset);
+ *   &#2f;* ... do something with iter ... *&#2f;
+ * }
+ * </programlisting></informalexample>
+ */
+#define TP_INTSET_ITER_INIT(set) { (set), (guint)(-1) }
+
+/**
+ * tp_intset_iter_init:
+ * @iter: An integer set iterator to be initialized.
+ * @set: An integer set to be used by that iterator
+ *
+ * Reset the iterator @iter to the beginning and make it iterate over @set.
+ */
+static inline void
+tp_intset_iter_init (TpIntSetIter *iter, const TpIntSet *set)
+{
+  g_return_if_fail (iter != NULL);
+  iter->set = set;
+  iter->element = (guint)(-1);
+}
+
+/**
+ * tp_intset_iter_init:
+ * @iter: An integer set iterator to be reset.
+ *
+ * Reset the iterator @iter to the beginning. It must already be associated
+ * with a set.
+ */
+static inline void
+tp_intset_iter_reset (TpIntSetIter *iter)
+{
+  g_return_if_fail (iter != NULL);
+  g_return_if_fail (iter->set != NULL);
+  iter->element = (guint)(-1);
+}
+
+gboolean tp_intset_iter_next (TpIntSetIter *iter);
 
 #endif /*__TP_INTSET_H__*/

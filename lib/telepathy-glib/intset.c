@@ -21,6 +21,16 @@
  *
  */
 
+/**
+ * SECTION:intset
+ * @title: TpIntSet
+ * @short_description: a set of unsigned integers
+ * @see_also: #TpHandleSet
+ *
+ * A #TpIntSet is a set of unsigned integers, implemented as a
+ * dynamically-allocated bitfield.
+ */
+
 #include <telepathy-glib/intset.h>
 
 #include <string.h>
@@ -45,6 +55,38 @@ _tp_intset_new_with_size (guint size)
   return set;
 }
 
+/**
+ * tp_intset_sized_new:
+ * @size: 1 more than the largest integer you expect to store
+ *
+ * Allocate an integer set just large enough to store the given number of bits,
+ * rounded up as necessary.
+ *
+ * The set will still expand automatically if you store larger integers;
+ * this is just an optimization to avoid wasting memory (if the set is too
+ * large) or time (if the set is too small and needs reallocation).
+ *
+ * Returns: a new, empty integer set to be destroyed with tp_intset_destroy()
+ */
+TpIntSet *
+tp_intset_sized_new (guint size)
+{
+  /* convert from a size in bits to a size in 32-bit words */
+  if (G_UNLIKELY (size == 0))
+    size = 1;
+  else
+    size = ((size - 1) >> 5) + 1;
+
+  return _tp_intset_new_with_size (size);
+}
+
+/**
+ * tp_intset_new:
+ *
+ * Allocate a new integer set with a default memory allocation.
+ *
+ * Returns: a new, empty integer set to be destroyed with tp_intset_destroy()
+ */
 TpIntSet *
 tp_intset_new ()
 {
@@ -55,7 +97,7 @@ tp_intset_new ()
  * tp_intset_destroy:
  * @set: set
  *
- * delete the set
+ * Free all memory used by the set.
  */
 void
 tp_intset_destroy (TpIntSet *set)
@@ -85,7 +127,7 @@ tp_intset_clear (TpIntSet *set)
  * @set: set
  * @element: integer to add
  *
- * Add an integer into a TpIntSet
+ * Add an integer into a TpIntSet.
  */
 void
 tp_intset_add (TpIntSet *set, guint element)
@@ -114,7 +156,8 @@ tp_intset_add (TpIntSet *set, guint element)
  * @element: integer to add
  *
  * Remove an integer from a TpIntSet
- * Returns: TRUE if element was in set
+ *
+ * Returns: %TRUE if @element was previously in @set
  */
 gboolean
 tp_intset_remove (TpIntSet *set, guint element)
@@ -137,26 +180,33 @@ tp_intset_remove (TpIntSet *set, guint element)
     }
 }
 
+static inline gboolean
+_tp_intset_is_member (const TpIntSet *set, guint element)
+{
+  guint offset;
+
+  offset = element >> 5;
+  if (offset >= set->size)
+    return FALSE;
+  else
+    return (set->bits[offset] & (1 << (element & 0x1f))) != 0;
+}
+
 /**
  * tp_intset_is_member:
  * @set: set
  * @element: integer to test
  *
  * Tests if @element is a member of @set
- * Returns: TRUE if element was in set
+ *
+ * Returns: %TRUE if @element is in @set
  */
 gboolean
 tp_intset_is_member (const TpIntSet *set, guint element)
 {
-  guint offset;
-
   g_return_val_if_fail (set != NULL, FALSE);
 
-  offset = element >> 5;
-  if (offset >= set->size)
-    return FALSE;
-  else
-    return (set->bits[offset] & (1 << (element & 0x1f)));
+  return _tp_intset_is_member (set, element);
 }
 
 /**
@@ -165,7 +215,7 @@ tp_intset_is_member (const TpIntSet *set, guint element)
  * @func: @TpIntFunc to use to iterate the set
  * @userdata: user data to pass to each call of @func
  *
- * Iterates every member of the set calling @func
+ * Call @func(element, @userdata) for each element of @set.
  */
 
 void
@@ -199,8 +249,10 @@ addint (guint32 i, gpointer data)
  * tp_intset_to_array:
  * @set: set to convert
  *
- * Convert a TpIntSet to an array, which must be freed with g_array_free by
- * the caller.
+ * FIXME: guint32?!
+ *
+ * Returns: a GArray of guint32 (which must be freed by the caller) containing
+ * the same integers as @set.
  */
 GArray *
 tp_intset_to_array (TpIntSet *set)
@@ -215,6 +267,16 @@ tp_intset_to_array (TpIntSet *set)
 
   return array;
 }
+
+
+/**
+ * tp_intset_from_array:
+ * @array: An array of guint32
+ *
+ * FIXME: guint32?!
+ *
+ * Returns: A set containing the same integers as @array.
+ */
 
 TpIntSet *
 tp_intset_from_array (GArray *array)
@@ -243,6 +305,14 @@ tp_intset_from_array (GArray *array)
   return set;
 }
 
+
+/**
+ * tp_intset_size:
+ * @set: A set of integers
+ *
+ * Returns: The number of integers in @set
+ */
+
 guint
 tp_intset_size (const TpIntSet *set)
 {
@@ -260,6 +330,15 @@ tp_intset_size (const TpIntSet *set)
 
   return count;
 }
+
+
+/**
+ * tp_intset_is_equal:
+ * @left: A set of integers
+ * @right: A set of integers
+ *
+ * Returns: %TRUE if @left and @right contain the same bits
+ */
 
 gboolean
 tp_intset_is_equal (const TpIntSet *left, const TpIntSet *right)
@@ -296,6 +375,15 @@ tp_intset_is_equal (const TpIntSet *left, const TpIntSet *right)
   return TRUE;
 }
 
+
+/**
+ * tp_intset_copy:
+ * @orig: A set of integers
+ *
+ * Returns: A set containing the same integers as @orig, to be freed with
+ * tp_intset_destroy() by the caller
+ */
+
 TpIntSet *
 tp_intset_copy (const TpIntSet *orig)
 {
@@ -308,6 +396,17 @@ tp_intset_copy (const TpIntSet *orig)
 
   return ret;
 }
+
+
+/**
+ * tp_intset_intersection:
+ * @left: The left operand
+ * @right: The right operand
+ *
+ * Returns: The set of those integers which are in both @left and @right
+ * (analogous to the bitwise operation left & right), to be freed with
+ * tp_intset_destroy() by the caller
+ */
 
 TpIntSet *
 tp_intset_intersection (const TpIntSet *left, const TpIntSet *right)
@@ -340,6 +439,17 @@ tp_intset_intersection (const TpIntSet *left, const TpIntSet *right)
   return ret;
 }
 
+
+/**
+ * tp_intset_union:
+ * @left: The left operand
+ * @right: The right operand
+ *
+ * Returns: The set of those integers which are in either @left or @right
+ * (analogous to the bitwise operation left | right), to be freed with
+ * tp_intset_destroy() by the caller
+ */
+
 TpIntSet *
 tp_intset_union (const TpIntSet *left, const TpIntSet *right)
 {
@@ -371,6 +481,17 @@ tp_intset_union (const TpIntSet *left, const TpIntSet *right)
   return ret;
 }
 
+
+/**
+ * tp_intset_difference:
+ * @left: The left operand
+ * @right: The right operand
+ *
+ * Returns: The set of those integers which are in @left and not in @right
+ * (analogous to the bitwise operation left & (~right)), to be freed with
+ * tp_intset_destroy() by the caller
+ */
+
 TpIntSet *
 tp_intset_difference (const TpIntSet *left, const TpIntSet *right)
 {
@@ -389,6 +510,17 @@ tp_intset_difference (const TpIntSet *left, const TpIntSet *right)
 
   return ret;
 }
+
+
+/**
+ * tp_intset_symmetric_difference:
+ * @left: The left operand
+ * @right: The right operand
+ *
+ * Returns: The set of those integers which are in either @left or @right
+ * but not both (analogous to the bitwise operation left ^ right), to be freed
+ * with tp_intset_destroy() by the caller
+ */
 
 TpIntSet *
 tp_intset_symmetric_difference (const TpIntSet *left, const TpIntSet *right)
@@ -432,6 +564,13 @@ _dump_foreach (guint i, gpointer data)
     g_string_append_printf (tmp, " %d", i);
 }
 
+/**
+ * tp_intset_dump:
+ * @set: An integer set
+ *
+ * Returns: a string which the caller must free with g_free, listing the
+ * numbers in @set in a human-readable format
+ */
 gchar *
 tp_intset_dump (const TpIntSet *set)
 {
@@ -439,4 +578,51 @@ tp_intset_dump (const TpIntSet *set)
 
   tp_intset_foreach (set, _dump_foreach, tmp);
   return g_string_free (tmp, FALSE);
+}
+
+/**
+ * tp_intset_iter_next:
+ * @iter: An iterator originally initialized with TP_INT_SET_INITIALIZER(set)
+ *
+ * If there are integers in (@iter->set) higher than (@iter->element), set
+ * (iter->element) to the next one and return %TRUE. Otherwise return %FALSE.
+ *
+ * Usage:
+ *
+ * <informalexample><programlisting>
+ * TpIntSetIter iter = TP_INT_SET_INIT (intset);
+ * while (tp_intset_iter_next (&iter))
+ * {
+ *   printf ("%u is in the intset\n", iter.element);
+ * }
+ * </programlisting></informalexample>
+ *
+ * Returns: %TRUE if (@iter->element) has been advanced
+ */
+gboolean
+tp_intset_iter_next (TpIntSetIter *iter)
+{
+  g_return_val_if_fail (iter != NULL, FALSE);
+  g_return_val_if_fail (iter->set != NULL, FALSE);
+
+  do
+    {
+      if (iter->element == (guint)(-1))
+        {
+          /* only just started */
+          iter->element = 0;
+        }
+      else
+        {
+          ++iter->element;
+        }
+
+      if (_tp_intset_is_member (iter->set, iter->element))
+        {
+          return TRUE;
+        }
+    }
+  while (iter->element < (iter->set->size << 5)
+         && iter->element != (guint)(-1));
+  return FALSE;
 }

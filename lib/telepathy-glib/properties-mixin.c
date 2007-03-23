@@ -461,17 +461,15 @@ tp_properties_mixin_has_property (GObject *obj, const gchar *name,
  * @ctx: the properties context representing a SetProperties call
  * @property: the property ID
  *
- * Returns: %TRUE if @ctx indicates that @property needs to be set on the
- * server, or has already been set in this batch
- *
- * FIXME: bad semantics: should look in remaining instead
+ * Returns: %TRUE if @ctx indicates that @property still needs to be set on
+ * the server.
  */
 gboolean
 tp_properties_context_has (TpPropertiesContext *ctx, guint property)
 {
   g_assert (property < ctx->mixin_cls->num_props);
 
-  return (ctx->values[property] != NULL);
+  return (tp_intset_has_member (ctx->remaining, property));
 }
 
 

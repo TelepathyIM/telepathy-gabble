@@ -187,6 +187,12 @@ tp_handle_set_size (TpHandleSet *set)
   return tp_intset_size (set->intset);
 }
 
+/**
+ * tp_handle_set_to_array:
+ * @set: A handle set
+ *
+ * Returns: a GArray of guint representing the handles in the set
+ */
 GArray *
 tp_handle_set_to_array (TpHandleSet *set)
 {

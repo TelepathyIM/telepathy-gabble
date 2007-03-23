@@ -809,7 +809,7 @@ member_array_to_string (TpHandleRepoIface *repo,
       TpHandle handle;
       const gchar *handle_str;
 
-      handle = g_array_index (array, guint32, i);
+      handle = g_array_index (array, guint, i);
       handle_str = tp_handle_inspect (repo, handle);
 
       g_string_append_printf (str, "%s%u (%s)",
@@ -1065,7 +1065,7 @@ remove_handle_owners_if_exist (TpSvcChannelInterfaceGroup *obj, GArray *array)
 
   for (i = 0; i < array->len; i++)
     {
-      TpHandle handle = g_array_index (array, guint32, i);
+      TpHandle handle = g_array_index (array, guint, i);
       gpointer local_handle, owner_handle;
 
       if (g_hash_table_lookup_extended (priv->handle_owners,

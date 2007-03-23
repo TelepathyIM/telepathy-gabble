@@ -2415,6 +2415,13 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
                                   "type", "submit",
                                   NULL);
 
+  /* we assume that the number of props will fit in a guint on all supported
+   * platforms, so fail at compile time if this is no longer the case
+   */
+#if NUM_ROOM_PROPS > 32
+#error GabbleMUCChannel request_config_form_reply_cb needs porting to TpIntSet
+#endif
+
   props_left = 0;
   for (i = 0; i < NUM_ROOM_PROPS; i++)
     {

@@ -121,8 +121,6 @@ tp_handles_are_valid (TpHandleRepoIface *self,
  * Increase the reference count of the given handle, if present in the
  * repository. For repository implementations which never free handles
  * (like #TpStaticHandleRepo) this has no effect.
- *
- * Returns: %TRUE if the handle is present in the repository, else %FALSE
  */
 
 void

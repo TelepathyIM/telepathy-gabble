@@ -343,8 +343,8 @@ properties_disco_cb (GabbleDisco *disco,
 
   NODE_DEBUG (query_result, "disco query result");
 
-  changed_props_val = tp_intset_sized_new (NUM_ROOM_PROPS);
-  changed_props_flags = tp_intset_sized_new (NUM_ROOM_PROPS);
+  changed_props_val = changed_props_flags = NULL;
+
 
   /*
    * Update room definition.
@@ -2238,7 +2238,8 @@ gabble_muc_channel_add_member (TpSvcChannelInterfaceGroup *obj, TpHandle handle,
       lm_message_node_add_child (invite_node, "reason", message);
     }
 
-  NODE_DEBUG (msg->node, "sending MUC invitation");
+  DEBUG ("sending MUC invitation for room %s to contact %u (%s) with reason "
+      "\"%s\"", priv->jid, handle, jid, message);
 
   result = _gabble_connection_send (priv->conn, msg, error);
   lm_message_unref (msg);
@@ -2297,7 +2298,8 @@ gabble_muc_channel_remove_member (TpSvcChannelInterfaceGroup *obj, TpHandle hand
       lm_message_node_add_child (item_node, "reason", message);
     }
 
-  NODE_DEBUG (msg->node, "sending MUC kick request");
+  DEBUG ("sending MUC kick request for contact %u (%s) to room %s with reason "
+      "\"%s\"", handle, jid, priv->jid, message);
 
   result = _gabble_connection_send_with_reply (priv->conn, msg,
                                                kick_request_reply_cb,

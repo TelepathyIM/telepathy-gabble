@@ -83,8 +83,8 @@ struct _TpHandleRepoIfaceClass {
     gboolean (*handles_are_valid) (TpHandleRepoIface *self, const GArray *handles,
         gboolean allow_zero, GError **error);
 
-    gboolean (*ref_handle) (TpHandleRepoIface *self, TpHandle handle);
-    gboolean (*unref_handle) (TpHandleRepoIface *self, TpHandle handle);
+    void (*ref_handle) (TpHandleRepoIface *self, TpHandle handle);
+    void (*unref_handle) (TpHandleRepoIface *self, TpHandle handle);
     gboolean (*client_hold_handle) (TpHandleRepoIface *self,
         const gchar *client, TpHandle handle, GError **error);
     gboolean (*client_release_handle) (TpHandleRepoIface *self,
@@ -111,8 +111,8 @@ gboolean tp_handle_is_valid (TpHandleRepoIface *self,
 gboolean tp_handles_are_valid (TpHandleRepoIface *self,
     const GArray *handles, gboolean allow_zero, GError **error);
 
-gboolean tp_handle_ref (TpHandleRepoIface *self, TpHandle handle);
-gboolean tp_handle_unref (TpHandleRepoIface *self, TpHandle handle);
+void tp_handle_ref (TpHandleRepoIface *self, TpHandle handle);
+void tp_handle_unref (TpHandleRepoIface *self, TpHandle handle);
 
 gboolean tp_handle_client_hold (TpHandleRepoIface *self,
     const gchar *client, TpHandle handle, GError **error);
@@ -126,7 +126,7 @@ TpHandle tp_handle_lookup (TpHandleRepoIface *self,
 TpHandle tp_handle_ensure (TpHandleRepoIface *self,
     const gchar *id, gpointer context, GError **error);
 
-gboolean tp_handle_set_qdata (TpHandleRepoIface *repo, TpHandle handle,
+void tp_handle_set_qdata (TpHandleRepoIface *repo, TpHandle handle,
     GQuark key_id, gpointer data, GDestroyNotify destroy);
 gpointer tp_handle_get_qdata (TpHandleRepoIface *repo, TpHandle handle,
     GQuark key_id);

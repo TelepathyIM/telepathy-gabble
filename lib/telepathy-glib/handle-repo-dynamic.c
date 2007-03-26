@@ -490,14 +490,13 @@ dynamic_handles_are_valid (TpHandleRepoIface *irepo, const GArray *handles,
   return TRUE;
 }
 
-static gboolean
+static void
 dynamic_unref_handle (TpHandleRepoIface *repo, TpHandle handle)
 {
   TpDynamicHandleRepo *self = TP_DYNAMIC_HANDLE_REPO (repo);
   TpHandlePriv *priv = handle_priv_lookup (self, handle);
 
-  if (priv == NULL)
-    return FALSE;
+  g_return_if_fail (priv != NULL);
 
   HANDLE_LEAK_DEBUG_DO (priv->traces, repo, handle, HL_UNREFFED)
 
@@ -507,24 +506,19 @@ dynamic_unref_handle (TpHandleRepoIface *repo, TpHandle handle)
 
   if (priv->refcount == 0)
     handle_priv_remove (self, handle);
-
-  return TRUE;
 }
 
-static gboolean
+static void
 dynamic_ref_handle (TpHandleRepoIface *repo, TpHandle handle)
 {
   TpHandlePriv *priv = handle_priv_lookup (TP_DYNAMIC_HANDLE_REPO (repo),
       handle);
 
-  if (priv == NULL)
-    return FALSE;
+  g_return_if_fail (priv != NULL);
 
   priv->refcount++;
 
   HANDLE_LEAK_DEBUG_DO (priv->traces, repo, handle, HL_REFFED)
-
-  return TRUE;
 }
 
 static gboolean

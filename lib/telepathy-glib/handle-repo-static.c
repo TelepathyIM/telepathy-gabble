@@ -203,11 +203,10 @@ static_handles_are_valid (TpHandleRepoIface *irepo, const GArray *handles,
   return TRUE;
 }
 
-static gboolean
+static void
 static_ref_or_unref_handle (TpHandleRepoIface *self, TpHandle handle)
 {
   /* nothing to do, handles in this repo are permanent */
-  return TRUE;
 }
 
 static gboolean

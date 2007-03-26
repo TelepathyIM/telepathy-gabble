@@ -125,12 +125,11 @@ tp_handles_are_valid (TpHandleRepoIface *self,
  * Returns: %TRUE if the handle is present in the repository, else %FALSE
  */
 
-gboolean
+void
 tp_handle_ref (TpHandleRepoIface *self,
-    TpHandle handle)
+               TpHandle handle)
 {
-  return TP_HANDLE_REPO_IFACE_GET_CLASS (self)->ref_handle (self,
-      handle);
+  TP_HANDLE_REPO_IFACE_GET_CLASS (self)->ref_handle (self, handle);
 }
 
 
@@ -144,16 +143,13 @@ tp_handle_ref (TpHandleRepoIface *self,
  *
  * For repository implementations which never free handles (like
  * #TpStaticHandleRepo) this has no effect.
- *
- * Returns: %TRUE if the handle is present in the repository, else %FALSE
  */
 
-gboolean
+void
 tp_handle_unref (TpHandleRepoIface *self,
-    TpHandle handle)
+                 TpHandle handle)
 {
-  return TP_HANDLE_REPO_IFACE_GET_CLASS (self)->unref_handle (self,
-      handle);
+  TP_HANDLE_REPO_IFACE_GET_CLASS (self)->unref_handle (self, handle);
 }
 
 
@@ -296,17 +292,17 @@ tp_handle_lookup (TpHandleRepoIface *self,
  *
  * Inspecting the return value from this function is deprecated; it will
  * be declared void in a future release.
- *
- * Returns: %TRUE
  */
 
-gboolean
-tp_handle_set_qdata (TpHandleRepoIface *repo, TpHandle handle,
-                     GQuark key_id, gpointer data, GDestroyNotify destroy)
+void
+tp_handle_set_qdata (TpHandleRepoIface *repo,
+                     TpHandle handle,
+                     GQuark key_id,
+                     gpointer data,
+                     GDestroyNotify destroy)
 {
   TP_HANDLE_REPO_IFACE_GET_CLASS (repo)->set_qdata (repo,
       handle, key_id, data, destroy);
-  return TRUE;
 }
 
 /**

@@ -1,6 +1,8 @@
 tpgincludedir=$(includedir)/telepathy-1.0/telepathy-glib
 genincludedir=$(tpgincludedir)/_gen
 
+EXTRA_DIST = extra-gtkdoc.h
+
 # This is a derived file but must be checked-in to Darcs anyway,
 # for bootstrapping.
 spec-gen.am: Makefile.am ../spec/all.xml $(SPEC_INTERFACE_XMLS) \

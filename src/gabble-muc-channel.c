@@ -245,7 +245,6 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   DBusGConnection *bus;
   TpHandleRepoIface *room_handles, *contact_handles;
   TpHandle self_handle;
-  gboolean valid;
 
   obj = G_OBJECT_CLASS (gabble_muc_channel_parent_class)->
            constructor (type, n_props, props);

@@ -294,15 +294,19 @@ tp_handle_lookup (TpHandleRepoIface *self,
  *
  * If @destroy is set, then the data is freed when the handle is freed.
  *
- * Returns: %TRUE on success, %FALSE if the handle does not exist
+ * Inspecting the return value from this function is deprecated; it will
+ * be declared void in a future release.
+ *
+ * Returns: %TRUE
  */
 
 gboolean
 tp_handle_set_qdata (TpHandleRepoIface *repo, TpHandle handle,
                      GQuark key_id, gpointer data, GDestroyNotify destroy)
 {
-  return TP_HANDLE_REPO_IFACE_GET_CLASS (repo)->set_qdata (repo,
+  TP_HANDLE_REPO_IFACE_GET_CLASS (repo)->set_qdata (repo,
       handle, key_id, data, destroy);
+  return TRUE;
 }
 
 /**
@@ -311,9 +315,8 @@ tp_handle_set_qdata (TpHandleRepoIface *repo, TpHandle handle,
  * @handle: A handle to get data from
  * @key_id: Key id of data to fetch
  *
- * Gets the data associated with a given key on a given handle
- *
- * Returns: %TRUE on success, %FALSE if the handle does not exist
+ * Returns: the data associated with a given key on a given handle; %NULL
+ * if there is no associated data.
  */
 gpointer
 tp_handle_get_qdata (TpHandleRepoIface *repo, TpHandle handle,

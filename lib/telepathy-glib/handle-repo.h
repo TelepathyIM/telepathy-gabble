@@ -96,7 +96,7 @@ struct _TpHandleRepoIfaceClass {
     TpHandle (*lookup_handle) (TpHandleRepoIface *self, const char *id,
         gpointer context, GError **error);
 
-    gboolean (*set_qdata) (TpHandleRepoIface *repo, TpHandle handle,
+    void (*set_qdata) (TpHandleRepoIface *repo, TpHandle handle,
         GQuark key_id, gpointer data, GDestroyNotify destroy);
     gpointer (*get_qdata) (TpHandleRepoIface *repo, TpHandle handle,
         GQuark key_id);

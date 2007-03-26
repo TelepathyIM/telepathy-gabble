@@ -252,15 +252,15 @@ static_lookup_handle (TpHandleRepoIface *irepo,
 }
 
 
-static gboolean
+static void
 static_set_qdata (TpHandleRepoIface *repo, TpHandle handle,
     GQuark key_id, gpointer data, GDestroyNotify destroy)
 {
   TpStaticHandleRepo *self = TP_STATIC_HANDLE_REPO (repo);
   guint i;
 
-  if (handle <= 0 || handle > self->last_handle)
-    return FALSE;
+  g_return_if_fail (handle > 0);
+  g_return_if_fail (handle <= self->last_handle);
 
   if (!self->datalists)
     {
@@ -273,8 +273,6 @@ static_set_qdata (TpHandleRepoIface *repo, TpHandle handle,
 
   g_datalist_id_set_data_full (self->datalists + handle - 1, key_id, data,
       destroy);
-
-  return FALSE;
 }
 
 static gpointer
@@ -283,9 +281,11 @@ static_get_qdata (TpHandleRepoIface *repo, TpHandle handle,
 {
   TpStaticHandleRepo *self = TP_STATIC_HANDLE_REPO (repo);
 
-  if (handle <= 0 || handle > self->last_handle)
-    return NULL;
+  g_return_val_if_fail (handle > 0, NULL);
+  g_return_val_if_fail (handle <= self->last_handle, NULL);
 
+  /* if we have no datalists that's not a bug - it means nobody has called
+   * static_set_qdata yet */
   if (!self->datalists)
     return NULL;
 

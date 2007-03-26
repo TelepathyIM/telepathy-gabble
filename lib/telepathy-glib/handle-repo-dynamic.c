@@ -726,16 +726,16 @@ dynamic_ensure_handle (TpHandleRepoIface *irepo,
 }
 
 
-static gboolean
+static void
 dynamic_set_qdata (TpHandleRepoIface *repo, TpHandle handle,
     GQuark key_id, gpointer data, GDestroyNotify destroy)
 {
   TpDynamicHandleRepo *self = TP_DYNAMIC_HANDLE_REPO (repo);
   TpHandlePriv *priv = handle_priv_lookup (self, handle);
-  if (priv == NULL)
-    return FALSE;
+
+  g_return_if_fail (((void)"invalid handle", priv != NULL));
+
   g_datalist_id_set_data_full (&priv->datalist, key_id, data, destroy);
-  return TRUE;
 }
 
 static gpointer
@@ -744,8 +744,9 @@ dynamic_get_qdata (TpHandleRepoIface *repo, TpHandle handle,
 {
   TpDynamicHandleRepo *self = TP_DYNAMIC_HANDLE_REPO (repo);
   TpHandlePriv *priv = handle_priv_lookup (self, handle);
-  if (priv == NULL)
-    return NULL;
+
+  g_return_val_if_fail (((void)"invalid handle", priv != NULL), NULL);
+
   return g_datalist_id_get_data (&priv->datalist, key_id);
 }
 

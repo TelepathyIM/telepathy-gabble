@@ -68,25 +68,25 @@ void test_handles (guint handle_type)
       g_assert (tp_handle_client_hold (tp_repo, "TestSuite", handle, NULL) == TRUE);
 
       /* Now unref it */
-      g_assert (tp_handle_unref (tp_repo, handle) == TRUE);
+      tp_handle_unref (tp_repo, handle);
 
       /* Validate it, should be all healthy because client holds it still */
       g_assert (tp_handle_is_valid (tp_repo, handle, NULL) == TRUE);
 
       /* Ref it again */
-      g_assert (tp_handle_ref (tp_repo, handle) == TRUE);
+      tp_handle_ref (tp_repo, handle);
 
       /* Client releases it */
       g_assert (tp_handle_client_release (tp_repo, "TestSuite", handle, NULL) == TRUE);
     }
 
   /* Now unref it */
-  g_assert (tp_handle_unref (tp_repo, handle) == TRUE);
+  tp_handle_unref (tp_repo, handle);
 
   if (handle_type != TP_HANDLE_TYPE_LIST)
     {
       /* Try to unref it again, should fail */
-      g_assert (tp_handle_unref (tp_repo, handle) == FALSE);
+      g_assert (tp_handle_is_valid (tp_repo, handle, NULL) == FALSE);
     }
 
   for (i = 0; i < NUM_TP_HANDLE_TYPES; i++)

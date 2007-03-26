@@ -195,12 +195,11 @@ gabble_text_mixin_parse_incoming_message (LmMessage *message,
                         const gchar **from,
                         time_t *stamp,
                         TpChannelTextMessageType *msgtype,
-                        const gchar **body,
-                        const gchar **body_offset,
+                        const gchar **body_ret,
                         gint *state,
                         TpChannelTextSendError *send_error)
 {
-  const gchar *type;
+  const gchar *type, *body;
   LmMessageNode *node;
 
   *send_error = TP_CHANNEL_SEND_NO_ERROR;
@@ -297,11 +296,11 @@ gabble_text_mixin_parse_incoming_message (LmMessage *message,
 
   if (node)
     {
-      *body = lm_message_node_get_value (node);
+      body = lm_message_node_get_value (node);
     }
   else
     {
-      *body = NULL;
+      body = NULL;
     }
 
   /* Messages starting with /me are ACTION messages, and the /me should be
@@ -311,20 +310,20 @@ gabble_text_mixin_parse_incoming_message (LmMessage *message,
    * all other cases. */
 
   *msgtype = TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE;
-  *body_offset = *body;
+  *body_ret = body;
 
-  if (*body)
+  if (body != NULL)
     {
-      if (0 == strncmp (*body, "/me ", 4))
+      if (0 == strncmp (body, "/me ", 4))
         {
           *msgtype = TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION;
-          *body_offset = *body + 4;
+          *body_ret = body + 4;
         }
       else if (type != NULL && (0 == strcmp (type, "chat") ||
                                 0 == strcmp (type, "groupchat")))
         {
           *msgtype = TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL;
-          *body_offset = *body;
+          *body_ret = body;
         }
     }
 
@@ -339,7 +338,6 @@ gabble_text_mixin_parse_incoming_message (LmMessage *message,
       *state = TP_CHANNEL_CHAT_STATE_ACTIVE;
       return TRUE;
     }
-
 
   node = lm_message_node_get_child_with_namespace  (message->node, "composing",
       NS_CHAT_STATES);

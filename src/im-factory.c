@@ -202,7 +202,7 @@ im_factory_message_cb (LmMessageHandler *handler,
   TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
-  const gchar *from, *body, *body_offset;
+  const gchar *from, *body;
   time_t stamp;
   TpChannelTextMessageType msgtype;
   TpHandle handle;
@@ -210,7 +210,8 @@ im_factory_message_cb (LmMessageHandler *handler,
   gint state;
   TpChannelTextSendError send_error;
 
-  if (!gabble_text_mixin_parse_incoming_message (message, &from, &stamp, &msgtype, &body, &body_offset, &state, &send_error))
+  if (!gabble_text_mixin_parse_incoming_message (message, &from, &stamp,
+        &msgtype, &body, &state, &send_error))
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
   if (body == NULL && state == -1)
@@ -227,7 +228,7 @@ im_factory_message_cb (LmMessageHandler *handler,
     }
 
   DEBUG ("message from %s (handle %u), msgtype %d, body:\n%s",
-         from, handle, msgtype, body_offset);
+         from, handle, msgtype, body);
 
   chan = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (handle));
 
@@ -253,7 +254,7 @@ im_factory_message_cb (LmMessageHandler *handler,
   if (send_error != TP_CHANNEL_SEND_NO_ERROR)
     {
       tp_svc_channel_type_text_emit_send_error ((TpSvcChannelTypeText *)chan,
-          send_error, stamp, msgtype, body_offset);
+          send_error, stamp, msgtype, body);
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 
@@ -261,7 +262,7 @@ im_factory_message_cb (LmMessageHandler *handler,
     _gabble_im_channel_state_receive (chan, state);
 
   if (body != NULL && _gabble_im_channel_receive (chan, msgtype, handle, from,
-                                  stamp, body_offset))
+                                  stamp, body))
     {
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }

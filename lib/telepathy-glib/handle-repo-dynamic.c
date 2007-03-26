@@ -593,7 +593,7 @@ dynamic_client_release_handle (TpHandleRepoIface *repo,
 
   if (!handle_set)
     {
-      g_critical ("%s: no handle set found for the given client %s",
+      g_debug ("%s: no handle set found for the given client %s",
           G_STRFUNC, client_name);
       g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
           "the given client %s wasn't holding any handles", client_name);
@@ -602,7 +602,7 @@ dynamic_client_release_handle (TpHandleRepoIface *repo,
 
   if (!tp_handle_set_remove (handle_set, handle))
     {
-      g_critical ("%s: the client %s wasn't holding the handle %u", G_STRFUNC,
+      g_debug ("%s: the client %s wasn't holding the handle %u", G_STRFUNC,
           client_name, handle);
       g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
           "the given client %s wasn't holding the handle %u", client_name,

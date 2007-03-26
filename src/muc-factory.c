@@ -668,27 +668,22 @@ muc_factory_message_cb (LmMessageHandler *handler,
 
   if (send_error != TP_CHANNEL_SEND_NO_ERROR)
     {
-      tp_svc_channel_type_text_emit_send_error (
-          (TpSvcChannelTypeText *)chan, send_error, stamp, msgtype,
-          body);
-      tp_handle_unref (handle_source, handle);
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      tp_svc_channel_type_text_emit_send_error ((TpSvcChannelTypeText *) chan,
+          send_error, stamp, msgtype, body);
+      goto done;
     }
 
   if (state != -1 && handle_type == TP_HANDLE_TYPE_CONTACT)
-    {
-      _gabble_muc_channel_state_receive (chan, state, handle);
-    }
+    _gabble_muc_channel_state_receive (chan, state, handle);
 
-  if (_gabble_muc_channel_receive (chan, msgtype, handle_type, handle, stamp,
-                                   body, message))
-    {
-      tp_handle_unref (handle_source, handle);
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-    }
+  if (body != NULL)
+    _gabble_muc_channel_receive (chan, msgtype, handle_type, handle, stamp,
+        body, message);
 
+done:
   tp_handle_unref (handle_source, handle);
-  return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 

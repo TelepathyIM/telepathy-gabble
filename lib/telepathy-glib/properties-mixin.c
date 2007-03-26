@@ -469,7 +469,7 @@ tp_properties_context_has (TpPropertiesContext *ctx, guint property)
 {
   g_assert (property < ctx->mixin_cls->num_props);
 
-  return (tp_intset_has_member (ctx->remaining, property));
+  return (tp_intset_is_member (ctx->remaining, property));
 }
 
 

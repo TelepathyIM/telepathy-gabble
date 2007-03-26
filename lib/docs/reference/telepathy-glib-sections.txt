@@ -95,7 +95,7 @@ TP_CHANNEL_FACTORY_IFACE_GET_CLASS
 <SECTION>
 <FILE>handle-repo</FILE>
 <INCLUDE>telepathy-glib/handle-repo.h</INCLUDE>
-<TITLE>Handle repositories</TITLE>
+<TITLE>handle-repo</TITLE>
 TpHandleRepoIface
 TpHandleRepoIfaceClass
 tp_handle_is_valid
@@ -170,7 +170,7 @@ TP_STATIC_HANDLE_REPO_GET_CLASS
 <SECTION>
 <FILE>svc-properties-interface</FILE>
 <INCLUDE>telepathy-glib/svc-properties-interface.h</INCLUDE>
-<TITLE>Service Properties interface</TITLE>
+<TITLE>svc-properties-interface</TITLE>
 TpSvcPropertiesInterface
 TpSvcPropertiesInterfaceClass
 tp_svc_properties_interface_get_properties_impl
@@ -201,7 +201,7 @@ dbus_glib_marshal_tp_svc_properties_interface_VOID__POINTER
 
 <SECTION>
 <INCLUDE>telepathy-glib/svc-channel.h</INCLUDE>
-<TITLE>Channel service interfaces</TITLE>
+<TITLE>svc-channel</TITLE>
 <FILE>svc-channel</FILE>
 TpSvcChannel
 TpSvcChannelClass
@@ -527,7 +527,7 @@ dbus_glib_marshal_tp_svc_channel_VOID__POINTER
 <SECTION>
 <FILE>svc-connection</FILE>
 <INCLUDE>telepathy-glib/svc-connection.h</INCLUDE>
-<TITLE>Connection service interfaces</TITLE>
+<TITLE>svc-connection</TITLE>
 TpSvcConnection
 TpSvcConnectionClass
 tp_svc_connection_connect_impl
@@ -797,7 +797,7 @@ dbus_glib_marshal_tp_svc_connection_VOID__UINT_BOXED_POINTER
 <SECTION>
 <FILE>svc-media-interfaces</FILE>
 <INCLUDE>telepathy-glib/svc-media-interfaces.h</INCLUDE>
-<TITLE>Media streaming interfaces</TITLE>
+<TITLE>svc-media-interfaces</TITLE>
 <SUBSECTION>
 TpSvcMediaSessionHandler
 TpSvcMediaSessionHandlerClass
@@ -884,7 +884,7 @@ dbus_glib_marshal_tp_svc_media_stream_handler_VOID__UINT_STRING_POINTER
 <SECTION>
 <FILE>svc-connection-manager</FILE>
 <INCLUDE>telepathy-glib/svc-connection-manager.h</INCLUDE>
-<TITLE>Connection Manager service</TITLE>
+<TITLE>svc-connection-manager</TITLE>
 TpSvcConnectionManager
 TpSvcConnectionManagerClass
 tp_svc_connection_manager_get_parameters_impl
@@ -916,7 +916,7 @@ dbus_glib_marshal_tp_svc_connection_manager_VOID__STRING_POINTER
 
 <SECTION>
 <FILE>util</FILE>
-<TITLE>Utilities</TITLE>
+<TITLE>util</TITLE>
 <INCLUDE>telepathy-glib/util.h</INCLUDE>
 tp_g_ptr_array_contains
 tp_g_value_slice_free
@@ -926,14 +926,14 @@ tp_escape_as_identifier
 </SECTION>
 
 <SECTION>
-<TITLE>Connection manager life cycle</TITLE>
+<TITLE>run</TITLE>
 <INCLUDE>telepathy-glib/run.h</INCLUDE>
 <FILE>run</FILE>
 tp_run_connection_manager
 </SECTION>
 
 <SECTION>
-<TITLE>ANSI codes for debug messages</TITLE>
+<TITLE>debug-ansi</TITLE>
 <INCLUDE>telepathy-glib/debug-ansi.h</INCLUDE>
 <FILE>debug-ansi</FILE>
 TP_ANSI_RESET
@@ -1007,7 +1007,7 @@ tp_properties_mixin_iface_init
 
 <SECTION>
 <FILE>debug</FILE>
-<TITLE>Common debug support</TITLE>
+<TITLE>debug</TITLE>
 <INCLUDE>telepathy-glib/debug.h</INCLUDE>
 tp_debug_set_flags_from_env
 tp_debug_set_all_flags
@@ -1016,7 +1016,7 @@ tp_debug_set_all_flags
 <SECTION>
 <FILE>handle</FILE>
 <INCLUDE>telepathy-glib/handle.h</INCLUDE>
-<TITLE>Telepathy handle type</TITLE>
+<TITLE>handle</TITLE>
 TpHandle
 </SECTION>
 
@@ -1087,7 +1087,7 @@ tp_intset_iter_next
 
 <SECTION>
 <FILE>dbus</FILE>
-<TITLE>D-Bus utilities</TITLE>
+<TITLE>dbus</TITLE>
 <INCLUDE>telepathy-glib/dbus.h</INCLUDE>
 tp_dbus_g_method_return_not_implemented
 tp_get_bus
@@ -1115,7 +1115,7 @@ g_marshal_value_peek_ulong
 </SECTION>
 
 <SECTION>
-<TITLE>Telepathy errors</TITLE>
+<TITLE>errors</TITLE>
 <INCLUDE>telepathy-glib/errors.h</INCLUDE>
 <FILE>errors</FILE>
 tp_errors_quark
@@ -1173,7 +1173,7 @@ tp_text_mixin_iface_init
 <SECTION>
 <FILE>enums</FILE>
 <INCLUDE>telepathy-glib/enums.h</INCLUDE>
-<TITLE>Telepathy protocol enumerations and flags</TITLE>
+<TITLE>enums</TITLE>
 TpConnMgrParamFlags
 TpHandleType
 TpConnectionStatus
@@ -1235,7 +1235,7 @@ NUM_TP_MEDIA_STREAM_TYPES
 
 <SECTION>
 <FILE>interfaces</FILE>
-<TITLE>Telepathy interface #defines</TITLE>
+<TITLE>interfaces</TITLE>
 <INCLUDE>telepathy-glib/interfaces.h</INCLUDE>
 TP_IFACE_CONNECTION_MANAGER
 TP_IFACE_CONNECTION

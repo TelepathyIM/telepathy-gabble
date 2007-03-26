@@ -341,10 +341,8 @@ properties_disco_cb (GabbleDisco *disco,
       return;
     }
 
-  NODE_DEBUG (query_result, "disco query result");
-
-  changed_props_val = changed_props_flags = NULL;
-
+  changed_props_val = tp_intset_sized_new (NUM_ROOM_PROPS);
+  changed_props_flags = tp_intset_sized_new (NUM_ROOM_PROPS);
 
   /*
    * Update room definition.

@@ -95,7 +95,6 @@ gabble_roster_channel_constructor (GType type, guint n_props,
   GabbleRosterChannelPrivate *priv;
   DBusGConnection *bus;
   TpBaseConnection *conn;
-  gboolean valid;
   TpHandle self_handle;
   guint handle_type;
   TpHandleRepoIface *handle_repo, *contact_repo;

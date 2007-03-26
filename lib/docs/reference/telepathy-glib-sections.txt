@@ -105,7 +105,6 @@ tp_handle_unref
 tp_handle_client_hold
 tp_handle_client_release
 tp_handle_inspect
-tp_handle_request
 tp_handle_set_qdata
 tp_handle_get_qdata
 tp_handle_ensure

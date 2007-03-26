@@ -95,7 +95,7 @@ struct _TpIntSetIter
  * do_something (const TpIntSet *intset)
  * {
  *   TpIntSetIter iter = TP_INTSET_ITER_INIT (intset);
- *   &#2f;* ... do something with iter ... *&#2f;
+ *   /<!-- -->* ... do something with iter ... *<!-- -->/
  * }
  * </programlisting></informalexample>
  */

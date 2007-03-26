@@ -536,6 +536,7 @@ dynamic_client_hold_handle (TpHandleRepoIface *repo,
   TpDynamicHandleRepo *self;
   TpHandleSet *handle_set;
 
+  g_assert (handle != 0);
   g_assert (repo != NULL);
   
   self = TP_DYNAMIC_HANDLE_REPO (repo);
@@ -574,6 +575,7 @@ dynamic_client_release_handle (TpHandleRepoIface *repo,
   TpDynamicHandleRepo *self;
   TpHandleSet *handle_set;
 
+  g_assert (handle != 0);
   g_assert (repo != NULL);
 
   self = TP_DYNAMIC_HANDLE_REPO (repo);

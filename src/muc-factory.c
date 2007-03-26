@@ -617,6 +617,7 @@ muc_factory_message_cb (LmMessageHandler *handler,
   room_handle = tp_handle_lookup (room_repo, room, NULL, NULL);
   g_free (room);
 
+  /* the message is nothing to do with MUC, do nothing */
   if (room_handle == 0)
     {
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
@@ -627,8 +628,8 @@ muc_factory_message_cb (LmMessageHandler *handler,
 
   if (chan == NULL)
     {
-      NODE_DEBUG (message->node, "ignoring groupchat message from known "
-          "handle with no MUC channel");
+      NODE_DEBUG (message->node, "ignoring MUC message from known "
+          "handle with no corresponding channel");
 
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
@@ -651,8 +652,16 @@ muc_factory_message_cb (LmMessageHandler *handler,
 
       if (handle == 0)
         {
-          g_warning ("%s: ignoring groupchat message from invalid JID %s",
-              G_STRFUNC, from);
+          NODE_DEBUG (message->node, "MUC message from invalid JID; ignoring");
+          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+        }
+
+      /* anything other than a type="groupchat" is from the person directly and
+       * simply relayed by the MUC, so should be left to the normal handlers */
+      if (lm_message_get_sub_type (message) != LM_MESSAGE_SUB_TYPE_GROUPCHAT)
+        {
+          tp_handle_unref (contact_repo, handle);
+
           return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
         }
     }

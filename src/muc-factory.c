@@ -395,6 +395,181 @@ obsolete_invite_disco_cb (GabbleDisco *self,
   g_slice_free (struct DiscoInviteData, data);
 }
 
+static gboolean
+process_muc_invite (GabbleMucFactory *fac,
+                    LmMessage *message,
+                    const gchar *from,
+                    TpChannelTextSendError send_error)
+{
+  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
+  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
+      TP_HANDLE_TYPE_CONTACT);
+  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (conn,
+      TP_HANDLE_TYPE_ROOM);
+
+  LmMessageNode *x_node, *invite_node, *reason_node;
+  const gchar *invite_from, *reason = NULL;
+  TpHandle inviter_handle, room_handle;
+  gchar *room;
+
+  /* does it have a muc subnode? */
+  x_node = lm_message_node_get_child_with_namespace (message->node, "x",
+      NS_MUC_USER);
+
+  if (x_node == NULL)
+    return FALSE;
+
+  /* and an invitation? */
+  invite_node = lm_message_node_get_child (x_node, "invite");
+
+  if (invite_node == NULL)
+    return FALSE;
+
+  /* FIXME: do something with these? */
+  if (send_error != TP_CHANNEL_SEND_NO_ERROR)
+    {
+      NODE_DEBUG (message->node, "got a MUC invitation message with a send "
+          "error; ignoring");
+
+      return TRUE;
+    }
+
+  invite_from = lm_message_node_get_attribute (invite_node, "from");
+  if (invite_from == NULL)
+    {
+      NODE_DEBUG (message->node, "got a MUC invitation message with no JID; "
+          "ignoring");
+
+      return TRUE;
+    }
+
+  inviter_handle = tp_handle_ensure (contact_repo, invite_from,
+      NULL, NULL);
+  if (inviter_handle == 0)
+    {
+      NODE_DEBUG (message->node, "got a MUC invitation message with invalid "
+          "inviter JID; ignoring");
+
+      return TRUE;
+    }
+
+  reason_node = lm_message_node_get_child (invite_node, "reason");
+
+  if (reason_node != NULL)
+    reason = lm_message_node_get_value (reason_node);
+
+  if (reason == NULL)
+    reason = "";
+
+  /* create the channel */
+  room = gabble_remove_resource (from);
+  room_handle = tp_handle_ensure (room_repo, from, NULL, NULL);
+  g_free (room);
+
+  if (room_handle == 0)
+    {
+      NODE_DEBUG (message->node, "got a MUC invitation message with invalid "
+          "room JID; ignoring");
+      return TRUE;
+    }
+
+  if (g_hash_table_lookup (priv->channels, GINT_TO_POINTER (room_handle)) == NULL)
+    {
+      GabbleMucChannel *chan = new_muc_channel (fac, room_handle, FALSE);
+      _gabble_muc_channel_handle_invited (chan, inviter_handle, reason);
+    }
+  else
+    {
+      NODE_DEBUG (message->node, "ignoring invite to a room we're already in");
+    }
+
+  tp_handle_unref (contact_repo, inviter_handle);
+  tp_handle_unref (room_repo, room_handle);
+
+  return TRUE;
+}
+
+static gboolean
+process_obsolete_invite (GabbleMucFactory *fac,
+                         LmMessage *message,
+                         const gchar *from,
+                         const gchar *body,
+                         TpChannelTextSendError send_error)
+{
+  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
+  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
+      TP_HANDLE_TYPE_CONTACT);
+
+  LmMessageNode *x_node;
+  const gchar *room;
+  TpHandle inviter_handle;
+  GabbleDiscoRequest *request;
+  struct DiscoInviteData *disco_udata;
+
+  /* check for obsolete invite method */
+  x_node = lm_message_node_get_child_with_namespace (message->node, "x",
+      NS_X_CONFERENCE);
+  if (x_node == NULL)
+    return FALSE;
+
+  /* this can only happen if the user sent an obsolete invite with another
+   * client or something */
+  if (send_error != TP_CHANNEL_SEND_NO_ERROR)
+    {
+      NODE_DEBUG (message->node, "got an obsolete MUC invitation message with "
+          "a send error; ignoring");
+
+      return TRUE;
+    }
+
+  /* the room JID is in x */
+  room = lm_message_node_get_attribute (x_node, "jid");
+  if (room == NULL)
+    {
+      NODE_DEBUG (message->node, "got a obsolete MUC invitation with no room "
+          "JID; ignoring");
+
+      return TRUE;
+    }
+
+  /* the inviter JID is in "from" */
+  inviter_handle = tp_handle_ensure (contact_repo, from, NULL, NULL);
+  if (inviter_handle == 0)
+    {
+      NODE_DEBUG (message->node, "got an obsolete MUC invitation message from "
+          "an invalid JID; ignoring");
+
+      return TRUE;
+    }
+
+  disco_udata = g_slice_new0 (struct DiscoInviteData);
+  disco_udata->factory = fac;
+  disco_udata->reason = g_strdup (body);
+  disco_udata->inviter = inviter_handle;
+
+  DEBUG ("received obsolete MUC invite from handle %u (%s), discoing room %s",
+      inviter_handle, from, room);
+
+  request = gabble_disco_request (priv->conn->disco, GABBLE_DISCO_TYPE_INFO,
+      room, NULL, obsolete_invite_disco_cb, disco_udata, G_OBJECT (fac), NULL);
+
+  if (request != NULL)
+    {
+      g_hash_table_insert (priv->disco_requests, request, NULL);
+    }
+  else
+    {
+      DEBUG ("obsolete MUC invite disco failed, freeing info");
+
+      tp_handle_unref (contact_repo, inviter_handle);
+      g_free (disco_udata->reason);
+      g_slice_free (struct DiscoInviteData, disco_udata);
+    }
+
+  return TRUE;
+}
 
 /**
  * muc_factory_message_cb:
@@ -416,10 +591,9 @@ muc_factory_message_cb (LmMessageHandler *handler,
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_ROOM);
 
-  const gchar *from, *body, *body_offset;
+  const gchar *from, *body;
   time_t stamp;
   TpChannelTextMessageType msgtype;
-  LmMessageNode *node;
   TpHandleRepoIface *handle_source;
   TpHandleType handle_type;
   TpHandle room_handle, handle;
@@ -429,134 +603,14 @@ muc_factory_message_cb (LmMessageHandler *handler,
   gchar *room;
 
   if (!gabble_text_mixin_parse_incoming_message (message, &from, &stamp,
-        &msgtype, &body, &body_offset, &state, &send_error))
-    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+        &msgtype, &body, &state, &send_error))
+    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
-  /* does it have a muc subnode? */
-  node = lm_message_node_get_child_with_namespace (message->node, "x",
-      NS_MUC_USER);
-  if (node != NULL)
-    {
-      /* and an invitation? */
-      node = lm_message_node_get_child (node, "invite");
-      if (node != NULL)
-        {
-          LmMessageNode *reason_node;
-          const gchar *invite_from, *reason;
-          TpHandle inviter_handle;
+  if (process_muc_invite (fac, message, from, send_error))
+    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
-          if (send_error != TP_CHANNEL_SEND_NO_ERROR)
-            {
-              NODE_DEBUG (message->node, "got a MUC invitation message "
-                             "with a send error; ignoring");
-
-              return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-            }
-
-          invite_from = lm_message_node_get_attribute (node, "from");
-          if (invite_from == NULL)
-            {
-              NODE_DEBUG (message->node, "got a MUC invitation message "
-                             "without a from field on the invite node, "
-                             "ignoring");
-
-              return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-            }
-
-          inviter_handle = tp_handle_ensure (contact_repo, invite_from,
-              NULL, NULL);
-          if (inviter_handle == 0)
-            {
-              NODE_DEBUG (message->node, "got a MUC invitation message "
-                             "where the from field on the invite node "
-                             "was not a valid JID, ignoring");
-              return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-            }
-
-          reason_node = lm_message_node_get_child (node, "reason");
-          if (reason_node != NULL)
-            {
-              reason = lm_message_node_get_value (reason_node);
-            }
-          else
-            {
-              reason = "";
-              NODE_DEBUG (message->node, "no MUC invite reason specified");
-            }
-
-          /* create the channel */
-          room = gabble_remove_resource (from);
-          handle = tp_handle_ensure (room_repo, from, NULL, NULL);
-          g_free (room);
-          if (handle == 0)
-            {
-              NODE_DEBUG (message->node, "got a MUC invitation message "
-                             "where the MUC was not a valid JID, ignoring");
-              return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-            }
-
-          if (g_hash_table_lookup (priv->channels, GINT_TO_POINTER (handle)) == NULL)
-            {
-              chan = new_muc_channel (fac, handle, FALSE);
-              _gabble_muc_channel_handle_invited (chan, inviter_handle, reason);
-            }
-          else
-            {
-              NODE_DEBUG (message->node, "ignoring invite to a room we're already in");
-            }
-          tp_handle_unref (contact_repo, inviter_handle);
-          tp_handle_unref (room_repo, handle);
-
-          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-        }
-    }
-  else
-    {
-      TpHandle inviter_handle;
-      GabbleDiscoRequest *request;
-      const gchar *reason;
-      struct DiscoInviteData *disco_udata;
-
-      /* check for obsolete invite method */
-      node = lm_message_node_get_child_with_namespace (message->node, "x",
-          NS_X_CONFERENCE);
-      if (node == NULL)
-        goto HANDLE_MESSAGE;
-
-      /* the room JID is in x */
-      from = lm_message_node_get_attribute (node, "jid");
-      if (from == NULL)
-        return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-
-      /* the inviter JID is in "from" */
-      inviter_handle = tp_handle_ensure (contact_repo, from, NULL, NULL);
-      if (inviter_handle == 0)
-        {
-          NODE_DEBUG (message->node, "got an obsolete MUC invitation message "
-                         "where the inviter was not a valid JID, ignoring");
-          return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-        }
-
-      /* reason is the body */
-      reason = body;
-
-      disco_udata = g_slice_new0 (struct DiscoInviteData);
-      disco_udata->factory = fac;
-      disco_udata->reason = g_strdup (reason);
-      disco_udata->inviter = inviter_handle;
-
-      NODE_DEBUG (message->node, "received obsolete invite method");
-
-      request = gabble_disco_request (priv->conn->disco, GABBLE_DISCO_TYPE_INFO,
-          from, NULL, obsolete_invite_disco_cb, disco_udata, G_OBJECT (fac), NULL);
-
-      if (request != NULL)
-        g_hash_table_insert (priv->disco_requests, request, NULL);
-
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-  }
-
-HANDLE_MESSAGE:
+  if (process_obsolete_invite (fac, message, from, body, send_error))
+    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
   /* check if a room with the jid exists */
   room = gabble_remove_resource (from);
@@ -573,10 +627,10 @@ HANDLE_MESSAGE:
 
   if (chan == NULL)
     {
-      g_warning ("%s: ignoring groupchat message from known handle with "
-                 "no MUC channel", G_STRFUNC);
+      NODE_DEBUG (message->node, "ignoring groupchat message from known "
+          "handle with no MUC channel");
 
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 
   /* get the handle of the sender, which is either the room
@@ -607,17 +661,18 @@ HANDLE_MESSAGE:
     {
       tp_svc_channel_type_text_emit_send_error (
           (TpSvcChannelTypeText *)chan, send_error, stamp, msgtype,
-          body_offset);
+          body);
       tp_handle_unref (handle_source, handle);
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 
-  if (state != -1 && handle_type == TP_HANDLE_TYPE_CONTACT) {
-    _gabble_muc_channel_state_receive (chan, state, handle);
-  }
+  if (state != -1 && handle_type == TP_HANDLE_TYPE_CONTACT)
+    {
+      _gabble_muc_channel_state_receive (chan, state, handle);
+    }
 
   if (_gabble_muc_channel_receive (chan, msgtype, handle_type, handle, stamp,
-                                   body_offset, message))
+                                   body, message))
     {
       tp_handle_unref (handle_source, handle);
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;

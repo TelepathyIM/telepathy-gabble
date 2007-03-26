@@ -258,8 +258,7 @@ gabble_muc_channel_constructor (GType type, guint n_props,
       TP_HANDLE_TYPE_CONTACT);
 
   /* ref our room handle */
-  valid = tp_handle_ref (room_handles, priv->handle);
-  g_assert (valid);
+  tp_handle_ref (room_handles, priv->handle);
 
   /* get the room's jid */
   priv->jid = tp_handle_inspect (room_handles, priv->handle);
@@ -268,8 +267,7 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   contact_handle_to_room_identity (GABBLE_MUC_CHANNEL (obj),
       conn->self_handle, &self_handle, &priv->self_jid);
 
-  valid = tp_handle_ref (contact_handles, self_handle);
-  g_assert (valid);
+  tp_handle_ref (contact_handles, self_handle);
 
   /* initialize our own role and affiliation */
   priv->self_role = ROLE_NONE;

@@ -105,8 +105,7 @@ tp_handle_set_add (TpHandleSet *set, TpHandle handle)
 
   if (!tp_intset_is_member(set->intset, handle))
     {
-      g_return_if_fail (tp_handle_ref (set->repo, handle));
-
+      tp_handle_ref (set->repo, handle);
       tp_intset_add (set->intset, handle);
     }
 }
@@ -130,8 +129,7 @@ tp_handle_set_remove (TpHandleSet *set, TpHandle handle)
 
   if (tp_intset_is_member(set->intset, handle))
     {
-      g_return_val_if_fail (tp_handle_unref (set->repo, handle), FALSE);
-
+      tp_handle_unref (set->repo, handle);
       tp_intset_remove (set->intset, handle);
       return TRUE;
     }

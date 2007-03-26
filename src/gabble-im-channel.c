@@ -99,7 +99,7 @@ gabble_im_channel_constructor (GType type, guint n_props,
   GabbleIMChannelPrivate *priv;
   TpBaseConnection *conn;
   DBusGConnection *bus;
-  gboolean valid, send_nick;
+  gboolean send_nick;
   TpHandleRepoIface *contact_handles;
 
   obj = G_OBJECT_CLASS (gabble_im_channel_parent_class)->
@@ -109,8 +109,7 @@ gabble_im_channel_constructor (GType type, guint n_props,
   contact_handles = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
 
-  valid = tp_handle_ref (contact_handles, priv->handle);
-  g_assert (valid);
+  tp_handle_ref (contact_handles, priv->handle);
 
   priv->peer_jid = g_strdup (tp_handle_inspect (contact_handles,
         priv->handle));

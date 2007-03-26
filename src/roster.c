@@ -2322,14 +2322,12 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
   /* temporarily remove the handle from the set (taking a reference),
    * make the message, and put it back afterwards
    */
-  g_return_val_if_fail (tp_handle_ref (group_repo, group),
-      FALSE);
+  tp_handle_ref (group_repo, group);
   was_in_group = tp_handle_set_remove (item->groups, group);
   message = _gabble_roster_item_to_message (roster, handle, NULL, NULL);
   if (was_in_group)
     tp_handle_set_add (item->groups, group);
-  g_return_val_if_fail (tp_handle_unref (group_repo, group),
-      FALSE);
+  tp_handle_unref (group_repo, group);
 
   ret = _gabble_connection_send_with_reply (priv->conn,
       message, roster_edited_cb, G_OBJECT (roster),

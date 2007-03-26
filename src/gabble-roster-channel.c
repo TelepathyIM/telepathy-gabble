@@ -117,8 +117,7 @@ gabble_roster_channel_constructor (GType type, guint n_props,
       || handle_type == TP_HANDLE_TYPE_LIST);
 
   /* ref our list handle */
-  valid = tp_handle_ref (handle_repo, priv->handle);
-  g_assert (valid);
+  tp_handle_ref (handle_repo, priv->handle);
 
   /* initialize group mixin */
   tp_group_mixin_init ((TpSvcChannelInterfaceGroup *)obj,

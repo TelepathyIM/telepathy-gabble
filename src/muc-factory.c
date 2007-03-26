@@ -313,6 +313,37 @@ new_muc_channel (GabbleMucFactory *fac, TpHandle handle, gboolean invite_self)
   return chan;
 }
 
+static void
+do_invite (GabbleMucFactory *fac,
+           const gchar *room,
+           TpHandle inviter_handle,
+           const gchar *reason)
+{
+  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
+  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_ROOM);
+  TpHandle room_handle;
+
+  room_handle = tp_handle_ensure (room_repo, room, NULL, NULL);
+
+  if (room_handle == 0)
+    {
+      DEBUG ("got a MUC invitation message with invalid room JID \"%s\"; "
+          "ignoring", room);
+      return;
+    }
+
+  if (g_hash_table_lookup (priv->channels, GUINT_TO_POINTER (room_handle)) ==
+      NULL)
+    {
+      GabbleMucChannel *chan = new_muc_channel (fac, room_handle, FALSE);
+      _gabble_muc_channel_handle_invited (chan, inviter_handle, reason);
+    }
+  else
+    {
+      DEBUG ("ignoring invite to room \"%s\"; we're already there", room);
+    }
+}
 
 struct DiscoInviteData {
     GabbleMucFactory *factory;
@@ -405,12 +436,10 @@ process_muc_invite (GabbleMucFactory *fac,
   TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
-  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (conn,
-      TP_HANDLE_TYPE_ROOM);
 
   LmMessageNode *x_node, *invite_node, *reason_node;
   const gchar *invite_from, *reason = NULL;
-  TpHandle inviter_handle, room_handle;
+  TpHandle inviter_handle;
   gchar *room;
 
   /* does it have a muc subnode? */
@@ -464,28 +493,10 @@ process_muc_invite (GabbleMucFactory *fac,
 
   /* create the channel */
   room = gabble_remove_resource (from);
-  room_handle = tp_handle_ensure (room_repo, from, NULL, NULL);
+  do_invite (fac, room, inviter_handle, reason);
   g_free (room);
 
-  if (room_handle == 0)
-    {
-      NODE_DEBUG (message->node, "got a MUC invitation message with invalid "
-          "room JID; ignoring");
-      return TRUE;
-    }
-
-  if (g_hash_table_lookup (priv->channels, GINT_TO_POINTER (room_handle)) == NULL)
-    {
-      GabbleMucChannel *chan = new_muc_channel (fac, room_handle, FALSE);
-      _gabble_muc_channel_handle_invited (chan, inviter_handle, reason);
-    }
-  else
-    {
-      NODE_DEBUG (message->node, "ignoring invite to a room we're already in");
-    }
-
   tp_handle_unref (contact_repo, inviter_handle);
-  tp_handle_unref (room_repo, room_handle);
 
   return TRUE;
 }

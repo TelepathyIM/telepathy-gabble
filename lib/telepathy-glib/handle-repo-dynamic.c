@@ -98,7 +98,7 @@ handle_priv_new ()
 static void
 handle_priv_free (TpHandlePriv *priv)
 {
-  g_assert (priv != NULL);
+  g_return_if_fail (priv != NULL);
 
   g_free(priv->string);
   g_datalist_clear (&(priv->datalist));
@@ -163,7 +163,7 @@ handle_priv_lookup (TpDynamicHandleRepo *repo,
 static TpHandle
 handle_alloc (TpDynamicHandleRepo *repo)
 {
-  g_assert (repo != NULL);
+  g_return_if_fail (repo != NULL);
 
   if (tp_heap_size (repo->free_handles))
     return GPOINTER_TO_UINT (tp_heap_extract_first (repo->free_handles));
@@ -187,8 +187,8 @@ handle_priv_remove (TpDynamicHandleRepo *repo,
   TpHandlePriv *priv;
   const gchar *string;
 
-  g_assert (handle != 0);
-  g_assert (repo != NULL);
+  g_return_if_fail (handle != 0);
+  g_return_if_fail (repo != NULL);
 
   priv = handle_priv_lookup (repo, handle);
 
@@ -530,8 +530,8 @@ dynamic_client_hold_handle (TpHandleRepoIface *repo,
   TpDynamicHandleRepo *self;
   TpHandleSet *handle_set;
 
-  g_assert (handle != 0);
-  g_assert (repo != NULL);
+  g_return_val_if_fail (handle != 0, FALSE);
+  g_return_val_if_fail (repo != NULL, FALSE);
   
   self = TP_DYNAMIC_HANDLE_REPO (repo);
 
@@ -569,8 +569,8 @@ dynamic_client_release_handle (TpHandleRepoIface *repo,
   TpDynamicHandleRepo *self;
   TpHandleSet *handle_set;
 
-  g_assert (handle != 0);
-  g_assert (repo != NULL);
+  g_return_val_if_fail (handle != 0, FALSE);
+  g_return_val_if_fail (repo != NULL, FALSE);
 
   self = TP_DYNAMIC_HANDLE_REPO (repo);
 

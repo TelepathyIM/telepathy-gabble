@@ -163,7 +163,7 @@ handle_priv_lookup (TpDynamicHandleRepo *repo,
 static TpHandle
 handle_alloc (TpDynamicHandleRepo *repo)
 {
-  g_return_if_fail (repo != NULL);
+  g_assert (repo != NULL);
 
   if (tp_heap_size (repo->free_handles))
     return GPOINTER_TO_UINT (tp_heap_extract_first (repo->free_handles));

@@ -1732,7 +1732,7 @@ OUT:
 /**
  * _gabble_muc_channel_receive
  */
-gboolean
+void
 _gabble_muc_channel_receive (GabbleMucChannel *chan,
                              TpChannelTextMessageType msg_type,
                              TpHandleType handle_type,
@@ -1794,7 +1794,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
               room_properties_update (chan);
             }
 
-          return TRUE;
+          return;
         }
 
       changed_values = tp_intset_sized_new (NUM_ROOM_PROPS);
@@ -1856,13 +1856,13 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
             }
         }
 
-      return TRUE;
+      return;
     }
   else if (handle_type == TP_HANDLE_TYPE_ROOM)
     {
       NODE_DEBUG (msg->node, "ignoring message from channel");
 
-      return TRUE;
+      return;
     }
   else if ((sender == chan->group.self_handle) && (timestamp == 0))
     {
@@ -1870,7 +1870,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
       timestamp = time (NULL);
       tp_svc_channel_type_text_emit_sent (chan, timestamp, msg_type, text);
 
-      return TRUE;
+      return;
     }
 
   /* Receive messages from other contacts and our own if they're delayed, and
@@ -1878,7 +1878,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
   if (timestamp == 0)
       timestamp = time (NULL);
 
-  return tp_text_mixin_receive (G_OBJECT (chan), msg_type, sender,
+  tp_text_mixin_receive (G_OBJECT (chan), msg_type, sender,
       timestamp, text);
 }
 

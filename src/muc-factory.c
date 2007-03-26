@@ -372,55 +372,37 @@ obsolete_invite_disco_cb (GabbleDisco *self,
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
-  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_ROOM);
   LmMessageNode *identity;
-  const char *category, *type;
-  TpHandle handle;
+  const char *category = NULL, *type = NULL;
 
   g_hash_table_remove (priv->disco_requests, request);
 
+  if (error != NULL)
+    {
+      DEBUG ("ignoring obsolete invite to room '%s'; got disco error: %s",
+          jid, error->message);
+      goto out;
+    }
+
   identity = lm_message_node_get_child (query_result, "identity");
-  if (NULL == identity)
-    return;
+  if (identity != NULL)
+    {
+      category = lm_message_node_get_attribute (identity, "category");
+      type = lm_message_node_get_attribute (identity, "type");
+    }
 
-  category = lm_message_node_get_attribute (identity, "category");
-  if (NULL == category)
-    return;
-
-  type = lm_message_node_get_attribute (identity, "type");
-  if (NULL == type)
-    return;
-
-  if (0 != strcmp (category, "conference") ||
-      0 != strcmp (type, "text"))
+  if (tp_strdiff (category, "conference") ||
+      tp_strdiff (type, "text"))
     {
       DEBUG ("obsolete invite request specified inappropriate jid '%s' "
-          "(not a text conference), ignoring", jid);
-      return;
+          "(not a text conference); ignoring request", jid);
+      goto out;
     }
 
   /* OK, it's MUC after all, create a new channel */
-  handle = tp_handle_ensure (room_repo, jid, NULL, NULL);
-  if (handle == 0)
-    {
-      DEBUG ("obsolete invite request specified invalid jid '%s', "
-          "ignoring", jid);
-      return;
-    }
+  do_invite (fac, jid, data->inviter, data->reason);
 
-  if (g_hash_table_lookup (priv->channels, GINT_TO_POINTER (handle)) == NULL)
-    {
-      GabbleMucChannel *chan;
-      chan = new_muc_channel (fac, handle, FALSE);
-      _gabble_muc_channel_handle_invited (chan, data->inviter, data->reason);
-    }
-  else
-    {
-      DEBUG ("ignoring invite to a room '%s' we're already in", jid);
-    }
-
-  tp_handle_unref (room_repo, handle);
+out:
   tp_handle_unref (contact_repo, data->inviter);
   g_free (data->reason);
   g_slice_free (struct DiscoInviteData, data);

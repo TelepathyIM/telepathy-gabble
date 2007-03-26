@@ -316,12 +316,13 @@ gabble_im_channel_finalize (GObject *object)
  * _gabble_im_channel_receive
  *
  */
-gboolean _gabble_im_channel_receive (GabbleIMChannel *chan,
-                                     TpChannelTextMessageType type,
-                                     TpHandle sender,
-                                     const char *from,
-                                     time_t timestamp,
-                                     const char *text)
+void
+_gabble_im_channel_receive (GabbleIMChannel *chan,
+                            TpChannelTextMessageType type,
+                            TpHandle sender,
+                            const char *from,
+                            time_t timestamp,
+                            const char *text)
 {
   GabbleIMChannelPrivate *priv;
 
@@ -338,7 +339,7 @@ gboolean _gabble_im_channel_receive (GabbleIMChannel *chan,
   if (timestamp == 0)
       timestamp = time (NULL);
 
-  return tp_text_mixin_receive (G_OBJECT (chan), type, sender, timestamp, text);
+  tp_text_mixin_receive (G_OBJECT (chan), type, sender, timestamp, text);
 }
 
 /**

@@ -20,6 +20,14 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+/**
+ * SECTION:heap
+ * @title: TpHeap
+ * @short_description: a heap queue of pointers
+ *
+ * A heap queue of pointers.
+ */
+
 #include <telepathy-glib/heap.h>
 
 #include <glib.h>
@@ -32,6 +40,12 @@ struct _TpHeap
   GCompareFunc comparator;
 };
 
+/**
+ * tp_heap_new:
+ * @comparator: Comparator by which to order the pointers in the heap
+ *
+ * Create a new, empty heap queue.
+ */
 TpHeap *
 tp_heap_new (GCompareFunc comparator)
 {
@@ -44,6 +58,12 @@ tp_heap_new (GCompareFunc comparator)
   return ret;
 }
 
+/**
+ * tp_heap_destroy:
+ * @heap: The heap queue
+ *
+ * Destroy a #TpHeap.
+ */
 void
 tp_heap_destroy (TpHeap * heap)
 {
@@ -53,6 +73,12 @@ tp_heap_destroy (TpHeap * heap)
   g_slice_free (TpHeap, heap);
 }
 
+/**
+ * tp_heap_clear:
+ * @heap: The heap queue
+ *
+ * Remove all items from a #TpHeap.
+ */
 void
 tp_heap_clear (TpHeap *heap)
 {
@@ -64,6 +90,13 @@ tp_heap_clear (TpHeap *heap)
 
 #define HEAP_INDEX(heap, index) (g_ptr_array_index ((heap)->data, (index)-1))
 
+/**
+ * tp_heap_add:
+ * @heap: The heap queue
+ * @element: An element
+ *
+ * Add element to the heap queue, maintaining correct order.
+ */
 void
 tp_heap_add (TpHeap *heap, gpointer element)
 {
@@ -88,6 +121,12 @@ tp_heap_add (TpHeap *heap, gpointer element)
     }
 }
 
+/**
+ * tp_heap_peek_first:
+ * @heap: The heap queue
+ *
+ * Returns: The first item in the queue, or %NULL if the queue is empty
+ */
 gpointer
 tp_heap_peek_first (TpHeap *heap)
 {
@@ -99,6 +138,15 @@ tp_heap_peek_first (TpHeap *heap)
     return NULL;
 }
 
+/*
+ * extract_element:
+ * @heap: The heap queue
+ * @index: The index into the queue
+ *
+ * Remove the element at 1-based index @index from the queue and return it.
+ *
+ * Returns: The element with 1-based index @index
+ */
 static gpointer
 extract_element (TpHeap * heap, int index)
 {
@@ -145,6 +193,13 @@ extract_element (TpHeap * heap, int index)
   return ret;
 }
 
+/**
+ * tp_heap_remove:
+ * @heap: The heap queue
+ * @element: An element in the heap
+ *
+ * Remove @element from @heap, if it's present.
+ */
 void
 tp_heap_remove (TpHeap *heap, gpointer element)
 {
@@ -162,6 +217,14 @@ tp_heap_remove (TpHeap *heap, gpointer element)
       }
 }
 
+/**
+ * tp_heap_extract_first:
+ * @heap: The heap queue
+ *
+ * Remove and return the first element in the queue.
+ *
+ * Returns: the removed element
+ */
 gpointer
 tp_heap_extract_first (TpHeap * heap)
 {
@@ -173,6 +236,12 @@ tp_heap_extract_first (TpHeap * heap)
   return extract_element (heap, 1);
 }
 
+/**
+ * tp_heap_size:
+ * @heap: The heap queue
+ *
+ * Returns: The number of items in @heap
+ */
 guint
 tp_heap_size (TpHeap *heap)
 {

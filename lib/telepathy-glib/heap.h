@@ -28,8 +28,8 @@
 typedef struct _TpHeap TpHeap;
 
 TpHeap *tp_heap_new (GCompareFunc comparator);
-void tp_heap_destroy (TpHeap *);
-void tp_heap_clear (TpHeap *);
+void tp_heap_destroy (TpHeap *heap);
+void tp_heap_clear (TpHeap *heap);
 
 void tp_heap_add (TpHeap *heap, gpointer element);
 void tp_heap_remove (TpHeap *heap, gpointer element);

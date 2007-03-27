@@ -4,7 +4,7 @@
  * @short_description: used to colorize log messages for clarity
  *
  * This header provides some ANSI escapes you can use to make debug messages
- * more colourful.
+ * more colourful. Please use sparingly.
  */
 
 #ifndef __TP_DEBUG_ANSI_H__

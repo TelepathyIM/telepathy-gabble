@@ -1009,6 +1009,7 @@ tp_properties_mixin_iface_init
 <FILE>debug</FILE>
 <TITLE>debug</TITLE>
 <INCLUDE>telepathy-glib/debug.h</INCLUDE>
+tp_debug_set_flags_from_string
 tp_debug_set_flags_from_env
 tp_debug_set_all_flags
 </SECTION>

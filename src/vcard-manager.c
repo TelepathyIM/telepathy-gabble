@@ -142,7 +142,8 @@ gabble_vcard_manager_init (GabbleVCardManager *obj)
 
   priv->cache = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
       cache_entry_free);
-  priv->timed_cache = tp_heap_new (cache_entry_compare);
+  /* no destructor here - the hash table is responsible for freeing it */
+  priv->timed_cache = tp_heap_new (cache_entry_compare, NULL);
 }
 
 static void gabble_vcard_manager_set_property (GObject *object, guint property_id,

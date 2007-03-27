@@ -230,7 +230,7 @@ tp_dynamic_handle_repo_init (TpDynamicHandleRepo *self)
   self->handle_to_priv = g_hash_table_new_full (g_direct_hash,
       g_direct_equal, NULL, (GDestroyNotify) handle_priv_free);
   self->string_to_handle = g_hash_table_new (g_str_hash, g_str_equal);
-  self->free_handles = tp_heap_new (handle_compare_func);
+  self->free_handles = tp_heap_new (handle_compare_func, NULL);
   self->next_handle = 1;
   g_datalist_init (&self->holder_to_handle_set);
 

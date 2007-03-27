@@ -38,6 +38,7 @@ struct _TpHeap
 {
   GPtrArray *data;
   GCompareFunc comparator;
+  GDestroyNotify destructor;
 };
 
 /**
@@ -47,13 +48,14 @@ struct _TpHeap
  * Create a new, empty heap queue.
  */
 TpHeap *
-tp_heap_new (GCompareFunc comparator)
+tp_heap_new (GCompareFunc comparator, GDestroyNotify destructor)
 {
   TpHeap *ret = g_slice_new (TpHeap);
   g_assert (comparator != NULL);
 
   ret->data = g_ptr_array_sized_new (DEFAULT_SIZE);
   ret->comparator = comparator;
+  ret->destructor = destructor;
 
   return ret;
 }
@@ -62,12 +64,22 @@ tp_heap_new (GCompareFunc comparator)
  * tp_heap_destroy:
  * @heap: The heap queue
  *
- * Destroy a #TpHeap.
+ * Destroy a #TpHeap. The destructor, if any, is called on all items.
  */
 void
 tp_heap_destroy (TpHeap * heap)
 {
   g_return_if_fail (heap != NULL);
+
+  if (heap->destructor)
+    {
+      guint i;
+
+      for (i = 0; i < heap->data->len; i++)
+        {
+          (heap->destructor) (g_ptr_array_index (heap->data, i));
+        }
+    }
 
   g_ptr_array_free (heap->data, TRUE);
   g_slice_free (TpHeap, heap);
@@ -77,12 +89,23 @@ tp_heap_destroy (TpHeap * heap)
  * tp_heap_clear:
  * @heap: The heap queue
  *
- * Remove all items from a #TpHeap.
+ * Remove all items from a #TpHeap. The destructor, if any, is called on all
+ * items.
  */
 void
 tp_heap_clear (TpHeap *heap)
 {
   g_return_if_fail (heap != NULL);
+
+  if (heap->destructor)
+    {
+      guint i;
+
+      for (i = 0; i < heap->data->len; i++)
+        {
+          (heap->destructor) (g_ptr_array_index (heap->data, i));
+        }
+    }
 
   g_ptr_array_free (heap->data, TRUE);
   heap->data = g_ptr_array_sized_new (DEFAULT_SIZE);
@@ -144,6 +167,7 @@ tp_heap_peek_first (TpHeap *heap)
  * @index: The index into the queue
  *
  * Remove the element at 1-based index @index from the queue and return it.
+ * The destructor, if any, is not called.
  *
  * Returns: The element with 1-based index @index
  */
@@ -198,7 +222,8 @@ extract_element (TpHeap * heap, int index)
  * @heap: The heap queue
  * @element: An element in the heap
  *
- * Remove @element from @heap, if it's present.
+ * Remove @element from @heap, if it's present. The destructor, if any,
+ * is not called.
  */
 void
 tp_heap_remove (TpHeap *heap, gpointer element)
@@ -221,7 +246,8 @@ tp_heap_remove (TpHeap *heap, gpointer element)
  * tp_heap_extract_first:
  * @heap: The heap queue
  *
- * Remove and return the first element in the queue.
+ * Remove and return the first element in the queue. The destructor, if any,
+ * is not called.
  *
  * Returns: the removed element
  */

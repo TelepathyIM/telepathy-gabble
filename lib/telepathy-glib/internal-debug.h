@@ -46,8 +46,6 @@ G_END_DECLS
 
 #define DEBUGGING 0
 
-#define NODE_DEBUG(n, s)
-
 #endif /* DEBUG_FLAG */
 
 #endif /* ENABLE_DEBUG */

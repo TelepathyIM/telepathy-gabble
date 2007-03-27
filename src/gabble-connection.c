@@ -2822,7 +2822,7 @@ gabble_connection_request_handles (TpSvcConnection *iface,
               for (j = 0; j < i; j++)
                 {
                   tp_handle_unref (handle_repo,
-                      (TpHandle) g_array_index (handles, guint, i));
+                      (TpHandle) g_array_index (handles, guint, j));
                 }
 
               dbus_g_method_return_error (context, error);
@@ -2886,7 +2886,7 @@ gabble_connection_request_handles (TpSvcConnection *iface,
               for (j = 0; j < i; j++)
                 {
                   tp_handle_unref (handle_repo,
-                      (TpHandle) g_array_index (handles, guint, i));
+                      (TpHandle) g_array_index (handles, guint, j));
                 }
 
               dbus_g_method_return_error (context, error);

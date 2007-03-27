@@ -29,11 +29,33 @@ void _tp_debug (TpDebugFlags flag, const gchar *format, ...)
 
 G_END_DECLS
 
+#endif /* __DEBUG_H__ */
+
+/* ------------------------------------ */
+
+/* Below this point is outside the __DEBUG_H__ guard - so it can take effect
+ * more than once. So you can do:
+ *
+ * #define DEBUG_FLAG TP_DEBUG_ONE_THING
+ * #include "internal-debug.h"
+ * ...
+ * DEBUG ("if we're debugging one thing");
+ * ...
+ * #undef DEBUG_FLAG
+ * #define DEBUG_FLAG TP_DEBUG_OTHER_THING
+ * #include "internal-debug.h"
+ * ...
+ * DEBUG ("if we're debugging the other thing");
+ * ...
+ */
+
 #ifdef DEBUG_FLAG
 
+#undef DEBUG
 #define DEBUG(format, ...) \
   _tp_debug(DEBUG_FLAG, "%s: " format, G_STRFUNC, ##__VA_ARGS__)
 
+#undef DEBUGGING
 #define DEBUGGING _tp_debug_flag_is_set(DEBUG_FLAG)
 
 #endif /* DEBUG_FLAG */
@@ -42,12 +64,12 @@ G_END_DECLS
 
 #ifdef DEBUG_FLAG
 
+#undef DEBUG
 #define DEBUG(format, ...)
 
+#undef DEBUGGING
 #define DEBUGGING 0
 
 #endif /* DEBUG_FLAG */
 
 #endif /* ENABLE_DEBUG */
-
-#endif /* __DEBUG_H__ */

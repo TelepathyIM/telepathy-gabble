@@ -2440,6 +2440,7 @@ hold_unref_and_return_handles (DBusGMethodInvocation *context,
           /* drop the reference that we own */
           for (j = i; j < handles->len; j++)
             {
+              handle = (TpHandle) g_array_index (handles, guint, j);
               tp_handle_unref (repo, handle);
             }
           dbus_g_method_return_error (context, error);

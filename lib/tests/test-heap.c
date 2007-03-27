@@ -12,7 +12,7 @@ static gint comparator_fn(gconstpointer a, gconstpointer b)
 
 int main()
 {
-	TpHeap *heap = tp_heap_new(comparator_fn);
+	TpHeap *heap = tp_heap_new(comparator_fn, NULL);
 	guint prev = 0;
 	guint i;
 

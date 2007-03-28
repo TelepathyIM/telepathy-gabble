@@ -1189,9 +1189,12 @@ tp_base_connection_release_handles (TpSvcConnection *iface,
         {
           dbus_g_method_return_error (context, error);
           g_error_free (error);
+          g_free (sender);
           return;
         }
     }
+
+  g_free (sender);
 
   tp_svc_connection_return_from_release_handles (context);
 }

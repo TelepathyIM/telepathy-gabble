@@ -278,16 +278,12 @@ void
 tp_text_mixin_finalize (GObject *obj)
 {
   TpTextMixin *mixin = TP_TEXT_MIXIN (obj);
-  _PendingMessage *msg;
 
   DEBUG ("%p", obj);
 
   /* free any data held directly by the object here */
 
-  while ((msg = g_queue_pop_head(mixin->priv->pending)))
-    {
-      _pending_free (msg, mixin->priv->contacts_repo);
-    }
+  tp_text_mixin_clear (obj);
 
   g_queue_free (mixin->priv->pending);
 
@@ -537,11 +533,9 @@ tp_text_mixin_list_pending_messages (GObject *obj,
   count = g_queue_get_length (mixin->priv->pending);
   messages = g_ptr_array_sized_new (count);
 
-  for (cur = (clear ? g_queue_pop_head_link(mixin->priv->pending)
-                    : g_queue_peek_head_link(mixin->priv->pending));
+  for (cur = g_queue_peek_head_link (mixin->priv->pending);
        cur != NULL;
-       cur = (clear ? g_queue_pop_head_link(mixin->priv->pending)
-                    : cur->next))
+       cur = cur->next)
     {
       _PendingMessage *msg = (_PendingMessage *) cur->data;
       GValue val = { 0, };
@@ -559,12 +553,10 @@ tp_text_mixin_list_pending_messages (GObject *obj,
           G_MAXUINT);
 
       g_ptr_array_add (messages, g_value_get_boxed (&val));
-
-      if (clear)
-        {
-          _pending_free (msg, mixin->priv->contacts_repo);
-        }
     }
+
+  if (clear)
+    tp_text_mixin_clear (obj);
 
   *ret = messages;
 
@@ -656,7 +648,7 @@ tp_text_mixin_clear (GObject *obj)
   TpTextMixin *mixin = TP_TEXT_MIXIN (obj);
   _PendingMessage *msg;
 
-  while ((msg = g_queue_pop_head(mixin->priv->pending)))
+  while ((msg = g_queue_pop_head (mixin->priv->pending)))
     {
       _pending_free (msg, mixin->priv->contacts_repo);
     }

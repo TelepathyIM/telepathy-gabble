@@ -27,3 +27,4 @@ test_intset_LDADD = \
     ../telepathy-glib/libtelepathy-glib.la
 
 AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @COVERAGE_CFLAGS@ -I.. -I$(srcdir)/..
+AM_LDFLAGS = @DBUS_LIBS@ @GLIB_LIBS@

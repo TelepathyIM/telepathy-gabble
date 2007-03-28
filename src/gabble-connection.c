@@ -1635,6 +1635,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
       DEBUG ("sending disco response failed");
     }
 
+  lm_message_unref (result);
   g_slist_free (features);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;

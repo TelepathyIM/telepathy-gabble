@@ -279,7 +279,7 @@ _request_avatar_cb (GabbleVCardManager *self,
   const gchar *mime_type;
   GArray *arr;
   GError *error = NULL;
-  GString *avatar;
+  GString *avatar = NULL;
   GabblePresence *presence;
 
   g_object_get (self, "connection", &conn, NULL);
@@ -388,6 +388,9 @@ _request_avatar_cb (GabbleVCardManager *self,
   g_array_free (arr, TRUE);
 
 out:
+  if (avatar != NULL)
+    g_string_free (avatar, TRUE);
+
   g_object_unref (conn);
 }
 

@@ -585,6 +585,7 @@ tp_base_connection_register (TpBaseConnection *self,
   if (cls->get_unique_connection_name)
     {
       tmp = cls->get_unique_connection_name (self);
+      g_assert(tmp != NULL);
       unique_name = tp_escape_as_identifier (tmp);
       g_free (tmp);
     }

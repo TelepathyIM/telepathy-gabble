@@ -72,6 +72,16 @@ GType tp_static_handle_repo_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), TP_TYPE_STATIC_HANDLE_REPO,\
   TpStaticHandleRepoClass))
 
+static inline TpHandleRepoIface *
+tp_static_handle_repo_new (TpHandleType handle_type,
+                           const gchar **handle_names)
+{
+  return (TpHandleRepoIface *) g_object_new (TP_TYPE_STATIC_HANDLE_REPO,
+      "handle-type", (guint)handle_type,
+      "handle-names", handle_names,
+      NULL);
+}
+
 G_END_DECLS
 
 #endif

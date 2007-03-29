@@ -451,23 +451,15 @@ _gabble_connection_create_handle_repos (TpBaseConnection *conn,
     TpHandleRepoIface *repos[NUM_TP_HANDLE_TYPES])
 {
   repos[TP_HANDLE_TYPE_CONTACT] =
-      (TpHandleRepoIface *)g_object_new (TP_TYPE_DYNAMIC_HANDLE_REPO,
-          "handle-type", TP_HANDLE_TYPE_CONTACT,
-          "normalize-function", gabble_normalize_contact,
-          "default-normalize-context", GUINT_TO_POINTER (GABBLE_JID_ANY),
-          NULL);
+      tp_dynamic_handle_repo_new (TP_HANDLE_TYPE_CONTACT,
+          gabble_normalize_contact, GUINT_TO_POINTER (GABBLE_JID_ANY));
   repos[TP_HANDLE_TYPE_ROOM] =
-      (TpHandleRepoIface *)g_object_new (TP_TYPE_DYNAMIC_HANDLE_REPO,
-          "handle-type", TP_HANDLE_TYPE_ROOM,
-          "normalize-function", gabble_normalize_room,
+      tp_dynamic_handle_repo_new (TP_HANDLE_TYPE_ROOM, gabble_normalize_room,
           NULL);
   repos[TP_HANDLE_TYPE_GROUP] =
-      (TpHandleRepoIface *)g_object_new (TP_TYPE_DYNAMIC_HANDLE_REPO,
-          "handle-type", TP_HANDLE_TYPE_GROUP, NULL);
+      tp_dynamic_handle_repo_new (TP_HANDLE_TYPE_GROUP, NULL, NULL);
   repos[TP_HANDLE_TYPE_LIST] =
-      (TpHandleRepoIface *)g_object_new (TP_TYPE_STATIC_HANDLE_REPO,
-          "handle-type", TP_HANDLE_TYPE_LIST,
-          "handle-names", list_handle_strings, NULL);
+      tp_static_handle_repo_new (TP_HANDLE_TYPE_LIST, list_handle_strings);
 }
 
 static void

@@ -80,6 +80,18 @@ GType tp_dynamic_handle_repo_get_type (void);
 TpHandle tp_dynamic_handle_repo_lookup_exact (TpHandleRepoIface *irepo,
     const char *id);
 
+static inline TpHandleRepoIface *
+tp_dynamic_handle_repo_new (TpHandleType handle_type,
+                            TpDynamicHandleRepoNormalizeFunc normalize_func,
+                            gpointer default_normalize_context)
+{
+  return (TpHandleRepoIface *) g_object_new (TP_TYPE_DYNAMIC_HANDLE_REPO,
+      "handle-type", (guint)handle_type,
+      "normalize-function", (gpointer)normalize_func,
+      "default-normalize-context", default_normalize_context,
+      NULL);
+}
+
 G_END_DECLS
 
 #endif

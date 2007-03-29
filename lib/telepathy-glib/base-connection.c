@@ -700,8 +700,6 @@ tp_base_connection_connect (TpSvcConnection *iface,
 {
   TpBaseConnection *self = TP_BASE_CONNECTION (iface);
   TpBaseConnectionClass *cls = TP_BASE_CONNECTION_GET_CLASS (self);
-  TpBaseConnectionPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
-      TP_TYPE_BASE_CONNECTION, TpBaseConnectionPrivate);
   GError *error = NULL;
 
   g_assert(TP_IS_BASE_CONNECTION (self));
@@ -715,12 +713,6 @@ tp_base_connection_connect (TpSvcConnection *iface,
               TP_CONNECTION_STATUS_CONNECTING,
               TP_CONNECTION_STATUS_REASON_REQUESTED);
 
-          /* the start_connecting implementation should have ensured
-           * we have a self_handle */
-
-          g_assert (self->self_handle != 0);
-          g_assert (tp_handle_is_valid (priv->handles[TP_HANDLE_TYPE_CONTACT],
-                self->self_handle, NULL));
         }
       else
         {
@@ -1277,6 +1269,12 @@ tp_base_connection_change_status (TpBaseConnection *self,
       break;
 
     case TP_CONNECTION_STATUS_CONNECTED:
+      /* the implementation should have ensured we have a valid self_handle
+       * before changing the state to CONNECTED */
+
+      g_assert (self->self_handle != 0);
+      g_assert (tp_handle_is_valid (priv->handles[TP_HANDLE_TYPE_CONTACT],
+                self->self_handle, NULL));
       if (klass->connected)
         (klass->connected) (self);
       g_ptr_array_foreach (priv->channel_factories, (GFunc)

@@ -1,9 +1,8 @@
 /*
  * TpHeap - a heap queue
  *
- * Copyright (C) 2006 Nokia Corporation. All rights reserved.
- *
- * Contact: Olli Salli (Nokia-M/Helsinki) <olli.salli@nokia.com>
+ * Copyright (C) 2006, 2007 Nokia Corporation. All rights reserved.
+ * Copyright (C) 2007 Collabora Ltd. <http://www.collabora.co.uk/>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public

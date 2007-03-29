@@ -578,7 +578,7 @@ tp_base_connection_register (TpBaseConnection *self,
   gchar *safe_proto;
   gchar *unique_name;
   guint request_name_result;
-  GError *request_error;
+  GError *request_error = NULL;
 
   safe_proto = tp_escape_as_identifier (priv->protocol);
 

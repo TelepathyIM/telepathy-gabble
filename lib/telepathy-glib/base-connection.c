@@ -201,6 +201,7 @@ tp_base_connection_set_property (GObject      *object,
     case PROP_PROTOCOL:
       g_free (priv->protocol);
       priv->protocol = g_value_dup_string (value);
+      g_assert(priv->protocol != NULL);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);

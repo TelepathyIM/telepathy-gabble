@@ -77,10 +77,10 @@ typedef struct {
 } LocalPendingInfo;
 
 static LocalPendingInfo *
-local_pending_info_new(TpHandleRepoIface *repo, 
-                       TpHandle actor, 
-                       guint reason, 
-                       const gchar *message) 
+local_pending_info_new (TpHandleRepoIface *repo,
+                        TpHandle actor,
+                        guint reason,
+                        const gchar *message)
 {
   LocalPendingInfo *info = g_slice_new0 (LocalPendingInfo);
   info->actor = actor;
@@ -93,7 +93,7 @@ local_pending_info_new(TpHandleRepoIface *repo,
 }
 
 static void
-local_pending_info_free(LocalPendingInfo *info) 
+local_pending_info_free (LocalPendingInfo *info)
 {
   g_free ((gchar *)info->message);
   tp_handle_unref (info->repo, info->actor);

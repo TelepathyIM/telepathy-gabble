@@ -164,10 +164,11 @@ typedef gchar *(*TpBaseConnectionGetUniqueConnectionNameImpl) (
  *  the Connect D-Bus method. See #TpBaseConnectionStartConnectingImpl for
  *  details.
  * @interfaces_always_present: A strv of extra D-Bus interfaces which are
- *  always implemented by instances of this class, which must be filled in
- *  by subclasses. Individual instances may detect which additional
- *  interfaces they support and signal them before going to state CONNECTED
- *  by calling tp_base_connection_add_interfaces().
+ *  always implemented by instances of this class, which may be filled in
+ *  by subclasses. The default is to list no additional interfaces.
+ *  Individual instances may detect which additional interfaces they support
+ *  and signal them before going to state CONNECTED by calling
+ *  tp_base_connection_add_interfaces().
  *
  * The class of a #TpBaseConnection. Many members are virtual methods etc.
  * to be filled in in the subclass' class_init function.

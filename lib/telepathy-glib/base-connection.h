@@ -253,6 +253,9 @@ void tp_base_connection_finish_shutdown (TpBaseConnection *self);
 void tp_base_connection_add_interfaces (TpBaseConnection *self,
     const gchar **interfaces);
 
+void tp_base_connection_dbus_request_handles (TpSvcConnection *iface,
+    guint handle_type, const gchar **names, DBusGMethodInvocation *context);
+
 /* TYPE MACROS */
 #define TP_TYPE_BASE_CONNECTION \
   (tp_base_connection_get_type())

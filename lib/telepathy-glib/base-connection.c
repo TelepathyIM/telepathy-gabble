@@ -1305,19 +1305,25 @@ hold_unref_and_return_handles (DBusGMethodInvocation *context,
 
 
 /**
- * tp_base_connection_request_handles
+ * tp_base_connection_dbus_request_handles:
+ * @iface: A pointer to #TpBaseConnection, cast to a pointer to
+ *  #TpSvcConnection
+ * @handle_type: The handle type (#TpHandleType) as a guint
+ * @names: A strv of handle names
+ * @context: The dbus-glib method invocation context
  *
- * Implements D-Bus method RequestHandles
- * on interface org.freedesktop.Telepathy.Connection
- *
- * @context: The D-Bus invocation context to use to return values
- *           or throw an error.
+ * Implements D-Bus method RequestHandles on interface
+ * org.freedesktop.Telepathy.Connection. Exported so subclasses can
+ * use it as a basis for their own implementations (for instance,
+ * at the time of writing Gabble's GabbleConnection does its own processing
+ * for room handles, in order to validate them asynchronously, but delegates
+ * to this implementation for all other types).
  */
-static void
-tp_base_connection_request_handles (TpSvcConnection *iface,
-                                    guint handle_type,
-                                    const gchar **names,
-                                    DBusGMethodInvocation *context)
+void
+tp_base_connection_dbus_request_handles (TpSvcConnection *iface,
+                                         guint handle_type,
+                                         const gchar **names,
+                                         DBusGMethodInvocation *context)
 {
   TpBaseConnection *self = TP_BASE_CONNECTION (iface);
   TpHandleRepoIface *handle_repo = tp_base_connection_get_handles (self,
@@ -1657,19 +1663,19 @@ service_iface_init(gpointer g_iface, gpointer iface_data)
 {
   TpSvcConnectionClass *klass = (TpSvcConnectionClass *)g_iface;
 
-#define IMPLEMENT(x) tp_svc_connection_implement_##x (klass, \
-    tp_base_connection_##x)
-  IMPLEMENT(connect);
-  IMPLEMENT(disconnect);
-  IMPLEMENT(get_interfaces);
-  IMPLEMENT(get_protocol);
-  IMPLEMENT(get_self_handle);
-  IMPLEMENT(get_status);
-  IMPLEMENT(hold_handles);
-  IMPLEMENT(inspect_handles);
-  IMPLEMENT(list_channels);
-  IMPLEMENT(request_channel);
-  IMPLEMENT(release_handles);
-  IMPLEMENT(request_handles);
+#define IMPLEMENT(prefix,x) tp_svc_connection_implement_##x (klass, \
+    tp_base_connection_##prefix##x)
+  IMPLEMENT(,connect);
+  IMPLEMENT(,disconnect);
+  IMPLEMENT(,get_interfaces);
+  IMPLEMENT(,get_protocol);
+  IMPLEMENT(,get_self_handle);
+  IMPLEMENT(,get_status);
+  IMPLEMENT(,hold_handles);
+  IMPLEMENT(,inspect_handles);
+  IMPLEMENT(,list_channels);
+  IMPLEMENT(,request_channel);
+  IMPLEMENT(,release_handles);
+  IMPLEMENT(dbus_,request_handles);
 #undef IMPLEMENT
 }

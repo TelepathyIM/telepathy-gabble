@@ -1403,7 +1403,7 @@ tp_base_connection_change_status (TpBaseConnection *self,
     }
 
   DEBUG("was %u, now %u, for reason %u", self->status, status, reason);
-  g_assert (status != TP_INTERNAL_CONNECTION_STATUS_NEW);
+  g_return_if_fail (status != TP_INTERNAL_CONNECTION_STATUS_NEW);
 
   if (self->status == status)
     {

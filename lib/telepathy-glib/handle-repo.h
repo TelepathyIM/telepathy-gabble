@@ -166,6 +166,9 @@ TpIntSet *tp_handle_set_difference_update (TpHandleSet *set, const TpIntSet *rem
  * Return %TRUE if the given handle type is supported (i.e. repos[handle_type]
  * is not %NULL) and the given handles are all valid in that repository.
  * If not, set @error and return %FALSE.
+ *
+ * Returns: %TRUE if the handle type is supported and the handles are all
+ * valid.
  */
 static inline gboolean
 tp_handles_supported_and_valid (TpHandleRepoIface *repos[NUM_TP_HANDLE_TYPES],

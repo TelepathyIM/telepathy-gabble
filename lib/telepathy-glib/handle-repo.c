@@ -77,6 +77,8 @@ tp_handle_repo_iface_get_type (void)
  * @handle: A handle of the type stored in the repository @self
  * @error: Set to InvalidHandle if %FALSE is returned
  *
+ * <!--Returns: says it all-->
+ *
  * Returns: %TRUE if the handle is nonzero and is present in the repository,
  * else %FALSE
  */
@@ -98,6 +100,8 @@ tp_handle_is_valid (TpHandleRepoIface *self,
  *           the repository @self
  * @allow_zero: If %TRUE, zero is treated like a valid handle
  * @error: Set to InvalidHandle if %FALSE is returned
+ *
+ * <!--Returns: says it all-->
  *
  * Returns: %TRUE if the handle is present in the repository, else %FALSE
  */
@@ -212,6 +216,8 @@ tp_handle_client_release (TpHandleRepoIface *self,
  * @self: A handle repository implementation
  * @handle: A handle of the type stored in the repository
  *
+ * <!--Returns: says it all-->
+ *
  * Returns: the string represented by the given handle, or NULL if the
  * handle is absent from the repository. The string is owned by the
  * handle repository and will remain valid as long as a reference to
@@ -232,12 +238,13 @@ tp_handle_inspect (TpHandleRepoIface *self,
  * @self: A handle repository implementation
  * @id: A string whose handle is required
  * @context: User data to be passed to the normalization callback
+ * @error: Used to return an error if 0 is returned
  *
  * Return a new reference to the handle for the given string. The handle
  * is normalized, if possible. If no such handle exists it will be created.
  *
  * Returns: the handle corresponding to the given string, or 0 if it
- * is invalid
+ * is invalid.
  */
 
 TpHandle
@@ -308,6 +315,8 @@ tp_handle_set_qdata (TpHandleRepoIface *repo,
  * @repo: A handle repository implementation
  * @handle: A handle to get data from
  * @key_id: Key id of data to fetch
+ *
+ * <!--Returns: says it all-->
  *
  * Returns: the data associated with a given key on a given handle; %NULL
  * if there is no associated data.

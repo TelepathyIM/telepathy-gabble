@@ -201,12 +201,13 @@ tp_text_mixin_class_init (GObjectClass *obj_cls, glong offset)
 
 
 /**
- * tp_text_mixin_class_init:
- * @obj_cls: The class of the implementation that uses this mixin
- * @offset: The byte offset of the TpTextMixinClass within the class structure
+ * tp_text_mixin_init:
+ * @obj: An instance of the implementation that uses this mixin
+ * @offset: The byte offset of the TpTextMixin within the object structure
+ * @contacts_repo: The connection's %TP_HANDLE_TYPE_CONTACT repository
  *
  * Initialize the text mixin. Should be called from the implementation's
- * init function like so:
+ * instance init function like so:
  *
  * <informalexample><programlisting>
  * tp_text_mixin_init ((GObject *)self,

@@ -1609,7 +1609,7 @@ tp_base_connection_add_interfaces (TpBaseConnection *self,
       return;
     }
 
-  for (iface = interfaces[0]; iface; iface++)
+  for (iface = interfaces[0]; *iface; iface++)
     {
       n_new++;
     }
@@ -1632,7 +1632,7 @@ tp_base_connection_add_interfaces (TpBaseConnection *self,
 
       if (klass->interfaces_always_present)
         {
-          for (iface = klass->interfaces_always_present[0]; iface; iface++)
+          for (iface = klass->interfaces_always_present[0]; *iface; iface++)
             {
               n_static++;
             }

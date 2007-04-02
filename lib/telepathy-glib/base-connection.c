@@ -1596,6 +1596,12 @@ tp_base_connection_add_interfaces (TpBaseConnection *self,
   g_return_if_fail (self->status != TP_CONNECTION_STATUS_CONNECTED);
   g_return_if_fail (self->status != TP_CONNECTION_STATUS_DISCONNECTED);
 
+  if (interfaces == NULL || interfaces[0] == NULL)
+    {
+      /* If user tries to add no new interfaces, ignore it */
+      return;
+    }
+
   for (iface = interfaces[0]; iface; iface++)
     {
       n_new++;
@@ -1617,9 +1623,12 @@ tp_base_connection_add_interfaces (TpBaseConnection *self,
       /* It's the first time anyone has added interfaces - create the array */
       guint n_static = 0;
 
-      for (iface = klass->interfaces_always_present[0]; iface; iface++)
+      if (klass->interfaces_always_present)
         {
-          n_static++;
+          for (iface = klass->interfaces_always_present[0]; iface; iface++)
+            {
+              n_static++;
+            }
         }
       priv->interfaces = g_array_sized_new (TRUE, FALSE, sizeof (gchar *),
           n_static + n_new);

@@ -20,6 +20,50 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+/**
+ * SECTION:handle-repo-dynamic
+ * @title: TpDynamicHandleRepo
+ * @short_description: general handle repository implementation, with dynamic
+ *  handle allocation and recycling
+ * @see_also: TpHandleRepoIface, TpStaticHandleRepo
+ *
+ * A dynamic handle repository will accept arbitrary handles, which can
+ * be created and destroyed at runtime.
+ *
+ * The #TpHandleRepoIface:handle-type property must be set at construction
+ * time; the #TpHandleRepoIface:normalize-func may be set to perform
+ * validation and normalization on handle ID strings.
+ *
+ * Most connection managers will use this for all supported handle types
+ * except %TP_HANDLE_TYPE_CONTACT_LIST.
+ */
+
+/* gtk-doc for things from the header */
+
+/**
+ * TpDynamicHandleRepoNormalizeFunc:
+ * @repo: The repository on which tp_handle_lookup() or tp_handle_ensure()
+ *        was called
+ * @id: The name to be normalized
+ * @context: Arbitrary context passed to tp_handle_lookup() or
+ *           tp_handle_ensure()
+ * @error: Used to raise the Telepathy error InvalidHandle with an appropriate
+ *         message if NULL is returned
+ *
+ * Returns: a normalized version of @id (to be freed with g_free by the
+ *          caller), or NULL if @id is not valid for this repository
+ */
+
+/**
+ * tp_dynamic_handle_repo_new:
+ * @handle_type: The handle type
+ * @normalize_func: The function to be used to normalize and validate handles,
+ *  or %NULL to accept all handles as-is
+ * @default_normalize_context: The context pointer to be passed to the
+ *  @normalize_func if a %NULL context is passed to tp_handle_lookup() and
+ *  tp_handle_ensure(); this may itself be %NULL
+ */
+
 #include <telepathy-glib/handle-repo-dynamic.h>
 
 #include <dbus/dbus-glib.h>
@@ -116,9 +160,21 @@ enum
   PROP_DEFAULT_NORMALIZE_CONTEXT,
 };
 
+/**
+ * TpDynamicHandleRepoClass:
+ *
+ * The class of a dynamic handle repository. The contents of the struct are private.
+ */
+
 struct _TpDynamicHandleRepoClass {
   GObjectClass parent_class;
 };
+
+/**
+ * TpDynamicHandleRepo:
+ *
+ * A dynamic handle repository. The contents of the struct are private.
+ */
 
 struct _TpDynamicHandleRepo {
   GObject parent;
@@ -429,6 +485,14 @@ tp_dynamic_handle_repo_class_init (TpDynamicHandleRepoClass *klass)
   g_object_class_override_property (object_class, PROP_HANDLE_TYPE,
       "handle-type");
 
+  /**
+   * TpDynamicHandleRepo::normalize-function:
+   *
+   * An optional #TpDynamicHandleRepoNormalizeFunc used to validate and
+   * normalize handle IDs. If %NULL (which is the default), any handle ID is
+   * accepted as-is (equivalent to supplying a pointer to a function that just
+   * calls g_strdup).
+   */
   param_spec = g_param_spec_pointer ("normalize-function",
       "Normalization function",
       "A TpDynamicHandleRepoNormalizeFunc used to normalize handle IDs.",
@@ -437,11 +501,19 @@ tp_dynamic_handle_repo_class_init (TpDynamicHandleRepoClass *klass)
   g_object_class_install_property (object_class, PROP_NORMALIZE_FUNCTION,
       param_spec);
 
+  /**
+   * TpDynamicHandleRepo::default-normalize-context:
+   *
+   * An optional default context given to the
+   * #TpDynamicHandleRepo::normalize-function if %NULL is passed as context to
+   * the ensure or lookup functions, e.g. when RequestHandle is called via
+   * D-Bus. The default is %NULL.
+   */
   param_spec = g_param_spec_pointer ("default-normalize-context",
       "Default normalization context",
       "The default context given to the normalize-function if NULL is passed "
       "as context to the ensure or lookup function, e.g. when RequestHandle"
-      "is called via D-Bus.",
+      "is called via D-Bus. The default is NULL.",
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_NICK |
       G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class,

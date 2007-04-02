@@ -138,24 +138,34 @@ GType gabble_connection_get_type(void);
 #define GABBLE_CONNECTION(obj) \
   (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_CONNECTION, GabbleConnection))
 #define GABBLE_CONNECTION_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_CONNECTION, GabbleConnectionClass))
+  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_CONNECTION, \
+                           GabbleConnectionClass))
 #define GABBLE_IS_CONNECTION(obj) \
   (G_TYPE_CHECK_INSTANCE_TYPE((obj), GABBLE_TYPE_CONNECTION))
 #define GABBLE_IS_CONNECTION_CLASS(klass) \
   (G_TYPE_CHECK_CLASS_TYPE((klass), GABBLE_TYPE_CONNECTION))
 #define GABBLE_CONNECTION_GET_CLASS(obj) \
-  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_CONNECTION, GabbleConnectionClass))
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_CONNECTION, \
+                              GabbleConnectionClass))
 
-gboolean _gabble_connection_set_properties_from_account (GabbleConnection *conn, const gchar *account, GError **error);
-gboolean _gabble_connection_send (GabbleConnection *conn, LmMessage *msg, GError **error);
-gboolean _gabble_connection_send_with_reply (GabbleConnection *conn, LmMessage *msg, GabbleConnectionMsgReplyFunc reply_func, GObject *object, gpointer user_data, GError **error);
-void _gabble_connection_acknowledge_set_iq (GabbleConnection *conn, LmMessage *iq);
-void _gabble_connection_send_iq_error (GabbleConnection *conn, LmMessage *message, GabbleXmppError error, const gchar *errmsg);
+gboolean _gabble_connection_set_properties_from_account (
+    GabbleConnection *conn, const gchar *account, GError **error);
+gboolean _gabble_connection_send (GabbleConnection *conn, LmMessage *msg,
+    GError **error);
+gboolean _gabble_connection_send_with_reply (GabbleConnection *conn,
+    LmMessage *msg, GabbleConnectionMsgReplyFunc reply_func, GObject *object,
+    gpointer user_data, GError **error);
+void _gabble_connection_acknowledge_set_iq (GabbleConnection *conn,
+    LmMessage *iq);
+void _gabble_connection_send_iq_error (GabbleConnection *conn,
+    LmMessage *message, GabbleXmppError error, const gchar *errmsg);
 
-GabbleConnectionAliasSource _gabble_connection_get_cached_alias (GabbleConnection *, TpHandle, gchar **);
+GabbleConnectionAliasSource _gabble_connection_get_cached_alias (
+    GabbleConnection *, TpHandle, gchar **);
 
 const char *_gabble_connection_find_conference_server (GabbleConnection *);
-gboolean _gabble_connection_signal_own_presence (GabbleConnection *, GError **);
+gboolean _gabble_connection_signal_own_presence (GabbleConnection *,
+    GError **);
 
 /* extern only for the benefit of the unit tests */
 void _gabble_connection_create_handle_repos (TpBaseConnection *conn,

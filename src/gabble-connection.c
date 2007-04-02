@@ -469,6 +469,12 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
   TpBaseConnectionClass *parent_class = TP_BASE_CONNECTION_CLASS (
       gabble_connection_class);
   GParamSpec *param_spec;
+  static const gchar *interfaces_always_present[] = {
+      TP_IFACE_CONNECTION_INTERFACE_ALIASING,
+      TP_IFACE_CONNECTION_INTERFACE_CAPABILITIES,
+      TP_IFACE_CONNECTION_INTERFACE_PRESENCE,
+      TP_IFACE_CONNECTION_INTERFACE_AVATARS,
+      NULL };
 
   DEBUG("Initializing (GabbleConnectionClass *)%p", gabble_connection_class);
 
@@ -484,6 +490,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
   parent_class->disconnected = disconnect_callbacks;
   parent_class->shut_down = connection_shut_down;
   parent_class->start_connecting = _gabble_connection_connect;
+  parent_class->interfaces_always_present = interfaces_always_present;
 
   g_type_class_add_private (gabble_connection_class, sizeof (GabbleConnectionPrivate));
 
@@ -2372,42 +2379,6 @@ gabble_connection_get_capabilities (TpSvcConnectionInterfaceCapabilities *iface,
 }
 
 
-/**
- * gabble_connection_get_interfaces
- *
- * Implements D-Bus method GetInterfaces
- * on interface org.freedesktop.Telepathy.Connection
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-static void
-gabble_connection_get_interfaces (TpSvcConnection *iface,
-                                  DBusGMethodInvocation *context)
-{
-  const char *interfaces[] = {
-      TP_IFACE_CONNECTION_INTERFACE_ALIASING,
-      TP_IFACE_CONNECTION_INTERFACE_CAPABILITIES,
-      TP_IFACE_CONNECTION_INTERFACE_PRESENCE,
-      TP_IFACE_CONNECTION_INTERFACE_AVATARS,
-      NULL };
-  GabbleConnection *self = GABBLE_CONNECTION (iface);
-  TpBaseConnection *base = (TpBaseConnection *)self;
-  GabbleConnectionPrivate *priv;
-
-  g_assert (GABBLE_IS_CONNECTION (self));
-
-  priv = GABBLE_CONNECTION_GET_PRIVATE (self);
-
-  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
-
-  tp_svc_connection_return_from_get_interfaces(
-      context, interfaces);
-}
-
 static void
 hold_unref_and_return_handles (DBusGMethodInvocation *context,
                                TpHandleRepoIface *repo,
@@ -2905,6 +2876,8 @@ gabble_connection_request_handles (TpSvcConnection *iface,
 }
 
 
+/* We reimplement RequestHandles to be able to do async validation on
+ * room handles */
 static void
 conn_service_iface_init(gpointer g_iface, gpointer iface_data)
 {
@@ -2912,7 +2885,6 @@ conn_service_iface_init(gpointer g_iface, gpointer iface_data)
 
 #define IMPLEMENT(x) tp_svc_connection_implement_##x (klass, \
     gabble_connection_##x)
-  IMPLEMENT(get_interfaces);
   IMPLEMENT(request_handles);
 #undef IMPLEMENT
 }

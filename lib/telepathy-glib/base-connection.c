@@ -508,9 +508,16 @@ tp_base_connection_class_init (TpBaseConnectionClass *klass)
   object_class->get_property = tp_base_connection_get_property;
   object_class->set_property = tp_base_connection_set_property;
 
-  param_spec = g_param_spec_string ("protocol", "Telepathy identifier for protocol",
+  /**
+   * TpBaseConnection:protocol:
+   *
+   * Identifier used in the Telepathy protocol when this connection's protocol
+   * name is required.
+   */
+  param_spec = g_param_spec_string ("protocol",
+                                    "Telepathy identifier for protocol",
                                     "Identifier string used when the protocol "
-                                    "name is required. Unused internally.",
+                                    "name is required.",
                                     NULL,
                                     G_PARAM_CONSTRUCT_ONLY |
                                     G_PARAM_READWRITE |

@@ -680,6 +680,23 @@ tp_base_connection_close_all_channels (TpBaseConnection *self)
 
 /* D-Bus methods on Connection interface ----------------------------*/
 
+static inline TpConnectionStatusReason
+conn_status_reason_from_g_error (GError *error)
+{
+  if (error->domain == TP_ERRORS)
+    {
+      switch (error->code)
+        {
+        case TP_ERROR_NETWORK_ERROR:
+          return TP_CONNECTION_STATUS_REASON_NETWORK_ERROR;
+        case TP_ERROR_PERMISSION_DENIED:
+          return TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED;
+        }
+    }
+
+  return TP_CONNECTION_STATUS_REASON_NONE_SPECIFIED;
+}
+
 /**
  * tp_base_connection_connect:
  *
@@ -700,22 +717,28 @@ tp_base_connection_connect (TpSvcConnection *iface,
 
   if (self->status == TP_INTERNAL_CONNECTION_STATUS_NEW)
     {
-      gboolean ok = cls->start_connecting (self, &error);
-      if (ok)
+      if (cls->start_connecting (self, &error))
         {
-          tp_base_connection_change_status (self,
-              TP_CONNECTION_STATUS_CONNECTING,
-              TP_CONNECTION_STATUS_REASON_REQUESTED);
-
+          if (self->status == TP_INTERNAL_CONNECTION_STATUS_NEW)
+            {
+              tp_base_connection_change_status (self,
+                TP_CONNECTION_STATUS_CONNECTING,
+                TP_CONNECTION_STATUS_REASON_REQUESTED);
+            }
         }
       else
         {
+          if (self->status != TP_CONNECTION_STATUS_DISCONNECTED)
+            {
+              tp_base_connection_change_status (self,
+                TP_CONNECTION_STATUS_DISCONNECTED,
+                conn_status_reason_from_g_error (error));
+            }
           dbus_g_method_return_error (context, error);
           g_error_free (error);
           return;
         }
     }
-
   tp_svc_connection_return_from_connect (context);
 }
 

@@ -66,3 +66,22 @@
  * ConnectionManager interface, with the correct method and signal signatures,
  * and emit signals from that object in a type-safe way.
  */
+
+/**
+ * SECTION:enums
+ * @title: Telepathy protocol enumerations
+ * @short-description: Enumerated types and bitfields from the Telepathy spec
+ *
+ * This header exposes the constants from the Telepathy specification as
+ * C enums. The names used in the specification (e.g.
+ * Connection_Status_Connected) are converted to upper-case and given a
+ * TP_ prefix, e.g. TP_CONNECTION_STATUS_CONNECTED.
+ *
+ * Each enum also has a constant for the number of members, named like
+ * NUM_TP_CONNECTION_STATUSES. The pluralization is currently hard-coded
+ * in the conversion scripts, but should move into the specification
+ * in future.
+ *
+ * Constants LAST_TP_CONNECTION_STATUS, etc. are also provided. These are
+ * deprecated and will be removed in a future release.
+ */

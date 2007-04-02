@@ -244,10 +244,10 @@ tp_text_mixin_init (GObject *obj,
 /**
  * tp_text_mixin_set_message_types:
  * @obj: An object with this mixin
+ * @...: guints representing members of #TpChannelTextMessageType, terminated
+ *  by %G_MAXUINT
  *
- * Set the supported message types. The arguments must all be of type guint
- * representing members of #TpChannelTextMessageType, and they must be
- * terminated by %G_MAXUINT.
+ * Set the supported message types.
  */
 void
 tp_text_mixin_set_message_types (GObject *obj,
@@ -328,6 +328,11 @@ static void _pending_free (_PendingMessage *msg,
 
 /**
  * tp_text_mixin_receive:
+ * @obj: An object with the text mixin
+ * @type: The type of message received from the underlying protocol
+ * @sender: The handle of the message sender
+ * @timestamp: The time the message was received
+ * @text: The text of the message
  *
  * Add a message to the pending queue and emit Received.
  */

@@ -27,8 +27,12 @@
  *
  * This base class makes it easier to write #TpSvcConnection implementations
  * by managing connection status, channel factories and handle tracking.
- * A subclass should usually only need to implement RequestHandles
- * and GetInterfaces, plus any extra interfaces beyond #TpSvcConnection.
+ * A subclass should often only need to implement GetInterfaces,
+ * plus any extra interfaces beyond #TpSvcConnection.
+ *
+ * Other methods may be reimplemented too: for instance, Gabble overrides
+ * RequestHandles so it can validate MUC rooms, which must be done
+ * asynchronously.
  */
 
 #include <telepathy-glib/base-connection.h>
@@ -1179,7 +1183,136 @@ tp_base_connection_release_handles (TpSvcConnection *iface,
   tp_svc_connection_return_from_release_handles (context);
 }
 
-/* Missing: RequestHandles (need to verify them) */
+
+/* FIXME: This is also in gabble-connection.c. Add it to the telepathy-glib
+ * public API once I've thought of a reasonable name for it!
+ * (Perhaps its semantics would be easier to understand if it freed the array
+ * too, or perhaps it should be split into hold_and_return_handles() and
+ * destroy_reffed_handle_array().) */
+static void
+hold_unref_and_return_handles (DBusGMethodInvocation *context,
+                               TpHandleRepoIface *repo,
+                               GArray *handles)
+{
+  GError *error;
+  gchar *sender = dbus_g_method_get_sender(context);
+  guint i, j;
+
+  for (i = 0; i < handles->len; i++)
+    {
+      TpHandle handle = (TpHandle) g_array_index (handles, guint, i);
+
+      if (!tp_handle_client_hold (repo, sender, handle, &error))
+        {
+          /* undo the hold on the ones we already did */
+          for (j = 0; j < i; j++)
+            {
+              handle = (TpHandle) g_array_index (handles, guint, j);
+              tp_handle_client_release (repo, sender, handle, NULL);
+            }
+          /* drop the reference that we own */
+          for (j = i; j < handles->len; j++)
+            {
+              handle = (TpHandle) g_array_index (handles, guint, j);
+              tp_handle_unref (repo, handle);
+            }
+          dbus_g_method_return_error (context, error);
+          g_error_free (error);
+          g_free (sender);
+          return;
+        }
+
+      /* now that the client owns a reference, release mine */
+      tp_handle_unref (repo, handle);
+    }
+  dbus_g_method_return (context, handles);
+  g_free (sender);
+}
+
+
+/**
+ * tp_base_connection_request_handles
+ *
+ * Implements D-Bus method RequestHandles
+ * on interface org.freedesktop.Telepathy.Connection
+ *
+ * @context: The D-Bus invocation context to use to return values
+ *           or throw an error.
+ */
+static void
+tp_base_connection_request_handles (TpSvcConnection *iface,
+                                    guint handle_type,
+                                    const gchar **names,
+                                    DBusGMethodInvocation *context)
+{
+  TpBaseConnection *self = TP_BASE_CONNECTION (iface);
+  TpHandleRepoIface *handle_repo = tp_base_connection_get_handles (self,
+      handle_type);
+  guint count = 0, i, j;
+  const gchar **cur_name;
+  GError *error = NULL;
+  GArray *handles = NULL;
+
+  for (cur_name = names; *cur_name != NULL; cur_name++)
+    {
+      count++;
+    }
+
+  g_assert (TP_IS_BASE_CONNECTION (self));
+
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (self, context);
+
+  if (!tp_handle_type_is_valid (handle_type, &error))
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return;
+    }
+
+  if (handle_repo == NULL)
+    {
+      DEBUG ("unimplemented handle type %u", handle_type);
+
+      error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+                          "unimplemented handle type %u", handle_type);
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return;
+    }
+
+  handles = g_array_sized_new(FALSE, FALSE, sizeof(guint), count);
+
+  for (i = 0; i < count; i++)
+    {
+      TpHandle handle;
+      const gchar *name = names[i];
+
+      handle = tp_handle_ensure (handle_repo, name, NULL, &error);
+
+      if (handle == 0)
+        {
+          DEBUG("RequestHandles of type %d failed because '%s' is invalid: %s",
+              handle_type, name, error->message);
+
+          /* unref the handles we already created */
+          for (j = 0; j < i; j++)
+            {
+              tp_handle_unref (handle_repo,
+                  (TpHandle) g_array_index (handles, guint, j));
+            }
+
+          dbus_g_method_return_error (context, error);
+          g_error_free (error);
+
+          g_array_free (handles, TRUE);
+          return;
+        }
+      g_array_append_val (handles, handle);
+    }
+
+  hold_unref_and_return_handles (context, handle_repo, handles);
+  g_array_free(handles, TRUE);
+}
 
 TpHandleRepoIface *
 tp_base_connection_get_handles (TpBaseConnection *self,
@@ -1303,6 +1436,6 @@ service_iface_init(gpointer g_iface, gpointer iface_data)
   IMPLEMENT(list_channels);
   IMPLEMENT(request_channel);
   IMPLEMENT(release_handles);
-  /* IMPLEMENT(request_handles); */
+  IMPLEMENT(request_handles);
 #undef IMPLEMENT
 }

@@ -76,17 +76,6 @@ static guint signals[N_SIGNALS] = {0};
       DBUS_TYPE_G_OBJECT_PATH, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT, \
       G_TYPE_INVALID))
 
-#define ERROR_IF_NOT_CONNECTED_ASYNC(CONN, ERROR, CONTEXT) \
-  if ((CONN)->status != TP_CONNECTION_STATUS_CONNECTED) \
-    { \
-      DEBUG ("rejected request as disconnected"); \
-      (ERROR) = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE, \
-          "Connection is disconnected"); \
-      dbus_g_method_return_error ((CONTEXT), (ERROR)); \
-      g_error_free ((ERROR)); \
-      return; \
-    }
-
 typedef struct _ChannelRequest ChannelRequest;
 
 struct _ChannelRequest
@@ -774,11 +763,10 @@ tp_base_connection_get_protocol (TpSvcConnection *iface,
 {
   TpBaseConnection *self = TP_BASE_CONNECTION (iface);
   TpBaseConnectionPrivate *priv;
-  GError *error;
 
   g_assert (TP_IS_BASE_CONNECTION (self));
 
-  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (self, context);
 
   priv = TP_BASE_CONNECTION_GET_PRIVATE (self);
 
@@ -796,11 +784,10 @@ tp_base_connection_get_self_handle (TpSvcConnection *iface,
                                     DBusGMethodInvocation *context)
 {
   TpBaseConnection *self = TP_BASE_CONNECTION (iface);
-  GError *error;
 
   g_assert (TP_IS_BASE_CONNECTION (self));
 
-  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (self, context);
 
   tp_svc_connection_return_from_get_self_handle (
       context, self->self_handle);
@@ -856,7 +843,7 @@ tp_base_connection_hold_handles (TpSvcConnection *iface,
 
   priv = TP_BASE_CONNECTION_GET_PRIVATE (self);
 
-  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (self, context);
 
   if (!tp_handles_supported_and_valid (priv->handles,
         handle_type, handles, FALSE, &error))
@@ -908,7 +895,7 @@ tp_base_connection_inspect_handles (TpSvcConnection *iface,
 
   g_assert (TP_IS_BASE_CONNECTION (self));
 
-  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context);
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (self, context);
 
   if (!tp_handles_supported_and_valid (priv->handles,
         handle_type, handles, FALSE, &error))
@@ -995,7 +982,6 @@ tp_base_connection_list_channels (TpSvcConnection *iface,
 {
   TpBaseConnection *self = TP_BASE_CONNECTION (iface);
   TpBaseConnectionPrivate *priv;
-  GError *error;
   GPtrArray *channels;
   guint i;
 
@@ -1003,7 +989,7 @@ tp_base_connection_list_channels (TpSvcConnection *iface,
 
   priv = TP_BASE_CONNECTION_GET_PRIVATE (self);
 
-  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (self, context);
 
   /* I think on average, each factory will have 2 channels :D */
   channels = g_ptr_array_sized_new (priv->channel_factories->len * 2);
@@ -1050,8 +1036,8 @@ tp_base_connection_request_channel (TpSvcConnection *iface,
 
   priv = TP_BASE_CONNECTION_GET_PRIVATE (self);
 
-  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context);
-  
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (self, context);
+
   request = channel_request_new (context, type, handle_type, handle,
       suppress_handler);
   g_ptr_array_add (priv->channel_requests, request);
@@ -1164,7 +1150,7 @@ tp_base_connection_release_handles (TpSvcConnection *iface,
 
   g_assert (TP_IS_BASE_CONNECTION (self));
 
-  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context)
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (self, context);
 
   if (!tp_handles_supported_and_valid (priv->handles,
         handle_type, handles, FALSE, &error))

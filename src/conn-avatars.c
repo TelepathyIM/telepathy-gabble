@@ -133,6 +133,9 @@ gabble_connection_get_avatar_requirements (TpSvcConnectionInterfaceAvatars *ifac
   static const char *mimetypes[] = {
       "image/png", "image/jpeg", "image/gif", NULL };
 
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (TP_BASE_CONNECTION (iface),
+      context);
+
   /* Jabber has no min/max width/height or max size, but XEP-0153 says
    * you SHOULD use 32-96px either way, and no more than 8K of data */
 
@@ -193,6 +196,8 @@ gabble_connection_get_avatar_tokens (TpSvcConnectionInterfaceAvatars *iface,
   GError *err;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
       TP_HANDLE_TYPE_CONTACT);
+
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, invocation);
 
   if (!tp_handles_are_valid (contact_handles, contacts, FALSE, &err))
     {
@@ -416,6 +421,8 @@ gabble_connection_request_avatar (TpSvcConnectionInterfaceAvatars *iface,
   GError *err = NULL;
   LmMessageNode *vcard_node;
 
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
+
   if (!tp_handle_is_valid (contact_handles, contact, &err))
     {
       dbus_g_method_return_error (context, err);
@@ -584,8 +591,11 @@ gabble_connection_set_avatar (TpSvcConnectionInterfaceAvatars *iface,
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *)self;
-  struct _set_avatar_ctx *ctx = g_new0 (struct _set_avatar_ctx, 1);
+  struct _set_avatar_ctx *ctx;
 
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
+
+  ctx = g_new0 (struct _set_avatar_ctx, 1);
   ctx->conn = self;
   ctx->invocation = context;
   if (avatar)

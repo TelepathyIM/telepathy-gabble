@@ -2172,7 +2172,7 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
   GPtrArray *ret;
   GError *error;
 
-  ERROR_IF_NOT_CONNECTED_ASYNC (base, error, context);
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
 
   DEBUG ("caps before: %x", pres->caps);
 
@@ -2291,7 +2291,7 @@ gabble_connection_get_capabilities (TpSvcConnectionInterfaceCapabilities *iface,
   GPtrArray *ret;
   GError *error;
 
-  ERROR_IF_NOT_CONNECTED_ASYNC (base, error, context);
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
 
   if (!tp_handles_are_valid (contact_handles, handles, TRUE, &error))
     {
@@ -2397,13 +2397,12 @@ gabble_connection_get_interfaces (TpSvcConnection *iface,
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *)self;
   GabbleConnectionPrivate *priv;
-  GError *error;
 
   g_assert (GABBLE_IS_CONNECTION (self));
 
   priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
-  ERROR_IF_NOT_CONNECTED_ASYNC (base, error, context)
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
 
   tp_svc_connection_return_from_get_interfaces(
       context, interfaces);
@@ -2778,7 +2777,7 @@ gabble_connection_request_handles (TpSvcConnection *iface,
 
   g_assert (GABBLE_IS_CONNECTION (self));
 
-  ERROR_IF_NOT_CONNECTED_ASYNC (base, error, context)
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
 
   if (!tp_handle_type_is_valid (handle_type, &error))
     {

@@ -47,11 +47,10 @@ gabble_connection_get_alias_flags (TpSvcConnectionInterfaceAliasing *iface,
                                    DBusGMethodInvocation *context)
 {
   TpBaseConnection *base = TP_BASE_CONNECTION (iface);
-  GError *error;
 
   g_assert (GABBLE_IS_CONNECTION (base));
 
-  ERROR_IF_NOT_CONNECTED_ASYNC (base, error, context)
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
 
   tp_svc_connection_interface_aliasing_return_from_get_alias_flags (
       context, TP_CONNECTION_ALIAS_FLAG_USER_SET);
@@ -190,7 +189,7 @@ gabble_connection_request_aliases (TpSvcConnectionInterfaceAliasing *iface,
 
   g_assert (GABBLE_IS_CONNECTION (self));
 
-  ERROR_IF_NOT_CONNECTED_ASYNC (base, error, context)
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
 
   if (!tp_handles_are_valid (contact_handles, contacts, FALSE, &error))
     {
@@ -341,7 +340,7 @@ gabble_connection_set_aliases (TpSvcConnectionInterfaceAliasing *iface,
 
   g_assert (GABBLE_IS_CONNECTION (self));
 
-  ERROR_IF_NOT_CONNECTED_ASYNC (base, error, context)
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
 
   data.conn = self;
   data.error = &error;

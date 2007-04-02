@@ -193,11 +193,10 @@ gabble_connection_add_status (TpSvcConnectionInterfacePresence *iface,
                               DBusGMethodInvocation *context)
 {
   TpBaseConnection *self = TP_BASE_CONNECTION (iface);
-  GError *error;
   GError unimpl = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
     "Only one status is possible at a time with this protocol" };
 
-  ERROR_IF_NOT_CONNECTED_ASYNC (self, error, context);
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (self, context);
 
   dbus_g_method_return_error (context, &unimpl);
 }
@@ -228,7 +227,7 @@ gabble_connection_clear_status (TpSvcConnectionInterfacePresence *iface,
 
   g_assert (GABBLE_IS_CONNECTION (self));
 
-  ERROR_IF_NOT_CONNECTED_ASYNC (base, error, context);
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
 
   g_object_get (self,
         "resource", &resource,
@@ -343,13 +342,12 @@ gabble_connection_get_statuses (TpSvcConnectionInterfacePresence *iface,
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *)self;
   GHashTable *ret;
-  GError *error;
   GValueArray *status;
   int i;
 
   g_assert (GABBLE_IS_CONNECTION (self));
 
-  ERROR_IF_NOT_CONNECTED_ASYNC (base, error, context)
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
 
   DEBUG ("called.");
 
@@ -421,7 +419,7 @@ gabble_connection_remove_status (TpSvcConnectionInterfacePresence *iface,
 
   g_assert (GABBLE_IS_CONNECTION (self));
 
-  ERROR_IF_NOT_CONNECTED_ASYNC (base, error, context)
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
 
   g_object_get (self,
       "resource", &resource,
@@ -474,7 +472,7 @@ gabble_connection_request_presence (TpSvcConnectionInterfacePresence *iface,
 
   g_assert (GABBLE_IS_CONNECTION (self));
 
-  ERROR_IF_NOT_CONNECTED_ASYNC (base, error, context)
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
 
   if (!tp_handles_are_valid (contact_handles, contacts, FALSE, &error))
     {
@@ -503,11 +501,10 @@ gabble_connection_set_last_activity_time (TpSvcConnectionInterfacePresence *ifac
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *)self;
-  GError *error;
 
   g_assert (GABBLE_IS_CONNECTION (self));
 
-  ERROR_IF_NOT_CONNECTED_ASYNC (base, error, context)
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
 
   tp_svc_connection_interface_presence_return_from_set_last_activity_time (
       context);
@@ -625,7 +622,7 @@ gabble_connection_set_status (TpSvcConnectionInterfacePresence *iface,
 
   g_assert (GABBLE_IS_CONNECTION (self));
 
-  ERROR_IF_NOT_CONNECTED_ASYNC (base, error, context)
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
 
   if (g_hash_table_size (statuses) != 1)
     {

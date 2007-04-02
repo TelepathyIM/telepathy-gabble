@@ -27,11 +27,11 @@
  *
  * This base class makes it easier to write #TpSvcConnection implementations
  * by managing connection status, channel factories and handle tracking.
- * A subclass should often only need to implement GetInterfaces,
- * plus any extra interfaces beyond #TpSvcConnection.
+ * A subclass should often not need to implement any of the Connection
+ * methods itself.
  *
- * Other methods may be reimplemented too: for instance, Gabble overrides
- * RequestHandles so it can validate MUC rooms, which must be done
+ * However, methods may be reimplemented if needed: for instance, Gabble
+ * overrides RequestHandles so it can validate MUC rooms, which must be done
  * asynchronously.
  */
 

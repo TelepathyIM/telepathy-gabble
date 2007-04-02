@@ -2733,76 +2733,22 @@ gabble_connection_request_handles (TpSvcConnection *iface,
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *)self;
-  TpHandleRepoIface *handle_repo = tp_base_connection_get_handles (base,
-      handle_type);
-  guint count = 0, i, j;
-  const gchar **cur_name;
-  GError *error = NULL;
-  GArray *handles = NULL;
-  RoomVerifyBatch *batch = NULL;
-
-  for (cur_name = names; *cur_name != NULL; cur_name++)
-    {
-      count++;
-    }
 
   g_assert (GABBLE_IS_CONNECTION (self));
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
 
-  if (!tp_handle_type_is_valid (handle_type, &error))
+  if (handle_type == TP_HANDLE_TYPE_ROOM)
     {
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-      return;
-    }
+      RoomVerifyBatch *batch = NULL;
+      guint count = 0, i;
+      const gchar **cur_name;
 
-  switch (handle_type)
-    {
-    case TP_HANDLE_TYPE_CONTACT:
-      handles = g_array_sized_new(FALSE, FALSE, sizeof(guint), count);
-
-      for (i = 0; i < count; i++)
+      for (cur_name = names; *cur_name != NULL; cur_name++)
         {
-          TpHandle handle;
-          const gchar *name = names[i];
-
-          if (!gabble_handle_jid_is_valid (handle_type, name, &error))
-            {
-              dbus_g_method_return_error (context, error);
-              g_error_free (error);
-
-              g_array_free (handles, TRUE);
-              return;
-            }
-
-          handle = tp_handle_ensure (handle_repo, name, NULL, &error);
-
-          if (handle == 0)
-            {
-              DEBUG ("requested handle %s was invalid", name);
-
-              /* unref the handles we already created */
-              for (j = 0; j < i; j++)
-                {
-                  tp_handle_unref (handle_repo,
-                      (TpHandle) g_array_index (handles, guint, j));
-                }
-
-              dbus_g_method_return_error (context, error);
-              g_error_free (error);
-
-              g_array_free (handles, TRUE);
-              return;
-            }
-
-          g_array_append_val(handles, handle);
+          count++;
         }
-      hold_unref_and_return_handles (context, handle_repo, handles);
-      g_array_free(handles, TRUE);
-      break;
 
-    case TP_HANDLE_TYPE_ROOM:
       batch = room_verify_batch_new (self, context, count, names);
       if (!batch)
         {
@@ -2827,52 +2773,12 @@ gabble_connection_request_handles (TpSvcConnection *iface,
 
       /* we've set the verification process going - the callback will handle
       returning or raising error */
-      break;
-
-    case TP_HANDLE_TYPE_LIST:
-    case TP_HANDLE_TYPE_GROUP:
-      handles = g_array_sized_new(FALSE, FALSE, sizeof(guint), count);
-
-      for (i = 0; i < count; i++)
-        {
-          TpHandle handle;
-          const gchar *name = names[i];
-
-          handle = tp_handle_ensure (handle_repo, name, NULL, &error);
-
-          if (handle == 0)
-            {
-              DEBUG ("requested %s channel %s not available", 
-                     handle_type == TP_HANDLE_TYPE_LIST ? "list" : "group",
-                     name);
-
-              /* unref the handles we already created */
-              for (j = 0; j < i; j++)
-                {
-                  tp_handle_unref (handle_repo,
-                      (TpHandle) g_array_index (handles, guint, j));
-                }
-
-              dbus_g_method_return_error (context, error);
-              g_error_free (error);
-
-              g_array_free (handles, TRUE);
-              return;
-            }
-          g_array_append_val(handles, handle);
-        }
-      hold_unref_and_return_handles (context, handle_repo, handles);
-      g_array_free(handles, TRUE);
-      break;
-
-    default:
-      DEBUG ("unimplemented handle type %u", handle_type);
-
-      error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-                          "unimplemented handle type %u", handle_type);
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
+      return;
     }
+
+  /* else it's either an invalid type, or a type we can verify immediately -
+   * in either case, let the superclass do it */
+  tp_base_connection_dbus_request_handles (iface, handle_type, names, context);
 }
 
 

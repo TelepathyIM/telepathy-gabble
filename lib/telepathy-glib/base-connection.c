@@ -1338,6 +1338,46 @@ void tp_base_connection_finish_shutdown (TpBaseConnection *self)
   g_signal_emit (self, signals[SHUTDOWN_FINISHED], 0);
 }
 
+/**
+ * tp_base_connection_change_status:
+ * @self: The connection
+ * @status: The new status
+ * @reason: The reason for the status change
+ *
+ * Change the status of the connection. The allowed state transitions are:
+ *
+ * <itemizedlist>
+ * <listitem>NEW -> CONNECTING</listitem>
+ * <listitem>CONNECTING -> CONNECTED</listitem>
+ * <listitem>NEW -> CONNECTED (equivalent to both of the above one after the other - see
+ * below)</listitem>
+ * <listitem>(anything except DISCONNECTED) -> DISCONNECTED</listitem>
+ * </itemizedlist>
+ *
+ * Before the transition to CONNECTED, the implementation must have discovered
+ * the handle for the local user, obtained a reference to that handle and
+ * stored it in the @self_handle member of #TpBaseConnection.
+ *
+ * Changing from NEW to CONNECTED is implemented by doing the transition from
+ * NEW to CONNECTING, followed by the transition from CONNECTING to CONNECTED;
+ * it's exactly equivalent to calling tp_base_connection_change_status for
+ * those two transitions one after the other.
+ *
+ * Any other valid transition does the following, in this order:
+ *
+ * <itemizedlist>
+ * <listitem>Update the @status member of #TpBaseConnection</listitem>
+ * <listitem>If the new state is DISCONNECTED, call the close_all_channels
+ * callback on all channel factories</listitem>
+ * <listitem>If the new state is DISCONNECTED, unref the @self_handle, if
+ * any, and set it to 0</listitem>
+ * <listitem>Emit the D-Bus StatusChanged signal</listitem>
+ * <listitem>Call the subclass' status change callback</listitem>
+ * <listitem>Call the channel factories' status change callbacks</listitem>
+ * <listitem>If the new state is DISCONNECTED, call the subclass'
+ * @shut_down callback</listitem>
+ * </itemizedlist>
+ */
 void
 tp_base_connection_change_status (TpBaseConnection *self,
                                   TpConnectionStatus status,
@@ -1352,6 +1392,16 @@ tp_base_connection_change_status (TpBaseConnection *self,
   priv = TP_BASE_CONNECTION_GET_PRIVATE (self);
   klass = TP_BASE_CONNECTION_GET_CLASS (self);
 
+  if (self->status == TP_INTERNAL_CONNECTION_STATUS_NEW
+      && status == TP_CONNECTION_STATUS_CONNECTED)
+    {
+      /* going straight from NEW to CONNECTED would cause confusion, so before
+       * we do anything else, go via CONNECTING */
+      DEBUG("from NEW to CONNECTED: going via CONNECTING first");
+      tp_base_connection_change_status (self, TP_CONNECTION_STATUS_CONNECTING,
+          reason);
+    }
+
   DEBUG("was %u, now %u, for reason %u", self->status, status, reason);
   g_assert (status != TP_INTERNAL_CONNECTION_STATUS_NEW);
 
@@ -1364,6 +1414,31 @@ tp_base_connection_change_status (TpBaseConnection *self,
 
   prev_status = self->status;
   self->status = status;
+
+  /* make appropriate assertions about our state */
+  switch (status)
+    {
+    case TP_CONNECTION_STATUS_DISCONNECTED:
+      /* you can go from any state to DISCONNECTED, except DISCONNECTED;
+       * and we already warned and returned if that was the case, so
+       * nothing to do here */
+      break;
+    case TP_CONNECTION_STATUS_CONNECTED:
+      /* you can only go to CONNECTED if you're CONNECTING (or NEW, but we
+       * covered that by forcing a transition to CONNECTING above) */
+      g_return_if_fail (prev_status == TP_CONNECTION_STATUS_CONNECTING);
+      /* by the time we go CONNECTED we must have the self handle */
+      g_return_if_fail (self->self_handle != 0);
+      break;
+    case TP_CONNECTION_STATUS_CONNECTING:
+      /* you can't go CONNECTING if a connection attempt has been made before */
+      g_return_if_fail (prev_status == TP_INTERNAL_CONNECTION_STATUS_NEW);
+      break;
+    default:
+      g_warning ("%s: invalid connection status %d", G_STRFUNC, status);
+      g_assert_not_reached ();
+      return;
+    }
 
   if (status == TP_CONNECTION_STATUS_DISCONNECTED)
     {

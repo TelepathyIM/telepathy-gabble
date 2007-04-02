@@ -162,8 +162,14 @@ typedef gchar *(*TpBaseConnectionGetUniqueConnectionNameImpl) (
  * @start_connecting: Asynchronously start connecting - called to implement
  *  the Connect D-Bus method. See #TpBaseConnectionStartConnectingImpl for
  *  details.
+ * @interfaces_always_present: A strv of extra D-Bus interfaces which are
+ *  always implemented by instances of this class, which must be filled in
+ *  by subclasses. Individual instances may detect which additional
+ *  interfaces they support and signal them before going to state CONNECTED
+ *  by calling tp_base_connection_add_interfaces().
  *
- * The class of a #TpBaseConnection.
+ * The class of a #TpBaseConnection. Many members are virtual methods etc.
+ * to be filled in in the subclass' class_init function.
  */
 struct _TpBaseConnectionClass {
     GObjectClass parent_class;
@@ -181,6 +187,8 @@ struct _TpBaseConnectionClass {
     TpBaseConnectionProc shut_down;
 
     TpBaseConnectionStartConnectingImpl start_connecting;
+
+    const gchar **interfaces_always_present;
 };
 
 /**
@@ -241,6 +249,9 @@ void tp_base_connection_change_status (TpBaseConnection *self,
     TpConnectionStatus status, TpConnectionStatusReason reason);
 
 void tp_base_connection_finish_shutdown (TpBaseConnection *self);
+
+void tp_base_connection_add_interfaces (TpBaseConnection *self,
+    const gchar **interfaces);
 
 /* TYPE MACROS */
 #define TP_TYPE_BASE_CONNECTION \

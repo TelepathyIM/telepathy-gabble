@@ -159,6 +159,14 @@ typedef struct _TpBaseConnectionPrivate
   GPtrArray *channel_requests;
 
   TpHandleRepoIface *handles[NUM_TP_HANDLE_TYPES];
+
+  /* if not %NULL, contains strings representing our interfaces.
+   * If %NULL, we have no interfaces except those in
+   * klass->interfaces_always_present (i.e. this is lazily allocated).
+   *
+   * Note that this is a GArray of gchar*, not a GPtrArray,
+   * so that we can use GArray's convenient auto-null-termination. */
+  GArray *interfaces;
 } TpBaseConnectionPrivate;
 
 static void
@@ -770,7 +778,43 @@ tp_base_connection_disconnect (TpSvcConnection *iface,
   tp_svc_connection_return_from_disconnect (context);
 }
 
-/* Missing: GetInterfaces, but could implement in a cunning generic way? */
+/**
+ * tp_base_connection_get_interfaces
+ *
+ * Implements D-Bus method GetInterfaces
+ * on interface org.freedesktop.Telepathy.Connection
+ */
+static void
+tp_base_connection_get_interfaces (TpSvcConnection *iface,
+                                   DBusGMethodInvocation *context)
+{
+  TpBaseConnection *self = TP_BASE_CONNECTION (iface);
+  TpBaseConnectionPrivate *priv;
+  TpBaseConnectionClass *klass;
+  const gchar **interfaces;
+
+  g_assert (TP_IS_BASE_CONNECTION (self));
+
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (self, context);
+
+  priv = TP_BASE_CONNECTION_GET_PRIVATE (self);
+  klass = TP_BASE_CONNECTION_GET_CLASS (self);
+
+  if (priv->interfaces)
+    {
+      /* There are some extra interfaces for this channel */
+      interfaces = (const gchar **)(priv->interfaces->data);
+    }
+  else
+    {
+      /* We only have the interfaces that are always present.
+       * Instead of bothering to duplicate the static
+       * array into the GArray, we just use it directly */
+      interfaces = klass->interfaces_always_present;
+    }
+
+  tp_svc_connection_return_from_get_interfaces(context, interfaces);
+}
 
 /**
  * tp_base_connection_get_protocol
@@ -1523,6 +1567,75 @@ tp_base_connection_change_status (TpBaseConnection *self,
     }
 }
 
+
+/**
+ * tp_base_connection_add_interfaces:
+ * @self: A TpBaseConnection in state #TP_INTERNAL_CONNECTION_STATUS_NEW
+ *  or #TP_CONNECTION_STATUS_CONNECTING
+ * @interfaces: A %NULL-terminated array of D-Bus interface names, which
+ *  must remain valid at least until the connection enters state
+ *  #TP_CONNECTION_STATUS_DISCONNECTED (in practice, you should either
+ *  use static strings, or use strdup'd strings and free them in the dispose
+ *  callback).
+ *
+ * Add some interfaces to the list supported by this Connection. If you're
+ * going to call this function at all, you must do so before moving to state
+ * CONNECTED (or DISCONNECTED); if you don't call it, only the set of
+ * interfaces always present (@interfaces_always_present in
+ * #TpBaseConnectionClass) will be supported.
+ */
+void
+tp_base_connection_add_interfaces (TpBaseConnection *self,
+                                   const gchar **interfaces)
+{
+  const gchar *iface;
+  guint i, n_new = 0;
+  TpBaseConnectionPrivate *priv = TP_BASE_CONNECTION_GET_PRIVATE (self);
+  TpBaseConnectionClass *klass = TP_BASE_CONNECTION_GET_CLASS (self);
+
+  g_return_if_fail (self->status != TP_CONNECTION_STATUS_CONNECTED);
+  g_return_if_fail (self->status != TP_CONNECTION_STATUS_DISCONNECTED);
+
+  for (iface = interfaces[0]; iface; iface++)
+    {
+      n_new++;
+    }
+
+  if (priv->interfaces)
+    {
+      guint size = priv->interfaces->len;
+
+      g_array_set_size (priv->interfaces, size + n_new);
+      for (i = 0; i < n_new; i++)
+        {
+          g_array_index (priv->interfaces, const gchar *, size + i) =
+            interfaces[i];
+        }
+    }
+  else
+    {
+      /* It's the first time anyone has added interfaces - create the array */
+      guint n_static = 0;
+
+      for (iface = klass->interfaces_always_present[0]; iface; iface++)
+        {
+          n_static++;
+        }
+      priv->interfaces = g_array_sized_new (TRUE, FALSE, sizeof (gchar *),
+          n_static + n_new);
+      for (i = 0; i < n_static; i++)
+        {
+          g_array_append_val (priv->interfaces,
+              klass->interfaces_always_present[i]);
+        }
+      for (i = 0; i < n_new; i++)
+        {
+          g_array_append_val (priv->interfaces, interfaces[i]);
+        }
+    }
+}
+
+
 static void
 service_iface_init(gpointer g_iface, gpointer iface_data)
 {
@@ -1532,7 +1645,7 @@ service_iface_init(gpointer g_iface, gpointer iface_data)
     tp_base_connection_##x)
   IMPLEMENT(connect);
   IMPLEMENT(disconnect);
-  /* IMPLEMENT(get_interfaces); */
+  IMPLEMENT(get_interfaces);
   IMPLEMENT(get_protocol);
   IMPLEMENT(get_self_handle);
   IMPLEMENT(get_status);

@@ -20,6 +20,24 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+/**
+ * SECTION:handle-repo-static
+ * @title: TpStaticHandleRepo
+ * @short_description: handle repository implementation with a fixed, static
+ *  set of handle names
+ * @see_also: TpHandleRepoIface, TpDynamicHandleRepo
+ *
+ * A static handle repository has a fixed, static set of allowed names;
+ * these handles can never be destroyed, and no more can be created, so
+ * no reference counting is performed.
+ *
+ * The #TpHandleRepoIface:handle-type property must be set at construction
+ * time.
+ *
+ * Most connection managers will use this for handles of type
+ * %TP_HANDLE_TYPE_CONTACT_LIST.
+ */
+
 #include <telepathy-glib/handle-repo-static.h>
 
 #include <string.h>

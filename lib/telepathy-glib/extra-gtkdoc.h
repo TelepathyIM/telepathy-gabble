@@ -110,3 +110,12 @@
  *
  * It also provides utility functions used by functions which return an error.
  */
+
+/**
+ * SECTION:handle
+ * @title: TpHandle
+ * @short_description: type representing handles
+ * @see_also: TpHandleRepoIface
+ *
+ * The TpHandle type represents a Telepathy handle.
+ */

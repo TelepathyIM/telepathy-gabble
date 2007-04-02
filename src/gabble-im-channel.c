@@ -389,6 +389,8 @@ gabble_im_channel_close (TpSvcChannel *iface,
 
   if (!priv->closed)
     {
+      tp_svc_channel_emit_closed (self);
+
       if (presence && (presence->caps & PRESENCE_CAP_CHAT_STATES))
         {
           /* Set the chat state of the channel on gone
@@ -398,10 +400,9 @@ gabble_im_channel_close (TpSvcChannel *iface,
               TP_CHANNEL_CHAT_STATE_GONE, priv->peer_jid, NULL, priv->conn,
               FALSE /* emit_signal */, NULL);
         }
+
       priv->closed = TRUE;
     }
-
-  tp_svc_channel_emit_closed (self);
 
   tp_svc_channel_return_from_close (context);
 }

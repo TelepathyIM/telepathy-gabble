@@ -68,6 +68,18 @@
  */
 
 /**
+ * SECTION:svc-media-interfaces
+ * @title: Service-side media streaming helper interfaces
+ * @short_description: media session and media stream
+ * @see_also: #TpSvcChannelTypeStreamedMedia
+ *
+ * These interfaces (auto-generated from the telepathy spec) make it easier
+ * to export the objects used to implement #TpSvcChannelTypeStreamedMedia,
+ * with the correct method and signal signatures, and emit signals from those
+ * objects.
+ */
+
+/**
  * SECTION:enums
  * @title: Telepathy protocol enumerations
  * @short_description: Enumerated types and bitfields from the Telepathy spec

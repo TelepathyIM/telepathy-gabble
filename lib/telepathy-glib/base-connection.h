@@ -256,7 +256,33 @@ void tp_base_connection_finish_shutdown (TpBaseConnection *self);
 #define TP_IS_BASE_CONNECTION_CLASS(klass) \
   (G_TYPE_CHECK_CLASS_TYPE((klass), TP_TYPE_BASE_CONNECTION))
 #define TP_BASE_CONNECTION_GET_CLASS(obj) \
-  (G_TYPE_INSTANCE_GET_CLASS ((obj), TP_TYPE_BASE_CONNECTION, TpBaseConnectionClass))
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), TP_TYPE_BASE_CONNECTION, \
+                              TpBaseConnectionClass))
+
+/**
+ * TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED:
+ * @conn: A TpBaseConnection
+ * @context: A DBusGMethodInvocation
+ *
+ * If @conn is not in state #TP_CONNECTION_STATUS_CONNECTED, complete the
+ * D-Bus method invocation @context by raising the Telepathy error
+ * #TP_ERROR_DISCONNECTED, and return from the current function (which
+ * must be void). For use in D-Bus method implementations.
+ */
+#define TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED(conn, context) \
+  G_STMT_START { \
+    TpBaseConnection *c = (conn); \
+    \
+    if (c->status != TP_CONNECTION_STATUS_CONNECTED) \
+      { \
+        GError e = { TP_ERRORS, TP_ERROR_DISCONNECTED, \
+            "Connection is disconnected" }; \
+        \
+        DEBUG ("rejected request as disconnected"); \
+        dbus_g_method_return_error((context), &e); \
+        return; \
+      } \
+  } G_STMT_END
 
 G_END_DECLS
 

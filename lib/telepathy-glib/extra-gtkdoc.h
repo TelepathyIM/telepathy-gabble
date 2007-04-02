@@ -34,7 +34,7 @@
 /**
  * SECTION:svc-channel
  * @title: Service-side Channel types and interfaces
- * @short-description: GInterfaces for Telepathy Channel objects
+ * @short_description: GInterfaces for Telepathy Channel objects
  * @see_also: #TpChannelIface
  *
  * These interfaces (auto-generated from the Telepathy spec) make it easier
@@ -46,7 +46,7 @@
 /**
  * SECTION:svc-connection
  * @title: Service-side Connection interfaces
- * @short-description: GInterfaces for Telepathy Connection objects
+ * @short_description: GInterfaces for Telepathy Connection objects
  * @see_also: #TpBaseConnection
  *
  * These interfaces (auto-generated from the Telepathy spec) make it easier
@@ -58,7 +58,7 @@
 /**
  * SECTION:svc-connection-manager
  * @title: Service-side Connection Manager interface
- * @short-description: GInterface for Telepathy ConnectionManager objects
+ * @short_description: GInterface for Telepathy ConnectionManager objects
  * @see_also: #TpBaseConnection
  *
  * The #TpSvcConnectionManager interface (auto-generated from the Telepathy
@@ -70,7 +70,7 @@
 /**
  * SECTION:enums
  * @title: Telepathy protocol enumerations
- * @short-description: Enumerated types and bitfields from the Telepathy spec
+ * @short_description: Enumerated types and bitfields from the Telepathy spec
  *
  * This header exposes the constants from the Telepathy specification as
  * C enums. The names used in the specification (e.g.

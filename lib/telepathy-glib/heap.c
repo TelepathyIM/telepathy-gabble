@@ -43,8 +43,12 @@ struct _TpHeap
 /**
  * tp_heap_new:
  * @comparator: Comparator by which to order the pointers in the heap
+ * @destructor: Function to call on the pointers when the heap is destroyed
+ *  or cleared, or %NULL if this is not needed
  *
- * Create a new, empty heap queue.
+ * <!--Returns: says it all-->
+ *
+ * Returns: A new, empty heap queue.
  */
 TpHeap *
 tp_heap_new (GCompareFunc comparator, GDestroyNotify destructor)
@@ -146,6 +150,8 @@ tp_heap_add (TpHeap *heap, gpointer element)
 /**
  * tp_heap_peek_first:
  * @heap: The heap queue
+ *
+ * <!--Returns: says it all-->
  *
  * Returns: The first item in the queue, or %NULL if the queue is empty
  */
@@ -264,6 +270,8 @@ tp_heap_extract_first (TpHeap * heap)
 /**
  * tp_heap_size:
  * @heap: The heap queue
+ *
+ * <!--Returns: says it all-->
  *
  * Returns: The number of items in @heap
  */

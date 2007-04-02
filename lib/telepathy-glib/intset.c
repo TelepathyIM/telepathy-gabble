@@ -249,6 +249,8 @@ addint (guint i, gpointer data)
  * tp_intset_to_array:
  * @set: set to convert
  *
+ * <!--Returns: says it all-->
+ *
  * Returns: a GArray of guint (which must be freed by the caller) containing
  * the same integers as @set.
  */
@@ -270,6 +272,8 @@ tp_intset_to_array (TpIntSet *set)
 /**
  * tp_intset_from_array:
  * @array: An array of guint
+ *
+ * <!--Returns: says it all-->
  *
  * Returns: A set containing the same integers as @array.
  */
@@ -306,6 +310,8 @@ tp_intset_from_array (GArray *array)
  * tp_intset_size:
  * @set: A set of integers
  *
+ * <!--Returns: says it all-->
+ *
  * Returns: The number of integers in @set
  */
 
@@ -332,6 +338,8 @@ tp_intset_size (const TpIntSet *set)
  * tp_intset_is_equal:
  * @left: A set of integers
  * @right: A set of integers
+ *
+ * <!--Returns: says it all-->
  *
  * Returns: %TRUE if @left and @right contain the same bits
  */
@@ -376,6 +384,8 @@ tp_intset_is_equal (const TpIntSet *left, const TpIntSet *right)
  * tp_intset_copy:
  * @orig: A set of integers
  *
+ * <!--Returns: says it all-->
+ *
  * Returns: A set containing the same integers as @orig, to be freed with
  * tp_intset_destroy() by the caller
  */
@@ -398,6 +408,8 @@ tp_intset_copy (const TpIntSet *orig)
  * tp_intset_intersection:
  * @left: The left operand
  * @right: The right operand
+ *
+ * <!--Returns: says it all-->
  *
  * Returns: The set of those integers which are in both @left and @right
  * (analogous to the bitwise operation left & right), to be freed with
@@ -441,6 +453,8 @@ tp_intset_intersection (const TpIntSet *left, const TpIntSet *right)
  * @left: The left operand
  * @right: The right operand
  *
+ * <!--Returns: says it all-->
+ *
  * Returns: The set of those integers which are in either @left or @right
  * (analogous to the bitwise operation left | right), to be freed with
  * tp_intset_destroy() by the caller
@@ -483,6 +497,8 @@ tp_intset_union (const TpIntSet *left, const TpIntSet *right)
  * @left: The left operand
  * @right: The right operand
  *
+ * <!--Returns: says it all-->
+ *
  * Returns: The set of those integers which are in @left and not in @right
  * (analogous to the bitwise operation left & (~right)), to be freed with
  * tp_intset_destroy() by the caller
@@ -512,6 +528,8 @@ tp_intset_difference (const TpIntSet *left, const TpIntSet *right)
  * tp_intset_symmetric_difference:
  * @left: The left operand
  * @right: The right operand
+ *
+ * <!--Returns: says it all-->
  *
  * Returns: The set of those integers which are in either @left or @right
  * but not both (analogous to the bitwise operation left ^ right), to be freed
@@ -563,6 +581,8 @@ _dump_foreach (guint i, gpointer data)
 /**
  * tp_intset_dump:
  * @set: An integer set
+ *
+ * <!--Returns: says it all-->
  *
  * Returns: a string which the caller must free with g_free, listing the
  * numbers in @set in a human-readable format

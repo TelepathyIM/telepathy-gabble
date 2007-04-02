@@ -1326,7 +1326,11 @@ tp_base_connection_get_handles (TpBaseConnection *self,
   return priv->handles[handle_type];
 }
 
-/** Tell the connection manager that this Connection has been disconnected,
+/**
+ * tp_base_connection_finish_shutdown:
+ * @self: The connection
+ *
+ * Tell the connection manager that this Connection has been disconnected,
  * has emitted StatusChanged and is ready to be removed from D-Bus.
  */
 void tp_base_connection_finish_shutdown (TpBaseConnection *self)

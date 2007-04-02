@@ -246,9 +246,11 @@ void tp_base_connection_finish_shutdown (TpBaseConnection *self);
 #define TP_TYPE_BASE_CONNECTION \
   (tp_base_connection_get_type())
 #define TP_BASE_CONNECTION(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST((obj), TP_TYPE_BASE_CONNECTION, TpBaseConnection))
+  (G_TYPE_CHECK_INSTANCE_CAST((obj), TP_TYPE_BASE_CONNECTION, \
+                              TpBaseConnection))
 #define TP_BASE_CONNECTION_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST((klass), TP_TYPE_BASE_CONNECTION, TpBaseConnectionClass))
+  (G_TYPE_CHECK_CLASS_CAST((klass), TP_TYPE_BASE_CONNECTION, \
+                           TpBaseConnectionClass))
 #define TP_IS_BASE_CONNECTION(obj) \
   (G_TYPE_CHECK_INSTANCE_TYPE((obj), TP_TYPE_BASE_CONNECTION))
 #define TP_IS_BASE_CONNECTION_CLASS(klass) \

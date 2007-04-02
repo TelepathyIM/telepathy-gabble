@@ -43,8 +43,6 @@
 
 #include <telepathy-glib/channel-factory-iface.h>
 #include <telepathy-glib/dbus.h>
-#include <telepathy-glib/enums.h>
-#include <telepathy-glib/svc-connection.h>
 #include <telepathy-glib/util.h>
 
 #define DEBUG_FLAG TP_DEBUG_CONNECTION

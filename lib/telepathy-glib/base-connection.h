@@ -25,8 +25,9 @@
 #include <dbus/dbus-glib.h>
 #include <glib-object.h>
 
-#include <telepathy-glib/handle-repo.h>
 #include <telepathy-glib/enums.h>
+#include <telepathy-glib/handle-repo.h>
+#include <telepathy-glib/svc-connection.h>
 
 G_BEGIN_DECLS
 

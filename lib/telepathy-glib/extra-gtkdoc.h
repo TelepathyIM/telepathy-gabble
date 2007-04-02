@@ -73,7 +73,9 @@
  * @short_description: Enumerated types and bitfields from the Telepathy spec
  *
  * This header exposes the constants from the Telepathy specification as
- * C enums. The names used in the specification (e.g.
+ * C enums. It is automatically generated from the specification.
+ *
+ * The names used in the specification (e.g.
  * Connection_Status_Connected) are converted to upper-case and given a
  * TP_ prefix, e.g. TP_CONNECTION_STATUS_CONNECTED.
  *
@@ -84,4 +86,27 @@
  *
  * Constants LAST_TP_CONNECTION_STATUS, etc. are also provided. These are
  * deprecated and will be removed in a future release.
+ */
+
+/**
+ * SECTION:interfaces
+ * @title: Telepathy protocol interface strings
+ * @short_description: D-Bus interface names from the Telepathy spec
+ *
+ * This header exposes the interface names from the Telepathy specification
+ * as cpp defines for strings. It is automatically generated from the
+ * specification.
+ */
+
+/**
+ * SECTION:errors
+ * @title: Telepathy protocol errors
+ * @short_description: The errors from the Telepathy D-Bus spec, as a
+ *  GLib error domain
+ *
+ * This header provides the Telepathy D-Bus errors, in the form of a
+ * GLib error domain. For D-Bus methods which fail with one of these errors,
+ * dbus-glib will generate a reply message with the appropriate error.
+ *
+ * It also provides utility functions used by functions which return an error.
  */

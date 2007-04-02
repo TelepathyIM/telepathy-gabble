@@ -61,17 +61,38 @@ typedef struct _TpBaseConnectionClass TpBaseConnectionClass;
 typedef void (*TpBaseConnectionProc) (TpBaseConnection *self);
 
 /**
- * TpBaseConnectionProcWithError:
+ * TpBaseConnectionStartConnectingImpl:
  * @self: The connection object
  * @error: Set to the error if %FALSE is returned
  *
- * Signature of a virtual method on #TpBaseConnection that takes no
- * additional parameters, but can fail and report an error.
+ * Signature of an implementation of the start_connecting method
+ * of #TpBaseConnection.
  *
- * Returns: %TRUE on success
+ * On entry, the implementation may assume that it is in state NEW.
+ *
+ * If %TRUE is returned, the Connect D-Bus method succeeds; the
+ * implementation must either have already set the status to CONNECTED by
+ * calling tp_base_connection_change_status(), or have arranged for a
+ * status change to either state DISCONNECTED or CONNECTED to be signalled by
+ * calling tp_base_connection_change_status() at some later time.
+ * If the status is still NEW after returning %TRUE, #TpBaseConnection will
+ * automatically change it to CONNECTING for reason REQUESTED.
+ *
+ * If %FALSE is returned, the error will be raised from Connect as an
+ * exception. If the status is not DISCONNECTED after %FALSE is returned,
+ * #TpBaseConnection will automatically change it to DISCONNECTED
+ * with a reason appropriate to the error; NetworkError results in
+ * NETWORK_ERROR, PermissionDenied results in AUTHENTICATION_FAILED, and all
+ * other errors currently result in NONE_SPECIFIED.
+ *
+ * All except the simplest connection managers are expected to implement this
+ * asynchronously, returning %TRUE in most cases and changing the status
+ * to CONNECTED or DISCONNECTED later.
+ *
+ * Returns: %FALSE if failure has already occurred, else %TRUE.
  */
-typedef gboolean (*TpBaseConnectionProcWithError) (TpBaseConnection *self,
-    GError **error);
+typedef gboolean (*TpBaseConnectionStartConnectingImpl) (
+    TpBaseConnection *self, GError **error);
 
 /**
  * TpBaseConnectionCreateHandleReposImpl:
@@ -85,7 +106,7 @@ typedef gboolean (*TpBaseConnectionProcWithError) (TpBaseConnection *self,
 typedef void (*TpBaseConnectionCreateHandleReposImpl) (TpBaseConnection *self,
     TpHandleRepoIface *repos[NUM_TP_HANDLE_TYPES]);
 
-/** 
+/**
  * TpBaseConnectionCreateChannelFactoriesImpl:
  * @self: The implementation, a subclass of TpBaseConnection
  *
@@ -99,7 +120,7 @@ typedef void (*TpBaseConnectionCreateHandleReposImpl) (TpBaseConnection *self,
 typedef GPtrArray *(*TpBaseConnectionCreateChannelFactoriesImpl) (
     TpBaseConnection *self);
 
-/** 
+/**
  * TpBaseConnectionGetUniqueConnectionNameImpl:
  * @self: The implementation, a subclass of TpBaseConnection
  *
@@ -118,29 +139,29 @@ typedef gchar *(*TpBaseConnectionGetUniqueConnectionNameImpl) (
  * @parent_class: The superclass' structure
  * @create_handle_repos: Fill in suitable handle repositories in the
  *  given array for all those handle types this Connection supports.
- *  May not be NULL, and the function must create at least a CONTACT
- *  handle repository (failing to do so may cause a crash).
+ *  Must be set by subclasses to a non-%NULL value; the function must create
+ *  at least a CONTACT handle repository (failing to do so will cause a crash).
  * @create_channel_factories: Create an array of channel factories for this
- *  Connection. May not be NULL.
+ *  Connection. Must be set by subclasses to a non-%NULL value.
  * @get_unique_connection_name: Construct a unique name for this connection
- *  (for example using the protocol's format for usernames). If NULL, a
- *  unique name will be generated.
- * @connecting: Called just after the state changes to CONNECTING. May be NULL
- *  if nothing special needs to happen.
- * @connected: Called just after the state changes to CONNECTED. May be NULL
- *  if nothing special needs to happen.
- * @disconnected: Called just after the state changes to DISCONNECTED. May be
- *  NULL if nothing special needs to happen.
- * @shut_down: Called after the state has changed to DISCONNECTED, and also
- *  after disconnected(). Must start the shutdown process for the underlying
+ *  (for example using the protocol's format for usernames). If %NULL (the
+ *  default), a unique name will be generated. Subclasses should usually
+ *  override this to get more obvious names, to aid debugging and prevent
+ *  multiple connections to the same account.
+ * @connecting: If set by subclasses, will be called just after the state
+ *  changes to CONNECTING. May be %NULL if nothing special needs to happen.
+ * @connected: If set by subclasses, will be called just after the state
+ *  changes to CONNECTED. May be %NULL if nothing special needs to happen.
+ * @disconnected: If set by subclasses, will be called just after the state
+ *  changes to DISCONNECTED. May be %NULL if nothing special needs to happen.
+ * @shut_down: Called after disconnected() is called, to clean up the
+ *  connection. Must start the shutdown process for the underlying
  *  network connection, and arrange for tp_base_connection_finish_shutdown()
  *  to be called after the underlying connection has been closed. May not
- *  be left as NULL.
- * @start_connecting: Asynchronously start connecting. May assume that the
- *  connection is in the NEW state. Must calculate and ref the self_handle.
- *  After this runs, the state will be set to CONNECTING. If %TRUE is
- *  returned, the connection may still fail, signalled by a state change
- *  to DISCONNECTED.
+ *  be left as %NULL.
+ * @start_connecting: Asynchronously start connecting - called to implement
+ *  the Connect D-Bus method. See #TpBaseConnectionStartConnectingImpl for
+ *  details.
  *
  * The class of a #TpBaseConnection.
  */
@@ -159,18 +180,23 @@ struct _TpBaseConnectionClass {
 
     TpBaseConnectionProc shut_down;
 
-    TpBaseConnectionProcWithError start_connecting;
+    TpBaseConnectionStartConnectingImpl start_connecting;
 };
 
 /**
  * TpBaseConnection:
- * @bus_name: D-Bus well-known bus name, owned by the connection manager
- *  process and associated with this connection.
- * @object_path: The object-path of this connection.
+ * @parent: Fields shared by the superclass.
+ * @bus_name: A D-Bus well-known bus name, owned by the connection manager
+ *  process and associated with this connection. Set by
+ *  tp_base_connection_register; should be considered read-only by subclasses.
+ * @object_path: The object-path of this connection. Set by
+ *  tp_base_connection_register; should be considered read-only by subclasses.
  * @status: Connection status - may either be a valid TpConnectionStatus or
- *  TP_INTERNAL_CONNECTION_STATUS_NEW.
+ *  TP_INTERNAL_CONNECTION_STATUS_NEW. Should be considered read-only by
+ *  subclasses: use tp_base_connection_change_status() to set it.
  * @self_handle: The handle of type %TP_HANDLE_TYPE_CONTACT representing the
- *  local user.
+ *  local user. Must be set nonzero by the subclass before moving to state
+ *  CONNECTED. If nonzero, the connection must hold a reference to the handle.
  * @priv: Pointer to opaque private data.
  *
  * Data structure representing a generic #TpSvcConnection implementation.
@@ -184,10 +210,10 @@ struct _TpBaseConnection {
     /**
      * TP_INTERNAL_CONNECTION_STATUS_NEW:
      *
-     * A special value for #TpConnectionStatus, used internally to indicate
-     * that the connection is disconnected because connection has never been
-     * attempted (as distinct from disconnected after connection has started,
-     * either by user request or an error).
+     * A special value for #TpConnectionStatus, used within GLib connection
+     * managers to indicate that the connection is disconnected because
+     * connection has never been attempted (as distinct from disconnected
+     * after connection has started, either by user request or an error).
      *
      * Must never be visible on the D-Bus - %TP_CONNECTION_STATUS_DISCONNECTED
      * is sent instead.

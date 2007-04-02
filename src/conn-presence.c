@@ -44,7 +44,7 @@ struct _StatusInfo
 
 /* order must match PresenceId enum in gabble-connection.h */
 /* in increasing order of presence */
-static const StatusInfo gabble_statuses[LAST_GABBLE_PRESENCE] = {
+static const StatusInfo gabble_statuses[NUM_GABBLE_PRESENCES] = {
  { "offline",   TP_CONNECTION_PRESENCE_TYPE_OFFLINE,       TRUE, TRUE },
  { "hidden",    TP_CONNECTION_PRESENCE_TYPE_HIDDEN,        TRUE, TRUE },
  { "xa",        TP_CONNECTION_PRESENCE_TYPE_EXTENDED_AWAY, TRUE, TRUE },
@@ -262,7 +262,7 @@ static gboolean
 status_is_available (GabbleConnection *conn, int status)
 {
   g_assert (GABBLE_IS_CONNECTION (conn));
-  g_assert (status < LAST_GABBLE_PRESENCE);
+  g_assert (status < NUM_GABBLE_PRESENCES);
 
   if (gabble_statuses[status].presence_type == TP_CONNECTION_PRESENCE_TYPE_HIDDEN &&
       (conn->features & GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE) == 0)
@@ -354,7 +354,7 @@ gabble_connection_get_statuses (TpSvcConnectionInterfacePresence *iface,
   ret = g_hash_table_new_full (g_str_hash, g_str_equal,
                                NULL, (GDestroyNotify) g_value_array_free);
 
-  for (i=0; i < LAST_GABBLE_PRESENCE; i++)
+  for (i=0; i < NUM_GABBLE_PRESENCES; i++)
     {
       /* don't report the invisible presence if the server
        * doesn't have the presence-invisible feature */
@@ -530,13 +530,13 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
 
   g_object_get (data->conn, "resource", &resource, NULL);
 
-  for (i = 0; i < LAST_GABBLE_PRESENCE; i++)
+  for (i = 0; i < NUM_GABBLE_PRESENCES; i++)
     {
       if (0 == strcmp (gabble_statuses[i].name, (const gchar*) key))
         break;
     }
 
-  if (i < LAST_GABBLE_PRESENCE)
+  if (i < NUM_GABBLE_PRESENCES)
     {
       GHashTable *args = (GHashTable *)value;
       GValue *message = g_hash_table_lookup (args, "message");

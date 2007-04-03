@@ -49,7 +49,7 @@
         G_TYPE_INVALID))
 
 static const char *
-group_change_reason_str(guint reason)
+group_change_reason_str (guint reason)
 {
   switch (reason)
     {
@@ -120,7 +120,7 @@ tp_group_mixin_class_get_offset_quark ()
 {
   static GQuark offset_quark = 0;
   if (!offset_quark)
-    offset_quark = g_quark_from_static_string("TpGroupMixinClassOffsetQuark");
+    offset_quark = g_quark_from_static_string ("TpGroupMixinClassOffsetQuark");
   return offset_quark;
 }
 
@@ -134,14 +134,15 @@ tp_group_mixin_get_offset_quark ()
 {
   static GQuark offset_quark = 0;
   if (!offset_quark)
-    offset_quark = g_quark_from_static_string("TpGroupMixinOffsetQuark");
+    offset_quark = g_quark_from_static_string ("TpGroupMixinOffsetQuark");
   return offset_quark;
 }
 
-void tp_group_mixin_class_init (TpSvcChannelInterfaceGroupClass *obj_cls,
-                                glong offset,
-                                TpGroupMixinAddMemberFunc add_func,
-                                TpGroupMixinRemMemberFunc rem_func)
+void
+tp_group_mixin_class_init (TpSvcChannelInterfaceGroupClass *obj_cls,
+                           glong offset,
+                           TpGroupMixinAddMemberFunc add_func,
+                           TpGroupMixinRemMemberFunc rem_func)
 {
   TpGroupMixinClass *mixin_cls;
 
@@ -157,10 +158,11 @@ void tp_group_mixin_class_init (TpSvcChannelInterfaceGroupClass *obj_cls,
   mixin_cls->remove_member = rem_func;
 }
 
-void tp_group_mixin_init (TpSvcChannelInterfaceGroup *obj,
-                          glong offset,
-                          TpHandleRepoIface *handle_repo,
-                          TpHandle self_handle)
+void
+tp_group_mixin_init (TpSvcChannelInterfaceGroup *obj,
+                     glong offset,
+                     TpHandleRepoIface *handle_repo,
+                     TpHandle self_handle)
 {
   TpGroupMixin *mixin;
 
@@ -199,7 +201,8 @@ handle_owners_foreach_unref (gpointer key,
   tp_handle_unref (mixin->handle_repo, GPOINTER_TO_UINT (value));
 }
 
-void tp_group_mixin_finalize (TpSvcChannelInterfaceGroup *obj)
+void
+tp_group_mixin_finalize (TpSvcChannelInterfaceGroup *obj)
 {
   TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
 
@@ -220,7 +223,9 @@ void tp_group_mixin_finalize (TpSvcChannelInterfaceGroup *obj)
 }
 
 gboolean
-tp_group_mixin_get_self_handle (TpSvcChannelInterfaceGroup *obj, guint *ret, GError **error)
+tp_group_mixin_get_self_handle (TpSvcChannelInterfaceGroup *obj,
+                                guint *ret,
+                                GError **error)
 {
   TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
 
@@ -258,7 +263,9 @@ tp_group_mixin_get_self_handle_async (TpSvcChannelInterfaceGroup *obj,
 }
 
 gboolean
-tp_group_mixin_get_group_flags (TpSvcChannelInterfaceGroup *obj, guint *ret, GError **error)
+tp_group_mixin_get_group_flags (TpSvcChannelInterfaceGroup *obj,
+                                guint *ret,
+                                GError **error)
 {
   TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
 
@@ -287,7 +294,10 @@ tp_group_mixin_get_group_flags_async (TpSvcChannelInterfaceGroup *obj,
 }
 
 gboolean
-tp_group_mixin_add_members (TpSvcChannelInterfaceGroup *obj, const GArray *contacts, const gchar *message, GError **error)
+tp_group_mixin_add_members (TpSvcChannelInterfaceGroup *obj,
+                            const GArray *contacts,
+                            const gchar *message,
+                            GError **error)
 {
   TpGroupMixinClass *mixin_cls = TP_GROUP_MIXIN_CLASS (G_OBJECT_GET_CLASS (obj));
   TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
@@ -358,7 +368,10 @@ tp_group_mixin_add_members_async (TpSvcChannelInterfaceGroup *obj,
 }
 
 gboolean
-tp_group_mixin_remove_members (TpSvcChannelInterfaceGroup *obj, const GArray *contacts, const gchar *message, GError **error)
+tp_group_mixin_remove_members (TpSvcChannelInterfaceGroup *obj,
+                               const GArray *contacts,
+                               const gchar *message,
+                               GError **error)
 {
   TpGroupMixinClass *mixin_cls = TP_GROUP_MIXIN_CLASS (G_OBJECT_GET_CLASS (obj));
   TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
@@ -378,12 +391,12 @@ tp_group_mixin_remove_members (TpSvcChannelInterfaceGroup *obj, const GArray *co
         {
           if ((mixin->group_flags & TP_CHANNEL_GROUP_FLAG_CAN_REMOVE) == 0)
             {
-              DEBUG ("handle %u cannot be removed from members without GROUP_FLAG_CAN_REMOVE",
-                  handle);
+              DEBUG ("handle %u cannot be removed from members without "
+                  "GROUP_FLAG_CAN_REMOVE", handle);
 
               g_set_error (error, TP_ERRORS, TP_ERROR_PERMISSION_DENIED,
-                  "handle %u cannot be removed from members without GROUP_FLAG_CAN_REMOVE",
-                  handle);
+                  "handle %u cannot be removed from members without "
+                  "GROUP_FLAG_CAN_REMOVE", handle);
 
               return FALSE;
             }
@@ -392,12 +405,12 @@ tp_group_mixin_remove_members (TpSvcChannelInterfaceGroup *obj, const GArray *co
         {
           if ((mixin->group_flags & TP_CHANNEL_GROUP_FLAG_CAN_RESCIND) == 0)
             {
-              DEBUG ("handle %u cannot be removed from remote pending without GROUP_FLAG_CAN_RESCIND",
-                  handle);
+              DEBUG ("handle %u cannot be removed from remote pending "
+                  "without GROUP_FLAG_CAN_RESCIND", handle);
 
               g_set_error (error, TP_ERRORS, TP_ERROR_PERMISSION_DENIED,
-                  "handle %u cannot be removed from remote pending without GROUP_FLAG_CAN_RESCIND",
-                  handle);
+                  "handle %u cannot be removed from remote pending without "
+                  "GROUP_FLAG_CAN_RESCIND", handle);
 
               return FALSE;
             }
@@ -448,7 +461,9 @@ tp_group_mixin_remove_members_async (TpSvcChannelInterfaceGroup *obj,
 }
 
 gboolean
-tp_group_mixin_get_members (TpSvcChannelInterfaceGroup *obj, GArray **ret, GError **error)
+tp_group_mixin_get_members (TpSvcChannelInterfaceGroup *obj,
+                            GArray **ret,
+                            GError **error)
 {
   TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
 
@@ -478,7 +493,9 @@ tp_group_mixin_get_members_async (TpSvcChannelInterfaceGroup *obj,
 }
 
 gboolean
-tp_group_mixin_get_local_pending_members (TpSvcChannelInterfaceGroup *obj, GArray **ret, GError **error)
+tp_group_mixin_get_local_pending_members (TpSvcChannelInterfaceGroup *obj,
+                                          GArray **ret,
+                                          GError **error)
 {
   TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
 
@@ -513,23 +530,23 @@ typedef struct {
 } _mixin_and_array_of_info;
 
 static void
-local_pending_members_with_info_foreach(TpHandleSet *set,
-                                        TpHandle i,
-                                        gpointer userdata)
+local_pending_members_with_info_foreach (TpHandleSet *set,
+                                         TpHandle i,
+                                         gpointer userdata)
 {
   _mixin_and_array_of_info *data = (_mixin_and_array_of_info *)userdata;
   TpGroupMixinPrivate *priv = data->mixin->priv;
   GValue entry = { 0, };
   LocalPendingInfo *info = g_hash_table_lookup (priv->local_pending_info,
                                                 GUINT_TO_POINTER(i));
-  g_assert(info != NULL);
+  g_assert (info != NULL);
 
-  g_value_init(&entry, TP_CHANNEL_GROUP_LOCAL_PENDING_WITH_INFO_ENTRY_TYPE);
-  g_value_take_boxed(&entry,
-      dbus_g_type_specialized_construct(
+  g_value_init (&entry, TP_CHANNEL_GROUP_LOCAL_PENDING_WITH_INFO_ENTRY_TYPE);
+  g_value_take_boxed (&entry,
+      dbus_g_type_specialized_construct (
           TP_CHANNEL_GROUP_LOCAL_PENDING_WITH_INFO_ENTRY_TYPE));
 
-  dbus_g_type_struct_set(&entry,
+  dbus_g_type_struct_set (&entry,
       0, i,
       1, info->actor,
       2, info->reason,
@@ -539,11 +556,11 @@ local_pending_members_with_info_foreach(TpHandleSet *set,
   g_ptr_array_add (data->array, g_value_get_boxed (&entry));
 }
 
-gboolean 
+gboolean
 tp_group_mixin_get_local_pending_members_with_info (
                                                TpSvcChannelInterfaceGroup *obj,
-                                               GPtrArray **ret, 
-                                               GError **error) 
+                                               GPtrArray **ret,
+                                               GError **error)
 {
   TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
   _mixin_and_array_of_info data = { mixin, NULL };
@@ -583,7 +600,9 @@ tp_group_mixin_get_local_pending_members_with_info_async (
 }
 
 gboolean
-tp_group_mixin_get_remote_pending_members (TpSvcChannelInterfaceGroup *obj, GArray **ret, GError **error)
+tp_group_mixin_get_remote_pending_members (TpSvcChannelInterfaceGroup *obj,
+                                           GArray **ret,
+                                           GError **error)
 {
   TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
 
@@ -613,13 +632,17 @@ tp_group_mixin_get_remote_pending_members_async (TpSvcChannelInterfaceGroup *obj
 }
 
 gboolean
-tp_group_mixin_get_all_members (TpSvcChannelInterfaceGroup *obj, GArray **ret, GArray **ret1, GArray **ret2, GError **error)
+tp_group_mixin_get_all_members (TpSvcChannelInterfaceGroup *obj,
+                                GArray **members,
+                                GArray **local_pending,
+                                GArray **remote_pending,
+                                GError **error)
 {
   TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
 
-  *ret = tp_handle_set_to_array (mixin->members);
-  *ret1 = tp_handle_set_to_array (mixin->local_pending);
-  *ret2 = tp_handle_set_to_array (mixin->remote_pending);
+  *members = tp_handle_set_to_array (mixin->members);
+  *local_pending = tp_handle_set_to_array (mixin->local_pending);
+  *remote_pending = tp_handle_set_to_array (mixin->remote_pending);
 
   return TRUE;
 }
@@ -648,9 +671,9 @@ tp_group_mixin_get_all_members_async (TpSvcChannelInterfaceGroup *obj,
 
 gboolean
 tp_group_mixin_get_handle_owners (TpSvcChannelInterfaceGroup *obj,
-                                      const GArray *handles,
-                                      GArray **ret,
-                                      GError **error)
+                                  const GArray *handles,
+                                  GArray **ret,
+                                  GError **error)
 {
   TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
   TpGroupMixinPrivate *priv = mixin->priv;
@@ -757,8 +780,8 @@ group_flags_to_string (TpChannelGroupFlags flags)
  */
 void
 tp_group_mixin_change_flags (TpSvcChannelInterfaceGroup *obj,
-                                 TpChannelGroupFlags add,
-                                 TpChannelGroupFlags remove)
+                             TpChannelGroupFlags add,
+                             TpChannelGroupFlags remove)
 {
   TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
   TpChannelGroupFlags added, removed;
@@ -793,12 +816,13 @@ tp_group_mixin_change_flags (TpSvcChannelInterfaceGroup *obj,
           g_free (str_flags);
         }
 
-      tp_svc_channel_interface_group_emit_group_flags_changed (obj, added, removed);
+      tp_svc_channel_interface_group_emit_group_flags_changed (obj, added,
+          removed);
     }
 }
 
 static gchar *
-member_array_to_string (TpHandleRepoIface *repo, 
+member_array_to_string (TpHandleRepoIface *repo,
                         const GArray *array)
 {
   GString *str;
@@ -824,7 +848,8 @@ member_array_to_string (TpHandleRepoIface *repo,
   return g_string_free (str, FALSE);
 }
 
-static void remove_handle_owners_if_exist (TpSvcChannelInterfaceGroup *obj, GArray *array);
+static void remove_handle_owners_if_exist (TpSvcChannelInterfaceGroup *obj,
+    GArray *array);
 
 typedef struct {
     TpGroupMixin *mixin;
@@ -832,8 +857,8 @@ typedef struct {
 } _mixin_and_info;
 
 static void
-local_pending_added_foreach(guint i,
-                            gpointer userdata)
+local_pending_added_foreach (guint i,
+                             gpointer userdata)
 {
   _mixin_and_info *data = (_mixin_and_info *)userdata;
   TpGroupMixinPrivate *priv = data->mixin->priv;
@@ -845,7 +870,7 @@ local_pending_added_foreach(guint i,
 }
 
 static void
-local_pending_added(TpGroupMixin *mixin,
+local_pending_added (TpGroupMixin *mixin,
                     TpIntSet *added,
                     TpHandle actor,
                     guint reason,
@@ -871,7 +896,7 @@ local_pending_remove_foreach(guint i,
 }
 
 static void
-local_pending_remove(TpGroupMixin *mixin,
+local_pending_remove (TpGroupMixin *mixin,
                      TpIntSet *removed)
 {
   tp_intset_foreach (removed, local_pending_remove_foreach, mixin);
@@ -1005,7 +1030,7 @@ tp_group_mixin_change_members (TpSvcChannelInterfaceGroup *obj,
                   "  actor         : %u\n"
                   "  reason        : %u: %s\n" TP_ANSI_RESET,
                   G_STRFUNC, message, add_str, rem_str, local_str, remote_str,
-                  actor, reason, group_change_reason_str(reason));
+                  actor, reason, group_change_reason_str (reason));
 
           fflush (stdout);
 
@@ -1050,8 +1075,8 @@ tp_group_mixin_change_members (TpSvcChannelInterfaceGroup *obj,
 
 void
 tp_group_mixin_add_handle_owner (TpSvcChannelInterfaceGroup *obj,
-                                     TpHandle local_handle,
-                                     TpHandle owner_handle)
+                                 TpHandle local_handle,
+                                 TpHandle owner_handle)
 {
   TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
   TpGroupMixinPrivate *priv = mixin->priv;
@@ -1064,7 +1089,8 @@ tp_group_mixin_add_handle_owner (TpSvcChannelInterfaceGroup *obj,
 }
 
 static void
-remove_handle_owners_if_exist (TpSvcChannelInterfaceGroup *obj, GArray *array)
+remove_handle_owners_if_exist (TpSvcChannelInterfaceGroup *obj,
+                               GArray *array)
 {
   TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
   TpGroupMixinPrivate *priv = mixin->priv;

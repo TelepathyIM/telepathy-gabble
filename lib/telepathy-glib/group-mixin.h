@@ -112,7 +112,7 @@ void tp_group_mixin_change_flags (TpSvcChannelInterfaceGroup *obj,
     TpChannelGroupFlags add, TpChannelGroupFlags remove);
 gboolean tp_group_mixin_change_members (TpSvcChannelInterfaceGroup *obj,
     const gchar *message, TpIntSet *add, TpIntSet *remove,
-    TpIntSet *local_pending, TpIntSet *remote_pending, TpHandle actor,
+    TpIntSet *add_local_pending, TpIntSet *add_remote_pending, TpHandle actor,
     TpChannelGroupChangeReason reason);
 
 void tp_group_mixin_add_handle_owner (TpSvcChannelInterfaceGroup *obj,

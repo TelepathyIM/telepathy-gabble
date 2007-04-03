@@ -113,6 +113,8 @@ struct _TpGroupMixinPrivate {
 /**
  * tp_group_mixin_class_get_offset_quark:
  *
+ * <!--Returns: says it all-->
+ *
  * Returns: the quark used for storing mixin offset on a GObjectClass
  */
 GQuark
@@ -127,6 +129,8 @@ tp_group_mixin_class_get_offset_quark ()
 /**
  * tp_group_mixin_get_offset_quark:
  *
+ * <!--Returns: says it all-->
+ *
  * Returns: the quark used for storing mixin offset on a GObject
  */
 GQuark
@@ -138,6 +142,17 @@ tp_group_mixin_get_offset_quark ()
   return offset_quark;
 }
 
+/**
+ * tp_group_mixin_class_init:
+ * @obj_cls: The class of an object implementing the group interface using this
+ *  mixin
+ * @offset: The offset of the TpGroupMixinClass structure within the class
+ *  structure
+ * @add_func: A callback to be used to add contacts to this group
+ * @rem_func: A callback to be used to remove contacts from this group
+ *
+ * Configure the mixin for use with the given class.
+ */
 void
 tp_group_mixin_class_init (TpSvcChannelInterfaceGroupClass *obj_cls,
                            glong offset,
@@ -158,6 +173,16 @@ tp_group_mixin_class_init (TpSvcChannelInterfaceGroupClass *obj_cls,
   mixin_cls->remove_member = rem_func;
 }
 
+/**
+ * tp_group_mixin_init:
+ * @obj: An object implementing the group interface using this mixin
+ * @offset: The offset of the TpGroupMixin structure within the instance
+ *  structure
+ * @handle_repo: The connection's handle repository for contacts
+ * @self_handle: The handle of the local user in this group, if any
+ *
+ * Initialize the mixin.
+ */
 void
 tp_group_mixin_init (TpSvcChannelInterfaceGroup *obj,
                      glong offset,
@@ -201,6 +226,12 @@ handle_owners_foreach_unref (gpointer key,
   tp_handle_unref (mixin->handle_repo, GPOINTER_TO_UINT (value));
 }
 
+/**
+ * tp_group_mixin_finalize:
+ * @obj: An object implementing the group interface using this mixin
+ *
+ * Unreference handles and free resources used by this mixin.
+ */
 void
 tp_group_mixin_finalize (TpSvcChannelInterfaceGroup *obj)
 {
@@ -222,6 +253,17 @@ tp_group_mixin_finalize (TpSvcChannelInterfaceGroup *obj)
   tp_handle_set_destroy (mixin->remote_pending);
 }
 
+/**
+ * tp_group_mixin_get_self_handle:
+ * @obj: An object implementing the group mixin using this interface
+ * @ret: Used to return the local user's handle in this group
+ * @error: Unused
+ *
+ * Set the guint pointed to by ret to the local user's handle in this
+ * group, or to 0 if the local user is not present in this group.
+ *
+ * Returns: %TRUE.
+ */
 gboolean
 tp_group_mixin_get_self_handle (TpSvcChannelInterfaceGroup *obj,
                                 guint *ret,
@@ -262,6 +304,17 @@ tp_group_mixin_get_self_handle_async (TpSvcChannelInterfaceGroup *obj,
     }
 }
 
+/**
+ * tp_group_mixin_get_group_flags:
+ * @obj: An object implementing the group mixin using this interface
+ * @ret: Used to return the flags
+ * @error: Unused
+ *
+ * Set the guint pointed to by ret to this group's flags, to be
+ * interpreted according to TpChannelGroupFlags.
+ *
+ * Returns: %TRUE
+ */
 gboolean
 tp_group_mixin_get_group_flags (TpSvcChannelInterfaceGroup *obj,
                                 guint *ret,
@@ -293,6 +346,21 @@ tp_group_mixin_get_group_flags_async (TpSvcChannelInterfaceGroup *obj,
     }
 }
 
+/**
+ * tp_group_mixin_add_members:
+ * @obj: An object implementing the group interface using this mixin
+ * @contacts: A GArray of guint representing contacts
+ * @message: A message associated with the addition request, if supported
+ * @error: Used to return an error if %FALSE is returned
+ *
+ * Request that the given contacts be added to the group as if in response
+ * to user action. If the group's flags prohibit this, raise
+ * PermissionDenied. If any of the handles is invalid, raise InvalidHandle.
+ * Otherwise attempt to add the contacts by calling the callbacks provided
+ * by the channel implementation.
+ *
+ * Returns: %TRUE on success
+ */
 gboolean
 tp_group_mixin_add_members (TpSvcChannelInterfaceGroup *obj,
                             const GArray *contacts,
@@ -367,6 +435,22 @@ tp_group_mixin_add_members_async (TpSvcChannelInterfaceGroup *obj,
     }
 }
 
+/**
+ * tp_group_mixin_remove_members:
+ * @obj: An object implementing the group interface using this mixin
+ * @contacts: A GArray of guint representing contacts
+ * @message: A message to be sent to those contacts, if supported
+ * @error: Used to return an error if %FALSE is returned
+ *
+ * Request that the given contacts be removed from the group as if in response
+ * to user action. If the group's flags prohibit this, raise
+ * PermissionDenied. If any of the handles is invalid, raise InvalidHandle.
+ * If any of the handles is absent from the group, raise NotAvailable.
+ * Otherwise attempt to remove the contacts by calling the callbacks provided
+ * by the channel implementation.
+ *
+ * Returns: %TRUE on success
+ */
 gboolean
 tp_group_mixin_remove_members (TpSvcChannelInterfaceGroup *obj,
                                const GArray *contacts,
@@ -460,6 +544,16 @@ tp_group_mixin_remove_members_async (TpSvcChannelInterfaceGroup *obj,
     }
 }
 
+/**
+ * tp_group_mixin_get_members:
+ * @obj: An object implementing the group interface using this mixin
+ * @ret: Used to return a GArray of guint contact handles
+ * @error: Unused
+ *
+ * Get the group's current members
+ *
+ * Returns: %TRUE
+ */
 gboolean
 tp_group_mixin_get_members (TpSvcChannelInterfaceGroup *obj,
                             GArray **ret,
@@ -492,6 +586,16 @@ tp_group_mixin_get_members_async (TpSvcChannelInterfaceGroup *obj,
     }
 }
 
+/**
+ * tp_group_mixin_get_local_pending_members:
+ * @obj: An object implementing the group interface using this mixin
+ * @ret: Used to return a GArray of guint contact handles
+ * @error: Unused
+ *
+ * Get the group's local-pending members.
+ *
+ * Returns: %TRUE
+ */
 gboolean
 tp_group_mixin_get_local_pending_members (TpSvcChannelInterfaceGroup *obj,
                                           GArray **ret,
@@ -556,6 +660,20 @@ local_pending_members_with_info_foreach (TpHandleSet *set,
   g_ptr_array_add (data->array, g_value_get_boxed (&entry));
 }
 
+/**
+ * tp_group_mixin_get_local_pending_members_with_info:
+ * @obj: An object implementing the group interface using this mixin
+ * @ret: Used to return a GPtrArray of D-Bus structures each containing
+ *  the handle of a local-pending contact, the handle of a contact
+ *  responsible for adding them to the group (or 0), the reason code
+ *  and a related message (e.g. their request to join the group)
+ * @error: Unused
+ *
+ * Get the group's local-pending members and information about their
+ * requests to join the channel.
+ *
+ * Returns: %TRUE
+ */
 gboolean
 tp_group_mixin_get_local_pending_members_with_info (
                                                TpSvcChannelInterfaceGroup *obj,
@@ -599,6 +717,17 @@ tp_group_mixin_get_local_pending_members_with_info_async (
     }
 }
 
+/**
+ * tp_group_mixin_get_remote_pending_members:
+ * @obj: An object implementing the group interface using this mixin
+ * @ret: Used to return a GArray of guint representing the handles
+ *  of the group's remote pending members
+ * @error: Unused
+ *
+ * Get the group's remote-pending members.
+ *
+ * Returns: %TRUE
+ */
 gboolean
 tp_group_mixin_get_remote_pending_members (TpSvcChannelInterfaceGroup *obj,
                                            GArray **ret,
@@ -631,6 +760,21 @@ tp_group_mixin_get_remote_pending_members_async (TpSvcChannelInterfaceGroup *obj
     }
 }
 
+/**
+ * tp_group_mixin_get_all_members:
+ * @obj: An object implementing the group interface using this mixin
+ * @members: Used to return a GArray of guint representing the handles
+ *  of the group's members
+ * @local_pending: Used to return a GArray of guint representing the handles
+ *  of the group's local pending members
+ * @remote_pending: Used to return a GArray of guint representing the handles
+ *  of the group's remote pending members
+ * @error: Unused
+ *
+ * Get the group's current and pending members.
+ *
+ * Returns: %TRUE
+ */
 gboolean
 tp_group_mixin_get_all_members (TpSvcChannelInterfaceGroup *obj,
                                 GArray **members,
@@ -669,6 +813,21 @@ tp_group_mixin_get_all_members_async (TpSvcChannelInterfaceGroup *obj,
     }
 }
 
+/**
+ * tp_group_mixin_get_handle_owners:
+ * @obj: An object implementing the group interface with this mixin
+ * @handles: An array of guint representing locally valid handles
+ * @ret: Used to return an array of guint representing globally valid
+ *  handles, or 0 where unavailable, if %TRUE is returned
+ * @error: Used to return an error if %FALSE is returned
+ *
+ * If the mixin has the flag %TP_CHANNEL_GROUP_FLAG_CHANNEL_SPECIFIC_HANDLES,
+ * return the global owners of the given local handles, or 0 where
+ * unavailable.
+ *
+ * Returns: %TRUE (setting @ret) on success, %FALSE (setting @error) on
+ * failure
+ */
 gboolean
 tp_group_mixin_get_handle_owners (TpSvcChannelInterfaceGroup *obj,
                                   const GArray *handles,
@@ -774,9 +933,14 @@ group_flags_to_string (TpChannelGroupFlags flags)
 
 /**
  * tp_group_mixin_change_flags:
+ * @obj: An object implementing the groups interface using this mixin
+ * @add: Flags to be added
+ * @remove: Flags to be removed
  *
  * Request a change to be made to the flags. Emits the
- * signal with the changes which were made.
+ * GroupFlagsChanged signal with the changes which were actually made.
+ *
+ * It is an error to set any of the same bits in both @add and @remove.
  */
 void
 tp_group_mixin_change_flags (TpSvcChannelInterfaceGroup *obj,
@@ -785,6 +949,9 @@ tp_group_mixin_change_flags (TpSvcChannelInterfaceGroup *obj,
 {
   TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
   TpChannelGroupFlags added, removed;
+
+  /* It's meaningless to want to add and remove the same capability */
+  g_return_if_fail ((add & remove) != 0);
 
   added = add & ~mixin->group_flags;
   mixin->group_flags |= added;
@@ -904,19 +1071,43 @@ local_pending_remove (TpGroupMixin *mixin,
 
 /**
  * tp_group_mixin_change_members:
+ * @obj: An object implementing the group interface using this mixin
+ * @message: A message to be sent to the affected contacts if possible
+ * @add: A set of contact handles to be added to the members (if not
+ *  already present) and removed from local pending and remote pending
+ *  (if present)
+ * @remove: A set of contact handles to be removed from members,
+ *  local pending or remote pending, wherever they are present
+ * @add_local_pending: A set of contact handles to be added to local pending,
+ *  and removed from members and remote pending
+ * @add_remote_pending: A set of contact handles to be added to remote pending,
+ *  and removed from members and local pending
+ * @actor: The handle of the contact responsible for this change
+ * @reason: The reason for this change
  *
- * Request members to be added, removed or marked as local or remote pending.
- * Changes member sets, references, and emits the MembersChanged signal.
+ * Change the sets of members as given by the arguments, and emit the
+ * MembersChanged signal if the changes were not a no-op.
+ *
+ * This function must be called in response to events on the underlying
+ * IM protocol, and must not be called in direct response to user input;
+ * it does not respect the permissions flags, but changes the group directly.
+ *
+ * If any two of add, remove, add_local_pending and add_remote_pending have
+ * a non-empty intersection, the result is undefined. Don't do that.
+ *
+ * Returns: %TRUE if the group was changed and the MembersChanged signal
+ *  was emitted; %FALSE if nothing actually changed and the signal was
+ *  suppressed.
  */
 gboolean
 tp_group_mixin_change_members (TpSvcChannelInterfaceGroup *obj,
-                                   const gchar *message,
-                                   TpIntSet *add,
-                                   TpIntSet *remove,
-                                   TpIntSet *local_pending,
-                                   TpIntSet *remote_pending,
-                                   TpHandle actor,
-                                   guint reason)
+                               const gchar *message,
+                               TpIntSet *add,
+                               TpIntSet *remove,
+                               TpIntSet *add_local_pending,
+                               TpIntSet *add_remote_pending,
+                               TpHandle actor,
+                               TpChannelGroupChangeReason reason)
 {
   TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
   TpIntSet *new_add, *new_remove, *new_local_pending,
@@ -931,11 +1122,11 @@ tp_group_mixin_change_members (TpSvcChannelInterfaceGroup *obj,
   if (remove == NULL)
     remove = empty;
 
-  if (local_pending == NULL)
-    local_pending = empty;
+  if (add_local_pending == NULL)
+    add_local_pending = empty;
 
-  if (remote_pending == NULL)
-    remote_pending = empty;
+  if (add_remote_pending == NULL)
+    add_remote_pending = empty;
 
   /* members + add */
   new_add = tp_handle_set_update (mixin->members, add);
@@ -943,19 +1134,19 @@ tp_group_mixin_change_members (TpSvcChannelInterfaceGroup *obj,
   /* members - remove */
   new_remove = tp_handle_set_difference_update (mixin->members, remove);
 
-  /* members - local_pending */
-  tmp = tp_handle_set_difference_update (mixin->members, local_pending);
+  /* members - add_local_pending */
+  tmp = tp_handle_set_difference_update (mixin->members, add_local_pending);
   tp_intset_destroy (tmp);
 
-  /* members - remote_pending */
-  tmp = tp_handle_set_difference_update (mixin->members, remote_pending);
+  /* members - add_remote_pending */
+  tmp = tp_handle_set_difference_update (mixin->members, add_remote_pending);
   tp_intset_destroy (tmp);
 
 
-  /* local pending + local_pending */
+  /* local pending + add_local_pending */
   new_local_pending = tp_handle_set_update (mixin->local_pending,
-      local_pending);
-  local_pending_added (mixin, local_pending, actor, reason, message);
+      add_local_pending);
+  local_pending_added (mixin, add_local_pending, actor, reason, message);
 
   /* local pending - add */
   tmp = tp_handle_set_difference_update (mixin->local_pending, add);
@@ -971,15 +1162,16 @@ tp_group_mixin_change_members (TpSvcChannelInterfaceGroup *obj,
   tp_intset_destroy (tmp);
   new_remove = tmp2;
 
-  /* local pending - remote_pending */
-  tmp = tp_handle_set_difference_update (mixin->local_pending, remote_pending);
+  /* local pending - add_remote_pending */
+  tmp = tp_handle_set_difference_update (mixin->local_pending,
+      add_remote_pending);
   local_pending_remove (mixin, tmp);
   tp_intset_destroy (tmp);
 
 
-  /* remote pending + remote_pending */
+  /* remote pending + add_remote_pending */
   new_remote_pending = tp_handle_set_update (mixin->remote_pending,
-      remote_pending);
+      add_remote_pending);
 
   /* remote pending - add */
   tmp = tp_handle_set_difference_update (mixin->remote_pending, add);
@@ -993,7 +1185,8 @@ tp_group_mixin_change_members (TpSvcChannelInterfaceGroup *obj,
   new_remove = tmp2;
 
   /* remote pending - local_pending */
-  tmp = tp_handle_set_difference_update (mixin->remote_pending, local_pending);
+  tmp = tp_handle_set_difference_update (mixin->remote_pending,
+      add_local_pending);
   tp_intset_destroy (tmp);
 
   if (tp_intset_size (new_add) > 0 ||
@@ -1073,6 +1266,16 @@ tp_group_mixin_change_members (TpSvcChannelInterfaceGroup *obj,
   return ret;
 }
 
+/**
+ * tp_group_mixin_add_handle_owner:
+ * @obj: A GObject implementing the group interface with this mixin
+ * @local_handle: A contact handle valid within this group (may not be 0)
+ * @owner_handle: A contact handle valid globally (may not be 0)
+ *
+ * Note that the given local handle is an alias within this group
+ * for the given globally-valid handle. It will be returned from subsequent
+ * GetHandleOwner queries where appropriate.
+ */
 void
 tp_group_mixin_add_handle_owner (TpSvcChannelInterfaceGroup *obj,
                                  TpHandle local_handle,
@@ -1080,6 +1283,9 @@ tp_group_mixin_add_handle_owner (TpSvcChannelInterfaceGroup *obj,
 {
   TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
   TpGroupMixinPrivate *priv = mixin->priv;
+
+  g_return_if_fail (local_handle != 0);
+  g_return_if_fail (owner_handle != 0);
 
   g_hash_table_insert (priv->handle_owners, GUINT_TO_POINTER (local_handle),
                        GUINT_TO_POINTER (owner_handle));
@@ -1116,7 +1322,17 @@ remove_handle_owners_if_exist (TpSvcChannelInterfaceGroup *obj,
     }
 }
 
-void tp_group_mixin_iface_init (gpointer g_iface, gpointer iface_data)
+/**
+ * tp_group_mixin_iface_init:
+ * @g_iface: A #TpSvcChannelInterfaceGroupClass
+ * @iface_data: Unused
+ *
+ * Fill in the vtable entries needed to implement the group interface using
+ * this mixin. This function should usually be called via
+ * G_IMPLEMENT_INTERFACE.
+ */
+void
+tp_group_mixin_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcChannelInterfaceGroupClass *klass =
     (TpSvcChannelInterfaceGroupClass *)g_iface;

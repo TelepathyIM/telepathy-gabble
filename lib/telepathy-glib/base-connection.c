@@ -48,7 +48,7 @@
 #define DEBUG_FLAG TP_DEBUG_CONNECTION
 #include "internal-debug.h"
 
-static void service_iface_init(gpointer, gpointer);
+static void service_iface_init (gpointer, gpointer);
 
 G_DEFINE_ABSTRACT_TYPE_WITH_CODE(TpBaseConnection,
     tp_base_connection,
@@ -200,7 +200,7 @@ tp_base_connection_set_property (GObject      *object,
     case PROP_PROTOCOL:
       g_free (priv->protocol);
       priv->protocol = g_value_dup_string (value);
-      g_assert(priv->protocol != NULL);
+      g_assert (priv->protocol != NULL);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -247,7 +247,7 @@ tp_base_connection_dispose (GObject *object)
     {
       if (priv->handles[i])
         {
-          g_object_unref((GObject *)priv->handles[i]);
+          g_object_unref ((GObject *)priv->handles[i]);
           priv->handles[i] = NULL;
         }
     }
@@ -561,7 +561,7 @@ tp_base_connection_init (TpBaseConnection *self)
       priv->handles[i] = NULL;
     }
 
-  priv->channel_requests = g_ptr_array_new();
+  priv->channel_requests = g_ptr_array_new ();
 }
 
 /**
@@ -592,7 +592,7 @@ tp_base_connection_register (TpBaseConnection *self,
   if (cls->get_unique_connection_name)
     {
       tmp = cls->get_unique_connection_name (self);
-      g_assert(tmp != NULL);
+      g_assert (tmp != NULL);
       unique_name = tp_escape_as_identifier (tmp);
       g_free (tmp);
     }
@@ -726,7 +726,7 @@ tp_base_connection_connect (TpSvcConnection *iface,
   TpBaseConnectionClass *cls = TP_BASE_CONNECTION_GET_CLASS (self);
   GError *error = NULL;
 
-  g_assert(TP_IS_BASE_CONNECTION (self));
+  g_assert (TP_IS_BASE_CONNECTION (self));
 
   if (self->status == TP_INTERNAL_CONNECTION_STATUS_NEW)
     {
@@ -818,7 +818,7 @@ tp_base_connection_get_interfaces (TpSvcConnection *iface,
       interfaces = klass->interfaces_always_present;
     }
 
-  tp_svc_connection_return_from_get_interfaces(context, interfaces);
+  tp_svc_connection_return_from_get_interfaces (context, interfaces);
 }
 
 /**
@@ -883,12 +883,12 @@ tp_base_connection_get_status (TpSvcConnection *iface,
 
   if (self->status == TP_INTERNAL_CONNECTION_STATUS_NEW)
     {
-      tp_svc_connection_return_from_get_status(
+      tp_svc_connection_return_from_get_status (
           context, TP_CONNECTION_STATUS_DISCONNECTED);
     }
   else
     {
-      tp_svc_connection_return_from_get_status(
+      tp_svc_connection_return_from_get_status (
           context, self->status);
     }
 }
@@ -1267,7 +1267,7 @@ hold_unref_and_return_handles (DBusGMethodInvocation *context,
                                GArray *handles)
 {
   GError *error;
-  gchar *sender = dbus_g_method_get_sender(context);
+  gchar *sender = dbus_g_method_get_sender (context);
   guint i, j;
 
   for (i = 0; i < handles->len; i++)
@@ -1358,7 +1358,7 @@ tp_base_connection_dbus_request_handles (TpSvcConnection *iface,
       return;
     }
 
-  handles = g_array_sized_new(FALSE, FALSE, sizeof(guint), count);
+  handles = g_array_sized_new (FALSE, FALSE, sizeof (guint), count);
 
   for (i = 0; i < count; i++)
     {
@@ -1389,7 +1389,7 @@ tp_base_connection_dbus_request_handles (TpSvcConnection *iface,
     }
 
   hold_unref_and_return_handles (context, handle_repo, handles);
-  g_array_free(handles, TRUE);
+  g_array_free (handles, TRUE);
 }
 
 TpHandleRepoIface *
@@ -1651,7 +1651,7 @@ tp_base_connection_add_interfaces (TpBaseConnection *self,
 
 
 static void
-service_iface_init(gpointer g_iface, gpointer iface_data)
+service_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcConnectionClass *klass = (TpSvcConnectionClass *)g_iface;
 

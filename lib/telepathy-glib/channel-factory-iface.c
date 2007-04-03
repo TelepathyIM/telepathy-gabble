@@ -102,7 +102,8 @@ tp_channel_factory_iface_get_type (void)
       NULL    /* instance_init */
     };
 
-    type = g_type_register_static (G_TYPE_INTERFACE, "TpChannelFactoryIface", &info, 0);
+    type = g_type_register_static (G_TYPE_INTERFACE, "TpChannelFactoryIface",
+        &info, 0);
   }
 
   return type;
@@ -120,7 +121,7 @@ tp_channel_factory_iface_get_type (void)
 void
 tp_channel_factory_iface_close_all (TpChannelFactoryIface *self)
 {
-  void (*virtual_method)(TpChannelFactoryIface *) = 
+  void (*virtual_method)(TpChannelFactoryIface *) =
     TP_CHANNEL_FACTORY_IFACE_GET_CLASS (self)->close_all;
   g_assert (virtual_method != NULL);
   virtual_method (self);
@@ -136,7 +137,7 @@ tp_channel_factory_iface_close_all (TpChannelFactoryIface *self)
 void
 tp_channel_factory_iface_connecting (TpChannelFactoryIface *self)
 {
-  void (*virtual_method)(TpChannelFactoryIface *) = 
+  void (*virtual_method)(TpChannelFactoryIface *) =
     TP_CHANNEL_FACTORY_IFACE_GET_CLASS (self)->connecting;
   if (virtual_method)
     virtual_method (self);
@@ -151,7 +152,7 @@ tp_channel_factory_iface_connecting (TpChannelFactoryIface *self)
 void
 tp_channel_factory_iface_connected (TpChannelFactoryIface *self)
 {
-  void (*virtual_method)(TpChannelFactoryIface *) = 
+  void (*virtual_method)(TpChannelFactoryIface *) =
     TP_CHANNEL_FACTORY_IFACE_GET_CLASS (self)->connected;
   if (virtual_method)
     virtual_method (self);
@@ -166,7 +167,7 @@ tp_channel_factory_iface_connected (TpChannelFactoryIface *self)
 void
 tp_channel_factory_iface_disconnected (TpChannelFactoryIface *self)
 {
-  void (*virtual_method)(TpChannelFactoryIface *) = 
+  void (*virtual_method)(TpChannelFactoryIface *) =
     TP_CHANNEL_FACTORY_IFACE_GET_CLASS (self)->disconnected;
   if (virtual_method)
     virtual_method (self);
@@ -185,7 +186,7 @@ tp_channel_factory_iface_foreach (TpChannelFactoryIface *self,
                                   TpChannelFunc func,
                                   gpointer data)
 {
-  void (*virtual_method)(TpChannelFactoryIface *, TpChannelFunc, gpointer) = 
+  void (*virtual_method)(TpChannelFactoryIface *, TpChannelFunc, gpointer) =
     TP_CHANNEL_FACTORY_IFACE_GET_CLASS (self)->foreach;
   g_assert (virtual_method != NULL);
   virtual_method (self, func, data);
@@ -207,7 +208,7 @@ tp_channel_factory_iface_foreach (TpChannelFactoryIface *self,
  *           nonzero handle.
  * @ret: Set to the new channel if it is available immediately, as
  *       documented in the description of #TpChannelFactoryRequestStatus
- * @error: Set to the error if the return is 
+ * @error: Set to the error if the return is
  *         %TP_CHANNEL_FACTORY_REQUEST_STATUS_ERROR, unset otherwise
  *
  * Request a channel.
@@ -242,7 +243,7 @@ tp_channel_factory_iface_request (TpChannelFactoryIface *self,
  * Signal that a new channel has been created (new-channel signal).
  * If the channel was created in response to a channel request, the request
  * was for a nonzero handle type, and the channel has zero handle type,
- * request will be the request context passed to 
+ * request will be the request context passed to
  * tp_channel_factory_iface_request(). Otherwise, request may either be
  * NULL or a request that led to the channel's creation; callers are expected
  * to determine which channels satisfy which requests based on the handle

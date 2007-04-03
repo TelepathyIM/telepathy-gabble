@@ -33,6 +33,11 @@
 
 #define DEFAULT_SIZE 64
 
+/**
+ * TpHeap:
+ *
+ * Structure representing the heap queue. All fields are private.
+ */
 struct _TpHeap
 {
   GPtrArray *data;

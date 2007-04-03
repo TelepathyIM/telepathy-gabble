@@ -885,8 +885,8 @@ local_pending_added (TpGroupMixin *mixin,
   tp_intset_foreach (added, local_pending_added_foreach, &data);
 }
 
-void
-local_pending_remove_foreach(guint i,
+static void
+local_pending_remove_foreach (guint i,
                              gpointer userdata)
 {
   TpGroupMixin *mixin = (TpGroupMixin *) userdata;

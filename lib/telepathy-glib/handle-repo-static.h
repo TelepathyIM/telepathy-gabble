@@ -50,9 +50,18 @@ G_BEGIN_DECLS
  * This is intended for handles of type %TP_HANDLE_TYPE_CONTACT_LIST,
  * for which the connection manager should only accept a static list of
  * supported handle names.
+ *
+ * All structure fields are private.
  */
 
 typedef struct _TpStaticHandleRepo TpStaticHandleRepo;
+
+/**
+ * TpStaticHandleRepoClass:
+ *
+ * The class of a TpStaticHandleRepo. All fields are private.
+ */
+
 typedef struct _TpStaticHandleRepoClass TpStaticHandleRepoClass;
 GType tp_static_handle_repo_get_type (void);
 
@@ -71,6 +80,21 @@ GType tp_static_handle_repo_get_type (void);
 #define TP_STATIC_HANDLE_REPO_GET_CLASS(obj) \
   (G_TYPE_INSTANCE_GET_CLASS ((obj), TP_TYPE_STATIC_HANDLE_REPO,\
   TpStaticHandleRepoClass))
+
+/**
+ * tp_static_handle_repo_new:
+ * @handle_type: The type of handle to store in the
+ *  new repository
+ * @handle_names: Same as #TpStaticHandleRepo:handle-names
+ *
+ * <!---->
+ *
+ * Returns: a new static handle repository
+ */
+static inline
+/* spacer so gtkdoc documents this function as though not static */
+TpHandleRepoIface *tp_static_handle_repo_new (TpHandleType handle_type,
+    const gchar **handle_names);
 
 static inline TpHandleRepoIface *
 tp_static_handle_repo_new (TpHandleType handle_type,

@@ -159,6 +159,7 @@ TP_DYNAMIC_HANDLE_REPO_GET_CLASS
 <FILE>handle-repo-static</FILE>
 <INCLUDE>telepathy-glib/handle-repo-static.h</INCLUDE>
 <TITLE>TpStaticHandleRepo</TITLE>
+tp_static_handle_repo_new
 TpStaticHandleRepo
 TpStaticHandleRepoClass
 <SUBSECTION Standard>

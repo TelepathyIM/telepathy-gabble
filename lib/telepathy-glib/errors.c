@@ -22,6 +22,14 @@
 
 #include <glib.h>
 
+/**
+ * tp_g_set_error_invalid_handle_type:
+ * @type: An invalid handle type
+ * @error: Either %NULL, or used to return an error (as for g_set_error)
+ *
+ * Set the error InvalidArgument corresponding to an invalid handle type,
+ * with an appropriate message.
+ */
 void
 tp_g_set_error_invalid_handle_type (guint type, GError **error)
 {
@@ -29,6 +37,17 @@ tp_g_set_error_invalid_handle_type (guint type, GError **error)
       "invalid handle type %u", type);
 }
 
+/**
+ * tp_g_set_error_unsupported_handle_type:
+ * @type: An unsupported handle type
+ * @error: Either %NULL, or used to return an error (as for g_set_error)
+ *
+ * Set the error InvalidArgument for a handle type which is valid but is not
+ * supported by this connection manager, with an appropriate message.
+ *
+ * FIXME: Shouldn't the error be NotImplemented? The spec doesn't always
+ * allow us to return that, though.
+ */
 void
 tp_g_set_error_unsupported_handle_type (guint type, GError **error)
 {
@@ -36,6 +55,13 @@ tp_g_set_error_unsupported_handle_type (guint type, GError **error)
       "unsupported handle type %u", type);
 }
 
+/**
+ * tp_errors_quark:
+ *
+ * <!--no need for more documentation, Returns: says it all-->
+ *
+ * Returns: the Telepathy error domain.
+ */
 GQuark
 tp_errors_quark (void)
 {

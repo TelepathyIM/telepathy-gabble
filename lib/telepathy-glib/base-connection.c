@@ -565,17 +565,27 @@ tp_base_connection_init (TpBaseConnection *self)
 }
 
 /**
- * tp_base_connection_register
+ * tp_base_connection_register:
+ * @self: A connection
+ * @cm_name: The name of the connection manager in the Telepathy protocol
+ * @bus_name: Used to return the bus name corresponding to the connection
+ *  if %TRUE is returned; must not be %NULL. To be freed by the caller.
+ * @object_path: Used to return the object path of the connection if
+ *  %TRUE is returned; must not be %NULL. To be freed by the caller.
+ * @error: Used to return an error if %FALSE is returned; may be %NULL
  *
  * Make the connection object appear on the bus, returning the bus
- * name and object path used.
+ * name and object path used. If %TRUE is returned, the connection owns the
+ * bus name, and will release it when destroyed.
+ *
+ * Returns: %TRUE on success, %FALSE on error.
  */
 gboolean
 tp_base_connection_register (TpBaseConnection *self,
-    const gchar *cm_name,
-    gchar **bus_name,
-    gchar **object_path,
-    GError **error)
+                             const gchar *cm_name,
+                             gchar **bus_name,
+                             gchar **object_path,
+                             GError **error)
 {
   TpBaseConnectionClass *cls = TP_BASE_CONNECTION_GET_CLASS (self);
   TpBaseConnectionPrivate *priv = TP_BASE_CONNECTION_GET_PRIVATE (self);
@@ -1401,9 +1411,19 @@ tp_base_connection_dbus_request_handles (TpSvcConnection *iface,
   g_array_free (handles, TRUE);
 }
 
+/**
+ * tp_base_connection_get_handles:
+ * @self: A connection
+ * @handle_type: The handle type
+ *
+ * <!---->
+ *
+ * Returns: the handle repository corresponding to the given handle type,
+ * or #NULL if it's unsupported or invalid.
+ */
 TpHandleRepoIface *
 tp_base_connection_get_handles (TpBaseConnection *self,
-    TpHandleType handle_type)
+                                TpHandleType handle_type)
 {
   TpBaseConnectionPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
       TP_TYPE_BASE_CONNECTION, TpBaseConnectionPrivate);

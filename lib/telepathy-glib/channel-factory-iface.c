@@ -220,7 +220,7 @@ TpChannelFactoryRequestStatus
 tp_channel_factory_iface_request (TpChannelFactoryIface *self,
                                   const gchar *chan_type,
                                   TpHandleType handle_type,
-                                  guint handle,
+                                  TpHandle handle,
                                   gpointer request,
                                   TpChannelIface **ret,
                                   GError **error)

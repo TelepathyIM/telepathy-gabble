@@ -143,6 +143,7 @@ tp_handle_set_difference_update
 TpDynamicHandleRepo
 TpDynamicHandleRepoClass
 tp_dynamic_handle_repo_lookup_exact
+tp_dynamic_handle_repo_new
 TpDynamicHandleRepoNormalizeFunc
 <SUBSECTION Standard>
 TP_DYNAMIC_HANDLE_REPO

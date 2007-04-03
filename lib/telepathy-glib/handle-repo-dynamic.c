@@ -38,32 +38,6 @@
  * except %TP_HANDLE_TYPE_CONTACT_LIST.
  */
 
-/* gtk-doc for things from the header */
-
-/**
- * TpDynamicHandleRepoNormalizeFunc:
- * @repo: The repository on which tp_handle_lookup() or tp_handle_ensure()
- *        was called
- * @id: The name to be normalized
- * @context: Arbitrary context passed to tp_handle_lookup() or
- *           tp_handle_ensure()
- * @error: Used to raise the Telepathy error InvalidHandle with an appropriate
- *         message if NULL is returned
- *
- * Returns: a normalized version of @id (to be freed with g_free by the
- *          caller), or NULL if @id is not valid for this repository
- */
-
-/**
- * tp_dynamic_handle_repo_new:
- * @handle_type: The handle type
- * @normalize_func: The function to be used to normalize and validate handles,
- *  or %NULL to accept all handles as-is
- * @default_normalize_context: The context pointer to be passed to the
- *  @normalize_func if a %NULL context is passed to tp_handle_lookup() and
- *  tp_handle_ensure(); this may itself be %NULL
- */
-
 #include <telepathy-glib/handle-repo-dynamic.h>
 
 #include <dbus/dbus-glib.h>

@@ -1600,7 +1600,7 @@ tp_base_connection_add_interfaces (TpBaseConnection *self,
                                    const gchar **interfaces)
 {
   const gchar *iface;
-  guint i, n_new = 0;
+  guint i, n_new;
   TpBaseConnectionPrivate *priv = TP_BASE_CONNECTION_GET_PRIVATE (self);
   TpBaseConnectionClass *klass = TP_BASE_CONNECTION_GET_CLASS (self);
 
@@ -1613,10 +1613,7 @@ tp_base_connection_add_interfaces (TpBaseConnection *self,
       return;
     }
 
-  for (iface = interfaces[0]; *iface; iface++)
-    {
-      n_new++;
-    }
+  n_new = g_strv_length (interfaces);
 
   if (priv->interfaces)
     {
@@ -1636,10 +1633,7 @@ tp_base_connection_add_interfaces (TpBaseConnection *self,
 
       if (klass->interfaces_always_present)
         {
-          for (iface = klass->interfaces_always_present[0]; *iface; iface++)
-            {
-              n_static++;
-            }
+          n_static = g_strv_length (klass->interfaces_always_present);
         }
       priv->interfaces = g_array_sized_new (TRUE, FALSE, sizeof (gchar *),
           n_static + n_new);

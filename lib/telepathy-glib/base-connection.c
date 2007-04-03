@@ -158,7 +158,7 @@ typedef struct _TpBaseConnectionPrivate
 
   TpHandleRepoIface *handles[NUM_TP_HANDLE_TYPES];
 
-  /* if not %NULL, contains strings representing our interfaces.
+  /* If not %NULL, contains strings representing our interfaces.
    * If %NULL, we have no interfaces except those in
    * klass->interfaces_always_present (i.e. this is lazily allocated).
    *

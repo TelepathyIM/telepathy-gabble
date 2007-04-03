@@ -147,6 +147,8 @@ typedef struct
 /**
  * tp_text_mixin_class_get_offset_quark:
  *
+ * <!--no documentation beyond Returns: needed-->
+ *
  * Returns: the quark used for storing mixin offset on a GObjectClass
  */
 GQuark
@@ -160,6 +162,8 @@ tp_text_mixin_class_get_offset_quark ()
 
 /**
  * tp_text_mixin_get_offset_quark:
+ *
+ * <!--no documentation beyond Returns: needed-->
  *
  * Returns: the quark used for storing mixin offset on a GObject
  */
@@ -335,6 +339,9 @@ static void _pending_free (_PendingMessage *msg,
  * @text: The text of the message
  *
  * Add a message to the pending queue and emit Received.
+ *
+ * Returns: %TRUE on success; %FALSE if the message was lost due to the memory
+ * limit.
  */
 gboolean
 tp_text_mixin_receive (GObject *obj,

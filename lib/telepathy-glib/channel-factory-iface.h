@@ -52,7 +52,8 @@ G_BEGIN_DECLS
   (G_TYPE_INSTANCE_GET_INTERFACE ((obj), \
   TP_TYPE_CHANNEL_FACTORY_IFACE, TpChannelFactoryIfaceClass))
 
-/** TpChannelFactoryIface:
+/**
+ * TpChannelFactoryIface:
  *
  * Opaque typedef representing any channel factory implementation.
  */
@@ -61,10 +62,10 @@ typedef struct _TpChannelFactoryIface TpChannelFactoryIface;
 /* documented below */
 typedef struct _TpChannelFactoryIfaceClass TpChannelFactoryIfaceClass;
 
-/** 
+/**
  * TpChannelFactoryRequestStatus:
- * @TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_IMPLEMENTED: Same as the Telepathy 
- *  error NotImplemented. The connection will try the next factory in its 
+ * @TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_IMPLEMENTED: Same as the Telepathy
+ *  error NotImplemented. The connection will try the next factory in its
  *  list; if all return this, the overall result of the request will be
  *  NotImplemented. *@ret and *@error are not set
  * @TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_AVAILABLE: Same as the Telepathy
@@ -74,7 +75,7 @@ typedef struct _TpChannelFactoryIfaceClass TpChannelFactoryIfaceClass;
  * @TP_CHANNEL_FACTORY_REQUEST_STATUS_ERROR: An error other than the above.
  *  *@ret is not set, *@error is set
  * @TP_CHANNEL_FACTORY_REQUEST_STATUS_CREATED: A new channel was created
- *  (possibly in response to more than one request). new-channel has already 
+ *  (possibly in response to more than one request). new-channel has already
  *  been emitted and *@ret is set to the new channel.
  * @TP_CHANNEL_FACTORY_REQUEST_STATUS_QUEUED: A new channel will be created,
  *  or was created but is not ready yet. Either new-channel or channel-error
@@ -120,7 +121,7 @@ typedef void (*TpChannelFactoryIfaceProc) (TpChannelFactoryIface *self);
  *           nonzero handle.
  * @ret: Set to the new channel if it is available immediately, as
  *       documented in the description of #TpChannelFactoryRequestStatus
- * @error: Set to the error if the return is 
+ * @error: Set to the error if the return is
  *         %TP_CHANNEL_FACTORY_REQUEST_STATUS_ERROR, unset otherwise
  *
  * Signature of an implementation of RequestChannel.
@@ -136,7 +137,7 @@ typedef TpChannelFactoryRequestStatus (*TpChannelFactoryIfaceRequestImpl) (
 /**
  * TpChannelFactoryIfaceForeachImpl:
  * @self: An object implementing #TpChannelFactoryIface
- * @func: A function 
+ * @func: A function
  * @data: Arbitrary data to pass to @func as the second argument
  *
  * Signature of an implementation of foreach, which must call
@@ -147,6 +148,7 @@ typedef void (*TpChannelFactoryIfaceForeachImpl) (TpChannelFactoryIface *self,
 
 /**
  * TpChannelFactoryIfaceClass:
+ * @parent_class: Fields shared with GTypeInterface
  * @close_all: Close all channels and shut down the channel factory. It is not
  *  expected to be usable afterwards. This is called when the connection goes
  *  to disconnected state, before emitting the StatusChanged signal or calling

@@ -48,7 +48,8 @@
         G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_STRING, \
         G_TYPE_INVALID))
 
-static const char *group_change_reason_str(guint reason)
+static const char *
+group_change_reason_str(guint reason)
 {
   switch (reason)
     {
@@ -181,13 +182,9 @@ void tp_group_mixin_init (TpSvcChannelInterfaceGroup *obj,
   mixin->remote_pending = tp_handle_set_new (handle_repo);
 
   mixin->priv = g_slice_new0 (TpGroupMixinPrivate);
-  mixin->priv->handle_owners = g_hash_table_new (g_direct_hash, g_direct_equal);
-  mixin->priv->local_pending_info = g_hash_table_new_full (
-                                                     g_direct_hash, 
-                                                     g_direct_equal,
-                                                     NULL,
-                                                     (GDestroyNotify)
-                                                       local_pending_info_free);
+  mixin->priv->handle_owners = g_hash_table_new (NULL, NULL);
+  mixin->priv->local_pending_info = g_hash_table_new_full (NULL, NULL, NULL,
+      (GDestroyNotify)local_pending_info_free);
   mixin->priv->actors = tp_handle_set_new (handle_repo);
 }
 
@@ -510,22 +507,25 @@ tp_group_mixin_get_local_pending_members_async (TpSvcChannelInterfaceGroup *obj,
     }
 }
 
+typedef struct {
+    TpGroupMixin *mixin;
+    GPtrArray *array;
+} _mixin_and_array_of_info;
+
 static void
-local_pending_members_with_info_foreach(TpHandleSet *set, 
-                                        TpHandle i, 
-                                        gpointer userdata) 
+local_pending_members_with_info_foreach(TpHandleSet *set,
+                                        TpHandle i,
+                                        gpointer userdata)
 {
-  gpointer *data = (gpointer *)userdata;
-  TpGroupMixin *mixin = (TpGroupMixin *) data[0];
-  TpGroupMixinPrivate *priv = mixin->priv;
-  GPtrArray *array = (GPtrArray *)data[1];
+  _mixin_and_array_of_info *data = (_mixin_and_array_of_info *)userdata;
+  TpGroupMixinPrivate *priv = data->mixin->priv;
   GValue entry = { 0, };
-  LocalPendingInfo *info = g_hash_table_lookup (priv->local_pending_info, 
+  LocalPendingInfo *info = g_hash_table_lookup (priv->local_pending_info,
                                                 GUINT_TO_POINTER(i));
   g_assert(info != NULL);
 
   g_value_init(&entry, TP_CHANNEL_GROUP_LOCAL_PENDING_WITH_INFO_ENTRY_TYPE);
-  g_value_take_boxed(&entry, 
+  g_value_take_boxed(&entry,
       dbus_g_type_specialized_construct(
           TP_CHANNEL_GROUP_LOCAL_PENDING_WITH_INFO_ENTRY_TYPE));
 
@@ -536,7 +536,7 @@ local_pending_members_with_info_foreach(TpHandleSet *set,
       3, info->message,
       G_MAXUINT);
 
-  g_ptr_array_add (array, g_value_get_boxed (&entry));
+  g_ptr_array_add (data->array, g_value_get_boxed (&entry));
 }
 
 gboolean 
@@ -546,12 +546,12 @@ tp_group_mixin_get_local_pending_members_with_info (
                                                GError **error) 
 {
   TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
-  gpointer data[2] = { mixin, NULL };
+  _mixin_and_array_of_info data = { mixin, NULL };
 
   *ret = g_ptr_array_new();
   data[1] = *ret;
 
-  tp_handle_set_foreach (mixin->local_pending, 
+  tp_handle_set_foreach (mixin->local_pending,
       local_pending_members_with_info_foreach, data);
 
   return TRUE;
@@ -826,30 +826,33 @@ member_array_to_string (TpHandleRepoIface *repo,
 
 static void remove_handle_owners_if_exist (TpSvcChannelInterfaceGroup *obj, GArray *array);
 
-static void 
-local_pending_added_foreach(guint i, 
-                            gpointer userdata) 
-{
-  gpointer *data = (gpointer *)userdata;
-  TpGroupMixin *mixin = (TpGroupMixin *) data[0]; 
-  TpGroupMixinPrivate *priv = mixin->priv;
-  LocalPendingInfo *info = (LocalPendingInfo *)data[1];
+typedef struct {
+    TpGroupMixin *mixin;
+    LocalPendingInfo *info;
+} _mixin_and_info;
 
-  g_hash_table_insert (priv->local_pending_info, 
-      GUINT_TO_POINTER (i), 
+static void
+local_pending_added_foreach(guint i,
+                            gpointer userdata)
+{
+  _mixin_and_info *data = (_mixin_and_info *)userdata;
+  TpGroupMixinPrivate *priv = data->mixin->priv;
+
+  g_hash_table_insert (priv->local_pending_info,
+      GUINT_TO_POINTER (i),
       local_pending_info_new (mixin->handle_repo,
-      info->actor, info->reason, info->message));
+      data->info->actor, data->info->reason, data->info->message));
 }
 
 static void
-local_pending_added(TpGroupMixin *mixin, 
-                    TpIntSet *added, 
-                    TpHandle actor, 
-                    guint reason, 
-                    const gchar *message) 
+local_pending_added(TpGroupMixin *mixin,
+                    TpIntSet *added,
+                    TpHandle actor,
+                    guint reason,
+                    const gchar *message)
 {
   LocalPendingInfo info;
-  gpointer data[2] = { mixin, &info };
+  _mixin_and_info data = { mixin, &info };
   info.actor = actor;
   info.reason = reason;
   info.message = message;
@@ -857,9 +860,9 @@ local_pending_added(TpGroupMixin *mixin,
   tp_intset_foreach (added, local_pending_added_foreach, data);
 }
 
-void 
-local_pending_remove_foreach(guint i, 
-                             gpointer userdata) 
+void
+local_pending_remove_foreach(guint i,
+                             gpointer userdata)
 {
   TpGroupMixin *mixin = (TpGroupMixin *) userdata;
   TpGroupMixinPrivate *priv = mixin->priv;
@@ -868,9 +871,9 @@ local_pending_remove_foreach(guint i,
 }
 
 static void
-local_pending_remove(TpGroupMixin *mixin, 
-                     TpIntSet *removed) 
-{ 
+local_pending_remove(TpGroupMixin *mixin,
+                     TpIntSet *removed)
+{
   tp_intset_foreach (removed, local_pending_remove_foreach, mixin);
 }
 
@@ -925,7 +928,8 @@ tp_group_mixin_change_members (TpSvcChannelInterfaceGroup *obj,
 
 
   /* local pending + local_pending */
-  new_local_pending = tp_handle_set_update (mixin->local_pending, local_pending);
+  new_local_pending = tp_handle_set_update (mixin->local_pending,
+      local_pending);
   local_pending_added (mixin, local_pending, actor, reason, message);
 
   /* local pending - add */
@@ -949,7 +953,8 @@ tp_group_mixin_change_members (TpSvcChannelInterfaceGroup *obj,
 
 
   /* remote pending + remote_pending */
-  new_remote_pending = tp_handle_set_update (mixin->remote_pending, remote_pending);
+  new_remote_pending = tp_handle_set_update (mixin->remote_pending,
+      remote_pending);
 
   /* remote pending - add */
   tmp = tp_handle_set_difference_update (mixin->remote_pending, add);
@@ -1075,8 +1080,10 @@ remove_handle_owners_if_exist (TpSvcChannelInterfaceGroup *obj, GArray *array)
                                         &local_handle,
                                         &owner_handle))
         {
-          tp_handle_unref (mixin->handle_repo, GPOINTER_TO_UINT (local_handle));
-          tp_handle_unref (mixin->handle_repo, GPOINTER_TO_UINT (owner_handle));
+          tp_handle_unref (mixin->handle_repo,
+              GPOINTER_TO_UINT (local_handle));
+          tp_handle_unref (mixin->handle_repo,
+              GPOINTER_TO_UINT (owner_handle));
 
           g_hash_table_remove (priv->handle_owners, GUINT_TO_POINTER (handle));
         }
@@ -1085,7 +1092,8 @@ remove_handle_owners_if_exist (TpSvcChannelInterfaceGroup *obj, GArray *array)
 
 void tp_group_mixin_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  TpSvcChannelInterfaceGroupClass *klass = (TpSvcChannelInterfaceGroupClass *)g_iface;
+  TpSvcChannelInterfaceGroupClass *klass =
+    (TpSvcChannelInterfaceGroupClass *)g_iface;
 
 #define IMPLEMENT(x) tp_svc_channel_interface_group_implement_##x (klass,\
     tp_group_mixin_##x##_async)

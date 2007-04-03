@@ -1153,7 +1153,6 @@ tp_heap_size
 TpTextMixin
 TpTextMixinPrivate
 TpTextMixinClass
-tp_text_mixin_get_type
 TP_TEXT_MIXIN_CLASS_OFFSET_QUARK
 TP_TEXT_MIXIN_CLASS_OFFSET
 TP_TEXT_MIXIN_CLASS

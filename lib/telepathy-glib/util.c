@@ -38,6 +38,8 @@
  * @haystack: The pointer array to be searched
  * @needle: The pointer to look for
  *
+ * <!--no further documentation needed-->
+ *
  * Returns: %TRUE if @needle is one of the elements of @haystack
  */
 

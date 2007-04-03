@@ -103,6 +103,7 @@ TpHandleRepoIface
 TpHandleRepoIfaceClass
 tp_handle_is_valid
 tp_handles_are_valid
+tp_handles_supported_and_valid
 tp_handle_ref
 tp_handle_unref
 tp_handle_client_hold

@@ -68,13 +68,34 @@ typedef struct _TpHandleSet TpHandleSet;
 /**
  * TpHandleRepoIface:
  *
- * Abstract interface of a repository for handles, supporting operations
- * which include checking for validity, reference counting, lookup by
- * string value and lookup by numeric value.
+ * Dummy typedef representing any implementation of this interface.
  */
-typedef struct _TpHandleRepoIface TpHandleRepoIface;    /* dummy typedef */
+typedef struct _TpHandleRepoIface TpHandleRepoIface;
+
+
 typedef struct _TpHandleRepoIfaceClass TpHandleRepoIfaceClass;
 
+/**
+ * TpHandleRepoIfaceClass:
+ * @parent_class: Fields shared with GTypeInterface
+ * @handle_is_valid: Implementation for tp_handle_is_valid() for this repo
+ * @handles_are_valid: Implementation for tp_handles_are_valid() for this repo
+ * @ref_handle: Implementation for tp_handle_ref() for this repo
+ * @unref_handle: Implementation for tp_handle_unref() for this repo
+ * @client_hold_handle: Implementation for tp_handle_client_hold() for this
+ *  repo
+ * @client_release_handle: Implementation for tp_handle_client_release() for
+ *  this repo
+ * @inspect_handle: Implementation for tp_handle_inspect() for this repo
+ * @ensure_handle: Implementation for tp_handle_ensure() for this repo
+ * @lookup_handle: Implementation for tp_handle_lookup() for this repo
+ * @get_qdata: Implementation for tp_handle_get_qdata() for this repo
+ * @set_qdata: Implementation for tp_handle_set_qdata() for this repo
+ *
+ * The class of a #TpHandleRepoIface. All implementation callbacks must be
+ * filled in by all implementations, and have the same semantics as the
+ * global function that calls them.
+ */
 struct _TpHandleRepoIfaceClass {
     GTypeInterface parent_class;
 
@@ -159,7 +180,7 @@ TpIntSet *tp_handle_set_difference_update (TpHandleSet *set, const TpIntSet *rem
  *         by handle type, where a null pointer means an unsupported handle
  *         type
  * @handle_type: The handle type
- * @handles: An array of handles of the given type
+ * @handles: A GArray of guint representing handles of the given type
  * @allow_zero: If %TRUE, zero is treated like a valid handle
  * @error: Used to return an error if %FALSE is returned
  *
@@ -170,10 +191,20 @@ TpIntSet *tp_handle_set_difference_update (TpHandleSet *set, const TpIntSet *rem
  * Returns: %TRUE if the handle type is supported and the handles are all
  * valid.
  */
+
+static inline
+/* spacer so gtkdoc documents this function as though not static */
+gboolean tp_handles_supported_and_valid (
+    TpHandleRepoIface *repos[NUM_TP_HANDLE_TYPES],
+    TpHandleType handle_type, const GArray *handles, gboolean allow_zero,
+    GError **error);
+
 static inline gboolean
 tp_handles_supported_and_valid (TpHandleRepoIface *repos[NUM_TP_HANDLE_TYPES],
-    TpHandleType handle_type, const GArray *handles, gboolean allow_zero,
-    GError **error)
+                                TpHandleType handle_type,
+                                const GArray *handles,
+                                gboolean allow_zero,
+                                GError **error)
 {
   if (!tp_handle_type_is_valid (handle_type, error))
     return FALSE;

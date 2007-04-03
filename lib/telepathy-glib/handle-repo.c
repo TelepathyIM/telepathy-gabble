@@ -20,6 +20,18 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+/**
+ * SECTION:handle-repo
+ * @title: TpHandleRepoIface
+ * @short_description: abstract interface for handle allocation
+ * @see_also: TpDynamicHandleRepo, TpStaticHandleRepo
+ *
+ * Abstract interface of a repository for handles, supporting operations
+ * which include checking for validity, reference counting, lookup by
+ * string value and lookup by numeric value. See #TpDynamicHandleRepo
+ * and #TpStaticHandleRepo for concrete implementations.
+ */
+
 #include <telepathy-glib/handle-repo.h>
 
 static void
@@ -263,6 +275,8 @@ tp_handle_ensure (TpHandleRepoIface *self,
  * @self: A handle repository implementation
  * @id: A string whose handle is required
  * @context: User data to be passed to the normalization callback
+ * @error: Used to raise an error if the handle does not exist or is
+ *  invalid
  *
  * Return the handle for the given string, without incrementing its
  * reference count. The handle is normalized if possible.

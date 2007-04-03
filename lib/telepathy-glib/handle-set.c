@@ -80,7 +80,9 @@ tp_handle_set_destroy (TpHandleSet *set)
  * tp_handle_set_peek:
  * @set:#TpHandleSet to peek at
  *
- * Get the underlying TpIntSet used by this TpHandleSet
+ * <!--Returns: says it all, this comment is just to keep gtkdoc happy-->
+ *
+ * Returns: the underlying #TpIntSet used by this #TpHandleSet
  */
 TpIntSet *
 tp_handle_set_peek (TpHandleSet *set)
@@ -168,6 +170,14 @@ foreach_helper(guint i, gpointer userdata)
   data->func(data->set, i, data->userdata);
 }
 
+/**
+ * tp_handle_set_foreach:
+ * @set: A set of handles
+ * @func: A callback
+ * @userdata: Arbitrary data to pass to @func
+ *
+ * Call @func(@set, @handle, @userdata) for each handle in @set.
+ */
 void
 tp_handle_set_foreach (TpHandleSet *set, TpHandleSetMemberFunc func,
     gpointer userdata)
@@ -179,6 +189,14 @@ tp_handle_set_foreach (TpHandleSet *set, TpHandleSetMemberFunc func,
   tp_intset_foreach (set->intset, foreach_helper, &data);
 }
 
+/**
+ * tp_handle_set_size:
+ * @set: A set of handles
+ *
+ * <!--no further documentation needed-->
+ *
+ * Returns: the number of handles in this set
+ */
 int
 tp_handle_set_size (TpHandleSet *set)
 {
@@ -188,6 +206,8 @@ tp_handle_set_size (TpHandleSet *set)
 /**
  * tp_handle_set_to_array:
  * @set: A handle set
+ *
+ * <!--Returns: says it all, this comment is just to keep gtkdoc happy-->
  *
  * Returns: a GArray of guint representing the handles in the set
  */

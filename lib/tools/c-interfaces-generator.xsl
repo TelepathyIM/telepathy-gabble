@@ -7,9 +7,17 @@
   <xsl:variable name="upper" select="'ABCDEFGHIJKLMNOPQRSTUVWXYZ'"/>
   <xsl:variable name="lower" select="'abcdefghijklmnopqrstuvwxyz'"/>
 
-  <xsl:template match="interface">#define TP_IFACE_<xsl:value-of select="translate(../@name, concat($lower, '/'), $upper)"/> \
-        "<xsl:value-of select="@name"/>"
-</xsl:template>
+  <xsl:template match="interface">
+    <xsl:text>/**&#10; * TP_IFACE_</xsl:text>
+    <xsl:value-of select="translate(../@name, concat($lower, '/'), $upper)"/>
+    <xsl:text>:&#10; * &#10; * The Telepathy interface name "</xsl:text>
+    <xsl:value-of select="@name"/>
+    <xsl:text>"&#10; */&#10;#define TP_IFACE_</xsl:text>
+    <xsl:value-of select="translate(../@name, concat($lower, '/'), $upper)"/>
+    <xsl:text> \&#10;"</xsl:text>
+    <xsl:value-of select="@name"/>
+    <xsl:text>"&#10;&#10;</xsl:text>
+  </xsl:template>
 
   <xsl:template match="text()"/>
 

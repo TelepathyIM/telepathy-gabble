@@ -84,7 +84,7 @@ typedef struct {
     const gsize offset;
 } TpCMParamSpec;
 
-/** 
+/**
  * TpCMProtocolSpec:
  * @name: The name which should be passed to RequestConnection for this
  *        protocol.
@@ -108,14 +108,14 @@ typedef struct {
     void (*params_free) (void *);
 } TpCMProtocolSpec;
 
-/** 
+/**
  * TpBaseConnectionManager:
  *
  * A base class for connection managers.
  */
 typedef struct _TpBaseConnectionManager TpBaseConnectionManager;
 
-/** 
+/**
  * TpBaseConnectionManagerClass:
  * @parent_class: The parent class
  * @cm_dbus_name: The name of this connection manager, as used to construct
@@ -133,7 +133,7 @@ typedef struct _TpBaseConnectionManager TpBaseConnectionManager;
  */
 typedef struct _TpBaseConnectionManagerClass TpBaseConnectionManagerClass;
 
-/** 
+/**
  * TpBaseConnectionManagerNewConnFunc:
  * @self: The connection manager implementation
  * @proto: The protocol name from the D-Bus request

@@ -78,7 +78,7 @@ static void
 tp_base_connection_manager_dispose (GObject *object)
 {
   TpBaseConnectionManager *self = TP_BASE_CONNECTION_MANAGER (object);
-  TpBaseConnectionManagerPrivate *priv = 
+  TpBaseConnectionManagerPrivate *priv =
     TP_BASE_CONNECTION_MANAGER_GET_PRIVATE (self);
 
   if (priv->dispose_has_run)
@@ -91,7 +91,7 @@ static void
 tp_base_connection_manager_finalize (GObject *object)
 {
   TpBaseConnectionManager *self = TP_BASE_CONNECTION_MANAGER (object);
-  TpBaseConnectionManagerPrivate *priv = 
+  TpBaseConnectionManagerPrivate *priv =
     TP_BASE_CONNECTION_MANAGER_GET_PRIVATE (self);
 
   g_hash_table_destroy(priv->connections);
@@ -455,7 +455,7 @@ tp_base_connection_manager_get_parameters (TpSvcConnectionManager *iface,
       g_value_init (&param, TP_TYPE_PARAM);
       g_value_set_static_boxed (&param,
         dbus_g_type_specialized_construct (TP_TYPE_PARAM));
-      
+
       def_value = param_default_value (protospec->parameters, i);
       dbus_g_type_struct_set (&param,
         0, protospec->parameters[i].name,

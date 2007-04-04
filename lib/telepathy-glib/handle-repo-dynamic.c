@@ -322,7 +322,7 @@ handle_leak_debug_printhandles_foreach (gpointer key, gpointer value, gpointer i
   TpHandlePriv *priv = (TpHandlePriv *) value;
 
   printf ("\t%05u: %s (%u refs), traces:\n", handle, priv->string, priv->refcount);
-  
+
   g_slist_foreach (priv->traces, handle_leak_debug_printbt_foreach, NULL);
 }
 
@@ -377,7 +377,7 @@ dynamic_finalize (GObject *obj)
   g_assert (self->string_to_handle);
 
   g_datalist_clear (&self->holder_to_handle_set);
-  
+
 #ifdef ENABLE_HANDLE_LEAK_DEBUG
   handle_leak_debug_print_report (self);
 #endif
@@ -578,7 +578,7 @@ dynamic_client_hold_handle (TpHandleRepoIface *repo,
 
   g_return_val_if_fail (handle != 0, FALSE);
   g_return_val_if_fail (repo != NULL, FALSE);
-  
+
   self = TP_DYNAMIC_HANDLE_REPO (repo);
 
   if (!client_name || *client_name == '\0')

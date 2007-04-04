@@ -57,7 +57,7 @@ typedef struct _TpChannelIface TpChannelIface;
 
 typedef struct _TpChannelIfaceClass TpChannelIfaceClass;
 
-/** 
+/**
  * TpChannelFunc:
  * @self: An object implementing the channel interface
  * @userdata: Arbitrary user-supplied data

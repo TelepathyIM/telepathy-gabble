@@ -451,6 +451,8 @@ ERROR:
  * @property: either %NULL, or a pointer to a location to receive the property
  *            index
  *
+ * <!--Returns: says it all; this comment is to keep gtkdoc happy-->
+ *
  * Returns: %TRUE, setting @property, if @obj has a property of that name
  */
 gboolean
@@ -481,6 +483,8 @@ tp_properties_mixin_has_property (GObject *obj, const gchar *name,
  * @ctx: the properties context representing a SetProperties call
  * @property: the property ID
  *
+ * <!--Returns: says it all; this comment is to keep gtkdoc happy-->
+ *
  * Returns: %TRUE if @ctx indicates that @property still needs to be set on
  * the server.
  */
@@ -497,6 +501,8 @@ tp_properties_context_has (TpPropertiesContext *ctx, guint property)
  * tp_properties_context_has_other_than:
  * @ctx: the properties context representing a SetProperties call
  * @property: the property ID
+ *
+ * <!--Returns: says it all; this comment is to keep gtkdoc happy-->
  *
  * Returns: %TRUE if @ctx has properties other than @property that still
  * need to be set on the server
@@ -517,6 +523,8 @@ tp_properties_context_has_other_than (TpPropertiesContext *ctx, guint property)
  * @ctx: the properties context representing a SetProperties call
  * @property: a property ID
  *
+ * <!--Returns: says it all; this comment is to keep gtkdoc happy-->
+ *
  * Returns: the value to be set on the server for the property @property
  * in @ctx (whether it has been set already or not)
  */
@@ -532,6 +540,8 @@ tp_properties_context_get (TpPropertiesContext *ctx, guint property)
 /**
  * tp_properties_context_get_value_count:
  * @ctx: the properties context representing a SetProperties call
+ *
+ * <!--Returns: says it all; this comment is to keep gtkdoc happy-->
  *
  * Returns: the number of properties in @ctx which still need to be set on
  *          the server, or have already been set
@@ -979,6 +989,8 @@ tp_properties_mixin_emit_flags (GObject *obj, const TpIntSet *props)
  * @obj: an object with this mixin
  * @prop_id: an integer property ID
  *
+ * <!--Returns: says it all; this comment is to keep gtkdoc happy-->
+ *
  * Returns: %TRUE if the given property has the READ flag
  */
 gboolean
@@ -999,6 +1011,8 @@ tp_properties_mixin_is_readable (GObject *obj, guint prop_id)
  * tp_properties_mixin_is_writable:
  * @obj: an object with this mixin
  * @prop_id: an integer property ID
+ *
+ * <!--Returns: says it all; this comment is to keep gtkdoc happy-->
  *
  * Returns: %TRUE if the given property has the WRITE flag
  */

@@ -31,8 +31,8 @@
  * be created and destroyed at runtime.
  *
  * The #TpHandleRepoIface:handle-type property must be set at construction
- * time; the #TpHandleRepoIface:normalize-func may be set to perform
- * validation and normalization on handle ID strings.
+ * time; the #TpDynamicHandleRepo:normalize-function property may be set to
+ * perform validation and normalization on handle ID strings.
  *
  * Most connection managers will use this for all supported handle types
  * except %TP_HANDLE_TYPE_CONTACT_LIST.

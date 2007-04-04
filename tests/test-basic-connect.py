@@ -50,7 +50,7 @@ class BasicConnectTest(ClientTestCase):
             conn2,
             # A new text channel to the client 1
             self["client2_conn"]["RequestChannel"].call(chan_type_text, 1,
-                self["client2_conn"]["RequestHandles"].call (1, ["telepathytest1@jabber.org"])[0], False), 
+                self["client2_conn"]["RequestHandles"].call (1, ["telepathytest1@jabber.org"])[0], False),
             # The interfaces for this text channel
             {"text": chan_type_text, "chan": iface_chan})
 
@@ -67,7 +67,7 @@ class BasicConnectTest(ClientTestCase):
         # Create the channel structure for client 1
         self["client1_chan"] = (
             conn1,
-            obj, 
+            obj,
             {"text": chan_type_text, "chan": iface_chan})
 
         # Retreive pending messages

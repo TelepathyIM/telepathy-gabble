@@ -455,7 +455,7 @@ gabble_im_channel_get_interfaces (TpSvcChannel *iface,
                                   DBusGMethodInvocation *context)
 {
   const char *interfaces[] = {
-      TP_IFACE_CHANNEL_INTERFACE_CHAT_STATE, 
+      TP_IFACE_CHANNEL_INTERFACE_CHAT_STATE,
       NULL };
 
   tp_svc_channel_return_from_get_interfaces (context, interfaces);

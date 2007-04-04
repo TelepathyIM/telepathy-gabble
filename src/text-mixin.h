@@ -49,7 +49,7 @@ void gabble_text_mixin_init (GObject *obj, glong offset,
     TpHandleRepoIface *contacts_repo, gboolean send_nick);
 
 gboolean gabble_text_mixin_send (GObject *obj, guint type, guint subtype,
-    gint state, const char *recipient, const gchar *text, 
+    gint state, const char *recipient, const gchar *text,
     GabbleConnection *conn, gboolean emit_signal, GError **error);
 
 gboolean gabble_text_mixin_parse_incoming_message (LmMessage *message,

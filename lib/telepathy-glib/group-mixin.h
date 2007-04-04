@@ -27,23 +27,79 @@
 #include <telepathy-glib/svc-channel.h>
 #include <telepathy-glib/util.h>
 
+/* this is a hack to let me change the API back how it was pre-tp-glib,
+ * without causing warnings... this will go away in version 0.5.8.
+ * FIXME: take this out after 0.5.7 is released */
+#ifdef _TP_CM_UPDATED_FOR_0_5_7
+#define _TP_GROUP_MIXIN_OBJECT GObject
+#define _TP_GROUP_MIXIN_OBJECT_CLASS GObjectClass
+#else
+#define _TP_GROUP_MIXIN_OBJECT TpSvcChannelInterfaceGroup
+#define _TP_GROUP_MIXIN_OBJECT_CLASS TpSvcChannelInterfaceGroupClass
+#endif
+
 G_BEGIN_DECLS
 
 typedef struct _TpGroupMixinClass TpGroupMixinClass;
+
 typedef struct _TpGroupMixin TpGroupMixin;
 typedef struct _TpGroupMixinPrivate TpGroupMixinPrivate;
 
-typedef gboolean (*TpGroupMixinAddMemberFunc) (TpSvcChannelInterfaceGroup *obj,
-    TpHandle handle, const gchar *message, GError **error);
-typedef gboolean (*TpGroupMixinRemMemberFunc) (TpSvcChannelInterfaceGroup *obj,
+/**
+ * TpGroupMixinAddMemberFunc:
+ * @obj: An object implementing the group interface with this mixin
+ * @handle: The handle of the contact to be added
+ * @message: A message to be sent if the protocol supports it
+ * @error: Used to return a Telepathy D-Bus error if %FALSE is returned
+ *
+ * Signature of the callback used to add a member to the group.
+ * This should perform the necessary operations in the underlying IM protocol
+ * to cause the member to be added.
+ *
+ * Returns: %TRUE on success, %FALSE with @error set on error
+ */
+typedef gboolean (*TpGroupMixinAddMemberFunc) (_TP_GROUP_MIXIN_OBJECT *obj,
     TpHandle handle, const gchar *message, GError **error);
 
+/**
+ * TpGroupMixinRemMemberFunc:
+ * @obj: An object implementing the group interface with this mixin
+ * @handle: The handle of the contact to be removed
+ * @message: A message to be sent if the protocol supports it
+ * @error: Used to return a Telepathy D-Bus error if %FALSE is returned
+ *
+ * Signature of the callback used to remove a member from the group.
+ * This should perform the necessary operations in the underlying IM protocol
+ * to cause the member to be removed.
+ *
+ * Returns: %TRUE on success, %FALSE with @error set on error
+ */
+typedef gboolean (*TpGroupMixinRemMemberFunc) (_TP_GROUP_MIXIN_OBJECT *obj,
+    TpHandle handle, const gchar *message, GError **error);
+
+/**
+ * TpGroupMixinClass:
+ *
+ * Structure representing the group mixin as used in a particular class.
+ * To be placed in the implementation's class structure.
+ *
+ * Initialize this with tp_group_mixin_class_init().
+ */
 struct _TpGroupMixinClass {
+  /*<private>*/
   TpGroupMixinAddMemberFunc add_member;
   TpGroupMixinRemMemberFunc remove_member;
 };
 
+/**
+ * TpGroupMixin:
+ *
+ * Structure representing the group mixin as used in a particular class.
+ * To be placed in the implementation's instance structure.
+ */
+/* FIXME: shouldn't most of this be private? */
 struct _TpGroupMixin {
+  /*<private>*/
   TpHandleRepoIface *handle_repo;
   TpHandle self_handle;
 
@@ -75,47 +131,47 @@ struct _TpGroupMixin {
 GQuark tp_group_mixin_class_get_offset_quark (void);
 GQuark tp_group_mixin_get_offset_quark (void);
 
-void tp_group_mixin_class_init (TpSvcChannelInterfaceGroupClass *obj_cls,
+void tp_group_mixin_class_init (_TP_GROUP_MIXIN_OBJECT_CLASS *obj_cls,
     glong offset, TpGroupMixinAddMemberFunc add_func,
     TpGroupMixinRemMemberFunc rem_func);
 
-void tp_group_mixin_init (TpSvcChannelInterfaceGroup *obj, glong offset,
+void tp_group_mixin_init (_TP_GROUP_MIXIN_OBJECT *obj, glong offset,
     TpHandleRepoIface *handle_repo, TpHandle self_handle);
-void tp_group_mixin_finalize (TpSvcChannelInterfaceGroup *obj);
+void tp_group_mixin_finalize (_TP_GROUP_MIXIN_OBJECT *obj);
 
-gboolean tp_group_mixin_get_self_handle (TpSvcChannelInterfaceGroup *obj,
+gboolean tp_group_mixin_get_self_handle (_TP_GROUP_MIXIN_OBJECT *obj,
     guint *ret, GError **error);
-gboolean tp_group_mixin_get_group_flags (TpSvcChannelInterfaceGroup *obj,
+gboolean tp_group_mixin_get_group_flags (_TP_GROUP_MIXIN_OBJECT *obj,
     guint *ret, GError **error);
 
-gboolean tp_group_mixin_add_members (TpSvcChannelInterfaceGroup *obj,
+gboolean tp_group_mixin_add_members (_TP_GROUP_MIXIN_OBJECT *obj,
     const GArray *contacts, const gchar *message, GError **error);
-gboolean tp_group_mixin_remove_members (TpSvcChannelInterfaceGroup *obj,
+gboolean tp_group_mixin_remove_members (_TP_GROUP_MIXIN_OBJECT *obj,
     const GArray *contacts, const gchar *message, GError **error);
 
-gboolean tp_group_mixin_get_members (TpSvcChannelInterfaceGroup *obj,
+gboolean tp_group_mixin_get_members (_TP_GROUP_MIXIN_OBJECT *obj,
     GArray **ret, GError **error);
-gboolean tp_group_mixin_get_local_pending_members (TpSvcChannelInterfaceGroup *obj,
+gboolean tp_group_mixin_get_local_pending_members (_TP_GROUP_MIXIN_OBJECT *obj,
     GArray **ret, GError **error);
-gboolean tp_group_mixin_get_local_pending_members_with_info (TpSvcChannelInterfaceGroup *obj,
+gboolean tp_group_mixin_get_local_pending_members_with_info (_TP_GROUP_MIXIN_OBJECT *obj,
     GPtrArray **ret, GError **error);
-gboolean tp_group_mixin_get_remote_pending_members (TpSvcChannelInterfaceGroup *obj,
+gboolean tp_group_mixin_get_remote_pending_members (_TP_GROUP_MIXIN_OBJECT *obj,
     GArray **ret, GError **error);
-gboolean tp_group_mixin_get_all_members (TpSvcChannelInterfaceGroup *obj,
+gboolean tp_group_mixin_get_all_members (_TP_GROUP_MIXIN_OBJECT *obj,
     GArray **members, GArray **local_pending, GArray **remote_pending,
     GError **error);
 
-gboolean tp_group_mixin_get_handle_owners (TpSvcChannelInterfaceGroup *obj,
+gboolean tp_group_mixin_get_handle_owners (_TP_GROUP_MIXIN_OBJECT *obj,
     const GArray *handles, GArray **ret, GError **error);
 
-void tp_group_mixin_change_flags (TpSvcChannelInterfaceGroup *obj,
+void tp_group_mixin_change_flags (_TP_GROUP_MIXIN_OBJECT *obj,
     TpChannelGroupFlags add, TpChannelGroupFlags remove);
-gboolean tp_group_mixin_change_members (TpSvcChannelInterfaceGroup *obj,
+gboolean tp_group_mixin_change_members (_TP_GROUP_MIXIN_OBJECT *obj,
     const gchar *message, TpIntSet *add, TpIntSet *remove,
     TpIntSet *add_local_pending, TpIntSet *add_remote_pending, TpHandle actor,
     TpChannelGroupChangeReason reason);
 
-void tp_group_mixin_add_handle_owner (TpSvcChannelInterfaceGroup *obj,
+void tp_group_mixin_add_handle_owner (_TP_GROUP_MIXIN_OBJECT *obj,
     TpHandle local_handle, TpHandle owner_handle);
 
 void tp_group_mixin_iface_init (gpointer g_iface, gpointer iface_data);

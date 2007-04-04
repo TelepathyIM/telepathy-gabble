@@ -42,6 +42,9 @@
  * <literal>G_DEFINE_TYPE_WITH_CODE</literal>.
  */
 
+/* use the new API internally */
+#define _TP_CM_UPDATED_FOR_0_5_7 1
+
 #include <dbus/dbus-glib.h>
 #include <stdio.h>
 
@@ -166,7 +169,7 @@ tp_group_mixin_get_offset_quark ()
  * Configure the mixin for use with the given class.
  */
 void
-tp_group_mixin_class_init (TpSvcChannelInterfaceGroupClass *obj_cls,
+tp_group_mixin_class_init (GObjectClass *obj_cls,
                            glong offset,
                            TpGroupMixinAddMemberFunc add_func,
                            TpGroupMixinRemMemberFunc rem_func)
@@ -196,7 +199,7 @@ tp_group_mixin_class_init (TpSvcChannelInterfaceGroupClass *obj_cls,
  * Initialize the mixin.
  */
 void
-tp_group_mixin_init (TpSvcChannelInterfaceGroup *obj,
+tp_group_mixin_init (GObject *obj,
                      glong offset,
                      TpHandleRepoIface *handle_repo,
                      TpHandle self_handle)
@@ -245,7 +248,7 @@ handle_owners_foreach_unref (gpointer key,
  * Unreference handles and free resources used by this mixin.
  */
 void
-tp_group_mixin_finalize (TpSvcChannelInterfaceGroup *obj)
+tp_group_mixin_finalize (GObject *obj)
 {
   TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
 
@@ -277,7 +280,7 @@ tp_group_mixin_finalize (TpSvcChannelInterfaceGroup *obj)
  * Returns: %TRUE.
  */
 gboolean
-tp_group_mixin_get_self_handle (TpSvcChannelInterfaceGroup *obj,
+tp_group_mixin_get_self_handle (GObject *obj,
                                 guint *ret,
                                 GError **error)
 {
@@ -304,7 +307,7 @@ tp_group_mixin_get_self_handle_async (TpSvcChannelInterfaceGroup *obj,
   guint ret;
   GError *error = NULL;
 
-  if (tp_group_mixin_get_self_handle (obj, &ret, &error))
+  if (tp_group_mixin_get_self_handle ((GObject *)obj, &ret, &error))
     {
       tp_svc_channel_interface_group_return_from_get_self_handle (
           context, ret);
@@ -328,7 +331,7 @@ tp_group_mixin_get_self_handle_async (TpSvcChannelInterfaceGroup *obj,
  * Returns: %TRUE
  */
 gboolean
-tp_group_mixin_get_group_flags (TpSvcChannelInterfaceGroup *obj,
+tp_group_mixin_get_group_flags (GObject *obj,
                                 guint *ret,
                                 GError **error)
 {
@@ -346,7 +349,7 @@ tp_group_mixin_get_group_flags_async (TpSvcChannelInterfaceGroup *obj,
   guint ret;
   GError *error = NULL;
 
-  if (tp_group_mixin_get_group_flags (obj, &ret, &error))
+  if (tp_group_mixin_get_group_flags ((GObject *)obj, &ret, &error))
     {
       tp_svc_channel_interface_group_return_from_get_group_flags (
           context, ret);
@@ -374,7 +377,7 @@ tp_group_mixin_get_group_flags_async (TpSvcChannelInterfaceGroup *obj,
  * Returns: %TRUE on success
  */
 gboolean
-tp_group_mixin_add_members (TpSvcChannelInterfaceGroup *obj,
+tp_group_mixin_add_members (GObject *obj,
                             const GArray *contacts,
                             const gchar *message,
                             GError **error)
@@ -436,7 +439,7 @@ tp_group_mixin_add_members_async (TpSvcChannelInterfaceGroup *obj,
 {
   GError *error = NULL;
 
-  if (tp_group_mixin_add_members (obj, contacts, message, &error))
+  if (tp_group_mixin_add_members ((GObject *)obj, contacts, message, &error))
     {
       tp_svc_channel_interface_group_return_from_add_members (context);
     }
@@ -464,7 +467,7 @@ tp_group_mixin_add_members_async (TpSvcChannelInterfaceGroup *obj,
  * Returns: %TRUE on success
  */
 gboolean
-tp_group_mixin_remove_members (TpSvcChannelInterfaceGroup *obj,
+tp_group_mixin_remove_members (GObject *obj,
                                const GArray *contacts,
                                const gchar *message,
                                GError **error)
@@ -545,7 +548,8 @@ tp_group_mixin_remove_members_async (TpSvcChannelInterfaceGroup *obj,
 {
   GError *error = NULL;
 
-  if (tp_group_mixin_remove_members (obj, contacts, message, &error))
+  if (tp_group_mixin_remove_members ((GObject *)obj, contacts, message,
+        &error))
     {
       tp_svc_channel_interface_group_return_from_remove_members (context);
     }
@@ -567,7 +571,7 @@ tp_group_mixin_remove_members_async (TpSvcChannelInterfaceGroup *obj,
  * Returns: %TRUE
  */
 gboolean
-tp_group_mixin_get_members (TpSvcChannelInterfaceGroup *obj,
+tp_group_mixin_get_members (GObject *obj,
                             GArray **ret,
                             GError **error)
 {
@@ -585,7 +589,7 @@ tp_group_mixin_get_members_async (TpSvcChannelInterfaceGroup *obj,
   GArray *ret;
   GError *error = NULL;
 
-  if (tp_group_mixin_get_members (obj, &ret, &error))
+  if (tp_group_mixin_get_members ((GObject *)obj, &ret, &error))
     {
       tp_svc_channel_interface_group_return_from_get_members (
           context, ret);
@@ -609,7 +613,7 @@ tp_group_mixin_get_members_async (TpSvcChannelInterfaceGroup *obj,
  * Returns: %TRUE
  */
 gboolean
-tp_group_mixin_get_local_pending_members (TpSvcChannelInterfaceGroup *obj,
+tp_group_mixin_get_local_pending_members (GObject *obj,
                                           GArray **ret,
                                           GError **error)
 {
@@ -627,7 +631,7 @@ tp_group_mixin_get_local_pending_members_async (TpSvcChannelInterfaceGroup *obj,
   GArray *ret;
   GError *error = NULL;
 
-  if (tp_group_mixin_get_local_pending_members (obj, &ret, &error))
+  if (tp_group_mixin_get_local_pending_members ((GObject *)obj, &ret, &error))
     {
       tp_svc_channel_interface_group_return_from_get_local_pending_members (
           context, ret);
@@ -688,7 +692,7 @@ local_pending_members_with_info_foreach (TpHandleSet *set,
  */
 gboolean
 tp_group_mixin_get_local_pending_members_with_info (
-                                               TpSvcChannelInterfaceGroup *obj,
+                                               GObject *obj,
                                                GPtrArray **ret,
                                                GError **error)
 {
@@ -712,7 +716,8 @@ tp_group_mixin_get_local_pending_members_with_info_async (
   GPtrArray *ret;
   GError *error = NULL;
 
-  if (tp_group_mixin_get_local_pending_members_with_info (obj, &ret, &error))
+  if (tp_group_mixin_get_local_pending_members_with_info ((GObject *)obj, &ret,
+        &error))
     {
       guint i;
       tp_svc_channel_interface_group_return_from_get_local_pending_members_with_info (
@@ -741,7 +746,7 @@ tp_group_mixin_get_local_pending_members_with_info_async (
  * Returns: %TRUE
  */
 gboolean
-tp_group_mixin_get_remote_pending_members (TpSvcChannelInterfaceGroup *obj,
+tp_group_mixin_get_remote_pending_members (GObject *obj,
                                            GArray **ret,
                                            GError **error)
 {
@@ -759,7 +764,7 @@ tp_group_mixin_get_remote_pending_members_async (TpSvcChannelInterfaceGroup *obj
   GArray *ret;
   GError *error = NULL;
 
-  if (tp_group_mixin_get_remote_pending_members (obj, &ret, &error))
+  if (tp_group_mixin_get_remote_pending_members ((GObject *)obj, &ret, &error))
     {
       tp_svc_channel_interface_group_return_from_get_remote_pending_members (
           context, ret);
@@ -788,7 +793,7 @@ tp_group_mixin_get_remote_pending_members_async (TpSvcChannelInterfaceGroup *obj
  * Returns: %TRUE
  */
 gboolean
-tp_group_mixin_get_all_members (TpSvcChannelInterfaceGroup *obj,
+tp_group_mixin_get_all_members (GObject *obj,
                                 GArray **members,
                                 GArray **local_pending,
                                 GArray **remote_pending,
@@ -810,7 +815,8 @@ tp_group_mixin_get_all_members_async (TpSvcChannelInterfaceGroup *obj,
   GArray *mem, *local, *remote;
   GError *error = NULL;
 
-  if (tp_group_mixin_get_all_members (obj, &mem, &local, &remote, &error))
+  if (tp_group_mixin_get_all_members ((GObject *)obj, &mem, &local, &remote,
+        &error))
     {
       tp_svc_channel_interface_group_return_from_get_all_members (
           context, mem, local, remote);
@@ -841,7 +847,7 @@ tp_group_mixin_get_all_members_async (TpSvcChannelInterfaceGroup *obj,
  * failure
  */
 gboolean
-tp_group_mixin_get_handle_owners (TpSvcChannelInterfaceGroup *obj,
+tp_group_mixin_get_handle_owners (GObject *obj,
                                   const GArray *handles,
                                   GArray **ret,
                                   GError **error)
@@ -900,7 +906,7 @@ tp_group_mixin_get_handle_owners_async (TpSvcChannelInterfaceGroup *obj,
   GArray *ret;
   GError *error = NULL;
 
-  if (tp_group_mixin_get_handle_owners (obj, handles, &ret, &error))
+  if (tp_group_mixin_get_handle_owners ((GObject *)obj, handles, &ret, &error))
     {
       tp_svc_channel_interface_group_return_from_get_handle_owners (
           context, ret);
@@ -955,7 +961,7 @@ group_flags_to_string (TpChannelGroupFlags flags)
  * It is an error to set any of the same bits in both @add and @remove.
  */
 void
-tp_group_mixin_change_flags (TpSvcChannelInterfaceGroup *obj,
+tp_group_mixin_change_flags (GObject *obj,
                              TpChannelGroupFlags add,
                              TpChannelGroupFlags remove)
 {
@@ -1027,7 +1033,7 @@ member_array_to_string (TpHandleRepoIface *repo,
   return g_string_free (str, FALSE);
 }
 
-static void remove_handle_owners_if_exist (TpSvcChannelInterfaceGroup *obj,
+static void remove_handle_owners_if_exist (GObject *obj,
     GArray *array);
 
 typedef struct {
@@ -1112,7 +1118,7 @@ local_pending_remove (TpGroupMixin *mixin,
  *  suppressed.
  */
 gboolean
-tp_group_mixin_change_members (TpSvcChannelInterfaceGroup *obj,
+tp_group_mixin_change_members (GObject *obj,
                                const gchar *message,
                                TpIntSet *add,
                                TpIntSet *remove,
@@ -1289,7 +1295,7 @@ tp_group_mixin_change_members (TpSvcChannelInterfaceGroup *obj,
  * GetHandleOwner queries where appropriate.
  */
 void
-tp_group_mixin_add_handle_owner (TpSvcChannelInterfaceGroup *obj,
+tp_group_mixin_add_handle_owner (GObject *obj,
                                  TpHandle local_handle,
                                  TpHandle owner_handle)
 {
@@ -1307,7 +1313,7 @@ tp_group_mixin_add_handle_owner (TpSvcChannelInterfaceGroup *obj,
 }
 
 static void
-remove_handle_owners_if_exist (TpSvcChannelInterfaceGroup *obj,
+remove_handle_owners_if_exist (GObject *obj,
                                GArray *array)
 {
   TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);

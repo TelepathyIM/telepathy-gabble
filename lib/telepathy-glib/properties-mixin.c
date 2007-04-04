@@ -221,7 +221,9 @@ void tp_properties_mixin_finalize (GObject *obj)
  * Returns: %TRUE on success
  */
 gboolean
-tp_properties_mixin_list_properties (GObject *obj, GPtrArray **ret, GError **error)
+tp_properties_mixin_list_properties (GObject *obj,
+                                     GPtrArray **ret,
+                                     GError **error)
 {
   TpPropertiesMixin *mixin = TP_PROPERTIES_MIXIN (obj);
   TpPropertiesMixinClass *mixin_cls = TP_PROPERTIES_MIXIN_CLASS (
@@ -286,7 +288,10 @@ tp_properties_mixin_list_properties (GObject *obj, GPtrArray **ret, GError **err
  * Returns: %TRUE on success
  */
 gboolean
-tp_properties_mixin_get_properties (GObject *obj, const GArray *properties, GPtrArray **ret, GError **error)
+tp_properties_mixin_get_properties (GObject *obj,
+                                    const GArray *properties,
+                                    GPtrArray **ret,
+                                    GError **error)
 {
   TpPropertiesMixin *mixin = TP_PROPERTIES_MIXIN (obj);
   TpPropertiesMixinClass *mixin_cls = TP_PROPERTIES_MIXIN_CLASS (
@@ -382,7 +387,8 @@ tp_properties_mixin_set_properties (GObject *obj,
       GValue *prop_val;
 
       g_value_init (&val_struct, TP_TYPE_PROPERTY_VALUE_STRUCT);
-      g_value_set_static_boxed (&val_struct, g_ptr_array_index (properties, i));
+      g_value_set_static_boxed (&val_struct,
+          g_ptr_array_index (properties, i));
 
       dbus_g_type_struct_get (&val_struct,
           0, &prop_id,
@@ -407,7 +413,8 @@ tp_properties_mixin_set_properties (GObject *obj,
       if (!tp_properties_mixin_is_writable (obj, prop_id))
         {
           error = g_error_new (TP_ERRORS, TP_ERROR_PERMISSION_DENIED,
-                               "permission denied for property identifier %d", prop_id);
+                               "permission denied for property identifier %d",
+                               prop_id);
           goto ERROR;
         }
 
@@ -416,8 +423,8 @@ tp_properties_mixin_set_properties (GObject *obj,
                                     mixin_cls->signatures[prop_id].type))
         {
           error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-                               "incompatible value type for property identifier %d",
-                               prop_id);
+                               "incompatible value type for property "
+                               "identifier %d", prop_id);
           goto ERROR;
         }
     }
@@ -1028,8 +1035,8 @@ get_properties (TpSvcPropertiesInterface *iface,
 {
   GPtrArray *ret;
   GError *error = NULL;
-  gboolean ok = tp_properties_mixin_get_properties (G_OBJECT (iface), properties,
-      &ret, &error);
+  gboolean ok = tp_properties_mixin_get_properties (G_OBJECT (iface),
+      properties, &ret, &error);
   if (!ok)
     {
       dbus_g_method_return_error (context, error);
@@ -1094,7 +1101,8 @@ set_properties (TpSvcPropertiesInterface *iface,
 void
 tp_properties_mixin_iface_init(gpointer g_iface, gpointer iface_data)
 {
-  TpSvcPropertiesInterfaceClass *klass = (TpSvcPropertiesInterfaceClass *)g_iface;
+  TpSvcPropertiesInterfaceClass *klass =
+    (TpSvcPropertiesInterfaceClass *)g_iface;
 
 #define IMPLEMENT(x) tp_svc_properties_interface_implement_##x (klass, x)
   IMPLEMENT(get_properties);

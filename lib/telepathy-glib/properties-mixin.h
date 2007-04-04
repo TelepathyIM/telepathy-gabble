@@ -204,20 +204,28 @@ typedef struct _TpPropertiesMixin TpPropertiesMixin;
 GQuark tp_properties_mixin_class_get_offset_quark (void);
 GQuark tp_properties_mixin_get_offset_quark (void);
 
-void tp_properties_mixin_class_init (GObjectClass *obj_cls, glong offset, const TpPropertySignature *signatures, guint num_properties, TpPropertiesSetFunc set_func);
+void tp_properties_mixin_class_init (GObjectClass *obj_cls, glong offset,
+    const TpPropertySignature *signatures, guint num_properties,
+    TpPropertiesSetFunc set_func);
 
 void tp_properties_mixin_init (GObject *obj, glong offset);
 void tp_properties_mixin_finalize (GObject *obj);
 
-gboolean tp_properties_mixin_list_properties (GObject *obj, GPtrArray **ret, GError **error);
-gboolean tp_properties_mixin_get_properties (GObject *obj, const GArray *properties, GPtrArray **ret, GError **error);
-void tp_properties_mixin_set_properties (GObject *obj, const GPtrArray *properties, DBusGMethodInvocation *context);
+gboolean tp_properties_mixin_list_properties (GObject *obj, GPtrArray **ret,
+    GError **error);
+gboolean tp_properties_mixin_get_properties (GObject *obj,
+    const GArray *properties, GPtrArray **ret, GError **error);
+void tp_properties_mixin_set_properties (GObject *obj,
+    const GPtrArray *properties, DBusGMethodInvocation *context);
 
-gboolean tp_properties_mixin_has_property (GObject *obj, const gchar *name, guint *property);
+gboolean tp_properties_mixin_has_property (GObject *obj, const gchar *name,
+    guint *property);
 
 gboolean tp_properties_context_has (TpPropertiesContext *ctx, guint property);
-gboolean tp_properties_context_has_other_than (TpPropertiesContext *ctx, guint property);
-const GValue *tp_properties_context_get (TpPropertiesContext *ctx, guint property);
+gboolean tp_properties_context_has_other_than (TpPropertiesContext *ctx,
+    guint property);
+const GValue *tp_properties_context_get (TpPropertiesContext *ctx,
+    guint property);
 guint tp_properties_context_get_value_count (TpPropertiesContext *ctx);
 void tp_properties_context_remove (TpPropertiesContext *ctx, guint property);
 void tp_properties_context_return (TpPropertiesContext *ctx, GError *error);

@@ -19,6 +19,9 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+/* FIXME: take this out after 0.5.7 is released */
+#define _TP_CM_UPDATED_FOR_0_5_7
+
 #include <dbus/dbus-glib.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -172,22 +175,19 @@ gabble_media_channel_constructor (GType type, guint n_props,
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
 
-  tp_group_mixin_init ((TpSvcChannelInterfaceGroup *)obj,
-      G_STRUCT_OFFSET (GabbleMediaChannel, group),
+  tp_group_mixin_init (obj, G_STRUCT_OFFSET (GabbleMediaChannel, group),
       contact_handles, conn->self_handle);
 
   /* automatically add creator to channel */
   set = tp_intset_new ();
   tp_intset_add (set, priv->creator);
 
-  tp_group_mixin_change_members ((TpSvcChannelInterfaceGroup *)obj,
-      "", set, NULL, NULL, NULL, 0, 0);
+  tp_group_mixin_change_members (obj, "", set, NULL, NULL, NULL, 0, 0);
 
   tp_intset_destroy (set);
 
   /* allow member adding */
-  tp_group_mixin_change_flags ((TpSvcChannelInterfaceGroup *)obj,
-      TP_CHANNEL_GROUP_FLAG_CAN_ADD, 0);
+  tp_group_mixin_change_flags (obj, TP_CHANNEL_GROUP_FLAG_CAN_ADD, 0);
 
   return obj;
 }
@@ -290,13 +290,13 @@ _gabble_media_channel_dispatch_session_action (GabbleMediaChannel *chan,
       set = tp_intset_new ();
       tp_intset_add (set, mixin->self_handle);
 
-      tp_group_mixin_change_members ((TpSvcChannelInterfaceGroup *)chan,
+      tp_group_mixin_change_members ((GObject *)chan,
           "", NULL, NULL, set, NULL, 0, 0);
 
       tp_intset_destroy (set);
 
       /* and update flags accordingly */
-      tp_group_mixin_change_flags ((TpSvcChannelInterfaceGroup *)chan,
+      tp_group_mixin_change_flags ((GObject *)chan,
           TP_CHANNEL_GROUP_FLAG_CAN_ADD | TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
           0);
     }
@@ -429,7 +429,8 @@ gabble_media_channel_set_property (GObject     *object,
 
 static void gabble_media_channel_dispose (GObject *object);
 static void gabble_media_channel_finalize (GObject *object);
-static gboolean gabble_media_channel_remove_member (TpSvcChannelInterfaceGroup *obj, TpHandle handle, const gchar *message, GError **error);
+static gboolean gabble_media_channel_remove_member (GObject *obj,
+    TpHandle handle, const gchar *message, GError **error);
 
 static void
 gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_class)
@@ -447,7 +448,7 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
   object_class->dispose = gabble_media_channel_dispose;
   object_class->finalize = gabble_media_channel_finalize;
 
-  tp_group_mixin_class_init ((TpSvcChannelInterfaceGroupClass *)object_class,
+  tp_group_mixin_class_init (object_class,
                                  G_STRUCT_OFFSET (GabbleMediaChannelClass, group_class),
                                  _gabble_media_channel_add_member,
                                  gabble_media_channel_remove_member);
@@ -563,7 +564,7 @@ gabble_media_channel_finalize (GObject *object)
 
   g_free (priv->object_path);
 
-  tp_group_mixin_finalize ((TpSvcChannelInterfaceGroup *)object);
+  tp_group_mixin_finalize (object);
 
   G_OBJECT_CLASS (gabble_media_channel_parent_class)->finalize (object);
 }
@@ -1018,7 +1019,7 @@ gabble_media_channel_request_streams (TpSvcChannelTypeStreamedMedia *iface,
 
 
 gboolean
-_gabble_media_channel_add_member (TpSvcChannelInterfaceGroup *obj,
+_gabble_media_channel_add_member (GObject *obj,
                                   TpHandle handle,
                                   const gchar *message,
                                   GError **error)
@@ -1125,7 +1126,10 @@ NO_CAPS:
 }
 
 static gboolean
-gabble_media_channel_remove_member (TpSvcChannelInterfaceGroup *obj, TpHandle handle, const gchar *message, GError **error)
+gabble_media_channel_remove_member (GObject *obj,
+                                    TpHandle handle,
+                                    const gchar *message,
+                                    GError **error)
 {
   GabbleMediaChannel *chan = GABBLE_MEDIA_CHANNEL (obj);
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
@@ -1192,11 +1196,11 @@ session_terminated_cb (GabbleMediaSession *session,
   tp_intset_add (set, mixin->self_handle);
   tp_intset_add (set, peer);
 
-  tp_group_mixin_change_members ((TpSvcChannelInterfaceGroup *)channel,
+  tp_group_mixin_change_members ((GObject *)channel,
       "", NULL, set, NULL, NULL, terminator, reason);
 
   /* update flags accordingly -- allow adding, deny removal */
-  tp_group_mixin_change_flags ((TpSvcChannelInterfaceGroup *)channel,
+  tp_group_mixin_change_flags ((GObject *)channel,
       TP_CHANNEL_GROUP_FLAG_CAN_ADD,
       TP_CHANNEL_GROUP_FLAG_CAN_REMOVE);
 
@@ -1253,11 +1257,11 @@ session_state_changed_cb (GabbleMediaSession *session,
   /* add the peer to the member list */
   tp_intset_add (set, peer);
 
-  tp_group_mixin_change_members ((TpSvcChannelInterfaceGroup *)channel,
+  tp_group_mixin_change_members ((GObject *)channel,
       "", set, NULL, NULL, NULL, 0, 0);
 
   /* update flags accordingly -- allow removal, deny adding and rescinding */
-  tp_group_mixin_change_flags ((TpSvcChannelInterfaceGroup *)channel,
+  tp_group_mixin_change_flags ((GObject *)channel,
       TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
       TP_CHANNEL_GROUP_FLAG_CAN_ADD | TP_CHANNEL_GROUP_FLAG_CAN_RESCIND);
 

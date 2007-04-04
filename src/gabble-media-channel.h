@@ -68,7 +68,7 @@ GType gabble_media_channel_get_type(void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_MEDIA_CHANNEL, GabbleMediaChannelClass))
 
 gboolean
-_gabble_media_channel_add_member (TpSvcChannelInterfaceGroup *obj,
+_gabble_media_channel_add_member (GObject *obj,
                                   TpHandle handle,
                                   const gchar *message,
                                   GError **error);

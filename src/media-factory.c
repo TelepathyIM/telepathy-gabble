@@ -816,8 +816,8 @@ gabble_media_factory_iface_request (TpChannelFactoryIface *iface,
     {
       chan = new_media_channel (fac, conn->self_handle);
 
-      if (!_gabble_media_channel_add_member (
-            TP_SVC_CHANNEL_INTERFACE_GROUP (chan), handle, "", error))
+      if (!_gabble_media_channel_add_member ((GObject *)chan, handle, "",
+            error))
         {
           gabble_media_channel_close (chan);
 

@@ -18,6 +18,9 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+/* FIXME: take this out after 0.5.7 is released */
+#define _TP_CM_UPDATED_FOR_0_5_7
+
 #include <dbus/dbus-glib.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -119,14 +122,14 @@ gabble_roster_channel_constructor (GType type, guint n_props,
   tp_handle_ref (handle_repo, priv->handle);
 
   /* initialize group mixin */
-  tp_group_mixin_init ((TpSvcChannelInterfaceGroup *)obj,
+  tp_group_mixin_init (obj,
       G_STRUCT_OFFSET (GabbleRosterChannel, group),
       contact_repo,
       self_handle);
 
   if (handle_type == TP_HANDLE_TYPE_GROUP)
     {
-      tp_group_mixin_change_flags ((TpSvcChannelInterfaceGroup *)obj,
+      tp_group_mixin_change_flags (obj,
           TP_CHANNEL_GROUP_FLAG_CAN_ADD |
           TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
           0);
@@ -138,7 +141,7 @@ gabble_roster_channel_constructor (GType type, guint n_props,
   /* magic contact lists from here down... */
   else if (GABBLE_LIST_HANDLE_PUBLISH == priv->handle)
     {
-      tp_group_mixin_change_flags ((TpSvcChannelInterfaceGroup *)obj,
+      tp_group_mixin_change_flags (obj,
           TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
           TP_CHANNEL_GROUP_FLAG_MESSAGE_ACCEPT |
           TP_CHANNEL_GROUP_FLAG_MESSAGE_REMOVE,
@@ -146,7 +149,7 @@ gabble_roster_channel_constructor (GType type, guint n_props,
     }
   else if (GABBLE_LIST_HANDLE_SUBSCRIBE == priv->handle)
     {
-      tp_group_mixin_change_flags ((TpSvcChannelInterfaceGroup *)obj,
+      tp_group_mixin_change_flags (obj,
           TP_CHANNEL_GROUP_FLAG_CAN_ADD |
           TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
           TP_CHANNEL_GROUP_FLAG_CAN_RESCIND |
@@ -157,13 +160,13 @@ gabble_roster_channel_constructor (GType type, guint n_props,
     }
   else if (GABBLE_LIST_HANDLE_KNOWN == priv->handle)
     {
-      tp_group_mixin_change_flags ((TpSvcChannelInterfaceGroup *)obj,
+      tp_group_mixin_change_flags (obj,
           TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
           0);
     }
   else if (GABBLE_LIST_HANDLE_DENY == priv->handle)
     {
-      tp_group_mixin_change_flags ((TpSvcChannelInterfaceGroup *)obj,
+      tp_group_mixin_change_flags (obj,
           TP_CHANNEL_GROUP_FLAG_CAN_ADD |
           TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
           0);
@@ -239,8 +242,10 @@ gabble_roster_channel_set_property (GObject     *object,
 static void gabble_roster_channel_dispose (GObject *object);
 static void gabble_roster_channel_finalize (GObject *object);
 
-static gboolean _gabble_roster_channel_add_member_cb (TpSvcChannelInterfaceGroup *obj, TpHandle handle, const gchar *message, GError **error);
-static gboolean _gabble_roster_channel_remove_member_cb (TpSvcChannelInterfaceGroup *obj, TpHandle handle, const gchar *message, GError **error);
+static gboolean _gabble_roster_channel_add_member_cb (GObject *obj,
+    TpHandle handle, const gchar *message, GError **error);
+static gboolean _gabble_roster_channel_remove_member_cb (GObject *obj,
+    TpHandle handle, const gchar *message, GError **error);
 
 static void
 gabble_roster_channel_class_init (GabbleRosterChannelClass *gabble_roster_channel_class)
@@ -273,7 +278,7 @@ gabble_roster_channel_class_init (GabbleRosterChannelClass *gabble_roster_channe
   g_object_class_override_property (object_class, PROP_HANDLE_TYPE, "handle-type");
   g_object_class_override_property (object_class, PROP_HANDLE, "handle");
 
-  tp_group_mixin_class_init ((TpSvcChannelInterfaceGroupClass *)object_class,
+  tp_group_mixin_class_init (object_class,
                              G_STRUCT_OFFSET (GabbleRosterChannelClass, group_class),
                              _gabble_roster_channel_add_member_cb,
                              _gabble_roster_channel_remove_member_cb);
@@ -314,7 +319,7 @@ gabble_roster_channel_finalize (GObject *object)
 
   tp_handle_unref (handle_repo, priv->handle);
 
-  tp_group_mixin_finalize ((TpSvcChannelInterfaceGroup *)object);
+  tp_group_mixin_finalize (object);
 
   G_OBJECT_CLASS (gabble_roster_channel_parent_class)->finalize (object);
 }
@@ -363,7 +368,7 @@ _gabble_roster_channel_send_presence (GabbleRosterChannel *chan,
  * Called by the group mixin to add one member.
  */
 static gboolean
-_gabble_roster_channel_add_member_cb (TpSvcChannelInterfaceGroup *obj,
+_gabble_roster_channel_add_member_cb (GObject *obj,
                                       TpHandle handle,
                                       const gchar *message,
                                       GError **error)
@@ -436,7 +441,7 @@ _gabble_roster_channel_add_member_cb (TpSvcChannelInterfaceGroup *obj,
  * Called by the group mixin to remove one member.
  */
 static gboolean
-_gabble_roster_channel_remove_member_cb (TpSvcChannelInterfaceGroup *obj,
+_gabble_roster_channel_remove_member_cb (GObject *obj,
                                          TpHandle handle,
                                          const gchar *message,
                                          GError **error)

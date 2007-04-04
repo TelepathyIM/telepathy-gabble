@@ -33,6 +33,13 @@
 
 G_BEGIN_DECLS
 
+/**
+ * TpPropertySignature:
+ * @name: Name of the property as seen in the Telepathy D-Bus protocol
+ * @type: GType which the variant value must have
+ *
+ * Signature of a property in the Telepathy properties interface.
+ */
 struct _TpPropertySignature {
     gchar *name;
     GType type;
@@ -40,6 +47,13 @@ struct _TpPropertySignature {
 
 typedef struct _TpPropertySignature TpPropertySignature;
 
+/**
+ * TpProperty:
+ * @value: The value of the property
+ * @flags: #TpPropertyFlags indicating the property's permissions
+ *
+ * Structure representing the current state of a property.
+ */
 struct _TpProperty {
     GValue *value;
     guint flags;
@@ -47,15 +61,22 @@ struct _TpProperty {
 
 typedef struct _TpProperty TpProperty;
 
+/**
+ * TpPropertiesContext:
+ *
+ * Opaque pointer representing an incomplete property-setting operation, used
+ * in the implementation of SetProperties.
+ */
 typedef struct _TpPropertiesContext TpPropertiesContext;
 
-/** 
+/**
  * TpPropertiesSetFunc:
  * @obj: An object with the properties mixin
  * @ctx: A properties context
  * @error: Set to the error if %FALSE is returned
  *
- * A callback used to implement the SetProperties D-Bus method.
+ * A callback used to implement the SetProperties D-Bus method by setting
+ * properties in the underlying IM protocol.
  *
  * The callback must either:
  *
@@ -69,7 +90,16 @@ typedef struct _TpPropertiesContext TpPropertiesContext;
  */
 typedef gboolean (*TpPropertiesSetFunc) (GObject *obj, TpPropertiesContext *ctx, GError **error);
 
+/**
+ * TpPropertiesMixinClass:
+ *
+ * Structure to be placed in a GObjectClass-derived structure containing
+ * settings for the properties mixin. Initialize it using
+ * tp_properties_mixin_class_init().
+ */
+/* FIXME: should all this be private? */
 struct _TpPropertiesMixinClass {
+  /*<private>*/
   const TpPropertySignature *signatures;
   guint num_props;
 
@@ -80,7 +110,9 @@ typedef struct _TpPropertiesMixinClass TpPropertiesMixinClass;
 
 typedef struct _TpPropertiesMixinPrivate TpPropertiesMixinPrivate;
 
+/* FIXME: should properties be private? */
 struct _TpPropertiesMixin {
+    /*<private>*/
     TpProperty *properties;
 
     TpPropertiesMixinPrivate *priv;
@@ -89,34 +121,83 @@ struct _TpPropertiesMixin {
 typedef struct _TpPropertiesMixin TpPropertiesMixin;
 
 /* TYPE MACROS */
-#define TP_PROPERTIES_MIXIN_CLASS_OFFSET_QUARK (tp_properties_mixin_class_get_offset_quark())
-#define TP_PROPERTIES_MIXIN_CLASS_OFFSET(o) (GPOINTER_TO_UINT (g_type_get_qdata (G_OBJECT_CLASS_TYPE (o), TP_PROPERTIES_MIXIN_CLASS_OFFSET_QUARK)))
-#define TP_PROPERTIES_MIXIN_CLASS(o) ((TpPropertiesMixinClass *) tp_mixin_offset_cast (o, TP_PROPERTIES_MIXIN_CLASS_OFFSET (o)))
+#define TP_PROPERTIES_MIXIN_CLASS_OFFSET_QUARK \
+  (tp_properties_mixin_class_get_offset_quark())
+#define TP_PROPERTIES_MIXIN_CLASS_OFFSET(o) \
+  (GPOINTER_TO_UINT (g_type_get_qdata (G_OBJECT_CLASS_TYPE (o), \
+                                      TP_PROPERTIES_MIXIN_CLASS_OFFSET_QUARK)))
+#define TP_PROPERTIES_MIXIN_CLASS(o) \
+  ((TpPropertiesMixinClass *) tp_mixin_offset_cast (o,\
+    TP_PROPERTIES_MIXIN_CLASS_OFFSET (o)))
 
-#define TP_PROPERTIES_MIXIN_OFFSET_QUARK (tp_properties_mixin_get_offset_quark())
-#define TP_PROPERTIES_MIXIN_OFFSET(o) (GPOINTER_TO_UINT (g_type_get_qdata (G_OBJECT_TYPE (o), TP_PROPERTIES_MIXIN_OFFSET_QUARK)))
-#define TP_PROPERTIES_MIXIN(o) ((TpPropertiesMixin *) tp_mixin_offset_cast (o, TP_PROPERTIES_MIXIN_OFFSET (o)))
+#define TP_PROPERTIES_MIXIN_OFFSET_QUARK \
+  (tp_properties_mixin_get_offset_quark())
+#define TP_PROPERTIES_MIXIN_OFFSET(o) \
+  (GPOINTER_TO_UINT (g_type_get_qdata (G_OBJECT_TYPE (o), \
+                                       TP_PROPERTIES_MIXIN_OFFSET_QUARK)))
+#define TP_PROPERTIES_MIXIN(o) \
+  ((TpPropertiesMixin *) tp_mixin_offset_cast (o, \
+    TP_PROPERTIES_MIXIN_OFFSET (o)))
 
+/**
+ * TP_TYPE_PROPERTY_INFO_STRUCT:
+ *
+ * The GType of the structures with D-Bus signature '(ussu)' returned by
+ * ListProperties.
+ */
 #define TP_TYPE_PROPERTY_INFO_STRUCT (dbus_g_type_get_struct ("GValueArray", \
       G_TYPE_UINT, \
       G_TYPE_STRING, \
       G_TYPE_STRING, \
       G_TYPE_UINT, \
       G_TYPE_INVALID))
+/**
+ * TP_TYPE_PROPERTY_INFO_LIST:
+ *
+ * The GType of the return from ListProperties (i.e. a GPtrArray
+ * of structures of type TP_TYPE_PROPERTY_INFO_STRUCT), corresponding to
+ * D-Bus signature 'a(ussu)'.
+ */
 #define TP_TYPE_PROPERTY_INFO_LIST (dbus_g_type_get_collection ("GPtrArray", \
       TP_TYPE_PROPERTY_INFO_STRUCT))
 
+/**
+ * TP_TYPE_PROPERTY_VALUE_STRUCT:
+ *
+ * The GType of the structures with signature '(uv)' returned by
+ * GetProperties and emitted in PropertiesChanged.
+ */
 #define TP_TYPE_PROPERTY_VALUE_STRUCT (dbus_g_type_get_struct ("GValueArray", \
       G_TYPE_UINT, \
       G_TYPE_VALUE, \
       G_TYPE_INVALID))
+/**
+ * TP_TYPE_PROPERTY_VALUE_LIST
+ *
+ * The GType of the return from GetProperties and the parameter to
+ * PropertiesChanged (i.e. a GPtrArray of structures of type
+ * TP_TYPE_PROPERTY_VALUE_STRUCT), corresponding to D-Bus signature 'a(uv)'.
+ */
 #define TP_TYPE_PROPERTY_VALUE_LIST (dbus_g_type_get_collection ("GPtrArray", \
       TP_TYPE_PROPERTY_VALUE_STRUCT))
 
+/**
+ * TP_TYPE_PROPERTY_FLAGS_STRUCT:
+ *
+ * The GType of the structures with D-Bus signature '(uu)' emitted in
+ * PropertyFlagsChanged.
+ */
 #define TP_TYPE_PROPERTY_FLAGS_STRUCT (dbus_g_type_get_struct ("GValueArray", \
       G_TYPE_UINT, \
       G_TYPE_UINT, \
       G_TYPE_INVALID))
+/**
+ * TP_TYPE_PROPERTY_FLAGS_LIST
+ *
+ * The GType of the parameter to PropertyFlagsChanged (i.e. a GPtrArray of
+ * structures of type TP_TYPE_PROPERTY_FLAGS_STRUCT), corresponding to
+ * D-Bus signature 'a(uu)'.
+ */
 #define TP_TYPE_PROPERTY_FLAGS_LIST (dbus_g_type_get_collection ("GPtrArray", \
       TP_TYPE_PROPERTY_FLAGS_STRUCT))
 

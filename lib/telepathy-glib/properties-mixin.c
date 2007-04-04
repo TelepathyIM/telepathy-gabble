@@ -28,6 +28,19 @@
  *
  * This mixin can be added to any GObject class to implement the properties
  * interface in a general way.
+ *
+ * To use the properties mixin, include a #TpPropertiesMixinClass somewhere
+ * in your class structure and a #TpPropertiesMixin somewhere in your
+ * instance structure, and call tp_properties_mixin_class_init() from your
+ * class_init function, tp_properties_mixin_init() from your init function
+ * or constructor, and tp_properties_mixin_finalize() from your dispose
+ * or finalize function.
+ *
+ * To use the properties mixin as the implementation of
+ * #TpSvcPropertiesInterface, call
+ * <literal>G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_PROPERTIES_INTERFACE,
+ * tp_properties_mixin_iface_init)</literal> in the fourth argument to
+ * <literal>G_DEFINE_TYPE_WITH_CODE</literal>.
  */
 
 #include <telepathy-glib/properties-mixin.h>

@@ -275,7 +275,7 @@ gabble_im_channel_dispose (GObject *object)
       {
         if (cap_chat_states)
           {
-          /* Set the chat state of the channel on gone 
+          /* Set the chat state of the channel on gone
            * (Channel.Interface.ChatState) */
           gabble_text_mixin_send (G_OBJECT (self),
               TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE, 0, TP_CHANNEL_CHAT_STATE_GONE,
@@ -344,7 +344,7 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
 
 /**
  * _gabble_im_channel_state_receive
- *			      
+ *
  * Send the D-BUS signal ChatStateChanged
  * on org.freedesktop.Telepathy.Channel.Interface.ChatState
  */

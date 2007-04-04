@@ -548,7 +548,7 @@ initial_request_cb (GabbleVCardManager *self,
     }
 
   /* Do we have an avatar already? If so, the presence cache ought to be
-   * told (anyone else's avatar SHA-1 we'd get from their presence, 
+   * told (anyone else's avatar SHA-1 we'd get from their presence,
    * but unless we have another XEP-0153 resource connected, we never
    * see our own presence)
    */
@@ -958,7 +958,7 @@ request_reply_cb (GabbleConnection *conn,
         {
           observe_vcard (conn, manager, request->handle, vcard_node);
         }
-      /* else we'll observe the vcard after editing it if we intend 
+      /* else we'll observe the vcard after editing it if we intend
        * to modify it */
     }
 
@@ -1207,7 +1207,7 @@ gabble_vcard_manager_request (GabbleVCardManager *self,
     g_object_weak_ref (object, notify_delete_request, request);
 
   priv->requests = g_slist_prepend (priv->requests, request);
-  if (handle == connection->self_handle) 
+  if (handle == connection->self_handle)
     {
       jid = NULL;
     }

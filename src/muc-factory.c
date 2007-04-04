@@ -214,7 +214,7 @@ get_muc_from_jid (GabbleMucFactory *fac, const gchar *jid)
   TpHandle handle;
   GabbleMucChannel *chan = NULL;
   gchar *room;
-  
+
   room = gabble_remove_resource (jid);
   if (!room)
     return NULL;
@@ -798,7 +798,7 @@ make_roomlist_channel (GabbleMucFactory *fac, gpointer request)
   g_signal_connect (priv->roomlist_channel, "closed",
                     (GCallback) roomlist_channel_closed_cb, fac);
 
-  tp_channel_factory_iface_emit_new_channel (fac, 
+  tp_channel_factory_iface_emit_new_channel (fac,
       (TpChannelIface *)priv->roomlist_channel, request);
 
   g_free (object_path);

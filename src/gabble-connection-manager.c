@@ -48,7 +48,7 @@ static TpBaseConnection *_gabble_connection_manager_new_connection (
 static void
 gabble_connection_manager_class_init (GabbleConnectionManagerClass *klass)
 {
-  TpBaseConnectionManagerClass *base_class = 
+  TpBaseConnectionManagerClass *base_class =
     (TpBaseConnectionManagerClass *)klass;
 
   base_class->new_connection = _gabble_connection_manager_new_connection;

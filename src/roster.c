@@ -744,7 +744,7 @@ _gabble_roster_item_put_group_in_message (guint handle, gpointer user_data)
  * @handle on the roster @roster.
  *
  * If item_return is not NULL, populate it with the <item/> node.
- * 
+ *
  * If item is not NULL, it represents the state we would like the contact's
  * roster item to have - use it instead of the contact's actual roster item
  * when composing the message.
@@ -936,7 +936,7 @@ _gabble_roster_emit_one (gpointer key,
       (TpBaseConnection *)priv->conn, data_struct->handle_type);
   TpHandle handle = GPOINTER_TO_INT (key);
   const gchar *name;
-  
+
   g_assert (data_struct->handle_type == TP_HANDLE_TYPE_GROUP ||
       data_struct->handle_type == TP_HANDLE_TYPE_LIST);
   g_assert (handle_repo != NULL);

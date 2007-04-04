@@ -1939,7 +1939,7 @@ _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
 
 /**
  * _gabble_muc_channel_state_receive
- *			      
+ *
  * Send the D-BUS signal ChatStateChanged
  * on org.freedesktop.Telepathy.Channel.Interface.ChatState
  */

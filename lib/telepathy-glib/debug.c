@@ -59,13 +59,13 @@
  */
 #include "config.h"
 
-#include "internal-debug.h"
+#include <glib.h>
 
 #ifdef ENABLE_DEBUG
 
-#include <stdarg.h>
+#include "internal-debug.h"
 
-#include <glib.h>
+#include <stdarg.h>
 
 #include <telepathy-glib/debug.h>
 
@@ -179,7 +179,12 @@ tp_debug_set_all_flags (void)
 }
 
 void
-tp_debug_set_flags_from_env (const char *var)
+tp_debug_set_flags_from_string (const gchar *flags_string)
+{
+}
+
+void
+tp_debug_set_flags_from_env (const gchar *var)
 {
 }
 

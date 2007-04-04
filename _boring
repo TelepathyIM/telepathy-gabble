@@ -71,9 +71,7 @@
 ^tests/test-base64$
 ^tests/test-gabble-presence$
 ^tests/test-handles$
-^lib/tests/test-handle-set$
-^lib/tests/test-heap$
-^lib/tests/test-intset$
+^lib/tests/test-[-a-z]+$
 (^|/)cscope\.out$
 (^|/)core$
 ^debian($|/)

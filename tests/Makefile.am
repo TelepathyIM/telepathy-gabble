@@ -55,3 +55,17 @@ EXTRA_DIST = $(service_in_files) $(conf_in_files)
 
 CLEANFILES = $(BUILT_SOURCES)
 
+whitespace_sources = *.c $(python_tests_shfiles) $(python_tests_pythonfiles)
+
+check-local::
+	@echo "Checking whitespace-related trivia..."
+	@if grep -n ' $$' $(whitespace_sources); \
+	then \
+		echo "^^^ The above files contain unwanted trailing spaces"; \
+		exit 1; \
+	fi
+	@if grep -n '	' $(whitespace_sources); \
+	then \
+		echo "^^^ The above files contain tabs"; \
+		exit 1; \
+	fi

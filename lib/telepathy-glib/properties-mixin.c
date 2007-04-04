@@ -108,6 +108,15 @@ tp_properties_mixin_get_offset_quark ()
  * @signatures: An array of property signatures
  * @num_properties: The number of entries in @signatures
  * @set_func: Callback used to set the properties
+ *
+ * Initialize the mixin. Should be called from the implementation's
+ * class_init function like so:
+ *
+ * <informalexample><programlisting>
+ * tp_properties_mixin_class_init ((GObjectClass *)klass,
+ *                                 G_STRUCT_OFFSET (SomeObjectClass,
+ *                                  properties_mixin));
+ * </programlisting></informalexample>
  */
 
 void
@@ -139,6 +148,15 @@ tp_properties_mixin_class_init (GObjectClass *obj_cls,
  * @obj: An object that has this mixin
  * @offset: The offset of the TpPropertiesMixin structure in the object
  *          structure
+ *
+ * Initialize the mixin. Should be called from the implementation's
+ * instance init function like so:
+ *
+ * <informalexample><programlisting>
+ * tp_properties_mixin_init ((GObject *)self,
+ *                           G_STRUCT_OFFSET (SomeObject, properties_mixin),
+ *                           self->contact_repo);
+ * </programlisting></informalexample>
  */
 
 void tp_properties_mixin_init (GObject *obj, glong offset)
@@ -1112,6 +1130,15 @@ set_properties (TpSvcPropertiesInterface *iface,
 }
 
 
+/**
+ * tp_properties_mixin_iface_init:
+ * @g_iface: A pointer to the #TpSvcPropertiesInterfaceClass in an object class
+ * @iface_data: Ignored
+ *
+ * Fill in this mixin's method implementations in the given interface vtable.
+ * This function should usually be called via G_IMPLEMENT_INTERFACE
+ * inside the G_DEFINE_TYPE_WITH_CODE macro.
+ */
 void
 tp_properties_mixin_iface_init(gpointer g_iface, gpointer iface_data)
 {

@@ -88,31 +88,50 @@ typedef struct _TpPropertiesContext TpPropertiesContext;
  *
  * Returns: %FALSE on immediate failure, %TRUE otherwise
  */
-typedef gboolean (*TpPropertiesSetFunc) (GObject *obj, TpPropertiesContext *ctx, GError **error);
+typedef gboolean (*TpPropertiesSetFunc) (GObject *obj,
+    TpPropertiesContext *ctx, GError **error);
+
+/* Doesn't yet exist. For future expansion. */
+typedef struct _TpPropertiesMixinClassPrivate TpPropertiesMixinClassPrivate;
 
 /**
  * TpPropertiesMixinClass:
+ * @signatures: Array of property signatures, as provided via
+ *  tp_properties_mixin_class_init().
+ * @num_props: Number of properties supported.
+ * @set_properties: Properties setting function, as supplied to
+ *  tp_properties_mixin_class_init().
+ * @priv: Pointer to opaque private data.
  *
  * Structure to be placed in a GObjectClass-derived structure containing
  * settings for the properties mixin. Initialize it using
  * tp_properties_mixin_class_init().
+ *
+ * All fields should be considered read-only.
  */
-/* FIXME: should all this be private? */
 struct _TpPropertiesMixinClass {
-  /*<private>*/
   const TpPropertySignature *signatures;
   guint num_props;
 
   TpPropertiesSetFunc set_properties;
+
+  TpPropertiesMixinClassPrivate *priv;
 };
 
 typedef struct _TpPropertiesMixinClass TpPropertiesMixinClass;
 
 typedef struct _TpPropertiesMixinPrivate TpPropertiesMixinPrivate;
 
-/* FIXME: should properties be private? */
+/**
+ * TpPropertiesMixin:
+ * @properties: Array of property values. Should be considered read-only.
+ * @priv: Pointer to opaque private data.
+ *
+ * Structure to be placed in a GObject-derived structure containing
+ * instance data for the properties mixin (i.e. the properties). Initialize
+ * it using tp_properties_mixin_init().
+ */
 struct _TpPropertiesMixin {
-    /*<private>*/
     TpProperty *properties;
 
     TpPropertiesMixinPrivate *priv;

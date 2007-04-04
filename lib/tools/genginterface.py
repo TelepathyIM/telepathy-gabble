@@ -251,9 +251,22 @@ def print_header_end(stream, prefix):
     stream.write ("#endif /* #ifndef "+guardname+"*/\n")
 
 def print_class_declaration(stream, prefix, classname, methods):
-    stream.write ("/* dummy struct representing any implementation */\n")
-    stream.write ("typedef struct _%s %s;\n\n" % (classname,classname))
-    stream.write ("typedef struct _%sClass %sClass;\n\n" % (classname,classname))
+    stream.write ("""\
+/**
+ * %(classname)s:
+ *
+ * Dummy typedef representing any implementation of this interface.
+ */
+typedef struct _%(classname)s %(classname)s;
+
+/**
+ * %(classname)sClass:
+ *
+ * The class of %(classname)s.
+ */
+typedef struct _%(classname)sClass %(classname)sClass;
+
+""" % locals())
 
     stream.write(
 """

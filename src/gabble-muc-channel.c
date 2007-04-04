@@ -775,7 +775,8 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_muc_channel_class);
   GParamSpec *param_spec;
 
-  g_type_class_add_private (gabble_muc_channel_class, sizeof (GabbleMucChannelPrivate));
+  g_type_class_add_private (gabble_muc_channel_class,
+      sizeof (GabbleMucChannelPrivate));
 
   object_class->constructor = gabble_muc_channel_constructor;
 
@@ -842,11 +843,13 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                                  gabble_muc_channel_remove_member);
 
   tp_properties_mixin_class_init (object_class,
-                                      G_STRUCT_OFFSET (GabbleMucChannelClass, properties_class),
+                                      G_STRUCT_OFFSET (GabbleMucChannelClass,
+                                        properties_class),
                                       room_property_signatures, NUM_ROOM_PROPS,
                                       gabble_muc_channel_do_set_properties);
 
-  tp_text_mixin_class_init (object_class, G_STRUCT_OFFSET (GabbleMucChannelClass, text_class));
+  tp_text_mixin_class_init (object_class,
+      G_STRUCT_OFFSET (GabbleMucChannelClass, text_class));
 }
 
 static void clear_join_timer (GabbleMucChannel *chan);
@@ -2321,10 +2324,14 @@ gabble_muc_channel_remove_member (GObject *obj,
 }
 
 
-static LmHandlerResult request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg, LmMessage *reply_msg, GObject *object, gpointer user_data);
+static LmHandlerResult request_config_form_reply_cb (GabbleConnection *conn,
+    LmMessage *sent_msg, LmMessage *reply_msg, GObject *object,
+    gpointer user_data);
 
 static gboolean
-gabble_muc_channel_do_set_properties (GObject *obj, TpPropertiesContext *ctx, GError **error)
+gabble_muc_channel_do_set_properties (GObject *obj,
+                                      TpPropertiesContext *ctx,
+                                      GError **error)
 {
   GabbleMucChannelPrivate *priv;
   LmMessage *msg;
@@ -2340,7 +2347,8 @@ gabble_muc_channel_do_set_properties (GObject *obj, TpPropertiesContext *ctx, GE
     {
       const gchar *str;
 
-      str = g_value_get_string (tp_properties_context_get (ctx, ROOM_PROP_SUBJECT));
+      str = g_value_get_string (tp_properties_context_get (ctx,
+            ROOM_PROP_SUBJECT));
 
       msg = lm_message_new_with_sub_type (priv->jid,
           LM_MESSAGE_TYPE_MESSAGE, LM_MESSAGE_SUB_TYPE_GROUPCHAT);
@@ -2376,7 +2384,9 @@ gabble_muc_channel_do_set_properties (GObject *obj, TpPropertiesContext *ctx, GE
   return TRUE;
 }
 
-static LmHandlerResult request_config_form_submit_reply_cb (GabbleConnection *conn, LmMessage *sent_msg, LmMessage *reply_msg, GObject *object, gpointer user_data);
+static LmHandlerResult request_config_form_submit_reply_cb (
+    GabbleConnection *conn, LmMessage *sent_msg, LmMessage *reply_msg,
+    GObject *object, gpointer user_data);
 
 static LmHandlerResult
 request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
@@ -2646,8 +2656,10 @@ OUT:
 }
 
 static LmHandlerResult
-request_config_form_submit_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
-                                     LmMessage *reply_msg, GObject *object,
+request_config_form_submit_reply_cb (GabbleConnection *conn,
+                                     LmMessage *sent_msg,
+                                     LmMessage *reply_msg,
+                                     GObject *object,
                                      gpointer user_data)
 {
   GabbleMucChannel *chan = GABBLE_MUC_CHANNEL (object);
@@ -2767,7 +2779,8 @@ text_iface_init(gpointer g_iface, gpointer iface_data)
 static void
 password_iface_init(gpointer g_iface, gpointer iface_data)
 {
-  TpSvcChannelInterfacePasswordClass *klass = (TpSvcChannelInterfacePasswordClass *)g_iface;
+  TpSvcChannelInterfacePasswordClass *klass =
+    (TpSvcChannelInterfacePasswordClass *)g_iface;
 
 #define IMPLEMENT(x) tp_svc_channel_interface_password_implement_##x (\
     klass, gabble_muc_channel_##x)
@@ -2779,7 +2792,9 @@ password_iface_init(gpointer g_iface, gpointer iface_data)
 static void
 chat_state_iface_init(gpointer g_iface, gpointer iface_data)
 {
-  TpSvcChannelInterfaceChatStateClass *klass = (TpSvcChannelInterfaceChatStateClass *)g_iface;
+  TpSvcChannelInterfaceChatStateClass *klass =
+    (TpSvcChannelInterfaceChatStateClass *)g_iface;
+
 #define IMPLEMENT(x) tp_svc_channel_interface_chat_state_implement_##x (\
     klass, gabble_muc_channel_##x)
   IMPLEMENT(set_chat_state);

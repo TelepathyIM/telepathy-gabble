@@ -84,6 +84,23 @@ CLEANFILES = $(BUILT_SOURCES) _gen/.exists
 clean-local:
 	-rmdir _gen
 
+whitespace_sources = \
+    $(tpginclude_HEADERS) \
+    $(libtelepathy_glib_la_SOURCES)
+
+check-local::
+	@echo "Checking whitespace-related trivia..."
+	@if grep -n ' $$' $(whitespace_sources); \
+	then \
+		echo "^^^ The above files contain unwanted trailing spaces"; \
+		exit 1; \
+	fi
+	@if grep -n '	' $(whitespace_sources); \
+	then \
+		echo "^^^ The above files contain tabs"; \
+		exit 1; \
+	fi
+
 libtelepathy_glib_la_SOURCES = \
     base-connection.c \
     base-connection-manager.c \

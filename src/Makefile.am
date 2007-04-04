@@ -9,7 +9,8 @@ CLEANFILES = $(BUILT_SOURCES)
 bin_PROGRAMS=telepathy-gabble
 noinst_PROGRAMS = write-mgr-file
 
-libgabble_convenience_la_SOURCES = \
+# These are the bits we wrote, so we can be really strict about coding style
+libgabble_convenience_la_our_sources = \
     base64.h \
     base64.c \
     capabilities.h \
@@ -62,17 +63,22 @@ libgabble_convenience_la_SOURCES = \
     presence-cache.c \
     roster.h \
     roster.c \
-    sha1/sha1.h \
-    sha1/sha1.c \
     text-mixin.h \
     text-mixin.c \
     util.h \
     util.c \
     vcard-manager.h \
     vcard-manager.c \
+    gabble-signals-marshal.list
+
+# we don't want to subject third-party source to whitespace removal -
+# it's more useful to keep it a verbatim copy
+libgabble_convenience_la_SOURCES = \
     libmd5-rfc/md5.c \
     libmd5-rfc/md5.h \
-    gabble-signals-marshal.list
+    sha1/sha1.h \
+    sha1/sha1.c \
+    $(libgabble_convenience_la_our_sources)
 
 nodist_libgabble_convenience_la_SOURCES = \
     $(BUILT_SOURCES)
@@ -85,6 +91,25 @@ write_mgr_file_LDADD = libgabble-convenience.la \
 telepathy_gabble_SOURCES = \
     gabble.h \
     gabble.c
+
+whitespace_sources = \
+    $(telepathy_gabble_SOURCES) \
+    $(libgabble_convenience_la_our_sources) \
+    $(telepathy_gabble_SOURCES) \
+    $(write_mgr_file_SOURCES)
+
+check-local::
+	@echo "Checking whitespace-related trivia..."
+	@if grep -n ' $$' $(whitespace_sources); \
+	then \
+		echo "^^^ The above files contain unwanted trailing spaces"; \
+		exit 1; \
+	fi
+	@if grep -n '	' $(whitespace_sources); \
+	then \
+		echo "^^^ The above files contain tabs"; \
+		exit 1; \
+	fi
 
 telepathy_gabble_LDADD = libgabble-convenience.la \
 			 $(top_builddir)/lib/telepathy-glib/libtelepathy-glib.la

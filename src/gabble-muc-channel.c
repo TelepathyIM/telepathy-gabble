@@ -19,6 +19,9 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+/* FIXME: take this out after 0.5.7 is released */
+#define _TP_CM_UPDATED_FOR_0_5_7
+
 #include <dbus/dbus-glib.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -277,12 +280,12 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
 
   /* initialize group mixin */
-  tp_group_mixin_init ((TpSvcChannelInterfaceGroup *)obj,
+  tp_group_mixin_init (obj,
       G_STRUCT_OFFSET (GabbleMucChannel, group),
       contact_handles, self_handle);
 
   /* set initial group flags */
-  tp_group_mixin_change_flags ((TpSvcChannelInterfaceGroup *)obj,
+  tp_group_mixin_change_flags (obj,
       TP_CHANNEL_GROUP_FLAG_CHANNEL_SPECIFIC_HANDLES |
       TP_CHANNEL_GROUP_FLAG_CAN_ADD,
       0);
@@ -307,7 +310,7 @@ gabble_muc_channel_constructor (GType type, guint n_props,
       GError *error = NULL;
       GArray *members = g_array_sized_new (FALSE, FALSE, sizeof (TpHandle), 1);
       g_array_append_val (members, self_handle);
-      tp_group_mixin_add_members ((TpSvcChannelInterfaceGroup *)obj, members,
+      tp_group_mixin_add_members (obj, members,
           "", &error);
       g_assert (error == NULL);
       g_array_free (members, TRUE);
@@ -759,9 +762,12 @@ gabble_muc_channel_set_property (GObject     *object,
 
 static void gabble_muc_channel_dispose (GObject *object);
 static void gabble_muc_channel_finalize (GObject *object);
-static gboolean gabble_muc_channel_add_member (TpSvcChannelInterfaceGroup *obj, TpHandle handle, const gchar *message, GError **error);
-static gboolean gabble_muc_channel_remove_member (TpSvcChannelInterfaceGroup *obj, TpHandle handle, const gchar *message, GError **error);
-static gboolean gabble_muc_channel_do_set_properties (GObject *obj, TpPropertiesContext *ctx, GError **error);
+static gboolean gabble_muc_channel_add_member (GObject *obj, TpHandle handle,
+    const gchar *message, GError **error);
+static gboolean gabble_muc_channel_remove_member (GObject *obj,
+    TpHandle handle, const gchar *message, GError **error);
+static gboolean gabble_muc_channel_do_set_properties (GObject *obj,
+    TpPropertiesContext *ctx, GError **error);
 
 static void
 gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
@@ -829,8 +835,9 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   g_cclosure_marshal_VOID__POINTER,
                   G_TYPE_NONE, 1, G_TYPE_POINTER);
 
-  tp_group_mixin_class_init ((TpSvcChannelInterfaceGroupClass *)object_class,
-                                 G_STRUCT_OFFSET (GabbleMucChannelClass, group_class),
+  tp_group_mixin_class_init (object_class,
+                                 G_STRUCT_OFFSET (GabbleMucChannelClass,
+                                   group_class),
                                  gabble_muc_channel_add_member,
                                  gabble_muc_channel_remove_member);
 
@@ -889,7 +896,7 @@ gabble_muc_channel_finalize (GObject *object)
 
   tp_properties_mixin_finalize (object);
 
-  tp_group_mixin_finalize ((TpSvcChannelInterfaceGroup *)object);
+  tp_group_mixin_finalize (object);
 
   tp_text_mixin_finalize (object);
 
@@ -1064,7 +1071,7 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
   set = tp_intset_new ();
   tp_intset_add (set, TP_GROUP_MIXIN (chan)->self_handle);
 
-  tp_group_mixin_change_members ((TpSvcChannelInterfaceGroup *)chan,
+  tp_group_mixin_change_members ((GObject *)chan,
                                      (reason != NULL) ? reason : "",
                                      NULL, set, NULL, NULL, actor,
                                      reason_code);
@@ -1393,8 +1400,7 @@ update_permissions (GabbleMucChannel *chan)
                        TP_CHANNEL_GROUP_FLAG_MESSAGE_REMOVE;
     }
 
-  tp_group_mixin_change_flags ((TpSvcChannelInterfaceGroup *) chan,
-      grp_flags_add, grp_flags_rem);
+  tp_group_mixin_change_flags ((GObject *) chan, grp_flags_add, grp_flags_rem);
 
 
   /*
@@ -1578,7 +1584,7 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
     {
       if (!tp_handle_set_is_member (mixin->members, handle))
         {
-          tp_group_mixin_change_members ((TpSvcChannelInterfaceGroup *)chan, "", set, NULL,
+          tp_group_mixin_change_members ((GObject *)chan, "", set, NULL,
                                              NULL, NULL, 0, 0);
 
           if (owner_jid != NULL)
@@ -1594,8 +1600,7 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
                 }
               else
                 {
-                  tp_group_mixin_add_handle_owner (
-                      (TpSvcChannelInterfaceGroup *)chan, handle,
+                  tp_group_mixin_add_handle_owner ((GObject *)chan, handle,
                       owner_handle);
                   tp_handle_unref (contact_handles, owner_handle);
                 }
@@ -1710,7 +1715,7 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
 
       if (handle != mixin->self_handle)
         {
-          tp_group_mixin_change_members ((TpSvcChannelInterfaceGroup *)chan, reason,
+          tp_group_mixin_change_members ((GObject *)chan, reason,
                                              NULL, set, NULL, NULL,
                                              actor, reason_code);
         }
@@ -1909,7 +1914,7 @@ _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
                                    &self_handle, &priv->self_jid);
   tp_intset_add (set_pending, self_handle);
 
-  tp_group_mixin_change_members ((TpSvcChannelInterfaceGroup *)chan, message, set_members,
+  tp_group_mixin_change_members ((GObject *)chan, message, set_members,
                                      NULL, set_pending, NULL, inviter,
                                      TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
 
@@ -2144,7 +2149,10 @@ gabble_muc_channel_send (TpSvcChannelTypeText *iface,
 
 
 static gboolean
-gabble_muc_channel_add_member (TpSvcChannelInterfaceGroup *obj, TpHandle handle, const gchar *message, GError **error)
+gabble_muc_channel_add_member (GObject *obj,
+                               TpHandle handle,
+                               const gchar *message,
+                               GError **error)
 {
   GabbleMucChannelPrivate *priv;
   TpGroupMixin *mixin;
@@ -2206,7 +2214,7 @@ gabble_muc_channel_add_member (TpSvcChannelInterfaceGroup *obj, TpHandle handle,
       tp_group_mixin_change_flags (obj, 0, TP_CHANNEL_GROUP_FLAG_CAN_ADD);
 
       /* clear message queue (which might contain an invite reason) */
-      tp_text_mixin_clear (G_OBJECT (obj));
+      tp_text_mixin_clear (obj);
 
       return result;
     }
@@ -2261,7 +2269,10 @@ kick_request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 }
 
 static gboolean
-gabble_muc_channel_remove_member (TpSvcChannelInterfaceGroup *obj, TpHandle handle, const gchar *message, GError **error)
+gabble_muc_channel_remove_member (GObject *obj,
+                                  TpHandle handle,
+                                  const gchar *message,
+                                  GError **error)
 {
   GabbleMucChannelPrivate *priv;
   LmMessage *msg;
@@ -2301,7 +2312,7 @@ gabble_muc_channel_remove_member (TpSvcChannelInterfaceGroup *obj, TpHandle hand
 
   result = _gabble_connection_send_with_reply (priv->conn, msg,
                                                kick_request_reply_cb,
-                                               (GObject *)obj, (gpointer) jid,
+                                               obj, (gpointer) jid,
                                                error);
 
   lm_message_unref (msg);

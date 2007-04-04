@@ -174,6 +174,7 @@ add_signal_handlers (void)
  *
  * If registering the connection manager on D-Bus fails, return 1.
  *
+ * Returns: the status code with which the process should exit
  */
 
 int

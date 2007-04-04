@@ -101,8 +101,8 @@ struct _TpHandleRepoIfaceClass {
 
     gboolean (*handle_is_valid) (TpHandleRepoIface *self, TpHandle handle,
         GError **error);
-    gboolean (*handles_are_valid) (TpHandleRepoIface *self, const GArray *handles,
-        gboolean allow_zero, GError **error);
+    gboolean (*handles_are_valid) (TpHandleRepoIface *self,
+        const GArray *handles, gboolean allow_zero, GError **error);
 
     void (*ref_handle) (TpHandleRepoIface *self, TpHandle handle);
     void (*unref_handle) (TpHandleRepoIface *self, TpHandle handle);
@@ -175,13 +175,15 @@ void tp_handle_set_add (TpHandleSet *set, TpHandle handle);
 gboolean tp_handle_set_remove (TpHandleSet *set, TpHandle handle);
 gboolean tp_handle_set_is_member (TpHandleSet *set, TpHandle handle);
 
-void tp_handle_set_foreach (TpHandleSet *set, TpHandleSetMemberFunc func, gpointer userdata);
+void tp_handle_set_foreach (TpHandleSet *set, TpHandleSetMemberFunc func,
+    gpointer userdata);
 
 int tp_handle_set_size (TpHandleSet *set);
 GArray *tp_handle_set_to_array (TpHandleSet *set);
 
 TpIntSet *tp_handle_set_update (TpHandleSet *set, const TpIntSet *add);
-TpIntSet *tp_handle_set_difference_update (TpHandleSet *set, const TpIntSet *remove);
+TpIntSet *tp_handle_set_difference_update (TpHandleSet *set,
+    const TpIntSet *remove);
 
 /* static inline because it relies on NUM_TP_HANDLE_TYPES */
 /**

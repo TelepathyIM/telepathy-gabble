@@ -62,10 +62,14 @@ void tp_text_mixin_init (GObject *obj, glong offset,
 void tp_text_mixin_set_message_types (GObject *obj, ...);
 void tp_text_mixin_finalize (GObject *obj);
 
-gboolean tp_text_mixin_receive (GObject *obj, TpChannelTextMessageType type, TpHandle sender, time_t timestamp, const char *text);
-gboolean tp_text_mixin_acknowledge_pending_messages (GObject *obj, const GArray * ids, GError **error);
-gboolean tp_text_mixin_list_pending_messages (GObject *obj, gboolean clear, GPtrArray ** ret, GError **error);
-gboolean tp_text_mixin_get_message_types (GObject *obj, GArray **ret, GError **error);
+gboolean tp_text_mixin_receive (GObject *obj, TpChannelTextMessageType type,
+    TpHandle sender, time_t timestamp, const char *text);
+gboolean tp_text_mixin_acknowledge_pending_messages (GObject *obj,
+    const GArray * ids, GError **error);
+gboolean tp_text_mixin_list_pending_messages (GObject *obj, gboolean clear,
+    GPtrArray ** ret, GError **error);
+gboolean tp_text_mixin_get_message_types (GObject *obj, GArray **ret,
+    GError **error);
 void tp_text_mixin_clear (GObject *obj);
 
 void tp_text_mixin_iface_init (gpointer g_iface, gpointer iface_data);

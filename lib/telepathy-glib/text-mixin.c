@@ -1,7 +1,7 @@
 /*
  * text-mixin.c - Source for TpTextMixin
- * Copyright (C) 2006 Collabora Ltd.
- * Copyright (C) 2006 Nokia Corporation
+ * Copyright (C) 2006, 2007 Collabora Ltd.
+ * Copyright (C) 2006, 2007 Nokia Corporation
  *   @author Ole Andre Vadla Ravnaas <ole.andre.ravnaas@collabora.co.uk>
  *   @author Robert McQueen <robert.mcqueen@collabora.co.uk>
  *   @author Senko Rasic <senko@senko.net>
@@ -31,6 +31,18 @@
  * text channel type in a general way. It implements the pending message
  * queue and GetMessageTypes, so the implementation should only need to
  * implement Send.
+ *
+ * To use the text mixin, include a #TpTextMixinClass somewhere in your
+ * class structure and a #TpTextMixin somewhere in your instance structure,
+ * and call tp_text_mixin_class_init() from your class_init function,
+ * tp_text_mixin_init() from your init function or constructor, and
+ * tp_text_mixin_finalize() from your dispose or finalize function.
+ *
+ * To use the text mixin as the implementation of
+ * #TpSvcTextInterface, in the function you pass to G_IMPLEMENT_INTERFACE,
+ * you should first call tp_text_mixin_iface_init(), then call
+ * tp_svc_channel_type_text_implement_send() to register your implementation
+ * of the Send method.
  */
 
 #include <telepathy-glib/text-mixin.h>

@@ -1130,13 +1130,14 @@ g_marshal_value_peek_ulong
 <TITLE>errors</TITLE>
 <INCLUDE>telepathy-glib/errors.h</INCLUDE>
 <FILE>errors</FILE>
-tp_errors_quark
 TP_ERRORS
-tp_error_get_type
 TP_TYPE_ERROR
 TpError
 tp_g_set_error_invalid_handle_type
 tp_g_set_error_unsupported_handle_type
+<SUBSECTION Standard>
+tp_error_get_type
+tp_errors_quark
 </SECTION>
 
 <SECTION>

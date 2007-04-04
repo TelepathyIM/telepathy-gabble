@@ -28,6 +28,18 @@
  *
  * This mixin can be added to a channel GObject class to implement the
  * groups interface in a general way.
+ *
+ * To use the group mixin, include a #TpGroupMixinClass somewhere in your
+ * class structure and a #TpGroupMixin somewhere in your instance structure,
+ * and call tp_group_mixin_class_init() from your class_init function,
+ * tp_group_mixin_init() from your init function or constructor, and
+ * tp_group_mixin_finalize() from your dispose or finalize function.
+ *
+ * To use the group mixin as the implementation of
+ * #TpSvcChannelInterfaceGroup, call
+ * <literal>G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
+ * tp_group_mixin_iface_init)</literal> in the fourth argument to
+ * <literal>G_DEFINE_TYPE_WITH_CODE</literal>.
  */
 
 #include <dbus/dbus-glib.h>

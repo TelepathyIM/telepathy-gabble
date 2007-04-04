@@ -40,6 +40,9 @@ typedef struct _TpDynamicHandleRepoClass TpDynamicHandleRepoClass;
  * @error: Used to raise the Telepathy error InvalidHandle with an appropriate
  *         message if NULL is returned
  *
+ * Signature of the normalization function optionally used by
+ * #TpDynamicHandleRepo instances.
+ *
  * Returns: a normalized version of @id (to be freed with g_free by the
  *          caller), or NULL if @id is not valid for this repository
  */

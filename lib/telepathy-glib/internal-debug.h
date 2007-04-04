@@ -29,6 +29,8 @@ void _tp_debug (TpDebugFlags flag, const gchar *format, ...)
 
 G_END_DECLS
 
+#endif /* ENABLE_DEBUG */
+
 #endif /* __DEBUG_H__ */
 
 /* ------------------------------------ */
@@ -50,6 +52,7 @@ G_END_DECLS
  */
 
 #ifdef DEBUG_FLAG
+#ifdef ENABLE_DEBUG
 
 #undef DEBUG
 #define DEBUG(format, ...) \
@@ -58,11 +61,7 @@ G_END_DECLS
 #undef DEBUGGING
 #define DEBUGGING _tp_debug_flag_is_set(DEBUG_FLAG)
 
-#endif /* DEBUG_FLAG */
-
-#else /* ENABLE_DEBUG */
-
-#ifdef DEBUG_FLAG
+#else /* !defined(ENABLE_DEBUG) */
 
 #undef DEBUG
 #define DEBUG(format, ...)
@@ -70,6 +69,5 @@ G_END_DECLS
 #undef DEBUGGING
 #define DEBUGGING 0
 
-#endif /* DEBUG_FLAG */
-
-#endif /* ENABLE_DEBUG */
+#endif /* !defined(ENABLE_DEBUG) */
+#endif /* defined(DEBUG_FLAG) */

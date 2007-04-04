@@ -1008,6 +1008,7 @@ TP_PROPERTIES_MIXIN_OFFSET
 tp_properties_mixin_class_get_offset_quark
 tp_properties_mixin_get_offset_quark
 TpPropertiesMixinPrivate
+TpPropertiesMixinClassPrivate
 <SUBSECTION Standard>
 TP_PROPERTIES_MIXIN_CLASS
 TP_PROPERTIES_MIXIN
@@ -1064,6 +1065,7 @@ TP_GROUP_MIXIN_CLASS_OFFSET
 TP_GROUP_MIXIN_OFFSET_QUARK
 TP_GROUP_MIXIN_OFFSET
 TpGroupMixinPrivate
+TpGroupMixinClassPrivate
 <SUBSECTION Standard>
 TP_GROUP_MIXIN_CLASS
 TP_GROUP_MIXIN
@@ -1180,6 +1182,7 @@ TP_TEXT_MIXIN_CLASS_OFFSET
 TP_TEXT_MIXIN_OFFSET_QUARK
 TP_TEXT_MIXIN_OFFSET
 TpTextMixinPrivate
+TpTextMixinClassPrivate
 <SUBSECTION Standard>
 TP_TEXT_MIXIN_CLASS
 TP_TEXT_MIXIN

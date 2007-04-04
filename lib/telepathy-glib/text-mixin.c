@@ -197,8 +197,10 @@ tp_text_mixin_get_offset_quark ()
  * Initialize the text mixin. Should be called from the implementation's
  * class_init function like so:
  *
+ * <informalexample><programlisting>
  * tp_text_mixin_class_init ((GObjectClass *)klass,
  *                           G_STRUCT_OFFSET (SomeObjectClass, text_mixin));
+ * </programlisting></informalexample>
  */
 
 void
@@ -231,7 +233,6 @@ tp_text_mixin_class_init (GObjectClass *obj_cls, glong offset)
  *                     self->contact_repo);
  * </programlisting></informalexample>
  */
-
 void
 tp_text_mixin_init (GObject *obj,
                     glong offset,

@@ -169,6 +169,7 @@ typedef gchar *(*TpBaseConnectionGetUniqueConnectionNameImpl) (
  *  Individual instances may detect which additional interfaces they support
  *  and signal them before going to state CONNECTED by calling
  *  tp_base_connection_add_interfaces().
+ * @priv: Pointer to opaque private data.
  *
  * The class of a #TpBaseConnection. Many members are virtual methods etc.
  * to be filled in in the subclass' class_init function.
@@ -191,6 +192,10 @@ struct _TpBaseConnectionClass {
     TpBaseConnectionStartConnectingImpl start_connecting;
 
     const gchar **interfaces_always_present;
+
+    /* FIXME: add some ABI padding here? */
+
+    gpointer priv;
 };
 
 /**

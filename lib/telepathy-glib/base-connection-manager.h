@@ -110,6 +110,8 @@ typedef struct {
 
 /**
  * TpBaseConnectionManager:
+ * @parent: The parent instance structure
+ * @priv: Pointer to opaque private data
  *
  * A base class for connection managers.
  */
@@ -128,6 +130,7 @@ typedef struct _TpBaseConnectionManager TpBaseConnectionManager;
  * @new_connection: A #TpBaseConnectionManagerNewConnFunc used to construct
  *  new connections. Must be filled in by subclasses in their class_init
  *  function.
+ * @priv: Pointer to opaque private data.
  *
  * The class structure for #TpBaseConnectionManager.
  */
@@ -164,6 +167,10 @@ struct _TpBaseConnectionManagerClass {
     const char *cm_dbus_name;
     const TpCMProtocolSpec *protocol_params;
     TpBaseConnectionManagerNewConnFunc new_connection;
+
+    /* FIXME: add some ABI padding here? */
+
+    gpointer priv;
 };
 
 struct _TpBaseConnectionManager {

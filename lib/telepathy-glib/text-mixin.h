@@ -30,17 +30,29 @@
 G_BEGIN_DECLS
 
 typedef struct _TpTextMixinClass TpTextMixinClass;
+typedef struct _TpTextMixinClassPrivate TpTextMixinClassPrivate;
 typedef struct _TpTextMixin TpTextMixin;
 typedef struct _TpTextMixinPrivate TpTextMixinPrivate;
 
+/**
+ * TpTextMixinClass:
+ *
+ * Structure to be included in the class structure of objects that
+ * use this mixin. Initialize it with tp_text_mixin_class_init().
+ */
 struct _TpTextMixinClass {
-  guint lost_message_signal_id;
-  guint received_signal_id;
-  guint send_error_signal_id;
-  guint sent_signal_id;
+    /*<private>*/
+    TpTextMixinClassPrivate *priv;
 };
 
+/**
+ * TpTextMixin:
+ *
+ * Structure to be included in the instance structure of objects that
+ * use this mixin. Initialize it with tp_text_mixin_init().
+ */
 struct _TpTextMixin {
+  /*<private>*/
   TpTextMixinPrivate *priv;
 };
 
@@ -57,6 +69,7 @@ GQuark tp_text_mixin_class_get_offset_quark (void);
 GQuark tp_text_mixin_get_offset_quark (void);
 
 void tp_text_mixin_class_init (GObjectClass *obj_cls, glong offset);
+
 void tp_text_mixin_init (GObject *obj, glong offset,
     TpHandleRepoIface *contacts_repo);
 void tp_text_mixin_set_message_types (GObject *obj, ...);

@@ -41,6 +41,7 @@
 G_BEGIN_DECLS
 
 typedef struct _TpGroupMixinClass TpGroupMixinClass;
+typedef struct _TpGroupMixinClassPrivate TpGroupMixinClassPrivate;
 
 typedef struct _TpGroupMixin TpGroupMixin;
 typedef struct _TpGroupMixinPrivate TpGroupMixinPrivate;
@@ -79,27 +80,46 @@ typedef gboolean (*TpGroupMixinRemMemberFunc) (_TP_GROUP_MIXIN_OBJECT *obj,
 
 /**
  * TpGroupMixinClass:
+ * @add_member: The add-member function that was passed to
+ *  tp_group_mixin_class_init()
+ * @remove_member: The remove-member function that was passed to
+ *  tp_group_mixin_class_init()
+ * @priv: Pointer to opaque private data
  *
  * Structure representing the group mixin as used in a particular class.
  * To be placed in the implementation's class structure.
  *
  * Initialize this with tp_group_mixin_class_init().
+ *
+ * All fields should be considered read-only.
  */
 struct _TpGroupMixinClass {
   /*<private>*/
   TpGroupMixinAddMemberFunc add_member;
   TpGroupMixinRemMemberFunc remove_member;
+  TpGroupMixinClassPrivate *priv;
 };
 
 /**
  * TpGroupMixin:
+ * @handle_repo: The connection's contact handle repository
+ * @self_handle: The local user's handle within this group, or 0 if none.
+ *  Set using (FIXME: how do we do self-renaming?)
+ * @group_flags: This group's flags. Set using tp_group_mixin_change_flags().
+ * @members: The members of the group. Alter using
+ *  tp_group_mixin_change_members().
+ * @local_pending: Members awaiting the local user's approval to join the
+ *  group. Alter using tp_group_mixin_change_members().
+ * @remote_pending: Members awaiting remote (e.g. remote user or server)
+ *  approval to join the group. Alter using tp_group_mixin_change_members().
+ * @priv: Pointer to opaque private data
  *
  * Structure representing the group mixin as used in a particular class.
  * To be placed in the implementation's instance structure.
+ *
+ * All fields should be considered read-only.
  */
-/* FIXME: shouldn't most of this be private? */
 struct _TpGroupMixin {
-  /*<private>*/
   TpHandleRepoIface *handle_repo;
   TpHandle self_handle;
 

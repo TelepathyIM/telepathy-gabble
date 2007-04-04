@@ -194,6 +194,19 @@ struct _TpBaseConnectionClass {
 };
 
 /**
+ * TP_INTERNAL_CONNECTION_STATUS_NEW:
+ *
+ * A special value for #TpConnectionStatus, used within GLib connection
+ * managers to indicate that the connection is disconnected because
+ * connection has never been attempted (as distinct from disconnected
+ * after connection has started, either by user request or an error).
+ *
+ * Must never be visible on the D-Bus - %TP_CONNECTION_STATUS_DISCONNECTED
+ * is sent instead.
+ */
+#   define TP_INTERNAL_CONNECTION_STATUS_NEW ((TpConnectionStatus)(-1))
+
+/**
  * TpBaseConnection:
  * @parent: Fields shared by the superclass.
  * @bus_name: A D-Bus well-known bus name, owned by the connection manager
@@ -216,20 +229,6 @@ struct _TpBaseConnection {
 
     gchar *bus_name;
     gchar *object_path;
-
-    /**
-     * TP_INTERNAL_CONNECTION_STATUS_NEW:
-     *
-     * A special value for #TpConnectionStatus, used within GLib connection
-     * managers to indicate that the connection is disconnected because
-     * connection has never been attempted (as distinct from disconnected
-     * after connection has started, either by user request or an error).
-     *
-     * Must never be visible on the D-Bus - %TP_CONNECTION_STATUS_DISCONNECTED
-     * is sent instead.
-     */
-#   define TP_INTERNAL_CONNECTION_STATUS_NEW \
-    ((TpConnectionStatus)(-1))
 
     TpConnectionStatus status;
 

@@ -19,6 +19,7 @@ TP_CHANNEL_IFACE_GET_CLASS
 <INCLUDE>telepathy-glib/base-connection.h</INCLUDE>
 <FILE>base-connection</FILE>
 <TITLE>TpBaseConnection</TITLE>
+TP_INTERNAL_CONNECTION_STATUS_NEW
 TpBaseConnection
 TpBaseConnectionClass
 TpBaseConnectionCreateChannelFactoriesImpl

@@ -1,0 +1,215 @@
+<refentry id="telepathy-glib-svc">
+  <refmeta>
+    <refentrytitle>
+      The TpSvc* interfaces
+    </refentrytitle>
+    <manvolnum>7</manvolnum>
+    <refmiscinfo>telepathy-glib</refmiscinfo>
+  </refmeta>
+
+  <refnamediv>
+    <refname>The TpSvc* interfaces</refname>
+    <refpurpose>How to export Telepathy objects</refpurpose>
+  </refnamediv>
+
+  <para>
+    The GInterfaces whose names start with TpSvc are generated automatically
+    from the Telepathy specification, and can be used to make it easier
+    to export methods and signals onto D-Bus. By implementing these
+    GInterfaces you can avoid needing to generate any "glue" using the
+    dbus-glib tools - this is all done internally inside telepathy-glib.
+  </para>
+
+
+  <para>
+    The media session interface makes a convenient example
+    because it only has two methods (Error() and Ready())
+    and one signal (NewStreamHandler), and media session handlers
+    aren't expected to implement any other interfaces.
+  </para>
+
+  <para>
+    The first thing to do is pre-declare the interface init function,
+    and define the type you'll be using, declaring it to implement the
+    media stream handler interface:
+  </para>
+
+  <informalexample><programlisting>
+static void stream_handler_iface_init (gpointer, gpointer);
+
+G_DEFINE_TYPE_WITH_CODE(GabbleMediaStream,
+    gabble_media_stream,
+    G_TYPE_OBJECT,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_MEDIA_STREAM_HANDLER,
+      stream_handler_iface_init)
+    )
+  </programlisting></informalexample>
+
+  <para>
+    Here we're using a subclass of G_TYPE_OBJECT. You can of course subclass
+    any type.
+  </para>
+
+  <para>
+    If you're implementing more than one interface on the same object,
+    define more than one init function, and call G_IMPLEMENT_INTERFACE
+    more than once. The interface init functions can even be extern
+    if you want to separate off chunks of functionality into a different
+    .c file. For instance, here's GabbleConnection:
+  </para>
+
+  <informalexample><programlisting>
+/* in header files */
+void conn_aliasing_iface_init (gpointer, gpointer);
+void conn_avatars_iface_init (gpointer, gpointer);
+void conn_presence_iface_init (gpointer, gpointer);
+
+/* in gabble-connection.c */
+static void conn_iface_init (gpointer, gpointer);
+static void capabilities_iface_init (gpointer, gpointer);
+
+G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
+    gabble_connection,
+    TP_TYPE_BASE_CONNECTION,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION,
+      conn_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_ALIASING,
+      conn_aliasing_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_AVATARS,
+      conn_avatars_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CAPABILITIES,
+      capabilities_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_PRESENCE,
+      conn_presence_iface_init);
+    )
+  </programlisting></informalexample>
+
+  <para>
+    The _class_init, _init etc. functions are just like normal, so I
+    won't describe them here. One thing to note, though, is that for
+    signals which are defined by the GInterface, you do not need to do
+    anything in the _class_init - the GInterface has already set the
+    signal up for you.
+  </para>
+
+  <para>
+    For each exported D-Bus method, there's a typedef ending with _impl
+    giving the signature you should use for your method implementation.
+    For example, here's the signature for the Error method on the
+    media session handler interface:
+    <informalexample><programlisting>
+        void (*tp_svc_media_session_handler_error_impl)
+          (TpSvcMediaSessionHandler *self, guint errno, const char *message,
+           DBusGMethodInvocation *context);
+    </programlisting></informalexample>
+    and here's the beginning of the corresponding implementation:
+    <informalexample><programlisting>
+static void
+gabble_media_session_error (TpSvcMediaSessionHandler *iface,
+                            guint errno,
+                            const char *message,
+                            DBusGMethodInvocation *context)
+{
+  GabbleMediaSession *self = GABBLE_MEDIA_SESSION (iface);
+
+  /* do stuff with self here */
+    </programlisting></informalexample>
+    All service methods in telepathy-glib are asynchronous - you can of
+    course implement them synchronously if you like, but you have to return
+    the result or error to D-Bus by calling a callback rather than by
+    returning from a function.
+  </para>
+
+  <para>
+    The method implementation's last parameter is a DBusGMethodInvocation.
+    To send the reply, you must either call dbus_g_method_return_error
+    (for a failure), dbus_g_method_return (for a successful return),
+    or an inline function whose name contains "_return_from_" provided by
+    the TpSvc interface. For example, for Error there's an inline function
+    tp_svc_media_session_handler_return_from_error(). These inline functions
+    are just a simple wrapper around dbus_g_method_return() to make it
+    type-safe - it's recommended that you use them where possible.
+  </para>
+
+  <para>
+    For instance, Error doesn't return anything, so
+    tp_svc_media_session_handler_return_from_error() doesn't take any
+    parameters apart from the DBusGMethodInvocation:
+    <informalexample><programlisting>
+static void
+gabble_media_session_error (TpSvcMediaSessionHandler *iface,
+                            guint errno,
+                            const char *message,
+                            DBusGMethodInvocation *context)
+{
+  GabbleMediaSession *self = GABBLE_MEDIA_SESSION (iface);
+
+  /* do stuff with self here */
+
+  tp_svc_media_session_handler_return_from_error (context);
+}
+    </programlisting></informalexample>
+  </para>
+
+  <para>
+    As for signals, they're named as dictated by dbus-glib. This normally
+    gives you a sensible lower-case name - for instance NewStreamHandler
+    is mapped to "new-stream-handler".
+  </para>
+
+  <para>
+    To emit a signal, the generated code contains another convenience
+    function whose name contains _emit_. This is prototyped to take
+    the correct arguments for the signal, and emits it efficiently:
+    <informalexample><programlisting>
+tp_svc_media_session_handler_emit_new_stream_handler (session,
+  object_path, id, media_type, TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL);
+    </programlisting></informalexample>
+  </para>
+
+  <para>
+    Finally, the interface init function needs to be written. Normally
+    you'd set the fields of a vtable to be pointers to your method
+    implementations. However, we couldn't do this in telepathy-glib
+    because that would mean breaking the ABI every time we added methods
+    to an interface. Instead, you call functions, with pointers to your
+    method implementations as a parameter:
+    <informalexample><programlisting>
+static void
+session_handler_iface_init (gpointer g_iface, gpointer iface_data)
+{
+  TpSvcMediaSessionHandlerClass *klass =
+    (TpSvcMediaSessionHandlerClass *)g_iface;
+
+  tp_svc_media_session_handler_implement_error (klass,
+      gabble_media_session_error);
+  tp_svc_media_session_handler_implement_ready (klass,
+      gabble_media_session_ready);
+}
+    </programlisting></informalexample>
+    This is obviously quite repetitive if there are a lot of methods, so
+    the convention I've used in telepathy-glib, Gabble and
+    telepathy-sofiasip is to define a temporary macro called IMPLEMENT:
+    <informalexample><programlisting>
+static void
+session_handler_iface_init (gpointer g_iface, gpointer iface_data)
+{
+  TpSvcMediaSessionHandlerClass *klass =
+    (TpSvcMediaSessionHandlerClass *)g_iface;
+
+#define IMPLEMENT(x) tp_svc_media_session_handler_implement_##x (\
+    klass, gabble_media_session_##x)
+  IMPLEMENT(error);
+  IMPLEMENT(ready);
+#undef IMPLEMENT
+}
+    </programlisting></informalexample>
+  </para>
+
+  <para>
+    If you're implementing many interfaces, just write many similar
+    interface init functions.
+  </para>
+
+</refentry>
+<!-- vim:set sw=2 sts=2 et: -->

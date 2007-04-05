@@ -113,7 +113,8 @@ typedef struct {
  * @parent: The parent instance structure
  * @priv: Pointer to opaque private data
  *
- * A base class for connection managers.
+ * A base class for connection managers. There are no interesting public
+ * fields in the instance structure.
  */
 typedef struct _TpBaseConnectionManager TpBaseConnectionManager;
 
@@ -174,6 +175,7 @@ struct _TpBaseConnectionManagerClass {
 };
 
 struct _TpBaseConnectionManager {
+    /*<private>*/
     GObject parent;
 
     gpointer priv;

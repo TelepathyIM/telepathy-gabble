@@ -2379,47 +2379,6 @@ gabble_connection_get_capabilities (TpSvcConnectionInterfaceCapabilities *iface,
 }
 
 
-static void
-hold_unref_and_return_handles (DBusGMethodInvocation *context,
-                               TpHandleRepoIface *repo,
-                               GArray *handles)
-{
-  GError *error;
-  gchar *sender = dbus_g_method_get_sender(context);
-  guint i, j;
-
-  for (i = 0; i < handles->len; i++)
-    {
-      TpHandle handle = (TpHandle) g_array_index (handles, guint, i);
-
-      if (!tp_handle_client_hold (repo, sender, handle, &error))
-        {
-          /* undo the hold on the ones we already did */
-          for (j = 0; j < i; j++)
-            {
-              handle = (TpHandle) g_array_index (handles, guint, j);
-              tp_handle_client_release (repo, sender, handle, NULL);
-            }
-          /* drop the reference that we own */
-          for (j = i; j < handles->len; j++)
-            {
-              handle = (TpHandle) g_array_index (handles, guint, j);
-              tp_handle_unref (repo, handle);
-            }
-          dbus_g_method_return_error (context, error);
-          g_error_free (error);
-          g_free (sender);
-          return;
-        }
-
-      /* now that the client owns a reference, release mine */
-      tp_handle_unref (repo, handle);
-    }
-  dbus_g_method_return (context, handles);
-  g_free (sender);
-}
-
-
 const char *
 _gabble_connection_find_conference_server (GabbleConnection *conn)
 {
@@ -2594,9 +2553,6 @@ room_verify_batch_try_return (RoomVerifyBatch *batch)
           return FALSE;
         }
     }
-
-  hold_unref_and_return_handles (batch->invocation, room_handles,
-      batch->handles);
 
   sender = dbus_g_method_get_sender (batch->invocation);
   if (!tp_handles_client_hold (room_handles, sender, batch->handles, &error))

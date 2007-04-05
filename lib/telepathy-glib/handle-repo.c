@@ -136,8 +136,8 @@ tp_handles_are_valid (TpHandleRepoIface *self,
  * @self: A handle repository implementation
  * @handle: A handle of the type stored in the repository
  *
- * Increase the reference count of the given handle, if present in the
- * repository. For repository implementations which never free handles
+ * Increase the reference count of the given handle, which must be present
+ * in the repository. For repository implementations which never free handles
  * (like #TpStaticHandleRepo) this has no effect.
  */
 
@@ -154,8 +154,9 @@ tp_handle_ref (TpHandleRepoIface *self,
  * @self: A handle repository implementation
  * @handle: A handle of the type stored in the repository
  *
- * Decrease the reference count of the given handle, if present in the
- * repository. If it reaches zero, delete the handle.
+ * Decrease the reference count of the given handle. If it reaches zero,
+ * delete the handle. It is an error to attempt to unref a handle
+ * which is not present in the repository.
  *
  * For repository implementations which never free handles (like
  * #TpStaticHandleRepo) this has no effect.
@@ -176,14 +177,17 @@ tp_handle_unref (TpHandleRepoIface *self,
  * @handle: A handle of the type stored in the repository
  * @error: Set if %FALSE is returned
  *
- * Take a reference to the given handle on behalf of the named client.
+ * Hold the given handle on behalf of the named client.
  * If the client leaves the bus, the reference is automatically discarded.
  *
- * For repository implementations which never free handles (like
- * #TpStaticHandleRepo) this has no effect.
+ * Handles held multiple times are the same as handles held
+ * once: the client either holds a handle or it doesn't. In particular,
+ * if you call tp_handle_client_hold() multiple times, then call
+ * tp_handle_client_release() just once, the client no longer holds the handle.
  *
- * Returns: %TRUE if the handle is present in the repository and the client
- * name is valid, else %FALSE
+ * It is an error for @handle not to be present in the repository.
+ *
+ * Returns: %TRUE if the client name is valid; else %FALSE with @error set.
  */
 
 gboolean
@@ -204,14 +208,14 @@ tp_handle_client_hold (TpHandleRepoIface *self,
  * @handle: A handle of the type stored in the repository
  * @error: Set if %FALSE is returned
  *
- * If the named client has a reference to the given handle, release it.
+ * If the named client holds the given handle, release it.
  * If this causes the reference count to become zero, delete the handle.
  *
  * For repository implementations which never free handles (like
  * #TpStaticHandleRepo) this has no effect.
  *
- * Returns: %TRUE if the handle is present in the repository and the client
- * name is valid, else %FALSE
+ * Returns: %TRUE if the client name is valid and the client previously held
+ * a reference to the handle, else %FALSE.
  */
 
 gboolean

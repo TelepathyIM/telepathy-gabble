@@ -230,6 +230,7 @@ struct _TpBaseConnectionClass {
  * Data structure representing a generic #TpSvcConnection implementation.
  */
 struct _TpBaseConnection {
+    /*<public>*/
     GObject parent;
 
     gchar *bus_name;

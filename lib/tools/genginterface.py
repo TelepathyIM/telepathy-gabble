@@ -283,12 +283,8 @@ GType %(prefix)s_get_type(void);
   (%(prefix)s_get_type())
 #define %(main)s_%(sub)s(obj) \\
   (G_TYPE_CHECK_INSTANCE_CAST((obj), %(type)s, %(name)s))
-#define %(main)s_%(sub)s_CLASS(klass) \\
-  (G_TYPE_CHECK_CLASS_CAST((klass), %(type)s, %(name)sClass))
 #define %(main)s_IS_%(sub)s(obj) \\
   (G_TYPE_CHECK_INSTANCE_TYPE((obj), %(type)s))
-#define %(main)s_IS_%(sub)s_CLASS(klass) \\
-  (G_TYPE_CHECK_CLASS_TYPE((klass), %(type)s))
 #define %(main)s_%(sub)s_GET_CLASS(obj) \\
   (G_TYPE_INSTANCE_GET_INTERFACE ((obj), %(type)s, %(name)sClass))
 

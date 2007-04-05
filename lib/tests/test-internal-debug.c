@@ -75,4 +75,5 @@ main (int argc, char **argv)
   test_debugging();
   test_not_debugging();
   test_debugging_again();
+  return 0;
 }

@@ -171,9 +171,8 @@ gabble_roomlist_channel_set_property (GObject     *object,
 {
   GabbleRoomlistChannel *chan = GABBLE_ROOMLIST_CHANNEL (object);
   GabbleRoomlistChannelPrivate *priv = GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (chan);
-  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
-  TpHandleRepoIface *room_handles = tp_base_connection_get_handles (conn,
-      TP_HANDLE_TYPE_ROOM);
+  TpBaseConnection *conn;
+  TpHandleRepoIface *room_handles;
   TpHandleSet *new_signalled_rooms;
 
   switch (property_id) {
@@ -192,6 +191,8 @@ gabble_roomlist_channel_set_property (GObject     *object,
     case PROP_CONNECTION:
       priv->conn = g_value_get_object (value);
       conn = (TpBaseConnection *)priv->conn;
+
+      room_handles = tp_base_connection_get_handles (conn, TP_HANDLE_TYPE_ROOM);
 
       new_signalled_rooms = tp_handle_set_new (room_handles);
       if (priv->signalled_rooms != NULL)

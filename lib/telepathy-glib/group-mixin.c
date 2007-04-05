@@ -969,7 +969,7 @@ tp_group_mixin_change_flags (GObject *obj,
   TpChannelGroupFlags added, removed;
 
   /* It's meaningless to want to add and remove the same capability */
-  g_return_if_fail ((add & remove) != 0);
+  g_return_if_fail ((add & remove) == 0);
 
   added = add & ~mixin->group_flags;
   mixin->group_flags |= added;

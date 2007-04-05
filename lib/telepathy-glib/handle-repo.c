@@ -350,6 +350,7 @@ tp_handle_client_release (TpHandleRepoIface *self,
  * @self: A handle repository implementation
  * @client: The D-Bus unique name of a client
  * @handles: A GArray of TpHandle representing handles
+ * @error: Used to return an error if %FALSE is returned
  *
  * Releases a reference to the given handles on behalf of the named client.
  *

@@ -2486,8 +2486,12 @@ struct _RoomVerifyContext {
 static void
 room_verify_batch_free (RoomVerifyBatch *batch)
 {
+  TpBaseConnection *base = (TpBaseConnection *)(batch->conn);
+  TpHandleRepoIface *room_handles = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_ROOM);
   guint i;
 
+  tp_handles_unref (room_handles, batch->handles);
   g_array_free (batch->handles, TRUE);
   for (i = 0; i < batch->count; i++)
     {
@@ -2579,6 +2583,8 @@ room_verify_batch_try_return (RoomVerifyBatch *batch)
   guint i;
   TpHandleRepoIface *room_handles = tp_base_connection_get_handles (
       (TpBaseConnection *)batch->conn, TP_HANDLE_TYPE_ROOM);
+  gchar *sender;
+  GError *error = NULL;
 
   for (i = 0; i < batch->count; i++)
     {
@@ -2591,6 +2597,25 @@ room_verify_batch_try_return (RoomVerifyBatch *batch)
 
   hold_unref_and_return_handles (batch->invocation, room_handles,
       batch->handles);
+
+  sender = dbus_g_method_get_sender (batch->invocation);
+  if (!tp_handles_client_hold (room_handles, sender, batch->handles, &error))
+    {
+      g_assert (error != NULL);
+    }
+  g_free (sender);
+
+  if (error == NULL)
+    {
+      tp_svc_connection_return_from_request_handles (batch->invocation,
+          batch->handles);
+    }
+  else
+    {
+      dbus_g_method_return_error (batch->invocation, error);
+      g_error_free (error);
+    }
+
   room_verify_batch_free (batch);
   return TRUE;
 }

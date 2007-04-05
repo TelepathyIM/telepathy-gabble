@@ -714,11 +714,11 @@ static gboolean
 timeout_request (gpointer data)
 {
   GabbleVCardManagerRequest *request = (GabbleVCardManagerRequest*) data;
-  GError *err;
+  GError *err /* doesn't need initializing */;
   g_return_val_if_fail (data != NULL, FALSE);
 
-  err = g_error_new (GABBLE_VCARD_MANAGER_ERROR, GABBLE_VCARD_MANAGER_ERROR_TIMEOUT,
-      "Request timed out");
+  err = g_error_new (GABBLE_VCARD_MANAGER_ERROR,
+      GABBLE_VCARD_MANAGER_ERROR_TIMEOUT, "Request timed out");
   DEBUG ("Request %p timed out, notifying callback %p",
          request, request->callback);
 
@@ -730,12 +730,11 @@ timeout_request (gpointer data)
 static void
 cancel_request (GabbleVCardManagerRequest *request)
 {
-  GError *err;
+  GError *err = g_error_new (GABBLE_VCARD_MANAGER_ERROR,
+      GABBLE_VCARD_MANAGER_ERROR_CANCELLED, "Request cancelled");
 
   g_assert (request != NULL);
 
-  err = g_error_new (GABBLE_VCARD_MANAGER_ERROR, GABBLE_VCARD_MANAGER_ERROR_CANCELLED,
-      "Request cancelled");
   DEBUG ("Request %p cancelled, notifying callback %p",
          request, request->callback);
 

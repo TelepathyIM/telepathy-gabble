@@ -1169,7 +1169,7 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
     }
   else
     {
-      GError *tp_error;
+      GError *tp_error /* doesn't need initializing */;
 
       switch (error) {
         case XMPP_ERROR_FORBIDDEN:

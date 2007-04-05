@@ -220,7 +220,7 @@ gabble_connection_clear_status (TpSvcConnectionInterfacePresence *iface,
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *)self;
-  GError *error;
+  GError *error = NULL;
   gboolean ok;
   gchar *resource;
   gint8 priority;
@@ -413,7 +413,7 @@ gabble_connection_remove_status (TpSvcConnectionInterfacePresence *iface,
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *)self;
   GabblePresence *presence = self->self_presence;
-  GError *error;
+  GError *error = NULL;
   gchar *resource;
   gint8 priority;
 
@@ -466,7 +466,7 @@ gabble_connection_request_presence (TpSvcConnectionInterfacePresence *iface,
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *)self;
-  GError *error;
+  GError *error = NULL;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
       TP_HANDLE_TYPE_CONTACT);
 
@@ -618,7 +618,7 @@ gabble_connection_set_status (TpSvcConnectionInterfacePresence *iface,
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *)self;
   struct _i_hate_g_hash_table_foreach data = { NULL, NULL, TRUE };
-  GError *error;
+  GError *error = NULL;
 
   g_assert (GABBLE_IS_CONNECTION (self));
 

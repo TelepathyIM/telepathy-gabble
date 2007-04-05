@@ -129,18 +129,15 @@ static void
 channel_request_cancel (gpointer data, gpointer user_data)
 {
   ChannelRequest *request = (ChannelRequest *) data;
-  GError *error;
+  GError error = { TP_ERRORS, TP_ERROR_DISCONNECTED,
+      "unable to service this channel request, we're disconnecting!" };
 
   DEBUG ("cancelling request at %p for %s/%u/%u", request,
       request->channel_type, request->handle_type, request->handle);
 
-  error = g_error_new (TP_ERRORS, TP_ERROR_DISCONNECTED, "unable to "
-      "service this channel request, we're disconnecting!");
-
-  dbus_g_method_return_error (request->context, error);
+  dbus_g_method_return_error (request->context, &error);
   request->context = NULL;
 
-  g_error_free (error);
   channel_request_free (request);
 }
 

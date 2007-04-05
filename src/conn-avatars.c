@@ -193,7 +193,7 @@ gabble_connection_get_avatar_tokens (TpSvcConnectionInterfaceAvatars *iface,
   gboolean have_self_avatar;
   guint i, my_index = 0;
   gchar **ret;
-  GError *err;
+  GError *err = NULL;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
       TP_HANDLE_TYPE_CONTACT);
 
@@ -482,7 +482,7 @@ _set_avatar_cb2 (GabbleVCardManager *manager,
   else
     {
       GabblePresence *presence = ctx->conn->self_presence;
-      GError *error;
+      GError *error = NULL;
 
       g_free (presence->avatar_sha1);
       if (ctx->avatar)

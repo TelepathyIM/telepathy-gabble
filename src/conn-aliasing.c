@@ -335,7 +335,7 @@ gabble_connection_set_aliases (TpSvcConnectionInterfaceAliasing *iface,
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *)self;
-  GError *error;
+  GError *error = NULL;
   struct _i_hate_g_hash_table_foreach data = { NULL, NULL, TRUE };
 
   g_assert (GABBLE_IS_CONNECTION (self));

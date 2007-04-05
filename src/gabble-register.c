@@ -484,7 +484,7 @@ send_registration (GabbleRegister *reg, RegistrationStage stage)
   GabbleRegisterPrivate *priv = GABBLE_REGISTER_GET_PRIVATE (reg);
   LmMessage *msg;
   LmMessageNode *node;
-  GError *error;
+  GError *error = NULL;
   GabbleConnectionMsgReplyFunc handler;
 
   msg = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,

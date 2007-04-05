@@ -110,6 +110,14 @@ check-local::
 		echo "^^^ The above files contain tabs"; \
 		exit 1; \
 	fi
+	@echo "Checking for GError mistakes..."
+	@if grep -n '^ *GError *\*[a-zA-Z_][a-zA-Z0-9_]* *;' \
+		$(whitespace_sources); \
+	then \
+		echo "^^^ The above files contain uninitialized GError*s -"; \
+		echo "    they should be initialized to NULL"; \
+		exit 1; \
+	fi
 
 telepathy_gabble_LDADD = libgabble-convenience.la \
 			 $(top_builddir)/lib/telepathy-glib/libtelepathy-glib.la

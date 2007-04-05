@@ -1989,7 +1989,7 @@ connection_disco_cb (GabbleDisco *disco,
   GabbleConnection *conn = user_data;
   TpBaseConnection *base = (TpBaseConnection *)conn;
   GabbleConnectionPrivate *priv;
-  GError *error;
+  GError *error = NULL;
 
   if (base->status != TP_CONNECTION_STATUS_CONNECTING)
     {
@@ -2177,7 +2177,7 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
   const CapabilityConversionData *ccd;
   GPtrArray *ret;
-  GError *error;
+  GError *error = NULL;
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
 
@@ -2296,7 +2296,7 @@ gabble_connection_get_capabilities (TpSvcConnectionInterfaceCapabilities *iface,
       TP_HANDLE_TYPE_CONTACT);
   guint i;
   GPtrArray *ret;
-  GError *error;
+  GError *error = NULL;
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
 
@@ -2512,12 +2512,11 @@ room_verify_batch_new (GabbleConnection *conn,
 
       if (!qualified_name)
         {
-          GError *error;
-          DEBUG ("requested handle %s contains no conference server",
-                 name);
-          error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE, "requested "
-                  "room handle %s does not specify a server, but we have not discovered "
-                  "any local conference servers and no fallback was provided", name);
+          GError *error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+              "requested room handle %s does not specify a server, but we "
+              "have not discovered any local conference servers and no "
+              "fallback was provided", name);
+          DEBUG ("%s", error->message);
           room_verify_batch_raise_error (batch, error);
           return NULL;
         }
@@ -2674,7 +2673,7 @@ room_jid_verify (RoomVerifyBatch *batch,
 {
   gchar *room, *service;
   gboolean ret;
-  GError *error;
+  GError *error = NULL;
 
   room = service = NULL;
   gabble_decode_jid (batch->contexts[index].jid, &room, &service, NULL);

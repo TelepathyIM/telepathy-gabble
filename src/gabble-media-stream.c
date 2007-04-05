@@ -627,7 +627,7 @@ gabble_media_stream_error_async (TpSvcMediaStreamHandler *iface,
                                  DBusGMethodInvocation *context)
 {
   GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
-  GError *error;
+  GError *error = NULL;
 
   if (gabble_media_stream_error (self, errno, message, &error))
     {

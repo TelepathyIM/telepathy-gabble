@@ -234,7 +234,7 @@ ref_one (guint handle, gpointer data)
  * Add a set of handles to a handle set, referencing those which are not
  * already members. The TpIntSet returned must be freed with tp_intset_destroy.
  *
- * Returns: the handles which were added
+ * Returns: the handles which were added (some subset of @add)
  */
 TpIntSet *
 tp_handle_set_update (TpHandleSet *set, const TpIntSet *add)
@@ -271,7 +271,14 @@ unref_one (guint handle, gpointer data)
  * Remove a set of handles from a handle set, dereferencing those which are
  * members. The TpIntSet returned must be freed with tp_intset_destroy.
  *
- * Returns: the handles which were removed
+ * If you want to be able to inspect the handles in the set returned,
+ * you must ensure that this function does not cause their refcount to drop
+ * to zero, for instance by temporarily taking a reference to all the
+ * handles in @remove, calling this function, doing something with the
+ * result and discarding the temporary references.
+ *
+ * Returns: the handles which were dereferenced and removed (some subset
+ *  of @remove).
  */
 TpIntSet *
 tp_handle_set_difference_update (TpHandleSet *set, const TpIntSet *remove)

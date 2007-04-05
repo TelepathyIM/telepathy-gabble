@@ -30,11 +30,11 @@ G_BEGIN_DECLS
 
 typedef struct _GabbleRosterClass GabbleRosterClass;
 
-GType gabble_roster_get_type(void);
+GType gabble_roster_get_type (void);
 
 /* TYPE MACROS */
 #define GABBLE_TYPE_ROSTER \
-  (gabble_roster_get_type())
+  (gabble_roster_get_type ())
 #define GABBLE_ROSTER(obj) \
   (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_ROSTER, GabbleRoster))
 #define GABBLE_ROSTER_CLASS(klass) \

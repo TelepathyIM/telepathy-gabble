@@ -111,7 +111,7 @@ static_get_property (GObject *object,
       g_value_set_uint (value, self->handle_type);
       break;
     case PROP_HANDLE_NAMES:
-      g_value_set_boxed (value, g_strdupv(self->handle_names));
+      g_value_set_boxed (value, g_strdupv (self->handle_names));
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -261,7 +261,7 @@ static_lookup_handle (TpHandleRepoIface *irepo,
 
   for (i = 0; i < self->last_handle; i++)
     {
-      if (!strcmp(self->handle_names[i], id))
+      if (!strcmp (self->handle_names[i], id))
         return (TpHandle) i + 1;
     }
 

@@ -41,11 +41,11 @@ struct _GabbleConnectionManager {
 
 extern const TpCMProtocolSpec gabble_protocols[];
 
-GType gabble_connection_manager_get_type(void);
+GType gabble_connection_manager_get_type (void);
 
 /* TYPE MACROS */
 #define GABBLE_TYPE_CONNECTION_MANAGER \
-  (gabble_connection_manager_get_type())
+  (gabble_connection_manager_get_type ())
 #define GABBLE_CONNECTION_MANAGER(obj) \
   (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_CONNECTION_MANAGER, \
                               GabbleConnectionManager))

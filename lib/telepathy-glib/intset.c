@@ -142,10 +142,11 @@ tp_intset_add (TpIntSet *set, guint element)
   if (offset >= set->size)
   {
     newsize = ((offset>>DEFAULT_INCREMENT_LOG2) +1 ) << DEFAULT_INCREMENT_LOG2;
-    set->bits = g_renew(guint32, set->bits, newsize);
-    memset (set->bits + set->size, 0, sizeof(guint32) * (newsize - set->size));
+    set->bits = g_renew (guint32, set->bits, newsize);
+    memset (set->bits + set->size, 0,
+        sizeof (guint32) * (newsize - set->size));
     set->size = newsize;
-    g_assert(offset<newsize);
+    g_assert (offset<newsize);
   }
   set->bits[offset] = set->bits[offset] | (1<<(element & 0x1f));
 }

@@ -51,21 +51,24 @@ struct _GabbleMediaChannel {
     gpointer priv;
 };
 
-GType gabble_media_channel_get_type(void);
+GType gabble_media_channel_get_type (void);
 
 /* TYPE MACROS */
 #define GABBLE_TYPE_MEDIA_CHANNEL \
-  (gabble_media_channel_get_type())
+  (gabble_media_channel_get_type ())
 #define GABBLE_MEDIA_CHANNEL(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_MEDIA_CHANNEL, GabbleMediaChannel))
+  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_MEDIA_CHANNEL,\
+                              GabbleMediaChannel))
 #define GABBLE_MEDIA_CHANNEL_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_MEDIA_CHANNEL, GabbleMediaChannelClass))
+  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_MEDIA_CHANNEL,\
+                           GabbleMediaChannelClass))
 #define GABBLE_IS_MEDIA_CHANNEL(obj) \
   (G_TYPE_CHECK_INSTANCE_TYPE((obj), GABBLE_TYPE_MEDIA_CHANNEL))
 #define GABBLE_IS_MEDIA_CHANNEL_CLASS(klass) \
   (G_TYPE_CHECK_CLASS_TYPE((klass), GABBLE_TYPE_MEDIA_CHANNEL))
 #define GABBLE_MEDIA_CHANNEL_GET_CLASS(obj) \
-  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_MEDIA_CHANNEL, GabbleMediaChannelClass))
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_MEDIA_CHANNEL, \
+                              GabbleMediaChannelClass))
 
 gboolean
 _gabble_media_channel_add_member (GObject *obj,

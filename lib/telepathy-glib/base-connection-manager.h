@@ -181,7 +181,7 @@ struct _TpBaseConnectionManager {
     gpointer priv;
 };
 
-GType tp_base_connection_manager_get_type(void);
+GType tp_base_connection_manager_get_type (void);
 
 /**
  * tp_base_connection_manager_register:
@@ -198,7 +198,7 @@ gboolean tp_base_connection_manager_register (TpBaseConnectionManager *self);
 
 /* TYPE MACROS */
 #define TP_TYPE_BASE_CONNECTION_MANAGER \
-  (tp_base_connection_manager_get_type())
+  (tp_base_connection_manager_get_type ())
 #define TP_BASE_CONNECTION_MANAGER(obj) \
   (G_TYPE_CHECK_INSTANCE_CAST((obj), TP_TYPE_BASE_CONNECTION_MANAGER, TpBaseConnectionManager))
 #define TP_BASE_CONNECTION_MANAGER_CLASS(klass) \

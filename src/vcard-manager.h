@@ -48,11 +48,11 @@ typedef enum
 GQuark gabble_vcard_manager_error_quark (void);
 #define GABBLE_VCARD_MANAGER_ERROR gabble_vcard_manager_error_quark ()
 
-GType gabble_vcard_manager_get_type(void);
+GType gabble_vcard_manager_get_type (void);
 
 /* TYPE MACROS */
 #define GABBLE_TYPE_VCARD_MANAGER \
-  (gabble_vcard_manager_get_type())
+  (gabble_vcard_manager_get_type ())
 #define GABBLE_VCARD_MANAGER(obj) \
   (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_VCARD_MANAGER, GabbleVCardManager))
 #define GABBLE_VCARD_MANAGER_CLASS(klass) \

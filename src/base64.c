@@ -140,7 +140,7 @@ GString *base64_decode (const gchar *str)
     {
       if (str[i] != 'A' &&
           str[i] != '=' &&
-          !isspace(str[i]) &&
+          !isspace (str[i]) &&
           decoding[(guchar) str[i]] == 0)
         {
           DEBUG ("bad character %x at byte %u", (guchar)str[i], i);
@@ -152,7 +152,7 @@ GString *base64_decode (const gchar *str)
 
   for (i = 0; str[i]; i++)
     {
-      if (isspace(str[i]))
+      if (isspace (str[i]))
         continue;
 
       group[filled++] = str[i];

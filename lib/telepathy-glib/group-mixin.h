@@ -133,7 +133,7 @@ struct _TpGroupMixin {
 
 /* TYPE MACROS */
 #define TP_GROUP_MIXIN_CLASS_OFFSET_QUARK \
-  (tp_group_mixin_class_get_offset_quark())
+  (tp_group_mixin_class_get_offset_quark ())
 #define TP_GROUP_MIXIN_CLASS_OFFSET(o) \
   (GPOINTER_TO_UINT (g_type_get_qdata (G_OBJECT_CLASS_TYPE (o), \
                                        TP_GROUP_MIXIN_CLASS_OFFSET_QUARK)))
@@ -141,7 +141,7 @@ struct _TpGroupMixin {
   ((TpGroupMixinClass *) tp_mixin_offset_cast (o, \
     TP_GROUP_MIXIN_CLASS_OFFSET (o)))
 
-#define TP_GROUP_MIXIN_OFFSET_QUARK (tp_group_mixin_get_offset_quark())
+#define TP_GROUP_MIXIN_OFFSET_QUARK (tp_group_mixin_get_offset_quark ())
 #define TP_GROUP_MIXIN_OFFSET(o) (GPOINTER_TO_UINT (g_type_get_qdata (\
         G_OBJECT_TYPE (o), TP_GROUP_MIXIN_OFFSET_QUARK)))
 #define TP_GROUP_MIXIN(o) ((TpGroupMixin *) tp_mixin_offset_cast (o, \

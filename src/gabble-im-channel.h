@@ -46,11 +46,11 @@ struct _GabbleIMChannel {
     gpointer priv;
 };
 
-GType gabble_im_channel_get_type(void);
+GType gabble_im_channel_get_type (void);
 
 /* TYPE MACROS */
 #define GABBLE_TYPE_IM_CHANNEL \
-  (gabble_im_channel_get_type())
+  (gabble_im_channel_get_type ())
 #define GABBLE_IM_CHANNEL(obj) \
   (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_IM_CHANNEL, GabbleIMChannel))
 #define GABBLE_IM_CHANNEL_CLASS(klass) \

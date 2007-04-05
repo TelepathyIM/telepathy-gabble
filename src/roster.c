@@ -1353,7 +1353,7 @@ _gabble_roster_send_presence_ack (GabbleRoster *roster,
       sub_type = LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE;
       break;
     default:
-      g_assert_not_reached();
+      g_assert_not_reached ();
       return;
     }
 
@@ -1764,7 +1764,7 @@ roster_item_apply_edits (GabbleRoster *roster,
 
   g_return_if_fail (item->unsent_edits);
 
-  memcpy (&edited_item, item, sizeof(GabbleRosterItem));
+  memcpy (&edited_item, item, sizeof (GabbleRosterItem));
 
 #ifdef ENABLE_DEBUG
   if (DEBUGGING)
@@ -1784,7 +1784,7 @@ roster_item_apply_edits (GabbleRoster *roster,
       edited_item.subscription = edits->new_subscription;
     }
 
-  if (edits->new_name != NULL && tp_strdiff(item->name, edits->new_name))
+  if (edits->new_name != NULL && tp_strdiff (item->name, edits->new_name))
     {
       DEBUG ("Changing name from %s to %s", item->name, edits->new_name);
       altered = TRUE;

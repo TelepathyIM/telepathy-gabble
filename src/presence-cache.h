@@ -28,7 +28,7 @@
 
 G_BEGIN_DECLS
 
-#define GABBLE_TYPE_PRESENCE_CACHE gabble_presence_cache_get_type()
+#define GABBLE_TYPE_PRESENCE_CACHE gabble_presence_cache_get_type ()
 
 #define GABBLE_PRESENCE_CACHE(obj) \
   (G_TYPE_CHECK_INSTANCE_CAST ((obj), \

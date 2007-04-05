@@ -302,16 +302,16 @@ nokia_iv_get_reply_cb (GabbleConnection *conn,
   for (i = 0; i < strlen (challenge); i++)
     challenge[i] = tolower (challenge[i]);
 
-  md5_init(&calculator);
-  md5_append(&calculator, (const md5_byte_t *)auth_btid,
-             strlen(auth_btid));
-  md5_append(&calculator, (const md5_byte_t *)":", 1);
-  md5_append(&calculator, (const md5_byte_t *)challenge, strlen(challenge));
-  md5_finish(&calculator, digest);
+  md5_init (&calculator);
+  md5_append (&calculator, (const md5_byte_t *)auth_btid,
+             strlen (auth_btid));
+  md5_append (&calculator, (const md5_byte_t *)":", 1);
+  md5_append (&calculator, (const md5_byte_t *)challenge, strlen (challenge));
+  md5_finish (&calculator, digest);
 
   for (i = 0; i < 16; i++)
     {
-      sprintf(response + i*2, "%02x",digest[i]);
+      sprintf (response + i*2, "%02x",digest[i]);
     }
 
   lm_message_node_add_child (query_node, "mac", auth_mac);

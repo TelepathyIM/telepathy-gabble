@@ -92,7 +92,7 @@ void test_handles (guint handle_type)
   for (i = 0; i < NUM_TP_HANDLE_TYPES; i++)
     {
       if (repos[i])
-        g_object_unref((GObject *)repos[i]);
+        g_object_unref ((GObject *)repos[i]);
     }
 }
 

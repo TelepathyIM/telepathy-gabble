@@ -3,7 +3,7 @@
 
 int main (int argc, char **argv)
 {
-  TpIntSet *set1 = tp_intset_new();
+  TpIntSet *set1 = tp_intset_new ();
   TpIntSet *a, *b;
   TpIntSet *ab_union, *ab_expected_union;
   TpIntSet *ab_inter, *ab_expected_inter;
@@ -11,31 +11,31 @@ int main (int argc, char **argv)
   TpIntSet *b_diff_a, *b_expected_diff_a;
   TpIntSet *ab_symmdiff, *ab_expected_symmdiff;
 
-  tp_intset_add(set1, 0);
+  tp_intset_add (set1, 0);
 
-  tp_intset_add(set1, 2);
-  tp_intset_add(set1, 3);
-  tp_intset_add(set1, 5);
-  tp_intset_add(set1, 8);
+  tp_intset_add (set1, 2);
+  tp_intset_add (set1, 3);
+  tp_intset_add (set1, 5);
+  tp_intset_add (set1, 8);
 
-  tp_intset_add(set1, 1024);
-  tp_intset_add(set1, 32);
+  tp_intset_add (set1, 1024);
+  tp_intset_add (set1, 32);
 
-  g_assert(tp_intset_size(set1) == 7);
+  g_assert (tp_intset_size (set1) == 7);
 
-  g_assert(tp_intset_is_member(set1, 2));
-  g_assert(tp_intset_is_member(set1, 5));
-  g_assert(tp_intset_is_member(set1, 1024));
-  g_assert(!tp_intset_is_member(set1, 1023));
-  g_assert(!tp_intset_is_member(set1, 1025));
-  g_assert(tp_intset_is_member(set1, 0));
-  g_assert(tp_intset_is_member(set1, 32));
-  g_assert(!tp_intset_is_member(set1, 31));
-  g_assert(!tp_intset_is_member(set1, 33));
+  g_assert (tp_intset_is_member (set1, 2));
+  g_assert (tp_intset_is_member (set1, 5));
+  g_assert (tp_intset_is_member (set1, 1024));
+  g_assert (!tp_intset_is_member (set1, 1023));
+  g_assert (!tp_intset_is_member (set1, 1025));
+  g_assert (tp_intset_is_member (set1, 0));
+  g_assert (tp_intset_is_member (set1, 32));
+  g_assert (!tp_intset_is_member (set1, 31));
+  g_assert (!tp_intset_is_member (set1, 33));
 
-  tp_intset_remove(set1, 8);
-  tp_intset_remove(set1, 1024);
-  g_assert(tp_intset_size(set1) == 5);
+  tp_intset_remove (set1, 8);
+  tp_intset_remove (set1, 1024);
+  g_assert (tp_intset_size (set1) == 5);
 
 #define NUM_A 11
 #define NUM_B 823

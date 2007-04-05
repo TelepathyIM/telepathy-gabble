@@ -412,7 +412,7 @@ gabble_presence_dump (GabblePresence *presence)
     {
       Resource *res = (Resource *) i->data;
 
-      g_string_append_printf(ret,
+      g_string_append_printf (ret,
         "  %s\n"
         "    capabilities: %d\n"
         "    status: %d\n"
@@ -422,7 +422,7 @@ gabble_presence_dump (GabblePresence *presence)
     }
 
   if (priv->resources == NULL)
-    g_string_append_printf(ret, "  (none)\n");
+    g_string_append_printf (ret, "  (none)\n");
 
   return g_string_free (ret, FALSE);
 }

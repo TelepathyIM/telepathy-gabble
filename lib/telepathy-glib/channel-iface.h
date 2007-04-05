@@ -26,7 +26,7 @@
 
 G_BEGIN_DECLS
 
-#define TP_TYPE_CHANNEL_IFACE tp_channel_iface_get_type()
+#define TP_TYPE_CHANNEL_IFACE (tp_channel_iface_get_type ())
 
 #define TP_CHANNEL_IFACE(obj) \
   (G_TYPE_CHECK_INSTANCE_CAST ((obj), \

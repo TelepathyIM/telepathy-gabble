@@ -1931,8 +1931,9 @@ _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
   /* queue the message */
   if (message && (message[0] != '\0'))
     {
-      tp_text_mixin_receive (G_OBJECT (chan), TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE, inviter,
-                             time(NULL), message);
+      tp_text_mixin_receive (G_OBJECT (chan),
+          TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE, inviter,
+          time (NULL), message);
     }
 
   /* emit READY signal so NewChannel is emitted */
@@ -2754,7 +2755,7 @@ gabble_muc_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
 }
 
 static void
-channel_iface_init(gpointer g_iface, gpointer iface_data)
+channel_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcChannelClass *klass = (TpSvcChannelClass *)g_iface;
 
@@ -2768,7 +2769,7 @@ channel_iface_init(gpointer g_iface, gpointer iface_data)
 }
 
 static void
-text_iface_init(gpointer g_iface, gpointer iface_data)
+text_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcChannelTypeTextClass *klass = (TpSvcChannelTypeTextClass *)g_iface;
 
@@ -2780,7 +2781,7 @@ text_iface_init(gpointer g_iface, gpointer iface_data)
 }
 
 static void
-password_iface_init(gpointer g_iface, gpointer iface_data)
+password_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcChannelInterfacePasswordClass *klass =
     (TpSvcChannelInterfacePasswordClass *)g_iface;
@@ -2793,7 +2794,7 @@ password_iface_init(gpointer g_iface, gpointer iface_data)
 }
 
 static void
-chat_state_iface_init(gpointer g_iface, gpointer iface_data)
+chat_state_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcChannelInterfaceChatStateClass *klass =
     (TpSvcChannelInterfaceChatStateClass *)g_iface;

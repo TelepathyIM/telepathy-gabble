@@ -56,11 +56,11 @@ typedef enum
 GQuark gabble_disco_error_quark (void);
 #define GABBLE_DISCO_ERROR gabble_disco_error_quark ()
 
-GType gabble_disco_get_type(void);
+GType gabble_disco_get_type (void);
 
 /* TYPE MACROS */
 #define GABBLE_TYPE_DISCO \
-  (gabble_disco_get_type())
+  (gabble_disco_get_type ())
 #define GABBLE_DISCO(obj) \
   (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_DISCO, GabbleDisco))
 #define GABBLE_DISCO_CLASS(klass) \

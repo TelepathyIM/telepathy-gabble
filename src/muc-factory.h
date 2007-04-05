@@ -35,11 +35,11 @@ struct _GabbleMucFactory {
   GObject parent;
 };
 
-GType gabble_muc_factory_get_type(void);
+GType gabble_muc_factory_get_type (void);
 
 /* TYPE MACROS */
 #define GABBLE_TYPE_MUC_FACTORY \
-  (gabble_muc_factory_get_type())
+  (gabble_muc_factory_get_type ())
 #define GABBLE_MUC_FACTORY(obj) \
   (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_MUC_FACTORY, GabbleMucFactory))
 #define GABBLE_MUC_FACTORY_CLASS(klass) \

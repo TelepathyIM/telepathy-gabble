@@ -52,11 +52,11 @@ struct _GabbleMucChannel {
     gpointer priv;
 };
 
-GType gabble_muc_channel_get_type(void);
+GType gabble_muc_channel_get_type (void);
 
 /* TYPE MACROS */
 #define GABBLE_TYPE_MUC_CHANNEL \
-  (gabble_muc_channel_get_type())
+  (gabble_muc_channel_get_type ())
 #define GABBLE_MUC_CHANNEL(obj) \
   (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_MUC_CHANNEL, GabbleMucChannel))
 #define GABBLE_MUC_CHANNEL_CLASS(klass) \

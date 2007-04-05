@@ -149,7 +149,7 @@ segv_handler (int sig)
 static void
 add_signal_handlers (void)
 {
-#if defined(HAVE_SIGNAL) && defined(ENABLE_BACKTRACE)
+#if defined (HAVE_SIGNAL) && defined (ENABLE_BACKTRACE)
   signal (SIGSEGV, segv_handler);
 #endif /* HAVE_SIGNAL && ENABLE_BACKTRACE */
 }
@@ -188,9 +188,9 @@ tp_run_connection_manager (const char *prog_name,
 
   add_signal_handlers ();
 
-  g_type_init();
+  g_type_init ();
 
-  g_set_prgname(prog_name);
+  g_set_prgname (prog_name);
 
   fatal_mask = g_log_set_always_fatal (G_LOG_FATAL_MASK);
   fatal_mask |= G_LOG_LEVEL_CRITICAL;
@@ -216,7 +216,7 @@ tp_run_connection_manager (const char *prog_name,
   dbus_g_error_domain_register (TP_ERRORS,
       "org.freedesktop.Telepathy.Error", TP_TYPE_ERROR);
 
-  manager = construct_cm();
+  manager = construct_cm ();
 
   g_signal_connect (manager, "new-connection",
       (GCallback) new_connection, NULL);

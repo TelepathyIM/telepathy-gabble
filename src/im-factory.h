@@ -37,11 +37,11 @@ struct _GabbleImFactory {
   GObject parent;
 };
 
-GType gabble_im_factory_get_type(void);
+GType gabble_im_factory_get_type (void);
 
 /* TYPE MACROS */
 #define GABBLE_TYPE_IM_FACTORY \
-  (gabble_im_factory_get_type())
+  (gabble_im_factory_get_type ())
 #define GABBLE_IM_FACTORY(obj) \
   (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_IM_FACTORY, GabbleImFactory))
 #define GABBLE_IM_FACTORY_CLASS(klass) \

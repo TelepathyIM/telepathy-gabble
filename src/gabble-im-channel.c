@@ -564,7 +564,7 @@ gabble_im_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
 }
 
 static void
-channel_iface_init(gpointer g_iface, gpointer iface_data)
+channel_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcChannelClass *klass = (TpSvcChannelClass *)g_iface;
 
@@ -578,7 +578,7 @@ channel_iface_init(gpointer g_iface, gpointer iface_data)
 }
 
 static void
-text_iface_init(gpointer g_iface, gpointer iface_data)
+text_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcChannelTypeTextClass *klass = (TpSvcChannelTypeTextClass *)g_iface;
 
@@ -590,7 +590,7 @@ text_iface_init(gpointer g_iface, gpointer iface_data)
 }
 
 static void
-chat_state_iface_init(gpointer g_iface, gpointer iface_data)
+chat_state_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcChannelInterfaceChatStateClass *klass = (TpSvcChannelInterfaceChatStateClass *)g_iface;
 #define IMPLEMENT(x) tp_svc_channel_interface_chat_state_implement_##x (\

@@ -1414,7 +1414,7 @@ _gabble_media_channel_caps_to_typeflags (GabblePresenceCapabilities caps)
 
 
 static void
-channel_iface_init(gpointer g_iface, gpointer iface_data)
+channel_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcChannelClass *klass = (TpSvcChannelClass *)g_iface;
 
@@ -1428,7 +1428,7 @@ channel_iface_init(gpointer g_iface, gpointer iface_data)
 }
 
 static void
-streamed_media_iface_init(gpointer g_iface, gpointer iface_data)
+streamed_media_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcChannelTypeStreamedMediaClass *klass = (TpSvcChannelTypeStreamedMediaClass *)g_iface;
 
@@ -1442,7 +1442,7 @@ streamed_media_iface_init(gpointer g_iface, gpointer iface_data)
 }
 
 static void
-media_signalling_iface_init(gpointer g_iface, gpointer iface_data)
+media_signalling_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcChannelInterfaceMediaSignallingClass *klass = (TpSvcChannelInterfaceMediaSignallingClass *)g_iface;
 

@@ -243,7 +243,7 @@ struct _TpBaseConnection {
     gpointer priv;
 };
 
-GType tp_base_connection_get_type(void);
+GType tp_base_connection_get_type (void);
 
 TpHandleRepoIface *tp_base_connection_get_handles (TpBaseConnection *self,
     TpHandleType handle_type);
@@ -265,7 +265,7 @@ void tp_base_connection_dbus_request_handles (TpSvcConnection *iface,
 
 /* TYPE MACROS */
 #define TP_TYPE_BASE_CONNECTION \
-  (tp_base_connection_get_type())
+  (tp_base_connection_get_type ())
 #define TP_BASE_CONNECTION(obj) \
   (G_TYPE_CHECK_INSTANCE_CAST((obj), TP_TYPE_BASE_CONNECTION, \
                               TpBaseConnection))
@@ -300,7 +300,7 @@ void tp_base_connection_dbus_request_handles (TpSvcConnection *iface,
             "Connection is disconnected" }; \
         \
         DEBUG ("rejected request as disconnected"); \
-        dbus_g_method_return_error((context), &e); \
+        dbus_g_method_return_error ((context), &e); \
         return; \
       } \
   } G_STMT_END

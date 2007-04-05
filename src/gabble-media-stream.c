@@ -368,7 +368,7 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
   param_spec = g_param_spec_enum ("mode", "Signalling mode",
                                   "Which signalling mode used to control the "
                                   "stream.",
-                                  gabble_media_session_mode_get_type(),
+                                  gabble_media_session_mode_get_type (),
                                   MODE_JINGLE,
                                   G_PARAM_CONSTRUCT_ONLY |
                                   G_PARAM_READWRITE |
@@ -1121,7 +1121,7 @@ _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream,
           return FALSE;
         }
 
-      id = atoi(str);
+      id = atoi (str);
 
       /* codec name */
       name = lm_message_node_get_attribute (node, "name");

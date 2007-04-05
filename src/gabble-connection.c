@@ -79,8 +79,8 @@
     ("GValueArray", G_TYPE_UINT, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT, \
                     G_TYPE_INVALID))
 
-static void conn_service_iface_init(gpointer, gpointer);
-static void capabilities_service_iface_init(gpointer, gpointer);
+static void conn_service_iface_init (gpointer, gpointer);
+static void capabilities_service_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
     gabble_connection,
@@ -1591,7 +1591,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
 
   if (node && (
       0 != strncmp (node, NS_GABBLE_CAPS "#", strlen (NS_GABBLE_CAPS) + 1) ||
-      strlen(node) < strlen (NS_GABBLE_CAPS) + 2))
+      strlen (node) < strlen (NS_GABBLE_CAPS) + 2))
     {
       NODE_DEBUG (iq, "got iq disco query with unexpected node attribute");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
@@ -1613,7 +1613,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   DEBUG ("got disco request for bundle %s, caps are %x", node, self->self_presence->caps);
   features = capabilities_get_features (self->self_presence->caps);
 
-  g_debug("%s: caps now %u", G_STRFUNC, self->self_presence->caps);
+  g_debug ("%s: caps now %u", G_STRFUNC, self->self_presence->caps);
 
   for (i = features; NULL != i; i = i->next)
     {
@@ -1756,7 +1756,7 @@ connection_ssl_cb (LmSSL      *lmssl,
       tp_reason = TP_CONNECTION_STATUS_REASON_CERT_OTHER_ERROR;
       break;
     default:
-      g_assert_not_reached();
+      g_assert_not_reached ();
       reason = "Unknown SSL error code from Loudmouth.";
       tp_reason = TP_CONNECTION_STATUS_REASON_ENCRYPTION_ERROR;
       break;
@@ -2454,7 +2454,7 @@ room_verify_batch_free (RoomVerifyBatch *batch)
   g_array_free (batch->handles, TRUE);
   for (i = 0; i < batch->count; i++)
     {
-      g_free(batch->contexts[i].jid);
+      g_free (batch->contexts[i].jid);
     }
   g_free (batch->contexts);
   g_slice_free (RoomVerifyBatch, batch);
@@ -2474,7 +2474,7 @@ room_verify_batch_raise_error (RoomVerifyBatch *batch,
     {
       if (batch->contexts[i].request)
         {
-          gabble_disco_cancel_request(batch->conn->disco,
+          gabble_disco_cancel_request (batch->conn->disco,
                                       batch->contexts[i].request);
         }
     }
@@ -2497,7 +2497,7 @@ room_verify_batch_new (GabbleConnection *conn,
   batch->conn = conn;
   batch->invocation = invocation;
   batch->count = count;
-  batch->handles = g_array_sized_new(FALSE, FALSE, sizeof(TpHandle), count);
+  batch->handles = g_array_sized_new (FALSE, FALSE, sizeof (TpHandle), count);
   batch->contexts = g_new0(RoomVerifyContext, count);
   for (i = 0; i < count; i++)
     {
@@ -2546,7 +2546,7 @@ room_verify_batch_try_return (RoomVerifyBatch *batch)
 
   for (i = 0; i < batch->count; i++)
     {
-      if (!g_array_index(batch->handles, TpHandle, i))
+      if (!g_array_index (batch->handles, TpHandle, i))
         {
           /* we're not ready yet */
           return FALSE;
@@ -2765,7 +2765,7 @@ gabble_connection_request_handles (TpSvcConnection *iface,
 /* We reimplement RequestHandles to be able to do async validation on
  * room handles */
 static void
-conn_service_iface_init(gpointer g_iface, gpointer iface_data)
+conn_service_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcConnectionClass *klass = (TpSvcConnectionClass *)g_iface;
 
@@ -2776,7 +2776,7 @@ conn_service_iface_init(gpointer g_iface, gpointer iface_data)
 }
 
 static void
-capabilities_service_iface_init(gpointer g_iface, gpointer iface_data)
+capabilities_service_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcConnectionInterfaceCapabilitiesClass *klass = (TpSvcConnectionInterfaceCapabilitiesClass *)g_iface;
 

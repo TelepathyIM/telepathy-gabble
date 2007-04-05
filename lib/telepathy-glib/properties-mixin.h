@@ -141,7 +141,7 @@ typedef struct _TpPropertiesMixin TpPropertiesMixin;
 
 /* TYPE MACROS */
 #define TP_PROPERTIES_MIXIN_CLASS_OFFSET_QUARK \
-  (tp_properties_mixin_class_get_offset_quark())
+  (tp_properties_mixin_class_get_offset_quark ())
 #define TP_PROPERTIES_MIXIN_CLASS_OFFSET(o) \
   (GPOINTER_TO_UINT (g_type_get_qdata (G_OBJECT_CLASS_TYPE (o), \
                                       TP_PROPERTIES_MIXIN_CLASS_OFFSET_QUARK)))
@@ -150,7 +150,7 @@ typedef struct _TpPropertiesMixin TpPropertiesMixin;
     TP_PROPERTIES_MIXIN_CLASS_OFFSET (o)))
 
 #define TP_PROPERTIES_MIXIN_OFFSET_QUARK \
-  (tp_properties_mixin_get_offset_quark())
+  (tp_properties_mixin_get_offset_quark ())
 #define TP_PROPERTIES_MIXIN_OFFSET(o) \
   (GPOINTER_TO_UINT (g_type_get_qdata (G_OBJECT_TYPE (o), \
                                        TP_PROPERTIES_MIXIN_OFFSET_QUARK)))
@@ -260,7 +260,7 @@ void tp_properties_mixin_emit_flags (GObject *obj, const TpIntSet *props);
 gboolean tp_properties_mixin_is_readable (GObject *obj, guint prop_id);
 gboolean tp_properties_mixin_is_writable (GObject *obj, guint prop_id);
 
-void tp_properties_mixin_iface_init(gpointer g_iface, gpointer iface_data);
+void tp_properties_mixin_iface_init (gpointer g_iface, gpointer iface_data);
 
 G_END_DECLS
 

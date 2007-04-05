@@ -130,11 +130,11 @@ typedef enum {
     GABBLE_CONNECTION_ALIAS_FROM_ROSTER
 } GabbleConnectionAliasSource;
 
-GType gabble_connection_get_type(void);
+GType gabble_connection_get_type (void);
 
 /* TYPE MACROS */
 #define GABBLE_TYPE_CONNECTION \
-  (gabble_connection_get_type())
+  (gabble_connection_get_type ())
 #define GABBLE_CONNECTION(obj) \
   (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_CONNECTION, GabbleConnection))
 #define GABBLE_CONNECTION_CLASS(klass) \

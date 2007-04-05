@@ -426,7 +426,7 @@ gabble_remove_resource (const gchar *jid)
     return g_strdup (jid);
 
   /* The user and domain parts can't contain '/', assuming it's valid */
-  buf = g_malloc(slash - jid + 1);
+  buf = g_malloc (slash - jid + 1);
   strncpy (buf, jid, slash - jid);
   buf[slash - jid] = '\0';
 

@@ -62,21 +62,24 @@ struct _GabbleMediaStream {
     gpointer priv;
 };
 
-GType gabble_media_stream_get_type(void);
+GType gabble_media_stream_get_type (void);
 
 /* TYPE MACROS */
 #define GABBLE_TYPE_MEDIA_STREAM \
-  (gabble_media_stream_get_type())
+  (gabble_media_stream_get_type ())
 #define GABBLE_MEDIA_STREAM(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_MEDIA_STREAM, GabbleMediaStream))
+  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_MEDIA_STREAM, \
+                              GabbleMediaStream))
 #define GABBLE_MEDIA_STREAM_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_MEDIA_STREAM, GabbleMediaStreamClass))
+  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_MEDIA_STREAM, \
+                           GabbleMediaStreamClass))
 #define GABBLE_IS_MEDIA_STREAM(obj) \
   (G_TYPE_CHECK_INSTANCE_TYPE((obj), GABBLE_TYPE_MEDIA_STREAM))
 #define GABBLE_IS_MEDIA_STREAM_CLASS(klass) \
   (G_TYPE_CHECK_CLASS_TYPE((klass), GABBLE_TYPE_MEDIA_STREAM))
 #define GABBLE_MEDIA_STREAM_GET_CLASS(obj) \
-  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_MEDIA_STREAM, GabbleMediaStreamClass))
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_MEDIA_STREAM, \
+                              GabbleMediaStreamClass))
 
 #define TP_TYPE_TRANSPORT_STRUCT (dbus_g_type_get_struct ("GValueArray", \
       G_TYPE_UINT, \
@@ -121,12 +124,19 @@ gboolean gabble_media_stream_error (GabbleMediaStream *self, guint errno,
     const gchar *message, GError **error);
 
 void _gabble_media_stream_close (GabbleMediaStream *close);
-gboolean _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream, LmMessage *message, LmMessageNode *desc_node, GError **error);
-gboolean _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream, LmMessage *message, LmMessageNode *transport_node, GError **error);
-LmMessageNode *_gabble_media_stream_add_content_node (GabbleMediaStream *stream, LmMessageNode *session_node);
-void _gabble_media_stream_content_node_add_description (GabbleMediaStream *stream, LmMessageNode *content_node);
-LmMessageNode *_gabble_media_stream_content_node_add_transport (GabbleMediaStream *stream, LmMessageNode *content_node);
-void _gabble_media_stream_update_sending (GabbleMediaStream *stream, gboolean start_sending);
+gboolean _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream,
+    LmMessage *message, LmMessageNode *desc_node, GError **error);
+gboolean _gabble_media_stream_post_remote_candidates (
+    GabbleMediaStream *stream, LmMessage *message,
+    LmMessageNode *transport_node, GError **error);
+LmMessageNode *_gabble_media_stream_add_content_node (
+    GabbleMediaStream *stream, LmMessageNode *session_node);
+void _gabble_media_stream_content_node_add_description (
+    GabbleMediaStream *stream, LmMessageNode *content_node);
+LmMessageNode *_gabble_media_stream_content_node_add_transport (
+    GabbleMediaStream *stream, LmMessageNode *content_node);
+void _gabble_media_stream_update_sending (GabbleMediaStream *stream,
+    gboolean start_sending);
 
 G_END_DECLS
 

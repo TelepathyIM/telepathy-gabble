@@ -703,8 +703,8 @@ gabble_media_factory_iface_connecting (TpChannelFactoryIface *iface)
   GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (iface);
   GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
 
-  g_assert(priv->conn != NULL);
-  g_assert(priv->conn->lmconn != NULL);
+  g_assert (priv->conn != NULL);
+  g_assert (priv->conn->lmconn != NULL);
 
   DEBUG ("adding callbacks");
 

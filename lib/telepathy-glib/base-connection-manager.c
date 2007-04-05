@@ -94,7 +94,7 @@ tp_base_connection_manager_finalize (GObject *object)
   TpBaseConnectionManagerPrivate *priv =
     TP_BASE_CONNECTION_MANAGER_GET_PRIVATE (self);
 
-  g_hash_table_destroy(priv->connections);
+  g_hash_table_destroy (priv->connections);
 
   G_OBJECT_CLASS (tp_base_connection_manager_parent_class)->finalize (object);
 }
@@ -201,14 +201,14 @@ param_default_value (const TpCMParamSpec *params, int i)
   GValue *value;
 
   value = g_slice_new0 (GValue);
-  g_value_init(value, params[i].gtype);
+  g_value_init (value, params[i].gtype);
 
   /* TODO: this check could be stricter if we knew whether register
   was true. In practice REQUIRED and REGISTER always go together in
   the Gabble params, though */
   if (params[i].flags & TP_CONN_MGR_PARAM_FLAG_REQUIRED & TP_CONN_MGR_PARAM_FLAG_REGISTER)
     {
-      g_assert(params[i].def == NULL);
+      g_assert (params[i].def == NULL);
       goto OUT;
     }
 
@@ -233,8 +233,8 @@ param_default_value (const TpCMParamSpec *params, int i)
         g_value_set_boolean (value, GPOINTER_TO_INT (params[i].def));
         break;
       default:
-        g_error("parameter_defaults: encountered unknown type %s on argument %s",
-                params[i].dtype, params[i].name);
+        g_error ("parameter_defaults: encountered unknown type %s on "
+            "argument %s", params[i].dtype, params[i].name);
     }
 
 OUT:
@@ -332,7 +332,7 @@ parse_parameters (const TpCMParamSpec *paramspec,
 
   value = g_hash_table_lookup (provided, "register");
   if (value != NULL && G_VALUE_TYPE(value) == G_TYPE_BOOLEAN &&
-      g_value_get_boolean(value))
+      g_value_get_boolean (value))
     {
       mandatory_flag = TP_CONN_MGR_PARAM_FLAG_REGISTER;
     }
@@ -650,7 +650,7 @@ tp_base_connection_manager_register (TpBaseConnectionManager *self)
 }
 
 static void
-service_iface_init(gpointer g_iface, gpointer iface_data)
+service_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcConnectionManagerClass *klass = (TpSvcConnectionManagerClass *)g_iface;
 

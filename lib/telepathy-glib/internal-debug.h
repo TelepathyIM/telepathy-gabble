@@ -56,12 +56,12 @@ G_END_DECLS
 
 #undef DEBUG
 #define DEBUG(format, ...) \
-  _tp_debug(DEBUG_FLAG, "%s: " format, G_STRFUNC, ##__VA_ARGS__)
+  _tp_debug (DEBUG_FLAG, "%s: " format, G_STRFUNC, ##__VA_ARGS__)
 
 #undef DEBUGGING
-#define DEBUGGING _tp_debug_flag_is_set(DEBUG_FLAG)
+#define DEBUGGING _tp_debug_flag_is_set (DEBUG_FLAG)
 
-#else /* !defined(ENABLE_DEBUG) */
+#else /* !defined (ENABLE_DEBUG) */
 
 #undef DEBUG
 #define DEBUG(format, ...)
@@ -69,5 +69,5 @@ G_END_DECLS
 #undef DEBUGGING
 #define DEBUGGING 0
 
-#endif /* !defined(ENABLE_DEBUG) */
-#endif /* defined(DEBUG_FLAG) */
+#endif /* !defined (ENABLE_DEBUG) */
+#endif /* defined (DEBUG_FLAG) */

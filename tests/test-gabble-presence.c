@@ -4,15 +4,15 @@
 #include <glib.h>
 #include <presence.h>
 
-int main(int argc, char **argv)
+int main (int argc, char **argv)
 {
   const gchar *resource;
   gchar *dump;
   GabblePresence *presence;
 
-  g_type_init();
+  g_type_init ();
 
-  presence = gabble_presence_new();
+  presence = gabble_presence_new ();
   g_assert (GABBLE_PRESENCE_OFFLINE == presence->status);
   g_assert (NULL == presence->status_message);
 
@@ -69,7 +69,7 @@ int main(int argc, char **argv)
   g_assert (NULL == resource);
 
   /* give voice cap to second resource, but make priority negative */
-  g_assert (FALSE == gabble_presence_update(presence, "bar",
+  g_assert (FALSE == gabble_presence_update (presence, "bar",
     GABBLE_PRESENCE_AVAILABLE, "dingoes", -1));
   gabble_presence_set_capabilities (presence, "bar", PRESENCE_CAP_GOOGLE_VOICE, 0);
 
@@ -111,7 +111,7 @@ int main(int argc, char **argv)
   g_assert (TRUE == gabble_presence_update (presence, NULL,
     GABBLE_PRESENCE_OFFLINE, "gone", 0));
   g_assert (GABBLE_PRESENCE_OFFLINE == presence->status);
-  g_assert (0 == strcmp("gone", presence->status_message));
+  g_assert (0 == strcmp ("gone", presence->status_message));
 
   /* caps are gone too */
   resource = gabble_presence_pick_resource_by_caps (presence,

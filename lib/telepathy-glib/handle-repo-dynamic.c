@@ -119,7 +119,7 @@ handle_priv_free (TpHandlePriv *priv)
 {
   g_return_if_fail (priv != NULL);
 
-  g_free(priv->string);
+  g_free (priv->string);
   g_datalist_clear (&(priv->datalist));
 #ifdef ENABLE_HANDLE_LEAK_DEBUG
   g_slist_foreach (priv->traces, handle_leak_trace_free_gfunc, NULL);
@@ -265,7 +265,7 @@ tp_dynamic_handle_repo_init (TpDynamicHandleRepo *self)
   self->next_handle = 1;
   g_datalist_init (&self->holder_to_handle_set);
 
-  self->bus_service_proxy = dbus_g_proxy_new_for_name (tp_get_bus(),
+  self->bus_service_proxy = dbus_g_proxy_new_for_name (tp_get_bus (),
       DBUS_SERVICE_DBUS, DBUS_PATH_DBUS, DBUS_INTERFACE_DBUS);
 
   dbus_g_proxy_add_signal (self->bus_service_proxy,
@@ -306,7 +306,7 @@ handle_leak_debug_printbt_foreach (gpointer data, gpointer user_data)
   HandleLeakTrace *hltrace = (HandleLeakTrace *) data;
   int i;
 
-  printf("\t    %s at:\n", handle_leak_describe_event (hltrace->event));
+  printf ("\t    %s at:\n", handle_leak_describe_event (hltrace->event));
 
   for (i = 1; i < hltrace->len; i++)
     {

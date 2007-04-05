@@ -382,7 +382,7 @@ gabble_connection_get_statuses (TpSvcConnectionInterfacePresence *iface,
       g_value_init (g_value_array_get_nth (status, 3),
           DBUS_TYPE_G_STRING_STRING_HASHTABLE);
       g_value_set_static_boxed (g_value_array_get_nth (status, 3),
-          get_statuses_arguments());
+          get_statuses_arguments ());
 
       g_hash_table_insert (ret, (gchar*) gabble_statuses[i].name, status);
     }

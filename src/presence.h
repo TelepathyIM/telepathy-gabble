@@ -29,7 +29,7 @@
 
 G_BEGIN_DECLS
 
-#define GABBLE_TYPE_PRESENCE gabble_presence_get_type()
+#define GABBLE_TYPE_PRESENCE gabble_presence_get_type ()
 
 #define GABBLE_PRESENCE(obj) \
     (G_TYPE_CHECK_INSTANCE_CAST ((obj), \

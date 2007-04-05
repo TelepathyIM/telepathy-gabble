@@ -168,7 +168,7 @@ tp_text_mixin_class_get_offset_quark ()
 {
   static GQuark offset_quark = 0;
   if (!offset_quark)
-    offset_quark = g_quark_from_static_string("TpTextMixinClassOffsetQuark");
+    offset_quark = g_quark_from_static_string ("TpTextMixinClassOffsetQuark");
   return offset_quark;
 }
 
@@ -184,7 +184,7 @@ tp_text_mixin_get_offset_quark ()
 {
   static GQuark offset_quark = 0;
   if (!offset_quark)
-    offset_quark = g_quark_from_static_string("TpTextMixinOffsetQuark");
+    offset_quark = g_quark_from_static_string ("TpTextMixinOffsetQuark");
   return offset_quark;
 }
 
@@ -322,7 +322,7 @@ _pending_get_alloc ()
   static _Allocator alloc = { 0, };
 
   if (0 == alloc.size)
-    _allocator_init (&alloc, sizeof(_PendingMessage), MAX_PENDING_MESSAGES);
+    _allocator_init (&alloc, sizeof (_PendingMessage), MAX_PENDING_MESSAGES);
 
   return &alloc;
 }
@@ -474,11 +474,11 @@ tp_text_mixin_acknowledge_pending_messages (GObject *obj,
   _PendingMessage *msg;
   guint i;
 
-  nodes = g_new(GList *, ids->len);
+  nodes = g_new (GList *, ids->len);
 
   for (i = 0; i < ids->len; i++)
     {
-      guint id = g_array_index(ids, guint, i);
+      guint id = g_array_index (ids, guint, i);
 
       nodes[i] = g_queue_find_custom (mixin->priv->pending,
                                       GINT_TO_POINTER (id),
@@ -491,7 +491,7 @@ tp_text_mixin_acknowledge_pending_messages (GObject *obj,
           g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
               "invalid message id %u", id);
 
-          g_free(nodes);
+          g_free (nodes);
           return FALSE;
         }
     }
@@ -507,7 +507,7 @@ tp_text_mixin_acknowledge_pending_messages (GObject *obj,
       _pending_free (msg, mixin->priv->contacts_repo);
     }
 
-  g_free(nodes);
+  g_free (nodes);
   return TRUE;
 }
 

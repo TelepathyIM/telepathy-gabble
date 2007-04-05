@@ -38,11 +38,11 @@ struct _GabbleRoomlistChannel {
     gpointer priv;
 };
 
-GType gabble_roomlist_channel_get_type(void);
+GType gabble_roomlist_channel_get_type (void);
 
 /* TYPE MACROS */
 #define GABBLE_TYPE_ROOMLIST_CHANNEL \
-  (gabble_roomlist_channel_get_type())
+  (gabble_roomlist_channel_get_type ())
 #define GABBLE_ROOMLIST_CHANNEL(obj) \
   (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_ROOMLIST_CHANNEL, GabbleRoomlistChannel))
 #define GABBLE_ROOMLIST_CHANNEL_CLASS(klass) \

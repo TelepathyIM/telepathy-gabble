@@ -39,9 +39,9 @@ G_END_DECLS
 #ifdef DEBUG_FLAG
 
 #define DEBUG(format, ...) \
-  gabble_debug(DEBUG_FLAG, "%s: " format, G_STRFUNC, ##__VA_ARGS__)
+  gabble_debug (DEBUG_FLAG, "%s: " format, G_STRFUNC, ##__VA_ARGS__)
 
-#define DEBUGGING gabble_debug_flag_is_set(DEBUG_FLAG)
+#define DEBUGGING gabble_debug_flag_is_set (DEBUG_FLAG)
 
 #define NODE_DEBUG(n, s) \
 G_STMT_START { \

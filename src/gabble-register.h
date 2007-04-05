@@ -31,11 +31,11 @@ G_BEGIN_DECLS
 typedef struct _GabbleRegister GabbleRegister;
 typedef struct _GabbleRegisterClass GabbleRegisterClass;
 
-GType gabble_register_get_type(void);
+GType gabble_register_get_type (void);
 
 /* TYPE MACROS */
 #define GABBLE_TYPE_REGISTER \
-  (gabble_register_get_type())
+  (gabble_register_get_type ())
 #define GABBLE_REGISTER(obj) \
   (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_REGISTER, GabbleRegister))
 #define GABBLE_REGISTER_CLASS(klass) \

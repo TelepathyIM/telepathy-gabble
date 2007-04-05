@@ -161,7 +161,7 @@ _got_self_avatar_for_get_avatar_tokens (GObject *obj,
 
   g_signal_handler_disconnect (obj, context->signal_conn);
   g_free (context->ret[context->my_index]);
-  context->ret[context->my_index] = g_strdup(sha1);
+  context->ret[context->my_index] = g_strdup (sha1);
 
   /* FIXME: I'm not entirely sure why gcc warns without this cast from
    * (gchar **) to (const gchar **) */

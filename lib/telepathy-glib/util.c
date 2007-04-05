@@ -159,7 +159,7 @@ tp_escape_as_identifier (const gchar *name)
   GString *op;
   const gchar *ptr, *first_ok;
 
-  g_return_val_if_fail(name != NULL, NULL);
+  g_return_val_if_fail (name != NULL, NULL);
 
   for (ptr = name; *ptr; ptr++)
     {

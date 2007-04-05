@@ -667,7 +667,7 @@ gabble_roomlist_channel_stop_listing (TpSvcChannelTypeRoomList *iface,
 }
 
 static void
-channel_iface_init(gpointer g_iface, gpointer iface_data)
+channel_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcChannelClass *klass = (TpSvcChannelClass *)g_iface;
 
@@ -681,7 +681,7 @@ channel_iface_init(gpointer g_iface, gpointer iface_data)
 }
 
 static void
-roomlist_iface_init(gpointer g_iface, gpointer iface_data)
+roomlist_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcChannelTypeRoomListClass *klass = (TpSvcChannelTypeRoomListClass *)g_iface;
 

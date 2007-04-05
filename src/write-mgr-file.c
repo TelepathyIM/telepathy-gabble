@@ -32,55 +32,55 @@ mgr_file_contents (const char *busname,
                    const TpCMProtocolSpec protocols[],
                    GError **error)
 {
-  GKeyFile *f = g_key_file_new();
+  GKeyFile *f = g_key_file_new ();
   const TpCMProtocolSpec *protocol;
   const TpCMParamSpec *row;
 
-  g_key_file_set_string(f, "ConnectionManager", "BusName", busname);
-  g_key_file_set_string(f, "ConnectionManager", "ObjectPath", objpath);
+  g_key_file_set_string (f, "ConnectionManager", "BusName", busname);
+  g_key_file_set_string (f, "ConnectionManager", "ObjectPath", objpath);
 
   for (protocol = protocols; protocol->name; protocol++)
     {
-      gchar *section_name = g_strdup_printf("Protocol %s", protocol->name);
+      gchar *section_name = g_strdup_printf ("Protocol %s", protocol->name);
 
       for (row = protocol->parameters; row->name; row++)
         {
-          gchar *param_name = g_strdup_printf("param-%s", row->name);
-          gchar *param_value = g_strdup_printf("%s%s%s", row->dtype,
+          gchar *param_name = g_strdup_printf ("param-%s", row->name);
+          gchar *param_value = g_strdup_printf ("%s%s%s", row->dtype,
               (row->flags & TP_CONN_MGR_PARAM_FLAG_REQUIRED ? " required" : ""),
               (row->flags & TP_CONN_MGR_PARAM_FLAG_REGISTER ? " register" : ""));
-          g_key_file_set_string(f, section_name, param_name, param_value);
-          g_free(param_value);
-          g_free(param_name);
+          g_key_file_set_string (f, section_name, param_name, param_value);
+          g_free (param_value);
+          g_free (param_name);
         }
 
       for (row = protocol->parameters; row->name; row++)
         {
           if (row->flags & TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT)
             {
-              gchar *default_name = g_strdup_printf("default-%s", row->name);
+              gchar *default_name = g_strdup_printf ("default-%s", row->name);
 
               switch (row->gtype)
                 {
                 case G_TYPE_STRING:
-                  g_key_file_set_string(f, section_name, default_name,
+                  g_key_file_set_string (f, section_name, default_name,
                                         row->def);
                   break;
                 case G_TYPE_INT:
                 case G_TYPE_UINT:
-                  g_key_file_set_integer(f, section_name, default_name,
+                  g_key_file_set_integer (f, section_name, default_name,
                                          GPOINTER_TO_INT(row->def));
                   break;
                 case G_TYPE_BOOLEAN:
-                  g_key_file_set_boolean(f, section_name, default_name,
+                  g_key_file_set_boolean (f, section_name, default_name,
                                          GPOINTER_TO_INT(row->def) ? 1 : 0);
                 }
-              g_free(default_name);
+              g_free (default_name);
             }
         }
-      g_free(section_name);
+      g_free (section_name);
     }
-  return g_key_file_to_data(f, NULL, error);
+  return g_key_file_to_data (f, NULL, error);
 }
 
 int
@@ -88,16 +88,16 @@ main (void)
 {
   GError *error = NULL;
 
-  gchar *s = mgr_file_contents(TP_CM_BUS_NAME_BASE "gabble",
+  gchar *s = mgr_file_contents (TP_CM_BUS_NAME_BASE "gabble",
                                TP_CM_OBJECT_PATH_BASE "gabble",
                                gabble_protocols, &error);
   if (!s)
     {
-      fprintf(stderr, error->message);
-      g_error_free(error);
+      fprintf (stderr, error->message);
+      g_error_free (error);
       return 1;
     }
-  printf("%s", s);
-  g_free(s);
+  printf ("%s", s);
+  g_free (s);
   return 0;
 }

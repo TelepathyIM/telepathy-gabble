@@ -37,11 +37,11 @@ struct _GabbleMediaFactory {
   GObject parent;
 };
 
-GType gabble_media_factory_get_type(void);
+GType gabble_media_factory_get_type (void);
 
 /* TYPE MACROS */
 #define GABBLE_TYPE_MEDIA_FACTORY \
-  (gabble_media_factory_get_type())
+  (gabble_media_factory_get_type ())
 #define GABBLE_MEDIA_FACTORY(obj) \
   (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_MEDIA_FACTORY, GabbleMediaFactory))
 #define GABBLE_MEDIA_FACTORY_CLASS(klass) \

@@ -69,21 +69,24 @@ struct _GabbleMediaSession {
     gpointer priv;
 };
 
-GType gabble_media_session_get_type(void);
+GType gabble_media_session_get_type (void);
 
 /* TYPE MACROS */
 #define GABBLE_TYPE_MEDIA_SESSION \
-  (gabble_media_session_get_type())
+  (gabble_media_session_get_type ())
 #define GABBLE_MEDIA_SESSION(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_MEDIA_SESSION, GabbleMediaSession))
+  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_MEDIA_SESSION, \
+                              GabbleMediaSession))
 #define GABBLE_MEDIA_SESSION_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_MEDIA_SESSION, GabbleMediaSessionClass))
+  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_MEDIA_SESSION, \
+                           GabbleMediaSessionClass))
 #define GABBLE_IS_MEDIA_SESSION(obj) \
   (G_TYPE_CHECK_INSTANCE_TYPE((obj), GABBLE_TYPE_MEDIA_SESSION))
 #define GABBLE_IS_MEDIA_SESSION_CLASS(klass) \
   (G_TYPE_CHECK_CLASS_TYPE((klass), GABBLE_TYPE_MEDIA_SESSION))
 #define GABBLE_MEDIA_SESSION_GET_CLASS(obj) \
-  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_MEDIA_SESSION, GabbleMediaSessionClass))
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_MEDIA_SESSION, \
+                              GabbleMediaSessionClass))
 
 /* CONVENIENCE MACROS */
 #define MSG_REPLY_CB_END_SESSION_IF_NOT_SUCCESSFUL(s, m) \
@@ -93,7 +96,8 @@ GType gabble_media_session_get_type(void);
       GMS_DEBUG_ERROR (s, m); \
       NODE_DEBUG (sent_msg->node, "message sent"); \
       NODE_DEBUG (reply_msg->node, "message reply"); \
-      _gabble_media_session_terminate (s, INITIATOR_LOCAL, TP_CHANNEL_GROUP_CHANGE_REASON_ERROR); \
+      _gabble_media_session_terminate (s, INITIATOR_LOCAL, \
+          TP_CHANNEL_GROUP_CHANGE_REASON_ERROR); \
       return LM_HANDLER_RESULT_REMOVE_MESSAGE; \
     } \
   } G_STMT_END

@@ -50,7 +50,7 @@ tp_handle_set_new (TpHandleRepoIface *repo)
   g_assert (repo != NULL);
 
   set = g_slice_new0 (TpHandleSet);
-  set->intset = tp_intset_new();
+  set->intset = tp_intset_new ();
   set->repo = repo;
 
   return set;
@@ -105,7 +105,7 @@ tp_handle_set_add (TpHandleSet *set, TpHandle handle)
   g_return_if_fail (set != NULL);
   g_return_if_fail (handle != 0);
 
-  if (!tp_intset_is_member(set->intset, handle))
+  if (!tp_intset_is_member (set->intset, handle))
     {
       tp_handle_ref (set->repo, handle);
       tp_intset_add (set->intset, handle);
@@ -129,7 +129,7 @@ tp_handle_set_remove (TpHandleSet *set, TpHandle handle)
   g_return_val_if_fail (set != NULL, FALSE);
   g_return_val_if_fail (handle != 0, FALSE);
 
-  if (tp_intset_is_member(set->intset, handle))
+  if (tp_intset_is_member (set->intset, handle))
     {
       tp_handle_unref (set->repo, handle);
       tp_intset_remove (set->intset, handle);
@@ -152,7 +152,7 @@ tp_handle_set_remove (TpHandleSet *set, TpHandle handle)
 gboolean
 tp_handle_set_is_member (TpHandleSet *set, TpHandle handle)
 {
-  return tp_intset_is_member(set->intset, handle);
+  return tp_intset_is_member (set->intset, handle);
 }
 
 typedef struct __foreach_data
@@ -163,11 +163,11 @@ typedef struct __foreach_data
 } _foreach_data;
 
 static void
-foreach_helper(guint i, gpointer userdata)
+foreach_helper (guint i, gpointer userdata)
 {
   _foreach_data *data = (_foreach_data*) userdata;
 
-  data->func(data->set, i, data->userdata);
+  data->func (data->set, i, data->userdata);
 }
 
 /**

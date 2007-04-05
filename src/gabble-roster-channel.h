@@ -45,11 +45,11 @@ struct _GabbleRosterChannel {
     gpointer priv;
 };
 
-GType gabble_roster_channel_get_type(void);
+GType gabble_roster_channel_get_type (void);
 
 /* TYPE MACROS */
 #define GABBLE_TYPE_ROSTER_CHANNEL \
-  (gabble_roster_channel_get_type())
+  (gabble_roster_channel_get_type ())
 #define GABBLE_ROSTER_CHANNEL(obj) \
   (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_ROSTER_CHANNEL, GabbleRosterChannel))
 #define GABBLE_ROSTER_CHANNEL_CLASS(klass) \

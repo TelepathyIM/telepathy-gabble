@@ -81,7 +81,8 @@ tp_properties_mixin_class_get_offset_quark ()
 {
   static GQuark offset_quark = 0;
   if (!offset_quark)
-    offset_quark = g_quark_from_static_string("TpPropertiesMixinClassOffsetQuark");
+    offset_quark = g_quark_from_static_string (
+        "TpPropertiesMixinClassOffsetQuark");
   return offset_quark;
 }
 
@@ -95,7 +96,8 @@ tp_properties_mixin_get_offset_quark ()
 {
   static GQuark offset_quark = 0;
   if (!offset_quark)
-    offset_quark = g_quark_from_static_string("TpPropertiesMixinOffsetQuark");
+    offset_quark = g_quark_from_static_string (
+        "TpPropertiesMixinOffsetQuark");
   return offset_quark;
 }
 
@@ -1140,7 +1142,7 @@ set_properties (TpSvcPropertiesInterface *iface,
  * inside the G_DEFINE_TYPE_WITH_CODE macro.
  */
 void
-tp_properties_mixin_iface_init(gpointer g_iface, gpointer iface_data)
+tp_properties_mixin_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcPropertiesInterfaceClass *klass =
     (TpSvcPropertiesInterfaceClass *)g_iface;

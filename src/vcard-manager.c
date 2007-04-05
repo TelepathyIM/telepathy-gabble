@@ -323,7 +323,7 @@ cache_entry_timeout (gpointer data)
   GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (manager);
   GabbleVCardCacheEntry *entry;
 
-  time_t now = time(NULL);
+  time_t now = time (NULL);
 
   while (NULL != (entry = tp_heap_peek_first (priv->timed_cache)))
     {
@@ -341,7 +341,7 @@ cache_entry_timeout (gpointer data)
   if (entry)
     {
       priv->cache_timer = g_timeout_add (
-          1000 * (entry->received + VCARD_CACHE_ENTRY_TTL - time(NULL)),
+          1000 * (entry->received + VCARD_CACHE_ENTRY_TTL - time (NULL)),
           cache_entry_timeout, manager);
     }
 
@@ -399,14 +399,14 @@ cache_entry_fill (GabbleVCardManager *manager, LmMessage *msg, TpHandle handle)
   g_assert (entry->message == NULL);
   entry->message = lm_message_new ("", LM_MESSAGE_TYPE_IQ);
   lm_message_node_steal_children (entry->message->node, msg->node);
-  entry->received = time(NULL);
+  entry->received = time (NULL);
   tp_heap_add (priv->timed_cache, entry);
 
   if (priv->cache_timer == 0)
     {
       GabbleVCardCacheEntry *first = tp_heap_peek_first (priv->timed_cache);
       priv->cache_timer = g_timeout_add ((first->received +
-          VCARD_CACHE_ENTRY_TTL - time(NULL)) * 1000, cache_entry_timeout, manager);
+          VCARD_CACHE_ENTRY_TTL - time (NULL)) * 1000, cache_entry_timeout, manager);
     }
 }
 
@@ -1415,7 +1415,7 @@ gabble_vcard_manager_get_cached_alias (GabbleVCardManager *manager,
   g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL), NULL);
 
   s = tp_handle_get_qdata (contact_repo, handle,
-      gabble_vcard_manager_cache_quark());
+      gabble_vcard_manager_cache_quark ());
 
   if (s == NO_ALIAS)
     s = NULL;
@@ -1444,7 +1444,7 @@ gabble_vcard_manager_has_cached_alias (GabbleVCardManager *manager,
       FALSE);
 
   p = tp_handle_get_qdata (contact_repo, handle,
-      gabble_vcard_manager_cache_quark());
+      gabble_vcard_manager_cache_quark ());
 
   return p != NULL;
 }

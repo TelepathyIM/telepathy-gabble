@@ -22,6 +22,8 @@
 /* FIXME: take this out after 0.5.7 is released */
 #define _TP_CM_UPDATED_FOR_0_5_7
 
+#include "gabble-media-channel.h"
+
 #include <dbus/dbus-glib.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,8 +42,6 @@
 #include <telepathy-glib/channel-iface.h>
 #include <telepathy-glib/svc-channel.h>
 #include <telepathy-glib/svc-properties-interface.h>
-
-#include "gabble-media-channel.h"
 
 #include "gabble-media-session.h"
 #include "gabble-media-stream.h"

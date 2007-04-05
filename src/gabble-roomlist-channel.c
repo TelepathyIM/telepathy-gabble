@@ -18,6 +18,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include "gabble-roomlist-channel.h"
+
 #include <dbus/dbus-glib.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,8 +38,6 @@
 #include <telepathy-glib/svc-channel.h>
 #include "namespaces.h"
 #include "util.h"
-
-#include "gabble-roomlist-channel.h"
 
 #define TP_TYPE_ROOM_STRUCT (dbus_g_type_get_struct ("GValueArray", \
       G_TYPE_UINT, \

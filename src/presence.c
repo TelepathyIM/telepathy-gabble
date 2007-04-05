@@ -18,11 +18,12 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include "presence.h"
+
 #include <string.h>
 #include <glib.h>
 
 #include "presence-cache.h"
-#include "presence.h"
 #include "namespaces.h"
 #include "util.h"
 

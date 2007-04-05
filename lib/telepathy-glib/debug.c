@@ -63,11 +63,11 @@
 
 #ifdef ENABLE_DEBUG
 
+#include <telepathy-glib/debug.h>
+
 #include "internal-debug.h"
 
 #include <stdarg.h>
-
-#include <telepathy-glib/debug.h>
 
 static TpDebugFlags flags = 0;
 

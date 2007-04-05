@@ -19,6 +19,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include "vcard-manager.h"
+
 #include <telepathy-glib/dbus.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_VCARD
@@ -33,7 +35,6 @@
 #include "handles.h"
 #include "time.h"
 #include "util.h"
-#include "vcard-manager.h"
 
 #define DEFAULT_REQUEST_TIMEOUT 20000
 #define VCARD_CACHE_ENTRY_TTL 30

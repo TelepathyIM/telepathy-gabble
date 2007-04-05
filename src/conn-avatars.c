@@ -20,6 +20,8 @@
 
 #include "config.h"
 
+#include "conn-avatars.h"
+
 #include <string.h>
 
 #include <loudmouth/loudmouth.h>
@@ -33,8 +35,6 @@
 #include "sha1/sha1.h"
 #include "vcard-manager.h"
 #include "util.h"
-
-#include "conn-avatars.h"
 
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
 

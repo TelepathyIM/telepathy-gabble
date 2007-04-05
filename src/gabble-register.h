@@ -24,7 +24,10 @@
 #define __GABBLE_REGISTER_H__
 
 #include <glib-object.h>
+
 #include <loudmouth/loudmouth.h>
+
+#include "gabble-connection.h"
 
 G_BEGIN_DECLS
 

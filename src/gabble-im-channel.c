@@ -18,6 +18,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include "gabble-im-channel.h"
+
 #include <dbus/dbus-glib.h>
 #include <loudmouth/loudmouth.h>
 #include <stdio.h>
@@ -39,8 +41,6 @@
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/channel-iface.h>
 #include <telepathy-glib/svc-channel.h>
-
-#include "gabble-im-channel.h"
 
 static void channel_iface_init (gpointer, gpointer);
 static void text_iface_init (gpointer, gpointer);

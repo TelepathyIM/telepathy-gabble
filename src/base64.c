@@ -17,6 +17,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include "base64.h"
+
 #define DEBUG_FLAG GABBLE_DEBUG_VCARD
 #include "debug.h"
 

@@ -18,6 +18,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include "presence-cache.h"
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -31,8 +33,6 @@
 #include "disco.h" /* \o\ \o/ /o/ */
 #include "namespaces.h"
 #include "util.h"
-
-#include "presence-cache.h"
 
 #include "gabble-signals-marshal.h"
 

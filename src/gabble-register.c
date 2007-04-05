@@ -20,6 +20,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include "gabble-register.h"
+
 #define DBUS_API_SUBJECT_TO_CHANGE
 
 #include <dbus/dbus-glib.h>
@@ -34,7 +36,6 @@
 
 #include "gabble-connection.h"
 #include "gabble-error.h"
-#include "gabble-register.h"
 #include "gabble-signals-marshal.h"
 #include "namespaces.h"
 #include "util.h"

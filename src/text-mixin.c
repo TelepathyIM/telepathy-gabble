@@ -23,6 +23,8 @@
 
 #define _GNU_SOURCE /* Needed for strptime (_XOPEN_SOURCE can also be used). */
 
+#include "text-mixin.h"
+
 #include <loudmouth/loudmouth.h>
 #include <dbus/dbus-glib.h>
 #include <string.h>
@@ -39,8 +41,6 @@
 #include "namespaces.h"
 #include "roster.h"
 #include "util.h"
-
-#include "text-mixin.h"
 
 /**
  * gabble_text_mixin_init:

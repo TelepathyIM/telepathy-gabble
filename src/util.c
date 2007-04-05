@@ -22,6 +22,8 @@
 
 #include "config.h"
 
+#include "util.h"
+
 #include <glib.h>
 #include <stdio.h>
 #include <string.h>
@@ -31,8 +33,6 @@
 #include "sha1/sha1.h"
 #include "namespaces.h"
 #include "gabble-connection.h"
-
-#include "util.h"
 
 #define DEBUG_FLAG GABBLE_DEBUG_JID
 #include "debug.h"

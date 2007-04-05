@@ -23,6 +23,8 @@
 
 #include <glib-object.h>
 
+#include "gabble-connection.h"
+
 G_BEGIN_DECLS
 
 typedef struct _GabbleRoomlistChannel GabbleRoomlistChannel;

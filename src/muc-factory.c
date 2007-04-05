@@ -17,6 +17,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include "muc-factory.h"
+
 #define DBUS_API_SUBJECT_TO_CHANGE
 
 #include <stdlib.h>
@@ -39,7 +41,6 @@
 #include "gabble-muc-channel.h"
 #include "gabble-roomlist-channel.h"
 #include "handles.h"
-#include "muc-factory.h"
 #include "namespaces.h"
 #include <telepathy-glib/interfaces.h>
 #include "text-mixin.h"

@@ -21,6 +21,8 @@
 /* FIXME: take this out after 0.5.7 is released */
 #define _TP_CM_UPDATED_FOR_0_5_7
 
+#include "gabble-roster-channel.h"
+
 #include <dbus/dbus-glib.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -38,8 +40,6 @@
 #include <telepathy-glib/channel-iface.h>
 #include <telepathy-glib/svc-channel.h>
 #include "util.h"
-
-#include "gabble-roster-channel.h"
 
 static void channel_iface_init (gpointer, gpointer);
 

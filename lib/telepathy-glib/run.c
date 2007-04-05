@@ -34,6 +34,8 @@
 
 #include "config.h"
 
+#include <telepathy-glib/run.h>
+
 #include <dbus/dbus-glib.h>
 #include <stdlib.h>
 #include <string.h>

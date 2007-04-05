@@ -19,10 +19,11 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include "gabble-error.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "gabble-error.h"
 #include "namespaces.h"
 
 #define MAX_LEGACY_ERRORS 3

@@ -19,6 +19,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include "gabble-media-session.h"
+
 #include <dbus/dbus-glib.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -43,7 +45,6 @@
 #include "presence-cache.h"
 #include "presence.h"
 
-#include "gabble-media-session.h"
 #include "gabble-signals-marshal.h"
 
 static void session_handler_iface_init (gpointer, gpointer);

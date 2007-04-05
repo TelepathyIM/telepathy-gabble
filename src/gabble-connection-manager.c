@@ -18,6 +18,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include "gabble-connection-manager.h"
+
 #include <dbus/dbus-protocol.h>
 #include <dbus/dbus-glib.h>
 #include <stdio.h>
@@ -27,8 +29,6 @@
 #include "gabble-connection.h"
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/errors.h>
-
-#include "gabble-connection-manager.h"
 
 G_DEFINE_TYPE(GabbleConnectionManager,
     gabble_connection_manager,

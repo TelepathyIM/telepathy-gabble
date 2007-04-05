@@ -18,13 +18,14 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include "handles.h"
+
 #include <glib.h>
 #include <string.h>
 
 #include <telepathy-glib/heap.h>
 #include <telepathy-glib/errors.h>
 
-#include "handles.h"
 #include "util.h"
 
 #include "config.h"

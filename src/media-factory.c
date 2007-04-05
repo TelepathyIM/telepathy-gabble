@@ -17,6 +17,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include "media-factory.h"
+
 #define DBUS_API_SUBJECT_TO_CHANGE
 
 #include <stdlib.h>
@@ -36,7 +38,6 @@
 #include "gabble-connection.h"
 #include "gabble-media-channel.h"
 #include "handles.h"
-#include "media-factory.h"
 #include "namespaces.h"
 #include <telepathy-glib/interfaces.h>
 #include "text-mixin.h"

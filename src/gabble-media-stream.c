@@ -19,6 +19,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include "gabble-media-stream.h"
+
 #include <dbus/dbus-glib.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -41,7 +43,6 @@
 #include <telepathy-glib/errors.h>
 #include <telepathy-glib/svc-media-interfaces.h>
 
-#include "gabble-media-stream.h"
 #include "gabble-signals-marshal.h"
 
 static void stream_handler_iface_init (gpointer, gpointer);

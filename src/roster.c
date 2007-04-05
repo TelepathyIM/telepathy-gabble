@@ -22,6 +22,8 @@
 /* FIXME: take this out after 0.5.7 is released */
 #define _TP_CM_UPDATED_FOR_0_5_7
 
+#include "roster.h"
+
 #define DBUS_API_SUBJECT_TO_CHANGE
 
 #include <dbus/dbus-glib.h>
@@ -37,7 +39,6 @@
 #include "gabble-roster-channel.h"
 #include "handles.h"
 #include "namespaces.h"
-#include "roster.h"
 #include "util.h"
 
 #define GOOGLE_ROSTER_VERSION "2"

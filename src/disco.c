@@ -21,6 +21,8 @@
  * -- LET'S DISCO!!!  \o/ \o_ _o/ /\o/\ _/o/- -\o\_ --
  */
 
+#include "disco.h"
+
 #define DBUS_API_SUBJECT_TO_CHANGE
 
 #include <dbus/dbus-glib.h>
@@ -31,7 +33,6 @@
 #define DEBUG_FLAG GABBLE_DEBUG_DISCO
 
 #include "debug.h"
-#include "disco.h"
 #include "gabble-connection.h"
 #include "gabble-error.h"
 #include "namespaces.h"

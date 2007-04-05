@@ -17,6 +17,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include "im-factory.h"
+
 #define DBUS_API_SUBJECT_TO_CHANGE
 
 #include <stdlib.h>
@@ -40,8 +42,6 @@
 #include <telepathy-glib/interfaces.h>
 #include "text-mixin.h"
 #include <telepathy-glib/channel-factory-iface.h>
-
-#include "im-factory.h"
 
 static void gabble_im_factory_iface_init (gpointer g_iface, gpointer iface_data);
 

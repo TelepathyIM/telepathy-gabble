@@ -22,6 +22,8 @@
 /* FIXME: take this out after 0.5.7 is released */
 #define _TP_CM_UPDATED_FOR_0_5_7
 
+#include "gabble-muc-channel.h"
+
 #include <dbus/dbus-glib.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -42,8 +44,6 @@
 #include <telepathy-glib/errors.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/channel-iface.h>
-
-#include "gabble-muc-channel.h"
 
 #define DEFAULT_JOIN_TIMEOUT (180 * 1000)
 #define MAX_NICK_RETRIES 3

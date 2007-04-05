@@ -20,6 +20,8 @@
 
 #include "config.h"
 
+#include "gabble-connection.h"
+
 #define DBUS_API_SUBJECT_TO_CHANGE
 
 #include <dbus/dbus-glib.h>
@@ -43,8 +45,6 @@
 #include <telepathy-glib/handle-repo-static.h>
 
 #include <telepathy-glib/svc-connection.h>
-
-#include "gabble-connection.h"
 
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
 

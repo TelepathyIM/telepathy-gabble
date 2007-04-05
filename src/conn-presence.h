@@ -21,6 +21,10 @@
 #ifndef __CONN_PRESENCE_H__
 #define __CONN_PRESENCE_H__
 
+#include <glib.h>
+
+#include "gabble-connection.h"
+
 G_BEGIN_DECLS
 
 void conn_presence_init (GabbleConnection *conn);

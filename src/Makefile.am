@@ -92,27 +92,28 @@ telepathy_gabble_SOURCES = \
     gabble.h \
     gabble.c
 
-whitespace_sources = \
+check_c_sources = \
     $(telepathy_gabble_SOURCES) \
     $(libgabble_convenience_la_our_sources) \
     $(telepathy_gabble_SOURCES) \
     $(write_mgr_file_SOURCES)
+check_whitespace_sources = $(check_c_sources)
 
 check-local::
 	@echo "Checking whitespace-related trivia..."
-	@if grep -n ' $$' $(whitespace_sources); \
+	@if grep -n ' $$' $(check_whitespace_sources); \
 	then \
 		echo "^^^ The above files contain unwanted trailing spaces"; \
 		exit 1; \
 	fi
-	@if grep -n '	' $(whitespace_sources); \
+	@if grep -n '	' $(check_whitespace_sources); \
 	then \
 		echo "^^^ The above files contain tabs"; \
 		exit 1; \
 	fi
 	@echo "Checking for GError mistakes..."
 	@if grep -n '^ *GError *\*[a-zA-Z_][a-zA-Z0-9_]* *;' \
-		$(whitespace_sources); \
+		$(check_c_sources); \
 	then \
 		echo "^^^ The above files contain uninitialized GError*s -"; \
 		echo "    they should be initialized to NULL"; \

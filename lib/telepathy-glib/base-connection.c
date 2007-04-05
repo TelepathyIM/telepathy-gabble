@@ -923,7 +923,6 @@ tp_base_connection_hold_handles (TpSvcConnection *iface,
   TpBaseConnectionPrivate *priv;
   GError *error = NULL;
   gchar *sender;
-  guint i;
 
   g_assert (TP_IS_BASE_CONNECTION (self));
 
@@ -940,17 +939,13 @@ tp_base_connection_hold_handles (TpSvcConnection *iface,
     }
 
   sender = dbus_g_method_get_sender (context);
-  for (i = 0; i < handles->len; i++)
+  if (!tp_handles_client_hold (priv->handles[handle_type], sender,
+        handles, &error))
     {
-      TpHandle handle = g_array_index (handles, TpHandle, i);
-      if (!tp_handle_client_hold (priv->handles[handle_type], sender,
-            handle, &error))
-        {
-          dbus_g_method_return_error (context, error);
-          g_error_free (error);
-          g_free (sender);
-          return;
-        }
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      g_free (sender);
+      return;
     }
 
   g_free (sender);
@@ -1232,7 +1227,6 @@ tp_base_connection_release_handles (TpSvcConnection *iface,
       TP_TYPE_BASE_CONNECTION, TpBaseConnectionPrivate);
   char *sender;
   GError *error = NULL;
-  guint i;
 
   g_assert (TP_IS_BASE_CONNECTION (self));
 
@@ -1247,68 +1241,18 @@ tp_base_connection_release_handles (TpSvcConnection *iface,
     }
 
   sender = dbus_g_method_get_sender (context);
-  for (i = 0; i < handles->len; i++)
+  if (!tp_handles_client_release (priv->handles[handle_type],
+        sender, handles, &error))
     {
-      TpHandle handle = g_array_index (handles, TpHandle, i);
-      if (!tp_handle_client_release (priv->handles[handle_type],
-            sender, handle, &error))
-        {
-          dbus_g_method_return_error (context, error);
-          g_error_free (error);
-          g_free (sender);
-          return;
-        }
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      g_free (sender);
+      return;
     }
 
   g_free (sender);
 
   tp_svc_connection_return_from_release_handles (context);
-}
-
-
-/* FIXME: This is also in gabble-connection.c. Add it to the telepathy-glib
- * public API once I've thought of a reasonable name for it!
- * (Perhaps its semantics would be easier to understand if it freed the array
- * too, or perhaps it should be split into hold_and_return_handles() and
- * destroy_reffed_handle_array().) */
-static void
-hold_unref_and_return_handles (DBusGMethodInvocation *context,
-                               TpHandleRepoIface *repo,
-                               GArray *handles)
-{
-  GError *error;
-  gchar *sender = dbus_g_method_get_sender (context);
-  guint i, j;
-
-  for (i = 0; i < handles->len; i++)
-    {
-      TpHandle handle = (TpHandle) g_array_index (handles, guint, i);
-
-      if (!tp_handle_client_hold (repo, sender, handle, &error))
-        {
-          /* undo the hold on the ones we already did */
-          for (j = 0; j < i; j++)
-            {
-              handle = (TpHandle) g_array_index (handles, guint, j);
-              tp_handle_client_release (repo, sender, handle, NULL);
-            }
-          /* drop the reference that we own */
-          for (j = i; j < handles->len; j++)
-            {
-              handle = (TpHandle) g_array_index (handles, guint, j);
-              tp_handle_unref (repo, handle);
-            }
-          dbus_g_method_return_error (context, error);
-          g_error_free (error);
-          g_free (sender);
-          return;
-        }
-
-      /* now that the client owns a reference, release mine */
-      tp_handle_unref (repo, handle);
-    }
-  dbus_g_method_return (context, handles);
-  g_free (sender);
 }
 
 
@@ -1336,10 +1280,11 @@ tp_base_connection_dbus_request_handles (TpSvcConnection *iface,
   TpBaseConnection *self = TP_BASE_CONNECTION (iface);
   TpHandleRepoIface *handle_repo = tp_base_connection_get_handles (self,
       handle_type);
-  guint count = 0, i, j;
+  guint count = 0, i;
   const gchar **cur_name;
   GError *error = NULL;
   GArray *handles = NULL;
+  gchar *sender;
 
   for (cur_name = names; *cur_name != NULL; cur_name++)
     {
@@ -1352,9 +1297,8 @@ tp_base_connection_dbus_request_handles (TpSvcConnection *iface,
 
   if (!tp_handle_type_is_valid (handle_type, &error))
     {
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-      return;
+      g_assert (error != NULL);
+      goto out;
     }
 
   /* FIXME: NotAvailable is the wrong error, since that's meant to be for
@@ -1372,9 +1316,7 @@ tp_base_connection_dbus_request_handles (TpSvcConnection *iface,
 
       error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
                           "unimplemented handle type %u", handle_type);
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-      return;
+      goto out;
     }
 
   handles = g_array_sized_new (FALSE, FALSE, sizeof (guint), count);
@@ -1390,25 +1332,35 @@ tp_base_connection_dbus_request_handles (TpSvcConnection *iface,
         {
           DEBUG("RequestHandles of type %d failed because '%s' is invalid: %s",
               handle_type, name, error->message);
-
-          /* unref the handles we already created */
-          for (j = 0; j < i; j++)
-            {
-              tp_handle_unref (handle_repo,
-                  (TpHandle) g_array_index (handles, guint, j));
-            }
-
-          dbus_g_method_return_error (context, error);
-          g_error_free (error);
-
-          g_array_free (handles, TRUE);
-          return;
+          g_assert (error != NULL);
+          goto out;
         }
       g_array_append_val (handles, handle);
     }
 
-  hold_unref_and_return_handles (context, handle_repo, handles);
-  g_array_free (handles, TRUE);
+  sender = dbus_g_method_get_sender (context);
+  if (!tp_handles_client_hold (handle_repo, sender, handles, &error))
+    {
+      g_assert (error != NULL);
+    }
+  g_free (sender);
+
+out:
+  if (error == NULL)
+    {
+      tp_svc_connection_return_from_request_handles (context, handles);
+    }
+  else
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+    }
+
+  if (handles != NULL)
+    {
+      tp_handles_unref (handle_repo, handles);
+      g_array_free (handles, TRUE);
+    }
 }
 
 /**

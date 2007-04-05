@@ -91,12 +91,18 @@ gboolean tp_handles_are_valid (TpHandleRepoIface *self,
     const GArray *handles, gboolean allow_zero, GError **error);
 
 void tp_handle_ref (TpHandleRepoIface *self, TpHandle handle);
+void tp_handles_ref (TpHandleRepoIface *self, const GArray *handles);
 void tp_handle_unref (TpHandleRepoIface *self, TpHandle handle);
+void tp_handles_unref (TpHandleRepoIface *self, const GArray *handles);
 
 gboolean tp_handle_client_hold (TpHandleRepoIface *self,
     const gchar *client, TpHandle handle, GError **error);
+gboolean tp_handles_client_hold (TpHandleRepoIface *self,
+    const gchar *client, const GArray *handles, GError **error);
 gboolean tp_handle_client_release (TpHandleRepoIface *self,
     const gchar *client, TpHandle handle, GError **error);
+gboolean tp_handles_client_release (TpHandleRepoIface *self,
+    const gchar *client, const GArray *handles, GError **error);
 
 const char *tp_handle_inspect (TpHandleRepoIface *self,
     TpHandle handle);

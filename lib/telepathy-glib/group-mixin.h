@@ -94,7 +94,6 @@ typedef gboolean (*TpGroupMixinRemMemberFunc) (_TP_GROUP_MIXIN_OBJECT *obj,
  * All fields should be considered read-only.
  */
 struct _TpGroupMixinClass {
-  /*<private>*/
   TpGroupMixinAddMemberFunc add_member;
   TpGroupMixinRemMemberFunc remove_member;
   TpGroupMixinClassPrivate *priv;

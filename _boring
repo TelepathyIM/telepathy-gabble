@@ -62,7 +62,7 @@
 \-gen.h$
 \.pc$
 ^data/gabble.manager$
-^data/org.freedesktop.Telepathy.ConnectionManager.gabble.service$
+^(data|tests)/org.freedesktop.Telepathy.ConnectionManager.gabble.service$
 ^src/telepathy-gabble$
 ^lib/_gen($|/)
 ^lib/check_self_contained$
@@ -71,6 +71,7 @@
 ^tests/test-base64$
 ^tests/test-gabble-presence$
 ^tests/test-handles$
+^tests/run-with-tmp-session-bus\.conf$
 ^lib/tests/test-[-a-z]+$
 (^|/)cscope\.out$
 (^|/)core$

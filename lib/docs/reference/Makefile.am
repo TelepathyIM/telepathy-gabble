@@ -47,7 +47,7 @@ CFILE_GLOB=$(top_srcdir)/lib/telepathy-glib/*.c $(top_builddir)/lib/telepathy-gl
 
 # Header files to ignore when scanning.
 # e.g. IGNORE_HFILES=gtkdebug.h gtkintl.h
-IGNORE_HFILES=internal-debug.h
+IGNORE_HFILES=internal-debug.h internal-handle-repo.h
 
 # Images to copy into HTML directory.
 # e.g. HTML_IMAGES=$(top_srcdir)/gtk/stock-icons/stock_about_24.png

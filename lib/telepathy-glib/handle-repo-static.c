@@ -42,6 +42,8 @@
 
 #include <string.h>
 
+#include <telepathy-glib/internal-handle-repo.h>
+
 enum
 {
   PROP_HANDLE_TYPE = 1,

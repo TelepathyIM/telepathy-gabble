@@ -72,56 +72,14 @@ typedef struct _TpHandleSet TpHandleSet;
  */
 typedef struct _TpHandleRepoIface TpHandleRepoIface;
 
-
-typedef struct _TpHandleRepoIfaceClass TpHandleRepoIfaceClass;
-
 /**
  * TpHandleRepoIfaceClass:
- * @parent_class: Fields shared with GTypeInterface
- * @handle_is_valid: Implementation for tp_handle_is_valid() for this repo
- * @handles_are_valid: Implementation for tp_handles_are_valid() for this repo
- * @ref_handle: Implementation for tp_handle_ref() for this repo
- * @unref_handle: Implementation for tp_handle_unref() for this repo
- * @client_hold_handle: Implementation for tp_handle_client_hold() for this
- *  repo
- * @client_release_handle: Implementation for tp_handle_client_release() for
- *  this repo
- * @inspect_handle: Implementation for tp_handle_inspect() for this repo
- * @ensure_handle: Implementation for tp_handle_ensure() for this repo
- * @lookup_handle: Implementation for tp_handle_lookup() for this repo
- * @get_qdata: Implementation for tp_handle_get_qdata() for this repo
- * @set_qdata: Implementation for tp_handle_set_qdata() for this repo
  *
- * The class of a #TpHandleRepoIface. All implementation callbacks must be
- * filled in by all implementations, and have the same semantics as the
- * global function that calls them.
+ * The class of a handle repository interface. The structure layout is
+ * only available within telepathy-glib, for the handle repository
+ * implementations' benefit.
  */
-struct _TpHandleRepoIfaceClass {
-    GTypeInterface parent_class;
-
-    gboolean (*handle_is_valid) (TpHandleRepoIface *self, TpHandle handle,
-        GError **error);
-    gboolean (*handles_are_valid) (TpHandleRepoIface *self,
-        const GArray *handles, gboolean allow_zero, GError **error);
-
-    void (*ref_handle) (TpHandleRepoIface *self, TpHandle handle);
-    void (*unref_handle) (TpHandleRepoIface *self, TpHandle handle);
-    gboolean (*client_hold_handle) (TpHandleRepoIface *self,
-        const gchar *client, TpHandle handle, GError **error);
-    gboolean (*client_release_handle) (TpHandleRepoIface *self,
-        const gchar *client, TpHandle handle, GError **error);
-
-    const char *(*inspect_handle) (TpHandleRepoIface *self, TpHandle handle);
-    TpHandle (*ensure_handle) (TpHandleRepoIface *self, const char *id,
-        gpointer context, GError **error);
-    TpHandle (*lookup_handle) (TpHandleRepoIface *self, const char *id,
-        gpointer context, GError **error);
-
-    void (*set_qdata) (TpHandleRepoIface *repo, TpHandle handle,
-        GQuark key_id, gpointer data, GDestroyNotify destroy);
-    gpointer (*get_qdata) (TpHandleRepoIface *repo, TpHandle handle,
-        GQuark key_id);
-};
+typedef struct _TpHandleRepoIfaceClass TpHandleRepoIfaceClass;
 
 GType tp_handle_repo_iface_get_type (void);
 

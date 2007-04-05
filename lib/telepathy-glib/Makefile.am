@@ -109,6 +109,7 @@ libtelepathy_glib_la_SOURCES = \
     internal-debug.h \
     errors.c \
     group-mixin.c \
+    internal-handle-repo.h \
     handle-repo.c \
     handle-repo-dynamic.c \
     handle-repo-static.c \

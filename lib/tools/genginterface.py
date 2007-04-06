@@ -270,7 +270,7 @@ typedef struct _%(classname)sClass %(classname)sClass;
 
     stream.write(
 """
-GType %(prefix)s_get_type(void);
+GType %(prefix)s_get_type (void);
 
 """ % {'prefix':prefix,'uprefix':prefix.upper()})
 
@@ -280,7 +280,7 @@ GType %(prefix)s_get_type(void);
     stream.write(
 """/* TYPE MACROS */
 #define %(type)s \\
-  (%(prefix)s_get_type())
+  (%(prefix)s_get_type ())
 #define %(main)s_%(sub)s(obj) \\
   (G_TYPE_CHECK_INSTANCE_CAST((obj), %(type)s, %(name)s))
 #define %(main)s_IS_%(sub)s(obj) \\
@@ -615,7 +615,7 @@ static void
 
     body.write(
 """
-      dbus_g_object_type_install_info (%(prefix)s_get_type(), &dbus_glib_%(prefix)s_object_info);
+      dbus_g_object_type_install_info (%(prefix)s_get_type (), &dbus_glib_%(prefix)s_object_info);
     }
 }
 

@@ -54,15 +54,18 @@ GType gabble_vcard_manager_get_type (void);
 #define GABBLE_TYPE_VCARD_MANAGER \
   (gabble_vcard_manager_get_type ())
 #define GABBLE_VCARD_MANAGER(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_VCARD_MANAGER, GabbleVCardManager))
+  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_VCARD_MANAGER, \
+                              GabbleVCardManager))
 #define GABBLE_VCARD_MANAGER_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_VCARD_MANAGER, GabbleVCardManagerClass))
+  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_VCARD_MANAGER, \
+                           GabbleVCardManagerClass))
 #define GABBLE_IS_VCARD_MANAGER(obj) \
   (G_TYPE_CHECK_INSTANCE_TYPE((obj), GABBLE_TYPE_VCARD_MANAGER))
 #define GABBLE_IS_VCARD_MANAGER_CLASS(klass) \
   (G_TYPE_CHECK_CLASS_TYPE((klass), GABBLE_TYPE_VCARD_MANAGER))
 #define GABBLE_VCARD_MANAGER_GET_CLASS(obj) \
-  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_VCARD_MANAGER, GabbleVCardManagerClass))
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_VCARD_MANAGER, \
+                              GabbleVCardManagerClass))
 
 struct _GabbleVCardManagerClass {
     GObjectClass parent_class;

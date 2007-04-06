@@ -30,12 +30,17 @@
 #include "gabble-types.h"
 
 gchar *sha1_hex (const gchar *bytes, guint len);
-void lm_message_node_add_own_nick (LmMessageNode *node, GabbleConnection *conn);
+void lm_message_node_add_own_nick (LmMessageNode *node,
+    GabbleConnection *conn);
 void lm_message_node_unlink (LmMessageNode *orphan);
-void lm_message_node_steal_children (LmMessageNode *snatcher, LmMessageNode *mum);
-gboolean lm_message_node_has_namespace (LmMessageNode *node, const gchar *ns, const gchar *tag);
-LmMessageNode *lm_message_node_get_child_with_namespace (LmMessageNode *node, const gchar *name, const gchar *ns);
-G_GNUC_NULL_TERMINATED LmMessage *lm_message_build (const gchar *to, LmMessageType type, guint spec, ...);
+void lm_message_node_steal_children (LmMessageNode *snatcher,
+    LmMessageNode *mum);
+gboolean lm_message_node_has_namespace (LmMessageNode *node, const gchar *ns,
+    const gchar *tag);
+LmMessageNode *lm_message_node_get_child_with_namespace (LmMessageNode *node,
+    const gchar *name, const gchar *ns);
+G_GNUC_NULL_TERMINATED LmMessage *lm_message_build (const gchar *to,
+    LmMessageType type, guint spec, ...);
 
 /* format: a@b/c */
 void gabble_decode_jid (const gchar *jid, gchar **a, gchar **b, gchar **c);

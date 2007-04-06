@@ -40,8 +40,11 @@ struct _GabbleTextMixin
     gboolean send_nick;
 };
 
-#define GABBLE_TEXT_MIXIN_CLASS(o) ((GabbleTextMixinClass *) tp_mixin_offset_cast (o, TP_TEXT_MIXIN_CLASS_OFFSET (o)))
-#define GABBLE_TEXT_MIXIN(o) ((GabbleTextMixin *) tp_mixin_offset_cast (o, TP_TEXT_MIXIN_OFFSET (o)))
+#define GABBLE_TEXT_MIXIN_CLASS(o) \
+  ((GabbleTextMixinClass *) tp_mixin_offset_cast (o,\
+    TP_TEXT_MIXIN_CLASS_OFFSET (o)))
+#define GABBLE_TEXT_MIXIN(o) \
+  ((GabbleTextMixin *) tp_mixin_offset_cast (o, TP_TEXT_MIXIN_OFFSET (o)))
 
 #define TP_CHANNEL_SEND_NO_ERROR ((TpChannelTextSendError)-1)
 

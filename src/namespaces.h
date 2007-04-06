@@ -35,16 +35,20 @@
 #define NS_GOOGLE_SESSION_PHONE "http://www.google.com/session/phone"
 #define NS_GOOGLE_TRANSPORT_P2P "http://www.google.com/transport/p2p"
 #define NS_JINGLE               "http://jabber.org/protocol/jingle"
-#define NS_JINGLE_DESCRIPTION_AUDIO "http://jabber.org/protocol/jingle/description/audio"
-#define NS_JINGLE_DESCRIPTION_VIDEO "http://jabber.org/protocol/jingle/description/video"
+#define NS_JINGLE_DESCRIPTION_AUDIO \
+  "http://jabber.org/protocol/jingle/description/audio"
+#define NS_JINGLE_DESCRIPTION_VIDEO \
+  "http://jabber.org/protocol/jingle/description/video"
 #define NS_JINGLE_ERRORS            "http://jabber.org/protocol/jingle#errors"
-#define NS_JINGLE_TRANSPORT_ICE     "http://jabber.org/protocol/jingle/transport/ice"
+#define NS_JINGLE_TRANSPORT_ICE     \
+  "http://jabber.org/protocol/jingle/transport/ice"
 #define NS_MUC                  "http://jabber.org/protocol/muc"
 #define NS_MUC_USER             "http://jabber.org/protocol/muc#user"
 #define NS_MUC_ADMIN            "http://jabber.org/protocol/muc#admin"
 #define NS_MUC_OWNER            "http://jabber.org/protocol/muc#owner"
 #define NS_NICK                 "http://jabber.org/protocol/nick"
-#define NS_NOKIA_IV             "http://videovoip.tableteer.nokia.com/xmpp/privilege"
+#define NS_NOKIA_IV             \
+  "http://videovoip.tableteer.nokia.com/xmpp/privilege"
 #define NS_OLPC_BUDDY_PROPS     "http://laptop.org/xmpp/buddy-properties"
 #define NS_OLPC_ACTIVITIES      "http://laptop.org/xmpp/activities"
 #define NS_PUBSUB               "http://jabber.org/protocol/pubsub"

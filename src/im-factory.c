@@ -43,10 +43,12 @@
 #include "text-mixin.h"
 #include <telepathy-glib/channel-factory-iface.h>
 
-static void gabble_im_factory_iface_init (gpointer g_iface, gpointer iface_data);
+static void gabble_im_factory_iface_init (gpointer g_iface,
+    gpointer iface_data);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleImFactory, gabble_im_factory, G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_FACTORY_IFACE, gabble_im_factory_iface_init));
+    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_FACTORY_IFACE,
+      gabble_im_factory_iface_init));
 
 /* properties */
 enum
@@ -65,9 +67,12 @@ struct _GabbleImFactoryPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_IM_FACTORY_GET_PRIVATE(o)    (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_IM_FACTORY, GabbleImFactoryPrivate))
+#define GABBLE_IM_FACTORY_GET_PRIVATE(o) \
+  (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_IM_FACTORY,\
+                                GabbleImFactoryPrivate))
 
-static GObject *gabble_im_factory_constructor (GType type, guint n_props, GObjectConstructParam *props);
+static GObject *gabble_im_factory_constructor (GType type, guint n_props,
+    GObjectConstructParam *props);
 
 static void
 gabble_im_factory_init (GabbleImFactory *fac)
@@ -161,7 +166,8 @@ gabble_im_factory_class_init (GabbleImFactoryClass *gabble_im_factory_class)
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_im_factory_class);
   GParamSpec *param_spec;
 
-  g_type_class_add_private (gabble_im_factory_class, sizeof (GabbleImFactoryPrivate));
+  g_type_class_add_private (gabble_im_factory_class,
+      sizeof (GabbleImFactoryPrivate));
 
   object_class->constructor = gabble_im_factory_constructor;
   object_class->dispose = gabble_im_factory_dispose;
@@ -329,7 +335,8 @@ new_im_channel (GabbleImFactory *fac, TpHandle handle)
 
   g_hash_table_insert (priv->channels, GINT_TO_POINTER (handle), chan);
 
-  tp_channel_factory_iface_emit_new_channel (fac, (TpChannelIface *)chan, NULL);
+  tp_channel_factory_iface_emit_new_channel (fac, (TpChannelIface *)chan,
+      NULL);
 
   g_free (object_path);
 
@@ -386,8 +393,8 @@ gabble_im_factory_iface_disconnected (TpChannelFactoryIface *iface)
 
   g_assert (priv->message_cb != NULL);
 
-  lm_connection_unregister_message_handler (priv->conn->lmconn, priv->message_cb,
-                                            LM_MESSAGE_TYPE_MESSAGE);
+  lm_connection_unregister_message_handler (priv->conn->lmconn,
+      priv->message_cb, LM_MESSAGE_TYPE_MESSAGE);
   lm_message_handler_unref (priv->message_cb);
   priv->message_cb = NULL;
 }
@@ -408,7 +415,9 @@ _foreach_slave (gpointer key, gpointer value, gpointer user_data)
 }
 
 static void
-gabble_im_factory_iface_foreach (TpChannelFactoryIface *iface, TpChannelFunc foreach, gpointer user_data)
+gabble_im_factory_iface_foreach (TpChannelFactoryIface *iface,
+                                 TpChannelFunc foreach,
+                                 gpointer user_data)
 {
   GabbleImFactory *fac = GABBLE_IM_FACTORY (iface);
   GabbleImFactoryPrivate *priv = GABBLE_IM_FACTORY_GET_PRIVATE (fac);

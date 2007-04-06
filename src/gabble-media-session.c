@@ -125,12 +125,18 @@ typedef struct {
 
 static const SessionStateDescription session_states[] =
 {
-    { "JS_STATE_PENDING_CREATED",       TP_ANSI_BOLD_ON TP_ANSI_FG_BLACK TP_ANSI_BG_WHITE   },
-    { "JS_STATE_PENDING_INITIATE_SENT", TP_ANSI_BOLD_ON               TP_ANSI_BG_CYAN    },
-    { "JS_STATE_PENDING_INITIATED",     TP_ANSI_BOLD_ON               TP_ANSI_BG_MAGENTA },
-    { "JS_STATE_PENDING_ACCEPT_SENT",   TP_ANSI_BOLD_ON               TP_ANSI_BG_CYAN    },
-    { "JS_STATE_ACTIVE",                TP_ANSI_BOLD_ON               TP_ANSI_BG_BLUE    },
-    { "JS_STATE_ENDED",                                            TP_ANSI_BG_RED     }
+    { "JS_STATE_PENDING_CREATED",
+      TP_ANSI_BOLD_ON TP_ANSI_FG_BLACK TP_ANSI_BG_WHITE   },
+    { "JS_STATE_PENDING_INITIATE_SENT",
+      TP_ANSI_BOLD_ON                  TP_ANSI_BG_CYAN    },
+    { "JS_STATE_PENDING_INITIATED",
+      TP_ANSI_BOLD_ON                  TP_ANSI_BG_MAGENTA },
+    { "JS_STATE_PENDING_ACCEPT_SENT",
+      TP_ANSI_BOLD_ON                  TP_ANSI_BG_CYAN    },
+    { "JS_STATE_ACTIVE",
+      TP_ANSI_BOLD_ON                  TP_ANSI_BG_BLUE    },
+    { "JS_STATE_ENDED",
+                                       TP_ANSI_BG_RED     }
 };
 
 static void
@@ -407,7 +413,8 @@ gabble_media_session_class_init (GabbleMediaSessionClass *gabble_media_session_c
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_media_session_class);
   GParamSpec *param_spec;
 
-  g_type_class_add_private (gabble_media_session_class, sizeof (GabbleMediaSessionPrivate));
+  g_type_class_add_private (gabble_media_session_class,
+      sizeof (GabbleMediaSessionPrivate));
 
   object_class->constructor = gabble_media_session_constructor;
 
@@ -427,15 +434,14 @@ gabble_media_session_class_init (GabbleMediaSessionClass *gabble_media_session_c
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 
-  param_spec = g_param_spec_object ("media-channel", "GabbleMediaChannel object",
-                                    "Gabble media channel object that owns this "
-                                    "media session object.",
-                                    GABBLE_TYPE_MEDIA_CHANNEL,
-                                    G_PARAM_CONSTRUCT_ONLY |
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NICK |
-                                    G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_MEDIA_CHANNEL, param_spec);
+  param_spec = g_param_spec_object ("media-channel",
+      "GabbleMediaChannel object",
+      "Gabble media channel object that owns this media session object.",
+      GABBLE_TYPE_MEDIA_CHANNEL,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_NICK |
+      G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_MEDIA_CHANNEL,
+      param_spec);
 
   param_spec = g_param_spec_string ("object-path", "D-Bus object path",
                                     "The D-Bus object path used for this "
@@ -690,8 +696,8 @@ _handle_create (GabbleMediaSession *session,
           else
             {
               g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_CONFLICT,
-                  "session initiator is creating a stream named \"%s\" already",
-                  stream_name);
+                  "session initiator is creating a stream named \"%s\" "
+                  "already", stream_name);
               return FALSE;
             }
         }
@@ -1417,8 +1423,8 @@ _add_ready_new_streams (GabbleMediaSession *session)
       GabbleMediaStream *stream = g_ptr_array_index (priv->streams, i);
 
       GMS_DEBUG_DUMP (session, "pondering accept-time add for stream: %s, got "
-          "local codecs: %s, initiator: %s, signalling state: %d", stream->name,
-          stream->got_local_codecs ? "true" : "false",
+          "local codecs: %s, initiator: %s, signalling state: %d",
+          stream->name, stream->got_local_codecs ? "true" : "false",
           stream->initiator == INITIATOR_LOCAL ? "local" : "remote",
           stream->signalling_state);
 
@@ -1463,8 +1469,9 @@ session_state_changed (GabbleMediaSession *session,
       g_source_remove (priv->timer_id);
       priv->timer_id = 0;
 
-      /* signal any streams to the remote end which were added locally & became
-       * ready before the session was accepted, so haven't been mentioned yet */
+      /* signal any streams to the remote end which were added locally &
+       * became ready before the session was accepted, so haven't been
+       * mentioned yet */
       _add_ready_new_streams (session);
     }
 }
@@ -1482,7 +1489,8 @@ _mark_local_streams_sent (GabbleMediaSession *session)
       if (stream->initiator == INITIATOR_REMOTE)
         continue;
 
-      GMS_DEBUG_INFO (session, "marking local stream %s as signalled", stream->name);
+      GMS_DEBUG_INFO (session, "marking local stream %s as signalled",
+          stream->name);
 
       g_object_set (stream, "signalling-state", STREAM_SIG_STATE_SENT, NULL);
     }
@@ -1504,7 +1512,8 @@ _mark_local_streams_acked (GabbleMediaSession *session)
       if (stream->signalling_state != STREAM_SIG_STATE_SENT)
         continue;
 
-      GMS_DEBUG_INFO (session, "marking local stream %s as acknowledged", stream->name);
+      GMS_DEBUG_INFO (session, "marking local stream %s as acknowledged",
+          stream->name);
 
       g_object_set (stream,
           "signalling-state", STREAM_SIG_STATE_ACKNOWLEDGED,
@@ -1525,7 +1534,8 @@ _set_remote_streams_playing (GabbleMediaSession *session)
       if (stream->initiator == INITIATOR_LOCAL)
         continue;
 
-      GMS_DEBUG_INFO (session, "setting remote stream %s as playing", stream->name);
+      GMS_DEBUG_INFO (session, "setting remote stream %s as playing",
+          stream->name);
 
       g_object_set (stream, "playing", TRUE, NULL);
     }
@@ -2200,7 +2210,8 @@ content_remove_msg_reply_cb (GabbleConnection *conn,
   GPtrArray *removing = (GPtrArray *) user_data;
   guint i;
 
-  MSG_REPLY_CB_END_SESSION_IF_NOT_SUCCESSFUL (session, "stream removal failed");
+  MSG_REPLY_CB_END_SESSION_IF_NOT_SUCCESSFUL (session,
+      "stream removal failed");
 
   for (i = 0; i < removing->len; i++)
     destroy_media_stream (session,
@@ -2775,7 +2786,8 @@ direction_msg_reply_cb (GabbleConnection *conn,
   GabbleMediaSession *session = GABBLE_MEDIA_SESSION (user_data);
   GabbleMediaStream *stream = GABBLE_MEDIA_STREAM (object);
 
-  MSG_REPLY_CB_END_SESSION_IF_NOT_SUCCESSFUL (session, "direction change failed");
+  MSG_REPLY_CB_END_SESSION_IF_NOT_SUCCESSFUL (session,
+      "direction change failed");
 
   if (stream->playing)
     {
@@ -2906,7 +2918,8 @@ _gabble_media_session_request_stream_direction (GabbleMediaSession *session,
 static void
 session_handler_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  TpSvcMediaSessionHandlerClass *klass = (TpSvcMediaSessionHandlerClass *)g_iface;
+  TpSvcMediaSessionHandlerClass *klass =
+    (TpSvcMediaSessionHandlerClass *)g_iface;
 
 #define IMPLEMENT(x) tp_svc_media_session_handler_implement_##x (\
     klass, gabble_media_session_##x)

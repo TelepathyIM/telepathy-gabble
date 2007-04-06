@@ -48,7 +48,8 @@ GType gabble_register_get_type (void);
 #define GABBLE_IS_REGISTER_CLASS(klass) \
   (G_TYPE_CHECK_CLASS_TYPE((klass), GABBLE_TYPE_REGISTER))
 #define GABBLE_REGISTER_GET_CLASS(obj) \
-  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_REGISTER, GabbleRegisterClass))
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_REGISTER,\
+                              GabbleRegisterClass))
 
 struct _GabbleRegisterClass {
     GObjectClass parent_class;

@@ -43,19 +43,25 @@ GType gabble_media_factory_get_type (void);
 #define GABBLE_TYPE_MEDIA_FACTORY \
   (gabble_media_factory_get_type ())
 #define GABBLE_MEDIA_FACTORY(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_MEDIA_FACTORY, GabbleMediaFactory))
+  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_MEDIA_FACTORY,\
+                              GabbleMediaFactory))
 #define GABBLE_MEDIA_FACTORY_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_MEDIA_FACTORY, GabbleMediaFactoryClass))
+  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_MEDIA_FACTORY,\
+                           GabbleMediaFactoryClass))
 #define GABBLE_IS_MEDIA_FACTORY(obj) \
   (G_TYPE_CHECK_INSTANCE_TYPE((obj), GABBLE_TYPE_MEDIA_FACTORY))
 #define GABBLE_IS_MEDIA_FACTORY_CLASS(klass) \
   (G_TYPE_CHECK_CLASS_TYPE((klass), GABBLE_TYPE_MEDIA_FACTORY))
 #define GABBLE_MEDIA_FACTORY_GET_CLASS(obj) \
-  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_MEDIA_FACTORY, GabbleMediaFactoryClass))
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_MEDIA_FACTORY,\
+                              GabbleMediaFactoryClass))
 
-const gchar * _gabble_media_factory_allocate_sid (GabbleMediaFactory *fac, GabbleMediaChannel *chan);
-const gchar * _gabble_media_factory_register_sid (GabbleMediaFactory *fac, const gchar *sid, GabbleMediaChannel *chan);
-void _gabble_media_factory_free_sid (GabbleMediaFactory *fac, const gchar *sid);
+const gchar * _gabble_media_factory_allocate_sid (GabbleMediaFactory *fac,
+    GabbleMediaChannel *chan);
+const gchar * _gabble_media_factory_register_sid (GabbleMediaFactory *fac,
+    const gchar *sid, GabbleMediaChannel *chan);
+void _gabble_media_factory_free_sid (GabbleMediaFactory *fac,
+    const gchar *sid);
 
 G_END_DECLS
 

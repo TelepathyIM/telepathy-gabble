@@ -58,23 +58,32 @@ GType gabble_muc_channel_get_type (void);
 #define GABBLE_TYPE_MUC_CHANNEL \
   (gabble_muc_channel_get_type ())
 #define GABBLE_MUC_CHANNEL(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_MUC_CHANNEL, GabbleMucChannel))
+  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_MUC_CHANNEL, \
+                              GabbleMucChannel))
 #define GABBLE_MUC_CHANNEL_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_MUC_CHANNEL, GabbleMucChannelClass))
+  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_MUC_CHANNEL,\
+                           GabbleMucChannelClass))
 #define GABBLE_IS_MUC_CHANNEL(obj) \
   (G_TYPE_CHECK_INSTANCE_TYPE((obj), GABBLE_TYPE_MUC_CHANNEL))
 #define GABBLE_IS_MUC_CHANNEL_CLASS(klass) \
   (G_TYPE_CHECK_CLASS_TYPE((klass), GABBLE_TYPE_MUC_CHANNEL))
 #define GABBLE_MUC_CHANNEL_GET_CLASS(obj) \
-  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_MUC_CHANNEL, GabbleMucChannelClass))
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_MUC_CHANNEL,\
+                              GabbleMucChannelClass))
 
 gboolean _gabble_muc_channel_is_ready (GabbleMucChannel *chan);
-void _gabble_muc_channel_presence_error (GabbleMucChannel *chan, const gchar *jid, LmMessageNode *pres_node);
-void _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan, TpHandle handle, LmMessage *message, LmMessageNode *x_node);
-void _gabble_muc_channel_receive (GabbleMucChannel *chan, TpChannelTextMessageType msg_type, TpHandleType handle_type, TpHandle sender, time_t timestamp, const gchar *text, LmMessage *msg);
+void _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
+    const gchar *jid, LmMessageNode *pres_node);
+void _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
+    TpHandle handle, LmMessage *message, LmMessageNode *x_node);
+void _gabble_muc_channel_receive (GabbleMucChannel *chan,
+    TpChannelTextMessageType msg_type, TpHandleType handle_type,
+    TpHandle sender, time_t timestamp, const gchar *text, LmMessage *msg);
 
-void _gabble_muc_channel_handle_invited (GabbleMucChannel *chan, TpHandle inviter, const gchar *message);
-void _gabble_muc_channel_state_receive (GabbleMucChannel *chan, guint state, guint from_handle);
+void _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
+    TpHandle inviter, const gchar *message);
+void _gabble_muc_channel_state_receive (GabbleMucChannel *chan,
+    guint state, guint from_handle);
 
 G_END_DECLS
 

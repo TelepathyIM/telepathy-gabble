@@ -41,15 +41,18 @@ GType gabble_muc_factory_get_type (void);
 #define GABBLE_TYPE_MUC_FACTORY \
   (gabble_muc_factory_get_type ())
 #define GABBLE_MUC_FACTORY(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_MUC_FACTORY, GabbleMucFactory))
+  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_MUC_FACTORY, \
+                              GabbleMucFactory))
 #define GABBLE_MUC_FACTORY_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_MUC_FACTORY, GabbleMucFactoryClass))
+  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_MUC_FACTORY, \
+                           GabbleMucFactoryClass))
 #define GABBLE_IS_MUC_FACTORY(obj) \
   (G_TYPE_CHECK_INSTANCE_TYPE((obj), GABBLE_TYPE_MUC_FACTORY))
 #define GABBLE_IS_MUC_FACTORY_CLASS(klass) \
   (G_TYPE_CHECK_CLASS_TYPE((klass), GABBLE_TYPE_MUC_FACTORY))
 #define GABBLE_MUC_FACTORY_GET_CLASS(obj) \
-  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_MUC_FACTORY, GabbleMucFactoryClass))
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_MUC_FACTORY, \
+                              GabbleMucFactoryClass))
 
 G_END_DECLS
 

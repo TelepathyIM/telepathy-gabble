@@ -40,7 +40,9 @@
  * provided through error if set.
  */
 gboolean
-gabble_handle_jid_is_valid (TpHandleType type, const gchar *jid, GError **error)
+gabble_handle_jid_is_valid (TpHandleType type,
+                            const gchar *jid,
+                            GError **error)
 {
   if (type == TP_HANDLE_TYPE_CONTACT || type == TP_HANDLE_TYPE_ROOM)
     {

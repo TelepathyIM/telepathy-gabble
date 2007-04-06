@@ -23,7 +23,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* when five DIFFERENT guys report the same caps for a given bundle, it'll be enough */
+/* when five DIFFERENT guys report the same caps for a given bundle, it'll
+be enough */
 #define CAPABILITY_BUNDLE_ENOUGH_TRUST 5
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 
@@ -57,7 +58,8 @@ enum
 
 static guint signals[LAST_SIGNAL] = { 0 };
 
-#define GABBLE_PRESENCE_CACHE_PRIV(account) ((GabblePresenceCachePrivate *)account->priv)
+#define GABBLE_PRESENCE_CACHE_PRIV(account) \
+  ((GabblePresenceCachePrivate *)account->priv)
 
 typedef struct _GabblePresenceCachePrivate GabblePresenceCachePrivate;
 
@@ -93,7 +95,10 @@ struct _DiscoWaiter
  * disco_waiter_new ()
  */
 static DiscoWaiter *
-disco_waiter_new (TpHandleRepoIface *repo, TpHandle handle, const gchar *resource, guint serial)
+disco_waiter_new (TpHandleRepoIface *repo,
+                  TpHandle handle,
+                  const gchar *resource,
+                  guint serial)
 {
   DiscoWaiter *waiter;
 
@@ -106,7 +111,8 @@ disco_waiter_new (TpHandleRepoIface *repo, TpHandle handle, const gchar *resourc
   waiter->resource = g_strdup (resource);
   waiter->serial = serial;
 
-  DEBUG ("created waiter %p for handle %u with serial %u", waiter, handle, serial);
+  DEBUG ("created waiter %p for handle %u with serial %u", waiter, handle,
+      serial);
 
   return waiter;
 }
@@ -116,7 +122,8 @@ disco_waiter_free (DiscoWaiter *waiter)
 {
   g_assert (NULL != waiter);
 
-  DEBUG ("freeing waiter %p for handle %u with serial %u", waiter, waiter->handle, waiter->serial);
+  DEBUG ("freeing waiter %p for handle %u with serial %u", waiter,
+      waiter->handle, waiter->serial);
 
   tp_handle_unref (waiter->repo, waiter->handle);
 
@@ -276,7 +283,8 @@ gabble_presence_cache_class_init (GabblePresenceCacheClass *klass)
     G_SIGNAL_RUN_LAST,
     0,
     NULL, NULL,
-    gabble_marshal_VOID__UINT_UINT_UINT, G_TYPE_NONE, 3, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT);
+    gabble_marshal_VOID__UINT_UINT_UINT, G_TYPE_NONE,
+    3, G_TYPE_UINT, G_TYPE_UINT, G_TYPE_UINT);
   signals[AVATAR_UPDATE] = g_signal_new (
     "avatar-update",
     G_TYPE_FROM_CLASS (klass),
@@ -467,8 +475,8 @@ gabble_presence_cache_status_changed_cb (GabbleConnection *conn,
     case TP_CONNECTION_STATUS_CONNECTING:
       g_assert (priv->lm_message_cb == NULL);
 
-      priv->lm_message_cb = lm_message_handler_new (gabble_presence_cache_lm_message_cb,
-                                                    cache, NULL);
+      priv->lm_message_cb = lm_message_handler_new (
+          gabble_presence_cache_lm_message_cb, cache, NULL);
       lm_connection_register_message_handler (priv->conn->lmconn,
                                               priv->lm_message_cb,
                                               LM_MESSAGE_TYPE_PRESENCE,
@@ -637,7 +645,8 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
            * For the moment I'm going to ignore that requirement and
            * trust that our other resource is getting its sha1 right!
            */
-          /* TODO: I don't trust anyone to get XMPP right, so let's do this. :D */
+          /* TODO: I don't trust anyone to get XMPP right, so let's do
+           * this. :D */
         }
 #endif
 
@@ -733,8 +742,8 @@ _caps_disco_cb (GabbleDisco *disco,
               jid = tp_handle_inspect (contact_repo, waiter->handle);
               full_jid = g_strdup_printf ("%s/%s", jid, waiter->resource);
 
-              gabble_disco_request (disco, GABBLE_DISCO_TYPE_INFO, full_jid, node,
-                                    _caps_disco_cb, cache, G_OBJECT(cache), NULL);
+              gabble_disco_request (disco, GABBLE_DISCO_TYPE_INFO, full_jid,
+                  node, _caps_disco_cb, cache, G_OBJECT(cache), NULL);
               waiter->disco_requested = TRUE;
               break;
             }
@@ -742,11 +751,13 @@ _caps_disco_cb (GabbleDisco *disco,
 
       if (NULL != i)
         {
-          DEBUG ("sent a retry disco request to %s for URI %s", full_jid, node);
+          DEBUG ("sent a retry disco request to %s for URI %s", full_jid,
+              node);
         }
       else
         {
-          DEBUG ("failed to find a suitable candidate to retry disco request for URI %s", node);
+          DEBUG ("failed to find a suitable candidate to retry disco "
+              "request for URI %s", node);
           /* FIXME do something very clever here? */
           g_hash_table_remove (priv->disco_pending, node);
         }
@@ -901,7 +912,8 @@ _process_caps_uri (GabblePresenceCache *cache,
       if (presence)
         {
           GabblePresenceCapabilities save_caps = presence->caps;
-          gabble_presence_set_capabilities (presence, resource, info->caps, serial);
+          gabble_presence_set_capabilities (presence, resource, info->caps,
+              serial);
           g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0,
               handle, save_caps, presence->caps);
           DEBUG ("caps for %d (%s) now %d", handle, from, presence->caps);
@@ -947,11 +959,13 @@ _process_caps_uri (GabblePresenceCache *cache,
 
       possible_trust = disco_waiter_list_get_request_count (waiters);
 
-      if (!value || info->trust + possible_trust < CAPABILITY_BUNDLE_ENOUGH_TRUST)
+      if (!value
+          || info->trust + possible_trust < CAPABILITY_BUNDLE_ENOUGH_TRUST)
         {
           /* DISCO */
-          DEBUG ("only %u trust out of %u possible thus far, sending disco for URI %s",
-              info->trust + possible_trust, CAPABILITY_BUNDLE_ENOUGH_TRUST, uri);
+          DEBUG ("only %u trust out of %u possible thus far, sending "
+              "disco for URI %s", info->trust + possible_trust,
+              CAPABILITY_BUNDLE_ENOUGH_TRUST, uri);
           gabble_disco_request (priv->conn->disco, GABBLE_DISCO_TYPE_INFO,
               from, uri, _caps_disco_cb, cache, G_OBJECT (cache), NULL);
           /* enough DISCO for you, buddy */
@@ -983,7 +997,8 @@ _process_caps (GabblePresenceCache *cache,
 
   for (i = uris; NULL != i; i = i->next)
     {
-      _process_caps_uri (cache, from, (gchar *) i->data, handle, resource, serial);
+      _process_caps_uri (cache, from, (gchar *) i->data, handle, resource,
+          serial);
       g_free (i->data);
     }
 

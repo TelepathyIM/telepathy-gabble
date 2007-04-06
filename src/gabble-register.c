@@ -68,7 +68,9 @@ struct _GabbleRegisterPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_REGISTER_GET_PRIVATE(o)     (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_REGISTER, GabbleRegisterPrivate))
+#define GABBLE_REGISTER_GET_PRIVATE(o) \
+  (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_REGISTER,\
+                                GabbleRegisterPrivate))
 
 static void
 gabble_register_init (GabbleRegister *obj)
@@ -88,7 +90,8 @@ gabble_register_class_init (GabbleRegisterClass *gabble_register_class)
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_register_class);
   GParamSpec *param_spec;
 
-  g_type_class_add_private (gabble_register_class, sizeof (GabbleRegisterPrivate));
+  g_type_class_add_private (gabble_register_class,
+      sizeof (GabbleRegisterPrivate));
 
   object_class->get_property = gabble_register_get_property;
   object_class->set_property = gabble_register_set_property;

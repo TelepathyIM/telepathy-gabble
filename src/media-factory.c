@@ -44,11 +44,15 @@
 #include <telepathy-glib/channel-factory-iface.h>
 #include "util.h"
 
-static void gabble_media_factory_iface_init (gpointer g_iface, gpointer iface_data);
-static LmHandlerResult media_factory_jingle_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
+static void gabble_media_factory_iface_init (gpointer g_iface,
+    gpointer iface_data);
+static LmHandlerResult media_factory_jingle_cb (LmMessageHandler *,
+    LmConnection *, LmMessage *, gpointer);
 
-G_DEFINE_TYPE_WITH_CODE (GabbleMediaFactory, gabble_media_factory, G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_FACTORY_IFACE, gabble_media_factory_iface_init));
+G_DEFINE_TYPE_WITH_CODE (GabbleMediaFactory, gabble_media_factory,
+    G_TYPE_OBJECT,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_FACTORY_IFACE,
+      gabble_media_factory_iface_init));
 
 /* properties */
 enum
@@ -77,9 +81,12 @@ struct _GabbleMediaFactoryPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_MEDIA_FACTORY_GET_PRIVATE(o)    (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_MEDIA_FACTORY, GabbleMediaFactoryPrivate))
+#define GABBLE_MEDIA_FACTORY_GET_PRIVATE(o) \
+  (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_MEDIA_FACTORY, \
+                                GabbleMediaFactoryPrivate))
 
-static GObject *gabble_media_factory_constructor (GType type, guint n_props, GObjectConstructParam *props);
+static GObject *gabble_media_factory_constructor (GType type, guint n_props,
+    GObjectConstructParam *props);
 
 static void
 gabble_media_factory_init (GabbleMediaFactory *fac)
@@ -190,7 +197,8 @@ gabble_media_factory_class_init (GabbleMediaFactoryClass *gabble_media_factory_c
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_media_factory_class);
   GParamSpec *param_spec;
 
-  g_type_class_add_private (gabble_media_factory_class, sizeof (GabbleMediaFactoryPrivate));
+  g_type_class_add_private (gabble_media_factory_class,
+      sizeof (GabbleMediaFactoryPrivate));
 
   object_class->constructor = gabble_media_factory_constructor;
   object_class->dispose = gabble_media_factory_dispose;
@@ -210,9 +218,12 @@ gabble_media_factory_class_init (GabbleMediaFactoryClass *gabble_media_factory_c
 
 }
 
-static gboolean _gabble_media_factory_sid_in_use (GabbleMediaFactory *fac, const gchar *sid);
-static GabbleMediaChannel *new_media_channel (GabbleMediaFactory *fac, TpHandle handle);
-static void media_channel_closed_cb (GabbleMediaChannel *chan, gpointer user_data);
+static gboolean _gabble_media_factory_sid_in_use (GabbleMediaFactory *fac,
+    const gchar *sid);
+static GabbleMediaChannel *new_media_channel (GabbleMediaFactory *fac,
+    TpHandle handle);
+static void media_channel_closed_cb (GabbleMediaChannel *chan,
+    gpointer user_data);
 
 /**
  * media_factory_jingle_cb
@@ -399,7 +410,8 @@ _gabble_media_factory_sid_in_use (GabbleMediaFactory *fac, const gchar *sid)
 }
 
 const gchar *
-_gabble_media_factory_allocate_sid (GabbleMediaFactory *fac, GabbleMediaChannel *chan)
+_gabble_media_factory_allocate_sid (GabbleMediaFactory *fac,
+                                    GabbleMediaChannel *chan)
 {
   const gchar *sid = _gabble_media_factory_get_unique_sid (fac);
 
@@ -465,7 +477,8 @@ media_channel_closed_cb (GabbleMediaChannel *chan, gpointer user_data)
 
   if (priv->session_chans)
     {
-      g_hash_table_foreach_remove (priv->session_chans, _remove_sid_mapping, chan);
+      g_hash_table_foreach_remove (priv->session_chans, _remove_sid_mapping,
+          chan);
     }
 }
 
@@ -508,7 +521,8 @@ new_media_channel (GabbleMediaFactory *fac, TpHandle creator)
 
   if (priv->relay_token != NULL)
     {
-      g_object_set ((GObject *) chan, "gtalk-p2p-relay-token", priv->relay_token, NULL);
+      g_object_set ((GObject *) chan, "gtalk-p2p-relay-token",
+          priv->relay_token, NULL);
     }
 
   DEBUG ("object path %s", object_path);
@@ -712,7 +726,8 @@ gabble_media_factory_iface_connecting (TpChannelFactoryIface *iface)
   g_assert (priv->jingle_cb == NULL);
   g_assert (priv->jingle_info_cb == NULL);
 
-  priv->jingle_cb = lm_message_handler_new (media_factory_jingle_cb, fac, NULL);
+  priv->jingle_cb = lm_message_handler_new (media_factory_jingle_cb, fac,
+      NULL);
   lm_connection_register_message_handler (priv->conn->lmconn, priv->jingle_cb,
                                           LM_MESSAGE_TYPE_IQ,
                                           LM_HANDLER_PRIORITY_NORMAL);
@@ -766,20 +781,22 @@ gabble_media_factory_iface_disconnected (TpChannelFactoryIface *iface)
   g_assert (priv->jingle_cb != NULL);
   g_assert (priv->jingle_info_cb != NULL);
 
-  lm_connection_unregister_message_handler (priv->conn->lmconn, priv->jingle_cb,
-                                            LM_MESSAGE_TYPE_IQ);
+  lm_connection_unregister_message_handler (priv->conn->lmconn,
+      priv->jingle_cb, LM_MESSAGE_TYPE_IQ);
   lm_message_handler_unref (priv->jingle_cb);
   priv->jingle_cb = NULL;
 
-  lm_connection_unregister_message_handler (priv->conn->lmconn, priv->jingle_info_cb,
-                                            LM_MESSAGE_TYPE_IQ);
+  lm_connection_unregister_message_handler (priv->conn->lmconn,
+      priv->jingle_info_cb, LM_MESSAGE_TYPE_IQ);
   lm_message_handler_unref (priv->jingle_info_cb);
   priv->jingle_info_cb = NULL;
 
 }
 
 static void
-gabble_media_factory_iface_foreach (TpChannelFactoryIface *iface, TpChannelFunc foreach, gpointer user_data)
+gabble_media_factory_iface_foreach (TpChannelFactoryIface *iface,
+                                    TpChannelFunc foreach,
+                                    gpointer user_data)
 {
   GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (iface);
   GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
@@ -787,7 +804,8 @@ gabble_media_factory_iface_foreach (TpChannelFactoryIface *iface, TpChannelFunc 
 
   for (i = 0; i < priv->channels->len; i++)
     {
-      foreach (TP_CHANNEL_IFACE (g_ptr_array_index (priv->channels, i)), user_data);
+      foreach (TP_CHANNEL_IFACE (g_ptr_array_index (priv->channels, i)),
+          user_data);
     }
 }
 

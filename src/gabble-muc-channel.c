@@ -228,7 +228,9 @@ struct _GabbleMucChannelPrivate
   gboolean invite_self;
 };
 
-#define GABBLE_MUC_CHANNEL_GET_PRIVATE(o)     (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_MUC_CHANNEL, GabbleMucChannelPrivate))
+#define GABBLE_MUC_CHANNEL_GET_PRIVATE(o) \
+  (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_MUC_CHANNEL, \
+                                GabbleMucChannelPrivate))
 
 static void
 gabble_muc_channel_init (GabbleMucChannel *obj)
@@ -236,7 +238,8 @@ gabble_muc_channel_init (GabbleMucChannel *obj)
   /* do nothing? */
 }
 
-static void contact_handle_to_room_identity (GabbleMucChannel *, TpHandle, TpHandle *, GString **);
+static void contact_handle_to_room_identity (GabbleMucChannel *, TpHandle,
+    TpHandle *, GString **);
 
 static GObject *
 gabble_muc_channel_constructor (GType type, guint n_props,
@@ -786,9 +789,12 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
   object_class->dispose = gabble_muc_channel_dispose;
   object_class->finalize = gabble_muc_channel_finalize;
 
-  g_object_class_override_property (object_class, PROP_OBJECT_PATH, "object-path");
-  g_object_class_override_property (object_class, PROP_CHANNEL_TYPE, "channel-type");
-  g_object_class_override_property (object_class, PROP_HANDLE_TYPE, "handle-type");
+  g_object_class_override_property (object_class, PROP_OBJECT_PATH,
+      "object-path");
+  g_object_class_override_property (object_class, PROP_CHANNEL_TYPE,
+      "channel-type");
+  g_object_class_override_property (object_class, PROP_HANDLE_TYPE,
+      "handle-type");
   g_object_class_override_property (object_class, PROP_HANDLE, "handle");
 
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
@@ -810,12 +816,9 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
   g_object_class_install_property (object_class, PROP_STATE, param_spec);
 
   param_spec = g_param_spec_boolean ("invite-self", "Invite self",
-                                     "Whether the user should be added to members list.",
-                                     FALSE,
-                                     G_PARAM_CONSTRUCT_ONLY |
-                                     G_PARAM_WRITABLE |
-                                     G_PARAM_STATIC_NAME |
-                                     G_PARAM_STATIC_BLURB);
+      "Whether the user should be added to members list.", FALSE,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_WRITABLE | G_PARAM_STATIC_NAME |
+      G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_INVITE_SELF, param_spec);
 
   signals[READY] =
@@ -973,7 +976,8 @@ provide_password_return_if_pending (GabbleMucChannel *chan, gboolean success)
     }
 }
 
-static void close_channel (GabbleMucChannel *chan, const gchar *reason, gboolean inform_muc, TpHandle actor, guint reason_code);
+static void close_channel (GabbleMucChannel *chan, const gchar *reason,
+    gboolean inform_muc, TpHandle actor, guint reason_code);
 
 static gboolean
 timeout_join (gpointer data)
@@ -1008,7 +1012,8 @@ channel_state_changed (GabbleMucChannel *chan,
 {
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
 
-  DEBUG ("state changed from %s to %s", muc_states[prev_state], muc_states[new_state]);
+  DEBUG ("state changed from %s to %s", muc_states[prev_state],
+      muc_states[new_state]);
 
   if (new_state == MUC_STATE_INITIATED)
     {
@@ -1141,8 +1146,8 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
 
   if (priv->state >= MUC_STATE_JOINED)
     {
-      g_warning ("%s: presence error while already member of the channel -- NYI",
-                 G_STRFUNC);
+      g_warning ("%s: presence error while already member of the channel "
+          "-- NYI", G_STRFUNC);
       return;
     }
 
@@ -1627,8 +1632,8 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
               LmMessage *msg;
               GError *error = NULL;
 
-              msg = lm_message_new_with_sub_type (priv->jid, LM_MESSAGE_TYPE_IQ,
-                                                  LM_MESSAGE_SUB_TYPE_SET);
+              msg = lm_message_new_with_sub_type (priv->jid,
+                  LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_SET);
 
               node = lm_message_node_add_child (msg->node, "query", NULL);
               lm_message_node_set_attribute (node, "xmlns", NS_MUC_OWNER);
@@ -1640,10 +1645,11 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
                                               NULL);
 
               if (!_gabble_connection_send_with_reply (priv->conn, msg,
-                    room_created_submit_reply_cb, G_OBJECT (chan), NULL, &error))
+                    room_created_submit_reply_cb, G_OBJECT (chan), NULL,
+                    &error))
                 {
-                  g_warning ("%s: failed to send submit message: %s", G_STRFUNC,
-                             error->message);
+                  g_warning ("%s: failed to send submit message: %s",
+                      G_STRFUNC, error->message);
                   g_error_free (error);
 
                   lm_message_unref (msg);
@@ -1698,7 +1704,8 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
        * 301 banned
        * 307 kicked
        * 321 "because of an affiliation change" - no reason_code
-       * 322 room has become members-only and we're not a member - no reason_code
+       * 322 room has become members-only and we're not a member - no
+       *    reason_code
        * 332 system (server) is being shut down - no reason code
        */
       if (status_code)
@@ -1875,7 +1882,8 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
     }
   else if ((sender == chan->group.self_handle) && (timestamp == 0))
     {
-      /* If we sent the message and it's not delayed, just emit the sent signal */
+      /* If we sent the message and it's not delayed, just emit the sent
+      signal */
       timestamp = time (NULL);
       tp_svc_channel_type_text_emit_sent (chan, timestamp, msg_type, text);
 
@@ -1948,7 +1956,9 @@ _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
  * on org.freedesktop.Telepathy.Channel.Interface.ChatState
  */
 void
-_gabble_muc_channel_state_receive (GabbleMucChannel *chan, guint state, guint from_handle)
+_gabble_muc_channel_state_receive (GabbleMucChannel *chan,
+                                   guint state,
+                                   guint from_handle)
 {
   GabbleMucChannelPrivate *priv;
 
@@ -1956,7 +1966,7 @@ _gabble_muc_channel_state_receive (GabbleMucChannel *chan, guint state, guint fr
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
 
-  tp_svc_channel_interface_chat_state_emit_chat_state_changed ((TpSvcChannelInterfaceChatState*)chan,
+  tp_svc_channel_interface_chat_state_emit_chat_state_changed (chan,
       from_handle, state);
 }
 
@@ -2203,8 +2213,7 @@ gabble_muc_channel_add_member (GObject *obj,
       tp_intset_add (set_pending, handle);
 
       tp_group_mixin_change_members (obj, "", set_empty, set_members,
-                                         set_empty, set_pending, 0,
-                                         TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
+          set_empty, set_pending, 0, TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
 
       tp_intset_destroy (set_empty);
       tp_intset_destroy (set_members);

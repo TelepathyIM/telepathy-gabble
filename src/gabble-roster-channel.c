@@ -253,7 +253,8 @@ gabble_roster_channel_class_init (GabbleRosterChannelClass *gabble_roster_channe
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_roster_channel_class);
   GParamSpec *param_spec;
 
-  g_type_class_add_private (gabble_roster_channel_class, sizeof (GabbleRosterChannelPrivate));
+  g_type_class_add_private (gabble_roster_channel_class,
+      sizeof (GabbleRosterChannelPrivate));
 
   object_class->constructor = gabble_roster_channel_constructor;
 
@@ -273,15 +274,18 @@ gabble_roster_channel_class_init (GabbleRosterChannelClass *gabble_roster_channe
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 
-  g_object_class_override_property (object_class, PROP_OBJECT_PATH, "object-path");
-  g_object_class_override_property (object_class, PROP_CHANNEL_TYPE, "channel-type");
-  g_object_class_override_property (object_class, PROP_HANDLE_TYPE, "handle-type");
+  g_object_class_override_property (object_class, PROP_OBJECT_PATH,
+      "object-path");
+  g_object_class_override_property (object_class, PROP_CHANNEL_TYPE,
+      "channel-type");
+  g_object_class_override_property (object_class, PROP_HANDLE_TYPE,
+      "handle-type");
   g_object_class_override_property (object_class, PROP_HANDLE, "handle");
 
   tp_group_mixin_class_init (object_class,
-                             G_STRUCT_OFFSET (GabbleRosterChannelClass, group_class),
-                             _gabble_roster_channel_add_member_cb,
-                             _gabble_roster_channel_remove_member_cb);
+      G_STRUCT_OFFSET (GabbleRosterChannelClass, group_class),
+      _gabble_roster_channel_add_member_cb,
+      _gabble_roster_channel_remove_member_cb);
 }
 
 void
@@ -513,8 +517,8 @@ _gabble_roster_channel_remove_member_cb (GObject *obj,
   else if (GABBLE_LIST_HANDLE_DENY == priv->handle)
     {
       /* unblock contact */
-      ret = gabble_roster_handle_set_blocked (priv->conn->roster, handle, FALSE,
-          error);
+      ret = gabble_roster_handle_set_blocked (priv->conn->roster, handle,
+          FALSE, error);
     }
   else
     {
@@ -627,7 +631,7 @@ gabble_roster_channel_get_interfaces (TpSvcChannel *self,
 
 
 static void
-channel_iface_init(gpointer g_iface, gpointer iface_data)
+channel_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcChannelClass *klass = (TpSvcChannelClass *)g_iface;
 

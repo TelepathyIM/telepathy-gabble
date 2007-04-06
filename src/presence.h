@@ -82,20 +82,23 @@ GType gabble_presence_get_type (void);
 
 GabblePresence* gabble_presence_new (void);
 
-gboolean gabble_presence_update (GabblePresence *presence, const gchar *resource, GabblePresenceId status, const gchar *status_message, gint8 priority);
+gboolean gabble_presence_update (GabblePresence *presence,
+    const gchar *resource, GabblePresenceId status,
+    const gchar *status_message, gint8 priority);
 
-void gabble_presence_set_capabilities (GabblePresence *presence, const gchar *resource, GabblePresenceCapabilities caps, guint serial);
+void gabble_presence_set_capabilities (GabblePresence *presence,
+    const gchar *resource, GabblePresenceCapabilities caps, guint serial);
 
-const gchar *gabble_presence_pick_resource_by_caps (GabblePresence *presence, GabblePresenceCapabilities caps);
+const gchar *gabble_presence_pick_resource_by_caps (GabblePresence *presence,
+    GabblePresenceCapabilities caps);
 
-gboolean
-gabble_presence_resource_has_caps (GabblePresence *presence,
+gboolean gabble_presence_resource_has_caps (GabblePresence *presence,
                                    const gchar *resource,
                                    GabblePresenceCapabilities caps);
 
-LmMessage *gabble_presence_as_message (GabblePresence *presence, const gchar *resource);
-gchar *
-gabble_presence_dump (GabblePresence *presence);
+LmMessage *gabble_presence_as_message (GabblePresence *presence,
+    const gchar *resource);
+gchar *gabble_presence_dump (GabblePresence *presence);
 
 G_END_DECLS
 

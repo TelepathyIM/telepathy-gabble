@@ -34,8 +34,10 @@ static const Feature self_advertised_features[] =
   { VERSION, NS_CHAT_STATES, PRESENCE_CAP_CHAT_STATES},
 
   { BUNDLE_VOICE_V1, NS_GOOGLE_FEAT_VOICE, PRESENCE_CAP_GOOGLE_VOICE},
-  { BUNDLE_JINGLE_AUDIO, NS_JINGLE_DESCRIPTION_AUDIO, PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO},
-  { BUNDLE_JINGLE_VIDEO, NS_JINGLE_DESCRIPTION_VIDEO, PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO},
+  { BUNDLE_JINGLE_AUDIO, NS_JINGLE_DESCRIPTION_AUDIO,
+    PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO},
+  { BUNDLE_JINGLE_VIDEO, NS_JINGLE_DESCRIPTION_VIDEO,
+    PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO},
   { NULL, NULL, 0}
 };
 
@@ -78,8 +80,11 @@ capabilities_get_initial_caps ()
   for (feat = self_advertised_features; NULL != feat->ns; feat++)
     {
       if (g_str_equal (feat->bundle, VERSION))
-          /* VERSION == bundle means a fixed feature, which we always advertise */
-            ret |= feat->caps;
+        {
+          /* VERSION == bundle means a fixed feature, which we always
+           * advertise */
+          ret |= feat->caps;
+        }
     }
 
   return ret;
@@ -87,7 +92,9 @@ capabilities_get_initial_caps ()
 
 const CapabilityConversionData capabilities_conversions[] =
 {
-  { TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA, _gabble_media_channel_typeflags_to_caps, _gabble_media_channel_caps_to_typeflags },
+  { TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA,
+    _gabble_media_channel_typeflags_to_caps,
+    _gabble_media_channel_caps_to_typeflags },
   { NULL, NULL, NULL}
 };
 

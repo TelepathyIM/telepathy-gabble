@@ -41,7 +41,8 @@ void gabble_debug_set_flags_from_env ()
   if (flags_string)
     {
       tp_debug_set_flags_from_env ("GABBLE_DEBUG");
-      gabble_debug_set_flags (g_parse_debug_string (flags_string, keys, nkeys));
+      gabble_debug_set_flags (g_parse_debug_string (flags_string, keys,
+            nkeys));
     }
 }
 

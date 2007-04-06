@@ -113,7 +113,8 @@ struct _GabbleRosterItem
 
 static void gabble_roster_factory_iface_init ();
 static void gabble_roster_init (GabbleRoster *roster);
-static GObject * gabble_roster_constructor (GType type, guint n_props, GObjectConstructParam *props);
+static GObject * gabble_roster_constructor (GType type, guint n_props,
+    GObjectConstructParam *props);
 static void gabble_roster_dispose (GObject *object);
 static void gabble_roster_finalize (GObject *object);
 static void gabble_roster_set_property (GObject *object, guint property_id,
@@ -125,7 +126,8 @@ static void _gabble_roster_item_free (GabbleRosterItem *item);
 static void item_edit_free (GabbleRosterItemEdit *edits);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleRoster, gabble_roster, G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_FACTORY_IFACE, gabble_roster_factory_iface_init));
+    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_FACTORY_IFACE,
+      gabble_roster_factory_iface_init));
 
 #define GABBLE_ROSTER_GET_PRIVATE(o)     ((GabbleRosterPrivate*) ((o)->priv));
 
@@ -169,25 +171,19 @@ gabble_roster_class_init (GabbleRosterClass *gabble_roster_class)
 static void
 gabble_roster_init (GabbleRoster *obj)
 {
-  GabbleRosterPrivate *priv =
-     G_TYPE_INSTANCE_GET_PRIVATE (obj, GABBLE_TYPE_ROSTER, GabbleRosterPrivate);
+  GabbleRosterPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (obj,
+      GABBLE_TYPE_ROSTER, GabbleRosterPrivate);
 
   obj->priv = priv;
 
-  priv->list_channels = g_hash_table_new_full (g_direct_hash,
-                                               g_direct_equal,
-                                               NULL,
-                                               g_object_unref);
+  priv->list_channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+      NULL, g_object_unref);
 
-  priv->group_channels = g_hash_table_new_full (g_direct_hash,
-                                                g_direct_equal,
-                                                NULL,
-                                                g_object_unref);
+  priv->group_channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+      NULL, g_object_unref);
 
-  priv->items = g_hash_table_new_full (g_direct_hash,
-                                       g_direct_equal,
-                                       NULL,
-                                       (GDestroyNotify) _gabble_roster_item_free);
+  priv->items = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+      NULL, (GDestroyNotify) _gabble_roster_item_free);
 }
 
 static GObject *
@@ -623,7 +619,8 @@ _gabble_roster_item_update (GabbleRoster *roster,
 
       DEBUG ("name for contact#%u changed to %s", contact_handle,
           name);
-      g_signal_emit (G_OBJECT (roster), signals[NICKNAME_UPDATE], 0, contact_handle);
+      g_signal_emit (G_OBJECT (roster), signals[NICKNAME_UPDATE], 0,
+          contact_handle);
     }
 
   old_groups = tp_handle_set_peek (item->groups);    /* borrowed */
@@ -635,9 +632,11 @@ _gabble_roster_item_update (GabbleRoster *roster,
   added_to = tp_handle_set_update (item->groups, new_groups);
   removed_from2 = tp_handle_set_difference_update (item->groups, removed_from);
 
-  DEBUG ("Checking which groups contact#%u was just added to:", contact_handle);
+  DEBUG ("Checking which groups contact#%u was just added to:",
+      contact_handle);
   tp_intset_foreach (added_to, _update_add_to_group, &ctx);
-  DEBUG ("Checking which groups contact#%u was just removed from:", contact_handle);
+  DEBUG ("Checking which groups contact#%u was just removed from:",
+      contact_handle);
   tp_intset_foreach (removed_from, _update_remove_from_group, &ctx);
 
   tp_intset_destroy (added_to);
@@ -733,7 +732,8 @@ struct _ItemToMessageContext {
 static void
 _gabble_roster_item_put_group_in_message (guint handle, gpointer user_data)
 {
-  struct _ItemToMessageContext *ctx = (struct _ItemToMessageContext *)user_data;
+  struct _ItemToMessageContext *ctx =
+    (struct _ItemToMessageContext *)user_data;
   TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
       ctx->conn, TP_HANDLE_TYPE_GROUP);
   const char *name = tp_handle_inspect (group_repo, handle);
@@ -871,8 +871,8 @@ _gabble_roster_create_channel (GabbleRoster *roster,
     }
   else
     {
-      DEBUG ("roster not yet received, not emitting signal for %s list channel",
-          name);
+      DEBUG ("roster not yet received, not emitting signal for %s list "
+          "channel", name);
     }
   g_free (object_path);
 
@@ -964,9 +964,11 @@ _gabble_roster_received (GabbleRoster *roster)
 
       priv->roster_received = TRUE;
 
-      g_hash_table_foreach (priv->list_channels, _gabble_roster_emit_one, &data);
+      g_hash_table_foreach (priv->list_channels, _gabble_roster_emit_one,
+          &data);
       data.handle_type = TP_HANDLE_TYPE_GROUP;
-      g_hash_table_foreach (priv->group_channels, _gabble_roster_emit_one, &data);
+      g_hash_table_foreach (priv->group_channels, _gabble_roster_emit_one,
+          &data);
     }
 }
 
@@ -992,7 +994,8 @@ _update_group (gpointer key, gpointer value, gpointer user_data)
   g_assert (group_handle == update->group_handle);
 #endif
 
-  DEBUG ("Updating group channel %u now message has been received", group_handle);
+  DEBUG ("Updating group channel %u now message has been received",
+      group_handle);
   tp_group_mixin_change_members ((GObject *)group_channel,
       "", update->contacts_added, update->contacts_removed, empty, empty,
       0, 0);
@@ -1409,7 +1412,8 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
 
   if (from == NULL)
     {
-       NODE_DEBUG (pres_node, "presence stanza without from attribute, ignoring");
+       NODE_DEBUG (pres_node, "presence stanza without from attribute, "
+           "ignoring");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
@@ -1425,7 +1429,8 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
 
   if (handle == conn->self_handle)
     {
-      NODE_DEBUG (pres_node, "ignoring presence from ourselves on another resource");
+      NODE_DEBUG (pres_node, "ignoring presence from ourselves on another "
+          "resource");
       ret = LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
       goto OUT;
     }
@@ -1876,7 +1881,8 @@ roster_item_apply_edits (GabbleRoster *roster,
     }
 
   DEBUG ("Contact#%u did change, sending message", contact);
-  message = _gabble_roster_item_to_message (roster, contact, NULL, &edited_item);
+  message = _gabble_roster_item_to_message (roster, contact, NULL,
+      &edited_item);
   ret = _gabble_connection_send_with_reply (priv->conn,
       message, roster_edited_cb, G_OBJECT (roster),
       GUINT_TO_POINTER(contact), NULL);
@@ -2317,7 +2323,8 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
     }
   else
     {
-      DEBUG ("immediate edit to contact#%u - remove from group#%u", handle, group);
+      DEBUG ("immediate edit to contact#%u - remove from group#%u", handle,
+          group);
       item->unsent_edits = item_edit_new ();
     }
 

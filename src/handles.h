@@ -30,7 +30,8 @@
 
 G_BEGIN_DECLS
 
-gboolean gabble_handle_jid_is_valid (TpHandleType type, const gchar *jid, GError **error);
+gboolean gabble_handle_jid_is_valid (TpHandleType type, const gchar *jid,
+    GError **error);
 
 G_END_DECLS
 

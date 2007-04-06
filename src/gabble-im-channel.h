@@ -54,15 +54,19 @@ GType gabble_im_channel_get_type (void);
 #define GABBLE_IM_CHANNEL(obj) \
   (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_IM_CHANNEL, GabbleIMChannel))
 #define GABBLE_IM_CHANNEL_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_IM_CHANNEL, GabbleIMChannelClass))
+  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_IM_CHANNEL,\
+                           GabbleIMChannelClass))
 #define GABBLE_IS_IM_CHANNEL(obj) \
   (G_TYPE_CHECK_INSTANCE_TYPE((obj), GABBLE_TYPE_IM_CHANNEL))
 #define GABBLE_IS_IM_CHANNEL_CLASS(klass) \
   (G_TYPE_CHECK_CLASS_TYPE((klass), GABBLE_TYPE_IM_CHANNEL))
 #define GABBLE_IM_CHANNEL_GET_CLASS(obj) \
-  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_IM_CHANNEL, GabbleIMChannelClass))
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_IM_CHANNEL, \
+                              GabbleIMChannelClass))
 
-void _gabble_im_channel_receive (GabbleIMChannel *chan, TpChannelTextMessageType type, TpHandle sender, const char *from, time_t timestamp, const char *text);
+void _gabble_im_channel_receive (GabbleIMChannel *chan,
+    TpChannelTextMessageType type, TpHandle sender, const char *from,
+    time_t timestamp, const char *text);
 void _gabble_im_channel_state_receive (GabbleIMChannel *chan, guint state);
 
 G_END_DECLS

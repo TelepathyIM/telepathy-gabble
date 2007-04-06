@@ -544,7 +544,8 @@ _set_avatar_cb1 (GabbleVCardManager *manager,
     }
 
   ctx->new_vcard_msg = lm_message_new (NULL, LM_MESSAGE_TYPE_UNKNOWN);
-  new_vcard = lm_message_node_add_child (ctx->new_vcard_msg->node, "vCard", "");
+  new_vcard = lm_message_node_add_child (ctx->new_vcard_msg->node,
+      "vCard", "");
   lm_message_node_set_attribute (new_vcard, "xmlns", NS_VCARD_TEMP);
   lm_message_node_steal_children (new_vcard, vcard);
 
@@ -653,7 +654,8 @@ conn_avatars_init (GabbleConnection *conn)
 void
 conn_avatars_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  TpSvcConnectionInterfaceAvatarsClass *klass = (TpSvcConnectionInterfaceAvatarsClass *) g_iface;
+  TpSvcConnectionInterfaceAvatarsClass *klass =
+    (TpSvcConnectionInterfaceAvatarsClass *) g_iface;
 
 #define IMPLEMENT(x) tp_svc_connection_interface_avatars_implement_##x (\
     klass, gabble_connection_##x)

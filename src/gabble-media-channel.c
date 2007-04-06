@@ -192,9 +192,12 @@ gabble_media_channel_constructor (GType type, guint n_props,
   return obj;
 }
 
-static void session_state_changed_cb (GabbleMediaSession *session, GParamSpec *arg1, GabbleMediaChannel *channel);
-static void session_stream_added_cb (GabbleMediaSession *session, GabbleMediaStream  *stream, GabbleMediaChannel *chan);
-static void session_terminated_cb (GabbleMediaSession *session, guint terminator, guint reason, gpointer user_data);
+static void session_state_changed_cb (GabbleMediaSession *session,
+    GParamSpec *arg1, GabbleMediaChannel *channel);
+static void session_stream_added_cb (GabbleMediaSession *session,
+    GabbleMediaStream  *stream, GabbleMediaChannel *chan);
+static void session_terminated_cb (GabbleMediaSession *session,
+    guint terminator, guint reason, gpointer user_data);
 
 /**
  * create_session
@@ -438,7 +441,8 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_media_channel_class);
   GParamSpec *param_spec;
 
-  g_type_class_add_private (gabble_media_channel_class, sizeof (GabbleMediaChannelPrivate));
+  g_type_class_add_private (gabble_media_channel_class,
+      sizeof (GabbleMediaChannelPrivate));
 
   object_class->constructor = gabble_media_channel_constructor;
 
@@ -449,13 +453,15 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
   object_class->finalize = gabble_media_channel_finalize;
 
   tp_group_mixin_class_init (object_class,
-                                 G_STRUCT_OFFSET (GabbleMediaChannelClass, group_class),
-                                 _gabble_media_channel_add_member,
-                                 gabble_media_channel_remove_member);
+      G_STRUCT_OFFSET (GabbleMediaChannelClass, group_class),
+      _gabble_media_channel_add_member, gabble_media_channel_remove_member);
 
-  g_object_class_override_property (object_class, PROP_OBJECT_PATH, "object-path");
-  g_object_class_override_property (object_class, PROP_CHANNEL_TYPE, "channel-type");
-  g_object_class_override_property (object_class, PROP_HANDLE_TYPE, "handle-type");
+  g_object_class_override_property (object_class, PROP_OBJECT_PATH,
+      "object-path");
+  g_object_class_override_property (object_class, PROP_CHANNEL_TYPE,
+      "channel-type");
+  g_object_class_override_property (object_class, PROP_HANDLE_TYPE,
+      "handle-type");
   g_object_class_override_property (object_class, PROP_HANDLE, "handle");
 
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
@@ -495,7 +501,8 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
                                     G_PARAM_READWRITE |
                                     G_PARAM_STATIC_NAME |
                                     G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_NAT_TRAVERSAL, param_spec);
+  g_object_class_install_property (object_class, PROP_NAT_TRAVERSAL,
+      param_spec);
 
   param_spec = g_param_spec_string ("stun-server",
                                     "STUN server",
@@ -523,7 +530,8 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
                                     G_PARAM_READWRITE |
                                     G_PARAM_STATIC_NAME |
                                     G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_GTALK_P2P_RELAY_TOKEN, param_spec);
+  g_object_class_install_property (object_class, PROP_GTALK_P2P_RELAY_TOKEN,
+      param_spec);
 
   tp_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleMediaChannelClass, properties_class),
@@ -606,7 +614,8 @@ gabble_media_channel_close (GabbleMediaChannel *self)
 
   if (priv->session)
     {
-      _gabble_media_session_terminate (priv->session, INITIATOR_LOCAL, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
+      _gabble_media_session_terminate (priv->session, INITIATOR_LOCAL,
+          TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
     }
 
   tp_svc_channel_emit_closed (self);
@@ -861,7 +870,8 @@ gabble_media_channel_remove_streams (TpSvcChannelTypeStreamedMedia *iface,
           goto OUT;
         }
 
-      /* make sure we don't allow the client to repeatedly remove the same stream */
+      /* make sure we don't allow the client to repeatedly remove the same
+      stream */
       for (j = 0; j < stream_objs->len; j++)
         {
           GabbleMediaStream *tmp = g_ptr_array_index (stream_objs, j);
@@ -1154,7 +1164,8 @@ gabble_media_channel_remove_member (GObject *obj,
       return FALSE;
     }
 
-  _gabble_media_session_terminate (priv->session, INITIATOR_LOCAL, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
+  _gabble_media_session_terminate (priv->session, INITIATOR_LOCAL,
+      TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
 
   /* remove the member */
   set = tp_intset_new ();
@@ -1312,7 +1323,10 @@ stream_state_changed_cb (GabbleMediaStream *stream,
   guint id;
   TpMediaStreamState connection_state;
 
-  g_object_get (stream, "id", &id, "connection-state", &connection_state, NULL);
+  g_object_get (stream,
+      "id", &id,
+      "connection-state", &connection_state,
+      NULL);
 
   tp_svc_channel_type_streamed_media_emit_stream_state_changed (chan,
       id, connection_state);
@@ -1430,7 +1444,8 @@ channel_iface_init (gpointer g_iface, gpointer iface_data)
 static void
 streamed_media_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  TpSvcChannelTypeStreamedMediaClass *klass = (TpSvcChannelTypeStreamedMediaClass *)g_iface;
+  TpSvcChannelTypeStreamedMediaClass *klass =
+    (TpSvcChannelTypeStreamedMediaClass *)g_iface;
 
 #define IMPLEMENT(x) tp_svc_channel_type_streamed_media_implement_##x (\
     klass, gabble_media_channel_##x)
@@ -1444,7 +1459,8 @@ streamed_media_iface_init (gpointer g_iface, gpointer iface_data)
 static void
 media_signalling_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  TpSvcChannelInterfaceMediaSignallingClass *klass = (TpSvcChannelInterfaceMediaSignallingClass *)g_iface;
+  TpSvcChannelInterfaceMediaSignallingClass *klass =
+    (TpSvcChannelInterfaceMediaSignallingClass *)g_iface;
 
 #define IMPLEMENT(x) tp_svc_channel_interface_media_signalling_implement_##x (\
     klass, gabble_media_channel_##x)

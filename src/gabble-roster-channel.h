@@ -51,15 +51,18 @@ GType gabble_roster_channel_get_type (void);
 #define GABBLE_TYPE_ROSTER_CHANNEL \
   (gabble_roster_channel_get_type ())
 #define GABBLE_ROSTER_CHANNEL(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_ROSTER_CHANNEL, GabbleRosterChannel))
+  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_ROSTER_CHANNEL,\
+                              GabbleRosterChannel))
 #define GABBLE_ROSTER_CHANNEL_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_ROSTER_CHANNEL, GabbleRosterChannelClass))
+  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_ROSTER_CHANNEL,\
+                           GabbleRosterChannelClass))
 #define GABBLE_IS_ROSTER_CHANNEL(obj) \
   (G_TYPE_CHECK_INSTANCE_TYPE((obj), GABBLE_TYPE_ROSTER_CHANNEL))
 #define GABBLE_IS_ROSTER_CHANNEL_CLASS(klass) \
   (G_TYPE_CHECK_CLASS_TYPE((klass), GABBLE_TYPE_ROSTER_CHANNEL))
 #define GABBLE_ROSTER_CHANNEL_GET_CLASS(obj) \
-  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_ROSTER_CHANNEL, GabbleRosterChannelClass))
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_ROSTER_CHANNEL,\
+                              GabbleRosterChannelClass))
 
 G_END_DECLS
 

@@ -277,7 +277,8 @@ delete_request (GabbleDiscoRequest *request)
 
   if (NULL != request->bound_object)
     {
-      g_object_weak_unref (request->bound_object, notify_delete_request, request);
+      g_object_weak_unref (request->bound_object, notify_delete_request,
+          request);
     }
 
   if (0 != request->timer_id)
@@ -419,7 +420,8 @@ gabble_disco_request (GabbleDisco *self, GabbleDiscoType type,
  * @type: type of request
  * @jid: Jabber ID to request on
  * @node: node to request on @jid, or NULL
- * @timeout: the time until the request fails, in milliseconds (1/1000ths of a second)
+ * @timeout: the time until the request fails, in milliseconds (1/1000ths of
+ *           a second)
  * @callback: #GabbleDiscoCb to call on request fullfilment
  * @object: GObject to bind request to. the callback will not be
  *          called if this object has been unrefed. NULL if not needed
@@ -707,7 +709,8 @@ disco_items_cb (GabbleDisco *disco,
       item_jid = lm_message_node_get_attribute (iter, "jid");
 
       if (NULL != item_jid &&
-          !g_hash_table_lookup_extended (pipeline->remaining_items, item_jid, &key, &value))
+          !g_hash_table_lookup_extended (pipeline->remaining_items, item_jid,
+            &key, &value))
         {
           gchar *tmp = g_strdup (item_jid);
           DEBUG ("discovered service item: %s", tmp);
@@ -832,8 +835,10 @@ services_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
   my_item->type = g_strdup (item->type);
   my_item->category = g_strdup (item->category);
 
-  my_item->features = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
-  g_hash_table_foreach  (item->features, service_feature_copy_one, my_item->features);
+  my_item->features = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
+      NULL);
+  g_hash_table_foreach  (item->features, service_feature_copy_one,
+      my_item->features);
 
   priv->service_cache = g_slist_prepend (priv->service_cache, my_item);
 }

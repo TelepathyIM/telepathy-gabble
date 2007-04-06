@@ -47,10 +47,12 @@
 #include <telepathy-glib/channel-factory-iface.h>
 #include "util.h"
 
-static void gabble_muc_factory_iface_init (gpointer g_iface, gpointer iface_data);
+static void gabble_muc_factory_iface_init (gpointer g_iface,
+    gpointer iface_data);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleMucFactory, gabble_muc_factory, G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_FACTORY_IFACE, gabble_muc_factory_iface_init));
+    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_FACTORY_IFACE,
+      gabble_muc_factory_iface_init));
 
 /* properties */
 enum
@@ -75,9 +77,12 @@ struct _GabbleMucFactoryPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_MUC_FACTORY_GET_PRIVATE(o)    (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_MUC_FACTORY, GabbleMucFactoryPrivate))
+#define GABBLE_MUC_FACTORY_GET_PRIVATE(o) \
+  (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_MUC_FACTORY, \
+                                GabbleMucFactoryPrivate))
 
-static GObject *gabble_muc_factory_constructor (GType type, guint n_props, GObjectConstructParam *props);
+static GObject *gabble_muc_factory_constructor (GType type, guint n_props,
+    GObjectConstructParam *props);
 
 static void
 gabble_muc_factory_init (GabbleMucFactory *fac)
@@ -134,7 +139,8 @@ gabble_muc_factory_dispose (GObject *object)
 
   tp_channel_factory_iface_close_all (TP_CHANNEL_FACTORY_IFACE (object));
 
-  g_hash_table_foreach (priv->disco_requests, cancel_disco_request, priv->conn->disco);
+  g_hash_table_foreach (priv->disco_requests, cancel_disco_request,
+      priv->conn->disco);
   g_hash_table_destroy (priv->disco_requests);
 
   if (G_OBJECT_CLASS (gabble_muc_factory_parent_class)->dispose)
@@ -185,7 +191,8 @@ gabble_muc_factory_class_init (GabbleMucFactoryClass *gabble_muc_factory_class)
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_muc_factory_class);
   GParamSpec *param_spec;
 
-  g_type_class_add_private (gabble_muc_factory_class, sizeof (GabbleMucFactoryPrivate));
+  g_type_class_add_private (gabble_muc_factory_class,
+      sizeof (GabbleMucFactoryPrivate));
 
   object_class->constructor = gabble_muc_factory_constructor;
   object_class->dispose = gabble_muc_factory_dispose;
@@ -260,7 +267,8 @@ muc_ready_cb (GabbleMucChannel *chan,
 
   DEBUG ("chan=%p", chan);
 
-  tp_channel_factory_iface_emit_new_channel (fac, (TpChannelIface *)chan, NULL);
+  tp_channel_factory_iface_emit_new_channel (fac, (TpChannelIface *)chan,
+      NULL);
 }
 
 static void
@@ -711,7 +719,8 @@ muc_factory_presence_cb (LmMessageHandler *handler,
 
   if (from == NULL)
     {
-      NODE_DEBUG (msg->node, "presence stanza without from attribute, ignoring");
+      NODE_DEBUG (msg->node,
+          "presence stanza without from attribute, ignoring");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
@@ -728,7 +737,8 @@ muc_factory_presence_cb (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 
-  x_node = lm_message_node_get_child_with_namespace (msg->node, "x", NS_MUC_USER);
+  x_node = lm_message_node_get_child_with_namespace (msg->node, "x",
+      NS_MUC_USER);
 
   /* is it a MUC member presence? */
   if (x_node != NULL)
@@ -741,7 +751,8 @@ muc_factory_presence_cb (LmMessageHandler *handler,
               GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
           if (handle == 0)
             {
-              NODE_DEBUG (msg->node, "discarding MUC presence from malformed jid");
+              NODE_DEBUG (msg->node,
+                  "discarding MUC presence from malformed jid");
               return LM_HANDLER_RESULT_REMOVE_MESSAGE;
             }
 
@@ -843,15 +854,16 @@ gabble_muc_factory_iface_connecting (TpChannelFactoryIface *iface)
   g_assert (priv->message_cb == NULL);
   g_assert (priv->presence_cb == NULL);
 
-  priv->message_cb = lm_message_handler_new (muc_factory_message_cb, fac, NULL);
+  priv->message_cb = lm_message_handler_new (muc_factory_message_cb, fac,
+      NULL);
   lm_connection_register_message_handler (priv->conn->lmconn, priv->message_cb,
                                           LM_MESSAGE_TYPE_MESSAGE,
                                           LM_HANDLER_PRIORITY_NORMAL);
 
-  priv->presence_cb = lm_message_handler_new (muc_factory_presence_cb, fac, NULL);
-  lm_connection_register_message_handler (priv->conn->lmconn, priv->presence_cb,
-                                          LM_MESSAGE_TYPE_PRESENCE,
-                                          LM_HANDLER_PRIORITY_NORMAL);
+  priv->presence_cb = lm_message_handler_new (muc_factory_presence_cb,
+      fac, NULL);
+  lm_connection_register_message_handler (priv->conn->lmconn,
+      priv->presence_cb, LM_MESSAGE_TYPE_PRESENCE, LM_HANDLER_PRIORITY_NORMAL);
 }
 
 
@@ -872,13 +884,13 @@ gabble_muc_factory_iface_disconnected (TpChannelFactoryIface *iface)
   g_assert (priv->message_cb != NULL);
   g_assert (priv->presence_cb != NULL);
 
-  lm_connection_unregister_message_handler (priv->conn->lmconn, priv->message_cb,
-                                            LM_MESSAGE_TYPE_MESSAGE);
+  lm_connection_unregister_message_handler (priv->conn->lmconn,
+      priv->message_cb, LM_MESSAGE_TYPE_MESSAGE);
   lm_message_handler_unref (priv->message_cb);
   priv->message_cb = NULL;
 
-  lm_connection_unregister_message_handler (priv->conn->lmconn, priv->presence_cb,
-                                            LM_MESSAGE_TYPE_PRESENCE);
+  lm_connection_unregister_message_handler (priv->conn->lmconn,
+      priv->presence_cb, LM_MESSAGE_TYPE_PRESENCE);
   lm_message_handler_unref (priv->presence_cb);
   priv->presence_cb = NULL;
 }
@@ -899,7 +911,9 @@ _foreach_slave (gpointer key, gpointer value, gpointer user_data)
 }
 
 static void
-gabble_muc_factory_iface_foreach (TpChannelFactoryIface *iface, TpChannelFunc foreach, gpointer user_data)
+gabble_muc_factory_iface_foreach (TpChannelFactoryIface *iface,
+                                  TpChannelFunc foreach,
+                                  gpointer user_data)
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (iface);
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);

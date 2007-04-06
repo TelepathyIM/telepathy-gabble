@@ -50,7 +50,8 @@ G_DEFINE_TYPE_WITH_CODE (GabbleIMChannel, gabble_im_channel, G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_TEXT, text_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CHAT_STATE, chat_state_iface_init));
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CHAT_STATE,
+      chat_state_iface_init));
 
 
 /* properties */
@@ -208,7 +209,8 @@ gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_im_channel_class);
   GParamSpec *param_spec;
 
-  g_type_class_add_private (gabble_im_channel_class, sizeof (GabbleIMChannelPrivate));
+  g_type_class_add_private (gabble_im_channel_class,
+      sizeof (GabbleIMChannelPrivate));
 
   object_class->constructor = gabble_im_channel_constructor;
 
@@ -218,9 +220,12 @@ gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
   object_class->dispose = gabble_im_channel_dispose;
   object_class->finalize = gabble_im_channel_finalize;
 
-  g_object_class_override_property (object_class, PROP_OBJECT_PATH, "object-path");
-  g_object_class_override_property (object_class, PROP_CHANNEL_TYPE, "channel-type");
-  g_object_class_override_property (object_class, PROP_HANDLE_TYPE, "handle-type");
+  g_object_class_override_property (object_class, PROP_OBJECT_PATH,
+      "object-path");
+  g_object_class_override_property (object_class, PROP_CHANNEL_TYPE,
+      "channel-type");
+  g_object_class_override_property (object_class, PROP_HANDLE_TYPE,
+      "handle-type");
   g_object_class_override_property (object_class, PROP_HANDLE, "handle");
 
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
@@ -278,8 +283,9 @@ gabble_im_channel_dispose (GObject *object)
           /* Set the chat state of the channel on gone
            * (Channel.Interface.ChatState) */
           gabble_text_mixin_send (G_OBJECT (self),
-              TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE, 0, TP_CHANNEL_CHAT_STATE_GONE,
-              priv->peer_jid, NULL, priv->conn, FALSE /* emit_signal */, NULL);
+              TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE, 0,
+              TP_CHANNEL_CHAT_STATE_GONE, priv->peer_jid, NULL, priv->conn,
+              FALSE /* emit_signal */, NULL);
           }
 
         tp_svc_channel_emit_closed (self);
@@ -592,7 +598,8 @@ text_iface_init (gpointer g_iface, gpointer iface_data)
 static void
 chat_state_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  TpSvcChannelInterfaceChatStateClass *klass = (TpSvcChannelInterfaceChatStateClass *)g_iface;
+  TpSvcChannelInterfaceChatStateClass *klass =
+    (TpSvcChannelInterfaceChatStateClass *)g_iface;
 #define IMPLEMENT(x) tp_svc_channel_interface_chat_state_implement_##x (\
     klass, gabble_im_channel_##x)
   IMPLEMENT(set_chat_state);

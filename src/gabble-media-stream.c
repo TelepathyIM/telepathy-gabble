@@ -326,7 +326,8 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_media_stream_class);
   GParamSpec *param_spec;
 
-  g_type_class_add_private (gabble_media_stream_class, sizeof (GabbleMediaStreamPrivate));
+  g_type_class_add_private (gabble_media_stream_class,
+      sizeof (GabbleMediaStreamPrivate));
 
   object_class->constructor = gabble_media_stream_constructor;
 
@@ -346,15 +347,14 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 
-  param_spec = g_param_spec_object ("media-session", "GabbleMediaSession object",
-                                    "Gabble media session object that owns this "
-                                    "media stream object.",
-                                    GABBLE_TYPE_MEDIA_SESSION,
-                                    G_PARAM_CONSTRUCT_ONLY |
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NICK |
-                                    G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_MEDIA_SESSION, param_spec);
+  param_spec = g_param_spec_object ("media-session",
+      "GabbleMediaSession object",
+      "Gabble media session object that owns this media stream object.",
+      GABBLE_TYPE_MEDIA_SESSION,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_NICK |
+      G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_MEDIA_SESSION,
+      param_spec);
 
   param_spec = g_param_spec_string ("object-path", "D-Bus object path",
                                     "The D-Bus object path used for this "
@@ -378,13 +378,9 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
   g_object_class_install_property (object_class, PROP_MODE, param_spec);
 
   param_spec = g_param_spec_string ("name", "Stream name",
-                                    "An opaque name for the stream used in the "
-                                    "signalling.",
-                                    NULL,
-                                    G_PARAM_CONSTRUCT_ONLY |
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_BLURB);
+      "An opaque name for the stream used in the signalling.", NULL,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_NAME |
+      G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_NAME, param_spec);
 
   param_spec = g_param_spec_uint ("id", "Stream ID",
@@ -421,17 +417,16 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_MEDIA_TYPE, param_spec);
 
-  param_spec = g_param_spec_uint ("connection-state", "Stream connection state",
-                                  "An integer indicating the state of the"
-                                  "stream's connection.",
-                                  TP_MEDIA_STREAM_STATE_DISCONNECTED,
-                                  TP_MEDIA_STREAM_STATE_CONNECTED,
-                                  TP_MEDIA_STREAM_STATE_DISCONNECTED,
-                                  G_PARAM_CONSTRUCT |
-                                  G_PARAM_READWRITE |
-                                  G_PARAM_STATIC_NAME |
-                                  G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_CONNECTION_STATE, param_spec);
+  param_spec = g_param_spec_uint ("connection-state",
+      "Stream connection state",
+      "An integer indicating the state of the stream's connection.",
+      TP_MEDIA_STREAM_STATE_DISCONNECTED,
+      TP_MEDIA_STREAM_STATE_CONNECTED,
+      TP_MEDIA_STREAM_STATE_DISCONNECTED,
+      G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_NAME |
+      G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_CONNECTION_STATE,
+      param_spec);
 
   param_spec = g_param_spec_boolean ("ready", "Ready?",
                                      "A boolean signifying whether the user "
@@ -445,14 +440,12 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
   g_object_class_install_property (object_class, PROP_READY, param_spec);
 
   param_spec = g_param_spec_boolean ("got-local-codecs", "Got local codecs?",
-                                     "A boolean signifying whether we've got "
-                                     "the locally supported codecs from the user.",
-                                     FALSE,
-                                     G_PARAM_CONSTRUCT |
-                                     G_PARAM_READWRITE |
-                                     G_PARAM_STATIC_NAME |
-                                     G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_GOT_LOCAL_CODECS, param_spec);
+      "A boolean signifying whether we've got the locally supported codecs "
+      "from the user.", FALSE,
+      G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_NAME |
+      G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_GOT_LOCAL_CODECS,
+      param_spec);
 
   param_spec = g_param_spec_uint ("signalling-state", "Signalling state",
                                   "Whether the stream is newly created, "
@@ -464,7 +457,8 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                                   G_PARAM_READWRITE |
                                   G_PARAM_STATIC_NAME |
                                   G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_SIGNALLING_STATE, param_spec);
+  g_object_class_install_property (object_class, PROP_SIGNALLING_STATE,
+      param_spec);
 
   param_spec = g_param_spec_boolean ("playing", "Set playing",
                                      "A boolean signifying whether the stream "
@@ -607,7 +601,9 @@ gabble_media_stream_error (GabbleMediaStream *self,
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
 
-  GMS_DEBUG_WARNING (priv->session, "Media.StreamHandler::Error called, error %u (%s) -- emitting signal", errno, message);
+  GMS_DEBUG_WARNING (priv->session,
+      "Media.StreamHandler::Error called, error %u (%s) -- emitting signal",
+      errno, message);
 
   g_signal_emit (self, signals[ERROR], 0, errno, message);
 
@@ -750,15 +746,16 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
   addr = g_value_get_string (g_value_array_get_nth (transport, 1));
   if (!strcmp (addr, "127.0.0.1"))
     {
-      GMS_DEBUG_WARNING (priv->session, "%s: ignoring native localhost candidate",
-                         G_STRFUNC);
+      GMS_DEBUG_WARNING (priv->session,
+          "%s: ignoring native localhost candidate", G_STRFUNC);
       tp_svc_media_stream_handler_return_from_new_native_candidate (context);
       return;
     }
 
   g_ptr_array_add (candidates, g_value_get_boxed (&candidate));
 
-  GMS_DEBUG_INFO (priv->session, "put 1 native candidate from stream-engine into cache");
+  GMS_DEBUG_INFO (priv->session,
+      "put 1 native candidate from stream-engine into cache");
 
   push_native_candidates (self);
 
@@ -895,7 +892,8 @@ candidates_msg_reply_cb (GabbleConnection *conn,
 
   priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (stream);
 
-  MSG_REPLY_CB_END_SESSION_IF_NOT_SUCCESSFUL (priv->session, "candidates failed");
+  MSG_REPLY_CB_END_SESSION_IF_NOT_SUCCESSFUL (priv->session,
+      "candidates failed");
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
@@ -976,9 +974,9 @@ _add_rtp_candidate_node (GabbleMediaSession *session, LmMessageNode *parent,
   GMS_DEBUG_DUMP (session,
     "  from Telepathy D-Bus struct: [%s\"%s\", %s[%s1, \"%s\", %d, %s, "
     "\"%s\", \"%s\", %f, %s, \"%s\", \"%s\"%s]]",
-    TP_ANSI_BOLD_OFF, candidate_id, TP_ANSI_BOLD_ON, TP_ANSI_BOLD_OFF, addr, port,
-    tp_protocols[proto], "RTP", "AVP", pref, tp_transports[type], user, pass,
-    TP_ANSI_BOLD_ON);
+    TP_ANSI_BOLD_OFF, candidate_id, TP_ANSI_BOLD_ON, TP_ANSI_BOLD_OFF,
+    addr, port, tp_protocols[proto], "RTP", "AVP", pref, tp_transports[type],
+    user, pass, TP_ANSI_BOLD_ON);
   GMS_DEBUG_DUMP (session,
     "  to Jingle XML: [%s%s%s]", TP_ANSI_BOLD_OFF, xml, TP_ANSI_BOLD_ON);
   g_free (xml);
@@ -1384,12 +1382,17 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
       g_ptr_array_add (candidates, g_value_get_boxed (&candidate));
 
       xml = lm_message_node_to_string (node);
-      GMS_DEBUG_INFO (priv->session, "put 1 remote candidate from peer into cache");
+      GMS_DEBUG_INFO (priv->session,
+          "put 1 remote candidate from peer into cache");
       GMS_DEBUG_DUMP (priv->session, "  from Jingle XML: [%s%s%s]",
                       TP_ANSI_BOLD_OFF, xml, TP_ANSI_BOLD_ON);
-      GMS_DEBUG_DUMP (priv->session, "  to Telepathy D-Bus struct: [%s\"%s\", %s[%s1, \"%s\", %d, %s, \"%s\", \"%s\", %f, %s, \"%s\", \"%s\"%s]]",
-                      TP_ANSI_BOLD_OFF, candidate_id, TP_ANSI_BOLD_ON,
-                      TP_ANSI_BOLD_OFF, addr, port, tp_protocols[proto], "RTP", "AVP", pref, tp_transports[type], user, pass, TP_ANSI_BOLD_ON);
+      GMS_DEBUG_DUMP (priv->session,
+          "  to Telepathy D-Bus struct: [%s\"%s\", %s[%s1, \"%s\", %d, %s, "
+          "\"%s\", \"%s\", %f, %s, \"%s\", \"%s\"%s]]",
+          TP_ANSI_BOLD_OFF, candidate_id, TP_ANSI_BOLD_ON,
+          TP_ANSI_BOLD_OFF, addr, port, tp_protocols[proto],
+          "RTP", "AVP", pref, tp_transports[type],
+          user, pass, TP_ANSI_BOLD_ON);
       g_free (xml);
 
       g_free (candidate_id);
@@ -1699,7 +1702,8 @@ _gabble_media_stream_update_sending (GabbleMediaStream *stream,
 static void
 stream_handler_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  TpSvcMediaStreamHandlerClass *klass = (TpSvcMediaStreamHandlerClass *)g_iface;
+  TpSvcMediaStreamHandlerClass *klass =
+    (TpSvcMediaStreamHandlerClass *)g_iface;
 
 #define IMPLEMENT(x,suffix) tp_svc_media_stream_handler_implement_##x (\
     klass, gabble_media_stream_##x##suffix)

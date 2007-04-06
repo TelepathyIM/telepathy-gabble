@@ -46,18 +46,22 @@ GType gabble_roomlist_channel_get_type (void);
 #define GABBLE_TYPE_ROOMLIST_CHANNEL \
   (gabble_roomlist_channel_get_type ())
 #define GABBLE_ROOMLIST_CHANNEL(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_ROOMLIST_CHANNEL, GabbleRoomlistChannel))
+  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_ROOMLIST_CHANNEL,\
+                              GabbleRoomlistChannel))
 #define GABBLE_ROOMLIST_CHANNEL_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_ROOMLIST_CHANNEL, GabbleRoomlistChannelClass))
+  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_ROOMLIST_CHANNEL,\
+                           GabbleRoomlistChannelClass))
 #define GABBLE_IS_ROOMLIST_CHANNEL(obj) \
   (G_TYPE_CHECK_INSTANCE_TYPE((obj), GABBLE_TYPE_ROOMLIST_CHANNEL))
 #define GABBLE_IS_ROOMLIST_CHANNEL_CLASS(klass) \
   (G_TYPE_CHECK_CLASS_TYPE((klass), GABBLE_TYPE_ROOMLIST_CHANNEL))
 #define GABBLE_ROOMLIST_CHANNEL_GET_CLASS(obj) \
-  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_ROOMLIST_CHANNEL, GabbleRoomlistChannelClass))
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_ROOMLIST_CHANNEL,\
+                              GabbleRoomlistChannelClass))
 
 
-GabbleRoomlistChannel *_gabble_roomlist_channel_new (GabbleConnection *conn, const gchar *object_path, const gchar *conference_server);
+GabbleRoomlistChannel *_gabble_roomlist_channel_new (GabbleConnection *conn,
+    const gchar *object_path, const gchar *conference_server);
 
 
 G_END_DECLS

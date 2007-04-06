@@ -176,7 +176,9 @@ struct _GabbleConnectionPrivate
     ((GabbleConnectionPrivate *)obj->priv)
 
 static void connection_nickname_update_cb (GObject *, TpHandle, gpointer);
-static void connection_capabilities_update_cb (GabblePresenceCache *, TpHandle, GabblePresenceCapabilities, GabblePresenceCapabilities, gpointer);
+static void connection_capabilities_update_cb (GabblePresenceCache *,
+    TpHandle, GabblePresenceCapabilities, GabblePresenceCapabilities,
+    gpointer);
 
 static GPtrArray *
 _gabble_connection_create_channel_factories (TpBaseConnection *conn)
@@ -492,7 +494,8 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
   parent_class->start_connecting = _gabble_connection_connect;
   parent_class->interfaces_always_present = interfaces_always_present;
 
-  g_type_class_add_private (gabble_connection_class, sizeof (GabbleConnectionPrivate));
+  g_type_class_add_private (gabble_connection_class,
+      sizeof (GabbleConnectionPrivate));
 
   object_class->dispose = gabble_connection_dispose;
   object_class->finalize = gabble_connection_finalize;
@@ -976,14 +979,19 @@ _gabble_connection_send_with_reply (GabbleConnection *conn,
   return ret;
 }
 
-static LmHandlerResult connection_iq_disco_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
-static LmHandlerResult connection_iq_unknown_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
-static LmHandlerResult connection_stream_error_cb (LmMessageHandler*, LmConnection*, LmMessage*, gpointer);
-static LmSSLResponse connection_ssl_cb (LmSSL*, LmSSLStatus, gpointer);
-static void connection_open_cb (LmConnection*, gboolean, gpointer);
-static void connection_auth_cb (LmConnection*, gboolean, gpointer);
-static void connection_disco_cb (GabbleDisco *, GabbleDiscoRequest *, const gchar *, const gchar *, LmMessageNode *, GError *, gpointer);
-static void connection_disconnected_cb (LmConnection *, LmDisconnectReason, gpointer);
+static LmHandlerResult connection_iq_disco_cb (LmMessageHandler *,
+    LmConnection *, LmMessage *, gpointer);
+static LmHandlerResult connection_iq_unknown_cb (LmMessageHandler *,
+    LmConnection *, LmMessage *, gpointer);
+static LmHandlerResult connection_stream_error_cb (LmMessageHandler *,
+    LmConnection *, LmMessage *, gpointer);
+static LmSSLResponse connection_ssl_cb (LmSSL *, LmSSLStatus, gpointer);
+static void connection_open_cb (LmConnection *, gboolean, gpointer);
+static void connection_auth_cb (LmConnection *, gboolean, gpointer);
+static void connection_disco_cb (GabbleDisco *, GabbleDiscoRequest *,
+    const gchar *, const gchar *, LmMessageNode *, GError *, gpointer);
+static void connection_disconnected_cb (LmConnection *, LmDisconnectReason,
+    gpointer);
 
 
 static gboolean
@@ -1058,8 +1066,8 @@ disconnect_callbacks (TpBaseConnection *base)
   lm_message_handler_unref (priv->iq_unknown_cb);
   priv->iq_unknown_cb = NULL;
 
-  lm_connection_unregister_message_handler (conn->lmconn, priv->stream_error_cb,
-                                            LM_MESSAGE_TYPE_STREAM_ERROR);
+  lm_connection_unregister_message_handler (conn->lmconn,
+      priv->stream_error_cb, LM_MESSAGE_TYPE_STREAM_ERROR);
   lm_message_handler_unref (priv->stream_error_cb);
   priv->stream_error_cb = NULL;
 }
@@ -1610,7 +1618,8 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   if (node)
     lm_message_node_set_attribute (result_query, "node", node);
 
-  DEBUG ("got disco request for bundle %s, caps are %x", node, self->self_presence->caps);
+  DEBUG ("got disco request for bundle %s, caps are %x", node,
+      self->self_presence->caps);
   features = capabilities_get_features (self->self_presence->caps);
 
   g_debug ("%s: caps now %u", G_STRFUNC, self->self_presence->caps);
@@ -1784,9 +1793,9 @@ do_auth (GabbleConnection *conn)
   DEBUG ("authenticating with username: %s, password: <hidden>, resource: %s",
            priv->username, priv->resource);
 
-  if (!lm_connection_authenticate (conn->lmconn, priv->username, priv->password,
-                                   priv->resource, connection_auth_cb,
-                                   conn, NULL, &error))
+  if (!lm_connection_authenticate (conn->lmconn, priv->username,
+        priv->password, priv->resource, connection_auth_cb, conn, NULL,
+        &error))
     {
       DEBUG ("failed: %s", error->message);
       g_error_free (error);
@@ -2223,7 +2232,8 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
   if (caps ^ save_caps)
     {
       DEBUG ("before != after, changing");
-      gabble_presence_set_capabilities (pres, priv->resource, caps, priv->caps_serial++);
+      gabble_presence_set_capabilities (pres, priv->resource, caps,
+          priv->caps_serial++);
       DEBUG ("set caps: %x", pres->caps);
     }
 
@@ -2318,7 +2328,8 @@ gabble_connection_get_capabilities (TpSvcConnectionInterfaceCapabilities *iface,
 
       if (0 == handle)
         {
-          /* FIXME report the magical channel types available on the connection itself */
+          /* FIXME report the magical channel types available on the
+           * connection itself */
           continue;
         }
 
@@ -2638,8 +2649,8 @@ room_jid_disco_cb (GabbleDisco *disco,
     {
       DEBUG ("no MUC support for service name in jid %s", rvctx->jid);
 
-      error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE, "specified server "
-          "doesn't support MUC");
+      error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "specified server doesn't support MUC");
 
       room_verify_batch_raise_error (batch, error);
 
@@ -2732,8 +2743,8 @@ gabble_connection_request_handles (TpSvcConnection *iface,
       batch = room_verify_batch_new (self, context, count, names);
       if (!batch)
         {
-          /* an error occurred while setting up the batch, and we returned error
-          to dbus */
+          /* an error occurred while setting up the batch, and we returned
+          error to dbus */
           return;
         }
 
@@ -2778,7 +2789,8 @@ conn_service_iface_init (gpointer g_iface, gpointer iface_data)
 static void
 capabilities_service_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  TpSvcConnectionInterfaceCapabilitiesClass *klass = (TpSvcConnectionInterfaceCapabilitiesClass *)g_iface;
+  TpSvcConnectionInterfaceCapabilitiesClass *klass =
+    (TpSvcConnectionInterfaceCapabilitiesClass *)g_iface;
 
 #define IMPLEMENT(x) tp_svc_connection_interface_capabilities_implement_##x (\
     klass, gabble_connection_##x)

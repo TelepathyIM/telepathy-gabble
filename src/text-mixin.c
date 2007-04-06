@@ -124,7 +124,8 @@ gabble_text_mixin_send (GObject *obj,
         }
     }
 
-  msg = lm_message_new_with_sub_type (recipient, LM_MESSAGE_TYPE_MESSAGE, subtype);
+  msg = lm_message_new_with_sub_type (recipient, LM_MESSAGE_TYPE_MESSAGE,
+      subtype);
 
   if (mixin->send_nick)
     {

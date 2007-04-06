@@ -1646,10 +1646,13 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
                              error->message);
                   g_error_free (error);
 
+                  lm_message_unref (msg);
                   close_channel (chan, NULL, TRUE, actor, reason_code);
 
                   goto OUT;
                 }
+
+              lm_message_unref (msg);
             }
 
           /* Update room properties */

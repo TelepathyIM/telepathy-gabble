@@ -56,28 +56,7 @@ EXTRA_DIST = $(service_in_files) $(conf_in_files)
 CLEANFILES = $(BUILT_SOURCES)
 
 check_c_sources = *.c
-check_whitespace_sources = \
-    $(check_c_sources) \
+check_misc_sources = \
     $(python_tests_shfiles) \
     $(python_tests_pythonfiles)
-
-check-local::
-	@echo "Checking whitespace-related trivia..."
-	@if grep -n ' $$' $(check_whitespace_sources); \
-	then \
-		echo "^^^ The above files contain unwanted trailing spaces"; \
-		exit 1; \
-	fi
-	@if grep -n '	' $(check_whitespace_sources); \
-	then \
-		echo "^^^ The above files contain tabs"; \
-		exit 1; \
-	fi
-	@echo "Checking for GError mistakes..."
-	@if grep -n '^ *GError *\*[a-zA-Z_][a-zA-Z0-9_]* *;' \
-		$(check_c_sources); \
-	then \
-		echo "^^^ The above files contain uninitialized GError*s -"; \
-		echo "    they should be initialized to NULL"; \
-		exit 1; \
-	fi
+include $(top_srcdir)/check-coding-style.mk

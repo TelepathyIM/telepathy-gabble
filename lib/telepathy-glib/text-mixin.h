@@ -57,13 +57,21 @@ struct _TpTextMixin {
 };
 
 /* TYPE MACROS */
-#define TP_TEXT_MIXIN_CLASS_OFFSET_QUARK (tp_text_mixin_class_get_offset_quark ())
-#define TP_TEXT_MIXIN_CLASS_OFFSET(o) (GPOINTER_TO_UINT (g_type_get_qdata (G_OBJECT_CLASS_TYPE (o), TP_TEXT_MIXIN_CLASS_OFFSET_QUARK)))
-#define TP_TEXT_MIXIN_CLASS(o) ((TpTextMixinClass *) tp_mixin_offset_cast (o, TP_TEXT_MIXIN_CLASS_OFFSET (o)))
+#define TP_TEXT_MIXIN_CLASS_OFFSET_QUARK \
+  (tp_text_mixin_class_get_offset_quark ())
+#define TP_TEXT_MIXIN_CLASS_OFFSET(o) \
+  (GPOINTER_TO_UINT (g_type_get_qdata (G_OBJECT_CLASS_TYPE (o), \
+                                       TP_TEXT_MIXIN_CLASS_OFFSET_QUARK)))
+#define TP_TEXT_MIXIN_CLASS(o) \
+  ((TpTextMixinClass *) tp_mixin_offset_cast (o, \
+    TP_TEXT_MIXIN_CLASS_OFFSET (o)))
 
 #define TP_TEXT_MIXIN_OFFSET_QUARK (tp_text_mixin_get_offset_quark ())
-#define TP_TEXT_MIXIN_OFFSET(o) (GPOINTER_TO_UINT (g_type_get_qdata (G_OBJECT_TYPE (o), TP_TEXT_MIXIN_OFFSET_QUARK)))
-#define TP_TEXT_MIXIN(o) ((TpTextMixin *) tp_mixin_offset_cast (o, TP_TEXT_MIXIN_OFFSET (o)))
+#define TP_TEXT_MIXIN_OFFSET(o) \
+  (GPOINTER_TO_UINT (g_type_get_qdata (G_OBJECT_TYPE (o), \
+                                       TP_TEXT_MIXIN_OFFSET_QUARK)))
+#define TP_TEXT_MIXIN(o) \
+  ((TpTextMixin *) tp_mixin_offset_cast (o, TP_TEXT_MIXIN_OFFSET (o)))
 
 GQuark tp_text_mixin_class_get_offset_quark (void);
 GQuark tp_text_mixin_get_offset_quark (void);

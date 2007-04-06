@@ -57,7 +57,8 @@
 
 #include "internal-debug.h"
 
-#define TP_TYPE_PENDING_MESSAGE_STRUCT (dbus_g_type_get_struct ("GValueArray", \
+#define TP_TYPE_PENDING_MESSAGE_STRUCT \
+  (dbus_g_type_get_struct ("GValueArray", \
       G_TYPE_UINT, \
       G_TYPE_UINT, \
       G_TYPE_UINT, \

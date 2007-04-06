@@ -132,7 +132,8 @@ tp_channel_iface_get_type (void)
       NULL    /* instance_init */
     };
 
-    type = g_type_register_static (G_TYPE_INTERFACE, "TpChannelIface", &info, 0);
+    type = g_type_register_static (G_TYPE_INTERFACE, "TpChannelIface", &info,
+        0);
   }
 
   return type;

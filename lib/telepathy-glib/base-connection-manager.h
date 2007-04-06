@@ -200,15 +200,18 @@ gboolean tp_base_connection_manager_register (TpBaseConnectionManager *self);
 #define TP_TYPE_BASE_CONNECTION_MANAGER \
   (tp_base_connection_manager_get_type ())
 #define TP_BASE_CONNECTION_MANAGER(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST((obj), TP_TYPE_BASE_CONNECTION_MANAGER, TpBaseConnectionManager))
+  (G_TYPE_CHECK_INSTANCE_CAST((obj), TP_TYPE_BASE_CONNECTION_MANAGER, \
+                              TpBaseConnectionManager))
 #define TP_BASE_CONNECTION_MANAGER_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST((klass), TP_TYPE_BASE_CONNECTION_MANAGER, TpBaseConnectionManagerClass))
+  (G_TYPE_CHECK_CLASS_CAST((klass), TP_TYPE_BASE_CONNECTION_MANAGER, \
+                           TpBaseConnectionManagerClass))
 #define TP_IS_BASE_CONNECTION_MANAGER(obj) \
   (G_TYPE_CHECK_INSTANCE_TYPE((obj), TP_TYPE_BASE_CONNECTION_MANAGER))
 #define TP_IS_BASE_CONNECTION_MANAGER_CLASS(klass) \
   (G_TYPE_CHECK_CLASS_TYPE((klass), TP_TYPE_BASE_CONNECTION_MANAGER))
 #define TP_BASE_CONNECTION_MANAGER_GET_CLASS(obj) \
-  (G_TYPE_INSTANCE_GET_CLASS ((obj), TP_TYPE_BASE_CONNECTION_MANAGER, TpBaseConnectionManagerClass))
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), TP_TYPE_BASE_CONNECTION_MANAGER, \
+                              TpBaseConnectionManagerClass))
 
 G_END_DECLS
 

@@ -50,7 +50,8 @@ void tp_intset_add (TpIntSet *set, guint element);
 gboolean tp_intset_remove (TpIntSet *set, guint element);
 gboolean tp_intset_is_member (const TpIntSet *set, guint element);
 
-void tp_intset_foreach (const TpIntSet *set, TpIntFunc func, gpointer userdata);
+void tp_intset_foreach (const TpIntSet *set, TpIntFunc func,
+    gpointer userdata);
 GArray *tp_intset_to_array (TpIntSet *set);
 TpIntSet *tp_intset_from_array (GArray *array);
 
@@ -62,7 +63,8 @@ TpIntSet *tp_intset_copy (const TpIntSet *orig);
 TpIntSet *tp_intset_intersection (const TpIntSet *left, const TpIntSet *right);
 TpIntSet *tp_intset_union (const TpIntSet *left, const TpIntSet *right);
 TpIntSet *tp_intset_difference (const TpIntSet *left, const TpIntSet *right);
-TpIntSet *tp_intset_symmetric_difference (const TpIntSet *left, const TpIntSet *right);
+TpIntSet *tp_intset_symmetric_difference (const TpIntSet *left,
+    const TpIntSet *right);
 
 gchar *tp_intset_dump (const TpIntSet *set);
 

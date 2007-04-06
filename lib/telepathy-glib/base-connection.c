@@ -673,7 +673,8 @@ tp_base_connection_register (TpBaseConnection *self,
 
   DEBUG ("bus name %s", self->bus_name);
 
-  dbus_g_connection_register_g_object (bus, self->object_path, G_OBJECT (self));
+  dbus_g_connection_register_g_object (bus, self->object_path,
+      G_OBJECT (self));
 
   DEBUG ("object path %s", self->object_path);
 
@@ -1022,8 +1023,10 @@ tp_base_connection_inspect_handles (TpSvcConnection *iface,
  * the data pointer, add a GValueArray containing the following:
  *  a D-Bus object path for the channel object on this service
  *  a D-Bus interface name representing the channel type
- *  an integer representing the handle type this channel communicates with, or zero
- *  an integer handle representing the contact, room or list this channel communicates with, or zero
+ *  an integer representing the handle type this channel communicates with,
+ *    or zero
+ *  an integer handle representing the contact, room or list this channel
+ *    communicates with, or zero
  */
 static void
 list_channel_factory_foreach_one (TpChannelIface *chan,
@@ -1410,8 +1413,8 @@ void tp_base_connection_finish_shutdown (TpBaseConnection *self)
  * <itemizedlist>
  * <listitem>NEW -> CONNECTING</listitem>
  * <listitem>CONNECTING -> CONNECTED</listitem>
- * <listitem>NEW -> CONNECTED (equivalent to both of the above one after the other - see
- * below)</listitem>
+ * <listitem>NEW -> CONNECTED (equivalent to both of the above one after the
+ * other - see below)</listitem>
  * <listitem>(anything except DISCONNECTED) -> DISCONNECTED</listitem>
  * </itemizedlist>
  *
@@ -1492,7 +1495,8 @@ tp_base_connection_change_status (TpBaseConnection *self,
       g_return_if_fail (self->self_handle != 0);
       break;
     case TP_CONNECTION_STATUS_CONNECTING:
-      /* you can't go CONNECTING if a connection attempt has been made before */
+      /* you can't go CONNECTING if a connection attempt has been made
+       * before */
       g_return_if_fail (prev_status == TP_INTERNAL_CONNECTION_STATUS_NEW);
       break;
     default:

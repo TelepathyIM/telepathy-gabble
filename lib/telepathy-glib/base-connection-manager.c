@@ -154,7 +154,8 @@ connection_shutdown_finished_cb (TpBaseConnection *conn,
                                  gpointer data)
 {
   TpBaseConnectionManager *self = TP_BASE_CONNECTION_MANAGER (data);
-  TpBaseConnectionManagerPrivate *priv = TP_BASE_CONNECTION_MANAGER_GET_PRIVATE (self);
+  TpBaseConnectionManagerPrivate *priv =
+    TP_BASE_CONNECTION_MANAGER_GET_PRIVATE (self);
 
   g_assert (g_hash_table_lookup (priv->connections, conn));
   g_hash_table_remove (priv->connections, conn);
@@ -386,12 +387,14 @@ parse_parameters (const TpCMParamSpec *paramspec,
           else if (paramspec[i].gtype == G_TYPE_INT)
             {
               g_debug ("%s: accepted value %d for param %s", G_STRFUNC,
-                       *((gint *) (params + paramspec[i].offset)), paramspec[i].name);
+                  *((gint *) (params + paramspec[i].offset)),
+                  paramspec[i].name);
             }
           else
             {
               g_debug ("%s: accepted value %u for param %s", G_STRFUNC,
-                       *((guint *) (params + paramspec[i].offset)), paramspec[i].name);
+                  *((guint *) (params + paramspec[i].offset)),
+                  paramspec[i].name);
             }
 
           g_hash_table_remove (provided, paramspec[i].name);
@@ -432,7 +435,8 @@ tp_base_connection_manager_get_parameters (TpSvcConnectionManager *iface,
   GError *error = NULL;
   const TpCMProtocolSpec *protospec = NULL;
   TpBaseConnectionManager *self = TP_BASE_CONNECTION_MANAGER (iface);
-  TpBaseConnectionManagerClass *cls = TP_BASE_CONNECTION_MANAGER_GET_CLASS (self);
+  TpBaseConnectionManagerClass *cls =
+    TP_BASE_CONNECTION_MANAGER_GET_CLASS (self);
   int i;
 
   g_assert (TP_IS_BASE_CONNECTION_MANAGER (iface));
@@ -485,7 +489,8 @@ tp_base_connection_manager_list_protocols (TpSvcConnectionManager *iface,
                                            DBusGMethodInvocation *context)
 {
   TpBaseConnectionManager *self = TP_BASE_CONNECTION_MANAGER (iface);
-  TpBaseConnectionManagerClass *cls = TP_BASE_CONNECTION_MANAGER_GET_CLASS (self);
+  TpBaseConnectionManagerClass *cls =
+    TP_BASE_CONNECTION_MANAGER_GET_CLASS (self);
   const char **protocols;
   guint i = 0;
 
@@ -634,7 +639,8 @@ tp_base_connection_manager_register (TpBaseConnectionManager *self)
 
   if (request_name_result == DBUS_REQUEST_NAME_REPLY_EXISTS)
     {
-      g_warning ("Failed to acquire bus name, connection manager already running?");
+      g_warning ("Failed to acquire bus name, connection manager already "
+          "running?");
 
       g_string_free (string, TRUE);
       return FALSE;

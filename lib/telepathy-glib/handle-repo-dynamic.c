@@ -1,6 +1,7 @@
 /*
- * handle-repo-dynamic.c - mechanism to store and retrieve handles on a connection
- * (general implementation with dynamic handle allocation and recycling)
+ * handle-repo-dynamic.c - mechanism to store and retrieve handles on a
+ * connection (general implementation with dynamic handle allocation and
+ * recycling)
  *
  * Copyright (C) 2007 Collabora Ltd. <http://www.collabora.co.uk/>
  * Copyright (C) 2007 Nokia Corporation
@@ -138,7 +139,8 @@ enum
 /**
  * TpDynamicHandleRepoClass:
  *
- * The class of a dynamic handle repository. The contents of the struct are private.
+ * The class of a dynamic handle repository. The contents of the struct
+ * are private.
  */
 
 struct _TpDynamicHandleRepoClass {
@@ -317,12 +319,15 @@ handle_leak_debug_printbt_foreach (gpointer data, gpointer user_data)
 }
 
 static void
-handle_leak_debug_printhandles_foreach (gpointer key, gpointer value, gpointer ignore)
+handle_leak_debug_printhandles_foreach (gpointer key,
+                                        gpointer value,
+                                        gpointer ignore)
 {
   TpHandle handle = GPOINTER_TO_UINT (key);
   TpHandlePriv *priv = (TpHandlePriv *) value;
 
-  printf ("\t%05u: %s (%u refs), traces:\n", handle, priv->string, priv->refcount);
+  printf ("\t%05u: %s (%u refs), traces:\n", handle, priv->string,
+      priv->refcount);
 
   g_slist_foreach (priv->traces, handle_leak_debug_printbt_foreach, NULL);
 }

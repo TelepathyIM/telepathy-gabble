@@ -400,12 +400,12 @@ tp_group_mixin_add_members (GObject *obj,
       if ((mixin->group_flags & TP_CHANNEL_GROUP_FLAG_CAN_ADD) == 0 &&
           !tp_handle_set_is_member (mixin->local_pending, handle))
         {
-          DEBUG ("handle %u cannot be added to members without GROUP_FLAG_CAN_ADD",
-              handle);
+          DEBUG ("handle %u cannot be added to members without "
+              "GROUP_FLAG_CAN_ADD", handle);
 
           g_set_error (error, TP_ERRORS, TP_ERROR_PERMISSION_DENIED,
-              "handle %u cannot be added to members without GROUP_FLAG_CAN_ADD",
-              handle);
+              "handle %u cannot be added to members without "
+              "GROUP_FLAG_CAN_ADD", handle);
 
           return FALSE;
         }

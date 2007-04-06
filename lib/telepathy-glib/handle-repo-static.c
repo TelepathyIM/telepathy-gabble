@@ -1,6 +1,7 @@
 /*
- * handle-repo-static.c - mechanism to store and retrieve handles on a connection
- * (implementation for handle types with a fixed list of possible handles)
+ * handle-repo-static.c - mechanism to store and retrieve handles on a
+ * connection (implementation for handle types with a fixed list of possible
+ * handles)
  *
  * Copyright (C) 2007 Collabora Ltd. <http://www.collabora.co.uk/>
  * Copyright (C) 2007 Nokia Corporation
@@ -174,17 +175,21 @@ tp_static_handle_repo_class_init (TpStaticHandleRepoClass *klass)
   object_class->set_property = static_set_property;
   object_class->finalize = static_finalize;
 
-  g_object_class_override_property (object_class, PROP_HANDLE_TYPE, "handle-type");
+  g_object_class_override_property (object_class, PROP_HANDLE_TYPE,
+      "handle-type");
   param_spec = g_param_spec_boxed ("handle-names", "Handle names",
       "The static set of handle names supported by this repo.",
       G_TYPE_STRV,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_NICK |
       G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_HANDLE_NAMES, param_spec);
+  g_object_class_install_property (object_class, PROP_HANDLE_NAMES,
+      param_spec);
 }
 
 static gboolean
-static_handle_is_valid (TpHandleRepoIface *irepo, TpHandle handle, GError **error)
+static_handle_is_valid (TpHandleRepoIface *irepo,
+                        TpHandle handle,
+                        GError **error)
 {
   TpStaticHandleRepo *self = TP_STATIC_HANDLE_REPO (irepo);
 

@@ -556,28 +556,37 @@ initial_request_cb (GabbleVCardManager *self,
   if (node)
     {
       DEBUG ("Our vCard has a PHOTO %p", node);
-      GString *avatar = NULL;
       LmMessageNode *binval = lm_message_node_get_child (node, "BINVAL");
 
       if (binval)
         {
-          gchar *sha1;
+          const gchar *binval_value;
 
-          avatar = base64_decode (lm_message_node_get_value (binval));
-          if (avatar)
-            {
-              sha1 = sha1_hex (avatar->str, avatar->len);
-              DEBUG ("Successfully decoded PHOTO.BINVAL, SHA-1 %s", sha1);
-              g_signal_emit (self, signals[GOT_SELF_INITIAL_AVATAR], 0, sha1);
-              g_free (sha1);
-            }
-          else
-            {
-              DEBUG ("Avatar is in garbled Base64, ignoring it:\n%s",
-                     lm_message_node_get_value (binval));
-            }
+          binval_value = lm_message_node_get_value (binval);
 
-          g_string_free (avatar, TRUE);
+          if (binval_value)
+            {
+              gchar *sha1;
+              GString *avatar;
+
+              avatar = base64_decode (binval_value);
+
+              if (avatar)
+                {
+                  sha1 = sha1_hex (avatar->str, avatar->len);
+                  DEBUG ("Successfully decoded PHOTO.BINVAL, SHA-1 %s", sha1);
+                  g_signal_emit (self, signals[GOT_SELF_INITIAL_AVATAR], 0,
+                      sha1);
+                  g_free (sha1);
+                }
+              else
+                {
+                  DEBUG ("Avatar is in garbled Base64, ignoring it:\n%s",
+                         lm_message_node_get_value (binval));
+                }
+
+              g_string_free (avatar, TRUE);
+            }
         }
     }
 

@@ -281,7 +281,7 @@ _request_avatar_cb (GabbleVCardManager *self,
   GabbleConnection *conn;
   TpBaseConnection *base;
   LmMessageNode *photo_node, *type_node, *binval_node;
-  const gchar *mime_type;
+  const gchar *mime_type, *binval_value;
   GArray *arr;
   GError *error = NULL;
   GString *avatar = NULL;
@@ -329,7 +329,18 @@ _request_avatar_cb (GabbleVCardManager *self,
       goto out;
     }
 
-  avatar = base64_decode (lm_message_node_get_value (binval_node));
+  binval_value = lm_message_node_get_value (binval_node);
+
+  if (NULL == binval_value)
+    {
+      g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+        "contact avatar is missing binval content");
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      goto out;
+    }
+
+  avatar = base64_decode (binval_value);
 
   if (NULL == avatar)
     {

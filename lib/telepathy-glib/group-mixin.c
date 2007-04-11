@@ -42,9 +42,6 @@
  * <literal>G_DEFINE_TYPE_WITH_CODE</literal>.
  */
 
-/* use the new API internally */
-#define _TP_CM_UPDATED_FOR_0_5_7 1
-
 #include <telepathy-glib/group-mixin.h>
 
 #include <dbus/dbus-glib.h>

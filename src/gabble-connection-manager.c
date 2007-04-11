@@ -193,6 +193,19 @@ const TpCMProtocolSpec gabble_protocols[] = {
       g_object_set (conn, prop, member, NULL); \
     }
 
+static gboolean
+check_not_empty_if_present (const gchar *name,
+                            const gchar *value,
+                            GError **error)
+{
+  if (value != NULL && value[0] == '\0')
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "If supplied, '%s' account parameter may not be empty", name);
+      return FALSE;
+    }
+  return TRUE;
+}
 
 static TpBaseConnection *
 _gabble_connection_manager_new_connection (TpBaseConnectionManager *self,
@@ -205,6 +218,32 @@ _gabble_connection_manager_new_connection (TpBaseConnectionManager *self,
   GabbleParams *params = (GabbleParams *)parsed_params;
 
   g_assert (GABBLE_IS_CONNECTION_MANAGER (self));
+
+  /* FIXME: validate the JID according to the RFC */
+  if (!check_not_empty_if_present ("account", params->account, error))
+    return FALSE;
+  /* FIXME: validate the server properly */
+  if (!check_not_empty_if_present ("server", params->server, error))
+    return FALSE;
+  /* FIXME: validate properly */
+  if (!check_not_empty_if_present ("https-proxy-server",
+        params->https_proxy_server, error))
+    return FALSE;
+  /* FIXME: validate the resource according to the RFC */
+  if (!check_not_empty_if_present ("resource", params->resource, error))
+    return FALSE;
+  /* FIXME: validate properly */
+  if (!check_not_empty_if_present ("fallback-conference-server",
+        params->fallback_conference_server, error))
+    return FALSE;
+  /* FIXME: validate properly */
+  if (!check_not_empty_if_present ("stun-server",
+        params->stun_server, error))
+    return FALSE;
+  /* setting a 0-length alias makes no sense */
+  if (!check_not_empty_if_present ("alias",
+        params->alias, error))
+    return FALSE;
 
   conn = g_object_new (GABBLE_TYPE_CONNECTION,
                        "protocol",           proto,

@@ -271,18 +271,20 @@ set_param_from_value (const TpCMParamSpec *paramspec,
     {
       case DBUS_TYPE_STRING:
         {
+          gchar **save_to = (gchar **) (params + paramspec->offset);
+          const gchar *str;
+
           g_assert (paramspec->gtype == G_TYPE_STRING);
-          const char *str = g_value_get_string (value);
-          /* FIXME: why don't we allow the client to provide empty strings? */
-          if (!str || *str == '\0')
+          str = g_value_get_string (value);
+          g_free (*save_to);
+          if (str == NULL)
             {
-              g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-                  "empty string values are not allowed for account "
-                  "parameter %s", paramspec->name);
-              return FALSE;
+              *save_to = g_strdup ("");
             }
           else
-            *((char **) (params + paramspec->offset)) = g_value_dup_string (value);
+            {
+              *save_to = g_value_dup_string (value);
+            }
         }
         break;
       case DBUS_TYPE_INT16:

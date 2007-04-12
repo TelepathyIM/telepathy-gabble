@@ -249,6 +249,11 @@ tp_base_connection_dispose (GObject *object)
         }
     }
 
+  if (priv->interfaces)
+    {
+      g_array_free (priv->interfaces, TRUE);
+    }
+
   if (G_OBJECT_CLASS (tp_base_connection_parent_class)->dispose)
     G_OBJECT_CLASS (tp_base_connection_parent_class)->dispose (object);
 }

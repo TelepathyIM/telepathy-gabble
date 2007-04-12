@@ -404,8 +404,8 @@ connection_new_channel_cb (TpChannelFactoryIface *factory,
 static void
 connection_channel_error_cb (TpChannelFactoryIface *factory,
                              GObject *chan,
-                             ChannelRequest *channel_request,
                              GError *error,
+                             ChannelRequest *channel_request,
                              gpointer data)
 {
   TpBaseConnection *conn = TP_BASE_CONNECTION (data);

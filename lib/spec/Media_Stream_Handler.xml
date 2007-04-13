@@ -92,8 +92,12 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
       </tp:docstring>
     </method>
     <tp:enum name="Media_Stream_Base_Proto">
-      <tp:enumvalue suffix="UDP" value="0"/>
-      <tp:enumvalue suffix="TCP" value="1"/>
+      <tp:enumvalue suffix="UDP" value="0">
+        <tp:docstring>UDP (User Datagram Protocol)</tp:docstring>
+      </tp:enumvalue>
+      <tp:enumvalue suffix="TCP" value="1">
+        <tp:docstring>TCP (Transmission Control Protocol)</tp:docstring>
+      </tp:enumvalue>
     </tp:enum>
     <method name="NewNativeCandidate">
       <arg direction="in" name="candidate_id" type="s">
@@ -219,6 +223,28 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
       <tp:docstring>
         Signal emitted when the connection manager wishes to set whether or not
         the stream sends to the remote end.
+      </tp:docstring>
+    </signal>
+    <signal name="StartTelephonyEvent">
+      <arg name="event" type="u">
+        <tp:docstring>
+          A telephony event code as defined by RFC 4733.
+        </tp:docstring>
+      </arg>
+      <tp:docstring>
+        Request that a telephony event (as defined by RFC 4733) is transmitted
+        over this stream until StopTelephonyEvent is called.
+      </tp:docstring>
+    </signal>
+    <signal name="StopTelephonyEvent">
+      <arg name="event" type="u">
+        <tp:docstring>
+          A telephony event code as defined by RFC 4733.
+        </tp:docstring>
+      </arg>
+      <tp:docstring>
+        Request that any ongoing telephony events (as defined by RFC 4733)
+        being transmitted over this stream are stopped.
       </tp:docstring>
     </signal>
     <method name="StreamState">

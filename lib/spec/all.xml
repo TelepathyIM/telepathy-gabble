@@ -2,7 +2,7 @@
   xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0"
   xmlns:xi="http://www.w3.org/2001/XInclude">
 
-<tp:version>0.15.0</tp:version>
+<tp:version>0.15.1</tp:version>
 
 <tp:copyright>Copyright (C) 2005, 2006, 2007 Collabora Limited</tp:copyright>
 <tp:copyright>Copyright (C) 2005, 2006, 2007 Nokia Corporation</tp:copyright>
@@ -41,6 +41,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
 <xi:include href="Channel_Type_Streamed_Media.xml"/>
 <xi:include href="Channel_Type_Room_List.xml"/>
 <xi:include href="Channel_Type_Text.xml"/>
+
 <xi:include href="Channel_Interface_Chat_State.xml"/>
 <xi:include href="Channel_Interface_DTMF.xml"/>
 <xi:include href="Channel_Interface_Group.xml"/>

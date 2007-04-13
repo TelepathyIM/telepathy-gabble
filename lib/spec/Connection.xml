@@ -49,6 +49,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
       <tp:docstring>
         Get the optional interfaces supported by this connection.
       </tp:docstring>
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.Disconnected"/>
+      </tp:possible-errors>
     </method>
     <method name="GetProtocol">
       <arg direction="out" type="s">

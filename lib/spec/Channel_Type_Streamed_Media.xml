@@ -22,12 +22,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
     <tp:requires interface="org.freedesktop.Telepathy.Channel"/>
     <tp:enum name="Media_Stream_Type">
       <tp:enumvalue suffix="Audio" value="0">
-        An audio stream
-        <tp:docstring></tp:docstring>
+        <tp:docstring>An audio stream</tp:docstring>
       </tp:enumvalue>
       <tp:enumvalue suffix="Video" value="1">
-        A video stream
-        <tp:docstring></tp:docstring>
+        <tp:docstring>A video stream</tp:docstring>
       </tp:enumvalue>
     </tp:enum>
     <tp:enum name="Media_Stream_State">

@@ -312,7 +312,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
         <tp:error name="org.freedesktop.Telepathy.Error.Channel.InviteOnly"/>
       </tp:possible-errors>
     </method>
-    <tp:enum name="Handle_Type">
+    <tp:enum name="Handle_Type" type="u">
       <tp:enumvalue suffix="None" value="0">
         <tp:docstring>
           A "null" handle type used to indicate the absence of a handle.
@@ -377,7 +377,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
         </tp:error>
       </tp:possible-errors>
     </method>
-    <tp:enum name="Connection_Status">
+    <tp:enum name="Connection_Status" type="u">
       <tp:enumvalue suffix="Connected" value="0">
         <tp:docstring>
             The connection is alive and all methods are available.
@@ -397,7 +397,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
         </tp:docstring>
       </tp:enumvalue>
     </tp:enum>
-    <tp:enum name="Connection_Status_Reason">
+    <tp:enum name="Connection_Status_Reason" type="u">
       <tp:enumvalue suffix="None_Specified" value="0">
         <tp:docstring>
             There is no reason set for this state change.

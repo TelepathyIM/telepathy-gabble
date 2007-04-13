@@ -76,7 +76,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
         <tp:error name="org.freedesktop.Telepathy.Error.NetworkError"/>
       </tp:possible-errors>
     </method>
-    <tp:flags name="Channel_Group_Flags" value-prefix="Channel_Group_Flag">
+    <tp:flags name="Channel_Group_Flags" value-prefix="Channel_Group_Flag" type="u">
       <tp:flag suffix="Can_Add" value="1">
         <tp:docstring>
             The AddMembers method can be used to add or invite members who are
@@ -296,7 +296,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
         The user interface should be updated as appropriate.
       </tp:docstring>
     </signal>
-    <tp:enum name="Channel_Group_Change_Reason">
+    <tp:enum name="Channel_Group_Change_Reason" type="u">
       <tp:enumvalue suffix="None" value="0">
         <tp:docstring>
             No reason was provided for this change.

@@ -141,7 +141,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
         <tp:error name="org.freedesktop.Telepathy.Error.PermissionDenied"/>
       </tp:possible-errors>
     </method>
-    <tp:enum name="Channel_Text_Send_Error">
+    <tp:enum name="Channel_Text_Send_Error" type="u">
       <tp:enumvalue suffix="Unknown" value="0">
         <tp:docstring>
         An unknown error occurred
@@ -221,7 +221,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
         Signals that a message has been sent on this channel.
       </tp:docstring>
     </signal>
-    <tp:enum name="Channel_Text_Message_Type">
+    <tp:enum name="Channel_Text_Message_Type" type="u">
       <tp:enumvalue suffix="Normal" value="0">
         <tp:docstring>
         A standard message
@@ -244,7 +244,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
         </tp:docstring>
       </tp:enumvalue>
     </tp:enum>
-    <tp:flags name="Channel_Text_Message_Flags" value-prefix="Channel_Text_Message_Flag">
+    <tp:flags name="Channel_Text_Message_Flags" value-prefix="Channel_Text_Message_Flag" type="u">
       <tp:flag suffix="Truncated" value="1">
         <tp:docstring>
         The incoming message was truncated to a shorter length by the

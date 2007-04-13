@@ -19,7 +19,7 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
   </tp:license>
   <interface name="org.freedesktop.Telepathy.ConnectionManager">
-    <tp:flags name="Conn_Mgr_Param_Flags" value-prefix="Conn_Mgr_Param_Flag">
+    <tp:flags name="Conn_Mgr_Param_Flags" value-prefix="Conn_Mgr_Param_Flag" type="u">
       <tp:flag suffix="Required" value="1">
         <tp:docstring>
           This parameter is required for connecting to the server.

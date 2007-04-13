@@ -145,7 +145,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
     implemented by available client processes.</p>
     </tp:docstring>
   </interface>
-  <tp:flags name="Connection_Capability_Flags" value-prefix="Connection_Capability_Flag">
+  <tp:flags name="Connection_Capability_Flags" value-prefix="Connection_Capability_Flag" type="u">
     <tp:flag suffix="Create" value="1">
       <tp:docstring>
         The given channel type and handle can be given to RequestChannel to

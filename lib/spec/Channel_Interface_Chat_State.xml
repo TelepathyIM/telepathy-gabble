@@ -50,7 +50,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
         This includes local state.
       </tp:docstring>
     </signal>
-    <tp:enum name="Channel_Chat_State">
+    <tp:enum name="Channel_Chat_State" type="u">
       <tp:enumvalue suffix="Gone" value="0">
         <tp:docstring>
         The contact has effectively ceased participating in the chat.

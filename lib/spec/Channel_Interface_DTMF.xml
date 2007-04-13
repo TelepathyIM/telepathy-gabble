@@ -24,7 +24,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
       <arg direction="in" name="stream_id" type="u">
         <tp:docstring>A stream ID as defined in the StreamedMedia channel type.</tp:docstring>
       </arg>
-      <arg direction="in" name="event" type="u">
+      <arg direction="in" name="event" type="y">
         <tp:docstring>A numeric event code from the DTMF_Event enum.</tp:docstring>
       </arg>
       <tp:docstring>
@@ -70,7 +70,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
         </tp:error>
       </tp:possible-errors>
     </method>
-    <tp:enum name="DTMF_Event" type="u">
+    <tp:enum name="DTMF_Event" type="y">
       <tp:enumvalue suffix="Digit_0" value="0">
         <tp:docstring>0</tp:docstring>
       </tp:enumvalue>

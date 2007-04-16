@@ -980,7 +980,7 @@ _process_caps (GabblePresenceCache *cache,
                const gchar *from,
                LmMessageNode *lm_node)
 {
-  gchar *resource;
+  const gchar *resource;
   GSList *uris, *i;
   GabblePresenceCachePrivate *priv;
   guint serial;
@@ -988,10 +988,7 @@ _process_caps (GabblePresenceCache *cache,
   priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
   serial = priv->caps_serial++;
 
-  gabble_decode_jid (from, NULL, NULL, &resource);
-
-  if (NULL == resource)
-    return;
+  resource = strchr (from, '/');
 
   uris = _extract_cap_bundles (lm_node);
 
@@ -1002,7 +999,6 @@ _process_caps (GabblePresenceCache *cache,
       g_free (i->data);
     }
 
-  g_free (resource);
   g_slist_free (uris);
 }
 
@@ -1013,8 +1009,7 @@ _parse_presence_message (GabblePresenceCache *cache,
                          LmMessage *message)
 {
   gint8 priority = 0;
-  gchar *resource = NULL;
-  const gchar *status_message = NULL;
+  const gchar *resource, *status_message = NULL;
   LmMessageNode *presence_node, *child_node;
   LmHandlerResult ret = LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
   GabblePresenceId presence_id;
@@ -1023,7 +1018,7 @@ _parse_presence_message (GabblePresenceCache *cache,
   presence_node = message->node;
   g_assert (0 == strcmp (presence_node->name, "presence"));
 
-  gabble_decode_jid (from, NULL, NULL, &resource);
+  resource = strchr (from, '/');
 
   presence = gabble_presence_cache_get (cache, handle);
 
@@ -1076,8 +1071,6 @@ _parse_presence_message (GabblePresenceCache *cache,
     default:
       break;
     }
-
-  g_free (resource);
 
   return ret;
 }

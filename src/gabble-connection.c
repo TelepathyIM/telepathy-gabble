@@ -761,8 +761,6 @@ gabble_connection_finalize (GObject *object)
  * _gabble_connection_set_properties_from_account
  *
  * Parses an account string which may be one of the following forms:
- *  username
- *  username/resource
  *  username@server
  *  username@server/resource
  * and sets the properties for username, stream server and resource

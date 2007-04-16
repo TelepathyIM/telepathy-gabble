@@ -573,8 +573,7 @@ contact_handle_to_room_identity (GabbleMucChannel *chan, TpHandle main_handle,
   TpBaseConnection *conn;
   TpHandleRepoIface *contact_repo;
   const gchar *main_jid;
-  gchar *username, *server;
-  gchar *jid;
+  gchar *username, *jid;
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
   conn = (TpBaseConnection *)priv->conn;
@@ -582,12 +581,11 @@ contact_handle_to_room_identity (GabbleMucChannel *chan, TpHandle main_handle,
 
   main_jid = tp_handle_inspect (contact_repo, main_handle);
 
-  gabble_decode_jid (main_jid, &username, &server, NULL);
+  gabble_decode_jid (main_jid, &username, NULL, NULL);
 
   jid = g_strdup_printf ("%s/%s", priv->jid, username);
 
   g_free (username);
-  g_free (server);
 
   if (room_handle)
     {

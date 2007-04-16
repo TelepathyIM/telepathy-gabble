@@ -2687,12 +2687,23 @@ room_jid_verify (RoomVerifyBatch *batch,
   room = service = NULL;
   gabble_decode_jid (batch->contexts[index].jid, &room, &service, NULL);
 
-  g_assert (room && service);
+  if (room == NULL || *room == '\0' || service == NULL || *service == '\0')
+    {
+      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "unable to get room name and service from JID %s",
+          batch->contexts[index].jid);
+
+      ret = FALSE;
+
+      goto out;
+    }
 
   ret = (gabble_disco_request (batch->conn->disco, GABBLE_DISCO_TYPE_INFO,
                                service, NULL, room_jid_disco_cb,
                                batch->contexts + index,
                                G_OBJECT (batch->conn), &error) != NULL);
+
+out:
   if (!ret)
     {
       room_verify_batch_raise_error (batch, error);

@@ -172,6 +172,7 @@ AC_OUTPUT( Makefile \
 	   lib/telepathy-glib/Makefile \
 	   lib/tests/Makefile \
 	   lib/tools/Makefile \
+	   lib/tools/update-spec-gen-am.sh \
            src/Makefile \
            m4/Makefile \
            data/Makefile \

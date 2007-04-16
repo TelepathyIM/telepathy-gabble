@@ -5,24 +5,6 @@ EXTRA_DIST = extra-gtkdoc.h
 
 # This is a derived file but must be checked-in to Darcs anyway,
 # for bootstrapping.
-spec-gen.am: Makefile.am ../spec/all.xml $(SPEC_INTERFACE_XMLS) \
-	../tools/ls-interfaces.xsl
-	$(XSLTPROC) $(XSLTPROCFLAGS) --xinclude \
-		$(srcdir)/../tools/ls-interfaces.xsl \
-		$(srcdir)/../spec/all.xml > spec-gen.tmp
-	@echo Interfaces to be generated are:
-	@cat spec-gen.tmp ; echo
-	@echo end of interfaces list
-	(\
-	echo SPEC_INTERFACES = `cat spec-gen.tmp` && \
-	echo SPEC_INTERFACE_XMLS = `sed -e 's,[A-Za-z_][A-Za-z_]*,../spec/&.xml,g' spec-gen.tmp` && \
-	echo SPEC_GENERATED_CS = `sed -e 's,[A-Za-z_][A-Za-z_]*,_gen/svc-&.c,g' spec-gen.tmp` && \
-	echo SPEC_GENERATED_HS = `sed -e 's,[A-Za-z_][A-Za-z_]*,_gen/svc-&.h,g' spec-gen.tmp` && \
-	echo SPEC_GLUE_HS = `sed -e 's,[A-Za-z_][A-Za-z_]*,_gen/svc-&-glue.h,g' spec-gen.tmp` && \
-	echo SPEC_GENERATED_LISTS = `sed -e 's,[A-Za-z_][A-Za-z_]*,_gen/svc-&-signals-marshal.list,g' spec-gen.tmp` \
-	) > spec-gen.am
-	rm -f spec-gen.tmp
-
 include spec-gen.am
 
 SPEC_GENERATED_SOURCES = $(SPEC_GENERATED_CS) $(SPEC_GENERATED_HS) \

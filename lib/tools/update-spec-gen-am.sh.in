@@ -1,0 +1,69 @@
+#!/bin/sh
+
+mk_specdir="lib/spec"
+mk_toolsdir="lib/tools"
+
+XSLTPROC=@XSLTPROC@
+top_srcdir=@abs_top_srcdir@
+
+toolsdir="${top_srcdir}/${mk_toolsdir}"
+specdir="${top_srcdir}/${mk_specdir}"
+
+outfile="$1"
+gendir="$2"
+
+SPEC_INTERFACES="`$XSLTPROC --nonet --novalid --xinclude $toolsdir/ls-interfaces.xsl $specdir/all.xml`"
+
+install -d ./`dirname "$outfile"`
+exec > "$outfile.tmp"
+
+printf "$outfile: \$(top_srcdir)/$mk_specdir/all.xml \\\\\\n"
+printf "\\t\\t\$(top_srcdir)/$mk_specdir/all.xml \\\\\\n"
+printf "\\t\\t\$(SPEC_INTERFACE_XMLS) \\\\\\n"
+printf "\\t\\t\$(top_srcdir)/$mk_toolsdir/ls-interfaces.xsl \\\\\\n"
+printf "\\t\\t\$(top_srcdir)/$mk_toolsdir/update-spec-gen-am.sh\\n"
+printf "\\t\$(SHELL) \$(top_srcdir)/$mk_toolsdir/update-spec-gen-am.sh $outfile $gendir\\n"
+
+printf "SPEC_INTERFACES ="
+for iface in $SPEC_INTERFACES
+do
+  printf '\\\n    %s' "$iface"
+done
+echo
+
+printf "SPEC_INTERFACES_XMLS ="
+for iface in $SPEC_INTERFACES
+do
+  printf '\\\n    $(top_srcdir)/%s/%s.xml' "$mk_specdir" "$iface"
+done
+echo
+
+printf "SPEC_GENERATED_CS ="
+for iface in $SPEC_INTERFACES
+do
+  printf '\\\n    %s/svc-%s.c' "$gendir" "$iface"
+done
+echo
+
+printf "SPEC_GENERATED_HS ="
+for iface in $SPEC_INTERFACES
+do
+  printf '\\\n    %s/svc-%s.h' "$gendir" "$iface"
+done
+echo
+
+printf "SPEC_GLUE_HS ="
+for iface in $SPEC_INTERFACES
+do
+  printf '\\\n    %s/svc-%s-glue.h' "$gendir" "$iface"
+done
+echo
+
+printf "SPEC_GENERATED_LISTS ="
+for iface in $SPEC_INTERFACES
+do
+  printf '\\\n    %s/svc-%s-signals-marshal.list' "$gendir" "$iface"
+done
+echo
+
+mv "$outfile.tmp" "$outfile"

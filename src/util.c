@@ -316,7 +316,6 @@ gabble_decode_jid (const gchar *jid,
   char *tmp_jid, *tmp_username, *tmp_server, *tmp_resource;
 
   g_assert (jid != NULL);
-  g_assert (*jid != '\0');
 
   if (username_room != NULL)
     *username_room = NULL;

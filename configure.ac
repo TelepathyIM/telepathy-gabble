@@ -77,6 +77,20 @@ AC_ARG_ENABLE(coverage,
   AC_HELP_STRING([--enable-coverage],[compile with coverage info]),
     enable_coverage=$enableval, enable_coverage=no )
 
+ifelse(gabble_nano_version, 0,
+    [ # Gabble is version x.y.z - disable coding style checks by default
+AC_ARG_ENABLE(coding-style-checks,
+  AC_HELP_STRING([--enable-coding-style-checks],
+                 [check coding style using grep]),
+    [ENABLE_CODING_STYLE_CHECKS=$enableval], [ENABLE_CODING_STYLE_CHECKS=no] )
+    ],
+    [ # Gabble is version x.y.z.1 - enable coding style checks by default
+AC_ARG_ENABLE(coding-style-checks,
+  AC_HELP_STRING([--disable-coding-style-checks],
+                 [don't check coding style using grep]),
+    [ENABLE_CODING_STYLE_CHECKS=$enableval], [ENABLE_CODING_STYLE_CHECKS=yes])
+    ])
+
 if test x$enable_debug = xyes; then
   AC_DEFINE(ENABLE_DEBUG, [], [Enable debug code])
 fi
@@ -96,6 +110,8 @@ fi
 
 AC_SUBST(HANDLE_LEAK_DEBUG_CFLAGS)
 AC_SUBST(COVERAGE_CFLAGS)
+
+AC_SUBST([ENABLE_CODING_STYLE_CHECKS])
 
 dnl Endianness (for the sha1 implementation)
 AC_C_BIGENDIAN

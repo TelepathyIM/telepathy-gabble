@@ -8,7 +8,7 @@ check-local::
 		top_srcdir=$(top_srcdir) sh $(top_srcdir)/check-c-style.sh \
 			$(check_c_sources) || fail=1; \
 	fi;\
-	if test -n "$(CHECK_CODING_STYLE)"; then \
+	if test yes = "$(ENABLE_CODING_STYLE_CHECKS)"; then \
 		exit "$$fail";\
 	else \
 		exit 0;\

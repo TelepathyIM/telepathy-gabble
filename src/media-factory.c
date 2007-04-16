@@ -243,8 +243,7 @@ media_factory_jingle_cb (LmMessageHandler *handler,
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
   LmMessageNode *iq_node, *session_node;
-  const gchar *from, *id, *action, *sid;
-  gchar *resource;
+  const gchar *from, *id, *action, *sid, *resource;
   TpHandle handle = 0;
   GabbleMediaChannel *chan = NULL;
   gboolean chan_is_new = FALSE;
@@ -296,6 +295,13 @@ media_factory_jingle_cb (LmMessageHandler *handler,
       goto BAD_REQUEST;
     }
 
+  resource = strchr (from, '/');
+  if (resource == NULL || *resource == '\0')
+    {
+      NODE_DEBUG (iq_node, "sender with no resource");
+      goto BAD_REQUEST;
+    }
+
   id = lm_message_node_get_attribute (iq_node, "id");
   if (id == NULL)
     {
@@ -342,7 +348,6 @@ media_factory_jingle_cb (LmMessageHandler *handler,
 
   DEBUG ("dispatching to session %s", sid);
   g_object_ref (chan);
-  gabble_decode_jid (from, NULL, NULL, &resource);
 
   if (_gabble_media_channel_dispatch_session_action (chan, handle, resource,
         sid, message, session_node, action, &error))
@@ -362,7 +367,6 @@ media_factory_jingle_cb (LmMessageHandler *handler,
     }
 
   g_object_unref (chan);
-  g_free (resource);
   if (handle)
     tp_handle_unref (contact_repo, handle);
 

@@ -362,8 +362,6 @@ parse_parameters (const TpCMParamSpec *paramspec,
         {
           if (!set_param_from_value (&paramspec[i], value, params, error))
             {
-              g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-                  "invalid value for parameter %s", paramspec[i].name);
               return FALSE;
             }
 

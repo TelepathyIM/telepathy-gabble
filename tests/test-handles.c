@@ -1,7 +1,6 @@
 #include <string.h>
 #include <glib.h>
 #include <glib-object.h>
-#include <handles.h>
 #include <gabble-connection.h>
 #include <telepathy-glib/enums.h>
 #include <telepathy-glib/interfaces.h>

@@ -32,7 +32,6 @@
 #include "debug.h"
 #include "gabble-connection.h"
 #include <telepathy-glib/group-mixin.h>
-#include "handles.h"
 #include "roster.h"
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/errors.h>

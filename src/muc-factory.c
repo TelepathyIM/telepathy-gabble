@@ -40,7 +40,6 @@
 #include "presence-cache.h"
 #include "gabble-muc-channel.h"
 #include "gabble-roomlist-channel.h"
-#include "handles.h"
 #include "namespaces.h"
 #include <telepathy-glib/interfaces.h>
 #include "text-mixin.h"

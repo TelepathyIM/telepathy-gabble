@@ -32,7 +32,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "handles.h"
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/enums.h>
 #include <telepathy-glib/errors.h>

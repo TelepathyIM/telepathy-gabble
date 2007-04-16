@@ -24,7 +24,6 @@
 #include <glib-object.h>
 
 #include "presence.h"
-#include "handles.h"
 
 G_BEGIN_DECLS
 

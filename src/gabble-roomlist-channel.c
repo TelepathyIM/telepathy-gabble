@@ -30,7 +30,6 @@
 #include "debug.h"
 #include "disco.h"
 #include "gabble-connection.h"
-#include "handles.h"
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/enums.h>
 #include <telepathy-glib/interfaces.h>

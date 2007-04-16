@@ -27,7 +27,6 @@
 #include <telepathy-glib/group-mixin.h>
 #include <telepathy-glib/properties-mixin.h>
 #include "text-mixin.h"
-#include "handles.h"
 
 G_BEGIN_DECLS
 

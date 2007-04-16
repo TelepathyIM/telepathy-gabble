@@ -33,7 +33,6 @@
 #include "gabble-connection.h"
 #include "presence.h"
 #include "presence-cache.h"
-#include "handles.h"
 #include "roster.h"
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/enums.h>

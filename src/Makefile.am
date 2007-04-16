@@ -48,8 +48,6 @@ libgabble_convenience_la_our_sources = \
     gabble-roomlist-channel.h \
     gabble-roomlist-channel.c \
     gabble-types.h \
-    handles.h \
-    handles.c \
     im-factory.h \
     im-factory.c \
     media-factory.h \

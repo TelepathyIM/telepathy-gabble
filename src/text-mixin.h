@@ -22,7 +22,6 @@
 #define __GABBLE_TEXT_MIXIN_H__
 
 #include <telepathy-glib/text-mixin.h>
-#include "handles.h"
 #include "util.h"
 
 G_BEGIN_DECLS

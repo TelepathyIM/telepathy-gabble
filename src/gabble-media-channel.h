@@ -27,7 +27,6 @@
 #include <telepathy-glib/properties-mixin.h>
 
 #include "gabble-media-session.h"
-#include "handles.h"
 #include "presence.h"
 
 G_BEGIN_DECLS

@@ -31,7 +31,6 @@
 
 #include <telepathy-glib/debug-ansi.h>
 #include "debug.h"
-#include "handles.h"
 #include "namespaces.h"
 #include "util.h"
 

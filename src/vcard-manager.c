@@ -28,11 +28,9 @@
 #include "base64.h"
 #include "debug.h"
 #include "gabble-connection.h"
-#include "handles.h"
 #include "namespaces.h"
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/heap.h>
-#include "handles.h"
 #include "time.h"
 #include "util.h"
 

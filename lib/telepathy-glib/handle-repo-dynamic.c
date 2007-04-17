@@ -258,8 +258,6 @@ handles_name_owner_changed_cb (DBusGProxy *proxy,
 static void
 tp_dynamic_handle_repo_init (TpDynamicHandleRepo *self)
 {
-  /* FIXME: some of this should be done in the c'tor probably */
-
   self->handle_to_priv = g_hash_table_new_full (g_direct_hash,
       g_direct_equal, NULL, (GDestroyNotify) handle_priv_free);
   self->string_to_handle = g_hash_table_new (g_str_hash, g_str_equal);
@@ -504,14 +502,14 @@ static gboolean
 dynamic_handle_is_valid (TpHandleRepoIface *irepo, TpHandle handle,
     GError **error)
 {
-  /* FIXME: cost per lookup */
   TpDynamicHandleRepo *self = TP_DYNAMIC_HANDLE_REPO (irepo);
 
   if (handle_priv_lookup (self, handle) == NULL)
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "handle %u is not currently valid for handle type %u '%s'",
-          handle, self->handle_type, "TODO: label handle types");
+          "handle %u is not currently a valid %s handle (type %u)",
+          handle, tp_handle_type_to_string (self->handle_type),
+          self->handle_type);
       return FALSE;
     }
   else

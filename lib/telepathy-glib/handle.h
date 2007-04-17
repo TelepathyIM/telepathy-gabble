@@ -1,5 +1,5 @@
 /*
- * tp-handle.h - Header for basic Telepathy-GLib handle functionality
+ * handle.h - Header for basic Telepathy-GLib handle functionality
  *
  * Copyright (C) 2005, 2007 Collabora Ltd.
  * Copyright (C) 2005, 2007 Nokia Corporation
@@ -77,6 +77,8 @@ tp_handle_type_is_valid (TpHandleType type, GError **error)
   tp_g_set_error_invalid_handle_type (type, error);
   return FALSE;
 }
+
+const gchar *tp_handle_type_to_string (TpHandleType type);
 
 G_END_DECLS
 

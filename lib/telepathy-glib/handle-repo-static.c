@@ -196,8 +196,9 @@ static_handle_is_valid (TpHandleRepoIface *irepo,
   if (handle <= 0 || handle > self->last_handle)
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "handle %u is not valid for handle type %u '%s'",
-          handle, self->handle_type, "TODO: label handle types");
+          "handle %u is not a valid %s handle (type %u)",
+          handle, tp_handle_type_to_string (self->handle_type),
+          self->handle_type);
       return FALSE;
     }
   else

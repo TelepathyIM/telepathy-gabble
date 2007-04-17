@@ -982,6 +982,7 @@ tp_debug_set_all_flags
 TpHandle
 TP_TYPE_HANDLE
 tp_handle_type_is_valid
+tp_handle_type_to_string
 </SECTION>
 
 <SECTION>

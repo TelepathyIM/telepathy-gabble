@@ -351,6 +351,18 @@ parse_parameters (const TpCMParamSpec *paramspec,
                   "missing mandatory account parameter %s", paramspec[i].name);
               return FALSE;
             }
+          else if (paramspec[i].flags & TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT)
+            {
+              gchar *s;
+
+              value = param_default_value (params, i);
+              s = g_strdup_value_contents (value);
+
+              g_debug ("%s: using default value %s = %s",
+                       G_STRFUNC, paramspec[i].name, s);
+
+              g_free (s);
+            }
           else
             {
               g_debug ("%s: using default value for param %s",

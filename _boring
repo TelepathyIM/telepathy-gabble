@@ -86,3 +86,4 @@
 ^lib/docs/reference/telepathy-glib\.(args|hierarchy|interfaces|prerequisites|signals)$
 ^lib/docs/reference/telepathy-glib-(undocumented|unused|decl|decl-list)\.txt$
 ^lib/tools/update-spec-gen-am\.sh$
+^lib/FIXME\.out$

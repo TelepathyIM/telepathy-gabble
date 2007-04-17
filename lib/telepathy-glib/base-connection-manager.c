@@ -204,10 +204,7 @@ param_default_value (const TpCMParamSpec *params, int i)
   value = g_slice_new0 (GValue);
   g_value_init (value, params[i].gtype);
 
-  /* TODO: this check could be stricter if we knew whether register
-  was true. In practice REQUIRED and REGISTER always go together in
-  the Gabble params, though */
-  if (params[i].flags & TP_CONN_MGR_PARAM_FLAG_REQUIRED & TP_CONN_MGR_PARAM_FLAG_REGISTER)
+  if (!(params[i].flags & TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT))
     {
       g_assert (params[i].def == NULL);
       goto OUT;

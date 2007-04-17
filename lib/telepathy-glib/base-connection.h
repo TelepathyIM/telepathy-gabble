@@ -169,10 +169,13 @@ typedef gchar *(*TpBaseConnectionGetUniqueConnectionNameImpl) (
  *  Individual instances may detect which additional interfaces they support
  *  and signal them before going to state CONNECTED by calling
  *  tp_base_connection_add_interfaces().
- * @priv: Pointer to opaque private data.
  *
  * The class of a #TpBaseConnection. Many members are virtual methods etc.
  * to be filled in in the subclass' class_init function.
+ *
+ * In addition to the fields documented here, there are four gpointer fields
+ * which must currently be %NULL (a meaning may be defined for these in a
+ * future version of telepathy-glib), and a pointer to opaque private data.
  */
 struct _TpBaseConnectionClass {
     GObjectClass parent_class;
@@ -193,7 +196,11 @@ struct _TpBaseConnectionClass {
 
     const gchar **interfaces_always_present;
 
-    /* FIXME: add some ABI padding here? */
+    /*<private>*/
+    gpointer _future1;
+    gpointer _future2;
+    gpointer _future3;
+    gpointer _future4;
 
     gpointer priv;
 };
@@ -225,9 +232,12 @@ struct _TpBaseConnectionClass {
  * @self_handle: The handle of type %TP_HANDLE_TYPE_CONTACT representing the
  *  local user. Must be set nonzero by the subclass before moving to state
  *  CONNECTED. If nonzero, the connection must hold a reference to the handle.
- * @priv: Pointer to opaque private data.
  *
  * Data structure representing a generic #TpSvcConnection implementation.
+ *
+ * In addition to the fields documented here, there are four gpointer fields
+ * which must currently be %NULL (a meaning may be defined for these in a
+ * future version of telepathy-glib), and a pointer to opaque private data.
  */
 struct _TpBaseConnection {
     /*<public>*/
@@ -239,6 +249,12 @@ struct _TpBaseConnection {
     TpConnectionStatus status;
 
     TpHandle self_handle;
+
+    /*<private>*/
+    gpointer _future1;
+    gpointer _future2;
+    gpointer _future3;
+    gpointer _future4;
 
     gpointer priv;
 };

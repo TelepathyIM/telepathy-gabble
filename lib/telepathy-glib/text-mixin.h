@@ -39,6 +39,8 @@ typedef struct _TpTextMixinPrivate TpTextMixinPrivate;
  *
  * Structure to be included in the class structure of objects that
  * use this mixin. Initialize it with tp_text_mixin_class_init().
+ *
+ * There are no public fields.
  */
 struct _TpTextMixinClass {
     /*<private>*/
@@ -50,6 +52,8 @@ struct _TpTextMixinClass {
  *
  * Structure to be included in the instance structure of objects that
  * use this mixin. Initialize it with tp_text_mixin_init().
+ *
+ * There are no public fields.
  */
 struct _TpTextMixin {
   /*<private>*/

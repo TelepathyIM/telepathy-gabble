@@ -63,6 +63,10 @@ G_BEGIN_DECLS
  *
  * Structure representing a connection manager parameter, as accepted by
  * RequestConnection.
+ *
+ * In addition to the fields documented here, there are two gpointer fields
+ * which must currently be %NULL. A meaning may be defined for these in a
+ * future version of telepathy-glib.
  */
 
 /* XXX: This should be driven by GTypes, but the GType is insufficiently
@@ -82,6 +86,10 @@ typedef struct {
     guint flags;
     const gpointer def;
     const gsize offset;
+
+    /*<private>*/
+    gpointer _future1;
+    gpointer _future2;
 } TpCMParamSpec;
 
 /**
@@ -100,12 +108,22 @@ typedef struct {
  *               data members (currently, only strings) if necessary.
  *
  * Structure representing a connection manager protocol.
+ *
+ * In addition to the fields documented here, there are four gpointer fields
+ * which must currently be %NULL. A meaning may be defined for these in a
+ * future version of telepathy-glib.
  */
 typedef struct {
     const gchar *name;
     const TpCMParamSpec *parameters;
-    void *(*params_new) (void);
-    void (*params_free) (void *);
+    gpointer (*params_new) (void);
+    void (*params_free) (gpointer);
+
+    /*<private>*/
+    gpointer _future1;
+    gpointer _future2;
+    gpointer _future3;
+    gpointer _future4;
 } TpCMProtocolSpec;
 
 /**
@@ -131,9 +149,12 @@ typedef struct _TpBaseConnectionManager TpBaseConnectionManager;
  * @new_connection: A #TpBaseConnectionManagerNewConnFunc used to construct
  *  new connections. Must be filled in by subclasses in their class_init
  *  function.
- * @priv: Pointer to opaque private data.
  *
  * The class structure for #TpBaseConnectionManager.
+ *
+ * In addition to the fields documented here, there are four gpointer fields
+ * which must currently be %NULL (a meaning may be defined for these in a
+ * future version of telepathy-glib), and a pointer to opaque private data.
  */
 typedef struct _TpBaseConnectionManagerClass TpBaseConnectionManagerClass;
 
@@ -169,7 +190,11 @@ struct _TpBaseConnectionManagerClass {
     const TpCMProtocolSpec *protocol_params;
     TpBaseConnectionManagerNewConnFunc new_connection;
 
-    /* FIXME: add some ABI padding here? */
+    /*<private>*/
+    gpointer _future1;
+    gpointer _future2;
+    gpointer _future3;
+    gpointer _future4;
 
     gpointer priv;
 };

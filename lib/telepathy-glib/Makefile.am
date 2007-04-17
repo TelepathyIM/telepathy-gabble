@@ -7,8 +7,17 @@ EXTRA_DIST = extra-gtkdoc.h
 # for bootstrapping.
 include spec-gen.am
 
-SPEC_GENERATED_SOURCES = $(SPEC_GENERATED_CS) $(SPEC_GENERATED_HS) \
-			 $(SPEC_GENERATED_LISTS) $(SPEC_GLUE_HS)
+STABLE_SPEC_GENERATED_SOURCES = \
+    $(STABLE_SPEC_GENERATED_CS) \
+    $(STABLE_SPEC_GENERATED_HS) \
+    $(STABLE_SPEC_GENERATED_LISTS) \
+    $(STABLE_SPEC_GLUE_HS)
+
+UNSTABLE_SPEC_GENERATED_SOURCES = \
+    $(UNSTABLE_SPEC_GENERATED_CS) \
+    $(UNSTABLE_SPEC_GENERATED_HS) \
+    $(UNSTABLE_SPEC_GENERATED_LISTS) \
+    $(UNSTABLE_SPEC_GLUE_HS)
 
 lib_LTLIBRARIES = libtelepathy-glib.la
 
@@ -18,6 +27,13 @@ lib_LTLIBRARIES = libtelepathy-glib.la
 #    -export-symbols-regex '^tp_'
 # but for now:
 libtelepathy_glib_la_LDFLAGS = -static
+
+if ENABLE_UNSTABLE
+# interfaces which aren't stable enough for the shared library anyway
+libtelepathy_glib_unstable_la_LDFLAGS = -static
+
+lib_LTLIBRARIES += libtelepathy-glib-unstable.la
+endif
 
 tpginclude_HEADERS = \
     base-connection.h \
@@ -52,16 +68,31 @@ nodist_libtelepathy_glib_la_SOURCES = \
     _gen/signals-marshal.h \
     _gen/signals-marshal.list \
     _gen/telepathy-errors.c \
-    $(SPEC_GENERATED_SOURCES)
+    $(STABLE_SPEC_GENERATED_SOURCES)
 
 nodist_geninclude_HEADERS = \
     _gen/telepathy-enums.h \
     _gen/telepathy-interfaces.h \
     _gen/telepathy-errors.h \
-    $(SPEC_GENERATED_HS)
+    $(STABLE_SPEC_GENERATED_HS)
 
-BUILT_SOURCES = $(nodist_geninclude_HEADERS) \
-		$(nodist_libtelepathy_glib_la_SOURCES)
+BUILT_SOURCES = \
+    $(nodist_libtelepathy_glib_la_SOURCES) \
+    $(nodist_geninclude_HEADERS)
+
+if ENABLE_UNSTABLE
+nodist_libtelepathy_glib_unstable_la_SOURCES = \
+    _gen/signals-marshal.c \
+    _gen/signals-marshal.h \
+    _gen/signals-marshal.list \
+    _gen/telepathy-errors.c \
+    $(UNSTABLE_SPEC_GENERATED_SOURCES)
+
+nodist_geninclude_HEADERS += $(UNSTABLE_SPEC_GENERATED_HS)
+
+BUILT_SOURCES += $(nodist_libtelepathy_glib_unstable_la_SOURCES)
+endif
+
 CLEANFILES = $(BUILT_SOURCES) _gen/.exists
 clean-local:
 	-rmdir _gen

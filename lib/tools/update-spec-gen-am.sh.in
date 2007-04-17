@@ -11,6 +11,7 @@ specdir="${top_srcdir}/${mk_specdir}"
 
 outfile="$1"
 gendir="$2"
+whitelist="$3"
 
 SPEC_INTERFACES="`$XSLTPROC --nonet --novalid --xinclude $toolsdir/ls-interfaces.xsl $specdir/all.xml`"
 
@@ -21,49 +22,37 @@ printf "$outfile: \$(top_srcdir)/$mk_specdir/all.xml \\\\\\n"
 printf "\\t\\t\$(top_srcdir)/$mk_specdir/all.xml \\\\\\n"
 printf "\\t\\t\$(SPEC_INTERFACE_XMLS) \\\\\\n"
 printf "\\t\\t\$(top_srcdir)/$mk_toolsdir/ls-interfaces.xsl \\\\\\n"
-printf "\\t\\t\$(top_srcdir)/$mk_toolsdir/update-spec-gen-am.sh\\n"
-printf "\\t\$(SHELL) \$(top_srcdir)/$mk_toolsdir/update-spec-gen-am.sh $outfile $gendir\\n"
+printf "\\t\\t\$(top_builddir)/$mk_toolsdir/update-spec-gen-am.sh\\n"
+printf "\\t\$(SHELL) \$(top_builddir)/$mk_toolsdir/update-spec-gen-am.sh $outfile $gendir $whitelist\\n"
 
-printf "SPEC_INTERFACES ="
+for class in INTERFACES INTERFACE_XMLS GENERATED_CS GENERATED_HS \
+             GENERATED_LISTS GLUE_HS
+do
+  echo "STABLE_SPEC_$class ="
+  echo "UNSTABLE_SPEC_$class ="
+done
+
 for iface in $SPEC_INTERFACES
 do
-  printf '\\\n    %s' "$iface"
+  if test -z "$whitelist" || grep "^$iface\$" "$whitelist" >/dev/null
+  then
+    stability=STABLE
+  else
+    stability=UNSTABLE
+  fi
+  echo "${stability}_SPEC_INTERFACES += $iface"
+  echo "${stability}_SPEC_INTERFACE_XMLS += \$(top_srcdir)/$mk_specdir/$iface.xml"
+  echo "${stability}_SPEC_GENERATED_CS += $gendir/svc-$iface.c"
+  echo "${stability}_SPEC_GENERATED_HS += $gendir/svc-$iface.h"
+  echo "${stability}_SPEC_GLUE_HS += $gendir/svc-$iface-glue.h"
+  echo "${stability}_SPEC_GENERATED_LISTS +="\
+       "$gendir/svc-$iface-signals-marshal.list"
 done
-echo
 
-printf "SPEC_INTERFACES_XMLS ="
-for iface in $SPEC_INTERFACES
+for class in INTERFACES INTERFACE_XMLS GENERATED_CS GENERATED_HS \
+             GENERATED_LISTS GLUE_HS
 do
-  printf '\\\n    $(top_srcdir)/%s/%s.xml' "$mk_specdir" "$iface"
+  echo "SPEC_$class = \$(STABLE_SPEC_$class) \$(UNSTABLE_SPEC_$class)"
 done
-echo
-
-printf "SPEC_GENERATED_CS ="
-for iface in $SPEC_INTERFACES
-do
-  printf '\\\n    %s/svc-%s.c' "$gendir" "$iface"
-done
-echo
-
-printf "SPEC_GENERATED_HS ="
-for iface in $SPEC_INTERFACES
-do
-  printf '\\\n    %s/svc-%s.h' "$gendir" "$iface"
-done
-echo
-
-printf "SPEC_GLUE_HS ="
-for iface in $SPEC_INTERFACES
-do
-  printf '\\\n    %s/svc-%s-glue.h' "$gendir" "$iface"
-done
-echo
-
-printf "SPEC_GENERATED_LISTS ="
-for iface in $SPEC_INTERFACES
-do
-  printf '\\\n    %s/svc-%s-signals-marshal.list' "$gendir" "$iface"
-done
-echo
 
 mv "$outfile.tmp" "$outfile"

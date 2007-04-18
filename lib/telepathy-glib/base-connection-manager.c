@@ -441,34 +441,6 @@ parse_parameters (const TpCMParamSpec *paramspec,
 
           tp_intset_add (params_present, i);
 
-          if (paramspec[i].gtype == G_TYPE_STRING)
-            {
-              if (0 == strcmp (paramspec[i].name, "password"))
-                {
-                  g_debug ("%s: accepted value <hidden> for param password",
-                      G_STRFUNC);
-                }
-              else
-                {
-                  g_debug ("%s: accepted value %s for param %s",
-                      G_STRFUNC,
-                      *((char **) (params + paramspec[i].offset)),
-                      paramspec[i].name);
-                }
-            }
-          else if (paramspec[i].gtype == G_TYPE_INT)
-            {
-              g_debug ("%s: accepted value %d for param %s", G_STRFUNC,
-                  *((gint *) (params + paramspec[i].offset)),
-                  paramspec[i].name);
-            }
-          else
-            {
-              g_debug ("%s: accepted value %u for param %s", G_STRFUNC,
-                  *((guint *) (params + paramspec[i].offset)),
-                  paramspec[i].name);
-            }
-
           g_hash_table_remove (provided, paramspec[i].name);
         }
     }

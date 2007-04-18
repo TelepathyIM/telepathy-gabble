@@ -65,7 +65,7 @@ G_END_DECLS
 #else /* !defined (ENABLE_DEBUG) */
 
 #undef DEBUG
-#define DEBUG(format, ...)
+#define DEBUG(format, ...) do {} while (0)
 
 #undef DEBUGGING
 #define DEBUGGING 0

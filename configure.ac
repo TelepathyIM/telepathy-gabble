@@ -188,6 +188,7 @@ AC_CHECK_HEADERS(signal.h)
 
 AC_OUTPUT( Makefile \
 	   lib/telepathy-glib.pc \
+	   lib/telepathy-glib-unstable.pc \
 	   lib/Makefile \
 	   lib/docs/Makefile \
 	   lib/docs/reference/Makefile \

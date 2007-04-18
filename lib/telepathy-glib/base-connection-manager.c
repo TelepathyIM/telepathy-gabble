@@ -322,7 +322,7 @@ set_param_from_value (const TpCMParamSpec *paramspec,
         }
 
       /* the filter may not change the type of the GValue */
-      g_return_val_if_fail (G_VALUE_TYPE (value) != paramspec->gtype, FALSE);
+      g_return_val_if_fail (G_VALUE_TYPE (value) == paramspec->gtype, FALSE);
     }
 
   switch (paramspec->dtype[0])

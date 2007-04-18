@@ -206,17 +206,18 @@ param_default_value (const TpCMParamSpec *params, int i)
   value = g_slice_new0 (GValue);
   g_value_init (value, params[i].gtype);
 
-  if (!(params[i].flags & TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT))
-    {
-      g_assert (params[i].def == NULL);
-      goto OUT;
-    }
+  /* If HAS_DEFAULT is false, we don't really care what the value is, so we'll
+   * just use whatever's in the user-supplied param spec. As long as we're
+   * careful to accept NULL, that should be fine. */
 
   switch (params[i].dtype[0])
     {
       case DBUS_TYPE_STRING:
         g_assert (params[i].gtype == G_TYPE_STRING);
-        g_value_set_static_string (value, (const gchar*) params[i].def);
+        if (params[i].def == NULL)
+          g_value_set_static_string (value, "");
+        else
+          g_value_set_static_string (value, (const gchar *) params[i].def);
         break;
       case DBUS_TYPE_INT16:
       case DBUS_TYPE_INT32:
@@ -237,7 +238,6 @@ param_default_value (const TpCMParamSpec *params, int i)
             "argument %s", params[i].dtype, params[i].name);
     }
 
-OUT:
   return value;
 }
 

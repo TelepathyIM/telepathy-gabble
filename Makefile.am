@@ -13,3 +13,6 @@ DISTCHECK_CONFIGURE_FLAGS = --enable-gtk-doc --disable-debug
 dist-hook:
 	chmod u+w ${distdir}/ChangeLog
 	if test -d _darcs; then darcs changes >${distdir}/ChangeLog; fi
+
+check-extra: check
+	make -C tests check-extra

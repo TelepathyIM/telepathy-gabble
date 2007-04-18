@@ -30,16 +30,19 @@ AM_LDFLAGS = @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@
 TESTS = $(noinst_PROGRAMS)
 EXTRA_TESTS = $(python_tests_shfiles)
 
-check-extra: $(service_files)
+check-extra: $(BUILT_SOURCES)
 	chmod +x run-with-tmp-session-bus.sh $(python_tests_shfiles) \
-		$(python_tests_pythonfiles)
+		$(python_tests_pythonfiles) exec-with-log.sh
 	$(MAKE) check TESTS="$(EXTRA_TESTS)"
 
+exec-with-log.sh: exec-with-log.sh.in
+	@sed -e "s|[@]abs_top_builddir[@]|@abs_top_builddir@|g" $< > $@
+
 %.conf: %.conf.in
-	@sed -e "s|\@abs_top_builddir\@|@abs_top_builddir@|" $< > $@
+	@sed -e "s|[@]abs_top_builddir[@]|@abs_top_builddir@|g" $< > $@
 
 %.service: %.service.in
-	@sed -e "s|\@abs_top_builddir\@|@abs_top_builddir@|" $< > $@
+	@sed -e "s|[@]abs_top_builddir[@]|@abs_top_builddir@|g" $< > $@
 
 # D-Bus service file for testing
 service_in_files = org.freedesktop.Telepathy.ConnectionManager.gabble.service.in
@@ -49,11 +52,11 @@ service_files = $(service_in_files:.service.in=.service)
 conf_in_files = run-with-tmp-session-bus.conf.in
 conf_files = $(conf_in_files:.conf.in=.conf)
 
-BUILT_SOURCES = $(service_files) $(conf_files)
+BUILT_SOURCES = $(service_files) $(conf_files) exec-with-log.sh
 
-EXTRA_DIST = $(service_in_files) $(conf_in_files)
+EXTRA_DIST = $(service_in_files) $(conf_in_files) exec-with-log.sh.in
 
-CLEANFILES = $(BUILT_SOURCES)
+CLEANFILES = $(BUILT_SOURCES) gabble-[1-9]*.log
 
 check_c_sources = *.c
 check_misc_sources = \

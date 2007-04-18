@@ -1,0 +1,9 @@
+#!/bin/sh
+
+cd "@abs_top_builddir@/tests"
+
+export GABBLE_DEBUG=all LM_DEBUG=net
+ulimit -c unlimited
+exec > gabble-$$.log 2>&1
+
+exec ../src/telepathy-gabble

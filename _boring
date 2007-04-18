@@ -87,3 +87,5 @@
 ^lib/docs/reference/telepathy-glib-(undocumented|unused|decl|decl-list)\.txt$
 ^lib/tools/update-spec-gen-am\.sh$
 ^lib/FIXME\.out$
+^tests/gabble-[1-9][0-9]*\.log$
+^tests/exec-with-log\.sh$

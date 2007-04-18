@@ -312,6 +312,19 @@ set_param_from_value (const TpCMParamSpec *paramspec,
       return FALSE;
     }
 
+  if (paramspec->filter != NULL)
+    {
+      if (!(paramspec->filter) (paramspec, value, error))
+        {
+          DEBUG ("parameter %s rejected by filter function: %s",
+              paramspec->name, error ? (*error)->message : "(error ignored)");
+          return FALSE;
+        }
+
+      /* the filter may not change the type of the GValue */
+      g_return_val_if_fail (G_VALUE_TYPE (value) != paramspec->gtype, FALSE);
+    }
+
   switch (paramspec->dtype[0])
     {
       case DBUS_TYPE_STRING:
@@ -716,4 +729,36 @@ service_iface_init (gpointer g_iface, gpointer iface_data)
   IMPLEMENT(list_protocols);
   IMPLEMENT(request_connection);
 #undef IMPLEMENT
+}
+
+gboolean
+tp_cm_param_filter_uint_nonzero (const TpCMParamSpec *paramspec,
+                                 GValue *value,
+                                 GError **error)
+{
+  if (g_value_get_uint (value) == 0)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Account parameter '%s' may not be set to zero",
+          paramspec->name);
+      return FALSE;
+    }
+  return TRUE;
+}
+
+gboolean
+tp_cm_param_filter_string_nonempty (const TpCMParamSpec *paramspec,
+                                    GValue *value,
+                                    GError **error)
+{
+  const gchar *str = g_value_get_string (value);
+
+  if (str == NULL || str[0] == '\0')
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Account parameter '%s' may not be set to an empty string",
+          paramspec->name);
+      return FALSE;
+    }
+  return TRUE;
 }

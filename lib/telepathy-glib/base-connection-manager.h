@@ -60,6 +60,9 @@ G_BEGIN_DECLS
  *          gboolean, depending on @gtype. Alternatively, this may be
  *          G_MAXSIZE, which means the parameter is obsolete, and is
  *          accepted but ignored.
+ * @filter: A callback which is used to validate or normalize the user-provided
+ *          value before it is written into the opaque data structure
+ * @filter_data: Arbitrary opaque data intended for use by the filter function
  *
  * Structure representing a connection manager parameter, as accepted by
  * RequestConnection.
@@ -68,6 +71,52 @@ G_BEGIN_DECLS
  * which must currently be %NULL. A meaning may be defined for these in a
  * future version of telepathy-glib.
  */
+
+typedef struct _TpCMParamSpec TpCMParamSpec;
+
+/**
+ * TpCMParamFilter:
+ * @paramspec: The parameter specification. The filter is likely to use
+ *  name (for the error message if the value is invalid) and filter_data.
+ * @value: The value for that parameter provided by the user.
+ *  May be changed to contain a different value of the same type, if
+ *  some sort of normalization is required
+ * @error: Used to raise %TP_ERROR_INVALID_ARGUMENT if the given value is
+ *  rejected
+ *
+ * Signature of a callback used to validate and/or normalize user-provided
+ * CM parameter values.
+ *
+ * Returns: %TRUE to accept, %FALSE (with @error set) to reject
+ */
+typedef gboolean (*TpCMParamFilter) (const TpCMParamSpec *paramspec,
+    GValue *value, GError **error);
+
+/**
+ * tp_cm_param_filter_string_nonempty:
+ * @paramspec: The parameter specification for a string parameter
+ * @value: A GValue containing a string, which will not be altered
+ * @error: Used to return an error if the string is empty
+ *
+ * A #TpCMParamFilter which rejects empty strings.
+ *
+ * Returns: %TRUE to accept, %FALSE (with @error set) to reject
+ */
+gboolean tp_cm_param_filter_string_nonempty (const TpCMParamSpec *paramspec,
+    GValue *value, GError **error);
+
+/**
+ * tp_cm_param_filter_uint_nonzero:
+ * @paramspec: The parameter specification for a guint parameter
+ * @value: A GValue containing a guint, which will not be altered
+ * @error: Used to return an error if the guint is 0
+ *
+ * A #TpCMParamFilter which rejects zero, useful for server port numbers.
+ *
+ * Returns: %TRUE to accept, %FALSE (with @error set) to reject
+ */
+gboolean tp_cm_param_filter_uint_nonzero (const TpCMParamSpec *paramspec,
+    GValue *value, GError **error);
 
 /* XXX: This should be driven by GTypes, but the GType is insufficiently
  * descriptive: if it's UINT we can't tell whether the D-Bus type is
@@ -79,7 +128,7 @@ G_BEGIN_DECLS
  * So, we keep the redundancy for future expansion.
  */
 
-typedef struct {
+struct _TpCMParamSpec {
     const gchar *name;
     const gchar *dtype;
     const GType gtype;
@@ -87,10 +136,13 @@ typedef struct {
     const gpointer def;
     const gsize offset;
 
+    TpCMParamFilter filter;
+    const gpointer filter_data;
+
     /*<private>*/
     gpointer _future1;
     gpointer _future2;
-} TpCMParamSpec;
+};
 
 /**
  * TpCMProtocolSpec:

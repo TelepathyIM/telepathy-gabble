@@ -48,6 +48,9 @@ TP_BASE_CONNECTION_GET_CLASS
 <TITLE>TpBaseConnectionManager</TITLE>
 <INCLUDE>telepathy-glib/base-connection-manager.h</INCLUDE>
 <FILE>base-connection-manager</FILE>
+TpCMParamFilter
+tp_cm_param_filter_string_nonempty
+tp_cm_param_filter_uint_nonzero
 TpCMParamSpec
 TpCMProtocolSpec
 TpBaseConnectionManager

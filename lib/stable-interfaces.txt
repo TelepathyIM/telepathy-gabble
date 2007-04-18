@@ -3,7 +3,6 @@ Connection
 Connection_Interface_Aliasing
 Connection_Interface_Avatars
 Connection_Interface_Capabilities
-Connection_Interface_Contact_Info
 Connection_Interface_Presence
 Channel
 Channel_Type_Contact_List

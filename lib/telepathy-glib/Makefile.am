@@ -82,10 +82,6 @@ BUILT_SOURCES = \
 
 if ENABLE_UNSTABLE
 nodist_libtelepathy_glib_unstable_la_SOURCES = \
-    _gen/signals-marshal.c \
-    _gen/signals-marshal.h \
-    _gen/signals-marshal.list \
-    _gen/telepathy-errors.c \
     $(UNSTABLE_SPEC_GENERATED_SOURCES)
 
 nodist_geninclude_HEADERS += $(UNSTABLE_SPEC_GENERATED_HS)

@@ -241,6 +241,59 @@ param_default_value (const TpCMParamSpec *params, int i)
   return value;
 }
 
+static void
+set_param_from_default (const TpCMParamSpec *paramspec,
+                        gpointer params)
+{
+  switch (paramspec->dtype[0])
+    {
+    case DBUS_TYPE_STRING:
+      {
+        gchar **save_to = (gchar **) (params + paramspec->offset);
+        g_assert (paramspec->gtype == G_TYPE_STRING);
+        g_assert (paramspec->def != NULL);
+
+        *save_to = g_strdup ((const gchar *) (paramspec->def));
+        DEBUG ("%s = \"%s\"", paramspec->name, *save_to);
+      }
+      break;
+    case DBUS_TYPE_INT16:
+    case DBUS_TYPE_INT32:
+      {
+        gint *save_to = (gint *) (params + paramspec->offset);
+        g_assert (paramspec->gtype == G_TYPE_INT);
+
+        *save_to = GPOINTER_TO_INT (paramspec->def);
+        DEBUG ("%s = %d = 0x%x", paramspec->name, *save_to, *save_to);
+      }
+      break;
+    case DBUS_TYPE_UINT16:
+    case DBUS_TYPE_UINT32:
+      {
+        guint *save_to = (guint *) (params + paramspec->offset);
+        g_assert (paramspec->gtype == G_TYPE_UINT);
+
+        *save_to = GPOINTER_TO_UINT (paramspec->def);
+        DEBUG ("%s = %u = 0x%x", paramspec->name, *save_to, *save_to);
+      }
+      break;
+    case DBUS_TYPE_BOOLEAN:
+      {
+        gboolean *save_to = (gboolean *) (params + paramspec->offset);
+        g_assert (paramspec->gtype == G_TYPE_BOOLEAN);
+        g_assert (paramspec->def == GINT_TO_POINTER (TRUE) || paramspec->def == GINT_TO_POINTER (FALSE));
+
+        *save_to = GPOINTER_TO_INT (paramspec->def);
+        DEBUG ("%s = %s", paramspec->name, *save_to ? "TRUE" : "FALSE");
+      }
+      break;
+    default:
+      g_error ("%s: encountered unhandled D-Bus type %s "
+               "on argument %s", G_STRFUNC, paramspec->dtype, paramspec->name);
+      g_assert_not_reached ();
+    }
+}
+
 static gboolean
 set_param_from_value (const TpCMParamSpec *paramspec,
                       GValue *value,
@@ -370,15 +423,8 @@ parse_parameters (const TpCMParamSpec *paramspec,
             }
           else if (paramspec[i].flags & TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT)
             {
-              gchar *s;
-
-              value = param_default_value (params, i);
-              s = g_strdup_value_contents (value);
-
-              g_debug ("%s: using default value %s = %s",
-                       G_STRFUNC, paramspec[i].name, s);
-
-              g_free (s);
+              /* FIXME: Should we add it to params_present? */
+              set_param_from_default (&paramspec[i], params);
             }
           else
             {

@@ -7,7 +7,24 @@ import xml.dom.minidom
 def cmdline_error():
     print """\
 usage:
-gen-ginterface xmlfile classname [output_basename [signal_marshal_prefix]]
+    gen-ginterface [OPTIONS] xmlfile classname
+options:
+    --include='<header.h>' (may be repeated)
+    --include='"header.h"' (ditto)
+        Include extra headers in the generated .c file
+    --signal-marshal-prefix='prefix'
+        Use the given prefix on generated signal marshallers (default is
+        derived from class name). If this is given, classname-signals-marshal.h
+        is not automatically included.
+    --filename='BASENAME'
+        Set the basename for the output files (default is derived from class
+        name)
+    --not-implemented-func='symbol'
+        Set action when methods not implemented in the interface vtable are
+        called. symbol must have signature
+            void symbol (DBusGMethodInvocation *context)
+        and return some sort of "not implemented" error via
+            dbus_g_method_return_error (context, ...)
 """
     sys.exit(1)
 
@@ -458,8 +475,18 @@ def do_method(method):
     body += "  if (impl)\n"
     body += "    (impl) (%s);\n" % args
     body += "  else\n"
-    # FIXME: Telepathy-specific
-    body += "    tp_dbus_g_method_return_not_implemented (context);\n"
+    if not_implemented_func:
+        body += "    %s (context);\n" % not_implemented_func
+    else:
+        # this seems as appropriate an error as any
+        body += """\
+    {
+      GError e = { DBUS_GERROR, DBUS_GERROR_UNKNOWN_METHOD,
+          "Method not implemented" };
+
+      dbus_g_method_return_error (context, &e);
+    }
+"""
     body += "}\n\n"
 
     dg_method_name = prefix + '_' + dbus_gutils_wincaps_to_uscore(dbus_method_name)
@@ -491,17 +518,36 @@ def do_method(method):
     return (method_decl, header, body)
 
 if __name__ == '__main__':
+    from getopt import gnu_getopt
+
+    options, argv = gnu_getopt(sys.argv[1:], '',
+                               ['filename=', 'signal-marshal-prefix=',
+                                'include=',
+                                'not-implemented-func='])
+
     try:
-        classname = sys.argv[2]
+        classname = argv[1]
     except IndexError:
         cmdline_error()
 
     prefix = camelcase_to_lower(classname)
 
-    if len(sys.argv) > 3:
-        basename = sys.argv[3]
-    else:
-        basename = prefix.replace('_','-')
+    basename = prefix.replace('_', '-')
+    signal_marshal_prefix = prefix
+    headers = []
+    not_implemented_func = ''
+
+    for option, value in options:
+        if option == '--filename':
+            basename = value
+        elif option == '--signal-marshal-prefix':
+            signal_marshal_prefix = value
+        elif option == '--include':
+            if value[0] not in '<"':
+                value = '"%s"' % value
+            headers.append(value)
+        elif option == '--not-implemented-func':
+            not_implemented_func = value
 
     outname_header = basename + ".h"
     outname_body = basename + ".c"
@@ -510,15 +556,10 @@ if __name__ == '__main__':
     header=open(outname_header,'w')
     body=open(outname_body, 'w')
 
-    if len(sys.argv) > 4:
-        signal_marshal_prefix = sys.argv[4]
-    else:
-        signal_marshal_prefix = prefix
-
     signal_marshal=open(outname_signal_marshal, 'w')
 
     try:
-        dom = xml.dom.minidom.parse(sys.argv[1])
+        dom = xml.dom.minidom.parse(argv[0])
     except IndexError:
         cmdline_error()
 
@@ -546,15 +587,13 @@ if __name__ == '__main__':
 
 """)
 
-    # FIXME: telepathy-glib-specific
-    body.write('#include <telepathy-glib/dbus.h>\n\n')
+    for h in headers:
+        body.write('#include %s\n' % h)
+    body.write('\n')
 
     if signal_marshal_prefix == prefix:
         body.write('#include "%s-signals-marshal.h"\n' % basename)
-    else:
-        # assume part of telepathy-glib
-        # FIXME: make this configurable
-        body.write('#include "signals-marshal.h"\n')
+        # else assume the signal marshallers are declared in one of the headers
 
     body.write('const DBusGObjectInfo dbus_glib_%s_object_info;\n'
             % prefix)

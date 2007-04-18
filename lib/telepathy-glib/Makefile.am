@@ -175,8 +175,12 @@ _gen/svc-%-glue.h: _gen/async-%.xml _gen/.exists
 		--prefix=tp_svc_`echo $* | tr A-Z a-z` $<
 
 _gen/svc-%.c _gen/svc-%.h _gen/svc-%-signals-marshal.list: ../spec/%.xml ../tools/genginterface.py _gen/.exists
-	$(PYTHON) $(srcdir)/../tools/genginterface.py $< \
-	TpSvc`echo $* | tr -d _` _gen/svc-$* _tp
+	$(PYTHON) $(srcdir)/../tools/genginterface.py \
+		--filename=_gen/svc-$* --signal-marshal-prefix=_tp \
+		--include='<telepathy-glib/dbus.h>' \
+		--include='"signals-marshal.h"' \
+		--not-implemented-func='tp_dbus_g_method_return_not_implemented' \
+		$< TpSvc`echo $* | tr -d _`
 
 _gen/signals-marshal.list: signals-marshal.list $(SPEC_GENERATED_LISTS)
 	sort $^ | uniq > $@

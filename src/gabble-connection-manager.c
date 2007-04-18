@@ -106,54 +106,85 @@ enum {
 static const TpCMParamSpec jabber_params[] = {
   { "account", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING,
     TP_CONN_MGR_PARAM_FLAG_REQUIRED | TP_CONN_MGR_PARAM_FLAG_REGISTER, NULL,
-    G_STRUCT_OFFSET(GabbleParams, account) },
+    G_STRUCT_OFFSET(GabbleParams, account),
+    /* FIXME: validate the JID according to the RFC */
+    tp_cm_param_filter_string_nonempty, NULL },
   { "password", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING,
     TP_CONN_MGR_PARAM_FLAG_REQUIRED | TP_CONN_MGR_PARAM_FLAG_REGISTER, NULL,
-    G_STRUCT_OFFSET(GabbleParams, password) },
+    G_STRUCT_OFFSET(GabbleParams, password), NULL, NULL },
+
   { "server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, 0, NULL,
-    G_STRUCT_OFFSET(GabbleParams, server) },
+    G_STRUCT_OFFSET(GabbleParams, server),
+    /* FIXME: validate the server properly */
+    tp_cm_param_filter_string_nonempty, NULL },
+
   { "resource", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING,
     TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GABBLE_PARAMS_DEFAULT_RESOURCE,
-    G_STRUCT_OFFSET(GabbleParams, resource) },
+    G_STRUCT_OFFSET(GabbleParams, resource),
+    /* FIXME: validate the resource according to the RFC */
+    tp_cm_param_filter_string_nonempty, NULL },
+
   { "priority", DBUS_TYPE_INT16_AS_STRING, G_TYPE_INT,
     TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(0),
-    G_STRUCT_OFFSET(GabbleParams, priority) },
+    G_STRUCT_OFFSET(GabbleParams, priority), NULL, NULL },
+
   { "port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT,
     TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT,
     GINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_PORT),
-    G_STRUCT_OFFSET(GabbleParams, port) },
+    G_STRUCT_OFFSET(GabbleParams, port),
+    tp_cm_param_filter_uint_nonzero, NULL },
+
   { "old-ssl", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN,
     TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(FALSE),
-    G_STRUCT_OFFSET(GabbleParams, old_ssl) },
+    G_STRUCT_OFFSET(GabbleParams, old_ssl), NULL, NULL },
+
   { "register", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN,
     TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(FALSE),
-    G_STRUCT_OFFSET(GabbleParams, do_register) },
+    G_STRUCT_OFFSET(GabbleParams, do_register), NULL, NULL },
+
   { "low-bandwidth", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN,
     TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(FALSE),
-    G_STRUCT_OFFSET(GabbleParams, low_bandwidth) },
+    G_STRUCT_OFFSET(GabbleParams, low_bandwidth), NULL, NULL },
+
   { "https-proxy-server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, 0, NULL,
-    G_STRUCT_OFFSET(GabbleParams, https_proxy_server) },
+    G_STRUCT_OFFSET(GabbleParams, https_proxy_server),
+    /* FIXME: validate properly */
+    tp_cm_param_filter_string_nonempty, NULL },
   { "https-proxy-port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT,
     TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT,
     GINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_PORT),
-    G_STRUCT_OFFSET(GabbleParams, https_proxy_port) },
+    G_STRUCT_OFFSET(GabbleParams, https_proxy_port),
+    tp_cm_param_filter_uint_nonzero, NULL },
+
   { "fallback-conference-server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING,
-    0, NULL, G_STRUCT_OFFSET(GabbleParams, fallback_conference_server) },
+    0, NULL, G_STRUCT_OFFSET(GabbleParams, fallback_conference_server),
+    /* FIXME: validate properly */
+    tp_cm_param_filter_string_nonempty, NULL },
+
   { "stun-server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, 0, NULL,
-    G_STRUCT_OFFSET(GabbleParams, stun_server) },
+    G_STRUCT_OFFSET(GabbleParams, stun_server),
+    /* FIXME: validate properly */
+    tp_cm_param_filter_string_nonempty, NULL },
   { "stun-port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT,
     TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT,
     GINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_STUN_PORT),
-    G_STRUCT_OFFSET(GabbleParams, stun_port) },
+    G_STRUCT_OFFSET(GabbleParams, stun_port),
+    tp_cm_param_filter_uint_nonzero, NULL },
+
   { "ignore-ssl-errors", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN,
     TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(FALSE),
-    G_STRUCT_OFFSET(GabbleParams, ignore_ssl_errors) },
+    G_STRUCT_OFFSET(GabbleParams, ignore_ssl_errors), NULL, NULL },
+
   { "alias", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, 0, NULL,
-    G_STRUCT_OFFSET(GabbleParams, alias) },
+    G_STRUCT_OFFSET(GabbleParams, alias),
+    /* setting a 0-length alias makes no sense */
+    tp_cm_param_filter_string_nonempty, NULL },
+
   { "mac", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, 0, NULL,
-    G_STRUCT_OFFSET(GabbleParams, auth_mac) },
+    G_STRUCT_OFFSET(GabbleParams, auth_mac), NULL, NULL },
   { "btid", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, 0, NULL,
-    G_STRUCT_OFFSET(GabbleParams, auth_btid) },
+    G_STRUCT_OFFSET(GabbleParams, auth_btid), NULL, NULL },
+
   { NULL, NULL, 0, 0, NULL, 0 }
 };
 
@@ -193,20 +224,6 @@ const TpCMProtocolSpec gabble_protocols[] = {
       g_object_set (conn, prop, member, NULL); \
     }
 
-static gboolean
-check_not_empty_if_present (const gchar *name,
-                            const gchar *value,
-                            GError **error)
-{
-  if (value != NULL && value[0] == '\0')
-    {
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "If supplied, '%s' account parameter may not be empty", name);
-      return FALSE;
-    }
-  return TRUE;
-}
-
 static TpBaseConnection *
 _gabble_connection_manager_new_connection (TpBaseConnectionManager *self,
                                            const gchar *proto,
@@ -218,32 +235,6 @@ _gabble_connection_manager_new_connection (TpBaseConnectionManager *self,
   GabbleParams *params = (GabbleParams *)parsed_params;
 
   g_assert (GABBLE_IS_CONNECTION_MANAGER (self));
-
-  /* FIXME: validate the JID according to the RFC */
-  if (!check_not_empty_if_present ("account", params->account, error))
-    return FALSE;
-  /* FIXME: validate the server properly */
-  if (!check_not_empty_if_present ("server", params->server, error))
-    return FALSE;
-  /* FIXME: validate properly */
-  if (!check_not_empty_if_present ("https-proxy-server",
-        params->https_proxy_server, error))
-    return FALSE;
-  /* FIXME: validate the resource according to the RFC */
-  if (!check_not_empty_if_present ("resource", params->resource, error))
-    return FALSE;
-  /* FIXME: validate properly */
-  if (!check_not_empty_if_present ("fallback-conference-server",
-        params->fallback_conference_server, error))
-    return FALSE;
-  /* FIXME: validate properly */
-  if (!check_not_empty_if_present ("stun-server",
-        params->stun_server, error))
-    return FALSE;
-  /* setting a 0-length alias makes no sense */
-  if (!check_not_empty_if_present ("alias",
-        params->alias, error))
-    return FALSE;
 
   conn = g_object_new (GABBLE_TYPE_CONNECTION,
                        "protocol",           proto,

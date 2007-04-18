@@ -330,7 +330,13 @@ set_param_from_value (const TpCMParamSpec *paramspec,
             {
               *save_to = g_value_dup_string (value);
             }
-          DEBUG ("%s = \"%s\"", paramspec->name, *save_to);
+          if (DEBUGGING)
+            {
+              if (strstr (paramspec->name, "password") != NULL)
+                DEBUG ("%s = <hidden>", paramspec->name);
+              else
+                DEBUG ("%s = \"%s\"", paramspec->name, *save_to);
+            }
         }
         break;
       case DBUS_TYPE_INT16:

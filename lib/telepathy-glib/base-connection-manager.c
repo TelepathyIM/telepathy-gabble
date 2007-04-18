@@ -495,7 +495,7 @@ tp_base_connection_manager_list_protocols (TpSvcConnectionManager *iface,
   while (cls->protocol_params[i].name)
     i++;
 
-  protocols = g_new0 (const char *, i);
+  protocols = g_new0 (const char *, i + 1);
   for (i = 0; cls->protocol_params[i].name; i++)
     {
       protocols[i] = cls->protocol_params[i].name;

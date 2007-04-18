@@ -38,6 +38,8 @@
 #include <dbus/dbus-protocol.h>
 
 #include <telepathy-glib/dbus.h>
+#define DEBUG_FLAG TP_DEBUG_PARAMS
+#include "internal-debug.h"
 
 static void service_iface_init (gpointer, gpointer);
 
@@ -188,7 +190,7 @@ get_parameters (const TpCMProtocolSpec *protos,
         }
     }
 
-  g_debug ("%s: unknown protocol %s", G_STRFUNC, proto);
+  DEBUG ("unknown protocol %s", proto);
 
   g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
       "unknown protocol %s", proto);
@@ -253,8 +255,7 @@ set_param_from_value (const TpCMParamSpec *paramspec,
 
   if (G_VALUE_TYPE (value) != paramspec->gtype)
     {
-      g_debug ("%s: expected type %s for parameter %s, got %s",
-               G_STRFUNC,
+      DEBUG ("expected type %s for parameter %s, got %s",
                g_type_name (paramspec->gtype), paramspec->name,
                G_VALUE_TYPE_NAME (value));
       g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
@@ -282,21 +283,37 @@ set_param_from_value (const TpCMParamSpec *paramspec,
             {
               *save_to = g_value_dup_string (value);
             }
+          DEBUG ("%s = \"%s\"", paramspec->name, *save_to);
         }
         break;
       case DBUS_TYPE_INT16:
       case DBUS_TYPE_INT32:
-        g_assert (paramspec->gtype == G_TYPE_INT);
-        *((gint *) (params + paramspec->offset)) = g_value_get_int (value);
+        {
+          gint i = g_value_get_int (value);
+
+          g_assert (paramspec->gtype == G_TYPE_INT);
+          *((gint *) (params + paramspec->offset)) = i;
+          DEBUG ("%s = %d = 0x%x", paramspec->name, i, i);
+        }
         break;
       case DBUS_TYPE_UINT16:
       case DBUS_TYPE_UINT32:
-        g_assert (paramspec->gtype == G_TYPE_UINT);
-        *((guint *) (params + paramspec->offset)) = g_value_get_uint (value);
+        {
+          guint i = g_value_get_uint (value);
+
+          g_assert (paramspec->gtype == G_TYPE_UINT);
+          *((guint *) (params + paramspec->offset)) = i;
+          DEBUG ("%s = %u = 0x%x", paramspec->name, i, i);
+        }
         break;
       case DBUS_TYPE_BOOLEAN:
-        g_assert (paramspec->gtype == G_TYPE_BOOLEAN);
-        *((gboolean *) (params + paramspec->offset)) = g_value_get_boolean (value);
+        {
+          gboolean b = g_value_get_boolean (value);
+
+          g_assert (paramspec->gtype == G_TYPE_BOOLEAN);
+          *((gboolean *) (params + paramspec->offset)) = b;
+          DEBUG ("%s = %s", paramspec->name, b ? "TRUE" : "FALSE");
+        }
         break;
       default:
         g_error ("set_param_from_value: encountered unhandled D-Bus type %s "
@@ -345,8 +362,7 @@ parse_parameters (const TpCMParamSpec *paramspec,
         {
           if (paramspec[i].flags & mandatory_flag)
             {
-              g_debug ("%s: missing mandatory param %s",
-                       G_STRFUNC, paramspec[i].name);
+              DEBUG ("missing mandatory param %s", paramspec[i].name);
               g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
                   "missing mandatory account parameter %s", paramspec[i].name);
               return FALSE;
@@ -365,8 +381,8 @@ parse_parameters (const TpCMParamSpec *paramspec,
             }
           else
             {
-              g_debug ("%s: using default value for param %s",
-                       G_STRFUNC, paramspec[i].name);
+              DEBUG ("%s not given, using default behaviour",
+                  paramspec[i].name);
             }
         }
       else
@@ -418,7 +434,7 @@ parse_parameters (const TpCMParamSpec *paramspec,
       g_hash_table_foreach (provided, report_unknown_param, &error_str);
       error_txt = g_string_free (error_str, FALSE);
 
-      g_debug ("%s: %s", G_STRFUNC, error_txt);
+      DEBUG ("%s", error_txt);
       g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           error_txt);
       g_free (error_txt);

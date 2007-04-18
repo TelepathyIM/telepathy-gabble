@@ -54,6 +54,8 @@
  * (text) instant messaging</listitem>
  * <listitem><literal>properties</literal> - output debug messages regarding
  * #TpPropertiesMixin</listitem>
+ * <listitem><literal>params</literal> - output debug messages regarding
+ * connection manager parameters</listitem>
  * <listitem><literal>all</literal> - all of the above</listitem>
  * </itemizedlist>
  */
@@ -88,6 +90,7 @@ static GDebugKey keys[] = {
   { "connection",    TP_DEBUG_CONNECTION },
   { "persist",       TP_DEBUG_PERSIST },
   { "im",            TP_DEBUG_IM },
+  { "params",        TP_DEBUG_PARAMS },
   { 0, },
 };
 

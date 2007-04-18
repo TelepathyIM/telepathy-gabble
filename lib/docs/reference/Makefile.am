@@ -1,5 +1,7 @@
 ## Process this file with automake to produce Makefile.in
 
+abs_top_builddir = @abs_top_builddir@
+
 # We require automake 1.6 at least.
 AUTOMAKE_OPTIONS = 1.6
 
@@ -30,6 +32,11 @@ SCAN_OPTIONS=
 # Extra options to supply to gtkdoc-mkdb.
 # e.g. MKDB_OPTIONS=--sgml-mode --output-format=xml
 MKDB_OPTIONS=--sgml-mode --output-format=xml
+
+if OUT_OF_TREE_BUILD
+SCAN_OPTIONS += --source-dir=$(abs_top_builddir)/lib/telepathy-glib/_gen
+MKDB_OPTIONS += --source-dir=$(abs_top_builddir)/lib/telepathy-glib/_gen
+endif
 
 # Extra options to supply to gtkdoc-mktmpl
 # e.g. MKTMPL_OPTIONS=--only-section-tmpl

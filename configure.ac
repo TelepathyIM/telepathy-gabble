@@ -120,6 +120,10 @@ AC_SUBST([ENABLE_CODING_STYLE_CHECKS])
 
 AM_CONDITIONAL([ENABLE_UNSTABLE], [test $enable_unstable = yes])
 
+dnl lib/docs/Makefile.am needs to know whether it's an out of tree build
+dnl (srcdir != builddir)
+AM_CONDITIONAL([OUT_OF_TREE_BUILD], [test "z$ac_srcdir" != z.])
+
 dnl Endianness (for the sha1 implementation)
 AC_C_BIGENDIAN
 

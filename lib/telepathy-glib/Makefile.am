@@ -25,6 +25,10 @@ lib_LTLIBRARIES = libtelepathy-glib.la
 #libtelepathy_glib_la_LDFLAGS = \
 #    -version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \
 #    -export-symbols-regex '^tp_'
+#
+# (FIXME: if we use -export-symbols-regex, -unstable will need its own
+# marshallers)
+#
 # but for now:
 libtelepathy_glib_la_LDFLAGS = -static
 

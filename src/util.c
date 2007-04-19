@@ -28,7 +28,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <telepathy-glib/handle-repo-dynamic.c>
+#include <telepathy-glib/handle-repo-dynamic.h>
 
 #include "sha1/sha1.h"
 #include "namespaces.h"

@@ -79,6 +79,9 @@ nodist_geninclude_HEADERS = \
     $(STABLE_SPEC_GENERATED_HS)
 
 nodist_libtelepathy_glib_unstable_la_SOURCES = \
+    _gen/unstable-signals-marshal.c \
+    _gen/unstable-signals-marshal.h \
+    _gen/unstable-signals-marshal.list \
     $(UNSTABLE_SPEC_GENERATED_SOURCES)
 
 nodist_unstablegeninclude_HEADERS = \

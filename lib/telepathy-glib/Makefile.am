@@ -148,7 +148,7 @@ _gen/.exists:
 _gen/svc-unstable.h: Makefile.in
 	for i in $(UNSTABLE_SPEC_INTERFACES); \
 	do \
-		echo "#include <telepathy-glib/_gen/svc-$i.h>"; \
+		echo "#include <telepathy-glib/_gen/svc-$$i.h>"; \
 	done > $@
 
 _gen/spec-only-stable.xsl: ../tools/identity.xsl _gen/stable-interfaces.txt \

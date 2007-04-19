@@ -1,9 +1,11 @@
+# Rules to re-generate this file
 spec-gen.am: $(top_srcdir)/lib/spec/all.xml \
 		$(top_srcdir)/lib/spec/all.xml \
 		$(SPEC_INTERFACE_XMLS) \
 		$(top_srcdir)/lib/tools/ls-interfaces.xsl \
 		$(top_builddir)/lib/tools/update-spec-gen-am.sh
-	$(SHELL) $(top_builddir)/lib/tools/update-spec-gen-am.sh spec-gen.am _gen ../stable-interfaces.txt
+	$(SHELL) $(top_builddir)/lib/tools/update-spec-gen-am.sh spec-gen.am _gen _gen/stable-interfaces.txt
+
 STABLE_SPEC_INTERFACES =
 UNSTABLE_SPEC_INTERFACES =
 STABLE_SPEC_INTERFACE_XMLS =

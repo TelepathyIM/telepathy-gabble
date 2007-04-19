@@ -1,7 +1,13 @@
 tpgincludedir=$(includedir)/telepathy-1.0/telepathy-glib
 genincludedir=$(tpgincludedir)/_gen
 
+unstableincludedir=$(includedir)/telepathy-unstable/telepathy-glib
+unstablegenincludedir=$(unstableincludedir)/_gen
+
 EXTRA_DIST = extra-gtkdoc.h
+
+# Also used to generate stable-interfaces.txt, which generates spec-gen.am
+include stable-interfaces.mk
 
 # This is a derived file but must be checked-in to Darcs anyway,
 # for bootstrapping.
@@ -19,7 +25,7 @@ UNSTABLE_SPEC_GENERATED_SOURCES = \
     $(UNSTABLE_SPEC_GENERATED_LISTS) \
     $(UNSTABLE_SPEC_GLUE_HS)
 
-lib_LTLIBRARIES = libtelepathy-glib.la
+lib_LTLIBRARIES = libtelepathy-glib.la libtelepathy-glib-unstable.la
 
 # when it becomes stable enough to have a shared library:
 #libtelepathy_glib_la_LDFLAGS = \
@@ -32,12 +38,8 @@ lib_LTLIBRARIES = libtelepathy-glib.la
 # but for now:
 libtelepathy_glib_la_LDFLAGS = -static
 
-if ENABLE_UNSTABLE
 # interfaces which aren't stable enough for the shared library anyway
 libtelepathy_glib_unstable_la_LDFLAGS = -static
-
-lib_LTLIBRARIES += libtelepathy-glib-unstable.la
-endif
 
 tpginclude_HEADERS = \
     base-connection.h \
@@ -59,11 +61,7 @@ tpginclude_HEADERS = \
     intset.h \
     properties-mixin.h \
     run.h \
-    svc-channel.h \
-    svc-connection.h \
-    svc-connection-manager.h \
-    svc-media-interfaces.h \
-    svc-properties-interface.h \
+    $(svc_headers) \
     text-mixin.h \
     util.h
 
@@ -80,20 +78,29 @@ nodist_geninclude_HEADERS = \
     _gen/telepathy-errors.h \
     $(STABLE_SPEC_GENERATED_HS)
 
-BUILT_SOURCES = \
-    $(nodist_libtelepathy_glib_la_SOURCES) \
-    $(nodist_geninclude_HEADERS)
-
-if ENABLE_UNSTABLE
 nodist_libtelepathy_glib_unstable_la_SOURCES = \
     $(UNSTABLE_SPEC_GENERATED_SOURCES)
 
-nodist_geninclude_HEADERS += $(UNSTABLE_SPEC_GENERATED_HS)
+nodist_unstablegeninclude_HEADERS = $(UNSTABLE_SPEC_GENERATED_HS)
+nodist_unstableinclude_HEADERS = _gen/svc-unstable.h \
+    _gen/unstable-interfaces.h \
+    _gen/unstable-enums.h
 
-BUILT_SOURCES += $(nodist_libtelepathy_glib_unstable_la_SOURCES)
-endif
+BUILT_SOURCES = \
+    $(nodist_libtelepathy_glib_la_SOURCES) \
+    $(nodist_geninclude_HEADERS) \
+    $(nodist_libtelepathy_glib_unstable_la_SOURCES) \
+    $(nodist_unstablegeninclude_HEADERS) \
+    $(nodist_unstableinclude_HEADERS)
 
-CLEANFILES = $(BUILT_SOURCES) _gen/.exists
+CLEANFILES = \
+    $(BUILT_SOURCES) \
+    _gen/.exists \
+    _gen/spec-only-unstable.xsl \
+    _gen/spec-only-stable.xsl \
+    _gen/stable-spec.xml \
+    _gen/unstable-spec.xml
+
 clean-local:
 	-rmdir _gen
 
@@ -138,17 +145,71 @@ _gen/.exists:
 	$(INSTALL) -d _gen
 	touch $@
 
-_gen/telepathy-enums.h: ../spec/all.xml \
-	$(SPEC_INTERFACE_XMLS) ../tools/c-constants-generator.xsl _gen/.exists
+_gen/svc-unstable.h: Makefile.in
+	for i in $(UNSTABLE_SPEC_INTERFACES); \
+	do \
+		echo "#include <telepathy-glib/_gen/svc-$i.h>"; \
+	done > $@
+
+_gen/spec-only-stable.xsl: ../tools/identity.xsl _gen/stable-interfaces.txt \
+		Makefile.am
+	(\
+	sed -e 's@</xsl:stylesheet>@@' $(srcdir)/../tools/identity.xsl; \
+	while read input; \
+	do \
+		echo '  <xsl:template match="node[@name='"'/$$input'"']" priority="2">'; \
+		echo '    <xsl:copy>'; \
+		echo '      <xsl:apply-templates select="@*|node()"/>';\
+		echo '    </xsl:copy>'; \
+		echo '  </xsl:template>'; \
+	done < _gen/stable-interfaces.txt; \
+	echo '  <!-- ignore all other nodes -->'; \
+	echo '  <xsl:template match="node" priority="1"/>'; \
+	echo "</xsl:stylesheet>"; \
+	) > $@
+
+_gen/spec-only-unstable.xsl: ../tools/identity.xsl _gen/stable-interfaces.txt
+	(\
+	sed -e 's@</xsl:stylesheet>@@' $(srcdir)/../tools/identity.xsl; \
+	while read input; \
+	do \
+		echo '  <xsl:template match="node[@name='"'/$$input'"']" priority="1"/>'; \
+	done < _gen/stable-interfaces.txt; \
+	echo "</xsl:stylesheet>"; \
+	) > $@
+
+_gen/stable-spec.xml: ../spec/all.xml \
+	$(SPEC_INTERFACE_XMLS) _gen/spec-only-stable.xsl
+	$(XSLTPROC) --xinclude $(XSLTPROCFLAGS) \
+		_gen/spec-only-stable.xsl $(srcdir)/../spec/all.xml > $@
+_gen/unstable-spec.xml: ../spec/all.xml \
+	$(SPEC_INTERFACE_XMLS) _gen/spec-only-unstable.xsl
+	$(XSLTPROC) --xinclude $(XSLTPROCFLAGS) \
+		_gen/spec-only-unstable.xsl $(srcdir)/../spec/all.xml > $@
+
+_gen/telepathy-enums.h: _gen/stable-spec.xml \
+	../tools/c-constants-generator.xsl
 	$(XSLTPROC) --xinclude $(XSLTPROCFLAGS) \
 		$(srcdir)/../tools/c-constants-generator.xsl \
-		$(srcdir)/../spec/all.xml > $@
+		_gen/stable-spec.xml > $@
 
-_gen/telepathy-interfaces.h: ../spec/all.xml \
-	$(SPEC_INTERFACE_XMLS) ../tools/c-interfaces-generator.xsl _gen/.exists
+_gen/unstable-enums.h: _gen/unstable-spec.xml \
+	../tools/c-constants-generator.xsl
+	$(XSLTPROC) --xinclude $(XSLTPROCFLAGS) \
+		$(srcdir)/../tools/c-constants-generator.xsl \
+		_gen/unstable-spec.xml > $@
+
+_gen/telepathy-interfaces.h: _gen/stable-spec.xml \
+	../tools/c-interfaces-generator.xsl
 	$(XSLTPROC) --xinclude $(XSLTPROCFLAGS) \
 		$(srcdir)/../tools/c-interfaces-generator.xsl \
-		$(srcdir)/../spec/all.xml > $@
+		_gen/stable-spec.xml > $@
+
+_gen/unstable-interfaces.h: _gen/unstable-spec.xml \
+	../tools/c-interfaces-generator.xsl
+	$(XSLTPROC) --xinclude $(XSLTPROCFLAGS) \
+		$(srcdir)/../tools/c-interfaces-generator.xsl \
+		_gen/unstable-spec.xml > $@
 
 _gen/telepathy-errors.c: ../spec/errors.xml \
 	../tools/glib-errors-enum-body.xsl _gen/.exists

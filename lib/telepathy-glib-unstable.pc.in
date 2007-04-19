@@ -8,4 +8,4 @@ Description: GLib utility library for the Telepathy framework - unstable interfa
 Version: @VERSION@
 Requires: dbus-glib-1 glib-2.0 gobject-2.0 telepathy-glib = @VERSION@
 Libs: -L${libdir} -ltelepathy-glib-unstable
-Cflags: -I${includedir}/telepathy-1.0
+Cflags: -I${includedir}/telepathy-unstable

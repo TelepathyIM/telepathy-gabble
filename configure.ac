@@ -65,11 +65,6 @@ AC_ARG_ENABLE(debug,
   AC_HELP_STRING([--disable-debug],[compile without debug code]),
     enable_debug=$enableval, enable_debug=yes )
 
-AC_ARG_ENABLE(unstable,
-  AC_HELP_STRING([--disable-unstable],
-    [don't build static library containing unstable interfaces]),
-    enable_unstable=$enableval, enable_unstable=yes )
-
 AC_ARG_ENABLE(handle-leak-debug,
   AC_HELP_STRING([--enable-handle-leak-debug],[compile with handle leak debugging code]),
     enable_handle_leak_debug=$enableval, enable_handle_leak_debug=no )
@@ -117,8 +112,6 @@ AC_SUBST(HANDLE_LEAK_DEBUG_CFLAGS)
 AC_SUBST(COVERAGE_CFLAGS)
 
 AC_SUBST([ENABLE_CODING_STYLE_CHECKS])
-
-AM_CONDITIONAL([ENABLE_UNSTABLE], [test $enable_unstable = yes])
 
 dnl lib/docs/Makefile.am needs to know whether it's an out of tree build
 dnl (srcdir != builddir)

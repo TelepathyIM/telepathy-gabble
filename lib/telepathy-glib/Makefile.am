@@ -86,7 +86,7 @@ nodist_libtelepathy_glib_unstable_la_SOURCES = \
 
 nodist_unstablegeninclude_HEADERS = \
     $(UNSTABLE_SPEC_GENERATED_HS) \
-    _gen/svc-unstable.h \
+    _gen/unstable-svc.h \
     _gen/unstable-interfaces.h \
     _gen/unstable-enums.h
 unstableinclude_HEADERS = \
@@ -152,7 +152,7 @@ _gen/.exists:
 	$(INSTALL) -d _gen
 	touch $@
 
-_gen/svc-unstable.h: Makefile.in
+_gen/unstable-svc.h: Makefile.in
 	for i in $(UNSTABLE_SPEC_INTERFACES); \
 	do \
 		echo "#include <telepathy-glib/_gen/svc-$$i.h>"; \

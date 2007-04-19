@@ -51,6 +51,8 @@
 ^stamp-h1$
 ^depcomp$
 ^compile$
+^gtk-doc\.make$
+^m4/gtk-doc\.m4$
 (^|/).deps($|/)
 (^|/).libs($|/)
 \.lo$
@@ -64,8 +66,8 @@
 ^data/gabble.manager$
 ^(data|tests)/org.freedesktop.Telepathy.ConnectionManager.gabble.service$
 ^src/telepathy-gabble$
-^lib/_gen($|/)
 ^lib/check_self_contained$
+^lib/spec/spec-gen\.am$
 ^lib/telepathy-glib/_gen($|/)
 ^src/write-mgr-file$
 ^tests/test-base64$

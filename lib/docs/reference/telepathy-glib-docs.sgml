@@ -14,6 +14,7 @@
     <xi:include href="xml/svc-connection.xml"/>
     <xi:include href="xml/svc-media-interfaces.xml"/>
     <xi:include href="xml/svc-connection-manager.xml"/>
+    <xi:include href="xml/svc-unstable.xml"/>
   </chapter>
   <chapter id="base-classes">
     <title>Connections and channels</title>

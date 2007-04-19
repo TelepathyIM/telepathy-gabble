@@ -33,6 +33,11 @@ SCAN_OPTIONS=
 # e.g. MKDB_OPTIONS=--sgml-mode --output-format=xml
 MKDB_OPTIONS=--sgml-mode --output-format=xml
 
+# If _gen is a subdirectory of $(top_srcdir)/lib/telepathy-glib then we
+# already get it scanned by virtue of setting DOC_SOURCE_DIR. If
+# it's not a subdirectory, we'll have to add a second --source-dir
+# so both get scanned (we want the declarations and doc-comments in
+# the generated source to take effect).
 if OUT_OF_TREE_BUILD
 SCAN_OPTIONS += --source-dir=$(abs_top_builddir)/lib/telepathy-glib/_gen
 MKDB_OPTIONS += --source-dir=$(abs_top_builddir)/lib/telepathy-glib/_gen

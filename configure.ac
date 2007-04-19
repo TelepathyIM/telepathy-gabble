@@ -12,16 +12,6 @@ m4_define([gabble_minor_version], [5])
 m4_define([gabble_micro_version], [9])
 m4_define([gabble_nano_version], [1])
 
-# If library source has changed since last release, increment revision
-# If interfaces have been added, removed or changed since last release,
-#  increment current and set revision to 0
-# If interfaces have been added since last release, increment age
-# If interfaces have been removed since last release, set age to 0
-
-m4_define([tp_glib_lt_current], [0])
-m4_define([tp_glib_lt_revision], [0])
-m4_define([tp_glib_lt_age], [0])
-
 # Some magic
 m4_define([gabble_base_version],
           [gabble_major_version.gabble_minor_version.gabble_micro_version])
@@ -42,16 +32,6 @@ AC_PROG_CC
 AC_PROG_CC_STDC
 AC_PROG_INSTALL
 AC_PROG_LIBTOOL
-AM_PROG_LIBTOOL
-
-GTK_DOC_CHECK([1.5])
-
-LT_CURRENT=tp_glib_lt_current
-LT_REVISION=tp_glib_lt_revision
-LT_AGE=tp_glib_lt_age
-AC_SUBST([LT_CURRENT])
-AC_SUBST([LT_REVISION])
-AC_SUBST([LT_AGE])
 
 dnl decide error flags
 AS_COMPILER_FLAG(-Wall, ERROR_CFLAGS="-Wall", ERROR_CFLAGS="")
@@ -83,12 +63,8 @@ AC_ARG_ENABLE(debug,
     enable_debug=$enableval, enable_debug=yes )
 
 AC_ARG_ENABLE(handle-leak-debug,
-  AC_HELP_STRING([--enable-handle-leak-debug],[compile with handle leak debugging code]),
+  AC_HELP_STRING([--enable-handle-leak-debug],[compile with -rdynamic so telepathy-glib handle leak debugging code will work]),
     enable_handle_leak_debug=$enableval, enable_handle_leak_debug=no )
-
-AC_ARG_ENABLE(backtrace,
-  AC_HELP_STRING([--enable-backtrace],[enable printing out the backtrace in case of crash]),
-    enable_backtrace=$enableval, enable_backtrace=no )
 
 AC_ARG_ENABLE(coverage,
   AC_HELP_STRING([--enable-coverage],[compile with coverage info]),
@@ -117,10 +93,6 @@ if test x$enable_handle_leak_debug = xyes; then
   HANDLE_LEAK_DEBUG_CFLAGS="-rdynamic"
 fi
 
-if test x$enable_backtrace = xyes; then
-  AC_DEFINE(ENABLE_BACKTRACE, [], [Enable backtrace output on crashes])
-fi
-
 if test x$enable_coverage = xyes; then
   COVERAGE_CFLAGS="-g -fprofile-arcs -ftest-coverage"
 fi
@@ -129,10 +101,6 @@ AC_SUBST(HANDLE_LEAK_DEBUG_CFLAGS)
 AC_SUBST(COVERAGE_CFLAGS)
 
 AC_SUBST([ENABLE_CODING_STYLE_CHECKS])
-
-dnl lib/docs/Makefile.am needs to know whether it's an out of tree build
-dnl (srcdir != builddir)
-AM_CONDITIONAL([OUT_OF_TREE_BUILD], [test "z$ac_srcdir" != z.])
 
 dnl Endianness (for the sha1 implementation)
 AC_C_BIGENDIAN
@@ -152,12 +120,19 @@ PKG_CHECK_MODULES(DBUS, [dbus-1 >= 0.61, dbus-glib-1 >= 0.72])
 AC_SUBST(DBUS_CFLAGS)
 AC_SUBST(DBUS_LIBS)
 
+PKG_CHECK_MODULES(TP_GLIB, [telepathy-glib >= 0.5.10])
+
+AC_SUBST(TP_GLIB_CFLAGS)
+AC_SUBST(TP_GLIB_LIBS)
+
 AS_AC_EXPAND(DATADIR, $datadir)
 DBUS_SERVICES_DIR="$DATADIR/dbus-1/services"
 AC_SUBST(DBUS_SERVICES_DIR)
 AC_DEFINE_UNQUOTED(DBUS_SERVICES_DIR, "$DBUS_SERVICES_DIR", [DBus services directory])
 
 dnl Check for code generation tools
+dnl - not actually needed in this release, but they'll be needed again
+dnl   when the OLPC branch is merged
 XSLTPROC=
 AC_CHECK_PROGS([XSLTPROC], [xsltproc])
 if test -z "$XSLTPROC"; then
@@ -192,25 +167,7 @@ PKG_CHECK_MODULES(LOUDMOUTH, loudmouth-1.0$LOUDMOUTH_VERSION_STR)
 AC_SUBST(LOUDMOUTH_CFLAGS)
 AC_SUBST(LOUDMOUTH_LIBS)
 
-dnl glibc backtrace functions
-AC_CHECK_FUNCS(backtrace backtrace_symbols_fd)
-AC_CHECK_HEADERS(execinfo.h)
-
-dnl signal functions
-AC_CHECK_FUNCS(signal)
-AC_CHECK_HEADERS(signal.h)
-
 AC_OUTPUT( Makefile \
-	   lib/telepathy-glib.pc \
-	   lib/telepathy-glib-unstable.pc \
-	   lib/Makefile \
-	   lib/docs/Makefile \
-	   lib/docs/reference/Makefile \
-	   lib/spec/Makefile \
-	   lib/telepathy-glib/Makefile \
-	   lib/tests/Makefile \
-	   lib/tools/Makefile \
-	   lib/tools/update-spec-gen-am.sh \
            src/Makefile \
            m4/Makefile \
            data/Makefile \

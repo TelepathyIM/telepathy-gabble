@@ -10,22 +10,18 @@ python_tests_pythonfiles = $(python_tests:=.py)
 python_tests_shfiles = $(python_tests:=.sh)
 
 test_gabble_presence_LDADD = \
-    $(top_builddir)/src/libgabble-convenience.la \
-    $(top_builddir)/lib/telepathy-glib/libtelepathy-glib.la
+    $(top_builddir)/src/libgabble-convenience.la
 
 test_base64_LDADD = \
-    $(top_builddir)/src/libgabble-convenience.la \
-    $(top_builddir)/lib/telepathy-glib/libtelepathy-glib.la
+    $(top_builddir)/src/libgabble-convenience.la
 
 test_handles_LDADD = \
-    $(top_builddir)/src/libgabble-convenience.la \
-    $(top_builddir)/lib/telepathy-glib/libtelepathy-glib.la
+    $(top_builddir)/src/libgabble-convenience.la
 
 AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @LOUDMOUTH_CFLAGS@ \
-    @COVERAGE_CFLAGS@ \
-    -I $(top_srcdir)/lib -I $(top_builddir)/lib \
+    @COVERAGE_CFLAGS@ @TP_GLIB_CFLAGS@ \
     -I $(top_srcdir)/src -I $(top_builddir)/src
-AM_LDFLAGS = @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@
+AM_LDFLAGS = @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@ @TP_GLIB_LIBS@
 
 TESTS = $(noinst_PROGRAMS)
 EXTRA_TESTS = $(python_tests_shfiles)

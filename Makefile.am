@@ -1,14 +1,13 @@
 ACLOCAL_AMFLAGS = -I m4
 
-SUBDIRS = lib src data m4 tests
+SUBDIRS = src data m4 tests
 
 EXTRA_DIST = \
     check-coding-style.mk \
     check-c-style.sh \
-    check-whitespace.sh \
-    gtk-doc.make
+    check-whitespace.sh
 
-DISTCHECK_CONFIGURE_FLAGS = --enable-gtk-doc --disable-debug
+DISTCHECK_CONFIGURE_FLAGS = --disable-debug
 
 dist-hook:
 	chmod u+w ${distdir}/ChangeLog

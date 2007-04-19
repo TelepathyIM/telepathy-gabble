@@ -14,4 +14,4 @@ $MAKE -C lib/telepathy-glib -f stable-interfaces.mk _gen/stable-interfaces.txt
 
 autoreconf -i
 
-./configure --enable-gtk-doc --enable-handle-leak-debug "$@"
+./configure "$@"

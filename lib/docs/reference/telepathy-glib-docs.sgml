@@ -9,6 +9,8 @@
   <chapter id="ch-dbus">
     <title>D-Bus interfaces</title>
     <xi:include href="tp-svc.xml"/>
+    <xi:include href="xml/interfaces.xml"/>
+    <xi:include href="xml/enums.xml"/>
     <xi:include href="xml/svc-properties-interface.xml"/>
     <xi:include href="xml/svc-channel.xml"/>
     <xi:include href="xml/svc-connection.xml"/>

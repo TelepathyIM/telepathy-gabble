@@ -239,15 +239,23 @@ _gen/svc-%-glue.h: _gen/async-%.xml _gen/.exists
 	$(DBUS_BINDING_TOOL) --mode=glib-server --output=$@ \
 		--prefix=tp_svc_`echo $* | tr A-Z a-z` $<
 
-_gen/svc-%.c _gen/svc-%.h _gen/svc-%-signals-marshal.list: ../spec/%.xml ../tools/genginterface.py _gen/.exists
+_gen/svc-%.c _gen/svc-%.h _gen/svc-%-signals-marshal.list: ../spec/%.xml ../tools/genginterface.py _gen/stable-interfaces.txt
+	if grep '^$*$$' _gen/stable-interfaces.txt; \
+	then \
+		sigprefix=_tp; \
+		sigheader=signals-marshal.h; \
+	else \
+		sigprefix=_tp_unst; \
+		sigheader=unstable-signals-marshal.h; \
+	fi; \
 	$(PYTHON) $(srcdir)/../tools/genginterface.py \
-		--filename=_gen/svc-$* --signal-marshal-prefix=_tp \
+		--filename=_gen/svc-$* --signal-marshal-prefix=$$sigprefix \
 		--include='<telepathy-glib/dbus.h>' \
-		--include='"signals-marshal.h"' \
+		--include="\"$$sigheader\"" \
 		--not-implemented-func='tp_dbus_g_method_return_not_implemented' \
 		$< TpSvc`echo $* | tr -d _`
 
-_gen/signals-marshal.list: signals-marshal.list $(SPEC_GENERATED_LISTS)
+_gen/signals-marshal.list: signals-marshal.list $(STABLE_SPEC_GENERATED_LISTS)
 	sort $^ | uniq > $@
 
 _gen/signals-marshal.h: _gen/signals-marshal.list _gen/.exists
@@ -255,3 +263,12 @@ _gen/signals-marshal.h: _gen/signals-marshal.list _gen/.exists
 
 _gen/signals-marshal.c: _gen/signals-marshal.list _gen/.exists
 	$(GLIB_GENMARSHAL) --body --prefix=_tp_marshal $< > $@
+
+_gen/unstable-signals-marshal.list: $(UNSTABLE_SPEC_GENERATED_LISTS)
+	sort $^ | uniq > $@
+
+_gen/unstable-signals-marshal.h: _gen/unstable-signals-marshal.list
+	$(GLIB_GENMARSHAL) --header --prefix=_tp_unst_marshal $< > $@
+
+_gen/unstable-signals-marshal.c: _gen/unstable-signals-marshal.list
+	$(GLIB_GENMARSHAL) --body --prefix=_tp_unst_marshal $< > $@

@@ -11,7 +11,7 @@ include stable-interfaces.mk
 
 # This is a derived file but must be checked-in to Darcs anyway,
 # for bootstrapping.
-include spec-gen.am
+include _gen/spec-gen.am
 
 STABLE_SPEC_GENERATED_SOURCES = \
     $(STABLE_SPEC_GENERATED_CS) \
@@ -101,7 +101,6 @@ BUILT_SOURCES = \
 
 CLEANFILES = \
     $(BUILT_SOURCES) \
-    _gen/.exists \
     _gen/spec-only-unstable.xsl \
     _gen/spec-only-stable.xsl \
     _gen/stable-spec.xml \
@@ -147,10 +146,6 @@ AM_LDFLAGS = @DBUS_LIBS@ @GLIB_LIBS@
 
 DROP_NAMESPACE = sed -e 's@xmlns:tp="http://telepathy\.freedesktop\.org/wiki/DbusSpec.extensions-v0"@@g'
 XSLTPROCFLAGS = --nonet --novalid
-
-_gen/.exists:
-	$(INSTALL) -d _gen
-	touch $@
 
 _gen/unstable-svc.h: Makefile.in
 	for i in $(UNSTABLE_SPEC_INTERFACES); \
@@ -219,26 +214,26 @@ _gen/unstable-interfaces.h: _gen/unstable-spec.xml \
 		_gen/unstable-spec.xml > $@
 
 _gen/telepathy-errors.c: ../spec/errors.xml \
-	../tools/glib-errors-enum-body.xsl _gen/.exists
+	../tools/glib-errors-enum-body.xsl
 	$(XSLTPROC) $(XSLTPROCFLAGS) \
 		$(srcdir)/../tools/glib-errors-enum-body.xsl \
 		$< > $@
 
 _gen/telepathy-errors.h: ../spec/errors.xml \
-	../tools/glib-errors-enum-header.xsl _gen/.exists
+	../tools/glib-errors-enum-header.xsl
 	$(XSLTPROC) $(XSLTPROCFLAGS) \
 		$(srcdir)/../tools/glib-errors-enum-header.xsl \
 		$< > $@
 
-_gen/%.xml: ../spec/%.xml ../tools/spec-to-introspect.xsl _gen/.exists
+_gen/%.xml: ../spec/%.xml ../tools/spec-to-introspect.xsl
 	$(XSLTPROC) $(XSLTPROCFLAGS) \
 		$(srcdir)/../tools/spec-to-introspect.xsl $< \
 		| $(DROP_NAMESPACE) > $@
 
-_gen/async-%.xml: _gen/%.xml ../tools/make-all-async.xsl _gen/.exists
+_gen/async-%.xml: _gen/%.xml ../tools/make-all-async.xsl
 	$(XSLTPROC) $(XSLTPROCFLAGS) $(srcdir)/../tools/make-all-async.xsl $< > $@
 
-_gen/svc-%-glue.h: _gen/async-%.xml _gen/.exists
+_gen/svc-%-glue.h: _gen/async-%.xml
 	$(DBUS_BINDING_TOOL) --mode=glib-server --output=$@ \
 		--prefix=tp_svc_`echo $* | tr A-Z a-z` $<
 
@@ -261,10 +256,10 @@ _gen/svc-%.c _gen/svc-%.h _gen/svc-%-signals-marshal.list: ../spec/%.xml ../tool
 _gen/signals-marshal.list: signals-marshal.list $(STABLE_SPEC_GENERATED_LISTS)
 	sort $^ | uniq > $@
 
-_gen/signals-marshal.h: _gen/signals-marshal.list _gen/.exists
+_gen/signals-marshal.h: _gen/signals-marshal.list
 	$(GLIB_GENMARSHAL) --header --prefix=_tp_marshal $< > $@
 
-_gen/signals-marshal.c: _gen/signals-marshal.list _gen/.exists
+_gen/signals-marshal.c: _gen/signals-marshal.list
 	$(GLIB_GENMARSHAL) --body --prefix=_tp_marshal $< > $@
 
 _gen/unstable-signals-marshal.list: $(UNSTABLE_SPEC_GENERATED_LISTS)

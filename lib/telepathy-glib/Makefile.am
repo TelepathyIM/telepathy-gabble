@@ -99,7 +99,8 @@ CLEANFILES = \
     _gen/spec-only-unstable.xsl \
     _gen/spec-only-stable.xsl \
     _gen/stable-spec.xml \
-    _gen/unstable-spec.xml
+    _gen/unstable-spec.xml \
+    _gen/stable-interfaces.txt
 
 clean-local:
 	-rmdir _gen

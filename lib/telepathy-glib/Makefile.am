@@ -81,10 +81,13 @@ nodist_geninclude_HEADERS = \
 nodist_libtelepathy_glib_unstable_la_SOURCES = \
     $(UNSTABLE_SPEC_GENERATED_SOURCES)
 
-nodist_unstablegeninclude_HEADERS = $(UNSTABLE_SPEC_GENERATED_HS)
-nodist_unstableinclude_HEADERS = _gen/svc-unstable.h \
+nodist_unstablegeninclude_HEADERS = \
+    $(UNSTABLE_SPEC_GENERATED_HS) \
+    _gen/svc-unstable.h \
     _gen/unstable-interfaces.h \
     _gen/unstable-enums.h
+unstableinclude_HEADERS = \
+    svc-unstable.h
 
 BUILT_SOURCES = \
     $(nodist_libtelepathy_glib_la_SOURCES) \

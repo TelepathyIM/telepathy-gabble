@@ -59,7 +59,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
   <xsl:with-param name="value-prefix" select="$value-prefix"/>
 </xsl:apply-templates> *
 <xsl:if test="tp:docstring">
- * <xsl:value-of select="translate(string (tp:docstring), '&#13;&#10;', '  ')"/>
+ * &lt;![CDATA[<xsl:value-of select="translate(string (tp:docstring), '&#13;&#10;', '  ')"/>]]&gt;
  *
 </xsl:if> * Bitfield/set of flags generated from the Telepathy specification.
  */
@@ -76,18 +76,18 @@ typedef enum {
     <xsl:param name="value-prefix"/>
     <xsl:text> * @</xsl:text>
     <xsl:value-of select="translate(concat($upper-case-prefix, $value-prefix, '_', @suffix), $lower, $upper)"/>
-    <xsl:text>: </xsl:text>
+    <xsl:text>: &lt;![CDATA[</xsl:text>
     <xsl:value-of select="translate(string(tp:docstring), '&#13;&#10;', '  ')"/>
-    <xsl:text>&#10;</xsl:text>
+    <xsl:text>]]&gt;&#10;</xsl:text>
   </xsl:template>
 
   <xsl:template match="tp:flag" mode="flag-or-enumvalue-gtkdoc">
     <xsl:param name="value-prefix"/>
     <xsl:text> * @</xsl:text>
     <xsl:value-of select="translate(concat($upper-case-prefix, $value-prefix, '_', @suffix), $lower, $upper)"/>
-    <xsl:text>: </xsl:text>
+    <xsl:text>: &lt;![CDATA[</xsl:text>
     <xsl:value-of select="translate(string(tp:docstring), '&#13;&#10;', '  ')"/>
-    <xsl:text>&#10;</xsl:text>
+    <xsl:text>]]&gt;&#10;</xsl:text>
   </xsl:template>
 
   <xsl:template match="tp:enum">
@@ -134,11 +134,10 @@ typedef enum {
   <xsl:with-param name="value-prefix" select="$value-prefix"/>
 </xsl:apply-templates> *
 <xsl:if test="tp:docstring">
- * <xsl:value-of select="translate(string (tp:docstring), '&#13;&#10;', '  ')"/>
+  * &lt;![CDATA[[<xsl:value-of select="translate(string (tp:docstring), '&#13;&#10;', '  ')"/>]]&gt;
  *
 </xsl:if> * Enumeration generated from the Telepathy specification.
  */
-<xsl:if test="tp:docstring">/* <xsl:value-of select="tp:docstring"/> */</xsl:if>
 typedef enum {
 <xsl:apply-templates>
   <xsl:with-param name="value-prefix" select="$value-prefix"/>

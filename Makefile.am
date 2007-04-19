@@ -15,4 +15,4 @@ dist-hook:
 	if test -d _darcs; then darcs changes >${distdir}/ChangeLog; fi
 
 check-extra: check
-	make -C tests check-extra
+	$(MAKE) -C tests check-extra

@@ -26,20 +26,20 @@ UNSTABLE_SPEC_GENERATED_SOURCES = \
     $(UNSTABLE_SPEC_GLUE_HS)
 
 lib_LTLIBRARIES = libtelepathy-glib.la libtelepathy-glib-unstable.la
+noinst_LTLIBRARIES = libtelepathy-glib-internal.la
 
-# when it becomes stable enough to have a shared library:
-#libtelepathy_glib_la_LDFLAGS = \
-#    -version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \
-#    -export-symbols-regex '^tp_'
-#
-# (FIXME: if we use -export-symbols-regex, -unstable will need its own
-# marshallers)
-#
-# but for now:
-libtelepathy_glib_la_LDFLAGS = -static
+# libtelepathy-glib is just a shared version of libtelepathy-glib-internal.
+# The static version is necessary because one of the tests wants to use
+# internal symbols (_tp_debug) which are made invisible by GNU ld.
+libtelepathy_glib_la_LDFLAGS = \
+    -version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \
+    -export-symbols-regex '^tp_'
+libtelepathy_glib_la_LIBADD = libtelepathy-glib-internal.la
+libtelepathy_glib_la_SOURCES =
 
 # interfaces which aren't stable enough for the shared library anyway
 libtelepathy_glib_unstable_la_LDFLAGS = -static
+libtelepathy_glib_unstable_la_LIBADD = libtelepathy-glib.la
 
 tpginclude_HEADERS = \
     base-connection.h \
@@ -65,7 +65,7 @@ tpginclude_HEADERS = \
     text-mixin.h \
     util.h
 
-nodist_libtelepathy_glib_la_SOURCES = \
+nodist_libtelepathy_glib_internal_la_SOURCES = \
     _gen/signals-marshal.c \
     _gen/signals-marshal.h \
     _gen/signals-marshal.list \
@@ -93,7 +93,7 @@ unstableinclude_HEADERS = \
     svc-unstable.h
 
 BUILT_SOURCES = \
-    $(nodist_libtelepathy_glib_la_SOURCES) \
+    $(nodist_libtelepathy_glib_internal_la_SOURCES) \
     $(nodist_geninclude_HEADERS) \
     $(nodist_libtelepathy_glib_unstable_la_SOURCES) \
     $(nodist_unstablegeninclude_HEADERS) \
@@ -116,7 +116,7 @@ check_c_sources = \
     $(libtelepathy_glib_la_SOURCES)
 include $(top_srcdir)/check-coding-style.mk
 
-libtelepathy_glib_la_SOURCES = \
+libtelepathy_glib_internal_la_SOURCES = \
     base-connection.c \
     base-connection-manager.c \
     dbus.c \

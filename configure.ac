@@ -12,6 +12,16 @@ m4_define([gabble_minor_version], [5])
 m4_define([gabble_micro_version], [9])
 m4_define([gabble_nano_version], [1])
 
+# If library source has changed since last release, increment revision
+# If interfaces have been added, removed or changed since last release,
+#  increment current and set revision to 0
+# If interfaces have been added since last release, increment age
+# If interfaces have been removed since last release, set age to 0
+
+m4_define([tp_glib_lt_current], [0])
+m4_define([tp_glib_lt_revision], [0])
+m4_define([tp_glib_lt_age], [0])
+
 # Some magic
 m4_define([gabble_base_version],
           [gabble_major_version.gabble_minor_version.gabble_micro_version])
@@ -35,6 +45,13 @@ AC_PROG_LIBTOOL
 AM_PROG_LIBTOOL
 
 GTK_DOC_CHECK([1.5])
+
+LT_CURRENT=tp_glib_lt_current
+LT_REVISION=tp_glib_lt_revision
+LT_AGE=tp_glib_lt_age
+AC_SUBST([LT_CURRENT])
+AC_SUBST([LT_REVISION])
+AC_SUBST([LT_AGE])
 
 dnl decide error flags
 AS_COMPILER_FLAG(-Wall, ERROR_CFLAGS="-Wall", ERROR_CFLAGS="")

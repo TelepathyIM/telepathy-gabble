@@ -27,10 +27,12 @@ test_intset_SOURCES = \
 test_intset_LDADD = \
     ../telepathy-glib/libtelepathy-glib.la
 
+# this needs to link against the static convenience library so that
+# _tp_debug is still visible
 test_internal_debug_SOURCES = \
     test-internal-debug.c
 test_internal_debug_LDADD = \
-    ../telepathy-glib/libtelepathy-glib.la
+    ../telepathy-glib/libtelepathy-glib-internal.la
 
 check_c_sources = *.c
 include $(top_srcdir)/check-coding-style.mk

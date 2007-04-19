@@ -4,6 +4,7 @@ EXTRA_DIST = \
     glib-errors-enum-header.xsl \
     c-interfaces-generator.xsl \
     genginterface.py \
+    identity.xsl \
     ls-interfaces.xsl \
     make-all-async.xsl \
     spec-to-introspect.xsl \

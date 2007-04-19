@@ -242,7 +242,7 @@ _gen/svc-%-glue.h: _gen/async-%.xml _gen/.exists
 	$(DBUS_BINDING_TOOL) --mode=glib-server --output=$@ \
 		--prefix=tp_svc_`echo $* | tr A-Z a-z` $<
 
-_gen/svc-%.c _gen/svc-%.h _gen/svc-%-signals-marshal.list: ../spec/%.xml ../tools/genginterface.py _gen/stable-interfaces.txt
+_gen/svc-%.c _gen/svc-%.h _gen/svc-%-signals-marshal.list: ../spec/%.xml ../tools/genginterface.py _gen/stable-interfaces.txt Makefile.am
 	if grep '^$*$$' _gen/stable-interfaces.txt; \
 	then \
 		sigprefix=_tp; \

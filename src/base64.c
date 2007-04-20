@@ -86,13 +86,11 @@ static const guint decoding[256] =
 #define GET_BYTE_2(s) (((decoding[(guchar)(s)[2]] & 0x03) << 6) | \
                        ((decoding[(guchar)(s)[3]] & 0xFF) << 0))
 
-gchar *base64_encode (const GString *str)
+gchar *base64_encode (guint len, const gchar *str)
 {
   guint i;
-  guint len;
   GString *tmp;
 
-  len = str->len;
   /* TODO: calculate requisite output string length and allocate that big a
    * GString */
   tmp = g_string_new ("");
@@ -107,22 +105,22 @@ gchar *base64_encode (const GString *str)
       switch (i + 3 - len)
         {
         case 1:
-          c1 = encoding[GET_6_BITS_0 (str->str + i)];
-          c2 = encoding[GET_6_BITS_1 (str->str + i)];
-          c3 = encoding[GET_6_BITS_2 (str->str + i)];
+          c1 = encoding[GET_6_BITS_0 (str + i)];
+          c2 = encoding[GET_6_BITS_1 (str + i)];
+          c3 = encoding[GET_6_BITS_2 (str + i)];
           c4 = '=';
           break;
         case 2:
-          c1 = encoding[GET_6_BITS_0 (str->str + i)];
-          c2 = encoding[GET_6_BITS_1 (str->str + i)];
+          c1 = encoding[GET_6_BITS_0 (str + i)];
+          c2 = encoding[GET_6_BITS_1 (str + i)];
           c3 = '=';
           c4 = '=';
           break;
         default:
-          c1 = encoding[GET_6_BITS_0 (str->str + i)];
-          c2 = encoding[GET_6_BITS_1 (str->str + i)];
-          c3 = encoding[GET_6_BITS_2 (str->str + i)];
-          c4 = encoding[GET_6_BITS_3 (str->str + i)];
+          c1 = encoding[GET_6_BITS_0 (str + i)];
+          c2 = encoding[GET_6_BITS_1 (str + i)];
+          c3 = encoding[GET_6_BITS_2 (str + i)];
+          c4 = encoding[GET_6_BITS_3 (str + i)];
         }
 
       g_string_append_printf (tmp, "%c%c%c%c", c1, c2, c3, c4);

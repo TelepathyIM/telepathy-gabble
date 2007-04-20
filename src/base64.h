@@ -22,7 +22,7 @@
 
 #include <glib.h>
 
-gchar *base64_encode (const GString *str);
+gchar *base64_encode (guint len, const gchar *str);
 GString *base64_decode (const gchar *str);
 
 #endif /* __BASE64_H__ */

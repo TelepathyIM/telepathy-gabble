@@ -34,7 +34,7 @@
 #include "disco.h"
 #include "gabble-connection.h"
 #include "namespaces.h"
-#include <telepathy-glib/interfaces.h>
+#include <telepathy-glib/svc-unstable.h>
 #include "util.h"
 #include "bytestream-ibb.h"
 #include "tube-dbus.h"

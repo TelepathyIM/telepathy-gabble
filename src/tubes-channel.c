@@ -34,12 +34,12 @@
 #include "tube-dbus.h"
 #include "bytestream-factory.h"
 
-#include <telepathy-glib/dbus.h>
 #include <telepathy-glib/errors.h>
 #include <telepathy-glib/interfaces.h>
+#include <telepathy-glib/dbus.h>
 #include <telepathy-glib/channel-iface.h>
 #include <telepathy-glib/svc-channel.h>
-#include <telepathy-glib/svc-properties-interface.h>
+#include <telepathy-glib/svc-unstable.h>
 
 #include "tubes-channel.h"
 

@@ -78,3 +78,4 @@
 ^telepathy-gabble-0
 ^tests/gabble-[1-9][0-9]*\.log$
 ^tests/exec-with-log\.sh$
+^extensions/_gen($|/)

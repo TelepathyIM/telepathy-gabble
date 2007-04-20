@@ -41,10 +41,6 @@ LmMessageNode *lm_message_node_get_child_with_namespace (LmMessageNode *node,
     const gchar *name, const gchar *ns);
 G_GNUC_NULL_TERMINATED LmMessage *lm_message_build (const gchar *to,
     LmMessageType type, guint spec, ...);
-G_GNUC_NULL_TERMINATED LmMessage * lm_message_build_with_sub_type (
-    const gchar *to, LmMessageType type, LmMessageSubType sub_type,
-    guint spec, ...);
-
 
 /* format: a@b/c */
 void gabble_decode_jid (const gchar *jid, gchar **a, gchar **b, gchar **c);

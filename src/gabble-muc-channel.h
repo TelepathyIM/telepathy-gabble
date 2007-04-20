@@ -27,6 +27,7 @@
 #include <telepathy-glib/group-mixin.h>
 #include <telepathy-glib/properties-mixin.h>
 #include "text-mixin.h"
+#include "muc-factory.h"
 
 G_BEGIN_DECLS
 
@@ -86,6 +87,9 @@ void _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
     TpHandle inviter, const gchar *message);
 void _gabble_muc_channel_state_receive (GabbleMucChannel *chan,
     guint state, guint from_handle);
+
+GabbleMucChannel *
+gabble_muc_factory_find_channel (GabbleMucFactory *factory, TpHandle handle);
 
 G_END_DECLS
 

@@ -37,8 +37,10 @@
 #include "namespaces.h"
 #include "util.h"
 #include "muc-factory.h"
+#include "gabble-muc-channel.h"
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/channel-factory-iface.h>
+#include <telepathy-glib/svc-unstable.h>
 
 static GabbleTubesChannel *new_tubes_channel (GabbleTubesFactory *fac,
     TpHandle handle, TpHandleType handle_type);

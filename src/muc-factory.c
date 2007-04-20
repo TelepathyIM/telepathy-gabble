@@ -996,6 +996,35 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
     }
 }
 
+struct lookup_foreach_ctx
+{
+  TpHandle handle;
+  GabbleMucChannel *ret;
+};
+
+static void
+find_channel_foreach (gpointer key, gpointer value, gpointer data)
+{
+  TpHandle handle = GPOINTER_TO_UINT (key);
+  GabbleMucChannel *chan = value;
+  struct lookup_foreach_ctx *ctx = data;
+
+  if (handle == ctx->handle)
+    ctx->ret = chan;
+}
+
+
+GabbleMucChannel *
+gabble_muc_factory_find_channel (GabbleMucFactory *factory,
+                                 TpHandle handle)
+{
+  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (factory);
+  struct lookup_foreach_ctx ctx = { handle, NULL };
+
+  g_hash_table_foreach (priv->channels, find_channel_foreach, &ctx);
+  return ctx.ret;
+}
+
 static void
 gabble_muc_factory_iface_init (gpointer g_iface,
                               gpointer iface_data)

@@ -16,6 +16,10 @@ libgabble_convenience_la_our_sources = \
     base64.c \
     capabilities.h \
     capabilities.c \
+    bytestream-factory.h \
+    bytestream-factory.c \
+    bytestream-ibb.h \
+    bytestream-ibb.c \
     conn-aliasing.h \
     conn-aliasing.c \
     conn-avatars.h \

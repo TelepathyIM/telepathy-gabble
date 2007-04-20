@@ -32,7 +32,6 @@ typedef enum
   GABBLE_DEBUG_VCARD         = 1 << 11,
   GABBLE_DEBUG_PIPELINE      = 1 << 12,
   GABBLE_DEBUG_JID           = 1 << 13,
-  GABBLE_DEBUG_OLPC          = 1 << 14,
 } GabbleDebugFlags;
 
 void gabble_debug_set_flags_from_env ();

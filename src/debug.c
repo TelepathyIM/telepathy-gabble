@@ -65,7 +65,6 @@ static GDebugKey keys[] = {
   { "persist",       GABBLE_DEBUG_PERSIST },
   { "vcard",         GABBLE_DEBUG_VCARD },
   { "jid",           GABBLE_DEBUG_JID },
-  { "olpc",          GABBLE_DEBUG_OLPC },
   { 0, },
 };
 

@@ -19,6 +19,8 @@ libgabble_convenience_la_our_sources = \
     conn-aliasing.c \
     conn-avatars.h \
     conn-avatars.c \
+    conn-olpc.h \
+    conn-olpc.c \
     conn-presence.h \
     conn-presence.c \
     debug.h \
@@ -55,6 +57,8 @@ libgabble_convenience_la_our_sources = \
     muc-factory.h \
     muc-factory.c \
     namespaces.h \
+    pubsub.h \
+    pubsub.c \
     presence.h \
     presence.c \
     presence-cache.h \

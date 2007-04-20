@@ -170,17 +170,34 @@ PKG_CHECK_MODULES(LOUDMOUTH, loudmouth-1.0$LOUDMOUTH_VERSION_STR)
 AC_SUBST(LOUDMOUTH_CFLAGS)
 AC_SUBST(LOUDMOUTH_LIBS)
 
-dnl Check for D-Bus tubes
-have_dbus_tube=no
-AC_CHECK_LIB(dbus-1, dbus_message_marshal,
-             [have_dbus_tube=yes],
-             [echo "Tubes will be disabled"])
+dnl Check for telepathy-glib-unstable
+PKG_CHECK_MODULES(TP_GLIB_UNSTABLE, [telepathy-glib-unstable >= 0.5.10],
+                  have_tp_glib_unstable=yes, have_tp_glib_unstable=no)
 
-if test x$have_dbus_tube = xyes; then
+if test x$have_tp_glib_unstable = xyes; then
   AC_DEFINE(HAVE_DBUS_TUBE, 1, [Define if we have D-Bus tubes support])
+  AC_SUBST(TP_GLIB_UNSTABLE_CFLAGS)
+  AC_SUBST(TP_GLIB_UNSTABLE_LIBS)
+fi
+
+dnl Check for D-Bus tubes
+AC_CHECK_LIB(dbus-1, dbus_message_marshal,
+             [have_dbus_message_marshal=yes],
+             [have_dbus_message_marshal=no])
+
+have_dbus_tube=no
+if test x$have_dbus_message_marshal = xyes; then
+  if test x$have_tp_glib_unstable = xyes; then
+    have_dbus_tube=yes
+    AC_DEFINE(HAVE_DBUS_TUBE, 1, [Define if we have D-Bus tubes support])
+  fi
 fi
 
 AM_CONDITIONAL(HAVE_DBUS_TUBE, test x$have_dbus_tube = xyes)
+
+if test x$have_dbus_tube = xno; then
+  echo "Don't build D-Bus tube"
+fi
 
 AC_OUTPUT( Makefile \
            extensions/Makefile \

@@ -33,7 +33,6 @@
 #include "debug.h"
 #include "disco.h"
 #include "gabble-connection.h"
-#include "handles.h"
 #include "namespaces.h"
 #include <telepathy-glib/interfaces.h>
 #include "util.h"

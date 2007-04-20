@@ -33,7 +33,6 @@
 #include "debug.h"
 #include "gabble-connection.h"
 #include "tubes-channel.h"
-#include "handles.h"
 #include "tubes-factory.h"
 #include "namespaces.h"
 #include "util.h"

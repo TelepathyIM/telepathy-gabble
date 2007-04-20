@@ -32,7 +32,6 @@
 
 #include "debug.h"
 #include "gabble-connection.h"
-#include "handles.h"
 #include "bytestream-ibb.h"
 #include "bytestream-factory.h"
 #include "namespaces.h"

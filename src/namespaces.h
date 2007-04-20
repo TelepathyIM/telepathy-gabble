@@ -51,6 +51,8 @@
   "http://videovoip.tableteer.nokia.com/xmpp/privilege"
 #define NS_OLPC_BUDDY_PROPS     "http://laptop.org/xmpp/buddy-properties"
 #define NS_OLPC_ACTIVITIES      "http://laptop.org/xmpp/activities"
+#define NS_OLPC_CURRENT_ACTIVITY    "http://laptop.org/xmpp/current-activity"
+#define NS_OLPC_ACTIVITY_PROPS      "http://laptop.org/xmpp/activity-properties"
 #define NS_PUBSUB               "http://jabber.org/protocol/pubsub"
 #define NS_PRESENCE_INVISIBLE   "presence-invisible"
 #define NS_PRIVACY              "jabber:iq:privacy"

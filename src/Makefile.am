@@ -10,8 +10,21 @@ CLEANFILES = $(BUILT_SOURCES)
 bin_PROGRAMS=telepathy-gabble
 noinst_PROGRAMS = write-mgr-file
 
+# There is no point to build tube support if we don't have D-Bus tube
+# as currently it's the only tube type implemented.
+if HAVE_DBUS_TUBE
+dbus_tube_sources = \
+    tube-dbus.h \
+    tube-dbus.c \
+    tubes-channel.h \
+    tubes-channel.c \
+    tubes-factory.h \
+    tubes-factory.c
+endif
+
 # These are the bits we wrote, so we can be really strict about coding style
 libgabble_convenience_la_our_sources = \
+    $(dbus_tube_sources) \
     base64.h \
     base64.c \
     capabilities.h \

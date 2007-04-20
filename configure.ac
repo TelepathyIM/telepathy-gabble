@@ -170,6 +170,18 @@ PKG_CHECK_MODULES(LOUDMOUTH, loudmouth-1.0$LOUDMOUTH_VERSION_STR)
 AC_SUBST(LOUDMOUTH_CFLAGS)
 AC_SUBST(LOUDMOUTH_LIBS)
 
+dnl Check for D-Bus tubes
+have_dbus_tube=no
+AC_CHECK_LIB(dbus-1, dbus_message_marshal,
+             [have_dbus_tube=yes],
+             [echo "Tubes will be disabled"])
+
+if test x$have_dbus_tube = xyes; then
+  AC_DEFINE(HAVE_DBUS_TUBE, 1, [Define if we have D-Bus tubes support])
+fi
+
+AM_CONDITIONAL(HAVE_DBUS_TUBE, test x$have_dbus_tube = xyes)
+
 AC_OUTPUT( Makefile \
            extensions/Makefile \
            extensions/tools/Makefile \

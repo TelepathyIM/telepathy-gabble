@@ -1,0 +1,232 @@
+<?xml version="1.0" ?>
+<node name="/OLPC_Buddy_Info" xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+  <tp:copyright> Copyright (C) 2007 Collabora Limited </tp:copyright>
+  <tp:license xmlns="http://www.w3.org/1999/xhtml">
+    <p>This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.</p>
+
+<p>This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Library General Public License for more details.</p>
+
+<p>You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
+  </tp:license>
+  <interface name="org.laptop.Telepathy.BuddyInfo">
+    <tp:requires interface="org.freedesktop.Telepathy.Connection"/>
+
+    <method name="SetProperties">
+      <arg direction="in" name="properties" type="a{sv}">
+        <tp:docstring>
+          A dictionary mapping information names to the desired values
+        </tp:docstring>
+      </arg>
+      <tp:docstring>
+        Set the information of the local user for this connection.
+      </tp:docstring>
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.Disconnected"/>
+        <tp:error name="org.freedesktop.Telepathy.Error.InvalidArgument"/>
+      </tp:possible-errors>
+    </method>
+
+    <method name="GetProperties">
+      <arg direction="in" name="contact" type="u">
+        <tp:docstring>
+          An integer handle for the contact to request his properties for
+        </tp:docstring>
+      </arg>
+      <arg direction="out" name="properties" type="a{sv}">
+        <tp:docstring>
+          A dictionary mapping information names to their values
+        </tp:docstring>
+      </arg>
+      <tp:docstring>
+        Get the properties of a particular contact.
+      </tp:docstring>
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.Disconnected"/>
+        <tp:error name="org.freedesktop.Telepathy.Error.InvalidArgument"/>
+      </tp:possible-errors>
+    </method>
+
+    <signal name="PropertiesChanged">
+      <arg name="contact" type="u">
+        <tp:docstring>
+          An integer handle representing the contact
+        </tp:docstring>
+      </arg>
+      <arg name="properties" type="a{sv}">
+        <tp:docstring>
+          A dictionary mapping information names to their new values
+        </tp:docstring>
+      </arg>
+      <tp:docstring>
+        Signal emitted when the properties of a contact from your 'subscribed'
+        contact list are changed.
+      </tp:docstring>
+    </signal>
+
+    <method name="SetActivities">
+      <arg direction="in" name="activities" type="a(su)">
+        <tp:docstring>
+          An array of structs containing:
+          <ul>
+            <li>the identifier of the activity</li>
+            <li>the handle of the activity channel</li>
+          </ul>
+        </tp:docstring>
+      </arg>
+      <tp:docstring>
+        Set the activities of the local user for this connection.
+      </tp:docstring>
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.Disconnected"/>
+        <tp:error name="org.freedesktop.Telepathy.Error.InvalidArgument"/>
+      </tp:possible-errors>
+    </method>
+
+    <method name="GetActivities">
+      <arg direction="in" name="contact" type="u">
+        <tp:docstring>
+          An integer handle for the contact to request his activities for
+        </tp:docstring>
+      </arg>
+      <arg direction="out" name="activities" type="a(su)">
+        <tp:docstring>
+          An array of structs containing:
+          <ul>
+            <li>the identifier of the activity</li>
+            <li>the handle of the activity channel</li>
+          </ul>
+        </tp:docstring>
+      </arg>
+      <tp:docstring>
+        Get the activities of a particular contact.
+      </tp:docstring>
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.Disconnected"/>
+        <tp:error name="org.freedesktop.Telepathy.Error.InvalidArgument"/>
+      </tp:possible-errors>
+    </method>
+
+    <signal name="ActivitiesChanged">
+      <arg name="contact" type="u">
+        <tp:docstring>
+          An integer handle representing the contact
+        </tp:docstring>
+      </arg>
+      <arg name="activities" type="a(su)">
+        <tp:docstring>
+          An array of structs containing:
+          <ul>
+            <li>the identifier of the activity</li>
+            <li>the handle of the activity channel</li>
+          </ul>
+        </tp:docstring>
+      </arg>
+      <tp:docstring>
+        Signal emitted when the activities of a contact from your 'subscribed'
+        contact list are changed.
+      </tp:docstring>
+    </signal>
+
+    <method name="SetCurrentActivity">
+      <arg direction="in" name="activity" type="s">
+        <tp:docstring>
+          The identifier of the activity
+        </tp:docstring>
+      </arg>
+      <arg direction="in" name="channel" type="u">
+        <tp:docstring>
+          The handle of the activity channel
+        </tp:docstring>
+      </arg>
+      <tp:docstring>
+        Set the current activity of the local user for this connection.
+      </tp:docstring>
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.Disconnected"/>
+        <tp:error name="org.freedesktop.Telepathy.Error.InvalidArgument"/>
+      </tp:possible-errors>
+    </method>
+
+    <method name="GetCurrentActivity">
+      <arg direction="in" name="contact" type="u">
+        <tp:docstring>
+          An integer handle for the contact to request his activities for
+        </tp:docstring>
+      </arg>
+      <arg direction="out" name="activity" type="s">
+        <tp:docstring>
+          The identifier of the activity
+        </tp:docstring>
+      </arg>
+      <arg direction="out" name="channel" type="u">
+        <tp:docstring>
+          The handle of the activity channel
+        </tp:docstring>
+      </arg>
+      <tp:docstring>
+        Get the current activity of a particular contact.
+      </tp:docstring>
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.Disconnected"/>
+        <tp:error name="org.freedesktop.Telepathy.Error.InvalidArgument"/>
+      </tp:possible-errors>
+    </method>
+
+    <signal name="CurrentActivityChanged">
+      <arg name="contact" type="u">
+        <tp:docstring>
+          An integer handle representing the contact
+        </tp:docstring>
+      </arg>
+      <arg name="activity" type="s">
+        <tp:docstring>
+          The identifier of the activity
+        </tp:docstring>
+      </arg>
+      <arg name="channel" type="u">
+        <tp:docstring>
+          The handle of the activity channel
+        </tp:docstring>
+      </arg>
+      <tp:docstring>
+        Signal emitted when the current activity of a contact from your 'subscribed'
+        contact list is changed.
+      </tp:docstring>
+    </signal>
+
+    <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+      <p>An interface on connections to associate OLPC buddy information
+    with contacts. Provides methods for the user to set their own information and
+    retrieve information of contacts.
+    User is automatically notified when information of contacts that are in his 'subscribe'
+    contact list change.</p>
+
+      <p>The following types and names are used to request and set information (except
+    for activities):</p>
+      <dl>
+        <dt>s:color</dt>
+        <dd>The color name of the buddy. Format used is #RRGGBB,#RRGGBB (stroke,fill).</dd>
+
+        <dt>ay:key</dt>
+        <dd>The public key of the buddy.</dd>
+      </dl>
+
+      <p>Activities are represented by a struct containing:</p>
+      <ul>
+        <li>the identifier of the activity</li>
+        <li>the handle of the activity channel</li>
+      </ul>
+
+      <p>If the activity identifier is empty (""), the handle is ignored and there is no current activity.</p>
+    </tp:docstring>
+  </interface>
+</node>
+<!-- vim:set sw=2 sts=2 et ft=xml: -->

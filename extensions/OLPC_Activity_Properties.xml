@@ -1,0 +1,99 @@
+<?xml version="1.0" ?>
+<node name="/OLPC_Activity_Properties" xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+  <tp:copyright> Copyright (C) 2007 Collabora Limited </tp:copyright>
+  <tp:license xmlns="http://www.w3.org/1999/xhtml">
+    <p>This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.</p>
+
+<p>This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Library General Public License for more details.</p>
+
+<p>You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
+  </tp:license>
+  <interface name="org.laptop.Telepathy.ActivityProperties">
+    <tp:requires interface="org.freedesktop.Telepathy.Connection"/>
+
+    <method name="SetProperties">
+      <arg direction="in" name="room" type="u">
+        <tp:docstring>
+          An integer handle representing the room of the activity
+        </tp:docstring>
+      </arg>
+      <arg direction="in" name="properties" type="a{sv}">
+        <tp:docstring>
+          A dictionary mapping properties names to the desired values
+        </tp:docstring>
+      </arg>
+      <tp:docstring>
+        Set the properties of the activity associated to the given room for this connection.
+        You have to be the owner of this activity.
+      </tp:docstring>
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.Disconnected"/>
+        <tp:error name="org.freedesktop.Telepathy.Error.InvalidArgument"/>
+        <tp:error name="org.freedesktop.Telepathy.Error.PermissionDenied"/>
+      </tp:possible-errors>
+    </method>
+
+    <method name="GetProperties">
+      <arg direction="in" name="room" type="u">
+        <tp:docstring>
+          An integer handle for the activity's room to request his properties for
+        </tp:docstring>
+      </arg>
+      <arg direction="out" name="properties" type="a{sv}">
+        <tp:docstring>
+          A dictionary mapping properties names to their values
+        </tp:docstring>
+      </arg>
+      <tp:docstring>
+        Get the properties of a particular activity.
+      </tp:docstring>
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.Disconnected"/>
+        <tp:error name="org.freedesktop.Telepathy.Error.InvalidArgument"/>
+      </tp:possible-errors>
+    </method>
+
+    <signal name="ActivityPropertiesChanged">
+      <arg name="room" type="u">
+        <tp:docstring>
+          An integer handle representing the room of the activity
+        </tp:docstring>
+      </arg>
+      <arg name="properties" type="a{sv}">
+        <tp:docstring>
+          A dictionary mapping properties names to their new values
+        </tp:docstring>
+      </arg>
+      <tp:docstring>
+        Signal emitted when the properties of an activity are changed.
+      </tp:docstring>
+    </signal>
+
+    <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+      <p>An interface on connections to associate OLPC activity properties
+    with rooms.</p>
+
+    <p>The following types and names are used to request and set properties:</p>
+      <dl>
+        <dt>s:color</dt>
+        <dd>The color of the activity. Format used is #RRGGBB,#RRGGBB (stroke,fill).</dd>
+
+        <dt>s:name</dt>
+        <dd>The name of the activity.</dd>
+
+        <dt>s:type</dt>
+        <dd>The type of the activity.</dd>
+      </dl>
+
+    </tp:docstring>
+  </interface>
+</node>
+<!-- vim:set sw=2 sts=2 et ft=xml: -->

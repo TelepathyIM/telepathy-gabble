@@ -576,7 +576,7 @@ _set_avatar_cb1 (GabbleVCardManager *manager,
       if (NULL == binval_node)
         binval_node = lm_message_node_add_child (photo_node, "BINVAL", "");
 
-      encoded = base64_encode (ctx->avatar);
+      encoded = base64_encode (ctx->avatar->len, ctx->avatar->str);
       lm_message_node_set_value (binval_node, encoded);
       g_free (encoded);
     }

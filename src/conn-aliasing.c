@@ -331,6 +331,11 @@ setaliases_foreach (gpointer key, gpointer value, gpointer user_data)
 
   if (base->self_handle == handle)
     {
+      /* User has called SetAliases on themselves - patch their vCard.
+       * FIXME: because SetAliases is currently synchronous, we ignore errors
+       * here, and just let the request happen in the background.
+       */
+
       if (data->conn->features & GABBLE_CONNECTION_FEATURES_PEP)
         {
           /* Publish nick using PEP */
@@ -347,10 +352,6 @@ setaliases_foreach (gpointer key, gpointer value, gpointer user_data)
           lm_message_unref (msg);
         }
 
-      /* User has done SetAliases on themselves - patch their vCard.
-       * FIXME: because SetAliases is currently synchronous, we ignore errors
-       * here, and just let the request happen in the background
-       */
       gabble_vcard_manager_edit (data->conn->vcard_manager, 0, NULL, NULL,
           G_OBJECT(data->conn), NULL, "NICKNAME", alias, NULL);
     }

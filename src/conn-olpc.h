@@ -20,8 +20,7 @@
 #ifndef __CONN_OLPC_H__
 #define __CONN_OLPC_H__
 
-#include <extensions/_gen/svc-OLPC_Buddy_Info.h>
-#include <extensions/_gen/svc-OLPC_Activity_Properties.h>
+#include <extensions/extensions.h>
 
 #include "gabble-connection.h"
 

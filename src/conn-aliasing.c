@@ -25,6 +25,8 @@
 #include "gabble-connection.h"
 #include "roster.h"
 #include "vcard-manager.h"
+#include "pubsub.h"
+#include "namespaces.h"
 
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
 
@@ -267,6 +269,32 @@ struct _i_hate_g_hash_table_foreach
   gboolean retval;
 };
 
+static LmHandlerResult
+nick_publish_msg_reply_cb (GabbleConnection *conn,
+                           LmMessage *sent_msg,
+                           LmMessage *reply_msg,
+                           GObject *object,
+                           gpointer user_data)
+{
+  if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_ERROR)
+    {
+      LmMessageNode *error_node;
+
+      error_node = lm_message_node_get_child (reply_msg->node, "error");
+
+      if (error_node != NULL)
+        {
+          GabbleXmppError error = gabble_xmpp_error_from_node (error_node);
+
+          g_warning ("%s: can't publish nick using PEP: %s: %s", G_STRFUNC,
+              gabble_xmpp_error_string (error),
+              gabble_xmpp_error_description (error));
+        }
+    }
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
 static void
 setaliases_foreach (gpointer key, gpointer value, gpointer user_data)
 {
@@ -303,6 +331,22 @@ setaliases_foreach (gpointer key, gpointer value, gpointer user_data)
 
   if (base->self_handle == handle)
     {
+      if (data->conn->features & GABBLE_CONNECTION_FEATURES_PEP)
+        {
+          /* Publish nick using PEP */
+          LmMessage *msg;
+          LmMessageNode *publish;
+
+          msg = pubsub_make_publish_msg (NULL, NS_NICK, NS_NICK, "nick",
+              &publish);
+          lm_message_node_set_value (publish, alias);
+
+          _gabble_connection_send_with_reply (data->conn, msg,
+              nick_publish_msg_reply_cb, NULL, NULL, NULL);
+
+          lm_message_unref (msg);
+        }
+
       /* User has done SetAliases on themselves - patch their vCard.
        * FIXME: because SetAliases is currently synchronous, we ignore errors
        * here, and just let the request happen in the background

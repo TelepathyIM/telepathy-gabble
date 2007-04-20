@@ -176,13 +176,6 @@ inspect_room (TpBaseConnection *base,
 }
 
 
-static void
-free_gvalue (GValue *value)
-{
-    g_value_unset (value);
-    g_slice_free (GValue, value);
-}
-
 static gboolean
 check_publish_reply_msg (LmMessage *reply_msg,
                          DBusGMethodInvocation *context)
@@ -266,7 +259,7 @@ extract_properties (LmMessageNode *props_node)
   LmMessageNode *node;
 
   properties = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
-      (GDestroyNotify) free_gvalue);
+      (GDestroyNotify) tp_g_value_slice_free);
 
   if (props_node == NULL)
     return properties;
@@ -1268,7 +1261,7 @@ olpc_activity_properties_set_properties (GabbleSvcOLPCActivityProperties *iface,
     }
 
   properties_copied = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
-      (GDestroyNotify) free_gvalue);
+      (GDestroyNotify) tp_g_value_slice_free);
   g_hash_table_foreach (properties, copy_properties,
       properties_copied);
 

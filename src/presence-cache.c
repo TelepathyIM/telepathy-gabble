@@ -812,6 +812,16 @@ _caps_disco_cb (GabbleDisco *disco,
         caps |= PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO;
       else if (0 == strcmp (var, NS_CHAT_STATES))
         caps |= PRESENCE_CAP_CHAT_STATES;
+      else if (0 == strcmp (var, NS_SI))
+        caps |= PRESENCE_CAP_SI;
+      else if (0 == strcmp (var, NS_BYTESTREAMS))
+        caps |= PRESENCE_CAP_BYTESTREAMS;
+      else if (0 == strcmp (var, NS_SI_FILE_TRANSFER))
+        caps |= PRESENCE_CAP_FILE_TRANSFER;
+      else if (0 == strcmp (var, NS_IBB))
+        caps |= PRESENCE_CAP_IBB;
+      else if (0 == strcmp (var, NS_SI_TUBES))
+        caps |= PRESENCE_CAP_SI_TUBES;
     }
 
   caps |= _detect_h263_n800_hack (node);

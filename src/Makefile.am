@@ -78,6 +78,9 @@ libgabble_convenience_la_SOURCES = \
     sha1/sha1.c \
     $(libgabble_convenience_la_our_sources)
 
+libgabble_convenience_la_LIBADD = \
+   $(top_builddir)/extensions/libgabble-extensions.la
+
 nodist_libgabble_convenience_la_SOURCES = \
     $(BUILT_SOURCES)
 

@@ -1,8 +1,6 @@
 
 tools_dir = tools
 
-# This is a derived file but must be checked-in to Darcs anyway,
-# for bootstrapping.
 include _gen/spec-gen.am
 
 SPEC_GENERATED_SOURCES = \

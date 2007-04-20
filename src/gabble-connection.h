@@ -118,6 +118,10 @@ struct _GabbleConnection {
     /* vCard lookup helper */
     GabbleVCardManager *vcard_manager;
 
+    /* OLPC hash tables */
+    GHashTable *olpc_activities_info;
+    GHashTable *olpc_contacts_activities;
+
     gpointer priv;
 };
 

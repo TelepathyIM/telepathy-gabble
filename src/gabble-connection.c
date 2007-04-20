@@ -51,6 +51,7 @@
 #include "conn-aliasing.h"
 #include "conn-avatars.h"
 #include "conn-presence.h"
+#include "conn-olpc.h"
 #include "debug.h"
 #include "disco.h"
 #include "presence-cache.h"
@@ -60,6 +61,7 @@
 #include "media-factory.h"
 #include "muc-factory.h"
 #include "namespaces.h"
+#include "pubsub.h"
 #include "roster.h"
 #include "util.h"
 #include "vcard-manager.h"
@@ -78,6 +80,12 @@
     ("GValueArray", G_TYPE_UINT, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT, \
                     G_TYPE_INVALID))
 
+/* XXX: this should be generated */
+#define TP_IFACE_OLPC_BUDDY_INFO \
+    "org.laptop.Telepathy.BuddyInfo"
+#define TP_IFACE_OLPC_ACTIVITY_PROPERTIES \
+    "org.laptop.Telepathy.ActivityProperties"
+
 static void conn_service_iface_init (gpointer, gpointer);
 static void capabilities_service_iface_init (gpointer, gpointer);
 
@@ -94,6 +102,10 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
       capabilities_service_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_PRESENCE,
       conn_presence_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_OLPC_BUDDY_INFO,
+      olpc_buddy_info_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_OLPC_ACTIVITY_PROPERTIES,
+      olpc_activity_properties_iface_init);
     )
 
 /* properties */
@@ -130,6 +142,7 @@ struct _GabbleConnectionPrivate
   LmMessageHandler *iq_disco_cb;
   LmMessageHandler *iq_unknown_cb;
   LmMessageHandler *stream_error_cb;
+  LmMessageHandler *msg_cb;
 
   /* connection properties */
   gchar *connect_server;
@@ -236,6 +249,7 @@ gabble_connection_constructor (GType type,
 
   conn_avatars_init (self);
   conn_presence_init (self);
+  conn_olpc_activity_properties_init (self);
 
   return (GObject *)self;
 }
@@ -712,12 +726,16 @@ gabble_connection_dispose (GObject *object)
   g_object_unref (self->presence_cache);
   self->presence_cache = NULL;
 
+  g_hash_table_destroy (self->olpc_activities_info);
+  g_hash_table_destroy (self->olpc_contacts_activities);
+
   /* if this is not already the case, we'll crash anyway */
   g_assert (!lm_connection_is_open (self->lmconn));
 
   g_assert (priv->iq_disco_cb == NULL);
   g_assert (priv->iq_unknown_cb == NULL);
   g_assert (priv->stream_error_cb == NULL);
+  g_assert (priv->msg_cb == NULL);
 
   /*
    * The Loudmouth connection can't be unref'd immediately because this
@@ -982,6 +1000,8 @@ static LmHandlerResult connection_iq_unknown_cb (LmMessageHandler *,
     LmConnection *, LmMessage *, gpointer);
 static LmHandlerResult connection_stream_error_cb (LmMessageHandler *,
     LmConnection *, LmMessage *, gpointer);
+static LmHandlerResult connection_msg_event_cb (LmMessageHandler *,
+    LmConnection*, LmMessage*, gpointer);
 static LmSSLResponse connection_ssl_cb (LmSSL *, LmSSLStatus, gpointer);
 static void connection_open_cb (LmConnection *, gboolean, gpointer);
 static void connection_auth_cb (LmConnection *, gboolean, gpointer);
@@ -1023,6 +1043,7 @@ connect_callbacks (TpBaseConnection *base)
   g_assert (priv->iq_disco_cb == NULL);
   g_assert (priv->iq_unknown_cb == NULL);
   g_assert (priv->stream_error_cb == NULL);
+  g_assert (priv->msg_cb == NULL);
 
   priv->iq_disco_cb = lm_message_handler_new (connection_iq_disco_cb,
                                               conn, NULL);
@@ -1041,6 +1062,12 @@ connect_callbacks (TpBaseConnection *base)
   lm_connection_register_message_handler (conn->lmconn, priv->stream_error_cb,
                                           LM_MESSAGE_TYPE_STREAM_ERROR,
                                           LM_HANDLER_PRIORITY_LAST);
+
+  priv->msg_cb = lm_message_handler_new (connection_msg_event_cb,
+                                            conn, NULL);
+  lm_connection_register_message_handler (conn->lmconn, priv->msg_cb,
+                                          LM_MESSAGE_TYPE_MESSAGE,
+                                          LM_HANDLER_PRIORITY_FIRST);
 }
 
 static void
@@ -1052,6 +1079,7 @@ disconnect_callbacks (TpBaseConnection *base)
   g_assert (priv->iq_disco_cb != NULL);
   g_assert (priv->iq_unknown_cb != NULL);
   g_assert (priv->stream_error_cb != NULL);
+  g_assert (priv->msg_cb != NULL);
 
   lm_connection_unregister_message_handler (conn->lmconn, priv->iq_disco_cb,
                                             LM_MESSAGE_TYPE_IQ);
@@ -1067,6 +1095,11 @@ disconnect_callbacks (TpBaseConnection *base)
       priv->stream_error_cb, LM_MESSAGE_TYPE_STREAM_ERROR);
   lm_message_handler_unref (priv->stream_error_cb);
   priv->stream_error_cb = NULL;
+
+  lm_connection_unregister_message_handler (conn->lmconn, priv->msg_cb,
+                                            LM_MESSAGE_TYPE_MESSAGE);
+  lm_message_handler_unref (priv->msg_cb);
+  priv->msg_cb = NULL;
 }
 
 /**
@@ -1715,6 +1748,61 @@ connection_stream_error_cb (LmMessageHandler *handler,
   return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 }
 
+/**
+ * connection_msg_event_cb
+ *
+ * Called by loudmouth when we get an incoming <message>. This handler handles
+ * pubsub events.
+ */
+static LmHandlerResult
+connection_msg_event_cb (LmMessageHandler *handler,
+                         LmConnection *connection,
+                         LmMessage *message,
+                         gpointer user_data)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)conn, TP_HANDLE_TYPE_CONTACT);
+  LmMessageNode *node;
+  TpHandle handle;
+  const gchar *event_ns, *from;
+
+  node = lm_message_node_get_child (message->node, "event");
+
+  if (node)
+    {
+      event_ns = lm_message_node_get_attribute (node, "xmlns");
+    }
+  else
+    {
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    }
+
+  if (event_ns == NULL || !g_str_has_prefix (event_ns, NS_PUBSUB))
+    {
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    }
+
+  from = lm_message_node_get_attribute (message->node, "from");
+  if (from == NULL)
+    {
+      NODE_DEBUG (message->node, "got a message without a from field");
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    }
+
+  handle = tp_handle_ensure (contact_repo, from, NULL, NULL);
+  if (handle == 0)
+    {
+      NODE_DEBUG (message->node, "invalid from handle");
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    }
+
+  gabble_pubsub_event_handler (conn, message, handle);
+
+  tp_handle_unref (contact_repo, handle);
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
 
 /**
  * connection_ssl_cb
@@ -2048,6 +2136,14 @@ connection_disco_cb (GabbleDisco *disco,
         }
 
       DEBUG ("set features flags to %d", conn->features);
+    }
+
+  if (conn->features && GABBLE_CONNECTION_FEATURES_PEP)
+    {
+      const gchar *ifaces[] = { TP_IFACE_OLPC_BUDDY_INFO,
+          TP_IFACE_OLPC_ACTIVITY_PROPERTIES, NULL };
+
+      tp_base_connection_add_interfaces ((TpBaseConnection *) conn, ifaces);
     }
 
   /* send presence to the server to indicate availability */

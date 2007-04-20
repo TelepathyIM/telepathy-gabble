@@ -169,6 +169,7 @@ AC_SUBST(LOUDMOUTH_LIBS)
 
 AC_OUTPUT( Makefile \
            extensions/Makefile \
+           extensions/tools/Makefile \
            src/Makefile \
            m4/Makefile \
            data/Makefile \

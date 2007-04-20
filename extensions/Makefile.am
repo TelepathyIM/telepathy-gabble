@@ -1,7 +1,10 @@
+SUBDIRS = tools
 
-tools_dir = tools
+tools_dir = $(srcdir)/tools
 
 include _gen/spec-gen.am
+
+EXTRA_DIST = $(SPEC_INTERFACE_XMLS) all.xml
 
 SPEC_GENERATED_SOURCES = \
     $(SPEC_GENERATED_CS) \
@@ -11,15 +14,21 @@ SPEC_GENERATED_SOURCES = \
 
 noinst_LTLIBRARIES = libgabble-extensions.la
 
+libgabble_extensions_la_SOURCES = \
+    extensions.h
+
 nodist_libgabble_extensions_la_SOURCES = \
     _gen/signals-marshal.c \
     _gen/signals-marshal.h \
     _gen/signals-marshal.list \
+    _gen/enums.h \
+    _gen/interfaces.h \
+    _gen/svc.h \
     $(SPEC_GENERATED_SOURCES)
 
 BUILT_SOURCES = $(nodist_libgabble_extensions_la_SOURCES)
 
-CLEANFILES = $(BUILT_SOURCES)
+CLEANFILES = $(BUILT_SOURCES) _gen/.exists
 
 AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @TP_GLIB_CFLAGS@ @HANDLE_LEAK_DEBUG_CFLAGS@
 AM_LDFLAGS = @DBUS_LIBS@ @GLIB_LIBS@ @TP_GLIB_LIBS@
@@ -29,7 +38,11 @@ AM_LDFLAGS = @DBUS_LIBS@ @GLIB_LIBS@ @TP_GLIB_LIBS@
 DROP_NAMESPACE = sed -e 's@xmlns:tp="http://telepathy\.freedesktop\.org/wiki/DbusSpec.extensions-v0"@@g'
 XSLTPROCFLAGS = --nonet --novalid
 
-_gen/%.xml: %.xml $(tools_dir)/spec-to-introspect.xsl
+_gen/.exists:
+	$(INSTALL) -d _gen
+	touch $@
+
+_gen/%.xml: %.xml $(tools_dir)/spec-to-introspect.xsl _gen/.exists
 	$(XSLTPROC) $(XSLTPROCFLAGS) \
 		$(tools_dir)/spec-to-introspect.xsl $< \
 		| $(DROP_NAMESPACE) > $@
@@ -41,7 +54,7 @@ _gen/svc-%-glue.h: _gen/async-%.xml
 	$(DBUS_BINDING_TOOL) --mode=glib-server --output=$@ \
 		--prefix=gabble_svc_`echo $* | tr A-Z a-z` $<
 
-_gen/svc-%.c _gen/svc-%.h _gen/svc-%-signals-marshal.list: %.xml $(tools_dir)/genginterface.py
+_gen/svc-%.c _gen/svc-%.h _gen/svc-%-signals-marshal.list: %.xml $(tools_dir)/genginterface.py _gen/.exists
 	$(PYTHON) $(tools_dir)/genginterface.py \
 		--filename=_gen/svc-$* --signal-marshal-prefix=_gabble_ext \
 		--include='<telepathy-glib/dbus.h>' \
@@ -57,3 +70,19 @@ _gen/signals-marshal.h: _gen/signals-marshal.list
 
 _gen/signals-marshal.c: _gen/signals-marshal.list
 	$(GLIB_GENMARSHAL) --body --prefix=_gabble_ext_marshal $< > $@
+
+_gen/svc.h: Makefile.in _gen/.exists
+	for i in $(SPEC_INTERFACES); \
+	do \
+		echo "#include \"extensions/_gen/svc-$$i.h\""; \
+	done > $@
+
+_gen/enums.h: all.xml tools/c-constants-generator.xsl _gen/.exists
+	$(XSLTPROC) --xinclude $(XSLTPROCFLAGS) \
+		$(srcdir)/tools/c-constants-generator.xsl \
+		$(srcdir)/all.xml > $@
+
+_gen/interfaces.h: all.xml tools/c-interfaces-generator.xsl _gen/.exists
+	$(XSLTPROC) --xinclude $(XSLTPROCFLAGS) \
+		$(srcdir)/tools/c-interfaces-generator.xsl \
+		$(srcdir)/all.xml > $@

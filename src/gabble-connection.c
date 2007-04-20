@@ -80,12 +80,6 @@
     ("GValueArray", G_TYPE_UINT, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT, \
                     G_TYPE_INVALID))
 
-/* XXX: this should be generated */
-#define TP_IFACE_OLPC_BUDDY_INFO \
-    "org.laptop.Telepathy.BuddyInfo"
-#define TP_IFACE_OLPC_ACTIVITY_PROPERTIES \
-    "org.laptop.Telepathy.ActivityProperties"
-
 static void conn_service_iface_init (gpointer, gpointer);
 static void capabilities_service_iface_init (gpointer, gpointer);
 
@@ -2140,8 +2134,8 @@ connection_disco_cb (GabbleDisco *disco,
 
   if (conn->features && GABBLE_CONNECTION_FEATURES_PEP)
     {
-      const gchar *ifaces[] = { TP_IFACE_OLPC_BUDDY_INFO,
-          TP_IFACE_OLPC_ACTIVITY_PROPERTIES, NULL };
+      const gchar *ifaces[] = { GABBLE_IFACE_OLPC_BUDDY_INFO,
+          GABBLE_IFACE_OLPC_ACTIVITY_PROPERTIES, NULL };
 
       tp_base_connection_add_interfaces ((TpBaseConnection *) conn, ifaces);
     }

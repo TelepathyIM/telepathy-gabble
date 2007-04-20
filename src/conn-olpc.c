@@ -774,6 +774,7 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
       guint channel;
       const gchar *room = NULL;
       ActivityInfo *info;
+      GError *error = NULL;
 
       g_value_init (&pair, ACTIVITY_PAIR_TYPE);
       g_value_set_static_boxed (&pair, g_ptr_array_index (activities, i));
@@ -782,12 +783,8 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
           1, &channel,
           G_MAXUINT);
 
-      if (!tp_handle_is_valid (room_repo, channel, NULL))
+      if (!tp_handle_is_valid (room_repo, channel, &error))
         {
-          GError *error = g_error_new (TP_ERRORS,
-              TP_ERROR_INVALID_ARGUMENT,
-              "Invalid room handle: %d", channel);
-
           DEBUG ("Invalid room handle");
           dbus_g_method_return_error (context, error);
 

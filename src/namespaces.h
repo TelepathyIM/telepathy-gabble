@@ -21,10 +21,15 @@
 #ifndef __GABBLE_NAMESPACES__H__
 #define __GABBLE_NAMESPACES__H__
 
+#define NS_AMP                  "http://jabber.org/protocol/amp"
+#define NS_BYTESTREAMS          "http://jabber.org/protocol/bytestreams"
 #define NS_CAPS                 "http://jabber.org/protocol/caps"
+#define NS_DATA                 "jabber:x:data"
 #define NS_CHAT_STATES          "http://jabber.org/protocol/chatstates"
 #define NS_DISCO_INFO           "http://jabber.org/protocol/disco#info"
 #define NS_DISCO_ITEMS          "http://jabber.org/protocol/disco#items"
+#define NS_FEATURENEG           "http://jabber.org/protocol/feature-neg"
+#define NS_SI_FILE_TRANSFER     "http://jabber.org/protocol/si/profile/file-transfer"
 #define NS_GABBLE_CAPS          "http://telepathy.freedesktop.org/caps"
 #define NS_GOOGLE_CAPS          "http://www.google.com/xmpp/client/caps"
 #define NS_GOOGLE_FEAT_SESSION  "http://www.google.com/xmpp/protocol/session"
@@ -34,6 +39,7 @@
 #define NS_GOOGLE_SESSION       "http://www.google.com/session"
 #define NS_GOOGLE_SESSION_PHONE "http://www.google.com/session/phone"
 #define NS_GOOGLE_TRANSPORT_P2P "http://www.google.com/transport/p2p"
+#define NS_IBB                  "http://jabber.org/protocol/ibb"
 #define NS_JINGLE               "http://jabber.org/protocol/jingle"
 #define NS_JINGLE_DESCRIPTION_AUDIO \
   "http://jabber.org/protocol/jingle/description/audio"
@@ -58,6 +64,9 @@
 #define NS_PRIVACY              "jabber:iq:privacy"
 #define NS_REGISTER             "jabber:iq:register"
 #define NS_ROSTER               "jabber:iq:roster"
+#define NS_SI                  "http://jabber.org/protocol/si"
+#define NS_SI_TUBES             "http://jabber.org/protocol/si/profile/tubes"
+#define NS_TUBES                "http://telepathy.freedesktop.org/xmpp/tubes"
 #define NS_VCARD_TEMP           "vcard-temp"
 #define NS_VCARD_TEMP_UPDATE    "vcard-temp:x:update"
 #define NS_X_DATA               "jabber:x:data"

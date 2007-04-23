@@ -413,16 +413,13 @@ set_property (gpointer key,
     }
   else if (G_VALUE_TYPE (gvalue) == DBUS_TYPE_G_UCHAR_ARRAY)
     {
-      GString *tmp;
       GArray *arr;
       gchar *str;
 
       type = "bytes";
       arr = g_value_get_boxed (gvalue);
-      tmp = g_string_new_len (arr->data, arr->len);
-      str = base64_encode (tmp);
+      str = base64_encode (arr->len, arr->data);
       lm_message_node_set_value (property, str);
-      g_string_free (tmp, TRUE);
       g_free (str);
     }
   else

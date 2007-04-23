@@ -300,6 +300,7 @@ media_factory_jingle_cb (LmMessageHandler *handler,
       NODE_DEBUG (iq_node, "sender with no resource");
       goto BAD_REQUEST;
     }
+  resource++;
 
   id = lm_message_node_get_attribute (iq_node, "id");
   if (id == NULL)

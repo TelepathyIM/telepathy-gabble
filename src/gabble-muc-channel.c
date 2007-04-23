@@ -2304,6 +2304,8 @@ gabble_muc_channel_remove_member (GObject *obj,
   jid = tp_handle_inspect (TP_GROUP_MIXIN (obj)->handle_repo, handle);
 
   nick = strchr (jid, '/');
+  if (nick)
+    nick++;
 
   lm_message_node_set_attributes (item_node,
                                   "nick", nick,

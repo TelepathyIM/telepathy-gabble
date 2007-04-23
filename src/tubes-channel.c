@@ -1180,7 +1180,7 @@ gabble_tubes_channel_offer_tube (TpSvcChannelTypeTubes *iface,
       state = TP_TUBE_STATE_REMOTE_PENDING;
     }
 
-  tube_id = create_new_tube (self, type, base->self_handle, service,
+  tube_id = create_new_tube (self, type, priv->self_handle, service,
       parameters_copied, state, (const gchar*) stream_id, bytestream);
 
   if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)

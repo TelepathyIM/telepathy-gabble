@@ -988,7 +988,9 @@ _process_caps (GabblePresenceCache *cache,
   priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
   serial = priv->caps_serial++;
 
-  resource = strchr (from, '/') + 1;
+  resource = strchr (from, '/');
+  if (resource)
+    resource++;
 
   uris = _extract_cap_bundles (lm_node);
 
@@ -1018,7 +1020,9 @@ _parse_presence_message (GabblePresenceCache *cache,
   presence_node = message->node;
   g_assert (0 == strcmp (presence_node->name, "presence"));
 
-  resource = strchr (from, '/') + 1;
+  resource = strchr (from, '/');
+  if (resource)
+    resource++;
 
   presence = gabble_presence_cache_get (cache, handle);
 

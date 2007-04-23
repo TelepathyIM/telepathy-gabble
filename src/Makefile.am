@@ -109,7 +109,7 @@ nodist_libgabble_convenience_la_SOURCES = \
 
 write_mgr_file_SOURCES = write-mgr-file.c
 
-write_mgr_file_LDADD = libgabble-convenience.la
+write_mgr_file_LDADD = libgabble-convenience.la $(ALL_LIBS)
 
 telepathy_gabble_SOURCES = \
     gabble.h \
@@ -122,7 +122,7 @@ check_c_sources = \
     $(write_mgr_file_SOURCES)
 include $(top_srcdir)/check-coding-style.mk
 
-telepathy_gabble_LDADD = libgabble-convenience.la
+telepathy_gabble_LDADD = libgabble-convenience.la $(ALL_LIBS)
 
 noinst_LTLIBRARIES = libgabble-convenience.la
 
@@ -130,7 +130,7 @@ AM_CFLAGS = $(ERROR_CFLAGS) -I$(top_srcdir) -I$(top_builddir) \
 	    @DBUS_CFLAGS@ @GLIB_CFLAGS@ @LOUDMOUTH_CFLAGS@ \
 	    @HANDLE_LEAK_DEBUG_CFLAGS@ @COVERAGE_CFLAGS@ @TP_GLIB_CFLAGS@ \
 	    @TP_GLIB_UNSTABLE_CFLAGS@
-AM_LDFLAGS = @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@ @TP_GLIB_LIBS@ \
+ALL_LIBS =  @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@ @TP_GLIB_LIBS@ \
 	     @TP_GLIB_UNSTABLE_LIBS@
 
 

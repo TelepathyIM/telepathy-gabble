@@ -6,24 +6,19 @@ noinst_PROGRAMS = \
 	test-parse-message
 
 test_gabble_presence_LDADD = \
-    $(top_builddir)/src/libgabble-convenience.la
+    $(top_builddir)/src/libgabble-convenience.la $(ALL_LIBS)
 
 test_base64_LDADD = \
-    $(top_builddir)/src/libgabble-convenience.la
+    $(top_builddir)/src/libgabble-convenience.la $(ALL_LIBS)
 
 test_handles_LDADD = \
-    $(top_builddir)/src/libgabble-convenience.la
-
-test_jid_decode_LDADD = \
-    $(top_builddir)/src/libgabble-convenience.la
-
-test_parse_message_LDADD = \
     $(top_builddir)/src/libgabble-convenience.la
 
 AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @LOUDMOUTH_CFLAGS@ \
     @COVERAGE_CFLAGS@ @TP_GLIB_CFLAGS@ \
     -I $(top_srcdir)/src -I $(top_builddir)/src
-AM_LDFLAGS = @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@ @TP_GLIB_LIBS@
+ALL_LIBS = @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@ @TP_GLIB_LIBS@ \
+    @TP_GLIB_UNSTABLE_LIBS@
 
 TESTS = $(noinst_PROGRAMS)
 TWISTED_TESTS = \

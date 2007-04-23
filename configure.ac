@@ -174,11 +174,8 @@ dnl Check for telepathy-glib-unstable
 PKG_CHECK_MODULES(TP_GLIB_UNSTABLE, [telepathy-glib-unstable >= 0.5.10],
                   have_tp_glib_unstable=yes, have_tp_glib_unstable=no)
 
-if test x$have_tp_glib_unstable = xyes; then
-  AC_DEFINE(HAVE_DBUS_TUBE, 1, [Define if we have D-Bus tubes support])
-  AC_SUBST(TP_GLIB_UNSTABLE_CFLAGS)
-  AC_SUBST(TP_GLIB_UNSTABLE_LIBS)
-fi
+AC_SUBST(TP_GLIB_UNSTABLE_CFLAGS)
+AC_SUBST(TP_GLIB_UNSTABLE_LIBS)
 
 dnl Check for D-Bus tubes
 AC_CHECK_LIB(dbus-1, dbus_message_marshal,

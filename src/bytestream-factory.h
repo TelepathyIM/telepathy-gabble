@@ -43,7 +43,7 @@ GType gabble_bytestream_factory_get_type (void);
 
 /* TYPE MACROS */
 #define GABBLE_TYPE_BYTESTREAM_FACTORY \
-  (gabble_bytestream_factory_get_type())
+  (gabble_bytestream_factory_get_type ())
 #define GABBLE_BYTESTREAM_FACTORY(obj) \
   (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_BYTESTREAM_FACTORY,\
                               GabbleBytestreamFactory))

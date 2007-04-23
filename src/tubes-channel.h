@@ -42,7 +42,7 @@ GType gabble_tubes_channel_get_type (void);
 
 /* TYPE MACROS */
 #define GABBLE_TYPE_TUBES_CHANNEL \
-  (gabble_tubes_channel_get_type())
+  (gabble_tubes_channel_get_type ())
 #define GABBLE_TUBES_CHANNEL(obj) \
   (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_TUBES_CHANNEL,\
                               GabbleTubesChannel))

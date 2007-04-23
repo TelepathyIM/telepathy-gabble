@@ -41,7 +41,7 @@ GType gabble_tube_dbus_get_type (void);
 
 /* TYPE MACROS */
 #define GABBLE_TYPE_TUBE_DBUS \
-  (gabble_tube_dbus_get_type())
+  (gabble_tube_dbus_get_type ())
 #define GABBLE_TUBE_DBUS(obj) \
   (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_TUBE_DBUS, GabbleTubeDBus))
 #define GABBLE_TUBE_DBUS_CLASS(klass) \

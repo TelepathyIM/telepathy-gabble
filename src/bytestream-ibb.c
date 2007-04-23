@@ -521,7 +521,7 @@ gabble_bytestream_ibb_accept (GabbleBytestreamIBB *self)
   msg = lm_message_new_with_sub_type (full_jid, LM_MESSAGE_TYPE_IQ,
       LM_MESSAGE_SUB_TYPE_RESULT);
 
-  lm_message_node_set_attribute(msg->node, "id", priv->stream_init_id);
+  lm_message_node_set_attribute (msg->node, "id", priv->stream_init_id);
 
   node = lm_message_node_add_child (msg->node, "si", NULL);
   lm_message_node_set_attribute (node, "xmlns", NS_SI);
@@ -581,7 +581,7 @@ gabble_bytestream_ibb_decline (GabbleBytestreamIBB *self)
   msg = lm_message_new_with_sub_type (full_jid, LM_MESSAGE_TYPE_IQ,
       LM_MESSAGE_SUB_TYPE_ERROR);
 
-  lm_message_node_set_attribute(msg->node, "id", priv->stream_init_id);
+  lm_message_node_set_attribute (msg->node, "id", priv->stream_init_id);
 
   error_node = lm_message_node_add_child (msg->node, "error", NULL);
   lm_message_node_set_attributes (error_node,

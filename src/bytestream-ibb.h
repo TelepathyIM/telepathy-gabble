@@ -41,7 +41,7 @@ GType gabble_bytestream_ibb_get_type (void);
 
 /* TYPE MACROS */
 #define GABBLE_TYPE_BYTESTREAM_IBB \
-  (gabble_bytestream_ibb_get_type())
+  (gabble_bytestream_ibb_get_type ())
 #define GABBLE_BYTESTREAM_IBB(obj) \
   (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_BYTESTREAM_IBB,\
                               GabbleBytestreamIBB))

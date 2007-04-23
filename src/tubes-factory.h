@@ -44,7 +44,7 @@ GType gabble_tubes_factory_get_type (void);
 
 /* TYPE MACROS */
 #define GABBLE_TYPE_TUBES_FACTORY \
-  (gabble_tubes_factory_get_type())
+  (gabble_tubes_factory_get_type ())
 #define GABBLE_TUBES_FACTORY(obj) \
   (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_TUBES_FACTORY,\
                               GabbleTubesFactory))

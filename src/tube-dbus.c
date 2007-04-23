@@ -169,18 +169,24 @@ filter_cb (DBusConnection *conn,
 
       dest = dbus_message_get_destination (msg);
 
-      data.contact = dest;
-      if (!g_hash_table_find (priv->dbus_names, find_contact, &data))
+      if (dest != NULL)
         {
-          DEBUG ("Unknown D-Bus name: %s", dest);
+          data.contact = dest;
+
+          if (!g_hash_table_find (priv->dbus_names, find_contact, &data))
+            {
+              DEBUG ("Unknown D-Bus name: %s", dest);
+              goto out;
+            }
+
+          gabble_bytestream_ibb_send_to (priv->bytestream, data.handle, len,
+              marshalled);
+
           goto out;
         }
-
-      gabble_bytestream_ibb_send_to (priv->bytestream, data.handle, len,
-          marshalled);
     }
-  else
-    gabble_bytestream_ibb_send (priv->bytestream, len, marshalled);
+
+  gabble_bytestream_ibb_send (priv->bytestream, len, marshalled);
 
 out:
   if (marshalled != NULL)

@@ -573,6 +573,7 @@ data_received_cb (GabbleBytestreamIBB *ibb,
   DBusError error = {0,};
   guint32 serial;
   const gchar *sender_name;
+  const gchar *destination;
 
   if (!priv->dbus_conn)
     return;
@@ -590,7 +591,10 @@ data_received_cb (GabbleBytestreamIBB *ibb,
       return;
     }
 
-  if (tp_strdiff (priv->dbus_local_name, dbus_message_get_destination (msg)))
+  destination = dbus_message_get_destination (msg);
+
+  if (destination != NULL &&
+      tp_strdiff (priv->dbus_local_name, dbus_message_get_destination (msg)))
     {
       /* This message is not intented to this tube.
        * Discard it. */

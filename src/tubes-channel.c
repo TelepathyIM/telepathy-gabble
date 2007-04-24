@@ -30,7 +30,6 @@
 #include "presence-cache.h"
 #include "namespaces.h"
 #include "util.h"
-#include "base64.h" // XXX remove ?
 #include "tube-dbus.h"
 #include "bytestream-factory.h"
 

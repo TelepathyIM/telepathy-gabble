@@ -24,7 +24,6 @@
 #define DEBUG_FLAG GABBLE_DEBUG_OLPC
 
 #include "debug.h"
-#include "base64.h"
 #include "gabble-connection.h"
 #include "presence-cache.h"
 #include "namespaces.h"
@@ -252,69 +251,6 @@ check_query_reply_msg (LmMessage *reply_msg,
   return FALSE;
 }
 
-static GHashTable*
-extract_properties (LmMessageNode *props_node)
-{
-  GHashTable *properties;
-  LmMessageNode *node;
-
-  properties = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
-      (GDestroyNotify) tp_g_value_slice_free);
-
-  if (props_node == NULL)
-    return properties;
-
-  for (node = props_node->children; node; node = node->next)
-    {
-      const gchar *name;
-      const gchar *type;
-      const gchar *value;
-      GValue *gvalue;
-
-      if (0 != strcmp (node->name, "property"))
-        continue;
-
-      name = lm_message_node_get_attribute (node, "name");
-
-      if (!name)
-        continue;
-
-      type = lm_message_node_get_attribute (node, "type");
-      value = lm_message_node_get_value (node);
-
-      if (type == NULL || value == NULL)
-        continue;
-
-      if (0 == strcmp (type, "bytes"))
-        {
-          GArray *arr;
-          GString *decoded;
-
-          decoded = base64_decode (value);
-
-          if (!decoded)
-            continue;
-
-          arr = g_array_new (FALSE, FALSE, sizeof (guchar));
-          g_array_append_vals (arr, decoded->str, decoded->len);
-          gvalue = g_slice_new0 (GValue);
-          g_value_init (gvalue, DBUS_TYPE_G_UCHAR_ARRAY);
-          g_value_take_boxed (gvalue, arr);
-          g_hash_table_insert (properties, g_strdup (name), gvalue);
-          g_string_free (decoded, TRUE);
-        }
-      else if (0 == strcmp (type, "str"))
-        {
-          gvalue = g_slice_new0 (GValue);
-          g_value_init (gvalue, G_TYPE_STRING);
-          g_value_set_string (gvalue, value);
-          g_hash_table_insert (properties, g_strdup (name), gvalue);
-        }
-    }
-
-  return properties;
-}
-
 static LmHandlerResult
 get_properties_reply_cb (GabbleConnection *conn,
                          LmMessage *sent_msg,
@@ -330,7 +266,7 @@ get_properties_reply_cb (GabbleConnection *conn,
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
   node = lm_message_node_find_child (reply_msg->node, "properties");
-  properties = extract_properties (node);
+  properties = lm_message_node_extract_properties (node, "property");
 
   gabble_svc_olpc_buddy_info_return_from_get_properties (context, properties);
   g_hash_table_destroy (properties);
@@ -381,58 +317,6 @@ set_properties_reply_cb (GabbleConnection *conn,
 }
 
 static void
-set_property (gpointer key,
-              gpointer value,
-              gpointer user_data)
-{
-  LmMessageNode *node = user_data;
-  LmMessageNode *property;
-  GValue *gvalue = value;
-  const char *type = NULL;
-
-  if (G_VALUE_TYPE (gvalue) == G_TYPE_STRING)
-    {
-      type = "str";
-    }
-  else if (G_VALUE_TYPE (gvalue) == DBUS_TYPE_G_UCHAR_ARRAY)
-    {
-      type = "bytes";
-    }
-  else
-    {
-      /* a type we don't know how to handle: ignore it */
-      return;
-    }
-
-  property = lm_message_node_add_child (node, "property", "");
-
-  if (G_VALUE_TYPE (gvalue) == G_TYPE_STRING)
-    {
-      lm_message_node_set_value (property,
-        g_value_get_string (gvalue));
-    }
-  else if (G_VALUE_TYPE (gvalue) == DBUS_TYPE_G_UCHAR_ARRAY)
-    {
-      GArray *arr;
-      gchar *str;
-
-      type = "bytes";
-      arr = g_value_get_boxed (gvalue);
-      str = base64_encode (arr->len, arr->data);
-      lm_message_node_set_value (property, str);
-      g_free (str);
-    }
-  else
-    {
-      g_debug ("property with unknown type \"%s\"",
-          g_type_name (G_VALUE_TYPE (gvalue)));
-    }
-
-  lm_message_node_set_attribute (property, "name", key);
-  lm_message_node_set_attribute (property, "type", type);
-}
-
-static void
 olpc_buddy_info_set_properties (GabbleSvcOLPCBuddyInfo *iface,
                                 GHashTable *properties,
                                 DBusGMethodInvocation *context)
@@ -447,7 +331,8 @@ olpc_buddy_info_set_properties (GabbleSvcOLPCBuddyInfo *iface,
   msg = pubsub_make_publish_msg (NULL, NS_OLPC_BUDDY_PROPS,
       NS_OLPC_BUDDY_PROPS, "properties", &publish);
 
-  g_hash_table_foreach (properties, set_property, publish);
+  lm_message_node_add_children_from_properties (publish, properties,
+      "property");
 
   if (!_gabble_connection_send_with_reply (conn, msg,
         set_properties_reply_cb, NULL, context, NULL))
@@ -470,7 +355,7 @@ olpc_buddy_info_properties_event_handler (GabbleConnection *conn,
   LmMessageNode *node;
 
   node = lm_message_node_find_child (msg->node, "properties");
-  properties = extract_properties (node);
+  properties = lm_message_node_extract_properties (node, "property");
   gabble_svc_olpc_buddy_info_emit_properties_changed (conn, handle,
       properties);
   g_hash_table_destroy (properties);
@@ -1186,7 +1071,8 @@ set_activity_properties (gpointer key,
       properties_node = lm_message_node_add_child (node, "properties", "");
 
       lm_message_node_set_attribute (properties_node, "room", room);
-      g_hash_table_foreach (info->properties, set_property, properties_node);
+      lm_message_node_add_children_from_properties (properties_node,
+          info->properties, "property");
     }
 }
 
@@ -1437,7 +1323,7 @@ update_activities_properties (GabbleConnection *conn,
 
       old_properties = info->properties;
 
-      new_properties = extract_properties (properties_node);
+      new_properties = lm_message_node_extract_properties (properties_node, "property");
 
       if (g_hash_table_size (new_properties) == 0)
         {

@@ -711,14 +711,15 @@ END:
  *
  * Send a Stream Initiation (XEP-0095) request.
  */
-void
+gboolean
 gabble_bytestream_factory_negotiate_stream (GabbleBytestreamFactory *self,
                                             TpHandle peer_handle,
                                             const gchar *profile,
                                             const gchar *stream_id,
                                             LmMessageNode *node,
                                             GabbleBytestreamFactoryNegotiateReplyFunc func,
-                                            gpointer user_data)
+                                            gpointer user_data,
+                                            GError **error)
 {
   GabbleBytestreamFactoryPrivate *priv;
   TpHandleRepoIface *contact_repo;
@@ -727,12 +728,13 @@ gabble_bytestream_factory_negotiate_stream (GabbleBytestreamFactory *self,
   const gchar *jid, *resource;
   gchar *full_jid;
   struct _streaminit_reply_cb_data *data;
+  gboolean result;
 
-  g_return_if_fail (GABBLE_IS_BYTESTREAM_FACTORY (self));
-  g_return_if_fail (peer_handle != 0);
-  g_return_if_fail (profile != NULL);
-  g_return_if_fail (stream_id != NULL);
-  g_return_if_fail (func != NULL);
+  g_assert (GABBLE_IS_BYTESTREAM_FACTORY (self));
+  g_assert (peer_handle != 0);
+  g_assert (profile != NULL);
+  g_assert (stream_id != NULL);
+  g_assert (func != NULL);
 
   priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
   contact_repo = tp_base_connection_get_handles (
@@ -759,10 +761,11 @@ gabble_bytestream_factory_negotiate_stream (GabbleBytestreamFactory *self,
   data->func = func;
   data->user_data = user_data;
 
-  // XXX manage send errors
-  _gabble_connection_send_with_reply (priv->conn, msg,
-      streaminit_reply_cb, G_OBJECT (self), data, NULL);
+  result = _gabble_connection_send_with_reply (priv->conn, msg,
+      streaminit_reply_cb, G_OBJECT (self), data, error);
 
   lm_message_unref (msg);
   g_free (full_jid);
+
+  return result;
 }

@@ -1149,6 +1149,7 @@ gabble_tubes_channel_offer_tube (TpSvcChannelTypeTubes *iface,
   GHashTable *parameters_copied;
   TpTubeState state;
   gchar *stream_id;
+  GError *error = NULL;
 
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
 
@@ -1208,14 +1209,23 @@ gabble_tubes_channel_offer_tube (TpSvcChannelTypeTubes *iface,
       lm_message_node_set_attribute (node, "xmlns", NS_SI_TUBES);
       publish_tube_in_node (node, tube, stream_id);
 
-      gabble_bytestream_factory_negotiate_stream (
+      if (!gabble_bytestream_factory_negotiate_stream (
           priv->conn->bytestream_factory,
           priv->handle,
           NS_SI_TUBES,
           stream_id,
           node,
           bytestream_negotiate_cb,
-          self);
+          self,
+          &error))
+        {
+          dbus_g_method_return_error (context, error);
+
+          g_error_free (error);
+          lm_message_node_unref (node);
+          g_free (stream_id);
+          return;
+        }
 
       lm_message_node_unref (node);
     }

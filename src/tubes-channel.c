@@ -30,7 +30,7 @@
 #include "presence-cache.h"
 #include "namespaces.h"
 #include "util.h"
-#include "base64.h"
+#include "base64.h" // XXX remove ?
 #include "tube-dbus.h"
 #include "bytestream-factory.h"
 
@@ -221,80 +221,6 @@ gabble_tubes_channel_set_property (GObject     *object,
     }
 }
 
-static GHashTable *
-extract_parameters (LmMessageNode *params_node)
-{
-  /* XXX use the code defined in the OLPC branch */
-  GHashTable *parameters;
-
-  parameters = g_hash_table_new_full (g_str_hash, g_str_equal,
-      g_free, (GDestroyNotify) free_gvalue);
-
-  if (params_node)
-    {
-      LmMessageNode *node;
-      for (node = params_node->children; node; node = node->next)
-        {
-          const gchar *name;
-          const gchar *type;
-          const gchar *value;
-          GValue *gvalue;
-
-          if (tp_strdiff (node->name, "parameter"))
-            continue;
-
-          name = lm_message_node_get_attribute (node, "name");
-
-          if (!name)
-            continue;
-
-          type = lm_message_node_get_attribute (node, "type");
-          value = lm_message_node_get_value (node);
-
-          if (type == NULL || 0 == strcmp (type, "bytes"))
-            {
-              GArray *arr;
-              GString *decoded;
-
-              decoded = base64_decode (value);
-
-              if (!decoded)
-                continue;
-
-              arr = g_array_new (FALSE, FALSE, sizeof (guchar));
-              g_array_append_vals (arr, decoded->str, decoded->len);
-              gvalue = g_slice_new0 (GValue);
-              g_value_init (gvalue, DBUS_TYPE_G_UCHAR_ARRAY);
-              g_value_set_boxed (gvalue, arr);
-              g_hash_table_insert (parameters, g_strdup (name), gvalue);
-            }
-          else if (0 == strcmp (type, "str"))
-            {
-              gvalue = g_slice_new0 (GValue);
-              g_value_init (gvalue, G_TYPE_STRING);
-              g_value_set_string (gvalue, value);
-              g_hash_table_insert (parameters, g_strdup (name), gvalue);
-            }
-          else if (0 == strcmp (type, "int"))
-            {
-              gvalue = g_slice_new0 (GValue);
-              g_value_init (gvalue, G_TYPE_INT);
-              g_value_set_int (gvalue, atoi (value));
-              g_hash_table_insert (parameters, g_strdup (name), gvalue);
-            }
-          else if (0 == strcmp (type, "uint"))
-            {
-              gvalue = g_slice_new0 (GValue);
-              g_value_init (gvalue, G_TYPE_UINT);
-              g_value_set_int (gvalue, atoi (value));
-              g_hash_table_insert (parameters, g_strdup (name), gvalue);
-            }
-        }
-    }
-
-  return parameters;
-}
-
 static void
 add_yourself_in_dbus_names (GabbleTubesChannel *self,
                             GabbleTubeDBus *tube)
@@ -432,7 +358,7 @@ extract_tube_information (GabbleTubesChannel *self,
       LmMessageNode *node;
 
       node = lm_message_node_get_child (tube_node, "parameters");
-      *parameters = extract_parameters (node);
+      *parameters = lm_message_node_extract_properties (node, "parameter");
     }
 
   return TRUE;
@@ -816,87 +742,6 @@ copy_parameter (gpointer key,
 }
 
 static void
-set_parameter (gpointer key,
-               gpointer value,
-               gpointer user_data)
-{
-  /* XXX use the code defined in the OLPC branch */
-  GValue *gvalue = value;
-  LmMessageNode *parameters_node = (LmMessageNode*) user_data;
-  LmMessageNode *parameter;
-  const gchar *type = NULL;
-
-  if (G_VALUE_TYPE (gvalue) == G_TYPE_STRING)
-    {
-      type = "str";
-    }
-  else if (G_VALUE_TYPE (gvalue) == DBUS_TYPE_G_UCHAR_ARRAY)
-    {
-      type = "bytes";
-    }
-  else if (G_VALUE_TYPE (gvalue) == G_TYPE_INT)
-    {
-      type = "int";
-    }
-  else if (G_VALUE_TYPE (gvalue) == G_TYPE_UINT)
-    {
-      type = "uint";
-    }
-  else
-    {
-      /* a type we don't know how to handle: ignore it */
-      return;
-    }
-
-  parameter = lm_message_node_add_child (parameters_node,
-      "parameter", NULL);
-
-  if (G_VALUE_TYPE (gvalue) == G_TYPE_STRING)
-    {
-      lm_message_node_set_value (parameter,
-        g_value_get_string (gvalue));
-    }
-  else if (G_VALUE_TYPE (gvalue) == DBUS_TYPE_G_UCHAR_ARRAY)
-    {
-      GArray *arr;
-      gchar *str;
-
-      arr = g_value_get_boxed (gvalue);
-      str = base64_encode (arr->len, arr->data);
-      lm_message_node_set_value (parameter, str);
-      g_free (str);
-    }
-  else if (G_VALUE_TYPE (gvalue) == G_TYPE_INT)
-    {
-      gchar *str;
-
-      str = g_strdup_printf ("%d", g_value_get_int (gvalue));
-      lm_message_node_set_value (parameter, str);
-
-      g_free (str);
-    }
-  else if (G_VALUE_TYPE (gvalue) == G_TYPE_UINT)
-    {
-      gchar *str;
-
-      str = g_strdup_printf ("%d", g_value_get_uint (gvalue));
-      lm_message_node_set_value (parameter, str);
-
-      g_free (str);
-    }
-  else
-    {
-      g_debug ("property with unknown type \"%s\"", g_type_name
-          (G_VALUE_TYPE (gvalue)));
-    }
-
-  lm_message_node_set_attributes (parameter,
-      "name", key,
-      "type", type,
-      NULL);
-}
-
-static void
 publish_tube_in_node (LmMessageNode *node,
                       GabbleTubeDBus *tube,
                       const gchar *stream_id)
@@ -937,7 +782,8 @@ publish_tube_in_node (LmMessageNode *node,
 
   parameters_node = lm_message_node_add_child (node, "parameters",
       NULL);
-  g_hash_table_foreach (parameters, set_parameter, parameters_node);
+  lm_message_node_add_children_from_properties (parameters_node, parameters,
+      "parameter");
 
   g_free (service);
   g_hash_table_unref (parameters);

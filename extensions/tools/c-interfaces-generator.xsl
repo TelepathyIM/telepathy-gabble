@@ -27,11 +27,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
   <xsl:variable name="lower" select="'abcdefghijklmnopqrstuvwxyz'"/>
 
   <xsl:template match="interface">
-    <xsl:text>/**&#10; * TP_IFACE_</xsl:text>
+    <xsl:text>/**&#10; * GABBLE_IFACE_</xsl:text>
     <xsl:value-of select="translate(../@name, concat($lower, '/'), $upper)"/>
     <xsl:text>:&#10; * &#10; * The Telepathy interface name "</xsl:text>
     <xsl:value-of select="@name"/>
-    <xsl:text>"&#10; */&#10;#define TP_IFACE_</xsl:text>
+    <xsl:text>"&#10; */&#10;#define GABBLE_IFACE_</xsl:text>
     <xsl:value-of select="translate(../@name, concat($lower, '/'), $upper)"/>
     <xsl:text> \&#10;"</xsl:text>
     <xsl:value-of select="@name"/>

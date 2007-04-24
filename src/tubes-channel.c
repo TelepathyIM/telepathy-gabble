@@ -1096,8 +1096,8 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
 
   if (node == NULL)
     {
-      // XXX decline/destroy bytestream
       NODE_DEBUG (msg->node, "got a SI request without a tube field");
+      gabble_bytestream_ibb_close (bytestream);
       return;
     }
 
@@ -1105,22 +1105,22 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
 
   if (stream_id == NULL)
     {
-      // XXX decline/destroy bytestream
       NODE_DEBUG (msg->node, "got a SI request without stream ID");
+      gabble_bytestream_ibb_close (bytestream);
       return;
     }
 
   if (g_hash_table_lookup (priv->stream_id_to_tube_id, stream_id) != NULL)
     {
-      // XXX decline/destroy bytestream
       DEBUG ("we already have a tube using this stream id: %s", stream_id);
+      gabble_bytestream_ibb_close (bytestream);
       return;
     }
 
   if (!extract_tube_information (self, node, &type, NULL,
               &service, &parameters))
     {
-      // XXX decline/destroy bytestream
+      gabble_bytestream_ibb_close (bytestream);
       return;
     }
 

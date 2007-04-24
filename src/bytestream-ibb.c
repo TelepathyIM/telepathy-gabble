@@ -405,6 +405,14 @@ gabble_bytestream_ibb_close (GabbleBytestreamIBB *self)
       priv->open = FALSE;
       g_signal_emit (G_OBJECT (self), signals[CLOSED], 0);
     }
+  else
+    {
+      if (priv->peer_resource != NULL && priv->stream_init_id != NULL)
+        {
+          /* Bytestream was not open so we decline the SI request */
+          gabble_bytestream_ibb_decline (self);
+        }
+    }
 }
 
 gboolean

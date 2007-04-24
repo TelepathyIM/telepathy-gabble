@@ -2,7 +2,7 @@
 
 fail=0
 
-if grep -n ' $$' "$@"
+if grep -n ' $' "$@"
 then
   echo "^^^ The above files contain unwanted trailing spaces"
   fail=1

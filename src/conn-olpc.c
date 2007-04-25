@@ -17,6 +17,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include "conn-olpc.h"
+
 #include <string.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_OLPC
@@ -28,8 +30,6 @@
 #include "namespaces.h"
 #include "pubsub.h"
 #include "util.h"
-
-#include "conn-olpc.h"
 
 #define ACTIVITY_PAIR_TYPE \
     dbus_g_type_get_struct ("GValueArray", G_TYPE_STRING, G_TYPE_UINT, \

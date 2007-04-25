@@ -37,26 +37,16 @@ struct _GabblePubsubEventHandler
 };
 
 gboolean
-gabble_pubsub_event_handler (
-    GabbleConnection *conn,
-    LmMessage *msg,
+gabble_pubsub_event_handler (GabbleConnection *conn, LmMessage *msg,
     TpHandle handle);
 
 gboolean
-pubsub_query (
-    GabbleConnection *conn,
-    const gchar *jid,
-    const gchar *ns,
-    GabbleConnectionMsgReplyFunc reply_func,
-    gpointer user_data);
+pubsub_query (GabbleConnection *conn, const gchar *jid, const gchar *ns,
+    GabbleConnectionMsgReplyFunc reply_func, gpointer user_data);
 
 LmMessage *
-pubsub_make_publish_msg (
-    const gchar *to,
-    const gchar *node_name,
-    const gchar *item_ns,
-    const gchar *item_name,
-    LmMessageNode **node);
+pubsub_make_publish_msg (const gchar *to, const gchar *node_name,
+    const gchar *item_ns, const gchar *item_name, LmMessageNode **node);
 
 LmHandlerResult
 pubsub_msg_event_cb (LmMessageHandler *handler, LmConnection *connection,

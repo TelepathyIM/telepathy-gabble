@@ -670,7 +670,7 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
           DEBUG ("Invalid room handle");
           dbus_g_method_return_error (context, error);
 
-          /* We have to unref information previoulsy
+          /* We have to unref information previously
            * refed in this loop */
           g_slist_foreach (activities_list,
               (GFunc) decrement_contacts_activities_list_foreach, conn);
@@ -704,7 +704,7 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
               DEBUG ("activity already added: %s", room);
               dbus_g_method_return_error (context, error);
 
-              /* We have to unref information previoulsy
+              /* We have to unref information previously
                * refed in this loop */
               g_slist_foreach (activities_list,
                   (GFunc) decrement_contacts_activities_list_foreach, conn);

@@ -127,3 +127,57 @@ pubsub_make_publish_msg (
       ')',
     ')', NULL);
 }
+
+/**
+ * pubsub_msg_event_cb
+ *
+ * Called by loudmouth when we get an incoming <message>. This handler handles
+ * pubsub events.
+ */
+LmHandlerResult
+pubsub_msg_event_cb (LmMessageHandler *handler,
+                 LmConnection *connection,
+                 LmMessage *message,
+                 gpointer user_data)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)conn, TP_HANDLE_TYPE_CONTACT);
+  LmMessageNode *node;
+  TpHandle handle;
+  const gchar *event_ns, *from;
+
+  node = lm_message_node_get_child (message->node, "event");
+
+  if (node)
+    {
+      event_ns = lm_message_node_get_attribute (node, "xmlns");
+    }
+  else
+    {
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    }
+
+  if (event_ns == NULL || !g_str_has_prefix (event_ns, NS_PUBSUB))
+    {
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    }
+
+  from = lm_message_node_get_attribute (message->node, "from");
+  if (from == NULL)
+    {
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    }
+
+  handle = tp_handle_ensure (contact_repo, from, NULL, NULL);
+  if (handle == 0)
+    {
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    }
+
+  gabble_pubsub_event_handler (conn, message, handle);
+
+  tp_handle_unref (contact_repo, handle);
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}

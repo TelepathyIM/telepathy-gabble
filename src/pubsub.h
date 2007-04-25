@@ -58,6 +58,11 @@ pubsub_make_publish_msg (
     const gchar *item_name,
     LmMessageNode **node);
 
+LmHandlerResult
+pubsub_msg_event_cb (LmMessageHandler *handler, LmConnection *connection,
+    LmMessage *message, gpointer user_data);
+
+
 G_END_DECLS
 
 #endif /* __PUBSUB_H__ */

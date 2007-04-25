@@ -34,7 +34,6 @@ static const Feature self_advertised_features[] =
   { VERSION, NS_CHAT_STATES, PRESENCE_CAP_CHAT_STATES},
   { VERSION, NS_NICK, 0},
   { VERSION, NS_NICK "+notify", 0},
-
   { VERSION, NS_OLPC_BUDDY_PROPS, 0},
   { VERSION, NS_OLPC_BUDDY_PROPS "+notify", 0},
   { VERSION, NS_OLPC_ACTIVITIES, 0},

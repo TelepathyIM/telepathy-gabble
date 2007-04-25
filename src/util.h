@@ -51,4 +51,11 @@ gchar *gabble_normalize_contact (TpHandleRepoIface *repo, const gchar *jid,
 gchar *gabble_normalize_room (TpHandleRepoIface *repo, const gchar *jid,
     gpointer context, GError **error);
 
+GHashTable *lm_message_node_extract_properties (LmMessageNode *node,
+    const gchar *prop);
+void
+lm_message_node_add_children_from_properties (LmMessageNode *node,
+    GHashTable *properties, const gchar *prop);
+
+
 #endif /* __GABBLE_UTIL_H__ */

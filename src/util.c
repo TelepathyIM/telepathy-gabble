@@ -27,12 +27,14 @@
 #include <glib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include <telepathy-glib/handle-repo-dynamic.h>
 
 #include "sha1/sha1.h"
 #include "namespaces.h"
 #include "gabble-connection.h"
+#include "base64.h"
 
 #define DEBUG_FLAG GABBLE_DEBUG_JID
 #include "debug.h"
@@ -488,4 +490,220 @@ OUT:
   g_free (server);
   g_free (resource);
   return ret;
+}
+
+/**
+ * lm_message_node_extract_properties
+ *
+ * Map a XML node to a properties hash table
+ * (used to parse a subset of the OLPC and tubes protocol)
+ *
+ * Example:
+ *
+ * <node>
+ *   <prop name="prop1" type="str">prop1_value</prop>
+ *   <prop name="prop2" type="uint">7</prop>
+ * </node>
+ *
+ * lm_message_node_extract_properties (node, "prop");
+ *
+ * --> { "prop1" : "prop1_value", "prop2" : 7 }
+ *
+ * Returns a hash table mapping names to GValue of the specified type.
+ * Valid types are: str, int, uint, bytes.
+ *
+ */
+GHashTable *
+lm_message_node_extract_properties (LmMessageNode *node,
+                                    const gchar *prop)
+{
+  GHashTable *properties;
+  LmMessageNode *child;
+
+  properties = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
+      (GDestroyNotify) tp_g_value_slice_free);
+
+  if (node == NULL)
+    return properties;
+
+  for (child = node->children; child; child = child->next)
+    {
+      const gchar *name;
+      const gchar *type;
+      const gchar *value;
+      GValue *gvalue;
+
+      if (0 != strcmp (child->name, prop))
+        continue;
+
+      name = lm_message_node_get_attribute (child, "name");
+
+      if (!name)
+        continue;
+
+      type = lm_message_node_get_attribute (child, "type");
+      value = lm_message_node_get_value (child);
+
+      if (type == NULL || value == NULL)
+        continue;
+
+      if (0 == strcmp (type, "bytes"))
+        {
+          GArray *arr;
+          GString *decoded;
+
+          decoded = base64_decode (value);
+          if (!decoded)
+            continue;
+
+          arr = g_array_new (FALSE, FALSE, sizeof (guchar));
+          g_array_append_vals (arr, decoded->str, decoded->len);
+          gvalue = g_slice_new0 (GValue);
+          g_value_init (gvalue, DBUS_TYPE_G_UCHAR_ARRAY);
+          g_value_take_boxed (gvalue, arr);
+          g_hash_table_insert (properties, g_strdup (name), gvalue);
+          g_string_free (decoded, TRUE);
+        }
+      else if (0 == strcmp (type, "str"))
+        {
+          gvalue = g_slice_new0 (GValue);
+          g_value_init (gvalue, G_TYPE_STRING);
+          g_value_set_string (gvalue, value);
+          g_hash_table_insert (properties, g_strdup (name), gvalue);
+        }
+      else if (0 == strcmp (type, "int"))
+        {
+          gvalue = g_slice_new0 (GValue);
+          g_value_init (gvalue, G_TYPE_INT);
+          g_value_set_int (gvalue, atoi (value));
+          g_hash_table_insert (properties, g_strdup (name), gvalue);
+        }
+      else if (0 == strcmp (type, "uint"))
+        {
+          gvalue = g_slice_new0 (GValue);
+          g_value_init (gvalue, G_TYPE_UINT);
+          g_value_set_int (gvalue, atoi (value));
+          g_hash_table_insert (properties, g_strdup (name), gvalue);
+        }
+    }
+
+  return properties;
+}
+
+struct _set_child_from_property_data
+{
+  LmMessageNode *node;
+  const gchar *prop;
+};
+
+static void
+set_child_from_property (gpointer key,
+                         gpointer value,
+                         gpointer user_data)
+{
+  GValue *gvalue = value;
+  struct _set_child_from_property_data *data =
+    (struct _set_child_from_property_data *) user_data;
+  LmMessageNode *child;
+  const char *type = NULL;
+
+  if (G_VALUE_TYPE (gvalue) == G_TYPE_STRING)
+    {
+      type = "str";
+    }
+  else if (G_VALUE_TYPE (gvalue) == DBUS_TYPE_G_UCHAR_ARRAY)
+    {
+      type = "bytes";
+    }
+  else if (G_VALUE_TYPE (gvalue) == G_TYPE_INT)
+    {
+      type = "int";
+    }
+  else if (G_VALUE_TYPE (gvalue) == G_TYPE_UINT)
+    {
+      type = "uint";
+    }
+  else
+    {
+      /* a type we don't know how to handle: ignore it */
+      g_debug ("property with unknown type \"%s\"",
+          g_type_name (G_VALUE_TYPE (gvalue)));
+      return;
+    }
+
+  child = lm_message_node_add_child (data->node, data->prop, "");
+
+  if (G_VALUE_TYPE (gvalue) == G_TYPE_STRING)
+    {
+      lm_message_node_set_value (child,
+        g_value_get_string (gvalue));
+    }
+  else if (G_VALUE_TYPE (gvalue) == DBUS_TYPE_G_UCHAR_ARRAY)
+    {
+      GArray *arr;
+      gchar *str;
+
+      type = "bytes";
+      arr = g_value_get_boxed (gvalue);
+      str = base64_encode (arr->len, arr->data);
+      lm_message_node_set_value (child, str);
+
+      g_free (str);
+    }
+  else if (G_VALUE_TYPE (gvalue) == G_TYPE_INT)
+    {
+      gchar *str;
+
+      str = g_strdup_printf ("%d", g_value_get_int (gvalue));
+      lm_message_node_set_value (child, str);
+
+      g_free (str);
+    }
+  else if (G_VALUE_TYPE (gvalue) == G_TYPE_UINT)
+    {
+      gchar *str;
+
+      str = g_strdup_printf ("%d", g_value_get_uint (gvalue));
+      lm_message_node_set_value (child, str);
+
+      g_free (str);
+    }
+  else
+    {
+      g_assert_not_reached ();
+    }
+
+  lm_message_node_set_attribute (child, "name", key);
+  lm_message_node_set_attribute (child, "type", type);
+}
+
+/**
+ *
+ * lm_message_node_set_children_from_properties
+ *
+ * Map a properties hash table to a XML node.
+ *
+ * Example:
+ *
+ * properties = { "prop1" : "prop1_value", "prop2" : 7 }
+ *
+ * lm_message_node_add_children_from_properties (node, properties, "prop");
+ *
+ * --> <node>
+ *       <prop name="prop1" type="str">prop1_value</prop>
+ *       <prop name="prop2" type="uint">7</prop>
+ *     </node>
+ *
+ */
+void
+lm_message_node_add_children_from_properties (LmMessageNode *node,
+                                              GHashTable *properties,
+                                              const gchar *prop)
+{
+  struct _set_child_from_property_data data;
+
+  data.node = node;
+  data.prop = prop;
+
+  g_hash_table_foreach (properties, set_child_from_property, &data);
 }

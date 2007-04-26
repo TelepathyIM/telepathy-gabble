@@ -29,6 +29,12 @@
 
 #include "gabble-types.h"
 #include "gabble-error.h"
+#include <telepathy-glib/base-connection.h>
+#include <telepathy-glib/presence-mixin.h>
+
+#ifdef HAVE_DBUS_TUBE
+#include "tubes-factory.h"
+#endif
 
 G_BEGIN_DECLS
 
@@ -111,6 +117,9 @@ struct _GabbleConnection {
     /* DISCO! */
     GabbleDisco *disco;
 
+    /* MUC factory */
+    GabbleMucFactory *muc_factory;
+
     /* connection feature flags */
     GabbleConnectionFeatures features;
 
@@ -128,6 +137,14 @@ struct _GabbleConnection {
     /* OLPC hash tables */
     GHashTable *olpc_activities_info;
     GHashTable *olpc_contacts_activities;
+
+    /* bytestream factory */
+    GabbleBytestreamFactory *bytestream_factory;
+
+#ifdef HAVE_DBUS_TUBE
+    /* tubes factory */
+    GabbleTubesFactory *tubes_factory;
+#endif
 
     gpointer priv;
 };

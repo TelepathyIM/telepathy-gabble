@@ -70,6 +70,8 @@
 #include "gabble-media-channel.h"
 #include "gabble-roomlist-channel.h"
 
+#define GABBLE_TP_ALIAS_PAIR_TYPE (dbus_g_type_get_struct ("GValueArray", \
+      G_TYPE_UINT, G_TYPE_STRING, G_TYPE_INVALID))
 #define GABBLE_TP_CAPABILITY_PAIR_TYPE (dbus_g_type_get_struct ("GValueArray", \
       G_TYPE_STRING, G_TYPE_UINT, G_TYPE_INVALID))
 #define GABBLE_TP_CAPABILITIES_CHANGED_MONSTER_TYPE (dbus_g_type_get_struct \
@@ -197,10 +199,9 @@ _gabble_connection_create_channel_factories (TpBaseConnection *conn)
 
   g_ptr_array_add (channel_factories, self->roster);
 
-  g_ptr_array_add (channel_factories,
-                   g_object_new (GABBLE_TYPE_MUC_FACTORY,
-                                 "connection", self,
-                                 NULL));
+  self->muc_factory = g_object_new (GABBLE_TYPE_MUC_FACTORY, "connection",
+      self, NULL);
+  g_ptr_array_add (channel_factories, self->muc_factory);
 
   g_ptr_array_add (channel_factories,
                    g_object_new (GABBLE_TYPE_MEDIA_FACTORY,
@@ -211,6 +212,11 @@ _gabble_connection_create_channel_factories (TpBaseConnection *conn)
                    g_object_new (GABBLE_TYPE_IM_FACTORY,
                                  "connection", self,
                                  NULL));
+
+#ifdef HAVE_DBUS_TUBE
+  self->tubes_factory = gabble_tubes_factory_new (self);
+  g_ptr_array_add (channel_factories, self->tubes_factory);
+#endif
 
   return channel_factories;
 }
@@ -243,6 +249,8 @@ gabble_connection_constructor (GType type,
   conn_avatars_init (self);
   conn_presence_init (self);
   conn_olpc_activity_properties_init (self);
+
+  self->bytestream_factory = gabble_bytestream_factory_new (self);
 
   return (GObject *)self;
 }
@@ -713,6 +721,12 @@ gabble_connection_dispose (GObject *object)
   g_assert ((base->status == TP_CONNECTION_STATUS_DISCONNECTED) ||
             (base->status == TP_INTERNAL_CONNECTION_STATUS_NEW));
   g_assert (base->self_handle == 0);
+
+  g_object_unref (self->vcard_manager);
+  self->vcard_manager = NULL;
+
+  /* unreffing channel factories frees the roster */
+  self->roster = NULL;
 
   g_object_unref (self->disco);
   self->disco = NULL;

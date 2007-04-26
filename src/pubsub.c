@@ -45,7 +45,7 @@ gabble_pubsub_event_handler (GabbleConnection *conn, LmMessage *msg,
   LmMessageNode *item_node;
   const gchar *event_ns;
 
-  item_node = lm_message_node_find_child (msg->node, "item"); 
+  item_node = lm_message_node_find_child (msg->node, "item");
   if (item_node == NULL)
     {
       return FALSE;
@@ -56,7 +56,7 @@ gabble_pubsub_event_handler (GabbleConnection *conn, LmMessage *msg,
       return FALSE;
     }
 
-  /* 
+  /*
    * the namespace of the item is that of the first child of the <item> node
    */
   event_ns = lm_message_node_get_attribute (item_node->children, "xmlns");

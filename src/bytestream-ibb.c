@@ -322,7 +322,6 @@ send_data_to (GabbleBytestreamIBB *self,
 {
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
   LmMessage *msg;
-  LmMessageNode *node, *amp;
   gchar *seq, *encoded;
   gboolean ret;
 
@@ -336,36 +335,30 @@ send_data_to (GabbleBytestreamIBB *self,
 
   encoded = base64_encode (len, str);
 
-  msg = lm_message_new (to, LM_MESSAGE_TYPE_MESSAGE);
+  msg = lm_message_build (to, LM_MESSAGE_TYPE_MESSAGE,
+      '(', "data", encoded,
+        '@', "xmlns", NS_IBB,
+        '@', "sid", priv->stream_id,
+        '@', "seq", seq,
+      ')',
+      '(', "amp", "",
+        '@', "xmlns", NS_AMP,
+        '(', "rule", "",
+          '@', "condition", "deliver-at",
+          '@', "value", "stored",
+          '@', "action", "error",
+        ')',
+        '(', "rule", "",
+          '@', "condition", "match-resource",
+          '@', "value", "exact",
+          '@', "action", "error",
+        ')',
+      ')', NULL);
 
   if (groupchat)
     {
       lm_message_node_set_attribute (msg->node, "type", "groupchat");
     }
-
-  node = lm_message_node_add_child (msg->node, "data", encoded);
-  lm_message_node_set_attributes (node,
-      "xmlns", NS_IBB,
-      "sid", priv->stream_id,
-      "seq", seq,
-      NULL);
-
-  amp = lm_message_node_add_child (msg->node, "amp", NULL);
-  lm_message_node_set_attribute (amp, "xmlns", NS_AMP);
-
-  node = lm_message_node_add_child (amp, "rule", NULL);
-  lm_message_node_set_attributes (node,
-      "condition", "deliver-at",
-      "value", "stored",
-      "action", "error",
-      NULL);
-
-  node = lm_message_node_add_child (amp, "rule", NULL);
-  lm_message_node_set_attributes (node,
-      "condition", "match-resource",
-      "value", "exact",
-      "action", "error",
-      NULL);
 
   ret = _gabble_connection_send (priv->conn, msg, NULL);
 
@@ -374,7 +367,6 @@ send_data_to (GabbleBytestreamIBB *self,
   g_free (seq);
 
   return ret;
-
 }
 
 gboolean

@@ -351,41 +351,29 @@ gabble_bytestream_factory_make_stream_init_message (const gchar *full_jid,
                                                     const gchar *stream_id,
                                                     const gchar *profile)
 {
-  LmMessage *msg;
-  LmMessageNode *lm_node;
-  LmMessageNode *field;
-
-  msg = lm_message_new_with_sub_type (full_jid, LM_MESSAGE_TYPE_IQ,
-                                           LM_MESSAGE_SUB_TYPE_SET);
-
-  lm_node = lm_message_node_add_child (msg->node, "si", NULL);
-  lm_message_node_set_attributes (lm_node,
-      "xmlns", NS_SI,
-      "id", stream_id,
-      "profile", profile,
-      "mime-type", "binary/octect-stream",
-      NULL);
-
-  lm_node = lm_message_node_add_child (lm_node, "feature", NULL);
-  lm_message_node_set_attribute (lm_node, "xmlns", NS_FEATURENEG);
-
-  lm_node = lm_message_node_add_child (lm_node, "x", NULL);
-  lm_message_node_set_attributes (lm_node,
-      "xmlns", NS_DATA,
-      "type", "form",
-      NULL);
-
-  field = lm_message_node_add_child (lm_node, "field", NULL);
-  lm_message_node_set_attributes (field,
-      "var", "stream-method",
-      "type", "list-single",
-      NULL);
-
-  /* Available bytestream methods: */
-  lm_node = lm_message_node_add_child (field, "option", NULL);
-  lm_message_node_add_child (lm_node, "value", NS_IBB);
-
-  return msg;
+  return lm_message_build (full_jid, LM_MESSAGE_TYPE_IQ,
+      '@', "type", "set",
+      '(', "si", "",
+        '@', "xmlns", NS_SI,
+        '@', "id", stream_id,
+        '@', "profile", profile,
+        '@', "mime-type", "binary/octect-stream",
+        '(', "feature", "",
+          '@', "xmlns", NS_FEATURENEG,
+          '(', "x", "",
+            '@', "xmlns", NS_DATA,
+            '@', "type", "form",
+            '(', "field", "",
+              '@', "var", "stream-method",
+              '@', "type", "list-single",
+              '(', "option", "",
+                '(', "value", NS_IBB,
+                ')',
+              ')',
+            ')',
+          ')',
+        ')',
+      ')', NULL);
 }
 
 /**

@@ -62,15 +62,16 @@ typedef void (* GabbleBytestreamFactoryNegotiateReplyFunc) (
     GabbleBytestreamIBB *bytestream, const gchar *stream_id, LmMessage *msg,
     gpointer user_data);
 
-GabbleBytestreamFactory* gabble_bytestream_factory_new (
-    GabbleConnection *conn);
+GabbleBytestreamFactory *
+gabble_bytestream_factory_new (GabbleConnection *conn);
 
-GabbleBytestreamIBB* gabble_bytestream_factory_create_ibb (
-    GabbleBytestreamFactory *fac, TpHandle peer_handle,
-    TpHandleType peer_handle_type, const gchar *stream_id,
-    const gchar *stream_init_id, const gchar *peer_resource, gboolean open);
+GabbleBytestreamIBB *
+gabble_bytestream_factory_create_ibb (GabbleBytestreamFactory *fac, 
+    TpHandle peer_handle, TpHandleType peer_handle_type,
+    const gchar *stream_id, const gchar *stream_init_id,
+    const gchar *peer_resource, gboolean open);
 
-LmMessage*
+LmMessage *
 gabble_bytestream_factory_make_stream_init_message (const gchar *full_jid,
     const gchar *stream_id, const gchar *profile);
 

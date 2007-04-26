@@ -55,8 +55,11 @@ GType gabble_tube_dbus_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_TUBE_DBUS,\
                               GabbleTubeDBusClass))
 
-gchar *gabble_tube_dbus_get_stream_id (GabbleTubeDBus *tube);
-void gabble_tube_dbus_close (GabbleTubeDBus *tube);
+gchar *
+gabble_tube_dbus_get_stream_id (GabbleTubeDBus *tube);
+
+void
+gabble_tube_dbus_close (GabbleTubeDBus *tube);
 
 G_END_DECLS
 

@@ -56,14 +56,24 @@ GType gabble_bytestream_ibb_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_BYTESTREAM_IBB,\
                               GabbleBytestreamIBBClass))
 
-gboolean gabble_bytestream_ibb_send (GabbleBytestreamIBB *ibb, guint len,
+gboolean
+gabble_bytestream_ibb_send (GabbleBytestreamIBB *ibb, guint len,
    gchar *str);
-void gabble_bytestream_ibb_close (GabbleBytestreamIBB *ibb);
-gboolean gabble_bytestream_ibb_receive (GabbleBytestreamIBB *ibb,
+
+void
+gabble_bytestream_ibb_close (GabbleBytestreamIBB *ibb);
+
+gboolean
+gabble_bytestream_ibb_receive (GabbleBytestreamIBB *ibb,
    LmMessage *msg);
-void gabble_bytestream_ibb_close (GabbleBytestreamIBB *ibb);
-void gabble_bytestream_ibb_accept (GabbleBytestreamIBB *ibb);
-gboolean gabble_bytestream_ibb_send_to (GabbleBytestreamIBB *ibb, TpHandle to,
+void
+gabble_bytestream_ibb_close (GabbleBytestreamIBB *ibb);
+
+void
+gabble_bytestream_ibb_accept (GabbleBytestreamIBB *ibb);
+
+gboolean
+gabble_bytestream_ibb_send_to (GabbleBytestreamIBB *ibb, TpHandle to,
    guint len, gchar *str);
 
 G_END_DECLS

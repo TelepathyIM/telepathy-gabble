@@ -59,9 +59,11 @@ GType gabble_tubes_factory_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_TUBES_FACTORY,\
                               GabbleTubesFactoryClass))
 
-GabbleTubesFactory* gabble_tubes_factory_new (GabbleConnection *conn);
+GabbleTubesFactory *
+gabble_tubes_factory_new (GabbleConnection *conn);
 
-void gabble_tubes_factory_handle_request (GabbleTubesFactory *fac,
+void
+gabble_tubes_factory_handle_request (GabbleTubesFactory *fac,
     GabbleBytestreamIBB *bytestream, TpHandle handle, const gchar *stream_id,
     LmMessage *msg);
 

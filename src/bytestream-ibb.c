@@ -497,7 +497,6 @@ gabble_bytestream_ibb_accept (GabbleBytestreamIBB *self)
   TpHandleRepoIface *handles_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, priv->peer_handle_type);
   LmMessage *msg;
-  LmMessageNode *node;
   const gchar *jid;
   gchar *full_jid;
 
@@ -518,26 +517,23 @@ gabble_bytestream_ibb_accept (GabbleBytestreamIBB *self)
   jid = tp_handle_inspect (handles_repo, priv->peer_handle);
   full_jid = g_strdup_printf ("%s/%s", jid, priv->peer_resource);
 
-  msg = lm_message_new_with_sub_type (full_jid, LM_MESSAGE_TYPE_IQ,
-      LM_MESSAGE_SUB_TYPE_RESULT);
-
-  lm_message_node_set_attribute (msg->node, "id", priv->stream_init_id);
-
-  node = lm_message_node_add_child (msg->node, "si", NULL);
-  lm_message_node_set_attribute (node, "xmlns", NS_SI);
-
-  node = lm_message_node_add_child (node, "feature", NULL);
-  lm_message_node_set_attribute (node, "xmlns", NS_FEATURENEG);
-
-  node = lm_message_node_add_child (node, "x", NULL);
-  lm_message_node_set_attributes (node,
-      "xmlns", NS_DATA,
-      "type", "submit",
-      NULL);
-
-  node = lm_message_node_add_child (node, "field", NULL);
-  lm_message_node_set_attribute (node, "var", "stream-method");
-  lm_message_node_add_child (node, "value", NS_IBB);
+  msg = lm_message_build (full_jid, LM_MESSAGE_TYPE_IQ,
+      '@', "type", "result",
+      '@', "id", priv->stream_init_id,
+      '(', "si", "",
+        '@', "xmlns", NS_SI,
+        '(', "feature", "",
+          '@', "xmlns", NS_FEATURENEG,
+          '(', "x", "",
+            '@', "xmlns", NS_DATA,
+            '@', "type", "submit",
+            '(', "field", "",
+              '@', "var", "stream-method",
+              '(', "value", NS_IBB, ')',
+            ')',
+          ')',
+        ')',
+      ')', NULL);
 
   if (_gabble_connection_send (priv->conn, msg, NULL))
     priv->open = TRUE;

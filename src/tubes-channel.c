@@ -1077,7 +1077,6 @@ gabble_tubes_channel_offer_tube (TpSvcChannelTypeTubes *iface,
       if (!gabble_bytestream_factory_negotiate_stream (
           priv->conn->bytestream_factory,
           msg,
-          priv->handle,
           stream_id,
           bytestream_negotiate_cb,
           self,

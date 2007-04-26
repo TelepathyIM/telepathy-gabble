@@ -76,7 +76,7 @@ gabble_bytestream_factory_make_stream_init_message (const gchar *full_jid,
 
 gboolean
 gabble_bytestream_factory_negotiate_stream (GabbleBytestreamFactory *fac,
-    LmMessage *msg, TpHandle peer_handle, const gchar *stream_id,
+    LmMessage *msg, const gchar *stream_id,
     GabbleBytestreamFactoryNegotiateReplyFunc func,
     gpointer user_data, GError **error);
 

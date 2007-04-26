@@ -586,7 +586,6 @@ gabble_bytestream_factory_create_ibb (GabbleBytestreamFactory *self,
 struct _streaminit_reply_cb_data
 {
   gchar *stream_id;
-  TpHandle peer_handle;
   GabbleBytestreamFactoryNegotiateReplyFunc func;
   gpointer user_data;
 };
@@ -606,6 +605,9 @@ streaminit_reply_cb (GabbleConnection *conn,
   gchar *peer_resource = NULL;
   LmMessageNode *si, *feature, *x, *field, *value;
   const gchar *from, *stream_method;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
+  TpHandle peer_handle = 0;
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
@@ -622,6 +624,8 @@ streaminit_reply_cb (GabbleConnection *conn,
       NODE_DEBUG (reply_msg->node, "got a message without a from field");
       goto END;
     }
+
+  peer_handle = tp_handle_ensure (contact_repo, from, NULL, NULL);
 
   gabble_decode_jid (from, NULL, NULL, &peer_resource);
 
@@ -680,7 +684,7 @@ streaminit_reply_cb (GabbleConnection *conn,
     {
       /* Remote user have accepted the stream so it's
        * open */
-      ibb = gabble_bytestream_factory_create_ibb (self, data->peer_handle,
+      ibb = gabble_bytestream_factory_create_ibb (self, peer_handle,
           TP_HANDLE_TYPE_CONTACT, data->stream_id, NULL,
           peer_resource, TRUE);
     }
@@ -692,6 +696,8 @@ END:
   if (peer_resource != NULL)
     g_free (peer_resource);
 
+  if (peer_handle != 0)
+    tp_handle_unref (contact_repo, peer_handle);
   g_free (data->stream_id);
   g_slice_free (struct _streaminit_reply_cb_data, data);
 
@@ -703,7 +709,6 @@ END:
  *
  * @msg: the SI negotiation msg (created using
  * gabble_bytestream_factory_make_stream_init_message)
- * @peer_handle: the handle of the contact to who you want to send the request
  * @stream_id: the stream identifier
  * @func: the callback to call when we receive the answser of the request
  * @user_data: user data to pass to the callback
@@ -714,7 +719,6 @@ END:
 gboolean
 gabble_bytestream_factory_negotiate_stream (GabbleBytestreamFactory *self,
                                             LmMessage *msg,
-                                            TpHandle peer_handle,
                                             const gchar *stream_id,
                                             GabbleBytestreamFactoryNegotiateReplyFunc func,
                                             gpointer user_data,
@@ -725,7 +729,6 @@ gabble_bytestream_factory_negotiate_stream (GabbleBytestreamFactory *self,
   gboolean result;
 
   g_assert (GABBLE_IS_BYTESTREAM_FACTORY (self));
-  g_assert (peer_handle != 0);
   g_assert (stream_id != NULL);
   g_assert (func != NULL);
 
@@ -733,7 +736,6 @@ gabble_bytestream_factory_negotiate_stream (GabbleBytestreamFactory *self,
 
   data = g_slice_new (struct _streaminit_reply_cb_data);
   data->stream_id = g_strdup (stream_id);
-  data->peer_handle = peer_handle;
   data->func = func;
   data->user_data = user_data;
 

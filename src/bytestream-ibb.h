@@ -63,7 +63,6 @@ gboolean gabble_bytestream_ibb_receive (GabbleBytestreamIBB *ibb,
    LmMessage *msg);
 void gabble_bytestream_ibb_close (GabbleBytestreamIBB *ibb);
 void gabble_bytestream_ibb_accept (GabbleBytestreamIBB *ibb);
-void gabble_bytestream_ibb_decline (GabbleBytestreamIBB *ibb);
 gboolean gabble_bytestream_ibb_send_to (GabbleBytestreamIBB *ibb, TpHandle to,
    guint len, gchar *str);
 

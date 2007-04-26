@@ -386,27 +386,6 @@ gabble_bytestream_ibb_send (GabbleBytestreamIBB *self,
   return send_data_to (self, to, groupchat, len, str);
 }
 
-void
-gabble_bytestream_ibb_close (GabbleBytestreamIBB *self)
-{
-  GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
-
-  if (priv->open)
-    {
-      /* XXX : send (and catch somewhere) IBB close message */
-      priv->open = FALSE;
-      g_signal_emit (G_OBJECT (self), signals[CLOSED], 0);
-    }
-  else
-    {
-      if (priv->peer_resource != NULL && priv->stream_init_id != NULL)
-        {
-          /* Bytestream was not open so we decline the SI request */
-          gabble_bytestream_ibb_decline (self);
-        }
-    }
-}
-
 gboolean
 gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
                                LmMessage *msg)
@@ -546,7 +525,7 @@ gabble_bytestream_ibb_accept (GabbleBytestreamIBB *self)
   g_free (full_jid);
 }
 
-void
+static void
 gabble_bytestream_ibb_decline (GabbleBytestreamIBB *self)
 {
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
@@ -589,8 +568,30 @@ gabble_bytestream_ibb_decline (GabbleBytestreamIBB *self)
 
   _gabble_connection_send (priv->conn, msg, NULL);
 
+  priv->open = FALSE;
   lm_message_unref (msg);
   g_free (full_jid);
+}
+
+void
+gabble_bytestream_ibb_close (GabbleBytestreamIBB *self)
+{
+  GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
+
+  if (priv->open)
+    {
+      /* XXX : send (and catch somewhere) IBB close message */
+      priv->open = FALSE;
+      g_signal_emit (G_OBJECT (self), signals[CLOSED], 0);
+    }
+  else
+    {
+      if (priv->peer_resource != NULL && priv->stream_init_id != NULL)
+        {
+          /* Bytestream was not open so we decline the SI request */
+          gabble_bytestream_ibb_decline (self);
+        }
+    }
 }
 
 gboolean

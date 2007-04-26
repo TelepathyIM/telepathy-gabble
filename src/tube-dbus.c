@@ -666,13 +666,6 @@ gabble_tube_dbus_close (GabbleTubeDBus *self)
 {
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
 
-  if (priv->state == TP_TUBE_STATE_LOCAL_PENDING)
-    {
-      gabble_bytestream_ibb_decline (priv->bytestream);
-    }
-  else
-    {
-      gabble_bytestream_ibb_close (priv->bytestream);
-      priv->bytestream = NULL;
-    }
+  gabble_bytestream_ibb_close (priv->bytestream);
+  priv->bytestream = NULL;
 }

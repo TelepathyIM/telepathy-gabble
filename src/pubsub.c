@@ -88,9 +88,8 @@ pubsub_query (
   LmMessage *msg;
   gboolean ret;
 
-  msg = lm_message_build (NULL, LM_MESSAGE_TYPE_IQ,
+  msg = lm_message_build (jid, LM_MESSAGE_TYPE_IQ,
       '@', "type", "get",
-      '@', "to", jid,
       '(', "pubsub", "",
         '@', "xmlns", NS_PUBSUB,
         '(', "items", "",

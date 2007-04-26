@@ -65,6 +65,10 @@ static GDebugKey keys[] = {
   { "persist",       GABBLE_DEBUG_PERSIST },
   { "vcard",         GABBLE_DEBUG_VCARD },
   { "jid",           GABBLE_DEBUG_JID },
+  { "olpc",          GABBLE_DEBUG_OLPC },
+  { "file-transfer", GABBLE_DEBUG_FILE_TRANSFER },
+  { "bytestream",    GABBLE_DEBUG_BYTESTREAM },
+  { "tubes",         GABBLE_DEBUG_TUBES },
   { 0, },
 };
 

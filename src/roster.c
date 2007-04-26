@@ -1910,7 +1910,7 @@ roster_edited_cb (GabbleConnection *conn,
                   gpointer user_data)
 {
   GabbleRoster *roster = GABBLE_ROSTER (roster_obj);
-  TpHandle contact = GPOINTER_TO_UINT(user_data);
+  TpHandle contact = GPOINTER_TO_UINT (user_data);
   GabbleRosterItem *item = _gabble_roster_item_get (roster, contact);
 
   if (item->unsent_edits)
@@ -1919,7 +1919,7 @@ roster_edited_cb (GabbleConnection *conn,
       roster_item_apply_edits (roster, contact, item);
     }
 
-  return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 GabbleRosterSubscription

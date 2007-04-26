@@ -553,7 +553,6 @@ gabble_bytestream_ibb_decline (GabbleBytestreamIBB *self)
   TpHandleRepoIface *handles_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, priv->peer_handle_type);
   LmMessage *msg;
-  LmMessageNode *error_node, *node;
   const gchar *jid;
   gchar *full_jid;
 
@@ -574,22 +573,19 @@ gabble_bytestream_ibb_decline (GabbleBytestreamIBB *self)
   jid = tp_handle_inspect (handles_repo, priv->peer_handle);
   full_jid = g_strdup_printf ("%s/%s", jid, priv->peer_resource);
 
-  msg = lm_message_new_with_sub_type (full_jid, LM_MESSAGE_TYPE_IQ,
-      LM_MESSAGE_SUB_TYPE_ERROR);
-
-  lm_message_node_set_attribute (msg->node, "id", priv->stream_init_id);
-
-  error_node = lm_message_node_add_child (msg->node, "error", NULL);
-  lm_message_node_set_attributes (error_node,
-      "code", "403",
-      "type", "cancel",
-      NULL);
-
-  node = lm_message_node_add_child (error_node, "forbidden", NULL);
-  lm_message_node_set_attribute (node, "xmlns", NS_XMPP_STANZAS);
-
-  node = lm_message_node_add_child (error_node, "text", "Offer Declined");
-  lm_message_node_set_attribute (node, "xmlns", NS_XMPP_STANZAS);
+  msg = lm_message_build (full_jid, LM_MESSAGE_TYPE_IQ,
+      '@', "type", "error",
+      '@', "id", priv->stream_init_id,
+      '(', "error", "",
+        '@', "code", "403",
+        '@', "type", "cancel",
+        '(', "forbidden", "",
+          '@', "xmlns", NS_XMPP_STANZAS,
+        ')',
+        '(', "text", "Offer Declined",
+          '@', "xmlns", NS_XMPP_STANZAS,
+        ')',
+      ')', NULL);
 
   _gabble_connection_send (priv->conn, msg, NULL);
 

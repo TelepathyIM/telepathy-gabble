@@ -76,6 +76,10 @@ gabble_bytestream_factory_make_stream_init_message (const gchar *full_jid,
     const gchar *stream_id, const gchar *profile);
 
 LmMessage *
+gabble_bytestream_factory_make_accept_message (const gchar *full_jid,
+    const gchar *stream_init_id, const gchar *stream_method);
+
+LmMessage *
 gabble_bytestream_factory_make_decline_message (const gchar *full_jid,
     const gchar *stream_init_id);
 

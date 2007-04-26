@@ -733,7 +733,31 @@ gabble_bytestream_factory_negotiate_stream (GabbleBytestreamFactory *self,
   return result;
 }
 
-LmMessage*
+LmMessage *
+gabble_bytestream_factory_make_accept_message (const gchar *full_jid,
+                                               const gchar *stream_init_id,
+                                               const gchar *stream_method)
+{
+  return lm_message_build (full_jid, LM_MESSAGE_TYPE_IQ,
+      '@', "type", "result",
+      '@', "id", stream_init_id,
+      '(', "si", "",
+        '@', "xmlns", NS_SI,
+        '(', "feature", "",
+          '@', "xmlns", NS_FEATURENEG,
+          '(', "x", "",
+            '@', "xmlns", NS_DATA,
+            '@', "type", "submit",
+            '(', "field", "",
+              '@', "var", "stream-method",
+              '(', "value", stream_method, ')',
+            ')',
+          ')',
+        ')',
+      ')', NULL);
+}
+
+LmMessage *
 gabble_bytestream_factory_make_decline_message (const gchar *full_jid,
                                                 const gchar *stream_init_id)
 {

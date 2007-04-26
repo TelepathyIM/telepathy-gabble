@@ -45,7 +45,7 @@ struct _GabbleTextMixin
 #define GABBLE_TEXT_MIXIN(o) \
   ((GabbleTextMixin *) tp_mixin_offset_cast (o, TP_TEXT_MIXIN_OFFSET (o)))
 
-#define TP_CHANNEL_SEND_NO_ERROR ((TpChannelTextSendError)-1)
+#define GABBLE_TEXT_CHANNEL_SEND_NO_ERROR ((TpChannelTextSendError)-1)
 
 void gabble_text_mixin_init (GObject *obj, glong offset,
     TpHandleRepoIface *contacts_repo, gboolean send_nick);

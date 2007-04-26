@@ -446,7 +446,7 @@ process_muc_invite (GabbleMucFactory *fac,
     return FALSE;
 
   /* FIXME: do something with these? */
-  if (send_error != TP_CHANNEL_SEND_NO_ERROR)
+  if (send_error != GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
     {
       NODE_DEBUG (message->node, "got a MUC invitation message with a send "
           "error; ignoring");
@@ -517,7 +517,7 @@ process_obsolete_invite (GabbleMucFactory *fac,
 
   /* this can only happen if the user sent an obsolete invite with another
    * client or something */
-  if (send_error != TP_CHANNEL_SEND_NO_ERROR)
+  if (send_error != GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
     {
       NODE_DEBUG (message->node, "got an obsolete MUC invitation message with "
           "a send error; ignoring");
@@ -667,7 +667,7 @@ muc_factory_message_cb (LmMessageHandler *handler,
         }
     }
 
-  if (send_error != TP_CHANNEL_SEND_NO_ERROR)
+  if (send_error != GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
     {
       tp_svc_channel_type_text_emit_send_error ((TpSvcChannelTypeText *) chan,
           send_error, stamp, msgtype, body);

@@ -81,7 +81,7 @@ GType gabble_media_stream_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_MEDIA_STREAM, \
                               GabbleMediaStreamClass))
 
-#define TP_TYPE_TRANSPORT_STRUCT (dbus_g_type_get_struct ("GValueArray", \
+#define GABBLE_TP_TYPE_TRANSPORT_STRUCT (dbus_g_type_get_struct ("GValueArray", \
       G_TYPE_UINT, \
       G_TYPE_STRING, \
       G_TYPE_UINT, \
@@ -93,16 +93,16 @@ GType gabble_media_stream_get_type (void);
       G_TYPE_STRING, \
       G_TYPE_STRING, \
       G_TYPE_INVALID))
-#define TP_TYPE_TRANSPORT_LIST (dbus_g_type_get_collection ("GPtrArray", \
-      TP_TYPE_TRANSPORT_STRUCT))
-#define TP_TYPE_CANDIDATE_STRUCT (dbus_g_type_get_struct ("GValueArray", \
+#define GABBLE_TP_TYPE_TRANSPORT_LIST (dbus_g_type_get_collection ("GPtrArray", \
+      GABBLE_TP_TYPE_TRANSPORT_STRUCT))
+#define GABBLE_TP_TYPE_CANDIDATE_STRUCT (dbus_g_type_get_struct ("GValueArray", \
       G_TYPE_STRING, \
-      TP_TYPE_TRANSPORT_LIST, \
+      GABBLE_TP_TYPE_TRANSPORT_LIST, \
       G_TYPE_INVALID))
-#define TP_TYPE_CANDIDATE_LIST (dbus_g_type_get_collection ("GPtrArray", \
-      TP_TYPE_CANDIDATE_STRUCT))
+#define GABBLE_TP_TYPE_CANDIDATE_LIST (dbus_g_type_get_collection ("GPtrArray", \
+      GABBLE_TP_TYPE_CANDIDATE_STRUCT))
 
-#define TP_TYPE_CODEC_STRUCT (dbus_g_type_get_struct ("GValueArray", \
+#define GABBLE_TP_TYPE_CODEC_STRUCT (dbus_g_type_get_struct ("GValueArray", \
       G_TYPE_UINT, \
       G_TYPE_STRING, \
       G_TYPE_UINT, \
@@ -110,8 +110,8 @@ GType gabble_media_stream_get_type (void);
       G_TYPE_UINT, \
       DBUS_TYPE_G_STRING_STRING_HASHTABLE, \
       G_TYPE_INVALID))
-#define TP_TYPE_CODEC_LIST (dbus_g_type_get_collection ("GPtrArray", \
-      TP_TYPE_CODEC_STRUCT))
+#define GABBLE_TP_TYPE_CODEC_LIST (dbus_g_type_get_collection ("GPtrArray", \
+      GABBLE_TP_TYPE_CODEC_STRUCT))
 
 #define COMBINED_DIRECTION_GET_DIRECTION(d) \
     ((TpMediaStreamDirection) ((d) & TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL))

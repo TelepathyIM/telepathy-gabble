@@ -45,12 +45,12 @@
 
 #include "media-factory.h"
 
-#define TP_SESSION_HANDLER_SET_TYPE (dbus_g_type_get_struct ("GValueArray", \
+#define GABBLE_TP_SESSION_HANDLER_SET_TYPE (dbus_g_type_get_struct ("GValueArray", \
       DBUS_TYPE_G_OBJECT_PATH, \
       G_TYPE_STRING, \
       G_TYPE_INVALID))
 
-#define TP_CHANNEL_STREAM_TYPE (dbus_g_type_get_struct ("GValueArray", \
+#define GABBLE_TP_CHANNEL_STREAM_TYPE (dbus_g_type_get_struct ("GValueArray", \
       G_TYPE_UINT, \
       G_TYPE_UINT, \
       G_TYPE_UINT, \
@@ -693,9 +693,9 @@ gabble_media_channel_get_session_handlers (TpSvcChannelInterfaceMediaSignalling 
       TpHandle member;
       gchar *path;
 
-      g_value_init (&handler, TP_SESSION_HANDLER_SET_TYPE);
+      g_value_init (&handler, GABBLE_TP_SESSION_HANDLER_SET_TYPE);
       g_value_take_boxed (&handler,
-          dbus_g_type_specialized_construct (TP_SESSION_HANDLER_SET_TYPE));
+          dbus_g_type_specialized_construct (GABBLE_TP_SESSION_HANDLER_SET_TYPE));
 
       g_object_get (priv->session,
                     "peer", &member,
@@ -752,9 +752,9 @@ make_stream_list (GabbleMediaChannel *self,
 
       g_object_get (priv->session, "peer", &peer, NULL);
 
-      g_value_init (&entry, TP_CHANNEL_STREAM_TYPE);
+      g_value_init (&entry, GABBLE_TP_CHANNEL_STREAM_TYPE);
       g_value_take_boxed (&entry,
-          dbus_g_type_specialized_construct (TP_CHANNEL_STREAM_TYPE));
+          dbus_g_type_specialized_construct (GABBLE_TP_CHANNEL_STREAM_TYPE));
 
       dbus_g_type_struct_set (&entry,
           0, id,

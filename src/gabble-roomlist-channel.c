@@ -38,14 +38,14 @@
 #include "namespaces.h"
 #include "util.h"
 
-#define TP_TYPE_ROOM_STRUCT (dbus_g_type_get_struct ("GValueArray", \
+#define GABBLE_TP_TYPE_ROOM_STRUCT (dbus_g_type_get_struct ("GValueArray", \
       G_TYPE_UINT, \
       G_TYPE_STRING, \
       dbus_g_type_get_map ("GHashTable", G_TYPE_STRING, G_TYPE_VALUE), \
       G_TYPE_INVALID))
 
-#define TP_TYPE_ROOM_LIST (dbus_g_type_get_collection ("GPtrArray", \
-      TP_TYPE_ROOM_STRUCT))
+#define GABBLE_TP_TYPE_ROOM_LIST (dbus_g_type_get_collection ("GPtrArray", \
+      GABBLE_TP_TYPE_ROOM_STRUCT))
 
 static void channel_iface_init (gpointer, gpointer);
 static void roomlist_iface_init (gpointer, gpointer);
@@ -354,7 +354,7 @@ emit_room_signal (gpointer data)
   while (priv->pending_room_signals->len != 0)
     {
       gpointer boxed = g_ptr_array_index (priv->pending_room_signals, 0);
-      g_boxed_free (TP_TYPE_ROOM_STRUCT, boxed);
+      g_boxed_free (GABBLE_TP_TYPE_ROOM_STRUCT, boxed);
       g_ptr_array_remove_index_fast (priv->pending_room_signals, 0);
     }
 
@@ -471,9 +471,9 @@ room_info_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
   tp_handle_set_add (priv->signalled_rooms, handle);
   tp_handle_unref (room_handles, handle);
 
-  g_value_init (&room, TP_TYPE_ROOM_STRUCT);
+  g_value_init (&room, GABBLE_TP_TYPE_ROOM_STRUCT);
   g_value_take_boxed (&room,
-      dbus_g_type_specialized_construct (TP_TYPE_ROOM_STRUCT));
+      dbus_g_type_specialized_construct (GABBLE_TP_TYPE_ROOM_STRUCT));
 
   dbus_g_type_struct_set (&room,
       0, handle,

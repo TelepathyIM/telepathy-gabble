@@ -203,7 +203,7 @@ gabble_text_mixin_parse_incoming_message (LmMessage *message,
   const gchar *type, *body;
   LmMessageNode *node;
 
-  *send_error = TP_CHANNEL_SEND_NO_ERROR;
+  *send_error = GABBLE_TEXT_CHANNEL_SEND_NO_ERROR;
 
   if (lm_message_get_sub_type (message) == LM_MESSAGE_SUB_TYPE_ERROR)
     {

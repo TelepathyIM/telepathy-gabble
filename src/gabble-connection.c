@@ -69,14 +69,14 @@
 #include "gabble-media-channel.h"
 #include "gabble-roomlist-channel.h"
 
-#define TP_ALIAS_PAIR_TYPE (dbus_g_type_get_struct ("GValueArray", \
+#define GABBLE_TP_ALIAS_PAIR_TYPE (dbus_g_type_get_struct ("GValueArray", \
       G_TYPE_UINT, G_TYPE_STRING, G_TYPE_INVALID))
-#define TP_CAPABILITY_PAIR_TYPE (dbus_g_type_get_struct ("GValueArray", \
+#define GABBLE_TP_CAPABILITY_PAIR_TYPE (dbus_g_type_get_struct ("GValueArray", \
       G_TYPE_STRING, G_TYPE_UINT, G_TYPE_INVALID))
-#define TP_CAPABILITIES_CHANGED_MONSTER_TYPE (dbus_g_type_get_struct \
+#define GABBLE_TP_CAPABILITIES_CHANGED_MONSTER_TYPE (dbus_g_type_get_struct \
     ("GValueArray", G_TYPE_UINT, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT, \
                     G_TYPE_UINT, G_TYPE_UINT, G_TYPE_INVALID))
-#define TP_GET_CAPABILITIES_MONSTER_TYPE (dbus_g_type_get_struct \
+#define GABBLE_TP_GET_CAPABILITIES_MONSTER_TYPE (dbus_g_type_get_struct \
     ("GValueArray", G_TYPE_UINT, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT, \
                     G_TYPE_INVALID))
 
@@ -1402,9 +1402,9 @@ connection_nickname_update_cb (GObject *object,
       goto OUT;
     }
 
-  g_value_init (&entry, TP_ALIAS_PAIR_TYPE);
+  g_value_init (&entry, GABBLE_TP_ALIAS_PAIR_TYPE);
   g_value_take_boxed (&entry, dbus_g_type_specialized_construct
-      (TP_ALIAS_PAIR_TYPE));
+      (GABBLE_TP_ALIAS_PAIR_TYPE));
 
   dbus_g_type_struct_set (&entry,
       0, handle,
@@ -2146,10 +2146,10 @@ _emit_capabilities_changed (GabbleConnection *conn,
             continue;
 
           g_value_init (&caps_monster_struct,
-              TP_CAPABILITIES_CHANGED_MONSTER_TYPE);
+              GABBLE_TP_CAPABILITIES_CHANGED_MONSTER_TYPE);
           g_value_take_boxed (&caps_monster_struct,
               dbus_g_type_specialized_construct
-                (TP_CAPABILITIES_CHANGED_MONSTER_TYPE));
+                (GABBLE_TP_CAPABILITIES_CHANGED_MONSTER_TYPE));
 
           dbus_g_type_struct_set (&caps_monster_struct,
               0, handle,
@@ -2171,7 +2171,7 @@ _emit_capabilities_changed (GabbleConnection *conn,
 
   for (i = 0; i < caps_arr->len; i++)
     {
-      g_boxed_free (TP_CAPABILITIES_CHANGED_MONSTER_TYPE,
+      g_boxed_free (GABBLE_TP_CAPABILITIES_CHANGED_MONSTER_TYPE,
           g_ptr_array_index (caps_arr, i));
     }
   g_ptr_array_free (caps_arr, TRUE);
@@ -2227,7 +2227,7 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
       gchar *iface;
       guint flags;
 
-      g_value_init (&iface_flags_pair, TP_CAPABILITY_PAIR_TYPE);
+      g_value_init (&iface_flags_pair, GABBLE_TP_CAPABILITY_PAIR_TYPE);
       g_value_set_static_boxed (&iface_flags_pair, g_ptr_array_index (add, i));
 
       dbus_g_type_struct_get (&iface_flags_pair,
@@ -2274,9 +2274,9 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
         {
           GValue iface_flags_pair = {0, };
 
-          g_value_init (&iface_flags_pair, TP_CAPABILITY_PAIR_TYPE);
+          g_value_init (&iface_flags_pair, GABBLE_TP_CAPABILITY_PAIR_TYPE);
           g_value_take_boxed (&iface_flags_pair,
-              dbus_g_type_specialized_construct (TP_CAPABILITY_PAIR_TYPE));
+              dbus_g_type_specialized_construct (GABBLE_TP_CAPABILITY_PAIR_TYPE));
 
           dbus_g_type_struct_set (&iface_flags_pair,
                                   0, ccd->iface,
@@ -2376,10 +2376,10 @@ gabble_connection_get_capabilities (TpSvcConnectionInterfaceCapabilities *iface,
               {
                 GValue monster = {0, };
 
-                g_value_init (&monster, TP_GET_CAPABILITIES_MONSTER_TYPE);
+                g_value_init (&monster, GABBLE_TP_GET_CAPABILITIES_MONSTER_TYPE);
                 g_value_take_boxed (&monster,
                     dbus_g_type_specialized_construct (
-                      TP_GET_CAPABILITIES_MONSTER_TYPE));
+                      GABBLE_TP_GET_CAPABILITIES_MONSTER_TYPE));
 
                 dbus_g_type_struct_set (&monster,
                     0, handle,
@@ -2397,9 +2397,9 @@ gabble_connection_get_capabilities (TpSvcConnectionInterfaceCapabilities *iface,
         {
           GValue monster = {0, };
 
-          g_value_init (&monster, TP_GET_CAPABILITIES_MONSTER_TYPE);
+          g_value_init (&monster, GABBLE_TP_GET_CAPABILITIES_MONSTER_TYPE);
           g_value_take_boxed (&monster,
-              dbus_g_type_specialized_construct (TP_GET_CAPABILITIES_MONSTER_TYPE));
+              dbus_g_type_specialized_construct (GABBLE_TP_GET_CAPABILITIES_MONSTER_TYPE));
 
           dbus_g_type_struct_set (&monster,
               0, handle,

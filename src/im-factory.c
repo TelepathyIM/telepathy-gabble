@@ -235,7 +235,7 @@ im_factory_message_cb (LmMessageHandler *handler,
 
   if (chan == NULL)
     {
-      if (send_error != TP_CHANNEL_SEND_NO_ERROR)
+      if (send_error != GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
         {
           DEBUG ("ignoring message error; no sending channel");
           tp_handle_unref (contact_repo, handle);
@@ -253,7 +253,7 @@ im_factory_message_cb (LmMessageHandler *handler,
    * not a problem */
   tp_handle_unref (contact_repo, handle);
 
-  if (send_error != TP_CHANNEL_SEND_NO_ERROR)
+  if (send_error != GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
     {
       if (body == NULL)
         {

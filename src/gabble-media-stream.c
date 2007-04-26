@@ -147,21 +147,21 @@ gabble_media_stream_init (GabbleMediaStream *self)
 
   self->priv = priv;
 
-  g_value_init (&priv->native_codecs, TP_TYPE_CODEC_LIST);
+  g_value_init (&priv->native_codecs, GABBLE_TP_TYPE_CODEC_LIST);
   g_value_take_boxed (&priv->native_codecs,
-      dbus_g_type_specialized_construct (TP_TYPE_CODEC_LIST));
+      dbus_g_type_specialized_construct (GABBLE_TP_TYPE_CODEC_LIST));
 
-  g_value_init (&priv->native_candidates, TP_TYPE_CANDIDATE_LIST);
+  g_value_init (&priv->native_candidates, GABBLE_TP_TYPE_CANDIDATE_LIST);
   g_value_take_boxed (&priv->native_candidates,
-      dbus_g_type_specialized_construct (TP_TYPE_CANDIDATE_LIST));
+      dbus_g_type_specialized_construct (GABBLE_TP_TYPE_CANDIDATE_LIST));
 
-  g_value_init (&priv->remote_codecs, TP_TYPE_CODEC_LIST);
+  g_value_init (&priv->remote_codecs, GABBLE_TP_TYPE_CODEC_LIST);
   g_value_take_boxed (&priv->remote_codecs,
-      dbus_g_type_specialized_construct (TP_TYPE_CODEC_LIST));
+      dbus_g_type_specialized_construct (GABBLE_TP_TYPE_CODEC_LIST));
 
-  g_value_init (&priv->remote_candidates, TP_TYPE_CANDIDATE_LIST);
+  g_value_init (&priv->remote_candidates, GABBLE_TP_TYPE_CANDIDATE_LIST);
   g_value_take_boxed (&priv->remote_candidates,
-      dbus_g_type_specialized_construct (TP_TYPE_CANDIDATE_LIST));
+      dbus_g_type_specialized_construct (GABBLE_TP_TYPE_CANDIDATE_LIST));
 }
 
 static GObject *
@@ -509,7 +509,7 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                   0,
                   NULL, NULL,
                   gabble_marshal_VOID__STRING_BOXED,
-                  G_TYPE_NONE, 2, G_TYPE_STRING, TP_TYPE_TRANSPORT_LIST);
+                  G_TYPE_NONE, 2, G_TYPE_STRING, GABBLE_TP_TYPE_TRANSPORT_LIST);
 
   signals[SUPPORTED_CODECS] =
     g_signal_new ("supported-codecs",
@@ -518,7 +518,7 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                   0,
                   NULL, NULL,
                   g_cclosure_marshal_VOID__BOXED,
-                  G_TYPE_NONE, 1, TP_TYPE_CODEC_LIST);
+                  G_TYPE_NONE, 1, GABBLE_TP_TYPE_CODEC_LIST);
 
   signals[ERROR] =
     g_signal_new ("error",
@@ -721,9 +721,9 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
 
   candidates = g_value_get_boxed (&priv->native_candidates);
 
-  g_value_init (&candidate, TP_TYPE_CANDIDATE_STRUCT);
+  g_value_init (&candidate, GABBLE_TP_TYPE_CANDIDATE_STRUCT);
   g_value_take_boxed (&candidate,
-      dbus_g_type_specialized_construct (TP_TYPE_CANDIDATE_STRUCT));
+      dbus_g_type_specialized_construct (GABBLE_TP_TYPE_CANDIDATE_STRUCT));
 
   dbus_g_type_struct_set (&candidate,
       0, candidate_id,
@@ -923,7 +923,7 @@ _add_rtp_candidate_node (GabbleMediaSession *session, LmMessageNode *parent,
   /* jingle audio only supports the concept of one transport per candidate */
   g_assert (transports->len == 1);
 
-  g_value_init (&transport, TP_TYPE_TRANSPORT_STRUCT);
+  g_value_init (&transport, GABBLE_TP_TYPE_TRANSPORT_STRUCT);
   g_value_set_static_boxed (&transport, g_ptr_array_index (transports, 0));
 
   dbus_g_type_struct_get (&transport,
@@ -1062,7 +1062,7 @@ push_native_candidates (GabbleMediaStream *stream)
     push_candidate (stream, g_ptr_array_index (candidates, i));
 
   g_value_take_boxed (&priv->native_candidates,
-    dbus_g_type_specialized_construct (TP_TYPE_CANDIDATE_LIST));
+    dbus_g_type_specialized_construct (GABBLE_TP_TYPE_CANDIDATE_LIST));
 }
 
 void
@@ -1162,9 +1162,9 @@ _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream,
           g_hash_table_insert (params, "bitrate", g_strdup (str));
         }
 
-      g_value_init (&codec, TP_TYPE_CODEC_STRUCT);
+      g_value_init (&codec, GABBLE_TP_TYPE_CODEC_STRUCT);
       g_value_take_boxed (&codec,
-          dbus_g_type_specialized_construct (TP_TYPE_CODEC_STRUCT));
+          dbus_g_type_specialized_construct (GABBLE_TP_TYPE_CODEC_STRUCT));
 
       dbus_g_type_struct_set (&codec,
           0, id,
@@ -1209,7 +1209,7 @@ push_remote_codecs (GabbleMediaStream *stream)
   tp_svc_media_stream_handler_emit_set_remote_codecs (stream, codecs);
 
   g_value_take_boxed (&priv->remote_codecs,
-      dbus_g_type_specialized_construct (TP_TYPE_CODEC_LIST));
+      dbus_g_type_specialized_construct (GABBLE_TP_TYPE_CODEC_LIST));
 }
 
 gboolean
@@ -1345,9 +1345,9 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
       gen = atoi (str);
 
 
-      g_value_init (&transport, TP_TYPE_TRANSPORT_STRUCT);
+      g_value_init (&transport, GABBLE_TP_TYPE_TRANSPORT_STRUCT);
       g_value_take_boxed (&transport,
-          dbus_g_type_specialized_construct (TP_TYPE_TRANSPORT_STRUCT));
+          dbus_g_type_specialized_construct (GABBLE_TP_TYPE_TRANSPORT_STRUCT));
 
       dbus_g_type_struct_set (&transport,
           0, 1,         /* component number */
@@ -1366,9 +1366,9 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
       g_ptr_array_add (transports, g_value_get_boxed (&transport));
 
 
-      g_value_init (&candidate, TP_TYPE_CANDIDATE_STRUCT);
+      g_value_init (&candidate, GABBLE_TP_TYPE_CANDIDATE_STRUCT);
       g_value_take_boxed (&candidate,
-          dbus_g_type_specialized_construct (TP_TYPE_CANDIDATE_STRUCT));
+          dbus_g_type_specialized_construct (GABBLE_TP_TYPE_CANDIDATE_STRUCT));
 
       /* FIXME: is this naming scheme sensible? */
       candidate_id = g_strdup_printf ("R%d", ++priv->remote_candidate_count);
@@ -1445,7 +1445,7 @@ push_remote_candidates (GabbleMediaStream *stream)
     }
 
   g_value_take_boxed (&priv->remote_candidates,
-      dbus_g_type_specialized_construct (TP_TYPE_CANDIDATE_LIST));
+      dbus_g_type_specialized_construct (GABBLE_TP_TYPE_CANDIDATE_LIST));
 }
 
 static void
@@ -1602,7 +1602,7 @@ _gabble_media_stream_content_node_add_description (GabbleMediaStream *stream,
       LmMessageNode *pt_node;
       CodecParamsFromTpContext ctx;
 
-      g_value_init (&codec, TP_TYPE_CODEC_STRUCT);
+      g_value_init (&codec, GABBLE_TP_TYPE_CODEC_STRUCT);
       g_value_set_static_boxed (&codec, g_ptr_array_index (codecs, i));
 
       dbus_g_type_struct_get (&codec,

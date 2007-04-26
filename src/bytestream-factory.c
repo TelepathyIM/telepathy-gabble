@@ -732,3 +732,22 @@ gabble_bytestream_factory_negotiate_stream (GabbleBytestreamFactory *self,
 
   return result;
 }
+
+LmMessage*
+gabble_bytestream_factory_make_decline_message (const gchar *full_jid,
+                                                const gchar *stream_init_id)
+{
+  return lm_message_build (full_jid, LM_MESSAGE_TYPE_IQ,
+      '@', "type", "error",
+      '@', "id", stream_init_id,
+      '(', "error", "",
+        '@', "code", "403",
+        '@', "type", "cancel",
+        '(', "forbidden", "",
+          '@', "xmlns", NS_XMPP_STANZAS,
+        ')',
+        '(', "text", "Offer Declined",
+          '@', "xmlns", NS_XMPP_STANZAS,
+        ')',
+      ')', NULL);
+}

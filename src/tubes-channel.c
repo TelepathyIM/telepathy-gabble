@@ -1047,19 +1047,38 @@ gabble_tubes_channel_offer_tube (TpSvcChannelTypeTubes *iface,
       /* Stream initiation */
       LmMessageNode *node;
       GabbleTubeDBus *tube;
+      LmMessage *msg;
+      TpHandleRepoIface *contact_repo;
+      GabblePresence *presence;
+      const gchar *jid, *resource;
+      gchar *full_jid;
 
       tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
 
-      node = lm_message_node_new ("tube", NULL);
+      contact_repo = tp_base_connection_get_handles (
+          (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+
+      jid = tp_handle_inspect (contact_repo, priv->handle);
+
+      presence = gabble_presence_cache_get (priv->conn->presence_cache,
+          priv->handle);
+      resource = gabble_presence_pick_resource_by_caps (presence,
+          PRESENCE_CAP_SI_TUBES);
+
+      full_jid = g_strdup_printf ("%s/%s", jid, resource);
+
+      msg = gabble_bytestream_factory_make_stream_init_message (full_jid,
+          stream_id, NS_SI_TUBES);
+
+      node = lm_message_node_add_child (msg->node, "tube", NULL);
       lm_message_node_set_attribute (node, "xmlns", NS_SI_TUBES);
       publish_tube_in_node (node, tube, stream_id);
 
       if (!gabble_bytestream_factory_negotiate_stream (
           priv->conn->bytestream_factory,
+          msg,
           priv->handle,
-          NS_SI_TUBES,
           stream_id,
-          node,
           bytestream_negotiate_cb,
           self,
           &error))
@@ -1067,12 +1086,14 @@ gabble_tubes_channel_offer_tube (TpSvcChannelTypeTubes *iface,
           dbus_g_method_return_error (context, error);
 
           g_error_free (error);
-          lm_message_node_unref (node);
           g_free (stream_id);
+          g_free (full_jid);
+          lm_message_unref (msg);
           return;
         }
 
-      lm_message_node_unref (node);
+      g_free (full_jid);
+      lm_message_unref (msg);
     }
 
   tp_svc_channel_type_tubes_return_from_offer_tube (context, tube_id);

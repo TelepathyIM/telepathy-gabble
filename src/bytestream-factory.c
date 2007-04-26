@@ -346,10 +346,10 @@ streaminit_parse_request (LmMessage *message,
   return TRUE;
 }
 
-static LmMessage *
-streaminit_create_request (const gchar *full_jid,
-                           const gchar *stream_id,
-                           const gchar *profile)
+LmMessage *
+gabble_bytestream_factory_make_stream_init_message (const gchar *full_jid,
+                                                    const gchar *stream_id,
+                                                    const gchar *profile)
 {
   LmMessage *msg;
   LmMessageNode *lm_node;
@@ -701,59 +701,35 @@ END:
 /*
  * gabble_bytestream_factory_negotiate_stream:
  *
+ * @msg: the SI negotiation msg (created using
+ * gabble_bytestream_factory_make_stream_init_message)
  * @peer_handle: the handle of the contact to who you want to send the request
- * @profile: the namespace of the profile associated with the bytestream
  * @stream_id: the stream identifier
- * @node: a LmMessageNode containing profile specific information, or NULL if
- * any
  * @func: the callback to call when we receive the answser of the request
  * @user_data: user data to pass to the callback
+ * @error: pointer in which to return a GError in case of failure.
  *
  * Send a Stream Initiation (XEP-0095) request.
  */
 gboolean
 gabble_bytestream_factory_negotiate_stream (GabbleBytestreamFactory *self,
+                                            LmMessage *msg,
                                             TpHandle peer_handle,
-                                            const gchar *profile,
                                             const gchar *stream_id,
-                                            LmMessageNode *node,
                                             GabbleBytestreamFactoryNegotiateReplyFunc func,
                                             gpointer user_data,
                                             GError **error)
 {
   GabbleBytestreamFactoryPrivate *priv;
-  TpHandleRepoIface *contact_repo;
-  LmMessage *msg;
-  GabblePresence *presence;
-  const gchar *jid, *resource;
-  gchar *full_jid;
   struct _streaminit_reply_cb_data *data;
   gboolean result;
 
   g_assert (GABBLE_IS_BYTESTREAM_FACTORY (self));
   g_assert (peer_handle != 0);
-  g_assert (profile != NULL);
   g_assert (stream_id != NULL);
   g_assert (func != NULL);
 
   priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
-  contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-
-  jid = tp_handle_inspect (contact_repo, peer_handle);
-
-  presence = gabble_presence_cache_get (priv->conn->presence_cache,
-      peer_handle);
-  resource = gabble_presence_pick_resource_by_caps (presence,
-      PRESENCE_CAP_SI);
-
-  full_jid = g_strdup_printf ("%s/%s", jid, resource);
-  msg = streaminit_create_request (full_jid, stream_id, profile);
-
-  if (node != NULL)
-    {
-      lm_message_node_add_child_node (msg->node, node);
-    }
 
   data = g_slice_new (struct _streaminit_reply_cb_data);
   data->stream_id = g_strdup (stream_id);
@@ -763,9 +739,6 @@ gabble_bytestream_factory_negotiate_stream (GabbleBytestreamFactory *self,
 
   result = _gabble_connection_send_with_reply (priv->conn, msg,
       streaminit_reply_cb, G_OBJECT (self), data, error);
-
-  lm_message_unref (msg);
-  g_free (full_jid);
 
   return result;
 }

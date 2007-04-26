@@ -70,10 +70,14 @@ GabbleBytestreamIBB* gabble_bytestream_factory_create_ibb (
     TpHandleType peer_handle_type, const gchar *stream_id,
     const gchar *stream_init_id, const gchar *peer_resource, gboolean open);
 
+LmMessage*
+gabble_bytestream_factory_make_stream_init_message (const gchar *full_jid,
+    const gchar *stream_id, const gchar *profile);
+
 gboolean
 gabble_bytestream_factory_negotiate_stream (GabbleBytestreamFactory *fac,
-    TpHandle peer_handle, const gchar *profile, const gchar *stream_id,
-    LmMessageNode *node, GabbleBytestreamFactoryNegotiateReplyFunc func,
+    LmMessage *msg, TpHandle peer_handle, const gchar *stream_id,
+    GabbleBytestreamFactoryNegotiateReplyFunc func,
     gpointer user_data, GError **error);
 
 gchar *

@@ -73,6 +73,10 @@ static LmHandlerResult
 bytestream_factory_iq_si_cb (LmMessageHandler *handler, LmConnection *lmconn,
     LmMessage *message, gpointer user_data);
 
+static LmMessage *
+make_profile_not_understood_iq (const gchar *full_jid,
+    const gchar *stream_init_id);
+
 static void
 gabble_bytestream_factory_init (GabbleBytestreamFactory *self)
 {
@@ -218,6 +222,25 @@ gabble_bytestream_factory_class_init (
       G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 
+}
+
+static void
+remove_bytestream (GabbleBytestreamFactory *self,
+                   GabbleBytestreamIBB *bytestream)
+{
+  GabbleBytestreamFactoryPrivate *priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE
+    (self);
+  gchar *stream_id;
+
+  if (priv->ibb_bytestreams == NULL)
+    return;
+
+  g_object_get (bytestream, "stream-id", &stream_id, NULL);
+
+  DEBUG ("remove bytestream %s\n", stream_id);
+  g_hash_table_remove (priv->ibb_bytestreams, stream_id);
+
+  g_free (stream_id);
 }
 
 /**
@@ -394,7 +417,6 @@ gabble_bytestream_factory_make_stream_init_iq (const gchar *full_jid,
  * This handler is concerned with Stream Initiation requests (XEP-0095).
  *
  */
-
 static LmHandlerResult
 bytestream_factory_iq_si_cb (LmMessageHandler *handler,
                              LmConnection *lmconn,
@@ -412,6 +434,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
   const gchar *profile, *from, *stream_id, *stream_init_id, *mime_type;
   GSList *stream_methods = NULL;
   gchar *peer_resource;
+  gboolean know_profile = FALSE;
 
   if (!streaminit_parse_request (msg, &profile, &from, &stream_id,
         &stream_init_id, &mime_type, &stream_methods))
@@ -419,17 +442,20 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
 
   peer_handle = tp_handle_lookup (contact_repo, from, NULL, NULL);
   if (peer_handle == 0)
-    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    {
+      g_slist_free (stream_methods);
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    }
 
   gabble_decode_jid (from, NULL, NULL, &peer_resource);
 
   /* check stream method */
   for (l = stream_methods; l != NULL; l = l->next)
     {
+      /* We create the stream according the stream method chosen.
+       * User have to accept it before we consider it as open */
       if (!tp_strdiff (l->data, NS_IBB))
         {
-          /* We create the stream according the stream method chosen.
-           * User have to accept it before we consider it as open */
           bytestream = gabble_bytestream_factory_create_ibb (self, peer_handle,
               TP_HANDLE_TYPE_CONTACT, stream_id, stream_init_id, peer_resource,
               FALSE);
@@ -437,20 +463,36 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
         }
     }
 
-  if (bytestream != NULL)
+  if (bytestream == NULL)
     {
-#ifdef HAVE_DBUS_TUBE
-      /* We inform the right factory when received a SI request */
-      if (strcmp (profile, NS_SI_TUBES) == 0)
-        {
-          gabble_tubes_factory_handle_request (priv->conn->tubes_factory,
-              bytestream, peer_handle, stream_id, msg);
-        }
-#endif
+      DEBUG ("SI request doesn't contain any support stream method.\
+          Stream declined");
+
+      g_slist_free (stream_methods);
+      g_free (peer_resource);
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
-  else
+
+  /* We inform the right factory when received a SI request */
+#ifdef HAVE_DBUS_TUBE
+  if (strcmp (profile, NS_SI_TUBES) == 0)
     {
-      DEBUG ("unknown stream method");
+      know_profile = TRUE;
+      gabble_tubes_factory_handle_request (priv->conn->tubes_factory,
+          bytestream, peer_handle, stream_id, msg);
+    }
+#endif
+
+  if (!know_profile)
+    {
+      /* We don't support this profile so we have to decline the stream */
+      LmMessage *reply;
+
+      reply = make_profile_not_understood_iq (from, stream_init_id);
+
+      DEBUG ("Profile unsupported: %s", profile);
+      _gabble_connection_send (priv->conn, reply, NULL);
+      remove_bytestream (self, bytestream);
     }
 
   g_slist_free (stream_methods);
@@ -519,16 +561,8 @@ bytestream_closed_cb (GabbleBytestreamIBB *bytestream,
                       gpointer user_data)
 {
   GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (user_data);
-  GabbleBytestreamFactoryPrivate *priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE
-    (self);
-  gchar *stream_id;
 
-  if (priv->ibb_bytestreams == NULL)
-    return;
-
-  g_object_get (bytestream, "stream-id", &stream_id, NULL);
-  g_hash_table_remove (priv->ibb_bytestreams, stream_id);
-  g_free (stream_id);
+  remove_bytestream (self, bytestream);
 }
 
 gchar *
@@ -806,6 +840,25 @@ gabble_bytestream_factory_make_decline_iq (const gchar *full_jid,
         ')',
         '(', "text", "Offer Declined",
           '@', "xmlns", NS_XMPP_STANZAS,
+        ')',
+      ')', NULL);
+}
+
+static LmMessage *
+make_profile_not_understood_iq (const gchar *full_jid,
+                                const gchar *stream_init_id)
+{
+  return lm_message_build (full_jid, LM_MESSAGE_TYPE_IQ,
+      '@', "type", "error",
+      '@', "id", stream_init_id,
+      '(', "error", "",
+        '@', "code", "400",
+        '@', "type", "cancel",
+        '(', "bad-request", "",
+          '@', "xmlns", NS_XMPP_STANZAS,
+        ')',
+        '(', "bad-profile", "",
+          '@', "xmlns", NS_SI,
         ')',
       ')', NULL);
 }

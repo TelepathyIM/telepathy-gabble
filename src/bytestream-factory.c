@@ -346,10 +346,21 @@ streaminit_parse_request (LmMessage *message,
   return TRUE;
 }
 
+/**
+ * gabble_bytestream_factory_make_stream_init_iq
+ *
+ * @full_jid: the full jid of the contact to who we
+ * want to offer the stream
+ * @stream_id: the stream ID of the new stream
+ * @profile: the profile associated with the stream
+ *
+ * Create a SI request IQ as described in XEP-0095.
+ *
+ */
 LmMessage *
-gabble_bytestream_factory_make_stream_init_message (const gchar *full_jid,
-                                                    const gchar *stream_id,
-                                                    const gchar *profile)
+gabble_bytestream_factory_make_stream_init_iq (const gchar *full_jid,
+                                               const gchar *stream_id,
+                                               const gchar *profile)
 {
   return lm_message_build (full_jid, LM_MESSAGE_TYPE_IQ,
       '@', "type", "set",
@@ -696,8 +707,8 @@ END:
 /*
  * gabble_bytestream_factory_negotiate_stream:
  *
- * @msg: the SI negotiation msg (created using
- * gabble_bytestream_factory_make_stream_init_message)
+ * @msg: the SI negotiation IQ (created using
+ * gabble_bytestream_factory_make_stream_init_iq)
  * @stream_id: the stream identifier
  * @func: the callback to call when we receive the answser of the request
  * @user_data: user data to pass to the callback
@@ -734,10 +745,22 @@ gabble_bytestream_factory_negotiate_stream (GabbleBytestreamFactory *self,
   return result;
 }
 
+/*
+ * gabble_bytestream_factory_make_accept_iq
+ *
+ * @full_jid: the full jid of the stream initiator
+ * @stream_init_id: the id of the SI request
+ * @stream_method: the stream method chosen (one of them proposed
+ * in the SI request)
+ *
+ * Create an IQ stanza accepting a stream in response to
+ * a SI request (XEP-0095).
+ *
+ */
 LmMessage *
-gabble_bytestream_factory_make_accept_message (const gchar *full_jid,
-                                               const gchar *stream_init_id,
-                                               const gchar *stream_method)
+gabble_bytestream_factory_make_accept_iq (const gchar *full_jid,
+                                          const gchar *stream_init_id,
+                                          const gchar *stream_method)
 {
   return lm_message_build (full_jid, LM_MESSAGE_TYPE_IQ,
       '@', "type", "result",
@@ -758,9 +781,19 @@ gabble_bytestream_factory_make_accept_message (const gchar *full_jid,
       ')', NULL);
 }
 
+/*
+ * gabble_bytestream_factory_make_decline_iq
+ *
+ * @full_jid: the full jid of the stream initiator
+ * @stream_init_id: the id of the SI request
+ *
+ * Create an IQ stanza refusing a stream in response to
+ * a SI request (XEP-0095).
+ *
+ */
 LmMessage *
-gabble_bytestream_factory_make_decline_message (const gchar *full_jid,
-                                                const gchar *stream_init_id)
+gabble_bytestream_factory_make_decline_iq (const gchar *full_jid,
+                                           const gchar *stream_init_id)
 {
   return lm_message_build (full_jid, LM_MESSAGE_TYPE_IQ,
       '@', "type", "error",

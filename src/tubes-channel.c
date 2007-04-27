@@ -1067,7 +1067,7 @@ gabble_tubes_channel_offer_tube (TpSvcChannelTypeTubes *iface,
 
       full_jid = g_strdup_printf ("%s/%s", jid, resource);
 
-      msg = gabble_bytestream_factory_make_stream_init_message (full_jid,
+      msg = gabble_bytestream_factory_make_stream_init_iq (full_jid,
           stream_id, NS_SI_TUBES);
 
       node = lm_message_node_add_child (msg->node, "tube", NULL);

@@ -496,7 +496,7 @@ gabble_bytestream_ibb_accept (GabbleBytestreamIBB *self)
   jid = tp_handle_inspect (handles_repo, priv->peer_handle);
   full_jid = g_strdup_printf ("%s/%s", jid, priv->peer_resource);
 
-  msg = gabble_bytestream_factory_make_accept_message (full_jid,
+  msg = gabble_bytestream_factory_make_accept_iq (full_jid,
       priv->stream_init_id, NS_IBB);
 
   if (_gabble_connection_send (priv->conn, msg, NULL))
@@ -537,7 +537,7 @@ gabble_bytestream_ibb_decline (GabbleBytestreamIBB *self)
   jid = tp_handle_inspect (handles_repo, priv->peer_handle);
   full_jid = g_strdup_printf ("%s/%s", jid, priv->peer_resource);
 
-  msg = gabble_bytestream_factory_make_decline_message (full_jid,
+  msg = gabble_bytestream_factory_make_decline_iq (full_jid,
       priv->stream_init_id);
 
   _gabble_connection_send (priv->conn, msg, NULL);

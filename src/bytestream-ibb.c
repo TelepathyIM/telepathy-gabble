@@ -556,7 +556,6 @@ gabble_bytestream_ibb_close (GabbleBytestreamIBB *self)
     {
       /* XXX : send (and catch somewhere) IBB close message */
       priv->open = FALSE;
-      g_signal_emit (G_OBJECT (self), signals[CLOSED], 0);
     }
   else
     {
@@ -566,6 +565,8 @@ gabble_bytestream_ibb_close (GabbleBytestreamIBB *self)
           gabble_bytestream_ibb_decline (self);
         }
     }
+
+  g_signal_emit (G_OBJECT (self), signals[CLOSED], 0);
 }
 
 gboolean

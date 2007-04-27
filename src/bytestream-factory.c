@@ -53,8 +53,8 @@ typedef struct _GabbleBytestreamFactoryPrivate GabbleBytestreamFactoryPrivate;
 struct _GabbleBytestreamFactoryPrivate
 {
   GabbleConnection *conn;
-  LmMessageHandler *iq_cb;
-  LmMessageHandler *message_cb;
+  LmMessageHandler *iq_si_cb;
+  LmMessageHandler *msg_data_cb;
 
   GHashTable *ibb_bytestreams;
 
@@ -83,8 +83,8 @@ gabble_bytestream_factory_init (GabbleBytestreamFactory *self)
   priv->ibb_bytestreams = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, g_object_unref);
 
-  priv->iq_cb = NULL;
-  priv->message_cb = NULL;
+  priv->iq_si_cb = NULL;
+  priv->msg_data_cb = NULL;
 
   priv->conn = NULL;
   priv->dispose_has_run = FALSE;
@@ -105,14 +105,14 @@ gabble_bytestream_factory_constructor (GType type,
   self = GABBLE_BYTESTREAM_FACTORY (obj);
   priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
 
-  priv->message_cb = lm_message_handler_new (bytestream_factory_msg_data_cb,
+  priv->msg_data_cb = lm_message_handler_new (bytestream_factory_msg_data_cb,
       self, NULL);
-  lm_connection_register_message_handler (priv->conn->lmconn, priv->message_cb,
-      LM_MESSAGE_TYPE_MESSAGE, LM_HANDLER_PRIORITY_FIRST);
+  lm_connection_register_message_handler (priv->conn->lmconn,
+      priv->msg_data_cb, LM_MESSAGE_TYPE_MESSAGE, LM_HANDLER_PRIORITY_FIRST);
 
-  priv->iq_cb = lm_message_handler_new (bytestream_factory_iq_si_cb, self,
+  priv->iq_si_cb = lm_message_handler_new (bytestream_factory_iq_si_cb, self,
       NULL);
-  lm_connection_register_message_handler (priv->conn->lmconn, priv->iq_cb,
+  lm_connection_register_message_handler (priv->conn->lmconn, priv->iq_si_cb,
       LM_MESSAGE_TYPE_IQ, LM_HANDLER_PRIORITY_FIRST);
 
   return obj;
@@ -132,12 +132,12 @@ gabble_bytestream_factory_dispose (GObject *object)
   priv->dispose_has_run = TRUE;
 
   lm_connection_unregister_message_handler (priv->conn->lmconn,
-      priv->message_cb, LM_MESSAGE_TYPE_MESSAGE);
-  lm_message_handler_unref (priv->message_cb);
+      priv->msg_data_cb, LM_MESSAGE_TYPE_MESSAGE);
+  lm_message_handler_unref (priv->msg_data_cb);
 
   lm_connection_unregister_message_handler (priv->conn->lmconn,
-      priv->iq_cb, LM_MESSAGE_TYPE_IQ);
-  lm_message_handler_unref (priv->iq_cb);
+      priv->iq_si_cb, LM_MESSAGE_TYPE_IQ);
+  lm_message_handler_unref (priv->iq_si_cb);
 
   g_hash_table_destroy (priv->ibb_bytestreams);
   priv->ibb_bytestreams = NULL;

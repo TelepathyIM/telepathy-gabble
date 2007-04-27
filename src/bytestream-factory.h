@@ -66,7 +66,7 @@ GabbleBytestreamFactory *
 gabble_bytestream_factory_new (GabbleConnection *conn);
 
 GabbleBytestreamIBB *
-gabble_bytestream_factory_create_ibb (GabbleBytestreamFactory *fac, 
+gabble_bytestream_factory_create_ibb (GabbleBytestreamFactory *fac,
     TpHandle peer_handle, TpHandleType peer_handle_type,
     const gchar *stream_id, const gchar *stream_init_id,
     const gchar *peer_resource, gboolean open);

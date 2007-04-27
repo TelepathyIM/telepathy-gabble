@@ -77,6 +77,10 @@ static LmMessage *
 make_profile_not_understood_iq (const gchar *full_jid,
     const gchar *stream_init_id);
 
+static LmMessage *
+make_no_valid_stream_iq (const gchar *full_jid,
+    const gchar *stream_init_id);
+
 static void
 gabble_bytestream_factory_init (GabbleBytestreamFactory *self)
 {
@@ -454,7 +458,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
     {
       /* We create the stream according the stream method chosen.
        * User have to accept it before we consider it as open */
-      if (!tp_strdiff (l->data, NS_IBB))
+      if (!tp_strdiff (l->data, NS_IBB"a"))
         {
           bytestream = gabble_bytestream_factory_create_ibb (self, peer_handle,
               TP_HANDLE_TYPE_CONTACT, stream_id, stream_init_id, peer_resource,
@@ -465,9 +469,14 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
 
   if (bytestream == NULL)
     {
-      DEBUG ("SI request doesn't contain any support stream method.\
-          Stream declined");
+      LmMessage *reply;
 
+      DEBUG ("SI request doesn't contain any supported stream method.");
+      reply = make_no_valid_stream_iq (from, stream_init_id);
+
+      _gabble_connection_send (priv->conn, reply, NULL);
+
+      lm_message_unref (reply);
       g_slist_free (stream_methods);
       g_free (peer_resource);
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
@@ -488,11 +497,13 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
       /* We don't support this profile so we have to decline the stream */
       LmMessage *reply;
 
+      DEBUG ("Profile unsupported: %s", profile);
       reply = make_profile_not_understood_iq (from, stream_init_id);
 
-      DEBUG ("Profile unsupported: %s", profile);
       _gabble_connection_send (priv->conn, reply, NULL);
       remove_bytestream (self, bytestream);
+
+      lm_message_unref (reply);
     }
 
   g_slist_free (stream_methods);
@@ -858,6 +869,25 @@ make_profile_not_understood_iq (const gchar *full_jid,
           '@', "xmlns", NS_XMPP_STANZAS,
         ')',
         '(', "bad-profile", "",
+          '@', "xmlns", NS_SI,
+        ')',
+      ')', NULL);
+}
+
+static LmMessage *
+make_no_valid_stream_iq (const gchar *full_jid,
+                         const gchar *stream_init_id)
+{
+  return lm_message_build (full_jid, LM_MESSAGE_TYPE_IQ,
+      '@', "type", "error",
+      '@', "id", stream_init_id,
+      '(', "error", "",
+        '@', "code", "400",
+        '@', "type", "cancel",
+        '(', "bad-request", "",
+          '@', "xmlns", NS_XMPP_STANZAS,
+        ')',
+        '(', "no-valid-streams", "",
           '@', "xmlns", NS_SI,
         ')',
       ')', NULL);

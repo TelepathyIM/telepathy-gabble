@@ -458,7 +458,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
     {
       /* We create the stream according the stream method chosen.
        * User have to accept it before we consider it as open */
-      if (!tp_strdiff (l->data, NS_IBB"a"))
+      if (!tp_strdiff (l->data, NS_IBB))
         {
           bytestream = gabble_bytestream_factory_create_ibb (self, peer_handle,
               TP_HANDLE_TYPE_CONTACT, stream_id, stream_init_id, peer_resource,
@@ -663,7 +663,6 @@ streaminit_reply_cb (GabbleConnection *conn,
   /* stream accepted */
 
   from = lm_message_node_get_attribute (reply_msg->node, "from");
-
   if (from == NULL)
     {
       NODE_DEBUG (reply_msg->node, "got a message without a from field");
@@ -676,9 +675,6 @@ streaminit_reply_cb (GabbleConnection *conn,
 
   si = lm_message_node_get_child_with_namespace (reply_msg->node, "si",
       NS_SI);
-
-  DEBUG ("stream %s accepted\n", data->stream_id);
-
   if (si == NULL)
     {
       NODE_DEBUG (reply_msg->node, "got a SI reply without a si field");
@@ -687,7 +683,6 @@ streaminit_reply_cb (GabbleConnection *conn,
 
   feature = lm_message_node_get_child_with_namespace (si, "feature",
       NS_FEATURENEG);
-
   if (feature == NULL)
     {
       NODE_DEBUG (reply_msg->node,
@@ -696,7 +691,6 @@ streaminit_reply_cb (GabbleConnection *conn,
     }
 
   x = lm_message_node_get_child_with_namespace (feature, "x", NS_X_DATA);
-
   if (x == NULL)
     {
       NODE_DEBUG (reply_msg->node, "got a SI reply without a x field");
@@ -704,7 +698,6 @@ streaminit_reply_cb (GabbleConnection *conn,
     }
 
   field = lm_message_node_get_child (x, "field");
-
   if (field == NULL ||
       tp_strdiff (lm_message_node_get_attribute (field, "var"),
         "stream-method"))
@@ -715,7 +708,6 @@ streaminit_reply_cb (GabbleConnection *conn,
     }
 
   value = lm_message_node_get_child (field, "value");
-
   if (value == NULL)
     {
       NODE_DEBUG (reply_msg->node,
@@ -733,6 +725,13 @@ streaminit_reply_cb (GabbleConnection *conn,
           TP_HANDLE_TYPE_CONTACT, data->stream_id, NULL,
           peer_resource, TRUE);
     }
+  else
+    {
+      DEBUG ("Remote user chose an unsupported stream method");
+      goto END;
+    }
+
+  DEBUG ("stream %s accepted\n", data->stream_id);
 
 END:
   /* user callback */
@@ -743,6 +742,7 @@ END:
 
   if (peer_handle != 0)
     tp_handle_unref (contact_repo, peer_handle);
+
   g_free (data->stream_id);
   g_slice_free (struct _streaminit_reply_cb_data, data);
 

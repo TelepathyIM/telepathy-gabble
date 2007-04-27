@@ -570,6 +570,7 @@ gabble_media_channel_finalize (GObject *object)
   g_free (priv->object_path);
 
   tp_group_mixin_finalize (object);
+  tp_properties_mixin_finalize (object);
 
   G_OBJECT_CLASS (gabble_media_channel_parent_class)->finalize (object);
 }

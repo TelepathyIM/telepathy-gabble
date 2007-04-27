@@ -65,11 +65,11 @@ struct _GabbleBytestreamFactoryPrivate
     ((GabbleBytestreamFactoryPrivate *) obj->priv)
 
 static LmHandlerResult
-bytestream_factory_message_cb (LmMessageHandler *handler, LmConnection *lmconn,
-    LmMessage *message, gpointer user_data);
+bytestream_factory_msg_data_cb (LmMessageHandler *handler,
+    LmConnection *lmconn, LmMessage *message, gpointer user_data);
 
 static LmHandlerResult
-bytestream_factory_iq_cb (LmMessageHandler *handler, LmConnection *lmconn,
+bytestream_factory_iq_si_cb (LmMessageHandler *handler, LmConnection *lmconn,
     LmMessage *message, gpointer user_data);
 
 static void
@@ -105,12 +105,13 @@ gabble_bytestream_factory_constructor (GType type,
   self = GABBLE_BYTESTREAM_FACTORY (obj);
   priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
 
-  priv->message_cb = lm_message_handler_new (bytestream_factory_message_cb,
+  priv->message_cb = lm_message_handler_new (bytestream_factory_msg_data_cb,
       self, NULL);
   lm_connection_register_message_handler (priv->conn->lmconn, priv->message_cb,
       LM_MESSAGE_TYPE_MESSAGE, LM_HANDLER_PRIORITY_FIRST);
 
-  priv->iq_cb = lm_message_handler_new (bytestream_factory_iq_cb, self, NULL);
+  priv->iq_cb = lm_message_handler_new (bytestream_factory_iq_si_cb, self,
+      NULL);
   lm_connection_register_message_handler (priv->conn->lmconn, priv->iq_cb,
       LM_MESSAGE_TYPE_IQ, LM_HANDLER_PRIORITY_FIRST);
 
@@ -377,18 +378,18 @@ gabble_bytestream_factory_make_stream_init_message (const gchar *full_jid,
 }
 
 /**
- * bytestream_factory_iq_cb:
+ * bytestream_factory_iq_si_cb:
  *
  * Called by loudmouth when we get an incoming <iq>.
- * This handler is concerned with Stream Initiation requests.
+ * This handler is concerned with Stream Initiation requests (XEP-0095).
  *
  */
 
 static LmHandlerResult
-bytestream_factory_iq_cb (LmMessageHandler *handler,
-                          LmConnection *lmconn,
-                          LmMessage *msg,
-                          gpointer user_data)
+bytestream_factory_iq_si_cb (LmMessageHandler *handler,
+                             LmConnection *lmconn,
+                             LmMessage *msg,
+                             gpointer user_data)
 {
   GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (user_data);
   GabbleBytestreamFactoryPrivate *priv =
@@ -449,15 +450,16 @@ bytestream_factory_iq_cb (LmMessageHandler *handler,
 
 
 /**
- * bytestream_factory_message_cb
+ * bytestream_factory_msg_data_cb
  *
  * Called by loudmouth when we get an incoming <message>.
+ * This handler handles IBB data.
  */
 static LmHandlerResult
-bytestream_factory_message_cb (LmMessageHandler *handler,
-                               LmConnection *lmconn,
-                               LmMessage *msg,
-                               gpointer user_data)
+bytestream_factory_msg_data_cb (LmMessageHandler *handler,
+                                LmConnection *lmconn,
+                                LmMessage *msg,
+                                gpointer user_data)
 {
   GabbleBytestreamFactory *self = user_data;
   GabbleBytestreamFactoryPrivate *priv;

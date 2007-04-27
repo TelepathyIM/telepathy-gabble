@@ -56,6 +56,7 @@ struct _GabbleBytestreamFactoryPrivate
   LmMessageHandler *iq_si_cb;
   LmMessageHandler *msg_data_cb;
 
+  /* Stream ID -> Stream */
   GHashTable *ibb_bytestreams;
 
   gboolean dispose_has_run;
@@ -318,23 +319,21 @@ streaminit_parse_request (LmMessage *message,
       stream_method = stream_method->next)
     {
       LmMessageNode *value;
+      const gchar *stream_method_str;
 
       value = lm_message_node_get_child (stream_method, "value");
-      if (value != NULL)
-        {
-          const gchar *stream_method;
+      if (value == NULL)
+        continue;
 
-          stream_method = lm_message_node_get_value (value);
+      stream_method_str = lm_message_node_get_value (value);
+      if (!tp_strdiff (stream_method_str, ""))
+        continue;
 
-          if (!tp_strdiff (stream_method, ""))
-            continue;
+      DEBUG ("Got stream-method %s", stream_method_str);
 
-          DEBUG ("Got stream-method %s", stream_method);
-
-          /* Append to the stream_methods list */
-          *stream_methods = g_slist_append (*stream_methods,
-              (gchar*) stream_method);
-        }
+      /* Append to the stream_methods list */
+      *stream_methods = g_slist_append (*stream_methods,
+          (gchar *) stream_method_str);
     }
 
   if (*stream_methods == NULL)

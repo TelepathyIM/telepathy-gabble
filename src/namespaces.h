@@ -29,7 +29,6 @@
 #define NS_DISCO_INFO           "http://jabber.org/protocol/disco#info"
 #define NS_DISCO_ITEMS          "http://jabber.org/protocol/disco#items"
 #define NS_FEATURENEG           "http://jabber.org/protocol/feature-neg"
-#define NS_SI_FILE_TRANSFER     "http://jabber.org/protocol/si/profile/file-transfer"
 #define NS_GABBLE_CAPS          "http://telepathy.freedesktop.org/caps"
 #define NS_GOOGLE_CAPS          "http://www.google.com/xmpp/client/caps"
 #define NS_GOOGLE_FEAT_SESSION  "http://www.google.com/xmpp/protocol/session"

@@ -33,7 +33,6 @@ typedef enum
   GABBLE_DEBUG_PIPELINE      = 1 << 12,
   GABBLE_DEBUG_JID           = 1 << 13,
   GABBLE_DEBUG_OLPC          = 1 << 14,
-  GABBLE_DEBUG_FILE_TRANSFER = 1 << 15,
   GABBLE_DEBUG_BYTESTREAM    = 1 << 16,
   GABBLE_DEBUG_TUBES         = 1 << 17,
 } GabbleDebugFlags;

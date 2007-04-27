@@ -816,8 +816,6 @@ _caps_disco_cb (GabbleDisco *disco,
         caps |= PRESENCE_CAP_SI;
       else if (0 == strcmp (var, NS_BYTESTREAMS))
         caps |= PRESENCE_CAP_BYTESTREAMS;
-      else if (0 == strcmp (var, NS_SI_FILE_TRANSFER))
-        caps |= PRESENCE_CAP_FILE_TRANSFER;
       else if (0 == strcmp (var, NS_IBB))
         caps |= PRESENCE_CAP_IBB;
       else if (0 == strcmp (var, NS_SI_TUBES))

@@ -406,7 +406,6 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
     }
 
   data = lm_message_node_get_child_with_namespace (msg->node, "data", NS_IBB);
-
   if (data == NULL)
     {
       NODE_DEBUG (msg->node, "got a message without a data element, ignoring");
@@ -414,7 +413,6 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
     }
 
   from = lm_message_node_get_attribute (msg->node, "from");
-
   if (from == NULL)
     {
       NODE_DEBUG (msg->node, "got a message without a from field, ignoring");
@@ -452,8 +450,6 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
       if (room_handle != priv->peer_handle)
         /* Data are not for this stream */
         return FALSE;
-
-      // XXX discard data messages sent by local user
     }
   else
     {

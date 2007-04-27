@@ -21,6 +21,9 @@
 #define __GABBLE_BYTESTREAM_IBB_H__
 
 #include <glib-object.h>
+#include <loudmouth/loudmouth.h>
+
+#include <telepathy-glib/base-connection.h>
 
 G_BEGIN_DECLS
 
@@ -66,6 +69,7 @@ gabble_bytestream_ibb_close (GabbleBytestreamIBB *ibb);
 gboolean
 gabble_bytestream_ibb_receive (GabbleBytestreamIBB *ibb,
    LmMessage *msg);
+
 void
 gabble_bytestream_ibb_close (GabbleBytestreamIBB *ibb);
 

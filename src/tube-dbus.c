@@ -17,6 +17,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include "tube-dbus.h"
+
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -37,7 +39,6 @@
 #include <telepathy-glib/svc-unstable.h>
 #include "util.h"
 #include "bytestream-ibb.h"
-#include "tube-dbus.h"
 
 G_DEFINE_TYPE (GabbleTubeDBus, gabble_tube_dbus, G_TYPE_OBJECT)
 

@@ -21,6 +21,9 @@
 #define __GABBLE_TUBES_CHANNEL_H__
 
 #include <glib-object.h>
+#include <loudmouth/loudmouth.h>
+
+#include <telepathy-glib/base-connection.h>
 #include "bytestream-ibb.h"
 
 G_BEGIN_DECLS

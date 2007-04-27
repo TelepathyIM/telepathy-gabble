@@ -17,6 +17,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include "tubes-factory.h"
+
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -33,7 +35,6 @@
 #include "debug.h"
 #include "gabble-connection.h"
 #include "tubes-channel.h"
-#include "tubes-factory.h"
 #include "namespaces.h"
 #include "util.h"
 #include "muc-factory.h"

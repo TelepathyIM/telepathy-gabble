@@ -32,10 +32,6 @@
 #include <telepathy-glib/base-connection.h>
 #include <telepathy-glib/presence-mixin.h>
 
-#ifdef HAVE_DBUS_TUBE
-#include "tubes-factory.h"
-#endif
-
 G_BEGIN_DECLS
 
 /* Default parameters for optional parameters */

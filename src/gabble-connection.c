@@ -66,6 +66,7 @@
 #include "roster.h"
 #include "util.h"
 #include "vcard-manager.h"
+#include "bytestream-factory.h"
 
 #include "gabble-media-channel.h"
 #include "gabble-roomlist-channel.h"

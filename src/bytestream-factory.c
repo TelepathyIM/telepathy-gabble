@@ -17,6 +17,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include "bytestream-factory.h"
+
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -30,14 +32,14 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_BYTESTREAM
 
+#include <telepathy-glib/interfaces.h>
 #include "debug.h"
 #include "gabble-connection.h"
 #include "bytestream-ibb.h"
-#include "bytestream-factory.h"
 #include "namespaces.h"
 #include "util.h"
 #include "presence-cache.h"
-#include <telepathy-glib/interfaces.h>
+#include "tubes-factory.h"
 
 G_DEFINE_TYPE (GabbleBytestreamFactory, gabble_bytestream_factory,
     G_TYPE_OBJECT);

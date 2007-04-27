@@ -17,6 +17,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include "bytestream-ibb.h"
+
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -38,7 +40,7 @@
 #include "util.h"
 #include "base64.h"
 #include "gabble-signals-marshal.h"
-#include "bytestream-ibb.h"
+#include "bytestream-factory.h"
 
 G_DEFINE_TYPE (GabbleBytestreamIBB, gabble_bytestream_ibb, G_TYPE_OBJECT);
 

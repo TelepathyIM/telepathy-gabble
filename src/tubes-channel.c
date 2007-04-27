@@ -17,6 +17,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include "tubes-channel.h"
+
 #include <dbus/dbus-glib.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -39,8 +41,6 @@
 #include <telepathy-glib/channel-iface.h>
 #include <telepathy-glib/svc-channel.h>
 #include <telepathy-glib/svc-unstable.h>
-
-#include "tubes-channel.h"
 
 #define TP_CHANNEL_TUBE_TYPE \
     (dbus_g_type_get_struct ("GValueArray", \

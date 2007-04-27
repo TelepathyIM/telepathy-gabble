@@ -21,13 +21,15 @@
 #define __TUBES_FACTORY_H__
 
 #include <glib-object.h>
-#include "bytestream-ibb.h"
+#include <loudmouth/loudmouth.h>
 
+#include <telepathy-glib/base-connection.h>
+#include "gabble-connection.h"
+#include "bytestream-ibb.h"
 #include "tubes-channel.h"
 
 G_BEGIN_DECLS
 
-typedef struct _GabbleTubesFactory GabbleTubesFactory;
 typedef struct _GabbleTubesFactoryClass GabbleTubesFactoryClass;
 
 struct _GabbleTubesFactoryClass {

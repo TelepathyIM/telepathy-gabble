@@ -21,12 +21,15 @@
 #define __BYTESTREAM_FACTORY_H__
 
 #include <glib-object.h>
-#include "gabble-connection.h"
+#include <loudmouth/loudmouth.h>
+
+#include <telepathy-glib/base-connection.h>
+#include "gabble-types.h"
 #include "bytestream-ibb.h"
+#include "gabble-connection.h"
 
 G_BEGIN_DECLS
 
-typedef struct _GabbleBytestreamFactory GabbleBytestreamFactory;
 typedef struct _GabbleBytestreamFactoryClass GabbleBytestreamFactoryClass;
 
 struct _GabbleBytestreamFactoryClass {
@@ -95,4 +98,3 @@ gabble_bytestream_factory_generate_stream_id (void);
 G_END_DECLS
 
 #endif /* #ifndef __BYTESTREAM_FACTORY_H__ */
-

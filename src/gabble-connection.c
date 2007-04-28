@@ -1114,8 +1114,6 @@ _gabble_connection_connect (TpBaseConnection *base,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (base);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
   char *jid;
 
   g_assert (priv->port > 0 && priv->port <= G_MAXUINT16);
@@ -1127,14 +1125,7 @@ _gabble_connection_connect (TpBaseConnection *base,
 
   jid = g_strdup_printf ("%s@%s", priv->username, priv->stream_server);
   lm_connection_set_jid (conn->lmconn, jid);
-
-  base->self_handle = tp_handle_ensure (contact_handles, jid, NULL, error);
   g_free (jid);
-
-  if (base->self_handle == 0)
-    {
-      return FALSE;
-    }
 
   /* set initial presence */
   conn->self_presence = gabble_presence_new ();
@@ -1960,8 +1951,11 @@ connection_auth_cb (LmConnection *lmconn,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (data);
   TpBaseConnection *base = (TpBaseConnection *)conn;
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   GError *error = NULL;
+  const gchar *jid;
 
   if (base->status != TP_CONNECTION_STATUS_CONNECTING)
     {
@@ -1982,6 +1976,26 @@ connection_auth_cb (LmConnection *lmconn,
 
       return;
     }
+
+
+  jid = lm_connection_get_jid (lmconn);
+
+  base->self_handle = tp_handle_ensure (contact_handles, jid, NULL, &error);
+
+  if (base->self_handle == 0)
+    {
+      DEBUG ("couldn't get our self handle");
+
+      g_error_free (error);
+
+      tp_base_connection_change_status ((TpBaseConnection *)conn,
+          TP_CONNECTION_STATUS_DISCONNECTED,
+          TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
+
+      return;
+    }
+
+  DEBUG ("Created self handle %d, our JID is %s", base->self_handle, jid);
 
   if (!gabble_disco_request_with_timeout (conn->disco, GABBLE_DISCO_TYPE_INFO,
                                           priv->stream_server, NULL, 5000,

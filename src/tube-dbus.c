@@ -316,6 +316,18 @@ unref_handle_foreach (gpointer key,
 }
 
 static void
+bytestream_state_changed_cb (GabbleBytestreamIBB *bytestream,
+                             BytestreamIBBState state,
+                             gpointer user_data)
+{
+  GabbleTubeDBus *self = GABBLE_TUBE_DBUS (user_data);
+  GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
+
+  /* XXX emit TubeClosed */
+  priv->bytestream = NULL;
+}
+
+static void
 gabble_tube_dbus_dispose (GObject *object)
 {
   GabbleTubeDBus *self = GABBLE_TUBE_DBUS (object);
@@ -438,6 +450,9 @@ gabble_tube_dbus_set_property (GObject *object,
         if (priv->bytestream == NULL)
           {
             priv->bytestream = g_value_get_object (value);
+
+            g_signal_connect (priv->bytestream, "state-changed",
+                G_CALLBACK (bytestream_state_changed_cb), self);
 
             if (priv->state == TP_TUBE_STATE_OPEN)
               tube_dbus_open (self);

@@ -285,7 +285,6 @@ unref_handle_foreach (gpointer key,
   tp_handle_unref (contact_repo, handle);
 }
 
-
 static void
 gabble_tube_dbus_dispose (GObject *object)
 {

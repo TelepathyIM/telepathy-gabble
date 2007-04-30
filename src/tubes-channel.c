@@ -221,22 +221,79 @@ gabble_tubes_channel_set_property (GObject     *object,
 }
 
 static void
+d_bus_names_changed_added (GabbleTubesChannel *self,
+                           guint tube_id,
+                           TpHandle contact,
+                           const gchar *new_name)
+{
+  GPtrArray *added = g_ptr_array_sized_new (1);
+  GArray *removed = g_array_new (FALSE, FALSE, sizeof (guint));
+  GValue tmp = {0,};
+  guint i;
+
+  g_value_init (&tmp, DBUS_NAME_PAIR_TYPE);
+  g_value_take_boxed (&tmp,
+      dbus_g_type_specialized_construct (DBUS_NAME_PAIR_TYPE));
+  dbus_g_type_struct_set (&tmp,
+      0, contact,
+      1, new_name,
+      G_MAXUINT);
+  g_ptr_array_add (added, g_value_get_boxed (&tmp));
+
+  tp_svc_channel_type_tubes_emit_d_bus_names_changed (self,
+      tube_id, added, removed);
+
+  for (i = 0; i < added->len; i++)
+    g_boxed_free (DBUS_NAME_PAIR_TYPE, added->pdata[i]);
+  g_ptr_array_free (added, TRUE);
+  g_array_free (removed, TRUE);
+}
+
+static void
+d_bus_names_changed_removed (GabbleTubesChannel *self,
+                             guint tube_id,
+                             TpHandle contact)
+{
+  GPtrArray *added = g_ptr_array_new ();
+  GArray *removed = g_array_new (FALSE, FALSE, sizeof (guint));
+
+  g_array_append_val (removed, contact);
+
+  tp_svc_channel_type_tubes_emit_d_bus_names_changed (self,
+      tube_id, added, removed);
+
+  g_ptr_array_free (added, TRUE);
+  g_array_free (removed, TRUE);
+}
+
+static void
 add_yourself_in_dbus_names (GabbleTubesChannel *self,
-                            GabbleTubeDBus *tube)
+                            guint tube_id)
 {
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+  GabbleTubeDBus *tube;
   GHashTable *names;
   gchar *name;
+
+  tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
+  if (tube == NULL)
+    return;
 
   g_object_get (tube,
       "dbus-name", &name,
       "dbus-names", &names,
       NULL);
+
   g_hash_table_insert (names, GUINT_TO_POINTER (priv->self_handle), name);
-  g_hash_table_unref (names);
   tp_handle_ref (contact_repo, priv->self_handle);
+
+  /* Emit the DBusNamesChanged signal */
+  d_bus_names_changed_added (self, tube_id, priv->self_handle, name);
+
+  g_free (name);
+  g_hash_table_unref (names);
 }
 
 static guint
@@ -299,7 +356,7 @@ create_new_tube (GabbleTubesChannel *self,
   if (type == TP_TUBE_TYPE_DBUS &&
       state != TP_TUBE_STATE_LOCAL_PENDING)
     {
-      add_yourself_in_dbus_names (self, tube);
+      add_yourself_in_dbus_names (self, tube_id);
     }
 
   return tube_id;
@@ -383,8 +440,6 @@ d_bus_names_changed_added (GabbleTubesChannel *self,
       G_MAXUINT);
   g_ptr_array_add (added, g_value_get_boxed (&tmp));
 
-  DEBUG ("Adding contact %u to tube %u on channel %p with name %s",
-         contact, tube_id, self, new_name);
   tp_svc_channel_type_tubes_emit_d_bus_names_changed (self,
       tube_id, added, removed);
 
@@ -404,8 +459,6 @@ d_bus_names_changed_removed (GabbleTubesChannel *self,
 
   g_array_append_val (removed, contact);
 
-  DEBUG ("Removing contact %u from tube %u on channel %p",
-         contact, tube_id, self);
   tp_svc_channel_type_tubes_emit_d_bus_names_changed (self,
       tube_id, added, removed);
 
@@ -1152,15 +1205,7 @@ gabble_tubes_channel_accept_tube (TpSvcChannelTypeTubes *iface,
   g_object_get (tube, "type", &type, NULL);
   if (type == TP_TUBE_TYPE_DBUS)
     {
-      gchar *name;
-
-      g_object_get (tube, "dbus-name", &name, NULL);
-
-      add_yourself_in_dbus_names (self, tube);
-      /* Emit the DBusNamesChanged signal */
-      d_bus_names_changed_added (self, id, priv->self_handle, name);
-
-      g_free (name);
+      add_yourself_in_dbus_names (self, id);
     }
 
   tp_svc_channel_type_tubes_return_from_accept_tube (context);

@@ -435,10 +435,13 @@ gabble_tube_dbus_set_property (GObject *object,
         priv->conn = g_value_get_object (value);
         break;
       case PROP_BYTESTREAM:
-        priv->bytestream = g_value_get_object (value);
+        if (priv->bytestream == NULL)
+          {
+            priv->bytestream = g_value_get_object (value);
 
-        if (priv->state == TP_TUBE_STATE_OPEN)
-          tube_dbus_open (self);
+            if (priv->state == TP_TUBE_STATE_OPEN)
+              tube_dbus_open (self);
+          }
         break;
       case PROP_INITIATOR:
         priv->initiator = g_value_get_uint (value);

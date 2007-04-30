@@ -592,9 +592,31 @@ gabble_bytestream_ibb_close (GabbleBytestreamIBB *self)
           gabble_bytestream_ibb_decline (self);
         }
     }
-  else
+  else if (priv->peer_handle_type == TP_HANDLE_TYPE_CONTACT)
     {
+      /* XXX : Does it make sense to send a close message in a
+       * muc bytestream ? */
       /* XXX : send (and catch somewhere) IBB close message */
+      TpHandleRepoIface *handles_repo = tp_base_connection_get_handles (
+          (TpBaseConnection *) priv->conn, priv->peer_handle_type);
+      LmMessage *msg;
+      const gchar *jid;
+      gchar *full_jid;
+
+      jid = tp_handle_inspect (handles_repo, priv->peer_handle);
+      full_jid = g_strdup_printf ("%s/%s", jid, priv->peer_resource);
+
+      msg = lm_message_build (full_jid, LM_MESSAGE_TYPE_IQ,
+          '@', "type", "set",
+          '(', "close", "",
+            '@', "xmlns", NS_IBB,
+            '@', "sid", priv->stream_id,
+          ')', NULL);
+
+      _gabble_connection_send (priv->conn, msg, NULL);
+
+      g_free (full_jid);
+      lm_message_unref (msg);
     }
 
   g_object_set (self, "state", BYTESTREAM_IBB_STATE_CLOSED, NULL);

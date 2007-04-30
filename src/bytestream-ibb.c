@@ -190,6 +190,7 @@ gabble_bytestream_ibb_set_property (GObject *object,
         break;
       case PROP_STATE:
         priv->state = g_value_get_uint (value);
+        g_signal_emit (object, signals[STATE_CHANGED], 0, priv->state);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -581,8 +582,7 @@ gabble_bytestream_ibb_close (GabbleBytestreamIBB *self)
       /* XXX : send (and catch somewhere) IBB close message */
     }
 
-  g_signal_emit (G_OBJECT (self), signals[STATE_CHANGED],
-      0, BYTESTREAM_IBB_STATE_CLOSED);
+  g_object_set (self, "state", BYTESTREAM_IBB_STATE_CLOSED, NULL);
 }
 
 gboolean

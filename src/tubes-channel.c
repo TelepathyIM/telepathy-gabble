@@ -940,6 +940,7 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
   GHashTable *parameters;
   TpTubeType type;
   LmMessageNode *node;
+  guint tube_id;
 
   node = lm_message_node_get_child_with_namespace (msg->node, "tube",
       NS_SI_TUBES);
@@ -952,7 +953,6 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
     }
 
   stream_id = lm_message_node_get_attribute (node, "stream_id");
-
   if (stream_id == NULL)
     {
       NODE_DEBUG (msg->node, "got a SI request without stream ID");
@@ -974,8 +974,39 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
       return;
     }
 
-  create_new_tube (self, type, priv->handle, service,
+  tube_id = create_new_tube (self, type, priv->handle, service,
       parameters, TP_TUBE_STATE_LOCAL_PENDING, stream_id, bytestream);
+
+  /* Tube type specific stuffs */
+  if (type == TP_TUBE_TYPE_DBUS)
+    {
+      TpHandleRepoIface *contact_repo;
+      const gchar *dbus_name;
+      GabbleTubeDBus *tube;
+      GHashTable *names;
+
+      dbus_name = lm_message_node_get_attribute (node, "dbus-name");
+      if (dbus_name == NULL)
+        return;
+
+      tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
+      if (tube == NULL)
+        return;
+
+      g_object_get (tube, "dbus-names", &names, NULL);
+      g_assert (names);
+
+      g_hash_table_insert (names, GUINT_TO_POINTER (priv->handle),
+          g_strdup (dbus_name));
+
+      contact_repo = tp_base_connection_get_handles (
+          (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+      tp_handle_ref (contact_repo, priv->handle);
+
+      d_bus_names_changed_added (self, tube_id, priv->handle, dbus_name);
+
+      g_hash_table_unref (names);
+    }
 }
 
 /**

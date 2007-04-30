@@ -950,9 +950,9 @@ _add_rtp_candidate_node (GabbleMediaSession *session, LmMessageNode *parent,
       type_str = "relay";
       break;
     default:
-      g_error ("%s: TpMediaStreamTransportType has an invalid value",
-        G_STRFUNC);
-      return;
+      g_warning ("%s: TpMediaStreamTransportType has an invalid value, "
+          "ignoring candidate", G_STRFUNC);
+      goto out;
   }
 
   cand_node = lm_message_node_add_child (parent, "candidate", NULL);
@@ -980,6 +980,7 @@ _add_rtp_candidate_node (GabbleMediaSession *session, LmMessageNode *parent,
     "  to Jingle XML: [%s%s%s]", TP_ANSI_BOLD_OFF, xml, TP_ANSI_BOLD_ON);
   g_free (xml);
 
+out:
   g_free (addr);
   g_free (user);
   g_free (pass);

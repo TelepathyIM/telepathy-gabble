@@ -292,7 +292,6 @@ add_yourself_in_dbus_names (GabbleTubesChannel *self,
   /* Emit the DBusNamesChanged signal */
   d_bus_names_changed_added (self, tube_id, priv->self_handle, name);
 
-  g_free (name);
   g_hash_table_unref (names);
 }
 

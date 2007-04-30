@@ -1300,13 +1300,25 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
         }
       else if (strcmp (str, "tcp") == 0)
         {
+          if (port == 443)
+            {
+              GMS_DEBUG_WARNING (priv->session, "%s: tcp candidates on port "
+                  "443 must be ssltcp, ignoring candidate", G_STRFUNC);
+              continue;
+            }
+
           proto = TP_MEDIA_STREAM_BASE_PROTO_TCP;
         }
       else if (strcmp (str, "ssltcp") == 0)
         {
-          GMS_DEBUG_WARNING (priv->session, "%s: ssltcp candidates "
-                             "not yet supported", G_STRFUNC);
-          continue;
+          if (port != 443)
+            {
+              GMS_DEBUG_WARNING (priv->session, "%s: ssltcp candidates must "
+                  "be on port 443, ignoring candidate", G_STRFUNC);
+              continue;
+            }
+
+          proto = TP_MEDIA_STREAM_BASE_PROTO_TCP;
         }
       else
         goto FAILURE;

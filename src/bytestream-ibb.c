@@ -101,6 +101,20 @@ gabble_bytestream_ibb_init (GabbleBytestreamIBB *self)
 }
 
 static void
+gabble_bytestream_ibb_dispose (GObject *object)
+{
+  GabbleBytestreamIBB *self = GABBLE_BYTESTREAM_IBB (object);
+  GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
+
+  if (priv->state != BYTESTREAM_IBB_STATE_CLOSED)
+    {
+      gabble_bytestream_ibb_close (self);
+    }
+
+  G_OBJECT_CLASS (gabble_bytestream_ibb_parent_class)->dispose (object);
+}
+
+static void
 gabble_bytestream_ibb_finalize (GObject *object)
 {
   GabbleBytestreamIBB *self = GABBLE_BYTESTREAM_IBB (object);
@@ -208,6 +222,7 @@ gabble_bytestream_ibb_class_init (
   g_type_class_add_private (gabble_bytestream_ibb_class,
       sizeof (GabbleBytestreamIBBPrivate));
 
+  object_class->dispose = gabble_bytestream_ibb_dispose;
   object_class->finalize = gabble_bytestream_ibb_finalize;
 
   object_class->get_property = gabble_bytestream_ibb_get_property;

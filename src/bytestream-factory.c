@@ -459,12 +459,12 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
   for (l = stream_methods; l != NULL; l = l->next)
     {
       /* We create the stream according the stream method chosen.
-       * User have to accept it before we consider it as open */
+       * User have to accept it */
       if (!tp_strdiff (l->data, NS_IBB))
         {
           bytestream = gabble_bytestream_factory_create_ibb (self, peer_handle,
               TP_HANDLE_TYPE_CONTACT, stream_id, stream_init_id, peer_resource,
-              FALSE);
+              BYTESTREAM_IBB_STATE_LOCAL_PENDING);
           break;
         }
     }
@@ -600,7 +600,7 @@ gabble_bytestream_factory_create_ibb (GabbleBytestreamFactory *self,
                                       const gchar *stream_id,
                                       const gchar *stream_init_id,
                                       const gchar *peer_resource,
-                                      gboolean open)
+                                      BytestreamIBBState state)
 {
   GabbleBytestreamFactoryPrivate *priv;
   GabbleBytestreamIBB *ibb;
@@ -613,7 +613,7 @@ gabble_bytestream_factory_create_ibb (GabbleBytestreamFactory *self,
                       "peer-handle", peer_handle,
                       "peer-handle-type", peer_handle_type,
                       "stream-id", stream_id,
-                      "open", open,
+                      "state", state,
                       NULL);
 
   if (stream_init_id != NULL)
@@ -720,11 +720,14 @@ streaminit_reply_cb (GabbleConnection *conn,
 
   if (!tp_strdiff (stream_method, NS_IBB))
     {
-      /* Remote user have accepted the stream so it's
-       * open */
+      /* Remote user have accepted the stream */
+      /* XXX: as we currently bypass stream specific initiation
+       * steps, we set the state of this new stream to
+       * "open" but it should be "accepted" until the bytestream
+       * is effectively open from the bytestream Pov */
       ibb = gabble_bytestream_factory_create_ibb (self, peer_handle,
           TP_HANDLE_TYPE_CONTACT, data->stream_id, NULL,
-          peer_resource, TRUE);
+          peer_resource, BYTESTREAM_IBB_STATE_OPEN);
     }
   else
     {

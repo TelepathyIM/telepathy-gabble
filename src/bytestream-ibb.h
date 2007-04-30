@@ -27,6 +27,17 @@
 
 G_BEGIN_DECLS
 
+typedef enum
+{
+  /* Received a SI request, response not yet sent */
+  BYTESTREAM_IBB_STATE_LOCAL_PENDING = 0,
+  /* SI request accepted, bytestream specific init steps not yet performed */
+  BYTESTREAM_IBB_STATE_ACCEPTED,
+  /* Bytestream open */
+  BYTESTREAM_IBB_STATE_OPEN,
+  LAST_BYTESTREAM_IBB_STATE,
+} BytestreamIBBState;
+
 typedef struct _GabbleBytestreamIBB GabbleBytestreamIBB;
 typedef struct _GabbleBytestreamIBBClass GabbleBytestreamIBBClass;
 

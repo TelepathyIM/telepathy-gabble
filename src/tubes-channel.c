@@ -550,7 +550,7 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
                   stream_id,
                   NULL,
                   NULL,
-                  TRUE);
+                  BYTESTREAM_IBB_STATE_OPEN);
 
               tube_id = create_new_tube (self, type, initiator_handle,
                   service, parameters, TP_TUBE_STATE_LOCAL_PENDING, stream_id,
@@ -1026,7 +1026,7 @@ gabble_tubes_channel_offer_tube (TpSvcChannelTypeTubes *iface,
   if (priv->handle_type == TP_HANDLE_TYPE_ROOM)
     {
       /* We don't need SI for muc tubes so the bytestream is
-       * already open */
+       * already accepted and open */
 
       bytestream = gabble_bytestream_factory_create_ibb (
           priv->conn->bytestream_factory,
@@ -1035,7 +1035,7 @@ gabble_tubes_channel_offer_tube (TpSvcChannelTypeTubes *iface,
           stream_id,
           NULL,
           NULL,
-          TRUE);
+          BYTESTREAM_IBB_STATE_OPEN);
 
       state = TP_TUBE_STATE_OPEN;
     }

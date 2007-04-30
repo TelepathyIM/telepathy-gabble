@@ -66,7 +66,7 @@ enum
   PROP_STREAM_ID,
   PROP_STREAM_INIT_ID,
   PROP_PEER_RESOURCE,
-  PROP_OPEN,
+  PROP_STATE,
   LAST_PROPERTY
 };
 
@@ -79,7 +79,7 @@ struct _GabbleBytestreamIBBPrivate
   gchar *stream_id;
   gchar *stream_init_id;
   gchar *peer_resource;
-  gboolean open;
+  BytestreamIBBState state;
 
   guint16 seq;
   guint16 last_seq_recv;
@@ -147,8 +147,8 @@ gabble_bytestream_ibb_get_property (GObject *object,
       case PROP_PEER_RESOURCE:
         g_value_set_string (value, priv->peer_resource);
         break;
-      case PROP_OPEN:
-        g_value_set_boolean (value, priv->open);
+      case PROP_STATE:
+        g_value_set_uint (value, priv->state);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -188,8 +188,8 @@ gabble_bytestream_ibb_set_property (GObject *object,
         g_free (priv->peer_resource);
         priv->peer_resource = g_value_dup_string (value);
         break;
-      case PROP_OPEN:
-        priv->open = g_value_get_boolean (value);
+      case PROP_STATE:
+        priv->state = g_value_get_uint (value);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -285,16 +285,17 @@ gabble_bytestream_ibb_class_init (
   g_object_class_install_property (object_class, PROP_PEER_RESOURCE,
       param_spec);
 
-  param_spec = g_param_spec_boolean (
-      "open",
-      "open",
-      "if the bytestream is open or not",
-      FALSE,
+  param_spec = g_param_spec_uint (
+      "state",
+      "Bytestream state",
+      "An enum (BytestreamIBBState) signifying the current state of"
+      "this bytestream object",
+      0, LAST_BYTESTREAM_IBB_STATE - 1, BYTESTREAM_IBB_STATE_LOCAL_PENDING,
       G_PARAM_READWRITE |
       G_PARAM_STATIC_NAME |
       G_PARAM_STATIC_NICK |
       G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_OPEN, param_spec);
+  g_object_class_install_property (object_class, PROP_STATE, param_spec);
 
   signals[DATA_RECEIVED] =
     g_signal_new ("data-received",
@@ -327,9 +328,10 @@ send_data_to (GabbleBytestreamIBB *self,
   gchar *seq, *encoded;
   gboolean ret;
 
-  if (!priv->open)
+  if (priv->state != BYTESTREAM_IBB_STATE_OPEN)
     {
-      DEBUG ("Can't send data to a closed stream");
+      DEBUG ("can't send data through a not open bytestream (state: %d)",
+          priv->state);
       return FALSE;
     }
 
@@ -399,9 +401,10 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
   TpHandle sender;
   TpHandleRepoIface *contact_repo;
 
-  if (!priv->open)
+  if (priv->state != BYTESTREAM_IBB_STATE_OPEN)
     {
-      DEBUG ("can't receive data through a closed bytestream");
+      DEBUG ("can't receive data through a not open bytestream (state: %d)",
+          priv->state);
       return FALSE;
     }
 
@@ -477,7 +480,7 @@ gabble_bytestream_ibb_accept (GabbleBytestreamIBB *self)
   const gchar *jid;
   gchar *full_jid;
 
-  if (priv->open)
+  if (priv->state != BYTESTREAM_IBB_STATE_LOCAL_PENDING)
     {
       /* The stream was previoulsy or automatically accepted */
       return;
@@ -498,11 +501,14 @@ gabble_bytestream_ibb_accept (GabbleBytestreamIBB *self)
       priv->stream_init_id, NS_IBB);
 
   if (_gabble_connection_send (priv->conn, msg, NULL))
-    priv->open = TRUE;
+    {
+      priv->state = BYTESTREAM_IBB_STATE_ACCEPTED;
+    }
 
   /* XXX We just accepted the SI initiation request.
    * Now we should deal with bytestream specific initiation
    * steps */
+  priv->state = BYTESTREAM_IBB_STATE_OPEN;
 
   lm_message_unref (msg);
   g_free (full_jid);
@@ -518,17 +524,18 @@ gabble_bytestream_ibb_decline (GabbleBytestreamIBB *self)
   const gchar *jid;
   gchar *full_jid;
 
+  if (priv->state != BYTESTREAM_IBB_STATE_LOCAL_PENDING)
+    {
+      DEBUG ("bytestream is not in the local pending state (state %d)",
+          priv->state);
+      return;
+    }
+
   if (priv->peer_handle_type == TP_HANDLE_TYPE_ROOM ||
       priv->peer_resource == NULL ||
       priv->stream_init_id == NULL)
     {
       DEBUG ("can't decline a bytestream not created due to a SI request");
-      return;
-    }
-
-  if (priv->open)
-    {
-      DEBUG ("can't decline an already open bytestream");
       return;
     }
 
@@ -540,7 +547,6 @@ gabble_bytestream_ibb_decline (GabbleBytestreamIBB *self)
 
   _gabble_connection_send (priv->conn, msg, NULL);
 
-  priv->open = FALSE;
   lm_message_unref (msg);
   g_free (full_jid);
 }
@@ -550,18 +556,16 @@ gabble_bytestream_ibb_close (GabbleBytestreamIBB *self)
 {
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
 
-  if (priv->open)
-    {
-      /* XXX : send (and catch somewhere) IBB close message */
-      priv->open = FALSE;
-    }
-  else
+  if (priv->state == BYTESTREAM_IBB_STATE_LOCAL_PENDING)
     {
       if (priv->peer_resource != NULL && priv->stream_init_id != NULL)
         {
-          /* Bytestream was not open so we decline the SI request */
           gabble_bytestream_ibb_decline (self);
         }
+    }
+  else
+    {
+      /* XXX : send (and catch somewhere) IBB close message */
     }
 
   g_signal_emit (G_OBJECT (self), signals[CLOSED], 0);

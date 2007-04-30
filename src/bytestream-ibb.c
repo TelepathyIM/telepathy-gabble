@@ -51,7 +51,7 @@ G_DEFINE_TYPE (GabbleBytestreamIBB, gabble_bytestream_ibb, G_TYPE_OBJECT);
 enum
 {
   DATA_RECEIVED,
-  CLOSED,
+  STATE_CHANGED,
   LAST_SIGNAL
 };
 
@@ -306,14 +306,14 @@ gabble_bytestream_ibb_class_init (
                   g_cclosure_marshal_VOID__UINT_POINTER,
                   G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_POINTER);
 
-  signals[CLOSED] =
-    g_signal_new ("closed",
+  signals[STATE_CHANGED] =
+    g_signal_new ("state-changed",
                   G_OBJECT_CLASS_TYPE (gabble_bytestream_ibb_class),
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_marshal_VOID__VOID,
-                  G_TYPE_NONE, 0);
+                  gabble_marshal_VOID__UINT,
+                  G_TYPE_NONE, 1, G_TYPE_UINT);
 }
 
 gboolean
@@ -581,7 +581,8 @@ gabble_bytestream_ibb_close (GabbleBytestreamIBB *self)
       /* XXX : send (and catch somewhere) IBB close message */
     }
 
-  g_signal_emit (G_OBJECT (self), signals[CLOSED], 0);
+  g_signal_emit (G_OBJECT (self), signals[STATE_CHANGED],
+      0, BYTESTREAM_IBB_STATE_CLOSED);
 }
 
 gboolean

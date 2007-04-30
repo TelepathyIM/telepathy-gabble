@@ -569,12 +569,16 @@ gabble_bytestream_factory_new (GabbleConnection *conn)
 }
 
 static void
-bytestream_closed_cb (GabbleBytestreamIBB *bytestream,
-                      gpointer user_data)
+bytestream_state_changed_cb (GabbleBytestreamIBB *bytestream,
+                             BytestreamIBBState state,
+                             gpointer user_data)
 {
   GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (user_data);
 
-  remove_bytestream (self, bytestream);
+  if (state == BYTESTREAM_IBB_STATE_CLOSED)
+    {
+      remove_bytestream (self, bytestream);
+    }
 }
 
 gchar *
@@ -622,7 +626,8 @@ gabble_bytestream_factory_create_ibb (GabbleBytestreamFactory *self,
   if (peer_resource != NULL)
     g_object_set (G_OBJECT (ibb), "peer-resource", peer_resource, NULL);
 
-  g_signal_connect (ibb, "closed", G_CALLBACK (bytestream_closed_cb), self);
+  g_signal_connect (ibb, "state-changed",
+      G_CALLBACK (bytestream_state_changed_cb), self);
 
   g_hash_table_insert (priv->ibb_bytestreams, g_strdup (stream_id), ibb);
 

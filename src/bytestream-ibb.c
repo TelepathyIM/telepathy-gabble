@@ -470,8 +470,8 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
   return TRUE;
 }
 
-void
-gabble_bytestream_ibb_accept (GabbleBytestreamIBB *self)
+LmMessage *
+gabble_bytestream_ibb_make_accept_iq (GabbleBytestreamIBB *self)
 {
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
   TpHandleRepoIface *handles_repo = tp_base_connection_get_handles (
@@ -479,6 +479,28 @@ gabble_bytestream_ibb_accept (GabbleBytestreamIBB *self)
   LmMessage *msg;
   const gchar *jid;
   gchar *full_jid;
+
+  if (priv->peer_handle_type == TP_HANDLE_TYPE_ROOM ||
+      priv->peer_resource == NULL ||
+      priv->stream_init_id == NULL)
+    {
+      return NULL;
+    }
+
+  jid = tp_handle_inspect (handles_repo, priv->peer_handle);
+  full_jid = g_strdup_printf ("%s/%s", jid, priv->peer_resource);
+
+  msg = gabble_bytestream_factory_make_accept_iq (full_jid,
+      priv->stream_init_id, NS_IBB);
+
+  g_free (full_jid);
+  return msg;
+}
+
+void
+gabble_bytestream_ibb_accept (GabbleBytestreamIBB *self, LmMessage *msg)
+{
+  GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
 
   if (priv->state != BYTESTREAM_IBB_STATE_LOCAL_PENDING)
     {
@@ -494,12 +516,6 @@ gabble_bytestream_ibb_accept (GabbleBytestreamIBB *self)
       return;
     }
 
-  jid = tp_handle_inspect (handles_repo, priv->peer_handle);
-  full_jid = g_strdup_printf ("%s/%s", jid, priv->peer_resource);
-
-  msg = gabble_bytestream_factory_make_accept_iq (full_jid,
-      priv->stream_init_id, NS_IBB);
-
   if (_gabble_connection_send (priv->conn, msg, NULL))
     {
       priv->state = BYTESTREAM_IBB_STATE_ACCEPTED;
@@ -509,9 +525,6 @@ gabble_bytestream_ibb_accept (GabbleBytestreamIBB *self)
    * Now we should deal with bytestream specific initiation
    * steps */
   priv->state = BYTESTREAM_IBB_STATE_OPEN;
-
-  lm_message_unref (msg);
-  g_free (full_jid);
 }
 
 static void

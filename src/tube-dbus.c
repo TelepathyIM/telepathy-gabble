@@ -227,7 +227,37 @@ tube_dbus_open (GabbleTubeDBus *self)
   if (priv->bytestream == NULL)
     return;
 
-  gabble_bytestream_ibb_accept (priv->bytestream);
+  if (priv->state == TP_TUBE_STATE_LOCAL_PENDING)
+    {
+      LmMessage *msg;
+      LmMessageNode *si, *tube_node;
+
+      msg = gabble_bytestream_ibb_make_accept_iq (priv->bytestream);
+
+      if (msg != NULL)
+        {
+          /* XXX this is crack we shouldn't request an accept IQ if we don't
+           * need one */
+          si = lm_message_node_get_child_with_namespace (msg->node, "si",
+              NS_SI);
+
+          if (si == NULL)
+            {
+              /* XXX errors ! */
+              return;
+            }
+
+          tube_node = lm_message_node_add_child (si, "tube", "");
+          lm_message_node_set_attribute (tube_node, "xmlns", NS_SI_TUBES);
+
+          lm_message_node_add_child (tube_node, "dbus-name",
+              priv->dbus_local_name);
+
+          gabble_bytestream_ibb_accept (priv->bytestream, msg);
+
+          lm_message_unref (msg);
+        }
+    }
 
   g_signal_connect (priv->bytestream, "data-received",
       G_CALLBACK (data_received_cb), self);
@@ -421,10 +451,10 @@ gabble_tube_dbus_set_property (GObject *object,
         priv->parameters = g_value_get_boxed (value);
         break;
       case PROP_STATE:
-        priv->state = g_value_get_uint (value);
-
-        if (priv->state == TP_TUBE_STATE_OPEN)
+        if (g_value_get_uint (value) == TP_TUBE_STATE_OPEN)
           tube_dbus_open (self);
+
+        priv->state = g_value_get_uint (value);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);

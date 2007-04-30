@@ -266,32 +266,53 @@ d_bus_names_changed_removed (GabbleTubesChannel *self,
 }
 
 static void
-add_yourself_in_dbus_names (GabbleTubesChannel *self,
-                            guint tube_id)
+add_name_in_dbus_names (GabbleTubesChannel *self,
+                        guint tube_id,
+                        TpHandle handle,
+                        const gchar *dbus_name)
 {
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   GabbleTubeDBus *tube;
   GHashTable *names;
-  gchar *name;
 
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
   if (tube == NULL)
     return;
 
   g_object_get (tube,
-      "dbus-name", &name,
       "dbus-names", &names,
       NULL);
 
-  g_hash_table_insert (names, GUINT_TO_POINTER (priv->self_handle), name);
-  tp_handle_ref (contact_repo, priv->self_handle);
+  g_hash_table_insert (names, GUINT_TO_POINTER (handle), g_strdup (dbus_name));
+  tp_handle_ref (contact_repo, handle);
 
   /* Emit the DBusNamesChanged signal */
-  d_bus_names_changed_added (self, tube_id, priv->self_handle, name);
+  d_bus_names_changed_added (self, tube_id, handle, dbus_name);
 
   g_hash_table_unref (names);
+}
+
+static void
+add_yourself_in_dbus_names (GabbleTubesChannel *self,
+                            guint tube_id)
+{
+  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  GabbleTubeDBus *tube;
+  gchar *dbus_name;
+
+  tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
+  if (tube == NULL)
+    return;
+
+  g_object_get (tube,
+      "dbus-name", &dbus_name,
+      NULL);
+
+  add_name_in_dbus_names (self, tube_id, priv->self_handle, dbus_name);
+
+  g_free (dbus_name);
 }
 
 static guint
@@ -588,10 +609,10 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
           if (!name)
             {
               /* Contact just joined the tube */
-              const gchar *new_name = lm_message_node_get_attribute (tube_node,
+              const gchar *new_name;
+
+              new_name = lm_message_node_get_attribute (tube_node,
                   "dbus-name");
-              TpHandleRepoIface *contact_repo = tp_base_connection_get_handles
-                ((TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 
               if (!new_name)
                 {
@@ -600,12 +621,7 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
                   continue;
                 }
 
-              g_hash_table_insert (names, GUINT_TO_POINTER (contact),
-                  g_strdup (new_name));
-              tp_handle_ref (contact_repo, contact);
-
-              /* Emit the DBusNamesChanged signal */
-              d_bus_names_changed_added (self, tube_id, contact, new_name);
+              add_name_in_dbus_names (self, tube_id, contact, new_name);
             }
 
           g_hash_table_unref (names);
@@ -910,6 +926,9 @@ bytestream_negotiate_cb (GabbleBytestreamIBB *bytestream,
 
   if (bytestream != NULL)
     {
+      LmMessageNode *si, *tube_node, *dbus_name_node;
+      const gchar *dbus_name;
+
       /* Tube was accepted by remote user */
       g_object_set (tube,
           "bytestream", bytestream,
@@ -918,8 +937,21 @@ bytestream_negotiate_cb (GabbleBytestreamIBB *bytestream,
 
       tp_svc_channel_type_tubes_emit_tube_state_changed (self, tube_id,
           TP_TUBE_STATE_OPEN);
-    }
 
+      si = lm_message_node_get_child_with_namespace (msg->node, "si", NS_SI);
+      /* XXX properly catch errors ! */
+      if (si == NULL)
+        return;
+
+      tube_node = lm_message_node_get_child_with_namespace (si, "tube",
+          NS_SI_TUBES);
+      if (tube_node == NULL)
+        return;
+
+      dbus_name_node = lm_message_node_get_child (tube_node, "dbus-name");
+      dbus_name = lm_message_node_get_value (dbus_name_node);
+      add_name_in_dbus_names (self, tube_id, priv->handle, dbus_name);
+    }
   else
     {
       /* Tube was declined by remote user. Close it */
@@ -980,32 +1012,13 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
   /* Tube type specific stuffs */
   if (type == TP_TUBE_TYPE_DBUS)
     {
-      TpHandleRepoIface *contact_repo;
       const gchar *dbus_name;
-      GabbleTubeDBus *tube;
-      GHashTable *names;
 
       dbus_name = lm_message_node_get_attribute (node, "dbus-name");
       if (dbus_name == NULL)
         return;
 
-      tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
-      if (tube == NULL)
-        return;
-
-      g_object_get (tube, "dbus-names", &names, NULL);
-      g_assert (names);
-
-      g_hash_table_insert (names, GUINT_TO_POINTER (priv->handle),
-          g_strdup (dbus_name));
-
-      contact_repo = tp_base_connection_get_handles (
-          (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-      tp_handle_ref (contact_repo, priv->handle);
-
-      d_bus_names_changed_added (self, tube_id, priv->handle, dbus_name);
-
-      g_hash_table_unref (names);
+      add_name_in_dbus_names (self, tube_id, priv->handle, dbus_name);
     }
 }
 

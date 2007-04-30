@@ -84,8 +84,11 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *ibb,
 void
 gabble_bytestream_ibb_close (GabbleBytestreamIBB *ibb);
 
+LmMessage *
+gabble_bytestream_ibb_make_accept_iq (GabbleBytestreamIBB *ibb);
+
 void
-gabble_bytestream_ibb_accept (GabbleBytestreamIBB *ibb);
+gabble_bytestream_ibb_accept (GabbleBytestreamIBB *ibb, LmMessage *msg);
 
 gboolean
 gabble_bytestream_ibb_send_to (GabbleBytestreamIBB *ibb, TpHandle to,

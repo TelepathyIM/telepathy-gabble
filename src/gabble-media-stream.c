@@ -907,8 +907,7 @@ _add_rtp_candidate_node (GabbleMediaSession *session, LmMessageNode *parent,
   gchar *port_str;
   gchar *pref_str;
   gchar *xml;
-  const gchar *type_str;
-  const gchar *candidate_id;
+  const gchar *type_str, *proto_str, *candidate_id;
   guint port;
   gdouble pref;
   TpMediaStreamBaseProto proto;
@@ -955,6 +954,23 @@ _add_rtp_candidate_node (GabbleMediaSession *session, LmMessageNode *parent,
       goto out;
   }
 
+  switch (proto)
+    {
+    case TP_MEDIA_STREAM_BASE_PROTO_UDP:
+      proto_str = "udp";
+      break;
+    case TP_MEDIA_STREAM_BASE_PROTO_TCP:
+      if (port == 443 && type == TP_MEDIA_STREAM_TRANSPORT_TYPE_RELAY)
+        proto_str = "ssltcp";
+      else
+        proto_str = "tcp";
+      break;
+    default:
+      g_warning ("%s: TpMediaStreamBaseProto has an invalid value, ignoring "
+          "candidate", G_STRFUNC);
+      goto out;
+    }
+
   cand_node = lm_message_node_add_child (parent, "candidate", NULL);
   lm_message_node_set_attributes (cand_node,
       "name", "rtp",
@@ -963,7 +979,7 @@ _add_rtp_candidate_node (GabbleMediaSession *session, LmMessageNode *parent,
       "username", user,
       "password", pass,
       "preference", pref_str,
-      "protocol", (proto == TP_MEDIA_STREAM_BASE_PROTO_UDP) ? "udp" : "tcp",
+      "protocol", proto_str,
       "type", type_str,
       "network", "0",
       "generation", "0",

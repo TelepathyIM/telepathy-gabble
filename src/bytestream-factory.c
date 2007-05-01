@@ -513,7 +513,6 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
-
 /**
  * bytestream_factory_msg_data_cb
  *

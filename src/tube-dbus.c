@@ -343,7 +343,6 @@ gabble_tube_dbus_finalize (GObject *object)
   G_OBJECT_CLASS (gabble_tube_dbus_parent_class)->finalize (object);
 }
 
-
 static void
 gabble_tube_dbus_get_property (GObject *object,
                                guint property_id,

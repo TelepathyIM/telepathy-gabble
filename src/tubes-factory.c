@@ -364,7 +364,6 @@ gabble_tubes_factory_iface_connecting (TpChannelFactoryIface *iface)
                                           LM_HANDLER_PRIORITY_NORMAL);
 }
 
-
 static void
 gabble_tubes_factory_iface_connected (TpChannelFactoryIface *iface)
 {
@@ -487,7 +486,6 @@ void gabble_tubes_factory_handle_request (GabbleTubesFactory *self,
 
   gabble_tubes_channel_tube_offered (chan, bytestream, msg);
 }
-
 
 GabbleTubesFactory *
 gabble_tubes_factory_new (GabbleConnection *conn)

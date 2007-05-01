@@ -76,7 +76,6 @@ enum
   LAST_PROPERTY,
 };
 
-
 /* private structure */
 typedef struct _GabbleTubesChannelPrivate GabbleTubesChannelPrivate;
 
@@ -1210,7 +1209,6 @@ gabble_tubes_channel_accept_tube (TpSvcChannelTypeTubes *iface,
   tp_svc_channel_type_tubes_return_from_accept_tube (context);
 }
 
-
 static void
 close_tube (GabbleTubesChannel *self,
             GabbleTubeDBus *tube,
@@ -1283,7 +1281,6 @@ gabble_tubes_channel_close_tube (TpSvcChannelTypeTubes *iface,
   tp_svc_channel_type_tubes_return_from_close_tube (context);
 }
 
-
 /**
  * gabble_tubes_channel_get_d_bus_server_address
  *
@@ -1332,7 +1329,6 @@ gabble_tubes_channel_get_d_bus_server_address (TpSvcChannelTypeTubes *iface,
   g_free (addr);
 }
 
-
 static void
 get_d_bus_names_foreach (gpointer key,
                          gpointer value,
@@ -1350,7 +1346,6 @@ get_d_bus_names_foreach (gpointer key,
       G_MAXUINT);
   g_ptr_array_add (ret, g_value_get_boxed (&tmp));
 }
-
 
 /**
  * gabble_tubes_channel_get_d_bus_names
@@ -1449,7 +1444,6 @@ close_tubes_channel (GabbleTubesChannel *self)
   tp_svc_channel_emit_closed (self);
 }
 
-
 /**
  * gabble_tubes_channel_close
  *
@@ -1468,7 +1462,6 @@ gabble_tubes_channel_close (TpSvcChannel *iface,
   tp_svc_channel_return_from_close (context);
 }
 
-
 /**
  * gabble_tubes_channel_get_channel_type
  *
@@ -1482,7 +1475,6 @@ gabble_tubes_channel_get_channel_type (TpSvcChannel *iface,
   tp_svc_channel_return_from_get_channel_type (context,
       TP_IFACE_CHANNEL_TYPE_TUBES);
 }
-
 
 /**
  * gabble_tubes_channel_get_handle
@@ -1503,7 +1495,6 @@ gabble_tubes_channel_get_handle (TpSvcChannel *iface,
   tp_svc_channel_return_from_get_handle (context, priv->handle_type,
       priv->handle);
 }
-
 
 /**
  * gabble_tubes_channel_get_interfaces

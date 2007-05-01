@@ -39,11 +39,22 @@
 #include <telepathy-glib/svc-unstable.h>
 #include "util.h"
 #include "bytestream-ibb.h"
+#include "gabble-signals-marshal.h"
 
 G_DEFINE_TYPE (GabbleTubeDBus, gabble_tube_dbus, G_TYPE_OBJECT)
 
 #define TUBE_PARAMETERS_TYPE dbus_g_type_get_map\
     ("GHashTable", G_TYPE_STRING, G_TYPE_VALUE)
+
+/* signals */
+enum
+{
+  STATE_CHANGED,
+  CLOSED,
+  LAST_SIGNAL
+};
+
+static guint signals[LAST_SIGNAL] = {0};
 
 /* properties */
 enum
@@ -317,21 +328,6 @@ unref_handle_foreach (gpointer key,
   tp_handle_unref (contact_repo, handle);
 }
 
-static void
-bytestream_state_changed_cb (GabbleBytestreamIBB *bytestream,
-                             BytestreamIBBState state,
-                             gpointer user_data)
-{
-  GabbleTubeDBus *self = GABBLE_TUBE_DBUS (user_data);
-  GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
-
-  if (state == BYTESTREAM_IBB_STATE_CLOSED)
-    {
-      /* XXX emit TubeClosed */
-      priv->bytestream = NULL;
-    }
-}
-
 static TpTubeState
 get_tube_state (GabbleTubeDBus *self)
 {
@@ -356,6 +352,26 @@ get_tube_state (GabbleTubeDBus *self)
 
   else
     g_assert_not_reached ();
+}
+
+static void
+bytestream_state_changed_cb (GabbleBytestreamIBB *bytestream,
+                             BytestreamIBBState state,
+                             gpointer user_data)
+{
+  GabbleTubeDBus *self = GABBLE_TUBE_DBUS (user_data);
+  GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
+
+  if (state == BYTESTREAM_IBB_STATE_CLOSED)
+    {
+      g_signal_emit (G_OBJECT (self), signals[CLOSED], 0);
+      priv->bytestream = NULL;
+    }
+  else
+    {
+      g_signal_emit (G_OBJECT (self), signals[STATE_CHANGED], 0,
+          get_tube_state (self));
+    }
 }
 
 static void
@@ -657,6 +673,24 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
       G_PARAM_STATIC_NICK |
       G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_DBUS_NAMES, param_spec);
+
+  signals[STATE_CHANGED] =
+    g_signal_new ("state-changed",
+                  G_OBJECT_CLASS_TYPE (gabble_tube_dbus_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_marshal_VOID__UINT,
+                  G_TYPE_NONE, 1, G_TYPE_UINT);
+
+  signals[CLOSED] =
+    g_signal_new ("closed",
+                  G_OBJECT_CLASS_TYPE (gabble_tube_dbus_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_marshal_VOID__VOID,
+                  G_TYPE_NONE, 0);
 }
 
 static void

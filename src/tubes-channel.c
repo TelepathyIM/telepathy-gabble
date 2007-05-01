@@ -316,6 +316,60 @@ add_yourself_in_dbus_names (GabbleTubesChannel *self,
 }
 
 static guint
+find_tube_id (GabbleTubesChannel *self,
+              GabbleTubeDBus *tube)
+{
+  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  const gchar *stream_id;
+  guint tube_id;
+
+  /* XXX maybe we could use a smarter way to find the tube ID ? */
+  stream_id = gabble_tube_dbus_get_stream_id (tube);
+  if (stream_id == NULL)
+    {
+      DEBUG ("no stream ID");
+      return 0;
+    }
+
+  tube_id = GPOINTER_TO_UINT (g_hash_table_lookup (priv->stream_id_to_tube_id,
+        stream_id));
+
+  g_assert (tube == g_hash_table_lookup (priv->tubes,
+        GUINT_TO_POINTER (tube_id)));
+
+  return tube_id;
+}
+
+static void
+tube_closed_cb (GabbleTubeDBus *tube,
+                gpointer user_data)
+{
+  GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (user_data);
+  guint tube_id;
+
+  tube_id = find_tube_id (self, tube);
+  if (tube_id == 0)
+    return;
+
+  tp_svc_channel_type_tubes_emit_tube_closed (self, tube_id);
+}
+
+static void
+tube_state_changed_cb (GabbleTubeDBus *tube,
+                       TpTubeState state,
+                       gpointer user_data)
+{
+  GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (user_data);
+  guint tube_id;
+
+  tube_id = find_tube_id (self, tube);
+  if (tube_id == 0)
+    return;
+
+  tp_svc_channel_type_tubes_emit_tube_state_changed (self, tube_id, state);
+}
+
+static guint
 create_new_tube (GabbleTubesChannel *self,
                  TpTubeType type,
                  TpHandle initiator,
@@ -383,6 +437,10 @@ create_new_tube (GabbleTubesChannel *self,
     {
       add_yourself_in_dbus_names (self, tube_id);
     }
+
+  g_signal_connect (tube, "state-changed", G_CALLBACK (tube_state_changed_cb),
+      self);
+  g_signal_connect (tube, "closed", G_CALLBACK (tube_closed_cb), self);
 
   return tube_id;
 }

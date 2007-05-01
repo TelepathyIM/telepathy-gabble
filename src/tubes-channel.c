@@ -320,7 +320,7 @@ find_tube_id (GabbleTubesChannel *self,
               GabbleTubeDBus *tube)
 {
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
-  const gchar *stream_id;
+  gchar *stream_id;
   guint tube_id;
 
   /* XXX maybe we could use a smarter way to find the tube ID ? */
@@ -337,6 +337,7 @@ find_tube_id (GabbleTubesChannel *self,
   g_assert (tube == g_hash_table_lookup (priv->tubes,
         GUINT_TO_POINTER (tube_id)));
 
+  g_free (stream_id);
   return tube_id;
 }
 

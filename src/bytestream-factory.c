@@ -590,27 +590,6 @@ parse_ibb_close_iq (GabbleBytestreamFactory *self,
   return TRUE;
 }
 
-/**
- * bytestream_factory_iq_ibb_cb:
- *
- * Called by loudmouth when we get an incoming <iq>.
- * This handler is concerned with IBB iq's.
- *
- */
-static LmHandlerResult
-bytestream_factory_iq_ibb_cb (LmMessageHandler *handler,
-                              LmConnection *lmconn,
-                              LmMessage *msg,
-                              gpointer user_data)
-{
-  GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (user_data);
-
-  if (parse_ibb_close_iq (self, msg))
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-
-  return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-}
-
 static gboolean
 parse_ibb_data (GabbleBytestreamFactory *self,
                 LmMessage *msg)
@@ -644,6 +623,30 @@ parse_ibb_data (GabbleBytestreamFactory *self,
   gabble_bytestream_ibb_receive (bytestream, msg);
 
   return TRUE;
+}
+
+/**
+ * bytestream_factory_iq_ibb_cb:
+ *
+ * Called by loudmouth when we get an incoming <iq>.
+ * This handler is concerned with IBB iq's.
+ *
+ */
+static LmHandlerResult
+bytestream_factory_iq_ibb_cb (LmMessageHandler *handler,
+                              LmConnection *lmconn,
+                              LmMessage *msg,
+                              gpointer user_data)
+{
+  GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (user_data);
+
+  if (parse_ibb_close_iq (self, msg))
+    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+
+  if (parse_ibb_data (self, msg))
+    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+
+  return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 }
 
 /**

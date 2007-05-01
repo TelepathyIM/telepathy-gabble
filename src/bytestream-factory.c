@@ -534,7 +534,7 @@ parse_ibb_close_iq (GabbleBytestreamFactory *self,
 {
   GabbleBytestreamFactoryPrivate *priv =
     GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
-      const gchar *from, *stream_id;
+  const gchar *from, *stream_id;
   GabbleBytestreamIBB *bytestream;
   LmMessage *reply;
   LmMessageNode *close_node;
@@ -611,6 +611,41 @@ bytestream_factory_iq_ibb_cb (LmMessageHandler *handler,
   return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 }
 
+static gboolean
+parse_ibb_data (GabbleBytestreamFactory *self,
+                LmMessage *msg)
+{
+  GabbleBytestreamFactoryPrivate *priv =
+    GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
+  GabbleBytestreamIBB *bytestream;
+  LmMessageNode *data;
+  const gchar *stream_id;
+
+  priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
+
+  data = lm_message_node_get_child_with_namespace (msg->node, "data", NS_IBB);
+  if (data == NULL)
+    return FALSE;
+
+  stream_id = lm_message_node_get_attribute (data, "sid");
+  if (stream_id == NULL)
+    {
+      DEBUG ("got a IBB message data without a stream id field");
+      return TRUE;
+    }
+
+  bytestream = g_hash_table_lookup (priv->ibb_bytestreams, stream_id);
+  if (bytestream == NULL)
+    {
+      DEBUG ("unknow stream: %s", stream_id);
+      return TRUE;
+    }
+
+  gabble_bytestream_ibb_receive (bytestream, msg);
+
+  return TRUE;
+}
+
 /**
  * bytestream_factory_msg_data_cb
  *
@@ -624,36 +659,11 @@ bytestream_factory_msg_data_cb (LmMessageHandler *handler,
                                 gpointer user_data)
 {
   GabbleBytestreamFactory *self = user_data;
-  GabbleBytestreamFactoryPrivate *priv;
-  GabbleBytestreamIBB *bytestream;
-  LmMessageNode *data;
-  const gchar *stream_id;
 
-  priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
+  if (parse_ibb_data (self, msg))
+    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
-  data = lm_message_node_get_child_with_namespace (msg->node, "data", NS_IBB);
-
-  if (data == NULL)
-    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-
-  stream_id = lm_message_node_get_attribute (data, "sid");
-  if (stream_id == NULL)
-    {
-      DEBUG ("got a IBB message data without a stream id field");
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-    }
-
-  bytestream = g_hash_table_lookup (priv->ibb_bytestreams, stream_id);
-
-  if (bytestream == NULL)
-    {
-      DEBUG ("unknow stream: %s", stream_id);
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-    }
-
-  gabble_bytestream_ibb_receive (bytestream, msg);
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 }
 
 GabbleBytestreamFactory *

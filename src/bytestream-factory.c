@@ -529,6 +529,71 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
 }
 
 static gboolean
+parse_ibb_open_iq (GabbleBytestreamFactory *self,
+                   LmMessage *msg)
+{
+  GabbleBytestreamFactoryPrivate *priv =
+    GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
+  const gchar *from, *stream_id;
+  GabbleBytestreamIBB *bytestream;
+  LmMessage *reply;
+  LmMessageNode *open_node;
+
+  if (lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_SET)
+    return FALSE;
+
+  open_node = lm_message_node_get_child_with_namespace (msg->node, "open",
+      NS_IBB);
+  if (open_node == NULL)
+    return FALSE;
+
+  from = lm_message_node_get_attribute (msg->node, "from");
+  if (from == NULL)
+    {
+      DEBUG ("got a message without a from field");
+      return TRUE;
+    }
+
+  stream_id = lm_message_node_get_attribute (open_node, "sid");
+  if (stream_id == NULL)
+    {
+      DEBUG ("IBB open stanza doesn't contain stream id");
+      return TRUE;
+    }
+
+  /* XXX we should probably do something with the "block-size" attribute */
+
+  bytestream = g_hash_table_lookup (priv->ibb_bytestreams, stream_id);
+  if (bytestream == NULL)
+    {
+      /* We don't accept stream not previously announced using SI */
+      GabbleXmppError error = XMPP_ERROR_ITEM_NOT_FOUND;
+
+      DEBUG ("unknow stream: %s", stream_id);
+
+      reply = lm_message_new_with_sub_type (from,
+          LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_ERROR);
+
+      gabble_xmpp_error_to_node (error, reply->node, NULL);
+    }
+  else
+    {
+      g_object_set (bytestream, "state", BYTESTREAM_IBB_STATE_OPEN,
+          NULL);
+
+      reply = lm_message_new_with_sub_type (from, LM_MESSAGE_TYPE_IQ,
+          LM_MESSAGE_SUB_TYPE_RESULT);
+    }
+
+  lm_message_node_set_attribute (reply->node,
+      "id", lm_message_node_get_attribute (msg->node, "id"));
+
+  _gabble_connection_send (priv->conn, reply, NULL);
+
+  return TRUE;
+}
+
+static gboolean
 parse_ibb_close_iq (GabbleBytestreamFactory *self,
                     LmMessage *msg)
 {
@@ -557,7 +622,7 @@ parse_ibb_close_iq (GabbleBytestreamFactory *self,
   stream_id = lm_message_node_get_attribute (close_node, "sid");
   if (stream_id == NULL)
     {
-      DEBUG ("close stanza doesn't contain stream id");
+      DEBUG ("IBB close stanza doesn't contain stream id");
       return TRUE;
     }
 
@@ -639,6 +704,9 @@ bytestream_factory_iq_ibb_cb (LmMessageHandler *handler,
                               gpointer user_data)
 {
   GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (user_data);
+
+  if (parse_ibb_open_iq (self, msg))
+    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
   if (parse_ibb_close_iq (self, msg))
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
@@ -768,7 +836,7 @@ streaminit_reply_cb (GabbleConnection *conn,
   GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (obj);
   struct _streaminit_reply_cb_data *data =
     (struct _streaminit_reply_cb_data*) user_data;
-  GabbleBytestreamIBB *ibb = NULL;
+  GabbleBytestreamIBB *bytestream = NULL;
   gchar *peer_resource = NULL;
   LmMessageNode *si, *feature, *x, *field, *value;
   const gchar *from, *stream_method;
@@ -842,13 +910,9 @@ streaminit_reply_cb (GabbleConnection *conn,
   if (!tp_strdiff (stream_method, NS_IBB))
     {
       /* Remote user have accepted the stream */
-      /* XXX: as we currently bypass stream specific initiation
-       * steps, we set the state of this new stream to
-       * "open" but it should be "accepted" until the bytestream
-       * is effectively open from the bytestream Pov */
-      ibb = gabble_bytestream_factory_create_ibb (self, peer_handle,
+      bytestream = gabble_bytestream_factory_create_ibb (self, peer_handle,
           TP_HANDLE_TYPE_CONTACT, data->stream_id, NULL,
-          peer_resource, BYTESTREAM_IBB_STATE_OPEN);
+          peer_resource, BYTESTREAM_IBB_STATE_INITIATING);
     }
   else
     {
@@ -860,7 +924,14 @@ streaminit_reply_cb (GabbleConnection *conn,
 
 END:
   /* user callback */
-  data->func (ibb, (const gchar*) data->stream_id, reply_msg, data->user_data);
+  data->func (bytestream, (const gchar*) data->stream_id, reply_msg,
+      data->user_data);
+
+  if (bytestream != NULL)
+    {
+      /* Let's start the initiation of the stream */
+      gabble_bytestream_ibb_initiation (bytestream);
+    }
 
   if (peer_resource != NULL)
     g_free (peer_resource);

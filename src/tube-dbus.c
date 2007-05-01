@@ -325,8 +325,11 @@ bytestream_state_changed_cb (GabbleBytestreamIBB *bytestream,
   GabbleTubeDBus *self = GABBLE_TUBE_DBUS (user_data);
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
 
-  /* XXX emit TubeClosed */
-  priv->bytestream = NULL;
+  if (state == BYTESTREAM_IBB_STATE_CLOSED)
+    {
+      /* XXX emit TubeClosed */
+      priv->bytestream = NULL;
+    }
 }
 
 static TpTubeState
@@ -345,10 +348,10 @@ get_tube_state (GabbleTubeDBus *self)
     return TP_TUBE_STATE_OPEN;
 
   else if (bytestream_state == BYTESTREAM_IBB_STATE_LOCAL_PENDING ||
-      bytestream_state == BYTESTREAM_IBB_STATE_LOCAL_ACCEPTED)
+      bytestream_state == BYTESTREAM_IBB_STATE_ACCEPTED)
     return TP_TUBE_STATE_LOCAL_PENDING;
 
-  else if (bytestream_state == BYTESTREAM_IBB_STATE_REMOTE_ACCEPTED)
+  else if (bytestream_state == BYTESTREAM_IBB_STATE_INITIATING)
     return TP_TUBE_STATE_REMOTE_PENDING;
 
   else

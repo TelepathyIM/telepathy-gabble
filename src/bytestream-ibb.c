@@ -131,7 +131,6 @@ gabble_bytestream_ibb_finalize (GObject *object)
   G_OBJECT_CLASS (gabble_bytestream_ibb_parent_class)->finalize (object);
 }
 
-
 static void
 gabble_bytestream_ibb_get_property (GObject *object,
                                     guint property_id,
@@ -394,11 +393,16 @@ gabble_bytestream_ibb_send (GabbleBytestreamIBB *self,
                             guint len,
                             gchar *str)
 {
-  GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
-  TpHandleRepoIface *handles_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, priv->peer_handle_type);
+  GabbleBytestreamIBBPrivate *priv;
+  TpHandleRepoIface *handles_repo;
   const gchar *to;
   gboolean groupchat;
+
+  g_assert (GABBLE_IS_BYTESTREAM_IBB (self));
+  priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
+
+  handles_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, priv->peer_handle_type);
 
   to = tp_handle_inspect (handles_repo, priv->peer_handle);
   groupchat = (priv->peer_handle_type == TP_HANDLE_TYPE_ROOM);
@@ -534,13 +538,8 @@ gabble_bytestream_ibb_accept (GabbleBytestreamIBB *self, LmMessage *msg)
 
   if (_gabble_connection_send (priv->conn, msg, NULL))
     {
-      priv->state = BYTESTREAM_IBB_STATE_LOCAL_ACCEPTED;
+      priv->state = BYTESTREAM_IBB_STATE_ACCEPTED;
     }
-
-  /* XXX We just accepted the SI initiation request.
-   * Now we should deal with bytestream specific initiation
-   * steps */
-  priv->state = BYTESTREAM_IBB_STATE_OPEN;
 }
 
 static void
@@ -635,4 +634,76 @@ gabble_bytestream_ibb_send_to (GabbleBytestreamIBB *self,
   to = tp_handle_inspect (contact_repo, contact);
 
   return send_data_to (self, to, FALSE, len, str);
+}
+
+static LmHandlerResult
+ibb_init_reply_cb (GabbleConnection *conn,
+                   LmMessage *sent_msg,
+                   LmMessage *reply_msg,
+                   GObject *obj,
+                   gpointer user_data)
+{
+  GabbleBytestreamIBB *self = GABBLE_BYTESTREAM_IBB (obj);
+
+  if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_RESULT)
+    {
+      /* yeah, stream initiated */
+      DEBUG ("IBB stream initiated");
+      g_object_set (self, "state", BYTESTREAM_IBB_STATE_OPEN, NULL);
+    }
+  else
+    {
+      DEBUG ("error during IBB initiation");
+      g_object_set (self, "state", BYTESTREAM_IBB_STATE_CLOSED, NULL);
+    }
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
+void
+gabble_bytestream_ibb_initiation (GabbleBytestreamIBB *self)
+{
+  GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+  LmMessage *msg;
+  const gchar *jid;
+  gchar *full_jid;
+
+  if (priv->state != BYTESTREAM_IBB_STATE_INITIATING)
+    {
+      DEBUG ("bytestream is not is the initiating state (state %d",
+          priv->state);
+      return;
+    }
+
+  if (priv->peer_handle_type != TP_HANDLE_TYPE_CONTACT)
+    {
+      DEBUG ("Can only initiate a private bytestream");
+      return;
+    }
+
+  if (priv->stream_id == NULL)
+    {
+      DEBUG ("stream doesn't have an ID");
+      return;
+    }
+
+  jid = tp_handle_inspect (contact_repo, priv->peer_handle);
+  full_jid = g_strdup_printf ("%s/%s", jid, priv->peer_resource);
+
+  msg = lm_message_build (full_jid, LM_MESSAGE_TYPE_IQ,
+      '@', "type", "set",
+      '(', "open", "",
+        '@', "xmlns", NS_IBB,
+        '@', "sid", priv->stream_id,
+        '@', "block-size", "4096",
+      ')', NULL);
+
+  /* XXX catch errors */
+  _gabble_connection_send_with_reply (priv->conn, msg, ibb_init_reply_cb,
+      G_OBJECT (self), NULL, NULL);
+
+  lm_message_unref (msg);
+  g_free (full_jid);
 }

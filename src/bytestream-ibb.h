@@ -33,10 +33,10 @@ typedef enum
   BYTESTREAM_IBB_STATE_LOCAL_PENDING = 0,
   /* We accepted SI request.
    * bytestream specific init steps not yet performed */
-  BYTESTREAM_IBB_STATE_LOCAL_ACCEPTED,
+  BYTESTREAM_IBB_STATE_ACCEPTED,
   /* Remote contact accepted the SI request.
-   * bytestream specific init steps not yet performed */
-  BYTESTREAM_IBB_STATE_REMOTE_ACCEPTED,
+   * bytestream specific initiation started */
+  BYTESTREAM_IBB_STATE_INITIATING,
   /* Bytestream open */
   BYTESTREAM_IBB_STATE_OPEN,
   BYTESTREAM_IBB_STATE_CLOSED,
@@ -74,6 +74,9 @@ GType gabble_bytestream_ibb_get_type (void);
 #define GABBLE_BYTESTREAM_IBB_GET_CLASS(obj) \
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_BYTESTREAM_IBB,\
                               GabbleBytestreamIBBClass))
+
+void
+gabble_bytestream_ibb_initiation (GabbleBytestreamIBB *ibb);
 
 gboolean
 gabble_bytestream_ibb_send (GabbleBytestreamIBB *ibb, guint len,

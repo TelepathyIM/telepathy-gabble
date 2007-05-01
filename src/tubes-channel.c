@@ -321,7 +321,6 @@ create_new_tube (GabbleTubesChannel *self,
                  TpHandle initiator,
                  const gchar* service,
                  GHashTable *parameters,
-                 TpTubeState state,
                  const gchar *stream_id,
                  GabbleBytestreamIBB *bytestream)
 {
@@ -329,6 +328,7 @@ create_new_tube (GabbleTubesChannel *self,
   GabbleTubeDBus *tube;
   guint tube_id;
   GType gtype;
+  TpTubeState state;
 
   switch (type)
     {
@@ -353,8 +353,6 @@ create_new_tube (GabbleTubesChannel *self,
       g_object_set (tube, "bytestream", bytestream, NULL);
     }
 
-  g_object_set (G_OBJECT (tube), "state", state, NULL);
-
   g_hash_table_insert (priv->tubes, GUINT_TO_POINTER (tube_id), tube);
   g_hash_table_insert (priv->stream_id_to_tube_id, g_strdup (stream_id),
       GUINT_TO_POINTER (tube_id));
@@ -362,6 +360,14 @@ create_new_tube (GabbleTubesChannel *self,
   if (priv->handle_type == TP_HANDLE_TYPE_ROOM)
     {
       update_tubes_presence (self);
+    }
+
+  g_object_get (tube, "state", &state, NULL);
+
+  if (state == TP_TUBE_STATE_OPEN)
+    {
+      /* The tube is already open */
+      gabble_tube_dbus_open (tube);
     }
 
   tp_svc_channel_type_tubes_emit_new_tube (self,
@@ -574,8 +580,7 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
                   BYTESTREAM_IBB_STATE_OPEN);
 
               tube_id = create_new_tube (self, type, initiator_handle,
-                  service, parameters, TP_TUBE_STATE_LOCAL_PENDING, stream_id,
-                  bytestream);
+                  service, parameters, stream_id, bytestream);
               tube = g_hash_table_lookup (priv->tubes,
                   GUINT_TO_POINTER (tube_id));
 
@@ -932,8 +937,9 @@ bytestream_negotiate_cb (GabbleBytestreamIBB *bytestream,
       /* Tube was accepted by remote user */
       g_object_set (tube,
           "bytestream", bytestream,
-          "state", TP_TUBE_STATE_OPEN,
           NULL);
+
+      gabble_tube_dbus_open (tube);
 
       tp_svc_channel_type_tubes_emit_tube_state_changed (self, tube_id,
           TP_TUBE_STATE_OPEN);
@@ -1007,7 +1013,7 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
     }
 
   tube_id = create_new_tube (self, type, priv->handle, service,
-      parameters, TP_TUBE_STATE_LOCAL_PENDING, stream_id, bytestream);
+      parameters, stream_id, bytestream);
 
   /* Tube type specific stuffs */
   if (type == TP_TUBE_TYPE_DBUS)
@@ -1038,10 +1044,9 @@ gabble_tubes_channel_offer_tube (TpSvcChannelTypeTubes *iface,
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (iface);
   GabbleTubesChannelPrivate *priv;
   TpBaseConnection *base;
-  GabbleBytestreamIBB *bytestream = NULL;
+  GabbleBytestreamIBB *bytestream;
   guint tube_id;
   GHashTable *parameters_copied;
-  TpTubeState state;
   gchar *stream_id;
   GError *error = NULL;
 
@@ -1080,16 +1085,17 @@ gabble_tubes_channel_offer_tube (TpSvcChannelTypeTubes *iface,
           NULL,
           NULL,
           BYTESTREAM_IBB_STATE_OPEN);
-
-      state = TP_TUBE_STATE_OPEN;
     }
   else
     {
-      state = TP_TUBE_STATE_REMOTE_PENDING;
+      /* bytestream is not yet created.
+       * It will be when we'll receive the response of the SI
+       * request */
+      bytestream = NULL;
     }
 
   tube_id = create_new_tube (self, type, priv->self_handle, service,
-      parameters_copied, state, (const gchar*) stream_id, bytestream);
+      parameters_copied, (const gchar*) stream_id, bytestream);
 
   if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
     {
@@ -1188,7 +1194,7 @@ gabble_tubes_channel_accept_tube (TpSvcChannelTypeTubes *iface,
       return;
     }
 
-  g_object_set (tube, "state", TP_TUBE_STATE_OPEN, NULL);
+  gabble_tube_dbus_open (tube);
 
   if (priv->handle_type == TP_HANDLE_TYPE_ROOM)
     {

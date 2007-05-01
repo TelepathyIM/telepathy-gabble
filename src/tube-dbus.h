@@ -59,6 +59,9 @@ gchar *
 gabble_tube_dbus_get_stream_id (GabbleTubeDBus *tube);
 
 void
+gabble_tube_dbus_open (GabbleTubeDBus *tube);
+
+void
 gabble_tube_dbus_close (GabbleTubeDBus *tube);
 
 G_END_DECLS

@@ -69,7 +69,6 @@ struct _GabbleTubeDBusPrivate
   TpHandle initiator;
   gchar *service;
   GHashTable *parameters;
-  TpTubeState state;
 
   /* our unique D-Bus name on the virtual tube bus */
   gchar *dbus_local_name;
@@ -217,17 +216,20 @@ new_connection_cb (DBusServer *server,
   priv->dbus_conn = conn;
 }
 
-static void
-tube_dbus_open (GabbleTubeDBus *self)
+void
+gabble_tube_dbus_open (GabbleTubeDBus *self)
 {
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
   DBusError error = {0,};
   gchar suffix[8];
+  BytestreamIBBState state;
 
   if (priv->bytestream == NULL)
     return;
 
-  if (priv->state == TP_TUBE_STATE_LOCAL_PENDING)
+  g_object_get (priv->bytestream, "state", &state, NULL);
+
+  if (state == BYTESTREAM_IBB_STATE_LOCAL_PENDING)
     {
       LmMessage *msg;
       LmMessageNode *si, *tube_node;
@@ -327,6 +329,32 @@ bytestream_state_changed_cb (GabbleBytestreamIBB *bytestream,
   priv->bytestream = NULL;
 }
 
+static TpTubeState
+get_tube_state (GabbleTubeDBus *self)
+{
+  GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
+  BytestreamIBBState bytestream_state;
+
+  if (priv->bytestream == NULL)
+    /* bytestream not yet created as we're waiting for the SI reply */
+    return TP_TUBE_STATE_REMOTE_PENDING;
+
+  g_object_get (priv->bytestream, "state", &bytestream_state, NULL);
+
+  if (bytestream_state == BYTESTREAM_IBB_STATE_OPEN)
+    return TP_TUBE_STATE_OPEN;
+
+  else if (bytestream_state == BYTESTREAM_IBB_STATE_LOCAL_PENDING ||
+      bytestream_state == BYTESTREAM_IBB_STATE_LOCAL_ACCEPTED)
+    return TP_TUBE_STATE_LOCAL_PENDING;
+
+  else if (bytestream_state == BYTESTREAM_IBB_STATE_REMOTE_ACCEPTED)
+    return TP_TUBE_STATE_REMOTE_PENDING;
+
+  else
+    g_assert_not_reached ();
+}
+
 static void
 gabble_tube_dbus_dispose (GObject *object)
 {
@@ -415,7 +443,7 @@ gabble_tube_dbus_get_property (GObject *object,
         g_value_set_boxed (value, priv->parameters);
         break;
       case PROP_STATE:
-        g_value_set_uint (value, priv->state);
+        g_value_set_uint (value, get_tube_state (self));
         break;
       case PROP_DBUS_ADDRESS:
         g_value_set_string (value, priv->dbus_srv_addr);
@@ -453,9 +481,6 @@ gabble_tube_dbus_set_property (GObject *object,
 
             g_signal_connect (priv->bytestream, "state-changed",
                 G_CALLBACK (bytestream_state_changed_cb), self);
-
-            if (priv->state == TP_TUBE_STATE_OPEN)
-              tube_dbus_open (self);
           }
         break;
       case PROP_INITIATOR:
@@ -467,12 +492,6 @@ gabble_tube_dbus_set_property (GObject *object,
         break;
       case PROP_PARAMETERS:
         priv->parameters = g_value_get_boxed (value);
-        break;
-      case PROP_STATE:
-        if (g_value_get_uint (value) == TP_TUBE_STATE_OPEN)
-          tube_dbus_open (self);
-
-        priv->state = g_value_get_uint (value);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -596,7 +615,7 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
       "Tube state",
       "The TpTubeState of this DBUS tube object",
       0, G_MAXUINT32, TP_TUBE_STATE_REMOTE_PENDING,
-      G_PARAM_READWRITE |
+      G_PARAM_READABLE |
       G_PARAM_STATIC_NAME |
       G_PARAM_STATIC_NICK |
       G_PARAM_STATIC_BLURB);

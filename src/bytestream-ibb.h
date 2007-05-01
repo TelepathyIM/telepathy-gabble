@@ -31,8 +31,12 @@ typedef enum
 {
   /* Received a SI request, response not yet sent */
   BYTESTREAM_IBB_STATE_LOCAL_PENDING = 0,
-  /* SI request accepted, bytestream specific init steps not yet performed */
-  BYTESTREAM_IBB_STATE_ACCEPTED,
+  /* We accepted SI request.
+   * bytestream specific init steps not yet performed */
+  BYTESTREAM_IBB_STATE_LOCAL_ACCEPTED,
+  /* Remote contact accepted the SI request.
+   * bytestream specific init steps not yet performed */
+  BYTESTREAM_IBB_STATE_REMOTE_ACCEPTED,
   /* Bytestream open */
   BYTESTREAM_IBB_STATE_OPEN,
   BYTESTREAM_IBB_STATE_CLOSED,

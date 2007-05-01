@@ -534,7 +534,7 @@ gabble_bytestream_ibb_accept (GabbleBytestreamIBB *self, LmMessage *msg)
 
   if (_gabble_connection_send (priv->conn, msg, NULL))
     {
-      priv->state = BYTESTREAM_IBB_STATE_ACCEPTED;
+      priv->state = BYTESTREAM_IBB_STATE_LOCAL_ACCEPTED;
     }
 
   /* XXX We just accepted the SI initiation request.

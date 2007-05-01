@@ -999,9 +999,6 @@ bytestream_negotiate_cb (GabbleBytestreamIBB *bytestream,
 
       gabble_tube_dbus_open (tube);
 
-      tp_svc_channel_type_tubes_emit_tube_state_changed (self, tube_id,
-          TP_TUBE_STATE_OPEN);
-
       si = lm_message_node_get_child_with_namespace (msg->node, "si", NS_SI);
       /* XXX properly catch errors ! */
       if (si == NULL)
@@ -1258,9 +1255,6 @@ gabble_tubes_channel_accept_tube (TpSvcChannelTypeTubes *iface,
     {
       update_tubes_presence (self);
     }
-
-  tp_svc_channel_type_tubes_emit_tube_state_changed (iface, id,
-      TP_TUBE_STATE_OPEN);
 
   g_object_get (tube, "type", &type, NULL);
   if (type == TP_TUBE_TYPE_DBUS)

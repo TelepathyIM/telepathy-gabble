@@ -1127,15 +1127,6 @@ _gabble_connection_connect (TpBaseConnection *base,
   lm_connection_set_jid (conn->lmconn, jid);
   g_free (jid);
 
-  /* set initial presence */
-  conn->self_presence = gabble_presence_new ();
-  gabble_presence_update (conn->self_presence, priv->resource,
-      GABBLE_PRESENCE_AVAILABLE, NULL, priv->priority);
-
-  /* set initial capabilities */
-  gabble_presence_set_capabilities (conn->self_presence, priv->resource,
-      capabilities_get_initial_caps (), priv->caps_serial++);
-
   /* always override server and port if one was forced upon us */
   if (priv->connect_server != NULL)
     {
@@ -1984,7 +1975,21 @@ connection_auth_cb (LmConnection *lmconn,
 
   if (base->self_handle == 0)
     {
-      DEBUG ("couldn't get our self handle");
+      DEBUG ("couldn't get our self handle: %s", error->message);
+
+      g_error_free (error);
+
+      tp_base_connection_change_status ((TpBaseConnection *)conn,
+          TP_CONNECTION_STATUS_DISCONNECTED,
+          TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
+
+      return;
+    }
+
+  /* update priv->resource and priv->stream_server from the server's JID */
+  if (!_gabble_connection_set_properties_from_account (conn, jid, &error))
+    {
+      DEBUG ("couldn't parse our own JID: %s", error->message);
 
       g_error_free (error);
 
@@ -1996,6 +2001,15 @@ connection_auth_cb (LmConnection *lmconn,
     }
 
   DEBUG ("Created self handle %d, our JID is %s", base->self_handle, jid);
+
+  /* set initial presence */
+  conn->self_presence = gabble_presence_new ();
+  gabble_presence_update (conn->self_presence, priv->resource,
+      GABBLE_PRESENCE_AVAILABLE, NULL, priv->priority);
+
+  /* set initial capabilities */
+  gabble_presence_set_capabilities (conn->self_presence, priv->resource,
+      capabilities_get_initial_caps (), priv->caps_serial++);
 
   if (!gabble_disco_request_with_timeout (conn->disco, GABBLE_DISCO_TYPE_INFO,
                                           priv->stream_server, NULL, 5000,

@@ -637,6 +637,11 @@ bytestream_factory_msg_data_cb (LmMessageHandler *handler,
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
   stream_id = lm_message_node_get_attribute (data, "sid");
+  if (stream_id == NULL)
+    {
+      DEBUG ("got a IBB message data without a stream id field");
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    }
 
   bytestream = g_hash_table_lookup (priv->ibb_bytestreams, stream_id);
 

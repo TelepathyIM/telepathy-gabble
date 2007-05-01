@@ -356,9 +356,8 @@ tube_closed_cb (GabbleTubeDBus *tube,
 }
 
 static void
-tube_state_changed_cb (GabbleTubeDBus *tube,
-                       TpTubeState state,
-                       gpointer user_data)
+tube_opened_cb (GabbleTubeDBus *tube,
+                gpointer user_data)
 {
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (user_data);
   guint tube_id;
@@ -367,7 +366,8 @@ tube_state_changed_cb (GabbleTubeDBus *tube,
   if (tube_id == 0)
     return;
 
-  tp_svc_channel_type_tubes_emit_tube_state_changed (self, tube_id, state);
+  tp_svc_channel_type_tubes_emit_tube_state_changed (self, tube_id,
+      TP_TUBE_STATE_OPEN);
 }
 
 static guint
@@ -439,8 +439,7 @@ create_new_tube (GabbleTubesChannel *self,
       add_yourself_in_dbus_names (self, tube_id);
     }
 
-  g_signal_connect (tube, "state-changed", G_CALLBACK (tube_state_changed_cb),
-      self);
+  g_signal_connect (tube, "opened", G_CALLBACK (tube_opened_cb), self);
   g_signal_connect (tube, "closed", G_CALLBACK (tube_closed_cb), self);
 
   return tube_id;

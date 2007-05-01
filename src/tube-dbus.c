@@ -49,7 +49,7 @@ G_DEFINE_TYPE (GabbleTubeDBus, gabble_tube_dbus, G_TYPE_OBJECT)
 /* signals */
 enum
 {
-  STATE_CHANGED,
+  OPENED,
   CLOSED,
   LAST_SIGNAL
 };
@@ -367,10 +367,9 @@ bytestream_state_changed_cb (GabbleBytestreamIBB *bytestream,
       g_signal_emit (G_OBJECT (self), signals[CLOSED], 0);
       priv->bytestream = NULL;
     }
-  else
+  else if (state == BYTESTREAM_IBB_STATE_OPEN)
     {
-      g_signal_emit (G_OBJECT (self), signals[STATE_CHANGED], 0,
-          get_tube_state (self));
+      g_signal_emit (G_OBJECT (self), signals[OPENED], 0);
     }
 }
 
@@ -674,14 +673,14 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
       G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_DBUS_NAMES, param_spec);
 
-  signals[STATE_CHANGED] =
-    g_signal_new ("state-changed",
+  signals[OPENED] =
+    g_signal_new ("opened",
                   G_OBJECT_CLASS_TYPE (gabble_tube_dbus_class),
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_marshal_VOID__UINT,
-                  G_TYPE_NONE, 1, G_TYPE_UINT);
+                  gabble_marshal_VOID__VOID,
+                  G_TYPE_NONE, 0);
 
   signals[CLOSED] =
     g_signal_new ("closed",

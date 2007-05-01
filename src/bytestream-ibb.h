@@ -86,9 +86,6 @@ gboolean
 gabble_bytestream_ibb_receive (GabbleBytestreamIBB *ibb,
    LmMessage *msg);
 
-void
-gabble_bytestream_ibb_close (GabbleBytestreamIBB *ibb);
-
 LmMessage *
 gabble_bytestream_ibb_make_accept_iq (GabbleBytestreamIBB *ibb);
 

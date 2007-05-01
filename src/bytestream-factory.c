@@ -56,6 +56,7 @@ struct _GabbleBytestreamFactoryPrivate
 {
   GabbleConnection *conn;
   LmMessageHandler *iq_si_cb;
+  LmMessageHandler *iq_ibb_cb;
   LmMessageHandler *msg_data_cb;
 
   /* Stream ID -> Stream */
@@ -73,6 +74,10 @@ bytestream_factory_msg_data_cb (LmMessageHandler *handler,
 
 static LmHandlerResult
 bytestream_factory_iq_si_cb (LmMessageHandler *handler, LmConnection *lmconn,
+    LmMessage *message, gpointer user_data);
+
+static LmHandlerResult
+bytestream_factory_iq_ibb_cb (LmMessageHandler *handler, LmConnection *lmconn,
     LmMessage *message, gpointer user_data);
 
 static LmMessage *
@@ -95,6 +100,7 @@ gabble_bytestream_factory_init (GabbleBytestreamFactory *self)
       g_free, g_object_unref);
 
   priv->iq_si_cb = NULL;
+  priv->iq_ibb_cb = NULL;
   priv->msg_data_cb = NULL;
 
   priv->conn = NULL;
@@ -126,6 +132,11 @@ gabble_bytestream_factory_constructor (GType type,
   lm_connection_register_message_handler (priv->conn->lmconn, priv->iq_si_cb,
       LM_MESSAGE_TYPE_IQ, LM_HANDLER_PRIORITY_FIRST);
 
+  priv->iq_ibb_cb = lm_message_handler_new (bytestream_factory_iq_ibb_cb, self,
+      NULL);
+  lm_connection_register_message_handler (priv->conn->lmconn, priv->iq_ibb_cb,
+      LM_MESSAGE_TYPE_IQ, LM_HANDLER_PRIORITY_FIRST);
+
   return obj;
 }
 
@@ -149,6 +160,10 @@ gabble_bytestream_factory_dispose (GObject *object)
   lm_connection_unregister_message_handler (priv->conn->lmconn,
       priv->iq_si_cb, LM_MESSAGE_TYPE_IQ);
   lm_message_handler_unref (priv->iq_si_cb);
+
+  lm_connection_unregister_message_handler (priv->conn->lmconn,
+      priv->iq_ibb_cb, LM_MESSAGE_TYPE_IQ);
+  lm_message_handler_unref (priv->iq_ibb_cb);
 
   g_hash_table_destroy (priv->ibb_bytestreams);
   priv->ibb_bytestreams = NULL;
@@ -511,6 +526,89 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
   g_slist_free (stream_methods);
   g_free (peer_resource);
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
+static gboolean
+parse_ibb_close_iq (GabbleBytestreamFactory *self,
+                    LmMessage *msg)
+{
+  GabbleBytestreamFactoryPrivate *priv =
+    GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
+      const gchar *from, *stream_id;
+  GabbleBytestreamIBB *bytestream;
+  LmMessage *reply;
+  LmMessageNode *close_node;
+
+  if (lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_SET)
+    return FALSE;
+
+  close_node = lm_message_node_get_child_with_namespace (msg->node, "close",
+      NS_IBB);
+  if (close_node == NULL)
+    return FALSE;
+
+  from = lm_message_node_get_attribute (msg->node, "from");
+  if (from == NULL)
+    {
+      DEBUG ("got a message without a from field");
+      return FALSE;
+    }
+
+  stream_id = lm_message_node_get_attribute (close_node, "sid");
+  if (stream_id == NULL)
+    {
+      DEBUG ("close stanza doesn't contain stream id");
+      return FALSE;
+    }
+
+  bytestream = g_hash_table_lookup (priv->ibb_bytestreams, stream_id);
+  if (bytestream == NULL)
+    {
+      GabbleXmppError error = XMPP_ERROR_ITEM_NOT_FOUND;
+
+      DEBUG ("unknow stream: %s", stream_id);
+
+      reply = lm_message_new_with_sub_type (from,
+          LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_ERROR);
+
+      gabble_xmpp_error_to_node (error, reply->node, NULL);
+    }
+  else
+    {
+      g_object_set (bytestream, "state", BYTESTREAM_IBB_STATE_CLOSED,
+          NULL);
+
+      reply = lm_message_new_with_sub_type (from, LM_MESSAGE_TYPE_IQ,
+          LM_MESSAGE_SUB_TYPE_RESULT);
+    }
+
+  lm_message_node_set_attribute (reply->node,
+      "id", lm_message_node_get_attribute (msg->node, "id"));
+
+  _gabble_connection_send (priv->conn, reply, NULL);
+
+  return TRUE;
+}
+
+/**
+ * bytestream_factory_iq_ibb_cb:
+ *
+ * Called by loudmouth when we get an incoming <iq>.
+ * This handler is concerned with IBB iq's.
+ *
+ */
+static LmHandlerResult
+bytestream_factory_iq_ibb_cb (LmMessageHandler *handler,
+                              LmConnection *lmconn,
+                              LmMessage *msg,
+                              gpointer user_data)
+{
+  GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (user_data);
+
+  if (parse_ibb_close_iq (self, msg))
+    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+
+  return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 }
 
 /**

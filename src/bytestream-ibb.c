@@ -596,7 +596,6 @@ gabble_bytestream_ibb_close (GabbleBytestreamIBB *self)
     {
       /* XXX : Does it make sense to send a close message in a
        * muc bytestream ? */
-      /* XXX : send (and catch somewhere) IBB close message */
       TpHandleRepoIface *handles_repo = tp_base_connection_get_handles (
           (TpBaseConnection *) priv->conn, priv->peer_handle_type);
       LmMessage *msg;

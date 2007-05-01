@@ -551,14 +551,14 @@ parse_ibb_close_iq (GabbleBytestreamFactory *self,
   if (from == NULL)
     {
       DEBUG ("got a message without a from field");
-      return FALSE;
+      return TRUE;
     }
 
   stream_id = lm_message_node_get_attribute (close_node, "sid");
   if (stream_id == NULL)
     {
       DEBUG ("close stanza doesn't contain stream id");
-      return FALSE;
+      return TRUE;
     }
 
   bytestream = g_hash_table_lookup (priv->ibb_bytestreams, stream_id);

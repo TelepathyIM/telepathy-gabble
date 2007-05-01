@@ -150,7 +150,7 @@ filter_cb (DBusConnection *conn,
       !tp_strdiff (dbus_message_get_member (msg), "Disconnected"))
     {
       /* connection was disconnected */
-
+      DEBUG ("connection was disconnected");
       dbus_connection_close (priv->dbus_conn);
       dbus_connection_unref (priv->dbus_conn);
       priv->dbus_conn = NULL;
@@ -652,7 +652,10 @@ data_received_cb (GabbleBytestreamIBB *ibb,
   const gchar *destination;
 
   if (!priv->dbus_conn)
-    return;
+    {
+      DEBUG ("no D-Bus connection");
+      return;
+    }
 
   /* XXX: This naïvely assumes that the underlying transport always gives
    * us complete messages. This is true for IBB, at least.
@@ -674,6 +677,7 @@ data_received_cb (GabbleBytestreamIBB *ibb,
     {
       /* This message is not intented to this tube.
        * Discard it. */
+      DEBUG ("message not intented to this tube");
       dbus_message_unref (msg);
       return;
     }

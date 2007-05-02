@@ -31,6 +31,17 @@ check-extra: $(BUILT_SOURCES)
 		$(python_tests_pythonfiles) exec-with-log.sh
 	$(MAKE) check TESTS="$(EXTRA_TESTS)"
 
+check-valgrind:
+	G_SLICE=always-malloc \
+	G_DEBUG=gc-friendly \
+	$(MAKE) \
+		TESTS_ENVIRONMENT="\
+		libtool --mode=execute valgrind \
+			--leak-check=full \
+			--show-reachable=no \
+			--error-exitcode=1" \
+		check
+
 exec-with-log.sh: exec-with-log.sh.in
 	@sed -e "s|[@]abs_top_builddir[@]|@abs_top_builddir@|g" $< > $@
 

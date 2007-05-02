@@ -242,23 +242,26 @@ gabble_tube_dbus_open (GabbleTubeDBus *self)
 
   if (state == BYTESTREAM_IBB_STATE_LOCAL_PENDING)
     {
-      LmMessage *msg;
-      LmMessageNode *si, *tube_node;
+      const gchar *stream_init_id;
 
-      msg = gabble_bytestream_ibb_make_accept_iq (priv->bytestream);
+      g_object_get (priv->bytestream,
+          "stream-init-id", &stream_init_id,
+          NULL);
 
-      if (msg != NULL)
+      if (stream_init_id != NULL)
         {
-          /* XXX this is crack we shouldn't request an accept IQ if we don't
-           * need one */
+          /* Bytestream was created using a SI request so
+           * we have to accept it */
+          LmMessage *msg;
+          LmMessageNode *si, *tube_node;
+
+          DEBUG ("accept the SI request");
+
+          msg = gabble_bytestream_ibb_make_accept_iq (priv->bytestream);
+
           si = lm_message_node_get_child_with_namespace (msg->node, "si",
               NS_SI);
-
-          if (si == NULL)
-            {
-              /* XXX errors ! */
-              return;
-            }
+          g_assert (si != NULL);
 
           tube_node = lm_message_node_add_child (si, "tube", "");
           lm_message_node_set_attribute (tube_node, "xmlns", NS_SI_TUBES);
@@ -269,6 +272,14 @@ gabble_tube_dbus_open (GabbleTubeDBus *self)
           gabble_bytestream_ibb_accept (priv->bytestream, msg);
 
           lm_message_unref (msg);
+        }
+      else
+        {
+          /* No SI so the bytestream is open */
+          DEBUG ("no SI, bytestream open");
+          g_object_set (priv->bytestream,
+              "state", BYTESTREAM_IBB_STATE_OPEN,
+              NULL);
         }
     }
 

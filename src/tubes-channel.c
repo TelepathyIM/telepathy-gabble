@@ -635,7 +635,7 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
                   stream_id,
                   NULL,
                   NULL,
-                  BYTESTREAM_IBB_STATE_OPEN);
+                  BYTESTREAM_IBB_STATE_LOCAL_PENDING);
 
               tube_id = create_new_tube (self, type, initiator_handle,
                   service, parameters, stream_id, bytestream);

@@ -922,16 +922,18 @@ streaminit_reply_cb (GabbleConnection *conn,
 
   DEBUG ("stream %s accepted\n", data->stream_id);
 
+  /* Let's start the initiation of the stream */
+  if (!gabble_bytestream_ibb_initiation (bytestream))
+    {
+      /* Initiation failed. We remove the stream */
+      remove_bytestream (self, bytestream);
+      bytestream = NULL;
+    }
+
 END:
   /* user callback */
   data->func (bytestream, (const gchar*) data->stream_id, reply_msg,
       data->user_data);
-
-  if (bytestream != NULL)
-    {
-      /* Let's start the initiation of the stream */
-      gabble_bytestream_ibb_initiation (bytestream);
-    }
 
   if (peer_resource != NULL)
     g_free (peer_resource);

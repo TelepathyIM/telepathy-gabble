@@ -660,7 +660,7 @@ ibb_init_reply_cb (GabbleConnection *conn,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
-void
+gboolean
 gabble_bytestream_ibb_initiation (GabbleBytestreamIBB *self)
 {
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
@@ -669,24 +669,25 @@ gabble_bytestream_ibb_initiation (GabbleBytestreamIBB *self)
   LmMessage *msg;
   const gchar *jid;
   gchar *full_jid;
+  gboolean result;
 
   if (priv->state != BYTESTREAM_IBB_STATE_INITIATING)
     {
       DEBUG ("bytestream is not is the initiating state (state %d",
           priv->state);
-      return;
+      return FALSE;
     }
 
   if (priv->peer_handle_type != TP_HANDLE_TYPE_CONTACT)
     {
       DEBUG ("Can only initiate a private bytestream");
-      return;
+      return FALSE;
     }
 
   if (priv->stream_id == NULL)
     {
       DEBUG ("stream doesn't have an ID");
-      return;
+      return FALSE;
     }
 
   jid = tp_handle_inspect (contact_repo, priv->peer_handle);
@@ -700,10 +701,13 @@ gabble_bytestream_ibb_initiation (GabbleBytestreamIBB *self)
         '@', "block-size", "4096",
       ')', NULL);
 
-  /* XXX catch errors */
-  _gabble_connection_send_with_reply (priv->conn, msg, ibb_init_reply_cb,
-      G_OBJECT (self), NULL, NULL);
+  result = _gabble_connection_send_with_reply (priv->conn, msg,
+      ibb_init_reply_cb, G_OBJECT (self), NULL, NULL);
+
+  if (!result)
+        DEBUG ("Error when sending IBB init stanza");
 
   lm_message_unref (msg);
   g_free (full_jid);
+  return result;
 }

@@ -131,7 +131,7 @@ int main (int argc, char **argv)
     "  (none)\n"));
   g_free (dump);
 
-
+  g_object_unref (presence);
   return 0;
 }
 

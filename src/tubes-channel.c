@@ -419,12 +419,6 @@ create_new_tube (GabbleTubesChannel *self,
 
   g_object_get (tube, "state", &state, NULL);
 
-  if (state == TP_TUBE_STATE_OPEN)
-    {
-      /* The tube is already open */
-      gabble_tube_dbus_accept (tube);
-    }
-
   tp_svc_channel_type_tubes_emit_new_tube (self,
       tube_id,
       initiator,

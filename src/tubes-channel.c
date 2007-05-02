@@ -422,7 +422,7 @@ create_new_tube (GabbleTubesChannel *self,
   if (state == TP_TUBE_STATE_OPEN)
     {
       /* The tube is already open */
-      gabble_tube_dbus_open (tube);
+      gabble_tube_dbus_accept (tube);
     }
 
   tp_svc_channel_type_tubes_emit_new_tube (self,
@@ -997,7 +997,7 @@ bytestream_negotiate_cb (GabbleBytestreamIBB *bytestream,
           "bytestream", bytestream,
           NULL);
 
-      gabble_tube_dbus_open (tube);
+      gabble_tube_dbus_accept (tube);
 
       si = lm_message_node_get_child_with_namespace (msg->node, "si", NS_SI);
       /* XXX properly catch errors ! */
@@ -1249,7 +1249,7 @@ gabble_tubes_channel_accept_tube (TpSvcChannelTypeTubes *iface,
       return;
     }
 
-  gabble_tube_dbus_open (tube);
+  gabble_tube_dbus_accept (tube);
 
   if (priv->handle_type == TP_HANDLE_TYPE_ROOM)
     {

@@ -228,60 +228,66 @@ new_connection_cb (DBusServer *server,
 }
 
 void
-gabble_tube_dbus_open (GabbleTubeDBus *self)
+gabble_tube_dbus_accept (GabbleTubeDBus *self)
+{
+  GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
+  BytestreamIBBState state;
+  const gchar *stream_init_id;
+
+  g_assert (priv->bytestream != NULL);
+
+  g_object_get (priv->bytestream,
+      "state", &state,
+      NULL);
+
+  if (state != BYTESTREAM_IBB_STATE_LOCAL_PENDING)
+    return;
+
+  g_object_get (priv->bytestream,
+      "stream-init-id", &stream_init_id,
+      NULL);
+
+  if (stream_init_id != NULL)
+    {
+      /* Bytestream was created using a SI request so
+       * we have to accept it */
+      LmMessage *msg;
+      LmMessageNode *si, *tube_node;
+
+      DEBUG ("accept the SI request");
+
+      msg = gabble_bytestream_ibb_make_accept_iq (priv->bytestream);
+
+      si = lm_message_node_get_child_with_namespace (msg->node, "si",
+          NS_SI);
+      g_assert (si != NULL);
+
+      tube_node = lm_message_node_add_child (si, "tube", "");
+      lm_message_node_set_attribute (tube_node, "xmlns", NS_SI_TUBES);
+
+      lm_message_node_add_child (tube_node, "dbus-name",
+          priv->dbus_local_name);
+
+      gabble_bytestream_ibb_accept (priv->bytestream, msg);
+
+      lm_message_unref (msg);
+    }
+  else
+    {
+      /* No SI so the bytestream is open */
+      DEBUG ("no SI, bytestream open");
+      g_object_set (priv->bytestream,
+          "state", BYTESTREAM_IBB_STATE_OPEN,
+          NULL);
+    }
+}
+
+static void
+tube_dbus_open (GabbleTubeDBus *self)
 {
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
   DBusError error = {0,};
   gchar suffix[8];
-  BytestreamIBBState state;
-
-  if (priv->bytestream == NULL)
-    return;
-
-  g_object_get (priv->bytestream, "state", &state, NULL);
-
-  if (state == BYTESTREAM_IBB_STATE_LOCAL_PENDING)
-    {
-      const gchar *stream_init_id;
-
-      g_object_get (priv->bytestream,
-          "stream-init-id", &stream_init_id,
-          NULL);
-
-      if (stream_init_id != NULL)
-        {
-          /* Bytestream was created using a SI request so
-           * we have to accept it */
-          LmMessage *msg;
-          LmMessageNode *si, *tube_node;
-
-          DEBUG ("accept the SI request");
-
-          msg = gabble_bytestream_ibb_make_accept_iq (priv->bytestream);
-
-          si = lm_message_node_get_child_with_namespace (msg->node, "si",
-              NS_SI);
-          g_assert (si != NULL);
-
-          tube_node = lm_message_node_add_child (si, "tube", "");
-          lm_message_node_set_attribute (tube_node, "xmlns", NS_SI_TUBES);
-
-          lm_message_node_add_child (tube_node, "dbus-name",
-              priv->dbus_local_name);
-
-          gabble_bytestream_ibb_accept (priv->bytestream, msg);
-
-          lm_message_unref (msg);
-        }
-      else
-        {
-          /* No SI so the bytestream is open */
-          DEBUG ("no SI, bytestream open");
-          g_object_set (priv->bytestream,
-              "state", BYTESTREAM_IBB_STATE_OPEN,
-              NULL);
-        }
-    }
 
   g_signal_connect (priv->bytestream, "data-received",
       G_CALLBACK (data_received_cb), self);
@@ -380,6 +386,7 @@ bytestream_state_changed_cb (GabbleBytestreamIBB *bytestream,
     }
   else if (state == BYTESTREAM_IBB_STATE_OPEN)
     {
+      tube_dbus_open (self);
       g_signal_emit (G_OBJECT (self), signals[OPENED], 0);
     }
 }
@@ -506,7 +513,14 @@ gabble_tube_dbus_set_property (GObject *object,
       case PROP_BYTESTREAM:
         if (priv->bytestream == NULL)
           {
+            BytestreamIBBState state;
             priv->bytestream = g_value_get_object (value);
+
+            g_object_get (priv->bytestream, "state", &state, NULL);
+            if (state == BYTESTREAM_IBB_STATE_OPEN)
+              {
+                tube_dbus_open (self);
+              }
 
             g_signal_connect (priv->bytestream, "state-changed",
                 G_CALLBACK (bytestream_state_changed_cb), self);

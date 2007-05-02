@@ -59,7 +59,7 @@ gchar *
 gabble_tube_dbus_get_stream_id (GabbleTubeDBus *tube);
 
 void
-gabble_tube_dbus_open (GabbleTubeDBus *tube);
+gabble_tube_dbus_accept (GabbleTubeDBus *tube);
 
 void
 gabble_tube_dbus_close (GabbleTubeDBus *tube);

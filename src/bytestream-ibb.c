@@ -395,8 +395,8 @@ gabble_bytestream_ibb_send (GabbleBytestreamIBB *self,
 {
   GabbleBytestreamIBBPrivate *priv;
   TpHandleRepoIface *handles_repo;
-  const gchar *to;
-  gboolean groupchat;
+  const gchar *jid;
+  gboolean result;
 
   g_assert (GABBLE_IS_BYTESTREAM_IBB (self));
   priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
@@ -404,10 +404,23 @@ gabble_bytestream_ibb_send (GabbleBytestreamIBB *self,
   handles_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, priv->peer_handle_type);
 
-  to = tp_handle_inspect (handles_repo, priv->peer_handle);
-  groupchat = (priv->peer_handle_type == TP_HANDLE_TYPE_ROOM);
+  jid = tp_handle_inspect (handles_repo, priv->peer_handle);
 
-  return send_data_to (self, to, groupchat, len, str);
+  if (priv->peer_handle_type == TP_HANDLE_TYPE_ROOM)
+    {
+      result = send_data_to (self, jid, TRUE, len, str);
+    }
+  else
+    {
+      gchar *full_jid;
+
+      full_jid = g_strdup_printf ("%s/%s", jid, priv->peer_resource);
+      result = send_data_to (self, full_jid, FALSE, len, str);
+
+      g_free (full_jid);
+    }
+
+  return result;
 }
 
 gboolean

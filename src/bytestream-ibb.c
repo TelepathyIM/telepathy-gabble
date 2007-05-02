@@ -644,6 +644,21 @@ gabble_bytestream_ibb_send_to (GabbleBytestreamIBB *self,
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   const gchar *to;
 
+  if (priv->peer_handle_type == TP_HANDLE_TYPE_CONTACT)
+    {
+      /* Private stream */
+      if (priv->peer_handle != contact)
+        {
+          to = tp_handle_inspect (contact_repo, contact);
+
+          DEBUG ("This bytestream can't be used to send data"
+              "to this contact: %s", to);
+          return FALSE;
+        }
+
+      return gabble_bytestream_ibb_send (self, len, str);
+    }
+
   to = tp_handle_inspect (contact_repo, contact);
 
   return send_data_to (self, to, FALSE, len, str);

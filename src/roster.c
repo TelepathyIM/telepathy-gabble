@@ -464,7 +464,21 @@ _gabble_roster_item_get (GabbleRoster *roster,
 
   if (NULL == item)
     {
+      GabbleConnectionAliasSource source;
+      gchar *alias = NULL;
+
+      source = _gabble_connection_get_cached_alias (priv->conn, handle, &alias);
+
+      g_assert (source < GABBLE_CONNECTION_ALIAS_FROM_ROSTER);
+
+      if (source <= GABBLE_CONNECTION_ALIAS_FROM_JID)
+        {
+          g_free (alias);
+          alias = NULL;
+        }
+
       item = g_slice_new0 (GabbleRosterItem);
+      item->name = alias;
       item->groups = tp_handle_set_new (group_repo);
       tp_handle_ref (contact_repo, handle);
       g_hash_table_insert (priv->items, GINT_TO_POINTER (handle), item);

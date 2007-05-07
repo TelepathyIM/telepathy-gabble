@@ -34,7 +34,7 @@ void gabble_debug_set_flags (GabbleDebugFlags flags);
 gboolean gabble_debug_flag_is_set (GabbleDebugFlags flag);
 void gabble_debug (GabbleDebugFlags flag, const gchar *format, ...)
     G_GNUC_PRINTF (2, 3);
-void gabble_debug_set_output_from_env (void);
+void gabble_debug_set_log_file_from_env (void);
 
 G_END_DECLS
 

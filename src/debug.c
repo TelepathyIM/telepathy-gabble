@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <errno.h>
 
 #include <glib.h>
 #include <glib/gstdio.h>
@@ -76,7 +77,7 @@ void gabble_debug (GabbleDebugFlags flag,
 }
 
 void
-gabble_debug_set_output_from_env (void)
+gabble_debug_set_log_file_from_env (void)
 {
   const gchar *output_file;
   int out;
@@ -88,12 +89,24 @@ gabble_debug_set_output_from_env (void)
   out = g_open (output_file, O_WRONLY | O_CREAT, 0644);
   if (out == -1)
     {
-      g_warning ("Can't use this file as log output: %s\n", output_file);
+      g_warning ("Can't open logfile '%s': %s", output_file,
+          g_strerror (errno));
       return;
     }
 
-  dup2 (out, STDOUT_FILENO);
-  dup2 (out, STDERR_FILENO);
+  if (dup2 (out, STDOUT_FILENO) == -1)
+    {
+      g_warning ("Error when duplicating stdout file descriptor: %s",
+          g_strerror (errno));
+      return;
+    }
+
+  if (dup2 (out, STDERR_FILENO) == -1)
+    {
+      g_warning ("Error when duplicating stderr file descriptor: %s",
+          g_strerror (errno));
+      return;
+    }
 }
 
 #endif /* ENABLE_DEBUG */

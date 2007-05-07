@@ -34,6 +34,8 @@ int
 main (int argc,
       char **argv)
 {
+  gabble_debug_set_output_from_env ();
+
 #ifdef ENABLE_DEBUG
   gabble_debug_set_flags_from_env ();
 

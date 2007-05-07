@@ -3,8 +3,13 @@
 #ifdef ENABLE_DEBUG
 
 #include <stdarg.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include <glib.h>
+#include <glib/gstdio.h>
 
 #include <telepathy-glib/debug.h>
 
@@ -68,6 +73,30 @@ void gabble_debug (GabbleDebugFlags flag,
       g_logv (G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, format, args);
       va_end (args);
     }
+}
+
+void
+gabble_debug_set_output_from_env (void)
+{
+  const gchar *output_file;
+  int out;
+
+  output_file = g_getenv ("GABBLE_OUTPUT");
+  if (output_file == NULL)
+    return;
+
+  out = g_open (output_file, O_WRONLY | O_CREAT, 0644);
+  if (out == -1)
+    {
+      g_warning ("Can't use this file as output: %s\n", output_file);
+      return;
+    }
+
+  close (STDOUT_FILENO);
+  dup (out);
+
+  close (STDERR_FILENO);
+  dup (out);
 }
 
 #endif /* ENABLE_DEBUG */

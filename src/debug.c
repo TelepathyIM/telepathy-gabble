@@ -81,14 +81,14 @@ gabble_debug_set_output_from_env (void)
   const gchar *output_file;
   int out;
 
-  output_file = g_getenv ("GABBLE_OUTPUT");
+  output_file = g_getenv ("GABBLE_LOGFILE");
   if (output_file == NULL)
     return;
 
   out = g_open (output_file, O_WRONLY | O_CREAT, 0644);
   if (out == -1)
     {
-      g_warning ("Can't use this file as output: %s\n", output_file);
+      g_warning ("Can't use this file as log output: %s\n", output_file);
       return;
     }
 

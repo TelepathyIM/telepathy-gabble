@@ -92,11 +92,8 @@ gabble_debug_set_output_from_env (void)
       return;
     }
 
-  close (STDOUT_FILENO);
-  dup (out);
-
-  close (STDERR_FILENO);
-  dup (out);
+  dup2 (out, STDOUT_FILENO);
+  dup2 (out, STDERR_FILENO);
 }
 
 #endif /* ENABLE_DEBUG */

@@ -1090,6 +1090,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
       TpHandleSet *referenced_handles;
       GArray *removed;
       TpHandle handle;
+      GabbleRosterChannel *schan;
       GabbleRosterChannel *chan;
       GHashTable *group_update_table;
       guint i;
@@ -1120,6 +1121,10 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
           deny_add = NULL;
           deny_rem = NULL;
         }
+
+      /* we need this for checking if a request is remote pending (and not removing it) */
+      handle = GABBLE_LIST_HANDLE_SUBSCRIBE;
+      schan = _gabble_roster_get_channel (roster, handle);
 
       /* get the publish channel first because we need it when processing */
       handle = GABBLE_LIST_HANDLE_PUBLISH;
@@ -1202,12 +1207,12 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
             case GABBLE_ROSTER_SUBSCRIPTION_NONE:
             case GABBLE_ROSTER_SUBSCRIPTION_FROM:
               if (item->ask_subscribe)
-                tp_intset_add (sub_rp, handle);
+                g_intset_add (sub_rp, handle);
               else
-                tp_intset_add (sub_rem, handle);
+                g_intset_add (sub_rem, handle);
               break;
             case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
-              tp_intset_add (sub_rem, handle);
+              g_intset_add (sub_rem, handle);
               break;
             default:
               g_assert_not_reached ();
@@ -1226,7 +1231,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
                   tp_intset_add (known_add, handle);
               break;
             case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
-              tp_intset_add (known_rem, handle);
+              g_intset_add (known_rem, handle);
               break;
             default:
               g_assert_not_reached ();

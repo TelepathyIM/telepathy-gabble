@@ -190,35 +190,17 @@ enum {
     BUILD_POINTER = '*',
 };
 
-/**
- * lm_message_build:
+/* lm_message_node_add_build_va
  *
- * Build an LmMessageNode from a list of arguments employing an
- * S-expression-like notation. Example:
- *
- * lm_message_build ("bob@jabber.org", LM_MESSAGE_TYPE_IQ,
- *   '(', 'query', 'lala',
- *      '@', 'xmlns', 'http://jabber.org/protocol/foo',
- *   ')',
- *   NULL);
- *
- * --> <iq to="bob@jabber.org">
- *        <query xmlns="http://jabber.org/protocol/foo">lala</query>
- *     </iq>
+ * Used to implement lm_message_build and lm_message_node_add_build.
  */
-G_GNUC_NULL_TERMINATED
-LmMessage *
-lm_message_build (const gchar *to, LmMessageType type, guint spec, ...)
+static void
+lm_message_node_add_build_va (LmMessageNode *node, guint spec, va_list ap)
 {
-  LmMessage *msg;
-  va_list ap;
   GSList *stack = NULL;
   guint arg = spec;
 
-  msg = lm_message_new (to, type);
-  stack = g_slist_prepend (stack, msg->node);
-
-  va_start (ap, spec);
+  stack = g_slist_prepend (stack, node);
 
   while (arg != BUILD_END)
     {
@@ -232,8 +214,8 @@ lm_message_build (const gchar *to, LmMessageType type, guint spec, ...)
             gchar *key = va_arg (ap, gchar *);
             gchar *value = va_arg (ap, gchar *);
 
-            g_return_val_if_fail (key != NULL, NULL);
-            g_return_val_if_fail (value != NULL, NULL);
+            g_return_if_fail (key != NULL);
+            g_return_if_fail (value != NULL);
             lm_message_node_set_attribute (stack->data, key, value);
           }
           break;
@@ -244,8 +226,8 @@ lm_message_build (const gchar *to, LmMessageType type, guint spec, ...)
             gchar *value = va_arg (ap, gchar *);
             LmMessageNode *child;
 
-            g_return_val_if_fail (name != NULL, NULL);
-            g_return_val_if_fail (value != NULL, NULL);
+            g_return_if_fail (name != NULL);
+            g_return_if_fail (value != NULL);
             child = lm_message_node_add_child (stack->data, name, value);
             stack = g_slist_prepend (stack, child);
           }
@@ -266,7 +248,7 @@ lm_message_build (const gchar *to, LmMessageType type, guint spec, ...)
           {
             LmMessageNode **node = va_arg (ap, LmMessageNode **);
 
-            g_return_val_if_fail (node != NULL, NULL);
+            g_return_if_fail (node != NULL);
             *node = stack->data;
           }
           break;
@@ -282,11 +264,37 @@ lm_message_build (const gchar *to, LmMessageType type, guint spec, ...)
       arg = va_arg (ap, guint);
     }
 
-  va_end (ap);
-
 END:
   g_slist_free (stack);
+}
 
+/**
+ * lm_message_build:
+ *
+ * Build an LmMessage from a list of arguments employing an S-expression-like
+ * notation. Example:
+ *
+ * lm_message_build ("bob@jabber.org", LM_MESSAGE_TYPE_IQ,
+ *   '(', 'query', 'lala',
+ *      '@', 'xmlns', 'http://jabber.org/protocol/foo',
+ *   ')',
+ *   NULL);
+ *
+ * --> <iq to="bob@jabber.org">
+ *        <query xmlns="http://jabber.org/protocol/foo">lala</query>
+ *     </iq>
+ */
+G_GNUC_NULL_TERMINATED
+LmMessage *
+lm_message_build (const gchar *to, LmMessageType type, guint spec, ...)
+{
+  LmMessage *msg;
+  va_list ap;
+
+  msg = lm_message_new (to, type);
+  va_start (ap, spec);
+  lm_message_node_add_build_va (msg->node, spec, ap);
+  va_end (ap);
   return msg;
 }
 

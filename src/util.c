@@ -299,6 +299,26 @@ lm_message_build (const gchar *to, LmMessageType type, guint spec, ...)
 }
 
 /**
+ * lm_message_build_with_sub_type:
+ *
+ * As lm_message_build (), but creates a message with an LmMessageSubType.
+ */
+G_GNUC_NULL_TERMINATED
+LmMessage *
+lm_message_build_with_sub_type (const gchar *to, LmMessageType type,
+    LmMessageSubType sub_type, guint spec, ...)
+{
+  LmMessage *msg;
+  va_list ap;
+
+  msg = lm_message_new_with_sub_type (to, type, sub_type);
+  va_start (ap, spec);
+  lm_message_node_add_build_va (msg->node, spec, ap);
+  va_end (ap);
+  return msg;
+}
+
+/**
  * gabble_decode_jid
  *
  * Parses a JID which may be one of the following forms:

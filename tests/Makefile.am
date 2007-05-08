@@ -2,7 +2,8 @@ noinst_PROGRAMS = \
 	test-gabble-presence \
 	test-base64 \
 	test-handles \
-	test-jid-decode
+	test-jid-decode \
+	test-parse-message
 
 python_tests = \
 	test-basic-connect
@@ -20,6 +21,9 @@ test_handles_LDADD = \
     $(top_builddir)/src/libgabble-convenience.la
 
 test_jid_decode_LDADD = \
+    $(top_builddir)/src/libgabble-convenience.la
+
+test_parse_message_LDADD = \
     $(top_builddir)/src/libgabble-convenience.la
 
 AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @LOUDMOUTH_CFLAGS@ \

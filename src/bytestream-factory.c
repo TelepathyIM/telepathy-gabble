@@ -474,7 +474,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
   for (l = stream_methods; l != NULL; l = l->next)
     {
       /* We create the stream according the stream method chosen.
-       * User have to accept it */
+       * User has to accept it */
       if (!tp_strdiff (l->data, NS_IBB))
         {
           bytestream = gabble_bytestream_factory_create_ibb (self, peer_handle,

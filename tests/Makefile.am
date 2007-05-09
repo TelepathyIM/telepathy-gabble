@@ -33,11 +33,21 @@ AM_LDFLAGS = @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@ @TP_GLIB_LIBS@
 
 TESTS = $(noinst_PROGRAMS)
 EXTRA_TESTS = $(python_tests_shfiles)
+TWISTED_TESTS = \
+	test-connect.py \
+	test-disco.py \
+	test-text.py \
+	test-roster.py
 
 check-extra: $(BUILT_SOURCES)
 	chmod +x run-with-tmp-session-bus.sh $(python_tests_shfiles) \
 		$(python_tests_pythonfiles) exec-with-log.sh
 	$(MAKE) check TESTS="$(EXTRA_TESTS)"
+
+check-twisted:
+	$(MAKE) check \
+		TESTS_ENVIRONMENT="sh run-with-tmp-session-bus.sh python" \
+		TESTS="$(TWISTED_TESTS)"
 
 check-valgrind:
 	G_SLICE=always-malloc \

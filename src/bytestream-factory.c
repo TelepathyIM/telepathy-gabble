@@ -39,7 +39,10 @@
 #include "namespaces.h"
 #include "util.h"
 #include "presence-cache.h"
+
+#ifdef HAVE_DBUS_TUBE
 #include "tubes-factory.h"
+#endif
 
 G_DEFINE_TYPE (GabbleBytestreamFactory, gabble_bytestream_factory,
     G_TYPE_OBJECT);

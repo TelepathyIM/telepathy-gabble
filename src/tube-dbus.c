@@ -321,6 +321,14 @@ gabble_tube_dbus_dispose (GObject *object)
       g_hash_table_destroy (priv->dbus_names);
     }
 
+  if (priv->conn != NULL && priv->initiator != 0)
+    {
+      TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+          (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+
+      tp_handle_unref (contact_repo, priv->initiator);
+    }
+
   priv->dispose_has_run = TRUE;
 
   if (G_OBJECT_CLASS (gabble_tube_dbus_parent_class)->dispose)
@@ -429,6 +437,31 @@ gabble_tube_dbus_set_property (GObject *object,
     }
 }
 
+static GObject *
+gabble_tube_dbus_constructor (GType type,
+                              guint n_props,
+                              GObjectConstructParam *props)
+{
+  GObject *obj;
+  GabbleTubeDBusPrivate *priv;
+
+  obj = G_OBJECT_CLASS (gabble_tube_dbus_parent_class)->
+           constructor (type, n_props, props);
+
+  priv = GABBLE_TUBE_DBUS_GET_PRIVATE (GABBLE_TUBE_DBUS (obj));
+
+  /* Ref the initiator handle, if we've been set up correctly */
+  if (priv->conn != NULL && priv->initiator != 0)
+    {
+      TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+          (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+
+      tp_handle_ref (contact_repo, priv->initiator);
+    }
+
+  return obj;
+}
+
 static void
 gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
 {
@@ -437,6 +470,7 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
 
   object_class->get_property = gabble_tube_dbus_get_property;
   object_class->set_property = gabble_tube_dbus_set_property;
+  object_class->constructor = gabble_tube_dbus_constructor;
 
   g_type_class_add_private (gabble_tube_dbus_class,
       sizeof (GabbleTubeDBusPrivate));

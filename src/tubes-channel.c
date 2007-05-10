@@ -458,6 +458,8 @@ d_bus_names_changed_added (GabbleTubesChannel *self,
       G_MAXUINT);
   g_ptr_array_add (added, g_value_get_boxed (&tmp));
 
+  DEBUG ("Adding contact %u to tube %u on channel %p with name %s",
+         contact, tube_id, self, new_name);
   tp_svc_channel_type_tubes_emit_d_bus_names_changed (self,
       tube_id, added, removed);
 
@@ -477,6 +479,8 @@ d_bus_names_changed_removed (GabbleTubesChannel *self,
 
   g_array_append_val (removed, contact);
 
+  DEBUG ("Removing contact %u from tube %u on channel %p",
+         contact, tube_id, self);
   tp_svc_channel_type_tubes_emit_d_bus_names_changed (self,
       tube_id, added, removed);
 
@@ -660,7 +664,11 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
                 ((TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 
               if (!new_name)
-                continue;
+                {
+                  DEBUG ("Contact %u isn't announcing their D-Bus name",
+                         contact);
+                  continue;
+                }
 
               g_hash_table_insert (names, GUINT_TO_POINTER (contact),
                   g_strdup (new_name));

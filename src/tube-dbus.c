@@ -641,7 +641,8 @@ data_received_cb (GabbleBytestreamIBB *ibb,
 
   if (tp_strdiff (sender_name, dbus_message_get_sender (msg)))
     {
-      DEBUG ("invalid sender");
+      DEBUG ("invalid sender %s (expected %s for sender handle %d)",
+             dbus_message_get_sender (msg), sender_name, sender);
       dbus_message_unref (msg);
       return;
     }

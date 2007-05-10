@@ -412,12 +412,12 @@ extract_tube_information (GabbleTubesChannel *self,
       const gchar *initiator;
 
       initiator = lm_message_node_get_attribute (tube_node, "initiator");
-      *initiator_handle = tp_handle_lookup (contact_repo, initiator, NULL,
-          NULL);
+      *initiator_handle = tp_handle_ensure (contact_repo, initiator,
+          GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
 
-      if (!tp_handle_is_valid (contact_repo, *initiator_handle, NULL))
+      if (initiator_handle == 0)
         {
-          DEBUG ("invalid initiator handle");
+          DEBUG ("invalid initiator JID %s", initiator);
           return FALSE;
         }
     }
@@ -563,6 +563,8 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
   GHashTable *old_dbus_tubes;
   struct _add_in_old_tubes_data add_data;
   struct _emit_d_bus_names_changed_foreach_data emit_data;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 
   if (contact == priv->self_handle)
     /* We don't need to inspect our own presence */
@@ -621,6 +623,9 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
                   bytestream);
               tube = g_hash_table_lookup (priv->tubes,
                   GUINT_TO_POINTER (tube_id));
+
+              /* the tube has reffed its initiator, no need to keep a ref */
+              tp_handle_unref (contact_repo, initiator_handle);
             }
         }
       else

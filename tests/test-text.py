@@ -19,6 +19,7 @@ def expect_connected(event, data):
     if event[3] != [0, 1]:
         return False
 
+    # <message><body>hello</body</message>
     m = domish.Element(('', 'message'))
     m['from'] = 'foo@bar.com'
     m.addElement('body', content='hello')
@@ -39,7 +40,7 @@ def expect_new_channel(event, data):
     if event[3][1] != u'org.freedesktop.Telepathy.Channel.Type.Text':
         return False
 
-    # XXX: don't assume that 1 is the self handle
+    # check that handle type == contact handle
     assert event[3][2] == 1
 
     jid = conn_iface(data['conn']).InspectHandles(1, [event[3][3]])[0]

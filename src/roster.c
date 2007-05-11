@@ -223,7 +223,7 @@ gabble_roster_dispose (GObject *object)
 static void
 item_handle_unref_foreach (gpointer key, gpointer data, gpointer user_data)
 {
-  TpHandle handle = (TpHandle) key;
+  TpHandle handle = GPOINTER_TO_UINT (key);
   GabbleRosterPrivate *priv = (GabbleRosterPrivate *) user_data;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);

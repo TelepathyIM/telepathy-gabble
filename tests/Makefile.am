@@ -37,7 +37,8 @@ TWISTED_TESTS = \
 	test-connect.py \
 	test-disco.py \
 	test-text.py \
-	test-roster.py
+	test-roster.py \
+	test-save-alias-to-vcard.py
 
 check-extra: $(BUILT_SOURCES)
 	chmod +x run-with-tmp-session-bus.sh $(python_tests_shfiles) \

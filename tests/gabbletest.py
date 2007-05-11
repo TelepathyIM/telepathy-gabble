@@ -226,17 +226,22 @@ def unwrap(x):
 
     return x
 
-def gabble_test_setup(handler):
+def gabble_test_setup(handler, params=None):
     # set up Gabble
     bus = dbus.SessionBus()
     gabble = get_cm(bus, 'gabble')
-    connection = request_connection(gabble, 'jabber', {
+    default_params = {
         'account': 'test@localhost/Resource',
         'password': 'pass',
         'resource': 'Resource',
         'server': 'localhost',
         'port': dbus.UInt32(5222),
-        })
+        }
+
+    if params:
+        default_params.update(params)
+
+    connection = request_connection(gabble, 'jabber', default_params)
 
     # listen for D-Bus signals
     bus.add_signal_receiver(
@@ -263,11 +268,11 @@ def gabble_test_setup(handler):
     # go!
     connection.Connect()
 
-def run(test):
+def run(test, params=None):
     for arg in sys.argv:
         if arg == '-v':
             test.verbose = True
 
-    gabble_test_setup(test)
+    gabble_test_setup(test, params)
     reactor.run()
 

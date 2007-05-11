@@ -225,6 +225,9 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
 
         <dt>ay:key</dt>
         <dd>The public key of the buddy.</dd>
+
+        <dt>s:jid</dt>
+        <dd>For link-local connections, the JID of the buddy's server account.</dd>
       </dl>
 
       <p>Activities are represented by a struct containing:</p>

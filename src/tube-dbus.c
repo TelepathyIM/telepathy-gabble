@@ -290,6 +290,8 @@ gabble_tube_dbus_dispose (GObject *object)
 {
   GabbleTubeDBus *self = GABBLE_TUBE_DBUS (object);
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 
   if (priv->dispose_has_run)
     return;
@@ -321,13 +323,7 @@ gabble_tube_dbus_dispose (GObject *object)
       g_hash_table_destroy (priv->dbus_names);
     }
 
-  if (priv->conn != NULL && priv->initiator != 0)
-    {
-      TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-          (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-
-      tp_handle_unref (contact_repo, priv->initiator);
-    }
+  tp_handle_unref (contact_repo, priv->initiator);
 
   priv->dispose_has_run = TRUE;
 
@@ -444,20 +440,19 @@ gabble_tube_dbus_constructor (GType type,
 {
   GObject *obj;
   GabbleTubeDBusPrivate *priv;
+  TpHandleRepoIface *contact_repo;
 
   obj = G_OBJECT_CLASS (gabble_tube_dbus_parent_class)->
            constructor (type, n_props, props);
 
   priv = GABBLE_TUBE_DBUS_GET_PRIVATE (GABBLE_TUBE_DBUS (obj));
 
-  /* Ref the initiator handle, if we've been set up correctly */
-  if (priv->conn != NULL && priv->initiator != 0)
-    {
-      TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-          (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-
-      tp_handle_ref (contact_repo, priv->initiator);
-    }
+  /* Ref the initiator handle */
+  g_assert (priv->conn != NULL);
+  g_assert (priv->initiator != 0);
+  contact_repo = tp_base_connection_get_handles
+      ((TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+  tp_handle_ref (contact_repo, priv->initiator);
 
   return obj;
 }

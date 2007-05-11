@@ -1310,9 +1310,9 @@ gabble_vcard_manager_replace (GabbleVCardManager *self,
 
   priv->requests = g_slist_prepend (priv->requests, request);
 
-  gabble_vcard_manager_invalidate_cache (self, request->handle);
-
   return request_send (request, replacement, NULL, error);
+
+  gabble_vcard_manager_invalidate_cache (self, request->handle);
 }
 
 GabbleVCardManagerRequest *

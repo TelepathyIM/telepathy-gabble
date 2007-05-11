@@ -1,7 +1,5 @@
 #include "config.h"
 
-#ifdef ENABLE_DEBUG
-
 #include <stdarg.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -15,6 +13,41 @@
 #include <telepathy-glib/debug.h>
 
 #include "debug.h"
+
+void
+gabble_debug_set_log_file_from_env (void)
+{
+  const gchar *output_file;
+  int out;
+
+  output_file = g_getenv ("GABBLE_LOGFILE");
+  if (output_file == NULL)
+    return;
+
+  out = g_open (output_file, O_WRONLY | O_CREAT, 0644);
+  if (out == -1)
+    {
+      g_warning ("Can't open logfile '%s': %s", output_file,
+          g_strerror (errno));
+      return;
+    }
+
+  if (dup2 (out, STDOUT_FILENO) == -1)
+    {
+      g_warning ("Error when duplicating stdout file descriptor: %s",
+          g_strerror (errno));
+      return;
+    }
+
+  if (dup2 (out, STDERR_FILENO) == -1)
+    {
+      g_warning ("Error when duplicating stderr file descriptor: %s",
+          g_strerror (errno));
+      return;
+    }
+}
+
+#ifdef ENABLE_DEBUG
 
 static GabbleDebugFlags flags = 0;
 
@@ -76,38 +109,4 @@ void gabble_debug (GabbleDebugFlags flag,
     }
 }
 
-void
-gabble_debug_set_log_file_from_env (void)
-{
-  const gchar *output_file;
-  int out;
-
-  output_file = g_getenv ("GABBLE_LOGFILE");
-  if (output_file == NULL)
-    return;
-
-  out = g_open (output_file, O_WRONLY | O_CREAT, 0644);
-  if (out == -1)
-    {
-      g_warning ("Can't open logfile '%s': %s", output_file,
-          g_strerror (errno));
-      return;
-    }
-
-  if (dup2 (out, STDOUT_FILENO) == -1)
-    {
-      g_warning ("Error when duplicating stdout file descriptor: %s",
-          g_strerror (errno));
-      return;
-    }
-
-  if (dup2 (out, STDERR_FILENO) == -1)
-    {
-      g_warning ("Error when duplicating stderr file descriptor: %s",
-          g_strerror (errno));
-      return;
-    }
-}
-
 #endif /* ENABLE_DEBUG */
-

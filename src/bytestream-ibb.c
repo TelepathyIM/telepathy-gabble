@@ -697,7 +697,6 @@ gabble_bytestream_ibb_initiation (GabbleBytestreamIBB *self)
   LmMessage *msg;
   const gchar *jid;
   gchar *full_jid;
-  gboolean result;
 
   if (priv->state != BYTESTREAM_IBB_STATE_INITIATING)
     {
@@ -729,13 +728,14 @@ gabble_bytestream_ibb_initiation (GabbleBytestreamIBB *self)
         '@', "block-size", "4096",
       ')', NULL);
 
-  result = _gabble_connection_send_with_reply (priv->conn, msg,
-      ibb_init_reply_cb, G_OBJECT (self), NULL, NULL);
+  if (!_gabble_connection_send_with_reply (priv->conn, msg,
+      ibb_init_reply_cb, G_OBJECT (self), NULL, NULL))
+    {
+      DEBUG ("Error when sending IBB init stanza");
+      lm_message_unref (msg);
+      g_free (full_jid);
+      return FALSE;
+    }
 
-  if (!result)
-        DEBUG ("Error when sending IBB init stanza");
-
-  lm_message_unref (msg);
-  g_free (full_jid);
-  return result;
+  return TRUE;
 }

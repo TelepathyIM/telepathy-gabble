@@ -235,7 +235,7 @@ def gabble_test_setup(handler, params=None):
         'password': 'pass',
         'resource': 'Resource',
         'server': 'localhost',
-        'port': dbus.UInt32(5222),
+        'port': dbus.UInt32(4242),
         }
 
     if params:
@@ -259,7 +259,7 @@ def gabble_test_setup(handler, params=None):
     authenticator = Authenticator(
         'test', '364321e78f46562a65a902156e03c322badbcf48')
     factory = XmlStreamFactory(handler, authenticator)
-    reactor.listenTCP(5222, factory)
+    reactor.listenTCP(4242, factory)
 
     # update callback data
     handler.data['conn'] = connection

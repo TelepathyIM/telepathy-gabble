@@ -276,3 +276,21 @@ def run(test, params=None):
     gabble_test_setup(test, params)
     reactor.run()
 
+def go(params=None):
+    """Create a test from the top level functions named expect_* in the
+    __main__ module and run it.
+    """
+
+    path, _, _, _ = traceback.extract_stack()[0]
+    import compiler
+    import __main__
+    ast = compiler.parseFile(path)
+    funcs = [
+        getattr(__main__, node.name)
+        for node in ast.node.asList()
+        if node.__class__ == compiler.ast.Function and
+            node.name.startswith('expect_')]
+    test = EventTest()
+    map(test.expect, funcs)
+    run(test, params)
+

@@ -127,6 +127,7 @@ check_pep (GabbleConnection *conn,
       GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
         "Server does not support PEP" };
 
+      DEBUG ("Server does not support PEP");
       dbus_g_method_return_error (context, &error);
       return FALSE;
     }
@@ -205,6 +206,7 @@ check_publish_reply_msg (LmMessage *reply_msg,
                   "Server refused to publish to the PEP node");
             }
 
+          DEBUG ("Server refused to publish to the PEP node");
           dbus_g_method_return_error (context, error);
           g_error_free (error);
         }
@@ -243,6 +245,7 @@ check_query_reply_msg (LmMessage *reply_msg,
                   "Server refused to query the PEP node");
             }
 
+          DEBUG ("Server refused to query the PEP node");
           dbus_g_method_return_error (context, error);
           g_error_free (error);
         }
@@ -282,6 +285,8 @@ olpc_buddy_info_get_properties (GabbleSvcOLPCBuddyInfo *iface,
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) conn;
   const gchar *jid;
+
+  DEBUG ("called");
 
   if (!check_pep (conn, context))
     return;
@@ -324,6 +329,8 @@ olpc_buddy_info_set_properties (GabbleSvcOLPCBuddyInfo *iface,
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   LmMessage *msg;
   LmMessageNode *publish;
+
+  DEBUG ("called");
 
   if (!check_pep (conn, context))
     return;
@@ -595,6 +602,8 @@ olpc_buddy_info_get_activities (GabbleSvcOLPCBuddyInfo *iface,
   TpBaseConnection *base = (TpBaseConnection *) conn;
   const gchar *jid;
 
+  DEBUG ("called");
+
   if (!check_pep (conn, context))
     return;
 
@@ -641,6 +650,8 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
   LmMessageNode *publish;
   guint i;
   GSList *activities_list = NULL, *old_activities;
+
+  DEBUG ("called");
 
   if (!check_pep (conn, context))
     return;
@@ -904,6 +915,8 @@ olpc_buddy_info_get_current_activity (GabbleSvcOLPCBuddyInfo *iface,
   TpBaseConnection *base = (TpBaseConnection *) conn;
   const gchar *jid;
 
+  DEBUG ("called");
+
   if (!check_pep (conn, context))
     return;
 
@@ -981,6 +994,8 @@ olpc_buddy_info_set_current_activity (GabbleSvcOLPCBuddyInfo *iface,
   LmMessage *msg;
   LmMessageNode *publish;
   const gchar *room = "";
+
+  DEBUG ("called");
 
   if (!check_pep (conn, context))
     return;
@@ -1124,6 +1139,8 @@ olpc_activity_properties_set_properties (GabbleSvcOLPCActivityProperties *iface,
   GHashTable *properties_copied;
   ActivityInfo *info;
 
+  DEBUG ("called");
+
   if (!check_pep (conn, context))
     return;
 
@@ -1179,6 +1196,8 @@ olpc_activity_properties_get_properties (GabbleSvcOLPCActivityProperties *iface,
   gboolean not_prop = FALSE;
   GHashTable *properties;
   ActivityInfo *info;
+
+  DEBUG ("called");
 
   if (!check_pep (conn, context))
     return;

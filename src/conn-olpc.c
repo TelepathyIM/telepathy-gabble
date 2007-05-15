@@ -127,7 +127,7 @@ check_pep (GabbleConnection *conn,
       GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
         "Server does not support PEP" };
 
-      DEBUG ("Server does not support PEP");
+      DEBUG ("%s", error.message);
       dbus_g_method_return_error (context, &error);
       return FALSE;
     }
@@ -197,16 +197,16 @@ check_publish_reply_msg (LmMessage *reply_msg,
                   error_node);
 
               error = g_error_new (TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-                  "Server refused to publish to the PEP node: %s",
+                  "Failed to publish to the PEP node: %s",
                   gabble_xmpp_error_description (xmpp_error));
             }
           else
             {
               error = g_error_new (TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-                  "Server refused to publish to the PEP node");
+                  "Failed to publish to the PEP node");
             }
 
-          DEBUG ("Server refused to publish to the PEP node");
+          DEBUG ("%s", error->message);
           dbus_g_method_return_error (context, error);
           g_error_free (error);
         }
@@ -236,16 +236,16 @@ check_query_reply_msg (LmMessage *reply_msg,
                   error_node);
 
               error = g_error_new (TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-                  "Server refused to query the PEP node: %s",
+                  "Failed to query the PEP node: %s",
                   gabble_xmpp_error_description (xmpp_error));
             }
           else
             {
               error = g_error_new (TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-                  "Server refused to query the PEP node");
+                  "Failed to query the PEP node");
             }
 
-          DEBUG ("Server refused to query the PEP node");
+          DEBUG ("%s", error->message);
           dbus_g_method_return_error (context, error);
           g_error_free (error);
         }

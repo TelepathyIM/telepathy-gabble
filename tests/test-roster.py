@@ -10,7 +10,7 @@ glib2reactor.install()
 
 from twisted.words.xish import xpath
 
-from gabbletest import EventTest, conn_iface, run
+from gabbletest import EventTest, conn_iface, go
 
 def expect_connected(event, data):
     if event[0] != 'dbus-signal':
@@ -53,7 +53,7 @@ def expect_roster_iq(event, data):
     data['stream'].send(iq)
     return True
 
-def expect_contact_list_channel(event, data, name, contacts):
+def _expect_contact_list_channel(event, data, name, contacts):
     if event[0] != 'dbus-signal':
         return False
 
@@ -77,15 +77,15 @@ def expect_contact_list_channel(event, data, name, contacts):
     return True
 
 def expect_contact_list_publish(event, data):
-    return expect_contact_list_channel(event, data, 'publish',
+    return _expect_contact_list_channel(event, data, 'publish',
         ['amy@foo.com', 'bob@foo.com'])
 
 def expect_contact_list_subscribe(event, data):
-    return expect_contact_list_channel(event, data, 'subscribe',
+    return _expect_contact_list_channel(event, data, 'subscribe',
         ['amy@foo.com', 'che@foo.com'])
 
 def expect_contact_list_known(event, data):
-    if expect_contact_list_channel(event, data, 'known',
+    if _expect_contact_list_channel(event, data, 'known',
             ['amy@foo.com', 'bob@foo.com', 'che@foo.com']):
         conn_iface(data['conn']).Disconnect()
         return True
@@ -105,14 +105,5 @@ def expect_disconnected(event, data):
     return True
 
 if __name__ == '__main__':
-    test = EventTest()
-    map(test.expect, [
-        expect_connected,
-        expect_roster_iq,
-        expect_contact_list_publish,
-        expect_contact_list_subscribe,
-        expect_contact_list_known,
-        expect_disconnected,
-        ])
-    run(test)
+    go()
 

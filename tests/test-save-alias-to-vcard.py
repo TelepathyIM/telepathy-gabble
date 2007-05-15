@@ -11,7 +11,7 @@ Regression test.
 from twisted.internet import glib2reactor
 glib2reactor.install()
 
-from gabbletest import EventTest, conn_iface, run
+from gabbletest import conn_iface, go
 
 def expect_connected(event, data):
     if event[0] != 'dbus-signal':
@@ -87,12 +87,5 @@ def expect_disconnected(event, data):
     return True
 
 if __name__ == '__main__':
-    test = EventTest()
-    map(test.expect, [
-        expect_connected,
-        expect_get_vcard,
-        expect_set_vcard,
-        expect_disconnected,
-        ])
-    run(test, {'alias': 'Some Guy'})
+    go({'alias': 'Some Guy'})
 

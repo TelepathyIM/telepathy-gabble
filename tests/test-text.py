@@ -10,7 +10,7 @@ glib2reactor.install()
 
 from twisted.words.xish import domish
 
-from gabbletest import EventTest, conn_iface, run
+from gabbletest import conn_iface, go
 
 def expect_connected(event, data):
     if event[0] != 'dbus-signal':
@@ -90,13 +90,5 @@ def expect_disconnected(event, data):
     return True
 
 if __name__ == '__main__':
-    test = EventTest()
-    map(test.expect, [
-        expect_connected,
-        expect_new_channel,
-        expect_conn_received,
-        expect_srv_received,
-        expect_disconnected,
-        ])
-    run(test)
+    go()
 

@@ -4,8 +4,7 @@ import dbus
 from twisted.internet import glib2reactor
 glib2reactor.install()
 
-from twisted.words.xish import domish, xpath
-from twisted.internet import reactor
+from twisted.words.xish import xpath
 
 from gabbletest import EventTest, conn_iface, run
 

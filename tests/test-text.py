@@ -5,9 +5,8 @@ from twisted.internet import glib2reactor
 glib2reactor.install()
 
 from twisted.words.xish import domish
-from twisted.internet import reactor
 
-from gabbletest import EventTest, conn_iface, gabble_test_setup, run
+from gabbletest import EventTest, conn_iface, run
 
 def expect_connected(event, data):
     if event[0] != 'dbus-signal':

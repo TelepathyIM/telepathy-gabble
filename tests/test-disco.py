@@ -1,11 +1,8 @@
 
-import dbus
-
 from twisted.internet import glib2reactor
 glib2reactor.install()
 
 from twisted.words.xish import domish
-from twisted.internet import reactor
 
 from gabbletest import EventTest, run
 

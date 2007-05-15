@@ -584,11 +584,18 @@ setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
           prio = CLAMP (g_value_get_int (priority), G_MININT8, G_MAXINT8);
         }
 
-      gabble_presence_update (data->conn->self_presence, resource, i, status,
-          prio);
-      emit_one_presence_update (data->conn, base->self_handle);
-      data->retval = _gabble_connection_signal_own_presence (data->conn,
-          data->error);
+      if (gabble_presence_update (data->conn->self_presence, resource, i,
+            status, prio))
+        {
+          emit_one_presence_update (data->conn, base->self_handle);
+          data->retval = _gabble_connection_signal_own_presence (data->conn,
+              data->error);
+        }
+      else
+        {
+          /* Nothing actually changed. */
+          data->retval = TRUE;
+        }
     }
   else
     {

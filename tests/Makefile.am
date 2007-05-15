@@ -35,6 +35,7 @@ TESTS = $(noinst_PROGRAMS)
 EXTRA_TESTS = $(python_tests_shfiles)
 TWISTED_TESTS = \
 	test-connect.py \
+	test-connect-fail.py \
 	test-disco.py \
 	test-text.py \
 	test-roster.py \

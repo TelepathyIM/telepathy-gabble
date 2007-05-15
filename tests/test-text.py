@@ -1,4 +1,8 @@
 
+"""
+Test text channel.
+"""
+
 import dbus
 
 from twisted.internet import glib2reactor

@@ -1,4 +1,8 @@
 
+"""
+Test that Gabble responds to disco#info queries.
+"""
+
 from twisted.internet import glib2reactor
 glib2reactor.install()
 

@@ -1,4 +1,8 @@
 
+"""
+Test connecting to a server.
+"""
+
 from twisted.internet import glib2reactor
 glib2reactor.install()
 

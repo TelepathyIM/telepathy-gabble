@@ -46,10 +46,11 @@ check-extra: $(BUILT_SOURCES)
 		$(python_tests_pythonfiles) exec-with-log.sh
 	$(MAKE) check TESTS="$(EXTRA_TESTS)"
 
+_check-twisted:
+	$(MAKE) check TESTS="$(TWISTED_TESTS)" TESTS_ENVIRONMENT=python
+
 check-twisted:
-	$(MAKE) check \
-		TESTS_ENVIRONMENT="sh run-with-tmp-session-bus.sh python" \
-		TESTS="$(TWISTED_TESTS)"
+	sh run-with-tmp-session-bus.sh $(MAKE) _check-twisted
 
 check-valgrind:
 	G_SLICE=always-malloc \

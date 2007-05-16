@@ -192,7 +192,7 @@ enum {
 
 /* lm_message_node_add_build_va
  *
- * Used to implement lm_message_build and lm_message_node_add_build.
+ * Used to implement lm_message_build and lm_message_build_with_sub_type.
  */
 static void
 lm_message_node_add_build_va (LmMessageNode *node, guint spec, va_list ap)

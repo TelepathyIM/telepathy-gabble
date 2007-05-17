@@ -418,52 +418,6 @@ extract_tube_information (GabbleTubesChannel *self,
   return TRUE;
 }
 
-static void
-d_bus_names_changed_added (GabbleTubesChannel *self,
-                           guint tube_id,
-                           TpHandle contact,
-                           const gchar *new_name)
-{
-  GPtrArray *added = g_ptr_array_sized_new (1);
-  GArray *removed = g_array_new (FALSE, FALSE, sizeof (guint));
-  GValue tmp = {0,};
-  guint i;
-
-  g_value_init (&tmp, DBUS_NAME_PAIR_TYPE);
-  g_value_take_boxed (&tmp,
-      dbus_g_type_specialized_construct (DBUS_NAME_PAIR_TYPE));
-  dbus_g_type_struct_set (&tmp,
-      0, contact,
-      1, new_name,
-      G_MAXUINT);
-  g_ptr_array_add (added, g_value_get_boxed (&tmp));
-
-  tp_svc_channel_type_tubes_emit_d_bus_names_changed (self,
-      tube_id, added, removed);
-
-  for (i = 0; i < added->len; i++)
-    g_boxed_free (DBUS_NAME_PAIR_TYPE, added->pdata[i]);
-  g_ptr_array_free (added, TRUE);
-  g_array_free (removed, TRUE);
-}
-
-static void
-d_bus_names_changed_removed (GabbleTubesChannel *self,
-                             guint tube_id,
-                             TpHandle contact)
-{
-  GPtrArray *added = g_ptr_array_new ();
-  GArray *removed = g_array_new (FALSE, FALSE, sizeof (guint));
-
-  g_array_append_val (removed, contact);
-
-  tp_svc_channel_type_tubes_emit_d_bus_names_changed (self,
-      tube_id, added, removed);
-
-  g_ptr_array_free (added, TRUE);
-  g_array_free (removed, TRUE);
-}
-
 struct _add_in_old_tubes_data
 {
   GHashTable *old_dbus_tubes;

@@ -22,9 +22,10 @@ def expect_connected(event, data):
     if event[3] != [0, 1]:
         return False
 
-    # <message><body>hello</body</message>
+    # <message type="chat"><body>hello</body</message>
     m = domish.Element(('', 'message'))
     m['from'] = 'foo@bar.com'
+    m['type'] = 'chat'
     m.addElement('body', content='hello')
     data['stream'].send(m)
     return True
@@ -57,7 +58,11 @@ def expect_conn_received(event, data):
     if event[2] != 'Received':
         return False
 
-    #print 'wrong message body'
+    # message type: normal
+    assert event[3][3] == 0
+    # flags: none
+    assert event[3][4] == 0
+    # body
     assert event[3][5] == 'hello'
 
     dbus.Interface(data['text_chan'],
@@ -70,6 +75,7 @@ def expect_srv_received(event, data):
 
     elem = event[1]
     assert elem.name == 'message'
+    assert elem['type'] == 'chat'
     body = list(event[1].elements())[0]
     assert body.name == 'body'
     assert body.children[0] == u'goodbye'

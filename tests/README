@@ -1,0 +1,33 @@
+
+== C tests ==
+
+To run all tests:
+
+  make check
+
+To run an individual test:
+
+  make check TESTS=test-handles
+
+To run tests under Valgrind:
+
+  make check-valgrind
+
+== Twisted tests ==
+
+To run all Twisted tests:
+
+  make check-twisted
+
+To run an individual Twisted test:
+
+  make check-twisted TWISTED_TESTS=test-connect.py
+
+or:
+
+  sh run-with-tmp-session-bus.py test-connect.py
+
+To run with debug information:
+
+  sh run-with-tmp-session-bus.py test-connect.py -v
+

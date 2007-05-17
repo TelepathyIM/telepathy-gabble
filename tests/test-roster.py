@@ -10,7 +10,7 @@ glib2reactor.install()
 
 from twisted.words.xish import xpath
 
-from gabbletest import EventTest, conn_iface, go
+from gabbletest import conn_iface, go
 
 def expect_connected(event, data):
     if event[0] != 'dbus-signal':

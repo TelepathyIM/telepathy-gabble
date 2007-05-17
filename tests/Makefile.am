@@ -38,6 +38,7 @@ TWISTED_TESTS = \
 	test-connect-fail.py \
 	test-disco.py \
 	test-text.py \
+	test-text-delayed.py \
 	test-roster.py \
 	test-save-alias-to-vcard.py \
 	test-set-status-idempotence.py

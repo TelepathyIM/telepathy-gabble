@@ -43,9 +43,6 @@
 
 G_DEFINE_TYPE (GabbleTubeDBus, gabble_tube_dbus, G_TYPE_OBJECT)
 
-#define TUBE_PARAMETERS_TYPE dbus_g_type_get_map\
-    ("GHashTable", G_TYPE_STRING, G_TYPE_VALUE)
-
 /* signals */
 enum
 {

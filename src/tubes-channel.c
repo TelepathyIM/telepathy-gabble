@@ -374,7 +374,7 @@ static guint
 create_new_tube (GabbleTubesChannel *self,
                  TpTubeType type,
                  TpHandle initiator,
-                 const gchar* service,
+                 const gchar *service,
                  GHashTable *parameters,
                  const gchar *stream_id,
                  GabbleBytestreamIBB *bytestream)

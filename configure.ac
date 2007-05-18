@@ -180,7 +180,8 @@ AC_SUBST(TP_GLIB_UNSTABLE_LIBS)
 dnl Check for D-Bus tubes
 AC_CHECK_LIB(dbus-1, dbus_message_marshal,
              [have_dbus_message_marshal=yes],
-             [have_dbus_message_marshal=no])
+             [have_dbus_message_marshal=no],
+             [$DBUS_LIBS])
 
 have_dbus_tube=no
 if test x$have_dbus_message_marshal = xyes; then

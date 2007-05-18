@@ -34,6 +34,7 @@
 #include "util.h"
 #include "tube-iface.h"
 #include "tube-dbus.h"
+#include "tube-stream.h"
 #include "bytestream-factory.h"
 
 #include <telepathy-glib/errors.h>
@@ -407,6 +408,9 @@ create_new_tube (GabbleTubesChannel *self,
     case TP_TUBE_TYPE_DBUS:
       gtype = GABBLE_TYPE_TUBE_DBUS;
       break;
+    case TP_TUBE_TYPE_STREAM:
+      gtype = GABBLE_TYPE_TUBE_STREAM;
+      break;
     default:
       g_assert_not_reached ();
     }
@@ -475,7 +479,13 @@ extract_tube_information (GabbleTubesChannel *self,
       _type = lm_message_node_get_attribute (tube_node, "type");
 
       if (!tp_strdiff (_type, "dbus"))
-        *type = TP_TUBE_TYPE_DBUS;
+        {
+          *type = TP_TUBE_TYPE_DBUS;
+        }
+      else if (!tp_strdiff (_type, "stream"))
+        {
+          *type = TP_TUBE_TYPE_STREAM;
+        }
       else
         {
           DEBUG ("Unknow tube type: %s", _type);
@@ -783,6 +793,8 @@ gabble_tubes_channel_get_available_tube_types (TpSvcChannelTypeTubes *iface,
   ret = g_array_sized_new (FALSE, FALSE, sizeof (TpTubeType), 1);
   type = TP_TUBE_TYPE_DBUS;
   g_array_append_val (ret, type);
+  type = TP_TUBE_TYPE_STREAM;
+  g_array_append_val (ret, type);
 
   tp_svc_channel_type_tubes_return_from_get_available_tube_types (context,
       ret);
@@ -861,6 +873,8 @@ publish_tube_in_node (LmMessageNode *node,
       case TP_TUBE_TYPE_DBUS:
         lm_message_node_set_attribute (node, "type", "dbus");
         break;
+      case TP_TUBE_TYPE_STREAM:
+        lm_message_node_set_attribute (node, "type", "stream");
       default:
         g_assert_not_reached ();
     }
@@ -1121,7 +1135,7 @@ gabble_tubes_channel_offer_tube (TpSvcChannelTypeTubes *iface,
   priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
   base = (TpBaseConnection*) priv->conn;
 
-  if (type != TP_TUBE_TYPE_DBUS)
+  if (type >= NUM_TP_TUBE_TYPES)
     {
       GError *error = g_error_new (TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "invalid type: %d", type);

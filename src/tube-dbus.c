@@ -38,10 +38,15 @@
 #include "namespaces.h"
 #include <telepathy-glib/svc-unstable.h>
 #include "util.h"
+#include "tube-iface.h"
 #include "bytestream-ibb.h"
 #include "gabble-signals-marshal.h"
 
-G_DEFINE_TYPE (GabbleTubeDBus, gabble_tube_dbus, G_TYPE_OBJECT)
+static void
+tube_iface_init (gpointer g_iface, gpointer iface_data);
+
+G_DEFINE_TYPE_WITH_CODE (GabbleTubeDBus, gabble_tube_dbus, G_TYPE_OBJECT,
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_TUBE_IFACE, tube_iface_init));
 
 /* signals */
 enum
@@ -224,9 +229,10 @@ new_connection_cb (DBusServer *server,
   priv->dbus_conn = conn;
 }
 
-void
-gabble_tube_dbus_accept (GabbleTubeDBus *self)
+static void
+gabble_tube_dbus_accept (GabbleTubeIface *tube)
 {
+  GabbleTubeDBus *self = GABBLE_TUBE_DBUS (tube);
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
   BytestreamIBBState state;
   gchar *stream_init_id;
@@ -777,11 +783,12 @@ data_received_cb (GabbleBytestreamIBB *ibb,
   dbus_message_unref (msg);
 }
 
-gchar *
-gabble_tube_dbus_get_stream_id (GabbleTubeDBus *self)
+static gchar *
+gabble_tube_dbus_get_stream_id (GabbleTubeIface *tube)
 {
-  gchar *stream_id;
+  GabbleTubeDBus *self = GABBLE_TUBE_DBUS (tube);
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
+  gchar *stream_id;
 
   if (priv->bytestream == NULL)
     return NULL;
@@ -790,9 +797,10 @@ gabble_tube_dbus_get_stream_id (GabbleTubeDBus *self)
   return stream_id;
 }
 
-void
-gabble_tube_dbus_close (GabbleTubeDBus *self)
+static void
+gabble_tube_dbus_close (GabbleTubeIface *tube)
 {
+  GabbleTubeDBus *self = GABBLE_TUBE_DBUS (tube);
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
 
   if (priv->bytestream != NULL)
@@ -804,4 +812,15 @@ gabble_tube_dbus_close (GabbleTubeDBus *self)
     {
       g_signal_emit (G_OBJECT (self), signals[CLOSED], 0);
     }
+}
+
+static void
+tube_iface_init (gpointer g_iface,
+                 gpointer iface_data)
+{
+  GabbleTubeIfaceClass *klass = (GabbleTubeIfaceClass *) g_iface;
+
+  klass->get_stream_id = gabble_tube_dbus_get_stream_id;
+  klass->accept = gabble_tube_dbus_accept;
+  klass->close = gabble_tube_dbus_close;
 }

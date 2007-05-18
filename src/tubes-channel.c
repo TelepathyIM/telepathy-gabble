@@ -32,6 +32,7 @@
 #include "presence-cache.h"
 #include "namespaces.h"
 #include "util.h"
+#include "tube-iface.h"
 #include "tube-dbus.h"
 #include "bytestream-factory.h"
 
@@ -333,14 +334,14 @@ add_yourself_in_dbus_names (GabbleTubesChannel *self,
 
 static guint
 find_tube_id (GabbleTubesChannel *self,
-              GabbleTubeDBus *tube)
+              GabbleTubeIface *tube)
 {
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
   gchar *stream_id;
   guint tube_id;
 
   /* XXX maybe we could use a smarter way to find the tube ID ? */
-  stream_id = gabble_tube_dbus_get_stream_id (tube);
+  stream_id = gabble_tube_iface_get_stream_id (tube);
   if (stream_id == NULL)
     {
       DEBUG ("no stream ID");
@@ -358,7 +359,7 @@ find_tube_id (GabbleTubesChannel *self,
 }
 
 static void
-tube_closed_cb (GabbleTubeDBus *tube,
+tube_closed_cb (GabbleTubeIface *tube,
                 gpointer user_data)
 {
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (user_data);
@@ -372,7 +373,7 @@ tube_closed_cb (GabbleTubeDBus *tube,
 }
 
 static void
-tube_opened_cb (GabbleTubeDBus *tube,
+tube_opened_cb (GabbleTubeIface *tube,
                 gpointer user_data)
 {
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (user_data);
@@ -396,7 +397,7 @@ create_new_tube (GabbleTubesChannel *self,
                  GabbleBytestreamIBB *bytestream)
 {
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
-  GabbleTubeDBus *tube;
+  GabbleTubeIface *tube;
   guint tube_id;
   GType gtype;
   TpTubeState state;
@@ -525,7 +526,7 @@ add_in_old_tubes (gpointer key,
                   gpointer user_data)
 {
   guint tube_id = GPOINTER_TO_UINT (key);
-  GabbleTubeDBus *tube = GABBLE_TUBE_DBUS (value);
+  GabbleTubeIface *tube = GABBLE_TUBE_IFACE (value);
   struct _add_in_old_tubes_data *data =
     (struct _add_in_old_tubes_data *) user_data;
   TpTubeType type;
@@ -533,7 +534,7 @@ add_in_old_tubes (gpointer key,
 
   g_object_get (tube, "type", &type, NULL);
 
-  if (type != TP_TUBE_TYPE_DBUS)
+  if (type >= NUM_TP_TUBE_TYPES)
     return;
 
   g_object_get (tube, "dbus-names", &names, NULL);
@@ -610,7 +611,7 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
       tube_node = tube_node->next)
     {
       const gchar *stream_id;
-      GabbleTubeDBus *tube;
+      GabbleTubeIface *tube;
       guint tube_id;
       TpTubeType type;
 
@@ -715,7 +716,7 @@ copy_tube_in_ptr_array (gpointer key,
                         gpointer value,
                         gpointer user_data)
 {
-  GabbleTubeDBus *tube = (GabbleTubeDBus *) value;
+  GabbleTubeIface *tube = (GabbleTubeIface *) value;
   guint tube_id = GPOINTER_TO_UINT(key);
   TpHandle initiator;
   gchar *service;
@@ -836,7 +837,7 @@ copy_parameter (gpointer key,
 
 static void
 publish_tube_in_node (LmMessageNode *node,
-                      GabbleTubeDBus *tube,
+                      GabbleTubeIface *tube,
                       const gchar *stream_id)
 {
   LmMessageNode *parameters_node;
@@ -906,7 +907,7 @@ publish_tubes_in_node (gpointer key,
   const gchar *initiator;
   TpTubeType type;
   gchar *stream_id;
-  GabbleTubeDBus *tube = g_hash_table_lookup (priv->tubes,
+  GabbleTubeIface *tube = g_hash_table_lookup (priv->tubes,
       GUINT_TO_POINTER (tube_id));
 
   g_object_get (tube,
@@ -916,7 +917,7 @@ publish_tubes_in_node (gpointer key,
   if (state != TP_TUBE_STATE_OPEN)
     return;
 
-  stream_id = gabble_tube_dbus_get_stream_id (GABBLE_TUBE_DBUS (tube));
+  stream_id = gabble_tube_iface_get_stream_id (tube);
 
   tube_node = lm_message_node_add_child (data->tubes_node, "tube", NULL);
   publish_tube_in_node (tube_node, tube, stream_id);
@@ -984,7 +985,7 @@ bytestream_negotiate_cb (GabbleBytestreamIBB *bytestream,
 {
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (user_data);
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
-  GabbleTubeDBus *tube;
+  GabbleTubeIface *tube;
   guint tube_id;
 
   tube_id = GPOINTER_TO_UINT (g_hash_table_lookup (priv->stream_id_to_tube_id,
@@ -1007,7 +1008,7 @@ bytestream_negotiate_cb (GabbleBytestreamIBB *bytestream,
           "bytestream", bytestream,
           NULL);
 
-      gabble_tube_dbus_accept (tube);
+      gabble_tube_iface_accept (tube);
 
       si = lm_message_node_get_child_with_namespace (msg->node, "si", NS_SI);
       /* XXX properly catch errors ! */
@@ -1166,7 +1167,7 @@ gabble_tubes_channel_offer_tube (TpSvcChannelTypeTubes *iface,
     {
       /* Stream initiation */
       LmMessageNode *node;
-      GabbleTubeDBus *tube;
+      GabbleTubeIface *tube;
       LmMessage *msg;
       TpHandleRepoIface *contact_repo;
       GabblePresence *presence;
@@ -1236,7 +1237,7 @@ gabble_tubes_channel_accept_tube (TpSvcChannelTypeTubes *iface,
 {
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (iface);
   GabbleTubesChannelPrivate *priv;
-  GabbleTubeDBus *tube;
+  GabbleTubeIface *tube;
   TpTubeState state;
   TpTubeType type;
 
@@ -1262,7 +1263,7 @@ gabble_tubes_channel_accept_tube (TpSvcChannelTypeTubes *iface,
       return;
     }
 
-  gabble_tube_dbus_accept (tube);
+  gabble_tube_iface_accept (tube);
 
   if (priv->handle_type == TP_HANDLE_TYPE_ROOM)
     {
@@ -1280,7 +1281,7 @@ gabble_tubes_channel_accept_tube (TpSvcChannelTypeTubes *iface,
 
 static void
 close_tube (GabbleTubesChannel *self,
-            GabbleTubeDBus *tube,
+            GabbleTubeIface *tube,
             guint tube_id)
 {
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
@@ -1289,9 +1290,9 @@ close_tube (GabbleTubesChannel *self,
   if (tube == NULL)
     return;
 
-  stream_id = gabble_tube_dbus_get_stream_id (tube);
+  stream_id = gabble_tube_iface_get_stream_id (tube);
 
-  gabble_tube_dbus_close (tube);
+  gabble_tube_iface_close (tube);
 
   g_hash_table_remove (priv->tubes, GUINT_TO_POINTER (tube_id));
 
@@ -1324,7 +1325,7 @@ gabble_tubes_channel_close_tube (TpSvcChannelTypeTubes *iface,
 {
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (iface);
   GabbleTubesChannelPrivate *priv;
-  GabbleTubeDBus *tube;
+  GabbleTubeIface *tube;
 
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
 

@@ -242,6 +242,13 @@ im_factory_message_cb (LmMessageHandler *handler,
           return LM_HANDLER_RESULT_REMOVE_MESSAGE;
         }
 
+      if (state == TP_CHANNEL_CHAT_STATE_GONE)
+        {
+          DEBUG ("ignoring GONE chat state; no existing channel");
+          tp_handle_unref (contact_repo, handle);
+          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+        }
+
       DEBUG ("found no IM channel, creating one");
 
       chan = new_im_channel (fac, handle);

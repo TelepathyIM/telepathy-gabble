@@ -22,6 +22,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
 
 #include <glib.h>
 
@@ -38,6 +44,10 @@
 #include "tube-iface.h"
 #include "bytestream-ibb.h"
 #include "gabble-signals-marshal.h"
+
+#ifndef UNIX_PATH_MAX
+#define UNIX_PATH_MAX 108
+#endif
 
 static void
 tube_iface_init (gpointer g_iface, gpointer iface_data);
@@ -65,6 +75,7 @@ enum
   PROP_SERVICE,
   PROP_PARAMETERS,
   PROP_STATE,
+  PROP_SOCKET,
   LAST_PROPERTY
 };
 
@@ -77,6 +88,11 @@ struct _GabbleTubeStreamPrivate
   gchar *service;
   GHashTable *parameters;
 
+  /* Path of the unix socket associated with this stream tube */
+  gchar *socket_path;
+  GIOChannel *io_channel;
+  GIOChannel *listen_io_channel;
+
   gboolean dispose_has_run;
 };
 
@@ -87,12 +103,149 @@ static void data_received_cb (GabbleBytestreamIBB *ibb, TpHandle sender,
     GString *data, gpointer user_data);
 
 static void
+generate_ascii_string (guint len,
+                       gchar *buf)
+{
+  const gchar *chars =
+    "0123456789"
+    "abcdefghijklmnopqrstuvwxyz"
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    "_-";
+  guint i;
+
+  for (i = 0; i < len; i++)
+    buf[i] = chars[g_random_int_range (0, 64)];
+}
+
+gboolean
+socket_recv_data_cb (GIOChannel *source,
+                     GIOCondition condition,
+                     gpointer data)
+{
+  //GabbleTubeStream *self = GABBLE_TUBE_STREAM (data);
+
+  if (condition & G_IO_IN)
+    {
+      gchar buffer[1024];
+      gsize readed;
+
+      memset(&buffer, 0, sizeof(buffer));
+
+      g_io_channel_read_chars (source, buffer, 1024, &readed, NULL);
+      DEBUG ("read: %s\n", buffer);
+    }
+  else if (condition & G_IO_ERR)
+    {
+      DEBUG ("error");
+    }
+  else
+    {
+      g_assert_not_reached ();
+    }
+
+  return TRUE;
+}
+
+gboolean
+listen_cb (GIOChannel *source,
+           GIOCondition condition,
+           gpointer data)
+{
+  GabbleTubeStream *self = GABBLE_TUBE_STREAM (data);
+  GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
+  int fd, listen_fd;
+  struct sockaddr_un addr;
+  socklen_t addrlen;
+  int flags;
+
+  listen_fd = g_io_channel_unix_get_fd (source);
+  fd = accept (listen_fd, (struct sockaddr *) &addr, &addrlen);
+  DEBUG ("connection from client");
+
+  /* Set socket non blocking */
+  flags = fcntl (fd, F_GETFL, 0);
+  fcntl (fd, F_SETFL, flags | O_NONBLOCK);
+
+  priv->io_channel = g_io_channel_unix_new (fd);
+  g_io_add_watch (priv->io_channel, G_IO_IN | G_IO_ERR,
+      socket_recv_data_cb, self);
+
+  /* Shall we accept more than one connection ? */
+  return FALSE;
+}
+
+static void
 tube_stream_open (GabbleTubeStream *self)
 {
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
+  int fd;
+  struct sockaddr_un addr;
+  int flags;
 
   g_signal_connect (priv->bytestream, "data-received",
       G_CALLBACK (data_received_cb), self);
+  // XXX close the tube if error ?
+
+  fd = socket (PF_UNIX, SOCK_STREAM, 0);
+  if (fd == -1)
+    {
+      DEBUG ("Error creating socket: %s", g_strerror (errno));
+      return;
+    }
+
+  memset(&addr, 0, sizeof(addr));
+  addr.sun_family = PF_UNIX;
+
+  /* Set socket non blocking */
+  flags = fcntl (fd, F_GETFL, 0);
+  fcntl (fd, F_SETFL, flags | O_NONBLOCK);
+
+  if (priv->socket_path == NULL)
+    {
+      /* No socket associated, let's create one */
+      gchar suffix[8];
+
+      generate_ascii_string (8, suffix);
+      priv->socket_path = g_strdup_printf ("/tmp/stream-gabble-%.8s", suffix);
+
+      DEBUG ("create socket: %s", priv->socket_path);
+
+      strncpy(addr.sun_path, priv->socket_path,
+          MIN (strlen (priv->socket_path) + 1, UNIX_PATH_MAX));
+
+      if (bind (fd, (struct sockaddr *) &addr, sizeof (addr)) == -1)
+        {
+          DEBUG ("Error binding socket: %s", g_strerror (errno));
+          return;
+        }
+
+      if (listen (fd, 1) == -1)
+        {
+          DEBUG ("Error listenning socket: %s", g_strerror (errno));
+          return;
+        }
+
+      priv->listen_io_channel = g_io_channel_unix_new (fd);
+      g_io_add_watch (priv->listen_io_channel, G_IO_IN,
+          listen_cb, self);
+    }
+  else
+    {
+      DEBUG ("Connect to socket: %s", priv->socket_path);
+
+      strncpy(addr.sun_path, priv->socket_path,
+          MIN(strlen(priv->socket_path) + 1, UNIX_PATH_MAX));
+
+      if (connect (fd, (struct sockaddr *) &addr, sizeof (addr)) == -1)
+        {
+          DEBUG ("Error connecting socket: %s", g_strerror (errno));
+          return;
+        }
+
+        priv->io_channel = g_io_channel_unix_new (fd);
+        g_io_add_watch (priv->io_channel, G_IO_IN | G_IO_ERR,
+            socket_recv_data_cb, self);
+    }
 }
 
 static void
@@ -104,6 +257,9 @@ gabble_tube_stream_init (GabbleTubeStream *self)
   self->priv = priv;
 
   priv->bytestream = NULL;
+  priv->io_channel = NULL;
+  priv->listen_io_channel = NULL;
+
   priv->dispose_has_run = FALSE;
 }
 
@@ -172,6 +328,18 @@ gabble_tube_stream_dispose (GObject *object)
 
   tp_handle_unref (contact_repo, priv->initiator);
 
+  if (priv->io_channel)
+    {
+      g_io_channel_unref (priv->io_channel);
+      priv->io_channel = NULL;
+    }
+
+  if (priv->listen_io_channel)
+    {
+      g_io_channel_unref (priv->listen_io_channel);
+      priv->listen_io_channel = NULL;
+    }
+
   priv->dispose_has_run = TRUE;
 
   if (G_OBJECT_CLASS (gabble_tube_stream_parent_class)->dispose)
@@ -186,6 +354,7 @@ gabble_tube_stream_finalize (GObject *object)
 
   g_free (priv->service);
   g_hash_table_destroy (priv->parameters);
+  g_free (priv->socket_path);
 
   G_OBJECT_CLASS (gabble_tube_stream_parent_class)->finalize (object);
 }
@@ -221,6 +390,9 @@ gabble_tube_stream_get_property (GObject *object,
         break;
       case PROP_STATE:
         g_value_set_uint (value, get_tube_state (self));
+        break;
+      case PROP_SOCKET:
+        g_value_set_string (value, priv->socket_path);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -267,6 +439,10 @@ gabble_tube_stream_set_property (GObject *object,
         break;
       case PROP_PARAMETERS:
         priv->parameters = g_value_get_boxed (value);
+        break;
+      case PROP_SOCKET:
+        g_free (priv->socket_path);
+        priv->socket_path = g_value_dup_string (value);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -395,6 +571,17 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
       G_PARAM_STATIC_NICK |
       G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_STATE, param_spec);
+
+  param_spec = g_param_spec_string (
+      "socket",
+      "socket path",
+      "the path of the unix socket associated with this stream tube.",
+      "",
+      G_PARAM_READWRITE |
+      G_PARAM_STATIC_NAME |
+      G_PARAM_STATIC_NICK |
+      G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_SOCKET, param_spec);
 
   signals[OPENED] =
     g_signal_new ("opened",

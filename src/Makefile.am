@@ -89,6 +89,8 @@ libgabble_convenience_la_our_sources = \
     text-mixin.c \
     tube-iface.h \
     tube-iface.c \
+    tube-stream.h \
+    tube-stream.c \
     util.h \
     util.c \
     vcard-manager.h \

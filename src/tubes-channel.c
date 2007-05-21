@@ -1188,6 +1188,9 @@ gabble_tubes_channel_offer_tube (TpSvcChannelTypeTubes *iface,
         {
           dbus_g_method_return_error (context, error);
 
+          g_hash_table_remove (priv->tubes, GUINT_TO_POINTER (tube_id));
+          g_hash_table_remove (priv->stream_id_to_tube_id, stream_id);
+
           g_error_free (error);
           g_free (stream_id);
           g_free (full_jid);

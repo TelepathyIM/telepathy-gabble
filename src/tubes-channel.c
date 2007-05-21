@@ -531,9 +531,9 @@ struct _add_in_old_tubes_data
 };
 
 static void
-add_in_old_tubes (gpointer key,
-                  gpointer value,
-                  gpointer user_data)
+add_in_old_dbus_tubes (gpointer key,
+                       gpointer value,
+                       gpointer user_data)
 {
   guint tube_id = GPOINTER_TO_UINT (key);
   GabbleTubeIface *tube = GABBLE_TUBE_IFACE (value);
@@ -544,7 +544,7 @@ add_in_old_tubes (gpointer key,
 
   g_object_get (tube, "type", &type, NULL);
 
-  if (type >= NUM_TP_TUBE_TYPES)
+  if (type != TP_TUBE_TYPE_DBUS)
     return;
 
   g_object_get (tube, "dbus-names", &names, NULL);
@@ -615,7 +615,7 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
   old_dbus_tubes = g_hash_table_new (g_direct_hash, g_direct_equal);
   add_data.old_dbus_tubes = old_dbus_tubes;
   add_data.contact = contact;
-  g_hash_table_foreach (priv->tubes, add_in_old_tubes, &add_data);
+  g_hash_table_foreach (priv->tubes, add_in_old_dbus_tubes, &add_data);
 
   for (tube_node = tubes_node->children; tube_node != NULL;
       tube_node = tube_node->next)
@@ -1017,6 +1017,7 @@ bytestream_negotiate_cb (GabbleBytestreamIBB *bytestream,
     {
       LmMessageNode *si, *tube_node, *dbus_name_node;
       const gchar *dbus_name;
+      TpTubeType type;
 
       /* Tube was accepted by remote user */
       g_object_set (tube,
@@ -1030,14 +1031,21 @@ bytestream_negotiate_cb (GabbleBytestreamIBB *bytestream,
       if (si == NULL)
         return;
 
+      g_object_get (tube,
+          "type", &type,
+          NULL);
+
       tube_node = lm_message_node_get_child_with_namespace (si, "tube",
           NS_SI_TUBES);
       if (tube_node == NULL)
         return;
 
-      dbus_name_node = lm_message_node_get_child (tube_node, "dbus-name");
-      dbus_name = lm_message_node_get_value (dbus_name_node);
-      add_name_in_dbus_names (self, tube_id, priv->handle, dbus_name);
+      if (type == TP_TUBE_TYPE_DBUS)
+        {
+          dbus_name_node = lm_message_node_get_child (tube_node, "dbus-name");
+          dbus_name = lm_message_node_get_value (dbus_name_node);
+          add_name_in_dbus_names (self, tube_id, priv->handle, dbus_name);
+        }
     }
   else
     {

@@ -875,6 +875,7 @@ publish_tube_in_node (LmMessageNode *node,
         break;
       case TP_TUBE_TYPE_STREAM:
         lm_message_node_set_attribute (node, "type", "stream");
+        break;
       default:
         g_assert_not_reached ();
     }

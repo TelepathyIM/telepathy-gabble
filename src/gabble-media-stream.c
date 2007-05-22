@@ -1669,6 +1669,26 @@ _gabble_media_stream_content_node_add_description (GabbleMediaStream *stream,
           5, &params,
           G_MAXUINT);
 
+      /* if the N800 hack mode is enabled then skip any codecs called
+       * H263-1998, and rebrand H263-N800 as H263-1998 */
+      if (priv->h283_n800_hack)
+        {
+          if (!tp_strdiff (name, "H263-1998"))
+            {
+              GMS_DEBUG_INFO (priv->session, "N800 hack enabled, skipping "
+                  "real local H263-1998");
+              g_free (name);
+              continue;
+            }
+          else if (!tp_strdiff (name, "H263-N800"))
+            {
+              GMS_DEBUG_INFO (priv->session, "N800 hack enabled, advertising "
+                  "local H263-N800 as H263-1998");
+              g_free (name);
+              name = g_strdup ("H263-1998");
+            }
+        }
+
       /* create a sub-node called "payload-type" and fill it */
       pt_node = lm_message_node_add_child (desc_node, "payload-type", NULL);
 

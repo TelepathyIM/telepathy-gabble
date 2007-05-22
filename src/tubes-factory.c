@@ -461,11 +461,11 @@ gabble_tubes_factory_iface_request (TpChannelFactoryIface *iface,
   return status;
 }
 
-void gabble_tubes_factory_handle_request (GabbleTubesFactory *self,
-                                          GabbleBytestreamIBB *bytestream,
-                                          TpHandle handle,
-                                          const gchar *stream_id,
-                                          LmMessage *msg)
+void gabble_tubes_factory_handle_si_request (GabbleTubesFactory *self,
+                                             GabbleBytestreamIBB *bytestream,
+                                             TpHandle handle,
+                                             const gchar *stream_id,
+                                             LmMessage *msg)
 {
   GabbleTubesFactoryPrivate *priv = GABBLE_TUBES_FACTORY_GET_PRIVATE (self);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
@@ -476,7 +476,6 @@ void gabble_tubes_factory_handle_request (GabbleTubesFactory *self,
     return;
 
   chan = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (handle));
-
   if (chan == NULL)
     {
       chan = new_tubes_channel (self, handle, TP_HANDLE_TYPE_CONTACT);

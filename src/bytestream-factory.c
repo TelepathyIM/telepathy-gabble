@@ -507,7 +507,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
   if (strcmp (profile, NS_SI_TUBES) == 0)
     {
       know_profile = TRUE;
-      gabble_tubes_factory_handle_request (priv->conn->tubes_factory,
+      gabble_tubes_factory_handle_si_request (priv->conn->tubes_factory,
           bytestream, peer_handle, stream_id, msg);
     }
 #endif

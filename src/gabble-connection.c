@@ -214,10 +214,8 @@ _gabble_connection_create_channel_factories (TpBaseConnection *conn)
                                  "connection", self,
                                  NULL));
 
-#ifdef HAVE_DBUS_TUBE
   self->tubes_factory = gabble_tubes_factory_new (self);
   g_ptr_array_add (channel_factories, self->tubes_factory);
-#endif
 
   return channel_factories;
 }

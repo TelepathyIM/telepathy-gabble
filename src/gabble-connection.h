@@ -137,10 +137,8 @@ struct _GabbleConnection {
     /* bytestream factory */
     GabbleBytestreamFactory *bytestream_factory;
 
-#ifdef HAVE_DBUS_TUBE
     /* tubes factory */
     GabbleTubesFactory *tubes_factory;
-#endif
 
     gpointer priv;
 };

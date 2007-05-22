@@ -40,9 +40,7 @@
 #include "util.h"
 #include "presence-cache.h"
 
-#ifdef HAVE_DBUS_TUBE
 #include "tubes-factory.h"
-#endif
 
 G_DEFINE_TYPE (GabbleBytestreamFactory, gabble_bytestream_factory,
     G_TYPE_OBJECT);
@@ -503,14 +501,12 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
     }
 
   /* We inform the right factory when received a SI request */
-#ifdef HAVE_DBUS_TUBE
   if (strcmp (profile, NS_SI_TUBES) == 0)
     {
       know_profile = TRUE;
       gabble_tubes_factory_handle_si_request (priv->conn->tubes_factory,
           bytestream, peer_handle, stream_id, msg);
     }
-#endif
 
   if (!know_profile)
     {

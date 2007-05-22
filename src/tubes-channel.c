@@ -33,9 +33,12 @@
 #include "namespaces.h"
 #include "util.h"
 #include "tube-iface.h"
-#include "tube-dbus.h"
 #include "tube-stream.h"
 #include "bytestream-factory.h"
+
+#ifdef HAVE_DBUS_TUBE
+#include "tube-dbus.h"
+#endif
 
 #include <telepathy-glib/errors.h>
 #include <telepathy-glib/group-mixin.h>
@@ -237,6 +240,7 @@ gabble_tubes_channel_set_property (GObject *object,
     }
 }
 
+#ifdef HAVE_DBUS_TUBE
 static void
 d_bus_names_changed_added (GabbleTubesChannel *self,
                            guint tube_id,
@@ -332,6 +336,7 @@ add_yourself_in_dbus_names (GabbleTubesChannel *self,
 
   g_free (dbus_name);
 }
+#endif
 
 static guint
 find_tube_id (GabbleTubesChannel *self,
@@ -405,9 +410,11 @@ create_new_tube (GabbleTubesChannel *self,
 
   switch (type)
     {
+#ifdef HAVE_DBUS_TUBE
     case TP_TUBE_TYPE_DBUS:
       gtype = GABBLE_TYPE_TUBE_DBUS;
       break;
+#endif
     case TP_TUBE_TYPE_STREAM:
       gtype = GABBLE_TYPE_TUBE_STREAM;
       break;
@@ -448,11 +455,13 @@ create_new_tube (GabbleTubesChannel *self,
       parameters,
       state);
 
+#ifdef HAVE_DBUS_TUBE
   if (type == TP_TUBE_TYPE_DBUS &&
       state != TP_TUBE_STATE_LOCAL_PENDING)
     {
       add_yourself_in_dbus_names (self, tube_id);
     }
+#endif
 
   g_signal_connect (tube, "opened", G_CALLBACK (tube_opened_cb), self);
   g_signal_connect (tube, "closed", G_CALLBACK (tube_closed_cb), self);
@@ -478,14 +487,16 @@ extract_tube_information (GabbleTubesChannel *self,
 
       _type = lm_message_node_get_attribute (tube_node, "type");
 
-      if (!tp_strdiff (_type, "dbus"))
-        {
-          *type = TP_TUBE_TYPE_DBUS;
-        }
-      else if (!tp_strdiff (_type, "stream"))
+      if (!tp_strdiff (_type, "stream"))
         {
           *type = TP_TUBE_TYPE_STREAM;
         }
+#ifdef HAVE_DBUS_TUBE
+      else if (!tp_strdiff (_type, "dbus"))
+        {
+          *type = TP_TUBE_TYPE_DBUS;
+        }
+#endif
       else
         {
           DEBUG ("Unknow tube type: %s", _type);
@@ -524,7 +535,8 @@ extract_tube_information (GabbleTubesChannel *self,
   return TRUE;
 }
 
-struct _add_in_old_tubes_data
+#ifdef HAVE_DBUS_TUBE
+struct _add_in_old_dbus_tubes_data
 {
   GHashTable *old_dbus_tubes;
   TpHandle contact;
@@ -537,8 +549,8 @@ add_in_old_dbus_tubes (gpointer key,
 {
   guint tube_id = GPOINTER_TO_UINT (key);
   GabbleTubeIface *tube = GABBLE_TUBE_IFACE (value);
-  struct _add_in_old_tubes_data *data =
-    (struct _add_in_old_tubes_data *) user_data;
+  struct _add_in_old_dbus_tubes_data *data =
+    (struct _add_in_old_dbus_tubes_data *) user_data;
   TpTubeType type;
   GHashTable *names;
 
@@ -592,6 +604,7 @@ emit_d_bus_names_changed_foreach (gpointer key,
 
   tp_handle_unref (contact_repo, data->contact);
 }
+#endif
 
 void
 gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
@@ -600,22 +613,26 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
 {
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
   LmMessageNode *tube_node;
-  GHashTable *old_dbus_tubes;
-  struct _add_in_old_tubes_data add_data;
-  struct _emit_d_bus_names_changed_foreach_data emit_data;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+#ifdef HAVE_DBUS_TUBE
+  GHashTable *old_dbus_tubes;
+  struct _add_in_old_dbus_tubes_data add_data;
+  struct _emit_d_bus_names_changed_foreach_data emit_data;
+#endif
 
   if (contact == priv->self_handle)
     /* We don't need to inspect our own presence */
     return;
 
+#ifdef HAVE_DBUS_TUBE
   /* Fill old_dbus_tubes with D-BUS tubes previoulsy announced by
    * the contact */
   old_dbus_tubes = g_hash_table_new (g_direct_hash, g_direct_equal);
   add_data.old_dbus_tubes = old_dbus_tubes;
   add_data.contact = contact;
   g_hash_table_foreach (priv->tubes, add_in_old_dbus_tubes, &add_data);
+#endif
 
   for (tube_node = tubes_node->children; tube_node != NULL;
       tube_node = tube_node->next)
@@ -667,18 +684,21 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
               tp_handle_unref (contact_repo, initiator_handle);
             }
         }
+#ifdef HAVE_DBUS_TUBE
       else
         {
           /* The contact is in the tube.
            * Remove it from old_dbus_tubes if needed */
           g_hash_table_remove (old_dbus_tubes, GUINT_TO_POINTER (tube_id));
         }
+#endif
 
       if (tube == NULL)
         continue;
 
       g_object_get (tube, "type", &type, NULL);
 
+#ifdef HAVE_DBUS_TUBE
       if (type == TP_TUBE_TYPE_DBUS)
         {
           /* Update mapping of handle -> D-Bus name. */
@@ -710,8 +730,10 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
 
           g_hash_table_unref (names);
         }
+#endif
     }
 
+#ifdef HAVE_DBUS_TUBE
   /* Tubes remaining in old_dbus_tubes was left by the contact */
   emit_data.contact = contact;
   emit_data.self = self;
@@ -719,6 +741,7 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
       &emit_data);
 
   g_hash_table_destroy (old_dbus_tubes);
+#endif
 }
 
 static void
@@ -791,8 +814,10 @@ gabble_tubes_channel_get_available_tube_types (TpSvcChannelTypeTubes *iface,
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
 
   ret = g_array_sized_new (FALSE, FALSE, sizeof (TpTubeType), 1);
+#ifdef HAVE_DBUS_TUBE
   type = TP_TUBE_TYPE_DBUS;
   g_array_append_val (ret, type);
+#endif
   type = TP_TUBE_TYPE_STREAM;
   g_array_append_val (ret, type);
 
@@ -1015,8 +1040,7 @@ bytestream_negotiate_cb (GabbleBytestreamIBB *bytestream,
 
   if (bytestream != NULL)
     {
-      LmMessageNode *si, *tube_node, *dbus_name_node;
-      const gchar *dbus_name;
+      LmMessageNode *si, *tube_node;
       TpTubeType type;
 
       /* Tube was accepted by remote user */
@@ -1040,12 +1064,17 @@ bytestream_negotiate_cb (GabbleBytestreamIBB *bytestream,
       if (tube_node == NULL)
         return;
 
+#ifdef HAVE_DBUS_TUBE
       if (type == TP_TUBE_TYPE_DBUS)
         {
+          LmMessageNode *dbus_name_node;
+          const gchar *dbus_name;
+
           dbus_name_node = lm_message_node_get_child (tube_node, "dbus-name");
           dbus_name = lm_message_node_get_value (dbus_name_node);
           add_name_in_dbus_names (self, tube_id, priv->handle, dbus_name);
         }
+#endif
     }
   else
     {
@@ -1105,6 +1134,8 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
       parameters, stream_id, bytestream);
 
   /* Tube type specific stuffs */
+
+#if HAVE_DBUS_TUBE
   if (type == TP_TUBE_TYPE_DBUS)
     {
       const gchar *dbus_name;
@@ -1115,6 +1146,7 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
 
       add_name_in_dbus_names (self, tube_id, priv->handle, dbus_name);
     }
+#endif
 }
 
 /**
@@ -1154,6 +1186,17 @@ gabble_tubes_channel_offer_tube (TpSvcChannelTypeTubes *iface,
 
       return;
     }
+
+#ifndef HAVE_DBUS_TUBE
+  if (type == TP_TUBE_TYPE_DBUS)
+    {
+      GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "D-Bus tube support not built" };
+
+      dbus_g_method_return_error (context, &error);
+      return;
+    }
+#endif
 
   parameters_copied = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
       (GDestroyNotify) tp_g_value_slice_free);
@@ -1294,10 +1337,13 @@ gabble_tubes_channel_accept_tube (TpSvcChannelTypeTubes *iface,
     }
 
   g_object_get (tube, "type", &type, NULL);
+
+#ifdef HAVE_DBUS_TUBE
   if (type == TP_TUBE_TYPE_DBUS)
     {
       add_yourself_in_dbus_names (self, id);
     }
+#endif
 
   tp_svc_channel_type_tubes_return_from_accept_tube (context);
 }
@@ -1329,8 +1375,10 @@ close_tube (GabbleTubesChannel *self,
       g_free (stream_id);
     }
 
+#ifdef HAVE_DBUS_TUBE
   /* Emit the DBusNamesChanged signal */
   d_bus_names_changed_removed (self, tube_id, priv->self_handle);
+#endif
 
   tp_svc_channel_type_tubes_emit_tube_closed (self, tube_id);
 }
@@ -1385,6 +1433,7 @@ gabble_tubes_channel_get_d_bus_server_address (TpSvcChannelTypeTubes *iface,
                                                guint id,
                                                DBusGMethodInvocation *context)
 {
+#ifdef HAVE_DBUS_TUBE
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (iface);
   GabbleTubesChannelPrivate *priv;
   GabbleTubeDBus *tube;
@@ -1433,8 +1482,17 @@ gabble_tubes_channel_get_d_bus_server_address (TpSvcChannelTypeTubes *iface,
   tp_svc_channel_type_tubes_return_from_get_d_bus_server_address (context,
       addr);
   g_free (addr);
+
+#else /* ! HAVE_DBUS_TUBE */
+
+  GError error = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+      "D-Bus tube support not built" };
+
+  dbus_g_method_return_error (context, &error);
+#endif
 }
 
+#ifdef HAVE_DBUS_TUBE
 static void
 get_d_bus_names_foreach (gpointer key,
                          gpointer value,
@@ -1452,6 +1510,7 @@ get_d_bus_names_foreach (gpointer key,
       G_MAXUINT);
   g_ptr_array_add (ret, g_value_get_boxed (&tmp));
 }
+#endif
 
 /**
  * gabble_tubes_channel_get_d_bus_names
@@ -1464,6 +1523,7 @@ gabble_tubes_channel_get_d_bus_names (TpSvcChannelTypeTubes *iface,
                                       guint id,
                                       DBusGMethodInvocation *context)
 {
+#ifdef HAVE_DBUS_TUBE
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (iface);
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
   GObject *tube;
@@ -1520,6 +1580,14 @@ gabble_tubes_channel_get_d_bus_names (TpSvcChannelTypeTubes *iface,
     g_boxed_free (DBUS_NAME_PAIR_TYPE, ret->pdata[i]);
   g_hash_table_unref (names);
   g_ptr_array_free (ret, TRUE);
+
+#else /* HAVE_DBUS_TUBE */
+
+  GError error = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+      "D-Bus tube support not built" };
+
+  dbus_g_method_return_error (context, &error);
+#endif
 }
 
 static void

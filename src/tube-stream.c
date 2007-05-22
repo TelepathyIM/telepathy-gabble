@@ -128,7 +128,7 @@ socket_recv_data_cb (GIOChannel *source,
   if (! (condition & G_IO_IN))
     return TRUE;
 
-  memset (&buffer, 0, sizeof(buffer));
+  memset (&buffer, 0, sizeof (buffer));
 
   status = g_io_channel_read_chars (source, buffer, 4096, &readed, &error);
   if (status == G_IO_STATUS_NORMAL)
@@ -209,7 +209,7 @@ tube_stream_open (GabbleTubeStream *self)
       return;
     }
 
-  memset(&addr, 0, sizeof(addr));
+  memset (&addr, 0, sizeof (addr));
   addr.sun_family = PF_UNIX;
 
   /* Set socket non blocking */
@@ -230,7 +230,7 @@ tube_stream_open (GabbleTubeStream *self)
 
       DEBUG ("create socket: %s", priv->socket_path);
 
-      strncpy(addr.sun_path, priv->socket_path,
+      strncpy (addr.sun_path, priv->socket_path,
           strlen (priv->socket_path) + 1);
 
       if (bind (fd, (struct sockaddr *) &addr, sizeof (addr)) == -1)
@@ -255,7 +255,7 @@ tube_stream_open (GabbleTubeStream *self)
     {
       DEBUG ("Connect to socket: %s", priv->socket_path);
 
-      strncpy(addr.sun_path, priv->socket_path,
+      strncpy (addr.sun_path, priv->socket_path,
           strlen (priv->socket_path) + 1);
 
       if (connect (fd, (struct sockaddr *) &addr, sizeof (addr)) == -1)

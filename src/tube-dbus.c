@@ -614,8 +614,8 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 
  param_spec = g_param_spec_uint (
-      "peer-handle",
-      "Peer handle",
+      "handle",
+      "Handle",
       "The TpHandle associated with the tubes channel that"
       "owns this D-Bus tube object.",
       0, G_MAXUINT32, 0,
@@ -627,8 +627,8 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
   g_object_class_install_property (object_class, PROP_HANDLE, param_spec);
 
   param_spec = g_param_spec_uint (
-      "peer-handle-type",
-      "Peer handle type",
+      "handle-type",
+      "Handle type",
       "The TpHandleType of the handle associated with the tubes channel that"
       "owns this D-Bus tube object.",
       0, G_MAXUINT32, 0,

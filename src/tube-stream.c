@@ -544,6 +544,33 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
       G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 
+  param_spec = g_param_spec_uint (
+      "handle",
+      "Handle",
+      "The TpHandle associated with the tubes channel that"
+      "owns this D-Bus tube object.",
+      0, G_MAXUINT32, 0,
+      G_PARAM_CONSTRUCT_ONLY |
+      G_PARAM_READWRITE |
+      G_PARAM_STATIC_NAME |
+      G_PARAM_STATIC_NICK |
+      G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_HANDLE, param_spec);
+
+  param_spec = g_param_spec_uint (
+      "handle-type",
+      "Handle type",
+      "The TpHandleType of the handle associated with the tubes channel that"
+      "owns this D-Bus tube object.",
+      0, G_MAXUINT32, 0,
+      G_PARAM_CONSTRUCT_ONLY |
+      G_PARAM_READWRITE |
+      G_PARAM_STATIC_NAME |
+      G_PARAM_STATIC_NICK |
+      G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_HANDLE_TYPE,
+      param_spec);
+
   param_spec = g_param_spec_object (
       "bytestream",
       "GabbleBytestreamIBB object",

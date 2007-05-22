@@ -65,6 +65,8 @@ static guint signals[LAST_SIGNAL] = {0};
 enum
 {
   PROP_CONNECTION = 1,
+  PROP_HANDLE,
+  PROP_HANDLE_TYPE,
   PROP_BYTESTREAM,
   PROP_TYPE,
   PROP_INITIATOR,
@@ -79,6 +81,8 @@ typedef struct _GabbleTubeStreamPrivate GabbleTubeStreamPrivate;
 struct _GabbleTubeStreamPrivate
 {
   GabbleConnection *conn;
+  TpHandle handle;
+  TpHandleType handle_type;
   GabbleBytestreamIBB *bytestream;
   TpHandle initiator;
   gchar *service;
@@ -399,6 +403,12 @@ gabble_tube_stream_get_property (GObject *object,
       case PROP_CONNECTION:
         g_value_set_object (value, priv->conn);
         break;
+      case PROP_HANDLE:
+        g_value_set_uint (value, priv->handle);
+        break;
+      case PROP_HANDLE_TYPE:
+        g_value_set_uint (value, priv->handle_type);
+        break;
       case PROP_BYTESTREAM:
         g_value_set_object (value, priv->bytestream);
         break;
@@ -439,6 +449,12 @@ gabble_tube_stream_set_property (GObject *object,
     {
       case PROP_CONNECTION:
         priv->conn = g_value_get_object (value);
+        break;
+      case PROP_HANDLE:
+        priv->handle = g_value_get_uint (value);
+        break;
+      case PROP_HANDLE_TYPE:
+        priv->handle_type = g_value_get_uint (value);
         break;
       case PROP_BYTESTREAM:
         if (priv->bytestream == NULL)

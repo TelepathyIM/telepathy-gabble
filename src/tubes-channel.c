@@ -426,6 +426,8 @@ create_new_tube (GabbleTubesChannel *self,
 
   tube = g_object_new (gtype,
                        "connection", priv->conn,
+                       "handle", priv->handle,
+                       "handle-type", priv->handle_type,
                        "initiator", initiator,
                        "service", service,
                        "parameters", parameters,

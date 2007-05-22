@@ -166,18 +166,7 @@ class EventTest:
                 print '- %s' % pprint.pformat(item)
 
         try:
-            if self.queue[0](event, self.data):
-                self.queue.pop(0)
-                self.timeout_delayed_call.reset(5)
-
-                if self.verbose:
-                    print 'event handled'
-
-                    if self.queue:
-                        print 'next handler: %r' % self.queue[0]
-            else:
-                if self.verbose:
-                    print 'event not handled'
+            ret = self.queue[0](event, self.data)
         except AssertionError, e:
             print 'test failed:'
             traceback.print_exc()
@@ -186,6 +175,19 @@ class EventTest:
             print 'error in handler:'
             traceback.print_exc()
             self.fail()
+
+        if ret:
+            self.queue.pop(0)
+            self.timeout_delayed_call.reset(5)
+
+            if self.verbose:
+                print 'event handled'
+
+                if self.queue:
+                    print 'next handler: %r' % self.queue[0]
+        else:
+            if self.verbose:
+                print 'event not handled'
 
         if self.verbose:
             print

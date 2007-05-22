@@ -693,6 +693,30 @@ _extract_cap_bundles (LmMessageNode *lm_node)
   return uris;
 }
 
+/* HACK HACK HACK: Detect Nokis N800 Internet Tablets running Gabble 0.4.x
+ * where x is less than 12, or the Nokia Internet Call Invitation client, which
+ * both connect the H263 codec to a H263+ payloader, creating the unique
+ * H283-N800 variant. Unfortunately they call it H263-1998, so we need to
+ * identify such clients and rewrite between H263-1998 and H263-N800 when
+ * calling them. */
+static GabblePresenceCapabilities
+_detect_h263_n800_hack (const gchar *node)
+{
+  const gchar *version04 = "http://telepathy.freedesktop.org/caps#0.4.";
+  int minor;
+
+  if (strncmp (node, version04, strlen (version04)) != 0)
+    return 0;
+
+  minor = atoi (node + strlen (version04));
+  if (minor == 0 || minor >= 12)
+    return 0;
+
+  DEBUG ("detected old Gabble version, enabling H263-N800 hack");
+
+  return PRESENCE_CAP_JINGLE_H263_N800_HACK;
+}
+
 static void
 _caps_disco_cb (GabbleDisco *disco,
                 GabbleDiscoRequest *request,
@@ -792,12 +816,7 @@ _caps_disco_cb (GabbleDisco *disco,
         caps |= PRESENCE_CAP_CHAT_STATES;
     }
 
-  handle = tp_handle_ensure (contact_repo, jid, NULL, NULL);
-  if (handle == 0)
-    {
-      DEBUG ("Ignoring presence from invalid JID %s", jid);
-      goto OUT;
-    }
+  handle = gabble_handle_for_contact (priv->conn->handles, jid, FALSE);
   trust = capability_info_recvd (cache, node, handle, caps);
 
   for (i = waiters; NULL != i;)

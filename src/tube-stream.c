@@ -45,10 +45,6 @@
 #include "bytestream-ibb.h"
 #include "gabble-signals-marshal.h"
 
-#ifndef UNIX_PATH_MAX
-#define UNIX_PATH_MAX 108
-#endif
-
 static void
 tube_iface_init (gpointer g_iface, gpointer iface_data);
 
@@ -122,26 +118,33 @@ socket_recv_data_cb (GIOChannel *source,
                      GIOCondition condition,
                      gpointer data)
 {
-  //GabbleTubeStream *self = GABBLE_TUBE_STREAM (data);
+  GabbleTubeStream *self = GABBLE_TUBE_STREAM (data);
+  GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
+  gchar buffer[4096];
+  gsize readed;
+  GIOStatus status;
+  GError *error = NULL;
 
-  if (condition & G_IO_IN)
+  if (! (condition & G_IO_IN))
+    return TRUE;
+
+  memset (&buffer, 0, sizeof(buffer));
+
+  status = g_io_channel_read_chars (source, buffer, 4096, &readed, &error);
+  if (status == G_IO_STATUS_NORMAL)
     {
-      gchar buffer[1024];
-      gsize readed;
+      DEBUG ("read from socket: %s\n", buffer);
 
-      memset(&buffer, 0, sizeof(buffer));
-
-      g_io_channel_read_chars (source, buffer, 1024, &readed, NULL);
-      DEBUG ("read: %s\n", buffer);
-    }
-  else if (condition & G_IO_ERR)
-    {
-      DEBUG ("error");
+      gabble_bytestream_ibb_send (priv->bytestream, readed, buffer);
     }
   else
     {
-      g_assert_not_reached ();
+      DEBUG ("error reading from socket: %s",
+          error ? error->message : "");
     }
+
+  if (error != NULL)
+    g_error_free (error);
 
   return TRUE;
 }
@@ -159,15 +162,28 @@ listen_cb (GIOChannel *source,
   int flags;
 
   listen_fd = g_io_channel_unix_get_fd (source);
+
   fd = accept (listen_fd, (struct sockaddr *) &addr, &addrlen);
+  if (fd == -1)
+    {
+      DEBUG ("Error accepting socket: %s", g_strerror (errno));
+      return FALSE;
+    }
+
   DEBUG ("connection from client");
 
   /* Set socket non blocking */
   flags = fcntl (fd, F_GETFL, 0);
-  fcntl (fd, F_SETFL, flags | O_NONBLOCK);
+  if (fcntl (fd, F_SETFL, flags | O_NONBLOCK) == -1)
+    {
+      DEBUG ("Can't set socket non blocking: %s", g_strerror (errno));
+      return FALSE;
+    }
 
   priv->io_channel = g_io_channel_unix_new (fd);
-  g_io_add_watch (priv->io_channel, G_IO_IN | G_IO_ERR,
+  g_io_channel_set_encoding (priv->io_channel, NULL, NULL);
+  g_io_channel_set_buffered (priv->io_channel, FALSE);
+  g_io_add_watch (priv->io_channel, G_IO_IN,
       socket_recv_data_cb, self);
 
   /* Shall we accept more than one connection ? */
@@ -198,7 +214,11 @@ tube_stream_open (GabbleTubeStream *self)
 
   /* Set socket non blocking */
   flags = fcntl (fd, F_GETFL, 0);
-  fcntl (fd, F_SETFL, flags | O_NONBLOCK);
+  if (fcntl (fd, F_SETFL, flags | O_NONBLOCK) == -1)
+    {
+      DEBUG ("Can't set socket non blocking: %s", g_strerror (errno));
+      return;
+    }
 
   if (priv->socket_path == NULL)
     {
@@ -211,7 +231,7 @@ tube_stream_open (GabbleTubeStream *self)
       DEBUG ("create socket: %s", priv->socket_path);
 
       strncpy(addr.sun_path, priv->socket_path,
-          MIN (strlen (priv->socket_path) + 1, UNIX_PATH_MAX));
+          strlen (priv->socket_path) + 1);
 
       if (bind (fd, (struct sockaddr *) &addr, sizeof (addr)) == -1)
         {
@@ -226,6 +246,8 @@ tube_stream_open (GabbleTubeStream *self)
         }
 
       priv->listen_io_channel = g_io_channel_unix_new (fd);
+      g_io_channel_set_encoding (priv->listen_io_channel, NULL, NULL);
+      g_io_channel_set_buffered (priv->listen_io_channel, FALSE);
       g_io_add_watch (priv->listen_io_channel, G_IO_IN,
           listen_cb, self);
     }
@@ -234,7 +256,7 @@ tube_stream_open (GabbleTubeStream *self)
       DEBUG ("Connect to socket: %s", priv->socket_path);
 
       strncpy(addr.sun_path, priv->socket_path,
-          MIN(strlen(priv->socket_path) + 1, UNIX_PATH_MAX));
+          strlen (priv->socket_path) + 1);
 
       if (connect (fd, (struct sockaddr *) &addr, sizeof (addr)) == -1)
         {
@@ -243,7 +265,9 @@ tube_stream_open (GabbleTubeStream *self)
         }
 
         priv->io_channel = g_io_channel_unix_new (fd);
-        g_io_add_watch (priv->io_channel, G_IO_IN | G_IO_ERR,
+        g_io_channel_set_encoding (priv->io_channel, NULL, NULL);
+        g_io_channel_set_buffered (priv->io_channel, FALSE);
+        g_io_add_watch (priv->io_channel, G_IO_IN,
             socket_recv_data_cb, self);
     }
 }
@@ -330,12 +354,14 @@ gabble_tube_stream_dispose (GObject *object)
 
   if (priv->io_channel)
     {
+      g_io_channel_shutdown (priv->io_channel, TRUE, NULL);
       g_io_channel_unref (priv->io_channel);
       priv->io_channel = NULL;
     }
 
   if (priv->listen_io_channel)
     {
+      g_io_channel_shutdown (priv->listen_io_channel, TRUE, NULL);
       g_io_channel_unref (priv->listen_io_channel);
       priv->listen_io_channel = NULL;
     }
@@ -608,10 +634,31 @@ data_received_cb (GabbleBytestreamIBB *ibb,
                   GString *data,
                   gpointer user_data)
 {
-  /*
   GabbleTubeStream *tube = GABBLE_TUBE_STREAM (user_data);
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (tube);
-  */
+  gsize written;
+  GIOStatus status;
+  GError *error = NULL;
+
+  DEBUG ("received: %s\n", data->str);
+
+  if (priv->io_channel == NULL)
+    return;
+
+  status = g_io_channel_write_chars (priv->io_channel, data->str, data->len,
+      &written, &error);
+  if (status == G_IO_STATUS_NORMAL)
+    {
+      DEBUG ("%d bytes written to the socket", written);
+    }
+  else
+    {
+      DEBUG ("error writing to socket: %s",
+          error ? error->message : "");
+    }
+
+  if (error != NULL)
+    g_error_free (error);
 }
 
 /**

@@ -101,13 +101,6 @@ struct _GabbleTubesChannelPrivate
 static void update_tubes_presence (GabbleTubesChannel *self);
 
 static void
-free_gvalue (GValue *value)
-{
-  g_value_unset (value);
-  g_slice_free (GValue, value);
-}
-
-static void
 gabble_tubes_channel_init (GabbleTubesChannel *self)
 {
   GabbleTubesChannelPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
@@ -1116,7 +1109,7 @@ gabble_tubes_channel_offer_tube (TpSvcChannelTypeTubes *iface,
     }
 
   parameters_copied = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
-      (GDestroyNotify) free_gvalue);
+      (GDestroyNotify) tp_g_value_slice_free);
   g_hash_table_foreach (parameters, copy_parameter, parameters_copied);
 
   stream_id = gabble_bytestream_factory_generate_stream_id ();

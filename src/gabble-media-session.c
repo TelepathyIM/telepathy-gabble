@@ -217,6 +217,7 @@ create_media_stream (GabbleMediaSession *session,
   gchar *object_path;
   GabbleMediaStream *stream;
   guint id;
+  gboolean h263_n800_hack = FALSE;
 
   g_assert (GABBLE_IS_MEDIA_SESSION (session));
   g_assert (name != NULL);
@@ -246,6 +247,20 @@ create_media_stream (GabbleMediaSession *session,
       media_type == TP_MEDIA_STREAM_TYPE_AUDIO ? "audio" : "video",
       name, id);
 
+  if (media_type == TP_MEDIA_STREAM_TYPE_VIDEO)
+    {
+      GabblePresence *presence = gabble_presence_cache_get (
+        priv->conn->presence_cache, priv->peer);
+
+      if (presence != NULL &&
+          gabble_presence_resource_has_caps (presence, priv->peer_resource,
+            PRESENCE_CAP_JINGLE_H263_N800_HACK))
+        {
+          GMS_DEBUG_INFO (session, "enabling H263-N800 hack");
+          h263_n800_hack = TRUE;
+        }
+    }
+
   object_path = g_strdup_printf ("%s/MediaStream%u", priv->object_path, id);
 
   stream = g_object_new (GABBLE_TYPE_MEDIA_STREAM,
@@ -257,6 +272,7 @@ create_media_stream (GabbleMediaSession *session,
                          "id", id,
                          "initiator", initiator,
                          "media-type", media_type,
+                         "h263-n800-hack", h263_n800_hack,
                          NULL);
 
   g_signal_connect (stream, "notify::connection-state",

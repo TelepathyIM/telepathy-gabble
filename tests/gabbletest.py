@@ -48,20 +48,13 @@ class Authenticator(xmlstream.Authenticator):
 
     def secondIq(self, iq):
         username = xpath.queryForNodes('/iq/query/username', iq)
-
-        assert username
-        assert len(username) == 1
-        assert str(username[0]) == self.expected_username
+        assert map(str, username) == [self.expected_username]
 
         digest = xpath.queryForNodes('/iq/query/digest', iq)
-        assert digest
-        assert len(digest) == 1
-        assert str(digest[0]) == self.expected_digest
+        assert map(str, digest) == [self.expected_digest]
 
         resource = xpath.queryForNodes('/iq/query/resource', iq)
-        assert resource
-        assert len(resource) == 1
-        assert str(resource[0]) == 'Resource'
+        assert map(str, resource) == ['Resource']
 
         result = IQ(self.xmlstream, "result")
         result["id"] = iq["id"]

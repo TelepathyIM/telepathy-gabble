@@ -81,6 +81,7 @@ enum
   PROP_MEDIA_TYPE,
   PROP_CONNECTION_STATE,
   PROP_READY,
+  PROP_H263_N800_HACK,
   PROP_GOT_LOCAL_CODECS,
   PROP_SIGNALLING_STATE,
   PROP_PLAYING,
@@ -99,6 +100,7 @@ struct _GabbleMediaStreamPrivate
   gchar *object_path;
   guint id;
   guint media_type;
+  gboolean h283_n800_hack;
 
   gboolean ready;
   gboolean sending;
@@ -218,6 +220,9 @@ gabble_media_stream_get_property (GObject    *object,
     case PROP_MEDIA_TYPE:
       g_value_set_uint (value, priv->media_type);
       break;
+    case PROP_H263_N800_HACK:
+      g_value_set_boolean (value, priv->h283_n800_hack);
+      break;
     case PROP_CONNECTION_STATE:
       g_value_set_uint (value, stream->connection_state);
       break;
@@ -277,6 +282,9 @@ gabble_media_stream_set_property (GObject      *object,
       break;
     case PROP_MEDIA_TYPE:
       priv->media_type = g_value_get_uint (value);
+      break;
+    case PROP_H263_N800_HACK:
+      priv->h283_n800_hack = g_value_get_boolean (value);
       break;
     case PROP_CONNECTION_STATE:
       GMS_DEBUG_INFO (priv->session, "stream %s connection state %d",
@@ -416,16 +424,17 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_MEDIA_TYPE, param_spec);
 
-  param_spec = g_param_spec_uint ("connection-state",
-      "Stream connection state",
-      "An integer indicating the state of the stream's connection.",
-      TP_MEDIA_STREAM_STATE_DISCONNECTED,
-      TP_MEDIA_STREAM_STATE_CONNECTED,
-      TP_MEDIA_STREAM_STATE_DISCONNECTED,
-      G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_CONNECTION_STATE,
-      param_spec);
+  param_spec = g_param_spec_uint ("connection-state", "Stream connection state",
+                                  "An integer indicating the state of the"
+                                  "stream's connection.",
+                                  TP_MEDIA_STREAM_STATE_DISCONNECTED,
+                                  TP_MEDIA_STREAM_STATE_CONNECTED,
+                                  TP_MEDIA_STREAM_STATE_DISCONNECTED,
+                                  G_PARAM_CONSTRUCT |
+                                  G_PARAM_READWRITE |
+                                  G_PARAM_STATIC_NAME |
+                                  G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_CONNECTION_STATE, param_spec);
 
   param_spec = g_param_spec_boolean ("ready", "Ready?",
                                      "A boolean signifying whether the user "

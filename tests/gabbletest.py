@@ -47,7 +47,7 @@ class Authenticator(xmlstream.Authenticator):
         self.xmlstream.send(result)
 
     def secondIq(self, iq):
-        username = xpath.queryForNodes('//username', iq)
+        username = xpath.queryForNodes('/iq/query/username', iq)
 
         assert username
         assert len(username) == 1

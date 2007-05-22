@@ -1154,6 +1154,24 @@ _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream,
           name = "";
         }
 
+      /* if the N800 hack mode is enabled then skip any codecs called
+       * H263-N800, and interpret the remote end's H263-1998 as H263-N800 */
+      if (priv->h283_n800_hack)
+        {
+          if (!tp_strdiff (name, "H263-N800"))
+            {
+              GMS_DEBUG_WARNING (priv->session, "N800 hack enabled, skipping "
+                  "unexpected remote H263-N800!");
+              continue;
+            }
+          else if (!tp_strdiff (name, "H263-1998"))
+            {
+              GMS_DEBUG_INFO (priv->session, "N800 hack enabled, interpeting "
+                  "remote H263-1998 as H263-N800");
+              name = "H263-N800";
+            }
+        }
+
       /* clock rate: jingle and newer GTalk */
       str = lm_message_node_get_attribute (node, "clockrate"); /* google */
       if (str == NULL)

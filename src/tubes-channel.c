@@ -145,9 +145,9 @@ gabble_tubes_channel_constructor (GType type,
 }
 
 static void
-gabble_tubes_channel_get_property (GObject    *object,
-                                   guint       property_id,
-                                   GValue     *value,
+gabble_tubes_channel_get_property (GObject *object,
+                                   guint property_id,
+                                   GValue *value,
                                    GParamSpec *pspec)
 {
   GabbleTubesChannel *chan = GABBLE_TUBES_CHANNEL (object);
@@ -179,10 +179,10 @@ gabble_tubes_channel_get_property (GObject    *object,
 }
 
 static void
-gabble_tubes_channel_set_property (GObject     *object,
-                                   guint        property_id,
+gabble_tubes_channel_set_property (GObject *object,
+                                   guint property_id,
                                    const GValue *value,
-                                   GParamSpec   *pspec)
+                                   GParamSpec *pspec)
 {
   GabbleTubesChannel *chan = GABBLE_TUBES_CHANNEL (object);
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (chan);
@@ -1418,7 +1418,7 @@ gabble_tubes_channel_get_d_bus_names (TpSvcChannelTypeTubes *iface,
                                       DBusGMethodInvocation *context)
 {
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (iface);
-  GabbleTubesChannelPrivate *priv  = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
   GObject *tube;
   GHashTable *names;
   GPtrArray *ret;

@@ -1294,6 +1294,90 @@ gabble_tubes_channel_offer_d_bus_tube (TpSvcChannelTypeTubes *iface,
 }
 
 /**
+ * gabble_tubes_channel_offer_stream_tube
+ *
+ * Implements D-Bus method OfferStreamTube
+ * on org.freedesktop.Telepathy.Channel.Type.Tubes
+ */
+static void
+gabble_tubes_channel_offer_stream_tube (TpSvcChannelTypeTubes *iface,
+                                        const gchar *service,
+                                        const gchar *socket,
+                                        GHashTable *parameters,
+                                        DBusGMethodInvocation *context)
+{
+  GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (iface);
+  GabbleTubesChannelPrivate *priv;
+  TpBaseConnection *base;
+  GabbleBytestreamIBB *bytestream;
+  guint tube_id;
+  GabbleTubeIface *tube;
+  GHashTable *parameters_copied;
+  gchar *stream_id;
+
+  g_assert (GABBLE_IS_TUBES_CHANNEL (self));
+
+  priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  base = (TpBaseConnection*) priv->conn;
+
+  parameters_copied = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
+      (GDestroyNotify) tp_g_value_slice_free);
+  g_hash_table_foreach (parameters, copy_parameter, parameters_copied);
+
+  stream_id = gabble_bytestream_factory_generate_stream_id ();
+
+  if (priv->handle_type == TP_HANDLE_TYPE_ROOM)
+    {
+      /* We don't need SI for muc tubes so the bytestream is
+       * already accepted and open */
+
+      bytestream = gabble_bytestream_factory_create_ibb (
+          priv->conn->bytestream_factory,
+          priv->handle,
+          priv->handle_type,
+          stream_id,
+          NULL,
+          NULL,
+          BYTESTREAM_IBB_STATE_OPEN);
+    }
+  else
+    {
+      /* bytestream is not yet created.
+       * It will be when we'll receive the response of the SI
+       * request */
+      bytestream = NULL;
+    }
+
+  tube_id = create_new_tube (self, TP_TUBE_TYPE_STREAM, priv->self_handle,
+      service, parameters_copied, (const gchar*) stream_id, bytestream);
+
+  tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
+
+  if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
+    {
+      /* Stream initiation */
+      GError *error = NULL;
+
+      if (!start_stream_initiation (self, tube, stream_id, &error))
+        {
+          dbus_g_method_return_error (context, error);
+
+          g_hash_table_remove (priv->tubes, GUINT_TO_POINTER (tube_id));
+          g_hash_table_remove (priv->stream_id_to_tube_id, stream_id);
+
+          g_error_free (error);
+          g_free (stream_id);
+          return;
+        }
+
+    }
+
+  tp_svc_channel_type_tubes_return_from_offer_d_bus_tube (context, tube_id);
+
+  g_free (stream_id);
+}
+
+/**
  * gabble_tubes_channel_accept_tube
  *
  * Implements D-Bus method AcceptTube
@@ -1813,6 +1897,7 @@ tubes_iface_init (gpointer g_iface,
   IMPLEMENT(get_available_tube_types);
   IMPLEMENT(list_tubes);
   IMPLEMENT(offer_d_bus_tube);
+  IMPLEMENT(offer_stream_tube);
   IMPLEMENT(accept_tube);
   IMPLEMENT(close_tube);
   IMPLEMENT(get_d_bus_server_address);

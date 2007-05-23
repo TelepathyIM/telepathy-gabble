@@ -114,7 +114,7 @@ class EventTest:
 
     def __init__(self):
         self.queue = []
-        self.data = {}
+        self.data = {'test': self}
         self.timeout_delayed_call = reactor.callLater(5, self.timeout_cb)
         #self.verbose = True
         self.verbose = False

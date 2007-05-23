@@ -202,8 +202,11 @@ tube_stream_open (GabbleTubeStream *self)
   struct sockaddr_un addr;
   int flags;
 
+  DEBUG ("called");
+
   g_signal_connect (priv->bytestream, "data-received",
       G_CALLBACK (data_received_cb), self);
+
   // XXX close the tube if error ?
 
   fd = socket (PF_UNIX, SOCK_STREAM, 0);
@@ -268,11 +271,11 @@ tube_stream_open (GabbleTubeStream *self)
           return;
         }
 
-        priv->io_channel = g_io_channel_unix_new (fd);
-        g_io_channel_set_encoding (priv->io_channel, NULL, NULL);
-        g_io_channel_set_buffered (priv->io_channel, FALSE);
-        g_io_add_watch (priv->io_channel, G_IO_IN,
-            socket_recv_data_cb, self);
+      priv->io_channel = g_io_channel_unix_new (fd);
+      g_io_channel_set_encoding (priv->io_channel, NULL, NULL);
+      g_io_channel_set_buffered (priv->io_channel, FALSE);
+      g_io_add_watch (priv->io_channel, G_IO_IN,
+          socket_recv_data_cb, self);
     }
 }
 

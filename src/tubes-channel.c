@@ -1320,6 +1320,8 @@ gabble_tubes_channel_offer_stream_tube (TpSvcChannelTypeTubes *iface,
   priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
   base = (TpBaseConnection*) priv->conn;
 
+  /* XXX check socket */
+
   parameters_copied = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
       (GDestroyNotify) tp_g_value_slice_free);
   g_hash_table_foreach (parameters, copy_parameter, parameters_copied);
@@ -1352,6 +1354,8 @@ gabble_tubes_channel_offer_stream_tube (TpSvcChannelTypeTubes *iface,
       service, parameters_copied, (const gchar*) stream_id, bytestream);
 
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
+
+  g_object_set (tube, "socket", socket, NULL);
 
   if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
     {

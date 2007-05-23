@@ -292,7 +292,13 @@
   <xsl:template match="/tp:spec">
     <html xmlns="http://www.w3.org/1999/xhtml">
       <head>
-        <title>Telepathy D-Bus Interface Specification</title>
+        <title>
+          <xsl:value-of select="tp:title"/>
+          <xsl:if test="tp:version">
+            <xsl:text> version </xsl:text>
+            <xsl:value-of select="tp:version"/>
+          </xsl:if>
+        </title>
         <style type="text/css">
 
           body {

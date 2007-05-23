@@ -1677,6 +1677,66 @@ gabble_tubes_channel_get_d_bus_names (TpSvcChannelTypeTubes *iface,
 #endif
 }
 
+/**
+ * gabble_tubes_channel_get_stream_socket_address
+ *
+ * Implements D-Bus method GetStreamSocketAddress
+ * on org.freedesktop.Telepathy.Channel.Type.Tubes
+ */
+static void
+gabble_tubes_channel_get_stream_socket_address (TpSvcChannelTypeTubes *iface,
+                                                guint id,
+                                                DBusGMethodInvocation *context)
+{
+  GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (iface);
+  GabbleTubesChannelPrivate *priv  = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  GabbleTubeIface *tube;
+  TpTubeType type;
+  TpTubeState state;
+  gchar *socket;
+
+  tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (id));
+  if (tube == NULL)
+    {
+      GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, "Unknown tube" };
+
+      dbus_g_method_return_error (context, &error);
+      return;
+    }
+
+  g_object_get (tube,
+      "type", &type,
+      "state", &state,
+      NULL);
+
+  if (type != TP_TUBE_TYPE_STREAM)
+    {
+      GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Tube is not a Stream tube" };
+
+      dbus_g_method_return_error (context, &error);
+      return;
+    }
+
+  if (state != TP_TUBE_STATE_OPEN)
+    {
+      GError error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "Tube is not open" };
+
+      dbus_g_method_return_error (context, &error);
+      return;
+    }
+
+  g_object_get (tube,
+      "socket", &socket,
+      NULL);
+
+  tp_svc_channel_type_tubes_return_from_get_stream_socket_address (context,
+      socket);
+
+  g_free (socket);
+}
+
 static void
 emit_tube_closed_signal (gpointer key,
                          gpointer value,
@@ -1902,6 +1962,7 @@ tubes_iface_init (gpointer g_iface,
   IMPLEMENT(close_tube);
   IMPLEMENT(get_d_bus_server_address);
   IMPLEMENT(get_d_bus_names);
+  IMPLEMENT(get_stream_socket_address);
 #undef IMPLEMENT
 }
 

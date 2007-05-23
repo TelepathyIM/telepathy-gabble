@@ -26,7 +26,7 @@ nodist_libgabble_extensions_la_SOURCES = \
     _gen/svc.h \
     $(SPEC_GENERATED_SOURCES)
 
-BUILT_SOURCES = $(nodist_libgabble_extensions_la_SOURCES)
+BUILT_SOURCES = $(nodist_libgabble_extensions_la_SOURCES) extensions.html
 
 CLEANFILES = $(BUILT_SOURCES) _gen/.exists
 
@@ -41,6 +41,11 @@ XSLTPROCFLAGS = --nonet --novalid
 _gen/.exists:
 	$(INSTALL) -d _gen
 	touch $@
+
+extensions.html: all.xml $(SPEC_INTERFACE_XMLS) $(tools_dir)/doc-generator.xsl
+	$(XSLTPROC) $(XSLTPROCFLAGS) --xinclude \
+		$(tools_dir)/doc-generator.xsl \
+		all.xml > $@
 
 _gen/%.xml: %.xml $(tools_dir)/spec-to-introspect.xsl _gen/.exists
 	$(XSLTPROC) $(XSLTPROCFLAGS) \

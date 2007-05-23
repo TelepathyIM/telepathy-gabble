@@ -2,7 +2,7 @@
   xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0"
   xmlns:xi="http://www.w3.org/2001/XInclude">
 
-<tp:version>0.14.1.1</tp:version>
+<tp:title>Gabble-specific extensions to the Telepathy interfaces</tp:title>
 
 <tp:copyright>Copyright (C) 2007 Collabora Limited</tp:copyright>
 

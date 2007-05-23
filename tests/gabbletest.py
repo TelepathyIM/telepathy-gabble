@@ -223,6 +223,20 @@ def unwrap(x):
 
     return x
 
+def call_async(test, proxy, method, *args, **kw):
+    """Call a D-Bus method asynchronously and generate an event for the
+    resulting method return/error."""
+
+    def reply_func(*ret):
+        test.handle_event(('dbus-return', method) + ret)
+
+    def error_func(err):
+        test.handle_event(('dbus-error', method, err))
+
+    method_proxy = getattr(proxy, method)
+    kw.update({'reply_handler': reply_func, 'error_handler': error_func})
+    method_proxy(*args, **kw)
+
 def gabble_test_setup(handler, params=None):
     # set up Gabble
     bus = dbus.SessionBus()

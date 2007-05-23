@@ -1342,7 +1342,8 @@ gabble_tubes_channel_get_d_bus_server_address (TpSvcChannelTypeTubes *iface,
   GabbleTubesChannelPrivate *priv;
   GabbleTubeDBus *tube;
   gchar *addr;
-  guint type;
+  TpTubeType type;
+  TpTubeState state;
 
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
 
@@ -1358,12 +1359,24 @@ gabble_tubes_channel_get_d_bus_server_address (TpSvcChannelTypeTubes *iface,
       return;
     }
 
-  g_object_get (tube, "type", &type, NULL);
+  g_object_get (tube,
+      "type", &type,
+      "state", &state,
+      NULL);
 
   if (type != TP_TUBE_TYPE_DBUS)
     {
       GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "Tube is not a D-Bus tube" };
+
+      dbus_g_method_return_error (context, &error);
+      return;
+    }
+
+  if (state != TP_TUBE_STATE_OPEN)
+    {
+      GError error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "Tube is not open" };
 
       dbus_g_method_return_error (context, &error);
       return;
@@ -1410,6 +1423,7 @@ gabble_tubes_channel_get_d_bus_names (TpSvcChannelTypeTubes *iface,
   GHashTable *names;
   GPtrArray *ret;
   TpTubeType type;
+  TpTubeState state;
   guint i;
 
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
@@ -1424,12 +1438,24 @@ gabble_tubes_channel_get_d_bus_names (TpSvcChannelTypeTubes *iface,
       return;
     }
 
-  g_object_get (tube, "type", &type, NULL);
+  g_object_get (tube,
+      "type", &type,
+      "state", &state,
+      NULL);
 
   if (type != TP_TUBE_TYPE_DBUS)
     {
       GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "Tube is not a D-Bus tube" };
+
+      dbus_g_method_return_error (context, &error);
+      return;
+    }
+
+  if (state != TP_TUBE_STATE_OPEN)
+    {
+      GError error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "Tube is not open" };
 
       dbus_g_method_return_error (context, &error);
       return;

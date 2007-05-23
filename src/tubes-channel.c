@@ -1613,7 +1613,7 @@ gabble_tubes_channel_get_d_bus_names (TpSvcChannelTypeTubes *iface,
 #ifdef HAVE_DBUS_TUBE
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (iface);
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
-  GObject *tube;
+  GabbleTubeIface *tube;
   GHashTable *names;
   GPtrArray *ret;
   TpTubeType type;

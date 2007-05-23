@@ -1152,18 +1152,18 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
 }
 
 /**
- * gabble_tubes_channel_offer_tube
+ * gabble_tubes_channel_offer_d_bus_tube
  *
- * Implements D-Bus method OfferTube
+ * Implements D-Bus method OfferDBusTube
  * on org.freedesktop.Telepathy.Channel.Type.Tubes
  */
 static void
-gabble_tubes_channel_offer_tube (TpSvcChannelTypeTubes *iface,
-                                 guint type,
-                                 const gchar *service,
-                                 GHashTable *parameters,
-                                 DBusGMethodInvocation *context)
+gabble_tubes_channel_offer_d_bus_tube (TpSvcChannelTypeTubes *iface,
+                                       const gchar *service,
+                                       GHashTable *parameters,
+                                       DBusGMethodInvocation *context)
 {
+#ifdef HAVE_DBUS_TUBE
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (iface);
   GabbleTubesChannelPrivate *priv;
   TpBaseConnection *base;
@@ -1177,28 +1177,6 @@ gabble_tubes_channel_offer_tube (TpSvcChannelTypeTubes *iface,
 
   priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
   base = (TpBaseConnection*) priv->conn;
-
-  if (type >= NUM_TP_TUBE_TYPES)
-    {
-      GError *error = g_error_new (TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "invalid type: %d", type);
-
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-
-      return;
-    }
-
-#ifndef HAVE_DBUS_TUBE
-  if (type == TP_TUBE_TYPE_DBUS)
-    {
-      GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "D-Bus tube support not built" };
-
-      dbus_g_method_return_error (context, &error);
-      return;
-    }
-#endif
 
   parameters_copied = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
       (GDestroyNotify) tp_g_value_slice_free);
@@ -1228,8 +1206,8 @@ gabble_tubes_channel_offer_tube (TpSvcChannelTypeTubes *iface,
       bytestream = NULL;
     }
 
-  tube_id = create_new_tube (self, type, priv->self_handle, service,
-      parameters_copied, (const gchar*) stream_id, bytestream);
+  tube_id = create_new_tube (self, TP_TUBE_TYPE_DBUS, priv->self_handle,
+      service, parameters_copied, (const gchar*) stream_id, bytestream);
 
   if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
     {
@@ -1287,9 +1265,17 @@ gabble_tubes_channel_offer_tube (TpSvcChannelTypeTubes *iface,
       lm_message_unref (msg);
     }
 
-  tp_svc_channel_type_tubes_return_from_offer_tube (context, tube_id);
+  tp_svc_channel_type_tubes_return_from_offer_d_bus_tube (context, tube_id);
 
   g_free (stream_id);
+
+#else
+  GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      "D-Bus tube support not built" };
+
+  dbus_g_method_return_error (context, &error);
+  return;
+#endif
 }
 
 /**
@@ -1811,7 +1797,7 @@ tubes_iface_init (gpointer g_iface,
     klass, gabble_tubes_channel_##x)
   IMPLEMENT(get_available_tube_types);
   IMPLEMENT(list_tubes);
-  IMPLEMENT(offer_tube);
+  IMPLEMENT(offer_d_bus_tube);
   IMPLEMENT(accept_tube);
   IMPLEMENT(close_tube);
   IMPLEMENT(get_d_bus_server_address);

@@ -1151,6 +1151,56 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
 #endif
 }
 
+static gboolean
+start_stream_initiation (GabbleTubesChannel *self,
+                         GabbleTubeIface *tube,
+                         const gchar *stream_id,
+                         GError **error)
+{
+  GabbleTubesChannelPrivate *priv;
+  LmMessageNode *node;
+  LmMessage *msg;
+  TpHandleRepoIface *contact_repo;
+  GabblePresence *presence;
+  const gchar *jid, *resource;
+  gchar *full_jid;
+  gboolean result;
+
+  priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+
+  contact_repo = tp_base_connection_get_handles (
+     (TpBaseConnection*) priv->conn, TP_HANDLE_TYPE_CONTACT);
+
+  jid = tp_handle_inspect (contact_repo, priv->handle);
+
+  presence = gabble_presence_cache_get (priv->conn->presence_cache,
+      priv->handle);
+  resource = gabble_presence_pick_resource_by_caps (presence,
+      PRESENCE_CAP_SI_TUBES);
+
+  full_jid = g_strdup_printf ("%s/%s", jid, resource);
+
+  msg = gabble_bytestream_factory_make_stream_init_iq (full_jid,
+      stream_id, NS_SI_TUBES);
+
+  node = lm_message_node_add_child (msg->node, "tube", NULL);
+  lm_message_node_set_attribute (node, "xmlns", NS_SI_TUBES);
+  publish_tube_in_node (node, tube, stream_id);
+
+  result = gabble_bytestream_factory_negotiate_stream (
+    priv->conn->bytestream_factory,
+    msg,
+    stream_id,
+    bytestream_negotiate_cb,
+    self,
+    error);
+
+  lm_message_unref (msg);
+  g_free (full_jid);
+
+  return result;
+}
+
 /**
  * gabble_tubes_channel_offer_d_bus_tube
  *
@@ -1169,9 +1219,9 @@ gabble_tubes_channel_offer_d_bus_tube (TpSvcChannelTypeTubes *iface,
   TpBaseConnection *base;
   GabbleBytestreamIBB *bytestream;
   guint tube_id;
+  GabbleTubeIface *tube;
   GHashTable *parameters_copied;
   gchar *stream_id;
-  GError *error = NULL;
 
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
 
@@ -1209,45 +1259,14 @@ gabble_tubes_channel_offer_d_bus_tube (TpSvcChannelTypeTubes *iface,
   tube_id = create_new_tube (self, TP_TUBE_TYPE_DBUS, priv->self_handle,
       service, parameters_copied, (const gchar*) stream_id, bytestream);
 
+  tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
+
   if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
     {
       /* Stream initiation */
-      LmMessageNode *node;
-      GabbleTubeIface *tube;
-      LmMessage *msg;
-      TpHandleRepoIface *contact_repo;
-      GabblePresence *presence;
-      const gchar *jid, *resource;
-      gchar *full_jid;
+      GError *error = NULL;
 
-      tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
-
-      contact_repo = tp_base_connection_get_handles (
-          (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-
-      jid = tp_handle_inspect (contact_repo, priv->handle);
-
-      presence = gabble_presence_cache_get (priv->conn->presence_cache,
-          priv->handle);
-      resource = gabble_presence_pick_resource_by_caps (presence,
-          PRESENCE_CAP_SI_TUBES);
-
-      full_jid = g_strdup_printf ("%s/%s", jid, resource);
-
-      msg = gabble_bytestream_factory_make_stream_init_iq (full_jid,
-          stream_id, NS_SI_TUBES);
-
-      node = lm_message_node_add_child (msg->node, "tube", NULL);
-      lm_message_node_set_attribute (node, "xmlns", NS_SI_TUBES);
-      publish_tube_in_node (node, tube, stream_id);
-
-      if (!gabble_bytestream_factory_negotiate_stream (
-          priv->conn->bytestream_factory,
-          msg,
-          stream_id,
-          bytestream_negotiate_cb,
-          self,
-          &error))
+      if (!start_stream_initiation (self, tube, stream_id, &error))
         {
           dbus_g_method_return_error (context, error);
 
@@ -1256,13 +1275,9 @@ gabble_tubes_channel_offer_d_bus_tube (TpSvcChannelTypeTubes *iface,
 
           g_error_free (error);
           g_free (stream_id);
-          g_free (full_jid);
-          lm_message_unref (msg);
           return;
         }
 
-      g_free (full_jid);
-      lm_message_unref (msg);
     }
 
   tp_svc_channel_type_tubes_return_from_offer_d_bus_tube (context, tube_id);

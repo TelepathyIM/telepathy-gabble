@@ -369,11 +369,35 @@ tube_closed_cb (GabbleTubeIface *tube,
                 gpointer user_data)
 {
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (user_data);
+  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
   guint tube_id;
+  gchar *stream_id;
 
   tube_id = find_tube_id (self, tube);
   if (tube_id == 0)
-    return;
+    {
+      DEBUG ("can't find tube ID");
+    }
+  else
+    {
+      g_hash_table_remove (priv->tubes, GUINT_TO_POINTER (tube_id));
+    }
+
+  stream_id = gabble_tube_iface_get_stream_id (tube);
+  if (stream_id != NULL)
+    {
+      if (!g_hash_table_remove (priv->stream_id_to_tube_id, stream_id))
+        {
+          DEBUG ("Can't find tube id using this stream id: %s", stream_id);
+        }
+
+      g_free (stream_id);
+    }
+
+#ifdef HAVE_DBUS_TUBE
+  /* Emit the DBusNamesChanged signal */
+  d_bus_names_changed_removed (self, tube_id, priv->self_handle);
+#endif
 
   tp_svc_channel_type_tubes_emit_tube_closed (self, tube_id);
 }
@@ -1081,10 +1105,7 @@ bytestream_negotiate_cb (GabbleBytestreamIBB *bytestream,
   else
     {
       /* Tube was declined by remote user. Close it */
-      g_hash_table_remove (priv->tubes, GUINT_TO_POINTER (tube_id));
-      g_hash_table_remove (priv->stream_id_to_tube_id, stream_id);
-
-      tp_svc_channel_type_tubes_emit_tube_closed (self, tube_id);
+      gabble_tube_iface_close (tube);
     }
 }
 
@@ -1287,10 +1308,9 @@ gabble_tubes_channel_offer_d_bus_tube (TpSvcChannelTypeTubes *iface,
 
       if (!start_stream_initiation (self, tube, stream_id, &error))
         {
-          dbus_g_method_return_error (context, error);
+          gabble_tube_iface_close (tube);
 
-          g_hash_table_remove (priv->tubes, GUINT_TO_POINTER (tube_id));
-          g_hash_table_remove (priv->stream_id_to_tube_id, stream_id);
+          dbus_g_method_return_error (context, error);
 
           g_error_free (error);
           g_free (stream_id);
@@ -1383,10 +1403,9 @@ gabble_tubes_channel_offer_stream_tube (TpSvcChannelTypeTubes *iface,
 
       if (!start_stream_initiation (self, tube, stream_id, &error))
         {
-          dbus_g_method_return_error (context, error);
+          gabble_tube_iface_close (tube);
 
-          g_hash_table_remove (priv->tubes, GUINT_TO_POINTER (tube_id));
-          g_hash_table_remove (priv->stream_id_to_tube_id, stream_id);
+          dbus_g_method_return_error (context, error);
 
           g_error_free (error);
           g_free (stream_id);
@@ -1458,41 +1477,6 @@ gabble_tubes_channel_accept_tube (TpSvcChannelTypeTubes *iface,
   tp_svc_channel_type_tubes_return_from_accept_tube (context);
 }
 
-static void
-close_tube (GabbleTubesChannel *self,
-            GabbleTubeIface *tube,
-            guint tube_id)
-{
-  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
-  gchar *stream_id;
-
-  if (tube == NULL)
-    return;
-
-  stream_id = gabble_tube_iface_get_stream_id (tube);
-
-  gabble_tube_iface_close (tube);
-
-  g_hash_table_remove (priv->tubes, GUINT_TO_POINTER (tube_id));
-
-  if (stream_id != NULL)
-    {
-      if (!g_hash_table_remove (priv->stream_id_to_tube_id, stream_id))
-        {
-          DEBUG ("Can't find tube id using this stream id: %s", stream_id);
-        }
-
-      g_free (stream_id);
-    }
-
-#ifdef HAVE_DBUS_TUBE
-  /* Emit the DBusNamesChanged signal */
-  d_bus_names_changed_removed (self, tube_id, priv->self_handle);
-#endif
-
-  tp_svc_channel_type_tubes_emit_tube_closed (self, tube_id);
-}
-
 /**
  * gabble_tubes_channel_close_tube
  *
@@ -1522,7 +1506,7 @@ gabble_tubes_channel_close_tube (TpSvcChannelTypeTubes *iface,
       return;
     }
 
-  close_tube (self, tube, id);
+  gabble_tube_iface_close (tube);
 
   if (priv->handle_type == TP_HANDLE_TYPE_ROOM)
     {

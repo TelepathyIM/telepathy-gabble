@@ -1165,6 +1165,17 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
   tube_id = create_new_tube (self, type, priv->handle, service,
       parameters, stream_id, bytestream);
 
+#ifndef HAVE_DBUS_TUBE
+  if (type == TP_TUBE_TYPE_DBUS)
+    {
+      DEBUG ("Don't create the tube as D-Bus tube support"
+          "is not built");
+
+      gabble_bytestream_ibb_close (bytestream);
+      return;
+    }
+#endif
+
   /* Tube type specific stuffs */
 
 #ifdef HAVE_DBUS_TUBE

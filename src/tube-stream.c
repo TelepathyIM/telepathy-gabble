@@ -795,8 +795,15 @@ gabble_tube_stream_close (GabbleTubeIface *tube)
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (tube);
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
 
-  gabble_bytestream_ibb_close (priv->bytestream);
-  priv->bytestream = NULL;
+  if (priv->bytestream != NULL)
+    {
+      gabble_bytestream_ibb_close (priv->bytestream);
+      priv->bytestream = NULL;
+    }
+  else
+    {
+      g_signal_emit (G_OBJECT (self), signals[CLOSED], 0);
+    }
 }
 
 static void

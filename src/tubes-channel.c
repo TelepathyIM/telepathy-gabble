@@ -1175,8 +1175,27 @@ start_stream_initiation (GabbleTubesChannel *self,
 
   presence = gabble_presence_cache_get (priv->conn->presence_cache,
       priv->handle);
+  if (presence == NULL)
+    {
+      DEBUG ("can't find contacts's presence");
+      if (error != NULL)
+        g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+            "can't find contact's presence");
+
+      return FALSE;
+    }
+
   resource = gabble_presence_pick_resource_by_caps (presence,
       PRESENCE_CAP_SI_TUBES);
+  if (resource == NULL)
+    {
+      DEBUG ("contact doesn't have tubes capabilities");
+      if (error != NULL)
+        g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+            "contact doesn't have tubes capabilities");
+
+      return FALSE;
+    }
 
   full_jid = g_strdup_printf ("%s/%s", jid, resource);
 

@@ -399,6 +399,8 @@ tube_closed_cb (GabbleTubeIface *tube,
   d_bus_names_changed_removed (self, tube_id, priv->self_handle);
 #endif
 
+  update_tubes_presence (self);
+
   tp_svc_channel_type_tubes_emit_tube_closed (self, tube_id);
 }
 
@@ -466,10 +468,7 @@ create_new_tube (GabbleTubesChannel *self,
   g_hash_table_insert (priv->stream_id_to_tube_id, g_strdup (stream_id),
       GUINT_TO_POINTER (tube_id));
 
-  if (priv->handle_type == TP_HANDLE_TYPE_ROOM)
-    {
-      update_tubes_presence (self);
-    }
+  update_tubes_presence (self);
 
   g_object_get (tube, "state", &state, NULL);
 
@@ -1022,6 +1021,9 @@ update_tubes_presence (GabbleTubesChannel *self)
   gchar *username, *to;
   struct _i_hate_g_hash_table_foreach data;
 
+  if (priv->handle_type != TP_HANDLE_TYPE_ROOM)
+    return;
+
   /* build the message */
   jid = tp_handle_inspect (room_repo, priv->handle);
 
@@ -1480,10 +1482,7 @@ gabble_tubes_channel_accept_tube (TpSvcChannelTypeTubes *iface,
 
   gabble_tube_iface_accept (tube);
 
-  if (priv->handle_type == TP_HANDLE_TYPE_ROOM)
-    {
-      update_tubes_presence (self);
-    }
+  update_tubes_presence (self);
 
   g_object_get (tube, "type", &type, NULL);
 
@@ -1527,11 +1526,6 @@ gabble_tubes_channel_close_tube (TpSvcChannelTypeTubes *iface,
     }
 
   gabble_tube_iface_close (tube);
-
-  if (priv->handle_type == TP_HANDLE_TYPE_ROOM)
-    {
-      update_tubes_presence (self);
-    }
 
   tp_svc_channel_type_tubes_return_from_close_tube (context);
 }

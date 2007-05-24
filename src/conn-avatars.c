@@ -269,6 +269,66 @@ gabble_connection_get_avatar_tokens (TpSvcConnectionInterfaceAvatars *iface,
 }
 
 
+static gboolean
+parse_avatar (LmMessageNode *vcard,
+              const gchar **mime_type,
+              GString **avatar,
+              GError **error)
+{
+  LmMessageNode *photo_node;
+  LmMessageNode *type_node;
+  LmMessageNode *binval_node;
+  const gchar *binval_value;
+
+  photo_node = lm_message_node_get_child (vcard, "PHOTO");
+
+  if (NULL == photo_node)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+        "contact vCard has no photo");
+      return FALSE;
+    }
+
+  type_node = lm_message_node_get_child (photo_node, "TYPE");
+
+  if (NULL == type_node)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+        "contact avatar is missing type node");
+      return FALSE;
+    }
+
+  binval_node = lm_message_node_get_child (photo_node, "BINVAL");
+
+  if (NULL == binval_node)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+        "contact avatar is missing binval node");
+      return FALSE;
+    }
+
+  binval_value = lm_message_node_get_value (binval_node);
+
+  if (NULL == binval_value)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+        "contact avatar is missing binval content");
+      return FALSE;
+    }
+
+  *avatar = base64_decode (binval_value);
+
+  if (NULL == *avatar)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+        "failed to decode avatar from base64");
+      return FALSE;
+    }
+
+  *mime_type = lm_message_node_get_value (type_node);
+  return TRUE;
+}
+
 static void
 _request_avatar_cb (GabbleVCardManager *self,
                     GabbleVCardManagerRequest *request,
@@ -280,8 +340,7 @@ _request_avatar_cb (GabbleVCardManager *self,
   DBusGMethodInvocation *context = (DBusGMethodInvocation *) user_data;
   GabbleConnection *conn;
   TpBaseConnection *base;
-  LmMessageNode *photo_node, *type_node, *binval_node;
-  const gchar *mime_type, *binval_value;
+  const gchar *mime_type = NULL;
   GArray *arr;
   GError *error = NULL;
   GString *avatar = NULL;
@@ -296,56 +355,8 @@ _request_avatar_cb (GabbleVCardManager *self,
       goto out;
     }
 
-  photo_node = lm_message_node_get_child (vcard, "PHOTO");
-
-  if (NULL == photo_node)
+  if (!parse_avatar (vcard, &mime_type, &avatar, &error))
     {
-      g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-        "contact vCard has no photo");
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-      goto out;
-    }
-
-  type_node = lm_message_node_get_child (photo_node, "TYPE");
-
-  if (NULL == type_node)
-    {
-      g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-        "contact avatar is missing type node");
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-      goto out;
-    }
-
-  binval_node = lm_message_node_get_child (photo_node, "BINVAL");
-
-  if (NULL == binval_node)
-    {
-      g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-        "contact avatar is missing binval node");
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-      goto out;
-    }
-
-  binval_value = lm_message_node_get_value (binval_node);
-
-  if (NULL == binval_value)
-    {
-      g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-        "contact avatar is missing binval content");
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-      goto out;
-    }
-
-  avatar = base64_decode (binval_value);
-
-  if (NULL == avatar)
-    {
-      g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-        "failed to decode avatar from base64");
       dbus_g_method_return_error (context, error);
       g_error_free (error);
       goto out;
@@ -396,7 +407,6 @@ _request_avatar_cb (GabbleVCardManager *self,
       g_free (sha1);
     }
 
-  mime_type = lm_message_node_get_value (type_node);
   arr = g_array_new (FALSE, FALSE, sizeof (gchar));
   g_array_append_vals (arr, avatar->str, avatar->len);
   tp_svc_connection_interface_avatars_return_from_request_avatar (

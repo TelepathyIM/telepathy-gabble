@@ -795,6 +795,13 @@ gabble_tube_dbus_close (GabbleTubeDBus *self)
 {
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
 
-  gabble_bytestream_ibb_close (priv->bytestream);
-  priv->bytestream = NULL;
+  if (priv->bytestream != NULL)
+    {
+      gabble_bytestream_ibb_close (priv->bytestream);
+      priv->bytestream = NULL;
+    }
+  else
+    {
+      g_signal_emit (G_OBJECT (self), signals[CLOSED], 0);
+    }
 }

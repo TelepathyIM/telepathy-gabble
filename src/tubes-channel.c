@@ -690,6 +690,15 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
             {
               GabbleBytestreamIBB *bytestream;
 
+#ifndef HAVE_DBUS_TUBE
+              if (type == TP_TUBE_TYPE_DBUS)
+                {
+                  DEBUG ("Don't create the tube as D-Bus tube support"
+                      "is not built");
+                  continue;
+                }
+#endif
+
               // XXX we should have a way to detect the type of stream
               // used by the tube and use it
               bytestream = gabble_bytestream_factory_create_ibb (

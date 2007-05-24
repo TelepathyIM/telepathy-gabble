@@ -1167,7 +1167,7 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
 
   /* Tube type specific stuffs */
 
-#if HAVE_DBUS_TUBE
+#ifdef HAVE_DBUS_TUBE
   if (type == TP_TUBE_TYPE_DBUS)
     {
       const gchar *dbus_name;

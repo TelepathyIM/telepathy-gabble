@@ -199,8 +199,11 @@ gabble_bytestream_ibb_set_property (GObject *object,
         priv->peer_resource = g_value_dup_string (value);
         break;
       case PROP_STATE:
-        priv->state = g_value_get_uint (value);
-        g_signal_emit (object, signals[STATE_CHANGED], 0, priv->state);
+        if (priv->state != g_value_get_uint (value))
+            {
+              priv->state = g_value_get_uint (value);
+              g_signal_emit (object, signals[STATE_CHANGED], 0, priv->state);
+            }
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);

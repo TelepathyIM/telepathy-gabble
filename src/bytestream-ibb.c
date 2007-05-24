@@ -597,6 +597,12 @@ gabble_bytestream_ibb_close (GabbleBytestreamIBB *self)
 {
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
 
+  if (priv->state == BYTESTREAM_IBB_STATE_CLOSED)
+    {
+     /* bytestream already closed, do nothing */
+     return;
+    }
+
   if (priv->state == BYTESTREAM_IBB_STATE_LOCAL_PENDING)
     {
       if (priv->peer_resource != NULL && priv->stream_init_id != NULL)

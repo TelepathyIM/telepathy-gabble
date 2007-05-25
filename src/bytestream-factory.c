@@ -655,6 +655,7 @@ parse_ibb_close_iq (GabbleBytestreamFactory *self,
 
   _gabble_connection_send (priv->conn, reply, NULL);
 
+  lm_message_unref (reply);
   return TRUE;
 }
 

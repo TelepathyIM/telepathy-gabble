@@ -66,6 +66,7 @@ enum
   PROP_HANDLE_TYPE,
   PROP_SELF_HANDLE,
   PROP_BYTESTREAM,
+  PROP_STREAM_ID,
   PROP_TYPE,
   PROP_INITIATOR,
   PROP_SERVICE,
@@ -85,6 +86,7 @@ struct _GabbleTubeDBusPrivate
   TpHandleType handle_type;
   TpHandle self_handle;
   GabbleBytestreamIBB *bytestream;
+  gchar *stream_id;
   TpHandle initiator;
   gchar *service;
   GHashTable *parameters;
@@ -428,6 +430,9 @@ gabble_tube_dbus_get_property (GObject *object,
       case PROP_BYTESTREAM:
         g_value_set_object (value, priv->bytestream);
         break;
+      case PROP_STREAM_ID:
+        g_value_set_string (value, priv->stream_id);
+        break;
       case PROP_TYPE:
         g_value_set_uint (value, TP_TUBE_TYPE_DBUS);
         break;
@@ -496,6 +501,10 @@ gabble_tube_dbus_set_property (GObject *object,
             g_signal_connect (priv->bytestream, "state-changed",
                 G_CALLBACK (bytestream_state_changed_cb), self);
           }
+        break;
+      case PROP_STREAM_ID:
+        g_free (priv->stream_id);
+        priv->stream_id = g_value_dup_string (value);
         break;
       case PROP_INITIATOR:
         priv->initiator = g_value_get_uint (value);
@@ -616,6 +625,18 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
       G_PARAM_STATIC_NICK |
       G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_BYTESTREAM, param_spec);
+
+  param_spec = g_param_spec_string (
+      "stream-id",
+      "stream id",
+      "The identifier of this tube's bytestream",
+      "",
+      G_PARAM_CONSTRUCT_ONLY |
+      G_PARAM_READWRITE |
+      G_PARAM_STATIC_NAME |
+      G_PARAM_STATIC_NICK |
+      G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_STREAM_ID, param_spec);
 
   param_spec = g_param_spec_uint (
       "type",

@@ -728,6 +728,26 @@ data_received_cb (GabbleBytestreamIBB *ibb,
     g_error_free (error);
 }
 
+GabbleTubeStream *
+gabble_tube_stream_new (GabbleConnection *conn,
+                        TpHandle handle,
+                        TpHandleType handle_type,
+                        TpHandle self_handle,
+                        TpHandle initiator,
+                        const gchar *service,
+                        GHashTable *parameters)
+{
+  return g_object_new (GABBLE_TYPE_TUBE_STREAM,
+      "connection", conn,
+      "handle", handle,
+      "handle-type", handle_type,
+      "self-handle", self_handle,
+      "initiator", initiator,
+      "service", service,
+      "parameters", parameters,
+      NULL);
+}
+
 /**
  * gabble_tube_stream_get_stream_id
  *

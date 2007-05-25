@@ -22,6 +22,8 @@
 
 #include <glib-object.h>
 
+#include "gabble-connection.h"
+
 G_BEGIN_DECLS
 
 typedef struct _GabbleTubeStream GabbleTubeStream;
@@ -54,6 +56,11 @@ GType gabble_tube_stream_get_type (void);
 #define GABBLE_TUBE_STREAM_GET_CLASS(obj) \
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_TUBE_STREAM,\
                               GabbleTubeStreamClass))
+
+GabbleTubeStream *
+gabble_tube_stream_new (GabbleConnection *conn, TpHandle handle,
+    TpHandleType handle_type, TpHandle self_handle, TpHandle initiator,
+    const gchar *service, GHashTable *parameters);
 
 G_END_DECLS
 

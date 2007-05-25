@@ -229,7 +229,7 @@ gabble_tube_dbus_accept (GabbleTubeDBus *self)
 {
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
   BytestreamIBBState state;
-  const gchar *stream_init_id;
+  gchar *stream_init_id;
 
   g_assert (priv->bytestream != NULL);
 
@@ -268,6 +268,7 @@ gabble_tube_dbus_accept (GabbleTubeDBus *self)
       gabble_bytestream_ibb_accept (priv->bytestream, msg);
 
       lm_message_unref (msg);
+      g_free (stream_init_id);
     }
   else
     {

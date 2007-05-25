@@ -801,13 +801,13 @@ gabble_tube_dbus_new (GabbleConnection *conn,
 {
   return g_object_new (GABBLE_TYPE_TUBE_DBUS,
       "connection", conn,
-       "handle", handle,
-       "handle-type", handle_type,
-       "self-handle", self_handle,
-       "initiator", initiator,
-       "service", service,
-       "parameters", parameters,
-       NULL);
+      "handle", handle,
+      "handle-type", handle_type,
+      "self-handle", self_handle,
+      "initiator", initiator,
+      "service", service,
+      "parameters", parameters,
+      NULL);
 }
 
 /**

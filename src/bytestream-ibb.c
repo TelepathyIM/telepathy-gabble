@@ -729,10 +729,14 @@ gabble_bytestream_ibb_initiation (GabbleBytestreamIBB *self)
       ibb_init_reply_cb, G_OBJECT (self), NULL, NULL))
     {
       DEBUG ("Error when sending IBB init stanza");
+
       lm_message_unref (msg);
       g_free (full_jid);
       return FALSE;
     }
+
+  lm_message_unref (msg);
+  g_free (full_jid);
 
   return TRUE;
 }

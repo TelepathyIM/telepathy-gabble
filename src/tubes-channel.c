@@ -431,34 +431,27 @@ create_new_tube (GabbleTubesChannel *self,
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
   GabbleTubeIface *tube;
   guint tube_id;
-  GType gtype;
   TpTubeState state;
 
   switch (type)
     {
 #ifdef HAVE_DBUS_TUBE
     case TP_TUBE_TYPE_DBUS:
-      gtype = GABBLE_TYPE_TUBE_DBUS;
+      tube = GABBLE_TUBE_IFACE (gabble_tube_dbus_new (priv->conn,
+          priv->handle, priv->handle_type, priv->self_handle, initiator,
+          service, parameters));
       break;
 #endif
     case TP_TUBE_TYPE_STREAM:
-      gtype = GABBLE_TYPE_TUBE_STREAM;
+      tube = GABBLE_TUBE_IFACE (gabble_tube_stream_new (priv->conn,
+          priv->handle, priv->handle_type, priv->self_handle, initiator,
+          service, parameters));
       break;
     default:
       g_assert_not_reached ();
     }
 
   tube_id = priv->next_tube_id++;
-
-  tube = g_object_new (gtype,
-                       "connection", priv->conn,
-                       "handle", priv->handle,
-                       "handle-type", priv->handle_type,
-                       "self-handle", priv->self_handle,
-                       "initiator", initiator,
-                       "service", service,
-                       "parameters", parameters,
-                       NULL);
 
   if (bytestream != NULL)
     {

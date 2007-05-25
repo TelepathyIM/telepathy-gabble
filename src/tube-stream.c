@@ -67,6 +67,7 @@ enum
   PROP_CONNECTION = 1,
   PROP_HANDLE,
   PROP_HANDLE_TYPE,
+  PROP_SELF_HANDLE,
   PROP_BYTESTREAM,
   PROP_TYPE,
   PROP_INITIATOR,
@@ -83,6 +84,7 @@ struct _GabbleTubeStreamPrivate
   GabbleConnection *conn;
   TpHandle handle;
   TpHandleType handle_type;
+  TpHandle self_handle;
   GabbleBytestreamIBB *bytestream;
   TpHandle initiator;
   gchar *service;
@@ -412,6 +414,9 @@ gabble_tube_stream_get_property (GObject *object,
       case PROP_HANDLE_TYPE:
         g_value_set_uint (value, priv->handle_type);
         break;
+      case PROP_SELF_HANDLE:
+        g_value_set_uint (value, priv->self_handle);
+        break;
       case PROP_BYTESTREAM:
         g_value_set_object (value, priv->bytestream);
         break;
@@ -458,6 +463,9 @@ gabble_tube_stream_set_property (GObject *object,
         break;
       case PROP_HANDLE_TYPE:
         priv->handle_type = g_value_get_uint (value);
+        break;
+      case PROP_SELF_HANDLE:
+        priv->self_handle = g_value_get_uint (value);
         break;
       case PROP_BYTESTREAM:
         if (priv->bytestream == NULL)
@@ -573,6 +581,19 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
       G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_HANDLE_TYPE,
       param_spec);
+
+  param_spec = g_param_spec_uint (
+      "self-handle",
+      "Self handle",
+      "The handle to use for ourself. This can be different from the "
+      "connection's self handle if our handle is a room handle.",
+      0, G_MAXUINT, 0,
+      G_PARAM_CONSTRUCT_ONLY |
+      G_PARAM_READWRITE |
+      G_PARAM_STATIC_NAME |
+      G_PARAM_STATIC_NICK |
+      G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_SELF_HANDLE, param_spec);
 
   param_spec = g_param_spec_object (
       "bytestream",

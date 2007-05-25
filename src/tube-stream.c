@@ -246,7 +246,7 @@ tube_stream_open (GabbleTubeStream *self)
           return;
         }
 
-      if (listen (fd, 1) == -1)
+      if (listen (fd, 5) == -1)
         {
           DEBUG ("Error listenning socket: %s", g_strerror (errno));
           return;

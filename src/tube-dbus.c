@@ -790,6 +790,26 @@ data_received_cb (GabbleBytestreamIBB *ibb,
   dbus_message_unref (msg);
 }
 
+GabbleTubeDBus *
+gabble_tube_dbus_new (GabbleConnection *conn,
+                      TpHandle handle,
+                      TpHandleType handle_type,
+                      TpHandle self_handle,
+                      TpHandle initiator,
+                      const gchar *service,
+                      GHashTable *parameters)
+{
+  return g_object_new (GABBLE_TYPE_TUBE_DBUS,
+      "connection", conn,
+       "handle", handle,
+       "handle-type", handle_type,
+       "self-handle", self_handle,
+       "initiator", initiator,
+       "service", service,
+       "parameters", parameters,
+       NULL);
+}
+
 /**
  * gabble_tube_dbus_get_stream_id
  *

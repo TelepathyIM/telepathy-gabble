@@ -22,6 +22,8 @@
 
 #include <glib-object.h>
 
+#include "gabble-connection.h"
+
 G_BEGIN_DECLS
 
 typedef struct _GabbleTubeDBus GabbleTubeDBus;
@@ -54,6 +56,11 @@ GType gabble_tube_dbus_get_type (void);
 #define GABBLE_TUBE_DBUS_GET_CLASS(obj) \
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_TUBE_DBUS,\
                               GabbleTubeDBusClass))
+
+GabbleTubeDBus *
+gabble_tube_dbus_new (GabbleConnection *conn, TpHandle handle,
+    TpHandleType handle_type, TpHandle self_handle, TpHandle initiator,
+    const gchar *service, GHashTable *parameters);
 
 G_END_DECLS
 

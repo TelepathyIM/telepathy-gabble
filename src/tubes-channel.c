@@ -104,6 +104,7 @@ struct _GabbleTubesChannelPrivate
 
   GHashTable *tubes;
   GHashTable *stream_id_to_tube_id;
+  GHashTable *tubes_by_unique_id;
   guint next_tube_id;
 
   gboolean closed;
@@ -130,6 +131,9 @@ gabble_tubes_channel_init (GabbleTubesChannel *self)
 
   priv->stream_id_to_tube_id = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, NULL);
+
+  priv->tubes_by_unique_id = g_hash_table_new_full (g_str_hash,
+      g_str_equal, g_free, g_object_unref);
 
   priv->next_tube_id = 1;
 
@@ -399,7 +403,7 @@ tube_closed_cb (GabbleTubeIface *tube,
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (user_data);
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
   guint tube_id;
-  gchar *stream_id;
+  gchar *stream_id, *unique_id;
 
   tube_id = find_tube_id (self, tube);
   if (tube_id == 0)
@@ -408,7 +412,10 @@ tube_closed_cb (GabbleTubeIface *tube,
     }
   else
     {
-      g_hash_table_remove (priv->tubes, GUINT_TO_POINTER (tube_id));
+      if (!g_hash_table_remove (priv->tubes, GUINT_TO_POINTER (tube_id)))
+        {
+          DEBUG ("Can't find tube having this id: %d", tube_id);
+        }
     }
 
   stream_id = gabble_tube_iface_get_stream_id (tube);
@@ -420,6 +427,17 @@ tube_closed_cb (GabbleTubeIface *tube,
         }
 
       g_free (stream_id);
+    }
+
+  g_object_get (tube, "unique-id", &unique_id, NULL);
+  if (unique_id != NULL)
+    {
+      if (!g_hash_table_remove (priv->tubes_by_unique_id, unique_id))
+          {
+          DEBUG ("Can't find tube using this unique id: %s", unique_id);
+          }
+
+      g_free (unique_id);
     }
 
 #ifdef HAVE_DBUS_TUBE
@@ -485,6 +503,8 @@ create_new_tube (GabbleTubesChannel *self,
   g_hash_table_insert (priv->tubes, GUINT_TO_POINTER (tube_id), tube);
   g_hash_table_insert (priv->stream_id_to_tube_id, g_strdup (stream_id),
       GUINT_TO_POINTER (tube_id));
+  g_hash_table_insert (priv->tubes_by_unique_id, g_strdup (unique_id),
+      g_object_ref (tube));
 
   update_tubes_presence (self);
 
@@ -1795,9 +1815,11 @@ gabble_tubes_channel_close (GabbleTubesChannel *self)
   g_hash_table_foreach (priv->tubes, emit_tube_closed_signal, self);
   g_hash_table_destroy (priv->tubes);
   g_hash_table_destroy (priv->stream_id_to_tube_id);
+  g_hash_table_destroy (priv->tubes_by_unique_id);
 
   priv->tubes = NULL;
   priv->stream_id_to_tube_id = NULL;
+  priv->tubes_by_unique_id = NULL;
   priv->closed = TRUE;
 
   tp_svc_channel_emit_closed (self);

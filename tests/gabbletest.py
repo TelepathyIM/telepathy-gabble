@@ -82,9 +82,10 @@ class XmlStream(xmlstream.XmlStream):
         self.handler.handle_event(('stream-authenticated',))
 
     def _cb_disco_iq(self, iq):
-        # no features
-        iq['type'] = 'result'
-        self.send(iq)
+        if iq['to'] == 'localhost':
+            # no features
+            iq['type'] = 'result'
+            self.send(iq)
 
 class XmlStreamFactory(xmlstream.XmlStreamFactory):
     def __init__(self, handler, authenticator):

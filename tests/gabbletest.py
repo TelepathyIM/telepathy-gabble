@@ -268,6 +268,7 @@ def gabble_test_setup(handler, params=None):
         None, None, gabble._named_service,
         path_keyword='path',
         member_keyword='member',
+        byte_arrays=True,
         )
 
     # set up Jabber server

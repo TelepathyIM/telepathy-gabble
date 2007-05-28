@@ -60,7 +60,7 @@ GType gabble_tube_dbus_get_type (void);
 GabbleTubeDBus *
 gabble_tube_dbus_new (GabbleConnection *conn, TpHandle handle,
     TpHandleType handle_type, TpHandle self_handle, TpHandle initiator,
-    const gchar *service, GHashTable *parameters);
+    const gchar *service, GHashTable *parameters, const gchar *stream_id);
 
 G_END_DECLS
 

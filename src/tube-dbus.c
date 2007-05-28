@@ -818,7 +818,8 @@ gabble_tube_dbus_new (GabbleConnection *conn,
                       TpHandle self_handle,
                       TpHandle initiator,
                       const gchar *service,
-                      GHashTable *parameters)
+                      GHashTable *parameters,
+                      const gchar *stream_id)
 {
   return g_object_new (GABBLE_TYPE_TUBE_DBUS,
       "connection", conn,
@@ -828,6 +829,7 @@ gabble_tube_dbus_new (GabbleConnection *conn,
       "initiator", initiator,
       "service", service,
       "parameters", parameters,
+      "stream-id", stream_id,
       NULL);
 }
 

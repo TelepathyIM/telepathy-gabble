@@ -439,7 +439,7 @@ create_new_tube (GabbleTubesChannel *self,
     case TP_TUBE_TYPE_DBUS:
       tube = GABBLE_TUBE_IFACE (gabble_tube_dbus_new (priv->conn,
           priv->handle, priv->handle_type, priv->self_handle, initiator,
-          service, parameters));
+          service, parameters, stream_id));
       break;
 #endif
     case TP_TUBE_TYPE_STREAM:

@@ -247,6 +247,27 @@ gabble_tubes_channel_set_property (GObject *object,
     }
 }
 
+/* XXX: maybe we could move this code to util.c
+ * (generate_unique_id or something) and so avoid
+ * to duplicate this code in 
+ * gabble_bytestream_factory_generate_stream_id
+ */
+gchar *
+generate_unique_tube_id (void)
+{
+  gchar *stream_id;
+  time_t curtime;
+  struct tm *loctime;
+  gchar stamp[20];
+
+  curtime = time (NULL);
+  loctime = localtime (&curtime);
+  strftime (stamp, sizeof (stamp), "%s", loctime);
+  stream_id = g_strdup_printf ("%s%d", stamp, g_random_int());
+
+  return stream_id;
+}
+
 #ifdef HAVE_DBUS_TUBE
 static void
 d_bus_names_changed_added (GabbleTubesChannel *self,
@@ -432,7 +453,8 @@ create_new_tube (GabbleTubesChannel *self,
                  TpHandle initiator,
                  const gchar *service,
                  GHashTable *parameters,
-                 const gchar *stream_id)
+                 const gchar *stream_id,
+                 const gchar *unique_id)
 {
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
   GabbleTubeIface *tube;
@@ -445,7 +467,7 @@ create_new_tube (GabbleTubesChannel *self,
     case TP_TUBE_TYPE_DBUS:
       tube = GABBLE_TUBE_IFACE (gabble_tube_dbus_new (priv->conn,
           priv->handle, priv->handle_type, priv->self_handle, initiator,
-          service, parameters, stream_id));
+          service, parameters, stream_id, unique_id));
       break;
 #endif
     case TP_TUBE_TYPE_STREAM:
@@ -693,7 +715,7 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
 #endif
 
               tube_id = create_new_tube (self, type, initiator_handle,
-                  service, parameters, stream_id);
+                  service, parameters, stream_id, "");
               tube = g_hash_table_lookup (priv->tubes,
                   GUINT_TO_POINTER (tube_id));
 
@@ -1148,7 +1170,7 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
     }
 
   tube_id = create_new_tube (self, type, priv->handle, service,
-      parameters, stream_id);
+      parameters, stream_id, "");
 
 #ifndef HAVE_DBUS_TUBE
   if (type == TP_TUBE_TYPE_DBUS)
@@ -1279,7 +1301,7 @@ gabble_tubes_channel_offer_d_bus_tube (TpSvcChannelTypeTubes *iface,
   stream_id = gabble_bytestream_factory_generate_stream_id ();
 
   tube_id = create_new_tube (self, TP_TUBE_TYPE_DBUS, priv->self_handle,
-      service, parameters_copied, (const gchar*) stream_id);
+      service, parameters_copied, (const gchar*) stream_id, "");
 
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
 
@@ -1378,7 +1400,7 @@ gabble_tubes_channel_offer_stream_tube (TpSvcChannelTypeTubes *iface,
   stream_id = gabble_bytestream_factory_generate_stream_id ();
 
   tube_id = create_new_tube (self, TP_TUBE_TYPE_STREAM, priv->self_handle,
-      service, parameters_copied, (const gchar*) stream_id);
+      service, parameters_copied, (const gchar*) stream_id, "");
 
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
 

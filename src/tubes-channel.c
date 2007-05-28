@@ -345,32 +345,6 @@ add_yourself_in_dbus_names (GabbleTubesChannel *self,
 }
 #endif
 
-static guint
-find_tube_id (GabbleTubesChannel *self,
-              GabbleTubeIface *tube)
-{
-  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
-  gchar *stream_id;
-  guint tube_id;
-
-  /* XXX maybe we could use a smarter way to find the tube ID ? */
-  stream_id = gabble_tube_iface_get_stream_id (tube);
-  if (stream_id == NULL)
-    {
-      DEBUG ("no stream ID");
-      return 0;
-    }
-
-  tube_id = GPOINTER_TO_UINT (g_hash_table_lookup (priv->stream_id_to_tube_id,
-        stream_id));
-
-  g_assert (tube == g_hash_table_lookup (priv->tubes,
-        GUINT_TO_POINTER (tube_id)));
-
-  g_free (stream_id);
-  return tube_id;
-}
-
 static void
 tube_closed_cb (GabbleTubeIface *tube,
                 gpointer user_data)
@@ -380,17 +354,10 @@ tube_closed_cb (GabbleTubeIface *tube,
   guint tube_id;
   gchar *stream_id;
 
-  tube_id = find_tube_id (self, tube);
-  if (tube_id == 0)
+  g_object_get (tube, "id", &tube_id, NULL);
+  if (!g_hash_table_remove (priv->tubes, GUINT_TO_POINTER (tube_id)))
     {
-      DEBUG ("can't find tube ID");
-    }
-  else
-    {
-      if (!g_hash_table_remove (priv->tubes, GUINT_TO_POINTER (tube_id)))
-        {
-          DEBUG ("Can't find tube having this id: %d", tube_id);
-        }
+      DEBUG ("Can't find tube having this id: %d", tube_id);
     }
 
   stream_id = gabble_tube_iface_get_stream_id (tube);
@@ -421,9 +388,7 @@ tube_opened_cb (GabbleTubeIface *tube,
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (user_data);
   guint tube_id;
 
-  tube_id = find_tube_id (self, tube);
-  if (tube_id == 0)
-    return;
+  g_object_get (tube, "id", &tube_id, NULL);
 
   tp_svc_channel_type_tubes_emit_tube_state_changed (self, tube_id,
       TP_TUBE_STATE_OPEN);
@@ -673,8 +638,8 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
       if (stream_id == NULL)
         continue;
 
-      tube_id = GPOINTER_TO_UINT (g_hash_table_lookup (
-            priv->stream_id_to_tube_id, stream_id));
+      extract_tube_information (self, tube_node, NULL,
+          NULL, NULL, NULL, &tube_id);
       tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
 
       if (tube == NULL)

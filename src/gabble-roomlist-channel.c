@@ -416,6 +416,8 @@ room_info_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
   keys = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
                                 (GDestroyNotify) tp_g_value_slice_free);
 
+  INSERT_KEY (keys, "handle-name", G_TYPE_STRING, string,
+      tp_handle_inspect (room_handles, handle));
   INSERT_KEY (keys, "name", G_TYPE_STRING, string, name);
 
   if (g_hash_table_lookup_extended (item->features, "muc_membersonly", &k, &v))

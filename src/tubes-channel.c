@@ -1323,7 +1323,6 @@ gabble_tubes_channel_offer_stream_tube (TpSvcChannelTypeTubes *iface,
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (iface);
   GabbleTubesChannelPrivate *priv;
   TpBaseConnection *base;
-  GabbleBytestreamIBB *bytestream;
   guint tube_id;
   GabbleTubeIface *tube;
   GHashTable *parameters_copied;
@@ -1341,28 +1340,6 @@ gabble_tubes_channel_offer_stream_tube (TpSvcChannelTypeTubes *iface,
   g_hash_table_foreach (parameters, copy_parameter, parameters_copied);
 
   stream_id = gabble_bytestream_factory_generate_stream_id ();
-
-  if (priv->handle_type == TP_HANDLE_TYPE_ROOM)
-    {
-      /* We don't need SI for muc tubes so the bytestream is
-       * already accepted and open */
-
-      bytestream = gabble_bytestream_factory_create_ibb (
-          priv->conn->bytestream_factory,
-          priv->handle,
-          priv->handle_type,
-          stream_id,
-          NULL,
-          NULL,
-          BYTESTREAM_IBB_STATE_OPEN);
-    }
-  else
-    {
-      /* bytestream is not yet created.
-       * It will be when we'll receive the response of the SI
-       * request */
-      bytestream = NULL;
-    }
 
   tube_id = create_new_tube (self, TP_TUBE_TYPE_STREAM, priv->self_handle,
       service, parameters_copied, (const gchar*) stream_id);
@@ -1386,7 +1363,6 @@ gabble_tubes_channel_offer_stream_tube (TpSvcChannelTypeTubes *iface,
           g_free (stream_id);
           return;
         }
-
     }
 
   tp_svc_channel_type_tubes_return_from_offer_d_bus_tube (context, tube_id);

@@ -464,6 +464,85 @@ gabble_connection_request_avatar (TpSvcConnectionInterfaceAvatars *iface,
     }
 }
 
+static void
+emit_avatar_retrieved (TpSvcConnectionInterfaceAvatars *iface,
+                       TpHandle contact,
+                       LmMessageNode *vcard_node)
+{
+  const gchar *mime_type;
+  GString *avatar_str;
+  gchar *sha1;
+  GArray *arr;
+
+  if (!parse_avatar (vcard_node, &mime_type, &avatar_str, NULL))
+    return;
+
+  DEBUG ("got avatar for contact %d", contact);
+
+  sha1 = sha1_hex (avatar_str->str, avatar_str->len);
+  arr = g_array_new (FALSE, FALSE, sizeof (gchar));
+  g_array_append_vals (arr, avatar_str->str, avatar_str->len);
+  tp_svc_connection_interface_avatars_emit_avatar_retrieved (iface, contact,
+      sha1, arr, mime_type);
+  g_array_free (arr, TRUE);
+  g_free (sha1);
+  g_string_free (avatar_str, TRUE);
+
+  DEBUG (":/");
+}
+
+static void
+request_avatars_cb (GabbleVCardManager *manager,
+                    GabbleVCardManagerRequest *request,
+                    TpHandle handle,
+                    LmMessageNode *vcard,
+                    GError *vcard_error,
+                    gpointer user_data)
+{
+  if (vcard_error != NULL)
+    return;
+
+  emit_avatar_retrieved (user_data, handle, vcard);
+}
+
+static void
+gabble_connection_request_avatars (TpSvcConnectionInterfaceAvatars *iface,
+                                   const GArray *contacts,
+                                   DBusGMethodInvocation *context)
+{
+  GabbleConnection *self = GABBLE_CONNECTION (iface);
+  TpBaseConnection *base = (TpBaseConnection *) self;
+  TpHandleRepoIface *contacts_repo =
+      tp_base_connection_get_handles (base, TP_HANDLE_TYPE_CONTACT);
+  GError *error = NULL;
+  guint i;
+
+  if (!tp_handles_are_valid (contacts_repo, contacts, FALSE, &error))
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return;
+    }
+
+  for (i = 0; i < contacts->len; i++)
+    {
+      LmMessageNode *vcard_node;
+
+      if (gabble_vcard_manager_get_cached (self->vcard_manager,
+            contacts->data[i], &vcard_node))
+        {
+          emit_avatar_retrieved (iface, contacts->data[i], vcard_node);
+        }
+      else
+        {
+          gabble_vcard_manager_request (self->vcard_manager,
+              contacts->data[i], 0, request_avatars_cb, iface, NULL, NULL);
+        }
+    }
+
+  tp_svc_connection_interface_avatars_return_from_request_avatars (context);
+}
+
 
 struct _set_avatar_ctx {
   GabbleConnection *conn;
@@ -672,6 +751,7 @@ conn_avatars_iface_init (gpointer g_iface, gpointer iface_data)
   IMPLEMENT(get_avatar_requirements);
   IMPLEMENT(get_avatar_tokens);
   IMPLEMENT(request_avatar);
+  IMPLEMENT(request_avatars);
   IMPLEMENT(set_avatar);
   IMPLEMENT(clear_avatar);
 #undef IMPLEMENT

@@ -23,6 +23,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <errno.h>
+
+#include <glib.h>
+#include <glib/gstdio.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_TUBES
 
@@ -1327,13 +1334,42 @@ gabble_tubes_channel_offer_stream_tube (TpSvcChannelTypeTubes *iface,
   GabbleTubeIface *tube;
   GHashTable *parameters_copied;
   gchar *stream_id;
+  struct stat stat_buff;
 
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
 
   priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
   base = (TpBaseConnection*) priv->conn;
 
-  /* XXX check socket */
+  if (g_stat (socket, &stat_buff) == -1)
+    {
+      GError *error = NULL;
+
+      DEBUG ("Error calling stat on socket: %s", g_strerror (errno));
+
+      error = g_error_new (TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, "%s: %s",
+          socket, g_strerror (errno));
+
+      dbus_g_method_return_error (context, error);
+
+      g_error_free (error);
+      return;
+    }
+
+  if (!S_ISSOCK (stat_buff.st_mode))
+    {
+      GError *error = NULL;
+
+      DEBUG ("%s is not a socket", socket);
+
+      error = g_error_new (TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "%s is not a socket", socket);
+
+      dbus_g_method_return_error (context, error);
+
+      g_error_free (error);
+      return;
+    }
 
   parameters_copied = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
       (GDestroyNotify) tp_g_value_slice_free);

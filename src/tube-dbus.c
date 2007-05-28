@@ -40,6 +40,7 @@
 #include "util.h"
 #include "tube-iface.h"
 #include "bytestream-ibb.h"
+#include "bytestream-factory.h"
 #include "gabble-signals-marshal.h"
 
 static void
@@ -528,13 +529,15 @@ gabble_tube_dbus_constructor (GType type,
                               GObjectConstructParam *props)
 {
   GObject *obj;
+  GabbleTubeDBus *self;
   GabbleTubeDBusPrivate *priv;
   TpHandleRepoIface *contact_repo;
 
   obj = G_OBJECT_CLASS (gabble_tube_dbus_parent_class)->
            constructor (type, n_props, props);
+  self = GABBLE_TUBE_DBUS (obj);
 
-  priv = GABBLE_TUBE_DBUS_GET_PRIVATE (GABBLE_TUBE_DBUS (obj));
+  priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
 
   /* Ref the initiator handle */
   g_assert (priv->conn != NULL);
@@ -542,6 +545,52 @@ gabble_tube_dbus_constructor (GType type,
   contact_repo = tp_base_connection_get_handles
       ((TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   tp_handle_ref (contact_repo, priv->initiator);
+
+  g_assert (priv->self_handle != 0);
+  if (priv->handle_type == TP_HANDLE_TYPE_ROOM)
+    {
+      /* 
+       * We have to create an IBB bytestream that will be
+       * used by this MUC tube to communicate.
+       *
+       * We don't create the bytestream of private D-Bus tube yet.
+       * It will be when we'll receive the answer of the SI request
+       */
+      g_assert (priv->stream_id != NULL);
+
+      if (priv->initiator == priv->self_handle)
+        {
+          /* We create this tube, bytestream is open */
+          priv->bytestream = gabble_bytestream_factory_create_ibb (
+              priv->conn->bytestream_factory,
+              priv->handle,
+              priv->handle_type,
+              priv->stream_id,
+              NULL,
+              NULL,
+              BYTESTREAM_IBB_STATE_OPEN);
+
+          tube_dbus_open (self);
+
+          g_signal_connect (priv->bytestream, "state-changed",
+              G_CALLBACK (bytestream_state_changed_cb), self);
+        }
+      else
+        {
+          /* We don't create this tube, bytestream is local pending */
+          priv->bytestream = gabble_bytestream_factory_create_ibb (
+              priv->conn->bytestream_factory,
+              priv->handle,
+              priv->handle_type,
+              priv->stream_id,
+              NULL,
+              NULL,
+              BYTESTREAM_IBB_STATE_LOCAL_PENDING);
+
+          g_signal_connect (priv->bytestream, "state-changed",
+              G_CALLBACK (bytestream_state_changed_cb), self);
+        }
+    }
 
   return obj;
 }

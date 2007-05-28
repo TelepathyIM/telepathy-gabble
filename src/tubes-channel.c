@@ -425,8 +425,7 @@ create_new_tube (GabbleTubesChannel *self,
                  TpHandle initiator,
                  const gchar *service,
                  GHashTable *parameters,
-                 const gchar *stream_id,
-                 GabbleBytestreamIBB *bytestream)
+                 const gchar *stream_id)
 {
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
   GabbleTubeIface *tube;
@@ -452,11 +451,6 @@ create_new_tube (GabbleTubesChannel *self,
     }
 
   tube_id = priv->next_tube_id++;
-
-  if (bytestream != NULL)
-    {
-      g_object_set (tube, "bytestream", bytestream, NULL);
-    }
 
   g_hash_table_insert (priv->tubes, GUINT_TO_POINTER (tube_id), tube);
   g_hash_table_insert (priv->stream_id_to_tube_id, g_strdup (stream_id),
@@ -681,7 +675,6 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
           if (extract_tube_information (self, tube_node, &type,
                 &initiator_handle, &service, &parameters))
             {
-              GabbleBytestreamIBB *bytestream;
 
 #ifndef HAVE_DBUS_TUBE
               if (type == TP_TUBE_TYPE_DBUS)
@@ -692,19 +685,8 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
                 }
 #endif
 
-              // XXX we should have a way to detect the type of stream
-              // used by the tube and use it
-              bytestream = gabble_bytestream_factory_create_ibb (
-                  priv->conn->bytestream_factory,
-                  priv->handle,
-                  priv->handle_type,
-                  stream_id,
-                  NULL,
-                  NULL,
-                  BYTESTREAM_IBB_STATE_LOCAL_PENDING);
-
               tube_id = create_new_tube (self, type, initiator_handle,
-                  service, parameters, stream_id, bytestream);
+                  service, parameters, stream_id);
               tube = g_hash_table_lookup (priv->tubes,
                   GUINT_TO_POINTER (tube_id));
 
@@ -1159,7 +1141,7 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
     }
 
   tube_id = create_new_tube (self, type, priv->handle, service,
-      parameters, stream_id, bytestream);
+      parameters, stream_id);
 
 #ifndef HAVE_DBUS_TUBE
   if (type == TP_TUBE_TYPE_DBUS)
@@ -1273,7 +1255,6 @@ gabble_tubes_channel_offer_d_bus_tube (TpSvcChannelTypeTubes *iface,
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (iface);
   GabbleTubesChannelPrivate *priv;
   TpBaseConnection *base;
-  GabbleBytestreamIBB *bytestream;
   guint tube_id;
   GabbleTubeIface *tube;
   GHashTable *parameters_copied;
@@ -1290,30 +1271,8 @@ gabble_tubes_channel_offer_d_bus_tube (TpSvcChannelTypeTubes *iface,
 
   stream_id = gabble_bytestream_factory_generate_stream_id ();
 
-  if (priv->handle_type == TP_HANDLE_TYPE_ROOM)
-    {
-      /* We don't need SI for muc tubes so the bytestream is
-       * already accepted and open */
-
-      bytestream = gabble_bytestream_factory_create_ibb (
-          priv->conn->bytestream_factory,
-          priv->handle,
-          priv->handle_type,
-          stream_id,
-          NULL,
-          NULL,
-          BYTESTREAM_IBB_STATE_OPEN);
-    }
-  else
-    {
-      /* bytestream is not yet created.
-       * It will be when we'll receive the response of the SI
-       * request */
-      bytestream = NULL;
-    }
-
   tube_id = create_new_tube (self, TP_TUBE_TYPE_DBUS, priv->self_handle,
-      service, parameters_copied, (const gchar*) stream_id, bytestream);
+      service, parameters_copied, (const gchar*) stream_id);
 
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
 
@@ -1406,7 +1365,7 @@ gabble_tubes_channel_offer_stream_tube (TpSvcChannelTypeTubes *iface,
     }
 
   tube_id = create_new_tube (self, TP_TUBE_TYPE_STREAM, priv->self_handle,
-      service, parameters_copied, (const gchar*) stream_id, bytestream);
+      service, parameters_copied, (const gchar*) stream_id);
 
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
 

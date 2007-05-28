@@ -479,6 +479,7 @@ create_new_tube (GabbleTubesChannel *self,
       g_assert_not_reached ();
     }
 
+  /* XXX maybe it could be worth to fusion this id with the unique id */
   tube_id = priv->next_tube_id++;
 
   g_hash_table_insert (priv->tubes, GUINT_TO_POINTER (tube_id), tube);
@@ -517,7 +518,8 @@ extract_tube_information (GabbleTubesChannel *self,
                           TpTubeType *type,
                           TpHandle *initiator_handle,
                           const gchar **service,
-                          GHashTable **parameters)
+                          GHashTable **parameters,
+                          const gchar **unique_id)
 {
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
@@ -572,6 +574,11 @@ extract_tube_information (GabbleTubesChannel *self,
 
       node = lm_message_node_get_child (tube_node, "parameters");
       *parameters = lm_message_node_extract_properties (node, "parameter");
+    }
+
+  if (unique_id != NULL)
+    {
+      *unique_id = lm_message_node_get_attribute (tube_node, "id");
     }
 
   return TRUE;
@@ -696,13 +703,13 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
       if (tube == NULL)
         {
           /* We don't know yet this tube */
-          const gchar *service;
+          const gchar *service, *unique_id;
           TpTubeType type;
           TpHandle initiator_handle;
           GHashTable *parameters;
 
           if (extract_tube_information (self, tube_node, &type,
-                &initiator_handle, &service, &parameters))
+                &initiator_handle, &service, &parameters, &unique_id))
             {
 
 #ifndef HAVE_DBUS_TUBE
@@ -715,7 +722,7 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
 #endif
 
               tube_id = create_new_tube (self, type, initiator_handle,
-                  service, parameters, stream_id, "");
+                  service, parameters, stream_id, unique_id);
               tube = g_hash_table_lookup (priv->tubes,
                   GUINT_TO_POINTER (tube_id));
 
@@ -919,17 +926,19 @@ publish_tube_in_node (LmMessageNode *node,
   LmMessageNode *parameters_node;
   GHashTable *parameters;
   TpTubeType type;
-  gchar *service;
+  gchar *service, *unique_id;
 
   g_object_get (G_OBJECT (tube),
       "service", &service,
       "parameters", &parameters,
       "type", &type,
+      "unique-id", &unique_id,
       NULL);
 
   lm_message_node_set_attributes (node,
       "stream_id", stream_id,
       "service", service,
+      "id", unique_id,
       NULL);
 
   switch (type)
@@ -1131,11 +1140,12 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
                                    LmMessage *msg)
 {
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
-  const gchar *service, *stream_id;
+  const gchar *service, *stream_id, *unique_id;
   GHashTable *parameters;
   TpTubeType type;
   LmMessageNode *node;
   guint tube_id;
+  GabbleTubeDBus *tube;
 
   node = lm_message_node_get_child_with_namespace (msg->node, "tube",
       NS_SI_TUBES);
@@ -1163,14 +1173,17 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
     }
 
   if (!extract_tube_information (self, node, &type, NULL,
-              &service, &parameters))
+              &service, &parameters, &unique_id))
     {
       gabble_bytestream_ibb_close (bytestream);
       return;
     }
 
   tube_id = create_new_tube (self, type, priv->handle, service,
-      parameters, stream_id, "");
+      parameters, stream_id, unique_id);
+  tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
+
+  g_object_set (tube, "bytestream", bytestream, NULL);
 
 #ifndef HAVE_DBUS_TUBE
   if (type == TP_TUBE_TYPE_DBUS)
@@ -1287,7 +1300,7 @@ gabble_tubes_channel_offer_d_bus_tube (TpSvcChannelTypeTubes *iface,
   guint tube_id;
   GabbleTubeIface *tube;
   GHashTable *parameters_copied;
-  gchar *stream_id;
+  gchar *stream_id, *unique_id;
 
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
 
@@ -1299,9 +1312,10 @@ gabble_tubes_channel_offer_d_bus_tube (TpSvcChannelTypeTubes *iface,
   g_hash_table_foreach (parameters, copy_parameter, parameters_copied);
 
   stream_id = gabble_bytestream_factory_generate_stream_id ();
+  unique_id = generate_unique_tube_id ();
 
   tube_id = create_new_tube (self, TP_TUBE_TYPE_DBUS, priv->self_handle,
-      service, parameters_copied, (const gchar*) stream_id, "");
+      service, parameters_copied, (const gchar*) stream_id, unique_id);
 
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
 
@@ -1326,6 +1340,7 @@ gabble_tubes_channel_offer_d_bus_tube (TpSvcChannelTypeTubes *iface,
   tp_svc_channel_type_tubes_return_from_offer_d_bus_tube (context, tube_id);
 
   g_free (stream_id);
+  g_free (unique_id);
 
 #else
   GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
@@ -1355,7 +1370,7 @@ gabble_tubes_channel_offer_stream_tube (TpSvcChannelTypeTubes *iface,
   guint tube_id;
   GabbleTubeIface *tube;
   GHashTable *parameters_copied;
-  gchar *stream_id;
+  gchar *stream_id, *unique_id;
   struct stat stat_buff;
 
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
@@ -1398,9 +1413,10 @@ gabble_tubes_channel_offer_stream_tube (TpSvcChannelTypeTubes *iface,
   g_hash_table_foreach (parameters, copy_parameter, parameters_copied);
 
   stream_id = gabble_bytestream_factory_generate_stream_id ();
+  unique_id = generate_unique_tube_id ();
 
   tube_id = create_new_tube (self, TP_TUBE_TYPE_STREAM, priv->self_handle,
-      service, parameters_copied, (const gchar*) stream_id, "");
+      service, parameters_copied, (const gchar*) stream_id, unique_id);
 
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
 
@@ -1426,6 +1442,7 @@ gabble_tubes_channel_offer_stream_tube (TpSvcChannelTypeTubes *iface,
   tp_svc_channel_type_tubes_return_from_offer_d_bus_tube (context, tube_id);
 
   g_free (stream_id);
+  g_free (unique_id);
 }
 
 /**

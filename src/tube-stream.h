@@ -60,7 +60,7 @@ GType gabble_tube_stream_get_type (void);
 GabbleTubeStream *
 gabble_tube_stream_new (GabbleConnection *conn, TpHandle handle,
     TpHandleType handle_type, TpHandle self_handle, TpHandle initiator,
-    const gchar *service, GHashTable *parameters);
+    const gchar *service, GHashTable *parameters, const gchar *unique_id);
 
 G_END_DECLS
 

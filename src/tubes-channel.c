@@ -473,7 +473,7 @@ create_new_tube (GabbleTubesChannel *self,
     case TP_TUBE_TYPE_STREAM:
       tube = GABBLE_TUBE_IFACE (gabble_tube_stream_new (priv->conn,
           priv->handle, priv->handle_type, priv->self_handle, initiator,
-          service, parameters));
+          service, parameters, unique_id));
       break;
     default:
       g_assert_not_reached ();

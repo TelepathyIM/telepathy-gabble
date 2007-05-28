@@ -68,7 +68,7 @@ enum
   PROP_HANDLE,
   PROP_HANDLE_TYPE,
   PROP_SELF_HANDLE,
-  PROP_UNIQUE_ID,
+  PROP_ID,
   PROP_BYTESTREAM,
   PROP_TYPE,
   PROP_INITIATOR,
@@ -86,7 +86,7 @@ struct _GabbleTubeStreamPrivate
   TpHandle handle;
   TpHandleType handle_type;
   TpHandle self_handle;
-  gchar *unique_id;
+  guint id;
   /* Socket fd -> bytestream */
   GHashTable *bytestreams;
   /* Default bytestream (the one created during SI) */
@@ -428,8 +428,8 @@ gabble_tube_stream_get_property (GObject *object,
       case PROP_SELF_HANDLE:
         g_value_set_uint (value, priv->self_handle);
         break;
-      case PROP_UNIQUE_ID:
-        g_value_set_string (value, priv->unique_id);
+      case PROP_ID:
+        g_value_set_uint (value, priv->id);
         break;
       case PROP_BYTESTREAM:
         g_value_set_object (value, priv->default_bytestream);
@@ -481,9 +481,8 @@ gabble_tube_stream_set_property (GObject *object,
       case PROP_SELF_HANDLE:
         priv->self_handle = g_value_get_uint (value);
         break;
-      case PROP_UNIQUE_ID:
-        g_free (priv->unique_id);
-        priv->unique_id = g_value_dup_string (value);
+      case PROP_ID:
+        priv->id = g_value_get_uint (value);
         break;
       case PROP_BYTESTREAM:
         if (priv->default_bytestream == NULL)
@@ -613,17 +612,17 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
       G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_SELF_HANDLE, param_spec);
 
-  param_spec = g_param_spec_string (
-      "unique-id",
-      "unique id",
+  param_spec = g_param_spec_uint (
+      "id",
+      "id",
       "The unique identifier of this tube",
-      "",
+      0, G_MAXUINT32, 0,
       G_PARAM_CONSTRUCT_ONLY |
       G_PARAM_READWRITE |
       G_PARAM_STATIC_NAME |
       G_PARAM_STATIC_NICK |
       G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_UNIQUE_ID, param_spec);
+  g_object_class_install_property (object_class, PROP_ID, param_spec);
 
   param_spec = g_param_spec_object (
       "bytestream",
@@ -765,7 +764,7 @@ gabble_tube_stream_new (GabbleConnection *conn,
                         TpHandle initiator,
                         const gchar *service,
                         GHashTable *parameters,
-                        const gchar *unique_id)
+                        guint id)
 {
   return g_object_new (GABBLE_TYPE_TUBE_STREAM,
       "connection", conn,
@@ -775,7 +774,7 @@ gabble_tube_stream_new (GabbleConnection *conn,
       "initiator", initiator,
       "service", service,
       "parameters", parameters,
-      "unique-id", unique_id,
+      "id", id,
       NULL);
 }
 

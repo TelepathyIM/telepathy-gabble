@@ -261,12 +261,11 @@ def gabble_test_setup(handler, params=None):
 
     # listen for D-Bus signals
     bus.add_signal_receiver(
-        handler_function=lambda *args, **kw:
+        lambda *args, **kw:
             handler.handle_event((
                 'dbus-signal', unwrap(kw['path']), kw['member'],
                 map(unwrap, args))),
-
-        named_service=gabble._named_service,
+        None, None, gabble._named_service,
         path_keyword='path',
         member_keyword='member',
         )

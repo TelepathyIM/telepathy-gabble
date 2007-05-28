@@ -549,7 +549,7 @@ gabble_tube_dbus_constructor (GType type,
   g_assert (priv->self_handle != 0);
   if (priv->handle_type == TP_HANDLE_TYPE_ROOM)
     {
-      /* 
+      /*
        * We have to create an IBB bytestream that will be
        * used by this MUC tube to communicate.
        *

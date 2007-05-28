@@ -42,7 +42,8 @@ TWISTED_TESTS = \
 	test-roster.py \
 	test-save-alias-to-vcard.py \
 	test-set-status-idempotence.py \
-	test-avatar.py
+	test-avatar.py \
+	test-avatar-async.py
 
 check-extra: $(BUILT_SOURCES)
 	chmod +x run-with-tmp-session-bus.sh $(python_tests_shfiles) \

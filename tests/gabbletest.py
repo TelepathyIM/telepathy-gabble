@@ -170,6 +170,10 @@ class EventTest:
             traceback.print_exc()
             self.fail()
 
+        if ret not in (True, False):
+            print ("warning: %s() returned something other than True or False"
+                % self.queue[0].__name__)
+
         if ret:
             self.queue.pop(0)
             self.timeout_delayed_call.reset(5)

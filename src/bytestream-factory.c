@@ -777,7 +777,7 @@ gabble_bytestream_factory_generate_stream_id (void)
   curtime = time (NULL);
   loctime = localtime (&curtime);
   strftime (stamp, sizeof (stamp), "%s", loctime);
-  stream_id = g_strdup_printf ("%s%d", stamp, g_random_int());
+  stream_id = g_strdup_printf ("%s%u", stamp, g_random_int());
 
   return stream_id;
 }

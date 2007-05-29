@@ -675,6 +675,8 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
                                     G_PARAM_STATIC_NAME |
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_AUTH_BTID, param_spec);
+
+  conn_presence_class_init (gabble_connection_class);
 }
 
 static gboolean
@@ -764,6 +766,8 @@ gabble_connection_finalize (GObject *object)
 
   g_free (priv->auth_mac);
   g_free (priv->auth_btid);
+
+  conn_presence_finalize (self);
 
   G_OBJECT_CLASS (gabble_connection_parent_class)->finalize (object);
 }

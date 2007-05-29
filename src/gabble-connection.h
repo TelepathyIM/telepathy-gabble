@@ -28,6 +28,7 @@
 #include "gabble-types.h"
 #include "gabble-error.h"
 #include <telepathy-glib/base-connection.h>
+#include <telepathy-glib/presence-mixin.h>
 
 G_BEGIN_DECLS
 
@@ -94,10 +95,12 @@ typedef enum {
 
 struct _GabbleConnectionClass {
     TpBaseConnectionClass parent_class;
+		TpPresenceMixinClass presence_class;
 };
 
 struct _GabbleConnection {
     TpBaseConnection parent;
+		TpPresenceMixin presence;
 
     /* loudmouth connection */
     LmConnection *lmconn;

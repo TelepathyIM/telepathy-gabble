@@ -22,6 +22,7 @@
 
 #include <string.h>
 
+#include <telepathy-glib/presence-mixin.h>
 #include <telepathy-glib/svc-connection.h>
 #include <telepathy-glib/util.h>
 
@@ -34,26 +35,31 @@
 #include "debug.h"
 
 
-typedef struct _StatusInfo StatusInfo;
-
-struct _StatusInfo
-{
-  const gchar *name;
-  TpConnectionPresenceType presence_type;
-  const gboolean self;
-  const gboolean exclusive;
+static const TpPresenceStatusOptionalArgumentSpec gabble_status_arguments[] = {
+  { "message",  "s" },
+  { "priority", "n" },
+  { NULL, NULL }
 };
+
 
 /* order must match PresenceId enum in gabble-connection.h */
 /* in increasing order of presence */
-static const StatusInfo gabble_statuses[NUM_GABBLE_PRESENCES] = {
- { "offline",   TP_CONNECTION_PRESENCE_TYPE_OFFLINE,       TRUE, TRUE },
- { "hidden",    TP_CONNECTION_PRESENCE_TYPE_HIDDEN,        TRUE, TRUE },
- { "xa",        TP_CONNECTION_PRESENCE_TYPE_EXTENDED_AWAY, TRUE, TRUE },
- { "away",      TP_CONNECTION_PRESENCE_TYPE_AWAY,          TRUE, TRUE },
- { "dnd",       TP_CONNECTION_PRESENCE_TYPE_AWAY,          TRUE, TRUE },
- { "available", TP_CONNECTION_PRESENCE_TYPE_AVAILABLE,     TRUE, TRUE },
- { "chat",      TP_CONNECTION_PRESENCE_TYPE_AVAILABLE,     TRUE, TRUE }
+static const TpPresenceStatusSpec gabble_statuses[] = {
+  { "offline", TP_CONNECTION_PRESENCE_TYPE_OFFLINE, TRUE,
+    gabble_status_arguments, NULL, NULL },
+  { "hidden", TP_CONNECTION_PRESENCE_TYPE_HIDDEN, TRUE, gabble_status_arguments,
+    NULL, NULL },
+  { "xa", TP_CONNECTION_PRESENCE_TYPE_EXTENDED_AWAY, TRUE,
+    gabble_status_arguments, NULL, NULL },
+  { "away", TP_CONNECTION_PRESENCE_TYPE_AWAY, TRUE, gabble_status_arguments,
+    NULL, NULL },
+  { "dnd", TP_CONNECTION_PRESENCE_TYPE_AWAY, TRUE, gabble_status_arguments,
+    NULL, NULL },
+  { "available", TP_CONNECTION_PRESENCE_TYPE_AVAILABLE, TRUE,
+    gabble_status_arguments, NULL, NULL },
+  { "chat", TP_CONNECTION_PRESENCE_TYPE_AVAILABLE, TRUE,
+    gabble_status_arguments, NULL, NULL },
+  { NULL, 0, FALSE, NULL, NULL, NULL }
 };
 
 
@@ -305,93 +311,6 @@ gabble_connection_get_presence (TpSvcConnectionInterfacePresence *iface,
   tp_svc_connection_interface_presence_return_from_get_presence (
       context, presence_hash);
   g_hash_table_destroy (presence_hash);
-}
-
-
-static GHashTable *
-get_statuses_arguments ()
-{
-  static GHashTable *arguments = NULL;
-
-  if (arguments == NULL)
-    {
-      arguments = g_hash_table_new (g_str_hash, g_str_equal);
-
-      g_hash_table_insert (arguments, "message", "s");
-      g_hash_table_insert (arguments, "priority", "n");
-    }
-
-  return arguments;
-}
-
-
-/**
- * gabble_connection_get_statuses
- *
- * Implements D-Bus method GetStatuses
- * on interface org.freedesktop.Telepathy.Connection.Interface.Presence
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-static void
-gabble_connection_get_statuses (TpSvcConnectionInterfacePresence *iface,
-                                DBusGMethodInvocation *context)
-{
-  GabbleConnection *self = GABBLE_CONNECTION (iface);
-  TpBaseConnection *base = (TpBaseConnection *)self;
-  GHashTable *ret;
-  GValueArray *status;
-  int i;
-
-  g_assert (GABBLE_IS_CONNECTION (self));
-
-  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
-
-  DEBUG ("called.");
-
-  ret = g_hash_table_new_full (g_str_hash, g_str_equal,
-                               NULL, (GDestroyNotify) g_value_array_free);
-
-  for (i=0; i < NUM_GABBLE_PRESENCES; i++)
-    {
-      /* don't report the invisible presence if the server
-       * doesn't have the presence-invisible feature */
-      if (!status_is_available (self, i))
-        continue;
-
-      status = g_value_array_new (5);
-
-      g_value_array_append (status, NULL);
-      g_value_init (g_value_array_get_nth (status, 0), G_TYPE_UINT);
-      g_value_set_uint (g_value_array_get_nth (status, 0),
-          gabble_statuses[i].presence_type);
-
-      g_value_array_append (status, NULL);
-      g_value_init (g_value_array_get_nth (status, 1), G_TYPE_BOOLEAN);
-      g_value_set_boolean (g_value_array_get_nth (status, 1),
-          gabble_statuses[i].self);
-
-      g_value_array_append (status, NULL);
-      g_value_init (g_value_array_get_nth (status, 2), G_TYPE_BOOLEAN);
-      g_value_set_boolean (g_value_array_get_nth (status, 2),
-          gabble_statuses[i].exclusive);
-
-      g_value_array_append (status, NULL);
-      g_value_init (g_value_array_get_nth (status, 3),
-          DBUS_TYPE_G_STRING_STRING_HASHTABLE);
-      g_value_set_static_boxed (g_value_array_get_nth (status, 3),
-          get_statuses_arguments ());
-
-      g_hash_table_insert (ret, (gchar*) gabble_statuses[i].name, status);
-    }
-
-  tp_svc_connection_interface_presence_return_from_get_statuses (
-      context, ret);
-  g_hash_table_destroy (ret);
 }
 
 
@@ -687,6 +606,22 @@ connection_status_changed_cb (
 }
 
 
+static gboolean
+status_available_cb (GObject *obj, guint nth_status)
+{
+  return status_is_available (GABBLE_CONNECTION (obj), nth_status);
+}
+
+
+void
+conn_presence_class_init (GabbleConnectionClass *klass)
+{
+  tp_presence_mixin_class_init ((GObjectClass *) klass,
+      G_STRUCT_OFFSET (GabbleConnectionClass, presence_class),
+      status_available_cb, gabble_statuses);
+}
+
+
 void
 conn_presence_init (GabbleConnection *conn)
 {
@@ -694,6 +629,16 @@ conn_presence_init (GabbleConnection *conn)
       G_CALLBACK (connection_presence_update_cb), conn);
   g_signal_connect (conn, "status-changed",
       G_CALLBACK (connection_status_changed_cb), conn);
+
+  tp_presence_mixin_init ((GObject *) conn,
+      G_STRUCT_OFFSET (GabbleConnection, presence));
+}
+
+
+void
+conn_presence_finalize (GabbleConnection *conn)
+{
+  tp_presence_mixin_finalize ((GObject *) conn);
 }
 
 
@@ -703,12 +648,13 @@ conn_presence_iface_init (gpointer g_iface, gpointer iface_data)
   TpSvcConnectionInterfacePresenceClass *klass =
       (TpSvcConnectionInterfacePresenceClass *) g_iface;
 
+  tp_presence_mixin_iface_init (g_iface, iface_data);
+
 #define IMPLEMENT(x) tp_svc_connection_interface_presence_implement_##x (\
     klass, gabble_connection_##x)
   IMPLEMENT(add_status);
   IMPLEMENT(clear_status);
   IMPLEMENT(get_presence);
-  IMPLEMENT(get_statuses);
   IMPLEMENT(remove_status);
   IMPLEMENT(request_presence);
   IMPLEMENT(set_last_activity_time);

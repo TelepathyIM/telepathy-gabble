@@ -425,6 +425,7 @@ create_new_tube (GabbleTubesChannel *self,
       g_assert_not_reached ();
     }
 
+  DEBUG ("add tube %u", tube_id);
   g_hash_table_insert (priv->tubes, GUINT_TO_POINTER (tube_id), tube);
   g_hash_table_insert (priv->stream_id_to_tube_id, g_strdup (stream_id),
       GUINT_TO_POINTER (tube_id));

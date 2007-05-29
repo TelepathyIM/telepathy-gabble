@@ -462,6 +462,8 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
         &stream_init_id, &mime_type, &stream_methods))
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
+  DEBUG ("received a SI request");
+
   peer_handle = tp_handle_lookup (contact_repo, from, NULL, NULL);
   if (peer_handle == 0)
     {

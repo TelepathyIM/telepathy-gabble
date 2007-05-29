@@ -517,6 +517,7 @@ gabble_bytestream_ibb_make_accept_iq (GabbleBytestreamIBB *self)
       priv->peer_resource == NULL ||
       priv->stream_init_id == NULL)
     {
+      DEBUG ("bytestream was not created due to a SI request");
       return NULL;
     }
 

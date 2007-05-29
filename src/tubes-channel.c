@@ -1237,6 +1237,12 @@ start_stream_initiation (GabbleTubesChannel *self,
   return result;
 }
 
+static gint
+generate_tube_id (void)
+{
+  return g_random_int_range (0, G_MAXINT);
+}
+
 /**
  * gabble_tubes_channel_offer_d_bus_tube
  *
@@ -1268,7 +1274,7 @@ gabble_tubes_channel_offer_d_bus_tube (TpSvcChannelTypeTubes *iface,
   g_hash_table_foreach (parameters, copy_parameter, parameters_copied);
 
   stream_id = gabble_bytestream_factory_generate_stream_id ();
-  tube_id = g_random_int ();
+  tube_id = generate_tube_id ();
 
   create_new_tube (self, TP_TUBE_TYPE_DBUS, priv->self_handle,
       service, parameters_copied, (const gchar*) stream_id, tube_id);
@@ -1367,7 +1373,7 @@ gabble_tubes_channel_offer_stream_tube (TpSvcChannelTypeTubes *iface,
   g_hash_table_foreach (parameters, copy_parameter, parameters_copied);
 
   stream_id = gabble_bytestream_factory_generate_stream_id ();
-  tube_id = g_random_int ();
+  tube_id = generate_tube_id ();
 
   create_new_tube (self, TP_TUBE_TYPE_STREAM, priv->self_handle,
       service, parameters_copied, (const gchar*) stream_id, tube_id);

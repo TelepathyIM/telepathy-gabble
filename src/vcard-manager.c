@@ -1022,15 +1022,7 @@ request_reply_cb (GabbleConnection *conn,
       priv->reqs_in_flight = g_slist_remove (priv->reqs_in_flight, request);
 
       request_send (request, vcard_node, NULL);
-
-      if (err)
-        {
-          complete_one_request (request, NULL, err);
-        }
-      else
-        {
-          DEBUG ("Request %p fetch succeeded", request);
-        }
+      DEBUG ("Request %p fetch succeeded", request);
     }
   else
     {

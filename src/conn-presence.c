@@ -409,29 +409,6 @@ gabble_connection_request_presence (TpSvcConnectionInterfacePresence *iface,
 }
 
 
-/**
- * gabble_connection_set_last_activity_time
- *
- * Implements D-Bus method SetLastActivityTime
- * on interface org.freedesktop.Telepathy.Connection.Interface.Presence
- */
-static void
-gabble_connection_set_last_activity_time (TpSvcConnectionInterfacePresence *iface,
-                                          guint time,
-                                          DBusGMethodInvocation *context)
-{
-  GabbleConnection *self = GABBLE_CONNECTION (iface);
-  TpBaseConnection *base = (TpBaseConnection *)self;
-
-  g_assert (GABBLE_IS_CONNECTION (self));
-
-  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
-
-  tp_svc_connection_interface_presence_return_from_set_last_activity_time (
-      context);
-}
-
-
 struct _i_hate_g_hash_table_foreach
 {
   GabbleConnection *conn;
@@ -657,7 +634,6 @@ conn_presence_iface_init (gpointer g_iface, gpointer iface_data)
   IMPLEMENT(get_presence);
   IMPLEMENT(remove_status);
   IMPLEMENT(request_presence);
-  IMPLEMENT(set_last_activity_time);
   IMPLEMENT(set_status);
 #undef IMPLEMENT
 }

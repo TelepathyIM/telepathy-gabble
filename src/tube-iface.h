@@ -32,7 +32,7 @@ struct _GabbleTubeIfaceClass {
 
   gchar * (*get_stream_id) (GabbleTubeIface *tube);
   void (*accept) (GabbleTubeIface *tube);
-  void (*close) (GabbleTubeIface *close);
+  void (*close) (GabbleTubeIface *tube);
 };
 
 GType gabble_tube_iface_get_type (void);

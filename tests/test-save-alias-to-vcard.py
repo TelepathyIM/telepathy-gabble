@@ -8,10 +8,10 @@ Regression test.
    parameter
 """
 
-from servicetest import Eventually
+from servicetest import lazy
 from gabbletest import go
 
-@Eventually
+@lazy
 def expect_connected(event, data):
     if event[0] != 'dbus-signal':
         return False

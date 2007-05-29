@@ -21,7 +21,7 @@ tp_path_prefix = '/org/freedesktop/Telepathy'
 class TryNextHandler(Exception):
     pass
 
-def Eventually(func):
+def lazy(func):
     def handler(event, data):
         if func(event, data):
             return True

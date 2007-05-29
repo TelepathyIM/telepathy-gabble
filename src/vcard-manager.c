@@ -912,7 +912,7 @@ replace_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 }
 
 static GabbleVCardManagerRequest *request_send (GabbleVCardManagerRequest *,
-    LmMessageNode *replacement, const gchar *jid, GError **error);
+    LmMessageNode *replacement, const gchar *jid);
 
 static LmHandlerResult
 request_reply_cb (GabbleConnection *conn,
@@ -1021,7 +1021,7 @@ request_reply_cb (GabbleConnection *conn,
        */
       priv->reqs_in_flight = g_slist_remove (priv->reqs_in_flight, request);
 
-      request_send (request, vcard_node, NULL, &err);
+      request_send (request, vcard_node, NULL);
 
       if (err)
         {
@@ -1144,8 +1144,7 @@ vcard_pipeline_enqueue (GabbleVCardManagerRequest *request, LmMessage *msg,
 static GabbleVCardManagerRequest *
 request_send (GabbleVCardManagerRequest *request,
               LmMessageNode *replacement,
-              const gchar *jid,
-              GError **error)
+              const gchar *jid)
 {
   GabbleVCardManager *self = request->manager;
   GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (self);
@@ -1260,7 +1259,7 @@ gabble_vcard_manager_request (GabbleVCardManager *self,
       DEBUG ("adding the request to new entry %p and sending the request",
           entry);
 
-      if (!request_send (entry->request, NULL, jid, error))
+      if (!request_send (entry->request, NULL, jid))
         {
           DEBUG ("some kind of error happened");
 
@@ -1310,7 +1309,7 @@ gabble_vcard_manager_replace (GabbleVCardManager *self,
 
   priv->requests = g_slist_prepend (priv->requests, request);
 
-  return request_send (request, replacement, NULL, error);
+  return request_send (request, replacement, NULL);
 
   gabble_vcard_manager_invalidate_cache (self, request->handle);
 }
@@ -1369,7 +1368,7 @@ gabble_vcard_manager_edit (GabbleVCardManager *self,
   request->edit_args[argc] = NULL;
   va_end (ap);
 
-  return request_send (request, NULL, NULL, error);
+  return request_send (request, NULL, NULL);
 }
 
 void

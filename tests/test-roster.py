@@ -7,8 +7,10 @@ import dbus
 
 from twisted.words.xish import xpath
 
+from servicetest import Eventually
 from gabbletest import go
 
+@Eventually
 def expect_connected(event, data):
     if event[0] != 'dbus-signal':
         return False

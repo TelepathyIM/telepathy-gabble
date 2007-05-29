@@ -519,7 +519,14 @@ extract_tube_information (GabbleTubesChannel *self,
   if (tube_id != NULL)
     {
       const gchar *str;
+
       str = lm_message_node_get_attribute (tube_node, "id");
+      if (str == NULL)
+        {
+          DEBUG ("no tube id in SI request");
+          return FALSE;
+        }
+
       *tube_id = atoi (str);
     }
 
@@ -1123,6 +1130,7 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
   if (!extract_tube_information (self, node, &type, NULL,
               &service, &parameters, &tube_id))
     {
+      DEBUG ("can't extract tube information in SI request");
       gabble_bytestream_ibb_close (bytestream);
       return;
     }

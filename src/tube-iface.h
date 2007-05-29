@@ -22,6 +22,8 @@
 
 #include <glib-object.h>
 
+#include "bytestream-ibb.h"
+
 G_BEGIN_DECLS
 
 typedef struct _GabbleTubeIface GabbleTubeIface;
@@ -33,6 +35,8 @@ struct _GabbleTubeIfaceClass {
   gchar * (*get_stream_id) (GabbleTubeIface *tube);
   void (*accept) (GabbleTubeIface *tube);
   void (*close) (GabbleTubeIface *tube);
+  void (*add_bytestream) (GabbleTubeIface *tube,
+      GabbleBytestreamIBB *bytestream);
 };
 
 GType gabble_tube_iface_get_type (void);
@@ -56,6 +60,10 @@ gabble_tube_iface_accept (GabbleTubeIface *tube);
 
 void
 gabble_tube_iface_close (GabbleTubeIface *tube);
+
+void
+gabble_tube_iface_add_bytestream (GabbleTubeIface *tube,
+    GabbleBytestreamIBB *bytestream);
 
 G_END_DECLS
 

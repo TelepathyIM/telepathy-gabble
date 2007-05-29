@@ -1101,7 +1101,7 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
   TpTubeType type;
   LmMessageNode *node;
   guint tube_id;
-  GabbleTubeDBus *tube;
+  GabbleTubeIface *tube;
 
   node = lm_message_node_get_child_with_namespace (msg->node, "tube",
       NS_SI_TUBES);
@@ -1136,6 +1136,16 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
       return;
     }
 
+  tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
+  if (tube != NULL)
+    {
+      DEBUG ("receive new bytestream request for existing tube: %u", tube_id);
+
+      gabble_tube_iface_add_bytestream (tube, bytestream);
+      return;
+    }
+
+  /* New tube */
   create_new_tube (self, type, priv->handle, service,
       parameters, stream_id, tube_id);
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));

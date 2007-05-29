@@ -38,10 +38,13 @@
 #include "debug.h"
 #include "disco.h"
 #include "gabble-connection.h"
+#include "presence.h"
+#include "presence-cache.h"
 #include "namespaces.h"
 #include <telepathy-glib/svc-unstable.h>
 #include "util.h"
 #include "tube-iface.h"
+#include "bytestream-factory.h"
 #include "bytestream-ibb.h"
 #include "gabble-signals-marshal.h"
 
@@ -87,8 +90,8 @@ struct _GabbleTubeStreamPrivate
   TpHandleType handle_type;
   TpHandle self_handle;
   guint id;
-  /* Socket fd -> bytestream */
-  GHashTable *bytestreams;
+  GHashTable *fd_to_bytestreams;
+  GHashTable *bytestream_to_io_channel;
   /* Default bytestream (the one created during SI) */
   GabbleBytestreamIBB *default_bytestream;
   TpHandle initiator;
@@ -97,7 +100,6 @@ struct _GabbleTubeStreamPrivate
 
   /* Path of the unix socket associated with this stream tube */
   gchar *socket_path;
-  GIOChannel *io_channel;
   GIOChannel *listen_io_channel;
 
   gboolean dispose_has_run;
@@ -106,10 +108,8 @@ struct _GabbleTubeStreamPrivate
 #define GABBLE_TUBE_STREAM_GET_PRIVATE(obj) \
     ((GabbleTubeStreamPrivate *) obj->priv)
 
-/*
 static void data_received_cb (GabbleBytestreamIBB *ibb, TpHandle sender,
     GString *data, gpointer user_data);
-    */
 
 static void
 generate_ascii_string (guint len,
@@ -144,7 +144,8 @@ socket_recv_data_cb (GIOChannel *source,
     return TRUE;
 
   fd = g_io_channel_unix_get_fd (source);
-  bytestream = g_hash_table_lookup (priv->bytestreams, GINT_TO_POINTER (fd));
+  bytestream = g_hash_table_lookup (priv->fd_to_bytestreams,
+      GINT_TO_POINTER (fd));
 
   if (bytestream == NULL)
     {
@@ -163,8 +164,10 @@ socket_recv_data_cb (GIOChannel *source,
     }
   else
     {
+      g_print ("status: %d\n", status);
       DEBUG ("error reading from socket: %s",
           error ? error->message : "");
+      return FALSE;
     }
 
   if (error != NULL)
@@ -173,13 +176,183 @@ socket_recv_data_cb (GIOChannel *source,
   return TRUE;
 }
 
+static void
+extra_bytestream_state_changed_cb (GabbleBytestreamIBB *bytestream,
+                                   BytestreamIBBState state,
+                                   gpointer user_data)
+{
+  GabbleTubeStream *self = GABBLE_TUBE_STREAM (user_data);
+  GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
+  GIOChannel *channel;
+
+  channel = g_hash_table_lookup (priv->bytestream_to_io_channel,
+      bytestream);
+  if (channel == NULL)
+    {
+      DEBUG ("no IO channel associated with the bytestream");
+      return;
+    }
+
+  // XXX use in both side!
+  if (state == BYTESTREAM_IBB_STATE_OPEN)
+    {
+      DEBUG ("extra bytestream open");
+
+      g_signal_connect (bytestream, "data-received",
+          G_CALLBACK (data_received_cb), self);
+
+      g_io_add_watch (channel, G_IO_IN, socket_recv_data_cb, self);
+    }
+  else if (state == BYTESTREAM_IBB_STATE_CLOSED)
+    {
+      int fd;
+
+      DEBUG ("extra bytestream closed");
+
+      fd = g_io_channel_unix_get_fd (channel);
+
+      g_hash_table_remove (priv->fd_to_bytestreams, GINT_TO_POINTER (fd));
+      g_hash_table_remove (priv->bytestream_to_io_channel, bytestream);
+    }
+}
+
+struct _bytestream_negotiate_cb_data
+{
+  GabbleTubeStream *self;
+  gint fd;
+};
+
+static void
+bytestream_negotiate_cb (GabbleBytestreamIBB *bytestream,
+                         const gchar *stream_id,
+                         LmMessage *msg,
+                         gpointer user_data)
+{
+  struct _bytestream_negotiate_cb_data *data =
+    (struct _bytestream_negotiate_cb_data *) user_data;
+  GabbleTubeStream *self = data->self;
+  GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
+  GIOChannel *channel;
+
+  if (bytestream == NULL)
+    {
+      DEBUG ("initiator refused new bytestream");
+
+      if (close (data->fd) == -1)
+        {
+          DEBUG ("error closing socket: %s", g_strerror (errno));
+        }
+
+      return;
+    }
+
+  DEBUG ("extra bytestream accepted");
+
+  channel = g_io_channel_unix_new (data->fd);
+  g_io_channel_set_encoding (channel, NULL, NULL);
+  g_io_channel_set_buffered (channel, FALSE);
+
+  g_hash_table_insert (priv->fd_to_bytestreams, GINT_TO_POINTER (data->fd),
+      g_object_ref (bytestream));
+  g_hash_table_insert (priv->bytestream_to_io_channel,
+      g_object_ref (bytestream), channel);
+
+  g_signal_connect (bytestream, "state-changed",
+                G_CALLBACK (extra_bytestream_state_changed_cb), self);
+
+  g_slice_free (struct _bytestream_negotiate_cb_data, data);
+}
+
+static gboolean
+start_stream_initiation (GabbleTubeStream *self,
+                         gint fd,
+                         GError **error)
+{
+  GabbleTubeStreamPrivate *priv;
+  LmMessageNode *node;
+  LmMessage *msg;
+  TpHandleRepoIface *contact_repo;
+  GabblePresence *presence;
+  const gchar *jid, *resource;
+  gchar *full_jid, *stream_id, *id_str;
+  gboolean result;
+  struct _bytestream_negotiate_cb_data *data;
+
+  priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
+
+  contact_repo = tp_base_connection_get_handles (
+     (TpBaseConnection*) priv->conn, TP_HANDLE_TYPE_CONTACT);
+
+  jid = tp_handle_inspect (contact_repo, priv->initiator);
+
+  presence = gabble_presence_cache_get (priv->conn->presence_cache,
+      priv->initiator);
+  if (presence == NULL)
+    {
+      DEBUG ("can't find initiator's presence");
+      if (error != NULL)
+        g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+            "can't find initiator's presence");
+
+      return FALSE;
+    }
+
+  resource = gabble_presence_pick_resource_by_caps (presence,
+      PRESENCE_CAP_SI_TUBES);
+  if (resource == NULL)
+    {
+      DEBUG ("initiator doesn't have tubes capabilities");
+      if (error != NULL)
+        g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+            "initiator doesn't have tubes capabilities");
+
+      return FALSE;
+    }
+
+  stream_id = gabble_bytestream_factory_generate_stream_id ();
+  full_jid = g_strdup_printf ("%s/%s", jid, resource);
+
+  msg = gabble_bytestream_factory_make_stream_init_iq (full_jid,
+      stream_id, NS_SI_TUBES);
+
+  id_str = g_strdup_printf ("%u", priv->id);
+
+  node = lm_message_node_add_child (msg->node, "tube", NULL);
+  lm_message_node_set_attributes (node,
+      "xmlns", NS_SI_TUBES,
+      "type", "stream",
+      "service", priv->service,
+      "initiator", jid,
+      "stream_id", stream_id,
+      "id", id_str,
+      NULL);
+
+  data = g_slice_new (struct _bytestream_negotiate_cb_data);
+  data->self = self;
+  data->fd = fd;
+
+  result = gabble_bytestream_factory_negotiate_stream (
+    priv->conn->bytestream_factory,
+    msg,
+    stream_id,
+    bytestream_negotiate_cb,
+    data,
+    error);
+
+  lm_message_unref (msg);
+  g_free (stream_id);
+  g_free (full_jid);
+  g_free (id_str);
+
+  return result;
+}
+
 gboolean
 listen_cb (GIOChannel *source,
            GIOCondition condition,
            gpointer data)
 {
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (data);
-  GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
   int fd, listen_fd;
   struct sockaddr_un addr;
   socklen_t addrlen;
@@ -204,17 +377,13 @@ listen_cb (GIOChannel *source,
       return FALSE;
     }
 
-  priv->io_channel = g_io_channel_unix_new (fd);
-  g_io_channel_set_encoding (priv->io_channel, NULL, NULL);
-  g_io_channel_set_buffered (priv->io_channel, FALSE);
-  g_io_add_watch (priv->io_channel, G_IO_IN,
-      socket_recv_data_cb, self);
+  DEBUG ("request new bytestream");
 
-  /* Shall we accept more than one connection ? */
-  return FALSE;
+  start_stream_initiation (self, fd, NULL);
+
+  return TRUE;
 }
 
-#if 0
 static gboolean
 new_connection_to_socket (GabbleTubeStream *self,
                           GabbleBytestreamIBB *bytestream)
@@ -223,6 +392,7 @@ new_connection_to_socket (GabbleTubeStream *self,
   int fd;
   struct sockaddr_un addr;
   int flags;
+  GIOChannel *channel;
 
   g_assert (priv->initiator == priv->self_handle);
 
@@ -233,7 +403,6 @@ new_connection_to_socket (GabbleTubeStream *self,
       return FALSE;
     }
 
-  // XXX close the tube if error ?
   memset (&addr, 0, sizeof (addr));
   addr.sun_family = PF_UNIX;
 
@@ -255,15 +424,21 @@ new_connection_to_socket (GabbleTubeStream *self,
     }
 
   DEBUG ("Connected to socket: %s", priv->socket_path);
-  priv->io_channel = g_io_channel_unix_new (fd);
-  g_io_channel_set_encoding (priv->io_channel, NULL, NULL);
-  g_io_channel_set_buffered (priv->io_channel, FALSE);
-  g_io_add_watch (priv->io_channel, G_IO_IN,
-      socket_recv_data_cb, self);
+  channel = g_io_channel_unix_new (fd);
+  g_io_channel_set_encoding (channel, NULL, NULL);
+  g_io_channel_set_buffered (channel, FALSE);
+  g_io_add_watch (channel, G_IO_IN, socket_recv_data_cb, self);
+
+  g_hash_table_insert (priv->fd_to_bytestreams, GINT_TO_POINTER (fd),
+      g_object_ref (bytestream));
+  g_hash_table_insert (priv->bytestream_to_io_channel,
+      g_object_ref (bytestream), channel);
+
+  g_signal_connect (bytestream, "data-received",
+      G_CALLBACK (data_received_cb), self);
 
   return TRUE;
 }
-#endif
 
 static void
 tube_stream_open (GabbleTubeStream *self)
@@ -284,11 +459,6 @@ tube_stream_open (GabbleTubeStream *self)
   /* We didn't create this tube so it doesn't have
    * a socket associated with it. Let's create one */
   g_assert (priv->socket_path == NULL);
-
-  /*
-  g_signal_connect (priv->default_bytestream, "data-received",
-      G_CALLBACK (data_received_cb), self);
-      */
 
   // XXX close the tube if error ?
 
@@ -346,9 +516,11 @@ gabble_tube_stream_init (GabbleTubeStream *self)
   self->priv = priv;
 
   priv->default_bytestream = NULL;
-  priv->bytestreams = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-      NULL, (GDestroyNotify) g_object_unref);
-  priv->io_channel = NULL;
+  priv->fd_to_bytestreams = g_hash_table_new_full (g_direct_hash,
+      g_direct_equal, NULL, (GDestroyNotify) g_object_unref);
+  priv->bytestream_to_io_channel = g_hash_table_new_full (g_direct_hash,
+      g_direct_equal, (GDestroyNotify) g_object_unref,
+      (GDestroyNotify) g_io_channel_unref);
   priv->listen_io_channel = NULL;
 
   priv->dispose_has_run = FALSE;
@@ -416,19 +588,19 @@ gabble_tube_stream_dispose (GObject *object)
       gabble_bytestream_ibb_close (priv->default_bytestream);
     }
 
-  if (priv->bytestreams != NULL)
+  if (priv->fd_to_bytestreams != NULL)
     {
-      g_hash_table_destroy (priv->bytestreams);
+      g_hash_table_destroy (priv->fd_to_bytestreams);
+      priv->fd_to_bytestreams = NULL;
+    }
+
+  if (priv->bytestream_to_io_channel != NULL)
+    {
+      g_hash_table_destroy (priv->bytestream_to_io_channel);
+      priv->bytestream_to_io_channel = NULL;
     }
 
   tp_handle_unref (contact_repo, priv->initiator);
-
-  if (priv->io_channel)
-    {
-      g_io_channel_shutdown (priv->io_channel, TRUE, NULL);
-      g_io_channel_unref (priv->io_channel);
-      priv->io_channel = NULL;
-    }
 
   if (priv->listen_io_channel)
     {
@@ -774,9 +946,8 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
                   G_TYPE_NONE, 0);
 }
 
-#if 0
 static void
-data_received_cb (GabbleBytestreamIBB *ibb,
+data_received_cb (GabbleBytestreamIBB *bytestream,
                   TpHandle sender,
                   GString *data,
                   gpointer user_data)
@@ -784,15 +955,20 @@ data_received_cb (GabbleBytestreamIBB *ibb,
   GabbleTubeStream *tube = GABBLE_TUBE_STREAM (user_data);
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (tube);
   gsize written;
+  GIOChannel *channel;
   GIOStatus status;
   GError *error = NULL;
 
   DEBUG ("received: %s\n", data->str);
 
-  if (priv->io_channel == NULL)
-    return;
+  channel = g_hash_table_lookup (priv->bytestream_to_io_channel, bytestream);
+  if (channel == NULL)
+    {
+      DEBUG ("no IO channel associated with the bytestream");
+      return;
+    }
 
-  status = g_io_channel_write_chars (priv->io_channel, data->str, data->len,
+  status = g_io_channel_write_chars (channel, data->str, data->len,
       &written, &error);
   if (status == G_IO_STATUS_NORMAL)
     {
@@ -807,7 +983,6 @@ data_received_cb (GabbleBytestreamIBB *ibb,
   if (error != NULL)
     g_error_free (error);
 }
-#endif
 
 GabbleTubeStream *
 gabble_tube_stream_new (GabbleConnection *conn,
@@ -940,10 +1115,43 @@ static void
 gabble_tube_stream_add_bytestream (GabbleTubeIface *tube,
                                    GabbleBytestreamIBB *bytestream)
 {
-  /*
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (tube);
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
-  */
+
+  if (priv->initiator != priv->self_handle)
+    {
+      DEBUG ("I'm not the initiator of this tube, can't accept"
+          "an extra bytestream");
+
+      gabble_bytestream_ibb_close (bytestream);
+      return;
+    }
+
+  /* New bytestream, let's connect to the socket */
+  if (new_connection_to_socket (self, bytestream))
+    {
+      LmMessage *msg;
+      LmMessageNode *si, *tube_node;
+
+      DEBUG ("accept the extra bytestream");
+
+      msg = gabble_bytestream_ibb_make_accept_iq (bytestream);
+
+      si = lm_message_node_get_child_with_namespace (msg->node, "si",
+          NS_SI);
+      g_assert (si != NULL);
+
+      tube_node = lm_message_node_add_child (si, "tube", "");
+      lm_message_node_set_attribute (tube_node, "xmlns", NS_SI_TUBES);
+
+      gabble_bytestream_ibb_accept (bytestream, msg);
+
+      lm_message_unref (msg);
+    }
+  else
+    {
+      gabble_bytestream_ibb_close (bytestream);
+    }
 }
 
 static void

@@ -477,8 +477,6 @@ emit_avatar_retrieved (TpSvcConnectionInterfaceAvatars *iface,
   if (!parse_avatar (vcard_node, &mime_type, &avatar_str, NULL))
     return;
 
-  DEBUG ("got avatar for contact %d", contact);
-
   sha1 = sha1_hex (avatar_str->str, avatar_str->len);
   arr = g_array_new (FALSE, FALSE, sizeof (gchar));
   g_array_append_vals (arr, avatar_str->str, avatar_str->len);
@@ -487,8 +485,6 @@ emit_avatar_retrieved (TpSvcConnectionInterfaceAvatars *iface,
   g_array_free (arr, TRUE);
   g_free (sha1);
   g_string_free (avatar_str, TRUE);
-
-  DEBUG (":/");
 }
 
 static void

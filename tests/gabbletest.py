@@ -22,6 +22,8 @@ class Authenticator(xmlstream.Authenticator):
     def connectionMade(self):
         self.xmlstream.initiating = False
         self.xmlstream.sid = '1'
+        self.xmlstream.version = '0.9'
+        self.xmlstream.namespace = 'jabber:client'
         self.xmlstream.sendHeader()
 
     def streamStarted(self):

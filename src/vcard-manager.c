@@ -911,7 +911,7 @@ replace_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
-static GabbleVCardManagerRequest *request_send (GabbleVCardManagerRequest *,
+static void request_send (GabbleVCardManagerRequest *,
     LmMessageNode *replacement, const gchar *jid);
 
 static LmHandlerResult
@@ -1133,7 +1133,7 @@ vcard_pipeline_enqueue (GabbleVCardManagerRequest *request, LmMessage *msg,
  * replace_reply_cb when it returns.
  *
  * Frees the @request on error, returns it on success. */
-static GabbleVCardManagerRequest *
+static void
 request_send (GabbleVCardManagerRequest *request,
               LmMessageNode *replacement,
               const gchar *jid)
@@ -1164,8 +1164,6 @@ request_send (GabbleVCardManagerRequest *request,
       (replacement ? replace_reply_cb : request_reply_cb));
 
   vcard_pipeline_go (self);
-
-  return request;
 }
 
 static void
@@ -1250,18 +1248,7 @@ gabble_vcard_manager_request (GabbleVCardManager *self,
           request);
       DEBUG ("adding the request to new entry %p and sending the request",
           entry);
-
-      if (!request_send (entry->request, NULL, jid))
-        {
-          DEBUG ("some kind of error happened");
-
-          delete_request (entry->request);
-          entry->request = NULL;
-          gabble_vcard_manager_invalidate_cache (self, entry->handle);
-
-          delete_request (request);
-          return NULL;
-        }
+      request_send (entry->request, NULL, jid);
     }
 
   return request;
@@ -1301,7 +1288,8 @@ gabble_vcard_manager_replace (GabbleVCardManager *self,
 
   priv->requests = g_slist_prepend (priv->requests, request);
 
-  return request_send (request, replacement, NULL);
+  request_send (request, replacement, NULL);
+  return request;
 
   gabble_vcard_manager_invalidate_cache (self, request->handle);
 }
@@ -1360,7 +1348,8 @@ gabble_vcard_manager_edit (GabbleVCardManager *self,
   request->edit_args[argc] = NULL;
   va_end (ap);
 
-  return request_send (request, NULL, NULL);
+  request_send (request, NULL, NULL);
+  return request;
 }
 
 void

@@ -183,34 +183,6 @@ emit_one_presence_update (GabbleConnection *self,
 
 
 /**
- * gabble_connection_add_status
- *
- * Implements D-Bus method AddStatus
- * on interface org.freedesktop.Telepathy.Connection.Interface.Presence
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-static void
-gabble_connection_add_status (TpSvcConnectionInterfacePresence *iface,
-                              const gchar *status,
-                              GHashTable *parms,
-                              DBusGMethodInvocation *context)
-{
-  TpBaseConnection *self = TP_BASE_CONNECTION (iface);
-  GError unimpl = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
-    "Only one status is possible at a time with this protocol" };
-
-  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (self, context);
-
-  dbus_g_method_return_error (context, &unimpl);
-}
-
-
-/**
  * gabble_connection_clear_status
  *
  * Implements D-Bus method ClearStatus
@@ -629,7 +601,6 @@ conn_presence_iface_init (gpointer g_iface, gpointer iface_data)
 
 #define IMPLEMENT(x) tp_svc_connection_interface_presence_implement_##x (\
     klass, gabble_connection_##x)
-  IMPLEMENT(add_status);
   IMPLEMENT(clear_status);
   IMPLEMENT(get_presence);
   IMPLEMENT(remove_status);

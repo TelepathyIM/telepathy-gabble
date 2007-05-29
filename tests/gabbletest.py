@@ -3,20 +3,13 @@
 Infrastructure code for testing Gabble by pretending to be a Jabber server.
 """
 
-import pprint
-import sys
-import traceback
-
-import dbus
-import dbus.glib
-
+import servicetest
 from twisted.words.xish import xpath
 from twisted.words.protocols.jabber.client import IQ
 from twisted.words.protocols.jabber import xmlstream
 from twisted.internet import reactor
 
-tp_name_prefix = 'org.freedesktop.Telepathy'
-tp_path_prefix = '/org/freedesktop/Telepathy'
+import dbus
 
 class Authenticator(xmlstream.Authenticator):
     "Trivial XML stream authenticator that accepts one username/digest pair."
@@ -104,148 +97,7 @@ class XmlStreamFactory(xmlstream.XmlStreamFactory):
             xs.addObserver(event, fn)
         return xs
 
-class EventTest:
-    """Somewhat odd event dispatcher for asynchronous tests.
-
-    Callbacks are kept in a queue. Incoming events are passed to the first
-    callback. If the callback returns True, the callback is removed. If the
-    callback raises AssertionError, the test fails. If there are no more
-    callbacks, the test passes. The reactor is stopped when the test passes.
-    """
-
-    def __init__(self):
-        self.queue = []
-        self.data = {'test': self}
-        self.timeout_delayed_call = reactor.callLater(5, self.timeout_cb)
-        #self.verbose = True
-        self.verbose = False
-        # ugh
-        self.stopping = False
-
-    def timeout_cb(self):
-        print 'timed out waiting for events'
-        print self.queue[0]
-        self.fail()
-
-    def fail(self):
-        # ugh; better way to stop the reactor and exit(1)?
-        import os
-        os._exit(1)
-
-    def expect(self, f):
-        self.queue.append(f)
-
-    def try_stop(self):
-        if self.stopping:
-            return True
-
-        if not self.queue:
-            if self.verbose:
-                print 'no handlers left; stopping'
-
-            self.stopping = True
-            reactor.stop()
-            return True
-
-        return False
-
-    def handle_event(self, event):
-        if self.try_stop():
-            return
-
-        if self.verbose:
-            print 'got event:'
-
-            for item in event:
-                print '- %s' % pprint.pformat(item)
-
-        try:
-            ret = self.queue[0](event, self.data)
-        except AssertionError, e:
-            print 'test failed:'
-            traceback.print_exc()
-            self.fail()
-        except Exception, e:
-            print 'error in handler:'
-            traceback.print_exc()
-            self.fail()
-
-        if ret not in (True, False):
-            print ("warning: %s() returned something other than True or False"
-                % self.queue[0].__name__)
-
-        if ret:
-            self.queue.pop(0)
-            self.timeout_delayed_call.reset(5)
-
-            if self.verbose:
-                print 'event handled'
-
-                if self.queue:
-                    print 'next handler: %r' % self.queue[0]
-        else:
-            if self.verbose:
-                print 'event not handled'
-
-        if self.verbose:
-            print
-
-        self.try_stop()
-
-def cm_iface(proxy):
-    return dbus.Interface(proxy, tp_name_prefix + '.ConnectionManager')
-
-def conn_iface(proxy):
-    return dbus.Interface(proxy, tp_name_prefix + '.Connection')
-
-def get_cm(bus, cm):
-    return bus.get_object(
-        tp_name_prefix + '.ConnectionManager.%s' % cm,
-        tp_path_prefix + '/ConnectionManager/%s' % cm)
-
-def request_connection(cm, protocol, parameters):
-    connection_name, connection_path = cm_iface(cm).RequestConnection(
-        protocol, parameters)
-    connection = cm._bus.get_object(connection_name, connection_path)
-    return connection
-
-def unwrap(x):
-    """Hack to unwrap D-Bus values, so that they're easier to read when
-    printed."""
-
-    if isinstance(x, list):
-        return map(unwrap, x)
-
-    if isinstance(x, tuple):
-        return tuple(map(unwrap, x))
-
-    if isinstance(x, dict):
-        return dict([(unwrap(k), unwrap(v)) for k, v in x.iteritems()])
-
-    for t in [unicode, str, long, int, float, bool]:
-        if isinstance(x, t):
-            return t(x)
-
-    return x
-
-def call_async(test, proxy, method, *args, **kw):
-    """Call a D-Bus method asynchronously and generate an event for the
-    resulting method return/error."""
-
-    def reply_func(*ret):
-        test.handle_event(('dbus-return', method) + ret)
-
-    def error_func(err):
-        test.handle_event(('dbus-error', method, err))
-
-    method_proxy = getattr(proxy, method)
-    kw.update({'reply_handler': reply_func, 'error_handler': error_func})
-    method_proxy(*args, **kw)
-
-def gabble_test_setup(handler, params=None):
-    # set up Gabble
-    bus = dbus.SessionBus()
-    gabble = get_cm(bus, 'gabble')
+def go(params=None):
     default_params = {
         'account': 'test@localhost/Resource',
         'password': 'pass',
@@ -257,19 +109,7 @@ def gabble_test_setup(handler, params=None):
     if params:
         default_params.update(params)
 
-    connection = request_connection(gabble, 'jabber', default_params)
-
-    # listen for D-Bus signals
-    bus.add_signal_receiver(
-        lambda *args, **kw:
-            handler.handle_event((
-                'dbus-signal', unwrap(kw['path']), kw['member'],
-                map(unwrap, args))),
-        None, None, gabble._named_service,
-        path_keyword='path',
-        member_keyword='member',
-        byte_arrays=True,
-        )
+    handler = servicetest.create_test('gabble', 'jabber', default_params)
 
     # set up Jabber server
     authenticator = Authenticator(
@@ -278,35 +118,8 @@ def gabble_test_setup(handler, params=None):
     reactor.listenTCP(4242, factory)
 
     # update callback data
-    handler.data['conn'] = connection
     handler.data['factory'] = factory
 
     # go!
-    connection.Connect()
-
-def run(test, params=None):
-    for arg in sys.argv:
-        if arg == '-v':
-            test.verbose = True
-
-    gabble_test_setup(test, params)
-    reactor.run()
-
-def go(params=None):
-    """Create a test from the top level functions named expect_* in the
-    __main__ module and run it.
-    """
-
-    path, _, _, _ = traceback.extract_stack()[0]
-    import compiler
-    import __main__
-    ast = compiler.parseFile(path)
-    funcs = [
-        getattr(__main__, node.name)
-        for node in ast.node.asList()
-        if node.__class__ == compiler.ast.Function and
-            node.name.startswith('expect_')]
-    test = EventTest()
-    map(test.expect, funcs)
-    run(test, params)
+    servicetest.run_test(handler)
 

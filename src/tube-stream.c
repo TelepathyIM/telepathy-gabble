@@ -930,6 +930,22 @@ gabble_tube_stream_close (GabbleTubeIface *tube)
     }
 }
 
+/**
+ * gabble_tube_stream_add_bytestream
+ *
+ * Implements gabble_tube_iface_add_bytestream on GabbleTubeIface
+ */
+
+static void
+gabble_tube_stream_add_bytestream (GabbleTubeIface *tube,
+                                   GabbleBytestreamIBB *bytestream)
+{
+  /*
+  GabbleTubeStream *self = GABBLE_TUBE_STREAM (tube);
+  GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
+  */
+}
+
 static void
 tube_iface_init (gpointer g_iface,
                  gpointer iface_data)
@@ -939,4 +955,5 @@ tube_iface_init (gpointer g_iface,
   klass->get_stream_id = gabble_tube_stream_get_stream_id;
   klass->accept = gabble_tube_stream_accept;
   klass->close = gabble_tube_stream_close;
+  klass->add_bytestream = gabble_tube_stream_add_bytestream;
 }

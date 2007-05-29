@@ -1007,6 +1007,20 @@ gabble_tube_dbus_close (GabbleTubeIface *tube)
     }
 }
 
+/**
+ * gabble_tube_dbus_add_bytestream
+ *
+ * Implements gabble_tube_iface_add_bytestream on GabbleTubeIface
+ */
+
+static void
+gabble_tube_dbus_add_bytestream (GabbleTubeIface *tube,
+                                 GabbleBytestreamIBB *bytestream)
+{
+  DEBUG ("D-Bus doesn't support extra bytestream");
+  gabble_bytestream_ibb_close (bytestream);
+}
+
 static void
 tube_iface_init (gpointer g_iface,
                  gpointer iface_data)
@@ -1016,4 +1030,5 @@ tube_iface_init (gpointer g_iface,
   klass->get_stream_id = gabble_tube_dbus_get_stream_id;
   klass->accept = gabble_tube_dbus_accept;
   klass->close = gabble_tube_dbus_close;
+  klass->add_bytestream = gabble_tube_dbus_add_bytestream;
 }

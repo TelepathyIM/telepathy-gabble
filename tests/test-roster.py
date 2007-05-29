@@ -5,12 +5,9 @@ Test basic roster functionality.
 
 import dbus
 
-from twisted.internet import glib2reactor
-glib2reactor.install()
-
 from twisted.words.xish import xpath
 
-from gabbletest import conn_iface, go
+from gabbletest import go
 
 def expect_connected(event, data):
     if event[0] != 'dbus-signal':
@@ -65,14 +62,12 @@ def _expect_contact_list_channel(event, data, name, contacts):
     if type != u'org.freedesktop.Telepathy.Channel.Type.ContactList':
         return False
 
-    chan_name = conn_iface(
-        data['conn']).InspectHandles(handle_type, [handle])[0]
+    chan_name = data['conn_iface'].InspectHandles(handle_type, [handle])[0]
     assert chan_name == name
     chan = data['conn']._bus.get_object(data['conn']._named_service, path)
     group_iface = dbus.Interface(chan,
         u'org.freedesktop.Telepathy.Channel.Interface.Group')
-    chan_contacts = conn_iface(
-        data['conn']).InspectHandles(1, group_iface.GetMembers())
+    chan_contacts = data['conn_iface'].InspectHandles(1, group_iface.GetMembers())
     assert chan_contacts == contacts
     return True
 
@@ -87,7 +82,7 @@ def expect_contact_list_subscribe(event, data):
 def expect_contact_list_known(event, data):
     if _expect_contact_list_channel(event, data, 'known',
             ['amy@foo.com', 'bob@foo.com', 'che@foo.com']):
-        conn_iface(data['conn']).Disconnect()
+        data['conn_iface'].Disconnect()
         return True
     else:
         return False

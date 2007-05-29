@@ -6,11 +6,8 @@ Test avatar support.
 import base64
 
 import dbus
-
-from twisted.internet import glib2reactor
-glib2reactor.install()
-
-from gabbletest import go, tp_name_prefix, conn_iface, call_async
+from servicetest import tp_name_prefix, call_async
+from gabbletest import go
 
 def avatars_iface(proxy):
     return dbus.Interface(proxy, tp_name_prefix +
@@ -26,8 +23,8 @@ def expect_connected(event, data):
     if event[3] != [0, 1]:
         return False
 
-    handle = conn_iface(data['conn']).RequestHandles(1, ['bob@foo.com'])[0]
-    call_async(data['test'], avatars_iface(data['conn']), 'RequestAvatar',
+    handle = data['conn_iface'].RequestHandles(1, ['bob@foo.com'])[0]
+    call_async(data['handler'], avatars_iface(data['conn']), 'RequestAvatar',
         handle, byte_arrays=True)
     return True
 
@@ -62,7 +59,7 @@ def expect_RequestAvatar_return(event, data):
 
     assert event[2] == 'hello'
     assert event[3] == 'image/png'
-    conn_iface(data['conn']).Disconnect()
+    data['conn_iface'].Disconnect()
     return True
 
 def expect_disconnected(event, data):

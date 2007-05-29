@@ -8,10 +8,7 @@ Regression test.
    parameter
 """
 
-from twisted.internet import glib2reactor
-glib2reactor.install()
-
-from gabbletest import conn_iface, go
+from gabbletest import go
 
 def expect_connected(event, data):
     if event[0] != 'dbus-signal':
@@ -71,7 +68,7 @@ def expect_set_vcard(event, data):
     nickname = vcard.firstChildElement()
     assert nickname.name == 'NICKNAME'
     assert str(nickname) == 'Some Guy'
-    conn_iface(data['conn']).Disconnect()
+    data['conn_iface'].Disconnect()
     return True
 
 def expect_disconnected(event, data):

@@ -3,9 +3,6 @@
 Test that Gabble responds to disco#info queries.
 """
 
-from twisted.internet import glib2reactor
-glib2reactor.install()
-
 from twisted.words.xish import domish
 
 from gabbletest import go
@@ -39,7 +36,7 @@ def expect_disco_response(event, data):
 
     assert elem['type'] == 'result'
     assert elem['to'] == 'foo@bar.com'
-    data['conn'].Disconnect()
+    data['conn_iface'].Disconnect()
     return True
 
 def expect_disconnected(event, data):

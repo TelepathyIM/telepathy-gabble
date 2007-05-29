@@ -5,9 +5,6 @@ Test network error handling.
 
 import dbus
 
-from twisted.internet import glib2reactor
-glib2reactor.install()
-
 from gabbletest import go
 
 def expect_connecting(event, data):

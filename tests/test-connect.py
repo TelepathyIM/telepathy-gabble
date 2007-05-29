@@ -3,9 +3,6 @@
 Test connecting to a server.
 """
 
-from twisted.internet import glib2reactor
-glib2reactor.install()
-
 from gabbletest import go
 
 def expect_connecting(event, data):
@@ -47,7 +44,7 @@ def expect_connected(event, data):
     if event[3] != [0, 1]:
         return False
 
-    data['conn'].Disconnect()
+    data['conn_iface'].Disconnect()
     return True
 
 def expect_disconnected(event, data):

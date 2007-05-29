@@ -5,12 +5,9 @@ Test text channel.
 
 import dbus
 
-from twisted.internet import glib2reactor
-glib2reactor.install()
-
 from twisted.words.xish import domish
 
-from gabbletest import conn_iface, go
+from gabbletest import go
 
 def expect_connected(event, data):
     if event[0] != 'dbus-signal':
@@ -47,7 +44,7 @@ def expect_new_channel(event, data):
     # check that handle type == contact handle
     assert event[3][2] == 1
 
-    jid = conn_iface(data['conn']).InspectHandles(1, [event[3][3]])[0]
+    jid = data['conn_iface'].InspectHandles(1, [event[3][3]])[0]
     assert jid == 'foo@bar.com'
     return True
 

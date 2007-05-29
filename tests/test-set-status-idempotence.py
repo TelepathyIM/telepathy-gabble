@@ -3,12 +3,9 @@
 Test that redundant calls to SetPresence don't cause anything to happen.
 """
 
-from twisted.internet import glib2reactor
-glib2reactor.install()
-
 import dbus
 
-from gabbletest import go, conn_iface
+from gabbletest import go
 
 def expect_connected(event, data):
     if event[0] != 'dbus-signal':
@@ -83,7 +80,7 @@ def expect_presence_stanza2(event, data):
     assert children[0].name == 'status'
     assert str(children[0]) == 'yo'
 
-    conn_iface(data['conn']).Disconnect()
+    data['conn_iface'].Disconnect()
     return True
 
 def expect_disconnected(event, data):

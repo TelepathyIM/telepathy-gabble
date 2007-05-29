@@ -1099,8 +1099,6 @@ _parse_message_message (GabblePresenceCache *cache,
   node = lm_message_get_node (message);
 
   _grab_nickname (cache, handle, from, node);
-  _grab_avatar_sha1 (cache, handle, from, node);
-  _process_caps (cache, handle, from, node);
 
   return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 }

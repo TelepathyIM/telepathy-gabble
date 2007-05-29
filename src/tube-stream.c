@@ -106,8 +106,10 @@ struct _GabbleTubeStreamPrivate
 #define GABBLE_TUBE_STREAM_GET_PRIVATE(obj) \
     ((GabbleTubeStreamPrivate *) obj->priv)
 
+/*
 static void data_received_cb (GabbleBytestreamIBB *ibb, TpHandle sender,
     GString *data, gpointer user_data);
+    */
 
 static void
 generate_ascii_string (guint len,
@@ -131,6 +133,8 @@ socket_recv_data_cb (GIOChannel *source,
 {
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (data);
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
+  GabbleBytestreamIBB *bytestream;
+  int fd;
   gchar buffer[4096];
   gsize readed;
   GIOStatus status;
@@ -139,6 +143,15 @@ socket_recv_data_cb (GIOChannel *source,
   if (! (condition & G_IO_IN))
     return TRUE;
 
+  fd = g_io_channel_unix_get_fd (source);
+  bytestream = g_hash_table_lookup (priv->bytestreams, GINT_TO_POINTER (fd));
+
+  if (bytestream == NULL)
+    {
+      DEBUG ("no bytestream associated with this socket");
+      return TRUE;
+    }
+
   memset (&buffer, 0, sizeof (buffer));
 
   status = g_io_channel_read_chars (source, buffer, 4096, &readed, &error);
@@ -146,7 +159,7 @@ socket_recv_data_cb (GIOChannel *source,
     {
       DEBUG ("read from socket: %s\n", buffer);
 
-      gabble_bytestream_ibb_send (priv->default_bytestream, readed, buffer);
+      gabble_bytestream_ibb_send (bytestream, readed, buffer);
     }
   else
     {
@@ -201,6 +214,57 @@ listen_cb (GIOChannel *source,
   return FALSE;
 }
 
+#if 0
+static gboolean
+new_connection_to_socket (GabbleTubeStream *self,
+                          GabbleBytestreamIBB *bytestream)
+{
+  GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
+  int fd;
+  struct sockaddr_un addr;
+  int flags;
+
+  g_assert (priv->initiator == priv->self_handle);
+
+  fd = socket (PF_UNIX, SOCK_STREAM, 0);
+  if (fd == -1)
+    {
+      DEBUG ("Error creating socket: %s", g_strerror (errno));
+      return FALSE;
+    }
+
+  // XXX close the tube if error ?
+  memset (&addr, 0, sizeof (addr));
+  addr.sun_family = PF_UNIX;
+
+  /* Set socket non blocking */
+  flags = fcntl (fd, F_GETFL, 0);
+  if (fcntl (fd, F_SETFL, flags | O_NONBLOCK) == -1)
+    {
+      DEBUG ("Can't set socket non blocking: %s", g_strerror (errno));
+      return FALSE;
+    }
+
+  strncpy (addr.sun_path, priv->socket_path,
+      strlen (priv->socket_path) + 1);
+
+  if (connect (fd, (struct sockaddr *) &addr, sizeof (addr)) == -1)
+    {
+      DEBUG ("Error connecting socket: %s", g_strerror (errno));
+      return FALSE;
+    }
+
+  DEBUG ("Connected to socket: %s", priv->socket_path);
+  priv->io_channel = g_io_channel_unix_new (fd);
+  g_io_channel_set_encoding (priv->io_channel, NULL, NULL);
+  g_io_channel_set_buffered (priv->io_channel, FALSE);
+  g_io_add_watch (priv->io_channel, G_IO_IN,
+      socket_recv_data_cb, self);
+
+  return TRUE;
+}
+#endif
+
 static void
 tube_stream_open (GabbleTubeStream *self)
 {
@@ -208,11 +272,23 @@ tube_stream_open (GabbleTubeStream *self)
   int fd;
   struct sockaddr_un addr;
   int flags;
+  gchar suffix[8];
 
   DEBUG ("called");
 
+  if (priv->initiator == priv->self_handle)
+    /* Nothing to do if we are the initiator of this tube.
+     * We'll connect to the socket each time request a new bytestream. */
+    return;
+
+  /* We didn't create this tube so it doesn't have
+   * a socket associated with it. Let's create one */
+  g_assert (priv->socket_path == NULL);
+
+  /*
   g_signal_connect (priv->default_bytestream, "data-received",
       G_CALLBACK (data_received_cb), self);
+      */
 
   // XXX close the tube if error ?
 
@@ -234,56 +310,31 @@ tube_stream_open (GabbleTubeStream *self)
       return;
     }
 
-  if (priv->socket_path == NULL)
+  generate_ascii_string (8, suffix);
+  priv->socket_path = g_strdup_printf ("/tmp/stream-gabble-%.8s", suffix);
+
+  DEBUG ("create socket: %s", priv->socket_path);
+
+  strncpy (addr.sun_path, priv->socket_path,
+      strlen (priv->socket_path) + 1);
+
+  if (bind (fd, (struct sockaddr *) &addr, sizeof (addr)) == -1)
     {
-      /* No socket associated, let's create one */
-      gchar suffix[8];
-
-      generate_ascii_string (8, suffix);
-      priv->socket_path = g_strdup_printf ("/tmp/stream-gabble-%.8s", suffix);
-
-      DEBUG ("create socket: %s", priv->socket_path);
-
-      strncpy (addr.sun_path, priv->socket_path,
-          strlen (priv->socket_path) + 1);
-
-      if (bind (fd, (struct sockaddr *) &addr, sizeof (addr)) == -1)
-        {
-          DEBUG ("Error binding socket: %s", g_strerror (errno));
-          return;
-        }
-
-      if (listen (fd, 5) == -1)
-        {
-          DEBUG ("Error listening socket: %s", g_strerror (errno));
-          return;
-        }
-
-      priv->listen_io_channel = g_io_channel_unix_new (fd);
-      g_io_channel_set_encoding (priv->listen_io_channel, NULL, NULL);
-      g_io_channel_set_buffered (priv->listen_io_channel, FALSE);
-      g_io_add_watch (priv->listen_io_channel, G_IO_IN,
-          listen_cb, self);
+      DEBUG ("Error binding socket: %s", g_strerror (errno));
+      return;
     }
-  else
+
+  if (listen (fd, 5) == -1)
     {
-      DEBUG ("Connect to socket: %s", priv->socket_path);
-
-      strncpy (addr.sun_path, priv->socket_path,
-          strlen (priv->socket_path) + 1);
-
-      if (connect (fd, (struct sockaddr *) &addr, sizeof (addr)) == -1)
-        {
-          DEBUG ("Error connecting socket: %s", g_strerror (errno));
-          return;
-        }
-
-      priv->io_channel = g_io_channel_unix_new (fd);
-      g_io_channel_set_encoding (priv->io_channel, NULL, NULL);
-      g_io_channel_set_buffered (priv->io_channel, FALSE);
-      g_io_add_watch (priv->io_channel, G_IO_IN,
-          socket_recv_data_cb, self);
+      DEBUG ("Error listening socket: %s", g_strerror (errno));
+      return;
     }
+
+  priv->listen_io_channel = g_io_channel_unix_new (fd);
+  g_io_channel_set_encoding (priv->listen_io_channel, NULL, NULL);
+  g_io_channel_set_buffered (priv->listen_io_channel, FALSE);
+  g_io_add_watch (priv->listen_io_channel, G_IO_IN,
+      listen_cb, self);
 }
 
 static void
@@ -723,6 +774,7 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
                   G_TYPE_NONE, 0);
 }
 
+#if 0
 static void
 data_received_cb (GabbleBytestreamIBB *ibb,
                   TpHandle sender,
@@ -755,6 +807,7 @@ data_received_cb (GabbleBytestreamIBB *ibb,
   if (error != NULL)
     g_error_free (error);
 }
+#endif
 
 GabbleTubeStream *
 gabble_tube_stream_new (GabbleConnection *conn,

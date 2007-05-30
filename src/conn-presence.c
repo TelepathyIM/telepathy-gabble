@@ -141,6 +141,68 @@ construct_presence_hash (GabbleConnection *self,
 }
 
 
+static GHashTable *
+construct_contact_statuses (GabbleConnection *self,
+                            const GArray *contact_handles)
+{
+  TpBaseConnection *base = (TpBaseConnection *)self;
+  guint i;
+  TpHandle handle;
+  GHashTable *contact_statuses, *parameters;
+  TpPresenceStatus *contact_status;
+  GValue *message;
+  GabblePresence *presence;
+  GabblePresenceId status;
+  const gchar *status_message;
+  TpHandleRepoIface *handle_repo = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
+
+  g_assert (tp_handles_are_valid (handle_repo, contact_handles, FALSE, NULL));
+
+  contact_statuses = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
+      (GDestroyNotify) tp_presence_status_free);
+
+  for (i = 0; i < contact_handles->len; i++)
+    {
+      handle = g_array_index (contact_handles, TpHandle, i);
+
+      if (handle == base->self_handle)
+        presence = self->self_presence;
+      else
+        presence = gabble_presence_cache_get (self->presence_cache, handle);
+
+      if (presence)
+        {
+          status = presence->status;
+          status_message = presence->status_message;
+        }
+      else
+        {
+          status = GABBLE_PRESENCE_OFFLINE;
+          status_message = NULL;
+        }
+
+      parameters = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
+          (GDestroyNotify) tp_g_value_slice_free);
+      if (status_message != NULL) {
+        message = g_slice_new0 (GValue);
+        g_value_init (message, G_TYPE_STRING);
+        g_value_set_static_string (message, status_message);
+
+
+        g_hash_table_insert (parameters, "message", message);
+      }
+
+      contact_status = tp_presence_status_new (status, parameters);
+
+      g_hash_table_insert (contact_statuses, GUINT_TO_POINTER (handle),
+          contact_status);
+    }
+
+  return contact_statuses;
+}
+
+
 /**
  * emit_presence_update:
  * @self: A #GabbleConnection
@@ -154,12 +216,11 @@ static void
 emit_presence_update (GabbleConnection *self,
                       const GArray *contact_handles)
 {
-  GHashTable *presence_hash;
+  GHashTable *contact_statuses;
 
-  presence_hash = construct_presence_hash (self, contact_handles);
-  tp_svc_connection_interface_presence_emit_presence_update (self,
-      presence_hash);
-  g_hash_table_destroy (presence_hash);
+  contact_statuses = construct_contact_statuses (self, contact_handles);
+  tp_presence_mixin_emit_presence_update ((GObject *) self, contact_statuses);
+  g_hash_table_destroy (contact_statuses);
 }
 
 

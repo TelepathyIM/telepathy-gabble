@@ -683,6 +683,8 @@ gabble_roomlist_channel_stop_listing (TpSvcChannelTypeRoomList *iface,
   g_assert (GABBLE_IS_ROOMLIST_CHANNEL (self));
 
   stop_listing (self);
+
+  tp_svc_channel_type_room_list_return_from_stop_listing (context);
 }
 
 static void

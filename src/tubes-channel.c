@@ -354,6 +354,9 @@ tube_closed_cb (GabbleTubeIface *tube,
   guint tube_id;
   gchar *stream_id;
 
+  if (priv->closed)
+    return;
+
   g_object_get (tube, "id", &tube_id, NULL);
   if (!g_hash_table_remove (priv->tubes, GUINT_TO_POINTER (tube_id)))
     {
@@ -1759,6 +1762,8 @@ gabble_tubes_channel_close (GabbleTubesChannel *self)
       return;
     }
 
+  priv->closed = TRUE;
+
   g_assert (g_hash_table_size (priv->tubes) ==
       g_hash_table_size (priv->stream_id_to_tube_id));
 
@@ -1768,7 +1773,6 @@ gabble_tubes_channel_close (GabbleTubesChannel *self)
 
   priv->tubes = NULL;
   priv->stream_id_to_tube_id = NULL;
-  priv->closed = TRUE;
 
   tp_svc_channel_emit_closed (self);
 }

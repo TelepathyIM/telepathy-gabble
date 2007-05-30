@@ -941,6 +941,7 @@ publish_tubes_in_node (gpointer key,
                        gpointer value,
                        gpointer user_data)
 {
+  const gchar *stream_id = (const gchar *) key;
   guint tube_id = GPOINTER_TO_UINT (value);
   struct _i_hate_g_hash_table_foreach *data =
     (struct _i_hate_g_hash_table_foreach *) user_data;
@@ -953,7 +954,6 @@ publish_tubes_in_node (gpointer key,
   LmMessageNode *tube_node;
   const gchar *initiator;
   TpTubeType type;
-  gchar *stream_id;
   GabbleTubeIface *tube = g_hash_table_lookup (priv->tubes,
       GUINT_TO_POINTER (tube_id));
 
@@ -967,8 +967,6 @@ publish_tubes_in_node (gpointer key,
   if (state != TP_TUBE_STATE_OPEN)
     return;
 
-  stream_id = gabble_tube_iface_get_stream_id (tube);
-
   tube_node = lm_message_node_add_child (data->tubes_node, "tube", NULL);
   publish_tube_in_node (tube_node, tube, stream_id);
 
@@ -978,8 +976,6 @@ publish_tubes_in_node (gpointer key,
         NULL);
   initiator = tp_handle_inspect (contact_repo, initiator_handle);
   lm_message_node_set_attribute (tube_node, "initiator", initiator);
-
-  g_free (stream_id);
 }
 
 static void

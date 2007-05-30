@@ -252,11 +252,7 @@ bytestream_negotiate_cb (GabbleBytestreamIBB *bytestream,
     {
       DEBUG ("initiator refused new bytestream");
 
-      if (close (data->fd) == -1)
-        {
-          DEBUG ("error closing socket: %s", g_strerror (errno));
-        }
-
+      close (data->fd);
       return;
     }
 
@@ -379,7 +375,7 @@ listen_cb (GIOChannel *source,
   if (fd == -1)
     {
       DEBUG ("Error accepting socket: %s", g_strerror (errno));
-      return FALSE;
+      return TRUE;
     }
 
   DEBUG ("connection from client");
@@ -389,12 +385,17 @@ listen_cb (GIOChannel *source,
   if (fcntl (fd, F_SETFL, flags | O_NONBLOCK) == -1)
     {
       DEBUG ("Can't set socket non blocking: %s", g_strerror (errno));
-      return FALSE;
+      close (fd);
+      return TRUE;
     }
 
   DEBUG ("request new bytestream");
 
-  start_stream_initiation (self, fd, NULL);
+  if (!start_stream_initiation (self, fd, NULL))
+    {
+      DEBUG ("closing new client connection");
+      close (fd);
+    }
 
   return TRUE;
 }

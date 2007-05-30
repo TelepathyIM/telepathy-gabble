@@ -139,6 +139,7 @@ data_to_read_on_socket_cb (GIOChannel *source,
   gsize readed;
   GIOStatus status;
   GError *error = NULL;
+  gboolean result = TRUE;
 
   if (! (condition & G_IO_IN))
     return TRUE;
@@ -158,15 +159,30 @@ data_to_read_on_socket_cb (GIOChannel *source,
   status = g_io_channel_read_chars (source, buffer, 4096, &readed, &error);
   if (status == G_IO_STATUS_NORMAL)
     {
-      DEBUG ("read from socket: %s\n", buffer);
+      DEBUG ("read %d bytes from socket", readed);
 
       gabble_bytestream_ibb_send (bytestream, readed, buffer);
+      result = TRUE;
+    }
+  else if (status == G_IO_STATUS_EOF)
+    {
+      DEBUG ("error reading from socket: EOF");
+
+      gabble_bytestream_ibb_close (bytestream);
+      result = FALSE;
+    }
+  else if (status == G_IO_STATUS_AGAIN)
+    {
+      DEBUG ("error reading from socket: resource temporarily unavailable");
+
+      result = TRUE;
     }
   else
     {
-      DEBUG ("error reading from socket: %s",
-          error ? error->message : "");
-      return FALSE;
+      DEBUG ("error reading from socket: %s", error ? error->message : "");
+
+      gabble_bytestream_ibb_close (bytestream);
+      result = FALSE;
     }
 
   if (error != NULL)

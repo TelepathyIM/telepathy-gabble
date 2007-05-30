@@ -339,8 +339,13 @@ bytestream_state_changed_cb (GabbleBytestreamIBB *bytestream,
 
   if (state == BYTESTREAM_IBB_STATE_CLOSED)
     {
+      if (priv->bytestream != NULL)
+        {
+          g_object_unref (priv->bytestream);
+          priv->bytestream = NULL;
+        }
+
       g_signal_emit (G_OBJECT (self), signals[CLOSED], 0);
-      priv->bytestream = NULL;
     }
   else if (state == BYTESTREAM_IBB_STATE_OPEN)
     {
@@ -363,7 +368,6 @@ gabble_tube_dbus_dispose (GObject *object)
   if (priv->bytestream)
     {
       gabble_bytestream_ibb_close (priv->bytestream);
-      priv->bytestream  = NULL;
     }
 
   if (priv->dbus_conn)
@@ -500,7 +504,9 @@ gabble_tube_dbus_set_property (GObject *object,
         if (priv->bytestream == NULL)
           {
             BytestreamIBBState state;
+
             priv->bytestream = g_value_get_object (value);
+            g_object_ref (priv->bytestream);
 
             g_object_get (priv->bytestream, "state", &state, NULL);
             if (state == BYTESTREAM_IBB_STATE_OPEN)
@@ -565,12 +571,14 @@ gabble_tube_dbus_constructor (GType type,
        * We don't create the bytestream of private D-Bus tube yet.
        * It will be when we'll receive the answer of the SI request
        */
+      GabbleBytestreamIBB *bytestream;
+
       g_assert (priv->stream_id != NULL);
 
       if (priv->initiator == priv->self_handle)
         {
           /* We create this tube, bytestream is open */
-          priv->bytestream = gabble_bytestream_factory_create_ibb (
+          bytestream = gabble_bytestream_factory_create_ibb (
               priv->conn->bytestream_factory,
               priv->handle,
               priv->handle_type,
@@ -578,16 +586,11 @@ gabble_tube_dbus_constructor (GType type,
               NULL,
               NULL,
               BYTESTREAM_IBB_STATE_OPEN);
-
-          tube_dbus_open (self);
-
-          g_signal_connect (priv->bytestream, "state-changed",
-              G_CALLBACK (bytestream_state_changed_cb), self);
         }
       else
         {
           /* We don't create this tube, bytestream is local pending */
-          priv->bytestream = gabble_bytestream_factory_create_ibb (
+          bytestream = gabble_bytestream_factory_create_ibb (
               priv->conn->bytestream_factory,
               priv->handle,
               priv->handle_type,
@@ -595,10 +598,9 @@ gabble_tube_dbus_constructor (GType type,
               NULL,
               NULL,
               BYTESTREAM_IBB_STATE_LOCAL_PENDING);
-
-          g_signal_connect (priv->bytestream, "state-changed",
-              G_CALLBACK (bytestream_state_changed_cb), self);
         }
+
+      g_object_set (self, "bytestream", bytestream, NULL);
     }
 
   return obj;
@@ -1000,7 +1002,6 @@ gabble_tube_dbus_close (GabbleTubeIface *tube)
   if (priv->bytestream != NULL)
     {
       gabble_bytestream_ibb_close (priv->bytestream);
-      priv->bytestream = NULL;
     }
   else
     {

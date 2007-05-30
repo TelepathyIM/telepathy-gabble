@@ -580,8 +580,13 @@ bytestream_state_changed_cb (GabbleBytestreamIBB *bytestream,
 
   if (state == BYTESTREAM_IBB_STATE_CLOSED)
     {
+      if (priv->default_bytestream != NULL)
+        {
+          g_object_unref (priv->default_bytestream);
+          priv->default_bytestream = NULL;
+        }
+
       g_signal_emit (G_OBJECT (self), signals[CLOSED], 0);
-      priv->default_bytestream = NULL;
     }
   else if (state == BYTESTREAM_IBB_STATE_OPEN)
     {
@@ -728,7 +733,9 @@ gabble_tube_stream_set_property (GObject *object,
         if (priv->default_bytestream == NULL)
           {
             BytestreamIBBState state;
+
             priv->default_bytestream = g_value_get_object (value);
+            g_object_ref (priv->default_bytestream);
 
             g_object_get (priv->default_bytestream, "state", &state, NULL);
             if (state == BYTESTREAM_IBB_STATE_OPEN)
@@ -1114,7 +1121,6 @@ gabble_tube_stream_close (GabbleTubeIface *tube)
   if (priv->default_bytestream != NULL)
     {
       gabble_bytestream_ibb_close (priv->default_bytestream);
-      priv->default_bytestream = NULL;
     }
   else
     {

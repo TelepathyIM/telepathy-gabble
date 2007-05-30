@@ -291,11 +291,13 @@ parse_avatar (LmMessageNode *vcard,
 
   type_node = lm_message_node_get_child (photo_node, "TYPE");
 
-  if (NULL == type_node)
+  if (NULL != type_node)
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-        "contact avatar is missing type node");
-      return FALSE;
+      *mime_type = lm_message_node_get_value (type_node);
+    }
+  else
+    {
+      *mime_type ="";
     }
 
   binval_node = lm_message_node_get_child (photo_node, "BINVAL");
@@ -325,7 +327,6 @@ parse_avatar (LmMessageNode *vcard,
       return FALSE;
     }
 
-  *mime_type = lm_message_node_get_value (type_node);
   return TRUE;
 }
 

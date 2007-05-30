@@ -401,6 +401,7 @@ gabble_tube_dbus_finalize (GObject *object)
   GabbleTubeDBus *self = GABBLE_TUBE_DBUS (object);
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
 
+  g_free (priv->stream_id);
   g_free (priv->service);
   g_hash_table_destroy (priv->parameters);
 

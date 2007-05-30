@@ -917,13 +917,8 @@ gabble_tube_dbus_get_stream_id (GabbleTubeIface *tube)
 {
   GabbleTubeDBus *self = GABBLE_TUBE_DBUS (tube);
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
-  gchar *stream_id;
 
-  if (priv->bytestream == NULL)
-    return NULL;
-
-  g_object_get (priv->bytestream, "stream-id", &stream_id, NULL);
-  return stream_id;
+  return priv->stream_id ? g_strdup (priv->stream_id) : NULL;
 }
 
 /*

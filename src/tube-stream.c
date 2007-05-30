@@ -983,7 +983,7 @@ data_received_cb (GabbleBytestreamIBB *bytestream,
   GIOStatus status;
   GError *error = NULL;
 
-  DEBUG ("received: %s\n", data->str);
+  DEBUG ("received %d bytes from bytestream", data->len);
 
   channel = g_hash_table_lookup (priv->bytestream_to_io_channel, bytestream);
   if (channel == NULL)

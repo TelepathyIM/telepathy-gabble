@@ -259,7 +259,7 @@ remove_bytestream (GabbleBytestreamFactory *self,
 
   g_object_get (bytestream, "stream-id", &stream_id, NULL);
 
-  DEBUG ("remove bytestream %s\n", stream_id);
+  DEBUG ("remove bytestream %s", stream_id);
   g_hash_table_remove (priv->ibb_bytestreams, stream_id);
 
   g_free (stream_id);
@@ -851,7 +851,7 @@ streaminit_reply_cb (GabbleConnection *conn,
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
-      DEBUG ("stream %s declined\n", data->stream_id);
+      DEBUG ("stream %s declined", data->stream_id);
       goto END;
     }
 
@@ -925,7 +925,7 @@ streaminit_reply_cb (GabbleConnection *conn,
       goto END;
     }
 
-  DEBUG ("stream %s accepted\n", data->stream_id);
+  DEBUG ("stream %s accepted", data->stream_id);
 
   /* Let's start the initiation of the stream */
   if (!gabble_bytestream_ibb_initiation (bytestream))

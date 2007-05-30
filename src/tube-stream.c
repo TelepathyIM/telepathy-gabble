@@ -127,9 +127,9 @@ generate_ascii_string (guint len,
 }
 
 gboolean
-socket_recv_data_cb (GIOChannel *source,
-                     GIOCondition condition,
-                     gpointer data)
+data_to_read_on_socket_cb (GIOChannel *source,
+                           GIOCondition condition,
+                           gpointer data)
 {
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (data);
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
@@ -201,7 +201,7 @@ extra_bytestream_state_changed_cb (GabbleBytestreamIBB *bytestream,
       g_signal_connect (bytestream, "data-received",
           G_CALLBACK (data_received_cb), self);
 
-      g_io_add_watch (channel, G_IO_IN, socket_recv_data_cb, self);
+      g_io_add_watch (channel, G_IO_IN, data_to_read_on_socket_cb, self);
     }
   else if (state == BYTESTREAM_IBB_STATE_CLOSED)
     {
@@ -427,7 +427,7 @@ new_connection_to_socket (GabbleTubeStream *self,
   channel = g_io_channel_unix_new (fd);
   g_io_channel_set_encoding (channel, NULL, NULL);
   g_io_channel_set_buffered (channel, FALSE);
-  g_io_add_watch (channel, G_IO_IN, socket_recv_data_cb, self);
+  g_io_add_watch (channel, G_IO_IN, data_to_read_on_socket_cb, self);
 
   g_hash_table_insert (priv->fd_to_bytestreams, GINT_TO_POINTER (fd),
       g_object_ref (bytestream));

@@ -700,9 +700,9 @@ gabble_tube_stream_get_property (GObject *object,
 
 static void
 gabble_tube_stream_set_property (GObject *object,
-                               guint property_id,
-                               const GValue *value,
-                               GParamSpec *pspec)
+                                 guint property_id,
+                                 const GValue *value,
+                                 GParamSpec *pspec)
 {
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (object);
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
@@ -762,8 +762,8 @@ gabble_tube_stream_set_property (GObject *object,
 
 static GObject *
 gabble_tube_stream_constructor (GType type,
-                              guint n_props,
-                              GObjectConstructParam *props)
+                                guint n_props,
+                                GObjectConstructParam *props)
 {
   GObject *obj;
   GabbleTubeStreamPrivate *priv;

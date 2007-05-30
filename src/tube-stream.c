@@ -265,6 +265,7 @@ bytestream_negotiate_cb (GabbleBytestreamIBB *bytestream,
   channel = g_io_channel_unix_new (data->fd);
   g_io_channel_set_encoding (channel, NULL, NULL);
   g_io_channel_set_buffered (channel, FALSE);
+  g_io_channel_set_close_on_unref (channel, TRUE);
 
   g_hash_table_insert (priv->fd_to_bytestreams, GINT_TO_POINTER (data->fd),
       g_object_ref (bytestream));
@@ -441,6 +442,7 @@ new_connection_to_socket (GabbleTubeStream *self,
   channel = g_io_channel_unix_new (fd);
   g_io_channel_set_encoding (channel, NULL, NULL);
   g_io_channel_set_buffered (channel, FALSE);
+  g_io_channel_set_close_on_unref (channel, TRUE);
 
   g_hash_table_insert (priv->fd_to_bytestreams, GINT_TO_POINTER (fd),
       g_object_ref (bytestream));
@@ -516,6 +518,8 @@ tube_stream_open (GabbleTubeStream *self)
   priv->listen_io_channel = g_io_channel_unix_new (fd);
   g_io_channel_set_encoding (priv->listen_io_channel, NULL, NULL);
   g_io_channel_set_buffered (priv->listen_io_channel, FALSE);
+  g_io_channel_set_close_on_unref (priv->listen_io_channel, TRUE);
+
   g_io_add_watch (priv->listen_io_channel, G_IO_IN,
       listen_cb, self);
 }
@@ -617,7 +621,6 @@ gabble_tube_stream_dispose (GObject *object)
 
   if (priv->listen_io_channel)
     {
-      g_io_channel_shutdown (priv->listen_io_channel, TRUE, NULL);
       g_io_channel_unref (priv->listen_io_channel);
       priv->listen_io_channel = NULL;
     }

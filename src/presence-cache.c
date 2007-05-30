@@ -1088,6 +1088,17 @@ _parse_message_message (GabblePresenceCache *cache,
   LmMessageNode *node;
   GabblePresence *presence;
 
+  switch (lm_message_get_sub_type (message))
+    {
+    case LM_MESSAGE_SUB_TYPE_NOT_SET:
+    case LM_MESSAGE_SUB_TYPE_NORMAL:
+    case LM_MESSAGE_SUB_TYPE_CHAT:
+    case LM_MESSAGE_SUB_TYPE_GROUPCHAT:
+      break;
+    default:
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    }
+
   presence = gabble_presence_cache_get (cache, handle);
 
   if (NULL == presence)

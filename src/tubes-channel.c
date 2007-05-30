@@ -957,6 +957,9 @@ publish_tubes_in_node (gpointer key,
   GabbleTubeIface *tube = g_hash_table_lookup (priv->tubes,
       GUINT_TO_POINTER (tube_id));
 
+  if (tube == NULL)
+    return;
+
   g_object_get (tube,
                 "state", &state,
                 NULL);

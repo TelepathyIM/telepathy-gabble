@@ -621,6 +621,7 @@ gabble_bytestream_ibb_close (GabbleBytestreamIBB *self)
       const gchar *jid;
       gchar *full_jid;
 
+      DEBUG ("send IBB close stanza");
       jid = tp_handle_inspect (handles_repo, priv->peer_handle);
       full_jid = g_strdup_printf ("%s/%s", jid, priv->peer_resource);
 

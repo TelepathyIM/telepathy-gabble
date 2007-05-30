@@ -642,6 +642,8 @@ parse_ibb_close_iq (GabbleBytestreamFactory *self,
     }
   else
     {
+      DEBUG ("received IBB close stanza. Bytestream closed");
+
       g_object_set (bytestream, "state", BYTESTREAM_IBB_STATE_CLOSED,
           NULL);
 

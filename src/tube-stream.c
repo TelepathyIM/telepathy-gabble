@@ -144,9 +144,9 @@ data_to_read_on_socket_cb (GIOChannel *source,
     return TRUE;
 
   fd = g_io_channel_unix_get_fd (source);
+
   bytestream = g_hash_table_lookup (priv->fd_to_bytestreams,
       GINT_TO_POINTER (fd));
-
   if (bytestream == NULL)
     {
       DEBUG ("no bytestream associated with this socket");
@@ -164,7 +164,6 @@ data_to_read_on_socket_cb (GIOChannel *source,
     }
   else
     {
-      g_print ("status: %d\n", status);
       DEBUG ("error reading from socket: %s",
           error ? error->message : "");
       return FALSE;
@@ -193,7 +192,6 @@ extra_bytestream_state_changed_cb (GabbleBytestreamIBB *bytestream,
       return;
     }
 
-  // XXX use in both side!
   if (state == BYTESTREAM_IBB_STATE_OPEN)
     {
       DEBUG ("extra bytestream open");
@@ -427,15 +425,14 @@ new_connection_to_socket (GabbleTubeStream *self,
   channel = g_io_channel_unix_new (fd);
   g_io_channel_set_encoding (channel, NULL, NULL);
   g_io_channel_set_buffered (channel, FALSE);
-  g_io_add_watch (channel, G_IO_IN, data_to_read_on_socket_cb, self);
 
   g_hash_table_insert (priv->fd_to_bytestreams, GINT_TO_POINTER (fd),
       g_object_ref (bytestream));
   g_hash_table_insert (priv->bytestream_to_io_channel,
       g_object_ref (bytestream), channel);
 
-  g_signal_connect (bytestream, "data-received",
-      G_CALLBACK (data_received_cb), self);
+  g_signal_connect (bytestream, "state-changed",
+                G_CALLBACK (extra_bytestream_state_changed_cb), self);
 
   return TRUE;
 }

@@ -608,6 +608,8 @@ emit_d_bus_names_changed_foreach (gpointer key,
 }
 #endif
 
+/* Called when we receive a presence from a contact who is
+ * in the muc associated with this tubes channel */
 void
 gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
                                        TpHandle contact,

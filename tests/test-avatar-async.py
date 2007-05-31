@@ -8,10 +8,11 @@ import sha
 
 import dbus
 
-from twisted.internet import glib2reactor
-glib2reactor.install()
+from servicetest import tp_name_prefix, call_async
+from gabbletest import go
 
-from gabbletest import go, tp_name_prefix, conn_iface, call_async
+def conn_iface(proxy):
+    return dbus.Interface(proxy, tp_name_prefix + '.Connection')
 
 def avatars_iface(proxy):
     return dbus.Interface(proxy, tp_name_prefix +
@@ -63,7 +64,7 @@ def expect_AvatarRetrieved(event, data):
 
     assert event[3][0] == data['handle']
     assert event[3][1] == sha.sha('hello').hexdigest()
-    assert event[3][2] == 'hello'
+    assert ''.join(map(chr, event[3][2])) == 'hello'
     assert event[3][3] == 'image/png'
 
     # Request again; this request should be satisfied from the avatar cache.
@@ -77,7 +78,7 @@ def expect_AvatarRetrieved_again(event, data):
 
     assert event[3][0] == data['handle']
     assert event[3][1] == sha.sha('hello').hexdigest()
-    assert event[3][2] == 'hello'
+    assert ''.join(map(chr, event[3][2])) == 'hello'
     assert event[3][3] == 'image/png'
 
     conn_iface(data['conn']).Disconnect()

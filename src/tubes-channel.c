@@ -104,7 +104,6 @@ struct _GabbleTubesChannelPrivate
 
   GHashTable *tubes;
   GHashTable *stream_id_to_tube_id;
-  guint next_tube_id;
 
   gboolean closed;
   gboolean dispose_has_run;
@@ -130,8 +129,6 @@ gabble_tubes_channel_init (GabbleTubesChannel *self)
 
   priv->stream_id_to_tube_id = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, NULL);
-
-  priv->next_tube_id = 1;
 
   priv->dispose_has_run = FALSE;
   priv->closed = FALSE;

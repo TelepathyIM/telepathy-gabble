@@ -1066,8 +1066,8 @@ bytestream_negotiate_cb (GabbleBytestreamIBB *bytestream,
 
   gabble_tube_iface_accept (tube);
 
+  /* Extract tube type specific information from SI reply */
   si = lm_message_node_get_child_with_namespace (msg->node, "si", NS_SI);
-  /* XXX properly catch errors ! */
   if (si == NULL)
     return;
 

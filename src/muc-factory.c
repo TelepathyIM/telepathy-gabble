@@ -281,7 +281,12 @@ muc_channel_closed_cb (GabbleMucChannel *chan, gpointer user_data)
 #ifdef HAVE_TUBES
       if (priv->tubes_channels != NULL)
         {
-          /* FIXME: close the corresponding tubes channel */
+          GabbleTubesChannel *tubes;
+
+          tubes = g_hash_table_lookup (priv->tubes_channels,
+              GUINT_TO_POINTER (room_handle));
+          if (tubes != NULL)
+            gabble_tubes_channel_close (tubes);
         }
 #endif
 

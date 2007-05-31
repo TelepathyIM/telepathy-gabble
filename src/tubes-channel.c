@@ -1505,8 +1505,8 @@ emit_tube_closed_signal (gpointer key,
   tp_svc_channel_type_tubes_emit_tube_closed (self, id);
 }
 
-static void
-close_tubes_channel (GabbleTubesChannel *self)
+void
+gabble_tubes_channel_close (GabbleTubesChannel *self)
 {
   GabbleTubesChannelPrivate *priv;
 
@@ -1536,20 +1536,20 @@ close_tubes_channel (GabbleTubesChannel *self)
 }
 
 /**
- * gabble_tubes_channel_close
+ * gabble_tubes_channel_close_async:
  *
  * Implements D-Bus method Close
  * on interface org.freedesktop.Telepathy.Channel
  */
 static void
-gabble_tubes_channel_close (TpSvcChannel *iface,
-                            DBusGMethodInvocation *context)
+gabble_tubes_channel_close_async (TpSvcChannel *iface,
+                                  DBusGMethodInvocation *context)
 {
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (iface);
 
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
 
-  close_tubes_channel (self);
+  gabble_tubes_channel_close (self);
   tp_svc_channel_return_from_close (context);
 }
 
@@ -1668,7 +1668,7 @@ gabble_tubes_channel_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  close_tubes_channel (self);
+  gabble_tubes_channel_close (self);
 
   g_assert (priv->closed);
   g_assert (priv->tubes == NULL);
@@ -1712,11 +1712,11 @@ channel_iface_init (gpointer g_iface,
 {
   TpSvcChannelClass *klass = (TpSvcChannelClass *)g_iface;
 
-#define IMPLEMENT(x) tp_svc_channel_implement_##x (\
-    klass, gabble_tubes_channel_##x)
-  IMPLEMENT(close);
-  IMPLEMENT(get_channel_type);
-  IMPLEMENT(get_handle);
-  IMPLEMENT(get_interfaces);
+#define IMPLEMENT(x, suffix) tp_svc_channel_implement_##x (\
+    klass, gabble_tubes_channel_##x##suffix)
+  IMPLEMENT(close,_async);
+  IMPLEMENT(get_channel_type,);
+  IMPLEMENT(get_handle,);
+  IMPLEMENT(get_interfaces,);
 #undef IMPLEMENT
 }

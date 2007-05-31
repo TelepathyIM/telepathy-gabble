@@ -596,6 +596,16 @@ bytestream_state_changed_cb (GabbleBytestreamIBB *bytestream,
 }
 
 static void
+close_each_extra_bytestream (gpointer key,
+                             gpointer value,
+                             gpointer user_data)
+{
+  GabbleBytestreamIBB *bytestream = (GabbleBytestreamIBB *) value;
+
+  gabble_bytestream_ibb_close (bytestream);
+}
+
+static void
 gabble_tube_stream_dispose (GObject *object)
 {
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (object);
@@ -613,6 +623,9 @@ gabble_tube_stream_dispose (GObject *object)
 
   if (priv->fd_to_bytestreams != NULL)
     {
+      g_hash_table_foreach (priv->fd_to_bytestreams,
+          close_each_extra_bytestream, self);
+
       g_hash_table_destroy (priv->fd_to_bytestreams);
       priv->fd_to_bytestreams = NULL;
     }

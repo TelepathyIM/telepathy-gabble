@@ -1196,7 +1196,7 @@ gabble_tube_stream_add_bytestream (GabbleTubeIface *tube,
 
   if (priv->initiator != priv->self_handle)
     {
-      DEBUG ("I'm not the initiator of this tube, can't accept"
+      DEBUG ("I'm not the initiator of this tube, can't accept "
           "an extra bytestream");
 
       gabble_bytestream_ibb_close (bytestream);

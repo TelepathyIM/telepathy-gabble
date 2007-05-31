@@ -36,9 +36,9 @@
 
 
 static const TpPresenceStatusOptionalArgumentSpec gabble_status_arguments[] = {
-  { "message",  "s" },
-  { "priority", "n" },
-  { NULL, NULL }
+  { "message",  "s", NULL, NULL },
+  { "priority", "n", NULL, NULL },
+  { NULL, NULL, NULL, NULL }
 };
 
 

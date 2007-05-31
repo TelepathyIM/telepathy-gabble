@@ -66,7 +66,7 @@ static const TpPresenceStatusSpec gabble_statuses[] = {
 static GHashTable *
 construct_contact_statuses_cb (GObject *obj,
                                const GArray *contact_handles,
-                               GError **unused)
+                               GError **error)
 {
   GabbleConnection *self = GABBLE_CONNECTION (obj);
   TpBaseConnection *base = (TpBaseConnection *)self;
@@ -81,7 +81,8 @@ construct_contact_statuses_cb (GObject *obj,
   TpHandleRepoIface *handle_repo = tp_base_connection_get_handles (base,
       TP_HANDLE_TYPE_CONTACT);
 
-  g_assert (tp_handles_are_valid (handle_repo, contact_handles, FALSE, NULL));
+  if (!tp_handles_are_valid (handle_repo, contact_handles, FALSE, error))
+    return NULL;
 
   contact_statuses = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
       (GDestroyNotify) tp_presence_status_free);

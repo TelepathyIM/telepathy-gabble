@@ -359,6 +359,7 @@ tube_closed_cb (GabbleTubeIface *tube,
     {
       DEBUG ("Can't find tube having this id: %d", tube_id);
     }
+  DEBUG ("tube %d removed", tube_id);
 
   stream_id = gabble_tube_iface_get_stream_id (tube);
   if (stream_id != NULL)
@@ -425,7 +426,7 @@ create_new_tube (GabbleTubesChannel *self,
       g_assert_not_reached ();
     }
 
-  DEBUG ("add tube %u", tube_id);
+  DEBUG ("create tube %u", tube_id);
   g_hash_table_insert (priv->tubes, GUINT_TO_POINTER (tube_id), tube);
   g_hash_table_insert (priv->stream_id_to_tube_id, g_strdup (stream_id),
       GUINT_TO_POINTER (tube_id));

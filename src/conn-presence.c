@@ -118,6 +118,7 @@ construct_contact_statuses (GObject *obj,
       }
 
       contact_status = tp_presence_status_new (status, parameters);
+      g_hash_table_unref (parameters);
 
       g_hash_table_insert (contact_statuses, GUINT_TO_POINTER (handle),
           contact_status);

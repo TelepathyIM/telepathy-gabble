@@ -1043,7 +1043,6 @@ bytestream_negotiate_cb (GabbleBytestreamIBB *bytestream,
   GabbleTubesChannel *self = data->self;
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
   GabbleTubeIface *tube = data->tube;
-  guint tube_id;
   LmMessageNode *si, *tube_node;
   TpTubeType type;
 
@@ -1057,8 +1056,6 @@ bytestream_negotiate_cb (GabbleBytestreamIBB *bytestream,
     }
 
   /* Tube was accepted by remote user */
-  tube_id = GPOINTER_TO_UINT (g_hash_table_lookup (priv->stream_id_to_tube_id,
-      stream_id));
 
   g_object_set (tube,
       "bytestream", bytestream,
@@ -1085,7 +1082,9 @@ bytestream_negotiate_cb (GabbleBytestreamIBB *bytestream,
     {
       LmMessageNode *dbus_name_node;
       const gchar *dbus_name;
+      guint tube_id;
 
+      g_object_get (tube, "id", &tube_id, NULL);
       dbus_name_node = lm_message_node_get_child (tube_node, "dbus-name");
       dbus_name = lm_message_node_get_value (dbus_name_node);
       add_name_in_dbus_names (self, tube_id, priv->handle, dbus_name);

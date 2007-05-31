@@ -13,5 +13,7 @@ dist-hook:
 	chmod u+w ${distdir}/ChangeLog
 	if test -d _darcs; then darcs changes >${distdir}/ChangeLog; fi
 
+check-twisted: check
+	$(MAKE) -C tests check-twisted
 check-extra: check
 	$(MAKE) -C tests check-extra

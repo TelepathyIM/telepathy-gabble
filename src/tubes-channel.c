@@ -103,7 +103,6 @@ struct _GabbleTubesChannelPrivate
   TpHandle self_handle;
 
   GHashTable *tubes;
-  GHashTable *stream_id_to_tube_id;
 
   gboolean closed;
   gboolean dispose_has_run;
@@ -124,8 +123,6 @@ gabble_tubes_channel_init (GabbleTubesChannel *self)
 
   priv->tubes = g_hash_table_new_full (g_direct_hash, g_direct_equal,
       NULL, (GDestroyNotify) g_object_unref);
-
-  self->muc = NULL;
 
   priv->stream_id_to_tube_id = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, NULL);
@@ -349,7 +346,6 @@ tube_closed_cb (GabbleTubeIface *tube,
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (user_data);
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
   guint tube_id;
-  gchar *stream_id;
 
   if (priv->closed)
     return;
@@ -360,17 +356,6 @@ tube_closed_cb (GabbleTubeIface *tube,
       DEBUG ("Can't find tube having this id: %d", tube_id);
     }
   DEBUG ("tube %d removed", tube_id);
-
-  stream_id = gabble_tube_iface_get_stream_id (tube);
-  if (stream_id != NULL)
-    {
-      if (!g_hash_table_remove (priv->stream_id_to_tube_id, stream_id))
-        {
-          DEBUG ("Can't find tube id using this stream id: %s", stream_id);
-        }
-
-      g_free (stream_id);
-    }
 
 #ifdef HAVE_DBUS_TUBE
   /* Emit the DBusNamesChanged signal */
@@ -428,8 +413,6 @@ create_new_tube (GabbleTubesChannel *self,
 
   DEBUG ("create tube %u", tube_id);
   g_hash_table_insert (priv->tubes, GUINT_TO_POINTER (tube_id), tube);
-  g_hash_table_insert (priv->stream_id_to_tube_id, g_strdup (stream_id),
-      GUINT_TO_POINTER (tube_id));
   update_tubes_presence (self);
 
   g_object_get (tube, "state", &state, NULL);
@@ -1133,13 +1116,6 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
       return;
     }
 
-  if (g_hash_table_lookup (priv->stream_id_to_tube_id, stream_id) != NULL)
-    {
-      DEBUG ("we already have a tube using this stream id: %s", stream_id);
-      gabble_bytestream_ibb_close (bytestream);
-      return;
-    }
-
   if (!extract_tube_information (self, node, &type, NULL,
               &service, &parameters, &tube_id))
     {
@@ -1781,15 +1757,10 @@ gabble_tubes_channel_close (GabbleTubesChannel *self)
 
   priv->closed = TRUE;
 
-  g_assert (g_hash_table_size (priv->tubes) ==
-      g_hash_table_size (priv->stream_id_to_tube_id));
-
   g_hash_table_foreach (priv->tubes, emit_tube_closed_signal, self);
   g_hash_table_destroy (priv->tubes);
-  g_hash_table_destroy (priv->stream_id_to_tube_id);
 
   priv->tubes = NULL;
-  priv->stream_id_to_tube_id = NULL;
 
   tp_svc_channel_emit_closed (self);
 }

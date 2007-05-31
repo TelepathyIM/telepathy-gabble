@@ -28,6 +28,7 @@
 
 #include "debug.h"
 #include "gabble-connection.h"
+#include "gabble-muc-channel.h"
 #include "presence.h"
 #include "presence-cache.h"
 #include "namespaces.h"
@@ -72,7 +73,7 @@ enum
   PROP_HANDLE_TYPE,
   PROP_HANDLE,
   PROP_CONNECTION,
-  PROP_SELF_HANDLE,
+  PROP_MUC,
   LAST_PROPERTY,
 };
 
@@ -82,6 +83,7 @@ typedef struct _GabbleTubesChannelPrivate GabbleTubesChannelPrivate;
 struct _GabbleTubesChannelPrivate
 {
   GabbleConnection *conn;
+  GabbleMucChannel *muc;
   char *object_path;
   TpHandle handle;
   TpHandleType handle_type;
@@ -111,6 +113,8 @@ gabble_tubes_channel_init (GabbleTubesChannel *self)
   priv->tubes = g_hash_table_new_full (g_direct_hash, g_direct_equal,
       NULL, (GDestroyNotify) g_object_unref);
 
+  priv->muc = NULL;
+
   priv->stream_id_to_tube_id = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, NULL);
 
@@ -135,6 +139,20 @@ gabble_tubes_channel_constructor (GType type,
            constructor (type, n_props, props);
 
   priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (GABBLE_TUBES_CHANNEL (obj));
+
+  switch (priv->handle_type)
+    {
+    case TP_HANDLE_TYPE_CONTACT:
+      g_assert (priv->muc == NULL);
+      priv->self_handle = ((TpBaseConnection *)(priv->conn))->self_handle;
+      break;
+    case TP_HANDLE_TYPE_ROOM:
+      g_assert (priv->muc != NULL);
+      priv->self_handle = priv->muc->group.self_handle;
+      break;
+    default:
+      g_assert_not_reached ();
+    }
 
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
@@ -170,8 +188,9 @@ gabble_tubes_channel_get_property (GObject *object,
       case PROP_CONNECTION:
         g_value_set_object (value, priv->conn);
         break;
-      case PROP_SELF_HANDLE:
-        g_value_set_uint (value, priv->self_handle);
+      case PROP_MUC:
+        g_value_set_object (value, priv->muc);
+        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -203,8 +222,8 @@ gabble_tubes_channel_set_property (GObject *object,
       case PROP_CONNECTION:
         priv->conn = g_value_get_object (value);
         break;
-      case PROP_SELF_HANDLE:
-        priv->self_handle = g_value_get_uint (value);
+      case PROP_MUC:
+        priv->muc = g_value_get_object (value);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -1625,19 +1644,17 @@ gabble_tubes_channel_class_init (
       G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 
-  /* XXX: Is this crack? It's a pain to look up the self handle on the muc, so
-   * we have the factory do it for us; this also means that the factory can
-   * check whether we're in the muc or not.
-   */
-  param_spec = g_param_spec_uint (
-      "self-handle",
-      "Self handle",
-      "The handle to use for ourself. This can be different from the "
-      "connection's self handle if our handle is a room handle.",
-      0, G_MAXUINT, 0,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_SELF_HANDLE, param_spec);
+  param_spec = g_param_spec_object (
+      "muc",
+      "GabbleMucChannel object",
+      "Gabble text MUC channel corresponding to this Tubes channel object, "
+      "if the handle type is ROOM.",
+      GABBLE_TYPE_MUC_CHANNEL,
+      G_PARAM_CONSTRUCT_ONLY |
+      G_PARAM_READWRITE |
+      G_PARAM_STATIC_NAME |
+      G_PARAM_STATIC_NICK |
+      G_PARAM_STATIC_BLURB);
 }
 
 void

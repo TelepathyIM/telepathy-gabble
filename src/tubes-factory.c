@@ -231,7 +231,6 @@ new_tubes_channel (GabbleTubesFactory *fac,
                        "object-path", object_path,
                        "handle", handle,
                        "handle-type", TP_HANDLE_TYPE_CONTACT,
-                       "self-handle", conn->self_handle,
                        NULL);
 
   DEBUG ("object path %s", object_path);

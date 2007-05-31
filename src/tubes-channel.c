@@ -1601,9 +1601,19 @@ gabble_tubes_channel_get_interfaces (TpSvcChannel *iface,
                                      DBusGMethodInvocation *context)
 {
   const char *interfaces[] = {
+      TP_IFACE_CHANNEL_INTERFACE_GROUP,
       NULL };
+  GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (iface);
 
-  tp_svc_channel_return_from_get_interfaces (context, interfaces);
+  if (self->muc)
+    {
+      tp_svc_channel_return_from_get_interfaces (context, interfaces);
+    }
+  else
+    {
+      /* only show the NULL */
+      tp_svc_channel_return_from_get_interfaces (context, interfaces + 1);
+    }
 }
 
 static void gabble_tubes_channel_dispose (GObject *object);

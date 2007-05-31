@@ -944,7 +944,7 @@ publish_tubes_in_node (gpointer key,
                        gpointer value,
                        gpointer user_data)
 {
-  guint tube_id = GPOINTER_TO_UINT (value);
+  GabbleTubeIface *tube = (GabbleTubeIface *) value;
   struct _i_hate_g_hash_table_foreach *data =
     (struct _i_hate_g_hash_table_foreach *) user_data;
   TpTubeState state;
@@ -956,8 +956,6 @@ publish_tubes_in_node (gpointer key,
   LmMessageNode *tube_node;
   const gchar *initiator;
   TpTubeType type;
-  GabbleTubeIface *tube = g_hash_table_lookup (priv->tubes,
-      GUINT_TO_POINTER (tube_id));
 
   if (tube == NULL)
     return;
@@ -1017,8 +1015,7 @@ update_tubes_presence (GabbleTubesChannel *self)
   data.self = self;
   data.tubes_node = node;
 
-  g_hash_table_foreach (priv->stream_id_to_tube_id, publish_tubes_in_node,
-      &data);
+  g_hash_table_foreach (priv->tubes, publish_tubes_in_node, &data);
 
   /* Send it */
   _gabble_connection_send (priv->conn, msg, NULL);

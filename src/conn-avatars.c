@@ -297,7 +297,7 @@ parse_avatar (LmMessageNode *vcard,
     }
   else
     {
-      *mime_type ="";
+      *mime_type = "";
     }
 
   binval_node = lm_message_node_get_child (photo_node, "BINVAL");

@@ -246,26 +246,6 @@ OUT:
 }
 
 
-/**
- * status_is_available
- *
- * Returns a boolean to indicate whether the given gabble status is
- * available on this connection.
- */
-static gboolean
-status_is_available (GabbleConnection *conn, int status)
-{
-  g_assert (GABBLE_IS_CONNECTION (conn));
-  g_assert (status < NUM_GABBLE_PRESENCES);
-
-  if (gabble_statuses[status].presence_type == TP_CONNECTION_PRESENCE_TYPE_HIDDEN &&
-      (conn->features & GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE) == 0)
-    return FALSE;
-  else
-    return TRUE;
-}
-
-
 static void
 connection_presence_update_cb (
     GabblePresenceCache *cache,
@@ -293,9 +273,15 @@ connection_status_changed_cb (
 
 
 static gboolean
-status_available_cb (GObject *obj, guint nth_status)
+status_available_cb (GObject *obj, guint status)
 {
-  return status_is_available (GABBLE_CONNECTION (obj), nth_status);
+  GabbleConnection *conn = GABBLE_CONNECTION (obj);
+
+  if (gabble_statuses[status].presence_type == TP_CONNECTION_PRESENCE_TYPE_HIDDEN &&
+      (conn->features & GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE) == 0)
+    return FALSE;
+  else
+    return TRUE;
 }
 
 

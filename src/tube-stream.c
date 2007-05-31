@@ -93,11 +93,18 @@ struct _GabbleTubeStreamPrivate
   GHashTable *fd_to_bytestreams;
   GHashTable *bytestream_to_io_channel;
   GHashTable *io_channel_to_watcher_source_id;
-  /* Default bytestream (the one created during SI) */
+  /* Default bytestream (the one created during SI)
+   * XXX: this is crack because we don't use/need this bytestream
+   * at all.
+   * Maybe we should refactor SI to not automatically create the bytestream
+   * and delegates that to the tube.
+   * Another problem is currently this bytestream is not only way we have
+   * to know when the remote contact close the tube for private tubes */
   GabbleBytestreamIBB *default_bytestream;
   TpHandle initiator;
   gchar *service;
   GHashTable *parameters;
+  TpTubeState state;
 
   /* Path of the unix socket associated with this stream tube */
   gchar *socket_path;
@@ -571,32 +578,6 @@ gabble_tube_stream_init (GabbleTubeStream *self)
   priv->dispose_has_run = FALSE;
 }
 
-static TpTubeState
-get_tube_state (GabbleTubeStream *self)
-{
-  GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
-  BytestreamIBBState bytestream_state;
-
-  if (priv->default_bytestream == NULL)
-    /* bytestream not yet created as we're waiting for the SI reply */
-    return TP_TUBE_STATE_REMOTE_PENDING;
-
-  g_object_get (priv->default_bytestream, "state", &bytestream_state, NULL);
-
-  if (bytestream_state == BYTESTREAM_IBB_STATE_OPEN)
-    return TP_TUBE_STATE_OPEN;
-
-  else if (bytestream_state == BYTESTREAM_IBB_STATE_LOCAL_PENDING ||
-      bytestream_state == BYTESTREAM_IBB_STATE_ACCEPTED)
-    return TP_TUBE_STATE_LOCAL_PENDING;
-
-  else if (bytestream_state == BYTESTREAM_IBB_STATE_INITIATING)
-    return TP_TUBE_STATE_REMOTE_PENDING;
-
-  else
-    g_assert_not_reached ();
-}
-
 static void
 bytestream_state_changed_cb (GabbleBytestreamIBB *bytestream,
                              BytestreamIBBState state,
@@ -614,11 +595,6 @@ bytestream_state_changed_cb (GabbleBytestreamIBB *bytestream,
         }
 
       g_signal_emit (G_OBJECT (self), signals[CLOSED], 0);
-    }
-  else if (state == BYTESTREAM_IBB_STATE_OPEN)
-    {
-      tube_stream_open (self);
-      g_signal_emit (G_OBJECT (self), signals[OPENED], 0);
     }
 }
 
@@ -745,7 +721,7 @@ gabble_tube_stream_get_property (GObject *object,
         g_value_set_boxed (value, priv->parameters);
         break;
       case PROP_STATE:
-        g_value_set_uint (value, get_tube_state (self));
+        g_value_set_uint (value, priv->state);
         break;
       case PROP_SOCKET:
         g_value_set_string (value, priv->socket_path);
@@ -785,16 +761,8 @@ gabble_tube_stream_set_property (GObject *object,
       case PROP_BYTESTREAM:
         if (priv->default_bytestream == NULL)
           {
-            BytestreamIBBState state;
-
             priv->default_bytestream = g_value_get_object (value);
             g_object_ref (priv->default_bytestream);
-
-            g_object_get (priv->default_bytestream, "state", &state, NULL);
-            if (state == BYTESTREAM_IBB_STATE_OPEN)
-              {
-                tube_stream_open (self);
-              }
 
             g_signal_connect (priv->default_bytestream, "state-changed",
                 G_CALLBACK (bytestream_state_changed_cb), self);
@@ -840,6 +808,26 @@ gabble_tube_stream_constructor (GType type,
   contact_repo = tp_base_connection_get_handles
       ((TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   tp_handle_ref (contact_repo, priv->initiator);
+
+  /* Set initial state of the tube */
+  if (priv->initiator == priv->self_handle)
+    {
+      /* We initiated this tube */
+      if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
+        {
+          /* Private tube */
+          priv->state = TP_TUBE_STATE_REMOTE_PENDING;
+        }
+      else
+        {
+          /* Muc tube */
+          priv->state = TP_TUBE_STATE_OPEN;
+        }
+    }
+  else
+    {
+      priv->state = TP_TUBE_STATE_LOCAL_PENDING;
+    }
 
   return obj;
 }
@@ -1096,7 +1084,12 @@ gabble_tube_stream_accept (GabbleTubeIface *tube)
   BytestreamIBBState state;
   const gchar *stream_init_id;
 
-  g_assert (priv->default_bytestream != NULL);
+  tube_stream_open (self);
+  priv->state = TP_TUBE_STATE_OPEN;
+  g_signal_emit (G_OBJECT (self), signals[OPENED], 0);
+
+  if (priv->default_bytestream == NULL)
+    return;
 
   g_object_get (priv->default_bytestream,
       "state", &state,

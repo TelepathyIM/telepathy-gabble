@@ -1044,55 +1044,53 @@ bytestream_negotiate_cb (GabbleBytestreamIBB *bytestream,
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
   GabbleTubeIface *tube = data->tube;
   guint tube_id;
+  LmMessageNode *si, *tube_node;
+  TpTubeType type;
 
   g_slice_free (struct _bytestream_negotiate_cb_data, data);
 
-  tube_id = GPOINTER_TO_UINT (g_hash_table_lookup (priv->stream_id_to_tube_id,
-      stream_id));
-
   if (bytestream != NULL)
-    {
-      LmMessageNode *si, *tube_node;
-      TpTubeType type;
-
-      /* Tube was accepted by remote user */
-      g_object_set (tube,
-          "bytestream", bytestream,
-          NULL);
-
-      gabble_tube_iface_accept (tube);
-
-      si = lm_message_node_get_child_with_namespace (msg->node, "si", NS_SI);
-      /* XXX properly catch errors ! */
-      if (si == NULL)
-        return;
-
-      g_object_get (tube,
-          "type", &type,
-          NULL);
-
-      tube_node = lm_message_node_get_child_with_namespace (si, "tube",
-          NS_SI_TUBES);
-      if (tube_node == NULL)
-        return;
-
-#ifdef HAVE_DBUS_TUBE
-      if (type == TP_TUBE_TYPE_DBUS)
-        {
-          LmMessageNode *dbus_name_node;
-          const gchar *dbus_name;
-
-          dbus_name_node = lm_message_node_get_child (tube_node, "dbus-name");
-          dbus_name = lm_message_node_get_value (dbus_name_node);
-          add_name_in_dbus_names (self, tube_id, priv->handle, dbus_name);
-        }
-#endif
-    }
-  else
     {
       /* Tube was declined by remote user. Close it */
       gabble_tube_iface_close (tube);
+      return;
     }
+
+  /* Tube was accepted by remote user */
+  tube_id = GPOINTER_TO_UINT (g_hash_table_lookup (priv->stream_id_to_tube_id,
+      stream_id));
+
+  g_object_set (tube,
+      "bytestream", bytestream,
+      NULL);
+
+  gabble_tube_iface_accept (tube);
+
+  si = lm_message_node_get_child_with_namespace (msg->node, "si", NS_SI);
+  /* XXX properly catch errors ! */
+  if (si == NULL)
+    return;
+
+  g_object_get (tube,
+      "type", &type,
+      NULL);
+
+  tube_node = lm_message_node_get_child_with_namespace (si, "tube",
+      NS_SI_TUBES);
+  if (tube_node == NULL)
+    return;
+
+#ifdef HAVE_DBUS_TUBE
+  if (type == TP_TUBE_TYPE_DBUS)
+    {
+      LmMessageNode *dbus_name_node;
+      const gchar *dbus_name;
+
+      dbus_name_node = lm_message_node_get_child (tube_node, "dbus-name");
+      dbus_name = lm_message_node_get_value (dbus_name_node);
+      add_name_in_dbus_names (self, tube_id, priv->handle, dbus_name);
+    }
+#endif
 }
 
 void

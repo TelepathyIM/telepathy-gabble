@@ -92,6 +92,7 @@ struct _GabbleTubeStreamPrivate
   guint id;
   GHashTable *fd_to_bytestreams;
   GHashTable *bytestream_to_io_channel;
+  GHashTable *io_channel_to_watcher_source_id;
   /* Default bytestream (the one created during SI) */
   GabbleBytestreamIBB *default_bytestream;
   TpHandle initiator;
@@ -101,6 +102,7 @@ struct _GabbleTubeStreamPrivate
   /* Path of the unix socket associated with this stream tube */
   gchar *socket_path;
   GIOChannel *listen_io_channel;
+  guint listen_io_channel_source_id;
 
   gboolean dispose_has_run;
 };
@@ -210,12 +212,16 @@ extra_bytestream_state_changed_cb (GabbleBytestreamIBB *bytestream,
 
   if (state == BYTESTREAM_IBB_STATE_OPEN)
     {
+      guint source_id;
       DEBUG ("extra bytestream open");
 
       g_signal_connect (bytestream, "data-received",
           G_CALLBACK (data_received_cb), self);
 
-      g_io_add_watch (channel, G_IO_IN, data_to_read_on_socket_cb, self);
+      source_id = g_io_add_watch (channel, G_IO_IN, data_to_read_on_socket_cb,
+          self);
+      g_hash_table_insert (priv->io_channel_to_watcher_source_id,
+          g_io_channel_ref (channel), GUINT_TO_POINTER (source_id));
     }
   else if (state == BYTESTREAM_IBB_STATE_CLOSED)
     {
@@ -227,6 +233,7 @@ extra_bytestream_state_changed_cb (GabbleBytestreamIBB *bytestream,
 
       g_hash_table_remove (priv->fd_to_bytestreams, GINT_TO_POINTER (fd));
       g_hash_table_remove (priv->bytestream_to_io_channel, bytestream);
+      g_hash_table_remove (priv->io_channel_to_watcher_source_id, channel);
     }
 }
 
@@ -521,8 +528,21 @@ tube_stream_open (GabbleTubeStream *self)
   g_io_channel_set_buffered (priv->listen_io_channel, FALSE);
   g_io_channel_set_close_on_unref (priv->listen_io_channel, TRUE);
 
-  g_io_add_watch (priv->listen_io_channel, G_IO_IN,
-      listen_cb, self);
+  priv->listen_io_channel_source_id = g_io_add_watch (priv->listen_io_channel,
+      G_IO_IN, listen_cb, self);
+}
+
+static void
+remove_watcher_source_id (gpointer data)
+{
+  guint source_id = GPOINTER_TO_UINT (data);
+  GSource *source;
+
+  source = g_main_context_find_source_by_id (NULL, source_id);
+  if (source != NULL)
+    {
+      g_source_destroy (source);
+    }
 }
 
 static void
@@ -533,13 +553,20 @@ gabble_tube_stream_init (GabbleTubeStream *self)
 
   self->priv = priv;
 
-  priv->default_bytestream = NULL;
   priv->fd_to_bytestreams = g_hash_table_new_full (g_direct_hash,
       g_direct_equal, NULL, (GDestroyNotify) g_object_unref);
+
   priv->bytestream_to_io_channel = g_hash_table_new_full (g_direct_hash,
       g_direct_equal, (GDestroyNotify) g_object_unref,
       (GDestroyNotify) g_io_channel_unref);
+
+  priv->io_channel_to_watcher_source_id = g_hash_table_new_full (g_direct_hash,
+      g_direct_equal, (GDestroyNotify) g_io_channel_unref,
+      (GDestroyNotify) remove_watcher_source_id);
+
+  priv->default_bytestream = NULL;
   priv->listen_io_channel = NULL;
+  priv->listen_io_channel_source_id = 0;
 
   priv->dispose_has_run = FALSE;
 }
@@ -636,7 +663,20 @@ gabble_tube_stream_dispose (GObject *object)
       priv->bytestream_to_io_channel = NULL;
     }
 
+  if (priv->io_channel_to_watcher_source_id != NULL)
+    {
+      g_hash_table_destroy (priv->io_channel_to_watcher_source_id);
+      priv->io_channel_to_watcher_source_id = NULL;
+    }
+
   tp_handle_unref (contact_repo, priv->initiator);
+
+  if (priv->listen_io_channel_source_id != 0)
+    {
+      g_source_destroy (g_main_context_find_source_by_id (NULL,
+            priv->listen_io_channel_source_id));
+      priv->listen_io_channel_source_id = 0;
+    }
 
   if (priv->listen_io_channel)
     {

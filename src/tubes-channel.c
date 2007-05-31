@@ -1026,26 +1026,29 @@ update_tubes_presence (GabbleTubesChannel *self)
   lm_message_unref (msg);
 }
 
+struct _bytestream_negotiate_cb_data
+{
+  GabbleTubesChannel *self;
+  GabbleTubeIface *tube;
+};
+
 static void
 bytestream_negotiate_cb (GabbleBytestreamIBB *bytestream,
                          const gchar *stream_id,
                          LmMessage *msg,
                          gpointer user_data)
 {
-  GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (user_data);
+  struct _bytestream_negotiate_cb_data *data =
+    (struct _bytestream_negotiate_cb_data *) user_data;
+  GabbleTubesChannel *self = data->self;
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
-  GabbleTubeIface *tube;
+  GabbleTubeIface *tube = data->tube;
   guint tube_id;
+
+  g_slice_free (struct _bytestream_negotiate_cb_data, data);
 
   tube_id = GPOINTER_TO_UINT (g_hash_table_lookup (priv->stream_id_to_tube_id,
       stream_id));
-  tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
-
-  if (tube == NULL)
-    {
-      DEBUG ("tube unknow");
-      return;
-    }
 
   if (bytestream != NULL)
     {
@@ -1195,6 +1198,7 @@ start_stream_initiation (GabbleTubesChannel *self,
   const gchar *jid, *resource;
   gchar *full_jid;
   gboolean result;
+  struct _bytestream_negotiate_cb_data *data;
 
   priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
 
@@ -1236,13 +1240,20 @@ start_stream_initiation (GabbleTubesChannel *self,
   lm_message_node_set_attribute (node, "xmlns", NS_SI_TUBES);
   publish_tube_in_node (node, tube, stream_id);
 
+  data = g_slice_new (struct _bytestream_negotiate_cb_data);
+  data->self = self;
+  data->tube = tube;
+
   result = gabble_bytestream_factory_negotiate_stream (
     priv->conn->bytestream_factory,
     msg,
     stream_id,
     bytestream_negotiate_cb,
-    self,
+    data,
     error);
+
+  if (!result)
+    g_slice_free (struct _bytestream_negotiate_cb_data, data);
 
   lm_message_unref (msg);
   g_free (full_jid);

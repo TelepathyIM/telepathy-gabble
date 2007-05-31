@@ -64,9 +64,9 @@ static const TpPresenceStatusSpec gabble_statuses[] = {
 
 
 static GHashTable *
-construct_contact_statuses (GObject *obj,
-                            const GArray *contact_handles,
-                            GError **unused)
+construct_contact_statuses_cb (GObject *obj,
+                               const GArray *contact_handles,
+                               GError **unused)
 {
   GabbleConnection *self = GABBLE_CONNECTION (obj);
   TpBaseConnection *base = (TpBaseConnection *)self;
@@ -143,7 +143,7 @@ emit_presence_update (GabbleConnection *self,
 {
   GHashTable *contact_statuses;
 
-  contact_statuses = construct_contact_statuses ((GObject *) self,
+  contact_statuses = construct_contact_statuses_cb ((GObject *) self,
       contact_handles, NULL);
   tp_presence_mixin_emit_presence_update ((GObject *) self, contact_statuses);
   g_hash_table_destroy (contact_statuses);
@@ -167,55 +167,82 @@ emit_one_presence_update (GabbleConnection *self,
 }
 
 
-
-
-/**
- * gabble_connection_clear_status
- *
- * Implements D-Bus method ClearStatus
- * on interface org.freedesktop.Telepathy.Connection.Interface.Presence
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-static void
-gabble_connection_clear_status (TpSvcConnectionInterfacePresence *iface,
-                                DBusGMethodInvocation *context)
+static gboolean
+set_own_status_cb (GObject *obj,
+                   const TpPresenceStatus *status,
+                   GError **error)
 {
-  GabbleConnection *self = GABBLE_CONNECTION (iface);
-  TpBaseConnection *base = (TpBaseConnection *)self;
-  GError *error = NULL;
-  gboolean ok;
+  GabbleConnection *conn = GABBLE_CONNECTION (obj);
+  TpBaseConnection *base = (TpBaseConnection *) conn;
   gchar *resource;
-  gint8 priority;
+  gint8 prio;
+  gboolean retval = TRUE;
 
-  g_assert (GABBLE_IS_CONNECTION (self));
-
-  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
-
-  g_object_get (self,
+  g_object_get (conn,
         "resource", &resource,
-        "priority", &priority,
+        "priority", &prio,
         NULL);
-  gabble_presence_update (self->self_presence, resource,
-      GABBLE_PRESENCE_AVAILABLE, NULL, priority);
-  emit_one_presence_update (self, base->self_handle);
-  ok = _gabble_connection_signal_own_presence (self, &error);
 
-  if (ok)
+  if (status)
     {
-      tp_svc_connection_interface_presence_return_from_clear_status (context);
+      GabblePresenceId i = status->index;
+      GHashTable *args = status->optional_arguments;
+      GValue *message = g_hash_table_lookup (args, "message");
+      GValue *priority = g_hash_table_lookup (args, "priority");
+      const gchar *status = NULL;
+
+      if (message)
+        {
+          if (!G_VALUE_HOLDS_STRING (message))
+            {
+              DEBUG ("got a status message which was not a string");
+              g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+                  "Status argument 'message' requires a string");
+              retval = FALSE;
+              goto OUT;
+            }
+          status = g_value_get_string (message);
+        }
+
+      if (priority)
+        {
+          if (!G_VALUE_HOLDS_INT (priority))
+            {
+              DEBUG ("got a priority value which was not a signed integer");
+              g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+                   "Status argument 'priority' requires a signed integer");
+              retval = FALSE;
+              goto OUT;
+            }
+          prio = CLAMP (g_value_get_int (priority), G_MININT8, G_MAXINT8);
+        }
+
+      if (gabble_presence_update (conn->self_presence, resource, i,
+            status, prio))
+        {
+          emit_one_presence_update (conn, base->self_handle);
+          retval = _gabble_connection_signal_own_presence (conn,
+              error);
+        }
+      else
+        {
+          /* Nothing actually changed. */
+          retval = TRUE;
+        }
     }
   else
     {
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
+      gabble_presence_update (conn->self_presence, resource,
+          GABBLE_PRESENCE_AVAILABLE, NULL, prio);
+      emit_one_presence_update (conn, base->self_handle);
+      return _gabble_connection_signal_own_presence (conn, error);
     }
 
+OUT:
+
   g_free (resource);
+
+  return retval;
 }
 
 
@@ -236,214 +263,6 @@ status_is_available (GabbleConnection *conn, int status)
     return FALSE;
   else
     return TRUE;
-}
-
-
-/**
- * gabble_connection_remove_status
- *
- * Implements D-Bus method RemoveStatus
- * on interface org.freedesktop.Telepathy.Connection.Interface.Presence
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-static void
-gabble_connection_remove_status (TpSvcConnectionInterfacePresence *iface,
-                                 const gchar *status,
-                                 DBusGMethodInvocation *context)
-{
-  GabbleConnection *self = GABBLE_CONNECTION (iface);
-  TpBaseConnection *base = (TpBaseConnection *)self;
-  GabblePresence *presence = self->self_presence;
-  GError *error = NULL;
-  gchar *resource;
-  gint8 priority;
-
-  g_assert (GABBLE_IS_CONNECTION (self));
-
-  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
-
-  g_object_get (self,
-      "resource", &resource,
-      "priority", &priority,
-      NULL);
-
-  if (strcmp (status, gabble_statuses[presence->status].name) == 0)
-    {
-      gabble_presence_update (presence, resource,
-          GABBLE_PRESENCE_AVAILABLE, NULL, priority);
-      emit_one_presence_update (self, base->self_handle);
-      if (_gabble_connection_signal_own_presence (self, &error))
-        {
-          tp_svc_connection_interface_presence_return_from_remove_status (
-              context);
-        }
-      else
-        {
-          dbus_g_method_return_error (context, error);
-          g_error_free (error);
-        }
-    }
-  else
-    {
-      GError nonexistent = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "Attempting to remove non-existent presence." };
-      dbus_g_method_return_error (context, &nonexistent);
-    }
-
-  g_free (resource);
-}
-
-
-struct _i_hate_g_hash_table_foreach
-{
-  GabbleConnection *conn;
-  GError **error;
-  gboolean retval;
-};
-
-
-static void
-setstatuses_foreach (gpointer key, gpointer value, gpointer user_data)
-{
-  struct _i_hate_g_hash_table_foreach *data =
-    (struct _i_hate_g_hash_table_foreach*) user_data;
-  TpBaseConnection *base = (TpBaseConnection *)data->conn;
-  gchar *resource;
-  int i;
-
-  g_object_get (data->conn, "resource", &resource, NULL);
-
-  for (i = 0; i < NUM_GABBLE_PRESENCES; i++)
-    {
-      if (0 == strcmp (gabble_statuses[i].name, (const gchar*) key))
-        break;
-    }
-
-  if (i < NUM_GABBLE_PRESENCES)
-    {
-      GHashTable *args = (GHashTable *)value;
-      GValue *message = g_hash_table_lookup (args, "message");
-      GValue *priority = g_hash_table_lookup (args, "priority");
-      const gchar *status = NULL;
-      gint8 prio;
-
-      g_object_get (data->conn, "priority", &prio, NULL);
-
-      if (!status_is_available (data->conn, i))
-        {
-          DEBUG ("requested status %s is not available", (const gchar *) key);
-          g_set_error (data->error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-              "requested status '%s' is not available on this connection",
-              (const gchar *) key);
-          data->retval = FALSE;
-          goto OUT;
-        }
-
-      if (message)
-        {
-          if (!G_VALUE_HOLDS_STRING (message))
-            {
-              DEBUG ("got a status message which was not a string");
-              g_set_error (data->error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-                  "Status argument 'message' requires a string");
-              data->retval = FALSE;
-              goto OUT;
-            }
-          status = g_value_get_string (message);
-        }
-
-      if (priority)
-        {
-          if (!G_VALUE_HOLDS_INT (priority))
-            {
-              DEBUG ("got a priority value which was not a signed integer");
-              g_set_error (data->error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-                   "Status argument 'priority' requires a signed integer");
-              data->retval = FALSE;
-              goto OUT;
-            }
-          prio = CLAMP (g_value_get_int (priority), G_MININT8, G_MAXINT8);
-        }
-
-      if (gabble_presence_update (data->conn->self_presence, resource, i,
-            status, prio))
-        {
-          emit_one_presence_update (data->conn, base->self_handle);
-          data->retval = _gabble_connection_signal_own_presence (data->conn,
-              data->error);
-        }
-      else
-        {
-          /* Nothing actually changed. */
-          data->retval = TRUE;
-        }
-    }
-  else
-    {
-      DEBUG ("got unknown status identifier %s", (const gchar *) key);
-      g_set_error (data->error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "unknown status identifier: %s", (const gchar *) key);
-      data->retval = FALSE;
-    }
-
-OUT:
-  g_free (resource);
-}
-
-/**
- * gabble_connection_set_status
- *
- * Implements D-Bus method SetStatus
- * on interface org.freedesktop.Telepathy.Connection.Interface.Presence
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-static void
-gabble_connection_set_status (TpSvcConnectionInterfacePresence *iface,
-                              GHashTable *statuses,
-                              DBusGMethodInvocation *context)
-{
-  GabbleConnection *self = GABBLE_CONNECTION (iface);
-  TpBaseConnection *base = (TpBaseConnection *)self;
-  struct _i_hate_g_hash_table_foreach data = { NULL, NULL, TRUE };
-  GError *error = NULL;
-
-  g_assert (GABBLE_IS_CONNECTION (self));
-
-  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
-
-  if (g_hash_table_size (statuses) != 1)
-    {
-      GError invalid = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "Only one status may be set at a time in this protocol" };
-      DEBUG ("got more than one status");
-      dbus_g_method_return_error (context, &invalid);
-      return;
-    }
-
-  data.conn = self;
-  data.error = &error;
-  g_hash_table_foreach (statuses, setstatuses_foreach, &data);
-
-  if (data.retval)
-    {
-      tp_svc_connection_interface_presence_return_from_set_status (
-          context);
-    }
-  else
-    {
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-    }
 }
 
 
@@ -485,7 +304,8 @@ conn_presence_class_init (GabbleConnectionClass *klass)
 {
   tp_presence_mixin_class_init ((GObjectClass *) klass,
       G_STRUCT_OFFSET (GabbleConnectionClass, presence_class),
-      status_available_cb, construct_contact_statuses, gabble_statuses);
+      status_available_cb, construct_contact_statuses_cb,
+      set_own_status_cb, gabble_statuses);
 }
 
 
@@ -512,15 +332,5 @@ conn_presence_finalize (GabbleConnection *conn)
 void
 conn_presence_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  TpSvcConnectionInterfacePresenceClass *klass =
-      (TpSvcConnectionInterfacePresenceClass *) g_iface;
-
   tp_presence_mixin_iface_init (g_iface, iface_data);
-
-#define IMPLEMENT(x) tp_svc_connection_interface_presence_implement_##x (\
-    klass, gabble_connection_##x)
-  IMPLEMENT(clear_status);
-  IMPLEMENT(remove_status);
-  IMPLEMENT(set_status);
-#undef IMPLEMENT
 }

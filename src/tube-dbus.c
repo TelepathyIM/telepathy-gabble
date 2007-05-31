@@ -907,20 +907,6 @@ gabble_tube_dbus_new (GabbleConnection *conn,
       NULL);
 }
 
-/**
- * gabble_tube_dbus_get_stream_id
- *
- * Implements gabble_tube_iface_get_stream_id on GabbleTubeIface
- */
-static gchar *
-gabble_tube_dbus_get_stream_id (GabbleTubeIface *tube)
-{
-  GabbleTubeDBus *self = GABBLE_TUBE_DBUS (tube);
-  GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
-
-  return priv->stream_id ? g_strdup (priv->stream_id) : NULL;
-}
-
 /*
  * gabble_tube_dbus_accept
  *
@@ -1024,7 +1010,6 @@ tube_iface_init (gpointer g_iface,
 {
   GabbleTubeIfaceClass *klass = (GabbleTubeIfaceClass *) g_iface;
 
-  klass->get_stream_id = gabble_tube_dbus_get_stream_id;
   klass->accept = gabble_tube_dbus_accept;
   klass->close = gabble_tube_dbus_close;
   klass->add_bytestream = gabble_tube_dbus_add_bytestream;

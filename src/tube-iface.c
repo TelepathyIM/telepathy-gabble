@@ -30,15 +30,6 @@ gabble_tube_iface_accept (GabbleTubeIface *self)
   virtual_method (self);
 }
 
-gchar *
-gabble_tube_iface_get_stream_id (GabbleTubeIface *self)
-{
-  gchar * (*virtual_method)(GabbleTubeIface *) =
-    GABBLE_TUBE_IFACE_GET_CLASS (self)->get_stream_id;
-  g_assert (virtual_method != NULL);
-  return virtual_method (self);
-}
-
 void
 gabble_tube_iface_close (GabbleTubeIface *self)
 {

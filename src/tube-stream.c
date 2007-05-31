@@ -1084,25 +1084,6 @@ gabble_tube_stream_new (GabbleConnection *conn,
 }
 
 /**
- * gabble_tube_stream_get_stream_id
- *
- * Implements gabble_tube_iface_get_stream_id on GabbleTubeIface
- */
-static gchar *
-gabble_tube_stream_get_stream_id (GabbleTubeIface *tube)
-{
-  GabbleTubeStream *self = GABBLE_TUBE_STREAM (tube);
-  GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
-  gchar *stream_id;
-
-  if (priv->default_bytestream == NULL)
-    return NULL;
-
-  g_object_get (priv->default_bytestream, "stream-id", &stream_id, NULL);
-  return stream_id;
-}
-
-/**
  * gabble_tube_stream_accept
  *
  * Implements gabble_tube_iface_accept on GabbleTubeIface
@@ -1236,7 +1217,6 @@ tube_iface_init (gpointer g_iface,
 {
   GabbleTubeIfaceClass *klass = (GabbleTubeIfaceClass *) g_iface;
 
-  klass->get_stream_id = gabble_tube_stream_get_stream_id;
   klass->accept = gabble_tube_stream_accept;
   klass->close = gabble_tube_stream_close;
   klass->add_bytestream = gabble_tube_stream_add_bytestream;

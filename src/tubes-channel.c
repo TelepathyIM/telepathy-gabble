@@ -1105,20 +1105,29 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
   guint tube_id;
   GabbleTubeIface *tube;
 
-  node = lm_message_node_get_child_with_namespace (msg->node, "tube",
-      NS_SI_TUBES);
-
+  node = lm_message_node_get_child_with_namespace (msg->node, "si",
+      NS_SI);
   if (node == NULL)
     {
-      NODE_DEBUG (msg->node, "got a SI request without tube markup");
+
+      NODE_DEBUG (msg->node, "got a SI request without SI markup");
       gabble_bytestream_ibb_close (bytestream);
       return;
     }
 
-  stream_id = lm_message_node_get_attribute (node, "stream_id");
+  stream_id = lm_message_node_get_attribute (node, "id");
   if (stream_id == NULL)
     {
       NODE_DEBUG (msg->node, "got a SI request without stream ID");
+      gabble_bytestream_ibb_close (bytestream);
+      return;
+    }
+
+  node = lm_message_node_get_child_with_namespace (msg->node, "tube",
+      NS_SI_TUBES);
+  if (node == NULL)
+    {
+      NODE_DEBUG (msg->node, "got a SI request without tube markup");
       gabble_bytestream_ibb_close (bytestream);
       return;
     }
@@ -1236,7 +1245,6 @@ start_stream_initiation (GabbleTubesChannel *self,
   node = lm_message_node_add_child (msg->node, "tube", NULL);
   lm_message_node_set_attribute (node, "xmlns", NS_SI_TUBES);
   publish_tube_in_node (node, tube);
-  lm_message_node_set_attribute (node, "stream_id", stream_id);
 
   data = g_slice_new (struct _bytestream_negotiate_cb_data);
   data->self = self;

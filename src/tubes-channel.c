@@ -1047,7 +1047,7 @@ bytestream_negotiate_cb (GabbleBytestreamIBB *bytestream,
 
   g_slice_free (struct _bytestream_negotiate_cb_data, data);
 
-  if (bytestream != NULL)
+  if (bytestream == NULL)
     {
       /* Tube was declined by remote user. Close it */
       gabble_tube_iface_close (tube);

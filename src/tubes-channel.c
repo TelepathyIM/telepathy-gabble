@@ -648,9 +648,6 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
 
       stream_id = lm_message_node_get_attribute (tube_node, "stream_id");
 
-      if (stream_id == NULL)
-        continue;
-
       extract_tube_information (self, tube_node, NULL,
           NULL, NULL, NULL, &tube_id);
       tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
@@ -914,11 +911,20 @@ publish_tube_in_node (LmMessageNode *node,
 
   if (type == TP_TUBE_TYPE_DBUS)
     {
-      gchar *name;
+      gchar *name, *stream_id;
 
-      g_object_get (G_OBJECT (tube), "dbus-name", &name, NULL);
-      lm_message_node_set_attribute (node, "dbus-name", name);
+      g_object_get (G_OBJECT (tube),
+          "dbus-name", &name,
+          "stream-id", &stream_id,
+          NULL);
+
+      lm_message_node_set_attributes (node,
+          "dbus-name", name,
+          "stream_id", stream_id,
+          NULL);
+
       g_free (name);
+      g_free (stream_id);
     }
 
   parameters_node = lm_message_node_add_child (node, "parameters",
@@ -941,7 +947,6 @@ publish_tubes_in_node (gpointer key,
                        gpointer value,
                        gpointer user_data)
 {
-  const gchar *stream_id = (const gchar *) key;
   guint tube_id = GPOINTER_TO_UINT (value);
   struct _i_hate_g_hash_table_foreach *data =
     (struct _i_hate_g_hash_table_foreach *) user_data;
@@ -969,7 +974,6 @@ publish_tubes_in_node (gpointer key,
 
   tube_node = lm_message_node_add_child (data->tubes_node, "tube", NULL);
   publish_tube_in_node (tube_node, tube);
-  lm_message_node_set_attribute (tube_node, "stream_id", stream_id);
 
   g_object_get (tube,
         "type", &type,

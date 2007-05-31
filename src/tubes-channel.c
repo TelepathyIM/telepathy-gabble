@@ -28,7 +28,6 @@
 
 #include "debug.h"
 #include "gabble-connection.h"
-#include "gabble-muc-channel.h"
 #include "presence.h"
 #include "presence-cache.h"
 #include "namespaces.h"
@@ -37,6 +36,7 @@
 #include "bytestream-factory.h"
 
 #include <telepathy-glib/errors.h>
+#include <telepathy-glib/group-mixin.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/channel-iface.h>
@@ -64,6 +64,8 @@ G_DEFINE_TYPE_WITH_CODE (GabbleTubesChannel, gabble_tubes_channel,
     G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_TUBES, tubes_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
+        tp_external_group_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL));
 
 enum
@@ -83,7 +85,6 @@ typedef struct _GabbleTubesChannelPrivate GabbleTubesChannelPrivate;
 struct _GabbleTubesChannelPrivate
 {
   GabbleConnection *conn;
-  GabbleMucChannel *muc;
   char *object_path;
   TpHandle handle;
   TpHandleType handle_type;
@@ -113,7 +114,7 @@ gabble_tubes_channel_init (GabbleTubesChannel *self)
   priv->tubes = g_hash_table_new_full (g_direct_hash, g_direct_equal,
       NULL, (GDestroyNotify) g_object_unref);
 
-  priv->muc = NULL;
+  self->muc = NULL;
 
   priv->stream_id_to_tube_id = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, NULL);
@@ -130,6 +131,7 @@ gabble_tubes_channel_constructor (GType type,
                                   GObjectConstructParam *props)
 {
   GObject *obj;
+  GabbleTubesChannel *self;
   GabbleTubesChannelPrivate *priv;
   DBusGConnection *bus;
 
@@ -138,17 +140,18 @@ gabble_tubes_channel_constructor (GType type,
   obj = G_OBJECT_CLASS (gabble_tubes_channel_parent_class)->
            constructor (type, n_props, props);
 
-  priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (GABBLE_TUBES_CHANNEL (obj));
+  self = GABBLE_TUBES_CHANNEL (obj);
+  priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
 
   switch (priv->handle_type)
     {
     case TP_HANDLE_TYPE_CONTACT:
-      g_assert (priv->muc == NULL);
+      g_assert (self->muc == NULL);
       priv->self_handle = ((TpBaseConnection *)(priv->conn))->self_handle;
       break;
     case TP_HANDLE_TYPE_ROOM:
-      g_assert (priv->muc != NULL);
-      priv->self_handle = priv->muc->group.self_handle;
+      g_assert (self->muc != NULL);
+      priv->self_handle = self->muc->group.self_handle;
       break;
     default:
       g_assert_not_reached ();
@@ -189,7 +192,7 @@ gabble_tubes_channel_get_property (GObject *object,
         g_value_set_object (value, priv->conn);
         break;
       case PROP_MUC:
-        g_value_set_object (value, priv->muc);
+        g_value_set_object (value, chan->muc);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -223,7 +226,7 @@ gabble_tubes_channel_set_property (GObject *object,
         priv->conn = g_value_get_object (value);
         break;
       case PROP_MUC:
-        priv->muc = g_value_get_object (value);
+        chan->muc = g_value_get_object (value);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -1615,6 +1618,9 @@ gabble_tubes_channel_class_init (
 
   g_type_class_add_private (gabble_tubes_channel_class,
       sizeof (GabbleTubesChannelPrivate));
+
+  tp_external_group_mixin_class_init (object_class,
+      G_STRUCT_OFFSET (GabbleTubesChannel, muc));
 
   object_class->constructor = gabble_tubes_channel_constructor;
 

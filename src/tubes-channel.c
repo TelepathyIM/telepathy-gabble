@@ -874,8 +874,7 @@ copy_parameter (gpointer key,
 
 static void
 publish_tube_in_node (LmMessageNode *node,
-                      GabbleTubeIface *tube,
-                      const gchar *stream_id)
+                      GabbleTubeIface *tube)
 {
   LmMessageNode *parameters_node;
   GHashTable *parameters;
@@ -893,7 +892,6 @@ publish_tube_in_node (LmMessageNode *node,
   id_str = g_strdup_printf ("%u", tube_id);
 
   lm_message_node_set_attributes (node,
-      "stream_id", stream_id,
       "service", service,
       "id", id_str,
       NULL);
@@ -968,7 +966,8 @@ publish_tubes_in_node (gpointer key,
     return;
 
   tube_node = lm_message_node_add_child (data->tubes_node, "tube", NULL);
-  publish_tube_in_node (tube_node, tube, stream_id);
+  publish_tube_in_node (tube_node, tube);
+  lm_message_node_set_attribute (tube_node, "stream_id", stream_id);
 
   g_object_get (tube,
         "type", &type,
@@ -1235,7 +1234,8 @@ start_stream_initiation (GabbleTubesChannel *self,
 
   node = lm_message_node_add_child (msg->node, "tube", NULL);
   lm_message_node_set_attribute (node, "xmlns", NS_SI_TUBES);
-  publish_tube_in_node (node, tube, stream_id);
+  publish_tube_in_node (node, tube);
+  lm_message_node_set_attribute (node, "stream_id", stream_id);
 
   data = g_slice_new (struct _bytestream_negotiate_cb_data);
   data->self = self;

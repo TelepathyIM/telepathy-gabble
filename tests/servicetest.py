@@ -177,12 +177,13 @@ def create_test(name, proto, params):
     test['handler'] = EventTest()
 
     test['bus'].add_signal_receiver(
-        handler_function=lambda *args, **kw:
+        lambda *args, **kw:
             test['handler'].handle_event((
                 'dbus-signal', unwrap(kw['path']), kw['member'],
                 map(unwrap, args))),
-
-        named_service=test['cm']._named_service,
+        None,       # signal name
+        None,       # interface
+        test['cm']._named_service,
         path_keyword='path',
         member_keyword='member'
         )

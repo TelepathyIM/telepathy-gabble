@@ -1091,6 +1091,7 @@ bytestream_negotiate_cb (GabbleBytestreamIBB *bytestream,
 #endif
 }
 
+/* Called when we receive a SI request */
 void
 gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
                                    GabbleBytestreamIBB *bytestream,
@@ -1109,7 +1110,7 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
 
   if (node == NULL)
     {
-      NODE_DEBUG (msg->node, "got a SI request without a tube field");
+      NODE_DEBUG (msg->node, "got a SI request without tube markup");
       gabble_bytestream_ibb_close (bytestream);
       return;
     }

@@ -402,6 +402,35 @@ gabble_decode_jid (const gchar *jid,
   g_free (tmp_jid);
 }
 
+/**
+ * gabble_get_room_handle_from_jid:
+ * @room_repo: The %TP_HANDLE_TYPE_ROOM handle repository
+ * @jid: A JID
+ *
+ * Given a JID seen in the from="" attribute on a stanza, work out whether
+ * it's something to do with a MUC, and if so, return its handle.
+ *
+ * Returns: The handle of the MUC, if the JID refers to either a MUC
+ *    we're in, or a contact's channel-specific JID inside a MUC.
+ *    Returns 0 if the JID is either invalid, or nothing to do with a
+ *    known MUC (typically this will mean it's the global JID of a contact).
+ */
+TpHandle
+gabble_get_room_handle_from_jid (TpHandleRepoIface *room_repo,
+                                 const gchar *jid)
+{
+  TpHandle handle;
+  gchar *room;
+
+  room = gabble_remove_resource (jid);
+  if (room == NULL)
+    return 0;
+
+  handle = tp_handle_lookup (room_repo, room, NULL, NULL);
+  g_free (room);
+  return handle;
+}
+
 #define INVALID_ARGUMENT(e, f, ...) \
   G_STMT_START { \
   DEBUG (f, ##__VA_ARGS__); \

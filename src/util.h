@@ -54,6 +54,8 @@ gchar *gabble_normalize_contact (TpHandleRepoIface *repo, const gchar *jid,
     gpointer userdata, GError **error);
 gchar *gabble_normalize_room (TpHandleRepoIface *repo, const gchar *jid,
     gpointer context, GError **error);
+TpHandle gabble_get_room_handle_from_jid (TpHandleRepoIface *room_repo,
+    const gchar *jid);
 
 GHashTable *lm_message_node_extract_properties (LmMessageNode *node,
     const gchar *prop);

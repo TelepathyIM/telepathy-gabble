@@ -943,6 +943,12 @@ gabble_tube_dbus_accept (GabbleTubeIface *tube)
       DEBUG ("accept the SI request");
 
       msg = gabble_bytestream_ibb_make_accept_iq (priv->bytestream);
+      if (msg == NULL)
+        {
+          DEBUG ("can't create SI accept IQ. Close the bytestream");
+          gabble_bytestream_ibb_close (priv->bytestream);
+          return;
+        }
 
       si = lm_message_node_get_child_with_namespace (msg->node, "si",
           NS_SI);

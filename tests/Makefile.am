@@ -54,7 +54,7 @@ _check-twisted:
 	$(MAKE) check TESTS="$(TWISTED_TESTS)" TESTS_ENVIRONMENT=python
 
 check-twisted:
-	chmod +x run-with-tmp-session-bus.sh $(TWISTED_TESTS) exec-with-log.sh
+	chmod +x run-with-tmp-session-bus.sh exec-with-log.sh
 	sh run-with-tmp-session-bus.sh $(MAKE) _check-twisted
 
 check-valgrind:

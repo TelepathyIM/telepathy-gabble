@@ -77,6 +77,7 @@ struct _GabbleBytestreamIBBPrivate
   gchar *stream_init_id;
   gchar *peer_resource;
   BytestreamIBBState state;
+  gchar *peer_jid;
 
   guint16 seq;
   guint16 last_seq_recv;
@@ -124,6 +125,8 @@ gabble_bytestream_ibb_finalize (GObject *object)
 
   if (priv->peer_resource)
     g_free (priv->peer_resource);
+
+  g_free (priv->peer_jid);
 
   G_OBJECT_CLASS (gabble_bytestream_ibb_parent_class)->finalize (object);
 }
@@ -211,6 +214,51 @@ gabble_bytestream_ibb_set_property (GObject *object,
     }
 }
 
+static GObject *
+gabble_bytestream_ibb_constructor (GType type,
+                                   guint n_props,
+                                   GObjectConstructParam *props)
+{
+  GObject *obj;
+  GabbleBytestreamIBBPrivate *priv;
+
+  obj = G_OBJECT_CLASS (gabble_bytestream_ibb_parent_class)->
+           constructor (type, n_props, props);
+
+  priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (GABBLE_BYTESTREAM_IBB (obj));
+
+  g_assert (priv->conn != NULL);
+  g_assert (priv->peer_handle != 0);
+
+  if (priv->peer_handle_type == TP_HANDLE_TYPE_ROOM)
+    {
+      TpHandleRepoIface *room_repo;
+
+      room_repo = tp_base_connection_get_handles (
+          (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
+
+      priv->peer_jid = g_strdup (tp_handle_inspect (room_repo,
+            priv->peer_handle));
+    }
+  else
+    {
+      TpHandleRepoIface *contact_repo;
+      const gchar *jid;
+
+      contact_repo = tp_base_connection_get_handles (
+          (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+
+      jid = tp_handle_inspect (contact_repo, priv->peer_handle);
+
+      if (priv->peer_resource != NULL)
+        priv->peer_jid = g_strdup_printf ("%s/%s", jid, priv->peer_resource);
+      else
+        priv->peer_jid = g_strdup (jid);
+    }
+
+  return obj;
+}
+
 static void
 gabble_bytestream_ibb_class_init (
     GabbleBytestreamIBBClass *gabble_bytestream_ibb_class)
@@ -226,6 +274,7 @@ gabble_bytestream_ibb_class_init (
 
   object_class->get_property = gabble_bytestream_ibb_get_property;
   object_class->set_property = gabble_bytestream_ibb_set_property;
+  object_class->constructor = gabble_bytestream_ibb_constructor;
 
   param_spec = g_param_spec_object (
       "connection",
@@ -394,33 +443,15 @@ gabble_bytestream_ibb_send (GabbleBytestreamIBB *self,
                             gchar *str)
 {
   GabbleBytestreamIBBPrivate *priv;
-  TpHandleRepoIface *handles_repo;
-  const gchar *jid;
-  gboolean result;
+  gboolean groupchat = FALSE;
 
   g_assert (GABBLE_IS_BYTESTREAM_IBB (self));
   priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
 
-  handles_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, priv->peer_handle_type);
-
-  jid = tp_handle_inspect (handles_repo, priv->peer_handle);
-
   if (priv->peer_handle_type == TP_HANDLE_TYPE_ROOM)
-    {
-      result = send_data_to (self, jid, TRUE, len, str);
-    }
-  else
-    {
-      gchar *full_jid;
+    groupchat = TRUE;
 
-      full_jid = g_strdup_printf ("%s/%s", jid, priv->peer_resource);
-      result = send_data_to (self, full_jid, FALSE, len, str);
-
-      g_free (full_jid);
-    }
-
-  return result;
+  return send_data_to (self, priv->peer_jid, groupchat, len, str);
 }
 
 gboolean
@@ -507,27 +538,18 @@ LmMessage *
 gabble_bytestream_ibb_make_accept_iq (GabbleBytestreamIBB *self)
 {
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
-  TpHandleRepoIface *handles_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, priv->peer_handle_type);
   LmMessage *msg;
-  const gchar *jid;
-  gchar *full_jid;
 
   if (priv->peer_handle_type == TP_HANDLE_TYPE_ROOM ||
-      priv->peer_resource == NULL ||
       priv->stream_init_id == NULL)
     {
       DEBUG ("bytestream was not created due to a SI request");
       return NULL;
     }
 
-  jid = tp_handle_inspect (handles_repo, priv->peer_handle);
-  full_jid = g_strdup_printf ("%s/%s", jid, priv->peer_resource);
-
-  msg = gabble_bytestream_factory_make_accept_iq (full_jid,
+  msg = gabble_bytestream_factory_make_accept_iq (priv->peer_jid,
       priv->stream_init_id, NS_IBB);
 
-  g_free (full_jid);
   return msg;
 }
 
@@ -543,7 +565,6 @@ gabble_bytestream_ibb_accept (GabbleBytestreamIBB *self, LmMessage *msg)
     }
 
   if (priv->peer_handle_type == TP_HANDLE_TYPE_ROOM ||
-      priv->peer_resource == NULL ||
       priv->stream_init_id == NULL)
     {
       DEBUG ("can't accept a bytestream not created due to a SI request");
@@ -560,11 +581,7 @@ static void
 gabble_bytestream_ibb_decline (GabbleBytestreamIBB *self)
 {
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
-  TpHandleRepoIface *handles_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, priv->peer_handle_type);
   LmMessage *msg;
-  const gchar *jid;
-  gchar *full_jid;
 
   if (priv->state != BYTESTREAM_IBB_STATE_LOCAL_PENDING)
     {
@@ -574,23 +591,18 @@ gabble_bytestream_ibb_decline (GabbleBytestreamIBB *self)
     }
 
   if (priv->peer_handle_type == TP_HANDLE_TYPE_ROOM ||
-      priv->peer_resource == NULL ||
       priv->stream_init_id == NULL)
     {
       DEBUG ("can't decline a bytestream not created due to a SI request");
       return;
     }
 
-  jid = tp_handle_inspect (handles_repo, priv->peer_handle);
-  full_jid = g_strdup_printf ("%s/%s", jid, priv->peer_resource);
-
-  msg = gabble_bytestream_factory_make_decline_iq (full_jid,
+  msg = gabble_bytestream_factory_make_decline_iq (priv->peer_jid,
       priv->stream_init_id);
 
   _gabble_connection_send (priv->conn, msg, NULL);
 
   lm_message_unref (msg);
-  g_free (full_jid);
 }
 
 void
@@ -604,7 +616,7 @@ gabble_bytestream_ibb_close (GabbleBytestreamIBB *self)
 
   if (priv->state == BYTESTREAM_IBB_STATE_LOCAL_PENDING)
     {
-      if (priv->peer_resource != NULL && priv->stream_init_id != NULL)
+      if (priv->stream_init_id != NULL)
         {
           /* Stream was created using SI so we decline the request */
           gabble_bytestream_ibb_decline (self);
@@ -615,17 +627,11 @@ gabble_bytestream_ibb_close (GabbleBytestreamIBB *self)
     {
       /* XXX : Does it make sense to send a close message in a
        * muc bytestream ? */
-      TpHandleRepoIface *handles_repo = tp_base_connection_get_handles (
-          (TpBaseConnection *) priv->conn, priv->peer_handle_type);
       LmMessage *msg;
-      const gchar *jid;
-      gchar *full_jid;
 
       DEBUG ("send IBB close stanza");
-      jid = tp_handle_inspect (handles_repo, priv->peer_handle);
-      full_jid = g_strdup_printf ("%s/%s", jid, priv->peer_resource);
 
-      msg = lm_message_build (full_jid, LM_MESSAGE_TYPE_IQ,
+      msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
           '@', "type", "set",
           '(', "close", "",
             '@', "xmlns", NS_IBB,
@@ -634,7 +640,6 @@ gabble_bytestream_ibb_close (GabbleBytestreamIBB *self)
 
       _gabble_connection_send (priv->conn, msg, NULL);
 
-      g_free (full_jid);
       lm_message_unref (msg);
     }
 
@@ -700,11 +705,7 @@ gboolean
 gabble_bytestream_ibb_initiation (GabbleBytestreamIBB *self)
 {
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   LmMessage *msg;
-  const gchar *jid;
-  gchar *full_jid;
 
   if (priv->state != BYTESTREAM_IBB_STATE_INITIATING)
     {
@@ -725,10 +726,7 @@ gabble_bytestream_ibb_initiation (GabbleBytestreamIBB *self)
       return FALSE;
     }
 
-  jid = tp_handle_inspect (contact_repo, priv->peer_handle);
-  full_jid = g_strdup_printf ("%s/%s", jid, priv->peer_resource);
-
-  msg = lm_message_build (full_jid, LM_MESSAGE_TYPE_IQ,
+  msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
       '@', "type", "set",
       '(', "open", "",
         '@', "xmlns", NS_IBB,
@@ -742,12 +740,10 @@ gabble_bytestream_ibb_initiation (GabbleBytestreamIBB *self)
       DEBUG ("Error when sending IBB init stanza");
 
       lm_message_unref (msg);
-      g_free (full_jid);
       return FALSE;
     }
 
   lm_message_unref (msg);
-  g_free (full_jid);
 
   return TRUE;
 }

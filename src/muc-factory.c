@@ -1228,6 +1228,7 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
             {
               tubes_chan = new_tubes_channel (fac, handle, text_chan);
               *ret = TP_CHANNEL_IFACE (tubes_chan);
+              tp_channel_factory_iface_emit_new_channel (fac, *ret, NULL);
               return TP_CHANNEL_FACTORY_REQUEST_STATUS_CREATED;
             }
           else

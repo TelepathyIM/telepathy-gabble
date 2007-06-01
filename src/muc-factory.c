@@ -238,27 +238,6 @@ gabble_muc_factory_class_init (GabbleMucFactoryClass *gabble_muc_factory_class)
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 }
 
-
-static TpHandle
-get_room_from_jid (GabbleMucFactory *fac, const gchar *jid)
-{
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
-  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
-  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (conn,
-      TP_HANDLE_TYPE_ROOM);
-  TpHandle handle;
-  gchar *room;
-
-  room = gabble_remove_resource (jid);
-  if (!room)
-    return 0;
-
-  handle = tp_handle_lookup (room_repo, room, NULL, NULL);
-  g_free (room);
-  return handle;
-}
-
-
 /**
  * muc_channel_closed_cb:
  *
@@ -861,6 +840,8 @@ muc_factory_presence_cb (LmMessageHandler *handler,
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
+  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_ROOM);
   const char *from;
   LmMessageSubType sub_type;
   GabbleMucChannel *muc_chan = NULL;
@@ -884,7 +865,7 @@ muc_factory_presence_cb (LmMessageHandler *handler,
 
   sub_type = lm_message_get_sub_type (msg);
 
-  room_handle = get_room_from_jid (fac, from);
+  room_handle = gabble_get_room_handle_from_jid (room_repo, from);
   if (room_handle)
     muc_chan = g_hash_table_lookup (priv->text_channels,
         GUINT_TO_POINTER (room_handle));

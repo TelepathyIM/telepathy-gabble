@@ -1669,6 +1669,7 @@ gabble_tubes_channel_class_init (
       G_PARAM_STATIC_NAME |
       G_PARAM_STATIC_NICK |
       G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_MUC, param_spec);
 }
 
 void

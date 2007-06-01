@@ -64,7 +64,10 @@
 #define NS_REGISTER             "jabber:iq:register"
 #define NS_ROSTER               "jabber:iq:roster"
 #define NS_SI                   "http://jabber.org/protocol/si"
-#define NS_SI_TUBES             "http://jabber.org/protocol/si/profile/tubes"
+#define NS_SI_TUBES             "http://telepathy.freedesktop.org/xmpp/si/profile/tubes"
+/* We are still using the old namespace to don't break compatibility with XO
+ * build but we should switch at some point */
+#define NS_SI_TUBES_OLD         "http://jabber.org/protocol/si/profile/tubes"
 #define NS_TUBES                "http://telepathy.freedesktop.org/xmpp/tubes"
 #define NS_VCARD_TEMP           "vcard-temp"
 #define NS_VCARD_TEMP_UPDATE    "vcard-temp:x:update"

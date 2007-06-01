@@ -503,7 +503,8 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
     }
 
   /* We inform the right factory when received a SI request */
-  if (strcmp (profile, NS_SI_TUBES) == 0)
+  if (strcmp (profile, NS_SI_TUBES) == 0 ||
+      strcmp (profile, NS_SI_TUBES_OLD) == 0)
     {
       know_profile = TRUE;
       gabble_tubes_factory_handle_si_request (priv->conn->tubes_factory,

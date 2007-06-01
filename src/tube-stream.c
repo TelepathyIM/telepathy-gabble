@@ -350,13 +350,13 @@ start_stream_initiation (GabbleTubeStream *self,
   stream_id = gabble_bytestream_factory_generate_stream_id ();
 
   msg = gabble_bytestream_factory_make_stream_init_iq (full_jid,
-      stream_id, NS_SI_TUBES);
+      stream_id, NS_SI_TUBES_OLD);
 
   id_str = g_strdup_printf ("%u", priv->id);
 
   node = lm_message_node_add_child (msg->node, "tube", NULL);
   lm_message_node_set_attributes (node,
-      "xmlns", NS_SI_TUBES,
+      "xmlns", NS_SI_TUBES_OLD,
       "type", "stream",
       "service", priv->service,
       "initiator", jid,
@@ -1130,7 +1130,7 @@ gabble_tube_stream_accept (GabbleTubeIface *tube)
       g_assert (si != NULL);
 
       tube_node = lm_message_node_add_child (si, "tube", "");
-      lm_message_node_set_attribute (tube_node, "xmlns", NS_SI_TUBES);
+      lm_message_node_set_attribute (tube_node, "xmlns", NS_SI_TUBES_OLD);
 
       gabble_bytestream_ibb_accept (priv->default_bytestream, msg);
 
@@ -1204,7 +1204,7 @@ gabble_tube_stream_add_bytestream (GabbleTubeIface *tube,
       g_assert (si != NULL);
 
       tube_node = lm_message_node_add_child (si, "tube", "");
-      lm_message_node_set_attribute (tube_node, "xmlns", NS_SI_TUBES);
+      lm_message_node_set_attribute (tube_node, "xmlns", NS_SI_TUBES_OLD);
 
       gabble_bytestream_ibb_accept (bytestream, msg);
 

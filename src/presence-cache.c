@@ -820,6 +820,8 @@ _caps_disco_cb (GabbleDisco *disco,
         caps |= PRESENCE_CAP_IBB;
       else if (0 == strcmp (var, NS_SI_TUBES))
         caps |= PRESENCE_CAP_SI_TUBES;
+      else if (0 == strcmp (var, NS_SI_TUBES_OLD))
+        caps |= PRESENCE_CAP_SI_TUBES;
     }
 
   caps |= _detect_h263_n800_hack (node);

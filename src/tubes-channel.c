@@ -1058,6 +1058,9 @@ bytestream_negotiate_cb (GabbleBytestreamIBB *bytestream,
   tube_node = lm_message_node_get_child_with_namespace (si, "tube",
       NS_SI_TUBES);
   if (tube_node == NULL)
+    tube_node = lm_message_node_get_child_with_namespace (si, "tube",
+        NS_SI_TUBES_OLD);
+  if (tube_node == NULL)
     return;
 
 #ifdef HAVE_DBUS_TUBE
@@ -1109,6 +1112,9 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
 
   node = lm_message_node_get_child_with_namespace (msg->node, "tube",
       NS_SI_TUBES);
+  if (node == NULL)
+    node = lm_message_node_get_child_with_namespace (msg->node, "tube",
+        NS_SI_TUBES_OLD);
   if (node == NULL)
     {
       NODE_DEBUG (msg->node, "got a SI request without tube markup");
@@ -1217,10 +1223,10 @@ start_stream_initiation (GabbleTubesChannel *self,
   full_jid = g_strdup_printf ("%s/%s", jid, resource);
 
   msg = gabble_bytestream_factory_make_stream_init_iq (full_jid,
-      stream_id, NS_SI_TUBES);
+      stream_id, NS_SI_TUBES_OLD);
 
   node = lm_message_node_add_child (msg->node, "tube", NULL);
-  lm_message_node_set_attribute (node, "xmlns", NS_SI_TUBES);
+  lm_message_node_set_attribute (node, "xmlns", NS_SI_TUBES_OLD);
   publish_tube_in_node (node, tube);
 
   data = g_slice_new (struct _bytestream_negotiate_cb_data);

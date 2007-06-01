@@ -152,6 +152,7 @@ gabble_tubes_channel_constructor (GType type,
     case TP_HANDLE_TYPE_ROOM:
       g_assert (self->muc != NULL);
       priv->self_handle = self->muc->group.self_handle;
+      tp_external_group_mixin_init (obj, (GObject *) self->muc);
       break;
     default:
       g_assert_not_reached ();
@@ -1629,9 +1630,6 @@ gabble_tubes_channel_class_init (
   g_type_class_add_private (gabble_tubes_channel_class,
       sizeof (GabbleTubesChannelPrivate));
 
-  tp_external_group_mixin_class_init (object_class,
-      G_STRUCT_OFFSET (GabbleTubesChannel, muc));
-
   object_class->constructor = gabble_tubes_channel_constructor;
 
   object_class->get_property = gabble_tubes_channel_get_property;
@@ -1684,6 +1682,10 @@ gabble_tubes_channel_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
+  if (self->muc != NULL)
+    {
+      tp_external_group_mixin_finalize (object);
+    }
   gabble_tubes_channel_close (self);
 
   g_assert (priv->closed);

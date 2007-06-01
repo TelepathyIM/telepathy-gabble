@@ -819,6 +819,7 @@ gabble_bytestream_factory_create_ibb (GabbleBytestreamFactory *self,
   g_signal_connect (ibb, "state-changed",
       G_CALLBACK (bytestream_state_changed_cb), self);
 
+  DEBUG ("add bytestream %s", stream_id);
   g_hash_table_insert (priv->ibb_bytestreams, g_strdup (stream_id), ibb);
 
   return ibb;

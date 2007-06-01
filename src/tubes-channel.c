@@ -147,7 +147,7 @@ gabble_tubes_channel_constructor (GType type,
     {
     case TP_HANDLE_TYPE_CONTACT:
       g_assert (self->muc == NULL);
-      priv->self_handle = ((TpBaseConnection *)(priv->conn))->self_handle;
+      priv->self_handle = ((TpBaseConnection *) (priv->conn))->self_handle;
       break;
     case TP_HANDLE_TYPE_ROOM:
       g_assert (self->muc != NULL);

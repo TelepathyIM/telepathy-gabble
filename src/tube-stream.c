@@ -297,8 +297,7 @@ start_stream_initiation (GabbleTubeStream *self,
   LmMessageNode *node;
   LmMessage *msg;
   TpHandleRepoIface *contact_repo;
-  GabblePresence *presence;
-  const gchar *jid, *resource;
+  const gchar *jid;
   gchar *full_jid, *stream_id, *id_str;
   gboolean result;
   struct _bytestream_negotiate_cb_data *data;
@@ -310,32 +309,45 @@ start_stream_initiation (GabbleTubeStream *self,
 
   jid = tp_handle_inspect (contact_repo, priv->initiator);
 
-  presence = gabble_presence_cache_get (priv->conn->presence_cache,
-      priv->initiator);
-  if (presence == NULL)
+  if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
     {
-      DEBUG ("can't find initiator's presence");
-      if (error != NULL)
-        g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-            "can't find initiator's presence");
+      /* Private tube */
+      GabblePresence *presence;
+      const gchar *resource;
 
-      return FALSE;
+      presence = gabble_presence_cache_get (priv->conn->presence_cache,
+          priv->initiator);
+      if (presence == NULL)
+        {
+          DEBUG ("can't find initiator's presence");
+          if (error != NULL)
+            g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+                "can't find initiator's presence");
+
+          return FALSE;
+        }
+
+      resource = gabble_presence_pick_resource_by_caps (presence,
+          PRESENCE_CAP_SI_TUBES);
+      if (resource == NULL)
+        {
+          DEBUG ("initiator doesn't have tubes capabilities");
+          if (error != NULL)
+            g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+                "initiator doesn't have tubes capabilities");
+
+          return FALSE;
+        }
+
+        full_jid = g_strdup_printf ("%s/%s", jid, resource);
     }
-
-  resource = gabble_presence_pick_resource_by_caps (presence,
-      PRESENCE_CAP_SI_TUBES);
-  if (resource == NULL)
+  else
     {
-      DEBUG ("initiator doesn't have tubes capabilities");
-      if (error != NULL)
-        g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-            "initiator doesn't have tubes capabilities");
-
-      return FALSE;
+      /* Muc tube */
+      full_jid = g_strdup (jid);
     }
 
   stream_id = gabble_bytestream_factory_generate_stream_id ();
-  full_jid = g_strdup_printf ("%s/%s", jid, resource);
 
   msg = gabble_bytestream_factory_make_stream_init_iq (full_jid,
       stream_id, NS_SI_TUBES);

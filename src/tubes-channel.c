@@ -1091,6 +1091,7 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
   LmMessageNode *node;
   guint tube_id;
   GabbleTubeIface *tube;
+  gboolean offering = TRUE;
 
   node = lm_message_node_get_child_with_namespace (msg->node, "si",
       NS_SI);
@@ -1130,12 +1131,34 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
       return;
     }
 
+  if (!tp_strdiff (lm_message_node_get_attribute (node, "offering"), "false"))
+    offering = FALSE;
+
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
   if (tube != NULL)
     {
-      DEBUG ("receive new bytestream request for existing tube: %u", tube_id);
+      if (offering)
+        {
+          DEBUG ("received SI request for an existing tube but with the "
+              "offering flag set to false. Tube rejected so.");
 
-      gabble_tube_iface_add_bytestream (tube, bytestream);
+          gabble_bytestream_ibb_close (bytestream);
+          return;
+        }
+
+        DEBUG ("received new SI request for existing tube: %u",
+            tube_id);
+
+        gabble_tube_iface_add_bytestream (tube, bytestream);
+        return;
+    }
+
+  if (!offering)
+    {
+      DEBUG ("tube %d not found so we reject this SI as it's a not a tube "
+          "offer", tube_id);
+
+      gabble_bytestream_ibb_close (bytestream);
       return;
     }
 
@@ -1228,6 +1251,7 @@ start_stream_initiation (GabbleTubesChannel *self,
   node = lm_message_node_add_child (msg->node, "tube", NULL);
   lm_message_node_set_attribute (node, "xmlns", NS_SI_TUBES_OLD);
   publish_tube_in_node (node, tube);
+  lm_message_node_set_attribute (node, "offering", "true");
 
   data = g_slice_new (struct _bytestream_negotiate_cb_data);
   data->self = self;

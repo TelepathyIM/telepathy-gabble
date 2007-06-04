@@ -362,10 +362,23 @@ gabble_tubes_factory_handle_si_request (GabbleTubesFactory *self,
   GabbleTubesFactoryPrivate *priv = GABBLE_TUBES_FACTORY_GET_PRIVATE (self);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
               (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
+     (TpBaseConnection*) priv->conn, TP_HANDLE_TYPE_ROOM);
   GabbleTubesChannel *chan;
+  const gchar *from;
+  TpHandle room_handle;
 
   if (!tp_handle_is_valid (contact_repo, handle, NULL))
     return;
+
+  from = lm_message_node_get_attribute (msg->node, "from");
+  room_handle = gabble_get_room_handle_from_jid (room_repo, from);
+  if (room_handle != 0)
+    {
+      /* XXX this is crack because we break private tube with muc contact
+       * support */
+      handle = room_handle;
+    }
 
   chan = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (handle));
   if (chan == NULL)

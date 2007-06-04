@@ -124,8 +124,7 @@ gabble_tubes_channel_init (GabbleTubesChannel *self)
   priv->tubes = g_hash_table_new_full (g_direct_hash, g_direct_equal,
       NULL, (GDestroyNotify) g_object_unref);
 
-  priv->stream_id_to_tube_id = g_hash_table_new_full (g_str_hash, g_str_equal,
-      g_free, NULL);
+  self->muc = NULL;
 
   priv->dispose_has_run = FALSE;
   priv->closed = FALSE;

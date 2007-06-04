@@ -452,7 +452,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
-  TpHandle peer_handle;
+  TpHandle peer_handle, room_handle;
   GabbleBytestreamIBB *bytestream = NULL;
   GSList *l;
   const gchar *profile, *from, *stream_id, *stream_init_id, *mime_type;
@@ -473,7 +473,8 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
-  if (gabble_get_room_handle_from_jid (room_repo, from) == 0)
+  room_handle = gabble_get_room_handle_from_jid (room_repo, from);
+  if (room_handle == 0)
     {
       /* jid is not a muc jid so we need contact's resource */
       gabble_decode_jid (from, NULL, NULL, &peer_resource);
@@ -512,9 +513,46 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
   if (strcmp (profile, NS_SI_TUBES) == 0 ||
       strcmp (profile, NS_SI_TUBES_OLD) == 0)
     {
+      gboolean request_handled;
+
       know_profile = TRUE;
-      gabble_tubes_factory_handle_si_request (priv->conn->tubes_factory,
-          bytestream, peer_handle, stream_id, msg);
+
+      if (room_handle == 0)
+        {
+          request_handled = gabble_tubes_factory_handle_si_request (
+              priv->conn->tubes_factory, bytestream, peer_handle, stream_id,
+              msg);
+        }
+      else
+        {
+          /* The sender of this SI request is a muc contact so the request
+           * can be:
+           * - an extra bytestream request for an existing muc tube
+           * - a new private tube offer
+           * - an extra bytestream request for an existing private tube
+           *
+           * First case is covered by the muc factory so we check if it knows
+           * a muc tube that could fit this request. If not, that means the
+           * request is private tube related. */
+
+          request_handled = gabble_muc_factory_handle_si_request (
+              priv->conn->muc_factory, bytestream, room_handle, stream_id,
+              msg);
+
+          if (!request_handled)
+            {
+              /* Let's try with the tubes factory now */
+              request_handled = gabble_tubes_factory_handle_si_request (
+                  priv->conn->tubes_factory, bytestream, peer_handle,
+                  stream_id, msg);
+            }
+        }
+
+      if (!request_handled)
+        {
+          DEBUG ("Can't handle tube SI request");
+          gabble_bytestream_ibb_close (bytestream);
+        }
     }
 
   if (!know_profile)

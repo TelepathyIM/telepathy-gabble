@@ -1110,7 +1110,6 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
     {
 
       NODE_DEBUG (msg->node, "got a SI request without SI markup");
-      gabble_bytestream_ibb_close (bytestream);
       return FALSE;
     }
 
@@ -1118,7 +1117,6 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
   if (stream_id == NULL)
     {
       NODE_DEBUG (msg->node, "got a SI request without stream ID");
-      gabble_bytestream_ibb_close (bytestream);
       return FALSE;
     }
 
@@ -1130,7 +1128,6 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
   if (node == NULL)
     {
       NODE_DEBUG (msg->node, "got a SI request without tube markup");
-      gabble_bytestream_ibb_close (bytestream);
       return FALSE;
     }
 
@@ -1138,7 +1135,6 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
               NULL, NULL, &offering, &tube_id))
     {
       DEBUG ("can't extract tube information in SI request");
-      gabble_bytestream_ibb_close (bytestream);
       return FALSE;
     }
 
@@ -1149,8 +1145,6 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
         {
           DEBUG ("received SI request for an existing tube but with the "
               "offering flag set to false. Tube rejected so.");
-
-          gabble_bytestream_ibb_close (bytestream);
           return FALSE;
         }
 
@@ -1165,8 +1159,6 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
     {
       DEBUG ("tube %d not found so we reject this SI as it's a not a tube "
           "offer", tube_id);
-
-      gabble_bytestream_ibb_close (bytestream);
       return FALSE;
     }
 
@@ -1175,7 +1167,6 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
               &service, &parameters, NULL, NULL))
     {
       DEBUG ("can't extract tube information in SI request");
-      gabble_bytestream_ibb_close (bytestream);
       return FALSE;
     }
 
@@ -1187,7 +1178,6 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
       if (dbus_name == NULL)
         {
           DEBUG ("D-Bus tube doesn't contain initiator D-Bus name");
-          gabble_bytestream_ibb_close (bytestream);
           return FALSE;
         }
     }
@@ -1207,7 +1197,6 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
       DEBUG ("Don't create the tube as D-Bus tube support"
           "is not built");
 
-      gabble_bytestream_ibb_close (bytestream);
       return FALSE;
 #endif
     }

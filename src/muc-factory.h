@@ -22,6 +22,8 @@
 
 #include <glib-object.h>
 
+#include "bytestream-ibb.h"
+
 G_BEGIN_DECLS
 
 typedef struct _GabbleMucFactory GabbleMucFactory;
@@ -53,6 +55,11 @@ GType gabble_muc_factory_get_type (void);
 #define GABBLE_MUC_FACTORY_GET_CLASS(obj) \
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_MUC_FACTORY, \
                               GabbleMucFactoryClass))
+
+gboolean
+gabble_muc_factory_handle_si_request (GabbleMucFactory *self,
+    GabbleBytestreamIBB *bytestream, TpHandle muc_handle,
+    const gchar *stream_id, LmMessage *msg);
 
 G_END_DECLS
 

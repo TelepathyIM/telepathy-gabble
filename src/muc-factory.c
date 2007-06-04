@@ -1245,6 +1245,31 @@ find_channel_foreach (gpointer key, gpointer value, gpointer data)
     ctx->ret = chan;
 }
 
+gboolean
+gabble_muc_factory_handle_si_request (GabbleMucFactory *self,
+                                      GabbleBytestreamIBB *bytestream,
+                                      TpHandle handle,
+                                      const gchar *stream_id,
+                                      LmMessage *msg)
+{
+  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
+  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
+     (TpBaseConnection*) priv->conn, TP_HANDLE_TYPE_ROOM);
+  GabbleTubesChannel *chan;
+
+  if (!tp_handle_is_valid (room_repo, handle, NULL))
+    return FALSE;
+
+  chan = g_hash_table_lookup (priv->tubes_channels,
+      GINT_TO_POINTER (handle));
+  if (chan == NULL)
+    {
+      /* We can't create muc tubes using SI */
+      return FALSE;
+    }
+
+  return gabble_tubes_channel_tube_offered (chan, bytestream, msg);
+}
 
 GabbleMucChannel *
 gabble_muc_factory_find_channel (GabbleMucFactory *factory,

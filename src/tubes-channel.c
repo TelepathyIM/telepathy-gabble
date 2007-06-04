@@ -444,6 +444,7 @@ extract_tube_information (GabbleTubesChannel *self,
                           TpHandle *initiator_handle,
                           const gchar **service,
                           GHashTable **parameters,
+                          gboolean *offering,
                           guint *tube_id)
 {
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
@@ -499,6 +500,17 @@ extract_tube_information (GabbleTubesChannel *self,
 
       node = lm_message_node_get_child (tube_node, "parameters");
       *parameters = lm_message_node_extract_properties (node, "parameter");
+    }
+
+  if (offering != NULL)
+    {
+      const gchar *_offering;
+
+      _offering = lm_message_node_get_attribute (tube_node, "offering");
+      if (!tp_strdiff (_offering, "false"))
+        *offering = FALSE;
+      else
+        *offering = TRUE;
     }
 
   if (tube_id != NULL)
@@ -630,7 +642,7 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
       stream_id = lm_message_node_get_attribute (tube_node, "stream_id");
 
       extract_tube_information (self, tube_node, NULL,
-          NULL, NULL, NULL, &tube_id);
+          NULL, NULL, NULL, NULL, &tube_id);
       tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
 
       if (tube == NULL)
@@ -643,7 +655,7 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
           guint tube_id;
 
           if (extract_tube_information (self, tube_node, &type,
-                &initiator_handle, &service, &parameters, &tube_id))
+                &initiator_handle, &service, &parameters, NULL, &tube_id))
             {
 
 #ifndef HAVE_DBUS_TUBE
@@ -1091,7 +1103,7 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
   LmMessageNode *node;
   guint tube_id;
   GabbleTubeIface *tube;
-  gboolean offering = TRUE;
+  gboolean offering;
 
   node = lm_message_node_get_child_with_namespace (msg->node, "si",
       NS_SI);
@@ -1123,16 +1135,13 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
       return;
     }
 
-  if (!extract_tube_information (self, node, &type, NULL,
-              &service, &parameters, &tube_id))
+  if (!extract_tube_information (self, node, NULL, NULL,
+              NULL, NULL, &offering, &tube_id))
     {
       DEBUG ("can't extract tube information in SI request");
       gabble_bytestream_ibb_close (bytestream);
       return;
     }
-
-  if (!tp_strdiff (lm_message_node_get_attribute (node, "offering"), "false"))
-    offering = FALSE;
 
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
   if (tube != NULL)
@@ -1163,6 +1172,14 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
     }
 
   /* New tube */
+  if (!extract_tube_information (self, node, &type, NULL,
+              &service, &parameters, NULL, NULL))
+    {
+      DEBUG ("can't extract tube information in SI request");
+      gabble_bytestream_ibb_close (bytestream);
+      return;
+    }
+
   create_new_tube (self, type, priv->handle, service,
       parameters, stream_id, tube_id);
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));

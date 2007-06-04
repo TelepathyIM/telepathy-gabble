@@ -815,13 +815,9 @@ gabble_bytestream_factory_create_ibb (GabbleBytestreamFactory *self,
                       "peer-handle-type", peer_handle_type,
                       "stream-id", stream_id,
                       "state", state,
+                      "stream-init-id", stream_init_id,
+                      "peer-resource", peer_resource,
                       NULL);
-
-  if (stream_init_id != NULL)
-    g_object_set (G_OBJECT (ibb), "stream-init-id", stream_init_id, NULL);
-
-  if (peer_resource != NULL)
-    g_object_set (G_OBJECT (ibb), "peer-resource", peer_resource, NULL);
 
   g_signal_connect (ibb, "state-changed",
       G_CALLBACK (bytestream_state_changed_cb), self);

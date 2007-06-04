@@ -330,6 +330,7 @@ gabble_bytestream_ibb_class_init (
       "stream init ID",
       "the iq ID of the SI request, if any",
       "",
+      G_PARAM_CONSTRUCT_ONLY |
       G_PARAM_READWRITE |
       G_PARAM_STATIC_NAME |
       G_PARAM_STATIC_NICK |
@@ -342,6 +343,7 @@ gabble_bytestream_ibb_class_init (
       "Peer resource",
       "the resource used by the remote peer during the SI, if any",
       "",
+      G_PARAM_CONSTRUCT_ONLY |
       G_PARAM_READWRITE |
       G_PARAM_STATIC_NAME |
       G_PARAM_STATIC_NICK |

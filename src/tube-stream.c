@@ -58,6 +58,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleTubeStream, gabble_tube_stream, G_TYPE_OBJECT,
 enum
 {
   OPENED,
+  NEW_CONNECTION,
   CLOSED,
   LAST_SIGNAL
 };
@@ -1014,6 +1015,15 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
                   gabble_marshal_VOID__VOID,
                   G_TYPE_NONE, 0);
 
+  signals[NEW_CONNECTION] =
+    g_signal_new ("new-connection",
+                  G_OBJECT_CLASS_TYPE (gabble_tube_stream_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_marshal_VOID__UINT,
+                  G_TYPE_NONE, 1, G_TYPE_UINT);
+
   signals[CLOSED] =
     g_signal_new ("closed",
                   G_OBJECT_CLASS_TYPE (gabble_tube_stream_class),
@@ -1201,6 +1211,7 @@ gabble_tube_stream_add_bytestream (GabbleTubeIface *tube,
     {
       LmMessage *msg;
       LmMessageNode *si, *tube_node;
+      TpHandle contact;
 
       DEBUG ("accept the extra bytestream");
 
@@ -1220,6 +1231,10 @@ gabble_tube_stream_add_bytestream (GabbleTubeIface *tube,
       lm_message_node_set_attribute (tube_node, "xmlns", NS_SI_TUBES_OLD);
 
       gabble_bytestream_ibb_accept (bytestream, msg);
+
+      g_object_get (bytestream, "peer-handle", &contact, NULL);
+
+      g_signal_emit (G_OBJECT (self), signals[NEW_CONNECTION], 0, contact);
 
       lm_message_unref (msg);
     }

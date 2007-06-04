@@ -1348,6 +1348,25 @@ gabble_tubes_channel_offer_d_bus_tube (TpSvcChannelTypeTubes *iface,
 #endif
 }
 
+static void
+stream_unix_tube_new_connection_cb (GabbleTubeIface *tube,
+                                    guint contact,
+                                    gpointer user_data)
+{
+  GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (user_data);
+  guint tube_id;
+  TpTubeType type;
+
+  g_object_get (tube,
+      "id", &tube_id, 
+      "type", &type,
+      NULL);
+
+  g_assert (type == TP_TUBE_TYPE_STREAM_UNIX);
+
+  tp_svc_channel_type_tubes_emit_stream_unix_socket_new_connection (self,
+      tube_id, contact);
+}
 /**
  * gabble_tubes_channel_offer_stream_unix_tube
  *
@@ -1435,6 +1454,9 @@ gabble_tubes_channel_offer_stream_unix_tube (TpSvcChannelTypeTubes *iface,
           return;
         }
     }
+
+  g_signal_connect (tube, "new-connection",
+      G_CALLBACK (stream_unix_tube_new_connection_cb), self);
 
   tp_svc_channel_type_tubes_return_from_offer_d_bus_tube (context, tube_id);
 

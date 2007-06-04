@@ -1090,7 +1090,7 @@ bytestream_negotiate_cb (GabbleBytestreamIBB *bytestream,
 }
 
 /* Called when we receive a SI request */
-void
+gboolean
 gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
                                    GabbleBytestreamIBB *bytestream,
                                    LmMessage *msg)
@@ -1111,7 +1111,7 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
 
       NODE_DEBUG (msg->node, "got a SI request without SI markup");
       gabble_bytestream_ibb_close (bytestream);
-      return;
+      return FALSE;
     }
 
   stream_id = lm_message_node_get_attribute (node, "id");
@@ -1119,7 +1119,7 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
     {
       NODE_DEBUG (msg->node, "got a SI request without stream ID");
       gabble_bytestream_ibb_close (bytestream);
-      return;
+      return FALSE;
     }
 
   node = lm_message_node_get_child_with_namespace (msg->node, "tube",
@@ -1131,7 +1131,7 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
     {
       NODE_DEBUG (msg->node, "got a SI request without tube markup");
       gabble_bytestream_ibb_close (bytestream);
-      return;
+      return FALSE;
     }
 
   if (!extract_tube_information (self, node, NULL, NULL,
@@ -1139,7 +1139,7 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
     {
       DEBUG ("can't extract tube information in SI request");
       gabble_bytestream_ibb_close (bytestream);
-      return;
+      return FALSE;
     }
 
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
@@ -1151,14 +1151,14 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
               "offering flag set to false. Tube rejected so.");
 
           gabble_bytestream_ibb_close (bytestream);
-          return;
+          return FALSE;
         }
 
         DEBUG ("received new SI request for existing tube: %u",
             tube_id);
 
         gabble_tube_iface_add_bytestream (tube, bytestream);
-        return;
+        return TRUE;
     }
 
   if (!offering)
@@ -1167,7 +1167,7 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
           "offer", tube_id);
 
       gabble_bytestream_ibb_close (bytestream);
-      return;
+      return FALSE;
     }
 
   /* New tube */
@@ -1176,7 +1176,7 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
     {
       DEBUG ("can't extract tube information in SI request");
       gabble_bytestream_ibb_close (bytestream);
-      return;
+      return FALSE;
     }
 
   create_new_tube (self, type, priv->handle, service,
@@ -1192,7 +1192,7 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
           "is not built");
 
       gabble_bytestream_ibb_close (bytestream);
-      return;
+      return FALSE;
     }
 #endif
 
@@ -1205,11 +1205,13 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
 
       dbus_name = lm_message_node_get_attribute (node, "dbus-name");
       if (dbus_name == NULL)
-        return;
+        return FALSE;
 
       add_name_in_dbus_names (self, tube_id, priv->handle, dbus_name);
     }
 #endif
+
+  return TRUE;
 }
 
 static gboolean

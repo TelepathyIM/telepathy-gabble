@@ -68,7 +68,7 @@ void
 gabble_tubes_channel_presence_updated (GabbleTubesChannel *chan,
     TpHandle contact, LmMessageNode *tubes_node);
 
-void
+gboolean
 gabble_tubes_channel_tube_offered (GabbleTubesChannel *chan,
     GabbleBytestreamIBB *bytestream, LmMessage *msg);
 

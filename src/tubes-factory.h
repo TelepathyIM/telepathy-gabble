@@ -64,7 +64,7 @@ GType gabble_tubes_factory_get_type (void);
 GabbleTubesFactory *
 gabble_tubes_factory_new (GabbleConnection *conn);
 
-void
+gboolean
 gabble_tubes_factory_handle_si_request (GabbleTubesFactory *fac,
     GabbleBytestreamIBB *bytestream, TpHandle handle, const gchar *stream_id,
     LmMessage *msg);

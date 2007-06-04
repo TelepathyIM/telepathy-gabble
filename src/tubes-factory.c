@@ -352,7 +352,7 @@ gabble_tubes_factory_iface_request (TpChannelFactoryIface *iface,
   return status;
 }
 
-void
+gboolean
 gabble_tubes_factory_handle_si_request (GabbleTubesFactory *self,
                                         GabbleBytestreamIBB *bytestream,
                                         TpHandle handle,
@@ -365,17 +365,17 @@ gabble_tubes_factory_handle_si_request (GabbleTubesFactory *self,
   GabbleTubesChannel *chan;
 
   if (!tp_handle_is_valid (contact_repo, handle, NULL))
-    return;
+    return FALSE;
 
   chan = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (handle));
   if (chan == NULL)
     {
       chan = new_tubes_channel (self, handle);
       tp_channel_factory_iface_emit_new_channel (self,
-          (TpChannelIface *)chan, NULL);
+          (TpChannelIface *) chan, NULL);
     }
 
-  gabble_tubes_channel_tube_offered (chan, bytestream, msg);
+  return gabble_tubes_channel_tube_offered (chan, bytestream, msg);
 }
 
 GabbleTubesFactory *

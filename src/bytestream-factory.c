@@ -450,12 +450,14 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
     GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
   TpHandle peer_handle;
   GabbleBytestreamIBB *bytestream = NULL;
   GSList *l;
   const gchar *profile, *from, *stream_id, *stream_init_id, *mime_type;
   GSList *stream_methods = NULL;
-  gchar *peer_resource;
+  gchar *peer_resource = NULL;
   gboolean know_profile = FALSE;
 
   if (!streaminit_parse_request (msg, &profile, &from, &stream_id,
@@ -471,7 +473,11 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
-  gabble_decode_jid (from, NULL, NULL, &peer_resource);
+  if (gabble_get_room_handle_from_jid (room_repo, from) == 0)
+    {
+      /* jid is not a muc jid so we need contact's resource */
+      gabble_decode_jid (from, NULL, NULL, &peer_resource);
+    }
 
   /* check stream method */
   for (l = stream_methods; l != NULL; l = l->next)
@@ -526,7 +532,8 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
     }
 
   g_slist_free (stream_methods);
-  g_free (peer_resource);
+  if (peer_resource != NULL)
+    g_free (peer_resource);
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
@@ -849,6 +856,8 @@ streaminit_reply_cb (GabbleConnection *conn,
   const gchar *from, *stream_method;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
+  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) conn, TP_HANDLE_TYPE_ROOM);
   TpHandle peer_handle = 0;
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
@@ -868,7 +877,11 @@ streaminit_reply_cb (GabbleConnection *conn,
 
   peer_handle = tp_handle_ensure (contact_repo, from, NULL, NULL);
 
-  gabble_decode_jid (from, NULL, NULL, &peer_resource);
+  if (gabble_get_room_handle_from_jid (room_repo, from) == 0)
+    {
+     /* jid is not a muc jid so we need contact's resource */
+     gabble_decode_jid (from, NULL, NULL, &peer_resource);
+    }
 
   si = lm_message_node_get_child_with_namespace (reply_msg->node, "si",
       NS_SI);

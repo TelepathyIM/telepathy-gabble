@@ -1096,7 +1096,7 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
                                    LmMessage *msg)
 {
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
-  const gchar *service, *stream_id;
+  const gchar *service, *stream_id, *dbus_name = NULL;
   GHashTable *parameters;
   TpTubeType type;
   LmMessageNode *node;
@@ -1179,37 +1179,38 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
       return FALSE;
     }
 
+  /* Type specific informations*/
+#ifdef HAVE_DBUS_TUBE
+  if (type == TP_TUBE_TYPE_DBUS)
+    {
+      dbus_name = lm_message_node_get_attribute (node, "dbus-name");
+      if (dbus_name == NULL)
+        {
+          DEBUG ("D-Bus tube doesn't contain initiator D-Bus name");
+          gabble_bytestream_ibb_close (bytestream);
+          return FALSE;
+        }
+    }
+#endif
+
   create_new_tube (self, type, priv->handle, service,
       parameters, stream_id, tube_id);
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
 
   g_object_set (tube, "bytestream", bytestream, NULL);
 
-#ifndef HAVE_DBUS_TUBE
   if (type == TP_TUBE_TYPE_DBUS)
     {
+#ifdef HAVE_DBUS_TUBE
+      add_name_in_dbus_names (self, tube_id, priv->handle, dbus_name);
+#else
       DEBUG ("Don't create the tube as D-Bus tube support"
           "is not built");
 
       gabble_bytestream_ibb_close (bytestream);
       return FALSE;
-    }
 #endif
-
-  /* Tube type specific stuffs */
-
-#ifdef HAVE_DBUS_TUBE
-  if (type == TP_TUBE_TYPE_DBUS)
-    {
-      const gchar *dbus_name;
-
-      dbus_name = lm_message_node_get_attribute (node, "dbus-name");
-      if (dbus_name == NULL)
-        return FALSE;
-
-      add_name_in_dbus_names (self, tube_id, priv->handle, dbus_name);
     }
-#endif
 
   return TRUE;
 }

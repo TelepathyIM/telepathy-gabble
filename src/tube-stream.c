@@ -399,6 +399,7 @@ listen_cb (GIOChannel *source,
 
   listen_fd = g_io_channel_unix_get_fd (source);
 
+  addrlen = sizeof (struct sockaddr_un);
   fd = accept (listen_fd, (struct sockaddr *) &addr, &addrlen);
   if (fd == -1)
     {

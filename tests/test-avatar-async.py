@@ -11,9 +11,6 @@ import dbus
 from servicetest import tp_name_prefix, call_async
 from gabbletest import go
 
-def conn_iface(proxy):
-    return dbus.Interface(proxy, tp_name_prefix + '.Connection')
-
 def avatars_iface(proxy):
     return dbus.Interface(proxy, tp_name_prefix +
         '.Connection.Interface.Avatars')
@@ -28,7 +25,7 @@ def expect_connected(event, data):
     if event[3] != [0, 1]:
         return False
 
-    handle = conn_iface(data['conn']).RequestHandles(1, ['bob@foo.com'])[0]
+    handle = data['conn_iface'].RequestHandles(1, ['bob@foo.com'])[0]
     data['handle'] = handle
     avatars_iface(data['conn']).RequestAvatars([handle])
     return True
@@ -81,7 +78,7 @@ def expect_AvatarRetrieved_again(event, data):
     assert event[3][2] == 'hello'
     assert event[3][3] == 'image/png'
 
-    conn_iface(data['conn']).Disconnect()
+    data['conn_iface'].Disconnect()
     return True
 
 def expect_disconnected(event, data):

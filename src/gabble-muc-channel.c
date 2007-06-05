@@ -2208,7 +2208,10 @@ gabble_muc_channel_add_member (GObject *obj,
       tp_intset_add (set_pending, handle);
 
       tp_group_mixin_change_members (obj, "", set_empty, set_members,
-          set_empty, set_pending, 0, TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
+          set_empty, set_pending, 0,
+          priv->invite_self
+            ? TP_CHANNEL_GROUP_CHANGE_REASON_NONE
+            : TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
 
       tp_intset_destroy (set_empty);
       tp_intset_destroy (set_members);

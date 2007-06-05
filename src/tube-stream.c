@@ -99,7 +99,7 @@ struct _GabbleTubeStreamPrivate
    * at all.
    * Maybe we should refactor SI to not automatically create the bytestream
    * and delegates that to the tube.
-   * Another problem is currently this bytestream is not only way we have
+   * Another problem is currently this bytestream is the only way we have
    * to know when the remote contact close the tube for private tubes */
   GabbleBytestreamIBB *default_bytestream;
   TpHandle initiator;

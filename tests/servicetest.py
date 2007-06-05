@@ -159,39 +159,35 @@ def call_async(test, proxy, method, *args, **kw):
 
 
 def create_test(name, proto, params):
-    test = {}
-
-    test['bus'] = dbus.SessionBus()
-    test['cm'] = test['bus'].get_object(
+    test = EventTest()
+    bus = dbus.SessionBus()
+    cm = bus.get_object(
         tp_name_prefix + '.ConnectionManager.%s' % name,
         tp_path_prefix + '/ConnectionManager/%s' % name)
-    test['cm_iface'] = dbus.Interface(test['cm'],
-        tp_name_prefix + '.ConnectionManager')
+    cm_iface = dbus.Interface(cm, tp_name_prefix + '.ConnectionManager')
 
-    connection_name, connection_path = test['cm_iface'].RequestConnection(
+    connection_name, connection_path = cm_iface.RequestConnection(
         proto, params)
-    test['conn'] = test['cm']._bus.get_object(connection_name, connection_path)
+    conn = bus.get_object(connection_name, connection_path)
+    conn_iface = dbus.Interface(conn, tp_name_prefix + '.Connection')
 
-    test['conn_iface'] = dbus.Interface(test['conn'], tp_name_prefix + '.Connection')
+    for name in ('bus', 'cm', 'cm_iface', 'conn', 'conn_iface'):
+        test.data[name] = locals()[name]
 
-    test['handler'] = EventTest()
-
-    test['bus'].add_signal_receiver(
+    bus.add_signal_receiver(
         lambda *args, **kw:
-            test['handler'].handle_event((
+            test.handle_event((
                 'dbus-signal', unwrap(kw['path']), kw['member'],
                 map(unwrap, args))),
         None,       # signal name
         None,       # interface
-        test['cm']._named_service,
+        cm._named_service,
         path_keyword='path',
         member_keyword='member',
         byte_arrays=True
         )
 
-    test['handler'].data = test
-    test['test'] = test
-    return test['handler']
+    return test
 
 
 def run_test(handler):

@@ -24,7 +24,7 @@ def expect_connected(event, data):
         return False
 
     handle = data['conn_iface'].RequestHandles(1, ['bob@foo.com'])[0]
-    call_async(data['handler'], avatars_iface(data['conn']), 'RequestAvatar',
+    call_async(data['test'], avatars_iface(data['conn']), 'RequestAvatar',
         handle, byte_arrays=True)
     return True
 

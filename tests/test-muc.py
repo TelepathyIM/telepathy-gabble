@@ -22,7 +22,7 @@ def expect_connected(event, data):
 
     # Need to call this asynchronously as it involves Gabble sending us a
     # query.
-    call_async(data['handler'], data['conn_iface'], 'RequestHandles', 2,
+    call_async(data['test'], data['conn_iface'], 'RequestHandles', 2,
         ['chat@conf.localhost'])
     return True
 
@@ -52,7 +52,7 @@ def expect_request_handles_return(event, data):
     assert event[1] == 'RequestHandles'
     handles = event[2]
 
-    call_async(data['handler'], data['conn_iface'], 'RequestChannel',
+    call_async(data['test'], data['conn_iface'], 'RequestChannel',
         'org.freedesktop.Telepathy.Channel.Type.Text', 2, handles[0], True)
     return True
 

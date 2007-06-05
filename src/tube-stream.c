@@ -247,20 +247,20 @@ extra_bytestream_state_changed_cb (GabbleBytestreamIBB *bytestream,
     }
 }
 
-struct _bytestream_negotiate_cb_data
+struct _extra_bytestream_negotiate_cb_data
 {
   GabbleTubeStream *self;
   gint fd;
 };
 
 static void
-bytestream_negotiate_cb (GabbleBytestreamIBB *bytestream,
+extra_bytestream_negotiate_cb (GabbleBytestreamIBB *bytestream,
                          const gchar *stream_id,
                          LmMessage *msg,
                          gpointer user_data)
 {
-  struct _bytestream_negotiate_cb_data *data =
-    (struct _bytestream_negotiate_cb_data *) user_data;
+  struct _extra_bytestream_negotiate_cb_data *data =
+    (struct _extra_bytestream_negotiate_cb_data *) user_data;
   GabbleTubeStream *self = data->self;
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
   GIOChannel *channel;
@@ -288,7 +288,7 @@ bytestream_negotiate_cb (GabbleBytestreamIBB *bytestream,
   g_signal_connect (bytestream, "state-changed",
                 G_CALLBACK (extra_bytestream_state_changed_cb), self);
 
-  g_slice_free (struct _bytestream_negotiate_cb_data, data);
+  g_slice_free (struct _extra_bytestream_negotiate_cb_data, data);
 }
 
 static gboolean
@@ -303,7 +303,7 @@ start_stream_initiation (GabbleTubeStream *self,
   const gchar *jid;
   gchar *full_jid, *stream_id, *id_str;
   gboolean result;
-  struct _bytestream_negotiate_cb_data *data;
+  struct _extra_bytestream_negotiate_cb_data *data;
 
   priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
 
@@ -368,7 +368,7 @@ start_stream_initiation (GabbleTubeStream *self,
       "offering", "false",
       NULL);
 
-  data = g_slice_new (struct _bytestream_negotiate_cb_data);
+  data = g_slice_new (struct _extra_bytestream_negotiate_cb_data);
   data->self = self;
   data->fd = fd;
 
@@ -376,7 +376,7 @@ start_stream_initiation (GabbleTubeStream *self,
     priv->conn->bytestream_factory,
     msg,
     stream_id,
-    bytestream_negotiate_cb,
+    extra_bytestream_negotiate_cb,
     data,
     error);
 

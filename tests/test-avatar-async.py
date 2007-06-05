@@ -64,7 +64,7 @@ def expect_AvatarRetrieved(event, data):
 
     assert event[3][0] == data['handle']
     assert event[3][1] == sha.sha('hello').hexdigest()
-    assert ''.join(map(chr, event[3][2])) == 'hello'
+    assert event[3][2] == 'hello'
     assert event[3][3] == 'image/png'
 
     # Request again; this request should be satisfied from the avatar cache.
@@ -78,7 +78,7 @@ def expect_AvatarRetrieved_again(event, data):
 
     assert event[3][0] == data['handle']
     assert event[3][1] == sha.sha('hello').hexdigest()
-    assert ''.join(map(chr, event[3][2])) == 'hello'
+    assert event[3][2] == 'hello'
     assert event[3][3] == 'image/png'
 
     conn_iface(data['conn']).Disconnect()

@@ -185,7 +185,8 @@ def create_test(name, proto, params):
         None,       # interface
         test['cm']._named_service,
         path_keyword='path',
-        member_keyword='member'
+        member_keyword='member',
+        byte_arrays=True
         )
 
     test['handler'].data = test

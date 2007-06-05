@@ -161,7 +161,9 @@ data_to_read_on_socket_cb (GIOChannel *source,
   if (bytestream == NULL)
     {
       DEBUG ("no bytestream associated with this socket");
-      return TRUE;
+
+      g_hash_table_remove (priv->io_channel_to_watcher_source_id, source);
+      return FALSE;
     }
 
   memset (&buffer, 0, sizeof (buffer));

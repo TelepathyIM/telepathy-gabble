@@ -1092,8 +1092,6 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
       TpHandle handle;
       GabbleRosterChannel *schan;
       GabbleRosterChannel *chan;
-      GHashTable *group_update_table;
-      guint i;
 
     case LM_MESSAGE_SUB_TYPE_RESULT:
     case LM_MESSAGE_SUB_TYPE_SET:
@@ -1128,8 +1126,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
 
       /* get the publish channel first because we need it when processing */
       handle = GABBLE_LIST_HANDLE_PUBLISH;
-      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle,
-          NULL);
+      chan = _gabble_roster_get_channel (roster, handle);
 
       /* iterate every sub-node, which we expect to be <item>s */
       for (item_node = query_node->children;
@@ -1188,7 +1185,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
                * if someone is awaiting our approval - we get this via presence
                * type=subscribe, so we have to not remove them if they're
                * already local_pending in our publish channel */
-              if (!tp_handle_set_is_member (chan->group.local_pending, handle))
+              if (!handle_set_is_member (chan->group.local_pending, handle))
                 {
                   tp_intset_add (pub_rem, handle);
                 }
@@ -1267,18 +1264,15 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
             g_array_append_val (removed, handle);
         }
 
-      /* chan was initialised to the publish channel before the for loop */
-
       DEBUG ("calling change members on publish channel");
-      tp_group_mixin_change_members ((GObject *)chan,
+      tp_group_mixin_change_members (G_OBJECT (chan),
             "", pub_add, pub_rem, NULL, NULL, 0, 0);
 
       handle = GABBLE_LIST_HANDLE_SUBSCRIBE;
-      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle,
-          NULL);
+      chan = _gabble_roster_get_channel (roster, handle);
 
       DEBUG ("calling change members on subscribe channel");
-      tp_group_mixin_change_members ((GObject *)chan,
+      tp_group_mixin_change_members (G_OBJECT (chan),
             "", sub_add, sub_rem, NULL, sub_rp, 0, 0);
 
       handle = GABBLE_LIST_HANDLE_KNOWN;

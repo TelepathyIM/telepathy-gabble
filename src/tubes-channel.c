@@ -1366,7 +1366,7 @@ stream_unix_tube_new_connection_cb (GabbleTubeIface *tube,
   TpTubeType type;
 
   g_object_get (tube,
-      "id", &tube_id, 
+      "id", &tube_id,
       "type", &type,
       NULL);
 

@@ -79,7 +79,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
           An array of structs containing:
           <ul>
             <li>the identifier of the activity</li>
-            <li>the handle of the activity channel</li>
+            <li>the room handle of the activity channel</li>
           </ul>
         </tp:docstring>
       </arg>
@@ -95,7 +95,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
     <method name="GetActivities">
       <arg direction="in" name="contact" type="u">
         <tp:docstring>
-          An integer handle for the contact to request his activities for
+          An integer handle for the contact whose activities are to be returned
         </tp:docstring>
       </arg>
       <arg direction="out" name="activities" type="a(su)">
@@ -103,7 +103,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
           An array of structs containing:
           <ul>
             <li>the identifier of the activity</li>
-            <li>the handle of the activity channel</li>
+            <li>the room handle of the activity channel</li>
           </ul>
         </tp:docstring>
       </arg>
@@ -140,12 +140,14 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
     <method name="SetCurrentActivity">
       <arg direction="in" name="activity" type="s">
         <tp:docstring>
-          The identifier of the activity
+          The identifier of the activity, or the empty string if there is no
+          current activity
         </tp:docstring>
       </arg>
       <arg direction="in" name="channel" type="u">
         <tp:docstring>
-          The handle of the activity channel
+          The room handle of the activity channel, or 0 if there is no current
+          activity
         </tp:docstring>
       </arg>
       <tp:docstring>
@@ -160,17 +162,18 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
     <method name="GetCurrentActivity">
       <arg direction="in" name="contact" type="u">
         <tp:docstring>
-          An integer handle for the contact to request his activities for
+          An integer handle for the contact whose current activity is to be
+          returned
         </tp:docstring>
       </arg>
       <arg direction="out" name="activity" type="s">
         <tp:docstring>
-          The identifier of the activity
+          The identifier of the activity, or "" if there is no current activity
         </tp:docstring>
       </arg>
       <arg direction="out" name="channel" type="u">
         <tp:docstring>
-          The handle of the activity channel
+          The room handle of the activity, or 0 if there is no current activity
         </tp:docstring>
       </arg>
       <tp:docstring>
@@ -190,12 +193,13 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
       </arg>
       <arg name="activity" type="s">
         <tp:docstring>
-          The identifier of the activity
+          The identifier of the activity, or "" if there is no current activity
         </tp:docstring>
       </arg>
       <arg name="channel" type="u">
         <tp:docstring>
-          The handle of the activity channel
+          The room handle of the activity channel, or 0 if there is no current
+          activity
         </tp:docstring>
       </arg>
       <tp:docstring>
@@ -211,11 +215,13 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
         The user is automatically notified when information of contacts that
         are in his 'subscribe' contact list change.</p>
 
-      <p>The following types and names are used to request and set information (except
-    for activities):</p>
+      <p>The following types and names are used to request and set information
+        (except for activities):</p>
       <dl>
         <dt>s:color</dt>
-        <dd>The color name of the buddy. Format used is #RRGGBB,#RRGGBB (stroke,fill).</dd>
+        <dd>The color name of the buddy. Format used is #RRGGBB,#RRGGBB
+          (stroke,fill).
+        </dd>
 
         <dt>ay:key</dt>
         <dd>The public key of the buddy.</dd>
@@ -226,8 +232,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
         <li>the identifier of the activity</li>
         <li>the handle of the activity channel</li>
       </ul>
-
-      <p>If the activity identifier is empty (""), the handle is ignored and there is no current activity.</p>
     </tp:docstring>
   </interface>
 </node>

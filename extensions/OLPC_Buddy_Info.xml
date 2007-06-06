@@ -68,7 +68,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
         </tp:docstring>
       </arg>
       <tp:docstring>
-        Signal emitted when the properties of a contact from your 'subscribed'
+        Signal emitted when the properties of a contact from your 'subscribe'
         contact list are changed.
       </tp:docstring>
     </signal>
@@ -132,7 +132,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
         </tp:docstring>
       </arg>
       <tp:docstring>
-        Signal emitted when the activities of a contact from your 'subscribed'
+        Signal emitted when the activities of a contact from your 'subscribe'
         contact list are changed.
       </tp:docstring>
     </signal>
@@ -199,17 +199,17 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
         </tp:docstring>
       </arg>
       <tp:docstring>
-        Signal emitted when the current activity of a contact from your 'subscribed'
+        Signal emitted when the current activity of a contact from your 'subscribe'
         contact list is changed.
       </tp:docstring>
     </signal>
 
     <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
       <p>An interface on connections to associate OLPC buddy information
-    with contacts. Provides methods for the user to set their own information and
-    retrieve information of contacts.
-    User is automatically notified when information of contacts that are in his 'subscribe'
-    contact list change.</p>
+        with contacts, providing methods for the user to set their own
+        information and retrieve information of contacts.
+        The user is automatically notified when information of contacts that
+        are in his 'subscribe' contact list change.</p>
 
       <p>The following types and names are used to request and set information (except
     for activities):</p>

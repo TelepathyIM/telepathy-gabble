@@ -27,9 +27,11 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
       </arg>
       <tp:docstring>
         Set the information of the local user for this connection.
+        This method may be called before Connect(), in which case the given
+        information will be advertised as soon as possible after connection
+        (possibly immediately).
       </tp:docstring>
       <tp:possible-errors>
-        <tp:error name="org.freedesktop.Telepathy.Error.Disconnected"/>
         <tp:error name="org.freedesktop.Telepathy.Error.InvalidArgument"/>
       </tp:possible-errors>
     </method>

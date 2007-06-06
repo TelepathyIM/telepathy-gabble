@@ -816,7 +816,15 @@ _caps_disco_cb (GabbleDisco *disco,
         caps |= PRESENCE_CAP_CHAT_STATES;
     }
 
-  handle = gabble_handle_for_contact (priv->conn->handles, jid, FALSE);
+  caps |= _detect_h263_n800_hack (node);
+
+  handle = tp_handle_ensure (contact_repo, jid, NULL, NULL);
+  if (handle == 0)
+    {
+      DEBUG ("Ignoring presence from invalid JID %s", jid);
+      goto OUT;
+    }
+
   trust = capability_info_recvd (cache, node, handle, caps);
 
   for (i = waiters; NULL != i;)

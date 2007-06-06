@@ -424,6 +424,19 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_MEDIA_TYPE, param_spec);
 
+  param_spec = g_param_spec_boolean ("h263-n800-hack", "Enable H263-N800 hack",
+                                     "A boolean signifying whether this "
+                                     "stream should dynamically rewrite "
+                                     "codec names between H263-N800 and "
+                                     "H263-1998.",
+                                     FALSE,
+                                     G_PARAM_CONSTRUCT_ONLY |
+                                     G_PARAM_READWRITE |
+                                     G_PARAM_STATIC_NAME |
+                                     G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_H263_N800_HACK,
+      param_spec);
+
   param_spec = g_param_spec_uint ("connection-state", "Stream connection state",
                                   "An integer indicating the state of the"
                                   "stream's connection.",
@@ -434,7 +447,8 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                                   G_PARAM_READWRITE |
                                   G_PARAM_STATIC_NAME |
                                   G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_CONNECTION_STATE, param_spec);
+  g_object_class_install_property (object_class, PROP_CONNECTION_STATE,
+      param_spec);
 
   param_spec = g_param_spec_boolean ("ready", "Ready?",
                                      "A boolean signifying whether the user "

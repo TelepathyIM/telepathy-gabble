@@ -67,7 +67,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
       </arg>
       <arg name="properties" type="a{sv}">
         <tp:docstring>
-          A dictionary mapping information names to their new values
+          A dictionary mapping property names to their new values. All
+          properties are included, not just those that have changed.
         </tp:docstring>
       </arg>
       <tp:docstring>

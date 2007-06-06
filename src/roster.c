@@ -1090,8 +1090,9 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
       TpHandleSet *referenced_handles;
       GArray *removed;
       TpHandle handle;
-      GabbleRosterChannel *schan;
-      GabbleRosterChannel *chan;
+      GabbleRosterChannel *pub_chan, *sub_chan, *chan;
+      GHashTable *group_update_table;
+      guint i;
 
     case LM_MESSAGE_SUB_TYPE_RESULT:
     case LM_MESSAGE_SUB_TYPE_SET:
@@ -1120,13 +1121,11 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
           deny_rem = NULL;
         }
 
-      /* we need this for checking if a request is remote pending (and not removing it) */
-      handle = GABBLE_LIST_HANDLE_SUBSCRIBE;
-      schan = _gabble_roster_get_channel (roster, handle);
-
-      /* get the publish channel first because we need it when processing */
-      handle = GABBLE_LIST_HANDLE_PUBLISH;
-      chan = _gabble_roster_get_channel (roster, handle);
+      /* we need these for preserving "fragile" local/remote pending states */
+      pub_chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
+          GABBLE_LIST_HANDLE_PUBLISH, NULL);
+      sub_chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
+          GABBLE_LIST_HANDLE_SUBSCRIBE, NULL);
 
       /* iterate every sub-node, which we expect to be <item>s */
       for (item_node = query_node->children;
@@ -1185,7 +1184,8 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
                * if someone is awaiting our approval - we get this via presence
                * type=subscribe, so we have to not remove them if they're
                * already local_pending in our publish channel */
-              if (!handle_set_is_member (chan->group.local_pending, handle))
+              if (!tp_handle_set_is_member (pub_chan->group.local_pending,
+                    handle))
                 {
                   tp_intset_add (pub_rem, handle);
                 }
@@ -1204,12 +1204,26 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
             case GABBLE_ROSTER_SUBSCRIPTION_NONE:
             case GABBLE_ROSTER_SUBSCRIPTION_FROM:
               if (item->ask_subscribe)
-                g_intset_add (sub_rp, handle);
+                {
+                  tp_intset_add (sub_rp, handle);
+                }
               else
-                g_intset_add (sub_rem, handle);
+                {
+                  /* don't remove remote pending, presence="unsubscribed"
+                   * does that */
+                  if (!tp_handle_set_is_member (sub_chan->group.remote_pending,
+                        handle))
+                    {
+                      tp_intset_add (sub_rem, handle);
+                    }
+                }
               break;
             case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
-              g_intset_add (sub_rem, handle);
+              if (!tp_handle_set_is_member (sub_chan->group.remote_pending,
+                    handle))
+                {
+                  tp_intset_add (sub_rem, handle);
+                }
               break;
             default:
               g_assert_not_reached ();
@@ -1228,7 +1242,11 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
                   tp_intset_add (known_add, handle);
               break;
             case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
-              g_intset_add (known_rem, handle);
+              if (!tp_handle_set_is_member (sub_chan->group.remote_pending,
+                    handle))
+                {
+                  tp_intset_add (known_rem, handle);
+                }
               break;
             default:
               g_assert_not_reached ();
@@ -1265,14 +1283,11 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
         }
 
       DEBUG ("calling change members on publish channel");
-      tp_group_mixin_change_members (G_OBJECT (chan),
+      tp_group_mixin_change_members ((GObject *) pub_chan,
             "", pub_add, pub_rem, NULL, NULL, 0, 0);
 
-      handle = GABBLE_LIST_HANDLE_SUBSCRIBE;
-      chan = _gabble_roster_get_channel (roster, handle);
-
       DEBUG ("calling change members on subscribe channel");
-      tp_group_mixin_change_members (G_OBJECT (chan),
+      tp_group_mixin_change_members ((GObject *) sub_chan,
             "", sub_add, sub_rem, NULL, sub_rp, 0, 0);
 
       handle = GABBLE_LIST_HANDLE_KNOWN;

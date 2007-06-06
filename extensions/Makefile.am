@@ -45,7 +45,7 @@ _gen/.exists:
 extensions.html: all.xml $(SPEC_INTERFACE_XMLS) $(tools_dir)/doc-generator.xsl
 	$(XSLTPROC) $(XSLTPROCFLAGS) --xinclude \
 		$(tools_dir)/doc-generator.xsl \
-		all.xml > $@
+		$(srcdir)/all.xml > $@
 
 _gen/%.xml: %.xml $(tools_dir)/spec-to-introspect.xsl _gen/.exists
 	$(XSLTPROC) $(XSLTPROCFLAGS) \

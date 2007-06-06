@@ -22,7 +22,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA</p>
     <method name="SetProperties">
       <arg direction="in" name="properties" type="a{sv}">
         <tp:docstring>
-          A dictionary mapping information names to the desired values
+          A dictionary mapping information names to the desired values.
+          This replaces any existing buddy properties completely: any keys
+          which were previously present, but are not present in this dictionary,
+          are deleted.
         </tp:docstring>
       </arg>
       <tp:docstring>

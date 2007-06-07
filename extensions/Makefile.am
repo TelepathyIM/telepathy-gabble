@@ -89,5 +89,6 @@ _gen/enums.h: all.xml tools/c-constants-generator.xsl _gen/.exists
 
 _gen/interfaces.h: all.xml tools/c-interfaces-generator.xsl _gen/.exists
 	$(XSLTPROC) --xinclude $(XSLTPROCFLAGS) \
+		--stringparam mixed-case-prefix Gabble \
 		$(srcdir)/tools/c-interfaces-generator.xsl \
 		$(srcdir)/all.xml > $@

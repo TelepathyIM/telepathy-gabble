@@ -84,6 +84,7 @@ _gen/svc.h: Makefile.in _gen/.exists
 
 _gen/enums.h: all.xml tools/c-constants-generator.xsl _gen/.exists
 	$(XSLTPROC) --xinclude $(XSLTPROCFLAGS) \
+		--stringparam mixed-case-prefix Gabble \
 		$(srcdir)/tools/c-constants-generator.xsl \
 		$(srcdir)/all.xml > $@
 

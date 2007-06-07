@@ -158,7 +158,9 @@ def type_to_gtype(s):
     elif s == 'as':  #array of strings
         return ("gchar **", "G_TYPE_STRV", "BOXED", True)
     elif s == 'ay': #byte array
-        return ("GArray *", "DBUS_TYPE_G_BYTE_ARRAY", "BOXED", True)
+        return ("GArray *",
+            "dbus_g_type_get_collection (\"GArray\", G_TYPE_UCHAR)", "BOXED",
+            True)
     elif s == 'au': #uint array
         return ("GArray *", "DBUS_TYPE_G_UINT_ARRAY", "BOXED", True)
     elif s == 'ai': #int array

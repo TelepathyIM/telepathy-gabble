@@ -1579,7 +1579,7 @@ gabble_tubes_channel_get_d_bus_server_address (TpSvcChannelTypeTubes *iface,
 #ifdef HAVE_DBUS_TUBE
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (iface);
   GabbleTubesChannelPrivate *priv;
-  GabbleTubeDBus *tube;
+  GabbleTubeIface *tube;
   gchar *addr;
   TpTubeType type;
   TpTubeState state;

@@ -139,6 +139,7 @@ gabble_tubes_channel_constructor (GType type,
   GabbleTubesChannel *self;
   GabbleTubesChannelPrivate *priv;
   DBusGConnection *bus;
+  TpHandleRepoIface *handle_repo;
 
   DEBUG ("Called");
 
@@ -147,6 +148,10 @@ gabble_tubes_channel_constructor (GType type,
 
   self = GABBLE_TUBES_CHANNEL (obj);
   priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  handle_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, priv->handle_type);
+
+  tp_handle_ref (handle_repo, priv->handle);
 
   switch (priv->handle_type)
     {
@@ -1987,7 +1992,10 @@ gabble_tubes_channel_finalize (GObject *object)
 {
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (object);
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  TpHandleRepoIface *handle_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, priv->handle_type);
 
+  tp_handle_unref (handle_repo, priv->handle);
   g_free (priv->object_path);
 
   G_OBJECT_CLASS (gabble_tubes_channel_parent_class)->finalize (object);

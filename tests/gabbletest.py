@@ -20,10 +20,6 @@ class Authenticator(xmlstream.Authenticator):
         xmlstream.Authenticator.__init__(self)
 
     def connectionMade(self):
-        self.xmlstream.initiating = False
-        self.xmlstream.sid = '1'
-        self.xmlstream.version = '0.9'
-        self.xmlstream.namespace = 'jabber:client'
         self.xmlstream.sendHeader()
 
     def streamStarted(self):
@@ -57,7 +53,17 @@ class Authenticator(xmlstream.Authenticator):
         self.xmlstream.send(result)
         self.xmlstream.dispatch(self.xmlstream, xmlstream.STREAM_AUTHD_EVENT)
 
-class XmlStream(xmlstream.XmlStream):
+    def registerIq(self, iq):
+        result = IQ(self.xmlstream, "result")
+        result["id"] = iq["id"]
+        #query = result.addElement
+        pass
+
+class BaseXmlStream(xmlstream.XmlStream):
+    initiating = False
+    sid = '1'
+    namespace = 'jabber:client'
+
     def __init__(self, handler, authenticator):
         xmlstream.XmlStream.__init__(self, authenticator)
         self.handler = handler
@@ -83,6 +89,12 @@ class XmlStream(xmlstream.XmlStream):
             iq['type'] = 'result'
             self.send(iq)
 
+class JabberXmlStream(BaseXmlStream):
+    version = '0.9'
+
+class XmppXmlStream(BaseXmlStream):
+    version = '1.0'
+
 class XmlStreamFactory(xmlstream.XmlStreamFactory):
     def __init__(self, handler, authenticator):
         xmlstream.XmlStreamFactory.__init__(self, authenticator)
@@ -93,7 +105,7 @@ class XmlStreamFactory(xmlstream.XmlStreamFactory):
         # buildProtocol doesn't honour self.protocol. This is fixed in SVN.
         self.resetDelay()
         # create the stream
-        xs = XmlStream(self.handler, self.authenticator)
+        xs = self.protocol(self.handler, self.authenticator)
         xs.factory = self
         # register all the bootstrap observers.
         for event, fn in self.bootstraps:
@@ -118,6 +130,7 @@ def go(params=None):
     authenticator = Authenticator(
         'test', '364321e78f46562a65a902156e03c322badbcf48')
     factory = XmlStreamFactory(handler, authenticator)
+    factory.protocol = JabberXmlStream
     reactor.listenTCP(4242, factory)
 
     # update callback data

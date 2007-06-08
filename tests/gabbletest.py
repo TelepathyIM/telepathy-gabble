@@ -90,10 +90,10 @@ class BaseXmlStream(xmlstream.XmlStream):
             self.send(iq)
 
 class JabberXmlStream(BaseXmlStream):
-    version = '0.9'
+    version = (0, 9)
 
 class XmppXmlStream(BaseXmlStream):
-    version = '1.0'
+    version = (1, 0)
 
 class XmlStreamFactory(xmlstream.XmlStreamFactory):
     def __init__(self, handler, authenticator):

@@ -11,7 +11,7 @@ from twisted.internet import reactor
 
 import dbus
 
-class Authenticator(xmlstream.Authenticator):
+class JabberAuthenticator(xmlstream.Authenticator):
     "Trivial XML stream authenticator that accepts one username/digest pair."
 
     def __init__(self, expected_username, expected_digest):
@@ -127,7 +127,7 @@ def go(params=None):
     handler = servicetest.create_test('gabble', 'jabber', default_params)
 
     # set up Jabber server
-    authenticator = Authenticator(
+    authenticator = JabberAuthenticator(
         'test', '364321e78f46562a65a902156e03c322badbcf48')
     factory = XmlStreamFactory(handler, authenticator)
     factory.protocol = JabberXmlStream

@@ -1968,11 +1968,15 @@ gabble_tubes_channel_dispose (GObject *object)
 {
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (object);
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  TpHandleRepoIface *handle_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, priv->handle_type);
 
   if (priv->dispose_has_run)
     return;
 
   priv->dispose_has_run = TRUE;
+
+  tp_handle_unref (handle_repo, priv->handle);
 
   if (self->muc != NULL)
     {
@@ -1992,10 +1996,7 @@ gabble_tubes_channel_finalize (GObject *object)
 {
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (object);
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
-  TpHandleRepoIface *handle_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, priv->handle_type);
 
-  tp_handle_unref (handle_repo, priv->handle);
   g_free (priv->object_path);
 
   G_OBJECT_CLASS (gabble_tubes_channel_parent_class)->finalize (object);

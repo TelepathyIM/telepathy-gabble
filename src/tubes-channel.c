@@ -55,7 +55,7 @@
 #include <telepathy-glib/svc-channel.h>
 #include <telepathy-glib/svc-unstable.h>
 
-#define TP_CHANNEL_TUBE_TYPE \
+#define GABBLE_CHANNEL_TUBE_TYPE \
     (dbus_g_type_get_struct ("GValueArray", \
         G_TYPE_UINT, \
         G_TYPE_UINT, \
@@ -763,9 +763,9 @@ copy_tube_in_ptr_array (gpointer key,
                 "state", &state,
                 NULL);
 
-  g_value_init (&entry, TP_CHANNEL_TUBE_TYPE);
+  g_value_init (&entry, GABBLE_CHANNEL_TUBE_TYPE);
   g_value_take_boxed (&entry,
-          dbus_g_type_specialized_construct (TP_CHANNEL_TUBE_TYPE));
+          dbus_g_type_specialized_construct (GABBLE_CHANNEL_TUBE_TYPE));
   dbus_g_type_struct_set (&entry,
           0, tube_id,
           1, initiator,
@@ -846,7 +846,7 @@ gabble_tubes_channel_list_tubes (TpSvcChannelTypeTubes *iface,
   tp_svc_channel_type_tubes_return_from_list_tubes (context, ret);
 
   for (i = 0; i < ret->len; i++)
-    g_boxed_free (TP_CHANNEL_TUBE_TYPE, ret->pdata[i]);
+    g_boxed_free (GABBLE_CHANNEL_TUBE_TYPE, ret->pdata[i]);
 
   g_ptr_array_free (ret, TRUE);
 }

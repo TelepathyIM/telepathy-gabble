@@ -746,7 +746,7 @@ copy_tube_in_ptr_array (gpointer key,
                         gpointer user_data)
 {
   GabbleTubeIface *tube = (GabbleTubeIface *) value;
-  guint tube_id = GPOINTER_TO_UINT(key);
+  guint tube_id = GPOINTER_TO_UINT (key);
   TpHandle initiator;
   gchar *service;
   GHashTable *parameters;

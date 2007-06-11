@@ -6,32 +6,22 @@ Test avatar support.
 import base64
 
 import dbus
-from servicetest import tp_name_prefix, call_async
+from servicetest import tp_name_prefix, call_async, match
 from gabbletest import go
 
 def avatars_iface(proxy):
     return dbus.Interface(proxy, tp_name_prefix +
         '.Connection.Interface.Avatars')
 
+@match('dbus-signal', signal='StatusChanged', args=[0, 1])
 def expect_connected(event, data):
-    if event.type != 'dbus-signal':
-        return False
-
-    if event.signal != 'StatusChanged':
-        return False
-
-    if event.args != [0, 1]:
-        return False
-
     handle = data['conn_iface'].RequestHandles(1, ['bob@foo.com'])[0]
     call_async(data['test'], avatars_iface(data['conn']), 'RequestAvatar',
         handle, byte_arrays=True)
     return True
 
+@match('stream-iq')
 def expect_vcard_iq(event, data):
-    if event.type != 'stream-iq':
-        return False
-
     iq = event.stanza
 
     if iq.getAttribute('to') != 'bob@foo.com':
@@ -50,28 +40,15 @@ def expect_vcard_iq(event, data):
     data['stream'].send(iq)
     return True
 
+@match('dbus-return', method='RequestAvatar')
 def expect_RequestAvatar_return(event, data):
-    if event.type != 'dbus-return':
-        return False
-
-    if event.method != 'RequestAvatar':
-        return False
-
     assert event.value[0] == 'hello'
     assert event.value[1] == 'image/png'
     data['conn_iface'].Disconnect()
     return True
 
+@match('dbus-signal', signal='StatusChanged', args=[2, 1])
 def expect_disconnected(event, data):
-    if event.type != 'dbus-signal':
-        return False
-
-    if event.signal != 'StatusChanged':
-        return False
-
-    if event.args != [2, 1]:
-        return False
-
     return True
 
 if __name__ == '__main__':

@@ -205,7 +205,8 @@ def create_test(name, proto, params):
     bus.add_signal_receiver(
         lambda *args, **kw:
             test.handle_event(
-                Event('dbus-signal', path=unwrap(kw['path']),
+                Event('dbus-signal',
+                    path=unwrap(kw['path'])[len(tp_path_prefix):],
                     signal=kw['member'], args=map(unwrap, args))),
         None,       # signal name
         None,       # interface

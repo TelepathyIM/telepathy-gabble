@@ -30,6 +30,26 @@ def lazy(func):
     handler.__name__ = func.__name__
     return handler
 
+def match(type, **kw):
+    def decorate(func):
+        def handler(event, data):
+            if event.type != type:
+                return False
+
+            for key, value in kw.iteritems():
+                if not hasattr(event, key):
+                    return False
+
+                if getattr(event, key) != value:
+                    return False
+
+            return func(event, data)
+
+        handler.__name__ = func.__name__
+        return handler
+
+    return decorate
+
 class Event:
     def __init__(self, type, **kw):
         self.__dict__.update(kw)

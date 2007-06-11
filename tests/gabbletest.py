@@ -59,7 +59,6 @@ class JabberAuthenticator(xmlstream.Authenticator):
 
 class BaseXmlStream(xmlstream.XmlStream):
     initiating = False
-    sid = '1'
     namespace = 'jabber:client'
 
     def __init__(self, handler, authenticator):

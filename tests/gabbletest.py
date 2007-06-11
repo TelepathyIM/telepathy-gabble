@@ -147,7 +147,8 @@ class XmlStreamFactory(xmlstream.XmlStreamFactory):
 
     def buildProtocol(self, _):
         # XXX: This is necessary because xmlstream.XmlStreamFactory's
-        # buildProtocol doesn't honour self.protocol. This is fixed in SVN.
+        # buildProtocol doesn't honour self.protocol. This is broken in
+        # Twisted Words 2.5, fixed in SVN.
         self.resetDelay()
         # create the stream
         xs = self.protocol(self.handler, self.authenticator)

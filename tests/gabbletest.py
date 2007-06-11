@@ -58,12 +58,6 @@ class JabberAuthenticator(xmlstream.Authenticator):
         self.xmlstream.send(result)
         self.xmlstream.dispatch(self.xmlstream, xmlstream.STREAM_AUTHD_EVENT)
 
-    def registerIq(self, iq):
-        result = IQ(self.xmlstream, "result")
-        result["id"] = iq["id"]
-        #query = result.addElement
-        pass
-
 class XmppAuthenticator(xmlstream.Authenticator):
     def __init__(self, username, password):
         xmlstream.Authenticator.__init__(self)

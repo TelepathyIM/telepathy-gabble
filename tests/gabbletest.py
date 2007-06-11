@@ -3,6 +3,8 @@
 Infrastructure code for testing Gabble by pretending to be a Jabber server.
 """
 
+import sha
+
 import servicetest
 from twisted.words.xish import xpath
 from twisted.words.protocols.jabber.client import IQ
@@ -14,9 +16,9 @@ import dbus
 class JabberAuthenticator(xmlstream.Authenticator):
     "Trivial XML stream authenticator that accepts one username/digest pair."
 
-    def __init__(self, expected_username, expected_digest):
-        self.expected_username = expected_username
-        self.expected_digest = expected_digest
+    def __init__(self, username, password):
+        self.username = username
+        self.password = password
         xmlstream.Authenticator.__init__(self)
 
     def streamStarted(self):
@@ -38,10 +40,11 @@ class JabberAuthenticator(xmlstream.Authenticator):
 
     def secondIq(self, iq):
         username = xpath.queryForNodes('/iq/query/username', iq)
-        assert map(str, username) == [self.expected_username]
+        assert map(str, username) == [self.username]
 
         digest = xpath.queryForNodes('/iq/query/digest', iq)
-        assert map(str, digest) == [self.expected_digest]
+        expect = sha.sha(self.xmlstream.sid + self.password).hexdigest()
+        assert map(str, digest) == [expect]
 
         resource = xpath.queryForNodes('/iq/query/resource', iq)
         assert map(str, resource) == ['Resource']
@@ -124,8 +127,7 @@ def go(params=None):
     handler = servicetest.create_test('gabble', 'jabber', default_params)
 
     # set up Jabber server
-    authenticator = JabberAuthenticator(
-        'test', '364321e78f46562a65a902156e03c322badbcf48')
+    authenticator = JabberAuthenticator('test', 'pass')
     factory = XmlStreamFactory(handler, authenticator)
     factory.protocol = JabberXmlStream
     reactor.listenTCP(4242, factory)

@@ -3,15 +3,19 @@
 Infrastructure code for testing Gabble by pretending to be a Jabber server.
 """
 
+import base64
 import sha
 
 import servicetest
-from twisted.words.xish import xpath
+from twisted.words.xish import domish, xpath
 from twisted.words.protocols.jabber.client import IQ
 from twisted.words.protocols.jabber import xmlstream
 from twisted.internet import reactor
 
 import dbus
+
+NS_XMPP_SASL = 'urn:ietf:params:xml:ns:xmpp-sasl'
+NS_XMPP_BIND = 'urn:ietf:params:xml:ns:xmpp-bind'
 
 class JabberAuthenticator(xmlstream.Authenticator):
     "Trivial XML stream authenticator that accepts one username/digest pair."
@@ -59,6 +63,53 @@ class JabberAuthenticator(xmlstream.Authenticator):
         result["id"] = iq["id"]
         #query = result.addElement
         pass
+
+class XmppAuthenticator(xmlstream.Authenticator):
+    def __init__(self, username, password):
+        xmlstream.Authenticator.__init__(self)
+        self.username = username
+        self.password = password
+        self.authenticated = False
+
+    def streamStarted(self):
+        self.xmlstream.sendHeader()
+
+        if self.authenticated:
+            # Initiator authenticated itself, and has started a new stream.
+
+            features = domish.Element((xmlstream.NS_STREAMS, 'features'))
+            bind = features.addElement((NS_XMPP_BIND, 'bind'))
+            self.xmlstream.send(features)
+
+            self.xmlstream.addOnetimeObserver(
+                "/iq/bind[@xmlns='%s']" % NS_XMPP_BIND, self.bindIq)
+        else:
+            features = domish.Element((xmlstream.NS_STREAMS, 'features'))
+            mechanisms = features.addElement((NS_XMPP_SASL, 'mechanisms'))
+            mechanism = mechanisms.addElement('mechanism', content='PLAIN')
+            self.xmlstream.send(features)
+
+            self.xmlstream.addOnetimeObserver("/auth", self.auth)
+
+    def auth(self, auth):
+        assert (base64.b64decode(str(auth)) ==
+            '\x00%s\x00%s' % (self.username, self.password))
+
+        success = domish.Element((NS_XMPP_SASL, 'success'))
+        self.xmlstream.send(success)
+        self.xmlstream.reset()
+        self.authenticated = True
+
+    def bindIq(self, iq):
+        assert xpath.queryForString('/iq/bind/resource', iq) == 'Resource'
+
+        result = IQ(self.xmlstream, "result")
+        result["id"] = iq["id"]
+        bind = result.addElement((NS_XMPP_BIND, 'bind'))
+        jid = bind.addElement('jid', content='test@localhost/Resource')
+        self.xmlstream.send(result)
+
+        self.xmlstream.dispatch(self.xmlstream, xmlstream.STREAM_AUTHD_EVENT)
 
 class BaseXmlStream(xmlstream.XmlStream):
     initiating = False

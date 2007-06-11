@@ -1,5 +1,5 @@
 /*
- * bytestreal-ibb.h - Header for GabbleBytestreamIBB
+ * bytestream-ibb.h - Header for GabbleBytestreamIBB
  * Copyright (C) 2007 Collabora Ltd.
  *
  * This library is free software; you can redistribute it and/or

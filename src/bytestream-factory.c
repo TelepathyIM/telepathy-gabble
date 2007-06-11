@@ -489,7 +489,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
         {
           bytestream = gabble_bytestream_factory_create_ibb (self, peer_handle,
               TP_HANDLE_TYPE_CONTACT, stream_id, stream_init_id, peer_resource,
-              BYTESTREAM_IBB_STATE_LOCAL_PENDING);
+              GABBLE_BYTESTREAM_IBB_STATE_LOCAL_PENDING);
           break;
         }
     }
@@ -625,7 +625,7 @@ parse_ibb_open_iq (GabbleBytestreamFactory *self,
     }
   else
     {
-      g_object_set (bytestream, "state", BYTESTREAM_IBB_STATE_OPEN,
+      g_object_set (bytestream, "state", GABBLE_BYTESTREAM_IBB_STATE_OPEN,
           NULL);
 
       reply = lm_message_new_with_sub_type (from, LM_MESSAGE_TYPE_IQ,
@@ -690,7 +690,7 @@ parse_ibb_close_iq (GabbleBytestreamFactory *self,
     {
       DEBUG ("received IBB close stanza. Bytestream closed");
 
-      g_object_set (bytestream, "state", BYTESTREAM_IBB_STATE_CLOSED,
+      g_object_set (bytestream, "state", GABBLE_BYTESTREAM_IBB_STATE_CLOSED,
           NULL);
 
       reply = lm_message_new_with_sub_type (from, LM_MESSAGE_TYPE_IQ,
@@ -805,12 +805,12 @@ gabble_bytestream_factory_new (GabbleConnection *conn)
 
 static void
 bytestream_state_changed_cb (GabbleBytestreamIBB *bytestream,
-                             BytestreamIBBState state,
+                             GabbleBytestreamIBBState state,
                              gpointer user_data)
 {
   GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (user_data);
 
-  if (state == BYTESTREAM_IBB_STATE_CLOSED)
+  if (state == GABBLE_BYTESTREAM_IBB_STATE_CLOSED)
     {
       remove_bytestream (self, bytestream);
     }
@@ -839,7 +839,7 @@ gabble_bytestream_factory_create_ibb (GabbleBytestreamFactory *self,
                                       const gchar *stream_id,
                                       const gchar *stream_init_id,
                                       const gchar *peer_resource,
-                                      BytestreamIBBState state)
+                                      GabbleBytestreamIBBState state)
 {
   GabbleBytestreamFactoryPrivate *priv;
   GabbleBytestreamIBB *ibb;
@@ -966,7 +966,7 @@ streaminit_reply_cb (GabbleConnection *conn,
       /* Remote user have accepted the stream */
       bytestream = gabble_bytestream_factory_create_ibb (self, peer_handle,
           TP_HANDLE_TYPE_CONTACT, data->stream_id, NULL,
-          peer_resource, BYTESTREAM_IBB_STATE_INITIATING);
+          peer_resource, GABBLE_BYTESTREAM_IBB_STATE_INITIATING);
     }
   else
     {

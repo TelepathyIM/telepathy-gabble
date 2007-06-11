@@ -76,7 +76,7 @@ struct _GabbleBytestreamIBBPrivate
   gchar *stream_id;
   gchar *stream_init_id;
   gchar *peer_resource;
-  BytestreamIBBState state;
+  GabbleBytestreamIBBState state;
   gchar *peer_jid;
 
   guint16 seq;
@@ -104,7 +104,7 @@ gabble_bytestream_ibb_dispose (GObject *object)
   GabbleBytestreamIBB *self = GABBLE_BYTESTREAM_IBB (object);
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
 
-  if (priv->state != BYTESTREAM_IBB_STATE_CLOSED)
+  if (priv->state != GABBLE_BYTESTREAM_IBB_STATE_CLOSED)
     {
       gabble_bytestream_ibb_close (self);
     }
@@ -354,9 +354,10 @@ gabble_bytestream_ibb_class_init (
   param_spec = g_param_spec_uint (
       "state",
       "Bytestream state",
-      "An enum (BytestreamIBBState) signifying the current state of"
+      "An enum (GabbleBytestreamIBBState) signifying the current state of"
       "this bytestream object",
-      0, LAST_BYTESTREAM_IBB_STATE - 1, BYTESTREAM_IBB_STATE_LOCAL_PENDING,
+      0, LAST_GABBLE_BYTESTREAM_IBB_STATE - 1,
+      GABBLE_BYTESTREAM_IBB_STATE_LOCAL_PENDING,
       G_PARAM_READWRITE |
       G_PARAM_STATIC_NAME |
       G_PARAM_STATIC_NICK |
@@ -394,7 +395,7 @@ send_data_to (GabbleBytestreamIBB *self,
   gchar *seq, *encoded;
   gboolean ret;
 
-  if (priv->state != BYTESTREAM_IBB_STATE_OPEN)
+  if (priv->state != GABBLE_BYTESTREAM_IBB_STATE_OPEN)
     {
       DEBUG ("can't send data through a not open bytestream (state: %d)",
           priv->state);
@@ -467,7 +468,7 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
   TpHandle sender;
   TpHandleRepoIface *contact_repo;
 
-  if (priv->state != BYTESTREAM_IBB_STATE_OPEN)
+  if (priv->state != GABBLE_BYTESTREAM_IBB_STATE_OPEN)
     {
       DEBUG ("can't receive data through a not open bytestream (state: %d)",
           priv->state);
@@ -560,7 +561,7 @@ gabble_bytestream_ibb_accept (GabbleBytestreamIBB *self, LmMessage *msg)
 {
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
 
-  if (priv->state != BYTESTREAM_IBB_STATE_LOCAL_PENDING)
+  if (priv->state != GABBLE_BYTESTREAM_IBB_STATE_LOCAL_PENDING)
     {
       /* The stream was previoulsy or automatically accepted */
       return;
@@ -575,7 +576,7 @@ gabble_bytestream_ibb_accept (GabbleBytestreamIBB *self, LmMessage *msg)
 
   if (_gabble_connection_send (priv->conn, msg, NULL))
     {
-      priv->state = BYTESTREAM_IBB_STATE_ACCEPTED;
+      priv->state = GABBLE_BYTESTREAM_IBB_STATE_ACCEPTED;
     }
 }
 
@@ -585,7 +586,7 @@ gabble_bytestream_ibb_decline (GabbleBytestreamIBB *self)
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
   LmMessage *msg;
 
-  if (priv->state != BYTESTREAM_IBB_STATE_LOCAL_PENDING)
+  if (priv->state != GABBLE_BYTESTREAM_IBB_STATE_LOCAL_PENDING)
     {
       DEBUG ("bytestream is not in the local pending state (state %d)",
           priv->state);
@@ -612,11 +613,11 @@ gabble_bytestream_ibb_close (GabbleBytestreamIBB *self)
 {
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
 
-  if (priv->state == BYTESTREAM_IBB_STATE_CLOSED)
+  if (priv->state == GABBLE_BYTESTREAM_IBB_STATE_CLOSED)
      /* bytestream already closed, do nothing */
      return;
 
-  if (priv->state == BYTESTREAM_IBB_STATE_LOCAL_PENDING)
+  if (priv->state == GABBLE_BYTESTREAM_IBB_STATE_LOCAL_PENDING)
     {
       if (priv->stream_init_id != NULL)
         {
@@ -645,7 +646,7 @@ gabble_bytestream_ibb_close (GabbleBytestreamIBB *self)
       lm_message_unref (msg);
     }
 
-  g_object_set (self, "state", BYTESTREAM_IBB_STATE_CLOSED, NULL);
+  g_object_set (self, "state", GABBLE_BYTESTREAM_IBB_STATE_CLOSED, NULL);
 }
 
 gboolean
@@ -692,12 +693,12 @@ ibb_init_reply_cb (GabbleConnection *conn,
     {
       /* yeah, stream initiated */
       DEBUG ("IBB stream initiated");
-      g_object_set (self, "state", BYTESTREAM_IBB_STATE_OPEN, NULL);
+      g_object_set (self, "state", GABBLE_BYTESTREAM_IBB_STATE_OPEN, NULL);
     }
   else
     {
       DEBUG ("error during IBB initiation");
-      g_object_set (self, "state", BYTESTREAM_IBB_STATE_CLOSED, NULL);
+      g_object_set (self, "state", GABBLE_BYTESTREAM_IBB_STATE_CLOSED, NULL);
     }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
@@ -709,7 +710,7 @@ gabble_bytestream_ibb_initiation (GabbleBytestreamIBB *self)
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
   LmMessage *msg;
 
-  if (priv->state != BYTESTREAM_IBB_STATE_INITIATING)
+  if (priv->state != GABBLE_BYTESTREAM_IBB_STATE_INITIATING)
     {
       DEBUG ("bytestream is not is the initiating state (state %d",
           priv->state);

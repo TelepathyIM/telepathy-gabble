@@ -72,7 +72,7 @@ GabbleBytestreamIBB *
 gabble_bytestream_factory_create_ibb (GabbleBytestreamFactory *fac,
     TpHandle peer_handle, TpHandleType peer_handle_type,
     const gchar *stream_id, const gchar *stream_init_id,
-    const gchar *peer_resource, BytestreamIBBState state);
+    const gchar *peer_resource, GabbleBytestreamIBBState state);
 
 LmMessage *
 gabble_bytestream_factory_make_stream_init_iq (const gchar *full_jid,

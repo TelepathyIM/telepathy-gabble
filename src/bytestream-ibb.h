@@ -30,18 +30,18 @@ G_BEGIN_DECLS
 typedef enum
 {
   /* Received a SI request, response not yet sent */
-  BYTESTREAM_IBB_STATE_LOCAL_PENDING = 0,
+  GABBLE_BYTESTREAM_IBB_STATE_LOCAL_PENDING = 0,
   /* We accepted SI request.
    * bytestream specific init steps not yet performed */
-  BYTESTREAM_IBB_STATE_ACCEPTED,
+  GABBLE_BYTESTREAM_IBB_STATE_ACCEPTED,
   /* Remote contact accepted the SI request.
    * bytestream specific initiation started */
-  BYTESTREAM_IBB_STATE_INITIATING,
+  GABBLE_BYTESTREAM_IBB_STATE_INITIATING,
   /* Bytestream open */
-  BYTESTREAM_IBB_STATE_OPEN,
-  BYTESTREAM_IBB_STATE_CLOSED,
-  LAST_BYTESTREAM_IBB_STATE,
-} BytestreamIBBState;
+  GABBLE_BYTESTREAM_IBB_STATE_OPEN,
+  GABBLE_BYTESTREAM_IBB_STATE_CLOSED,
+  LAST_GABBLE_BYTESTREAM_IBB_STATE,
+} GabbleBytestreamIBBState;
 
 typedef struct _GabbleBytestreamIBB GabbleBytestreamIBB;
 typedef struct _GabbleBytestreamIBBClass GabbleBytestreamIBBClass;

@@ -307,7 +307,7 @@ static TpTubeState
 get_tube_state (GabbleTubeDBus *self)
 {
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
-  BytestreamIBBState bytestream_state;
+  GabbleBytestreamIBBState bytestream_state;
 
   if (priv->bytestream == NULL)
     /* bytestream not yet created as we're waiting for the SI reply */
@@ -315,14 +315,14 @@ get_tube_state (GabbleTubeDBus *self)
 
   g_object_get (priv->bytestream, "state", &bytestream_state, NULL);
 
-  if (bytestream_state == BYTESTREAM_IBB_STATE_OPEN)
+  if (bytestream_state == GABBLE_BYTESTREAM_IBB_STATE_OPEN)
     return TP_TUBE_STATE_OPEN;
 
-  else if (bytestream_state == BYTESTREAM_IBB_STATE_LOCAL_PENDING ||
-      bytestream_state == BYTESTREAM_IBB_STATE_ACCEPTED)
+  else if (bytestream_state == GABBLE_BYTESTREAM_IBB_STATE_LOCAL_PENDING ||
+      bytestream_state == GABBLE_BYTESTREAM_IBB_STATE_ACCEPTED)
     return TP_TUBE_STATE_LOCAL_PENDING;
 
-  else if (bytestream_state == BYTESTREAM_IBB_STATE_INITIATING)
+  else if (bytestream_state == GABBLE_BYTESTREAM_IBB_STATE_INITIATING)
     return TP_TUBE_STATE_REMOTE_PENDING;
 
   else
@@ -331,13 +331,13 @@ get_tube_state (GabbleTubeDBus *self)
 
 static void
 bytestream_state_changed_cb (GabbleBytestreamIBB *bytestream,
-                             BytestreamIBBState state,
+                             GabbleBytestreamIBBState state,
                              gpointer user_data)
 {
   GabbleTubeDBus *self = GABBLE_TUBE_DBUS (user_data);
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
 
-  if (state == BYTESTREAM_IBB_STATE_CLOSED)
+  if (state == GABBLE_BYTESTREAM_IBB_STATE_CLOSED)
     {
       if (priv->bytestream != NULL)
         {
@@ -347,7 +347,7 @@ bytestream_state_changed_cb (GabbleBytestreamIBB *bytestream,
 
       g_signal_emit (G_OBJECT (self), signals[CLOSED], 0);
     }
-  else if (state == BYTESTREAM_IBB_STATE_OPEN)
+  else if (state == GABBLE_BYTESTREAM_IBB_STATE_OPEN)
     {
       tube_dbus_open (self);
       g_signal_emit (G_OBJECT (self), signals[OPENED], 0);
@@ -503,13 +503,13 @@ gabble_tube_dbus_set_property (GObject *object,
       case PROP_BYTESTREAM:
         if (priv->bytestream == NULL)
           {
-            BytestreamIBBState state;
+            GabbleBytestreamIBBState state;
 
             priv->bytestream = g_value_get_object (value);
             g_object_ref (priv->bytestream);
 
             g_object_get (priv->bytestream, "state", &state, NULL);
-            if (state == BYTESTREAM_IBB_STATE_OPEN)
+            if (state == GABBLE_BYTESTREAM_IBB_STATE_OPEN)
               {
                 tube_dbus_open (self);
               }
@@ -585,7 +585,7 @@ gabble_tube_dbus_constructor (GType type,
               priv->stream_id,
               NULL,
               NULL,
-              BYTESTREAM_IBB_STATE_OPEN);
+              GABBLE_BYTESTREAM_IBB_STATE_OPEN);
         }
       else
         {
@@ -597,7 +597,7 @@ gabble_tube_dbus_constructor (GType type,
               priv->stream_id,
               NULL,
               NULL,
-              BYTESTREAM_IBB_STATE_LOCAL_PENDING);
+              GABBLE_BYTESTREAM_IBB_STATE_LOCAL_PENDING);
         }
 
       g_object_set (self, "bytestream", bytestream, NULL);
@@ -917,7 +917,7 @@ gabble_tube_dbus_accept (GabbleTubeIface *tube)
 {
   GabbleTubeDBus *self = GABBLE_TUBE_DBUS (tube);
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
-  BytestreamIBBState state;
+  GabbleBytestreamIBBState state;
   gchar *stream_init_id;
 
   g_assert (priv->bytestream != NULL);
@@ -926,7 +926,7 @@ gabble_tube_dbus_accept (GabbleTubeIface *tube)
       "state", &state,
       NULL);
 
-  if (state != BYTESTREAM_IBB_STATE_LOCAL_PENDING)
+  if (state != GABBLE_BYTESTREAM_IBB_STATE_LOCAL_PENDING)
     return;
 
   g_object_get (priv->bytestream,
@@ -970,7 +970,7 @@ gabble_tube_dbus_accept (GabbleTubeIface *tube)
       /* No SI so the bytestream is open */
       DEBUG ("no SI, bytestream open");
       g_object_set (priv->bytestream,
-          "state", BYTESTREAM_IBB_STATE_OPEN,
+          "state", GABBLE_BYTESTREAM_IBB_STATE_OPEN,
           NULL);
     }
 }

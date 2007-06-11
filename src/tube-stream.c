@@ -205,7 +205,7 @@ data_to_read_on_socket_cb (GIOChannel *source,
 
 static void
 extra_bytestream_state_changed_cb (GabbleBytestreamIBB *bytestream,
-                                   BytestreamIBBState state,
+                                   GabbleBytestreamIBBState state,
                                    gpointer user_data)
 {
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (user_data);
@@ -220,7 +220,7 @@ extra_bytestream_state_changed_cb (GabbleBytestreamIBB *bytestream,
       return;
     }
 
-  if (state == BYTESTREAM_IBB_STATE_OPEN)
+  if (state == GABBLE_BYTESTREAM_IBB_STATE_OPEN)
     {
       guint source_id;
       DEBUG ("extra bytestream open");
@@ -233,7 +233,7 @@ extra_bytestream_state_changed_cb (GabbleBytestreamIBB *bytestream,
       g_hash_table_insert (priv->io_channel_to_watcher_source_id,
           g_io_channel_ref (channel), GUINT_TO_POINTER (source_id));
     }
-  else if (state == BYTESTREAM_IBB_STATE_CLOSED)
+  else if (state == GABBLE_BYTESTREAM_IBB_STATE_CLOSED)
     {
       int fd;
 
@@ -597,13 +597,13 @@ gabble_tube_stream_init (GabbleTubeStream *self)
 
 static void
 bytestream_state_changed_cb (GabbleBytestreamIBB *bytestream,
-                             BytestreamIBBState state,
+                             GabbleBytestreamIBBState state,
                              gpointer user_data)
 {
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (user_data);
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
 
-  if (state == BYTESTREAM_IBB_STATE_CLOSED)
+  if (state == GABBLE_BYTESTREAM_IBB_STATE_CLOSED)
     {
       if (priv->default_bytestream != NULL)
         {
@@ -1107,7 +1107,7 @@ gabble_tube_stream_accept (GabbleTubeIface *tube)
 {
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (tube);
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
-  BytestreamIBBState state;
+  GabbleBytestreamIBBState state;
   const gchar *stream_init_id;
 
   tube_stream_open (self);
@@ -1121,7 +1121,7 @@ gabble_tube_stream_accept (GabbleTubeIface *tube)
       "state", &state,
       NULL);
 
-  if (state != BYTESTREAM_IBB_STATE_LOCAL_PENDING)
+  if (state != GABBLE_BYTESTREAM_IBB_STATE_LOCAL_PENDING)
     return;
 
   g_object_get (priv->default_bytestream,
@@ -1161,7 +1161,7 @@ gabble_tube_stream_accept (GabbleTubeIface *tube)
       /* No SI so the bytestream is open */
       DEBUG ("no SI, bytestream open");
       g_object_set (priv->default_bytestream,
-          "state", BYTESTREAM_IBB_STATE_OPEN,
+          "state", GABBLE_BYTESTREAM_IBB_STATE_OPEN,
           NULL);
     }
 }

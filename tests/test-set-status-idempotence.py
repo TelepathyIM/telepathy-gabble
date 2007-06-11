@@ -8,13 +8,13 @@ import dbus
 from gabbletest import go
 
 def expect_connected(event, data):
-    if event[0] != 'dbus-signal':
+    if event.type != 'dbus-signal':
         return False
 
-    if event[2] != 'StatusChanged':
+    if event.signal != 'StatusChanged':
         return False
 
-    if event[3] != [0, 1]:
+    if event.args != [0, 1]:
         return False
 
     presence = dbus.Interface(data['conn'],
@@ -26,25 +26,25 @@ def expect_connected(event, data):
     return True
 
 def expect_presence_update1(event, data):
-    if event[0] != 'dbus-signal':
+    if event.type != 'dbus-signal':
         return False
 
-    if event[2] != 'PresenceUpdate':
+    if event.signal != 'PresenceUpdate':
         return False
 
-    if event[3] != [{1L: (0L, {u'away': {u'message': u'gone'}})}]:
+    if event.args != [{1L: (0L, {u'away': {u'message': u'gone'}})}]:
         return False
 
     return True
 
 def expect_presence_stanza1(event, data):
-    if event[0] != 'stream-presence':
+    if event.type != 'stream-presence':
         return False
 
     presence = dbus.Interface(data['conn'],
         'org.freedesktop.Telepathy.Connection.Interface.Presence')
 
-    children = list(event[1].elements())
+    children = list(event.stanza.elements())
     assert children[0].name == 'show'
     assert str(children[0]) == 'away'
     assert children[1].name == 'status'
@@ -61,22 +61,22 @@ def expect_presence_stanza1(event, data):
     return True
 
 def expect_presence_update2(event, data):
-    if event[0] != 'dbus-signal':
+    if event.type != 'dbus-signal':
         return False
 
-    if event[2] != 'PresenceUpdate':
+    if event.signal != 'PresenceUpdate':
         return False
 
-    if event[3] != [{1L: (0L, {u'available': {u'message': u'yo'}})}]:
+    if event.args != [{1L: (0L, {u'available': {u'message': u'yo'}})}]:
         return False
 
     return True
 
 def expect_presence_stanza2(event, data):
-    if event[0] != 'stream-presence':
+    if event.type != 'stream-presence':
         return False
 
-    children = list(event[1].elements())
+    children = list(event.stanza.elements())
     assert children[0].name == 'status'
     assert str(children[0]) == 'yo'
 
@@ -84,13 +84,13 @@ def expect_presence_stanza2(event, data):
     return True
 
 def expect_disconnected(event, data):
-    if event[0] != 'dbus-signal':
+    if event.type != 'dbus-signal':
         return False
 
-    if event[2] != 'StatusChanged':
+    if event.signal != 'StatusChanged':
         return False
 
-    if event[3] != [2, 1]:
+    if event.args != [2, 1]:
         return False
 
     return True

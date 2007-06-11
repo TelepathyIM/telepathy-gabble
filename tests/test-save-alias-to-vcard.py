@@ -13,26 +13,26 @@ from gabbletest import go
 
 @lazy
 def expect_connected(event, data):
-    if event[0] != 'dbus-signal':
+    if event.type != 'dbus-signal':
         return False
 
-    if event[2] != 'StatusChanged':
+    if event.signal != 'StatusChanged':
         return False
 
-    if event[3] != [0, 1]:
+    if event.args != [0, 1]:
         return False
 
     return True
 
 def expect_get_vcard(event, data):
-    if event[0] != 'stream-iq':
+    if event.type != 'stream-iq':
         return False
 
     # Looking for something like this:
     #   <iq xmlns='jabber:client' type='get' id='262286393608'>
     #      <vCard xmlns='vcard-temp'/>
 
-    iq = event[1]
+    iq = event.stanza
 
     if iq['type'] != 'get':
         return False
@@ -51,10 +51,10 @@ def expect_get_vcard(event, data):
     return True
 
 def expect_set_vcard(event, data):
-    if event[0] != 'stream-iq':
+    if event.type != 'stream-iq':
         return False
 
-    iq = event[1]
+    iq = event.stanza
 
     if iq['type'] != 'set':
         return False
@@ -74,13 +74,13 @@ def expect_set_vcard(event, data):
     return True
 
 def expect_disconnected(event, data):
-    if event[0] != 'dbus-signal':
+    if event.type != 'dbus-signal':
         return False
 
-    if event[2] != 'StatusChanged':
+    if event.signal != 'StatusChanged':
         return False
 
-    if event[3] != [2, 1]:
+    if event.args != [2, 1]:
         return False
 
     return True

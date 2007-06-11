@@ -12,22 +12,22 @@ from gabbletest import go
 
 @lazy
 def expect_connected(event, data):
-    if event[0] != 'dbus-signal':
+    if event.type != 'dbus-signal':
         return False
 
-    if event[2] != 'StatusChanged':
+    if event.signal != 'StatusChanged':
         return False
 
-    if event[3] != [0, 1]:
+    if event.args != [0, 1]:
         return False
 
     return True
 
 def expect_roster_iq(event, data):
-    if event[0] != 'stream-iq':
+    if event.type != 'stream-iq':
         return False
 
-    iq = event[1]
+    iq = event.stanza
     nodes = xpath.queryForNodes("/iq/query[@xmlns='jabber:iq:roster']", iq)
 
     if not nodes:
@@ -53,13 +53,13 @@ def expect_roster_iq(event, data):
     return True
 
 def _expect_contact_list_channel(event, data, name, contacts):
-    if event[0] != 'dbus-signal':
+    if event.type != 'dbus-signal':
         return False
 
-    if event[2] != 'NewChannel':
+    if event.signal != 'NewChannel':
         return False
 
-    path, type, handle_type, handle, suppress_handler = event[3]
+    path, type, handle_type, handle, suppress_handler = event.args
 
     if type != u'org.freedesktop.Telepathy.Channel.Type.ContactList':
         return False
@@ -90,13 +90,13 @@ def expect_contact_list_known(event, data):
         return False
 
 def expect_disconnected(event, data):
-    if event[0] != 'dbus-signal':
+    if event.type != 'dbus-signal':
         return False
 
-    if event[2] != 'StatusChanged':
+    if event.signal != 'StatusChanged':
         return False
 
-    if event[3] != [2, 1]:
+    if event.args != [2, 1]:
         return False
 
     return True

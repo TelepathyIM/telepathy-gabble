@@ -8,13 +8,13 @@ from twisted.words.xish import domish
 from gabbletest import go
 
 def expect_connected(event, data):
-    if event[0] != 'dbus-signal':
+    if event.type != 'dbus-signal':
         return False
 
-    if event[2] != 'StatusChanged':
+    if event.signal != 'StatusChanged':
         return False
 
-    if event[3] != [0, 1]:
+    if event.args != [0, 1]:
         return False
 
     m = domish.Element(('', 'iq'))
@@ -26,10 +26,10 @@ def expect_connected(event, data):
     return True
 
 def expect_disco_response(event, data):
-    if event[0] != 'stream-iq':
+    if event.type != 'stream-iq':
         return False
 
-    elem = event[1]
+    elem = event.stanza
 
     if elem['id'] != '1':
         return False
@@ -40,13 +40,13 @@ def expect_disco_response(event, data):
     return True
 
 def expect_disconnected(event, data):
-    if event[0] != 'dbus-signal':
+    if event.type != 'dbus-signal':
         return False
 
-    if event[2] != 'StatusChanged':
+    if event.signal != 'StatusChanged':
         return False
 
-    if event[3] != [2, 1]:
+    if event.args != [2, 1]:
         return False
 
     return True

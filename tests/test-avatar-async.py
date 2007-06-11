@@ -8,7 +8,7 @@ import sha
 
 import dbus
 
-from servicetest import tp_name_prefix, call_async
+from servicetest import tp_name_prefix
 from gabbletest import go
 
 def avatars_iface(proxy):
@@ -16,13 +16,13 @@ def avatars_iface(proxy):
         '.Connection.Interface.Avatars')
 
 def expect_connected(event, data):
-    if event[0] != 'dbus-signal':
+    if event.type != 'dbus-signal':
         return False
 
-    if event[2] != 'StatusChanged':
+    if event.signal != 'StatusChanged':
         return False
 
-    if event[3] != [0, 1]:
+    if event.args != [0, 1]:
         return False
 
     handle = data['conn_iface'].RequestHandles(1, ['bob@foo.com'])[0]
@@ -31,10 +31,10 @@ def expect_connected(event, data):
     return True
 
 def expect_vcard_iq(event, data):
-    if event[0] != 'stream-iq':
+    if event.type != 'stream-iq':
         return False
 
-    iq = event[1]
+    iq = event.stanza
 
     if iq.getAttribute('to') != 'bob@foo.com':
         return False
@@ -53,16 +53,16 @@ def expect_vcard_iq(event, data):
     return True
 
 def expect_AvatarRetrieved(event, data):
-    if event[0] != 'dbus-signal':
+    if event.type != 'dbus-signal':
         return False
 
-    if event[2] != 'AvatarRetrieved':
+    if event.signal != 'AvatarRetrieved':
         return False
 
-    assert event[3][0] == data['handle']
-    assert event[3][1] == sha.sha('hello').hexdigest()
-    assert event[3][2] == 'hello'
-    assert event[3][3] == 'image/png'
+    assert event.args[0] == data['handle']
+    assert event.args[1] == sha.sha('hello').hexdigest()
+    assert event.args[2] == 'hello'
+    assert event.args[3] == 'image/png'
 
     # Request again; this request should be satisfied from the avatar cache.
     avatars_iface(data['conn']).RequestAvatars([data['handle']])
@@ -70,25 +70,25 @@ def expect_AvatarRetrieved(event, data):
 
 def expect_AvatarRetrieved_again(event, data):
     # This event *must* be the AvatarRetrieved signal.
-    assert event[0] == 'dbus-signal'
-    assert event[2] == 'AvatarRetrieved'
+    assert event.type == 'dbus-signal'
+    assert event.signal == 'AvatarRetrieved'
 
-    assert event[3][0] == data['handle']
-    assert event[3][1] == sha.sha('hello').hexdigest()
-    assert event[3][2] == 'hello'
-    assert event[3][3] == 'image/png'
+    assert event.args[0] == data['handle']
+    assert event.args[1] == sha.sha('hello').hexdigest()
+    assert event.args[2] == 'hello'
+    assert event.args[3] == 'image/png'
 
     data['conn_iface'].Disconnect()
     return True
 
 def expect_disconnected(event, data):
-    if event[0] != 'dbus-signal':
+    if event.type != 'dbus-signal':
         return False
 
-    if event[2] != 'StatusChanged':
+    if event.signal != 'StatusChanged':
         return False
 
-    if event[3] != [2, 1]:
+    if event.args != [2, 1]:
         return False
 
     return True

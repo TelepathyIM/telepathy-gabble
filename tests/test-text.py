@@ -10,13 +10,13 @@ from twisted.words.xish import domish
 from gabbletest import go
 
 def expect_connected(event, data):
-    if event[0] != 'dbus-signal':
+    if event.type != 'dbus-signal':
         return False
 
-    if event[2] != 'StatusChanged':
+    if event.signal != 'StatusChanged':
         return False
 
-    if event[3] != [0, 1]:
+    if event.args != [0, 1]:
         return False
 
     # <message type="chat"><body>hello</body</message>
@@ -28,52 +28,52 @@ def expect_connected(event, data):
     return True
 
 def expect_new_channel(event, data):
-    if event[0] != 'dbus-signal':
+    if event.type != 'dbus-signal':
         return False
 
-    if event[2] != 'NewChannel':
+    if event.signal != 'NewChannel':
         return False
 
     bus = data['conn']._bus
     data['text_chan'] = bus.get_object(
-        data['conn']._named_service, event[3][0])
+        data['conn']._named_service, event.args[0])
 
-    if event[3][1] != u'org.freedesktop.Telepathy.Channel.Type.Text':
+    if event.args[1] != u'org.freedesktop.Telepathy.Channel.Type.Text':
         return False
 
     # check that handle type == contact handle
-    assert event[3][2] == 1
+    assert event.args[2] == 1
 
-    jid = data['conn_iface'].InspectHandles(1, [event[3][3]])[0]
+    jid = data['conn_iface'].InspectHandles(1, [event.args[3]])[0]
     assert jid == 'foo@bar.com'
     return True
 
 def expect_conn_received(event, data):
-    if event[0] != 'dbus-signal':
+    if event.type != 'dbus-signal':
         return False
 
-    if event[2] != 'Received':
+    if event.signal != 'Received':
         return False
 
     # message type: normal
-    assert event[3][3] == 0
+    assert event.args[3] == 0
     # flags: none
-    assert event[3][4] == 0
+    assert event.args[4] == 0
     # body
-    assert event[3][5] == 'hello'
+    assert event.args[5] == 'hello'
 
     dbus.Interface(data['text_chan'],
         u'org.freedesktop.Telepathy.Channel.Type.Text').Send(0, 'goodbye')
     return True
 
 def expect_srv_received(event, data):
-    if event[0] != 'stream-message':
+    if event.type != 'stream-message':
         return False
 
-    elem = event[1]
+    elem = event.stanza
     assert elem.name == 'message'
     assert elem['type'] == 'chat'
-    body = list(event[1].elements())[0]
+    body = list(event.stanza.elements())[0]
     assert body.name == 'body'
     assert body.children[0] == u'goodbye'
 
@@ -81,13 +81,13 @@ def expect_srv_received(event, data):
     return True
 
 def expect_disconnected(event, data):
-    if event[0] != 'dbus-signal':
+    if event.type != 'dbus-signal':
         return False
 
-    if event[2] != 'StatusChanged':
+    if event.signal != 'StatusChanged':
         return False
 
-    if event[3] != [2, 1]:
+    if event.args != [2, 1]:
         return False
 
     return True

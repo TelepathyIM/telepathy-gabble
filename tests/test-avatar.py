@@ -14,13 +14,13 @@ def avatars_iface(proxy):
         '.Connection.Interface.Avatars')
 
 def expect_connected(event, data):
-    if event[0] != 'dbus-signal':
+    if event.type != 'dbus-signal':
         return False
 
-    if event[2] != 'StatusChanged':
+    if event.signal != 'StatusChanged':
         return False
 
-    if event[3] != [0, 1]:
+    if event.args != [0, 1]:
         return False
 
     handle = data['conn_iface'].RequestHandles(1, ['bob@foo.com'])[0]
@@ -29,10 +29,10 @@ def expect_connected(event, data):
     return True
 
 def expect_vcard_iq(event, data):
-    if event[0] != 'stream-iq':
+    if event.type != 'stream-iq':
         return False
 
-    iq = event[1]
+    iq = event.stanza
 
     if iq.getAttribute('to') != 'bob@foo.com':
         return False
@@ -51,25 +51,25 @@ def expect_vcard_iq(event, data):
     return True
 
 def expect_RequestAvatar_return(event, data):
-    if event[0] != 'dbus-return':
+    if event.type != 'dbus-return':
         return False
 
-    if event[1] != 'RequestAvatar':
+    if event.method != 'RequestAvatar':
         return False
 
-    assert event[2] == 'hello'
-    assert event[3] == 'image/png'
+    assert event.value[0] == 'hello'
+    assert event.value[1] == 'image/png'
     data['conn_iface'].Disconnect()
     return True
 
 def expect_disconnected(event, data):
-    if event[0] != 'dbus-signal':
+    if event.type != 'dbus-signal':
         return False
 
-    if event[2] != 'StatusChanged':
+    if event.signal != 'StatusChanged':
         return False
 
-    if event[3] != [2, 1]:
+    if event.args != [2, 1]:
         return False
 
     return True

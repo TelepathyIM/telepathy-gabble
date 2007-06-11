@@ -171,8 +171,8 @@ AC_SUBST(LOUDMOUTH_CFLAGS)
 AC_SUBST(LOUDMOUTH_LIBS)
 
 dnl Check for telepathy-glib-unstable
-PKG_CHECK_MODULES(TP_GLIB_UNSTABLE, [telepathy-glib-unstable >= 0.5.10],
-                  have_tp_glib_unstable=yes, have_tp_glib_unstable=no)
+dnl XXX bump dependency when tp-glib will be released with new tubes spec
+PKG_CHECK_MODULES(TP_GLIB_UNSTABLE, [telepathy-glib-unstable >= 0.5.13])
 
 AC_SUBST(TP_GLIB_UNSTABLE_CFLAGS)
 AC_SUBST(TP_GLIB_UNSTABLE_LIBS)
@@ -185,10 +185,8 @@ AC_CHECK_LIB(dbus-1, dbus_message_marshal,
 
 have_dbus_tube=no
 if test x$have_dbus_message_marshal = xyes; then
-  if test x$have_tp_glib_unstable = xyes; then
-    have_dbus_tube=yes
-    AC_DEFINE(HAVE_DBUS_TUBE, 1, [Define if we have D-Bus tubes support])
-  fi
+  have_dbus_tube=yes
+  AC_DEFINE(HAVE_DBUS_TUBE, 1, [Define if we have D-Bus tubes support])
 fi
 
 AM_CONDITIONAL(HAVE_DBUS_TUBE, test x$have_dbus_tube = xyes)

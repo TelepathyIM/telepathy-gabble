@@ -120,11 +120,11 @@ class BaseXmlStream(xmlstream.XmlStream):
         self.handler = handler
         handler.data['stream'] = self
         self.addObserver('//iq', lambda x: handler.handle_event(
-            ('stream-iq', x)))
+            servicetest.Event('stream-iq', stanza=x)))
         self.addObserver('//message', lambda x: handler.handle_event(
-            ('stream-message', x)))
+            servicetest.Event('stream-message', stanza=x)))
         self.addObserver('//presence', lambda x: handler.handle_event(
-            ('stream-presence', x)))
+            servicetest.Event('stream-presence', stanza=x)))
         self.addObserver('//event/stream/authd', self._cb_authd)
 
     def _cb_authd(self, _):
@@ -132,7 +132,7 @@ class BaseXmlStream(xmlstream.XmlStream):
         self.addObserver(
             "/iq/query[@xmlns='http://jabber.org/protocol/disco#info']",
             self._cb_disco_iq)
-        self.handler.handle_event(('stream-authenticated',))
+        self.handler.handle_event(servicetest.Event('stream-authenticated'))
 
     def _cb_disco_iq(self, iq):
         if iq['to'] == 'localhost':

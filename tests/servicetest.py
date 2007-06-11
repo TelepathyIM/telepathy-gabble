@@ -30,6 +30,11 @@ def lazy(func):
     handler.__name__ = func.__name__
     return handler
 
+class Event:
+    def __init__(self, type, **kw):
+        self.__dict__.update(kw)
+        self.type = type
+
 class EventTest:
     """Somewhat odd event dispatcher for asynchronous tests.
 
@@ -81,9 +86,12 @@ class EventTest:
 
         if self.verbose:
             print 'got event:'
+            print '- type: %s' % event.type
 
-            for item in event:
-                print '- %s' % pprint.pformat(item)
+            for key in dir(event):
+                if key != 'type' and not key.startswith('_'):
+                    print '- %s: %s' % (
+                        key, pprint.pformat(getattr(event, key)))
 
         try:
             ret = self.queue[0](event, self.data)
@@ -148,10 +156,10 @@ def call_async(test, proxy, method, *args, **kw):
     resulting method return/error."""
 
     def reply_func(*ret):
-        test.handle_event(('dbus-return', method) + ret)
+        test.handle_event(Event('dbus-return', method=method, value=ret))
 
     def error_func(err):
-        test.handle_event(('dbus-error', method, err))
+        test.handle_event(Event('dbus-error', method=method, error=err))
 
     method_proxy = getattr(proxy, method)
     kw.update({'reply_handler': reply_func, 'error_handler': error_func})
@@ -176,9 +184,9 @@ def create_test(name, proto, params):
 
     bus.add_signal_receiver(
         lambda *args, **kw:
-            test.handle_event((
-                'dbus-signal', unwrap(kw['path']), kw['member'],
-                map(unwrap, args))),
+            test.handle_event(
+                Event('dbus-signal', path=unwrap(kw['path']),
+                    signal=kw['member'], args=map(unwrap, args))),
         None,       # signal name
         None,       # interface
         cm._named_service,

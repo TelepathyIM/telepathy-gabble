@@ -58,12 +58,6 @@ typedef enum {
     PRESENCE_CAP_JINGLE = 1 << 2,
     PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO = 1 << 3,
     PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO = 1 << 4,
-    PRESENCE_CAP_JINGLE_H263_N800_HACK = 1 << 5,
-    PRESENCE_CAP_CHAT_STATES = 1 << 6,
-    PRESENCE_CAP_SI = 1 << 7,
-    PRESENCE_CAP_BYTESTREAMS = 1 << 8,
-    PRESENCE_CAP_IBB = 1 << 9,
-    PRESENCE_CAP_SI_TUBES = 1 << 10,
 } GabblePresenceCapabilities;
 
 struct _GabblePresence {

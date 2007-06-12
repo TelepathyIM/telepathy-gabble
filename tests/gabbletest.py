@@ -159,6 +159,9 @@ class XmlStreamFactory(xmlstream.XmlStreamFactory):
         return xs
 
 def go(params=None):
+    # hack to ease debugging
+    domish.Element.__repr__ = domish.Element.toXml
+
     default_params = {
         'account': 'test@localhost/Resource',
         'password': 'pass',

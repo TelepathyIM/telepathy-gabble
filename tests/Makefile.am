@@ -39,6 +39,7 @@ TWISTED_TESTS = \
 	test-roster.py \
 	test-roster-subscribe.py \
 	test-save-alias-to-vcard.py \
+	test-olpc-set-props-preload.py \
 	test-set-status-idempotence.py \
 	test-text.py \
 	test-text-delayed.py

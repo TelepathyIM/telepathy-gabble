@@ -224,7 +224,7 @@ def create_test(name, proto, params):
     return test
 
 
-def run_test(handler):
+def run_test(handler, start=None):
     """Create a test from the top level functions named expect_* in the
     __main__ module and run it.
     """
@@ -245,6 +245,10 @@ def run_test(handler):
             handler.verbose = True
 
     map(handler.expect, funcs)
-    handler.data['conn'].Connect()
-    reactor.run()
 
+    if start is None:
+        handler.data['conn'].Connect()
+    else:
+        start(handler.data)
+
+    reactor.run()

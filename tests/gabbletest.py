@@ -195,7 +195,7 @@ class XmlStreamFactory(xmlstream.XmlStreamFactory):
             xs.addObserver(event, fn)
         return xs
 
-def go(params=None, authenticator=None, protocol=None):
+def go(params=None):
     # hack to ease debugging
     domish.Element.__repr__ = domish.Element.toXml
 
@@ -227,5 +227,5 @@ def go(params=None, authenticator=None, protocol=None):
     handler.data['factory'] = factory
 
     # go!
-    servicetest.run_test(handler)
+    servicetest.run_test(handler, start)
 

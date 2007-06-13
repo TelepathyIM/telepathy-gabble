@@ -81,3 +81,4 @@
 ^tests/test-jid-decode$
 ^tests/test-parse-message$
 ^extensions/_gen($|/)
+^extensions/extensions\.html$

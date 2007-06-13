@@ -118,6 +118,7 @@ decrement_contacts_activities_list_foreach (ActivityInfo *info,
     }
 }
 
+/* context may be NULL. */
 static gboolean
 check_pep (GabbleConnection *conn,
            DBusGMethodInvocation *context)
@@ -128,7 +129,8 @@ check_pep (GabbleConnection *conn,
         "Server does not support PEP" };
 
       DEBUG ("%s", error.message);
-      dbus_g_method_return_error (context, &error);
+      if (context != NULL)
+        dbus_g_method_return_error (context, &error);
       return FALSE;
     }
 
@@ -175,7 +177,9 @@ inspect_room (TpBaseConnection *base,
   return inspect_handle (base, context, room, room_repo);
 }
 
-
+/* context may be NULL, since this may be called in response to becoming
+ * connected.
+ */
 static gboolean
 check_publish_reply_msg (LmMessage *reply_msg,
                          DBusGMethodInvocation *context)
@@ -207,7 +211,8 @@ check_publish_reply_msg (LmMessage *reply_msg,
             }
 
           DEBUG ("%s", error->message);
-          dbus_g_method_return_error (context, error);
+          if (context != NULL)
+            dbus_g_method_return_error (context, error);
           g_error_free (error);
         }
     }
@@ -305,6 +310,7 @@ olpc_buddy_info_get_properties (GabbleSvcOLPCBuddyInfo *iface,
     }
 }
 
+/* context may be NULL. */
 static LmHandlerResult
 set_properties_reply_cb (GabbleConnection *conn,
                          LmMessage *sent_msg,
@@ -317,20 +323,19 @@ set_properties_reply_cb (GabbleConnection *conn,
   if (!check_publish_reply_msg (reply_msg, context))
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
-  gabble_svc_olpc_buddy_info_return_from_set_properties (context);
+  if (context != NULL)
+    gabble_svc_olpc_buddy_info_return_from_set_properties (context);
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
+/* context may be NULL, in which case it will be NULL in the reply_cb. */
 static void
-olpc_buddy_info_set_properties (GabbleSvcOLPCBuddyInfo *iface,
-                                GHashTable *properties,
-                                DBusGMethodInvocation *context)
+transmit_properties (GabbleConnection *conn,
+                     GHashTable *properties,
+                     DBusGMethodInvocation *context)
 {
-  GabbleConnection *conn = GABBLE_CONNECTION (iface);
   LmMessage *msg;
   LmMessageNode *publish;
-
-  DEBUG ("called");
 
   if (!check_pep (conn, context))
     return;
@@ -347,10 +352,80 @@ olpc_buddy_info_set_properties (GabbleSvcOLPCBuddyInfo *iface,
       GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
         "Failed to send property change request to server" };
 
-      dbus_g_method_return_error (context, &error);
+      DEBUG ("%s", error.message);
+      if (context != NULL)
+        dbus_g_method_return_error (context, &error);
     }
 
   lm_message_unref (msg);
+}
+
+static GQuark
+preload_buddy_properties_quark ()
+{
+  static GQuark q = 0;
+  if (q == 0)
+    {
+      q = g_quark_from_static_string
+        ("GabbleConnection.preload_buddy_properties_quark");
+    }
+  return q;
+}
+
+void
+gabble_connection_connected_olpc (GabbleConnection *conn)
+{
+  GHashTable *preload = g_object_steal_qdata ((GObject *) conn,
+      preload_buddy_properties_quark ());
+
+  if (preload != NULL)
+    {
+      transmit_properties (conn, preload, NULL);
+      g_hash_table_destroy (preload);
+    }
+}
+
+static void
+olpc_buddy_info_set_properties (GabbleSvcOLPCBuddyInfo *iface,
+                                GHashTable *properties,
+                                DBusGMethodInvocation *context)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (iface);
+  TpBaseConnection *base_conn = (TpBaseConnection *) conn;
+  DEBUG ("called");
+
+  if (base_conn->status == TP_CONNECTION_STATUS_CONNECTED)
+    {
+      transmit_properties (conn, properties, context);
+    }
+  else
+    {
+      GHashTable *preload;
+      GQuark preload_quark = preload_buddy_properties_quark ();
+
+      DEBUG ("Not connected: will perform OLPC buddy property update later");
+
+      preload = g_object_get_qdata ((GObject *) conn, preload_quark);
+      if (preload != NULL)
+        {
+          /* throw away any already-preloaded properties - SetProperties
+           * is an overwrite, not an update */
+          g_hash_table_remove_all (preload);
+        }
+      else
+        {
+          preload = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
+               (GDestroyNotify) tp_g_value_slice_free);
+          g_object_set_qdata_full ((GObject *) conn, preload_quark, preload,
+              (GDestroyNotify) g_hash_table_destroy);
+        }
+
+      gabble_g_hash_table_update (preload, properties,
+          (GBoxedCopyFunc) g_strdup,
+          (GBoxedCopyFunc) gabble_g_value_slice_dup);
+
+      gabble_svc_olpc_buddy_info_return_from_set_properties (context);
+    }
 }
 
 gboolean

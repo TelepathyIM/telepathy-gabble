@@ -472,6 +472,14 @@ _gabble_connection_create_handle_repos (TpBaseConnection *conn,
 }
 
 static void
+base_connected_cb (TpBaseConnection *base_conn)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (base_conn);
+
+  gabble_connection_connected_olpc (conn);
+}
+
+static void
 gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_connection_class);
@@ -496,6 +504,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
   parent_class->create_channel_factories =
     _gabble_connection_create_channel_factories;
   parent_class->connecting = connect_callbacks;
+  parent_class->connected = base_connected_cb;
   parent_class->disconnected = disconnect_callbacks;
   parent_class->shut_down = connection_shut_down;
   parent_class->start_connecting = _gabble_connection_connect;

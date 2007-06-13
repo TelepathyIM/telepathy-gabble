@@ -43,6 +43,8 @@ gboolean
 olpc_activities_properties_event_handler (GabbleConnection *conn,
     LmMessage *msg, TpHandle handle);
 
+void gabble_connection_connected_olpc (GabbleConnection *conn);
+
 void
 olpc_activity_properties_iface_init (gpointer g_iface, gpointer iface_data);
 

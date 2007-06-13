@@ -158,7 +158,7 @@ class XmlStreamFactory(xmlstream.XmlStreamFactory):
             xs.addObserver(event, fn)
         return xs
 
-def go(params=None):
+def go(params=None, authenticator=None, protocol=None):
     # hack to ease debugging
     domish.Element.__repr__ = domish.Element.toXml
 
@@ -175,10 +175,15 @@ def go(params=None):
 
     handler = servicetest.create_test('gabble', 'jabber', default_params)
 
+    if authenticator is None:
+        authenticator = JabberAuthenticator('test', 'pass')
+
+    if protocol is None:
+        protocol = JabberXmlStream
+
     # set up Jabber server
-    authenticator = JabberAuthenticator('test', 'pass')
     factory = XmlStreamFactory(handler, authenticator)
-    factory.protocol = JabberXmlStream
+    factory.protocol = protocol
     reactor.listenTCP(4242, factory)
 
     # update callback data

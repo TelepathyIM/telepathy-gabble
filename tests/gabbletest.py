@@ -159,7 +159,15 @@ class BaseXmlStream(xmlstream.XmlStream):
 
     def _cb_disco_iq(self, iq):
         if iq['to'] == 'localhost':
-            # no features
+            # add PEP support
+            nodes = xpath.queryForNodes(
+                "/iq/query[@xmlns='http://jabber.org/protocol/disco#info']",
+                iq)
+            query = nodes[0]
+            identity = query.addElement('identity')
+            identity['category'] = 'pubsub'
+            identity['type'] = 'pep'
+
             iq['type'] = 'result'
             self.send(iq)
 

@@ -8,28 +8,18 @@ import dbus
 from twisted.words.xish import domish, xpath
 
 from gabbletest import go
-from servicetest import call_async, lazy
+from servicetest import call_async, lazy, match
 
+@match('dbus-signal', signal='StatusChanged', args=[0, 1])
 def expect_connected(event, data):
-    if event.type != 'dbus-signal':
-        return False
-
-    if event.signal != 'StatusChanged':
-        return False
-
-    if event.args != [0, 1]:
-        return False
-
     # Need to call this asynchronously as it involves Gabble sending us a
     # query.
     call_async(data['test'], data['conn_iface'], 'RequestHandles', 2,
         ['chat@conf.localhost'])
     return True
 
+@match('stream-iq')
 def expect_disco(event, data):
-    if event.type != 'stream-iq':
-        return False
-
     iq = event.stanza
     nodes = xpath.queryForNodes(
         "/iq/query[@xmlns='http://jabber.org/protocol/disco#info']", iq)
@@ -57,20 +47,13 @@ def expect_request_handles_return(event, data):
     return True
 
 @lazy
+@match('dbus-signal', signal='MembersChanged')
 def expect_members_changed1(event, data):
-    if event.type != 'dbus-signal':
-        return False
-
-    if event.signal != 'MembersChanged':
-        return False
-
     assert event.args == [u'', [], [], [], [2], 0, 0]
     return True
 
+@match('stream-presence')
 def expect_presence(event, data):
-    if event.type != 'stream-presence':
-        return False
-
     assert event.stanza['to'] == 'chat@conf.localhost/test'
 
     # Send presence for other member of room.
@@ -83,13 +66,8 @@ def expect_presence(event, data):
     data['stream'].send(presence)
     return True
 
+@match('dbus-signal', signal='MembersChanged')
 def expect_members_changed2(event, data):
-    if event.type != 'dbus-signal':
-        return False
-
-    if event.signal != 'MembersChanged':
-        return False
-
     assert event.args == [u'', [3], [], [], [], 0, 0]
     assert data['conn_iface'].InspectHandles(1, [3]) == [
         'chat@conf.localhost/bob']
@@ -104,12 +82,8 @@ def expect_members_changed2(event, data):
     data['stream'].send(presence)
     return True
 
+@match('dbus-return', method='RequestChannel')
 def expect_request_channel_return(event, data):
-    if event.type != 'dbus-return':
-        return False
-
-    assert event.method == 'RequestChannel'
-
     bus = data['conn']._bus
     data['text_chan'] = bus.get_object(
         data['conn']._named_service, event.value[0])
@@ -121,13 +95,8 @@ def expect_request_channel_return(event, data):
     data['stream'].send(message)
     return True
 
+@match('dbus-signal', signal='Received')
 def expect_received(event, data):
-    if event.type != 'dbus-signal':
-        return False
-
-    if event.signal != 'Received':
-        return False
-
     # sender: bob
     assert event.args[2] == 3
     # message type: normal
@@ -141,10 +110,8 @@ def expect_received(event, data):
         u'org.freedesktop.Telepathy.Channel.Type.Text').Send(0, 'goodbye')
     return True
 
+@match('stream-message')
 def expect_message(event, data):
-    if event.type != 'stream-message':
-        return False
-
     elem = event.stanza
     assert elem.name == 'message'
     assert elem['type'] == 'groupchat'
@@ -155,16 +122,8 @@ def expect_message(event, data):
     data['conn'].Disconnect()
     return True
 
+@match('dbus-signal', signal='StatusChanged', args=[2, 1])
 def expect_disconnected(event, data):
-    if event.type != 'dbus-signal':
-        return False
-
-    if event.signal != 'StatusChanged':
-        return False
-
-    if event.args != [2, 1]:
-        return False
-
     return True
 
 if __name__ == '__main__':

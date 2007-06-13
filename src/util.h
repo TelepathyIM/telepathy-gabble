@@ -63,5 +63,8 @@ void
 lm_message_node_add_children_from_properties (LmMessageNode *node,
     GHashTable *properties, const gchar *prop);
 
+GValue *gabble_g_value_slice_dup (const GValue *value);
+void gabble_g_hash_table_update (GHashTable *target, GHashTable *source,
+    GBoxedCopyFunc key_dup, GBoxedCopyFunc value_dup);
 
 #endif /* __GABBLE_UTIL_H__ */

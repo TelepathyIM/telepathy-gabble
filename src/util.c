@@ -764,3 +764,72 @@ lm_message_node_add_children_from_properties (LmMessageNode *node,
 
   g_hash_table_foreach (properties, set_child_from_property, &data);
 }
+
+/* To be added to tp-glib util.c with s/gabble/tp/ ? */
+
+/**
+ * gabble_g_value_slice_dup:
+ * @value: A GValue
+ *
+ * <!-- 'Returns' says it all -->
+ *
+ * Returns: a newly allocated copy of @value, to be freed with
+ * tp_g_value_slice_free() or g_slice_free().
+ */
+GValue *
+gabble_g_value_slice_dup (const GValue *value)
+{
+  GValue *ret = g_slice_new0 (GValue);
+
+  g_value_init (ret, G_VALUE_TYPE (value));
+  g_value_copy (value, ret);
+  return ret;
+}
+
+struct _gabble_g_hash_table_update
+{
+  GHashTable *target;
+  GBoxedCopyFunc key_dup, value_dup;
+};
+
+static void
+_gabble_g_hash_table_update_helper (gpointer key,
+                                    gpointer value,
+                                    gpointer user_data)
+{
+  struct _gabble_g_hash_table_update *data = user_data;
+  gpointer new_key = (data->key_dup) (key);
+  gpointer new_value = (data->value_dup) (value);
+
+  g_hash_table_replace (data->target, new_key, new_value);
+}
+
+/**
+ * gabble_g_hash_table_update:
+ * @target: The hash table to be updated
+ * @source: The hash table to update it with (read-only)
+ * @key_dup: function to duplicate a key from @source so it can be be stored
+ *           in @target
+ * @value_dup: function to duplicate a value from @source so it can be stored
+ *             in @target
+ *
+ * Add each item in @source to @target, replacing any existing item with the
+ * same key. @key_dup and @value_dup are used to duplicate the items; in
+ * principle they could also be used to convert between types.
+ */
+void
+gabble_g_hash_table_update (GHashTable *target,
+                            GHashTable *source,
+                            GBoxedCopyFunc key_dup,
+                            GBoxedCopyFunc value_dup)
+{
+  struct _gabble_g_hash_table_update data = { target, key_dup,
+      value_dup };
+
+  g_return_if_fail (target != NULL);
+  g_return_if_fail (source != NULL);
+  g_return_if_fail (key_dup != NULL);
+  g_return_if_fail (value_dup != NULL);
+
+  g_hash_table_foreach (source, _gabble_g_hash_table_update_helper, &data);
+}

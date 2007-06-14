@@ -7,58 +7,34 @@ import dbus
 
 from twisted.words.xish import xpath
 
-from servicetest import lazy
+from servicetest import lazy, match
 from gabbletest import go
 
 @lazy
+@match('dbus-signal', signal='StatusChanged', args=[0, 1])
 def expect_connected(event, data):
-    if event.type != 'dbus-signal':
-        return False
-
-    if event.signal != 'StatusChanged':
-        return False
-
-    if event.args != [0, 1]:
-        return False
-
     return True
 
+@match('stream-iq', query_ns='jabber:iq:roster')
 def expect_roster_iq(event, data):
-    if event.type != 'stream-iq':
-        return False
-
-    iq = event.stanza
-    nodes = xpath.queryForNodes("/iq/query[@xmlns='jabber:iq:roster']", iq)
-
-    if not nodes:
-        return False
-
-    assert len(nodes) == 1
-    iq['type'] = 'result'
-    query = nodes[0]
-
-    item = query.addElement('item')
+    event.stanza['type'] = 'result'
+    item = event.query.addElement('item')
     item['jid'] = 'amy@foo.com'
     item['subscription'] = 'both'
 
-    item = query.addElement('item')
+    item = event.query.addElement('item')
     item['jid'] = 'bob@foo.com'
     item['subscription'] = 'from'
 
-    item = query.addElement('item')
+    item = event.query.addElement('item')
     item['jid'] = 'che@foo.com'
     item['subscription'] = 'to'
 
-    data['stream'].send(iq)
+    data['stream'].send(event.stanza)
     return True
 
+@match('dbus-signal', signal='NewChannel')
 def _expect_contact_list_channel(event, data, name, contacts):
-    if event.type != 'dbus-signal':
-        return False
-
-    if event.signal != 'NewChannel':
-        return False
-
     path, type, handle_type, handle, suppress_handler = event.args
 
     if type != u'org.freedesktop.Telepathy.Channel.Type.ContactList':
@@ -69,7 +45,8 @@ def _expect_contact_list_channel(event, data, name, contacts):
     chan = data['conn']._bus.get_object(data['conn']._named_service, path)
     group_iface = dbus.Interface(chan,
         u'org.freedesktop.Telepathy.Channel.Interface.Group')
-    chan_contacts = data['conn_iface'].InspectHandles(1, group_iface.GetMembers())
+    chan_contacts = data['conn_iface'].InspectHandles(1,
+        group_iface.GetMembers())
     assert chan_contacts == contacts
     return True
 
@@ -89,16 +66,8 @@ def expect_contact_list_known(event, data):
     else:
         return False
 
+@match('dbus-signal', signal='StatusChanged', args=[2, 1])
 def expect_disconnected(event, data):
-    if event.type != 'dbus-signal':
-        return False
-
-    if event.signal != 'StatusChanged':
-        return False
-
-    if event.args != [2, 1]:
-        return False
-
     return True
 
 if __name__ == '__main__':

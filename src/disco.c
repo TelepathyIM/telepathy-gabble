@@ -699,9 +699,7 @@ disco_items_cb (GabbleDisco *disco,
       goto out;
     }
 
-  iter = result->children;
-
-  for (; iter; iter = iter->next)
+  for (iter = result->children; iter; iter = iter->next)
     {
       if (0 != strcmp (iter->name, "item"))
         continue;

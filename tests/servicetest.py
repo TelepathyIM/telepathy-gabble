@@ -32,7 +32,7 @@ def lazy(func):
 
 def match(type, **kw):
     def decorate(func):
-        def handler(event, data):
+        def handler(event, data, *extra, **extra_kw):
             if event.type != type:
                 return False
 
@@ -43,7 +43,7 @@ def match(type, **kw):
                 if getattr(event, key) != value:
                     return False
 
-            return func(event, data)
+            return func(event, data, *extra, **extra_kw)
 
         handler.__name__ = func.__name__
         return handler

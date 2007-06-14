@@ -272,7 +272,7 @@ gabble_roomlist_channel_class_init (GabbleRoomlistChannelClass *gabble_roomlist_
 
 static void stop_listing (GabbleRoomlistChannel *self);
 
-void
+static void
 gabble_roomlist_channel_dispose (GObject *object)
 {
   GabbleRoomlistChannel *self = GABBLE_ROOMLIST_CHANNEL (object);
@@ -301,7 +301,7 @@ gabble_roomlist_channel_dispose (GObject *object)
     G_OBJECT_CLASS (gabble_roomlist_channel_parent_class)->dispose (object);
 }
 
-void
+static void
 gabble_roomlist_channel_finalize (GObject *object)
 {
   GabbleRoomlistChannel *self = GABBLE_ROOMLIST_CHANNEL (object);

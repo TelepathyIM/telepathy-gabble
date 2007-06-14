@@ -1,6 +1,6 @@
 
 """
-Infrastructure code for testing Gabble by pretending to be a Jabber server.
+Infrastructure code for testing connection managers.
 """
 
 from twisted.internet import glib2reactor

@@ -105,6 +105,17 @@ class XmppAuthenticator(xmlstream.Authenticator):
 
         self.xmlstream.dispatch(self.xmlstream, xmlstream.STREAM_AUTHD_EVENT)
 
+def make_iq_event(iq):
+    event = servicetest.Event('stream-iq', stanza=iq)
+    event.to = iq.getAttribute("to")
+    queries = xpath.queryForNodes("/iq/query", iq)
+
+    if queries:
+        event.query = queries[0]
+        event.query_ns = event.query.uri
+
+    return event
+
 class BaseXmlStream(xmlstream.XmlStream):
     initiating = False
     namespace = 'jabber:client'
@@ -114,7 +125,7 @@ class BaseXmlStream(xmlstream.XmlStream):
         self.handler = handler
         handler.data['stream'] = self
         self.addObserver('//iq', lambda x: handler.handle_event(
-            servicetest.Event('stream-iq', stanza=x)))
+            make_iq_event(x)))
         self.addObserver('//message', lambda x: handler.handle_event(
             servicetest.Event('stream-message', stanza=x)))
         self.addObserver('//presence', lambda x: handler.handle_event(

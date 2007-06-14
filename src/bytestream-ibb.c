@@ -464,7 +464,7 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
   LmMessageNode *data;
   GString *str;
-  const gchar *from, *msg_type;
+  const gchar *from;
   TpHandle sender;
   TpHandleRepoIface *contact_repo;
 
@@ -497,8 +497,6 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
    * contact with before.
    */
   sender = tp_handle_lookup (contact_repo, from, NULL, NULL);
-
-  msg_type = lm_message_node_get_attribute (msg->node, "type");
 
   if (priv->peer_handle_type == TP_HANDLE_TYPE_ROOM)
     {

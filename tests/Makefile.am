@@ -44,7 +44,8 @@ TWISTED_TESTS = \
 	test-set-status-idempotence.py \
 	test-avatar.py \
 	test-avatar-async.py \
-	test-muc.py
+	test-muc.py \
+	test-muc-ownership.py
 
 check-extra: $(BUILT_SOURCES)
 	chmod +x run-with-tmp-session-bus.sh $(python_tests_shfiles) \

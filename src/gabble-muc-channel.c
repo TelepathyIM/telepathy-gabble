@@ -287,6 +287,7 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   /* set initial group flags */
   tp_group_mixin_change_flags (obj,
       TP_CHANNEL_GROUP_FLAG_CHANNEL_SPECIFIC_HANDLES |
+      TP_CHANNEL_GROUP_FLAG_HANDLE_OWNERS_NOT_AVAILABLE |
       TP_CHANNEL_GROUP_FLAG_CAN_ADD,
       0);
 
@@ -1606,6 +1607,12 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
                   tp_group_mixin_add_handle_owner ((GObject *)chan, handle,
                       owner_handle);
                   tp_handle_unref (contact_handles, owner_handle);
+
+                  /* If at least one handle in the channel has an owner,
+                   * the HANDLE_OWNERS_NOT_AVAILABLE flag should be removed.
+                   */
+                  tp_group_mixin_change_flags ((GObject *) chan, 0,
+                      TP_CHANNEL_GROUP_FLAG_HANDLE_OWNERS_NOT_AVAILABLE);
                 }
             }
 

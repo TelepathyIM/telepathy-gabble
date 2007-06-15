@@ -18,23 +18,14 @@ def expect_connected(event, data):
         ['chat@conf.localhost'])
     return True
 
-@match('stream-iq')
+@match('stream-iq', to='conf.localhost',
+    query_ns='http://jabber.org/protocol/disco#info')
 def expect_disco(event, data):
-    iq = event.stanza
-    nodes = xpath.queryForNodes(
-        "/iq/query[@xmlns='http://jabber.org/protocol/disco#info']", iq)
-
-    if not nodes:
-        return False
-
-    assert iq['to'] == 'conf.localhost'
-
-    query = nodes[0]
-    feature = query.addElement('feature')
+    feature = event.query.addElement('feature')
     feature['var'] = 'http://jabber.org/protocol/muc'
 
-    iq['type'] = 'result'
-    data['stream'].send(iq)
+    event.stanza['type'] = 'result'
+    data['stream'].send(event.stanza)
     return True
 
 def expect_request_handles_return(event, data):

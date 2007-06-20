@@ -188,9 +188,14 @@ set_own_status_cb (GObject *obj,
     {
       GabblePresenceId i = status->index;
       GHashTable *args = status->optional_arguments;
-      GValue *message = g_hash_table_lookup (args, "message");
-      GValue *priority = g_hash_table_lookup (args, "priority");
+      GValue *message = NULL, *priority = NULL;
       const gchar *status = NULL;
+
+      if (args != NULL)
+        {
+          message = g_hash_table_lookup (args, "message");
+          priority = g_hash_table_lookup (args, "priority");
+        }
 
       if (message)
         {

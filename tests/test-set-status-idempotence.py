@@ -77,6 +77,27 @@ def expect_presence_stanza2(event, data):
     assert children[0].name == 'status'
     assert str(children[0]) == 'yo'
 
+    # call SetPresence with no optional arguments, as this used to cause a
+    # crash in tp-glib
+    data['conn_presence'].SetStatus({'available':{}})
+
+    return True
+
+def expect_presence_update3(event, data):
+    if event.type != 'dbus-signal':
+        return False
+
+    if event.signal != 'PresenceUpdate':
+        return False
+
+    assert event.args == [{1L: (0L, {u'available': {}})}]
+
+    return True
+
+def expect_presence_stanza3(event, data):
+    if event.type != 'stream-presence':
+        return False
+
     data['conn_iface'].Disconnect()
     return True
 

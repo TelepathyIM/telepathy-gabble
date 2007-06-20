@@ -17,12 +17,12 @@ def expect_connected(event, data):
     if event.args != [0, 1]:
         return False
 
-    presence = dbus.Interface(data['conn'],
+    data['conn_presence'] = dbus.Interface(data['conn'],
         'org.freedesktop.Telepathy.Connection.Interface.Presence')
 
     # Set presence to away. This should cause PresenceUpdate to be emitted,
     # and a new <presence> stanza to be sent to the server.
-    presence.SetStatus({'away':{'message': 'gone'}})
+    data['conn_presence'].SetStatus({'away':{'message': 'gone'}})
     return True
 
 def expect_presence_update1(event, data):
@@ -41,9 +41,6 @@ def expect_presence_stanza1(event, data):
     if event.type != 'stream-presence':
         return False
 
-    presence = dbus.Interface(data['conn'],
-        'org.freedesktop.Telepathy.Connection.Interface.Presence')
-
     children = list(event.stanza.elements())
     assert children[0].name == 'show'
     assert str(children[0]) == 'away'
@@ -52,11 +49,11 @@ def expect_presence_stanza1(event, data):
 
     # Set presence a second time. Since this call is redundant, there should
     # be no PresenceUpdate or <presence> sent to the server.
-    presence.SetStatus({'away':{'message': 'gone'}})
+    data['conn_presence'].SetStatus({'away':{'message': 'gone'}})
 
     # Set presence a third time. This call is not redundant, and should
     # generate a signal/message.
-    presence.SetStatus({'available':{'message': 'yo'}})
+    data['conn_presence'].SetStatus({'available':{'message': 'yo'}})
 
     return True
 

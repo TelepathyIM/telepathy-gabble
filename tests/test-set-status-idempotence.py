@@ -22,7 +22,7 @@ def expect_connected(event, data):
 
     # Set presence to away. This should cause PresenceUpdate to be emitted,
     # and a new <presence> stanza to be sent to the server.
-    data['conn_presence'].SetStatus({'away':{'message': 'gone'}})
+    data['conn_presence'].SetStatus({'away': {'message': 'gone'}})
     return True
 
 def expect_presence_update1(event, data):
@@ -53,7 +53,7 @@ def expect_presence_stanza1(event, data):
 
     # Set presence a third time. This call is not redundant, and should
     # generate a signal/message.
-    data['conn_presence'].SetStatus({'available':{'message': 'yo'}})
+    data['conn_presence'].SetStatus({'available': {'message': 'yo'}})
 
     return True
 
@@ -79,7 +79,7 @@ def expect_presence_stanza2(event, data):
 
     # call SetPresence with no optional arguments, as this used to cause a
     # crash in tp-glib
-    data['conn_presence'].SetStatus({'available':{}})
+    data['conn_presence'].SetStatus({'available': {}})
 
     return True
 

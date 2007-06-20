@@ -25,9 +25,9 @@ To run an individual Twisted test:
 
 or:
 
-  sh run-with-tmp-session-bus.py test-connect.py
+  sh run-with-tmp-session-bus.sh test-connect.py
 
 To run with debug information:
 
-  sh run-with-tmp-session-bus.py test-connect.py -v
+  sh run-with-tmp-session-bus.sh test-connect.py -v
 

@@ -5,18 +5,11 @@ Test that redundant calls to SetPresence don't cause anything to happen.
 
 import dbus
 
+from servicetest import match
 from gabbletest import go
 
+@match('dbus-signal', signal='StatusChanged', args=[0, 1])
 def expect_connected(event, data):
-    if event.type != 'dbus-signal':
-        return False
-
-    if event.signal != 'StatusChanged':
-        return False
-
-    if event.args != [0, 1]:
-        return False
-
     data['conn_presence'] = dbus.Interface(data['conn'],
         'org.freedesktop.Telepathy.Connection.Interface.Presence')
 
@@ -25,22 +18,13 @@ def expect_connected(event, data):
     data['conn_presence'].SetStatus({'away': {'message': 'gone'}})
     return True
 
+@match('dbus-signal', signal='PresenceUpdate')
 def expect_presence_update1(event, data):
-    if event.type != 'dbus-signal':
-        return False
-
-    if event.signal != 'PresenceUpdate':
-        return False
-
-    if event.args != [{1L: (0L, {u'away': {u'message': u'gone'}})}]:
-        return False
-
+    assert event.args == [{1L: (0L, {u'away': {u'message': u'gone'}})}]
     return True
 
+@match('stream-presence')
 def expect_presence_stanza1(event, data):
-    if event.type != 'stream-presence':
-        return False
-
     children = list(event.stanza.elements())
     assert children[0].name == 'show'
     assert str(children[0]) == 'away'
@@ -57,22 +41,13 @@ def expect_presence_stanza1(event, data):
 
     return True
 
+@match('dbus-signal', signal='PresenceUpdate')
 def expect_presence_update2(event, data):
-    if event.type != 'dbus-signal':
-        return False
-
-    if event.signal != 'PresenceUpdate':
-        return False
-
-    if event.args != [{1L: (0L, {u'available': {u'message': u'yo'}})}]:
-        return False
-
+    assert event.args == [{1L: (0L, {u'available': {u'message': u'yo'}})}]
     return True
 
+@match('stream-presence')
 def expect_presence_stanza2(event, data):
-    if event.type != 'stream-presence':
-        return False
-
     children = list(event.stanza.elements())
     assert children[0].name == 'status'
     assert str(children[0]) == 'yo'
@@ -83,34 +58,18 @@ def expect_presence_stanza2(event, data):
 
     return True
 
+@match('dbus-signal', signal='PresenceUpdate')
 def expect_presence_update3(event, data):
-    if event.type != 'dbus-signal':
-        return False
-
-    if event.signal != 'PresenceUpdate':
-        return False
-
     assert event.args == [{1L: (0L, {u'available': {}})}]
-
     return True
 
+@match('stream-presence')
 def expect_presence_stanza3(event, data):
-    if event.type != 'stream-presence':
-        return False
-
     data['conn_iface'].Disconnect()
     return True
 
+@match('dbus-signal', signal='StatusChanged', args=[2, 1])
 def expect_disconnected(event, data):
-    if event.type != 'dbus-signal':
-        return False
-
-    if event.signal != 'StatusChanged':
-        return False
-
-    if event.args != [2, 1]:
-        return False
-
     return True
 
 if __name__ == '__main__':

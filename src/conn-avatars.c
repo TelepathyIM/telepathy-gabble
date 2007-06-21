@@ -524,16 +524,17 @@ gabble_connection_request_avatars (TpSvcConnectionInterfaceAvatars *iface,
   for (i = 0; i < contacts->len; i++)
     {
       LmMessageNode *vcard_node;
+      TpHandle contact = g_array_index (contacts, TpHandle, i);
 
       if (gabble_vcard_manager_get_cached (self->vcard_manager,
-            contacts->data[i], &vcard_node))
+            contact, &vcard_node))
         {
-          emit_avatar_retrieved (iface, contacts->data[i], vcard_node);
+          emit_avatar_retrieved (iface, contact, vcard_node);
         }
       else
         {
           gabble_vcard_manager_request (self->vcard_manager,
-              contacts->data[i], 0, request_avatars_cb, iface, NULL, NULL);
+              contact, 0, request_avatars_cb, iface, NULL, NULL);
         }
     }
 

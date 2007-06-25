@@ -854,8 +854,13 @@ data_received_cb (GabbleBytestreamIBB *ibb,
       return;
     }
 
-  destination = dbus_message_get_destination (msg);
+  if (!tp_strdiff (dbus_message_get_sender (msg), priv->dbus_local_name))
+    {
+      /* Discard echo messages */
+      return;
+    }
 
+  destination = dbus_message_get_destination (msg);
   if (destination != NULL &&
       tp_strdiff (priv->dbus_local_name, dbus_message_get_destination (msg)))
     {

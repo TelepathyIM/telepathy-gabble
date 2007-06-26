@@ -295,10 +295,7 @@ unref_handle_foreach (gpointer key,
                       gpointer user_data)
 {
   TpHandle handle = GPOINTER_TO_UINT (key);
-  GabbleTubeDBus *self = (GabbleTubeDBus *) user_data;
-  GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+  TpHandleRepoIface *contact_repo = (TpHandleRepoIface *) user_data;
 
   tp_handle_unref (contact_repo, handle);
 }
@@ -387,7 +384,10 @@ gabble_tube_dbus_dispose (GObject *object)
 
   if (priv->dbus_names)
     {
-      g_hash_table_foreach (priv->dbus_names, unref_handle_foreach, self);
+      TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+          (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+      g_hash_table_foreach (priv->dbus_names, unref_handle_foreach,
+          contact_repo);
       g_hash_table_destroy (priv->dbus_names);
     }
 

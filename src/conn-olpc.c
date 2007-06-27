@@ -936,7 +936,7 @@ extract_current_activity (GabbleConnection *conn,
        * it will be freed */
       const gchar *from;
 
-      DEBUG ("unknow current activity %s", room);
+      DEBUG ("unknown current activity %s", room);
 
       from = lm_message_node_get_attribute (msg->node, "from");
 

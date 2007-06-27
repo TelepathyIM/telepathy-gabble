@@ -111,7 +111,7 @@ struct _GabbleTubesChannelPrivate
 #define GABBLE_TUBES_CHANNEL_GET_PRIVATE(obj) \
     ((GabbleTubesChannelPrivate *) obj->priv)
 
-static void update_tubes_presence (GabbleTubesChannel *self);
+static gboolean update_tubes_presence (GabbleTubesChannel *self);
 
 static void
 gabble_tubes_channel_init (GabbleTubesChannel *self)
@@ -986,7 +986,7 @@ publish_tubes_in_node (gpointer key,
   lm_message_node_set_attribute (tube_node, "initiator", initiator);
 }
 
-static void
+static gboolean
 update_tubes_presence (GabbleTubesChannel *self)
 {
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
@@ -1000,9 +1000,10 @@ update_tubes_presence (GabbleTubesChannel *self)
   const gchar *main_jid, *jid;
   gchar *username, *to;
   struct _i_hate_g_hash_table_foreach data;
+  gboolean result;
 
   if (priv->handle_type != TP_HANDLE_TYPE_ROOM)
-    return;
+    return FALSE;
 
   /* build the message */
   jid = tp_handle_inspect (room_repo, priv->handle);
@@ -1026,11 +1027,12 @@ update_tubes_presence (GabbleTubesChannel *self)
   g_hash_table_foreach (priv->tubes, publish_tubes_in_node, &data);
 
   /* Send it */
-  _gabble_connection_send (priv->conn, msg, NULL);
+  result = _gabble_connection_send (priv->conn, msg, NULL);
 
   g_free (username);
   g_free (to);
   lm_message_unref (msg);
+  return result;
 }
 
 struct _bytestream_negotiate_cb_data

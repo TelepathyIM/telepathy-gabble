@@ -473,7 +473,7 @@ extract_tube_information (GabbleTubesChannel *self,
 #endif
       else
         {
-          DEBUG ("Unknow tube type: %s", _type);
+          DEBUG ("Unknown tube type: %s", _type);
           return FALSE;
         }
     }

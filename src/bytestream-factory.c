@@ -616,7 +616,7 @@ parse_ibb_open_iq (GabbleBytestreamFactory *self,
       /* We don't accept stream not previously announced using SI */
       GabbleXmppError error = XMPP_ERROR_ITEM_NOT_FOUND;
 
-      DEBUG ("unknow stream: %s", stream_id);
+      DEBUG ("unknown stream: %s", stream_id);
 
       reply = lm_message_new_with_sub_type (from,
           LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_ERROR);
@@ -679,7 +679,7 @@ parse_ibb_close_iq (GabbleBytestreamFactory *self,
     {
       GabbleXmppError error = XMPP_ERROR_ITEM_NOT_FOUND;
 
-      DEBUG ("unknow stream: %s", stream_id);
+      DEBUG ("unknown stream: %s", stream_id);
 
       reply = lm_message_new_with_sub_type (from,
           LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_ERROR);
@@ -732,7 +732,7 @@ parse_ibb_data (GabbleBytestreamFactory *self,
   bytestream = g_hash_table_lookup (priv->ibb_bytestreams, stream_id);
   if (bytestream == NULL)
     {
-      DEBUG ("unknow stream: %s", stream_id);
+      DEBUG ("unknown stream: %s", stream_id);
       return TRUE;
     }
 

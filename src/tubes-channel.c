@@ -651,7 +651,7 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
       guint tube_id;
       TpTubeType type;
 
-      stream_id = lm_message_node_get_attribute (tube_node, "stream_id");
+      stream_id = lm_message_node_get_attribute (tube_node, "stream-id");
 
       extract_tube_information (self, tube_node, NULL,
           NULL, NULL, NULL, NULL, &tube_id);
@@ -925,7 +925,7 @@ publish_tube_in_node (LmMessageNode *node,
 
       lm_message_node_set_attributes (node,
           "dbus-name", name,
-          "stream_id", stream_id,
+          "stream-id", stream_id,
           NULL);
 
       g_free (name);

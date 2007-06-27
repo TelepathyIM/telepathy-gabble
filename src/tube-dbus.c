@@ -857,7 +857,9 @@ data_received_cb (GabbleBytestreamIBB *ibb,
     }
 
   destination = dbus_message_get_destination (msg);
-  if (tp_strdiff (priv->dbus_local_name, destination))
+  /* If destination is NULL this msg is broadcasted (signals) so we don't have
+   * to check it */
+  if (destination != NULL && tp_strdiff (priv->dbus_local_name, destination))
     {
       /* This message is not intended to this tube.
        * Discard it. */

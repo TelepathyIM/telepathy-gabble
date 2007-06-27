@@ -877,7 +877,8 @@ copy_parameter (gpointer key,
 }
 
 static void
-publish_tube_in_node (LmMessageNode *node,
+publish_tube_in_node (GabbleTubesChannel *self,
+                      LmMessageNode *node,
                       GabbleTubeIface *tube)
 {
   LmMessageNode *parameters_node;
@@ -885,19 +886,28 @@ publish_tube_in_node (LmMessageNode *node,
   TpTubeType type;
   gchar *service, *id_str;
   guint tube_id;
+  GabbleTubesChannelPrivate *priv =
+      GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+    (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+  TpHandle initiator_handle;
+  const gchar *initiator;
 
   g_object_get (G_OBJECT (tube),
       "service", &service,
       "parameters", &parameters,
       "type", &type,
       "id", &tube_id,
+      "initiator", &initiator_handle,
       NULL);
 
   id_str = g_strdup_printf ("%u", tube_id);
+  initiator = tp_handle_inspect (contact_repo, initiator_handle);
 
   lm_message_node_set_attributes (node,
       "service", service,
       "id", id_str,
+      "initiator", initiator,
       NULL);
 
   g_free (id_str);
@@ -956,14 +966,7 @@ publish_tubes_in_node (gpointer key,
   struct _i_hate_g_hash_table_foreach *data =
     (struct _i_hate_g_hash_table_foreach *) user_data;
   TpTubeState state;
-  GabbleTubesChannelPrivate *priv =
-      GABBLE_TUBES_CHANNEL_GET_PRIVATE (data->self);
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-    (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-  TpHandle initiator_handle;
   LmMessageNode *tube_node;
-  const gchar *initiator;
-  TpTubeType type;
 
   if (tube == NULL)
     return;
@@ -976,14 +979,7 @@ publish_tubes_in_node (gpointer key,
     return;
 
   tube_node = lm_message_node_add_child (data->tubes_node, "tube", NULL);
-  publish_tube_in_node (tube_node, tube);
-
-  g_object_get (tube,
-        "type", &type,
-        "initiator", &initiator_handle,
-        NULL);
-  initiator = tp_handle_inspect (contact_repo, initiator_handle);
-  lm_message_node_set_attribute (tube_node, "initiator", initiator);
+  publish_tube_in_node (data->self, tube_node, tube);
 }
 
 static gboolean
@@ -1273,7 +1269,7 @@ start_stream_initiation (GabbleTubesChannel *self,
 
   node = lm_message_node_add_child (msg->node, "tube", NULL);
   lm_message_node_set_attribute (node, "xmlns", NS_SI_TUBES_OLD);
-  publish_tube_in_node (node, tube);
+  publish_tube_in_node (self, node, tube);
   lm_message_node_set_attribute (node, "offering", "true");
 
   data = g_slice_new (struct _bytestream_negotiate_cb_data);

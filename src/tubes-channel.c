@@ -486,7 +486,7 @@ extract_tube_information (GabbleTubesChannel *self,
       *initiator_handle = tp_handle_ensure (contact_repo, initiator,
           GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
 
-      if (initiator_handle == 0)
+      if (*initiator_handle == 0)
         {
           DEBUG ("invalid initiator JID %s", initiator);
           return FALSE;

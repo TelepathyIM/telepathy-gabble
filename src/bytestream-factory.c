@@ -820,14 +820,9 @@ gchar *
 gabble_bytestream_factory_generate_stream_id (void)
 {
   gchar *stream_id;
-  time_t curtime;
-  struct tm *loctime;
-  gchar stamp[20];
 
-  curtime = time (NULL);
-  loctime = localtime (&curtime);
-  strftime (stamp, sizeof (stamp), "%s", loctime);
-  stream_id = g_strdup_printf ("%s%u", stamp, g_random_int());
+  stream_id = g_strdup_printf ("%lu-%u", (unsigned long) time (NULL),
+      g_random_int ());
 
   return stream_id;
 }

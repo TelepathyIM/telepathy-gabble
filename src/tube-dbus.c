@@ -572,33 +572,29 @@ gabble_tube_dbus_constructor (GType type,
        * It will be when we'll receive the answer of the SI request
        */
       GabbleBytestreamIBB *bytestream;
+      GabbleBytestreamIBBState state;
 
       g_assert (priv->stream_id != NULL);
 
       if (priv->initiator == priv->self_handle)
         {
           /* We create this tube, bytestream is open */
-          bytestream = gabble_bytestream_factory_create_ibb (
-              priv->conn->bytestream_factory,
-              priv->handle,
-              priv->handle_type,
-              priv->stream_id,
-              NULL,
-              NULL,
-              GABBLE_BYTESTREAM_IBB_STATE_OPEN);
+          state = GABBLE_BYTESTREAM_IBB_STATE_OPEN;
         }
       else
         {
           /* We don't create this tube, bytestream is local pending */
-          bytestream = gabble_bytestream_factory_create_ibb (
-              priv->conn->bytestream_factory,
-              priv->handle,
-              priv->handle_type,
-              priv->stream_id,
-              NULL,
-              NULL,
-              GABBLE_BYTESTREAM_IBB_STATE_LOCAL_PENDING);
+          state = GABBLE_BYTESTREAM_IBB_STATE_LOCAL_PENDING;
         }
+
+      bytestream = gabble_bytestream_factory_create_ibb (
+          priv->conn->bytestream_factory,
+          priv->handle,
+          priv->handle_type,
+          priv->stream_id,
+          NULL,
+          NULL,
+          state);
 
       g_object_set (self, "bytestream", bytestream, NULL);
     }

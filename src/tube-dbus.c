@@ -857,12 +857,12 @@ data_received_cb (GabbleBytestreamIBB *ibb,
     }
 
   destination = dbus_message_get_destination (msg);
-  if (destination != NULL &&
-      tp_strdiff (priv->dbus_local_name, dbus_message_get_destination (msg)))
+  if (tp_strdiff (priv->dbus_local_name, destination))
     {
       /* This message is not intented to this tube.
        * Discard it. */
-      DEBUG ("message not intented to this tube");
+      DEBUG ("message not intented to this tube (destination = %s)",
+          destination);
       dbus_message_unref (msg);
       return;
     }

@@ -509,7 +509,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 
-  /* We inform the right factory when received a SI request */
+  /* We inform the right factory we received a SI request */
   if (strcmp (profile, NS_SI_TUBES) == 0 ||
       strcmp (profile, NS_SI_TUBES_OLD) == 0)
     {

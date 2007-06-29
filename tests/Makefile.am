@@ -34,18 +34,18 @@ AM_LDFLAGS = @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@ @TP_GLIB_LIBS@
 TESTS = $(noinst_PROGRAMS)
 EXTRA_TESTS = $(python_tests_shfiles)
 TWISTED_TESTS = \
+	test-avatar.py \
+	test-avatar-async.py \
 	test-connect.py \
 	test-connect-fail.py \
 	test-disco.py \
-	test-text.py \
-	test-text-delayed.py \
+	test-muc.py \
+	test-muc-ownership.py \
 	test-roster.py \
 	test-save-alias-to-vcard.py \
 	test-set-status-idempotence.py \
-	test-avatar.py \
-	test-avatar-async.py \
-	test-muc.py \
-	test-muc-ownership.py
+	test-text.py \
+	test-text-delayed.py
 
 check-extra: $(BUILT_SOURCES)
 	chmod +x run-with-tmp-session-bus.sh $(python_tests_shfiles) \

@@ -41,6 +41,7 @@ TWISTED_TESTS = \
 	test-disco.py \
 	test-muc.py \
 	test-muc-ownership.py \
+	test-register.py \
 	test-roster.py \
 	test-save-alias-to-vcard.py \
 	test-set-status-idempotence.py \

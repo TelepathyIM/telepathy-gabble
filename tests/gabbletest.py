@@ -133,7 +133,7 @@ class BaseXmlStream(xmlstream.XmlStream):
         self.addObserver('//event/stream/authd', self._cb_authd)
 
     def _cb_authd(self, _):
-        # caleld when stream is authenticated
+        # called when stream is authenticated
         self.addObserver(
             "/iq/query[@xmlns='http://jabber.org/protocol/disco#info']",
             self._cb_disco_iq)

@@ -43,6 +43,7 @@ TWISTED_TESTS = \
 	test-muc-ownership.py \
 	test-register.py \
 	test-roster.py \
+	test-roster-subscribe.py \
 	test-save-alias-to-vcard.py \
 	test-set-status-idempotence.py \
 	test-text.py \

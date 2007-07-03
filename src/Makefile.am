@@ -70,8 +70,7 @@ libgabble_convenience_la_our_sources = \
     util.h \
     util.c \
     vcard-manager.h \
-    vcard-manager.c \
-    gabble-signals-marshal.list
+    vcard-manager.c
 
 # we don't want to subject third-party source to whitespace removal -
 # it's more useful to keep it a verbatim copy
@@ -112,6 +111,11 @@ AM_CFLAGS = $(ERROR_CFLAGS) -I$(top_srcdir) -I$(top_builddir) \
 	    @HANDLE_LEAK_DEBUG_CFLAGS@ @COVERAGE_CFLAGS@ @TP_GLIB_CFLAGS@
 AM_LDFLAGS = @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@ @TP_GLIB_LIBS@
 
+
+gabble-signals-marshal.list: $(libgabble_convenience_la_SOURCES) Makefile.am
+	sed -n -e 's/.*gabble_marshal_\([A-Z]*__[A-Z_]*\).*/\1/p' \
+	$(libgabble_convenience_la_SOURCES) \
+	| sed -e 's/__/:/' -e 'y/_/,/' | sort -u > $@
 
 %-signals-marshal.h: %-signals-marshal.list
 	glib-genmarshal --header --prefix=$(subst -,_,$*)_marshal $< > $*-signals-marshal.h

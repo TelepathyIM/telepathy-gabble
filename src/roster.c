@@ -107,7 +107,8 @@ struct _GabbleRosterItem
   GabbleRosterItemEdit *unsent_edits;
 };
 
-static void gabble_roster_factory_iface_init ();
+static void gabble_roster_factory_iface_init (gpointer g_iface,
+    gpointer iface_data);
 static void gabble_roster_init (GabbleRoster *roster);
 static GObject * gabble_roster_constructor (GType type, guint n_props,
     GObjectConstructParam *props);

@@ -108,6 +108,7 @@ class XmppAuthenticator(xmlstream.Authenticator):
 def make_iq_event(iq):
     event = servicetest.Event('stream-iq', stanza=iq)
     event.to = iq.getAttribute("to")
+    event.iq_type = iq.getAttribute("type")
     queries = xpath.queryForNodes("/iq/query", iq)
 
     if queries:

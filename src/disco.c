@@ -329,6 +329,21 @@ cancel_request (GabbleDiscoRequest *request)
   delete_request (request);
 }
 
+static const char *
+disco_type_to_xmlns (GabbleDiscoType type)
+{
+  switch (type) {
+    case GABBLE_DISCO_TYPE_INFO:
+      return NS_DISCO_INFO;
+    case GABBLE_DISCO_TYPE_ITEMS:
+      return NS_DISCO_ITEMS;
+    default:
+      g_assert_not_reached ();
+  }
+
+  return NULL;
+}
+
 static LmHandlerResult
 request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
                   LmMessage *reply_msg, GObject *object, gpointer user_data)
@@ -344,7 +359,8 @@ request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
   if (!g_list_find (priv->requests, request))
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
-  query_node = lm_message_node_get_child (reply_msg->node, "query");
+  query_node = lm_message_node_get_child_with_namespace (reply_msg->node,
+      "query", disco_type_to_xmlns (request->type));
 
   if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_ERROR)
     {
@@ -442,7 +458,6 @@ gabble_disco_request_with_timeout (GabbleDisco *self, GabbleDiscoType type,
   GabbleDiscoRequest *request;
   LmMessage *msg;
   LmMessageNode *lm_node;
-  const gchar *xmlns;
 
   request = g_slice_new0 (GabbleDiscoRequest);
   request->disco = self;
@@ -465,19 +480,7 @@ gabble_disco_request_with_timeout (GabbleDisco *self, GabbleDiscoType type,
                                            LM_MESSAGE_SUB_TYPE_GET);
   lm_node = lm_message_node_add_child (msg->node, "query", NULL);
 
-  switch (type) {
-    case GABBLE_DISCO_TYPE_INFO:
-      xmlns = NS_DISCO_INFO;
-      break;
-    case GABBLE_DISCO_TYPE_ITEMS:
-      xmlns = NS_DISCO_ITEMS;
-      break;
-    default:
-      g_assert_not_reached ();
-      return NULL;
-  }
-
-  lm_message_node_set_attribute (lm_node, "xmlns", xmlns);
+  lm_message_node_set_attribute (lm_node, "xmlns", disco_type_to_xmlns (type));
 
   if (node)
     {

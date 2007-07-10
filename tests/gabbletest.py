@@ -118,9 +118,13 @@ class XmppAuthenticator(xmlstream.Authenticator):
 
         self.xmlstream.dispatch(self.xmlstream, xmlstream.STREAM_AUTHD_EVENT)
 
+def make_stream_event(type, stanza):
+    event = servicetest.Event(type, stanza=stanza)
+    event.to = stanza.getAttribute("to")
+    return event
+
 def make_iq_event(iq):
-    event = servicetest.Event('stream-iq', stanza=iq)
-    event.to = iq.getAttribute("to")
+    event = make_stream_event('stream-iq', iq)
     event.iq_type = iq.getAttribute("type")
     queries = xpath.queryForNodes("/iq/query", iq)
 
@@ -143,7 +147,7 @@ class BaseXmlStream(xmlstream.XmlStream):
         self.addObserver('//message', lambda x: handler.handle_event(
             servicetest.Event('stream-message', stanza=x)))
         self.addObserver('//presence', lambda x: handler.handle_event(
-            servicetest.Event('stream-presence', stanza=x)))
+            make_stream_event('stream-presence', x)))
         self.addObserver('//event/stream/authd', self._cb_authd)
 
     def _cb_authd(self, _):

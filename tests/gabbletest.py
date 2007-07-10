@@ -17,6 +17,19 @@ import dbus
 NS_XMPP_SASL = 'urn:ietf:params:xml:ns:xmpp-sasl'
 NS_XMPP_BIND = 'urn:ietf:params:xml:ns:xmpp-bind'
 
+def make_result_iq(stream, iq):
+    result = IQ(stream, "result")
+    result["id"] = iq["id"]
+    query = iq.firstChildElement()
+
+    if query:
+        result.addElement((query.uri, 'query'))
+
+    return result
+
+def acknowledge_iq(stream, iq):
+    stream.send(make_result_iq(stream, iq))
+
 class JabberAuthenticator(xmlstream.Authenticator):
     "Trivial XML stream authenticator that accepts one username/digest pair."
 

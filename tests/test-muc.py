@@ -110,7 +110,7 @@ def expect_message(event, data):
     assert body.name == 'body'
     assert body.children[0] == u'goodbye'
 
-    data['conn'].Disconnect()
+    data['conn_iface'].Disconnect()
     return True
 
 @match('dbus-signal', signal='StatusChanged', args=[2, 1])

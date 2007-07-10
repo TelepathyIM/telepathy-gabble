@@ -86,14 +86,16 @@ class EventTest:
     def expect(self, f):
         self.queue.append(f)
 
+    def log(self, s):
+        if self.verbose:
+            print s
+
     def try_stop(self):
         if self.stopping:
             return True
 
         if not self.queue:
-            if self.verbose:
-                print 'no handlers left; stopping'
-
+            self.log('no handlers left; stopping')
             self.stopping = True
             reactor.stop()
             return True
@@ -101,9 +103,7 @@ class EventTest:
         return False
 
     def call_handlers(self, event):
-        if self.verbose:
-            print 'trying %r' % self.queue[0]
-
+        self.log('trying %r' % self.queue[0])
         handler = self.queue.pop(0)
 
         try:
@@ -123,14 +123,13 @@ class EventTest:
         if self.try_stop():
             return
 
-        if self.verbose:
-            print 'got event:'
-            print '- type: %s' % event.type
+        self.log('got event:')
+        self.log('- type: %s' % event.type)
 
-            for key in dir(event):
-                if key != 'type' and not key.startswith('_'):
-                    print '- %s: %s' % (
-                        key, pprint.pformat(getattr(event, key)))
+        for key in dir(event):
+            if key != 'type' and not key.startswith('_'):
+                self.log('- %s: %s' % (
+                    key, pprint.pformat(getattr(event, key))))
 
         try:
             ret = self.call_handlers(event)
@@ -149,16 +148,11 @@ class EventTest:
 
         if ret:
             self.timeout_delayed_call.reset(5)
-
-            if self.verbose:
-                print 'event handled'
+            self.log('event handled')
         else:
-            if self.verbose:
-                print 'event not handled'
+            self.log('event not handled')
 
-        if self.verbose:
-            print
-
+        self.log('')
         self.try_stop()
 
 def unwrap(x):

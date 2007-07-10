@@ -34,6 +34,7 @@ TWISTED_TESTS = \
 	test-disco.py \
 	test-muc.py \
 	test-muc-ownership.py \
+	test-muc-properties.py \
 	test-register.py \
 	test-roster.py \
 	test-roster-subscribe.py \

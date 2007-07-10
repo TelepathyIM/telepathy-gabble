@@ -5,7 +5,7 @@ Test MUC support.
 
 import dbus
 
-from twisted.words.xish import domish, xpath
+from twisted.words.xish import domish
 
 from gabbletest import go
 from servicetest import call_async, lazy, match

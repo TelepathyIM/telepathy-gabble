@@ -5,8 +5,6 @@ Test basic roster functionality.
 
 import dbus
 
-from twisted.words.xish import xpath
-
 from servicetest import lazy, match
 from gabbletest import go
 

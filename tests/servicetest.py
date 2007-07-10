@@ -100,6 +100,22 @@ class EventTest:
 
         return False
 
+    def call_handlers(self, event):
+        handler = self.queue.pop(0)
+
+        try:
+            ret = handler(event, self.data)
+        except TryNextHandler, e:
+            if self.queue:
+                return self.call_handlers(event)
+            else:
+                return False
+
+        if not ret:
+            self.queue.insert(0, handler)
+
+        return ret
+
     def handle_event(self, event):
         if self.try_stop():
             return
@@ -114,13 +130,7 @@ class EventTest:
                         key, pprint.pformat(getattr(event, key)))
 
         try:
-            ret = self.queue[0](event, self.data)
-        except TryNextHandler, e:
-            if len(self.queue) > 1:
-                missed = self.queue.pop(0)
-                self.handle_event(event)
-                self.queue.insert(0, missed)
-            return
+            ret = self.call_handlers(event)
         except AssertionError, e:
             print 'test failed:'
             traceback.print_exc()
@@ -135,7 +145,6 @@ class EventTest:
                 % self.queue[0].__name__)
 
         if ret:
-            self.queue.pop(0)
             self.timeout_delayed_call.reset(5)
 
             if self.verbose:

@@ -5,12 +5,6 @@ noinst_PROGRAMS = \
 	test-jid-decode \
 	test-parse-message
 
-python_tests = \
-	test-basic-connect
-
-python_tests_pythonfiles = $(python_tests:=.py)
-python_tests_shfiles = $(python_tests:=.sh)
-
 test_gabble_presence_LDADD = \
     $(top_builddir)/src/libgabble-convenience.la
 
@@ -32,7 +26,6 @@ AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @LOUDMOUTH_CFLAGS@ \
 AM_LDFLAGS = @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@ @TP_GLIB_LIBS@
 
 TESTS = $(noinst_PROGRAMS)
-EXTRA_TESTS = $(python_tests_shfiles)
 TWISTED_TESTS = \
 	test-avatar.py \
 	test-avatar-async.py \
@@ -48,11 +41,6 @@ TWISTED_TESTS = \
 	test-set-status-idempotence.py \
 	test-text.py \
 	test-text-delayed.py
-
-check-extra: $(BUILT_SOURCES)
-	chmod +x run-with-tmp-session-bus.sh $(python_tests_shfiles) \
-		$(python_tests_pythonfiles) exec-with-log.sh
-	$(MAKE) check TESTS="$(EXTRA_TESTS)"
 
 _check-twisted:
 	$(MAKE) check TESTS="$(TWISTED_TESTS)" TESTS_ENVIRONMENT=python

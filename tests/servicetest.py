@@ -101,6 +101,9 @@ class EventTest:
         return False
 
     def call_handlers(self, event):
+        if self.verbose:
+            print 'trying %r' % self.queue[0]
+
         handler = self.queue.pop(0)
 
         try:
@@ -149,9 +152,6 @@ class EventTest:
 
             if self.verbose:
                 print 'event handled'
-
-                if self.queue:
-                    print 'next handler: %r' % self.queue[0]
         else:
             if self.verbose:
                 print 'event not handled'

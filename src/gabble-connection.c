@@ -2464,7 +2464,7 @@ _gabble_connection_find_conference_server (GabbleConnection *conn)
     {
       /* Find first server that has NS_MUC feature */
       const GabbleDiscoItem *item = gabble_disco_service_find (conn->disco,
-          NULL, NULL, NS_MUC);
+          "conference", "text", NS_MUC);
       if (item != NULL)
         priv->conference_server = item->jid;
     }

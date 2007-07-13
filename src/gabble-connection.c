@@ -2484,7 +2484,7 @@ _gabble_connection_get_canonical_room_name (GabbleConnection *conn,
 
   g_assert (GABBLE_IS_CONNECTION (conn));
 
-  if (index (name, '@'))
+  if (strchr (name, '@'))
     return g_strdup (name);
 
   server = _gabble_connection_find_conference_server (conn);

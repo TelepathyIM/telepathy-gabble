@@ -11,7 +11,7 @@ import dbus
 
 from twisted.words.xish import domish
 
-from gabbletest import go
+from gabbletest import go, make_result_iq
 from servicetest import call_async, lazy, match
 
 @match('dbus-signal', signal='StatusChanged', args=[0, 1])
@@ -25,11 +25,10 @@ def expect_connected(event, data):
 @match('stream-iq', to='conf.localhost',
     query_ns='http://jabber.org/protocol/disco#info')
 def expect_disco(event, data):
-    feature = event.query.addElement('feature')
+    result = make_result_iq(data['stream'], event.stanza)
+    feature = result.firstChildElement().addElement('feature')
     feature['var'] = 'http://jabber.org/protocol/muc'
-
-    event.stanza['type'] = 'result'
-    data['stream'].send(event.stanza)
+    data['stream'].send(result)
     return True
 
 def expect_request_handles_return(event, data):
@@ -42,15 +41,13 @@ def expect_request_handles_return(event, data):
     return True
 
 @lazy
-@match('dbus-signal', signal='MembersChanged')
+@match('dbus-signal', signal='MembersChanged',
+    args=[u'', [], [], [], [2], 0, 0])
 def expect_members_changed1(event, data):
-    assert event.args == [u'', [], [], [], [2], 0, 0]
     return True
 
-@match('stream-presence')
+@match('stream-presence', to='chat@conf.localhost/test')
 def expect_presence(event, data):
-    assert event.stanza['to'] == 'chat@conf.localhost/test'
-
     # Send presence for anonymous other member of room.
     presence = domish.Element((None, 'presence'))
     presence['from'] = 'chat@conf.localhost/bob'
@@ -61,9 +58,9 @@ def expect_presence(event, data):
     data['stream'].send(presence)
     return True
 
-@match('dbus-signal', signal='MembersChanged')
+@match('dbus-signal', signal='MembersChanged',
+    args=[u'', [3], [], [], [], 0, 0])
 def expect_members_changed2(event, data):
-    assert event.args == [u'', [3], [], [], [], 0, 0]
     assert data['conn_iface'].InspectHandles(1, [3]) == [
         'chat@conf.localhost/bob']
 

@@ -151,19 +151,21 @@ def expect_set_vcard_again(event, data):
     if vcard.name != 'vCard':
         return False
 
-    photos = xpath.queryForNodes('/PHOTO', vcard)
-    assert photos is not None and len(photos) == 1, repr(photos)
-    types = xpath.queryForNodes('/TYPE', photos[0])
-    binvals = xpath.queryForNodes('/BINVAL', photos[0])
-    assert types is not None and len(types) == 1, repr(types)
-    assert binvals is not None and len(binvals) == 1, repr(binvals)
-    assert str(types[0]) == 'image/png'
-    assert str(binvals[0]) == base64.b64encode('hello')
-
-    nicknames = xpath.queryForNodes('/NICKNAME', vcard)
+    nicknames = xpath.queryForNodes('/vCard/NICKNAME', vcard)
     assert nicknames is not None
     assert len(nicknames) == 1
     assert str(nicknames[0]) == 'Some Guy'
+
+    photos = xpath.queryForNodes('/vCard/PHOTO', vcard)
+    assert photos is not None and len(photos) == 1, repr(photos)
+    types = xpath.queryForNodes('/PHOTO/TYPE', photos[0])
+    binvals = xpath.queryForNodes('/PHOTO/BINVAL', photos[0])
+    assert types is not None and len(types) == 1, repr(types)
+    assert binvals is not None and len(binvals) == 1, repr(binvals)
+    assert str(types[0]) == 'image/png'
+    got = str(binvals[0])
+    exp = base64.b64encode('hello')
+    assert got == exp, (got, exp)
 
     data['conn_iface'].Disconnect()
     return True

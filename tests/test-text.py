@@ -77,7 +77,7 @@ def expect_srv_received(event, data):
     assert body.name == 'body'
     assert body.children[0] == u'goodbye'
 
-    data['conn'].Disconnect()
+    data['conn_iface'].Disconnect()
     return True
 
 def expect_disconnected(event, data):

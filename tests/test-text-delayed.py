@@ -63,7 +63,7 @@ def expect_conn_received(event, data):
         == '2007-05-17 16:15:01')
     assert event.args[5] == 'hello'
 
-    data['conn'].Disconnect()
+    data['conn_iface'].Disconnect()
     return True
 
 def expect_disconnected(event, data):

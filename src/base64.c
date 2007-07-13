@@ -107,12 +107,14 @@ gchar *base64_encode (guint len, const gchar *str)
         case 1:
           c1 = encoding[GET_6_BITS_0 (str + i)];
           c2 = encoding[GET_6_BITS_1 (str + i)];
-          c3 = encoding[GET_6_BITS_2 (str + i)];
+          /* can't use GET_6_BITS_2 because str[i+2] is out of range */
+          c3 = encoding[(str[i + 1] & 0x0f) << 2];
           c4 = '=';
           break;
         case 2:
           c1 = encoding[GET_6_BITS_0 (str + i)];
-          c2 = encoding[GET_6_BITS_1 (str + i)];
+          /* can't use GET_6_BITS_1 because str[i+1] is out of range */
+          c2 = encoding[(str[i] & 0x03) << 4];
           c3 = '=';
           c4 = '=';
           break;

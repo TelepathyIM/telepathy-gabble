@@ -1,31 +1,39 @@
-
+#include <stdio.h>
 #include <string.h>
 
 #include <base64.h>
 
 struct test {
   gchar *str;
+  size_t len;
   gchar *encoded;
 };
 
 struct test tests[] = {
-  { "c",   "Yw==" },
-  { "ca",  "Y2E=" },
-  { "car", "Y2Fy" },
-  { "carnal pleasure.", "Y2FybmFsIHBsZWFzdXJlLg==" },
-  { "carnal pleasure",  "Y2FybmFsIHBsZWFzdXJl" },
-  { "carnal pleasur",   "Y2FybmFsIHBsZWFzdXI=" },
-  { "carnal pleasu",    "Y2FybmFsIHBsZWFzdQ==" },
+  { "c", 0,   "Yw==" },
+  { "ca", 0,  "Y2E=" },
+  { "car", 0, "Y2Fy" },
+  { "carnal pleasure.", 0, "Y2FybmFsIHBsZWFzdXJlLg==" },
+  { "carnal pleasure", 0,  "Y2FybmFsIHBsZWFzdXJl" },
+  { "carnal pleasur", 0,   "Y2FybmFsIHBsZWFzdXI=" },
+  { "carnal pleasu", 0,    "Y2FybmFsIHBsZWFzdQ==" },
   /* test long (> 76 / 4 * 3) string */
-  { "1234567890"
+  {
+    "1234567890"
     "1234567890"
     "1234567890"
     "1234567890"
     "1234567890"
     "1234567890",
+    0,
     "MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM"
     "0NTY3\nODkw" },
-  { NULL, NULL }
+  /* regression test: formerly we assumed that there was a NUL immediately
+   * after the data */
+  { "hello", 5, "aGVsbG8=" },
+  { "hello\xff\xff", 5, "aGVsbG8=" },
+
+  { NULL, 0, NULL }
 };
 
 int
@@ -37,7 +45,9 @@ main (void)
 
   for (t = tests; t->str != NULL; t++)
     {
-      s = base64_encode (strlen (t->str), t->str);
+      if (t->len == 0)
+        t->len = strlen (t->str);
+      s = base64_encode (t->len, t->str);
       g_assert (0 == strcmp (s, t->encoded));
       g_free (s);
     }
@@ -77,7 +87,7 @@ main (void)
     {
       tmp1 = base64_decode (t->encoded);
       g_assert (tmp1);
-      tmp2 = g_string_new (t->str);
+      tmp2 = g_string_new_len (t->str, t->len);
       g_assert (g_string_equal (tmp1, tmp2));
       g_string_free (tmp1, TRUE);
       g_string_free (tmp2, TRUE);

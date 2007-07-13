@@ -482,8 +482,6 @@ gabble_vcard_manager_dispose (GObject *object)
 {
   GabbleVCardManager *self = GABBLE_VCARD_MANAGER (object);
   GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (self);
-  DBusGProxy *bus_proxy;
-  bus_proxy = tp_get_bus_proxy ();
 
   if (priv->dispose_has_run)
     return;

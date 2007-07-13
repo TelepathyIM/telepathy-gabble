@@ -42,7 +42,8 @@ TWISTED_TESTS = \
 	test-olpc-set-props-preload.py \
 	test-set-status-idempotence.py \
 	test-text.py \
-	test-text-delayed.py
+	test-text-delayed.py \
+	test-vcard-race.py
 
 _check-twisted:
 	$(MAKE) check TESTS="$(TWISTED_TESTS)" TESTS_ENVIRONMENT=python

@@ -85,7 +85,5 @@ EXTRA_DIST = $(service_in_files) $(conf_in_files) exec-with-log.sh.in
 CLEANFILES = $(BUILT_SOURCES) gabble-[1-9]*.log
 
 check_c_sources = *.c
-check_misc_sources = \
-    $(python_tests_shfiles) \
-    $(python_tests_pythonfiles)
+check_misc_sources = $(TWISTED_TESTS)
 include $(top_srcdir)/check-coding-style.mk

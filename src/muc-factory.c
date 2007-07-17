@@ -46,11 +46,9 @@
 #include <telepathy-glib/channel-factory-iface.h>
 #include "util.h"
 
-#ifdef HAVE_DBUS_TUBE
 #define HAVE_TUBES
-#include <telepathy-glib/svc-unstable.h>
 #include "tubes-channel.h"
-#endif
+#include <telepathy-glib/svc-unstable.h>
 
 static void gabble_muc_factory_iface_init (gpointer g_iface,
     gpointer iface_data);

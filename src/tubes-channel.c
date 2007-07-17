@@ -1045,8 +1045,10 @@ bytestream_negotiate_cb (GabbleBytestreamIBB *bytestream,
 {
   struct _bytestream_negotiate_cb_data *data =
     (struct _bytestream_negotiate_cb_data *) user_data;
+#ifdef HAVE_DBUS_TUBE
   GabbleTubesChannel *self = data->self;
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+#endif
   GabbleTubeIface *tube = data->tube;
   LmMessageNode *si, *tube_node;
   TpTubeType type;
@@ -1107,7 +1109,10 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
                                    LmMessage *msg)
 {
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
-  const gchar *service, *stream_id, *dbus_name = NULL;
+  const gchar *service, *stream_id;
+#ifdef HAVE_DBUS_TUBE
+  const gchar *dbus_name = NULL;
+#endif
   GHashTable *parameters;
   TpTubeType type;
   LmMessageNode *node;

@@ -15,6 +15,7 @@
 \.bak$
 \.BAK$
 \.orig$
+\.rej$
 (^|/)vssver\.scc$
 \.swp$
 \.swo$
@@ -67,6 +68,7 @@
 ^(data|tests)/org.freedesktop.Telepathy.ConnectionManager.gabble.service$
 ^src/telepathy-gabble$
 ^src/write-mgr-file$
+^src/gabble-signals-marshal.list$
 ^tests/test-base64$
 ^tests/test-gabble-presence$
 ^tests/test-handles$

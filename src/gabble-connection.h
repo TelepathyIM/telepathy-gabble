@@ -24,11 +24,11 @@
 #include <dbus/dbus-glib.h>
 #include <glib-object.h>
 #include <loudmouth/loudmouth.h>
+#include <telepathy-glib/base-connection.h>
+#include <telepathy-glib/presence-mixin.h>
 
 #include "gabble-types.h"
 #include "gabble-error.h"
-#include <telepathy-glib/base-connection.h>
-#include <telepathy-glib/presence-mixin.h>
 
 G_BEGIN_DECLS
 
@@ -117,6 +117,10 @@ struct _GabbleConnection {
     /* presence */
     GabblePresenceCache *presence_cache;
     GabblePresence *self_presence;
+
+    /* IQ request pipeline helper, so simultaneous requests don't make
+     * servers hate us */
+    GabbleRequestPipeline *req_pipeline;
 
     /* vCard lookup helper */
     GabbleVCardManager *vcard_manager;

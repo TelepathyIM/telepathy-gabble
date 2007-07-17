@@ -63,6 +63,8 @@ libgabble_convenience_la_our_sources = \
     presence.c \
     presence-cache.h \
     presence-cache.c \
+    request-pipeline.h \
+    request-pipeline.c \
     roster.h \
     roster.c \
     text-mixin.h \

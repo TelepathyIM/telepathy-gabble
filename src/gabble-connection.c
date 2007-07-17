@@ -62,6 +62,7 @@
 #include "muc-factory.h"
 #include "namespaces.h"
 #include "pubsub.h"
+#include "request-pipeline.h"
 #include "roster.h"
 #include "util.h"
 #include "vcard-manager.h"
@@ -228,6 +229,7 @@ gabble_connection_constructor (GType type,
 
   DEBUG("Post-construction: (GabbleConnection *)%p", self);
 
+  self->req_pipeline = gabble_request_pipeline_new (self);
   self->disco = gabble_disco_new (self);
   self->vcard_manager = gabble_vcard_manager_new (self);
   g_signal_connect (self->vcard_manager, "nickname-update", G_CALLBACK
@@ -723,6 +725,9 @@ gabble_connection_dispose (GObject *object)
 
   g_object_unref (self->disco);
   self->disco = NULL;
+
+  g_object_unref (self->req_pipeline);
+  self->req_pipeline = NULL;
 
   if (self->self_presence != NULL)
     g_object_unref (self->self_presence);

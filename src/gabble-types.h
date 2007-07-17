@@ -33,6 +33,7 @@ typedef struct _GabblePresenceCache GabblePresenceCache;
 typedef struct _GabbleRoster GabbleRoster;
 typedef struct _GabbleRosterChannel GabbleRosterChannel;
 typedef struct _GabbleVCardManager GabbleVCardManager;
+typedef struct _GabbleRequestPipeline GabbleRequestPipeline;
 
 typedef enum {
     INITIATOR_INVALID = -1,

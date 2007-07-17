@@ -46,7 +46,6 @@
 #include <telepathy-glib/channel-factory-iface.h>
 #include "util.h"
 
-#define HAVE_TUBES
 #include "tubes-channel.h"
 #include <telepathy-glib/svc-unstable.h>
 
@@ -71,22 +70,15 @@ struct _GabbleMucFactoryPrivate
 
   LmMessageHandler *message_cb;
   LmMessageHandler *presence_cb;
-
   /* GUINT_TO_POINTER(room_handle) => (GabbleMucChannel *) */
   GHashTable *text_channels;
-#ifdef HAVE_TUBES
   /* GUINT_TO_POINTER(room_handle) => (GabbleTubesChannel *) */
   GHashTable *tubes_channels;
-#endif
   GabbleRoomlistChannel *roomlist_channel;
-
-#ifdef HAVE_TUBES
   /* Tubes channel requests which will be satisfied when the corresponding
    * text channel is created.
    * GabbleMucChannel * => GabbleTubesChannel * */
   GHashTable *text_needed_for_tubes;
-#endif
-
   GHashTable *disco_requests;
 
   gboolean dispose_has_run;
@@ -106,12 +98,10 @@ gabble_muc_factory_init (GabbleMucFactory *fac)
 
   priv->text_channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
       NULL, g_object_unref);
-#ifdef HAVE_TUBES
   priv->tubes_channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
       NULL, g_object_unref);
   priv->text_needed_for_tubes = g_hash_table_new_full (g_direct_hash,
       g_direct_equal, NULL, NULL);
-#endif
 
   priv->disco_requests = g_hash_table_new_full (g_direct_hash, g_direct_equal,
                                                 NULL, NULL);
@@ -160,9 +150,7 @@ gabble_muc_factory_dispose (GObject *object)
 
   tp_channel_factory_iface_close_all (TP_CHANNEL_FACTORY_IFACE (object));
   g_assert (priv->text_channels == NULL);
-#ifdef HAVE_TUBES
   g_assert (priv->tubes_channels == NULL);
-#endif
 
   g_hash_table_foreach (priv->disco_requests, cancel_disco_request,
       priv->conn->disco);
@@ -255,7 +243,6 @@ muc_channel_closed_cb (GabbleMucChannel *chan, gpointer user_data)
 
       DEBUG ("removing MUC channel with handle %d", room_handle);
 
-#ifdef HAVE_TUBES
       if (priv->tubes_channels != NULL)
         {
           GabbleTubesChannel *tubes;
@@ -265,15 +252,12 @@ muc_channel_closed_cb (GabbleMucChannel *chan, gpointer user_data)
           if (tubes != NULL)
             gabble_tubes_channel_close (tubes);
         }
-#endif
 
       g_hash_table_remove (priv->text_channels,
           GINT_TO_POINTER (room_handle));
     }
 }
 
-
-#ifdef HAVE_TUBES
 /**
  * tubes_channel_closed_cb:
  *
@@ -305,25 +289,20 @@ tubes_channel_closed_cb (GabbleTubesChannel *chan, gpointer user_data)
           GINT_TO_POINTER (room_handle));
     }
 }
-#endif
-
 
 static void
 muc_ready_cb (GabbleMucChannel *chan,
               gpointer data)
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (data);
-#ifdef HAVE_TUBES
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
   GabbleTubesChannel *tubes_chan;
-#endif
 
   DEBUG ("chan=%p", chan);
 
   tp_channel_factory_iface_emit_new_channel (fac, (TpChannelIface *) chan,
       NULL);
 
-#ifdef HAVE_TUBES
   tubes_chan = g_hash_table_lookup (priv->text_needed_for_tubes, chan);
   if (tubes_chan != NULL)
     {
@@ -331,7 +310,6 @@ muc_ready_cb (GabbleMucChannel *chan,
       tp_channel_factory_iface_emit_new_channel (fac,
           (TpChannelIface *) tubes_chan, NULL);
     }
-#endif
 }
 
 static void
@@ -340,17 +318,14 @@ muc_join_error_cb (GabbleMucChannel *chan,
                    gpointer data)
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (data);
-#ifdef HAVE_TUBES
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
   GabbleTubesChannel *tubes_chan;
-#endif
 
   DEBUG ("error->code=%u, error->message=\"%s\"", error->code, error->message);
 
   tp_channel_factory_iface_emit_channel_error (fac, (TpChannelIface *) chan,
       error, NULL);
 
-#ifdef HAVE_TUBES
   tubes_chan = g_hash_table_lookup (priv->text_needed_for_tubes, chan);
   if (tubes_chan != NULL)
     {
@@ -358,7 +333,6 @@ muc_join_error_cb (GabbleMucChannel *chan,
       tp_channel_factory_iface_emit_channel_error (fac,
           (TpChannelIface *) tubes_chan, error, NULL);
     }
-#endif
 }
 
 /**
@@ -400,7 +374,6 @@ new_muc_channel (GabbleMucFactory *fac, TpHandle handle, gboolean invite_self)
   return chan;
 }
 
-#ifdef HAVE_TUBES
 /**
  * new_tubes_channel:
  *
@@ -440,7 +413,6 @@ new_tubes_channel (GabbleMucFactory *fac,
 
   return chan;
 }
-#endif
 
 static void
 do_invite (GabbleMucFactory *fac,
@@ -843,10 +815,8 @@ muc_factory_presence_cb (LmMessageHandler *handler,
   const char *from;
   LmMessageSubType sub_type;
   GabbleMucChannel *muc_chan = NULL;
-#ifdef HAVE_TUBES
   GabbleTubesChannel *tubes_chan;
   LmMessageNode *tubes_node;
-#endif
   LmMessageNode *x_node;
   TpHandle room_handle;
 
@@ -908,7 +878,6 @@ muc_factory_presence_cb (LmMessageHandler *handler,
         }
     }
 
-#ifdef HAVE_TUBES
   /* is it presence from an in-MUC JID containing tubes info? */
 
   if (muc_chan != NULL)
@@ -940,7 +909,6 @@ muc_factory_presence_cb (LmMessageHandler *handler,
           tp_handle_unref (contact_repo, handle);
         }
     }
-#endif
 
   return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 }
@@ -1008,14 +976,12 @@ gabble_muc_factory_iface_close_all (TpChannelFactoryIface *iface)
       g_hash_table_destroy (tmp);
     }
 
-#ifdef HAVE_TUBES
   if (priv->tubes_channels != NULL)
     {
       GHashTable *tmp = priv->tubes_channels;
       priv->tubes_channels = NULL;
       g_hash_table_destroy (tmp);
     }
-#endif
 
   if (priv->roomlist_channel != NULL)
     {
@@ -1105,9 +1071,7 @@ gabble_muc_factory_iface_foreach (TpChannelFactoryIface *iface,
   data.foreach = foreach;
 
   g_hash_table_foreach (priv->text_channels, _foreach_slave, &data);
-#ifdef HAVE_TUBES
   g_hash_table_foreach (priv->tubes_channels, _foreach_slave, &data);
-#endif
 
   if (priv->roomlist_channel != NULL)
     foreach (TP_CHANNEL_IFACE (priv->roomlist_channel), user_data);
@@ -1151,9 +1115,7 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
   GabbleMucChannel *text_chan;
-#ifdef HAVE_TUBES
   GabbleTubesChannel *tubes_chan;
-#endif
 
   if (!tp_strdiff (chan_type, TP_IFACE_CHANNEL_TYPE_ROOM_LIST))
     {
@@ -1191,7 +1153,6 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
           return TP_CHANNEL_FACTORY_REQUEST_STATUS_QUEUED;
         }
     }
-#ifdef HAVE_TUBES
   else if (!tp_strdiff (chan_type, TP_IFACE_CHANNEL_TYPE_TUBES))
     {
       tubes_chan = g_hash_table_lookup (priv->tubes_channels,
@@ -1219,7 +1180,6 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
             }
         }
     }
-#endif
   else
     {
       return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_IMPLEMENTED;

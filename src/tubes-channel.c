@@ -611,6 +611,37 @@ emit_d_bus_names_changed_foreach (gpointer key,
 
   tp_handle_unref (contact_repo, data->contact);
 }
+
+static void
+contact_left_muc (GabbleTubesChannel *self,
+                  TpHandle contact)
+{
+  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+    (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+  GHashTable *old_dbus_tubes;
+  struct _add_in_old_dbus_tubes_data add_data;
+  struct _emit_d_bus_names_changed_foreach_data emit_data;
+
+  DEBUG ("%s left muc and so left all its tube", tp_handle_inspect (
+        contact_repo, contact));
+
+  /* Fill old_dbus_tubes with D-BUS tubes previoulsy announced by
+   * the contact */
+  old_dbus_tubes = g_hash_table_new (g_direct_hash, g_direct_equal);
+  add_data.old_dbus_tubes = old_dbus_tubes;
+  add_data.contact = contact;
+  g_hash_table_foreach (priv->tubes, add_in_old_dbus_tubes, &add_data);
+
+  /* contact left the muc so he left all its tubes */
+  emit_data.contact = contact;
+  emit_data.self = self;
+  g_hash_table_foreach (old_dbus_tubes, emit_d_bus_names_changed_foreach,
+      &emit_data);
+
+  g_hash_table_destroy (old_dbus_tubes);
+}
+
 #endif
 
 /* Called when we receive a presence from a contact who is
@@ -618,13 +649,14 @@ emit_d_bus_names_changed_foreach (gpointer key,
 void
 gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
                                        TpHandle contact,
-                                       LmMessageNode *tubes_node)
+                                       LmMessage *presence)
 {
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
-  LmMessageNode *tube_node;
+  LmMessageNode *tubes_node, *tube_node;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 #ifdef HAVE_DBUS_TUBE
+  const gchar *presence_type;
   GHashTable *old_dbus_tubes;
   struct _add_in_old_dbus_tubes_data add_data;
   struct _emit_d_bus_names_changed_foreach_data emit_data;
@@ -632,6 +664,23 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
 
   if (contact == priv->self_handle)
     /* We don't need to inspect our own presence */
+    return;
+
+  /* We are interested by this presence only if it contains tube information
+   * or indicates someone left the muc */
+#ifdef HAVE_DBUS_TUBE
+  presence_type = lm_message_node_get_attribute (presence->node, "type");
+  if (!tp_strdiff (presence_type, "unavailable"))
+    {
+      contact_left_muc (self, contact);
+      return;
+    }
+#endif
+
+  tubes_node = lm_message_node_get_child_with_namespace (presence->node,
+      "tubes", NS_TUBES);
+
+  if (tubes_node == NULL)
     return;
 
 #ifdef HAVE_DBUS_TUBE

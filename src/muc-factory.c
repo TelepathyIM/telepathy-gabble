@@ -815,8 +815,6 @@ muc_factory_presence_cb (LmMessageHandler *handler,
   const char *from;
   LmMessageSubType sub_type;
   GabbleMucChannel *muc_chan = NULL;
-  GabbleTubesChannel *tubes_chan;
-  LmMessageNode *tubes_node;
   LmMessageNode *x_node;
   TpHandle room_handle;
 
@@ -883,31 +881,39 @@ muc_factory_presence_cb (LmMessageHandler *handler,
   if (muc_chan != NULL)
     {
       TpHandle handle;
+      GabbleTubesChannel *tubes_chan;
 
-      tubes_node = lm_message_node_get_child_with_namespace (msg->node,
-          "tubes", NS_TUBES);
-      if (tubes_node != NULL)
+      tubes_chan = g_hash_table_lookup (priv->tubes_channels,
+          GINT_TO_POINTER (room_handle));
+      if (tubes_chan == NULL)
         {
-          tubes_chan = g_hash_table_lookup (priv->tubes_channels,
-              GINT_TO_POINTER (room_handle));
-          if (tubes_chan == NULL)
-            {
-              tubes_chan = new_tubes_channel (fac, room_handle, muc_chan);
-              tp_channel_factory_iface_emit_new_channel (fac,
-                  (TpChannelIface *) tubes_chan, NULL);
-            }
-          handle = tp_handle_ensure (contact_repo, from,
-              GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
-          if (handle == 0)
-            {
-              NODE_DEBUG (msg->node,
-                  "discarding Tubes presence from malformed jid");
-              return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-            }
-          gabble_tubes_channel_presence_updated (tubes_chan, handle,
-              tubes_node);
-          tp_handle_unref (contact_repo, handle);
+          LmMessageNode *tubes_node;
+
+          tubes_node = lm_message_node_get_child_with_namespace (
+              msg->node, "tubes", NS_TUBES);
+
+          if (tubes_node == NULL)
+            /* presence doesn't contain tubes information, no need
+             * to create a tubes channel */
+            return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+
+          tubes_chan = new_tubes_channel (fac, room_handle, muc_chan);
+          tp_channel_factory_iface_emit_new_channel (fac,
+              (TpChannelIface *) tubes_chan, NULL);
         }
+
+      handle = tp_handle_ensure (contact_repo, from,
+          GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
+      if (handle == 0)
+        {
+          NODE_DEBUG (msg->node,
+              "discarding Tubes presence from malformed jid");
+          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+        }
+
+      gabble_tubes_channel_presence_updated (tubes_chan, handle,
+          msg);
+      tp_handle_unref (contact_repo, handle);
     }
 
   return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;

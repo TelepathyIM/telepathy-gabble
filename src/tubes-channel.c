@@ -1164,39 +1164,39 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
 #endif
   GHashTable *parameters;
   TpTubeType type;
-  LmMessageNode *node;
+  LmMessageNode *si_node, *tube_node;
   guint tube_id;
   GabbleTubeIface *tube;
   gboolean offering;
 
-  node = lm_message_node_get_child_with_namespace (msg->node, "si",
+  si_node = lm_message_node_get_child_with_namespace (msg->node, "si",
       NS_SI);
-  if (node == NULL)
+  if (si_node == NULL)
     {
 
       NODE_DEBUG (msg->node, "got a SI request without SI markup");
       return FALSE;
     }
 
-  stream_id = lm_message_node_get_attribute (node, "id");
+  stream_id = lm_message_node_get_attribute (si_node, "id");
   if (stream_id == NULL)
     {
       NODE_DEBUG (msg->node, "got a SI request without stream ID");
       return FALSE;
     }
 
-  node = lm_message_node_get_child_with_namespace (msg->node, "tube",
+  tube_node = lm_message_node_get_child_with_namespace (si_node, "tube",
       NS_SI_TUBES);
-  if (node == NULL)
-    node = lm_message_node_get_child_with_namespace (msg->node, "tube",
+  if (tube_node == NULL)
+    tube_node = lm_message_node_get_child_with_namespace (si_node, "tube",
         NS_SI_TUBES_OLD);
-  if (node == NULL)
+  if (tube_node == NULL)
     {
       NODE_DEBUG (msg->node, "got a SI request without tube markup");
       return FALSE;
     }
 
-  if (!extract_tube_information (self, node, NULL, NULL,
+  if (!extract_tube_information (self, tube_node, NULL, NULL,
               NULL, NULL, &offering, &tube_id))
     {
       DEBUG ("can't extract tube information in SI request");
@@ -1228,7 +1228,7 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
     }
 
   /* New tube */
-  if (!extract_tube_information (self, node, &type, NULL,
+  if (!extract_tube_information (self, tube_node, &type, NULL,
               &service, &parameters, NULL, NULL))
     {
       DEBUG ("can't extract tube information in SI request");
@@ -1239,7 +1239,7 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
 #ifdef HAVE_DBUS_TUBE
   if (type == TP_TUBE_TYPE_DBUS)
     {
-      dbus_name = lm_message_node_get_attribute (node, "dbus-name");
+      dbus_name = lm_message_node_get_attribute (tube_node, "dbus-name");
       if (dbus_name == NULL)
         {
           DEBUG ("D-Bus tube doesn't contain initiator D-Bus name");
@@ -1276,7 +1276,7 @@ start_stream_initiation (GabbleTubesChannel *self,
                          GError **error)
 {
   GabbleTubesChannelPrivate *priv;
-  LmMessageNode *node;
+  LmMessageNode *tube_node, *si_node;
   LmMessage *msg;
   TpHandleRepoIface *contact_repo;
   GabblePresence *presence;
@@ -1321,10 +1321,13 @@ start_stream_initiation (GabbleTubesChannel *self,
   msg = gabble_bytestream_factory_make_stream_init_iq (full_jid,
       stream_id, NS_SI_TUBES_OLD);
 
-  node = lm_message_node_add_child (msg->node, "tube", NULL);
-  lm_message_node_set_attribute (node, "xmlns", NS_SI_TUBES_OLD);
-  publish_tube_in_node (self, node, tube);
-  lm_message_node_set_attribute (node, "offering", "true");
+  si_node = lm_message_node_get_child_with_namespace (msg->node, "si", NS_SI);
+  g_assert (si_node != NULL);
+
+  tube_node = lm_message_node_add_child (si_node, "tube", NULL);
+  lm_message_node_set_attribute (tube_node, "xmlns", NS_SI_TUBES_OLD);
+  publish_tube_in_node (self, tube_node, tube);
+  lm_message_node_set_attribute (tube_node, "offering", "true");
 
   data = g_slice_new (struct _bytestream_negotiate_cb_data);
   data->self = self;

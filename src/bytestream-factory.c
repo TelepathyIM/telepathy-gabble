@@ -1034,6 +1034,12 @@ gabble_bytestream_factory_negotiate_stream (GabbleBytestreamFactory *self,
   result = _gabble_connection_send_with_reply (priv->conn, msg,
       streaminit_reply_cb, G_OBJECT (self), data, error);
 
+  if (!result)
+    {
+      g_free (data->stream_id);
+      g_slice_free (struct _streaminit_reply_cb_data, data);
+    }
+
   return result;
 }
 

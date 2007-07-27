@@ -379,6 +379,10 @@ gabble_tubes_factory_handle_si_request (GabbleTubesFactory *self,
           (TpChannelIface *) chan, NULL);
     }
 
+  /* XXX we should probably only emit the new channel signal only
+   * if this function returns TRUE and if not, close the channel because
+   * that means this SI request wasn't for this channel so there was no
+   * point to create it */
   return gabble_tubes_channel_tube_offered (chan, bytestream, msg);
 }
 

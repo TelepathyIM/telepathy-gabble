@@ -1209,7 +1209,7 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
       if (offering)
         {
           DEBUG ("received SI request for an existing tube but with the "
-              "offering flag set to false. Tube rejected so.");
+              "offering flag set to true. Tube rejected so.");
           return FALSE;
         }
 

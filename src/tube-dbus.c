@@ -312,18 +312,21 @@ get_tube_state (GabbleTubeDBus *self)
 
   g_object_get (priv->bytestream, "state", &bytestream_state, NULL);
 
-  if (bytestream_state == GABBLE_BYTESTREAM_IBB_STATE_OPEN)
-    return TP_TUBE_STATE_OPEN;
-
-  else if (bytestream_state == GABBLE_BYTESTREAM_IBB_STATE_LOCAL_PENDING ||
-      bytestream_state == GABBLE_BYTESTREAM_IBB_STATE_ACCEPTED)
-    return TP_TUBE_STATE_LOCAL_PENDING;
-
-  else if (bytestream_state == GABBLE_BYTESTREAM_IBB_STATE_INITIATING)
-    return TP_TUBE_STATE_REMOTE_PENDING;
-
-  else
-    g_assert_not_reached ();
+  switch (bytestream_state)
+    {
+      case GABBLE_BYTESTREAM_IBB_STATE_OPEN:
+        return TP_TUBE_STATE_OPEN;
+        break;
+      case GABBLE_BYTESTREAM_IBB_STATE_LOCAL_PENDING:
+      case GABBLE_BYTESTREAM_IBB_STATE_ACCEPTED:
+        return TP_TUBE_STATE_LOCAL_PENDING;
+        break;
+      case GABBLE_BYTESTREAM_IBB_STATE_INITIATING:
+        return TP_TUBE_STATE_REMOTE_PENDING;
+        break;
+      default:
+        g_assert_not_reached ();
+    }
 }
 
 static void

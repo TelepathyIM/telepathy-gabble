@@ -23,6 +23,7 @@
 #include <glib-object.h>
 
 #include "gabble-connection.h"
+#include "bytestream-ibb.h"
 
 G_BEGIN_DECLS
 
@@ -61,7 +62,7 @@ GabbleTubeDBus *
 gabble_tube_dbus_new (GabbleConnection *conn, TpHandle handle,
     TpHandleType handle_type, TpHandle self_handle, TpHandle initiator,
     const gchar *service, GHashTable *parameters, const gchar *stream_id,
-    guint id);
+    guint id, GabbleBytestreamIBB *bytestream);
 
 G_END_DECLS
 

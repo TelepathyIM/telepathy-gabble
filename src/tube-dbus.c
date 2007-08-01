@@ -895,9 +895,10 @@ gabble_tube_dbus_new (GabbleConnection *conn,
                       const gchar *service,
                       GHashTable *parameters,
                       const gchar *stream_id,
-                      guint id)
+                      guint id,
+                      GabbleBytestreamIBB *bytestream)
 {
-  return g_object_new (GABBLE_TYPE_TUBE_DBUS,
+  GabbleTubeDBus *tube = g_object_new (GABBLE_TYPE_TUBE_DBUS,
       "connection", conn,
       "handle", handle,
       "handle-type", handle_type,
@@ -908,6 +909,11 @@ gabble_tube_dbus_new (GabbleConnection *conn,
       "stream-id", stream_id,
       "id", id,
       NULL);
+
+  if (bytestream != NULL)
+    g_object_set (tube, "bytestream", bytestream, NULL);
+
+  return tube;
 }
 
 /*

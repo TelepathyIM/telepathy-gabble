@@ -391,7 +391,8 @@ create_new_tube (GabbleTubesChannel *self,
                  const gchar *service,
                  GHashTable *parameters,
                  const gchar *stream_id,
-                 guint tube_id)
+                 guint tube_id,
+                 GabbleBytestreamIBB *bytestream)
 {
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
   GabbleTubeIface *tube;
@@ -403,7 +404,7 @@ create_new_tube (GabbleTubesChannel *self,
     case TP_TUBE_TYPE_DBUS:
       tube = GABBLE_TUBE_IFACE (gabble_tube_dbus_new (priv->conn,
           priv->handle, priv->handle_type, priv->self_handle, initiator,
-          service, parameters, stream_id, tube_id));
+          service, parameters, stream_id, tube_id, bytestream));
       break;
 #endif
     case TP_TUBE_TYPE_STREAM_UNIX:
@@ -729,7 +730,7 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
 #endif
 
               create_new_tube (self, type, initiator_handle,
-                  service, parameters, stream_id, tube_id);
+                  service, parameters, stream_id, tube_id, NULL);
               tube = g_hash_table_lookup (priv->tubes,
                   GUINT_TO_POINTER (tube_id));
 
@@ -1249,10 +1250,8 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
 #endif
 
   create_new_tube (self, type, priv->handle, service,
-      parameters, stream_id, tube_id);
+      parameters, stream_id, tube_id, bytestream);
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
-
-  g_object_set (tube, "bytestream", bytestream, NULL);
 
   if (type == TP_TUBE_TYPE_DBUS)
     {
@@ -1390,7 +1389,7 @@ gabble_tubes_channel_offer_d_bus_tube (TpSvcChannelTypeTubes *iface,
   tube_id = generate_tube_id ();
 
   create_new_tube (self, TP_TUBE_TYPE_DBUS, priv->self_handle,
-      service, parameters_copied, (const gchar*) stream_id, tube_id);
+      service, parameters_copied, (const gchar*) stream_id, tube_id, NULL);
 
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
 
@@ -1508,7 +1507,7 @@ gabble_tubes_channel_offer_stream_unix_tube (TpSvcChannelTypeTubes *iface,
   tube_id = generate_tube_id ();
 
   create_new_tube (self, TP_TUBE_TYPE_STREAM_UNIX, priv->self_handle,
-      service, parameters_copied, (const gchar*) stream_id, tube_id);
+      service, parameters_copied, (const gchar*) stream_id, tube_id, NULL);
 
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
 

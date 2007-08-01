@@ -1669,15 +1669,6 @@ gabble_tubes_channel_get_d_bus_server_address (TpSvcChannelTypeTubes *iface,
       return;
     }
 
-  if (state != TP_TUBE_STATE_OPEN)
-    {
-      GError error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-          "Tube is not open" };
-
-      dbus_g_method_return_error (context, &error);
-      return;
-    }
-
   g_object_get (tube, "dbus-address", &addr, NULL);
   tp_svc_channel_type_tubes_return_from_get_d_bus_server_address (context,
       addr);

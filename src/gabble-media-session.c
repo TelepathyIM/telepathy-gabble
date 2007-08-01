@@ -55,7 +55,7 @@ G_DEFINE_TYPE_WITH_CODE(GabbleMediaSession,
       session_handler_iface_init)
     )
 
-#define DEFAULT_SESSION_TIMEOUT 50000
+#define DEFAULT_SESSION_TIMEOUT 60000
 
 #define GTALK_STREAM_NAME "gtalk"
 

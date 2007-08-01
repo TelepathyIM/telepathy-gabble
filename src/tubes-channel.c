@@ -384,7 +384,7 @@ tube_opened_cb (GabbleTubeIface *tube,
       TP_TUBE_STATE_OPEN);
 }
 
-static void
+GabbleTubeIface *
 create_new_tube (GabbleTubesChannel *self,
                  TpTubeType type,
                  TpHandle initiator,
@@ -440,6 +440,8 @@ create_new_tube (GabbleTubesChannel *self,
 
   g_signal_connect (tube, "opened", G_CALLBACK (tube_opened_cb), self);
   g_signal_connect (tube, "closed", G_CALLBACK (tube_closed_cb), self);
+
+  return tube;
 }
 
 static gboolean
@@ -729,10 +731,8 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
                 }
 #endif
 
-              create_new_tube (self, type, initiator_handle,
+              tube = create_new_tube (self, type, initiator_handle,
                   service, parameters, stream_id, tube_id, NULL);
-              tube = g_hash_table_lookup (priv->tubes,
-                  GUINT_TO_POINTER (tube_id));
 
               /* the tube has reffed its initiator, no need to keep a ref */
               tp_handle_unref (contact_repo, initiator_handle);
@@ -1249,9 +1249,8 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
     }
 #endif
 
-  create_new_tube (self, type, priv->handle, service,
+  tube = create_new_tube (self, type, priv->handle, service,
       parameters, stream_id, tube_id, bytestream);
-  tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
 
   if (type == TP_TUBE_TYPE_DBUS)
     {
@@ -1388,10 +1387,8 @@ gabble_tubes_channel_offer_d_bus_tube (TpSvcChannelTypeTubes *iface,
   stream_id = gabble_bytestream_factory_generate_stream_id ();
   tube_id = generate_tube_id ();
 
-  create_new_tube (self, TP_TUBE_TYPE_DBUS, priv->self_handle,
+  tube = create_new_tube (self, TP_TUBE_TYPE_DBUS, priv->self_handle,
       service, parameters_copied, (const gchar*) stream_id, tube_id, NULL);
-
-  tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
 
   if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
     {
@@ -1506,10 +1503,8 @@ gabble_tubes_channel_offer_stream_unix_tube (TpSvcChannelTypeTubes *iface,
   stream_id = gabble_bytestream_factory_generate_stream_id ();
   tube_id = generate_tube_id ();
 
-  create_new_tube (self, TP_TUBE_TYPE_STREAM_UNIX, priv->self_handle,
+  tube = create_new_tube (self, TP_TUBE_TYPE_STREAM_UNIX, priv->self_handle,
       service, parameters_copied, (const gchar*) stream_id, tube_id, NULL);
-
-  tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
 
   g_object_set (tube, "socket", socket, NULL);
 

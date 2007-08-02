@@ -130,6 +130,8 @@ class EventTest:
             if key != 'type' and not key.startswith('_'):
                 self.log('- %s: %s' % (
                     key, pprint.pformat(getattr(event, key))))
+                if key == 'error':
+                    self.log('%s' % getattr(event, key))
 
         try:
             ret = self.call_handlers(event)

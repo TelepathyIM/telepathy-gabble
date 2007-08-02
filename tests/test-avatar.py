@@ -21,6 +21,21 @@ def expect_connected(event, data):
     return True
 
 @match('stream-iq')
+def expect_my_vcard_iq(event, data):
+    iq = event.stanza
+    if iq.getAttribute('to') is not None:
+        return False
+
+    vcard = list(iq.elements())[0]
+
+    if vcard.name != 'vCard':
+        return False
+
+    iq['type'] = 'result'
+    data['stream'].send(iq)
+    return True
+
+@match('stream-iq')
 def expect_vcard_iq(event, data):
     iq = event.stanza
 

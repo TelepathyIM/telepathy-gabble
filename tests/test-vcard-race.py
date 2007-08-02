@@ -61,6 +61,9 @@ def expect_got_self_handle(event, data):
     handle = event.value[0]
     call_async(data['test'], aliasing_iface(data['conn']),
                'SetAliases', {handle: 'Some Guy'})
+    call_async(data['test'], avatars_iface(data['conn']),
+               'SetAvatar', 'hello', 'image/png')
+
     return True
 
 @match('stream-iq')
@@ -82,62 +85,13 @@ def expect_get_vcard_again(event, data):
     if vcard.name != 'vCard':
         return False
 
-    # Send empty vCard back, but only after we've called SetAvatar and it
-    # has requested the vCard too (this triggers the race)
-    iq['type'] = 'result'
-    data['SetAliases-get-reply'] = iq
-    call_async(data['test'], avatars_iface(data['conn']),
-               'SetAvatar', 'hello', 'image/png')
-    return True
-
-@match('stream-iq')
-def expect_get_vcard_yet_again(event, data):
-    # Looking for something like this:
-    #   <iq xmlns='jabber:client' type='get' id='262286393608'>
-    #      <vCard xmlns='vcard-temp'/>
-
-    iq = event.stanza
-
-    if iq['type'] != 'get':
-        return False
-
-    if iq.uri != 'jabber:client':
-        return False
-
-    vcard = list(iq.elements())[0]
-
-    if vcard.name != 'vCard':
-        return False
-
-    data['stream'].send(data['SetAliases-get-reply'])
-
-    # Send empty vCard back.
     iq['type'] = 'result'
     data['stream'].send(iq)
+
     return True
 
 @match('stream-iq')
 def expect_set_vcard(event, data):
-    iq = event.stanza
-
-    if iq['type'] != 'set':
-        return False
-
-    if iq.uri != 'jabber:client':
-        return False
-
-    vcard = list(iq.elements())[0]
-
-    if vcard.name != 'vCard':
-        return False
-
-    nickname = vcard.firstChildElement()
-    assert nickname.name == 'NICKNAME'
-    assert str(nickname) == 'Some Guy'
-    return True
-
-@match('stream-iq')
-def expect_set_vcard_again(event, data):
     iq = event.stanza
 
     if iq['type'] != 'set':

@@ -95,20 +95,11 @@ GabbleVCardManagerRequest *gabble_vcard_manager_request (GabbleVCardManager *,
                                                        GObject *object,
                                                        GError **error);
 
-GabbleVCardManagerRequest *gabble_vcard_manager_replace (GabbleVCardManager *,
-                                                       LmMessageNode *,
-                                                       guint timeout,
-                                                       GabbleVCardManagerCb,
-                                                       gpointer user_data,
-                                                       GObject *object,
-                                                       GError **error);
-
 GabbleVCardManagerRequest *gabble_vcard_manager_edit (GabbleVCardManager *,
                                                     guint timeout,
                                                     GabbleVCardManagerCb,
                                                     gpointer user_data,
                                                     GObject *object,
-                                                    GError **error,
                                                     ...)
                                                    G_GNUC_NULL_TERMINATED;
 

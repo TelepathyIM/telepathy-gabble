@@ -8,7 +8,7 @@ import sha
 
 import dbus
 
-from servicetest import tp_name_prefix
+from servicetest import tp_name_prefix, match, lazy
 from gabbletest import go
 
 def avatars_iface(proxy):
@@ -30,10 +30,23 @@ def expect_connected(event, data):
     avatars_iface(data['conn']).RequestAvatars([handle])
     return True
 
-def expect_vcard_iq(event, data):
-    if event.type != 'stream-iq':
+@match('stream-iq')
+def expect_my_vcard_iq(event, data):
+    iq = event.stanza
+    if iq.getAttribute('to') is not None:
         return False
 
+    vcard = list(iq.elements())[0]
+
+    if vcard.name != 'vCard':
+        return False
+
+    iq['type'] = 'result'
+    data['stream'].send(iq)
+    return True
+
+@match('stream-iq')
+def expect_vcard_iq(event, data):
     iq = event.stanza
 
     if iq.getAttribute('to') != 'bob@foo.com':

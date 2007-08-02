@@ -353,7 +353,7 @@ setaliases_foreach (gpointer key, gpointer value, gpointer user_data)
         }
 
       gabble_vcard_manager_edit (data->conn->vcard_manager, 0, NULL, NULL,
-          G_OBJECT(data->conn), NULL, "NICKNAME", alias, NULL);
+          G_OBJECT(data->conn), "NICKNAME", alias, NULL);
     }
 
   if (NULL != error)

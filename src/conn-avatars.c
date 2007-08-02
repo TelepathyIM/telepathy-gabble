@@ -545,19 +545,15 @@ gabble_connection_request_avatars (TpSvcConnectionInterfaceAvatars *iface,
 struct _set_avatar_ctx {
   GabbleConnection *conn;
   DBusGMethodInvocation *invocation;
-  LmMessage *new_vcard_msg;
   GString *avatar;
-  gchar *mime_type;
 };
 
 
 static void
 _set_avatar_ctx_free (struct _set_avatar_ctx *ctx)
 {
-  lm_message_unref (ctx->new_vcard_msg);
   if (ctx->avatar)
       g_string_free (ctx->avatar, TRUE);
-  g_free (ctx->mime_type);
   g_free (ctx);
 }
 
@@ -611,68 +607,6 @@ _set_avatar_cb2 (GabbleVCardManager *manager,
 }
 
 
-static void
-_set_avatar_cb1 (GabbleVCardManager *manager,
-                 GabbleVCardManagerRequest *request,
-                 TpHandle handle,
-                 LmMessageNode *vcard,
-                 GError *vcard_error,
-                 gpointer user_data)
-{
-  struct _set_avatar_ctx *ctx = (struct _set_avatar_ctx *) user_data;
-  LmMessageNode *new_vcard, *photo_node, *type_node, *binval_node, *i, *next;
-  gchar *encoded;
-
-  if (NULL == vcard)
-    {
-      dbus_g_method_return_error (ctx->invocation, vcard_error);
-      _set_avatar_ctx_free (ctx);
-      return;
-    }
-
-  ctx->new_vcard_msg = lm_message_new (NULL, LM_MESSAGE_TYPE_UNKNOWN);
-  new_vcard = lm_message_node_add_child (ctx->new_vcard_msg->node,
-      "vCard", "");
-  lm_message_node_set_attribute (new_vcard, "xmlns", NS_VCARD_TEMP);
-  lm_message_node_steal_children (new_vcard, vcard);
-
-  for (i = new_vcard->children; i; i = next)
-    {
-      next = i->next;
-      if (0 == strcmp (i->name, "PHOTO"))
-        {
-          lm_message_node_unlink (i);
-          lm_message_node_unref (i);
-        }
-    }
-
-  photo_node = lm_message_node_add_child (new_vcard, "PHOTO", "");
-
-  if (ctx->avatar)
-    {
-
-      type_node = lm_message_node_get_child (photo_node, "TYPE");
-
-      if (NULL == type_node)
-        type_node = lm_message_node_add_child (photo_node, "TYPE", "");
-
-      lm_message_node_set_value (type_node, ctx->mime_type);
-
-      binval_node = lm_message_node_get_child (photo_node, "BINVAL");
-
-      if (NULL == binval_node)
-        binval_node = lm_message_node_add_child (photo_node, "BINVAL", "");
-
-      encoded = base64_encode (ctx->avatar->len, ctx->avatar->str);
-      lm_message_node_set_value (binval_node, encoded);
-      g_free (encoded);
-    }
-
-  gabble_vcard_manager_replace (
-    manager, new_vcard, 0, _set_avatar_cb2, ctx, NULL, NULL);
-}
-
-
 /**
  * gabble_connection_set_avatar
  *
@@ -691,6 +625,8 @@ gabble_connection_set_avatar (TpSvcConnectionInterfaceAvatars *iface,
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *)self;
   struct _set_avatar_ctx *ctx;
+  gchar *value = NULL;
+  gchar *base64;
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
 
@@ -700,14 +636,18 @@ gabble_connection_set_avatar (TpSvcConnectionInterfaceAvatars *iface,
   if (avatar)
     {
       ctx->avatar = g_string_new_len (avatar->data, avatar->len);
-      ctx->mime_type = g_strdup (mime_type);
+      base64 = base64_encode (avatar->len, avatar->data);
+      value = g_strdup_printf ("%s %s", mime_type, base64);
+      g_free (base64);
     }
 
   DEBUG ("called");
-  gabble_vcard_manager_invalidate_cache (self->vcard_manager,
-      base->self_handle);
-  gabble_vcard_manager_request (self->vcard_manager,
-      base->self_handle, 0, _set_avatar_cb1, ctx, NULL, NULL);
+
+  gabble_vcard_manager_edit (self->vcard_manager, 0,
+      _set_avatar_cb2, ctx, (GObject *) self,
+      "PHOTO", value,
+      NULL);
+  g_free (value);
 }
 
 

@@ -67,6 +67,8 @@ typedef enum {
     XMPP_ERROR_JINGLE_UNSUPPORTED_CONTENT,
     XMPP_ERROR_JINGLE_UNSUPPORTED_TRANSPORT,
 
+    XMPP_ERROR_UNKNOWN,
+
     NUM_XMPP_ERRORS,
 
     INVALID_XMPP_ERROR,
@@ -81,5 +83,6 @@ LmMessageNode *gabble_xmpp_error_to_node (GabbleXmppError error,
     LmMessageNode *parent_node, const gchar *errmsg);
 const gchar *gabble_xmpp_error_string (GabbleXmppError error);
 const gchar *gabble_xmpp_error_description (GabbleXmppError error);
+GError *gabble_message_get_xmpp_error (LmMessage *msg);
 
 #endif /* __GABBLE_ERROR_H__ */

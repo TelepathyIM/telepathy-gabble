@@ -348,7 +348,8 @@ GError *
 gabble_xmpp_error_to_g_error (GabbleXmppError error)
 {
   if (error >= NUM_XMPP_ERRORS)
-    return NULL;
+      return g_error_new (GABBLE_XMPP_ERROR, XMPP_ERROR_UNKNOWN,
+          "Unknown or invalid XMPP error");
 
   return g_error_new (GABBLE_XMPP_ERROR,
                       error,
@@ -424,3 +425,28 @@ gabble_xmpp_error_description (GabbleXmppError error)
     return NULL;
 }
 
+GError *
+gabble_message_get_xmpp_error (LmMessage *msg)
+{
+  g_return_val_if_fail (msg == NULL, NULL);
+
+  if (lm_message_get_sub_type (msg) == LM_MESSAGE_SUB_TYPE_ERROR)
+    {
+      LmMessageNode *error_node = lm_message_node_get_child (msg->node,
+          "error");
+
+      if (error_node != NULL)
+        {
+          return gabble_xmpp_error_to_g_error
+              (gabble_xmpp_error_from_node (error_node));
+        }
+      else
+        {
+          return g_error_new (GABBLE_XMPP_ERROR, XMPP_ERROR_UNKNOWN,
+              "Unknown or invalid XMPP error");
+        }
+    }
+
+  /* no error */
+  return NULL;
+}

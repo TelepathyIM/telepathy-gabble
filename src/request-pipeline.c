@@ -206,7 +206,7 @@ gabble_request_pipeline_item_cancel (GabbleRequestPipelineItem *item)
   GabbleRequestPipelinePrivate *priv =
       GABBLE_REQUEST_PIPELINE_GET_PRIVATE (item->pipeline);
 
-  (item->callback) (priv->connection, NULL, item, &cancelled);
+  (item->callback) (priv->connection, NULL, item->user_data, &cancelled);
   delete_item (item);
 }
 
@@ -230,14 +230,16 @@ gabble_request_pipeline_dispose (GObject *object)
   while (priv->items_in_flight)
     {
       item = priv->items_in_flight->data;
-      (item->callback) (priv->connection, NULL, item, &disconnected);
+      (item->callback) (priv->connection, NULL, item->user_data,
+                        &disconnected);
       delete_item (item);
     }
 
   while (priv->pending_items)
     {
       item = priv->pending_items->data;
-      (item->callback) (priv->connection, NULL, item, &disconnected);
+      (item->callback) (priv->connection, NULL, item->user_data,
+                        &disconnected);
       delete_item (item);
     }
 
@@ -274,7 +276,7 @@ response_cb (GabbleConnection *conn,
 
   priv->items_in_flight = g_slist_remove (priv->items_in_flight, item);
 
-  item->callback (priv->connection, reply, user_data, NULL);
+  item->callback (priv->connection, reply, item->user_data, NULL);
 
   delete_item (item);
 
@@ -362,6 +364,7 @@ delayed_run_pipeline (gpointer user_data)
   return FALSE;
 }
 
+/* A reference to msg is stolen */
 GabbleRequestPipelineItem *
 gabble_request_pipeline_enqueue (GabbleRequestPipeline *pipeline,
                                  LmMessage *msg,

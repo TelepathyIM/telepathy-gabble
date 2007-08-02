@@ -180,7 +180,7 @@ delete_item (GabbleRequestPipelineItem *item)
   g_assert (GABBLE_IS_REQUEST_PIPELINE (item->pipeline));
   priv = GABBLE_REQUEST_PIPELINE_GET_PRIVATE (item->pipeline);
 
-  g_debug ("deleting item %p", item);
+  DEBUG ("deleting item %p", item);
 
   if (item->in_flight)
     {
@@ -225,7 +225,7 @@ gabble_request_pipeline_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  g_debug ("disposing request-pipeline");
+  DEBUG ("disposing request-pipeline");
 
   while (priv->items_in_flight)
     {
@@ -265,7 +265,7 @@ response_cb (GabbleConnection *conn,
   g_assert (GABBLE_IS_REQUEST_PIPELINE (pipeline));
   priv = GABBLE_REQUEST_PIPELINE_GET_PRIVATE (pipeline);
 
-  g_debug ("%s: got reply for request %p", G_STRFUNC, item);
+  DEBUG ("got reply for request %p", item);
 
   if (NULL == g_slist_find (priv->items_in_flight, item))
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
@@ -296,7 +296,7 @@ send_next_request (GabbleRequestPipeline *pipeline)
 
   item = priv->pending_items->data;
 
-  g_debug ("%s: processing request %p", G_STRFUNC, item);
+  DEBUG ("processing request %p", item);
 
   g_assert (item->in_flight == FALSE);
 
@@ -386,7 +386,7 @@ gabble_request_pipeline_enqueue (GabbleRequestPipeline *pipeline,
 
   priv->pending_items = g_slist_append (priv->pending_items, item);
 
-  g_debug ("%s: enqueued new request as item %p", G_STRFUNC, item);
+  DEBUG ("enqueued new request as item %p", item);
 
   /* if this is the first request in pipeline, run it delayed so in the
    * case of errors the callback will be called after this function returns

@@ -2,7 +2,8 @@ BUILT_SOURCES = \
     gabble-media-session-enumtypes.h \
     gabble-media-session-enumtypes.c \
     gabble-signals-marshal.h \
-    gabble-signals-marshal.c
+    gabble-signals-marshal.c \
+    gabble-signals-marshal.list
 
 CLEANFILES = $(BUILT_SOURCES)
 

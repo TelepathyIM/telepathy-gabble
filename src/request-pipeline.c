@@ -69,15 +69,6 @@ gabble_request_pipeline_error_quark (void)
   return quark;
 }
 
-GQuark
-gabble_request_pipeline_cache_quark (void)
-{
-  static GQuark quark = 0;
-  if (!quark)
-    quark = g_quark_from_static_string ("gabble-request-pipeline-cache");
-  return quark;
-}
-
 #define GABBLE_REQUEST_PIPELINE_GET_PRIVATE(o) \
   ((GabbleRequestPipelinePrivate *) ((o)->priv));
 

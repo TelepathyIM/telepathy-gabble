@@ -592,7 +592,7 @@ muc_factory_message_cb (LmMessageHandler *handler,
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_ROOM);
 
-  const gchar *from, *body;
+  const gchar *from, *body, *subject;
   time_t stamp;
   TpChannelTextMessageType msgtype;
   TpHandleRepoIface *handle_source;
@@ -602,6 +602,7 @@ muc_factory_message_cb (LmMessageHandler *handler,
   gint state;
   TpChannelTextSendError send_error;
   gchar *room;
+  LmMessageNode *subj_node;
 
   if (!gabble_text_mixin_parse_incoming_message (message, &from, &stamp,
         &msgtype, &body, &state, &send_error))
@@ -680,9 +681,14 @@ muc_factory_message_cb (LmMessageHandler *handler,
   if (body != NULL)
     _gabble_muc_channel_receive (chan, msgtype, handle_type, handle, stamp,
         body, message);
-  else if (NULL != lm_message_node_get_child (message->node, "subject"))
-    _gabble_muc_channel_handle_subject (chan, msgtype, handle_type, handle,
-        stamp, body, message);
+
+  subj_node = lm_message_node_get_child (message->node, "subject");
+  if (subj_node != NULL)
+    {
+      subject = lm_message_node_get_value (subj_node);
+      _gabble_muc_channel_handle_subject (chan, msgtype, handle_type, handle,
+          stamp, subject, message);
+    }
 
 done:
   tp_handle_unref (handle_source, handle);

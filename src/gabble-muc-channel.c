@@ -1756,22 +1756,17 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
                                     TpHandleType handle_type,
                                     TpHandle sender,
                                     time_t timestamp,
-                                    const gchar *text,
+                                    const gchar *subject,
                                     LmMessage *msg)
 {
   gboolean error;
   GabbleMucChannelPrivate *priv;
-  LmMessageNode *subj_node, *node;
   TpIntSet *changed_values, *changed_flags;
   GValue val = { 0, };
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
-
-  subj_node = lm_message_node_get_child (msg->node, "subject");
-
-  g_assert (subj_node != NULL);
 
   error = lm_message_get_sub_type (msg) == LM_MESSAGE_SUB_TYPE_ERROR;
 
@@ -1783,17 +1778,13 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
 
   if (error)
     {
-      GabbleXmppError xmpp_error = INVALID_XMPP_ERROR;
+      LmMessageNode *node;
       const gchar *err_desc = NULL;
 
       node = lm_message_node_get_child (msg->node, "error");
       if (node)
         {
-          xmpp_error = gabble_xmpp_error_from_node (node);
-        }
-
-      if (xmpp_error != INVALID_XMPP_ERROR)
-        {
+          GabbleXmppError xmpp_error = gabble_xmpp_error_from_node (node);
           err_desc = gabble_xmpp_error_description (xmpp_error);
         }
 
@@ -1821,7 +1812,7 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
 
   /* ROOM_PROP_SUBJECT */
   g_value_init (&val, G_TYPE_STRING);
-  g_value_set_string (&val, lm_message_node_get_value (subj_node));
+  g_value_set_string (&val, subject);
 
   tp_properties_mixin_change_value (G_OBJECT (chan),
       ROOM_PROP_SUBJECT, &val, changed_values);
@@ -1874,8 +1865,6 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
           priv->properties_ctx = NULL;
         }
     }
-
-  return;
 }
 
 /**

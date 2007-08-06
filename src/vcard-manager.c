@@ -460,11 +460,18 @@ complete_one_request (GabbleVCardManagerRequest *request,
 }
 
 static void
-disconnect_entry_foreach (gpointer handle, gpointer entry, gpointer unused)
+disconnect_entry_foreach (gpointer handle, gpointer value, gpointer unused)
 {
   GError err = { TP_ERRORS, TP_ERROR_DISCONNECTED, "Connection closed" };
+  GabbleVCardCacheEntry *entry = value;
 
   cache_entry_complete_requests (entry, &err);
+
+  if (entry->pipeline_item)
+    {
+      gabble_request_pipeline_item_cancel (entry->pipeline_item);
+      entry->pipeline_item = NULL;
+    }
 }
 
 static void

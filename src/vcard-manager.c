@@ -834,10 +834,8 @@ replace_reply_cb (GabbleConnection *conn,
                   GObject *object,
                   gpointer user_data)
 {
-  GabbleVCardManager *manager = GABBLE_VCARD_MANAGER (object);
-
-  DEBUG ("Replace request got a reply: conn@%p, sent_msg@%p, reply_msg@%p, "
-         "manager @%p", conn, sent_msg, reply_msg, manager);
+  DEBUG ("Replace request got a reply: conn@%p, sent_msg@%p, reply_msg@%p",
+      conn, sent_msg, reply_msg);
 
   cache_entry_incoming (user_data, reply_msg, TRUE, NULL);
 

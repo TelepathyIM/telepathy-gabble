@@ -1748,7 +1748,138 @@ OUT:
 
 
 /**
- * _gabble_muc_channel_receive
+ * _gabble_muc_channel_handle_subject: handle room subject updates
+ */
+void
+_gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
+                                    TpChannelTextMessageType msg_type,
+                                    TpHandleType handle_type,
+                                    TpHandle sender,
+                                    time_t timestamp,
+                                    const gchar *text,
+                                    LmMessage *msg)
+{
+  gboolean error;
+  GabbleMucChannelPrivate *priv;
+  LmMessageNode *subj_node, *node;
+  TpIntSet *changed_values, *changed_flags;
+  GValue val = { 0, };
+
+  g_assert (GABBLE_IS_MUC_CHANNEL (chan));
+
+  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+
+  subj_node = lm_message_node_get_child (msg->node, "subject");
+
+  g_assert (subj_node != NULL);
+
+  error = lm_message_get_sub_type (msg) == LM_MESSAGE_SUB_TYPE_ERROR;
+
+  if (priv->properties_ctx)
+    {
+      tp_properties_context_remove (priv->properties_ctx,
+          ROOM_PROP_SUBJECT);
+    }
+
+  if (error)
+    {
+      GabbleXmppError xmpp_error = INVALID_XMPP_ERROR;
+      const gchar *err_desc = NULL;
+
+      node = lm_message_node_get_child (msg->node, "error");
+      if (node)
+        {
+          xmpp_error = gabble_xmpp_error_from_node (node);
+        }
+
+      if (xmpp_error != INVALID_XMPP_ERROR)
+        {
+          err_desc = gabble_xmpp_error_description (xmpp_error);
+        }
+
+      if (priv->properties_ctx)
+        {
+          GError *error = NULL;
+
+          error = g_error_new (TP_ERRORS, TP_ERROR_PERMISSION_DENIED,
+              (err_desc) ? err_desc : "failed to change subject");
+
+          tp_properties_context_return (priv->properties_ctx, error);
+          priv->properties_ctx = NULL;
+
+          /* Get the properties into a consistent state. */
+          room_properties_update (chan);
+        }
+
+      return;
+    }
+
+  g_debug ("%s: updating new property value for subject", G_STRFUNC);
+
+  changed_values = tp_intset_sized_new (NUM_ROOM_PROPS);
+  changed_flags = tp_intset_sized_new (NUM_ROOM_PROPS);
+
+  /* ROOM_PROP_SUBJECT */
+  g_value_init (&val, G_TYPE_STRING);
+  g_value_set_string (&val, lm_message_node_get_value (subj_node));
+
+  tp_properties_mixin_change_value (G_OBJECT (chan),
+      ROOM_PROP_SUBJECT, &val, changed_values);
+
+  tp_properties_mixin_change_flags (G_OBJECT (chan),
+      ROOM_PROP_SUBJECT, TP_PROPERTY_FLAG_READ, 0,
+      changed_flags);
+
+  g_value_unset (&val);
+
+  if (handle_type == TP_HANDLE_TYPE_CONTACT)
+    {
+      /* ROOM_PROP_SUBJECT_CONTACT */
+      g_value_init (&val, G_TYPE_UINT);
+      g_value_set_uint (&val, sender);
+
+      tp_properties_mixin_change_value (G_OBJECT (chan),
+          ROOM_PROP_SUBJECT_CONTACT, &val, changed_values);
+
+      tp_properties_mixin_change_flags (G_OBJECT (chan),
+          ROOM_PROP_SUBJECT_CONTACT, TP_PROPERTY_FLAG_READ, 0,
+          changed_flags);
+
+      g_value_unset (&val);
+    }
+
+  /* ROOM_PROP_SUBJECT_TIMESTAMP */
+  g_value_init (&val, G_TYPE_UINT);
+  g_value_set_uint (&val, timestamp);
+
+  tp_properties_mixin_change_value (G_OBJECT (chan),
+      ROOM_PROP_SUBJECT_TIMESTAMP, &val, changed_values);
+
+  tp_properties_mixin_change_flags (G_OBJECT (chan),
+      ROOM_PROP_SUBJECT_TIMESTAMP, TP_PROPERTY_FLAG_READ, 0,
+      changed_flags);
+
+  g_value_unset (&val);
+
+  /* Emit signals */
+  tp_properties_mixin_emit_changed (G_OBJECT (chan), changed_values);
+  tp_properties_mixin_emit_flags (G_OBJECT (chan), changed_flags);
+  tp_intset_destroy (changed_values);
+  tp_intset_destroy (changed_flags);
+
+  if (priv->properties_ctx)
+    {
+      if (tp_properties_context_return_if_done (priv->properties_ctx))
+        {
+          priv->properties_ctx = NULL;
+        }
+    }
+
+  return;
+}
+
+/**
+ * _gabble_muc_channel_receive: receive MUC messages
  */
 void
 _gabble_muc_channel_receive (GabbleMucChannel *chan,
@@ -1761,8 +1892,6 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
 {
   gboolean error;
   GabbleMucChannelPrivate *priv;
-  LmMessageNode *subj_node, *node;
-  GValue val = { 0, };
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
@@ -1770,113 +1899,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
 
   error = lm_message_get_sub_type (msg) == LM_MESSAGE_SUB_TYPE_ERROR;
 
-  subj_node = lm_message_node_get_child (msg->node, "subject");
-
-  if (subj_node)
-    {
-      TpIntSet *changed_values, *changed_flags;
-
-      if (priv->properties_ctx)
-        {
-          tp_properties_context_remove (priv->properties_ctx,
-              ROOM_PROP_SUBJECT);
-        }
-
-      if (error)
-        {
-          GabbleXmppError xmpp_error = INVALID_XMPP_ERROR;
-          const gchar *err_desc = NULL;
-
-          node = lm_message_node_get_child (msg->node, "error");
-          if (node)
-            {
-              xmpp_error = gabble_xmpp_error_from_node (node);
-            }
-
-          if (xmpp_error != INVALID_XMPP_ERROR)
-            {
-              err_desc = gabble_xmpp_error_description (xmpp_error);
-            }
-
-          if (priv->properties_ctx)
-            {
-              GError *error = NULL;
-
-              error = g_error_new (TP_ERRORS, TP_ERROR_PERMISSION_DENIED,
-                  (err_desc) ? err_desc : "failed to change subject");
-
-              tp_properties_context_return (priv->properties_ctx, error);
-              priv->properties_ctx = NULL;
-
-              /* Get the properties into a consistent state. */
-              room_properties_update (chan);
-            }
-
-          return;
-        }
-
-      changed_values = tp_intset_sized_new (NUM_ROOM_PROPS);
-      changed_flags = tp_intset_sized_new (NUM_ROOM_PROPS);
-
-      /* ROOM_PROP_SUBJECT */
-      g_value_init (&val, G_TYPE_STRING);
-      g_value_set_string (&val, lm_message_node_get_value (subj_node));
-
-      tp_properties_mixin_change_value (G_OBJECT (chan),
-          ROOM_PROP_SUBJECT, &val, changed_values);
-
-      tp_properties_mixin_change_flags (G_OBJECT (chan),
-          ROOM_PROP_SUBJECT, TP_PROPERTY_FLAG_READ, 0,
-          changed_flags);
-
-      g_value_unset (&val);
-
-      if (handle_type == TP_HANDLE_TYPE_CONTACT)
-        {
-          /* ROOM_PROP_SUBJECT_CONTACT */
-          g_value_init (&val, G_TYPE_UINT);
-          g_value_set_uint (&val, sender);
-
-          tp_properties_mixin_change_value (G_OBJECT (chan),
-              ROOM_PROP_SUBJECT_CONTACT, &val, changed_values);
-
-          tp_properties_mixin_change_flags (G_OBJECT (chan),
-              ROOM_PROP_SUBJECT_CONTACT, TP_PROPERTY_FLAG_READ, 0,
-              changed_flags);
-
-          g_value_unset (&val);
-        }
-
-      /* ROOM_PROP_SUBJECT_TIMESTAMP */
-      g_value_init (&val, G_TYPE_UINT);
-      g_value_set_uint (&val, timestamp);
-
-      tp_properties_mixin_change_value (G_OBJECT (chan),
-          ROOM_PROP_SUBJECT_TIMESTAMP, &val, changed_values);
-
-      tp_properties_mixin_change_flags (G_OBJECT (chan),
-          ROOM_PROP_SUBJECT_TIMESTAMP, TP_PROPERTY_FLAG_READ, 0,
-          changed_flags);
-
-      g_value_unset (&val);
-
-      /* Emit signals */
-      tp_properties_mixin_emit_changed (G_OBJECT (chan), changed_values);
-      tp_properties_mixin_emit_flags (G_OBJECT (chan), changed_flags);
-      tp_intset_destroy (changed_values);
-      tp_intset_destroy (changed_flags);
-
-      if (priv->properties_ctx)
-        {
-          if (tp_properties_context_return_if_done (priv->properties_ctx))
-            {
-              priv->properties_ctx = NULL;
-            }
-        }
-
-      return;
-    }
-  else if (handle_type == TP_HANDLE_TYPE_ROOM)
+  if (handle_type == TP_HANDLE_TYPE_ROOM)
     {
       NODE_DEBUG (msg->node, "ignoring message from channel");
 

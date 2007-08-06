@@ -680,6 +680,9 @@ muc_factory_message_cb (LmMessageHandler *handler,
   if (body != NULL)
     _gabble_muc_channel_receive (chan, msgtype, handle_type, handle, stamp,
         body, message);
+  else if (NULL != lm_message_node_get_child (message->node, "subject"))
+    _gabble_muc_channel_handle_subject (chan, msgtype, handle_type, handle,
+        stamp, body, message);
 
 done:
   tp_handle_unref (handle_source, handle);

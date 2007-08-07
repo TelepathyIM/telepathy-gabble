@@ -2737,6 +2737,7 @@ room_jid_disco_cb (GabbleDisco *disco,
   if (handle == 0)
     {
       room_verify_batch_raise_error (batch, error);
+      return;
     }
 
   DEBUG ("disco reported MUC support for service name in jid %s", rvctx->jid);

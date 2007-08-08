@@ -66,6 +66,7 @@
 \.pc$
 ^data/gabble.manager$
 ^(data|tests)/org.freedesktop.Telepathy.ConnectionManager.gabble.service$
+^src/gabble-signals-marshal\.list$
 ^src/telepathy-gabble$
 ^src/write-mgr-file$
 ^src/gabble-signals-marshal.list$

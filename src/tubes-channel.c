@@ -620,8 +620,10 @@ contact_left_muc (GabbleTubesChannel *self,
                   TpHandle contact)
 {
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+#ifdef ENABLE_DEBUG
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
     (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+#endif
   GHashTable *old_dbus_tubes;
   struct _add_in_old_dbus_tubes_data add_data;
   struct _emit_d_bus_names_changed_foreach_data emit_data;

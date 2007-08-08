@@ -36,6 +36,7 @@
 
 #include "debug.h"
 #include "disco.h"
+#include "extensions/extensions.h"
 #include "gabble-connection.h"
 #include "presence-cache.h"
 #include "gabble-muc-channel.h"
@@ -47,7 +48,6 @@
 #include "util.h"
 
 #include "tubes-channel.h"
-#include <telepathy-glib/svc-unstable.h>
 
 static void gabble_muc_factory_iface_init (gpointer g_iface,
     gpointer iface_data);
@@ -1159,7 +1159,7 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
           return TP_CHANNEL_FACTORY_REQUEST_STATUS_QUEUED;
         }
     }
-  else if (!tp_strdiff (chan_type, TP_IFACE_CHANNEL_TYPE_TUBES))
+  else if (!tp_strdiff (chan_type, GABBLE_IFACE_CHANNEL_TYPE_TUBES))
     {
       tubes_chan = g_hash_table_lookup (priv->tubes_channels,
           GINT_TO_POINTER (handle));

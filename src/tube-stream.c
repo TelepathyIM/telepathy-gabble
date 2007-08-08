@@ -37,11 +37,11 @@
 
 #include "debug.h"
 #include "disco.h"
+#include "extensions/extensions.h"
 #include "gabble-connection.h"
 #include "presence.h"
 #include "presence-cache.h"
 #include "namespaces.h"
-#include <telepathy-glib/svc-unstable.h>
 #include "util.h"
 #include "tube-iface.h"
 #include "bytestream-factory.h"
@@ -105,7 +105,7 @@ struct _GabbleTubeStreamPrivate
   TpHandle initiator;
   gchar *service;
   GHashTable *parameters;
-  TpTubeState state;
+  GabbleTubeState state;
 
   /* Path of the unix socket associated with this stream tube */
   gchar *socket_path;
@@ -726,7 +726,7 @@ gabble_tube_stream_get_property (GObject *object,
         g_value_set_object (value, priv->default_bytestream);
         break;
       case PROP_TYPE:
-        g_value_set_uint (value, TP_TUBE_TYPE_STREAM_UNIX);
+        g_value_set_uint (value, GABBLE_TUBE_TYPE_STREAM_UNIX);
         break;
       case PROP_INITIATOR:
         g_value_set_uint (value, priv->initiator);
@@ -833,17 +833,17 @@ gabble_tube_stream_constructor (GType type,
       if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
         {
           /* Private tube */
-          priv->state = TP_TUBE_STATE_REMOTE_PENDING;
+          priv->state = GABBLE_TUBE_STATE_REMOTE_PENDING;
         }
       else
         {
           /* Muc tube */
-          priv->state = TP_TUBE_STATE_OPEN;
+          priv->state = GABBLE_TUBE_STATE_OPEN;
         }
     }
   else
     {
-      priv->state = TP_TUBE_STATE_LOCAL_PENDING;
+      priv->state = GABBLE_TUBE_STATE_LOCAL_PENDING;
     }
 
   return obj;
@@ -943,8 +943,8 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
   param_spec = g_param_spec_uint (
       "type",
       "Tube type",
-      "The TpTubeType this D-Bus tube object.",
-      0, G_MAXUINT32, TP_TUBE_TYPE_STREAM_UNIX,
+      "The GabbleTubeType this D-Bus tube object.",
+      0, G_MAXUINT32, GABBLE_TUBE_TYPE_STREAM_UNIX,
       G_PARAM_READABLE |
       G_PARAM_STATIC_NAME |
       G_PARAM_STATIC_NICK |
@@ -990,8 +990,8 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
   param_spec = g_param_spec_uint (
       "state",
       "Tube state",
-      "The TpTubeState of this STREAM tube object",
-      0, G_MAXUINT32, TP_TUBE_STATE_REMOTE_PENDING,
+      "The GabbleTubeState of this STREAM tube object",
+      0, G_MAXUINT32, GABBLE_TUBE_STATE_REMOTE_PENDING,
       G_PARAM_READABLE |
       G_PARAM_STATIC_NAME |
       G_PARAM_STATIC_NICK |
@@ -1111,7 +1111,7 @@ gabble_tube_stream_accept (GabbleTubeIface *tube)
   const gchar *stream_init_id;
 
   tube_stream_open (self);
-  priv->state = TP_TUBE_STATE_OPEN;
+  priv->state = GABBLE_TUBE_STATE_OPEN;
   g_signal_emit (G_OBJECT (self), signals[OPENED], 0);
 
   if (priv->default_bytestream == NULL)

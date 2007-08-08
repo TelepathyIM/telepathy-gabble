@@ -33,6 +33,7 @@
 #define DEBUG_FLAG GABBLE_DEBUG_TUBES
 
 #include "debug.h"
+#include "extensions/extensions.h"
 #include "gabble-connection.h"
 #include "tubes-channel.h"
 #include "namespaces.h"
@@ -41,7 +42,6 @@
 #include "gabble-muc-channel.h"
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/channel-factory-iface.h>
-#include <telepathy-glib/svc-unstable.h>
 
 static GabbleTubesChannel *new_tubes_channel (GabbleTubesFactory *fac,
     TpHandle handle);
@@ -327,7 +327,7 @@ gabble_tubes_factory_iface_request (TpChannelFactoryIface *iface,
   GabbleTubesChannel *chan;
   TpChannelFactoryRequestStatus status;
 
-  if (tp_strdiff (chan_type, TP_IFACE_CHANNEL_TYPE_TUBES))
+  if (tp_strdiff (chan_type, GABBLE_IFACE_CHANNEL_TYPE_TUBES))
     return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_IMPLEMENTED;
 
   if (handle_type != TP_HANDLE_TYPE_CONTACT)

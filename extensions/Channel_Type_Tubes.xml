@@ -1,0 +1,422 @@
+<?xml version="1.0" ?>
+<node name="/Channel_Type_Tubes" xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+  <tp:copyright>
+    Copyright (C) 2007 Collabora Limited
+  </tp:copyright>
+  <tp:license>
+    This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Library General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+  </tp:license>
+  <interface name="org.freedesktop.Telepathy.Channel.Type.Tubes" tp:name-const="CHANNEL_TYPE_TUBES">
+    <tp:requires interface="org.freedesktop.Telepathy.Channel"/>
+    <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+      <p>A "tube" is a mechanism for arbitrary data transfer. Currently, one
+        kind of data transfer is specified, namely that of D-Bus messages.
+        Each tube has a service name, which is a string specifying the kind of
+        communication that takes place over it, and a dictionary of arbitrary
+        parameters. Tube parameters are commonly used for bootstrap
+        information such as usernames and passwords. Each tube is identified
+        by a locally unique identifier.</p>
+
+       <p>The Tubes channel type may be requested for handles of type
+         HANDLE_TYPE_CONTACT and HANDLE_TYPE_ROOM.</p>
+    </tp:docstring>
+
+    <tp:enum name="Tube_Type">
+      <tp:enumvalue suffix="DBus" value="0">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          <p>An ordered reliable transport, for transporting D-Bus
+            traffic.</p>
+
+          <p>For each D-Bus tube, the connection manager listens on a D-Bus
+            server address, as detailed in the D-Bus specification. On this
+            address, it emulates a bus upon which each tube participant appears
+            as an endpoint.</p>
+
+          <p>The objects and interfaces which are expected to exist on the
+            emulated bus depend on the well-known name; typically, either the
+            participant who initiated the tube is expected to export the same
+            objects/interfaces that would be exported by a service of that name
+            on a bus, or all participants are expected to export those
+            objects/interfaces.</p>
+        </tp:docstring>
+      </tp:enumvalue>
+
+      <tp:enumvalue suffix="Stream_Unix" value="1">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          <p>An ordered reliable transport, for transporting TCP traffic
+            through a Unix stream socket.</p>
+
+          <p>For each Stream Unix tube offered, the connection manager exports
+            a local Unix socket to the participants of the tube.
+            When accepting a Stream Unix tube, a new listening local socket is
+            created. Each time the client connects to this socket, the
+            connection manager of the initiator of the tube opens a new
+            connection to its local socket. Both sides can then use this pair
+            of sockets to communicate together.</p>
+        </tp:docstring>
+      </tp:enumvalue>
+    </tp:enum>
+
+    <tp:enum name="Tube_State">
+      <tp:enumvalue suffix="Local_Pending" value="0">
+        <tp:docstring>
+          The tube is waiting to be accepted/closed locally.
+        </tp:docstring>
+      </tp:enumvalue>
+      <tp:enumvalue suffix="Remote_Pending" value="1">
+        <tp:docstring>
+          The tube is waiting to be accepted/closed remotely.
+        </tp:docstring>
+      </tp:enumvalue>
+      <tp:enumvalue suffix="Open" value="2">
+        <tp:docstring>
+          The tube is open for traffic.
+        </tp:docstring>
+      </tp:enumvalue>
+    </tp:enum>
+
+    <method name="GetAvailableTubeTypes">
+      <arg direction="out" type="au" tp:type="Tube_Type[]">
+        <tp:docstring>
+          An array of the available tube types, as defined by the Tube_Type
+          enum.
+        </tp:docstring>
+      </arg>
+    </method>
+
+    <method name="ListTubes">
+      <arg direction="out" type="a(uuusa{sv}u)">
+        <tp:docstring>
+         Return an array of tuples, each representing a tube, with the
+         following members:
+
+         <ul>
+           <li>the tube's ID</li>
+           <li>the tube's initiator</li>
+           <li>the tube's type</li>
+           <li>the tube's service</li>
+           <li>the tube's parameters</li>
+           <li>the tube's state</li>
+         </ul>
+        </tp:docstring>
+      </arg>
+    </method>
+
+    <method name="OfferDBusTube">
+      <tp:docstring>
+        Offers a D-Bus tube providing the service specified.
+      </tp:docstring>
+      <arg direction="in" name="service" type="s">
+        <tp:docstring>
+          A string representing the service name that will be used over the
+          tube.
+          It should be a well-known D-Bus service name, of the form
+          com.example.ServiceName.
+        </tp:docstring>
+      </arg>
+      <arg direction="in" name="parameters" type="a{sv}">
+        <tp:docstring>
+          A dictionary of properties for the new tube.
+        </tp:docstring>
+      </arg>
+      <arg direction="out" type="u">
+        <tp:docstring>
+          The ID of the new tube.
+        </tp:docstring>
+      </arg>
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.NetworkError"/>
+        <tp:error name="org.freedesktop.Telepathy.Error.NotAvailable">
+          <tp:docstring>
+            The contact associated with this channel doesn't have tubes
+            capabilities.
+          </tp:docstring>
+        </tp:error>
+        <tp:error name="org.freedesktop.Telepathy.Error.NotImplemented">
+          <tp:docstring>
+            The connection manager doesn't support D-Bus tubes.
+          </tp:docstring>
+        </tp:error>
+      </tp:possible-errors>
+    </method>
+
+    <method name="OfferStreamUnixTube">
+      <tp:docstring>
+        Offers a Stream Unix tube exporting the local socket specified.
+      </tp:docstring>
+      <arg direction="in" name="service" type="s">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          A string representing the service name that will be used over the
+          tube.
+          It should be a well-known TCP service name as defined by
+          <a href="http://www.dns-sd.org/ServiceTypes.html">
+            http://www.dns-sd.org/ServiceTypes.html</a>.
+        </tp:docstring>
+      </arg>
+      <arg direction="in" name="socket" type="s">
+        <tp:docstring>
+          The path of the local Unix socket exported over the tube.
+        </tp:docstring>
+      </arg>
+      <arg direction="in" name="parameters" type="a{sv}">
+        <tp:docstring>
+          A dictionary of properties for the new tube.
+        </tp:docstring>
+      </arg>
+      <arg direction="out" type="u">
+        <tp:docstring>
+          The ID of the new tube.
+        </tp:docstring>
+      </arg>
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.NetworkError"/>
+        <tp:error name="org.freedesktop.Telepathy.Error.NotAvailable">
+          <tp:docstring>
+            The contact associated with this channel doesn't have tubes
+            capabilities.
+          </tp:docstring>
+        </tp:error>
+        <tp:error name="org.freedesktop.Telepathy.Error.NotImplemented">
+          <tp:docstring>
+            The connection manager doesn't support Stream Unix tubes.
+          </tp:docstring>
+        </tp:error>
+      </tp:possible-errors>
+    </method>
+
+    <signal name="NewTube">
+      <tp:docstring>
+        Emitted when a tube is created.
+      </tp:docstring>
+      <arg name="id" type="u">
+        <tp:docstring>
+          The ID of the new tube.
+        </tp:docstring>
+      </arg>
+      <arg name="initiator" type="u" tp:type="Contact_Handle">
+        <tp:docstring>
+          The handle of the contact who initiated the tube.
+        </tp:docstring>
+      </arg>
+      <arg name="type" type="u" tp:type="Tube_Type">
+        <tp:docstring>
+          The tube type, as defined by the Tube_Type enum.
+        </tp:docstring>
+      </arg>
+      <arg name="service" type="s">
+        <tp:docstring>
+          A string representing the service that will be used over the tube.
+        </tp:docstring>
+      </arg>
+      <arg name="parameters" type="a{sv}">
+        <tp:docstring>
+          The new tube's properties.
+        </tp:docstring>
+      </arg>
+      <arg name="state" type="u" tp:type="Tube_State">
+        <tp:docstring>
+          The new tube's state.
+        </tp:docstring>
+      </arg>
+    </signal>
+
+    <method name="AcceptTube">
+      <tp:docstring>
+        Accept a tube that's in the "local pending" state. The connection
+        manager will attempt to open the tube. The tube remains in the
+        "local pending" state until the TubeStateChanged signal is emitted.
+      </tp:docstring>
+      <arg direction="in" name="id" type="u">
+        <tp:docstring>
+          The ID of the tube to accept.
+        </tp:docstring>
+      </arg>
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.InvalidArgument" />
+      </tp:possible-errors>
+    </method>
+
+    <signal name="TubeStateChanged">
+      <tp:docstring>
+        Emitted when the state of a tube changes.
+      </tp:docstring>
+      <arg name="id" type="u">
+        <tp:docstring>
+          The ID of the tube that changed state.
+        </tp:docstring>
+      </arg>
+      <arg name="state" type="u" tp:type="Tube_State">
+        <tp:docstring>
+          The new state of the tube; see the Tube_State enumeration.
+        </tp:docstring>
+      </arg>
+    </signal>
+
+    <method name="CloseTube">
+      <tp:docstring>
+        Close a tube.
+      </tp:docstring>
+      <arg direction="in" name="id" type="u">
+        <tp:docstring>
+          The ID of the tube to close.
+        </tp:docstring>
+      </arg>
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.InvalidArgument" />
+      </tp:possible-errors>
+    </method>
+
+    <signal name="TubeClosed">
+      <tp:docstring>
+       Emitted when a tube has been closed. The ID of a closed tube is no
+       longer valid. The ID may later be reused for a new tube.
+      </tp:docstring>
+      <arg name="id" type="u">
+        <tp:docstring>
+          The ID of the tube that was closed.
+        </tp:docstring>
+      </arg>
+    </signal>
+
+    <method name="GetDBusServerAddress">
+      <tp:docstring>
+        For a D-Bus tube, return a string describing the address of the
+        private bus.
+      </tp:docstring>
+      <arg direction="in" name="id" type="u">
+        <tp:docstring>
+          The ID of the tube to get an address for.
+        </tp:docstring>
+      </arg>
+      <arg direction="out" type="s">
+        <tp:docstring>
+          The bus address.
+        </tp:docstring>
+      </arg>
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.InvalidArgument">
+          <tp:docstring>
+            The tube is not a D-Bus tube.
+          </tp:docstring>
+        </tp:error>
+        <tp:error name="org.freedesktop.Telepathy.Error.NotAvailable">
+          <tp:docstring>
+            This tube is not in the "open" state.
+          </tp:docstring>
+        </tp:error>
+      </tp:possible-errors>
+    </method>
+
+    <method name="GetDBusNames">
+      <tp:docstring>
+        For a D-Bus tube, obtain a mapping between contact handles and their
+        unique bus names on this tube.
+      </tp:docstring>
+      <arg direction="in" name="id" type="u">
+        <tp:docstring>
+          The ID of the tube to get names for.
+        </tp:docstring>
+      </arg>
+      <arg direction="out" type="a(us)">
+        <tp:docstring>
+          An array of structures, each containing a contact handle and a D-Bus
+          bus name.
+        </tp:docstring>
+      </arg>
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.InvalidArgument">
+          <tp:docstring>
+            The tube is not a D-Bus tube.
+          </tp:docstring>
+        </tp:error>
+        <tp:error name="org.freedesktop.Telepathy.Error.NotAvailable">
+          <tp:docstring>
+            This tube is not in the "open" state.
+          </tp:docstring>
+        </tp:error>
+      </tp:possible-errors>
+    </method>
+
+    <signal name="DBusNamesChanged">
+      <tp:docstring>
+        Emitted on a D-Bus tube when a participant opens or closes the tube.
+      </tp:docstring>
+      <arg name="id" type="u">
+        <tp:docstring>
+          The ID of the tube whose names have changed.
+        </tp:docstring>
+      </arg>
+      <arg name="added" type="a(us)">
+        <tp:docstring>
+          Array of handles and D-Bus names of new participants.
+        </tp:docstring>
+      </arg>
+      <arg name="removed" type="au" tp:type="Contact_Handle[]">
+        <tp:docstring>
+          Array of handles of former participants.
+        </tp:docstring>
+      </arg>
+    </signal>
+
+    <method name="GetStreamUnixSocketAddress">
+      <tp:docstring>
+        For a Stream Unix tube, obtain the path of the Unix socket
+        used to communicate over this tube.
+      </tp:docstring>
+      <arg direction="in" name="id" type="u">
+        <tp:docstring>
+          The ID of the tube to get the socket for.
+        </tp:docstring>
+      </arg>
+      <arg direction="out" type="s">
+        <tp:docstring>
+          A string containing the path of the Unix socket.
+        </tp:docstring>
+      </arg>
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.InvalidArgument">
+          <tp:docstring>
+            The tube is not a Stream Unix tube.
+          </tp:docstring>
+        </tp:error>
+        <tp:error name="org.freedesktop.Telepathy.Error.NotAvailable">
+          <tp:docstring>
+            This tube is not in the "open" state.
+          </tp:docstring>
+        </tp:error>
+      </tp:possible-errors>
+    </method>
+
+    <signal name="StreamUnixSocketNewConnection">
+      <tp:docstring>
+        Emitted on a Stream Unix tube when a participant opens a new connection
+        to its socket.
+      </tp:docstring>
+      <arg name="id" type="u">
+        <tp:docstring>
+          The ID of the tube
+        </tp:docstring>
+      </arg>
+      <arg name="handle" type="u">
+        <tp:docstring>
+          The handle of the participant who opened the new connection
+        </tp:docstring>
+      </arg>
+    </signal>
+
+  </interface>
+
+</node>
+<!-- vim:set sw=2 sts=2 et ft=xml: -->

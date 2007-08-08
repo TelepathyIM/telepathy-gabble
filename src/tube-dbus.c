@@ -34,9 +34,9 @@
 
 #include "debug.h"
 #include "disco.h"
+#include "extensions/extensions.h"
 #include "gabble-connection.h"
 #include "namespaces.h"
-#include <telepathy-glib/svc-unstable.h>
 #include "util.h"
 #include "tube-iface.h"
 #include "bytestream-ibb.h"
@@ -300,7 +300,7 @@ unref_handle_foreach (gpointer key,
   tp_handle_unref (contact_repo, handle);
 }
 
-static TpTubeState
+static GabbleTubeState
 get_tube_state (GabbleTubeDBus *self)
 {
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
@@ -308,21 +308,21 @@ get_tube_state (GabbleTubeDBus *self)
 
   if (priv->bytestream == NULL)
     /* bytestream not yet created as we're waiting for the SI reply */
-    return TP_TUBE_STATE_REMOTE_PENDING;
+    return GABBLE_TUBE_STATE_REMOTE_PENDING;
 
   g_object_get (priv->bytestream, "state", &bytestream_state, NULL);
 
   switch (bytestream_state)
     {
       case GABBLE_BYTESTREAM_IBB_STATE_OPEN:
-        return TP_TUBE_STATE_OPEN;
+        return GABBLE_TUBE_STATE_OPEN;
         break;
       case GABBLE_BYTESTREAM_IBB_STATE_LOCAL_PENDING:
       case GABBLE_BYTESTREAM_IBB_STATE_ACCEPTED:
-        return TP_TUBE_STATE_LOCAL_PENDING;
+        return GABBLE_TUBE_STATE_LOCAL_PENDING;
         break;
       case GABBLE_BYTESTREAM_IBB_STATE_INITIATING:
-        return TP_TUBE_STATE_REMOTE_PENDING;
+        return GABBLE_TUBE_STATE_REMOTE_PENDING;
         break;
       default:
         g_assert_not_reached ();
@@ -448,7 +448,7 @@ gabble_tube_dbus_get_property (GObject *object,
         g_value_set_string (value, priv->stream_id);
         break;
       case PROP_TYPE:
-        g_value_set_uint (value, TP_TUBE_TYPE_DBUS);
+        g_value_set_uint (value, GABBLE_TUBE_TYPE_DBUS);
         break;
       case PROP_INITIATOR:
         g_value_set_uint (value, priv->initiator);
@@ -713,7 +713,7 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
       "type",
       "Tube type",
       "The TpTubeType this D-Bus tube object.",
-      0, G_MAXUINT32, TP_TUBE_TYPE_DBUS,
+      0, G_MAXUINT32, GABBLE_TUBE_TYPE_DBUS,
       G_PARAM_READABLE |
       G_PARAM_STATIC_NAME |
       G_PARAM_STATIC_NICK |
@@ -759,8 +759,8 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
   param_spec = g_param_spec_uint (
       "state",
       "Tube state",
-      "The TpTubeState of this DBUS tube object",
-      0, G_MAXUINT32, TP_TUBE_STATE_REMOTE_PENDING,
+      "The GabbleTubeState of this DBUS tube object",
+      0, G_MAXUINT32, GABBLE_TUBE_STATE_REMOTE_PENDING,
       G_PARAM_READABLE |
       G_PARAM_STATIC_NAME |
       G_PARAM_STATIC_NICK |

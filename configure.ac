@@ -170,13 +170,6 @@ PKG_CHECK_MODULES(LOUDMOUTH, loudmouth-1.0$LOUDMOUTH_VERSION_STR)
 AC_SUBST(LOUDMOUTH_CFLAGS)
 AC_SUBST(LOUDMOUTH_LIBS)
 
-dnl Check for telepathy-glib-unstable
-dnl XXX bump dependency when tp-glib will be released with new tubes spec
-PKG_CHECK_MODULES(TP_GLIB_UNSTABLE, [telepathy-glib-unstable >= 0.5.13])
-
-AC_SUBST(TP_GLIB_UNSTABLE_CFLAGS)
-AC_SUBST(TP_GLIB_UNSTABLE_LIBS)
-
 dnl Check for D-Bus tubes
 AC_CHECK_LIB(dbus-1, dbus_message_marshal,
              [have_dbus_message_marshal=yes],

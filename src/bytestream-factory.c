@@ -294,7 +294,8 @@ streaminit_parse_request (LmMessage *message,
     }
 
   *mime_type = lm_message_node_get_attribute (si, "mime-type");
-  /* if no mime_type is defined, we assume "binary/octect-stream" */
+  /* if no mime_type is defined, XEP-0095 says to assume "binary/octect-stream"
+   * which is presumably a typo for "application/octet-stream" */
 
   *profile = lm_message_node_get_attribute (si, "profile");
   if (*profile == NULL)

@@ -81,14 +81,6 @@ static LmHandlerResult
 bytestream_factory_iq_ibb_cb (LmMessageHandler *handler, LmConnection *lmconn,
     LmMessage *message, gpointer user_data);
 
-static LmMessage *
-make_profile_not_understood_iq (const gchar *full_jid,
-    const gchar *stream_init_id);
-
-static LmMessage *
-make_no_valid_stream_iq (const gchar *full_jid,
-    const gchar *stream_init_id);
-
 static void
 gabble_bytestream_factory_init (GabbleBytestreamFactory *self)
 {
@@ -1103,44 +1095,6 @@ gabble_bytestream_factory_make_decline_iq (const gchar *full_jid,
         ')',
         '(', "text", "Offer Declined",
           '@', "xmlns", NS_XMPP_STANZAS,
-        ')',
-      ')', NULL);
-}
-
-static LmMessage *
-make_profile_not_understood_iq (const gchar *full_jid,
-                                const gchar *stream_init_id)
-{
-  return lm_message_build (full_jid, LM_MESSAGE_TYPE_IQ,
-      '@', "type", "error",
-      '@', "id", stream_init_id,
-      '(', "error", "",
-        '@', "code", "400",
-        '@', "type", "cancel",
-        '(', "bad-request", "",
-          '@', "xmlns", NS_XMPP_STANZAS,
-        ')',
-        '(', "bad-profile", "",
-          '@', "xmlns", NS_SI,
-        ')',
-      ')', NULL);
-}
-
-static LmMessage *
-make_no_valid_stream_iq (const gchar *full_jid,
-                         const gchar *stream_init_id)
-{
-  return lm_message_build (full_jid, LM_MESSAGE_TYPE_IQ,
-      '@', "type", "error",
-      '@', "id", stream_init_id,
-      '(', "error", "",
-        '@', "code", "400",
-        '@', "type", "cancel",
-        '(', "bad-request", "",
-          '@', "xmlns", NS_XMPP_STANZAS,
-        ')',
-        '(', "no-valid-streams", "",
-          '@', "xmlns", NS_SI,
         ')',
       ')', NULL);
 }

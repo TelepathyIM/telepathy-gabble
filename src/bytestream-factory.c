@@ -451,10 +451,10 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
   gchar *peer_resource = NULL;
   gboolean request_handled;
 
-  if (lm_message_get_sub_type (message) != LM_MESSAGE_SUB_TYPE_SET)
+  if (lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_SET)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
-  si = lm_message_node_get_child_with_namespace (iq, "si", NS_SI);
+  si = lm_message_node_get_child_with_namespace (msg->node, "si", NS_SI);
   if (si == NULL)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 

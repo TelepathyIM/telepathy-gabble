@@ -494,14 +494,11 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
 
   if (bytestream == NULL)
     {
-      LmMessage *reply;
+      DEBUG ("SI request doesn't contain any supported stream methods.");
 
-      DEBUG ("SI request doesn't contain any supported stream method.");
-      reply = make_no_valid_stream_iq (from, stream_init_id);
+      _gabble_connection_send_iq_error (priv->conn, msg,
+          XMPP_ERROR_SI_NO_VALID_STREAMS, NULL);
 
-      _gabble_connection_send (priv->conn, reply, NULL);
-
-      lm_message_unref (reply);
       g_slist_free (stream_methods);
       g_free (peer_resource);
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;

@@ -1183,23 +1183,6 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
     }
 }
 
-struct lookup_foreach_ctx
-{
-  TpHandle handle;
-  GabbleMucChannel *ret;
-};
-
-static void
-find_channel_foreach (gpointer key, gpointer value, gpointer data)
-{
-  TpHandle handle = GPOINTER_TO_UINT (key);
-  GabbleMucChannel *chan = value;
-  struct lookup_foreach_ctx *ctx = data;
-
-  if (handle == ctx->handle)
-    ctx->ret = chan;
-}
-
 gboolean
 gabble_muc_factory_handle_si_request (GabbleMucFactory *self,
                                       GabbleBytestreamIBB *bytestream,
@@ -1231,10 +1214,8 @@ gabble_muc_factory_find_channel (GabbleMucFactory *factory,
                                  TpHandle handle)
 {
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (factory);
-  struct lookup_foreach_ctx ctx = { handle, NULL };
 
-  g_hash_table_foreach (priv->text_channels, find_channel_foreach, &ctx);
-  return ctx.ret;
+  return g_hash_table_lookup (priv->text_channels, GUINT_TO_POINTER (handle));
 }
 
 static void

@@ -1186,7 +1186,7 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
 gboolean
 gabble_muc_factory_handle_si_request (GabbleMucFactory *self,
                                       GabbleBytestreamIBB *bytestream,
-                                      TpHandle handle,
+                                      TpHandle room_handle,
                                       const gchar *stream_id,
                                       LmMessage *msg)
 {
@@ -1195,11 +1195,11 @@ gabble_muc_factory_handle_si_request (GabbleMucFactory *self,
      (TpBaseConnection*) priv->conn, TP_HANDLE_TYPE_ROOM);
   GabbleTubesChannel *chan;
 
-  if (!tp_handle_is_valid (room_repo, handle, NULL))
+  if (!tp_handle_is_valid (room_repo, room_handle, NULL))
     return FALSE;
 
   chan = g_hash_table_lookup (priv->tubes_channels,
-      GINT_TO_POINTER (handle));
+      GUINT_TO_POINTER (room_handle));
   if (chan == NULL)
     {
       /* We can't create muc tubes using SI */

@@ -58,7 +58,7 @@ GType gabble_muc_factory_get_type (void);
 
 gboolean
 gabble_muc_factory_handle_si_request (GabbleMucFactory *self,
-    GabbleBytestreamIBB *bytestream, TpHandle muc_handle,
+    GabbleBytestreamIBB *bytestream, TpHandle room_handle,
     const gchar *stream_id, LmMessage *msg);
 
 G_END_DECLS

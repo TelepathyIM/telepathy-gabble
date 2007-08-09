@@ -288,6 +288,24 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       NS_JINGLE_ERRORS,
       { 0, },
     },
+
+    {
+      "no-valid-streams",
+      "None of the available streams are acceptable.",
+      "cancel",
+      XMPP_ERROR_BAD_REQUEST,
+      NS_SI,
+      { 400, 0 },
+    },
+
+    {
+      "bad-profile",
+      "The profile is not understood or invalid.",
+      "modify",
+      XMPP_ERROR_BAD_REQUEST,
+      NS_SI,
+      { 400, 0 },
+    },
 };
 
 GQuark

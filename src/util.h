@@ -45,9 +45,6 @@ G_GNUC_NULL_TERMINATED LmMessage * lm_message_build_with_sub_type (
     const gchar *to, LmMessageType type, LmMessageSubType sub_type,
     guint spec, ...);
 
-LmMessageNode* lm_message_node_new (const gchar *name, const gchar *value);
-LmMessageNode* lm_message_node_ref (LmMessageNode *node);
-void lm_message_node_unref (LmMessageNode *node);
 void lm_message_node_add_child_node (LmMessageNode *node,
     LmMessageNode *child);
 

@@ -259,7 +259,7 @@ remove_bytestream (GabbleBytestreamFactory *self,
 
   g_object_get (bytestream, "stream-id", &stream_id, NULL);
 
-  DEBUG ("remove bytestream %s", stream_id);
+  DEBUG ("removing bytestream %s", stream_id);
   g_hash_table_remove (priv->ibb_bytestreams, stream_id);
 
   g_free (stream_id);
@@ -268,8 +268,7 @@ remove_bytestream (GabbleBytestreamFactory *self,
 /**
  * streaminit_parse_request
  *
- * Parses a SI request, or returns FALSE
- * if it can't be parsed.
+ * Parses a SI request, or returns FALSE if it can't be parsed.
  */
 static gboolean
 streaminit_parse_request (LmMessage *message,
@@ -394,8 +393,7 @@ streaminit_parse_request (LmMessage *message,
 /**
  * gabble_bytestream_factory_make_stream_init_iq
  *
- * @full_jid: the full jid of the contact to who we
- * want to offer the stream
+ * @full_jid: the full jid of the contact to whom we want to offer the stream
  * @stream_id: the stream ID of the new stream
  * @profile: the profile associated with the stream
  *
@@ -435,8 +433,8 @@ gabble_bytestream_factory_make_stream_init_iq (const gchar *full_jid,
 /**
  * bytestream_factory_iq_si_cb:
  *
- * Called by loudmouth when we get an incoming <iq>.
- * This handler is concerned with Stream Initiation requests (XEP-0095).
+ * Called by loudmouth when we get an incoming <iq>. This handler is concerned
+ * with Stream Initiation requests (XEP-0095).
  *
  */
 static LmHandlerResult
@@ -476,7 +474,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
   room_handle = gabble_get_room_handle_from_jid (room_repo, from);
   if (room_handle == 0)
     {
-      /* jid is not a muc jid so we need contact's resource */
+      /* JID is not a MUC JID so we need contact's resource */
       gabble_decode_jid (from, NULL, NULL, &peer_resource);
     }
 

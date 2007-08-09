@@ -22,31 +22,29 @@
 
 #include "gabble-connection.h"
 
-#define DBUS_API_SUBJECT_TO_CHANGE
-
-#include <dbus/dbus-glib.h>
-#include <dbus/dbus-glib-lowlevel.h>
-#include <glib-object.h>
-#include <loudmouth/loudmouth.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <telepathy-glib/dbus.h>
-#include <telepathy-glib/enums.h>
-#include <telepathy-glib/errors.h>
-#include <telepathy-glib/interfaces.h>
+#define DBUS_API_SUBJECT_TO_CHANGE
+#include <dbus/dbus-glib.h>
+#include <dbus/dbus-glib-lowlevel.h>
+#include <glib-object.h>
+#include <loudmouth/loudmouth.h>
 
 #include <telepathy-glib/channel-iface.h>
 #include <telepathy-glib/channel-factory-iface.h>
-
+#include <telepathy-glib/dbus.h>
+#include <telepathy-glib/enums.h>
+#include <telepathy-glib/errors.h>
 #include <telepathy-glib/handle-repo-dynamic.h>
 #include <telepathy-glib/handle-repo-static.h>
-
+#include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/svc-connection.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
 
+#include "bytestream-factory.h"
 #include "capabilities.h"
 #include "conn-aliasing.h"
 #include "conn-avatars.h"
@@ -54,16 +52,19 @@
 #include "conn-olpc.h"
 #include "debug.h"
 #include "disco.h"
-#include "presence-cache.h"
-#include "presence.h"
+#include "gabble-media-channel.h"
 #include "gabble-register.h"
+#include "gabble-roomlist-channel.h"
 #include "im-factory.h"
 #include "media-factory.h"
 #include "muc-factory.h"
 #include "namespaces.h"
+#include "presence-cache.h"
+#include "presence.h"
 #include "pubsub.h"
 #include "request-pipeline.h"
 #include "roster.h"
+#include "tubes-factory.h"
 #include "util.h"
 #include "vcard-manager.h"
 #include "bytestream-factory.h"

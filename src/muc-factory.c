@@ -276,11 +276,6 @@ tubes_channel_closed_cb (GabbleTubesChannel *chan, gpointer user_data)
       g_hash_table_remove (priv->tubes_channels,
           GINT_TO_POINTER (room_handle));
 
-      if (priv->text_channels != NULL)
-        {
-          /* FIXME: close the corresponding text channel? */
-        }
-
       g_hash_table_remove (priv->tubes_channels,
           GINT_TO_POINTER (room_handle));
     }

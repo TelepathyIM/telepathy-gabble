@@ -386,6 +386,8 @@ streaminit_parse_request (LmMessage *message,
  *
  * Create a SI request IQ as described in XEP-0095.
  *
+ * The MIME type is not set - the receiving client will assume
+ * application/octet-stream unless the caller sets a MIME type explicitly.
  */
 LmMessage *
 gabble_bytestream_factory_make_stream_init_iq (const gchar *full_jid,
@@ -398,7 +400,6 @@ gabble_bytestream_factory_make_stream_init_iq (const gchar *full_jid,
         '@', "xmlns", NS_SI,
         '@', "id", stream_id,
         '@', "profile", profile,
-        '@', "mime-type", "binary/octect-stream",
         '(', "feature", "",
           '@', "xmlns", NS_FEATURENEG,
           '(', "x", "",

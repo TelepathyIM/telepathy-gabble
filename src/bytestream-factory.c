@@ -450,25 +450,41 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
+  LmMessageNode *si;
   TpHandle peer_handle, room_handle;
   GabbleBytestreamIBB *bytestream = NULL;
   GSList *l;
   const gchar *profile, *from, *stream_id, *stream_init_id, *mime_type;
   GSList *stream_methods = NULL;
   gchar *peer_resource = NULL;
-  gboolean know_profile = FALSE;
+  gboolean request_handled;
+
+  if (lm_message_get_sub_type (message) != LM_MESSAGE_SUB_TYPE_SET)
+    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+
+  si = lm_message_node_get_child_with_namespace (iq, "si", NS_SI);
+  if (si == NULL)
+    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+
+  /* after this point, the message is for us, so in all cases we either handle
+   * it or send an error reply */
 
   if (!streaminit_parse_request (msg, &profile, &from, &stream_id,
         &stream_init_id, &mime_type, &stream_methods))
-    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    {
+      _gabble_connection_send_iq_error (priv->conn, msg,
+          XMPP_ERROR_BAD_REQUEST, "failed to parse SI request");
+      goto out;
+    }
 
   DEBUG ("received a SI request");
 
   peer_handle = tp_handle_lookup (contact_repo, from, NULL, NULL);
   if (peer_handle == 0)
     {
-      g_slist_free (stream_methods);
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+      _gabble_connection_send_iq_error (priv->conn, msg,
+          XMPP_ERROR_JID_MALFORMED, NULL);
+      goto out;
     }
 
   room_handle = gabble_get_room_handle_from_jid (room_repo, from);
@@ -498,75 +514,63 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
 
       _gabble_connection_send_iq_error (priv->conn, msg,
           XMPP_ERROR_SI_NO_VALID_STREAMS, NULL);
-
-      g_slist_free (stream_methods);
-      g_free (peer_resource);
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      goto out;
     }
 
   /* We inform the right factory we received a SI request */
   if (tp_strdiff (profile, NS_SI_TUBES) ||
       tp_strdiff (profile, NS_SI_TUBES_OLD))
     {
-      gboolean request_handled;
+      DEBUG ("SI profile unsupported: %s", profile);
 
-      know_profile = TRUE;
+      _gabble_connection_send_iq_error (priv->conn, msg,
+          XMPP_ERROR_SI_BAD_PROFILE, NULL);
+      remove_bytestream (self, bytestream);
 
-      if (room_handle == 0)
+      goto out;
+    }
+
+  if (room_handle == 0)
+    {
+      /* 1-1 tubes */
+      request_handled = gabble_tubes_factory_handle_si_request (
+          priv->conn->tubes_factory, bytestream, peer_handle, stream_id, msg);
+    }
+  else
+    {
+      /* The sender of this SI request is a MUC contact so the request
+       * can be:
+       * - an extra bytestream request for an existing MUC tube
+       * - a new private tube offer
+       * - an extra bytestream request for an existing private tube
+       *
+       * First case is covered by the MUC factory so we check if it knows
+       * a MUC tube that could fit this request. If not, that means the
+       * request is private tube related.
+       */
+
+      request_handled = gabble_muc_factory_handle_si_request (
+          priv->conn->muc_factory, bytestream, room_handle, stream_id, msg);
+
+      if (!request_handled)
         {
+          /* Let's try with the 1-1 tubes factory now */
           request_handled = gabble_tubes_factory_handle_si_request (
               priv->conn->tubes_factory, bytestream, peer_handle, stream_id,
               msg);
         }
-      else
-        {
-          /* The sender of this SI request is a muc contact so the request
-           * can be:
-           * - an extra bytestream request for an existing muc tube
-           * - a new private tube offer
-           * - an extra bytestream request for an existing private tube
-           *
-           * First case is covered by the muc factory so we check if it knows
-           * a muc tube that could fit this request. If not, that means the
-           * request is private tube related. */
-
-          request_handled = gabble_muc_factory_handle_si_request (
-              priv->conn->muc_factory, bytestream, room_handle, stream_id,
-              msg);
-
-          if (!request_handled)
-            {
-              /* Let's try with the tubes factory now */
-              request_handled = gabble_tubes_factory_handle_si_request (
-                  priv->conn->tubes_factory, bytestream, peer_handle,
-                  stream_id, msg);
-            }
-        }
-
-      if (!request_handled)
-        {
-          DEBUG ("Can't handle tube SI request");
-          gabble_bytestream_ibb_close (bytestream);
-        }
     }
 
-  if (!know_profile)
+  if (!request_handled)
     {
-      /* We don't support this profile so we have to decline the stream */
-      LmMessage *reply;
-
-      DEBUG ("Profile unsupported: %s", profile);
-      reply = make_profile_not_understood_iq (from, stream_init_id);
-
-      _gabble_connection_send (priv->conn, reply, NULL);
-      remove_bytestream (self, bytestream);
-
-      lm_message_unref (reply);
+      DEBUG ("Can't handle tube SI request");
+      gabble_bytestream_ibb_close (bytestream);
     }
 
+out:
   g_slist_free (stream_methods);
-  if (peer_resource != NULL)
-    g_free (peer_resource);
+  g_free (peer_resource);
+
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 

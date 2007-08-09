@@ -185,7 +185,7 @@ fi
 AM_CONDITIONAL(HAVE_DBUS_TUBE, test x$have_dbus_tube = xyes)
 
 if test x$have_dbus_tube = xno; then
-  echo "Don't build D-Bus tube"
+  echo "Not building support for D-Bus tubes! (libdbus >= 1.1 required)"
 fi
 
 AC_OUTPUT( Makefile \

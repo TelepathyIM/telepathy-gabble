@@ -106,14 +106,13 @@ struct _GabbleConnection {
     /* loudmouth connection */
     LmConnection *lmconn;
 
-    /* roster */
+    /* channel factories borrowed from TpBaseConnection's list */
     GabbleRoster *roster;
+    GabbleMucFactory *muc_factory;
+    GabbleTubesFactory *tubes_factory;
 
     /* DISCO! */
     GabbleDisco *disco;
-
-    /* MUC factory */
-    GabbleMucFactory *muc_factory;
 
     /* connection feature flags */
     GabbleConnectionFeatures features;
@@ -135,9 +134,6 @@ struct _GabbleConnection {
 
     /* bytestream factory */
     GabbleBytestreamFactory *bytestream_factory;
-
-    /* tubes factory */
-    GabbleTubesFactory *tubes_factory;
 
     gpointer priv;
 };

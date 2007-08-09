@@ -264,6 +264,7 @@ remove_bytestream (GabbleBytestreamFactory *self,
  */
 static gboolean
 streaminit_parse_request (LmMessage *message,
+                          LmMessageNode *si,
                           const gchar **profile,
                           const gchar **from,
                           const gchar **stream_id,
@@ -271,12 +272,8 @@ streaminit_parse_request (LmMessage *message,
                           const gchar **mime_type,
                           GSList **stream_methods)
 {
-  LmMessageNode *iq, *si, *feature, *x, *field, *stream_method;
-
-  if (lm_message_get_sub_type (message) != LM_MESSAGE_SUB_TYPE_SET)
-    return FALSE;
-
-  iq = lm_message_get_node (message);
+  LmMessageNode *iq = message->node;
+  LmMessageNode *feature, *x, *field, *stream_method;
 
   *stream_init_id = lm_message_node_get_attribute (iq, "id");
 
@@ -288,9 +285,6 @@ streaminit_parse_request (LmMessage *message,
     }
 
   /* Parse <si> */
-  si = lm_message_node_get_child_with_namespace (iq, "si", NS_SI);
-  if (si == NULL)
-    return FALSE;
 
   *stream_id = lm_message_node_get_attribute (si, "id");
   if (*stream_id == NULL)
@@ -461,7 +455,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
   /* after this point, the message is for us, so in all cases we either handle
    * it or send an error reply */
 
-  if (!streaminit_parse_request (msg, &profile, &from, &stream_id,
+  if (!streaminit_parse_request (msg, si, &profile, &from, &stream_id,
         &stream_init_id, &mime_type, &stream_methods))
     {
       _gabble_connection_send_iq_error (priv->conn, msg,

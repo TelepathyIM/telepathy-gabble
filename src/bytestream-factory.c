@@ -505,8 +505,8 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
     }
 
   /* We inform the right factory we received a SI request */
-  if (strcmp (profile, NS_SI_TUBES) == 0 ||
-      strcmp (profile, NS_SI_TUBES_OLD) == 0)
+  if (tp_strdiff (profile, NS_SI_TUBES) ||
+      tp_strdiff (profile, NS_SI_TUBES_OLD))
     {
       gboolean request_handled;
 

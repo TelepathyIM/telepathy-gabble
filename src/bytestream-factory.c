@@ -561,14 +561,13 @@ out:
 }
 
 static gboolean
-parse_ibb_open_iq (GabbleBytestreamFactory *self,
-                   LmMessage *msg)
+handle_ibb_open_iq (GabbleBytestreamFactory *self,
+                    LmMessage *msg)
 {
   GabbleBytestreamFactoryPrivate *priv =
     GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
   const gchar *from, *stream_id;
   GabbleBytestreamIBB *bytestream;
-  LmMessage *reply;
   LmMessageNode *open_node;
 
   if (lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_SET)
@@ -583,6 +582,8 @@ parse_ibb_open_iq (GabbleBytestreamFactory *self,
   if (from == NULL)
     {
       DEBUG ("got a message without a from field");
+      _gabble_connection_send_iq_error (priv->conn, msg,
+          XMPP_ERROR_BAD_REQUEST, NULL);
       return TRUE;
     }
 
@@ -590,6 +591,8 @@ parse_ibb_open_iq (GabbleBytestreamFactory *self,
   if (stream_id == NULL)
     {
       DEBUG ("IBB open stanza doesn't contain stream id");
+      _gabble_connection_send_iq_error (priv->conn, msg,
+          XMPP_ERROR_BAD_REQUEST, NULL);
       return TRUE;
     }
 
@@ -598,31 +601,18 @@ parse_ibb_open_iq (GabbleBytestreamFactory *self,
   bytestream = g_hash_table_lookup (priv->ibb_bytestreams, stream_id);
   if (bytestream == NULL)
     {
-      /* We don't accept stream not previously announced using SI */
-      GabbleXmppError error = XMPP_ERROR_ITEM_NOT_FOUND;
-
+      /* We don't accept streams not previously announced using SI */
       DEBUG ("unknown stream: %s", stream_id);
-
-      reply = lm_message_new_with_sub_type (from,
-          LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_ERROR);
-
-      gabble_xmpp_error_to_node (error, reply->node, NULL);
-    }
-  else
-    {
-      g_object_set (bytestream, "state", GABBLE_BYTESTREAM_IBB_STATE_OPEN,
-          NULL);
-
-      reply = lm_message_new_with_sub_type (from, LM_MESSAGE_TYPE_IQ,
-          LM_MESSAGE_SUB_TYPE_RESULT);
+      _gabble_connection_send_iq_error (priv->conn, msg,
+          XMPP_ERROR_BAD_REQUEST, NULL);
+      return TRUE;
     }
 
-  lm_message_node_set_attribute (reply->node,
-      "id", lm_message_node_get_attribute (msg->node, "id"));
+  g_object_set (bytestream, "state", GABBLE_BYTESTREAM_IBB_STATE_OPEN,
+      NULL);
 
-  _gabble_connection_send (priv->conn, reply, NULL);
+  _gabble_connection_acknowledge_set_iq (priv->conn, msg);
 
-  lm_message_unref (reply);
   return TRUE;
 }
 
@@ -741,7 +731,7 @@ bytestream_factory_iq_ibb_cb (LmMessageHandler *handler,
 {
   GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (user_data);
 
-  if (parse_ibb_open_iq (self, msg))
+  if (handle_ibb_open_iq (self, msg))
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
   if (parse_ibb_close_iq (self, msg))

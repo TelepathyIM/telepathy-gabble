@@ -26,28 +26,24 @@
 #include <time.h>
 
 #include <glib.h>
-
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
-
 #include <loudmouth/loudmouth.h>
+#include <telepathy-glib/channel-factory-iface.h>
+#include <telepathy-glib/interfaces.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_MUC
-
 #include "debug.h"
 #include "disco.h"
 #include "extensions/extensions.h"
 #include "gabble-connection.h"
-#include "presence-cache.h"
 #include "gabble-muc-channel.h"
 #include "gabble-roomlist-channel.h"
 #include "namespaces.h"
-#include <telepathy-glib/interfaces.h>
+#include "presence-cache.h"
 #include "text-mixin.h"
-#include <telepathy-glib/channel-factory-iface.h>
-#include "util.h"
-
 #include "tubes-channel.h"
+#include "util.h"
 
 static void gabble_muc_factory_iface_init (gpointer g_iface,
     gpointer iface_data);

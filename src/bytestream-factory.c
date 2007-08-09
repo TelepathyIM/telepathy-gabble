@@ -261,6 +261,10 @@ remove_bytestream (GabbleBytestreamFactory *self,
  * streaminit_parse_request
  *
  * Parses a SI request, or returns FALSE if it can't be parsed.
+ *
+ * The items in the linked list of stream methods are borrowed
+ * from the message; their lifetime is only as long as that of the
+ * message.
  */
 static gboolean
 streaminit_parse_request (LmMessage *message,
@@ -320,51 +324,47 @@ streaminit_parse_request (LmMessage *message,
       return FALSE;
     }
 
-  field = lm_message_node_get_child (x, "field");
-  if (field == NULL)
+  for (field = x->children; field; field = field->next)
     {
-      NODE_DEBUG (message->node,
-          "got a SI request without stream method list");
-      return FALSE;
-    }
-
-  if (tp_strdiff (lm_message_node_get_attribute (field, "var"),
-        "stream-method"))
-    {
-      NODE_DEBUG (message->node,
-          "got a SI request without stream method list");
-      return FALSE;
-    }
-
-  if (tp_strdiff (lm_message_node_get_attribute (field, "type"),
-        "list-single"))
-    {
-      NODE_DEBUG (message->node,
-          "got a SI request without stream method list");
-      return FALSE;
-    }
-
-  /* Get the stream methods offered */
-  *stream_methods = NULL;
-  for (stream_method = field->children; stream_method;
-      stream_method = stream_method->next)
-    {
-      LmMessageNode *value;
-      const gchar *stream_method_str;
-
-      value = lm_message_node_get_child (stream_method, "value");
-      if (value == NULL)
+      if (tp_strdiff (lm_message_node_get_attribute (field, "var"),
+            "stream-method"))
+        /* some future field, ignore it */
         continue;
 
-      stream_method_str = lm_message_node_get_value (value);
-      if (!tp_strdiff (stream_method_str, ""))
-        continue;
+      if (tp_strdiff (lm_message_node_get_attribute (field, "type"),
+            "list-single"))
+        {
+          NODE_DEBUG(message->node, "SI request's stream-method field was not "
+              "of type list-single");
+          return FALSE;
+        }
 
-      DEBUG ("Got stream-method %s", stream_method_str);
+      /* Get the stream methods offered */
+      *stream_methods = NULL;
+      for (stream_method = field->children; stream_method;
+          stream_method = stream_method->next)
+        {
+          LmMessageNode *value;
+          const gchar *stream_method_str;
 
-      /* Append to the stream_methods list */
-      *stream_methods = g_slist_append (*stream_methods,
-          (gchar *) stream_method_str);
+          value = lm_message_node_get_child (stream_method, "value");
+          if (value == NULL)
+            continue;
+
+          stream_method_str = lm_message_node_get_value (value);
+          if (!tp_strdiff (stream_method_str, ""))
+            continue;
+
+          DEBUG ("Got stream-method %s", stream_method_str);
+
+          /* Append to the stream_methods list */
+          *stream_methods = g_slist_append (*stream_methods,
+              (gchar *) stream_method_str);
+        }
+
+      /* no need to parse the rest of the fields, we've found the one we
+       * wanted */
+      break;
     }
 
   if (*stream_methods == NULL)

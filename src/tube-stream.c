@@ -146,7 +146,7 @@ data_to_read_on_socket_cb (GIOChannel *source,
   GabbleBytestreamIBB *bytestream;
   int fd;
   gchar buffer[4096];
-  gsize readed;
+  gsize num_read;
   GIOStatus status;
   GError *error = NULL;
   gboolean result = TRUE;
@@ -168,12 +168,12 @@ data_to_read_on_socket_cb (GIOChannel *source,
 
   memset (&buffer, 0, sizeof (buffer));
 
-  status = g_io_channel_read_chars (source, buffer, 4096, &readed, &error);
+  status = g_io_channel_read_chars (source, buffer, 4096, &num_read, &error);
   if (status == G_IO_STATUS_NORMAL)
     {
-      DEBUG ("read %d bytes from socket", readed);
+      DEBUG ("read %d bytes from socket", num_read);
 
-      gabble_bytestream_ibb_send (bytestream, readed, buffer);
+      gabble_bytestream_ibb_send (bytestream, num_read, buffer);
       result = TRUE;
     }
   else if (status == G_IO_STATUS_EOF)

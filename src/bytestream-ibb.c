@@ -457,9 +457,10 @@ gabble_bytestream_ibb_send (GabbleBytestreamIBB *self,
   return send_data_to (self, priv->peer_jid, groupchat, len, str);
 }
 
-gboolean
+void
 gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
-                               LmMessage *msg)
+                               LmMessage *msg,
+                               gboolean is_iq)
 {
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
   LmMessageNode *data;
@@ -468,25 +469,29 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
   TpHandle sender;
   TpHandleRepoIface *contact_repo;
 
+  /* caller must have checked for this in order to know which bytestream to
+   * route this packet to */
+  data = lm_message_node_get_child_with_namespace (msg->node, "data", NS_IBB);
+  g_assert (data != NULL);
+
   if (priv->state != GABBLE_BYTESTREAM_IBB_STATE_OPEN)
     {
       DEBUG ("can't receive data through a not open bytestream (state: %d)",
           priv->state);
-      return FALSE;
-    }
-
-  data = lm_message_node_get_child_with_namespace (msg->node, "data", NS_IBB);
-  if (data == NULL)
-    {
-      NODE_DEBUG (msg->node, "got a message without a data element, ignoring");
-      return FALSE;
+      if (is_iq)
+        _gabble_connection_send_iq_error (priv->conn, msg,
+            XMPP_ERROR_BAD_REQUEST, "IBB bytestream isn't open");
+      return;
     }
 
   from = lm_message_node_get_attribute (msg->node, "from");
   if (from == NULL)
     {
       NODE_DEBUG (msg->node, "got a message without a from field, ignoring");
-      return FALSE;
+      if (is_iq)
+        _gabble_connection_send_iq_error (priv->conn, msg,
+            XMPP_ERROR_BAD_REQUEST, "IQ 'from' attribute missing");
+      return;
     }
 
   contact_repo = tp_base_connection_get_handles (
@@ -501,38 +506,51 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
   if (priv->peer_handle_type == TP_HANDLE_TYPE_ROOM)
     {
       /* multi users stream */
-      gchar *room_jid;
       TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
           (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
-      TpHandle room_handle;
-
-      room_jid = gabble_remove_resource (from);
-
-      if (!room_jid)
-        return FALSE;
-
-      room_handle = tp_handle_lookup (room_repo, room_jid, NULL, NULL);
-
-      g_free (room_jid);
+      TpHandle room_handle = gabble_get_room_handle_from_jid (room_repo,
+          from);
 
       if (room_handle != priv->peer_handle)
-        /* Data are not for this stream */
-        return FALSE;
+        {
+          /* Data are not for this stream - we got a message for a known
+           * stream, but from the wrong sender.
+           *
+           * FIXME: we should dispatch by (sender, stream-ID) pairs rather
+           * than by stream IDs so that this can't happen */
+          DEBUG ("Unexpected sender for IBB <data>");
+          if (is_iq)
+            _gabble_connection_send_iq_error (priv->conn, msg,
+                XMPP_ERROR_BAD_REQUEST, "IBB <data> from unexpected sender");
+          return;
+        }
+
+      /* XXX: currently we ignore the sequence number because we don't have
+       * any sane semantics for what seqno to send */
     }
   else
     {
       /* Private stream */
       if (priv->peer_handle != sender)
-        return FALSE;
+        {
+          DEBUG ("Unexpected sender for IBB <data>");
+          if (is_iq)
+            _gabble_connection_send_iq_error (priv->conn, msg,
+                XMPP_ERROR_BAD_REQUEST, "IBB <data> from unexpected sender");
+          return;
+        }
 
-      // XXX check sequence number
+      /* FIXME: check sequence number */
     }
 
   str = base64_decode (lm_message_node_get_value (data));
   g_signal_emit (G_OBJECT (self), signals[DATA_RECEIVED], 0, sender, str);
-
   g_string_free (str, TRUE);
-  return TRUE;
+
+  if (is_iq)
+    _gabble_connection_acknowledge_set_iq (priv->conn, msg);
+
+  return;
 }
 
 LmMessage *

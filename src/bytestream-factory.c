@@ -619,8 +619,8 @@ handle_ibb_open_iq (GabbleBytestreamFactory *self,
 }
 
 static gboolean
-parse_ibb_close_iq (GabbleBytestreamFactory *self,
-                    LmMessage *msg)
+handle_ibb_close_iq (GabbleBytestreamFactory *self,
+                     LmMessage *msg)
 {
   GabbleBytestreamFactoryPrivate *priv =
     GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
@@ -641,6 +641,8 @@ parse_ibb_close_iq (GabbleBytestreamFactory *self,
   if (from == NULL)
     {
       DEBUG ("got a message without a from field");
+      _gabble_connection_send_iq_error (priv->conn, msg,
+          XMPP_ERROR_BAD_REQUEST, "IBB <close> has no 'from' attribute");
       return TRUE;
     }
 
@@ -648,6 +650,8 @@ parse_ibb_close_iq (GabbleBytestreamFactory *self,
   if (stream_id == NULL)
     {
       DEBUG ("IBB close stanza doesn't contain stream id");
+      _gabble_connection_send_iq_error (priv->conn, msg,
+          XMPP_ERROR_BAD_REQUEST, "IBB <close> has no stream ID");
       return TRUE;
     }
 
@@ -683,9 +687,14 @@ parse_ibb_close_iq (GabbleBytestreamFactory *self,
   return TRUE;
 }
 
+/* IBB can be transported over either IQs or messages, so msg can either be
+ * an <iq> or a <message>. If it's an <iq> we need to reply to it.
+ *
+ * Return TRUE if we take responsibility for this message. */
 static gboolean
-parse_ibb_data (GabbleBytestreamFactory *self,
-                LmMessage *msg)
+handle_ibb_data (GabbleBytestreamFactory *self,
+                 LmMessage *msg,
+                 gboolean is_iq)
 {
   GabbleBytestreamFactoryPrivate *priv =
     GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
@@ -695,6 +704,9 @@ parse_ibb_data (GabbleBytestreamFactory *self,
 
   priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
 
+  if (is_iq && lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_SET)
+    return FALSE;
+
   data = lm_message_node_get_child_with_namespace (msg->node, "data", NS_IBB);
   if (data == NULL)
     return FALSE;
@@ -703,6 +715,9 @@ parse_ibb_data (GabbleBytestreamFactory *self,
   if (stream_id == NULL)
     {
       DEBUG ("got a IBB message data without a stream id field");
+      if (is_iq)
+        _gabble_connection_send_iq_error (priv->conn, msg,
+            XMPP_ERROR_BAD_REQUEST, "IBB <data> needs a stream ID");
       return TRUE;
     }
 
@@ -710,10 +725,13 @@ parse_ibb_data (GabbleBytestreamFactory *self,
   if (bytestream == NULL)
     {
       DEBUG ("unknown stream: %s", stream_id);
+      if (is_iq)
+        _gabble_connection_send_iq_error (priv->conn, msg,
+            XMPP_ERROR_BAD_REQUEST, "IBB <data> has unknown stream ID");
       return TRUE;
     }
 
-  gabble_bytestream_ibb_receive (bytestream, msg);
+  gabble_bytestream_ibb_receive (bytestream, msg, is_iq);
 
   return TRUE;
 }
@@ -736,10 +754,10 @@ bytestream_factory_iq_ibb_cb (LmMessageHandler *handler,
   if (handle_ibb_open_iq (self, msg))
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
-  if (parse_ibb_close_iq (self, msg))
+  if (handle_ibb_close_iq (self, msg))
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
-  if (parse_ibb_data (self, msg))
+  if (handle_ibb_data (self, msg, TRUE))
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
   return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
@@ -759,7 +777,7 @@ bytestream_factory_msg_data_cb (LmMessageHandler *handler,
 {
   GabbleBytestreamFactory *self = user_data;
 
-  if (parse_ibb_data (self, msg))
+  if (handle_ibb_data (self, msg, FALSE))
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
   return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;

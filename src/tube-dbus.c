@@ -365,6 +365,8 @@ gabble_tube_dbus_dispose (GObject *object)
   if (priv->dispose_has_run)
     return;
 
+  priv->dispose_has_run = TRUE;
+
   if (priv->bytestream)
     {
       gabble_bytestream_ibb_close (priv->bytestream);
@@ -379,11 +381,8 @@ gabble_tube_dbus_dispose (GObject *object)
   if (priv->dbus_srv)
     dbus_server_unref (priv->dbus_srv);
 
-  if (priv->dbus_srv_addr)
-    g_free (priv->dbus_srv_addr);
-
-  if (priv->dbus_local_name)
-    g_free (priv->dbus_local_name);
+  g_free (priv->dbus_srv_addr);
+  g_free (priv->dbus_local_name);
 
   if (priv->dbus_names)
     {
@@ -395,8 +394,6 @@ gabble_tube_dbus_dispose (GObject *object)
     }
 
   tp_handle_unref (contact_repo, priv->initiator);
-
-  priv->dispose_has_run = TRUE;
 
   if (G_OBJECT_CLASS (gabble_tube_dbus_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_tube_dbus_parent_class)->dispose (object);

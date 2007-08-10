@@ -201,7 +201,7 @@ tubes_channel_closed_cb (GabbleTubesChannel *chan,
 
   DEBUG ("removing tubes channel with handle %d", contact_handle);
 
-  g_hash_table_remove (priv->channels, GINT_TO_POINTER (contact_handle));
+  g_hash_table_remove (priv->channels, GUINT_TO_POINTER (contact_handle));
 }
 
 /**
@@ -237,7 +237,7 @@ new_tubes_channel (GabbleTubesFactory *fac,
 
   g_signal_connect (chan, "closed", G_CALLBACK (tubes_channel_closed_cb), fac);
 
-  g_hash_table_insert (priv->channels, GINT_TO_POINTER (handle), chan);
+  g_hash_table_insert (priv->channels, GUINT_TO_POINTER (handle), chan);
 
   g_free (object_path);
 
@@ -340,7 +340,7 @@ gabble_tubes_factory_iface_request (TpChannelFactoryIface *iface,
   if (handle == ((TpBaseConnection*) priv->conn)->self_handle)
      return TP_CHANNEL_FACTORY_REQUEST_STATUS_INVALID_HANDLE;
 
-  chan = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (handle));
+  chan = g_hash_table_lookup (priv->channels, GUINT_TO_POINTER (handle));
 
   status = TP_CHANNEL_FACTORY_REQUEST_STATUS_EXISTING;
   if (chan == NULL)
@@ -371,7 +371,7 @@ gabble_tubes_factory_handle_si_request (GabbleTubesFactory *self,
   if (!tp_handle_is_valid (contact_repo, handle, NULL))
     return FALSE;
 
-  chan = g_hash_table_lookup (priv->channels, GINT_TO_POINTER (handle));
+  chan = g_hash_table_lookup (priv->channels, GUINT_TO_POINTER (handle));
   if (chan == NULL)
     {
       chan = new_tubes_channel (self, handle);

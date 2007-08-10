@@ -251,7 +251,7 @@ gabble_tubes_factory_iface_close_all (TpChannelFactoryIface *iface)
   GabbleTubesFactoryPrivate *priv = GABBLE_TUBES_FACTORY_GET_PRIVATE (fac);
   GHashTable *tmp;
 
-  DEBUG ("closing tubes channels");
+  DEBUG ("closing 1-1 tubes channels");
 
   if (priv->channels == NULL)
     return;

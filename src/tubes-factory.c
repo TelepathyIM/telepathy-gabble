@@ -368,8 +368,9 @@ gabble_tubes_factory_handle_si_request (GabbleTubesFactory *self,
               (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   GabbleTubesChannel *chan;
 
-  if (!tp_handle_is_valid (contact_repo, handle, NULL))
-    return FALSE;
+  DEBUG ("contact#%u stream %s", handle, stream_id);
+  g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
+      FALSE);
 
   chan = g_hash_table_lookup (priv->channels, GUINT_TO_POINTER (handle));
   if (chan == NULL)

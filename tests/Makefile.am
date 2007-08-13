@@ -39,7 +39,6 @@ TWISTED_TESTS = \
 	test-connect-fail.py \
 	test-disco.py \
 	test-muc.py \
-	test-muc-alias.py \
 	test-muc-ownership.py \
 	test-muc-properties.py \
 	test-olpc-set-props-preload.py \
@@ -49,6 +48,7 @@ TWISTED_TESTS = \
 	test-save-alias-to-vcard.py \
 	test-set-alias.py \
 	test-set-status-idempotence.py \
+	test-si-tubes-offer-dbus.py
 	test-text.py \
 	test-text-delayed.py \
 	test-text-no-body.py \

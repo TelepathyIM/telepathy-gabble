@@ -49,6 +49,7 @@ TWISTED_TESTS = \
 	test-set-alias.py \
 	test-set-status-idempotence.py \
 	test-si-tubes-offer-dbus.py
+	test-si-tubes-offer-stream.py
 	test-text.py \
 	test-text-delayed.py \
 	test-text-no-body.py \

@@ -48,8 +48,7 @@ TWISTED_TESTS = \
 	test-save-alias-to-vcard.py \
 	test-set-alias.py \
 	test-set-status-idempotence.py \
-	test-si-tubes-offer-dbus.py \
-	test-si-tubes-offer-stream.py \
+	test-si-tubes.py \
 	test-text.py \
 	test-text-delayed.py \
 	test-text-no-body.py \

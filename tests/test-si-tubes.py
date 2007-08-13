@@ -25,6 +25,13 @@ NS_SI_TUBES_OLD = 'http://jabber.org/protocol/si/profile/tubes'
 NS_IBB = 'http://jabber.org/protocol/ibb'
 NS_X_DATA = 'jabber:x:data'
 
+sample_parameters = dbus.Dictionary({
+    's': 'hello',
+    'ay': dbus.ByteArray('hello'),
+    'u': dbus.UInt32(123),
+    'i': dbus.Int32(-123),
+    }, signature='sv')
+
 
 class Echo(Protocol):
     def dataReceived(self, data):
@@ -57,15 +64,6 @@ def expect_roster_iq(event, data):
     item['subscription'] = 'both'
 
     data['stream'].send(event.stanza)
-
-    presence = domish.Element(('jabber:client', 'presence'))
-    presence['from'] = 'alice@localhost/Alice'
-    presence['to'] = 'test@localhost/Resource'
-    c = presence.addElement('c')
-    c['xmlns'] = 'http://jabber.org/protocol/caps'
-    c['node'] = 'http://example.com/ICantBelieveItsNotTelepathy'
-    c['ver'] = '1.2.3'
-    data['stream'].send(presence)
 
     presence = domish.Element(('jabber:client', 'presence'))
     presence['from'] = 'bob@localhost/Bob'
@@ -105,13 +103,6 @@ def expect_request_handles_return(event, data):
 
     return True
 
-sample_parameters = dbus.Dictionary({
-    's': 'hello',
-    'ay': dbus.ByteArray('hello'),
-    'u': dbus.UInt32(123),
-    'i': dbus.Int32(-123),
-    }, signature='sv')
-
 @match('dbus-return', method='RequestChannel')
 def expect_request_channel_return(event, data):
     bus = data['conn']._bus
@@ -128,7 +119,7 @@ def expect_request_channel_return(event, data):
     return True
 
 @match('stream-iq', iq_type='set', to='bob@localhost/Bob')
-def expect_stream_initiation(event, data):
+def expect_stream_initiation_stream(event, data):
 
     iq = event.stanza
     si_nodes = xpath.queryForNodes('/iq/si', iq)
@@ -138,7 +129,7 @@ def expect_stream_initiation(event, data):
     assert len(si_nodes) == 1
     si = si_nodes[0]
     assert si['profile'] == NS_SI_TUBES_OLD # FIXME: shouldn't be _OLD
-    data['stream_id'] = si['id']
+    data['stream_stream_id'] = si['id']
 
     feature = xpath.queryForNodes('/si/feature', si)[0]
     x = xpath.queryForNodes('/feature/x', feature)[0]
@@ -155,7 +146,7 @@ def expect_stream_initiation(event, data):
     # FIXME: tube['id'] has rubbish in it
     assert tube['offering'] == 'true'
     assert tube['type'] == 'stream'
-    data['tube_id'] = long(tube['id'])
+    data['stream_tube_id'] = long(tube['id'])
 
     params = {}
     parameter_nodes = xpath.queryForNodes('/tube/parameters/parameter', tube)
@@ -186,11 +177,11 @@ def expect_stream_initiation(event, data):
     return True
 
 @match('stream-iq', iq_type='set', to='bob@localhost/Bob')
-def expect_ibb_open(event, data):
+def expect_ibb_open_stream(event, data):
     iq = event.stanza
     open = xpath.queryForNodes('/iq/open', iq)[0]
     assert open.uri == NS_IBB
-    assert open['sid'] == data['stream_id']
+    assert open['sid'] == data['stream_stream_id']
 
     result = IQ(data['stream'], 'result')
     result['id'] = iq['id']
@@ -202,8 +193,8 @@ def expect_ibb_open(event, data):
     return True
 
 @match('dbus-signal', signal='TubeStateChanged')
-def expect_tube_open(event, data):
-    assert event.args[0] == data['tube_id']
+def expect_tube_open_stream(event, data):
+    assert event.args[0] == data['stream_tube_id']
     assert event.args[1] == 2       # OPEN
 
     call_async(data['test'], data['tubes_iface'], 'ListTubes',
@@ -212,9 +203,9 @@ def expect_tube_open(event, data):
     return True
 
 @match('dbus-return', method='ListTubes')
-def expect_list_tubes_return(event, data):
+def expect_list_tubes_return1(event, data):
     assert event.value[0] == [(
-        data['tube_id'],
+        data['stream_tube_id'],
         data['self_handle'],
         1,      # Unix stream
         'echo',
@@ -243,7 +234,7 @@ def expect_list_tubes_return(event, data):
     value.addContent(NS_IBB)
 
     tube = si.addElement((NS_SI_TUBES_OLD, 'tube'))
-    tube['id'] = str(data['tube_id'])
+    tube['id'] = str(data['stream_tube_id'])
     tube['offering'] = 'false'
 
     data['stream'].send(iq)
@@ -251,12 +242,12 @@ def expect_list_tubes_return(event, data):
     return True
 
 @match('stream-iq', iq_type='result')
-def expect_stream_initiation_ok(event, data):
+def expect_stream_initiation_ok_stream(event, data):
     return True
 
 @match('dbus-signal', signal='StreamUnixSocketNewConnection')
-def expect_new_connection(event, data):
-    assert event.args[0] == data['tube_id']
+def expect_new_connection_stream(event, data):
+    assert event.args[0] == data['stream_tube_id']
     assert event.args[1] == data['bob_handle']
 
     # have the fake client open the stream
@@ -270,7 +261,7 @@ def expect_new_connection(event, data):
     return True
 
 @match('stream-iq', iq_type='result')
-def expect_ibb_open_ok(event, data):
+def expect_ibb_open_ok_stream(event, data):
 
     # have the fake client send us some data
     message = domish.Element(('jabber:client', 'message'))
@@ -284,7 +275,7 @@ def expect_ibb_open_ok(event, data):
     return True
 
 @match('stream-message')
-def expect_echo(event, data):
+def expect_echo_stream(event, data):
     message = event.stanza
 
     assert message['to'] == 'bob@localhost/Bob'
@@ -297,7 +288,154 @@ def expect_echo(event, data):
     binary = base64.b64decode(str(ibb_data))
     assert binary == 'hello, world'
 
+    # OK, how about D-Bus?
+    call_async(data['test'], data['tubes_iface'], 'OfferDBusTube',
+        'com.example.TestCase', sample_parameters)
+
+    return True
+
+@match('stream-iq', iq_type='set', to='bob@localhost/Bob')
+def expect_stream_initiation_dbus(event, data):
+
+    iq = event.stanza
+    si_nodes = xpath.queryForNodes('/iq/si', iq)
+    if si_nodes is None:
+        return False
+
+    assert len(si_nodes) == 1
+    si = si_nodes[0]
+    assert si['profile'] == NS_SI_TUBES_OLD # FIXME: shouldn't be _OLD
+    data['dbus_stream_id'] = si['id']
+
+    feature = xpath.queryForNodes('/si/feature', si)[0]
+    x = xpath.queryForNodes('/feature/x', feature)[0]
+    assert x['type'] == 'form'
+    field = xpath.queryForNodes('/x/field', x)[0]
+    assert field['var'] == 'stream-method'
+    assert field['type'] == 'list-single'
+    value = xpath.queryForNodes('/field/option/value', field)[0]
+    assert str(value) == NS_IBB
+
+    tube = xpath.queryForNodes('/si/tube', si)[0]
+    assert tube['initiator'] == 'test@localhost'
+    assert tube['service'] == 'com.example.TestCase'
+    assert tube['stream-id'] == data['dbus_stream_id']
+    data['my_bus_name'] = tube['dbus-name']
+    assert tube['offering'] == 'true'
+    assert tube['type'] == 'dbus'
+    data['dbus_tube_id'] = long(tube['id'])
+
+    params = {}
+    parameter_nodes = xpath.queryForNodes('/tube/parameters/parameter', tube)
+    for node in parameter_nodes:
+        assert node['name'] not in params
+        params[node['name']] = (node['type'], str(node))
+    assert params == {'ay': ('bytes', 'aGVsbG8='),
+                      's': ('str', 'hello'),
+                      'i': ('int', '-123'),
+                      'u': ('uint', '123'),
+                     }
+
+    result = IQ(data['stream'], 'result')
+    result['id'] = iq['id']
+    result['from'] = iq['to']
+    result['to'] = 'test@localhost/Resource'
+    res_si = result.addElement((NS_SI, 'si'))
+    res_feature = res_si.addElement((NS_FEATURE_NEG, 'feature'))
+    res_x = res_feature.addElement((NS_X_DATA, 'x'))
+    res_x['type'] = 'submit'
+    res_field = res_x.addElement((None, 'field'))
+    res_field['var'] = 'stream-method'
+    res_value = res_field.addElement((None, 'value'))
+    res_value.addContent(NS_IBB)
+
+    data['stream'].send(result)
+
+    return True
+
+@match('stream-iq', iq_type='set', to='bob@localhost/Bob')
+def expect_ibb_open_dbus(event, data):
+    iq = event.stanza
+    open = xpath.queryForNodes('/iq/open', iq)[0]
+    assert open.uri == NS_IBB
+    assert open['sid'] == data['dbus_stream_id']
+
+    result = IQ(data['stream'], 'result')
+    result['id'] = iq['id']
+    result['from'] = iq['to']
+    result['to'] = 'test@localhost/Resource'
+
+    data['stream'].send(result)
+
+    return True
+
+@match('dbus-signal', signal='TubeStateChanged')
+def expect_tube_open_dbus(event, data):
+    assert event.args[0] == data['dbus_tube_id']
+    assert event.args[1] == 2       # OPEN
+
+    call_async(data['test'], data['tubes_iface'], 'ListTubes',
+        byte_arrays=True)
+
+    return True
+
+@match('dbus-return', method='ListTubes')
+def expect_list_tubes_return_dbus(event, data):
+    assert sorted(event.value[0]) == sorted([(
+        data['dbus_tube_id'],
+        data['tubes_self_handle'],
+        0,      # DBUS
+        'com.example.TestCase',
+        sample_parameters,
+        2,      # OPEN
+        ),(
+        data['stream_tube_id'],
+        data['tubes_self_handle'],
+        1,      # stream
+        'echo',
+        sample_parameters,
+        2,      # OPEN
+        )])
+
+    call_async(data['test'], data['tubes_iface'], 'GetDBusServerAddress',
+        data['dbus_tube_id'])
+
+    return True
+
+@match('dbus-return', method='GetDBusServerAddress')
+def expect_get_dbus_server_address_return(event, data):
+    data['dbus_tube_conn'] = Connection(event.value[0])
+    signal = SignalMessage('/', 'foo.bar', 'baz')
+    signal.append(42, signature='u')
+    data['dbus_tube_conn'].send_message(signal)
+    return True
+
+@match('stream-message')
+def expect_message_dbus(event, data):
+    message = event.stanza
+
+    assert message['to'] == 'bob@localhost/Bob'
+
+    data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % NS_IBB,
+        message)
+    assert data_nodes is not None
+    assert len(data_nodes) == 1
+    ibb_data = data_nodes[0]
+    assert ibb_data['sid'] == data['dbus_stream_id']
+    binary = base64.b64decode(str(ibb_data))
+    # little and big endian versions of: SIGNAL, NO_REPLY, protocol v1,
+    # 4-byte payload
+    assert binary.startswith('l\x04\x01\x01' '\x04\x00\x00\x00') or \
+           binary.startswith('B\x04\x01\x01' '\x00\x00\x00\x04')
+    # little and big endian versions of the 4-byte payload, UInt32(42)
+    assert (binary[0] == 'l' and binary.endswith('\x2a\x00\x00\x00')) or \
+           (binary[0] == 'B' and binary.endswith('\x00\x00\x00\x2a'))
+    # XXX: verify that it's actually in the "sender" slot, rather than just
+    # being in the message somewhere
+    assert data['my_bus_name'] in binary
+
     # OK, we're done
+
     data['conn_iface'].Disconnect()
     return True
 

@@ -791,7 +791,7 @@ observe_vcard (GabbleConnection *conn,
 
   old_alias = gabble_vcard_manager_get_cached_alias (manager, handle);
 
-  if (!tp_strdiff (alias, old_alias))
+  if (old_alias != NULL && !tp_strdiff (old_alias, alias))
     {
 #ifdef ENABLE_DEBUG
       if (alias != NULL)

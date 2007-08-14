@@ -383,14 +383,14 @@ def expect_tube_open_dbus(event, data):
 def expect_list_tubes_return_dbus(event, data):
     assert sorted(event.value[0]) == sorted([(
         data['dbus_tube_id'],
-        data['tubes_self_handle'],
+        data['self_handle'],
         0,      # DBUS
         'com.example.TestCase',
         sample_parameters,
         2,      # OPEN
         ),(
         data['stream_tube_id'],
-        data['tubes_self_handle'],
+        data['self_handle'],
         1,      # stream
         'echo',
         sample_parameters,

@@ -1244,4 +1244,11 @@ gabble_muc_factory_iface_init (gpointer g_iface,
   klass->request = gabble_muc_factory_iface_request;
 }
 
+GabbleMucChannel *
+gabble_muc_factory_find_text_channel (GabbleMucFactory *self,
+                                      TpHandle handle)
+{
+  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
 
+  return g_hash_table_lookup (priv->channels, GUINT_TO_POINTER (handle));
+}

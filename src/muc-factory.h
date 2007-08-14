@@ -57,6 +57,9 @@ GType gabble_muc_factory_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_MUC_FACTORY, \
                               GabbleMucFactoryClass))
 
+GabbleMucChannel *gabble_muc_factory_find_text_channel (GabbleMucFactory *self,
+    TpHandle handle);
+
 void gabble_muc_factory_handle_si_stream_request (GabbleMucFactory *self,
     GabbleBytestreamIface *bytestream, TpHandle room_handle,
     const gchar *stream_id, LmMessage *msg);

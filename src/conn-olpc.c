@@ -43,6 +43,7 @@ typedef struct
   TpHandle handle;
   GHashTable *properties;
 
+  GabbleConnection *conn;
   TpHandleRepoIface *room_repo;
   guint refcount;
 } ActivityInfo;
@@ -69,6 +70,7 @@ activity_info_new (GabbleConnection *conn,
   tp_handle_ref (room_repo, handle);
   info->properties = NULL;
 
+  info->conn = conn;
   info->room_repo = room_repo;
   info->refcount = 1;
 
@@ -103,8 +105,7 @@ activity_info_set_properties (ActivityInfo *info,
 }
 
 static void
-decrement_contacts_activities_list_foreach (ActivityInfo *info,
-                                            GabbleConnection *conn)
+activity_info_unref (ActivityInfo *info)
 {
   info->refcount--;
 
@@ -114,9 +115,16 @@ decrement_contacts_activities_list_foreach (ActivityInfo *info,
 
   if (info->refcount == 0)
     {
-      g_hash_table_remove (conn->olpc_activities_info,
+      g_hash_table_remove (info->conn->olpc_activities_info,
           GUINT_TO_POINTER (info->handle));
     }
+}
+
+static void
+decrement_contacts_activities_list_foreach (ActivityInfo *info,
+                                            gpointer unused)
+{
+  activity_info_unref (info);
 }
 
 /* context may be NULL. */
@@ -592,7 +600,7 @@ extract_activities (GabbleConnection *conn,
       /* We decrement the refcount (and free if needed) all the
        * activities previously announced by this contact. */
       g_slist_foreach (old_activities,
-          (GFunc) decrement_contacts_activities_list_foreach, conn);
+          (GFunc) decrement_contacts_activities_list_foreach, NULL);
     }
 
   /* Update the list of activities associated with this contact. */
@@ -776,7 +784,7 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
           /* We have to unref information previously
            * refed in this loop */
           g_slist_foreach (activities_list,
-              (GFunc) decrement_contacts_activities_list_foreach, conn);
+              (GFunc) decrement_contacts_activities_list_foreach, NULL);
 
           /* set_activities failed so we don't unref old activities
            * of the local user */
@@ -810,7 +818,7 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
               /* We have to unref information previously
                * refed in this loop */
               g_slist_foreach (activities_list,
-                  (GFunc) decrement_contacts_activities_list_foreach, conn);
+                  (GFunc) decrement_contacts_activities_list_foreach, NULL);
 
               /* set_activities failed so we don't unref old activities
                * of the local user */
@@ -847,7 +855,7 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
       /* We decrement the refcount (and free if needed) all the
        * activities previously announced by our own contact. */
       g_slist_foreach (old_activities,
-          (GFunc) decrement_contacts_activities_list_foreach, conn);
+          (GFunc) decrement_contacts_activities_list_foreach, NULL);
     }
 
   /* Update the list of activities associated with our own contact. */
@@ -1505,7 +1513,7 @@ connection_presence_update_cb (GabblePresenceCache *cache,
           GINT_TO_POINTER (handle));
 
       g_slist_foreach (list,
-          (GFunc) decrement_contacts_activities_list_foreach, conn);
+          (GFunc) decrement_contacts_activities_list_foreach, NULL);
 
       g_hash_table_remove (conn->olpc_contacts_activities,
           GUINT_TO_POINTER (handle));

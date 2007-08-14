@@ -227,19 +227,6 @@ gabble_connection_request_aliases (TpSvcConnectionInterfaceAliasing *iface,
               tp_handle_inspect (contact_handles, handle));
 
           g_free (alias);
-
-          if (gabble_vcard_manager_get_cached (self->vcard_manager, handle,
-                NULL))
-            {
-                GabbleConnectionAliasSource source;
-                source = _gabble_connection_get_cached_alias (self, handle,
-                    &alias);
-                request->vcard_requests[i] = NULL;
-                request->aliases[i] = alias;
-                request->pending_vcard_requests++;
-                continue;
-            }
-
           vcard_request = gabble_vcard_manager_request (self->vcard_manager,
               handle, 0, aliases_request_vcard_cb, request, G_OBJECT (self),
               &error);

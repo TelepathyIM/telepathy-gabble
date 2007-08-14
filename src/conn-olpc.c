@@ -1346,7 +1346,12 @@ check_prop_in_old_properties (gpointer key,
               data->new_infos = TRUE;
             }
         }
-      /* XXX check other properties type */
+      /* XXX check other types of property (we don't actually have any yet) */
+      else
+        {
+          /* if in doubt, emit the signal */
+          data->new_infos = TRUE;
+        }
     }
 }
 

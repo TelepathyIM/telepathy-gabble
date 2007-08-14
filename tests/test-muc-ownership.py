@@ -31,9 +31,8 @@ def expect_disco(event, data):
     data['stream'].send(result)
     return True
 
+@match('dbus-return', method='RequestHandles')
 def expect_request_handles_return(event, data):
-    assert event.type == 'dbus-return'
-    assert event.method == 'RequestHandles'
     handles = event.value[0]
 
     call_async(data['test'], data['conn_iface'], 'RequestChannel',

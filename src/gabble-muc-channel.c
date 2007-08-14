@@ -27,20 +27,20 @@
 #include <string.h>
 #include <time.h>
 
+#include <telepathy-glib/dbus.h>
+#include <telepathy-glib/debug-ansi.h>
+#include <telepathy-glib/errors.h>
+#include <telepathy-glib/interfaces.h>
+#include <telepathy-glib/channel-iface.h>
+
 #define DEBUG_FLAG GABBLE_DEBUG_MUC
 
-#include <telepathy-glib/debug-ansi.h>
 #include "debug.h"
 #include "disco.h"
 #include "gabble-connection.h"
 #include "gabble-error.h"
 #include "namespaces.h"
 #include "util.h"
-
-#include <telepathy-glib/dbus.h>
-#include <telepathy-glib/errors.h>
-#include <telepathy-glib/interfaces.h>
-#include <telepathy-glib/channel-iface.h>
 
 #define DEFAULT_JOIN_TIMEOUT (180 * 1000)
 #define MAX_NICK_RETRIES 3

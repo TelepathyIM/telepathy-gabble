@@ -1166,23 +1166,6 @@ set_activity_properties (gpointer key,
     }
 }
 
-static void
-copy_properties (gpointer key,
-                 gpointer value,
-                 gpointer user_data)
-{
-  const gchar *prop = key;
-  GValue *gvalue = value;
-  GHashTable *properties_copied = user_data;
-  GValue *gvalue_copied;
-
-  gvalue_copied = g_slice_new0 (GValue);
-  g_value_init (gvalue_copied, G_VALUE_TYPE (gvalue));
-  g_value_copy (gvalue, gvalue_copied);
-
-  g_hash_table_insert (properties_copied, g_strdup (prop), gvalue_copied);
-}
-
 static LmHandlerResult
 set_activity_properties_reply_cb (GabbleConnection *conn,
                                   LmMessage *sent_msg,
@@ -1234,8 +1217,8 @@ olpc_activity_properties_set_properties (GabbleSvcOLPCActivityProperties *iface,
 
   properties_copied = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
       (GDestroyNotify) tp_g_value_slice_free);
-  g_hash_table_foreach (properties, copy_properties,
-      properties_copied);
+  gabble_g_hash_table_update (properties_copied, properties,
+      g_strdup, gabble_g_value_slice_dup);
 
   info = g_hash_table_lookup (conn->olpc_activities_info,
       GUINT_TO_POINTER (room));

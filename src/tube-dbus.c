@@ -861,9 +861,9 @@ data_received_cb (GabbleBytestreamIBB *ibb,
    * to check it */
   if (destination != NULL && tp_strdiff (priv->dbus_local_name, destination))
     {
-      /* This message is not intended to this tube.
+      /* This message is not intended for this tube.
        * Discard it. */
-      DEBUG ("message not intended to this tube (destination = %s)",
+      DEBUG ("message not intended for this tube (destination = %s)",
           destination);
       dbus_message_unref (msg);
       return;

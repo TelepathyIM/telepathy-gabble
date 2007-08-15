@@ -88,7 +88,11 @@ conf_files = $(conf_in_files:.conf.in=.conf)
 
 BUILT_SOURCES = $(service_files) $(conf_files) exec-with-log.sh
 
-EXTRA_DIST = $(service_in_files) $(conf_in_files) exec-with-log.sh.in
+EXTRA_DIST = \
+	$(service_in_files) \
+	$(conf_in_files) \
+	exec-with-log.sh.in \
+	$(TWISTED_TESTS)
 
 CLEANFILES = $(BUILT_SOURCES) gabble-[1-9]*.log
 

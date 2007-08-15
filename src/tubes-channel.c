@@ -1422,6 +1422,35 @@ gabble_tubes_channel_offer_d_bus_tube (GabbleSvcChannelTypeTubes *iface,
 #endif
 }
 
+/**
+ * gabble_tubes_channel_offer_tube
+ *
+ * Implements D-Bus method OfferTube
+ * on org.freedesktop.Telepathy.Channel.Type.Tubes
+ */
+static void
+gabble_tubes_channel_offer_tube (GabbleSvcChannelTypeTubes *iface,
+                                 guint tube_type,
+                                 const gchar *service,
+                                 GHashTable *parameters,
+                                 DBusGMethodInvocation *context)
+{
+  if (tube_type == GABBLE_TUBE_TYPE_DBUS)
+    {
+      DEBUG ("deprecated");
+      /* they have the same return signature, so it's safe to do: */
+      gabble_tubes_channel_offer_d_bus_tube (iface, service, parameters,
+          context);
+    }
+  else
+    {
+      GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Deprecated method OfferTube only works for D-Bus tubes" };
+
+      dbus_g_method_return_error (context, &error);
+    }
+}
+
 static void
 stream_unix_tube_new_connection_cb (GabbleTubeIface *tube,
                                     guint contact,
@@ -2062,6 +2091,7 @@ tubes_iface_init (gpointer g_iface,
     klass, gabble_tubes_channel_##x)
   IMPLEMENT(get_available_tube_types);
   IMPLEMENT(list_tubes);
+  IMPLEMENT(offer_tube);
   IMPLEMENT(offer_d_bus_tube);
   IMPLEMENT(offer_stream_unix_tube);
   IMPLEMENT(accept_tube);

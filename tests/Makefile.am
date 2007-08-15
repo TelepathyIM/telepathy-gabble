@@ -28,6 +28,7 @@ AM_LDFLAGS = @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@ @TP_GLIB_LIBS@
 TESTS = $(noinst_PROGRAMS)
 TWISTED_TESTS = \
 	test-alias.py \
+	test-alias-empty-vcard.py \
 	test-avatar.py \
 	test-avatar-async.py \
 	test-connect.py \

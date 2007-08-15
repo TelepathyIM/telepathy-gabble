@@ -998,6 +998,7 @@ streaminit_reply_cb (GabbleConnection *conn,
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_ROOM);
   TpHandle peer_handle = 0;
+  gboolean success;
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
@@ -1082,14 +1083,21 @@ streaminit_reply_cb (GabbleConnection *conn,
   DEBUG ("stream %s accepted", data->stream_id);
 
   /* Let's start the initiation of the stream */
-  if (!gabble_bytestream_ibb_initiation (bytestream))
+  if (gabble_bytestream_ibb_initiation (bytestream))
+    {
+      /* FIXME: we should really only "succeed" when our <open> succeeds.
+       * It only really matters from the point of view of the data->func */
+      success = TRUE;
+    }
+
+END:
+  if (!success)
     {
       /* Initiation failed. We remove the stream */
       remove_bytestream (self, bytestream);
       bytestream = NULL;
     }
 
-END:
   /* user callback */
   data->func (bytestream, (const gchar*) data->stream_id, reply_msg,
       data->user_data);

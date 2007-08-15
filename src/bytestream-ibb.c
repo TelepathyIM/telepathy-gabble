@@ -482,9 +482,7 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
   LmMessageNode *data;
   GString *str;
-  const gchar *from;
   TpHandle sender;
-  TpHandleRepoIface *contact_repo;
 
   /* caller must have checked for this in order to know which bytestream to
    * route this packet to */
@@ -501,44 +499,24 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
       return;
     }
 
-  from = lm_message_node_get_attribute (msg->node, "from");
-  if (from == NULL)
-    {
-      NODE_DEBUG (msg->node, "got a message without a from field, ignoring");
-      if (is_iq)
-        _gabble_connection_send_iq_error (priv->conn, msg,
-            XMPP_ERROR_BAD_REQUEST, "IQ 'from' attribute missing");
-      return;
-    }
-
-  contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-
-  /* This will only recognise it as a MUC handle if it's one it's seen before;
-   * but people we're having a tube with should be people we've established
-   * contact with before.
-   */
-  sender = tp_handle_lookup (contact_repo, from, NULL, NULL);
-
   if (priv->peer_handle_type == TP_HANDLE_TYPE_ROOM)
     {
       /* multi users stream */
-      TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
-          (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
-      TpHandle room_handle = gabble_get_room_handle_from_jid (room_repo,
-          from);
+      TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+          (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+      const gchar *from = lm_message_node_get_attribute (msg->node, "from");
 
-      if (room_handle != priv->peer_handle)
+      /* MUC stream using pseudo-IBB - the sender is required to be a
+       * MUC-JID, and it's required to be a <message> (both checked by caller)
+       */
+      g_return_if_fail (from != NULL);
+      sender = tp_handle_lookup (contact_repo, from,
+          GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
+
+      if (sender == 0)
         {
-          /* Data are not for this stream - we got a message for a known
-           * stream, but from the wrong sender.
-           *
-           * FIXME: we should dispatch by (sender, stream-ID) pairs rather
-           * than by stream IDs so that this can't happen */
-          DEBUG ("Unexpected sender for IBB <data>");
-          if (is_iq)
-            _gabble_connection_send_iq_error (priv->conn, msg,
-                XMPP_ERROR_BAD_REQUEST, "IBB <data> from unexpected sender");
+          DEBUG ("ignoring data in MUC from unknown contact %s", from);
+          g_return_if_fail (!is_iq);
           return;
         }
 
@@ -547,15 +525,9 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
     }
   else
     {
-      /* Private stream */
-      if (priv->peer_handle != sender)
-        {
-          DEBUG ("Unexpected sender for IBB <data>");
-          if (is_iq)
-            _gabble_connection_send_iq_error (priv->conn, msg,
-                XMPP_ERROR_BAD_REQUEST, "IBB <data> from unexpected sender");
-          return;
-        }
+      /* Private stream using SI - the bytestream factory has already checked
+       * the sender in order to dispatch to us */
+      sender = priv->peer_handle;
 
       /* FIXME: check sequence number */
     }

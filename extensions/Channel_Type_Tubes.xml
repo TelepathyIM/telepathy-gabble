@@ -117,7 +117,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
     <method name="OfferTube">
       <tp:docstring>
         Offers a tube providing the service specified, over a tube of the
-        specified type.
+        specified type. In practice, this will only work for D-Bus tubes.
+        DEPRECATED: use OfferDBusTube instead.
       </tp:docstring>
       <arg direction="in" name="type" type="u" tp:type="Tube_Type">
         <tp:docstring>

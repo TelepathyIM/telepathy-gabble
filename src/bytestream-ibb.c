@@ -30,17 +30,18 @@
 
 #include <loudmouth/loudmouth.h>
 
+#include <telepathy-glib/interfaces.h>
+
 #define DEBUG_FLAG GABBLE_DEBUG_TUBES
 
+#include "base64.h"
+#include "bytestream-factory.h"
 #include "debug.h"
 #include "disco.h"
 #include "gabble-connection.h"
-#include "namespaces.h"
-#include <telepathy-glib/interfaces.h>
-#include "util.h"
-#include "base64.h"
 #include "gabble-signals-marshal.h"
-#include "bytestream-factory.h"
+#include "namespaces.h"
+#include "util.h"
 
 G_DEFINE_TYPE (GabbleBytestreamIBB, gabble_bytestream_ibb, G_TYPE_OBJECT);
 

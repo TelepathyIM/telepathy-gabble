@@ -63,6 +63,7 @@ enum
   PROP_PEER_HANDLE_TYPE,
   PROP_STREAM_ID,
   PROP_STREAM_INIT_ID,
+  PROP_PEER_JID,
   PROP_PEER_RESOURCE,
   PROP_STATE,
   LAST_PROPERTY
@@ -160,6 +161,9 @@ gabble_bytestream_ibb_get_property (GObject *object,
         break;
       case PROP_PEER_RESOURCE:
         g_value_set_string (value, priv->peer_resource);
+        break;
+      case PROP_PEER_JID:
+        g_value_set_string (value, priv->peer_jid);
         break;
       case PROP_STATE:
         g_value_set_uint (value, priv->state);
@@ -350,6 +354,18 @@ gabble_bytestream_ibb_class_init (
       G_PARAM_STATIC_NICK |
       G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_PEER_RESOURCE,
+      param_spec);
+
+  param_spec = g_param_spec_string (
+      "peer-jid",
+      "Peer JID",
+      "The JID used by the remote peer during the SI",
+      "",
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_NAME |
+      G_PARAM_STATIC_NICK |
+      G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_PEER_JID,
       param_spec);
 
   param_spec = g_param_spec_uint (

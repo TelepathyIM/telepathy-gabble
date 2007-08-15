@@ -560,12 +560,8 @@ gabble_bytestream_ibb_make_accept_iq (GabbleBytestreamIBB *self)
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
   LmMessage *msg;
 
-  if (priv->peer_handle_type == TP_HANDLE_TYPE_ROOM ||
-      priv->stream_init_id == NULL)
-    {
-      DEBUG ("bytestream was not created due to a SI request");
-      return NULL;
-    }
+  g_return_val_if_fail (priv->peer_handle_type != TP_HANDLE_TYPE_ROOM, NULL);
+  g_return_val_if_fail (priv->stream_init_id != NULL, NULL);
 
   msg = gabble_bytestream_factory_make_accept_iq (priv->peer_jid,
       priv->stream_init_id, NS_IBB);

@@ -635,6 +635,10 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
   if (!request_handled)
     {
       DEBUG ("Can't handle tube SI request");
+      /* FIXME: work out under exactly what circumstances this will happen,
+       * so the error can be made more appropriate */
+      _gabble_connection_send_iq_error (priv->conn, msg,
+          XMPP_ERROR_BAD_REQUEST, "request not handled anywhere");
       gabble_bytestream_ibb_close (bytestream);
     }
 

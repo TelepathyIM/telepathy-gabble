@@ -1178,6 +1178,10 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
   /* Caller is expected to have checked that we have a SI node with
    * a stream ID and the TUBES (or TUBES_OLD) profile
    */
+  g_return_val_if_fail (lm_message_get_type (msg) == LM_MESSAGE_TYPE_IQ,
+      FALSE);
+  g_return_val_if_fail (lm_message_get_type (msg) ==
+      LM_MESSAGE_TYPE_SUB_TYPE_SET, FALSE);
   si_node = lm_message_node_get_child_with_namespace (msg->node, "si",
       NS_SI);
   g_return_val_if_fail (si_node != NULL, FALSE);

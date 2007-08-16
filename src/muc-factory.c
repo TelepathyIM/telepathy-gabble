@@ -1195,8 +1195,8 @@ gabble_muc_factory_handle_si_request (GabbleMucFactory *self,
      (TpBaseConnection*) priv->conn, TP_HANDLE_TYPE_ROOM);
   GabbleTubesChannel *chan;
 
-  if (!tp_handle_is_valid (room_repo, room_handle, NULL))
-    return FALSE;
+  g_return_val_if_fail (tp_handle_is_valid (room_repo, room_handle, NULL),
+      FALSE);
 
   chan = g_hash_table_lookup (priv->tubes_channels,
       GUINT_TO_POINTER (room_handle));

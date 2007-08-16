@@ -1154,7 +1154,10 @@ bytestream_negotiate_cb (GabbleBytestreamIBB *bytestream,
 #endif
 }
 
-/* Called when we receive a SI request */
+/* Called when we receive a SI request,
+ * via either gabble_muc_factory_handle_si_request or
+ * gabble_tubes_factory_handle_si_request
+ */
 gboolean
 gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
                                    GabbleBytestreamIBB *bytestream,
@@ -1172,21 +1175,14 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
   GabbleTubeIface *tube;
   gboolean offering;
 
+  /* Caller is expected to have checked that we have a SI node with
+   * a stream ID and the TUBES (or TUBES_OLD) profile
+   */
   si_node = lm_message_node_get_child_with_namespace (msg->node, "si",
       NS_SI);
-  if (si_node == NULL)
-    {
-
-      NODE_DEBUG (msg->node, "got a SI request without SI markup");
-      return FALSE;
-    }
-
+  g_return_val_if_fail (si_node != NULL, FALSE);
   stream_id = lm_message_node_get_attribute (si_node, "id");
-  if (stream_id == NULL)
-    {
-      NODE_DEBUG (msg->node, "got a SI request without stream ID");
-      return FALSE;
-    }
+  g_return_val_if_fail (stream_id != NULL, FALSE);
 
   tube_node = lm_message_node_get_child_with_namespace (si_node, "tube",
       NS_SI_TUBES);

@@ -1135,7 +1135,7 @@ bytestream_negotiate_cb (GabbleBytestreamIBB *bytestream,
       NS_SI_TUBES);
   if (tube_node == NULL)
     tube_node = lm_message_node_get_child_with_namespace (si, "tube",
-        NS_SI_TUBES_OLD);
+        NS_SI_TUBES);
   if (tube_node == NULL)
     return;
 
@@ -1319,13 +1319,13 @@ start_stream_initiation (GabbleTubesChannel *self,
   full_jid = g_strdup_printf ("%s/%s", jid, resource);
 
   msg = gabble_bytestream_factory_make_stream_init_iq (full_jid,
-      stream_id, NS_SI_TUBES_OLD);
+      stream_id, NS_SI_TUBES);
 
   si_node = lm_message_node_get_child_with_namespace (msg->node, "si", NS_SI);
   g_assert (si_node != NULL);
 
   tube_node = lm_message_node_add_child (si_node, "tube", NULL);
-  lm_message_node_set_attribute (tube_node, "xmlns", NS_SI_TUBES_OLD);
+  lm_message_node_set_attribute (tube_node, "xmlns", NS_SI_TUBES);
   publish_tube_in_node (self, tube_node, tube);
   lm_message_node_set_attribute (tube_node, "offering", "true");
 

@@ -128,7 +128,7 @@ def expect_stream_initiation_stream(event, data):
 
     assert len(si_nodes) == 1
     si = si_nodes[0]
-    assert si['profile'] == NS_SI_TUBES_OLD # FIXME: shouldn't be _OLD
+    assert si['profile'] == NS_SI_TUBES
     data['stream_stream_id'] = si['id']
 
     feature = xpath.queryForNodes('/si/feature', si)[0]
@@ -222,7 +222,7 @@ def expect_list_tubes_return1(event, data):
     iq['from'] = 'bob@localhost/Bob'
     si = iq.addElement((NS_SI, 'si'))
     si['id'] = 'alpha'
-    si['profile'] = NS_SI_TUBES_OLD
+    si['profile'] = NS_SI_TUBES
     feature = si.addElement((NS_FEATURE_NEG, 'feature'))
     x = feature.addElement((NS_X_DATA, 'x'))
     x['type'] = 'form'
@@ -233,7 +233,7 @@ def expect_list_tubes_return1(event, data):
     value = option.addElement((None, 'value'))
     value.addContent(NS_IBB)
 
-    tube = si.addElement((NS_SI_TUBES_OLD, 'tube'))
+    tube = si.addElement((NS_SI_TUBES, 'tube'))
     tube['id'] = str(data['stream_tube_id'])
     tube['offering'] = 'false'
 
@@ -304,7 +304,7 @@ def expect_stream_initiation_dbus(event, data):
 
     assert len(si_nodes) == 1
     si = si_nodes[0]
-    assert si['profile'] == NS_SI_TUBES_OLD # FIXME: shouldn't be _OLD
+    assert si['profile'] == NS_SI_TUBES
     data['dbus_stream_id'] = si['id']
 
     feature = xpath.queryForNodes('/si/feature', si)[0]

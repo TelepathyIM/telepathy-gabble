@@ -959,7 +959,7 @@ gabble_tube_dbus_accept (GabbleTubeIface *tube)
       g_assert (si != NULL);
 
       tube_node = lm_message_node_add_child (si, "tube", "");
-      lm_message_node_set_attribute (tube_node, "xmlns", NS_SI_TUBES_OLD);
+      lm_message_node_set_attribute (tube_node, "xmlns", NS_SI_TUBES);
 
       lm_message_node_add_child (tube_node, "dbus-name",
           priv->dbus_local_name);

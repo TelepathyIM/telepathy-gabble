@@ -1419,8 +1419,12 @@ timeout_session (gpointer data)
 
   DEBUG ("session timed out");
 
-  _gabble_media_session_terminate (session, INITIATOR_LOCAL,
-      TP_CHANNEL_GROUP_CHANGE_REASON_ERROR);
+  if (session->initiator == INITIATOR_LOCAL)
+      _gabble_media_session_terminate (session, INITIATOR_LOCAL,
+          TP_CHANNEL_GROUP_CHANGE_REASON_NO_ANSWER);
+  else
+      _gabble_media_session_terminate (session, INITIATOR_LOCAL,
+          TP_CHANNEL_GROUP_CHANGE_REASON_ERROR);
 
   return FALSE;
 }

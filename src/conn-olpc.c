@@ -1101,7 +1101,7 @@ olpc_buddy_info_set_current_activity (GabbleSvcOLPCBuddyInfo *iface,
     return;
 
   /* if activity == "" there is no current activity */
-  if (strlen (activity) > 0)
+  if (activity[0] != '\0')
     {
       room = inspect_room (base, context, channel);
       if (room == NULL)

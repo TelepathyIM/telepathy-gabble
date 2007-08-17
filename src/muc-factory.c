@@ -1222,10 +1222,10 @@ gabble_muc_factory_handle_si_stream_request (GabbleMucFactory *self,
 }
 
 GabbleMucChannel *
-gabble_muc_factory_find_channel (GabbleMucFactory *factory,
-                                 TpHandle handle)
+gabble_muc_factory_find_text_channel (GabbleMucFactory *self,
+                                      TpHandle handle)
 {
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (factory);
+  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
 
   return g_hash_table_lookup (priv->text_channels, GUINT_TO_POINTER (handle));
 }
@@ -1242,13 +1242,4 @@ gabble_muc_factory_iface_init (gpointer g_iface,
   klass->disconnected = gabble_muc_factory_iface_disconnected;
   klass->foreach = gabble_muc_factory_iface_foreach;
   klass->request = gabble_muc_factory_iface_request;
-}
-
-GabbleMucChannel *
-gabble_muc_factory_find_text_channel (GabbleMucFactory *self,
-                                      TpHandle handle)
-{
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
-
-  return g_hash_table_lookup (priv->channels, GUINT_TO_POINTER (handle));
 }

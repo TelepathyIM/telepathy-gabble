@@ -690,14 +690,21 @@ lm_message_node_extract_properties (LmMessageNode *node,
         {
           gvalue = g_slice_new0 (GValue);
           g_value_init (gvalue, G_TYPE_INT);
-          g_value_set_int (gvalue, atoi (value));
+          g_value_set_int (gvalue, strtol (value, NULL, 10));
           g_hash_table_insert (properties, g_strdup (name), gvalue);
         }
       else if (0 == strcmp (type, "uint"))
         {
           gvalue = g_slice_new0 (GValue);
           g_value_init (gvalue, G_TYPE_UINT);
-          g_value_set_uint (gvalue, atoi (value));
+          g_value_set_uint (gvalue, strtoul (value, NULL, 10));
+          g_hash_table_insert (properties, g_strdup (name), gvalue);
+        }
+      else if (0 == strcmp (type, "bool"))
+        {
+          gvalue = g_slice_new0 (GValue);
+          g_value_init (gvalue, G_TYPE_BOOLEAN);
+          g_value_set_boolean (gvalue, !!strtol (value, NULL, 10));
           g_hash_table_insert (properties, g_strdup (name), gvalue);
         }
     }
@@ -737,6 +744,10 @@ set_child_from_property (gpointer key,
   else if (G_VALUE_TYPE (gvalue) == G_TYPE_UINT)
     {
       type = "uint";
+    }
+  else if (G_VALUE_TYPE (gvalue) == G_TYPE_BOOLEAN)
+    {
+      type = "bool";
     }
   else
     {
@@ -778,7 +789,16 @@ set_child_from_property (gpointer key,
     {
       gchar *str;
 
-      str = g_strdup_printf ("%d", g_value_get_uint (gvalue));
+      str = g_strdup_printf ("%u", g_value_get_uint (gvalue));
+      lm_message_node_set_value (child, str);
+
+      g_free (str);
+    }
+  else if (G_VALUE_TYPE (gvalue) == G_TYPE_BOOLEAN)
+    {
+      gchar *str;
+
+      str = g_strdup_printf ("%u", g_value_get_boolean (gvalue));
       lm_message_node_set_value (child, str);
 
       g_free (str);

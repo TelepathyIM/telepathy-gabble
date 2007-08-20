@@ -22,10 +22,13 @@
 
 #include <string.h>
 
+#include <telepathy-glib/channel-iface.h>
+
 #define DEBUG_FLAG GABBLE_DEBUG_OLPC
 
 #include "debug.h"
 #include "gabble-connection.h"
+#include "gabble-muc-channel.h"
 #include "presence-cache.h"
 #include "namespaces.h"
 #include "pubsub.h"
@@ -1501,6 +1504,107 @@ connection_status_changed_cb (GabbleConnection *conn,
     }
 }
 
+gboolean
+conn_olpc_process_activity_properties_message (GabbleConnection *conn,
+                                               LmMessage *msg,
+                                               const gchar *from)
+{
+  LmMessageNode *node = lm_message_node_get_child_with_namespace (msg->node,
+      "properties", NS_OLPC_ACTIVITY_PROPS);
+
+  /* if no <properties xmlns=...>, then not for us */
+  if (node == NULL)
+    return FALSE;
+
+  /* FIXME: pick up the activity properties */
+
+  return TRUE;
+}
+
+static void
+muc_channel_closed_cb (GabbleMucChannel *chan,
+                       ActivityInfo *info)
+{
+  GabbleConnection *conn = info->conn;
+  TpBaseConnection *base = (TpBaseConnection *) info->conn;
+  GSList *my_activities;
+
+  /* unref the activity info (it was referenced on behalf of the channel) */
+  activity_info_unref (info);
+
+  /* remove it from our advertised activities list, unreffing it again
+   * in the process */
+  my_activities = g_hash_table_lookup (conn->olpc_contacts_activities,
+      GUINT_TO_POINTER (base->self_handle));
+  g_hash_table_steal (conn->olpc_contacts_activities,
+      GUINT_TO_POINTER (base->self_handle));
+  my_activities = g_slist_remove (my_activities, info);
+  activity_info_unref (info);
+  g_hash_table_insert (conn->olpc_contacts_activities,
+      GUINT_TO_POINTER (base->self_handle), my_activities);
+
+  /* FIXME: update our activities PEP */
+  /* FIXME: update our activity properties PEP */
+}
+
+static void
+muc_channel_pre_invite_cb (GabbleMucChannel *chan,
+                           TpHandle invitee,
+                           ActivityInfo *info)
+{
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles
+      ((TpBaseConnection *) info->conn, TP_HANDLE_TYPE_CONTACT);
+  /* send them the properties */
+  LmMessage *msg;
+
+  msg = lm_message_new (tp_handle_inspect (contact_repo, invitee),
+      LM_MESSAGE_TYPE_MESSAGE);
+  activity_info_contribute_properties (info, msg->node);
+
+  /* not much we can do about errors - but if this fails, the invitation
+   * will too, unless something extremely strange is going on */
+  if (!_gabble_connection_send (info->conn, msg, NULL))
+    {
+      DEBUG ("Unable to send activity properties to invitee");
+    }
+  lm_message_unref (msg);
+}
+
+static void
+muc_factory_new_channel_cb (GabbleMucFactory *fac,
+                            TpChannelIface *chan,
+                            gpointer opaque_request,
+                            GabbleConnection *conn)
+{
+  ActivityInfo *info;
+  TpHandle room_handle;
+
+  if (!GABBLE_IS_MUC_CHANNEL (chan))
+    return;
+
+  g_object_get (chan,
+      "handle", &room_handle,
+      NULL);
+
+  /* ref the activity info for as long as we have a channel open */
+
+  info = g_hash_table_lookup (conn->olpc_activities_info,
+      GUINT_TO_POINTER (room_handle));
+  if (info == NULL)
+    {
+      info = add_activity_info (conn, room_handle);
+    }
+  else
+    {
+      info->refcount++;
+    }
+
+  g_signal_connect (chan, "closed", G_CALLBACK (muc_channel_closed_cb),
+      info);
+  g_signal_connect (chan, "pre-invite", G_CALLBACK (muc_channel_pre_invite_cb),
+      info);
+}
+
 static void
 connection_presence_update_cb (GabblePresenceCache *cache,
                                TpHandle handle,
@@ -1543,6 +1647,9 @@ conn_olpc_activity_properties_init (GabbleConnection *conn)
 
   g_signal_connect (conn, "status-changed",
       G_CALLBACK (connection_status_changed_cb), NULL);
+
+  g_signal_connect (conn->muc_factory, "new-channel",
+      G_CALLBACK (muc_factory_new_channel_cb), conn);
 
   g_signal_connect (conn->presence_cache, "presence-update",
       G_CALLBACK (connection_presence_update_cb), conn);

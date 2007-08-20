@@ -33,6 +33,7 @@
 #include <telepathy-glib/interfaces.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_MUC
+#include "conn-olpc.h"
 #include "debug.h"
 #include "disco.h"
 #include "extensions/extensions.h"
@@ -688,6 +689,10 @@ muc_factory_message_cb (LmMessageHandler *handler,
 
   if (!gabble_text_mixin_parse_incoming_message (message, &from, &stamp,
         &msgtype, &body, &state, &send_error))
+    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+
+  if (conn_olpc_process_activity_properties_message (priv->conn, message,
+        from))
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
   if (process_muc_invite (fac, message, from, send_error))

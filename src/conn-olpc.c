@@ -638,7 +638,7 @@ extract_activities (GabbleConnection *conn,
       tp_handle_unref (room_repo, room_handle);
     }
 
-  old_activities = g_hash_table_lookup (conn->olpc_contacts_activities,
+  old_activities = g_hash_table_lookup (conn->olpc_pep_activities,
       GUINT_TO_POINTER (from_handle));
 
   if (old_activities != NULL)
@@ -650,7 +650,7 @@ extract_activities (GabbleConnection *conn,
     }
 
   /* Update the list of activities associated with this contact. */
-  g_hash_table_insert (conn->olpc_contacts_activities,
+  g_hash_table_insert (conn->olpc_pep_activities,
       GUINT_TO_POINTER (from_handle), activities_list);
 
   return activities;
@@ -893,7 +893,7 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
             NULL);
     }
 
-  old_activities = g_hash_table_lookup (conn->olpc_contacts_activities,
+  old_activities = g_hash_table_lookup (conn->olpc_pep_activities,
       GUINT_TO_POINTER (base->self_handle));
 
   if (old_activities != NULL)
@@ -905,7 +905,7 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
     }
 
   /* Update the list of activities associated with our own contact. */
-  g_hash_table_insert (conn->olpc_contacts_activities,
+  g_hash_table_insert (conn->olpc_pep_activities,
       GUINT_TO_POINTER (base->self_handle), activities_list);
 
   if (!_gabble_connection_send_with_reply (conn, msg,
@@ -937,7 +937,8 @@ olpc_buddy_info_activities_event_handler (GabbleConnection *conn,
 static ActivityInfo*
 add_activity_info_in_list (GabbleConnection *conn,
                            TpHandle room_handle,
-                           const gchar *from)
+                           const gchar *from,
+                           GHashTable *table)
 {
   ActivityInfo *info;
   TpHandle from_handle;
@@ -956,14 +957,11 @@ add_activity_info_in_list (GabbleConnection *conn,
   info = add_activity_info (conn, room_handle);
 
   /* Add activity information in the list of the contact */
-  activities_list = g_hash_table_lookup (conn->olpc_contacts_activities,
-      GINT_TO_POINTER (from_handle));
+  activities_list = g_hash_table_lookup (table, GINT_TO_POINTER (from_handle));
   activities_list = g_slist_prepend (activities_list, info);
 
-  g_hash_table_steal (conn->olpc_contacts_activities,
-      GINT_TO_POINTER (from_handle));
-  g_hash_table_insert (conn->olpc_contacts_activities,
-      GINT_TO_POINTER (from_handle), activities_list);
+  g_hash_table_steal (table, GINT_TO_POINTER (from_handle));
+  g_hash_table_insert (table, GINT_TO_POINTER (from_handle), activities_list);
 
   return info;
 }
@@ -1011,7 +1009,8 @@ extract_current_activity (GabbleConnection *conn,
 
       from = lm_message_node_get_attribute (msg->node, "from");
 
-      info = add_activity_info_in_list (conn, room_handle, from);
+      info = add_activity_info_in_list (conn, room_handle, from,
+          conn->olpc_pep_activities);
     }
 
   tp_handle_unref (room_repo, room_handle);
@@ -1120,7 +1119,7 @@ activity_in_own_list (GabbleConnection *conn,
   if (info == NULL)
     return FALSE;
 
-  activities_list = g_hash_table_lookup (conn->olpc_contacts_activities,
+  activities_list = g_hash_table_lookup (conn->olpc_pep_activities,
       GINT_TO_POINTER (base->self_handle));
 
   if (activities_list == NULL || g_slist_find (activities_list, info) == NULL)
@@ -1457,7 +1456,8 @@ update_activities_properties (GabbleConnection *conn,
 
           from = lm_message_node_get_attribute (msg->node, "from");
 
-          info = add_activity_info_in_list (conn, room_handle, from);
+          info = add_activity_info_in_list (conn, room_handle, from,
+              conn->olpc_pep_activities);
         }
 
       tp_handle_unref (room_repo, room_handle);
@@ -1560,19 +1560,20 @@ muc_channel_closed_cb (GabbleMucChannel *chan,
   TpBaseConnection *base = (TpBaseConnection *) info->conn;
   GSList *my_activities;
 
-  /* unref the activity info (it was referenced on behalf of the channel) */
-  activity_info_unref (info);
-
   /* remove it from our advertised activities list, unreffing it again
    * in the process */
-  my_activities = g_hash_table_lookup (conn->olpc_contacts_activities,
+  my_activities = g_hash_table_lookup (conn->olpc_pep_activities,
       GUINT_TO_POINTER (base->self_handle));
-  g_hash_table_steal (conn->olpc_contacts_activities,
+  g_hash_table_steal (conn->olpc_pep_activities,
       GUINT_TO_POINTER (base->self_handle));
+  if (g_slist_find (my_activities, info))
+    activity_info_unref (info);
   my_activities = g_slist_remove (my_activities, info);
-  activity_info_unref (info);
-  g_hash_table_insert (conn->olpc_contacts_activities,
+  g_hash_table_insert (conn->olpc_pep_activities,
       GUINT_TO_POINTER (base->self_handle), my_activities);
+
+  /* unref the activity info (it was referenced on behalf of the channel) */
+  activity_info_unref (info);
 
   /* FIXME: update our activities PEP */
   /* FIXME: update our activity properties PEP */
@@ -1671,13 +1672,22 @@ connection_presence_update_cb (GabblePresenceCache *cache,
        */
       GSList *list;
 
-      list = g_hash_table_lookup (conn->olpc_contacts_activities,
+      list = g_hash_table_lookup (conn->olpc_pep_activities,
           GINT_TO_POINTER (handle));
 
       g_slist_foreach (list,
           (GFunc) decrement_contacts_activities_list_foreach, NULL);
 
-      g_hash_table_remove (conn->olpc_contacts_activities,
+      g_hash_table_remove (conn->olpc_pep_activities,
+          GUINT_TO_POINTER (handle));
+
+      list = g_hash_table_lookup (conn->olpc_invited_activities,
+          GINT_TO_POINTER (handle));
+
+      g_slist_foreach (list,
+          (GFunc) decrement_contacts_activities_list_foreach, NULL);
+
+      g_hash_table_remove (conn->olpc_invited_activities,
           GUINT_TO_POINTER (handle));
     }
 }
@@ -1685,14 +1695,27 @@ connection_presence_update_cb (GabblePresenceCache *cache,
 void
 conn_olpc_activity_properties_init (GabbleConnection *conn)
 {
-  /* associate the room handle of an activity with its
-   * information */
+  /* room TpHandle => borrowed ActivityInfo */
   conn->olpc_activities_info = g_hash_table_new_full (g_direct_hash,
       g_direct_equal, NULL, (GDestroyNotify) activity_info_free);
 
-  /* associate the handle of a contact with a list
-   * of activity information published by him */
-  conn->olpc_contacts_activities = g_hash_table_new_full (g_direct_hash,
+  /* Activity info from PEP
+   *
+   * contact TpHandle => GSList of referenced ActivityInfo
+   *
+   * Special case: the entry for self_handle is the complete list of
+   * activities, not just those from PEP
+   */
+  conn->olpc_pep_activities = g_hash_table_new_full (g_direct_hash,
+      g_direct_equal, NULL, (GDestroyNotify) g_slist_free);
+
+  /* Activity info from pseudo-invitations
+   *
+   * contact TpHandle => GSList of referenced ActivityInfo
+   *
+   * Special case: there is never an entry for self_handle
+   */
+  conn->olpc_invited_activities = g_hash_table_new_full (g_direct_hash,
       g_direct_equal, NULL, (GDestroyNotify) g_slist_free);
 
   g_signal_connect (conn, "status-changed",

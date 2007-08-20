@@ -130,7 +130,8 @@ struct _GabbleConnection {
 
     /* OLPC hash tables */
     GHashTable *olpc_activities_info;
-    GHashTable *olpc_contacts_activities;
+    GHashTable *olpc_pep_activities;
+    GHashTable *olpc_invited_activities;
 
     /* bytestream factory */
     GabbleBytestreamFactory *bytestream_factory;

@@ -529,7 +529,7 @@ extract_activities (GabbleConnection *conn,
   GPtrArray *activities;
   LmMessageNode *activities_node;
   LmMessageNode *node;
-  GSList *activities_list = NULL, *old_activities;
+  GSList *activities_list = NULL, *old_activities, *iter;
   const gchar *from;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
@@ -652,6 +652,39 @@ extract_activities (GabbleConnection *conn,
   /* Update the list of activities associated with this contact. */
   g_hash_table_insert (conn->olpc_pep_activities,
       GUINT_TO_POINTER (from_handle), activities_list);
+
+  /* FIXME: O(n**2) */
+  DEBUG ("Incorporating private activities into GetActivities() return...");
+  for (iter = g_hash_table_lookup (conn->olpc_invited_activities,
+           GUINT_TO_POINTER (from_handle));
+       iter != NULL;
+       iter = iter->next)
+    {
+      if (g_slist_find (activities_list, iter->data) == NULL)
+        {
+          ActivityInfo *invited = iter->data;
+          GValue gvalue = { 0 };
+
+          if (invited->id == NULL)
+            {
+              DEBUG ("... private activity #%u has no ID, skipping",
+                  invited->handle);
+              continue;
+            }
+
+          g_value_init (&gvalue, ACTIVITY_PAIR_TYPE);
+          g_value_take_boxed (&gvalue, dbus_g_type_specialized_construct
+              (ACTIVITY_PAIR_TYPE));
+          dbus_g_type_struct_set (&gvalue,
+              0, invited->id,
+              1, invited->handle,
+              G_MAXUINT);
+          DEBUG ("... private activity #%u (ID %s)",
+              invited->handle, invited->id);
+          g_ptr_array_add (activities, g_value_get_boxed (&gvalue));
+        }
+    }
+  DEBUG ("... done");
 
   return activities;
 }

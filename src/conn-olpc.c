@@ -514,7 +514,11 @@ extract_activities (GabbleConnection *conn,
     return activities;
 
   from = lm_message_node_get_attribute (msg->node, "from");
-
+  if (from == NULL)
+    {
+      NODE_DEBUG (msg->node, "No sender, skipping");
+      return activities;
+    }
   from_handle = tp_handle_lookup (contact_repo, from, NULL, NULL);
 
   if (from_handle == 0)

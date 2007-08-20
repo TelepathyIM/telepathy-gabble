@@ -537,8 +537,7 @@ extract_activities (GabbleConnection *conn,
           (TpBaseConnection *) conn, TP_HANDLE_TYPE_ROOM);
       TpHandle room_handle;
 
-
-      if (0 != strcmp (node->name, "activity"))
+      if (tp_strdiff (node->name, "activity"))
         continue;
 
       type = lm_message_node_get_attribute (node, "type");

@@ -124,6 +124,24 @@ activity_info_unref (ActivityInfo *info)
 }
 
 static void
+activity_info_contribute_properties (ActivityInfo *info,
+                                     LmMessageNode *parent)
+{
+  LmMessageNode *props_node;
+
+  if (info->properties == NULL)
+    return;
+
+  props_node = lm_message_node_add_child (parent,
+      "properties", "");
+  lm_message_node_set_attribute (props_node, "xmlns", NS_OLPC_ACTIVITY_PROPS);
+  lm_message_node_set_attribute (props_node, "room",
+      activity_info_get_room (info));
+  lm_message_node_add_children_from_properties (props_node, info->properties,
+      "property");
+}
+
+static void
 decrement_contacts_activities_list_foreach (ActivityInfo *info,
                                             gpointer unused)
 {
@@ -1183,18 +1201,9 @@ set_activity_properties (gpointer key,
                          gpointer user_data)
 {
   LmMessageNode *node = user_data;
-  LmMessageNode *properties_node;
   ActivityInfo *info = (ActivityInfo*) value;
 
-  if (info->properties != NULL)
-    {
-      const gchar *room = activity_info_get_room (info);
-      properties_node = lm_message_node_add_child (node, "properties", "");
-
-      lm_message_node_set_attribute (properties_node, "room", room);
-      lm_message_node_add_children_from_properties (properties_node,
-          info->properties, "property");
-    }
+  activity_info_contribute_properties (info, node);
 }
 
 static LmHandlerResult

@@ -1573,14 +1573,92 @@ conn_olpc_process_activity_properties_message (GabbleConnection *conn,
                                                LmMessage *msg,
                                                const gchar *from)
 {
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
+  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) conn, TP_HANDLE_TYPE_ROOM);
   LmMessageNode *node = lm_message_node_get_child_with_namespace (msg->node,
       "properties", NS_OLPC_ACTIVITY_PROPS);
+  const gchar *room, *id;
+  TpHandle room_handle, contact_handle;
+  ActivityInfo *info;
+  GSList *their_invites;
+  GHashTable *new_properties;
 
   /* if no <properties xmlns=...>, then not for us */
   if (node == NULL)
     return FALSE;
 
-  /* FIXME: pick up the activity properties */
+  DEBUG ("Found <properties> node in <message>");
+
+  /* FIXME: This is stupid. We should ref the handles in a TpHandleSet
+   * per activity, then we could _ensure this handle */
+  contact_handle = tp_handle_lookup (contact_repo, from, NULL, NULL);
+  if (contact_handle == 0)
+    {
+      DEBUG ("... contact <%s> unknown - ignoring (FIX THIS)", from);
+      return TRUE;
+    }
+
+  their_invites = g_hash_table_lookup (conn->olpc_invited_activities,
+      GUINT_TO_POINTER (contact_handle));
+
+  room = lm_message_node_get_attribute (node, "room");
+  if (room == NULL)
+    {
+      NODE_DEBUG (node, "... room name missing - ignoring");
+      return TRUE;
+    }
+  DEBUG ("... room <%s>", room);
+  room_handle = tp_handle_ensure (room_repo, room, NULL, NULL);
+  if (room_handle == 0)
+    {
+      DEBUG ("... room <%s> invalid - ignoring", room);
+      return TRUE;
+    }
+
+  id = lm_message_node_get_attribute (node, "activity");
+  if (id == NULL)
+    {
+      NODE_DEBUG (node, "... activity ID missing - ignoring");
+      return TRUE;
+    }
+
+  info = g_hash_table_lookup (conn->olpc_activities_info,
+      GUINT_TO_POINTER (room_handle));
+  if (info == NULL)
+    {
+      DEBUG ("... creating new ActivityInfo");
+      info = add_activity_info (conn, room_handle);
+      their_invites = g_slist_prepend (their_invites, info);
+    }
+  else if (g_slist_find (their_invites, info) == NULL)
+    {
+      DEBUG ("... it's the first time that contact invited me, referencing "
+          "ActivityInfo");
+      info->refcount++;
+      their_invites = g_slist_prepend (their_invites, info);
+    }
+
+  /* re-insert the correct linked list, now we're happy with it */
+  g_hash_table_steal (conn->olpc_invited_activities,
+      GUINT_TO_POINTER (contact_handle));
+  g_hash_table_insert (conn->olpc_invited_activities,
+      GUINT_TO_POINTER (contact_handle), their_invites);
+
+  /* apply the info we found */
+  if (tp_strdiff (info->id, id))
+    {
+      DEBUG ("... recording new activity ID %s", id);
+      g_free (info->id);
+      info->id = g_strdup (id);
+    }
+
+  new_properties = lm_message_node_extract_properties (node,
+      "property");
+  activity_info_set_properties (info, new_properties);
+
+  /* FIXME: if necessary, emit signals and stuff */
 
   return TRUE;
 }

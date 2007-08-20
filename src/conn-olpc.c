@@ -538,9 +538,6 @@ extract_activities (GabbleConnection *conn,
   activities_node = lm_message_node_find_child (msg->node, "activities");
   activities = g_ptr_array_new ();
 
-  if (activities_node == NULL)
-    return activities;
-
   from = lm_message_node_get_attribute (msg->node, "from");
   if (from == NULL)
     {
@@ -548,14 +545,16 @@ extract_activities (GabbleConnection *conn,
       return activities;
     }
   from_handle = tp_handle_lookup (contact_repo, from, NULL, NULL);
-
   if (from_handle == 0)
     {
       DEBUG ("unknown sender");
       return activities;
     }
 
-  for (node = activities_node->children; node; node = node->next)
+  DEBUG ("Incorporating public activities into GetActivities() return...");
+  for (node = (activities_node != NULL ? activities_node->children : NULL);
+       node;
+       node = node->next)
     {
       const gchar *act_id;
       const gchar *room;

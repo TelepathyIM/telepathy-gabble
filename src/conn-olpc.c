@@ -126,22 +126,26 @@ activity_info_unref (ActivityInfo *info)
     }
 }
 
-static void
+/* Returns TRUE if we have an ID and properties for the activity, else FALSE.
+ */
+static gboolean
 activity_info_contribute_properties (ActivityInfo *info,
                                      LmMessageNode *parent)
 {
   LmMessageNode *props_node;
 
-  if (info->properties == NULL)
-    return;
+  if (info->id == NULL || info->properties == NULL)
+    return FALSE;
 
   props_node = lm_message_node_add_child (parent,
       "properties", "");
   lm_message_node_set_attribute (props_node, "xmlns", NS_OLPC_ACTIVITY_PROPS);
   lm_message_node_set_attribute (props_node, "room",
       activity_info_get_room (info));
+  lm_message_node_set_attribute (props_node, "activity", info->id);
   lm_message_node_add_children_from_properties (props_node, info->properties,
       "property");
+  return TRUE;
 }
 
 static void
@@ -1576,13 +1580,15 @@ muc_channel_pre_invite_cb (GabbleMucChannel *chan,
 
   msg = lm_message_new (tp_handle_inspect (contact_repo, invitee),
       LM_MESSAGE_TYPE_MESSAGE);
-  activity_info_contribute_properties (info, msg->node);
 
-  /* not much we can do about errors - but if this fails, the invitation
-   * will too, unless something extremely strange is going on */
-  if (!_gabble_connection_send (info->conn, msg, NULL))
+  if (activity_info_contribute_properties (info, msg->node))
     {
-      DEBUG ("Unable to send activity properties to invitee");
+      /* not much we can do about errors - but if this fails, the invitation
+       * will too, unless something extremely strange is going on */
+      if (!_gabble_connection_send (info->conn, msg, NULL))
+        {
+          DEBUG ("Unable to send activity properties to invitee");
+        }
     }
   lm_message_unref (msg);
 }

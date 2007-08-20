@@ -45,6 +45,7 @@ typedef struct
 {
   TpHandle handle;
   GHashTable *properties;
+  gchar *id;
 
   GabbleConnection *conn;
   TpHandleRepoIface *room_repo;
@@ -72,6 +73,7 @@ activity_info_new (GabbleConnection *conn,
   info->handle = handle;
   tp_handle_ref (room_repo, handle);
   info->properties = NULL;
+  info->id = NULL;
 
   info->conn = conn;
   info->room_repo = room_repo;
@@ -89,6 +91,7 @@ activity_info_free (ActivityInfo *info)
     {
       g_hash_table_destroy (info->properties);
     }
+  g_free (info->id);
 
   tp_handle_unref (info->room_repo, info->handle);
 
@@ -550,7 +553,7 @@ extract_activities (GabbleConnection *conn,
 
   for (node = activities_node->children; node; node = node->next)
     {
-      const gchar *type;
+      const gchar *act_id;
       const gchar *room;
       GValue gvalue = {0,};
       ActivityInfo *info;
@@ -561,9 +564,9 @@ extract_activities (GabbleConnection *conn,
       if (tp_strdiff (node->name, "activity"))
         continue;
 
-      type = lm_message_node_get_attribute (node, "type");
+      act_id = lm_message_node_get_attribute (node, "type");
 
-      if (!type)
+      if (!act_id)
         continue;
 
       room = lm_message_node_get_attribute (node, "room");
@@ -599,6 +602,11 @@ extract_activities (GabbleConnection *conn,
               activity_info_get_room (info),
               info->handle, info->refcount);
         }
+      if (tp_strdiff (info->id, act_id))
+        {
+          g_free (info->id);
+          info->id = g_strdup (act_id);
+        }
 
       /* Let's add this activity in user's activities list */
       activities_list = g_slist_prepend (activities_list, info);
@@ -608,7 +616,7 @@ extract_activities (GabbleConnection *conn,
           dbus_g_type_specialized_construct (ACTIVITY_PAIR_TYPE));
 
       dbus_g_type_struct_set (&gvalue,
-          0, type,
+          0, act_id,
           1, info->handle,
           G_MAXUINT);
       g_ptr_array_add (activities, g_value_get_boxed (&gvalue));
@@ -859,6 +867,8 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
               activity_info_get_room (info),
               info->handle, info->refcount);
         }
+      g_free (info->id);
+      info->id = activity;
 
       activities_list = g_slist_prepend (activities_list, info);
 
@@ -867,8 +877,6 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
             "type", activity,
             "room", room,
             NULL);
-
-      g_free (activity);
     }
 
   old_activities = g_hash_table_lookup (conn->olpc_contacts_activities,

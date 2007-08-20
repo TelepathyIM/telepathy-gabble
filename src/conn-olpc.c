@@ -568,18 +568,25 @@ extract_activities (GabbleConnection *conn,
         continue;
 
       act_id = lm_message_node_get_attribute (node, "type");
-
-      if (!act_id)
-        continue;
+      if (act_id == NULL)
+        {
+          NODE_DEBUG (node, "No activity ID, skipping");
+          continue;
+        }
 
       room = lm_message_node_get_attribute (node, "room");
-
-      if (!room)
-        continue;
+      if (room == NULL)
+        {
+          NODE_DEBUG (node, "No room name, skipping");
+          continue;
+        }
 
       room_handle = tp_handle_ensure (room_repo, room, NULL, NULL);
       if (room_handle == 0)
-        continue;
+        {
+          DEBUG ("Invalid room name <%s>, skipping", room);
+          continue;
+        }
 
       info = g_hash_table_lookup (conn->olpc_activities_info,
           GUINT_TO_POINTER (room_handle));
@@ -590,6 +597,7 @@ extract_activities (GabbleConnection *conn,
         }
       else
         {
+          /* FIXME: O(n**2) */
           if (g_slist_find (activities_list, info) != NULL)
             {
               /* Avoid to add an activity if the contact has
@@ -607,6 +615,8 @@ extract_activities (GabbleConnection *conn,
         }
       if (tp_strdiff (info->id, act_id))
         {
+          DEBUG ("Assigning new ID <%s> to room #%u <%s>", act_id, room_handle,
+              room);
           g_free (info->id);
           info->id = g_strdup (act_id);
         }
@@ -622,6 +632,7 @@ extract_activities (GabbleConnection *conn,
           0, act_id,
           1, info->handle,
           G_MAXUINT);
+      DEBUG ("... public activity #%u (ID %s)", info->handle, act_id);
       g_ptr_array_add (activities, g_value_get_boxed (&gvalue));
 
       tp_handle_unref (room_repo, room_handle);

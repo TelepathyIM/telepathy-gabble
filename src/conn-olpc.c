@@ -2141,6 +2141,7 @@ connection_presence_update_cb (GabblePresenceCache *cache,
       /* Contact goes offline. We have to unref all the information
        * provided by him
        */
+      GPtrArray *empty = g_ptr_array_new ();
       TpHandleSet *list;
 
       list = g_hash_table_lookup (conn->olpc_pep_activities,
@@ -2160,6 +2161,10 @@ connection_presence_update_cb (GabblePresenceCache *cache,
 
       g_hash_table_remove (conn->olpc_invited_activities,
           GUINT_TO_POINTER (handle));
+
+      gabble_svc_olpc_buddy_info_emit_activities_changed (conn, handle,
+          empty);
+      g_ptr_array_free (empty, TRUE);
     }
 }
 

@@ -1719,25 +1719,29 @@ muc_channel_closed_cb (GabbleMucChannel *chan,
   GabbleConnection *conn = info->conn;
   TpBaseConnection *base = (TpBaseConnection *) info->conn;
   TpHandleSet *my_activities;
+  gboolean was_in_our_pep = FALSE;
 
   /* remove it from our advertised activities list, unreffing it in the
-   * process */
+   * process if it was in fact advertised */
   my_activities = g_hash_table_lookup (conn->olpc_pep_activities,
       GUINT_TO_POINTER (base->self_handle));
-  g_hash_table_steal (conn->olpc_pep_activities,
-      GUINT_TO_POINTER (base->self_handle));
-  if (tp_handle_set_remove (my_activities, info->handle))
+  if (my_activities != NULL)
     {
-      activity_info_unref (info);
+      if (tp_handle_set_remove (my_activities, info->handle))
+        {
+          was_in_our_pep = activity_info_is_visible (info);
+          activity_info_unref (info);
+        }
     }
-  g_hash_table_insert (conn->olpc_pep_activities,
-      GUINT_TO_POINTER (base->self_handle), my_activities);
 
   /* unref it again (it was referenced on behalf of the channel) */
   activity_info_unref (info);
 
-  /* FIXME: update our activities PEP */
-  /* FIXME: update our activity properties PEP */
+  if (was_in_our_pep)
+    {
+      /* FIXME: update our activities PEP accordingly */
+      /* FIXME: update our activity properties PEP accordingly */
+    }
 }
 
 static void

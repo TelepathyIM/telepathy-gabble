@@ -1338,6 +1338,8 @@ olpc_activity_properties_set_properties (GabbleSvcOLPCActivityProperties *iface,
   const gchar *jid;
   GHashTable *properties_copied;
   ActivityInfo *info;
+  GabbleMucChannel *muc_channel;
+  guint state;
 
   DEBUG ("called");
 
@@ -1357,6 +1359,23 @@ olpc_activity_properties_set_properties (GabbleSvcOLPCActivityProperties *iface,
       return;
     }
 
+  muc_channel = gabble_muc_factory_find_text_channel (conn->muc_factory,
+      room);
+  if (muc_channel != NULL)
+    {
+      g_object_get (muc_channel,
+          "state", &state,
+          NULL);
+    }
+  if (muc_channel == NULL || state != MUC_STATE_JOINED)
+    {
+      GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Can't set properties on an activity if you're not in it" };
+
+      dbus_g_method_return_error (context, &error);
+      return;
+    }
+
   properties_copied = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
       (GDestroyNotify) tp_g_value_slice_free);
   gabble_g_hash_table_update (properties_copied, properties,
@@ -1365,6 +1384,18 @@ olpc_activity_properties_set_properties (GabbleSvcOLPCActivityProperties *iface,
   info = g_hash_table_lookup (conn->olpc_activities_info,
       GUINT_TO_POINTER (room));
   activity_info_set_properties (info, properties_copied);
+
+  msg = lm_message_new (jid, LM_MESSAGE_TYPE_MESSAGE);
+  activity_info_contribute_properties (info, msg->node, FALSE);
+  if (!_gabble_connection_send (info->conn, msg, NULL))
+    {
+      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+        "Failed to send property change notification to chatroom" };
+
+      lm_message_unref (msg);
+      dbus_g_method_return_error (context, &error);
+    }
+  lm_message_unref (msg);
 
   msg = pubsub_make_publish_msg (NULL,
       NS_OLPC_ACTIVITY_PROPS,

@@ -1394,6 +1394,7 @@ olpc_activity_properties_set_properties (GabbleSvcOLPCActivityProperties *iface,
 
       lm_message_unref (msg);
       dbus_g_method_return_error (context, &error);
+      return;
     }
   lm_message_unref (msg);
 

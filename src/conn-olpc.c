@@ -1381,6 +1381,7 @@ olpc_activity_properties_set_properties (GabbleSvcOLPCActivityProperties *iface,
       GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
         "Failed to send property change request to server" };
 
+      lm_message_unref (msg);
       dbus_g_method_return_error (context, &error);
     }
 

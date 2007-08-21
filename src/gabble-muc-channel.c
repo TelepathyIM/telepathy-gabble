@@ -96,14 +96,6 @@ enum
   LAST_PROPERTY
 };
 
-typedef enum {
-    MUC_STATE_CREATED = 0,
-    MUC_STATE_INITIATED,
-    MUC_STATE_AUTH,
-    MUC_STATE_JOINED,
-    MUC_STATE_ENDED,
-} GabbleMucState;
-
 #ifdef ENABLE_DEBUG
 static const gchar *muc_states[] =
 {

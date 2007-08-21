@@ -32,6 +32,14 @@
 
 G_BEGIN_DECLS
 
+typedef enum {
+    MUC_STATE_CREATED = 0,
+    MUC_STATE_INITIATED,
+    MUC_STATE_AUTH,
+    MUC_STATE_JOINED,
+    MUC_STATE_ENDED,
+} GabbleMucState;
+
 typedef struct _GabbleMucChannelClass GabbleMucChannelClass;
 
 struct _GabbleMucChannelClass {

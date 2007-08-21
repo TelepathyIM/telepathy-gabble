@@ -126,15 +126,45 @@ activity_info_unref (ActivityInfo *info)
     }
 }
 
+static gboolean
+activity_info_is_visible (ActivityInfo *info)
+{
+  GValue *gv;
+
+  /* false if incomplete */
+  if (info->id == NULL || info->properties == NULL)
+    return FALSE;
+
+  gv = g_hash_table_lookup (info->properties, "private");
+
+  if (gv == NULL)
+    {
+      /* FIXME: for now, the default is private=False so we don't break the PS.
+       * It should be private=True for privacy-by-default. */
+      return TRUE;
+    }
+
+  /* if they put something non-boolean in it, err on the side of privacy */
+  if (!G_VALUE_HOLDS_BOOLEAN (gv))
+    return FALSE;
+
+  /* if they specified a privacy level, go with it */
+  return !g_value_get_boolean (gv);
+}
+
 /* Returns TRUE if we have an ID and properties for the activity, else FALSE.
  */
 static gboolean
 activity_info_contribute_properties (ActivityInfo *info,
-                                     LmMessageNode *parent)
+                                     LmMessageNode *parent,
+                                     gboolean only_public)
 {
   LmMessageNode *props_node;
 
   if (info->id == NULL || info->properties == NULL)
+    return FALSE;
+
+  if (only_public && !activity_info_is_visible (info))
     return FALSE;
 
   props_node = lm_message_node_add_child (parent,
@@ -1275,7 +1305,7 @@ set_activity_properties (gpointer key,
   LmMessageNode *node = user_data;
   ActivityInfo *info = (ActivityInfo*) value;
 
-  activity_info_contribute_properties (info, node);
+  activity_info_contribute_properties (info, node, TRUE);
 }
 
 static LmHandlerResult
@@ -1723,7 +1753,7 @@ muc_channel_pre_invite_cb (GabbleMucChannel *chan,
   msg = lm_message_new (tp_handle_inspect (contact_repo, invitee),
       LM_MESSAGE_TYPE_MESSAGE);
 
-  if (activity_info_contribute_properties (info, msg->node))
+  if (activity_info_contribute_properties (info, msg->node, FALSE))
     {
       /* not much we can do about errors - but if this fails, the invitation
        * will too, unless something extremely strange is going on */

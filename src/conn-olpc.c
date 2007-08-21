@@ -178,6 +178,9 @@ activity_info_contribute_properties (ActivityInfo *info,
   return TRUE;
 }
 
+typedef void (*ActivityInfoChangeCallback) (ActivityInfo *info,
+    gpointer user_data, GError *error);
+
 static void
 decrement_contacts_activities_list_foreach (TpHandleSet *set,
                                             TpHandle handle,
@@ -571,7 +574,6 @@ extract_activities (GabbleConnection *conn,
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_ROOM);
   TpHandle from_handle;
-  TpIntSetIter iter = { NULL, 0 };
 
   activities_node = lm_message_node_find_child (msg->node, "activities");
   activities = g_ptr_array_new ();
@@ -694,8 +696,9 @@ extract_activities (GabbleConnection *conn,
 
   if (invited_activities != NULL)
     {
-      g_assert (tp_handle_set_peek (invited_activities) != NULL);
-      tp_intset_iter_init (&iter, tp_handle_set_peek (invited_activities));
+      TpIntSetIter iter = TP_INTSET_ITER_INIT (tp_handle_set_peek
+            (invited_activities));
+
       while (tp_intset_iter_next (&iter))
         {
           if (tp_handle_set_is_member (activities_list, iter.element))
@@ -847,6 +850,60 @@ olpc_buddy_info_get_activities (GabbleSvcOLPCBuddyInfo *iface,
     }
 }
 
+/* FIXME: API could be improved */
+static gboolean
+upload_activities_pep (GabbleConnection *conn,
+                       GabbleConnectionMsgReplyFunc callback,
+                       gpointer user_data,
+                       GError **error)
+{
+  TpBaseConnection *base = (TpBaseConnection *) conn;
+  LmMessageNode *publish;
+  LmMessage *msg = pubsub_make_publish_msg (NULL, NS_OLPC_ACTIVITIES,
+      NS_OLPC_ACTIVITIES, "activities", &publish);
+  TpHandleSet *my_activities = g_hash_table_lookup
+      (conn->olpc_pep_activities, GUINT_TO_POINTER (base->self_handle));
+  GError *e = NULL;
+  gboolean ret;
+
+  if (my_activities != NULL)
+    {
+      TpIntSetIter iter = TP_INTSET_ITER_INIT (tp_handle_set_peek
+            (my_activities));
+
+      while (tp_intset_iter_next (&iter))
+        {
+          ActivityInfo *info = g_hash_table_lookup (conn->olpc_activities_info,
+              GUINT_TO_POINTER (iter.element));
+          LmMessageNode *activity_node;
+
+          g_assert (info != NULL);
+          if (!activity_info_is_visible (info))
+            continue;
+
+          activity_node = lm_message_node_add_child (publish,
+              "activity", "");
+          lm_message_node_set_attributes (activity_node,
+              "type", info->id,
+              "room", activity_info_get_room (info),
+              NULL);
+        }
+    }
+
+  ret = _gabble_connection_send_with_reply (conn, msg, callback, NULL,
+        user_data, &e);
+
+  if (!ret)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+          "Failed to send property change request to server: %s", e->message);
+      g_error_free (e);
+    }
+
+  lm_message_unref (msg);
+  return ret;
+}
+
 static LmHandlerResult
 set_activities_reply_cb (GabbleConnection *conn,
                          LmMessage *sent_msg,
@@ -858,6 +915,8 @@ set_activities_reply_cb (GabbleConnection *conn,
 
   if (!check_publish_reply_msg (reply_msg, context))
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+
+  /* FIXME: emit ActivitiesChanged? */
 
   gabble_svc_olpc_buddy_info_return_from_set_activities (context);
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
@@ -999,6 +1058,9 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
     }
 
   lm_message_unref (msg);
+
+  /* FIXME: what if we were advertising properties for things that
+   * we've declared are no longer in our activities list? */
 }
 
 gboolean
@@ -1308,6 +1370,63 @@ set_activity_properties (gpointer key,
   activity_info_contribute_properties (info, node, TRUE);
 }
 
+/* FIXME: API could be improved */
+static gboolean
+upload_activity_properties_pep (GabbleConnection *conn,
+                                GabbleConnectionMsgReplyFunc callback,
+                                gpointer user_data,
+                                GError **error)
+{
+  LmMessageNode *publish;
+  LmMessage *msg = pubsub_make_publish_msg (NULL, NS_OLPC_ACTIVITY_PROPS,
+      NS_OLPC_ACTIVITY_PROPS, "activities", &publish);
+  GError *e = NULL;
+  gboolean ret;
+
+  g_hash_table_foreach (conn->olpc_activities_info, set_activity_properties,
+      publish);
+
+  ret = _gabble_connection_send_with_reply (conn, msg, callback, NULL,
+        user_data, &e);
+
+  if (!ret)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+          "Failed to send property change request to server: %s", e->message);
+      g_error_free (e);
+    }
+
+  lm_message_unref (msg);
+  return ret;
+}
+
+static LmHandlerResult
+set_activity_properties_activities_reply_cb (GabbleConnection *conn,
+                                             LmMessage *sent_msg,
+                                             LmMessage *reply_msg,
+                                             GObject *object,
+                                             gpointer user_data)
+{
+  DBusGMethodInvocation *context = user_data;
+
+  /* if the SetProperties() call was skipped, both messages are NULL */
+  g_assert ((sent_msg == NULL) == (reply_msg == NULL));
+
+  if (reply_msg != NULL && !check_publish_reply_msg (reply_msg, context))
+    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+
+  /* FIXME: emit ActivityPropertiesChanged? */
+
+  gabble_svc_olpc_activity_properties_return_from_set_properties (context);
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
+typedef struct {
+    DBusGMethodInvocation *context;
+    gboolean visibility_changed;
+} set_properties_ctx;
+
 static LmHandlerResult
 set_activity_properties_reply_cb (GabbleConnection *conn,
                                   LmMessage *sent_msg,
@@ -1315,13 +1434,36 @@ set_activity_properties_reply_cb (GabbleConnection *conn,
                                   GObject *object,
                                   gpointer user_data)
 {
-  DBusGMethodInvocation *context = user_data;
+  set_properties_ctx *context = user_data;
 
-  if (!check_publish_reply_msg (reply_msg, context))
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  /* if the SetProperties() call was skipped, both messages are NULL */
+  g_assert ((sent_msg == NULL) == (reply_msg == NULL));
 
-  gabble_svc_olpc_activity_properties_return_from_set_properties (context);
+  if (reply_msg == NULL ||
+      check_publish_reply_msg (reply_msg, context->context))
+    {
+      /* FIXME: set the activities list if needed */
+      if (context->visibility_changed)
+        {
+          GError *err = NULL;
 
+          if (!upload_activities_pep (conn,
+                set_activity_properties_activities_reply_cb,
+                context->context, &err))
+            {
+              dbus_g_method_return_error (context->context, err);
+              g_error_free (err);
+            }
+        }
+      else
+        {
+          /* nothing to do, so just "succeed" */
+          set_activity_properties_activities_reply_cb (conn, NULL, NULL, NULL,
+              context->context);
+        }
+    }
+
+  g_slice_free (set_properties_ctx, context);
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
@@ -1334,12 +1476,13 @@ olpc_activity_properties_set_properties (GabbleSvcOLPCActivityProperties *iface,
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) conn;
   LmMessage *msg;
-  LmMessageNode *publish;
   const gchar *jid;
   GHashTable *properties_copied;
   ActivityInfo *info;
   GabbleMucChannel *muc_channel;
   guint state;
+  gboolean was_visible, is_visible;
+  set_properties_ctx *ctx;
 
   DEBUG ("called");
 
@@ -1383,7 +1526,12 @@ olpc_activity_properties_set_properties (GabbleSvcOLPCActivityProperties *iface,
 
   info = g_hash_table_lookup (conn->olpc_activities_info,
       GUINT_TO_POINTER (room));
+
+  was_visible = activity_info_is_visible (info);
+
   activity_info_set_properties (info, properties_copied);
+
+  is_visible = activity_info_is_visible (info);
 
   msg = lm_message_new (jid, LM_MESSAGE_TYPE_MESSAGE);
   activity_info_contribute_properties (info, msg->node, FALSE);
@@ -1398,26 +1546,31 @@ olpc_activity_properties_set_properties (GabbleSvcOLPCActivityProperties *iface,
     }
   lm_message_unref (msg);
 
-  msg = pubsub_make_publish_msg (NULL,
-      NS_OLPC_ACTIVITY_PROPS,
-      NS_OLPC_ACTIVITY_PROPS,
-      "activities",
-      &publish);
+  /* FIXME: send update to people we previously invited too */
 
-  g_hash_table_foreach (conn->olpc_activities_info, set_activity_properties,
-      publish);
+  ctx = g_slice_new (set_properties_ctx);
+  ctx->context = context;
+  ctx->visibility_changed = (was_visible != is_visible);
 
-  if (!_gabble_connection_send_with_reply (conn, msg,
-        set_activity_properties_reply_cb, NULL, context, NULL))
+  if (was_visible || is_visible)
     {
-      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-        "Failed to send property change request to server" };
+      GError *err = NULL;
 
-      lm_message_unref (msg);
-      dbus_g_method_return_error (context, &error);
+      if (!upload_activity_properties_pep (conn,
+            set_activity_properties_reply_cb, ctx, &err))
+        {
+          g_slice_free (set_properties_ctx, ctx);
+          dbus_g_method_return_error (context, err);
+          g_error_free (err);
+          return;
+        }
     }
-
-  lm_message_unref (msg);
+  else
+    {
+      /* chain straight to the reply callback, which changes our Activities
+       * list */
+      set_activity_properties_reply_cb (conn, NULL, NULL, NULL, ctx);
+    }
 }
 
 static void
@@ -1857,6 +2010,7 @@ conn_olpc_process_activity_properties_message (GabbleConnection *conn,
         }
    }
   /* FIXME: do the same for our activities PEP node */
+  /* FIXME: re-invite people we invited */
 
   return TRUE;
 }
@@ -1916,6 +2070,9 @@ muc_channel_pre_invite_cb (GabbleMucChannel *chan,
         }
     }
   lm_message_unref (msg);
+
+  /* FIXME: remember we invited them, so we can ping them again if it
+   * changes */
 }
 
 static void

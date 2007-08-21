@@ -1616,37 +1616,46 @@ connection_status_changed_cb (GabbleConnection *conn,
     }
 }
 
+static LmHandlerResult
+pseudo_invite_set_props_reply_cb (GabbleConnection *conn,
+                                  LmMessage *sent_msg,
+                                  LmMessage *reply_msg,
+                                  GObject *object,
+                                  gpointer user_data)
+{
+  if (!check_publish_reply_msg (reply_msg, NULL))
+    DEBUG ("Failed to make PEP properties change in response to "
+        "pseudo-invitation message");
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
 gboolean
 conn_olpc_process_activity_properties_message (GabbleConnection *conn,
                                                LmMessage *msg,
                                                const gchar *from)
 {
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
-  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) conn, TP_HANDLE_TYPE_ROOM);
+  TpBaseConnection *base = (TpBaseConnection *) conn;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
+  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_ROOM);
   LmMessageNode *node = lm_message_node_get_child_with_namespace (msg->node,
       "properties", NS_OLPC_ACTIVITY_PROPS);
-  const gchar *room, *id;
-  TpHandle room_handle, contact_handle;
+  LmMessageNode *publish;
+  const gchar *id;
+  TpHandle room_handle, contact_handle = 0;
   ActivityInfo *info;
-  TpHandleSet *their_invites;
-  GHashTable *new_properties;
+  TpHandleSet *their_invites, *our_activities;
+  GHashTable *old_properties, *new_properties;
+  gboolean properties_changed, pep_properties_changed;
+  gboolean was_visible, is_visible;
+  GabbleMucChannel *muc_channel = NULL;
 
   /* if no <properties xmlns=...>, then not for us */
   if (node == NULL)
     return FALSE;
 
   DEBUG ("Found <properties> node in <message>");
-
-  /* FIXME: This is stupid. We should ref the handles in a TpHandleSet
-   * per activity, then we could _ensure this handle */
-  contact_handle = tp_handle_lookup (contact_repo, from, NULL, NULL);
-  if (contact_handle == 0)
-    {
-      DEBUG ("... contact <%s> unknown - ignoring (FIX THIS)", from);
-      return TRUE;
-    }
 
   id = lm_message_node_get_attribute (node, "activity");
   if (id == NULL)
@@ -1655,47 +1664,116 @@ conn_olpc_process_activity_properties_message (GabbleConnection *conn,
       return TRUE;
     }
 
-  room = lm_message_node_get_attribute (node, "room");
-  if (room == NULL)
+  room_handle = gabble_get_room_handle_from_jid (room_repo, from);
+
+  if (room_handle != 0)
     {
-      NODE_DEBUG (node, "... room name missing - ignoring");
-      return TRUE;
-    }
-  DEBUG ("... room <%s>", room);
-  room_handle = tp_handle_ensure (room_repo, room, NULL, NULL);
-  if (room_handle == 0)
-    {
-      DEBUG ("... room <%s> invalid - ignoring", room);
-      return TRUE;
+      muc_channel = gabble_muc_factory_find_text_channel (conn->muc_factory,
+          room_handle);
     }
 
-  their_invites = g_hash_table_lookup (conn->olpc_invited_activities,
-      GUINT_TO_POINTER (contact_handle));
-  if (their_invites == NULL)
+  if (muc_channel == NULL)
     {
-      their_invites = tp_handle_set_new (room_repo);
-      g_hash_table_insert (conn->olpc_invited_activities,
-          GUINT_TO_POINTER (contact_handle), their_invites);
+      const gchar *room;
+
+      DEBUG ("Activity properties message was a pseudo-invitation");
+
+      /* FIXME: This is stupid. We should ref the handles in a TpHandleSet
+       * per activity, then we could _ensure this handle */
+      contact_handle = tp_handle_lookup (contact_repo, from, NULL, NULL);
+      if (contact_handle == 0)
+        {
+          DEBUG ("... contact <%s> unknown - ignoring (FIX THIS)", from);
+          return TRUE;
+        }
+
+      room = lm_message_node_get_attribute (node, "room");
+      if (room == NULL)
+        {
+          NODE_DEBUG (node, "... room name missing - ignoring");
+          return TRUE;
+        }
+      DEBUG ("... room <%s>", room);
+      room_handle = tp_handle_ensure (room_repo, room, NULL, NULL);
+      if (room_handle == 0)
+        {
+          DEBUG ("... room <%s> invalid - ignoring", room);
+          return TRUE;
+        }
+
+      muc_channel = gabble_muc_factory_find_text_channel (conn->muc_factory,
+          room_handle);
+      if (muc_channel != NULL)
+        {
+          guint state;
+
+          g_object_get (muc_channel,
+              "state", &state,
+              NULL);
+          if (state == MUC_STATE_JOINED)
+            {
+              DEBUG ("Ignoring pseudo-invitation to <%s> - we're already "
+                  "there", room);
+              return TRUE;
+            }
+        }
+    }
+  else
+    {
+      DEBUG ("Activity properties message was in a chatroom");
     }
 
   info = g_hash_table_lookup (conn->olpc_activities_info,
       GUINT_TO_POINTER (room_handle));
-  if (info == NULL)
+
+  if (contact_handle != 0)
     {
-      DEBUG ("... creating new ActivityInfo");
-      info = add_activity_info (conn, room_handle);
-      tp_handle_set_add (their_invites, room_handle);
+      their_invites = g_hash_table_lookup (conn->olpc_invited_activities,
+          GUINT_TO_POINTER (contact_handle));
+      if (their_invites == NULL)
+        {
+          their_invites = tp_handle_set_new (room_repo);
+          g_hash_table_insert (conn->olpc_invited_activities,
+              GUINT_TO_POINTER (contact_handle), their_invites);
+        }
+
+      if (info == NULL)
+        {
+          DEBUG ("... creating new ActivityInfo");
+          info = add_activity_info (conn, room_handle);
+          tp_handle_set_add (their_invites, room_handle);
+        }
+      else if (!tp_handle_set_is_member (their_invites, room_handle))
+        {
+          DEBUG ("... it's the first time that contact invited me, "
+              "referencing ActivityInfo on their behalf");
+          info->refcount++;
+          tp_handle_set_add (their_invites, room_handle);
+        }
+      tp_handle_unref (room_repo, room_handle);
     }
-  else if (!tp_handle_set_is_member (their_invites, room_handle))
+  else
     {
-      DEBUG ("... it's the first time that contact invited me, referencing "
-          "ActivityInfo");
-      info->refcount++;
-      tp_handle_set_add (their_invites, room_handle);
+      /* we're in the room, so it ought to have an ActivityInfo ref'd */
+      g_assert (info != NULL);
     }
-  tp_handle_unref (room_repo, room_handle);
+
+  new_properties = lm_message_node_extract_properties (node,
+      "property");
+  g_assert (new_properties);
+
+  /* before applying the changes, gather enough information to work out
+   * whether anything changed */
+
+  old_properties = info->properties;
+
+  was_visible = activity_info_is_visible (info);
+
+  properties_changed = old_properties == NULL
+    || properties_contains_new_infos (old_properties, new_properties);
 
   /* apply the info we found */
+
   if (tp_strdiff (info->id, id))
     {
       DEBUG ("... recording new activity ID %s", id);
@@ -1703,11 +1781,49 @@ conn_olpc_process_activity_properties_message (GabbleConnection *conn,
       info->id = g_strdup (id);
     }
 
-  new_properties = lm_message_node_extract_properties (node,
-      "property");
   activity_info_set_properties (info, new_properties);
 
-  /* FIXME: if necessary, emit signals and stuff */
+  /* emit signals and amend our PEP nodes, if necessary */
+
+  is_visible = activity_info_is_visible (info);
+
+  if (is_visible)
+    {
+      pep_properties_changed = properties_changed || !was_visible;
+    }
+  else
+    {
+      pep_properties_changed = was_visible;
+    }
+
+  if (properties_changed)
+    gabble_svc_olpc_activity_properties_emit_activity_properties_changed (conn,
+        room_handle, new_properties);
+  /* FIXME: emit signal for inviter's activities list if necessary */
+
+  /* If we're announcing this activity, we might need to change our PEP node */
+  if (pep_properties_changed)
+    {
+      our_activities = g_hash_table_lookup (conn->olpc_pep_activities,
+          GUINT_TO_POINTER (base->self_handle));
+      if (our_activities != NULL &&
+          tp_handle_set_is_member (our_activities, room_handle))
+        {
+          msg = pubsub_make_publish_msg (NULL, NS_OLPC_ACTIVITY_PROPS,
+              NS_OLPC_ACTIVITY_PROPS, "activities", &publish);
+
+          g_hash_table_foreach (conn->olpc_activities_info,
+              set_activity_properties, publish);
+
+          if (!_gabble_connection_send_with_reply (conn, msg,
+                pseudo_invite_set_props_reply_cb, NULL, NULL, NULL))
+            {
+              DEBUG ("Failed to send PEP properties change in response to "
+              "pseudo-invitation message");
+            }
+        }
+   }
+  /* FIXME: do the same for our activities PEP node */
 
   return TRUE;
 }

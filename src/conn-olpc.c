@@ -2002,7 +2002,17 @@ conn_olpc_process_activity_properties_message (GabbleConnection *conn,
     }
   else
     {
+      TpHandle self_handle;
+
       DEBUG ("Activity properties message was in a chatroom");
+
+      g_object_get (muc_channel,
+          "self-handle", &self_handle,
+          NULL);
+      if (tp_handle_lookup (contact_repo, from, NULL, NULL) == self_handle)
+        {
+          DEBUG ("Ignoring echoed activity properties message from myself");
+        }
     }
 
   info = g_hash_table_lookup (conn->olpc_activities_info,

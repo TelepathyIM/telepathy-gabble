@@ -1395,17 +1395,6 @@ olpc_buddy_info_iface_init (gpointer g_iface,
 #undef IMPLEMENT
 }
 
-static void
-set_activity_properties (gpointer key,
-                         gpointer value,
-                         gpointer user_data)
-{
-  LmMessageNode *node = user_data;
-  ActivityInfo *info = (ActivityInfo*) value;
-
-  activity_info_contribute_properties (info, node, TRUE);
-}
-
 /* FIXME: API could be improved */
 static gboolean
 upload_activity_properties_pep (GabbleConnection *conn,

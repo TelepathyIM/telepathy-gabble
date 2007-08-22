@@ -152,7 +152,7 @@ activity_info_is_visible (ActivityInfo *info)
   return !g_value_get_boolean (gv);
 }
 
-/* Returns TRUE if we have an ID and properties for the activity, else FALSE.
+/* Returns TRUE if it actually contributed something, else FALSE.
  */
 static gboolean
 activity_info_contribute_properties (ActivityInfo *info,
@@ -1413,14 +1413,28 @@ upload_activity_properties_pep (GabbleConnection *conn,
                                 gpointer user_data,
                                 GError **error)
 {
+  TpBaseConnection *base = (TpBaseConnection *) conn;
   LmMessageNode *publish;
   LmMessage *msg = pubsub_make_publish_msg (NULL, NS_OLPC_ACTIVITY_PROPS,
       NS_OLPC_ACTIVITY_PROPS, "activities", &publish);
   GError *e = NULL;
   gboolean ret;
+  TpHandleSet *my_activities = g_hash_table_lookup (conn->olpc_pep_activities,
+      GUINT_TO_POINTER (base->self_handle));
 
-  g_hash_table_foreach (conn->olpc_activities_info, set_activity_properties,
-      publish);
+  if (my_activities != NULL)
+    {
+      TpIntSetIter iter = TP_INTSET_ITER_INIT (tp_handle_set_peek
+          (my_activities));
+
+      while (tp_intset_iter_next (&iter))
+        {
+          ActivityInfo *info = g_hash_table_lookup (conn->olpc_activities_info,
+              GUINT_TO_POINTER (iter.element));
+
+          activity_info_contribute_properties (info, publish, TRUE);
+        }
+    }
 
   ret = _gabble_connection_send_with_reply (conn, msg, callback, NULL,
         user_data, &e);

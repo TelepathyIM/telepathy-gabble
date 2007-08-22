@@ -2097,7 +2097,8 @@ conn_olpc_process_activity_properties_message (GabbleConnection *conn,
           get_buddy_activities (conn, contact_handle));
     }
 
-  /* FIXME: re-invite people we invited */
+  if (muc_channel != NULL)
+    refresh_invitations (muc_channel, info, NULL);
 
   /* If we're announcing this activity, we might need to change our PEP node */
   if (pep_properties_changed)
@@ -2191,7 +2192,7 @@ muc_channel_closed_cb (GabbleMucChannel *chan,
         }
     }
 
-  /* FIXME: revoke invitations */
+  /* FIXME: revoke invitations (how?) */
 }
 
 static void

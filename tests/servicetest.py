@@ -110,7 +110,9 @@ class EventTest:
             ret = handler(event, self.data)
         except TryNextHandler, e:
             if self.queue:
-                return self.call_handlers(event)
+                ret = self.call_handlers(event)
+                self.queue.insert(0, handler)
+                return ret
             else:
                 return False
 

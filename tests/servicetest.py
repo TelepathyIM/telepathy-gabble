@@ -193,8 +193,7 @@ def call_async(test, proxy, method, *args, **kw):
     method_proxy(*args, **kw)
 
 
-def create_test(name, proto, params):
-    test = EventTest()
+def prepare_test(test, name, proto, params):
     bus = dbus.SessionBus()
     cm = bus.get_object(
         tp_name_prefix + '.ConnectionManager.%s' % name,

@@ -210,7 +210,8 @@ def go(params=None, authenticator=None, protocol=None, start=None):
     if params:
         default_params.update(params)
 
-    handler = servicetest.create_test('gabble', 'jabber', default_params)
+    handler = servicetest.EventTest()
+    servicetest.prepare_test(handler, 'gabble', 'jabber', default_params)
 
     if authenticator is None:
         authenticator = JabberAuthenticator('test', 'pass')

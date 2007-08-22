@@ -1831,8 +1831,7 @@ connection_status_changed_cb (GabbleConnection *conn,
       g_hash_table_foreach (conn->olpc_activities_info,
           set_activity_properties, publish);
 
-      _gabble_connection_send_with_reply (conn, msg,
-        NULL, NULL, NULL, NULL);
+      _gabble_connection_send (conn, msg, NULL);
 
       lm_message_unref (msg);
     }

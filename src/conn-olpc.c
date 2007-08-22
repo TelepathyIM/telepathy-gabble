@@ -447,6 +447,18 @@ preload_buddy_properties_quark ()
   return q;
 }
 
+static GQuark
+invitees_quark ()
+{
+  static GQuark q = 0;
+  if (q == 0)
+    {
+      q = g_quark_from_static_string
+        ("GabbleConnection.conn_olpc_invitees_quark");
+    }
+  return q;
+}
+
 void
 gabble_connection_connected_olpc (GabbleConnection *conn)
 {
@@ -1095,7 +1107,9 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
   lm_message_unref (msg);
 
   /* FIXME: what if we were advertising properties for things that
-   * we've declared are no longer in our activities list? */
+   * we've declared are no longer in our activities list? Strictly speaking
+   * we should probably re-upload our activity properties PEP if that's
+   * the case */
 }
 
 gboolean
@@ -1506,6 +1520,44 @@ set_activity_properties_reply_cb (GabbleConnection *conn,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
+static gboolean
+refresh_invitations (GabbleMucChannel *chan,
+                     ActivityInfo *info,
+                     GError **error)
+{
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) info->conn, TP_HANDLE_TYPE_CONTACT);
+  TpHandleSet *invitees = g_object_get_qdata ((GObject *) chan,
+      invitees_quark ());
+
+  if (invitees != NULL && tp_handle_set_size (invitees) > 0)
+    {
+      LmMessage *msg = lm_message_new (NULL, LM_MESSAGE_TYPE_MESSAGE);
+      TpIntSetIter iter = TP_INTSET_ITER_INIT (tp_handle_set_peek
+          (invitees));
+
+      activity_info_contribute_properties (info, msg->node, FALSE);
+
+      while (tp_intset_iter_next (&iter))
+        {
+          const gchar *to = tp_handle_inspect (contact_repo, iter.element);
+
+          lm_message_node_set_attribute (msg->node, "to", to);
+          if (!_gabble_connection_send (info->conn, msg, error))
+            {
+              DEBUG ("Unable to re-send activity properties to invitee %s",
+                  to);
+              lm_message_unref (msg);
+              return FALSE;
+            }
+        }
+
+      lm_message_unref (msg);
+    }
+
+  return TRUE;
+}
+
 static void
 olpc_activity_properties_set_properties (GabbleSvcOLPCActivityProperties *iface,
                                          guint room,
@@ -1522,6 +1574,7 @@ olpc_activity_properties_set_properties (GabbleSvcOLPCActivityProperties *iface,
   guint state;
   gboolean was_visible, is_visible;
   set_properties_ctx *ctx;
+  GError *err = NULL;
 
   DEBUG ("called");
 
@@ -1585,7 +1638,12 @@ olpc_activity_properties_set_properties (GabbleSvcOLPCActivityProperties *iface,
     }
   lm_message_unref (msg);
 
-  /* FIXME: send update to people we previously invited too */
+  if (!refresh_invitations (muc_channel, info, &err))
+    {
+      dbus_g_method_return_error (context, err);
+      g_error_free (err);
+      return;
+    }
 
   ctx = g_slice_new (set_properties_ctx);
   ctx->context = context;
@@ -1593,8 +1651,6 @@ olpc_activity_properties_set_properties (GabbleSvcOLPCActivityProperties *iface,
 
   if (was_visible || is_visible)
     {
-      GError *err = NULL;
-
       if (!upload_activity_properties_pep (conn,
             set_activity_properties_reply_cb, ctx, &err))
         {
@@ -2134,6 +2190,8 @@ muc_channel_closed_cb (GabbleMucChannel *chan,
               "channel close");
         }
     }
+
+  /* FIXME: revoke invitations */
 }
 
 static void
@@ -2143,6 +2201,8 @@ muc_channel_pre_invite_cb (GabbleMucChannel *chan,
 {
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles
       ((TpBaseConnection *) info->conn, TP_HANDLE_TYPE_CONTACT);
+  GQuark quark = invitees_quark ();
+  TpHandleSet *invitees;
   /* send them the properties */
   LmMessage *msg;
 
@@ -2160,8 +2220,14 @@ muc_channel_pre_invite_cb (GabbleMucChannel *chan,
     }
   lm_message_unref (msg);
 
-  /* FIXME: remember we invited them, so we can ping them again if it
-   * changes */
+  invitees = g_object_get_qdata ((GObject *) chan, quark);
+  if (invitees == NULL)
+    {
+      invitees = tp_handle_set_new (contact_repo);
+      tp_handle_set_add (invitees, invitee);
+      g_object_set_qdata_full ((GObject *) chan, quark, invitees,
+          (GDestroyNotify) tp_handle_set_destroy);
+    }
 }
 
 static void

@@ -2107,7 +2107,7 @@ conn_olpc_process_activity_properties_message (GabbleConnection *conn,
           get_buddy_activities (conn, contact_handle));
     }
 
-  if (muc_channel != NULL)
+  if (properties_changed && muc_channel != NULL)
     refresh_invitations (muc_channel, info, NULL);
 
   /* If we're announcing this activity, we might need to change our PEP node */

@@ -2077,6 +2077,22 @@ conn_olpc_process_activity_properties_message (GabbleConnection *conn,
   return TRUE;
 }
 
+static LmHandlerResult
+closed_pep_reply_cb (GabbleConnection *conn,
+                     LmMessage *sent_msg,
+                     LmMessage *reply_msg,
+                     GObject *object,
+                     gpointer user_data)
+{
+  if (!check_publish_reply_msg (reply_msg, NULL))
+    {
+      NODE_DEBUG (reply_msg->node, "Failed to make PEP change in "
+          "response to channel closure");
+      NODE_DEBUG (sent_msg->node, "The failed request was");
+    }
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
 static void
 muc_channel_closed_cb (GabbleMucChannel *chan,
                        ActivityInfo *info)
@@ -2104,8 +2120,17 @@ muc_channel_closed_cb (GabbleMucChannel *chan,
 
   if (was_in_our_pep)
     {
-      /* FIXME: update our activities PEP accordingly */
-      /* FIXME: update our activity properties PEP accordingly */
+      if (!upload_activities_pep (conn, closed_pep_reply_cb, NULL, NULL))
+        {
+          DEBUG ("Failed to send PEP activities change in response to "
+              "channel close");
+        }
+      if (!upload_activity_properties_pep (conn, closed_pep_reply_cb, NULL,
+            NULL))
+        {
+          DEBUG ("Failed to send PEP activity props change in response to "
+              "channel close");
+        }
     }
 }
 

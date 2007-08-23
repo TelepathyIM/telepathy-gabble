@@ -267,9 +267,22 @@ gabble_presence_update (GabblePresence *presence,
     {
       if (NULL != res)
         {
+          GSList *i;
+
           priv->resources = g_slist_remove (priv->resources, res);
           _resource_free (res);
           res = NULL;
+
+          /* recaulculate aggregate capability mask */
+
+          presence->caps = 0;
+
+          for (i = priv->resources; i; i = i->next)
+            {
+              Resource *r = (Resource *) i->data;
+
+              presence->caps |= r->caps;
+            }
         }
     }
   else

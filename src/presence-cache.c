@@ -1277,6 +1277,7 @@ gabble_presence_cache_update (
       (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
   const gchar *jid;
   GabblePresence *presence;
+  GabblePresenceCapabilities caps_before;
 
   jid = tp_handle_inspect (contact_repo, handle);
   DEBUG ("%s (%d) resource %s prio %d presence %d message \"%s\"",
@@ -1287,9 +1288,15 @@ gabble_presence_cache_update (
   if (presence == NULL)
     presence = _cache_insert (cache, handle);
 
+  caps_before = presence->caps;
+
   if (gabble_presence_update (presence, resource, presence_id, status_message,
         priority))
     g_signal_emit (cache, signals[PRESENCE_UPDATE], 0, handle);
+
+  if (caps_before != presence->caps)
+    g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0, handle,
+        caps_before, presence->caps);
 
   gabble_presence_cache_maybe_remove (cache, handle);
 }

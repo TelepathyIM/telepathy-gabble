@@ -2353,7 +2353,6 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
 static const gchar *assumed_caps[] =
 {
   TP_IFACE_CHANNEL_TYPE_TEXT,
-  TP_IFACE_CHANNEL_INTERFACE_GROUP,
   NULL
 };
 

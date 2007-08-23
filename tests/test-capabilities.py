@@ -12,7 +12,7 @@ from gabbletest import go, make_result_iq
 
 basic_caps = [
   (2, u'org.freedesktop.Telepathy.Channel.Type.Text', 3, 0),
-  (2, u'org.freedesktop.Telepathy.Channel.Interface.Group', 3, 0)]
+  ]
 
 def make_presence(from_jid, type, status):
     presence = domish.Element((None, 'presence'))

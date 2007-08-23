@@ -31,6 +31,7 @@ TWISTED_TESTS = \
 	test-alias-empty-vcard.py \
 	test-avatar.py \
 	test-avatar-async.py \
+	test-capabilities.py \
 	test-connect.py \
 	test-connect-fail.py \
 	test-disco.py \

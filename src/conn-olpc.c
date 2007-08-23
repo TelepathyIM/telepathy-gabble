@@ -1744,7 +1744,18 @@ check_prop_in_old_properties (gpointer key,
               data->new_infos = TRUE;
             }
         }
-      /* XXX check other types of property (we don't actually have any yet) */
+      else if (G_VALUE_TYPE (gvalue) == G_TYPE_BOOLEAN)
+        {
+          gboolean bool1, bool2;
+
+          bool1 = g_value_get_boolean (gvalue);
+          bool2 = g_value_get_boolean (old_gvalue);
+
+          if (bool1 != bool2)
+            {
+              data->new_infos = TRUE;
+            }
+        }
       else
         {
           /* if in doubt, emit the signal */

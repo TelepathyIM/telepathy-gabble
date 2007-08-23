@@ -2313,8 +2313,9 @@ connection_presence_update_cb (GabblePresenceCache *cache,
       list = g_hash_table_lookup (conn->olpc_pep_activities,
           GUINT_TO_POINTER (handle));
 
-      tp_handle_set_foreach (list,
-          decrement_contacts_activities_list_foreach, conn);
+      if (list != NULL)
+        tp_handle_set_foreach (list,
+            decrement_contacts_activities_list_foreach, conn);
 
       g_hash_table_remove (conn->olpc_pep_activities,
           GUINT_TO_POINTER (handle));
@@ -2322,8 +2323,9 @@ connection_presence_update_cb (GabblePresenceCache *cache,
       list = g_hash_table_lookup (conn->olpc_invited_activities,
           GUINT_TO_POINTER (handle));
 
-      tp_handle_set_foreach (list,
-          decrement_contacts_activities_list_foreach, conn);
+      if (list != NULL)
+        tp_handle_set_foreach (list,
+            decrement_contacts_activities_list_foreach, conn);
 
       g_hash_table_remove (conn->olpc_invited_activities,
           GUINT_TO_POINTER (handle));

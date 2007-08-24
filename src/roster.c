@@ -1206,7 +1206,15 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
             case GABBLE_ROSTER_SUBSCRIPTION_FROM:
               if (item->ask_subscribe)
                 {
-                  tp_intset_add (sub_rp, handle);
+                  if (tp_handle_set_is_member (sub_chan->group.members, handle))
+                    {
+                      DEBUG("not letting gtalk demote member %u to pending",
+                          handle);
+                    }
+                  else
+                    {
+                      tp_intset_add (sub_rp, handle);
+                    }
                 }
               else
                 {

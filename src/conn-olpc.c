@@ -1626,6 +1626,7 @@ olpc_activity_properties_set_properties (GabbleSvcOLPCActivityProperties *iface,
   is_visible = activity_info_is_visible (info);
 
   msg = lm_message_new (jid, LM_MESSAGE_TYPE_MESSAGE);
+  lm_message_node_set_attribute (msg->node, "type", "groupchat");
   activity_info_contribute_properties (info, msg->node, FALSE);
   if (!_gabble_connection_send (info->conn, msg, NULL))
     {

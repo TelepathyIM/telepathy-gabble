@@ -47,7 +47,8 @@ TWISTED_TESTS = \
 	test-set-status-idempotence.py \
 	test-text.py \
 	test-text-delayed.py \
-	test-vcard-race.py
+	test-vcard-race.py \
+	test-google-roster.py
 
 _check-twisted:
 	$(MAKE) check TESTS="$(TWISTED_TESTS)" TESTS_ENVIRONMENT=python

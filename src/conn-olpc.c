@@ -1571,6 +1571,21 @@ muc_channel_pre_invite_cb (GabbleMucChannel *chan,
 }
 
 static void
+muc_channel_conctact_join_cb (GabbleMucChannel *chan,
+                              TpHandle contact,
+                              gpointer unused)
+{
+  GQuark quark = invitees_quark ();
+  TpHandleSet *invitees;
+
+  invitees = g_object_get_qdata ((GObject *) chan, quark);
+  if (invitees != NULL)
+    {
+      tp_handle_set_remove (invitees, contact);
+    }
+}
+
+static void
 muc_factory_new_channel_cb (GabbleMucFactory *fac,
                             TpChannelIface *chan,
                             gpointer opaque_request,
@@ -1603,6 +1618,8 @@ muc_factory_new_channel_cb (GabbleMucFactory *fac,
       info);
   g_signal_connect (chan, "pre-invite", G_CALLBACK (muc_channel_pre_invite_cb),
       info);
+  g_signal_connect (chan, "contact-join",
+      G_CALLBACK (muc_channel_conctact_join_cb), NULL);
 }
 
 static void

@@ -1633,6 +1633,8 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
                    */
                   tp_group_mixin_change_flags ((GObject *) chan, 0,
                       TP_CHANNEL_GROUP_FLAG_HANDLE_OWNERS_NOT_AVAILABLE);
+
+                  g_signal_emit (chan, signals[CONTACT_JOIN], 0, owner_handle);
                 }
             }
 

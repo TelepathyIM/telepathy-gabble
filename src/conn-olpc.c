@@ -2246,10 +2246,10 @@ muc_channel_pre_invite_cb (GabbleMucChannel *chan,
   if (invitees == NULL)
     {
       invitees = tp_handle_set_new (contact_repo);
-      tp_handle_set_add (invitees, invitee);
       g_object_set_qdata_full ((GObject *) chan, quark, invitees,
           (GDestroyNotify) tp_handle_set_destroy);
     }
+  tp_handle_set_add (invitees, invitee);
 }
 
 static void

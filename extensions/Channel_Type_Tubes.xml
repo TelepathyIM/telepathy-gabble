@@ -512,6 +512,35 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
       </arg>
     </signal>
 
+    <method name="OfferTube">
+      <tp:docstring>
+        Offers a tube providing the service specified, over a tube of the
+        specified type. In practice, this will only work for D-Bus tubes.
+        DEPRECATED: use OfferDBusTube instead.
+      </tp:docstring>
+      <arg direction="in" name="type" type="u" tp:type="Tube_Type">
+        <tp:docstring>
+          The type of tube wanted, one of the values from
+          the Tube_Type enum.
+        </tp:docstring>
+      </arg>
+      <arg direction="in" name="service" type="s">
+        <tp:docstring>
+          A string representing the service that will be used over the tube.
+        </tp:docstring>
+      </arg>
+      <arg direction="in" name="parameters" type="a{sv}">
+        <tp:docstring>
+          A dicionary of properties for the new tube.
+        </tp:docstring>
+      </arg>
+      <arg direction="out" type="u">
+        <tp:docstring>
+          The ID of the new tube.
+        </tp:docstring>
+      </arg>
+    </method>
+
   </interface>
 
 </node>

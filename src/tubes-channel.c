@@ -407,7 +407,7 @@ create_new_tube (GabbleTubesChannel *self,
           service, parameters, stream_id, tube_id, bytestream));
       break;
 #endif
-    case GABBLE_TUBE_TYPE_STREAM_UNIX:
+    case GABBLE_TUBE_TYPE_STREAM:
       tube = GABBLE_TUBE_IFACE (gabble_tube_stream_new (priv->conn,
           priv->handle, priv->handle_type, priv->self_handle, initiator,
           service, parameters, tube_id));
@@ -466,7 +466,7 @@ extract_tube_information (GabbleTubesChannel *self,
 
       if (!tp_strdiff (_type, "stream"))
         {
-          *type = GABBLE_TUBE_TYPE_STREAM_UNIX;
+          *type = GABBLE_TUBE_TYPE_STREAM;
         }
 #ifdef HAVE_DBUS_TUBE
       else if (!tp_strdiff (_type, "dbus"))
@@ -874,7 +874,7 @@ gabble_tubes_channel_get_available_tube_types (GabbleSvcChannelTypeTubes *iface,
   type = GABBLE_TUBE_TYPE_DBUS;
   g_array_append_val (ret, type);
 #endif
-  type = GABBLE_TUBE_TYPE_STREAM_UNIX;
+  type = GABBLE_TUBE_TYPE_STREAM;
   g_array_append_val (ret, type);
 
   gabble_svc_channel_type_tubes_return_from_get_available_tube_types (context,
@@ -969,7 +969,7 @@ publish_tube_in_node (GabbleTubesChannel *self,
       case GABBLE_TUBE_TYPE_DBUS:
         lm_message_node_set_attribute (node, "type", "dbus");
         break;
-      case GABBLE_TUBE_TYPE_STREAM_UNIX:
+      case GABBLE_TUBE_TYPE_STREAM:
         lm_message_node_set_attribute (node, "type", "stream");
         break;
       default:
@@ -1407,7 +1407,6 @@ gabble_tubes_channel_offer_d_bus_tube (GabbleSvcChannelTypeTubes *iface,
           g_free (stream_id);
           return;
         }
-
     }
 
   gabble_svc_channel_type_tubes_return_from_offer_d_bus_tube (context, tube_id);
@@ -1465,23 +1464,25 @@ stream_unix_tube_new_connection_cb (GabbleTubeIface *tube,
       "type", &type,
       NULL);
 
-  g_assert (type == GABBLE_TUBE_TYPE_STREAM_UNIX);
+  g_assert (type == GABBLE_TUBE_TYPE_STREAM);
 
-  gabble_svc_channel_type_tubes_emit_stream_unix_socket_new_connection (self,
+  gabble_svc_channel_type_tubes_emit_stream_tube_new_connection (self,
       tube_id, contact);
 }
+
 /**
- * gabble_tubes_channel_offer_stream_unix_tube
+ * gabble_tubes_channel_offer_stream_tube
  *
- * Implements D-Bus method OfferStreamUnixTube
+ * Implements D-Bus method OfferStreamTube
  * on org.freedesktop.Telepathy.Channel.Type.Tubes
  */
 static void
-gabble_tubes_channel_offer_stream_unix_tube (GabbleSvcChannelTypeTubes *iface,
-                                             const gchar *service,
-                                             const gchar *socket,
-                                             GHashTable *parameters,
-                                             DBusGMethodInvocation *context)
+gabble_tubes_channel_offer_stream_tube (GabbleSvcChannelTypeTubes *iface,
+                                        const gchar *service,
+                                        GHashTable *parameters,
+                                        guint address_type,
+                                        const GValue *address,
+                                        DBusGMethodInvocation *context)
 {
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (iface);
   GabbleTubesChannelPrivate *priv;
@@ -1490,12 +1491,28 @@ gabble_tubes_channel_offer_stream_unix_tube (GabbleSvcChannelTypeTubes *iface,
   GabbleTubeIface *tube;
   GHashTable *parameters_copied;
   gchar *stream_id;
+  const gchar *socket;
   struct stat stat_buff;
 
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
 
   priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
   base = (TpBaseConnection*) priv->conn;
+
+  if (address_type != GABBLE_TUBE_ADDRESS_TYPE_UNIX)
+    {
+      GError *error = NULL;
+
+      error = g_error_new (TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+          "Address type %d not implemented", address_type);
+
+      dbus_g_method_return_error (context, error);
+
+      g_error_free (error);
+      return;
+    }
+
+  socket = g_value_get_string (address);
 
   if (g_stat (socket, &stat_buff) == -1)
     {
@@ -1534,10 +1551,12 @@ gabble_tubes_channel_offer_stream_unix_tube (GabbleSvcChannelTypeTubes *iface,
   stream_id = gabble_bytestream_factory_generate_stream_id ();
   tube_id = generate_tube_id ();
 
-  tube = create_new_tube (self, GABBLE_TUBE_TYPE_STREAM_UNIX, priv->self_handle,
+  tube = create_new_tube (self, GABBLE_TUBE_TYPE_STREAM, priv->self_handle,
       service, parameters_copied, (const gchar*) stream_id, tube_id, NULL);
 
-  g_object_set (tube, "socket", socket, NULL);
+  g_object_set (tube,
+      "socket", socket,
+      NULL);
 
   if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
     {
@@ -1559,27 +1578,30 @@ gabble_tubes_channel_offer_stream_unix_tube (GabbleSvcChannelTypeTubes *iface,
   g_signal_connect (tube, "new-connection",
       G_CALLBACK (stream_unix_tube_new_connection_cb), self);
 
-  gabble_svc_channel_type_tubes_return_from_offer_d_bus_tube (context, tube_id);
+  gabble_svc_channel_type_tubes_return_from_offer_stream_tube (context,
+      tube_id);
 
   g_free (stream_id);
 }
 
 /**
- * gabble_tubes_channel_accept_tube
+ * gabble_tubes_channel_accept_d_bus_tube
  *
- * Implements D-Bus method AcceptTube
+ * Implements D-Bus method AcceptDBusTube
  * on org.freedesktop.Telepathy.Channel.Type.Tubes
  */
 static void
-gabble_tubes_channel_accept_tube (GabbleSvcChannelTypeTubes *iface,
-                                  guint id,
-                                  DBusGMethodInvocation *context)
+gabble_tubes_channel_accept_d_bus_tube (GabbleSvcChannelTypeTubes *iface,
+                                        guint id,
+                                        DBusGMethodInvocation *context)
 {
+#ifdef HAVE_DBUS_TUBE
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (iface);
   GabbleTubesChannelPrivate *priv;
   GabbleTubeIface *tube;
   GabbleTubeState state;
   GabbleTubeType type;
+  gchar *addr;
 
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
 
@@ -1591,15 +1613,29 @@ gabble_tubes_channel_accept_tube (GabbleSvcChannelTypeTubes *iface,
       GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, "Unknown tube" };
 
       dbus_g_method_return_error (context, &error);
-
       return;
     }
 
-  g_object_get (tube, "state", &state, NULL);
+  g_object_get (tube,
+      "type", &type,
+      "state", &state,
+      NULL);
+
+  if (type != GABBLE_TUBE_TYPE_DBUS)
+    {
+      GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Tube is not a D-Bus tube" };
+
+      dbus_g_method_return_error (context, &error);
+      return;
+    }
+
   if (state != GABBLE_TUBE_STATE_LOCAL_PENDING)
     {
-      /* XXX raise an error if the tube was not in the local pending state ? */
-      gabble_svc_channel_type_tubes_return_from_accept_tube (context);
+      GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Tube is not in the local pending state" };
+
+      dbus_g_method_return_error (context, &error);
       return;
     }
 
@@ -1607,16 +1643,100 @@ gabble_tubes_channel_accept_tube (GabbleSvcChannelTypeTubes *iface,
 
   update_tubes_presence (self);
 
-  g_object_get (tube, "type", &type, NULL);
+  add_yourself_in_dbus_names (self, id);
 
-#ifdef HAVE_DBUS_TUBE
-  if (type == GABBLE_TUBE_TYPE_DBUS)
-    {
-      add_yourself_in_dbus_names (self, id);
-    }
+  g_object_get (tube, "dbus-address", &addr, NULL);
+  gabble_svc_channel_type_tubes_return_from_accept_d_bus_tube (context, addr);
+  g_free (addr);
+#else
+  GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      "D-Bus tube support not built" };
+
+  dbus_g_method_return_error (context, &error);
+  return;
 #endif
+}
 
-  gabble_svc_channel_type_tubes_return_from_accept_tube (context);
+/**
+ * gabble_tubes_channel_accept_stream_tube
+ *
+ * Implements D-Bus method AcceptStreamTube
+ * on org.freedesktop.Telepathy.Channel.Type.Tubes
+ */
+static void
+gabble_tubes_channel_accept_stream_tube (GabbleSvcChannelTypeTubes *iface,
+                                         guint id,
+                                         guint address_type,
+                                         DBusGMethodInvocation *context)
+{
+  GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (iface);
+  GabbleTubesChannelPrivate *priv;
+  GabbleTubeIface *tube;
+  GabbleTubeState state;
+  GabbleTubeType type;
+  gchar *socket;
+  GValue address = {0,};
+
+  g_assert (GABBLE_IS_TUBES_CHANNEL (self));
+
+  priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+
+  tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (id));
+  if (tube == NULL)
+    {
+      GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, "Unknown tube" };
+
+      dbus_g_method_return_error (context, &error);
+      return;
+    }
+
+  if (address_type != GABBLE_TUBE_ADDRESS_TYPE_UNIX)
+    {
+      GError *error = NULL;
+
+      error = g_error_new (TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+          "Address type %d not implemented", address_type);
+
+      dbus_g_method_return_error (context, error);
+
+      g_error_free (error);
+      return;
+    }
+
+  g_object_get (tube,
+      "type", &type,
+      "state", &state,
+      NULL);
+
+  if (type != GABBLE_TUBE_TYPE_STREAM)
+    {
+      GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Tube is not a stream tube" };
+
+      dbus_g_method_return_error (context, &error);
+      return;
+    }
+
+  if (state != GABBLE_TUBE_STATE_LOCAL_PENDING)
+    {
+      GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Tube is not in the local pending state" };
+
+      dbus_g_method_return_error (context, &error);
+      return;
+    }
+
+  gabble_tube_iface_accept (tube);
+
+  update_tubes_presence (self);
+
+  g_object_get (tube, "socket", &socket, NULL);
+  g_value_init (&address, G_TYPE_STRING);
+  g_value_set_string (&address, socket);
+
+  gabble_svc_channel_type_tubes_return_from_accept_stream_tube (context,
+      &address);
+  g_free (socket);
 }
 
 /**
@@ -1654,15 +1774,15 @@ gabble_tubes_channel_close_tube (GabbleSvcChannelTypeTubes *iface,
 }
 
 /**
- * gabble_tubes_channel_get_d_bus_server_address
+ * gabble_tubes_channel_get_d_bus_tube_address
  *
- * Implements D-Bus method GetDBusServerAddress
+ * Implements D-Bus method GetDBusTubeAddress
  * on org.freedesktop.Telepathy.Channel.Type.Tubes
  */
 static void
-gabble_tubes_channel_get_d_bus_server_address (GabbleSvcChannelTypeTubes *iface,
-                                               guint id,
-                                               DBusGMethodInvocation *context)
+gabble_tubes_channel_get_d_bus_tube_address (GabbleSvcChannelTypeTubes *iface,
+                                             guint id,
+                                             DBusGMethodInvocation *context)
 {
 #ifdef HAVE_DBUS_TUBE
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (iface);
@@ -1701,7 +1821,7 @@ gabble_tubes_channel_get_d_bus_server_address (GabbleSvcChannelTypeTubes *iface,
     }
 
   g_object_get (tube, "dbus-address", &addr, NULL);
-  gabble_svc_channel_type_tubes_return_from_get_d_bus_server_address (context,
+  gabble_svc_channel_type_tubes_return_from_get_d_bus_tube_address (context,
       addr);
   g_free (addr);
 
@@ -1813,13 +1933,13 @@ gabble_tubes_channel_get_d_bus_names (GabbleSvcChannelTypeTubes *iface,
 }
 
 /**
- * gabble_tubes_channel_get_stream_unix_socket_address
+ * gabble_tubes_channel_get_stream_tube_socket_address
  *
- * Implements D-Bus method GetStreamSocketAddress
+ * Implements D-Bus method GetStreamTubeSocketAddress
  * on org.freedesktop.Telepathy.Channel.Type.Tubes
  */
 static void
-gabble_tubes_channel_get_stream_unix_socket_address (GabbleSvcChannelTypeTubes *iface,
+gabble_tubes_channel_get_stream_tube_socket_address (GabbleSvcChannelTypeTubes *iface,
                                                      guint id,
                                                      DBusGMethodInvocation *context)
 {
@@ -1829,6 +1949,7 @@ gabble_tubes_channel_get_stream_unix_socket_address (GabbleSvcChannelTypeTubes *
   GabbleTubeType type;
   GabbleTubeState state;
   gchar *socket;
+  GValue address = {0,};
 
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (id));
   if (tube == NULL)
@@ -1844,7 +1965,7 @@ gabble_tubes_channel_get_stream_unix_socket_address (GabbleSvcChannelTypeTubes *
       "state", &state,
       NULL);
 
-  if (type != GABBLE_TUBE_TYPE_STREAM_UNIX)
+  if (type != GABBLE_TUBE_TYPE_STREAM)
     {
       GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "Tube is not a Stream tube" };
@@ -1866,8 +1987,11 @@ gabble_tubes_channel_get_stream_unix_socket_address (GabbleSvcChannelTypeTubes *
       "socket", &socket,
       NULL);
 
-  gabble_svc_channel_type_tubes_return_from_get_stream_unix_socket_address (
-      context, socket);
+  g_value_init (&address, G_TYPE_STRING);
+  g_value_set_string (&address, socket);
+
+  gabble_svc_channel_type_tubes_return_from_get_stream_tube_socket_address (
+      context, GABBLE_TUBE_ADDRESS_TYPE_UNIX, &address);
 
   g_free (socket);
 }
@@ -2091,14 +2215,15 @@ tubes_iface_init (gpointer g_iface,
     klass, gabble_tubes_channel_##x)
   IMPLEMENT(get_available_tube_types);
   IMPLEMENT(list_tubes);
+  IMPLEMENT(close_tube);
   IMPLEMENT(offer_tube);
   IMPLEMENT(offer_d_bus_tube);
-  IMPLEMENT(offer_stream_unix_tube);
-  IMPLEMENT(accept_tube);
-  IMPLEMENT(close_tube);
-  IMPLEMENT(get_d_bus_server_address);
+  IMPLEMENT(accept_d_bus_tube);
+  IMPLEMENT(get_d_bus_tube_address);
   IMPLEMENT(get_d_bus_names);
-  IMPLEMENT(get_stream_unix_socket_address);
+  IMPLEMENT(offer_stream_tube);
+  IMPLEMENT(accept_stream_tube);
+  IMPLEMENT(get_stream_tube_socket_address);
 #undef IMPLEMENT
 }
 

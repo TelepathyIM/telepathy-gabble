@@ -729,7 +729,7 @@ gabble_tube_stream_get_property (GObject *object,
         g_value_set_object (value, priv->default_bytestream);
         break;
       case PROP_TYPE:
-        g_value_set_uint (value, GABBLE_TUBE_TYPE_STREAM_UNIX);
+        g_value_set_uint (value, GABBLE_TUBE_TYPE_STREAM);
         break;
       case PROP_INITIATOR:
         g_value_set_uint (value, priv->initiator);
@@ -947,7 +947,7 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
       "type",
       "Tube type",
       "The GabbleTubeType this D-Bus tube object.",
-      0, G_MAXUINT32, GABBLE_TUBE_TYPE_STREAM_UNIX,
+      0, G_MAXUINT32, GABBLE_TUBE_TYPE_STREAM,
       G_PARAM_READABLE |
       G_PARAM_STATIC_NAME |
       G_PARAM_STATIC_NICK |

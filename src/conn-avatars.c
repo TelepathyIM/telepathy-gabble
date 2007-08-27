@@ -143,6 +143,7 @@ gabble_connection_get_avatar_requirements (TpSvcConnectionInterfaceAvatars *ifac
       context, mimetypes, 32, 32, 96, 96, 8192);
 }
 
+/* begin deprecated code */
 
 typedef struct {
   DBusGMethodInvocation *invocation;
@@ -150,7 +151,6 @@ typedef struct {
   guint my_index;
   gulong signal_conn;
 } GetAvatarTokensContext;
-
 
 static void
 _got_self_avatar_for_get_avatar_tokens (GObject *obj,
@@ -267,6 +267,134 @@ gabble_connection_get_avatar_tokens (TpSvcConnectionInterfaceAvatars *iface,
       invocation, (const gchar **)ret);
   g_strfreev (ret);
 }
+
+/* end deprecated code */
+
+typedef struct {
+  GabbleConnection *conn;
+  DBusGMethodInvocation *invocation;
+  GHashTable *ret;
+  gulong signal_conn;
+} GetKnownAvatarTokensContext;
+
+static void
+_got_self_avatar_for_get_known_avatar_tokens (GObject *obj,
+                                        gchar *sha1,
+                                        gpointer user_data)
+{
+  GetKnownAvatarTokensContext *context =
+      (GetKnownAvatarTokensContext *) user_data;
+  TpBaseConnection *base = (TpBaseConnection *) context->conn;
+
+  g_signal_handler_disconnect (obj, context->signal_conn);
+
+  g_hash_table_insert(context->ret, GUINT_TO_POINTER (base->self_handle),
+      g_strdup(sha1));
+
+  tp_svc_connection_interface_avatars_return_from_get_known_avatar_tokens (
+      context->invocation, context->ret);
+  g_hash_table_destroy (context->ret);
+
+  g_slice_free (GetKnownAvatarTokensContext, context);
+}
+
+
+/**
+ * gabble_connection_get_avatar_tokens
+ *
+ * Implements D-Bus method GetAvatarTokens
+ * on interface org.freedesktop.Telepathy.Connection.Interface.Avatars
+ *
+ * @context: The D-Bus invocation context to use to return values
+ *           or throw an error.
+ */
+static void
+gabble_connection_get_known_avatar_tokens (TpSvcConnectionInterfaceAvatars *iface,
+                                     const GArray *contacts,
+                                     DBusGMethodInvocation *invocation)
+{
+  GabbleConnection *self = GABBLE_CONNECTION (iface);
+  TpBaseConnection *base = (TpBaseConnection *)self;
+  gboolean wait_for_self_avatar = FALSE;
+  gboolean have_self_avatar;
+  guint i;
+  GHashTable *ret;
+  GError *err = NULL;
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
+
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, invocation);
+
+  if (!tp_handles_are_valid (contact_handles, contacts, FALSE, &err))
+    {
+      dbus_g_method_return_error (invocation, err);
+      g_error_free (err);
+      return;
+    }
+
+  g_object_get (self->vcard_manager,
+      "have-self-avatar", &have_self_avatar,
+      NULL);
+
+  ret = g_hash_table_new_full (NULL, NULL, NULL, g_free);
+
+  /* TODO: always call the callback so we can defer presence lookups until
+   * we return the method, then we don't need to strdup the strings we're
+   * returning. */
+
+  for (i = 0; i < contacts->len; i++)
+    {
+      TpHandle handle;
+      GabblePresence *presence = NULL;
+
+      handle = g_array_index (contacts, TpHandle, i);
+
+      if (base->self_handle == handle)
+        {
+          if (have_self_avatar)
+            {
+              presence = self->self_presence;
+            }
+          else
+            {
+              wait_for_self_avatar = TRUE;
+            }
+        }
+      else
+        {
+          presence = gabble_presence_cache_get (self->presence_cache, handle);
+        }
+
+      if (NULL != presence)
+        {
+          if (NULL != presence->avatar_sha1)
+              g_hash_table_insert (ret, GUINT_TO_POINTER (handle),
+                  g_strdup (presence->avatar_sha1));
+          else
+              g_hash_table_insert (ret, GUINT_TO_POINTER (handle), g_strdup (""));
+        }
+    }
+
+  if (wait_for_self_avatar)
+    {
+      GetKnownAvatarTokensContext *context = g_slice_new (GetKnownAvatarTokensContext);
+
+      context->invocation = invocation;
+      context->ret = ret;
+      context->signal_conn = g_signal_connect (self->vcard_manager,
+          "got-self-initial-avatar",
+          G_CALLBACK (_got_self_avatar_for_get_known_avatar_tokens),
+          context);
+
+      return;
+    }
+
+  tp_svc_connection_interface_avatars_return_from_get_known_avatar_tokens (
+      invocation, ret);
+
+  g_hash_table_destroy (ret);
+}
+
 
 
 static gboolean
@@ -688,6 +816,7 @@ conn_avatars_iface_init (gpointer g_iface, gpointer iface_data)
     klass, gabble_connection_##x)
   IMPLEMENT(get_avatar_requirements);
   IMPLEMENT(get_avatar_tokens);
+  IMPLEMENT(get_known_avatar_tokens);
   IMPLEMENT(request_avatar);
   IMPLEMENT(request_avatars);
   IMPLEMENT(set_avatar);

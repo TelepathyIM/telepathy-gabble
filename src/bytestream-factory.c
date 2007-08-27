@@ -785,10 +785,13 @@ handle_ibb_data (GabbleBytestreamFactory *self,
 {
   GabbleBytestreamFactoryPrivate *priv =
     GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
-  GabbleBytestreamIBB *bytestream;
+  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
+  GabbleBytestreamIBB *bytestream = NULL;
   LmMessageNode *data;
   ConstBytestreamIdentifier bsid = { NULL, NULL };
   gchar *room_name = NULL;
+  TpHandle room_handle;
 
   priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
 
@@ -818,9 +821,11 @@ handle_ibb_data (GabbleBytestreamFactory *self,
       return TRUE;
     }
 
-  if (!is_iq && lm_message_get_sub_type (msg) == LM_MESSAGE_SUB_TYPE_GROUPCHAT)
+  room_name = gabble_remove_resource (bsid.jid);
+  room_handle = tp_handle_lookup (room_repo, room_name, NULL, NULL);
+
+  if (!is_iq && room_handle != 0)
     {
-      room_name = gabble_remove_resource (bsid.jid);
       bsid.jid = room_name;
       bytestream = g_hash_table_lookup (priv->muc_bytestreams, &bsid);
     }

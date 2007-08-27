@@ -297,7 +297,7 @@ start_stream_initiation (GabbleTubeStream *self,
                          GError **error)
 {
   GabbleTubeStreamPrivate *priv;
-  LmMessageNode *node;
+  LmMessageNode *node, *si_node;
   LmMessage *msg;
   TpHandleRepoIface *contact_repo;
   const gchar *jid;
@@ -355,9 +355,12 @@ start_stream_initiation (GabbleTubeStream *self,
   msg = gabble_bytestream_factory_make_stream_init_iq (full_jid,
       stream_id, NS_SI_TUBES);
 
+  si_node = lm_message_node_get_child_with_namespace (msg->node, "si", NS_SI);
+  g_assert (si_node != NULL);
+
   id_str = g_strdup_printf ("%u", priv->id);
 
-  node = lm_message_node_add_child (msg->node, "tube", NULL);
+  node = lm_message_node_add_child (si_node, "tube", NULL);
   lm_message_node_set_attributes (node,
       "xmlns", NS_SI_TUBES,
       "type", "stream",

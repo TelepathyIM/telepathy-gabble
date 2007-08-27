@@ -1823,21 +1823,26 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
 
   g_value_unset (&val);
 
+  /* ROOM_PROP_SUBJECT_CONTACT */
+  g_value_init (&val, G_TYPE_UINT);
+
   if (handle_type == TP_HANDLE_TYPE_CONTACT)
     {
-      /* ROOM_PROP_SUBJECT_CONTACT */
-      g_value_init (&val, G_TYPE_UINT);
       g_value_set_uint (&val, sender);
-
-      tp_properties_mixin_change_value (G_OBJECT (chan),
-          ROOM_PROP_SUBJECT_CONTACT, &val, changed_values);
-
-      tp_properties_mixin_change_flags (G_OBJECT (chan),
-          ROOM_PROP_SUBJECT_CONTACT, TP_PROPERTY_FLAG_READ, 0,
-          changed_flags);
-
-      g_value_unset (&val);
     }
+  else
+    {
+      g_value_set_uint(&val, 0);
+    }
+
+  tp_properties_mixin_change_value (G_OBJECT (chan),
+      ROOM_PROP_SUBJECT_CONTACT, &val, changed_values);
+
+  tp_properties_mixin_change_flags (G_OBJECT (chan),
+      ROOM_PROP_SUBJECT_CONTACT, TP_PROPERTY_FLAG_READ, 0,
+      changed_flags);
+
+  g_value_unset (&val);
 
   /* ROOM_PROP_SUBJECT_TIMESTAMP */
   g_value_init (&val, G_TYPE_UINT);

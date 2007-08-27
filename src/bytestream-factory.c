@@ -792,6 +792,7 @@ handle_ibb_data (GabbleBytestreamFactory *self,
   ConstBytestreamIdentifier bsid = { NULL, NULL };
   gchar *room_name = NULL;
   TpHandle room_handle;
+  const gchar *from;
 
   priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
 
@@ -802,8 +803,8 @@ handle_ibb_data (GabbleBytestreamFactory *self,
   if (data == NULL)
     return FALSE;
 
-  bsid.jid = lm_message_node_get_attribute (msg->node, "from");
-  if (bsid.jid == NULL)
+  from = lm_message_node_get_attribute (msg->node, "from");
+  if (from == NULL)
     {
       DEBUG ("got a message without a from field");
       _gabble_connection_send_iq_error (priv->conn, msg,
@@ -821,7 +822,7 @@ handle_ibb_data (GabbleBytestreamFactory *self,
       return TRUE;
     }
 
-  room_name = gabble_remove_resource (bsid.jid);
+  room_name = gabble_remove_resource (from);
   room_handle = tp_handle_lookup (room_repo, room_name, NULL, NULL);
 
   if (!is_iq && room_handle != 0)
@@ -829,8 +830,10 @@ handle_ibb_data (GabbleBytestreamFactory *self,
       bsid.jid = room_name;
       bytestream = g_hash_table_lookup (priv->muc_bytestreams, &bsid);
     }
-  else
+
+  if (bytestream == NULL)
     {
+      bsid.jid = from;
       bytestream = g_hash_table_lookup (priv->ibb_bytestreams, &bsid);
     }
 

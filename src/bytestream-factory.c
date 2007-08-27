@@ -948,6 +948,7 @@ gabble_bytestream_factory_create_ibb (GabbleBytestreamFactory *self,
 {
   GabbleBytestreamFactoryPrivate *priv;
   GabbleBytestreamIBB *ibb;
+  BytestreamIdentifier *id;
 
   g_return_val_if_fail (GABBLE_IS_BYTESTREAM_FACTORY (self), NULL);
   priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
@@ -965,16 +966,16 @@ gabble_bytestream_factory_create_ibb (GabbleBytestreamFactory *self,
   g_signal_connect (ibb, "state-changed",
       G_CALLBACK (bytestream_state_changed_cb), self);
 
-  DEBUG ("add bytestream %s", stream_id);
+  id = bytestream_id_new (ibb);
   if (peer_handle_type == TP_HANDLE_TYPE_ROOM)
     {
-      g_hash_table_insert (priv->muc_bytestreams, bytestream_id_new (ibb),
-          ibb);
+      DEBUG ("add muc bytestream <%s> from <%s>", id->stream, id->jid);
+      g_hash_table_insert (priv->muc_bytestreams, id, ibb);
     }
   else
     {
-      g_hash_table_insert (priv->ibb_bytestreams, bytestream_id_new (ibb),
-          ibb);
+      DEBUG ("add private bytestream <%s> from <%s>", id->stream, id->jid);
+      g_hash_table_insert (priv->ibb_bytestreams, id, ibb);
     }
 
   return ibb;

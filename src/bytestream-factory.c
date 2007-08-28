@@ -825,7 +825,9 @@ handle_ibb_data (GabbleBytestreamFactory *self,
   room_name = gabble_remove_resource (from);
   room_handle = tp_handle_lookup (room_repo, room_name, NULL, NULL);
 
-  if (!is_iq && room_handle != 0)
+  if (!is_iq && room_handle != 0 &&
+      gabble_muc_factory_find_channel (priv->conn->muc_factory, room_handle)
+      != NULL)
     {
       bsid.jid = room_name;
       bytestream = g_hash_table_lookup (priv->muc_bytestreams, &bsid);

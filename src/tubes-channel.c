@@ -1464,8 +1464,9 @@ gabble_tubes_channel_offer_stream_tube (GabbleSvcChannelTypeTubes *iface,
   GabbleTubeIface *tube;
   GHashTable *parameters_copied;
   gchar *stream_id;
-  const gchar *socket;
   struct stat stat_buff;
+  GArray *array;
+  GString *socket;
 
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
 
@@ -1498,16 +1499,30 @@ gabble_tubes_channel_offer_stream_tube (GabbleSvcChannelTypeTubes *iface,
       return;
     }
 
-  socket = g_value_get_string (address);
+  if (G_VALUE_TYPE (address) != DBUS_TYPE_G_UCHAR_ARRAY)
+    {
+      GError *error = NULL;
 
-  if (g_stat (socket, &stat_buff) == -1)
+      error = g_error_new (TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Unix socket address is supposed to be ay");
+
+      dbus_g_method_return_error (context, error);
+
+      g_error_free (error);
+      return;
+    }
+
+  array = g_value_get_boxed (address);
+  socket = g_string_new_len (array->data, array->len);
+
+  if (g_stat (socket->str, &stat_buff) == -1)
     {
       GError *error = NULL;
 
       DEBUG ("Error calling stat on socket: %s", g_strerror (errno));
 
       error = g_error_new (TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, "%s: %s",
-          socket, g_strerror (errno));
+          socket->str, g_strerror (errno));
 
       dbus_g_method_return_error (context, error);
 
@@ -1519,10 +1534,10 @@ gabble_tubes_channel_offer_stream_tube (GabbleSvcChannelTypeTubes *iface,
     {
       GError *error = NULL;
 
-      DEBUG ("%s is not a socket", socket);
+      DEBUG ("%s is not a socket", socket->str);
 
       error = g_error_new (TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "%s is not a socket", socket);
+          "%s is not a socket", socket->str);
 
       dbus_g_method_return_error (context, error);
 
@@ -1541,7 +1556,7 @@ gabble_tubes_channel_offer_stream_tube (GabbleSvcChannelTypeTubes *iface,
       service, parameters_copied, (const gchar*) stream_id, tube_id, NULL);
 
   g_object_set (tube,
-      "socket", socket,
+      "socket", socket->str,
       NULL);
 
   if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
@@ -1568,6 +1583,7 @@ gabble_tubes_channel_offer_stream_tube (GabbleSvcChannelTypeTubes *iface,
       tube_id);
 
   g_free (stream_id);
+  g_string_free (socket, TRUE);
 }
 
 /**
@@ -1951,6 +1967,7 @@ gabble_tubes_channel_get_stream_tube_socket_address (GabbleSvcChannelTypeTubes *
   GabbleTubeState state;
   gchar *socket;
   GValue address = {0,};
+  GArray *array;
 
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (id));
   if (tube == NULL)
@@ -1988,13 +2005,16 @@ gabble_tubes_channel_get_stream_tube_socket_address (GabbleSvcChannelTypeTubes *
       "socket", &socket,
       NULL);
 
-  g_value_init (&address, G_TYPE_STRING);
-  g_value_set_string (&address, socket);
+  g_value_init (&address, DBUS_TYPE_G_UCHAR_ARRAY);
+  array = g_array_sized_new (TRUE, FALSE, sizeof (gchar), strlen (socket));
+  g_array_insert_vals (array, 0, socket, strlen (socket));
+  g_value_set_boxed (&address, array);
 
   gabble_svc_channel_type_tubes_return_from_get_stream_tube_socket_address (
       context, GABBLE_SOCKET_ADDRESS_TYPE_UNIX, &address);
 
   g_free (socket);
+  g_array_free (array, TRUE);
 }
 
 /**

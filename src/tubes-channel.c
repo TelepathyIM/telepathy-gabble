@@ -1421,35 +1421,6 @@ gabble_tubes_channel_offer_d_bus_tube (GabbleSvcChannelTypeTubes *iface,
 #endif
 }
 
-/**
- * gabble_tubes_channel_offer_tube
- *
- * Implements D-Bus method OfferTube
- * on org.freedesktop.Telepathy.Channel.Type.Tubes
- */
-static void
-gabble_tubes_channel_offer_tube (GabbleSvcChannelTypeTubes *iface,
-                                 guint tube_type,
-                                 const gchar *service,
-                                 GHashTable *parameters,
-                                 DBusGMethodInvocation *context)
-{
-  if (tube_type == GABBLE_TUBE_TYPE_DBUS)
-    {
-      DEBUG ("deprecated");
-      /* they have the same return signature, so it's safe to do: */
-      gabble_tubes_channel_offer_d_bus_tube (iface, service, parameters,
-          context);
-    }
-  else
-    {
-      GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "Deprecated method OfferTube only works for D-Bus tubes" };
-
-      dbus_g_method_return_error (context, &error);
-    }
-}
-
 static void
 stream_unix_tube_new_connection_cb (GabbleTubeIface *tube,
                                     guint contact,
@@ -1482,6 +1453,8 @@ gabble_tubes_channel_offer_stream_tube (GabbleSvcChannelTypeTubes *iface,
                                         GHashTable *parameters,
                                         guint address_type,
                                         const GValue *address,
+                                        guint access_control,
+                                        const GValue *access_control_param,
                                         DBusGMethodInvocation *context)
 {
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (iface);
@@ -1499,12 +1472,25 @@ gabble_tubes_channel_offer_stream_tube (GabbleSvcChannelTypeTubes *iface,
   priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
   base = (TpBaseConnection*) priv->conn;
 
-  if (address_type != GABBLE_TUBE_ADDRESS_TYPE_UNIX)
+  if (address_type != GABBLE_SOCKET_ADDRESS_TYPE_UNIX)
     {
       GError *error = NULL;
 
       error = g_error_new (TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
           "Address type %d not implemented", address_type);
+
+      dbus_g_method_return_error (context, error);
+
+      g_error_free (error);
+      return;
+    }
+
+  if (access_control != GABBLE_SOCKET_ACCESS_CONTROL_LOCALHOST)
+    {
+      GError *error = NULL;
+
+      error = g_error_new (TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Unix sockets only support localhost control access");
 
       dbus_g_method_return_error (context, error);
 
@@ -1667,6 +1653,8 @@ static void
 gabble_tubes_channel_accept_stream_tube (GabbleSvcChannelTypeTubes *iface,
                                          guint id,
                                          guint address_type,
+                                         guint access_control,
+                                         const GValue *access_control_param,
                                          DBusGMethodInvocation *context)
 {
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (iface);
@@ -1690,12 +1678,25 @@ gabble_tubes_channel_accept_stream_tube (GabbleSvcChannelTypeTubes *iface,
       return;
     }
 
-  if (address_type != GABBLE_TUBE_ADDRESS_TYPE_UNIX)
+  if (address_type != GABBLE_SOCKET_ADDRESS_TYPE_UNIX)
     {
       GError *error = NULL;
 
       error = g_error_new (TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
           "Address type %d not implemented", address_type);
+
+      dbus_g_method_return_error (context, error);
+
+      g_error_free (error);
+      return;
+    }
+
+  if (access_control != GABBLE_SOCKET_ACCESS_CONTROL_LOCALHOST)
+    {
+      GError *error = NULL;
+
+      error = g_error_new (TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Unix sockets only support localhost control access");
 
       dbus_g_method_return_error (context, error);
 
@@ -1991,7 +1992,7 @@ gabble_tubes_channel_get_stream_tube_socket_address (GabbleSvcChannelTypeTubes *
   g_value_set_string (&address, socket);
 
   gabble_svc_channel_type_tubes_return_from_get_stream_tube_socket_address (
-      context, GABBLE_TUBE_ADDRESS_TYPE_UNIX, &address);
+      context, GABBLE_SOCKET_ADDRESS_TYPE_UNIX, &address);
 
   g_free (socket);
 }
@@ -2216,7 +2217,6 @@ tubes_iface_init (gpointer g_iface,
   IMPLEMENT(get_available_tube_types);
   IMPLEMENT(list_tubes);
   IMPLEMENT(close_tube);
-  IMPLEMENT(offer_tube);
   IMPLEMENT(offer_d_bus_tube);
   IMPLEMENT(accept_d_bus_tube);
   IMPLEMENT(get_d_bus_tube_address);

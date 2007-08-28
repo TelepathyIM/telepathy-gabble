@@ -1,6 +1,6 @@
 
 """
-Test basic roster functionality.
+Test GetAvatarTokens() and GetKnownAvatarTokens().
 """
 
 import dbus
@@ -19,14 +19,8 @@ def avatars_iface(proxy):
     return dbus.Interface(proxy, tp_name_prefix +
         '.Connection.Interface.Avatars')
 
-stanza_seq = 0
-
 def make_presence(jid, sha1sum):
-    global stanza_seq
-    stanza_seq = stanza_seq + 1
-
     p = domish.Element((None, 'presence'))
-    p['id'] = str(stanza_seq)
     p['from'] = jid
     p['to'] = 'test@localhost/Resource'
     x = domish.Element(('vcard-temp:x:update', 'x'))

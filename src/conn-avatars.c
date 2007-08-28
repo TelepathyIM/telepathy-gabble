@@ -279,8 +279,8 @@ typedef struct {
 
 static void
 _got_self_avatar_for_get_known_avatar_tokens (GObject *obj,
-                                        gchar *sha1,
-                                        gpointer user_data)
+                                              gchar *sha1,
+                                              gpointer user_data)
 {
   GetKnownAvatarTokensContext *context =
       (GetKnownAvatarTokensContext *) user_data;
@@ -310,8 +310,8 @@ _got_self_avatar_for_get_known_avatar_tokens (GObject *obj,
  */
 static void
 gabble_connection_get_known_avatar_tokens (TpSvcConnectionInterfaceAvatars *iface,
-                                     const GArray *contacts,
-                                     DBusGMethodInvocation *invocation)
+                                           const GArray *contacts,
+                                           DBusGMethodInvocation *invocation)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *)self;

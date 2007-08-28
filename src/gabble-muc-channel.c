@@ -1832,7 +1832,7 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
     }
   else
     {
-      g_value_set_uint(&val, 0);
+      g_value_set_uint (&val, 0);
     }
 
   tp_properties_mixin_change_value (G_OBJECT (chan),

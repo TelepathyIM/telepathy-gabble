@@ -1997,6 +1997,37 @@ gabble_tubes_channel_get_stream_tube_socket_address (GabbleSvcChannelTypeTubes *
   g_free (socket);
 }
 
+/**
+ * gabble_tubes_channel_get_available_stream_tube_types
+ *
+ * Implements D-Bus method GetAvailableStreamTubeTypes
+ * on org.freedesktop.Telepathy.Channel.Type.Tubes
+ */
+static void
+gabble_tubes_channel_get_available_stream_tube_types (GabbleSvcChannelTypeTubes *iface,
+                                                      DBusGMethodInvocation *context)
+{
+  GHashTable *ret;
+  GArray *tab;
+  GabbleSocketAccessControl access;
+
+  ret = g_hash_table_new (g_direct_hash, g_direct_equal);
+
+  /* Socket_Address_Type_Unix*/
+  tab = g_array_sized_new (FALSE, FALSE, sizeof (GabbleSocketAccessControl),
+      1);
+  access = GABBLE_SOCKET_ACCESS_CONTROL_LOCALHOST;
+  g_array_append_val (tab, access);
+  g_hash_table_insert (ret, GUINT_TO_POINTER (GABBLE_SOCKET_ADDRESS_TYPE_UNIX),
+      tab);
+
+  gabble_svc_channel_type_tubes_return_from_get_available_stream_tube_types (
+      context, ret);
+
+  g_array_free (tab, TRUE);
+  g_hash_table_destroy (ret);
+}
+
 static void
 emit_tube_closed_signal (gpointer key,
                          gpointer value,
@@ -2224,6 +2255,7 @@ tubes_iface_init (gpointer g_iface,
   IMPLEMENT(offer_stream_tube);
   IMPLEMENT(accept_stream_tube);
   IMPLEMENT(get_stream_tube_socket_address);
+  IMPLEMENT(get_available_stream_tube_types);
 #undef IMPLEMENT
 }
 

@@ -2028,6 +2028,65 @@ gabble_tubes_channel_get_available_stream_tube_types (GabbleSvcChannelTypeTubes 
   g_hash_table_destroy (ret);
 }
 
+/**
+ * gabble_tubes_channel_offer_tube
+ *
+ * Implements D-Bus method OfferTube
+ * on org.freedesktop.Telepathy.Channel.Type.Tubes
+ */
+static void
+gabble_tubes_channel_offer_tube (GabbleSvcChannelTypeTubes *iface,
+                                 guint tube_type,
+                                 const gchar *service,
+                                 GHashTable *parameters,
+                                 DBusGMethodInvocation *context)
+{
+  if (tube_type == GABBLE_TUBE_TYPE_DBUS)
+    {
+      DEBUG ("deprecated");
+      /* they have the same return signature, so it's safe to do: */
+      gabble_tubes_channel_offer_d_bus_tube (iface, service, parameters,
+          context);
+    }
+  else
+    {
+      GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Deprecated method OfferTube only works for D-Bus tubes" };
+
+      dbus_g_method_return_error (context, &error);
+    }
+}
+
+/**
+ * gabble_tubes_channel_accept_tube
+ *
+ * Implements D-Bus method AcceptTube
+ * on org.freedesktop.Telepathy.Channel.Type.Tubes
+ */
+static void
+gabble_tubes_channel_accept_tube (GabbleSvcChannelTypeTubes *iface,
+                                  guint id,
+                                  DBusGMethodInvocation *context)
+{
+  DEBUG ("deprecated");
+  gabble_tubes_channel_accept_d_bus_tube (iface, id, context);
+}
+
+/**
+ * gabble_tubes_channel_get_d_bus_server_address
+ *
+ * Implements D-Bus method GetDBusServerAddress
+ * on org.freedesktop.Telepathy.Channel.Type.Tubes
+ */
+static void
+gabble_tubes_channel_get_d_bus_server_address (GabbleSvcChannelTypeTubes *iface,
+                                               guint id,
+                                               DBusGMethodInvocation *context)
+{
+  DEBUG ("deprecated");
+  gabble_tubes_channel_get_d_bus_tube_address (iface, id, context);
+}
+
 static void
 emit_tube_closed_signal (gpointer key,
                          gpointer value,
@@ -2256,6 +2315,10 @@ tubes_iface_init (gpointer g_iface,
   IMPLEMENT(accept_stream_tube);
   IMPLEMENT(get_stream_tube_socket_address);
   IMPLEMENT(get_available_stream_tube_types);
+  /* DEPRECATED */
+  IMPLEMENT(offer_tube);
+  IMPLEMENT(accept_tube);
+  IMPLEMENT(get_d_bus_server_address);
 #undef IMPLEMENT
 }
 

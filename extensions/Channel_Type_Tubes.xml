@@ -629,6 +629,82 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
       </arg>
     </signal>
 
+    <method name="OfferTube">
+      <tp:docstring>
+        Offers a tube providing the service specified, over a tube of the
+        specified type. In practice, this will only work for D-Bus tubes.
+        DEPRECATED: use OfferDBusTube instead.
+      </tp:docstring>
+      <arg direction="in" name="type" type="u" tp:type="Tube_Type">
+        <tp:docstring>
+          The type of tube wanted, one of the values from
+          the Tube_Type enum.
+        </tp:docstring>
+      </arg>
+      <arg direction="in" name="service" type="s">
+        <tp:docstring>
+          A string representing the service that will be used over the tube.
+        </tp:docstring>
+      </arg>
+      <arg direction="in" name="parameters" type="a{sv}">
+        <tp:docstring>
+          A dicionary of properties for the new tube.
+        </tp:docstring>
+      </arg>
+      <arg direction="out" type="u">
+        <tp:docstring>
+          The ID of the new tube.
+        </tp:docstring>
+      </arg>
+    </method>
+
+   <method name="AcceptTube">
+      <tp:docstring>
+        Accept a tube that's in the "local pending" state. The connection
+        manager will attempt to open the tube. The tube remains in the
+        "local pending" state until the TubeStateChanged signal is emitted.
+        In practice, this will only work for D-Bus tubes.
+        DEPRECATED: use AcceptDBusTube instead.
+      </tp:docstring>
+      <arg direction="in" name="id" type="u">
+        <tp:docstring>
+          The ID of the tube to accept.
+        </tp:docstring>
+      </arg>
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.InvalidArgument" />
+      </tp:possible-errors>
+    </method>
+
+    <method name="GetDBusServerAddress">
+      <tp:docstring>
+        For a D-Bus tube, return a string describing the address of the
+        private bus.
+      </tp:docstring>
+      <arg direction="in" name="id" type="u">
+        <tp:docstring>
+          The ID of the tube to get an address for.
+        </tp:docstring>
+      </arg>
+      <arg direction="out" type="s">
+        <tp:docstring>
+          The bus address.
+        </tp:docstring>
+      </arg>
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.InvalidArgument">
+          <tp:docstring>
+            The tube is not a D-Bus tube.
+          </tp:docstring>
+        </tp:error>
+        <tp:error name="org.freedesktop.Telepathy.Error.NotAvailable">
+          <tp:docstring>
+            This tube is not in the "open" state.
+          </tp:docstring>
+        </tp:error>
+      </tp:possible-errors>
+    </method>
+
   </interface>
 
 </node>

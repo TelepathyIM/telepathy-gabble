@@ -2006,6 +2006,7 @@ conn_olpc_process_activity_properties_message (GabbleConnection *conn,
       if (tp_handle_lookup (contact_repo, from, NULL, NULL) == self_handle)
         {
           DEBUG ("Ignoring echoed activity properties message from myself");
+          return TRUE;
         }
     }
 

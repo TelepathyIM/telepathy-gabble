@@ -83,10 +83,17 @@ struct _GabbleVCardManagerPrivate
    * bloating every cache entry with these fields. */
 
   gboolean have_self_avatar;
-  /* Map string => string */
+
+  /* Contains all the vCard fields that should be changed, using field
+   * names as keys. (Maps gchar* -> gchar *). */
   GHashTable *edits;
 
+  /* Contains RequestPipelineItem for our SET vCard request, or NULL if we
+   * don't have SET request in the pipeline already. At most one SET request
+   * can be in pipeline at any given time. */
   GabbleRequestPipelineItem *edit_pipeline_item;
+
+  /* List of all pending edit requests that we got. */
   GList *edit_requests;
 };
 
@@ -108,6 +115,9 @@ struct _GabbleVCardManagerEditRequest
   GabbleVCardManagerEditCb callback;
   gpointer user_data;
   GObject *bound_object;
+
+  /* Set if we have already patched vCard with data from this request,
+   * and sent a SET request to the server to replace the vCard. */
   gboolean set_in_pipeline;
 };
 
@@ -396,9 +406,9 @@ cache_entry_attempt_to_free (GabbleVCardCacheEntry *entry)
 
   if (entry->handle == base->self_handle)
     {
-      g_assert (priv->edits == NULL);
-      /* if we're do have some pending edits, we should also have
+      /* if we do have some pending edits, we should also have
        * some pipeline items or pending requests */
+      g_assert (priv->edits == NULL);
     }
 
   tp_heap_remove (priv->timed_cache, entry);

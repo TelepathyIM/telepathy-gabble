@@ -177,9 +177,9 @@ activity_info_contribute_properties (ActivityInfo *info,
 }
 
 static void
-decrement_contacts_activities_list_foreach (TpHandleSet *set,
-                                            TpHandle handle,
-                                            gpointer data)
+decrement_contacts_activities_set_foreach (TpHandleSet *set,
+                                           TpHandle handle,
+                                           gpointer data)
 {
   GabbleConnection *conn = data;
   ActivityInfo *info = g_hash_table_lookup (conn->olpc_activities_info,
@@ -648,7 +648,7 @@ extract_activities (GabbleConnection *conn,
 {
   LmMessageNode *activities_node;
   LmMessageNode *node;
-  TpHandleSet *activities_list, *old_activities;
+  TpHandleSet *activities_set, *old_activities;
   const gchar *from;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
@@ -671,7 +671,7 @@ extract_activities (GabbleConnection *conn,
       return;
     }
 
-  activities_list = tp_handle_set_new (room_repo);
+  activities_set = tp_handle_set_new (room_repo);
   for (node = (activities_node != NULL ? activities_node->children : NULL);
        node;
        node = node->next)
@@ -713,11 +713,11 @@ extract_activities (GabbleConnection *conn,
       if (info == NULL)
         {
           info = add_activity_info (conn, room_handle);
-          g_assert (!tp_handle_set_is_member (activities_list, room_handle));
+          g_assert (!tp_handle_set_is_member (activities_set, room_handle));
         }
       else
         {
-          if (tp_handle_set_is_member (activities_list, room_handle))
+          if (tp_handle_set_is_member (activities_set, room_handle))
             {
               NODE_DEBUG (node, "Room advertised twice, skipping");
               tp_handle_unref (room_repo, room_handle);
@@ -729,8 +729,8 @@ extract_activities (GabbleConnection *conn,
               activity_info_get_room (info),
               info->handle, info->refcount);
         }
-      /* pass ownership to the activities_list */
-      tp_handle_set_add (activities_list, room_handle);
+      /* pass ownership to the activities_set */
+      tp_handle_set_add (activities_set, room_handle);
       tp_handle_unref (room_repo, room_handle);
 
       if (tp_strdiff (info->id, act_id))
@@ -750,12 +750,12 @@ extract_activities (GabbleConnection *conn,
       /* We decrement the refcount (and free if needed) all the
        * activities previously announced by this contact. */
       tp_handle_set_foreach (old_activities,
-          decrement_contacts_activities_list_foreach, conn);
+          decrement_contacts_activities_set_foreach, conn);
     }
 
   /* Update the list of activities associated with this contact. */
   g_hash_table_insert (conn->olpc_pep_activities,
-      GUINT_TO_POINTER (from_handle), activities_list);
+      GUINT_TO_POINTER (from_handle), activities_set);
 }
 
 static void
@@ -974,14 +974,14 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
       base, TP_HANDLE_TYPE_ROOM);
   guint i;
-  TpHandleSet *activities_list, *old_activities;
+  TpHandleSet *activities_set, *old_activities;
 
   DEBUG ("called");
 
   if (!check_pep (conn, context))
     return;
 
-  activities_list = tp_handle_set_new (room_repo);
+  activities_set = tp_handle_set_new (room_repo);
 
   for (i = 0; i < activities->len; i++)
     {
@@ -1006,13 +1006,13 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
 
           /* We have to unref information previously
            * refed in this loop */
-          tp_handle_set_foreach (activities_list,
-              decrement_contacts_activities_list_foreach, conn);
+          tp_handle_set_foreach (activities_set,
+              decrement_contacts_activities_set_foreach, conn);
 
           /* set_activities failed so we don't unref old activities
            * of the local user */
 
-          tp_handle_set_destroy (activities_list);
+          tp_handle_set_destroy (activities_set);
           g_error_free (error);
           g_free (activity);
           return;
@@ -1029,7 +1029,7 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
         }
       else
         {
-          if (tp_handle_set_is_member (activities_list, channel))
+          if (tp_handle_set_is_member (activities_set, channel))
             {
               GError *error = g_error_new (TP_ERRORS,
                   TP_ERROR_INVALID_ARGUMENT,
@@ -1040,13 +1040,13 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
 
               /* We have to unref information previously
                * refed in this loop */
-              tp_handle_set_foreach (activities_list,
-                  decrement_contacts_activities_list_foreach, conn);
+              tp_handle_set_foreach (activities_set,
+                  decrement_contacts_activities_set_foreach, conn);
 
               /* set_activities failed so we don't unref old activities
                * of the local user */
 
-              tp_handle_set_destroy (activities_list);
+              tp_handle_set_destroy (activities_set);
               g_error_free (error);
               g_free (activity);
               return;
@@ -1061,7 +1061,7 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
       g_free (info->id);
       info->id = activity;
 
-      tp_handle_set_add (activities_list, channel);
+      tp_handle_set_add (activities_set, channel);
     }
 
   old_activities = g_hash_table_lookup (conn->olpc_pep_activities,
@@ -1072,12 +1072,12 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
       /* We decrement the refcount (and free if needed) all the
        * activities previously announced by our own contact. */
       tp_handle_set_foreach (old_activities,
-          decrement_contacts_activities_list_foreach, conn);
+          decrement_contacts_activities_set_foreach, conn);
     }
 
   /* Update the list of activities associated with our own contact. */
   g_hash_table_insert (conn->olpc_pep_activities,
-      GUINT_TO_POINTER (base->self_handle), activities_list);
+      GUINT_TO_POINTER (base->self_handle), activities_set);
 
   if (!upload_activities_pep (conn, set_activities_reply_cb, context, NULL))
     {
@@ -1109,14 +1109,14 @@ olpc_buddy_info_activities_event_handler (GabbleConnection *conn,
 }
 
 static ActivityInfo*
-add_activity_info_in_list (GabbleConnection *conn,
-                           TpHandle room_handle,
-                           const gchar *from,
-                           GHashTable *table)
+add_activity_info_in_set (GabbleConnection *conn,
+                          TpHandle room_handle,
+                          const gchar *from,
+                          GHashTable *table)
 {
   ActivityInfo *info;
   TpHandle from_handle;
-  TpHandleSet *activities_list;
+  TpHandleSet *activities_set;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection*) conn, TP_HANDLE_TYPE_CONTACT);
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
@@ -1133,14 +1133,14 @@ add_activity_info_in_list (GabbleConnection *conn,
   info = add_activity_info (conn, room_handle);
 
   /* Add activity information in the list of the contact */
-  activities_list = g_hash_table_lookup (table, GUINT_TO_POINTER (
+  activities_set = g_hash_table_lookup (table, GUINT_TO_POINTER (
         from_handle));
-  if (activities_list == NULL)
+  if (activities_set == NULL)
     {
-      activities_list = tp_handle_set_new (room_repo);
-      tp_handle_set_add (activities_list, room_handle);
+      activities_set = tp_handle_set_new (room_repo);
+      tp_handle_set_add (activities_set, room_handle);
       g_hash_table_insert (table, GUINT_TO_POINTER (from_handle),
-          activities_list);
+          activities_set);
     }
 
   return info;
@@ -1189,7 +1189,7 @@ extract_current_activity (GabbleConnection *conn,
 
       from = lm_message_node_get_attribute (msg->node, "from");
 
-      info = add_activity_info_in_list (conn, room_handle, from,
+      info = add_activity_info_in_set (conn, room_handle, from,
           conn->olpc_pep_activities);
     }
 
@@ -1277,11 +1277,11 @@ set_current_activity_reply_cb (GabbleConnection *conn,
 
 /* Check if this activity is in our own activities list */
 static gboolean
-activity_in_own_list (GabbleConnection *conn,
-                      const gchar *room)
+activity_in_own_set (GabbleConnection *conn,
+                     const gchar *room)
 {
   TpBaseConnection *base = (TpBaseConnection*) conn;
-  TpHandleSet *activities_list;
+  TpHandleSet *activities_set;
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_ROOM);
   TpHandle room_handle;
@@ -1292,11 +1292,11 @@ activity_in_own_list (GabbleConnection *conn,
      * have found the handle as ActivityInfo keep a ref on it */
     return FALSE;
 
-  activities_list = g_hash_table_lookup (conn->olpc_pep_activities,
+  activities_set = g_hash_table_lookup (conn->olpc_pep_activities,
       GINT_TO_POINTER (base->self_handle));
 
-  if (activities_list == NULL ||
-      !tp_handle_set_is_member (activities_list, room_handle))
+  if (activities_set == NULL ||
+      !tp_handle_set_is_member (activities_set, room_handle))
     return FALSE;
 
   return TRUE;
@@ -1326,7 +1326,7 @@ olpc_buddy_info_set_current_activity (GabbleSvcOLPCBuddyInfo *iface,
       if (room == NULL)
         return;
 
-      if (!activity_in_own_list (conn, room))
+      if (!activity_in_own_set (conn, room))
         {
           GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
             "Can't set an activity as current if you're not announcing it" };
@@ -1566,7 +1566,7 @@ olpc_activity_properties_set_properties (GabbleSvcOLPCActivityProperties *iface,
   if (jid == NULL)
     return;
 
-  if (!activity_in_own_list (conn, jid))
+  if (!activity_in_own_set (conn, jid))
     {
       GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "Can't set properties on an activity if you're not announcing it" };
@@ -1811,7 +1811,7 @@ update_activities_properties (GabbleConnection *conn,
 
           from = lm_message_node_get_attribute (msg->node, "from");
 
-          info = add_activity_info_in_list (conn, room_handle, from,
+          info = add_activity_info_in_set (conn, room_handle, from,
               conn->olpc_pep_activities);
         }
 
@@ -2308,7 +2308,7 @@ connection_presence_update_cb (GabblePresenceCache *cache,
 
       if (list != NULL)
         tp_handle_set_foreach (list,
-            decrement_contacts_activities_list_foreach, conn);
+            decrement_contacts_activities_set_foreach, conn);
 
       g_hash_table_remove (conn->olpc_pep_activities,
           GUINT_TO_POINTER (handle));
@@ -2318,7 +2318,7 @@ connection_presence_update_cb (GabblePresenceCache *cache,
 
       if (list != NULL)
         tp_handle_set_foreach (list,
-            decrement_contacts_activities_list_foreach, conn);
+            decrement_contacts_activities_set_foreach, conn);
 
       g_hash_table_remove (conn->olpc_invited_activities,
           GUINT_TO_POINTER (handle));

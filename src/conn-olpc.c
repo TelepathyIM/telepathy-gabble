@@ -645,32 +645,16 @@ get_buddy_activities (GabbleConnection *conn,
 
 static void
 extract_activities (GabbleConnection *conn,
-                    LmMessage *msg)
+                    LmMessage *msg,
+                    TpHandle sender)
 {
   LmMessageNode *activities_node;
   LmMessageNode *node;
   TpHandleSet *activities_set, *old_activities;
-  const gchar *from;
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_ROOM);
-  TpHandle from_handle;
 
   activities_node = lm_message_node_find_child (msg->node, "activities");
-
-  from = lm_message_node_get_attribute (msg->node, "from");
-  if (from == NULL)
-    {
-      NODE_DEBUG (msg->node, "No sender, skipping");
-      return;
-    }
-  from_handle = tp_handle_lookup (contact_repo, from, NULL, NULL);
-  if (from_handle == 0)
-    {
-      DEBUG ("unknown sender");
-      return;
-    }
 
   activities_set = tp_handle_set_new (room_repo);
   for (node = (activities_node != NULL ? activities_node->children : NULL);
@@ -744,7 +728,7 @@ extract_activities (GabbleConnection *conn,
     }
 
   old_activities = g_hash_table_lookup (conn->olpc_pep_activities,
-      GUINT_TO_POINTER (from_handle));
+      GUINT_TO_POINTER (sender));
 
   if (old_activities != NULL)
     {
@@ -756,7 +740,7 @@ extract_activities (GabbleConnection *conn,
 
   /* Update the list of activities associated with this contact. */
   g_hash_table_insert (conn->olpc_pep_activities,
-      GUINT_TO_POINTER (from_handle), activities_set);
+      GUINT_TO_POINTER (sender), activities_set);
 }
 
 static void
@@ -834,27 +818,29 @@ get_activities_reply_cb (GabbleConnection *conn,
   if (!check_query_reply_msg (reply_msg, context))
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
-  extract_activities (conn, reply_msg);
-
   from = lm_message_node_get_attribute (reply_msg->node, "from");
   if (from == NULL)
     {
-      NODE_DEBUG (reply_msg->node, "No sender, skipping");
-      activities = g_ptr_array_new ();
+      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+        "Error in pubsub reply: no sender" };
+
+      dbus_g_method_return_error (context, &error);
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
-  else
+
+  from_handle = tp_handle_lookup (contact_repo, from, NULL, NULL);
+  if (from_handle == 0)
     {
-      from_handle = tp_handle_lookup (contact_repo, from, NULL, NULL);
-      if (from_handle == 0)
-        {
-          DEBUG ("unknown sender");
-          activities = g_ptr_array_new ();
-        }
-      else
-        {
-          activities = get_buddy_activities (conn, from_handle);
-        }
+      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+        "Error in pubsub reply: unknown sender" };
+
+      dbus_g_method_return_error (context, &error);
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
+
+  extract_activities (conn, reply_msg, from_handle);
+
+  activities = get_buddy_activities (conn, from_handle);
 
   /* FIXME: race between client and PEP */
   check_activity_properties (conn, activities, from);
@@ -1101,7 +1087,7 @@ olpc_buddy_info_activities_event_handler (GabbleConnection *conn,
 {
   GPtrArray *activities;
 
-  extract_activities (conn, msg);
+  extract_activities (conn, msg, handle);
   activities = get_buddy_activities (conn, handle);
   gabble_svc_olpc_buddy_info_emit_activities_changed (conn, handle,
       activities);

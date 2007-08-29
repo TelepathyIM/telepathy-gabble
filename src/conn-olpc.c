@@ -176,9 +176,6 @@ activity_info_contribute_properties (ActivityInfo *info,
   return TRUE;
 }
 
-typedef void (*ActivityInfoChangeCallback) (ActivityInfo *info,
-    gpointer user_data, GError *error);
-
 static void
 decrement_contacts_activities_list_foreach (TpHandleSet *set,
                                             TpHandle handle,

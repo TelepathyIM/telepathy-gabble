@@ -883,9 +883,11 @@ replace_reply_cb (GabbleConnection *conn,
 
   /* Scan all edit requests, call and remove ones whose data made it
    * into SET request that just returned. */
-  for (li = priv->edit_requests; li; li = g_list_next (li))
+  li = priv->edit_requests;
+  while (li)
     {
       GabbleVCardManagerEditRequest *req = (GabbleVCardManagerEditRequest *) li->data;
+      li = g_list_next (li);
       if (req->set_in_pipeline)
         {
           if (req->callback)
@@ -894,7 +896,6 @@ replace_reply_cb (GabbleConnection *conn,
             }
 
           gabble_vcard_manager_remove_edit_request (req);
-          li = priv->edit_requests;
         }
     }
   
@@ -1160,8 +1161,10 @@ gabble_vcard_manager_request (GabbleVCardManager *self,
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       connection, TP_HANDLE_TYPE_CONTACT);
   GabbleVCardManagerRequest *request;
+  GabbleVCardCacheEntry *entry = cache_entry_get (self, handle);
 
   g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL), NULL);
+  g_assert (entry->message == NULL);
 
   if (timeout == 0)
     timeout = DEFAULT_REQUEST_TIMEOUT;
@@ -1170,7 +1173,7 @@ gabble_vcard_manager_request (GabbleVCardManager *self,
   DEBUG ("Created request %p to retrieve <%u>'s vCard", request, handle);
   request->timeout = timeout;
   request->manager = self;
-  request->entry = cache_entry_get (self, handle);
+  request->entry = entry;
   request->callback = callback;
   request->user_data = user_data;
   request->bound_object = object;
@@ -1199,7 +1202,7 @@ gabble_vcard_manager_edit (GabbleVCardManager *self,
   GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (self);
   TpBaseConnection *base = (TpBaseConnection *)priv->connection;
   GabbleVCardManagerEditRequest *req;
-  GabbleVCardCacheEntry *entry = cache_entry_get (self, base->self_handle);
+  GabbleVCardCacheEntry *entry;
 
   argc = 0;
   va_start (ap, object);
@@ -1215,6 +1218,7 @@ gabble_vcard_manager_edit (GabbleVCardManager *self,
   DEBUG ("called; invalidating cache");
   gabble_vcard_manager_invalidate_cache (self, base->self_handle);
   DEBUG ("checking if we have pending requests already");
+  entry = cache_entry_get (self, base->self_handle);
   if (!entry->pending_requests)
     {
       DEBUG ("we don't, create one");

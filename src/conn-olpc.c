@@ -139,9 +139,7 @@ activity_info_is_visible (ActivityInfo *info)
 
   if (gv == NULL)
     {
-      /* FIXME: for now, the default is private=False so we don't break the PS.
-       * It should be private=True for privacy-by-default. */
-      return TRUE;
+      return FALSE;
     }
 
   /* if they put something non-boolean in it, err on the side of privacy */

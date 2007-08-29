@@ -95,6 +95,11 @@ struct _GabbleVCardManagerPrivate
 
   /* List of all pending edit requests that we got. */
   GList *edit_requests;
+
+  /* Patched vCard that we sent to the server to update, but haven't
+   * got confirmation yet. We don't want to store it in cache (visible
+   * to others) before we're sure the server accepts it. */
+  LmMessageNode *patched_vcard;
 };
 
 struct _GabbleVCardManagerRequest
@@ -868,21 +873,28 @@ replace_reply_cb (GabbleConnection *conn,
 
   priv->edit_pipeline_item = NULL;
 
-  DEBUG ("replace reply cb, error = %p", err);
-  DEBUG ("self_handle == %d", base->self_handle);
+  DEBUG ("called: %s error", (error) ? "some" : "no");
+
+  g_assert (priv->patched_vcard != NULL);
 
   if (err)
     {
-      /* in dispose base->self_handle is already 0, so make an exceptio
-       * for that ugly special case, bah */
-      if (base->self_handle != 0)
-          gabble_vcard_manager_invalidate_cache (manager, base->self_handle);
+      /* We won't need our patched vcard after all */
+      lm_message_node_unref (priv->patched_vcard);
+      priv->patched_vcard = NULL;
+
       node = NULL;
     }
   else
     {
       GabbleVCardCacheEntry *entry = cache_entry_get (manager,
           base->self_handle);
+
+      /* Finally we may put the new vcard in the cache. */
+      lm_message_node_unref (entry->vcard_node);
+      entry->vcard_node = priv->patched_vcard;
+      priv->patched_vcard = NULL;
+
       node = entry->vcard_node;
     }
 
@@ -954,12 +966,26 @@ patch_vcard_foreach (gpointer k, gpointer v, gpointer user_data)
     }
 }
 
+/* Loudmouth hates me. The feelings are mutual. */
+static LmMessageNode *
+vcard_copy (LmMessage *msg, LmMessageNode *vcard_node)
+{
+    LmMessageNode *child;
+    LmMessageNode *new = lm_message_node_add_child (msg->node, "vCard", "");
+
+    for (child = vcard_node->children; child; child = child->next)
+        lm_message_node_add_child (new, child->name, child->value);
+
+    return new;
+}
+
 static void
 manager_patch_vcard (GabbleVCardManager *manager,
                      LmMessageNode *vcard_node)
 {
   GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (manager);
   LmMessage *msg;
+  LmMessageNode *patched_vcard;
   GList *li;
 
   g_assert (priv->edits != NULL);
@@ -972,18 +998,19 @@ manager_patch_vcard (GabbleVCardManager *manager,
    * pipeline item. Or so I hope. */
   g_assert (priv->edit_pipeline_item == NULL);
 
-  /* Apply any unsent edits to the vCard */
-  g_hash_table_foreach (priv->edits, patch_vcard_foreach, vcard_node);
-
   msg = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
       LM_MESSAGE_SUB_TYPE_SET);
 
-  /* We optimistically assume that the SET will succeed with no
-   * race conditions, so we save the newly patched vCard in the
-   * cache. If SET fails, we will invalidate that cache entry. */
-  lm_message_node_ref (vcard_node);
-  g_assert (msg->node->children == NULL);
-  msg->node->children = vcard_node;
+  patched_vcard = vcard_copy (msg, vcard_node);
+
+  /* Apply any unsent edits to the patched vCard */
+  g_hash_table_foreach (priv->edits, patch_vcard_foreach, patched_vcard);
+
+  /* We'll save the patched vcard, and if the server says
+   * we're ok, put it into the cache. But we want to leave the
+   * original vcard in the cache until that happens. */
+  lm_message_node_ref (patched_vcard);
+  priv->patched_vcard = patched_vcard;
 
   priv->edit_pipeline_item = gabble_request_pipeline_enqueue (
       priv->connection->req_pipeline, msg, 0, replace_reply_cb, manager);
@@ -1142,6 +1169,9 @@ cache_entry_ensure_queued (GabbleVCardCacheEntry *entry, guint timeout)
 
       entry->pipeline_item = gabble_request_pipeline_enqueue
           (conn->req_pipeline, msg, timeout, pipeline_reply_cb, entry);
+
+      lm_message_unref (msg);
+
       DEBUG ("adding request to cache entry %p and queueing the <iq>", entry);
     }
 }

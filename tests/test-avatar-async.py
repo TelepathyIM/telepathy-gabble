@@ -15,6 +15,7 @@ def avatars_iface(proxy):
     return dbus.Interface(proxy, tp_name_prefix +
         '.Connection.Interface.Avatars')
 
+@lazy
 def expect_connected(event, data):
     if event.type != 'dbus-signal':
         return False

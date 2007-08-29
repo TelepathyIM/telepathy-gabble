@@ -6,13 +6,14 @@ Test avatar support.
 import base64
 
 import dbus
-from servicetest import tp_name_prefix, call_async, match
+from servicetest import tp_name_prefix, call_async, match, lazy
 from gabbletest import go
 
 def avatars_iface(proxy):
     return dbus.Interface(proxy, tp_name_prefix +
         '.Connection.Interface.Avatars')
 
+@lazy
 @match('dbus-signal', signal='StatusChanged', args=[0, 1])
 def expect_connected(event, data):
     handle = data['conn_iface'].RequestHandles(1, ['bob@foo.com'])[0]

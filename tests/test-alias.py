@@ -6,13 +6,14 @@ Test alias support.
 import base64
 
 import dbus
-from servicetest import tp_name_prefix, call_async, match
+from servicetest import tp_name_prefix, call_async, match, lazy
 from gabbletest import go, make_result_iq
 
 def aliasing_iface(proxy):
     return dbus.Interface(proxy, tp_name_prefix +
         '.Connection.Interface.Aliasing')
 
+@lazy
 @match('dbus-signal', signal='StatusChanged', args=[0, 1])
 def expect_connected(event, data):
     handle = data['conn_iface'].RequestHandles(1, ['bob@foo.com'])[0]

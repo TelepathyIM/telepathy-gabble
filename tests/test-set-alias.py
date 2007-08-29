@@ -4,7 +4,7 @@ Test alias setting support.
 """
 
 import dbus
-from servicetest import tp_name_prefix, match
+from servicetest import tp_name_prefix, match, lazy
 from gabbletest import go
 
 from twisted.words.protocols.jabber.client import IQ
@@ -13,6 +13,7 @@ def aliasing_iface(proxy):
     return dbus.Interface(proxy, tp_name_prefix +
         '.Connection.Interface.Aliasing')
 
+@lazy
 @match('dbus-signal', signal='StatusChanged', args=[0, 1])
 def expect_connected(event, data):
     aliasing_iface(data['conn_iface']).SetAliases({1: 'lala'})

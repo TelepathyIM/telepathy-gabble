@@ -765,27 +765,6 @@ lm_message_node_add_children_from_properties (LmMessageNode *node,
   g_hash_table_foreach (properties, set_child_from_property, &data);
 }
 
-/* To be added to tp-glib util.c with s/gabble/tp/ ? */
-
-/**
- * gabble_g_value_slice_dup:
- * @value: A GValue
- *
- * <!-- 'Returns' says it all -->
- *
- * Returns: a newly allocated copy of @value, to be freed with
- * tp_g_value_slice_free() or g_slice_free().
- */
-GValue *
-gabble_g_value_slice_dup (const GValue *value)
-{
-  GValue *ret = g_slice_new0 (GValue);
-
-  g_value_init (ret, G_VALUE_TYPE (value));
-  g_value_copy (value, ret);
-  return ret;
-}
-
 struct _gabble_g_hash_table_update
 {
   GHashTable *target;

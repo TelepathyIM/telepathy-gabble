@@ -45,6 +45,7 @@ struct _GabbleRequestPipelineItem
   guint timer_id;
   guint timeout;
   gboolean in_flight;
+  gboolean zombie;
 
   GabbleRequestPipelineCb callback;
   gpointer user_data;
@@ -201,7 +202,8 @@ gabble_request_pipeline_item_cancel (GabbleRequestPipelineItem *item)
       GABBLE_REQUEST_PIPELINE_GET_PRIVATE (item->pipeline);
 
   (item->callback) (priv->connection, NULL, item->user_data, &cancelled);
-  delete_item (item);
+
+  item->zombie = TRUE;
 }
 
 static void
@@ -224,16 +226,20 @@ gabble_request_pipeline_dispose (GObject *object)
   while (priv->items_in_flight)
     {
       item = priv->items_in_flight->data;
-      (item->callback) (priv->connection, NULL, item->user_data,
-                        &disconnected);
+      if (!item->zombie)
+          (item->callback) (priv->connection, NULL, item->user_data,
+                            &disconnected);
+
       delete_item (item);
     }
 
   while (priv->pending_items)
     {
       item = priv->pending_items->data;
-      (item->callback) (priv->connection, NULL, item->user_data,
-                        &disconnected);
+      if (!item->zombie)
+          (item->callback) (priv->connection, NULL, item->user_data,
+                            &disconnected);
+
       delete_item (item);
     }
 
@@ -270,7 +276,10 @@ response_cb (GabbleConnection *conn,
 
   priv->items_in_flight = g_slist_remove (priv->items_in_flight, item);
 
-  item->callback (priv->connection, reply, item->user_data, NULL);
+  if (!item->zombie)
+      item->callback (priv->connection, reply, item->user_data, NULL);
+  else
+      DEBUG ("ignoring zombie connection reply");
 
   delete_item (item);
 
@@ -343,7 +352,7 @@ timeout_cb (gpointer data)
   item->callback (priv->connection, NULL, item->user_data, error);
 
   item->timer_id = 0;
-  delete_item (item);
+  item->zombie = TRUE;
 
   gabble_request_pipeline_go (pipeline);
 

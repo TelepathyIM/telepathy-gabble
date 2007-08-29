@@ -2254,9 +2254,9 @@ muc_channel_pre_invite_cb (GabbleMucChannel *chan,
 }
 
 static void
-muc_channel_conctact_join_cb (GabbleMucChannel *chan,
-                              TpHandle contact,
-                              gpointer unused)
+muc_channel_contact_join_cb (GabbleMucChannel *chan,
+                             TpHandle contact,
+                             gpointer unused)
 {
   GQuark quark = invitees_quark ();
   TpHandleSet *invitees;
@@ -2302,7 +2302,7 @@ muc_factory_new_channel_cb (GabbleMucFactory *fac,
   g_signal_connect (chan, "pre-invite", G_CALLBACK (muc_channel_pre_invite_cb),
       info);
   g_signal_connect (chan, "contact-join",
-      G_CALLBACK (muc_channel_conctact_join_cb), NULL);
+      G_CALLBACK (muc_channel_contact_join_cb), NULL);
 }
 
 static void

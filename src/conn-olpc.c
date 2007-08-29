@@ -167,10 +167,11 @@ activity_info_contribute_properties (ActivityInfo *info,
 
   props_node = lm_message_node_add_child (parent,
       "properties", "");
-  lm_message_node_set_attribute (props_node, "xmlns", NS_OLPC_ACTIVITY_PROPS);
-  lm_message_node_set_attribute (props_node, "room",
-      activity_info_get_room (info));
-  lm_message_node_set_attribute (props_node, "activity", info->id);
+  lm_message_node_set_attributes (props_node,
+      "xmlns", NS_OLPC_ACTIVITY_PROPS,
+      "room", activity_info_get_room (info),
+      "activity", info->id,
+      NULL);
   lm_message_node_add_children_from_properties (props_node, info->properties,
       "property");
   return TRUE;

@@ -230,3 +230,50 @@ def go(params=None, authenticator=None, protocol=None, start=None):
     # go!
     servicetest.run_test(handler, start)
 
+
+# Useful routines for server-side vCard handling
+current_vcard = domish.Element(('vcard-temp', 'vCard'))
+
+def handle_get_vcard(event, data):
+    iq = event.stanza
+
+    if iq['type'] != 'get':
+        return False
+
+    if iq.uri != 'jabber:client':
+        return False
+
+    vcard = list(iq.elements())[0]
+
+    if vcard.name != 'vCard':
+        return False
+
+    # Send back current vCard
+    new_iq = IQ(data['stream'], 'result')
+    new_iq['id'] = iq['id']
+    new_iq.addChild(current_vcard)    
+    data['stream'].send(new_iq)
+    return True
+
+def handle_set_vcard(event, data):
+    iq = event.stanza
+
+    if iq['type'] != 'set':
+        return False
+
+    if iq.uri != 'jabber:client':
+        return False
+
+    vcard = list(iq.elements())[0]
+
+    if vcard.name != 'vCard':
+        return False
+
+    current_vcard = vcard
+    
+    new_iq = IQ(data['stream'], 'result')
+    new_iq['id'] = iq['id']
+    data['stream'].send(new_iq)
+    return True
+
+

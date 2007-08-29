@@ -50,7 +50,8 @@ TWISTED_TESTS = \
 	test-vcard-race.py \
 	test-google-roster.py \
 	test-avatar-tokens.py \
-	test-vcard-torture.py
+	test-vcard-cache.py \
+	test-vcard-set-and-get.py
 
 _check-twisted:
 	$(MAKE) check TESTS="$(TWISTED_TESTS)" TESTS_ENVIRONMENT=python

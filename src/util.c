@@ -783,6 +783,8 @@ _gabble_g_hash_table_update_helper (gpointer key,
   g_hash_table_replace (data->target, new_key, new_value);
 }
 
+/* To be added to tp-glib util.c with s/gabble/tp/ ? */
+
 /**
  * gabble_g_hash_table_update:
  * @target: The hash table to be updated

@@ -31,6 +31,7 @@ G_BEGIN_DECLS
 
 typedef struct _GabbleVCardManagerClass GabbleVCardManagerClass;
 typedef struct _GabbleVCardManagerRequest GabbleVCardManagerRequest;
+typedef struct _GabbleVCardManagerEditRequest GabbleVCardManagerEditRequest;
 
 /**
  * GabbleVCardManagerError:
@@ -95,14 +96,6 @@ GabbleVCardManagerRequest *gabble_vcard_manager_request (GabbleVCardManager *,
                                                        GObject *object,
                                                        GError **error);
 
-GabbleVCardManagerRequest *gabble_vcard_manager_edit (GabbleVCardManager *,
-                                                    guint timeout,
-                                                    GabbleVCardManagerCb,
-                                                    gpointer user_data,
-                                                    GObject *object,
-                                                    ...)
-                                                   G_GNUC_NULL_TERMINATED;
-
 void gabble_vcard_manager_cancel_request (GabbleVCardManager *manager,
                                           GabbleVCardManagerRequest *request);
 
@@ -115,6 +108,23 @@ gboolean gabble_vcard_manager_get_cached (GabbleVCardManager *,
                                           TpHandle,
                                           LmMessageNode **);
 void gabble_vcard_manager_invalidate_cache (GabbleVCardManager *, TpHandle);
+
+typedef void (*GabbleVCardManagerEditCb)(GabbleVCardManager *self,
+                                         GabbleVCardManagerEditRequest *request,
+                                         LmMessageNode *vcard,
+                                         GError *error,
+                                         gpointer user_data);
+
+GabbleVCardManagerEditRequest *gabble_vcard_manager_edit (GabbleVCardManager *,
+                                                          guint timeout,
+                                                          GabbleVCardManagerEditCb,
+                                                          gpointer user_data,
+                                                          GObject *object,
+                                                          ...)
+                                                          G_GNUC_NULL_TERMINATED;
+
+
+void gabble_vcard_manager_remove_edit_request (GabbleVCardManagerEditRequest *);
 
 G_END_DECLS
 

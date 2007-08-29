@@ -688,8 +688,7 @@ _set_avatar_ctx_free (struct _set_avatar_ctx *ctx)
 
 static void
 _set_avatar_cb2 (GabbleVCardManager *manager,
-                 GabbleVCardManagerRequest *request,
-                 TpHandle handle,
+                 GabbleVCardManagerEditRequest *request,
                  LmMessageNode *vcard,
                  GError *vcard_error,
                  gpointer user_data)

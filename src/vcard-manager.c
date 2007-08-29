@@ -146,11 +146,10 @@ struct _GabbleVCardCacheEntry
   /* List of (GabbleVCardManagerRequest *) borrowed from priv->requests */
   GSList *pending_requests;
 
-  /* Cached message */
-  LmMessage *message;
-  /* If @message is not NULL, the borrowed vCard node (guaranteed not NULL) */
+  /* VCard node for this entry (owned reference), or NULL if there's no node */
   LmMessageNode *vcard_node;
-  /* If @message is not NULL, the time the message will expire */
+
+  /* If @vcard_node is not NULL, the time the message will expire */
   time_t expires;
 };
 
@@ -318,8 +317,8 @@ cache_entry_free (gpointer data)
       gabble_request_pipeline_item_cancel (entry->pipeline_item);
     }
 
-  if (entry->message)
-      lm_message_unref (entry->message);
+  if (entry->vcard_node)
+      lm_message_node_unref (entry->vcard_node);
 
   tp_handle_unref (contact_repo, entry->handle);
 
@@ -388,10 +387,10 @@ cache_entry_attempt_to_free (GabbleVCardCacheEntry *entry)
       (entry->manager);
   TpBaseConnection *base = (TpBaseConnection *) priv->connection;
 
-  if (entry->message != NULL)
+  if (entry->vcard_node != NULL)
     {
-      DEBUG ("Not freeing vCard cache entry %p: it has a cached message %p",
-          entry, entry->message);
+      DEBUG ("Not freeing vCard cache entry %p: it has a cached vCard %p",
+          entry, entry->vcard_node);
       return;
     }
 
@@ -438,10 +437,9 @@ gabble_vcard_manager_invalidate_cache (GabbleVCardManager *manager,
 
   tp_heap_remove (priv->timed_cache, entry);
 
-  if (entry->message)
+  if (entry->vcard_node)
     {
-      lm_message_unref (entry->message);
-      entry->message = NULL;
+      lm_message_node_unref (entry->vcard_node);
       entry->vcard_node = NULL;
     }
 
@@ -1089,10 +1087,6 @@ pipeline_reply_cb (GabbleConnection *conn,
     }
 
   /* Put the message in the cache */
-  /* FIXME - check if this leaks or underrerfs */
-  lm_message_ref (reply_msg);
-  entry->message = reply_msg;
-
   lm_message_node_ref (vcard_node);
   entry->vcard_node = vcard_node;
 
@@ -1199,7 +1193,7 @@ gabble_vcard_manager_request (GabbleVCardManager *self,
   GabbleVCardCacheEntry *entry = cache_entry_get (self, handle);
 
   g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL), NULL);
-  g_assert (entry->message == NULL);
+  g_assert (entry->vcard_node == NULL);
 
   if (timeout == 0)
     timeout = DEFAULT_REQUEST_TIMEOUT;
@@ -1370,11 +1364,11 @@ gabble_vcard_manager_get_cached (GabbleVCardManager *self,
   g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
       FALSE);
 
-  if ((entry == NULL) || (entry->message == NULL))
+  if ((entry == NULL) || (entry->vcard_node == NULL))
       return FALSE;
 
   if (node != NULL)
-      *node = lm_message_node_get_child (entry->message->node, "vCard");
+      *node = entry->vcard_node;
 
   return TRUE;
 }

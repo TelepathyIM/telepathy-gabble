@@ -702,9 +702,25 @@ lm_message_node_extract_properties (LmMessageNode *node,
         }
       else if (0 == strcmp (type, "bool"))
         {
+          gboolean val;
+
+          if (!tp_strdiff (value, "0"))
+            {
+              val = FALSE;
+            }
+          else if (!tp_strdiff (value, "1"))
+            {
+              val = TRUE;
+            }
+          else
+            {
+              g_debug ("invalid boolean value: %s", value);
+              continue;
+            }
+
           gvalue = g_slice_new0 (GValue);
           g_value_init (gvalue, G_TYPE_BOOLEAN);
-          g_value_set_boolean (gvalue, !!strtol (value, NULL, 10));
+          g_value_set_boolean (gvalue, val);
           g_hash_table_insert (properties, g_strdup (name), gvalue);
         }
     }

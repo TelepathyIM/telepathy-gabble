@@ -6,4 +6,10 @@ export GABBLE_DEBUG=all LM_DEBUG=net
 ulimit -c unlimited
 exec > gabble-$$.log 2>&1
 
-exec ../src/telepathy-gabble
+if test -n "$GABBLE_TEST_VALGRIND"; then
+	export G_DEBUG=gc-friendly
+	export G_SLICE=always-malloc
+	GABBLE_WRAPPER="valgrind --leak-check=full"
+fi
+
+exec $GABBLE_WRAPPER ../src/telepathy-gabble

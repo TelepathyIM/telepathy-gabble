@@ -2082,10 +2082,13 @@ conn_olpc_process_activity_properties_message (GabbleConnection *conn,
 
   if (activities_changed)
     {
+      GPtrArray *activities;
       g_assert (contact_handle != 0);
 
+      activities = get_buddy_activities (conn, contact_handle);
       gabble_svc_olpc_buddy_info_emit_activities_changed (conn, contact_handle,
-          get_buddy_activities (conn, contact_handle));
+          activities);
+      free_activities (activities);
     }
 
   if (properties_changed && muc_channel != NULL)

@@ -639,7 +639,7 @@ status_changed_cb (GObject *object,
 
       /* FIXME: we happen to know that synchronous errors can't happen */
       gabble_vcard_manager_request (self, base->self_handle, 0,
-          initial_request_cb, NULL, (GObject *) self, NULL);
+          initial_request_cb, NULL, (GObject *) self);
     }
 }
 
@@ -854,6 +854,7 @@ get_error_from_pipeline_reply (LmMessage *reply_msg, GError *error)
         err = g_error_new (GABBLE_VCARD_MANAGER_ERROR,
             GABBLE_VCARD_MANAGER_ERROR_UNKNOWN, "An unknown error occurred");
       }
+
     return err;
 }
 
@@ -1188,8 +1189,7 @@ gabble_vcard_manager_request (GabbleVCardManager *self,
                               guint timeout,
                               GabbleVCardManagerCb callback,
                               gpointer user_data,
-                              GObject *object,
-                              GError **error) // FIXME 'error' is not needed
+                              GObject *object)
 {
   GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (self);
   TpBaseConnection *connection = (TpBaseConnection *)priv->connection;
@@ -1259,7 +1259,7 @@ gabble_vcard_manager_edit (GabbleVCardManager *self,
       DEBUG ("we don't, create one");
       /* create dummy GET request if neccessary */
       gabble_vcard_manager_request (self, base->self_handle, 0, NULL,
-          NULL, NULL, NULL);
+          NULL, NULL);
     }
 
   if (priv->edits == NULL)

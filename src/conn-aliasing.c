@@ -228,16 +228,7 @@ gabble_connection_request_aliases (TpSvcConnectionInterfaceAliasing *iface,
 
           g_free (alias);
           vcard_request = gabble_vcard_manager_request (self->vcard_manager,
-              handle, 0, aliases_request_vcard_cb, request, G_OBJECT (self),
-              &error);
-
-          if (NULL != error)
-            {
-              dbus_g_method_return_error (context, error);
-              g_error_free (error);
-              aliases_request_free (request);
-              return;
-            }
+              handle, 0, aliases_request_vcard_cb, request, G_OBJECT (self));
 
           request->vcard_requests[i] = vcard_request;
           request->pending_vcard_requests++;

@@ -589,7 +589,7 @@ gabble_connection_request_avatar (TpSvcConnectionInterfaceAvatars *iface,
   else
     {
       gabble_vcard_manager_request (self->vcard_manager, contact, 0,
-          _request_avatar_cb, context, NULL, NULL);
+          _request_avatar_cb, context, NULL);
     }
 }
 
@@ -662,7 +662,7 @@ gabble_connection_request_avatars (TpSvcConnectionInterfaceAvatars *iface,
       else
         {
           gabble_vcard_manager_request (self->vcard_manager,
-              contact, 0, request_avatars_cb, iface, NULL, NULL);
+              contact, 0, request_avatars_cb, iface, NULL);
         }
     }
 

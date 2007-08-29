@@ -93,8 +93,7 @@ GabbleVCardManagerRequest *gabble_vcard_manager_request (GabbleVCardManager *,
                                                        guint timeout,
                                                        GabbleVCardManagerCb,
                                                        gpointer user_data,
-                                                       GObject *object,
-                                                       GError **error);
+                                                       GObject *object);
 
 void gabble_vcard_manager_cancel_request (GabbleVCardManager *manager,
                                           GabbleVCardManagerRequest *request);

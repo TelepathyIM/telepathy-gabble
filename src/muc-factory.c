@@ -151,6 +151,7 @@ gabble_muc_factory_dispose (GObject *object)
   g_hash_table_foreach (priv->disco_requests, cancel_disco_request,
       priv->conn->disco);
   g_hash_table_destroy (priv->disco_requests);
+  g_hash_table_destroy (priv->text_needed_for_tubes);
 
   if (G_OBJECT_CLASS (gabble_muc_factory_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_muc_factory_parent_class)->dispose (object);

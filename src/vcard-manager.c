@@ -930,8 +930,6 @@ patch_vcard_foreach (gpointer k, gpointer v, gpointer user_data)
   /* For PHOTO the value is special-cased to be "image/jpeg base64base64" */
   if (!tp_strdiff (key, "PHOTO"))
     {
-      gchar **tokens = g_strsplit (value, " ", 2);
-
       node = lm_message_node_get_child (vcard_node, "PHOTO");
       if (node != NULL)
         {
@@ -942,13 +940,15 @@ patch_vcard_foreach (gpointer k, gpointer v, gpointer user_data)
       node = lm_message_node_add_child (vcard_node, "PHOTO", "");
       if (value != NULL)
         {
+          gchar **tokens = g_strsplit (value, " ", 2);
+
           DEBUG ("Setting PHOTO of type %s, BINVAL length %ld starting %.30s",
               tokens[0], (long) strlen (tokens[1]), tokens[1]);
           lm_message_node_add_child (node, "TYPE", tokens[0]);
           lm_message_node_add_child (node, "BINVAL", tokens[1]);
-        }
 
-      g_strfreev (tokens);
+          g_strfreev (tokens);
+        }
     }
   else
     {
@@ -1224,23 +1224,15 @@ gabble_vcard_manager_edit (GabbleVCardManager *self,
                            GabbleVCardManagerEditCb callback,
                            gpointer user_data,
                            GObject *object,
+                           size_t n_pairs,
                            ...)
 {
   va_list ap;
-  size_t i, argc;
+  size_t i;
   GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (self);
   TpBaseConnection *base = (TpBaseConnection *)priv->connection;
   GabbleVCardManagerEditRequest *req;
   GabbleVCardCacheEntry *entry;
-
-  argc = 0;
-  va_start (ap, object);
-  while (va_arg (ap, const gchar *) != NULL)
-    {
-      argc++;
-    }
-  va_end (ap);
-  g_return_val_if_fail (argc % 2 == 0, NULL);
 
   /* Invalidate our current vCard and ensure that we're going to get
    * it in the near future */
@@ -1259,14 +1251,21 @@ gabble_vcard_manager_edit (GabbleVCardManager *self,
   if (priv->edits == NULL)
       priv->edits = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
 
-  va_start (ap, object);
-  for (i = 0; i < argc / 2; i++)
+  va_start (ap, n_pairs);
+  for (i = 0; i < n_pairs; i++)
     {
       gchar *key = g_strdup (va_arg (ap, const gchar *));
       gchar *value = g_strdup (va_arg (ap, const gchar *));
 
-      DEBUG ("%s => value of length %ld starting %.30s", key,
-          (long) strlen (value), value);
+      if (value)
+        {
+          DEBUG ("%s => value of length %ld starting %.30s", key,
+              (long) strlen (value), value);
+        }
+      else
+        {
+          DEBUG ("%s => null value", key);
+        }
       g_hash_table_insert (priv->edits, key, value);
     }
   va_end (ap);

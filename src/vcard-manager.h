@@ -119,8 +119,8 @@ GabbleVCardManagerEditRequest *gabble_vcard_manager_edit (GabbleVCardManager *,
                                                           GabbleVCardManagerEditCb,
                                                           gpointer user_data,
                                                           GObject *object,
-                                                          ...)
-                                                          G_GNUC_NULL_TERMINATED;
+                                                          size_t n_pairs,
+                                                          ...);
 
 
 void gabble_vcard_manager_remove_edit_request (GabbleVCardManagerEditRequest *);

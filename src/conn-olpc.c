@@ -978,8 +978,6 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
   TpBaseConnection *base = (TpBaseConnection*) conn;
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
       base, TP_HANDLE_TYPE_ROOM);
-  LmMessage *msg;
-  LmMessageNode *publish;
   guint i;
   TpHandleSet *activities_list, *old_activities;
 
@@ -989,13 +987,10 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
     return;
 
   activities_list = tp_handle_set_new (room_repo);
-  msg = pubsub_make_publish_msg (NULL, NS_OLPC_ACTIVITIES, NS_OLPC_ACTIVITIES,
-      "activities", &publish);
 
   for (i = 0; i < activities->len; i++)
     {
       GValue pair = {0,};
-      LmMessageNode *activity_node;
       gchar *activity;
       guint channel;
       const gchar *room = NULL;
@@ -1072,12 +1067,6 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
       info->id = activity;
 
       tp_handle_set_add (activities_list, channel);
-
-      activity_node = lm_message_node_add_child (publish, "activity", "");
-      lm_message_node_set_attributes (activity_node,
-            "type", activity,
-            "room", room,
-            NULL);
     }
 
   old_activities = g_hash_table_lookup (conn->olpc_pep_activities,
@@ -1095,16 +1084,13 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
   g_hash_table_insert (conn->olpc_pep_activities,
       GUINT_TO_POINTER (base->self_handle), activities_list);
 
-  if (!_gabble_connection_send_with_reply (conn, msg,
-        set_activities_reply_cb, NULL, context, NULL))
+  if (!upload_activities_pep (conn, set_activities_reply_cb, context, NULL))
     {
       GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
         "Failed to send property request to server" };
 
       dbus_g_method_return_error (context, &error);
     }
-
-  lm_message_unref (msg);
 
   /* FIXME: what if we were advertising properties for things that
    * we've declared are no longer in our activities list? Strictly speaking

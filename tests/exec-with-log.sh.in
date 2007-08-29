@@ -4,7 +4,7 @@ cd "@abs_top_builddir@/tests"
 
 export GABBLE_DEBUG=all LM_DEBUG=net
 ulimit -c unlimited
-exec > gabble-$$.log 2>&1
+exec > gabble-testing.log 2>&1
 
 if test -n "$GABBLE_TEST_VALGRIND"; then
 	export G_DEBUG=gc-friendly

@@ -185,6 +185,9 @@ delete_item (GabbleRequestPipelineItem *item)
   if (item->timer_id)
       g_source_remove (item->timer_id);
 
+  if (item->message)
+      lm_message_unref (item->message);
+
   g_slice_free (GabbleRequestPipelineItem, item);
 }
 
@@ -377,6 +380,8 @@ gabble_request_pipeline_enqueue (GabbleRequestPipeline *pipeline,
   item->in_flight = FALSE;
   item->callback = callback;
   item->user_data = user_data;
+
+  lm_message_ref (msg);
 
   priv->pending_items = g_slist_append (priv->pending_items, item);
 

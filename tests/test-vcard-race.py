@@ -25,6 +25,7 @@ def avatars_iface(proxy):
     return dbus.Interface(proxy, tp_name_prefix +
         '.Connection.Interface.Avatars')
 
+@lazy
 @match('dbus-signal', signal='StatusChanged', args=[0, 1])
 def expect_connected(event, data):
     return True
@@ -59,6 +60,7 @@ def expect_get_vcard(event, data):
 @match('dbus-return', method='GetSelfHandle')
 def expect_got_self_handle(event, data):
     handle = event.value[0]
+
     call_async(data['test'], aliasing_iface(data['conn']),
                'SetAliases', {handle: 'Some Guy'})
     call_async(data['test'], avatars_iface(data['conn']),
@@ -130,4 +132,3 @@ def expect_disconnected(event, data):
 
 if __name__ == '__main__':
     go()
-

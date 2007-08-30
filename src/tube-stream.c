@@ -45,7 +45,7 @@
 #include "util.h"
 #include "tube-iface.h"
 #include "bytestream-factory.h"
-#include "bytestream-ibb.h"
+#include "bytestream-iface.h"
 #include "gabble-signals-marshal.h"
 
 static void
@@ -101,7 +101,7 @@ struct _GabbleTubeStreamPrivate
    * and delegates that to the tube.
    * Another problem is currently this bytestream is the only way we have
    * to know when the remote contact close the tube for private tubes */
-  GabbleBytestreamIBB *default_bytestream;
+  GabbleBytestreamIface *default_bytestream;
   TpHandle initiator;
   gchar *service;
   GHashTable *parameters;
@@ -118,7 +118,7 @@ struct _GabbleTubeStreamPrivate
 #define GABBLE_TUBE_STREAM_GET_PRIVATE(obj) \
     ((GabbleTubeStreamPrivate *) obj->priv)
 
-static void data_received_cb (GabbleBytestreamIBB *ibb, TpHandle sender,
+static void data_received_cb (GabbleBytestreamIface *ibb, TpHandle sender,
     GString *data, gpointer user_data);
 
 static void
@@ -143,7 +143,7 @@ data_to_read_on_socket_cb (GIOChannel *source,
 {
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (data);
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
-  GabbleBytestreamIBB *bytestream;
+  GabbleBytestreamIface *bytestream;
   int fd;
   gchar buffer[4096];
   gsize num_read;
@@ -173,14 +173,14 @@ data_to_read_on_socket_cb (GIOChannel *source,
     {
       DEBUG ("read %d bytes from socket", num_read);
 
-      gabble_bytestream_ibb_send (bytestream, num_read, buffer);
+      gabble_bytestream_iface_send (bytestream, num_read, buffer);
       result = TRUE;
     }
   else if (status == G_IO_STATUS_EOF)
     {
       DEBUG ("error reading from socket: EOF");
 
-      gabble_bytestream_ibb_close (bytestream);
+      gabble_bytestream_iface_close (bytestream);
       result = FALSE;
     }
   else if (status == G_IO_STATUS_AGAIN)
@@ -193,7 +193,7 @@ data_to_read_on_socket_cb (GIOChannel *source,
     {
       DEBUG ("error reading from socket: %s", error ? error->message : "");
 
-      gabble_bytestream_ibb_close (bytestream);
+      gabble_bytestream_iface_close (bytestream);
       result = FALSE;
     }
 
@@ -204,8 +204,8 @@ data_to_read_on_socket_cb (GIOChannel *source,
 }
 
 static void
-extra_bytestream_state_changed_cb (GabbleBytestreamIBB *bytestream,
-                                   GabbleBytestreamIBBState state,
+extra_bytestream_state_changed_cb (GabbleBytestreamIface *bytestream,
+                                   GabbleBytestreamState state,
                                    gpointer user_data)
 {
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (user_data);
@@ -220,7 +220,7 @@ extra_bytestream_state_changed_cb (GabbleBytestreamIBB *bytestream,
       return;
     }
 
-  if (state == GABBLE_BYTESTREAM_IBB_STATE_OPEN)
+  if (state == GABBLE_BYTESTREAM_STATE_OPEN)
     {
       guint source_id;
       DEBUG ("extra bytestream open");
@@ -233,7 +233,7 @@ extra_bytestream_state_changed_cb (GabbleBytestreamIBB *bytestream,
       g_hash_table_insert (priv->io_channel_to_watcher_source_id,
           g_io_channel_ref (channel), GUINT_TO_POINTER (source_id));
     }
-  else if (state == GABBLE_BYTESTREAM_IBB_STATE_CLOSED)
+  else if (state == GABBLE_BYTESTREAM_STATE_CLOSED)
     {
       int fd;
 
@@ -254,10 +254,10 @@ struct _extra_bytestream_negotiate_cb_data
 };
 
 static void
-extra_bytestream_negotiate_cb (GabbleBytestreamIBB *bytestream,
-                         const gchar *stream_id,
-                         LmMessage *msg,
-                         gpointer user_data)
+extra_bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
+                               const gchar *stream_id,
+                               LmMessage *msg,
+                               gpointer user_data)
 {
   struct _extra_bytestream_negotiate_cb_data *data =
     (struct _extra_bytestream_negotiate_cb_data *) user_data;
@@ -436,7 +436,7 @@ listen_cb (GIOChannel *source,
 
 static gboolean
 new_connection_to_socket (GabbleTubeStream *self,
-                          GabbleBytestreamIBB *bytestream)
+                          GabbleBytestreamIface *bytestream)
 {
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
   int fd;
@@ -599,14 +599,14 @@ gabble_tube_stream_init (GabbleTubeStream *self)
 }
 
 static void
-bytestream_state_changed_cb (GabbleBytestreamIBB *bytestream,
-                             GabbleBytestreamIBBState state,
+bytestream_state_changed_cb (GabbleBytestreamIface *bytestream,
+                             GabbleBytestreamState state,
                              gpointer user_data)
 {
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (user_data);
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
 
-  if (state == GABBLE_BYTESTREAM_IBB_STATE_CLOSED)
+  if (state == GABBLE_BYTESTREAM_STATE_CLOSED)
     {
       if (priv->default_bytestream != NULL)
         {
@@ -623,9 +623,9 @@ close_each_extra_bytestream (gpointer key,
                              gpointer value,
                              gpointer user_data)
 {
-  GabbleBytestreamIBB *bytestream = (GabbleBytestreamIBB *) value;
+  GabbleBytestreamIface *bytestream = (GabbleBytestreamIface *) value;
 
-  gabble_bytestream_ibb_close (bytestream);
+  gabble_bytestream_iface_close (bytestream);
 }
 
 static void
@@ -641,7 +641,7 @@ gabble_tube_stream_dispose (GObject *object)
 
   if (priv->default_bytestream)
     {
-      gabble_bytestream_ibb_close (priv->default_bytestream);
+      gabble_bytestream_iface_close (priv->default_bytestream);
     }
 
   if (priv->fd_to_bytestreams != NULL)
@@ -934,7 +934,7 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
 
   param_spec = g_param_spec_object (
       "bytestream",
-      "GabbleBytestreamIBB object",
+      "Object implementing the GabbleBytestreamIface interface",
       "bytestream object created during SI if any",
       GABBLE_TYPE_BYTESTREAM_IBB,
       G_PARAM_READWRITE |
@@ -1041,7 +1041,7 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
 }
 
 static void
-data_received_cb (GabbleBytestreamIBB *bytestream,
+data_received_cb (GabbleBytestreamIface *bytestream,
                   TpHandle sender,
                   GString *data,
                   gpointer user_data)
@@ -1110,7 +1110,7 @@ gabble_tube_stream_accept (GabbleTubeIface *tube)
 {
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (tube);
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
-  GabbleBytestreamIBBState state;
+  GabbleBytestreamState state;
   const gchar *stream_init_id;
 
   tube_stream_open (self);
@@ -1124,7 +1124,7 @@ gabble_tube_stream_accept (GabbleTubeIface *tube)
       "state", &state,
       NULL);
 
-  if (state != GABBLE_BYTESTREAM_IBB_STATE_LOCAL_PENDING)
+  if (state != GABBLE_BYTESTREAM_STATE_LOCAL_PENDING)
     return;
 
   g_object_get (priv->default_bytestream,
@@ -1140,11 +1140,11 @@ gabble_tube_stream_accept (GabbleTubeIface *tube)
 
       DEBUG ("accept the SI request");
 
-      msg = gabble_bytestream_ibb_make_accept_iq (priv->default_bytestream);
+      msg = gabble_bytestream_iface_make_accept_iq (priv->default_bytestream);
       if (msg == NULL)
         {
           DEBUG ("can't create SI accept IQ. Close the bytestream");
-          gabble_bytestream_ibb_close (priv->default_bytestream);
+          gabble_bytestream_iface_close (priv->default_bytestream);
           return;
         }
 
@@ -1155,7 +1155,7 @@ gabble_tube_stream_accept (GabbleTubeIface *tube)
       tube_node = lm_message_node_add_child (si, "tube", "");
       lm_message_node_set_attribute (tube_node, "xmlns", NS_SI_TUBES);
 
-      gabble_bytestream_ibb_accept (priv->default_bytestream, msg);
+      gabble_bytestream_iface_accept (priv->default_bytestream, msg);
 
       lm_message_unref (msg);
     }
@@ -1164,7 +1164,7 @@ gabble_tube_stream_accept (GabbleTubeIface *tube)
       /* No SI so the bytestream is open */
       DEBUG ("no SI, bytestream open");
       g_object_set (priv->default_bytestream,
-          "state", GABBLE_BYTESTREAM_IBB_STATE_OPEN,
+          "state", GABBLE_BYTESTREAM_STATE_OPEN,
           NULL);
     }
 }
@@ -1182,7 +1182,7 @@ gabble_tube_stream_close (GabbleTubeIface *tube)
 
   if (priv->default_bytestream != NULL)
     {
-      gabble_bytestream_ibb_close (priv->default_bytestream);
+      gabble_bytestream_iface_close (priv->default_bytestream);
     }
   else
     {
@@ -1198,7 +1198,7 @@ gabble_tube_stream_close (GabbleTubeIface *tube)
 
 static void
 gabble_tube_stream_add_bytestream (GabbleTubeIface *tube,
-                                   GabbleBytestreamIBB *bytestream)
+                                   GabbleBytestreamIface *bytestream)
 {
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (tube);
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
@@ -1208,7 +1208,7 @@ gabble_tube_stream_add_bytestream (GabbleTubeIface *tube,
       DEBUG ("I'm not the initiator of this tube, can't accept "
           "an extra bytestream");
 
-      gabble_bytestream_ibb_close (bytestream);
+      gabble_bytestream_iface_close (bytestream);
       return;
     }
 
@@ -1221,11 +1221,11 @@ gabble_tube_stream_add_bytestream (GabbleTubeIface *tube,
 
       DEBUG ("accept the extra bytestream");
 
-      msg = gabble_bytestream_ibb_make_accept_iq (bytestream);
+      msg = gabble_bytestream_iface_make_accept_iq (bytestream);
       if (msg == NULL)
         {
           DEBUG ("can't create SI accept IQ. Close the bytestream");
-          gabble_bytestream_ibb_close (bytestream);
+          gabble_bytestream_iface_close (bytestream);
           return;
         }
 
@@ -1236,7 +1236,7 @@ gabble_tube_stream_add_bytestream (GabbleTubeIface *tube,
       tube_node = lm_message_node_add_child (si, "tube", "");
       lm_message_node_set_attribute (tube_node, "xmlns", NS_SI_TUBES);
 
-      gabble_bytestream_ibb_accept (bytestream, msg);
+      gabble_bytestream_iface_accept (bytestream, msg);
 
       g_object_get (bytestream, "peer-handle", &contact, NULL);
 
@@ -1246,7 +1246,7 @@ gabble_tube_stream_add_bytestream (GabbleTubeIface *tube,
     }
   else
     {
-      gabble_bytestream_ibb_close (bytestream);
+      gabble_bytestream_iface_close (bytestream);
     }
 }
 

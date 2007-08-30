@@ -48,6 +48,7 @@
 #define NS_JINGLE_TRANSPORT_ICE     \
   "http://jabber.org/protocol/jingle/transport/ice"
 #define NS_MUC                  "http://jabber.org/protocol/muc"
+#define NS_MUC_BYTESTREAM       "http://telepathy.freedesktop.org/xmpp/protocol/muc-bytestream"
 #define NS_MUC_USER             "http://jabber.org/protocol/muc#user"
 #define NS_MUC_ADMIN            "http://jabber.org/protocol/muc#admin"
 #define NS_MUC_OWNER            "http://jabber.org/protocol/muc#owner"

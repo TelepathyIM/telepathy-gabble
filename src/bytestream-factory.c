@@ -37,6 +37,7 @@
 #include "gabble-connection.h"
 #include "bytestream-iface.h"
 #include "bytestream-ibb.h"
+#include "bytestream-muc.h"
 #include "namespaces.h"
 #include "util.h"
 #include "presence-cache.h"
@@ -122,7 +123,7 @@ struct _GabbleBytestreamFactoryPrivate
 
   /* MUC pseudo-IBB - data sent by groupchat messages, IQs not allowed.
    *
-   * BytestreamIdentifier -> GabbleBytestreamIBB */
+   * BytestreamIdentifier -> GabbleBytestreamMuc */
   GHashTable *muc_bytestreams;
 
   gboolean dispose_has_run;
@@ -575,7 +576,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
         {
           bytestream = GABBLE_BYTESTREAM_IFACE (
               gabble_bytestream_factory_create_ibb (self, peer_handle,
-              TP_HANDLE_TYPE_CONTACT, stream_id, stream_init_id, peer_resource,
+              stream_id, stream_init_id, peer_resource,
               GABBLE_BYTESTREAM_STATE_LOCAL_PENDING));
           break;
         }
@@ -787,14 +788,9 @@ handle_ibb_data (GabbleBytestreamFactory *self,
 {
   GabbleBytestreamFactoryPrivate *priv =
     GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
-  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
   GabbleBytestreamIBB *bytestream = NULL;
   LmMessageNode *data;
   ConstBytestreamIdentifier bsid = { NULL, NULL };
-  gchar *room_name = NULL;
-  TpHandle room_handle;
-  const gchar *from;
 
   priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
 
@@ -805,8 +801,8 @@ handle_ibb_data (GabbleBytestreamFactory *self,
   if (data == NULL)
     return FALSE;
 
-  from = lm_message_node_get_attribute (msg->node, "from");
-  if (from == NULL)
+  bsid.jid = lm_message_node_get_attribute (msg->node, "from");
+  if (bsid.jid == NULL)
     {
       DEBUG ("got a message without a from field");
       _gabble_connection_send_iq_error (priv->conn, msg,
@@ -824,22 +820,7 @@ handle_ibb_data (GabbleBytestreamFactory *self,
       return TRUE;
     }
 
-  room_name = gabble_remove_resource (from);
-  room_handle = tp_handle_lookup (room_repo, room_name, NULL, NULL);
-
-  if (!is_iq && room_handle != 0 &&
-      gabble_muc_factory_find_channel (priv->conn->muc_factory, room_handle)
-      != NULL)
-    {
-      bsid.jid = room_name;
-      bytestream = g_hash_table_lookup (priv->muc_bytestreams, &bsid);
-    }
-
-  if (bytestream == NULL)
-    {
-      bsid.jid = from;
-      bytestream = g_hash_table_lookup (priv->ibb_bytestreams, &bsid);
-    }
+  bytestream = g_hash_table_lookup (priv->ibb_bytestreams, &bsid);
 
   if (bytestream == NULL)
     {
@@ -848,11 +829,60 @@ handle_ibb_data (GabbleBytestreamFactory *self,
         _gabble_connection_send_iq_error (priv->conn, msg,
             XMPP_ERROR_BAD_REQUEST, "IBB <data> has unknown stream ID");
 
-      g_free (room_name);
       return TRUE;
     }
 
   gabble_bytestream_ibb_receive (bytestream, msg, is_iq);
+
+  return TRUE;
+}
+
+static gboolean
+handle_muc_data (GabbleBytestreamFactory *self,
+                 LmMessage *msg)
+{
+  GabbleBytestreamFactoryPrivate *priv =
+    GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
+  GabbleBytestreamMuc *bytestream = NULL;
+  LmMessageNode *data;
+  ConstBytestreamIdentifier bsid = { NULL, NULL };
+  gchar *room_name;
+  const gchar *from;
+
+  priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
+
+  data = lm_message_node_get_child_with_namespace (msg->node, "data",
+      NS_MUC_BYTESTREAM);
+  if (data == NULL)
+    return FALSE;
+
+  from = lm_message_node_get_attribute (msg->node, "from");
+  if (from == NULL)
+    {
+      DEBUG ("got a message without a from field");
+      return TRUE;
+    }
+
+  bsid.stream = lm_message_node_get_attribute (data, "sid");
+  if (bsid.stream == NULL)
+    {
+      DEBUG ("got a pseudo IBB muc message data without a stream id field");
+      return TRUE;
+    }
+
+  room_name = gabble_remove_resource (from);
+  bsid.jid = room_name;
+  bytestream = g_hash_table_lookup (priv->muc_bytestreams, &bsid);
+
+  if (bytestream == NULL)
+    {
+      DEBUG ("unknown muc stream: <%s> from <%s>", bsid.stream, bsid.jid);
+      g_free (room_name);
+      return TRUE;
+    }
+  g_assert (GABBLE_IS_BYTESTREAM_MUC (bytestream));
+
+  gabble_bytestream_muc_receive (bytestream, msg);
 
   g_free (room_name);
   return TRUE;
@@ -889,7 +919,7 @@ bytestream_factory_iq_ibb_cb (LmMessageHandler *handler,
  * bytestream_factory_msg_data_cb
  *
  * Called by loudmouth when we get an incoming <message>.
- * This handler handles IBB data.
+ * This handler handles IBB data and pseudo IBB Muc data.
  */
 static LmHandlerResult
 bytestream_factory_msg_data_cb (LmMessageHandler *handler,
@@ -900,6 +930,9 @@ bytestream_factory_msg_data_cb (LmMessageHandler *handler,
   GabbleBytestreamFactory *self = user_data;
 
   if (handle_ibb_data (self, msg, FALSE))
+    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+
+  if (handle_muc_data (self, msg))
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
   return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
@@ -947,7 +980,6 @@ gabble_bytestream_factory_generate_stream_id (void)
 GabbleBytestreamIBB *
 gabble_bytestream_factory_create_ibb (GabbleBytestreamFactory *self,
                                       TpHandle peer_handle,
-                                      TpHandleType peer_handle_type,
                                       const gchar *stream_id,
                                       const gchar *stream_init_id,
                                       const gchar *peer_resource,
@@ -963,7 +995,6 @@ gabble_bytestream_factory_create_ibb (GabbleBytestreamFactory *self,
   ibb = g_object_new (GABBLE_TYPE_BYTESTREAM_IBB,
                       "connection", priv->conn,
                       "peer-handle", peer_handle,
-                      "peer-handle-type", peer_handle_type,
                       "stream-id", stream_id,
                       "state", state,
                       "stream-init-id", stream_init_id,
@@ -974,18 +1005,40 @@ gabble_bytestream_factory_create_ibb (GabbleBytestreamFactory *self,
       G_CALLBACK (bytestream_state_changed_cb), self);
 
   id = bytestream_id_new (GABBLE_BYTESTREAM_IFACE (ibb));
-  if (peer_handle_type == TP_HANDLE_TYPE_ROOM)
-    {
-      DEBUG ("add muc bytestream <%s> from <%s>", id->stream, id->jid);
-      g_hash_table_insert (priv->muc_bytestreams, id, ibb);
-    }
-  else
-    {
-      DEBUG ("add private bytestream <%s> from <%s>", id->stream, id->jid);
-      g_hash_table_insert (priv->ibb_bytestreams, id, ibb);
-    }
+  DEBUG ("add private bytestream <%s> from <%s>", id->stream, id->jid);
+  g_hash_table_insert (priv->ibb_bytestreams, id, ibb);
 
   return ibb;
+}
+
+GabbleBytestreamMuc *
+gabble_bytestream_factory_create_muc (GabbleBytestreamFactory *self,
+                                      TpHandle peer_handle,
+                                      const gchar *stream_id,
+                                      GabbleBytestreamState state)
+{
+  GabbleBytestreamFactoryPrivate *priv;
+  GabbleBytestreamMuc *bytestream;
+  BytestreamIdentifier *id;
+
+  g_return_val_if_fail (GABBLE_IS_BYTESTREAM_FACTORY (self), NULL);
+  priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
+
+  bytestream = g_object_new (GABBLE_TYPE_BYTESTREAM_MUC,
+                      "connection", priv->conn,
+                      "peer-handle", peer_handle,
+                      "stream-id", stream_id,
+                      "state", state,
+                      NULL);
+
+  g_signal_connect (bytestream, "state-changed",
+      G_CALLBACK (bytestream_state_changed_cb), self);
+
+  id = bytestream_id_new (GABBLE_BYTESTREAM_IFACE (bytestream));
+  DEBUG ("add muc bytestream <%s> from <%s>", id->stream, id->jid);
+  g_hash_table_insert (priv->muc_bytestreams, id, bytestream);
+
+  return bytestream;
 }
 
 struct _streaminit_reply_cb_data
@@ -1089,8 +1142,8 @@ streaminit_reply_cb (GabbleConnection *conn,
       /* Remote user have accepted the stream */
       bytestream = GABBLE_BYTESTREAM_IFACE (
           gabble_bytestream_factory_create_ibb (self, peer_handle,
-          TP_HANDLE_TYPE_CONTACT, data->stream_id, NULL,
-          peer_resource, GABBLE_BYTESTREAM_STATE_INITIATING));
+          data->stream_id, NULL, peer_resource,
+          GABBLE_BYTESTREAM_STATE_INITIATING));
     }
   else
     {

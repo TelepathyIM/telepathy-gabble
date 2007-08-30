@@ -27,6 +27,7 @@
 #include "gabble-types.h"
 #include "bytestream-iface.h"
 #include "bytestream-ibb.h"
+#include "bytestream-muc.h"
 #include "gabble-connection.h"
 
 G_BEGIN_DECLS
@@ -71,9 +72,12 @@ gabble_bytestream_factory_new (GabbleConnection *conn);
 
 GabbleBytestreamIBB *
 gabble_bytestream_factory_create_ibb (GabbleBytestreamFactory *fac,
-    TpHandle peer_handle, TpHandleType peer_handle_type,
-    const gchar *stream_id, const gchar *stream_init_id,
+    TpHandle peer_handle, const gchar *stream_id, const gchar *stream_init_id,
     const gchar *peer_resource, GabbleBytestreamState state);
+
+GabbleBytestreamMuc *
+gabble_bytestream_factory_create_muc (GabbleBytestreamFactory *fac,
+    TpHandle peer_handle, const gchar *stream_id, GabbleBytestreamState state);
 
 LmMessage *
 gabble_bytestream_factory_make_stream_init_iq (const gchar *full_jid,

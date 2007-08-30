@@ -26,7 +26,7 @@
 #include <telepathy-glib/base-connection.h>
 
 #include "gabble-muc-channel.h"
-#include "bytestream-ibb.h"
+#include "bytestream-iface.h"
 
 G_BEGIN_DECLS
 
@@ -70,7 +70,7 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *chan,
 
 gboolean
 gabble_tubes_channel_tube_offered (GabbleTubesChannel *chan,
-    GabbleBytestreamIBB *bytestream, LmMessage *msg);
+    GabbleBytestreamIface *bytestream, LmMessage *msg);
 
 void gabble_tubes_channel_close (GabbleTubesChannel *self);
 

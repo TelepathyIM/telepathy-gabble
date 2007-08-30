@@ -392,7 +392,7 @@ create_new_tube (GabbleTubesChannel *self,
                  GHashTable *parameters,
                  const gchar *stream_id,
                  guint tube_id,
-                 GabbleBytestreamIBB *bytestream)
+                 GabbleBytestreamIface *bytestream)
 {
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
   GabbleTubeIface *tube;
@@ -1090,7 +1090,7 @@ struct _bytestream_negotiate_cb_data
 };
 
 static void
-bytestream_negotiate_cb (GabbleBytestreamIBB *bytestream,
+bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
                          const gchar *stream_id,
                          LmMessage *msg,
                          gpointer user_data)
@@ -1160,7 +1160,7 @@ bytestream_negotiate_cb (GabbleBytestreamIBB *bytestream,
  */
 gboolean
 gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
-                                   GabbleBytestreamIBB *bytestream,
+                                   GabbleBytestreamIface *bytestream,
                                    LmMessage *msg)
 {
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);

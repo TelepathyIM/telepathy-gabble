@@ -243,6 +243,8 @@ gabble_request_pipeline_dispose (GObject *object)
       delete_item (item);
     }
 
+  g_idle_remove_by_data (self);
+
   if (G_OBJECT_CLASS (gabble_request_pipeline_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_request_pipeline_parent_class)->dispose (object);
 }

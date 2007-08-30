@@ -358,7 +358,7 @@ gabble_tubes_factory_iface_request (TpChannelFactoryIface *iface,
 
 gboolean
 gabble_tubes_factory_handle_si_request (GabbleTubesFactory *self,
-                                        GabbleBytestreamIBB *bytestream,
+                                        GabbleBytestreamIface *bytestream,
                                         TpHandle handle,
                                         const gchar *stream_id,
                                         LmMessage *msg)

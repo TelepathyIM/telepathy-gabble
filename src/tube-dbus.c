@@ -950,10 +950,18 @@ gabble_tube_dbus_accept (GabbleTubeIface *tube)
        * we have to accept it */
       LmMessage *msg;
       LmMessageNode *si, *tube_node;
+      const gchar *protocol;
+      gchar *peer_jid;
 
       DEBUG ("accept the SI request");
 
-      msg = gabble_bytestream_iface_make_accept_iq (priv->bytestream);
+      g_object_get (priv->bytestream,
+          "peer-jid", &peer_jid,
+          NULL);
+
+      protocol = gabble_bytestream_iface_get_protocol (priv->bytestream);
+      msg = gabble_bytestream_factory_make_accept_iq (peer_jid, stream_init_id,
+          protocol);
       g_assert (msg != NULL);
 
       si = lm_message_node_get_child_with_namespace (msg->node, "si",
@@ -970,6 +978,7 @@ gabble_tube_dbus_accept (GabbleTubeIface *tube)
 
       lm_message_unref (msg);
       g_free (stream_init_id);
+      g_free (peer_jid);
     }
   else
     {

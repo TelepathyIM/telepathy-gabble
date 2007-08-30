@@ -52,7 +52,6 @@ struct _GabbleBytestreamIfaceClass {
   void (*close) (GabbleBytestreamIface *bytestream);
   void (*accept) (GabbleBytestreamIface *bytestream, LmMessage *msg);
   const gchar * (*get_protocol) (GabbleBytestreamIface *bytestream);
-  LmMessage * (*make_accept_iq) (GabbleBytestreamIface *bytestream);
 };
 
 GType gabble_bytestream_iface_get_type (void);
@@ -85,9 +84,6 @@ gabble_bytestream_iface_accept (GabbleBytestreamIface *bytestream,
 
 const gchar *
 gabble_bytestream_iface_get_protocol (GabbleBytestreamIface *bytestream);
-
-LmMessage *
-gabble_bytestream_iface_make_accept_iq (GabbleBytestreamIface *bytestream);
 
 G_END_DECLS
 

@@ -553,27 +553,6 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
 }
 
 /*
- * gabble_bytestream_ibb_make_accept_iq
- *
- * Implements gabble_bytestream_iface_make_accept_iq on GabbleBytestreamIface
- */
-static LmMessage *
-gabble_bytestream_ibb_make_accept_iq (GabbleBytestreamIface *iface)
-{
-  GabbleBytestreamIBB *self = GABBLE_BYTESTREAM_IBB (iface);
-  GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
-  LmMessage *msg;
-
-  g_return_val_if_fail (priv->peer_handle_type != TP_HANDLE_TYPE_ROOM, NULL);
-  g_return_val_if_fail (priv->stream_init_id != NULL, NULL);
-
-  msg = gabble_bytestream_factory_make_accept_iq (priv->peer_jid,
-      priv->stream_init_id, NS_IBB);
-
-  return msg;
-}
-
-/*
  * gabble_bytestream_ibb_accept
  *
  * Implements gabble_bytestream_iface_accept on GabbleBytestreamIface
@@ -809,5 +788,4 @@ bytestream_iface_init (gpointer g_iface,
   klass->close = gabble_bytestream_ibb_close;
   klass->accept = gabble_bytestream_ibb_accept;
   klass->get_protocol = gabble_bytestream_ibb_get_protocol;
-  klass->make_accept_iq = gabble_bytestream_ibb_make_accept_iq;
 }

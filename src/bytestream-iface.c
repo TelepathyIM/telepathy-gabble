@@ -69,15 +69,6 @@ gabble_bytestream_iface_get_protocol (GabbleBytestreamIface *self)
   return virtual_method (self);
 }
 
-LmMessage *
-gabble_bytestream_iface_make_accept_iq (GabbleBytestreamIface *self)
-{
-  LmMessage * (*virtual_method)(GabbleBytestreamIface *) =
-    GABBLE_BYTESTREAM_IFACE_GET_CLASS (self)->make_accept_iq;
-  g_assert (virtual_method != NULL);
-  return virtual_method (self);
-}
-
 GType
 gabble_bytestream_iface_get_type (void)
 {

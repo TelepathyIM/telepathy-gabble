@@ -1100,6 +1100,27 @@ gabble_tube_stream_new (GabbleConnection *conn,
       NULL);
 }
 
+static LmMessage *
+create_si_accept_iq (GabbleBytestreamIface *bytestream)
+{
+  LmMessage *msg;
+  gchar *stream_init_id, *peer_jid;
+  const gchar *protocol;
+
+  g_object_get (bytestream,
+      "stream-init-id", &stream_init_id,
+      "peer-jid", &peer_jid,
+      NULL);
+
+  protocol = gabble_bytestream_iface_get_protocol (bytestream);
+  msg = gabble_bytestream_factory_make_accept_iq (peer_jid, stream_init_id,
+      protocol);
+
+  g_free (stream_init_id);
+  g_free (peer_jid);
+  return msg;
+}
+
 /**
  * gabble_tube_stream_accept
  *
@@ -1140,14 +1161,7 @@ gabble_tube_stream_accept (GabbleTubeIface *tube)
 
       DEBUG ("accept the SI request");
 
-      msg = gabble_bytestream_iface_make_accept_iq (priv->default_bytestream);
-      if (msg == NULL)
-        {
-          DEBUG ("can't create SI accept IQ. Close the bytestream");
-          gabble_bytestream_iface_close (priv->default_bytestream);
-          return;
-        }
-
+      msg = create_si_accept_iq (priv->default_bytestream);
       si = lm_message_node_get_child_with_namespace (msg->node, "si",
           NS_SI);
       g_assert (si != NULL);
@@ -1221,14 +1235,7 @@ gabble_tube_stream_add_bytestream (GabbleTubeIface *tube,
 
       DEBUG ("accept the extra bytestream");
 
-      msg = gabble_bytestream_iface_make_accept_iq (bytestream);
-      if (msg == NULL)
-        {
-          DEBUG ("can't create SI accept IQ. Close the bytestream");
-          gabble_bytestream_iface_close (bytestream);
-          return;
-        }
-
+      msg = create_si_accept_iq (bytestream);
       si = lm_message_node_get_child_with_namespace (msg->node, "si",
           NS_SI);
       g_assert (si != NULL);

@@ -35,15 +35,15 @@ def expect_get_inital_vcard(event, data):
 
 @match('dbus-signal', signal='StatusChanged', args=[0, 1])
 def expect_connected(event, data):
-    
+
     handle = data['conn_iface'].GetSelfHandle()
     data['self_handle'] = handle
-    
+
     call_async(data['test'], avatars_iface(data['conn']),
                 'RequestAvatar', handle)
     call_async(data['test'], aliasing_iface(data['conn']),
                 'RequestAliases', [handle])
-    
+
     return True
 
 # FIXME - find out why RequestAliases returns before

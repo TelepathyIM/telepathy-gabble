@@ -251,11 +251,12 @@ def handle_get_vcard(event, data):
     # Send back current vCard
     new_iq = IQ(data['stream'], 'result')
     new_iq['id'] = iq['id']
-    new_iq.addChild(current_vcard)    
+    new_iq.addChild(current_vcard)
     data['stream'].send(new_iq)
     return True
 
 def handle_set_vcard(event, data):
+    global current_vcard
     iq = event.stanza
 
     if iq['type'] != 'set':
@@ -269,8 +270,8 @@ def handle_set_vcard(event, data):
     if vcard.name != 'vCard':
         return False
 
-    current_vcard = vcard
-    
+    current_vcard = iq.firstChildElement()
+
     new_iq = IQ(data['stream'], 'result')
     new_iq['id'] = iq['id']
     data['stream'].send(new_iq)

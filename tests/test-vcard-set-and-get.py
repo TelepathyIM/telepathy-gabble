@@ -35,7 +35,7 @@ def expect_get_inital_vcard(event, data):
 
 @match('dbus-signal', signal='StatusChanged', args=[0, 1])
 def expect_connected(event, data):
-    
+
     handle = data['conn_iface'].GetSelfHandle()
     data['self_handle'] = handle
 
@@ -69,7 +69,7 @@ def expect_set_vcard(event, data):
 def expect_avatar_error2(event, data):
     assert event.error.message == 'contact vCard has no photo'
     return True
-    
+
 # Only after we get AvatarUpdated with the new
 # token, we should be able to request new avatar
 @match('dbus-signal', signal='AvatarUpdated')
@@ -77,7 +77,7 @@ def expect_avatar_updated(event, data):
     handle = data['self_handle']
     call_async(data['test'], avatars_iface(data['conn']),
                 'RequestAvatar', handle)
-                
+
     return True
 
 @match('dbus-return', method='RequestAvatar')
@@ -90,7 +90,7 @@ def expect_avatar_error3(event, data):
 # FIXME - one possible problem with the test is that gabble might
 # be too fast for us, so set aliases will immediately get, patch, set vcard,
 # before gabble gets setavatar. So if the test hangs, this might be the cause.
-    
+
 ### TODO - more tests here
 
 

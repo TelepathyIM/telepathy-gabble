@@ -1306,19 +1306,6 @@ _gabble_connection_get_cached_alias (GabbleConnection *conn,
       goto OUT;
     }
 
-  /* if we've seen a nickname in their vCard, use that */
-  tmp = gabble_vcard_manager_get_cached_alias (conn->vcard_manager, handle);
-  if (NULL != tmp)
-    {
-      ret = GABBLE_CONNECTION_ALIAS_FROM_VCARD;
-
-      if (NULL != alias)
-        *alias = g_strdup (tmp);
-
-      goto OUT;
-    }
-
-  /* fallback to JID */
   tmp = tp_handle_inspect (contact_handles, handle);
   g_assert (NULL != tmp);
 
@@ -1327,13 +1314,25 @@ _gabble_connection_get_cached_alias (GabbleConnection *conn,
   /* MUC handles have the nickname in the resource */
   if (NULL != resource)
     {
-      ret = GABBLE_CONNECTION_ALIAS_FROM_JID;
+      ret = GABBLE_CONNECTION_ALIAS_FROM_MUC_RESOURCE;
 
       if (NULL != alias)
         {
           *alias = resource;
           resource = NULL;
         }
+
+      goto OUT;
+    }
+
+  /* if we've seen a nickname in their vCard, use that */
+  tmp = gabble_vcard_manager_get_cached_alias (conn->vcard_manager, handle);
+  if (NULL != tmp)
+    {
+      ret = GABBLE_CONNECTION_ALIAS_FROM_VCARD;
+
+      if (NULL != alias)
+        *alias = g_strdup (tmp);
 
       goto OUT;
     }

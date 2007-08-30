@@ -967,13 +967,13 @@ patch_vcard_foreach (gpointer k, gpointer v, gpointer user_data)
 
 /* Loudmouth hates me. The feelings are mutual. */
 static LmMessageNode *
-vcard_copy (LmMessage *msg, LmMessageNode *vcard_node)
+vcard_copy (LmMessageNode *parent, LmMessageNode *src)
 {
     LmMessageNode *child;
-    LmMessageNode *new = lm_message_node_add_child (msg->node, "vCard", "");
+    LmMessageNode *new = lm_message_node_add_child (parent, src->name, src->value);
 
-    for (child = vcard_node->children; child; child = child->next)
-        lm_message_node_add_child (new, child->name, child->value);
+    for (child = src->children; child; child = child->next)
+        vcard_copy (new, child);
 
     return new;
 }
@@ -1000,7 +1000,7 @@ manager_patch_vcard (GabbleVCardManager *manager,
   msg = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
       LM_MESSAGE_SUB_TYPE_SET);
 
-  patched_vcard = vcard_copy (msg, vcard_node);
+  patched_vcard = vcard_copy (msg->node, vcard_node);
 
   /* Apply any unsent edits to the patched vCard */
   g_hash_table_foreach (priv->edits, patch_vcard_foreach, patched_vcard);

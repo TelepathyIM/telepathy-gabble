@@ -35,6 +35,7 @@
 #include <telepathy-glib/interfaces.h>
 #include "debug.h"
 #include "gabble-connection.h"
+#include "bytestream-iface.h"
 #include "bytestream-ibb.h"
 #include "namespaces.h"
 #include "util.h"
@@ -84,7 +85,7 @@ bytestream_id_hash (gconstpointer v)
 }
 
 BytestreamIdentifier *
-bytestream_id_new (GabbleBytestreamIBB *bytestream)
+bytestream_id_new (GabbleBytestreamIface *bytestream)
 {
   BytestreamIdentifier *bsid = g_slice_new (BytestreamIdentifier);
 
@@ -307,7 +308,7 @@ gabble_bytestream_factory_class_init (
 
 static void
 remove_bytestream (GabbleBytestreamFactory *self,
-                   GabbleBytestreamIBB *bytestream)
+                   GabbleBytestreamIface *bytestream)
 {
   GabbleBytestreamFactoryPrivate *priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE
     (self);
@@ -523,7 +524,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
   LmMessageNode *si;
   TpHandle peer_handle, room_handle;
-  GabbleBytestreamIBB *bytestream = NULL;
+  GabbleBytestreamIface *bytestream = NULL;
   GSList *l;
   const gchar *profile, *from, *stream_id, *stream_init_id, *mime_type;
   GSList *stream_methods = NULL;
@@ -572,9 +573,10 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
        * User has to accept it */
       if (!tp_strdiff (l->data, NS_IBB))
         {
-          bytestream = gabble_bytestream_factory_create_ibb (self, peer_handle,
+          bytestream = GABBLE_BYTESTREAM_IFACE (
+              gabble_bytestream_factory_create_ibb (self, peer_handle,
               TP_HANDLE_TYPE_CONTACT, stream_id, stream_init_id, peer_resource,
-              GABBLE_BYTESTREAM_IBB_STATE_LOCAL_PENDING);
+              GABBLE_BYTESTREAM_STATE_LOCAL_PENDING));
           break;
         }
     }
@@ -639,7 +641,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
        * so the error can be made more appropriate */
       _gabble_connection_send_iq_error (priv->conn, msg,
           XMPP_ERROR_BAD_REQUEST, "request not handled anywhere");
-      gabble_bytestream_ibb_close (bytestream);
+      gabble_bytestream_iface_close (bytestream);
     }
 
 out:
@@ -697,7 +699,7 @@ handle_ibb_open_iq (GabbleBytestreamFactory *self,
       return TRUE;
     }
 
-  g_object_set (bytestream, "state", GABBLE_BYTESTREAM_IBB_STATE_OPEN,
+  g_object_set (bytestream, "state", GABBLE_BYTESTREAM_STATE_OPEN,
       NULL);
 
   _gabble_connection_acknowledge_set_iq (priv->conn, msg);
@@ -758,7 +760,7 @@ handle_ibb_close_iq (GabbleBytestreamFactory *self,
     {
       DEBUG ("received IBB close stanza. Bytestream closed");
 
-      g_object_set (bytestream, "state", GABBLE_BYTESTREAM_IBB_STATE_CLOSED,
+      g_object_set (bytestream, "state", GABBLE_BYTESTREAM_STATE_CLOSED,
           NULL);
 
       reply = lm_message_new_with_sub_type (bsid.jid, LM_MESSAGE_TYPE_IQ,
@@ -919,13 +921,13 @@ gabble_bytestream_factory_new (GabbleConnection *conn)
 }
 
 static void
-bytestream_state_changed_cb (GabbleBytestreamIBB *bytestream,
-                             GabbleBytestreamIBBState state,
+bytestream_state_changed_cb (GabbleBytestreamIface *bytestream,
+                             GabbleBytestreamState state,
                              gpointer user_data)
 {
   GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (user_data);
 
-  if (state == GABBLE_BYTESTREAM_IBB_STATE_CLOSED)
+  if (state == GABBLE_BYTESTREAM_STATE_CLOSED)
     {
       remove_bytestream (self, bytestream);
     }
@@ -949,7 +951,7 @@ gabble_bytestream_factory_create_ibb (GabbleBytestreamFactory *self,
                                       const gchar *stream_id,
                                       const gchar *stream_init_id,
                                       const gchar *peer_resource,
-                                      GabbleBytestreamIBBState state)
+                                      GabbleBytestreamState state)
 {
   GabbleBytestreamFactoryPrivate *priv;
   GabbleBytestreamIBB *ibb;
@@ -971,7 +973,7 @@ gabble_bytestream_factory_create_ibb (GabbleBytestreamFactory *self,
   g_signal_connect (ibb, "state-changed",
       G_CALLBACK (bytestream_state_changed_cb), self);
 
-  id = bytestream_id_new (ibb);
+  id = bytestream_id_new (GABBLE_BYTESTREAM_IFACE (ibb));
   if (peer_handle_type == TP_HANDLE_TYPE_ROOM)
     {
       DEBUG ("add muc bytestream <%s> from <%s>", id->stream, id->jid);
@@ -1004,7 +1006,7 @@ streaminit_reply_cb (GabbleConnection *conn,
   GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (obj);
   struct _streaminit_reply_cb_data *data =
     (struct _streaminit_reply_cb_data*) user_data;
-  GabbleBytestreamIBB *bytestream = NULL;
+  GabbleBytestreamIface *bytestream = NULL;
   gchar *peer_resource = NULL;
   LmMessageNode *si, *feature, *x, *field, *value;
   const gchar *from, *stream_method;
@@ -1085,9 +1087,10 @@ streaminit_reply_cb (GabbleConnection *conn,
   if (!tp_strdiff (stream_method, NS_IBB))
     {
       /* Remote user have accepted the stream */
-      bytestream = gabble_bytestream_factory_create_ibb (self, peer_handle,
+      bytestream = GABBLE_BYTESTREAM_IFACE (
+          gabble_bytestream_factory_create_ibb (self, peer_handle,
           TP_HANDLE_TYPE_CONTACT, data->stream_id, NULL,
-          peer_resource, GABBLE_BYTESTREAM_IBB_STATE_INITIATING);
+          peer_resource, GABBLE_BYTESTREAM_STATE_INITIATING));
     }
   else
     {
@@ -1098,7 +1101,7 @@ streaminit_reply_cb (GabbleConnection *conn,
   DEBUG ("stream %s accepted", data->stream_id);
 
   /* Let's start the initiation of the stream */
-  if (gabble_bytestream_ibb_initiation (bytestream))
+  if (gabble_bytestream_iface_initiation (bytestream))
     {
       /* FIXME: we should really only "succeed" when our <open> succeeds.
        * It only really matters from the point of view of the data->func */

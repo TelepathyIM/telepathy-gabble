@@ -25,6 +25,7 @@
 
 #include <telepathy-glib/base-connection.h>
 #include "gabble-types.h"
+#include "bytestream-iface.h"
 #include "bytestream-ibb.h"
 #include "gabble-connection.h"
 
@@ -62,7 +63,7 @@ GType gabble_bytestream_factory_get_type (void);
                               GabbleBytestreamFactoryClass))
 
 typedef void (* GabbleBytestreamFactoryNegotiateReplyFunc) (
-    GabbleBytestreamIBB *bytestream, const gchar *stream_id, LmMessage *msg,
+    GabbleBytestreamIface *bytestream, const gchar *stream_id, LmMessage *msg,
     gpointer user_data);
 
 GabbleBytestreamFactory *
@@ -72,7 +73,7 @@ GabbleBytestreamIBB *
 gabble_bytestream_factory_create_ibb (GabbleBytestreamFactory *fac,
     TpHandle peer_handle, TpHandleType peer_handle_type,
     const gchar *stream_id, const gchar *stream_init_id,
-    const gchar *peer_resource, GabbleBytestreamIBBState state);
+    const gchar *peer_resource, GabbleBytestreamState state);
 
 LmMessage *
 gabble_bytestream_factory_make_stream_init_iq (const gchar *full_jid,

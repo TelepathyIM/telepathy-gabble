@@ -36,6 +36,7 @@ TWISTED_TESTS = \
 	test-connect-fail.py \
 	test-disco.py \
 	test-muc.py \
+	test-muc-alias.py \
 	test-muc-ownership.py \
 	test-muc-properties.py \
 	test-register.py \

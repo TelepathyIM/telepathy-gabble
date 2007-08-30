@@ -825,7 +825,8 @@ observe_vcard (GabbleConnection *conn,
           gabble_vcard_manager_cache_quark (), (gchar *) NO_ALIAS, NULL);
     }
 
-  g_signal_emit (G_OBJECT (manager), signals[NICKNAME_UPDATE], 0, handle);
+  if ((old_alias != NULL) || (alias != NULL))
+      g_signal_emit (G_OBJECT (manager), signals[NICKNAME_UPDATE], 0, handle);
 }
 
 GError *
@@ -893,6 +894,9 @@ replace_reply_cb (GabbleConnection *conn,
       lm_message_node_unref (entry->vcard_node);
       entry->vcard_node = priv->patched_vcard;
       priv->patched_vcard = NULL;
+
+      /* observe it so we pick up alias updates */
+      observe_vcard (conn, manager, base->self_handle, entry->vcard_node);
 
       node = entry->vcard_node;
     }

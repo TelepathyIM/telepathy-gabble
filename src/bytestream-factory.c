@@ -1013,7 +1013,7 @@ streaminit_reply_cb (GabbleConnection *conn,
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_ROOM);
   TpHandle peer_handle = 0;
-  gboolean success;
+  gboolean success = FALSE;
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {

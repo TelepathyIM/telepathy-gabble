@@ -573,7 +573,7 @@ gabble_tube_dbus_constructor (GType type,
        * We don't create the bytestream of private D-Bus tube yet.
        * It will be when we'll receive the answer of the SI request
        */
-      GabbleBytestreamIBB *bytestream;
+      GabbleBytestreamMuc *bytestream;
       GabbleBytestreamState state;
 
       g_assert (priv->stream_id != NULL);
@@ -589,13 +589,10 @@ gabble_tube_dbus_constructor (GType type,
           state = GABBLE_BYTESTREAM_STATE_LOCAL_PENDING;
         }
 
-      bytestream = gabble_bytestream_factory_create_ibb (
+      bytestream = gabble_bytestream_factory_create_muc (
           priv->conn->bytestream_factory,
           priv->handle,
-          priv->handle_type,
           priv->stream_id,
-          NULL,
-          NULL,
           state);
 
       g_object_set (self, "bytestream", bytestream, NULL);

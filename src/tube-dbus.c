@@ -39,6 +39,7 @@
 #include "namespaces.h"
 #include "util.h"
 #include "tube-iface.h"
+#include "bytestream-iface.h"
 #include "bytestream-ibb.h"
 #include "bytestream-factory.h"
 #include "gabble-signals-marshal.h"
@@ -88,7 +89,7 @@ struct _GabbleTubeDBusPrivate
   TpHandleType handle_type;
   TpHandle self_handle;
   guint id;
-  GabbleBytestreamIBB *bytestream;
+  GabbleBytestreamIface *bytestream;
   gchar *stream_id;
   TpHandle initiator;
   gchar *service;
@@ -203,14 +204,15 @@ filter_cb (DBusConnection *conn,
               goto out;
             }
 
-          gabble_bytestream_ibb_send_to (priv->bytestream, data.handle, len,
+          gabble_bytestream_ibb_send_to (
+              GABBLE_BYTESTREAM_IBB (priv->bytestream), data.handle, len,
               marshalled);
 
           goto out;
         }
     }
 
-  gabble_bytestream_ibb_send (priv->bytestream, len, marshalled);
+  gabble_bytestream_iface_send (priv->bytestream, len, marshalled);
 
 out:
   if (marshalled != NULL)
@@ -304,7 +306,7 @@ static GabbleTubeState
 get_tube_state (GabbleTubeDBus *self)
 {
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
-  GabbleBytestreamIBBState bytestream_state;
+  GabbleBytestreamState bytestream_state;
 
   if (priv->bytestream == NULL)
     /* bytestream not yet created as we're waiting for the SI reply */
@@ -314,14 +316,14 @@ get_tube_state (GabbleTubeDBus *self)
 
   switch (bytestream_state)
     {
-      case GABBLE_BYTESTREAM_IBB_STATE_OPEN:
+      case GABBLE_BYTESTREAM_STATE_OPEN:
         return GABBLE_TUBE_STATE_OPEN;
         break;
-      case GABBLE_BYTESTREAM_IBB_STATE_LOCAL_PENDING:
-      case GABBLE_BYTESTREAM_IBB_STATE_ACCEPTED:
+      case GABBLE_BYTESTREAM_STATE_LOCAL_PENDING:
+      case GABBLE_BYTESTREAM_STATE_ACCEPTED:
         return GABBLE_TUBE_STATE_LOCAL_PENDING;
         break;
-      case GABBLE_BYTESTREAM_IBB_STATE_INITIATING:
+      case GABBLE_BYTESTREAM_STATE_INITIATING:
         return GABBLE_TUBE_STATE_REMOTE_PENDING;
         break;
       default:
@@ -331,13 +333,13 @@ get_tube_state (GabbleTubeDBus *self)
 
 static void
 bytestream_state_changed_cb (GabbleBytestreamIBB *bytestream,
-                             GabbleBytestreamIBBState state,
+                             GabbleBytestreamState state,
                              gpointer user_data)
 {
   GabbleTubeDBus *self = GABBLE_TUBE_DBUS (user_data);
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
 
-  if (state == GABBLE_BYTESTREAM_IBB_STATE_CLOSED)
+  if (state == GABBLE_BYTESTREAM_STATE_CLOSED)
     {
       if (priv->bytestream != NULL)
         {
@@ -347,7 +349,7 @@ bytestream_state_changed_cb (GabbleBytestreamIBB *bytestream,
 
       g_signal_emit (G_OBJECT (self), signals[CLOSED], 0);
     }
-  else if (state == GABBLE_BYTESTREAM_IBB_STATE_OPEN)
+  else if (state == GABBLE_BYTESTREAM_STATE_OPEN)
     {
       tube_dbus_open (self);
       g_signal_emit (G_OBJECT (self), signals[OPENED], 0);
@@ -369,7 +371,7 @@ gabble_tube_dbus_dispose (GObject *object)
 
   if (priv->bytestream)
     {
-      gabble_bytestream_ibb_close (priv->bytestream);
+      gabble_bytestream_iface_close (priv->bytestream);
     }
 
   if (priv->dbus_conn)
@@ -503,13 +505,13 @@ gabble_tube_dbus_set_property (GObject *object,
       case PROP_BYTESTREAM:
         if (priv->bytestream == NULL)
           {
-            GabbleBytestreamIBBState state;
+            GabbleBytestreamState state;
 
             priv->bytestream = g_value_get_object (value);
             g_object_ref (priv->bytestream);
 
             g_object_get (priv->bytestream, "state", &state, NULL);
-            if (state == GABBLE_BYTESTREAM_IBB_STATE_OPEN)
+            if (state == GABBLE_BYTESTREAM_STATE_OPEN)
               {
                 tube_dbus_open (self);
               }
@@ -572,19 +574,19 @@ gabble_tube_dbus_constructor (GType type,
        * It will be when we'll receive the answer of the SI request
        */
       GabbleBytestreamIBB *bytestream;
-      GabbleBytestreamIBBState state;
+      GabbleBytestreamState state;
 
       g_assert (priv->stream_id != NULL);
 
       if (priv->initiator == priv->self_handle)
         {
           /* We create this tube, bytestream is open */
-          state = GABBLE_BYTESTREAM_IBB_STATE_OPEN;
+          state = GABBLE_BYTESTREAM_STATE_OPEN;
         }
       else
         {
           /* We don't create this tube, bytestream is local pending */
-          state = GABBLE_BYTESTREAM_IBB_STATE_LOCAL_PENDING;
+          state = GABBLE_BYTESTREAM_STATE_LOCAL_PENDING;
         }
 
       bytestream = gabble_bytestream_factory_create_ibb (
@@ -684,10 +686,10 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
 
   param_spec = g_param_spec_object (
       "bytestream",
-      "GabbleBytestreamIBB object",
-      "Gabble bytestream IBB object used for streaming data for this D-Bus"
+      "Object implementing the GabbleBytestreamIface interface",
+      "Bytestream object used for streaming data for this D-Bus"
       "tube object.",
-      GABBLE_TYPE_BYTESTREAM_IBB,
+      G_TYPE_OBJECT,
       G_PARAM_READWRITE |
       G_PARAM_STATIC_NAME |
       G_PARAM_STATIC_NICK |
@@ -896,7 +898,7 @@ gabble_tube_dbus_new (GabbleConnection *conn,
                       GHashTable *parameters,
                       const gchar *stream_id,
                       guint id,
-                      GabbleBytestreamIBB *bytestream)
+                      GabbleBytestreamIface *bytestream)
 {
   GabbleTubeDBus *tube = g_object_new (GABBLE_TYPE_TUBE_DBUS,
       "connection", conn,
@@ -926,7 +928,7 @@ gabble_tube_dbus_accept (GabbleTubeIface *tube)
 {
   GabbleTubeDBus *self = GABBLE_TUBE_DBUS (tube);
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
-  GabbleBytestreamIBBState state;
+  GabbleBytestreamState state;
   gchar *stream_init_id;
 
   g_assert (priv->bytestream != NULL);
@@ -935,7 +937,7 @@ gabble_tube_dbus_accept (GabbleTubeIface *tube)
       "state", &state,
       NULL);
 
-  if (state != GABBLE_BYTESTREAM_IBB_STATE_LOCAL_PENDING)
+  if (state != GABBLE_BYTESTREAM_STATE_LOCAL_PENDING)
     return;
 
   g_object_get (priv->bytestream,
@@ -951,7 +953,7 @@ gabble_tube_dbus_accept (GabbleTubeIface *tube)
 
       DEBUG ("accept the SI request");
 
-      msg = gabble_bytestream_ibb_make_accept_iq (priv->bytestream);
+      msg = gabble_bytestream_iface_make_accept_iq (priv->bytestream);
       g_assert (msg != NULL);
 
       si = lm_message_node_get_child_with_namespace (msg->node, "si",
@@ -964,7 +966,7 @@ gabble_tube_dbus_accept (GabbleTubeIface *tube)
       lm_message_node_add_child (tube_node, "dbus-name",
           priv->dbus_local_name);
 
-      gabble_bytestream_ibb_accept (priv->bytestream, msg);
+      gabble_bytestream_iface_accept (priv->bytestream, msg);
 
       lm_message_unref (msg);
       g_free (stream_init_id);
@@ -974,7 +976,7 @@ gabble_tube_dbus_accept (GabbleTubeIface *tube)
       /* No SI so the bytestream is open */
       DEBUG ("no SI, bytestream open");
       g_object_set (priv->bytestream,
-          "state", GABBLE_BYTESTREAM_IBB_STATE_OPEN,
+          "state", GABBLE_BYTESTREAM_STATE_OPEN,
           NULL);
     }
 }
@@ -992,7 +994,7 @@ gabble_tube_dbus_close (GabbleTubeIface *tube)
 
   if (priv->bytestream != NULL)
     {
-      gabble_bytestream_ibb_close (priv->bytestream);
+      gabble_bytestream_iface_close (priv->bytestream);
     }
   else
     {
@@ -1005,13 +1007,12 @@ gabble_tube_dbus_close (GabbleTubeIface *tube)
  *
  * Implements gabble_tube_iface_add_bytestream on GabbleTubeIface
  */
-
 static void
 gabble_tube_dbus_add_bytestream (GabbleTubeIface *tube,
-                                 GabbleBytestreamIBB *bytestream)
+                                 GabbleBytestreamIface *bytestream)
 {
   DEBUG ("D-Bus doesn't support extra bytestream");
-  gabble_bytestream_ibb_close (bytestream);
+  gabble_bytestream_iface_close (bytestream);
 }
 
 static void

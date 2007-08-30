@@ -15,5 +15,3 @@ dist-hook:
 
 check-twisted: all
 	$(MAKE) -C tests check-twisted
-check-extra: check
-	$(MAKE) -C tests check-extra

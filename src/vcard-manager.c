@@ -914,7 +914,7 @@ replace_reply_cb (GabbleConnection *conn,
           gabble_vcard_manager_remove_edit_request (req);
         }
     }
-  
+
   if (err != NULL)
     g_error_free (err);
 }
@@ -988,7 +988,7 @@ manager_patch_vcard (GabbleVCardManager *manager,
   GList *li;
 
   g_assert (priv->edits != NULL);
-  
+
   /* There can be only one SET request at any given time,
    * because XMPP server will process requests sequentially.
    * This function can only be called when GET request for
@@ -1109,7 +1109,7 @@ pipeline_reply_cb (GabbleConnection *conn,
       DEBUG("will patch vcard");
       manager_patch_vcard (manager, vcard_node);
     }
-  
+
   /* Observe the vCard as it goes past */
   observe_vcard (priv->connection, manager, entry->handle, vcard_node);
 

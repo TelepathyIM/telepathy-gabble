@@ -48,7 +48,6 @@ TWISTED_TESTS = \
 	test-text.py \
 	test-text-delayed.py \
 	test-vcard-race.py \
-	test-google-roster.py \
 	test-avatar-tokens.py \
 	test-vcard-cache.py \
 	test-vcard-set-and-get.py

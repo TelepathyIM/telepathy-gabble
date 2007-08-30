@@ -27,6 +27,8 @@ libgabble_convenience_la_our_sources = \
     bytestream-factory.c \
     bytestream-ibb.h \
     bytestream-ibb.c \
+    bytestream-iface.h \
+    bytestream-iface.c \
     conn-aliasing.h \
     conn-aliasing.c \
     conn-avatars.h \

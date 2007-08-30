@@ -41,9 +41,9 @@ gabble_tube_iface_close (GabbleTubeIface *self)
 
 void
 gabble_tube_iface_add_bytestream (GabbleTubeIface *self,
-                                  GabbleBytestreamIBB *bytestream)
+                                  GabbleBytestreamIface *bytestream)
 {
-  void (*virtual_method)(GabbleTubeIface *, GabbleBytestreamIBB *) =
+  void (*virtual_method)(GabbleTubeIface *, GabbleBytestreamIface *) =
     GABBLE_TUBE_IFACE_GET_CLASS (self)->add_bytestream;
   g_assert (virtual_method != NULL);
   virtual_method (self, bytestream);

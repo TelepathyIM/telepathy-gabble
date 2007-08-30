@@ -63,7 +63,7 @@ G_STMT_START { \
 
 #ifdef DEBUG_FLAG
 
-#define DEBUG(format, ...)
+#define DEBUG(format, ...) do { } while (0);
 
 #define DEBUGGING 0
 

@@ -27,22 +27,6 @@
 
 G_BEGIN_DECLS
 
-typedef enum
-{
-  /* Received a SI request, response not yet sent */
-  GABBLE_BYTESTREAM_IBB_STATE_LOCAL_PENDING = 0,
-  /* We accepted SI request.
-   * bytestream specific init steps not yet performed */
-  GABBLE_BYTESTREAM_IBB_STATE_ACCEPTED,
-  /* Remote contact accepted the SI request.
-   * bytestream specific initiation started */
-  GABBLE_BYTESTREAM_IBB_STATE_INITIATING,
-  /* Bytestream open */
-  GABBLE_BYTESTREAM_IBB_STATE_OPEN,
-  GABBLE_BYTESTREAM_IBB_STATE_CLOSED,
-  LAST_GABBLE_BYTESTREAM_IBB_STATE,
-} GabbleBytestreamIBBState;
-
 typedef struct _GabbleBytestreamIBB GabbleBytestreamIBB;
 typedef struct _GabbleBytestreamIBBClass GabbleBytestreamIBBClass;
 
@@ -75,24 +59,8 @@ GType gabble_bytestream_ibb_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_BYTESTREAM_IBB,\
                               GabbleBytestreamIBBClass))
 
-gboolean
-gabble_bytestream_ibb_initiation (GabbleBytestreamIBB *ibb);
-
-gboolean
-gabble_bytestream_ibb_send (GabbleBytestreamIBB *ibb, guint len,
-   gchar *str);
-
-void
-gabble_bytestream_ibb_close (GabbleBytestreamIBB *ibb);
-
 void gabble_bytestream_ibb_receive (GabbleBytestreamIBB *ibb,
    LmMessage *msg, gboolean is_iq);
-
-LmMessage *
-gabble_bytestream_ibb_make_accept_iq (GabbleBytestreamIBB *ibb);
-
-void
-gabble_bytestream_ibb_accept (GabbleBytestreamIBB *ibb, LmMessage *msg);
 
 gboolean
 gabble_bytestream_ibb_send_to (GabbleBytestreamIBB *ibb, TpHandle to,

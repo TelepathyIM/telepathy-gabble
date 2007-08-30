@@ -64,7 +64,7 @@ def expect_aliases_return1(event, data):
 # We don't have a vCard yet
 @match('dbus-error', method='RequestAvatar')
 def expect_avatar_error1(event, data):
-    assert event.error.message == 'contact vCard has no photo'
+    assert event.error.args[0] == 'contact vCard has no photo'
     data['conn_iface'].Disconnect()
     return True
 

@@ -67,7 +67,7 @@ def expect_set_vcard(event, data):
 # We *still* don't have photo in the vCard
 @match('dbus-error', method='RequestAvatar')
 def expect_avatar_error2(event, data):
-    assert event.error.message == 'contact vCard has no photo'
+    assert event.error.args[0] == 'contact vCard has no photo'
     return True
 
 # Only after we get AvatarUpdated with the new

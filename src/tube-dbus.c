@@ -186,7 +186,7 @@ filter_cb (DBusConnection *conn,
   if (!dbus_message_marshal (msg, &marshalled, &len))
     goto out;
 
-  if (GABBLE_IS_BYTESTREAM_IBB (priv->bytestream))
+  if (GABBLE_IS_BYTESTREAM_MUC (priv->bytestream))
     {
       /* This bytestream support direct send */
       const gchar *dest;
@@ -204,8 +204,8 @@ filter_cb (DBusConnection *conn,
               goto out;
             }
 
-          gabble_bytestream_ibb_send_to (
-              GABBLE_BYTESTREAM_IBB (priv->bytestream), data.handle, len,
+          gabble_bytestream_muc_send_to (
+              GABBLE_BYTESTREAM_MUC (priv->bytestream), data.handle, len,
               marshalled);
 
           goto out;

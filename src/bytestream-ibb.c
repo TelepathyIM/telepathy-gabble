@@ -81,7 +81,6 @@ struct _GabbleBytestreamIBBPrivate
 {
   GabbleConnection *conn;
   TpHandle peer_handle;
-  TpHandleType peer_handle_type;
   gchar *stream_id;
   gchar *stream_init_id;
   gchar *peer_resource;
@@ -128,13 +127,8 @@ gabble_bytestream_ibb_finalize (GObject *object)
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
 
   g_free (priv->stream_id);
-
-  if (priv->stream_init_id)
-    g_free (priv->stream_init_id);
-
-  if (priv->peer_resource)
-    g_free (priv->peer_resource);
-
+  g_free (priv->stream_init_id);
+  g_free (priv->peer_resource);
   g_free (priv->peer_jid);
 
   G_OBJECT_CLASS (gabble_bytestream_ibb_parent_class)->finalize (object);
@@ -158,7 +152,7 @@ gabble_bytestream_ibb_get_property (GObject *object,
         g_value_set_uint (value, priv->peer_handle);
         break;
       case PROP_PEER_HANDLE_TYPE:
-        g_value_set_uint (value, priv->peer_handle_type);
+        g_value_set_uint (value, TP_HANDLE_TYPE_CONTACT);
         break;
       case PROP_STREAM_ID:
         g_value_set_string (value, priv->stream_id);
@@ -198,9 +192,6 @@ gabble_bytestream_ibb_set_property (GObject *object,
       case PROP_PEER_HANDLE:
         priv->peer_handle = g_value_get_uint (value);
         break;
-      case PROP_PEER_HANDLE_TYPE:
-        priv->peer_handle_type = g_value_get_uint (value);
-        break;
       case PROP_STREAM_ID:
         g_free (priv->stream_id);
         priv->stream_id = g_value_dup_string (value);
@@ -233,6 +224,8 @@ gabble_bytestream_ibb_constructor (GType type,
 {
   GObject *obj;
   GabbleBytestreamIBBPrivate *priv;
+  TpHandleRepoIface *contact_repo;
+  const gchar *jid;
 
   obj = G_OBJECT_CLASS (gabble_bytestream_ibb_parent_class)->
            constructor (type, n_props, props);
@@ -241,32 +234,17 @@ gabble_bytestream_ibb_constructor (GType type,
 
   g_assert (priv->conn != NULL);
   g_assert (priv->peer_handle != 0);
+  g_assert (priv->stream_id != NULL);
 
-  if (priv->peer_handle_type == TP_HANDLE_TYPE_ROOM)
-    {
-      TpHandleRepoIface *room_repo;
+  contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 
-      room_repo = tp_base_connection_get_handles (
-          (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
+  jid = tp_handle_inspect (contact_repo, priv->peer_handle);
 
-      priv->peer_jid = g_strdup (tp_handle_inspect (room_repo,
-            priv->peer_handle));
-    }
+  if (priv->peer_resource != NULL)
+    priv->peer_jid = g_strdup_printf ("%s/%s", jid, priv->peer_resource);
   else
-    {
-      TpHandleRepoIface *contact_repo;
-      const gchar *jid;
-
-      contact_repo = tp_base_connection_get_handles (
-          (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-
-      jid = tp_handle_inspect (contact_repo, priv->peer_handle);
-
-      if (priv->peer_resource != NULL)
-        priv->peer_jid = g_strdup_printf ("%s/%s", jid, priv->peer_resource);
-      else
-        priv->peer_jid = g_strdup (jid);
-    }
+    priv->peer_jid = g_strdup (jid);
 
   return obj;
 }
@@ -317,8 +295,7 @@ gabble_bytestream_ibb_class_init (
       "Peer handle type",
       "The TpHandleType of the remote peer's associated handle",
       0, G_MAXUINT32, 0,
-      G_PARAM_CONSTRUCT_ONLY |
-      G_PARAM_READWRITE |
+      G_PARAM_READABLE |
       G_PARAM_STATIC_NAME |
       G_PARAM_STATIC_NICK |
       G_PARAM_STATIC_BLURB);
@@ -407,7 +384,7 @@ gabble_bytestream_ibb_class_init (
                   G_TYPE_NONE, 1, G_TYPE_UINT);
 }
 
-gboolean
+static gboolean
 send_data_to (GabbleBytestreamIBB *self,
               const gchar *to,
               gboolean groupchat,
@@ -476,12 +453,8 @@ gabble_bytestream_ibb_send (GabbleBytestreamIface *iface,
 {
   GabbleBytestreamIBB *self = GABBLE_BYTESTREAM_IBB (iface);
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
-  gboolean groupchat = FALSE;
 
-  if (priv->peer_handle_type == TP_HANDLE_TYPE_ROOM)
-    groupchat = TRUE;
-
-  return send_data_to (self, priv->peer_jid, groupchat, len, str);
+  return send_data_to (self, priv->peer_jid, FALSE, len, str);
 }
 
 void
@@ -509,38 +482,11 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
       return;
     }
 
-  if (priv->peer_handle_type == TP_HANDLE_TYPE_ROOM)
-    {
-      /* multi users stream */
-      TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-          (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-      const gchar *from = lm_message_node_get_attribute (msg->node, "from");
+  /* Private stream using SI - the bytestream factory has already checked
+   * the sender in order to dispatch to us */
+  sender = priv->peer_handle;
 
-      /* MUC stream using pseudo-IBB - the sender is required to be a
-       * MUC-JID, and it's required to be a <message> (both checked by caller)
-       */
-      g_return_if_fail (from != NULL);
-      sender = tp_handle_lookup (contact_repo, from,
-          GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
-
-      if (sender == 0)
-        {
-          DEBUG ("ignoring data in MUC from unknown contact %s", from);
-          g_return_if_fail (!is_iq);
-          return;
-        }
-
-      /* XXX: currently we ignore the sequence number because we don't have
-       * any sane semantics for what seqno to send */
-    }
-  else
-    {
-      /* Private stream using SI - the bytestream factory has already checked
-       * the sender in order to dispatch to us */
-      sender = priv->peer_handle;
-
-      /* FIXME: check sequence number */
-    }
+  /* FIXME: check sequence number */
 
   str = base64_decode (lm_message_node_get_value (data));
   g_signal_emit (G_OBJECT (self), signals[DATA_RECEIVED], 0, sender, str);
@@ -569,13 +515,6 @@ gabble_bytestream_ibb_accept (GabbleBytestreamIface *iface, LmMessage *msg)
       return;
     }
 
-  if (priv->peer_handle_type == TP_HANDLE_TYPE_ROOM ||
-      priv->stream_init_id == NULL)
-    {
-      DEBUG ("can't accept a bytestream not created due to a SI request");
-      return;
-    }
-
   if (_gabble_connection_send (priv->conn, msg, NULL))
     {
       priv->state = GABBLE_BYTESTREAM_STATE_ACCEPTED;
@@ -592,13 +531,6 @@ gabble_bytestream_ibb_decline (GabbleBytestreamIBB *self)
     {
       DEBUG ("bytestream is not in the local pending state (state %d)",
           priv->state);
-      return;
-    }
-
-  if (priv->peer_handle_type == TP_HANDLE_TYPE_ROOM ||
-      priv->stream_init_id == NULL)
-    {
-      DEBUG ("can't decline a bytestream not created due to a SI request");
       return;
     }
 
@@ -627,14 +559,10 @@ gabble_bytestream_ibb_close (GabbleBytestreamIface *iface)
 
   if (priv->state == GABBLE_BYTESTREAM_STATE_LOCAL_PENDING)
     {
-      if (priv->stream_init_id != NULL)
-        {
-          /* Stream was created using SI so we decline the request */
-          gabble_bytestream_ibb_decline (self);
-        }
+      /* Stream was created using SI so we decline the request */
+      gabble_bytestream_ibb_decline (self);
     }
-
-  else if (priv->peer_handle_type == TP_HANDLE_TYPE_CONTACT)
+  else
     {
       /* XXX : Does it make sense to send a close message in a
        * muc bytestream ? */
@@ -668,25 +596,18 @@ gabble_bytestream_ibb_send_to (GabbleBytestreamIBB *self,
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   const gchar *to;
 
-  if (priv->peer_handle_type == TP_HANDLE_TYPE_CONTACT)
+  /* Private stream */
+  if (priv->peer_handle != contact)
     {
-      /* Private stream */
-      if (priv->peer_handle != contact)
-        {
-          to = tp_handle_inspect (contact_repo, contact);
+      to = tp_handle_inspect (contact_repo, contact);
 
-          DEBUG ("This bytestream can't be used to send data"
-              "to this contact: %s", to);
-          return FALSE;
-        }
-
-      return gabble_bytestream_ibb_send (GABBLE_BYTESTREAM_IFACE (self), len,
-          str);
+      DEBUG ("This bytestream can't be used to send data"
+          "to this contact: %s", to);
+      return FALSE;
     }
 
-  to = tp_handle_inspect (contact_repo, contact);
-
-  return send_data_to (self, to, FALSE, len, str);
+  return gabble_bytestream_ibb_send (GABBLE_BYTESTREAM_IFACE (self), len,
+      str);
 }
 
 static LmHandlerResult
@@ -729,18 +650,6 @@ gabble_bytestream_ibb_initiation (GabbleBytestreamIface *iface)
     {
       DEBUG ("bytestream is not is the initiating state (state %d",
           priv->state);
-      return FALSE;
-    }
-
-  if (priv->peer_handle_type != TP_HANDLE_TYPE_CONTACT)
-    {
-      DEBUG ("Can only initiate a private bytestream");
-      return FALSE;
-    }
-
-  if (priv->stream_id == NULL)
-    {
-      DEBUG ("stream doesn't have an ID");
       return FALSE;
     }
 

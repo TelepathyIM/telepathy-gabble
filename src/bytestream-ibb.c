@@ -384,13 +384,17 @@ gabble_bytestream_ibb_class_init (
                   G_TYPE_NONE, 1, G_TYPE_UINT);
 }
 
+/*
+ * gabble_bytestream_ibb_send
+ *
+ * Implements gabble_bytestream_iface_send on GabbleBytestreamIface
+ */
 static gboolean
-send_data_to (GabbleBytestreamIBB *self,
-              const gchar *to,
-              gboolean groupchat,
-              guint len,
-              gchar *str)
+gabble_bytestream_ibb_send (GabbleBytestreamIface *iface,
+                            guint len,
+                            gchar *str)
 {
+  GabbleBytestreamIBB *self = GABBLE_BYTESTREAM_IBB (iface);
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
   LmMessage *msg;
   gchar *seq, *encoded;
@@ -404,10 +408,9 @@ send_data_to (GabbleBytestreamIBB *self,
     }
 
   seq = g_strdup_printf ("%u", priv->seq++);
-
   encoded = base64_encode (len, str);
 
-  msg = lm_message_build (to, LM_MESSAGE_TYPE_MESSAGE,
+  msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_MESSAGE,
       '(', "data", encoded,
         '@', "xmlns", NS_IBB,
         '@', "sid", priv->stream_id,
@@ -427,10 +430,6 @@ send_data_to (GabbleBytestreamIBB *self,
         ')',
       ')', NULL);
 
-  if (groupchat)
-    {
-      lm_message_node_set_attribute (msg->node, "type", "groupchat");
-    }
 
   ret = _gabble_connection_send (priv->conn, msg, NULL);
 
@@ -439,22 +438,6 @@ send_data_to (GabbleBytestreamIBB *self,
   g_free (seq);
 
   return ret;
-}
-
-/*
- * gabble_bytestream_ibb_send
- *
- * Implements gabble_bytestream_iface_send on GabbleBytestreamIface
- */
-static gboolean
-gabble_bytestream_ibb_send (GabbleBytestreamIface *iface,
-                            guint len,
-                            gchar *str)
-{
-  GabbleBytestreamIBB *self = GABBLE_BYTESTREAM_IBB (iface);
-  GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
-
-  return send_data_to (self, priv->peer_jid, FALSE, len, str);
 }
 
 void
@@ -583,31 +566,6 @@ gabble_bytestream_ibb_close (GabbleBytestreamIface *iface)
     }
 
   g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
-}
-
-gboolean
-gabble_bytestream_ibb_send_to (GabbleBytestreamIBB *self,
-                               TpHandle contact,
-                               guint len,
-                               gchar *str)
-{
-  GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-  const gchar *to;
-
-  /* Private stream */
-  if (priv->peer_handle != contact)
-    {
-      to = tp_handle_inspect (contact_repo, contact);
-
-      DEBUG ("This bytestream can't be used to send data"
-          "to this contact: %s", to);
-      return FALSE;
-    }
-
-  return gabble_bytestream_ibb_send (GABBLE_BYTESTREAM_IFACE (self), len,
-      str);
 }
 
 static LmHandlerResult

@@ -714,9 +714,9 @@ ibb_init_reply_cb (GabbleConnection *conn,
 }
 
 /*
- * gabll_bytestream_ibb_initiation
+ * gabble_bytestream_ibb_initiation
  *
- * Implements gibber_bytestream_iface_initiation on GabbleBytestreamIface
+ * Implements gabble_bytestream_iface_initiation on GabbleBytestreamIface
  */
 static gboolean
 gabble_bytestream_ibb_initiation (GabbleBytestreamIface *iface)

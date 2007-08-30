@@ -22,7 +22,7 @@
 
 #include <glib-object.h>
 
-#include "bytestream-ibb.h"
+#include "bytestream-iface.h"
 #include "gabble-types.h"
 
 G_BEGIN_DECLS
@@ -58,7 +58,7 @@ GType gabble_muc_factory_get_type (void);
                               GabbleMucFactoryClass))
 
 gboolean gabble_muc_factory_handle_si_request (GabbleMucFactory *self,
-    GabbleBytestreamIBB *bytestream, TpHandle room_handle,
+    GabbleBytestreamIface *bytestream, TpHandle room_handle,
     const gchar *stream_id, LmMessage *msg);
 
 GabbleMucChannel *gabble_muc_factory_find_channel (GabbleMucFactory *factory,

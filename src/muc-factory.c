@@ -1185,7 +1185,7 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
 
 gboolean
 gabble_muc_factory_handle_si_request (GabbleMucFactory *self,
-                                      GabbleBytestreamIBB *bytestream,
+                                      GabbleBytestreamIface *bytestream,
                                       TpHandle room_handle,
                                       const gchar *stream_id,
                                       LmMessage *msg)

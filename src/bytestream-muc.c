@@ -402,7 +402,7 @@ send_data_to (GabbleBytestreamMuc *self,
   GabbleBytestreamMucPrivate *priv = GABBLE_BYTESTREAM_MUC_GET_PRIVATE (self);
   LmMessage *msg;
   guint sent, stanza_count;
-  LmMessageNode *data;
+  LmMessageNode *data = NULL;
   guint frag;
 
   if (priv->state != GABBLE_BYTESTREAM_STATE_OPEN)
@@ -414,6 +414,7 @@ send_data_to (GabbleBytestreamMuc *self,
 
   msg = lm_message_build (to, LM_MESSAGE_TYPE_MESSAGE,
       '(', "data", "",
+        '*', &data,
         '@', "xmlns", NS_MUC_BYTESTREAM,
         '@', "sid", priv->stream_id,
       ')',
@@ -431,8 +432,6 @@ send_data_to (GabbleBytestreamMuc *self,
         ')',
       ')', NULL);
 
-  data = lm_message_node_get_child_with_namespace (msg->node, "data",
-      NS_MUC_BYTESTREAM);
   g_assert (data != NULL);
 
   if (groupchat)

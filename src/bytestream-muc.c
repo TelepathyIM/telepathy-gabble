@@ -44,6 +44,9 @@
 #include "namespaces.h"
 #include "util.h"
 
+/* 64k is probably a really big default value as XEP 0047 recommends 4k  */
+#define MAX_BLOCK_SIZE (1024 * 64)
+
 static void
 bytestream_iface_init (gpointer g_iface, gpointer iface_data);
 
@@ -85,10 +88,18 @@ struct _GabbleBytestreamMucPrivate
   gchar *stream_id;
   GabbleBytestreamState state;
   gchar *peer_jid;
+  /* (gchar *) -> GString */
+  GHashTable *buffers;
 };
 
 #define GABBLE_BYTESTREAM_MUC_GET_PRIVATE(obj) \
     ((GabbleBytestreamMucPrivate *) obj->priv)
+
+static void
+free_buffer (GString *buffer)
+{
+  g_string_free (buffer, TRUE);
+}
 
 static void
 gabble_bytestream_muc_init (GabbleBytestreamMuc *self)
@@ -97,6 +108,8 @@ gabble_bytestream_muc_init (GabbleBytestreamMuc *self)
       GABBLE_TYPE_BYTESTREAM_MUC, GabbleBytestreamMucPrivate);
 
   self->priv = priv;
+  priv->buffers = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
+      (GDestroyNotify) free_buffer);
 }
 
 static void
@@ -121,6 +134,12 @@ gabble_bytestream_muc_finalize (GObject *object)
 
   g_free (priv->stream_id);
   g_free (priv->peer_jid);
+
+  if (priv->buffers != NULL)
+    {
+      g_hash_table_destroy (priv->buffers);
+      priv->buffers = NULL;
+    }
 
   G_OBJECT_CLASS (gabble_bytestream_muc_parent_class)->finalize (object);
 }
@@ -360,6 +379,14 @@ gabble_bytestream_muc_class_init (
                   G_TYPE_NONE, 1, G_TYPE_UINT);
 }
 
+enum
+{
+  FRAG_NONE = 0,
+  FRAG_FIRST,
+  FRAG_MIDDLE,
+  FRAG_LAST
+};
+
 static gboolean
 send_data_to (GabbleBytestreamMuc *self,
               const gchar *to,
@@ -369,8 +396,9 @@ send_data_to (GabbleBytestreamMuc *self,
 {
   GabbleBytestreamMucPrivate *priv = GABBLE_BYTESTREAM_MUC_GET_PRIVATE (self);
   LmMessage *msg;
-  gchar *encoded;
-  gboolean ret;
+  guint sent, stanza_count;
+  LmMessageNode *data;
+  guint frag;
 
   if (priv->state != GABBLE_BYTESTREAM_STATE_OPEN)
     {
@@ -379,10 +407,8 @@ send_data_to (GabbleBytestreamMuc *self,
       return FALSE;
     }
 
-  encoded = base64_encode (len, str);
-
   msg = lm_message_build (to, LM_MESSAGE_TYPE_MESSAGE,
-      '(', "data", encoded,
+      '(', "data", "",
         '@', "xmlns", NS_MUC_BYTESTREAM,
         '@', "sid", priv->stream_id,
       ')',
@@ -400,17 +426,82 @@ send_data_to (GabbleBytestreamMuc *self,
         ')',
       ')', NULL);
 
+  data = lm_message_node_get_child_with_namespace (msg->node, "data",
+      NS_MUC_BYTESTREAM);
+  g_assert (data != NULL);
+
   if (groupchat)
     {
       lm_message_node_set_attribute (msg->node, "type", "groupchat");
     }
 
-  ret = _gabble_connection_send (priv->conn, msg, NULL);
+  sent = 0;
+  stanza_count = 0;
+  while (sent < len)
+    {
+      gboolean ret;
+      gchar *encoded;
+      guint send_now;
+      GError *error = NULL;
+
+      if ((len - sent) > MAX_BLOCK_SIZE)
+        {
+          /* We can't send all the remaining data in one stanza */
+          send_now = MAX_BLOCK_SIZE;
+
+          if (stanza_count == 0)
+            frag = FRAG_FIRST;
+          else
+            frag = FRAG_MIDDLE;
+        }
+      else
+        {
+          /* Send all the remaining data */
+          send_now = (len - sent);
+
+          if (stanza_count == 0)
+            frag = FRAG_NONE;
+          else
+            frag = FRAG_LAST;
+        }
+
+      encoded = base64_encode (send_now, str + sent);
+      lm_message_node_set_value (data, encoded);
+
+      switch (frag)
+        {
+          case FRAG_FIRST:
+            lm_message_node_set_attribute (data, "frag", "first");
+            break;
+          case FRAG_MIDDLE:
+            lm_message_node_set_attribute (data, "frag", "middle");
+            break;
+          case FRAG_LAST:
+            lm_message_node_set_attribute (data, "frag", "last");
+            break;
+        }
+
+      DEBUG ("send %d bytes", send_now);
+      ret = _gabble_connection_send (priv->conn, msg, &error);
+
+      g_free (encoded);
+
+      if (!ret)
+        {
+          DEBUG ("error sending pseusdo IBB Muc stanza: %s", error->message);
+          g_error_free (error);
+          lm_message_unref (msg);
+          return FALSE;
+        }
+
+      sent += send_now;
+      stanza_count++;
+    }
+
+  DEBUG ("finished to send %d bytes (%d stanzas needed)", len, stanza_count);
 
   lm_message_unref (msg);
-  g_free (encoded);
-
-  return ret;
+  return TRUE;
 }
 
 /*
@@ -440,6 +531,10 @@ gabble_bytestream_muc_receive (GabbleBytestreamMuc *self,
   LmMessageNode *data;
   GString *str;
   TpHandle sender;
+  GString *buffer;
+  const gchar *frag_val;
+  guint frag;
+  gboolean fully_received = FALSE;
 
   /* caller must have checked for this in order to know which bytestream to
    * route this packet to */
@@ -465,11 +560,93 @@ gabble_bytestream_muc_receive (GabbleBytestreamMuc *self,
       return;
     }
 
-  str = base64_decode (lm_message_node_get_value (data));
-  g_signal_emit (G_OBJECT (self), signals[DATA_RECEIVED], 0, sender, str);
-  g_string_free (str, TRUE);
+  frag_val = lm_message_node_get_attribute (data, "frag");
+  if (frag_val == NULL)
+    frag = FRAG_NONE;
+  else if (!tp_strdiff (frag_val, "first"))
+    frag = FRAG_FIRST;
+  else if (!tp_strdiff (frag_val, "middle"))
+    frag = FRAG_MIDDLE;
+  else if (!tp_strdiff (frag_val, "last"))
+    frag = FRAG_LAST;
+  else
+    {
+      DEBUG ("Invalid frag value: %s", frag_val);
+      return;
+    }
 
-  return;
+  str = base64_decode (lm_message_node_get_value (data));
+
+  buffer = g_hash_table_lookup (priv->buffers, from);
+
+  if (frag == FRAG_NONE)
+    {
+      if (buffer != NULL)
+        {
+          DEBUG ("Drop incomplete buffer of %s. "
+              "Received new unfragmented data", from);
+          g_hash_table_remove (priv->buffers, from);
+        }
+
+      fully_received = TRUE;
+    }
+
+  else if (frag == FRAG_FIRST)
+    {
+      if (buffer != NULL)
+        {
+          DEBUG ("Drop incomplete buffer of %s. "
+              "Received first part of new data", from);
+          g_hash_table_remove (priv->buffers, from);
+        }
+      else
+        {
+          DEBUG ("New buffer for %s", from);
+        }
+
+      g_hash_table_insert (priv->buffers, g_strdup (from), str);
+    }
+
+  else if (frag == FRAG_MIDDLE)
+    {
+      if (buffer == NULL)
+        {
+          DEBUG ("Drop middle part stanza from %s, first parts not buffered",
+              from);
+        }
+      else
+        {
+          DEBUG ("Append data to buffer of %s (%d bytes)", from, str->len);
+          g_string_append_len (buffer, str->str, str->len);
+        }
+
+      g_string_free (str, TRUE);
+    }
+
+  else if (frag == FRAG_LAST)
+    {
+      if (buffer == NULL)
+          {
+            DEBUG ("Drop last part stanza from %s, first parts not buffered",
+                from);
+            g_string_free (str, TRUE);
+          }
+      else
+        {
+          DEBUG ("Received last part from %s, buffer flushed", from);
+          g_string_prepend_len (str, buffer->str, buffer->len);
+          g_hash_table_remove (priv->buffers, from);
+          fully_received = TRUE;
+        }
+    }
+
+  if (fully_received)
+    {
+      DEBUG ("fully received %d bytes of data", str->len);
+      g_signal_emit (G_OBJECT (self), signals[DATA_RECEIVED], 0, sender,
+          str);
+      g_string_free (str, TRUE);
+    }
 }
 
 /*

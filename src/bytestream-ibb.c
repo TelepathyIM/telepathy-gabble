@@ -547,8 +547,6 @@ gabble_bytestream_ibb_close (GabbleBytestreamIface *iface)
     }
   else
     {
-      /* XXX : Does it make sense to send a close message in a
-       * muc bytestream ? */
       LmMessage *msg;
 
       DEBUG ("send IBB close stanza");

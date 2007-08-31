@@ -88,7 +88,7 @@ struct _GabbleBytestreamMucPrivate
   gchar *stream_id;
   GabbleBytestreamState state;
   gchar *peer_jid;
-  /* (gchar *) -> GString */
+  /* (gchar *): sender's muc-JID -> (GString *): accumulated message data */
   GHashTable *buffers;
 };
 

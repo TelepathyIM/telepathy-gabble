@@ -1154,7 +1154,7 @@ streaminit_reply_cb (GabbleConnection *conn,
   DEBUG ("stream %s accepted", data->stream_id);
 
   /* Let's start the initiation of the stream */
-  if (gabble_bytestream_iface_initiation (bytestream))
+  if (gabble_bytestream_iface_initiate (bytestream))
     {
       /* FIXME: we should really only "succeed" when our <open> succeeds.
        * It only really matters from the point of view of the data->func */

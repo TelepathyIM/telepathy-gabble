@@ -22,10 +22,10 @@
 #include <glib.h>
 
 gboolean
-gabble_bytestream_iface_initiation (GabbleBytestreamIface *self)
+gabble_bytestream_iface_initiate (GabbleBytestreamIface *self)
 {
   gboolean (*virtual_method)(GabbleBytestreamIface *) =
-    GABBLE_BYTESTREAM_IFACE_GET_CLASS (self)->initiation;
+    GABBLE_BYTESTREAM_IFACE_GET_CLASS (self)->initiate;
   g_assert (virtual_method != NULL);
   return virtual_method (self);
 }

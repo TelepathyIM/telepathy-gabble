@@ -696,12 +696,12 @@ gabble_bytestream_muc_send_to (GabbleBytestreamMuc *self,
 }
 
 /*
- * gabll_bytestream_muc_initiation
+ * gabll_bytestream_muc_initiate
  *
- * Implements gabble_bytestream_iface_initiation on GabbleBytestreamIface
+ * Implements gabble_bytestream_iface_initiate on GabbleBytestreamIface
  */
 static gboolean
-gabble_bytestream_muc_initiation (GabbleBytestreamIface *iface)
+gabble_bytestream_muc_initiate (GabbleBytestreamIface *iface)
 {
   /* Nothing to do */
   return TRUE;
@@ -724,7 +724,7 @@ bytestream_iface_init (gpointer g_iface,
 {
   GabbleBytestreamIfaceClass *klass = (GabbleBytestreamIfaceClass *) g_iface;
 
-  klass->initiation = gabble_bytestream_muc_initiation;
+  klass->initiate = gabble_bytestream_muc_initiate;
   klass->send = gabble_bytestream_muc_send;
   klass->close = gabble_bytestream_muc_close;
   klass->accept = gabble_bytestream_muc_accept;

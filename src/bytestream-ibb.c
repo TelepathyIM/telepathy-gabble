@@ -591,12 +591,12 @@ ibb_init_reply_cb (GabbleConnection *conn,
 }
 
 /*
- * gabble_bytestream_ibb_initiation
+ * gabble_bytestream_ibb_initiate
  *
- * Implements gabble_bytestream_iface_initiation on GabbleBytestreamIface
+ * Implements gabble_bytestream_iface_initiate on GabbleBytestreamIface
  */
 static gboolean
-gabble_bytestream_ibb_initiation (GabbleBytestreamIface *iface)
+gabble_bytestream_ibb_initiate (GabbleBytestreamIface *iface)
 {
   GabbleBytestreamIBB *self = GABBLE_BYTESTREAM_IBB (iface);
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
@@ -648,7 +648,7 @@ bytestream_iface_init (gpointer g_iface,
 {
   GabbleBytestreamIfaceClass *klass = (GabbleBytestreamIfaceClass *) g_iface;
 
-  klass->initiation = gabble_bytestream_ibb_initiation;
+  klass->initiate = gabble_bytestream_ibb_initiate;
   klass->send = gabble_bytestream_ibb_send;
   klass->close = gabble_bytestream_ibb_close;
   klass->accept = gabble_bytestream_ibb_accept;

@@ -392,7 +392,7 @@ send_data_to (GabbleBytestreamMuc *self,
               const gchar *to,
               gboolean groupchat,
               guint len,
-              gchar *str)
+              const gchar *str)
 {
   GabbleBytestreamMucPrivate *priv = GABBLE_BYTESTREAM_MUC_GET_PRIVATE (self);
   LmMessage *msg;
@@ -512,7 +512,7 @@ send_data_to (GabbleBytestreamMuc *self,
 static gboolean
 gabble_bytestream_muc_send (GabbleBytestreamIface *iface,
                             guint len,
-                            gchar *str)
+                            const gchar *str)
 {
   GabbleBytestreamMuc *self = GABBLE_BYTESTREAM_MUC (iface);
   GabbleBytestreamMucPrivate *priv = GABBLE_BYTESTREAM_MUC_GET_PRIVATE (self);

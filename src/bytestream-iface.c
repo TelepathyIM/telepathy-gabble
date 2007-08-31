@@ -33,9 +33,9 @@ gabble_bytestream_iface_initiation (GabbleBytestreamIface *self)
 gboolean
 gabble_bytestream_iface_send (GabbleBytestreamIface *self,
                               guint len,
-                              gchar *data)
+                              const gchar *data)
 {
-  gboolean (*virtual_method)(GabbleBytestreamIface *, guint, gchar *) =
+  gboolean (*virtual_method)(GabbleBytestreamIface *, guint, const gchar *) =
     GABBLE_BYTESTREAM_IFACE_GET_CLASS (self)->send;
   g_assert (virtual_method != NULL);
   return virtual_method (self, len, data);

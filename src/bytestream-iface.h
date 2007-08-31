@@ -48,7 +48,8 @@ struct _GabbleBytestreamIfaceClass {
   GTypeInterface parent;
 
   gboolean (*initiation) (GabbleBytestreamIface *bytestream);
-  gboolean (*send) (GabbleBytestreamIface *bytestream, guint len, gchar *data);
+  gboolean (*send) (GabbleBytestreamIface *bytestream, guint len,
+      const gchar *data);
   void (*close) (GabbleBytestreamIface *bytestream);
   void (*accept) (GabbleBytestreamIface *bytestream, LmMessage *msg);
   const gchar * (*get_protocol) (GabbleBytestreamIface *bytestream);
@@ -73,7 +74,7 @@ gabble_bytestream_iface_initiation (GabbleBytestreamIface *bytestream);
 
 gboolean
 gabble_bytestream_iface_send (GabbleBytestreamIface *bytestream, guint len,
-   gchar *data);
+   const gchar *data);
 
 void
 gabble_bytestream_iface_close (GabbleBytestreamIface *bytestream);

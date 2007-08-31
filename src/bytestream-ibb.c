@@ -392,7 +392,7 @@ gabble_bytestream_ibb_class_init (
 static gboolean
 gabble_bytestream_ibb_send (GabbleBytestreamIface *iface,
                             guint len,
-                            gchar *str)
+                            const gchar *str)
 {
   GabbleBytestreamIBB *self = GABBLE_BYTESTREAM_IBB (iface);
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);

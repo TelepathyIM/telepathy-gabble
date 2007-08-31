@@ -87,7 +87,7 @@ struct _GabbleBytestreamMucPrivate
   TpHandleType peer_handle_type;
   gchar *stream_id;
   GabbleBytestreamState state;
-  gchar *peer_jid;
+  const gchar *peer_jid;
   /* (gchar *): sender's muc-JID -> (GString *): accumulated message data */
   GHashTable *buffers;
 };
@@ -117,6 +117,10 @@ gabble_bytestream_muc_dispose (GObject *object)
 {
   GabbleBytestreamMuc *self = GABBLE_BYTESTREAM_MUC (object);
   GabbleBytestreamMucPrivate *priv = GABBLE_BYTESTREAM_MUC_GET_PRIVATE (self);
+  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
+
+  tp_handle_unref (room_repo, priv->peer_handle);
 
   if (priv->state != GABBLE_BYTESTREAM_STATE_CLOSED)
     {
@@ -133,7 +137,6 @@ gabble_bytestream_muc_finalize (GObject *object)
   GabbleBytestreamMucPrivate *priv = GABBLE_BYTESTREAM_MUC_GET_PRIVATE (self);
 
   g_free (priv->stream_id);
-  g_free (priv->peer_jid);
 
   if (priv->buffers != NULL)
     {
@@ -226,6 +229,7 @@ gabble_bytestream_muc_constructor (GType type,
 {
   GObject *obj;
   GabbleBytestreamMucPrivate *priv;
+  TpHandleRepoIface *room_repo;
 
   obj = G_OBJECT_CLASS (gabble_bytestream_muc_parent_class)->
            constructor (type, n_props, props);
@@ -235,13 +239,14 @@ gabble_bytestream_muc_constructor (GType type,
   g_assert (priv->conn != NULL);
   g_assert (priv->peer_handle != 0);
 
-  TpHandleRepoIface *room_repo;
 
   room_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
 
-  priv->peer_jid = g_strdup (tp_handle_inspect (room_repo,
-        priv->peer_handle));
+  tp_handle_ref (room_repo, priv->peer_handle);
+
+  priv->peer_jid = tp_handle_inspect (room_repo,
+        priv->peer_handle);
 
   return obj;
 }

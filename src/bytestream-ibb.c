@@ -357,7 +357,7 @@ gabble_bytestream_ibb_class_init (
       "Bytestream state",
       "An enum (GabbleBytestreamState) signifying the current state of"
       "this bytestream object",
-      0, LAST_GABBLE_BYTESTREAM_STATE - 1,
+      0, NUM_GABBLE_BYTESTREAM_STATES - 1,
       GABBLE_BYTESTREAM_STATE_LOCAL_PENDING,
       G_PARAM_READWRITE |
       G_PARAM_STATIC_NAME |

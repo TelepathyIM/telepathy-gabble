@@ -38,7 +38,7 @@ typedef enum
   /* Bytestream open */
   GABBLE_BYTESTREAM_STATE_OPEN,
   GABBLE_BYTESTREAM_STATE_CLOSED,
-  LAST_GABBLE_BYTESTREAM_STATE,
+  NUM_GABBLE_BYTESTREAM_STATES,
 } GabbleBytestreamState;
 
 typedef struct _GabbleBytestreamIface GabbleBytestreamIface;

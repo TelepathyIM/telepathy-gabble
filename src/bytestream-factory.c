@@ -817,9 +817,7 @@ handle_ibb_data (GabbleBytestreamFactory *self,
 
   bytestream = g_hash_table_lookup (priv->ibb_bytestreams, &bsid);
 
-  if (!is_iq && room_handle != 0 &&
-      gabble_muc_factory_find_channel (priv->conn->muc_factory, room_handle)
-      != NULL)
+  if (bytestream == NULL)
     {
       DEBUG ("unknown stream: <%s> from <%s>", bsid.stream, bsid.jid);
       if (is_iq)

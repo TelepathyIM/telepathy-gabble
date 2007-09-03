@@ -868,138 +868,28 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
   object_class->dispose = gabble_tube_stream_dispose;
   object_class->finalize = gabble_tube_stream_finalize;
 
-  param_spec = g_param_spec_object (
-      "connection",
-      "GabbleConnection object",
-      "Gabble connection object that owns this D-Bus tube object.",
-      GABBLE_TYPE_CONNECTION,
-      G_PARAM_CONSTRUCT_ONLY |
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
-
-  param_spec = g_param_spec_uint (
-      "handle",
-      "Handle",
-      "The TpHandle associated with the tubes channel that"
-      "owns this D-Bus tube object.",
-      0, G_MAXUINT32, 0,
-      G_PARAM_CONSTRUCT_ONLY |
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_HANDLE, param_spec);
-
-  param_spec = g_param_spec_uint (
-      "handle-type",
-      "Handle type",
-      "The TpHandleType of the handle associated with the tubes channel that"
-      "owns this D-Bus tube object.",
-      0, G_MAXUINT32, 0,
-      G_PARAM_CONSTRUCT_ONLY |
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_HANDLE_TYPE,
-      param_spec);
-
-  param_spec = g_param_spec_uint (
-      "self-handle",
-      "Self handle",
-      "The handle to use for ourself. This can be different from the "
-      "connection's self handle if our handle is a room handle.",
-      0, G_MAXUINT, 0,
-      G_PARAM_CONSTRUCT_ONLY |
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_SELF_HANDLE, param_spec);
-
-  param_spec = g_param_spec_uint (
-      "id",
-      "id",
-      "The unique identifier of this tube",
-      0, G_MAXUINT32, 0,
-      G_PARAM_CONSTRUCT_ONLY |
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_ID, param_spec);
-
-  param_spec = g_param_spec_object (
-      "bytestream",
-      "Object implementing the GabbleBytestreamIface interface",
-      "bytestream object created during SI if any",
-      GABBLE_TYPE_BYTESTREAM_IBB,
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_BYTESTREAM, param_spec);
-
-  param_spec = g_param_spec_uint (
-      "type",
-      "Tube type",
-      "The GabbleTubeType this D-Bus tube object.",
-      0, G_MAXUINT32, GABBLE_TUBE_TYPE_STREAM,
-      G_PARAM_READABLE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_TYPE, param_spec);
-
-  param_spec = g_param_spec_uint (
-      "initiator",
-      "Initiator handle",
-      "The TpHandle of the initiator of this D-Bus tube object.",
-      0, G_MAXUINT32, 0,
-      G_PARAM_CONSTRUCT_ONLY |
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_INITIATOR, param_spec);
-
-  param_spec = g_param_spec_string (
-      "service",
-      "service name",
-      "the service associated with this D-BUS tube object.",
-      "",
-      G_PARAM_CONSTRUCT_ONLY |
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_SERVICE, param_spec);
-
-  param_spec = g_param_spec_boxed (
-      "parameters",
-      "parameters GHashTable",
-      "GHashTable containing parameters of this STREAM tube object.",
-      G_TYPE_HASH_TABLE,
-      G_PARAM_CONSTRUCT_ONLY |
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_PARAMETERS, param_spec);
-
-  param_spec = g_param_spec_uint (
-      "state",
-      "Tube state",
-      "The GabbleTubeState of this STREAM tube object",
-      0, G_MAXUINT32, GABBLE_TUBE_STATE_REMOTE_PENDING,
-      G_PARAM_READABLE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_STATE, param_spec);
+  g_object_class_override_property (object_class, PROP_CONNECTION,
+    "connection");
+  g_object_class_override_property (object_class, PROP_HANDLE,
+    "handle");
+  g_object_class_override_property (object_class, PROP_HANDLE_TYPE,
+    "handle-type");
+  g_object_class_override_property (object_class, PROP_SELF_HANDLE,
+    "self-handle");
+  g_object_class_override_property (object_class, PROP_ID,
+    "id");
+  g_object_class_override_property (object_class, PROP_BYTESTREAM,
+    "bytestream");
+  g_object_class_override_property (object_class, PROP_TYPE,
+    "type");
+  g_object_class_override_property (object_class, PROP_INITIATOR,
+    "initiator");
+  g_object_class_override_property (object_class, PROP_SERVICE,
+    "service");
+  g_object_class_override_property (object_class, PROP_PARAMETERS,
+    "parameters");
+  g_object_class_override_property (object_class, PROP_STATE,
+    "state");
 
   param_spec = g_param_spec_string (
       "socket",

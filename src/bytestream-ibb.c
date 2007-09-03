@@ -280,8 +280,6 @@ gabble_bytestream_ibb_class_init (
        "peer-handle-type");
    g_object_class_override_property (object_class, PROP_STREAM_ID,
        "stream-id");
-   g_object_class_override_property (object_class, PROP_STREAM_INIT_ID,
-       "stream-init-id");
    g_object_class_override_property (object_class, PROP_PEER_JID,
        "peer-jid");
    g_object_class_override_property (object_class, PROP_STATE,
@@ -298,6 +296,18 @@ gabble_bytestream_ibb_class_init (
       G_PARAM_STATIC_NICK |
       G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_PEER_RESOURCE,
+      param_spec);
+
+  param_spec = g_param_spec_string (
+      "stream-init-id",
+      "stream init ID",
+      "the iq ID of the SI request, if any",
+      "",
+      G_PARAM_READWRITE |
+      G_PARAM_STATIC_NAME |
+      G_PARAM_STATIC_NICK |
+      G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_STREAM_INIT_ID,
       param_spec);
 
   signals[DATA_RECEIVED] =

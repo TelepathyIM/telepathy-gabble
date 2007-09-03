@@ -260,7 +260,6 @@ gabble_bytestream_ibb_class_init (
     GabbleBytestreamIBBClass *gabble_bytestream_ibb_class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_bytestream_ibb_class);
-  GParamSpec *param_spec;
 
   g_type_class_add_private (gabble_bytestream_ibb_class,
       sizeof (GabbleBytestreamIBBPrivate));
@@ -272,104 +271,22 @@ gabble_bytestream_ibb_class_init (
   object_class->set_property = gabble_bytestream_ibb_set_property;
   object_class->constructor = gabble_bytestream_ibb_constructor;
 
-  param_spec = g_param_spec_object (
-      "connection",
-      "GabbleConnection object",
-      "Gabble connection object that owns this Bytestream IBB object.",
-      GABBLE_TYPE_CONNECTION,
-      G_PARAM_CONSTRUCT_ONLY |
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
-
-  param_spec = g_param_spec_uint (
-      "peer-handle",
-      "Peer handle",
-      "The TpHandle of the remote peer involved in this bytestream",
-      0, G_MAXUINT32, 0,
-      G_PARAM_CONSTRUCT_ONLY |
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_PEER_HANDLE, param_spec);
-
-  param_spec = g_param_spec_uint (
-      "peer-handle-type",
-      "Peer handle type",
-      "The TpHandleType of the remote peer's associated handle",
-      0, G_MAXUINT32, 0,
-      G_PARAM_READABLE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_PEER_HANDLE_TYPE,
-      param_spec);
-
-  param_spec = g_param_spec_string (
-      "stream-id",
-      "stream ID",
-      "the ID of the stream",
-      "",
-      G_PARAM_CONSTRUCT_ONLY |
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_STREAM_ID, param_spec);
-
-  param_spec = g_param_spec_string (
-      "stream-init-id",
-      "stream init ID",
-      "the iq ID of the SI request, if any",
-      "",
-      G_PARAM_CONSTRUCT_ONLY |
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_STREAM_INIT_ID,
-      param_spec);
-
-  param_spec = g_param_spec_string (
-      "peer-resource",
-      "Peer resource",
-      "the resource used by the remote peer during the SI, if any",
-      "",
-      G_PARAM_CONSTRUCT_ONLY |
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_PEER_RESOURCE,
-      param_spec);
-
-  param_spec = g_param_spec_string (
-      "peer-jid",
-      "Peer JID",
-      "The JID used by the remote peer during the SI",
-      "",
-      G_PARAM_READABLE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_PEER_JID,
-      param_spec);
-
-  param_spec = g_param_spec_uint (
-      "state",
-      "Bytestream state",
-      "An enum (GabbleBytestreamState) signifying the current state of"
-      "this bytestream object",
-      0, NUM_GABBLE_BYTESTREAM_STATES - 1,
-      GABBLE_BYTESTREAM_STATE_LOCAL_PENDING,
-      G_PARAM_READWRITE |
-      G_PARAM_STATIC_NAME |
-      G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_STATE, param_spec);
+   g_object_class_override_property (object_class, PROP_CONNECTION,
+      "connection");
+   g_object_class_override_property (object_class, PROP_PEER_HANDLE,
+       "peer-handle");
+   g_object_class_override_property (object_class, PROP_PEER_HANDLE_TYPE,
+       "peer-handle-type");
+   g_object_class_override_property (object_class, PROP_STREAM_ID,
+       "stream-id");
+   g_object_class_override_property (object_class, PROP_STREAM_INIT_ID,
+       "stream-init-id");
+   g_object_class_override_property (object_class, PROP_PEER_RESOURCE,
+       "peer-resource");
+   g_object_class_override_property (object_class, PROP_PEER_JID,
+       "peer-jid");
+   g_object_class_override_property (object_class, PROP_STATE,
+       "state");
 
   signals[DATA_RECEIVED] =
     g_signal_new ("data-received",

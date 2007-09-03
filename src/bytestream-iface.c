@@ -21,6 +21,8 @@
 
 #include <glib.h>
 
+#include "gabble-connection.h"
+
 gboolean
 gabble_bytestream_iface_initiate (GabbleBytestreamIface *self)
 {
@@ -69,6 +71,112 @@ gabble_bytestream_iface_get_protocol (GabbleBytestreamIface *self)
   return virtual_method (self);
 }
 
+static void
+gabble_bytestream_iface_base_init (gpointer klass)
+{
+  static gboolean initialized = FALSE;
+
+  if (!initialized)
+    {
+      GParamSpec *param_spec;
+
+      param_spec = g_param_spec_object (
+          "connection",
+          "GabbleConnection object",
+          "Gabble connection object that owns this Bytestream object.",
+          GABBLE_TYPE_CONNECTION,
+          G_PARAM_CONSTRUCT_ONLY |
+          G_PARAM_READWRITE |
+          G_PARAM_STATIC_NAME |
+          G_PARAM_STATIC_NICK |
+          G_PARAM_STATIC_BLURB);
+      g_object_interface_install_property (klass, param_spec);
+
+      param_spec = g_param_spec_uint (
+          "peer-handle",
+          "Peer handle",
+          "The TpHandle of the remote peer involved in this bytestream",
+          0, G_MAXUINT32, 0,
+          G_PARAM_CONSTRUCT_ONLY |
+          G_PARAM_READWRITE |
+          G_PARAM_STATIC_NAME |
+          G_PARAM_STATIC_NICK |
+          G_PARAM_STATIC_BLURB);
+      g_object_interface_install_property (klass, param_spec);
+
+      param_spec = g_param_spec_uint (
+          "peer-handle-type",
+          "Peer handle type",
+          "The TpHandleType of the remote peer's associated handle",
+          0, G_MAXUINT32, 0,
+          G_PARAM_READABLE |
+          G_PARAM_STATIC_NAME |
+          G_PARAM_STATIC_NICK |
+          G_PARAM_STATIC_BLURB);
+      g_object_interface_install_property (klass, param_spec);
+
+      param_spec = g_param_spec_string (
+          "stream-id",
+          "stream ID",
+          "the ID of the stream",
+          "",
+          G_PARAM_CONSTRUCT_ONLY |
+          G_PARAM_READWRITE |
+          G_PARAM_STATIC_NAME |
+          G_PARAM_STATIC_NICK |
+          G_PARAM_STATIC_BLURB);
+      g_object_interface_install_property (klass, param_spec);
+
+      param_spec = g_param_spec_string (
+          "stream-init-id",
+          "stream init ID",
+          "the iq ID of the SI request, if any",
+          "",
+          G_PARAM_READWRITE |
+          G_PARAM_STATIC_NAME |
+          G_PARAM_STATIC_NICK |
+          G_PARAM_STATIC_BLURB);
+      g_object_interface_install_property (klass, param_spec);
+
+      param_spec = g_param_spec_string (
+          "peer-resource",
+          "Peer resource",
+          "the resource used by the remote peer during the SI, if any",
+          "",
+          G_PARAM_READWRITE |
+          G_PARAM_STATIC_NAME |
+          G_PARAM_STATIC_NICK |
+          G_PARAM_STATIC_BLURB);
+      g_object_interface_install_property (klass, param_spec);
+
+      param_spec = g_param_spec_string (
+          "peer-jid",
+          "Peer JID",
+          "The JID used by the remote peer during the SI",
+          "",
+          G_PARAM_READABLE |
+          G_PARAM_STATIC_NAME |
+          G_PARAM_STATIC_NICK |
+          G_PARAM_STATIC_BLURB);
+      g_object_interface_install_property (klass, param_spec);
+
+      param_spec = g_param_spec_uint (
+          "state",
+          "Bytestream state",
+          "An enum (GabbleBytestreamState) signifying the current state of"
+          "this bytestream object",
+          0, NUM_GABBLE_BYTESTREAM_STATES - 1,
+          GABBLE_BYTESTREAM_STATE_LOCAL_PENDING,
+          G_PARAM_READWRITE |
+          G_PARAM_STATIC_NAME |
+          G_PARAM_STATIC_NICK |
+          G_PARAM_STATIC_BLURB);
+      g_object_interface_install_property (klass, param_spec);
+
+      initialized = TRUE;
+    }
+}
+
 GType
 gabble_bytestream_iface_get_type (void)
 {
@@ -77,7 +185,7 @@ gabble_bytestream_iface_get_type (void)
   if (type == 0) {
     static const GTypeInfo info = {
       sizeof (GabbleBytestreamIfaceClass),
-      NULL,   /* base_init */
+      gabble_bytestream_iface_base_init,   /* base_init */
       NULL,   /* base_finalize */
       NULL,   /* class_init */
       NULL,   /* class_finalize */

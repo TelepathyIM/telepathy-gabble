@@ -74,7 +74,6 @@ enum
   PROP_STREAM_ID,
   PROP_STREAM_INIT_ID,
   PROP_PEER_JID,
-  PROP_PEER_RESOURCE,
   PROP_STATE,
   LAST_PROPERTY
 };
@@ -171,9 +170,6 @@ gabble_bytestream_muc_get_property (GObject *object,
         g_value_set_string (value, priv->stream_id);
         break;
       case PROP_STREAM_INIT_ID:
-        g_value_set_string (value, NULL);
-        break;
-      case PROP_PEER_RESOURCE:
         g_value_set_string (value, NULL);
         break;
       case PROP_PEER_JID:
@@ -277,8 +273,6 @@ gabble_bytestream_muc_class_init (
        "stream-id");
   g_object_class_override_property (object_class, PROP_STREAM_INIT_ID,
        "stream-init-id");
-  g_object_class_override_property (object_class, PROP_PEER_RESOURCE,
-       "peer-resource");
   g_object_class_override_property (object_class, PROP_PEER_JID,
       "peer-jid");
   g_object_class_override_property (object_class, PROP_STATE,

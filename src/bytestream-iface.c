@@ -139,17 +139,6 @@ gabble_bytestream_iface_base_init (gpointer klass)
       g_object_interface_install_property (klass, param_spec);
 
       param_spec = g_param_spec_string (
-          "peer-resource",
-          "Peer resource",
-          "the resource used by the remote peer during the SI, if any",
-          "",
-          G_PARAM_READWRITE |
-          G_PARAM_STATIC_NAME |
-          G_PARAM_STATIC_NICK |
-          G_PARAM_STATIC_BLURB);
-      g_object_interface_install_property (klass, param_spec);
-
-      param_spec = g_param_spec_string (
           "peer-jid",
           "Peer JID",
           "The JID used by the remote peer during the SI",

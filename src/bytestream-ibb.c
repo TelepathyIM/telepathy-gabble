@@ -260,6 +260,7 @@ gabble_bytestream_ibb_class_init (
     GabbleBytestreamIBBClass *gabble_bytestream_ibb_class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_bytestream_ibb_class);
+  GParamSpec *param_spec;
 
   g_type_class_add_private (gabble_bytestream_ibb_class,
       sizeof (GabbleBytestreamIBBPrivate));
@@ -281,12 +282,23 @@ gabble_bytestream_ibb_class_init (
        "stream-id");
    g_object_class_override_property (object_class, PROP_STREAM_INIT_ID,
        "stream-init-id");
-   g_object_class_override_property (object_class, PROP_PEER_RESOURCE,
-       "peer-resource");
    g_object_class_override_property (object_class, PROP_PEER_JID,
        "peer-jid");
    g_object_class_override_property (object_class, PROP_STATE,
        "state");
+
+  param_spec = g_param_spec_string (
+      "peer-resource",
+      "Peer resource",
+      "the resource used by the remote peer during the SI, if any",
+      "",
+      G_PARAM_CONSTRUCT_ONLY |
+      G_PARAM_READWRITE |
+      G_PARAM_STATIC_NAME |
+      G_PARAM_STATIC_NICK |
+      G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_PEER_RESOURCE,
+      param_spec);
 
   signals[DATA_RECEIVED] =
     g_signal_new ("data-received",

@@ -1132,7 +1132,6 @@ gabble_tube_stream_accept (GabbleTubeIface *tube)
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (tube);
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
   GabbleBytestreamState state;
-  const gchar *stream_init_id;
 
   tube_stream_open (self);
   priv->state = GABBLE_TUBE_STATE_OPEN;
@@ -1148,11 +1147,7 @@ gabble_tube_stream_accept (GabbleTubeIface *tube)
   if (state != GABBLE_BYTESTREAM_STATE_LOCAL_PENDING)
     return;
 
-  g_object_get (priv->default_bytestream,
-      "stream-init-id", &stream_init_id,
-      NULL);
-
-  if (stream_init_id != NULL)
+  if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
     {
       /* Bytestream was created using a SI request so
        * we have to accept it */

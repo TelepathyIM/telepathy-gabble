@@ -926,7 +926,6 @@ gabble_tube_dbus_accept (GabbleTubeIface *tube)
   GabbleTubeDBus *self = GABBLE_TUBE_DBUS (tube);
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
   GabbleBytestreamState state;
-  gchar *stream_init_id;
 
   g_assert (priv->bytestream != NULL);
 
@@ -937,22 +936,19 @@ gabble_tube_dbus_accept (GabbleTubeIface *tube)
   if (state != GABBLE_BYTESTREAM_STATE_LOCAL_PENDING)
     return;
 
-  g_object_get (priv->bytestream,
-      "stream-init-id", &stream_init_id,
-      NULL);
-
-  if (stream_init_id != NULL)
+  if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
     {
       /* Bytestream was created using a SI request so
        * we have to accept it */
       LmMessage *msg;
       LmMessageNode *si, *tube_node;
       const gchar *protocol;
-      gchar *peer_jid;
+      gchar *peer_jid, *stream_init_id;
 
       DEBUG ("accept the SI request");
 
       g_object_get (priv->bytestream,
+          "stream-init-id", &stream_init_id,
           "peer-jid", &peer_jid,
           NULL);
 

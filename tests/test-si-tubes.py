@@ -113,8 +113,10 @@ def expect_request_channel_return(event, data):
 
     data['self_handle'] = data['conn_iface'].GetSelfHandle()
 
-    call_async(data['test'], data['tubes_iface'], 'OfferStreamUnixTube',
-        'echo', os.getcwd() + '/stream', sample_parameters)
+    # Unix socket
+    path = os.getcwd() + '/stream'
+    call_async(data['test'], data['tubes_iface'], 'OfferStreamTube',
+        'echo', sample_parameters, 0, dbus.ByteArray(path), 0, "")
 
     return True
 
@@ -245,7 +247,7 @@ def expect_list_tubes_return1(event, data):
 def expect_stream_initiation_ok_stream(event, data):
     return True
 
-@match('dbus-signal', signal='StreamUnixSocketNewConnection')
+@match('dbus-signal', signal='StreamTubeNewConnection')
 def expect_new_connection_stream(event, data):
     assert event.args[0] == data['stream_tube_id']
     assert event.args[1] == data['bob_handle']

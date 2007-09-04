@@ -30,6 +30,7 @@ NS_FEATURE_NEG = 'http://jabber.org/protocol/feature-neg'
 NS_SI_TUBES = 'http://telepathy.freedesktop.org/xmpp/si/profile/tubes'
 NS_SI_TUBES_OLD = 'http://jabber.org/protocol/si/profile/tubes'
 NS_IBB = 'http://jabber.org/protocol/ibb'
+NS_MUC_BYTESTREAM = 'http://telepathy.freedesktop.org/xmpp/protocol/muc-bytestream'
 NS_X_DATA = 'jabber:x:data'
 
 
@@ -206,7 +207,7 @@ def expect_message_dbus(event, data):
     assert message['to'] == 'chat@conf.localhost'
     assert message['type'] == 'groupchat'
 
-    data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % NS_IBB,
+    data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % NS_MUC_BYTESTREAM,
         message)
     assert data_nodes is not None
     assert len(data_nodes) == 1

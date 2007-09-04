@@ -30,6 +30,7 @@ NS_FEATURE_NEG = 'http://jabber.org/protocol/feature-neg'
 NS_SI_TUBES = 'http://telepathy.freedesktop.org/xmpp/si/profile/tubes'
 NS_SI_TUBES_OLD = 'http://jabber.org/protocol/si/profile/tubes'
 NS_IBB = 'http://jabber.org/protocol/ibb'
+NS_MUC_BYTESTREAM = 'http://telepathy.freedesktop.org/xmpp/protocol/muc-bytestream'
 NS_X_DATA = 'jabber:x:data'
 
 
@@ -119,23 +120,68 @@ def expect_request_channel_return(event, data):
     data['tubes_self_handle'] = data['tubes_chan'].GetSelfHandle(
         dbus_interface=tp_name_prefix + '.Channel.Interface.Group')
 
-    call_async(data['test'], data['tubes_iface'], 'OfferStreamUnixTube',
-        'echo', os.getcwd() + '/stream', sample_parameters)
+    # Unix socket
+    path = os.getcwd() + '/stream'
+    call_async(data['test'], data['tubes_iface'], 'OfferStreamTube',
+        'echo', sample_parameters, 0, dbus.ByteArray(path), 0, "")
 
     return True
 
+@lazy
 @match('dbus-signal', signal='NewTube')
 def expect_new_tube_stream(event, data):
     data['stream_tube_id'] = event.args[0]
     assert event.args[1] == data['tubes_self_handle']
-    assert event.args[2] == 1       # Unix stream
+    assert event.args[2] == 1       # Stream
     assert event.args[3] == 'echo'
     assert event.args[4] == sample_parameters
     assert event.args[5] == 2       # OPEN
 
     return True
 
-@match('dbus-return', method='OfferStreamUnixTube')
+@lazy
+@match('stream-presence')
+def expect_tubes_in_presence1(event, data):
+    presence = event.stanza
+
+    assert presence['to'] == 'chat@conf.localhost/test'
+
+    x_nodes = xpath.queryForNodes('/presence/x[@xmlns="http://jabber.org/'
+            'protocol/muc"]', presence)
+    assert x_nodes is not None
+    assert len(x_nodes) == 1
+
+    tubes_nodes = xpath.queryForNodes('/presence/tubes[@xmlns="%s"]'
+        % NS_TUBES, presence)
+    assert tubes_nodes is not None
+    assert len(tubes_nodes) == 1
+
+    tube_nodes = xpath.queryForNodes('/tubes/tube', tubes_nodes[0])
+    assert tube_nodes is not None
+    assert len(tube_nodes) == 1
+    for tube in tube_nodes:
+        assert tube['type'] == 'stream'
+        assert tube['initiator'] == 'chat@conf.localhost/test'
+        assert tube['service'] == 'echo'
+        assert not tube.hasAttribute('stream-id')
+        assert not tube.hasAttribute('dbus-name')
+        #assert tube['id'] == str(data['stream_tube_id'])
+
+    params = {}
+    parameter_nodes = xpath.queryForNodes('/tube/parameters/parameter', tube)
+    for node in parameter_nodes:
+        assert node['name'] not in params
+        params[node['name']] = (node['type'], str(node))
+    assert params == {'ay': ('bytes', 'aGVsbG8='),
+                      's': ('str', 'hello'),
+                      'i': ('int', '-123'),
+                      'u': ('uint', '123'),
+                     }
+
+    return True
+
+@lazy
+@match('dbus-return', method='OfferStreamTube')
 def expect_offer_stream_tube_return(event, data):
     call_async(data['test'], data['tubes_iface'], 'ListTubes',
         byte_arrays=True)
@@ -146,7 +192,7 @@ def expect_list_tubes_return1(event, data):
     assert event.value[0] == [(
         data['stream_tube_id'],
         data['tubes_self_handle'],
-        1,      # Unix stream
+        1,      # Stream
         'echo',
         sample_parameters,
         2,      # OPEN
@@ -180,50 +226,12 @@ def expect_list_tubes_return1(event, data):
 
     return True
 
-# FIXME: It can't be correct that this doesn't get sent until we
-# have a client wanting to talk to us - how does the client know we have
-# a tube at all?!
-@match('stream-presence')
-def expect_tubes_in_presence1(event, data):
-    presence = event.stanza
-
-    assert presence['to'] == 'chat@conf.localhost/test'
-
-    x_nodes = xpath.queryForNodes('/presence/x[@xmlns="http://jabber.org/'
-            'protocol/muc"]', presence)
-    assert x_nodes is not None
-    assert len(x_nodes) == 1
-
-    tubes_nodes = xpath.queryForNodes('/presence/tubes[@xmlns="%s"]'
-        % NS_TUBES, presence)
-    assert tubes_nodes is not None
-    assert len(tubes_nodes) == 1
-
-    tube_nodes = xpath.queryForNodes('/tubes/tube', tubes_nodes[0])
-    assert tube_nodes is not None
-    assert len(tube_nodes) == 1
-    for tube in tube_nodes:
-        assert tube['type'] == 'stream'
-        assert tube['initiator'] == 'chat@conf.localhost/test'
-        assert tube['service'] == 'echo'
-        assert not tube.hasAttribute('stream-id')
-        assert not tube.hasAttribute('dbus-name')
-        assert tube['id'] == str(data['stream_tube_id'])
-
-    params = {}
-    parameter_nodes = xpath.queryForNodes('/tube/parameters/parameter', tube)
-    for node in parameter_nodes:
-        assert node['name'] not in params
-        params[node['name']] = (node['type'], str(node))
-    assert params == {'ay': ('bytes', 'aGVsbG8='),
-                      's': ('str', 'hello'),
-                      'i': ('int', '-123'),
-                      'u': ('uint', '123'),
-                     }
-
+@lazy
+@match('stream-iq', iq_type='result')
+def expect_stream_initiation_ok(event, data):
     return True
 
-@match('dbus-signal', signal='StreamUnixSocketNewConnection')
+@match('dbus-signal', signal='StreamTubeNewConnection')
 def expect_stream_new_connection(event, data):
     assert event.args[0] == data['stream_tube_id']
     assert event.args[1] == data['bob_handle']
@@ -236,10 +244,6 @@ def expect_stream_new_connection(event, data):
     open['sid'] = 'alpha'
     open['block-size'] = '4096'
     data['stream'].send(iq)
-    return True
-
-@match('stream-iq', iq_type='result')
-def expect_stream_initiation_ok(event, data):
     return True
 
 @match('stream-iq', iq_type='result')
@@ -275,6 +279,7 @@ def expect_stream_echo(event, data):
         'com.example.TestCase', sample_parameters)
     return True
 
+@lazy
 @match('dbus-signal', signal='NewTube')
 def expect_new_tube_dbus(event, data):
     data['dbus_tube_id'] = event.args[0]
@@ -286,6 +291,58 @@ def expect_new_tube_dbus(event, data):
 
     return True
 
+
+@lazy
+@match('stream-presence')
+def expect_tubes_in_presence2(event, data):
+    presence = event.stanza
+
+    assert presence['to'] == 'chat@conf.localhost/test'
+
+    x_nodes = xpath.queryForNodes('/presence/x[@xmlns="http://jabber.org/'
+            'protocol/muc"]', presence)
+    assert x_nodes is not None
+    assert len(x_nodes) == 1
+
+    tubes_nodes = xpath.queryForNodes('/presence/tubes[@xmlns="%s"]'
+        % NS_TUBES, presence)
+    assert tubes_nodes is not None
+    assert len(tubes_nodes) == 1
+
+    tube_nodes = xpath.queryForNodes('/tubes/tube', tubes_nodes[0])
+    assert tube_nodes is not None
+    assert len(tube_nodes) == 2
+    for tube in tube_nodes:
+        assert tube['type'] in ('dbus', 'stream')
+
+        if tube['type'] == 'dbus':
+            assert tube['initiator'] == 'chat@conf.localhost/test'
+            assert tube['service'] == 'com.example.TestCase'
+            data['dbus_stream_id'] = tube['stream-id']
+            #assert tube['dbus-name'] == data['my_bus_name']
+            #assert tube['id'] == str(data['dbus_tube_id'])
+
+    params = {}
+    parameter_nodes = xpath.queryForNodes('/tube/parameters/parameter', tube)
+    for node in parameter_nodes:
+        assert node['name'] not in params
+        params[node['name']] = (node['type'], str(node))
+    assert params == {'ay': ('bytes', 'aGVsbG8='),
+                      's': ('str', 'hello'),
+                      'i': ('int', '-123'),
+                      'u': ('uint', '123'),
+                     }
+
+    return True
+
+@lazy
+@match('dbus-return', method='OfferDBusTube')
+def expect_offer_dbus_tube_return(event, data):
+    call_async(data['test'], data['tubes_iface'], 'ListTubes',
+        byte_arrays=True)
+    return True
+
+
 @lazy
 @match('dbus-signal', signal='DBusNamesChanged')
 def expect_dbus_names_changed(event, data):
@@ -293,12 +350,6 @@ def expect_dbus_names_changed(event, data):
     assert event.args[1][0][0] == data['tubes_self_handle']
     data['my_bus_name'] = event.args[1][0][1]
 
-    return True
-
-@match('dbus-return', method='OfferDBusTube')
-def expect_offer_dbus_tube_return(event, data):
-    call_async(data['test'], data['tubes_iface'], 'ListTubes',
-        byte_arrays=True)
     return True
 
 @match('dbus-return', method='ListTubes')
@@ -332,50 +383,6 @@ def expect_get_dbus_server_address_return(event, data):
     data['tube'].send_message(signal)
     return True
 
-# FIXME: I don't think it's correct that this doesn't get sent until we send
-# data
-@match('stream-presence')
-def expect_tubes_in_presence2(event, data):
-    presence = event.stanza
-
-    assert presence['to'] == 'chat@conf.localhost/test'
-
-    x_nodes = xpath.queryForNodes('/presence/x[@xmlns="http://jabber.org/'
-            'protocol/muc"]', presence)
-    assert x_nodes is not None
-    assert len(x_nodes) == 1
-
-    tubes_nodes = xpath.queryForNodes('/presence/tubes[@xmlns="%s"]'
-        % NS_TUBES, presence)
-    assert tubes_nodes is not None
-    assert len(tubes_nodes) == 1
-
-    tube_nodes = xpath.queryForNodes('/tubes/tube', tubes_nodes[0])
-    assert tube_nodes is not None
-    assert len(tube_nodes) == 2
-    for tube in tube_nodes:
-        assert tube['type'] in ('dbus', 'stream')
-
-        if tube['type'] == 'dbus':
-            assert tube['initiator'] == 'chat@conf.localhost/test'
-            assert tube['service'] == 'com.example.TestCase'
-            data['dbus_stream_id'] = tube['stream-id']
-            assert tube['dbus-name'] == data['my_bus_name']
-            assert tube['id'] == str(data['dbus_tube_id'])
-
-    params = {}
-    parameter_nodes = xpath.queryForNodes('/tube/parameters/parameter', tube)
-    for node in parameter_nodes:
-        assert node['name'] not in params
-        params[node['name']] = (node['type'], str(node))
-    assert params == {'ay': ('bytes', 'aGVsbG8='),
-                      's': ('str', 'hello'),
-                      'i': ('int', '-123'),
-                      'u': ('uint', '123'),
-                     }
-
-    return True
-
 @match('stream-message')
 def expect_message_dbus(event, data):
     message = event.stanza
@@ -383,7 +390,7 @@ def expect_message_dbus(event, data):
     assert message['to'] == 'chat@conf.localhost'
     assert message['type'] == 'groupchat'
 
-    data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % NS_IBB,
+    data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % NS_MUC_BYTESTREAM,
         message)
     assert data_nodes is not None
     assert len(data_nodes) == 1

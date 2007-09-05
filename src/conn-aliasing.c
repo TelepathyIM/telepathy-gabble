@@ -220,7 +220,7 @@ aliases_request_pep_cb (GabbleConnection *self,
       DEBUG ("Got cached alias %s with priority %u", alias, source);
     }
 
-  if (source > GABBLE_CONNECTION_ALIAS_FROM_VCARD)
+  if (source >= GABBLE_CONNECTION_ALIAS_FROM_VCARD)
     {
       aliases_request->aliases[index] = alias;
     }

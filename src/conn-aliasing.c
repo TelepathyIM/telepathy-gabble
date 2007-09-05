@@ -212,21 +212,22 @@ aliases_request_pep_cb (GabbleConnection *self,
     {
       /* Try to extract an alias, caching it if necessary. */
       gabble_conn_aliasing_pep_nick_reply_handler (self, msg, handle);
-
-      source = _gabble_connection_get_cached_alias (aliases_request->conn,
-          handle, &alias);
-      g_assert (source != GABBLE_CONNECTION_ALIAS_NONE);
-      g_assert (NULL != alias);
-      DEBUG ("Got cached alias %s with priority %u", alias, source);
     }
 
-  if (source >= GABBLE_CONNECTION_ALIAS_FROM_VCARD)
+  source = _gabble_connection_get_cached_alias (aliases_request->conn,
+      handle, &alias);
+  g_assert (source != GABBLE_CONNECTION_ALIAS_NONE);
+  g_assert (NULL != alias);
+  DEBUG ("Got cached alias %s with priority %u", alias, source);
+
+  if (source >= GABBLE_CONNECTION_ALIAS_FROM_VCARD ||
+      gabble_vcard_manager_has_cached_alias (self->vcard_manager, handle))
     {
       aliases_request->aliases[index] = alias;
     }
   else
     {
-      /* not in PEP - chain to looking up their vCard */
+      /* not in PEP and we have no vCard - chain to looking up their vCard */
       GabbleVCardManagerRequest *vcard_request = gabble_vcard_manager_request
           (self->vcard_manager, handle, 0, aliases_request_vcard_cb,
            aliases_request, G_OBJECT (self));

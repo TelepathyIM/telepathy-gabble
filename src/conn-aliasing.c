@@ -202,6 +202,10 @@ aliases_request_pep_cb (GabbleConnection *self,
 
   if (error != NULL)
     {
+      DEBUG ("Error getting alias from PEP: %s", error->message);
+    }
+  else if (lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_RESULT)
+    {
       NODE_DEBUG (msg->node, "Error getting alias from PEP");
     }
   else

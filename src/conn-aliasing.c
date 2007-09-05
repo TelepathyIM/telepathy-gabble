@@ -23,14 +23,20 @@
 #include <telepathy-glib/svc-connection.h>
 
 #include "gabble-connection.h"
-#include "roster.h"
-#include "vcard-manager.h"
-#include "pubsub.h"
 #include "namespaces.h"
+#include "pubsub.h"
+#include "request-pipeline.h"
+#include "roster.h"
+#include "util.h"
+#include "vcard-manager.h"
 
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
 
 #include "debug.h"
+
+static void gabble_conn_aliasing_pep_nick_reply_handler (
+    GabbleConnection *conn, LmMessage *msg, TpHandle handle);
+
 
 /**
  * gabble_connection_get_alias_flags
@@ -66,11 +72,18 @@ struct _AliasesRequest
   GabbleConnection *conn;
   DBusGMethodInvocation *request_call;
   guint pending_vcard_requests;
+  guint pending_pep_requests;
   GArray *contacts;
   GabbleVCardManagerRequest **vcard_requests;
+  GabbleRequestPipelineItem **pep_requests;
   gchar **aliases;
 };
 
+typedef struct
+{
+  AliasesRequest *aliases_request;
+  guint index;
+} AliasRequest;
 
 static AliasesRequest *
 aliases_request_new (GabbleConnection *conn,
@@ -86,6 +99,8 @@ aliases_request_new (GabbleConnection *conn,
   g_array_insert_vals (request->contacts, 0, contacts->data, contacts->len);
   request->vcard_requests =
     g_new0 (GabbleVCardManagerRequest *, contacts->len);
+  request->pep_requests =
+    g_new0 (GabbleRequestPipelineItem *, contacts->len);
   request->aliases = g_new0 (gchar *, contacts->len + 1);
   return request;
 }
@@ -113,7 +128,8 @@ aliases_request_free (AliasesRequest *request)
 static gboolean
 aliases_request_try_return (AliasesRequest *request)
 {
-  if (request->pending_vcard_requests == 0)
+  if (request->pending_vcard_requests == 0 &&
+      request->pending_pep_requests == 0)
     {
       /* FIXME: I'm not entirely sure why gcc warns without this cast from
        * (gchar **) to (const gchar **) */
@@ -161,6 +177,60 @@ aliases_request_vcard_cb (GabbleVCardManager *manager,
   aliases_request->pending_vcard_requests--;
   aliases_request->vcard_requests[i] = NULL;
   aliases_request->aliases[i] = alias;
+
+  if (aliases_request_try_return (aliases_request))
+    aliases_request_free (aliases_request);
+}
+
+
+static void
+aliases_request_pep_cb (GabbleConnection *self,
+                        LmMessage *msg,
+                        gpointer user_data,
+                        GError *error)
+{
+  AliasRequest *alias_request = (AliasRequest *) user_data;
+  AliasesRequest *aliases_request = alias_request->aliases_request;
+  guint index = alias_request->index;
+  TpHandle handle = g_array_index (aliases_request->contacts, TpHandle, index);
+  GabbleConnectionAliasSource source = GABBLE_CONNECTION_ALIAS_NONE;
+  gchar *alias = NULL;
+
+  aliases_request->pending_pep_requests--;
+  aliases_request->pep_requests[index] = NULL;
+  g_slice_free (AliasRequest, alias_request);
+
+  if (error != NULL)
+    {
+      NODE_DEBUG (msg->node, "Error getting alias from PEP");
+    }
+  else
+    {
+      /* Try to extract an alias, caching it if necessary. */
+      gabble_conn_aliasing_pep_nick_reply_handler (self, msg, handle);
+
+      source = _gabble_connection_get_cached_alias (aliases_request->conn,
+          handle, &alias);
+      g_assert (source != GABBLE_CONNECTION_ALIAS_NONE);
+      g_assert (NULL != alias);
+      DEBUG ("Got cached alias %s with priority %u", alias, source);
+    }
+
+  if (source > GABBLE_CONNECTION_ALIAS_FROM_VCARD)
+    {
+      aliases_request->aliases[index] = alias;
+    }
+  else
+    {
+      /* not in PEP - chain to looking up their vCard */
+      GabbleVCardManagerRequest *vcard_request = gabble_vcard_manager_request
+          (self->vcard_manager, handle, 0, aliases_request_vcard_cb,
+           aliases_request, G_OBJECT (self));
+
+      g_free (alias);
+      aliases_request->vcard_requests[index] = vcard_request;
+      aliases_request->pending_vcard_requests++;
+    }
 
   if (aliases_request_try_return (aliases_request))
     aliases_request_free (aliases_request);
@@ -220,6 +290,34 @@ gabble_connection_request_aliases (TpSvcConnectionInterfaceAliasing *iface,
            * tried getting an alias from a vcard and failed, so there's no
            * point trying again. */
           request->aliases[i] = alias;
+        }
+      else if (self->features & GABBLE_CONNECTION_FEATURES_PEP)
+        {
+           /* FIXME: we shouldn't have to do this, since we should get PEP
+            * events when someone first sends us presence. However, the
+            * current ejabberd PEP implementation doesn't seem to give
+            * us notifications of the initial state. */
+          AliasRequest *data = g_slice_new (AliasRequest);
+          LmMessage *msg = lm_message_build
+              (tp_handle_inspect (contact_handles, handle),
+              LM_MESSAGE_TYPE_IQ,
+              '(', "pubsub", "",
+                '@', "xmlns", NS_PUBSUB,
+                '(', "items", "",
+                  '@', "node", NS_NICK,
+                ')',
+              ')',
+              NULL);
+          GabbleRequestPipelineItem *pep_request;
+
+          g_free (alias);
+          data->aliases_request = request;
+          data->index = i;
+
+          pep_request = gabble_request_pipeline_enqueue (self->req_pipeline,
+              msg, 0, aliases_request_pep_cb, data);
+          request->pep_requests[i] = pep_request;
+          request->pending_pep_requests++;
         }
       else
         {

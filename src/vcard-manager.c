@@ -969,12 +969,21 @@ patch_vcard_foreach (gpointer k, gpointer v, gpointer user_data)
     }
 }
 
-/* Loudmouth hates me. The feelings are mutual. */
+/* Loudmouth hates me. The feelings are mutual.
+ *
+ * Note that this function doesn't copy any attributes other than
+ * xmlns, because LM provides no way to iterate over attributes. Thanks, LM. */
 static LmMessageNode *
 vcard_copy (LmMessageNode *parent, LmMessageNode *src)
 {
     LmMessageNode *child;
-    LmMessageNode *new = lm_message_node_add_child (parent, src->name, src->value);
+    LmMessageNode *new = lm_message_node_add_child (parent, src->name,
+        src->value);
+    const gchar *xmlns;
+
+    xmlns = lm_message_node_get_attribute (src, "xmlns");
+    if (xmlns != NULL)
+      lm_message_node_set_attribute (new, "xmlns", xmlns);
 
     for (child = src->children; child; child = child->next)
         vcard_copy (new, child);

@@ -575,9 +575,7 @@ _grab_nickname (GabblePresenceCache *cache,
 
   if (tp_strdiff (presence->nickname, nickname))
     {
-      if (NULL != presence->nickname)
-        g_free (presence->nickname);
-
+      g_free (presence->nickname);
       presence->nickname = g_strdup (nickname);
       g_signal_emit (cache, signals[NICKNAME_UPDATE], 0, handle);
     }

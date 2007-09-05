@@ -8,7 +8,7 @@ import time
 import dbus
 
 from servicetest import call_async, lazy, match, tp_name_prefix, unwrap
-from gabbletest import go, handle_get_vcard
+from gabbletest import go, handle_get_vcard, make_result_iq
 
 from twisted.words.xish import xpath
 from twisted.words.xish import domish
@@ -43,7 +43,37 @@ def expect_connected(event, data):
                 'RequestAvatar', handle)
     call_async(data['test'], aliasing_iface(data['conn']),
                 'RequestAliases', [handle])
+    data['returned'] = set()
 
+    return True
+
+@lazy
+@match('stream-iq', to='test@localhost', iq_type='get')
+def expect_pep_iq(event, data):
+    iq = event.stanza
+    pubsub = iq.firstChildElement()
+    assert pubsub.name == 'pubsub'
+    assert pubsub.uri == "http://jabber.org/protocol/pubsub"
+    items = pubsub.firstChildElement()
+    assert items.name == 'items'
+    assert items['node'] == "http://jabber.org/protocol/nick"
+
+    result = make_result_iq(data['stream'], iq)
+    result['type'] = 'error'
+    error = result.addElement('error')
+    error['type'] = 'auth'
+    error.addElement('forbidden', 'urn:ietf:params:xml:ns:xmpp-stanzas')
+    data['stream'].send(result)
+    return True
+
+# Default alias is our username
+@lazy
+@match('dbus-return', method='RequestAliases')
+def expect_aliases_return1(event, data):
+    assert unwrap(event.value[0]) == ['test']
+    data['returned'].add('RequestAliases')
+    if len(data['returned']) == 2:
+        data['conn_iface'].Disconnect()
     return True
 
 # FIXME - find out why RequestAliases returns before
@@ -54,18 +84,13 @@ def expect_connected(event, data):
 # and return immediately. Or not, if it's g_idle()'d. So
 # it's better if conn-aliasing look into the cache itself.
 
-# Default alias is our username
-@lazy
-@match('dbus-return', method='RequestAliases')
-def expect_aliases_return1(event, data):
-    assert unwrap(event.value[0]) == ['test']
-    return True
-
 # We don't have a vCard yet
 @match('dbus-error', method='RequestAvatar')
 def expect_avatar_error1(event, data):
     assert event.error.args[0] == 'contact vCard has no photo'
-    data['conn_iface'].Disconnect()
+    data['returned'].add('RequestAvatar')
+    if len(data['returned']) == 2:
+        data['conn_iface'].Disconnect()
     return True
 
 @match('dbus-signal', signal='StatusChanged', args=[2, 1])

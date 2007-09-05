@@ -1310,31 +1310,3 @@ void gabble_presence_cache_add_bundle_caps (GabblePresenceCache *cache,
   info->trust = CAPABILITY_BUNDLE_ENOUGH_TRUST;
   info->caps |= new_caps;
 }
-
-gboolean
-gabble_presence_cache_pep_nick_event_handler (GabbleConnection *conn,
-                                              LmMessage *msg,
-                                              TpHandle handle)
-{
-  const gchar *from;
-  LmMessageNode *node;
-
-  from = lm_message_node_get_attribute (msg->node, "from");
-  if (NULL == from)
-    {
-      NODE_DEBUG (msg->node, "PEP event without from attribute, ignoring");
-      return FALSE;
-    }
-
-  node = lm_message_node_find_child (msg->node, "item");
-  if (NULL == node)
-    {
-    NODE_DEBUG (msg->node, "PEP event without item node, ignoring");
-    return FALSE;
-  }
-
-  _grab_nickname (conn->presence_cache, handle, from, node);
-
-  return TRUE;
-}
-

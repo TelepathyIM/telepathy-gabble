@@ -183,6 +183,9 @@ gboolean _gabble_connection_signal_own_presence (GabbleConnection *,
 void _gabble_connection_create_handle_repos (TpBaseConnection *conn,
     TpHandleRepoIface *repos[NUM_TP_HANDLE_TYPES]);
 
+void gabble_connection_pep_nickname_updated (GabbleConnection *self,
+    TpHandle handle);
+
 
 G_END_DECLS
 

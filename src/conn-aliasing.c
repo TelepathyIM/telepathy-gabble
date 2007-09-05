@@ -385,6 +385,113 @@ gabble_connection_set_aliases (TpSvcConnectionInterfaceAliasing *iface,
 }
 
 
+GQuark
+gabble_conn_aliasing_pep_alias_quark (void)
+{
+  static GQuark quark = 0;
+
+  if (G_UNLIKELY (quark == 0))
+    quark = g_quark_from_static_string
+        ("gabble_conn_aliasing_pep_alias_quark");
+
+  return quark;
+}
+
+
+static void
+_grab_nickname (GabbleConnection *self,
+                TpHandle handle,
+                LmMessageNode *node)
+{
+  TpBaseConnection *base = (TpBaseConnection *) self;
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
+  GQuark quark = gabble_conn_aliasing_pep_alias_quark ();
+  const gchar *old, *nickname;
+
+  node = lm_message_node_get_child_with_namespace (node, "nick", NS_NICK);
+
+  if (NULL == node)
+    {
+      DEBUG ("didn't get a nickname for %s", tp_handle_inspect
+          (contact_handles, handle));
+      return;
+    }
+  nickname = lm_message_node_get_value (node);
+
+  old = tp_handle_get_qdata (contact_handles, handle, quark);
+
+  if (tp_strdiff (old, nickname))
+    {
+      tp_handle_set_qdata (contact_handles, handle, quark, g_strdup (nickname),
+          g_free);
+      gabble_connection_pep_nickname_updated (self, handle);
+    }
+}
+
+
+gboolean
+gabble_conn_aliasing_pep_nick_event_handler (GabbleConnection *conn,
+                                             LmMessage *msg,
+                                             TpHandle handle)
+{
+  LmMessageNode *node;
+
+  node = lm_message_node_find_child (msg->node, "item");
+  if (NULL == node)
+    {
+    NODE_DEBUG (msg->node, "PEP event without item node, ignoring");
+    return FALSE;
+  }
+
+  _grab_nickname (conn, handle, node);
+
+  return TRUE;
+}
+
+
+static void
+gabble_conn_aliasing_pep_nick_reply_handler (GabbleConnection *conn,
+                                             LmMessage *msg,
+                                             TpHandle handle)
+{
+  LmMessageNode *pubsub_node, *items_node, *item_node;
+
+  pubsub_node = lm_message_node_get_child_with_namespace (msg->node,
+      "pubsub", NS_PUBSUB);
+  if (pubsub_node == NULL)
+    {
+      pubsub_node = lm_message_node_get_child_with_namespace (msg->node,
+        "pubsub", NS_PUBSUB "#event");
+
+      if (pubsub_node == NULL)
+        {
+          NODE_DEBUG (msg->node, "PEP reply with no <pubsub>, ignoring");
+          return;
+        }
+      else
+        {
+          NODE_DEBUG (msg->node, "PEP reply from buggy server with #event "
+              "on <pubsub> namespace");
+        }
+    }
+
+  items_node = lm_message_node_get_child (pubsub_node, "items");
+  if (items_node == NULL)
+    {
+      NODE_DEBUG (msg->node, "No items in PEP reply");
+      return;
+    }
+
+  for (item_node = items_node->children;
+       item_node != NULL;
+       item_node = item_node->next)
+    {
+      _grab_nickname (conn, handle, item_node);
+    }
+}
+
+
 void
 conn_aliasing_iface_init (gpointer g_iface, gpointer iface_data)
 {

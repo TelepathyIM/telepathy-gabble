@@ -23,9 +23,16 @@
 
 #include <glib.h>
 
+#include "gabble-connection.h"
+
 G_BEGIN_DECLS
 
 void conn_aliasing_iface_init (gpointer g_iface, gpointer iface_data);
+
+gboolean gabble_conn_aliasing_pep_nick_event_handler (GabbleConnection *conn,
+    LmMessage *msg, TpHandle handle);
+
+GQuark gabble_conn_aliasing_pep_alias_quark (void);
 
 G_END_DECLS
 

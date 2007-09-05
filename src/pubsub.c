@@ -21,15 +21,15 @@
 #include <loudmouth/loudmouth.h>
 #include <telepathy-glib/enums.h>
 
+#include "conn-aliasing.h"
 #include "pubsub.h"
 #include "namespaces.h"
 #include "util.h"
-#include "presence-cache.h"
 #include "conn-olpc.h"
 
 static const GabblePubsubEventHandler pubsub_event_handlers[] =
 {
-    { NS_NICK, gabble_presence_cache_pep_nick_event_handler},
+    { NS_NICK, gabble_conn_aliasing_pep_nick_event_handler },
     { NS_OLPC_BUDDY_PROPS, olpc_buddy_info_properties_event_handler},
     { NS_OLPC_ACTIVITIES, olpc_buddy_info_activities_event_handler},
     { NS_OLPC_CURRENT_ACTIVITY, olpc_buddy_info_current_activity_event_handler},

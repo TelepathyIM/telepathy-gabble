@@ -1283,6 +1283,18 @@ _gabble_connection_get_cached_alias (GabbleConnection *conn,
       goto OUT;
     }
 
+  tmp = tp_handle_get_qdata (contact_handles, handle,
+      gabble_conn_aliasing_pep_alias_quark ());
+  if (NULL != tmp)
+    {
+      ret = GABBLE_CONNECTION_ALIAS_FROM_PRESENCE;
+
+      if (NULL != alias)
+        *alias = g_strdup (tmp);
+
+      goto OUT;
+    }
+
   pres = gabble_presence_cache_get (conn->presence_cache, handle);
   if (NULL != pres && NULL != pres->nickname)
     {
@@ -1368,7 +1380,12 @@ connection_nickname_update_cb (GObject *object,
   GPtrArray *aliases;
   GValue entry = { 0, };
 
-  if (object == G_OBJECT (conn->roster))
+  if (object == user_data)
+    {
+      /* actually PEP */
+      signal_source = GABBLE_CONNECTION_ALIAS_FROM_PRESENCE;
+    }
+  else if (object == G_OBJECT (conn->roster))
     {
       signal_source = GABBLE_CONNECTION_ALIAS_FROM_ROSTER;
     }
@@ -1421,6 +1438,13 @@ connection_nickname_update_cb (GObject *object,
 
 OUT:
   g_free (alias);
+}
+
+void
+gabble_connection_pep_nickname_updated (GabbleConnection *self,
+                                        TpHandle handle)
+{
+  connection_nickname_update_cb ((GObject *) self, handle, self);
 }
 
 /**

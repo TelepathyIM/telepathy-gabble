@@ -77,8 +77,6 @@ void gabble_presence_cache_maybe_remove (GabblePresenceCache *cache,
     TpHandle handle);
 void gabble_presence_cache_add_bundle_caps (GabblePresenceCache *cache,
     const gchar *node, GabblePresenceCapabilities caps);
-gboolean gabble_presence_cache_pep_nick_event_handler (GabbleConnection *conn,
-    LmMessage *msg, TpHandle handle);
 
 G_END_DECLS
 

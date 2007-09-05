@@ -37,6 +37,8 @@ def expect_get_inital_vcard(event, data):
 
     if vcard.name != 'vCard':
         return False
+    if vcard['xmlns'] != 'vcard-temp':
+        return False
 
     time.sleep(40)
     return handle_get_vcard(event, data)

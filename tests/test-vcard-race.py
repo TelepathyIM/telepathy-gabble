@@ -48,6 +48,8 @@ def expect_get_vcard(event, data):
 
     if vcard.name != 'vCard':
         return False
+    if vcard.uri != 'vcard-temp':
+        return False
 
     # Send empty vCard back.
     iq['type'] = 'result'
@@ -86,6 +88,8 @@ def expect_get_vcard_again(event, data):
 
     if vcard.name != 'vCard':
         return False
+    if vcard.uri != 'vcard-temp':
+        return False
 
     iq['type'] = 'result'
     data['stream'].send(iq)
@@ -105,6 +109,8 @@ def expect_set_vcard(event, data):
     vcard = list(iq.elements())[0]
 
     if vcard.name != 'vCard':
+        return False
+    if vcard.uri != 'vcard-temp':
         return False
 
     nicknames = xpath.queryForNodes('/vCard/NICKNAME', vcard)

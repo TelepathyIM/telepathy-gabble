@@ -28,8 +28,29 @@ def expect_my_vcard_iq(event, data):
 
     if vcard.name != 'vCard':
         return False
+    if vcard.uri != 'vcard-temp':
+        return False
 
     data['stream'].send(make_result_iq(data['stream'], event.stanza))
+    return True
+
+@match('stream-iq', to='bob@foo.com', iq_type='get')
+def expect_pep_iq(event, data):
+    iq = event.stanza
+    pubsub = iq.firstChildElement()
+    assert pubsub.name == 'pubsub'
+    assert pubsub.uri == "http://jabber.org/protocol/pubsub"
+    items = pubsub.firstChildElement()
+    assert items.name == 'items'
+    assert items['node'] == "http://jabber.org/protocol/nick"
+
+    result = make_result_iq(data['stream'], iq)
+    result['type'] = 'error'
+    error = result.addElement('error')
+    error['type'] = 'auth'
+    error.addElement('forbidden', 'urn:ietf:params:xml:ns:xmpp-stanzas')
+    data['stream'].send(result)
+
     return True
 
 @match('stream-iq', to='bob@foo.com')
@@ -37,6 +58,7 @@ def expect_vcard_iq(event, data):
     iq = event.stanza
     vcard = iq.firstChildElement()
     assert vcard.name == 'vCard'
+    assert vcard.uri == 'vcard-temp'
 
     result = make_result_iq(data['stream'], iq)
     result.addChild(vcard)

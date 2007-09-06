@@ -321,8 +321,12 @@ gabble_connection_request_aliases (TpSvcConnectionInterfaceAliasing *iface,
             * current ejabberd PEP implementation doesn't seem to give
             * us notifications of the initial state. */
           AliasRequest *data = g_slice_new (AliasRequest);
-          LmMessage *msg = lm_message_build
-              (tp_handle_inspect (contact_handles, handle),
+          LmMessage *msg;
+          GabbleRequestPipelineItem *pep_request;
+
+          g_free (alias);
+
+          msg = lm_message_build (tp_handle_inspect (contact_handles, handle),
               LM_MESSAGE_TYPE_IQ,
               '(', "pubsub", "",
                 '@', "xmlns", NS_PUBSUB,
@@ -331,9 +335,7 @@ gabble_connection_request_aliases (TpSvcConnectionInterfaceAliasing *iface,
                 ')',
               ')',
               NULL);
-          GabbleRequestPipelineItem *pep_request;
 
-          g_free (alias);
           data->aliases_request = request;
           data->index = i;
 

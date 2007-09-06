@@ -31,6 +31,7 @@
 
 #include <telepathy-glib/handle-repo-dynamic.h>
 
+#include "conn-aliasing.h"
 #include "sha1/sha1.h"
 #include "namespaces.h"
 #include "gabble-connection.h"

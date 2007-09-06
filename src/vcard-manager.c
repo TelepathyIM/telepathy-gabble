@@ -28,6 +28,7 @@
 #include <telepathy-glib/heap.h>
 
 #include "base64.h"
+#include "conn-aliasing.h"
 #include "gabble-connection.h"
 #include "namespaces.h"
 #include "request-pipeline.h"

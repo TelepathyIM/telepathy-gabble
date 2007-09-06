@@ -31,6 +31,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_ROSTER
 
+#include "conn-aliasing.h"
 #include "debug.h"
 #include "gabble-connection.h"
 #include "gabble-roster-channel.h"

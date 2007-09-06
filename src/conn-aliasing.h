@@ -38,6 +38,9 @@ void gabble_conn_aliasing_nickname_updated (GObject *object,
 const gchar *gabble_conn_aliasing_get_cached_pep_alias (GabbleConnection *conn,
     TpHandle handle);
 
+GabbleConnectionAliasSource _gabble_connection_get_cached_alias (
+    GabbleConnection *, TpHandle, gchar **);
+
 G_END_DECLS
 
 #endif /* __CONN_ALIASING_H__ */

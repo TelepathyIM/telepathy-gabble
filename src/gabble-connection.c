@@ -70,8 +70,6 @@
 #include "gabble-media-channel.h"
 #include "gabble-roomlist-channel.h"
 
-#define GABBLE_TP_ALIAS_PAIR_TYPE (dbus_g_type_get_struct ("GValueArray", \
-      G_TYPE_UINT, G_TYPE_STRING, G_TYPE_INVALID))
 #define GABBLE_TP_CAPABILITY_PAIR_TYPE (dbus_g_type_get_struct ("GValueArray", \
       G_TYPE_STRING, G_TYPE_UINT, G_TYPE_INVALID))
 #define GABBLE_TP_CAPABILITIES_CHANGED_MONSTER_TYPE (dbus_g_type_get_struct \
@@ -182,7 +180,6 @@ struct _GabbleConnectionPrivate
 #define GABBLE_CONNECTION_GET_PRIVATE(obj) \
     ((GabbleConnectionPrivate *)obj->priv)
 
-static void connection_nickname_update_cb (GObject *, TpHandle, gpointer);
 static void connection_capabilities_update_cb (GabblePresenceCache *,
     TpHandle, GabblePresenceCapabilities, GabblePresenceCapabilities,
     gpointer);
@@ -196,7 +193,7 @@ _gabble_connection_create_channel_factories (TpBaseConnection *conn)
 
   self->roster = gabble_roster_new (self);
   g_signal_connect (self->roster, "nickname-update", G_CALLBACK
-      (connection_nickname_update_cb), self);
+      (gabble_conn_aliasing_nickname_updated), self);
 
   g_ptr_array_add (channel_factories, self->roster);
 
@@ -233,11 +230,11 @@ gabble_connection_constructor (GType type,
   self->disco = gabble_disco_new (self);
   self->vcard_manager = gabble_vcard_manager_new (self);
   g_signal_connect (self->vcard_manager, "nickname-update", G_CALLBACK
-      (connection_nickname_update_cb), self);
+      (gabble_conn_aliasing_nickname_updated), self);
 
   self->presence_cache = gabble_presence_cache_new (self);
   g_signal_connect (self->presence_cache, "nickname-update", G_CALLBACK
-      (connection_nickname_update_cb), self);
+      (gabble_conn_aliasing_nickname_updated), self);
   g_signal_connect (self->presence_cache, "capabilities-update", G_CALLBACK
       (connection_capabilities_update_cb), self);
 
@@ -1368,83 +1365,6 @@ OUT:
   return ret;
 }
 
-static void
-connection_nickname_update_cb (GObject *object,
-                               TpHandle handle,
-                               gpointer user_data)
-{
-  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
-  GabbleConnectionAliasSource signal_source, current_source;
-  gchar *alias = NULL;
-  GPtrArray *aliases;
-  GValue entry = { 0, };
-
-  if (object == user_data)
-    {
-      /* actually PEP */
-      signal_source = GABBLE_CONNECTION_ALIAS_FROM_PRESENCE;
-    }
-  else if (object == G_OBJECT (conn->roster))
-    {
-      signal_source = GABBLE_CONNECTION_ALIAS_FROM_ROSTER;
-    }
-  else if (object == G_OBJECT (conn->presence_cache))
-    {
-      signal_source = GABBLE_CONNECTION_ALIAS_FROM_PRESENCE;
-    }
-   else if (object == G_OBJECT (conn->vcard_manager))
-     {
-       signal_source = GABBLE_CONNECTION_ALIAS_FROM_VCARD;
-     }
-  else
-    {
-      g_assert_not_reached ();
-      return;
-    }
-
-  current_source = _gabble_connection_get_cached_alias (conn, handle, &alias);
-
-  g_assert (current_source != GABBLE_CONNECTION_ALIAS_NONE);
-
-  /* if the active alias for this handle is already known and from
-   * a higher priority, this signal is not interesting so we do
-   * nothing */
-  if (signal_source < current_source)
-    {
-      DEBUG ("ignoring boring alias change for handle %u, signal from %u "
-          "but source %u has alias \"%s\"", handle, signal_source,
-          current_source, alias);
-      goto OUT;
-    }
-
-  g_value_init (&entry, GABBLE_TP_ALIAS_PAIR_TYPE);
-  g_value_take_boxed (&entry, dbus_g_type_specialized_construct
-      (GABBLE_TP_ALIAS_PAIR_TYPE));
-
-  dbus_g_type_struct_set (&entry,
-      0, handle,
-      1, alias,
-      G_MAXUINT);
-
-  aliases = g_ptr_array_sized_new (1);
-  g_ptr_array_add (aliases, g_value_get_boxed (&entry));
-
-
-  tp_svc_connection_interface_aliasing_emit_aliases_changed (conn, aliases);
-
-  g_value_unset (&entry);
-  g_ptr_array_free (aliases, TRUE);
-
-OUT:
-  g_free (alias);
-}
-
-void
-gabble_connection_pep_nickname_updated (GabbleConnection *self,
-                                        TpHandle handle)
-{
-  connection_nickname_update_cb ((GObject *) self, handle, self);
-}
 
 /**
  * _gabble_connection_signal_own_presence:

@@ -35,9 +35,6 @@ gboolean gabble_conn_aliasing_pep_nick_event_handler (GabbleConnection *conn,
 void gabble_conn_aliasing_nickname_updated (GObject *object,
     TpHandle handle, gpointer user_data);
 
-const gchar *gabble_conn_aliasing_get_cached_pep_alias (GabbleConnection *conn,
-    TpHandle handle);
-
 GabbleConnectionAliasSource _gabble_connection_get_cached_alias (
     GabbleConnection *, TpHandle, gchar **);
 

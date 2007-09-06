@@ -635,23 +635,6 @@ gabble_conn_aliasing_pep_nick_reply_handler (GabbleConnection *conn,
 }
 
 
-const gchar *
-gabble_conn_aliasing_get_cached_pep_alias (GabbleConnection *self,
-                                           TpHandle handle)
-{
-  TpBaseConnection *base = (TpBaseConnection *) self;
-  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
-  const gchar * tmp = tp_handle_get_qdata (contact_handles, handle,
-      gabble_conn_aliasing_pep_alias_quark ());
-
-  if (tmp == NO_ALIAS)
-    return NULL;
-
-  return tmp;
-}
-
-
 void
 gabble_conn_aliasing_nickname_updated (GObject *object,
                                        TpHandle handle,
@@ -753,8 +736,9 @@ _gabble_connection_get_cached_alias (GabbleConnection *conn,
       goto OUT;
     }
 
-  tmp = gabble_conn_aliasing_get_cached_pep_alias (conn, handle);
-  if (NULL != tmp)
+  tmp = tp_handle_get_qdata (contact_handles, handle,
+      gabble_conn_aliasing_pep_alias_quark ());
+  if (tmp != NULL && tmp != NO_ALIAS)
     {
       ret = GABBLE_CONNECTION_ALIAS_FROM_PRESENCE;
 

@@ -623,6 +623,7 @@ gabble_conn_aliasing_pep_nick_reply_handler (GabbleConnection *conn,
           break;
         }
     }
+
   if (!found)
     {
       _cache_negatively (conn, handle);

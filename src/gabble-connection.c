@@ -1304,14 +1304,25 @@ _gabble_connection_get_cached_alias (GabbleConnection *conn,
 
   /* XXX: should this be more important than the ones from presence? */
   /* if it's our own handle, use alias passed to the connmgr, if any */
-  if (handle == base->self_handle && priv->alias != NULL)
+  if (handle == base->self_handle)
     {
-      ret = GABBLE_CONNECTION_ALIAS_FROM_CONNMGR;
+      gchar *cm_alias;
 
-      if (NULL != alias)
-        *alias = g_strdup (priv->alias);
+      g_object_get (conn,
+          "alias", &cm_alias,
+          NULL);
 
-      goto OUT;
+      if (cm_alias != NULL)
+        {
+          ret = GABBLE_CONNECTION_ALIAS_FROM_CONNMGR;
+
+          if (NULL != alias)
+            *alias = cm_alias;
+          else
+            g_free (cm_alias);
+
+          goto OUT;
+        }
     }
 
   tmp = tp_handle_inspect (contact_handles, handle);

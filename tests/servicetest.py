@@ -7,6 +7,7 @@ from twisted.internet import glib2reactor
 glib2reactor.install()
 
 import pprint
+import os
 import sys
 import traceback
 
@@ -238,7 +239,7 @@ def run_test(handler, start=None):
         if node.__class__ == compiler.ast.Function and
             node.name.startswith('expect_')]
 
-    handler.verbose = False
+    handler.verbose = (os.environ.get('CHECK_TWISTED_VERBOSE', '') != '')
     for arg in sys.argv:
         if arg == '-v':
             handler.verbose = True

@@ -1283,8 +1283,7 @@ _gabble_connection_get_cached_alias (GabbleConnection *conn,
       goto OUT;
     }
 
-  tmp = tp_handle_get_qdata (contact_handles, handle,
-      gabble_conn_aliasing_pep_alias_quark ());
+  tmp = gabble_conn_aliasing_get_cached_pep_alias (conn, handle);
   if (NULL != tmp)
     {
       ret = GABBLE_CONNECTION_ALIAS_FROM_PRESENCE;

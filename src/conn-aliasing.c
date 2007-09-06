@@ -36,7 +36,10 @@
 
 static void gabble_conn_aliasing_pep_nick_reply_handler (
     GabbleConnection *conn, LmMessage *msg, TpHandle handle);
+static GQuark gabble_conn_aliasing_pep_alias_quark (void);
 
+/* distinct from any strdup()d pointer - used for negative caching */
+static const gchar *NO_ALIAS = "";
 
 /**
  * gabble_connection_get_alias_flags
@@ -184,6 +187,19 @@ aliases_request_vcard_cb (GabbleVCardManager *manager,
 
 
 static void
+_cache_negatively (GabbleConnection *self,
+                   TpHandle handle)
+{
+  TpBaseConnection *base = (TpBaseConnection *) self;
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
+
+  tp_handle_set_qdata (contact_handles, handle,
+      gabble_conn_aliasing_pep_alias_quark (), (gchar *) NO_ALIAS, NULL);
+}
+
+
+static void
 aliases_request_pep_cb (GabbleConnection *self,
                         LmMessage *msg,
                         gpointer user_data,
@@ -203,10 +219,12 @@ aliases_request_pep_cb (GabbleConnection *self,
   if (error != NULL)
     {
       DEBUG ("Error getting alias from PEP: %s", error->message);
+      _cache_negatively (self, handle);
     }
   else if (lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
       NODE_DEBUG (msg->node, "Error getting alias from PEP");
+      _cache_negatively (self, handle);
     }
   else
     {
@@ -501,7 +519,7 @@ gabble_conn_aliasing_pep_alias_quark (void)
 }
 
 
-static void
+static gboolean
 _grab_nickname (GabbleConnection *self,
                 TpHandle handle,
                 LmMessageNode *node)
@@ -518,7 +536,8 @@ _grab_nickname (GabbleConnection *self,
     {
       DEBUG ("didn't get a nickname for %s", tp_handle_inspect
           (contact_handles, handle));
-      return;
+      _cache_negatively (self, handle);
+      return FALSE;
     }
   nickname = lm_message_node_get_value (node);
 
@@ -530,6 +549,7 @@ _grab_nickname (GabbleConnection *self,
           g_free);
       gabble_connection_pep_nickname_updated (self, handle);
     }
+  return TRUE;
 }
 
 
@@ -559,6 +579,7 @@ gabble_conn_aliasing_pep_nick_reply_handler (GabbleConnection *conn,
                                              TpHandle handle)
 {
   LmMessageNode *pubsub_node, *items_node, *item_node;
+  gboolean found = FALSE;
 
   pubsub_node = lm_message_node_get_child_with_namespace (msg->node,
       "pubsub", NS_PUBSUB);
@@ -570,6 +591,7 @@ gabble_conn_aliasing_pep_nick_reply_handler (GabbleConnection *conn,
       if (pubsub_node == NULL)
         {
           NODE_DEBUG (msg->node, "PEP reply with no <pubsub>, ignoring");
+          _cache_negatively (conn, handle);
           return;
         }
       else
@@ -583,6 +605,7 @@ gabble_conn_aliasing_pep_nick_reply_handler (GabbleConnection *conn,
   if (items_node == NULL)
     {
       NODE_DEBUG (msg->node, "No items in PEP reply");
+      _cache_negatively (conn, handle);
       return;
     }
 
@@ -590,8 +613,35 @@ gabble_conn_aliasing_pep_nick_reply_handler (GabbleConnection *conn,
        item_node != NULL;
        item_node = item_node->next)
     {
-      _grab_nickname (conn, handle, item_node);
+      if (_grab_nickname (conn, handle, item_node))
+        {
+          /* FIXME: does this do the right thing on servers which return
+           * multiple items? ejabberd only returns one anyway */
+          found = TRUE;
+          break;
+        }
     }
+  if (!found)
+    {
+      _cache_negatively (conn, handle);
+    }
+}
+
+
+const gchar *
+gabble_conn_aliasing_get_cached_pep_alias (GabbleConnection *self,
+                                           TpHandle handle)
+{
+  TpBaseConnection *base = (TpBaseConnection *) self;
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
+  const gchar * tmp = tp_handle_get_qdata (contact_handles, handle,
+      gabble_conn_aliasing_pep_alias_quark ());
+
+  if (tmp == NO_ALIAS)
+    return NULL;
+
+  return tmp;
 }
 
 

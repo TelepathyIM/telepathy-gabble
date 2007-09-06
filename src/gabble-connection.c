@@ -67,13 +67,7 @@
 #include "tubes-factory.h"
 #include "util.h"
 #include "vcard-manager.h"
-#include "bytestream-factory.h"
 
-#include "gabble-media-channel.h"
-#include "gabble-roomlist-channel.h"
-
-#define GABBLE_TP_ALIAS_PAIR_TYPE (dbus_g_type_get_struct ("GValueArray", \
-      G_TYPE_UINT, G_TYPE_STRING, G_TYPE_INVALID))
 #define GABBLE_TP_CAPABILITY_PAIR_TYPE (dbus_g_type_get_struct ("GValueArray", \
       G_TYPE_STRING, G_TYPE_UINT, G_TYPE_INVALID))
 #define GABBLE_TP_CAPABILITIES_CHANGED_MONSTER_TYPE (dbus_g_type_get_struct \

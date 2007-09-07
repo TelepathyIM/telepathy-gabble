@@ -358,7 +358,7 @@ def signal_emit_stub(signal):
 
 def print_class_definition(stream, prefix, classname, methods):
     stream.write ("struct _%sClass {\n" % classname)
-    stream.write ("    GObjectClass parent_class;\n")
+    stream.write ("    GTypeInterface parent_class;\n")
 
     for method in methods:
         dbus_method_name = method.getAttributeNode("name").nodeValue

@@ -57,7 +57,7 @@ _gen/async-%.xml: _gen/%.xml $(tools_dir)/make-all-async.xsl
 
 _gen/svc-%-glue.h: _gen/async-%.xml
 	$(DBUS_BINDING_TOOL) --mode=glib-server --output=$@ \
-		--prefix=gabble_svc_`echo $* | tr A-Z a-z` $<
+		--prefix=gabble_svc_`echo $* | tr '[:upper:]' '[:lower:]'` $<
 
 _gen/svc-%.c _gen/svc-%.h _gen/svc-%-signals-marshal.list: %.xml $(tools_dir)/genginterface.py _gen/.exists
 	$(PYTHON) $(tools_dir)/genginterface.py \

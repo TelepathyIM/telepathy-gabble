@@ -156,6 +156,7 @@ enum
 {
   ROOM_PROP_ANONYMOUS = 0,
   ROOM_PROP_INVITE_ONLY,
+  ROOM_PROP_INVITE_RESTRICTED,
   ROOM_PROP_MODERATED,
   ROOM_PROP_NAME,
   ROOM_PROP_DESCRIPTION,
@@ -175,6 +176,7 @@ enum
 const TpPropertySignature room_property_signatures[NUM_ROOM_PROPS] = {
       { "anonymous",         G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
       { "invite-only",       G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
+      { "invite-restricted", G_TYPE_BOOLEAN },  /* impl: WRITE */
       { "moderated",         G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
       { "name",              G_TYPE_STRING },   /* impl: READ, WRITE */
       { "description",       G_TYPE_STRING },   /* impl: READ, WRITE */
@@ -1458,6 +1460,10 @@ update_permissions (GabbleMucChannel *chan)
       changed_props_flags);
 
   tp_properties_mixin_change_flags (G_OBJECT (chan),
+      ROOM_PROP_INVITE_RESTRICTED, prop_flags_add, prop_flags_rem,
+      changed_props_flags);
+
+  tp_properties_mixin_change_flags (G_OBJECT (chan),
       ROOM_PROP_MODERATED, prop_flags_add, prop_flags_rem,
       changed_props_flags);
 
@@ -2561,6 +2567,11 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
         {
           id = ROOM_PROP_INVITE_ONLY;
         }
+      else if (strcmp (var, "muc#roomconfig_allowinvites") == 0)
+        {
+          id = ROOM_PROP_INVITE_RESTRICTED;
+          invert = TRUE;
+        }
       else if (strcmp (var, "moderated") == 0 ||
                strcmp (var, "muc#roomconfig_moderatedroom") == 0 ||
                strcmp (var, "muc#owner_moderatedroom") == 0)
@@ -2612,7 +2623,8 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
           continue;
         }
 
-      DEBUG ("looking up %s", room_property_signatures[id].name);
+      DEBUG ("looking up %s... has=%d", room_property_signatures[id].name,
+          tp_properties_context_has (ctx, id));
 
       if (!tp_properties_context_has (ctx, id))
         continue;
@@ -2637,6 +2649,7 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
           }
         }
 
+      DEBUG ("Setting value %s for %s", val_str, var);
       lm_message_node_set_value (value_node, val_str);
 
       props_left &= ~(1 << id);

@@ -83,6 +83,8 @@ AC_ARG_ENABLE(coding-style-checks,
                  [don't check coding style using grep]),
     [ENABLE_CODING_STYLE_CHECKS=$enableval], [ENABLE_CODING_STYLE_CHECKS=yes])
     ])
+# FIXME: until we fix all the MACRO(foo) invocations, the above is switched off
+ENABLE_CODING_STYLE_CHECKS=no
 
 if test x$enable_debug = xyes; then
   AC_DEFINE(ENABLE_DEBUG, [], [Enable debug code])

@@ -109,8 +109,6 @@ struct _GabbleTubeDBusPrivate
   DBusConnection *dbus_conn;
   /* mapping of contact handle -> D-Bus name */
   GHashTable *dbus_names;
-  /* mapping of D-Bus name -> contact handle */
-  GHashTable *dbus_name_to_handle;
 
   gboolean dispose_has_run;
 };
@@ -120,6 +118,8 @@ struct _GabbleTubeDBusPrivate
 
 static void data_received_cb (GabbleBytestreamIface *stream, TpHandle sender,
     GString *data, gpointer user_data);
+
+static void gabble_tube_dbus_close (GabbleTubeIface *tube);
 
 /*
  * Characters used are permissible both in filenames and in D-Bus names. (See
@@ -434,12 +434,6 @@ gabble_tube_dbus_dispose (GObject *object)
       g_hash_table_destroy (priv->dbus_names);
     }
 
-  if (priv->dbus_name_to_handle)
-     {
-       g_hash_table_destroy (priv->dbus_name_to_handle);
-       priv->dbus_name_to_handle = NULL;
-     }
-
   tp_handle_unref (contact_repo, priv->initiator);
 
   if (G_OBJECT_CLASS (gabble_tube_dbus_parent_class)->dispose)
@@ -752,18 +746,17 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
 }
 
 static void
-data_received_cb (GabbleBytestreamIface *stream,
+message_received (GabbleTubeDBus *tube,
                   TpHandle sender,
-                  GString *data,
-                  gpointer user_data)
+                  const char *data,
+                  size_t len)
 {
-  GabbleTubeDBus *tube = GABBLE_TUBE_DBUS (user_data);
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (tube);
   DBusMessage *msg;
   DBusError error = {0,};
-  guint32 serial;
   const gchar *sender_name;
   const gchar *destination;
+  guint32 serial;
 
   if (!priv->dbus_conn)
     {
@@ -771,23 +764,7 @@ data_received_cb (GabbleBytestreamIface *stream,
       return;
     }
 
-  /* XXX: This naïvely assumes that the underlying transport always gives
-   * us complete messages. This is true for IBB, at least.
-   *
-   * What we should do is:
-   *
-   * * if the bytestream is message-boundary-preserving (MUC), keep this
-   *   assumption
-   * * if it's not necessarily, but does guarantee that the first message is
-   *   aligned (IBB), do minimal parsing. Each D-Bus message has a 16-byte
-   *   fixed header, in which
-   *   * byte 0 is 'l' (ell) or 'B' for endianness
-   *   * bytes 4-7 are body length "n" in bytes in that endianness
-   *   * bytes 12-15 are length "m" of param array in bytes in that endianness
-   *   followed by m + n + ((8 - (m % 8)) % 8) bytes of other content.
-   */
-
-  msg = dbus_message_demarshal (data->str, data->len, &error);
+  msg = dbus_message_demarshal (data, len, &error);
 
   if (msg == NULL)
     {
@@ -807,8 +784,7 @@ data_received_cb (GabbleBytestreamIface *stream,
        * Discard it. */
       DEBUG ("message not intended for this participant (destination = %s)",
           destination);
-      dbus_message_unref (msg);
-      return;
+      goto unref;
     }
 
   sender_name = g_hash_table_lookup (priv->dbus_names,
@@ -818,14 +794,130 @@ data_received_cb (GabbleBytestreamIface *stream,
     {
       DEBUG ("invalid sender %s (expected %s for sender handle %d)",
              dbus_message_get_sender (msg), sender_name, sender);
-      dbus_message_unref (msg);
-      return;
+      goto unref;
     }
 
   /* XXX: what do do if this returns FALSE? */
   dbus_connection_send (priv->dbus_conn, msg, &serial);
 
+unref:
   dbus_message_unref (msg);
+}
+
+static guint32
+collect_le32 (char *str)
+{
+  unsigned char *bytes = (unsigned char *) str;
+
+  return bytes[0] | (bytes[1] << 8) | (bytes[2] << 16) | (bytes[3] << 24);
+}
+
+static guint32
+collect_be32 (char *str)
+{
+  unsigned char *bytes = (unsigned char *) str;
+
+  return (bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 24) | bytes[3];
+}
+
+/* as per the D-Bus Specification */
+#define MAX_DBUS_MESSAGE 134217728
+
+static void
+data_received_cb (GabbleBytestreamIface *stream,
+                  TpHandle sender,
+                  GString *data,
+                  gpointer user_data)
+{
+  GabbleTubeDBus *tube = GABBLE_TUBE_DBUS (user_data);
+  GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (tube);
+
+  if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
+    {
+      GString *buf = priv->reassembly_buffer;
+
+      g_string_append_len (buf, data->str, data->len);
+
+      /* Each D-Bus message has a 16-byte fixed header, in which
+       *
+       * * byte 0 is 'l' (ell) or 'B' for endianness
+       * * bytes 4-7 are body length "n" in bytes in that endianness
+       * * bytes 12-15 are length "m" of param array in bytes in that
+       *   endianness
+       *
+       * followed by m + n + ((8 - (m % 8)) % 8) bytes of other content.
+       */
+
+      while (buf->len >= 16)
+        {
+          guint32 body_length, params_length, m;
+
+          /* see if we have a whole message and have already calculated
+           * how many bytes it needs */
+
+          if (priv->reassembly_bytes_needed != 0)
+            {
+              if (buf->len >= priv->reassembly_bytes_needed)
+                {
+                  message_received (tube, sender, buf->str,
+                      priv->reassembly_bytes_needed);
+                  g_string_erase (buf, 0, priv->reassembly_bytes_needed);
+                }
+              else
+                {
+                  /* we'll have to wait for more data */
+                  break;
+                }
+            }
+
+          /* work out how big the next message is going to be */
+
+          if (buf->str[0] == '\x42' /* ASCII B */)
+            {
+              body_length = collect_be32 (buf->str + 4);
+              m = collect_be32 (buf->str + 12);
+            }
+          else if (buf->str[0] == '\x6C' /* ASCII l */)
+            {
+              body_length = collect_le32 (buf->str + 4);
+              m = collect_le32 (buf->str + 12);
+            }
+          else
+            {
+              DEBUG ("D-Bus message has unknown endianness byte 0x%x, "
+                  "closing tube", buf->str[0]);
+              gabble_tube_dbus_close ((GabbleTubeIface *) tube);
+              return;
+            }
+
+          /* pad to 8-byte boundary */
+          params_length = m + ((8 - (m % 8)) % 8);
+          g_assert (params_length % 8 == 0);
+          g_assert (params_length >= m);
+          g_assert (params_length < m + 8);
+
+          priv->reassembly_bytes_needed = params_length + body_length + 16;
+
+          /* only testing the first two of these to catch overflows */
+          if (body_length > MAX_DBUS_MESSAGE ||
+              params_length > MAX_DBUS_MESSAGE ||
+              priv->reassembly_bytes_needed > MAX_DBUS_MESSAGE)
+            {
+              DEBUG ("D-Bus message is too large to be valid, closing tube");
+              gabble_tube_dbus_close ((GabbleTubeIface *) tube);
+              return;
+            }
+
+          g_assert (priv->reassembly_bytes_needed != 0);
+        }
+    }
+  else
+    {
+      /* MUC bytestreams are message-boundary preserving, which is necessary,
+       * because we can't assume we started at the beginning */
+      g_assert (GABBLE_IS_BYTESTREAM_MUC (priv->bytestream));
+      message_received (tube, sender, data->str, data->len);
+    }
 }
 
 GabbleTubeDBus *

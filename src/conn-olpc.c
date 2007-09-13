@@ -1357,6 +1357,13 @@ olpc_buddy_info_current_activity_event_handler (GabbleConnection *conn,
       gabble_svc_olpc_buddy_info_emit_current_activity_changed (conn, handle,
           activity, room_handle);
     }
+  else
+    {
+      DEBUG ("emitting CurrentActivityChanged(contact#%u, \"\", 0)",
+             handle);
+      gabble_svc_olpc_buddy_info_emit_current_activity_changed (conn, handle,
+          "", 0);
+    }
 
   return TRUE;
 }

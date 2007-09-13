@@ -17,6 +17,9 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+/* FIXME: This file should probably be renamed to private-tubes-factory.c as
+ * it's used for private tubes only */
+
 #include "tubes-factory.h"
 
 #include <stdlib.h>

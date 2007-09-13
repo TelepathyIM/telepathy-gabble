@@ -104,6 +104,7 @@ struct _GabbleTubesChannelPrivate
 
   GHashTable *tubes;
 
+  gulong pre_presence_signal;
   gboolean closed;
   gboolean dispose_has_run;
 };
@@ -165,7 +166,7 @@ gabble_tubes_channel_constructor (GType type,
     case TP_HANDLE_TYPE_ROOM:
       g_assert (self->muc != NULL);
 
-      g_signal_connect (self->muc, "pre-presence",
+      priv->pre_presence_signal = g_signal_connect (self->muc, "pre-presence",
           G_CALLBACK (pre_presence_cb), self);
 
       priv->self_handle = self->muc->group.self_handle;
@@ -2281,6 +2282,8 @@ gabble_tubes_channel_dispose (GObject *object)
 
   if (self->muc != NULL)
     {
+      g_signal_handler_disconnect (self->muc, priv->pre_presence_signal);
+
       tp_external_group_mixin_finalize (object);
     }
   gabble_tubes_channel_close (self);

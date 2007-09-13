@@ -198,6 +198,7 @@ filter_cb (DBusConnection *conn,
         {
           data.contact = dest;
 
+          /* FIXME: O(n), perhaps we should keep an inverse of dbus_names */
           if (!g_hash_table_find (priv->dbus_names, find_contact, &data))
             {
               DEBUG ("Unknown D-Bus name: %s", dest);
@@ -253,6 +254,7 @@ tube_dbus_open (GabbleTubeDBus *self)
       G_CALLBACK (data_received_cb), self);
 
   generate_ascii_string (8, suffix);
+  /* FIXME: is hard-coding /tmp really appropriate? */
   priv->dbus_srv_addr = g_strdup_printf (
       "unix:path=/tmp/dbus-gabble-%.8s", suffix);
   DEBUG ("listening on %s", priv->dbus_srv_addr);
@@ -385,6 +387,8 @@ gabble_tube_dbus_dispose (GObject *object)
 
   g_free (priv->dbus_srv_addr);
   g_free (priv->dbus_local_name);
+
+  /* FIXME: unlink the Unix socket */
 
   if (priv->dbus_names)
     {
@@ -909,6 +913,7 @@ static void
 gabble_tube_dbus_add_bytestream (GabbleTubeIface *tube,
                                  GabbleBytestreamIface *bytestream)
 {
+  /* FIXME: should we support this, if we don't have a bytestream yet? */
   DEBUG ("D-Bus doesn't support extra bytestream");
   gabble_bytestream_iface_close (bytestream);
 }

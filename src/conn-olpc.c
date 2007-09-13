@@ -1210,6 +1210,8 @@ get_current_activity_reply_cb (GabbleConnection *conn,
       room_handle = 0;
     }
 
+  DEBUG ("GetCurrentActivity returns (\"%s\", room#%u)", activity,
+      room_handle);
   gabble_svc_olpc_buddy_info_return_from_get_current_activity (context,
       activity, room_handle);
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
@@ -1224,7 +1226,7 @@ olpc_buddy_info_get_current_activity (GabbleSvcOLPCBuddyInfo *iface,
   TpBaseConnection *base = (TpBaseConnection *) conn;
   const gchar *jid;
 
-  DEBUG ("called");
+  DEBUG ("called for contact#%u", contact);
 
   if (!check_pep (conn, context))
     return;
@@ -1350,6 +1352,8 @@ olpc_buddy_info_current_activity_event_handler (GabbleConnection *conn,
 
   if (extract_current_activity (conn, msg, &activity, &room_handle))
     {
+      DEBUG ("emitting CurrentActivityChanged(contact#%u, ID \"%s\", room#%u)",
+             handle, activity, room_handle);
       gabble_svc_olpc_buddy_info_emit_current_activity_changed (conn, handle,
           activity, room_handle);
     }

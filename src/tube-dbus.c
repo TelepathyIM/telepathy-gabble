@@ -112,7 +112,7 @@ struct _GabbleTubeDBusPrivate
 #define GABBLE_TUBE_DBUS_GET_PRIVATE(obj) \
     ((GabbleTubeDBusPrivate *) obj->priv)
 
-static void data_received_cb (GabbleBytestreamIBB *ibb, TpHandle sender,
+static void data_received_cb (GabbleBytestreamIface *stream, TpHandle sender,
     GString *data, gpointer user_data);
 
 /*
@@ -332,7 +332,7 @@ get_tube_state (GabbleTubeDBus *self)
 }
 
 static void
-bytestream_state_changed_cb (GabbleBytestreamIBB *bytestream,
+bytestream_state_changed_cb (GabbleBytestreamIface *bytestream,
                              GabbleBytestreamState state,
                              gpointer user_data)
 {
@@ -567,7 +567,7 @@ gabble_tube_dbus_constructor (GType type,
   if (priv->handle_type == TP_HANDLE_TYPE_ROOM)
     {
       /*
-       * We have to create an IBB bytestream that will be
+       * We have to create a pseudo-IBB bytestream that will be
        * used by this MUC tube to communicate.
        *
        * We don't create the bytestream of private D-Bus tube yet.
@@ -707,7 +707,7 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
 }
 
 static void
-data_received_cb (GabbleBytestreamIBB *ibb,
+data_received_cb (GabbleBytestreamIface *stream,
                   TpHandle sender,
                   GString *data,
                   gpointer user_data)

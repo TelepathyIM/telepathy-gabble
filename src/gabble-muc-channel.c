@@ -75,6 +75,7 @@ enum
 {
     READY,
     JOIN_ERROR,
+    PRE_PRESENCE,
     LAST_SIGNAL
 };
 
@@ -601,6 +602,25 @@ contact_handle_to_room_identity (GabbleMucChannel *chan, TpHandle main_handle,
   g_free (jid);
 }
 
+static LmMessage *
+create_presence_message (GabbleMucChannel *self,
+                         LmMessageSubType sub_type)
+{
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
+  LmMessage *msg;
+  LmMessageNode *x_node;
+
+  msg = lm_message_new_with_sub_type (priv->self_jid->str,
+      LM_MESSAGE_TYPE_PRESENCE, sub_type);
+
+  x_node = lm_message_node_add_child (msg->node, "x", NULL);
+  lm_message_node_set_attribute (x_node, "xmlns", NS_MUC);
+
+  g_signal_emit (self, signals[PRE_PRESENCE], 0, msg);
+
+  return msg;
+}
+
 static gboolean
 send_join_request (GabbleMucChannel *channel,
                    const gchar *password,
@@ -614,10 +634,8 @@ send_join_request (GabbleMucChannel *channel,
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (channel);
 
   /* build the message */
-  msg = lm_message_new (priv->self_jid->str, LM_MESSAGE_TYPE_PRESENCE);
-
-  x_node = lm_message_node_add_child (msg->node, "x", NULL);
-  lm_message_node_set_attribute (x_node, "xmlns", NS_MUC);
+  msg = create_presence_message (channel, LM_MESSAGE_SUB_TYPE_NOT_SET);
+  x_node = lm_message_node_get_child_with_namespace (msg->node, "x", NS_MUC);
 
   g_free (priv->password);
 
@@ -655,9 +673,7 @@ send_leave_message (GabbleMucChannel *channel,
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (channel);
 
   /* build the message */
-  msg = lm_message_new_with_sub_type (priv->self_jid->str,
-                                      LM_MESSAGE_TYPE_PRESENCE,
-                                      LM_MESSAGE_SUB_TYPE_UNAVAILABLE);
+  msg = create_presence_message (channel, LM_MESSAGE_SUB_TYPE_UNAVAILABLE);
 
   if (reason != NULL)
     {
@@ -836,6 +852,15 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   NULL, NULL,
                   g_cclosure_marshal_VOID__POINTER,
                   G_TYPE_NONE, 1, G_TYPE_POINTER);
+
+  signals[PRE_PRESENCE] =
+    g_signal_new ("pre-presence",
+                  G_OBJECT_CLASS_TYPE (gabble_muc_channel_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  g_cclosure_marshal_VOID__UINT,
+                  G_TYPE_NONE, 1, G_TYPE_UINT);
 
   tp_group_mixin_class_init (object_class,
                                  G_STRUCT_OFFSET (GabbleMucChannelClass,
@@ -2795,6 +2820,21 @@ gabble_muc_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
     }
 
   tp_svc_channel_interface_chat_state_return_from_set_chat_state (context);
+}
+
+gboolean
+gabble_muc_channel_send_presence (GabbleMucChannel *self,
+                                  GError **error)
+{
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
+  LmMessage *msg;
+  gboolean result;
+
+  msg = create_presence_message (self, LM_MESSAGE_SUB_TYPE_NOT_SET);
+  result = _gabble_connection_send (priv->conn, msg, error);
+
+  lm_message_unref (msg);
+  return result;
 }
 
 static void

@@ -1206,11 +1206,8 @@ get_current_activity_reply_cb (GabbleConnection *conn,
 
   if (!extract_current_activity (conn, reply_msg, &activity, &room_handle))
     {
-      if (extract_current_activity (conn, reply_msg, &activity, &room_handle))
-        {
-          gabble_svc_olpc_buddy_info_return_from_get_current_activity (context,
-              activity, room_handle);
-        }
+      activity = "";
+      room_handle = 0;
     }
 
   gabble_svc_olpc_buddy_info_return_from_get_current_activity (context,

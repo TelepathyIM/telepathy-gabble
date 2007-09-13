@@ -748,10 +748,12 @@ data_received_cb (GabbleBytestreamIface *stream,
 
   msg = dbus_message_demarshal (data->str, data->len, &error);
 
-  if (!msg)
+  if (msg == NULL)
     {
       /* message was corrupted */
-      DEBUG ("received corrupted message from %d", sender);
+      DEBUG ("received corrupted message from %d: %s: %s", sender,
+          error.name, error.message);
+      dbus_error_free (&error);
       return;
     }
 
@@ -760,9 +762,9 @@ data_received_cb (GabbleBytestreamIface *stream,
    * to check it */
   if (destination != NULL && tp_strdiff (priv->dbus_local_name, destination))
     {
-      /* This message is not intended for this tube.
+      /* This message is not intended for this participant.
        * Discard it. */
-      DEBUG ("message not intended for this tube (destination = %s)",
+      DEBUG ("message not intended for this participant (destination = %s)",
           destination);
       dbus_message_unref (msg);
       return;

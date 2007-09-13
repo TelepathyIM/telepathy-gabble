@@ -728,6 +728,18 @@ data_received_cb (GabbleBytestreamIface *stream,
 
   /* XXX: This naïvely assumes that the underlying transport always gives
    * us complete messages. This is true for IBB, at least.
+   *
+   * What we should do is:
+   *
+   * * if the bytestream is message-boundary-preserving (MUC), keep this
+   *   assumption
+   * * if it's not necessarily, but does guarantee that the first message is
+   *   aligned (IBB), do minimal parsing. Each D-Bus message has a 16-byte
+   *   fixed header, in which
+   *   * byte 0 is 'l' (ell) or 'B' for endianness
+   *   * bytes 4-7 are body length "n" in bytes in that endianness
+   *   * bytes 12-15 are length "m" of param array in bytes in that endianness
+   *   followed by m + n + ((8 - (m % 8)) % 8) bytes of other content.
    */
 
   msg = dbus_message_demarshal (data->str, data->len, &error);

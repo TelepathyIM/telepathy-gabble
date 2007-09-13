@@ -601,7 +601,7 @@ gabble_bytestream_muc_send_to (GabbleBytestreamMuc *self,
   const gchar *to;
 
   to = tp_handle_inspect (contact_repo, contact);
-  /* TODO check if the contact is a member of the muc */
+  g_return_val_if_fail (g_str_has_prefix (to, priv->peer_jid), FALSE);
 
   return send_data_to (self, to, FALSE, len, str);
 }

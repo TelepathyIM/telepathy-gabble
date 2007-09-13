@@ -616,8 +616,6 @@ create_presence_message (GabbleMucChannel *self,
   x_node = lm_message_node_add_child (msg->node, "x", NULL);
   lm_message_node_set_attribute (x_node, "xmlns", NS_MUC);
 
-  g_signal_emit (self, signals[PRE_PRESENCE], 0, msg);
-
   return msg;
 }
 
@@ -644,6 +642,8 @@ send_join_request (GabbleMucChannel *channel,
       priv->password = g_strdup (password);
       lm_message_node_add_child (x_node, "password", password);
     }
+
+  g_signal_emit (channel, signals[PRE_PRESENCE], 0, msg);
 
   /* send it */
   ret = _gabble_connection_send (priv->conn, msg, error);
@@ -679,6 +679,8 @@ send_leave_message (GabbleMucChannel *channel,
     {
       lm_message_node_add_child (msg->node, "status", reason);
     }
+
+  g_signal_emit (channel, signals[PRE_PRESENCE], 0, msg);
 
   /* send it */
   ret = _gabble_connection_send (priv->conn, msg, &error);
@@ -2831,6 +2833,7 @@ gabble_muc_channel_send_presence (GabbleMucChannel *self,
   gboolean result;
 
   msg = create_presence_message (self, LM_MESSAGE_SUB_TYPE_NOT_SET);
+  g_signal_emit (self, signals[PRE_PRESENCE], 0, msg);
   result = _gabble_connection_send (priv->conn, msg, error);
 
   lm_message_unref (msg);

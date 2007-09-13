@@ -1154,7 +1154,7 @@ extract_current_activity (GabbleConnection *conn,
   *activity = lm_message_node_get_attribute (node, "type");
 
   room = lm_message_node_get_attribute (node, "room");
-  if (room == NULL)
+  if (room == NULL || room[0] == '\0')
     return FALSE;
 
   room_handle = tp_handle_ensure (room_repo, room, NULL, NULL);

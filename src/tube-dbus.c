@@ -161,9 +161,9 @@ find_contact (gpointer key,
 static DBusHandlerResult
 filter_cb (DBusConnection *conn,
            DBusMessage *msg,
-           void *data)
+           void *user_data)
 {
-  GabbleTubeDBus *tube = GABBLE_TUBE_DBUS (data);
+  GabbleTubeDBus *tube = GABBLE_TUBE_DBUS (user_data);
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (tube);
   gchar *marshalled = NULL;
   gint len;

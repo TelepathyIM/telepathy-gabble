@@ -739,12 +739,6 @@ data_received_cb (GabbleBytestreamIface *stream,
       return;
     }
 
-  if (!tp_strdiff (dbus_message_get_sender (msg), priv->dbus_local_name))
-    {
-      /* Discard echo messages */
-      return;
-    }
-
   destination = dbus_message_get_destination (msg);
   /* If destination is NULL this msg is broadcasted (signals) so we don't have
    * to check it */

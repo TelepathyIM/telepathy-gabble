@@ -602,6 +602,7 @@ gabble_bytestream_muc_send_to (GabbleBytestreamMuc *self,
 
   to = tp_handle_inspect (contact_repo, contact);
   g_return_val_if_fail (g_str_has_prefix (to, priv->peer_jid), FALSE);
+  g_return_val_if_fail (to[strlen (priv->peer_jid)] == '/', FALSE);
 
   return send_data_to (self, to, FALSE, len, str);
 }

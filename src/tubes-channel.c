@@ -113,6 +113,9 @@ struct _GabbleTubesChannelPrivate
 
 static gboolean update_tubes_presence (GabbleTubesChannel *self);
 
+static void pre_presence_cb (GabbleMucChannel *muc, LmMessage *msg,
+    GabbleTubesChannel *self);
+
 static void
 gabble_tubes_channel_init (GabbleTubesChannel *self)
 {
@@ -161,6 +164,10 @@ gabble_tubes_channel_constructor (GType type,
       break;
     case TP_HANDLE_TYPE_ROOM:
       g_assert (self->muc != NULL);
+
+      g_signal_connect (self->muc, "pre-presence",
+          G_CALLBACK (pre_presence_cb), self);
+
       priv->self_handle = self->muc->group.self_handle;
       tp_external_group_mixin_init (obj, (GObject *) self->muc);
       break;
@@ -1034,53 +1041,33 @@ publish_tubes_in_node (gpointer key,
   publish_tube_in_node (data->self, tube_node, tube);
 }
 
-static gboolean
-update_tubes_presence (GabbleTubesChannel *self)
+static void
+pre_presence_cb (GabbleMucChannel *muc,
+                 LmMessage *msg,
+                 GabbleTubesChannel *self)
 {
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
-  TpBaseConnection *conn = (TpBaseConnection*) priv->conn;
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      conn, TP_HANDLE_TYPE_CONTACT);
-  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
-      conn, TP_HANDLE_TYPE_ROOM);
-  LmMessage *msg;
-  LmMessageNode *node;
-  const gchar *main_jid, *jid;
-  gchar *username, *to;
   struct _i_hate_g_hash_table_foreach data;
-  gboolean result;
+  LmMessageNode *node;
 
-  if (priv->handle_type != TP_HANDLE_TYPE_ROOM)
-    return FALSE;
-
-  /* build the message */
-  jid = tp_handle_inspect (room_repo, priv->handle);
-
-  main_jid = tp_handle_inspect (contact_repo, conn->self_handle);
-
-  gabble_decode_jid (main_jid, &username, NULL, NULL);
-
-  to = g_strdup_printf ("%s/%s", jid, username);
-
-  msg = lm_message_new (to, LM_MESSAGE_TYPE_PRESENCE);
-
-  node = lm_message_node_add_child (msg->node, "x", NULL);
-  lm_message_node_set_attribute (node, "xmlns", NS_MUC);
-
+  /* Augment the muc presence with tubes information */
   node = lm_message_node_add_child (msg->node, "tubes", NULL);
   lm_message_node_set_attribute (node, "xmlns", NS_TUBES);
   data.self = self;
   data.tubes_node = node;
 
   g_hash_table_foreach (priv->tubes, publish_tubes_in_node, &data);
+}
 
-  /* Send it */
-  result = _gabble_connection_send (priv->conn, msg, NULL);
+static gboolean
+update_tubes_presence (GabbleTubesChannel *self)
+{
+  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
 
-  g_free (username);
-  g_free (to);
-  lm_message_unref (msg);
-  return result;
+  if (priv->handle_type != TP_HANDLE_TYPE_ROOM)
+    return FALSE;
+
+  return gabble_muc_channel_send_presence (self->muc, NULL);
 }
 
 struct _bytestream_negotiate_cb_data

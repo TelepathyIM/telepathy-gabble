@@ -859,6 +859,8 @@ data_received_cb (GabbleBytestreamIface *stream,
     {
       GString *buf = priv->reassembly_buffer;
 
+      g_assert (buf != NULL);
+
       g_string_append_len (buf, data->str, data->len);
 
       /* Each D-Bus message has a 16-byte fixed header, in which

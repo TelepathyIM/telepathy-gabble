@@ -22,8 +22,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <errno.h>
 
 #include <glib.h>
+#include <glib/gstdio.h>
 
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
@@ -364,6 +366,7 @@ gabble_tube_dbus_dispose (GObject *object)
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+  gchar **tmp;
 
   if (priv->dispose_has_run)
     return;
@@ -384,10 +387,15 @@ gabble_tube_dbus_dispose (GObject *object)
   if (priv->dbus_srv)
     dbus_server_unref (priv->dbus_srv);
 
+  tmp = g_strsplit (priv->dbus_srv_addr, "=", 2);
+  if (g_unlink (tmp[1]) != 0)
+    {
+      DEBUG ("unlink of %s failed: %s", tmp[1], g_strerror (errno));
+    }
+  g_strfreev (tmp);
+
   g_free (priv->dbus_srv_addr);
   g_free (priv->dbus_local_name);
-
-  /* FIXME: unlink the Unix socket */
 
   if (priv->dbus_names)
     {

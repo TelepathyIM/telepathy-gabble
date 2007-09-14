@@ -271,7 +271,8 @@ tube_dbus_open (GabbleTubeDBus *self)
       if (priv->dbus_srv_addr != NULL)
         break;
 
-      DEBUG ("dbus_server_listen failed (try %d): %s", i, error.message);
+      DEBUG ("dbus_server_listen failed (try %u): %s: %s", i, error.name,
+          error.message);
       dbus_error_free (&error);
     }
 

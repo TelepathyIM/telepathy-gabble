@@ -254,7 +254,7 @@ tube_dbus_open (GabbleTubeDBus *self)
   for (i = 0; i < DBUS_SERVER_LISTEN_MAX_TRY; i++)
     {
       gchar suffix[8];
-      DBusError *error = NULL;
+      DBusError error;
 
       g_free (priv->dbus_srv_addr);
       g_free (priv->socket_path);
@@ -265,13 +265,14 @@ tube_dbus_open (GabbleTubeDBus *self)
       priv->dbus_srv_addr = g_strdup_printf ("unix:path=%s",
           priv->socket_path);
 
-      priv->dbus_srv = dbus_server_listen (priv->dbus_srv_addr, error);
+      dbus_error_init (&error);
+      priv->dbus_srv = dbus_server_listen (priv->dbus_srv_addr, &error);
 
       if (priv->dbus_srv_addr != NULL)
         break;
 
-      DEBUG ("dbus_server_listen failed (try %d): %s", i, error->message);
-      dbus_error_free (error);
+      DEBUG ("dbus_server_listen failed (try %d): %s", i, error.message);
+      dbus_error_free (&error);
     }
 
   if (priv->dbus_srv_addr ==NULL)

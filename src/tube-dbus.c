@@ -109,6 +109,13 @@ struct _GabbleTubeDBusPrivate
   DBusConnection *dbus_conn;
   /* mapping of contact handle -> D-Bus name */
   GHashTable *dbus_names;
+  /* mapping of D-Bus name -> contact handle */
+  GHashTable *dbus_name_to_handle;
+
+  /* Message reassembly buffer (CONTACT tubes only) */
+  GString *reassembly_buffer;
+  /* Number of bytes that will be in the next message, 0 if unknown */
+  guint32 reassembly_bytes_needed;
 
   gboolean dispose_has_run;
 };
@@ -433,6 +440,15 @@ gabble_tube_dbus_dispose (GObject *object)
           contact_repo);
       g_hash_table_destroy (priv->dbus_names);
     }
+
+  if (priv->dbus_name_to_handle)
+     {
+       g_hash_table_destroy (priv->dbus_name_to_handle);
+       priv->dbus_name_to_handle = NULL;
+     }
+
+  if (priv->reassembly_buffer)
+    g_string_free (priv->reassembly_buffer, TRUE);
 
   tp_handle_unref (contact_repo, priv->initiator);
 

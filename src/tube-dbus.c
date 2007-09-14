@@ -797,26 +797,30 @@ message_received (GabbleTubeDBus *tube,
       return;
     }
 
-  destination = dbus_message_get_destination (msg);
-  /* If destination is NULL this msg is broadcasted (signals) so we don't have
-   * to check it */
-  if (destination != NULL && tp_strdiff (priv->dbus_local_name, destination))
+  if (priv->handle_type == TP_HANDLE_TYPE_ROOM)
     {
-      /* This message is not intended for this participant.
-       * Discard it. */
-      DEBUG ("message not intended for this participant (destination = %s)",
-          destination);
-      goto unref;
-    }
+      destination = dbus_message_get_destination (msg);
+      /* If destination is NULL this msg is broadcasted (signals) so we don't
+       * have to check it */
+      if (destination != NULL && tp_strdiff (priv->dbus_local_name,
+            destination))
+        {
+          /* This message is not intended for this participant.
+           * Discard it. */
+          DEBUG ("message not intended for this participant (destination = "
+              "%s)", destination);
+          goto unref;
+        }
 
-  sender_name = g_hash_table_lookup (priv->dbus_names,
-      GUINT_TO_POINTER (sender));
+      sender_name = g_hash_table_lookup (priv->dbus_names,
+          GUINT_TO_POINTER (sender));
 
-  if (tp_strdiff (sender_name, dbus_message_get_sender (msg)))
-    {
-      DEBUG ("invalid sender %s (expected %s for sender handle %d)",
-             dbus_message_get_sender (msg), sender_name, sender);
-      goto unref;
+      if (tp_strdiff (sender_name, dbus_message_get_sender (msg)))
+        {
+          DEBUG ("invalid sender %s (expected %s for sender handle %d)",
+                 dbus_message_get_sender (msg), sender_name, sender);
+          goto unref;
+        }
     }
 
   /* XXX: what do do if this returns FALSE? */

@@ -2248,6 +2248,44 @@ muc_channel_contact_join_cb (GabbleMucChannel *chan,
     }
 }
 
+typedef struct
+{
+  GabbleConnection *conn;
+  TpHandle room_handle;
+} remove_invite_foreach_ctx;
+
+static void
+remove_invite_foreach (gpointer key,
+                       gpointer value,
+                       gpointer user_data)
+{
+  TpHandleSet *rooms = (TpHandleSet *) value;
+  remove_invite_foreach_ctx *ctx = (remove_invite_foreach_ctx *) user_data;
+
+  if (tp_handle_set_remove (rooms, ctx->room_handle))
+    {
+      ActivityInfo *info;
+
+      info = g_hash_table_lookup (ctx->conn->olpc_activities_info,
+          GUINT_TO_POINTER (ctx->room_handle));
+
+      g_assert (info != NULL);
+      activity_info_unref (info);
+    }
+}
+
+static void
+forget_activity_invites (GabbleConnection *conn,
+                         TpHandle room_handle)
+{
+  remove_invite_foreach_ctx ctx;
+
+  ctx.conn = conn;
+  ctx.room_handle = room_handle;
+  g_hash_table_foreach (conn->olpc_invited_activities, remove_invite_foreach,
+      &ctx);
+}
+
 static void
 muc_factory_new_channel_cb (GabbleMucFactory *fac,
                             TpChannelIface *chan,
@@ -2276,6 +2314,9 @@ muc_factory_new_channel_cb (GabbleMucFactory *fac,
     {
       info->refcount++;
     }
+
+  /* Forget about all invites we received about this activity */
+  forget_activity_invites (conn, room_handle);
 
   g_signal_connect (chan, "closed", G_CALLBACK (muc_channel_closed_cb),
       info);

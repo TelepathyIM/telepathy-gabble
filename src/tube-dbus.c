@@ -312,7 +312,7 @@ gabble_tube_dbus_init (GabbleTubeDBus *self)
   priv->dbus_names = g_hash_table_new_full (g_direct_hash, g_direct_equal,
       NULL, g_free);
   priv->dbus_name_to_handle = g_hash_table_new_full (g_str_hash,
-      g_str_equal, g_free, NULL);
+      g_str_equal, NULL, NULL);
 
   DEBUG ("local name: %s", priv->dbus_local_name);
 }
@@ -961,15 +961,17 @@ gabble_tube_dbus_add_name (GabbleTubeDBus *self,
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+  gchar *name_copy;
 
   g_assert (g_hash_table_size (priv->dbus_names) ==
       g_hash_table_size (priv->dbus_name_to_handle));
 
+  name_copy = g_strdup (name);
   g_hash_table_insert (priv->dbus_names, GUINT_TO_POINTER (handle),
-      g_strdup (name));
+      name_copy);
   tp_handle_ref (contact_repo, handle);
 
-  g_hash_table_insert (priv->dbus_name_to_handle, g_strdup (name),
+  g_hash_table_insert (priv->dbus_name_to_handle, name_copy,
       GUINT_TO_POINTER (handle));
 }
 

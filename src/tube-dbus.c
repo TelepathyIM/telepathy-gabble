@@ -225,25 +225,58 @@ new_connection_cb (DBusServer *server,
 }
 
 static void
-tube_dbus_open (GabbleTubeDBus *self)
+do_close (GabbleTubeDBus *self)
 {
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
-  DBusError error = {0,};
-  gchar suffix[8];
+
+  if (priv->bytestream != NULL)
+    {
+      gabble_bytestream_iface_close (priv->bytestream);
+    }
+  else
+    {
+      g_signal_emit (G_OBJECT (self), signals[CLOSED], 0);
+    }
+}
+
+static void
+tube_dbus_open (GabbleTubeDBus *self)
+{
+#define DBUS_SERVER_LISTEN_MAX_TRY 5
+  GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
+  guint i;
 
   g_signal_connect (priv->bytestream, "data-received",
       G_CALLBACK (data_received_cb), self);
 
-  generate_ascii_string (8, suffix);
-  priv->dbus_srv_addr = g_strdup_printf (
-      "unix:path=%s/dbus-gabble-%.8s", g_get_tmp_dir (), suffix);
-  DEBUG ("listening on %s", priv->dbus_srv_addr);
-  priv->dbus_srv = dbus_server_listen (priv->dbus_srv_addr, &error);
+  for (i = 0; i < DBUS_SERVER_LISTEN_MAX_TRY; i++)
+    {
+      gchar suffix[8];
+      DBusError *error = NULL;
 
-  /* XXX: if dbus_server_listen fails, we should retry with different
-   * addresses, then close the tube if we give up
-   */
-  g_assert (priv->dbus_srv);
+      g_free (priv->dbus_srv_addr);
+
+      generate_ascii_string (8, suffix);
+      priv->dbus_srv_addr = g_strdup_printf (
+          "unix:path=%s/dbus-gabble-%.8s", g_get_tmp_dir (), suffix);
+
+      priv->dbus_srv = dbus_server_listen (priv->dbus_srv_addr, error);
+
+      if (priv->dbus_srv_addr != NULL)
+        break;
+
+      DEBUG ("dbus_server_listen failed (try %d): %s", i, error->message);
+      dbus_error_free (error);
+    }
+
+  if (priv->dbus_srv_addr ==NULL)
+    {
+      DEBUG ("all attempts failed. Close the tube");
+      do_close (self);
+      return;
+    }
+
+  DEBUG ("listening on %s", priv->dbus_srv_addr);
 
   dbus_server_set_new_connection_function (priv->dbus_srv, new_connection_cb,
       self, NULL);
@@ -260,6 +293,7 @@ gabble_tube_dbus_init (GabbleTubeDBus *self)
   self->priv = priv;
 
   priv->bytestream = NULL;
+  priv->dbus_srv_addr = NULL;
   priv->dispose_has_run = FALSE;
 
   /* XXX: check this doesn't clash with other bus names */
@@ -888,16 +922,8 @@ static void
 gabble_tube_dbus_close (GabbleTubeIface *tube)
 {
   GabbleTubeDBus *self = GABBLE_TUBE_DBUS (tube);
-  GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
 
-  if (priv->bytestream != NULL)
-    {
-      gabble_bytestream_iface_close (priv->bytestream);
-    }
-  else
-    {
-      g_signal_emit (G_OBJECT (self), signals[CLOSED], 0);
-    }
+  do_close (self);
 }
 
 /**

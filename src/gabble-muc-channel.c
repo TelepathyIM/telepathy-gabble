@@ -75,6 +75,9 @@ enum
 {
     READY,
     JOIN_ERROR,
+    PRE_INVITE,
+    CONTACT_JOIN,
+    PRE_PRESENCE,
     LAST_SIGNAL
 };
 
@@ -858,6 +861,33 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   NULL, NULL,
                   g_cclosure_marshal_VOID__POINTER,
                   G_TYPE_NONE, 1, G_TYPE_POINTER);
+
+  signals[PRE_INVITE] =
+    g_signal_new ("pre-invite",
+                  G_OBJECT_CLASS_TYPE (gabble_muc_channel_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  g_cclosure_marshal_VOID__UINT,
+                  G_TYPE_NONE, 1, G_TYPE_UINT);
+
+  signals[CONTACT_JOIN] =
+    g_signal_new ("contact-join",
+                  G_OBJECT_CLASS_TYPE (gabble_muc_channel_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  g_cclosure_marshal_VOID__UINT,
+                  G_TYPE_NONE, 1, G_TYPE_UINT);
+
+  signals[PRE_PRESENCE] =
+    g_signal_new ("pre-presence",
+                  G_OBJECT_CLASS_TYPE (gabble_muc_channel_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  g_cclosure_marshal_VOID__UINT,
+                  G_TYPE_NONE, 1, G_TYPE_UINT);
 
   tp_group_mixin_class_init (object_class,
                                  G_STRUCT_OFFSET (GabbleMucChannelClass,

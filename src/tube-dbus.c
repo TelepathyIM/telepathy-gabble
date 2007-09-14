@@ -966,6 +966,19 @@ gabble_tube_dbus_add_name (GabbleTubeDBus *self,
   g_assert (g_hash_table_size (priv->dbus_names) ==
       g_hash_table_size (priv->dbus_name_to_handle));
 
+  if (g_hash_table_lookup (priv->dbus_names, GUINT_TO_POINTER (handle))
+      != NULL)
+    {
+      DEBUG ("contact %d has already announced his D-Bus name", handle);
+      return;
+    }
+
+  if (g_hash_table_lookup (priv->dbus_name_to_handle, name) != NULL)
+    {
+      DEBUG ("D-Bus name %s already used", name);
+      return;
+    }
+
   name_copy = g_strdup (name);
   g_hash_table_insert (priv->dbus_names, GUINT_TO_POINTER (handle),
       name_copy);

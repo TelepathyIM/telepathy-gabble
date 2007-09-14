@@ -101,6 +101,8 @@ struct _GabbleTubeDBusPrivate
   gchar *dbus_local_name;
   /* the address that we are listening for D-Bus connections on */
   gchar *dbus_srv_addr;
+  /* the path of the UNIX socket used by the D-Bus server */
+  gchar *socket_path;
   /* the server that's listening on dbus_srv_addr */
   DBusServer *dbus_srv;
   /* the connection to dbus_srv from a local client, or NULL */
@@ -255,10 +257,13 @@ tube_dbus_open (GabbleTubeDBus *self)
       DBusError *error = NULL;
 
       g_free (priv->dbus_srv_addr);
+      g_free (priv->socket_path);
 
       generate_ascii_string (8, suffix);
-      priv->dbus_srv_addr = g_strdup_printf (
-          "unix:path=%s/dbus-gabble-%.8s", g_get_tmp_dir (), suffix);
+      priv->socket_path = g_strdup_printf ("%s/dbus-gabble-%.8s",
+          g_get_tmp_dir (), suffix);
+      priv->dbus_srv_addr = g_strdup_printf ("unix:path=%s",
+          priv->socket_path);
 
       priv->dbus_srv = dbus_server_listen (priv->dbus_srv_addr, error);
 
@@ -294,6 +299,7 @@ gabble_tube_dbus_init (GabbleTubeDBus *self)
 
   priv->bytestream = NULL;
   priv->dbus_srv_addr = NULL;
+  priv->socket_path = NULL;
   priv->dispose_has_run = FALSE;
 
   /* XXX: check this doesn't clash with other bus names */
@@ -381,7 +387,6 @@ gabble_tube_dbus_dispose (GObject *object)
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-  gchar **tmp;
 
   if (priv->dispose_has_run)
     return;
@@ -402,15 +407,21 @@ gabble_tube_dbus_dispose (GObject *object)
   if (priv->dbus_srv)
     dbus_server_unref (priv->dbus_srv);
 
-  tmp = g_strsplit (priv->dbus_srv_addr, "=", 2);
-  if (g_unlink (tmp[1]) != 0)
+  if (priv->socket_path != NULL)
     {
-      DEBUG ("unlink of %s failed: %s", tmp[1], g_strerror (errno));
+      if (g_unlink (priv->socket_path) != 0)
+        {
+          DEBUG ("unlink of %s failed: %s", priv->socket_path,
+              g_strerror (errno));
+        }
     }
-  g_strfreev (tmp);
 
   g_free (priv->dbus_srv_addr);
+  priv->dbus_srv_addr = NULL;
+  g_free (priv->socket_path);
+  priv->socket_path = NULL;
   g_free (priv->dbus_local_name);
+  priv->dbus_local_name = NULL;
 
   if (priv->dbus_names)
     {

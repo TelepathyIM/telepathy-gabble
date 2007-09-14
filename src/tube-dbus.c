@@ -836,9 +836,6 @@ collect_be32 (char *str)
   return (bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 24) | bytes[3];
 }
 
-/* as per the D-Bus Specification */
-#define MAX_DBUS_MESSAGE 134217728
-
 static void
 data_received_cb (GabbleBytestreamIface *stream,
                   TpHandle sender,
@@ -888,12 +885,12 @@ data_received_cb (GabbleBytestreamIface *stream,
 
           /* work out how big the next message is going to be */
 
-          if (buf->str[0] == '\x42' /* ASCII B */)
+          if (buf->str[0] == DBUS_BIG_ENDIAN)
             {
               body_length = collect_be32 (buf->str + 4);
               m = collect_be32 (buf->str + 12);
             }
-          else if (buf->str[0] == '\x6C' /* ASCII l */)
+          else if (buf->str[0] == DBUS_LITTLE_ENDIAN)
             {
               body_length = collect_le32 (buf->str + 4);
               m = collect_le32 (buf->str + 12);
@@ -914,10 +911,13 @@ data_received_cb (GabbleBytestreamIface *stream,
 
           priv->reassembly_bytes_needed = params_length + body_length + 16;
 
-          /* only testing the first two of these to catch overflows */
-          if (body_length > MAX_DBUS_MESSAGE ||
-              params_length > MAX_DBUS_MESSAGE ||
-              priv->reassembly_bytes_needed > MAX_DBUS_MESSAGE)
+          /* n.b.: this looks as if it could be simplified to just the third
+           * test, but that would be wrong if the addition had overflowed, so
+           * don't do that. The first and second tests are sufficient to
+           * ensure no overflow on 32-bit platforms */
+          if (body_length > DBUS_MAXIMUM_MESSAGE_LENGTH ||
+              params_length > DBUS_MAXIMUM_ARRAY_LENGTH ||
+              priv->reassembly_bytes_needed > DBUS_MAXIMUM_MESSAGE_LENGTH)
             {
               DEBUG ("D-Bus message is too large to be valid, closing tube");
               gabble_tube_dbus_close ((GabbleTubeIface *) tube);

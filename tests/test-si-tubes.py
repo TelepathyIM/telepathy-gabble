@@ -10,7 +10,7 @@ from dbus.lowlevel import SignalMessage
 
 # must come before the twisted imports due to side-effects
 from gabbletest import go, make_result_iq
-from servicetest import call_async, lazy, match, tp_name_prefix
+from servicetest import call_async, lazy, match, tp_name_prefix, unwrap, Event
 
 from twisted.internet.protocol import Factory, Protocol
 from twisted.words.protocols.jabber.client import IQ
@@ -436,9 +436,78 @@ def expect_message_dbus(event, data):
     # being in the message somewhere
     assert data['my_bus_name'] in binary
 
-    # OK, we're done
+    def got_signal_cb(*args, **kwargs):
+        data['test'].handle_event(Event('tube-signal',
+            path=kwargs['path'],
+            signal=kwargs['member'],
+            args=map(unwrap, args)))
 
+    data['dbus_tube_conn'].add_signal_receiver(got_signal_cb,
+            path_keyword='path', member_keyword='member',
+            byte_arrays=True)
+
+    dbus_message = binary
+    seq = 0
+
+    # Have the fake client send us a message all in one go...
+    msg = domish.Element(('jabber:client', 'message'))
+    msg['to'] = 'test@localhost/Resource'
+    msg['from'] = 'bob@localhost/Bob'
+    data_node = msg.addElement('data', NS_IBB)
+    data_node['sid'] = data['dbus_stream_id']
+    data_node['seq'] = str(seq)
+    data_node.addContent(base64.b64encode(dbus_message))
+    data['stream'].send(msg)
+    seq += 1
+
+    # ... and a message one byte at a time ...
+
+    for byte in dbus_message:
+        msg = domish.Element(('jabber:client', 'message'))
+        msg['to'] = 'test@localhost/Resource'
+        msg['from'] = 'bob@localhost/Bob'
+        data_node = msg.addElement('data', NS_IBB)
+        data_node['sid'] = data['dbus_stream_id']
+        data_node['seq'] = str(seq)
+        data_node.addContent(base64.b64encode(byte))
+        data['stream'].send(msg)
+        seq += 1
+
+    # ... and two messages in one go
+
+    msg = domish.Element(('jabber:client', 'message'))
+    msg['to'] = 'test@localhost/Resource'
+    msg['from'] = 'bob@localhost/Bob'
+    data_node = msg.addElement('data', NS_IBB)
+    data_node['sid'] = data['dbus_stream_id']
+    data_node['seq'] = str(seq)
+    data_node.addContent(base64.b64encode(dbus_message + dbus_message))
+    data['stream'].send(msg)
+    seq += 1
+
+    return True
+
+@match('tube-signal', signal='baz', args=[42])
+def expect_tube_signal_1(event, data):
+    return True
+
+@match('tube-signal', signal='baz', args=[42])
+def expect_tube_signal_2(event, data):
+    return True
+
+@match('tube-signal', signal='baz', args=[42])
+def expect_tube_signal_3(event, data):
+    return True
+
+@match('tube-signal', signal='baz', args=[42])
+def expect_tube_signal_4(event, data):
+
+    # OK, we're done
     data['conn_iface'].Disconnect()
+    return True
+
+@match('tube-signal', signal='Disconnected')
+def expect_tube_disconnected(event, data):
     return True
 
 @match('dbus-signal', signal='StatusChanged', args=[2, 1])

@@ -107,6 +107,8 @@ struct _GabbleTubeDBusPrivate
   DBusConnection *dbus_conn;
   /* mapping of contact handle -> D-Bus name */
   GHashTable *dbus_names;
+  /* mapping of D-Bus name -> contact handle */
+  GHashTable *dbus_names_reverted;
 
   gboolean dispose_has_run;
 };
@@ -134,30 +136,6 @@ generate_ascii_string (guint len,
 
   for (i = 0; i < len; i++)
     buf[i] = chars[g_random_int_range (0, 64)];
-}
-
-struct _find_contact_data
-{
-  const gchar *contact;
-  TpHandle handle;
-};
-
-static gboolean
-find_contact (gpointer key,
-              gpointer value,
-              gpointer user_data)
-{
-  TpHandle handle = GPOINTER_TO_UINT (key);
-  gchar *name = (gchar *) value;
-  struct _find_contact_data *data = (struct _find_contact_data *) user_data;
-
-  if (strcmp (data->contact, name) == 0)
-    {
-      data->handle = handle;
-      return TRUE;
-    }
-
-  return FALSE;
 }
 
 static DBusHandlerResult
@@ -192,23 +170,24 @@ filter_cb (DBusConnection *conn,
     {
       /* This bytestream support direct send */
       const gchar *dest;
-      struct _find_contact_data data;
 
       dest = dbus_message_get_destination (msg);
 
       if (dest != NULL)
         {
-          data.contact = dest;
+          TpHandle handle;
 
-          /* FIXME: O(n), perhaps we should keep an inverse of dbus_names */
-          if (!g_hash_table_find (priv->dbus_names, find_contact, &data))
+          handle = GPOINTER_TO_UINT (g_hash_table_lookup (
+                priv->dbus_names_reverted, dest));
+
+          if (handle == 0)
             {
               DEBUG ("Unknown D-Bus name: %s", dest);
               goto out;
             }
 
           gabble_bytestream_muc_send_to (
-              GABBLE_BYTESTREAM_MUC (priv->bytestream), data.handle, len,
+              GABBLE_BYTESTREAM_MUC (priv->bytestream), handle, len,
               marshalled);
 
           goto out;
@@ -290,6 +269,8 @@ gabble_tube_dbus_init (GabbleTubeDBus *self)
   priv->dbus_local_name = g_strdup_printf (":1.%.8s", suffix);
   priv->dbus_names = g_hash_table_new_full (g_direct_hash, g_direct_equal,
       NULL, g_free);
+  priv->dbus_names_reverted = g_hash_table_new_full (g_str_hash,
+      g_str_equal, g_free, NULL);
 
   DEBUG ("local name: %s", priv->dbus_local_name);
 }
@@ -405,6 +386,12 @@ gabble_tube_dbus_dispose (GObject *object)
           contact_repo);
       g_hash_table_destroy (priv->dbus_names);
     }
+
+  if (priv->dbus_names_reverted)
+     {
+       g_hash_table_destroy (priv->dbus_names_reverted);
+       priv->dbus_names_reverted = NULL;
+     }
 
   tp_handle_unref (contact_repo, priv->initiator);
 
@@ -936,9 +923,15 @@ gabble_tube_dbus_add_name (GabbleTubeDBus *self,
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 
+  g_assert (g_hash_table_size (priv->dbus_names) ==
+      g_hash_table_size (priv->dbus_names_reverted));
+
   g_hash_table_insert (priv->dbus_names, GUINT_TO_POINTER (handle),
       g_strdup (name));
   tp_handle_ref (contact_repo, handle);
+
+  g_hash_table_insert (priv->dbus_names_reverted, g_strdup (name),
+      GUINT_TO_POINTER (handle));
 }
 
 gboolean
@@ -948,9 +941,17 @@ gabble_tube_dbus_remove_name (GabbleTubeDBus *self,
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+  const gchar *name;
 
-  if (!g_hash_table_remove (priv->dbus_names, GUINT_TO_POINTER (handle)))
+  name = g_hash_table_lookup (priv->dbus_names, GUINT_TO_POINTER (handle));
+  if (name == NULL)
     return FALSE;
+
+  g_hash_table_remove (priv->dbus_names_reverted, name);
+  g_hash_table_remove (priv->dbus_names, GUINT_TO_POINTER (handle));
+
+  g_assert (g_hash_table_size (priv->dbus_names) ==
+      g_hash_table_size (priv->dbus_names_reverted));
 
   tp_handle_unref (contact_repo, handle);
   return TRUE;

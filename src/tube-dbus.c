@@ -652,6 +652,12 @@ gabble_tube_dbus_constructor (GType type,
 
       g_object_set (self, "bytestream", bytestream, NULL);
     }
+  else
+    {
+      /* For contact (IBB) tubes we need to be able to reassemble messages. */
+      priv->reassembly_buffer = g_string_new ("");
+      priv->reassembly_bytes_needed = 0;
+    }
 
   return obj;
 }

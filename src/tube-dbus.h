@@ -64,6 +64,11 @@ gabble_tube_dbus_new (GabbleConnection *conn, TpHandle handle,
     const gchar *service, GHashTable *parameters, const gchar *stream_id,
     guint id, GabbleBytestreamIface *bytestream);
 
+void gabble_tube_dbus_add_name (GabbleTubeDBus *tube, TpHandle handle,
+    const gchar *name);
+
+gboolean gabble_tube_dbus_remove_name (GabbleTubeDBus *tube, TpHandle handle);
+
 G_END_DECLS
 
 #endif /* #ifndef __GABBLE_TUBE_DBUS_H__ */

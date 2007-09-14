@@ -927,6 +927,35 @@ gabble_tube_dbus_add_bytestream (GabbleTubeIface *tube,
   gabble_bytestream_iface_close (bytestream);
 }
 
+void
+gabble_tube_dbus_add_name (GabbleTubeDBus *self,
+                           TpHandle handle,
+                           const gchar *name)
+{
+  GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+
+  g_hash_table_insert (priv->dbus_names, GUINT_TO_POINTER (handle),
+      g_strdup (name));
+  tp_handle_ref (contact_repo, handle);
+}
+
+gboolean
+gabble_tube_dbus_remove_name (GabbleTubeDBus *self,
+                              TpHandle handle)
+{
+  GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+
+  if (!g_hash_table_remove (priv->dbus_names, GUINT_TO_POINTER (handle)))
+    return FALSE;
+
+  tp_handle_unref (contact_repo, handle);
+  return TRUE;
+}
+
 static void
 tube_iface_init (gpointer g_iface,
                  gpointer iface_data)

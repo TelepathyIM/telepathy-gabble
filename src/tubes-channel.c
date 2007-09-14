@@ -307,26 +307,16 @@ add_name_in_dbus_names (GabbleTubesChannel *self,
                         const gchar *dbus_name)
 {
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   GabbleTubeDBus *tube;
-  GHashTable *names;
 
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
   if (tube == NULL)
     return;
 
-  g_object_get (tube,
-      "dbus-names", &names,
-      NULL);
-
-  g_hash_table_insert (names, GUINT_TO_POINTER (handle), g_strdup (dbus_name));
-  tp_handle_ref (contact_repo, handle);
+  gabble_tube_dbus_add_name (tube, handle, dbus_name);
 
   /* Emit the DBusNamesChanged signal */
   d_bus_names_changed_added (self, tube_id, handle, dbus_name);
-
-  g_hash_table_unref (names);
 }
 
 static void
@@ -606,21 +596,12 @@ emit_d_bus_names_changed_foreach (gpointer key,
   GabbleTubeDBus *tube = GABBLE_TUBE_DBUS (value);
   struct _emit_d_bus_names_changed_foreach_data *data =
     (struct _emit_d_bus_names_changed_foreach_data *) user_data;
-  GHashTable *names;
-  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (
-      data->self);
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 
   /* Remove from the D-Bus names mapping */
-  g_object_get (tube, "dbus-names", &names, NULL);
-  g_hash_table_remove (names, GUINT_TO_POINTER (data->contact));
-  g_hash_table_unref (names);
+  gabble_tube_dbus_remove_name (tube, data->contact);
 
   /* Emit the DBusNamesChanged signal */
   d_bus_names_changed_removed (data->self, tube_id, data->contact);
-
-  tp_handle_unref (contact_repo, data->contact);
 }
 
 static void

@@ -2154,6 +2154,141 @@ closed_pep_reply_cb (GabbleConnection *conn,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
+static gboolean
+revoke_invitations (GabbleMucChannel *chan,
+                    ActivityInfo *info,
+                    GError **error)
+{
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) info->conn, TP_HANDLE_TYPE_CONTACT);
+  TpHandleSet *invitees = g_object_get_qdata ((GObject *) chan,
+      invitees_quark ());
+
+  if (invitees != NULL && tp_handle_set_size (invitees) > 0)
+    {
+      LmMessage *msg = lm_message_new (NULL, LM_MESSAGE_TYPE_MESSAGE);
+      TpIntSetIter iter = TP_INTSET_ITER_INIT (tp_handle_set_peek
+          (invitees));
+      LmMessageNode *uninvite_node;
+
+      uninvite_node = lm_message_node_add_child (msg->node, "uninvite", "");
+      lm_message_node_set_attribute (uninvite_node, "xmlns",
+          NS_OLPC_ACTIVITY_PROPS);
+      lm_message_node_set_attribute (uninvite_node, "room",
+          activity_info_get_room (info));
+      lm_message_node_set_attribute (uninvite_node, "id",
+          info->id);
+
+      while (tp_intset_iter_next (&iter))
+        {
+          const gchar *to = tp_handle_inspect (contact_repo, iter.element);
+
+          lm_message_node_set_attribute (msg->node, "to", to);
+          if (!_gabble_connection_send (info->conn, msg, error))
+            {
+              DEBUG ("Unable to send activity invitee revocation %s",
+                  to);
+              lm_message_unref (msg);
+              return FALSE;
+            }
+        }
+
+      lm_message_unref (msg);
+    }
+
+  return TRUE;
+}
+
+gboolean
+conn_olpc_process_activity_uninvite_message (GabbleConnection *conn,
+                                             LmMessage *msg,
+                                             const gchar *from)
+{
+  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) conn, TP_HANDLE_TYPE_ROOM);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
+  LmMessageNode *node;
+  const gchar *id, *room;
+  TpHandle room_handle, from_handle;
+  TpHandleSet *rooms;
+
+  node = lm_message_node_get_child_with_namespace (msg->node, "uninvite",
+      NS_OLPC_ACTIVITY_PROPS);
+
+  /* if no <uninvite xmlns=...>, then not for us */
+  if (node == NULL)
+    return FALSE;
+
+  id = lm_message_node_get_attribute (node, "id");
+  if (id == NULL)
+    {
+      DEBUG ("no activity id. Skip");
+      return TRUE;
+    }
+
+  room = lm_message_node_get_attribute (node, "room");
+  if (room == NULL)
+    {
+      DEBUG ("no room. Skip");
+      return TRUE;
+    }
+
+  room_handle = tp_handle_lookup (room_repo, room, NULL, NULL);
+  if (room_handle == 0)
+    {
+      DEBUG ("room %s unknown", room);
+      return TRUE;
+    }
+
+  from_handle = tp_handle_lookup (contact_repo, from, NULL, NULL);
+  if (from_handle == 0)
+    {
+      DEBUG ("sender %s unknown", from);
+      return TRUE;
+    }
+
+  rooms = g_hash_table_lookup (conn->olpc_invited_activities,
+      GUINT_TO_POINTER (from_handle));
+
+  if (rooms == NULL)
+    {
+      DEBUG ("No invites associated with contact %d", from_handle);
+      return TRUE;
+    }
+
+  if (tp_handle_set_remove (rooms, room_handle))
+    {
+      ActivityInfo *info;
+
+      info = g_hash_table_lookup (conn->olpc_activities_info,
+          GUINT_TO_POINTER (room_handle));
+
+      if (info == NULL)
+        {
+          DEBUG ("No info about activity associated with room %s", room);
+          return TRUE;
+        }
+
+      if (tp_strdiff (id, info->id))
+        {
+          DEBUG ("Uninvite's activity id (%s) doesn't match our "
+              "activity id (%s)", id, info->id);
+          return TRUE;
+        }
+
+      DEBUG ("remove invite from %s", from);
+      activity_info_unref (info);
+    }
+  else
+    {
+      DEBUG ("No invite from %s for activity %s (room %s)", from, id, room);
+      return TRUE;
+    }
+
+  return TRUE;
+}
+
 static void
 muc_channel_closed_cb (GabbleMucChannel *chan,
                        ActivityInfo *info)
@@ -2162,6 +2297,9 @@ muc_channel_closed_cb (GabbleMucChannel *chan,
   TpBaseConnection *base = (TpBaseConnection *) info->conn;
   TpHandleSet *my_activities;
   gboolean was_in_our_pep = FALSE;
+
+  /* Revoke invitations we sent for this activity */
+  revoke_invitations (chan, info, NULL);
 
   /* remove it from our advertised activities list, unreffing it in the
    * process if it was in fact advertised */
@@ -2193,8 +2331,6 @@ muc_channel_closed_cb (GabbleMucChannel *chan,
               "channel close");
         }
     }
-
-  /* FIXME: revoke invitations (how?) */
 }
 
 static void

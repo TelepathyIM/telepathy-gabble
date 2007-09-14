@@ -695,6 +695,10 @@ muc_factory_message_cb (LmMessageHandler *handler,
         from))
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
+  if (conn_olpc_process_activity_uninvite_message (priv->conn, message,
+        from))
+    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+
   if (process_muc_invite (fac, message, from, send_error))
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 

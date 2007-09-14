@@ -254,9 +254,8 @@ tube_dbus_open (GabbleTubeDBus *self)
       G_CALLBACK (data_received_cb), self);
 
   generate_ascii_string (8, suffix);
-  /* FIXME: is hard-coding /tmp really appropriate? */
   priv->dbus_srv_addr = g_strdup_printf (
-      "unix:path=/tmp/dbus-gabble-%.8s", suffix);
+      "unix:path=%s/dbus-gabble-%.8s", g_get_tmp_dir (), suffix);
   DEBUG ("listening on %s", priv->dbus_srv_addr);
   priv->dbus_srv = dbus_server_listen (priv->dbus_srv_addr, &error);
 

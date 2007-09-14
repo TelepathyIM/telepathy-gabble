@@ -244,14 +244,14 @@ do_close (GabbleTubeDBus *self)
 static void
 tube_dbus_open (GabbleTubeDBus *self)
 {
-#define DBUS_SERVER_LISTEN_MAX_TRY 5
+#define SERVER_LISTEN_MAX_TRIES 5
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
   guint i;
 
   g_signal_connect (priv->bytestream, "data-received",
       G_CALLBACK (data_received_cb), self);
 
-  for (i = 0; i < DBUS_SERVER_LISTEN_MAX_TRY; i++)
+  for (i = 0; i < SERVER_LISTEN_MAX_TRIES; i++)
     {
       gchar suffix[8];
       DBusError error;

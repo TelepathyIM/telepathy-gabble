@@ -862,6 +862,8 @@ data_received_cb (GabbleBytestreamIface *stream,
       g_assert (buf != NULL);
 
       g_string_append_len (buf, data->str, data->len);
+      DEBUG ("Received %" G_GSIZE_FORMAT " bytes, so we now have %"
+          G_GSIZE_FORMAT " bytes in reassembly buffer", data->len, buf->len);
 
       /* Each D-Bus message has a 16-byte fixed header, in which
        *
@@ -884,9 +886,12 @@ data_received_cb (GabbleBytestreamIface *stream,
             {
               if (buf->len >= priv->reassembly_bytes_needed)
                 {
+                  DEBUG ("Received complete D-Bus message of size %"
+                      G_GINT32_FORMAT, priv->reassembly_bytes_needed);
                   message_received (tube, sender, buf->str,
                       priv->reassembly_bytes_needed);
                   g_string_erase (buf, 0, priv->reassembly_bytes_needed);
+                  priv->reassembly_bytes_needed = 0;
                 }
               else
                 {
@@ -894,6 +899,9 @@ data_received_cb (GabbleBytestreamIface *stream,
                   break;
                 }
             }
+
+          if (buf->len < 16)
+            break;
 
           /* work out how big the next message is going to be */
 
@@ -910,7 +918,7 @@ data_received_cb (GabbleBytestreamIface *stream,
           else
             {
               DEBUG ("D-Bus message has unknown endianness byte 0x%x, "
-                  "closing tube", buf->str[0]);
+                  "closing tube", (unsigned int) buf->str[0]);
               gabble_tube_dbus_close ((GabbleTubeIface *) tube);
               return;
             }
@@ -937,6 +945,8 @@ data_received_cb (GabbleBytestreamIface *stream,
             }
 
           g_assert (priv->reassembly_bytes_needed != 0);
+          DEBUG ("We need %" G_GINT32_FORMAT " bytes for the next full "
+              "message", priv->reassembly_bytes_needed);
         }
     }
   else

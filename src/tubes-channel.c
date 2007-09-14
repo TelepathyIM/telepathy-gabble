@@ -560,24 +560,19 @@ add_in_old_dbus_tubes (gpointer key,
   struct _add_in_old_dbus_tubes_data *data =
     (struct _add_in_old_dbus_tubes_data *) user_data;
   GabbleTubeType type;
-  GHashTable *names;
 
   g_object_get (tube, "type", &type, NULL);
 
   if (type != GABBLE_TUBE_TYPE_DBUS)
     return;
 
-  g_object_get (tube, "dbus-names", &names, NULL);
-  g_assert (names);
-
-  if (g_hash_table_lookup (names, GUINT_TO_POINTER (data->contact)))
+  if (gabble_tube_dbus_handle_in_names (GABBLE_TUBE_DBUS (tube),
+        data->contact))
     {
       /* contact was in this tube */
       g_hash_table_insert (data->old_dbus_tubes, GUINT_TO_POINTER (tube_id),
           tube);
     }
-
-  g_hash_table_unref (names);
 }
 
 struct
@@ -747,15 +742,8 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
       if (type == GABBLE_TUBE_TYPE_DBUS)
         {
           /* Update mapping of handle -> D-Bus name. */
-
-          GHashTable *names;
-          gchar *name;
-
-          g_object_get (tube, "dbus-names", &names, NULL);
-          g_assert (names);
-          name = g_hash_table_lookup (names, GUINT_TO_POINTER (contact));
-
-          if (!name)
+          if (!gabble_tube_dbus_handle_in_names (GABBLE_TUBE_DBUS (tube),
+                contact))
             {
               /* Contact just joined the tube */
               const gchar *new_name;
@@ -772,8 +760,6 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
 
               add_name_in_dbus_names (self, tube_id, contact, new_name);
             }
-
-          g_hash_table_unref (names);
         }
 #endif
     }

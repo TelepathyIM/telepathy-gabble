@@ -69,6 +69,9 @@ void gabble_tube_dbus_add_name (GabbleTubeDBus *tube, TpHandle handle,
 
 gboolean gabble_tube_dbus_remove_name (GabbleTubeDBus *tube, TpHandle handle);
 
+gboolean gabble_tube_dbus_handle_in_names (GabbleTubeDBus *tube,
+    TpHandle handle);
+
 G_END_DECLS
 
 #endif /* #ifndef __GABBLE_TUBE_DBUS_H__ */

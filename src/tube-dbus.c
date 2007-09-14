@@ -956,6 +956,16 @@ gabble_tube_dbus_remove_name (GabbleTubeDBus *self,
   return TRUE;
 }
 
+gboolean
+gabble_tube_dbus_handle_in_names (GabbleTubeDBus *self,
+                                  TpHandle handle)
+{
+  GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
+
+  return (g_hash_table_lookup (priv->dbus_names, GUINT_TO_POINTER (handle))
+      != NULL);
+}
+
 static void
 tube_iface_init (gpointer g_iface,
                  gpointer iface_data)

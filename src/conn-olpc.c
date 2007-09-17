@@ -2392,6 +2392,9 @@ remove_invite_foreach (gpointer key,
   TpHandleSet *rooms = (TpHandleSet *) value;
   remove_invite_foreach_ctx *ctx = (remove_invite_foreach_ctx *) user_data;
 
+  /* We are now in the activity and so the responsibilty to track
+   * buddies membership is delegated to the PS. At some point, maybe that
+   * should be done by CM's */
   if (tp_handle_set_remove (rooms, ctx->room_handle))
     {
       ActivityInfo *info;
@@ -2399,6 +2402,7 @@ remove_invite_foreach (gpointer key,
       info = g_hash_table_lookup (ctx->conn->olpc_activities_info,
           GUINT_TO_POINTER (ctx->room_handle));
 
+      /* FIXME: Should we emit BuddyInfo::ActivitiesChanged? */
       g_assert (info != NULL);
       DEBUG ("forget invite for activity %s from contact %d", info->id,
           inviter);

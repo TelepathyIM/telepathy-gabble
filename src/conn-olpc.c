@@ -2260,6 +2260,7 @@ conn_olpc_process_activity_uninvite_message (GabbleConnection *conn,
   if (tp_handle_set_remove (rooms, room_handle))
     {
       ActivityInfo *info;
+      GPtrArray *activities;
 
       info = g_hash_table_lookup (conn->olpc_activities_info,
           GUINT_TO_POINTER (room_handle));
@@ -2279,6 +2280,12 @@ conn_olpc_process_activity_uninvite_message (GabbleConnection *conn,
 
       DEBUG ("remove invite from %s", from);
       activity_info_unref (info);
+
+      /* Emit BuddyInfo::ActivitiesChanged */
+      activities = get_buddy_activities (conn, from_handle);
+      gabble_svc_olpc_buddy_info_emit_activities_changed (conn, from_handle,
+          activities);
+      free_activities (activities);
     }
   else
     {

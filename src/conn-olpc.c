@@ -2179,6 +2179,7 @@ revoke_invitations (GabbleMucChannel *chan,
       lm_message_node_set_attribute (uninvite_node, "id",
           info->id);
 
+      DEBUG ("revoke invitations for activity %s", info->id);
       while (tp_intset_iter_next (&iter))
         {
           const gchar *to = tp_handle_inspect (contact_repo, iter.element);

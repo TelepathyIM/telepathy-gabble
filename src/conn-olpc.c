@@ -2369,21 +2369,6 @@ muc_channel_pre_invite_cb (GabbleMucChannel *chan,
   tp_handle_set_add (invitees, invitee);
 }
 
-static void
-muc_channel_contact_join_cb (GabbleMucChannel *chan,
-                             TpHandle contact,
-                             gpointer unused)
-{
-  GQuark quark = invitees_quark ();
-  TpHandleSet *invitees;
-
-  invitees = g_object_get_qdata ((GObject *) chan, quark);
-  if (invitees != NULL)
-    {
-      tp_handle_set_remove (invitees, contact);
-    }
-}
-
 typedef struct
 {
   GabbleConnection *conn;
@@ -2395,6 +2380,7 @@ remove_invite_foreach (gpointer key,
                        gpointer value,
                        gpointer user_data)
 {
+  TpHandle inviter = GPOINTER_TO_UINT (key);
   TpHandleSet *rooms = (TpHandleSet *) value;
   remove_invite_foreach_ctx *ctx = (remove_invite_foreach_ctx *) user_data;
 
@@ -2406,6 +2392,8 @@ remove_invite_foreach (gpointer key,
           GUINT_TO_POINTER (ctx->room_handle));
 
       g_assert (info != NULL);
+      DEBUG ("forget invite for activity %s from contact %d", info->id,
+          inviter);
       activity_info_unref (info);
     }
 }
@@ -2420,6 +2408,32 @@ forget_activity_invites (GabbleConnection *conn,
   ctx.room_handle = room_handle;
   g_hash_table_foreach (conn->olpc_invited_activities, remove_invite_foreach,
       &ctx);
+}
+
+static void
+muc_channel_contact_join_cb (GabbleMucChannel *chan,
+                             TpHandle contact,
+                             ActivityInfo *info)
+{
+  if (contact == chan->group.self_handle)
+    {
+      /* We join the channel, forget about all invites we received about
+       * this activity */
+      forget_activity_invites (info->conn, info->handle);
+    }
+  else
+    {
+      GQuark quark = invitees_quark ();
+      TpHandleSet *invitees;
+
+      invitees = g_object_get_qdata ((GObject *) chan, quark);
+      if (invitees != NULL)
+        {
+          DEBUG ("contact %d joined the muc, remove the invite we sent to him",
+              contact);
+          tp_handle_set_remove (invitees, contact);
+        }
+    }
 }
 
 static void
@@ -2451,15 +2465,12 @@ muc_factory_new_channel_cb (GabbleMucFactory *fac,
       info->refcount++;
     }
 
-  /* Forget about all invites we received about this activity */
-  forget_activity_invites (conn, room_handle);
-
   g_signal_connect (chan, "closed", G_CALLBACK (muc_channel_closed_cb),
       info);
   g_signal_connect (chan, "pre-invite", G_CALLBACK (muc_channel_pre_invite_cb),
       info);
   g_signal_connect (chan, "contact-join",
-      G_CALLBACK (muc_channel_contact_join_cb), NULL);
+      G_CALLBACK (muc_channel_contact_join_cb), info);
 }
 
 static void

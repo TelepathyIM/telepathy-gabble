@@ -1097,6 +1097,8 @@ channel_state_changed (GabbleMucChannel *chan,
 
           priv->ready_emitted = TRUE;
         }
+      g_signal_emit (chan, signals[CONTACT_JOIN], 0,
+          TP_GROUP_MIXIN (chan)->self_handle);
     }
 }
 

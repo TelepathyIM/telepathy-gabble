@@ -73,6 +73,7 @@ enum
   PROP_PEER_JID,
   PROP_PEER_RESOURCE,
   PROP_STATE,
+  PROP_BLOCK_SIZE,
   LAST_PROPERTY
 };
 
@@ -86,6 +87,7 @@ struct _GabbleBytestreamIBBPrivate
   gchar *peer_resource;
   GabbleBytestreamState state;
   gchar *peer_jid;
+  guint block_size;
 
   guint16 seq;
   guint16 last_seq_recv;
@@ -102,6 +104,7 @@ gabble_bytestream_ibb_init (GabbleBytestreamIBB *self)
 
   self->priv = priv;
 
+  priv->block_size = 4096;
   priv->seq = 0;
   priv->last_seq_recv = 0;
 }
@@ -173,6 +176,9 @@ gabble_bytestream_ibb_get_property (GObject *object,
       case PROP_STATE:
         g_value_set_uint (value, priv->state);
         break;
+      case PROP_BLOCK_SIZE:
+        g_value_set_uint (value, priv->block_size);
+        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -214,6 +220,9 @@ gabble_bytestream_ibb_set_property (GObject *object,
               priv->state = g_value_get_uint (value);
               g_signal_emit (object, signals[STATE_CHANGED], 0, priv->state);
             }
+        break;
+      case PROP_BLOCK_SIZE:
+        priv->block_size = g_value_get_uint (value);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -308,6 +317,18 @@ gabble_bytestream_ibb_class_init (
       G_PARAM_STATIC_NICK |
       G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_STREAM_INIT_ID,
+      param_spec);
+
+  param_spec = g_param_spec_uint (
+      "block-size",
+      "block size",
+      "Maximum data sent using one stanza as described in XEP-0047",
+      0, G_MAXUINT32, 4096,
+      G_PARAM_READWRITE |
+      G_PARAM_STATIC_NAME |
+      G_PARAM_STATIC_NICK |
+      G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_BLOCK_SIZE,
       param_spec);
 
   signals[DATA_RECEIVED] =

@@ -7,8 +7,6 @@ from twisted.internet import glib2reactor
 glib2reactor.install()
 
 import pprint
-import os
-import sys
 import traceback
 
 import dbus
@@ -242,21 +240,3 @@ def load_event_handlers():
         if node.__class__ == compiler.ast.Function and
             node.name.startswith('expect_')]
 
-def run_test(handler, start=None):
-    """Create a test from the top level functions named expect_* in the
-    __main__ module and run it.
-    """
-
-    handler.verbose = (os.environ.get('CHECK_TWISTED_VERBOSE', '') != '')
-    for arg in sys.argv:
-        if arg == '-v':
-            handler.verbose = True
-
-    map(handler.expect, load_event_handlers())
-
-    if start is None:
-        handler.data['conn'].Connect()
-    else:
-        start(handler.data)
-
-    reactor.run()

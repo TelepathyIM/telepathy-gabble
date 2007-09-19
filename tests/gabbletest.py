@@ -4,7 +4,9 @@ Infrastructure code for testing Gabble by pretending to be a Jabber server.
 """
 
 import base64
+import os
 import sha
+import sys
 
 import servicetest
 from twisted.words.xish import domish, xpath
@@ -235,9 +237,18 @@ def go(params=None, authenticator=None, protocol=None, start=None):
     data = prepare_test(handler.handle_event, params, authenticator, protocol)
     handler.data = data
     handler.data['test'] = handler
+    handler.verbose = (os.environ.get('CHECK_TWISTED_VERBOSE', '') != '')
+    map(handler.expect, servicetest.load_event_handlers())
 
-    # go!
-    servicetest.run_test(handler, start)
+    if '-v' in sys.argv:
+        handler.verbose = True
+
+    if start is None:
+        handler.data['conn'].Connect()
+    else:
+        start(handler.data)
+
+    reactor.run()
 
 
 # Useful routines for server-side vCard handling

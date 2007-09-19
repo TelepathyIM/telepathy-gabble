@@ -390,3 +390,6 @@ def load_event_handlers():
         if node.__class__ == compiler.ast.Function and
             node.name.startswith('expect_')]
 
+if __name__ == '__main__':
+    unittest.main()
+

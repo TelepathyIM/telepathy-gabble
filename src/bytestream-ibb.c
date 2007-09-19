@@ -567,6 +567,7 @@ gabble_bytestream_ibb_initiate (GabbleBytestreamIface *iface)
   GabbleBytestreamIBB *self = GABBLE_BYTESTREAM_IBB (iface);
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
   LmMessage *msg;
+  gchar *block_size;
 
   if (priv->state != GABBLE_BYTESTREAM_STATE_INITIATING)
     {
@@ -575,13 +576,15 @@ gabble_bytestream_ibb_initiate (GabbleBytestreamIface *iface)
       return FALSE;
     }
 
+  block_size = g_strdup_printf ("%u", priv->block_size);
   msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
       '@', "type", "set",
       '(', "open", "",
         '@', "xmlns", NS_IBB,
         '@', "sid", priv->stream_id,
-        '@', "block-size", "4096",
+        '@', "block-size", block_size,
       ')', NULL);
+  g_free (block_size);
 
   if (!_gabble_connection_send_with_reply (priv->conn, msg,
       ibb_init_reply_cb, G_OBJECT (self), NULL, NULL))

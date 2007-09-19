@@ -876,12 +876,12 @@ replace_reply_cb (GabbleConnection *conn,
 
   DEBUG ("called: %s error", (error) ? "some" : "no");
 
-  g_assert (priv->patched_vcard != NULL);
-
   if (err)
     {
       /* We won't need our patched vcard after all */
-      lm_message_node_unref (priv->patched_vcard);
+      if (priv->patched_vcard != NULL)
+          lm_message_node_unref (priv->patched_vcard);
+
       priv->patched_vcard = NULL;
 
       node = NULL;
@@ -890,6 +890,9 @@ replace_reply_cb (GabbleConnection *conn,
     {
       GabbleVCardCacheEntry *entry = cache_entry_get (manager,
           base->self_handle);
+
+      /* We must have patched vcard by now */
+      g_assert (priv->patched_vcard != NULL);
 
       /* Finally we may put the new vcard in the cache. */
       lm_message_node_unref (entry->vcard_node);

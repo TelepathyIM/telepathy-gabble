@@ -363,8 +363,8 @@ gabble_bytestream_ibb_send (GabbleBytestreamIface *iface,
   GabbleBytestreamIBB *self = GABBLE_BYTESTREAM_IBB (iface);
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
   LmMessage *msg;
-  gchar *seq, *encoded;
-  gboolean ret;
+  guint sent, stanza_count;
+  LmMessageNode *data;
 
   if (priv->state != GABBLE_BYTESTREAM_STATE_OPEN)
     {
@@ -373,14 +373,11 @@ gabble_bytestream_ibb_send (GabbleBytestreamIface *iface,
       return FALSE;
     }
 
-  seq = g_strdup_printf ("%u", priv->seq++);
-  encoded = base64_encode (len, str);
-
   msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_MESSAGE,
-      '(', "data", encoded,
+      '(', "data", "",
+        '*', &data,
         '@', "xmlns", NS_IBB,
         '@', "sid", priv->stream_id,
-        '@', "seq", seq,
       ')',
       '(', "amp", "",
         '@', "xmlns", NS_AMP,
@@ -396,14 +393,57 @@ gabble_bytestream_ibb_send (GabbleBytestreamIface *iface,
         ')',
       ')', NULL);
 
+  sent = 0;
+  stanza_count = 0;
+  while (sent < len)
+    {
+      guint send_now, remaining;
+      gchar *seq, *encoded;
+      GError *error = NULL;
+      gboolean ret;
 
-  ret = _gabble_connection_send (priv->conn, msg, NULL);
+      remaining = (len - sent);
+
+      if (remaining > priv->block_size)
+        {
+          /* We can't send all the remaining data in one stanza */
+          send_now = priv->block_size;
+        }
+      else
+        {
+          /* Send all the remaining data */
+          send_now = remaining;
+        }
+
+      encoded = base64_encode (send_now, str + sent);
+      lm_message_node_set_value (data, encoded);
+
+      seq = g_strdup_printf ("%u", priv->seq++);
+      lm_message_node_set_attribute (data, "seq", seq);
+
+      DEBUG ("send %d bytes", send_now);
+      ret = _gabble_connection_send (priv->conn, msg, &error);
+
+      g_free (encoded);
+      g_free (seq);
+
+      if (!ret)
+        {
+          DEBUG ("error sending pseusdo IBB Muc stanza: %s", error->message);
+          g_error_free (error);
+          lm_message_unref (msg);
+          return FALSE;
+        }
+
+      sent += send_now;
+      stanza_count++;
+    }
+
+  DEBUG ("finished to send %d bytes (%d stanzas needed)", len, stanza_count);
 
   lm_message_unref (msg);
-  g_free (encoded);
-  g_free (seq);
 
-  return ret;
+  return TRUE;
 }
 
 void

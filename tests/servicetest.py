@@ -192,7 +192,7 @@ def call_async(test, proxy, method, *args, **kw):
     method_proxy(*args, **kw)
 
 
-def prepare_test(test, name, proto, params):
+def prepare_test(event_func, name, proto, params):
     bus = dbus.SessionBus()
     cm = bus.get_object(
         tp_name_prefix + '.ConnectionManager.%s' % name,
@@ -203,13 +203,14 @@ def prepare_test(test, name, proto, params):
         proto, params)
     conn = bus.get_object(connection_name, connection_path)
     conn_iface = dbus.Interface(conn, tp_name_prefix + '.Connection')
+    data = {}
 
     for name in ('bus', 'cm', 'cm_iface', 'conn', 'conn_iface'):
-        test.data[name] = locals()[name]
+        data[name] = locals()[name]
 
     bus.add_signal_receiver(
         lambda *args, **kw:
-            test.handle_event(
+            event_func(
                 Event('dbus-signal',
                     path=unwrap(kw['path'])[len(tp_path_prefix):],
                     signal=kw['member'], args=map(unwrap, args))),
@@ -221,13 +222,7 @@ def prepare_test(test, name, proto, params):
         byte_arrays=True
         )
 
-    return test
-
-
-def run_test(handler, start=None):
-    """Create a test from the top level functions named expect_* in the
-    __main__ module and run it.
-    """
+    return data
 
 def load_event_handlers():
     path, _, _, _ = traceback.extract_stack()[0]

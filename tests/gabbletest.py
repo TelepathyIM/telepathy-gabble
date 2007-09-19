@@ -194,10 +194,7 @@ class XmlStreamFactory(xmlstream.XmlStreamFactory):
             xs.addObserver(event, fn)
         return xs
 
-def go(params=None, authenticator=None, protocol=None, start=None):
-    # hack to ease debugging
-    domish.Element.__repr__ = domish.Element.toXml
-
+def prepare_test(event_func, params=None, authenticator=None, protocol=None):
     default_params = {
         'account': 'test@localhost/Resource',
         'password': 'pass',
@@ -209,10 +206,10 @@ def go(params=None, authenticator=None, protocol=None, start=None):
     if params:
         default_params.update(params)
 
-    handler = servicetest.EventTest()
-    data = servicetest.prepare_test(handler.handle_event, 'gabble', 'jabber',
+    data = servicetest.prepare_test(event_func, 'gabble', 'jabber',
         default_params)
-    handler.data.update(data)
+
+    # set up Jabber server
 
     if authenticator is None:
         authenticator = JabberAuthenticator('test', 'pass')
@@ -223,12 +220,21 @@ def go(params=None, authenticator=None, protocol=None, start=None):
     class Stream(protocol):
         def __init__(self, *args):
             protocol.__init__(self, *args)
-            handler.data['stream'] = self
+            data['stream'] = self
 
-    # set up Jabber server
-    factory = XmlStreamFactory(handler.handle_event, authenticator)
+    factory = XmlStreamFactory(event_func, authenticator)
     factory.protocol = Stream
     reactor.listenTCP(4242, factory)
+    return data
+
+def go(params=None, authenticator=None, protocol=None, start=None):
+    # hack to ease debugging
+    domish.Element.__repr__ = domish.Element.toXml
+
+    handler = servicetest.EventTest()
+    data = prepare_test(handler.handle_event, params, authenticator, protocol)
+    handler.data = data
+    handler.data['test'] = handler
 
     # go!
     servicetest.run_test(handler, start)

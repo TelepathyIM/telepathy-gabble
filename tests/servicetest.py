@@ -8,6 +8,7 @@ glib2reactor.install()
 
 import pprint
 import traceback
+import unittest
 
 import dbus
 import dbus.glib
@@ -162,6 +163,155 @@ class EventTest:
 
         self.log('')
         self.try_stop()
+
+class EventPattern:
+    def __init__(self, type, **properties):
+        self.type = type
+        self.properties = properties
+
+    def match(self, event):
+        if event.type != self.type:
+            return False
+
+        for key, value in self.properties.iteritems():
+            try:
+                if getattr(event, key) != value:
+                    return False
+            except AttributeError:
+                return False
+
+        return True
+
+class TimeoutError(Exception):
+    pass
+
+class BaseEventQueue:
+    """Abstract event queue base class.
+
+    Implement the wait() method to have something that works.
+    """
+
+    timeout = 5
+
+    def __init__(self):
+        self.verbose = False
+
+    def log(self, s):
+        if self.verbose:
+            print s
+
+    def expect(self, type, **kw):
+        pattern = EventPattern(type, **kw)
+
+        while True:
+            event = self.wait()
+            self.log('got event:')
+            map(self.log, format_event(event))
+
+            if pattern.match(event):
+                self.log('handled')
+                self.log('')
+                return event
+
+            self.log('not handled')
+            self.log('')
+
+    def expect_many(self, *patterns):
+        ret = [None] * len(patterns)
+
+        while None in ret:
+            event = self.wait()
+            self.log('got event:')
+            map(self.log, format_event(event))
+
+            for i, pattern in enumerate(patterns):
+                if pattern.match(event):
+                    self.log('handled')
+                    self.log('')
+                    ret[i] = event
+                    break
+            else:
+                self.log('not handled')
+                self.log('')
+
+        return ret
+
+    def demand(self, type, **kw):
+        pattern = EventPattern(type, **kw)
+
+        event = self.wait()
+
+        if pattern.match(event):
+            self.log('handled')
+            return event
+
+        self.log('not handled')
+        raise RuntimeError('expected %r, got %r' % (pattern, event))
+
+class IteratingEventQueue(BaseEventQueue):
+    """Event queue that works by iterating the Twisted reactor."""
+
+    def __init__(self):
+        BaseEventQueue.__init__(self)
+        self.events = []
+
+    def wait(self):
+        stop = [False]
+
+        def later():
+            stop[0] = True
+
+        delayed_call = reactor.callLater(self.timeout, later)
+
+        while (not self.events) and (not stop[0]):
+            reactor.iterate(0.1)
+
+        if self.events:
+            delayed_call.cancel()
+            return self.events.pop(0)
+        else:
+            raise TimeoutError
+
+    def append(self, event):
+        self.events.append(event)
+
+class TestEventQueue(BaseEventQueue):
+    def __init__(self, events):
+        BaseEventQueue.__init__(self)
+        self.events = events
+
+    def wait(self):
+        if self.events:
+            return self.events.pop(0)
+        else:
+            raise TimeoutError
+
+class EventQueueTest(unittest.TestCase):
+    def test_expect(self):
+        queue = TestEventQueue([Event('foo'), Event('bar')])
+        assert queue.expect('foo').type == 'foo'
+        assert queue.expect('bar').type == 'bar'
+
+    def test_expect_many(self):
+        queue = TestEventQueue([Event('foo'), Event('bar')])
+        bar, foo = queue.expect_many(
+            EventPattern('bar'),
+            EventPattern('foo'))
+        assert bar.type == 'bar'
+        assert foo.type == 'foo'
+
+    def test_timeout(self):
+        queue = TestEventQueue([])
+        self.assertRaises(TimeoutError, queue.expect, 'foo')
+
+    def test_demand(self):
+        queue = TestEventQueue([Event('foo'), Event('bar')])
+        foo = queue.demand('foo')
+        assert foo.type == 'foo'
+
+    def test_demand_fail(self):
+        queue = TestEventQueue([Event('foo'), Event('bar')])
+        self.assertRaises(RuntimeError, queue.demand, 'bar')
 
 def unwrap(x):
     """Hack to unwrap D-Bus values, so that they're easier to read when

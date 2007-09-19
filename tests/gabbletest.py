@@ -138,15 +138,14 @@ class BaseXmlStream(xmlstream.XmlStream):
     initiating = False
     namespace = 'jabber:client'
 
-    def __init__(self, handler, authenticator):
+    def __init__(self, event_func, authenticator):
         xmlstream.XmlStream.__init__(self, authenticator)
-        self.handler = handler
-        handler.data['stream'] = self
-        self.addObserver('//iq', lambda x: handler.handle_event(
+        self.event_func = event_func
+        self.addObserver('//iq', lambda x: event_func(
             make_iq_event(x)))
-        self.addObserver('//message', lambda x: handler.handle_event(
+        self.addObserver('//message', lambda x: event_func(
             servicetest.Event('stream-message', stanza=x)))
-        self.addObserver('//presence', lambda x: handler.handle_event(
+        self.addObserver('//presence', lambda x: event_func(
             make_stream_event('stream-presence', x)))
         self.addObserver('//event/stream/authd', self._cb_authd)
 
@@ -155,7 +154,7 @@ class BaseXmlStream(xmlstream.XmlStream):
         self.addObserver(
             "/iq/query[@xmlns='http://jabber.org/protocol/disco#info']",
             self._cb_disco_iq)
-        self.handler.handle_event(servicetest.Event('stream-authenticated'))
+        self.event_func(servicetest.Event('stream-authenticated'))
 
     def _cb_disco_iq(self, iq):
         if iq['to'] == 'localhost':
@@ -178,9 +177,9 @@ class XmppXmlStream(BaseXmlStream):
     version = (1, 0)
 
 class XmlStreamFactory(xmlstream.XmlStreamFactory):
-    def __init__(self, handler, authenticator):
+    def __init__(self, event_func, authenticator):
         xmlstream.XmlStreamFactory.__init__(self, authenticator)
-        self.handler = handler
+        self.event_func = event_func
 
     def buildProtocol(self, _):
         # XXX: This is necessary because xmlstream.XmlStreamFactory's
@@ -188,7 +187,7 @@ class XmlStreamFactory(xmlstream.XmlStreamFactory):
         # Twisted Words 2.5, fixed in SVN.
         self.resetDelay()
         # create the stream
-        xs = self.protocol(self.handler, self.authenticator)
+        xs = self.protocol(self.event_func, self.authenticator)
         xs.factory = self
         # register all the bootstrap observers.
         for event, fn in self.bootstraps:
@@ -221,9 +220,14 @@ def go(params=None, authenticator=None, protocol=None, start=None):
     if protocol is None:
         protocol = JabberXmlStream
 
+    class Stream(protocol):
+        def __init__(self, *args):
+            protocol.__init__(self, *args)
+            handler.data['stream'] = self
+
     # set up Jabber server
-    factory = XmlStreamFactory(handler, authenticator)
-    factory.protocol = protocol
+    factory = XmlStreamFactory(handler.handle_event, authenticator)
+    factory.protocol = Stream
     reactor.listenTCP(4242, factory)
 
     # go!

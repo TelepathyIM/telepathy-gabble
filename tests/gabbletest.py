@@ -224,9 +224,6 @@ def go(params=None, authenticator=None, protocol=None, start=None):
     factory.protocol = protocol
     reactor.listenTCP(4242, factory)
 
-    # update callback data
-    handler.data['factory'] = factory
-
     # go!
     servicetest.run_test(handler, start)
 

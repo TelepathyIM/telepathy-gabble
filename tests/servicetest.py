@@ -229,22 +229,28 @@ def run_test(handler, start=None):
     __main__ module and run it.
     """
 
+def load_event_handlers():
     path, _, _, _ = traceback.extract_stack()[0]
     import compiler
     import __main__
     ast = compiler.parseFile(path)
-    funcs = [
+    return [
         getattr(__main__, node.name)
         for node in ast.node.asList()
         if node.__class__ == compiler.ast.Function and
             node.name.startswith('expect_')]
+
+def run_test(handler, start=None):
+    """Create a test from the top level functions named expect_* in the
+    __main__ module and run it.
+    """
 
     handler.verbose = (os.environ.get('CHECK_TWISTED_VERBOSE', '') != '')
     for arg in sys.argv:
         if arg == '-v':
             handler.verbose = True
 
-    map(handler.expect, funcs)
+    map(handler.expect, load_event_handlers())
 
     if start is None:
         handler.data['conn'].Connect()

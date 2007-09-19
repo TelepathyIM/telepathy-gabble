@@ -56,6 +56,19 @@ class Event:
         self.__dict__.update(kw)
         self.type = type
 
+def format_event(event):
+    ret = ['- type %s' % event.type]
+
+    for key in dir(event):
+        if key != 'type' and not key.startswith('_'):
+            ret.append('- %s: %s' % (
+                key, pprint.pformat(getattr(event, key))))
+
+            if key == 'error':
+                ret.append('%s' % getattr(event, key))
+
+    return ret
+
 class EventTest:
     """Somewhat odd event dispatcher for asynchronous tests.
 
@@ -126,13 +139,7 @@ class EventTest:
 
         self.log('got event:')
         self.log('- type: %s' % event.type)
-
-        for key in dir(event):
-            if key != 'type' and not key.startswith('_'):
-                self.log('- %s: %s' % (
-                    key, pprint.pformat(getattr(event, key))))
-                if key == 'error':
-                    self.log('%s' % getattr(event, key))
+        map(self.log, format_event(event))
 
         try:
             ret = self.call_handlers(event)

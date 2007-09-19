@@ -661,6 +661,7 @@ handle_ibb_open_iq (GabbleBytestreamFactory *self,
   GabbleBytestreamIBB *bytestream;
   LmMessageNode *open_node;
   ConstBytestreamIdentifier bsid = { NULL, NULL };
+  const gchar *tmp;
 
   if (lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_SET)
     return FALSE;
@@ -688,8 +689,6 @@ handle_ibb_open_iq (GabbleBytestreamFactory *self,
       return TRUE;
     }
 
-  /* XXX we should probably do something with the "block-size" attribute */
-
   bytestream = g_hash_table_lookup (priv->ibb_bytestreams, &bsid);
   if (bytestream == NULL)
     {
@@ -698,6 +697,15 @@ handle_ibb_open_iq (GabbleBytestreamFactory *self,
       _gabble_connection_send_iq_error (priv->conn, msg,
           XMPP_ERROR_BAD_REQUEST, NULL);
       return TRUE;
+    }
+
+  tmp = lm_message_node_get_attribute (open_node, "block-size");
+  if (tmp != NULL)
+    {
+      guint block_size = strtoul (tmp, NULL, 10);
+
+      if (block_size > 0)
+        g_object_set (bytestream, "block-size", block_size, NULL);
     }
 
   g_object_set (bytestream, "state", GABBLE_BYTESTREAM_STATE_OPEN,

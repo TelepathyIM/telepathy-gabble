@@ -115,6 +115,28 @@ gabble_presence_new (void)
   return g_object_new (GABBLE_TYPE_PRESENCE, NULL);
 }
 
+static gboolean
+resource_better_than (Resource *a, Resource *b, GabblePresenceCapabilities caps)
+{
+    if ((a->priority < 0) || ((a->caps & caps) != caps))
+        return FALSE;
+
+    if (NULL == b)
+        return TRUE;
+
+    if (a->status < b->status)
+        return FALSE;
+    else if (a->status > b->status)
+        return TRUE;
+
+    if (a->last_activity < b->last_activity)
+        return FALSE;
+    else if (a->last_activity > b->last_activity)
+        return TRUE;
+
+    return (a->priority > b->priority);
+}
+
 const gchar *
 gabble_presence_pick_resource_by_caps (
     GabblePresence *presence,
@@ -128,18 +150,8 @@ gabble_presence_pick_resource_by_caps (
     {
       Resource *res = (Resource *) i->data;
 
-      if (((res->priority >= 0) && (res->caps & caps) == caps))
-        {
-          if ((NULL == chosen) ||
-              (res->status > chosen->status) ||
-              ((res->status == chosen->status) &&
-                  ((res->last_activity > chosen->last_activity) ||
-                      ((res->last_activity == chosen->last_activity) &&
-                          (res->priority > chosen->priority)))))
-            {
-              chosen = res;
-            }
-        }
+      if (resource_better_than (res, chosen, caps))
+          chosen = res;
     }
 
   if (chosen)

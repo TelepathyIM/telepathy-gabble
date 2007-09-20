@@ -2432,7 +2432,9 @@ muc_channel_contact_join_cb (GabbleMucChannel *chan,
                              TpHandle contact,
                              ActivityInfo *info)
 {
-  if (contact == chan->group.self_handle)
+  TpBaseConnection *base = (TpBaseConnection *) info->conn;
+
+  if (contact == base->self_handle)
     {
       /* We join the channel, forget about all invites we received about
        * this activity */

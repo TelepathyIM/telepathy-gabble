@@ -360,7 +360,7 @@ def prepare_test(event_func, name, proto, params):
     conn_iface = dbus.Interface(conn, tp_name_prefix + '.Connection')
     data = {}
 
-    for name in ('bus', 'cm', 'cm_iface', 'conn', 'conn_iface'):
+    for name in ('bus', 'conn', 'conn_iface'):
         data[name] = locals()[name]
 
     bus.add_signal_receiver(

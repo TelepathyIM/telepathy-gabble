@@ -1091,14 +1091,15 @@ channel_state_changed (GabbleMucChannel *chan,
 
   if (new_state == MUC_STATE_JOINED || new_state == MUC_STATE_AUTH)
     {
+      TpBaseConnection *base = (TpBaseConnection *) priv->conn;
+
       if (!priv->ready_emitted)
         {
           g_signal_emit (chan, signals[READY], 0);
 
           priv->ready_emitted = TRUE;
         }
-      g_signal_emit (chan, signals[CONTACT_JOIN], 0,
-          TP_GROUP_MIXIN (chan)->self_handle);
+      g_signal_emit (chan, signals[CONTACT_JOIN], 0, base->self_handle);
     }
 }
 

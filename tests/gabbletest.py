@@ -9,6 +9,7 @@ import sha
 import sys
 
 import servicetest
+import twisted
 from twisted.words.xish import domish, xpath
 from twisted.words.protocols.jabber.client import IQ
 from twisted.words.protocols.jabber import xmlstream
@@ -178,24 +179,6 @@ class JabberXmlStream(BaseXmlStream):
 class XmppXmlStream(BaseXmlStream):
     version = (1, 0)
 
-class XmlStreamFactory(xmlstream.XmlStreamFactory):
-    def __init__(self, event_func, authenticator):
-        xmlstream.XmlStreamFactory.__init__(self, authenticator)
-        self.event_func = event_func
-
-    def buildProtocol(self, _):
-        # XXX: This is necessary because xmlstream.XmlStreamFactory's
-        # buildProtocol doesn't honour self.protocol. This is broken in
-        # Twisted Words 2.5, fixed in SVN.
-        self.resetDelay()
-        # create the stream
-        xs = self.protocol(self.event_func, self.authenticator)
-        xs.factory = self
-        # register all the bootstrap observers.
-        for event, fn in self.bootstraps:
-            xs.addObserver(event, fn)
-        return xs
-
 def prepare_test(event_func, params=None, authenticator=None, protocol=None):
     default_params = {
         'account': 'test@localhost/Resource',
@@ -219,13 +202,9 @@ def prepare_test(event_func, params=None, authenticator=None, protocol=None):
     if protocol is None:
         protocol = JabberXmlStream
 
-    class Stream(protocol):
-        def __init__(self, *args):
-            protocol.__init__(self, *args)
-            data['stream'] = self
-
-    factory = XmlStreamFactory(event_func, authenticator)
-    factory.protocol = Stream
+    data['stream'] = protocol(event_func, authenticator)
+    factory = twisted.internet.protocol.Factory()
+    factory.protocol = lambda *args: data['stream']
     reactor.listenTCP(4242, factory)
     return data
 

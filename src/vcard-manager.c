@@ -895,7 +895,9 @@ replace_reply_cb (GabbleConnection *conn,
       g_assert (priv->patched_vcard != NULL);
 
       /* Finally we may put the new vcard in the cache. */
-      lm_message_node_unref (entry->vcard_node);
+      if (entry->vcard_node)
+          lm_message_node_unref (entry->vcard_node);
+
       entry->vcard_node = priv->patched_vcard;
       priv->patched_vcard = NULL;
 

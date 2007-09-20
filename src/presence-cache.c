@@ -907,7 +907,7 @@ OUT:
   g_free (full_jid);
 }
 
-static void
+static GabblePresenceCapabilities
 _process_caps_uri (GabblePresenceCache *cache,
                    const gchar *from,
                    const gchar *uri,
@@ -936,12 +936,10 @@ _process_caps_uri (GabblePresenceCache *cache,
 
       if (presence)
         {
-          GabblePresenceCapabilities save_caps = presence->caps;
           gabble_presence_set_capabilities (presence, resource, info->caps,
               serial);
-          g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0,
-              handle, save_caps, presence->caps);
           DEBUG ("caps for %d (%s) now %d", handle, from, presence->caps);
+          return presence->caps;
         }
       else
         {
@@ -997,10 +995,13 @@ _process_caps_uri (GabblePresenceCache *cache,
           waiter->disco_requested = TRUE;
         }
     }
+
+  return 0;
 }
 
 static void
 _process_caps (GabblePresenceCache *cache,
+               GabblePresence *presence,
                TpHandle handle,
                const gchar *from,
                LmMessageNode *lm_node)
@@ -1008,6 +1009,7 @@ _process_caps (GabblePresenceCache *cache,
   const gchar *resource;
   GSList *uris, *i;
   GabblePresenceCachePrivate *priv;
+  GabblePresenceCapabilities old_caps = 0, new_caps = 0;
   guint serial;
 
   priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
@@ -1019,11 +1021,31 @@ _process_caps (GabblePresenceCache *cache,
 
   uris = _extract_cap_bundles (lm_node);
 
+  if (presence)
+      old_caps = presence->caps;
+
   for (i = uris; NULL != i; i = i->next)
     {
-      _process_caps_uri (cache, from, (gchar *) i->data, handle, resource,
-          serial);
+      GabblePresenceCapabilities c = _process_caps_uri (cache, from,
+          (gchar *) i->data, handle, resource, serial);
       g_free (i->data);
+
+      if (0 != c)
+          new_caps = c;
+    }
+
+  if (new_caps != old_caps)
+    {
+      DEBUG ("Emitting caps update: handle %u, old %u, new %u",
+          handle, old_caps, new_caps);
+
+      g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0,
+          handle, old_caps, new_caps);
+    }
+  else
+    {
+      DEBUG ("No change in caps %u for handle %u, not updating",
+          handle, old_caps);
     }
 
   g_slist_free (uris);
@@ -1081,7 +1103,7 @@ _parse_presence_message (GabblePresenceCache *cache,
 
       _grab_nickname (cache, handle, from, presence_node);
       _grab_avatar_sha1 (cache, handle, from, presence_node);
-      _process_caps (cache, handle, from, presence_node);
+      _process_caps (cache, presence, handle, from, presence_node);
 
       ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
       break;

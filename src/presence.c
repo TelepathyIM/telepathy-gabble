@@ -44,6 +44,7 @@ struct _Resource {
     GabblePresenceId status;
     gchar *status_message;
     gint8 priority;
+    time_t last_activity;
 };
 
 typedef struct _GabblePresencePrivate GabblePresencePrivate;
@@ -63,6 +64,7 @@ _resource_new (gchar *name)
   new->status_message = NULL;
   new->priority = 0;
   new->caps_serial = 0;
+  new->last_activity = 0;
 
   return new;
 }
@@ -126,10 +128,18 @@ gabble_presence_pick_resource_by_caps (
     {
       Resource *res = (Resource *) i->data;
 
-      if ((res->priority >= 0) &&
-          ((res->caps & caps) == caps) &&
-          (NULL == chosen || res->priority > chosen->priority))
-        chosen = res;
+      if (((res->priority >= 0) && (res->caps & caps) == caps))
+        {
+          if ((NULL == chosen) ||
+              (res->status > chosen->status) ||
+              ((res->status == chosen->status) &&
+                  ((res->last_activity > chosen->last_activity) ||
+                      ((res->last_activity == chosen->last_activity) &&
+                          (res->priority > chosen->priority)))))
+            {
+              chosen = res;
+            }
+        }
     }
 
   if (chosen)
@@ -302,6 +312,9 @@ gabble_presence_update (GabblePresence *presence,
         }
 
       res->priority = priority;
+
+      if (res->status >= GABBLE_PRESENCE_AVAILABLE)
+          res->last_activity = time (NULL);
     }
 
   /* select the most preferable Resource and update presence->* based on our

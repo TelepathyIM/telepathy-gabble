@@ -2398,11 +2398,16 @@ remove_invite_foreach (gpointer key,
   if (tp_handle_set_remove (rooms, ctx->room_handle))
     {
       ActivityInfo *info;
+      GPtrArray *activities;
 
       info = g_hash_table_lookup (ctx->conn->olpc_activities_info,
           GUINT_TO_POINTER (ctx->room_handle));
 
-      /* FIXME: Should we emit BuddyInfo::ActivitiesChanged? */
+      activities = get_buddy_activities (ctx->conn, inviter);
+      gabble_svc_olpc_buddy_info_emit_activities_changed (ctx->conn, inviter,
+          activities);
+      free_activities (activities);
+
       g_assert (info != NULL);
       DEBUG ("forget invite for activity %s from contact %d", info->id,
           inviter);

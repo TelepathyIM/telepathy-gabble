@@ -199,7 +199,7 @@ gabble_tubes_channel_get_property (GObject *object,
         g_value_set_string (value, priv->object_path);
         break;
       case PROP_CHANNEL_TYPE:
-        g_value_set_static_string (value, GABBLE_IFACE_CHANNEL_TYPE_TUBES);
+        g_value_set_static_string (value, TP_IFACE_CHANNEL_TYPE_TUBES);
         break;
       case PROP_HANDLE_TYPE:
         g_value_set_uint (value, priv->handle_type);
@@ -390,12 +390,12 @@ tube_opened_cb (GabbleTubeIface *tube,
   g_object_get (tube, "id", &tube_id, NULL);
 
   tp_svc_channel_type_tubes_emit_tube_state_changed (self, tube_id,
-      GABBLE_TUBE_STATE_OPEN);
+      TP_TUBE_STATE_OPEN);
 }
 
 GabbleTubeIface *
 create_new_tube (GabbleTubesChannel *self,
-                 GabbleTubeType type,
+                 TpTubeType type,
                  TpHandle initiator,
                  const gchar *service,
                  GHashTable *parameters,
@@ -405,18 +405,18 @@ create_new_tube (GabbleTubesChannel *self,
 {
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
   GabbleTubeIface *tube;
-  GabbleTubeState state;
+  TpTubeState state;
 
   switch (type)
     {
 #ifdef HAVE_DBUS_TUBE
-    case GABBLE_TUBE_TYPE_DBUS:
+    case TP_TUBE_TYPE_DBUS:
       tube = GABBLE_TUBE_IFACE (gabble_tube_dbus_new (priv->conn,
           priv->handle, priv->handle_type, priv->self_handle, initiator,
           service, parameters, stream_id, tube_id, bytestream));
       break;
 #endif
-    case GABBLE_TUBE_TYPE_STREAM:
+    case TP_TUBE_TYPE_STREAM:
       tube = GABBLE_TUBE_IFACE (gabble_tube_stream_new (priv->conn,
           priv->handle, priv->handle_type, priv->self_handle, initiator,
           service, parameters, tube_id));
@@ -440,8 +440,8 @@ create_new_tube (GabbleTubesChannel *self,
       state);
 
 #ifdef HAVE_DBUS_TUBE
-  if (type == GABBLE_TUBE_TYPE_DBUS &&
-      state != GABBLE_TUBE_STATE_LOCAL_PENDING)
+  if (type == TP_TUBE_TYPE_DBUS &&
+      state != TP_TUBE_STATE_LOCAL_PENDING)
     {
       add_yourself_in_dbus_names (self, tube_id);
     }
@@ -456,7 +456,7 @@ create_new_tube (GabbleTubesChannel *self,
 static gboolean
 extract_tube_information (GabbleTubesChannel *self,
                           LmMessageNode *tube_node,
-                          GabbleTubeType *type,
+                          TpTubeType *type,
                           TpHandle *initiator_handle,
                           const gchar **service,
                           GHashTable **parameters,
@@ -474,12 +474,12 @@ extract_tube_information (GabbleTubesChannel *self,
 
       if (!tp_strdiff (_type, "stream"))
         {
-          *type = GABBLE_TUBE_TYPE_STREAM;
+          *type = TP_TUBE_TYPE_STREAM;
         }
 #ifdef HAVE_DBUS_TUBE
       else if (!tp_strdiff (_type, "dbus"))
         {
-          *type = GABBLE_TUBE_TYPE_DBUS;
+          *type = TP_TUBE_TYPE_DBUS;
         }
 #endif
       else
@@ -558,11 +558,11 @@ add_in_old_dbus_tubes (gpointer key,
   GabbleTubeIface *tube = GABBLE_TUBE_IFACE (value);
   struct _add_in_old_dbus_tubes_data *data =
     (struct _add_in_old_dbus_tubes_data *) user_data;
-  GabbleTubeType type;
+  TpTubeType type;
 
   g_object_get (tube, "type", &type, NULL);
 
-  if (type != GABBLE_TUBE_TYPE_DBUS)
+  if (type != TP_TUBE_TYPE_DBUS)
     return;
 
   if (gabble_tube_dbus_handle_in_names (GABBLE_TUBE_DBUS (tube),
@@ -687,7 +687,7 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
       const gchar *stream_id;
       GabbleTubeIface *tube;
       guint tube_id;
-      GabbleTubeType type;
+      TpTubeType type;
 
       stream_id = lm_message_node_get_attribute (tube_node, "stream-id");
 
@@ -699,7 +699,7 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
         {
           /* We don't know yet this tube */
           const gchar *service;
-          GabbleTubeType type;
+          TpTubeType type;
           TpHandle initiator_handle;
           GHashTable *parameters;
           guint tube_id;
@@ -739,7 +739,7 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
       g_object_get (tube, "type", &type, NULL);
 
 #ifdef HAVE_DBUS_TUBE
-      if (type == GABBLE_TUBE_TYPE_DBUS)
+      if (type == TP_TUBE_TYPE_DBUS)
         {
           /* Update mapping of handle -> D-Bus name. */
           if (!gabble_tube_dbus_handle_in_names (GABBLE_TUBE_DBUS (tube),
@@ -785,8 +785,8 @@ copy_tube_in_ptr_array (gpointer key,
   TpHandle initiator;
   gchar *service;
   GHashTable *parameters;
-  GabbleTubeState state;
-  GabbleTubeType type;
+  TpTubeState state;
+  TpTubeType type;
   GPtrArray *array = (GPtrArray *) user_data;
   GValue entry = {0,};
 
@@ -840,16 +840,16 @@ gabble_tubes_channel_get_available_tube_types (TpSvcChannelTypeTubes *iface,
 {
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (iface);
   GArray *ret;
-  GabbleTubeType type;
+  TpTubeType type;
 
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
 
-  ret = g_array_sized_new (FALSE, FALSE, sizeof (GabbleTubeType), 1);
+  ret = g_array_sized_new (FALSE, FALSE, sizeof (TpTubeType), 1);
 #ifdef HAVE_DBUS_TUBE
-  type = GABBLE_TUBE_TYPE_DBUS;
+  type = TP_TUBE_TYPE_DBUS;
   g_array_append_val (ret, type);
 #endif
-  type = GABBLE_TUBE_TYPE_STREAM;
+  type = TP_TUBE_TYPE_STREAM;
   g_array_append_val (ret, type);
 
   tp_svc_channel_type_tubes_return_from_get_available_tube_types (context,
@@ -910,7 +910,7 @@ publish_tube_in_node (GabbleTubesChannel *self,
 {
   LmMessageNode *parameters_node;
   GHashTable *parameters;
-  GabbleTubeType type;
+  TpTubeType type;
   gchar *service, *id_str;
   guint tube_id;
   GabbleTubesChannelPrivate *priv =
@@ -941,17 +941,17 @@ publish_tube_in_node (GabbleTubesChannel *self,
 
   switch (type)
     {
-      case GABBLE_TUBE_TYPE_DBUS:
+      case TP_TUBE_TYPE_DBUS:
         lm_message_node_set_attribute (node, "type", "dbus");
         break;
-      case GABBLE_TUBE_TYPE_STREAM:
+      case TP_TUBE_TYPE_STREAM:
         lm_message_node_set_attribute (node, "type", "stream");
         break;
       default:
         g_assert_not_reached ();
     }
 
-  if (type == GABBLE_TUBE_TYPE_DBUS)
+  if (type == TP_TUBE_TYPE_DBUS)
     {
       gchar *name, *stream_id;
 
@@ -994,7 +994,7 @@ publish_tubes_in_node (gpointer key,
   GabbleTubeIface *tube = (GabbleTubeIface *) value;
   struct _i_hate_g_hash_table_foreach *data =
     (struct _i_hate_g_hash_table_foreach *) user_data;
-  GabbleTubeState state;
+  TpTubeState state;
   LmMessageNode *tube_node;
 
   if (tube == NULL)
@@ -1004,7 +1004,7 @@ publish_tubes_in_node (gpointer key,
                 "state", &state,
                 NULL);
 
-  if (state != GABBLE_TUBE_STATE_OPEN)
+  if (state != TP_TUBE_STATE_OPEN)
     return;
 
   tube_node = lm_message_node_add_child (data->tubes_node, "tube", NULL);
@@ -1055,6 +1055,8 @@ bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
   struct _bytestream_negotiate_cb_data *data =
     (struct _bytestream_negotiate_cb_data *) user_data;
   GabbleTubeIface *tube = data->tube;
+  LmMessageNode *si, *tube_node;
+  GabbleTubeType type;
 
   g_slice_free (struct _bytestream_negotiate_cb_data, data);
 
@@ -1072,6 +1074,37 @@ bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
       NULL);
 
   gabble_tube_iface_accept (tube);
+
+  /* Extract tube type specific information from SI reply */
+  si = lm_message_node_get_child_with_namespace (msg->node, "si", NS_SI);
+  if (si == NULL)
+    return;
+
+  g_object_get (tube,
+      "type", &type,
+      NULL);
+
+  tube_node = lm_message_node_get_child_with_namespace (si, "tube",
+      NS_TUBES);
+  if (tube_node == NULL)
+    tube_node = lm_message_node_get_child_with_namespace (si, "tube",
+        NS_TUBES);
+  if (tube_node == NULL)
+    return;
+
+#ifdef HAVE_DBUS_TUBE
+  if (type == GABBLE_TUBE_TYPE_DBUS)
+    {
+      LmMessageNode *dbus_name_node;
+      const gchar *dbus_name;
+      guint tube_id;
+
+      g_object_get (tube, "id", &tube_id, NULL);
+      dbus_name_node = lm_message_node_get_child (tube_node, "dbus-name");
+      dbus_name = lm_message_node_get_value (dbus_name_node);
+      add_name_in_dbus_names (self, tube_id, priv->handle, dbus_name);
+    }
+#endif
 }
 
 /* Called when we receive a SI request,
@@ -1085,7 +1118,7 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
   const gchar *service, *stream_id;
   GHashTable *parameters;
-  GabbleTubeType type;
+  TpTubeType type;
   LmMessageNode *si_node, *tube_node;
   guint tube_id;
   GabbleTubeIface *tube;
@@ -1138,8 +1171,23 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
       return;
     }
 
-#ifndef HAVE_DBUS_TUBE
+  /* Type specific informations*/
+#ifdef HAVE_DBUS_TUBE
   if (type == GABBLE_TUBE_TYPE_DBUS)
+    {
+      dbus_name = lm_message_node_get_attribute (tube_node, "dbus-name");
+      if (dbus_name == NULL)
+        {
+          DEBUG ("D-Bus tube doesn't contain initiator D-Bus name");
+          return FALSE;
+        }
+    }
+#endif
+
+  tube = create_new_tube (self, type, priv->handle, service,
+      parameters, stream_id, tube_id, bytestream);
+
+  if (type == TP_TUBE_TYPE_DBUS)
     {
       GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_FORBIDDEN,
           "Unable to handle D-Bus tubes" };
@@ -1354,7 +1402,7 @@ gabble_tubes_channel_offer_d_bus_tube (TpSvcChannelTypeTubes *iface,
   stream_id = gabble_bytestream_factory_generate_stream_id ();
   tube_id = generate_tube_id ();
 
-  tube = create_new_tube (self, GABBLE_TUBE_TYPE_DBUS, priv->self_handle,
+  tube = create_new_tube (self, TP_TUBE_TYPE_DBUS, priv->self_handle,
       service, parameters_copied, (const gchar*) stream_id, tube_id, NULL);
 
   if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
@@ -1393,14 +1441,14 @@ stream_unix_tube_new_connection_cb (GabbleTubeIface *tube,
 {
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (user_data);
   guint tube_id;
-  GabbleTubeType type;
+  TpTubeType type;
 
   g_object_get (tube,
       "id", &tube_id,
       "type", &type,
       NULL);
 
-  g_assert (type == GABBLE_TUBE_TYPE_STREAM);
+  g_assert (type == TP_TUBE_TYPE_STREAM);
 
   tp_svc_channel_type_tubes_emit_stream_tube_new_connection (self,
       tube_id, contact);
@@ -1436,10 +1484,20 @@ gabble_tubes_channel_offer_stream_tube (TpSvcChannelTypeTubes *iface,
   priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
   base = (TpBaseConnection*) priv->conn;
 
-  if (!gabble_tube_stream_check_params (address_type, address,
-        access_control, access_control_param, &error))
+  if (address_type != GABBLE_SOCKET_ADDRESS_TYPE_UNIX)
     {
       dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return;
+    }
+
+  if (access_control != GABBLE_SOCKET_ACCESS_CONTROL_LOCALHOST)
+    {
+      error = g_error_new (TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Unix sockets only support localhost control access");
+
+      dbus_g_method_return_error (context, error);
+
       g_error_free (error);
       return;
     }
@@ -1451,7 +1509,7 @@ gabble_tubes_channel_offer_stream_tube (TpSvcChannelTypeTubes *iface,
   stream_id = gabble_bytestream_factory_generate_stream_id ();
   tube_id = generate_tube_id ();
 
-  tube = create_new_tube (self, GABBLE_TUBE_TYPE_STREAM, priv->self_handle,
+  tube = create_new_tube (self, TP_TUBE_TYPE_STREAM, priv->self_handle,
       service, parameters_copied, (const gchar*) stream_id, tube_id, NULL);
 
   g_object_set (tube,
@@ -1502,8 +1560,8 @@ gabble_tubes_channel_accept_d_bus_tube (TpSvcChannelTypeTubes *iface,
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (iface);
   GabbleTubesChannelPrivate *priv;
   GabbleTubeIface *tube;
-  GabbleTubeState state;
-  GabbleTubeType type;
+  TpTubeState state;
+  TpTubeType type;
   gchar *addr;
 
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
@@ -1524,7 +1582,7 @@ gabble_tubes_channel_accept_d_bus_tube (TpSvcChannelTypeTubes *iface,
       "state", &state,
       NULL);
 
-  if (type != GABBLE_TUBE_TYPE_DBUS)
+  if (type != TP_TUBE_TYPE_DBUS)
     {
       GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "Tube is not a D-Bus tube" };
@@ -1533,7 +1591,7 @@ gabble_tubes_channel_accept_d_bus_tube (TpSvcChannelTypeTubes *iface,
       return;
     }
 
-  if (state != GABBLE_TUBE_STATE_LOCAL_PENDING)
+  if (state != TP_TUBE_STATE_LOCAL_PENDING)
     {
       GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "Tube is not in the local pending state" };
@@ -1577,8 +1635,8 @@ gabble_tubes_channel_accept_stream_tube (TpSvcChannelTypeTubes *iface,
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (iface);
   GabbleTubesChannelPrivate *priv;
   GabbleTubeIface *tube;
-  GabbleTubeState state;
-  GabbleTubeType type;
+  TpTubeState state;
+  TpTubeType type;
   GValue *address;
 
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
@@ -1594,7 +1652,7 @@ gabble_tubes_channel_accept_stream_tube (TpSvcChannelTypeTubes *iface,
       return;
     }
 
-  if (address_type != GABBLE_SOCKET_ADDRESS_TYPE_UNIX)
+  if (address_type != TP_SOCKET_ADDRESS_TYPE_UNIX)
     {
       GError *error = NULL;
 
@@ -1607,7 +1665,7 @@ gabble_tubes_channel_accept_stream_tube (TpSvcChannelTypeTubes *iface,
       return;
     }
 
-  if (access_control != GABBLE_SOCKET_ACCESS_CONTROL_LOCALHOST)
+  if (access_control != TP_SOCKET_ACCESS_CONTROL_LOCALHOST)
     {
       GError *error = NULL;
 
@@ -1625,7 +1683,7 @@ gabble_tubes_channel_accept_stream_tube (TpSvcChannelTypeTubes *iface,
       "state", &state,
       NULL);
 
-  if (type != GABBLE_TUBE_TYPE_STREAM)
+  if (type != TP_TUBE_TYPE_STREAM)
     {
       GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "Tube is not a stream tube" };
@@ -1634,7 +1692,7 @@ gabble_tubes_channel_accept_stream_tube (TpSvcChannelTypeTubes *iface,
       return;
     }
 
-  if (state != GABBLE_TUBE_STATE_LOCAL_PENDING)
+  if (state != TP_TUBE_STATE_LOCAL_PENDING)
     {
       GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "Tube is not in the local pending state" };
@@ -1709,8 +1767,8 @@ gabble_tubes_channel_get_d_bus_tube_address (TpSvcChannelTypeTubes *iface,
   GabbleTubesChannelPrivate *priv;
   GabbleTubeIface *tube;
   gchar *addr;
-  GabbleTubeType type;
-  GabbleTubeState state;
+  TpTubeType type;
+  TpTubeState state;
 
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
 
@@ -1731,7 +1789,7 @@ gabble_tubes_channel_get_d_bus_tube_address (TpSvcChannelTypeTubes *iface,
       "state", &state,
       NULL);
 
-  if (type != GABBLE_TUBE_TYPE_DBUS)
+  if (type != TP_TUBE_TYPE_DBUS)
     {
       GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "Tube is not a D-Bus tube" };
@@ -1791,8 +1849,8 @@ gabble_tubes_channel_get_d_bus_names (TpSvcChannelTypeTubes *iface,
   GabbleTubeIface *tube;
   GHashTable *names;
   GPtrArray *ret;
-  GabbleTubeType type;
-  GabbleTubeState state;
+  TpTubeType type;
+  TpTubeState state;
   guint i;
 
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
@@ -1812,8 +1870,7 @@ gabble_tubes_channel_get_d_bus_names (TpSvcChannelTypeTubes *iface,
       "state", &state,
       NULL);
 
-  if (type != GABBLE_TUBE_TYPE_DBUS ||
-      priv->handle_type != TP_HANDLE_TYPE_ROOM)
+  if (type != GABBLE_TUBE_TYPE_DBUS)
     {
       GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "Tube is not a Muc D-Bus tube" };
@@ -1822,7 +1879,7 @@ gabble_tubes_channel_get_d_bus_names (TpSvcChannelTypeTubes *iface,
       return;
     }
 
-  if (state != GABBLE_TUBE_STATE_OPEN)
+  if (state != TP_TUBE_STATE_OPEN)
     {
       GError error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
           "Tube is not open" };
@@ -1867,8 +1924,8 @@ gabble_tubes_channel_get_stream_tube_socket_address (TpSvcChannelTypeTubes *ifac
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (iface);
   GabbleTubesChannelPrivate *priv  = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
   GabbleTubeIface *tube;
-  GabbleTubeType type;
-  GabbleTubeState state;
+  TpTubeType type;
+  TpTubeState state;
   GValue *address;
 
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (id));
@@ -1885,7 +1942,7 @@ gabble_tubes_channel_get_stream_tube_socket_address (TpSvcChannelTypeTubes *ifac
       "state", &state,
       NULL);
 
-  if (type != GABBLE_TUBE_TYPE_STREAM)
+  if (type != TP_TUBE_TYPE_STREAM)
     {
       GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "Tube is not a Stream tube" };
@@ -1894,7 +1951,7 @@ gabble_tubes_channel_get_stream_tube_socket_address (TpSvcChannelTypeTubes *ifac
       return;
     }
 
-  if (state != GABBLE_TUBE_STATE_OPEN)
+  if (state != TP_TUBE_STATE_OPEN)
     {
       GError error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
           "Tube is not open" };
@@ -1913,7 +1970,10 @@ gabble_tubes_channel_get_stream_tube_socket_address (TpSvcChannelTypeTubes *ifac
   g_value_set_boxed (&address, array);
 
   gabble_svc_channel_type_tubes_return_from_get_stream_tube_socket_address (
-      context, GABBLE_SOCKET_ADDRESS_TYPE_UNIX, address);
+      context, GABBLE_SOCKET_ADDRESS_TYPE_UNIX, &address);
+
+  g_free (socket);
+  g_array_free (array, TRUE);
 }
 
 /**
@@ -1928,16 +1988,16 @@ gabble_tubes_channel_get_available_stream_tube_types (TpSvcChannelTypeTubes *ifa
 {
   GHashTable *ret;
   GArray *tab;
-  GabbleSocketAccessControl access;
+  TpSocketAccessControl access;
 
   ret = g_hash_table_new (g_direct_hash, g_direct_equal);
 
   /* Socket_Address_Type_Unix*/
-  tab = g_array_sized_new (FALSE, FALSE, sizeof (GabbleSocketAccessControl),
+  tab = g_array_sized_new (FALSE, FALSE, sizeof (TpSocketAccessControl),
       1);
-  access = GABBLE_SOCKET_ACCESS_CONTROL_LOCALHOST;
+  access = TP_SOCKET_ACCESS_CONTROL_LOCALHOST;
   g_array_append_val (tab, access);
-  g_hash_table_insert (ret, GUINT_TO_POINTER (GABBLE_SOCKET_ADDRESS_TYPE_UNIX),
+  g_hash_table_insert (ret, GUINT_TO_POINTER (TP_SOCKET_ADDRESS_TYPE_UNIX),
       tab);
 
   tp_svc_channel_type_tubes_return_from_get_available_stream_tube_types (
@@ -2013,7 +2073,7 @@ gabble_tubes_channel_get_channel_type (TpSvcChannel *iface,
                                        DBusGMethodInvocation *context)
 {
   tp_svc_channel_return_from_get_channel_type (context,
-      GABBLE_IFACE_CHANNEL_TYPE_TUBES);
+      TP_IFACE_CHANNEL_TYPE_TUBES);
 }
 
 /**

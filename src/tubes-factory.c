@@ -330,7 +330,7 @@ gabble_tubes_factory_iface_request (TpChannelFactoryIface *iface,
   GabbleTubesChannel *chan;
   TpChannelFactoryRequestStatus status;
 
-  if (tp_strdiff (chan_type, GABBLE_IFACE_CHANNEL_TYPE_TUBES))
+  if (tp_strdiff (chan_type, TP_IFACE_CHANNEL_TYPE_TUBES))
     return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_IMPLEMENTED;
 
   if (handle_type != TP_HANDLE_TYPE_CONTACT)

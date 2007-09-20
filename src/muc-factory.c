@@ -1150,7 +1150,7 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
           return TP_CHANNEL_FACTORY_REQUEST_STATUS_QUEUED;
         }
     }
-  else if (!tp_strdiff (chan_type, GABBLE_IFACE_CHANNEL_TYPE_TUBES))
+  else if (!tp_strdiff (chan_type, TP_IFACE_CHANNEL_TYPE_TUBES))
     {
       tubes_chan = g_hash_table_lookup (priv->tubes_channels,
           GINT_TO_POINTER (handle));

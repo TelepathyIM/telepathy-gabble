@@ -109,7 +109,7 @@ struct _GabbleTubeStreamPrivate
   TpHandle initiator;
   gchar *service;
   GHashTable *parameters;
-  GabbleTubeState state;
+  TpTubeState state;
 
   GabbleSocketAddressType address_type;
   GValue *address;
@@ -785,7 +785,7 @@ gabble_tube_stream_get_property (GObject *object,
         g_value_set_object (value, priv->default_bytestream);
         break;
       case PROP_TYPE:
-        g_value_set_uint (value, GABBLE_TUBE_TYPE_STREAM);
+        g_value_set_uint (value, TP_TUBE_TYPE_STREAM);
         break;
       case PROP_INITIATOR:
         g_value_set_uint (value, priv->initiator);
@@ -921,17 +921,17 @@ gabble_tube_stream_constructor (GType type,
       if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
         {
           /* Private tube */
-          priv->state = GABBLE_TUBE_STATE_REMOTE_PENDING;
+          priv->state = TP_TUBE_STATE_REMOTE_PENDING;
         }
       else
         {
           /* Muc tube */
-          priv->state = GABBLE_TUBE_STATE_OPEN;
+          priv->state = TP_TUBE_STATE_OPEN;
         }
     }
   else
     {
-      priv->state = GABBLE_TUBE_STATE_LOCAL_PENDING;
+      priv->state = TP_TUBE_STATE_LOCAL_PENDING;
     }
 
   return obj;
@@ -1149,7 +1149,7 @@ gabble_tube_stream_accept (GabbleTubeIface *tube)
   GabbleBytestreamState state;
 
   tube_stream_open (self);
-  priv->state = GABBLE_TUBE_STATE_OPEN;
+  priv->state = TP_TUBE_STATE_OPEN;
   g_signal_emit (G_OBJECT (self), signals[OPENED], 0);
 
   if (priv->default_bytestream == NULL)

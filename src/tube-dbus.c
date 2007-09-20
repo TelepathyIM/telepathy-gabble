@@ -326,7 +326,7 @@ unref_handle_foreach (gpointer key,
   tp_handle_unref (contact_repo, handle);
 }
 
-static GabbleTubeState
+static TpTubeState
 get_tube_state (GabbleTubeDBus *self)
 {
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
@@ -334,21 +334,21 @@ get_tube_state (GabbleTubeDBus *self)
 
   if (priv->bytestream == NULL)
     /* bytestream not yet created as we're waiting for the SI reply */
-    return GABBLE_TUBE_STATE_REMOTE_PENDING;
+    return TP_TUBE_STATE_REMOTE_PENDING;
 
   g_object_get (priv->bytestream, "state", &bytestream_state, NULL);
 
   switch (bytestream_state)
     {
       case GABBLE_BYTESTREAM_STATE_OPEN:
-        return GABBLE_TUBE_STATE_OPEN;
+        return TP_TUBE_STATE_OPEN;
         break;
       case GABBLE_BYTESTREAM_STATE_LOCAL_PENDING:
       case GABBLE_BYTESTREAM_STATE_ACCEPTED:
-        return GABBLE_TUBE_STATE_LOCAL_PENDING;
+        return TP_TUBE_STATE_LOCAL_PENDING;
         break;
       case GABBLE_BYTESTREAM_STATE_INITIATING:
-        return GABBLE_TUBE_STATE_REMOTE_PENDING;
+        return TP_TUBE_STATE_REMOTE_PENDING;
         break;
       default:
         g_assert_not_reached ();
@@ -493,7 +493,7 @@ gabble_tube_dbus_get_property (GObject *object,
         g_value_set_string (value, priv->stream_id);
         break;
       case PROP_TYPE:
-        g_value_set_uint (value, GABBLE_TUBE_TYPE_DBUS);
+        g_value_set_uint (value, TP_TUBE_TYPE_DBUS);
         break;
       case PROP_INITIATOR:
         g_value_set_uint (value, priv->initiator);

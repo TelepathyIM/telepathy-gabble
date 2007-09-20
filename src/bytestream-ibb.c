@@ -429,7 +429,7 @@ gabble_bytestream_ibb_send (GabbleBytestreamIface *iface,
 
       if (!ret)
         {
-          DEBUG ("error sending pseusdo IBB Muc stanza: %s", error->message);
+          DEBUG ("error sending IBB Muc stanza: %s", error->message);
           g_error_free (error);
           lm_message_unref (msg);
           return FALSE;

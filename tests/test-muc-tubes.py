@@ -367,13 +367,13 @@ def expect_list_tubes_return2(event, data):
         2,      # OPEN
         )])
 
-    call_async(data['test'], data['tubes_iface'], 'GetDBusServerAddress',
+    call_async(data['test'], data['tubes_iface'], 'GetDBusTubeAddress',
         data['dbus_tube_id'])
 
     return True
 
-@match('dbus-return', method='GetDBusServerAddress')
-def expect_get_dbus_server_address_return(event, data):
+@match('dbus-return', method='GetDBusTubeAddress')
+def expect_get_dbus_tube_address_return(event, data):
     data['tube'] = Connection(event.value[0])
     signal = SignalMessage('/', 'foo.bar', 'baz')
     signal.append(42, signature='u')

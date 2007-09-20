@@ -191,7 +191,7 @@ def prepare_test(event_func, params=None, authenticator=None, protocol=None):
     if params:
         default_params.update(params)
 
-    data = servicetest.prepare_test(event_func, 'gabble', 'jabber',
+    bus, conn = servicetest.prepare_test(event_func, 'gabble', 'jabber',
         default_params)
 
     # set up Jabber server
@@ -202,19 +202,25 @@ def prepare_test(event_func, params=None, authenticator=None, protocol=None):
     if protocol is None:
         protocol = JabberXmlStream
 
-    data['stream'] = protocol(event_func, authenticator)
+    stream = protocol(event_func, authenticator)
     factory = twisted.internet.protocol.Factory()
-    factory.protocol = lambda *args: data['stream']
+    factory.protocol = lambda *args: stream
     reactor.listenTCP(4242, factory)
-    return data
+    return bus, conn, stream
 
 def go(params=None, authenticator=None, protocol=None, start=None):
     # hack to ease debugging
     domish.Element.__repr__ = domish.Element.toXml
 
     handler = servicetest.EventTest()
-    data = prepare_test(handler.handle_event, params, authenticator, protocol)
-    handler.data = data
+    bus, conn, stream = \
+        prepare_test(handler.handle_event, params, authenticator, protocol)
+    handler.data = {
+        'bus': bus,
+        'conn': conn,
+        'conn_iface': dbus.Interface(conn,
+            'org.freedesktop.Telepathy.Connection'),
+        'stream': stream}
     handler.data['test'] = handler
     handler.verbose = (os.environ.get('CHECK_TWISTED_VERBOSE', '') != '')
     map(handler.expect, servicetest.load_event_handlers())

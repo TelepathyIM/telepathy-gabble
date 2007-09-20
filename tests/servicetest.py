@@ -358,10 +358,6 @@ def prepare_test(event_func, name, proto, params):
         proto, params)
     conn = bus.get_object(connection_name, connection_path)
     conn_iface = dbus.Interface(conn, tp_name_prefix + '.Connection')
-    data = {}
-
-    for name in ('bus', 'conn', 'conn_iface'):
-        data[name] = locals()[name]
 
     bus.add_signal_receiver(
         lambda *args, **kw:
@@ -377,7 +373,7 @@ def prepare_test(event_func, name, proto, params):
         byte_arrays=True
         )
 
-    return data
+    return bus, conn
 
 def load_event_handlers():
     path, _, _, _ = traceback.extract_stack()[0]

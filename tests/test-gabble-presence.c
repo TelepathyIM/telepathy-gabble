@@ -1,5 +1,6 @@
 
 #include <string.h>
+#include <unistd.h>
 
 #include <glib.h>
 #include <presence.h>
@@ -42,12 +43,22 @@ int main (int argc, char **argv)
   g_assert (FALSE == gabble_presence_update (presence, "foo",
     GABBLE_PRESENCE_AVAILABLE, "status message", 0));
 
+  /* sleep a while so the next resource will have different timestamp */
+  sleep (1);
+
   /* presence from different resource, but equal present-ness; unchanged */
   g_assert (FALSE == gabble_presence_update (presence, "bar",
     GABBLE_PRESENCE_AVAILABLE, "dingoes", 0));
 
   g_assert (GABBLE_PRESENCE_AVAILABLE == presence->status);
   g_assert (0 == strcmp ("status message", presence->status_message));
+
+  /* but if we were to make a voip call, we would prefer the newer one */
+  g_assert (0 == strcmp ("bar",
+        gabble_presence_pick_resource_by_caps (presence, 0)));
+
+  /* sleep a while so the next resource will have different timestamp */
+  sleep (1);
 
   /* presence with higher priority; presence and message changed */
   g_assert (TRUE == gabble_presence_update (presence, "bar",
@@ -56,9 +67,32 @@ int main (int argc, char **argv)
   g_assert (GABBLE_PRESENCE_AVAILABLE == presence->status);
   g_assert (0 == strcmp ("dingoes", presence->status_message));
 
+  /* sleep a while so the next resource will have different timestamp */
+  sleep (1);
+
+  /* now foo is newer, so the next voip call would prefer that */
+  g_assert (FALSE == gabble_presence_update (presence, "foo",
+    GABBLE_PRESENCE_AVAILABLE, "status message", 0));
+  g_assert (0 == strcmp ("foo",
+        gabble_presence_pick_resource_by_caps (presence, 0)));
+
+  /* sleep a while so the next resource will have different timestamp */
+  sleep (1);
+
   /* presence from first resource with greated present-ness: change */
   g_assert (TRUE == gabble_presence_update (presence, "foo",
     GABBLE_PRESENCE_CHAT, "status message", 0));
+
+  /* sleep a while so the next resource will have different timestamp */
+  sleep (1);
+
+  /* make bar be the latest presence: no change, since foo is more present */
+  g_assert (FALSE == gabble_presence_update (presence, "bar",
+    GABBLE_PRESENCE_AVAILABLE, "dingoes", 1));
+
+  /* we still prefer foo for the voip calls, because it's more present */
+  g_assert (0 == strcmp ("foo",
+        gabble_presence_pick_resource_by_caps (presence, 0)));
 
   g_assert (GABBLE_PRESENCE_CHAT == presence->status);
   g_assert (0 == strcmp ("status message", presence->status_message));

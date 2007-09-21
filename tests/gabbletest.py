@@ -138,6 +138,11 @@ def make_iq_event(iq):
 
     return event
 
+def make_presence_event(stanza):
+    event = make_stream_event('stream-presence', stanza)
+    event.presence_type = stanza.getAttribute('type')
+    return event
+
 class BaseXmlStream(xmlstream.XmlStream):
     initiating = False
     namespace = 'jabber:client'
@@ -150,7 +155,7 @@ class BaseXmlStream(xmlstream.XmlStream):
         self.addObserver('//message', lambda x: event_func(
             servicetest.Event('stream-message', stanza=x)))
         self.addObserver('//presence', lambda x: event_func(
-            make_stream_event('stream-presence', x)))
+            make_presence_event(x)))
         self.addObserver('//event/stream/authd', self._cb_authd)
 
     def _cb_authd(self, _):

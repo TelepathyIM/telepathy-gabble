@@ -116,9 +116,9 @@ gabble_presence_new (void)
 }
 
 static gboolean
-resource_better_than (Resource *a, Resource *b, GabblePresenceCapabilities caps)
+resource_better_than (Resource *a, Resource *b)
 {
-    if ((a->priority < 0) || ((a->caps & caps) != caps))
+    if (a->priority < 0)
         return FALSE;
 
     if (NULL == b)
@@ -150,8 +150,9 @@ gabble_presence_pick_resource_by_caps (
     {
       Resource *res = (Resource *) i->data;
 
-      if (resource_better_than (res, chosen, caps))
-          chosen = res;
+      if (((res->caps & caps) == caps) &&
+          (resource_better_than (res, chosen)))
+              chosen = res;
     }
 
   if (chosen)

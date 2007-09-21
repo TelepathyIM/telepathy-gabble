@@ -129,11 +129,12 @@ def make_stream_event(type, stanza):
 def make_iq_event(iq):
     event = make_stream_event('stream-iq', iq)
     event.iq_type = iq.getAttribute("type")
-    queries = xpath.queryForNodes("/iq/query", iq)
+    query = iq.firstChildElement()
 
-    if queries:
-        event.query = queries[0]
-        event.query_ns = event.query.uri
+    if query:
+        event.query = query
+        event.query_ns = query.uri
+        event.query_name = query.name
 
     return event
 

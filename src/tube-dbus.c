@@ -302,7 +302,6 @@ gabble_tube_dbus_init (GabbleTubeDBus *self)
 {
   GabbleTubeDBusPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
       GABBLE_TYPE_TUBE_DBUS, GabbleTubeDBusPrivate);
-  gchar suffix[8];
 
   self->priv = priv;
 
@@ -311,17 +310,10 @@ gabble_tube_dbus_init (GabbleTubeDBus *self)
   priv->socket_path = NULL;
   priv->dispose_has_run = FALSE;
 
-  /* XXX: check this doesn't clash with other bus names */
-  /* this has to contain at least two dot-separated components */
-
-  generate_ascii_string (8, suffix);
-  priv->dbus_local_name = g_strdup_printf (":1.%.8s", suffix);
   priv->dbus_names = g_hash_table_new_full (g_direct_hash, g_direct_equal,
       NULL, g_free);
   priv->dbus_name_to_handle = g_hash_table_new_full (g_str_hash,
       g_str_equal, NULL, NULL);
-
-  DEBUG ("local name: %s", priv->dbus_local_name);
 }
 
 static void
@@ -604,6 +596,8 @@ gabble_tube_dbus_constructor (GType type,
   GabbleTubeDBus *self;
   GabbleTubeDBusPrivate *priv;
   TpHandleRepoIface *contact_repo;
+  TpBaseConnection *base;
+  gchar *name;
 
   obj = G_OBJECT_CLASS (gabble_tube_dbus_parent_class)->
            constructor (type, n_props, props);
@@ -617,6 +611,15 @@ gabble_tube_dbus_constructor (GType type,
   contact_repo = tp_base_connection_get_handles
       ((TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   tp_handle_ref (contact_repo, priv->initiator);
+
+  base = (TpBaseConnection *) priv->conn;
+  /* We use the jid so we shouldn't clash with other bus names */
+  name = tp_escape_as_identifier (tp_handle_inspect (contact_repo,
+        base->self_handle));
+  priv->dbus_local_name = g_strdup_printf (":1.%.8s", name);
+  g_free (name);
+
+  DEBUG ("local name: %s", priv->dbus_local_name);
 
   g_assert (priv->self_handle != 0);
   if (priv->handle_type == TP_HANDLE_TYPE_ROOM)

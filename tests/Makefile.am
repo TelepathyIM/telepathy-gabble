@@ -46,6 +46,7 @@ TWISTED_TESTS = \
 	test-connect.py \
 	test-connect-fail.py \
 	test-disco.py \
+	test-google-roster.py \
 	test-muc.py \
 	test-muc-alias.py \
 	test-muc-ownership.py \

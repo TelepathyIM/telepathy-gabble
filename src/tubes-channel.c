@@ -1511,7 +1511,8 @@ gabble_tubes_channel_offer_stream_tube (GabbleSvcChannelTypeTubes *iface,
       service, parameters_copied, (const gchar*) stream_id, tube_id, NULL);
 
   g_object_set (tube,
-      "socket", socket->str,
+      "address-type", address_type,
+      "address", address,
       NULL);
 
   if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
@@ -1633,8 +1634,7 @@ gabble_tubes_channel_accept_stream_tube (GabbleSvcChannelTypeTubes *iface,
   GabbleTubeIface *tube;
   GabbleTubeState state;
   GabbleTubeType type;
-  gchar *socket;
-  GValue address = {0,};
+  GValue *address;
 
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
 
@@ -1698,17 +1698,18 @@ gabble_tubes_channel_accept_stream_tube (GabbleSvcChannelTypeTubes *iface,
       return;
     }
 
+  g_object_set (tube,
+      "address-type", address_type,
+      NULL);
+
   gabble_tube_iface_accept (tube);
 
   update_tubes_presence (self);
 
-  g_object_get (tube, "socket", &socket, NULL);
-  g_value_init (&address, G_TYPE_STRING);
-  g_value_set_string (&address, socket);
+  g_object_get (tube, "address", &address, NULL);
 
   gabble_svc_channel_type_tubes_return_from_accept_stream_tube (context,
-      &address);
-  g_free (socket);
+      address);
 }
 
 /**
@@ -1920,9 +1921,7 @@ gabble_tubes_channel_get_stream_tube_socket_address (GabbleSvcChannelTypeTubes *
   GabbleTubeIface *tube;
   GabbleTubeType type;
   GabbleTubeState state;
-  gchar *socket;
-  GValue address = {0,};
-  GArray *array;
+  GValue *address;
 
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (id));
   if (tube == NULL)
@@ -1957,19 +1956,11 @@ gabble_tubes_channel_get_stream_tube_socket_address (GabbleSvcChannelTypeTubes *
     }
 
   g_object_get (tube,
-      "socket", &socket,
+      "address", &address,
       NULL);
 
-  g_value_init (&address, DBUS_TYPE_G_UCHAR_ARRAY);
-  array = g_array_sized_new (TRUE, FALSE, sizeof (gchar), strlen (socket));
-  g_array_insert_vals (array, 0, socket, strlen (socket));
-  g_value_set_boxed (&address, array);
-
   gabble_svc_channel_type_tubes_return_from_get_stream_tube_socket_address (
-      context, GABBLE_SOCKET_ADDRESS_TYPE_UNIX, &address);
-
-  g_free (socket);
-  g_array_free (array, TRUE);
+      context, GABBLE_SOCKET_ADDRESS_TYPE_UNIX, address);
 }
 
 /**

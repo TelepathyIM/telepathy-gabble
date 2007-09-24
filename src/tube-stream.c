@@ -79,7 +79,8 @@ enum
   PROP_SERVICE,
   PROP_PARAMETERS,
   PROP_STATE,
-  PROP_SOCKET,
+  PROP_ADDRESS_TYPE,
+  PROP_ADDRESS,
   LAST_PROPERTY
 };
 
@@ -107,8 +108,8 @@ struct _GabbleTubeStreamPrivate
   GHashTable *parameters;
   GabbleTubeState state;
 
-  /* Path of the unix socket associated with this stream tube */
-  gchar *socket_path;
+  GabbleSocketAddressType address_type;
+  GValue *address;
   GIOChannel *listen_io_channel;
   guint listen_io_channel_source_id;
 
@@ -434,6 +435,22 @@ listen_cb (GIOChannel *source,
   return TRUE;
 }
 
+static GString *
+get_unix_socket_path (GabbleTubeStream *self)
+{
+  GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
+  GArray *array;
+
+  g_return_val_if_fail (priv->address != NULL, NULL);
+  g_return_val_if_fail (
+      priv->address_type == GABBLE_SOCKET_ADDRESS_TYPE_UNIX ||
+      priv->address_type == GABBLE_SOCKET_ADDRESS_TYPE_ABSTRACT_UNIX, NULL);
+
+  array = g_value_get_boxed (priv->address);
+
+  return g_string_new_len (array->data, array->len);
+}
+
 static gboolean
 new_connection_to_socket (GabbleTubeStream *self,
                           GabbleBytestreamIface *bytestream)
@@ -464,16 +481,28 @@ new_connection_to_socket (GabbleTubeStream *self,
       return FALSE;
     }
 
-  strncpy (addr.sun_path, priv->socket_path,
-      strlen (priv->socket_path) + 1);
+  if (priv->address_type == GABBLE_SOCKET_ADDRESS_TYPE_UNIX)
+    {
+      GString *socket_path;
+
+      socket_path = get_unix_socket_path (self);
+      strncpy (addr.sun_path, socket_path->str, socket_path->len + 1);
+
+      DEBUG ("Will try to connect to socket: %s", socket_path->str);
+      g_string_free (socket_path, TRUE);
+    }
+  else
+    {
+      g_assert_not_reached ();
+    }
 
   if (connect (fd, (struct sockaddr *) &addr, sizeof (addr)) == -1)
     {
       DEBUG ("Error connecting socket: %s", g_strerror (errno));
       return FALSE;
     }
+  DEBUG ("Connected to socket");
 
-  DEBUG ("Connected to socket: %s", priv->socket_path);
   channel = g_io_channel_unix_new (fd);
   g_io_channel_set_encoding (channel, NULL, NULL);
   g_io_channel_set_buffered (channel, FALSE);
@@ -508,7 +537,7 @@ tube_stream_open (GabbleTubeStream *self)
 
   /* We didn't create this tube so it doesn't have
    * a socket associated with it. Let's create one */
-  g_assert (priv->socket_path == NULL);
+  g_assert (priv->address == NULL);
 
   // XXX close the tube if error ?
 
@@ -519,9 +548,6 @@ tube_stream_open (GabbleTubeStream *self)
       return;
     }
 
-  memset (&addr, 0, sizeof (addr));
-  addr.sun_family = PF_UNIX;
-
   /* Set socket non blocking */
   flags = fcntl (fd, F_GETFL, 0);
   if (fcntl (fd, F_SETFL, flags | O_NONBLOCK) == -1)
@@ -530,13 +556,37 @@ tube_stream_open (GabbleTubeStream *self)
       return;
     }
 
-  generate_ascii_string (8, suffix);
-  priv->socket_path = g_strdup_printf ("/tmp/stream-gabble-%.8s", suffix);
+  memset (&addr, 0, sizeof (addr));
 
-  DEBUG ("create socket: %s", priv->socket_path);
+  if (priv->address_type == GABBLE_SOCKET_ADDRESS_TYPE_UNIX)
+    {
+      GArray *array;
+      gchar *socket_path;
 
-  strncpy (addr.sun_path, priv->socket_path,
-      strlen (priv->socket_path) + 1);
+      generate_ascii_string (8, suffix);
+      socket_path = g_strdup_printf ("/tmp/stream-gabble-%.8s", suffix);
+
+      array = g_array_sized_new (TRUE, FALSE, sizeof (gchar), strlen (
+            socket_path));
+      g_array_insert_vals (array, 0, socket_path, strlen (socket_path));
+
+      priv->address = tp_g_value_slice_new (DBUS_TYPE_G_UCHAR_ARRAY);
+      g_value_set_boxed (priv->address, array);
+
+      DEBUG ("create socket: %s", socket_path);
+
+      addr.sun_family = PF_UNIX;
+
+      strncpy (addr.sun_path, socket_path,
+          strlen (socket_path) + 1);
+
+      g_free (socket_path);
+      g_array_free (array, TRUE);
+    }
+  else
+    {
+      g_assert_not_reached ();
+    }
 
   if (bind (fd, (struct sockaddr *) &addr, sizeof (addr)) == -1)
     {
@@ -694,7 +744,12 @@ gabble_tube_stream_finalize (GObject *object)
 
   g_free (priv->service);
   g_hash_table_destroy (priv->parameters);
-  g_free (priv->socket_path);
+
+  if (priv->address != NULL)
+    {
+      tp_g_value_slice_free (priv->address);
+      priv->address = NULL;
+    }
 
   G_OBJECT_CLASS (gabble_tube_stream_parent_class)->finalize (object);
 }
@@ -743,8 +798,11 @@ gabble_tube_stream_get_property (GObject *object,
       case PROP_STATE:
         g_value_set_uint (value, priv->state);
         break;
-      case PROP_SOCKET:
-        g_value_set_string (value, priv->socket_path);
+      case PROP_ADDRESS_TYPE:
+        g_value_set_uint (value, priv->address_type);
+        break;
+      case PROP_ADDRESS:
+        g_value_set_pointer (value, priv->address);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -798,9 +856,17 @@ gabble_tube_stream_set_property (GObject *object,
       case PROP_PARAMETERS:
         priv->parameters = g_value_get_boxed (value);
         break;
-      case PROP_SOCKET:
-        g_free (priv->socket_path);
-        priv->socket_path = g_value_dup_string (value);
+      case PROP_ADDRESS_TYPE:
+        /* For now, only UNIX socket are implemented */
+        g_assert (g_value_get_uint (value) == GABBLE_SOCKET_ADDRESS_TYPE_UNIX);
+        priv->address_type = g_value_get_uint (value);
+        break;
+      case PROP_ADDRESS:
+        if (priv->address == NULL)
+          {
+            priv->address = tp_g_value_slice_dup ((GValue *)
+                g_value_get_pointer (value));
+          }
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -891,16 +957,29 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
   g_object_class_override_property (object_class, PROP_STATE,
     "state");
 
-  param_spec = g_param_spec_string (
-      "socket",
-      "socket path",
-      "the path of the unix socket associated with this stream tube.",
-      "",
+  param_spec = g_param_spec_uint (
+      "address-type",
+      "address type",
+      "a GabbleSocketAddressType representing the type of the listening"
+      "address of the local service",
+      0, NUM_GABBLE_SOCKET_ADDRESS_TYPES - 1, 0,
       G_PARAM_READWRITE |
       G_PARAM_STATIC_NAME |
       G_PARAM_STATIC_NICK |
       G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_SOCKET, param_spec);
+  g_object_class_install_property (object_class, PROP_ADDRESS_TYPE,
+      param_spec);
+
+  param_spec = g_param_spec_pointer (
+      "address",
+      "address",
+      "The listening address of the local service, as indicated by the "
+      "address-type",
+      G_PARAM_READWRITE |
+      G_PARAM_STATIC_NAME |
+      G_PARAM_STATIC_NICK |
+      G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_ADDRESS, param_spec);
 
   signals[OPENED] =
     g_signal_new ("opened",

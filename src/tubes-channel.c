@@ -1419,80 +1419,24 @@ gabble_tubes_channel_offer_stream_tube (GabbleSvcChannelTypeTubes *iface,
   GabbleTubeIface *tube;
   GHashTable *parameters_copied;
   gchar *stream_id;
-  struct stat stat_buff;
-  GArray *array;
-  GString *socket;
+  GError *error = NULL;
 
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
 
   priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
   base = (TpBaseConnection*) priv->conn;
 
-  if (address_type != GABBLE_SOCKET_ADDRESS_TYPE_UNIX)
+  if (!gabble_tube_stream_check_address (address_type, address, &error))
     {
-      GError *error = NULL;
-
-      error = g_error_new (TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
-          "Address type %d not implemented", address_type);
-
       dbus_g_method_return_error (context, error);
-
       g_error_free (error);
       return;
     }
 
   if (access_control != GABBLE_SOCKET_ACCESS_CONTROL_LOCALHOST)
     {
-      GError *error = NULL;
-
       error = g_error_new (TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "Unix sockets only support localhost control access");
-
-      dbus_g_method_return_error (context, error);
-
-      g_error_free (error);
-      return;
-    }
-
-  if (G_VALUE_TYPE (address) != DBUS_TYPE_G_UCHAR_ARRAY)
-    {
-      GError *error = NULL;
-
-      error = g_error_new (TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "Unix socket address is supposed to be ay");
-
-      dbus_g_method_return_error (context, error);
-
-      g_error_free (error);
-      return;
-    }
-
-  array = g_value_get_boxed (address);
-  socket = g_string_new_len (array->data, array->len);
-
-  if (g_stat (socket->str, &stat_buff) == -1)
-    {
-      GError *error = NULL;
-
-      DEBUG ("Error calling stat on socket: %s", g_strerror (errno));
-
-      error = g_error_new (TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, "%s: %s",
-          socket->str, g_strerror (errno));
-
-      dbus_g_method_return_error (context, error);
-
-      g_error_free (error);
-      return;
-    }
-
-  if (!S_ISSOCK (stat_buff.st_mode))
-    {
-      GError *error = NULL;
-
-      DEBUG ("%s is not a socket", socket->str);
-
-      error = g_error_new (TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "%s is not a socket", socket->str);
 
       dbus_g_method_return_error (context, error);
 
@@ -1539,7 +1483,6 @@ gabble_tubes_channel_offer_stream_tube (GabbleSvcChannelTypeTubes *iface,
       tube_id);
 
   g_free (stream_id);
-  g_string_free (socket, TRUE);
 }
 
 /**

@@ -30,6 +30,7 @@
 #include <errno.h>
 
 #include <glib.h>
+#include <glib/gstdio.h>
 
 #include <loudmouth/loudmouth.h>
 
@@ -1203,6 +1204,65 @@ gabble_tube_stream_add_bytestream (GabbleTubeIface *tube,
     {
       gabble_bytestream_iface_close (bytestream);
     }
+}
+
+gboolean
+gabble_tube_stream_check_address (GabbleSocketAddressType address_type,
+                                  const GValue *address,
+                                  GError **error)
+{
+  if (address_type != GABBLE_SOCKET_ADDRESS_TYPE_UNIX)
+  {
+    g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+        "Address type %d not implemented", address_type);
+    return FALSE;
+  }
+
+  if (address_type == GABBLE_SOCKET_ADDRESS_TYPE_UNIX)
+    {
+      GArray *array;
+      GString *socket;
+      struct stat stat_buff;
+
+      /* Check address type */
+      if (G_VALUE_TYPE (address) != DBUS_TYPE_G_UCHAR_ARRAY)
+        {
+          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              "Unix socket address is supposed to be ay");
+          return FALSE;
+        }
+
+      array = g_value_get_boxed (address);
+      socket = g_string_new_len (array->data, array->len);
+
+      if (g_stat (socket->str, &stat_buff) == -1)
+      {
+        DEBUG ("Error calling stat on socket: %s", g_strerror (errno));
+
+        g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, "%s: %s",
+            socket->str, g_strerror (errno));
+        g_string_free (socket, TRUE);
+        return FALSE;
+      }
+
+      if (!S_ISSOCK (stat_buff.st_mode))
+      {
+        DEBUG ("%s is not a socket", socket->str);
+
+        g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+            "%s is not a socket", socket->str);
+        g_string_free (socket, TRUE);
+        return FALSE;
+      }
+
+      g_string_free (socket, TRUE);
+    }
+  else
+    {
+      g_assert_not_reached ();
+    }
+
+  return TRUE;
 }
 
 static void

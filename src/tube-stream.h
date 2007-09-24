@@ -23,6 +23,7 @@
 #include <glib-object.h>
 
 #include "gabble-connection.h"
+#include "extensions/extensions.h"
 
 G_BEGIN_DECLS
 
@@ -61,6 +62,10 @@ GabbleTubeStream *
 gabble_tube_stream_new (GabbleConnection *conn, TpHandle handle,
     TpHandleType handle_type, TpHandle self_handle, TpHandle initiator,
     const gchar *service, GHashTable *parameters, guint id);
+
+gboolean
+gabble_tube_stream_check_address (GabbleSocketAddressType address_type,
+    const GValue *address, GError **error);
 
 G_END_DECLS
 

@@ -293,7 +293,7 @@ gabble_bytestream_muc_class_init (
 
 enum
 {
-  FRAG_NONE = 0,
+  FRAG_COMPLETE = 0,
   FRAG_FIRST,
   FRAG_MIDDLE,
   FRAG_LAST
@@ -371,7 +371,7 @@ send_data_to (GabbleBytestreamMuc *self,
           send_now = (len - sent);
 
           if (stanza_count == 0)
-            frag = FRAG_NONE;
+            frag = FRAG_COMPLETE;
           else
             frag = FRAG_LAST;
         }
@@ -473,13 +473,15 @@ gabble_bytestream_muc_receive (GabbleBytestreamMuc *self,
 
   frag_val = lm_message_node_get_attribute (data, "frag");
   if (frag_val == NULL)
-    frag = FRAG_NONE;
+    frag = FRAG_COMPLETE;
   else if (!tp_strdiff (frag_val, "first"))
     frag = FRAG_FIRST;
   else if (!tp_strdiff (frag_val, "middle"))
     frag = FRAG_MIDDLE;
   else if (!tp_strdiff (frag_val, "last"))
     frag = FRAG_LAST;
+  else if (!tp_strdiff (frag_val, "complete"))
+    frag = FRAG_COMPLETE;
   else
     {
       DEBUG ("Invalid frag value: %s", frag_val);
@@ -490,7 +492,7 @@ gabble_bytestream_muc_receive (GabbleBytestreamMuc *self,
 
   buffer = g_hash_table_lookup (priv->buffers, from);
 
-  if (frag == FRAG_NONE)
+  if (frag == FRAG_COMPLETE)
     {
       if (buffer != NULL)
         {

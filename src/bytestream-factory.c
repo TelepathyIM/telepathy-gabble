@@ -592,8 +592,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
     }
 
   /* We inform the right factory we received a SI request */
-  if (tp_strdiff (profile, NS_SI_TUBES) &&
-      tp_strdiff (profile, NS_SI_TUBES_OLD))
+  if (tp_strdiff (profile, NS_TUBES))
     {
       DEBUG ("SI profile unsupported: %s", profile);
 

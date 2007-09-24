@@ -1447,6 +1447,8 @@ gabble_tubes_channel_offer_stream_tube (GabbleSvcChannelTypeTubes *iface,
   g_object_set (tube,
       "address-type", address_type,
       "address", address,
+      "access-control", access_control,
+      "access-control-param", access_control_param,
       NULL);
 
   if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
@@ -1633,6 +1635,8 @@ gabble_tubes_channel_accept_stream_tube (GabbleSvcChannelTypeTubes *iface,
 
   g_object_set (tube,
       "address-type", address_type,
+      "access-control", access_control,
+      "access-control-param", access_control_param,
       NULL);
 
   gabble_tube_iface_accept (tube);

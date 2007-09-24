@@ -82,6 +82,8 @@ enum
   PROP_STATE,
   PROP_ADDRESS_TYPE,
   PROP_ADDRESS,
+  PROP_ACCESS_CONTROL,
+  PROP_ACCESS_CONTROL_PARAM,
   LAST_PROPERTY
 };
 
@@ -111,6 +113,8 @@ struct _GabbleTubeStreamPrivate
 
   GabbleSocketAddressType address_type;
   GValue *address;
+  GabbleSocketAccessControl access_control;
+  GValue *access_control_param;
   GIOChannel *listen_io_channel;
   guint listen_io_channel_source_id;
 
@@ -629,6 +633,10 @@ gabble_tube_stream_init (GabbleTubeStream *self)
   priv->default_bytestream = NULL;
   priv->listen_io_channel = NULL;
   priv->listen_io_channel_source_id = 0;
+  priv->address_type = GABBLE_SOCKET_ADDRESS_TYPE_UNIX;
+  priv->address = NULL;
+  priv->access_control = GABBLE_SOCKET_ACCESS_CONTROL_LOCALHOST;
+  priv->access_control_param = NULL;
 
   priv->dispose_has_run = FALSE;
 }
@@ -736,6 +744,12 @@ gabble_tube_stream_finalize (GObject *object)
       priv->address = NULL;
     }
 
+  if (priv->access_control_param != NULL)
+    {
+      tp_g_value_slice_free (priv->access_control_param);
+      priv->access_control_param = NULL;
+    }
+
   G_OBJECT_CLASS (gabble_tube_stream_parent_class)->finalize (object);
 }
 
@@ -788,6 +802,12 @@ gabble_tube_stream_get_property (GObject *object,
         break;
       case PROP_ADDRESS:
         g_value_set_pointer (value, priv->address);
+        break;
+      case PROP_ACCESS_CONTROL:
+        g_value_set_uint (value, priv->access_control);
+        break;
+      case PROP_ACCESS_CONTROL_PARAM:
+        g_value_set_pointer (value, priv->access_control_param);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -842,7 +862,7 @@ gabble_tube_stream_set_property (GObject *object,
         priv->parameters = g_value_get_boxed (value);
         break;
       case PROP_ADDRESS_TYPE:
-        /* For now, only UNIX socket are implemented */
+        /* For now, only UNIX sockets are implemented */
         g_assert (g_value_get_uint (value) == GABBLE_SOCKET_ADDRESS_TYPE_UNIX);
         priv->address_type = g_value_get_uint (value);
         break;
@@ -850,6 +870,19 @@ gabble_tube_stream_set_property (GObject *object,
         if (priv->address == NULL)
           {
             priv->address = tp_g_value_slice_dup ((GValue *)
+                g_value_get_pointer (value));
+          }
+        break;
+      case PROP_ACCESS_CONTROL:
+        /* For now, only "localhost" control is implemented */
+        g_assert (g_value_get_uint (value) ==
+            GABBLE_SOCKET_ACCESS_CONTROL_LOCALHOST);
+        priv->access_control = g_value_get_uint (value);
+        break;
+      case PROP_ACCESS_CONTROL_PARAM:
+        if (priv->access_control_param == NULL)
+          {
+            priv->access_control_param = tp_g_value_slice_dup ((GValue *)
                 g_value_get_pointer (value));
           }
         break;
@@ -947,7 +980,8 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
       "address type",
       "a GabbleSocketAddressType representing the type of the listening"
       "address of the local service",
-      0, NUM_GABBLE_SOCKET_ADDRESS_TYPES - 1, 0,
+      0, NUM_GABBLE_SOCKET_ADDRESS_TYPES - 1,
+      GABBLE_SOCKET_ADDRESS_TYPE_UNIX,
       G_PARAM_READWRITE |
       G_PARAM_STATIC_NAME |
       G_PARAM_STATIC_NICK |
@@ -965,6 +999,32 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
       G_PARAM_STATIC_NICK |
       G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_ADDRESS, param_spec);
+
+  param_spec = g_param_spec_uint (
+      "access-control",
+      "access control",
+      "a GabbleSocketAccessControl representing the access control "
+      "the local service applies to the local socket",
+      0, NUM_GABBLE_SOCKET_ACCESS_CONTROLS - 1,
+      GABBLE_SOCKET_ACCESS_CONTROL_LOCALHOST,
+      G_PARAM_READWRITE |
+      G_PARAM_STATIC_NAME |
+      G_PARAM_STATIC_NICK |
+      G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_ACCESS_CONTROL,
+      param_spec);
+
+  param_spec = g_param_spec_pointer (
+      "access-control-param",
+      "access control param",
+      "A parameter for the access control type, to be interpreted as specified"
+      "in the documentation for the Socket_Access_Control enum.",
+      G_PARAM_READWRITE |
+      G_PARAM_STATIC_NAME |
+      G_PARAM_STATIC_NICK |
+      G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_ACCESS_CONTROL_PARAM,
+      param_spec);
 
   signals[OPENED] =
     g_signal_new ("opened",

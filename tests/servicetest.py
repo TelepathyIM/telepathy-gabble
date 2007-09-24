@@ -337,7 +337,8 @@ def call_async(test, proxy, method, *args, **kw):
     resulting method return/error."""
 
     def reply_func(*ret):
-        test.handle_event(Event('dbus-return', method=method, value=ret))
+        test.handle_event(Event('dbus-return', method=method,
+            value=unwrap(ret)))
 
     def error_func(err):
         test.handle_event(Event('dbus-error', method=method, error=err))

@@ -435,22 +435,6 @@ listen_cb (GIOChannel *source,
   return TRUE;
 }
 
-static GString *
-get_unix_socket_path (GabbleTubeStream *self)
-{
-  GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
-  GArray *array;
-
-  g_return_val_if_fail (priv->address != NULL, NULL);
-  g_return_val_if_fail (
-      priv->address_type == GABBLE_SOCKET_ADDRESS_TYPE_UNIX ||
-      priv->address_type == GABBLE_SOCKET_ADDRESS_TYPE_ABSTRACT_UNIX, NULL);
-
-  array = g_value_get_boxed (priv->address);
-
-  return g_string_new_len (array->data, array->len);
-}
-
 static gboolean
 new_connection_to_socket (GabbleTubeStream *self,
                           GabbleBytestreamIface *bytestream)
@@ -483,13 +467,13 @@ new_connection_to_socket (GabbleTubeStream *self,
 
   if (priv->address_type == GABBLE_SOCKET_ADDRESS_TYPE_UNIX)
     {
-      GString *socket_path;
+      GArray *array;
+      array = g_value_get_boxed (priv->address);
 
-      socket_path = get_unix_socket_path (self);
-      strncpy (addr.sun_path, socket_path->str, socket_path->len + 1);
+      strncpy (addr.sun_path, array->data, array->len + 1);
 
-      DEBUG ("Will try to connect to socket: %s", socket_path->str);
-      g_string_free (socket_path, TRUE);
+      //DEBUG ("Will try to connect to socket: %s", socket_path->str);
+      DEBUG ("Will try to connect to socket: %s", (const gchar *) array->data);
     }
   else
     {

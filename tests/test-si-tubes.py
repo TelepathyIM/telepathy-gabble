@@ -20,8 +20,6 @@ from twisted.internet import reactor
 NS_TUBES = 'http://telepathy.freedesktop.org/xmpp/tubes'
 NS_SI = 'http://jabber.org/protocol/si'
 NS_FEATURE_NEG = 'http://jabber.org/protocol/feature-neg'
-NS_SI_TUBES = 'http://telepathy.freedesktop.org/xmpp/si/profile/tubes'
-NS_SI_TUBES_OLD = 'http://jabber.org/protocol/si/profile/tubes'
 NS_IBB = 'http://jabber.org/protocol/ibb'
 NS_X_DATA = 'jabber:x:data'
 
@@ -84,9 +82,7 @@ def expect_caps_disco(event, data):
     assert event.query['node'] == \
         'http://example.com/ICantBelieveItsNotTelepathy#1.2.3'
     feature = event.query.addElement('feature')
-    feature['var'] = NS_SI_TUBES
-    feature = event.query.addElement('feature')
-    feature['var'] = NS_SI_TUBES_OLD
+    feature['var'] = NS_TUBES
 
     data['stream'].send(event.stanza)
 
@@ -130,7 +126,7 @@ def expect_stream_initiation_stream(event, data):
 
     assert len(si_nodes) == 1
     si = si_nodes[0]
-    assert si['profile'] == NS_SI_TUBES
+    assert si['profile'] == NS_TUBES
     data['stream_stream_id'] = si['id']
 
     feature = xpath.queryForNodes('/si/feature', si)[0]
@@ -224,7 +220,7 @@ def expect_list_tubes_return1(event, data):
     iq['from'] = 'bob@localhost/Bob'
     si = iq.addElement((NS_SI, 'si'))
     si['id'] = 'alpha'
-    si['profile'] = NS_SI_TUBES
+    si['profile'] = NS_TUBES
     feature = si.addElement((NS_FEATURE_NEG, 'feature'))
     x = feature.addElement((NS_X_DATA, 'x'))
     x['type'] = 'form'
@@ -235,7 +231,7 @@ def expect_list_tubes_return1(event, data):
     value = option.addElement((None, 'value'))
     value.addContent(NS_IBB)
 
-    tube = si.addElement((NS_SI_TUBES, 'tube'))
+    tube = si.addElement((NS_TUBES, 'tube'))
     tube['id'] = str(data['stream_tube_id'])
     tube['offering'] = 'false'
 
@@ -306,7 +302,7 @@ def expect_stream_initiation_dbus(event, data):
 
     assert len(si_nodes) == 1
     si = si_nodes[0]
-    assert si['profile'] == NS_SI_TUBES
+    assert si['profile'] == NS_TUBES
     data['dbus_stream_id'] = si['id']
 
     feature = xpath.queryForNodes('/si/feature', si)[0]

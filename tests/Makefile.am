@@ -32,6 +32,7 @@ TWISTED_TESTS = \
 	test-alias-empty-vcard.py \
 	test-avatar.py \
 	test-avatar-async.py \
+	test-avatar-tokens.py \
 	test-capabilities.py \
 	test-connect.py \
 	test-connect-fail.py \
@@ -40,18 +41,17 @@ TWISTED_TESTS = \
 	test-muc-alias.py \
 	test-muc-ownership.py \
 	test-muc-properties.py \
+	test-olpc-set-props-preload.py \
 	test-register.py \
 	test-roster.py \
 	test-roster-subscribe.py \
 	test-save-alias-to-vcard.py \
-	test-olpc-set-props-preload.py \
 	test-set-alias.py \
 	test-set-status-idempotence.py \
 	test-text.py \
 	test-text-delayed.py \
-	test-vcard-race.py \
-	test-avatar-tokens.py \
 	test-vcard-cache.py \
+	test-vcard-race.py \
 	test-vcard-set-and-get.py
 
 _check-twisted:

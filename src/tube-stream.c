@@ -477,7 +477,6 @@ new_connection_to_socket (GabbleTubeStream *self,
 
       strncpy (addr.sun_path, array->data, array->len + 1);
 
-      //DEBUG ("Will try to connect to socket: %s", socket_path->str);
       DEBUG ("Will try to connect to socket: %s", (const gchar *) array->data);
     }
   else

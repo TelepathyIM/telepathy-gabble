@@ -868,8 +868,7 @@ gabble_tube_stream_set_property (GObject *object,
       case PROP_ADDRESS:
         if (priv->address == NULL)
           {
-            priv->address = tp_g_value_slice_dup ((GValue *)
-                g_value_get_pointer (value));
+            priv->address = tp_g_value_slice_dup (g_value_get_pointer (value));
           }
         break;
       case PROP_ACCESS_CONTROL:
@@ -881,7 +880,7 @@ gabble_tube_stream_set_property (GObject *object,
       case PROP_ACCESS_CONTROL_PARAM:
         if (priv->access_control_param == NULL)
           {
-            priv->access_control_param = tp_g_value_slice_dup ((GValue *)
+            priv->access_control_param = tp_g_value_slice_dup (
                 g_value_get_pointer (value));
           }
         break;

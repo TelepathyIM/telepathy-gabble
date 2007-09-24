@@ -1,4 +1,3 @@
-
 """
 Test that CapabilitiesChanged signal is emitted only once after
 all the caps in the presence have been analyzed.
@@ -35,8 +34,8 @@ def expect_connected(event, data):
     presence.addElement('priority', None, '0')
     c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
     c['node'] = 'http://telepathy.freedesktop.org/caps'
-    c['ver'] = '0.5.14'
-    c['ext'] = 'voice-v1 jingle-audio jingle-video'
+    c['ver'] = '0.4.test-version'
+    c['ext'] = 'jingle-audio jingle-video'
     data['stream'].send(presence)
     return True
 

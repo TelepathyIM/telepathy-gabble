@@ -1207,9 +1207,11 @@ gabble_tube_stream_add_bytestream (GabbleTubeIface *tube,
 }
 
 gboolean
-gabble_tube_stream_check_address (GabbleSocketAddressType address_type,
-                                  const GValue *address,
-                                  GError **error)
+gabble_tube_stream_check_params (GabbleSocketAddressType address_type,
+                                 const GValue *address,
+                                 GabbleSocketAccessControl access_control,
+                                 const GValue *access_control_param,
+                                 GError **error)
 {
   if (address_type != GABBLE_SOCKET_ADDRESS_TYPE_UNIX)
   {
@@ -1256,6 +1258,13 @@ gabble_tube_stream_check_address (GabbleSocketAddressType address_type,
       }
 
       g_string_free (socket, TRUE);
+
+      if (access_control != GABBLE_SOCKET_ACCESS_CONTROL_LOCALHOST)
+      {
+        g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+            "Unix sockets only support localhost control access");
+        return FALSE;
+      }
     }
   else
     {

@@ -64,8 +64,9 @@ gabble_tube_stream_new (GabbleConnection *conn, TpHandle handle,
     const gchar *service, GHashTable *parameters, guint id);
 
 gboolean
-gabble_tube_stream_check_address (GabbleSocketAddressType address_type,
-    const GValue *address, GError **error);
+gabble_tube_stream_check_params (GabbleSocketAddressType address_type,
+    const GValue *address, GabbleSocketAccessControl access_control,
+    const GValue *access_control_param, GError **error);
 
 G_END_DECLS
 

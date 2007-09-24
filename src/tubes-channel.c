@@ -1426,20 +1426,10 @@ gabble_tubes_channel_offer_stream_tube (GabbleSvcChannelTypeTubes *iface,
   priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
   base = (TpBaseConnection*) priv->conn;
 
-  if (!gabble_tube_stream_check_address (address_type, address, &error))
+  if (!gabble_tube_stream_check_params (address_type, address,
+        access_control, access_control_param, &error))
     {
       dbus_g_method_return_error (context, error);
-      g_error_free (error);
-      return;
-    }
-
-  if (access_control != GABBLE_SOCKET_ACCESS_CONTROL_LOCALHOST)
-    {
-      error = g_error_new (TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "Unix sockets only support localhost control access");
-
-      dbus_g_method_return_error (context, error);
-
       g_error_free (error);
       return;
     }

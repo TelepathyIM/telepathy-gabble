@@ -26,7 +26,7 @@ def make_result_iq(stream, iq):
     query = iq.firstChildElement()
 
     if query:
-        result.addElement((query.uri, 'query'))
+        result.addElement((query.uri, query.name))
 
     return result
 

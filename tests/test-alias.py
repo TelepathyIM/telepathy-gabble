@@ -61,8 +61,7 @@ def expect_vcard_iq(event, data):
     assert vcard.uri == 'vcard-temp'
 
     result = make_result_iq(data['stream'], iq)
-    result.addChild(vcard)
-
+    vcard = result.firstChildElement()
     vcard.addElement('NICKNAME', content='Bobby')
 
     data['stream'].send(result)

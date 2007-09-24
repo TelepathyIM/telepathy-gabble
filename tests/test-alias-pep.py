@@ -45,7 +45,7 @@ def expect_pep_iq(event, data):
     assert items['node'] == "http://jabber.org/protocol/nick"
 
     result = make_result_iq(data['stream'], iq)
-    pubsub = result.addElement('pubsub', 'http://jabber.org/protocol/pubsub')
+    pubsub = result.firstChildElement()
     items = pubsub.addElement('items')
     items['node'] = 'http://jabber.org/protocol/nick'
     item = items.addElement('item')

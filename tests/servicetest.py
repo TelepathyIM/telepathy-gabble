@@ -275,6 +275,9 @@ class IteratingEventQueue(BaseEventQueue):
     def append(self, event):
         self.events.append(event)
 
+    # compatibility
+    handle_event = append
+
 class TestEventQueue(BaseEventQueue):
     def __init__(self, events):
         BaseEventQueue.__init__(self)

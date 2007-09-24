@@ -615,8 +615,8 @@ gabble_tube_dbus_constructor (GType type,
   base = (TpBaseConnection *) priv->conn;
   /* We use the jid so we shouldn't clash with other bus names */
   name = tp_escape_as_identifier (tp_handle_inspect (contact_repo,
-        base->self_handle));
-  priv->dbus_local_name = g_strdup_printf (":1.%.8s", name);
+        priv->self_handle));
+  priv->dbus_local_name = g_strdup_printf (":1.%s", name);
   g_free (name);
 
   DEBUG ("local name: %s", priv->dbus_local_name);

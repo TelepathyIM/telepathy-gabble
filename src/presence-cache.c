@@ -907,7 +907,7 @@ OUT:
   g_free (full_jid);
 }
 
-static GabblePresenceCapabilities
+static void
 _process_caps_uri (GabblePresenceCache *cache,
                    const gchar *from,
                    const gchar *uri,
@@ -939,7 +939,6 @@ _process_caps_uri (GabblePresenceCache *cache,
           gabble_presence_set_capabilities (presence, resource, info->caps,
               serial);
           DEBUG ("caps for %d (%s) now %d", handle, from, presence->caps);
-          return presence->caps;
         }
       else
         {
@@ -995,8 +994,6 @@ _process_caps_uri (GabblePresenceCache *cache,
           waiter->disco_requested = TRUE;
         }
     }
-
-  return 0;
 }
 
 static void
@@ -1009,7 +1006,7 @@ _process_caps (GabblePresenceCache *cache,
   const gchar *resource;
   GSList *uris, *i;
   GabblePresenceCachePrivate *priv;
-  GabblePresenceCapabilities old_caps = 0, new_caps = 0;
+  GabblePresenceCapabilities old_caps = 0;
   guint serial;
 
   priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
@@ -1026,26 +1023,27 @@ _process_caps (GabblePresenceCache *cache,
 
   for (i = uris; NULL != i; i = i->next)
     {
-      GabblePresenceCapabilities c = _process_caps_uri (cache, from,
-          (gchar *) i->data, handle, resource, serial);
+      _process_caps_uri (cache, from, (gchar *) i->data, handle, resource, serial);
       g_free (i->data);
 
-      if (0 != c)
-          new_caps = c;
     }
 
-  if (new_caps != old_caps)
+  if (presence && (old_caps != presence->caps))
     {
       DEBUG ("Emitting caps update: handle %u, old %u, new %u",
-          handle, old_caps, new_caps);
+          handle, old_caps, presence->caps);
 
       g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0,
-          handle, old_caps, new_caps);
+          handle, old_caps, presence->caps);
+    }
+  else if (!presence)
+    {
+      DEBUG ("No presence, not updating caps for %u", handle);
     }
   else
     {
       DEBUG ("No change in caps %u for handle %u, not updating",
-          handle, old_caps);
+          presence->caps, handle);
     }
 
   g_slist_free (uris);
@@ -1100,6 +1098,9 @@ _parse_presence_message (GabblePresenceCache *cache,
       presence_id = _presence_node_get_status (presence_node);
       gabble_presence_cache_update (cache, handle, resource, presence_id,
           status_message, priority);
+
+      if (!presence)
+          presence = gabble_presence_cache_get (cache, handle);
 
       _grab_nickname (cache, handle, from, presence_node);
       _grab_avatar_sha1 (cache, handle, from, presence_node);

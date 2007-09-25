@@ -516,12 +516,7 @@ gabble_bytestream_ibb_decline (GabbleBytestreamIBB *self)
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
   LmMessage *msg;
 
-  if (priv->state != GABBLE_BYTESTREAM_STATE_LOCAL_PENDING)
-    {
-      DEBUG ("bytestream is not in the local pending state (state %d)",
-          priv->state);
-      return;
-    }
+  g_return_if_fail (priv->state == GABBLE_BYTESTREAM_STATE_LOCAL_PENDING);
 
   msg = gabble_bytestream_factory_make_decline_iq (priv->peer_jid,
       priv->stream_init_id);

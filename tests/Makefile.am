@@ -3,7 +3,8 @@ noinst_PROGRAMS = \
 	test-base64 \
 	test-handles \
 	test-jid-decode \
-	test-parse-message
+	test-parse-message \
+	test-dtube-unique-names
 
 test_gabble_presence_LDADD = \
     $(top_builddir)/src/libgabble-convenience.la $(ALL_LIBS)
@@ -18,6 +19,9 @@ test_jid_decode_LDADD = \
     $(top_builddir)/src/libgabble-convenience.la $(ALL_LIBS)
 
 test_parse_message_LDADD = \
+    $(top_builddir)/src/libgabble-convenience.la $(ALL_LIBS)
+
+test_dtube_unique_names_LDADD = \
     $(top_builddir)/src/libgabble-convenience.la $(ALL_LIBS)
 
 AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @LOUDMOUTH_CFLAGS@ \

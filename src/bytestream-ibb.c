@@ -510,7 +510,7 @@ gabble_bytestream_ibb_accept (GabbleBytestreamIface *iface, LmMessage *msg)
     }
 }
 
-static void
+void
 gabble_bytestream_ibb_decline (GabbleBytestreamIBB *self)
 {
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
@@ -529,6 +529,8 @@ gabble_bytestream_ibb_decline (GabbleBytestreamIBB *self)
   _gabble_connection_send (priv->conn, msg, NULL);
 
   lm_message_unref (msg);
+
+  g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
 }
 
 /*
@@ -567,9 +569,9 @@ gabble_bytestream_ibb_close (GabbleBytestreamIface *iface)
       _gabble_connection_send (priv->conn, msg, NULL);
 
       lm_message_unref (msg);
-    }
 
-  g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
+      g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
+    }
 }
 
 static LmHandlerResult

@@ -240,9 +240,12 @@ class BaseEventQueue:
         pattern = EventPattern(type, **kw)
 
         event = self.wait()
+        self.log('got event:')
+        map(self.log, format_event(event))
 
         if pattern.match(event):
             self.log('handled')
+            self.log('')
             return event
 
         self.log('not handled')

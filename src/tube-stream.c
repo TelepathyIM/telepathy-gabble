@@ -111,9 +111,9 @@ struct _GabbleTubeStreamPrivate
   GHashTable *parameters;
   TpTubeState state;
 
-  GabbleSocketAddressType address_type;
+  TpSocketAddressType address_type;
   GValue *address;
-  GabbleSocketAccessControl access_control;
+  TpSocketAccessControl access_control;
   GValue *access_control_param;
   GIOChannel *listen_io_channel;
   guint listen_io_channel_source_id;
@@ -473,7 +473,7 @@ new_connection_to_socket (GabbleTubeStream *self,
       return FALSE;
     }
 
-  if (priv->address_type == GABBLE_SOCKET_ADDRESS_TYPE_UNIX)
+  if (priv->address_type == TP_SOCKET_ADDRESS_TYPE_UNIX)
     {
       GArray *array;
       array = g_value_get_boxed (priv->address);
@@ -549,7 +549,7 @@ tube_stream_open (GabbleTubeStream *self)
 
   memset (&addr, 0, sizeof (addr));
 
-  if (priv->address_type == GABBLE_SOCKET_ADDRESS_TYPE_UNIX)
+  if (priv->address_type == TP_SOCKET_ADDRESS_TYPE_UNIX)
     {
       GArray *array;
       gchar *socket_path;
@@ -635,9 +635,9 @@ gabble_tube_stream_init (GabbleTubeStream *self)
   priv->default_bytestream = NULL;
   priv->listen_io_channel = NULL;
   priv->listen_io_channel_source_id = 0;
-  priv->address_type = GABBLE_SOCKET_ADDRESS_TYPE_UNIX;
+  priv->address_type = TP_SOCKET_ADDRESS_TYPE_UNIX;
   priv->address = NULL;
-  priv->access_control = GABBLE_SOCKET_ACCESS_CONTROL_LOCALHOST;
+  priv->access_control = TP_SOCKET_ACCESS_CONTROL_LOCALHOST;
   priv->access_control_param = NULL;
 
   priv->dispose_has_run = FALSE;
@@ -865,7 +865,7 @@ gabble_tube_stream_set_property (GObject *object,
         break;
       case PROP_ADDRESS_TYPE:
         /* For now, only UNIX sockets are implemented */
-        g_assert (g_value_get_uint (value) == GABBLE_SOCKET_ADDRESS_TYPE_UNIX);
+        g_assert (g_value_get_uint (value) == TP_SOCKET_ADDRESS_TYPE_UNIX);
         priv->address_type = g_value_get_uint (value);
         break;
       case PROP_ADDRESS:
@@ -877,7 +877,7 @@ gabble_tube_stream_set_property (GObject *object,
       case PROP_ACCESS_CONTROL:
         /* For now, only "localhost" control is implemented */
         g_assert (g_value_get_uint (value) ==
-            GABBLE_SOCKET_ACCESS_CONTROL_LOCALHOST);
+            TP_SOCKET_ACCESS_CONTROL_LOCALHOST);
         priv->access_control = g_value_get_uint (value);
         break;
       case PROP_ACCESS_CONTROL_PARAM:
@@ -979,10 +979,10 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
   param_spec = g_param_spec_uint (
       "address-type",
       "address type",
-      "a GabbleSocketAddressType representing the type of the listening"
+      "a TpSocketAddressType representing the type of the listening"
       "address of the local service",
-      0, NUM_GABBLE_SOCKET_ADDRESS_TYPES - 1,
-      GABBLE_SOCKET_ADDRESS_TYPE_UNIX,
+      0, NUM_TP_SOCKET_ADDRESS_TYPES - 1,
+      TP_SOCKET_ADDRESS_TYPE_UNIX,
       G_PARAM_READWRITE |
       G_PARAM_STATIC_NAME |
       G_PARAM_STATIC_NICK |
@@ -1004,10 +1004,10 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
   param_spec = g_param_spec_uint (
       "access-control",
       "access control",
-      "a GabbleSocketAccessControl representing the access control "
+      "a TpSocketAccessControl representing the access control "
       "the local service applies to the local socket",
-      0, NUM_GABBLE_SOCKET_ACCESS_CONTROLS - 1,
-      GABBLE_SOCKET_ACCESS_CONTROL_LOCALHOST,
+      0, NUM_TP_SOCKET_ACCESS_CONTROLS - 1,
+      TP_SOCKET_ACCESS_CONTROL_LOCALHOST,
       G_PARAM_READWRITE |
       G_PARAM_STATIC_NAME |
       G_PARAM_STATIC_NICK |
@@ -1268,20 +1268,20 @@ gabble_tube_stream_add_bytestream (GabbleTubeIface *tube,
 }
 
 gboolean
-gabble_tube_stream_check_params (GabbleSocketAddressType address_type,
+gabble_tube_stream_check_params (TpSocketAddressType address_type,
                                  const GValue *address,
-                                 GabbleSocketAccessControl access_control,
+                                 TpSocketAccessControl access_control,
                                  const GValue *access_control_param,
                                  GError **error)
 {
-  if (address_type != GABBLE_SOCKET_ADDRESS_TYPE_UNIX)
+  if (address_type != TP_SOCKET_ADDRESS_TYPE_UNIX)
   {
     g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
         "Address type %d not implemented", address_type);
     return FALSE;
   }
 
-  if (address_type == GABBLE_SOCKET_ADDRESS_TYPE_UNIX)
+  if (address_type == TP_SOCKET_ADDRESS_TYPE_UNIX)
     {
       GArray *array;
       GString *socket;
@@ -1320,7 +1320,7 @@ gabble_tube_stream_check_params (GabbleSocketAddressType address_type,
 
       g_string_free (socket, TRUE);
 
-      if (access_control != GABBLE_SOCKET_ACCESS_CONTROL_LOCALHOST)
+      if (access_control != TP_SOCKET_ACCESS_CONTROL_LOCALHOST)
       {
         g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
             "Unix sockets only support localhost control access");

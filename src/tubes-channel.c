@@ -31,10 +31,17 @@
 #include <glib.h>
 #include <glib/gstdio.h>
 
+#include <telepathy-glib/channel-iface.h>
+#include <telepathy-glib/dbus.h>
+#include <telepathy-glib/enums.h>
+#include <telepathy-glib/errors.h>
+#include <telepathy-glib/group-mixin.h>
+#include <telepathy-glib/interfaces.h>
+#include <telepathy-glib/svc-channel.h>
+
 #define DEBUG_FLAG GABBLE_DEBUG_TUBES
 
 #include "debug.h"
-#include "extensions/extensions.h"
 #include "gabble-connection.h"
 #include "presence.h"
 #include "presence-cache.h"
@@ -47,13 +54,6 @@
 #ifdef HAVE_DBUS_TUBE
 #include "tube-dbus.h"
 #endif
-
-#include <telepathy-glib/errors.h>
-#include <telepathy-glib/group-mixin.h>
-#include <telepathy-glib/interfaces.h>
-#include <telepathy-glib/dbus.h>
-#include <telepathy-glib/channel-iface.h>
-#include <telepathy-glib/svc-channel.h>
 
 #define GABBLE_CHANNEL_TUBE_TYPE \
     (dbus_g_type_get_struct ("GValueArray", \
@@ -1055,8 +1055,6 @@ bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
   struct _bytestream_negotiate_cb_data *data =
     (struct _bytestream_negotiate_cb_data *) user_data;
   GabbleTubeIface *tube = data->tube;
-  LmMessageNode *si, *tube_node;
-  GabbleTubeType type;
 
   g_slice_free (struct _bytestream_negotiate_cb_data, data);
 
@@ -1074,37 +1072,6 @@ bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
       NULL);
 
   gabble_tube_iface_accept (tube);
-
-  /* Extract tube type specific information from SI reply */
-  si = lm_message_node_get_child_with_namespace (msg->node, "si", NS_SI);
-  if (si == NULL)
-    return;
-
-  g_object_get (tube,
-      "type", &type,
-      NULL);
-
-  tube_node = lm_message_node_get_child_with_namespace (si, "tube",
-      NS_TUBES);
-  if (tube_node == NULL)
-    tube_node = lm_message_node_get_child_with_namespace (si, "tube",
-        NS_TUBES);
-  if (tube_node == NULL)
-    return;
-
-#ifdef HAVE_DBUS_TUBE
-  if (type == GABBLE_TUBE_TYPE_DBUS)
-    {
-      LmMessageNode *dbus_name_node;
-      const gchar *dbus_name;
-      guint tube_id;
-
-      g_object_get (tube, "id", &tube_id, NULL);
-      dbus_name_node = lm_message_node_get_child (tube_node, "dbus-name");
-      dbus_name = lm_message_node_get_value (dbus_name_node);
-      add_name_in_dbus_names (self, tube_id, priv->handle, dbus_name);
-    }
-#endif
 }
 
 /* Called when we receive a SI request,
@@ -1171,22 +1138,7 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
       return;
     }
 
-  /* Type specific informations*/
-#ifdef HAVE_DBUS_TUBE
-  if (type == GABBLE_TUBE_TYPE_DBUS)
-    {
-      dbus_name = lm_message_node_get_attribute (tube_node, "dbus-name");
-      if (dbus_name == NULL)
-        {
-          DEBUG ("D-Bus tube doesn't contain initiator D-Bus name");
-          return FALSE;
-        }
-    }
-#endif
-
-  tube = create_new_tube (self, type, priv->handle, service,
-      parameters, stream_id, tube_id, bytestream);
-
+#ifndef HAVE_DBUS_TUBE
   if (type == TP_TUBE_TYPE_DBUS)
     {
       GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_FORBIDDEN,
@@ -1422,7 +1374,7 @@ gabble_tubes_channel_offer_d_bus_tube (TpSvcChannelTypeTubes *iface,
         }
     }
 
-  gabble_svc_channel_type_tubes_return_from_offer_d_bus_tube (context, tube_id);
+  tp_svc_channel_type_tubes_return_from_offer_d_bus_tube (context, tube_id);
 
   g_free (stream_id);
 #else
@@ -1484,20 +1436,10 @@ gabble_tubes_channel_offer_stream_tube (TpSvcChannelTypeTubes *iface,
   priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
   base = (TpBaseConnection*) priv->conn;
 
-  if (address_type != GABBLE_SOCKET_ADDRESS_TYPE_UNIX)
+  if (!gabble_tube_stream_check_params (address_type, address,
+        access_control, access_control_param, &error))
     {
       dbus_g_method_return_error (context, error);
-      g_error_free (error);
-      return;
-    }
-
-  if (access_control != GABBLE_SOCKET_ACCESS_CONTROL_LOCALHOST)
-    {
-      error = g_error_new (TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "Unix sockets only support localhost control access");
-
-      dbus_g_method_return_error (context, error);
-
       g_error_free (error);
       return;
     }
@@ -1870,7 +1812,8 @@ gabble_tubes_channel_get_d_bus_names (TpSvcChannelTypeTubes *iface,
       "state", &state,
       NULL);
 
-  if (type != GABBLE_TUBE_TYPE_DBUS)
+  if (type != TP_TUBE_TYPE_DBUS ||
+      priv->handle_type != TP_HANDLE_TYPE_ROOM)
     {
       GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "Tube is not a Muc D-Bus tube" };
@@ -1964,16 +1907,8 @@ gabble_tubes_channel_get_stream_tube_socket_address (TpSvcChannelTypeTubes *ifac
       "address", &address,
       NULL);
 
-  g_value_init (&address, DBUS_TYPE_G_UCHAR_ARRAY);
-  array = g_array_sized_new (TRUE, FALSE, sizeof (gchar), strlen (socket));
-  g_array_insert_vals (array, 0, socket, strlen (socket));
-  g_value_set_boxed (&address, array);
-
-  gabble_svc_channel_type_tubes_return_from_get_stream_tube_socket_address (
-      context, GABBLE_SOCKET_ADDRESS_TYPE_UNIX, &address);
-
-  g_free (socket);
-  g_array_free (array, TRUE);
+  tp_svc_channel_type_tubes_return_from_get_stream_tube_socket_address (
+      context, TP_SOCKET_ADDRESS_TYPE_UNIX, address);
 }
 
 /**

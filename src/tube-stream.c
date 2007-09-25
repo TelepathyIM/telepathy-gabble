@@ -374,7 +374,6 @@ start_stream_initiation (GabbleTubeStream *self,
       "initiator", jid,
       "stream_id", stream_id,
       "id", id_str,
-      "offering", "false",
       NULL);
 
   data = g_slice_new (struct _extra_bytestream_negotiate_cb_data);

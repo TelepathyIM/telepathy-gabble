@@ -98,7 +98,7 @@ struct _GabbleTubeDBusPrivate
   gchar *service;
   GHashTable *parameters;
 
-  /* our unique D-Bus name on the virtual tube bus */
+  /* our unique D-Bus name on the virtual tube bus (NULL for 1-1 D-Bus tube)*/
   gchar *dbus_local_name;
   /* the address that we are listening for D-Bus connections on */
   gchar *dbus_srv_addr;
@@ -171,7 +171,10 @@ filter_cb (DBusConnection *conn,
       goto out;
     }
 
-  dbus_message_set_sender (msg, priv->dbus_local_name);
+  if (priv->dbus_local_name != NULL)
+    {
+      dbus_message_set_sender (msg, priv->dbus_local_name);
+    }
 
   if (!dbus_message_marshal (msg, &marshalled, &len))
     goto out;
@@ -635,6 +638,8 @@ gabble_tube_dbus_constructor (GType type,
 
       priv->dbus_local_name = _gabble_generate_dbus_unique_name (nick);
 
+      DEBUG ("local name: %s", priv->dbus_local_name);
+
       if (priv->initiator == priv->self_handle)
         {
           /* We create this tube, bytestream is open */
@@ -658,21 +663,13 @@ gabble_tube_dbus_constructor (GType type,
     }
   else
     {
-      gchar *name;
-
-      /* We use the jid so we shouldn't clash with other bus names */
-      name = tp_escape_as_identifier (tp_handle_inspect (contact_repo,
-            priv->self_handle));
-      priv->dbus_local_name = g_strdup_printf (":1.%s", name);
+      /* The local D-Bus name is for muc tubes only */
+      priv->dbus_local_name = NULL;
 
       /* For contact (IBB) tubes we need to be able to reassemble messages. */
       priv->reassembly_buffer = g_string_new ("");
       priv->reassembly_bytes_needed = 0;
-
-      g_free (name);
     }
-
-  DEBUG ("local name: %s", priv->dbus_local_name);
 
   return obj;
 }
@@ -1029,7 +1026,7 @@ gabble_tube_dbus_accept (GabbleTubeIface *tube)
       /* Bytestream was created using a SI request so
        * we have to accept it */
       LmMessage *msg;
-      LmMessageNode *si, *tube_node;
+      LmMessageNode *si;
       const gchar *protocol;
       gchar *peer_jid, *stream_init_id;
 
@@ -1048,12 +1045,6 @@ gabble_tube_dbus_accept (GabbleTubeIface *tube)
       si = lm_message_node_get_child_with_namespace (msg->node, "si",
           NS_SI);
       g_assert (si != NULL);
-
-      tube_node = lm_message_node_add_child (si, "tube", "");
-      lm_message_node_set_attribute (tube_node, "xmlns", NS_TUBES);
-
-      lm_message_node_add_child (tube_node, "dbus-name",
-          priv->dbus_local_name);
 
       gabble_bytestream_iface_accept (priv->bytestream, msg);
 

@@ -379,6 +379,7 @@ gabble_connection_get_known_avatar_tokens (TpSvcConnectionInterfaceAvatars *ifac
     {
       GetKnownAvatarTokensContext *context = g_slice_new (GetKnownAvatarTokensContext);
 
+      context->conn = self;
       context->invocation = invocation;
       context->ret = ret;
       context->signal_conn = g_signal_connect (self->vcard_manager,

@@ -86,3 +86,5 @@
 ^tests/test-parse-message$
 ^extensions/_gen($|/)
 ^extensions/extensions\.html$
+^docs/.*\.html$
+^docs/xep\.xsl$

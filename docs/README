@@ -1,0 +1,6 @@
+To produce HTML versions of the "Tubes over XMPP" and "MUC Bytestreams"
+proto-XEPs, you'll need to obtain xep.xsl from
+svn://svn.xmpp.org:7398/xmpp/trunk/extensions/ and put it in this directory.
+It's not distributed with Gabble due to unclear licensing. As a result,
+the proto-XEPs aren't compiled to HTML by a normal build - you have to run
+"make -C docs proto-xep-html" explicitly.

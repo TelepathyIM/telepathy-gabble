@@ -1,0 +1,183 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<?xml-stylesheet type='text/xsl' href='xep.xsl'?>
+<xep>
+<header>
+  <title>MUC Bytestreams</title>
+  <abstract>A protocol for message transfer within a MUC.</abstract>
+  <legal>This document is copyright 2007 Collabora Ltd. and may be
+    distributed under the same terms as the Telepathy specification.</legal>
+  <number>proto-muc-bytestream</number>
+  <status>ProtoXEP</status>
+  <type>External extension</type>
+  <sig>Telepathy project</sig>
+  <approver>Telepathy project</approver>
+  <dependencies>
+    <spec>XMPP Core</spec>
+    <spec>XEP-0045</spec>
+  </dependencies>
+  <supersedes/>
+  <supersededby/>
+  <shortname>NOT YET ASSIGNED</shortname>
+  <author>
+    <firstname>Simon</firstname>
+    <surname>McVittie</surname>
+    <email>simon.mcvittie@collabora.co.uk</email>
+    <jid>simon.mcvittie@collabora.co.uk</jid>
+  </author>
+  <revision>
+    <version>0.0.1</version>
+    <date>2007-09-07</date>
+    <initials>smcv</initials>
+    <remark><p>First draft.</p></remark>
+  </revision>
+</header>
+<section1 topic='Introduction' anchor='intro'>
+  <p>This document describes a protocol for tunneling binary message streams
+    through an XMPP MUC (XEP-0045). It's designed for use in Tubes
+    but could be useful for other similar protocols.</p>
+  <p>The XML namespace defined here is
+    http://telepathy.freedesktop.org/xmpp/protocol/muc-bytestream
+    (NS_MUC_BYTESTREAM in Gabble source code).</p>
+</section1>
+<section1 topic='Requirements' anchor='reqs'>
+
+  <p>D-Bus Tubes require a mechanism by which binary messages, possibly larger
+    than the MUC service's maximum message size, can be transmitted through
+    a MUC, preserving message boundaries. Multicasting messages to all
+    participants, and sending unicast messages to a single participant,
+    are both required.</p>
+
+  <p>The protocol used is intentionally similar to IBB (XEP-0047).</p>
+
+</section1>
+<section1 topic='Use Cases' anchor='usecases'>
+  <p>MUC Bytestream messages are multiplexed using a stream ID similar to that
+    used in In-Band Bytestreams. As with In-Band Bytestreams, the stream ID
+    SHOULD be randomly generated in a way that will avoid collisions, and
+    any specification that references this one will need to describe how the
+    stream ID can be associated with a higher-level construct (e.g. a
+    Tube).</p>
+
+  <p>The uniqueness requirement for stream IDs is per-MUC, not
+    per-participant, so collision avoidance must occur with the same scope.</p>
+
+  <p>Within a particular message stream, some messages can be broadcast to
+    all participants in the MUC while some messages can be sent to a particular
+    participant.</p>
+
+  <example caption="Sending a short binary message to all participants">
+    <![CDATA[
+    <message from='chat@conf.example/someone' to='chat@conf.example'
+      type='groupchat'>
+      <data
+        xmlns='http://telepathy.freedesktop.org/xmpp/protocol/muc-bytestream"
+        sid="some-stream-id'>base64base64...</data>
+    </message>
+    ]]>
+  </example>
+  <example caption="Sending a short binary message to a single participant">
+    <![CDATA[
+    <message from='chat@conf.example/someone' to='chat@conf.example/otherguy'
+      type='groupchat'>
+      <data
+        xmlns='http://telepathy.freedesktop.org/xmpp/protocol/muc-bytestream'
+        sid='some-stream-id'>base64base64...</data>
+    </message>
+    ]]>
+  </example>
+
+  <p>Messages which are too large for the MUC to relay them intact SHOULD be
+    "fragmented", i.e. split into multiple stanzas.</p>
+
+  <p>To send messages which need to be fragmented, set the 'frag' attribute
+    to "first" on the first part of the message, "middle" on any intermediate
+    parts and "last" on the last part. Setting 'frag' to "complete", or
+    omitting it, means the XMPP stanza is a complete message in the
+    underlying message stream, i.e. it is simultaneously the first and
+    last fragment.</p>
+
+  <p>When receiving messages, participants MUST buffer and reassemble
+    fragmented messages independently for each (sender, 'sid') pair.</p>
+
+  <p>When a participant has started to send a fragmented message, it MUST
+    send all the fragments of that message, finishing with one with 'frag'
+    set to "last", before it starts to send any subsequent message with the
+    same 'sid' attribute.</p>
+
+  <p>If a participant leaves the MUC, or signals via a higher-level protocol
+    that it has left the MUC Bytestream stream with a particular 'sid',
+    any buffered fragments from that sender representing an incomplete
+    message SHOULD be discarded by recipients.</p>
+
+  <example caption="Sending a long binary message">
+    <![CDATA[
+    <!--This example sends a message to all participants, but the process
+    to send a message to one participant is the same -->
+
+    <message from='chat@conf.example/someone' to='chat@conf.example'
+        type='groupchat'>
+      <data frag='first'
+        xmlns='http://telepathy.freedesktop.org/xmpp/protocol/muc-bytestream'
+        sid='some-stream-id'>base64base64...</data>
+    </message>
+
+    <!-- 0 or more stanzas with frag='middle' - this example
+      has one such stanza -->
+    <message from='chat@conf.example/someone' to='chat@conf.example'
+        type='groupchat'>
+      <data frag='middle'
+        xmlns='http://telepathy.freedesktop.org/xmpp/protocol/muc-bytestream'
+        sid='some-stream-id'>base64base64...</data>
+    </message>
+
+    <message from='chat@conf.example/someone' to='chat@conf.example'
+        type='groupchat'>
+      <data frag='last'
+        xmlns='http://telepathy.freedesktop.org/xmpp/protocol/muc-bytestream"
+        sid="some-stream-id'>base64base64...</data>
+    </message>
+    ]]>
+  </example>
+</section1>
+<section1 topic='Security Considerations' anchor='security'>
+  <p>Senders can cause denial of service to recipients via memory exhaustion
+    if they send very large fragmented messages. Recipients MUST impose a
+    limit on the size of message they will reassemble; higher-level protocols
+    that reference this one SHOULD recommend a suitable limit for that
+    protocol.</p>
+</section1>
+<section1 topic='IANA Considerations' anchor='iana'>
+  <p>None.</p>
+</section1>
+<section1 topic='XMPP Registrar Considerations' anchor='registrar'>
+  <p>None.</p>
+</section1>
+<section1 topic='XML Schema' anchor='schema'>
+  <code><![CDATA[
+    <xs:schema
+      xmlns:xs='http://www.w3.org/2001/XMLSchema'
+      targetNamespace='http://telepathy.freedesktop.org/xmpp/protocol/muc-bytestream'
+      xmlns='http://telepathy.freedesktop.org/xmpp/protocol/muc-bytestream'
+      elementFormDefault='qualified'>
+
+      <xs:element name='data'>
+        <xs:complexType>
+          <xs:simpleContent>
+            <xs:extension base="xs:base64Binary">
+              <xs:attribute name='sid' type='xs:string' use='required' />
+              <xs:attribute name='frag' use='optional' default='complete'>
+                <xs:restriction base='xs:NCName'>
+                  <xs:enumeration value='first' />
+                  <xs:enumeration value='middle' />
+                  <xs:enumeration value='last' />
+                  <xs:enumeration value='complete' />
+                </xs:restriction>
+              </xs:attribute>
+            </xs:extension>
+          </xs:simpleContent>
+        </xs:complexType>
+      </xs:element>
+    </xs:schema>
+  ]]></code>
+</section1>
+</xep>

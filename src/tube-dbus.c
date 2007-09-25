@@ -1087,7 +1087,7 @@ gabble_tube_dbus_add_bytestream (GabbleTubeIface *tube,
   gabble_bytestream_iface_close (bytestream);
 }
 
-void
+gboolean
 gabble_tube_dbus_add_name (GabbleTubeDBus *self,
                            TpHandle handle,
                            const gchar *name)
@@ -1104,13 +1104,13 @@ gabble_tube_dbus_add_name (GabbleTubeDBus *self,
       != NULL)
     {
       DEBUG ("contact %d has already announced his D-Bus name", handle);
-      return;
+      return FALSE;
     }
 
   if (g_hash_table_lookup (priv->dbus_name_to_handle, name) != NULL)
     {
       DEBUG ("D-Bus name %s already used", name);
-      return;
+      return FALSE;
     }
 
   name_copy = g_strdup (name);
@@ -1120,6 +1120,8 @@ gabble_tube_dbus_add_name (GabbleTubeDBus *self,
 
   g_hash_table_insert (priv->dbus_name_to_handle, name_copy,
       GUINT_TO_POINTER (handle));
+
+  return TRUE;
 }
 
 gboolean

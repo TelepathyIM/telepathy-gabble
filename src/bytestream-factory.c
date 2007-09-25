@@ -591,11 +591,15 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
       goto out;
     }
 
+  /* Now that we have a bytestream, it's responsible for declining the IQ
+   * if needed. */
+
   /* We inform the right factory we received a SI request */
   if (tp_strdiff (profile, NS_TUBES))
     {
       DEBUG ("SI profile unsupported: %s", profile);
 
+      /* FIXME: the bytestream will send a second reply :-( */
       _gabble_connection_send_iq_error (priv->conn, msg,
           XMPP_ERROR_SI_BAD_PROFILE, NULL);
       remove_bytestream (self, bytestream);
@@ -632,6 +636,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
     {
       /* Invalid tube SI request */
       DEBUG ("Invalid tube SI request");
+      /* FIXME: the bytestream will cause a second reply :-( */
       _gabble_connection_send_iq_error (priv->conn, msg,
           XMPP_ERROR_BAD_REQUEST, "Invalid tube SI request");
       remove_bytestream (self, bytestream);
@@ -644,6 +649,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
       DEBUG ("Can't handle tube SI request");
       /* FIXME: work out under exactly what circumstances this will happen,
        * so the error can be made more appropriate */
+      /* FIXME: the bytestream will send a second reply :-( */
       _gabble_connection_send_iq_error (priv->conn, msg,
           XMPP_ERROR_BAD_REQUEST, "request not handled anywhere");
       gabble_bytestream_iface_close (bytestream);

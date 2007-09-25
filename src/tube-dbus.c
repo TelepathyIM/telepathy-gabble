@@ -598,7 +598,6 @@ gabble_tube_dbus_constructor (GType type,
   GabbleTubeDBusPrivate *priv;
   TpHandleRepoIface *contact_repo;
   TpBaseConnection *base;
-  gchar *name;
 
   obj = G_OBJECT_CLASS (gabble_tube_dbus_parent_class)->
            constructor (type, n_props, props);
@@ -614,13 +613,6 @@ gabble_tube_dbus_constructor (GType type,
   tp_handle_ref (contact_repo, priv->initiator);
 
   base = (TpBaseConnection *) priv->conn;
-  /* We use the jid so we shouldn't clash with other bus names */
-  name = tp_escape_as_identifier (tp_handle_inspect (contact_repo,
-        priv->self_handle));
-  priv->dbus_local_name = g_strdup_printf (":1.%s", name);
-  g_free (name);
-
-  DEBUG ("local name: %s", priv->dbus_local_name);
 
   g_assert (priv->self_handle != 0);
   if (priv->handle_type == TP_HANDLE_TYPE_ROOM)
@@ -634,8 +626,14 @@ gabble_tube_dbus_constructor (GType type,
        */
       GabbleBytestreamMuc *bytestream;
       GabbleBytestreamState state;
+      gchar *nick;
 
       g_assert (priv->stream_id != NULL);
+
+      gabble_decode_jid (tp_handle_inspect (contact_repo, priv->self_handle),
+          NULL, NULL, &nick);
+
+      priv->dbus_local_name = _gabble_generate_dbus_unique_name (nick);
 
       if (priv->initiator == priv->self_handle)
         {
@@ -655,13 +653,26 @@ gabble_tube_dbus_constructor (GType type,
           state);
 
       g_object_set (self, "bytestream", bytestream, NULL);
+
+      g_free (nick);
     }
   else
     {
+      gchar *name;
+
+      /* We use the jid so we shouldn't clash with other bus names */
+      name = tp_escape_as_identifier (tp_handle_inspect (contact_repo,
+            priv->self_handle));
+      priv->dbus_local_name = g_strdup_printf (":1.%s", name);
+
       /* For contact (IBB) tubes we need to be able to reassemble messages. */
       priv->reassembly_buffer = g_string_new ("");
       priv->reassembly_bytes_needed = 0;
+
+      g_free (name);
     }
+
+  DEBUG ("local name: %s", priv->dbus_local_name);
 
   return obj;
 }

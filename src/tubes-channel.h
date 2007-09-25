@@ -72,6 +72,10 @@ gboolean
 gabble_tubes_channel_tube_offered (GabbleTubesChannel *chan,
     GabbleBytestreamIface *bytestream, LmMessage *msg);
 
+gboolean
+gabble_tubes_channel_bytestream_offered (GabbleTubesChannel *chan,
+    GabbleBytestreamIface *bytestream, LmMessage *msg);
+
 void gabble_tubes_channel_close (GabbleTubesChannel *self);
 
 G_END_DECLS

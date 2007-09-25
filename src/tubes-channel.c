@@ -1098,8 +1098,7 @@ bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
 }
 
 /* Called when we receive a SI request,
- * via either gabble_muc_factory_handle_si_request or
- * gabble_tubes_factory_handle_si_request
+ * via gabble_tubes_factory_handle_si_tube_request
  */
 gboolean
 gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
@@ -1118,7 +1117,7 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
   GabbleTubeIface *tube;
 
   /* Caller is expected to have checked that we have a SI node with
-   * a stream ID and the TUBES (or TUBES_OLD) profile
+   * a stream ID and the TUBES profile
    */
   g_return_val_if_fail (lm_message_get_type (msg) == LM_MESSAGE_TYPE_IQ,
       FALSE);
@@ -1148,11 +1147,8 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
   if (tube != NULL)
     {
-        DEBUG ("received new SI request for existing tube: %u",
-            tube_id);
-
-        gabble_tube_iface_add_bytestream (tube, bytestream);
-        return TRUE;
+        DEBUG ("there is already a tube having this id: %u", tube_id);
+        return FALSE;
     }
 
   /* New tube */
@@ -1193,6 +1189,73 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
 
   return TRUE;
 }
+
+/* Called when we receive a SI request,
+ * via either gabble_muc_factory_handle_si_stream_request or
+ * gabble_tubes_factory_handle_si_stream_request
+ */
+gboolean
+gabble_tubes_channel_bytestream_offered (GabbleTubesChannel *self,
+                                         GabbleBytestreamIface *bytestream,
+                                         LmMessage *msg)
+{
+  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  const gchar *stream_id, *tmp;
+  gchar *endptr;
+  LmMessageNode *si_node, *stream_node;
+  guint tube_id;
+  GabbleTubeIface *tube;
+
+  /* Caller is expected to have checked that we have a stream or muc-stream
+   * node with a stream ID and the TUBES profile
+   */
+  g_return_val_if_fail (lm_message_get_type (msg) == LM_MESSAGE_TYPE_IQ,
+      FALSE);
+  g_return_val_if_fail (lm_message_get_sub_type (msg) ==
+      LM_MESSAGE_SUB_TYPE_SET, FALSE);
+
+  si_node = lm_message_node_get_child_with_namespace (msg->node, "si",
+      NS_SI);
+  g_return_val_if_fail (si_node != NULL, FALSE);
+
+  if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
+    stream_node = lm_message_node_get_child_with_namespace (si_node,
+        "stream", NS_TUBES);
+  else
+    stream_node = lm_message_node_get_child_with_namespace (si_node,
+        "muc-stream", NS_TUBES);
+  g_return_val_if_fail (stream_node != NULL, FALSE);
+
+  stream_id = lm_message_node_get_attribute (si_node, "id");
+  g_return_val_if_fail (stream_id != NULL, FALSE);
+
+  tmp = lm_message_node_get_attribute (stream_node, "tube");
+  if (tmp == NULL)
+    {
+      DEBUG ("no tube attribute");
+      return FALSE;
+    }
+  tube_id = strtol (tmp, &endptr, 10);
+  if (!endptr || *endptr)
+    {
+      DEBUG ("tube id is not numeric: %s", tmp);
+      return FALSE;
+    }
+
+  tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
+  if (tube == NULL)
+    {
+      DEBUG ("tube %u doesn't exist", tube_id);
+      return FALSE;
+    }
+
+  DEBUG ("received new bytestream request for existing tube: %u", tube_id);
+
+  gabble_tube_iface_add_bytestream (tube, bytestream);
+
+  return TRUE;
+}
+
 
 static gboolean
 start_stream_initiation (GabbleTubesChannel *self,

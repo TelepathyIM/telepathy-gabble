@@ -366,14 +366,18 @@ start_stream_initiation (GabbleTubeStream *self,
 
   id_str = g_strdup_printf ("%u", priv->id);
 
-  node = lm_message_node_add_child (si_node, "tube", NULL);
+  if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
+    {
+      node = lm_message_node_add_child (si_node, "stream", NULL);
+    }
+  else
+    {
+      node = lm_message_node_add_child (si_node, "muc-stream", NULL);
+    }
+
   lm_message_node_set_attributes (node,
       "xmlns", NS_TUBES,
-      "type", "stream",
-      "service", priv->service,
-      "initiator", jid,
-      "stream_id", stream_id,
-      "id", id_str,
+      "tube", id_str,
       NULL);
 
   data = g_slice_new (struct _extra_bytestream_negotiate_cb_data);

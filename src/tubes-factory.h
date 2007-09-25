@@ -65,9 +65,15 @@ GabbleTubesFactory *
 gabble_tubes_factory_new (GabbleConnection *conn);
 
 gboolean
-gabble_tubes_factory_handle_si_request (GabbleTubesFactory *fac,
+gabble_tubes_factory_handle_si_tube_request (GabbleTubesFactory *fac,
     GabbleBytestreamIface *bytestream, TpHandle handle, const gchar *stream_id,
     LmMessage *msg);
+
+gboolean
+gabble_tubes_factory_handle_si_stream_request (GabbleTubesFactory *fac,
+    GabbleBytestreamIface *bytestream, TpHandle handle, const gchar *stream_id,
+    LmMessage *msg);
+
 
 G_END_DECLS
 

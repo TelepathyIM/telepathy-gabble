@@ -603,35 +603,40 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
       goto out;
     }
 
-  if (room_handle == 0)
+  /* This SI request can be:
+   *  - a 1-1 new tube offer
+   *  - a 1-1 tube extra bytestream offer
+   *  - a muc tube extra bytestream offer
+   */
+  if (lm_message_node_get_child_with_namespace (si, "tube", NS_TUBES) != NULL)
     {
-      /* 1-1 tubes */
-      request_handled = gabble_tubes_factory_handle_si_request (
+      /* The SI request is a tube offer */
+      request_handled = gabble_tubes_factory_handle_si_tube_request (
           priv->conn->tubes_factory, bytestream, peer_handle, stream_id, msg);
+    }
+  else if (lm_message_node_get_child_with_namespace (si, "stream", NS_TUBES)
+      != NULL)
+    {
+      /* The SI request is an extra bytestream for a 1-1 tube */
+      request_handled = gabble_tubes_factory_handle_si_stream_request (
+          priv->conn->tubes_factory, bytestream, peer_handle, stream_id, msg);
+    }
+  else if (lm_message_node_get_child_with_namespace (si, "muc-stream",
+        NS_TUBES) != NULL)
+    {
+      /* The SI request is an extra bytestream for a muc tube */
+      request_handled = gabble_muc_factory_handle_si_stream_request (
+          priv->conn->muc_factory, bytestream, room_handle, stream_id, msg);
     }
   else
     {
-      /* The sender of this SI request is a MUC contact so the request
-       * can be:
-       * - an extra bytestream request for an existing MUC tube
-       * - a new private tube offer
-       * - an extra bytestream request for an existing private tube
-       *
-       * First case is covered by the MUC factory so we check if it knows
-       * a MUC tube that could fit this request. If not, that means the
-       * request is private tube related.
-       */
+      /* Invalid tube SI request */
+      DEBUG ("Invalid tube SI request");
+      _gabble_connection_send_iq_error (priv->conn, msg,
+          XMPP_ERROR_BAD_REQUEST, "Invalid tube SI request");
+      remove_bytestream (self, bytestream);
 
-      request_handled = gabble_muc_factory_handle_si_request (
-          priv->conn->muc_factory, bytestream, room_handle, stream_id, msg);
-
-      if (!request_handled)
-        {
-          /* Let's try with the 1-1 tubes factory now */
-          request_handled = gabble_tubes_factory_handle_si_request (
-              priv->conn->tubes_factory, bytestream, peer_handle, stream_id,
-              msg);
-        }
+      goto out;
     }
 
   if (!request_handled)

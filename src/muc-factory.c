@@ -1184,11 +1184,11 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
 }
 
 gboolean
-gabble_muc_factory_handle_si_request (GabbleMucFactory *self,
-                                      GabbleBytestreamIface *bytestream,
-                                      TpHandle room_handle,
-                                      const gchar *stream_id,
-                                      LmMessage *msg)
+gabble_muc_factory_handle_si_stream_request (GabbleMucFactory *self,
+                                             GabbleBytestreamIface *bytestream,
+                                             TpHandle room_handle,
+                                             const gchar *stream_id,
+                                             LmMessage *msg)
 {
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
@@ -1202,11 +1202,11 @@ gabble_muc_factory_handle_si_request (GabbleMucFactory *self,
       GUINT_TO_POINTER (room_handle));
   if (chan == NULL)
     {
-      /* We can't create muc tubes using SI */
+      DEBUG ("tubes channel doesn't exist for muc %d", room_handle);
       return FALSE;
     }
 
-  return gabble_tubes_channel_tube_offered (chan, bytestream, msg);
+  return gabble_tubes_channel_bytestream_offered (chan, bytestream, msg);
 }
 
 GabbleMucChannel *

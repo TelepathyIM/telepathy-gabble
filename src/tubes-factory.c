@@ -364,11 +364,11 @@ gabble_tubes_factory_iface_request (TpChannelFactoryIface *iface,
 }
 
 gboolean
-gabble_tubes_factory_handle_si_request (GabbleTubesFactory *self,
-                                        GabbleBytestreamIface *bytestream,
-                                        TpHandle handle,
-                                        const gchar *stream_id,
-                                        LmMessage *msg)
+gabble_tubes_factory_handle_si_tube_request (GabbleTubesFactory *self,
+                                             GabbleBytestreamIface *bytestream,
+                                             TpHandle handle,
+                                             const gchar *stream_id,
+                                             LmMessage *msg)
 {
   GabbleTubesFactoryPrivate *priv = GABBLE_TUBES_FACTORY_GET_PRIVATE (self);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
@@ -385,13 +385,39 @@ gabble_tubes_factory_handle_si_request (GabbleTubesFactory *self,
       chan = new_tubes_channel (self, handle);
       tp_channel_factory_iface_emit_new_channel (self,
           (TpChannelIface *) chan, NULL);
+
+      /* FIXME we should probably only emit the new channel signal only
+       * if this function returns TRUE and if not, close the channel.
+       */
     }
 
-  /* XXX we should probably only emit the new channel signal only
-   * if this function returns TRUE and if not, close the channel because
-   * that means this SI request wasn't for this channel so there was no
-   * point to create it */
   return gabble_tubes_channel_tube_offered (chan, bytestream, msg);
+}
+
+gboolean
+gabble_tubes_factory_handle_si_stream_request (GabbleTubesFactory *self,
+                                               GabbleBytestreamIface *bytestream,
+                                               TpHandle handle,
+                                               const gchar *stream_id,
+                                               LmMessage *msg)
+{
+  GabbleTubesFactoryPrivate *priv = GABBLE_TUBES_FACTORY_GET_PRIVATE (self);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+              (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+  GabbleTubesChannel *chan;
+
+  DEBUG ("contact#%u stream %s", handle, stream_id);
+  g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
+      FALSE);
+
+  chan = g_hash_table_lookup (priv->channels, GUINT_TO_POINTER (handle));
+  if (chan == NULL)
+    {
+      DEBUG ("tubes channel with contact %d doesn't exist", handle);
+      return FALSE;
+    }
+
+  return gabble_tubes_channel_bytestream_offered (chan, bytestream, msg);
 }
 
 GabbleTubesFactory *

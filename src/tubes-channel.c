@@ -320,10 +320,11 @@ add_name_in_dbus_names (GabbleTubesChannel *self,
   if (tube == NULL)
     return;
 
-  gabble_tube_dbus_add_name (tube, handle, dbus_name);
-
-  /* Emit the DBusNamesChanged signal */
-  d_bus_names_changed_added (self, tube_id, handle, dbus_name);
+  if (gabble_tube_dbus_add_name (tube, handle, dbus_name))
+    {
+      /* Emit the DBusNamesChanged signal */
+      d_bus_names_changed_added (self, tube_id, handle, dbus_name);
+    }
 }
 
 static void
@@ -591,10 +592,11 @@ emit_d_bus_names_changed_foreach (gpointer key,
     (struct _emit_d_bus_names_changed_foreach_data *) user_data;
 
   /* Remove from the D-Bus names mapping */
-  gabble_tube_dbus_remove_name (tube, data->contact);
-
-  /* Emit the DBusNamesChanged signal */
-  d_bus_names_changed_removed (data->self, tube_id, data->contact);
+  if (gabble_tube_dbus_remove_name (tube, data->contact))
+    {
+      /* Emit the DBusNamesChanged signal */
+      d_bus_names_changed_removed (data->self, tube_id, data->contact);
+    }
 }
 
 static void

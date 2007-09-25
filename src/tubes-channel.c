@@ -1096,9 +1096,9 @@ bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
 /* Called when we receive a SI request,
  * via gabble_tubes_factory_handle_si_tube_request
  */
-gboolean
+void
 gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
-                                   GabbleBytestreamIface *bytestream,
+                                   GabbleBytestreamIBB *bytestream,
                                    LmMessage *msg)
 {
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
@@ -1110,38 +1110,35 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
   GabbleTubeIface *tube;
 
   /* Caller is expected to have checked that we have a SI node with
-   * a stream ID and the TUBES profile
+   * a stream ID, the TUBES profile and a <tube> element
    */
-  g_return_val_if_fail (lm_message_get_type (msg) == LM_MESSAGE_TYPE_IQ,
-      FALSE);
-  g_return_val_if_fail (lm_message_get_sub_type (msg) ==
-      LM_MESSAGE_SUB_TYPE_SET, FALSE);
+  g_return_if_fail (lm_message_get_type (msg) == LM_MESSAGE_TYPE_IQ);
+  g_return_if_fail (lm_message_get_sub_type (msg) == LM_MESSAGE_SUB_TYPE_SET);
   si_node = lm_message_node_get_child_with_namespace (msg->node, "si",
       NS_SI);
-  g_return_val_if_fail (si_node != NULL, FALSE);
+  g_return_if_fail (si_node != NULL);
   stream_id = lm_message_node_get_attribute (si_node, "id");
-  g_return_val_if_fail (stream_id != NULL, FALSE);
-
+  g_return_if_fail (stream_id != NULL);
   tube_node = lm_message_node_get_child_with_namespace (si_node, "tube",
       NS_TUBES);
-  if (tube_node == NULL)
-    {
-      NODE_DEBUG (msg->node, "got a SI request without tube markup");
-      return FALSE;
-    }
+  g_return_if_fail (tube_node != NULL);
 
   if (!extract_tube_information (self, tube_node, NULL, NULL,
               NULL, NULL, &tube_id))
     {
       DEBUG ("can't extract tube information in SI request");
-      return FALSE;
+      gabble_bytestream_ibb_decline (bytestream, XMPP_ERROR_BAD_REQUEST,
+          "<tube> has no id attribute");
+      return;
     }
 
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
   if (tube != NULL)
     {
-        DEBUG ("there is already a tube having this id: %u", tube_id);
-        return FALSE;
+      DEBUG ("there is already a tube having this id: %u", tube_id);
+      gabble_bytestream_ibb_decline (bytestream, XMPP_ERROR_BAD_REQUEST,
+          "tube ID already in use");
+      return;
     }
 
   /* New tube */
@@ -1149,7 +1146,9 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
               &service, &parameters, NULL))
     {
       DEBUG ("can't extract tube information in SI request");
-      return FALSE;
+      gabble_bytestream_ibb_decline (bytestream, XMPP_ERROR_BAD_REQUEST,
+          "Can't extract <tube> information from SI request");
+      return;
     }
 
 #ifndef HAVE_DBUS_TUBE
@@ -1158,14 +1157,14 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
       DEBUG ("Don't create the tube as D-Bus tube support"
           "is not built");
 
-      return FALSE;
+      gabble_bytestream_ibb_decline (bytestream, XMPP_ERROR_FORBIDDEN,
+          "Unable to handle D-Bus tubes");
+      return;
     }
 #endif
 
   tube = create_new_tube (self, type, priv->handle, service,
-      parameters, stream_id, tube_id, bytestream);
-
-  return TRUE;
+      parameters, stream_id, tube_id, (GabbleBytestreamIface *) bytestream);
 }
 
 /* Called when we receive a SI request,
@@ -1234,7 +1233,8 @@ gabble_tubes_channel_bytestream_offered (GabbleTubesChannel *self,
 
   DEBUG ("received new bytestream request for existing tube: %u", tube_id);
 
-  gabble_tube_iface_add_bytestream (tube, bytestream);
+  gabble_tube_iface_add_bytestream (tube,
+      (GabbleBytestreamIface *) bytestream);
 }
 
 

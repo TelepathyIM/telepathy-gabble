@@ -68,8 +68,8 @@ GType gabble_tubes_channel_get_type (void);
 void gabble_tubes_channel_presence_updated (GabbleTubesChannel *chan,
     TpHandle contact, LmMessage *presence);
 
-gboolean gabble_tubes_channel_tube_offered (GabbleTubesChannel *chan,
-    GabbleBytestreamIface *bytestream, LmMessage *msg);
+void gabble_tubes_channel_tube_offered (GabbleTubesChannel *chan,
+    GabbleBytestreamIBB *bytestream, LmMessage *msg);
 
 void gabble_tubes_channel_bytestream_offered (GabbleTubesChannel *chan,
     GabbleBytestreamIBB *bytestream, LmMessage *msg);

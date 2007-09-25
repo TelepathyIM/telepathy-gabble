@@ -559,8 +559,8 @@ vcard_get_avatar_sha1 (LmMessageNode *vcard)
 
   if (avatar)
     {
-      DEBUG ("Successfully decoded PHOTO.BINVAL, SHA-1 %s", sha1);
       sha1 = sha1_hex (avatar->str, avatar->len);
+      DEBUG ("Successfully decoded PHOTO.BINVAL, SHA-1 %s", sha1);
     }
   else
     {

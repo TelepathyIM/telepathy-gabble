@@ -1203,7 +1203,7 @@ gabble_muc_factory_handle_si_stream_request (GabbleMucFactory *self,
     {
       DEBUG ("tubes channel doesn't exist for muc %d", room_handle);
       gabble_bytestream_ibb_decline (bytestream, XMPP_ERROR_BAD_REQUEST,
-          "No tubes channel available for this MUC")
+          "No tubes channel available for this MUC");
       return;
     }
 

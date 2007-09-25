@@ -85,9 +85,6 @@ LmMessage * gabble_bytestream_factory_make_stream_init_iq (
 LmMessage * gabble_bytestream_factory_make_accept_iq (const gchar *full_jid,
     const gchar *stream_init_id, const gchar *stream_method);
 
-LmMessage * gabble_bytestream_factory_make_decline_iq (const gchar *full_jid,
-    const gchar *stream_init_id);
-
 gboolean gabble_bytestream_factory_negotiate_stream (
     GabbleBytestreamFactory *fac, LmMessage *msg, const gchar *stream_id,
     GabbleBytestreamFactoryNegotiateReplyFunc func,

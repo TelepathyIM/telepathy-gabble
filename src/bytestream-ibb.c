@@ -518,8 +518,19 @@ gabble_bytestream_ibb_decline (GabbleBytestreamIBB *self)
 
   g_return_if_fail (priv->state == GABBLE_BYTESTREAM_STATE_LOCAL_PENDING);
 
-  msg = gabble_bytestream_factory_make_decline_iq (priv->peer_jid,
-      priv->stream_init_id);
+  msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
+      '@', "type", "error",
+      '@', "id", priv->stream_init_id,
+      '(', "error", "",
+        '@', "code", "403",
+        '@', "type", "cancel",
+        '(', "forbidden", "",
+          '@', "xmlns", NS_XMPP_STANZAS,
+        ')',
+        '(', "text", "Offer Declined",
+          '@', "xmlns", NS_XMPP_STANZAS,
+        ')',
+      ')', NULL);
 
   _gabble_connection_send (priv->conn, msg, NULL);
 

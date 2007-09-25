@@ -1285,32 +1285,3 @@ gabble_bytestream_factory_make_accept_iq (const gchar *full_jid,
         ')',
       ')', NULL);
 }
-
-/*
- * gabble_bytestream_factory_make_decline_iq
- *
- * @full_jid: the full jid of the stream initiator
- * @stream_init_id: the id of the SI request
- *
- * Create an IQ stanza refusing a stream in response to
- * a SI request (XEP-0095).
- *
- */
-LmMessage *
-gabble_bytestream_factory_make_decline_iq (const gchar *full_jid,
-                                           const gchar *stream_init_id)
-{
-  return lm_message_build (full_jid, LM_MESSAGE_TYPE_IQ,
-      '@', "type", "error",
-      '@', "id", stream_init_id,
-      '(', "error", "",
-        '@', "code", "403",
-        '@', "type", "cancel",
-        '(', "forbidden", "",
-          '@', "xmlns", NS_XMPP_STANZAS,
-        ')',
-        '(', "text", "Offer Declined",
-          '@', "xmlns", NS_XMPP_STANZAS,
-        ')',
-      ')', NULL);
-}

@@ -603,7 +603,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
       goto out;
     }
 
-  /* This SI request can be:
+  /* A Tubes SI request can be:
    *  - a 1-1 new tube offer
    *  - a 1-1 tube extra bytestream offer
    *  - a muc tube extra bytestream offer

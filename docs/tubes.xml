@@ -581,7 +581,7 @@
       <xs:element name='tube'>
         <xs:complexType>
           <!-- Required attributes -->
-          <xs:attribute name='id' type='xs:string' use='required'/>
+          <xs:attribute name='id' type='xs:unsignedInt' use='required'/>
           <xs:attribute name='type' use='required'>
             <xs:simpleType>
               <xs:restriction base='xs:NCName'>
@@ -635,7 +635,7 @@
       <xs:complexType name='stream-connection'>
         <xs:simpleContent>
           <xs:extension base='empty'>
-            <xs:attribute name='tube' use='required' type='xs:string'/>
+            <xs:attribute name='tube' use='required' type='xs:unsignedInt'/>
           </xs:extension>
         </xs:simpleContent>
       </xs:complexType>

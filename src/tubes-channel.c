@@ -1055,8 +1055,6 @@ bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
   struct _bytestream_negotiate_cb_data *data =
     (struct _bytestream_negotiate_cb_data *) user_data;
   GabbleTubeIface *tube = data->tube;
-  LmMessageNode *si, *tube_node;
-  GabbleTubeType type;
 
   g_slice_free (struct _bytestream_negotiate_cb_data, data);
 

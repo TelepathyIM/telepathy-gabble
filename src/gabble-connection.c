@@ -717,11 +717,8 @@ gabble_connection_dispose (GObject *object)
             (base->status == TP_INTERNAL_CONNECTION_STATUS_NEW));
   g_assert (base->self_handle == 0);
 
-  g_object_unref (self->vcard_manager);
-  self->vcard_manager = NULL;
-
-  /* unreffing channel factories frees the roster */
-  self->roster = NULL;
+  g_object_unref (self->bytestream_factory);
+  self->bytestream_factory = NULL;
 
   g_object_unref (self->disco);
   self->disco = NULL;
@@ -732,8 +729,11 @@ gabble_connection_dispose (GObject *object)
   g_object_unref (self->vcard_manager);
   self->vcard_manager = NULL;
 
-  /* unreffing channel factories frees the roster */
+  /* remove borrowed references before TpBaseConnection unrefs the channel
+   * factories */
   self->roster = NULL;
+  self->muc_factory = NULL;
+  self->tubes_factory = NULL;
 
   if (self->self_presence != NULL)
     g_object_unref (self->self_presence);

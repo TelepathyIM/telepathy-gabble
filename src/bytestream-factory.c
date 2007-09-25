@@ -525,7 +525,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
   LmMessageNode *si;
   TpHandle peer_handle, room_handle;
-  GabbleBytestreamIface *bytestream = NULL;
+  GabbleBytestreamIBB *bytestream = NULL;
   GSList *l;
   const gchar *profile, *from, *stream_id, *stream_init_id, *mime_type;
   GSList *stream_methods = NULL;
@@ -574,10 +574,9 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
        * User has to accept it */
       if (!tp_strdiff (l->data, NS_IBB))
         {
-          bytestream = GABBLE_BYTESTREAM_IFACE (
-              gabble_bytestream_factory_create_ibb (self, peer_handle,
+          bytestream = gabble_bytestream_factory_create_ibb (self, peer_handle,
               stream_id, stream_init_id, peer_resource,
-              GABBLE_BYTESTREAM_STATE_LOCAL_PENDING));
+              GABBLE_BYTESTREAM_STATE_LOCAL_PENDING);
           break;
         }
     }
@@ -599,11 +598,8 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
     {
       DEBUG ("SI profile unsupported: %s", profile);
 
-      /* FIXME: the bytestream will send a second reply :-( */
-      _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_SI_BAD_PROFILE, NULL);
-      remove_bytestream (self, bytestream);
-
+      gabble_bytestream_ibb_decline (bytestream, XMPP_ERROR_SI_BAD_PROFILE,
+          NULL);
       goto out;
     }
 
@@ -616,31 +612,32 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
     {
       /* The SI request is a tube offer */
       request_handled = gabble_tubes_factory_handle_si_tube_request (
-          priv->conn->tubes_factory, bytestream, peer_handle, stream_id, msg);
+          priv->conn->tubes_factory, (GabbleBytestreamIface *) bytestream,
+          peer_handle, stream_id, msg);
     }
   else if (lm_message_node_get_child_with_namespace (si, "stream", NS_TUBES)
       != NULL)
     {
       /* The SI request is an extra bytestream for a 1-1 tube */
       request_handled = gabble_tubes_factory_handle_si_stream_request (
-          priv->conn->tubes_factory, bytestream, peer_handle, stream_id, msg);
+          priv->conn->tubes_factory, (GabbleBytestreamIface *) bytestream,
+          peer_handle, stream_id, msg);
     }
   else if (lm_message_node_get_child_with_namespace (si, "muc-stream",
         NS_TUBES) != NULL)
     {
       /* The SI request is an extra bytestream for a muc tube */
       request_handled = gabble_muc_factory_handle_si_stream_request (
-          priv->conn->muc_factory, bytestream, room_handle, stream_id, msg);
+          priv->conn->muc_factory, (GabbleBytestreamIface *) bytestream,
+          room_handle, stream_id, msg);
     }
   else
     {
       /* Invalid tube SI request */
       DEBUG ("Invalid tube SI request");
-      /* FIXME: the bytestream will cause a second reply :-( */
-      _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_BAD_REQUEST, "Invalid tube SI request");
-      remove_bytestream (self, bytestream);
-
+      gabble_bytestream_ibb_decline (bytestream, XMPP_ERROR_BAD_REQUEST,
+          "Invalid tube SI request: expected <tube>, <stream> or "
+          "<muc-stream>");
       goto out;
     }
 
@@ -650,9 +647,8 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
       /* FIXME: work out under exactly what circumstances this will happen,
        * so the error can be made more appropriate */
       /* FIXME: the bytestream will send a second reply :-( */
-      _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_BAD_REQUEST, "request not handled anywhere");
-      gabble_bytestream_iface_close (bytestream);
+      gabble_bytestream_ibb_decline (bytestream, XMPP_ERROR_BAD_REQUEST,
+          "request not handled anywhere");
     }
 
 out:

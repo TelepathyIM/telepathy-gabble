@@ -530,6 +530,48 @@ gabble_vcard_manager_finalize (GObject *object)
   G_OBJECT_CLASS (gabble_vcard_manager_parent_class)->finalize (object);
 }
 
+static gchar *
+vcard_get_avatar_sha1 (LmMessageNode *vcard)
+{
+  gchar *sha1;
+  const gchar *binval_value;
+  GString *avatar;
+  LmMessageNode *node;
+  LmMessageNode *binval;
+
+  node = lm_message_node_get_child (vcard, "PHOTO");
+
+  if (!node)
+    return g_strdup ("");
+
+  DEBUG ("Our vCard has a PHOTO %p", node);
+  binval = lm_message_node_get_child (node, "BINVAL");
+
+  if (!binval)
+    return g_strdup ("");
+
+  binval_value = lm_message_node_get_value (binval);
+
+  if (!binval_value)
+    return g_strdup ("");
+
+  avatar = base64_decode (binval_value);
+
+  if (avatar)
+    {
+      DEBUG ("Successfully decoded PHOTO.BINVAL, SHA-1 %s", sha1);
+      sha1 = sha1_hex (avatar->str, avatar->len);
+    }
+  else
+    {
+      DEBUG ("Avatar is in garbled Base64, ignoring it:\n%s", binval_value);
+      sha1 = g_strdup ("");
+    }
+
+  g_string_free (avatar, TRUE);
+  return sha1;
+}
+
 /* Called during connection. */
 static void
 initial_request_cb (GabbleVCardManager *self,
@@ -541,60 +583,23 @@ initial_request_cb (GabbleVCardManager *self,
 {
   GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (self);
   gchar *alias = (gchar *)user_data;
-  LmMessageNode *node;
+  gchar *sha1;
 
-  if (!vcard)
+  if (vcard)
     {
-      g_free (alias);
-      return;
-    }
+      /* We now have our own avatar (or lack thereof) so can answer
+       * GetAvatarTokens([self_handle])
+       */
+      priv->have_self_avatar = TRUE;
 
-  /* We now have our own avatar (or lack thereof) so can answer
-   * GetAvatarTokens([self_handle])
-   */
-  priv->have_self_avatar = TRUE;
-
-  /* Do we have an avatar already? If so, the presence cache ought to be
-   * told (anyone else's avatar SHA-1 we'd get from their presence,
-   * but unless we have another XEP-0153 resource connected, we never
-   * see our own presence)
-   */
-  node = lm_message_node_get_child (vcard, "PHOTO");
-  if (node)
-    {
-      DEBUG ("Our vCard has a PHOTO %p", node);
-      LmMessageNode *binval = lm_message_node_get_child (node, "BINVAL");
-
-      if (binval)
-        {
-          const gchar *binval_value;
-
-          binval_value = lm_message_node_get_value (binval);
-
-          if (binval_value)
-            {
-              gchar *sha1;
-              GString *avatar;
-
-              avatar = base64_decode (binval_value);
-
-              if (avatar)
-                {
-                  sha1 = sha1_hex (avatar->str, avatar->len);
-                  DEBUG ("Successfully decoded PHOTO.BINVAL, SHA-1 %s", sha1);
-                  g_signal_emit (self, signals[GOT_SELF_INITIAL_AVATAR], 0,
-                      sha1);
-                  g_free (sha1);
-                }
-              else
-                {
-                  DEBUG ("Avatar is in garbled Base64, ignoring it:\n%s",
-                         lm_message_node_get_value (binval));
-                }
-
-              g_string_free (avatar, TRUE);
-            }
-        }
+      /* Do we have an avatar already? If so, the presence cache ought to be
+       * told (anyone else's avatar SHA-1 we'd get from their presence,
+       * but unless we have another XEP-0153 resource connected, we never
+       * see our own presence)
+       */
+      sha1 = vcard_get_avatar_sha1 (vcard);
+      g_signal_emit (self, signals[GOT_SELF_INITIAL_AVATAR], 0, sha1);
+      g_free (sha1);
     }
 
   g_free (alias);

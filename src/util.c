@@ -60,6 +60,18 @@ sha1_hex (const gchar *bytes, guint len)
   return hex_hash;
 }
 
+void
+sha1_bin (const gchar *bytes,
+          guint len,
+          gchar out[SHA1_HASH_SIZE])
+{
+  SHA1Context sc;
+
+  SHA1Init (&sc);
+  SHA1Update (&sc, bytes, len);
+  SHA1Final (&sc, (uint8_t *) out);
+}
+
 static void
 lm_message_node_add_nick (LmMessageNode *node, const gchar *nick)
 {

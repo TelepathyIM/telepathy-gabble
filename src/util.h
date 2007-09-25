@@ -28,8 +28,10 @@
 #include <loudmouth/loudmouth.h>
 
 #include "gabble-types.h"
+#include "sha1/sha1.h"
 
 gchar *sha1_hex (const gchar *bytes, guint len);
+void sha1_bin (const gchar *bytes, guint len, gchar out[SHA1_HASH_SIZE]);
 void lm_message_node_add_own_nick (LmMessageNode *node,
     GabbleConnection *conn);
 void lm_message_node_unlink (LmMessageNode *orphan);

@@ -127,6 +127,7 @@ aliases_request_free (AliasesRequest *request)
 
   g_array_free (request->contacts, TRUE);
   g_free (request->vcard_requests);
+  g_free (request->pep_requests);
   g_strfreev (request->aliases);
   g_slice_free (AliasesRequest, request);
 }

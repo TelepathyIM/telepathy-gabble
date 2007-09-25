@@ -86,13 +86,13 @@ check-valgrind:
 		check
 
 exec-with-log.sh: exec-with-log.sh.in
-	@sed -e "s|[@]abs_top_builddir[@]|@abs_top_builddir@|g" $< > $@
+	sed -e "s|[@]abs_top_builddir[@]|@abs_top_builddir@|g" $< > $@
 
 %.conf: %.conf.in
-	@sed -e "s|[@]abs_top_builddir[@]|@abs_top_builddir@|g" $< > $@
+	sed -e "s|[@]abs_top_builddir[@]|@abs_top_builddir@|g" $< > $@
 
 %.service: %.service.in
-	@sed -e "s|[@]abs_top_builddir[@]|@abs_top_builddir@|g" $< > $@
+	sed -e "s|[@]abs_top_builddir[@]|@abs_top_builddir@|g" $< > $@
 
 # D-Bus service file for testing
 service_in_files = org.freedesktop.Telepathy.ConnectionManager.gabble.service.in

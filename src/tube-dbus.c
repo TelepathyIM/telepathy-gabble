@@ -40,6 +40,7 @@
 #include "gabble-connection.h"
 #include "namespaces.h"
 #include "util.h"
+#include "base64.h"
 #include "tube-iface.h"
 #include "bytestream-iface.h"
 #include "bytestream-ibb.h"
@@ -1152,6 +1153,63 @@ gabble_tube_dbus_handle_in_names (GabbleTubeDBus *self,
 
   return (g_hash_table_lookup (priv->dbus_names, GUINT_TO_POINTER (handle))
       != NULL);
+}
+
+gchar *
+_gabble_generate_dbus_unique_name (const gchar *nick)
+{
+  gchar *encoded, *result;
+  size_t len;
+  guint i;
+  GString *name;
+
+  len = strlen (nick);
+
+  if (len <= 186)
+    {
+      encoded = base64_encode (len, nick, FALSE);
+    }
+  else
+    {
+      gchar sha1[20];
+      GString *tmp;
+
+      sha1_bin (nick, len, sha1);
+      tmp = g_string_sized_new (169 + 20);
+
+      g_string_append_len (tmp, nick, 169);
+      g_string_append_len (tmp, sha1, 20);
+
+      encoded = base64_encode (tmp->len, tmp->str, FALSE);
+
+      g_string_free (tmp, TRUE);
+    }
+
+  len = strlen (encoded);
+  name = g_string_sized_new (len);
+
+  for (i = 0; i < len; i++)
+    {
+      switch (encoded[i])
+        {
+          case '+':
+            g_string_append_c (name, '_');
+            break;
+          case '/':
+            g_string_append_c (name, '-');
+            break;
+          case '=':
+            g_string_append_c (name, 'A');
+            break;
+          default:
+            g_string_append_c (name, encoded[i]);
+        }
+    }
+
+  result = g_strdup_printf (":2.%s", name->str);
+
+  g_string_free (name, TRUE);
+  return result;
 }
 
 static void

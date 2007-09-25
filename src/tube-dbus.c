@@ -1163,7 +1163,6 @@ _gabble_generate_dbus_unique_name (const gchar *nick)
   gchar *encoded, *result;
   size_t len;
   guint i;
-  GString *name;
 
   len = strlen (nick);
 
@@ -1187,30 +1186,25 @@ _gabble_generate_dbus_unique_name (const gchar *nick)
       g_string_free (tmp, TRUE);
     }
 
-  len = strlen (encoded);
-  name = g_string_sized_new (len);
-
-  for (i = 0; i < len; i++)
+  for (i = 0; encoded[i] != '\0'; i++)
     {
       switch (encoded[i])
         {
           case '+':
-            g_string_append_c (name, '_');
+            encoded[i] = '_';
             break;
           case '/':
-            g_string_append_c (name, '-');
+            encoded[i] = '-';
             break;
           case '=':
-            g_string_append_c (name, 'A');
+            encoded[i] = 'A';
             break;
-          default:
-            g_string_append_c (name, encoded[i]);
         }
     }
 
-  result = g_strdup_printf (":2.%s", name->str);
+  result = g_strdup_printf (":2.%s", encoded);
 
-  g_string_free (name, TRUE);
+  g_free (encoded);
   return result;
 }
 

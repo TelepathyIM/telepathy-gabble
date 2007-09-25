@@ -98,6 +98,7 @@ aliases_request_new (GabbleConnection *conn,
                      const GArray *contacts)
 {
   AliasesRequest *request;
+  TpHandleRepoIface *contact_handles;
 
   request = g_slice_new0 (AliasesRequest);
   request->conn = conn;
@@ -109,6 +110,11 @@ aliases_request_new (GabbleConnection *conn,
   request->pep_requests =
     g_new0 (GabbleRequestPipelineItem *, contacts->len);
   request->aliases = g_new0 (gchar *, contacts->len + 1);
+
+  contact_handles = tp_base_connection_get_handles ((TpBaseConnection *) conn,
+      TP_HANDLE_TYPE_CONTACT);
+  tp_handles_ref (contact_handles, contacts);
+
   return request;
 }
 
@@ -117,6 +123,7 @@ static void
 aliases_request_free (AliasesRequest *request)
 {
   guint i;
+  TpHandleRepoIface *contact_handles;
 
   for (i = 0; i < request->contacts->len; i++)
     {
@@ -124,6 +131,10 @@ aliases_request_free (AliasesRequest *request)
         gabble_vcard_manager_cancel_request (request->conn->vcard_manager,
             request->vcard_requests[i]);
     }
+
+  contact_handles = tp_base_connection_get_handles (
+      (TpBaseConnection *) request->conn, TP_HANDLE_TYPE_CONTACT);
+  tp_handles_unref (contact_handles, request->contacts);
 
   g_array_free (request->contacts, TRUE);
   g_free (request->vcard_requests);

@@ -423,13 +423,7 @@ gabble_tubes_factory_handle_si_stream_request (GabbleTubesFactory *self,
       return;
     }
 
-  if (!gabble_tubes_channel_bytestream_offered (chan,
-        (GabbleBytestreamIface *) bytestream, msg))
-    {
-      gabble_bytestream_ibb_decline (bytestream, XMPP_ERROR_BAD_REQUEST,
-          "FIXME: GabbleTubesChannel didn't like that bytestream for some "
-          "reason");
-    }
+  gabble_tubes_channel_bytestream_offered (chan, bytestream, msg);
 }
 
 GabbleTubesFactory *

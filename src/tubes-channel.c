@@ -1172,9 +1172,9 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
  * via either gabble_muc_factory_handle_si_stream_request or
  * gabble_tubes_factory_handle_si_stream_request
  */
-gboolean
+void
 gabble_tubes_channel_bytestream_offered (GabbleTubesChannel *self,
-                                         GabbleBytestreamIface *bytestream,
+                                         GabbleBytestreamIBB *bytestream,
                                          LmMessage *msg)
 {
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
@@ -1187,14 +1187,12 @@ gabble_tubes_channel_bytestream_offered (GabbleTubesChannel *self,
   /* Caller is expected to have checked that we have a stream or muc-stream
    * node with a stream ID and the TUBES profile
    */
-  g_return_val_if_fail (lm_message_get_type (msg) == LM_MESSAGE_TYPE_IQ,
-      FALSE);
-  g_return_val_if_fail (lm_message_get_sub_type (msg) ==
-      LM_MESSAGE_SUB_TYPE_SET, FALSE);
+  g_return_if_fail (lm_message_get_type (msg) == LM_MESSAGE_TYPE_IQ);
+  g_return_if_fail (lm_message_get_sub_type (msg) == LM_MESSAGE_SUB_TYPE_SET);
 
   si_node = lm_message_node_get_child_with_namespace (msg->node, "si",
       NS_SI);
-  g_return_val_if_fail (si_node != NULL, FALSE);
+  g_return_if_fail (si_node != NULL);
 
   if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
     stream_node = lm_message_node_get_child_with_namespace (si_node,
@@ -1202,36 +1200,41 @@ gabble_tubes_channel_bytestream_offered (GabbleTubesChannel *self,
   else
     stream_node = lm_message_node_get_child_with_namespace (si_node,
         "muc-stream", NS_TUBES);
-  g_return_val_if_fail (stream_node != NULL, FALSE);
+  g_return_if_fail (stream_node != NULL);
 
   stream_id = lm_message_node_get_attribute (si_node, "id");
-  g_return_val_if_fail (stream_id != NULL, FALSE);
+  g_return_if_fail (stream_id != NULL);
 
   tmp = lm_message_node_get_attribute (stream_node, "tube");
   if (tmp == NULL)
     {
       DEBUG ("no tube attribute");
-      return FALSE;
+      gabble_bytestream_ibb_decline (bytestream, XMPP_ERROR_BAD_REQUEST,
+          "<stream> or <muc-stream> has no tube attribute");
+      return;
     }
   tube_id = strtol (tmp, &endptr, 10);
   if (!endptr || *endptr)
     {
       DEBUG ("tube id is not numeric: %s", tmp);
-      return FALSE;
+      gabble_bytestream_ibb_decline (bytestream, XMPP_ERROR_BAD_REQUEST,
+          "<stream> or <muc-stream> tube attribute not numeric");
+      return;
     }
 
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
   if (tube == NULL)
     {
       DEBUG ("tube %u doesn't exist", tube_id);
-      return FALSE;
+      gabble_bytestream_ibb_decline (bytestream, XMPP_ERROR_BAD_REQUEST,
+          "<stream> or <muc-stream> tube attribute points to a nonexistent "
+          "tube");
+      return;
     }
 
   DEBUG ("received new bytestream request for existing tube: %u", tube_id);
 
   gabble_tube_iface_add_bytestream (tube, bytestream);
-
-  return TRUE;
 }
 
 

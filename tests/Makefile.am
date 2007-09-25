@@ -87,6 +87,7 @@ check-valgrind:
 
 exec-with-log.sh: exec-with-log.sh.in
 	sed -e "s|[@]abs_top_builddir[@]|@abs_top_builddir@|g" $< > $@
+	chmod +x $@
 
 %.conf: %.conf.in
 	sed -e "s|[@]abs_top_builddir[@]|@abs_top_builddir@|g" $< > $@

@@ -316,7 +316,7 @@ def expect_stream_initiation_dbus(event, data):
     assert tube['initiator'] == 'test@localhost'
     assert tube['service'] == 'com.example.TestCase'
     assert tube['stream-id'] == data['dbus_stream_id']
-    data['my_bus_name'] = tube['dbus-name']
+    assert not tube.hasAttribute('dbus-name')
     assert tube['type'] == 'dbus'
     data['dbus_tube_id'] = long(tube['id'])
 
@@ -401,6 +401,8 @@ def expect_list_tubes_return_dbus(event, data):
 def expect_get_dbus_server_address_return(event, data):
     data['dbus_tube_conn'] = Connection(event.value[0])
     signal = SignalMessage('/', 'foo.bar', 'baz')
+    data['my_bus_name'] = ':123.whatever.you.like'
+    signal.set_sender(data['my_bus_name'])
     signal.append(42, signature='u')
     data['dbus_tube_conn'].send_message(signal)
     return True

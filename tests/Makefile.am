@@ -34,6 +34,7 @@ TWISTED_TESTS = \
 	test-avatar-async.py \
 	test-avatar-tokens.py \
 	test-capabilities.py \
+	test-caps-update.py \
 	test-connect.py \
 	test-connect-fail.py \
 	test-disco.py \
@@ -51,6 +52,7 @@ TWISTED_TESTS = \
 	test-text.py \
 	test-text-delayed.py \
 	test-vcard-cache.py \
+	test-vcard-race.py \
 	test-vcard-set-and-get.py
 
 _check-twisted:

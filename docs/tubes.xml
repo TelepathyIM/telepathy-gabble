@@ -473,7 +473,9 @@
       <li>If <i>utf8nick</i> has 186 octets or fewer, encode it using
         Base64; otherwise encode a string consisting of the first 169
         octets of <i>utf8nick</i>, followed by the 20 octets of the
-        SHA-1 of <i>utf8nick</i></li>
+        SHA-1 of <i>utf8nick</i> (note that this is the whole of the raw
+        binary SHA-1, and not the first half of the SHA-1 written in
+        hexadecimal).</li>
       <li>Remove all whitespace</li>
       <li>Replace "+" with "_", "/" with "-" and "=" with "A"</li>
     </ul>

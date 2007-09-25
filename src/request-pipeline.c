@@ -369,7 +369,6 @@ delayed_run_pipeline (gpointer user_data)
   return FALSE;
 }
 
-/* A reference to msg is stolen */
 GabbleRequestPipelineItem *
 gabble_request_pipeline_enqueue (GabbleRequestPipeline *pipeline,
                                  LmMessage *msg,

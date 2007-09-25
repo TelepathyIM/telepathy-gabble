@@ -348,6 +348,8 @@ gabble_connection_request_aliases (TpSvcConnectionInterfaceAliasing *iface,
               msg, 0, aliases_request_pep_cb, data);
           request->pep_requests[i] = pep_request;
           request->pending_pep_requests++;
+
+          lm_message_unref (msg);
         }
       else
         {

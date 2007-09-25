@@ -70,6 +70,7 @@
 ^src/telepathy-gabble$
 ^src/write-mgr-file$
 ^src/gabble-signals-marshal.list$
+^tests/gabble-testing\.log$
 ^tests/test-base64$
 ^tests/test-gabble-presence$
 ^tests/test-handles$

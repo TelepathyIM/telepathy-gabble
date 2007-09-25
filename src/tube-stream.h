@@ -58,13 +58,12 @@ GType gabble_tube_stream_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_TUBE_STREAM,\
                               GabbleTubeStreamClass))
 
-GabbleTubeStream *
-gabble_tube_stream_new (GabbleConnection *conn, TpHandle handle,
-    TpHandleType handle_type, TpHandle self_handle, TpHandle initiator,
-    const gchar *service, GHashTable *parameters, guint id);
+GabbleTubeStream * gabble_tube_stream_new (GabbleConnection *conn,
+    TpHandle handle, TpHandleType handle_type, TpHandle self_handle,
+    TpHandle initiator, const gchar *service, GHashTable *parameters,
+    guint id);
 
-gboolean
-gabble_tube_stream_check_params (GabbleSocketAddressType address_type,
+gboolean gabble_tube_stream_check_params (GabbleSocketAddressType address_type,
     const GValue *address, GabbleSocketAccessControl access_control,
     const GValue *access_control_param, GError **error);
 

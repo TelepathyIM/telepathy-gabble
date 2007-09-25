@@ -58,8 +58,7 @@ GType gabble_tube_dbus_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_TUBE_DBUS,\
                               GabbleTubeDBusClass))
 
-GabbleTubeDBus *
-gabble_tube_dbus_new (GabbleConnection *conn, TpHandle handle,
+GabbleTubeDBus * gabble_tube_dbus_new (GabbleConnection *conn, TpHandle handle,
     TpHandleType handle_type, TpHandle self_handle, TpHandle initiator,
     const gchar *service, GHashTable *parameters, const gchar *stream_id,
     guint id, GabbleBytestreamIface *bytestream);

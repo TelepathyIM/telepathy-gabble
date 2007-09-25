@@ -51,14 +51,11 @@ GType gabble_tube_iface_get_type (void);
   (G_TYPE_INSTANCE_GET_INTERFACE ((obj), GABBLE_TYPE_TUBE_IFACE,\
                               GabbleTubeIfaceClass))
 
-void
-gabble_tube_iface_accept (GabbleTubeIface *tube);
+void gabble_tube_iface_accept (GabbleTubeIface *tube);
 
-void
-gabble_tube_iface_close (GabbleTubeIface *tube);
+void gabble_tube_iface_close (GabbleTubeIface *tube);
 
-void
-gabble_tube_iface_add_bytestream (GabbleTubeIface *tube,
+void gabble_tube_iface_add_bytestream (GabbleTubeIface *tube,
     GabbleBytestreamIface *bytestream);
 
 G_END_DECLS

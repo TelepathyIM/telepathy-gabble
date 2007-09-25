@@ -69,22 +69,18 @@ GType gabble_bytestream_iface_get_type (void);
   (G_TYPE_INSTANCE_GET_INTERFACE ((obj), GABBLE_TYPE_BYTESTREAM_IFACE,\
                               GabbleBytestreamIfaceClass))
 
-gboolean
-gabble_bytestream_iface_initiate (GabbleBytestreamIface *bytestream);
+gboolean gabble_bytestream_iface_initiate (GabbleBytestreamIface *bytestream);
 
-gboolean
-gabble_bytestream_iface_send (GabbleBytestreamIface *bytestream, guint len,
-   const gchar *data);
+gboolean gabble_bytestream_iface_send (GabbleBytestreamIface *bytestream,
+    guint len, const gchar *data);
 
-void
-gabble_bytestream_iface_close (GabbleBytestreamIface *bytestream);
+void gabble_bytestream_iface_close (GabbleBytestreamIface *bytestream);
 
-void
-gabble_bytestream_iface_accept (GabbleBytestreamIface *bytestream,
+void gabble_bytestream_iface_accept (GabbleBytestreamIface *bytestream,
     LmMessage *msg);
 
-const gchar *
-gabble_bytestream_iface_get_protocol (GabbleBytestreamIface *bytestream);
+const gchar * gabble_bytestream_iface_get_protocol (
+    GabbleBytestreamIface *bytestream);
 
 G_END_DECLS
 

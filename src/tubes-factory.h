@@ -61,19 +61,15 @@ GType gabble_tubes_factory_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_TUBES_FACTORY,\
                               GabbleTubesFactoryClass))
 
-GabbleTubesFactory *
-gabble_tubes_factory_new (GabbleConnection *conn);
+GabbleTubesFactory * gabble_tubes_factory_new (GabbleConnection *conn);
 
-gboolean
-gabble_tubes_factory_handle_si_tube_request (GabbleTubesFactory *fac,
+gboolean gabble_tubes_factory_handle_si_tube_request (GabbleTubesFactory *fac,
     GabbleBytestreamIface *bytestream, TpHandle handle, const gchar *stream_id,
     LmMessage *msg);
 
-gboolean
-gabble_tubes_factory_handle_si_stream_request (GabbleTubesFactory *fac,
-    GabbleBytestreamIface *bytestream, TpHandle handle, const gchar *stream_id,
-    LmMessage *msg);
-
+gboolean gabble_tubes_factory_handle_si_stream_request (
+    GabbleTubesFactory *fac, GabbleBytestreamIface *bytestream,
+    TpHandle handle, const gchar *stream_id, LmMessage *msg);
 
 G_END_DECLS
 

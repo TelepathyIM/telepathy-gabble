@@ -64,16 +64,13 @@ GType gabble_tubes_channel_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_TUBES_CHANNEL,\
                               GabbleTubesChannelClass))
 
-void
-gabble_tubes_channel_presence_updated (GabbleTubesChannel *chan,
+void gabble_tubes_channel_presence_updated (GabbleTubesChannel *chan,
     TpHandle contact, LmMessage *presence);
 
-gboolean
-gabble_tubes_channel_tube_offered (GabbleTubesChannel *chan,
+gboolean gabble_tubes_channel_tube_offered (GabbleTubesChannel *chan,
     GabbleBytestreamIface *bytestream, LmMessage *msg);
 
-gboolean
-gabble_tubes_channel_bytestream_offered (GabbleTubesChannel *chan,
+gboolean gabble_tubes_channel_bytestream_offered (GabbleTubesChannel *chan,
     GabbleBytestreamIface *bytestream, LmMessage *msg);
 
 void gabble_tubes_channel_close (GabbleTubesChannel *self);

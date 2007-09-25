@@ -62,9 +62,8 @@ GType gabble_bytestream_muc_get_type (void);
 void gabble_bytestream_muc_receive (GabbleBytestreamMuc *bytestream,
    LmMessage *msg);
 
-gboolean
-gabble_bytestream_muc_send_to (GabbleBytestreamMuc *bytestream, TpHandle to,
-   guint len, gchar *str);
+gboolean gabble_bytestream_muc_send_to (GabbleBytestreamMuc *bytestream,
+    TpHandle to, guint len, gchar *str);
 
 G_END_DECLS
 

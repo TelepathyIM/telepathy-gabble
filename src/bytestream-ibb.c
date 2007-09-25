@@ -415,7 +415,7 @@ gabble_bytestream_ibb_send (GabbleBytestreamIface *iface,
           send_now = remaining;
         }
 
-      encoded = base64_encode (send_now, str + sent);
+      encoded = base64_encode (send_now, str + sent, FALSE);
       lm_message_node_set_value (data, encoded);
 
       seq = g_strdup_printf ("%u", priv->seq++);

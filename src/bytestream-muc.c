@@ -376,7 +376,7 @@ send_data_to (GabbleBytestreamMuc *self,
             frag = FRAG_LAST;
         }
 
-      encoded = base64_encode (send_now, str + sent);
+      encoded = base64_encode (send_now, str + sent, FALSE);
       lm_message_node_set_value (data, encoded);
 
       switch (frag)

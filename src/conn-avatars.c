@@ -764,7 +764,7 @@ gabble_connection_set_avatar (TpSvcConnectionInterfaceAvatars *iface,
   if (avatar)
     {
       ctx->avatar = g_string_new_len (avatar->data, avatar->len);
-      base64 = base64_encode (avatar->len, avatar->data);
+      base64 = base64_encode (avatar->len, avatar->data, TRUE);
       value = g_strdup_printf ("%s %s", mime_type, base64);
       g_free (base64);
     }

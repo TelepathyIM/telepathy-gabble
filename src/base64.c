@@ -86,7 +86,7 @@ static const guint decoding[256] =
 #define GET_BYTE_2(s) (((decoding[(guchar)(s)[2]] & 0x03) << 6) | \
                        ((decoding[(guchar)(s)[3]] & 0xFF) << 0))
 
-gchar *base64_encode (guint len, const gchar *str)
+gchar *base64_encode (guint len, const gchar *str, gboolean split_lines)
 {
   guint i;
   GString *tmp;
@@ -99,7 +99,7 @@ gchar *base64_encode (guint len, const gchar *str)
     {
       guint c1, c2, c3, c4;
 
-      if (i > 0 && (i * 4) % 76 == 0)
+      if (split_lines && i > 0 && (i * 4) % 76 == 0)
           g_string_append_c (tmp, '\n');
 
       switch (i + 3 - len)

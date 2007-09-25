@@ -47,7 +47,7 @@ main (void)
     {
       if (t->len == 0)
         t->len = strlen (t->str);
-      s = base64_encode (t->len, t->str);
+      s = base64_encode (t->len, t->str, TRUE);
       g_assert (0 == strcmp (s, t->encoded));
       g_free (s);
     }

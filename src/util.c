@@ -748,7 +748,7 @@ set_child_from_property (gpointer key,
 
       type = "bytes";
       arr = g_value_get_boxed (gvalue);
-      str = base64_encode (arr->len, arr->data);
+      str = base64_encode (arr->len, arr->data, FALSE);
       lm_message_node_set_value (child, str);
 
       g_free (str);

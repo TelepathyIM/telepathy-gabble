@@ -627,6 +627,14 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
         NS_TUBES) != NULL)
     {
       /* The SI request is an extra bytestream for a muc tube */
+
+      if (room_handle == 0)
+        {
+          gabble_bytestream_ibb_decline (bytestream, XMPP_ERROR_BAD_REQUEST,
+              "<muc-stream> is only valid in a MUC context");
+          goto out;
+        }
+
       request_handled = gabble_muc_factory_handle_si_stream_request (
           priv->conn->muc_factory, (GabbleBytestreamIface *) bytestream,
           room_handle, stream_id, msg);

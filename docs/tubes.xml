@@ -653,4 +653,26 @@
     </xs:schema>
   ]]></code>
 </section1>
+<section1 topic='Appendix: test data for D-Bus unique name algorithm'>
+  <p>The string "short" produces the unique name ":2.c2hvcnQA".</p>
+  <p>The string "FirstWitch", as used in the examples, produces the
+    unique name ":2.Rmlyc3RXaXRjaAAA".</p>
+  <p>The string "Second witch", as used in the examples, produces the
+    unique name ":2.U2Vjb25kIHdpdGNo".</p>
+
+  <p>The string consisting of 18 repetitions of "0123456789" followed by
+    "012345" (186 characters) produces a unique name consisting of ":2.",
+    followed by 6 repetitions of the 40-character string
+    "MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5", followed by "MDEyMzQ1".</p>
+
+  <p>The string consisting of 18 repetitions of "0123456789" followed by
+    "0123456" (187 characters) produces a unique name consisting of ":2.",
+    followed by 5 repetitions of the 40-character string above, followed by
+    "MDEyMzQ1Njc4OTAxMjM0NTY3OEVd9C5NgmmRD6jp1ftG6XUEc11x".</p>
+
+  <p>The string consisting of 20 repetitions of "0123456789" (200 characters)
+    produces a unique name consisting of ":2.", followed by 5 repetitions of
+    the 40-character string above, followed by
+    "MDEyMzQ1Njc4OTAxMjM0NTY3OO-utwRnwcoUFhnJVMKg5pm9Hxal".</p>
+</section1>
 </xep>

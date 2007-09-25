@@ -25,6 +25,7 @@
 
 #include <telepathy-glib/base-connection.h>
 #include "gabble-connection.h"
+#include "bytestream-ibb.h"
 #include "bytestream-iface.h"
 #include "tubes-channel.h"
 
@@ -63,13 +64,13 @@ GType gabble_tubes_factory_get_type (void);
 
 GabbleTubesFactory * gabble_tubes_factory_new (GabbleConnection *conn);
 
-gboolean gabble_tubes_factory_handle_si_tube_request (GabbleTubesFactory *fac,
-    GabbleBytestreamIface *bytestream, TpHandle handle, const gchar *stream_id,
+void gabble_tubes_factory_handle_si_tube_request (GabbleTubesFactory *fac,
+    GabbleBytestreamIBB *bytestream, TpHandle handle, const gchar *stream_id,
     LmMessage *msg);
 
-gboolean gabble_tubes_factory_handle_si_stream_request (
-    GabbleTubesFactory *fac, GabbleBytestreamIface *bytestream,
-    TpHandle handle, const gchar *stream_id, LmMessage *msg);
+void gabble_tubes_factory_handle_si_stream_request (GabbleTubesFactory *fac,
+    GabbleBytestreamIBB *bytestream, TpHandle handle, const gchar *stream_id,
+    LmMessage *msg);
 
 G_END_DECLS
 

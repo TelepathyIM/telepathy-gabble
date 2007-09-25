@@ -363,9 +363,9 @@ gabble_tubes_factory_iface_request (TpChannelFactoryIface *iface,
   return status;
 }
 
-gboolean
+void
 gabble_tubes_factory_handle_si_tube_request (GabbleTubesFactory *self,
-                                             GabbleBytestreamIface *bytestream,
+                                             GabbleBytestreamIBB *bytestream,
                                              TpHandle handle,
                                              const gchar *stream_id,
                                              LmMessage *msg)
@@ -376,8 +376,7 @@ gabble_tubes_factory_handle_si_tube_request (GabbleTubesFactory *self,
   GabbleTubesChannel *chan;
 
   DEBUG ("contact#%u stream %s", handle, stream_id);
-  g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
-      FALSE);
+  g_return_if_fail (tp_handle_is_valid (contact_repo, handle, NULL));
 
   chan = g_hash_table_lookup (priv->channels, GUINT_TO_POINTER (handle));
   if (chan == NULL)
@@ -387,16 +386,22 @@ gabble_tubes_factory_handle_si_tube_request (GabbleTubesFactory *self,
           (TpChannelIface *) chan, NULL);
 
       /* FIXME we should probably only emit the new channel signal only
-       * if this function returns TRUE and if not, close the channel.
+       * if the call below returns TRUE and if not, close the channel.
        */
     }
 
-  return gabble_tubes_channel_tube_offered (chan, bytestream, msg);
+  if (!gabble_tubes_channel_bytestream_offered (chan,
+        (GabbleBytestreamIface *) bytestream, msg))
+    {
+      gabble_bytestream_ibb_decline (bytestream, XMPP_ERROR_BAD_REQUEST,
+          "FIXME: GabbleTubesChannel didn't like that bytestream for some "
+          "reason");
+    }
 }
 
-gboolean
+void
 gabble_tubes_factory_handle_si_stream_request (GabbleTubesFactory *self,
-                                               GabbleBytestreamIface *bytestream,
+                                               GabbleBytestreamIBB *bytestream,
                                                TpHandle handle,
                                                const gchar *stream_id,
                                                LmMessage *msg)
@@ -407,17 +412,24 @@ gabble_tubes_factory_handle_si_stream_request (GabbleTubesFactory *self,
   GabbleTubesChannel *chan;
 
   DEBUG ("contact#%u stream %s", handle, stream_id);
-  g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
-      FALSE);
+  g_return_if_fail (tp_handle_is_valid (contact_repo, handle, NULL));
 
   chan = g_hash_table_lookup (priv->channels, GUINT_TO_POINTER (handle));
   if (chan == NULL)
     {
       DEBUG ("tubes channel with contact %d doesn't exist", handle);
-      return FALSE;
+      gabble_bytestream_ibb_decline (bytestream, XMPP_ERROR_BAD_REQUEST,
+          "No tubes channel available for this contact");
+      return;
     }
 
-  return gabble_tubes_channel_bytestream_offered (chan, bytestream, msg);
+  if (!gabble_tubes_channel_bytestream_offered (chan,
+        (GabbleBytestreamIface *) bytestream, msg))
+    {
+      gabble_bytestream_ibb_decline (bytestream, XMPP_ERROR_BAD_REQUEST,
+          "FIXME: GabbleTubesChannel didn't like that bytestream for some "
+          "reason");
+    }
 }
 
 GabbleTubesFactory *

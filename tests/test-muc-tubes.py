@@ -216,9 +216,8 @@ def expect_list_tubes_return1(event, data):
     value = option.addElement((None, 'value'))
     value.addContent(NS_IBB)
 
-    tube = si.addElement((NS_TUBES, 'tube'))
-    tube['id'] = str(data['stream_tube_id'])
-    tube['offering'] = 'false'
+    stream = si.addElement((NS_TUBES, 'muc-stream'))
+    stream['tube'] = str(data['stream_tube_id'])
 
     data['stream'].send(iq)
 

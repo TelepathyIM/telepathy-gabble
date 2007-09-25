@@ -142,7 +142,6 @@ def expect_stream_initiation_stream(event, data):
     assert tube['initiator'] == 'test@localhost'
     assert tube['service'] == 'echo'
     # FIXME: tube['id'] has rubbish in it
-    assert tube['offering'] == 'true'
     assert tube['type'] == 'stream'
     data['stream_tube_id'] = long(tube['id'])
 
@@ -231,9 +230,8 @@ def expect_list_tubes_return1(event, data):
     value = option.addElement((None, 'value'))
     value.addContent(NS_IBB)
 
-    tube = si.addElement((NS_TUBES, 'tube'))
-    tube['id'] = str(data['stream_tube_id'])
-    tube['offering'] = 'false'
+    stream = si.addElement((NS_TUBES, 'stream'))
+    stream['tube'] = str(data['stream_tube_id'])
 
     data['stream'].send(iq)
 
@@ -319,7 +317,6 @@ def expect_stream_initiation_dbus(event, data):
     assert tube['service'] == 'com.example.TestCase'
     assert tube['stream-id'] == data['dbus_stream_id']
     data['my_bus_name'] = tube['dbus-name']
-    assert tube['offering'] == 'true'
     assert tube['type'] == 'dbus'
     data['dbus_tube_id'] = long(tube['id'])
 

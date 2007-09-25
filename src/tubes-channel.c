@@ -521,7 +521,7 @@ extract_tube_information (GabbleTubesChannel *self,
     {
       const gchar *str;
       gchar *endptr;
-      long int tmp;
+      unsigned long tmp;
 
       str = lm_message_node_get_attribute (tube_node, "id");
       if (str == NULL)
@@ -530,13 +530,13 @@ extract_tube_information (GabbleTubesChannel *self,
           return FALSE;
         }
 
-      tmp = strtol (str, &endptr, 10);
-      if (!endptr || *endptr)
+      tmp = strtoul (str, &endptr, 10);
+      if (!endptr || *endptr || tmp > G_MAXUINT32)
         {
-          DEBUG ("tube id is not numeric: %s", str);
+          DEBUG ("tube id is not numeric or > 2**32: %s", str);
           return FALSE;
         }
-      *tube_id = (int) tmp;
+      *tube_id = (guint) tmp;
     }
 
   return TRUE;
@@ -1181,6 +1181,7 @@ gabble_tubes_channel_bytestream_offered (GabbleTubesChannel *self,
   gchar *endptr;
   LmMessageNode *si_node, *stream_node;
   guint tube_id;
+  unsigned long tube_id_tmp;
   GabbleTubeIface *tube;
 
   /* Caller is expected to have checked that we have a stream or muc-stream
@@ -1212,14 +1213,15 @@ gabble_tubes_channel_bytestream_offered (GabbleTubesChannel *self,
           "<stream> or <muc-stream> has no tube attribute");
       return;
     }
-  tube_id = strtol (tmp, &endptr, 10);
-  if (!endptr || *endptr)
+  tube_id_tmp = strtoul (tmp, &endptr, 10);
+  if (!endptr || *endptr || tube_id_tmp > G_MAXUINT32)
     {
-      DEBUG ("tube id is not numeric: %s", tmp);
+      DEBUG ("tube id is not numeric or > 2**32: %s", tmp);
       gabble_bytestream_ibb_decline (bytestream, XMPP_ERROR_BAD_REQUEST,
-          "<stream> or <muc-stream> tube attribute not numeric");
+          "<stream> or <muc-stream> tube attribute not numeric or > 2**32");
       return;
     }
+  tube_id = (guint) tube_id_tmp;
 
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
   if (tube == NULL)
@@ -1318,9 +1320,11 @@ start_stream_initiation (GabbleTubesChannel *self,
   return result;
 }
 
-static gint
+static guint
 generate_tube_id (void)
 {
+  /* We don't generate IDs in the top half of the range, to be nice to
+   * older Gabble versions. */
   return g_random_int_range (0, G_MAXINT);
 }
 
@@ -1377,7 +1381,8 @@ gabble_tubes_channel_offer_d_bus_tube (GabbleSvcChannelTypeTubes *iface,
         }
     }
 
-  gabble_svc_channel_type_tubes_return_from_offer_d_bus_tube (context, tube_id);
+  gabble_svc_channel_type_tubes_return_from_offer_d_bus_tube (context,
+      tube_id);
 
   g_free (stream_id);
 #else

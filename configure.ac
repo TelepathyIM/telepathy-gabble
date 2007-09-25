@@ -189,6 +189,7 @@ if test x$have_dbus_tube = xno; then
 fi
 
 AC_OUTPUT( Makefile \
+           docs/Makefile \
            extensions/Makefile \
            extensions/tools/Makefile \
            src/Makefile \

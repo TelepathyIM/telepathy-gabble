@@ -635,9 +635,9 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
           goto out;
         }
 
-      request_handled = gabble_muc_factory_handle_si_stream_request (
-          priv->conn->muc_factory, (GabbleBytestreamIface *) bytestream,
-          room_handle, stream_id, msg);
+      gabble_muc_factory_handle_si_stream_request (priv->conn->muc_factory,
+          bytestream, room_handle, stream_id, msg);
+      request_handled = TRUE;
     }
   else
     {

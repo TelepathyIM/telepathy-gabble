@@ -1183,9 +1183,9 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
     }
 }
 
-gboolean
+void
 gabble_muc_factory_handle_si_stream_request (GabbleMucFactory *self,
-                                             GabbleBytestreamIface *bytestream,
+                                             GabbleBytestreamIBB *bytestream,
                                              TpHandle room_handle,
                                              const gchar *stream_id,
                                              LmMessage *msg)
@@ -1195,18 +1195,25 @@ gabble_muc_factory_handle_si_stream_request (GabbleMucFactory *self,
      (TpBaseConnection*) priv->conn, TP_HANDLE_TYPE_ROOM);
   GabbleTubesChannel *chan;
 
-  g_return_val_if_fail (tp_handle_is_valid (room_repo, room_handle, NULL),
-      FALSE);
+  g_return_if_fail (tp_handle_is_valid (room_repo, room_handle, NULL));
 
   chan = g_hash_table_lookup (priv->tubes_channels,
       GUINT_TO_POINTER (room_handle));
   if (chan == NULL)
     {
       DEBUG ("tubes channel doesn't exist for muc %d", room_handle);
-      return FALSE;
+      gabble_bytestream_ibb_decline (bytestream, XMPP_ERROR_BAD_REQUEST,
+          "No tubes channel available for this MUC")
+      return;
     }
 
-  return gabble_tubes_channel_bytestream_offered (chan, bytestream, msg);
+  if (!gabble_tubes_channel_bytestream_offered (chan,
+        (GabbleBytestreamIface *) bytestream, msg))
+    {
+      gabble_bytestream_ibb_decline (bytestream, XMPP_ERROR_BAD_REQUEST,
+          "FIXME: GabbleTubesChannel didn't like that bytestream for some "
+          "reason");
+    }
 }
 
 GabbleMucChannel *

@@ -390,11 +390,11 @@ gabble_tubes_factory_handle_si_tube_request (GabbleTubesFactory *self,
        */
     }
 
-  if (!gabble_tubes_channel_bytestream_offered (chan,
+  if (!gabble_tubes_channel_tube_offered (chan,
         (GabbleBytestreamIface *) bytestream, msg))
     {
       gabble_bytestream_ibb_decline (bytestream, XMPP_ERROR_BAD_REQUEST,
-          "FIXME: GabbleTubesChannel didn't like that bytestream for some "
+          "FIXME: GabbleTubesChannel didn't like that tube for some "
           "reason");
     }
 }

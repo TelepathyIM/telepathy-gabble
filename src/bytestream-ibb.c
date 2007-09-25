@@ -510,6 +510,8 @@ gabble_bytestream_ibb_accept (GabbleBytestreamIface *iface, LmMessage *msg)
     }
 }
 
+/* FIXME: when we support some sort of non-IBB bytestream, this will have
+ * to become part of a GabbleSIBytestreamIface */
 void
 gabble_bytestream_ibb_decline (GabbleBytestreamIBB *self,
                                GabbleXmppError err_code,

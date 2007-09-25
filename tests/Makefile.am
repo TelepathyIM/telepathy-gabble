@@ -51,6 +51,7 @@ TWISTED_TESTS = \
 	test-set-status-idempotence.py \
 	test-text.py \
 	test-text-delayed.py \
+	test-text-no-body.py \
 	test-vcard-cache.py \
 	test-vcard-race.py \
 	test-vcard-set-and-get.py

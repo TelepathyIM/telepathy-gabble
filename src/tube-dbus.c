@@ -1118,6 +1118,26 @@ gabble_tube_dbus_add_name (GabbleTubeDBus *self,
       return FALSE;
     }
 
+  if (g_str_has_prefix (name, ":2."))
+    {
+      gchar *nick, *supposed_name;
+      const gchar *jid;
+
+      jid = tp_handle_inspect (contact_repo, handle);
+      gabble_decode_jid (jid, NULL, NULL, &nick);
+      supposed_name = _gabble_generate_dbus_unique_name (nick);
+      g_free (nick);
+
+      if (tp_strdiff (name, supposed_name))
+        {
+          DEBUG ("contact %s announces %s as D-Bus name but it should be %s",
+              jid, name, supposed_name);
+          g_free (supposed_name);
+          return FALSE;
+        }
+      g_free (supposed_name);
+    }
+
   name_copy = g_strdup (name);
   g_hash_table_insert (priv->dbus_names, GUINT_TO_POINTER (handle),
       name_copy);

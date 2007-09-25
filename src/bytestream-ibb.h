@@ -25,6 +25,8 @@
 
 #include <telepathy-glib/base-connection.h>
 
+#include "gabble-error.h"
+
 G_BEGIN_DECLS
 
 typedef struct _GabbleBytestreamIBB GabbleBytestreamIBB;
@@ -59,7 +61,8 @@ GType gabble_bytestream_ibb_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_BYTESTREAM_IBB,\
                               GabbleBytestreamIBBClass))
 
-void gabble_bytestream_ibb_decline (GabbleBytestreamIBB *self);
+void gabble_bytestream_ibb_decline (GabbleBytestreamIBB *self,
+    GabbleXmppError err_code, const gchar *err_msg);
 
 void gabble_bytestream_ibb_receive (GabbleBytestreamIBB *ibb,
    LmMessage *msg, gboolean is_iq);

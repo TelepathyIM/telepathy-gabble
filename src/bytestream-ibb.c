@@ -511,7 +511,9 @@ gabble_bytestream_ibb_accept (GabbleBytestreamIface *iface, LmMessage *msg)
 }
 
 void
-gabble_bytestream_ibb_decline (GabbleBytestreamIBB *self)
+gabble_bytestream_ibb_decline (GabbleBytestreamIBB *self,
+                               GabbleXmppError err_code,
+                               const gchar *err_msg)
 {
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
   LmMessage *msg;
@@ -523,8 +525,7 @@ gabble_bytestream_ibb_decline (GabbleBytestreamIBB *self)
       '@', "id", priv->stream_init_id,
       NULL);
 
-  gabble_xmpp_error_to_node (XMPP_ERROR_FORBIDDEN, msg->node,
-      "Offer Declined");
+  gabble_xmpp_error_to_node (err_code, msg->node, err_msg);
 
   _gabble_connection_send (priv->conn, msg, NULL);
 
@@ -551,7 +552,8 @@ gabble_bytestream_ibb_close (GabbleBytestreamIface *iface)
   if (priv->state == GABBLE_BYTESTREAM_STATE_LOCAL_PENDING)
     {
       /* Stream was created using SI so we decline the request */
-      gabble_bytestream_ibb_decline (self);
+      gabble_bytestream_ibb_decline (self, XMPP_ERROR_FORBIDDEN,
+          "Offer Declined");
     }
   else
     {

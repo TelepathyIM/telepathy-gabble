@@ -98,7 +98,7 @@ struct _GabbleTubeDBusPrivate
   gchar *service;
   GHashTable *parameters;
 
-  /* our unique D-Bus name on the virtual tube bus (NULL for 1-1 D-Bus tube)*/
+  /* our unique D-Bus name on the virtual tube bus (NULL for 1-1 D-Bus tubes)*/
   gchar *dbus_local_name;
   /* the address that we are listening for D-Bus connections on */
   gchar *dbus_srv_addr;
@@ -108,7 +108,7 @@ struct _GabbleTubeDBusPrivate
   DBusServer *dbus_srv;
   /* the connection to dbus_srv from a local client, or NULL */
   DBusConnection *dbus_conn;
-  /* mapping of contact handle -> D-Bus name */
+  /* mapping of contact handle -> D-Bus name (NULL for 1-1 D-Bus tubes) */
   GHashTable *dbus_names;
   /* mapping of D-Bus name -> contact handle */
   GHashTable *dbus_name_to_handle;
@@ -313,11 +313,6 @@ gabble_tube_dbus_init (GabbleTubeDBus *self)
   priv->dbus_srv_addr = NULL;
   priv->socket_path = NULL;
   priv->dispose_has_run = FALSE;
-
-  priv->dbus_names = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-      NULL, g_free);
-  priv->dbus_name_to_handle = g_hash_table_new_full (g_str_hash,
-      g_str_equal, NULL, NULL);
 }
 
 static void
@@ -633,6 +628,11 @@ gabble_tube_dbus_constructor (GType type,
 
       g_assert (priv->stream_id != NULL);
 
+      priv->dbus_names = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+          NULL, g_free);
+     priv->dbus_name_to_handle = g_hash_table_new_full (g_str_hash,
+         g_str_equal, NULL, NULL);
+
       gabble_decode_jid (tp_handle_inspect (contact_repo, priv->self_handle),
           NULL, NULL, &nick);
 
@@ -663,8 +663,10 @@ gabble_tube_dbus_constructor (GType type,
     }
   else
     {
-      /* The local D-Bus name is for muc tubes only */
+      /* The D-Bus names mapping is used in muc tubes only */
       priv->dbus_local_name = NULL;
+      priv->dbus_names = NULL;
+      priv->dbus_name_to_handle = NULL;
 
       /* For contact (IBB) tubes we need to be able to reassemble messages. */
       priv->reassembly_buffer = g_string_new ("");
@@ -741,7 +743,7 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
   param_spec = g_param_spec_string (
       "dbus-name",
       "D-Bus name",
-      "The local D-Bus name on the virtual bus.",
+      "The local D-Bus name on the virtual bus (used for muc tubes only).",
       "",
       G_PARAM_READABLE |
       G_PARAM_STATIC_NAME |
@@ -752,7 +754,7 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
   param_spec = g_param_spec_boxed (
       "dbus-names",
       "D-Bus names",
-      "Mapping of contact handles to D-Bus names.",
+      "Mapping of contact handles to D-Bus names (used for muc tubes only).",
       G_TYPE_HASH_TABLE,
       G_PARAM_READABLE |
       G_PARAM_STATIC_NAME |
@@ -1099,6 +1101,7 @@ gabble_tube_dbus_add_name (GabbleTubeDBus *self,
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   gchar *name_copy;
 
+  g_assert (priv->handle_type == TP_HANDLE_TYPE_ROOM);
   g_assert (g_hash_table_size (priv->dbus_names) ==
       g_hash_table_size (priv->dbus_name_to_handle));
 
@@ -1135,6 +1138,8 @@ gabble_tube_dbus_remove_name (GabbleTubeDBus *self,
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   const gchar *name;
 
+  g_assert (priv->handle_type == TP_HANDLE_TYPE_ROOM);
+
   name = g_hash_table_lookup (priv->dbus_names, GUINT_TO_POINTER (handle));
   if (name == NULL)
     return FALSE;
@@ -1154,6 +1159,8 @@ gabble_tube_dbus_handle_in_names (GabbleTubeDBus *self,
                                   TpHandle handle)
 {
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
+
+  g_assert (priv->handle_type == TP_HANDLE_TYPE_ROOM);
 
   return (g_hash_table_lookup (priv->dbus_names, GUINT_TO_POINTER (handle))
       != NULL);

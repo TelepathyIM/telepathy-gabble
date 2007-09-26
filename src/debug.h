@@ -63,11 +63,11 @@ G_STMT_START { \
 
 #ifdef DEBUG_FLAG
 
-#define DEBUG(format, ...) do { } while (0);
+#define DEBUG(format, ...) G_STMT_START { } G_STMT_END
 
 #define DEBUGGING 0
 
-#define NODE_DEBUG(n, s)
+#define NODE_DEBUG(n, s) G_STMT_START { } G_STMT_END
 
 #endif /* DEBUG_FLAG */
 

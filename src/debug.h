@@ -53,7 +53,7 @@ G_END_DECLS
 #define NODE_DEBUG(n, s) \
 G_STMT_START { \
   gchar *debug_tmp = lm_message_node_to_string (n); \
-  gabble_debug (DEBUG_FLAG, "%s: " s ":\n%s", G_STRFUNC, debug_tmp); \
+  gabble_debug (DEBUG_FLAG, "%s: %s:\n%s", G_STRFUNC, s, debug_tmp); \
   g_free (debug_tmp); \
 } G_STMT_END
 

@@ -1429,6 +1429,12 @@ upload_activity_properties_pep (GabbleConnection *conn,
   return ret;
 }
 
+typedef struct {
+    DBusGMethodInvocation *context;
+    gboolean visibility_changed;
+    ActivityInfo *info;
+} set_properties_ctx;
+
 static LmHandlerResult
 set_activity_properties_activities_reply_cb (GabbleConnection *conn,
                                              LmMessage *sent_msg,
@@ -1436,25 +1442,27 @@ set_activity_properties_activities_reply_cb (GabbleConnection *conn,
                                              GObject *object,
                                              gpointer user_data)
 {
-  DBusGMethodInvocation *context = user_data;
+  set_properties_ctx *context = user_data;
 
   /* if the SetProperties() call was skipped, both messages are NULL */
   g_assert ((sent_msg == NULL) == (reply_msg == NULL));
 
-  if (reply_msg != NULL && !check_publish_reply_msg (reply_msg, context))
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  if (reply_msg != NULL &&
+      !check_publish_reply_msg (reply_msg, context->context))
+    {
+      g_slice_free (set_properties_ctx, context);
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    }
 
-  /* FIXME: emit ActivityPropertiesChanged? */
+  gabble_svc_olpc_activity_properties_emit_activity_properties_changed (
+      conn, context->info->handle, context->info->properties);
 
-  gabble_svc_olpc_activity_properties_return_from_set_properties (context);
+  gabble_svc_olpc_activity_properties_return_from_set_properties (
+      context->context);
 
+  g_slice_free (set_properties_ctx, context);
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
-
-typedef struct {
-    DBusGMethodInvocation *context;
-    gboolean visibility_changed;
-} set_properties_ctx;
 
 static LmHandlerResult
 set_activity_properties_reply_cb (GabbleConnection *conn,
@@ -1468,30 +1476,32 @@ set_activity_properties_reply_cb (GabbleConnection *conn,
   /* if the SetProperties() call was skipped, both messages are NULL */
   g_assert ((sent_msg == NULL) == (reply_msg == NULL));
 
-  if (reply_msg == NULL ||
-      check_publish_reply_msg (reply_msg, context->context))
+  if (reply_msg != NULL &&
+      !check_publish_reply_msg (reply_msg, context->context))
     {
-      if (context->visibility_changed)
-        {
-          GError *err = NULL;
-
-          if (!upload_activities_pep (conn,
-                set_activity_properties_activities_reply_cb,
-                context->context, &err))
-            {
-              dbus_g_method_return_error (context->context, err);
-              g_error_free (err);
-            }
-        }
-      else
-        {
-          /* nothing to do, so just "succeed" */
-          set_activity_properties_activities_reply_cb (conn, NULL, NULL, NULL,
-              context->context);
-        }
+      g_slice_free (set_properties_ctx, context);
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 
-  g_slice_free (set_properties_ctx, context);
+  if (context->visibility_changed)
+    {
+      GError *err = NULL;
+
+      if (!upload_activities_pep (conn,
+            set_activity_properties_activities_reply_cb,
+            context, &err))
+        {
+          dbus_g_method_return_error (context->context, err);
+          g_error_free (err);
+        }
+    }
+  else
+    {
+      /* nothing to do, so just "succeed" */
+      set_activity_properties_activities_reply_cb (conn, NULL, NULL, NULL,
+          context);
+    }
+
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
@@ -1624,6 +1634,7 @@ olpc_activity_properties_set_properties (GabbleSvcOLPCActivityProperties *iface,
   ctx = g_slice_new (set_properties_ctx);
   ctx->context = context;
   ctx->visibility_changed = (was_visible != is_visible);
+  ctx->info = info;
 
   if (was_visible || is_visible)
     {

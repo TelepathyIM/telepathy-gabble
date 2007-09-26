@@ -35,6 +35,8 @@ ALL_LIBS = @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@ @TP_GLIB_LIBS@
 
 TESTS = $(noinst_PROGRAMS)
 TWISTED_TESTS = \
+	olpc-muc-invitation.py \
+	olpc-muc-prop-change.py \
 	test-alias.py \
 	test-alias-pep.py \
 	test-alias-empty-vcard.py \

@@ -44,9 +44,9 @@ TWISTED_TESTS = \
 	test-disco.py \
 	test-muc.py \
 	test-muc-alias.py \
-	test-muc-tubes.py \
 	test-muc-ownership.py \
 	test-muc-properties.py \
+	test-muc-tubes.py \
 	test-olpc-set-props-preload.py \
 	test-register.py \
 	test-roster.py \

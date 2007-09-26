@@ -51,6 +51,7 @@ TWISTED_TESTS = \
 	test-google-roster.py \
 	test-muc.py \
 	test-muc-alias.py \
+	test-muc-invitation.py \
 	test-muc-ownership.py \
 	test-muc-properties.py \
 	test-muc-tubes.py \

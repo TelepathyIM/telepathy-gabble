@@ -74,6 +74,8 @@ def expect_avatar_error2(event, data):
 # token, we should be able to request new avatar
 @match('dbus-signal', signal='AvatarUpdated')
 def expect_avatar_updated(event, data):
+    if event.args[1] == u'':
+        return False
     handle = data['self_handle']
     call_async(data['test'], avatars_iface(data['conn']),
                 'RequestAvatar', handle)

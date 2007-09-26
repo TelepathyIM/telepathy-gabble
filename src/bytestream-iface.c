@@ -44,12 +44,13 @@ gabble_bytestream_iface_send (GabbleBytestreamIface *self,
 }
 
 void
-gabble_bytestream_iface_close (GabbleBytestreamIface *self)
+gabble_bytestream_iface_close (GabbleBytestreamIface *self,
+                               GError *error)
 {
-  void (*virtual_method)(GabbleBytestreamIface *) =
+  void (*virtual_method)(GabbleBytestreamIface *, GError *) =
     GABBLE_BYTESTREAM_IFACE_GET_CLASS (self)->close;
   g_assert (virtual_method != NULL);
-  virtual_method (self);
+  virtual_method (self, error);
 }
 
 void

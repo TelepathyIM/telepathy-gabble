@@ -244,7 +244,7 @@ do_close (GabbleTubeDBus *self)
 
   if (priv->bytestream != NULL)
     {
-      gabble_bytestream_iface_close (priv->bytestream);
+      gabble_bytestream_iface_close (priv->bytestream, NULL);
     }
   else
     {
@@ -395,7 +395,7 @@ gabble_tube_dbus_dispose (GObject *object)
 
   if (priv->bytestream)
     {
-      gabble_bytestream_iface_close (priv->bytestream);
+      gabble_bytestream_iface_close (priv->bytestream, NULL);
     }
 
   if (priv->dbus_conn)
@@ -1088,7 +1088,7 @@ gabble_tube_dbus_add_bytestream (GabbleTubeIface *tube,
 {
   /* FIXME: should we support this, if we don't have a bytestream yet? */
   DEBUG ("D-Bus doesn't support extra bytestream");
-  gabble_bytestream_iface_close (bytestream);
+  gabble_bytestream_iface_close (bytestream, NULL);
 }
 
 gboolean

@@ -121,7 +121,7 @@ gabble_bytestream_ibb_dispose (GObject *object)
 
   if (priv->state != GABBLE_BYTESTREAM_STATE_CLOSED)
     {
-      gabble_bytestream_iface_close (GABBLE_BYTESTREAM_IFACE (self));
+      gabble_bytestream_iface_close (GABBLE_BYTESTREAM_IFACE (self), NULL);
     }
 
   G_OBJECT_CLASS (gabble_bytestream_ibb_parent_class)->dispose (object);
@@ -510,12 +510,9 @@ gabble_bytestream_ibb_accept (GabbleBytestreamIface *iface, LmMessage *msg)
     }
 }
 
-/* FIXME: when we support some sort of non-IBB bytestream, this will have
- * to become part of a GabbleSIBytestreamIface */
-void
+static void
 gabble_bytestream_ibb_decline (GabbleBytestreamIBB *self,
-                               GabbleXmppError err_code,
-                               const gchar *err_msg)
+                               GError *error)
 {
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
   LmMessage *msg;
@@ -527,7 +524,15 @@ gabble_bytestream_ibb_decline (GabbleBytestreamIBB *self,
       '@', "id", priv->stream_init_id,
       NULL);
 
-  gabble_xmpp_error_to_node (err_code, msg->node, err_msg);
+  if (error != NULL && error->domain == GABBLE_XMPP_ERROR)
+    {
+      gabble_xmpp_error_to_node (error->code, msg->node, error->message);
+    }
+  else
+    {
+      gabble_xmpp_error_to_node (XMPP_ERROR_FORBIDDEN, msg->node,
+          "Offer Declined");
+    }
 
   _gabble_connection_send (priv->conn, msg, NULL);
 
@@ -542,7 +547,8 @@ gabble_bytestream_ibb_decline (GabbleBytestreamIBB *self,
  * Implements gabble_bytestream_iface_close on GabbleBytestreamIface
  */
 static void
-gabble_bytestream_ibb_close (GabbleBytestreamIface *iface)
+gabble_bytestream_ibb_close (GabbleBytestreamIface *iface,
+                             GError *error)
 {
   GabbleBytestreamIBB *self = GABBLE_BYTESTREAM_IBB (iface);
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
@@ -554,8 +560,7 @@ gabble_bytestream_ibb_close (GabbleBytestreamIface *iface)
   if (priv->state == GABBLE_BYTESTREAM_STATE_LOCAL_PENDING)
     {
       /* Stream was created using SI so we decline the request */
-      gabble_bytestream_ibb_decline (self, XMPP_ERROR_FORBIDDEN,
-          "Offer Declined");
+      gabble_bytestream_ibb_decline (self, error);
     }
   else
     {

@@ -525,7 +525,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
   LmMessageNode *si;
   TpHandle peer_handle, room_handle;
-  GabbleBytestreamIBB *bytestream = NULL;
+  GabbleBytestreamIface *bytestream = NULL;
   GSList *l;
   const gchar *profile, *from, *stream_id, *stream_init_id, *mime_type;
   GSList *stream_methods = NULL;
@@ -573,7 +573,8 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
        * User has to accept it */
       if (!tp_strdiff (l->data, NS_IBB))
         {
-          bytestream = gabble_bytestream_factory_create_ibb (self, peer_handle,
+          bytestream = (GabbleBytestreamIface *)
+            gabble_bytestream_factory_create_ibb (self, peer_handle,
               stream_id, stream_init_id, peer_resource,
               GABBLE_BYTESTREAM_STATE_LOCAL_PENDING);
           break;
@@ -595,10 +596,10 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
   /* We inform the right factory we received a SI request */
   if (tp_strdiff (profile, NS_TUBES))
     {
+      GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_SI_BAD_PROFILE, "" };
       DEBUG ("SI profile unsupported: %s", profile);
 
-      gabble_bytestream_ibb_decline (bytestream, XMPP_ERROR_SI_BAD_PROFILE,
-          NULL);
+      gabble_bytestream_iface_close (bytestream, &e);
       goto out;
     }
 
@@ -627,8 +628,10 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
 
       if (room_handle == 0)
         {
-          gabble_bytestream_ibb_decline (bytestream, XMPP_ERROR_BAD_REQUEST,
-              "<muc-stream> is only valid in a MUC context");
+          GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+              "<muc-stream> is only valid in a MUC context" };
+
+          gabble_bytestream_iface_close (bytestream, &e);
         }
       else
         {
@@ -638,11 +641,13 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
     }
   else
     {
-      /* Invalid tube SI request */
-      DEBUG ("Invalid tube SI request");
-      gabble_bytestream_ibb_decline (bytestream, XMPP_ERROR_BAD_REQUEST,
+      GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
           "Invalid tube SI request: expected <tube>, <stream> or "
-          "<muc-stream>");
+          "<muc-stream>" };
+
+      /* Invalid tube SI request */
+      NODE_DEBUG (msg->node, e.message);
+      gabble_bytestream_iface_close (bytestream, &e);
     }
 
 out:

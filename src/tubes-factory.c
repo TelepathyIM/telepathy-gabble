@@ -365,7 +365,7 @@ gabble_tubes_factory_iface_request (TpChannelFactoryIface *iface,
 
 void
 gabble_tubes_factory_handle_si_tube_request (GabbleTubesFactory *self,
-                                             GabbleBytestreamIBB *bytestream,
+                                             GabbleBytestreamIface *bytestream,
                                              TpHandle handle,
                                              const gchar *stream_id,
                                              LmMessage *msg)
@@ -395,7 +395,7 @@ gabble_tubes_factory_handle_si_tube_request (GabbleTubesFactory *self,
 
 void
 gabble_tubes_factory_handle_si_stream_request (GabbleTubesFactory *self,
-                                               GabbleBytestreamIBB *bytestream,
+                                               GabbleBytestreamIface *bytestream,
                                                TpHandle handle,
                                                const gchar *stream_id,
                                                LmMessage *msg)
@@ -411,9 +411,11 @@ gabble_tubes_factory_handle_si_stream_request (GabbleTubesFactory *self,
   chan = g_hash_table_lookup (priv->channels, GUINT_TO_POINTER (handle));
   if (chan == NULL)
     {
+      GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+          "No tubes channel available for this contact" };
+
       DEBUG ("tubes channel with contact %d doesn't exist", handle);
-      gabble_bytestream_ibb_decline (bytestream, XMPP_ERROR_BAD_REQUEST,
-          "No tubes channel available for this contact");
+      gabble_bytestream_iface_close (bytestream, &e);
       return;
     }
 

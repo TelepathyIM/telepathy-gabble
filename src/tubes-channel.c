@@ -1079,7 +1079,7 @@ bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
  */
 void
 gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
-                                   GabbleBytestreamIBB *bytestream,
+                                   GabbleBytestreamIface *bytestream,
                                    LmMessage *msg)
 {
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
@@ -1107,18 +1107,22 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
   if (!extract_tube_information (self, tube_node, NULL, NULL,
               NULL, NULL, &tube_id))
     {
-      DEBUG ("can't extract tube information in SI request");
-      gabble_bytestream_ibb_decline (bytestream, XMPP_ERROR_BAD_REQUEST,
-          "<tube> has no id attribute");
+      GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+          "<tube> has no id attribute" };
+
+      NODE_DEBUG (tube_node, e.message);
+      gabble_bytestream_iface_close (bytestream, &e);
       return;
     }
 
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
   if (tube != NULL)
     {
-      DEBUG ("there is already a tube having this id: %u", tube_id);
-      gabble_bytestream_ibb_decline (bytestream, XMPP_ERROR_BAD_REQUEST,
-          "tube ID already in use");
+      GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+          "tube ID already in use" };
+
+      NODE_DEBUG (tube_node, e.message);
+      gabble_bytestream_iface_close (bytestream, &e);
       return;
     }
 
@@ -1126,20 +1130,23 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
   if (!extract_tube_information (self, tube_node, &type, NULL,
               &service, &parameters, NULL))
     {
-      DEBUG ("can't extract tube information in SI request");
-      gabble_bytestream_ibb_decline (bytestream, XMPP_ERROR_BAD_REQUEST,
-          "Can't extract <tube> information from SI request");
+      GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+          "can't extract <tube> information from SI request" };
+
+      NODE_DEBUG (tube_node, e.message);
+      gabble_bytestream_iface_close (bytestream, &e);
       return;
     }
 
 #ifndef HAVE_DBUS_TUBE
   if (type == GABBLE_TUBE_TYPE_DBUS)
     {
+      GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_FORBIDDEN,
+          "Unable to handle D-Bus tubes" };
+
       DEBUG ("Don't create the tube as D-Bus tube support"
           "is not built");
-
-      gabble_bytestream_ibb_decline (bytestream, XMPP_ERROR_FORBIDDEN,
-          "Unable to handle D-Bus tubes");
+      gabble_bytestream_iface_close (bytestream, &e);
       return;
     }
 #endif
@@ -1154,7 +1161,7 @@ gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
  */
 void
 gabble_tubes_channel_bytestream_offered (GabbleTubesChannel *self,
-                                         GabbleBytestreamIBB *bytestream,
+                                         GabbleBytestreamIface *bytestream,
                                          LmMessage *msg)
 {
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
@@ -1189,17 +1196,21 @@ gabble_tubes_channel_bytestream_offered (GabbleTubesChannel *self,
   tmp = lm_message_node_get_attribute (stream_node, "tube");
   if (tmp == NULL)
     {
-      DEBUG ("no tube attribute");
-      gabble_bytestream_ibb_decline (bytestream, XMPP_ERROR_BAD_REQUEST,
-          "<stream> or <muc-stream> has no tube attribute");
+      GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+          "<stream> or <muc-stream> has no tube attribute" };
+
+      NODE_DEBUG (stream_node, e.message);
+      gabble_bytestream_iface_close (bytestream, &e);
       return;
     }
   tube_id_tmp = strtoul (tmp, &endptr, 10);
   if (!endptr || *endptr || tube_id_tmp > G_MAXUINT32)
     {
+      GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+          "<stream> or <muc-stream> tube attribute not numeric or > 2**32" };
+
       DEBUG ("tube id is not numeric or > 2**32: %s", tmp);
-      gabble_bytestream_ibb_decline (bytestream, XMPP_ERROR_BAD_REQUEST,
-          "<stream> or <muc-stream> tube attribute not numeric or > 2**32");
+      gabble_bytestream_iface_close (bytestream, &e);
       return;
     }
   tube_id = (guint) tube_id_tmp;
@@ -1207,17 +1218,18 @@ gabble_tubes_channel_bytestream_offered (GabbleTubesChannel *self,
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
   if (tube == NULL)
     {
-      DEBUG ("tube %u doesn't exist", tube_id);
-      gabble_bytestream_ibb_decline (bytestream, XMPP_ERROR_BAD_REQUEST,
+      GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
           "<stream> or <muc-stream> tube attribute points to a nonexistent "
-          "tube");
+          "tube" };
+
+      DEBUG ("tube %u doesn't exist", tube_id);
+      gabble_bytestream_iface_close (bytestream, &e);
       return;
     }
 
   DEBUG ("received new bytestream request for existing tube: %u", tube_id);
 
-  gabble_tube_iface_add_bytestream (tube,
-      (GabbleBytestreamIface *) bytestream);
+  gabble_tube_iface_add_bytestream (tube, bytestream);
 }
 
 

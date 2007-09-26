@@ -186,7 +186,7 @@ data_to_read_on_socket_cb (GIOChannel *source,
     {
       DEBUG ("error reading from socket: EOF");
 
-      gabble_bytestream_iface_close (bytestream);
+      gabble_bytestream_iface_close (bytestream, NULL);
       result = FALSE;
     }
   else if (status == G_IO_STATUS_AGAIN)
@@ -199,7 +199,7 @@ data_to_read_on_socket_cb (GIOChannel *source,
     {
       DEBUG ("error reading from socket: %s", error ? error->message : "");
 
-      gabble_bytestream_iface_close (bytestream);
+      gabble_bytestream_iface_close (bytestream, NULL);
       result = FALSE;
     }
 
@@ -670,7 +670,7 @@ close_each_extra_bytestream (gpointer key,
 {
   GabbleBytestreamIface *bytestream = (GabbleBytestreamIface *) value;
 
-  gabble_bytestream_iface_close (bytestream);
+  gabble_bytestream_iface_close (bytestream, NULL);
 }
 
 static void
@@ -686,7 +686,7 @@ gabble_tube_stream_dispose (GObject *object)
 
   if (priv->default_bytestream)
     {
-      gabble_bytestream_iface_close (priv->default_bytestream);
+      gabble_bytestream_iface_close (priv->default_bytestream, NULL);
     }
 
   if (priv->fd_to_bytestreams != NULL)
@@ -1206,7 +1206,7 @@ gabble_tube_stream_close (GabbleTubeIface *tube)
 
   if (priv->default_bytestream != NULL)
     {
-      gabble_bytestream_iface_close (priv->default_bytestream);
+      gabble_bytestream_iface_close (priv->default_bytestream, NULL);
     }
   else
     {
@@ -1232,7 +1232,7 @@ gabble_tube_stream_add_bytestream (GabbleTubeIface *tube,
       DEBUG ("I'm not the initiator of this tube, can't accept "
           "an extra bytestream");
 
-      gabble_bytestream_iface_close (bytestream);
+      gabble_bytestream_iface_close (bytestream, NULL);
       return;
     }
 
@@ -1263,7 +1263,7 @@ gabble_tube_stream_add_bytestream (GabbleTubeIface *tube,
     }
   else
     {
-      gabble_bytestream_iface_close (bytestream);
+      gabble_bytestream_iface_close (bytestream, NULL);
     }
 }
 

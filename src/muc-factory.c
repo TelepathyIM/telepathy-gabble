@@ -1185,7 +1185,7 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
 
 void
 gabble_muc_factory_handle_si_stream_request (GabbleMucFactory *self,
-                                             GabbleBytestreamIBB *bytestream,
+                                             GabbleBytestreamIface *bytestream,
                                              TpHandle room_handle,
                                              const gchar *stream_id,
                                              LmMessage *msg)
@@ -1201,9 +1201,11 @@ gabble_muc_factory_handle_si_stream_request (GabbleMucFactory *self,
       GUINT_TO_POINTER (room_handle));
   if (chan == NULL)
     {
+      GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+          "No tubes channel available for this MUC" };
+
       DEBUG ("tubes channel doesn't exist for muc %d", room_handle);
-      gabble_bytestream_ibb_decline (bytestream, XMPP_ERROR_BAD_REQUEST,
-          "No tubes channel available for this MUC");
+      gabble_bytestream_iface_close (bytestream, &e);
       return;
     }
 

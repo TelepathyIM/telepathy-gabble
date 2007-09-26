@@ -122,7 +122,7 @@ gabble_bytestream_muc_dispose (GObject *object)
 
   if (priv->state != GABBLE_BYTESTREAM_STATE_CLOSED)
     {
-      gabble_bytestream_iface_close (GABBLE_BYTESTREAM_IFACE (self));
+      gabble_bytestream_iface_close (GABBLE_BYTESTREAM_IFACE (self), NULL);
     }
 
   G_OBJECT_CLASS (gabble_bytestream_muc_parent_class)->dispose (object);
@@ -579,7 +579,8 @@ gabble_bytestream_muc_accept (GabbleBytestreamIface *iface, LmMessage *msg)
  * Implements gabble_bytestream_iface_close on GabbleBytestreamIface
  */
 static void
-gabble_bytestream_muc_close (GabbleBytestreamIface *iface)
+gabble_bytestream_muc_close (GabbleBytestreamIface *iface,
+                             GError *error)
 {
   GabbleBytestreamMuc *self = GABBLE_BYTESTREAM_MUC (iface);
   GabbleBytestreamMucPrivate *priv = GABBLE_BYTESTREAM_MUC_GET_PRIVATE (self);

@@ -64,9 +64,6 @@ void gabble_muc_factory_handle_si_stream_request (GabbleMucFactory *self,
     GabbleBytestreamIface *bytestream, TpHandle room_handle,
     const gchar *stream_id, LmMessage *msg);
 
-GabbleMucChannel *gabble_muc_factory_find_channel (GabbleMucFactory *factory,
-    TpHandle handle);
-
 G_END_DECLS
 
 #endif /* #ifndef __MUC_FACTORY_H__ */

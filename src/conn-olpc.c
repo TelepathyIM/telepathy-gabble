@@ -1471,7 +1471,6 @@ set_activity_properties_reply_cb (GabbleConnection *conn,
   if (reply_msg == NULL ||
       check_publish_reply_msg (reply_msg, context->context))
     {
-      /* FIXME: set the activities list if needed */
       if (context->visibility_changed)
         {
           GError *err = NULL;

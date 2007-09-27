@@ -410,14 +410,26 @@
       SI streams as shown above, and Romeo's XMPP implementation will open
       multiple parallel connections to his web server. This MUST be
       supported by implementations.</p>
-    <example caption='Leaving a tube'>
+    <example caption='Leaving a tube (initiator)'>
       <![CDATA[
       <!-- Romeo stops offering the stream tube.
-      He SHOULD close the stream first, if possible - assume this has
-      already been done. -->
+      He SHOULD close all streams first. If not, Juliet SHOULD
+      close all streams when this message is received. -->
       <message to='juliet@capulet.lit/Balcony'
           from='romeo@montague.lit/Home'>
-        <close xmlns='http://telepathy.freedesktop.org/xmpp/protocol/tubes'>
+        <close xmlns='http://telepathy.freedesktop.org/xmpp/protocol/tubes'
+          tube='1402'/>
+      </message>
+      ]]>
+    </example>
+    <example caption='Leaving a tube (non-initiator)'>
+      <![CDATA[
+      <!-- Alternatively, Juliet could reject the stream tube.
+      She SHOULD close all streams first. If not, Romeo SHOULD close all
+      streams in response to this message. -->
+      <message from='juliet@capulet.lit/Balcony'
+          to='romeo@montague.lit/Home'>
+        <close xmlns='http://telepathy.freedesktop.org/xmpp/protocol/tubes'
           tube='1402'/>
       </message>
       ]]>

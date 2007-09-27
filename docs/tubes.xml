@@ -299,7 +299,7 @@
           <tube xmlns='http://telepathy.freedesktop.org/xmpp/protocol/tubes'>
               type='dbus' initiator='romeo@montague.lit'
               service='com.example.Chess'
-              id='chess-tube-1'>
+              id='333'>
             <parameters>
               <parameter name='theme'
                 type='str'>montagues-vs-capulets.conf</parameter>

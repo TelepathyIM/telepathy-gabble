@@ -918,7 +918,6 @@ publish_tube_in_node (GabbleTubesChannel *self,
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
     (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   TpHandle initiator_handle;
-  const gchar *initiator;
 
   g_object_get (G_OBJECT (tube),
       "service", &service,
@@ -933,27 +932,13 @@ publish_tube_in_node (GabbleTubesChannel *self,
     return;
 
   id_str = g_strdup_printf ("%u", tube_id);
-  initiator = tp_handle_inspect (contact_repo, initiator_handle);
 
   lm_message_node_set_attributes (node,
       "service", service,
       "id", id_str,
-      "initiator", initiator,
       NULL);
 
   g_free (id_str);
-
-  switch (type)
-    {
-      case TP_TUBE_TYPE_DBUS:
-        lm_message_node_set_attribute (node, "type", "dbus");
-        break;
-      case TP_TUBE_TYPE_STREAM:
-        lm_message_node_set_attribute (node, "type", "stream");
-        break;
-      default:
-        g_assert_not_reached ();
-    }
 
   if (type == TP_TUBE_TYPE_DBUS)
     {
@@ -965,7 +950,9 @@ publish_tube_in_node (GabbleTubesChannel *self,
           NULL);
 
       lm_message_node_set_attributes (node,
+          "type", "dbus",
           "stream-id", stream_id,
+          "initiator", tp_handle_inspect (contact_repo, initiator_handle),
           NULL);
 
       if (name != NULL)
@@ -973,6 +960,14 @@ publish_tube_in_node (GabbleTubesChannel *self,
 
       g_free (name);
       g_free (stream_id);
+    }
+  else if (type == TP_TUBE_TYPE_STREAM)
+    {
+      lm_message_node_set_attribute (node, "type", "stream");
+    }
+  else
+    {
+      g_assert_not_reached ();
     }
 
   parameters_node = lm_message_node_add_child (node, "parameters",

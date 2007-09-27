@@ -385,17 +385,17 @@ gabble_connection_connected_olpc (GabbleConnection *conn)
     }
 }
 
-#ifndef GLIB_HAS_HASH_TABLE_REMOVE_ALL
+#ifndef HAS_G_HASH_TABLE_REMOVE_ALL
 static gboolean
 _hash_table_remove_yes (gpointer key, gpointer value, gpointer user_data)
 {
-	return TRUE;
+  return TRUE;
 }
 
 static void
 g_hash_table_remove_all (GHashTable *table)
 {
-	g_hash_table_foreach_remove (table, _hash_table_remove_yes, NULL);
+  g_hash_table_foreach_remove (table, _hash_table_remove_yes, NULL);
 }
 #endif
 

@@ -593,7 +593,7 @@
         </xs:simpleContent>
       </xs:complexType>
 
-      <xs:complexType name='stream-connection'>
+      <xs:complexType name='tube-reference'>
         <xs:simpleContent>
           <xs:extension base='empty'>
             <xs:attribute name='tube' use='required' type='xs:unsignedInt'/>
@@ -601,10 +601,12 @@
         </xs:simpleContent>
       </xs:complexType>
 
-      <xs:element name='stream' type='stream-connection'/>
+      <xs:element name='close' type='tube-reference'/>
+
+      <xs:element name='stream' type='tube-reference'/>
 
       <!-- only valid in a MUC -->
-      <xs:element name='muc-stream' type='stream-connection'/>
+      <xs:element name='muc-stream' type='tube-reference'/>
 
       <xs:simpleType name='empty'>
         <xs:restriction base='xs:string'>

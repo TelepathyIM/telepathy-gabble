@@ -723,11 +723,13 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
                       if (initiator_handle == 0)
                         {
                           DEBUG ("D-Bus tube initiator missing");
+                          /* skip to the next child of <tubes> */
                           continue;
                         }
 #else
                       DEBUG ("Don't create the tube as D-Bus tube support"
                           "is not built");
+                      /* skip to the next child of <tubes> */
                       continue;
 #endif
                     }
@@ -765,6 +767,7 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
 #endif
 
       if (tube == NULL)
+        /* skip to the next child of <tubes> */
         continue;
 
       g_object_get (tube, "type", &type, NULL);
@@ -786,6 +789,7 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
                 {
                   DEBUG ("Contact %u isn't announcing their D-Bus name",
                          contact);
+                  /* skip to the next child of <tubes> */
                   continue;
                 }
 

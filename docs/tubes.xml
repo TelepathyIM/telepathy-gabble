@@ -212,34 +212,6 @@
 
     <example caption='Accepting (joining) a stream tube'>
       <![CDATA[
-      <!-- The first witch accepts the tube by copying it into her own
-      MUC presence. -->
-      <presence to='darkcave@conf.macbeth.lit'
-          from='darkcave@conf.macbeth.lit/Second witch'>
-        <x xmlns='http://jabber.org/protocol/muc'>
-        </x>
-        <tubes xmlns='http://telepathy.freedesktop.org/xmpp/protocol/tubes'>
-          <tube type='dbus' initiator='darkcave@conf.macbeth.lit/FirstWitch'
-            service='lit.macbeth.BubblingCauldron' stream-id='12345'
-            id='54321' dbus-name=':2.Rmlyc3RXaXRjaAAA'>
-            <parameters>
-              <parameter name='s' type='str'>hello</parameter>
-              <parameter name='ay' type='bytes'>aGVsbG8=</parameter>
-              <parameter name='u' type='uint'>123</parameter>
-              <parameter name='i' type='int'>-123</parameter>
-            </parameters>
-          </tube>
-          <tube type='stream' initiator='darkcave@conf.macbeth.lit/Second witch'
-            service='webdav' id='666'>
-            <parameters>
-              <parameter name='u' type='str'>witchery</parameter>
-              <parameter name='p' type='str'>password</parameter>
-              <parameter name='path' type='str'>/plots/macbeth</parameter>
-            </parameters>
-          </tube>
-        </tubes>
-      </presence>
-
       <!-- The first witch makes a connection to the second witch to
       open the stream. Data transfer proceeds as usual according to
       Stream Initiation - in this case, they'll use IBB.

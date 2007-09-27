@@ -352,51 +352,20 @@
         'path': '/poetry/for-juliet/'   # string
       }
       -->
-      <iq to='juliet@capulet.lit/Balcony'
-          from='romeo@montague.lit/Home' type='set'>
-        <si xmlns='http://jabber.org/protocol/si' id='http-stream-1'
-            profile='http://telepathy.freedesktop.org/xmpp/protocol/tubes'>
-          <tube xmlns='http://telepathy.freedesktop.org/xmpp/protocol/tubes'>
-              type='stream' initiator='romeo@montague.lit'
-              service='http'
-              id='http-tube-1'>
-            <parameters>
-              <parameter name='path' type='str'>/poetry/for-juliet/</parameter>
-            </parameters>
-          </tube>
-          <feature xmlns='http://jabber.org/protocol/feature-neg'>
-            <x xmlns="jabber:x:data" type="form">
-              <field var='stream-method' type='list-single'>
-                <option>
-                  <value>http://jabber.org/protocol/ibb</value>
-                </option>
-              </field>
-            </x>
-          </feature>
-        </si>
-      </presence>
+      <message to='juliet@capulet.lit/Balcony'
+          from='romeo@montague.lit/Home'>
+        <tube xmlns='http://telepathy.freedesktop.org/xmpp/protocol/tubes'>
+            type='stream' initiator='romeo@montague.lit'
+            service='http'
+            id='1402'>
+          <parameters>
+            <parameter name='path' type='str'>/poetry/for-juliet/</parameter>
+          </parameters>
+        </tube>
+      </message>
       ]]>
     </example>
     <example caption='Accepting (joining) a stream tube'>
-      <![CDATA[
-      <!-- Juliet accepts the tube by accepting the SI -->
-      <iq to='romeo@montague.lit/Home'
-          from='juliet@capulet.lit/Balcony' type='result'>
-          <si xmlns='http://jabber.org/protocol/si'>
-            <feature xmlns='http://jabber.org/protocol/feature-neg'>
-              <x xmlns='jabber:x:data' type='submit'>
-                <field var='stream=method'>
-                  <value>http://jabber.org/protocol/ibb</value>
-                </field>
-              </x>
-            </feature>
-        </si>
-      </iq>
-
-      <!-- No data travels over this SI stream. FIXME: this is weird. -->
-      ]]>
-    </example>
-    <example caption='Starting to transfer data over a stream tube'>
       <![CDATA[
       <!-- Juliet's web browser connects to Juliet's XMPP implementation,
       causing a stream to be opened -->
@@ -405,7 +374,7 @@
         <si xmlns='http://jabber.org/protocol/si' id='http-stream-1a'
             profile='http://telepathy.freedesktop.org/xmpp/protocol/tubes'>
           <stream xmlns='http://telepathy.freedesktop.org/xmpp/protocol/tubes'>
-              tube='http-tube-1'>
+              tube='1402'>
           <feature xmlns='http://jabber.org/protocol/feature-neg'>
             <x xmlns="jabber:x:data" type="form">
               <field var='stream-method' type='list-single'>
@@ -441,6 +410,18 @@
       SI streams as shown above, and Romeo's XMPP implementation will open
       multiple parallel connections to his web server. This MUST be
       supported by implementations.</p>
+    <example caption='Leaving a tube'>
+      <![CDATA[
+      <!-- Romeo stops offering the stream tube.
+      He SHOULD close the stream first, if possible - assume this has
+      already been done. -->
+      <message to='juliet@capulet.lit/Balcony'
+          from='romeo@montague.lit/Home'>
+        <close xmlns='http://telepathy.freedesktop.org/xmpp/protocol/tubes'>
+          tube='1402'/>
+      </message>
+      ]]>
+    </example>
   </section2>
 </section1>
 <section1 topic='Business Rules' anchor='rules'>

@@ -111,6 +111,11 @@ PKG_CHECK_MODULES(GLIB, [glib-2.0 >= 2.4, gobject-2.0 >= 2.4])
 AC_SUBST(GLIB_CFLAGS)
 AC_SUBST(GLIB_LIBS)
 
+AC_CHECK_LIB(glib-2.0, g_hash_table_remove_all,
+  [ AC_DEFINE(GLIB_HAS_HASH_TABLE_REMOVE_ALL, [],
+    [Whether g_hash_table_remove_all() function is provided by GLib]) ],
+  [])
+
 GLIB_GENMARSHAL=`$PKG_CONFIG --variable=glib_genmarshal glib-2.0`
 AC_SUBST(GLIB_GENMARSHAL)
 

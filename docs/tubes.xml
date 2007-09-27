@@ -315,7 +315,7 @@
             </x>
           </feature>
         </si>
-      </presence>
+      </iq>
       ]]>
     </example>
     <example caption='Accepting (joining) a D-Bus tube'>

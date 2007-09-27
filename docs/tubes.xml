@@ -552,15 +552,14 @@
               </xs:restriction>
             </xs:simpleType>
           </xs:attribute>
-          <xs:attribute name='initiator' type='xs:string' use='required'/>
           <xs:attribute name='service' type='xs:string' use='required'/>
 
           <!-- MUC D-Bus tube attributes -->
-          <!-- dbus-name is required for MUC D-Bus tubes, but is ignored
-            and SHOULD NOT be emitted otherwise -->
+          <!-- MUST be present for MUC D-Bus tubes, SHOULD NOT be
+          emitted for other types of tube, MUST be ignored for other types
+          of tube -->
+          <xs:attribute name='initiator' type='xs:string' use='optional'/>
           <xs:attribute name='dbus-name' type='xs:string' use='optional'/>
-          <!-- stream-id is required for MUC D-Bus tubes, but is ignored
-            and SHOULD NOT be emitted otherwise -->
           <xs:attribute name='stream-id' type='xs:string' use='optional'/>
 
           <!-- Parameters -->

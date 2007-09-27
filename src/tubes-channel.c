@@ -731,7 +731,12 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
                 }
               else if (type == TP_TUBE_TYPE_STREAM)
                 {
+                  if (initiator_handle != 0)
+                    /* ignore it */
+                    tp_handle_unref (contact_repo, initiator_handle);
+
                   initiator_handle = contact;
+                  tp_handle_ref (contact_repo, initiator_handle);
                 }
               else
                 {

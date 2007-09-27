@@ -315,7 +315,17 @@ gabble_text_mixin_parse_incoming_message (LmMessage *message,
 
   if (body != NULL)
     {
-      if (0 == strncmp (body, "/me ", 4))
+      if (type == NULL &&
+          lm_message_node_get_child_with_namespace (message->node,
+              "time", "google:timestamp") != NULL &&
+          lm_message_node_get_child_with_namespace (message->node,
+              "x", "jabber:x:delay") != NULL)
+        {
+          /* Google servers send offline messages without a type. Work around
+           * this. */
+          *msgtype = TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL;
+        }
+      else if (0 == strncmp (body, "/me ", 4))
         {
           *msgtype = TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION;
           *body_ret = body + 4;

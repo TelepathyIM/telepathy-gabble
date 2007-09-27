@@ -715,32 +715,35 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
           if (extract_tube_information (self, tube_node, &type,
                 &initiator_handle, &service, &parameters, &tube_id))
             {
-              if (type == TP_TUBE_TYPE_DBUS)
+              switch (type)
                 {
-#ifdef HAVE_DBUS_TUBE
-                  if (initiator_handle == 0)
+                  case TP_TUBE_TYPE_DBUS:
                     {
-                      DEBUG ("D-Bus tube initiator missing");
-                      continue;
-                    }
+#ifdef HAVE_DBUS_TUBE
+                      if (initiator_handle == 0)
+                        {
+                          DEBUG ("D-Bus tube initiator missing");
+                          continue;
+                        }
 #else
-                  DEBUG ("Don't create the tube as D-Bus tube support"
-                      "is not built");
-                  continue;
+                      DEBUG ("Don't create the tube as D-Bus tube support"
+                          "is not built");
+                      continue;
 #endif
-                }
-              else if (type == TP_TUBE_TYPE_STREAM)
-                {
-                  if (initiator_handle != 0)
-                    /* ignore it */
-                    tp_handle_unref (contact_repo, initiator_handle);
+                    }
+                  case TP_TUBE_TYPE_STREAM:
+                    {
+                      if (initiator_handle != 0)
+                        /* ignore it */
+                        tp_handle_unref (contact_repo, initiator_handle);
 
-                  initiator_handle = contact;
-                  tp_handle_ref (contact_repo, initiator_handle);
-                }
-              else
-                {
-                  g_assert_not_reached ();
+                      initiator_handle = contact;
+                      tp_handle_ref (contact_repo, initiator_handle);
+                    }
+                  default:
+                    {
+                      g_assert_not_reached ();
+                    }
                 }
 
               tube = create_new_tube (self, type, initiator_handle,
@@ -966,34 +969,37 @@ publish_tube_in_node (GabbleTubesChannel *self,
 
   g_free (id_str);
 
-  if (type == TP_TUBE_TYPE_DBUS)
+  switch (type)
     {
-      gchar *name, *stream_id;
+      case TP_TUBE_TYPE_DBUS:
+        {
+          gchar *name, *stream_id;
 
-      g_object_get (G_OBJECT (tube),
-          "stream-id", &stream_id,
-          "dbus-name", &name,
-          NULL);
+          g_object_get (G_OBJECT (tube),
+              "stream-id", &stream_id,
+              "dbus-name", &name,
+              NULL);
 
-      lm_message_node_set_attributes (node,
-          "type", "dbus",
-          "stream-id", stream_id,
-          "initiator", tp_handle_inspect (contact_repo, initiator_handle),
-          NULL);
+          lm_message_node_set_attributes (node,
+              "type", "dbus",
+              "stream-id", stream_id,
+              "initiator", tp_handle_inspect (contact_repo, initiator_handle),
+              NULL);
 
-      if (name != NULL)
-        lm_message_node_set_attribute (node, "dbus-name", name);
+          if (name != NULL)
+            lm_message_node_set_attribute (node, "dbus-name", name);
 
-      g_free (name);
-      g_free (stream_id);
-    }
-  else if (type == TP_TUBE_TYPE_STREAM)
-    {
-      lm_message_node_set_attribute (node, "type", "stream");
-    }
-  else
-    {
-      g_assert_not_reached ();
+          g_free (name);
+          g_free (stream_id);
+        }
+      case TP_TUBE_TYPE_STREAM:
+        {
+          lm_message_node_set_attribute (node, "type", "stream");
+        }
+      default:
+        {
+          g_assert_not_reached ();
+        }
     }
 
   parameters_node = lm_message_node_add_child (node, "parameters",

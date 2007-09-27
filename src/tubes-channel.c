@@ -928,6 +928,10 @@ publish_tube_in_node (GabbleTubesChannel *self,
       "initiator", &initiator_handle,
       NULL);
 
+  if (type == TP_TUBE_TYPE_STREAM && initiator_handle != priv->self_handle)
+    /* We only announce stream tubes we initiated */
+    return;
+
   id_str = g_strdup_printf ("%u", tube_id);
   initiator = tp_handle_inspect (contact_repo, initiator_handle);
 

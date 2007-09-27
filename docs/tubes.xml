@@ -187,6 +187,8 @@
         <x xmlns='http://jabber.org/protocol/muc'>
         </x>
         <tubes xmlns='http://telepathy.freedesktop.org/xmpp/protocol/tubes'>
+          <!-- This D-Bus tube is still here from the first example -
+            it's not part of the stream tube -->
           <tube type='dbus' initiator='darkcave@conf.macbeth.lit/FirstWitch'
             service='lit.macbeth.BubblingCauldron' stream-id='12345'
             id='54321' dbus-name=':2.U2Vjb25kIHdpdGNo'>
@@ -197,8 +199,11 @@
               <parameter name='i' type='int'>-123</parameter>
             </parameters>
           </tube>
-          <tube type='stream' initiator='darkcave@conf.macbeth.lit/Second witch'
-            service='webdav' id='666'>
+
+          <!-- This is the new stream tube. There is no initiator attribute
+          because the initiator is implicitly the participant whose presence
+          it's seen in -->
+          <tube type='stream' service='webdav' id='666'>
             <parameters>
               <parameter name='u' type='str'>anonymous</parameter>
               <parameter name='p' type='str'>password</parameter>
@@ -219,6 +224,10 @@
       The child element is <muc-stream> and not <stream> in order to
       disambiguate between SI-based streams in a MUC Tubes channel, and
       SI-based streams in a 1-1 channel between two members of a MUC.
+
+      The first witch MUST NOT copy the tube into her own presence
+      in this case - only the initiator should put stream tubes in their
+      presence, since stream tubes cannot continue after the initiator leaves.
       -->
       <iq from='darkcave@conf.macbeth.lit/FirstWitch'
           to='darkcave@conf.macbeth.lit/Second witch' type='set'>

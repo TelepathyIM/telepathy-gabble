@@ -725,6 +725,7 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
                           DEBUG ("D-Bus tube initiator missing");
                           continue;
                         }
+                      break;
 #else
                       DEBUG ("Don't create the tube as D-Bus tube support"
                           "is not built");
@@ -739,6 +740,7 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
 
                       initiator_handle = contact;
                       tp_handle_ref (contact_repo, initiator_handle);
+                      break;
                     }
                   default:
                     {
@@ -991,10 +993,12 @@ publish_tube_in_node (GabbleTubesChannel *self,
 
           g_free (name);
           g_free (stream_id);
+          break;
         }
       case TP_TUBE_TYPE_STREAM:
         {
           lm_message_node_set_attribute (node, "type", "stream");
+          break;
         }
       default:
         {

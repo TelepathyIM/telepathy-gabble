@@ -494,13 +494,21 @@ extract_tube_information (GabbleTubesChannel *self,
       const gchar *initiator;
 
       initiator = lm_message_node_get_attribute (tube_node, "initiator");
-      *initiator_handle = tp_handle_ensure (contact_repo, initiator,
-          GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
 
-      if (*initiator_handle == 0)
+      if (initiator != NULL)
         {
-          DEBUG ("invalid initiator JID %s", initiator);
-          return FALSE;
+          *initiator_handle = tp_handle_ensure (contact_repo, initiator,
+              GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
+
+          if (*initiator_handle == 0)
+            {
+              DEBUG ("invalid initiator JID %s", initiator);
+              return FALSE;
+            }
+        }
+      else
+        {
+          *initiator_handle = 0;
         }
     }
 
@@ -707,15 +715,28 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
           if (extract_tube_information (self, tube_node, &type,
                 &initiator_handle, &service, &parameters, &tube_id))
             {
-
-#ifndef HAVE_DBUS_TUBE
-              if (type == GABBLE_TUBE_TYPE_DBUS)
+              if (type == TP_TUBE_TYPE_DBUS)
                 {
+#ifdef HAVE_DBUS_TUBE
+                  if (initiator_handle == 0)
+                    {
+                      DEBUG ("D-Bus tube initiator missing");
+                      continue;
+                    }
+#else
                   DEBUG ("Don't create the tube as D-Bus tube support"
                       "is not built");
                   continue;
-                }
 #endif
+                }
+              else if (type == TP_TUBE_TYPE_STREAM)
+                {
+                  initiator_handle = contact;
+                }
+              else
+                {
+                  g_assert_not_reached ();
+                }
 
               tube = create_new_tube (self, type, initiator_handle,
                   service, parameters, stream_id, tube_id, NULL);

@@ -1392,6 +1392,73 @@ send_new_stream_tube_msg (GabbleTubesChannel *self,
   return result;
 }
 
+static void
+tube_msg_offered (GabbleTubesChannel *self,
+                  LmMessage *msg)
+{
+  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  const gchar *service;
+  GHashTable *parameters;
+  TpTubeType type;
+  LmMessageNode *tube_node;
+  guint tube_id;
+  GabbleTubeIface *tube;
+
+  g_return_if_fail (lm_message_get_type (msg) == LM_MESSAGE_TYPE_MESSAGE);
+  tube_node = lm_message_node_get_child_with_namespace (msg->node, "tube",
+      NS_TUBES);
+  g_return_if_fail (tube_node != NULL);
+
+  if (!extract_tube_information (self, tube_node, NULL, NULL,
+              NULL, NULL, &tube_id))
+    {
+      DEBUG ("<tube> has no id attribute");
+      /* FIXME: Send the close <message> ? */
+      return;
+    }
+
+  tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
+  if (tube != NULL)
+    {
+      DEBUG ("tube ID already in use");
+      /* FIXME: Send the close <message> ? */
+      return;
+    }
+
+  /* New tube */
+  if (!extract_tube_information (self, tube_node, &type, NULL,
+              &service, &parameters, NULL))
+    {
+      DEBUG ("can't extract <tube> information from message");
+      /* FIXME: Send the close <message> ? */
+      return;
+    }
+
+  if (type != TP_TUBE_TYPE_STREAM)
+    {
+      DEBUG ("Only stream tubes are allowed to be created using messages");
+      /* FIXME: Send the close <message> ? */
+      return;
+    }
+
+  tube = create_new_tube (self, type, priv->handle, service,
+      parameters, NULL, tube_id, NULL);
+}
+
+void
+gabble_tubes_channel_tube_msg (GabbleTubesChannel *self,
+                               LmMessage *msg)
+{
+  LmMessageNode *node;
+
+  node = lm_message_node_get_child_with_namespace (msg->node, "tube",
+      NS_TUBES);
+  if (node != NULL)
+    {
+      tube_msg_offered (self, msg);
+      return;
+    }
+}
 
 static guint
 generate_tube_id (void)

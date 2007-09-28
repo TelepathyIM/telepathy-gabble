@@ -73,6 +73,8 @@ void gabble_tubes_channel_tube_si_offered (GabbleTubesChannel *chan,
 void gabble_tubes_channel_bytestream_offered (GabbleTubesChannel *chan,
     GabbleBytestreamIface *bytestream, LmMessage *msg);
 
+void gabble_tubes_channel_tube_msg (GabbleTubesChannel *chan, LmMessage *msg);
+
 void gabble_tubes_channel_close (GabbleTubesChannel *self);
 
 G_END_DECLS

@@ -499,6 +499,8 @@ tubes_factory_msg_tube_cb (LmMessageHandler *handler,
           (TpChannelIface *) chan, NULL);
     }
 
+  gabble_tubes_channel_tube_msg (chan, msg);
+
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 

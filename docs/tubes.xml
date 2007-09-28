@@ -497,20 +497,27 @@
       <li>"str": A Unicode string containing no zero bytes '\0'. In this
           implementation it cannot contain any other character forbidden
           by XML either. The &lt;parameter&gt; character content is the
-          string itself. The corresponding D-Bus signature is 's'.</li>
+          string itself. The corresponding D-Bus signature is 's'.
+          This corresponds to xs:string in XML Schema Part 2.</li>
       <li>"bytes": An array of bytes, represented in Base64. The corresponding
-          D-Bus signature is 'ay'.</li>
+          D-Bus signature is 'ay'. This corresponds to xs:base64Binary in
+          XML Schema Part 2.</li>
       <li>"uint": An unsigned integer representable in 32 bits. The
-          corresponding D-Bus signature is 'u' or 'q' on input, 'u' on output,
-          and the element's character content is an ASCII unsigned
-          decimal integer.</li>
+          corresponding D-Bus signature is 'u' or 'q' on input, 'u' on output.
+          The element's character content is an ASCII unsigned
+          decimal integer. This corresponds to xs:unsignedInt in XML
+          Schema Part 2.</li>
       <li>"int": A signed integer representable in 32 bits using two's
           complement. The corresponding D-Bus signature is 'i' or 'h' on input,
           'i' on output, and the element's character content is an ASCII
-          decimal integer, possibly starting with '-'.</li>
-      <li>"bool": A boolean value represented as one of the strings "0" or "1",
-          representing False and True respectively.
-          The corresponding D-Bus signature is 'b'.</li>
+          decimal integer, possibly starting with '-' or '+'. This corresponds
+          to xs:int in XML Schema Part 2.</li>
+        <li>"bool": A boolean value represented as one of the strings "false",
+          "true", "0" or "1", as per xs:boolean in XML Schema Part 2.
+          The corresponding D-Bus signature is 'b'. (Implementation note:
+          early versions of Tubes in Gabble only accepted "0" or "1", so
+          implementations that care about backwards compatibility SHOULD emit
+          those representations).</li>
     </ul>
   </section2>
   <section2 topic='TODO'>

@@ -1114,6 +1114,31 @@ static void
 gabble_tube_stream_close (GabbleTubeIface *tube)
 {
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (tube);
+  GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
+
+  if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
+    {
+      LmMessage *msg;
+      const gchar *jid;
+      TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+          (TpBaseConnection*) priv->conn, TP_HANDLE_TYPE_CONTACT);
+      gchar *id_str;
+
+      jid = tp_handle_inspect (contact_repo, priv->handle);
+      id_str = g_strdup_printf ("%u", priv->id);
+
+      /* Send the close message */
+      msg = lm_message_build (jid, LM_MESSAGE_TYPE_MESSAGE,
+          '(', "close", "",
+            '@', "xmlns", NS_TUBES,
+            '@', "tube", id_str,
+          ')', NULL);
+      g_free (id_str);
+
+      _gabble_connection_send (priv->conn, msg, NULL);
+
+      lm_message_unref (msg);
+    }
 
   g_signal_emit (G_OBJECT (self), signals[CLOSED], 0);
 }

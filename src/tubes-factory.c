@@ -465,15 +465,17 @@ tubes_factory_msg_tube_cb (LmMessageHandler *handler,
   GabbleTubesFactoryPrivate *priv = GABBLE_TUBES_FACTORY_GET_PRIVATE (self);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-  LmMessageNode *tube_node;
+  LmMessageNode *tube_node, *close_node;
   GabbleTubesChannel *chan;
   const gchar *from;
   TpHandle handle;
 
   tube_node = lm_message_node_get_child_with_namespace (msg->node, "tube",
       NS_TUBES);
+  close_node = lm_message_node_get_child_with_namespace (msg->node, "close",
+      NS_TUBES);
 
-  if (tube_node == NULL)
+  if (tube_node == NULL && close_node == NULL)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
   from = lm_message_node_get_attribute (msg->node, "from");
@@ -492,11 +494,23 @@ tubes_factory_msg_tube_cb (LmMessageHandler *handler,
 
   /* Tube offer */
   chan = g_hash_table_lookup (priv->channels, GUINT_TO_POINTER (handle));
+
   if (chan == NULL)
     {
-      chan = new_tubes_channel (self, handle);
-      tp_channel_factory_iface_emit_new_channel (self,
-          (TpChannelIface *) chan, NULL);
+      if (tube_node != NULL)
+        {
+          /* We create the tubes channel only if the message is a new tube
+           * offer */
+          chan = new_tubes_channel (self, handle);
+          tp_channel_factory_iface_emit_new_channel (self,
+              (TpChannelIface *) chan, NULL);
+        }
+      else
+        {
+          DEBUG ("Ignore tube close message as there is no tubes channel"
+             " to handle it");
+          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+        }
     }
 
   gabble_tubes_channel_tube_msg (chan, msg);

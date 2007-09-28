@@ -1460,6 +1460,55 @@ tube_msg_offered (GabbleTubesChannel *self,
 }
 
 void
+tube_msg_close (GabbleTubesChannel *self,
+                LmMessage *msg)
+{
+  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  LmMessageNode *close_node;
+  guint tube_id;
+  const gchar *tmp;
+  gchar *endptr;
+  GabbleTubeIface *tube;
+  TpTubeType type;
+
+  close_node = lm_message_node_get_child_with_namespace (msg->node, "close",
+      NS_TUBES);
+  g_assert (close != NULL);
+
+  tmp = lm_message_node_get_attribute (close_node, "tube");
+  if (tmp == NULL)
+    {
+      DEBUG ("no tube id in close message");
+      return;
+    }
+
+  tube_id = (guint) strtoul (tmp, &endptr, 10);
+  if (!endptr || *endptr || tube_id > G_MAXUINT32)
+    {
+      DEBUG ("tube id is not numeric or > 2**32: %s", tmp);
+      return;
+    }
+
+  tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
+  if (tube == NULL)
+    {
+      DEBUG ("<close> tube attribute points to a nonexistent tube");
+      return;
+    }
+
+  g_object_get (tube, "type", &type, NULL);
+  if (type != TP_TUBE_TYPE_STREAM)
+    {
+      DEBUG ("Only stream tubes can be closed using a close message");
+      return;
+    }
+
+  DEBUG ("tube %u was closed by remote peer", tube_id);
+  /* FIXME: we shouldn't re-send the close message */
+  gabble_tube_iface_close (tube);
+}
+
+void
 gabble_tubes_channel_tube_msg (GabbleTubesChannel *self,
                                LmMessage *msg)
 {
@@ -1470,6 +1519,14 @@ gabble_tubes_channel_tube_msg (GabbleTubesChannel *self,
   if (node != NULL)
     {
       tube_msg_offered (self, msg);
+      return;
+    }
+
+  node = lm_message_node_get_child_with_namespace (msg->node, "close",
+      NS_TUBES);
+  if (node != NULL)
+    {
+      tube_msg_close (self, msg);
       return;
     }
 }

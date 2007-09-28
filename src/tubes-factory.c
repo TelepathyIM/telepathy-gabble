@@ -52,6 +52,9 @@ static GabbleTubesChannel *new_tubes_channel (GabbleTubesFactory *fac,
 static void tubes_channel_closed_cb (GabbleTubesChannel *chan,
     gpointer user_data);
 
+static LmHandlerResult tubes_factory_msg_tube_cb (LmMessageHandler *handler,
+    LmConnection *lmconn, LmMessage *msg, gpointer user_data);
+
 static void gabble_tubes_factory_iface_init (gpointer g_iface,
     gpointer iface_data);
 
@@ -80,10 +83,6 @@ struct _GabbleTubesFactoryPrivate
 
 #define GABBLE_TUBES_FACTORY_GET_PRIVATE(obj) \
     ((GabbleTubesFactoryPrivate *) obj->priv)
-
-static LmHandlerResult
-tubes_factory_msg_tube_cb (LmMessageHandler *handler,
-    LmConnection *lmconn, LmMessage *msg, gpointer user_data);
 
 static void
 gabble_tubes_factory_init (GabbleTubesFactory *self)

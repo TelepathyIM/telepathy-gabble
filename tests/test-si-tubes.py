@@ -116,30 +116,18 @@ def expect_request_channel_return(event, data):
 
     return True
 
-@match('stream-iq', iq_type='set', to='bob@localhost/Bob')
-def expect_stream_initiation_stream(event, data):
+@match('stream-message')
+def expect_stream_tubes_offer_stream(event, data):
 
-    iq = event.stanza
-    si_nodes = xpath.queryForNodes('/iq/si', iq)
-    if si_nodes is None:
+    message = event.stanza
+    tube_nodes = xpath.queryForNodes('/message/tube[@xmlns="%s"]' % NS_TUBES,
+        message)
+    if tube_nodes is None:
         return False
 
-    assert len(si_nodes) == 1
-    si = si_nodes[0]
-    assert si['profile'] == NS_TUBES
-    data['stream_stream_id'] = si['id']
+    assert len(tube_nodes) == 1
+    tube = tube_nodes[0]
 
-    feature = xpath.queryForNodes('/si/feature', si)[0]
-    x = xpath.queryForNodes('/feature/x', feature)[0]
-    assert x['type'] == 'form'
-    field = xpath.queryForNodes('/x/field', x)[0]
-    assert field['var'] == 'stream-method'
-    assert field['type'] == 'list-single'
-    value = xpath.queryForNodes('/field/option/value', field)[0]
-    assert str(value) == NS_IBB
-
-    tube = xpath.queryForNodes('/si/tube', si)[0]
-    assert tube['initiator'] == 'test@localhost'
     assert tube['service'] == 'echo'
     # FIXME: tube['id'] has rubbish in it
     assert tube['type'] == 'stream'
@@ -155,63 +143,6 @@ def expect_stream_initiation_stream(event, data):
                       'i': ('int', '-123'),
                       'u': ('uint', '123'),
                      }
-
-    result = IQ(data['stream'], 'result')
-    result['id'] = iq['id']
-    result['from'] = iq['to']
-    result['to'] = 'test@localhost/Resource'
-    res_si = result.addElement((NS_SI, 'si'))
-    res_feature = res_si.addElement((NS_FEATURE_NEG, 'feature'))
-    res_x = res_feature.addElement((NS_X_DATA, 'x'))
-    res_x['type'] = 'submit'
-    res_field = res_x.addElement((None, 'field'))
-    res_field['var'] = 'stream-method'
-    res_value = res_field.addElement((None, 'value'))
-    res_value.addContent(NS_IBB)
-
-    data['stream'].send(result)
-
-    return True
-
-@match('stream-iq', iq_type='set', to='bob@localhost/Bob')
-def expect_ibb_open_stream(event, data):
-    iq = event.stanza
-    open = xpath.queryForNodes('/iq/open', iq)[0]
-    assert open.uri == NS_IBB
-    assert open['sid'] == data['stream_stream_id']
-
-    result = IQ(data['stream'], 'result')
-    result['id'] = iq['id']
-    result['from'] = iq['to']
-    result['to'] = 'test@localhost/Resource'
-
-    data['stream'].send(result)
-
-    return True
-
-@match('dbus-signal', signal='TubeStateChanged')
-def expect_tube_open_stream(event, data):
-    assert event.args[0] == data['stream_tube_id']
-    assert event.args[1] == 2       # OPEN
-
-    call_async(data['test'], data['tubes_iface'], 'ListTubes',
-        byte_arrays=True)
-
-    return True
-
-@match('dbus-return', method='ListTubes')
-def expect_list_tubes_return1(event, data):
-    assert event.value[0] == [(
-        data['stream_tube_id'],
-        data['self_handle'],
-        1,      # Unix stream
-        'echo',
-        sample_parameters,
-        2,      # OPEN
-        )]
-
-    # FIXME: if we use an unknown JID here, everything fails
-    # (the code uses lookup where it should use ensure)
 
     # The CM is the server, so fake a client wanting to talk to it
     iq = IQ(data['stream'], 'set')
@@ -241,6 +172,16 @@ def expect_list_tubes_return1(event, data):
 def expect_stream_initiation_ok_stream(event, data):
     return True
 
+@match('dbus-signal', signal='TubeStateChanged')
+def expect_tube_open_stream(event, data):
+    assert event.args[0] == data['stream_tube_id']
+    assert event.args[1] == 2       # OPEN
+
+    call_async(data['test'], data['tubes_iface'], 'ListTubes',
+        byte_arrays=True)
+
+    return True
+
 @match('dbus-signal', signal='StreamTubeNewConnection')
 def expect_new_connection_stream(event, data):
     assert event.args[0] == data['stream_tube_id']
@@ -254,6 +195,19 @@ def expect_new_connection_stream(event, data):
     open['sid'] = 'alpha'
     open['block-size'] = '4096'
     data['stream'].send(iq)
+    return True
+
+@match('dbus-return', method='ListTubes')
+def expect_list_tubes_return1(event, data):
+    assert event.value[0] == [(
+        data['stream_tube_id'],
+        data['self_handle'],
+        1,      # Unix stream
+        'echo',
+        sample_parameters,
+        2,      # OPEN
+        )]
+
     return True
 
 @match('stream-iq', iq_type='result')

@@ -394,10 +394,12 @@ _hash_table_remove_yes (gpointer key, gpointer value, gpointer user_data)
 }
 
 static void
-g_hash_table_remove_all (GHashTable *table)
+our_g_hash_table_remove_all (GHashTable *table)
 {
   g_hash_table_foreach_remove (table, _hash_table_remove_yes, NULL);
 }
+
+#define g_hash_table_remove_all our_g_hash_table_remove_all
 #endif
 
 static void

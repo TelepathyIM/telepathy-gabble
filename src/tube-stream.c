@@ -74,7 +74,6 @@ enum
   PROP_HANDLE_TYPE,
   PROP_SELF_HANDLE,
   PROP_ID,
-  PROP_BYTESTREAM,
   PROP_TYPE,
   PROP_INITIATOR,
   PROP_SERVICE,
@@ -98,14 +97,6 @@ struct _GabbleTubeStreamPrivate
   GHashTable *fd_to_bytestreams;
   GHashTable *bytestream_to_io_channel;
   GHashTable *io_channel_to_watcher_source_id;
-  /* Default bytestream (the one created during SI)
-   * XXX: this is crack because we don't use/need this bytestream
-   * at all.
-   * Maybe we should refactor SI to not automatically create the bytestream
-   * and delegates that to the tube.
-   * Another problem is currently this bytestream is the only way we have
-   * to know when the remote contact close the tube for private tubes */
-  GabbleBytestreamIface *default_bytestream;
   TpHandle initiator;
   gchar *service;
   GHashTable *parameters;
@@ -632,7 +623,6 @@ gabble_tube_stream_init (GabbleTubeStream *self)
       g_direct_equal, (GDestroyNotify) g_io_channel_unref,
       (GDestroyNotify) remove_watcher_source_id);
 
-  priv->default_bytestream = NULL;
   priv->listen_io_channel = NULL;
   priv->listen_io_channel_source_id = 0;
   priv->address_type = TP_SOCKET_ADDRESS_TYPE_UNIX;
@@ -641,26 +631,6 @@ gabble_tube_stream_init (GabbleTubeStream *self)
   priv->access_control_param = NULL;
 
   priv->dispose_has_run = FALSE;
-}
-
-static void
-bytestream_state_changed_cb (GabbleBytestreamIface *bytestream,
-                             GabbleBytestreamState state,
-                             gpointer user_data)
-{
-  GabbleTubeStream *self = GABBLE_TUBE_STREAM (user_data);
-  GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
-
-  if (state == GABBLE_BYTESTREAM_STATE_CLOSED)
-    {
-      if (priv->default_bytestream != NULL)
-        {
-          g_object_unref (priv->default_bytestream);
-          priv->default_bytestream = NULL;
-        }
-
-      g_signal_emit (G_OBJECT (self), signals[CLOSED], 0);
-    }
 }
 
 static void
@@ -683,11 +653,6 @@ gabble_tube_stream_dispose (GObject *object)
 
   if (priv->dispose_has_run)
     return;
-
-  if (priv->default_bytestream)
-    {
-      gabble_bytestream_iface_close (priv->default_bytestream, NULL);
-    }
 
   if (priv->fd_to_bytestreams != NULL)
     {
@@ -781,9 +746,6 @@ gabble_tube_stream_get_property (GObject *object,
       case PROP_ID:
         g_value_set_uint (value, priv->id);
         break;
-      case PROP_BYTESTREAM:
-        g_value_set_object (value, priv->default_bytestream);
-        break;
       case PROP_TYPE:
         g_value_set_uint (value, TP_TUBE_TYPE_STREAM);
         break;
@@ -842,16 +804,6 @@ gabble_tube_stream_set_property (GObject *object,
         break;
       case PROP_ID:
         priv->id = g_value_get_uint (value);
-        break;
-      case PROP_BYTESTREAM:
-        if (priv->default_bytestream == NULL)
-          {
-            priv->default_bytestream = g_value_get_object (value);
-            g_object_ref (priv->default_bytestream);
-
-            g_signal_connect (priv->default_bytestream, "state-changed",
-                G_CALLBACK (bytestream_state_changed_cb), self);
-          }
         break;
       case PROP_INITIATOR:
         priv->initiator = g_value_get_uint (value);
@@ -1144,51 +1096,13 @@ gabble_tube_stream_accept (GabbleTubeIface *tube)
 {
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (tube);
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
-  GabbleBytestreamState state;
+
+  if (priv->state != TP_TUBE_STATE_LOCAL_PENDING)
+    return;
 
   tube_stream_open (self);
   priv->state = TP_TUBE_STATE_OPEN;
   g_signal_emit (G_OBJECT (self), signals[OPENED], 0);
-
-  if (priv->default_bytestream == NULL)
-    return;
-
-  g_object_get (priv->default_bytestream,
-      "state", &state,
-      NULL);
-
-  if (state != GABBLE_BYTESTREAM_STATE_LOCAL_PENDING)
-    return;
-
-  if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
-    {
-      /* Bytestream was created using a SI request so
-       * we have to accept it */
-      LmMessage *msg;
-      LmMessageNode *si, *tube_node;
-
-      DEBUG ("accept the SI request");
-
-      msg = create_si_accept_iq (priv->default_bytestream);
-      si = lm_message_node_get_child_with_namespace (msg->node, "si",
-          NS_SI);
-      g_assert (si != NULL);
-
-      tube_node = lm_message_node_add_child (si, "tube", "");
-      lm_message_node_set_attribute (tube_node, "xmlns", NS_TUBES);
-
-      gabble_bytestream_iface_accept (priv->default_bytestream, msg);
-
-      lm_message_unref (msg);
-    }
-  else
-    {
-      /* No SI so the bytestream is open */
-      DEBUG ("no SI, bytestream open");
-      g_object_set (priv->default_bytestream,
-          "state", GABBLE_BYTESTREAM_STATE_OPEN,
-          NULL);
-    }
 }
 
 /**
@@ -1200,16 +1114,8 @@ static void
 gabble_tube_stream_close (GabbleTubeIface *tube)
 {
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (tube);
-  GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
 
-  if (priv->default_bytestream != NULL)
-    {
-      gabble_bytestream_iface_close (priv->default_bytestream, NULL);
-    }
-  else
-    {
-      g_signal_emit (G_OBJECT (self), signals[CLOSED], 0);
-    }
+  g_signal_emit (G_OBJECT (self), signals[CLOSED], 0);
 }
 
 /**

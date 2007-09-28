@@ -1190,6 +1190,16 @@ gabble_tubes_channel_tube_si_offered (GabbleTubesChannel *self,
     }
 #endif
 
+  if (type != TP_TUBE_TYPE_DBUS)
+    {
+      GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_FORBIDDEN,
+          "Only D-Bus tubes are allowed to be created using SI" };
+
+      DEBUG ("%s", e.message);
+      gabble_bytestream_iface_close (bytestream, &e);
+      return;
+    }
+
   tube = create_new_tube (self, type, priv->handle, service,
       parameters, stream_id, tube_id, (GabbleBytestreamIface *) bytestream);
 }
@@ -1287,6 +1297,10 @@ start_stream_initiation (GabbleTubesChannel *self,
   gchar *full_jid;
   gboolean result;
   struct _bytestream_negotiate_cb_data *data;
+  TpTubeType type;
+
+  g_object_get (tube, "type", &type, NULL);
+  g_assert (type == TP_TUBE_TYPE_DBUS);
 
   priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
 

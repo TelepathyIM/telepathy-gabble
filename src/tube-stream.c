@@ -1147,6 +1147,13 @@ gabble_tube_stream_add_bytestream (GabbleTubeIface *tube,
       LmMessageNode *si, *tube_node;
       TpHandle contact;
 
+      if (priv->state == TP_TUBE_STATE_REMOTE_PENDING)
+        {
+          DEBUG ("Received first connection. Tube is now open");
+          priv->state = TP_TUBE_STATE_OPEN;
+          g_signal_emit (G_OBJECT (self), signals[OPENED], 0);
+        }
+
       DEBUG ("accept the extra bytestream");
 
       msg = create_si_accept_iq (bytestream);

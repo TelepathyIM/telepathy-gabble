@@ -1117,9 +1117,9 @@ bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
  * via gabble_tubes_factory_handle_si_tube_request
  */
 void
-gabble_tubes_channel_tube_offered (GabbleTubesChannel *self,
-                                   GabbleBytestreamIface *bytestream,
-                                   LmMessage *msg)
+gabble_tubes_channel_tube_si_offered (GabbleTubesChannel *self,
+                                      GabbleBytestreamIface *bytestream,
+                                      LmMessage *msg)
 {
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
   const gchar *service, *stream_id;

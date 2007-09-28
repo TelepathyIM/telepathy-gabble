@@ -390,7 +390,7 @@ gabble_tubes_factory_handle_si_tube_request (GabbleTubesFactory *self,
        */
     }
 
-  gabble_tubes_channel_tube_offered (chan, bytestream, msg);
+  gabble_tubes_channel_tube_si_offered (chan, bytestream, msg);
 }
 
 void

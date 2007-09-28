@@ -129,7 +129,6 @@ def expect_stream_tubes_offer_stream(event, data):
     tube = tube_nodes[0]
 
     assert tube['service'] == 'echo'
-    # FIXME: tube['id'] has rubbish in it
     assert tube['type'] == 'stream'
     assert not tube.hasAttribute('initiator')
     data['stream_tube_id'] = long(tube['id'])

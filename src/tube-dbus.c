@@ -702,8 +702,6 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
     "self-handle");
   g_object_class_override_property (object_class, PROP_ID,
     "id");
-  g_object_class_override_property (object_class, PROP_BYTESTREAM,
-    "bytestream");
   g_object_class_override_property (object_class, PROP_TYPE,
     "type");
   g_object_class_override_property (object_class, PROP_INITIATOR,
@@ -714,6 +712,19 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
     "parameters");
   g_object_class_override_property (object_class, PROP_STATE,
     "state");
+
+  param_spec = g_param_spec_object (
+      "bytestream",
+      "Object implementing the GabbleBytestreamIface interface",
+      "Bytestream object used for streaming data for this"
+      "tube object.",
+      G_TYPE_OBJECT,
+      G_PARAM_READWRITE |
+      G_PARAM_STATIC_NAME |
+      G_PARAM_STATIC_NICK |
+      G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_BYTESTREAM,
+      param_spec);
 
   param_spec = g_param_spec_string (
       "stream-id",

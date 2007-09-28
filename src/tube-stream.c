@@ -963,8 +963,6 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
     "self-handle");
   g_object_class_override_property (object_class, PROP_ID,
     "id");
-  g_object_class_override_property (object_class, PROP_BYTESTREAM,
-    "bytestream");
   g_object_class_override_property (object_class, PROP_TYPE,
     "type");
   g_object_class_override_property (object_class, PROP_INITIATOR,

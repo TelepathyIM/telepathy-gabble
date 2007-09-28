@@ -123,18 +123,6 @@ gabble_tube_iface_base_init (gpointer klass)
           G_PARAM_STATIC_BLURB);
       g_object_interface_install_property (klass, param_spec);
 
-      param_spec = g_param_spec_object (
-          "bytestream",
-          "Object implementing the GabbleBytestreamIface interface",
-          "Bytestream object used for streaming data for this"
-          "tube object.",
-          G_TYPE_OBJECT,
-          G_PARAM_READWRITE |
-          G_PARAM_STATIC_NAME |
-          G_PARAM_STATIC_NICK |
-          G_PARAM_STATIC_BLURB);
-      g_object_interface_install_property (klass, param_spec);
-
       param_spec = g_param_spec_uint (
           "type",
           "Tube type",

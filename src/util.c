@@ -812,12 +812,11 @@ set_child_from_property (gpointer key,
     }
   else if (G_VALUE_TYPE (gvalue) == G_TYPE_BOOLEAN)
     {
-      gchar *str;
-
-      str = g_strdup_printf ("%u", g_value_get_boolean (gvalue));
-      lm_message_node_set_value (child, str);
-
-      g_free (str);
+      /* we output as "0" or "1" despite the canonical representation for
+       * xs:boolean being "false" or "true", for compatibility with older
+       * Gabble versions (OLPC Trial-3) */
+      lm_message_node_set_value (child,
+          g_value_get_boolean (gvalue) ? "1" : "0");
     }
   else
     {

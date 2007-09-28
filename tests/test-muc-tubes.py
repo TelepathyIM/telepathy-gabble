@@ -159,6 +159,7 @@ def expect_tubes_in_presence1(event, data):
     assert len(tube_nodes) == 1
     for tube in tube_nodes:
         assert tube['type'] == 'stream'
+        assert not tube.hasAttribute('initiator')
         assert tube['service'] == 'echo'
         assert not tube.hasAttribute('stream-id')
         assert not tube.hasAttribute('dbus-name')

@@ -1352,6 +1352,47 @@ start_stream_initiation (GabbleTubesChannel *self,
   return result;
 }
 
+static gboolean
+send_new_stream_tube_msg (GabbleTubesChannel *self,
+                          GabbleTubeIface *tube,
+                          const gchar *stream_id,
+                          GError **error)
+{
+  GabbleTubesChannelPrivate *priv;
+  LmMessageNode *tube_node = NULL;
+  LmMessage *msg;
+  TpHandleRepoIface *contact_repo;
+  const gchar *jid;
+  TpTubeType type;
+  gboolean result;
+
+  g_object_get (tube, "type", &type, NULL);
+  g_assert (type == TP_TUBE_TYPE_STREAM);
+
+  priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+
+  contact_repo = tp_base_connection_get_handles (
+     (TpBaseConnection*) priv->conn, TP_HANDLE_TYPE_CONTACT);
+
+  jid = tp_handle_inspect (contact_repo, priv->handle);
+
+  msg = lm_message_build (jid, LM_MESSAGE_TYPE_MESSAGE,
+      '(', "tube", "",
+        '*', &tube_node,
+        '@', "xmlns", NS_TUBES,
+      ')', NULL);
+
+  g_assert (tube_node != NULL);
+
+  publish_tube_in_node (self, tube_node, tube);
+
+  result = _gabble_connection_send (priv->conn, msg, error);
+
+  lm_message_unref (msg);
+  return result;
+}
+
+
 static guint
 generate_tube_id (void)
 {
@@ -1505,7 +1546,7 @@ gabble_tubes_channel_offer_stream_tube (TpSvcChannelTypeTubes *iface,
       /* Stream initiation */
       GError *error = NULL;
 
-      if (!start_stream_initiation (self, tube, stream_id, &error))
+      if (!send_new_stream_tube_msg (self, tube, stream_id, &error))
         {
           gabble_tube_iface_close (tube);
 

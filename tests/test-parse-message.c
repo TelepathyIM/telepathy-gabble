@@ -156,7 +156,7 @@ test_google_offline (void)
   g_assert (0 == strcmp (from, "foo@bar.com"));
   g_assert (stamp == 1190899454);
   g_assert (type == TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL);
-  g_assert (0 == strcmp(body, "hello"));
+  g_assert (0 == strcmp (body, "hello"));
   g_assert (state == -1);
   g_assert (send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR);
   lm_message_unref (msg);

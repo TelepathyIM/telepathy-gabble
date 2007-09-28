@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!DOCTYPE xep [
-  <!ENTITY NS_TUBES "http://telepathy.freedesktop.org/xmpp/protocol/tubes">
+  <!ENTITY NS_TUBES "http://telepathy.freedesktop.org/xmpp/tubes">
 ]>
 <?xml-stylesheet type='text/xsl' href='xep.xsl'?>
 <xep>
@@ -114,7 +114,7 @@
           from='darkcave@conf.macbeth.lit/FirstWitch'>
         <x xmlns='http://jabber.org/protocol/muc'>
         </x>
-        <tubes xmlns='http://telepathy.freedesktop.org/xmpp/protocol/tubes'>
+        <tubes xmlns='http://telepathy.freedesktop.org/xmpp/tubes'>
           <tube type='dbus' initiator='darkcave@conf.macbeth.lit/FirstWitch'
             service='lit.macbeth.BubblingCauldron' stream-id='12345'
             id='54321' dbus-name=':2.Rmlyc3RXaXRjaAAA'>
@@ -139,7 +139,7 @@
           from='darkcave@conf.macbeth.lit/Second witch'>
         <x xmlns='http://jabber.org/protocol/muc'>
         </x>
-        <tubes xmlns='http://telepathy.freedesktop.org/xmpp/protocol/tubes'>
+        <tubes xmlns='http://telepathy.freedesktop.org/xmpp/tubes'>
           <tube type='dbus' initiator='darkcave@conf.macbeth.lit/FirstWitch'
             service='lit.macbeth.BubblingCauldron' stream-id='12345'
             id='54321' dbus-name=':2.U2Vjb25kIHdpdGNo'>
@@ -186,7 +186,7 @@
           from='darkcave@conf.macbeth.lit/Second witch'>
         <x xmlns='http://jabber.org/protocol/muc'>
         </x>
-        <tubes xmlns='http://telepathy.freedesktop.org/xmpp/protocol/tubes'>
+        <tubes xmlns='http://telepathy.freedesktop.org/xmpp/tubes'>
           <!-- This D-Bus tube is still here from the first example -
             it's not part of the stream tube -->
           <tube type='dbus' initiator='darkcave@conf.macbeth.lit/FirstWitch'
@@ -232,9 +232,9 @@
       <iq from='darkcave@conf.macbeth.lit/FirstWitch'
           to='darkcave@conf.macbeth.lit/Second witch' type='set'>
         <si xmlns='http://jabber.org/protocol/si' id='55555'
-          profile='http://telepathy.freedesktop.org/xmpp/protocol/tubes'>
+          profile='http://telepathy.freedesktop.org/xmpp/tubes'>
           <muc-stream
-            xmlns='http://telepathy.freedesktop.org/xmpp/protocol/tubes'
+            xmlns='http://telepathy.freedesktop.org/xmpp/tubes'
             tube='666' />
           <feature xmlns='http://jabber.org/protocol/feature-neg'>
             <x xmlns="jabber:x:data" type="form">
@@ -262,7 +262,7 @@
           from='darkcave@conf.macbeth.lit/Second witch'>
         <x xmlns='http://jabber.org/protocol/muc'>
         </x>
-        <tubes xmlns='http://telepathy.freedesktop.org/xmpp/protocol/tubes'>
+        <tubes xmlns='http://telepathy.freedesktop.org/xmpp/tubes'>
           <tube type='dbus' initiator='darkcave@conf.macbeth.lit/FirstWitch'
             service='lit.macbeth.BubblingCauldron' stream-id='12345'
             id='54321' dbus-name=':2.Rmlyc3RXaXRjaAAA'>
@@ -295,11 +295,9 @@
       <iq to='tybalt@capulet.lit/Work'
           from='romeo@montague.lit/Home' type='set'>
         <si xmlns='http://jabber.org/protocol/si' id='chess-stream-1'
-            profile='http://telepathy.freedesktop.org/xmpp/protocol/tubes'>
-          <tube xmlns='http://telepathy.freedesktop.org/xmpp/protocol/tubes'>
-              type='dbus' initiator='romeo@montague.lit'
-              service='com.example.Chess'
-              id='333'>
+            profile='http://telepathy.freedesktop.org/xmpp/tubes'>
+          <tube xmlns='http://telepathy.freedesktop.org/xmpp/tubes'>
+              type='dbus' service='com.example.Chess' id='333'>
             <parameters>
               <parameter name='theme'
                 type='str'>montagues-vs-capulets.conf</parameter>
@@ -354,10 +352,8 @@
       -->
       <message to='juliet@capulet.lit/Balcony'
           from='romeo@montague.lit/Home'>
-        <tube xmlns='http://telepathy.freedesktop.org/xmpp/protocol/tubes'>
-            type='stream' initiator='romeo@montague.lit'
-            service='http'
-            id='1402'>
+        <tube xmlns='http://telepathy.freedesktop.org/xmpp/tubes'
+            type='stream' service='http' id='1402'>
           <parameters>
             <parameter name='path' type='str'>/poetry/for-juliet/</parameter>
           </parameters>
@@ -372,9 +368,9 @@
       <iq to='romeo@montague.lit/Home'
           from='juliet@capulet.lit/Balcony' type='set'>
         <si xmlns='http://jabber.org/protocol/si' id='http-stream-1a'
-            profile='http://telepathy.freedesktop.org/xmpp/protocol/tubes'>
-          <stream xmlns='http://telepathy.freedesktop.org/xmpp/protocol/tubes'>
-              tube='1402'>
+            profile='http://telepathy.freedesktop.org/xmpp/tubes'>
+          <stream xmlns='http://telepathy.freedesktop.org/xmpp/tubes'
+            tube='1402'/>
           <feature xmlns='http://jabber.org/protocol/feature-neg'>
             <x xmlns="jabber:x:data" type="form">
               <field var='stream-method' type='list-single'>
@@ -417,7 +413,7 @@
       close all streams when this message is received. -->
       <message to='juliet@capulet.lit/Balcony'
           from='romeo@montague.lit/Home'>
-        <close xmlns='http://telepathy.freedesktop.org/xmpp/protocol/tubes'
+        <close xmlns='http://telepathy.freedesktop.org/xmpp/tubes'
           tube='1402'/>
       </message>
       ]]>
@@ -429,7 +425,7 @@
       streams in response to this message. -->
       <message from='juliet@capulet.lit/Balcony'
           to='romeo@montague.lit/Home'>
-        <close xmlns='http://telepathy.freedesktop.org/xmpp/protocol/tubes'
+        <close xmlns='http://telepathy.freedesktop.org/xmpp/tubes'
           tube='1402'/>
       </message>
       ]]>

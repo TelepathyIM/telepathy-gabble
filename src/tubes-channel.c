@@ -1394,7 +1394,21 @@ send_new_stream_tube_msg (GabbleTubesChannel *self,
       '(', "tube", "",
         '*', &tube_node,
         '@', "xmlns", NS_TUBES,
-      ')', NULL);
+      ')',
+      '(', "amp", "",
+        '@', "xmlns", NS_AMP,
+        '(', "rule", "",
+          '@', "condition", "deliver-at",
+          '@', "value", "stored",
+          '@', "action", "error",
+        ')',
+        '(', "rule", "",
+          '@', "condition", "match-resource",
+          '@', "value", "exact",
+          '@', "action", "error",
+        ')',
+      ')',
+      NULL);
 
   g_assert (tube_node != NULL);
 

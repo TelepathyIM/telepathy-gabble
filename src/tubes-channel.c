@@ -1439,7 +1439,21 @@ send_tube_close_msg (GabbleTubesChannel *self,
       '(', "close", "",
         '@', "xmlns", NS_TUBES,
         '@', "tube", id_str,
-      ')', NULL);
+      ')',
+      '(', "amp", "",
+        '@', "xmlns", NS_AMP,
+        '(', "rule", "",
+          '@', "condition", "deliver-at",
+          '@', "value", "stored",
+          '@', "action", "error",
+        ')',
+        '(', "rule", "",
+          '@', "condition", "match-resource",
+          '@', "value", "exact",
+          '@', "action", "error",
+        ')',
+      ')',
+      NULL);
   g_free (id_str);
 
   _gabble_connection_send (priv->conn, msg, NULL);

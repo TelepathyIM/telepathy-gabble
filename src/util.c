@@ -704,11 +704,11 @@ lm_message_node_extract_properties (LmMessageNode *node,
         {
           gboolean val;
 
-          if (!tp_strdiff (value, "0"))
+          if (!tp_strdiff (value, "0") || !tp_strdiff (value, "false"))
             {
               val = FALSE;
             }
-          else if (!tp_strdiff (value, "1"))
+          else if (!tp_strdiff (value, "1") || !tp_strdiff (value, "true"))
             {
               val = TRUE;
             }

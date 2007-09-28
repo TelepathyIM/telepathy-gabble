@@ -1407,6 +1407,33 @@ send_new_stream_tube_msg (GabbleTubesChannel *self,
 }
 
 static void
+send_tube_close_msg (GabbleTubesChannel *self,
+                     guint tube_id)
+{
+  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  LmMessage *msg;
+  const gchar *jid;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection*) priv->conn, TP_HANDLE_TYPE_CONTACT);
+  gchar *id_str;
+
+  jid = tp_handle_inspect (contact_repo, priv->handle);
+  id_str = g_strdup_printf ("%u", tube_id);
+
+  /* Send the close message */
+  msg = lm_message_build (jid, LM_MESSAGE_TYPE_MESSAGE,
+      '(', "close", "",
+        '@', "xmlns", NS_TUBES,
+        '@', "tube", id_str,
+      ')', NULL);
+  g_free (id_str);
+
+  _gabble_connection_send (priv->conn, msg, NULL);
+
+  lm_message_unref (msg);
+}
+
+static void
 tube_msg_offered (GabbleTubesChannel *self,
                   LmMessage *msg)
 {
@@ -1427,7 +1454,7 @@ tube_msg_offered (GabbleTubesChannel *self,
               NULL, NULL, &tube_id))
     {
       DEBUG ("<tube> has no id attribute");
-      /* FIXME: Send the close <message> ? */
+      /* We can't send a close message as reply so just ignore it */
       return;
     }
 
@@ -1435,7 +1462,7 @@ tube_msg_offered (GabbleTubesChannel *self,
   if (tube != NULL)
     {
       DEBUG ("tube ID already in use");
-      /* FIXME: Send the close <message> ? */
+      /* FIXME close both tubes */
       return;
     }
 
@@ -1444,14 +1471,14 @@ tube_msg_offered (GabbleTubesChannel *self,
               &service, &parameters, NULL))
     {
       DEBUG ("can't extract <tube> information from message");
-      /* FIXME: Send the close <message> ? */
+      send_tube_close_msg (self, tube_id);
       return;
     }
 
   if (type != TP_TUBE_TYPE_STREAM)
     {
       DEBUG ("Only stream tubes are allowed to be created using messages");
-      /* FIXME: Send the close <message> ? */
+      send_tube_close_msg (self, tube_id);
       return;
     }
 

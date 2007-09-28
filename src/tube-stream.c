@@ -108,6 +108,7 @@ struct _GabbleTubeStreamPrivate
   GValue *access_control_param;
   GIOChannel *listen_io_channel;
   guint listen_io_channel_source_id;
+  gboolean closed;
 
   gboolean dispose_has_run;
 };
@@ -629,6 +630,7 @@ gabble_tube_stream_init (GabbleTubeStream *self)
   priv->address = NULL;
   priv->access_control = TP_SOCKET_ACCESS_CONTROL_LOCALHOST;
   priv->access_control_param = NULL;
+  priv->closed = FALSE;
 
   priv->dispose_has_run = FALSE;
 }
@@ -654,11 +656,10 @@ gabble_tube_stream_dispose (GObject *object)
   if (priv->dispose_has_run)
     return;
 
+  gabble_tube_iface_close (GABBLE_TUBE_IFACE (self));
+
   if (priv->fd_to_bytestreams != NULL)
     {
-      g_hash_table_foreach (priv->fd_to_bytestreams,
-          close_each_extra_bytestream, self);
-
       g_hash_table_destroy (priv->fd_to_bytestreams);
       priv->fd_to_bytestreams = NULL;
     }
@@ -1115,6 +1116,13 @@ gabble_tube_stream_close (GabbleTubeIface *tube)
 {
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (tube);
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
+
+  if (priv->closed)
+    return;
+  priv->closed = TRUE;
+
+  g_hash_table_foreach (priv->fd_to_bytestreams,
+      close_each_extra_bytestream, self);
 
   if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
     {

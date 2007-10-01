@@ -64,7 +64,7 @@
 #include "pubsub.h"
 #include "request-pipeline.h"
 #include "roster.h"
-#include "tubes-factory.h"
+#include "private-tubes-factory.h"
 #include "util.h"
 #include "vcard-manager.h"
 

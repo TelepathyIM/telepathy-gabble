@@ -89,8 +89,8 @@ libgabble_convenience_la_our_sources = \
     tube-iface.c \
     tubes-channel.h \
     tubes-channel.c \
-    tubes-factory.h \
-    tubes-factory.c \
+    private-tubes-factory.h \
+    private-tubes-factory.c \
     tube-stream.h \
     tube-stream.c \
     util.h \

@@ -42,7 +42,7 @@
 #include "util.h"
 #include "presence-cache.h"
 
-#include "tubes-factory.h"
+#include "private-tubes-factory.h"
 
 G_DEFINE_TYPE (GabbleBytestreamFactory, gabble_bytestream_factory,
     G_TYPE_OBJECT);

@@ -20,7 +20,7 @@
 /* FIXME: This file should probably be renamed to private-tubes-factory.c as
  * it's used for private tubes only */
 
-#include "tubes-factory.h"
+#include "private-tubes-factory.h"
 
 #include <stdlib.h>
 #include <string.h>

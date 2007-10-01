@@ -429,9 +429,12 @@ gabble_bytestream_ibb_send (GabbleBytestreamIface *iface,
 
       if (!ret)
         {
-          DEBUG ("error sending IBB Muc stanza: %s", error->message);
+          DEBUG ("error sending IBB Muc stanza: %s. Close the bytestream",
+              error->message);
           g_error_free (error);
           lm_message_unref (msg);
+
+          gabble_bytestream_iface_close (GABBLE_BYTESTREAM_IFACE (self), NULL);
           return FALSE;
         }
 

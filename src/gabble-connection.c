@@ -210,8 +210,8 @@ _gabble_connection_create_channel_factories (TpBaseConnection *conn)
                                  "connection", self,
                                  NULL));
 
-  self->tubes_factory = gabble_private_tubes_factory_new (self);
-  g_ptr_array_add (channel_factories, self->tubes_factory);
+  self->private_tubes_factory = gabble_private_tubes_factory_new (self);
+  g_ptr_array_add (channel_factories, self->private_tubes_factory);
 
   return channel_factories;
 }
@@ -733,7 +733,7 @@ gabble_connection_dispose (GObject *object)
    * factories */
   self->roster = NULL;
   self->muc_factory = NULL;
-  self->tubes_factory = NULL;
+  self->private_tubes_factory = NULL;
 
   if (self->self_presence != NULL)
     g_object_unref (self->self_presence);

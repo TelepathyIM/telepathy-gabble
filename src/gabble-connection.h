@@ -109,7 +109,7 @@ struct _GabbleConnection {
     /* channel factories borrowed from TpBaseConnection's list */
     GabbleRoster *roster;
     GabbleMucFactory *muc_factory;
-    GabblePrivateTubesFactory *tubes_factory;
+    GabblePrivateTubesFactory *private_tubes_factory;
 
     /* DISCO! */
     GabbleDisco *disco;

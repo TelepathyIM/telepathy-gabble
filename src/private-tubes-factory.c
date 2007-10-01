@@ -49,13 +49,15 @@ static GabbleTubesChannel *new_tubes_channel (GabblePrivateTubesFactory *fac,
 static void tubes_channel_closed_cb (GabbleTubesChannel *chan,
     gpointer user_data);
 
-static LmHandlerResult private_tubes_factory_msg_tube_cb (LmMessageHandler *handler,
-    LmConnection *lmconn, LmMessage *msg, gpointer user_data);
+static LmHandlerResult private_tubes_factory_msg_tube_cb (
+    LmMessageHandler *handler, LmConnection *lmconn, LmMessage *msg,
+    gpointer user_data);
 
 static void gabble_private_tubes_factory_iface_init (gpointer g_iface,
     gpointer iface_data);
 
-G_DEFINE_TYPE_WITH_CODE (GabblePrivateTubesFactory, gabble_private_tubes_factory,
+G_DEFINE_TYPE_WITH_CODE (GabblePrivateTubesFactory,
+    gabble_private_tubes_factory,
     G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_FACTORY_IFACE,
         gabble_private_tubes_factory_iface_init));
@@ -67,7 +69,8 @@ enum
   LAST_PROPERTY
 };
 
-typedef struct _GabblePrivateTubesFactoryPrivate GabblePrivateTubesFactoryPrivate;
+typedef struct _GabblePrivateTubesFactoryPrivate \
+          GabblePrivateTubesFactoryPrivate;
 struct _GabblePrivateTubesFactoryPrivate
 {
   GabbleConnection *conn;
@@ -111,8 +114,8 @@ gabble_private_tubes_factory_constructor (GType type,
   self = GABBLE_PRIVATE_TUBES_FACTORY (obj);
   priv = GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
 
-  priv->msg_tube_cb = lm_message_handler_new (private_tubes_factory_msg_tube_cb,
-      self, NULL);
+  priv->msg_tube_cb = lm_message_handler_new (
+      private_tubes_factory_msg_tube_cb, self, NULL);
   lm_connection_register_message_handler (priv->conn->lmconn,
       priv->msg_tube_cb, LM_MESSAGE_TYPE_MESSAGE, LM_HANDLER_PRIORITY_FIRST);
 
@@ -123,7 +126,8 @@ static void
 gabble_private_tubes_factory_dispose (GObject *object)
 {
   GabblePrivateTubesFactory *fac = GABBLE_PRIVATE_TUBES_FACTORY (object);
-  GabblePrivateTubesFactoryPrivate *priv = GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (fac);
+  GabblePrivateTubesFactoryPrivate *priv =
+    GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (fac);
 
   if (priv->dispose_has_run)
     return;
@@ -139,7 +143,8 @@ gabble_private_tubes_factory_dispose (GObject *object)
   lm_message_handler_unref (priv->msg_tube_cb);
 
   if (G_OBJECT_CLASS (gabble_private_tubes_factory_parent_class)->dispose)
-    G_OBJECT_CLASS (gabble_private_tubes_factory_parent_class)->dispose (object);
+    G_OBJECT_CLASS (gabble_private_tubes_factory_parent_class)->dispose (
+        object);
 }
 
 static void
@@ -149,7 +154,8 @@ gabble_private_tubes_factory_get_property (GObject *object,
                                    GParamSpec *pspec)
 {
   GabblePrivateTubesFactory *fac = GABBLE_PRIVATE_TUBES_FACTORY (object);
-  GabblePrivateTubesFactoryPrivate *priv = GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (fac);
+  GabblePrivateTubesFactoryPrivate *priv =
+    GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (fac);
 
   switch (property_id)
     {
@@ -169,7 +175,8 @@ gabble_private_tubes_factory_set_property (GObject *object,
                                    GParamSpec *pspec)
 {
   GabblePrivateTubesFactory *fac = GABBLE_PRIVATE_TUBES_FACTORY (object);
-  GabblePrivateTubesFactoryPrivate *priv = GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (fac);
+  GabblePrivateTubesFactoryPrivate *priv =
+    GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (fac);
 
   switch (property_id)
     {
@@ -186,7 +193,8 @@ static void
 gabble_private_tubes_factory_class_init (
     GabblePrivateTubesFactoryClass *gabble_private_tubes_factory_class)
 {
-  GObjectClass *object_class = G_OBJECT_CLASS (gabble_private_tubes_factory_class);
+  GObjectClass *object_class = G_OBJECT_CLASS (
+      gabble_private_tubes_factory_class);
   GParamSpec *param_spec;
 
   g_type_class_add_private (gabble_private_tubes_factory_class,
@@ -224,7 +232,8 @@ tubes_channel_closed_cb (GabbleTubesChannel *chan,
                          gpointer user_data)
 {
   GabblePrivateTubesFactory *conn = GABBLE_PRIVATE_TUBES_FACTORY (user_data);
-  GabblePrivateTubesFactoryPrivate *priv = GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (conn);
+  GabblePrivateTubesFactoryPrivate *priv =
+    GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (conn);
   TpHandle contact_handle;
 
   if (priv->channels == NULL)
@@ -281,7 +290,8 @@ static void
 gabble_private_tubes_factory_iface_close_all (TpChannelFactoryIface *iface)
 {
   GabblePrivateTubesFactory *fac = GABBLE_PRIVATE_TUBES_FACTORY (iface);
-  GabblePrivateTubesFactoryPrivate *priv = GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (fac);
+  GabblePrivateTubesFactoryPrivate *priv =
+    GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (fac);
   GHashTable *tmp;
 
   DEBUG ("closing 1-1 tubes channels");
@@ -335,7 +345,8 @@ gabble_private_tubes_factory_iface_foreach (TpChannelFactoryIface *iface,
                                     gpointer user_data)
 {
   GabblePrivateTubesFactory *fac = GABBLE_PRIVATE_TUBES_FACTORY (iface);
-  GabblePrivateTubesFactoryPrivate *priv = GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (fac);
+  GabblePrivateTubesFactoryPrivate *priv =
+    GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (fac);
   struct _ForeachData data;
 
   data.user_data = user_data;
@@ -354,7 +365,8 @@ gabble_private_tubes_factory_iface_request (TpChannelFactoryIface *iface,
                                     GError **error)
 {
   GabblePrivateTubesFactory *fac = GABBLE_PRIVATE_TUBES_FACTORY (iface);
-  GabblePrivateTubesFactoryPrivate *priv = GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (fac);
+  GabblePrivateTubesFactoryPrivate *priv =
+    GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (fac);
   TpHandleRepoIface *contacts_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   GabbleTubesChannel *chan;
@@ -394,13 +406,15 @@ gabble_private_tubes_factory_iface_request (TpChannelFactoryIface *iface,
 }
 
 void
-gabble_private_tubes_factory_handle_si_tube_request (GabblePrivateTubesFactory *self,
-                                             GabbleBytestreamIface *bytestream,
-                                             TpHandle handle,
-                                             const gchar *stream_id,
-                                             LmMessage *msg)
+gabble_private_tubes_factory_handle_si_tube_request (
+    GabblePrivateTubesFactory *self,
+    GabbleBytestreamIface *bytestream,
+    TpHandle handle,
+    const gchar *stream_id,
+    LmMessage *msg)
 {
-  GabblePrivateTubesFactoryPrivate *priv = GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
+  GabblePrivateTubesFactoryPrivate *priv =
+    GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
               (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   GabbleTubesChannel *chan;
@@ -424,13 +438,15 @@ gabble_private_tubes_factory_handle_si_tube_request (GabblePrivateTubesFactory *
 }
 
 void
-gabble_private_tubes_factory_handle_si_stream_request (GabblePrivateTubesFactory *self,
-                                               GabbleBytestreamIface *bytestream,
-                                               TpHandle handle,
-                                               const gchar *stream_id,
-                                               LmMessage *msg)
+gabble_private_tubes_factory_handle_si_stream_request (
+    GabblePrivateTubesFactory *self,
+    GabbleBytestreamIface *bytestream,
+    TpHandle handle,
+    const gchar *stream_id,
+    LmMessage *msg)
 {
-  GabblePrivateTubesFactoryPrivate *priv = GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
+  GabblePrivateTubesFactoryPrivate *priv =
+    GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
               (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   GabbleTubesChannel *chan;
@@ -459,7 +475,8 @@ private_tubes_factory_msg_tube_cb (LmMessageHandler *handler,
                            gpointer user_data)
 {
   GabblePrivateTubesFactory *self = GABBLE_PRIVATE_TUBES_FACTORY (user_data);
-  GabblePrivateTubesFactoryPrivate *priv = GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
+  GabblePrivateTubesFactoryPrivate *priv =
+    GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   LmMessageNode *tube_node, *close_node;

@@ -429,9 +429,8 @@ gabble_private_tubes_factory_handle_si_tube_request (
       tp_channel_factory_iface_emit_new_channel (self,
           (TpChannelIface *) chan, NULL);
 
-      /* FIXME we should probably only emit the new channel signal only
-       * if the call below returns TRUE and if not, close the channel.
-       */
+      /* FIXME: Should we close the channel if the request is not properly
+       * handled by the newly created channel ? */
     }
 
   gabble_tubes_channel_tube_si_offered (chan, bytestream, msg);

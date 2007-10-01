@@ -611,15 +611,15 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
   if (lm_message_node_get_child_with_namespace (si, "tube", NS_TUBES) != NULL)
     {
       /* The SI request is a tube offer */
-       gabble_tubes_factory_handle_si_tube_request (priv->conn->tubes_factory,
-           bytestream, peer_handle, stream_id, msg);
+       gabble_private_tubes_factory_handle_si_tube_request (
+           priv->conn->tubes_factory, bytestream, peer_handle, stream_id, msg);
     }
   else if (lm_message_node_get_child_with_namespace (si, "stream", NS_TUBES)
       != NULL)
     {
       /* The SI request is an extra bytestream for a 1-1 tube */
-      gabble_tubes_factory_handle_si_stream_request (priv->conn->tubes_factory,
-          bytestream, peer_handle, stream_id, msg);
+      gabble_private_tubes_factory_handle_si_stream_request (
+          priv->conn->tubes_factory, bytestream, peer_handle, stream_id, msg);
     }
   else if (lm_message_node_get_child_with_namespace (si, "muc-stream",
         NS_TUBES) != NULL)

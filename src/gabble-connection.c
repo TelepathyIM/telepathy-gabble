@@ -210,7 +210,7 @@ _gabble_connection_create_channel_factories (TpBaseConnection *conn)
                                  "connection", self,
                                  NULL));
 
-  self->tubes_factory = gabble_tubes_factory_new (self);
+  self->tubes_factory = gabble_private_tubes_factory_new (self);
   g_ptr_array_add (channel_factories, self->tubes_factory);
 
   return channel_factories;

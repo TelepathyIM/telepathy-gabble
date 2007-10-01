@@ -1,5 +1,5 @@
 /*
- * tubes-factory.h - Header for GabbleTubesFactory
+ * private-tubes-factory.h - Header for GabblePrivateTubesFactory
  * Copyright (C) 2007 Collabora Ltd.
  *
  * This library is free software; you can redistribute it and/or
@@ -17,8 +17,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef __TUBES_FACTORY_H__
-#define __TUBES_FACTORY_H__
+#ifndef __PRIVATE_TUBES_FACTORY_H__
+#define __PRIVATE_TUBES_FACTORY_H__
 
 #include <glib-object.h>
 #include <loudmouth/loudmouth.h>
@@ -30,48 +30,49 @@
 
 G_BEGIN_DECLS
 
-typedef struct _GabbleTubesFactoryClass GabbleTubesFactoryClass;
+typedef struct _GabblePrivateTubesFactoryClass GabblePrivateTubesFactoryClass;
 
-struct _GabbleTubesFactoryClass {
+struct _GabblePrivateTubesFactoryClass {
   GObjectClass parent_class;
 };
 
-struct _GabbleTubesFactory {
+struct _GabblePrivateTubesFactory {
   GObject parent;
 
   gpointer priv;
 };
 
-GType gabble_tubes_factory_get_type (void);
+GType gabble_private_tubes_factory_get_type (void);
 
 /* TYPE MACROS */
-#define GABBLE_TYPE_TUBES_FACTORY \
-  (gabble_tubes_factory_get_type ())
-#define GABBLE_TUBES_FACTORY(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_TUBES_FACTORY,\
-                              GabbleTubesFactory))
-#define GABBLE_TUBES_FACTORY_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_TUBES_FACTORY,\
-                           GabbleTubesFactoryClass))
-#define GABBLE_IS_TUBES_FACTORY(obj) \
-  (G_TYPE_CHECK_INSTANCE_TYPE((obj), GABBLE_TYPE_TUBES_FACTORY))
-#define GABBLE_IS_TUBES_FACTORY_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_TYPE((klass), GABBLE_TYPE_TUBES_FACTORY))
-#define GABBLE_TUBES_FACTORY_GET_CLASS(obj) \
-  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_TUBES_FACTORY,\
-                              GabbleTubesFactoryClass))
+#define GABBLE_TYPE_PRIVATE_TUBES_FACTORY \
+  (gabble_private_tubes_factory_get_type ())
+#define GABBLE_PRIVATE_TUBES_FACTORY(obj) \
+  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_PRIVATE_TUBES_FACTORY,\
+                              GabblePrivateTubesFactory))
+#define GABBLE_PRIVATE_TUBES_FACTORY_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_PRIVATE_TUBES_FACTORY,\
+                           GabblePrivateTubesFactoryClass))
+#define GABBLE_IS_PRIVATE_TUBES_FACTORY(obj) \
+  (G_TYPE_CHECK_INSTANCE_TYPE((obj), GABBLE_TYPE_PRIVATE_TUBES_FACTORY))
+#define GABBLE_IS_PRIVATE_TUBES_FACTORY_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_TYPE((klass), GABBLE_TYPE_PRIVATE_TUBES_FACTORY))
+#define GABBLE_PRIVATE_TUBES_FACTORY_GET_CLASS(obj) \
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_PRIVATE_TUBES_FACTORY,\
+                              GabblePrivateTubesFactoryClass))
 
-GabbleTubesFactory * gabble_tubes_factory_new (GabbleConnection *conn);
+GabblePrivateTubesFactory * gabble_private_tubes_factory_new (
+    GabbleConnection *conn);
 
-void gabble_tubes_factory_handle_si_tube_request (GabbleTubesFactory *fac,
-    GabbleBytestreamIface *bytestream, TpHandle handle, const gchar *stream_id,
-    LmMessage *msg);
+void gabble_private_tubes_factory_handle_si_tube_request (
+    GabblePrivateTubesFactory *fac, GabbleBytestreamIface *bytestream,
+    TpHandle handle, const gchar *stream_id, LmMessage *msg);
 
-void gabble_tubes_factory_handle_si_stream_request (GabbleTubesFactory *fac,
-    GabbleBytestreamIface *bytestream, TpHandle handle, const gchar *stream_id,
-    LmMessage *msg);
+void gabble_private_tubes_factory_handle_si_stream_request (
+    GabblePrivateTubesFactory *fac, GabbleBytestreamIface *bytestream,
+    TpHandle handle, const gchar *stream_id, LmMessage *msg);
 
 G_END_DECLS
 
-#endif /* #ifndef __TUBES_FACTORY_H__ */
+#endif /* #ifndef __PRIVATE_TUBES_FACTORY_H__ */
 

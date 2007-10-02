@@ -542,7 +542,7 @@ new_connection_to_socket (GabbleTubeStream *self,
   return TRUE;
 }
 
-static void
+static gboolean
 tube_stream_open (GabbleTubeStream *self)
 {
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
@@ -554,7 +554,7 @@ tube_stream_open (GabbleTubeStream *self)
   if (priv->initiator == priv->self_handle)
     /* Nothing to do if we are the initiator of this tube.
      * We'll connect to the socket each time request a new bytestream. */
-    return;
+    return TRUE;
 
   /* We didn't create this tube so it doesn't have
    * a socket associated with it. Let's create one */
@@ -570,8 +570,7 @@ tube_stream_open (GabbleTubeStream *self)
       if (fd == -1)
         {
           DEBUG ("Error creating socket: %s", g_strerror (errno));
-          gabble_tube_iface_close (GABBLE_TUBE_IFACE (self));
-          return;
+          return FALSE;
         }
 
       generate_ascii_string (8, suffix);
@@ -597,8 +596,7 @@ tube_stream_open (GabbleTubeStream *self)
       if (bind (fd, (struct sockaddr *) &addr, sizeof (addr)) == -1)
         {
           DEBUG ("Error binding socket: %s", g_strerror (errno));
-          gabble_tube_iface_close (GABBLE_TUBE_IFACE (self));
-          return;
+          return FALSE;
         }
     }
   else if (priv->address_type == TP_SOCKET_ADDRESS_TYPE_IPV4)
@@ -615,8 +613,7 @@ tube_stream_open (GabbleTubeStream *self)
       if (ret != 0)
         {
           DEBUG ("getaddrinfo failed: %s", gai_strerror (ret));
-          gabble_tube_iface_close (GABBLE_TUBE_IFACE (self));
-          return;
+          return FALSE;
         }
 
       fd = socket (result->ai_family, result->ai_socktype,
@@ -625,8 +622,7 @@ tube_stream_open (GabbleTubeStream *self)
         {
           DEBUG ("Error creating socket: %s", g_strerror (errno));
           freeaddrinfo (result);
-          gabble_tube_iface_close (GABBLE_TUBE_IFACE (self));
-          return;
+          return FALSE;
         }
 
       for (port = 5000; port < 5100; port++)
@@ -641,9 +637,8 @@ tube_stream_open (GabbleTubeStream *self)
                 continue;
 
               DEBUG ("Error binding socket: %s", g_strerror (errno));
-              gabble_tube_iface_close (GABBLE_TUBE_IFACE (self));
               freeaddrinfo (result);
-              return;
+              return FALSE;
             }
 
           DEBUG ("create socket %s:%u", "127.0.0.1", port);
@@ -661,9 +656,8 @@ tube_stream_open (GabbleTubeStream *self)
       if (priv->address == NULL)
         {
           DEBUG ("Can't find a free port");
-          gabble_tube_iface_close (GABBLE_TUBE_IFACE (self));
           freeaddrinfo (result);
-          return;
+          return FALSE;
         }
 
       freeaddrinfo (result);
@@ -676,8 +670,7 @@ tube_stream_open (GabbleTubeStream *self)
   if (listen (fd, 5) == -1)
     {
       DEBUG ("Error listening socket: %s", g_strerror (errno));
-      gabble_tube_iface_close (GABBLE_TUBE_IFACE (self));
-      return;
+      return FALSE;
     }
 
   priv->listen_io_channel = g_io_channel_unix_new (fd);
@@ -687,6 +680,8 @@ tube_stream_open (GabbleTubeStream *self)
 
   priv->listen_io_channel_source_id = g_io_add_watch (priv->listen_io_channel,
       G_IO_IN, listen_cb, self);
+
+  return TRUE;
 }
 
 static void
@@ -1216,7 +1211,12 @@ gabble_tube_stream_accept (GabbleTubeIface *tube)
   if (priv->state != TP_TUBE_STATE_LOCAL_PENDING)
     return;
 
-  tube_stream_open (self);
+  if (!tube_stream_open (self))
+    {
+      gabble_tube_iface_close (GABBLE_TUBE_IFACE (self));
+      return;
+    }
+
   priv->state = TP_TUBE_STATE_OPEN;
   g_signal_emit (G_OBJECT (self), signals[OPENED], 0);
 }

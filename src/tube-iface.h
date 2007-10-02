@@ -32,7 +32,7 @@ typedef struct _GabbleTubeIfaceClass GabbleTubeIfaceClass;
 struct _GabbleTubeIfaceClass {
   GTypeInterface parent;
 
-  void (*accept) (GabbleTubeIface *tube);
+  gboolean (*accept) (GabbleTubeIface *tube, GError **error);
   void (*close) (GabbleTubeIface *tube);
   void (*add_bytestream) (GabbleTubeIface *tube,
       GabbleBytestreamIface *bytestream);
@@ -51,7 +51,7 @@ GType gabble_tube_iface_get_type (void);
   (G_TYPE_INSTANCE_GET_INTERFACE ((obj), GABBLE_TYPE_TUBE_IFACE,\
                               GabbleTubeIfaceClass))
 
-void gabble_tube_iface_accept (GabbleTubeIface *tube);
+gboolean gabble_tube_iface_accept (GabbleTubeIface *tube, GError **error);
 
 void gabble_tube_iface_close (GabbleTubeIface *tube);
 

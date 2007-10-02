@@ -1202,23 +1202,28 @@ create_si_accept_iq (GabbleBytestreamIface *bytestream)
  *
  * Implements gabble_tube_iface_accept on GabbleTubeIface
  */
-static void
-gabble_tube_stream_accept (GabbleTubeIface *tube)
+static gboolean
+gabble_tube_stream_accept (GabbleTubeIface *tube,
+                           GError **error)
 {
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (tube);
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
 
   if (priv->state != TP_TUBE_STATE_LOCAL_PENDING)
-    return;
+    return TRUE;
 
   if (!tube_stream_open (self))
     {
+      /* FIXME: we should get the error from tube_stream_open */
+      g_set_error (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+          "error when opening the stream tube");
       gabble_tube_iface_close (GABBLE_TUBE_IFACE (self));
-      return;
+      return FALSE;
     }
 
   priv->state = TP_TUBE_STATE_OPEN;
   g_signal_emit (G_OBJECT (self), signals[OPENED], 0);
+  return TRUE;
 }
 
 /**

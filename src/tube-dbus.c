@@ -1013,8 +1013,9 @@ gabble_tube_dbus_new (GabbleConnection *conn,
  *
  * Implements gabble_tube_iface_accept on GabbleTubeIface
  */
-static void
-gabble_tube_dbus_accept (GabbleTubeIface *tube)
+static gboolean
+gabble_tube_dbus_accept (GabbleTubeIface *tube,
+                         GError **error)
 {
   GabbleTubeDBus *self = GABBLE_TUBE_DBUS (tube);
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
@@ -1027,7 +1028,7 @@ gabble_tube_dbus_accept (GabbleTubeIface *tube)
       NULL);
 
   if (state != GABBLE_BYTESTREAM_STATE_LOCAL_PENDING)
-    return;
+    return TRUE;
 
   if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
     {
@@ -1054,6 +1055,7 @@ gabble_tube_dbus_accept (GabbleTubeIface *tube)
           NS_SI);
       g_assert (si != NULL);
 
+      /* FIXME: We should report errors if accept fails */
       gabble_bytestream_iface_accept (priv->bytestream, msg);
 
       lm_message_unref (msg);
@@ -1068,6 +1070,8 @@ gabble_tube_dbus_accept (GabbleTubeIface *tube)
           "state", GABBLE_BYTESTREAM_STATE_OPEN,
           NULL);
     }
+
+  return TRUE;
 }
 
 /*

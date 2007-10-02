@@ -23,13 +23,14 @@
 
 #include <glib.h>
 
-void
-gabble_tube_iface_accept (GabbleTubeIface *self)
+gboolean
+gabble_tube_iface_accept (GabbleTubeIface *self,
+                          GError **error)
 {
-  void (*virtual_method)(GabbleTubeIface *) =
+  gboolean (*virtual_method)(GabbleTubeIface *, GError **error) =
     GABBLE_TUBE_IFACE_GET_CLASS (self)->accept;
   g_assert (virtual_method != NULL);
-  virtual_method (self);
+  return virtual_method (self, error);
 }
 
 void

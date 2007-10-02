@@ -1106,7 +1106,7 @@ bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
       "bytestream", bytestream,
       NULL);
 
-  gabble_tube_iface_accept (tube);
+  gabble_tube_iface_accept (tube, NULL);
 }
 #endif
 
@@ -1814,7 +1814,7 @@ gabble_tubes_channel_accept_d_bus_tube (TpSvcChannelTypeTubes *iface,
       return;
     }
 
-  gabble_tube_iface_accept (tube);
+  gabble_tube_iface_accept (tube, NULL);
 
   update_tubes_presence (self);
 
@@ -1922,7 +1922,7 @@ gabble_tubes_channel_accept_stream_tube (TpSvcChannelTypeTubes *iface,
       "access-control-param", access_control_param,
       NULL);
 
-  gabble_tube_iface_accept (tube);
+  gabble_tube_iface_accept (tube, NULL);
 
   update_tubes_presence (self);
 

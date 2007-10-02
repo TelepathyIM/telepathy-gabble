@@ -522,12 +522,11 @@ tube_stream_open (GabbleTubeStream *self)
    * a socket associated with it. Let's create one */
   g_assert (priv->address == NULL);
 
-  // XXX close the tube if error ?
-
   fd = socket (PF_UNIX, SOCK_STREAM, 0);
   if (fd == -1)
     {
       DEBUG ("Error creating socket: %s", g_strerror (errno));
+      gabble_tube_iface_close (GABBLE_TUBE_IFACE (self));
       return;
     }
 
@@ -536,6 +535,7 @@ tube_stream_open (GabbleTubeStream *self)
   if (fcntl (fd, F_SETFL, flags | O_NONBLOCK) == -1)
     {
       DEBUG ("Can't set socket non blocking: %s", g_strerror (errno));
+      gabble_tube_iface_close (GABBLE_TUBE_IFACE (self));
       return;
     }
 
@@ -574,12 +574,14 @@ tube_stream_open (GabbleTubeStream *self)
   if (bind (fd, (struct sockaddr *) &addr, sizeof (addr)) == -1)
     {
       DEBUG ("Error binding socket: %s", g_strerror (errno));
+      gabble_tube_iface_close (GABBLE_TUBE_IFACE (self));
       return;
     }
 
   if (listen (fd, 5) == -1)
     {
       DEBUG ("Error listening socket: %s", g_strerror (errno));
+      gabble_tube_iface_close (GABBLE_TUBE_IFACE (self));
       return;
     }
 

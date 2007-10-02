@@ -1777,6 +1777,7 @@ gabble_tubes_channel_accept_d_bus_tube (TpSvcChannelTypeTubes *iface,
   TpTubeState state;
   TpTubeType type;
   gchar *addr;
+  GError *error = NULL;
 
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
 
@@ -1814,7 +1815,11 @@ gabble_tubes_channel_accept_d_bus_tube (TpSvcChannelTypeTubes *iface,
       return;
     }
 
-  gabble_tube_iface_accept (tube, NULL);
+  if (!gabble_tube_iface_accept (tube, &error))
+    {
+      dbus_g_method_return_error (context, error);
+      return;
+    }
 
   update_tubes_presence (self);
 
@@ -1852,6 +1857,7 @@ gabble_tubes_channel_accept_stream_tube (TpSvcChannelTypeTubes *iface,
   TpTubeState state;
   TpTubeType type;
   GValue *address;
+  GError *error = NULL;
 
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
 
@@ -1922,7 +1928,11 @@ gabble_tubes_channel_accept_stream_tube (TpSvcChannelTypeTubes *iface,
       "access-control-param", access_control_param,
       NULL);
 
-  gabble_tube_iface_accept (tube, NULL);
+  if (!gabble_tube_iface_accept (tube, &error))
+    {
+      dbus_g_method_return_error (context, error);
+      return;
+    }
 
   update_tubes_presence (self);
 

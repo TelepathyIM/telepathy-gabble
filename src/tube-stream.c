@@ -547,8 +547,6 @@ tube_stream_open (GabbleTubeStream *self)
 {
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
   int fd;
-  struct sockaddr_un addr;
-  int flags;
   gchar suffix[8];
 
   DEBUG ("called");
@@ -562,29 +560,19 @@ tube_stream_open (GabbleTubeStream *self)
    * a socket associated with it. Let's create one */
   g_assert (priv->address == NULL);
 
-  fd = socket (PF_UNIX, SOCK_STREAM, 0);
-  if (fd == -1)
-    {
-      DEBUG ("Error creating socket: %s", g_strerror (errno));
-      gabble_tube_iface_close (GABBLE_TUBE_IFACE (self));
-      return;
-    }
-
-  /* Set socket non blocking */
-  flags = fcntl (fd, F_GETFL, 0);
-  if (fcntl (fd, F_SETFL, flags | O_NONBLOCK) == -1)
-    {
-      DEBUG ("Can't set socket non blocking: %s", g_strerror (errno));
-      gabble_tube_iface_close (GABBLE_TUBE_IFACE (self));
-      return;
-    }
-
-  memset (&addr, 0, sizeof (addr));
-
   if (priv->address_type == TP_SOCKET_ADDRESS_TYPE_UNIX)
     {
       GArray *array;
       gchar *socket_path;
+      struct sockaddr_un addr;
+
+      fd = socket (PF_UNIX, SOCK_STREAM, 0);
+      if (fd == -1)
+        {
+          DEBUG ("Error creating socket: %s", g_strerror (errno));
+          gabble_tube_iface_close (GABBLE_TUBE_IFACE (self));
+          return;
+        }
 
       generate_ascii_string (8, suffix);
       socket_path = g_strdup_printf ("/tmp/stream-gabble-%.8s", suffix);
@@ -598,24 +586,91 @@ tube_stream_open (GabbleTubeStream *self)
 
       DEBUG ("create socket: %s", socket_path);
 
+      memset (&addr, 0, sizeof (addr));
       addr.sun_family = PF_UNIX;
-
       strncpy (addr.sun_path, socket_path,
           strlen (socket_path) + 1);
 
       g_free (socket_path);
       g_array_free (array, TRUE);
+
+      if (bind (fd, (struct sockaddr *) &addr, sizeof (addr)) == -1)
+        {
+          DEBUG ("Error binding socket: %s", g_strerror (errno));
+          gabble_tube_iface_close (GABBLE_TUBE_IFACE (self));
+          return;
+        }
+    }
+  else if (priv->address_type == TP_SOCKET_ADDRESS_TYPE_IPV4)
+    {
+      struct addrinfo req, *result = NULL;
+      int ret;
+      guint port;
+
+      memset (&req, 0, sizeof(req));
+      req.ai_family = AF_INET;
+      req.ai_socktype = SOCK_STREAM;
+
+      ret = getaddrinfo (NULL, "0", &req, &result);
+      if (ret != 0)
+        {
+          DEBUG ("getaddrinfo failed: %s", gai_strerror (ret));
+          gabble_tube_iface_close (GABBLE_TUBE_IFACE (self));
+          return;
+        }
+
+      fd = socket (result->ai_family, result->ai_socktype,
+          result->ai_protocol);
+      if (fd == -1)
+        {
+          DEBUG ("Error creating socket: %s", g_strerror (errno));
+          freeaddrinfo (result);
+          gabble_tube_iface_close (GABBLE_TUBE_IFACE (self));
+          return;
+        }
+
+      for (port = 5000; port < 5100; port++)
+        {
+          ((struct sockaddr_in *) result->ai_addr)->sin_port = ntohs (port);
+
+          if (bind (fd, (struct sockaddr *) result->ai_addr,
+                result->ai_addrlen)  == -1)
+            {
+              if (errno == EADDRINUSE)
+                /* Port used */
+                continue;
+
+              DEBUG ("Error binding socket: %s", g_strerror (errno));
+              gabble_tube_iface_close (GABBLE_TUBE_IFACE (self));
+              freeaddrinfo (result);
+              return;
+            }
+
+          DEBUG ("create socket %s:%u", "127.0.0.1", port);
+
+          priv->address = tp_g_value_slice_new (SOCKET_ADDRESS_IPV4_TYPE);
+          g_value_take_boxed (priv->address,
+              dbus_g_type_specialized_construct (SOCKET_ADDRESS_IPV4_TYPE));
+
+          dbus_g_type_struct_set (priv->address,
+              0, "127.0.0.1",
+              1, port,
+              G_MAXUINT);
+        }
+
+      if (priv->address == NULL)
+        {
+          DEBUG ("Can't find a free port");
+          gabble_tube_iface_close (GABBLE_TUBE_IFACE (self));
+          freeaddrinfo (result);
+          return;
+        }
+
+      freeaddrinfo (result);
     }
   else
     {
       g_assert_not_reached ();
-    }
-
-  if (bind (fd, (struct sockaddr *) &addr, sizeof (addr)) == -1)
-    {
-      DEBUG ("Error binding socket: %s", g_strerror (errno));
-      gabble_tube_iface_close (GABBLE_TUBE_IFACE (self));
-      return;
     }
 
   if (listen (fd, 5) == -1)

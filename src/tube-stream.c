@@ -543,7 +543,8 @@ new_connection_to_socket (GabbleTubeStream *self,
 }
 
 static gboolean
-tube_stream_open (GabbleTubeStream *self)
+tube_stream_open (GabbleTubeStream *self,
+                  GError **error)
 {
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
   int fd;
@@ -570,6 +571,8 @@ tube_stream_open (GabbleTubeStream *self)
       if (fd == -1)
         {
           DEBUG ("Error creating socket: %s", g_strerror (errno));
+          g_set_error (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+              "Error creating socket: %s", g_strerror (errno));
           return FALSE;
         }
 
@@ -596,6 +599,8 @@ tube_stream_open (GabbleTubeStream *self)
       if (bind (fd, (struct sockaddr *) &addr, sizeof (addr)) == -1)
         {
           DEBUG ("Error binding socket: %s", g_strerror (errno));
+          g_set_error (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+              "Error binding socket: %s", g_strerror (errno));
           return FALSE;
         }
     }
@@ -613,6 +618,8 @@ tube_stream_open (GabbleTubeStream *self)
       if (ret != 0)
         {
           DEBUG ("getaddrinfo failed: %s", gai_strerror (ret));
+          g_set_error (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+              "getaddrinfo failed: %s", gai_strerror (ret));
           return FALSE;
         }
 
@@ -622,6 +629,8 @@ tube_stream_open (GabbleTubeStream *self)
         {
           DEBUG ("Error creating socket: %s", g_strerror (errno));
           freeaddrinfo (result);
+          g_set_error (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+              "Error creating socket: %s", g_strerror (errno));
           return FALSE;
         }
 
@@ -638,6 +647,8 @@ tube_stream_open (GabbleTubeStream *self)
 
               DEBUG ("Error binding socket: %s", g_strerror (errno));
               freeaddrinfo (result);
+              g_set_error (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+                  "Error binding socket: %s", g_strerror (errno));
               return FALSE;
             }
 
@@ -657,6 +668,8 @@ tube_stream_open (GabbleTubeStream *self)
         {
           DEBUG ("Can't find a free port");
           freeaddrinfo (result);
+          g_set_error (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+              "Can't find a free port");
           return FALSE;
         }
 
@@ -670,6 +683,8 @@ tube_stream_open (GabbleTubeStream *self)
   if (listen (fd, 5) == -1)
     {
       DEBUG ("Error listening socket: %s", g_strerror (errno));
+      g_set_error (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+          "Error listening socket: %s", g_strerror (errno));
       return FALSE;
     }
 
@@ -1212,11 +1227,8 @@ gabble_tube_stream_accept (GabbleTubeIface *tube,
   if (priv->state != TP_TUBE_STATE_LOCAL_PENDING)
     return TRUE;
 
-  if (!tube_stream_open (self))
+  if (!tube_stream_open (self, error))
     {
-      /* FIXME: we should get the error from tube_stream_open */
-      g_set_error (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-          "error when opening the stream tube");
       gabble_tube_iface_close (GABBLE_TUBE_IFACE (self));
       return FALSE;
     }

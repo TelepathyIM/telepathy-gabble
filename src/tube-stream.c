@@ -607,7 +607,7 @@ tube_stream_open (GabbleTubeStream *self)
       int ret;
       guint port;
 
-      memset (&req, 0, sizeof(req));
+      memset (&req, 0, sizeof (req));
       req.ai_family = AF_INET;
       req.ai_socktype = SOCK_STREAM;
 

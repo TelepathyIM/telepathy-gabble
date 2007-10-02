@@ -475,6 +475,7 @@ new_connection_to_socket (GabbleTubeStream *self,
       gchar *ip, *port_str;
       guint port;
       struct addrinfo req, *result = NULL;
+      int ret;
 
       fd = socket (PF_INET, SOCK_STREAM, 0);
       if (fd == -1)
@@ -496,9 +497,10 @@ new_connection_to_socket (GabbleTubeStream *self,
       req.ai_socktype = SOCK_STREAM;
       req.ai_protocol = IPPROTO_TCP;
 
-      if (getaddrinfo (ip, port_str, &req, &result) != 0)
+      ret = getaddrinfo (ip, port_str, &req, &result);
+      if (ret != 0)
         {
-          DEBUG ("getaddrinfo failed: %s",  g_strerror (errno));
+          DEBUG ("getaddrinfo failed: %s",  gai_strerror (ret));
           g_free (ip);
           g_free (port_str);
           return FALSE;
@@ -1349,6 +1351,7 @@ gabble_tube_stream_check_params (TpSocketAddressType address_type,
       gchar *ip, *port_str;
       guint port;
       struct addrinfo req, *result = NULL;
+      int ret;
 
       /* Check address type */
       /*
@@ -1373,10 +1376,11 @@ gabble_tube_stream_check_params (TpSocketAddressType address_type,
       req.ai_socktype = SOCK_STREAM;
       req.ai_protocol = IPPROTO_TCP;
 
-      if (getaddrinfo (ip, port_str, &req, &result) != 0)
+      ret = getaddrinfo (ip, port_str, &req, &result);
+      if (ret != 0)
         {
           g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-              "Invalid address: %s", g_strerror (errno));
+              "Invalid address: %s", gai_strerror (ret));
           g_free (ip);
           g_free (port_str);
           return FALSE;

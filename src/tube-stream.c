@@ -28,6 +28,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <netdb.h>
 
 #include <glib.h>
 #include <glib/gstdio.h>
@@ -54,6 +55,10 @@ tube_iface_init (gpointer g_iface, gpointer iface_data);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleTubeStream, gabble_tube_stream, G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_TUBE_IFACE, tube_iface_init));
+
+#define SOCKET_ADDRESS_IPV4_TYPE \
+    dbus_g_type_get_struct ("GValueArray", G_TYPE_STRING, G_TYPE_UINT, \
+        G_TYPE_INVALID)
 
 /* signals */
 enum
@@ -1252,7 +1257,8 @@ gabble_tube_stream_check_params (TpSocketAddressType address_type,
                                  const GValue *access_control_param,
                                  GError **error)
 {
-  if (address_type != TP_SOCKET_ADDRESS_TYPE_UNIX)
+  if (address_type != TP_SOCKET_ADDRESS_TYPE_UNIX &&
+      address_type != TP_SOCKET_ADDRESS_TYPE_IPV4)
   {
     g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
         "Address type %d not implemented", address_type);
@@ -1304,6 +1310,49 @@ gabble_tube_stream_check_params (TpSocketAddressType address_type,
             "Unix sockets only support localhost control access");
         return FALSE;
       }
+    }
+  else if (address_type == TP_SOCKET_ADDRESS_TYPE_IPV4)
+    {
+      gchar *ip, *port_str;
+      guint port;
+      struct addrinfo req, *result = NULL;
+
+      /* Check address type */
+      /*
+      if (G_VALUE_TYPE (address) != SOCKET_ADDRESS_IPV4_TYPE)
+        {
+          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              "IPv4 socket address is supposed to be sq");
+          return FALSE;
+        }
+        */
+
+      dbus_g_type_struct_get (address,
+          0, &ip,
+          1, &port,
+          G_MAXUINT);
+
+      port_str = g_strdup_printf ("%u", port);
+
+      memset (&req, 0, sizeof (req));
+      req.ai_flags = AI_NUMERICHOST;
+      req.ai_family = AF_INET;
+      req.ai_socktype = SOCK_STREAM;
+      req.ai_protocol = IPPROTO_TCP;
+
+      if (getaddrinfo (ip, port_str, &req, &result) != 0)
+        {
+          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              "Invalid address: %s", g_strerror (errno));
+          g_free (ip);
+          g_free (port_str);
+          freeaddrinfo (result);
+          return FALSE;
+        }
+
+      g_free (ip);
+      g_free (port_str);
+      freeaddrinfo (result);
     }
   else
     {

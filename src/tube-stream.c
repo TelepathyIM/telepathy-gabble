@@ -658,6 +658,24 @@ gabble_tube_stream_dispose (GObject *object)
 
   gabble_tube_iface_close (GABBLE_TUBE_IFACE (self));
 
+  if (priv->initiator != priv->self_handle &&
+      priv->address_type == TP_SOCKET_ADDRESS_TYPE_UNIX)
+    {
+      /* We created a new UNIX socket. Let's delete it */
+      GArray *array;
+      GString *path;
+
+      array = g_value_get_boxed (priv->address);
+      path = g_string_new_len (array->data, array->len);
+
+      if (g_unlink (path->str) != 0)
+        {
+          DEBUG ("unlink of %s failed: %s", path->str, g_strerror (errno));
+        }
+
+      g_string_free (path, TRUE);
+    }
+
   if (priv->fd_to_bytestreams != NULL)
     {
       g_hash_table_destroy (priv->fd_to_bytestreams);

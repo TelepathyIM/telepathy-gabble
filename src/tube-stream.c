@@ -447,37 +447,70 @@ new_connection_to_socket (GabbleTubeStream *self,
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
   int fd;
   struct sockaddr_un addr;
-  int flags;
   GIOChannel *channel;
 
   g_assert (priv->initiator == priv->self_handle);
 
-  fd = socket (PF_UNIX, SOCK_STREAM, 0);
-  if (fd == -1)
-    {
-      DEBUG ("Error creating socket: %s", g_strerror (errno));
-      return FALSE;
-    }
-
   memset (&addr, 0, sizeof (addr));
-  addr.sun_family = PF_UNIX;
-
-  /* Set socket non blocking */
-  flags = fcntl (fd, F_GETFL, 0);
-  if (fcntl (fd, F_SETFL, flags | O_NONBLOCK) == -1)
-    {
-      DEBUG ("Can't set socket non blocking: %s", g_strerror (errno));
-      return FALSE;
-    }
 
   if (priv->address_type == TP_SOCKET_ADDRESS_TYPE_UNIX)
     {
       GArray *array;
       array = g_value_get_boxed (priv->address);
 
+      fd = socket (PF_UNIX, SOCK_STREAM, 0);
+      if (fd == -1)
+        {
+          DEBUG ("Error creating socket: %s", g_strerror (errno));
+          return FALSE;
+        }
+
+      addr.sun_family = PF_UNIX;
       strncpy (addr.sun_path, array->data, array->len + 1);
 
       DEBUG ("Will try to connect to socket: %s", (const gchar *) array->data);
+    }
+  else if (priv->address_type == TP_SOCKET_ADDRESS_TYPE_IPV4)
+    {
+      gchar *ip, *port_str;
+      guint port;
+      struct addrinfo req, *result = NULL;
+
+      fd = socket (PF_INET, SOCK_STREAM, 0);
+      if (fd == -1)
+        {
+          DEBUG ("Error creating socket: %s", g_strerror (errno));
+          return FALSE;
+        }
+
+      dbus_g_type_struct_get (priv->address,
+          0, &ip,
+          1, &port,
+          G_MAXUINT);
+
+      port_str = g_strdup_printf ("%u", port);
+
+      memset (&req, 0, sizeof (req));
+      req.ai_flags = AI_NUMERICHOST;
+      req.ai_family = AF_INET;
+      req.ai_socktype = SOCK_STREAM;
+      req.ai_protocol = IPPROTO_TCP;
+
+      if (getaddrinfo (ip, port_str, &req, &result) != 0)
+        {
+          DEBUG ("getaddrinfo failed: %s",  g_strerror (errno));
+          g_free (ip);
+          g_free (port_str);
+          return FALSE;
+        }
+
+      DEBUG ("Will try to connect to %s:%s", ip, port_str);
+
+      memcpy (&addr, result->ai_addr, sizeof (addr));
+
+      g_free (ip);
+      g_free (port_str);
+      freeaddrinfo (result);
     }
   else
     {
@@ -842,8 +875,8 @@ gabble_tube_stream_set_property (GObject *object,
         priv->parameters = g_value_get_boxed (value);
         break;
       case PROP_ADDRESS_TYPE:
-        /* For now, only UNIX sockets are implemented */
-        g_assert (g_value_get_uint (value) == TP_SOCKET_ADDRESS_TYPE_UNIX);
+        g_assert (g_value_get_uint (value) == TP_SOCKET_ADDRESS_TYPE_UNIX ||
+            g_value_get_uint (value) == TP_SOCKET_ADDRESS_TYPE_IPV4);
         priv->address_type = g_value_get_uint (value);
         break;
       case PROP_ADDRESS:
@@ -1346,7 +1379,6 @@ gabble_tube_stream_check_params (TpSocketAddressType address_type,
               "Invalid address: %s", g_strerror (errno));
           g_free (ip);
           g_free (port_str);
-          freeaddrinfo (result);
           return FALSE;
         }
 

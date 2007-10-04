@@ -60,6 +60,8 @@ G_DEFINE_TYPE_WITH_CODE (GabbleTubeStream, gabble_tube_stream, G_TYPE_OBJECT,
     dbus_g_type_get_struct ("GValueArray", G_TYPE_STRING, G_TYPE_UINT, \
         G_TYPE_INVALID)
 
+#define UNIX_PATH_MAX 108
+
 /* signals */
 enum
 {
@@ -466,7 +468,8 @@ new_connection_to_socket (GabbleTubeStream *self,
         }
 
       addr.sun_family = PF_UNIX;
-      strncpy (addr.sun_path, array->data, array->len + 1);
+      strncpy (addr.sun_path, array->data, UNIX_PATH_MAX - 1);
+      addr.sun_path[UNIX_PATH_MAX] = '\0';
 
       DEBUG ("Will try to connect to socket: %s", (const gchar *) array->data);
     }

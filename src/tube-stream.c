@@ -557,7 +557,6 @@ tube_stream_open (GabbleTubeStream *self,
 {
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
   int fd;
-  gchar suffix[8];
 
   DEBUG ("called");
 
@@ -573,8 +572,8 @@ tube_stream_open (GabbleTubeStream *self,
   if (priv->address_type == TP_SOCKET_ADDRESS_TYPE_UNIX)
     {
       GArray *array;
-      gchar *socket_path;
       struct sockaddr_un addr;
+      gchar suffix[8];
 
       fd = socket (PF_UNIX, SOCK_STREAM, 0);
       if (fd == -1)
@@ -585,24 +584,22 @@ tube_stream_open (GabbleTubeStream *self,
           return FALSE;
         }
 
+      memset (&addr, 0, sizeof (addr));
+      addr.sun_family = PF_UNIX;
+
       generate_ascii_string (8, suffix);
-      socket_path = g_strdup_printf ("/tmp/stream-gabble-%.8s", suffix);
+      snprintf (addr.sun_path, UNIX_PATH_MAX -1,
+        "/tmp/stream-gabble-%.8s", suffix);
+
+      DEBUG ("create socket: %s", addr.sun_path);
 
       array = g_array_sized_new (TRUE, FALSE, sizeof (gchar), strlen (
-            socket_path));
-      g_array_insert_vals (array, 0, socket_path, strlen (socket_path));
+            addr.sun_path));
+      g_array_insert_vals (array, 0, addr.sun_path, strlen (addr.sun_path));
 
       priv->address = tp_g_value_slice_new (DBUS_TYPE_G_UCHAR_ARRAY);
       g_value_set_boxed (priv->address, array);
 
-      DEBUG ("create socket: %s", socket_path);
-
-      memset (&addr, 0, sizeof (addr));
-      addr.sun_family = PF_UNIX;
-      strncpy (addr.sun_path, socket_path,
-          strlen (socket_path) + 1);
-
-      g_free (socket_path);
       g_array_free (array, TRUE);
 
       if (bind (fd, (struct sockaddr *) &addr, sizeof (addr)) == -1)

@@ -448,8 +448,14 @@ new_connection_to_socket (GabbleTubeStream *self,
 {
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
   int fd;
-  struct sockaddr_un addr;
   GIOChannel *channel;
+  union
+  {
+    /* we'd call this unix, but gcc predefines that. Thanks, gcc */
+    struct sockaddr_un un;
+    struct sockaddr_in ipv4;
+    struct sockaddr_in6 ipv6;
+  } addr;
 
   g_assert (priv->initiator == priv->self_handle);
 
@@ -467,9 +473,9 @@ new_connection_to_socket (GabbleTubeStream *self,
           return FALSE;
         }
 
-      addr.sun_family = PF_UNIX;
-      strncpy (addr.sun_path, array->data, UNIX_PATH_MAX - 1);
-      addr.sun_path[UNIX_PATH_MAX] = '\0';
+      addr.un.sun_family = PF_UNIX;
+      strncpy (addr.un.sun_path, array->data, UNIX_PATH_MAX - 1);
+      addr.un.sun_path[UNIX_PATH_MAX] = '\0';
 
       DEBUG ("Will try to connect to socket: %s", (const gchar *) array->data);
     }
@@ -511,7 +517,7 @@ new_connection_to_socket (GabbleTubeStream *self,
 
       DEBUG ("Will try to connect to %s:%s", ip, port_str);
 
-      memcpy (&addr, result->ai_addr, sizeof (addr));
+      memcpy (&addr, result->ai_addr, sizeof (addr.ipv4));
 
       g_free (ip);
       g_free (port_str);

@@ -1,5 +1,7 @@
 <!--
 Extract a space-separated list of interface classnames from the Telepathy spec.
+The master copy of this stylesheet is in the Telepathy spec repository -
+please make any changes there.
 
 Copyright (C) 2006, 2007 Collabora Limited
 

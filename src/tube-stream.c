@@ -606,74 +606,50 @@ tube_stream_open (GabbleTubeStream *self,
     }
   else if (priv->address_type == TP_SOCKET_ADDRESS_TYPE_IPV4)
     {
-      struct addrinfo req, *result = NULL;
-      int ret;
-      guint port;
+      struct sockaddr_in addr;
+      socklen_t len;
 
-      memset (&req, 0, sizeof (req));
-      req.ai_family = AF_INET;
-      req.ai_socktype = SOCK_STREAM;
+      addr.sin_family = AF_INET;
+      addr.sin_port = 0;         /* == ntohs (0) */
+      addr.sin_addr.s_addr = ntohl (INADDR_LOOPBACK);
 
-      ret = getaddrinfo (NULL, "0", &req, &result);
-      if (ret != 0)
-        {
-          DEBUG ("getaddrinfo failed: %s", gai_strerror (ret));
-          g_set_error (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-              "getaddrinfo failed: %s", gai_strerror (ret));
-          return FALSE;
-        }
+      len = sizeof (addr);
 
-      fd = socket (result->ai_family, result->ai_socktype,
-          result->ai_protocol);
+      fd = socket (PF_INET, SOCK_STREAM, 0);
       if (fd == -1)
         {
           DEBUG ("Error creating socket: %s", g_strerror (errno));
-          freeaddrinfo (result);
           g_set_error (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
               "Error creating socket: %s", g_strerror (errno));
           return FALSE;
         }
 
-      for (port = 5000; port < 5100; port++)
+      if (bind (fd, (struct sockaddr *) &addr, len) == -1)
         {
-          ((struct sockaddr_in *) result->ai_addr)->sin_port = ntohs (port);
-
-          if (bind (fd, (struct sockaddr *) result->ai_addr,
-                result->ai_addrlen)  == -1)
-            {
-              if (errno == EADDRINUSE)
-                /* Port used */
-                continue;
-
-              DEBUG ("Error binding socket: %s", g_strerror (errno));
-              freeaddrinfo (result);
-              g_set_error (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-                  "Error binding socket: %s", g_strerror (errno));
-              return FALSE;
-            }
-
-          DEBUG ("create socket %s:%u", "127.0.0.1", port);
-
-          priv->address = tp_g_value_slice_new (SOCKET_ADDRESS_IPV4_TYPE);
-          g_value_take_boxed (priv->address,
-              dbus_g_type_specialized_construct (SOCKET_ADDRESS_IPV4_TYPE));
-
-          dbus_g_type_struct_set (priv->address,
-              0, "127.0.0.1",
-              1, port,
-              G_MAXUINT);
-        }
-
-      if (priv->address == NULL)
-        {
-          DEBUG ("Can't find a free port");
-          freeaddrinfo (result);
+          DEBUG ("Error binding socket: %s", g_strerror (errno));
           g_set_error (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-              "Can't find a free port");
+              "Error binding socket: %s", g_strerror (errno));
           return FALSE;
         }
 
-      freeaddrinfo (result);
+      if (getsockname (fd, (struct sockaddr *) &addr, &len) == -1)
+        {
+          DEBUG ("getsockname failed: %s", g_strerror (errno));
+          g_set_error (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+              "getsockname failed: %s", g_strerror (errno));
+          return FALSE;
+        }
+
+      DEBUG ("create socket %s:%u", "127.0.0.1", htons (addr.sin_port));
+
+      priv->address = tp_g_value_slice_new (SOCKET_ADDRESS_IPV4_TYPE);
+      g_value_take_boxed (priv->address,
+          dbus_g_type_specialized_construct (SOCKET_ADDRESS_IPV4_TYPE));
+
+      dbus_g_type_struct_set (priv->address,
+          0, "127.0.0.1",
+          1, htons (addr.sin_port),
+          G_MAXUINT);
     }
   else
     {

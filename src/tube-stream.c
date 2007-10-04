@@ -1396,7 +1396,7 @@ gabble_tube_stream_check_params (TpSocketAddressType address_type,
     }
   else if (address_type == TP_SOCKET_ADDRESS_TYPE_IPV4)
     {
-      gchar *ip, *port_str;
+      gchar *ip;
       guint port;
       struct addrinfo req, *result = NULL;
       int ret;
@@ -1416,26 +1416,22 @@ gabble_tube_stream_check_params (TpSocketAddressType address_type,
           1, &port,
           G_MAXUINT);
 
-      port_str = g_strdup_printf ("%u", port);
-
       memset (&req, 0, sizeof (req));
       req.ai_flags = AI_NUMERICHOST;
       req.ai_family = AF_INET;
       req.ai_socktype = SOCK_STREAM;
       req.ai_protocol = IPPROTO_TCP;
 
-      ret = getaddrinfo (ip, port_str, &req, &result);
+      ret = getaddrinfo (ip, NULL, &req, &result);
       if (ret != 0)
         {
           g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
               "Invalid address: %s", gai_strerror (ret));
           g_free (ip);
-          g_free (port_str);
           return FALSE;
         }
 
       g_free (ip);
-      g_free (port_str);
       freeaddrinfo (result);
     }
   else

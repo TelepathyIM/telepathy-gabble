@@ -1366,6 +1366,15 @@ gabble_tube_stream_check_params (TpSocketAddressType address_type,
         }
 
       array = g_value_get_boxed (address);
+
+      if (array->len > UNIX_PATH_MAX - 1)
+        {
+          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              "Unix socket path is too long (max length allowed: %d)",
+              UNIX_PATH_MAX - 1);
+          return FALSE;
+        }
+
       socket = g_string_new_len (array->data, array->len);
 
       if (g_stat (socket->str, &stat_buff) == -1)

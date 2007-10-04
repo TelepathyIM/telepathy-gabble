@@ -1177,7 +1177,7 @@ streaminit_reply_cb (GabbleConnection *conn,
     }
 
 END:
-  if (!success)
+  if (!success && bytestream != NULL)
     {
       /* Initiation failed. We remove the stream */
       remove_bytestream (self, bytestream);

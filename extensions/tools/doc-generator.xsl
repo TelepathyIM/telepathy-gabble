@@ -1,3 +1,24 @@
+<!-- Generate HTML documentation from the Telepathy specification.
+The master copy of this stylesheet is in the Telepathy spec repository -
+please make any changes there.
+
+Copyright (C) 2006, 2007 Collabora Limited
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Library General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+-->
+
 <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
   xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0"
   exclude-result-prefixes="tp">
@@ -126,7 +147,11 @@
   </xsl:template>
 
   <xsl:template match="tp:enum">
-    <h3 xmlns="http://www.w3.org/1999/xhtml"><xsl:value-of select="@name"/></h3>
+    <h3 xmlns="http://www.w3.org/1999/xhtml">
+      <a name="{concat(../@name, concat('.', @name))}">
+        <xsl:value-of select="@name"/>
+      </a>
+    </h3>
     <xsl:apply-templates select="tp:docstring" />
     <dl xmlns="http://www.w3.org/1999/xhtml">
         <xsl:variable name="value-prefix">
@@ -167,7 +192,10 @@
 
   <xsl:template match="method">
     <div xmlns="http://www.w3.org/1999/xhtml" class="method">
-      <h3 xmlns="http://www.w3.org/1999/xhtml"><xsl:value-of select="@name"/> (
+      <h3 xmlns="http://www.w3.org/1999/xhtml">
+        <a name="{concat(../@name, concat('.', @name))}">
+          <xsl:value-of select="@name"/>
+        </a> (
         <xsl:for-each xmlns="" select="arg[@direction='in']">
           <xsl:value-of select="@type"/>: <xsl:value-of select="@name"/>
           <xsl:if test="position() != last()">, </xsl:if>
@@ -263,7 +291,10 @@
 
   <xsl:template match="signal">
     <div xmlns="http://www.w3.org/1999/xhtml" class="signal">
-      <h3 xmlns="http://www.w3.org/1999/xhtml"><xsl:value-of select="@name"/> ( 
+      <h3 xmlns="http://www.w3.org/1999/xhtml">
+        <a name="{concat(../@name, concat('.', @name))}">
+          <xsl:value-of select="@name"/>
+        </a> (
         <xsl:for-each xmlns="" select="arg">
           <xsl:value-of select="@type"/>: <xsl:value-of select="@name"/>
           <xsl:if test="position() != last()">, </xsl:if>

@@ -456,6 +456,7 @@ new_connection_to_socket (GabbleTubeStream *self,
     struct sockaddr_in ipv4;
     struct sockaddr_in6 ipv6;
   } addr;
+  socklen_t len;
 
   g_assert (priv->initiator == priv->self_handle);
 
@@ -476,6 +477,7 @@ new_connection_to_socket (GabbleTubeStream *self,
       addr.un.sun_family = PF_UNIX;
       strncpy (addr.un.sun_path, array->data, UNIX_PATH_MAX - 1);
       addr.un.sun_path[UNIX_PATH_MAX] = '\0';
+      len = sizeof (addr.un);
 
       DEBUG ("Will try to connect to socket: %s", (const gchar *) array->data);
     }
@@ -518,6 +520,7 @@ new_connection_to_socket (GabbleTubeStream *self,
       DEBUG ("Will try to connect to %s:%s", ip, port_str);
 
       memcpy (&addr, result->ai_addr, sizeof (addr.ipv4));
+      len = sizeof (addr.ipv4);
 
       g_free (ip);
       g_free (port_str);
@@ -528,7 +531,7 @@ new_connection_to_socket (GabbleTubeStream *self,
       g_assert_not_reached ();
     }
 
-  if (connect (fd, (struct sockaddr *) &addr, sizeof (addr)) == -1)
+  if (connect (fd, (struct sockaddr *) &addr, len) == -1)
     {
       DEBUG ("Error connecting socket: %s", g_strerror (errno));
       return FALSE;

@@ -406,13 +406,13 @@ listen_cb (GIOChannel *source,
 {
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (data);
   int fd, listen_fd;
-  struct sockaddr_un addr;
+  struct sockaddr_storage addr;
   socklen_t addrlen;
   int flags;
 
   listen_fd = g_io_channel_unix_get_fd (source);
 
-  addrlen = sizeof (struct sockaddr_un);
+  addrlen = sizeof (struct sockaddr_storage);
   fd = accept (listen_fd, (struct sockaddr *) &addr, &addrlen);
   if (fd == -1)
     {

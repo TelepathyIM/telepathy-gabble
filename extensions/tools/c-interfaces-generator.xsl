@@ -1,5 +1,5 @@
 <!-- Stylesheet to extract C enumerations from the Telepathy spec.
-The master copy of this stylesheet is in libtelepathy-glib - please make any
+The master copy of this stylesheet is in telepathy-glib - please make any
 changes there.
 
 Copyright (C) 2006, 2007 Collabora Limited

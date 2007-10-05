@@ -1444,14 +1444,12 @@ gabble_tube_stream_check_params (TpSocketAddressType address_type,
       int ret;
 
       /* Check address type */
-      /*
       if (G_VALUE_TYPE (address) != SOCKET_ADDRESS_IPV4_TYPE)
         {
           g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
               "IPv4 socket address is supposed to be sq");
           return FALSE;
         }
-        */
 
       dbus_g_type_struct_get (address,
           0, &ip,

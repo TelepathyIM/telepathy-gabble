@@ -127,11 +127,6 @@ gabble_tubes_channel_init (GabbleTubesChannel *self)
 
   priv->tubes = g_hash_table_new_full (g_direct_hash, g_direct_equal,
       NULL, (GDestroyNotify) g_object_unref);
-
-  self->muc = NULL;
-
-  priv->dispose_has_run = FALSE;
-  priv->closed = FALSE;
 }
 
 static GObject *

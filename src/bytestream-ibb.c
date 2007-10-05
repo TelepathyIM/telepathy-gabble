@@ -482,6 +482,15 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
   /* FIXME: check sequence number */
 
   str = base64_decode (lm_message_node_get_value (data));
+  if (str == NULL)
+    {
+      DEBUG ("base64 decoding failed");
+      if (is_iq)
+        _gabble_connection_send_iq_error (priv->conn, msg,
+            XMPP_ERROR_BAD_REQUEST, "base64 decoding failed");
+      return;
+    }
+
   g_signal_emit (G_OBJECT (self), signals[DATA_RECEIVED], 0, sender, str);
   g_string_free (str, TRUE);
 

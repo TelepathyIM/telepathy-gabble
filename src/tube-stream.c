@@ -1498,6 +1498,14 @@ check_ip_params (TpSocketAddressType address_type,
   g_free (ip);
   freeaddrinfo (result);
 
+  if (access_control != TP_SOCKET_ACCESS_CONTROL_LOCALHOST)
+  {
+    g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+        "%s sockets only support localhost control access",
+        (address_type == TP_SOCKET_ADDRESS_TYPE_IPV4 ? "IPv4" : "IPv6"));
+    return FALSE;
+  }
+
   return TRUE;
 }
 

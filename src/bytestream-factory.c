@@ -807,8 +807,9 @@ handle_ibb_data (GabbleBytestreamFactory *self,
   if (bsid.jid == NULL)
     {
       DEBUG ("got a message without a from field");
-      _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_BAD_REQUEST, "IBB <close> has no 'from' attribute");
+      if (is_iq)
+        _gabble_connection_send_iq_error (priv->conn, msg,
+            XMPP_ERROR_BAD_REQUEST, "IBB <close> has no 'from' attribute");
       return TRUE;
     }
 

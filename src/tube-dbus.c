@@ -308,11 +308,6 @@ gabble_tube_dbus_init (GabbleTubeDBus *self)
       GABBLE_TYPE_TUBE_DBUS, GabbleTubeDBusPrivate);
 
   self->priv = priv;
-
-  priv->bytestream = NULL;
-  priv->dbus_srv_addr = NULL;
-  priv->socket_path = NULL;
-  priv->dispose_has_run = FALSE;
 }
 
 static void

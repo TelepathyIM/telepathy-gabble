@@ -91,6 +91,7 @@ struct _GabbleBytestreamIBBPrivate
 
   guint16 seq;
   guint16 last_seq_recv;
+  gboolean dispose_has_run;
 };
 
 #define GABBLE_BYTESTREAM_IBB_GET_PRIVATE(obj) \
@@ -114,6 +115,11 @@ gabble_bytestream_ibb_dispose (GObject *object)
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+
+  if (priv->dispose_has_run)
+    return;
+
+  priv->dispose_has_run = TRUE;
 
   tp_handle_unref (contact_repo, priv->peer_handle);
 

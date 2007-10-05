@@ -418,8 +418,8 @@ streaminit_parse_request (LmMessage *message,
       if (tp_strdiff (lm_message_node_get_attribute (field, "type"),
             "list-single"))
         {
-          NODE_DEBUG(message->node, "SI request's stream-method field was not "
-              "of type list-single");
+          NODE_DEBUG (message->node, "SI request's stream-method field was "
+              "not of type list-single");
           return FALSE;
         }
 
@@ -1119,39 +1119,44 @@ streaminit_reply_cb (GabbleConnection *conn,
       goto END;
     }
 
-  field = lm_message_node_get_child (x, "field");
-  if (field == NULL ||
-      tp_strdiff (lm_message_node_get_attribute (field, "var"),
-        "stream-method"))
+  for (field = x->children; field; field = field->next)
     {
-      NODE_DEBUG (reply_msg->node,
-          "got a SI reply without stream methods");
-      goto END;
+      if (tp_strdiff (lm_message_node_get_attribute (field, "var"),
+            "stream-method"))
+        /* some future field, ignore it */
+        continue;
+
+      value = lm_message_node_get_child (field, "value");
+      if (value == NULL)
+        {
+          NODE_DEBUG (reply_msg->node, "SI reply's stream-method field "
+              "doesn't contain stream-method value");
+          goto END;
+        }
+
+      stream_method = lm_message_node_get_value (value);
+
+      if (!tp_strdiff (stream_method, NS_IBB))
+        {
+          /* Remote user has accepted the stream */
+          bytestream = GABBLE_BYTESTREAM_IFACE (
+              gabble_bytestream_factory_create_ibb (self, peer_handle,
+              data->stream_id, NULL, peer_resource,
+              GABBLE_BYTESTREAM_STATE_INITIATING));
+        }
+      else
+        {
+          DEBUG ("Remote user chose an unsupported stream method");
+          goto END;
+        }
+
+      /* no need to parse the rest of the fields, we've found the one we
+       * wanted */
+      break;
     }
 
-  value = lm_message_node_get_child (field, "value");
-  if (value == NULL)
-    {
-      NODE_DEBUG (reply_msg->node,
-          "got a SI reply without stream-method value");
-      goto END;
-    }
-
-  stream_method = lm_message_node_get_value (value);
-
-  if (!tp_strdiff (stream_method, NS_IBB))
-    {
-      /* Remote user has accepted the stream */
-      bytestream = GABBLE_BYTESTREAM_IFACE (
-          gabble_bytestream_factory_create_ibb (self, peer_handle,
-          data->stream_id, NULL, peer_resource,
-          GABBLE_BYTESTREAM_STATE_INITIATING));
-    }
-  else
-    {
-      DEBUG ("Remote user chose an unsupported stream method");
-      goto END;
-    }
+  if (bytestream == NULL)
+    goto END;
 
   DEBUG ("stream %s accepted", data->stream_id);
 

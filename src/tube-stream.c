@@ -60,8 +60,6 @@ G_DEFINE_TYPE_WITH_CODE (GabbleTubeStream, gabble_tube_stream, G_TYPE_OBJECT,
     dbus_g_type_get_struct ("GValueArray", G_TYPE_STRING, G_TYPE_UINT, \
         G_TYPE_INVALID)
 
-#define UNIX_PATH_MAX 108
-
 /* Linux glibc bits/socket.h suggests that struct sockaddr_storage is
  * not guaranteed to be big enough for AF_UNIX addresses */
 typedef union
@@ -492,8 +490,8 @@ new_connection_to_socket (GabbleTubeStream *self,
         }
 
       addr.un.sun_family = PF_UNIX;
-      strncpy (addr.un.sun_path, array->data, UNIX_PATH_MAX - 1);
-      addr.un.sun_path[UNIX_PATH_MAX] = '\0';
+      strncpy (addr.un.sun_path, array->data, sizeof (addr.un.sun_path) - 1);
+      addr.un.sun_path[sizeof (addr.un.sun_path)] = '\0';
       len = sizeof (addr.un);
 
       DEBUG ("Will try to connect to socket: %s", (const gchar *) array->data);
@@ -608,7 +606,7 @@ tube_stream_open (GabbleTubeStream *self,
       addr.sun_family = PF_UNIX;
 
       generate_ascii_string (8, suffix);
-      snprintf (addr.sun_path, UNIX_PATH_MAX -1,
+      snprintf (addr.sun_path, sizeof (addr.sun_path) - 1,
         "/tmp/stream-gabble-%.8s", suffix);
 
       DEBUG ("create socket: %s", addr.sun_path);
@@ -1380,6 +1378,7 @@ gabble_tube_stream_check_params (TpSocketAddressType address_type,
       GString *socket;
       struct stat stat_buff;
       guint i;
+      struct sockaddr_un dummy;
 
       /* Check address type */
       if (G_VALUE_TYPE (address) != DBUS_TYPE_G_UCHAR_ARRAY)
@@ -1391,11 +1390,11 @@ gabble_tube_stream_check_params (TpSocketAddressType address_type,
 
       array = g_value_get_boxed (address);
 
-      if (array->len > UNIX_PATH_MAX - 1)
+      if (array->len > sizeof (dummy.sun_path) - 1)
         {
           g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
               "Unix socket path is too long (max length allowed: %d)",
-              UNIX_PATH_MAX - 1);
+              sizeof (dummy.sun_path) - 1);
           return FALSE;
         }
 

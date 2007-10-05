@@ -157,13 +157,6 @@ gabble_bytestream_factory_init (GabbleBytestreamFactory *self)
 
   priv->muc_bytestreams = g_hash_table_new_full (bytestream_id_hash,
       bytestream_id_equal, bytestream_id_free, g_object_unref);
-
-  priv->iq_si_cb = NULL;
-  priv->iq_ibb_cb = NULL;
-  priv->msg_data_cb = NULL;
-
-  priv->conn = NULL;
-  priv->dispose_has_run = FALSE;
 }
 
 static GObject *

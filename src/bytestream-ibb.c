@@ -324,6 +324,7 @@ gabble_bytestream_ibb_class_init (
       "block size",
       "Maximum data sent using one stanza as described in XEP-0047",
       0, G_MAXUINT32, 4096,
+      G_PARAM_CONSTRUCT |
       G_PARAM_READWRITE |
       G_PARAM_STATIC_NAME |
       G_PARAM_STATIC_NICK |

@@ -60,6 +60,10 @@ G_DEFINE_TYPE_WITH_CODE (GabbleTubeStream, gabble_tube_stream, G_TYPE_OBJECT,
     dbus_g_type_get_struct ("GValueArray", G_TYPE_STRING, G_TYPE_UINT, \
         G_TYPE_INVALID)
 
+#define SOCKET_ADDRESS_IPV6_TYPE \
+    dbus_g_type_get_struct ("GValueArray", G_TYPE_STRING, G_TYPE_UINT, \
+        G_TYPE_INVALID)
+
 /* Linux glibc bits/socket.h suggests that struct sockaddr_storage is
  * not guaranteed to be big enough for AF_UNIX addresses */
 typedef union
@@ -1354,6 +1358,72 @@ gabble_tube_stream_add_bytestream (GabbleTubeIface *tube,
     }
 }
 
+static gboolean
+check_ip_params (TpSocketAddressType address_type,
+                 const GValue *address,
+                 TpSocketAccessControl access_control,
+                 const GValue *access_control_param,
+                 GError **error)
+{
+  gchar *ip;
+  guint port;
+  struct addrinfo req, *result = NULL;
+  int ret;
+
+  /* Check address type */
+  if (address_type == TP_SOCKET_ADDRESS_TYPE_IPV4)
+    {
+      if (G_VALUE_TYPE (address) != SOCKET_ADDRESS_IPV4_TYPE)
+        {
+          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              "IPv4 socket address is supposed to be sq");
+          return FALSE;
+        }
+    }
+  else if (address_type == TP_SOCKET_ADDRESS_TYPE_IPV6)
+    {
+      if (G_VALUE_TYPE (address) != SOCKET_ADDRESS_IPV6_TYPE)
+        {
+          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              "IPv6 socket address is supposed to be sq");
+          return FALSE;
+        }
+    }
+  else
+    {
+      g_assert_not_reached ();
+    }
+
+  dbus_g_type_struct_get (address,
+      0, &ip,
+      1, &port,
+      G_MAXUINT);
+
+  memset (&req, 0, sizeof (req));
+  req.ai_flags = AI_NUMERICHOST;
+  req.ai_socktype = SOCK_STREAM;
+  req.ai_protocol = IPPROTO_TCP;
+
+  if (address_type == TP_SOCKET_ADDRESS_TYPE_IPV4)
+    req.ai_family = AF_INET;
+  else
+    req.ai_family = AF_INET6;
+
+  ret = getaddrinfo (ip, NULL, &req, &result);
+  if (ret != 0)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Invalid address: %s", gai_strerror (ret));
+      g_free (ip);
+      return FALSE;
+    }
+
+  g_free (ip);
+  freeaddrinfo (result);
+
+  return TRUE;
+}
+
 gboolean
 gabble_tube_stream_check_params (TpSocketAddressType address_type,
                                  const GValue *address,
@@ -1361,14 +1431,6 @@ gabble_tube_stream_check_params (TpSocketAddressType address_type,
                                  const GValue *access_control_param,
                                  GError **error)
 {
-  if (address_type != TP_SOCKET_ADDRESS_TYPE_UNIX &&
-      address_type != TP_SOCKET_ADDRESS_TYPE_IPV4)
-  {
-    g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
-        "Address type %d not implemented", address_type);
-    return FALSE;
-  }
-
   if (address_type == TP_SOCKET_ADDRESS_TYPE_UNIX)
     {
       GArray *array;
@@ -1436,47 +1498,17 @@ gabble_tube_stream_check_params (TpSocketAddressType address_type,
         return FALSE;
       }
     }
-  else if (address_type == TP_SOCKET_ADDRESS_TYPE_IPV4)
+  else if (address_type == TP_SOCKET_ADDRESS_TYPE_IPV4 ||
+      address_type == TP_SOCKET_ADDRESS_TYPE_IPV6)
     {
-      gchar *ip;
-      guint port;
-      struct addrinfo req, *result = NULL;
-      int ret;
-
-      /* Check address type */
-      if (G_VALUE_TYPE (address) != SOCKET_ADDRESS_IPV4_TYPE)
-        {
-          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-              "IPv4 socket address is supposed to be sq");
-          return FALSE;
-        }
-
-      dbus_g_type_struct_get (address,
-          0, &ip,
-          1, &port,
-          G_MAXUINT);
-
-      memset (&req, 0, sizeof (req));
-      req.ai_flags = AI_NUMERICHOST;
-      req.ai_family = AF_INET;
-      req.ai_socktype = SOCK_STREAM;
-      req.ai_protocol = IPPROTO_TCP;
-
-      ret = getaddrinfo (ip, NULL, &req, &result);
-      if (ret != 0)
-        {
-          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-              "Invalid address: %s", gai_strerror (ret));
-          g_free (ip);
-          return FALSE;
-        }
-
-      g_free (ip);
-      freeaddrinfo (result);
+      check_ip_params (address_type, address, access_control,
+          access_control_param, error);
     }
   else
     {
-      g_assert_not_reached ();
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+          "Address type %d not implemented", address_type);
+      return FALSE;
     }
 
   return TRUE;

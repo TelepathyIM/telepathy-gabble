@@ -88,6 +88,8 @@ struct _GabbleBytestreamMucPrivate
   const gchar *peer_jid;
   /* (gchar *): sender's muc-JID -> (GString *): accumulated message data */
   GHashTable *buffers;
+
+  gboolean dispose_has_run;
 };
 
 #define GABBLE_BYTESTREAM_MUC_GET_PRIVATE(obj) \
@@ -117,6 +119,11 @@ gabble_bytestream_muc_dispose (GObject *object)
   GabbleBytestreamMucPrivate *priv = GABBLE_BYTESTREAM_MUC_GET_PRIVATE (self);
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
+
+  if (priv->dispose_has_run)
+    return;
+
+  priv->dispose_has_run = TRUE;
 
   tp_handle_unref (room_repo, priv->peer_handle);
 

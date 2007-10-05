@@ -519,7 +519,7 @@ gabble_bytestream_ibb_accept (GabbleBytestreamIface *iface, LmMessage *msg)
 
   if (_gabble_connection_send (priv->conn, msg, NULL))
     {
-      priv->state = GABBLE_BYTESTREAM_STATE_ACCEPTED;
+      g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_ACCEPTED, NULL);
     }
 }
 

@@ -498,7 +498,7 @@ new_connection_to_socket (GabbleTubeStream *self,
     }
   else if (priv->address_type == TP_SOCKET_ADDRESS_TYPE_IPV4)
     {
-      gchar *ip, *port_str;
+      gchar *ip;
       guint port;
       struct addrinfo req, *result = NULL;
       int ret;
@@ -515,30 +515,27 @@ new_connection_to_socket (GabbleTubeStream *self,
           1, &port,
           G_MAXUINT);
 
-      port_str = g_strdup_printf ("%u", port);
-
       memset (&req, 0, sizeof (req));
       req.ai_flags = AI_NUMERICHOST;
       req.ai_family = AF_INET;
       req.ai_socktype = SOCK_STREAM;
       req.ai_protocol = IPPROTO_TCP;
 
-      ret = getaddrinfo (ip, port_str, &req, &result);
+      ret = getaddrinfo (ip, NULL, &req, &result);
       if (ret != 0)
         {
           DEBUG ("getaddrinfo failed: %s",  gai_strerror (ret));
           g_free (ip);
-          g_free (port_str);
           return FALSE;
         }
 
-      DEBUG ("Will try to connect to %s:%s", ip, port_str);
+      DEBUG ("Will try to connect to %s:%u", ip, port);
 
       memcpy (&addr, result->ai_addr, sizeof (addr.ipv4));
+      addr.ipv4.sin_port = ntohs (port);
       len = sizeof (addr.ipv4);
 
       g_free (ip);
-      g_free (port_str);
       freeaddrinfo (result);
     }
   else

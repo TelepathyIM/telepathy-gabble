@@ -1359,6 +1359,83 @@ gabble_tube_stream_add_bytestream (GabbleTubeIface *tube,
 }
 
 static gboolean
+check_unix_params (TpSocketAddressType address_type,
+                   const GValue *address,
+                   TpSocketAccessControl access_control,
+                   const GValue *access_control_param,
+                   GError **error)
+{
+  GArray *array;
+  GString *socket;
+  struct stat stat_buff;
+  guint i;
+  struct sockaddr_un dummy;
+
+  g_assert (address_type == TP_SOCKET_ADDRESS_TYPE_UNIX);
+
+  /* Check address type */
+  if (G_VALUE_TYPE (address) != DBUS_TYPE_G_UCHAR_ARRAY)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Unix socket address is supposed to be ay");
+      return FALSE;
+    }
+
+  array = g_value_get_boxed (address);
+
+  if (array->len > sizeof (dummy.sun_path) - 1)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Unix socket path is too long (max length allowed: %d)",
+          sizeof (dummy.sun_path) - 1);
+      return FALSE;
+    }
+
+  for (i = 0; i < array->len; i++)
+    {
+      if (g_array_index (array, gchar , i) == '\0')
+        {
+          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              "Unix socket path can't contain zero bytes");
+          return FALSE;
+        }
+    }
+
+  socket = g_string_new_len (array->data, array->len);
+
+  if (g_stat (socket->str, &stat_buff) == -1)
+  {
+    DEBUG ("Error calling stat on socket: %s", g_strerror (errno));
+
+    g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, "%s: %s",
+        socket->str, g_strerror (errno));
+    g_string_free (socket, TRUE);
+    return FALSE;
+  }
+
+  if (!S_ISSOCK (stat_buff.st_mode))
+  {
+    DEBUG ("%s is not a socket", socket->str);
+
+    g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+        "%s is not a socket", socket->str);
+    g_string_free (socket, TRUE);
+    return FALSE;
+  }
+
+  g_string_free (socket, TRUE);
+
+  if (access_control != TP_SOCKET_ACCESS_CONTROL_LOCALHOST)
+  {
+    g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+        "Unix sockets only support localhost control access");
+    return FALSE;
+  }
+
+  return TRUE;
+}
+
+static gboolean
 check_ip_params (TpSocketAddressType address_type,
                  const GValue *address,
                  TpSocketAccessControl access_control,
@@ -1431,87 +1508,22 @@ gabble_tube_stream_check_params (TpSocketAddressType address_type,
                                  const GValue *access_control_param,
                                  GError **error)
 {
-  if (address_type == TP_SOCKET_ADDRESS_TYPE_UNIX)
+  switch (address_type)
     {
-      GArray *array;
-      GString *socket;
-      struct stat stat_buff;
-      guint i;
-      struct sockaddr_un dummy;
+      case TP_SOCKET_ADDRESS_TYPE_UNIX:
+        return check_unix_params (address_type, address, access_control,
+            access_control_param, error);
 
-      /* Check address type */
-      if (G_VALUE_TYPE (address) != DBUS_TYPE_G_UCHAR_ARRAY)
-        {
-          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-              "Unix socket address is supposed to be ay");
-          return FALSE;
-        }
+      case TP_SOCKET_ADDRESS_TYPE_IPV4:
+      case TP_SOCKET_ADDRESS_TYPE_IPV6:
+        return check_ip_params (address_type, address, access_control,
+            access_control_param, error);
 
-      array = g_value_get_boxed (address);
-
-      if (array->len > sizeof (dummy.sun_path) - 1)
-        {
-          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-              "Unix socket path is too long (max length allowed: %d)",
-              sizeof (dummy.sun_path) - 1);
-          return FALSE;
-        }
-
-      for (i = 0; i < array->len; i++)
-        {
-          if (g_array_index (array, gchar , i) == '\0')
-            {
-              g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-                  "Unix socket path can't contain zero bytes");
-              return FALSE;
-            }
-        }
-
-      socket = g_string_new_len (array->data, array->len);
-
-      if (g_stat (socket->str, &stat_buff) == -1)
-      {
-        DEBUG ("Error calling stat on socket: %s", g_strerror (errno));
-
-        g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, "%s: %s",
-            socket->str, g_strerror (errno));
-        g_string_free (socket, TRUE);
+      default:
+        g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+            "Address type %d not implemented", address_type);
         return FALSE;
-      }
-
-      if (!S_ISSOCK (stat_buff.st_mode))
-      {
-        DEBUG ("%s is not a socket", socket->str);
-
-        g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-            "%s is not a socket", socket->str);
-        g_string_free (socket, TRUE);
-        return FALSE;
-      }
-
-      g_string_free (socket, TRUE);
-
-      if (access_control != TP_SOCKET_ACCESS_CONTROL_LOCALHOST)
-      {
-        g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-            "Unix sockets only support localhost control access");
-        return FALSE;
-      }
     }
-  else if (address_type == TP_SOCKET_ADDRESS_TYPE_IPV4 ||
-      address_type == TP_SOCKET_ADDRESS_TYPE_IPV6)
-    {
-      check_ip_params (address_type, address, access_control,
-          access_control_param, error);
-    }
-  else
-    {
-      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
-          "Address type %d not implemented", address_type);
-      return FALSE;
-    }
-
-  return TRUE;
 }
 
 static void

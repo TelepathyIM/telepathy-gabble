@@ -731,7 +731,6 @@ handle_ibb_close_iq (GabbleBytestreamFactory *self,
     GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
   ConstBytestreamIdentifier bsid = { NULL, NULL };
   GabbleBytestreamIBB *bytestream;
-  LmMessage *reply;
   LmMessageNode *close_node;
 
   if (lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_SET)
@@ -763,14 +762,9 @@ handle_ibb_close_iq (GabbleBytestreamFactory *self,
   bytestream = g_hash_table_lookup (priv->ibb_bytestreams, &bsid);
   if (bytestream == NULL)
     {
-      GabbleXmppError error = XMPP_ERROR_ITEM_NOT_FOUND;
-
       DEBUG ("unknown stream: <%s> from <%s>", bsid.stream, bsid.jid);
-
-      reply = lm_message_new_with_sub_type (bsid.jid,
-          LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_ERROR);
-
-      gabble_xmpp_error_to_node (error, reply->node, NULL);
+      _gabble_connection_send_iq_error (priv->conn, msg,
+          XMPP_ERROR_ITEM_NOT_FOUND, NULL);
     }
   else
     {
@@ -779,16 +773,9 @@ handle_ibb_close_iq (GabbleBytestreamFactory *self,
       g_object_set (bytestream, "state", GABBLE_BYTESTREAM_STATE_CLOSED,
           NULL);
 
-      reply = lm_message_new_with_sub_type (bsid.jid, LM_MESSAGE_TYPE_IQ,
-          LM_MESSAGE_SUB_TYPE_RESULT);
+      _gabble_connection_acknowledge_set_iq (priv->conn, msg);
     }
 
-  lm_message_node_set_attribute (reply->node,
-      "id", lm_message_node_get_attribute (msg->node, "id"));
-
-  _gabble_connection_send (priv->conn, reply, NULL);
-
-  lm_message_unref (reply);
   return TRUE;
 }
 

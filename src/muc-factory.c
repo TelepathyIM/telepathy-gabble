@@ -346,11 +346,11 @@ new_muc_channel (GabbleMucFactory *fac, TpHandle handle, gboolean invite_self)
   DEBUG ("creating new chan, object path %s", object_path);
 
   chan = g_object_new (GABBLE_TYPE_MUC_CHANNEL,
-                       "connection", priv->conn,
-                       "object-path", object_path,
-                       "handle", handle,
-                       "invite-self", invite_self,
-                       NULL);
+      "connection", priv->conn,
+       "object-path", object_path,
+       "handle", handle,
+       "invite-self", invite_self,
+       NULL);
 
   g_signal_connect (chan, "closed", (GCallback) muc_channel_closed_cb, fac);
 
@@ -389,12 +389,12 @@ new_tubes_channel (GabbleMucFactory *fac,
   DEBUG ("creating new tubes chan, object path %s", object_path);
 
   chan = g_object_new (GABBLE_TYPE_TUBES_CHANNEL,
-                       "connection", priv->conn,
-                       "object-path", object_path,
-                       "handle", room,
-                       "handle-type", TP_HANDLE_TYPE_ROOM,
-                       "muc", muc,
-                       NULL);
+      "connection", priv->conn,
+      "object-path", object_path,
+      "handle", room,
+      "handle-type", TP_HANDLE_TYPE_ROOM,
+      "muc", muc,
+      NULL);
 
   g_signal_connect (chan, "closed", (GCallback) tubes_channel_closed_cb, fac);
 
@@ -426,7 +426,7 @@ do_invite (GabbleMucFactory *fac,
     }
 
   if (g_hash_table_lookup (priv->text_channels,
-          GUINT_TO_POINTER (room_handle)) == NULL)
+        GUINT_TO_POINTER (room_handle)) == NULL)
     {
       GabbleMucChannel *chan = new_muc_channel (fac, room_handle, FALSE);
       _gabble_muc_channel_handle_invited (chan, inviter_handle, reason);

@@ -94,7 +94,8 @@ gabble_private_tubes_factory_init (GabblePrivateTubesFactory *self)
 
   priv->msg_tube_cb = NULL;
   priv->channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-                                          NULL, g_object_unref);
+      NULL, g_object_unref);
+
   priv->conn = NULL;
   priv->dispose_has_run = FALSE;
 }
@@ -469,9 +470,9 @@ gabble_private_tubes_factory_handle_si_stream_request (
 
 static LmHandlerResult
 private_tubes_factory_msg_tube_cb (LmMessageHandler *handler,
-                           LmConnection *lmconn,
-                           LmMessage *msg,
-                           gpointer user_data)
+                                   LmConnection *lmconn,
+                                   LmMessage *msg,
+                                   gpointer user_data)
 {
   GabblePrivateTubesFactory *self = GABBLE_PRIVATE_TUBES_FACTORY (user_data);
   GabblePrivateTubesFactoryPrivate *priv =

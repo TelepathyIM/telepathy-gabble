@@ -1457,7 +1457,7 @@ check_unix_params (TpSocketAddressType address_type,
   if (array->len > sizeof (dummy.sun_path) - 1)
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "Unix socket path is too long (max length allowed: %d)",
+          "Unix socket path is too long (max length allowed: %zu)",
           sizeof (dummy.sun_path) - 1);
       return FALSE;
     }

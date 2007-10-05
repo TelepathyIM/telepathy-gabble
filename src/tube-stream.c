@@ -433,6 +433,10 @@ listen_cb (GIOChannel *source,
     {
       addrlen = sizeof (addr.ipv4);
     }
+  else if (priv->address_type == TP_SOCKET_ADDRESS_TYPE_IPV6)
+    {
+      addrlen = sizeof (addr.ipv6);
+    }
   else
     {
       g_assert_not_reached ();
@@ -692,6 +696,54 @@ tube_stream_open (GabbleTubeStream *self,
       dbus_g_type_struct_set (priv->address,
           0, "127.0.0.1",
           1, ntohs (addr.sin_port),
+          G_MAXUINT);
+    }
+  else if (priv->address_type == TP_SOCKET_ADDRESS_TYPE_IPV6)
+    {
+      struct sockaddr_in6 addr;
+      socklen_t len;
+      struct in6_addr loopback_addr = IN6ADDR_LOOPBACK_INIT;
+
+      addr.sin6_family = AF_INET6;
+      addr.sin6_port = 0;         /* == ntohs (0) */
+      addr.sin6_addr = loopback_addr;
+
+      len = sizeof (addr);
+
+      fd = socket (PF_INET6, SOCK_STREAM, 0);
+      if (fd == -1)
+        {
+          DEBUG ("Error creating socket: %s", g_strerror (errno));
+          g_set_error (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+              "Error creating socket: %s", g_strerror (errno));
+          return FALSE;
+        }
+
+      if (bind (fd, (struct sockaddr *) &addr, len) == -1)
+        {
+          DEBUG ("Error binding socket: %s", g_strerror (errno));
+          g_set_error (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+              "Error binding socket: %s", g_strerror (errno));
+          return FALSE;
+        }
+
+      if (getsockname (fd, (struct sockaddr *) &addr, &len) == -1)
+        {
+          DEBUG ("getsockname failed: %s", g_strerror (errno));
+          g_set_error (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+              "getsockname failed: %s", g_strerror (errno));
+          return FALSE;
+        }
+
+      DEBUG ("create socket %s:%u", "::1", ntohs (addr.sin6_port));
+
+      priv->address = tp_g_value_slice_new (SOCKET_ADDRESS_IPV6_TYPE);
+      g_value_take_boxed (priv->address,
+          dbus_g_type_specialized_construct (SOCKET_ADDRESS_IPV6_TYPE));
+
+      dbus_g_type_struct_set (priv->address,
+          0, "::1",
+          1, ntohs (addr.sin6_port),
           G_MAXUINT);
     }
   else

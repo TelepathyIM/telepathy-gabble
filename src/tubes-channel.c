@@ -1873,7 +1873,8 @@ gabble_tubes_channel_accept_stream_tube (TpSvcChannelTypeTubes *iface,
     }
 
   if (address_type != TP_SOCKET_ADDRESS_TYPE_UNIX &&
-      address_type != TP_SOCKET_ADDRESS_TYPE_IPV4)
+      address_type != TP_SOCKET_ADDRESS_TYPE_IPV4 &&
+      address_type != TP_SOCKET_ADDRESS_TYPE_IPV6)
     {
       GError *error = NULL;
 

@@ -632,7 +632,7 @@ tube_stream_open (GabbleTubeStream *self,
 
       addr.sin_family = AF_INET;
       addr.sin_port = 0;         /* == ntohs (0) */
-      addr.sin_addr.s_addr = ntohl (INADDR_LOOPBACK);
+      addr.sin_addr.s_addr = htonl (INADDR_LOOPBACK);
 
       len = sizeof (addr);
 
@@ -661,7 +661,7 @@ tube_stream_open (GabbleTubeStream *self,
           return FALSE;
         }
 
-      DEBUG ("create socket %s:%u", "127.0.0.1", htons (addr.sin_port));
+      DEBUG ("create socket %s:%u", "127.0.0.1", ntohs (addr.sin_port));
 
       priv->address = tp_g_value_slice_new (SOCKET_ADDRESS_IPV4_TYPE);
       g_value_take_boxed (priv->address,
@@ -669,7 +669,7 @@ tube_stream_open (GabbleTubeStream *self,
 
       dbus_g_type_struct_set (priv->address,
           0, "127.0.0.1",
-          1, htons (addr.sin_port),
+          1, ntohs (addr.sin_port),
           G_MAXUINT);
     }
   else

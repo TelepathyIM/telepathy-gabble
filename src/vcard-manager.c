@@ -1085,6 +1085,10 @@ pipeline_reply_cb (GabbleConnection *conn,
        * to the user */
       if (entry->handle == base->self_handle && priv->edits != NULL)
         {
+          /* We won't have a chance to apply those, might as well forget them */
+          g_hash_table_destroy (priv->edits);
+          priv->edits = NULL;
+
           replace_reply_cb (conn, reply_msg, manager, error);
         }
 

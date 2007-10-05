@@ -287,7 +287,7 @@ tube_dbus_open (GabbleTubeDBus *self)
       dbus_error_free (&error);
     }
 
-  if (priv->dbus_srv_addr ==NULL)
+  if (priv->dbus_srv_addr == NULL)
     {
       DEBUG ("all attempts failed. Close the tube");
       do_close (self);
@@ -593,7 +593,7 @@ gabble_tube_dbus_constructor (GType type,
   TpBaseConnection *base;
 
   obj = G_OBJECT_CLASS (gabble_tube_dbus_parent_class)->
-           constructor (type, n_props, props);
+    constructor (type, n_props, props);
   self = GABBLE_TUBE_DBUS (obj);
 
   priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
@@ -625,7 +625,7 @@ gabble_tube_dbus_constructor (GType type,
 
       priv->dbus_names = g_hash_table_new_full (g_direct_hash, g_direct_equal,
           NULL, g_free);
-     priv->dbus_name_to_handle = g_hash_table_new_full (g_str_hash,
+      priv->dbus_name_to_handle = g_hash_table_new_full (g_str_hash,
          g_str_equal, NULL, NULL);
 
       gabble_decode_jid (tp_handle_inspect (contact_repo, priv->self_handle),

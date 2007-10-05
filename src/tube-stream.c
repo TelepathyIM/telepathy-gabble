@@ -62,6 +62,16 @@ G_DEFINE_TYPE_WITH_CODE (GabbleTubeStream, gabble_tube_stream, G_TYPE_OBJECT,
 
 #define UNIX_PATH_MAX 108
 
+/* Linux glibc bits/socket.h suggests that struct sockaddr_storage is
+ * not guaranteed to be big enough for AF_UNIX addresses */
+typedef union
+{
+  /* we'd call this unix, but gcc predefines that. Thanks, gcc */
+  struct sockaddr_un un;
+  struct sockaddr_in ipv4;
+  struct sockaddr_in6 ipv6;
+} SockAddr;
+
 /* signals */
 enum
 {
@@ -405,14 +415,27 @@ listen_cb (GIOChannel *source,
            gpointer data)
 {
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (data);
+  GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
   int fd, listen_fd;
-  struct sockaddr_storage addr;
+  SockAddr addr;
   socklen_t addrlen;
   int flags;
 
   listen_fd = g_io_channel_unix_get_fd (source);
 
-  addrlen = sizeof (struct sockaddr_storage);
+  if (priv->address_type == TP_SOCKET_ADDRESS_TYPE_UNIX)
+    {
+      addrlen = sizeof (addr.un);
+    }
+  else if (priv->address_type == TP_SOCKET_ADDRESS_TYPE_IPV4)
+    {
+      addrlen = sizeof (addr.ipv4);
+    }
+  else
+    {
+      g_assert_not_reached ();
+    }
+
   fd = accept (listen_fd, (struct sockaddr *) &addr, &addrlen);
   if (fd == -1)
     {
@@ -449,13 +472,7 @@ new_connection_to_socket (GabbleTubeStream *self,
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
   int fd;
   GIOChannel *channel;
-  union
-  {
-    /* we'd call this unix, but gcc predefines that. Thanks, gcc */
-    struct sockaddr_un un;
-    struct sockaddr_in ipv4;
-    struct sockaddr_in6 ipv6;
-  } addr;
+  SockAddr addr;
   socklen_t len;
 
   g_assert (priv->initiator == priv->self_handle);

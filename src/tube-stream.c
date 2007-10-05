@@ -169,7 +169,7 @@ data_to_read_on_socket_cb (GIOChannel *source,
   status = g_io_channel_read_chars (source, buffer, 4096, &num_read, &error);
   if (status == G_IO_STATUS_NORMAL)
     {
-      DEBUG ("read %d bytes from socket", num_read);
+      DEBUG ("read %zu bytes from socket", num_read);
 
       gabble_bytestream_iface_send (bytestream, num_read, buffer);
       result = TRUE;
@@ -1039,7 +1039,7 @@ data_received_cb (GabbleBytestreamIface *bytestream,
   GIOStatus status;
   GError *error = NULL;
 
-  DEBUG ("received %d bytes from bytestream", data->len);
+  DEBUG ("received %zu bytes from bytestream", data->len);
 
   channel = g_hash_table_lookup (priv->bytestream_to_io_channel, bytestream);
   if (channel == NULL)
@@ -1052,7 +1052,7 @@ data_received_cb (GabbleBytestreamIface *bytestream,
       &written, &error);
   if (status == G_IO_STATUS_NORMAL)
     {
-      DEBUG ("%d bytes written to the socket", written);
+      DEBUG ("%zu bytes written to the socket", written);
     }
   else
     {

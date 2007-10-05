@@ -541,7 +541,7 @@ gabble_bytestream_muc_receive (GabbleBytestreamMuc *self,
         }
       else
         {
-          DEBUG ("Append data to buffer of %s (%d bytes)", from, str->len);
+          DEBUG ("Append data to buffer of %s (%zu bytes)", from, str->len);
           g_string_append_len (buffer, str->str, str->len);
         }
 
@@ -567,7 +567,7 @@ gabble_bytestream_muc_receive (GabbleBytestreamMuc *self,
 
   if (fully_received)
     {
-      DEBUG ("fully received %d bytes of data", str->len);
+      DEBUG ("fully received %zu bytes of data", str->len);
       g_signal_emit (G_OBJECT (self), signals[DATA_RECEIVED], 0, sender,
           str);
       g_string_free (str, TRUE);

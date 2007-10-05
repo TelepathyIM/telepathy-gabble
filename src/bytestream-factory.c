@@ -304,7 +304,6 @@ gabble_bytestream_factory_class_init (
       G_PARAM_STATIC_NICK |
       G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
-
 }
 
 static void
@@ -996,13 +995,13 @@ gabble_bytestream_factory_create_ibb (GabbleBytestreamFactory *self,
   priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
 
   ibb = g_object_new (GABBLE_TYPE_BYTESTREAM_IBB,
-                      "connection", priv->conn,
-                      "peer-handle", peer_handle,
-                      "stream-id", stream_id,
-                      "state", state,
-                      "stream-init-id", stream_init_id,
-                      "peer-resource", peer_resource,
-                      NULL);
+      "connection", priv->conn,
+      "peer-handle", peer_handle,
+      "stream-id", stream_id,
+      "state", state,
+      "stream-init-id", stream_init_id,
+      "peer-resource", peer_resource,
+      NULL);
 
   g_signal_connect (ibb, "state-changed",
       G_CALLBACK (bytestream_state_changed_cb), self);
@@ -1028,11 +1027,11 @@ gabble_bytestream_factory_create_muc (GabbleBytestreamFactory *self,
   priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
 
   bytestream = g_object_new (GABBLE_TYPE_BYTESTREAM_MUC,
-                      "connection", priv->conn,
-                      "peer-handle", peer_handle,
-                      "stream-id", stream_id,
-                      "state", state,
-                      NULL);
+      "connection", priv->conn,
+      "peer-handle", peer_handle,
+      "stream-id", stream_id,
+      "state", state,
+      NULL);
 
   g_signal_connect (bytestream, "state-changed",
       G_CALLBACK (bytestream_state_changed_cb), self);

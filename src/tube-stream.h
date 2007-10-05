@@ -59,7 +59,7 @@ GType gabble_tube_stream_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_TUBE_STREAM,\
                               GabbleTubeStreamClass))
 
-GabbleTubeStream * gabble_tube_stream_new (GabbleConnection *conn,
+GabbleTubeStream *gabble_tube_stream_new (GabbleConnection *conn,
     TpHandle handle, TpHandleType handle_type, TpHandle self_handle,
     TpHandle initiator, const gchar *service, GHashTable *parameters,
     guint id);

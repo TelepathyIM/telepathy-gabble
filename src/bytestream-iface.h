@@ -80,7 +80,7 @@ void gabble_bytestream_iface_close (GabbleBytestreamIface *bytestream,
 void gabble_bytestream_iface_accept (GabbleBytestreamIface *bytestream,
     LmMessage *msg);
 
-const gchar * gabble_bytestream_iface_get_protocol (
+const gchar *gabble_bytestream_iface_get_protocol (
     GabbleBytestreamIface *bytestream);
 
 G_END_DECLS

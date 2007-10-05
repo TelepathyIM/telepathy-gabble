@@ -489,6 +489,11 @@ gabble_bytestream_muc_receive (GabbleBytestreamMuc *self,
     }
 
   str = base64_decode (lm_message_node_get_value (data));
+  if (str == NULL)
+    {
+      DEBUG ("base64 decoding failed");
+      return;
+    }
 
   buffer = g_hash_table_lookup (priv->buffers, from);
 

@@ -500,14 +500,19 @@ new_connection_to_socket (GabbleTubeStream *self,
 
       DEBUG ("Will try to connect to socket: %s", (const gchar *) array->data);
     }
-  else if (priv->address_type == TP_SOCKET_ADDRESS_TYPE_IPV4)
+  else if (priv->address_type == TP_SOCKET_ADDRESS_TYPE_IPV4 ||
+      priv->address_type == TP_SOCKET_ADDRESS_TYPE_IPV6)
     {
       gchar *ip;
       guint port;
       struct addrinfo req, *result = NULL;
       int ret;
 
-      fd = socket (PF_INET, SOCK_STREAM, 0);
+      if (priv->address_type == TP_SOCKET_ADDRESS_TYPE_IPV4)
+        fd = socket (PF_INET, SOCK_STREAM, 0);
+      else
+        fd = socket (PF_INET6, SOCK_STREAM, 0);
+
       if (fd == -1)
         {
           DEBUG ("Error creating socket: %s", g_strerror (errno));
@@ -521,9 +526,13 @@ new_connection_to_socket (GabbleTubeStream *self,
 
       memset (&req, 0, sizeof (req));
       req.ai_flags = AI_NUMERICHOST;
-      req.ai_family = AF_INET;
       req.ai_socktype = SOCK_STREAM;
       req.ai_protocol = IPPROTO_TCP;
+
+      if (priv->address_type == TP_SOCKET_ADDRESS_TYPE_IPV4)
+        req.ai_family = AF_INET;
+      else
+        req.ai_family = AF_INET6;
 
       ret = getaddrinfo (ip, NULL, &req, &result);
       if (ret != 0)
@@ -535,9 +544,18 @@ new_connection_to_socket (GabbleTubeStream *self,
 
       DEBUG ("Will try to connect to %s:%u", ip, port);
 
-      memcpy (&addr, result->ai_addr, sizeof (addr.ipv4));
-      addr.ipv4.sin_port = ntohs (port);
-      len = sizeof (addr.ipv4);
+      if (priv->address_type == TP_SOCKET_ADDRESS_TYPE_IPV4)
+        {
+          memcpy (&addr, result->ai_addr, sizeof (addr.ipv4));
+          addr.ipv4.sin_port = ntohs (port);
+          len = sizeof (addr.ipv4);
+        }
+      else
+        {
+          memcpy (&addr, result->ai_addr, sizeof (addr.ipv6));
+          addr.ipv6.sin6_port = ntohs (port);
+          len = sizeof (addr.ipv6);
+        }
 
       g_free (ip);
       freeaddrinfo (result);
@@ -944,7 +962,8 @@ gabble_tube_stream_set_property (GObject *object,
         break;
       case PROP_ADDRESS_TYPE:
         g_assert (g_value_get_uint (value) == TP_SOCKET_ADDRESS_TYPE_UNIX ||
-            g_value_get_uint (value) == TP_SOCKET_ADDRESS_TYPE_IPV4);
+            g_value_get_uint (value) == TP_SOCKET_ADDRESS_TYPE_IPV4 ||
+            g_value_get_uint (value) == TP_SOCKET_ADDRESS_TYPE_IPV6);
         priv->address_type = g_value_get_uint (value);
         break;
       case PROP_ADDRESS:

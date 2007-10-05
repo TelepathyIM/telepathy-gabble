@@ -1141,7 +1141,7 @@ streaminit_reply_cb (GabbleConnection *conn,
 
   if (!tp_strdiff (stream_method, NS_IBB))
     {
-      /* Remote user have accepted the stream */
+      /* Remote user has accepted the stream */
       bytestream = GABBLE_BYTESTREAM_IFACE (
           gabble_bytestream_factory_create_ibb (self, peer_handle,
           data->stream_id, NULL, peer_resource,

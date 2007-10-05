@@ -67,22 +67,22 @@ typedef void (* GabbleBytestreamFactoryNegotiateReplyFunc) (
     GabbleBytestreamIface *bytestream, const gchar *stream_id, LmMessage *msg,
     gpointer user_data);
 
-GabbleBytestreamFactory * gabble_bytestream_factory_new (
+GabbleBytestreamFactory *gabble_bytestream_factory_new (
     GabbleConnection *conn);
 
-GabbleBytestreamIBB * gabble_bytestream_factory_create_ibb (
+GabbleBytestreamIBB *gabble_bytestream_factory_create_ibb (
     GabbleBytestreamFactory *fac, TpHandle peer_handle, const gchar *stream_id,
     const gchar *stream_init_id, const gchar *peer_resource,
     GabbleBytestreamState state);
 
-GabbleBytestreamMuc * gabble_bytestream_factory_create_muc (
+GabbleBytestreamMuc *gabble_bytestream_factory_create_muc (
     GabbleBytestreamFactory *fac, TpHandle peer_handle, const gchar *stream_id,
     GabbleBytestreamState state);
 
-LmMessage * gabble_bytestream_factory_make_stream_init_iq (
+LmMessage *gabble_bytestream_factory_make_stream_init_iq (
     const gchar *full_jid, const gchar *stream_id, const gchar *profile);
 
-LmMessage * gabble_bytestream_factory_make_accept_iq (const gchar *full_jid,
+LmMessage *gabble_bytestream_factory_make_accept_iq (const gchar *full_jid,
     const gchar *stream_init_id, const gchar *stream_method);
 
 gboolean gabble_bytestream_factory_negotiate_stream (
@@ -90,7 +90,7 @@ gboolean gabble_bytestream_factory_negotiate_stream (
     GabbleBytestreamFactoryNegotiateReplyFunc func,
     gpointer user_data, GError **error);
 
-gchar * gabble_bytestream_factory_generate_stream_id (void);
+gchar *gabble_bytestream_factory_generate_stream_id (void);
 
 G_END_DECLS
 

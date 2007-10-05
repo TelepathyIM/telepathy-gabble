@@ -1362,6 +1362,7 @@ gabble_tube_stream_check_params (TpSocketAddressType address_type,
       GArray *array;
       GString *socket;
       struct stat stat_buff;
+      guint i;
 
       /* Check address type */
       if (G_VALUE_TYPE (address) != DBUS_TYPE_G_UCHAR_ARRAY)
@@ -1379,6 +1380,16 @@ gabble_tube_stream_check_params (TpSocketAddressType address_type,
               "Unix socket path is too long (max length allowed: %d)",
               UNIX_PATH_MAX - 1);
           return FALSE;
+        }
+
+      for (i = 0; i < array->len; i++)
+        {
+          if (g_array_index (array, gchar , i) == '\0')
+            {
+              g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+                  "Unix socket path can't contain zero bytes");
+              return FALSE;
+            }
         }
 
       socket = g_string_new_len (array->data, array->len);

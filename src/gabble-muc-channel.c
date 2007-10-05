@@ -604,17 +604,21 @@ contact_handle_to_room_identity (GabbleMucChannel *chan, TpHandle main_handle,
 
 static LmMessage *
 create_presence_message (GabbleMucChannel *self,
-                         LmMessageSubType sub_type)
+                         LmMessageSubType sub_type,
+                         LmMessageNode **x_node)
 {
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
   LmMessage *msg;
-  LmMessageNode *x_node;
+  LmMessageNode *node;
 
   msg = lm_message_new_with_sub_type (priv->self_jid->str,
       LM_MESSAGE_TYPE_PRESENCE, sub_type);
 
-  x_node = lm_message_node_add_child (msg->node, "x", NULL);
-  lm_message_node_set_attribute (x_node, "xmlns", NS_MUC);
+  node = lm_message_node_add_child (msg->node, "x", NULL);
+  lm_message_node_set_attribute (node, "xmlns", NS_MUC);
+
+  if (x_node != NULL)
+    *x_node = node;
 
   return msg;
 }
@@ -632,8 +636,8 @@ send_join_request (GabbleMucChannel *channel,
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (channel);
 
   /* build the message */
-  msg = create_presence_message (channel, LM_MESSAGE_SUB_TYPE_NOT_SET);
-  x_node = lm_message_node_get_child_with_namespace (msg->node, "x", NS_MUC);
+  msg = create_presence_message (channel, LM_MESSAGE_SUB_TYPE_NOT_SET,
+      &x_node);
 
   g_free (priv->password);
 
@@ -673,7 +677,8 @@ send_leave_message (GabbleMucChannel *channel,
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (channel);
 
   /* build the message */
-  msg = create_presence_message (channel, LM_MESSAGE_SUB_TYPE_UNAVAILABLE);
+  msg = create_presence_message (channel, LM_MESSAGE_SUB_TYPE_UNAVAILABLE,
+      NULL);
 
   if (reason != NULL)
     {
@@ -2832,7 +2837,7 @@ gabble_muc_channel_send_presence (GabbleMucChannel *self,
   LmMessage *msg;
   gboolean result;
 
-  msg = create_presence_message (self, LM_MESSAGE_SUB_TYPE_NOT_SET);
+  msg = create_presence_message (self, LM_MESSAGE_SUB_TYPE_NOT_SET, NULL);
   g_signal_emit (self, signals[PRE_PRESENCE], 0, msg);
   result = _gabble_connection_send (priv->conn, msg, error);
 

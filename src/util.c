@@ -63,7 +63,7 @@ sha1_hex (const gchar *bytes, guint len)
 void
 sha1_bin (const gchar *bytes,
           guint len,
-          gchar out[SHA1_HASH_SIZE])
+          guchar out[SHA1_HASH_SIZE])
 {
   SHA1Context sc;
 

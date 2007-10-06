@@ -1207,14 +1207,14 @@ _gabble_generate_dbus_unique_name (const gchar *nick)
     }
   else
     {
-      gchar sha1[20];
+      guchar sha1[20];
       GString *tmp;
 
       sha1_bin (nick, len, sha1);
       tmp = g_string_sized_new (169 + 20);
 
       g_string_append_len (tmp, nick, 169);
-      g_string_append_len (tmp, sha1, 20);
+      g_string_append_len (tmp, (const gchar *) sha1, 20);
 
       encoded = base64_encode (tmp->len, tmp->str, FALSE);
 

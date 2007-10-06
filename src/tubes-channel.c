@@ -1623,7 +1623,7 @@ gabble_tubes_channel_offer_d_bus_tube (TpSvcChannelTypeTubes *iface,
   tube_id = generate_tube_id ();
 
   tube = create_new_tube (self, TP_TUBE_TYPE_DBUS, priv->self_handle,
-      service, parameters_copied, (const gchar*) stream_id, tube_id, NULL);
+      service, parameters_copied, (const gchar *) stream_id, tube_id, NULL);
 
   if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
     {
@@ -1720,7 +1720,7 @@ gabble_tubes_channel_offer_stream_tube (TpSvcChannelTypeTubes *iface,
   tube_id = generate_tube_id ();
 
   tube = create_new_tube (self, TP_TUBE_TYPE_STREAM, priv->self_handle,
-      service, parameters_copied, (const gchar*) stream_id, tube_id, NULL);
+      service, parameters_copied, (const gchar *) stream_id, tube_id, NULL);
 
   g_object_set (tube,
       "address-type", address_type,

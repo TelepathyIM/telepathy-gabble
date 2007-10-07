@@ -837,7 +837,8 @@ gabble_tube_stream_dispose (GObject *object)
   gabble_tube_iface_close (GABBLE_TUBE_IFACE (self));
 
   if (priv->initiator != priv->self_handle &&
-      priv->address_type == TP_SOCKET_ADDRESS_TYPE_UNIX)
+      priv->address_type == TP_SOCKET_ADDRESS_TYPE_UNIX &&
+      priv->address != NULL)
     {
       /* We created a new UNIX socket. Let's delete it */
       GArray *array;

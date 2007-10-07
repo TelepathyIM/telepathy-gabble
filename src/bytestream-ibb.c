@@ -104,8 +104,6 @@ gabble_bytestream_ibb_init (GabbleBytestreamIBB *self)
       GABBLE_TYPE_BYTESTREAM_IBB, GabbleBytestreamIBBPrivate);
 
   self->priv = priv;
-
-  priv->block_size = 4096;
 }
 
 static void

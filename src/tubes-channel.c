@@ -1074,6 +1074,7 @@ update_tubes_presence (GabbleTubesChannel *self)
   return gabble_muc_channel_send_presence (self->muc, NULL);
 }
 
+#ifdef HAVE_DBUS_TUBE
 struct _bytestream_negotiate_cb_data
 {
   GabbleTubesChannel *self;
@@ -1107,6 +1108,7 @@ bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
 
   gabble_tube_iface_accept (tube);
 }
+#endif
 
 /* Called when we receive a SI request,
  * via gabble_tubes_factory_handle_si_tube_request
@@ -1277,6 +1279,7 @@ gabble_tubes_channel_bytestream_offered (GabbleTubesChannel *self,
 }
 
 
+#ifdef HAVE_DBUS_TUBE
 static gboolean
 start_stream_initiation (GabbleTubesChannel *self,
                          GabbleTubeIface *tube,
@@ -1360,6 +1363,7 @@ start_stream_initiation (GabbleTubesChannel *self,
 
   return result;
 }
+#endif
 
 static gboolean
 send_new_stream_tube_msg (GabbleTubesChannel *self,

@@ -1,10 +1,14 @@
+if HAVE_DBUS_TUBE
+dbus_test_programs = test-dtube-unique-names
+endif
+
 noinst_PROGRAMS = \
+	$(dbus_test_programs) \
 	test-gabble-presence \
 	test-base64 \
 	test-handles \
 	test-jid-decode \
-	test-parse-message \
-	test-dtube-unique-names
+	test-parse-message
 
 test_gabble_presence_LDADD = \
     $(top_builddir)/src/libgabble-convenience.la $(ALL_LIBS)
@@ -107,6 +111,17 @@ EXTRA_DIST = \
 
 CLEANFILES = $(BUILT_SOURCES) gabble-[1-9]*.log
 
-check_c_sources = *.c
+if HAVE_DBUS_TUBE
+dbus_test_sources = test-dtube-unique-names.c
+endif
+
+check_c_sources = \
+	$(dbus_test_sources) \
+	test-base64.c \
+	test-gabble-presence.c \
+	test-jid-decode.c \
+	test-handles.c \
+	test-parse-message.c
+
 check_misc_sources = $(TWISTED_TESTS)
 include $(top_srcdir)/check-coding-style.mk

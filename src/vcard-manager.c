@@ -37,8 +37,8 @@
 #define DEBUG_FLAG GABBLE_DEBUG_VCARD
 #include "debug.h"
 
-#define DEFAULT_REQUEST_TIMEOUT 20000
-#define VCARD_CACHE_ENTRY_TTL 30
+#define DEFAULT_REQUEST_TIMEOUT 60000
+#define VCARD_CACHE_ENTRY_TTL 60
 
 static const gchar *NO_ALIAS = "none";
 

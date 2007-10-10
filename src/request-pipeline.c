@@ -27,7 +27,7 @@
 #include "gabble-connection.h"
 
 #define DEFAULT_REQUEST_TIMEOUT 20000
-#define REQUEST_PIPELINE_SIZE 3
+#define REQUEST_PIPELINE_SIZE 5
 
 /* Properties */
 enum

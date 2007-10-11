@@ -188,7 +188,7 @@ data_to_read_on_socket_cb (GIOChannel *source,
   status = g_io_channel_read_chars (source, buffer, 4096, &num_read, &error);
   if (status == G_IO_STATUS_NORMAL)
     {
-      DEBUG ("read %zu bytes from socket", num_read);
+      DEBUG ("read %" G_GSIZE_FORMAT " bytes from socket", num_read);
 
       gabble_bytestream_iface_send (bytestream, num_read, buffer);
       result = TRUE;
@@ -1217,7 +1217,7 @@ data_received_cb (GabbleBytestreamIface *bytestream,
   GIOStatus status;
   GError *error = NULL;
 
-  DEBUG ("received %zu bytes from bytestream", data->len);
+  DEBUG ("received %" G_GSIZE_FORMAT " bytes from bytestream", data->len);
 
   channel = g_hash_table_lookup (priv->bytestream_to_io_channel, bytestream);
   if (channel == NULL)
@@ -1230,7 +1230,7 @@ data_received_cb (GabbleBytestreamIface *bytestream,
       &written, &error);
   if (status == G_IO_STATUS_NORMAL)
     {
-      DEBUG ("%zu bytes written to the socket", written);
+      DEBUG ("%" G_GSIZE_FORMAT " bytes written to the socket", written);
     }
   else
     {
@@ -1458,7 +1458,8 @@ check_unix_params (TpSocketAddressType address_type,
   if (array->len > sizeof (dummy.sun_path) - 1)
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "Unix socket path is too long (max length allowed: %zu)",
+          "Unix socket path is too long (max length allowed: %"
+          G_GSIZE_FORMAT ")",
           sizeof (dummy.sun_path) - 1);
       return FALSE;
     }

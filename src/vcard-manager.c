@@ -560,15 +560,15 @@ vcard_get_avatar_sha1 (LmMessageNode *vcard)
   if (avatar)
     {
       sha1 = sha1_hex (avatar->str, avatar->len);
+      g_string_free (avatar, TRUE);
       DEBUG ("Successfully decoded PHOTO.BINVAL, SHA-1 %s", sha1);
     }
   else
     {
-      DEBUG ("Avatar is in garbled Base64, ignoring it:\n%s", binval_value);
+      DEBUG ("Avatar is in garbled Base64, ignoring it!");
       sha1 = g_strdup ("");
     }
 
-  g_string_free (avatar, TRUE);
   return sha1;
 }
 

@@ -3,56 +3,30 @@
 Test alias setting support.
 """
 
-import dbus
-from servicetest import tp_name_prefix, match, lazy
-from gabbletest import go
+from servicetest import EventPattern
+from gabbletest import exec_test, acknowledge_iq
 
-from twisted.words.protocols.jabber.client import IQ
+def test(q, bus, conn, stream):
+    conn.Connect()
+    _, iq_event = q.expect_many(
+        EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
+        EventPattern('stream-iq', to=None, query_ns='vcard-temp',
+            query_name='vCard'))
 
-def aliasing_iface(proxy):
-    return dbus.Interface(proxy, tp_name_prefix +
-        '.Connection.Interface.Aliasing')
+    acknowledge_iq(stream, iq_event.stanza)
 
-@lazy
-@match('dbus-signal', signal='StatusChanged', args=[0, 1])
-def expect_connected(event, data):
-    aliasing_iface(data['conn_iface']).SetAliases({1: 'lala'})
-    return True
+    conn.Aliasing.SetAliases({1: 'lala'})
 
-@match('stream-iq', to=None, iq_type='get')
-def expect_vcard_get_iq(event, data):
-    vcard = event.stanza.firstChildElement()
+    iq_event = q.expect('stream-iq', iq_type='set', query_ns='vcard-temp',
+        query_name='vCard')
+    acknowledge_iq(stream, iq_event.stanza)
 
-    if vcard.name != 'vCard':
-        return False
+    event = q.expect('dbus-signal', signal='AliasesChanged',
+        args=[[(1, u'lala')]])
 
-    iq = IQ(data['stream'], 'result')
-    iq['id'] = event.stanza['id']
-    data['stream'].send(iq)
-    return True
-
-@match('stream-iq', to=None, iq_type='set')
-def expect_vcard_set_iq(event, data):
-    vcard = event.stanza.firstChildElement()
-
-    if vcard.name != 'vCard':
-        return False
-
-    iq = IQ(data['stream'], 'result')
-    iq['id'] = event.stanza['id']
-    data['stream'].send(iq)
-    return True
-
-@match('dbus-signal', signal='AliasesChanged')
-def expect_AliasesChanged(event, data):
-    assert event.args == [[(1, u'lala')]]
-    data['conn_iface'].Disconnect()
-    return True
-
-@match('dbus-signal', signal='StatusChanged', args=[2, 1])
-def expect_disconnected(event, data):
-    return True
+    conn.Disconnect()
+    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 if __name__ == '__main__':
-    go()
+    exec_test(test)
 

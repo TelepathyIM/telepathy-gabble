@@ -354,6 +354,23 @@ def call_async(test, proxy, method, *args, **kw):
     method_proxy(*args, **kw)
 
 
+class ProxyWrapper:
+    def __init__(self, object, default, others):
+        self.object = object
+        self.default_interface = dbus.Interface(object, default)
+        self.interfaces = dict([
+            (name, dbus.Interface(object, iface))
+            for name, iface in others.iteritems()])
+
+    def __getattr__(self, name):
+        if name in self.interfaces:
+            return self.interfaces[name]
+
+        if name in self.object.__dict__:
+            return getattr(self.object, name)
+
+        return getattr(self.default_interface, name)
+
 def prepare_test(event_func, name, proto, params):
     bus = dbus.SessionBus()
     cm = bus.get_object(
@@ -364,7 +381,11 @@ def prepare_test(event_func, name, proto, params):
     connection_name, connection_path = cm_iface.RequestConnection(
         proto, params)
     conn = bus.get_object(connection_name, connection_path)
-    conn_iface = dbus.Interface(conn, tp_name_prefix + '.Connection')
+    conn = ProxyWrapper(conn, tp_name_prefix + '.Connection',
+        dict([
+            (name, tp_name_prefix + '.Connection.Interface.' + name)
+            for name in ['Aliasing', 'Avatars', 'Capabilities', 'Presence']] +
+        [('Peer', 'org.freedesktop.DBus.Peer')]))
 
     bus.add_signal_receiver(
         lambda *args, **kw:

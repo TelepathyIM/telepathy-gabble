@@ -166,7 +166,7 @@ class BaseXmlStream(xmlstream.XmlStream):
         self.event_func(servicetest.Event('stream-authenticated'))
 
     def _cb_disco_iq(self, iq):
-        if iq['to'] == 'localhost':
+        if iq.getAttribute('to') == 'localhost':
             # add PEP support
             nodes = xpath.queryForNodes(
                 "/iq/query[@xmlns='http://jabber.org/protocol/disco#info']",

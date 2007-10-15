@@ -241,6 +241,49 @@ def go(params=None, authenticator=None, protocol=None, start=None):
 
     reactor.run()
 
+def exec_test(fun, params=None):
+    queue = servicetest.IteratingEventQueue()
+
+    if '-v' in sys.argv:
+        queue.verbose = True
+
+    bus, conn, stream = prepare_test(queue.append, params)
+
+    # hack to ease debugging
+    domish.Element.__repr__ = domish.Element.toXml
+
+    if sys.stdout.isatty():
+        def red(s):
+            return '\x1b[31m%s\x1b[0m' % s
+
+        def green(s):
+            return '\x1b[32m%s\x1b[0m' % s
+
+        patterns = {
+            'handled': green,
+            'not handled': red,
+            }
+
+        class Colourer:
+            def __init__(self, fh, patterns):
+                self.fh = fh
+                self.patterns = patterns
+
+            def write(self, s):
+                f = self.patterns.get(s, lambda x: x)
+                self.fh.write(f(s))
+
+        sys.stdout = Colourer(sys.stdout, patterns)
+
+    try:
+        fun(queue, bus, conn, stream)
+    finally:
+        try:
+            conn.Disconnect()
+            # second call destroys object
+            conn.Disconnect()
+        except dbus.DBusException, e:
+            pass
 
 # Useful routines for server-side vCard handling
 current_vcard = domish.Element(('vcard-temp', 'vCard'))

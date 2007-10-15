@@ -1,77 +1,48 @@
 
 """
-Test alias support.
+Test PEP alias support.
 """
 
-import base64
+from servicetest import call_async, EventPattern
+from gabbletest import exec_test, make_result_iq, acknowledge_iq
 
-import dbus
-from servicetest import tp_name_prefix, call_async, match, lazy
-from gabbletest import go, make_result_iq
+def test(q, bus, conn, stream):
+    conn.Connect()
+    _, event = q.expect_many(
+        EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
+        EventPattern('stream-iq', to=None, query_ns='vcard-temp',
+            query_name='vCard'))
 
-def aliasing_iface(proxy):
-    return dbus.Interface(proxy, tp_name_prefix +
-        '.Connection.Interface.Aliasing')
+    acknowledge_iq(stream, event.stanza)
 
-@lazy
-@match('dbus-signal', signal='StatusChanged', args=[0, 1])
-def expect_connected(event, data):
-    handle = data['conn_iface'].RequestHandles(1, ['bob@foo.com'])[0]
-    call_async(data['test'], aliasing_iface(data['conn']), 'RequestAliases',
-        [handle])
-    data['handle'] = handle
-    return True
+    handle = conn.RequestHandles(1, ['bob@foo.com'])[0]
+    call_async(q, conn.Aliasing, 'RequestAliases', [handle])
 
-@match('stream-iq', to=None)
-def expect_my_vcard_iq(event, data):
-    vcard = event.stanza.firstChildElement()
-
-    if vcard.name != 'vCard':
-        return False
-    if vcard.uri != 'vcard-temp':
-        return False
-
-    data['stream'].send(make_result_iq(data['stream'], event.stanza))
-    return True
-
-@match('stream-iq', to='bob@foo.com', iq_type='get')
-def expect_pep_iq(event, data):
-    iq = event.stanza
-    pubsub = iq.firstChildElement()
-    assert pubsub.name == 'pubsub'
-    assert pubsub.uri == "http://jabber.org/protocol/pubsub"
-    items = pubsub.firstChildElement()
+    event = q.expect('stream-iq', to='bob@foo.com', iq_type='get',
+        query_ns='http://jabber.org/protocol/pubsub', query_name='pubsub')
+    items = event.query.firstChildElement()
     assert items.name == 'items'
     assert items['node'] == "http://jabber.org/protocol/nick"
-
-    result = make_result_iq(data['stream'], iq)
+    result = make_result_iq(stream, event.stanza)
     pubsub = result.firstChildElement()
     items = pubsub.addElement('items')
     items['node'] = 'http://jabber.org/protocol/nick'
     item = items.addElement('item')
-    nick = item.addElement('nick', 'http://jabber.org/protocol/nick',
-                           content='Bobby')
+    item.addElement('nick', 'http://jabber.org/protocol/nick',
+        content='Bobby')
+    stream.send(result)
 
-    data['stream'].send(result)
-    return True
+    q.expect('dbus-signal', signal='AliasesChanged',
+        args=[[(handle, u'Bobby')]])
+    q.expect('dbus-return', method='RequestAliases',
+        value=(['Bobby'],))
 
-@match('dbus-signal', signal='AliasesChanged')
-def expect_AliasesChanged(event, data):
-    return event.args == [[(data['handle'], u'Bobby')]]
-
-@match('dbus-return', method='RequestAliases')
-def expect_RequestAliases_return(event, data):
-    assert event.value[0] == ['Bobby']
     # A second request should be satisfied from the cache.
-    assert aliasing_iface(data['conn']).RequestAliases(
-        [data['handle']]) == ['Bobby']
-    data['conn_iface'].Disconnect()
-    return True
+    assert conn.Aliasing.RequestAliases([handle]) == ['Bobby']
 
-@match('dbus-signal', signal='StatusChanged', args=[2, 1])
-def expect_disconnected(event, data):
-    return True
+    conn.Disconnect()
+    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 if __name__ == '__main__':
-    go()
+    exec_test(test)
 

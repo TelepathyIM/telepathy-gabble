@@ -621,15 +621,15 @@
       <!-- Sent by romeo@angstbook -->
       <iq to='mercutio@mab' type='set'>
         <query xmlns='jabber:iq:oob' sid='55555'>
-          <url>x-tcp://169.254.16.3:1234</url>
+          <url>x-tcp://angstbook.local:1234</url>
         </query>
       </iq>
 
-      <!-- Mercutio connects to port 1234 at the given IP address and
-      OOB negotiation proceeds -->
+      <!-- Mercutio resolves the IP address of angstbook.local and connects
+      to port 1234, and out-of-band transfer proceeds -->
 
       <!-- FIXME: this has too many steps and it ends up with a TCP
-      connection flowing the wrong way. There must be a better way... -->
+      connection flowing "the wrong way" -->
       ]]>
     </example>
     <example caption='Leaving a tube explicitly'>

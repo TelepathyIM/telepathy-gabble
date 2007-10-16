@@ -109,6 +109,9 @@
       }
 
       See below for how the dbus-name is generated.
+
+      The protocol SHOULD be included. If it is omitted,
+      muc-bytestream should be assumed for MUC D-Bus tubes.
       -->
       <presence to='darkcave@conf.macbeth.lit'
           from='darkcave@conf.macbeth.lit/FirstWitch'>
@@ -117,7 +120,8 @@
         <tubes xmlns='http://telepathy.freedesktop.org/xmpp/tubes'>
           <tube type='dbus' initiator='darkcave@conf.macbeth.lit/FirstWitch'
             service='lit.macbeth.BubblingCauldron' stream-id='12345'
-            id='54321' dbus-name=':2.Rmlyc3RXaXRjaAAA'>
+            id='54321' dbus-name=':2.Rmlyc3RXaXRjaAAA'
+            protocol='http://telepathy.freedesktop.org/xmpp/muc-bytestream'>
             <parameters>
               <parameter name='s' type='str'>hello</parameter>
               <parameter name='ay' type='bytes'>aGVsbG8=</parameter>
@@ -142,7 +146,8 @@
         <tubes xmlns='http://telepathy.freedesktop.org/xmpp/tubes'>
           <tube type='dbus' initiator='darkcave@conf.macbeth.lit/FirstWitch'
             service='lit.macbeth.BubblingCauldron' stream-id='12345'
-            id='54321' dbus-name=':2.U2Vjb25kIHdpdGNo'>
+            id='54321' dbus-name=':2.U2Vjb25kIHdpdGNo'
+            protocol='http://telepathy.freedesktop.org/xmpp/muc-bytestream'>
             <parameters>
               <parameter name='s' type='str'>hello</parameter>
               <parameter name='ay' type='bytes'>aGVsbG8=</parameter>
@@ -158,7 +163,8 @@
     <example caption='Sending data in a MUC D-Bus tube'>
       <![CDATA[
       <!-- The second witch sends a D-Bus signal to everyone.
-      MUC D-Bus tubes always use MUC Bytestreams (XEP-proto-muc-bytestream).
+      MUC D-Bus tubes currently always use MUC Bytestreams
+      (XEP-proto-muc-bytestream).
 
       Messages can also go to a particular participant (for method calls and
       replies), and can be split up if too big - see the MUC Bytestreams
@@ -191,7 +197,8 @@
             it's not part of the stream tube -->
           <tube type='dbus' initiator='darkcave@conf.macbeth.lit/FirstWitch'
             service='lit.macbeth.BubblingCauldron' stream-id='12345'
-            id='54321' dbus-name=':2.U2Vjb25kIHdpdGNo'>
+            id='54321' dbus-name=':2.U2Vjb25kIHdpdGNo'
+            protocol='http://telepathy.freedesktop.org/xmpp/muc-bytestream'>
             <parameters>
               <parameter name='s' type='str'>hello</parameter>
               <parameter name='ay' type='bytes'>aGVsbG8=</parameter>
@@ -203,7 +210,8 @@
           <!-- This is the new stream tube. There is no initiator attribute
           because the initiator is implicitly the participant whose presence
           it's seen in -->
-          <tube type='stream' service='webdav' id='666'>
+          <tube type='stream' service='webdav' id='666'
+            protocol='http://jabber.org/protocol/si'>
             <parameters>
               <parameter name='u' type='str'>anonymous</parameter>
               <parameter name='p' type='str'>password</parameter>
@@ -265,7 +273,8 @@
         <tubes xmlns='http://telepathy.freedesktop.org/xmpp/tubes'>
           <tube type='dbus' initiator='darkcave@conf.macbeth.lit/FirstWitch'
             service='lit.macbeth.BubblingCauldron' stream-id='12345'
-            id='54321' dbus-name=':2.Rmlyc3RXaXRjaAAA'>
+            id='54321' dbus-name=':2.Rmlyc3RXaXRjaAAA'
+            protocol='http://telepathy.freedesktop.org/xmpp/muc-bytestream'>
             <parameters>
               <parameter name='s' type='str'>hello</parameter>
               <parameter name='ay' type='bytes'>aGVsbG8=</parameter>
@@ -451,7 +460,8 @@
         <tubes xmlns='http://telepathy.freedesktop.org/xmpp/tubes'>
           <tube type='dbus' initiator='mercutio@mab'
             service='lit.verona.Duel' stream-id='8'
-            id='54321' dbus-name=':2.bWVyY3V0aW9AbWFi'>
+            id='54321' dbus-name=':2.bWVyY3V0aW9AbWFi'
+            protocol='http://telepathy.freedesktop.org/xmpp/ll/rmulticast'>
             <parameters>
               <parameter name='weapon' type='str'>swords</parameter>
             </parameters>
@@ -470,8 +480,9 @@
       <message type='groupchat'>
         <tubes xmlns='http://telepathy.freedesktop.org/xmpp/tubes'>
           <tube type='dbus' initiator='mercutio@mab'
-            service='lit.macbeth.BubblingCauldron' stream-id='6'
-            id='54321' dbus-name=':2.VHliYWx0QGZlbGluZQAA'>
+            service='lit.verona.Duel' stream-id='6'
+            id='54321' dbus-name=':2.VHliYWx0QGZlbGluZQAA'
+            protocol='http://telepathy.freedesktop.org/xmpp/ll/rmulticast'>
             <parameters>
               <parameter name='weapon' type='str'>swords</parameter>
             </parameters>
@@ -520,7 +531,8 @@
         <tubes xmlns='http://telepathy.freedesktop.org/xmpp/tubes'>
           <tube type='dbus' initiator='mercutio@mab'
             service='lit.verona.Duel' stream-id='8'
-            id='54321' dbus-name=':2.bWVyY3V0aW9AbWFi'>
+            id='54321' dbus-name=':2.bWVyY3V0aW9AbWFi'
+            protocol='http://telepathy.freedesktop.org/xmpp/ll/rmulticast'>
             <parameters>
               <parameter name='weapon' type='str'>swords</parameter>
             </parameters>
@@ -533,7 +545,8 @@
         <tubes xmlns='http://telepathy.freedesktop.org/xmpp/tubes'>
           <tube type='dbus' initiator='mercutio@mab'
             service='lit.verona.Duel' stream-id='6'
-            id='54321' dbus-name=':2.VHliYWx0QGZlbGluZQAA'>
+            id='54321' dbus-name=':2.VHliYWx0QGZlbGluZQAA'
+            protocol='http://telepathy.freedesktop.org/xmpp/ll/rmulticast'>
             <parameters>
               <parameter name='weapon' type='str'>swords</parameter>
             </parameters>
@@ -553,7 +566,8 @@
             it's not part of the stream tube -->
           <tube type='dbus' initiator='mercutio@mab'
             service='lit.verona.Duel' stream-id='8'
-            id='54321' dbus-name=':2.bWVyY3V0aW9AbWFi'>
+            id='54321' dbus-name=':2.bWVyY3V0aW9AbWFi'
+            protocol='http://telepathy.freedesktop.org/xmpp/ll/rmulticast'>
             <parameters>
               <parameter name='weapon' type='str'>swords</parameter>
             </parameters>
@@ -562,7 +576,8 @@
           <!-- This is the new stream tube. There is no initiator attribute
           because the initiator is implicitly the participant whose message
           it's seen in -->
-          <tube type='stream' service='webdav' id='666'>
+          <tube type='stream' service='webdav' id='666'
+            protocol='http://jabber.org/protocol/si'>
             <parameters>
               <parameter name='path' type='str'>/warez</parameter>
             </parameters>
@@ -644,7 +659,8 @@
             removed -->
           <tube type='dbus' initiator='mercutio@mab'
             service='lit.verona.Duel' stream-id='8'
-            id='54321' dbus-name=':2.bWVyY3V0aW9AbWFi'>
+            id='54321' dbus-name=':2.bWVyY3V0aW9AbWFi'
+            protocol='http://telepathy.freedesktop.org/xmpp/ll/rmulticast'>
             <parameters>
               <parameter name='weapon' type='str'>swords</parameter>
             </parameters>
@@ -801,6 +817,11 @@
             </xs:simpleType>
           </xs:attribute>
           <xs:attribute name='service' type='xs:string' use='required'/>
+          <!-- Implementations SHOULD include this attribute for D-Bus
+          tubes in a MUC context; if they do not, muc-bytestream MUST
+          be assumed. For all other tubes, this attribute MUST be included.
+          -->
+          <xs:attribute name='protocol' type='xs:anyURI' use='optional'/>
 
           <!-- MUC D-Bus tube attributes -->
           <!-- MUST be present for MUC D-Bus tubes, SHOULD NOT be

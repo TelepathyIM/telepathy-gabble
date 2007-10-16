@@ -431,6 +431,231 @@
       ]]>
     </example>
   </section2>
+  <section2 topic='In a link-local multi-user chat' anchor='usecases-llmuc'>
+    <example caption='Offering a new D-Bus tube'>
+      <![CDATA[
+      <!-- Suppose Mercutio and Tybalt are in a link-local chatroom,
+      with their mDNS presence records being
+      mercutio@mab._presence._tcp.local. and
+      Tybalt@feline._presence._tcp.local.
+
+      Mercutio offers a D-Bus tube to the service lit.verona.Duel.
+
+      This time one Tube parameter was provided by the Telepathy API,
+      a string called 'weapon' with value "swords".
+
+      See below for how the dbus-name is generated.
+      -->
+      <!-- Sent by mercutio@mab -->
+      <message type='groupchat'>
+        <tubes xmlns='http://telepathy.freedesktop.org/xmpp/tubes'>
+          <tube type='dbus' initiator='mercutio@mab'
+            service='lit.verona.Duel' stream-id='8'
+            id='54321' dbus-name=':2.bWVyY3V0aW9AbWFi'>
+            <parameters>
+              <parameter name='weapon' type='str'>swords</parameter>
+            </parameters>
+          </tube>
+        </tubes>
+      </message>
+      ]]>
+    </example>
+
+    <example caption='Accepting (joining) a D-Bus tube'>
+      <![CDATA[
+      <!-- Tybalt joins the D-Bus tube, changing the dbus-name appropriately.
+      In the implementation of Tubes on link-local MUC he may also have a
+      different stream-id. -->
+      <!-- Sent by Tybalt@feline -->
+      <message type='groupchat'>
+        <tubes xmlns='http://telepathy.freedesktop.org/xmpp/tubes'>
+          <tube type='dbus' initiator='mercutio@mab'
+            service='lit.macbeth.BubblingCauldron' stream-id='6'
+            id='54321' dbus-name=':2.VHliYWx0QGZlbGluZQAA'>
+            <parameters>
+              <parameter name='weapon' type='str'>swords</parameter>
+            </parameters>
+          </tube>
+        </tubes>
+      </message>
+      ]]>
+    </example>
+
+    <example caption='Sending data in a link-local MUC D-Bus tube'>
+      <![CDATA[
+      <!-- Tybalt sends a D-Bus message and Mercutio responds.
+
+      Link-local MUC D-Bus tubes always use the rMulticast streams 1 to 255;
+      in this case, because Tybalt has stream-id='6' in his announcement
+      message, all messages from Tybalt in stream 6 MUST be interpreted as
+      part of tube 54321. Similarly, all messages from Mercutio in stream 8
+      MUST be interpreted as part of tube 54321. Messages from Tybalt in
+      stream 8 are NOT part of tube 54321.
+      -->
+      <!-- (a binary rMulticast message is sent by Tybalt with stream ID 6;
+      its payload is a raw D-Bus message) -->
+      <!-- (a binary rMulticast message is sent by Mercutio with stream ID 8;
+      its payload is also a raw D-Bus message) -->
+      ]]>
+    </example>
+
+    <example caption='Joining and being notified about link-local MUC tubes'>
+      <![CDATA[
+      <!-- An rMulticast join event occurs, in which Romeo and Benvolio
+      join the chatroom. Their mDNS presence records are:
+
+      romeo@angstbook._presence._tcp.local.
+      benvolio@peacemaker._presence._tcp.local.
+
+      Mercutio and Tybalt must both respond by re-sending
+      their tube announcements to the chatroom, once. They SHOULD NOT
+      send their tube announcements twice when two participants join
+      in a single join event. -->
+
+      <!-- rMulticast protocol indicates that romeo@angstbook and
+      benvolio@peacemaker have joined the room -->
+
+      <!-- Sent by mercutio@mab -->
+      <message type='groupchat'>
+        <tubes xmlns='http://telepathy.freedesktop.org/xmpp/tubes'>
+          <tube type='dbus' initiator='mercutio@mab'
+            service='lit.verona.Duel' stream-id='8'
+            id='54321' dbus-name=':2.bWVyY3V0aW9AbWFi'>
+            <parameters>
+              <parameter name='weapon' type='str'>swords</parameter>
+            </parameters>
+          </tube>
+        </tubes>
+      </message>
+
+      <!-- Sent by Tybalt@feline -->
+      <message type='groupchat'>
+        <tubes xmlns='http://telepathy.freedesktop.org/xmpp/tubes'>
+          <tube type='dbus' initiator='mercutio@mab'
+            service='lit.verona.Duel' stream-id='6'
+            id='54321' dbus-name=':2.VHliYWx0QGZlbGluZQAA'>
+            <parameters>
+              <parameter name='weapon' type='str'>swords</parameter>
+            </parameters>
+          </tube>
+        </tubes>
+      </message>
+      ]]>
+    </example>
+
+    <example caption='Offering a new stream tube'>
+      <![CDATA[
+      <!-- Mercutio offers a stream tube to his WebDAV server. This message
+      would also be re-sent if another rMulticast join event occurred. -->
+      <message type='groupchat'>
+        <tubes xmlns='http://telepathy.freedesktop.org/xmpp/tubes'>
+          <!-- This D-Bus tube is still here from the first example -
+            it's not part of the stream tube -->
+          <tube type='dbus' initiator='mercutio@mab'
+            service='lit.verona.Duel' stream-id='8'
+            id='54321' dbus-name=':2.bWVyY3V0aW9AbWFi'>
+            <parameters>
+              <parameter name='weapon' type='str'>swords</parameter>
+            </parameters>
+          </tube>
+
+          <!-- This is the new stream tube. There is no initiator attribute
+          because the initiator is implicitly the participant whose message
+          it's seen in -->
+          <tube type='stream' service='webdav' id='666'>
+            <parameters>
+              <parameter name='path' type='str'>/warez</parameter>
+            </parameters>
+          </tube>
+        </tubes>
+      </presence>
+      ]]>
+    </example>
+
+    <example caption='Accepting (joining) a stream tube'>
+      <![CDATA[
+      <!-- Romeo joins the stream tube to download some MP3s from
+      Mercutio's server.
+
+      The child element is, again, <muc-stream> and not <stream>.
+
+      Romeo MUST NOT copy the tube into his own tube announcements
+      in this case - only the initiator should announce stream tubes,
+      since stream tubes cannot continue after the initiator leaves.
+      -->
+      <!-- Sent by romeo@angstbook -->
+      <iq to='mercutio@mab' type='set'>
+        <si xmlns='http://jabber.org/protocol/si' id='55555'
+          profile='http://telepathy.freedesktop.org/xmpp/tubes'>
+          <muc-stream
+            xmlns='http://telepathy.freedesktop.org/xmpp/tubes'
+            tube='666' />
+          <feature xmlns='http://jabber.org/protocol/feature-neg'>
+            <x xmlns="jabber:x:data" type="form">
+              <field var='stream-method' type='list-single'>
+                <option>
+                  <value>jabber:iq:oob</value>
+                </option>
+              </field>
+            </x>
+          </feature>
+        </si>
+      </iq>
+
+      <!-- Sent by mercutio@mab -->
+      <iq to='romeo@angstbook' type='result'>
+        <si xmlns='http://jabber.org/protocol/si' id='55555'
+          profile='http://telepathy.freedesktop.org/xmpp/tubes'>
+          <muc-stream xmlns='http://telepathy.freedesktop.org/xmpp/tubes'
+            tube='666'/>
+          <feature xmlns='http://jabber.org/protocol/feature-neg'>
+            <x xmlns='jabber:x:data' type='submit'>
+              <field var='stream-method'>
+                <value>jabber:iq:oob</value>
+              </field>
+            </x>
+          </feature>
+        </si>
+      </iq>
+
+      <!-- Sent by romeo@angstbook -->
+      <iq to='mercutio@mab' type='set'>
+        <query xmlns='jabber:iq:oob' sid='55555'>
+          <url>x-tcp://169.254.16.3:1234</url>
+        </query>
+      </iq>
+
+      <!-- Mercutio connects to port 1234 at the given IP address and
+      OOB negotiation proceeds -->
+
+      <!-- FIXME: this has too many steps and it ends up with a TCP
+      connection flowing the wrong way. There must be a better way... -->
+      ]]>
+    </example>
+    <example caption='Leaving a tube explicitly'>
+      <![CDATA[
+      <!-- Mercutio stops offering the stream tube.
+      He SHOULD close the OOB stream first, if possible - assume this has
+      already been done. -->
+      <message type='groupchat'>
+        <tubes xmlns='http://telepathy.freedesktop.org/xmpp/tubes'>
+          <!-- This D-Bus tube is still here from the first example -
+            it's now the only one, because the stream tube has been
+            removed -->
+          <tube type='dbus' initiator='mercutio@mab'
+            service='lit.verona.Duel' stream-id='8'
+            id='54321' dbus-name=':2.bWVyY3V0aW9AbWFi'>
+            <parameters>
+              <parameter name='weapon' type='str'>swords</parameter>
+            </parameters>
+          </tube>
+        </tubes>
+      </message>
+      ]]>
+    </example>
+    <p>Leaving the link-local MUC (a leave or split event from rMulticast)
+      also implicitly implies leaving all tubes.</p>
+  </section2>
 </section1>
 <section1 topic='Business Rules' anchor='rules'>
   <section2 topic='D-Bus unique names in a MUC context'>
@@ -471,6 +696,14 @@
     <p>For backwards compatibility with earlier implementations, the dbus-name
       MAY also be ":1." followed by an arbitrary unique string of up to 252
       characters chosen from A-Z, a-z, 0-9, "-" or "_".</p>
+  </section2>
+  <section2 topic='D-Bus unique names in a link-local MUC context'>
+    <p>The D-Bus unique names used in a link-local MUC SHOULD be ":2."
+      followed by the _presence._tcp instance name (e.g. mercutio@mab)
+      processed with the algorithm above.</p>
+    <p>Again, implementations MUST NOT use unique names that start with ":2."
+      but are not formed according to the above rules, and SHOULD treat tube
+      elements containing such a dbus-name as if they were invalid.</p>
   </section2>
   <section2 topic='Definition of the tubes SI profile'>
     <p>The Tubes SI profile is indicated by the profile string &NS_TUBES;.

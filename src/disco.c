@@ -364,14 +364,7 @@ request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 
   if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_ERROR)
     {
-      LmMessageNode *error_node;
-
-      error_node = lm_message_node_get_child (reply_msg->node, "error");
-      if (error_node)
-        {
-          err = gabble_xmpp_error_to_g_error (
-              gabble_xmpp_error_from_node (error_node));
-        }
+      err = gabble_message_get_xmpp_error (reply_msg);
 
       if (err == NULL)
         {

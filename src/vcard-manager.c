@@ -838,7 +838,6 @@ observe_vcard (GabbleConnection *conn,
 GError *
 get_error_from_pipeline_reply (LmMessage *reply_msg, GError *error)
 {
-    LmMessageNode *error_node;
     GError *err = NULL;
 
     if (error)
@@ -847,12 +846,7 @@ get_error_from_pipeline_reply (LmMessage *reply_msg, GError *error)
     if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_ERROR)
         return NULL;
 
-    error_node = lm_message_node_get_child (reply_msg->node, "error");
-    if (error_node)
-      {
-        err = gabble_xmpp_error_to_g_error
-            (gabble_xmpp_error_from_node (error_node));
-      }
+    err = gabble_message_get_xmpp_error (reply_msg);
 
     if (err == NULL)
       {

@@ -365,7 +365,7 @@ gabble_xmpp_error_from_node (LmMessageNode *error_node)
   return INVALID_XMPP_ERROR;
 }
 
-GError *
+static GError *
 gabble_xmpp_error_to_g_error (GabbleXmppError error)
 {
   if (error >= NUM_XMPP_ERRORS)

@@ -27,6 +27,8 @@ proto-xep-upload: proto-xep-html
 
 xep.xsl:
 	@echo "Please get xep.xsl from xmpp.org svn - see README for details"
+	@echo "This command might work:"
+	@echo "wget 'http://svn.xmpp.org:18080/browse/~raw,r=1214/XMPP/trunk/extensions/xep.xsl'"
 	@exit 1
 
 EXTRA_DIST += $(PROTO_XEP_XML)

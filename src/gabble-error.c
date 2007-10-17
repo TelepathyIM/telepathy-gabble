@@ -448,7 +448,7 @@ gabble_xmpp_error_description (GabbleXmppError error)
 GError *
 gabble_message_get_xmpp_error (LmMessage *msg)
 {
-  g_return_val_if_fail (msg == NULL, NULL);
+  g_return_val_if_fail (msg != NULL, NULL);
 
   if (lm_message_get_sub_type (msg) == LM_MESSAGE_SUB_TYPE_ERROR)
     {

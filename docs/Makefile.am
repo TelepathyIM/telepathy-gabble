@@ -9,6 +9,7 @@ CLEANFILES = $(man_MANS)
 # ---- Proto-XEPs (not automatically generated, see README) ----
 
 PROTO_XEP_XML = \
+    olpc.xml \
     muc-bytestream.xml \
     tubes.xml
 PROTO_XEP_HTML = $(PROTO_XEP_XML:.xml=.html)

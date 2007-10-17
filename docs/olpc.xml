@@ -1,0 +1,791 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE xep [
+  <!ENTITY NS_OLPC_ACTIVITIES "http://laptop.org/xmpp/activities">
+  <!ENTITY NS_OLPC_ACTIVITY_PROPS "http://laptop.org/xmpp/activity-properties">
+  <!ENTITY NS_OLPC_BUDDY_PROPS "http://laptop.org/xmpp/buddy-properties">
+  <!ENTITY NS_OLPC_CURRENT_ACTIVITY "http://laptop.org/xmpp/current-activity">
+]>
+<?xml-stylesheet type='text/xsl' href='xep.xsl'?>
+<xep>
+<header>
+  <title>OLPC-specific properties (as used in Trial-3 and 1.0)</title>
+  <abstract>Properties for the Activity and Buddy abstractions used in the
+    One Laptop per Child's Sugar environment.</abstract>
+  <legal>Copyright (c) 2007 Collabora Limited. This document may be
+    distributed under the same terms as the Telepathy specification.</legal>
+  <number>proto-olpc-trial3</number>
+  <status>ProtoXEP</status>
+  <type>Extension</type>
+  <sig>Standards</sig>
+  <approver>Telepathy project</approver>
+  <dependencies>
+    <spec>XMPP Core</spec>
+    <spec>XEP-0045</spec>
+    <spec>XEP-proto-llmuc</spec>
+  </dependencies>
+  <supersedes/>
+  <supersededby/>
+  <shortname>NOT YET ASSIGNED</shortname>
+  <author>
+    <firstname>Simon</firstname>
+    <surname>McVittie</surname>
+    <email>simon.mcvittie@collabora.co.uk</email>
+    <jid>simon.mcvittie@collabora.co.uk</jid>
+  </author>
+  <revision>
+    <version>0.0.1</version>
+    <date>2007-10-01</date>
+    <initials>smcv</initials>
+    <remark><p>First draft.</p></remark>
+  </revision>
+</header>
+<section1 topic='Introduction' anchor='intro'>
+  <p>This document describes the protocol used to transfer OLPC-specific
+    buddy (contact) and activity (chat room) information.</p>
+</section1>
+<section1 topic='Requirements' anchor='reqs'>
+  <p>The OLPC Sugar environment has the abstractions of a Buddy (corresponding
+    to a child and/or their laptop (XO), represented in XMPP by a JID and in
+    link-local XMPP by a _presence._tcp record) and an Activity (corresponding to
+    a shared activity, represented in XMPP by a MUC and in link-local XMPP by a
+    llmuc chatroom). The API requires that various properties can be browsed for
+    (without joining any activities or chatrooms).</p>
+</section1>
+
+<section1 topic='Use Cases' anchor='usecases'>
+  <section2 topic='Buddy properties'>
+
+    <p>Buddy properties are published in PEP. As currently implemented,
+      all XOs subscribe to the presence and buddy properties of all other
+      XOs on the same server.</p>
+
+    <p>The buddy properties currently supported are ip4-address, key and
+      color.</p>
+
+    <example caption='Publishing buddy properties'>
+    <![CDATA[
+    <iq type="set" id="345265478350"
+      from='1111111111111111111111111111111111111111@jabber.laptop.org'>
+      <pubsub xmlns="http://jabber.org/protocol/pubsub">
+        <publish node="http://laptop.org/xmpp/buddy-properties">
+          <item>
+            <properties xmlns="http://laptop.org/xmpp/buddy-properties">
+              <property type="str" name="ip4-address">10.0.0.123</property>
+              <property type="bytes" name="key">Base64Base64...</property>
+              <property type="str" name="color">#005FE4,#00A0FF</property>
+            </properties>
+          </item>
+        </publish>
+      </pubsub>
+    </iq>
+    ]]>
+    </example>
+
+    <p>Subscribers receive the change notification, as usual for PEP.
+      (For all the other PEP nodes described in this document, the process
+      is the same, and has been omitted from this document for
+      conciseness.)</p>
+
+    <example caption='Subscriber receives buddy properties notification'>
+    <![CDATA[
+    <message
+      from='1111111111111111111111111111111111111111@jabber.laptop.org'
+      to='2222222222222222222222222222222222222222@jabber.laptop.org/Telepathy'>
+      <event xmlns='http://jabber.org/protocol/pubsub#event'>
+        <items node='http://laptop.org/xmpp/current-activity'>
+          <item>
+            <properties xmlns="http://laptop.org/xmpp/buddy-properties">
+              <property type="str" name="ip4-address">10.0.0.123</property>
+              <property type="bytes" name="key">Base64Base64...</property>
+              <property type="str" name="color">#005FE4,#00A0FF</property>
+            </properties>
+          </item>
+        </items>
+      </event>
+    </message>
+    ]]>
+    </example>
+
+    <section3 topic='Buddy properties in link-local XMPP'>
+      <p>In link-local XMPP, none of this happens. Instead, the ip4-address
+        property is implicitly available, and the key and color properties
+        are encoded in the _presence._tcp TXT record.</p>
+
+      <p>The 'color' property is mapped to the 'olpc-color' TXT record key:</p>
+
+      <code>
+        11111@xo-12-34-56._presence._tcp.local. IN TXT "olpc-color=#005FE4,#00A0FF"
+      </code>
+
+      <p>The 'key' property is mapped to the 'olpc-key-part0',
+        'olpc-key-part1', ... properties, split as necessary to fit in
+        the 255-byte limit for TXT records. Because mDNS TXT records
+        are 8-bit-clean, the segments contain raw binary rather than
+        the Base64 binary used in XMPP:</p>
+
+      <code>
+        11111@xo-12-34-56._presence._tcp.local. IN TXT "olpc-key-part0=binarybinary..."
+        11111@xo-12-34-56._presence._tcp.local. IN TXT "olpc-key-part1=binarybinary..."
+        11111@xo-12-34-56._presence._tcp.local. IN TXT "olpc-key-part2=binarybinary..."
+      </code>
+
+      <p>(As currently implemented, the "raw binary" is in fact *also*
+        Base64, so the data seen in XMPP is doubly Base64'd. However, this
+        is not guaranteed to remain the case, so the protocols need to
+        assume the underlying byte array for the key can contain
+        anything.)</p>
+
+      <p>Implementors must be careful to ensure that there is no key
+        in the TXT record for the key segment 1 greater than the last one
+        they need (in this case, olpc-key-part3 must be removed if
+        present).</p>
+    </section3>
+
+  </section2>
+
+  <section2 topic='Current activity'>
+
+    <p>The Neighbourhood view on the OLPC groups XO icons by their
+      current activity, so XOs must notify each other of current-activity
+      changes.</p>
+
+    <p>As currently implemented, this is done for both public and private
+      activities, which represents an information leak. (FIXME)</p>
+
+    <p>Note that the 'type' attribute is in fact the activity ID; the name is
+      for historical reasons.</p>
+
+    <example caption='Publishing current activity'>
+    <![CDATA[
+    <iq type="set" id="364923889843"
+      from='1111111111111111111111111111111111111111@jabber.laptop.org'>
+      <pubsub xmlns="http://jabber.org/protocol/pubsub">
+        <publish node="http://laptop.org/xmpp/current-activity">
+          <item>
+            <activity xmlns="http://laptop.org/xmpp/current-activity">
+              room="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@conference.jabber.laptop.org"
+              type="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"/>
+          </item>
+        </publish>
+      </pubsub>
+    </iq>
+    ]]>
+    </example>
+
+    <section3 topic='Current activity in link-local XMPP'>
+      <p>In link-local XMPP, the current activity is mapped to a pair of
+        keys in the TXT record: olpc-current-activity (the activity ID)
+        and olpc-current-activity-room (the Salut rMulticast chat room
+        name).</p>
+
+      <code>
+        11111@xo-12-34-56._presence._tcp.local. IN TXT "olpc-current-activity=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        11111@xo-12-34-56._presence._tcp.local. IN TXT "olpc-current-activity-room=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      </code>
+    </section3>
+
+  </section2>
+
+  <section2 topic='Public activity properties'>
+
+    <p>For activities to be handled by the Sugar environment, certain
+      properties are needed. Because there is no server-side storage
+      corresponding to a chat room and accessible by all participants,
+      participants each publish the properties of all their activities.</p>
+
+    <p>To keep participants' idea of the activity properties in sync,
+      when the properties change, the participant making the change MUST
+      send a broadcast message to the chatroom, notifying other participants
+      of the new properties.</p>
+
+    <p>This &lt;message/&gt; MUST be sent before updating the PEP node
+      with the activity properties.</p>
+
+    <example caption='Notifying the chatroom of a properties change'>
+    <![CDATA[
+    <message type="groupchat"
+      from='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@conference.jabber.laptop.org/1111111111111111111111111111111111111111'>
+      to='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@conference.jabber.laptop.org'>
+      <properties xmlns="http://laptop.org/xmpp/activity-properties"
+        activity="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        room="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@conference.jabber.laptop.org">
+        <property type="str" name="type">org.laptop.Connect</property>
+        <property type="str" name="name">Connect Activity</property>
+        <property type="str" name="tags"></property>
+        <property type="str" name="color">#005FE4,#00A0FF</property>
+        <property type="bool" name="private">0</property>
+      </properties>
+    </message>
+    ]]>
+    </example>
+
+    <p>For public activities, the participants all announce all their
+      activities and their properties in a PEP node.</p>
+
+    <p>When an activity becomes private, the participants all delete it
+      from their activity-properties PEP nodes.</p>
+
+    <example caption='Publishing activity properties'>
+    <![CDATA[
+    <iq type="set" id="275828931562"
+      from='1111111111111111111111111111111111111111@jabber.laptop.org'>
+      <pubsub xmlns="http://jabber.org/protocol/pubsub">
+        <publish node="http://laptop.org/xmpp/activity-properties">
+          <item>
+            <activities xmlns="http://laptop.org/xmpp/activity-properties">
+              <properties
+                xmlns="http://laptop.org/xmpp/activity-properties"
+                activity="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                room="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@conference.jabber.laptop.org">
+                <property type="str" name="type">org.laptop.Connect</property>
+                <property type="str" name="name">Connect Activity</property>
+                <property type="str" name="tags"></property>
+                <property type="str" name="color">#005FE4,#00A0FF</property>
+                <property type="bool" name="private">0</property>
+              </properties>
+              <properties
+                xmlns="http://laptop.org/xmpp/activity-properties"
+                activity="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                room="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb@conference.jabber.laptop.org">
+                <property type="str" name="type">org.laptop.HelloMesh</property>
+                <property type="str" name="name">Example Activity</property>
+                <property type="str" name="tags"></property>
+                <property type="str" name="color">#005FE4,#00A0FF</property>
+                <property type="bool" name="private">0</property>
+              </properties>
+            </activities>
+          </item>
+        </publish>
+      </pubsub>
+    </iq>
+    ]]>
+    </example>
+
+    <p>The participants all announce all their list of activities in yet
+      another PEP node, for backwards compatibility. This mechanism
+      will be removed in a future version of this protocol.</p>
+
+    <p>Note that again, the 'type' attribute is in fact the activity ID;
+      the name is for historical reasons.</p>
+
+    <example caption='Publishing public activity list'>
+    <![CDATA[
+    <iq type="set" id="116108118099">
+      <pubsub xmlns="http://jabber.org/protocol/pubsub">
+        <publish node="http://laptop.org/xmpp/activities">
+          <item>
+            <activities xmlns="http://laptop.org/xmpp/activities">
+              <activity
+                room="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@conference.jabber.laptop.org"
+                type="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"/>
+              <activity
+                room="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb@conference.jabber.laptop.org"
+                type="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"/>
+            </activities>
+          </item>
+        </publish>
+      </pubsub>
+    </iq>
+    ]]>
+    </example>
+
+    <section3 topic='Activity properties in link-local XMPP'>
+      <p>In link-local XMPP, the activity properties are mapped to
+        the _olpc-activity._udp record. Each participant in each public
+        activity publishes an mDNS service named
+        <em>chatroomname</em>:<em>publishedname</em>@<em>hostname</em>,
+        like so:</p>
+
+      <code>
+        ; Advertised by 11111...
+        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:11111@xo-12-34-56._olpc-activity._udp.local. IN SRV 0 xo-12-34-56.local.
+        _olpc_activity._udp.local. IN PTR aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:11111@xo-12-34-56._olpc-activity._udp.local.
+       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:11111@xo-12-34-56._olpc-activity._udp.local IN TXT "txtvers=0"
+       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:11111@xo-12-34-56._olpc-activity._udp.local IN TXT "room=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:11111@xo-12-34-56._olpc-activity._udp.local IN TXT "activity-id=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:11111@xo-12-34-56._olpc-activity._udp.local IN TXT "name=Connect Activity"
+       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:11111@xo-12-34-56._olpc-activity._udp.local IN TXT "color=#005FE4,#00A0FF"
+       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:11111@xo-12-34-56._olpc-activity._udp.local IN TXT "type=org.laptop.ConnectActivity"
+       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:11111@xo-12-34-56._olpc-activity._udp.local IN TXT "tags="
+        bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:11111@xo-12-34-56._olpc-activity._udp.local. IN SRV 0 xo-12-34-56.local.
+        _olpc_activity._udp.local. IN PTR bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:11111@xo-12-34-56._olpc-activity._udp.local.
+       bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:11111@xo-12-34-56._olpc-activity._udp.local IN TXT "txtvers=0"
+       bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:11111@xo-12-34-56._olpc-activity._udp.local IN TXT "room=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+       bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:11111@xo-12-34-56._olpc-activity._udp.local IN TXT "activity-id=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+       bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:11111@xo-12-34-56._olpc-activity._udp.local IN TXT "name=Example Activity"
+       bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:11111@xo-12-34-56._olpc-activity._udp.local IN TXT "color=#005FE4,#00A0FF"
+       bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:11111@xo-12-34-56._olpc-activity._udp.local IN TXT "type=org.laptop.HelloMesh"
+       bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:11111@xo-12-34-56._olpc-activity._udp.local IN TXT "tags="
+
+       ; Advertised by 22222... - suppose here that 22222... is in the activity
+       ; aaaaa... but not in bbbbb...
+       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:22222@xo-22-22-22._olpc-activity._udp.local. IN SRV 0 xo-22-22-22.local.
+       _olpc_activity._udp.local. IN PTR aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:22222@xo-22-22-22._olpc-activity._udp.local.
+       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:22222@xo-22-22-22._olpc-activity._udp.local IN TXT "txtvers=0"
+       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:22222@xo-22-22-22._olpc-activity._udp.local IN TXT "room=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:22222@xo-22-22-22._olpc-activity._udp.local IN TXT "activity-id=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:22222@xo-22-22-22._olpc-activity._udp.local IN TXT "name=Connect Activity"
+       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:22222@xo-22-22-22._olpc-activity._udp.local IN TXT "color=#005FE4,#00A0FF"
+       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:22222@xo-22-22-22._olpc-activity._udp.local IN TXT "type=org.laptop.ConnectActivity"
+       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:22222@xo-22-22-22._olpc-activity._udp.local IN TXT "tags="
+      </code>
+
+      <p>The &lt;message/&gt; sent to the chat room with the updated
+        properties is much the same as for XMPP:</p>
+
+      <example caption='Notifying the chatroom of a properties change (link-local)'>
+      <![CDATA[
+      <!-- Sent via chatroom aaaaa... using rMulticast -->
+      <message type="groupchat"
+        from='11111@xo-12-34-56'
+        to='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'>
+        <properties xmlns="http://laptop.org/xmpp/activity-properties"
+          activity="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          room="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa">
+          <property type="str" name="type">org.laptop.Connect</property>
+          <property type="str" name="name">Connect Activity</property>
+          <property type="str" name="tags"></property>
+          <property type="str" name="color">#005FE4,#00A0FF</property>
+          <property type="bool" name="private">0</property>
+        </properties>
+      </message>
+      ]]>
+      </example>
+
+    </section3>
+
+  </section2>
+
+  <section2 topic='Private activities'>
+
+    <p>When an activity becomes private, the participants all delete it
+      from their activity-properties and activities PEP nodes. In
+      this example, the XO whose JID starts with 11111 makes the activity
+      whose ID starts with aaaaa private, and removes it from their PEP nodes;
+      the XO whose JID starts with 22222 responds by removing it from
+      their PEP nodes too.</p>
+
+    <p>To a third XO observing the PEP nodes, this is indistinguishable from
+      both XOs leaving the activity simultaneously, which is what we want.</p>
+
+    <example caption='Making an activity private'>
+    <![CDATA[
+    <message type="groupchat"
+      from='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@conference.jabber.laptop.org/1111111111111111111111111111111111111111'>
+      to='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@conference.jabber.laptop.org'>
+      <properties xmlns="http://laptop.org/xmpp/activity-properties"
+        activity="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        room="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@conference.jabber.laptop.org">
+        <property type="str" name="type">org.laptop.Connect</property>
+        <property type="str" name="name">Connect Activity</property>
+        <property type="str" name="tags"></property>
+        <property type="str" name="color">#005FE4,#00A0FF</property>
+        <property type="bool" name="private">1</property>
+      </properties>
+    </message>
+
+    <iq type="set" id="275828931562"
+      from='1111111111111111111111111111111111111111@jabber.laptop.org'>
+      <pubsub xmlns="http://jabber.org/protocol/pubsub">
+        <publish node="http://laptop.org/xmpp/activity-properties">
+          <item>
+            <activities xmlns="http://laptop.org/xmpp/activity-properties">
+              <properties
+                xmlns="http://laptop.org/xmpp/activity-properties"
+                activity="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                room="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb@conference.jabber.laptop.org">
+                <property type="str" name="type">org.laptop.HelloMesh</property>
+                <property type="str" name="name">Example Activity</property>
+                <property type="str" name="tags"></property>
+                <property type="str" name="color">#005FE4,#00A0FF</property>
+                <property type="bool" name="private">0</property>
+              </properties>
+            </activities>
+          </item>
+        </publish>
+      </pubsub>
+    </iq>
+
+    <iq type="set" id="116108118099">
+      <pubsub xmlns="http://jabber.org/protocol/pubsub">
+        <publish node="http://laptop.org/xmpp/activities">
+          <item>
+            <activities xmlns="http://laptop.org/xmpp/activities">
+              <activity
+                room="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb@conference.jabber.laptop.org"
+                type="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"/>
+            </activities>
+          </item>
+        </publish>
+      </pubsub>
+    </iq>
+
+    <!-- 22222... receives the above <message/>, and responds by deleting
+    activity aaaaa... from their PEP records. We assume here that 22222
+    is not in any other public activity. -->
+
+    <iq type="set" id="103874931562"
+      from='2222222222222222222222222222222222222222@jabber.laptop.org'>
+      <pubsub xmlns="http://jabber.org/protocol/pubsub">
+        <publish node="http://laptop.org/xmpp/activity-properties">
+          <item>
+            <activities xmlns="http://laptop.org/xmpp/activity-properties">
+            </activities>
+          </item>
+        </publish>
+      </pubsub>
+    </iq>
+
+    <iq type="set" id="116108239899">
+      <pubsub xmlns="http://jabber.org/protocol/pubsub">
+        <publish node="http://laptop.org/xmpp/activities">
+          <item>
+            <activities xmlns="http://laptop.org/xmpp/activities">
+            </activities>
+          </item>
+        </publish>
+      </pubsub>
+    </iq>
+    ]]>
+    </example>
+
+    <section3 topic='Private activities in link-local XMPP'>
+      <p>Instead of deleting activities from their PEP records,
+        link-local peers delete them from their mDNS records.</p>
+
+      <p>The &lt;message/&gt; sent to the chat room with the updated
+        properties is, again, much the same as for XMPP.</p>
+    </section3>
+
+  </section2>
+
+  <section2 topic='Invitations'>
+
+    <p>Before inviting a buddy to an activity, OLPC users are expected to
+      send them the activity properties. These are sent in a &lt;message/&gt;
+      stanza referred to as a "pseudo-invitation". If the activity
+      is private, then this is the only opportunity the invitee has to
+      get the activity properties.</p>
+
+    <example caption='Inviting a buddy to an activity'>
+    <![CDATA[
+    <!-- 11111 sends pseudo-invitation directly to 33333 -->
+    <message
+      from='1111111111111111111111111111111111111111@jabber.laptop.org/Telepathy'
+      to='3333333333333333333333333333333333333333@jabber.laptop.org'>
+      <properties xmlns='http://laptop.org/xmpp/activity-properties'
+        activity='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+        room='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@conference.jabber.laptop.org'>
+        <property type='str' name='type'>org.laptop.Connect</property>
+        <property type='str' name='name'>Connect Activity</property>
+        <property type='str' name='tags'/>
+        <property type='str' name='color'>#0d1c38,#49bce4</property>
+        <property type='bool' name='private'>1</property>
+      </properties>
+    </message>
+
+    <!-- 11111 sends invitation to 33333 via MUC service -->
+    <message
+      to='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@conference.jabber.laptop.org'>
+      <x xmlns="http://jabber.org/protocol/muc#user">
+        <invite to="3333333333333333333333333333333333333333@jabber.laptop.org"/>
+      </x>
+    </message>
+
+    <!-- MUC service relays invitation to 33333 -->
+    <message type='normal'
+      from='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@conference.jabber.laptop.org'
+      to='3333333333333333333333333333333333333333@jabber.laptop.org'>
+      <x xmlns='http://jabber.org/protocol/muc#user'>
+        <invite from='1111111111111111111111111111111111111111@jabber.laptop.org/Telepathy'>
+          <reason/>
+        </invite>
+      </x>
+      <x xmlns='jabber:x:conference' jid='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@conference.jabber.laptop.org'/>
+    </message>
+    ]]>
+    </example>
+
+    <p>If the activity properties change before the invitee joins the
+      activity, the inviter must notify the invitee by re-sending the
+      pseudo-invitation (only).</p>
+
+    <example caption='Updating a buddy on activity properties'>
+    <![CDATA[
+    <message
+      from='1111111111111111111111111111111111111111@jabber.laptop.org/Telepathy'
+      to='3333333333333333333333333333333333333333@jabber.laptop.org'>
+      <properties xmlns='http://laptop.org/xmpp/activity-properties'
+        activity='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+        room='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@conference.jabber.laptop.org'>
+        <property type='str' name='type'>org.laptop.Connect</property>
+        <property type='str' name='name'>this name changed</property>
+        <property type='str' name='tags'/>
+        <property type='str' name='color'>#0d1c38,#49bce4</property>
+        <property type='bool' name='private'>1</property>
+      </properties>
+    </message>
+    ]]>
+    </example>
+
+    <p>If the inviter leaves the activity before the invitee joins, the
+      invitee can no longer rely on being notified about any changes;
+      if the activity was private, the invitee can't even rely on being
+      able to see whether it exists. Accordingly, the inviter should cancel
+      their invitation; if all invitations to a private activity have been
+      cancelled, the invitee should assume that the activity has
+      disappeared.</p>
+
+    <example caption='Cancelling an invitation'>
+    <![CDATA[
+    <message
+      from='1111111111111111111111111111111111111111@jabber.laptop.org/Telepathy'
+      to='3333333333333333333333333333333333333333@jabber.laptop.org'>
+      <uninvite xmlns='http://laptop.org/xmpp/activity-properties'
+        id='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+        room='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@conference.jabber.laptop.org'/>
+    </message>
+    ]]>
+    </example>
+  </section2>
+
+    <section3 topic='Invitations in link-local XMPP'>
+      <p>There isn't the concept of sending an invitation via the MUC service
+        in link-local XMPP, so the process can be made somewhat simpler.</p>
+
+      <example caption='Inviting a buddy to an activity (link-local)'>
+      <![CDATA[
+      <!-- Sent over unicast TCP connection between xo-12-34-56.local.
+      and xo-33-33-33.local. -->
+      <message from='11111@xo-12-34-56' to='33333@xo-33-33-33'>
+        <x xmlns='http://collabora.co.uk/protocol/llmuc'>
+          <invite protocol='rmulticast'>
+            <roomname>aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa</roomname>
+            <address>224.0.0.1</address>
+            <port>23453</port>
+            <properties xmlns='http://laptop.org/xmpp/activity-properties'
+              activity='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+              room='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'>
+              <property type='str' name='type'>org.laptop.Connect</property>
+              <property type='str' name='name'>Connect Activity</property>
+              <property type='str' name='tags'/>
+              <property type='str' name='color'>#0d1c38,#49bce4</property>
+              <property type='bool' name='private'>1</property>
+            </properties>
+          </invite>
+        </x>
+      </message>
+      ]]>
+      </example>
+
+      <example caption='Updating a buddy on activity properties (link-local)'>
+      <![CDATA[
+      <!-- Sent over unicast TCP connection between xo-12-34-56.local.
+      and xo-33-33-33.local. -->
+      <message
+        from='11111@xo-12-34-56'
+        to='33333@xo-33-33-33'>
+        <properties xmlns='http://laptop.org/xmpp/activity-properties'
+          activity='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+          room='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'>
+          <property type='str' name='type'>org.laptop.Connect</property>
+          <property type='str' name='name'>this name changed</property>
+          <property type='str' name='tags'/>
+          <property type='str' name='color'>#0d1c38,#49bce4</property>
+          <property type='bool' name='private'>1</property>
+        </properties>
+      </message>
+      ]]>
+      </example>
+
+      <example caption='Cancelling an invitation (link-local)'>
+      <![CDATA[
+      <!-- Sent over unicast TCP connection between xo-12-34-56.local.
+      and xo-33-33-33.local. -->
+      <message from='11111@xo-12-34-56' to='33333@xo-33-33-33'>
+        <uninvite xmlns='http://laptop.org/xmpp/activity-properties'
+          id='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+          room='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'/>
+      </message>
+      ]]>
+      </example>
+
+    </section3>
+
+</section1>
+<section1 topic='Business Rules' anchor='rules'>
+  <p>Properties have the same syntax and semantics as the "parameters" in
+    XEP-proto-tubes.</p>
+</section1>
+<section1 topic='Security Considerations' anchor='security'>
+  <p>Putting the current activity in a PEP node, even if it's private,
+    leaks the room name.</p>
+</section1>
+<section1 topic='IANA Considerations' anchor='iana'>
+  <p>None.</p>
+</section1>
+<section1 topic='XMPP Registrar Considerations' anchor='registrar'>
+  <p>None.</p>
+</section1>
+<section1 topic='XML Schema' anchor='schema'>
+  <code>
+    <![CDATA[
+    <!-- Buddy properties -->
+    <xs:schema
+      xmlns:xs='http://www.w3.org/2001/XMLSchema'
+      targetNamespace='http://laptop.org/xmpp/buddy-properties'
+      xmlns='http://laptop.org/xmpp/buddy-properties'
+      elementFormDefault='qualified'>
+
+      <!-- Published in the PEP node of the same namespace -->
+      <xs:element name='properties'>
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name='property' minOccurs='0' maxOccurs='unbounded'
+              type='name-value-pair'/>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+
+      <!-- A name-value pair (the same format as Tubes parameters, as it
+      happens) -->
+      <xs:complexType name='name-value-pair'>
+        <xs:simpleContent>
+          <xs:extension base='xs:string'>
+            <xs:attribute name='name' type='xs:string'/>
+            <xs:attribute name='type'>
+              <xs:simpleType>
+                <xs:restriction base='xs:NCName'>
+                  <xs:enumeration value='bool'/>
+                  <xs:enumeration value='str'/>
+                  <xs:enumeration value='bytes'/>
+                  <xs:enumeration value='int'/>
+                  <xs:enumeration value='uint'/>
+                </xs:restriction>
+              </xs:simpleType>
+            </xs:attribute>
+          </xs:extension>
+        </xs:simpleContent>
+      </xs:complexType>
+    </xs:schema>
+    ]]>
+    <![CDATA[
+    <!-- Activity properties -->
+    <xs:schema
+      xmlns:xs='http://www.w3.org/2001/XMLSchema'
+      targetNamespace='http://laptop.org/xmpp/activity-properties'
+      xmlns='http://laptop.org/xmpp/activity-properties'
+      elementFormDefault='qualified'>
+
+      <!-- Sent in pseudo-invitations, published in the PEP node
+      of the same namespace, and sent in chatrooms -->
+      <xs:element name='properties'>
+        <xs:complexType>
+          <!-- XMPP MUC's (bare) JID -->
+          <xs:attribute name='room' use='required' type='xs:string'/>
+          <!-- OLPC Activity ID (a 40-character hex string, as of Trial-3) -->
+          <xs:attribute name='activity' use='required' type='xs:string'/>
+
+          <xs:element name='property' minOccurs='0' maxOccurs='unbounded'
+            type='name-value-pair'/>
+        </xs:complexType>
+      </xs:element>
+
+      <!-- Sent to cancel invitations -->
+      <xs:element name='uninvite'>
+        <xs:complexType>
+          <xs:attribute name='room' use='required' type='xs:string'/>
+          <xs:attribute name='id' use='required' type='xs:string'/>
+        </xs:complexType>
+      </xs:element>
+
+      <!-- A name-value pair (the same format as Tubes parameters, as it
+      happens) -->
+      <xs:complexType name='name-value-pair'>
+        <xs:simpleContent>
+          <xs:extension base='xs:string'>
+            <xs:attribute name='name' type='xs:string'/>
+            <xs:attribute name='type'>
+              <xs:simpleType>
+                <xs:restriction base='xs:NCName'>
+                  <xs:enumeration value='bool'/>
+                  <xs:enumeration value='str'/>
+                  <xs:enumeration value='bytes'/>
+                  <xs:enumeration value='int'/>
+                  <xs:enumeration value='uint'/>
+                </xs:restriction>
+              </xs:simpleType>
+            </xs:attribute>
+          </xs:extension>
+        </xs:simpleContent>
+      </xs:complexType>
+
+      <xs:simpleType name='empty'>
+        <xs:restriction base='xs:string'>
+          <xs:enumeration value=''/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:schema>
+    ]]>
+    <![CDATA[
+    <!-- Buddy's Activities list -->
+    <xs:schema
+      xmlns:xs='http://www.w3.org/2001/XMLSchema'
+      targetNamespace='http://laptop.org/xmpp/activities'
+      xmlns='http://laptop.org/xmpp/activities'
+      elementFormDefault='qualified'>
+
+      <!-- Published in the PEP node of the same namespace -->
+      <xs:element name='activities'>
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name='activity'>
+              <xs:complexType>
+                <!-- Despite its name, this attribute is actually the
+                OLPC activity ID! Historical reasons... -->
+                <xs:attribute name='type' type='xs:string'/>
+                <!-- XMPP MUC (bare) JID -->
+                <xs:attribute name='room' type='xs:string'/>
+              </xs:complexType>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:simpleType name='empty'>
+        <xs:restriction base='xs:string'>
+          <xs:enumeration value=''/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:schema>
+    ]]>
+    <![CDATA[
+    <!-- Buddy's current activity -->
+    <xs:schema
+      xmlns:xs='http://www.w3.org/2001/XMLSchema'
+      targetNamespace='http://laptop.org/xmpp/current-activity'
+      xmlns='http://laptop.org/xmpp/current-activity'
+      elementFormDefault='qualified'>
+
+      <!-- Published in the PEP node of the same namespace -->
+      <xs:element name='activity'>
+        <xs:complexType>
+          <!-- Despite its name, this attribute is actually the
+          OLPC activity ID! Historical reasons...
+          Empty if no current activity. -->
+          <xs:attribute name='type' type='xs:string'/>
+          <!-- XMPP MUC (bare) JID, or empty if no current activity -->
+          <xs:attribute name='room' type='xs:string'/>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:simpleType name='empty'>
+        <xs:restriction base='xs:string'>
+          <xs:enumeration value=''/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:schema>
+    ]]>
+  </code>
+</section1>
+</xep>

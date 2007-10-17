@@ -581,19 +581,25 @@
       <example caption='Updating a buddy on activity properties (link-local)'>
       <![CDATA[
       <!-- Sent over unicast TCP connection between xo-12-34-56.local.
-      and xo-33-33-33.local. -->
-      <message
-        from='11111@xo-12-34-56'
-        to='33333@xo-33-33-33'>
-        <properties xmlns='http://laptop.org/xmpp/activity-properties'
-          activity='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
-          room='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'>
-          <property type='str' name='type'>org.laptop.Connect</property>
-          <property type='str' name='name'>this name changed</property>
-          <property type='str' name='tags'/>
-          <property type='str' name='color'>#0d1c38,#49bce4</property>
-          <property type='bool' name='private'>1</property>
-        </properties>
+      and xo-33-33-33.local. We just re-send the invitation. -->
+
+      <message from='11111@xo-12-34-56' to='33333@xo-33-33-33'>
+        <x xmlns='http://collabora.co.uk/protocol/llmuc'>
+          <invite protocol='rmulticast'>
+            <roomname>aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa</roomname>
+            <address>224.0.0.1</address>
+            <port>23453</port>
+            <properties xmlns='http://laptop.org/xmpp/activity-properties'
+              activity='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+              room='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'>
+              <property type='str' name='type'>org.laptop.Connect</property>
+              <property type='str' name='name'>The name changed</property>
+              <property type='str' name='tags'/>
+              <property type='str' name='color'>#0d1c38,#49bce4</property>
+              <property type='bool' name='private'>1</property>
+            </properties>
+          </invite>
+        </x>
       </message>
       ]]>
       </example>

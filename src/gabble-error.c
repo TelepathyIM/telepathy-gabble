@@ -328,7 +328,7 @@ gabble_xmpp_error_from_node (LmMessageNode *error_node)
   /* First, try to look it up the modern way */
   if (error_node->children)
     {
-      for (i = 0; i < NUM_XMPP_ERRORS; i++)
+      for (i = XMPP_ERROR_UNKNOWN - 1; i >= 0; i--)
         {
           if (lm_message_node_get_child (error_node, xmpp_errors[i].name))
             {

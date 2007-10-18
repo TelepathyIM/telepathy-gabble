@@ -61,12 +61,8 @@ update_own_avatar_sha1 (GabbleConnection *conn,
 
   if (!_gabble_connection_signal_own_presence (conn, &error))
     {
-      if (out_error == NULL)
-        {
-          DEBUG ("failed to signal changed avatar sha1 to the server: %s",
-              error->message);
-          g_error_free (error);
-        }
+      DEBUG ("failed to signal changed avatar sha1 to the server: %s",
+          error->message);
 
       g_propagate_error (out_error, error);
 

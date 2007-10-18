@@ -369,7 +369,7 @@ static GError *
 gabble_xmpp_error_to_g_error (GabbleXmppError error)
 {
   if (error >= NUM_XMPP_ERRORS)
-      return g_error_new (GABBLE_XMPP_ERROR, XMPP_ERROR_UNKNOWN,
+      return g_error_new (GABBLE_XMPP_ERROR, XMPP_ERROR_UNDEFINED_CONDITION,
           "Unknown or invalid XMPP error");
 
   return g_error_new (GABBLE_XMPP_ERROR,
@@ -463,8 +463,8 @@ gabble_message_get_xmpp_error (LmMessage *msg)
         }
       else
         {
-          return g_error_new (GABBLE_XMPP_ERROR, XMPP_ERROR_UNKNOWN,
-              "Unknown or invalid XMPP error");
+          return g_error_new (GABBLE_XMPP_ERROR,
+              XMPP_ERROR_UNDEFINED_CONDITION, "Unknown or invalid XMPP error");
         }
     }
 

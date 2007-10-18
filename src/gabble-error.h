@@ -71,8 +71,6 @@ typedef enum {
     XMPP_ERROR_SI_BAD_PROFILE,
 
     NUM_XMPP_ERRORS,
-
-    XMPP_ERROR_UNKNOWN,
     INVALID_XMPP_ERROR,
 } GabbleXmppError;
 

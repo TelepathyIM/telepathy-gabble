@@ -980,6 +980,12 @@ gabble_muc_factory_iface_close_all (TpChannelFactoryIface *iface)
       g_hash_table_destroy (tmp);
     }
 
+  if (priv->text_needed_for_tubes != NULL)
+    {
+      g_hash_table_destroy (priv->text_needed_for_tubes);
+      priv->text_needed_for_tubes = NULL;
+    }
+
   if (priv->roomlist_channel != NULL)
     {
       GObject *tmp = G_OBJECT (priv->roomlist_channel);

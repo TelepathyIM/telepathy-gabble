@@ -45,7 +45,7 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "to another entity",
       "modify",
       0,
-      NULL,
+      NS_XMPP_STANZAS,
       { 302, 0, },
     },
 
@@ -54,7 +54,7 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "the recipient or server can no longer be contacted at this address",
       "modify",
       0,
-      NULL,
+      NS_XMPP_STANZAS,
       { 302, 0, },
     },
 
@@ -63,7 +63,7 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "the sender has sent XML that is malformed or that cannot be processed",
       "modify",
       0,
-      NULL,
+      NS_XMPP_STANZAS,
       { 400, 0, },
     },
     {
@@ -72,7 +72,7 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "it at this time",
       "wait",
       0,
-      NULL,
+      NS_XMPP_STANZAS,
       { 400, 0, },
     },
     {
@@ -82,7 +82,7 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "to the syntax defined in Addressing Scheme (Section 3)",
       "modify",
       0,
-      NULL,
+      NS_XMPP_STANZAS,
       { 400, 0, },
     },
 
@@ -92,7 +92,7 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "perform the action, or has provided improper credentials",
       "auth",
       0,
-      NULL,
+      NS_XMPP_STANZAS,
       { 401, 0, },
     },
 
@@ -102,7 +102,7 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "service because payment is required",
       "auth",
       0,
-      NULL,
+      NS_XMPP_STANZAS,
       { 402, 0, },
     },
 
@@ -112,7 +112,7 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "perform the action",
       "auth",
       0,
-      NULL,
+      NS_XMPP_STANZAS,
       { 403, 0, },
     },
 
@@ -121,7 +121,7 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "the addressed JID or item requested cannot be found",
       "cancel",
       0,
-      NULL,
+      NS_XMPP_STANZAS,
       { 404, 0, },
     },
     {
@@ -129,7 +129,7 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "the intended recipient is temporarily unavailable",
       "wait",
       0,
-      NULL,
+      NS_XMPP_STANZAS,
       { 404, 0, },
     },
     {
@@ -139,7 +139,7 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "contacted within a reasonable amount of time",
       "cancel",
       0,
-      NULL,
+      NS_XMPP_STANZAS,
       { 404, 0, },
     },
 
@@ -148,7 +148,7 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "the recipient or server does not allow any entity to perform the action",
       "cancel",
       0,
-      NULL,
+      NS_XMPP_STANZAS,
       { 405, 0, },
     },
 
@@ -159,7 +159,7 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "or server (e.g., a local policy regarding acceptable words in messages)",
       "modify",
       0,
-      NULL,
+      NS_XMPP_STANZAS,
       { 406, 0, },
     },
 
@@ -169,7 +169,7 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "because registration is required",
       "auth",
       0,
-      NULL,
+      NS_XMPP_STANZAS,
       { 407, 0, },
     },
     {
@@ -178,7 +178,7 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "because a subscription is required",
       "auth",
       0,
-      NULL,
+      NS_XMPP_STANZAS,
       { 407, 0, },
     },
 
@@ -189,7 +189,7 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "contacted within a reasonable amount of time",
       "wait",
       0,
-      NULL,
+      NS_XMPP_STANZAS,
       { 408, 504, 0, },
     },
 
@@ -199,7 +199,7 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "with the same name or address",
       "cancel",
       0,
-      NULL,
+      NS_XMPP_STANZAS,
       { 409, 0, },
     },
 
@@ -209,7 +209,7 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "or an otherwise-undefined internal server error",
       "wait",
       0,
-      NULL,
+      NS_XMPP_STANZAS,
       { 500, 0, },
     },
     {
@@ -217,7 +217,7 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "application-specific condition",
       NULL,
       0,
-      NULL,
+      NS_XMPP_STANZAS,
       { 500, 0, },
     },
     {
@@ -226,7 +226,7 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "the request",
       "wait",
       0,
-      NULL,
+      NS_XMPP_STANZAS,
       { 500, 0, },
     },
 
@@ -236,7 +236,7 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "therefore cannot be processed",
       "cancel",
       0,
-      NULL,
+      NS_XMPP_STANZAS,
       { 501, 0, },
     },
 
@@ -246,7 +246,7 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       "service",
       "cancel",
       0,
-      NULL,
+      NS_XMPP_STANZAS,
       { 502, 503, 510, },
     },
 

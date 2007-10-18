@@ -813,14 +813,31 @@ gabble_tube_stream_init (GabbleTubeStream *self)
   priv->dispose_has_run = FALSE;
 }
 
-static void
+static gboolean
 close_each_extra_bytestream (gpointer key,
                              gpointer value,
                              gpointer user_data)
 {
+  GabbleTubeStream *self = GABBLE_TUBE_STREAM (user_data);
+  GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
   GabbleBytestreamIface *bytestream = (GabbleBytestreamIface *) value;
+  GIOChannel *channel;
+
+  /* We are iterating over priv->fd_to_bytestreams so we can't modify it.
+   * Disconnect signals so extra_bytestream_state_changed_cb won't be
+   * called */
+  g_signal_handlers_disconnect_matched (bytestream, G_SIGNAL_MATCH_DATA,
+      0, 0, NULL, NULL, self);
 
   gabble_bytestream_iface_close (bytestream, NULL);
+
+  channel = g_hash_table_lookup (priv->bytestream_to_io_channel, bytestream);
+  g_assert (channel != NULL);
+
+  g_hash_table_remove (priv->bytestream_to_io_channel, bytestream);
+  g_hash_table_remove (priv->io_channel_to_watcher_source_id, channel);
+
+  return TRUE;
 }
 
 static void
@@ -1326,7 +1343,7 @@ gabble_tube_stream_close (GabbleTubeIface *tube)
     return;
   priv->closed = TRUE;
 
-  g_hash_table_foreach (priv->fd_to_bytestreams,
+  g_hash_table_foreach_remove (priv->fd_to_bytestreams,
       close_each_extra_bytestream, self);
 
   if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)

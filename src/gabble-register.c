@@ -223,11 +223,8 @@ nokia_iv_set_reply_cb (GabbleConnection *conn,
 
           error = gabble_xmpp_error_from_node (node);
 
-          if (error != INVALID_XMPP_ERROR)
-            {
-              g_string_append_printf (msg, ": %s",
-                  gabble_xmpp_error_string (error));
-            }
+          g_string_append_printf (msg, ": %s",
+              gabble_xmpp_error_string (error));
         }
 
       g_signal_emit (object, signals[FINISHED], 0, FALSE, code, msg->str);
@@ -381,11 +378,8 @@ set_reply_cb (GabbleConnection *conn,
               code = TP_ERROR_INVALID_ARGUMENT;
             }
 
-          if (error != INVALID_XMPP_ERROR)
-            {
-              g_string_append_printf (msg, ": %s",
-                  gabble_xmpp_error_string (error));
-            }
+          g_string_append_printf (msg, ": %s",
+              gabble_xmpp_error_string (error));
         }
 
       g_signal_emit (object, signals[FINISHED], 0, FALSE, code, msg->str);

@@ -597,7 +597,7 @@ jingle_info_iq_callback (LmMessageHandler *handler,
 
   if (sub_type == LM_MESSAGE_SUB_TYPE_ERROR)
     {
-      GabbleXmppError xmpp_error = INVALID_XMPP_ERROR;
+      GabbleXmppError xmpp_error = XMPP_ERROR_UNDEFINED_CONDITION;
 
       node = lm_message_node_get_child (message->node, "error");
       if (node != NULL)
@@ -605,8 +605,7 @@ jingle_info_iq_callback (LmMessageHandler *handler,
           xmpp_error = gabble_xmpp_error_from_node (node);
         }
 
-      DEBUG ("jingle info error: %s", xmpp_error == INVALID_XMPP_ERROR ?
-          "unknown error" : gabble_xmpp_error_string (xmpp_error));
+      DEBUG ("jingle info error: %s", gabble_xmpp_error_string (xmpp_error));
 
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }

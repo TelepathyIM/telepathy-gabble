@@ -1238,16 +1238,8 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
             }
           break;
         default:
-          if (error != INVALID_XMPP_ERROR)
-            {
-              tp_error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-                                      gabble_xmpp_error_description (error));
-            }
-          else
-            {
-              tp_error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-                                      "unknown error");
-            }
+          tp_error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+              gabble_xmpp_error_description (error));
           break;
       }
 

@@ -70,7 +70,6 @@ typedef enum {
     XMPP_ERROR_SI_BAD_PROFILE,
 
     NUM_XMPP_ERRORS,
-    INVALID_XMPP_ERROR,
 } GabbleXmppError;
 
 GQuark gabble_xmpp_error_quark (void);

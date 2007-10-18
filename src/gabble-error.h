@@ -26,7 +26,8 @@
 #include <loudmouth/loudmouth.h>
 
 typedef enum {
-    XMPP_ERROR_REDIRECT = 0,            /* 302 */
+    XMPP_ERROR_UNDEFINED_CONDITION = 0, /* 500 */
+    XMPP_ERROR_REDIRECT,                /* 302 */
     XMPP_ERROR_GONE,                    /* 302 */
 
     XMPP_ERROR_BAD_REQUEST,             /* 400 */
@@ -55,7 +56,6 @@ typedef enum {
     XMPP_ERROR_CONFLICT,                /* 409 */
 
     XMPP_ERROR_INTERNAL_SERVER_ERROR,   /* 500 */
-    XMPP_ERROR_UNDEFINED_CONDITION,     /* 500 */
     XMPP_ERROR_RESOURCE_CONSTRAINT,     /* 500 */
 
     XMPP_ERROR_FEATURE_NOT_IMPLEMENTED, /* 501 */

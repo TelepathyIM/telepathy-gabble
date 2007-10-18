@@ -40,6 +40,15 @@ typedef struct {
 static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
 {
     {
+      "undefined-condition",
+      "application-specific condition",
+      NULL,
+      0,
+      NS_XMPP_STANZAS,
+      { 500, 0, },
+    },
+
+    {
       "redirect",
       "the recipient or server is redirecting requests for this information "
       "to another entity",
@@ -213,14 +222,6 @@ static const XmppErrorSpec xmpp_errors[NUM_XMPP_ERRORS] =
       { 500, 0, },
     },
     {
-      "undefined-condition",
-      "application-specific condition",
-      NULL,
-      0,
-      NS_XMPP_STANZAS,
-      { 500, 0, },
-    },
-    {
       "resource-constraint",
       "the server or recipient lacks the system resources necessary to service "
       "the request",
@@ -328,9 +329,10 @@ gabble_xmpp_error_from_node (LmMessageNode *error_node)
   /* First, try to look it up the modern way */
   if (error_node->children)
     {
-      for (i = NUM_XMPP_ERRORS; i > 0;)
+      /* we loop backwards because the most specific errors are the larger
+       * numbers; the >= 0 test is OK because i is signed */
+      for (i = NUM_XMPP_ERRORS - 1; i >= 0; i--)
         {
-          i--;
           if (lm_message_node_get_child (error_node, xmpp_errors[i].name))
             {
               return i;
@@ -346,7 +348,9 @@ gabble_xmpp_error_from_node (LmMessageNode *error_node)
 
       error_code = atoi (error_code_str);
 
-      for (i = 0; i < NUM_XMPP_ERRORS; i++)
+      /* skip UNDEFINED_CONDITION, we want code 500 to be translated
+       * to INTERNAL_SERVER_ERROR */
+      for (i = 1; i < NUM_XMPP_ERRORS; i++)
         {
           const XmppErrorSpec *spec = &xmpp_errors[i];
 

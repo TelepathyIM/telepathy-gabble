@@ -25,6 +25,7 @@
 #include <stdio.h>
 
 #include "namespaces.h"
+#include "util.h"
 
 #define MAX_LEGACY_ERRORS 3
 
@@ -333,7 +334,8 @@ gabble_xmpp_error_from_node (LmMessageNode *error_node)
        * numbers; the >= 0 test is OK because i is signed */
       for (i = NUM_XMPP_ERRORS - 1; i >= 0; i--)
         {
-          if (lm_message_node_get_child (error_node, xmpp_errors[i].name))
+          if (lm_message_node_get_child_with_namespace (error_node,
+                xmpp_errors[i].name, xmpp_errors[i].namespace))
             {
               return i;
             }

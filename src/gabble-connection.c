@@ -908,7 +908,7 @@ message_send_reply_cb (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
-  if (handler_data->object_alive)
+  if (handler_data->object_alive && handler_data->reply_func != NULL)
     {
       return handler_data->reply_func (handler_data->conn,
                                        handler_data->sent_msg,
@@ -954,6 +954,9 @@ message_send_handler_destroy_cb (gpointer data)
  *
  * If object is non-NULL the handler will follow the lifetime of that object,
  * which means that if the object is destroyed the callback will not be invoked.
+ *
+ * if reply_func is NULL the reply will be ignored but connection_iq_unknown_cb
+ * won't be called.
  */
 gboolean
 _gabble_connection_send_with_reply (GabbleConnection *conn,

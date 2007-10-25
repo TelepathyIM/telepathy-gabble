@@ -2340,18 +2340,6 @@ _gabble_media_session_remove_streams (GabbleMediaSession *session,
     }
 }
 
-/* for when you want the reply to be removed from
- * the handler chain, but don't care what it is */
-static LmHandlerResult
-ignore_reply_cb (GabbleConnection *conn,
-                 LmMessage *sent_msg,
-                 LmMessage *reply_msg,
-                 GObject *object,
-                 gpointer user_data)
-{
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-}
-
 static void
 send_reject_message (GabbleMediaSession *session)
 {
@@ -2371,7 +2359,7 @@ send_reject_message (GabbleMediaSession *session)
   GMS_DEBUG_INFO (session, "sending jingle session action \"reject\" to peer");
 
   /* send it */
-  _gabble_connection_send_with_reply (priv->conn, msg, ignore_reply_cb,
+  _gabble_connection_send_with_reply (priv->conn, msg, NULL,
                                       G_OBJECT (session), NULL, NULL);
 
   lm_message_unref (msg);
@@ -2397,7 +2385,7 @@ send_terminate_message (GabbleMediaSession *session)
       action);
 
   /* send it */
-  _gabble_connection_send_with_reply (priv->conn, msg, ignore_reply_cb,
+  _gabble_connection_send_with_reply (priv->conn, msg, NULL,
                                       G_OBJECT (session), NULL, NULL);
 
   lm_message_unref (msg);

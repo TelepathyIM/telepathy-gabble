@@ -1454,17 +1454,6 @@ olpc_activities_properties_event_handler (GabbleConnection *conn,
   return update_activities_properties (conn, msg);
 }
 
-static LmHandlerResult
-ignored_reply_cb (GabbleConnection *conn,
-                  LmMessage *sent_msg,
-                  LmMessage *reply_msg,
-                  GObject *object,
-                  gpointer user_data)
-{
-  /* So connection_iq_unknown_cb is not called */
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-}
-
 static void
 connection_status_changed_cb (GabbleConnection *conn,
                               TpConnectionStatus status,
@@ -1490,7 +1479,7 @@ connection_status_changed_cb (GabbleConnection *conn,
           set_activity_properties, publish);
 
       _gabble_connection_send_with_reply (conn, msg,
-        ignored_reply_cb, NULL, NULL, NULL);
+        NULL, NULL, NULL, NULL);
 
       lm_message_unref (msg);
     }

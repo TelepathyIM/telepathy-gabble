@@ -556,18 +556,6 @@ gabble_bytestream_ibb_decline (GabbleBytestreamIBB *self,
   g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
 }
 
-static LmHandlerResult
-ignored_reply_cb (GabbleConnection *conn,
-                  LmMessage *sent_msg,
-                  LmMessage *reply_msg,
-                  GObject *object,
-                  gpointer user_data)
-{
-  /* We don't really care about the answer as the bytestream
-   * is closed anyway. */
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-}
-
 /*
  * gabble_bytestream_ibb_close
  *
@@ -602,8 +590,10 @@ gabble_bytestream_ibb_close (GabbleBytestreamIface *iface,
             '@', "sid", priv->stream_id,
           ')', NULL);
 
+      /* We don't really care about the answer as the bytestream
+       * is closed anyway. */
       _gabble_connection_send_with_reply (priv->conn, msg,
-          ignored_reply_cb, NULL, NULL, NULL);
+          NULL, NULL, NULL, NULL);
 
       lm_message_unref (msg);
 

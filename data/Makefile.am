@@ -13,9 +13,9 @@ CLEANFILES = $(BUILT_FILES)
 
 EXTRA_DIST = $(service_in_files)
 
-# Rule to make the service file with bindir expanded
+# Rule to make the service file with libexecdir expanded
 $(service_DATA): $(service_in_files) Makefile
-	@sed -e "s|\@bindir\@|$(bindir)|" $< > $@
+	@sed -e "s|\@libexecdir\@|$(libexecdir)|" $< > $@
 
 $(manager_DATA): ../src/gabble-connection-manager.c ../src/write-mgr-file.c
 	$(MAKE) -C ../src write-mgr-file

@@ -7,7 +7,7 @@ BUILT_SOURCES = \
 
 CLEANFILES = $(BUILT_SOURCES)
 
-bin_PROGRAMS=telepathy-gabble
+libexec_PROGRAMS=telepathy-gabble
 noinst_PROGRAMS = write-mgr-file
 
 if HAVE_DBUS_TUBE

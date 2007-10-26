@@ -1876,21 +1876,17 @@ connection_status_changed_cb (GabbleConnection *conn,
        * We have to cleanup PEP node to avoid to confuse
        * remote contacts with old properties from a previous session.
        */
-      LmMessage *msg;
-      LmMessageNode *publish;
-
-      msg = pubsub_make_publish_msg (NULL,
-          NS_OLPC_ACTIVITY_PROPS,
-          NS_OLPC_ACTIVITY_PROPS,
-          "activities",
-          &publish);
-
-      g_hash_table_foreach (conn->olpc_activities_info,
-          set_activity_properties, publish);
-
-      _gabble_connection_send (conn, msg, NULL);
-
-      lm_message_unref (msg);
+      if (!upload_activities_pep (conn, on_connect_pep_reply_cb, NULL, NULL))
+        {
+          DEBUG ("Failed to send PEP activities reset in response to "
+              "initial connection");
+        }
+      if (!upload_activity_properties_pep (conn, on_connect_pep_reply_cb, NULL,
+            NULL))
+        {
+          DEBUG ("Failed to send PEP activity props reset in response to "
+              "initial connection");
+        }
     }
 }
 

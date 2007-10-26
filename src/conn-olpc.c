@@ -1876,12 +1876,12 @@ connection_status_changed_cb (GabbleConnection *conn,
        * We have to cleanup PEP node to avoid to confuse
        * remote contacts with old properties from a previous session.
        */
-      if (!upload_activities_pep (conn, on_connect_pep_reply_cb, NULL, NULL))
+      if (!upload_activities_pep (conn, NULL, NULL, NULL))
         {
           DEBUG ("Failed to send PEP activities reset in response to "
               "initial connection");
         }
-      if (!upload_activity_properties_pep (conn, on_connect_pep_reply_cb, NULL,
+      if (!upload_activity_properties_pep (conn, NULL, NULL,
             NULL))
         {
           DEBUG ("Failed to send PEP activity props reset in response to "

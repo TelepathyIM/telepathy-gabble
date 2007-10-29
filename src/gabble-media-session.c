@@ -635,7 +635,7 @@ gabble_media_session_error (TpSvcMediaSessionHandler *iface,
 
   for (i = 0; i < tmp->len; i++)
     {
-      GabbleMediaStream *stream = g_ptr_array_index (priv->streams, i);
+      GabbleMediaStream *stream = g_ptr_array_index (tmp, i);
 
       gabble_media_stream_error (stream, errno, message, NULL);
     }

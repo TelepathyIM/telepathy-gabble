@@ -147,11 +147,11 @@ gabble_muc_factory_dispose (GObject *object)
   tp_channel_factory_iface_close_all (TP_CHANNEL_FACTORY_IFACE (object));
   g_assert (priv->text_channels == NULL);
   g_assert (priv->tubes_channels == NULL);
+  g_assert (priv->text_needed_for_tubes == NULL);
 
   g_hash_table_foreach (priv->disco_requests, cancel_disco_request,
       priv->conn->disco);
   g_hash_table_destroy (priv->disco_requests);
-  g_hash_table_destroy (priv->text_needed_for_tubes);
 
   if (G_OBJECT_CLASS (gabble_muc_factory_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_muc_factory_parent_class)->dispose (object);
@@ -964,6 +964,12 @@ gabble_muc_factory_iface_close_all (TpChannelFactoryIface *iface)
 
   DEBUG ("closing channels");
 
+  if (priv->text_needed_for_tubes != NULL)
+    {
+      g_hash_table_destroy (priv->text_needed_for_tubes);
+      priv->text_needed_for_tubes = NULL;
+    }
+
   if (priv->text_channels != NULL)
     {
       GHashTable *tmp = priv->text_channels;
@@ -976,12 +982,6 @@ gabble_muc_factory_iface_close_all (TpChannelFactoryIface *iface)
       GHashTable *tmp = priv->tubes_channels;
       priv->tubes_channels = NULL;
       g_hash_table_destroy (tmp);
-    }
-
-  if (priv->text_needed_for_tubes != NULL)
-    {
-      g_hash_table_destroy (priv->text_needed_for_tubes);
-      priv->text_needed_for_tubes = NULL;
     }
 
   if (priv->roomlist_channel != NULL)

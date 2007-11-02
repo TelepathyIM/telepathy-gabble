@@ -8,12 +8,12 @@
 <?xml-stylesheet type='text/xsl' href='xep.xsl'?>
 <xep>
 <header>
-  <title>OLPC-specific properties (as used in Trial-3 and 1.0)</title>
+  <title>OLPC-specific properties, version 1.0</title>
   <abstract>Properties for the Activity and Buddy abstractions used in the
     One Laptop per Child's Sugar environment.</abstract>
   <legal>Copyright (c) 2007 Collabora Limited. This document may be
     distributed under the same terms as the Telepathy specification.</legal>
-  <number>proto-olpc-trial3</number>
+  <number>proto-olpc1.0</number>
   <status>ProtoXEP</status>
   <type>Extension</type>
   <sig>Standards</sig>
@@ -21,7 +21,7 @@
   <dependencies>
     <spec>XMPP Core</spec>
     <spec>XEP-0045</spec>
-    <spec>XEP-proto-llmuc</spec>
+    <spec>XEP-proto-clique</spec>
   </dependencies>
   <supersedes/>
   <supersededby/>
@@ -291,43 +291,43 @@
 
     <section3 topic='Activity properties in link-local XMPP'>
       <p>In link-local XMPP, the activity properties are mapped to
-        the _olpc-activity._udp record. Each participant in each public
+        the _olpc-activity1._udp record. Each participant in each public
         activity publishes an mDNS service named
         <em>chatroomname</em>:<em>publishedname</em>@<em>hostname</em>,
         like so:</p>
 
       <code>
         ; Advertised by 11111...
-        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:11111@xo-12-34-56._olpc-activity._udp.local. IN SRV 0 xo-12-34-56.local.
-        _olpc_activity._udp.local. IN PTR aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:11111@xo-12-34-56._olpc-activity._udp.local.
-       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:11111@xo-12-34-56._olpc-activity._udp.local IN TXT "txtvers=0"
-       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:11111@xo-12-34-56._olpc-activity._udp.local IN TXT "room=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:11111@xo-12-34-56._olpc-activity._udp.local IN TXT "activity-id=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:11111@xo-12-34-56._olpc-activity._udp.local IN TXT "name=Connect Activity"
-       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:11111@xo-12-34-56._olpc-activity._udp.local IN TXT "color=#005FE4,#00A0FF"
-       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:11111@xo-12-34-56._olpc-activity._udp.local IN TXT "type=org.laptop.ConnectActivity"
-       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:11111@xo-12-34-56._olpc-activity._udp.local IN TXT "tags="
-        bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:11111@xo-12-34-56._olpc-activity._udp.local. IN SRV 0 xo-12-34-56.local.
-        _olpc_activity._udp.local. IN PTR bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:11111@xo-12-34-56._olpc-activity._udp.local.
-       bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:11111@xo-12-34-56._olpc-activity._udp.local IN TXT "txtvers=0"
-       bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:11111@xo-12-34-56._olpc-activity._udp.local IN TXT "room=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
-       bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:11111@xo-12-34-56._olpc-activity._udp.local IN TXT "activity-id=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
-       bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:11111@xo-12-34-56._olpc-activity._udp.local IN TXT "name=Example Activity"
-       bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:11111@xo-12-34-56._olpc-activity._udp.local IN TXT "color=#005FE4,#00A0FF"
-       bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:11111@xo-12-34-56._olpc-activity._udp.local IN TXT "type=org.laptop.HelloMesh"
-       bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:11111@xo-12-34-56._olpc-activity._udp.local IN TXT "tags="
+        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:11111@xo-12-34-56._olpc-activity1._udp.local. IN SRV 0 xo-12-34-56.local.
+        _olpc-activity1._udp.local. IN PTR aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:11111@xo-12-34-56._olpc-activity1._udp.local.
+       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:11111@xo-12-34-56._olpc-activity1._udp.local IN TXT "txtvers=0"
+       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:11111@xo-12-34-56._olpc-activity1._udp.local IN TXT "room=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:11111@xo-12-34-56._olpc-activity1._udp.local IN TXT "activity-id=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:11111@xo-12-34-56._olpc-activity1._udp.local IN TXT "name=Connect Activity"
+       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:11111@xo-12-34-56._olpc-activity1._udp.local IN TXT "color=#005FE4,#00A0FF"
+       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:11111@xo-12-34-56._olpc-activity1._udp.local IN TXT "type=org.laptop.ConnectActivity"
+       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:11111@xo-12-34-56._olpc-activity1._udp.local IN TXT "tags="
+        bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:11111@xo-12-34-56._olpc-activity1._udp.local. IN SRV 0 xo-12-34-56.local.
+        _olpc-activity1._udp.local. IN PTR bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:11111@xo-12-34-56._olpc-activity1._udp.local.
+       bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:11111@xo-12-34-56._olpc-activity1._udp.local IN TXT "txtvers=0"
+       bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:11111@xo-12-34-56._olpc-activity1._udp.local IN TXT "room=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+       bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:11111@xo-12-34-56._olpc-activity1._udp.local IN TXT "activity-id=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+       bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:11111@xo-12-34-56._olpc-activity1._udp.local IN TXT "name=Example Activity"
+       bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:11111@xo-12-34-56._olpc-activity1._udp.local IN TXT "color=#005FE4,#00A0FF"
+       bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:11111@xo-12-34-56._olpc-activity1._udp.local IN TXT "type=org.laptop.HelloMesh"
+       bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:11111@xo-12-34-56._olpc-activity1._udp.local IN TXT "tags="
 
        ; Advertised by 22222... - suppose here that 22222... is in the activity
        ; aaaaa... but not in bbbbb...
-       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:22222@xo-22-22-22._olpc-activity._udp.local. IN SRV 0 xo-22-22-22.local.
-       _olpc_activity._udp.local. IN PTR aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:22222@xo-22-22-22._olpc-activity._udp.local.
-       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:22222@xo-22-22-22._olpc-activity._udp.local IN TXT "txtvers=0"
-       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:22222@xo-22-22-22._olpc-activity._udp.local IN TXT "room=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:22222@xo-22-22-22._olpc-activity._udp.local IN TXT "activity-id=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:22222@xo-22-22-22._olpc-activity._udp.local IN TXT "name=Connect Activity"
-       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:22222@xo-22-22-22._olpc-activity._udp.local IN TXT "color=#005FE4,#00A0FF"
-       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:22222@xo-22-22-22._olpc-activity._udp.local IN TXT "type=org.laptop.ConnectActivity"
-       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:22222@xo-22-22-22._olpc-activity._udp.local IN TXT "tags="
+       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:22222@xo-22-22-22._olpc-activity1._udp.local. IN SRV 0 xo-22-22-22.local.
+       _olpc_activity._udp.local. IN PTR aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:22222@xo-22-22-22._olpc-activity1._udp.local.
+       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:22222@xo-22-22-22._olpc-activity1._udp.local IN TXT "txtvers=0"
+       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:22222@xo-22-22-22._olpc-activity1._udp.local IN TXT "room=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:22222@xo-22-22-22._olpc-activity1._udp.local IN TXT "activity-id=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:22222@xo-22-22-22._olpc-activity1._udp.local IN TXT "name=Connect Activity"
+       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:22222@xo-22-22-22._olpc-activity1._udp.local IN TXT "color=#005FE4,#00A0FF"
+       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:22222@xo-22-22-22._olpc-activity1._udp.local IN TXT "type=org.laptop.ConnectActivity"
+       aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:22222@xo-22-22-22._olpc-activity1._udp.local IN TXT "tags="
       </code>
 
       <p>The &lt;message/&gt; sent to the chat room with the updated

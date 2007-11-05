@@ -88,3 +88,4 @@
 ^extensions/extensions\.html$
 ^docs/.*\.html$
 ^docs/xep\.xsl$
+^docs/telepathy-gabble\.8$

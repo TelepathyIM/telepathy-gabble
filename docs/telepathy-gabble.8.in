@@ -1,0 +1,37 @@
+.TH TELEPATHY-GABBLE "8" "October 2007" "Telepathy" "D-Bus services"
+\" This man page was written by Simon McVittie for the Debian project,
+\" but may be used by others.
+\" Copyright © 2007 Collabora Ltd. <http://www.collabora.co.uk/>
+\" It may be distributed under the same terms as telepathy-gabble itself.
+.SH NAME
+telepathy-gabble \- Telepathy connection manager for XMPP (Jabber)
+.SH SYNOPSIS
+\fB@libexecdir@/telepathy\-gabble\fR
+.SH DESCRIPTION
+Gabble implements the Telepathy D-Bus specification for XMPP (Jabber),
+allowing Telepathy clients like
+.BR empathy (1)
+to connect to XMPP accounts, including Google Talk.
+.PP
+It is a D-Bus service which runs on the session bus, and should usually be
+started automatically by D-Bus activation. However, it might be useful to
+start it manually for debugging.
+.SH OPTIONS
+There are no command-line options.
+.SH ENVIRONMENT
+.TP
+\fBGABBLE_LOGFILE\fR=\fIfilename\fR
+If set, debug output will go to the given file rather than to stderr.
+.TP
+\fBGABBLE_DEBUG\fR=\fItype\fR
+May be set to "all" for full debug output, or various undocumented options
+(which may change from release to release) to filter the output.
+\fBLM_DEBUG\fR=\fItype\fR
+May be set to "all" for full debug output from the Loudmouth XMPP library used
+by Gabble, or various undocumented options (which may change from release to
+release) to filter the output. For general Gabble debugging, "net" is
+recommended.
+.SH SEE ALSO
+.IR http://telepathy.freedesktop.org/ ,
+.IR http://telepathy.freedesktop.org/wiki/CategoryGabble ,
+.BR empathy (1)

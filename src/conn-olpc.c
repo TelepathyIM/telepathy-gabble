@@ -1125,10 +1125,15 @@ add_activity_info_in_set (GabbleConnection *conn,
   if (activities_set == NULL)
     {
       activities_set = tp_handle_set_new (room_repo);
-      tp_handle_set_add (activities_set, room_handle);
       g_hash_table_insert (table, GUINT_TO_POINTER (from_handle),
           activities_set);
     }
+
+  /* add_activity_info_in_set isn't meant to be called if the
+   * activity already existed */
+  g_assert (!tp_handle_set_is_member (activities_set, room_handle));
+
+  tp_handle_set_add (activities_set, room_handle);
 
   return info;
 }

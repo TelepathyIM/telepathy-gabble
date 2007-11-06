@@ -1,5 +1,5 @@
 """
-Test MUC invitations.
+Test OLPC MUC properties.
 """
 
 import dbus

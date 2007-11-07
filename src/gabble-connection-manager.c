@@ -68,6 +68,7 @@ struct _GabbleParams {
   gint priority;
   guint port;
   gboolean old_ssl;
+  gboolean require_encryption;
   gboolean do_register;
   gboolean low_bandwidth;
   gchar *https_proxy_server;
@@ -89,6 +90,7 @@ enum {
     JABBER_PARAM_PRIORITY,
     JABBER_PARAM_PORT,
     JABBER_PARAM_OLD_SSL,
+    JABBER_PARAM_REQUIRE_ENCRYPTION,
     JABBER_PARAM_REGISTER,
     JABBER_PARAM_LOW_BANDWIDTH,
     JABBER_PARAM_HTTPS_PROXY_SERVER,
@@ -137,6 +139,10 @@ static const TpCMParamSpec jabber_params[] = {
   { "old-ssl", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN,
     TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(FALSE),
     G_STRUCT_OFFSET(GabbleParams, old_ssl), NULL, NULL },
+
+  { "require-encryption", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN,
+    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(FALSE),
+    G_STRUCT_OFFSET(GabbleParams, require_encryption), NULL, NULL },
 
   { "register", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN,
     TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(FALSE),
@@ -249,6 +255,9 @@ _gabble_connection_manager_new_connection (TpBaseConnectionManager *self,
                              (gint8) CLAMP (params->priority, G_MININT8, G_MAXINT8));
   SET_PROPERTY_IF_PARAM_SET ("port", JABBER_PARAM_PORT, params->port);
   SET_PROPERTY_IF_PARAM_SET ("old-ssl", JABBER_PARAM_OLD_SSL, params->old_ssl);
+  SET_PROPERTY_IF_PARAM_SET ("require-encryption",
+                             JABBER_PARAM_REQUIRE_ENCRYPTION,
+                             params->require_encryption);
   SET_PROPERTY_IF_PARAM_SET ("register", JABBER_PARAM_REGISTER,
                              params->do_register);
   SET_PROPERTY_IF_PARAM_SET ("low-bandwidth", JABBER_PARAM_LOW_BANDWIDTH,

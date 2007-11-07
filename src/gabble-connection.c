@@ -105,6 +105,7 @@ enum
     PROP_CONNECT_SERVER = 1,
     PROP_PORT,
     PROP_OLD_SSL,
+    PROP_REQUIRE_ENCRYPTION,
     PROP_REGISTER,
     PROP_LOW_BANDWIDTH,
     PROP_STREAM_SERVER,
@@ -139,6 +140,7 @@ struct _GabbleConnectionPrivate
   gchar *connect_server;
   guint port;
   gboolean old_ssl;
+  gboolean require_encryption;
 
   gboolean ignore_ssl_errors;
   TpConnectionStatusReason ssl_error;
@@ -289,6 +291,9 @@ gabble_connection_get_property (GObject    *object,
     case PROP_OLD_SSL:
       g_value_set_boolean (value, priv->old_ssl);
       break;
+    case PROP_REQUIRE_ENCRYPTION:
+      g_value_set_boolean (value, priv->require_encryption);
+      break;
     case PROP_REGISTER:
       g_value_set_boolean (value, priv->do_register);
       break;
@@ -359,6 +364,9 @@ gabble_connection_set_property (GObject      *object,
       break;
     case PROP_OLD_SSL:
       priv->old_ssl = g_value_get_boolean (value);
+      break;
+    case PROP_REQUIRE_ENCRYPTION:
+      priv->require_encryption = g_value_get_boolean (value);
       break;
     case PROP_REGISTER:
       priv->do_register = g_value_get_boolean (value);
@@ -544,6 +552,14 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
                                      G_PARAM_STATIC_NAME |
                                      G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_OLD_SSL, param_spec);
+
+  param_spec = g_param_spec_boolean ("require-encryption", "Require encryption",
+                                     "Require the connection to be encrypted, either "
+                                     "via old-style SSL, or StartTLS mechanisms.", FALSE,
+                                     G_PARAM_READWRITE |
+                                     G_PARAM_STATIC_NAME |
+                                     G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_REQUIRE_ENCRYPTION, param_spec);
 
   param_spec = g_param_spec_boolean ("register", "Register account on server",
                                      "Register a new account on server.", FALSE,
@@ -1195,9 +1211,12 @@ _gabble_connection_connect (TpBaseConnection *base,
       LmSSL *ssl = lm_ssl_new (NULL, connection_ssl_cb, conn, NULL);
       lm_connection_set_ssl (conn->lmconn, ssl);
 
-      /* Try to use StartTLS if possible, but ignore any errors you get */
-      lm_ssl_use_starttls (ssl, TRUE, FALSE);
-      priv->ignore_ssl_errors = TRUE;
+      /* Try to use StartTLS if possible, but be careful about
+         allowing SSL errors in that default case. */
+      lm_ssl_use_starttls (ssl, TRUE, priv->require_encryption);
+
+      if (!priv->require_encryption)
+          priv->ignore_ssl_errors = TRUE;
     }
 #endif /* HAVE_LM_STARTTLS */
 

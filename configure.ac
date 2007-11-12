@@ -130,6 +130,11 @@ PKG_CHECK_MODULES(TP_GLIB, [telepathy-glib >= 0.5.14])
 AC_SUBST(TP_GLIB_CFLAGS)
 AC_SUBST(TP_GLIB_LIBS)
 
+AC_CHECK_LIB(telepathy-glib, tp_debug_set_flags,
+  [ AC_DEFINE(HAVE_TP_DEBUG_SET_FLAGS, [],
+    [Define if tp_debug_set_flags() function is provided by telepathy-glib]) ],
+  [], [$TP_GLIB_LIBS])
+
 AS_AC_EXPAND(DATADIR, $datadir)
 DBUS_SERVICES_DIR="$DATADIR/dbus-1/services"
 AC_SUBST(DBUS_SERVICES_DIR)

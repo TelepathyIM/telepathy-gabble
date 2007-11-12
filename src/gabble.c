@@ -45,6 +45,8 @@ main (int argc,
    * still implies all debug flags in 0.6.x. */
   if (g_getenv ("GABBLE_PERSIST"))
     {
+      gabble_debug_set_flags (0xffff);
+
 #ifdef HAVE_TP_DEBUG_SET_FLAGS
       /* tp-glib >= 0.6.1: persist is no longer a flag in quite the same way */
       tp_debug_set_flags ("all");

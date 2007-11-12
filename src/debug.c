@@ -62,7 +62,6 @@ static GDebugKey keys[] = {
   { "im",            GABBLE_DEBUG_IM },
   { "muc",           GABBLE_DEBUG_MUC },
   { "connection",    GABBLE_DEBUG_CONNECTION },
-  { "persist",       GABBLE_DEBUG_PERSIST },
   { "vcard",         GABBLE_DEBUG_VCARD },
   { "pipeline",      GABBLE_DEBUG_PIPELINE },
   { "jid",           GABBLE_DEBUG_JID },
@@ -79,9 +78,14 @@ void gabble_debug_set_flags_from_env ()
 
   flags_string = g_getenv ("GABBLE_DEBUG");
 
+#ifdef HAVE_TP_DEBUG_SET_FLAGS
+      tp_debug_set_flags (flags_string);
+#else
+      tp_debug_set_flags_from_string (flags_string);
+#endif
+
   if (flags_string)
     {
-      tp_debug_set_flags_from_env ("GABBLE_DEBUG");
       gabble_debug_set_flags (g_parse_debug_string (flags_string, keys,
             nkeys));
     }

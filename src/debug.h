@@ -28,7 +28,6 @@ typedef enum
   GABBLE_DEBUG_MUC           = 1 << 7,
   GABBLE_DEBUG_CONNECTION    = 1 << 8,
   GABBLE_DEBUG_IM            = 1 << 9,
-  GABBLE_DEBUG_PERSIST       = 1 << 10,
   GABBLE_DEBUG_VCARD         = 1 << 11,
   GABBLE_DEBUG_PIPELINE      = 1 << 12,
   GABBLE_DEBUG_JID           = 1 << 13,

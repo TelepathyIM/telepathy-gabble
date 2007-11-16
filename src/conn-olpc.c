@@ -1832,7 +1832,8 @@ update_activities_properties (GabbleConnection *conn,
 
       old_properties = info->properties;
 
-      new_properties = lm_message_node_extract_properties (properties_node, "property");
+      new_properties = lm_message_node_extract_properties (properties_node,
+          "property");
 
       if (g_hash_table_size (new_properties) == 0)
         {

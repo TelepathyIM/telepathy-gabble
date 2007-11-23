@@ -130,11 +130,13 @@ PKG_CHECK_MODULES(TP_GLIB, [telepathy-glib >= 0.5.14])
 AC_SUBST(TP_GLIB_CFLAGS)
 AC_SUBST(TP_GLIB_LIBS)
 
+dnl May be removed if we depend on telepathy-glib >= 0.6.1
 AC_CHECK_LIB(telepathy-glib, tp_debug_set_flags,
   [ AC_DEFINE(HAVE_TP_DEBUG_SET_FLAGS, [],
     [Define if tp_debug_set_flags() function is provided by telepathy-glib]) ],
   [], [$TP_GLIB_LIBS])
 
+dnl May be removed if we depend on telepathy-glib >= 0.7.0
 AC_CHECK_LIB(telepathy-glib, tp_g_hash_table_update,
   [ AC_DEFINE(HAVE_TP_G_HASH_TABLE_UPDATE, [],
     [Define if tp_g_hash_table_update() function is provided by tp-glib]) ],
@@ -173,7 +175,7 @@ PKG_CHECK_EXISTS(loudmouth-1.0 >= 1.3.2, [
     AC_DEFINE(HAVE_LM_STARTTLS, 1, [Define if Loudmouth supports StartTLS])
     AC_DEFINE(HAVE_LM_CONNECTION_GET_FULL_JID, 1, [Define if Loudmouth supports XMPP1.0 protocol])], [])
 
-dnl Check for D-Bus tubes
+dnl Check for D-Bus tubes - may be removed if we depend on dbus-1 >= 1.1.0
 AC_CHECK_LIB(dbus-1, dbus_message_marshal,
              [have_dbus_message_marshal=yes],
              [have_dbus_message_marshal=no],

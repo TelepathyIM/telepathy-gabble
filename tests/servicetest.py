@@ -142,6 +142,13 @@ class EventTest:
 
         try:
             ret = self.call_handlers(event)
+        except SystemExit, e:
+            if e.code:
+                print "Unsuccessful exit:", e
+                self.fail()
+            else:
+                self.queue[:] = []
+                ret = True
         except AssertionError, e:
             print 'test failed:'
             traceback.print_exc()

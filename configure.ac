@@ -111,6 +111,7 @@ PKG_CHECK_MODULES(GLIB, [glib-2.0 >= 2.4, gobject-2.0 >= 2.4])
 AC_SUBST(GLIB_CFLAGS)
 AC_SUBST(GLIB_LIBS)
 
+dnl May be removed if we depend on glib-2.0 >= 2.12
 AC_CHECK_LIB(glib-2.0, g_hash_table_remove_all,
   [ AC_DEFINE(HAS_G_HASH_TABLE_REMOVE_ALL, [],
     [Whether g_hash_table_remove_all() function is provided by GLib]) ],

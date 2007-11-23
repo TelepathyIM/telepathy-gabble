@@ -22,6 +22,8 @@
 #ifndef __GABBLE_UTIL_H__
 #define __GABBLE_UTIL_H__
 
+#include <config.h>
+
 #include <glib.h>
 #include <telepathy-glib/handle-repo.h>
 #include <telepathy-glib/util.h>
@@ -67,7 +69,10 @@ void
 lm_message_node_add_children_from_properties (LmMessageNode *node,
     GHashTable *properties, const gchar *prop);
 
+#ifndef HAVE_TP_G_HASH_TABLE_UPDATE
+#define tp_g_hash_table_update(t,s,k,v) gabble_g_hash_table_update (t,s,k,v)
 void gabble_g_hash_table_update (GHashTable *target, GHashTable *source,
     GBoxedCopyFunc key_dup, GBoxedCopyFunc value_dup);
+#endif
 
 #endif /* __GABBLE_UTIL_H__ */

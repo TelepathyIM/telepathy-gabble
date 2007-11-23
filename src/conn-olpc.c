@@ -519,7 +519,7 @@ olpc_buddy_info_set_properties (GabbleSvcOLPCBuddyInfo *iface,
               (GDestroyNotify) g_hash_table_destroy);
         }
 
-      gabble_g_hash_table_update (preload, properties,
+      tp_g_hash_table_update (preload, properties,
           (GBoxedCopyFunc) g_strdup,
           (GBoxedCopyFunc) tp_g_value_slice_dup);
 
@@ -1603,7 +1603,7 @@ olpc_activity_properties_set_properties (GabbleSvcOLPCActivityProperties *iface,
 
   properties_copied = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
       (GDestroyNotify) tp_g_value_slice_free);
-  gabble_g_hash_table_update (properties_copied, properties,
+  tp_g_hash_table_update (properties_copied, properties,
       (GBoxedCopyFunc) g_strdup, (GBoxedCopyFunc) tp_g_value_slice_dup);
 
   info = g_hash_table_lookup (conn->olpc_activities_info,

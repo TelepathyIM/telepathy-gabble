@@ -135,6 +135,11 @@ AC_CHECK_LIB(telepathy-glib, tp_debug_set_flags,
     [Define if tp_debug_set_flags() function is provided by telepathy-glib]) ],
   [], [$TP_GLIB_LIBS])
 
+AC_CHECK_LIB(telepathy-glib, tp_g_hash_table_update,
+  [ AC_DEFINE(HAVE_TP_G_HASH_TABLE_UPDATE, [],
+    [Define if tp_g_hash_table_update() function is provided by tp-glib]) ],
+  [], [$TP_GLIB_LIBS])
+
 AS_AC_EXPAND(DATADIR, $datadir)
 DBUS_SERVICES_DIR="$DATADIR/dbus-1/services"
 AC_SUBST(DBUS_SERVICES_DIR)

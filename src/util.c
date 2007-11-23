@@ -858,6 +858,7 @@ lm_message_node_add_children_from_properties (LmMessageNode *node,
   g_hash_table_foreach (properties, set_child_from_property, &data);
 }
 
+#ifndef HAVE_TP_G_HASH_TABLE_UPDATE
 struct _gabble_g_hash_table_update
 {
   GHashTable *target;
@@ -905,3 +906,4 @@ gabble_g_hash_table_update (GHashTable *target,
 
   g_hash_table_foreach (source, _gabble_g_hash_table_update_helper, &data);
 }
+#endif

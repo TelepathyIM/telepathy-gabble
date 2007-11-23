@@ -153,7 +153,7 @@ class EventTest:
             print 'test failed:'
             traceback.print_exc()
             self.fail()
-        except Exception, e:
+        except (Exception, KeyboardInterrupt), e:
             print 'error in handler:'
             traceback.print_exc()
             self.fail()

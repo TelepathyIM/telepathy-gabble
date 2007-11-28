@@ -1695,6 +1695,7 @@ gabble_roster_factory_iface_request (TpChannelFactoryIface *iface,
   TpHandleRepoIface *handle_repo = tp_base_connection_get_handles (
       (TpBaseConnection *)priv->conn, handle_type);
   gboolean created;
+  GabbleRosterChannel *chan;
 
   if (strcmp (chan_type, TP_IFACE_CHANNEL_TYPE_CONTACT_LIST))
     return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_IMPLEMENTED;
@@ -1712,11 +1713,10 @@ gabble_roster_factory_iface_request (TpChannelFactoryIface *iface,
       !(priv->conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER))
     return TP_CHANNEL_FACTORY_REQUEST_STATUS_NOT_AVAILABLE;
 
+  chan = _gabble_roster_get_channel (roster, handle_type, handle,
+      &created);
   if (priv->roster_received)
     {
-      GabbleRosterChannel *chan;
-      chan = _gabble_roster_get_channel (roster, handle_type, handle,
-          &created);
       *ret = TP_CHANNEL_IFACE (chan);
       return created ? TP_CHANNEL_FACTORY_REQUEST_STATUS_CREATED
                      : TP_CHANNEL_FACTORY_REQUEST_STATUS_EXISTING;

@@ -68,7 +68,8 @@ TWISTED_TESTS = \
 	test-text-no-body.py \
 	test-vcard-cache.py \
 	test-vcard-race.py \
-	test-vcard-set-and-get.py
+	test-vcard-set-and-get.py \
+	test-group-race.py
 
 _check-twisted:
 	$(MAKE) check TESTS="$(TWISTED_TESTS)" TESTS_ENVIRONMENT=python

@@ -44,8 +44,9 @@
 #include "namespaces.h"
 #include "util.h"
 
-/* 64k is probably a really big default value as XEP 0047 recommends 4k  */
-#define MAX_BLOCK_SIZE (1024 * 64)
+/* 45k gives us 60k after base64 encoding, allowing 4k of header before we hit
+ * ejabberd's default 64k maximum stanza size */
+#define MAX_BLOCK_SIZE (1024 * 45)
 
 static void
 bytestream_iface_init (gpointer g_iface, gpointer iface_data);

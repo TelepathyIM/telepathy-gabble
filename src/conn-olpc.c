@@ -534,6 +534,11 @@ olpc_buddy_info_properties_event_handler (GabbleConnection *conn,
 {
   GHashTable *properties;
   LmMessageNode *node;
+  TpBaseConnection *base = (TpBaseConnection*) conn;
+
+  if (handle == base->self_handle)
+    /* Ignore echoed pubsub notifications */
+    return TRUE;
 
   node = lm_message_node_find_child (msg->node, "properties");
   properties = lm_message_node_extract_properties (node, "property");
@@ -1086,6 +1091,11 @@ olpc_buddy_info_activities_event_handler (GabbleConnection *conn,
                                           TpHandle handle)
 {
   GPtrArray *activities;
+  TpBaseConnection *base = (TpBaseConnection*) conn;
+
+  if (handle == base->self_handle)
+    /* Ignore echoed pubsub notifications */
+    return TRUE;
 
   extract_activities (conn, msg, handle);
   activities = get_buddy_activities (conn, handle);
@@ -1354,6 +1364,11 @@ olpc_buddy_info_current_activity_event_handler (GabbleConnection *conn,
 {
   guint room_handle;
   const gchar *activity;
+  TpBaseConnection *base = (TpBaseConnection*) conn;
+
+  if (handle == base->self_handle)
+    /* Ignore echoed pubsub notifications */
+    return TRUE;
 
   if (extract_current_activity (conn, msg, &activity, &room_handle))
     {
@@ -1867,6 +1882,12 @@ olpc_activities_properties_event_handler (GabbleConnection *conn,
                                           LmMessage *msg,
                                           TpHandle handle)
 {
+  TpBaseConnection *base = (TpBaseConnection*) conn;
+
+  if (handle == base->self_handle)
+    /* Ignore echoed pubsub notifications */
+    return TRUE;
+
   return update_activities_properties (conn, msg);
 }
 

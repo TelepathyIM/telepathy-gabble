@@ -32,6 +32,7 @@ def expect_roster_iq(event, data):
 @match('dbus-return', method='RequestHandles')
 def expect_request_handles_return(event, data):
     handles = event.value[0]
+    data['group_test_handle'] = handles[0]
 
     call_async(data['test'], data['conn_iface'], 'RequestChannel',
     'org.freedesktop.Telepathy.Channel.Type.ContactList', 4, handles[0], True)
@@ -40,8 +41,22 @@ def expect_request_handles_return(event, data):
 
     return True
 
+@lazy
 @match('dbus-return', method='RequestChannel')
 def expect_request_channel_return(event, data):
+    return True
+
+
+@match('dbus-signal', signal='NewChannel')
+def expect_new_channel(event, data):
+    if event.args[1] != 'org.freedesktop.Telepathy.Channel.Type.ContactList':
+        return False
+
+    if event.args[2] != 4: # handle type is not Handle_Type_Group
+        return False
+
+    assert event.args[3] == data['group_test_handle']
+
     return True
 
 if __name__ == '__main__':

@@ -88,6 +88,15 @@ def handle_muc_get_iq(stream, stanza):
     x['type'] = 'form'
     add_field(x, 'text', 'password', '')
     add_field(x, 'boolean', 'password-required', '0')
+
+    # add a multi values setting
+    field = x.addElement('field')
+    field['type'] = 'list-multi'
+    field['var'] = 'muc#roomconfig_presencebroadcast'
+    for v in ['moderator', 'participant', 'visitor']:
+        field.addElement('value', content=v)
+        field.addElement('option', content=v)
+
     stream.send(iq)
     return True
 
@@ -107,10 +116,13 @@ def expect_muc_get_iq2(event, data):
     query_ns='http://jabber.org/protocol/muc#owner')
 def expect_muc_set_iq(event, data):
     fields = xpath.queryForNodes('/iq/query/x/field', event.stanza)
-    form = dict(zip(
-        [e['var'] for e in fields],
-        [str(e.firstChildElement()) for e in fields]))
-    assert form == {'password': 'foo', 'password-required': '0'}
+    form = {}
+    for field in fields:
+        values = xpath.queryForNodes('/field/value', field)
+        form[field['var']] = [str(v) for v in values]
+    assert form == {'password': ['foo'], 'password-required': ['0'],
+            'muc#roomconfig_presencebroadcast' :
+            ['moderator', 'participant', 'visitor']}
     acknowledge_iq(data['stream'], event.stanza)
     return True
 

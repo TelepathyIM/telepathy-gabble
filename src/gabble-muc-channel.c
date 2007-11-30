@@ -2533,7 +2533,6 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
       guint id;
       GType type;
       gboolean invert;
-      gchar buf[16];
       const gchar *val_str = NULL, *type_str;
       gboolean val_bool;
 
@@ -2666,8 +2665,9 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
               switch (type) {
                 case G_TYPE_BOOLEAN:
                   val_bool = g_value_get_boolean (provided_value);
-                  sprintf (buf, "%d", (invert) ? !val_bool : val_bool);
-                  val_str = buf;
+                  if (invert)
+                    val_bool = !val_bool;
+                  val_str = val_bool ? "1" : "0";
                   break;
                 case G_TYPE_STRING:
                   val_str = g_value_get_string (provided_value);

@@ -69,7 +69,7 @@ def expect_request_channel_return(event, data):
     props = dict([(name, id)
         for id, name, sig, flags in props_iface.ListProperties()])
     call_async(data['test'], props_iface, 'SetProperties',
-        [(props['password'], 'foo')])
+        [(props['password'], 'foo'), (props['password-required'], True)])
 
     data['props_iface'] = props_iface
     data['props'] = props
@@ -87,7 +87,7 @@ def handle_muc_get_iq(stream, stanza):
     x = query.addElement(('jabber:x:data', 'x'))
     x['type'] = 'form'
     add_field(x, 'text', 'password', '')
-    add_field(x, 'boolean', 'password-required', '0')
+    add_field(x, 'boolean', 'password_protected', '0')
 
     # add a multi values setting
     field = x.addElement('field')
@@ -120,7 +120,7 @@ def expect_muc_set_iq(event, data):
     for field in fields:
         values = xpath.queryForNodes('/field/value', field)
         form[field['var']] = [str(v) for v in values]
-    assert form == {'password': ['foo'], 'password-required': ['0'],
+    assert form == {'password': ['foo'], 'password_protected': ['1'],
             'muc#roomconfig_presencebroadcast' :
             ['moderator', 'participant', 'visitor']}
     acknowledge_iq(data['stream'], event.stanza)
@@ -128,7 +128,8 @@ def expect_muc_set_iq(event, data):
 
 @match('dbus-signal', signal='PropertiesChanged')
 def expect_properties_changed(event, data):
-    assert event.args == [[(data['props']['password'], 'foo')]]
+    assert event.args == [[(data['props']['password'], 'foo'),
+        (data['props']['password-required'], True)]]
     return True
 
 @match('dbus-return', method='SetProperties', value=())

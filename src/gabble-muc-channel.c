@@ -2689,19 +2689,15 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
           /* Copy all the <value> nodes */
           LmMessageNode *value_node;
 
-          value_node = lm_message_node_get_child (node, "value");
-          if (value_node != NULL)
+          for (value_node = node->children; value_node != NULL;
+              value_node = value_node->next)
             {
-              for (value_node = node->children; value_node != NULL;
-                  value_node = value_node->next)
-                {
-                  if (tp_strdiff (value_node->name, "value"))
-                    /* Not a value, skip it */
-                    continue;
+              if (tp_strdiff (value_node->name, "value"))
+                /* Not a value, skip it */
+                continue;
 
-                  lm_message_node_add_child (field_node, "value",
-                      lm_message_node_get_value (value_node));
-                }
+              lm_message_node_add_child (field_node, "value",
+                  lm_message_node_get_value (value_node));
             }
         }
     }

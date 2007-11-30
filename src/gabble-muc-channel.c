@@ -2536,12 +2536,6 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
       gchar buf[16];
       const gchar *val_str = NULL, *type_str;
       gboolean val_bool;
-      gboolean list_multi = FALSE;
-      /* if list_multi is TRUE multi_values contains all the values that
-       * will be set for this field */
-      GPtrArray *multi_values = NULL;
-      /* use the value provided in the server reply */
-      gboolean use_default;
 
       if (strcmp (node->name, "field") != 0)
         {
@@ -2556,24 +2550,11 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
         continue;
       }
 
-      type_str = lm_message_node_get_attribute (node, "type");
-      if (type_str != NULL)
-        {
-          list_multi = !tp_strdiff (type_str, "list-multi");
-        }
-
       value_node = lm_message_node_get_child (node, "value");
-      if (!list_multi && value_node == NULL)
-        {
-          DEBUG ("skipping var '%s' because of lacking value attribute",
-                 var);
-          continue;
-        }
 
       id = INVALID_ROOM_PROP;
       type = G_TYPE_BOOLEAN;
       invert = FALSE;
-      use_default = TRUE;
 
       if (strcmp (var, "anonymous") == 0)
         {
@@ -2662,102 +2643,66 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
           g_warning ("%s: ignoring field '%s'", G_STRFUNC, var);
         }
 
-      if (id != INVALID_ROOM_PROP)
-        {
-          /* Known property. Use our value if we have one */
-          DEBUG ("looking up %s... has=%d", room_property_signatures[id].name,
-              tp_properties_context_has (ctx, id));
-
-          if (tp_properties_context_has (ctx, id))
-            {
-              use_default = FALSE;
-
-              if (!val_str)
-                {
-                  const GValue *provided_value;
-
-                  provided_value = tp_properties_context_get (ctx, id);
-
-                  switch (type) {
-                    case G_TYPE_BOOLEAN:
-                      val_bool = g_value_get_boolean (provided_value);
-                      sprintf (buf, "%d", (invert) ? !val_bool : val_bool);
-                      val_str = buf;
-                      break;
-                    case G_TYPE_STRING:
-                      val_str = g_value_get_string (provided_value);
-                      break;
-                    default:
-                      g_assert_not_reached ();
-                  }
-                }
-            }
-
-          DEBUG ("Setting value %s for %s", val_str, var);
-
-          props_left &= ~(1 << id);
-        }
-
-      if (use_default)
-        {
-          if (!list_multi)
-            {
-              /* One value to extract */
-              val_str = lm_message_node_get_value (value_node);
-            }
-          else
-            {
-              multi_values = g_ptr_array_new ();
-
-              /* One or more values to extract */
-              for (value_node = node->children; value_node != NULL;
-                  value_node = value_node->next)
-                {
-                  const gchar *tmp;
-
-                  if (tp_strdiff (value_node->name, "value"))
-                    /* Not a value, skip it */
-                    continue;
-
-                  tmp = lm_message_node_get_value (value_node);
-                  if (tmp == NULL)
-                    continue;
-
-                  g_ptr_array_add (multi_values, (gpointer) tmp);
-                }
-            }
-        }
-
       /* add the corresponding field node to the reply message */
       field_node = lm_message_node_add_child (submit_node, "field", NULL);
       lm_message_node_set_attribute (field_node, "var", var);
+
+      type_str = lm_message_node_get_attribute (node, "type");
       if (type_str)
         {
           lm_message_node_set_attribute (field_node, "type", type_str);
         }
 
-      /* add the corresponding value node(s) to the reply message */
-      if (!list_multi)
+      if (id != INVALID_ROOM_PROP && tp_properties_context_has (ctx, id))
         {
-          /* One <value> node */
+          /* Known property and we have a value to set */
+          DEBUG ("looking up %s... has=%d", room_property_signatures[id].name,
+              tp_properties_context_has (ctx, id));
+
+          if (!val_str)
+            {
+              const GValue *provided_value;
+
+              provided_value = tp_properties_context_get (ctx, id);
+
+              switch (type) {
+                case G_TYPE_BOOLEAN:
+                  val_bool = g_value_get_boolean (provided_value);
+                  sprintf (buf, "%d", (invert) ? !val_bool : val_bool);
+                  val_str = buf;
+                  break;
+                case G_TYPE_STRING:
+                  val_str = g_value_get_string (provided_value);
+                  break;
+                default:
+                  g_assert_not_reached ();
+              }
+            }
+
+          DEBUG ("Setting value %s for %s", val_str, var);
+
+          props_left &= ~(1 << id);
+
+          /* add the corresponding value node(s) to the reply message */
           lm_message_node_add_child (field_node, "value", val_str);
         }
       else
         {
-          /* One or more <value> nodes */
-          guint i;
-
-          g_assert (multi_values != NULL);
-
-          for (i = 0; i < multi_values->len; i++)
+          /* Copy all the <value> nodes */
+          if (value_node != NULL)
             {
-              lm_message_node_add_child (field_node, "value",
-                  g_ptr_array_index (multi_values, i));
+              for (value_node = node->children; value_node != NULL;
+                  value_node = value_node->next)
+                {
+                  if (tp_strdiff (value_node->name, "value"))
+                    /* Not a value, skip it */
+                    continue;
+
+                  lm_message_node_add_child (field_node, "value",
+                      lm_message_node_get_value (value_node));
+                }
             }
         }
-
-      if (multi_values != NULL)
-        g_ptr_array_free (multi_values, TRUE);
     }
 
   if (props_left != 0)

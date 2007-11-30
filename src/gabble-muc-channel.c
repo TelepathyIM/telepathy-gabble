@@ -2529,7 +2529,7 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
   for (node = form_node->children; node; node = node->next)
     {
       const gchar *var;
-      LmMessageNode *field_node, *value_node;
+      LmMessageNode *field_node;
       guint id;
       GType type;
       gboolean invert;
@@ -2549,8 +2549,6 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
                node->name);
         continue;
       }
-
-      value_node = lm_message_node_get_child (node, "value");
 
       id = INVALID_ROOM_PROP;
       type = G_TYPE_BOOLEAN;
@@ -2689,6 +2687,9 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
       else
         {
           /* Copy all the <value> nodes */
+          LmMessageNode *value_node;
+
+          value_node = lm_message_node_get_child (node, "value");
           if (value_node != NULL)
             {
               for (value_node = node->children; value_node != NULL;

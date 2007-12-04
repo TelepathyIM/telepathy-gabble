@@ -1,11 +1,13 @@
 check-local::
 	@fail=0; \
 	if test -n "$(check_misc_sources)"; then \
-		top_srcdir=$(top_srcdir) sh $(top_srcdir)/check-whitespace.sh \
+		tools_dir=$(top_srcdir)/tools \
+		sh $(top_srcdir)/tools/check-misc.sh \
 			$(check_misc_sources) || fail=1; \
 	fi; \
 	if test -n "$(check_c_sources)"; then \
-		top_srcdir=$(top_srcdir) sh $(top_srcdir)/check-c-style.sh \
+		tools_dir=$(top_srcdir)/tools \
+		sh $(top_srcdir)/tools/check-c-style.sh \
 			$(check_c_sources) || fail=1; \
 	fi;\
 	if test yes = "$(ENABLE_CODING_STYLE_CHECKS)"; then \

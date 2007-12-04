@@ -3,6 +3,7 @@ EXTRA_DIST = \
     c-interfaces-generator.xsl \
     check-coding-style.mk \
     check-c-style.sh \
+    check-misc.sh \
     check-whitespace.sh \
     doc-generator.xsl \
     genginterface.py \

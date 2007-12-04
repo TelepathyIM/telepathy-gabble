@@ -154,11 +154,6 @@ AC_CHECK_PROGS([XSLTPROC], [xsltproc])
 if test -z "$XSLTPROC"; then
   AC_MSG_ERROR([xsltproc (from the libxslt source package) is required])
 fi
-DBUS_BINDING_TOOL=
-AC_CHECK_PROGS([DBUS_BINDING_TOOL], [dbus-binding-tool])
-if test -z "$DBUS_BINDING_TOOL"; then
-  AC_MSG_ERROR([dbus-binding-tool (from dbus-glib) is required])
-fi
 PYTHON=
 AC_CHECK_PROGS([PYTHON], [python2.3 python2.4 python2.5 python])
 if test -z "$PYTHON"; then

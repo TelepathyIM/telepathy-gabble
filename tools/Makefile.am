@@ -10,10 +10,7 @@ EXTRA_DIST = \
     glib-signals-marshal-gen.py \
     identity.xsl \
     libglibcodegen.py \
-    ls-interfaces.xsl \
-    make-all-async.xsl \
-    spec-to-introspect.xsl \
-    update-spec-gen-am.sh
+    ls-interfaces.xsl
 
 TELEPATHY_GLIB_SRCDIR = $(top_srcdir)/../telepathy-glib
 maintainer-update-from-telepathy-glib:

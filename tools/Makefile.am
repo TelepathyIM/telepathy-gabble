@@ -8,6 +8,7 @@ EXTRA_DIST = \
     doc-generator.xsl \
     genginterface.py \
     glib-ginterface-gen.py \
+    glib-signals-marshal-gen.py \
     libglibcodegen.py \
     ls-interfaces.xsl \
     make-all-async.xsl \

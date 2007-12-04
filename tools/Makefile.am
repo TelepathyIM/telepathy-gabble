@@ -7,6 +7,8 @@ EXTRA_DIST = \
     check-whitespace.sh \
     doc-generator.xsl \
     genginterface.py \
+    glib-ginterface-gen.py \
+    libglibcodegen.py \
     ls-interfaces.xsl \
     make-all-async.xsl \
     spec-to-introspect.xsl \

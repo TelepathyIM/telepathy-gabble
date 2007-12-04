@@ -6,7 +6,6 @@ EXTRA_DIST = \
     check-misc.sh \
     check-whitespace.sh \
     doc-generator.xsl \
-    genginterface.py \
     glib-ginterface-gen.py \
     glib-signals-marshal-gen.py \
     libglibcodegen.py \

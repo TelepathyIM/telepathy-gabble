@@ -130,4 +130,4 @@ check_c_sources = \
 	test-parse-message.c
 
 check_misc_sources = $(TWISTED_TESTS)
-include $(top_srcdir)/check-coding-style.mk
+include $(top_srcdir)/tools/check-coding-style.mk

@@ -1,10 +1,10 @@
 #!/bin/sh
 
 mk_specdir="extensions"
-mk_toolsdir="extensions/tools"
+mk_toolsdir="tools"
 
 test -n "$XSLTPROC" || XSLTPROC=xsltproc
-test -n "$TOP_SRCDIR" || TOP_SRCDIR=../..
+test -n "$TOP_SRCDIR" || TOP_SRCDIR=..
 
 toolsdir="${TOP_SRCDIR}/${mk_toolsdir}"
 specdir="${TOP_SRCDIR}/${mk_specdir}"

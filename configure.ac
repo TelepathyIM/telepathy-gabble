@@ -197,9 +197,9 @@ fi
 AC_OUTPUT( Makefile \
            docs/Makefile \
            extensions/Makefile \
-           extensions/tools/Makefile \
            src/Makefile \
            m4/Makefile \
            data/Makefile \
-           tests/Makefile
+           tests/Makefile \
+           tools/Makefile
 )

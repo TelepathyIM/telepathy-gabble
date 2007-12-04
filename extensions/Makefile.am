@@ -1,6 +1,4 @@
-SUBDIRS = tools
-
-tools_dir = $(srcdir)/tools
+tools_dir = $(top_srcdir)/tools
 
 include _gen/spec-gen.am
 
@@ -82,14 +80,14 @@ _gen/svc.h: Makefile.in _gen/.exists
 		echo "#include \"extensions/_gen/svc-$$i.h\""; \
 	done > $@
 
-_gen/enums.h: all.xml $(SPEC_INTERFACE_XMLS) tools/c-constants-generator.xsl _gen/.exists
+_gen/enums.h: all.xml $(SPEC_INTERFACE_XMLS) $(tools_dir)/c-constants-generator.xsl _gen/.exists
 	$(XSLTPROC) --xinclude $(XSLTPROCFLAGS) \
 		--stringparam mixed-case-prefix Gabble \
-		$(srcdir)/tools/c-constants-generator.xsl \
+		$(tools_dir)/c-constants-generator.xsl \
 		$(srcdir)/all.xml > $@
 
-_gen/interfaces.h: all.xml $(SPEC_INTERFACE_XMLS) tools/c-interfaces-generator.xsl _gen/.exists
+_gen/interfaces.h: all.xml $(SPEC_INTERFACE_XMLS) $(tools_dir)/c-interfaces-generator.xsl _gen/.exists
 	$(XSLTPROC) --xinclude $(XSLTPROCFLAGS) \
 		--stringparam mixed-case-prefix Gabble \
-		$(srcdir)/tools/c-interfaces-generator.xsl \
+		$(tools_dir)/c-interfaces-generator.xsl \
 		$(srcdir)/all.xml > $@

@@ -39,6 +39,52 @@ AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @LOUDMOUTH_CFLAGS@ \
 ALL_LIBS = @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@ @TP_GLIB_LIBS@
 
 TESTS = $(noinst_PROGRAMS)
+TWISTED_TESTS = \
+	olpc-muc-invitation.py \
+	olpc-muc-prop-change.py \
+	test-alias.py \
+	test-alias-pep.py \
+	test-alias-empty-vcard.py \
+	test-avatar.py \
+	test-avatar-async.py \
+	test-avatar-tokens.py \
+	test-capabilities.py \
+	test-caps-update.py \
+	test-connect.py \
+	test-connect-fail.py \
+	test-disco.py \
+	test-google-roster.py \
+	test-muc.py \
+	test-muc-alias.py \
+	test-muc-invitation.py \
+	test-muc-ownership.py \
+	test-muc-properties.py \
+	test-muc-offer-stream-tube-ibb.py \
+	test-muc-accept-stream-tube-ibb.py \
+	test-muc-offer-dbus-tube.py \
+	test-olpc-set-props-preload.py \
+	test-register.py \
+	test-roster.py \
+	test-roster-subscribe.py \
+	test-save-alias-to-vcard.py \
+	test-set-alias.py \
+	test-set-status-idempotence.py \
+	test-si-tubes.py \
+	test-text.py \
+	test-text-delayed.py \
+	test-text-no-body.py \
+	test-vcard-cache.py \
+	test-vcard-race.py \
+	test-vcard-set-and-get.py \
+	test-group-race.py \
+	test-olpc-bundle.py
+
+_check-twisted:
+	$(MAKE) check TESTS="$(TWISTED_TESTS)" TESTS_ENVIRONMENT=python
+
+check-twisted:
+	chmod +x run-with-tmp-session-bus.sh exec-with-log.sh
+	sh run-with-tmp-session-bus.sh $(MAKE) _check-twisted
 
 check-valgrind:
 	G_SLICE=always-malloc \

@@ -136,7 +136,7 @@ struct _GabbleConnectionPrivate
   LmMessageHandler *iq_disco_cb;
   LmMessageHandler *iq_unknown_cb;
   LmMessageHandler *stream_error_cb;
-  LmMessageHandler *msg_cb;
+  LmMessageHandler *pubsub_msg_cb;
 
   /* connection properties */
   gchar *connect_server;
@@ -760,7 +760,7 @@ gabble_connection_dispose (GObject *object)
   g_assert (priv->iq_disco_cb == NULL);
   g_assert (priv->iq_unknown_cb == NULL);
   g_assert (priv->stream_error_cb == NULL);
-  g_assert (priv->msg_cb == NULL);
+  g_assert (priv->pubsub_msg_cb == NULL);
 
   /*
    * The Loudmouth connection can't be unref'd immediately because this
@@ -1072,7 +1072,7 @@ connect_callbacks (TpBaseConnection *base)
   g_assert (priv->iq_disco_cb == NULL);
   g_assert (priv->iq_unknown_cb == NULL);
   g_assert (priv->stream_error_cb == NULL);
-  g_assert (priv->msg_cb == NULL);
+  g_assert (priv->pubsub_msg_cb == NULL);
 
   priv->iq_disco_cb = lm_message_handler_new (connection_iq_disco_cb,
                                               conn, NULL);
@@ -1092,9 +1092,9 @@ connect_callbacks (TpBaseConnection *base)
                                           LM_MESSAGE_TYPE_STREAM_ERROR,
                                           LM_HANDLER_PRIORITY_LAST);
 
-  priv->msg_cb = lm_message_handler_new (pubsub_msg_event_cb,
+  priv->pubsub_msg_cb = lm_message_handler_new (pubsub_msg_event_cb,
                                             conn, NULL);
-  lm_connection_register_message_handler (conn->lmconn, priv->msg_cb,
+  lm_connection_register_message_handler (conn->lmconn, priv->pubsub_msg_cb,
                                           LM_MESSAGE_TYPE_MESSAGE,
                                           LM_HANDLER_PRIORITY_FIRST);
 }
@@ -1108,7 +1108,7 @@ disconnect_callbacks (TpBaseConnection *base)
   g_assert (priv->iq_disco_cb != NULL);
   g_assert (priv->iq_unknown_cb != NULL);
   g_assert (priv->stream_error_cb != NULL);
-  g_assert (priv->msg_cb != NULL);
+  g_assert (priv->pubsub_msg_cb != NULL);
 
   lm_connection_unregister_message_handler (conn->lmconn, priv->iq_disco_cb,
                                             LM_MESSAGE_TYPE_IQ);
@@ -1125,10 +1125,10 @@ disconnect_callbacks (TpBaseConnection *base)
   lm_message_handler_unref (priv->stream_error_cb);
   priv->stream_error_cb = NULL;
 
-  lm_connection_unregister_message_handler (conn->lmconn, priv->msg_cb,
+  lm_connection_unregister_message_handler (conn->lmconn, priv->pubsub_msg_cb,
                                             LM_MESSAGE_TYPE_MESSAGE);
-  lm_message_handler_unref (priv->msg_cb);
-  priv->msg_cb = NULL;
+  lm_message_handler_unref (priv->pubsub_msg_cb);
+  priv->pubsub_msg_cb = NULL;
 }
 
 /**

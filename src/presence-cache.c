@@ -820,6 +820,11 @@ _caps_disco_cb (GabbleDisco *disco,
         caps |= PRESENCE_CAP_IBB;
       else if (0 == strcmp (var, NS_TUBES))
         caps |= PRESENCE_CAP_SI_TUBES;
+      else if (!tp_strdiff (var, NS_OLPC_BUDDY_PROPS "+notify") ||
+          !tp_strdiff (var, NS_OLPC_ACTIVITIES "+notify") ||
+          !tp_strdiff (var, NS_OLPC_CURRENT_ACTIVITY "+notify") ||
+          !tp_strdiff (var, NS_OLPC_ACTIVITY_PROPS "+notify"))
+        caps |= PRESENCE_CAP_OLPC;
     }
 
   caps |= _detect_h263_n800_hack (node);

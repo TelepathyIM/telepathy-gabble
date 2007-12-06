@@ -28,6 +28,7 @@
 #define BUNDLE_VOICE_V1         "voice-v1"
 #define BUNDLE_JINGLE_AUDIO     "jingle-audio"
 #define BUNDLE_JINGLE_VIDEO     "jingle-video"
+#define BUNDLE_OLPC             "olpc"
 
 typedef struct _Feature Feature;
 

@@ -2585,18 +2585,75 @@ connection_presence_do_update (GabblePresenceCache *cache,
     }
 }
 
+static void
+buddy_changed (GabbleConnection *conn,
+               LmMessageNode *change)
+{
+  LmMessageNode *properties_node;
+  const gchar *jid;
+  TpHandle handle;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+    (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
+
+  jid = lm_message_node_get_attribute (change, "jid");
+  if (jid == NULL)
+    {
+      DEBUG ("No jid attribute in change message. Discard");
+      return;
+    }
+
+  /* FIXME: Should we really have to ensure the handle? If we receive changes
+   * notifications that means this contact is in your search frame so maybe
+   * we should keep a ref on his handle */
+  handle = tp_handle_ensure (contact_repo, jid, NULL, NULL);
+  if (handle == 0)
+    {
+      DEBUG ("Invalid jid: %s. Discard", jid);
+      return;
+    }
+
+  properties_node = lm_message_node_get_child_with_namespace (change,
+      "properties", NS_OLPC_BUDDY_PROPS);
+  if (properties_node != NULL)
+    {
+      GHashTable *properties;
+
+      properties = lm_message_node_extract_properties (properties_node,
+          "property");
+      gabble_svc_olpc_buddy_info_emit_properties_changed (conn, handle,
+          properties);
+
+      g_hash_table_destroy (properties);
+    }
+}
+
 LmHandlerResult
 conn_olpc_msg_cb (LmMessageHandler *handler,
                   LmConnection *connection,
                   LmMessage *message,
                   gpointer user_data)
 {
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   const gchar *from;
+  LmMessageNode *node;
 
   from = lm_message_node_get_attribute (message->node, "from");
   /* FIXME: we shouldn't hardcode that */
   if (tp_strdiff (from, "index.jabber.laptop.org"))
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+
+  for (node = message->node->children; node != NULL; node = node->next)
+    {
+      const gchar *ns;
+
+      ns = lm_message_node_get_attribute (node, "xmlns");
+
+      if (!tp_strdiff (node->name, "change") &&
+        !tp_strdiff (ns, NS_OLPC_BUDDY))
+        {
+          buddy_changed (conn, node);
+        }
+    }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }

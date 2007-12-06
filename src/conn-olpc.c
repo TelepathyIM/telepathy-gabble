@@ -364,6 +364,7 @@ olpc_buddy_info_get_properties (GabbleSvcOLPCBuddyInfo *iface,
 
   DEBUG ("called");
 
+  gabble_connection_ensure_capabilities (conn, PRESENCE_CAP_OLPC);
   if (!check_pep (conn, context))
     return;
 
@@ -408,6 +409,7 @@ transmit_properties (GabbleConnection *conn,
   LmMessage *msg;
   LmMessageNode *publish;
 
+  gabble_connection_ensure_capabilities (conn, PRESENCE_CAP_OLPC);
   if (!check_pep (conn, context))
     return;
 
@@ -867,6 +869,7 @@ olpc_buddy_info_get_activities (GabbleSvcOLPCBuddyInfo *iface,
 
   DEBUG ("called");
 
+  gabble_connection_ensure_capabilities (conn, PRESENCE_CAP_OLPC);
   if (!check_pep (conn, context))
     return;
 
@@ -970,6 +973,7 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
 
   DEBUG ("called");
 
+  gabble_connection_ensure_capabilities (conn, PRESENCE_CAP_OLPC);
   if (!check_pep (conn, context))
     return;
 
@@ -1243,6 +1247,7 @@ olpc_buddy_info_get_current_activity (GabbleSvcOLPCBuddyInfo *iface,
 
   DEBUG ("called for contact#%u", contact);
 
+  gabble_connection_ensure_capabilities (conn, PRESENCE_CAP_OLPC);
   if (!check_pep (conn, context))
     return;
 
@@ -1317,6 +1322,7 @@ olpc_buddy_info_set_current_activity (GabbleSvcOLPCBuddyInfo *iface,
 
   DEBUG ("called");
 
+  gabble_connection_ensure_capabilities (conn, PRESENCE_CAP_OLPC);
   if (!check_pep (conn, context))
     return;
 
@@ -1583,6 +1589,7 @@ olpc_activity_properties_set_properties (GabbleSvcOLPCActivityProperties *iface,
 
   DEBUG ("called");
 
+  gabble_connection_ensure_capabilities (conn, PRESENCE_CAP_OLPC);
   if (!check_pep (conn, context))
     return;
 
@@ -1687,6 +1694,7 @@ olpc_activity_properties_get_properties (GabbleSvcOLPCActivityProperties *iface,
 
   DEBUG ("called");
 
+  gabble_connection_ensure_capabilities (conn, PRESENCE_CAP_OLPC);
   if (!check_pep (conn, context))
     return;
 

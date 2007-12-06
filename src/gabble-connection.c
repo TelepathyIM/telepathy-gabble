@@ -2743,6 +2743,29 @@ gabble_connection_request_handles (TpSvcConnection *iface,
   tp_base_connection_dbus_request_handles (iface, handle_type, names, context);
 }
 
+void
+gabble_connection_ensure_capabilities (GabbleConnection *self,
+                                       GabblePresenceCapabilities caps)
+{
+  GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
+  GabblePresenceCapabilities old_caps, new_caps;
+
+  old_caps = self->self_presence->caps;
+  new_caps = old_caps;
+  new_caps |= caps;
+
+  if (old_caps ^ new_caps)
+    {
+      /* We changed capabilities */
+      GError *error = NULL;
+
+      gabble_presence_set_capabilities (self->self_presence, priv->resource,
+          new_caps, priv->caps_serial++);
+
+      if (!_gabble_connection_signal_own_presence (self, &error))
+        DEBUG ("error sending presence: %s", error->message);
+    }
+}
 
 /* We reimplement RequestHandles to be able to do async validation on
  * room handles */

@@ -183,6 +183,9 @@ const char *_gabble_connection_find_conference_server (GabbleConnection *);
 gboolean _gabble_connection_signal_own_presence (GabbleConnection *,
     GError **);
 
+void gabble_connection_ensure_capabilities (GabbleConnection *conn,
+    GabblePresenceCapabilities caps);
+
 /* extern only for the benefit of the unit tests */
 void _gabble_connection_create_handle_repos (TpBaseConnection *conn,
     TpHandleRepoIface *repos[NUM_TP_HANDLE_TYPES]);

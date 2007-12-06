@@ -1314,6 +1314,7 @@ _gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
   gboolean ret;
   gchar *ext_string = NULL;
   GSList *features, *i;
+  TpIntSet *hash_set;
 
   if (presence->status == GABBLE_PRESENCE_HIDDEN)
     {
@@ -1324,24 +1325,40 @@ _gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
   /* TODO: why is this not part of presence -> msg? */
   features = capabilities_get_features (presence->caps);
 
+  hash_set = tp_intset_new ();
   for (i = features; NULL != i; i = i->next)
     {
       const Feature *feat = (const Feature *) i->data;
 
       if ((NULL != feat->bundle) && tp_strdiff (VERSION, feat->bundle))
         {
+          guint hash;
+
+          /* Rely on the address is probably better than use g_str_hash as
+           * strings are all hardcoded in the code */
+          hash = GPOINTER_TO_UINT (feat->bundle);
+
           if (NULL != ext_string)
             {
-              gchar *tmp = ext_string;
-              ext_string = g_strdup_printf ("%s %s", ext_string, feat->bundle);
-              g_free (tmp);
+              if (!tp_intset_is_member (hash_set, hash))
+                {
+                  /* This bundle wasn't added yet */
+                  gchar *tmp = ext_string;
+
+                  ext_string = g_strdup_printf ("%s %s", ext_string,
+                      feat->bundle);
+                  tp_intset_add (hash_set, hash);
+                  g_free (tmp);
+                }
             }
           else
             {
               ext_string = g_strdup (feat->bundle);
+              tp_intset_add (hash_set, hash);
             }
         }
     }
+  tp_intset_destroy (hash_set);
 
   node = lm_message_node_add_child (node, "c", NULL);
   lm_message_node_set_attributes (

@@ -2585,6 +2585,22 @@ connection_presence_do_update (GabblePresenceCache *cache,
     }
 }
 
+LmHandlerResult
+conn_olpc_msg_cb (LmMessageHandler *handler,
+                  LmConnection *connection,
+                  LmMessage *message,
+                  gpointer user_data)
+{
+  const gchar *from;
+
+  from = lm_message_node_get_attribute (message->node, "from");
+  /* FIXME: we shouldn't hardcode that */
+  if (tp_strdiff (from, "index.jabber.laptop.org"))
+      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
 static void
 connection_presences_updated_cb (GabblePresenceCache *cache,
                                  GArray *handles,

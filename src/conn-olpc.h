@@ -57,5 +57,8 @@ gboolean conn_olpc_process_activity_properties_message (GabbleConnection *conn,
 gboolean conn_olpc_process_activity_uninvite_message (GabbleConnection *conn,
     LmMessage *msg, const gchar *from);
 
+LmHandlerResult conn_olpc_msg_cb (LmMessageHandler *handler,
+    LmConnection *connection, LmMessage *message, gpointer user_data);
+
 #endif /* __CONN_OLPC_H__ */
 

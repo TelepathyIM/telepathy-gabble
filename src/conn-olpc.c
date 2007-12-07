@@ -1153,18 +1153,16 @@ add_activity_info_in_set (GabbleConnection *conn,
 
 static gboolean
 extract_current_activity (GabbleConnection *conn,
-                          LmMessage *msg,
+                          LmMessageNode *node,
+                          const gchar *contact,
                           const gchar **activity,
                           guint *handle)
 {
-  LmMessageNode *node;
   const gchar *room;
   ActivityInfo *info;
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_ROOM);
   TpHandle room_handle;
-
-  node = lm_message_node_find_child (msg->node, "activity");
 
   if (node == NULL)
     return FALSE;
@@ -1188,13 +1186,10 @@ extract_current_activity (GabbleConnection *conn,
        * If the remote user doesn't announce this activity
        * in his next activities list, information about
        * it will be freed */
-      const gchar *from;
 
       DEBUG ("unknown current activity %s", room);
 
-      from = lm_message_node_get_attribute (msg->node, "from");
-
-      info = add_activity_info_in_set (conn, room_handle, from,
+      info = add_activity_info_in_set (conn, room_handle, contact,
           conn->olpc_pep_activities);
     }
 
@@ -1218,11 +1213,15 @@ get_current_activity_reply_cb (GabbleConnection *conn,
   DBusGMethodInvocation *context = user_data;
   guint room_handle;
   const gchar *activity;
+  LmMessageNode *node;
+  const gchar *from;
 
   if (!check_query_reply_msg (reply_msg, context))
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
-  if (!extract_current_activity (conn, reply_msg, &activity, &room_handle))
+  from = lm_message_node_get_attribute (reply_msg->node, "from");
+  node = lm_message_node_find_child (reply_msg->node, "activity");
+  if (!extract_current_activity (conn, node, from, &activity, &room_handle))
     {
       activity = "";
       room_handle = 0;
@@ -1369,13 +1368,15 @@ olpc_buddy_info_current_activity_event_handler (GabbleConnection *conn,
 {
   guint room_handle;
   const gchar *activity;
-  TpBaseConnection *base = (TpBaseConnection *) conn;
+  TpBaseConnection *base = (TpBaseConnection*) conn;
 
   if (handle == base->self_handle)
     /* Ignore echoed pubsub notifications */
     return TRUE;
 
-  if (extract_current_activity (conn, msg, &activity, &room_handle))
+  from = lm_message_node_get_attribute (msg->node, "from");
+  node = lm_message_node_find_child (msg->node, "activity");
+  if (extract_current_activity (conn, node, from, &activity, &room_handle))
     {
       DEBUG ("emitting CurrentActivityChanged(contact#%u, ID \"%s\", room#%u)",
              handle, activity, room_handle);
@@ -2589,7 +2590,7 @@ static void
 buddy_changed (GabbleConnection *conn,
                LmMessageNode *change)
 {
-  LmMessageNode *properties_node;
+  LmMessageNode *node;
   const gchar *jid;
   TpHandle handle;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
@@ -2612,18 +2613,37 @@ buddy_changed (GabbleConnection *conn,
       return;
     }
 
-  properties_node = lm_message_node_get_child_with_namespace (change,
+  node = lm_message_node_get_child_with_namespace (change,
       "properties", NS_OLPC_BUDDY_PROPS);
-  if (properties_node != NULL)
+  if (node != NULL)
     {
+      /* Buddy properties changes */
       GHashTable *properties;
 
-      properties = lm_message_node_extract_properties (properties_node,
+      properties = lm_message_node_extract_properties (node,
           "property");
       gabble_svc_olpc_buddy_info_emit_properties_changed (conn, handle,
           properties);
 
       g_hash_table_destroy (properties);
+    }
+
+  node = lm_message_node_get_child_with_namespace (change,
+      "activity", NS_OLPC_CURRENT_ACTIVITY);
+  if (node != NULL)
+    {
+      /* Buddy current activity change */
+      const gchar *activity;
+      TpHandle room_handle;
+
+      if (!extract_current_activity (conn, node, jid, &activity, &room_handle))
+        {
+          activity = "";
+          room_handle = 0;
+        }
+
+      gabble_svc_olpc_buddy_info_emit_current_activity_changed (conn, handle,
+          activity, room_handle);
     }
 }
 

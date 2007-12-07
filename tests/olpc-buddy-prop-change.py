@@ -99,7 +99,6 @@ def expect_indexer_properties_changed(event, data):
     activity['type'] = 'testactivity'
 
     data['stream'].send(message)
-
     return True
 
 @match('dbus-signal', signal='CurrentActivityChanged')
@@ -130,7 +129,6 @@ def expect_friends_current_activity_changed(event, data):
     rule['action'] ='error'
 
     data['stream'].send(message)
-
     return True
 
 @match('dbus-signal', signal='CurrentActivityChanged')
@@ -142,6 +140,36 @@ def expect_indexer_current_activity_changed(event, data):
 
     assert activity == 'testactivity2'
     assert room_id == 'testroom2@conference.localhost'
+
+    # The indexer informs us about an activity properties change
+    message = domish.Element(('jabber:client', 'message'))
+    message['from'] = 'index.jabber.laptop.org'
+    message['to'] = 'test@localhost'
+
+    change = message.addElement((NS_OLPC_ACTIVITY, 'change'))
+    change['activity'] = 'testactivity'
+    change['room'] = 'testactivity@conference.localhost'
+    properties = change.addElement((NS_OLPC_ACTIVITY_PROPS, 'properties'))
+    property = properties.addElement((None, 'property'))
+    property['type'] = 'str'
+    property['name'] = 'tags'
+    property.addContent('game')
+
+    amp = message.addElement((NS_AMP, 'amp'))
+    rule = amp.addElement((None, 'rule'))
+    rule['condition'] = 'deliver-at'
+    rule['value'] = 'stored'
+    rule['action'] ='error'
+
+    data['stream'].send(message)
+    return True
+
+@match('dbus-signal', signal='ActivityPropertiesChanged')
+def expect_indexer_activity_properties_changed(event, data):
+    room = event.args[0]
+    properties = event.args[1]
+
+    assert properties == {'tags': 'game'}
 
     return True
 

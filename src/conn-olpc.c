@@ -40,7 +40,8 @@
         G_TYPE_INVALID)
 
 static gboolean
-update_activities_properties (GabbleConnection *conn, LmMessage *msg);
+update_activities_properties (GabbleConnection *conn, const gchar *contact,
+    LmMessage *msg);
 
 typedef struct
 {
@@ -558,7 +559,10 @@ get_activity_properties_reply_cb (GabbleConnection *conn,
                                   GObject *object,
                                   gpointer user_data)
 {
-  update_activities_properties (conn, reply_msg);
+  const gchar *from;
+
+  from = lm_message_node_get_attribute (reply_msg->node, "from");
+  update_activities_properties (conn, from, reply_msg);
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
@@ -1798,14 +1802,84 @@ properties_contains_new_infos (GHashTable *old_properties,
   return data.new_infos;
 }
 
+static void
+update_activity_properties (GabbleConnection *conn,
+                            const gchar *room,
+                            const gchar *contact,
+                            LmMessageNode *properties_node)
+{
+  GHashTable *new_properties, *old_properties;
+  gboolean new_infos = FALSE;
+  ActivityInfo *info;
+  TpHandle room_handle;
+  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) conn, TP_HANDLE_TYPE_ROOM);
+
+  room_handle = tp_handle_ensure (room_repo, room, NULL, NULL);
+
+  info = g_hash_table_lookup (conn->olpc_activities_info,
+      GUINT_TO_POINTER (room_handle));
+
+  if (info == NULL)
+    {
+      DEBUG ("unknown activity: %s", room);
+      if (contact != NULL)
+        {
+          /* Humm we received properties for an activity we don't
+           * know yet.
+           * If the remote user doesn't announce this activity
+           * in his next activities list, information about
+           * it will be freed */
+          info = add_activity_info_in_set (conn, room_handle, contact,
+              conn->olpc_pep_activities);
+        }
+      else
+        {
+          info = add_activity_info (conn, room_handle);
+        }
+    }
+
+  tp_handle_unref (room_repo, room_handle);
+
+  if (info == NULL)
+    return;
+
+  old_properties = info->properties;
+
+  new_properties = lm_message_node_extract_properties (properties_node,
+      "property");
+
+  if (g_hash_table_size (new_properties) == 0)
+    {
+      g_hash_table_destroy (new_properties);
+      return;
+    }
+
+  if (old_properties == NULL ||
+      properties_contains_new_infos (old_properties,
+        new_properties))
+    {
+      new_infos = TRUE;
+    }
+
+  activity_info_set_properties (info, new_properties);
+
+  if (new_infos)
+    {
+      /* Only emit the signal if we add new values */
+
+      gabble_svc_olpc_activity_properties_emit_activity_properties_changed (
+          conn, info->handle, new_properties);
+    }
+}
+
 static gboolean
 update_activities_properties (GabbleConnection *conn,
+                              const gchar *contact,
                               LmMessage *msg)
 {
   const gchar *room;
   LmMessageNode *node, *properties_node;
-  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) conn, TP_HANDLE_TYPE_ROOM);
 
   node = lm_message_node_find_child (msg->node, "activities");
   if (node == NULL)
@@ -1814,11 +1888,6 @@ update_activities_properties (GabbleConnection *conn,
   for (properties_node = node->children; properties_node != NULL;
       properties_node = properties_node->next)
     {
-      GHashTable *new_properties, *old_properties;
-      gboolean new_infos = FALSE;
-      ActivityInfo *info;
-      TpHandle room_handle;
-
       if (strcmp (properties_node->name, "properties") != 0)
         continue;
 
@@ -1826,62 +1895,8 @@ update_activities_properties (GabbleConnection *conn,
       if (room == NULL)
         continue;
 
-      room_handle = tp_handle_ensure (room_repo, room, NULL, NULL);
-
-      info = g_hash_table_lookup (conn->olpc_activities_info,
-          GUINT_TO_POINTER (room_handle));
-
-      if (info == NULL)
-        {
-          /* Humm we received properties for an activity we don't
-           * know yet.
-           * If the remote user doesn't announce this activity
-           * in his next activities list, information about
-           * it will be freed */
-          const gchar *from;
-
-          DEBUG ("unknown activity: %s", room);
-
-          from = lm_message_node_get_attribute (msg->node, "from");
-
-          info = add_activity_info_in_set (conn, room_handle, from,
-              conn->olpc_pep_activities);
-        }
-
-      tp_handle_unref (room_repo, room_handle);
-
-      if (info == NULL)
-        continue;
-
-      old_properties = info->properties;
-
-      new_properties = lm_message_node_extract_properties (properties_node,
-          "property");
-
-      if (g_hash_table_size (new_properties) == 0)
-        {
-          g_hash_table_destroy (new_properties);
-          continue;
-        }
-
-      if (old_properties == NULL ||
-          properties_contains_new_infos (old_properties,
-            new_properties))
-        {
-          new_infos = TRUE;
-        }
-
-      activity_info_set_properties (info, new_properties);
-
-      if (new_infos)
-        {
-          /* Only emit the signal if we add new values */
-
-          gabble_svc_olpc_activity_properties_emit_activity_properties_changed (
-              conn, info->handle, new_properties);
-        }
+      update_activity_properties (conn, room, contact, properties_node);
     }
-
   return TRUE;
 }
 
@@ -1890,13 +1905,15 @@ olpc_activities_properties_event_handler (GabbleConnection *conn,
                                           LmMessage *msg,
                                           TpHandle handle)
 {
-  TpBaseConnection *base = (TpBaseConnection *) conn;
+  TpBaseConnection *base = (TpBaseConnection*) conn;
 
   if (handle == base->self_handle)
     /* Ignore echoed pubsub notifications */
     return TRUE;
 
-  return update_activities_properties (conn, msg);
+  from = lm_message_node_get_attribute (msg->node, "from");
+
+  return update_activities_properties (conn, from, msg);
 }
 
 static void
@@ -2647,6 +2664,30 @@ buddy_changed (GabbleConnection *conn,
     }
 }
 
+static void
+activity_changed (GabbleConnection *conn,
+                  LmMessageNode *change)
+{
+  LmMessageNode *node;
+
+  node = lm_message_node_get_child_with_namespace (change, "properties",
+      NS_OLPC_ACTIVITY_PROPS);
+  if (node != NULL)
+    {
+      const gchar *room;
+      LmMessageNode *properties_node;
+
+      room = lm_message_node_get_attribute (change, "room");
+      properties_node = lm_message_node_get_child_with_namespace (change,
+          "properties", NS_OLPC_ACTIVITY_PROPS);
+
+      if (room != NULL && properties_node != NULL)
+        {
+          update_activity_properties (conn, room, NULL, properties_node);
+        }
+    }
+}
+
 LmHandlerResult
 conn_olpc_msg_cb (LmMessageHandler *handler,
                   LmConnection *connection,
@@ -2672,6 +2713,11 @@ conn_olpc_msg_cb (LmMessageHandler *handler,
         !tp_strdiff (ns, NS_OLPC_BUDDY))
         {
           buddy_changed (conn, node);
+        }
+      else if (!tp_strdiff (node->name, "change") &&
+          !tp_strdiff (ns, NS_OLPC_ACTIVITY))
+        {
+          activity_changed (conn, node);
         }
     }
 

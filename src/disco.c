@@ -215,8 +215,8 @@ gabble_disco_dispose (GObject *object)
       GabbleDiscoItem *item = (GabbleDiscoItem *) l->data;
       g_free ((char *) item->jid);
       g_free ((char *) item->name);
-      g_free ((char *) item->type);
       g_free ((char *) item->category);
+      g_free ((char *) item->type);
       g_hash_table_destroy (item->features);
       g_free (item);
     }
@@ -826,8 +826,8 @@ services_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
 
   my_item->jid = g_strdup (item->jid);
   my_item->name = g_strdup (item->name);
-  my_item->type = g_strdup (item->type);
   my_item->category = g_strdup (item->category);
+  my_item->type = g_strdup (item->type);
 
   my_item->features = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
       NULL);
@@ -877,8 +877,8 @@ gabble_disco_conn_status_changed_cb (GabbleConnection *conn,
 
 const GabbleDiscoItem *
 gabble_disco_service_find (GabbleDisco *disco,
-                           const char *type,
                            const char *category,
+                           const char *type,
                            const char *feature)
 {
   GabbleDiscoPrivate *priv;

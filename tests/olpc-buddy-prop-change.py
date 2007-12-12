@@ -1,18 +1,13 @@
-"""test OLPC Buddy properties change notifications"""
-import base64
-import errno
-import os
+"""
+test OLPC Buddy properties change notifications
+"""
 
 import dbus
 
-# must come before the twisted imports due to side-effects
-from gabbletest import go, make_result_iq
-from servicetest import call_async, lazy, match, tp_name_prefix, unwrap, Event
+from servicetest import call_async, EventPattern
+from gabbletest import exec_test, make_result_iq, acknowledge_iq
 
-from twisted.internet.protocol import Factory, Protocol
-from twisted.words.protocols.jabber.client import IQ
 from twisted.words.xish import domish, xpath
-from twisted.internet import reactor
 
 NS_OLPC_BUDDY_PROPS = "http://laptop.org/xmpp/buddy-properties"
 NS_OLPC_ACTIVITIES = "http://laptop.org/xmpp/activities"
@@ -23,8 +18,15 @@ NS_OLPC_ACTIVITY = "http://laptop.org/xmpp/activity"
 
 NS_AMP = "http://jabber.org/protocol/amp"
 
-@match('dbus-signal', signal='StatusChanged', args=[0, 1])
-def expect_connected(event, data):
+def test(q, bus, conn, stream):
+    conn.Connect()
+
+    _, iq_event = q.expect_many(
+        EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
+        EventPattern('stream-iq', to=None, query_ns='vcard-temp',
+            query_name='vCard'))
+
+    acknowledge_iq(stream, iq_event.stanza)
 
     # Alice, one our friends changed her properties
     message = domish.Element(('jabber:client', 'message'))
@@ -42,13 +44,9 @@ def expect_connected(event, data):
     property['type'] = 'str'
     property['name'] = 'color'
     property.addContent('#005FE4,#00A0FF')
+    stream.send(message)
 
-    data['stream'].send(message)
-
-    return True
-
-@match('dbus-signal', signal='PropertiesChanged')
-def expect_friends_properties_changed(event, data):
+    event = q.expect('dbus-signal', signal='PropertiesChanged')
     contact = event.args[0]
     props = event.args[1]
 
@@ -73,11 +71,9 @@ def expect_friends_properties_changed(event, data):
     rule['value'] = 'stored'
     rule['action'] ='error'
 
-    data['stream'].send(message)
-    return True
+    stream.send(message)
 
-@match('dbus-signal', signal='PropertiesChanged')
-def expect_indexer_properties_changed(event, data):
+    event = q.expect('dbus-signal', signal='PropertiesChanged')
     contact = event.args[0]
     props = event.args[1]
 
@@ -98,15 +94,13 @@ def expect_indexer_properties_changed(event, data):
     activity['room'] = 'testroom@conference.localhost'
     activity['type'] = 'testactivity'
 
-    data['stream'].send(message)
-    return True
+    stream.send(message)
 
-@match('dbus-signal', signal='CurrentActivityChanged')
-def expect_friends_current_activity_changed(event, data):
+    event = q.expect('dbus-signal', signal='CurrentActivityChanged')
     contact = event.args[0]
     activity = event.args[1]
     room = event.args[2]
-    room_id = data['conn_iface'].InspectHandles(2, [room])[0]
+    room_id = conn.InspectHandles(2, [room])[0]
 
     assert activity == 'testactivity'
     assert room_id == 'testroom@conference.localhost'
@@ -127,16 +121,13 @@ def expect_friends_current_activity_changed(event, data):
     rule['condition'] = 'deliver-at'
     rule['value'] = 'stored'
     rule['action'] ='error'
+    stream.send(message)
 
-    data['stream'].send(message)
-    return True
-
-@match('dbus-signal', signal='CurrentActivityChanged')
-def expect_indexer_current_activity_changed(event, data):
+    event = q.expect('dbus-signal', signal='CurrentActivityChanged')
     contact = event.args[0]
     activity = event.args[1]
     room = event.args[2]
-    room_id = data['conn_iface'].InspectHandles(2, [room])[0]
+    room_id = conn.InspectHandles(2, [room])[0]
 
     assert activity == 'testactivity2'
     assert room_id == 'testroom2@conference.localhost'
@@ -160,18 +151,13 @@ def expect_indexer_current_activity_changed(event, data):
     rule['condition'] = 'deliver-at'
     rule['value'] = 'stored'
     rule['action'] ='error'
+    stream.send(message)
 
-    data['stream'].send(message)
-    return True
-
-@match('dbus-signal', signal='ActivityPropertiesChanged')
-def expect_indexer_activity_properties_changed(event, data):
+    event = q.expect('dbus-signal', signal='ActivityPropertiesChanged')
     room = event.args[0]
     properties = event.args[1]
 
     assert properties == {'tags': 'game'}
 
-    return True
-
 if __name__ == '__main__':
-    go()
+    exec_test(test)

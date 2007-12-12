@@ -307,6 +307,9 @@ check_query_reply_msg (LmMessage *reply_msg,
           LmMessageNode *error_node;
           GError *error = NULL;
 
+          if (context == NULL)
+            return FALSE;
+
           error_node = lm_message_node_get_child (reply_msg->node, "error");
           if (error_node != NULL)
             {

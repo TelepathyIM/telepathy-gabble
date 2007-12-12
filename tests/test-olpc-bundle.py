@@ -1,9 +1,5 @@
 """test OLPC bundle. We shouldn't announce OLPC features until we use the OLPC
 interface"""
-import base64
-import errno
-import os
-
 import dbus
 
 from servicetest import call_async, EventPattern

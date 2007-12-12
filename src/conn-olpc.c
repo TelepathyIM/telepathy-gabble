@@ -336,6 +336,102 @@ check_query_reply_msg (LmMessage *reply_msg,
 }
 
 static LmHandlerResult
+get_buddy_properties_from_search_reply_cb (GabbleConnection *conn,
+                                           LmMessage *sent_msg,
+                                           LmMessage *reply_msg,
+                                           GObject *object,
+                                           gpointer user_data)
+{
+  DBusGMethodInvocation *context = user_data;
+  LmMessageNode *query, *buddy;
+  const gchar *buddy_jid;
+  GError *error = NULL;
+
+  /* Which buddy are we requesting properties for ? */
+  buddy = lm_message_node_find_child (sent_msg->node, "buddy");
+  g_assert (buddy != NULL);
+  buddy_jid = lm_message_node_get_attribute (buddy, "jid");
+  g_assert (buddy_jid != NULL);
+
+  /* Parse the reply */
+  query = lm_message_node_get_child_with_namespace (reply_msg->node, "query",
+      NS_OLPC_BUDDY);
+  if (query == NULL)
+    {
+      g_set_error (&error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+          "Search reply doesn't contain <query> node");
+      goto search_reply_cb_end;
+    }
+
+  for (buddy = query->children; buddy != NULL; buddy = buddy->next)
+    {
+      const gchar *jid;
+
+      jid = lm_message_node_get_attribute (buddy, "jid");
+      if (!tp_strdiff (jid, buddy_jid))
+        {
+          LmMessageNode *properties_node;
+          GHashTable *properties;
+
+          properties_node = lm_message_node_get_child_with_namespace (buddy,
+              "properties", NS_OLPC_BUDDY_PROPS);
+          properties = lm_message_node_extract_properties (properties_node,
+              "property");
+
+          gabble_svc_olpc_buddy_info_return_from_get_properties (context,
+              properties);
+          g_hash_table_destroy (properties);
+          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+        }
+    }
+
+  /* We didn't find the buddy */
+  g_set_error (&error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+      "Search reply doesn't contain info about %s", buddy_jid);
+
+search_reply_cb_end:
+  if (error != NULL)
+    {
+      DEBUG ("error in indexer reply: %s", error->message);
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+    }
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
+static void
+get_buddy_properties_from_search (GabbleConnection *conn,
+                                  const gchar *buddy,
+                                  DBusGMethodInvocation *context)
+{
+  LmMessage *query;
+
+  /* FIXME: don't hardcode indexer */
+  query = lm_message_build_with_sub_type ("index.jabber.laptop.org",
+      LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET,
+      '(', "query", "",
+          '@', "xmlns", NS_OLPC_BUDDY,
+          '(', "buddy", "",
+            '@', "jid", buddy,
+          ')',
+      ')',
+      NULL);
+
+  if (!_gabble_connection_send_with_reply (conn, query,
+        get_buddy_properties_from_search_reply_cb, NULL, context, NULL))
+    {
+      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+        "Failed to send buddy search query to server" };
+
+      DEBUG ("%s", error.message);
+      dbus_g_method_return_error (context, &error);
+    }
+
+  lm_message_unref (query);
+}
+
+static LmHandlerResult
 get_properties_reply_cb (GabbleConnection *conn,
                          LmMessage *sent_msg,
                          LmMessage *reply_msg,
@@ -346,8 +442,17 @@ get_properties_reply_cb (GabbleConnection *conn,
   GHashTable *properties;
   LmMessageNode *node;
 
-  if (!check_query_reply_msg (reply_msg, context))
+  if (!check_query_reply_msg (reply_msg, NULL))
+    {
+      const gchar *buddy;
+
+      buddy = lm_message_node_get_attribute (sent_msg->node, "to");
+      g_assert (buddy != NULL);
+
+      DEBUG ("PEP query failed. Let's try to search this buddy");
+      get_buddy_properties_from_search (conn, buddy, context);
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    }
 
   node = lm_message_node_find_child (reply_msg->node, "properties");
   properties = lm_message_node_extract_properties (node, "property");

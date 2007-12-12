@@ -1312,7 +1312,7 @@ _gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
   LmMessage *message = gabble_presence_as_message (presence, priv->resource);
   LmMessageNode *node = lm_message_get_node (message);
   gboolean ret;
-  gchar *ext_string = NULL;
+  GString *ext_string = NULL;
   GSList *features, *i;
   GHashTable *bundles;
 
@@ -1337,18 +1337,14 @@ _gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
               if (g_hash_table_lookup (bundles, (gchar *) feat->bundle) == NULL)
                 {
                   /* This bundle wasn't added yet */
-                  gchar *tmp = ext_string;
-
-                  ext_string = g_strdup_printf ("%s %s", ext_string,
-                      feat->bundle);
+                  g_string_append_printf (ext_string, " %s", feat->bundle);
                   g_hash_table_insert (bundles, (gchar *) feat->bundle,
                       (gpointer) feat);
-                  g_free (tmp);
                 }
             }
           else
             {
-              ext_string = g_strdup (feat->bundle);
+              ext_string = g_string_new (feat->bundle);
               g_hash_table_insert (bundles, (gchar *) feat->bundle,
                   (gpointer) feat);
             }
@@ -1365,13 +1361,15 @@ _gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
     NULL);
 
   if (NULL != ext_string)
-      lm_message_node_set_attribute (node, "ext", ext_string);
+    {
+      lm_message_node_set_attribute (node, "ext", ext_string->str);
+      g_string_free (ext_string, TRUE);
+    }
 
   ret = _gabble_connection_send (self, message, error);
 
   lm_message_unref (message);
 
-  g_free (ext_string);
   g_slist_free (features);
 
   return ret;

@@ -1325,6 +1325,7 @@ _gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
   /* TODO: why is this not part of presence -> msg? */
   features = capabilities_get_features (presence->caps);
 
+  /* this is used as a set, so any non-NULL value will do */
   bundles = g_hash_table_new (g_str_hash, g_str_equal);
   for (i = features; NULL != i; i = i->next)
     {

@@ -824,7 +824,7 @@ _caps_disco_cb (GabbleDisco *disco,
           !tp_strdiff (var, NS_OLPC_ACTIVITIES "+notify") ||
           !tp_strdiff (var, NS_OLPC_CURRENT_ACTIVITY "+notify") ||
           !tp_strdiff (var, NS_OLPC_ACTIVITY_PROPS "+notify"))
-        caps |= PRESENCE_CAP_OLPC;
+        caps |= PRESENCE_CAP_OLPC_1;
     }
 
   caps |= _detect_h263_n800_hack (node);

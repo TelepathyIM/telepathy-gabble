@@ -60,7 +60,7 @@ typedef enum {
     PRESENCE_CAP_IBB = 1 << 9,
     PRESENCE_CAP_SI_TUBES = 1 << 10,
     PRESENCE_CAP_FILE_TRANSFER = 1 << 11,
-    PRESENCE_CAP_OLPC = 1 << 12
+    PRESENCE_CAP_OLPC_1 = 1 << 12
 } GabblePresenceCapabilities;
 
 G_END_DECLS

@@ -56,7 +56,7 @@ def test(q, bus, conn, stream):
     assert len(c_nodes) == 1
 
     c_node = c_nodes[0]
-    assert c_node['ext'] == 'olpc'
+    assert c_node['ext'] == 'olpc1'
 
     # send diso request
     m = domish.Element(('', 'iq'))

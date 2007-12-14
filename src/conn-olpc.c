@@ -33,6 +33,7 @@
 #include "presence-cache.h"
 #include "namespaces.h"
 #include "pubsub.h"
+#include "disco.h"
 #include "util.h"
 
 #define ACTIVITY_PAIR_TYPE \
@@ -250,6 +251,35 @@ inspect_room (TpBaseConnection *base,
   return inspect_handle (base, context, room, room_repo);
 }
 
+static gboolean
+check_gadget_buddy (GabbleConnection *conn,
+                    DBusGMethodInvocation *context)
+{
+  const GabbleDiscoItem *item;
+
+  if (conn->olpc_gadget_buddy != NULL)
+    return TRUE;
+
+  item = gabble_disco_service_find (conn->disco, "gadget", "collaboration",
+      NS_OLPC_BUDDY);
+
+  if (item != NULL)
+    conn->olpc_gadget_buddy = item->jid;
+
+  if (conn->olpc_gadget_buddy == NULL)
+    {
+      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+        "Server does not provide Gadget Buddy service" };
+
+      DEBUG ("%s", error.message);
+      if (context != NULL)
+        dbus_g_method_return_error (context, &error);
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
 /* context may be NULL, since this may be called in response to becoming
  * connected.
  */
@@ -407,8 +437,10 @@ get_buddy_properties_from_search (GabbleConnection *conn,
 {
   LmMessage *query;
 
-  /* FIXME: don't hardcode indexer */
-  query = lm_message_build_with_sub_type ("index.jabber.laptop.org",
+  if (!check_gadget_buddy (conn, context))
+    return;
+
+  query = lm_message_build_with_sub_type (conn->olpc_gadget_buddy,
       LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET,
       '(', "query", "",
           '@', "xmlns", NS_OLPC_BUDDY,
@@ -2875,6 +2907,9 @@ conn_olpc_activity_properties_init (GabbleConnection *conn)
    */
   conn->olpc_invited_activities = g_hash_table_new_full (g_direct_hash,
       g_direct_equal, NULL, (GDestroyNotify) tp_handle_set_destroy);
+
+  conn->olpc_gadget_buddy = NULL;
+  conn->olpc_gadget_activity = NULL;
 
   g_signal_connect (conn, "status-changed",
       G_CALLBACK (connection_status_changed_cb), NULL);

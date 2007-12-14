@@ -141,6 +141,10 @@ struct _GabbleConnection {
     GHashTable *olpc_pep_activities;
     GHashTable *olpc_invited_activities;
 
+    /* OLPC services */
+    const gchar *olpc_gadget_buddy;
+    const gchar *olpc_gadget_activity;
+
     /* bytestream factory */
     GabbleBytestreamFactory *bytestream_factory;
 

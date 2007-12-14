@@ -280,6 +280,35 @@ check_gadget_buddy (GabbleConnection *conn,
   return TRUE;
 }
 
+static gboolean
+check_gadget_activity (GabbleConnection *conn,
+                       DBusGMethodInvocation *context)
+{
+  const GabbleDiscoItem *item;
+
+  if (conn->olpc_gadget_activity != NULL)
+    return TRUE;
+
+  item = gabble_disco_service_find (conn->disco, "gadget", "collaboration",
+      NS_OLPC_ACTIVITY);
+
+  if (item != NULL)
+    conn->olpc_gadget_activity = item->jid;
+
+  if (conn->olpc_gadget_activity == NULL)
+    {
+      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+        "Server does not provide Gadget Activity service" };
+
+      DEBUG ("%s", error.message);
+      if (context != NULL)
+        dbus_g_method_return_error (context, &error);
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
 /* context may be NULL, since this may be called in response to becoming
  * connected.
  */
@@ -2838,9 +2867,23 @@ conn_olpc_msg_cb (LmMessageHandler *handler,
   const gchar *from;
   LmMessageNode *node;
 
+  /* FIXME: We call that to be sure conn->olpc_gadget_{buddy,activity} are
+   * initialised if the service was discovered.
+   * Are we supposed to receive changes notifications message from gadget
+   * if we didn't send it a search request before? If not we can assume
+   * these check_gadget_* functions were already called and just check if
+   * conn->olpc_gadget_{buddy,activity} are not NULL.
+   */
+  if (!check_gadget_buddy (conn, NULL) && !check_gadget_activity (conn, NULL))
+    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+
   from = lm_message_node_get_attribute (message->node, "from");
+  if (from == NULL)
+    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+
   /* FIXME: we shouldn't hardcode that */
-  if (tp_strdiff (from, "index.jabber.laptop.org"))
+  if (tp_strdiff (from, conn->olpc_gadget_buddy) &&
+      tp_strdiff (from, conn->olpc_gadget_activity))
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
   for (node = message->node->children; node != NULL; node = node->next)

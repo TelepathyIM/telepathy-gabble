@@ -88,7 +88,7 @@ def test(q, bus, conn, stream):
 
     # send reply to the search query
     reply = make_result_iq('stream', event.stanza)
-    reply['from'] = 'index.jabber.laptop.org'
+    reply['from'] = 'gadget.localhost'
     reply['to'] = 'alice@localhost'
     query = xpath.queryForNodes('/iq/query', reply)[0]
     buddy = query.addElement((None, "buddy"))

@@ -170,6 +170,15 @@ def expect_stream_tubes_offer_stream(event, data):
 
 @match('stream-iq', iq_type='result')
 def expect_stream_initiation_ok_stream(event, data):
+    iq = event.stanza
+    si = xpath.queryForNodes('/iq/si[@xmlns="%s"]' % NS_SI,
+        iq)[0]
+    value = xpath.queryForNodes('/si/feature/x/field/value', si)
+    assert len(value) == 1
+    proto = value[0]
+    assert str(proto) == NS_IBB
+    tube = xpath.queryForNodes('/si/tube[@xmlns="%s"]' % NS_TUBES, si)
+    assert len(tube) == 1
     return True
 
 @match('dbus-signal', signal='TubeStateChanged')

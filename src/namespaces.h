@@ -55,6 +55,7 @@
 #define NS_NICK                 "http://jabber.org/protocol/nick"
 #define NS_NOKIA_IV             \
   "http://videovoip.tableteer.nokia.com/xmpp/privilege"
+#define NS_OOB                  "jabber:iq:oob"
 #define NS_OLPC_BUDDY_PROPS     "http://laptop.org/xmpp/buddy-properties"
 #define NS_OLPC_ACTIVITIES      "http://laptop.org/xmpp/activities"
 #define NS_OLPC_CURRENT_ACTIVITY    "http://laptop.org/xmpp/current-activity"

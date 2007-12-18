@@ -32,7 +32,7 @@
 
 #include <telepathy-glib/interfaces.h>
 
-#define DEBUG_FLAG GABBLE_DEBUG_TUBES
+#define DEBUG_FLAG GABBLE_DEBUG_BYTESTREAM
 
 #include "bytestream-iface.h"
 #include "base64.h"

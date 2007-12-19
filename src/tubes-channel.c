@@ -1832,6 +1832,9 @@ gabble_tubes_channel_accept_d_bus_tube (TpSvcChannelTypeTubes *iface,
   add_yourself_in_dbus_names (self, id);
 
   g_object_get (tube, "dbus-address", &addr, NULL);
+  /* FIXME: This is broken in 1-1 D-Bus tubes because tube_open will be called
+   * only when the bytestream is fully initialised.
+   * So now we return a NULL string */
   tp_svc_channel_type_tubes_return_from_accept_d_bus_tube (context, addr);
   g_free (addr);
 #else

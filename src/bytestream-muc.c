@@ -637,17 +637,6 @@ gabble_bytestream_muc_initiate (GabbleBytestreamIface *iface)
   return TRUE;
 }
 
-/*
- * gabble_bytestream_muc_get_protocol
- *
- * Implements gabble_bytestream_iface_get_protocol on GabbleBytestreamIface
- */
-static const gchar *
-gabble_bytestream_muc_get_protocol (GabbleBytestreamIface *iface)
-{
-  return NS_MUC_BYTESTREAM;
-}
-
 static void
 bytestream_iface_init (gpointer g_iface,
                        gpointer iface_data)
@@ -658,5 +647,4 @@ bytestream_iface_init (gpointer g_iface,
   klass->send = gabble_bytestream_muc_send;
   klass->close = gabble_bytestream_muc_close;
   klass->accept = gabble_bytestream_muc_accept;
-  klass->get_protocol = gabble_bytestream_muc_get_protocol;
 }

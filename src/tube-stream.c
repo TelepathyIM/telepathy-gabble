@@ -1281,27 +1281,6 @@ gabble_tube_stream_new (GabbleConnection *conn,
       NULL);
 }
 
-static LmMessage *
-create_si_accept_iq (GabbleBytestreamIface *bytestream)
-{
-  LmMessage *msg;
-  gchar *stream_init_id, *peer_jid;
-  const gchar *protocol;
-
-  g_object_get (bytestream,
-      "stream-init-id", &stream_init_id,
-      "peer-jid", &peer_jid,
-      NULL);
-
-  protocol = gabble_bytestream_iface_get_protocol (bytestream);
-  msg = gabble_bytestream_factory_make_accept_iq (peer_jid, stream_init_id,
-      protocol);
-
-  g_free (stream_init_id);
-  g_free (peer_jid);
-  return msg;
-}
-
 /**
  * gabble_tube_stream_accept
  *
@@ -1387,6 +1366,16 @@ gabble_tube_stream_close (GabbleTubeIface *tube)
   g_signal_emit (G_OBJECT (self), signals[CLOSED], 0);
 }
 
+static void
+augment_si_accept_iq (LmMessageNode *si,
+                      gpointer user_data)
+{
+  LmMessageNode *tube_node;
+
+  tube_node = lm_message_node_add_child (si, "tube", "");
+  lm_message_node_set_attribute (tube_node, "xmlns", NS_TUBES);
+}
+
 /**
  * gabble_tube_stream_add_bytestream
  *
@@ -1412,8 +1401,6 @@ gabble_tube_stream_add_bytestream (GabbleTubeIface *tube,
   /* New bytestream, let's connect to the socket */
   if (new_connection_to_socket (self, bytestream))
     {
-      LmMessage *msg;
-      LmMessageNode *si, *tube_node;
       TpHandle contact;
 
       if (priv->state == TP_TUBE_STATE_REMOTE_PENDING)
@@ -1425,21 +1412,11 @@ gabble_tube_stream_add_bytestream (GabbleTubeIface *tube,
 
       DEBUG ("accept the extra bytestream");
 
-      msg = create_si_accept_iq (bytestream);
-      si = lm_message_node_get_child_with_namespace (msg->node, "si",
-          NS_SI);
-      g_assert (si != NULL);
-
-      tube_node = lm_message_node_add_child (si, "tube", "");
-      lm_message_node_set_attribute (tube_node, "xmlns", NS_TUBES);
-
-      gabble_bytestream_iface_accept (bytestream, msg);
+      gabble_bytestream_iface_accept (bytestream, augment_si_accept_iq, self);
 
       g_object_get (bytestream, "peer-handle", &contact, NULL);
 
       g_signal_emit (G_OBJECT (self), signals[NEW_CONNECTION], 0, contact);
-
-      lm_message_unref (msg);
     }
   else
     {

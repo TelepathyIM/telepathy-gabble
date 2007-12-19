@@ -41,6 +41,9 @@ typedef enum
   NUM_GABBLE_BYTESTREAM_STATES,
 } GabbleBytestreamState;
 
+typedef void (* GabbleBytestreamAugmentSiAcceptReply) (
+    LmMessageNode *si, gpointer user_data);
+
 typedef struct _GabbleBytestreamIface GabbleBytestreamIface;
 typedef struct _GabbleBytestreamIfaceClass GabbleBytestreamIfaceClass;
 
@@ -51,7 +54,8 @@ struct _GabbleBytestreamIfaceClass {
   gboolean (*send) (GabbleBytestreamIface *bytestream, guint len,
       const gchar *data);
   void (*close) (GabbleBytestreamIface *bytestream, GError *error);
-  void (*accept) (GabbleBytestreamIface *bytestream, LmMessage *msg);
+  void (*accept) (GabbleBytestreamIface *bytestream,
+      GabbleBytestreamAugmentSiAcceptReply func, gpointer user_data);
   const gchar * (*get_protocol) (GabbleBytestreamIface *bytestream);
 };
 
@@ -78,7 +82,7 @@ void gabble_bytestream_iface_close (GabbleBytestreamIface *bytestream,
     GError *error);
 
 void gabble_bytestream_iface_accept (GabbleBytestreamIface *bytestream,
-    LmMessage *msg);
+    GabbleBytestreamAugmentSiAcceptReply func, gpointer user_data);
 
 const gchar *gabble_bytestream_iface_get_protocol (
     GabbleBytestreamIface *bytestream);

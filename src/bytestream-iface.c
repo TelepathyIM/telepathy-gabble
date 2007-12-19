@@ -55,12 +55,14 @@ gabble_bytestream_iface_close (GabbleBytestreamIface *self,
 
 void
 gabble_bytestream_iface_accept (GabbleBytestreamIface *self,
-                                LmMessage *msg)
+                                GabbleBytestreamAugmentSiAcceptReply func,
+                                gpointer user_data)
 {
-  void (*virtual_method)(GabbleBytestreamIface *, LmMessage *) =
+  void (*virtual_method)(GabbleBytestreamIface *,
+      GabbleBytestreamAugmentSiAcceptReply, gpointer) =
     GABBLE_BYTESTREAM_IFACE_GET_CLASS (self)->accept;
   g_assert (virtual_method != NULL);
-  virtual_method (self, msg);
+  virtual_method (self, func, user_data);
 }
 
 const gchar *

@@ -581,7 +581,9 @@ gabble_bytestream_muc_receive (GabbleBytestreamMuc *self,
  * Implements gabble_bytestream_iface_accept on GabbleBytestreamIface
  */
 static void
-gabble_bytestream_muc_accept (GabbleBytestreamIface *iface, LmMessage *msg)
+gabble_bytestream_muc_accept (GabbleBytestreamIface *iface,
+                              GabbleBytestreamAugmentSiAcceptReply func,
+                              gpointer user_data)
 {
   /* Don't have to accept a muc bytestream */
 }

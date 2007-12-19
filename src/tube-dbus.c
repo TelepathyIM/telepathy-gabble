@@ -1008,6 +1008,16 @@ gabble_tube_dbus_new (GabbleConnection *conn,
   return tube;
 }
 
+static void
+augment_si_accept_iq (LmMessageNode *si,
+                      gpointer user_data)
+{
+  LmMessageNode *tube_node;
+
+  tube_node = lm_message_node_add_child (si, "tube", "");
+  lm_message_node_set_attribute (tube_node, "xmlns", NS_TUBES);
+}
+
 /*
  * gabble_tube_dbus_accept
  *
@@ -1034,35 +1044,11 @@ gabble_tube_dbus_accept (GabbleTubeIface *tube,
     {
       /* Bytestream was created using a SI request so
        * we have to accept it */
-      LmMessage *msg;
-      LmMessageNode *si, *tube_node;
-      const gchar *protocol;
-      gchar *peer_jid, *stream_init_id;
 
       DEBUG ("accept the SI request");
 
-      g_object_get (priv->bytestream,
-          "stream-init-id", &stream_init_id,
-          "peer-jid", &peer_jid,
-          NULL);
-
-      protocol = gabble_bytestream_iface_get_protocol (priv->bytestream);
-      msg = gabble_bytestream_factory_make_accept_iq (peer_jid, stream_init_id,
-          protocol);
-      g_assert (msg != NULL);
-
-      si = lm_message_node_get_child_with_namespace (msg->node, "si",
-          NS_SI);
-      g_assert (si != NULL);
-      tube_node = lm_message_node_add_child (si, "tube", "");
-      lm_message_node_set_attribute (tube_node, "xmlns", NS_TUBES);
-
-      /* FIXME: We should report errors if accept fails */
-      gabble_bytestream_iface_accept (priv->bytestream, msg);
-
-      lm_message_unref (msg);
-      g_free (stream_init_id);
-      g_free (peer_jid);
+      gabble_bytestream_iface_accept (priv->bytestream, augment_si_accept_iq,
+          self);
     }
   else
     {

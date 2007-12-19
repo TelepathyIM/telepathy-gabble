@@ -73,6 +73,7 @@ enum
   PROP_PEER_JID,
   PROP_PEER_RESOURCE,
   PROP_STATE,
+  PROP_PROTOCOL,
   PROP_BLOCK_SIZE,
   LAST_PROPERTY
 };
@@ -177,6 +178,9 @@ gabble_bytestream_ibb_get_property (GObject *object,
         break;
       case PROP_STATE:
         g_value_set_uint (value, priv->state);
+        break;
+      case PROP_PROTOCOL:
+        g_value_set_string (value, NS_IBB);
         break;
       case PROP_BLOCK_SIZE:
         g_value_set_uint (value, priv->block_size);
@@ -295,6 +299,8 @@ gabble_bytestream_ibb_class_init (
        "peer-jid");
    g_object_class_override_property (object_class, PROP_STATE,
        "state");
+   g_object_class_override_property (object_class, PROP_PROTOCOL,
+       "protocol");
 
   param_spec = g_param_spec_string (
       "peer-resource",

@@ -508,10 +508,14 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
  * Implements gabble_bytestream_iface_accept on GabbleBytestreamIface
  */
 static void
-gabble_bytestream_ibb_accept (GabbleBytestreamIface *iface, LmMessage *msg)
+gabble_bytestream_ibb_accept (GabbleBytestreamIface *iface,
+                              GabbleBytestreamAugmentSiAcceptReply func,
+                              gpointer user_data)
 {
   GabbleBytestreamIBB *self = GABBLE_BYTESTREAM_IBB (iface);
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
+  LmMessage *msg;
+  LmMessageNode *si;
 
   if (priv->state != GABBLE_BYTESTREAM_STATE_LOCAL_PENDING)
     {
@@ -519,10 +523,24 @@ gabble_bytestream_ibb_accept (GabbleBytestreamIface *iface, LmMessage *msg)
       return;
     }
 
+  msg = gabble_bytestream_factory_make_accept_iq (priv->peer_jid,
+      priv->stream_init_id, NS_IBB);
+  si = lm_message_node_get_child_with_namespace (msg->node, "si", NS_SI);
+  g_assert (si != NULL);
+
+  if (func != NULL)
+    {
+      /* let the caller add his profile specific data */
+      func (si, user_data);
+    }
+
   if (_gabble_connection_send (priv->conn, msg, NULL))
     {
+      DEBUG ("stream is now accepted");
       g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_ACCEPTED, NULL);
     }
+
+  lm_message_unref (msg);
 }
 
 static void

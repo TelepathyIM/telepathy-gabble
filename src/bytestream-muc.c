@@ -75,6 +75,7 @@ enum
   PROP_STREAM_ID,
   PROP_PEER_JID,
   PROP_STATE,
+  PROP_PROTOCOL,
   LAST_PROPERTY
 };
 
@@ -182,6 +183,9 @@ gabble_bytestream_muc_get_property (GObject *object,
       case PROP_STATE:
         g_value_set_uint (value, priv->state);
         break;
+      case PROP_PROTOCOL:
+        g_value_set_string (value, NS_MUC_BYTESTREAM);
+        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -279,6 +283,8 @@ gabble_bytestream_muc_class_init (
       "peer-jid");
   g_object_class_override_property (object_class, PROP_STATE,
        "state");
+  g_object_class_override_property (object_class, PROP_PROTOCOL,
+       "protocol");
 
   signals[DATA_RECEIVED] =
     g_signal_new ("data-received",

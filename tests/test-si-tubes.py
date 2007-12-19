@@ -460,6 +460,98 @@ def expect_tube_signal_3(event, data):
 @match('tube-signal', signal='baz', args=[42])
 def expect_tube_signal_4(event, data):
 
+    # OK, now let's try to accept a D-Bus tube
+    iq = IQ(data['stream'], 'set')
+    iq['to'] = 'test@localhost/Resource'
+    iq['from'] = 'bob@localhost/Bob'
+    si = iq.addElement((NS_SI, 'si'))
+    si['id'] = 'beta'
+    si['profile'] = NS_TUBES
+    feature = si.addElement((NS_FEATURE_NEG, 'feature'))
+    x = feature.addElement((NS_X_DATA, 'x'))
+    x['type'] = 'form'
+    field = x.addElement((None, 'field'))
+    field['var'] = 'stream-method'
+    field['type'] = 'list-single'
+    option = field.addElement((None, 'option'))
+    value = option.addElement((None, 'value'))
+    value.addContent(NS_IBB)
+
+    tube = si.addElement((NS_TUBES, 'tube'))
+    tube['type'] = 'dbus'
+    tube['service'] = 'com.example.TestCase2'
+    tube['id'] = '69'
+    parameters = tube.addElement((None, 'parameters'))
+    parameter = parameters.addElement((None, 'parameter'))
+    parameter['type'] = 'str'
+    parameter['name'] = 'login'
+    parameter.addContent('TEST')
+
+    data['stream'].send(iq)
+
+    return True
+
+@match('dbus-signal', signal='NewTube')
+def expect_new_tube_signal(event, data):
+    id = event.args[0]
+    initiator = event.args[1]
+    type = event.args[2]
+    service = event.args[3]
+    parameters = event.args[4]
+    state = event.args[5]
+
+    assert id == 69
+    initiator_jid = data['conn_iface'].InspectHandles(1, [initiator])[0]
+    assert initiator_jid == 'bob@localhost'
+    assert type == 0 # D-Bus tube
+    assert service == 'com.example.TestCase2'
+    assert parameters == {'login': 'TEST'}
+    assert state == 0 # local pending
+
+    # accept the tube
+    call_async(data['test'], data['tubes_iface'], 'AcceptDBusTube',
+        id)
+
+    return True
+
+@match('stream-iq', iq_type='result')
+def expect_dbus_tube_si_result(event, data):
+    iq = event.stanza
+    si = xpath.queryForNodes('/iq/si[@xmlns="%s"]' % NS_SI,
+        iq)[0]
+    value = xpath.queryForNodes('/si/feature/x/field/value', si)
+    assert len(value) == 1
+    proto = value[0]
+    assert str(proto) == NS_IBB
+    tube = xpath.queryForNodes('/si/tube[@xmlns="%s"]' % NS_TUBES, si)
+    assert len(tube) == 1
+
+    # Init the IBB bytestream
+    iq = IQ(data['stream'], 'set')
+    iq['to'] = 'test@localhost/Resource'
+    iq['from'] = 'bob@localhost/Bob'
+    open = iq.addElement((NS_IBB, 'open'))
+    open['sid'] = 'beta'
+    open['block-size'] = '4096'
+    data['stream'].send(iq)
+
+    return True
+
+@match('dbus-return', method='AcceptDBusTube')
+def expect_accept_dbus_tube_return(event, data):
+    address = event.value[0]
+    # FIXME: this is currently broken. See FIXME in tubes-channel.c
+    #assert len(address) > 0
+    return True
+
+@match('dbus-signal', signal='TubeStateChanged')
+def expect_dbus_tube_state_changed_signal(event, data):
+    id = event.args[0]
+    state = event.args[1]
+
+    assert id == 69
+    assert state == 2 # open
+
     # OK, we're done
     data['conn_iface'].Disconnect()
     return True

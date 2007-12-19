@@ -65,15 +65,6 @@ gabble_bytestream_iface_accept (GabbleBytestreamIface *self,
   virtual_method (self, func, user_data);
 }
 
-const gchar *
-gabble_bytestream_iface_get_protocol (GabbleBytestreamIface *self)
-{
-  const gchar * (*virtual_method)(GabbleBytestreamIface *) =
-    GABBLE_BYTESTREAM_IFACE_GET_CLASS (self)->get_protocol;
-  g_assert (virtual_method != NULL);
-  return virtual_method (self);
-}
-
 static void
 gabble_bytestream_iface_base_init (gpointer klass)
 {

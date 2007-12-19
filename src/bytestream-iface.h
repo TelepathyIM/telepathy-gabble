@@ -56,7 +56,6 @@ struct _GabbleBytestreamIfaceClass {
   void (*close) (GabbleBytestreamIface *bytestream, GError *error);
   void (*accept) (GabbleBytestreamIface *bytestream,
       GabbleBytestreamAugmentSiAcceptReply func, gpointer user_data);
-  const gchar * (*get_protocol) (GabbleBytestreamIface *bytestream);
 };
 
 GType gabble_bytestream_iface_get_type (void);
@@ -83,9 +82,6 @@ void gabble_bytestream_iface_close (GabbleBytestreamIface *bytestream,
 
 void gabble_bytestream_iface_accept (GabbleBytestreamIface *bytestream,
     GabbleBytestreamAugmentSiAcceptReply func, gpointer user_data);
-
-const gchar *gabble_bytestream_iface_get_protocol (
-    GabbleBytestreamIface *bytestream);
 
 G_END_DECLS
 

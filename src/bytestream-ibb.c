@@ -687,17 +687,6 @@ gabble_bytestream_ibb_initiate (GabbleBytestreamIface *iface)
   return TRUE;
 }
 
-/*
- * gabble_bytestream_ibb_get_protocol
- *
- * Implements gabble_bytestream_iface_get_protocol on GabbleBytestreamIface
- */
-static const gchar *
-gabble_bytestream_ibb_get_protocol (GabbleBytestreamIface *iface)
-{
-  return NS_IBB;
-}
-
 static void
 bytestream_iface_init (gpointer g_iface,
                        gpointer iface_data)
@@ -708,5 +697,4 @@ bytestream_iface_init (gpointer g_iface,
   klass->send = gabble_bytestream_ibb_send;
   klass->close = gabble_bytestream_ibb_close;
   klass->accept = gabble_bytestream_ibb_accept;
-  klass->get_protocol = gabble_bytestream_ibb_get_protocol;
 }

@@ -118,7 +118,7 @@ def test(q, bus, conn, stream):
     # handle new_tube_event
     new_tube_event, stream_event, offer_return_event = q.expect_many(
         EventPattern('dbus-signal', signal='NewTube'),
-        EventPattern('stream-presence'),
+        EventPattern('stream-presence', to='chat@conf.localhost/test'),
         EventPattern('dbus-return', method='OfferStreamTube'))
 
     stream_tube_id = new_tube_event.args[0]
@@ -130,8 +130,6 @@ def test(q, bus, conn, stream):
 
     # handle stream_event
     presence = stream_event.stanza
-    assert presence['to'] == 'chat@conf.localhost/test'
-
     x_nodes = xpath.queryForNodes('/presence/x[@xmlns="http://jabber.org/'
             'protocol/muc"]', presence)
     assert x_nodes is not None
@@ -164,12 +162,8 @@ def test(q, bus, conn, stream):
                       'u': ('uint', '123'),
                      }
 
-    # handle offer_return_event
-    call_async(q, tubes_iface, 'ListTubes',
-        byte_arrays=True)
-
-    event = q.expect('dbus-return', method='ListTubes')
-    assert event.value[0] == [(
+    tubes = tubes_iface.ListTubes(byte_arrays=True)
+    assert tubes == [(
         stream_tube_id,
         tubes_self_handle,
         1,      # Stream
@@ -205,7 +199,8 @@ def test(q, bus, conn, stream):
 
     iq_event, new_conn_event = q.expect_many(
         EventPattern('stream-iq', iq_type='result'),
-        EventPattern('dbus-signal', signal='StreamTubeNewConnection'))
+        EventPattern('dbus-signal', signal='StreamTubeNewConnection',
+            args=[stream_tube_id,bob_handle]))
 
     # handle iq_event
     iq = iq_event.stanza
@@ -217,10 +212,6 @@ def test(q, bus, conn, stream):
     assert str(proto) == NS_IBB
     tube = xpath.queryForNodes('/si/tube[@xmlns="%s"]' % NS_TUBES, si)
     assert len(tube) == 1
-
-    # handle new_conn_event
-    assert new_conn_event.args[0] == stream_tube_id
-    assert new_conn_event.args[1] == bob_handle
 
     # have the fake client open the stream
     iq = IQ(stream, 'set')
@@ -263,7 +254,7 @@ def test(q, bus, conn, stream):
     new_tube_event, presence_event, offer_return_event, dbus_changed_event = \
         q.expect_many(
         EventPattern('dbus-signal', signal='NewTube'),
-        EventPattern('stream-presence'),
+        EventPattern('stream-presence', to='chat@conf.localhost/test'),
         EventPattern('dbus-return', method='OfferDBusTube'),
         EventPattern('dbus-signal', signal='DBusNamesChanged'))
 
@@ -275,11 +266,11 @@ def test(q, bus, conn, stream):
     assert new_tube_event.args[4] == sample_parameters
     assert new_tube_event.args[5] == 2       # OPEN
 
+    # handle offer_return_event
+    assert offer_return_event.value[0] == dbus_tube_id
+
     # handle presence_event
     presence = presence_event.stanza
-
-    assert presence['to'] == 'chat@conf.localhost/test'
-
     x_nodes = xpath.queryForNodes('/presence/x[@xmlns="http://jabber.org/'
             'protocol/muc"]', presence)
     assert x_nodes is not None

@@ -76,24 +76,18 @@ def test(q, bus, conn, stream):
     event = q.expect('stream-iq', iq_type='get',
         query_ns='http://jabber.org/protocol/disco#info',
         to='bob@localhost/Bob')
-    event.stanza['type'] = 'result'
+    result = event.stanza
+    result['type'] = 'result'
     assert event.query['node'] == \
         'http://example.com/ICantBelieveItsNotTelepathy#1.2.3'
     feature = event.query.addElement('feature')
     feature['var'] = NS_TUBES
+    stream.send(result)
 
-    stream.send(event.stanza)
-
-    call_async(q, conn, 'RequestHandles', 1, ['bob@localhost'])
-
-    event = q.expect('dbus-return', method='RequestHandles')
-    bob_handle = event.value[0][0]
-
-    call_async(q, conn, 'RequestChannel',
-        tp_name_prefix + '.Channel.Type.Tubes', 1, bob_handle, True)
-
-    event = q.expect('dbus-return', method='RequestChannel')
-    tubes_chan = bus.get_object(conn.bus_name, event.value[0])
+    bob_handle = conn.RequestHandles(1, ['bob@localhost'])[0]
+    chan_path = conn.RequestChannel(tp_name_prefix + '.Channel.Type.Tubes', 1,
+            bob_handle, True)
+    tubes_chan = bus.get_object(conn.bus_name, chan_path)
     tubes_iface = dbus.Interface(tubes_chan,
         tp_name_prefix + '.Channel.Type.Tubes')
 
@@ -151,8 +145,11 @@ def test(q, bus, conn, stream):
     stream_node['tube'] = str(stream_tube_id)
     stream.send(iq)
 
-    event = q.expect('stream-iq', iq_type='result')
-    iq = event.stanza
+    si_reply_event, _ = q.expect_many(
+            EventPattern('stream-iq', iq_type='result'),
+            EventPattern('dbus-signal', signal='TubeStateChanged',
+                args=[stream_tube_id, 2])) # 2 == OPEN
+    iq = si_reply_event.stanza
     si = xpath.queryForNodes('/iq/si[@xmlns="%s"]' % NS_SI,
         iq)[0]
     value = xpath.queryForNodes('/si/feature/x/field/value', si)
@@ -162,15 +159,18 @@ def test(q, bus, conn, stream):
     tube = xpath.queryForNodes('/si/tube[@xmlns="%s"]' % NS_TUBES, si)
     assert len(tube) == 1
 
-    event = q.expect('dbus-signal', signal='TubeStateChanged')
-    assert event.args[0] == stream_tube_id
-    assert event.args[1] == 2       # OPEN
+    q.expect('dbus-signal', signal='StreamTubeNewConnection',
+        args=[stream_tube_id, bob_handle])
 
-    call_async(q, tubes_iface, 'ListTubes', byte_arrays=True)
-
-    event = q.expect('dbus-signal', signal='StreamTubeNewConnection')
-    assert event.args[0] == stream_tube_id
-    assert event.args[1] == bob_handle
+    tubes = tubes_iface.ListTubes(byte_arrays=True)
+    assert tubes == [(
+        stream_tube_id,
+        self_handle,
+        1,      # Unix stream
+        'echo',
+        sample_parameters,
+        2,      # OPEN
+        )]
 
     # have the fake client open the stream
     iq = IQ(stream, 'set')
@@ -181,17 +181,7 @@ def test(q, bus, conn, stream):
     open['block-size'] = '4096'
     stream.send(iq)
 
-    event = q.expect('dbus-return', method='ListTubes')
-    assert event.value[0] == [(
-        stream_tube_id,
-        self_handle,
-        1,      # Unix stream
-        'echo',
-        sample_parameters,
-        2,      # OPEN
-        )]
-
-    event = q.expect('stream-iq', iq_type='result')
+    q.expect('stream-iq', iq_type='result')
     # have the fake client send us some data
     message = domish.Element(('jabber:client', 'message'))
     message['to'] = 'test@localhost/Resource'
@@ -203,10 +193,9 @@ def test(q, bus, conn, stream):
     stream.send(message)
     return True
 
-    event = q.expect('stream-message')
+    event = q.expect('stream-message', to='bob@localhost/Bob')
     message = event.stanza
 
-    assert message['to'] == 'bob@localhost/Bob'
     data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % NS_IBB,
         message)
     assert data_nodes is not None
@@ -287,14 +276,11 @@ def test(q, bus, conn, stream):
 
     stream.send(result)
 
-    event = q.expect('dbus-signal', signal='TubeStateChanged')
-    assert event.args[0] == dbus_tube_id
-    assert event.args[1] == 2       # OPEN
+    q.expect('dbus-signal', signal='TubeStateChanged',
+        args=[dbus_tube_id, 2]) # 2 == OPEN
 
-    call_async(q, tubes_iface, 'ListTubes', byte_arrays=True)
-
-    event = q.expect('dbus-return', method='ListTubes')
-    assert sorted(event.value[0]) == sorted([(
+    tubes = tubes_iface.ListTubes(byte_arrays=True)
+    assert sorted(tubes) == sorted([(
         dbus_tube_id,
         self_handle,
         0,      # DBUS
@@ -310,11 +296,9 @@ def test(q, bus, conn, stream):
         2,      # OPEN
         )])
 
-    call_async(q, tubes_iface, 'GetDBusTubeAddress',
-        dbus_tube_id)
+    dbus_tube_adr = tubes_iface.GetDBusTubeAddress(dbus_tube_id)
+    dbus_tube_conn = Connection(dbus_tube_adr)
 
-    event = q.expect('dbus-return', method='GetDBusTubeAddress')
-    dbus_tube_conn = Connection(event.value[0])
     signal = SignalMessage('/', 'foo.bar', 'baz')
     my_bus_name = ':123.whatever.you.like'
     signal.set_sender(my_bus_name)
@@ -471,19 +455,17 @@ def test(q, bus, conn, stream):
     # FIXME: this is currently broken. See FIXME in tubes-channel.c
     #assert len(address) > 0
 
-    event = q.expect('dbus-signal', signal='TubeStateChanged')
+    event = q.expect('dbus-signal', signal='TubeStateChanged',
+        args=[69, 2]) # 2 == OPEN
     id = event.args[0]
     state = event.args[1]
-
-    assert id == 69
-    assert state == 2 # open
 
     # OK, we're done
     conn.Disconnect()
     return True
 
-    event = q.expect('tube-signal', signal='Disconnected')
-    event = q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
+    q.expect('tube-signal', signal='Disconnected')
+    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 if __name__ == '__main__':
     exec_test(test)

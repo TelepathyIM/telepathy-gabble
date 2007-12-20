@@ -145,6 +145,7 @@ def make_presence_event(stanza):
 
 def make_message_event(stanza):
     event = make_stream_event('stream-message', stanza)
+    event.message_type = stanza.getAttribute('type')
     return event
 
 class BaseXmlStream(xmlstream.XmlStream):

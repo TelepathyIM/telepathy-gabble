@@ -335,9 +335,9 @@ def test(q, bus, conn, stream):
     signal.append(42, signature='u')
     tube.send_message(signal)
 
-    event = q.expect('stream-message', to='chat@conf.localhost')
+    event = q.expect('stream-message', to='chat@conf.localhost',
+        message_type='groupchat')
     message = event.stanza
-    assert message['type'] == 'groupchat'
 
     data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % NS_MUC_BYTESTREAM,
         message)

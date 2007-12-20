@@ -439,7 +439,7 @@ listen_cb (GIOChannel *source,
     }
   else
     {
-      g_assert_not_reached ();
+      g_return_val_if_reached (TRUE);
     }
 
   fd = accept (listen_fd, (struct sockaddr *) &addr, &addrlen);
@@ -566,7 +566,7 @@ new_connection_to_socket (GabbleTubeStream *self,
     }
   else
     {
-      g_assert_not_reached ();
+      g_return_val_if_reached (FALSE);
     }
 
   if (connect (fd, (struct sockaddr *) &addr, len) == -1)
@@ -748,7 +748,7 @@ tube_stream_open (GabbleTubeStream *self,
     }
   else
     {
-      g_assert_not_reached ();
+      g_return_val_if_reached (FALSE);
     }
 
   if (listen (fd, 5) == -1)
@@ -1535,7 +1535,7 @@ check_ip_params (TpSocketAddressType address_type,
     }
   else
     {
-      g_assert_not_reached ();
+      g_return_val_if_reached (FALSE);
     }
 
   dbus_g_type_struct_get (address,

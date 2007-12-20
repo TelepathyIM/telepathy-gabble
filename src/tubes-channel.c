@@ -168,7 +168,7 @@ gabble_tubes_channel_constructor (GType type,
       tp_external_group_mixin_init (obj, (GObject *) self->muc);
       break;
     default:
-      g_assert_not_reached ();
+      g_return_val_if_reached (NULL);
     }
 
   bus = tp_get_bus ();
@@ -417,7 +417,7 @@ create_new_tube (GabbleTubesChannel *self,
           service, parameters, tube_id));
       break;
     default:
-      g_assert_not_reached ();
+      g_return_val_if_reached (NULL);
     }
 
   DEBUG ("create tube %u", tube_id);
@@ -741,7 +741,7 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
                     break;
                   default:
                     {
-                      g_assert_not_reached ();
+                      g_return_if_reached ();
                     }
                 }
 
@@ -997,7 +997,7 @@ publish_tube_in_node (GabbleTubesChannel *self,
         break;
       default:
         {
-          g_assert_not_reached ();
+          g_return_if_reached ();
         }
     }
 

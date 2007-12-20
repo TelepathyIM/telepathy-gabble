@@ -86,7 +86,7 @@ def test(q, bus, conn, stream):
     item['role'] = 'moderator'
     stream.send(presence)
 
-    event = q.expect('dbus-signal', signal='MembersChanged',
+    q.expect('dbus-signal', signal='MembersChanged',
             args=[u'', [3], [], [], [], 0, 0])
 
     conn.InspectHandles(1, [3]) == ['chat@conf.localhost/bob']
@@ -115,12 +115,12 @@ def test(q, bus, conn, stream):
     call_async(q, tubes_iface, 'OfferStreamTube',
         'echo', sample_parameters, 0, dbus.ByteArray(path), 0, "")
 
-    # handle new_tube_event
-    new_tube_event, stream_event, offer_return_event = q.expect_many(
+    new_tube_event, stream_event, _ = q.expect_many(
         EventPattern('dbus-signal', signal='NewTube'),
         EventPattern('stream-presence', to='chat@conf.localhost/test'),
         EventPattern('dbus-return', method='OfferStreamTube'))
 
+    # handle new_tube_event
     stream_tube_id = new_tube_event.args[0]
     assert new_tube_event.args[1] == tubes_self_handle
     assert new_tube_event.args[2] == 1       # Stream
@@ -197,7 +197,7 @@ def test(q, bus, conn, stream):
 
     stream.send(iq)
 
-    iq_event, new_conn_event = q.expect_many(
+    iq_event, _ = q.expect_many(
         EventPattern('stream-iq', iq_type='result'),
         EventPattern('dbus-signal', signal='StreamTubeNewConnection',
             args=[stream_tube_id,bob_handle]))
@@ -222,7 +222,7 @@ def test(q, bus, conn, stream):
     open['block-size'] = '4096'
     stream.send(iq)
 
-    event = q.expect('stream-iq', iq_type='result')
+    q.expect('stream-iq', iq_type='result')
 
     # have the fake client send us some data
     message = domish.Element(('jabber:client', 'message'))
@@ -234,10 +234,9 @@ def test(q, bus, conn, stream):
     data_node.addContent(base64.b64encode('hello, world'))
     stream.send(message)
 
-    event = q.expect('stream-message')
+    event = q.expect('stream-message', to='chat@conf.localhost/bob')
     message = event.stanza
 
-    assert message['to'] == 'chat@conf.localhost/bob'
     data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % NS_IBB,
         message)
     assert data_nodes is not None
@@ -305,17 +304,16 @@ def test(q, bus, conn, stream):
                       'u': ('uint', '123'),
                      }
 
-
-    # handle offer_return_event
-    call_async(q, tubes_iface, 'ListTubes', byte_arrays=True)
-
     # handle dbus_changed_event
     assert dbus_changed_event.args[0] == dbus_tube_id
     assert dbus_changed_event.args[1][0][0] == tubes_self_handle
     my_bus_name = dbus_changed_event.args[1][0][1]
 
-    event = q.expect('dbus-return', method='ListTubes')
-    assert sorted(event.value[0]) == sorted([(
+    # handle offer_return_event
+    assert dbus_tube_id == offer_return_event.value[0]
+
+    tubes = tubes_iface.ListTubes(byte_arrays=True)
+    assert sorted(tubes) == sorted([(
         dbus_tube_id,
         tubes_self_handle,
         0,      # DBUS
@@ -331,19 +329,14 @@ def test(q, bus, conn, stream):
         2,      # OPEN
         )])
 
-    call_async(q, tubes_iface, 'GetDBusTubeAddress',
-        dbus_tube_id)
-
-    event = q.expect('dbus-return', method='GetDBusTubeAddress')
-    tube = Connection(event.value[0])
+    dbus_tube_adr = tubes_iface.GetDBusTubeAddress(dbus_tube_id)
+    tube = Connection(dbus_tube_adr)
     signal = SignalMessage('/', 'foo.bar', 'baz')
     signal.append(42, signature='u')
     tube.send_message(signal)
 
-    event = q.expect('stream-message')
+    event = q.expect('stream-message', to='chat@conf.localhost')
     message = event.stanza
-
-    assert message['to'] == 'chat@conf.localhost'
     assert message['type'] == 'groupchat'
 
     data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % NS_MUC_BYTESTREAM,
@@ -365,7 +358,6 @@ def test(q, bus, conn, stream):
     assert my_bus_name in binary
 
     # OK, we're done
-
     conn.Disconnect()
 
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])

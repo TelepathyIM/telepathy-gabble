@@ -249,6 +249,7 @@ def go(params=None, authenticator=None, protocol=None, start=None):
 def exec_test(fun, params=None):
     queue = servicetest.IteratingEventQueue()
 
+    queue.verbose = (os.environ.get('CHECK_TWISTED_VERBOSE', '') != '')
     if '-v' in sys.argv:
         queue.verbose = True
 

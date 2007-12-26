@@ -54,7 +54,8 @@ TWISTED_TESTS = \
 	test-muc-invitation.py \
 	test-muc-ownership.py \
 	test-muc-properties.py \
-	test-muc-tubes.py \
+	test-muc-offer-stream-tube-ibb.py \
+	test-muc-offer-dbus-tube.py \
 	test-olpc-set-props-preload.py \
 	test-register.py \
 	test-roster.py \

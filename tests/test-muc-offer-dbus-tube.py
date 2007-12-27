@@ -138,8 +138,8 @@ def test(q, bus, conn, stream):
         assert tube['initiator'] == 'chat@conf.localhost/test'
         assert tube['service'] == 'com.example.TestCase'
         dbus_stream_id = tube['stream-id']
-        #assert tube['dbus-name'] == my_bus_name
-        #assert tube['id'] == str(dbus_tube_id)
+        my_bus_name = tube['dbus-name']
+        assert tube['id'] == str(dbus_tube_id)
 
     params = {}
     parameter_nodes = xpath.queryForNodes('/tube/parameters/parameter', tube)
@@ -155,7 +155,7 @@ def test(q, bus, conn, stream):
     # handle dbus_changed_event
     assert dbus_changed_event.args[0] == dbus_tube_id
     assert dbus_changed_event.args[1][0][0] == tubes_self_handle
-    my_bus_name = dbus_changed_event.args[1][0][1]
+    assert dbus_changed_event.args[1][0][1] == my_bus_name
 
     # handle offer_return_event
     assert dbus_tube_id == offer_return_event.value[0]

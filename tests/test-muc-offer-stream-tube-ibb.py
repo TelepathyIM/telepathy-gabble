@@ -6,7 +6,7 @@ import os
 
 import dbus
 
-from servicetest import call_async, EventPattern, tp_name_prefix
+from servicetest import call_async, EventPattern, tp_name_prefix, EventProtocolFactory
 from gabbletest import exec_test, make_result_iq, acknowledge_iq
 
 from twisted.words.xish import domish, xpath
@@ -29,13 +29,8 @@ NS_MUC_BYTESTREAM = 'http://telepathy.freedesktop.org/xmpp/protocol/muc-bytestre
 NS_X_DATA = 'jabber:x:data'
 
 
-class Echo(Protocol):
-    def dataReceived(self, data):
-        self.transport.write(data)
-
-def set_up_echo():
-    factory = Factory()
-    factory.protocol = Echo
+def set_up_listener_socket(q):
+    factory = EventProtocolFactory(q)
     try:
         os.remove(os.getcwd() + '/stream')
     except OSError, e:
@@ -44,7 +39,7 @@ def set_up_echo():
     reactor.listenUNIX(os.getcwd() + '/stream', factory)
 
 def test(q, bus, conn, stream):
-    set_up_echo()
+    set_up_listener_socket(q)
     conn.Connect()
 
     _, iq_event = q.expect_many(
@@ -128,6 +123,7 @@ def test(q, bus, conn, stream):
     assert new_tube_event.args[5] == 2       # OPEN
 
     # handle stream_event
+    # We announce our newly created tube in our muc presence
     presence = stream_event.stanza
     x_nodes = xpath.queryForNodes('/presence/x[@xmlns="http://jabber.org/'
             'protocol/muc"]', presence)
@@ -196,6 +192,9 @@ def test(q, bus, conn, stream):
 
     stream.send(iq)
 
+    event = q.expect('socket-connected')
+    protocol = event.protocol
+
     iq_event, _ = q.expect_many(
         EventPattern('stream-iq', iq_type='result'),
         EventPattern('dbus-signal', signal='StreamTubeNewConnection',
@@ -230,10 +229,14 @@ def test(q, bus, conn, stream):
     data_node = message.addElement((NS_IBB, 'data'))
     data_node['sid'] = 'alpha'
     data_node['seq'] = '0'
-    data_node.addContent(base64.b64encode('hello, world'))
+    data_node.addContent(base64.b64encode('hello initiator'))
     stream.send(message)
 
-    # the server socket echoed our message
+    # the server reply
+    event = q.expect('socket-data', data='hello initiator', protocol=protocol)
+    protocol.sendData('hello joiner')
+
+    # we receive server's data
     event = q.expect('stream-message', to='chat@conf.localhost/bob')
     message = event.stanza
 
@@ -244,7 +247,7 @@ def test(q, bus, conn, stream):
     ibb_data = data_nodes[0]
     assert ibb_data['sid'] == 'alpha'
     binary = base64.b64decode(str(ibb_data))
-    assert binary == 'hello, world'
+    assert binary == 'hello joiner'
 
     # OK, we're done
     conn.Disconnect()

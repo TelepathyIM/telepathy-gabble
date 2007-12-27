@@ -368,10 +368,10 @@ def test(q, bus, conn, stream):
     stream.send(msg)
     seq += 1
 
-    q.expect('tube-signal', signal='baz', args=[42])
-    q.expect('tube-signal', signal='baz', args=[42])
-    q.expect('tube-signal', signal='baz', args=[42])
-    q.expect('tube-signal', signal='baz', args=[42])
+    q.expect('tube-signal', signal='baz', args=[42], tube=dbus_tube_conn)
+    q.expect('tube-signal', signal='baz', args=[42], tube=dbus_tube_conn)
+    q.expect('tube-signal', signal='baz', args=[42], tube=dbus_tube_conn)
+    q.expect('tube-signal', signal='baz', args=[42], tube=dbus_tube_conn)
 
     # OK, now let's try to accept a D-Bus tube
     iq = IQ(stream, 'set')

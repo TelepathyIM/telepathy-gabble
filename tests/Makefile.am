@@ -72,7 +72,8 @@ TWISTED_TESTS = \
 	test-vcard-race.py \
 	test-vcard-set-and-get.py \
 	test-group-race.py \
-	test-olpc-bundle.py
+	test-olpc-bundle.py \
+	test-get-available-tubes.py
 
 _check-twisted:
 	$(MAKE) check TESTS="$(TWISTED_TESTS)" TESTS_ENVIRONMENT=python

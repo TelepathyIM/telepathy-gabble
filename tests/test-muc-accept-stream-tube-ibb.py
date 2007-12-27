@@ -229,7 +229,7 @@ def test(q, bus, conn, stream):
     message.addElement((None, 'poney'))
     stream.send(message)
 
-    q.expect('socket-data', data="hi joiner!")
+    q.expect('socket-data', protocol=protocol, data="hi joiner!")
 
     # OK, we're done
     conn.Disconnect()

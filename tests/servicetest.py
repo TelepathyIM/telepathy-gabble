@@ -434,7 +434,7 @@ class EventProtocol(Protocol):
     def sendData(self, data):
         self.transport.write(data)
 
-class EventProtocolFactory(ClientFactory):
+class EventProtocolClientFactory(ClientFactory):
     def __init__(self, queue):
         self.queue = queue
 

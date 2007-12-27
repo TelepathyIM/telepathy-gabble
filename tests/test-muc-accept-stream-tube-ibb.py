@@ -6,7 +6,7 @@ import os
 
 import dbus
 
-from servicetest import call_async, EventPattern, tp_name_prefix, EventProtocol, EventProtocolFactory
+from servicetest import call_async, EventPattern, tp_name_prefix, EventProtocol, EventProtocolClientFactory
 from gabbletest import exec_test, make_result_iq, acknowledge_iq
 
 from twisted.words.xish import domish, xpath
@@ -157,7 +157,7 @@ def test(q, bus, conn, stream):
     unix_socket_adr = accept_return_event.value[0]
 
     c = ClientCreator(reactor, EventProtocol)
-    factory = EventProtocolFactory(q)
+    factory = EventProtocolClientFactory(q)
     reactor.connectUNIX(unix_socket_adr, factory)
 
     event = q.expect('socket-connected')

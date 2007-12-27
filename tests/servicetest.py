@@ -4,7 +4,7 @@ Infrastructure code for testing connection managers.
 """
 
 from twisted.internet import glib2reactor
-from twisted.internet.protocol import Protocol
+from twisted.internet.protocol import Protocol, ClientFactory
 glib2reactor.install()
 
 import pprint
@@ -423,8 +423,8 @@ def load_event_handlers():
             node.name.startswith('expect_')]
 
 class EventProtocol(Protocol):
-    def __init__(self):
-        self.queue = None
+    def __init__(self, queue=None):
+        self.queue = queue
 
     def dataReceived(self, data):
         if self.queue is not None:
@@ -434,6 +434,14 @@ class EventProtocol(Protocol):
     def sendData(self, data):
         self.transport.write(data)
 
+class EventProtocolFactory(ClientFactory):
+    def __init__(self, queue):
+        self.queue = queue
+
+    def buildProtocol(self, addr):
+        proto =  EventProtocol(self.queue)
+        self.queue.handle_event(Event('socket-connected', protocol=proto))
+        return proto
 
 if __name__ == '__main__':
     unittest.main()

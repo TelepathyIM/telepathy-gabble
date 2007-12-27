@@ -6,7 +6,7 @@ import os
 
 import dbus
 
-from servicetest import call_async, EventPattern, tp_name_prefix, EventProtocol
+from servicetest import call_async, EventPattern, tp_name_prefix, EventProtocol, EventProtocolFactory
 from gabbletest import exec_test, make_result_iq, acknowledge_iq
 
 from twisted.words.xish import domish, xpath
@@ -161,7 +161,12 @@ def test(q, bus, conn, stream):
         p.sendData("hello initiator")
 
     c = ClientCreator(reactor, EventProtocol)
-    c.connectUNIX(unix_socket_adr).addCallback(gotProtocol, q)
+    factory = EventProtocolFactory(q)
+    reactor.connectUNIX(unix_socket_adr, factory)
+
+    event = q.expect('socket-connected')
+    protocol = event.protocol
+    protocol.sendData("hello initiator")
 
     # expect SI request
     event = q.expect('stream-iq', to='chat@conf.localhost/bob', query_ns=NS_SI,

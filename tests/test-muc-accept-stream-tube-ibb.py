@@ -159,16 +159,16 @@ def test(q, bus, conn, stream):
     class TestProto(EventProtocol):
         def __init__(self):
             EventProtocol.__init__(self)
-            self.queue = q
 
         def sendMessage(self, msg):
             self.transport.write(msg)
 
-    def gotProtocol(p):
+    def gotProtocol(p, queue):
+        p.queue = queue
         p.sendMessage("hello initiator")
 
     c = ClientCreator(reactor, TestProto)
-    c.connectUNIX(unix_socket_adr).addCallback(gotProtocol)
+    c.connectUNIX(unix_socket_adr).addCallback(gotProtocol, q)
 
     # expect SI request
     event = q.expect('stream-iq', to='chat@conf.localhost/bob', query_ns=NS_SI,

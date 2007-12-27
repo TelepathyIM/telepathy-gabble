@@ -3,11 +3,10 @@
 import base64
 import errno
 import os
-import socket
 
 import dbus
 
-from servicetest import call_async, EventPattern, tp_name_prefix
+from servicetest import call_async, EventPattern, tp_name_prefix, EventProtocol
 from gabbletest import exec_test, make_result_iq, acknowledge_iq
 
 from twisted.words.xish import domish, xpath
@@ -157,10 +156,19 @@ def test(q, bus, conn, stream):
 
     unix_socket_adr = accept_return_event.value[0]
 
-    # FIXME: Should we use twisted API ?
-    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-    sock.connect(unix_socket_adr)
-    sock.send("hello initiator")
+    class TestProto(EventProtocol):
+        def __init__(self):
+            EventProtocol.__init__(self)
+            self.queue = q
+
+        def sendMessage(self, msg):
+            self.transport.write(msg)
+
+    def gotProtocol(p):
+        p.sendMessage("hello initiator")
+
+    c = ClientCreator(reactor, TestProto)
+    c.connectUNIX(unix_socket_adr).addCallback(gotProtocol)
 
     # expect SI request
     event = q.expect('stream-iq', to='chat@conf.localhost/bob', query_ns=NS_SI,
@@ -227,7 +235,7 @@ def test(q, bus, conn, stream):
     message.addElement((None, 'poney'))
     stream.send(message)
 
-    # TODO: check if we received the right data on our socket
+    q.expect('socket-data', data="hi joiner!")
 
     # OK, we're done
     conn.Disconnect()

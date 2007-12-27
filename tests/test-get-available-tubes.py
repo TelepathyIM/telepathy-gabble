@@ -101,7 +101,6 @@ def test(q, bus, conn, stream):
 
     # test GetAvailableStreamTubeTypes
     stream_tubes_types = tubes_iface_muc.GetAvailableStreamTubeTypes()
-    print stream_tubes_types
     assert len(stream_tubes_types) == 3
     # Unix sockets supports Socket_Access_Control_Localhost
     assert stream_tubes_types[0] == [0]

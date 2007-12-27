@@ -431,6 +431,10 @@ class EventProtocol(Protocol):
             self.queue.handle_event(Event('socket-data', protocol=self,
                 data=data))
 
+    def sendData(self, data):
+        self.transport.write(data)
+
+
 if __name__ == '__main__':
     unittest.main()
 

@@ -156,18 +156,11 @@ def test(q, bus, conn, stream):
 
     unix_socket_adr = accept_return_event.value[0]
 
-    class TestProto(EventProtocol):
-        def __init__(self):
-            EventProtocol.__init__(self)
-
-        def sendMessage(self, msg):
-            self.transport.write(msg)
-
     def gotProtocol(p, queue):
         p.queue = queue
-        p.sendMessage("hello initiator")
+        p.sendData("hello initiator")
 
-    c = ClientCreator(reactor, TestProto)
+    c = ClientCreator(reactor, EventProtocol)
     c.connectUNIX(unix_socket_adr).addCallback(gotProtocol, q)
 
     # expect SI request

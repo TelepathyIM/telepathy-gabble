@@ -8,7 +8,7 @@ import dbus
 from dbus.connection import Connection
 from dbus.lowlevel import SignalMessage
 
-from servicetest import call_async, EventPattern, tp_name_prefix
+from servicetest import call_async, EventPattern, Event, tp_name_prefix, unwrap
 from gabbletest import exec_test, make_result_iq, acknowledge_iq
 
 from twisted.words.xish import domish, xpath
@@ -191,7 +191,6 @@ def test(q, bus, conn, stream):
     data_node['seq'] = '0'
     data_node.addContent(base64.b64encode('hello, world'))
     stream.send(message)
-    return True
 
     event = q.expect('stream-message', to='bob@localhost/Bob')
     message = event.stanza
@@ -362,7 +361,7 @@ def test(q, bus, conn, stream):
         data_node['sid'] = dbus_stream_id
         data_node['seq'] = str(seq)
         data_node.addContent(base64.b64encode(byte))
-        data['stream'].send(msg)
+        stream.send(msg)
         seq += 1
 
     # ... and two messages in one go

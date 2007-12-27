@@ -8,7 +8,7 @@ import dbus
 from dbus.connection import Connection
 from dbus.lowlevel import SignalMessage
 
-from servicetest import call_async, EventPattern, Event, tp_name_prefix, unwrap
+from servicetest import call_async, EventPattern, Event, tp_name_prefix, watch_tube_signals
 from gabbletest import exec_test, make_result_iq, acknowledge_iq
 
 from twisted.words.xish import domish, xpath
@@ -327,15 +327,7 @@ def test(q, bus, conn, stream):
     # being in the message somewhere
     assert my_bus_name in binary
 
-    def got_signal_cb(*args, **kwargs):
-        q.handle_event(Event('tube-signal',
-            path=kwargs['path'],
-            signal=kwargs['member'],
-            args=map(unwrap, args)))
-
-    dbus_tube_conn.add_signal_receiver(got_signal_cb,
-            path_keyword='path', member_keyword='member',
-            byte_arrays=True)
+    watch_tube_signals(q, dbus_tube_conn)
 
     dbus_message = binary
     seq = 0

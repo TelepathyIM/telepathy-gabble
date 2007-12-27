@@ -452,6 +452,18 @@ class EventProtocolClientFactory(ClientFactory):
         self.queue.handle_event(Event('socket-connected', protocol=proto))
         return proto
 
+def watch_tube_signals(q, tube_conn):
+    def got_signal_cb(*args, **kwargs):
+        q.handle_event(Event('tube-signal',
+            path=kwargs['path'],
+            signal=kwargs['member'],
+            args=map(unwrap, args),
+            tube_conn=tube_conn))
+
+    tube_conn.add_signal_receiver(got_signal_cb,
+        path_keyword='path', member_keyword='member',
+        byte_arrays=True)
+
 if __name__ == '__main__':
     unittest.main()
 

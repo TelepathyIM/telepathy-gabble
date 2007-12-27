@@ -156,10 +156,6 @@ def test(q, bus, conn, stream):
 
     unix_socket_adr = accept_return_event.value[0]
 
-    def gotProtocol(p, queue):
-        p.queue = queue
-        p.sendData("hello initiator")
-
     c = ClientCreator(reactor, EventProtocol)
     factory = EventProtocolFactory(q)
     reactor.connectUNIX(unix_socket_adr, factory)

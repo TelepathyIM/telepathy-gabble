@@ -11,7 +11,6 @@ import pprint
 import traceback
 import unittest
 
-import dbus
 import dbus.glib
 
 from twisted.internet import reactor

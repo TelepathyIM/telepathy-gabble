@@ -443,14 +443,8 @@ class EventProtocolFactory(Factory):
         self.queue.handle_event(Event('socket-connected', protocol=proto))
         return proto
 
-class EventProtocolClientFactory(ClientFactory):
-    def __init__(self, queue):
-        self.queue = queue
-
-    def buildProtocol(self, addr):
-        proto =  EventProtocol(self.queue)
-        self.queue.handle_event(Event('socket-connected', protocol=proto))
-        return proto
+class EventProtocolClientFactory(EventProtocolFactory, ClientFactory):
+    pass
 
 def watch_tube_signals(q, tube):
     def got_signal_cb(*args, **kwargs):

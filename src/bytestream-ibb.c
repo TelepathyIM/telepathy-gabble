@@ -542,7 +542,8 @@ gabble_bytestream_ibb_accept (GabbleBytestreamIface *iface,
 
   if (_gabble_connection_send (priv->conn, msg, NULL))
     {
-      DEBUG ("stream is now accepted");
+      DEBUG ("stream %s with %s is now accepted", priv->stream_id,
+          priv->peer_jid);
       g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_ACCEPTED, NULL);
     }
 

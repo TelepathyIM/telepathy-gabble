@@ -225,7 +225,6 @@ def test(q, bus, conn, stream):
     data_node['sid'] = stream_id
     data_node['seq'] = '0'
     data_node.addContent(base64.b64encode('hi joiner!'))
-    message.addElement((None, 'poney'))
     stream.send(message)
 
     q.expect('socket-data', protocol=protocol, data="hi joiner!")

@@ -156,7 +156,6 @@ def test(q, bus, conn, stream):
 
     unix_socket_adr = accept_return_event.value[0]
 
-    c = ClientCreator(reactor, EventProtocol)
     factory = EventProtocolClientFactory(q)
     reactor.connectUNIX(unix_socket_adr, factory)
 

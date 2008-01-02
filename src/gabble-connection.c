@@ -1186,9 +1186,8 @@ _gabble_connection_connect (TpBaseConnection *base,
       lm_connection_set_port (conn->lmconn, priv->port);
     }
 #ifndef HAVE_LM_SRV_LOOKUPS
-  /* otherwise set the server & port to the stream server,
-   * if one didn't appear from a SRV lookup */
-  else if (lm_connection_get_server (conn->lmconn) == NULL)
+  /* set the server and port from the JID if we don't have SRV lookups */
+  else
     {
       lm_connection_set_server (conn->lmconn, priv->stream_server);
       lm_connection_set_port (conn->lmconn, priv->port);

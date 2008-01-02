@@ -8,8 +8,8 @@ import dbus
 from dbus.connection import Connection
 from dbus.lowlevel import SignalMessage
 
-from servicetest import call_async, EventPattern, Event, tp_name_prefix, watch_tube_signals
-from gabbletest import exec_test, make_result_iq, acknowledge_iq
+from servicetest import call_async, EventPattern, tp_name_prefix, watch_tube_signals
+from gabbletest import exec_test, acknowledge_iq
 
 from twisted.words.xish import domish, xpath
 from twisted.internet.protocol import Factory, Protocol

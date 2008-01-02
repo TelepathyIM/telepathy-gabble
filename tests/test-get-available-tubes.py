@@ -1,9 +1,5 @@
 """Test GetAvailableStreamTubeTypes and GetAvailableTubeTypes"""
 
-import base64
-import errno
-import os
-
 import dbus
 
 from servicetest import call_async, EventPattern, tp_name_prefix

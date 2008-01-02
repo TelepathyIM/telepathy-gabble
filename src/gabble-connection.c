@@ -1171,10 +1171,18 @@ _gabble_connection_connect (TpBaseConnection *base,
   lm_connection_set_jid (conn->lmconn, jid);
   g_free (jid);
 
-  /* always override server and port if one was forced upon us */
+  /* override server and port if one was forced upon us */
   if (priv->connect_server != NULL)
     {
       lm_connection_set_server (conn->lmconn, priv->connect_server);
+      lm_connection_set_port (conn->lmconn, priv->port);
+    }
+  /* set the server and port from the JID if we're using old SSL, otherwise we
+   * will try and make an SSL connection to a server or port we got from a SRV
+   * lookup, which should be connected to in clear */
+  else if (priv->old_ssl)
+    {
+      lm_connection_set_server (conn->lmconn, priv->stream_server);
       lm_connection_set_port (conn->lmconn, priv->port);
     }
 #ifndef HAVE_LM_SRV_LOOKUPS

@@ -1,8 +1,6 @@
 """Test IBB tube support in the context of a MUC."""
 
 import base64
-import errno
-import os
 
 import dbus
 from dbus.connection import Connection
@@ -12,9 +10,6 @@ from servicetest import call_async, EventPattern, tp_name_prefix
 from gabbletest import exec_test, make_result_iq, acknowledge_iq
 
 from twisted.words.xish import domish, xpath
-from twisted.internet.protocol import Factory, Protocol
-from twisted.internet import reactor
-from twisted.words.protocols.jabber.client import IQ
 
 sample_parameters = dbus.Dictionary({
     's': 'hello',

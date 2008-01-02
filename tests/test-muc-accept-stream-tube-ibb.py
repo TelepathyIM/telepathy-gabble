@@ -1,16 +1,12 @@
 """Test IBB stream tube support in the context of a MUC."""
 
 import base64
-import errno
-import os
-
 import dbus
 
-from servicetest import call_async, EventPattern, tp_name_prefix, EventProtocol, EventProtocolClientFactory
+from servicetest import call_async, EventPattern, tp_name_prefix, EventProtocolClientFactory
 from gabbletest import exec_test, make_result_iq, acknowledge_iq
 
 from twisted.words.xish import domish, xpath
-from twisted.internet.protocol import Factory, Protocol, ClientCreator
 from twisted.internet import reactor
 from twisted.words.protocols.jabber.client import IQ
 

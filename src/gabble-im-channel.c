@@ -187,8 +187,9 @@ gabble_im_channel_set_property (GObject     *object,
       priv->handle = g_value_get_uint (value);
       break;
     case PROP_HANDLE_TYPE:
-      /* this property is writable in the interface, but not actually
-       * meaningfully changable on this channel, so we do nothing */
+    case PROP_CHANNEL_TYPE:
+      /* these properties are writable in the interface, but not actually
+       * meaningfully changeable on this channel, so we do nothing */
       break;
     case PROP_CONNECTION:
       priv->conn = g_value_get_object (value);

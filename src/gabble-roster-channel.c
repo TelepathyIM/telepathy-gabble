@@ -219,6 +219,10 @@ gabble_roster_channel_set_property (GObject     *object,
     case PROP_OBJECT_PATH:
       g_free (priv->object_path);
       priv->object_path = g_value_dup_string (value);
+    case PROP_CHANNEL_TYPE:
+      /* in telepathy-glib > 0.7.0 this property is writable in the
+       * interface, but not actually meaningfully changeable on this channel,
+       * so we do nothing */
       break;
     case PROP_HANDLE_TYPE:
       priv->handle_type = g_value_get_uint (value);

@@ -230,6 +230,10 @@ gabble_tubes_channel_set_property (GObject *object,
         priv->object_path = g_value_dup_string (value);
         DEBUG ("Setting object_path: %s", priv->object_path);
         break;
+      case PROP_CHANNEL_TYPE:
+      /* this property is writable in the interface, but not actually
+       * meaningfully changeable on this channel, so we do nothing */
+      break;
       case PROP_HANDLE:
         priv->handle = g_value_get_uint (value);
         break;

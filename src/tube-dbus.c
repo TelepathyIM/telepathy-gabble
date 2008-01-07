@@ -348,6 +348,8 @@ get_tube_state (GabbleTubeDBus *self)
       default:
         g_assert_not_reached ();
     }
+
+  g_return_val_if_reached (0);
 }
 
 static void

@@ -35,7 +35,6 @@ G_BEGIN_DECLS
 
 /* Default parameters for optional parameters */
 #define GABBLE_PARAMS_DEFAULT_RESOURCE                   "Telepathy"
-#define GABBLE_PARAMS_DEFAULT_PORT                       5222
 #define GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_PORT           443
 #define GABBLE_PARAMS_DEFAULT_STUN_PORT                  3478
 

@@ -131,8 +131,7 @@ static const TpCMParamSpec jabber_params[] = {
     G_STRUCT_OFFSET(GabbleParams, priority), NULL, NULL },
 
   { "port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT,
-    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT,
-    GINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_PORT),
+    0, GUINT_TO_POINTER(0),
     G_STRUCT_OFFSET(GabbleParams, port),
     tp_cm_param_filter_uint_nonzero, NULL },
 

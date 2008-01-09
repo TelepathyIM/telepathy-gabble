@@ -536,7 +536,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
 
   param_spec = g_param_spec_uint ("port", "Jabber server port",
                                   "The port used when establishing a connection.",
-                                  0, G_MAXUINT16, GABBLE_PARAMS_DEFAULT_PORT,
+                                  0, G_MAXUINT16, 0,
                                   G_PARAM_CONSTRUCT |
                                   G_PARAM_READWRITE |
                                   G_PARAM_STATIC_NAME |
@@ -1160,7 +1160,7 @@ _gabble_connection_connect (TpBaseConnection *base,
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   char *jid;
 
-  g_assert (priv->port > 0 && priv->port <= G_MAXUINT16);
+  g_assert (priv->port <= G_MAXUINT16);
   g_assert (priv->stream_server != NULL);
   g_assert (priv->username != NULL);
   g_assert (priv->password != NULL);

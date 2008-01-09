@@ -346,10 +346,8 @@ get_tube_state (GabbleTubeDBus *self)
         return TP_TUBE_STATE_REMOTE_PENDING;
         break;
       default:
-        g_assert_not_reached ();
+        g_return_val_if_reached (0);
     }
-
-  g_return_val_if_reached (0);
 }
 
 static void

@@ -77,8 +77,6 @@
     ("GValueArray", G_TYPE_UINT, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT, \
                     G_TYPE_INVALID))
 
-#define FALLBACK_PORT 5222
-
 static void conn_service_iface_init (gpointer, gpointer);
 static void capabilities_service_iface_init (gpointer, gpointer);
 
@@ -1177,33 +1175,28 @@ _gabble_connection_connect (TpBaseConnection *base,
   if (priv->connect_server != NULL || priv->port != 0)
     {
       gchar *server;
-      guint port;
 
       if (priv->connect_server != NULL)
         server = priv->connect_server;
       else
         server = priv->stream_server;
 
-      if (priv->port != 0)
-        port = priv->port;
-      else
-        port = FALLBACK_PORT;
-
       DEBUG ("disabling SRV because \"server\" or \"port\" parameter "
-          "specified, will connect to %s:%u", server, port);
+          "specified, will connect to %s", server);
 
       lm_connection_set_server (conn->lmconn, server);
-      lm_connection_set_port (conn->lmconn, port);
+
+      if (priv->port != 0)
+        lm_connection_set_port (conn->lmconn, priv->port);
     }
 #ifndef HAVE_LM_SRV_LOOKUPS
   /* set the server and port from the JID if we don't have SRV lookups */
   else
     {
-      DEBUG ("SRV lookup not supported, will connect to %s:%u",
-          priv->stream_server, FALLBACK_PORT);
+      DEBUG ("SRV lookup not supported, will connect to %s",
+          priv->stream_server);
 
       lm_connection_set_server (conn->lmconn, priv->stream_server);
-      lm_connection_set_port (conn->lmconn, FALLBACK_PORT);
     }
 #else
   DEBUG ("letting SRV lookup decide server and port");

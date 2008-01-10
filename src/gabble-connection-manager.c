@@ -78,8 +78,6 @@ struct _GabbleParams {
   guint stun_port;
   gboolean ignore_ssl_errors;
   gchar *alias;
-  gchar *auth_mac;
-  gchar *auth_btid;
 };
 
 enum {
@@ -100,8 +98,6 @@ enum {
     JABBER_PARAM_STUN_PORT,
     JABBER_PARAM_IGNORE_SSL_ERRORS,
     JABBER_PARAM_ALIAS,
-    JABBER_PARAM_AUTH_MAC,
-    JABBER_PARAM_AUTH_BTID,
     LAST_JABBER_PARAM
 };
 
@@ -185,11 +181,6 @@ static const TpCMParamSpec jabber_params[] = {
     /* setting a 0-length alias makes no sense */
     tp_cm_param_filter_string_nonempty, NULL },
 
-  { "mac", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, 0, NULL,
-    G_STRUCT_OFFSET(GabbleParams, auth_mac), NULL, NULL },
-  { "btid", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, 0, NULL,
-    G_STRUCT_OFFSET(GabbleParams, auth_btid), NULL, NULL },
-
   { NULL, NULL, 0, 0, NULL, 0 }
 };
 
@@ -212,8 +203,6 @@ free_params (void *p)
   g_free (params->fallback_conference_server);
   g_free (params->stun_server);
   g_free (params->alias);
-  g_free (params->auth_mac);
-  g_free (params->auth_btid);
 
   g_slice_free (GabbleParams, params);
 }
@@ -277,10 +266,6 @@ _gabble_connection_manager_new_connection (TpBaseConnectionManager *self,
                               JABBER_PARAM_IGNORE_SSL_ERRORS,
                               params->ignore_ssl_errors);
   SET_PROPERTY_IF_PARAM_SET ("alias", JABBER_PARAM_ALIAS, params->alias);
-  SET_PROPERTY_IF_PARAM_SET ("auth-mac", JABBER_PARAM_AUTH_MAC,
-                             params->auth_mac);
-  SET_PROPERTY_IF_PARAM_SET ("auth-btid", JABBER_PARAM_AUTH_BTID,
-                             params->auth_btid);
 
   /* split up account into username, stream-server and resource */
   if (!_gabble_connection_set_properties_from_account (conn, params->account,

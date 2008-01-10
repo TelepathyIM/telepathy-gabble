@@ -162,8 +162,6 @@ struct _GabbleConnectionPrivate
   gchar *resource;
   gint8 priority;
   gchar *alias;
-  gchar *auth_mac;
-  gchar *auth_btid;
 
   /* reference to conference server name */
   const gchar *conference_server;

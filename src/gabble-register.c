@@ -39,7 +39,6 @@
 #include "gabble-signals-marshal.h"
 #include "namespaces.h"
 #include "util.h"
-#include "libmd5-rfc/md5.h"
 
 /* signal enum */
 enum
@@ -197,160 +196,6 @@ gabble_register_new (GabbleConnection *conn)
         "connection", conn, NULL));
 }
 
-typedef enum { STAGE_NOKIA_IV, STAGE_REGISTER } RegistrationStage;
-static void send_registration (GabbleRegister *, RegistrationStage);
-
-static LmHandlerResult
-nokia_iv_set_reply_cb (GabbleConnection *conn,
-                       LmMessage *sent_msg,
-                       LmMessage *reply_msg,
-                       GObject *object,
-                       gpointer user_data)
-{
-  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
-    {
-      LmMessageNode *node;
-      gint code = TP_ERROR_NOT_AVAILABLE;
-      GString *msg;
-
-      msg = g_string_sized_new (30);
-      g_string_append (msg, "Request failed");
-
-      node = lm_message_node_get_child (reply_msg->node, "error");
-      if (node)
-        {
-          GabbleXmppError error;
-
-          error = gabble_xmpp_error_from_node (node);
-
-          g_string_append_printf (msg, ": %s",
-              gabble_xmpp_error_string (error));
-        }
-
-      g_signal_emit (object, signals[FINISHED], 0, FALSE, code, msg->str);
-      g_string_free (msg, TRUE);
-    }
-  else
-    {
-      /* IV pre-authorization finished - move on to account registration */
-      send_registration (GABBLE_REGISTER (object), STAGE_REGISTER);
-    }
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-}
-
-static LmHandlerResult
-nokia_iv_get_reply_cb (GabbleConnection *conn,
-                       LmMessage *sent_msg,
-                       LmMessage *reply_msg,
-                       GObject *object,
-                       gpointer user_data)
-{
-  GabbleRegister *reg = GABBLE_REGISTER (object);
-  GabbleRegisterPrivate *priv = GABBLE_REGISTER_GET_PRIVATE (reg);
-  GError *error = NULL;
-  gint err_code = -1;
-  const gchar *err_msg = NULL;
-  LmMessage *msg = NULL;
-  LmMessageNode *query_node, *challenge_node;
-  gchar *auth_mac, *auth_btid;
-  gchar *challenge;
-  gchar response[33];
-  guint i;
-  md5_byte_t digest[16];
-  md5_state_t calculator;
-
-  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
-    {
-      /* We tried, but the server doesn't seem to support it. Never mind,
-      let's try to log in anyway and see what happens. */
-      g_signal_emit (object, signals[FINISHED], 0, TRUE, -1, NULL);
-      goto OUT;
-    }
-
-  /* sanity check the reply to some degree ... */
-  query_node = lm_message_node_get_child_with_namespace (reply_msg->node,
-      "query", NS_NOKIA_IV);
-
-  if (query_node == NULL)
-    goto ERROR_MALFORMED_REPLY;
-
-  challenge_node = lm_message_node_get_child (query_node, "challenge");
-  if (!challenge_node)
-    goto ERROR_MALFORMED_REPLY;
-  challenge = g_strdup (lm_message_node_get_value (challenge_node));
-  if (!challenge)
-    goto ERROR_MALFORMED_REPLY;
-
-  /* craft a reply */
-  msg = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
-                                      LM_MESSAGE_SUB_TYPE_SET);
-
-  query_node = lm_message_node_add_child (msg->node, "query", NULL);
-  lm_message_node_set_attribute (query_node, "xmlns", NS_NOKIA_IV);
-
-  g_object_get (priv->conn,
-      "auth-mac", &auth_mac,
-      "auth-btid", &auth_btid,
-      NULL);
-
-  for (i = 0; i < strlen (auth_mac); i++)
-    auth_mac[i] = tolower (auth_mac[i]);
-
-  for (i = 0; i < strlen (auth_btid); i++)
-    auth_btid[i] = tolower (auth_btid[i]);
-
-  for (i = 0; i < strlen (challenge); i++)
-    challenge[i] = tolower (challenge[i]);
-
-  md5_init (&calculator);
-  md5_append (&calculator, (const md5_byte_t *)auth_btid,
-             strlen (auth_btid));
-  md5_append (&calculator, (const md5_byte_t *)":", 1);
-  md5_append (&calculator, (const md5_byte_t *)challenge, strlen (challenge));
-  md5_finish (&calculator, digest);
-
-  for (i = 0; i < 16; i++)
-    {
-      sprintf (response + i*2, "%02x",digest[i]);
-    }
-
-  lm_message_node_add_child (query_node, "mac", auth_mac);
-  lm_message_node_add_child (query_node, "response", response);
-
-  g_free (auth_mac);
-  g_free (auth_btid);
-  g_free (challenge);
-
-  if (!_gabble_connection_send_with_reply (priv->conn, msg,
-                                           nokia_iv_set_reply_cb,
-                                           G_OBJECT (reg), NULL, &error))
-    {
-      err_code = error->code;
-      err_msg = error->message;
-    }
-
-  goto OUT;
-
-ERROR_MALFORMED_REPLY:
-  err_code = TP_ERROR_NOT_AVAILABLE;
-  err_msg = "Malformed reply";
-
-OUT:
-  if (err_code != -1)
-    {
-      g_signal_emit (reg, signals[FINISHED], 0, FALSE, err_code, err_msg);
-    }
-
-  if (msg)
-    lm_message_unref (msg);
-
-  if (error)
-    g_error_free (error);
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-}
-
 static LmHandlerResult
 set_reply_cb (GabbleConnection *conn,
               LmMessage *sent_msg,
@@ -476,39 +321,6 @@ OUT:
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
-static void
-send_registration (GabbleRegister *reg, RegistrationStage stage)
-{
-  GabbleRegisterPrivate *priv = GABBLE_REGISTER_GET_PRIVATE (reg);
-  LmMessage *msg;
-  LmMessageNode *node;
-  GError *error = NULL;
-  GabbleConnectionMsgReplyFunc handler;
-
-  msg = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
-                                      LM_MESSAGE_SUB_TYPE_GET);
-  node = lm_message_node_add_child (msg->node, "query", NULL);
-  if (stage == STAGE_NOKIA_IV)
-    {
-      lm_message_node_set_attribute (node, "xmlns", NS_NOKIA_IV);
-      handler = nokia_iv_get_reply_cb;
-    }
-  else
-    {
-      lm_message_node_set_attribute (node, "xmlns", NS_REGISTER);
-      handler = get_reply_cb;
-    }
-  if (!_gabble_connection_send_with_reply (priv->conn, msg, handler,
-                                           G_OBJECT (reg), NULL, &error))
-    {
-      g_signal_emit (reg, signals[FINISHED], 0, FALSE, error->code,
-                     error->message);
-      g_error_free (error);
-    }
-
-  lm_message_unref (msg);
-}
-
 /**
  * gabble_register_start:
  *
@@ -519,24 +331,25 @@ send_registration (GabbleRegister *reg, RegistrationStage stage)
 void gabble_register_start (GabbleRegister *reg)
 {
   GabbleRegisterPrivate *priv = GABBLE_REGISTER_GET_PRIVATE (reg);
-  gchar *auth_mac, *auth_btid;
+  LmMessage *msg;
+  LmMessageNode *node;
+  GError *error = NULL;
+  GabbleConnectionMsgReplyFunc handler;
 
-  g_object_get (priv->conn, "auth-mac", &auth_mac, NULL);
-  g_object_get (priv->conn, "auth-btid", &auth_btid, NULL);
+  msg = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
+                                      LM_MESSAGE_SUB_TYPE_GET);
+  node = lm_message_node_add_child (msg->node, "query", NULL);
 
-  if (auth_mac && auth_btid)
+  lm_message_node_set_attribute (node, "xmlns", NS_REGISTER);
+  handler = get_reply_cb;
+
+  if (!_gabble_connection_send_with_reply (priv->conn, msg, handler,
+                                           G_OBJECT (reg), NULL, &error))
     {
-      send_registration (reg, STAGE_NOKIA_IV);
+      g_signal_emit (reg, signals[FINISHED], 0, FALSE, error->code,
+                     error->message);
+      g_error_free (error);
     }
-  else
-    {
-      if (auth_mac || auth_btid)
-        {
-          g_warning ("Only one of 'mac', 'btid' supplied - not performing "
-                     "privileged device authorization");
-        }
-      send_registration (reg, STAGE_REGISTER);
-    }
-  g_free (auth_mac);
-  g_free (auth_btid);
+
+  lm_message_unref (msg);
 }

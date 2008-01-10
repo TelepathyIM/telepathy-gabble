@@ -81,7 +81,6 @@ enum
   PROP_MEDIA_TYPE,
   PROP_CONNECTION_STATE,
   PROP_READY,
-  PROP_H263_N800_HACK,
   PROP_GOT_LOCAL_CODECS,
   PROP_SIGNALLING_STATE,
   PROP_PLAYING,
@@ -100,7 +99,6 @@ struct _GabbleMediaStreamPrivate
   gchar *object_path;
   guint id;
   guint media_type;
-  gboolean h283_n800_hack;
 
   gboolean ready;
   gboolean sending;
@@ -220,9 +218,6 @@ gabble_media_stream_get_property (GObject    *object,
     case PROP_MEDIA_TYPE:
       g_value_set_uint (value, priv->media_type);
       break;
-    case PROP_H263_N800_HACK:
-      g_value_set_boolean (value, priv->h283_n800_hack);
-      break;
     case PROP_CONNECTION_STATE:
       g_value_set_uint (value, stream->connection_state);
       break;
@@ -282,9 +277,6 @@ gabble_media_stream_set_property (GObject      *object,
       break;
     case PROP_MEDIA_TYPE:
       priv->media_type = g_value_get_uint (value);
-      break;
-    case PROP_H263_N800_HACK:
-      priv->h283_n800_hack = g_value_get_boolean (value);
       break;
     case PROP_CONNECTION_STATE:
       GMS_DEBUG_INFO (priv->session, "stream %s connection state %d",
@@ -423,19 +415,6 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                                   G_PARAM_STATIC_NAME |
                                   G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_MEDIA_TYPE, param_spec);
-
-  param_spec = g_param_spec_boolean ("h263-n800-hack", "Enable H263-N800 hack",
-                                     "A boolean signifying whether this "
-                                     "stream should dynamically rewrite "
-                                     "codec names between H263-N800 and "
-                                     "H263-1998.",
-                                     FALSE,
-                                     G_PARAM_CONSTRUCT_ONLY |
-                                     G_PARAM_READWRITE |
-                                     G_PARAM_STATIC_NAME |
-                                     G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_H263_N800_HACK,
-      param_spec);
 
   param_spec = g_param_spec_uint ("connection-state", "Stream connection state",
                                   "An integer indicating the state of the"
@@ -1168,24 +1147,6 @@ _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream,
           name = "";
         }
 
-      /* if the N800 hack mode is enabled then skip any codecs called
-       * H263-N800, and interpret the remote end's H263-1998 as H263-N800 */
-      if (priv->h283_n800_hack)
-        {
-          if (!tp_strdiff (name, "H263-N800"))
-            {
-              GMS_DEBUG_WARNING (priv->session, "N800 hack enabled, skipping "
-                  "unexpected remote H263-N800!");
-              continue;
-            }
-          else if (!tp_strdiff (name, "H263-1998"))
-            {
-              GMS_DEBUG_INFO (priv->session, "N800 hack enabled, interpeting "
-                  "remote H263-1998 as H263-N800");
-              name = "H263-N800";
-            }
-        }
-
       /* clock rate: jingle and newer GTalk */
       str = lm_message_node_get_attribute (node, "clockrate"); /* google */
       if (str == NULL)
@@ -1682,26 +1643,6 @@ _gabble_media_stream_content_node_add_description (GabbleMediaStream *stream,
           4, &channels,
           5, &params,
           G_MAXUINT);
-
-      /* if the N800 hack mode is enabled then skip any codecs called
-       * H263-1998, and rebrand H263-N800 as H263-1998 */
-      if (priv->h283_n800_hack)
-        {
-          if (!tp_strdiff (name, "H263-1998"))
-            {
-              GMS_DEBUG_INFO (priv->session, "N800 hack enabled, skipping "
-                  "real local H263-1998");
-              g_free (name);
-              continue;
-            }
-          else if (!tp_strdiff (name, "H263-N800"))
-            {
-              GMS_DEBUG_INFO (priv->session, "N800 hack enabled, advertising "
-                  "local H263-N800 as H263-1998");
-              g_free (name);
-              name = g_strdup ("H263-1998");
-            }
-        }
 
       /* create a sub-node called "payload-type" and fill it */
       pt_node = lm_message_node_add_child (desc_node, "payload-type", NULL);

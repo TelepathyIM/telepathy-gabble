@@ -1151,7 +1151,7 @@ _gabble_connection_connect (TpBaseConnection *base,
         lm_connection_set_port (conn->lmconn, priv->port);
     }
 #ifndef HAVE_LM_SRV_LOOKUPS
-  /* set the server and port from the JID if we don't have SRV lookups */
+  /* set the server from the JID if we don't have SRV lookups */
   else
     {
       DEBUG ("SRV lookup not supported, will connect to %s",

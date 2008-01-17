@@ -5,12 +5,12 @@ AC_PREREQ([2.59])
 #     odd minor -> development series
 #     even minor -> stable series
 #     increment micro for each release within a series
-#   set gabble_release to 1.
+#   set gabble_nano_version to 0.
 
 m4_define([gabble_major_version], [0])
 m4_define([gabble_minor_version], [7])
-m4_define([gabble_micro_version], [1])
-m4_define([gabble_nano_version], [1])
+m4_define([gabble_micro_version], [2])
+m4_define([gabble_nano_version], [0])
 
 # Some magic
 m4_define([gabble_base_version],

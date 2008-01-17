@@ -1,0 +1,52 @@
+telepathy-gabble 0.7.2 (2008-01-17)
+===================================
+* Improvements to build system and code generation
+* Tubes improvements
+* Test improvements
+  * Improvements to test framework
+  * Most of the MUC tube code path is tested
+* Saner behaviour of old-ssl/server/port/require-encryption flags
+* Removal of unneccessary support hacks for N800-H263 and Nokia's
+  Instant Video
+
+telepathy-gabble 0.7.1 (2007-11-12)
+===================================
+This version detects whether Loudmouth >= 1.3.2 is present at build time;
+if found, it uses STARTTLS whenever available, enables support for SASL and
+SRV lookups, and has a require-encryption connection manager parameter which
+makes the connection fail if STARTTLS cannot be used.
+
+It also takes advantage of the debug infrastructure changes in
+telepathy-glib 0.6.1 to separate the concepts of debug flags and
+persistence.
+
+telepathy-gabble 0.7.0 (2007-11-07)
+===================================
+This is the first release on the 0.7 development branch. The main change
+is the addition of Tubes - we've finally managed to get the various
+OLPC-specific branches reviewed and merged. We aim to get this release
+into Update.1 of the OLPC system software.
+
+Highlights:
+
+* All the same bug fixes as stable branch release 0.6.1
+
+* Tubes, a generic transport for collaborative applications:
+  * multi-user D-Bus tubes, where the collaboration is in a MUC (chat room)
+    which behaves a lot like the D-Bus daemon
+  * one-to-one D-Bus tubes, which behave a lot like peer-to-peer D-Bus
+    connections
+  * multi-user stream tubes, where one user in a MUC exports a Unix,
+    IPv4 or IPv6 server socket and other users can connect to it
+  * one-to-one stream tubes, just like multi-user but without the MUC
+
+* Support for the OLPC Activity and Buddy abstractions
+
+* A man page and some protocol documentation
+
+* The connection manager binary now installs to $libexecdir -
+  distributors take note!
+
+D-Bus tubes require libdbus-1 version 1.0.2 or better; if you compile
+against an older version of libdbus you won't get D-Bus tubes support.
+

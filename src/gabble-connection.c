@@ -1150,9 +1150,9 @@ _gabble_connection_connect (TpBaseConnection *base,
       if (priv->port != 0)
         lm_connection_set_port (conn->lmconn, priv->port);
     }
+  else
 #ifndef HAVE_LM_SRV_LOOKUPS
   /* set the server from the JID if we don't have SRV lookups */
-  else
     {
       DEBUG ("SRV lookup not supported, will connect to %s",
           priv->stream_server);
@@ -1160,7 +1160,7 @@ _gabble_connection_connect (TpBaseConnection *base,
       lm_connection_set_server (conn->lmconn, priv->stream_server);
     }
 #else
-  DEBUG ("letting SRV lookup decide server and port");
+    DEBUG ("letting SRV lookup decide server and port");
 #endif /* HAVE_LM_SRV_LOOKUPS */
 
   if (priv->https_proxy_server)

@@ -158,22 +158,15 @@ if test -z "$PYTHON"; then
 fi
 
 dnl Check for Loudmouth
-AC_ARG_ENABLE(loudmouth-versioning,
-  AC_HELP_STRING([--disable-loudmouth-versioning],
-                 [Stops configure checking the version of loudmouth to use.]),
-                 enable_loudmouth_versioning=$enableval,
-                 enable_loudmouth_versioning=yes)
-
-if test x$enable_loudmouth_versioning = xyes; then
-  LOUDMOUTH_VERSION_STR=" >= 1.1.1"
-else
-  LOUDMOUTH_VERSION_STR=""
-fi
-
-PKG_CHECK_MODULES(LOUDMOUTH, loudmouth-1.0$LOUDMOUTH_VERSION_STR)
+PKG_CHECK_MODULES(LOUDMOUTH, loudmouth-1.0 >= 1.1.1)
 
 AC_SUBST(LOUDMOUTH_CFLAGS)
 AC_SUBST(LOUDMOUTH_LIBS)
+
+PKG_CHECK_EXISTS(loudmouth-1.0 >= 1.3.2, [
+    AC_DEFINE(HAVE_LM_SRV_LOOKUPS, 1, [Define if Loudmouth can perform SRV lookups on JID domain])
+    AC_DEFINE(HAVE_LM_STARTTLS, 1, [Define if Loudmouth supports StartTLS])
+    AC_DEFINE(HAVE_LM_CONNECTION_GET_FULL_JID, 1, [Define if Loudmouth supports XMPP1.0 protocol])], [])
 
 AC_OUTPUT( Makefile \
            extensions/Makefile \

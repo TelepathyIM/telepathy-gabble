@@ -135,6 +135,9 @@ struct _GabbleConnection {
     /* bytestream factory */
     GabbleBytestreamFactory *bytestream_factory;
 
+    /* outstanding avatar requests */
+    GHashTable *avatar_requests;
+
     gpointer priv;
 };
 

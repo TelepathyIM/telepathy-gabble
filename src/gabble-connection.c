@@ -245,6 +245,8 @@ gabble_connection_constructor (GType type,
 
   self->bytestream_factory = gabble_bytestream_factory_new (self);
 
+  self->avatar_requests = g_hash_table_new (NULL, NULL);
+
   return (GObject *)self;
 }
 
@@ -725,6 +727,8 @@ gabble_connection_dispose (GObject *object)
   g_hash_table_destroy (self->olpc_activities_info);
   g_hash_table_destroy (self->olpc_pep_activities);
   g_hash_table_destroy (self->olpc_invited_activities);
+
+  g_hash_table_destroy (self->avatar_requests);
 
   /* if this is not already the case, we'll crash anyway */
   g_assert (!lm_connection_is_open (self->lmconn));

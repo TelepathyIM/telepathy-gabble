@@ -613,6 +613,13 @@ emit_avatar_retrieved (TpSvcConnectionInterfaceAvatars *iface,
   g_string_free (avatar_str, TRUE);
 }
 
+/* All references are borrowed */
+typedef struct {
+    TpHandle handle;
+    GabbleConnection *conn;
+    TpSvcConnectionInterfaceAvatars *iface;
+} RequestAvatarsContext;
+
 static void
 request_avatars_cb (GabbleVCardManager *manager,
                     GabbleVCardManagerRequest *request,
@@ -621,10 +628,18 @@ request_avatars_cb (GabbleVCardManager *manager,
                     GError *vcard_error,
                     gpointer user_data)
 {
-  if (vcard_error != NULL)
-    return;
+  RequestAvatarsContext *ctx = user_data;
 
-  emit_avatar_retrieved (user_data, handle, vcard);
+  g_assert (g_hash_table_lookup (ctx->conn->avatar_requests,
+      GUINT_TO_POINTER (ctx->handle)));
+
+  g_hash_table_remove (ctx->conn->avatar_requests,
+      GUINT_TO_POINTER (ctx->handle));
+
+  if (vcard_error == NULL)
+    emit_avatar_retrieved (ctx->iface, handle, vcard);
+
+  g_slice_free (RequestAvatarsContext, ctx);
 }
 
 static void
@@ -658,8 +673,21 @@ gabble_connection_request_avatars (TpSvcConnectionInterfaceAvatars *iface,
         }
       else
         {
-          gabble_vcard_manager_request (self->vcard_manager,
-              contact, 0, request_avatars_cb, iface, NULL);
+          if (NULL == g_hash_table_lookup (self->avatar_requests,
+                GUINT_TO_POINTER (contact)))
+            {
+              RequestAvatarsContext *ctx = g_slice_new (RequestAvatarsContext);
+
+              ctx->conn = self;
+              ctx->iface = iface;
+              ctx->handle = contact;
+
+              g_hash_table_insert (self->avatar_requests,
+                  GUINT_TO_POINTER (contact), ctx);
+
+              gabble_vcard_manager_request (self->vcard_manager,
+                contact, 0, request_avatars_cb, ctx, NULL);
+            }
         }
     }
 

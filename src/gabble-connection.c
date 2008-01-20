@@ -141,6 +141,7 @@ struct _GabbleConnectionPrivate
   gchar *connect_server;
   guint port;
   gboolean old_ssl;
+  gboolean require_encryption;
 
   gboolean ignore_ssl_errors;
   TpConnectionStatusReason ssl_error;
@@ -1191,6 +1192,20 @@ _gabble_connection_connect (TpBaseConnection *base,
       lm_connection_set_ssl (conn->lmconn, ssl);
       lm_ssl_unref (ssl);
     }
+#ifdef HAVE_LM_STARTTLS
+  else
+    {
+      LmSSL *ssl = lm_ssl_new (NULL, connection_ssl_cb, conn, NULL);
+      lm_connection_set_ssl (conn->lmconn, ssl);
+
+      /* Try to use StartTLS if possible, but be careful about
+         allowing SSL errors in that default case. */
+      lm_ssl_use_starttls (ssl, TRUE, priv->require_encryption);
+
+      if (!priv->require_encryption)
+          priv->ignore_ssl_errors = TRUE;
+    }
+#endif /* HAVE_LM_STARTTLS */
 
   /* send whitespace to the server every 30 seconds */
   lm_connection_set_keep_alive_rate (conn->lmconn, 30);

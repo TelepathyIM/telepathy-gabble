@@ -525,7 +525,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
 
   param_spec = g_param_spec_uint ("port", "Jabber server port",
                                   "The port used when establishing a connection.",
-                                  0, G_MAXUINT16, GABBLE_PARAMS_DEFAULT_PORT,
+                                  0, G_MAXUINT16, 0,
                                   G_PARAM_CONSTRUCT |
                                   G_PARAM_READWRITE |
                                   G_PARAM_STATIC_NAME |
@@ -1131,7 +1131,7 @@ _gabble_connection_connect (TpBaseConnection *base,
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
   char *jid;
 
-  g_assert (priv->port > 0 && priv->port <= G_MAXUINT16);
+  g_assert (priv->port <= G_MAXUINT16);
   g_assert (priv->stream_server != NULL);
   g_assert (priv->username != NULL);
   g_assert (priv->password != NULL);
@@ -1142,19 +1142,36 @@ _gabble_connection_connect (TpBaseConnection *base,
   lm_connection_set_jid (conn->lmconn, jid);
   g_free (jid);
 
-  /* always override server and port if one was forced upon us */
-  if (priv->connect_server != NULL)
+  /* override server and port if either was provided */
+  if (priv->connect_server != NULL || priv->port != 0)
     {
-      lm_connection_set_server (conn->lmconn, priv->connect_server);
-      lm_connection_set_port (conn->lmconn, priv->port);
+      gchar *server;
+
+      if (priv->connect_server != NULL)
+        server = priv->connect_server;
+      else
+        server = priv->stream_server;
+
+      DEBUG ("disabling SRV because \"server\" or \"port\" parameter "
+          "specified, will connect to %s", server);
+
+      lm_connection_set_server (conn->lmconn, server);
+
+      if (priv->port != 0)
+        lm_connection_set_port (conn->lmconn, priv->port);
     }
-  /* otherwise set the server & port to the stream server,
-   * if one didn't appear from a SRV lookup */
-  else if (lm_connection_get_server (conn->lmconn) == NULL)
+  else
+#ifndef HAVE_LM_SRV_LOOKUPS
+  /* set the server from the JID if we don't have SRV lookups */
     {
+      DEBUG ("SRV lookup not supported, will connect to %s",
+          priv->stream_server);
+
       lm_connection_set_server (conn->lmconn, priv->stream_server);
-      lm_connection_set_port (conn->lmconn, priv->port);
     }
+#else
+    DEBUG ("letting SRV lookup decide server and port");
+#endif /* HAVE_LM_SRV_LOOKUPS */
 
   if (priv->https_proxy_server)
     {

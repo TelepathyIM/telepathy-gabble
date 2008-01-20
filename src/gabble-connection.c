@@ -1845,7 +1845,11 @@ connection_auth_cb (LmConnection *lmconn,
     }
 
 
+#ifdef HAVE_LM_CONNECTION_GET_FULL_JID
+  jid = lm_connection_get_full_jid (lmconn);
+#else
   jid = lm_connection_get_jid (lmconn);
+#endif /* HAVE_LM_CONNECTION_GET_FULL_JID */
 
   base->self_handle = tp_handle_ensure (contact_handles, jid, NULL, &error);
 

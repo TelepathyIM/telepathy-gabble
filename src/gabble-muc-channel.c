@@ -358,15 +358,15 @@ properties_disco_cb (GabbleDisco *disco,
   lm_node = lm_message_node_get_child (query_result, "identity");
   if (lm_node)
     {
-      const gchar *type, *category, *name;
+      const gchar *category, *type, *name;
 
-      type = lm_message_node_get_attribute (lm_node, "type");
       category = lm_message_node_get_attribute (lm_node, "category");
+      type = lm_message_node_get_attribute (lm_node, "type");
       name = lm_message_node_get_attribute (lm_node, "name");
 
-      if (NULL != type && 0 == strcmp (type, "text") &&
-          NULL != category && 0 == strcmp (category, "conference") &&
-          NULL != name)
+      if (!tp_strdiff (category, "conference") &&
+          !tp_strdiff (type, "text") &&
+          name != NULL)
         {
           g_value_init (&val, G_TYPE_STRING);
           g_value_set_string (&val, name);

@@ -105,8 +105,8 @@ typedef struct _GabbleDiscoItem GabbleDiscoItem;
 struct _GabbleDiscoItem {
     const gchar *jid;
     const char *name;
-    const char *type;
     const char *category;
+    const char *type;
     GHashTable *features;
 };
 
@@ -130,8 +130,8 @@ void gabble_disco_pipeline_destroy (gpointer self);
 void gabble_disco_service_discovery (GabbleDisco *disco, const char *server);
 const GabbleDiscoItem *
 gabble_disco_service_find (GabbleDisco *disco,
-                           const char *type,
                            const char *category,
+                           const char *type,
                            const char *feature);
 
 G_END_DECLS

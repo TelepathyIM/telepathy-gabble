@@ -897,23 +897,21 @@ gabble_disco_service_find (GabbleDisco *disco,
   for (l = priv->service_cache; l; l = g_slist_next (l))
     {
       GabbleDiscoItem *item = (GabbleDiscoItem *) l->data;
-      gboolean selected = TRUE;
-
-      if (type != NULL && tp_strdiff (type, item->type))
-        selected = FALSE;
 
       if (category != NULL && tp_strdiff (category, item->category))
-        selected = FALSE;
+        continue;
+
+      if (type != NULL && tp_strdiff (type, item->type))
+        continue;
 
       if (feature != NULL)
         {
           gpointer k, v;
           if (!g_hash_table_lookup_extended (item->features, feature, &k, &v))
-            selected = FALSE;
+            continue;
         }
 
-      if (selected)
-        return item;
+      return item;
     }
 
   return NULL;

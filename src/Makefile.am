@@ -140,7 +140,7 @@ ALL_LIBS =  @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@ @TP_GLIB_LIBS@
 
 gabble-signals-marshal.list: $(libgabble_convenience_la_SOURCES) Makefile.am
 	( cd $(srcdir) && \
-	sed -n -e 's/.*gabble_marshal_\([[:upper:]]*__[[:upper:]_]*\).*/\1/p' \
+	sed -n -e 's/.*gabble_marshal_\([A-Z0-9]*__[A-Z0-9_]*\).*/\1/p' \
 	$(libgabble_convenience_la_SOURCES) ) \
 	| sed -e 's/__/:/' -e 'y/_/,/' | sort -u > $@.tmp
 	if cmp -s $@.tmp $@; then \

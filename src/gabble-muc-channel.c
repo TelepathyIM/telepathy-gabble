@@ -220,6 +220,10 @@ struct _GabbleMucChannelPrivate
   gboolean dispose_has_run;
 
   gboolean invite_self;
+
+  /* Aggregate all presences when joining the chatroom */
+  TpIntSet *presence_handle_set;
+  gboolean initial_members_received;
 };
 
 #define GABBLE_MUC_CHANNEL_GET_PRIVATE(o) \
@@ -229,7 +233,11 @@ struct _GabbleMucChannelPrivate
 static void
 gabble_muc_channel_init (GabbleMucChannel *obj)
 {
-  /* do nothing? */
+  GabbleMucChannelPrivate *priv;
+
+  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
+  priv->presence_handle_set = tp_intset_new ();
+  priv->initial_members_received = FALSE;
 }
 
 static void contact_handle_to_room_identity (GabbleMucChannel *, TpHandle,
@@ -927,6 +935,8 @@ gabble_muc_channel_finalize (GObject *object)
       (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_ROOM);
 
   DEBUG ("called");
+
+  tp_intset_destroy (priv->presence_handle_set);
 
   /* free any data held directly by the object here */
   tp_handle_unref (room_handles, priv->handle);
@@ -1631,8 +1641,28 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
     {
       if (!tp_handle_set_is_member (mixin->members, handle))
         {
-          tp_group_mixin_change_members ((GObject *)chan, "", set, NULL,
-                                             NULL, NULL, 0, 0);
+          if (priv->initial_members_received)
+          {
+            /* no aggregation */
+            tp_group_mixin_change_members ((GObject *)chan, "", set, NULL,
+                                            NULL, NULL, 0, 0);
+          }
+          else
+          {
+            /* aggregate this presence */
+            tp_intset_add (priv->presence_handle_set, handle);
+
+            /* Do not emit one signal per presence. Instead, get all presences,
+             * and add them in priv->presence_handle_set. When we get the last
+             * presence, emit the signal. The last presence is ourselve. */
+            if (handle == mixin->self_handle)
+            {
+              /* Change all presences in only one operation */
+              tp_group_mixin_change_members ((GObject *)chan, "", priv->presence_handle_set, NULL,
+                                              NULL, NULL, 0, 0);
+              priv->initial_members_received = TRUE;
+            }
+          }
 
           if (owner_jid != NULL)
             {

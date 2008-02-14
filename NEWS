@@ -1,0 +1,10 @@
+telepathy-gabble 0.6 (2008-02-14)
+=================================
+This is a maintenance release from the 0.6.x stable branch containing
+several bugfixes backported from the development 0.7 branch.
+
+Included are fixes for better XMPP1.0 support (optional SRV/TLS/SASL
+feature support on Loudmouth>=1.3.2), better compatibility with
+telepathy-glib > 0.7.0 (avoid warnings for writable properties,
+properly set 'persist' flag), and improvements in disco support.
+

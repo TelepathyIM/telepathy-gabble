@@ -2138,19 +2138,19 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
   for (i = 0; i < add->len; i++)
     {
       GValue iface_flags_pair = {0, };
-      gchar *iface;
+      gchar *channel_type;
       guint flags;
 
       g_value_init (&iface_flags_pair, GABBLE_TP_CAPABILITY_PAIR_TYPE);
       g_value_set_static_boxed (&iface_flags_pair, g_ptr_array_index (add, i));
 
       dbus_g_type_struct_get (&iface_flags_pair,
-                              0, &iface,
+                              0, &channel_type,
                               1, &flags,
                               G_MAXUINT);
 
       for (ccd = capabilities_conversions; NULL != ccd->iface; ccd++)
-          if (g_str_equal (iface, ccd->iface))
+          if (g_str_equal (channel_type, ccd->iface))
             add_caps |= ccd->tf2c_fn (flags);
 
       g_free (iface);

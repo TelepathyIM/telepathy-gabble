@@ -2273,8 +2273,10 @@ _gabble_media_session_remove_streams (GabbleMediaSession *session,
           {
             LmMessageNode *content_node;
 
+            g_assert (priv->state > JS_STATE_PENDING_CREATED);
             g_assert (msg != NULL);
             g_assert (removing != NULL);
+            g_assert (session_node != NULL);
 
             content_node = _gabble_media_stream_add_content_node (stream,
                 session_node);

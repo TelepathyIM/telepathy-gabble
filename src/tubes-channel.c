@@ -392,7 +392,7 @@ tube_opened_cb (GabbleTubeIface *tube,
       TP_TUBE_STATE_OPEN);
 }
 
-GabbleTubeIface *
+static GabbleTubeIface *
 create_new_tube (GabbleTubesChannel *self,
                  TpTubeType type,
                  TpHandle initiator,
@@ -1523,7 +1523,7 @@ tube_msg_offered (GabbleTubesChannel *self,
       parameters, NULL, tube_id, NULL);
 }
 
-void
+static void
 tube_msg_close (GabbleTubesChannel *self,
                 LmMessage *msg)
 {

@@ -66,7 +66,7 @@ typedef struct
   const gchar *stream;
 } ConstBytestreamIdentifier;
 
-gboolean
+static gboolean
 bytestream_id_equal (gconstpointer v1,
                      gconstpointer v2)
 {
@@ -77,7 +77,7 @@ bytestream_id_equal (gconstpointer v1,
       (!tp_strdiff (left->stream, right->stream));
 }
 
-guint
+static guint
 bytestream_id_hash (gconstpointer v)
 {
   const ConstBytestreamIdentifier *bsid = v;
@@ -85,7 +85,7 @@ bytestream_id_hash (gconstpointer v)
   return g_str_hash (bsid->jid) ^ g_str_hash (bsid->stream);
 }
 
-BytestreamIdentifier *
+static BytestreamIdentifier *
 bytestream_id_new (GabbleBytestreamIface *bytestream)
 {
   BytestreamIdentifier *bsid = g_slice_new (BytestreamIdentifier);
@@ -97,7 +97,7 @@ bytestream_id_new (GabbleBytestreamIface *bytestream)
   return bsid;
 }
 
-void
+static void
 bytestream_id_free (gpointer v)
 {
   BytestreamIdentifier *bsid = v;

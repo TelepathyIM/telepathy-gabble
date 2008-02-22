@@ -291,8 +291,6 @@ gabble_presence_update (GabblePresence *presence,
     {
       if (NULL != res)
         {
-          GSList *i;
-
           priv->resources = g_slist_remove (priv->resources, res);
           _resource_free (res);
           res = NULL;
@@ -344,18 +342,18 @@ gabble_presence_update (GabblePresence *presence,
 
   for (i = priv->resources; NULL != i; i = i->next)
     {
-      Resource *res = (Resource *) i->data;
+      Resource *r = (Resource *) i->data;
 
-      presence->caps |= res->caps;
+      presence->caps |= r->caps;
 
       /* trump existing status & message if it's more present
        * or has the same presence and a higher priority */
-      if (res->status > presence->status ||
-          (res->status == presence->status && res->priority > prio))
+      if (r->status > presence->status ||
+          (r->status == presence->status && r->priority > prio))
         {
-          presence->status = res->status;
-          presence->status_message = res->status_message;
-          prio = res->priority;
+          presence->status = r->status;
+          presence->status_message = r->status_message;
+          prio = r->priority;
         }
     }
 

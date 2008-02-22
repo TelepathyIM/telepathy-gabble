@@ -149,18 +149,13 @@ gabble-signals-marshal.list: $(libgabble_convenience_la_SOURCES) Makefile.am
 		mv $@.tmp $@; \
 	fi
 
-%-signals-marshal.h: %-signals-marshal.list
-	glib-genmarshal --header --prefix=$(subst -,_,$*)_marshal $< > $*-signals-marshal.h
+%-signals-marshal.h: %-signals-marshal.list Makefile.am
+	glib-genmarshal --header --prefix=$(subst -,_,$*)_marshal $< > $@
 
-%-signals-marshal.c: %-signals-marshal.list
-	glib-genmarshal --body --prefix=$(subst -,_,$*)_marshal $< > $*-signals-marshal.c
-
-%-marshal.h: %-marshal.list
-	glib-genmarshal --header --prefix=$(subst -,_,$*)_marshal $< > $*-marshal.h
-
-%-marshal.c: %-marshal.list
-	glib-genmarshal --body --prefix=$(subst -,_,$*)_marshal $< > $*-marshal.c
-
+%-signals-marshal.c: %-signals-marshal.list Makefile.am
+	{ echo '#include "$*-signals-marshal.h"' && \
+	glib-genmarshal --body --prefix=$(subst -,_,$*)_marshal $< ; \
+	} > $@
 
 # rules for making the glib enum objects
 %-enumtypes.h: %.h Makefile.in

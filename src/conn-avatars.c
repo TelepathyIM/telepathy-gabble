@@ -811,7 +811,7 @@ gabble_connection_set_avatar (TpSvcConnectionInterfaceAvatars *iface,
  * @context: The D-Bus invocation context to use to return values
  *           or throw an error.
  */
-void
+static void
 gabble_connection_clear_avatar (TpSvcConnectionInterfaceAvatars *iface,
                                 DBusGMethodInvocation *context)
 {

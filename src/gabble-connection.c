@@ -2047,16 +2047,16 @@ _emit_capabilities_changed (GabbleConnection *conn,
       if (ccd->c2tf_fn (old_caps | new_caps))
         {
           GValue caps_monster_struct = {0, };
-          guint old_tpflags = ccd->c2tf_fn (old_caps);
-          guint old_caps = old_tpflags ?
+          guint old_specific = ccd->c2tf_fn (old_caps);
+          guint old_generic = old_specific ?
             TP_CONNECTION_CAPABILITY_FLAG_CREATE |
             TP_CONNECTION_CAPABILITY_FLAG_INVITE : 0;
-          guint new_tpflags = ccd->c2tf_fn (new_caps);
-          guint new_caps = new_tpflags ?
+          guint new_specific = ccd->c2tf_fn (new_caps);
+          guint new_generic = new_specific ?
             TP_CONNECTION_CAPABILITY_FLAG_CREATE |
             TP_CONNECTION_CAPABILITY_FLAG_INVITE : 0;
 
-          if (0 == (old_tpflags ^ new_tpflags))
+          if (0 == (old_specific ^ new_specific))
             continue;
 
           g_value_init (&caps_monster_struct,
@@ -2068,10 +2068,10 @@ _emit_capabilities_changed (GabbleConnection *conn,
           dbus_g_type_struct_set (&caps_monster_struct,
               0, handle,
               1, ccd->iface,
-              2, old_caps,
-              3, new_caps,
-              4, old_tpflags,
-              5, new_tpflags,
+              2, old_generic,
+              3, new_generic,
+              4, old_specific,
+              5, new_specific,
               G_MAXUINT);
 
           g_ptr_array_add (caps_arr, g_value_get_boxed (&caps_monster_struct));

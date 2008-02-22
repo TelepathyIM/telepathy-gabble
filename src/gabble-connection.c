@@ -1515,9 +1515,10 @@ connection_iq_disco_cb (LmMessageHandler *handler,
 
       if (NULL == node || !tp_strdiff (suffix, feature->bundle))
         {
-          LmMessageNode *node = lm_message_node_add_child (result_query,
-              "feature", NULL);
-          lm_message_node_set_attribute (node, "var", feature->ns);
+          LmMessageNode *feature_node = lm_message_node_add_child
+              (result_query, "feature", NULL);
+
+          lm_message_node_set_attribute (feature_node, "var", feature->ns);
         }
     }
 

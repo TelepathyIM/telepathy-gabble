@@ -326,15 +326,12 @@ properties_disco_cb (GabbleDisco *disco,
                      gpointer user_data)
 {
   GabbleMucChannel *chan = user_data;
-  GabbleMucChannelPrivate *priv;
   TpIntSet *changed_props_val, *changed_props_flags;
   LmMessageNode *lm_node;
   const gchar *str;
   GValue val = { 0, };
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
-
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
 
   if (error)
     {

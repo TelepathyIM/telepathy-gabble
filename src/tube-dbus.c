@@ -420,8 +420,6 @@ gabble_tube_dbus_dispose (GObject *object)
 
   if (priv->dbus_names)
     {
-      TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-          (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
       g_hash_table_foreach (priv->dbus_names, unref_handle_foreach,
           contact_repo);
       g_hash_table_destroy (priv->dbus_names);

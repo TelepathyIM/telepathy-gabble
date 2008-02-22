@@ -1807,7 +1807,7 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
                                     const gchar *subject,
                                     LmMessage *msg)
 {
-  gboolean error;
+  gboolean is_error;
   GabbleMucChannelPrivate *priv;
   TpIntSet *changed_values, *changed_flags;
   GValue val = { 0, };
@@ -1816,7 +1816,7 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
 
-  error = lm_message_get_sub_type (msg) == LM_MESSAGE_SUB_TYPE_ERROR;
+  is_error = lm_message_get_sub_type (msg) == LM_MESSAGE_SUB_TYPE_ERROR;
 
   if (priv->properties_ctx)
     {
@@ -1824,7 +1824,7 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
           ROOM_PROP_SUBJECT);
     }
 
-  if (error)
+  if (is_error)
     {
       LmMessageNode *node;
       const gchar *err_desc = NULL;
@@ -1932,14 +1932,14 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
                              const gchar *text,
                              LmMessage *msg)
 {
-  gboolean error;
+  gboolean is_error;
   GabbleMucChannelPrivate *priv;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
 
-  error = lm_message_get_sub_type (msg) == LM_MESSAGE_SUB_TYPE_ERROR;
+  is_error = lm_message_get_sub_type (msg) == LM_MESSAGE_SUB_TYPE_ERROR;
 
   if (handle_type == TP_HANDLE_TYPE_ROOM)
     {

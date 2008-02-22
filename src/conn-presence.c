@@ -189,7 +189,7 @@ set_own_status_cb (GObject *obj,
       GabblePresenceId i = status->index;
       GHashTable *args = status->optional_arguments;
       GValue *message = NULL, *priority = NULL;
-      const gchar *status = NULL;
+      const gchar *message_str = NULL;
 
       if (args != NULL)
         {
@@ -207,7 +207,7 @@ set_own_status_cb (GObject *obj,
               retval = FALSE;
               goto OUT;
             }
-          status = g_value_get_string (message);
+          message_str = g_value_get_string (message);
         }
 
       if (priority)
@@ -224,7 +224,7 @@ set_own_status_cb (GObject *obj,
         }
 
       if (gabble_presence_update (conn->self_presence, resource, i,
-            status, prio))
+            message_str, prio))
         {
           emit_one_presence_update (conn, base->self_handle);
           retval = _gabble_connection_signal_own_presence (conn,

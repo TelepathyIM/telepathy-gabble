@@ -735,10 +735,10 @@ _caps_disco_cb (GabbleDisco *disco,
 
           if (!waiter->disco_requested)
             {
-              const gchar *jid;
+              const gchar *j;
 
-              jid = tp_handle_inspect (contact_repo, waiter->handle);
-              full_jid = g_strdup_printf ("%s/%s", jid, waiter->resource);
+              j = tp_handle_inspect (contact_repo, waiter->handle);
+              full_jid = g_strdup_printf ("%s/%s", j, waiter->resource);
 
               gabble_disco_request (disco, GABBLE_DISCO_TYPE_INFO, full_jid,
                   node, _caps_disco_cb, cache, G_OBJECT(cache), NULL);
@@ -862,10 +862,10 @@ _caps_disco_cb (GabbleDisco *disco,
 
           if (!waiter->disco_requested)
             {
-              const gchar *jid;
+              const gchar *j;
 
-              jid = tp_handle_inspect (contact_repo, waiter->handle);
-              full_jid = g_strdup_printf ("%s/%s", jid, waiter->resource);
+              j = tp_handle_inspect (contact_repo, waiter->handle);
+              full_jid = g_strdup_printf ("%s/%s", j, waiter->resource);
 
               gabble_disco_request (disco, GABBLE_DISCO_TYPE_INFO, full_jid,
                   node, _caps_disco_cb, cache, G_OBJECT(cache), NULL);

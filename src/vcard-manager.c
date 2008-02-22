@@ -675,8 +675,6 @@ static void
 delete_request (GabbleVCardManagerRequest *request)
 {
   GabbleVCardManager *manager = request->manager;
-  GabbleVCardManagerPrivate *priv = GABBLE_VCARD_MANAGER_GET_PRIVATE (manager);
-  TpHandleRepoIface *contact_repo;
 
   DEBUG ("Discarding request %p", request);
 
@@ -688,9 +686,6 @@ delete_request (GabbleVCardManagerRequest *request)
   /* poison the request, so assertions about it will fail if there's a
    * dangling reference */
   request->manager = NULL;
-
-  contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->connection, TP_HANDLE_TYPE_CONTACT);
 
   request->entry->pending_requests = g_slist_remove
       (request->entry->pending_requests, request);

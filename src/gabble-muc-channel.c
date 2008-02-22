@@ -977,7 +977,7 @@ static void clear_poll_timer (GabbleMucChannel *chan)
 static void
 change_password_flags (GabbleMucChannel *chan,
                        TpChannelPasswordFlags add,
-                       TpChannelPasswordFlags remove)
+                       TpChannelPasswordFlags del)
 {
   GabbleMucChannelPrivate *priv;
   TpChannelPasswordFlags added, removed;
@@ -989,10 +989,10 @@ change_password_flags (GabbleMucChannel *chan,
   added = add & ~priv->password_flags;
   priv->password_flags |= added;
 
-  removed = remove & priv->password_flags;
+  removed = del & priv->password_flags;
   priv->password_flags &= ~removed;
 
-  if (add != 0 || remove != 0)
+  if (add != 0 || del != 0)
     {
       DEBUG ("emitting password flags changed, added 0x%X, removed 0x%X",
               added, removed);

@@ -1432,7 +1432,7 @@ check_unix_params (TpSocketAddressType address_type,
                    GError **error)
 {
   GArray *array;
-  GString *socket;
+  GString *socket_address;
   struct stat stat_buff;
   guint i;
   struct sockaddr_un dummy;
@@ -1468,29 +1468,29 @@ check_unix_params (TpSocketAddressType address_type,
         }
     }
 
-  socket = g_string_new_len (array->data, array->len);
+  socket_address = g_string_new_len (array->data, array->len);
 
-  if (g_stat (socket->str, &stat_buff) == -1)
+  if (g_stat (socket_address->str, &stat_buff) == -1)
   {
     DEBUG ("Error calling stat on socket: %s", g_strerror (errno));
 
     g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, "%s: %s",
-        socket->str, g_strerror (errno));
-    g_string_free (socket, TRUE);
+        socket_address->str, g_strerror (errno));
+    g_string_free (socket_address, TRUE);
     return FALSE;
   }
 
   if (!S_ISSOCK (stat_buff.st_mode))
   {
-    DEBUG ("%s is not a socket", socket->str);
+    DEBUG ("%s is not a socket", socket_address->str);
 
     g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-        "%s is not a socket", socket->str);
-    g_string_free (socket, TRUE);
+        "%s is not a socket", socket_address->str);
+    g_string_free (socket_address, TRUE);
     return FALSE;
   }
 
-  g_string_free (socket, TRUE);
+  g_string_free (socket_address, TRUE);
 
   if (access_control != TP_SOCKET_ACCESS_CONTROL_LOCALHOST)
   {

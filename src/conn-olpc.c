@@ -671,8 +671,6 @@ extract_activities (GabbleConnection *conn,
       const gchar *act_id;
       const gchar *room;
       ActivityInfo *info;
-      TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
-          (TpBaseConnection *) conn, TP_HANDLE_TYPE_ROOM);
       TpHandle room_handle;
 
       if (tp_strdiff (node->name, "activity"))

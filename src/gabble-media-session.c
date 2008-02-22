@@ -641,18 +641,18 @@ gabble_media_session_ready (TpSvcMediaSessionHandler *iface,
                             DBusGMethodInvocation *context)
 {
   GabbleMediaSession *self = GABBLE_MEDIA_SESSION (iface);
-  GabbleMediaSessionPrivate *priv;
+  GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (self);
   guint i;
 
-  g_assert (GABBLE_IS_MEDIA_SESSION (self));
-
-  priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (self);
+  if (priv->ready)
+    goto out;
 
   priv->ready = TRUE;
 
   for (i = 0; i < priv->streams->len; i++)
     _emit_new_stream (self, g_ptr_array_index (priv->streams, i));
 
+out:
   tp_svc_media_session_handler_return_from_ready (context);
 }
 

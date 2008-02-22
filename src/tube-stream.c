@@ -153,7 +153,7 @@ generate_ascii_string (guint len,
     buf[i] = chars[g_random_int_range (0, 64)];
 }
 
-gboolean
+static gboolean
 data_to_read_on_socket_cb (GIOChannel *source,
                            GIOCondition condition,
                            gpointer data)
@@ -411,7 +411,7 @@ start_stream_initiation (GabbleTubeStream *self,
   return result;
 }
 
-gboolean
+static gboolean
 listen_cb (GIOChannel *source,
            GIOCondition condition,
            gpointer data)

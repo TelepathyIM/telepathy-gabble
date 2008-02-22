@@ -6,7 +6,8 @@
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/errors.h>
 
-void test_handles (guint handle_type)
+static void
+test_handles (guint handle_type)
 {
   TpHandleRepoIface *repos[NUM_TP_HANDLE_TYPES];
   TpHandleRepoIface *tp_repo = NULL;

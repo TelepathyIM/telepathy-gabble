@@ -196,8 +196,6 @@ gabble_disco_dispose (GObject *object)
   GabbleDisco *self = GABBLE_DISCO (object);
   GabbleDiscoPrivate *priv = GABBLE_DISCO_GET_PRIVATE (self);
   GSList *l;
-  DBusGProxy *bus_proxy;
-  bus_proxy = tp_get_bus_proxy ();
 
   if (priv->dispose_has_run)
     return;

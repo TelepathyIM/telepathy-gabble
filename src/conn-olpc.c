@@ -1025,7 +1025,7 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
         {
           if (tp_handle_set_is_member (activities_set, channel))
             {
-              GError *error = g_error_new (TP_ERRORS,
+              error = g_error_new (TP_ERRORS,
                   TP_ERROR_INVALID_ARGUMENT,
                   "Can't set twice the same activity: %s", room);
 

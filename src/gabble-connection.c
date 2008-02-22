@@ -2118,7 +2118,7 @@ connection_capabilities_update_cb (GabblePresenceCache *cache,
 static void
 gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *iface,
                                           const GPtrArray *add,
-                                          const gchar **remove,
+                                          const gchar **del,
                                           DBusGMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
@@ -2156,10 +2156,10 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
       g_free (iface);
     }
 
-  for (i = 0; NULL != remove[i]; i++)
+  for (i = 0; NULL != del[i]; i++)
     {
       for (ccd = capabilities_conversions; NULL != ccd->iface; ccd++)
-          if (g_str_equal (remove[i], ccd->iface))
+          if (g_str_equal (del[i], ccd->iface))
             remove_caps |= ccd->tf2c_fn (~0);
     }
 

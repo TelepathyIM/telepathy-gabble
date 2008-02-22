@@ -84,9 +84,6 @@ struct _GabbleMediaFactoryPrivate
   (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_MEDIA_FACTORY, \
                                 GabbleMediaFactoryPrivate))
 
-static GObject *gabble_media_factory_constructor (GType type, guint n_props,
-    GObjectConstructParam *props);
-
 static void
 gabble_media_factory_init (GabbleMediaFactory *fac)
 {
@@ -103,20 +100,6 @@ gabble_media_factory_init (GabbleMediaFactory *fac)
 
   priv->session_chans = g_hash_table_new_full (g_str_hash, g_str_equal,
                                                g_free, NULL);
-}
-
-static GObject *
-gabble_media_factory_constructor (GType type, guint n_props,
-                               GObjectConstructParam *props)
-{
-  GObject *obj;
-  GabbleMediaFactoryPrivate *priv;
-
-  obj = G_OBJECT_CLASS (gabble_media_factory_parent_class)->
-           constructor (type, n_props, props);
-  priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (obj);
-
-  return obj;
 }
 
 
@@ -199,7 +182,6 @@ gabble_media_factory_class_init (GabbleMediaFactoryClass *gabble_media_factory_c
   g_type_class_add_private (gabble_media_factory_class,
       sizeof (GabbleMediaFactoryPrivate));
 
-  object_class->constructor = gabble_media_factory_constructor;
   object_class->dispose = gabble_media_factory_dispose;
 
   object_class->get_property = gabble_media_factory_get_property;

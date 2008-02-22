@@ -434,7 +434,7 @@ transmit_properties (GabbleConnection *conn,
 }
 
 static GQuark
-preload_buddy_properties_quark ()
+preload_buddy_properties_quark (void)
 {
   static GQuark q = 0;
   if (q == 0)
@@ -446,7 +446,7 @@ preload_buddy_properties_quark ()
 }
 
 static GQuark
-invitees_quark ()
+invitees_quark (void)
 {
   static GQuark q = 0;
   if (q == 0)

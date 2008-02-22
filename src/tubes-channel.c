@@ -711,13 +711,11 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
         {
           /* We don't know yet this tube */
           const gchar *service;
-          TpTubeType type;
           TpHandle initiator_handle;
           GHashTable *parameters;
-          guint tube_id;
 
           if (extract_tube_information (self, tube_node, &type,
-                &initiator_handle, &service, &parameters, &tube_id))
+                &initiator_handle, &service, &parameters, NULL))
             {
               switch (type)
                 {

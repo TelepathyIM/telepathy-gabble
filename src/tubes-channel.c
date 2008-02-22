@@ -1828,6 +1828,7 @@ gabble_tubes_channel_accept_d_bus_tube (TpSvcChannelTypeTubes *iface,
   if (!gabble_tube_iface_accept (tube, &error))
     {
       dbus_g_method_return_error (context, error);
+      g_error_free (error);
       return;
     }
 

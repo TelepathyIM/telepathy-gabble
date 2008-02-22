@@ -131,8 +131,7 @@ gboolean _gabble_media_session_request_stream_direction (GabbleMediaSession *,
 #define _GMS_DEBUG_LEVEL 2
 #endif
 
-#if _GMS_DEBUG_LEVEL
-#ifdef ENABLE_DEBUG
+#if defined (ENABLE_DEBUG) && _GMS_DEBUG_LEVEL
 
 #define GMS_DEBUG_INFO(s, ...) \
   _gabble_media_session_debug (s, DEBUG_MSG_INFO, __VA_ARGS__)
@@ -162,8 +161,7 @@ void _gabble_media_session_debug (GabbleMediaSession *session,
 #define GMS_DEBUG_ERROR(s, ...)
 #define GMS_DEBUG_EVENT(s, ...)
 
-#endif /* ENABLE_DEBUG */
-#endif /* _GMS_DEBUG_LEVEL */
+#endif /* defined (ENABLE_DEBUG) && _GMS_DEBUG_LEVEL */
 
 G_END_DECLS
 

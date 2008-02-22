@@ -2425,7 +2425,7 @@ _gabble_media_session_terminate (GabbleMediaSession *session,
   g_signal_emit (session, signals[TERMINATED], 0, actor, why);
 }
 
-#if _GMS_DEBUG_LEVEL
+#if defined (ENABLE_DEBUG) && _GMS_DEBUG_LEVEL
 void
 _gabble_media_session_debug (GabbleMediaSession *session,
                              DebugMessageType type,

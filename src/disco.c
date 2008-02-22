@@ -82,7 +82,7 @@ gabble_disco_error_quark (void)
   return quark;
 }
 
-#define GABBLE_DISCO_GET_PRIVATE(o)     ((GabbleDiscoPrivate*)((o)->priv));
+#define GABBLE_DISCO_GET_PRIVATE(o)     ((GabbleDiscoPrivate*)((o)->priv))
 
 static void
 gabble_disco_init (GabbleDisco *obj)

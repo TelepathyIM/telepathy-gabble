@@ -264,9 +264,6 @@ lm_message_node_add_build_va (LmMessageNode *node, guint spec, va_list ap)
     {
       switch (arg)
         {
-        case BUILD_END:
-          goto END;
-
         case BUILD_ATTRIBUTE:
           {
             gchar *key = va_arg (ap, gchar *);
@@ -322,7 +319,6 @@ lm_message_node_add_build_va (LmMessageNode *node, guint spec, va_list ap)
       arg = va_arg (ap, guint);
     }
 
-END:
   g_slist_free (stack);
 }
 

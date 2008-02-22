@@ -1415,7 +1415,7 @@ timeout_session (gpointer data)
 
 static void do_content_add (GabbleMediaSession *, GabbleMediaStream *);
 
-void
+static void
 _add_ready_new_streams (GabbleMediaSession *session)
 {
   GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);

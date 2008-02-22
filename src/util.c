@@ -304,10 +304,10 @@ lm_message_node_add_build_va (LmMessageNode *node, guint spec, va_list ap)
 
         case BUILD_POINTER:
           {
-            LmMessageNode **node = va_arg (ap, LmMessageNode **);
+            LmMessageNode **assign_to = va_arg (ap, LmMessageNode **);
 
-            g_return_if_fail (node != NULL);
-            *node = stack->data;
+            g_return_if_fail (assign_to != NULL);
+            *assign_to = stack->data;
           }
           break;
 

@@ -55,11 +55,12 @@ _gen/svc.c _gen/svc.h: _gen/all.xml $(tools_dir)/glib-ginterface-gen.py
 _gen/signals-marshal.list: _gen/all.xml $(tools_dir)/glib-signals-marshal-gen.py
 	$(PYTHON) $(tools_dir)/glib-signals-marshal-gen.py $< > $@
 
-_gen/signals-marshal.h: _gen/signals-marshal.list
+_gen/signals-marshal.h: _gen/signals-marshal.list Makefile.am
 	$(GLIB_GENMARSHAL) --header --prefix=_gabble_ext_marshal $< > $@
 
-_gen/signals-marshal.c: _gen/signals-marshal.list
-	$(GLIB_GENMARSHAL) --body --prefix=_gabble_ext_marshal $< > $@
+_gen/signals-marshal.c: _gen/signals-marshal.list Makefile.am
+	{ echo '#include "_gen/signals-marshal.h"' && \
+	$(GLIB_GENMARSHAL) --body --prefix=_gabble_ext_marshal $< ; } > $@
 
 _gen/enums.h: _gen/all.xml $(tools_dir)/c-constants-generator.xsl
 	$(XSLTPROC) $(XSLTPROCFLAGS) \

@@ -576,7 +576,7 @@ jingle_info_send_request (GabbleMediaFactory *fac)
  * Called by loudmouth when we get an incoming <iq>. This handler
  * is concerned only with Jingle info queries.
  */
-LmHandlerResult
+static LmHandlerResult
 jingle_info_iq_callback (LmMessageHandler *handler,
                          LmConnection *lmconn,
                          LmMessage *message,

@@ -2011,7 +2011,7 @@ connection_disco_cb (GabbleDisco *disco,
   return;
 
 ERROR:
-  if (error)
+  if (error != NULL)
     g_error_free (error);
 
   tp_base_connection_change_status (base,

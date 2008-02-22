@@ -964,7 +964,7 @@ patch_vcard_foreach (gpointer k, gpointer v, gpointer user_data)
         }
       else
         {
-          node = lm_message_node_add_child (vcard_node, key, value);
+          lm_message_node_add_child (vcard_node, key, value);
         }
     }
 }

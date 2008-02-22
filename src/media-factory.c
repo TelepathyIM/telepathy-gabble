@@ -691,9 +691,9 @@ gabble_media_factory_iface_close_all (TpChannelFactoryIface *iface)
   if (priv->channels)
     {
       GPtrArray *tmp = priv->channels;
-      priv->channels = NULL;
-
       guint i;
+
+      priv->channels = NULL;
 
       for (i = 0; i < tmp->len; i++)
         {

@@ -698,8 +698,13 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
 
       stream_id = lm_message_node_get_attribute (tube_node, "stream-id");
 
-      extract_tube_information (self, tube_node, NULL,
-          NULL, NULL, NULL, &tube_id);
+      if (!extract_tube_information (self, tube_node, NULL,
+          NULL, NULL, NULL, &tube_id))
+        {
+          DEBUG ("Bad tube ID, skipping to next child of <tubes>");
+          continue;
+        }
+
       tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
 
       if (tube == NULL)

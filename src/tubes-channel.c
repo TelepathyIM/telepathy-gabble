@@ -1749,8 +1749,6 @@ gabble_tubes_channel_offer_stream_tube (TpSvcChannelTypeTubes *iface,
   if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
     {
       /* Stream initiation */
-      GError *error = NULL;
-
       if (!send_new_stream_tube_msg (self, tube, stream_id, &error))
         {
           gabble_tube_iface_close (tube);

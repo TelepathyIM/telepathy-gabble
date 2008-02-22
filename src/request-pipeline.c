@@ -71,7 +71,7 @@ gabble_request_pipeline_error_quark (void)
 }
 
 #define GABBLE_REQUEST_PIPELINE_GET_PRIVATE(o) \
-  ((GabbleRequestPipelinePrivate *) ((o)->priv));
+  ((GabbleRequestPipelinePrivate *) ((o)->priv))
 
 static void
 gabble_request_pipeline_init (GabbleRequestPipeline *obj)

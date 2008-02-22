@@ -45,24 +45,21 @@ struct _Feature
  * Return a linked list of const Feature structs corresponding to the given
  * GabblePresenceCapabilities.
  */
-GSList *
-capabilities_get_features (GabblePresenceCapabilities caps);
+GSList *capabilities_get_features (GabblePresenceCapabilities caps);
 
 /*
  * capabilities_fill_cache
  *
  * Fill up the given GabblePresenceCache with known feature nodes
  */
-void
-capabilities_fill_cache (GabblePresenceCache *cache);
+void capabilities_fill_cache (GabblePresenceCache *cache);
 
 /*
  * capabilities_get_initial_caps
  *
  * Return the GabblePresenceCapabilities we always have
  */
-GabblePresenceCapabilities
-capabilities_get_initial_caps ();
+GabblePresenceCapabilities capabilities_get_initial_caps (void);
 
 typedef GabblePresenceCapabilities (*TypeFlagsToCapsFunc) (guint typeflags);
 typedef guint (*CapsToTypeFlagsFunc) (GabblePresenceCapabilities caps);

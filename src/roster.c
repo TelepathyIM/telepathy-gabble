@@ -2326,7 +2326,6 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
   GabbleRosterItem *item;
   LmMessage *message;
   gboolean ret, was_in_group;
-  const gchar *name;
 
   g_return_val_if_fail (roster != NULL, FALSE);
   g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
@@ -2361,8 +2360,6 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
           group);
       item->unsent_edits = item_edit_new ();
     }
-
-  name = tp_handle_inspect (group_repo, group);
 
   /* temporarily remove the handle from the set (taking a reference),
    * make the message, and put it back afterwards

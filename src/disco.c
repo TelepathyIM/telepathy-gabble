@@ -190,7 +190,7 @@ gabble_disco_constructor (GType type, guint n_props,
 
 static void cancel_request (GabbleDiscoRequest *request);
 
-void
+static void
 gabble_disco_dispose (GObject *object)
 {
   GabbleDisco *self = GABBLE_DISCO (object);
@@ -226,7 +226,7 @@ gabble_disco_dispose (GObject *object)
     G_OBJECT_CLASS (gabble_disco_parent_class)->dispose (object);
 }
 
-void
+static void
 gabble_disco_finalize (GObject *object)
 {
   DEBUG ("called with %p", object);

@@ -835,7 +835,7 @@ observe_vcard (GabbleConnection *conn,
       g_signal_emit (G_OBJECT (manager), signals[NICKNAME_UPDATE], 0, handle);
 }
 
-GError *
+static GError *
 get_error_from_pipeline_reply (LmMessage *reply_msg, GError *error)
 {
     GError *err = NULL;

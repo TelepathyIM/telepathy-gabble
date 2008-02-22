@@ -2632,7 +2632,7 @@ room_jid_disco_cb (GabbleDisco *disco,
  */
 static gboolean
 room_jid_verify (RoomVerifyBatch *batch,
-                 guint index,
+                 guint i,
                  DBusGMethodInvocation *context)
 {
   gchar *room, *service;
@@ -2640,13 +2640,13 @@ room_jid_verify (RoomVerifyBatch *batch,
   GError *error = NULL;
 
   room = service = NULL;
-  gabble_decode_jid (batch->contexts[index].jid, &room, &service, NULL);
+  gabble_decode_jid (batch->contexts[i].jid, &room, &service, NULL);
 
   if (room == NULL || *room == '\0' || service == NULL || *service == '\0')
     {
       g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "unable to get room name and service from JID %s",
-          batch->contexts[index].jid);
+          batch->contexts[i].jid);
 
       ret = FALSE;
 
@@ -2655,7 +2655,7 @@ room_jid_verify (RoomVerifyBatch *batch,
 
   ret = (gabble_disco_request (batch->conn->disco, GABBLE_DISCO_TYPE_INFO,
                                service, NULL, room_jid_disco_cb,
-                               batch->contexts + index,
+                               batch->contexts + i,
                                G_OBJECT (batch->conn), &error) != NULL);
 
 out:

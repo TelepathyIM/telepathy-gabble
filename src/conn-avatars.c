@@ -298,9 +298,9 @@ _got_self_avatar_for_get_known_avatar_tokens (GObject *obj,
 
 
 /**
- * gabble_connection_get_avatar_tokens
+ * gabble_connection_get_known_avatar_tokens
  *
- * Implements D-Bus method GetAvatarTokens
+ * Implements D-Bus method GetKnownAvatarTokens
  * on interface org.freedesktop.Telepathy.Connection.Interface.Avatars
  *
  * @context: The D-Bus invocation context to use to return values

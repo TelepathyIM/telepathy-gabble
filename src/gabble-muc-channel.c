@@ -1642,27 +1642,29 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
       if (!tp_handle_set_is_member (mixin->members, handle))
         {
           if (priv->initial_members_received)
-          {
-            /* no aggregation */
-            tp_group_mixin_change_members ((GObject *)chan, "", set, NULL,
-                                            NULL, NULL, 0, 0);
-          }
-          else
-          {
-            /* aggregate this presence */
-            tp_intset_add (priv->presence_handle_set, handle);
-
-            /* Do not emit one signal per presence. Instead, get all presences,
-             * and add them in priv->presence_handle_set. When we get the last
-             * presence, emit the signal. The last presence is ourselve. */
-            if (handle == mixin->self_handle)
             {
-              /* Change all presences in only one operation */
-              tp_group_mixin_change_members ((GObject *)chan, "", priv->presence_handle_set, NULL,
+              /* no aggregation */
+              tp_group_mixin_change_members ((GObject *)chan, "", set, NULL,
                                               NULL, NULL, 0, 0);
-              priv->initial_members_received = TRUE;
             }
-          }
+          else
+            {
+              /* aggregate this presence */
+              tp_intset_add (priv->presence_handle_set, handle);
+
+              /* Do not emit one signal per presence. Instead, get all
+               * presences, and add them in priv->presence_handle_set. When we
+               * get the last presence, emit the signal. The last presence is
+               * ourselve. */
+              if (handle == mixin->self_handle)
+                {
+                  /* Change all presences in only one operation */
+                  tp_group_mixin_change_members ((GObject *)chan, "",
+                                                 priv->presence_handle_set,
+                                                 NULL, NULL, NULL, 0, 0);
+                  priv->initial_members_received = TRUE;
+                }
+            }
 
           if (owner_jid != NULL)
             {

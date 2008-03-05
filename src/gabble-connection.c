@@ -2153,7 +2153,7 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
           if (g_str_equal (channel_type, ccd->iface))
             add_caps |= ccd->tf2c_fn (flags);
 
-      g_free (iface);
+      g_free (channel_type);
     }
 
   for (i = 0; NULL != del[i]; i++)

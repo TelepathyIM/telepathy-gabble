@@ -38,6 +38,8 @@
 #include "namespaces.h"
 #include "util.h"
 
+#include "presence-cache.h"
+
 #define GOOGLE_ROSTER_VERSION "2"
 
 /* Properties */
@@ -2045,6 +2047,9 @@ gabble_roster_handle_set_blocked (GabbleRoster *roster,
       GUINT_TO_POINTER(handle), error);
 
   lm_message_unref (message);
+
+  if (blocked)
+      gabble_presence_cache_really_remove (priv->conn->presence_cache, handle);
 
   return ret;
 }

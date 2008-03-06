@@ -1318,3 +1318,20 @@ void gabble_presence_cache_add_bundle_caps (GabblePresenceCache *cache,
   info->trust = CAPABILITY_BUNDLE_ENOUGH_TRUST;
   info->caps |= new_caps;
 }
+
+void
+gabble_presence_cache_really_remove (
+    GabblePresenceCache *cache,
+    TpHandle handle)
+{
+  GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
+  const gchar *jid;
+
+  jid = tp_handle_inspect (contact_repo, handle);
+  DEBUG ("forced to discard cached presence for jid %s", jid);
+  g_hash_table_remove (priv->presence, GINT_TO_POINTER (handle));
+  tp_handle_set_remove (priv->presence_handles, handle);
+}
+

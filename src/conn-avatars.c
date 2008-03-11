@@ -284,8 +284,13 @@ _got_self_avatar_for_get_known_avatar_tokens (GObject *obj,
 
   g_signal_handler_disconnect (obj, context->signal_conn);
 
-  g_hash_table_insert (context->ret, GUINT_TO_POINTER (base->self_handle),
-      g_strdup (sha1));
+  /* If we're disconnecting (meaning self_handle==0), don't ever
+   * bother, we'll just confuse the client with a strange handle. */
+  if (base->self_handle != 0)
+    {
+      g_hash_table_insert (context->ret, GUINT_TO_POINTER (base->self_handle),
+          g_strdup (sha1));
+    }
 
   tp_svc_connection_interface_avatars_return_from_get_known_avatar_tokens (
       context->invocation, context->ret);

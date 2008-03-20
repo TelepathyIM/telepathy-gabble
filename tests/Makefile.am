@@ -2,6 +2,8 @@ if HAVE_DBUS_TUBE
 dbus_test_programs = test-dtube-unique-names
 endif
 
+SUBDIRS = twisted
+
 noinst_PROGRAMS = \
 	$(dbus_test_programs) \
 	test-gabble-presence \

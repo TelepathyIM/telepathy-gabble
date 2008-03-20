@@ -202,5 +202,6 @@ AC_OUTPUT( Makefile \
            m4/Makefile \
            data/Makefile \
            tests/Makefile \
-           tools/Makefile
+           tools/Makefile \
+           tests/twisted/Makefile
 )

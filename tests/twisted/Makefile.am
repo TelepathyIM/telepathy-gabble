@@ -34,22 +34,11 @@ TESTS = \
 	vcard/test-vcard-torture.py
 
 _check:
-	$(MAKE) check TESTS="$(TWISTED_TESTS)" TESTS_ENVIRONMENT=python
+	$(MAKE) check TESTS_ENVIRONMENT="PYTHONPATH=. python"
 
 check-twisted:
 	chmod +x run-with-tmp-session-bus.sh exec-with-log.sh
-	sh run-with-tmp-session-bus.sh $(MAKE) _check-twisted
-
-check-valgrind:
-	G_SLICE=always-malloc \
-	G_DEBUG=gc-friendly \
-	$(MAKE) \
-		TESTS_ENVIRONMENT="\
-		libtool --mode=execute valgrind \
-			--leak-check=full \
-			--show-reachable=no \
-			--error-exitcode=1" \
-		check
+	sh run-with-tmp-session-bus.sh $(MAKE) _check
 
 exec-with-log.sh: exec-with-log.sh.in
 	sed -e "s|[@]abs_top_builddir[@]|@abs_top_builddir@|g" $< > $@

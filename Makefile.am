@@ -9,6 +9,6 @@ dist-hook:
 	if test -d _darcs; then darcs changes >${distdir}/ChangeLog; fi
 
 check-twisted: all
-	$(MAKE) -C tests check-twisted
+	$(MAKE) -C tests/twisted check-twisted
 
 check-all: check check-twisted

@@ -410,6 +410,12 @@ def prepare_test(event_func, name, proto, params):
 
     return bus, conn
 
+def make_channel_proxy(conn, path, iface):
+    bus = dbus.SessionBus()
+    chan = bus.get_object(conn.object.bus_name, path)
+    chan = dbus.Interface(chan, tp_name_prefix + '.' + iface)
+    return chan
+
 def load_event_handlers():
     path, _, _, _ = traceback.extract_stack()[0]
     import compiler

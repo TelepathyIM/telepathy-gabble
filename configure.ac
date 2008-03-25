@@ -166,6 +166,18 @@ if test -z "$PYTHON"; then
   AC_MSG_ERROR([Python is required to compile this package])
 fi
 
+dnl Check for twisted python for tests
+TWISTEDPYTHON=
+AC_CHECK_PROGS([TWISTEDPYTHON], [twistd])
+if test -z "$TWISTEDPYTHON"; then
+  echo "No TwistedPython support found, disabling twisted tests"
+  CHECKTWISTED=
+else
+  echo "TwistedPython support found, enabling twisted tests"
+  CHECKTWISTED=twisted
+fi
+AC_SUBST(CHECKTWISTED)
+
 dnl Check for Loudmouth
 PKG_CHECK_MODULES(LOUDMOUTH, loudmouth-1.0 >= 1.1.1)
 

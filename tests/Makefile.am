@@ -2,7 +2,7 @@ if HAVE_DBUS_TUBE
 dbus_test_programs = test-dtube-unique-names
 endif
 
-SUBDIRS = twisted
+SUBDIRS = @CHECKTWISTED@
 
 noinst_PROGRAMS = \
 	$(dbus_test_programs) \

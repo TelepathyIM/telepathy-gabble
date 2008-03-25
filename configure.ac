@@ -167,14 +167,13 @@ if test -z "$PYTHON"; then
 fi
 
 dnl Check for twisted python for tests
-TWISTEDPYTHON=
-AC_CHECK_PROGS([TWISTEDPYTHON], [twistd])
-if test -z "$TWISTEDPYTHON"; then
-  echo "No TwistedPython support found, disabling twisted tests"
-  CHECKTWISTED=
-else
-  echo "TwistedPython support found, enabling twisted tests"
+AC_MSG_CHECKING([for TwistedPython with XMPP protocol support])
+if $PYTHON -c "import twisted.words.xish.domish, twisted.words.protocols.jabber, twisted.internet.reactor" >/dev/null 2>&1; then
+  AC_MSG_RESULT([yes])
   CHECKTWISTED=twisted
+else
+  AC_MSG_RESULT([no])
+  CHECKTWISTED=
 fi
 AC_SUBST(CHECKTWISTED)
 

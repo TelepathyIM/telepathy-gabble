@@ -42,36 +42,14 @@ TESTS_ENVIRONMENT = \
 	PYTHONPATH=@abs_top_srcdir@/tests/twisted
 
 check-twisted:
-	sh with-session-bus.sh --config-file=run-with-tmp-session-bus.conf -- $(MAKE) check \
+	$(MAKE) -C tools
+	sh tools/with-session-bus.sh --config-file=tools/tmp-session-bus.conf -- $(MAKE) check \
 		TESTS="$(TWISTED_TESTS)" TESTS_ENVIRONMENT="PYTHONPATH=@abs_top_srcdir@/tests/twisted python"
 
-exec-with-log.sh: exec-with-log.sh.in
-	sed -e "s|[@]abs_top_builddir[@]|@abs_top_builddir@|g" $< > $@
-	chmod +x $@
-
-%.conf: %.conf.in
-	sed -e "s|[@]abs_top_builddir[@]|@abs_top_builddir@|g" $< > $@
-
-%.service: %.service.in
-	sed -e "s|[@]abs_top_builddir[@]|@abs_top_builddir@|g" $< > $@
-
-# D-Bus service file for testing
-service_in_files = org.freedesktop.Telepathy.ConnectionManager.gabble.service.in
-service_files = $(service_in_files:.service.in=.service)
-
-# D-Bus config file for testing
-conf_in_files = run-with-tmp-session-bus.conf.in
-conf_files = $(conf_in_files:.conf.in=.conf)
-
-BUILT_SOURCES = $(service_files) $(conf_files) exec-with-log.sh
-
 EXTRA_DIST = \
-	$(service_in_files) \
-	$(conf_in_files) \
-	exec-with-log.sh.in \
 	$(TESTS)
 
-CLEANFILES = gabble-[1-9]*.log
+CLEANFILES = gabble-[1-9]*.log *.pyc */*.pyc
 
 check_misc_sources = $(TESTS)
 

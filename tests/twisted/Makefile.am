@@ -1,4 +1,4 @@
-TESTS = \
+TWISTED_TESTS = \
 	muc/test-muc-invitation.py \
 	muc/test-muc-ownership.py \
 	muc/test-muc-properties.py \
@@ -36,12 +36,14 @@ TESTS = \
 	jingle/test-outgoing-call.py \
 	jingle/test-outgoing-call-rejected.py
 
-_check:
-	$(MAKE) check TESTS_ENVIRONMENT="PYTHONPATH=. python"
+TESTS = check-twisted
+
+TESTS_ENVIRONMENT = \
+	PYTHONPATH=@abs_top_srcdir@/tests/twisted
 
 check-twisted:
-	chmod +x run-with-tmp-session-bus.sh exec-with-log.sh
-	sh run-with-tmp-session-bus.sh $(MAKE) _check
+	sh with-session-bus.sh --config-file=run-with-tmp-session-bus.conf -- $(MAKE) check \
+		TESTS="$(TWISTED_TESTS)" TESTS_ENVIRONMENT="PYTHONPATH=@abs_top_srcdir@/tests/twisted python"
 
 exec-with-log.sh: exec-with-log.sh.in
 	sed -e "s|[@]abs_top_builddir[@]|@abs_top_builddir@|g" $< > $@

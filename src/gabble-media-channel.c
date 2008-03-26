@@ -1447,7 +1447,7 @@ static void
 gabble_media_channel_get_hold_state (TpSvcChannelInterfaceHold *iface,
                                      DBusGMethodInvocation *context)
 {
-  /* stub implementation: we have not been put on hold */
+  /* stub implementation: we have not put the call on hold */
   tp_svc_channel_interface_hold_return_from_get_hold_state (context,
       FALSE);
 }
@@ -1457,7 +1457,7 @@ gabble_media_channel_request_hold (TpSvcChannelInterfaceHold *iface,
                                    gboolean hold,
                                    DBusGMethodInvocation *context)
 {
-  /* stub implementation: holding is not implemented */
+  /* stub implementation: holding is not implemented, unholding is fine */
   if (hold)
     {
       tp_dbus_g_method_return_not_implemented (context);

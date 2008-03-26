@@ -1464,8 +1464,7 @@ gabble_media_channel_request_hold (TpSvcChannelInterfaceHold *iface,
     }
   else
     {
-      tp_svc_channel_interface_hold_return_from_get_hold_state (context,
-          FALSE);
+      tp_svc_channel_interface_hold_return_from_request_hold (context);
     }
 }
 

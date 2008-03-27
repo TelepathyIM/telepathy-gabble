@@ -31,6 +31,7 @@ TWISTED_TESTS = \
 	vcard/test-vcard-cache.py \
 	vcard/test-vcard-race.py \
 	vcard/test-vcard-set-and-get.py \
+	jingle/hold-audio.py \
 	jingle/test-incoming-call.py \
 	jingle/test-outgoing-call.py \
 	jingle/test-outgoing-call-rejected.py

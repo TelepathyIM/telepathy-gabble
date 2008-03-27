@@ -118,6 +118,19 @@ const TpPropertySignature channel_property_signatures[NUM_CHAN_PROPS] = {
       { "gtalk-p2p-relay-token",  G_TYPE_STRING }
 };
 
+typedef struct _HoldChangeAttempt HoldChangeAttempt;
+
+struct _HoldChangeAttempt {
+  DBusGMethodInvocation *context;
+  guint timeout_id;
+  HoldChangeAttempt *next;
+};
+
+typedef enum {
+    GABBLE_HOLD_STATE_UNHELD = 0,
+    GABBLE_HOLD_STATE_HELD,
+    GABBLE_HOLD_STATE_INDETERMINATE
+} GabbleHoldState;
 struct _GabbleMediaChannelPrivate
 {
   GabbleConnection *conn;
@@ -130,8 +143,13 @@ struct _GabbleMediaChannelPrivate
 
   guint next_stream_id;
 
-  gboolean closed;
-  gboolean dispose_has_run;
+  HoldChangeAttempt *first_hold_change_attempt;
+  HoldChangeAttempt *last_hold_change_attempt;
+  guint streams_held;
+  gboolean closed:1;
+  gboolean dispose_has_run:1;
+  gboolean want_hold:1;
+  GabbleHoldState hold_state:2;
 };
 
 #define GABBLE_MEDIA_CHANNEL_GET_PRIVATE(obj) (obj->priv)
@@ -986,6 +1004,8 @@ gabble_media_channel_request_streams (TpSvcChannelTypeStreamedMedia *iface,
 
   g_assert (GABBLE_IS_MEDIA_CHANNEL (self));
 
+  /* FIXME: disallow this if we've put the other guy on hold? */
+
   priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
   conn = (TpBaseConnection *)priv->conn;
   contact_handles = tp_base_connection_get_handles (conn,
@@ -1279,6 +1299,178 @@ session_state_changed_cb (GabbleMediaSession *session,
   tp_intset_destroy (set);
 }
 
+
+/* Arbitrary magic number: how long we will wait for a streaming client to
+ * reacquire resources, before giving up on it. Units: ms */
+#define UNHOLD_WAIT_MS 20000
+/* Arbitrary magic number: how long we will wait for a streaming client to
+ * say it's released resources, before giving up on it. Units: ms */
+#define HOLD_WAIT_MS 5000
+
+
+static gboolean
+hold_change_timed_out (gpointer data)
+{
+  GabbleMediaChannel *self = data;
+  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
+  HoldChangeAttempt *attempt = priv->first_hold_change_attempt;
+  GError e = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+      priv->want_hold
+          ? "Timed out while waiting for streaming client to acquire resource"
+          : "Timed out while waiting for streaming client to release resource"
+  };
+
+  g_assert (attempt != NULL);
+  priv->first_hold_change_attempt = attempt->next;
+
+  if (priv->last_hold_change_attempt == attempt)
+    {
+      g_assert (attempt->next == NULL);
+      priv->last_hold_change_attempt = NULL;
+    }
+
+  dbus_g_method_return_error (attempt->context, &e);
+  g_slice_free (HoldChangeAttempt, attempt);
+
+  return FALSE;
+}
+
+
+static void
+complete_hold_changes (GabbleMediaChannel *self,
+                       GError *error)
+{
+  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
+  HoldChangeAttempt *attempt = priv->first_hold_change_attempt;
+
+  priv->first_hold_change_attempt = NULL;
+  priv->last_hold_change_attempt = NULL;
+
+  while (attempt != NULL)
+    {
+      HoldChangeAttempt *dead;
+
+      if (error == NULL)
+        tp_svc_channel_interface_hold_return_from_request_hold (
+            attempt->context);
+      else
+        dbus_g_method_return_error (attempt->context, error);
+
+      g_source_remove (attempt->timeout_id);
+      dead = attempt;
+      attempt = attempt->next;
+      g_slice_free (HoldChangeAttempt, dead);
+    }
+}
+
+
+static void
+add_hold_change_attempt (GabbleMediaChannel *self,
+                         DBusGMethodInvocation *context,
+                         guint timeout)
+{
+  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
+  HoldChangeAttempt *attempt = g_slice_new0 (HoldChangeAttempt);
+
+  attempt->context = context;
+  attempt->next = NULL;
+
+  if (priv->last_hold_change_attempt != NULL)
+    {
+      g_assert (priv->first_hold_change_attempt != NULL);
+      g_assert (priv->last_hold_change_attempt->next == NULL);
+      priv->last_hold_change_attempt->next = attempt;
+    }
+  else
+    {
+      g_assert (priv->first_hold_change_attempt == NULL);
+      priv->first_hold_change_attempt = attempt;
+    }
+
+  priv->last_hold_change_attempt = attempt;
+
+  attempt->timeout_id = g_timeout_add (timeout, hold_change_timed_out,
+      self);
+}
+
+
+static void
+stream_hold_state_changed (GabbleMediaStream *stream G_GNUC_UNUSED,
+                           GParamSpec *unused G_GNUC_UNUSED,
+                           gpointer data)
+{
+  GabbleMediaChannel *self = data;
+  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
+  gboolean all_held, any_held;
+  guint i;
+
+  all_held = TRUE;
+  any_held = FALSE;
+
+  for (i = 0; i < priv->streams->len; i++)
+    {
+      gboolean its_hold;
+
+      g_object_get (g_ptr_array_index (priv->streams, i),
+          "local-hold", &its_hold,
+          NULL);
+
+      all_held = all_held && its_hold;
+      any_held = any_held || its_hold;
+    }
+
+  /* Emit HoldStateChanged if necessary. The hold state is TRUE if and
+   * only if all streams are held (because this indicates that another
+   * stream can safely be unheld). */
+  if (all_held)
+    {
+      if (priv->hold_state != GABBLE_HOLD_STATE_HELD)
+      {
+        priv->hold_state = GABBLE_HOLD_STATE_HELD;
+        tp_svc_channel_interface_hold_emit_hold_state_changed (self, TRUE);
+      }
+    }
+  else if (priv->hold_state == GABBLE_HOLD_STATE_HELD)
+    {
+      if (any_held)
+        priv->hold_state = GABBLE_HOLD_STATE_INDETERMINATE;
+      else
+        priv->hold_state = GABBLE_HOLD_STATE_UNHELD;
+
+      tp_svc_channel_interface_hold_emit_hold_state_changed (self, FALSE);
+    }
+
+  /* If we're trying to unhold, succeed when all streams are unheld */
+  if (!any_held && !priv->want_hold)
+    {
+      complete_hold_changes (self, NULL);
+    }
+
+  /* If we're trying to go on hold, succeed when all streams are held */
+  if (all_held && priv->want_hold)
+    {
+      complete_hold_changes (self, NULL);
+    }
+}
+
+
+static void
+stream_unhold_failed (GabbleMediaStream *stream,
+                      gpointer data)
+{
+  GabbleMediaChannel *self = data;
+  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
+  GError e = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+      "Unhold failed: streaming client failed to reacquire resource" };
+
+  if (!priv->want_hold)
+    {
+      /* we're trying to unhold - make it fail */
+      complete_hold_changes (self, &e);
+    }
+}
+
+
 static void
 stream_close_cb (GabbleMediaStream *stream,
                  GabbleMediaChannel *chan)
@@ -1286,13 +1478,21 @@ stream_close_cb (GabbleMediaStream *stream,
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
   guint id;
 
-  g_object_get (stream, "id", &id, NULL);
+  g_object_get (stream,
+      "id", &id,
+      NULL);
 
   tp_svc_channel_type_streamed_media_emit_stream_removed (chan, id);
 
   if (priv->streams != NULL)
     {
       g_ptr_array_remove (priv->streams, stream);
+
+      /* A stream closing might cause the "total" hold state to change:
+       * if there's one held and one unheld, and the unheld one closes,
+       * then our state changes from indeterminate to held. */
+      stream_hold_state_changed (stream, NULL, chan);
+
       g_object_unref (stream);
     }
 }
@@ -1371,10 +1571,14 @@ session_stream_added_cb (GabbleMediaSession *session,
                     (GCallback) stream_close_cb, chan);
   g_signal_connect (stream, "error",
                     (GCallback) stream_error_cb, chan);
+  g_signal_connect (stream, "unhold-failed",
+                    (GCallback) stream_unhold_failed, chan);
   g_signal_connect (stream, "notify::connection-state",
                     (GCallback) stream_state_changed_cb, chan);
   g_signal_connect (stream, "notify::combined-direction",
                     (GCallback) stream_direction_changed_cb, chan);
+  g_signal_connect (stream, "notify::local-hold",
+                    (GCallback) stream_hold_state_changed, chan);
 
   /* emit StreamAdded */
   g_object_get (session, "peer", &handle, NULL);
@@ -1382,6 +1586,9 @@ session_stream_added_cb (GabbleMediaSession *session,
 
   tp_svc_channel_type_streamed_media_emit_stream_added (
       chan, id, handle, type);
+
+  /* A stream being added might cause the "total" hold state to change */
+  stream_hold_state_changed (stream, NULL, chan);
 }
 
 guint
@@ -1443,25 +1650,76 @@ static void
 gabble_media_channel_get_hold_state (TpSvcChannelInterfaceHold *iface,
                                      DBusGMethodInvocation *context)
 {
-  /* stub implementation: we have not put the call on hold */
+  GabbleMediaChannel *self = (GabbleMediaChannel *) iface;
+  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
+
   tp_svc_channel_interface_hold_return_from_get_hold_state (context,
-      FALSE);
+      (priv->hold_state == GABBLE_HOLD_STATE_HELD));
 }
+
 
 static void
 gabble_media_channel_request_hold (TpSvcChannelInterfaceHold *iface,
                                    gboolean hold,
                                    DBusGMethodInvocation *context)
 {
-  /* stub implementation: holding is not implemented, unholding is fine */
+  GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
+  GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
+  guint i;
+
+
   if (hold)
     {
-      tp_dbus_g_method_return_not_implemented (context);
+      if (!priv->want_hold && priv->first_hold_change_attempt != NULL)
+        {
+          GError e = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+              "RequestHold(FALSE) cancelled by RequestHold(TRUE)" };
+
+          complete_hold_changes (self, &e);
+        }
+      else if (priv->hold_state == GABBLE_HOLD_STATE_HELD)
+        {
+          tp_svc_channel_interface_hold_return_from_request_hold (context);
+          return;
+        }
+
+      /* FIXME: when we upgrade to current Jingle, signal to the peer that
+       * we're putting them on hold, via a session-info message;
+       * ignore success or failure, since there's nothing we could really
+       * do differently, and the message is only advisory.
+       *
+       * For now, we don't signal the hold in the XMPP stream */
+      DEBUG ("TODO: actually say something in the XMPP stream");
     }
   else
     {
-      tp_svc_channel_interface_hold_return_from_request_hold (context);
+      if (priv->want_hold && priv->first_hold_change_attempt != NULL)
+        {
+          GError e = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+              "RequestHold(TRUE) cancelled by RequestHold(FALSE)" };
+
+          complete_hold_changes (self, &e);
+        }
+      else if (priv->hold_state == GABBLE_HOLD_STATE_UNHELD)
+        {
+          tp_svc_channel_interface_hold_return_from_request_hold (context);
+          return;
+        }
     }
+
+  priv->want_hold = hold;
+
+  /* Tell streaming client to release or reacquire resources */
+
+  for (i = 0; i < priv->streams->len; i++)
+    {
+      gabble_media_stream_hold (g_ptr_array_index (priv->streams, i), hold);
+    }
+
+  /* Wait for success on all streams, failure on one stream (in the case of
+   * Unhold), or timeout */
+  add_hold_change_attempt (self, context,
+      hold ? HOLD_WAIT_MS : UNHOLD_WAIT_MS);
 }
 
 

@@ -137,6 +137,7 @@ LmMessageNode *_gabble_media_stream_content_node_add_transport (
     GabbleMediaStream *stream, LmMessageNode *content_node);
 void _gabble_media_stream_update_sending (GabbleMediaStream *stream,
     gboolean start_sending);
+void gabble_media_stream_hold (GabbleMediaStream *stream, gboolean hold);
 
 G_END_DECLS
 

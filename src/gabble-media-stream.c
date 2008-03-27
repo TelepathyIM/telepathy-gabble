@@ -62,6 +62,7 @@ enum
     NEW_NATIVE_CANDIDATE,
     SUPPORTED_CODECS,
     ERROR,
+    UNHOLD_FAILED,
 
     LAST_SIGNAL
 };
@@ -85,6 +86,7 @@ enum
   PROP_SIGNALLING_STATE,
   PROP_PLAYING,
   PROP_COMBINED_DIRECTION,
+  PROP_LOCAL_HOLD,
   LAST_PROPERTY
 };
 
@@ -111,8 +113,9 @@ struct _GabbleMediaStreamPrivate
 
   guint remote_candidate_count;
 
-  gboolean closed;
-  gboolean dispose_has_run;
+  gboolean closed:1;
+  gboolean dispose_has_run:1;
+  gboolean local_hold:1;
 };
 
 #define GABBLE_MEDIA_STREAM_GET_PRIVATE(obj) \
@@ -235,6 +238,9 @@ gabble_media_stream_get_property (GObject    *object,
       break;
     case PROP_COMBINED_DIRECTION:
       g_value_set_uint (value, stream->combined_direction);
+      break;
+    case PROP_LOCAL_HOLD:
+      g_value_set_boolean (value, priv->local_hold);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -485,6 +491,12 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
   g_object_class_install_property (object_class, PROP_COMBINED_DIRECTION,
       param_spec);
 
+  param_spec = g_param_spec_boolean ("local-hold", "Local hold?",
+      "True if resources used for this stream have been freed.", FALSE,
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_NAME | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NICK);
+  g_object_class_install_property (object_class, PROP_LOCAL_HOLD, param_spec);
+
   /* signals not exported by D-Bus interface */
   signals[DESTROY] =
     g_signal_new ("destroy",
@@ -530,6 +542,11 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                   NULL, NULL,
                   gabble_marshal_VOID__UINT_STRING,
                   G_TYPE_NONE, 2, G_TYPE_UINT, G_TYPE_STRING);
+
+  signals[UNHOLD_FAILED] = g_signal_new ("unhold-failed",
+      G_OBJECT_CLASS_TYPE (gabble_media_stream_class),
+      G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED, 0, NULL, NULL,
+      g_cclosure_marshal_VOID__VOID, G_TYPE_NONE, 0);
 }
 
 void
@@ -636,6 +653,70 @@ gabble_media_stream_error_async (TpSvcMediaStreamHandler *iface,
       dbus_g_method_return_error (context, error);
       g_error_free (error);
     }
+}
+
+
+/**
+ * gabble_media_stream_hold:
+ *
+ * Tell streaming clients that the stream is going on hold, so they should
+ * stop streaming and free up any resources they are currently holding
+ * (e.g. close hardware devices); or that the stream is coming off hold,
+ * so they should reacquire those resources.
+ */
+void
+gabble_media_stream_hold (GabbleMediaStream *self,
+                          gboolean hold)
+{
+  tp_svc_media_stream_handler_emit_set_stream_held (self, hold);
+}
+
+
+/**
+ * gabble_media_stream_hold_state:
+ *
+ * Called by streaming clients when the stream's hold state has been changed
+ * successfully in response to SetStreamHeld.
+ */
+static void
+gabble_media_stream_hold_state (TpSvcMediaStreamHandler *iface,
+                                gboolean hold_state,
+                                DBusGMethodInvocation *context)
+{
+  GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
+  GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
+
+  DEBUG ("%p: %s", self, hold_state ? "held" : "unheld");
+  priv->local_hold = hold_state;
+
+  g_object_notify ((GObject *) self, "local-hold");
+
+  tp_svc_media_stream_handler_return_from_hold_state (context);
+}
+
+
+/**
+ * gabble_media_stream_unhold_failure:
+ *
+ * Called by streaming clients when an attempt to reacquire the necessary
+ * hardware or software resources to unhold the stream, in response to
+ * SetStreamHeld, has failed.
+ */
+static void
+gabble_media_stream_unhold_failure (TpSvcMediaStreamHandler *iface,
+                                    DBusGMethodInvocation *context)
+{
+  GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
+  GabbleMediaStreamPrivate *priv = GABBLE_MEDIA_STREAM_GET_PRIVATE (self);
+
+  DEBUG ("%p", self);
+
+  priv->local_hold = TRUE;
+
+  g_signal_emit (self, signals[UNHOLD_FAILED], 0);
+  g_object_notify ((GObject *) self, "local-hold");
+
+  tp_svc_media_stream_handler_return_from_unhold_failure (context);
 }
 
 
@@ -1739,6 +1820,7 @@ stream_handler_iface_init (gpointer g_iface, gpointer iface_data)
     klass, gabble_media_stream_##x##suffix)
   IMPLEMENT(codec_choice,);
   IMPLEMENT(error,_async);
+  IMPLEMENT(hold_state,);
   IMPLEMENT(native_candidates_prepared,);
   IMPLEMENT(new_active_candidate_pair,);
   IMPLEMENT(new_native_candidate,);
@@ -1746,5 +1828,6 @@ stream_handler_iface_init (gpointer g_iface, gpointer iface_data)
   IMPLEMENT(set_local_codecs,);
   IMPLEMENT(stream_state,);
   IMPLEMENT(supported_codecs,);
+  IMPLEMENT(unhold_failure,);
 #undef IMPLEMENT
 }

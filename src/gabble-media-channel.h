@@ -32,6 +32,7 @@
 G_BEGIN_DECLS
 
 typedef struct _GabbleMediaChannel GabbleMediaChannel;
+typedef struct _GabbleMediaChannelPrivate GabbleMediaChannelPrivate;
 typedef struct _GabbleMediaChannelClass GabbleMediaChannelClass;
 
 struct _GabbleMediaChannelClass {
@@ -47,7 +48,7 @@ struct _GabbleMediaChannel {
     TpGroupMixin group;
     TpPropertiesMixin properties;
 
-    gpointer priv;
+    GabbleMediaChannelPrivate *priv;
 };
 
 GType gabble_media_channel_get_type (void);

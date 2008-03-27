@@ -118,9 +118,6 @@ const TpPropertySignature channel_property_signatures[NUM_CHAN_PROPS] = {
       { "gtalk-p2p-relay-token",  G_TYPE_STRING }
 };
 
-/* private structure */
-typedef struct _GabbleMediaChannelPrivate GabbleMediaChannelPrivate;
-
 struct _GabbleMediaChannelPrivate
 {
   GabbleConnection *conn;
@@ -137,8 +134,7 @@ struct _GabbleMediaChannelPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_MEDIA_CHANNEL_GET_PRIVATE(obj) \
-    ((GabbleMediaChannelPrivate *)obj->priv)
+#define GABBLE_MEDIA_CHANNEL_GET_PRIVATE(obj) (obj->priv)
 
 static void
 gabble_media_channel_init (GabbleMediaChannel *self)

@@ -35,14 +35,14 @@ TWISTED_TESTS = \
 	jingle/test-outgoing-call.py \
 	jingle/test-outgoing-call-rejected.py
 
-TESTS = check-twisted
+TESTS =
 
 TESTS_ENVIRONMENT = \
 	PYTHONPATH=@abs_top_srcdir@/tests/twisted
 
-check-twisted:
+check-local:
 	$(MAKE) -C tools
-	sh tools/with-session-bus.sh --config-file=tools/tmp-session-bus.conf -- $(MAKE) check \
+	sh tools/with-session-bus.sh --config-file=tools/tmp-session-bus.conf -- $(MAKE) check-TESTS \
 		TESTS="$(TWISTED_TESTS)" TESTS_ENVIRONMENT="PYTHONPATH=@abs_top_srcdir@/tests/twisted $(PYTHON)"
 
 EXTRA_DIST = \

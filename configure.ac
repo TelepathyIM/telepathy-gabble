@@ -170,12 +170,11 @@ dnl Check for twisted python for tests
 AC_MSG_CHECKING([for TwistedPython with XMPP protocol support])
 if $PYTHON -c "import twisted.words.xish.domish, twisted.words.protocols.jabber, twisted.internet.reactor" >/dev/null 2>&1; then
   AC_MSG_RESULT([yes])
-  CHECKTWISTED=twisted
+  AM_CONDITIONAL([WANT_TWISTED_TESTS], true)
 else
   AC_MSG_RESULT([no])
-  CHECKTWISTED=
+  AM_CONDITIONAL([WANT_TWISTED_TESTS], false)
 fi
-AC_SUBST(CHECKTWISTED)
 
 dnl Check for Loudmouth
 PKG_CHECK_MODULES(LOUDMOUTH, loudmouth-1.0 >= 1.1.1)

@@ -53,3 +53,4 @@ CLEANFILES = gabble-[1-9]*.log *.pyc */*.pyc
 
 check_misc_sources = $(TESTS)
 
+include $(top_srcdir)/tools/check-coding-style.mk

@@ -55,6 +55,10 @@ class JingleTest:
         # Default audio codecs for the remote end
         self.audio_codecs = [ ('GSM', 3, 8000), ('PCMA', 8, 8000), ('PCMU', 0, 8000) ]
 
+        # Default video codecs for the remote end. I have no idea what's
+        # a suitable value here...
+        self.video_codecs = [ ('WTF', 42, 80000) ]
+
         # Default candidates for the remote end
         self.remote_transports = [
               ( "192.168.0.1", # host
@@ -66,6 +70,11 @@ class JingleTest:
                 0, # transport type = TP_MEDIA_STREAM_TRANSPORT_TYPE_LOCAL,
                 "username",
                 "password" ) ]
+
+
+    def get_video_codecs_dbus(self):
+        return dbus.Array([ (id, name, 0, rate, 0, {} ) for (name, id, rate) in self.video_codecs ],
+            signature='(usuuua{ss})')
 
 
     def get_audio_codecs_dbus(self):

@@ -80,7 +80,6 @@ def test(q, bus, conn, stream):
     video_stream_handler.StreamState(2)
 
     e = q.expect('stream-iq')
-    print e.iq_type, e.stanza
     assert e.query.name == 'jingle'
     assert e.query['action'] == 'session-initiate'
     stream.send(gabbletest.make_result_iq(stream, e.stanza))
@@ -117,13 +116,10 @@ def test(q, bus, conn, stream):
 
     # ---- Test 4: successful unhold ----
 
-    print "starting test 4"
     call_async(q, hold_iface, 'RequestHold', False)
     e = q.expect('dbus-signal', signal='SetStreamHeld', args=[False])
     e = q.expect('dbus-signal', signal='SetStreamHeld', args=[False])
-    print "unheld audio stream"
     call_async(q, audio_stream_handler, 'HoldState', False)
-    print "unheld video stream"
     call_async(q, video_stream_handler, 'HoldState', False)
 
     q.expect_many(

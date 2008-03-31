@@ -1343,6 +1343,13 @@ complete_hold_changes (GabbleMediaChannel *self,
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
   HoldChangeAttempt *attempt = priv->first_hold_change_attempt;
 
+#ifdef ENABLE_DEBUG
+  if (error == NULL)
+    DEBUG ("%p: success", self);
+  else
+    DEBUG ("%p: %s", self, error->message);
+#endif
+
   priv->first_hold_change_attempt = NULL;
   priv->last_hold_change_attempt = NULL;
 
@@ -1415,9 +1422,13 @@ stream_hold_state_changed (GabbleMediaStream *stream G_GNUC_UNUSED,
           "local-hold", &its_hold,
           NULL);
 
+      DEBUG ("Stream at index %u has local-hold=%u", i, (guint) its_hold);
+
       all_held = all_held && its_hold;
       any_held = any_held || its_hold;
     }
+
+  DEBUG ("all_held=%u, any_held=%u", (guint) all_held, (guint) any_held);
 
   /* Emit HoldStateChanged if necessary. The hold state is TRUE if and
    * only if all streams are held (because this indicates that another
@@ -1425,10 +1436,11 @@ stream_hold_state_changed (GabbleMediaStream *stream G_GNUC_UNUSED,
   if (all_held)
     {
       if (priv->hold_state != GABBLE_HOLD_STATE_HELD)
-      {
-        priv->hold_state = GABBLE_HOLD_STATE_HELD;
-        tp_svc_channel_interface_hold_emit_hold_state_changed (self, TRUE);
-      }
+        {
+          DEBUG ("Emitting HoldStateChanged(TRUE)");
+          priv->hold_state = GABBLE_HOLD_STATE_HELD;
+          tp_svc_channel_interface_hold_emit_hold_state_changed (self, TRUE);
+        }
     }
   else if (priv->hold_state == GABBLE_HOLD_STATE_HELD)
     {
@@ -1443,12 +1455,14 @@ stream_hold_state_changed (GabbleMediaStream *stream G_GNUC_UNUSED,
   /* If we're trying to unhold, succeed when all streams are unheld */
   if (!any_held && !priv->want_hold)
     {
+      DEBUG ("Successful unhold operation, completing queued calls");
       complete_hold_changes (self, NULL);
     }
 
   /* If we're trying to go on hold, succeed when all streams are held */
   if (all_held && priv->want_hold)
     {
+      DEBUG ("Successful hold operation, completing queued calls");
       complete_hold_changes (self, NULL);
     }
 }
@@ -1462,6 +1476,8 @@ stream_unhold_failed (GabbleMediaStream *stream,
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
   GError e = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
       "Unhold failed: streaming client failed to reacquire resource" };
+
+  DEBUG ("%p: %p", self, stream);
 
   if (!priv->want_hold)
     {
@@ -1653,6 +1669,11 @@ gabble_media_channel_get_hold_state (TpSvcChannelInterfaceHold *iface,
   GabbleMediaChannel *self = (GabbleMediaChannel *) iface;
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
 
+  DEBUG ("%p: GetHoldState() returns %u because hold state is %c", self,
+      (guint) (priv->hold_state == GABBLE_HOLD_STATE_HELD),
+      (priv->hold_state == GABBLE_HOLD_STATE_UNHELD ? 'U' :
+       priv->hold_state == GABBLE_HOLD_STATE_HELD ? 'H' : '?'));
+
   tp_svc_channel_interface_hold_return_from_get_hold_state (context,
       (priv->hold_state == GABBLE_HOLD_STATE_HELD));
 }
@@ -1667,6 +1688,7 @@ gabble_media_channel_request_hold (TpSvcChannelInterfaceHold *iface,
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
   guint i;
 
+  DEBUG ("%p: RequestHold(%u)", self, hold);
 
   if (hold)
     {
@@ -1675,10 +1697,12 @@ gabble_media_channel_request_hold (TpSvcChannelInterfaceHold *iface,
           GError e = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
               "RequestHold(FALSE) cancelled by RequestHold(TRUE)" };
 
+          DEBUG ("User changed their mind, cancelling previous hold changes");
           complete_hold_changes (self, &e);
         }
       else if (priv->hold_state == GABBLE_HOLD_STATE_HELD)
         {
+          DEBUG ("No-op");
           tp_svc_channel_interface_hold_return_from_request_hold (context);
           return;
         }
@@ -1698,10 +1722,12 @@ gabble_media_channel_request_hold (TpSvcChannelInterfaceHold *iface,
           GError e = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
               "RequestHold(TRUE) cancelled by RequestHold(FALSE)" };
 
+          DEBUG ("User changed their mind, cancelling previous hold changes");
           complete_hold_changes (self, &e);
         }
       else if (priv->hold_state == GABBLE_HOLD_STATE_UNHELD)
         {
+          DEBUG ("No-op");
           tp_svc_channel_interface_hold_return_from_request_hold (context);
           return;
         }

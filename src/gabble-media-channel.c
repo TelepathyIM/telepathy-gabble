@@ -1442,14 +1442,20 @@ stream_hold_state_changed (GabbleMediaStream *stream G_GNUC_UNUSED,
           tp_svc_channel_interface_hold_emit_hold_state_changed (self, TRUE);
         }
     }
-  else if (priv->hold_state == GABBLE_HOLD_STATE_HELD)
+  else
     {
+      gboolean was_held = (priv->hold_state == GABBLE_HOLD_STATE_HELD);
+
       if (any_held)
         priv->hold_state = GABBLE_HOLD_STATE_INDETERMINATE;
       else
         priv->hold_state = GABBLE_HOLD_STATE_UNHELD;
 
-      tp_svc_channel_interface_hold_emit_hold_state_changed (self, FALSE);
+      if (was_held)
+        {
+          DEBUG ("Emitting HoldStateChanged(FALSE)");
+          tp_svc_channel_interface_hold_emit_hold_state_changed (self, FALSE);
+        }
     }
 
   /* If we're trying to unhold, succeed when all streams are unheld */

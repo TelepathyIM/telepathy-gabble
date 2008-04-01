@@ -1316,8 +1316,8 @@ hold_change_timed_out (gpointer data)
   HoldChangeAttempt *attempt = priv->first_hold_change_attempt;
   GError e = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
       priv->want_hold
-          ? "Timed out while waiting for streaming client to acquire resource"
-          : "Timed out while waiting for streaming client to release resource"
+          ? "Timed out while waiting for streaming client to release resource"
+          : "Timed out while waiting for streaming client to acquire resource"
   };
 
   g_assert (attempt != NULL);

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-cd "@abs_top_builddir@/tests"
+cd "@abs_top_builddir@/tests/twisted/tools"
 
 export GABBLE_DEBUG=all LM_DEBUG=net
 ulimit -c unlimited
@@ -12,4 +12,4 @@ if test -n "$GABBLE_TEST_VALGRIND"; then
 	GABBLE_WRAPPER="valgrind --leak-check=full"
 fi
 
-exec $GABBLE_WRAPPER ../src/telepathy-gabble
+exec $GABBLE_WRAPPER ../../../src/telepathy-gabble

@@ -60,7 +60,16 @@
       G_TYPE_UINT, \
       G_TYPE_INVALID))
 
+#ifdef WITH_CALL_STATE
+#error Before enabling CallState, update configure.ac to require tp-glib 0.7.6
 static void call_state_iface_init (gpointer, gpointer);
+#define MAYBE_CALL_STATE() \
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CALL_STATE, \
+      call_state_iface_init);
+#else
+#define MAYBE_CALL_STATE() G_STMT_START { } G_STMT_END
+#endif
+
 static void channel_iface_init (gpointer, gpointer);
 static void hold_iface_init (gpointer, gpointer);
 static void media_signalling_iface_init (gpointer, gpointer);
@@ -69,8 +78,7 @@ static void streamed_media_iface_init (gpointer, gpointer);
 G_DEFINE_TYPE_WITH_CODE (GabbleMediaChannel, gabble_media_channel,
     G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CALL_STATE,
-      call_state_iface_init);
+    MAYBE_CALL_STATE ();
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
       tp_group_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_INTERFACE_HOLD,
@@ -1656,6 +1664,7 @@ _gabble_media_channel_caps_to_typeflags (GabblePresenceCapabilities caps)
   return typeflags;
 }
 
+#ifdef WITH_CALL_STATE
 static void
 gabble_media_channel_get_call_states (TpSvcChannelInterfaceCallState *iface,
                                       DBusGMethodInvocation *context)
@@ -1668,6 +1677,7 @@ gabble_media_channel_get_call_states (TpSvcChannelInterfaceCallState *iface,
       states);
   g_hash_table_destroy (states);
 }
+#endif
 
 static void
 gabble_media_channel_get_hold_state (GabbleSvcChannelInterfaceHold *iface,
@@ -1797,6 +1807,7 @@ media_signalling_iface_init (gpointer g_iface, gpointer iface_data)
 #undef IMPLEMENT
 }
 
+#ifdef WITH_CALL_STATE
 static void
 call_state_iface_init (gpointer g_iface,
                        gpointer iface_data G_GNUC_UNUSED)
@@ -1808,6 +1819,7 @@ call_state_iface_init (gpointer g_iface,
   IMPLEMENT(get_call_states);
 #undef IMPLEMENT
 }
+#endif
 
 static void
 hold_iface_init (gpointer g_iface,

@@ -28,6 +28,7 @@
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
 #include "debug.h"
+#include "extensions/extensions.h" /* for Hold */
 #include "gabble-connection.h"
 #include "gabble-media-session.h"
 #include "presence.h"
@@ -72,7 +73,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMediaChannel, gabble_media_channel,
       call_state_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
       tp_group_mixin_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_HOLD,
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_INTERFACE_HOLD,
       hold_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_MEDIA_SIGNALLING,
       media_signalling_iface_init);
@@ -680,7 +681,7 @@ gabble_media_channel_get_interfaces (TpSvcChannel *iface,
   const gchar *interfaces[] = {
       TP_IFACE_CHANNEL_INTERFACE_CALL_STATE,
       TP_IFACE_CHANNEL_INTERFACE_GROUP,
-      TP_IFACE_CHANNEL_INTERFACE_HOLD,
+      GABBLE_IFACE_CHANNEL_INTERFACE_HOLD,
       TP_IFACE_CHANNEL_INTERFACE_MEDIA_SIGNALLING,
       TP_IFACE_PROPERTIES_INTERFACE,
       NULL
@@ -1358,7 +1359,7 @@ complete_hold_changes (GabbleMediaChannel *self,
       HoldChangeAttempt *dead;
 
       if (error == NULL)
-        tp_svc_channel_interface_hold_return_from_request_hold (
+        gabble_svc_channel_interface_hold_return_from_request_hold (
             attempt->context);
       else
         dbus_g_method_return_error (attempt->context, error);
@@ -1439,7 +1440,7 @@ stream_hold_state_changed (GabbleMediaStream *stream G_GNUC_UNUSED,
         {
           DEBUG ("Emitting HoldStateChanged(TRUE)");
           priv->hold_state = GABBLE_HOLD_STATE_HELD;
-          tp_svc_channel_interface_hold_emit_hold_state_changed (self, TRUE);
+          gabble_svc_channel_interface_hold_emit_hold_state_changed (self, TRUE);
         }
     }
   else
@@ -1454,7 +1455,7 @@ stream_hold_state_changed (GabbleMediaStream *stream G_GNUC_UNUSED,
       if (was_held)
         {
           DEBUG ("Emitting HoldStateChanged(FALSE)");
-          tp_svc_channel_interface_hold_emit_hold_state_changed (self, FALSE);
+          gabble_svc_channel_interface_hold_emit_hold_state_changed (self, FALSE);
         }
     }
 
@@ -1669,7 +1670,7 @@ gabble_media_channel_get_call_states (TpSvcChannelInterfaceCallState *iface,
 }
 
 static void
-gabble_media_channel_get_hold_state (TpSvcChannelInterfaceHold *iface,
+gabble_media_channel_get_hold_state (GabbleSvcChannelInterfaceHold *iface,
                                      DBusGMethodInvocation *context)
 {
   GabbleMediaChannel *self = (GabbleMediaChannel *) iface;
@@ -1680,13 +1681,13 @@ gabble_media_channel_get_hold_state (TpSvcChannelInterfaceHold *iface,
       (priv->hold_state == GABBLE_HOLD_STATE_UNHELD ? 'U' :
        priv->hold_state == GABBLE_HOLD_STATE_HELD ? 'H' : '?'));
 
-  tp_svc_channel_interface_hold_return_from_get_hold_state (context,
+  gabble_svc_channel_interface_hold_return_from_get_hold_state (context,
       (priv->hold_state == GABBLE_HOLD_STATE_HELD));
 }
 
 
 static void
-gabble_media_channel_request_hold (TpSvcChannelInterfaceHold *iface,
+gabble_media_channel_request_hold (GabbleSvcChannelInterfaceHold *iface,
                                    gboolean hold,
                                    DBusGMethodInvocation *context)
 {
@@ -1709,7 +1710,7 @@ gabble_media_channel_request_hold (TpSvcChannelInterfaceHold *iface,
       else if (priv->hold_state == GABBLE_HOLD_STATE_HELD)
         {
           DEBUG ("No-op");
-          tp_svc_channel_interface_hold_return_from_request_hold (context);
+          gabble_svc_channel_interface_hold_return_from_request_hold (context);
           return;
         }
 
@@ -1734,7 +1735,7 @@ gabble_media_channel_request_hold (TpSvcChannelInterfaceHold *iface,
       else if (priv->hold_state == GABBLE_HOLD_STATE_UNHELD)
         {
           DEBUG ("No-op");
-          tp_svc_channel_interface_hold_return_from_request_hold (context);
+          gabble_svc_channel_interface_hold_return_from_request_hold (context);
           return;
         }
     }
@@ -1812,9 +1813,9 @@ static void
 hold_iface_init (gpointer g_iface,
                  gpointer iface_data G_GNUC_UNUSED)
 {
-  TpSvcChannelInterfaceHoldClass *klass = g_iface;
+  GabbleSvcChannelInterfaceHoldClass *klass = g_iface;
 
-#define IMPLEMENT(x) tp_svc_channel_interface_hold_implement_##x (\
+#define IMPLEMENT(x) gabble_svc_channel_interface_hold_implement_##x (\
     klass, gabble_media_channel_##x)
   IMPLEMENT(get_hold_state);
   IMPLEMENT(request_hold);

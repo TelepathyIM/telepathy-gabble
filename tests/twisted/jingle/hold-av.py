@@ -11,6 +11,19 @@ import dbus
 import time
 
 
+MEDIA_STREAM_TYPE_AUDIO = 0
+MEDIA_STREAM_TYPE_VIDEO = 0
+# Hold states
+S_UNHELD = 0
+S_HELD = 1
+S_PENDING_HOLD = 2
+S_PENDING_UNHOLD = 3
+# Reasons
+R_NONE = 0
+R_REQUESTED = 1
+R_RESOURCE_NOT_AVAILABLE = 2
+
+
 def test(q, bus, conn, stream):
     jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
 
@@ -53,7 +66,8 @@ def test(q, bus, conn, stream):
     session_handler = make_channel_proxy(conn, e.args[0], 'Media.SessionHandler')
     session_handler.Ready()
 
-    media_iface.RequestStreams(1, [0, 1]) # 0 == MEDIA_STREAM_TYPE_AUDIO
+    media_iface.RequestStreams(1, [MEDIA_STREAM_TYPE_AUDIO,
+        MEDIA_STREAM_TYPE_VIDEO])
 
     e = q.expect('dbus-signal', signal='NewStreamHandler')
 
@@ -88,179 +102,251 @@ def test(q, bus, conn, stream):
 
     q.expect('stream-iq', iq_type='result')
 
-    # ---- Test 1: GetHoldState returns False and unhold is a no-op ----
+    # ---- Test 1: GetHoldState returns unheld and unhold is a no-op ----
 
     hold_state = hold_iface.GetHoldState()
-    assert not hold_state
+    assert hold_state[0] == S_UNHELD, hold_state
     hold_iface.RequestHold(False)
 
     # ---- Test 2: successful hold ----
 
     call_async(q, hold_iface, 'RequestHold', True)
-    e = q.expect('dbus-signal', signal='SetStreamHeld', args=[True])
-    e = q.expect('dbus-signal', signal='SetStreamHeld', args=[True])
-    call_async(q, audio_stream_handler, 'HoldState', True)
-    call_async(q, video_stream_handler, 'HoldState', True)
-
     q.expect_many(
-        EventPattern('dbus-return', method='HoldState', value=()),
+        EventPattern('dbus-signal', signal='HoldStateChanged',
+            args=[S_PENDING_HOLD, R_REQUESTED]),
+        EventPattern('dbus-signal', signal='SetStreamHeld', args=[True]),
         EventPattern('dbus-return', method='RequestHold', value=()),
-        EventPattern('dbus-signal', signal='HoldStateChanged', args=[True]),
         )
 
-    # ---- Test 3: GetHoldState returns True and hold is a no-op ----
+    call_async(q, audio_stream_handler, 'HoldState', True)
+    call_async(q, video_stream_handler, 'HoldState', True)
+    q.expect_many(
+        EventPattern('dbus-return', method='HoldState', value=()),
+        EventPattern('dbus-signal', signal='HoldStateChanged',
+            args=[S_HELD, R_REQUESTED]),
+        )
+
+    # ---- Test 3: GetHoldState returns held and hold is a no-op ----
 
     hold_state = hold_iface.GetHoldState()
-    assert hold_state
+    assert hold_state[0] == S_HELD, hold_state
     hold_iface.RequestHold(True)
 
     # ---- Test 4: successful unhold ----
 
     call_async(q, hold_iface, 'RequestHold', False)
-    e = q.expect('dbus-signal', signal='SetStreamHeld', args=[False])
-    e = q.expect('dbus-signal', signal='SetStreamHeld', args=[False])
+    q.expect_many(
+        EventPattern('dbus-signal', signal='HoldStateChanged',
+            args=[S_PENDING_UNHOLD, R_REQUESTED]),
+        EventPattern('dbus-signal', signal='SetStreamHeld', args=[False]),
+        EventPattern('dbus-return', method='RequestHold', value=()),
+        )
+
     call_async(q, audio_stream_handler, 'HoldState', False)
     call_async(q, video_stream_handler, 'HoldState', False)
-
     q.expect_many(
         EventPattern('dbus-return', method='HoldState', value=()),
-        EventPattern('dbus-return', method='RequestHold', value=()),
-        EventPattern('dbus-signal', signal='HoldStateChanged', args=[False]),
+        EventPattern('dbus-signal', signal='HoldStateChanged',
+            args=[S_UNHELD, R_REQUESTED]),
         )
 
     # ---- Test 5: GetHoldState returns False and unhold is a no-op ----
 
     hold_state = hold_iface.GetHoldState()
-    assert not hold_state
+    assert hold_state[0] == S_UNHELD, hold_state
     hold_iface.RequestHold(False)
 
     # ---- Test 6: 3 parallel calls to hold ----
 
-    call_async(q, hold_iface, 'RequestHold', True)
-    call_async(q, hold_iface, 'RequestHold', True)
-    call_async(q, hold_iface, 'RequestHold', True)
+    hold_state = hold_iface.GetHoldState()
+    assert hold_state[0] == S_UNHELD, hold_state
 
-    e = q.expect('dbus-signal', signal='SetStreamHeld', args=[True])
-    e = q.expect('dbus-signal', signal='SetStreamHeld', args=[True])
+    call_async(q, hold_iface, 'RequestHold', True)
+    call_async(q, hold_iface, 'RequestHold', True)
+    call_async(q, hold_iface, 'RequestHold', True)
+    q.expect_many(
+        EventPattern('dbus-signal', signal='HoldStateChanged',
+            args=[S_PENDING_HOLD, R_REQUESTED]),
+        EventPattern('dbus-signal', signal='SetStreamHeld', args=[True]),
+        EventPattern('dbus-return', method='RequestHold', value=()),
+        )
 
     call_async(q, audio_stream_handler, 'HoldState', True)
     call_async(q, video_stream_handler, 'HoldState', True)
-
-    # FIXME: this hard-codes the order in which things happen - enhance
-    # expect_many to be able to require multiple similar events to happen
-    q.expect('dbus-return', method='HoldState', value=())
-    q.expect('dbus-signal', signal='HoldStateChanged', args=[True])
-    q.expect('dbus-return', method='RequestHold', value=())
-    q.expect('dbus-return', method='RequestHold', value=())
-    q.expect('dbus-return', method='RequestHold', value=())
-    q.expect('dbus-return', method='HoldState', value=())
+    q.expect_many(
+        EventPattern('dbus-return', method='HoldState', value=()),
+        EventPattern('dbus-signal', signal='HoldStateChanged',
+            args=[S_HELD, R_REQUESTED]),
+        )
 
     # ---- Test 7: 3 parallel calls to unhold ----
 
-    hold_state = hold_iface.GetHoldState()
-    assert hold_state
-
     call_async(q, hold_iface, 'RequestHold', False)
     call_async(q, hold_iface, 'RequestHold', False)
     call_async(q, hold_iface, 'RequestHold', False)
-
-    e = q.expect('dbus-signal', signal='SetStreamHeld', args=[False])
-    e = q.expect('dbus-signal', signal='SetStreamHeld', args=[False])
+    q.expect_many(
+        EventPattern('dbus-signal', signal='HoldStateChanged',
+            args=[S_PENDING_UNHOLD, R_REQUESTED]),
+        EventPattern('dbus-signal', signal='SetStreamHeld', args=[False]),
+        EventPattern('dbus-return', method='RequestHold', value=()),
+        )
 
     call_async(q, audio_stream_handler, 'HoldState', False)
     call_async(q, video_stream_handler, 'HoldState', False)
-
-    # FIXME: this hard-codes the order in which things happen - enhance
-    # expect_many to be able to require multiple similar events to happen
-
-    # Inconsistency: HoldStateChanged is emitted earlier here than in test 6 -
-    # to be safe we treat an indeterminate state as unheld (because it means
-    # the call is at least partially active, so some resources are held)
-    q.expect('dbus-signal', signal='HoldStateChanged', args=[False])
-    q.expect('dbus-return', method='HoldState', value=())
-    q.expect('dbus-return', method='RequestHold', value=())
-    q.expect('dbus-return', method='RequestHold', value=())
-    q.expect('dbus-return', method='RequestHold', value=())
-    q.expect('dbus-return', method='HoldState', value=())
+    q.expect_many(
+        EventPattern('dbus-return', method='HoldState', value=()),
+        EventPattern('dbus-signal', signal='HoldStateChanged',
+            args=[S_UNHELD, R_REQUESTED]),
+        )
 
     # ---- Test 8: hold, then change our minds before s-e has responded ----
 
     hold_state = hold_iface.GetHoldState()
-    assert not hold_state
+    assert hold_state[0] == S_UNHELD, hold_state
 
     call_async(q, hold_iface, 'RequestHold', True)
     call_async(q, hold_iface, 'RequestHold', False)
-    e = q.expect('dbus-signal', signal='SetStreamHeld', args=[True])
-    e = q.expect('dbus-signal', signal='SetStreamHeld', args=[True])
-    e = q.expect('dbus-error', method='RequestHold')
-    assert str(e.error) == \
-            ('org.freedesktop.Telepathy.Errors.NotAvailable: '
-             'RequestHold(TRUE) cancelled by RequestHold(FALSE)'), e.error
-    e = q.expect('dbus-signal', signal='SetStreamHeld', args=[False])
-    e = q.expect('dbus-signal', signal='SetStreamHeld', args=[False])
+    q.expect_many(
+        EventPattern('dbus-signal', signal='HoldStateChanged',
+            args=[S_PENDING_HOLD, R_REQUESTED]),
+        EventPattern('dbus-signal', signal='SetStreamHeld', args=[True]),
+        )
+    q.expect_many(
+        EventPattern('dbus-signal', signal='HoldStateChanged',
+            args=[S_PENDING_UNHOLD, R_REQUESTED]),
+        EventPattern('dbus-signal', signal='SetStreamHeld', args=[False]),
+        )
 
     call_async(q, audio_stream_handler, 'HoldState', True)
     call_async(q, video_stream_handler, 'HoldState', True)
     call_async(q, audio_stream_handler, 'HoldState', False)
     call_async(q, video_stream_handler, 'HoldState', False)
-
     q.expect_many(
         EventPattern('dbus-return', method='HoldState', value=()),
-        EventPattern('dbus-return', method='RequestHold', value=()),
-        EventPattern('dbus-signal', signal='HoldStateChanged', args=[False]),
+        EventPattern('dbus-signal', signal='HoldStateChanged',
+            args=[S_UNHELD, R_REQUESTED]),
         )
+
+    hold_state = hold_iface.GetHoldState()
+    assert hold_state[0] == S_UNHELD, hold_state
 
     # ---- Test 9: unhold, then change our minds before s-e has responded ----
 
-    # (we need to hold first)
+    # Go to state "held" first
     call_async(q, hold_iface, 'RequestHold', True)
-    e = q.expect('dbus-signal', signal='SetStreamHeld', args=[True])
-    e = q.expect('dbus-signal', signal='SetStreamHeld', args=[True])
+    q.expect_many(
+        EventPattern('dbus-signal', signal='HoldStateChanged',
+            args=[S_PENDING_HOLD, R_REQUESTED]),
+        EventPattern('dbus-signal', signal='SetStreamHeld', args=[True]),
+        EventPattern('dbus-return', method='RequestHold', value=()),
+        )
     call_async(q, audio_stream_handler, 'HoldState', True)
     call_async(q, video_stream_handler, 'HoldState', True)
     q.expect_many(
         EventPattern('dbus-return', method='HoldState', value=()),
-        EventPattern('dbus-return', method='RequestHold', value=()),
-        EventPattern('dbus-signal', signal='HoldStateChanged', args=[True]),
+        EventPattern('dbus-signal', signal='HoldStateChanged',
+            args=[S_HELD, R_REQUESTED]),
         )
 
-    # OK, now do the unhold/hold cycle
+    # Actually do test 9
+
+    hold_state = hold_iface.GetHoldState()
+    assert hold_state[0] == S_HELD, hold_state
+
     call_async(q, hold_iface, 'RequestHold', False)
     call_async(q, hold_iface, 'RequestHold', True)
-    e = q.expect('dbus-signal', signal='SetStreamHeld', args=[False])
-    e = q.expect('dbus-signal', signal='SetStreamHeld', args=[False])
-    e = q.expect('dbus-error', method='RequestHold')
-    assert str(e.error) == \
-            ('org.freedesktop.Telepathy.Errors.NotAvailable: '
-             'RequestHold(FALSE) cancelled by RequestHold(TRUE)'), e.error
-    e = q.expect('dbus-signal', signal='SetStreamHeld', args=[True])
-    e = q.expect('dbus-signal', signal='SetStreamHeld', args=[True])
+    q.expect_many(
+        EventPattern('dbus-signal', signal='HoldStateChanged',
+            args=[S_PENDING_UNHOLD, R_REQUESTED]),
+        EventPattern('dbus-signal', signal='SetStreamHeld', args=[False]),
+        )
+    q.expect_many(
+        EventPattern('dbus-signal', signal='HoldStateChanged',
+            args=[S_PENDING_HOLD, R_REQUESTED]),
+        EventPattern('dbus-signal', signal='SetStreamHeld', args=[True]),
+        )
 
     call_async(q, audio_stream_handler, 'HoldState', False)
     call_async(q, video_stream_handler, 'HoldState', False)
     call_async(q, audio_stream_handler, 'HoldState', True)
     call_async(q, video_stream_handler, 'HoldState', True)
-
     q.expect_many(
         EventPattern('dbus-return', method='HoldState', value=()),
-        EventPattern('dbus-return', method='RequestHold', value=()),
-        EventPattern('dbus-signal', signal='HoldStateChanged', args=[True]),
+        EventPattern('dbus-signal', signal='HoldStateChanged',
+            args=[S_HELD, R_REQUESTED]),
         )
 
-    # Unhold, just to get back to a "normal" state
+    hold_state = hold_iface.GetHoldState()
+    assert hold_state[0] == S_HELD, hold_state
+
+    # ---- Test 10: attempting to unhold fails (both streams) ----
+
     call_async(q, hold_iface, 'RequestHold', False)
-    e = q.expect('dbus-signal', signal='SetStreamHeld', args=[False])
-    e = q.expect('dbus-signal', signal='SetStreamHeld', args=[False])
+    q.expect_many(
+        EventPattern('dbus-signal', signal='HoldStateChanged',
+            args=[S_PENDING_UNHOLD, R_REQUESTED]),
+        EventPattern('dbus-signal', signal='SetStreamHeld', args=[False]),
+        EventPattern('dbus-return', method='RequestHold', value=()),
+        )
+
+    call_async(q, audio_stream_handler, 'UnholdFailure')
+    call_async(q, video_stream_handler, 'UnholdFailure')
+
+    q.expect_many(
+        EventPattern('dbus-return', method='UnholdFailure', value=()),
+        EventPattern('dbus-signal', signal='HoldStateChanged',
+            args=[S_HELD, R_RESOURCE_NOT_AVAILABLE]),
+        )
+
+    # ---- Test 11: attempting to unhold fails (first stream) ----
+
+    call_async(q, hold_iface, 'RequestHold', False)
+    q.expect_many(
+        EventPattern('dbus-signal', signal='HoldStateChanged',
+            args=[S_PENDING_UNHOLD, R_REQUESTED]),
+        EventPattern('dbus-signal', signal='SetStreamHeld', args=[False]),
+        EventPattern('dbus-return', method='RequestHold', value=()),
+        )
+
+    call_async(q, audio_stream_handler, 'UnholdFailure')
+
+    q.expect_many(
+        EventPattern('dbus-return', method='UnholdFailure', value=()),
+        EventPattern('dbus-signal', signal='HoldStateChanged',
+            args=[S_HELD, R_RESOURCE_NOT_AVAILABLE]),
+        )
+
+    # ---- Test 12: attempting to unhold partially fails, so roll back ----
+
+    call_async(q, hold_iface, 'RequestHold', False)
+    q.expect_many(
+        EventPattern('dbus-signal', signal='HoldStateChanged',
+            args=[S_PENDING_UNHOLD, R_REQUESTED]),
+        EventPattern('dbus-signal', signal='SetStreamHeld', args=[False]),
+        EventPattern('dbus-return', method='RequestHold', value=()),
+        )
+
     call_async(q, audio_stream_handler, 'HoldState', False)
-    call_async(q, video_stream_handler, 'HoldState', False)
+    q.expect('dbus-return', method='HoldState', value=())
+
+    call_async(q, video_stream_handler, 'UnholdFailure')
+
+    q.expect_many(
+        EventPattern('dbus-signal', signal='SetStreamHeld', args=[True]),
+        EventPattern('dbus-return', method='UnholdFailure', value=()),
+        EventPattern('dbus-signal', signal='HoldStateChanged',
+            args=[S_PENDING_HOLD, R_RESOURCE_NOT_AVAILABLE]),
+        )
+
+    call_async(q, audio_stream_handler, 'HoldState', True)
 
     q.expect_many(
         EventPattern('dbus-return', method='HoldState', value=()),
-        EventPattern('dbus-return', method='RequestHold', value=()),
-        EventPattern('dbus-signal', signal='HoldStateChanged', args=[False]),
+        EventPattern('dbus-signal', signal='HoldStateChanged',
+            args=[S_HELD, R_RESOURCE_NOT_AVAILABLE]),
         )
 
-    # Time passes ... afterwards we close the chan
+    # ---- The end ----
 
     group_iface.RemoveMembers([dbus.UInt32(1)], 'closed')
 

@@ -65,7 +65,7 @@ main (int argc,
 #ifdef ENABLE_DEBUG
   gabble_debug_set_flags_from_env ();
 
-  if (g_getenv ("GABBLE_TIMING"))
+  if (g_getenv ("GABBLE_TIMING") != NULL)
     g_log_set_handler (NULL, G_LOG_LEVEL_DEBUG, stamp_log, NULL);
 
   if (g_getenv ("GABBLE_PERSIST") != NULL)

@@ -11,6 +11,18 @@ import dbus
 import time
 
 
+MEDIA_STREAM_TYPE_AUDIO = 0
+# Hold states
+S_UNHELD = 0
+S_HELD = 1
+S_PENDING_HOLD = 2
+S_PENDING_UNHOLD = 3
+# Reasons
+R_NONE = 0
+R_REQUESTED = 1
+R_RESOURCE_NOT_AVAILABLE = 2
+
+
 def test(q, bus, conn, stream):
     jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
 

@@ -23,6 +23,7 @@
 #include <string.h>
 
 #include <telepathy-glib/channel-iface.h>
+#include <telepathy-glib/util.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_OLPC
 

@@ -68,16 +68,8 @@ main (int argc,
   if (g_getenv ("GABBLE_TIMING"))
     g_log_set_handler (NULL, G_LOG_LEVEL_DEBUG, stamp_log, NULL);
 
-  if (g_getenv ("GABBLE_PERSIST"))
-    {
-#ifdef HAVE_TP_DEBUG_SET_FLAGS
-      /* tp-glib >= 0.6.1: persist is no longer a flag in quite the same way */
-      tp_debug_set_persistent (TRUE);
-#else
-      /* tp-glib < 0.6.1: persist is a flag, of sorts */
-      tp_debug_set_flags_from_string ("persist");
-#endif
-    }
+  if (g_getenv ("GABBLE_PERSIST") != NULL)
+    tp_debug_set_persistent (TRUE);
 #endif
 
   return tp_run_connection_manager ("telepathy-gabble", VERSION,

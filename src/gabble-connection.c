@@ -1155,17 +1155,7 @@ _gabble_connection_connect (TpBaseConnection *base,
         lm_connection_set_port (conn->lmconn, priv->port);
     }
   else
-#ifndef HAVE_LM_SRV_LOOKUPS
-  /* set the server from the JID if we don't have SRV lookups */
-    {
-      DEBUG ("SRV lookup not supported, will connect to %s",
-          priv->stream_server);
-
-      lm_connection_set_server (conn->lmconn, priv->stream_server);
-    }
-#else
     DEBUG ("letting SRV lookup decide server and port");
-#endif /* HAVE_LM_SRV_LOOKUPS */
 
   if (priv->https_proxy_server)
     {
@@ -1185,7 +1175,6 @@ _gabble_connection_connect (TpBaseConnection *base,
       lm_connection_set_ssl (conn->lmconn, ssl);
       lm_ssl_unref (ssl);
     }
-#ifdef HAVE_LM_STARTTLS
   else
     {
       LmSSL *ssl = lm_ssl_new (NULL, connection_ssl_cb, conn, NULL);
@@ -1198,7 +1187,6 @@ _gabble_connection_connect (TpBaseConnection *base,
       if (!priv->require_encryption)
           priv->ignore_ssl_errors = TRUE;
     }
-#endif /* HAVE_LM_STARTTLS */
 
   /* send whitespace to the server every 30 seconds */
   lm_connection_set_keep_alive_rate (conn->lmconn, 30);
@@ -1851,11 +1839,7 @@ connection_auth_cb (LmConnection *lmconn,
     }
 
 
-#ifdef HAVE_LM_CONNECTION_GET_FULL_JID
   jid = lm_connection_get_full_jid (lmconn);
-#else
-  jid = lm_connection_get_jid (lmconn);
-#endif /* HAVE_LM_CONNECTION_GET_FULL_JID */
 
   base->self_handle = tp_handle_ensure (contact_handles, jid, NULL, &error);
 

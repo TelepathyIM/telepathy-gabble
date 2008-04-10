@@ -1155,7 +1155,9 @@ _gabble_connection_connect (TpBaseConnection *base,
         lm_connection_set_port (conn->lmconn, priv->port);
     }
   else
-    DEBUG ("letting SRV lookup decide server and port");
+    {
+      DEBUG ("letting SRV lookup decide server and port");
+    }
 
   if (priv->https_proxy_server)
     {

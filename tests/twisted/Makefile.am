@@ -44,7 +44,7 @@ TESTS_ENVIRONMENT = \
 
 check-local: check-coding-style
 	$(MAKE) -C tools
-	sh tools/with-session-bus.sh --config-file=tools/tmp-session-bus.conf -- $(MAKE) check-TESTS \
+	sh $(srcdir)/tools/with-session-bus.sh --config-file=tools/tmp-session-bus.conf -- $(MAKE) check-TESTS \
 		TESTS="$(TWISTED_TESTS)" TESTS_ENVIRONMENT="PYTHONPATH=@abs_top_srcdir@/tests/twisted $(PYTHON)"
 
 EXTRA_DIST = \

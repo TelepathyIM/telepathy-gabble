@@ -1427,7 +1427,7 @@ stream_hold_state_changed (GabbleMediaStream *stream G_GNUC_UNUSED,
         }
       else
         {
-          /* We were previously HELD. So why have we gone on hold now? */
+          /* We were previously HELD. So why have we gone off hold now? */
           DEBUG ("Unexpectedly entered UNHELD state!");
           priv->hold_state = GABBLE_LOCAL_HOLD_STATE_UNHELD;
           priv->hold_state_reason = GABBLE_LOCAL_HOLD_STATE_REASON_NONE;

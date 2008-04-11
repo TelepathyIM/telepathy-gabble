@@ -48,7 +48,10 @@ check-local: check-coding-style
 		TESTS="$(TWISTED_TESTS)" TESTS_ENVIRONMENT="PYTHONPATH=@abs_top_srcdir@/tests/twisted $(PYTHON)"
 
 EXTRA_DIST = \
-	$(TWISTED_TESTS)
+	$(TWISTED_TESTS) \
+	gabbletest.py \
+	servicetest.py \
+	jingle/jingletest.py
 
 CLEANFILES = gabble-[1-9]*.log *.pyc */*.pyc
 

@@ -24,7 +24,7 @@ AC_INIT([Telepathy Gabble], [gabble_version],
 
 AC_CONFIG_MACRO_DIR([m4])
 
-AM_INIT_AUTOMAKE([1.8 tar-ustar -Wno-portability])
+AM_INIT_AUTOMAKE([1.8 -Wno-portability])
 AM_CONFIG_HEADER(config.h)
 
 dnl check for tools

@@ -1,3 +1,33 @@
+telepathy-gabble 0.7.3 (2008-04-11)
+===================================
+
+Requirements:
+
+* telepathy-glib >= 0.7.0 and Loudmouth >= 1.3.2 are now required
+
+Enhancements:
+
+* Implements the current draft of the Hold interface, which will be in
+  telepathy-spec 0.17.4 if all goes well
+
+* Improved Python regression test API and more regression tests:
+  - outgoing Jingle calls
+  - holding calls
+
+Fixes:
+
+* Only emit one AvatarRetrieved signal per contact, no matter how many
+  requests there were for their avatar (fd.o #12465)
+
+* Explicitly say we require GNU make, and turn off Automake portability
+  warnings (fd.o #14020)
+
+* Don't emit NewStreamHandler signals multiple times if Ready is called
+  multiple times on the SessionHandler (a bug in stream-engine used to
+  cause this to happen sometimes)
+
+* Assorted code cleanup prompted by adding more gcc warnings
+
 telepathy-gabble 0.7.2 (2008-01-17)
 ===================================
 * Improvements to build system and code generation

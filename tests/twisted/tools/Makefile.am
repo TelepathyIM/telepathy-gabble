@@ -23,3 +23,7 @@ EXTRA_DIST = \
 	$(conf_in_files) \
 	exec-with-log.sh.in \
 	with-session-bus.sh
+
+CLEANFILES = \
+    $(BUILT_SOURCES) \
+    gabble-testing.log

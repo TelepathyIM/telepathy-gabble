@@ -21,5 +21,5 @@ BUILT_SOURCES = $(service_files) $(conf_files) exec-with-log.sh
 EXTRA_DIST = \
 	$(service_in_files) \
 	$(conf_in_files) \
-	exec-with-log.sh.in
-
+	exec-with-log.sh.in \
+	with-session-bus.sh

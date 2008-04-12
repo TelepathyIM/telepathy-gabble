@@ -2320,6 +2320,10 @@ _gabble_media_session_remove_streams (GabbleMediaSession *session,
       GMS_DEBUG_INFO (session, "not sending jingle session action "
           "\"content-remove\" to peer, no initiates or adds sent for "
           "these streams");
+      if (priv->state < JS_STATE_PENDING_INITIATE_SENT)
+        {
+           try_session_initiate (session);
+        }
     }
 }
 

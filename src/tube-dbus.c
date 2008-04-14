@@ -47,6 +47,8 @@
 #include "bytestream-factory.h"
 #include "gabble-signals-marshal.h"
 
+#define MAX_MESSAGES_QUEUED 16
+
 static void
 tube_iface_init (gpointer g_iface, gpointer iface_data);
 
@@ -246,10 +248,11 @@ new_connection_cb (DBusServer *server,
    * delivered as soon as we get the connection. */
   DEBUG ("%u messages in the queue", g_slist_length(priv->dbus_msg_queue));
   priv->dbus_msg_queue = g_slist_reverse (priv->dbus_msg_queue);
-  for (i = priv->dbus_msg_queue ; i != NULL; i = g_slist_delete_link(i, i))
+  for (i = priv->dbus_msg_queue ; i != NULL; i = g_slist_delete_link (i, i))
     {
       DBusMessage *msg = i->data;
-      DEBUG ("deliver queued message from '%s' to '%s' on the new connection",
+      DEBUG ("delivering queued message from '%s' to '%s' on the "
+             "new connection",
              dbus_message_get_sender (msg),
              dbus_message_get_destination (msg));
       dbus_connection_send (priv->dbus_conn, msg, &serial);
@@ -862,7 +865,6 @@ message_received (GabbleTubeDBus *tube,
       /* If the application never connects to the private dbus connection, we
        * don't want to eat all the memory. Only queue MAX_MESSAGES_QUEUED
        * messages. If there is more messages, drop them. */
-      #define MAX_MESSAGES_QUEUED 16
       if (g_slist_length (priv->dbus_msg_queue) >= MAX_MESSAGES_QUEUED)
         {
           DEBUG ("Too many messages queued (%d > %d). Ignore this message.",
@@ -870,7 +872,7 @@ message_received (GabbleTubeDBus *tube,
           goto unref;
         }
 
-      priv->dbus_msg_queue = g_slist_prepend(priv->dbus_msg_queue, msg);
+      priv->dbus_msg_queue = g_slist_prepend (priv->dbus_msg_queue, msg);
 
       /* returns without unref the message */
       return;

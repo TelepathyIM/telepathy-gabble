@@ -35,7 +35,15 @@ TWISTED_TESTS = \
 	jingle/hold-av.py \
 	jingle/test-incoming-call.py \
 	jingle/test-outgoing-call.py \
-	jingle/test-outgoing-call-rejected.py
+	jingle/test-outgoing-call-rejected.py \
+	test-capabilities.py \
+	test-caps-update.py \
+	test-connect-fail.py \
+	test-connect.py \
+	test-disco.py \
+	test-group-race.py \
+	test-register.py \
+	test-set-status-idempotence.py
 
 TESTS =
 

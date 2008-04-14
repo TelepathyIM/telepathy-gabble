@@ -43,8 +43,12 @@ TWISTED_TESTS = \
 	test-disco.py \
 	test-group-race.py \
 	test-register.py \
-	test-set-status-idempotence.py \
+	test-set-status-idempotence.py
+
+if ENABLE_SLOW_TESTS
+TWISTED_TESTS += \
 	slow/test-disco-no-reply.py
+endif
 
 TESTS =
 

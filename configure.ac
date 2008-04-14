@@ -187,6 +187,20 @@ if test x$have_dbus_tube = xno; then
   echo "Not building support for D-Bus tubes! (libdbus >= 1.1 required)"
 fi
 
+dnl Run slow tests
+AC_ARG_ENABLE(slow-tests,
+  AC_HELP_STRING([--enable-slow-tests],[Run slow tests]),
+    enable_slow_tests=$enableval, enable_slow_tests=no )
+
+if test x$enable_slow_tests = xyes; then
+  AC_DEFINE(ENABLE_SLOW_TESTS, [], [Run slow tests])
+fi
+
+AM_CONDITIONAL(ENABLE_SLOW_TESTS, test "x$enable_slow_tests" = "xyes")
+
+AC_SUBST(ENABLE_SLOW_TESTS)
+
+
 AC_OUTPUT( Makefile \
            docs/Makefile \
            extensions/Makefile \

@@ -246,14 +246,14 @@ def go(params=None, authenticator=None, protocol=None, start=None):
 
     reactor.run()
 
-def exec_test(fun, params=None):
+def exec_test(fun, params=None, protocol=None):
     queue = servicetest.IteratingEventQueue()
 
     queue.verbose = (os.environ.get('CHECK_TWISTED_VERBOSE', '') != '')
     if '-v' in sys.argv:
         queue.verbose = True
 
-    bus, conn, stream = prepare_test(queue.append, params)
+    bus, conn, stream = prepare_test(queue.append, params, protocol=protocol)
 
     # hack to ease debugging
     domish.Element.__repr__ = domish.Element.toXml

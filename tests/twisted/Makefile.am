@@ -44,7 +44,7 @@ TWISTED_TESTS = \
 	test-group-race.py \
 	test-register.py \
 	test-set-status-idempotence.py \
-	test-disco-no-reply.py
+	slow/test-disco-no-reply.py
 
 TESTS =
 

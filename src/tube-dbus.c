@@ -110,7 +110,7 @@ struct _GabbleTubeDBusPrivate
   DBusConnection *dbus_conn;
   /* the queue of D-Bus messages to be delivered to a local client when it
    * will connect */
-  GList *dbus_msg_queue;
+  GSList *dbus_msg_queue;
   /* mapping of contact handle -> D-Bus name (NULL for 1-1 D-Bus tubes) */
   GHashTable *dbus_names;
   /* mapping of D-Bus name -> contact handle */
@@ -227,7 +227,7 @@ new_connection_cb (DBusServer *server,
   GabbleTubeDBus *tube = GABBLE_TUBE_DBUS (data);
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (tube);
   guint32 serial;
-  GList *i;
+  GSList *i;
 
   if (priv->dbus_conn != NULL)
     /* we already have a connection; drop this new one */
@@ -244,15 +244,15 @@ new_connection_cb (DBusServer *server,
   /* We may have received messages to deliver before the local connection is
    * established. Theses messages are kept in the dbus_msg_queue list and are
    * delivered as soon as we get the connection. */
-  DEBUG ("%u messages in the queue", g_list_length(priv->dbus_msg_queue));
-  while ((i = g_list_first(priv->dbus_msg_queue)))
+  DEBUG ("%u messages in the queue", g_slist_length(priv->dbus_msg_queue));
+  priv->dbus_msg_queue = g_slist_reverse (priv->dbus_msg_queue);
+  for (i = priv->dbus_msg_queue ; i != NULL; i = g_slist_delete_link(i, i))
     {
       DBusMessage *msg = i->data;
       DEBUG ("deliver queued message from '%s' to '%s' on the new connection",
              dbus_message_get_sender (msg),
              dbus_message_get_destination (msg));
       dbus_connection_send (priv->dbus_conn, msg, &serial);
-      priv->dbus_msg_queue = g_list_remove(priv->dbus_msg_queue, msg);
       dbus_message_unref (msg);
     }
 }
@@ -863,7 +863,7 @@ message_received (GabbleTubeDBus *tube,
     {
       DEBUG ("no D-Bus connection: queue the message");
 
-      priv->dbus_msg_queue = g_list_append(priv->dbus_msg_queue, msg);
+      priv->dbus_msg_queue = g_slist_prepend(priv->dbus_msg_queue, msg);
 
       /* returns without unref the message */
       return;

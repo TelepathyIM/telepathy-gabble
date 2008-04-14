@@ -855,10 +855,6 @@ message_received (GabbleTubeDBus *tube,
         }
     }
 
-  DEBUG ("deliver message from '%s' to '%s'",
-         dbus_message_get_sender (msg),
-         dbus_message_get_destination (msg));
-
   if (!priv->dbus_conn)
     {
       DEBUG ("no D-Bus connection: queue the message");
@@ -879,6 +875,10 @@ message_received (GabbleTubeDBus *tube,
       /* returns without unref the message */
       return;
     }
+
+  DEBUG ("deliver message from '%s' to '%s'",
+         dbus_message_get_sender (msg),
+         dbus_message_get_destination (msg));
 
   /* XXX: what do do if this returns FALSE? */
   dbus_connection_send (priv->dbus_conn, msg, &serial);

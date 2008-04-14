@@ -1933,6 +1933,11 @@ connection_disco_cb (GabbleDisco *disco,
   if (disco_error)
     {
       DEBUG ("got disco error, setting no features: %s", disco_error->message);
+      if (disco_error->code == GABBLE_DISCO_ERROR_TIMEOUT)
+        {
+          DEBUG ("didn't receive a response to our disco request: disconnect");
+          goto ERROR;
+        }
     }
   else
     {

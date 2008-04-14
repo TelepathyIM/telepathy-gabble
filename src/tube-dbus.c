@@ -863,6 +863,17 @@ message_received (GabbleTubeDBus *tube,
     {
       DEBUG ("no D-Bus connection: queue the message");
 
+      /* If the application never connects to the private dbus connection, we
+       * don't want to eat all the memory. Only queue MAX_MESSAGES_QUEUED
+       * messages. If there is more messages, drop them. */
+      #define MAX_MESSAGES_QUEUED 16
+      if (g_slist_length (priv->dbus_msg_queue) >= MAX_MESSAGES_QUEUED)
+        {
+          DEBUG ("Too many messages queued (%d > %d). Ignore this message.",
+                 g_slist_length (priv->dbus_msg_queue), MAX_MESSAGES_QUEUED);
+          goto unref;
+        }
+
       priv->dbus_msg_queue = g_slist_prepend(priv->dbus_msg_queue, msg);
 
       /* returns without unref the message */

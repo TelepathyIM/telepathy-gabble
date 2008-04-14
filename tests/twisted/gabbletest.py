@@ -246,8 +246,8 @@ def go(params=None, authenticator=None, protocol=None, start=None):
 
     reactor.run()
 
-def exec_test(fun, params=None, protocol=None):
-    queue = servicetest.IteratingEventQueue()
+def exec_test(fun, params=None, protocol=None, timeout=None):
+    queue = servicetest.IteratingEventQueue(timeout)
 
     queue.verbose = (os.environ.get('CHECK_TWISTED_VERBOSE', '') != '')
     if '-v' in sys.argv:

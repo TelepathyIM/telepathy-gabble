@@ -198,10 +198,13 @@ class BaseEventQueue:
     Implement the wait() method to have something that works.
     """
 
-    timeout = 5
-
-    def __init__(self):
+    def __init__(self, timeout=None):
         self.verbose = False
+
+        if timeout is None:
+            self.timeout = 5
+        else:
+            self.timeout = timeout
 
     def log(self, s):
         if self.verbose:
@@ -261,8 +264,8 @@ class BaseEventQueue:
 class IteratingEventQueue(BaseEventQueue):
     """Event queue that works by iterating the Twisted reactor."""
 
-    def __init__(self):
-        BaseEventQueue.__init__(self)
+    def __init__(self, timeout=None):
+        BaseEventQueue.__init__(self, timeout)
         self.events = []
 
     def wait(self):

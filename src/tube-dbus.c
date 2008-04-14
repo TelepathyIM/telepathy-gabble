@@ -47,7 +47,15 @@
 #include "bytestream-factory.h"
 #include "gabble-signals-marshal.h"
 
+/* When we receive D-Bus messages to be delivered to the application and the
+ * application is not yet connected to the D-Bus tube, theses D-Bus messages
+ * are queued and delivered when the application connects to the D-Bus tube.
+ *
+ * If the application never connects, there is a risk that the contact sends
+ * too many messages and eat all the memory. To avoid this, there is an
+ * arbitrary limit on the queue set to 16 messages and 4MB. */
 #define MAX_MESSAGES_QUEUED 16
+#define MAX_QUEUE_SIZE (4096*1024)
 
 static void
 tube_iface_init (gpointer g_iface, gpointer iface_data);
@@ -113,6 +121,8 @@ struct _GabbleTubeDBusPrivate
   /* the queue of D-Bus messages to be delivered to a local client when it
    * will connect */
   GSList *dbus_msg_queue;
+  /* current size of the queue in bytes. The maximum is MAX_QUEUE_SIZE */
+  unsigned long dbus_msg_queue_size;
   /* mapping of contact handle -> D-Bus name (NULL for 1-1 D-Bus tubes) */
   GHashTable *dbus_names;
   /* mapping of D-Bus name -> contact handle */
@@ -246,7 +256,8 @@ new_connection_cb (DBusServer *server,
   /* We may have received messages to deliver before the local connection is
    * established. Theses messages are kept in the dbus_msg_queue list and are
    * delivered as soon as we get the connection. */
-  DEBUG ("%u messages in the queue", g_slist_length(priv->dbus_msg_queue));
+  DEBUG ("%u messages in the queue (%lu bytes)",
+         g_slist_length(priv->dbus_msg_queue), priv->dbus_msg_queue_size);
   priv->dbus_msg_queue = g_slist_reverse (priv->dbus_msg_queue);
   for (i = priv->dbus_msg_queue ; i != NULL; i = g_slist_delete_link (i, i))
     {
@@ -258,6 +269,7 @@ new_connection_cb (DBusServer *server,
       dbus_connection_send (priv->dbus_conn, msg, &serial);
       dbus_message_unref (msg);
     }
+  priv->dbus_msg_queue_size = 0;
 }
 
 static void
@@ -860,25 +872,34 @@ message_received (GabbleTubeDBus *tube,
 
   if (!priv->dbus_conn)
     {
-      DEBUG ("no D-Bus connection: queue the message");
+      DEBUG ("no D-Bus connection: queuing the message");
 
       /* If the application never connects to the private dbus connection, we
        * don't want to eat all the memory. Only queue MAX_MESSAGES_QUEUED
-       * messages. If there is more messages, drop them. */
-      if (g_slist_length (priv->dbus_msg_queue) >= MAX_MESSAGES_QUEUED)
+       * messages or MAX_QUEUE_SIZE bytes. If there is more messages, drop
+       * them. */
+      if (g_slist_length (priv->dbus_msg_queue) + 1 > MAX_MESSAGES_QUEUED)
         {
-          DEBUG ("Too many messages queued (%d > %d). Ignore this message.",
-                 g_slist_length (priv->dbus_msg_queue), MAX_MESSAGES_QUEUED);
+          DEBUG ("Too many D-Bus messages queued (%d). Ignore this message.",
+                 g_slist_length (priv->dbus_msg_queue));
+          goto unref;
+        }
+      if (priv->dbus_msg_queue_size + len > MAX_QUEUE_SIZE)
+        {
+          DEBUG ("D-Bus message queue size limit reached (%u bytes). "
+                 "Ignore this message.",
+                 MAX_QUEUE_SIZE);
           goto unref;
         }
 
       priv->dbus_msg_queue = g_slist_prepend (priv->dbus_msg_queue, msg);
+      priv->dbus_msg_queue_size += len;
 
       /* returns without unref the message */
       return;
     }
 
-  DEBUG ("deliver message from '%s' to '%s'",
+  DEBUG ("delivering message from '%s' to '%s'",
          dbus_message_get_sender (msg),
          dbus_message_get_destination (msg));
 

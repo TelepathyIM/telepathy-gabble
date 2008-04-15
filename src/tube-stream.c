@@ -1,6 +1,6 @@
 /*
  * tube-stream.c - Source for GabbleTubeStream
- * Copyright (C) 2007 Ltd.
+ * Copyright (C) 2007-2008 Collabora Ltd.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public

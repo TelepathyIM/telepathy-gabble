@@ -257,9 +257,9 @@ new_connection_cb (DBusServer *server,
    * established. Theses messages are kept in the dbus_msg_queue list and are
    * delivered as soon as we get the connection. */
   DEBUG ("%u messages in the queue (%lu bytes)",
-         g_slist_length(priv->dbus_msg_queue), priv->dbus_msg_queue_size);
+         g_slist_length (priv->dbus_msg_queue), priv->dbus_msg_queue_size);
   priv->dbus_msg_queue = g_slist_reverse (priv->dbus_msg_queue);
-  for (i = priv->dbus_msg_queue ; i != NULL; i = g_slist_delete_link (i, i))
+  for (i = priv->dbus_msg_queue; i != NULL; i = g_slist_delete_link (i, i))
     {
       DBusMessage *msg = i->data;
       DEBUG ("delivering queued message from '%s' to '%s' on the "
@@ -876,7 +876,7 @@ message_received (GabbleTubeDBus *tube,
 
       /* If the application never connects to the private dbus connection, we
        * don't want to eat all the memory. Only queue MAX_MESSAGES_QUEUED
-       * messages or MAX_QUEUE_SIZE bytes. If there is more messages, drop
+       * messages or MAX_QUEUE_SIZE bytes. If there are more messages, drop
        * them. */
       if (g_slist_length (priv->dbus_msg_queue) + 1 > MAX_MESSAGES_QUEUED)
         {

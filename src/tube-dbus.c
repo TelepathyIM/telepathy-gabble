@@ -269,6 +269,7 @@ new_connection_cb (DBusServer *server,
       dbus_connection_send (priv->dbus_conn, msg, &serial);
       dbus_message_unref (msg);
     }
+  priv->dbus_msg_queue = NULL;
   priv->dbus_msg_queue_size = 0;
 }
 
@@ -444,6 +445,18 @@ gabble_tube_dbus_dispose (GObject *object)
           DEBUG ("unlink of %s failed: %s", priv->socket_path,
               g_strerror (errno));
         }
+    }
+
+  if (priv->dbus_msg_queue)
+    {
+      GSList *i;
+      for (i = priv->dbus_msg_queue; i != NULL; i = g_slist_delete_link (i, i))
+        {
+          DBusMessage *msg = i->data;
+          dbus_message_unref (msg);
+        }
+      priv->dbus_msg_queue = NULL;
+      priv->dbus_msg_queue_size = 0;
     }
 
   g_free (priv->dbus_srv_addr);

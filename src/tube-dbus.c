@@ -446,7 +446,7 @@ gabble_tube_dbus_dispose (GObject *object)
         }
     }
 
-  if (priv->dbus_msg_queue)
+  if (priv->dbus_msg_queue != NULL)
     {
       GSList *i;
       for (i = priv->dbus_msg_queue; i != NULL; i = g_slist_delete_link (i, i))

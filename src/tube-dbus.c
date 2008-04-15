@@ -53,8 +53,7 @@
  *
  * If the application never connects, there is a risk that the contact sends
  * too many messages and eat all the memory. To avoid this, there is an
- * arbitrary limit on the queue set to 16 messages and 4MB. */
-#define MAX_MESSAGES_QUEUED 16
+ * arbitrary limit on the queue size set to 4MB. */
 #define MAX_QUEUE_SIZE (4096*1024)
 
 static void
@@ -888,15 +887,8 @@ message_received (GabbleTubeDBus *tube,
       DEBUG ("no D-Bus connection: queuing the message");
 
       /* If the application never connects to the private dbus connection, we
-       * don't want to eat all the memory. Only queue MAX_MESSAGES_QUEUED
-       * messages or MAX_QUEUE_SIZE bytes. If there are more messages, drop
-       * them. */
-      if (g_slist_length (priv->dbus_msg_queue) + 1 > MAX_MESSAGES_QUEUED)
-        {
-          DEBUG ("Too many D-Bus messages queued (%d). Ignore this message.",
-                 g_slist_length (priv->dbus_msg_queue));
-          goto unref;
-        }
+       * don't want to eat all the memory. Only queue MAX_QUEUE_SIZE bytes. If
+       * there are more messages, drop them. */
       if (priv->dbus_msg_queue_size + len > MAX_QUEUE_SIZE)
         {
           DEBUG ("D-Bus message queue size limit reached (%u bytes). "

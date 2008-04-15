@@ -260,7 +260,7 @@ check_gadget_buddy (GabbleConnection *conn,
   if (conn->olpc_gadget_buddy != NULL)
     return TRUE;
 
-  item = gabble_disco_service_find (conn->disco, "gadget", "collaboration",
+  item = gabble_disco_service_find (conn->disco, "collaboration", "gadget",
       NS_OLPC_BUDDY);
 
   if (item != NULL)
@@ -289,7 +289,7 @@ check_gadget_activity (GabbleConnection *conn,
   if (conn->olpc_gadget_activity != NULL)
     return TRUE;
 
-  item = gabble_disco_service_find (conn->disco, "gadget", "collaboration",
+  item = gabble_disco_service_find (conn->disco, "collaboration", "gadget",
       NS_OLPC_ACTIVITY);
 
   if (item != NULL)

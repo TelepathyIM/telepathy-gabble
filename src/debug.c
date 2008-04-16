@@ -24,7 +24,7 @@ gabble_debug_set_log_file_from_env (void)
   if (output_file == NULL)
     return;
 
-  out = g_open (output_file, O_WRONLY | O_CREAT, 0644);
+  out = g_open (output_file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
   if (out == -1)
     {
       g_warning ("Can't open logfile '%s': %s", output_file,

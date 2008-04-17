@@ -1,21 +1,19 @@
-# Telepathy manager file
+EXTRA_DIST = gabble.service.in
+
 managerdir = $(datadir)/telepathy/managers
 manager_DATA = gabble.manager
 
-# Dbus service file
-servicedir = $(DBUS_SERVICES_DIR)
-service_in_files = org.freedesktop.Telepathy.ConnectionManager.gabble.service.in
-service_DATA = $(service_in_files:.service.in=.service)
+servicedir = $(datadir)/dbus-1/services
+service_DATA = org.freedesktop.Telepathy.ConnectionManager.gabble.service
 
-BUILT_FILES = $(service_DATA) $(manager_DATA)
-
-CLEANFILES = $(BUILT_FILES)
-
-EXTRA_DIST = $(service_in_files)
-
-# Rule to make the service file with libexecdir expanded
-$(service_DATA): $(service_in_files) Makefile
+org.freedesktop.Telepathy.ConnectionManager.gabble.service: gabble.service.in \
+		Makefile
 	@sed -e "s|\@libexecdir\@|$(libexecdir)|" $< > $@
+
+CLEANFILES = $(service_DATA) $(manager_DATA)
+
+$(service_DATA): $(service_in_files) Makefile
+	sed -e "s|[@]libexecdir[@]|$(libexecdir)|" $< > $@
 
 $(manager_DATA): ../src/gabble-connection-manager.c ../src/write-mgr-file.c
 	$(MAKE) -C ../src write-mgr-file

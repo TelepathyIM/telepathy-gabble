@@ -1,7 +1,19 @@
 #!/bin/sh
 set -e
 
-autoreconf -i
+if test -n "$AUTOMAKE"; then
+    : # don't override an explicit user request
+elif automake-1.8 --version &>/dev/null && \
+     aclocal-1.8 --version &>/dev/null; then
+    # If we have automake-1.8, use it. This helps to ensure that our build
+    # system doesn't accidentally grow automake-1.9 dependencies.
+    AUTOMAKE=automake-1.8
+    export AUTOMAKE
+    ACLOCAL=aclocal-1.8
+    export ACLOCAL
+fi
+
+autoreconf -i -f
 
 run_configure=true
 for arg in $*; do

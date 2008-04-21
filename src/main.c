@@ -1,7 +1,6 @@
 /*
- * gabble.h - entry point and utility functions for telepathy-gabble
- * Copyright (C) 2005 Collabora Ltd.
- * Copyright (C) 2005 Nokia Corporation
+ * main.c - simple wrapper calling gabble_main
+ * Copyright (C) 2008 Collabora Ltd.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -18,16 +17,11 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef __GABBLE_H__
-#define __GABBLE_H__
+#include "gabble.h"
 
-#include <dbus/dbus-glib.h>
-
-G_BEGIN_DECLS
-
-int gabble_main (int argc, char **argv);
-
-G_END_DECLS
-
-#endif /* #ifndef __GABBLE_H__*/
-
+int
+main (int argc,
+      char **argv)
+{
+  return gabble_main (argc, argv);
+}

@@ -27,6 +27,7 @@
 #include <telepathy-glib/run.h>
 #include "debug.h"
 #include "gabble-connection-manager.h"
+#include "gabble.h"
 
 static TpBaseConnectionManager *
 construct_cm (void)
@@ -57,8 +58,8 @@ stamp_log (const gchar *log_domain,
 #endif
 
 int
-main (int argc,
-      char **argv)
+gabble_main (int argc,
+             char **argv)
 {
   gabble_debug_set_log_file_from_env ();
 

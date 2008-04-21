@@ -43,6 +43,8 @@ libgabble_convenience_la_our_sources = \
     debug.c \
     disco.h \
     disco.c \
+    gabble.c \
+    gabble.h \
     gabble-error.c \
     gabble-error.h \
     gabble-connection-manager.h \
@@ -118,8 +120,7 @@ write_mgr_file_SOURCES = write-mgr-file.c
 write_mgr_file_LDADD = libgabble-convenience.la $(ALL_LIBS)
 
 telepathy_gabble_SOURCES = \
-    gabble.h \
-    gabble.c
+    main.c
 
 check_c_sources = \
     $(telepathy_gabble_SOURCES) \

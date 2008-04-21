@@ -24,5 +24,5 @@ class JabberXmlStreamNoDiscoReply (JabberXmlStream):
 
 if __name__ == '__main__':
     jabber_xml_stream_no_disco_reply = JabberXmlStreamNoDiscoReply
-    # timeout has to be greater than DEFAULT_REQUEST_TIMEOUT
-    exec_test(test, protocol=jabber_xml_stream_no_disco_reply, timeout=25)
+    # telepathy-gabble-debug have been tweaked to timeout after 3 seconds
+    exec_test(test, protocol=jabber_xml_stream_no_disco_reply)

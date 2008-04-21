@@ -68,6 +68,8 @@
 #include "util.h"
 #include "vcard-manager.h"
 
+guint DISCO_REPLY_TIMEOUT = 5000;
+
 #define GABBLE_TP_CAPABILITY_PAIR_TYPE (dbus_g_type_get_struct ("GValueArray", \
       G_TYPE_STRING, G_TYPE_UINT, G_TYPE_INVALID))
 #define GABBLE_TP_CAPABILITIES_CHANGED_MONSTER_TYPE (dbus_g_type_get_struct \
@@ -1884,7 +1886,8 @@ connection_auth_cb (LmConnection *lmconn,
       capabilities_get_initial_caps (), priv->caps_serial++);
 
   if (!gabble_disco_request_with_timeout (conn->disco, GABBLE_DISCO_TYPE_INFO,
-                                          priv->stream_server, NULL, 5000,
+                                          priv->stream_server, NULL,
+                                          DISCO_REPLY_TIMEOUT,
                                           connection_disco_cb, conn,
                                           G_OBJECT (conn), &error))
     {
@@ -2777,3 +2780,10 @@ capabilities_service_iface_init (gpointer g_iface, gpointer iface_data)
 #undef IMPLEMENT
 }
 
+
+/* For unit tests only */
+void
+gabble_connection_set_disco_reply_timeout (guint timeout)
+{
+  DISCO_REPLY_TIMEOUT = timeout;
+}

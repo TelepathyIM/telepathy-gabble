@@ -192,6 +192,9 @@ void gabble_connection_ensure_capabilities (GabbleConnection *conn,
 void _gabble_connection_create_handle_repos (TpBaseConnection *conn,
     TpHandleRepoIface *repos[NUM_TP_HANDLE_TYPES]);
 
+/* For unit tests only */
+void gabble_connection_set_disco_reply_timeout (guint timeout);
+
 G_END_DECLS
 
 #endif /* #ifndef __GABBLE_CONNECTION_H__*/

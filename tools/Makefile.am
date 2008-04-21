@@ -9,8 +9,7 @@ EXTRA_DIST = \
     glib-ginterface-gen.py \
     glib-signals-marshal-gen.py \
     identity.xsl \
-    libglibcodegen.py \
-    ls-interfaces.xsl
+    libglibcodegen.py
 
 TELEPATHY_GLIB_SRCDIR = $(top_srcdir)/../telepathy-glib
 maintainer-update-from-telepathy-glib:

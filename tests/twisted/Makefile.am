@@ -62,6 +62,20 @@ EXTRA_DIST = \
 	servicetest.py \
 	jingle/jingletest.py
 
+noinst_PROGRAMS = \
+	telepathy-gabble-debug
+
+telepathy_gabble_debug_SOURCES = \
+    main-debug.c
+
+telepathy_gabble_debug_LDADD = \
+    $(top_builddir)/src/libgabble-convenience.la $(ALL_LIBS)
+
+AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @LOUDMOUTH_CFLAGS@ \
+    @COVERAGE_CFLAGS@ @TP_GLIB_CFLAGS@ \
+    -I $(top_srcdir)/src -I $(top_builddir)/src
+ALL_LIBS = @DBUS_LIBS@ @GLIB_LIBS@ @LOUDMOUTH_LIBS@ @TP_GLIB_LIBS@
+
 CLEANFILES = gabble-[1-9]*.log *.pyc */*.pyc
 
 check_misc_sources = $(TESTS)

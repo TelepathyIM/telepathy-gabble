@@ -12,4 +12,4 @@ if test -n "$GABBLE_TEST_VALGRIND"; then
 	GABBLE_WRAPPER="valgrind --leak-check=full"
 fi
 
-exec $GABBLE_WRAPPER ../../../src/telepathy-gabble
+exec $GABBLE_WRAPPER ../telepathy-gabble-debug

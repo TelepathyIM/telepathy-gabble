@@ -41,10 +41,10 @@ TWISTED_TESTS = \
 	test-connect-fail.py \
 	test-connect.py \
 	test-disco.py \
+	test-disco-no-reply.py \
 	test-group-race.py \
 	test-register.py \
-	test-set-status-idempotence.py \
-	test-disco-no-reply.py
+	test-set-status-idempotence.py
 
 TESTS =
 

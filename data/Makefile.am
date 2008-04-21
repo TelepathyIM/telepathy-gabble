@@ -11,7 +11,7 @@ service_DATA = org.freedesktop.Telepathy.ConnectionManager.gabble.service
 # non-archaic tarballs)
 org.freedesktop.Telepathy.ConnectionManager.gabble.service: gabble.service.in \
 		Makefile
-	@sed -e "s|\@libexecdir\@|$(libexecdir)|" $< > $@
+	@sed -e "s|[@]libexecdir[@]|$(libexecdir)|" $< > $@
 
 CLEANFILES = $(service_DATA) $(manager_DATA)
 

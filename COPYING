@@ -12,10 +12,8 @@ license also reproduced below.
 
 xep.xsl in the the tools/ directory, used to generate HTML documentation
 for various non-standard XMPP extensions, is copyright 1999-2008 by the
-XMPP Standards Foundation (XSF) and is released under the MIT-style
-xmpp.org IPR Policy, http://www.xmpp.org/extensions/ipr-policy.shtml, the
-relevant part of which is reproduced below. (Peter Saint-Andre has confirmed
-that this license applies to xep.xsl.)
+XMPP Standards Foundation (XSF) and is released under a MIT-style
+license, reproduced below.
 
 ------------------------------------------------------------------------
 
@@ -588,57 +586,22 @@ License of src/sha1:
 
 License of tools/xep.xsl
 
-    Copyright
+  Copyright (c) 1999 - 2008 XMPP Standards Foundation
 
-    This XMPP Extension Protocol is copyright (c) 1999 - 2008 by the
-    XMPP Standards Foundation (XSF).
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
 
-    Permissions
+  The above copyright notice and this permission notice shall be included in
+  all copies or substantial portions of the Software.
 
-    Permission is hereby granted, free of charge, to any person obtaining
-    a copy of this specification (the "Specification"), to make use of
-    the Specification without restriction, including without limitation
-    the rights to implement the Specification in a software program,
-    deploy the Specification in a network service, and copy, modify,
-    merge, publish, translate, distribute, sublicense, or sell copies of
-    the Specification, and to permit persons to whom the Specification
-    is furnished to do so, subject to the condition that the foregoing
-    copyright notice and this permission notice shall be included in all
-    copies or substantial portions of the Specification. Unless separate
-    permission is granted, modified works that are redistributed shall not
-    contain misleading information regarding the authors, title, number,
-    or publisher of the Specification, and shall not claim endorsement
-    of the modified works by the authors, any organization or project
-    to which the authors belong, or the XMPP Standards Foundation.
-    Disclaimer of Warranty
-
-    ## NOTE WELL: This Specification is provided on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied,
-    including, without limitation, any warranties or conditions of TITLE,
-    NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A PARTICULAR
-    PURPOSE. In no event shall the XMPP Standards Foundation or the
-    authors of this Specification be liable for any claim, damages, or
-    other liability, whether in an action of contract, tort, or otherwise,
-    arising from, out of, or in connection with the Specification or
-    the implementation, deployment, or other use of the Specification. ##
-
-    Limitation of Liability
-
-    In no event and under no legal theory, whether in tort (including
-    negligence), contract, or otherwise, unless required by applicable
-    law (such as deliberate and grossly negligent acts) or agreed to in
-    writing, shall the XMPP Standards Foundation or any author of this
-    Specification be liable for damages, including any direct, indirect,
-    special, incidental, or consequential damages of any character arising
-    out of the use or inability to use the Specification (including
-    but not limited to damages for loss of goodwill, work stoppage,
-    computer failure or malfunction, or any and all other commercial
-    damages or losses), even if the XMPP Standards Foundation or such
-    author has been advised of the possibility of such damages.
-
-    IPR Conformance
-
-    This XMPP Extension Protocol has been contributed in full conformance
-    with the XSF's Intellectual Property Rights Policy (a copy of which
-    may be found at <http://www.xmpp.org/extensions/ipr-policy.shtml>
-    or obtained by writing to XSF, P.O. Box 1641, Denver, CO 80201 USA).
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+  THE SOFTWARE.

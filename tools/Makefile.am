@@ -9,7 +9,18 @@ EXTRA_DIST = \
     glib-ginterface-gen.py \
     glib-signals-marshal-gen.py \
     identity.xsl \
-    libglibcodegen.py
+    libglibcodegen.py \
+    xep.xsl
+
+maintainer-update-from-xmpp.org:
+	set -e && ( \
+	uri=svn://svn.xmpp.org:7938/xmpp/trunk/extensions/xep.xsl; \
+	rev=`svn info $$uri | \
+		sed -n 's/^Last Changed Rev: *\([0-9][0-9]*\)$$/\1/p'`;\
+	echo "<!-- Copied from svn.xmpp.org, r$$rev, do not edit -->";\
+	svn cat $$uri;\
+	) > xep.xsl.tmp
+	mv xep.xsl.tmp xep.xsl
 
 TELEPATHY_GLIB_SRCDIR = $(top_srcdir)/../telepathy-glib
 maintainer-update-from-telepathy-glib:

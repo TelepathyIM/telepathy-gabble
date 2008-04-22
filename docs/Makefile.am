@@ -1,34 +1,25 @@
-man_MANS = telepathy-gabble.8
+tools_dir = $(top_srcdir)/tools
 
-EXTRA_DIST = $(man_MANS:.8=.8.in)
-CLEANFILES = $(man_MANS)
+man_MANS = telepathy-gabble.8
+doc_DATA = \
+    olpc.html \
+    muc-bytestream.html \
+    tubes.html
+
+EXTRA_DIST = \
+    $(man_MANS:.8=.8.in) \
+    $(doc_DATA:.html=.xml)
+
+CLEANFILES = \
+    $(man_MANS) \
+    $(doc_DATA)
 
 %.8: %.8.in Makefile
 	sed -e 's,[@]libexecdir[@],@libexecdir@,' < $< > $@
 
-# ---- Proto-XEPs (not automatically generated, see README) ----
+$(doc_DATA): %.html: %.xml $(tools_dir)/xep.xsl
+	$(XSLTPROC) $(tools_dir)/xep.xsl $< > $@
 
-PROTO_XEP_XML = \
-    olpc.xml \
-    muc-bytestream.xml \
-    tubes.xml
-PROTO_XEP_HTML = $(PROTO_XEP_XML:.xml=.html)
-
-proto-xep-html: $(PROTO_XEP_HTML)
-.PHONY: proto-xep-html
-
-$(PROTO_XEP_HTML): %.html: %.xml xep.xsl
-	$(XSLTPROC) xep.xsl $< > $@
-.PHONY: proto-xep-html
-
-proto-xep-upload: proto-xep-html
-	rsync -P $(PROTO_XEP_HTML) projects.collabora.co.uk:public_html/
+proto-xep-upload: $(doc_DATA)
+	rsync -P $(doc_DATA) projects.collabora.co.uk:public_html/
 .PHONY: proto-xep-upload
-
-xep.xsl:
-	@echo "Please get xep.xsl from xmpp.org svn - see README for details"
-	@echo "This command might work:"
-	@echo "wget 'http://svn.xmpp.org:18080/browse/~raw,r=1214/XMPP/trunk/extensions/xep.xsl'"
-	@exit 1
-
-EXTRA_DIST += $(PROTO_XEP_XML)

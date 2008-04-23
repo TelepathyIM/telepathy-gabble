@@ -515,16 +515,20 @@ typedef struct
 {
   /* borrowed TpHandle => GroupMembershipUpdate */
   GHashTable *group_mem_updates;
-  /* borrowed */
+  /* borrowed from the GabbleRosterItem */
   guint contact_handle;
 } GroupsUpdateContext;
 
 typedef struct
 {
-  /* all handles borrowed */
+  /* all contact handles borrowed from the corresponding GabbleRosterItem
+   * (but FIXME: if a contact disappears entirely, we may lose?) */
   TpIntSet *contacts_added;
   TpIntSet *contacts_removed;
 #ifdef ENABLE_DEBUG
+  /* This is also the key in the hash table in which these structs are values.
+   * Borrowed from the GabbleRosterItem's ->groups key (but FIXME: if all
+   * contacts have been removed from a particular group, we lose) */
   guint group_handle;
 #endif
 } GroupMembershipUpdate;

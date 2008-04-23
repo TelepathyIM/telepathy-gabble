@@ -1,4 +1,5 @@
-<!-- Copied from svn.xmpp.org, r1803, do not edit -->
+<?xml version='1.0' encoding='UTF-8'?>
+
 <!--
 
 Copyright (c) 1999 - 2008 XMPP Standards Foundation

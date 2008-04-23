@@ -7,6 +7,7 @@ TWISTED_TESTS = \
 	olpc/olpc-muc-prop-change.py \
 	olpc/test-olpc-bundle.py \
 	olpc/test-olpc-set-props-preload.py \
+	roster/groups.py \
 	roster/test-google-roster.py \
 	roster/test-roster.py \
 	roster/test-roster-subscribe.py \

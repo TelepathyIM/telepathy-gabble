@@ -21,5 +21,5 @@ $(html_DATA): %.html: %.xml $(tools_dir)/xep.xsl
 	$(XSLTPROC) $(tools_dir)/xep.xsl $< > $@
 
 proto-xep-upload: $(html_DATA)
-	rsync -P $(html_DATA) projects.collabora.co.uk:public_html/
+	rsync -P $(html_DATA) people.collabora.co.uk:public_html/
 .PHONY: proto-xep-upload

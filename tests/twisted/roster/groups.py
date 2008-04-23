@@ -58,6 +58,9 @@ def test(q, bus, conn, stream):
 
     stream.send(event.stanza)
 
+    # FIXME: this is somewhat fragile - it's asserting the exact order that
+    # things currently happen in roster.c. In reality the order is not
+    # significant
     _expect_contact_list_channel(q, bus, conn, 'publish',
         ['amy@foo.com', 'bob@foo.com'])
     _expect_contact_list_channel(q, bus, conn, 'subscribe',

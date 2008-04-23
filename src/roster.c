@@ -513,12 +513,15 @@ static GabbleRosterChannel *_gabble_roster_get_channel (GabbleRoster *,
 
 typedef struct
 {
+  /* borrowed TpHandle => GroupMembershipUpdate */
   GHashTable *group_mem_updates;
+  /* borrowed */
   guint contact_handle;
 } GroupsUpdateContext;
 
 typedef struct
 {
+  /* all handles borrowed */
   TpIntSet *contacts_added;
   TpIntSet *contacts_removed;
 #ifdef ENABLE_DEBUG

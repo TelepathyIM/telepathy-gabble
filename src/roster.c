@@ -513,7 +513,9 @@ static GabbleRosterChannel *_gabble_roster_get_channel (GabbleRoster *,
 
 typedef struct
 {
-  /* borrowed TpHandle => GroupMembershipUpdate */
+  TpHandleRepoIface *contact_repo;
+  TpHandleRepoIface *group_repo;
+  /* TpHandle borrowed from GroupMembershipUpdate => GroupMembershipUpdate */
   GHashTable *group_mem_updates;
   /* borrowed from the GabbleRosterItem */
   guint contact_handle;
@@ -521,16 +523,11 @@ typedef struct
 
 typedef struct
 {
-  /* all contact handles borrowed from the corresponding GabbleRosterItem
-   * (but FIXME: if a contact disappears entirely, we may lose?) */
-  TpIntSet *contacts_added;
-  TpIntSet *contacts_removed;
-#ifdef ENABLE_DEBUG
-  /* This is also the key in the hash table in which these structs are values.
-   * Borrowed from the GabbleRosterItem's ->groups key (but FIXME: if all
-   * contacts have been removed from a particular group, we lose) */
+  TpHandleRepoIface *group_repo;
+  TpHandleSet *contacts_added;
+  TpHandleSet *contacts_removed;
+  /* referenced */
   guint group_handle;
-#endif
 } GroupMembershipUpdate;
 
 static GroupMembershipUpdate *
@@ -545,11 +542,11 @@ group_mem_update_ensure (GroupsUpdateContext *ctx,
 
   DEBUG ("Creating new hash table entry for group#%u", group_handle);
   update = g_slice_new0 (GroupMembershipUpdate);
-#ifdef ENABLE_DEBUG
+  update->group_repo = ctx->group_repo;
+  tp_handle_ref (update->group_repo, group_handle);
   update->group_handle = group_handle;
-#endif
-  update->contacts_added = tp_intset_new ();
-  update->contacts_removed = tp_intset_new ();
+  update->contacts_added = tp_handle_set_new (ctx->contact_repo);
+  update->contacts_removed = tp_handle_set_new (ctx->contact_repo);
   g_hash_table_insert (ctx->group_mem_updates,
                        GUINT_TO_POINTER (group_handle),
                        update);
@@ -564,7 +561,7 @@ _update_add_to_group (guint group_handle, gpointer user_data)
 
   DEBUG ("- contact#%u added to group#%u", ctx->contact_handle,
          group_handle);
-  tp_intset_add (update->contacts_added, ctx->contact_handle);
+  tp_handle_set_add (update->contacts_added, ctx->contact_handle);
 }
 
 static void
@@ -575,7 +572,7 @@ _update_remove_from_group (guint group_handle, gpointer user_data)
 
   DEBUG ("- contact#%u removed from group#%u", ctx->contact_handle,
          group_handle);
-  tp_intset_add (update->contacts_removed, ctx->contact_handle);
+  tp_handle_set_add (update->contacts_removed, ctx->contact_handle);
 }
 
 static GabbleRosterItem *
@@ -586,17 +583,21 @@ _gabble_roster_item_update (GabbleRoster *roster,
                             gboolean google_roster_mode)
 {
   GabbleRosterPrivate *priv = GABBLE_ROSTER_GET_PRIVATE (roster);
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
   GabbleRosterItem *item;
   const gchar *ask, *name;
   TpIntSet *new_groups, *added_to, *removed_from, *removed_from2;
   TpHandleSet *new_groups_handle_set;
-  GroupsUpdateContext ctx = { group_updates, contact_handle };
+  GroupsUpdateContext ctx = { NULL, NULL, group_updates,
+      contact_handle };
+
+  ctx.contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+  ctx.group_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_GROUP);
 
   g_assert (roster != NULL);
   g_assert (GABBLE_IS_ROSTER (roster));
-  g_assert (tp_handle_is_valid (contact_repo, contact_handle, NULL));
+  g_assert (tp_handle_is_valid (ctx.contact_repo, contact_handle, NULL));
   g_assert (node != NULL);
 
   item = _gabble_roster_item_get (roster, contact_handle);
@@ -998,8 +999,9 @@ _gabble_roster_received (GabbleRoster *roster)
 static void
 _group_mem_update_destroy (GroupMembershipUpdate *update)
 {
-  tp_intset_destroy (update->contacts_added);
-  tp_intset_destroy (update->contacts_removed);
+  tp_handle_set_destroy (update->contacts_added);
+  tp_handle_set_destroy (update->contacts_removed);
+  tp_handle_unref (update->group_repo, update->group_handle);
   g_slice_free (GroupMembershipUpdate, update);
 }
 
@@ -1022,7 +1024,8 @@ _update_group (gpointer key,
   DEBUG ("Updating group channel %u now message has been received",
       group_handle);
   tp_group_mixin_change_members ((GObject *) group_channel,
-      "", update->contacts_added, update->contacts_removed, empty, empty,
+      "", tp_handle_set_peek (update->contacts_added),
+      tp_handle_set_peek (update->contacts_removed), empty, empty,
       0, 0);
 
   tp_intset_destroy (empty);

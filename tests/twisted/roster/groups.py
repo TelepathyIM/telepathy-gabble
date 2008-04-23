@@ -15,24 +15,28 @@ HT_GROUP = 4
 def _expect_contact_list_channel(q, bus, conn, name, contacts):
     event = q.expect('dbus-signal', signal='NewChannel')
     path, type, handle_type, handle, suppress_handler = event.args
-    assert type == u'org.freedesktop.Telepathy.Channel.Type.ContactList'
-    assert handle_type == HT_CONTACT_LIST
-    assert conn.InspectHandles(handle_type, [handle])[0] == name
+    assert type == u'org.freedesktop.Telepathy.Channel.Type.ContactList', type
+    assert handle_type == HT_CONTACT_LIST, handle_type
+    inspected = conn.InspectHandles(handle_type, [handle])[0]
+    assert inspected == name, (inspected, name)
     chan = bus.get_object(conn._named_service, path)
     group_iface = dbus.Interface(chan,
         u'org.freedesktop.Telepathy.Channel.Interface.Group')
-    assert conn.InspectHandles(1, group_iface.GetMembers()) == contacts
+    inspected = conn.InspectHandles(1, group_iface.GetMembers())
+    assert inspected == contacts, (inspected, contacts)
 
 def _expect_group_channel(q, bus, conn, name, contacts):
     event = q.expect('dbus-signal', signal='NewChannel')
     path, type, handle_type, handle, suppress_handler = event.args
-    assert type == u'org.freedesktop.Telepathy.Channel.Type.ContactList'
-    assert handle_type == HT_GROUP
-    assert conn.InspectHandles(handle_type, [handle])[0] == name
+    assert type == u'org.freedesktop.Telepathy.Channel.Type.ContactList', type
+    assert handle_type == HT_GROUP, handle_type
+    inspected = conn.InspectHandles(handle_type, [handle])[0]
+    assert inspected == name, (inspected, name)
     chan = bus.get_object(conn._named_service, path)
     group_iface = dbus.Interface(chan,
         u'org.freedesktop.Telepathy.Channel.Interface.Group')
-    assert conn.InspectHandles(1, group_iface.GetMembers()) == contacts
+    inspected = conn.InspectHandles(1, group_iface.GetMembers())
+    assert inspected == contacts, (inspected, contacts)
 
 def test(q, bus, conn, stream):
     conn.Connect()

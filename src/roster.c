@@ -586,7 +586,7 @@ _gabble_roster_item_update (GabbleRoster *roster,
       (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
   GabbleRosterItem *item;
   const gchar *ask, *name;
-  TpIntSet *old_groups, *new_groups, *added_to, *removed_from, *removed_from2;
+  TpIntSet *new_groups, *added_to, *removed_from, *removed_from2;
   TpHandleSet *new_groups_handle_set;
   GroupsUpdateContext ctx = { group_updates, contact_handle };
 
@@ -642,12 +642,12 @@ _gabble_roster_item_update (GabbleRoster *roster,
           contact_handle);
     }
 
-  old_groups = tp_handle_set_peek (item->groups);    /* borrowed */
   new_groups_handle_set = _parse_item_groups (node,
       (TpBaseConnection *)priv->conn);
   new_groups = tp_handle_set_peek (new_groups_handle_set);
 
-  removed_from = tp_intset_difference (old_groups, new_groups);
+  removed_from = tp_intset_difference (tp_handle_set_peek (item->groups),
+      new_groups);
   added_to = tp_handle_set_update (item->groups, new_groups);
   removed_from2 = tp_handle_set_difference_update (item->groups, removed_from);
 

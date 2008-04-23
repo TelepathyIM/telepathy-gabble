@@ -530,12 +530,14 @@ typedef struct
 } GroupMembershipUpdate;
 
 static GroupMembershipUpdate *
-group_mem_update_ensure (GroupsUpdateContext *ctx, TpHandle group_handle)
+group_mem_update_ensure (GroupsUpdateContext *ctx,
+                         TpHandle group_handle)
 {
   GroupMembershipUpdate *update = g_hash_table_lookup (ctx->group_mem_updates,
       GUINT_TO_POINTER (group_handle));
 
-  if (update) return update;
+  if (update != NULL)
+    return update;
 
   DEBUG ("Creating new hash table entry for group#%u", group_handle);
   update = g_slice_new0 (GroupMembershipUpdate);
@@ -998,11 +1000,13 @@ _group_mem_update_destroy (GroupMembershipUpdate *update)
 }
 
 static gboolean
-_update_group (gpointer key, gpointer value, gpointer user_data)
+_update_group (gpointer key,
+               gpointer value,
+               gpointer user_data)
 {
   guint group_handle = GPOINTER_TO_UINT (key);
   GabbleRoster *roster = GABBLE_ROSTER (user_data);
-  GroupMembershipUpdate *update = (GroupMembershipUpdate *)value;
+  GroupMembershipUpdate *update = value;
   GabbleRosterChannel *group_channel = _gabble_roster_get_channel (
       roster, TP_HANDLE_TYPE_GROUP, group_handle, NULL);
   TpIntSet *empty = tp_intset_new ();
@@ -1013,7 +1017,7 @@ _update_group (gpointer key, gpointer value, gpointer user_data)
 
   DEBUG ("Updating group channel %u now message has been received",
       group_handle);
-  tp_group_mixin_change_members ((GObject *)group_channel,
+  tp_group_mixin_change_members ((GObject *) group_channel,
       "", update->contacts_added, update->contacts_removed, empty, empty,
       0, 0);
 
@@ -1345,6 +1349,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
       g_hash_table_destroy (group_update_table);
       tp_handle_set_destroy (referenced_handles);
       break;
+
     default:
        NODE_DEBUG (iq_node, "unhandled roster IQ");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;

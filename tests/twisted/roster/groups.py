@@ -49,6 +49,7 @@ def test(q, bus, conn, stream):
     item['jid'] = 'amy@foo.com'
     item['subscription'] = 'both'
     group = item.addElement('group', content='women')
+    group = item.addElement('group', content='affected-by-fdo-12791')
 
     item = event.query.addElement('item')
     item['jid'] = 'bob@foo.com'
@@ -59,6 +60,11 @@ def test(q, bus, conn, stream):
     item['jid'] = 'che@foo.com'
     item['subscription'] = 'to'
     group = item.addElement('group', content='men')
+
+    item = event.query.addElement('item')
+    item['jid'] = 'amy@foo.com'
+    item['subscription'] = 'both'
+    group = item.addElement('group', content='women')
 
     stream.send(event.stanza)
 
@@ -72,6 +78,7 @@ def test(q, bus, conn, stream):
     _expect_contact_list_channel(q, bus, conn, 'known',
         ['amy@foo.com', 'bob@foo.com', 'che@foo.com'])
     _expect_group_channel(q, bus, conn, 'women', ['amy@foo.com'])
+    _expect_group_channel(q, bus, conn, 'affected-by-fdo-12791', [])
     _expect_group_channel(q, bus, conn, 'men', ['bob@foo.com', 'che@foo.com'])
 
     conn.Disconnect()

@@ -222,7 +222,7 @@ struct _GabbleMucChannelPrivate
   gboolean invite_self;
 
   /* Aggregate all presences when joining the chatroom */
-  TpIntSet *presence_handle_set;
+  TpHandleSet *presence_handle_set;
   gboolean initial_members_received;
 };
 
@@ -236,7 +236,7 @@ gabble_muc_channel_init (GabbleMucChannel *obj)
   GabbleMucChannelPrivate *priv;
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
-  priv->presence_handle_set = tp_intset_new ();
+  priv->presence_handle_set = NULL;
   priv->initial_members_received = FALSE;
 }
 
@@ -275,6 +275,8 @@ gabble_muc_channel_constructor (GType type, guint n_props,
       conn->self_handle, &self_handle, &priv->self_jid);
 
   tp_handle_ref (contact_handles, self_handle);
+
+  priv->presence_handle_set = tp_handle_set_new (contact_handles);
 
   /* initialize our own role and affiliation */
   priv->self_role = ROLE_NONE;
@@ -936,7 +938,11 @@ gabble_muc_channel_finalize (GObject *object)
 
   DEBUG ("called");
 
-  tp_intset_destroy (priv->presence_handle_set);
+  if (priv->presence_handle_set != NULL)
+    {
+      tp_handle_set_destroy (priv->presence_handle_set);
+      priv->presence_handle_set = NULL;
+    }
 
   /* free any data held directly by the object here */
   tp_handle_unref (room_handles, priv->handle);
@@ -1604,6 +1610,7 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
   DEBUG ("called");
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
+  g_assert (handle != 0);
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
   conn = (TpBaseConnection *)priv->conn;
@@ -1650,7 +1657,7 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
           else
             {
               /* aggregate this presence */
-              tp_intset_add (priv->presence_handle_set, handle);
+              tp_handle_set_add (priv->presence_handle_set, handle);
 
               /* Do not emit one signal per presence. Instead, get all
                * presences, and add them in priv->presence_handle_set. When we
@@ -1660,9 +1667,11 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
                 {
                   /* Change all presences in only one operation */
                   tp_group_mixin_change_members ((GObject *)chan, "",
-                                                 priv->presence_handle_set,
-                                                 NULL, NULL, NULL, 0, 0);
+                      tp_handle_set_peek (priv->presence_handle_set),
+                      NULL, NULL, NULL, 0, 0);
                   priv->initial_members_received = TRUE;
+                  tp_handle_set_destroy (priv->presence_handle_set);
+                  priv->presence_handle_set = NULL;
                 }
             }
 

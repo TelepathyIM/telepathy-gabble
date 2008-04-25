@@ -893,7 +893,7 @@ muc_factory_presence_cb (LmMessageHandler *handler,
           if (tubes_node == NULL)
             /* presence doesn't contain tubes information, no need
              * to create a tubes channel */
-            return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+            return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
           tubes_chan = new_tubes_channel (fac, room_handle, muc_chan);
           tp_channel_factory_iface_emit_new_channel (fac,

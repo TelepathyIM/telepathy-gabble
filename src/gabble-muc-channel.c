@@ -222,8 +222,7 @@ struct _GabbleMucChannelPrivate
   gboolean invite_self;
 
   /* Aggregate all presences when joining the chatroom */
-  TpHandleSet *presence_handle_set;
-  gboolean initial_members_received;
+  TpHandleSet *initial_members_aggregator;
 };
 
 #define GABBLE_MUC_CHANNEL_GET_PRIVATE(o) \
@@ -236,8 +235,7 @@ gabble_muc_channel_init (GabbleMucChannel *obj)
   GabbleMucChannelPrivate *priv;
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
-  priv->presence_handle_set = NULL;
-  priv->initial_members_received = FALSE;
+  priv->initial_members_aggregator = NULL;
 }
 
 static void contact_handle_to_room_identity (GabbleMucChannel *, TpHandle,
@@ -276,7 +274,7 @@ gabble_muc_channel_constructor (GType type, guint n_props,
 
   tp_handle_ref (contact_handles, self_handle);
 
-  priv->presence_handle_set = tp_handle_set_new (contact_handles);
+  priv->initial_members_aggregator = tp_handle_set_new (contact_handles);
 
   /* initialize our own role and affiliation */
   priv->self_role = ROLE_NONE;
@@ -938,10 +936,10 @@ gabble_muc_channel_finalize (GObject *object)
 
   DEBUG ("called");
 
-  if (priv->presence_handle_set != NULL)
+  if (priv->initial_members_aggregator != NULL)
     {
-      tp_handle_set_destroy (priv->presence_handle_set);
-      priv->presence_handle_set = NULL;
+      tp_handle_set_destroy (priv->initial_members_aggregator);
+      priv->initial_members_aggregator = NULL;
     }
 
   /* free any data held directly by the object here */
@@ -1648,30 +1646,29 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
     {
       if (!tp_handle_set_is_member (mixin->members, handle))
         {
-          if (priv->initial_members_received)
+          if (priv->initial_members_aggregator == NULL)
             {
               /* no aggregation */
-              tp_group_mixin_change_members ((GObject *)chan, "", set, NULL,
+              tp_group_mixin_change_members ((GObject *) chan, "", set, NULL,
                                               NULL, NULL, 0, 0);
             }
           else
             {
               /* aggregate this presence */
-              tp_handle_set_add (priv->presence_handle_set, handle);
+              tp_handle_set_add (priv->initial_members_aggregator, handle);
 
               /* Do not emit one signal per presence. Instead, get all
-               * presences, and add them in priv->presence_handle_set. When we
-               * get the last presence, emit the signal. The last presence is
-               * ourselve. */
+               * presences, and add them in priv->initial_members_aggregator.
+               * When we get the last presence, emit the signal. The last
+               * presence is ourselves. */
               if (handle == mixin->self_handle)
                 {
                   /* Change all presences in only one operation */
-                  tp_group_mixin_change_members ((GObject *)chan, "",
-                      tp_handle_set_peek (priv->presence_handle_set),
+                  tp_group_mixin_change_members ((GObject *) chan, "",
+                      tp_handle_set_peek (priv->initial_members_aggregator),
                       NULL, NULL, NULL, 0, 0);
-                  priv->initial_members_received = TRUE;
-                  tp_handle_set_destroy (priv->presence_handle_set);
-                  priv->presence_handle_set = NULL;
+                  tp_handle_set_destroy (priv->initial_members_aggregator);
+                  priv->initial_members_aggregator = NULL;
                 }
             }
 

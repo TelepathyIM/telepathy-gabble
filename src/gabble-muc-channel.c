@@ -1648,7 +1648,7 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
         {
           if (priv->initial_members_aggregator == NULL)
             {
-              /* no aggregation */
+              /* we've already had the initial batch of presence stanzas */
               tp_group_mixin_change_members ((GObject *) chan, "", set, NULL,
                                               NULL, NULL, 0, 0);
             }

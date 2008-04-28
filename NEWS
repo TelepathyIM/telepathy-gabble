@@ -13,7 +13,7 @@ Enhancements:
 
 Fixes:
 
-* fd.o #12791: fix assertion failure with strange roster items
+* fd.o #12791, Debian #446259: fix assertion failure with strange roster items
 
 * fd.o #14343: fix race condition that can lose messages between accepting
   a D-Bus tube and actually connecting to it

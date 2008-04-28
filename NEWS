@@ -1,3 +1,35 @@
+telepathy-gabble 0.7.4 (unreleased)
+===================================
+
+Enhancements:
+
+* fd.o #14467: aggregate MembersChanged signals when joining MUCs, so we
+  get one big signal rather than lots of single-contact signals, potentially
+  reducing client round-trips
+
+* Re-enable some regression tests that were accidentally removed in 0.7.3
+
+* Build documentation for our extensions to XMPP by default
+
+Fixes:
+
+* fd.o #12791: fix assertion failure with strange roster items
+
+* fd.o #14343: fix race condition that can lose messages between accepting
+  a D-Bus tube and actually connecting to it
+
+* fd.o #15095: fix MUC contacts always appearing to be offline
+
+* When removing a media stream before the initiate is sent, send it if possible
+
+* when blocking gtalk contacts, discard their presence
+
+* disconnect the connection if we don't receive a reply to the discovery
+  request for server features
+
+* stop using Automake 1.9 features, and prefer to autoreconf using 1.8 (if
+  available) to ensure that we don't accidentally re-add a 1.9 dependency
+
 telepathy-gabble 0.7.3 (2008-04-11)
 ===================================
 

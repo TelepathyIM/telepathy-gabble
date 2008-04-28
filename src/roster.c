@@ -1166,6 +1166,14 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
               continue;
             }
 
+          if (strchr (jid, '/') != NULL)
+            {
+              /* Avoid fd.o #12791 */
+              NODE_DEBUG (item_node,
+                  "item node has resource in jid, skipping");
+              continue;
+            }
+
           handle = tp_handle_ensure (contact_repo, jid, NULL, NULL);
           if (handle == 0)
             {

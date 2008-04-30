@@ -39,14 +39,24 @@ def expect_request_handles_return(event, data):
         'org.freedesktop.Telepathy.Channel.Type.Text', 2, handles[0], True)
     return True
 
-@lazy
+@match('stream-presence', to='chat@conf.localhost/test')
+def expect_presence(event, data):
+    return True
+
+@match('dbus-signal', signal='GroupFlagsChanged')
+def expect_group_flags_changed(event, data):
+    assert event.args[1] == 0
+    return True
+
 @match('dbus-signal', signal='MembersChanged',
     args=[u'', [], [], [], [2], 0, 0])
 def expect_members_changed1(event, data):
     return True
 
-@match('stream-presence', to='chat@conf.localhost/test')
-def expect_presence(event, data):
+@match('dbus-signal', signal='GroupFlagsChanged')
+def expect_group_flags_changed2(event, data):
+    assert event.args == [0, 1]
+
     # Send presence for anonymous other member of room.
     presence = domish.Element((None, 'presence'))
     presence['from'] = 'chat@conf.localhost/bob'
@@ -55,13 +65,6 @@ def expect_presence(event, data):
     item['affiliation'] = 'owner'
     item['role'] = 'moderator'
     data['stream'].send(presence)
-    return True
-
-@match('dbus-signal', signal='MembersChanged',
-    args=[u'', [3], [], [], [], 0, 0])
-def expect_members_changed2(event, data):
-    assert data['conn_iface'].InspectHandles(1, [3]) == [
-        'chat@conf.localhost/bob']
 
     # Send presence for nonymous other member of room.
     presence = domish.Element((None, 'presence'))
@@ -72,13 +75,6 @@ def expect_members_changed2(event, data):
     item['role'] = 'participant'
     item['jid'] = 'che@foo.com'
     data['stream'].send(presence)
-    return True
-
-@match('dbus-signal', signal='MembersChanged')
-def expect_members_changed3(event, data):
-    assert event.args == [u'', [4], [], [], [], 0, 0]
-    assert data['conn_iface'].InspectHandles(1, [4]) == [
-        'chat@conf.localhost/che']
 
     # Send presence for own membership of room.
     presence = domish.Element((None, 'presence'))
@@ -91,10 +87,21 @@ def expect_members_changed3(event, data):
     return True
 
 @match('dbus-signal', signal='GroupFlagsChanged')
-def expect_group_flags_changed(event, data):
+def expect_group_flags_changed3(event, data):
     # Since we received MUC presence that contains an owner JID, the
     # OWNERS_NOT_AVAILABLE flag should be removed.
     assert event.args == [0, 1024]
+    return True
+
+@match('dbus-signal', signal='MembersChanged',
+    args=[u'', [2, 3, 4], [], [], [], 0, 0])
+def expect_members_changed2(event, data):
+    assert data['conn_iface'].InspectHandles(1, [2]) == [
+        'chat@conf.localhost/test']
+    assert data['conn_iface'].InspectHandles(1, [3]) == [
+        'chat@conf.localhost/bob']
+    assert data['conn_iface'].InspectHandles(1, [4]) == [
+        'chat@conf.localhost/che']
     return True
 
 @match('dbus-return', method='RequestChannel')

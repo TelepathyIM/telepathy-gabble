@@ -1312,24 +1312,37 @@ session_state_changed_cb (GabbleMediaSession *session,
                 "peer", &peer,
                 NULL);
 
-  if (state != JS_STATE_ACTIVE)
-    return;
-
-  if (priv->creator != mixin->self_handle)
-    return;
-
   set = tp_intset_new ();
 
   /* add the peer to the member list */
   tp_intset_add (set, peer);
 
-  tp_group_mixin_change_members ((GObject *)channel,
-      "", set, NULL, NULL, NULL, 0, 0);
+  if (state >= JS_STATE_PENDING_INITIATE_SENT &&
+      state < JS_STATE_ACTIVE)
+    {
+      /* The first time we send anything to the other user, they materialise
+       * in remote-pending if necessary */
 
-  /* update flags accordingly -- allow removal, deny adding and rescinding */
-  tp_group_mixin_change_flags ((GObject *)channel,
-      TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
-      TP_CHANNEL_GROUP_FLAG_CAN_ADD | TP_CHANNEL_GROUP_FLAG_CAN_RESCIND);
+      tp_group_mixin_change_members ((GObject *) channel,
+          "", NULL, NULL, NULL, set, 0, 0);
+
+      tp_group_mixin_change_flags ((GObject *) channel,
+          TP_CHANNEL_GROUP_FLAG_CAN_REMOVE | TP_CHANNEL_GROUP_FLAG_CAN_RESCIND,
+          TP_CHANNEL_GROUP_FLAG_CAN_ADD);
+    }
+
+  if (state == JS_STATE_ACTIVE &&
+      priv->creator == mixin->self_handle)
+    {
+      tp_group_mixin_change_members ((GObject *)channel,
+          "", set, NULL, NULL, NULL, 0, 0);
+
+      /* update flags accordingly -- allow removal, deny adding and
+       * rescinding */
+      tp_group_mixin_change_flags ((GObject *) channel,
+          TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
+          TP_CHANNEL_GROUP_FLAG_CAN_ADD | TP_CHANNEL_GROUP_FLAG_CAN_RESCIND);
+    }
 
   tp_intset_destroy (set);
 }

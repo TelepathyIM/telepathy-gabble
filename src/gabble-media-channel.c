@@ -1068,11 +1068,11 @@ gabble_media_channel_request_streams (TpSvcChannelTypeStreamedMedia *iface,
           "peer", &peer,
           NULL);
 
-      if (peer != handle)
+      if (peer != contact_handle)
         {
           g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
               "cannot add streams for %u: this channel's peer is %u",
-              handle, peer);
+              contact_handle, peer);
           goto error;
         }
     }

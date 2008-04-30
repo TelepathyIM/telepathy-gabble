@@ -293,6 +293,10 @@ _gabble_media_channel_dispatch_session_action (GabbleMediaChannel *chan,
   GabbleMediaSession *session = priv->session;
   gboolean session_is_new = FALSE;
 
+  /* If this assertion fails, create_session() would think we're the
+   * initiator. However, GabbleMediaFactory checks this, so it can't fail */
+  g_return_val_if_fail (sid != NULL, FALSE);
+
   if (session == NULL)
     {
       TpGroupMixin *mixin = TP_GROUP_MIXIN (chan);

@@ -296,6 +296,7 @@ gabble_media_session_constructor (GType type, guint n_props,
   GObject *obj;
   GabbleMediaSessionPrivate *priv;
   DBusGConnection *bus;
+  TpHandleRepoIface *contact_handles;
 
   obj = G_OBJECT_CLASS (gabble_media_session_parent_class)->
            constructor (type, n_props, props);
@@ -303,6 +304,11 @@ gabble_media_session_constructor (GType type, guint n_props,
 
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
+
+  contact_handles = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+
+  tp_handle_ref (contact_handles, priv->peer);
 
   return obj;
 }
@@ -530,6 +536,7 @@ gabble_media_session_dispose (GObject *object)
   GabbleMediaSession *self = GABBLE_MEDIA_SESSION (object);
   GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (self);
   guint i;
+  TpHandleRepoIface *contact_handles;
 
   DEBUG ("called");
 
@@ -556,6 +563,11 @@ gabble_media_session_dispose (GObject *object)
     g_ptr_array_free (g_ptr_array_index (priv->remove_requests, i), TRUE);
   g_ptr_array_free (priv->remove_requests, TRUE);
   priv->remove_requests = NULL;
+
+  contact_handles = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+
+  tp_handle_unref (contact_handles, priv->peer);
 
   if (G_OBJECT_CLASS (gabble_media_session_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_media_session_parent_class)->dispose (object);

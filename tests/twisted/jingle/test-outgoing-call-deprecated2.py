@@ -40,11 +40,13 @@ def test(q, bus, conn, stream):
 
     path = conn.RequestChannel(
         'org.freedesktop.Telepathy.Channel.Type.StreamedMedia',
-        1, handle, True)
+        0, 0, True)
 
     signalling_iface = make_channel_proxy(conn, path, 'Channel.Interface.MediaSignalling')
     media_iface = make_channel_proxy(conn, path, 'Channel.Type.StreamedMedia')
     group_iface = make_channel_proxy(conn, path, 'Channel.Interface.Group')
+
+    group_iface.AddMembers([handle], 'deprecated API')
 
     # S-E gets notified about new session handler, and calls Ready on it
     e = q.expect('dbus-signal', signal='NewSessionHandler')

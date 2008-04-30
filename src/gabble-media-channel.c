@@ -1050,14 +1050,6 @@ gabble_media_channel_request_streams (TpSvcChannelTypeStreamedMedia *iface,
   if (!tp_handle_is_valid (contact_handles, contact_handle, &error))
     goto error;
 
-  if (!tp_handle_set_is_member (self->group.members, contact_handle) &&
-      !tp_handle_set_is_member (self->group.remote_pending, contact_handle))
-    {
-      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "given handle %u is not a member of the channel", contact_handle);
-      goto error;
-    }
-
   if (priv->session == NULL)
     {
       if (create_session (self, contact_handle, NULL, NULL, &error)

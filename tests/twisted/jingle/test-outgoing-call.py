@@ -6,6 +6,7 @@ when the remote party accepts the call.
 
 from gabbletest import exec_test, make_result_iq
 from servicetest import make_channel_proxy, unwrap, tp_path_prefix
+from twisted.words.xish import domish
 import jingletest
 import gabbletest
 import dbus
@@ -45,6 +46,16 @@ def test(q, bus, conn, stream):
     signalling_iface = make_channel_proxy(conn, path, 'Channel.Interface.MediaSignalling')
     media_iface = make_channel_proxy(conn, path, 'Channel.Type.StreamedMedia')
     group_iface = make_channel_proxy(conn, path, 'Channel.Interface.Group')
+
+    # FIXME: Hack to make sure the disco info has been processed - we need to
+    # send Gabble some XML that will cause an event when processed, and
+    # wait for that event (until
+    # https://bugs.freedesktop.org/show_bug.cgi?id=15769 is fixed)
+    el = domish.Element(('jabber.client', 'presence'))
+    el['from'] = 'bob@example.com/Bar'
+    stream.send(el.toXml())
+    q.expect('dbus-signal', signal='PresenceUpdate')
+    # OK, now we can continue. End of hack
 
     media_iface.RequestStreams(handle, [0]) # 0 == MEDIA_STREAM_TYPE_AUDIO
 

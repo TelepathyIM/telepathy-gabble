@@ -1048,32 +1048,48 @@ gabble_media_channel_request_streams (TpSvcChannelTypeStreamedMedia *iface,
       TP_HANDLE_TYPE_CONTACT);
 
   if (!tp_handle_is_valid (contact_handles, contact_handle, &error))
-    {
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-      return;
-    }
+    goto error;
 
   if (!tp_handle_set_is_member (self->group.members, contact_handle) &&
       !tp_handle_set_is_member (self->group.remote_pending, contact_handle))
     {
       g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "given handle %u is not a member of the channel", contact_handle);
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-      return;
+      goto error;
     }
 
-  /* if the person is a channel member, we should have a session */
+  if (priv->session == NULL)
+    {
+      if (create_session (self, contact_handle, NULL, NULL, &error)
+          == NULL)
+        {
+          dbus_g_method_return_error (context, error);
+          g_error_free (error);
+          return;
+        }
+    }
+  else
+    {
+      TpHandle peer;
+
+      g_object_get (priv->session,
+          "peer", &peer,
+          NULL);
+
+      if (peer != handle)
+        {
+          g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+              "cannot add streams for %u: this channel's peer is %u",
+              handle, peer);
+          goto error;
+        }
+    }
+
   g_assert (priv->session != NULL);
 
   if (!_gabble_media_session_request_streams (priv->session, types, &streams,
         &error))
-    {
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-      return;
-    }
+    goto error;
 
   ret = make_stream_list (self, streams);
 
@@ -1081,6 +1097,11 @@ gabble_media_channel_request_streams (TpSvcChannelTypeStreamedMedia *iface,
 
   tp_svc_channel_type_streamed_media_return_from_request_streams (context, ret);
   g_ptr_array_free (ret, TRUE);
+  return;
+
+error:
+  dbus_g_method_return_error (context, error);
+  g_error_free (error);
 }
 
 

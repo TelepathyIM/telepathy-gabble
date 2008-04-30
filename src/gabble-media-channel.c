@@ -1101,9 +1101,28 @@ _gabble_media_channel_add_member (GObject *obj,
 
       /* yes: invite the peer */
 
-      /* create a new session */
-      if (create_session (chan, handle, NULL, NULL, error) == NULL)
-        return FALSE;
+      if (priv->session == NULL)
+        {
+          /* create a new session */
+          if (create_session (chan, handle, NULL, NULL, error) == NULL)
+            return FALSE;
+        }
+      else
+        {
+          TpHandle peer;
+
+          g_object_get (priv->session,
+              "peer", &peer,
+              NULL);
+
+          if (peer != handle)
+            {
+              g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+                  "handle %u cannot be added: this channel's peer is %u",
+                  handle, peer);
+              return FALSE;
+            }
+        }
 
       /* make the peer remote pending */
       set = tp_intset_new ();

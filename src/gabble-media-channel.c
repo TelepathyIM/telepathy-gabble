@@ -223,7 +223,8 @@ static GabbleMediaSession *
 create_session (GabbleMediaChannel *channel,
                 TpHandle peer,
                 const gchar *peer_resource,
-                const gchar *sid)
+                const gchar *sid,
+                GError **error)
 {
   GabbleMediaChannelPrivate *priv;
   GabbleMediaSession *session;
@@ -297,7 +298,8 @@ _gabble_media_channel_dispatch_session_action (GabbleMediaChannel *chan,
       TpGroupMixin *mixin = TP_GROUP_MIXIN (chan);
       TpIntSet *set;
 
-      session = create_session (chan, peer, peer_resource, sid);
+      session = create_session (chan, peer, peer_resource, sid, NULL);
+      g_assert (session != NULL);
       session_is_new = TRUE;
 
       /* make us local pending */
@@ -1089,7 +1091,8 @@ _gabble_media_channel_add_member (GObject *obj,
       /* yes: invite the peer */
 
       /* create a new session */
-      create_session (chan, handle, NULL, NULL);
+      create_session (chan, handle, NULL, NULL, NULL);
+      g_assert (priv->session != NULL);
 
       /* make the peer remote pending */
       set = tp_intset_new ();

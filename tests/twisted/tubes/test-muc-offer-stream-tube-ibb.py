@@ -79,12 +79,6 @@ def test(q, bus, conn, stream):
     item['role'] = 'moderator'
     stream.send(presence)
 
-    q.expect('dbus-signal', signal='MembersChanged',
-            args=[u'', [3], [], [], [], 0, 0])
-
-    conn.InspectHandles(1, [3]) == ['chat@conf.localhost/bob']
-    bob_handle = 3
-
     # Send presence for own membership of room.
     presence = domish.Element((None, 'presence'))
     presence['from'] = 'chat@conf.localhost/test'
@@ -93,6 +87,13 @@ def test(q, bus, conn, stream):
     item['affiliation'] = 'none'
     item['role'] = 'participant'
     stream.send(presence)
+
+    q.expect('dbus-signal', signal='MembersChanged',
+            args=[u'', [2, 3], [], [], [], 0, 0])
+
+    assert conn.InspectHandles(1, [2]) == ['chat@conf.localhost/test']
+    assert conn.InspectHandles(1, [3]) == ['chat@conf.localhost/bob']
+    bob_handle = 3
 
     event = q.expect('dbus-return', method='RequestChannel')
 

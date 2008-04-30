@@ -37,6 +37,7 @@ TWISTED_TESTS = \
 	jingle/hold-av.py \
 	jingle/test-incoming-call.py \
 	jingle/test-outgoing-call.py \
+	jingle/test-outgoing-call-deprecated.py \
 	jingle/test-outgoing-call-rejected.py \
 	test-capabilities.py \
 	test-caps-update.py \

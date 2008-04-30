@@ -219,7 +219,7 @@ static void session_terminated_cb (GabbleMediaSession *session,
  * the "initiator" property of the newly created
  * GabbleMediaSession is set to our own handle.
  */
-static GabbleMediaSession*
+static GabbleMediaSession *
 create_session (GabbleMediaChannel *channel,
                 TpHandle peer,
                 const gchar *peer_resource,

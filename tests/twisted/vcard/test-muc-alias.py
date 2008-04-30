@@ -55,13 +55,6 @@ def expect_presence(event, data):
     item['affiliation'] = 'owner'
     item['role'] = 'moderator'
     data['stream'].send(presence)
-    return True
-
-@match('dbus-signal', signal='MembersChanged',
-    args=[u'', [3], [], [], [], 0, 0])
-def expect_members_changed2(event, data):
-    assert data['conn_iface'].InspectHandles(1, [3]) == [
-        'chat@conf.localhost/bob']
 
     # Send presence for own membership of room.
     presence = domish.Element((None, 'presence'))
@@ -71,6 +64,16 @@ def expect_members_changed2(event, data):
     item['affiliation'] = 'none'
     item['role'] = 'participant'
     data['stream'].send(presence)
+    return True
+
+@match('dbus-signal', signal='MembersChanged',
+    args=[u'', [2, 3], [], [], [], 0, 0])
+def expect_members_changed2(event, data):
+    assert data['conn_iface'].InspectHandles(1, [2]) == [
+        'chat@conf.localhost/test']
+    assert data['conn_iface'].InspectHandles(1, [3]) == [
+        'chat@conf.localhost/bob']
+
     return True
 
 @match('dbus-return', method='RequestChannel')

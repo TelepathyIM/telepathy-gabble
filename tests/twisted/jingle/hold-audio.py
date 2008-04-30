@@ -65,7 +65,7 @@ def test(q, bus, conn, stream):
     session_handler = make_channel_proxy(conn, e.args[0], 'Media.SessionHandler')
     session_handler.Ready()
 
-    media_iface.RequestStreams(1, [MEDIA_STREAM_TYPE_AUDIO])
+    media_iface.RequestStreams(handle, [MEDIA_STREAM_TYPE_AUDIO])
 
     e = q.expect('dbus-signal', signal='NewStreamHandler')
 

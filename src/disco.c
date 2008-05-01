@@ -306,6 +306,15 @@ timeout_request (gpointer data)
    * destroys us (as seen in test-disco-no-reply.py) */
   disco = g_object_ref (request->disco);
 
+  /* also, we're about to run the callback, so it's too late to cancel it -
+   * avoid crashing if running the callback destroys the bound object */
+  if (NULL != request->bound_object)
+    {
+      g_object_weak_unref (request->bound_object, notify_delete_request,
+          request);
+      request->bound_object = NULL;
+    }
+
   (request->callback)(request->disco, request, request->jid, request->node,
                       NULL, err, request->user_data);
   g_error_free (err);

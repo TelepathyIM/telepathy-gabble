@@ -1,5 +1,7 @@
-telepathy-gabble 0.7.4 (unreleased)
+telepathy-gabble 0.7.4 (2008-05-01)
 ===================================
+
+The "stop making coredumps, I want to go to the pub" release.
 
 Enhancements:
 
@@ -37,6 +39,10 @@ Fixes:
 
 * stop using Automake 1.9 features, and prefer to autoreconf using 1.8 (if
   available) to ensure that we don't accidentally re-add a 1.9 dependency
+
+* make sure teardown of the disco object doesn't crash if one of its callbacks
+  causes it to be destroyed (bug exposed by test-disco-no-reply.py regression
+  test)
 
 telepathy-gabble 0.7.3 (2008-04-11)
 ===================================

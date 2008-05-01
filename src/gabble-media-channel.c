@@ -347,7 +347,7 @@ _gabble_media_channel_dispatch_session_action (GabbleMediaChannel *chan,
       tp_intset_add (set, mixin->self_handle);
 
       tp_group_mixin_change_members ((GObject *)chan,
-          "", NULL, NULL, set, NULL, 0, 0);
+          "", NULL, NULL, set, NULL, peer, 0);
 
       tp_intset_destroy (set);
 

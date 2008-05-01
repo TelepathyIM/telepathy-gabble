@@ -80,6 +80,15 @@ def expect_CapabilitiesChanged(event, data):
         0, 1, 0)]])
 def expect_CapabilitiesChanged2(event, data):
     # can't do calls any more
+
+    # regression test for fd.o #15198: getting caps of invalid handle crashed
+    try:
+        caps_iface(data['conn']).GetCapabilities([31337])
+    except dbus.DBusException, e:
+        pass
+    else:
+        assert False, "Should have had an error!"
+
     data['conn_iface'].Disconnect()
     return True
 

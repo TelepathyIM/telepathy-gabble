@@ -20,7 +20,13 @@ Fixes:
 
 * fd.o #14602: update the StreamedMedia call API to telepathy-spec 0.17.3
 
+* fd.o #14806: when we add ourselves to the local-pending set for incoming
+  calls, set the caller as the actor
+
 * fd.o #15095: fix MUC contacts always appearing to be offline
+
+* fd.o #15198: fix assertion failure when calling GetCapabilities on an invalid
+  handle
 
 * When removing a media stream before the initiate is sent, send it if possible
 

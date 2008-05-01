@@ -18,6 +18,8 @@ Fixes:
 * fd.o #14343: fix race condition that can lose messages between accepting
   a D-Bus tube and actually connecting to it
 
+* fd.o #14602: update the StreamedMedia call API to spec 0.17.3
+
 * fd.o #15095: fix MUC contacts always appearing to be offline
 
 * When removing a media stream before the initiate is sent, send it if possible

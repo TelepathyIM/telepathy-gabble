@@ -785,6 +785,7 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
   GPtrArray *candidates;
   GValue candidate = { 0, };
   GValueArray *transport;
+  guint component_id;
   const gchar *addr;
 
   g_assert (GABBLE_IS_MEDIA_STREAM (self));
@@ -830,6 +831,15 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
     {
       GMS_DEBUG_WARNING (priv->session,
           "%s: ignoring native localhost candidate", G_STRFUNC);
+      tp_svc_media_stream_handler_return_from_new_native_candidate (context);
+      return;
+    }
+
+  component_id = g_value_get_uint (g_value_array_get_nth (transport, 0));
+  if (component_id != 1)
+    {
+      GMS_DEBUG_WARNING (priv->session,
+          "%s: ignoring native candidate non-1 component", G_STRFUNC);
       tp_svc_media_stream_handler_return_from_new_native_candidate (context);
       return;
     }

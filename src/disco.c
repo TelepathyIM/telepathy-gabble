@@ -293,6 +293,7 @@ static gboolean
 timeout_request (gpointer data)
 {
   GabbleDiscoRequest *request = (GabbleDiscoRequest*) data;
+  GabbleDisco *disco;
   GError *err /* doesn't need initializing */;
   g_return_val_if_fail (data != NULL, FALSE);
 
@@ -300,12 +301,20 @@ timeout_request (gpointer data)
       "Request for %s on %s timed out",
       (request->type == GABBLE_DISCO_TYPE_INFO)?"info":"items",
       request->jid);
+
+  /* Temporarily ref the disco object to avoid crashing if the callback
+   * destroys us (as seen in test-disco-no-reply.py) */
+  disco = g_object_ref (request->disco);
+
   (request->callback)(request->disco, request, request->jid, request->node,
                       NULL, err, request->user_data);
   g_error_free (err);
 
   request->timer_id = 0;
   delete_request (request);
+
+  g_object_unref (disco);
+
   return FALSE;
 }
 

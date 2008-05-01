@@ -2250,6 +2250,7 @@ gabble_connection_get_capabilities (TpSvcConnectionInterfaceCapabilities *iface,
     {
       dbus_g_method_return_error (context, error);
       g_error_free (error);
+      return;
     }
 
   ret = g_ptr_array_new ();

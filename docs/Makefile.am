@@ -1,5 +1,8 @@
 tools_dir = $(top_srcdir)/tools
 
+# htmldir is not defined by autoconf < 2.59c
+htmldir = $(if $(filter-out @%@,@htmldir@),@htmldir@,$(datadir)/doc/$(PACKAGE))
+
 man_MANS = telepathy-gabble.8
 html_DATA = \
     olpc.html \

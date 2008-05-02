@@ -6,33 +6,27 @@ import dbus
 
 from twisted.words.xish import domish, xpath
 
-from gabbletest import go, make_result_iq
-from servicetest import call_async, lazy, match
+from gabbletest import go, make_result_iq, exec_test
+from servicetest import call_async, EventPattern
 
-@match('dbus-signal', signal='StatusChanged', args=[0, 1])
-def expect_connected(event, data):
+def test(q, bus, conn, stream):
+    conn.Connect()
 
-    data['bob_handle'] = data['conn_iface'].RequestHandles(1,
-        ['bob@localhost'])[0]
+    q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
 
-    data['buddy_iface'] = dbus.Interface(data['conn'],
-            'org.laptop.Telepathy.BuddyInfo')
-    call_async(data['test'], data['buddy_iface'], 'GetActivities',
-        data['bob_handle'])
+    bob_handle = conn.RequestHandles(1, ['bob@localhost'])[0]
 
-    return True
+    buddy_iface = dbus.Interface(conn, 'org.laptop.Telepathy.BuddyInfo')
+    call_async(q, buddy_iface, 'GetActivities', bob_handle)
 
-@match('stream-iq', iq_type='get', to='bob@localhost')
-def expect_get_bob_activities_iq_get(event, data):
+    event = q.expect('stream-iq', iq_type='get', to='bob@localhost')
     # Bob has no activities
     event.stanza['type'] = 'result'
     event.stanza['to'] = 'test@localhost'
     event.stanza['from'] = 'bob@localhost'
-    data['stream'].send(event.stanza)
-    return True
+    stream.send(event.stanza)
 
-@match('dbus-return', method='GetActivities')
-def expect_get_bob_activities_return(event, data):
+    event = q.expect('dbus-return', method='GetActivities')
     # initially, Bob has no activities
     assert event.value == ([],)
 
@@ -52,7 +46,7 @@ def expect_get_bob_activities_return(event, data):
     property['name'] = 'private'
     property.addContent('1')
 
-    data['stream'].send(message)
+    stream.send(message)
 
     message = domish.Element((None, 'message'))
     message['from'] = 'chat@conf.localhost'
@@ -63,80 +57,61 @@ def expect_get_bob_activities_return(event, data):
     reason = invite.addElement((None, 'reason'))
     reason.addContent('No good reason')
 
-    data['stream'].send(message)
+    stream.send(message)
 
-    return True
-
-@match('dbus-signal', signal='NewChannel')
-def expect_text_channel(event, data):
+    event = q.expect('dbus-signal', signal='NewChannel')
     if event.args[1] != 'org.freedesktop.Telepathy.Channel.Type.Text':
         return False
 
     assert event.args[2] == 2   # handle type
     assert event.args[3] == 1   # handle
-    data['room_handle'] = 1
+    room_handle = 1
 
-    bus = data['conn']._bus
-    data['text_chan'] = bus.get_object(
-        data['conn'].bus_name, event.args[0])
-    data['group_iface'] = dbus.Interface(data['text_chan'],
-        'org.freedesktop.Telepathy.Channel.Interface.Group')
+    text_chan = bus.get_object(conn.bus_name, event.args[0])
+    group_iface = dbus.Interface(text_chan,
+            'org.freedesktop.Telepathy.Channel.Interface.Group')
 
-    members = data['group_iface'].GetAllMembers()[0]
-    local_pending = data['group_iface'].GetAllMembers()[1]
-    remote_pending = data['group_iface'].GetAllMembers()[2]
+    members = group_iface.GetAllMembers()[0]
+    local_pending = group_iface.GetAllMembers()[1]
+    remote_pending = group_iface.GetAllMembers()[2]
 
     assert len(members) == 1
-    assert data['conn_iface'].InspectHandles(1, members)[0] == 'bob@localhost'
-    data['bob_handle'] = members[0]
+    assert conn.InspectHandles(1, members)[0] == 'bob@localhost'
+    bob_handle = members[0]
     assert len(local_pending) == 1
     # FIXME: the username-part-is-nickname assumption
-    assert data['conn_iface'].InspectHandles(1, local_pending)[0] == \
+    assert conn.InspectHandles(1, local_pending)[0] == \
             'chat@conf.localhost/test'
     assert len(remote_pending) == 0
 
-    data['room_self_handle'] = data['group_iface'].GetSelfHandle()
-    assert data['room_self_handle'] == local_pending[0]
+    room_self_handle = group_iface.GetSelfHandle()
+    assert room_self_handle == local_pending[0]
 
     # by now, we should have picked up the extra activity properties
-    data['buddy_iface'] = dbus.Interface(data['conn'],
-            'org.laptop.Telepathy.BuddyInfo')
-    call_async(data['test'], data['buddy_iface'], 'GetActivities',
-        data['bob_handle'])
+    buddy_iface = dbus.Interface(conn, 'org.laptop.Telepathy.BuddyInfo')
+    call_async(q, buddy_iface, 'GetActivities', bob_handle)
 
-    return True
-
-@match('stream-iq', iq_type='get', to='bob@localhost')
-def expect_get_bob_activities_iq_get_again(event, data):
+    event = q.expect('stream-iq', iq_type='get', to='bob@localhost')
     # Bob still has no (public) activities
     event.stanza['type'] = 'result'
     event.stanza['to'] = 'test@localhost'
     event.stanza['from'] = 'bob@localhost'
-    data['stream'].send(event.stanza)
-    return True
+    stream.send(event.stanza)
 
-@lazy
-@match('dbus-return', method='GetActivities')
-def expect_get_bob_activities_return_again(event, data):
-    assert event.value == ([('foo_id', data['room_handle'])],)
+    event = q.expect('dbus-return', method='GetActivities')
+
+    assert event.value == ([('foo_id', room_handle)],)
 
     # OK, now accept the invitation
-    call_async(data['test'], data['group_iface'], 'AddMembers',
-        [data['room_self_handle']], 'Oh, OK then')
+    call_async(q, group_iface, 'AddMembers', [room_self_handle], 'Oh, OK then')
 
-    return True
+    q.expect('stream-presence', to='chat@conf.localhost/test')
 
-@lazy
-@match('dbus-signal', signal='MembersChanged')
-def expect_add_myself_into_remote_pending(event, data):
-    assert event.args == ['', [], [data['bob_handle']], [],
-            [data['room_self_handle']], 0,
-            data['room_self_handle']]
-    return True
+    event = q.expect('dbus-signal', signal='MembersChanged')
 
-@lazy
-@match('stream-presence', to='chat@conf.localhost/test')
-def expect_presence(event, data):
+    assert event.args == ['', [], [bob_handle], [],
+            [room_self_handle], 0, room_self_handle]
+
     # Send presence for own membership of room.
     presence = domish.Element((None, 'presence'))
     presence['from'] = 'chat@conf.localhost/test'
@@ -144,50 +119,34 @@ def expect_presence(event, data):
     item = x.addElement('item')
     item['affiliation'] = 'owner'
     item['role'] = 'moderator'
-    data['stream'].send(presence)
-    return True
+    stream.send(presence)
 
-@match('dbus-return', method='AddMembers')
-def expect_add_myself_success(event, data):
-    return True
+    q.expect('dbus-return', method='AddMembers')
 
-@match('dbus-signal', signal='MembersChanged')
-def expect_members_changed2(event, data):
-    assert event.args == ['', [data['room_self_handle']], [], [],
-            [], 0, 0]
+    event = q.expect('dbus-signal', signal='MembersChanged')
+    assert event.args == ['', [room_self_handle], [], [], [], 0, 0]
 
-    call_async(data['test'], data['buddy_iface'], 'SetActivities',
-        [('foo_id', data['room_handle'])])
-    return True
+    call_async(q, buddy_iface, 'SetActivities', [('foo_id', room_handle)])
 
-@match('stream-iq', iq_type='set')
-def expect_activities_publication(event, data):
+    event = q.expect('stream-iq', iq_type='set')
     event.stanza['type'] = 'result'
     event.stanza['to'] = 'test@localhost'
     event.stanza['from'] = 'test@localhost'
-    data['stream'].send(event.stanza)
-    return True
+    stream.send(event.stanza)
 
-@match('dbus-return', method='SetActivities')
-def expect_set_activities_success(event, data):
-    data['act_prop_iface'] = dbus.Interface(data['conn'],
-            'org.laptop.Telepathy.ActivityProperties')
-    call_async(data['test'], data['act_prop_iface'], 'SetProperties',
-        data['room_handle'], {'color': '#ffff00,#00ffff', 'private': True})
-    return True
+    q.expect('dbus-return', method='SetActivities')
+    act_prop_iface = dbus.Interface(conn, 'org.laptop.Telepathy.ActivityProperties')
+    call_async(q, act_prop_iface, 'SetProperties',
+        room_handle, {'color': '#ffff00,#00ffff', 'private': True})
 
-@match('dbus-return', method='SetProperties')
-def expect_set_activity_props_success(event, data):
-
+    q.expect('dbus-return', method='SetProperties')
     # Test sending an invitation
-    data['alice_handle'] = data['conn_iface'].RequestHandles(1,
+    alice_handle = conn.RequestHandles(1,
         ['alice@localhost'])[0]
-    call_async(data['test'], data['group_iface'], 'AddMembers',
-        [data['alice_handle']], 'I want to test invitations')
-    return True
+    call_async(q, group_iface, 'AddMembers', [alice_handle],
+            'I want to test invitations')
 
-@match('stream-message')
-def expect_act_props_pseudo_invite(event, data):
+    event = q.expect('stream-message')
     message = event.stanza
     if message['to'] != 'alice@localhost':
         return False
@@ -214,10 +173,7 @@ def expect_act_props_pseudo_invite(event, data):
     assert 'color' in seen, seen
     assert 'private' in seen, seen
 
-    return True
-
-@match('stream-message')
-def expect_invitation(event, data):
+    event = q.expect('stream-message')
     message = event.stanza
     if message['to'] != 'chat@conf.localhost':
         return False
@@ -234,12 +190,10 @@ def expect_invitation(event, data):
     assert (reasons is not None and len(reasons) == 1), repr(reasons)
     assert str(reasons[0]) == 'I want to test invitations'
 
-    call_async(data['test'], data['act_prop_iface'], 'SetProperties',
-        data['room_handle'], {'color': '#f00baa,#f00baa', 'private': True})
-    return True
+    call_async(q, act_prop_iface, 'SetProperties',
+        room_handle, {'color': '#f00baa,#f00baa', 'private': True})
 
-@match('stream-message')
-def expect_act_props_refresh_pseudo_invite(event, data):
+    event = q.expect('stream-message')
     message = event.stanza
     if message['to'] != 'alice@localhost':
         return False
@@ -266,18 +220,11 @@ def expect_act_props_refresh_pseudo_invite(event, data):
     assert 'color' in seen, seen
     assert 'private' in seen, seen
 
-    return True
+    q.expect('dbus-return', method='SetProperties')
 
-@match('dbus-return', method='SetProperties')
-def expect_set_activity_props_success2(event, data):
+    conn.Disconnect()
 
-    data['conn_iface'].Disconnect()
-    return True
-
-@match('dbus-signal', signal='StatusChanged', args=[2, 1])
-def expect_disconnected(event, data):
-    return True
+    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 if __name__ == '__main__':
-    go()
-
+    exec_test(test)

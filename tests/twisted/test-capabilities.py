@@ -7,12 +7,11 @@ import dbus
 
 from twisted.words.xish import domish
 
-from servicetest import match
-from gabbletest import go, make_result_iq
+from gabbletest import exec_test, make_result_iq
 
-basic_caps = [
-  (2, u'org.freedesktop.Telepathy.Channel.Type.Text', 3, 0),
-  ]
+text = 'org.freedesktop.Telepathy.Channel.Type.Text'
+sm = 'org.freedesktop.Telepathy.Channel.Type.StreamedMedia'
+basic_caps = [(2, text, 3, 0)]
 
 def make_presence(from_jid, type, status):
     presence = domish.Element((None, 'presence'))
@@ -28,74 +27,60 @@ def make_presence(from_jid, type, status):
 
     return presence
 
-def caps_iface(proxy):
-    return dbus.Interface(proxy,
-        'org.freedesktop.Telepathy.Connection.Interface.Capabilities')
+def test(q, bus, conn, stream):
+    conn.Connect()
+    q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
 
-@match('dbus-signal', signal='StatusChanged', args=[0, 1])
-def expect_connected(event, data):
     presence = make_presence('bob@foo.com/Foo', None, 'hello')
-    data['stream'].send(presence)
-    return True
+    stream.send(presence)
 
-@match('dbus-signal', signal='PresenceUpdate',
-    args=[{2L: (0L, {u'available': {'message': 'hello'}})}])
-def expect_presence_update(event, data):
+    event = q.expect('dbus-signal', signal='PresenceUpdate',
+        args=[{2L: (0L, {u'available': {'message': 'hello'}})}])
+
     # no special capabilities
-    assert caps_iface(data['conn_iface']).GetCapabilities([2]) == basic_caps
+    assert conn.Capabilities.GetCapabilities([2]) == basic_caps
 
     # send updated presence with Jingle caps info
     presence = make_presence('bob@foo.com/Foo', None, 'hello')
     c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
     c['node'] = 'http://telepathy.freedesktop.org/fake-client'
     c['ver'] = '0.1'
-    data['stream'].send(presence)
-    return True
+    stream.send(presence)
 
-@match('stream-iq', query_ns='http://jabber.org/protocol/disco#info',
-    to='bob@foo.com/Foo')
-def expect_disco_iq(event, data):
     # Gabble looks up our capabilities
-    result = make_result_iq(data['stream'], event.stanza)
+    event = q.expect('stream-iq', to='bob@foo.com/Foo',
+        query_ns='http://jabber.org/protocol/disco#info')
+    result = make_result_iq(stream, event.stanza)
     query = result.firstChildElement()
     feature = query.addElement('feature')
     feature['var'] = 'http://jabber.org/protocol/jingle'
     feature = query.addElement('feature')
     feature['var'] = 'http://jabber.org/protocol/jingle/description/audio'
-    data['stream'].send(result)
-    return True
+    stream.send(result)
 
-@match('dbus-signal', signal='CapabilitiesChanged',
-    args=[[(2, u'org.freedesktop.Telepathy.Channel.Type.StreamedMedia', 0,
-        3, 0, 1)]])
-def expect_CapabilitiesChanged(event, data):
     # we can now do audio calls
+    event = q.expect('dbus-signal', signal='CapabilitiesChanged',
+        args=[[(2, sm, 0, 3, 0, 1)]])
+
     # go offline
     presence = make_presence('bob@foo.com/Foo', 'unavailable', None)
-    data['stream'].send(presence)
-    return True
+    stream.send(presence)
 
-@match('dbus-signal', signal='CapabilitiesChanged',
-    args=[[(2, u'org.freedesktop.Telepathy.Channel.Type.StreamedMedia', 3,
-        0, 1, 0)]])
-def expect_CapabilitiesChanged2(event, data):
     # can't do calls any more
+    event = q.expect('dbus-signal', signal='CapabilitiesChanged',
+        args=[[(2, sm, 3, 0, 1, 0)]])
 
     # regression test for fd.o #15198: getting caps of invalid handle crashed
     try:
-        caps_iface(data['conn']).GetCapabilities([31337])
+        conn.Capabilities.GetCapabilities([31337])
     except dbus.DBusException, e:
         pass
     else:
         assert False, "Should have had an error!"
 
-    data['conn_iface'].Disconnect()
-    return True
-
-@match('dbus-signal', signal='StatusChanged', args=[2, 1])
-def expect_disconnected(event, data):
-    return True
+    conn.Disconnect()
+    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 if __name__ == '__main__':
-    go()
+    exec_test(test)
 

@@ -42,6 +42,9 @@ class JabberAuthenticator(xmlstream.Authenticator):
         xmlstream.Authenticator.__init__(self)
 
     def streamStarted(self, root=None):
+        if root:
+            self.xmlstream.sid = root.getAttribute('id')
+
         self.xmlstream.sendHeader()
         self.xmlstream.addOnetimeObserver(
             "/iq/query[@xmlns='jabber:iq:auth']", self.initialIq)

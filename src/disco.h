@@ -127,7 +127,6 @@ void gabble_disco_pipeline_destroy (gpointer self);
 
 /* Service discovery */
 
-void gabble_disco_service_discovery (GabbleDisco *disco, const char *server);
 const GabbleDiscoItem *
 gabble_disco_service_find (GabbleDisco *disco,
                            const char *category,

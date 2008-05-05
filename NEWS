@@ -4,7 +4,16 @@ telepathy-gabble 0.7.5 (unreleased)
 Fixes:
 
 * fd.o #15095: fix MUC contacts always appearing to be offline (and actually
-  include the patch this time)
+  include the patch this time) (regression in 0.7.0, probably)
+
+* fd.o #15311: update tests to work with python-twisted 8.0 (as seen in
+  current Debian unstable)
+
+* Ignore components with ID != 1 in native candidates - we can only signal
+  one component, and Farsight 2 reports RTCP components along with RTP ones
+
+* Don't assume that htmldir will be defined by autoconf (it's new in 2.59c,
+  and we only require >= 2.59; regression in 0.7.4)
 
 telepathy-gabble 0.7.4 (2008-05-01)
 ===================================

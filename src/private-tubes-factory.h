@@ -64,10 +64,12 @@ GType gabble_private_tubes_factory_get_type (void);
 GabblePrivateTubesFactory * gabble_private_tubes_factory_new (
     GabbleConnection *conn);
 
+/* New 1-1 D-Bus tube requested by the remote contact */
 void gabble_private_tubes_factory_handle_si_tube_request (
     GabblePrivateTubesFactory *fac, GabbleBytestreamIface *bytestream,
     TpHandle handle, const gchar *stream_id, LmMessage *msg);
 
+/* New connection requested in a existing 1-1 stream tube */
 void gabble_private_tubes_factory_handle_si_stream_request (
     GabblePrivateTubesFactory *fac, GabbleBytestreamIface *bytestream,
     TpHandle handle, const gchar *stream_id, LmMessage *msg);

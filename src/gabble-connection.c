@@ -44,6 +44,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
 
+#include "base64.h"
 #include "bytestream-factory.h"
 #include "capabilities.h"
 #include "conn-aliasing.h"
@@ -64,6 +65,7 @@
 #include "pubsub.h"
 #include "request-pipeline.h"
 #include "roster.h"
+#include "sha1/sha1.h"
 #include "private-tubes-factory.h"
 #include "util.h"
 #include "vcard-manager.h"
@@ -1266,6 +1268,12 @@ connection_shut_down (TpBaseConnection *base)
     }
 }
 
+static gint
+feature_strcmp (gconstpointer a, gconstpointer b)
+{
+  return strcmp ((gchar *) a, (gchar *) b);
+}
+
 /**
  * compute_caps_hash:
  * @self: A #GabbleConnection
@@ -1277,7 +1285,39 @@ connection_shut_down (TpBaseConnection *base)
 static gchar *
 compute_caps_hash (GabbleConnection *self)
 {
-  return g_strdup ("12345");
+  GabblePresence *presence = self->self_presence;
+  GSList *features = capabilities_get_features (presence->caps);
+  GArray *features_ns = g_array_new (FALSE, FALSE, sizeof (gpointer));
+  GString *s;
+  gchar *str;
+  gchar sha1[SHA1_HASH_SIZE];
+  GSList *i;
+  unsigned int j;
+  gchar *encoded;
+
+  /* this is used as a set, so any non-NULL value will do */
+  for (i = features; NULL != i; i = i->next)
+    {
+      const Feature *feat = (const Feature *) i->data;
+      g_array_append_val (features_ns, feat->ns);
+    }
+
+  g_array_sort (features_ns, feature_strcmp);
+
+  s = g_string_new ("");
+  for (j = 0 ; j < features_ns->len ; j++)
+    {
+      s = g_string_append (s, g_array_index (features_ns, gchar*, j));
+      s = g_string_append (s, "<");
+    }
+
+  str = g_string_free (s, FALSE);
+  sha1_bin (str, strlen(str), (guchar *) sha1);
+  encoded = base64_encode (SHA1_HASH_SIZE, sha1, FALSE);
+
+  g_slist_free (features);
+
+  return encoded;
 }
 
 /**

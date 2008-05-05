@@ -1266,6 +1266,19 @@ connection_shut_down (TpBaseConnection *base)
     }
 }
 
+/**
+ * compute_caps_hash:
+ * @self: A #GabbleConnection
+ *
+ * Compute the hash as defined by the XEP-0115
+ *
+ * Returns: the hash. The called must free the returned hash.
+ */
+static gchar *
+compute_caps_hash (GabbleConnection *self)
+{
+  return g_strdup ("12345");
+}
 
 /**
  * _gabble_connection_signal_own_presence:
@@ -1284,9 +1297,7 @@ _gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
   LmMessage *message = gabble_presence_as_message (presence, priv->resource);
   LmMessageNode *node = lm_message_get_node (message);
   gboolean ret;
-  GString *ext_string = NULL;
-  GSList *features, *i;
-  GHashTable *bundles;
+  gchar *caps_hash = compute_caps_hash (self);
 
   if (presence->status == GABBLE_PRESENCE_HIDDEN)
     {
@@ -1294,56 +1305,21 @@ _gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
         lm_message_node_set_attribute (node, "type", "invisible");
     }
 
-  /* TODO: why is this not part of presence -> msg? */
-  features = capabilities_get_features (presence->caps);
-
-  /* this is used as a set, so any non-NULL value will do */
-  bundles = g_hash_table_new (g_str_hash, g_str_equal);
-  for (i = features; NULL != i; i = i->next)
-    {
-      const Feature *feat = (const Feature *) i->data;
-
-      if ((NULL != feat->bundle) && tp_strdiff (VERSION, feat->bundle))
-        {
-          if (NULL != ext_string)
-            {
-              if (g_hash_table_lookup (bundles, (gchar *) feat->bundle) == NULL)
-                {
-                  /* This bundle wasn't added yet */
-                  g_string_append_printf (ext_string, " %s", feat->bundle);
-                  g_hash_table_insert (bundles, (gchar *) feat->bundle,
-                      (gpointer) feat);
-                }
-            }
-          else
-            {
-              ext_string = g_string_new (feat->bundle);
-              g_hash_table_insert (bundles, (gchar *) feat->bundle,
-                  (gpointer) feat);
-            }
-        }
-    }
-  g_hash_table_destroy (bundles);
-
+  /* XEP-0115 deprecates ext bundles. Instead, we update the hash */
   node = lm_message_node_add_child (node, "c", NULL);
   lm_message_node_set_attributes (
     node,
     "xmlns", NS_CAPS,
+    "hash",  "sha-1",
     "node",  NS_GABBLE_CAPS,
-    "ver",   VERSION,
+    "ver",   caps_hash,
     NULL);
-
-  if (NULL != ext_string)
-    {
-      lm_message_node_set_attribute (node, "ext", ext_string->str);
-      g_string_free (ext_string, TRUE);
-    }
 
   ret = _gabble_connection_send (self, message, error);
 
-  lm_message_unref (message);
+  g_free (caps_hash);
 
-  g_slist_free (features);
+  lm_message_unref (message);
 
   return ret;
 }
@@ -1461,6 +1437,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   const gchar *node, *suffix;
   GSList *features;
   GSList *i;
+  gchar *caps_hash;
 
   if (lm_message_get_sub_type (message) != LM_MESSAGE_SUB_TYPE_GET)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
@@ -1501,18 +1478,20 @@ connection_iq_disco_cb (LmMessageHandler *handler,
 
   g_debug ("%s: caps now %u", G_STRFUNC, self->self_presence->caps);
 
-  for (i = features; NULL != i; i = i->next)
+  caps_hash = compute_caps_hash (self);
+  if (NULL == node || strcmp (suffix, compute_caps_hash (self)) == 0)
     {
-      const Feature *feature = (const Feature *) i->data;
-
-      if (NULL == node || !tp_strdiff (suffix, feature->bundle))
+      for (i = features; NULL != i; i = i->next)
         {
+          const Feature *feature = (const Feature *) i->data;
+
           LmMessageNode *feature_node = lm_message_node_add_child
               (result_query, "feature", NULL);
 
           lm_message_node_set_attribute (feature_node, "var", feature->ns);
         }
     }
+  g_free (caps_hash);
 
   NODE_DEBUG (result_iq, "sending disco response");
 

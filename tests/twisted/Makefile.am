@@ -59,7 +59,7 @@ check-local: check-coding-style
 	$(MAKE) -C tools
 	rm -f tools/core
 	sh $(srcdir)/tools/with-session-bus.sh --config-file=tools/tmp-session-bus.conf -- $(MAKE) check-TESTS \
-		TESTS="$(TWISTED_TESTS)" TESTS_ENVIRONMENT="PYTHONPATH=@abs_top_srcdir@/tests/twisted $(PYTHON)"
+		TESTS="$(TWISTED_TESTS)" TESTS_ENVIRONMENT="PYTHONPATH=@abs_top_srcdir@/tests/twisted $(TEST_PYTHON)"
 	@if test -e tools/core; then\
 		echo "Core dump exists: tools/core";\
 		exit 1;\

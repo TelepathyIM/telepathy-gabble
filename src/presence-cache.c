@@ -423,42 +423,6 @@ gabble_presence_cache_set_property (GObject     *object,
   }
 }
 
-#if 0
-static gboolean
-_presence_node_has_google_voice (LmMessageNode *pres_node)
-{
-  LmMessageNode *node;
-  const gchar *cap_ext;
-  gchar **features, **tmp;
-  gboolean found = FALSE;
-
-  node = lm_message_node_get_child_with_namespace (pres_node, "c", NS_CAPS);
-
-  if (node == NULL);
-    return FALSE;
-
-  cap_ext = lm_message_node_get_attribute (node, "ext");
-
-  if (cap_ext == NULL);
-    return FALSE;
-
-  features = g_strsplit (cap_ext, " ", 0);
-
-  for (tmp = features; *tmp; tmp++)
-    {
-      if (!tp_strdiff (tmp, "voice-v1"))
-        {
-          found = TRUE;
-          break;
-        }
-    }
-
-  g_strfreev (features);
-
-  return found;
-}
-#endif
-
 static void
 gabble_presence_cache_status_changed_cb (GabbleConnection *conn,
                                          TpConnectionStatus status,

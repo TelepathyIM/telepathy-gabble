@@ -287,10 +287,9 @@ def install_colourer():
 
 def exec_test(fun, params=None, protocol=None, timeout=None):
     queue = servicetest.IteratingEventQueue(timeout)
-
-    queue.verbose = (os.environ.get('CHECK_TWISTED_VERBOSE', '') != '')
-    if '-v' in sys.argv:
-        queue.verbose = True
+    queue.verbose = (
+        os.environ.get('CHECK_TWISTED_VERBOSE', '') != ''
+        or '-v' in sys.argv)
 
     bus = dbus.SessionBus()
     conn, stream = prepare_test(bus, queue.append, params, protocol=protocol)

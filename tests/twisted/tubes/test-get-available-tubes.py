@@ -7,6 +7,8 @@ from gabbletest import exec_test, make_result_iq, acknowledge_iq
 
 from twisted.words.xish import domish
 
+from gabbleconfig import HAVE_DBUS_TUBES
+
 sample_parameters = dbus.Dictionary({
     's': 'hello',
     'ay': dbus.ByteArray('hello'),
@@ -89,9 +91,14 @@ def test(q, bus, conn, stream):
 
     # test GetAvailableTubeTypes
     tube_types = tubes_iface_muc.GetAvailableTubeTypes()
-    assert len(tube_types) == 2
-    assert 0 in tube_types # D-Bus tube
-    assert 1 in tube_types # Stream tube
+
+    if HAVE_DBUS_TUBES:
+        assert len(tube_types) == 2
+        assert 0 in tube_types # D-Bus tube
+        assert 1 in tube_types # Stream tube
+    else:
+        assert len(tube_types) == 1
+        assert 1 in tube_types # Stream tube
 
     # test GetAvailableStreamTubeTypes
     stream_tubes_types = tubes_iface_muc.GetAvailableStreamTubeTypes()

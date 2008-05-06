@@ -381,8 +381,7 @@ class ProxyWrapper:
 
         return getattr(self.default_interface, name)
 
-def prepare_test(event_func, name, proto, params):
-    bus = dbus.SessionBus()
+def prepare_test(bus, event_func, name, proto, params):
     cm = bus.get_object(
         tp_name_prefix + '.ConnectionManager.%s' % name,
         tp_path_prefix + '/ConnectionManager/%s' % name)
@@ -411,7 +410,7 @@ def prepare_test(event_func, name, proto, params):
         byte_arrays=True
         )
 
-    return bus, conn
+    return conn
 
 def make_channel_proxy(conn, path, iface):
     bus = dbus.SessionBus()

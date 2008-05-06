@@ -204,7 +204,8 @@ class JabberXmlStream(BaseXmlStream):
 class XmppXmlStream(BaseXmlStream):
     version = (1, 0)
 
-def prepare_test(event_func, params=None, authenticator=None, protocol=None):
+def prepare_test(bus, event_func, params=None, authenticator=None,
+        protocol=None):
     default_params = {
         'account': 'test@localhost/Resource',
         'password': 'pass',
@@ -216,7 +217,7 @@ def prepare_test(event_func, params=None, authenticator=None, protocol=None):
     if params:
         default_params.update(params)
 
-    bus, conn = servicetest.prepare_test(event_func, 'gabble', 'jabber',
+    conn = servicetest.prepare_test(bus, event_func, 'gabble', 'jabber',
         default_params)
 
     # set up Jabber server
@@ -231,15 +232,16 @@ def prepare_test(event_func, params=None, authenticator=None, protocol=None):
     factory = twisted.internet.protocol.Factory()
     factory.protocol = lambda *args: stream
     reactor.listenTCP(4242, factory)
-    return bus, conn, stream
+    return conn, stream
 
 def go(params=None, authenticator=None, protocol=None, start=None):
     # hack to ease debugging
     domish.Element.__repr__ = domish.Element.toXml
 
+    bus = dbus.SessionBus()
     handler = servicetest.EventTest()
-    bus, conn, stream = \
-        prepare_test(handler.handle_event, params, authenticator, protocol)
+    conn, stream = \
+        prepare_test(bus, handler.handle_event, params, authenticator, protocol)
     handler.data = {
         'bus': bus,
         'conn': conn,
@@ -290,7 +292,8 @@ def exec_test(fun, params=None, protocol=None, timeout=None):
     if '-v' in sys.argv:
         queue.verbose = True
 
-    bus, conn, stream = prepare_test(queue.append, params, protocol=protocol)
+    bus = dbus.SessionBus()
+    conn, stream = prepare_test(bus, queue.append, params, protocol=protocol)
 
     # hack to ease debugging
     domish.Element.__repr__ = domish.Element.toXml

@@ -261,9 +261,9 @@ create_session (GabbleMediaChannel *channel,
           goto NO_CAPS;
         }
 
-      if (!(presence->caps & PRESENCE_CAP_GOOGLE_VOICE ||
-            presence->caps & PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO ||
-            presence->caps & PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO))
+      if ((_gabble_media_channel_caps_to_typeflags (presence->caps) &
+            (TP_CHANNEL_MEDIA_CAPABILITY_AUDIO |
+             TP_CHANNEL_MEDIA_CAPABILITY_VIDEO)) == 0)
         {
           DEBUG ("failed to add contact %d (%s) to media channel: "
               "caps %x aren't sufficient", peer,
@@ -271,7 +271,6 @@ create_session (GabbleMediaChannel *channel,
               presence->caps);
           goto NO_CAPS;
         }
-
 
       sid = _gabble_media_factory_allocate_sid (priv->factory, channel);
     }

@@ -143,6 +143,9 @@ AC_CHECK_PROGS([XSLTPROC], [xsltproc])
 if test -z "$XSLTPROC"; then
   AC_MSG_ERROR([xsltproc (from the libxslt source package) is required])
 fi
+# This is for the code generation, not for the tests - any version of Python
+# >= 2.3 with the standard library will do. We prefer older versions,
+# to ensure that when we claim that 2.3 is sufficient we are telling the truth.
 PYTHON=
 AC_CHECK_PROGS([PYTHON], [python2.3 python2.4 python2.5 python])
 if test -z "$PYTHON"; then

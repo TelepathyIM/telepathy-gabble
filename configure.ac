@@ -152,15 +152,21 @@ if test -z "$PYTHON"; then
   AC_MSG_ERROR([Python is required to compile this package])
 fi
 
-dnl Check for twisted python for tests
-AC_MSG_CHECKING([for TwistedPython with XMPP protocol support])
-if $PYTHON -c "import twisted.words.xish.domish, twisted.words.protocols.jabber, twisted.internet.reactor" >/dev/null 2>&1; then
-  AC_MSG_RESULT([yes])
-  AM_CONDITIONAL([WANT_TWISTED_TESTS], true)
-else
-  AC_MSG_RESULT([no])
-  AM_CONDITIONAL([WANT_TWISTED_TESTS], false)
-fi
+# Check for a Python >= 2.4 with Twisted, to run the tests
+AC_MSG_CHECKING([for Python >= 2.4 with Twisted and XMPP protocol support])
+for TEST_PYTHON in python2.4 python2.5 python; do
+  if $TEST_PYTHON -c "from sys import version_info; raise SystemExit(version_info < (2, 4, 0, 'final', 0))" >/dev/null 2>&1; then
+    if $TEST_PYTHON -c "import twisted.words.xish.domish, twisted.words.protocols.jabber, twisted.internet.reactor" >/dev/null 2>&1; then
+      AC_MSG_RESULT([$TEST_PYTHON])
+      AM_CONDITIONAL([WANT_TWISTED_TESTS], true)
+      break
+    else
+      TEST_PYTHON=false
+    fi
+  fi
+done
+AC_SUBST(TEST_PYTHON)
+AM_CONDITIONAL([WANT_TWISTED_TESTS], test false != "$TEST_PYTHON")
 
 dnl Check for Loudmouth
 PKG_CHECK_MODULES(LOUDMOUTH, loudmouth-1.0 >= 1.3.2)

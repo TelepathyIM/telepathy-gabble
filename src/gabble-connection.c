@@ -1271,7 +1271,10 @@ connection_shut_down (TpBaseConnection *base)
 static gint
 feature_strcmp (gconstpointer a, gconstpointer b)
 {
-  return strcmp ((gchar *) a, (gchar *) b);
+  gchar *left = *(gchar **) a;
+  gchar *right = *(gchar **) b;
+
+  return strcmp (left, right);
 }
 
 /**
@@ -1287,7 +1290,7 @@ compute_caps_hash (GabbleConnection *self)
 {
   GabblePresence *presence = self->self_presence;
   GSList *features = capabilities_get_features (presence->caps);
-  GArray *features_ns = g_array_new (FALSE, FALSE, sizeof (gpointer));
+  GPtrArray *features_ns = g_ptr_array_new ();
   GString *s;
   gchar *str;
   gchar sha1[SHA1_HASH_SIZE];
@@ -1299,21 +1302,28 @@ compute_caps_hash (GabbleConnection *self)
   for (i = features; NULL != i; i = i->next)
     {
       const Feature *feat = (const Feature *) i->data;
-      g_array_append_val (features_ns, feat->ns);
+      g_ptr_array_add (features_ns, (gpointer) feat->ns);
     }
 
-  g_array_sort (features_ns, feature_strcmp);
+  g_ptr_array_sort (features_ns, feature_strcmp);
 
   s = g_string_new ("");
+
+  /* Ugly hack. FIXME: Gabble should handle identities.
+   * http://www.xmpp.org/registrar/disco-categories.html */
+  s = g_string_append (s, "client/pc//Telepathy Gabble " VERSION "<");
+
   for (j = 0 ; j < features_ns->len ; j++)
     {
-      s = g_string_append (s, g_array_index (features_ns, gchar*, j));
+      s = g_string_append (s, g_ptr_array_index (features_ns, j));
       s = g_string_append (s, "<");
     }
 
   str = g_string_free (s, FALSE);
+  DEBUG ("caps string: '%s'\n", str);
   sha1_bin (str, strlen(str), (guchar *) sha1);
   encoded = base64_encode (SHA1_HASH_SIZE, sha1, FALSE);
+  DEBUG ("caps base64: '%s'\n", encoded);
 
   g_slist_free (features);
 
@@ -1473,7 +1483,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
 {
   GabbleConnection *self = GABBLE_CONNECTION (user_data);
   LmMessage *result;
-  LmMessageNode *iq, *result_iq, *query, *result_query;
+  LmMessageNode *iq, *result_iq, *query, *result_query, *identity;
   const gchar *node, *suffix;
   GSList *features;
   GSList *i;
@@ -1514,6 +1524,14 @@ connection_iq_disco_cb (LmMessageHandler *handler,
 
   DEBUG ("got disco request for bundle %s, caps are %x", node,
       self->self_presence->caps);
+
+  /* Every entity MUST have at least one identity (XEP-0030) */
+  identity = lm_message_node_add_child
+      (result_query, "identity", NULL);
+  lm_message_node_set_attribute (identity, "category", "client");
+  lm_message_node_set_attribute (identity, "name", "Telepathy Gabble " VERSION);
+  lm_message_node_set_attribute (identity, "type", "pc");
+
   features = capabilities_get_features (self->self_presence->caps);
 
   g_debug ("%s: caps now %u", G_STRFUNC, self->self_presence->caps);

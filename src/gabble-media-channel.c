@@ -1655,10 +1655,17 @@ _gabble_media_channel_get_stream_id (GabbleMediaChannel *chan)
   return priv->next_stream_id++;
 }
 
-#define AUDIO_CAPS \
-  ( PRESENCE_CAP_GOOGLE_VOICE | PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO )
+#define GTALK_CAPS \
+  ( PRESENCE_CAP_GOOGLE_VOICE )
 
-#define VIDEO_CAPS \
+#define JINGLE_CAPS \
+  ( PRESENCE_CAP_JINGLE \
+  | PRESENCE_CAP_GOOGLE_TRANSPORT_P2P )
+
+#define JINGLE_AUDIO_CAPS \
+  ( PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO )
+
+#define JINGLE_VIDEO_CAPS \
   ( PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO )
 
 GabblePresenceCapabilities
@@ -1666,11 +1673,18 @@ _gabble_media_channel_typeflags_to_caps (TpChannelMediaCapabilities flags)
 {
   GabblePresenceCapabilities caps = 0;
 
-  if (flags & TP_CHANNEL_MEDIA_CAPABILITY_AUDIO)
-    caps |= AUDIO_CAPS;
+  /* currently we can only signal any (GTalk or Jingle calls) using
+   * the GTalk-P2P transport */
+  if (flags & TP_CHANNEL_MEDIA_CAPABILITY_NAT_TRAVERSAL_GTALK_P2P)
+    {
+      caps |= JINGLE_CAPS;
 
-  if (flags & TP_CHANNEL_MEDIA_CAPABILITY_VIDEO)
-    caps |= VIDEO_CAPS;
+      if (flags & TP_CHANNEL_MEDIA_CAPABILITY_AUDIO)
+        caps |= GTALK_CAPS | JINGLE_AUDIO_CAPS;
+
+      if (flags & TP_CHANNEL_MEDIA_CAPABILITY_VIDEO)
+        caps |= JINGLE_VIDEO_CAPS;
+    }
 
   return caps;
 }
@@ -1680,11 +1694,21 @@ _gabble_media_channel_caps_to_typeflags (GabblePresenceCapabilities caps)
 {
   TpChannelMediaCapabilities typeflags = 0;
 
-  if (caps & AUDIO_CAPS)
+  /* this is intentionally asymmetric to the previous function - we don't
+   * require the other end to advertise the GTalk-P2P transport capability
+   * separately because old GTalk clients didn't do that - having Google voice
+   * implied Google session and GTalk-P2P */
+  if ((caps & GTALK_CAPS) == GTALK_CAPS)
     typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_AUDIO;
 
-  if (caps & VIDEO_CAPS)
-    typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_VIDEO;
+  if ((caps & JINGLE_CAPS) == JINGLE_CAPS)
+    {
+      if ((caps & JINGLE_AUDIO_CAPS) == JINGLE_AUDIO_CAPS)
+        typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_AUDIO;
+
+      if ((caps & JINGLE_VIDEO_CAPS) == JINGLE_VIDEO_CAPS)
+        typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_VIDEO;
+    }
 
   return typeflags;
 }

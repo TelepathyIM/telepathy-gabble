@@ -19,7 +19,7 @@ def _expect_contact_list_channel(q, bus, conn, name, contacts):
 
 def test(q, bus, conn, stream):
     conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
+    # q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
 
     event = q.expect('stream-iq', query_ns='jabber:iq:roster')
     event.stanza['type'] = 'result'

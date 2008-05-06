@@ -1528,6 +1528,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   GSList *features;
   GSList *i;
   gchar *caps_hash;
+  gboolean bundle_found;
 
   if (lm_message_get_sub_type (message) != LM_MESSAGE_SUB_TYPE_GET)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
@@ -1562,7 +1563,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   if (node)
     lm_message_node_set_attribute (result_query, "node", node);
 
-  DEBUG ("got disco request for bundle %s, caps are %x", node,
+  DEBUG ("got disco request for node %s, caps are %x", node,
       self->self_presence->caps);
 
   /* Every entity MUST have at least one identity (XEP-0030) */
@@ -1576,27 +1577,62 @@ connection_iq_disco_cb (LmMessageHandler *handler,
 
   g_debug ("%s: caps now %u", G_STRFUNC, self->self_presence->caps);
 
-  caps_hash = compute_caps_hash (self);
-  if (NULL == node || strcmp (suffix, compute_caps_hash (self)) == 0)
+  /* If node is not NULL, it can be either a caps bundle as defined in the
+   * legacy XEP-0115 version 1.3 or an hash as defined in XEP-0115 version
+   * 1.5. */
+
+  bundle_found = FALSE;
+  for (i = features; NULL != i; i = i->next)
     {
+      const Feature *feature = (const Feature *) i->data;
+
+      if (NULL != node && !tp_strdiff (suffix, feature->bundle))
+        {
+          bundle_found = TRUE;
+          DEBUG ("requested node '%s' is an existing bundle", suffix);
+        }
+    }
+
+  caps_hash = compute_caps_hash (self);
+  DEBUG ("caps_hash='%s'", caps_hash);
+  if (NULL == node || bundle_found ||
+      g_str_equal (suffix, caps_hash))
+    {
+      if (NULL == node)
+        DEBUG ("No requested node. Send all features.");
+      else
+        DEBUG ("requested node '%s' is an existing node", suffix);
+
       for (i = features; NULL != i; i = i->next)
         {
           const Feature *feature = (const Feature *) i->data;
 
-          LmMessageNode *feature_node = lm_message_node_add_child
-              (result_query, "feature", NULL);
+          if (! bundle_found || g_str_equal (suffix, feature->bundle))
+            {
+              LmMessageNode *feature_node = lm_message_node_add_child
+                  (result_query, "feature", NULL);
 
-          lm_message_node_set_attribute (feature_node, "var", feature->ns);
+              lm_message_node_set_attribute (feature_node, "var", feature->ns);
+            }
+        }
+
+      NODE_DEBUG (result_iq, "sending disco response");
+
+      if (!lm_connection_send (self->lmconn, result, NULL))
+        {
+          DEBUG ("sending disco response failed");
         }
     }
-  g_free (caps_hash);
-
-  NODE_DEBUG (result_iq, "sending disco response");
-
-  if (!lm_connection_send (self->lmconn, result, NULL))
+  else
     {
-      DEBUG ("sending disco response failed");
+      /* Return <item-not-found>. It is possible that the remote contact
+       * requested an old version (old hash) of our capabilities. In the
+       * meantime, it will have gotten a new hash, and query the new hash
+       * anyway. */
+      _gabble_connection_send_iq_error (self, message,
+          XMPP_ERROR_ITEM_NOT_FOUND, NULL);
     }
+  g_free (caps_hash);
 
   lm_message_unref (result);
   g_slist_free (features);

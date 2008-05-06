@@ -27,7 +27,7 @@ gboolean
 gabble_tube_iface_accept (GabbleTubeIface *self,
                           GError **error)
 {
-  gboolean (*virtual_method)(GabbleTubeIface *, GError **error) =
+  gboolean (*virtual_method)(GabbleTubeIface *, GError **) =
     GABBLE_TUBE_IFACE_GET_CLASS (self)->accept;
   g_assert (virtual_method != NULL);
   return virtual_method (self, error);

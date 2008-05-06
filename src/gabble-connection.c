@@ -1298,7 +1298,6 @@ compute_caps_hash (GabbleConnection *self)
   unsigned int j;
   gchar *encoded;
 
-  /* this is used as a set, so any non-NULL value will do */
   for (i = features; NULL != i; i = i->next)
     {
       const Feature *feat = (const Feature *) i->data;

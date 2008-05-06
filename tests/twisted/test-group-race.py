@@ -10,10 +10,9 @@ from twisted.words.protocols.jabber.client import IQ
 from twisted.words.xish import domish, xpath
 from twisted.internet import reactor
 
+@lazy
 @match('dbus-signal', signal='StatusChanged', args=[0, 1])
 def expect_connected(event, data):
-
-
     return True
 
 @match('stream-iq', query_ns='jabber:iq:roster')

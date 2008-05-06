@@ -63,17 +63,7 @@ def expect_text_channel(event, data):
 
     return True
 
-@match('dbus-signal', signal='MembersChanged')
-def expect_add_myself_into_remote_pending(event, data):
-    assert event.args == ['', [], [data['bob_handle']], [],
-            [data['room_self_handle']], 0,
-            data['room_self_handle']]
-    return True
-
-@match('dbus-return', method='AddMembers')
-def expect_add_myself_success(event, data):
-    return True
-
+@lazy
 @match('stream-presence', to='chat@conf.localhost/test')
 def expect_presence(event, data):
     # Send presence for own membership of room.
@@ -84,6 +74,17 @@ def expect_presence(event, data):
     item['affiliation'] = 'owner'
     item['role'] = 'moderator'
     data['stream'].send(presence)
+    return True
+
+@match('dbus-signal', signal='MembersChanged')
+def expect_add_myself_into_remote_pending(event, data):
+    assert event.args == ['', [], [data['bob_handle']], [],
+            [data['room_self_handle']], 0,
+            data['room_self_handle']]
+    return True
+
+@match('dbus-return', method='AddMembers')
+def expect_add_myself_success(event, data):
     return True
 
 @match('dbus-signal', signal='MembersChanged')

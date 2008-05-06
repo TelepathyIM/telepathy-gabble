@@ -53,28 +53,6 @@ def expect_presence(event, data):
     data['stream'].send(presence)
     return True
 
-@match('dbus-signal', signal='MembersChanged',
-    args=[u'', [2], [], [], [], 0, 0])
-def expect_members_changed2(event, data):
-    return True
-
-@match('dbus-return', method='RequestChannel')
-def expect_request_channel_return(event, data):
-    bus = data['conn']._bus
-    data['text_chan'] = bus.get_object(
-        data['conn']._named_service, event.value[0])
-
-    props_iface = dbus.Interface(data['text_chan'],
-        'org.freedesktop.Telepathy.Properties')
-    props = dict([(name, id)
-        for id, name, sig, flags in props_iface.ListProperties()])
-    call_async(data['test'], props_iface, 'SetProperties',
-        [(props['password'], 'foo'), (props['password-required'], True)])
-
-    data['props_iface'] = props_iface
-    data['props'] = props
-    return True
-
 def add_field(elem, type, var, value):
     field = elem.addElement('field')
     field['type'] = type
@@ -100,11 +78,35 @@ def handle_muc_get_iq(stream, stanza):
     stream.send(iq)
     return True
 
+@lazy
 @match('stream-iq', to='chat@conf.localhost', iq_type='get',
     query_ns='http://jabber.org/protocol/muc#owner')
 def expect_muc_get_iq1(event, data):
     handle_muc_get_iq(data['stream'], event.stanza)
     return True
+
+@match('dbus-signal', signal='MembersChanged',
+    args=[u'', [2], [], [], [], 0, 0])
+def expect_members_changed2(event, data):
+    return True
+
+@match('dbus-return', method='RequestChannel')
+def expect_request_channel_return(event, data):
+    bus = data['conn']._bus
+    data['text_chan'] = bus.get_object(
+        data['conn']._named_service, event.value[0])
+
+    props_iface = dbus.Interface(data['text_chan'],
+        'org.freedesktop.Telepathy.Properties')
+    props = dict([(name, id)
+        for id, name, sig, flags in props_iface.ListProperties()])
+    call_async(data['test'], props_iface, 'SetProperties',
+        [(props['password'], 'foo'), (props['password-required'], True)])
+
+    data['props_iface'] = props_iface
+    data['props'] = props
+    return True
+
 
 @match('stream-iq', to='chat@conf.localhost', iq_type='get',
     query_ns='http://jabber.org/protocol/muc#owner')

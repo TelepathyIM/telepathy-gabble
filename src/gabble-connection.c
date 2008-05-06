@@ -1321,7 +1321,7 @@ compute_caps_hash (GabbleConnection *self)
 
   str = g_string_free (s, FALSE);
   DEBUG ("caps string: '%s'\n", str);
-  sha1_bin (str, strlen(str), (guchar *) sha1);
+  sha1_bin (str, strlen (str), (guchar *) sha1);
   encoded = base64_encode (SHA1_HASH_SIZE, sha1, FALSE);
   DEBUG ("caps base64: '%s'\n", encoded);
 

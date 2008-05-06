@@ -25,6 +25,14 @@
 
 #include "presence.h"
 
+/* XEP-0115 version 1.3:
+ *
+ * "The names of the feature bundles MUST NOT be used for semantic purposes:
+ * they are merely opaque identifiers"
+ *
+ * However, some old Jabber clients (e.g. Gabble 0.2) requires the bundle name
+ * "voice-v1". We keep this name for compatibility.
+ */
 #define BUNDLE_VOICE_V1         "voice-v1"
 #define BUNDLE_JINGLE_AUDIO     "jingle-audio"
 #define BUNDLE_JINGLE_VIDEO     "jingle-video"

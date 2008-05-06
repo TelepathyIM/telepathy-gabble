@@ -1347,6 +1347,9 @@ _gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
   LmMessage *message = gabble_presence_as_message (presence, priv->resource);
   LmMessageNode *node = lm_message_get_node (message);
   gboolean ret;
+  GString *ext_string = NULL;
+  GSList *features, *i;
+  GHashTable *bundles;
   gchar *caps_hash = compute_caps_hash (self);
 
   if (presence->status == GABBLE_PRESENCE_HIDDEN)
@@ -1355,7 +1358,37 @@ _gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
         lm_message_node_set_attribute (node, "type", "invisible");
     }
 
-  /* XEP-0115 deprecates ext bundles. Instead, we update the hash */
+  features = capabilities_get_features (presence->caps);
+
+  /* this is used as a set, so any non-NULL value will do */
+  bundles = g_hash_table_new (g_str_hash, g_str_equal);
+  for (i = features; NULL != i; i = i->next)
+    {
+      const Feature *feat = (const Feature *) i->data;
+
+      if ((NULL != feat->bundle) && tp_strdiff (VERSION, feat->bundle))
+        {
+          if (NULL != ext_string)
+            {
+              if (g_hash_table_lookup (bundles, (gchar *) feat->bundle) == NULL)
+                {
+                  /* This bundle wasn't added yet */
+                  g_string_append_printf (ext_string, " %s", feat->bundle);
+                  g_hash_table_insert (bundles, (gchar *) feat->bundle,
+                      (gpointer) feat);
+                }
+            }
+          else
+            {
+              ext_string = g_string_new (feat->bundle);
+              g_hash_table_insert (bundles, (gchar *) feat->bundle,
+                  (gpointer) feat);
+            }
+        }
+    }
+  g_hash_table_destroy (bundles);
+
+  /* XEP-0115 version 1.5 uses a verification string in the 'ver' attribute */
   node = lm_message_node_add_child (node, "c", NULL);
   lm_message_node_set_attributes (
     node,
@@ -1365,10 +1398,18 @@ _gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
     "ver",   caps_hash,
     NULL);
 
+  /* XEP-0115 deprecates 'ext' feature bundles. But we need it for
+   * backward-compatibility */
+  if (NULL != ext_string)
+    {
+      lm_message_node_set_attribute (node, "ext", ext_string->str);
+      g_string_free (ext_string, TRUE);
+    }
+
   ret = _gabble_connection_send (self, message, error);
 
   g_free (caps_hash);
-
+  g_slist_free (features);
   lm_message_unref (message);
 
   return ret;

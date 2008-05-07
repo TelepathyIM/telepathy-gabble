@@ -217,7 +217,7 @@ def prepare_test(bus, event_func, params=None, authenticator=None,
     if params:
         default_params.update(params)
 
-    conn = servicetest.prepare_test(bus, event_func, 'gabble', 'jabber',
+    conn = servicetest.make_connection(bus, event_func, 'gabble', 'jabber',
         default_params)
 
     # set up Jabber server

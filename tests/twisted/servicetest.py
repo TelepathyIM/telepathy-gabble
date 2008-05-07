@@ -381,7 +381,7 @@ class ProxyWrapper:
 
         return getattr(self.default_interface, name)
 
-def prepare_test(bus, event_func, name, proto, params):
+def make_connection(bus, event_func, name, proto, params):
     cm = bus.get_object(
         tp_name_prefix + '.ConnectionManager.%s' % name,
         tp_path_prefix + '/ConnectionManager/%s' % name)

@@ -478,45 +478,35 @@ feature_strcmp (gconstpointer a, gconstpointer b)
   return strcmp (left, right);
 }
 
-/**
- * gabble_presence_get_xep0115_hash:
- * @self: A #GabblePresence
- *
- * Compute the hash as defined by the XEP-0115
- *
- * Returns: the hash. The called must free the returned hash.
- */
-gchar *
-gabble_presence_get_xep0115_hash (GabblePresence *presence)
+static gchar *
+gabble_presence_compute_xep0115_hash (
+    GPtrArray *features,
+    GPtrArray *identities)
 {
-  GSList *features = capabilities_get_features (presence->caps);
-  GPtrArray *features_ns = g_ptr_array_new ();
   GString *s;
   gchar *str;
   gchar sha1[SHA1_HASH_SIZE];
-  GSList *i;
   unsigned int j;
   gchar *encoded;
 
-  for (i = features; NULL != i; i = i->next)
-    {
-      const Feature *feat = (const Feature *) i->data;
-      g_ptr_array_add (features_ns, (gpointer) feat->ns);
-    }
-
-  g_ptr_array_sort (features_ns, feature_strcmp);
+  g_ptr_array_sort (identities, feature_strcmp);
+  g_ptr_array_sort (features, feature_strcmp);
 
   s = g_string_new ("");
 
-  /* Ugly hack. FIXME: Gabble should handle identities.
-   * http://www.xmpp.org/registrar/disco-categories.html */
-  s = g_string_append (s, "client/pc//Telepathy Gabble " VERSION "<");
-
-  for (j = 0 ; j < features_ns->len ; j++)
+  for (j = 0 ; j < identities->len ; j++)
     {
-      s = g_string_append (s, g_ptr_array_index (features_ns, j));
+      s = g_string_append (s, g_ptr_array_index (identities, j));
       s = g_string_append (s, "<");
     }
+
+  for (j = 0 ; j < features->len ; j++)
+    {
+      s = g_string_append (s, g_ptr_array_index (features, j));
+      s = g_string_append (s, "<");
+    }
+
+  /* FIXME: add XEP-0128 data forms in the hash */
 
   str = g_string_free (s, FALSE);
   DEBUG ("caps string: '%s'\n", str);
@@ -524,9 +514,99 @@ gabble_presence_get_xep0115_hash (GabblePresence *presence)
   encoded = base64_encode (SHA1_HASH_SIZE, sha1, FALSE);
   DEBUG ("caps base64: '%s'\n", encoded);
 
-  g_slist_free (features);
-
   return encoded;
 }
 
+
+/**
+ *
+ * Compute the hash as defined by the XEP-0115
+ *
+ * Returns: the hash. The called must free the returned hash.
+ */
+gchar *
+gabble_presence_compute_xep0115_hash_from_lm_node (LmMessageNode *node)
+{
+  GPtrArray *features = g_ptr_array_new ();
+  GPtrArray *identities = g_ptr_array_new ();
+  LmMessageNode *child;
+  gchar *str;
+
+  for (child = node->children; NULL != child; child = child->next)
+    {
+      if (g_str_equal (child->name, "identity"))
+        {
+          const gchar *category;
+          const gchar *name;
+          const gchar *type;
+          const gchar *xmllang;
+
+          category = lm_message_node_get_attribute (child, "category");
+          name = lm_message_node_get_attribute (child, "name");
+          type = lm_message_node_get_attribute (child, "type");
+          xmllang = lm_message_node_get_attribute (child, "xml:lang");
+
+          if (NULL == category)
+            continue;
+          if (NULL == name)
+            name = "";
+          if (NULL == type)
+            type = "";
+          if (NULL == xmllang)
+            xmllang = "";
+
+          g_ptr_array_add (identities,
+              (gpointer) g_strdup_printf ("%s/%s/%s/%s",
+                  category, type, xmllang, name));
+        }
+      else if (g_str_equal (child->name, "feature"))
+        {
+          const gchar *var;
+          var = lm_message_node_get_attribute (child, "var");
+
+          if (NULL == var)
+            continue;
+
+          g_ptr_array_add (features, (gpointer) g_strdup (var));
+        }
+
+    }
+
+  str = gabble_presence_compute_xep0115_hash (features, identities);
+
+  g_ptr_array_free (features, TRUE);
+  g_ptr_array_free (identities, TRUE);
+
+  return str;
+}
+
+
+gchar *
+gabble_presence_compute_xep0115_hash_from_self_presence (GabbleConnection *self)
+{
+  GabblePresence *presence = self->self_presence;
+  GSList *features_list = capabilities_get_features (presence->caps);
+  GPtrArray *features = g_ptr_array_new ();
+  GPtrArray *identities = g_ptr_array_new ();
+  gchar *str;
+  GSList *i;
+
+  for (i = features_list; NULL != i; i = i->next)
+    {
+      const Feature *feat = (const Feature *) i->data;
+      g_ptr_array_add (features, (gpointer) feat->ns);
+    }
+
+  g_ptr_array_sort (features, feature_strcmp);
+
+  g_ptr_array_add (features, (gpointer) "client/pc//" PACKAGE_STRING);
+
+  str = gabble_presence_compute_xep0115_hash (features, identities);
+
+  g_ptr_array_free (features, TRUE);
+  g_ptr_array_free (identities, TRUE);
+  g_slist_free (features_list);
+
+  return str;
+}
 

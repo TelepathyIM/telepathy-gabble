@@ -204,8 +204,7 @@ class JabberXmlStream(BaseXmlStream):
 class XmppXmlStream(BaseXmlStream):
     version = (1, 0)
 
-def prepare_test(bus, event_func, params=None, authenticator=None,
-        protocol=None):
+def make_connection(bus, event_func, params=None):
     default_params = {
         'account': 'test@localhost/Resource',
         'password': 'pass',
@@ -217,9 +216,10 @@ def prepare_test(bus, event_func, params=None, authenticator=None,
     if params:
         default_params.update(params)
 
-    conn = servicetest.make_connection(bus, event_func, 'gabble', 'jabber',
+    return servicetest.make_connection(bus, event_func, 'gabble', 'jabber',
         default_params)
 
+def make_stream(event_func, authenticator=None, protocol=None):
     # set up Jabber server
 
     if authenticator is None:
@@ -232,7 +232,7 @@ def prepare_test(bus, event_func, params=None, authenticator=None,
     factory = twisted.internet.protocol.Factory()
     factory.protocol = lambda *args: stream
     reactor.listenTCP(4242, factory)
-    return conn, stream
+    return stream
 
 def go(params=None, authenticator=None, protocol=None, start=None):
     # hack to ease debugging
@@ -240,8 +240,8 @@ def go(params=None, authenticator=None, protocol=None, start=None):
 
     bus = dbus.SessionBus()
     handler = servicetest.EventTest()
-    conn, stream = \
-        prepare_test(bus, handler.handle_event, params, authenticator, protocol)
+    conn = make_connection(bus, handler.handle_event, params)
+    stream = make_stream(handler.handle_event, authenticator, protocol)
     handler.data = {
         'bus': bus,
         'conn': conn,
@@ -298,7 +298,8 @@ def exec_test(fun, params=None, protocol=None, timeout=None):
         or '-v' in sys.argv)
 
     bus = dbus.SessionBus()
-    conn, stream = prepare_test(bus, queue.append, params, protocol=protocol)
+    conn = make_connection(bus, queue.append, params)
+    stream = make_stream(queue.append, protocol=protocol)
 
     try:
         fun(queue, bus, conn, stream)

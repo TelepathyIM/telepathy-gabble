@@ -1507,7 +1507,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   identity = lm_message_node_add_child
       (result_query, "identity", NULL);
   lm_message_node_set_attribute (identity, "category", "client");
-  lm_message_node_set_attribute (identity, "name", "Telepathy Gabble " VERSION);
+  lm_message_node_set_attribute (identity, "name", PACKAGE_STRING);
   lm_message_node_set_attribute (identity, "type", "pc");
 
   features = capabilities_get_features (self->self_presence->caps);

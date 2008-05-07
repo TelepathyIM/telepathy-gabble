@@ -286,6 +286,12 @@ def install_colourer():
     sys.stdout = Colourer(sys.stdout, patterns)
 
 def exec_test(fun, params=None, protocol=None, timeout=None):
+    # hack to ease debugging
+    domish.Element.__repr__ = domish.Element.toXml
+
+    if sys.stdout.isatty():
+        install_colourer()
+
     queue = servicetest.IteratingEventQueue(timeout)
     queue.verbose = (
         os.environ.get('CHECK_TWISTED_VERBOSE', '') != ''
@@ -293,12 +299,6 @@ def exec_test(fun, params=None, protocol=None, timeout=None):
 
     bus = dbus.SessionBus()
     conn, stream = prepare_test(bus, queue.append, params, protocol=protocol)
-
-    # hack to ease debugging
-    domish.Element.__repr__ = domish.Element.toXml
-
-    if sys.stdout.isatty():
-        install_colourer()
 
     try:
         fun(queue, bus, conn, stream)

@@ -12,7 +12,7 @@ version 2.1 of the License, or (at your option) any later version.
 This library is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-Library General Public License for more details.
+Lesser General Public License for more details.
 
 You should have received a copy of the GNU Lesser General Public
 License along with this library; if not, write to the Free Software
@@ -58,22 +58,31 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
         </xsl:otherwise>
       </xsl:choose>
     </xsl:variable>
-/**
- * <xsl:value-of select="translate(concat($mixed-case-prefix, $name), '_', '')"/>:
-<xsl:apply-templates mode="flag-or-enumvalue-gtkdoc">
-  <xsl:with-param name="value-prefix" select="$value-prefix"/>
-</xsl:apply-templates> *
-<xsl:if test="tp:docstring">
- * &lt;![CDATA[<xsl:value-of select="translate(string (tp:docstring), '&#13;&#10;', '  ')"/>]]&gt;
- *
-</xsl:if> * Bitfield/set of flags generated from the Telepathy specification.
- */
-typedef enum {
-<xsl:apply-templates>
-  <xsl:with-param name="value-prefix" select="$value-prefix"/>
-</xsl:apply-templates>} <xsl:value-of select="translate(concat($mixed-case-prefix, $name), '_', '')"/>;
-
-</xsl:template>
+    <xsl:text>/**&#10;</xsl:text>
+    <xsl:text> *&#10;</xsl:text>
+    <xsl:value-of select="translate(concat($mixed-case-prefix, $name), '_', '')"/>
+    <xsl:text>:&#10;</xsl:text>
+    <xsl:apply-templates mode="flag-or-enumvalue-gtkdoc">
+      <xsl:with-param name="value-prefix" select="$value-prefix"/>
+    </xsl:apply-templates>
+    <xsl:text> *&#10;</xsl:text>
+    <xsl:if test="tp:docstring">
+      <xsl:text> * &lt;![CDATA[</xsl:text>
+      <xsl:value-of select="translate(string (tp:docstring), '&#13;&#10;', '  ')"/>
+      <xsl:text>]]&gt;&#10;</xsl:text>
+      <xsl:text> *&#10;</xsl:text>
+    </xsl:if>
+    <xsl:text> * Bitfield/set of flags generated from the Telepathy specification.&#10;</xsl:text>
+    <xsl:text> */&#10;</xsl:text>
+    <xsl:text>typedef enum {&#10;</xsl:text>
+    <xsl:apply-templates>
+      <xsl:with-param name="value-prefix" select="$value-prefix"/>
+    </xsl:apply-templates>
+    <xsl:text>} </xsl:text>
+    <xsl:value-of select="translate(concat($mixed-case-prefix, $name), '_', '')"/>
+    <xsl:text>;&#10;</xsl:text>
+    <xsl:text>&#10;</xsl:text>
+  </xsl:template>
 
   <xsl:template match="text()" mode="flag-or-enumvalue-gtkdoc"/>
 
@@ -129,29 +138,46 @@ typedef enum {
         </xsl:otherwise>
       </xsl:choose>
     </xsl:variable>
-/**
- * <xsl:value-of select="translate(concat($mixed-case-prefix, $name), '_', '')"/>:
-<xsl:apply-templates mode="flag-or-enumvalue-gtkdoc">
-  <xsl:with-param name="value-prefix" select="$value-prefix"/>
-</xsl:apply-templates> *
-<xsl:if test="tp:docstring">
-  * &lt;![CDATA[[<xsl:value-of select="translate(string (tp:docstring), '&#13;&#10;', '  ')"/>]]&gt;
- *
-</xsl:if> * Enumeration generated from the Telepathy specification.
- */
-typedef enum {
-<xsl:apply-templates>
-  <xsl:with-param name="value-prefix" select="$value-prefix"/>
-</xsl:apply-templates>} <xsl:value-of select="translate(concat($mixed-case-prefix, $name), '_', '')"/>;
-
-/**
- * NUM_<xsl:value-of select="translate(concat($upper-case-prefix, $name-plural), $lower, $upper)"/>:
- *
- * 1 higher than the highest valid value of #<xsl:value-of select="translate(concat($mixed-case-prefix, $name), '_', '')"/>.
- */
-#define NUM_<xsl:value-of select="translate(concat($upper-case-prefix, $name-plural), $lower, $upper)"/> (<xsl:value-of select="tp:enumvalue[position() = last()]/@value"/>+1)
-
-</xsl:template>
+    <xsl:text>/**&#10;</xsl:text>
+    <xsl:text> *&#10;</xsl:text>
+    <xsl:value-of select="translate(concat($mixed-case-prefix, $name), '_', '')"/>
+    <xsl:text>:&#10;</xsl:text>
+    <xsl:apply-templates mode="flag-or-enumvalue-gtkdoc">
+      <xsl:with-param name="value-prefix" select="$value-prefix"/>
+    </xsl:apply-templates>
+    <xsl:text> *&#10;</xsl:text>
+    <xsl:if test="tp:docstring">
+      <xsl:text> * &lt;![CDATA[</xsl:text>
+      <xsl:value-of select="translate(string (tp:docstring), '&#13;&#10;', '  ')"/>
+      <xsl:text>]]&gt;&#10;</xsl:text>
+      <xsl:text> *&#10;</xsl:text>
+    </xsl:if>
+    <xsl:text> * Bitfield/set of flags generated from the Telepathy specification.&#10;</xsl:text>
+    <xsl:text> */&#10;</xsl:text>
+    <xsl:text>typedef enum {&#10;</xsl:text>
+    <xsl:apply-templates>
+      <xsl:with-param name="value-prefix" select="$value-prefix"/>
+    </xsl:apply-templates>
+    <xsl:text>} </xsl:text>
+    <xsl:value-of select="translate(concat($mixed-case-prefix, $name), '_', '')"/>
+    <xsl:text>;&#10;</xsl:text>
+    <xsl:text>&#10;</xsl:text>
+    <xsl:text>/**&#10;</xsl:text>
+    <xsl:text> * NUM_</xsl:text>
+    <xsl:value-of select="translate(concat($upper-case-prefix, $name-plural), $lower, $upper)"/>
+    <xsl:text>:&#10;</xsl:text>
+    <xsl:text> *&#10;</xsl:text>
+    <xsl:text> * 1 higher than the highest valid value of #</xsl:text>
+    <xsl:value-of select="translate(concat($mixed-case-prefix, $name), '_', '')"/>
+    <xsl:text>.&#10;</xsl:text>
+    <xsl:text> */&#10;</xsl:text>
+    <xsl:text>#define NUM_</xsl:text>
+    <xsl:value-of select="translate(concat($upper-case-prefix, $name-plural), $lower, $upper)"/>
+    <xsl:text> (</xsl:text>
+    <xsl:value-of select="tp:enumvalue[position() = last()]/@value"/>
+    <xsl:text>+1)&#10;</xsl:text>
+    <xsl:text>&#10;</xsl:text>
+  </xsl:template>
 
   <xsl:template match="tp:flags/tp:flag">
     <xsl:param name="value-prefix"/>
@@ -168,11 +194,20 @@ typedef enum {
     <xsl:variable name="name" select="translate(concat($upper-case-prefix, $value-prefix, '_', $suffix), $lower, $upper)"/>
 
     <xsl:if test="@name and @suffix and @name != @suffix">
-      <xsl:message terminate="yes">Flag name <xsl:value-of select="@name"/> != suffix <xsl:value-of select="@suffix"/>
-</xsl:message>
+      <xsl:message terminate="yes">
+        <xsl:text>Flag name </xsl:text>
+        <xsl:value-of select="@name"/>
+        <xsl:text> != suffix </xsl:text>
+        <xsl:value-of select="@suffix"/>
+        <xsl:text>&#10;</xsl:text>
+      </xsl:message>
     </xsl:if>
-    <xsl:text>    </xsl:text><xsl:value-of select="$name"/> = <xsl:value-of select="@value"/>,
-</xsl:template>
+    <xsl:text>    </xsl:text>
+    <xsl:value-of select="$name"/>
+    <xsl:text> = </xsl:text>
+    <xsl:value-of select="@value"/>
+    <xsl:text>,&#10;</xsl:text>
+  </xsl:template>
 
   <xsl:template match="tp:enum/tp:enumvalue">
     <xsl:param name="value-prefix"/>
@@ -189,27 +224,36 @@ typedef enum {
     <xsl:variable name="name" select="translate(concat($upper-case-prefix, $value-prefix, '_', $suffix), $lower, $upper)"/>
 
     <xsl:if test="@name and @suffix and @name != @suffix">
-      <xsl:message terminate="yes">Flag name <xsl:value-of select="@name"/> != suffix <xsl:value-of select="@suffix"/>
-</xsl:message>
+      <xsl:message terminate="yes">
+        <xsl:text>Enumvalue name </xsl:text>
+        <xsl:value-of select="@name"/>
+        <xsl:text> != suffix </xsl:text>
+        <xsl:value-of select="@suffix"/>
+        <xsl:text>&#10;</xsl:text>
+      </xsl:message>
     </xsl:if>
 
     <xsl:if test="preceding-sibling::tp:enumvalue and number(preceding-sibling::tp:enumvalue[1]/@value) > number(@value)">
-      <xsl:message terminate="yes">Enum values must be in ascending numeric order,
-but <xsl:value-of select="$name"/> is less than the previous value
-</xsl:message>
+      <xsl:message terminate="yes">
+        <xsl:text>Enum values must be in ascending numeric order, but </xsl:text>
+        <xsl:value-of select="$name"/>
+        <xsl:text> is less than the previous value</xsl:text>
+      </xsl:message>
     </xsl:if>
 
-    <xsl:text>    </xsl:text><xsl:value-of select="$name"/> = <xsl:value-of select="@value"/>,
-</xsl:template>
+    <xsl:text>    </xsl:text>
+    <xsl:value-of select="$name"/>
+    <xsl:text> = </xsl:text>
+    <xsl:value-of select="@value"/>
+    <xsl:text>,&#10;</xsl:text>
+  </xsl:template>
 
   <xsl:template match="tp:flag">
-    <xsl:message terminate="yes">tp:flag found outside tp:flags
-</xsl:message>
+    <xsl:message terminate="yes">tp:flag found outside tp:flags&#10;</xsl:message>
   </xsl:template>
 
   <xsl:template match="tp:enumvalue">
-    <xsl:message terminate="yes">tp:enumvalue found outside tp:enum
-</xsl:message>
+    <xsl:message terminate="yes">tp:enumvalue found outside tp:enum&#10;</xsl:message>
   </xsl:template>
 
   <xsl:template match="text()"/>
@@ -227,7 +271,8 @@ but <xsl:value-of select="$name"/> is less than the previous value
       <xsl:text>, version </xsl:text>
       <xsl:value-of select="tp:version"/>
     </xsl:if>
-    <xsl:text>&#10;&#10;</xsl:text>
+    <xsl:text>&#10;</xsl:text>
+    <xsl:text>&#10;</xsl:text>
     <xsl:for-each select="tp:copyright">
       <xsl:value-of select="."/>
       <xsl:text>&#10;</xsl:text>
@@ -235,21 +280,18 @@ but <xsl:value-of select="$name"/> is less than the previous value
     <xsl:value-of select="tp:license"/>
     <xsl:text>&#10;</xsl:text>
     <xsl:value-of select="tp:docstring"/>
-    <xsl:text>&#10; */
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-</xsl:text>
+    <xsl:text>&#10;</xsl:text>
+    <xsl:text> */&#10;</xsl:text>
+    <xsl:text>&#10;</xsl:text>
+    <xsl:text>#ifdef __cplusplus&#10;</xsl:text>
+    <xsl:text>extern "C" {&#10;</xsl:text>
+    <xsl:text>#endif&#10;</xsl:text>
+    <xsl:text>&#10;</xsl:text>
     <xsl:apply-templates/>
-    <xsl:text>
-
-#ifdef __cplusplus
-}
-#endif
-
-</xsl:text>
+    <xsl:text>&#10;</xsl:text>
+    <xsl:text>#ifdef __cplusplus&#10;</xsl:text>
+    <xsl:text>}&#10;</xsl:text>
+    <xsl:text>#endif&#10;</xsl:text>
   </xsl:template>
 
 </xsl:stylesheet>

@@ -14,11 +14,11 @@ please make any changes there.
 # This library is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# Library General Public License for more details.
+# Lesser General Public License for more details.
 #
 # You should have received a copy of the GNU Lesser General Public
 # License along with this library; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 
 from string import ascii_letters, digits
@@ -113,6 +113,22 @@ def escape_as_identifier(identifier):
             ret.append('_%02x' % ord(c))
 
     return ''.join(ret)
+
+
+def get_docstring(element):
+    docstring = None
+    for x in element.childNodes:
+        if x.namespaceURI == NS_TP and x.localName == 'docstring':
+            docstring = x
+    if docstring is not None:
+        docstring = docstring.toxml().replace('\n', ' ').strip()
+        if docstring.startswith('<tp:docstring>'):
+            docstring = docstring[14:].lstrip()
+        if docstring.endswith('</tp:docstring>'):
+            docstring = docstring[:-15].rstrip()
+        if docstring in ('<tp:docstring/>', ''):
+            docstring = ''
+    return docstring
 
 
 def signal_to_marshal_type(signal):
@@ -276,7 +292,7 @@ def type_to_gtype(s):
     elif s == 'ab': #boolean array
         return ("GArray *", "DBUS_TYPE_G_BOOLEAN_ARRAY", "BOXED", True)
     elif s == 'ao': #object path array
-        return ("GArray *", "DBUS_TYPE_G_OBJECT_ARRAY", "BOXED", True)
+        return ("GPtrArray *", "DBUS_TYPE_G_OBJECT_ARRAY", "BOXED", True)
     elif s == 'a{ss}': #hash table of string to string
         return ("GHashTable *", "DBUS_TYPE_G_STRING_STRING_HASHTABLE", "BOXED", False)
     elif s[:2] == 'a{':  #some arbitrary hash tables
@@ -297,3 +313,8 @@ def type_to_gtype(s):
 
     # we just don't know ..
     raise Exception, "don't know the GType for " + s
+
+
+def xml_escape(s):
+    s = s.replace('&', '&amp;').replace("'", '&apos;').replace('"', '&quot;')
+    return s.replace('<', '&lt;').replace('>', '&gt;')

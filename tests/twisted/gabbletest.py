@@ -33,6 +33,14 @@ def make_result_iq(stream, iq):
 def acknowledge_iq(stream, iq):
     stream.send(make_result_iq(stream, iq))
 
+def sync_stream(q, stream):
+    """Used to ensure that Gabble has processed all stanzas sent to it."""
+
+    iq = IQ(stream, "get")
+    iq.addElement(('http://jabber.org/protocol/disco#info', 'query'))
+    stream.send(iq)
+    q.expect('stream-iq', query_ns='http://jabber.org/protocol/disco#info')
+
 class JabberAuthenticator(xmlstream.Authenticator):
     "Trivial XML stream authenticator that accepts one username/digest pair."
 

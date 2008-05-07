@@ -44,7 +44,6 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
 
-#include "base64.h"
 #include "bytestream-factory.h"
 #include "capabilities.h"
 #include "conn-aliasing.h"
@@ -65,7 +64,6 @@
 #include "pubsub.h"
 #include "request-pipeline.h"
 #include "roster.h"
-#include "sha1/sha1.h"
 #include "private-tubes-factory.h"
 #include "util.h"
 #include "vcard-manager.h"
@@ -1268,67 +1266,6 @@ connection_shut_down (TpBaseConnection *base)
     }
 }
 
-static gint
-feature_strcmp (gconstpointer a, gconstpointer b)
-{
-  gchar *left = *(gchar **) a;
-  gchar *right = *(gchar **) b;
-
-  return strcmp (left, right);
-}
-
-/**
- * compute_caps_hash:
- * @self: A #GabbleConnection
- *
- * Compute the hash as defined by the XEP-0115
- *
- * Returns: the hash. The called must free the returned hash.
- */
-static gchar *
-compute_caps_hash (GabbleConnection *self)
-{
-  GabblePresence *presence = self->self_presence;
-  GSList *features = capabilities_get_features (presence->caps);
-  GPtrArray *features_ns = g_ptr_array_new ();
-  GString *s;
-  gchar *str;
-  gchar sha1[SHA1_HASH_SIZE];
-  GSList *i;
-  unsigned int j;
-  gchar *encoded;
-
-  for (i = features; NULL != i; i = i->next)
-    {
-      const Feature *feat = (const Feature *) i->data;
-      g_ptr_array_add (features_ns, (gpointer) feat->ns);
-    }
-
-  g_ptr_array_sort (features_ns, feature_strcmp);
-
-  s = g_string_new ("");
-
-  /* Ugly hack. FIXME: Gabble should handle identities.
-   * http://www.xmpp.org/registrar/disco-categories.html */
-  s = g_string_append (s, "client/pc//Telepathy Gabble " VERSION "<");
-
-  for (j = 0 ; j < features_ns->len ; j++)
-    {
-      s = g_string_append (s, g_ptr_array_index (features_ns, j));
-      s = g_string_append (s, "<");
-    }
-
-  str = g_string_free (s, FALSE);
-  DEBUG ("caps string: '%s'\n", str);
-  sha1_bin (str, strlen (str), (guchar *) sha1);
-  encoded = base64_encode (SHA1_HASH_SIZE, sha1, FALSE);
-  DEBUG ("caps base64: '%s'\n", encoded);
-
-  g_slist_free (features);
-
-  return encoded;
-}
-
 /**
  * _gabble_connection_signal_own_presence:
  * @self: A #GabbleConnection
@@ -1349,7 +1286,7 @@ _gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
   GString *ext_string = NULL;
   GSList *features, *i;
   GHashTable *bundles;
-  gchar *caps_hash = compute_caps_hash (self);
+  gchar *caps_hash = gabble_presence_get_xep0115_hash (self->self_presence);
 
   if (presence->status == GABBLE_PRESENCE_HIDDEN)
     {
@@ -1593,7 +1530,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
         }
     }
 
-  caps_hash = compute_caps_hash (self);
+  caps_hash = gabble_presence_get_xep0115_hash (self->self_presence);
   DEBUG ("caps_hash='%s'", caps_hash);
   if (NULL == node || bundle_found ||
       g_str_equal (suffix, caps_hash))

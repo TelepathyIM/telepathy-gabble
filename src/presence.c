@@ -24,8 +24,11 @@
 #include <glib.h>
 #include <time.h>
 
+#include "base64.h"
+#include "capabilities.h"
 #include "presence-cache.h"
 #include "namespaces.h"
+#include "sha1/sha1.h"
 #include "util.h"
 
 #include "config.h"
@@ -465,3 +468,65 @@ gabble_presence_dump (GabblePresence *presence)
 
   return g_string_free (ret, FALSE);
 }
+
+static gint
+feature_strcmp (gconstpointer a, gconstpointer b)
+{
+  gchar *left = *(gchar **) a;
+  gchar *right = *(gchar **) b;
+
+  return strcmp (left, right);
+}
+
+/**
+ * gabble_presence_get_xep0115_hash:
+ * @self: A #GabblePresence
+ *
+ * Compute the hash as defined by the XEP-0115
+ *
+ * Returns: the hash. The called must free the returned hash.
+ */
+gchar *
+gabble_presence_get_xep0115_hash (GabblePresence *presence)
+{
+  GSList *features = capabilities_get_features (presence->caps);
+  GPtrArray *features_ns = g_ptr_array_new ();
+  GString *s;
+  gchar *str;
+  gchar sha1[SHA1_HASH_SIZE];
+  GSList *i;
+  unsigned int j;
+  gchar *encoded;
+
+  for (i = features; NULL != i; i = i->next)
+    {
+      const Feature *feat = (const Feature *) i->data;
+      g_ptr_array_add (features_ns, (gpointer) feat->ns);
+    }
+
+  g_ptr_array_sort (features_ns, feature_strcmp);
+
+  s = g_string_new ("");
+
+  /* Ugly hack. FIXME: Gabble should handle identities.
+   * http://www.xmpp.org/registrar/disco-categories.html */
+  s = g_string_append (s, "client/pc//Telepathy Gabble " VERSION "<");
+
+  for (j = 0 ; j < features_ns->len ; j++)
+    {
+      s = g_string_append (s, g_ptr_array_index (features_ns, j));
+      s = g_string_append (s, "<");
+    }
+
+  str = g_string_free (s, FALSE);
+  DEBUG ("caps string: '%s'\n", str);
+  sha1_bin (str, strlen (str), (guchar *) sha1);
+  encoded = base64_encode (SHA1_HASH_SIZE, sha1, FALSE);
+  DEBUG ("caps base64: '%s'\n", encoded);
+
+  g_slist_free (features);
+
+  return encoded;
+}
+
+

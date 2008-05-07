@@ -1,4 +1,4 @@
-check-local::
+check-coding-style:
 	@fail=0; \
 	if test -n "$(check_misc_sources)"; then \
 		tools_dir=$(top_srcdir)/tools \

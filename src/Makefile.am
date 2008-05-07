@@ -128,6 +128,7 @@ check_c_sources = \
     $(telepathy_gabble_SOURCES) \
     $(write_mgr_file_SOURCES)
 include $(top_srcdir)/tools/check-coding-style.mk
+check-local: check-coding-style
 
 telepathy_gabble_LDADD = libgabble-convenience.la $(ALL_LIBS)
 

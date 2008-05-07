@@ -64,3 +64,4 @@ check_c_sources = \
 	test-parse-message.c
 
 include $(top_srcdir)/tools/check-coding-style.mk
+check-local: check-coding-style

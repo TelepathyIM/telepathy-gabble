@@ -89,6 +89,8 @@ struct _DiscoWaiter
   gchar *resource;
   guint serial;
   gboolean disco_requested;
+  const gchar *hash;
+  const gchar *ver;
 };
 
 /**
@@ -98,6 +100,8 @@ static DiscoWaiter *
 disco_waiter_new (TpHandleRepoIface *repo,
                   TpHandle handle,
                   const gchar *resource,
+                  const gchar *hash,
+                  const gchar *ver,
                   guint serial)
 {
   DiscoWaiter *waiter;
@@ -109,6 +113,8 @@ disco_waiter_new (TpHandleRepoIface *repo,
   waiter->repo = repo;
   waiter->handle = handle;
   waiter->resource = g_strdup (resource);
+  waiter->hash = hash;
+  waiter->hash = ver;
   waiter->serial = serial;
 
   DEBUG ("created waiter %p for handle %u with serial %u", waiter, handle,
@@ -155,7 +161,13 @@ disco_waiter_list_get_request_count (GSList *list)
       DiscoWaiter *waiter = (DiscoWaiter *) i->data;
 
       if (waiter->disco_requested)
-        c++;
+        {
+          if (waiter->hash)
+            /* One waiter is enough if the request has a verification string */
+            c += CAPABILITY_BUNDLE_ENOUGH_TRUST;
+          else
+            c++;
+        }
     }
 
   return c;
@@ -612,26 +624,39 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
 }
 
 static GSList *
-_extract_cap_bundles (LmMessageNode *lm_node)
+_extract_cap_bundles (
+    LmMessageNode *lm_node,
+    const gchar **hash,
+    const gchar **ver)
 {
-  const gchar *node, *ver, *ext;
+  const gchar *node, *ext;
   GSList *uris = NULL;
   LmMessageNode *cap_node;
+
+  *hash = NULL;
+  *ver = NULL;
 
   cap_node = lm_message_node_get_child_with_namespace (lm_node, "c", NS_CAPS);
 
   if (NULL == cap_node)
-    return NULL;
+      return NULL;
+
+  *hash = lm_message_node_get_attribute (cap_node, "hash");
 
   node = lm_message_node_get_attribute (cap_node, "node");
 
   if (NULL == node)
     return NULL;
 
-  ver = lm_message_node_get_attribute (cap_node, "ver");
+  *ver = lm_message_node_get_attribute (cap_node, "ver");
 
-  if (NULL != ver)
-    uris = g_slist_prepend (uris, g_strdup_printf ("%s#%s", node, ver));
+  if (NULL != *ver)
+    uris = g_slist_prepend (uris, g_strdup_printf ("%s#%s", node, *ver));
+
+  /* If there is a hash, the remote contact uses XEP-0115 v1.5 and the 'ext'
+   * attribute MUST be ignored. */
+  if (NULL != *hash)
+    return uris;
 
   ext = lm_message_node_get_attribute (cap_node, "ext");
 
@@ -660,6 +685,7 @@ _caps_disco_cb (GabbleDisco *disco,
                 gpointer user_data)
 {
   GSList *waiters, *i;
+  DiscoWaiter *waiter_self;
   LmMessageNode *child;
   GabblePresenceCache *cache;
   GabblePresenceCachePrivate *priv;
@@ -769,7 +795,45 @@ _caps_disco_cb (GabbleDisco *disco,
       goto OUT;
     }
 
-  trust = capability_info_recvd (cache, node, handle, caps);
+  waiter_self = NULL;
+  for (i = waiters; NULL != i;)
+    {
+      DiscoWaiter *waiter;
+
+      waiter= (DiscoWaiter *) i->data;
+      if (waiter->handle == handle)
+        {
+          waiter_self = waiter;
+          break;
+        }
+    }
+  if (NULL == waiter_self)
+    {
+      DEBUG ("Ignoring non requested disco reply");
+      goto OUT;
+    }
+
+  if (waiter_self->hash != NULL)
+    {
+      const gchar *computed_hash;
+
+      computed_hash =
+          gabble_presence_compute_xep0115_hash_from_lm_node (query_result);
+
+      if (waiter_self->ver != computed_hash)
+        {
+          /* The received reply does not match the */
+          g_warning ("The announced verification string '%s' does not match "
+              "our hash '%s'.", waiter_self->ver, computed_hash);
+          /* TODO: send queries for waiters? */
+          goto OUT;
+        }
+        trust = CAPABILITY_BUNDLE_ENOUGH_TRUST;
+    }
+  else
+    {
+      trust = capability_info_recvd (cache, node, handle, caps);
+    }
 
   for (i = waiters; NULL != i;)
     {
@@ -857,6 +921,8 @@ static void
 _process_caps_uri (GabblePresenceCache *cache,
                    const gchar *from,
                    const gchar *uri,
+                   const gchar *hash,
+                   const gchar *ver,
                    TpHandle handle,
                    const gchar *resource,
                    guint serial)
@@ -921,7 +987,8 @@ _process_caps_uri (GabblePresenceCache *cache,
         }
 
       waiters = (GSList *) value;
-      waiter = disco_waiter_new (contact_repo, handle, resource, serial);
+      waiter = disco_waiter_new (contact_repo, handle, resource,
+          hash, ver, serial);
       waiters = g_slist_prepend (waiters, waiter);
       g_hash_table_insert (priv->disco_pending, key, waiters);
 
@@ -954,6 +1021,7 @@ _process_caps (GabblePresenceCache *cache,
   GabblePresenceCachePrivate *priv;
   GabblePresenceCapabilities old_caps = 0;
   guint serial;
+  const gchar *hash, *ver;
 
   priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
   serial = priv->caps_serial++;
@@ -962,14 +1030,15 @@ _process_caps (GabblePresenceCache *cache,
   if (resource != NULL)
     resource++;
 
-  uris = _extract_cap_bundles (lm_node);
+  uris = _extract_cap_bundles (lm_node, &hash, &ver);
 
   if (presence)
       old_caps = presence->caps;
 
   for (i = uris; NULL != i; i = i->next)
     {
-      _process_caps_uri (cache, from, (gchar *) i->data, handle, resource, serial);
+      _process_caps_uri (cache, from, (gchar *) i->data, hash, ver, handle,
+          resource, serial);
       g_free (i->data);
 
     }

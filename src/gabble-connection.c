@@ -1286,7 +1286,7 @@ _gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
   GString *ext_string = NULL;
   GSList *features, *i;
   GHashTable *bundles;
-  gchar *caps_hash = gabble_presence_get_xep0115_hash (self->self_presence);
+  gchar *caps_hash;
 
   if (presence->status == GABBLE_PRESENCE_HIDDEN)
     {
@@ -1325,6 +1325,7 @@ _gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
   g_hash_table_destroy (bundles);
 
   /* XEP-0115 version 1.5 uses a verification string in the 'ver' attribute */
+  caps_hash = gabble_presence_compute_xep0115_hash_from_self_presence (self);
   node = lm_message_node_add_child (node, "c", NULL);
   lm_message_node_set_attributes (
     node,
@@ -1530,7 +1531,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
         }
     }
 
-  caps_hash = gabble_presence_get_xep0115_hash (self->self_presence);
+  caps_hash = gabble_presence_compute_xep0115_hash_from_self_presence (self);
   DEBUG ("caps_hash='%s'", caps_hash);
   if (NULL == node || bundle_found ||
       g_str_equal (suffix, caps_hash))

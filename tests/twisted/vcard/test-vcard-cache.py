@@ -2,101 +2,46 @@
 Tests basic vCard caching functionality.
 """
 
-import base64
-import time
+from servicetest import call_async, EventPattern
+from gabbletest import exec_test, acknowledge_iq, sync_stream
 
-import dbus
+def test(q, bus, conn, stream):
+    conn.Connect()
+    _, event = q.expect_many(
+        EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
+        EventPattern('stream-iq', to=None, query_ns='vcard-temp',
+            query_name='vCard'))
 
-from servicetest import call_async, lazy, match, tp_name_prefix, unwrap
-from gabbletest import go, handle_get_vcard, make_result_iq
+    acknowledge_iq(stream, event.stanza)
+    # Force Gabble to process the vCard before calling any methods.
+    sync_stream(q, stream)
 
-from twisted.words.xish import xpath
-from twisted.words.xish import domish
-from twisted.words.protocols.jabber.client import IQ
+    # Request our alias and avatar, expect them to be resolved from cache.
 
-def aliasing_iface(proxy):
-    return dbus.Interface(proxy, tp_name_prefix +
-        '.Connection.Interface.Aliasing')
+    handle = conn.GetSelfHandle()
+    call_async(q, conn.Avatars, 'RequestAvatar', handle)
+    call_async(q, conn.Aliasing, 'RequestAliases', [handle])
 
-def avatars_iface(proxy):
-    return dbus.Interface(proxy, tp_name_prefix +
-        '.Connection.Interface.Avatars')
+    # FIXME - find out why RequestAliases returns before RequestAvatar even
+    # though everything's cached. Probably due to queueing, which means
+    # conn-avatars don't look into the cache before making a request. Prolly
+    # should make vcard_request look into the cache itself, and return
+    # immediately. Or not, if it's g_idle()'d. So it's better if conn-aliasing
+    # look into the cache itself.
 
-# Gabble requests vCard immediately upon connecting,
-# so this happens before StatusChanged signal
+    r1, r2 = q.expect_many(
+        EventPattern('dbus-return', method='RequestAliases'),
+        EventPattern('dbus-error', method='RequestAvatar'))
 
-@lazy
-@match('stream-iq')
-def expect_get_inital_vcard(event, data):
-    return handle_get_vcard(event, data)
+    # Default alias is our username
+    assert r1.value[0] == ['test']
 
-# Request our alias and avatar, expect them to be
-# resolved from cache.
+    # We don't have a vCard yet
+    assert r2.error.args[0] == 'contact vCard has no photo'
 
-@match('dbus-signal', signal='StatusChanged', args=[0, 1])
-def expect_connected(event, data):
-
-    handle = data['conn_iface'].GetSelfHandle()
-    data['self_handle'] = handle
-
-    call_async(data['test'], avatars_iface(data['conn']),
-                'RequestAvatar', handle)
-    call_async(data['test'], aliasing_iface(data['conn']),
-                'RequestAliases', [handle])
-    data['returned'] = set()
-
-    return True
-
-@lazy
-@match('stream-iq', to='test@localhost', iq_type='get')
-def expect_pep_iq(event, data):
-    iq = event.stanza
-    pubsub = iq.firstChildElement()
-    assert pubsub.name == 'pubsub'
-    assert pubsub.uri == "http://jabber.org/protocol/pubsub"
-    items = pubsub.firstChildElement()
-    assert items.name == 'items'
-    assert items['node'] == "http://jabber.org/protocol/nick"
-
-    result = make_result_iq(data['stream'], iq)
-    result['type'] = 'error'
-    error = result.addElement('error')
-    error['type'] = 'auth'
-    error.addElement('forbidden', 'urn:ietf:params:xml:ns:xmpp-stanzas')
-    data['stream'].send(result)
-    return True
-
-# Default alias is our username
-@lazy
-@match('dbus-return', method='RequestAliases')
-def expect_aliases_return1(event, data):
-    assert unwrap(event.value[0]) == ['test']
-    data['returned'].add('RequestAliases')
-    if len(data['returned']) == 2:
-        data['conn_iface'].Disconnect()
-    return True
-
-# FIXME - find out why RequestAliases returns before
-# RequestAvatar even though everything's cached
-# Probably due to queueing, which means conn-avatars don't
-# look into the cache before making a request. Prolly
-# should make vcard_request look into the cache itself,
-# and return immediately. Or not, if it's g_idle()'d. So
-# it's better if conn-aliasing look into the cache itself.
-
-# We don't have a vCard yet
-@match('dbus-error', method='RequestAvatar')
-def expect_avatar_error1(event, data):
-    assert event.error.args[0] == 'contact vCard has no photo'
-    data['returned'].add('RequestAvatar')
-    if len(data['returned']) == 2:
-        data['conn_iface'].Disconnect()
-    return True
-
-@match('dbus-signal', signal='StatusChanged', args=[2, 1])
-def expect_disconnected(event, data):
-    return True
+    conn.Disconnect()
+    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 if __name__ == '__main__':
-    go()
+    exec_test(test)
 

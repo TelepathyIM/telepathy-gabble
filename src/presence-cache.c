@@ -565,19 +565,20 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
 
   if (NULL == x_node)
     {
-#if 0
-      if (handle == priv->conn->parent.self_handle)
-        {
-          /* One of my other resources does not support XEP-0153. As per that
-           * XEP, I MUST stop advertising the image hash, at least until all
-           * instances of non-conforming resources have gone offline.
-           * However, we're going to ignore this requirement and hope that
-           * non-conforming clients won't alter the <PHOTO>, which should
-           * in practice be true.
-           */
-          presence->avatar_sha1 = NULL;
-        }
-#endif
+      /* If (handle == priv->conn->parent.self_handle), then this means
+       * that one of our other resources does not support XEP-0153. According
+       * to that XEP, we MUST now stop advertising the image hash, at least
+       * until all instances of non-conforming resources have gone offline, by
+       * setting presence->avatar_sha1 to NULL.
+       *
+       * However, this would mean that logging in (e.g.) with an old version
+       * of Gabble would disable avatars in this newer version, which is
+       * quite a silly failure mode. As a result, we ignore this
+       * requirement and hope that non-conforming clients won't alter the
+       * <PHOTO>, which should in practice be true.
+       *
+       * If handle != self_handle, then in any case we want to ignore this
+       * message for vCard purposes. */
       return;
     }
 

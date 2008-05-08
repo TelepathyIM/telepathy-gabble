@@ -796,7 +796,7 @@ _caps_disco_cb (GabbleDisco *disco,
     }
 
   waiter_self = NULL;
-  for (i = waiters; NULL != i;)
+  for (i = waiters; NULL != i;  i = i->next)
     {
       DiscoWaiter *waiter;
 

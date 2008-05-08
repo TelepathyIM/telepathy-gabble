@@ -89,8 +89,8 @@ struct _DiscoWaiter
   gchar *resource;
   guint serial;
   gboolean disco_requested;
-  const gchar *hash;
-  const gchar *ver;
+  gchar *hash;
+  gchar *ver;
 };
 
 /**
@@ -113,8 +113,8 @@ disco_waiter_new (TpHandleRepoIface *repo,
   waiter->repo = repo;
   waiter->handle = handle;
   waiter->resource = g_strdup (resource);
-  waiter->hash = hash;
-  waiter->ver = ver;
+  waiter->hash = g_strdup (hash);
+  waiter->ver = g_strdup (ver);
   waiter->serial = serial;
 
   DEBUG ("created waiter %p for handle %u with serial %u", waiter, handle,
@@ -134,6 +134,8 @@ disco_waiter_free (DiscoWaiter *waiter)
   tp_handle_unref (waiter->repo, waiter->handle);
 
   g_free (waiter->resource);
+  g_free (waiter->hash);
+  g_free (waiter->ver);
   g_slice_free (DiscoWaiter, waiter);
 }
 

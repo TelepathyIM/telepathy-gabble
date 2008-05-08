@@ -139,6 +139,9 @@ def make_iq_event(iq):
         event.query_ns = query.uri
         event.query_name = query.name
 
+        if query.getAttribute("node"):
+            event.query_node = query.getAttribute("node")
+
     return event
 
 def make_presence_event(stanza):

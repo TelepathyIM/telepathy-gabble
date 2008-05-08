@@ -114,7 +114,7 @@ disco_waiter_new (TpHandleRepoIface *repo,
   waiter->handle = handle;
   waiter->resource = g_strdup (resource);
   waiter->hash = hash;
-  waiter->hash = ver;
+  waiter->ver = ver;
   waiter->serial = serial;
 
   DEBUG ("created waiter %p for handle %u with serial %u", waiter, handle,

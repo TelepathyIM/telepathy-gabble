@@ -478,35 +478,89 @@ feature_strcmp (gconstpointer a, gconstpointer b)
   return strcmp (left, right);
 }
 
+struct _dataform_field {
+  gchar *fieldname;
+  GPtrArray *values;
+};
+
+struct _dataform {
+  gchar *form_type;
+  GPtrArray *fields;
+};
+
+static gint
+fields_cmp (gconstpointer a, gconstpointer b)
+{
+  struct _dataform_field *left = *(struct _dataform_field **) a;
+  struct _dataform_field *right = *(struct _dataform_field **) b;
+
+  return strcmp (left->fieldname, right->fieldname);
+}
+
+static gint
+dataforms_cmp (gconstpointer a, gconstpointer b)
+{
+  struct _dataform *left = *(struct _dataform **) a;
+  struct _dataform *right = *(struct _dataform **) b;
+
+  return strcmp (left->form_type, right->form_type);
+}
+
 static gchar *
 gabble_presence_compute_xep0115_hash (
     GPtrArray *features,
-    GPtrArray *identities)
+    GPtrArray *identities,
+    GPtrArray *dataforms)
 {
   GString *s;
   gchar *str;
   gchar sha1[SHA1_HASH_SIZE];
-  unsigned int j;
+  unsigned int i, j, k;
   gchar *encoded;
 
   g_ptr_array_sort (identities, feature_strcmp);
   g_ptr_array_sort (features, feature_strcmp);
+  g_ptr_array_sort (dataforms, dataforms_cmp);
 
   s = g_string_new ("");
 
-  for (j = 0 ; j < identities->len ; j++)
+  for (i = 0 ; i < identities->len ; i++)
     {
-      s = g_string_append (s, g_ptr_array_index (identities, j));
+      s = g_string_append (s, g_ptr_array_index (identities, i));
       s = g_string_append (s, "<");
     }
 
-  for (j = 0 ; j < features->len ; j++)
+  for (i = 0 ; i < features->len ; i++)
     {
-      s = g_string_append (s, g_ptr_array_index (features, j));
+      s = g_string_append (s, g_ptr_array_index (features, i));
       s = g_string_append (s, "<");
     }
 
-  /* FIXME: add XEP-0128 data forms in the hash */
+  for (i = 0 ; i < dataforms->len ; i++)
+    {
+      struct _dataform *form = g_ptr_array_index (features, i);
+
+      s = g_string_append (s, form->form_type);
+      s = g_string_append (s, "<");
+
+      g_ptr_array_sort (form->fields, fields_cmp);
+
+      for (j = 0 ; j < form->fields->len ; j++)
+        {
+          struct _dataform_field *field = g_ptr_array_index (form->fields, j);
+
+          s = g_string_append (s, field->fieldname);
+          s = g_string_append (s, "<");
+
+          g_ptr_array_sort (field->values, fields_cmp);
+
+          for (k = 0 ; k < field->values->len ; k++)
+            {
+              s = g_string_append (s, g_ptr_array_index (field->values, k));
+              s = g_string_append (s, "<");
+            }
+        }
+    }
 
   str = g_string_free (s, FALSE);
   DEBUG ("caps string: '%s'\n", str);
@@ -529,6 +583,7 @@ gabble_presence_compute_xep0115_hash_from_lm_node (LmMessageNode *node)
 {
   GPtrArray *features = g_ptr_array_new ();
   GPtrArray *identities = g_ptr_array_new ();
+  GPtrArray *dataforms = g_ptr_array_new ();
   LmMessageNode *child;
   gchar *str;
 
@@ -569,13 +624,76 @@ gabble_presence_compute_xep0115_hash_from_lm_node (LmMessageNode *node)
 
           g_ptr_array_add (features, (gpointer) g_strdup (var));
         }
+      else if (g_str_equal (child->name, "x"))
+        {
+          const gchar *xmlns;
+          const gchar *type;
+          LmMessageNode *x_child;
+          struct _dataform *form;
 
+          xmlns = lm_message_node_get_attribute (child, "xmlns");
+          type = lm_message_node_get_attribute (child, "type");
+
+          if (! g_str_equal (xmlns, "jabber:x:data"))
+            continue;
+
+          if (! g_str_equal (type, "result"))
+            continue;
+
+          form = g_slice_new0 (struct _dataform);
+
+          for (x_child = child->children;
+               NULL != x_child;
+               x_child = x_child->next)
+            {
+              const gchar *var;
+              LmMessageNode *value_child;
+              struct _dataform_field *field;
+
+              if (! g_str_equal (x_child->name, "field"))
+                continue;
+
+              var = lm_message_node_get_attribute (x_child, "var");
+
+              if (NULL == var)
+                continue;
+
+              field = g_slice_new0 (struct _dataform_field);
+
+              for (value_child = x_child->children;
+                   NULL != value_child;
+                   value_child = value_child->next)
+                {
+                  const gchar *content;
+
+                  if (! g_str_equal (value_child->name, "value"))
+                    continue;
+
+                  if (g_str_equal (var, "FORM_TYPE"))
+                    {
+                      form->form_type = g_strdup (var);
+                    }
+                  else
+                    {
+                      content = lm_message_node_get_value (value_child);
+                      g_ptr_array_add (field->values,
+                          (gpointer) g_strdup (content));
+                    }
+                }
+
+              g_ptr_array_add (form->fields, (gpointer) field);
+            }
+
+          g_ptr_array_add (dataforms, (gpointer) form);
+        }
     }
 
-  str = gabble_presence_compute_xep0115_hash (features, identities);
+  str = gabble_presence_compute_xep0115_hash (features, identities, dataforms);
 
   g_ptr_array_free (features, TRUE);
   g_ptr_array_free (identities, TRUE);
+  g_ptr_array_free (dataforms, TRUE);
+  /* TODO: also free content of dataforms */
 
   return str;
 }
@@ -588,23 +706,27 @@ gabble_presence_compute_xep0115_hash_from_self_presence (GabbleConnection *self)
   GSList *features_list = capabilities_get_features (presence->caps);
   GPtrArray *features = g_ptr_array_new ();
   GPtrArray *identities = g_ptr_array_new ();
+  GPtrArray *dataforms = g_ptr_array_new ();
   gchar *str;
   GSList *i;
 
+  /* get our features list  */
   for (i = features_list; NULL != i; i = i->next)
     {
       const Feature *feat = (const Feature *) i->data;
       g_ptr_array_add (features, (gpointer) feat->ns);
     }
 
-  g_ptr_array_sort (features, feature_strcmp);
-
+  /* XEP-0030 requires at least 1 identity. We don't need more. */
   g_ptr_array_add (features, (gpointer) "client/pc//" PACKAGE_STRING);
 
-  str = gabble_presence_compute_xep0115_hash (features, identities);
+  /* Gabble does not use dataforms, let 'dataforms' be empty */
+
+  str = gabble_presence_compute_xep0115_hash (features, identities, dataforms);
 
   g_ptr_array_free (features, TRUE);
   g_ptr_array_free (identities, TRUE);
+  g_ptr_array_free (dataforms, TRUE);
   g_slist_free (features_list);
 
   return str;

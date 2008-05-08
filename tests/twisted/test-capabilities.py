@@ -56,6 +56,8 @@ def test(q, bus, conn, stream):
     feature['var'] = 'http://jabber.org/protocol/jingle'
     feature = query.addElement('feature')
     feature['var'] = 'http://jabber.org/protocol/jingle/description/audio'
+    feature = query.addElement('feature')
+    feature['var'] = 'http://www.google.com/transport/p2p'
     stream.send(result)
 
     # we can now do audio calls

@@ -19,8 +19,7 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
   </tp:license>
 
-  <interface name="org.freedesktop.Telepathy.Channel.Interface.Hold"
-    tp:causes-havoc='not yet API-stable'>
+  <interface name="org.freedesktop.Telepathy.Channel.Interface.Hold">
     <tp:requires interface="org.freedesktop.Telepathy.Channel.Type.StreamedMedia"/>
 
     <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
@@ -155,12 +154,14 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
         <p>If the connection manager can immediately tell that the requested
           state change could not possibly succeed, this method SHOULD
-          return the NotAvailable error.</p>
+          return the NotAvailable error. If the requested state is the
+          same as the current state, this method SHOULD return successfully
+          without doing anything.</p>
 
         <p>Otherwise, this method SHOULD immediately set the hold state to
           Local_Hold_State_Pending_Hold or Local_Hold_State_Pending_Unhold
-          (as appropriate), emitting HoldStateChanged, and return
-          successfully.</p>
+          (as appropriate), emitting HoldStateChanged if this is a change,
+          and return successfully.</p>
 
         <p>The eventual success or failure of the request is indicated by a
           subsequent HoldStateChanged signal, changing the hold state to

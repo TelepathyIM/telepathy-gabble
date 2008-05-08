@@ -822,7 +822,7 @@ _caps_disco_cb (GabbleDisco *disco,
       computed_hash =
           gabble_presence_compute_xep0115_hash_from_lm_node (query_result);
 
-      if (waiter_self->ver != computed_hash)
+      if (! g_str_equal (waiter_self->ver, computed_hash))
         {
           /* The received reply does not match the */
           g_warning ("The announced verification string '%s' does not match "

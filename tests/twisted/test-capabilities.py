@@ -7,6 +7,7 @@ import dbus
 
 from twisted.words.xish import domish
 
+from servicetest import EventPattern
 from gabbletest import exec_test, make_result_iq
 
 text = 'org.freedesktop.Telepathy.Channel.Type.Text'
@@ -40,17 +41,36 @@ def test(q, bus, conn, stream):
     # no special capabilities
     assert conn.Capabilities.GetCapabilities([2]) == basic_caps
 
-    # send updated presence with Jingle caps info
+    # send updated presence with Jingle audio/video caps info. we turn on both
+    # audio and video at the same time to test that all of the capabilities are
+    # discovered before any capabilities change signal is emitted
     presence = make_presence('bob@foo.com/Foo', None, 'hello')
     c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
     c['node'] = 'http://telepathy.freedesktop.org/fake-client'
     c['ver'] = '0.1'
+    c['ext'] = 'video'
     stream.send(presence)
 
-    # Gabble looks up our capabilities
-    event = q.expect('stream-iq', to='bob@foo.com/Foo',
-        query_ns='http://jabber.org/protocol/disco#info')
-    result = make_result_iq(stream, event.stanza)
+    # Gabble looks up both the version and the video bundles, in any order
+    (version_event, video_event) = q.expect_many(
+        EventPattern('stream-iq', to='bob@foo.com/Foo',
+            query_ns='http://jabber.org/protocol/disco#info',
+            query_node='http://telepathy.freedesktop.org/fake-client#0.1'),
+        EventPattern('stream-iq', to='bob@foo.com/Foo',
+            query_ns='http://jabber.org/protocol/disco#info',
+            query_node='http://telepathy.freedesktop.org/fake-client#video'))
+
+    # reply to the video bundle query first - this capability alone is not
+    # sufficient to make us callable
+    result = make_result_iq(stream, video_event.stanza)
+    query = result.firstChildElement()
+    feature = query.addElement('feature')
+    feature['var'] = 'http://jabber.org/protocol/jingle/description/video'
+    stream.send(result)
+
+    # reply to the version bundle query, which should make us audio and
+    # video callable
+    result = make_result_iq(stream, version_event.stanza)
     query = result.firstChildElement()
     feature = query.addElement('feature')
     feature['var'] = 'http://jabber.org/protocol/jingle'
@@ -60,38 +80,28 @@ def test(q, bus, conn, stream):
     feature['var'] = 'http://www.google.com/transport/p2p'
     stream.send(result)
 
-    # we can now do audio calls
+    # we can now do audio and video calls
     event = q.expect('dbus-signal', signal='CapabilitiesChanged',
-        args=[[(2, sm, 0, 3, 0, 1)]])
+        args=[[(2, sm, 0, 3, 0, 3)]])
 
-    # send updated presence with video support
+    # send updated presence without video support
     presence = make_presence('bob@foo.com/Foo', None, 'hello')
     c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
     c['node'] = 'http://telepathy.freedesktop.org/fake-client'
     c['ver'] = '0.1'
-    c['ext'] = 'video'
     stream.send(presence)
 
-    # Gabble looks up our new capabilities
-    event = q.expect('stream-iq', to='bob@foo.com/Foo',
-        query_ns='http://jabber.org/protocol/disco#info')
-    result = make_result_iq(stream, event.stanza)
-    query = result.firstChildElement()
-    feature = query.addElement('feature')
-    feature['var'] = 'http://jabber.org/protocol/jingle/description/video'
-    stream.send(result)
-
-    # we can now do video calls too
+    # we can now do only audio calls
     event = q.expect('dbus-signal', signal='CapabilitiesChanged',
-        args=[[(2, sm, 3, 3, 1, 3)]])
+        args=[[(2, sm, 3, 3, 3, 1)]])
 
     # go offline
     presence = make_presence('bob@foo.com/Foo', 'unavailable', None)
     stream.send(presence)
 
-    # can't do calls any more
+    # can't do audio calls any more
     event = q.expect('dbus-signal', signal='CapabilitiesChanged',
-        args=[[(2, sm, 3, 0, 3, 0)]])
+        args=[[(2, sm, 3, 0, 1, 0)]])
 
     # regression test for fd.o #15198: getting caps of invalid handle crashed
     try:

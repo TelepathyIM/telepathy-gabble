@@ -64,13 +64,34 @@ def test(q, bus, conn, stream):
     event = q.expect('dbus-signal', signal='CapabilitiesChanged',
         args=[[(2, sm, 0, 3, 0, 1)]])
 
+    # send updated presence with video support
+    presence = make_presence('bob@foo.com/Foo', None, 'hello')
+    c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
+    c['node'] = 'http://telepathy.freedesktop.org/fake-client'
+    c['ver'] = '0.1'
+    c['ext'] = 'video'
+    stream.send(presence)
+
+    # Gabble looks up our new capabilities
+    event = q.expect('stream-iq', to='bob@foo.com/Foo',
+        query_ns='http://jabber.org/protocol/disco#info')
+    result = make_result_iq(stream, event.stanza)
+    query = result.firstChildElement()
+    feature = query.addElement('feature')
+    feature['var'] = 'http://jabber.org/protocol/jingle/description/video'
+    stream.send(result)
+
+    # we can now do video calls too
+    event = q.expect('dbus-signal', signal='CapabilitiesChanged',
+        args=[[(2, sm, 3, 3, 1, 3)]])
+
     # go offline
     presence = make_presence('bob@foo.com/Foo', 'unavailable', None)
     stream.send(presence)
 
     # can't do calls any more
     event = q.expect('dbus-signal', signal='CapabilitiesChanged',
-        args=[[(2, sm, 3, 0, 1, 0)]])
+        args=[[(2, sm, 3, 0, 3, 0)]])
 
     # regression test for fd.o #15198: getting caps of invalid handle crashed
     try:

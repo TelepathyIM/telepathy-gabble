@@ -91,10 +91,6 @@ LmMessage *gabble_presence_as_message (GabblePresence *presence,
 gchar *gabble_presence_dump (GabblePresence *presence);
 
 
-gchar *gabble_presence_compute_xep0115_hash_from_lm_node (LmMessageNode *node);
-gchar *gabble_presence_compute_xep0115_hash_from_self_presence (
-    GabbleConnection *self);
-
 G_END_DECLS
 
 #endif /* __GABBLE_PRESENCE_H__ */

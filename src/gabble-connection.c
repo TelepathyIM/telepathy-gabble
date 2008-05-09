@@ -46,6 +46,7 @@
 
 #include "bytestream-factory.h"
 #include "capabilities.h"
+#include "caps-hash.h"
 #include "conn-aliasing.h"
 #include "conn-avatars.h"
 #include "conn-presence.h"
@@ -1265,6 +1266,7 @@ connection_shut_down (TpBaseConnection *base)
       tp_base_connection_finish_shutdown (base);
     }
 }
+
 
 /**
  * _gabble_connection_signal_own_presence:

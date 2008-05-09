@@ -713,7 +713,9 @@ gabble_media_channel_get_interfaces (TpSvcChannel *iface,
                                      DBusGMethodInvocation *context)
 {
   const gchar *interfaces[] = {
+#ifdef WITH_CALL_STATE
       TP_IFACE_CHANNEL_INTERFACE_CALL_STATE,
+#endif
       TP_IFACE_CHANNEL_INTERFACE_GROUP,
       GABBLE_IFACE_CHANNEL_INTERFACE_HOLD,
       TP_IFACE_CHANNEL_INTERFACE_MEDIA_SIGNALLING,

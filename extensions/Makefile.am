@@ -42,7 +42,7 @@ _gen/all.xml: all.xml $(wildcard *.xml) Makefile.am
 extensions.html: _gen/all.xml $(tools_dir)/doc-generator.xsl Makefile.am
 	$(XSLTPROC) $(XSLTPROCFLAGS) \
 		$(tools_dir)/doc-generator.xsl \
-		$(srcdir)/all.xml > $@
+		$< > $@
 
 _gen/svc.c _gen/svc.h: _gen/all.xml $(tools_dir)/glib-ginterface-gen.py \
 	Makefile.am

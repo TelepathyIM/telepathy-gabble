@@ -54,7 +54,7 @@ struct _dataform {
 
 
 static gint
-feature_strcmp (gconstpointer a, gconstpointer b)
+char_cmp (gconstpointer a, gconstpointer b)
 {
   gchar *left = *(gchar **) a;
   gchar *right = *(gchar **) b;
@@ -130,8 +130,8 @@ gabble_presence_compute_xep0115_hash (
   unsigned int i, j, k;
   gchar *encoded;
 
-  g_ptr_array_sort (identities, feature_strcmp);
-  g_ptr_array_sort (features, feature_strcmp);
+  g_ptr_array_sort (identities, char_cmp);
+  g_ptr_array_sort (features, char_cmp);
   g_ptr_array_sort (dataforms, dataforms_cmp);
 
   s = g_string_new ("");
@@ -150,7 +150,9 @@ gabble_presence_compute_xep0115_hash (
 
   for (i = 0 ; i < dataforms->len ; i++)
     {
-      struct _dataform *form = g_ptr_array_index (features, i);
+      struct _dataform *form = g_ptr_array_index (dataforms, i);
+
+      g_assert (form->form_type != NULL);
 
       s = g_string_append (s, form->form_type);
       s = g_string_append (s, "<");
@@ -164,7 +166,7 @@ gabble_presence_compute_xep0115_hash (
           s = g_string_append (s, field->fieldname);
           s = g_string_append (s, "<");
 
-          g_ptr_array_sort (field->values, fields_cmp);
+          g_ptr_array_sort (field->values, char_cmp);
 
           for (k = 0 ; k < field->values->len ; k++)
             {
@@ -251,6 +253,8 @@ gabble_presence_compute_xep0115_hash_from_lm_node (LmMessageNode *node)
             continue;
 
           form = g_slice_new0 (struct _dataform);
+          form->form_type = NULL;
+          form->fields = g_ptr_array_new ();
 
           for (x_child = child->children;
                NULL != x_child;
@@ -269,6 +273,8 @@ gabble_presence_compute_xep0115_hash_from_lm_node (LmMessageNode *node)
                 continue;
 
               field = g_slice_new0 (struct _dataform_field);
+              field->values = g_ptr_array_new ();
+              field->fieldname = g_strdup (var);
 
               for (value_child = x_child->children;
                    NULL != value_child;
@@ -279,13 +285,18 @@ gabble_presence_compute_xep0115_hash_from_lm_node (LmMessageNode *node)
                   if (! g_str_equal (value_child->name, "value"))
                     continue;
 
+                  content = lm_message_node_get_value (value_child);
+
                   if (g_str_equal (var, "FORM_TYPE"))
                     {
-                      form->form_type = g_strdup (var);
+                      /* If the stanza is correctly formed, there is only one
+                       * FORM_TYPE and this check is useless. Otherwise, just
+                       * use the first one */
+                      if (form->form_type == NULL)
+                        form->form_type = g_strdup (content);
                     }
                   else
                     {
-                      content = lm_message_node_get_value (value_child);
                       g_ptr_array_add (field->values,
                           (gpointer) g_strdup (content));
                     }
@@ -293,6 +304,10 @@ gabble_presence_compute_xep0115_hash_from_lm_node (LmMessageNode *node)
 
               g_ptr_array_add (form->fields, (gpointer) field);
             }
+
+          /* this should not happen if the stanza is correctly formed. */
+          if (form->form_type == NULL)
+            form->form_type = g_strdup ("");
 
           g_ptr_array_add (dataforms, (gpointer) form);
         }

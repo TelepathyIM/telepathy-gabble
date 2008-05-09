@@ -23,6 +23,8 @@ libgabble_convenience_la_our_sources = \
     base64.c \
     capabilities.h \
     capabilities.c \
+    caps-hash.h \
+    caps-hash.c \
     bytestream-factory.h \
     bytestream-factory.c \
     bytestream-ibb.h \

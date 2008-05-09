@@ -30,6 +30,7 @@ be enough */
 
 #include <telepathy-glib/intset.h>
 
+#include "caps-hash.h"
 #include "debug.h"
 #include "disco.h" /* \o\ \o/ /o/ */
 #include "namespaces.h"

@@ -571,6 +571,43 @@ gabble_presence_compute_xep0115_hash (
   return encoded;
 }
 
+static void
+_free_field (gpointer data, gpointer user_data)
+{
+  struct _dataform_field *field = data;
+
+  g_free (field->fieldname);
+  g_ptr_array_foreach (field->values, (GFunc) g_free, NULL);
+
+  g_slice_free1 (sizeof (struct _dataform_field), field);
+}
+
+static void
+_free_form (gpointer data, gpointer user_data)
+{
+  struct _dataform *form = data;
+
+  g_free (form->form_type);
+
+  g_ptr_array_foreach (form->fields, (GFunc) _free_field, NULL);
+
+  g_slice_free1 (sizeof (struct _dataform), form);
+}
+
+static void
+gabble_presence_free_xep0115_hash (
+    GPtrArray *features,
+    GPtrArray *identities,
+    GPtrArray *dataforms)
+{
+  g_ptr_array_foreach (features, (GFunc) g_free, NULL);
+  g_ptr_array_foreach (identities, (GFunc) g_free, NULL);
+  g_ptr_array_foreach (dataforms, (GFunc) _free_form, NULL);
+
+  g_ptr_array_free (features, TRUE);
+  g_ptr_array_free (identities, TRUE);
+  g_ptr_array_free (dataforms, TRUE);
+}
 
 /**
  *
@@ -690,10 +727,7 @@ gabble_presence_compute_xep0115_hash_from_lm_node (LmMessageNode *node)
 
   str = gabble_presence_compute_xep0115_hash (features, identities, dataforms);
 
-  g_ptr_array_free (features, TRUE);
-  g_ptr_array_free (identities, TRUE);
-  g_ptr_array_free (dataforms, TRUE);
-  /* TODO: also free content of dataforms */
+  gabble_presence_free_xep0115_hash (features, identities, dataforms);
 
   return str;
 }
@@ -714,19 +748,18 @@ gabble_presence_compute_xep0115_hash_from_self_presence (GabbleConnection *self)
   for (i = features_list; NULL != i; i = i->next)
     {
       const Feature *feat = (const Feature *) i->data;
-      g_ptr_array_add (features, (gpointer) feat->ns);
+      g_ptr_array_add (features, (gpointer) g_strdup (feat->ns));
     }
 
   /* XEP-0030 requires at least 1 identity. We don't need more. */
-  g_ptr_array_add (features, (gpointer) "client/pc//" PACKAGE_STRING);
+  g_ptr_array_add (identities,
+      (gpointer) g_strdup ("client/pc//" PACKAGE_STRING));
 
   /* Gabble does not use dataforms, let 'dataforms' be empty */
 
   str = gabble_presence_compute_xep0115_hash (features, identities, dataforms);
 
-  g_ptr_array_free (features, TRUE);
-  g_ptr_array_free (identities, TRUE);
-  g_ptr_array_free (dataforms, TRUE);
+  gabble_presence_free_xep0115_hash (features, identities, dataforms);
   g_slist_free (features_list);
 
   return str;

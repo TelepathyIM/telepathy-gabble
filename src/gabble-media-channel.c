@@ -28,7 +28,6 @@
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
 #include "debug.h"
-#include "extensions/extensions.h" /* for Hold */
 #include "gabble-connection.h"
 #include "gabble-media-session.h"
 #include "presence.h"
@@ -81,7 +80,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMediaChannel, gabble_media_channel,
     MAYBE_CALL_STATE ();
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
       tp_group_mixin_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_INTERFACE_HOLD,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_HOLD,
       hold_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_MEDIA_SIGNALLING,
       media_signalling_iface_init);
@@ -139,8 +138,8 @@ struct _GabbleMediaChannelPrivate
 
   guint next_stream_id;
 
-  GabbleLocalHoldState hold_state;
-  GabbleLocalHoldStateReason hold_state_reason;
+  TpLocalHoldState hold_state;
+  TpLocalHoldStateReason hold_state_reason;
 
   gboolean closed:1;
   gboolean dispose_has_run:1;
@@ -717,7 +716,7 @@ gabble_media_channel_get_interfaces (TpSvcChannel *iface,
       TP_IFACE_CHANNEL_INTERFACE_CALL_STATE,
 #endif
       TP_IFACE_CHANNEL_INTERFACE_GROUP,
-      GABBLE_IFACE_CHANNEL_INTERFACE_HOLD,
+      TP_IFACE_CHANNEL_INTERFACE_HOLD,
       TP_IFACE_CHANNEL_INTERFACE_MEDIA_SIGNALLING,
       TP_IFACE_PROPERTIES_INTERFACE,
       NULL
@@ -1405,48 +1404,48 @@ stream_hold_state_changed (GabbleMediaStream *stream G_GNUC_UNUSED,
     {
       /* Move to state HELD */
 
-      if (priv->hold_state == GABBLE_LOCAL_HOLD_STATE_HELD)
+      if (priv->hold_state == TP_LOCAL_HOLD_STATE_HELD)
         {
           /* nothing changed */
           return;
         }
-      else if (priv->hold_state == GABBLE_LOCAL_HOLD_STATE_PENDING_UNHOLD)
+      else if (priv->hold_state == TP_LOCAL_HOLD_STATE_PENDING_UNHOLD)
         {
           /* This can happen if the user asks us to hold, then changes their
            * mind. We make no particular guarantees about stream states when
            * in PENDING_UNHOLD state, so keep claiming to be in that state */
           return;
         }
-      else if (priv->hold_state == GABBLE_LOCAL_HOLD_STATE_PENDING_HOLD)
+      else if (priv->hold_state == TP_LOCAL_HOLD_STATE_PENDING_HOLD)
         {
           /* We wanted to hold, and indeed we have. Yay! Keep whatever
            * reason code we used for going to PENDING_HOLD */
-          priv->hold_state = GABBLE_LOCAL_HOLD_STATE_HELD;
+          priv->hold_state = TP_LOCAL_HOLD_STATE_HELD;
         }
       else
         {
           /* We were previously UNHELD. So why have we gone on hold now? */
           DEBUG ("Unexpectedly entered HELD state!");
-          priv->hold_state = GABBLE_LOCAL_HOLD_STATE_HELD;
-          priv->hold_state_reason = GABBLE_LOCAL_HOLD_STATE_REASON_NONE;
+          priv->hold_state = TP_LOCAL_HOLD_STATE_HELD;
+          priv->hold_state_reason = TP_LOCAL_HOLD_STATE_REASON_NONE;
         }
     }
   else if (any_held)
     {
-      if (priv->hold_state == GABBLE_LOCAL_HOLD_STATE_UNHELD)
+      if (priv->hold_state == TP_LOCAL_HOLD_STATE_UNHELD)
         {
           /* The streaming client has spontaneously changed its stream
            * state. Why? We just don't know */
           DEBUG ("Unexpectedly entered PENDING_UNHOLD state!");
-          priv->hold_state = GABBLE_LOCAL_HOLD_STATE_PENDING_UNHOLD;
-          priv->hold_state_reason = GABBLE_LOCAL_HOLD_STATE_REASON_NONE;
+          priv->hold_state = TP_LOCAL_HOLD_STATE_PENDING_UNHOLD;
+          priv->hold_state_reason = TP_LOCAL_HOLD_STATE_REASON_NONE;
         }
-      else if (priv->hold_state == GABBLE_LOCAL_HOLD_STATE_HELD)
+      else if (priv->hold_state == TP_LOCAL_HOLD_STATE_HELD)
         {
           /* Likewise */
           DEBUG ("Unexpectedly entered PENDING_HOLD state!");
-          priv->hold_state = GABBLE_LOCAL_HOLD_STATE_PENDING_HOLD;
-          priv->hold_state_reason = GABBLE_LOCAL_HOLD_STATE_REASON_NONE;
+          priv->hold_state = TP_LOCAL_HOLD_STATE_PENDING_HOLD;
+          priv->hold_state_reason = TP_LOCAL_HOLD_STATE_REASON_NONE;
         }
       else
         {
@@ -1462,34 +1461,34 @@ stream_hold_state_changed (GabbleMediaStream *stream G_GNUC_UNUSED,
     {
       /* Move to state UNHELD */
 
-      if (priv->hold_state == GABBLE_LOCAL_HOLD_STATE_UNHELD)
+      if (priv->hold_state == TP_LOCAL_HOLD_STATE_UNHELD)
         {
           /* nothing changed */
           return;
         }
-      else if (priv->hold_state == GABBLE_LOCAL_HOLD_STATE_PENDING_HOLD)
+      else if (priv->hold_state == TP_LOCAL_HOLD_STATE_PENDING_HOLD)
         {
           /* This can happen if the user asks us to unhold, then changes their
            * mind. We make no particular guarantees about stream states when
            * in PENDING_HOLD state, so keep claiming to be in that state */
           return;
         }
-      else if (priv->hold_state == GABBLE_LOCAL_HOLD_STATE_PENDING_UNHOLD)
+      else if (priv->hold_state == TP_LOCAL_HOLD_STATE_PENDING_UNHOLD)
         {
           /* We wanted to hold, and indeed we have. Yay! Keep whatever
            * reason code we used for going to PENDING_UNHOLD */
-          priv->hold_state = GABBLE_LOCAL_HOLD_STATE_UNHELD;
+          priv->hold_state = TP_LOCAL_HOLD_STATE_UNHELD;
         }
       else
         {
           /* We were previously HELD. So why have we gone off hold now? */
           DEBUG ("Unexpectedly entered UNHELD state!");
-          priv->hold_state = GABBLE_LOCAL_HOLD_STATE_UNHELD;
-          priv->hold_state_reason = GABBLE_LOCAL_HOLD_STATE_REASON_NONE;
+          priv->hold_state = TP_LOCAL_HOLD_STATE_UNHELD;
+          priv->hold_state_reason = TP_LOCAL_HOLD_STATE_REASON_NONE;
         }
     }
 
-  gabble_svc_channel_interface_hold_emit_hold_state_changed (self,
+  tp_svc_channel_interface_hold_emit_hold_state_changed (self,
       priv->hold_state, priv->hold_state_reason);
 }
 
@@ -1505,17 +1504,16 @@ stream_unhold_failed (GabbleMediaStream *stream,
   DEBUG ("%p: %p", self, stream);
 
   /* Unholding failed - let's roll back to Hold state */
-  priv->hold_state = GABBLE_LOCAL_HOLD_STATE_PENDING_HOLD;
-  priv->hold_state_reason =
-      GABBLE_LOCAL_HOLD_STATE_REASON_RESOURCE_NOT_AVAILABLE;
-  gabble_svc_channel_interface_hold_emit_hold_state_changed (self,
+  priv->hold_state = TP_LOCAL_HOLD_STATE_PENDING_HOLD;
+  priv->hold_state_reason = TP_LOCAL_HOLD_STATE_REASON_RESOURCE_NOT_AVAILABLE;
+  tp_svc_channel_interface_hold_emit_hold_state_changed (self,
       priv->hold_state, priv->hold_state_reason);
 
   /* The stream's state may have changed from unheld to held, so re-poll.
    * It's possible that all streams are now held, in which case we can stop. */
   stream_hold_state_changed (stream, NULL, self);
 
-  if (priv->hold_state == GABBLE_LOCAL_HOLD_STATE_HELD)
+  if (priv->hold_state == TP_LOCAL_HOLD_STATE_HELD)
     return;
 
   /* There should be no need to notify the peer, who already thinks they're
@@ -1731,60 +1729,60 @@ gabble_media_channel_get_call_states (TpSvcChannelInterfaceCallState *iface,
 #endif
 
 static void
-gabble_media_channel_get_hold_state (GabbleSvcChannelInterfaceHold *iface,
+gabble_media_channel_get_hold_state (TpSvcChannelInterfaceHold *iface,
                                      DBusGMethodInvocation *context)
 {
   GabbleMediaChannel *self = (GabbleMediaChannel *) iface;
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
 
-  gabble_svc_channel_interface_hold_return_from_get_hold_state (context,
+  tp_svc_channel_interface_hold_return_from_get_hold_state (context,
       priv->hold_state, priv->hold_state_reason);
 }
 
 
 static void
-gabble_media_channel_request_hold (GabbleSvcChannelInterfaceHold *iface,
+gabble_media_channel_request_hold (TpSvcChannelInterfaceHold *iface,
                                    gboolean hold,
                                    DBusGMethodInvocation *context)
 {
   GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
   guint i;
-  GabbleLocalHoldState old_state = priv->hold_state;
+  TpLocalHoldState old_state = priv->hold_state;
 
   DEBUG ("%p: RequestHold(%u)", self, !!hold);
 
   if (hold)
     {
-      if (priv->hold_state == GABBLE_LOCAL_HOLD_STATE_HELD)
+      if (priv->hold_state == TP_LOCAL_HOLD_STATE_HELD)
         {
           DEBUG ("No-op");
-          gabble_svc_channel_interface_hold_return_from_request_hold (context);
+          tp_svc_channel_interface_hold_return_from_request_hold (context);
           return;
         }
 
       inform_peer_of_hold (self);
 
-      priv->hold_state = GABBLE_LOCAL_HOLD_STATE_PENDING_HOLD;
+      priv->hold_state = TP_LOCAL_HOLD_STATE_PENDING_HOLD;
     }
   else
     {
-      if (priv->hold_state == GABBLE_LOCAL_HOLD_STATE_UNHELD)
+      if (priv->hold_state == TP_LOCAL_HOLD_STATE_UNHELD)
         {
           DEBUG ("No-op");
-          gabble_svc_channel_interface_hold_return_from_request_hold (context);
+          tp_svc_channel_interface_hold_return_from_request_hold (context);
           return;
         }
 
-      priv->hold_state = GABBLE_LOCAL_HOLD_STATE_PENDING_UNHOLD;
+      priv->hold_state = TP_LOCAL_HOLD_STATE_PENDING_UNHOLD;
     }
 
   if (old_state != priv->hold_state ||
-      priv->hold_state_reason != GABBLE_LOCAL_HOLD_STATE_REASON_REQUESTED)
+      priv->hold_state_reason != TP_LOCAL_HOLD_STATE_REASON_REQUESTED)
     {
-      gabble_svc_channel_interface_hold_emit_hold_state_changed (self,
-          priv->hold_state, GABBLE_LOCAL_HOLD_STATE_REASON_REQUESTED);
-      priv->hold_state_reason = GABBLE_LOCAL_HOLD_STATE_REASON_REQUESTED;
+      tp_svc_channel_interface_hold_emit_hold_state_changed (self,
+          priv->hold_state, TP_LOCAL_HOLD_STATE_REASON_REQUESTED);
+      priv->hold_state_reason = TP_LOCAL_HOLD_STATE_REASON_REQUESTED;
     }
 
   /* Tell streaming client to release or reacquire resources */
@@ -1794,7 +1792,7 @@ gabble_media_channel_request_hold (GabbleSvcChannelInterfaceHold *iface,
       gabble_media_stream_hold (g_ptr_array_index (priv->streams, i), hold);
     }
 
-  gabble_svc_channel_interface_hold_return_from_request_hold (context);
+  tp_svc_channel_interface_hold_return_from_request_hold (context);
 }
 
 
@@ -1857,9 +1855,9 @@ static void
 hold_iface_init (gpointer g_iface,
                  gpointer iface_data G_GNUC_UNUSED)
 {
-  GabbleSvcChannelInterfaceHoldClass *klass = g_iface;
+  TpSvcChannelInterfaceHoldClass *klass = g_iface;
 
-#define IMPLEMENT(x) gabble_svc_channel_interface_hold_implement_##x (\
+#define IMPLEMENT(x) tp_svc_channel_interface_hold_implement_##x (\
     klass, gabble_media_channel_##x)
   IMPLEMENT(get_hold_state);
   IMPLEMENT(request_hold);

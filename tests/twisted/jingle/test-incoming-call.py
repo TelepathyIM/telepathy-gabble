@@ -39,6 +39,8 @@ def test(q, bus, conn, stream):
 
     jt.send_remote_disco_reply(event.stanza)
 
+    remote_handle = conn.RequestHandles(1, ["foo@bar.com/Foo"])[0]
+
     # SCENARIO 1 - We reject incoming call
 
     # Remote end calls us
@@ -51,9 +53,9 @@ def test(q, bus, conn, stream):
     session_handler = make_channel_proxy(conn, e.args[0], 'Media.SessionHandler')
     session_handler.Ready()
 
-    # We're pending
+    # We're pending because of remote_handle
     e = q.expect('dbus-signal', signal='MembersChanged',
-             args=[u'', [], [], [1L], [], 0, 0])
+             args=[u'', [], [], [1L], [], remote_handle, 0])
 
     media_chan = make_channel_proxy(conn, tp_path_prefix + e.path, 'Channel.Interface.Group')
 
@@ -77,9 +79,9 @@ def test(q, bus, conn, stream):
     session_handler = make_channel_proxy(conn, e.args[0], 'Media.SessionHandler')
     session_handler.Ready()
 
-    # We're pending
+    # We're pending because of remote_handle
     e = q.expect('dbus-signal', signal='MembersChanged',
-             args=[u'', [], [], [1L], [], 0, 0])
+             args=[u'', [], [], [1L], [], remote_handle, 0])
 
     media_chan = make_channel_proxy(conn, tp_path_prefix + e.path, 'Channel.Interface.Group')
 

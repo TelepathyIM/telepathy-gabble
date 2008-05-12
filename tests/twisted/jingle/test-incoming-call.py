@@ -100,6 +100,10 @@ def test(q, bus, conn, stream):
 
     stream_handler = make_channel_proxy(conn, e.args[0], 'Media.StreamHandler')
 
+    # We are now in members too
+    e = q.expect('dbus-signal', signal='MembersChanged',
+             args=[u'', [1L], [], [], [], 0, 0])
+
     stream_handler.NewNativeCandidate("fake", jt.get_remote_transports_dbus())
     stream_handler.Ready(jt.get_audio_codecs_dbus())
     stream_handler.StreamState(2)

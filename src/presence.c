@@ -465,4 +465,3 @@ gabble_presence_dump (GabblePresence *presence)
 
   return g_string_free (ret, FALSE);
 }
-

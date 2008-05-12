@@ -90,7 +90,6 @@ LmMessage *gabble_presence_as_message (GabblePresence *presence,
     const gchar *resource);
 gchar *gabble_presence_dump (GabblePresence *presence);
 
-
 G_END_DECLS
 
 #endif /* __GABBLE_PRESENCE_H__ */

@@ -262,7 +262,6 @@ gabble_presence_compute_xep0115_hash_from_lm_node (LmMessageNode *node)
             {
               const gchar *var;
               LmMessageNode *value_child;
-              struct _dataform_field *field;
 
               if (! g_str_equal (x_child->name, "field"))
                 continue;
@@ -272,37 +271,51 @@ gabble_presence_compute_xep0115_hash_from_lm_node (LmMessageNode *node)
               if (NULL == var)
                 continue;
 
-              field = g_slice_new0 (struct _dataform_field);
-              field->values = g_ptr_array_new ();
-              field->fieldname = g_strdup (var);
-
-              for (value_child = x_child->children;
-                   NULL != value_child;
-                   value_child = value_child->next)
+              if (g_str_equal (var, "FORM_TYPE"))
                 {
-                  const gchar *content;
-
-                  if (! g_str_equal (value_child->name, "value"))
-                    continue;
-
-                  content = lm_message_node_get_value (value_child);
-
-                  if (g_str_equal (var, "FORM_TYPE"))
+                  for (value_child = x_child->children;
+                       NULL != value_child;
+                       value_child = value_child->next)
                     {
+                      const gchar *content;
+
+                      if (! g_str_equal (value_child->name, "value"))
+                        continue;
+
+                      content = lm_message_node_get_value (value_child);
+
                       /* If the stanza is correctly formed, there is only one
                        * FORM_TYPE and this check is useless. Otherwise, just
                        * use the first one */
                       if (form->form_type == NULL)
                         form->form_type = g_strdup (content);
                     }
-                  else
+                }
+              else
+                {
+                  struct _dataform_field *field = NULL;
+
+                  field = g_slice_new0 (struct _dataform_field);
+                  field->values = g_ptr_array_new ();
+                  field->fieldname = g_strdup (var);
+
+                  for (value_child = x_child->children;
+                       NULL != value_child;
+                       value_child = value_child->next)
                     {
+                      const gchar *content;
+
+                      if (! g_str_equal (value_child->name, "value"))
+                        continue;
+
+                      content = lm_message_node_get_value (value_child);
+
                       g_ptr_array_add (field->values,
                           (gpointer) g_strdup (content));
                     }
-                }
 
-              g_ptr_array_add (form->fields, (gpointer) field);
+                    g_ptr_array_add (form->fields, (gpointer) field);
+                }
             }
 
           /* this should not happen if the stanza is correctly formed. */

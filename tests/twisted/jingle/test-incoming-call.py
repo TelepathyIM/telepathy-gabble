@@ -46,6 +46,10 @@ def test(q, bus, conn, stream):
     # Remote end calls us
     jt.incoming_call()
 
+    # The caller is in members
+    e = q.expect('dbus-signal', signal='MembersChanged',
+             args=[u'', [remote_handle], [], [], [], 0, 0])
+
     # S-E gets notified about new session handler, and calls Ready on it
     e = q.expect('dbus-signal', signal='NewSessionHandler')
     assert e.args[1] == 'rtp'
@@ -71,6 +75,10 @@ def test(q, bus, conn, stream):
 
     # Remote end calls us
     jt.incoming_call()
+
+    # The caller is in members
+    e = q.expect('dbus-signal', signal='MembersChanged',
+             args=[u'', [remote_handle], [], [], [], 0, 0])
 
     # S-E gets notified about new session handler, and calls Ready on it
     e = q.expect('dbus-signal', signal='NewSessionHandler')

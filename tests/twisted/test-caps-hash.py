@@ -10,8 +10,8 @@ This test changes the caps several times:
   *bogus* hash. Check that 'CapabilitiesChanged' is *not* fired
 - Change presence *not* to handle audio calls, using XEP-0115-v1.5, with a
   *good* hash. Check that 'CapabilitiesChanged' *is* fired
-- Change presence to handle audio calls, using XEP-0115-v1.5. Check that
-  'CapabilitiesChanged' is fired
+- Change presence to handle audio calls, using XEP-0115-v1.5, with a XEP-0128
+  dataform. Check that 'CapabilitiesChanged' is fired
 """
 
 import dbus
@@ -152,7 +152,7 @@ def _test(q, bus, conn, stream, contact, contact_handle, client):
     presence = make_presence(contact, None, 'hello')
     c = presence.addElement(('http://jabber.org/protocol/caps', 'c'))
     c['node'] = client
-    c['ver'] = 'JpaYgiKL0y4fUOCTwN3WLGpaftM=' # good hash
+    c['ver'] = 'CzO+nkbflbxu1pgzOQSIi8gOyDc=' # good hash
     c['hash'] = 'sha-1'
     stream.send(presence)
 
@@ -175,6 +175,26 @@ def _test(q, bus, conn, stream, contact, contact_handle, client):
     feature['var'] = 'http://jabber.org/protocol/jingle/description/audio'
     feature = query.addElement('feature')
     feature['var'] = 'http://www.google.com/transport/p2p'
+
+    query.addRawXml("""
+<x type='result' xmlns='jabber:x:data'>
+<field var='FORM_TYPE' type='hidden'>
+<value>urn:xmpp:dataforms:softwareinfo</value>
+</field>
+<field var='software'>
+<value>A Fake Client with Twisted</value>
+</field>
+<field var='software_version'>
+<value>5.11.2-svn-20080512</value>
+</field>
+<field var='os'>
+<value>Debian GNU/Linux unstable (sid) unstable sid</value>
+</field>
+<field var='os_version'>
+<value>2.6.24-1-amd64</value>
+</field>
+</x>
+    """)
     stream.send(result)
 
     # we can now do audio calls

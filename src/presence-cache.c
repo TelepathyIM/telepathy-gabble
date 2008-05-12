@@ -215,7 +215,8 @@ capability_info_free (CapabilityInfo *info)
 
 static guint
 capability_info_recvd (GabblePresenceCache *cache, const gchar *node,
-        TpHandle handle, GabblePresenceCapabilities caps)
+        TpHandle handle, GabblePresenceCapabilities caps,
+        guint trust_inc)
 {
   CapabilityInfo *info = capability_info_get (cache, node, caps);
 
@@ -230,7 +231,7 @@ capability_info_recvd (GabblePresenceCache *cache, const gchar *node,
   if (!tp_intset_is_member (info->guys, handle))
     {
       tp_intset_add (info->guys, handle);
-      info->trust++;
+      info->trust += trust_inc;
     }
 
   return info->trust;
@@ -836,11 +837,13 @@ _caps_disco_cb (GabbleDisco *disco,
           /* TODO: send queries for waiters? */
           goto OUT;
         }
-        trust = CAPABILITY_BUNDLE_ENOUGH_TRUST;
+
+      trust = capability_info_recvd (cache, node, handle, caps,
+          CAPABILITY_BUNDLE_ENOUGH_TRUST);
     }
   else
     {
-      trust = capability_info_recvd (cache, node, handle, caps);
+      trust = capability_info_recvd (cache, node, handle, caps, 1);
     }
 
   for (i = waiters; NULL != i;)

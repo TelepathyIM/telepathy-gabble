@@ -119,7 +119,7 @@ gabble_presence_free_xep0115_hash (
 }
 
 static gchar *
-gabble_presence_compute_xep0115_hash (
+caps_hash_compute (
     GPtrArray *features,
     GPtrArray *identities,
     GPtrArray *dataforms)
@@ -191,7 +191,7 @@ gabble_presence_compute_xep0115_hash (
  * Returns: the hash. The called must free the returned hash with g_free().
  */
 gchar *
-gabble_presence_compute_xep0115_hash_from_lm_node (LmMessageNode *node)
+caps_hash_compute_from_lm_node (LmMessageNode *node)
 {
   GPtrArray *features = g_ptr_array_new ();
   GPtrArray *identities = g_ptr_array_new ();
@@ -326,7 +326,7 @@ gabble_presence_compute_xep0115_hash_from_lm_node (LmMessageNode *node)
         }
     }
 
-  str = gabble_presence_compute_xep0115_hash (features, identities, dataforms);
+  str = caps_hash_compute (features, identities, dataforms);
 
   gabble_presence_free_xep0115_hash (features, identities, dataforms);
 
@@ -340,7 +340,7 @@ gabble_presence_compute_xep0115_hash_from_lm_node (LmMessageNode *node)
  * Returns: the hash. The called must free the returned hash with g_free().
  */
 gchar *
-gabble_presence_compute_xep0115_hash_from_self_presence (GabbleConnection *self)
+caps_hash_compute_from_self_presence (GabbleConnection *self)
 {
   GabblePresence *presence = self->self_presence;
   GSList *features_list = capabilities_get_features (presence->caps);
@@ -363,7 +363,7 @@ gabble_presence_compute_xep0115_hash_from_self_presence (GabbleConnection *self)
 
   /* Gabble does not use dataforms, let 'dataforms' be empty */
 
-  str = gabble_presence_compute_xep0115_hash (features, identities, dataforms);
+  str = caps_hash_compute (features, identities, dataforms);
 
   gabble_presence_free_xep0115_hash (features, identities, dataforms);
   g_slist_free (features_list);

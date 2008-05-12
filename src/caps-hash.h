@@ -24,8 +24,8 @@
 #include <loudmouth/loudmouth.h>
 #include "gabble-connection.h"
 
-gchar *gabble_presence_compute_xep0115_hash_from_lm_node (LmMessageNode *node);
-gchar *gabble_presence_compute_xep0115_hash_from_self_presence (
+gchar *caps_hash_compute_from_lm_node (LmMessageNode *node);
+gchar *caps_hash_compute_from_self_presence (
     GabbleConnection *self);
 
 #endif /* __CAPS_HASH_H__ */

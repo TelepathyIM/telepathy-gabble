@@ -826,8 +826,7 @@ _caps_disco_cb (GabbleDisco *disco,
     {
       const gchar *computed_hash;
 
-      computed_hash =
-          gabble_presence_compute_xep0115_hash_from_lm_node (query_result);
+      computed_hash = caps_hash_compute_from_lm_node (query_result);
 
       if (! g_str_equal (waiter_self->ver, computed_hash))
         {

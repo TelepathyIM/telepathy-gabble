@@ -1327,7 +1327,7 @@ _gabble_connection_signal_own_presence (GabbleConnection *self, GError **error)
   g_hash_table_destroy (bundles);
 
   /* XEP-0115 version 1.5 uses a verification string in the 'ver' attribute */
-  caps_hash = gabble_presence_compute_xep0115_hash_from_self_presence (self);
+  caps_hash = caps_hash_compute_from_self_presence (self);
   node = lm_message_node_add_child (node, "c", NULL);
   lm_message_node_set_attributes (
     node,
@@ -1508,7 +1508,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
 
   /* Every entity MUST have at least one identity (XEP-0030). Gabble publishs
    * one identity. If you change the identity here, you also need to change
-   * gabble_presence_compute_xep0115_hash_from_self_presence(). */
+   * caps_hash_compute_from_self_presence(). */
   identity = lm_message_node_add_child
       (result_query, "identity", NULL);
   lm_message_node_set_attribute (identity, "category", "client");
@@ -1535,7 +1535,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
         }
     }
 
-  caps_hash = gabble_presence_compute_xep0115_hash_from_self_presence (self);
+  caps_hash = caps_hash_compute_from_self_presence (self);
   DEBUG ("caps_hash='%s'", caps_hash);
   if (NULL == node || bundle_found ||
       g_str_equal (suffix, caps_hash))

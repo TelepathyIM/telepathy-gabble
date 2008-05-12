@@ -105,7 +105,8 @@ def test(q, bus, conn, stream):
              args=[u'', [1L], [], [], [], 0, 0])
 
     # we are now both in members
-    assert media_chan.GetMembers() == [1L, remote_handle]
+    members = media_chan.GetMembers()
+    assert set(members) == set([1L, remote_handle]), members
 
     stream_handler.NewNativeCandidate("fake", jt.get_remote_transports_dbus())
     stream_handler.Ready(jt.get_audio_codecs_dbus())

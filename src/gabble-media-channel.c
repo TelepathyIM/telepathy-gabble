@@ -1314,10 +1314,12 @@ session_state_changed_cb (GabbleMediaSession *session,
 
   /* Is the peer already in members ? */
   tp_group_mixin_get_members ((GObject *) channel, &members, NULL);
+
   for (i = 0; i < members->len && !peer_in_members; i++)
     {
       peer_in_members = (g_array_index (members, TpHandle, i) == peer);
     }
+
   g_array_free (members, TRUE);
 
   if (state >= JS_STATE_PENDING_INITIATE_SENT &&

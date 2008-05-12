@@ -1299,9 +1299,6 @@ session_state_changed_cb (GabbleMediaSession *session,
   JingleSessionState state;
   TpHandle peer;
   TpIntSet *set;
-  GArray *members;
-  gboolean peer_in_members = FALSE;
-  guint i;
 
   g_object_get (session,
                 "state", &state,
@@ -1312,18 +1309,9 @@ session_state_changed_cb (GabbleMediaSession *session,
 
   tp_intset_add (set, peer);
 
-  /* Is the peer already in members ? */
-  tp_group_mixin_get_members ((GObject *) channel, &members, NULL);
-
-  for (i = 0; i < members->len && !peer_in_members; i++)
-    {
-      peer_in_members = (g_array_index (members, TpHandle, i) == peer);
-    }
-
-  g_array_free (members, TRUE);
-
   if (state >= JS_STATE_PENDING_INITIATE_SENT &&
-      state < JS_STATE_ACTIVE && !peer_in_members)
+      state < JS_STATE_ACTIVE &&
+      !tp_handle_set_is_member (mixin->members, peer))
     {
       /* The first time we send anything to the other user, they materialise
        * in remote-pending if necessary */

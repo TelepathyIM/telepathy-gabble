@@ -1506,7 +1506,9 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   DEBUG ("got disco request for node %s, caps are %x", node,
       self->self_presence->caps);
 
-  /* Every entity MUST have at least one identity (XEP-0030) */
+  /* Every entity MUST have at least one identity (XEP-0030). Gabble publishs
+   * one identity. If you change the identity here, you also need to change
+   * gabble_presence_compute_xep0115_hash_from_self_presence(). */
   identity = lm_message_node_add_child
       (result_query, "identity", NULL);
   lm_message_node_set_attribute (identity, "category", "client");

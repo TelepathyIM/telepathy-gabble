@@ -1307,7 +1307,6 @@ session_state_changed_cb (GabbleMediaSession *session,
 
   set = tp_intset_new ();
 
-  /* add the peer to the member list */
   tp_intset_add (set, peer);
 
   if (state >= JS_STATE_PENDING_INITIATE_SENT &&
@@ -1327,6 +1326,7 @@ session_state_changed_cb (GabbleMediaSession *session,
   if (state == JS_STATE_ACTIVE &&
       priv->creator == mixin->self_handle)
     {
+      /* add the peer to the member list */
       tp_group_mixin_change_members ((GObject *)channel,
           "", set, NULL, NULL, NULL, 0, 0);
 

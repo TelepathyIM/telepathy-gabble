@@ -165,7 +165,7 @@ disco_waiter_list_get_request_count (GSList *list)
 
       if (waiter->disco_requested)
         {
-          if (waiter->hash != NULL && g_str_equal (waiter->hash, "sha-1"))
+          if (!tp_strdiff (waiter->hash, "sha-1"))
             /* One waiter is enough if
              * 1. the request has a verification string
              * 2. the hash algorithm is supported
@@ -823,7 +823,7 @@ _caps_disco_cb (GabbleDisco *disco,
   /* Only 'sha-1' is mandatory to implement by XEP-0115. If the received
    * discovery response uses another hash algorithm, don't check the hash and
    * fallback to the old method. */
-  if (waiter_self->hash != NULL && g_str_equal (waiter_self->hash, "sha-1"))
+  if (!tp_strdiff (waiter_self->hash, "sha-1"))
     {
       const gchar *computed_hash;
 

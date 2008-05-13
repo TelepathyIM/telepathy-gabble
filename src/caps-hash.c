@@ -42,12 +42,16 @@
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 #include "debug.h"
 
-struct _dataform_field {
+typedef struct _DataFormField DataFormField;
+
+struct _DataFormField {
   gchar *fieldname;
   GPtrArray *values;
 };
 
-struct _dataform {
+typedef struct _DataForm DataForm;
+
+struct _DataForm {
   gchar *form_type;
   GPtrArray *fields;
 };
@@ -65,8 +69,8 @@ char_cmp (gconstpointer a, gconstpointer b)
 static gint
 fields_cmp (gconstpointer a, gconstpointer b)
 {
-  struct _dataform_field *left = *(struct _dataform_field **) a;
-  struct _dataform_field *right = *(struct _dataform_field **) b;
+  DataFormField *left = *(DataFormField **) a;
+  DataFormField *right = *(DataFormField **) b;
 
   return strcmp (left->fieldname, right->fieldname);
 }
@@ -74,8 +78,8 @@ fields_cmp (gconstpointer a, gconstpointer b)
 static gint
 dataforms_cmp (gconstpointer a, gconstpointer b)
 {
-  struct _dataform *left = *(struct _dataform **) a;
-  struct _dataform *right = *(struct _dataform **) b;
+  DataForm *left = *(DataForm **) a;
+  DataForm *right = *(DataForm **) b;
 
   return strcmp (left->form_type, right->form_type);
 }
@@ -83,24 +87,24 @@ dataforms_cmp (gconstpointer a, gconstpointer b)
 static void
 _free_field (gpointer data, gpointer user_data)
 {
-  struct _dataform_field *field = data;
+  DataFormField *field = data;
 
   g_free (field->fieldname);
   g_ptr_array_foreach (field->values, (GFunc) g_free, NULL);
 
-  g_slice_free1 (sizeof (struct _dataform_field), field);
+  g_slice_free1 (sizeof (DataFormField), field);
 }
 
 static void
 _free_form (gpointer data, gpointer user_data)
 {
-  struct _dataform *form = data;
+  DataForm *form = data;
 
   g_free (form->form_type);
 
   g_ptr_array_foreach (form->fields, _free_field, NULL);
 
-  g_slice_free1 (sizeof (struct _dataform), form);
+  g_slice_free1 (sizeof (DataForm), form);
 }
 
 static void
@@ -151,7 +155,7 @@ caps_hash_compute (
   for (i = 0 ; i < dataforms->len ; i++)
     {
       guint j;
-      struct _dataform *form = g_ptr_array_index (dataforms, i);
+      DataForm *form = g_ptr_array_index (dataforms, i);
 
       g_assert (form->form_type != NULL);
 
@@ -163,7 +167,7 @@ caps_hash_compute (
       for (j = 0 ; j < form->fields->len ; j++)
         {
           guint k;
-          struct _dataform_field *field = g_ptr_array_index (form->fields, j);
+          DataFormField *field = g_ptr_array_index (form->fields, j);
 
           g_string_append (s, field->fieldname);
           g_string_append_c (s, '<');
@@ -242,7 +246,7 @@ caps_hash_compute_from_lm_node (LmMessageNode *node)
           const gchar *xmlns;
           const gchar *type;
           LmMessageNode *x_child;
-          struct _dataform *form;
+          DataForm *form;
 
           xmlns = lm_message_node_get_attribute (child, "xmlns");
           type = lm_message_node_get_attribute (child, "type");
@@ -253,7 +257,7 @@ caps_hash_compute_from_lm_node (LmMessageNode *node)
           if (! g_str_equal (type, "result"))
             continue;
 
-          form = g_slice_new0 (struct _dataform);
+          form = g_slice_new0 (DataForm);
           form->form_type = NULL;
           form->fields = g_ptr_array_new ();
 
@@ -294,9 +298,9 @@ caps_hash_compute_from_lm_node (LmMessageNode *node)
                 }
               else
                 {
-                  struct _dataform_field *field = NULL;
+                  DataFormField *field = NULL;
 
-                  field = g_slice_new0 (struct _dataform_field);
+                  field = g_slice_new0 (DataFormField);
                   field->values = g_ptr_array_new ();
                   field->fieldname = g_strdup (var);
 

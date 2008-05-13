@@ -127,7 +127,7 @@ caps_hash_compute (
   GString *s;
   gchar *str;
   gchar sha1[SHA1_HASH_SIZE];
-  unsigned int i, j, k;
+  guint i;
   gchar *encoded;
 
   g_ptr_array_sort (identities, char_cmp);
@@ -138,49 +138,51 @@ caps_hash_compute (
 
   for (i = 0 ; i < identities->len ; i++)
     {
-      s = g_string_append (s, g_ptr_array_index (identities, i));
-      s = g_string_append (s, "<");
+      g_string_append (s, g_ptr_array_index (identities, i));
+      g_string_append_c (s, '<');
     }
 
   for (i = 0 ; i < features->len ; i++)
     {
-      s = g_string_append (s, g_ptr_array_index (features, i));
-      s = g_string_append (s, "<");
+      g_string_append (s, g_ptr_array_index (features, i));
+      g_string_append_c (s, '<');
     }
 
   for (i = 0 ; i < dataforms->len ; i++)
     {
+      guint j;
       struct _dataform *form = g_ptr_array_index (dataforms, i);
 
       g_assert (form->form_type != NULL);
 
-      s = g_string_append (s, form->form_type);
-      s = g_string_append (s, "<");
+      g_string_append (s, form->form_type);
+      g_string_append_c (s, '<');
 
       g_ptr_array_sort (form->fields, fields_cmp);
 
       for (j = 0 ; j < form->fields->len ; j++)
         {
+          guint k;
           struct _dataform_field *field = g_ptr_array_index (form->fields, j);
 
-          s = g_string_append (s, field->fieldname);
-          s = g_string_append (s, "<");
+          g_string_append (s, field->fieldname);
+          g_string_append_c (s, '<');
 
           g_ptr_array_sort (field->values, char_cmp);
 
           for (k = 0 ; k < field->values->len ; k++)
             {
-              s = g_string_append (s, g_ptr_array_index (field->values, k));
-              s = g_string_append (s, "<");
+              g_string_append (s, g_ptr_array_index (field->values, k));
+              g_string_append_c (s, '<');
             }
         }
     }
 
   str = g_string_free (s, FALSE);
-  DEBUG ("caps string: '%s'\n", str);
+  DEBUG ("caps string: '%s'", str);
   sha1_bin (str, strlen (str), (guchar *) sha1);
   encoded = base64_encode (SHA1_HASH_SIZE, sha1, FALSE);
-  DEBUG ("caps base64: '%s'\n", encoded);
+  DEBUG ("caps base64: '%s'", encoded);
 
   return encoded;
 }
@@ -223,8 +225,7 @@ caps_hash_compute_from_lm_node (LmMessageNode *node)
             xmllang = "";
 
           g_ptr_array_add (identities,
-              (gpointer) g_strdup_printf ("%s/%s/%s/%s",
-                  category, type, xmllang, name));
+              g_strdup_printf ("%s/%s/%s/%s", category, type, xmllang, name));
         }
       else if (g_str_equal (child->name, "feature"))
         {
@@ -234,7 +235,7 @@ caps_hash_compute_from_lm_node (LmMessageNode *node)
           if (NULL == var)
             continue;
 
-          g_ptr_array_add (features, (gpointer) g_strdup (var));
+          g_ptr_array_add (features, g_strdup (var));
         }
       else if (g_str_equal (child->name, "x"))
         {
@@ -310,8 +311,7 @@ caps_hash_compute_from_lm_node (LmMessageNode *node)
 
                       content = lm_message_node_get_value (value_child);
 
-                      g_ptr_array_add (field->values,
-                          (gpointer) g_strdup (content));
+                      g_ptr_array_add (field->values, g_strdup (content));
                     }
 
                     g_ptr_array_add (form->fields, (gpointer) field);
@@ -354,12 +354,11 @@ caps_hash_compute_from_self_presence (GabbleConnection *self)
   for (i = features_list; NULL != i; i = i->next)
     {
       const Feature *feat = (const Feature *) i->data;
-      g_ptr_array_add (features, (gpointer) g_strdup (feat->ns));
+      g_ptr_array_add (features, g_strdup (feat->ns));
     }
 
   /* XEP-0030 requires at least 1 identity. We don't need more. */
-  g_ptr_array_add (identities,
-      (gpointer) g_strdup ("client/pc//" PACKAGE_STRING));
+  g_ptr_array_add (identities, g_strdup ("client/pc//" PACKAGE_STRING));
 
   /* Gabble does not use dataforms, let 'dataforms' be empty */
 

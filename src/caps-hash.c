@@ -94,7 +94,7 @@ _free_field (gpointer data, gpointer user_data)
   g_free (field->field_name);
   g_ptr_array_foreach (field->values, (GFunc) g_free, NULL);
 
-  g_slice_free1 (sizeof (DataFormField), field);
+  g_slice_free (DataFormField, field);
 }
 
 static void
@@ -106,7 +106,7 @@ _free_form (gpointer data, gpointer user_data)
 
   g_ptr_array_foreach (form->fields, _free_field, NULL);
 
-  g_slice_free1 (sizeof (DataForm), form);
+  g_slice_free (DataForm, form);
 }
 
 static void

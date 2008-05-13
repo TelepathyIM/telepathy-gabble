@@ -807,7 +807,7 @@ _caps_disco_cb (GabbleDisco *disco,
     {
       DiscoWaiter *waiter;
 
-      waiter= (DiscoWaiter *) i->data;
+      waiter = (DiscoWaiter *) i->data;
       if (waiter->handle == handle)
         {
           waiter_self = waiter;

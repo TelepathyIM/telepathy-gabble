@@ -98,7 +98,7 @@ _free_form (gpointer data, gpointer user_data)
 
   g_free (form->form_type);
 
-  g_ptr_array_foreach (form->fields, (GFunc) _free_field, NULL);
+  g_ptr_array_foreach (form->fields, _free_field, NULL);
 
   g_slice_free1 (sizeof (struct _dataform), form);
 }
@@ -111,7 +111,7 @@ gabble_presence_free_xep0115_hash (
 {
   g_ptr_array_foreach (features, (GFunc) g_free, NULL);
   g_ptr_array_foreach (identities, (GFunc) g_free, NULL);
-  g_ptr_array_foreach (dataforms, (GFunc) _free_form, NULL);
+  g_ptr_array_foreach (dataforms, _free_form, NULL);
 
   g_ptr_array_free (features, TRUE);
   g_ptr_array_free (identities, TRUE);

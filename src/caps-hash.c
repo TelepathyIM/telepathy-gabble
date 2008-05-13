@@ -45,7 +45,8 @@
 typedef struct _DataFormField DataFormField;
 
 struct _DataFormField {
-  gchar *fieldname;
+  gchar *field_name;
+  /* array of strings */
   GPtrArray *values;
 };
 
@@ -53,6 +54,7 @@ typedef struct _DataForm DataForm;
 
 struct _DataForm {
   gchar *form_type;
+  /* array of DataFormField */
   GPtrArray *fields;
 };
 
@@ -72,7 +74,7 @@ fields_cmp (gconstpointer a, gconstpointer b)
   DataFormField *left = *(DataFormField **) a;
   DataFormField *right = *(DataFormField **) b;
 
-  return strcmp (left->fieldname, right->fieldname);
+  return strcmp (left->field_name, right->field_name);
 }
 
 static gint
@@ -89,7 +91,7 @@ _free_field (gpointer data, gpointer user_data)
 {
   DataFormField *field = data;
 
-  g_free (field->fieldname);
+  g_free (field->field_name);
   g_ptr_array_foreach (field->values, (GFunc) g_free, NULL);
 
   g_slice_free1 (sizeof (DataFormField), field);
@@ -169,7 +171,7 @@ caps_hash_compute (
           guint k;
           DataFormField *field = g_ptr_array_index (form->fields, j);
 
-          g_string_append (s, field->fieldname);
+          g_string_append (s, field->field_name);
           g_string_append_c (s, '<');
 
           g_ptr_array_sort (field->values, char_cmp);
@@ -302,7 +304,7 @@ caps_hash_compute_from_lm_node (LmMessageNode *node)
 
                   field = g_slice_new0 (DataFormField);
                   field->values = g_ptr_array_new ();
-                  field->fieldname = g_strdup (var);
+                  field->field_name = g_strdup (var);
 
                   for (value_child = x_child->children;
                        NULL != value_child;

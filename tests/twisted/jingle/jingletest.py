@@ -50,7 +50,11 @@ class JingleTest:
         # Default feats for remote end
         self.remote_feats = [ 'http://www.google.com/xmpp/protocol/session',
               'http://www.google.com/transport/p2p',
-              'http://jabber.org/protocol/jingle' ]
+              'http://jabber.org/protocol/jingle',
+              # was previously in bundles:
+              'http://jabber.org/protocol/jingle/description/audio',
+              'http://jabber.org/protocol/jingle/description/video',
+              'http://www.google.com/xmpp/protocol/voice/v1']
 
         # Default audio codecs for the remote end
         self.audio_codecs = [ ('GSM', 3, 8000), ('PCMA', 8, 8000), ('PCMU', 0, 8000) ]

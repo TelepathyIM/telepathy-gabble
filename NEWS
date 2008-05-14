@@ -1,3 +1,26 @@
+telepathy-gabble 0.7.6 (2008-05-14)
+===================================
+
+The "my first Gabble release" release.
+
+Requirements:
+
+* telepathy-glib >= 0.7.8 is now required
+
+Enhancements:
+
+* Implement the telepathy-glib's version of the Hold API
+
+Fixes:
+
+* fd.o #15656: fix an inconsistency in audio/video capabilities
+
+* fd.o #15422: fix generation of extensions/extensions.html
+
+* fd.o #15904: fix a regression making the caller of an incoming call in
+  the remote pending set instead of the members one.
+
+
 telepathy-gabble 0.7.5 (2008-05-05)
 ===================================
 

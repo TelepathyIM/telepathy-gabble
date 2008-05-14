@@ -23,8 +23,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* when five DIFFERENT guys report the same caps for a given bundle, it'll
-be enough */
+/* When five DIFFERENT guys report the same caps for a given bundle, it'll
+ * be enough. But if only ONE guy use the verification string (XEP-0115 v1.5),
+ * it'll be enough too.
+ */
 #define CAPABILITY_BUNDLE_ENOUGH_TRUST 5
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 

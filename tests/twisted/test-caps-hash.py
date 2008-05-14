@@ -119,6 +119,9 @@ def _test(q, bus, conn, stream, contact, contact_handle, client):
     feature['var'] = 'http://jabber.org/protocol/bogus-feature'
     stream.send(result)
 
+    # Dummy synchronous D-Bus method call
+    assert conn.InspectHandles(1, []) == []
+
     # don't receive any D-Bus signal
     assert caps_changed_flag == 0
 
@@ -134,6 +137,9 @@ def _test(q, bus, conn, stream, contact, contact_handle, client):
     query_node = xpath.queryForNodes('/iq/query', event.stanza)[0]
     assert query_node.attributes['node'] == \
         client + '#' + '0.0'
+
+    # Dummy synchronous D-Bus method call
+    assert conn.InspectHandles(1, []) == []
 
     # still don't receive any D-Bus signal
     assert caps_changed_flag == 0
@@ -156,6 +162,8 @@ def _test(q, bus, conn, stream, contact, contact_handle, client):
     c['hash'] = 'sha-1'
     stream.send(presence)
 
+    # Dummy synchronous D-Bus method call
+    assert conn.InspectHandles(1, []) == []
     assert caps_changed_flag == 0
 
     # Gabble looks up our capabilities
@@ -196,6 +204,9 @@ def _test(q, bus, conn, stream, contact, contact_handle, client):
 </x>
     """)
     stream.send(result)
+
+    # Dummy synchronous D-Bus method call
+    assert conn.InspectHandles(1, []) == []
 
     # we can now do audio calls
     assert caps_changed_flag == 0

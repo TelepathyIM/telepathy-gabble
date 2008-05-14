@@ -77,6 +77,11 @@ capabilities_fill_cache (GabblePresenceCache *cache)
       g_free (node);
     }
 
+  /* Cache this bundle from the Google Talk client as trusted. So Gabble will
+   * not send any discovery request for this bundle.
+   *
+   * XMPP does not require to cache this bundle but some old versions of
+   * Google Talk do not reply correctly to discovery requests. */
   gabble_presence_cache_add_bundle_caps (cache,
     "http://www.google.com/xmpp/client/caps#voice-v1",
     PRESENCE_CAP_GOOGLE_VOICE);

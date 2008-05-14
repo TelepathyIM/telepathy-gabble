@@ -701,8 +701,9 @@ _caps_disco_cb (GabbleDisco *disco,
   TpHandleRepoIface *contact_repo;
   gchar *full_jid = NULL;
   GabblePresenceCapabilities caps = 0;
-  guint trust;
+  guint trust, trust_inc;
   TpHandle handle = 0;
+  gboolean bad_hash = FALSE;
 
   cache = GABBLE_PRESENCE_CACHE (user_data);
   priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
@@ -748,9 +749,11 @@ _caps_disco_cb (GabbleDisco *disco,
         }
       else
         {
+          /* The contact sends us an error and we don't have any other
+           * contacts to send the discovery request on the same node. We
+           * cannot get the caps for this node. */
           DEBUG ("failed to find a suitable candidate to retry disco "
               "request for URI %s", node);
-          /* FIXME do something very clever here? */
           g_hash_table_remove (priv->disco_pending, node);
         }
 
@@ -828,24 +831,27 @@ _caps_disco_cb (GabbleDisco *disco,
   if (!tp_strdiff (waiter_self->hash, "sha-1"))
     {
       const gchar *computed_hash;
+      trust_inc = CAPABILITY_BUNDLE_ENOUGH_TRUST;
 
       computed_hash = caps_hash_compute_from_lm_node (query_result);
 
-      if (! g_str_equal (waiter_self->ver, computed_hash))
+      if (g_str_equal (waiter_self->ver, computed_hash))
+        {
+          trust = capability_info_recvd (cache, node, handle, caps, trust_inc);
+        }
+      else
         {
           /* The received reply does not match the */
           g_warning ("The announced verification string '%s' does not match "
               "our hash '%s'.", waiter_self->ver, computed_hash);
-          /* TODO: send queries for waiters? */
-          goto OUT;
+          trust = 0;
+          bad_hash = TRUE;
         }
-
-      trust = capability_info_recvd (cache, node, handle, caps,
-          CAPABILITY_BUNDLE_ENOUGH_TRUST);
     }
   else
     {
-      trust = capability_info_recvd (cache, node, handle, caps, 1);
+      trust_inc = 1;
+      trust = capability_info_recvd (cache, node, handle, caps, trust_inc);
     }
 
   for (i = waiters; NULL != i;)
@@ -861,20 +867,23 @@ _caps_disco_cb (GabbleDisco *disco,
           gpointer key;
           gpointer value;
 
-          /* trusted reply */
-          presence = gabble_presence_cache_get (cache, waiter->handle);
+          if (!bad_hash)
+            {
+              /* trusted reply */
+              presence = gabble_presence_cache_get (cache, waiter->handle);
 
-          if (presence)
-          {
-            GabblePresenceCapabilities save_caps = presence->caps;
-            DEBUG ("setting caps for %d (%s) to %d (save_caps %d)",
-                handle, jid, caps, save_caps);
-            gabble_presence_set_capabilities (presence, waiter->resource,caps,
-              waiter->serial);
-            DEBUG ("caps for %d (%s) now %d", handle, jid, presence->caps);
-            g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0,
-              waiter->handle, save_caps, presence->caps);
-          }
+              if (presence)
+              {
+                GabblePresenceCapabilities save_caps = presence->caps;
+                DEBUG ("setting caps for %d (%s) to %d (save_caps %d)",
+                    handle, jid, caps, save_caps);
+                gabble_presence_set_capabilities (presence,
+                  waiter->resource,caps, waiter->serial);
+                DEBUG ("caps for %d (%s) now %d", handle, jid, presence->caps);
+                g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0,
+                  waiter->handle, save_caps, presence->caps);
+              }
+            }
 
           tmp = i;
           i = i->next;
@@ -890,7 +899,7 @@ _caps_disco_cb (GabbleDisco *disco,
 
           disco_waiter_free (waiter);
         }
-      else if (trust + disco_waiter_list_get_request_count (waiters) - 1
+      else if (trust + disco_waiter_list_get_request_count (waiters) - trust_inc
           < CAPABILITY_BUNDLE_ENOUGH_TRUST)
         {
           /* if the possible trust, not counting this guy, is too low,

@@ -9,7 +9,7 @@ Requirements:
 
 Enhancements:
 
-* Implement the telepathy-glib's version of the Hold API
+* Implement the Hold API using telepathy-glib rather than as an extension
 
 Fixes:
 

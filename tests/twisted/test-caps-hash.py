@@ -12,6 +12,12 @@ This test changes the caps several times:
   *good* hash. Check that 'CapabilitiesChanged' *is* fired
 - Change presence to handle audio calls, using XEP-0115-v1.5, with a XEP-0128
   dataform. Check that 'CapabilitiesChanged' is fired
+This is done for 2 contacts
+
+Then, this test announce 2 contacts with the same hash.
+- Gabble must ask only once for the hash and update the caps for both contacts
+- When the caps advertised by the first contact does not match, Gabble asks
+  the second and update only the caps of the second contact
 """
 
 import dbus
@@ -55,7 +61,7 @@ def presence_add_caps(presence, ver, client, hash=None):
         c['hash'] = hash
     return presence
 
-def _test(q, bus, conn, stream, contact, contact_handle, client):
+def test_hash(q, bus, conn, stream, contact, contact_handle, client):
     global caps_changed_flag
 
     presence = make_presence(contact, None, 'hello')
@@ -209,8 +215,113 @@ def _test(q, bus, conn, stream, contact, contact_handle, client):
     assert conn.InspectHandles(1, []) == []
 
     # we can now do audio calls
-    assert caps_changed_flag == 0
     event = q.expect('dbus-signal', signal='CapabilitiesChanged')
+    assert caps_changed_flag == 1
+    caps_changed_flag = 0
+
+def test_two_clients(q, bus, conn, stream, contact1, contact2,
+        contact_handle1, contact_handle2, client, broken_hash):
+    global caps_changed_flag
+
+    presence = make_presence(contact1, None, 'hello')
+    stream.send(presence)
+
+    event = q.expect('dbus-signal', signal='PresenceUpdate',
+        args=[{contact_handle1: (0L, {u'available': {'message': 'hello'}})}])
+
+    presence = make_presence(contact2, None, 'hello')
+    stream.send(presence)
+
+    event = q.expect('dbus-signal', signal='PresenceUpdate',
+        args=[{contact_handle2: (0L, {u'available': {'message': 'hello'}})}])
+
+    # no special capabilities
+    basic_caps = [(contact_handle1, text, 3, 0)]
+    assert conn.Capabilities.GetCapabilities([contact_handle1]) == basic_caps
+    basic_caps = [(contact_handle2, text, 3, 0)]
+    assert conn.Capabilities.GetCapabilities([contact_handle2]) == basic_caps
+
+    # send updated presence with Jingle caps info
+    presence = make_presence(contact1, None, 'hello')
+    ver = 'JpaYgiKL0y4fUOCTwN3WLGpaftM='
+    presence = presence_add_caps(presence, ver, client,
+            hash='sha-1')
+    stream.send(presence)
+    presence = make_presence(contact2, None, 'hello')
+    presence = presence_add_caps(presence, ver, client,
+            hash='sha-1')
+    stream.send(presence)
+
+    # Dummy synchronous D-Bus method call
+    assert conn.InspectHandles(1, []) == []
+
+    # don't receive any D-Bus signal
+    assert caps_changed_flag == 0
+
+    # Gabble looks up our capabilities
+    event = q.expect('stream-iq', to=contact1,
+        query_ns='http://jabber.org/protocol/disco#info')
+    query_node = xpath.queryForNodes('/iq/query', event.stanza)[0]
+    assert query_node.attributes['node'] == \
+        client + '#' + ver
+
+    # send good reply
+    result = make_result_iq(stream, event.stanza)
+    query = result.firstChildElement()
+    feature = query.addElement('feature')
+    feature['var'] = 'http://jabber.org/protocol/jingle'
+    feature = query.addElement('feature')
+    feature['var'] = 'http://jabber.org/protocol/jingle/description/audio'
+    feature = query.addElement('feature')
+    feature['var'] = 'http://www.google.com/transport/p2p'
+    if broken_hash:
+        # make the hash break!
+        feature = query.addElement('feature')
+        feature['var'] = 'http://broken-feature'
+    stream.send(result)
+
+    if broken_hash:
+        # Dummy synchronous D-Bus method call
+        assert conn.InspectHandles(1, []) == []
+
+        # don't receive any D-Bus signal
+        assert caps_changed_flag == 0
+        
+        # Gabble looks up our capabilities again because the first contact
+        # failed to provide a valid hash
+        event = q.expect('stream-iq', to=contact2,
+            query_ns='http://jabber.org/protocol/disco#info')
+        query_node = xpath.queryForNodes('/iq/query', event.stanza)[0]
+        assert query_node.attributes['node'] == \
+            client + '#' + ver
+
+        # send good reply
+        result = make_result_iq(stream, event.stanza)
+        query = result.firstChildElement()
+        feature = query.addElement('feature')
+        feature['var'] = 'http://jabber.org/protocol/jingle'
+        feature = query.addElement('feature')
+        feature['var'] = 'http://jabber.org/protocol/jingle/description/audio'
+        feature = query.addElement('feature')
+        feature['var'] = 'http://www.google.com/transport/p2p'
+        stream.send(result)
+
+    # we can now do audio calls with both contacts
+    event = q.expect('dbus-signal', signal='CapabilitiesChanged',
+        args=[[(contact_handle2, sm, 0, 3, 0, 1)]])#  what are the good values?!
+    if not broken_hash:
+        # if the first contact failed to provide a good hash, it does not
+        # deserve its capabilities to be understood by Gabble!
+        event = q.expect('dbus-signal', signal='CapabilitiesChanged',
+            args=[[(contact_handle1, sm, 0, 3, 0, 1)]])#  what are the good values?!
+
+    caps_changed_flag = 0
+
+    # Dummy synchronous D-Bus method call
+    assert conn.InspectHandles(1, []) == []
+
+    # don't receive any D-Bus signal
+    assert caps_changed_flag == 0
 
 def test(q, bus, conn, stream):
     conn.Connect()
@@ -220,8 +331,15 @@ def test(q, bus, conn, stream):
     conn_caps_iface = dbus.Interface(conn, caps_iface)
     conn_caps_iface.connect_to_signal('CapabilitiesChanged', caps_changed_cb)
 
-    _test(q, bus, conn, stream, 'bob@foo.com/Foo', 2L, 'http://telepathy.freedesktop.org/fake-client')
-    _test(q, bus, conn, stream, 'bob2@foo.com/Foo', 3L, 'http://telepathy.freedesktop.org/fake-client2')
+    test_hash(q, bus, conn, stream, 'bob@foo.com/Foo', 2L, 'http://telepathy.freedesktop.org/fake-client')
+    test_hash(q, bus, conn, stream, 'bob2@foo.com/Foo', 3L, 'http://telepathy.freedesktop.org/fake-client2')
+
+    test_two_clients(q, bus, conn, stream, 'user1@example.com/Res',
+            'user2@example.com/Res', 4L, 5L,
+            'http://telepathy.freedesktop.org/fake-client3', 0)
+    test_two_clients(q, bus, conn, stream, 'user3@example.com/Res',
+            'user4@example.com/Res', 6L, 7L,
+            'http://telepathy.freedesktop.org/fake-client4', 1)
 
     conn.Disconnect()
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])

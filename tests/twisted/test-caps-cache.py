@@ -15,14 +15,6 @@ text = 'org.freedesktop.Telepathy.Channel.Type.Text'
 sm = 'org.freedesktop.Telepathy.Channel.Type.StreamedMedia'
 caps_iface = 'org.freedesktop.Telepathy.Connection.Interface.Capabilities'
 
-caps_changed_flag = 0
-
-def caps_changed_cb(dummy):
-    # Workaround to bug 9980: do not raise an error but use a flag
-    # https://bugs.freedesktop.org/show_bug.cgi?id=9980
-    global caps_changed_flag
-    caps_changed_flag = 1
-
 def make_presence(from_jid, type, status):
     presence = domish.Element((None, 'presence'))
 
@@ -46,7 +38,6 @@ def presence_add_caps(presence, ver, client, hash=None):
     return presence
 
 def _test_without_hash(q, bus, conn, stream, contact, contact_handle, client, disco):
-    global caps_changed_flag
 
     presence = make_presence(contact, None, 'hello')
     stream.send(presence)
@@ -85,13 +76,8 @@ def _test_without_hash(q, bus, conn, stream, contact, contact_handle, client, di
 
     # we can now do audio calls
     event = q.expect('dbus-signal', signal='CapabilitiesChanged')
-    caps_changed_flag = 0
-
-    # don't receive any D-Bus signal
-    assert caps_changed_flag == 0
 
 def _test_with_hash(q, bus, conn, stream, contact, contact_handle, client, disco):
-    global caps_changed_flag
 
     presence = make_presence(contact, None, 'hello')
     stream.send(presence)
@@ -152,18 +138,10 @@ def _test_with_hash(q, bus, conn, stream, contact, contact_handle, client, disco
 
     # we can now do audio calls
     event = q.expect('dbus-signal', signal='CapabilitiesChanged')
-    caps_changed_flag = 0
-
-    # don't receive any D-Bus signal
-    assert caps_changed_flag == 0
 
 def test(q, bus, conn, stream):
     conn.Connect()
     q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
-
-    # be notified when the signal CapabilitiesChanged is fired
-    conn_caps_iface = dbus.Interface(conn, caps_iface)
-    conn_caps_iface.connect_to_signal('CapabilitiesChanged', caps_changed_cb)
 
     client = 'http://telepathy.freedesktop.org/fake-client'
 

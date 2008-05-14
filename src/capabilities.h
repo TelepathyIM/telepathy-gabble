@@ -34,6 +34,13 @@
  * "voice-v1". We keep this name for compatibility.
  */
 #define BUNDLE_VOICE_V1         "voice-v1"
+
+/* The bundles "jingle-audio", "jingle-video" and "olpc1" are no more
+ * advertised in the 'ext' attribute of the presence stanza. But the following
+ * identifiers are still used in self_advertised_features to identify whether
+ * it is a fixed feature, which we always advertise. VERSION == bundle means a
+ * fixed feature.
+ */
 #define BUNDLE_JINGLE_AUDIO     "jingle-audio"
 #define BUNDLE_JINGLE_VIDEO     "jingle-video"
 #define BUNDLE_OLPC_1           "olpc1"

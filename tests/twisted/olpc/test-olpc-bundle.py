@@ -55,9 +55,6 @@ def test(q, bus, conn, stream):
     assert c_nodes is not None
     assert len(c_nodes) == 1
 
-    c_node = c_nodes[0]
-    assert c_node['ext'] == 'olpc1'
-
     # send diso request
     m = domish.Element(('', 'iq'))
     m['from'] = 'alice@jabber.laptop.org'

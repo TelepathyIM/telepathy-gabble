@@ -69,6 +69,10 @@ void
 capabilities_fill_cache (GabblePresenceCache *cache)
 {
   const Feature *feat;
+
+  /* We don't advertise bundles anymore, but we keep them in the cache. So if
+   * we speak to an old version of Gabble, we don't need to make discovery
+   * requests for theses bundles. */
   for (feat = self_advertised_features; NULL != feat->ns; feat++)
     {
       gchar *node = g_strconcat (NS_GABBLE_CAPS "#", feat->bundle, NULL);

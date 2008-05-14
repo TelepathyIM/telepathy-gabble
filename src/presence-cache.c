@@ -875,11 +875,13 @@ _caps_disco_cb (GabbleDisco *disco,
               if (presence)
               {
                 GabblePresenceCapabilities save_caps = presence->caps;
-                DEBUG ("setting caps for %d (%s) to %d (save_caps %d)",
-                    handle, jid, caps, save_caps);
+                DEBUG ("setting caps for %d (thanks to %d %s) to "
+                    "%d (save_caps %d)",
+                    waiter->handle, handle, jid, caps, save_caps);
                 gabble_presence_set_capabilities (presence,
-                  waiter->resource,caps, waiter->serial);
-                DEBUG ("caps for %d (%s) now %d", handle, jid, presence->caps);
+                    waiter->resource,caps, waiter->serial);
+                DEBUG ("caps for %d (thanks to %d %s) now %d", waiter->handle,
+                    handle, jid, presence->caps);
                 g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0,
                   waiter->handle, save_caps, presence->caps);
               }

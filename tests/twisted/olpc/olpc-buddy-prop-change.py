@@ -80,6 +80,7 @@ def test(q, bus, conn, stream):
     message = domish.Element(('jabber:client', 'message'))
     message['from'] = 'gadget.localhost'
     message['to'] = 'test@localhost'
+    message['type'] = 'notice'
 
     change = message.addElement((NS_OLPC_BUDDY, 'change'))
     change['jid'] = 'bob@localhost'
@@ -133,6 +134,7 @@ def test(q, bus, conn, stream):
     message = domish.Element(('jabber:client', 'message'))
     message['from'] = 'gadget.localhost'
     message['to'] = 'test@localhost'
+    message['type'] = 'notice'
 
     change = message.addElement((NS_OLPC_BUDDY, 'change'))
     change['jid'] = 'bob@localhost'
@@ -160,6 +162,7 @@ def test(q, bus, conn, stream):
     message = domish.Element(('jabber:client', 'message'))
     message['from'] = 'gadget.localhost'
     message['to'] = 'test@localhost'
+    message['type'] = 'notice'
 
     change = message.addElement((NS_OLPC_ACTIVITY, 'change'))
     change['activity'] = 'testactivity'

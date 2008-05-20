@@ -57,6 +57,7 @@ def test(q, bus, conn, stream):
     stream.send(reply)
 
     buddy_info_iface = dbus.Interface(conn, 'org.laptop.Telepathy.BuddyInfo')
+    buddy_iface = dbus.Interface(conn, 'org.laptop.Telepathy.Buddy')
 
     call_async(q, conn, 'RequestHandles', 1, ['bob@localhost'])
 
@@ -87,7 +88,7 @@ def test(q, bus, conn, stream):
     assert buddy['jid'] == 'bob@localhost'
 
     # send reply to the search query
-    reply = make_result_iq('stream', event.stanza)
+    reply = make_result_iq(stream, event.stanza)
     reply['from'] = 'gadget.localhost'
     reply['to'] = 'alice@localhost'
     query = xpath.queryForNodes('/iq/query', reply)[0]
@@ -104,6 +105,54 @@ def test(q, bus, conn, stream):
     props = event.value[0]
 
     assert props == {'color': '#005FE4,#00A0FF' }
+
+    # request 3 random buddies
+    call_async(q, buddy_iface, 'RequestRandom', 3)
+
+    event = q.expect('stream-iq', to='gadget.localhost',
+            query_ns=NS_OLPC_BUDDY)
+    random = xpath.queryForNodes('/iq/query/random', event.stanza)
+    assert len(random) == 1
+    assert random[0]['max'] == '3'
+
+    # reply to random query
+    reply = make_result_iq(stream, event.stanza)
+    reply['from'] = 'gadget.localhost'
+    reply['to'] = 'alice@localhost'
+    query = xpath.queryForNodes('/iq/query', reply)[0]
+    buddy = query.addElement((None, "buddy"))
+    buddy['jid'] = 'bob@localhost'
+    properties = buddy.addElement((NS_OLPC_BUDDY_PROPS, "properties"))
+    property = properties.addElement((None, "property"))
+    property['type'] = 'str'
+    property['name'] = 'color'
+    property.addContent('#005FE4,#00A0FF')
+    stream.send(reply)
+
+    event = q.expect('dbus-return', method='RequestRandom')
+    view_path = event.value[0]
+    view = bus.get_object(conn.bus_name, view_path)
+    view_iface = dbus.Interface(view, 'org.laptop.Telepathy.BuddyView')
+
+    event = q.expect('dbus-signal', signal='PropertiesChanged')
+    handle, props = event.args
+    assert conn.InspectHandles(1, [handle])[0] == 'bob@localhost'
+    assert props == {'color': '#005FE4,#00A0FF'}
+
+    event = q.expect('dbus-signal', signal='MembersChanged')
+    msg, added, removed, lp, rp, actor, reason = event.args
+    assert (removed, lp, rp) == ([], [], [])
+    assert len(added) == 1
+    handle = added[0]
+    assert conn.InspectHandles(1, [handle])[0] == 'bob@localhost'
+
+    call_async(q, view_iface, 'Close')
+    event = q.expect('stream-message', to='gadget.localhost')
+    close = xpath.queryForNodes('/message/close', event.stanza)
+    assert len(close) == 1
+    assert close[0]['id'] == '0'
+
+    event = q.expect('dbus-return', method='Close')
 
 if __name__ == '__main__':
     exec_test(test)

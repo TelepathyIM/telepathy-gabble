@@ -35,6 +35,7 @@
 #include "pubsub.h"
 #include "disco.h"
 #include "util.h"
+#include "olpc-buddy-view.h"
 
 #define ACTIVITY_PAIR_TYPE \
     dbus_g_type_get_struct ("GValueArray", G_TYPE_STRING, G_TYPE_UINT, \
@@ -2951,6 +2952,13 @@ conn_olpc_activity_properties_init (GabbleConnection *conn)
   conn->olpc_invited_activities = g_hash_table_new_full (g_direct_hash,
       g_direct_equal, NULL, (GDestroyNotify) tp_handle_set_destroy);
 
+  /* Active buddy views
+   *
+   * view id guint => GabbleOlpcBuddyView
+   */
+  conn->olpc_buddy_views = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+      NULL, (GDestroyNotify) g_object_unref);
+
   conn->olpc_gadget_buddy = NULL;
   conn->olpc_gadget_activity = NULL;
 
@@ -2974,5 +2982,187 @@ olpc_activity_properties_iface_init (gpointer g_iface,
     klass, olpc_activity_properties_##x)
   IMPLEMENT(get_properties);
   IMPLEMENT(set_properties);
+#undef IMPLEMENT
+}
+
+static void
+buddy_view_closed_cb (GabbleOlpcBuddyView *view,
+                      GabbleConnection *conn)
+{
+  guint id;
+
+  g_object_get (view, "id", &id, NULL);
+  g_hash_table_remove (conn->olpc_buddy_views, GUINT_TO_POINTER (id));
+}
+
+static GabbleOlpcBuddyView *
+create_buddy_view (GabbleConnection *conn)
+{
+  guint id;
+  GabbleOlpcBuddyView *view;
+
+  /* Look for a free ID */
+  for (id = 0; id < G_MAXUINT &&
+      g_hash_table_lookup (conn->olpc_buddy_views, GUINT_TO_POINTER (id))
+      != NULL; id++);
+
+  if (id == G_MAXUINT)
+    {
+      /* All the ID's are allocated */
+      return NULL;
+    }
+
+  view = gabble_olpc_buddy_view_new (conn, id);
+  g_hash_table_insert (conn->olpc_buddy_views, GUINT_TO_POINTER (id), view);
+
+  g_signal_connect (view, "closed", G_CALLBACK (buddy_view_closed_cb), conn);
+
+  return view;
+}
+
+static LmHandlerResult
+buddy_query_result_cb (GabbleConnection *conn,
+                       LmMessage *sent_msg,
+                       LmMessage *reply_msg,
+                       GObject *_view,
+                       gpointer user_data)
+{
+  LmMessageNode *query, *buddy;
+  TpHandleSet *buddies;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection*) conn, TP_HANDLE_TYPE_CONTACT);
+  GabbleOlpcBuddyView *view = GABBLE_OLPC_BUDDY_VIEW (_view);
+
+  query = lm_message_node_get_child_with_namespace (reply_msg->node, "query",
+      NS_OLPC_BUDDY);
+  if (query == NULL)
+    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+
+  buddies = tp_handle_set_new (contact_repo);
+  for (buddy = query->children; buddy != NULL; buddy = buddy->next)
+    {
+      const gchar *jid;
+      LmMessageNode *properties_node;
+      GHashTable *properties;
+      TpHandle handle;
+
+      jid = lm_message_node_get_attribute (buddy, "jid");
+
+      handle = tp_handle_ensure (contact_repo, jid, NULL, NULL);
+      if (handle == 0)
+        {
+          DEBUG ("Invalid jid: %s", jid);
+          tp_handle_set_destroy (buddies);
+          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+        }
+
+      tp_handle_set_add (buddies, handle);
+      tp_handle_unref (contact_repo, handle);
+
+      properties_node = lm_message_node_get_child_with_namespace (buddy,
+          "properties", NS_OLPC_BUDDY_PROPS);
+      properties = lm_message_node_extract_properties (properties_node,
+          "property");
+
+      gabble_svc_olpc_buddy_info_emit_properties_changed (conn, handle,
+          properties);
+
+      g_hash_table_destroy (properties);
+    }
+
+  /* TODO: remove buddies when needed */
+  gabble_olpc_buddy_view_add_buddies (view, buddies);
+
+  tp_handle_set_destroy (buddies);
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
+static void
+olpc_buddy_request_random (GabbleSvcOLPCBuddy *iface,
+                           guint max,
+                           DBusGMethodInvocation *context)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (iface);
+  LmMessage *query;
+  gchar *max_str, *id_str;
+  gchar *object_path;
+  guint id;
+  GabbleOlpcBuddyView *view;
+
+  if (!check_gadget_buddy (conn, context))
+    return;
+
+  if (max == 0)
+    {
+      GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+        "max have to be greater than 0" };
+
+      DEBUG ("%s", error.message);
+      dbus_g_method_return_error (context, &error);
+      return;
+    }
+
+  view = create_buddy_view (conn);
+  if (view == NULL)
+    {
+      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+        "can't create view" };
+
+      DEBUG ("%s", error.message);
+      dbus_g_method_return_error (context, &error);
+      return;
+    }
+
+  g_object_get (view,
+      "id", &id,
+      "object-path", &object_path,
+      NULL);
+
+  max_str = g_strdup_printf ("%u", max);
+  id_str = g_strdup_printf ("%u", id);
+
+  query = lm_message_build_with_sub_type (conn->olpc_gadget_buddy,
+      LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET,
+      '(', "query", "",
+          '@', "xmlns", NS_OLPC_BUDDY,
+          '@', "id", id_str,
+          '(', "random", "",
+            '@', "max", max_str,
+          ')',
+      ')',
+      NULL);
+
+  g_free (max_str);
+  g_free (id_str);
+
+  if (!_gabble_connection_send_with_reply (conn, query,
+        buddy_query_result_cb, G_OBJECT (view), NULL, NULL))
+    {
+      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+        "Failed to send buddy search query to server" };
+
+      DEBUG ("%s", error.message);
+      dbus_g_method_return_error (context, &error);
+      lm_message_unref (query);
+      g_free (object_path);
+      return;
+    }
+
+  gabble_svc_olpc_buddy_return_from_request_random (context, object_path);
+
+  g_free (object_path);
+  lm_message_unref (query);
+}
+
+void
+olpc_buddy_iface_init (gpointer g_iface,
+                       gpointer iface_data)
+{
+  GabbleSvcOLPCBuddyClass *klass = g_iface;
+
+#define IMPLEMENT(x) gabble_svc_olpc_buddy_implement_##x (\
+    klass, olpc_buddy_##x)
+  IMPLEMENT(request_random);
+  /* TODO: implement SearchByProperties */
 #undef IMPLEMENT
 }

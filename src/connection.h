@@ -140,6 +140,7 @@ struct _GabbleConnection {
     GHashTable *olpc_activities_info;
     GHashTable *olpc_pep_activities;
     GHashTable *olpc_invited_activities;
+    GHashTable *olpc_buddy_views;
 
     /* OLPC services */
     const gchar *olpc_gadget_buddy;

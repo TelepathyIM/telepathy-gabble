@@ -76,6 +76,8 @@ libgabble_convenience_la_our_sources = \
     muc-factory.h \
     muc-factory.c \
     namespaces.h \
+    olpc-buddy-view.h \
+    olpc-buddy-view.c \
     pubsub.h \
     pubsub.c \
     presence.h \

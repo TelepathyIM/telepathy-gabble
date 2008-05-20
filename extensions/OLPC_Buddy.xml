@@ -1,0 +1,71 @@
+<?xml version="1.0" ?>
+<node name="/OLPC_Buddy" xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+  <tp:copyright> Copyright (C) 2008 Collabora Limited </tp:copyright>
+  <tp:license xmlns="http://www.w3.org/1999/xhtml">
+    <p>This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.</p>
+
+<p>This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.</p>
+
+<p>You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
+  </tp:license>
+  <interface name="org.laptop.Telepathy.Buddy">
+    <tp:requires interface="org.freedesktop.Telepathy.Connection"/>
+    <tp:requires interface="org.laptop.Telepathy.BuddyInfo"/>
+
+    <method name="SearchByProperties">
+      <arg direction="in" name="properties" type="a{sv}">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          A buddy properties dictionary as described on
+          <code>org.laptop.Telepathy.BuddyInfo</code>.
+        </tp:docstring>
+      </arg>
+      <arg direction="out" name="view" type="o">
+        <tp:docstring>
+          The D-Bus object path for the view created 
+        </tp:docstring>
+      </arg>
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+        <p>Search for buddies having the given properties.</p>
+        <p>Returns a <code>org.laptop.Telepathy.BuddyView</code> object representing the
+           result of the search.</p>
+      </tp:docstring>
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.InvalidArgument"/>
+      </tp:possible-errors>
+    </method>
+
+    <method name="RequestRandom">
+      <arg direction="in" name="max" type="u">
+         <tp:docstring>
+          The maximum of random buddies to look for.
+        </tp:docstring>
+      </arg>
+      <arg direction="out" name="view" type="o">
+        <tp:docstring>
+          The D-Bus object path for the view created 
+        </tp:docstring>
+      </arg>
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+        <p>Request random buddies.</p>
+        <p>Returns a <code>org.laptop.Telepathy.BuddyView</code> object representing the
+           random buddies returned.</p>
+      </tp:docstring>
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.InvalidArgument"/>
+      </tp:possible-errors>
+    </method>
+
+    <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+      <p>An interface on connections to search and request buddies</p>
+    </tp:docstring>
+  </interface>
+</node>
+<!-- vim:set sw=2 sts=2 et ft=xml: -->

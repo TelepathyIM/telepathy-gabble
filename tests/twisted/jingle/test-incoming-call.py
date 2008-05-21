@@ -7,7 +7,7 @@ print "FIXME: jingle/test-incoming-call.py disabled due to race condition"
 # exiting 77 causes automake to consider the test to have been skipped
 raise SystemExit(77)
 
-from gabbletest import exec_test, make_result_iq
+from gabbletest import exec_test, make_result_iq, sync_stream
 from servicetest import make_channel_proxy, unwrap, tp_path_prefix
 import jingletest
 import gabbletest
@@ -38,6 +38,9 @@ def test(q, bus, conn, stream):
              to='foo@bar.com/Foo')
 
     jt.send_remote_disco_reply(event.stanza)
+
+    # Force Gabble to process the caps before calling RequestChannel
+    sync_stream(q, stream)
 
     remote_handle = conn.RequestHandles(1, ["foo@bar.com/Foo"])[0]
 

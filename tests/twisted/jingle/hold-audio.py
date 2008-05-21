@@ -2,7 +2,7 @@
 Test the Hold API.
 """
 
-from gabbletest import exec_test, make_result_iq, acknowledge_iq
+from gabbletest import exec_test, make_result_iq, acknowledge_iq, sync_stream
 from servicetest import make_channel_proxy, unwrap, tp_path_prefix, \
         call_async, EventPattern
 import jingletest
@@ -46,6 +46,9 @@ def test(q, bus, conn, stream):
              to='foo@bar.com/Foo')
 
     jt.send_remote_disco_reply(event.stanza)
+
+    # Force Gabble to process the caps before calling RequestChannel
+    sync_stream(q, stream)
 
     handle = conn.RequestHandles(1, [jt.remote_jid])[0]
 

@@ -78,6 +78,8 @@ libgabble_convenience_la_our_sources = \
     namespaces.h \
     olpc-buddy-view.h \
     olpc-buddy-view.c \
+    olpc-activity-view.h \
+    olpc-activity-view.c \
     pubsub.h \
     pubsub.c \
     presence.h \

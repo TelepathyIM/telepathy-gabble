@@ -44,8 +44,8 @@ class JingleTest:
         self.google_mode = False
 
         # Default caps for the remote end
-        self.remote_caps = { 'ext': 'voice-v1 jingle-audio jingle-video', 'ver': '0.6.0',
-                 'node': 'http://telepathy.freedesktop.org/caps' }
+        self.remote_caps = { 'ext': '', 'ver': '0.0.0',
+                 'node': 'http://example.com/fake-client0' }
 
         # Default feats for remote end
         self.remote_feats = [ 'http://www.google.com/xmpp/protocol/session',

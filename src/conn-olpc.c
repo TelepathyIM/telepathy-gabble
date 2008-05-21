@@ -36,6 +36,7 @@
 #include "disco.h"
 #include "util.h"
 #include "olpc-buddy-view.h"
+#include "olpc-activity-view.h"
 
 #define ACTIVITY_PAIR_TYPE \
     dbus_g_type_get_struct ("GValueArray", G_TYPE_STRING, G_TYPE_UINT, \
@@ -2959,6 +2960,13 @@ conn_olpc_activity_properties_init (GabbleConnection *conn)
   conn->olpc_buddy_views = g_hash_table_new_full (g_direct_hash, g_direct_equal,
       NULL, (GDestroyNotify) g_object_unref);
 
+  /* Active activities views
+   *
+   * view id guint => GabbleOlpcActivityView
+   */
+  conn->olpc_activity_views = g_hash_table_new_full (g_direct_hash,
+      g_direct_equal, NULL, (GDestroyNotify) g_object_unref);
+
   conn->olpc_gadget_buddy = NULL;
   conn->olpc_gadget_activity = NULL;
 
@@ -3236,5 +3244,186 @@ olpc_buddy_iface_init (gpointer g_iface,
     klass, olpc_buddy_##x)
   IMPLEMENT(request_random);
   IMPLEMENT(search_by_properties);
+#undef IMPLEMENT
+}
+
+static LmHandlerResult
+activity_query_result_cb (GabbleConnection *conn,
+                          LmMessage *sent_msg,
+                          LmMessage *reply_msg,
+                          GObject *_view,
+                          gpointer user_data)
+{
+  LmMessageNode *query, *activity;
+  TpHandleSet *activities;
+  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
+      (TpBaseConnection*) conn, TP_HANDLE_TYPE_ROOM);
+  GabbleOlpcActivityView *view = GABBLE_OLPC_ACTIVITY_VIEW (_view);
+
+  query = lm_message_node_get_child_with_namespace (reply_msg->node, "query",
+      NS_OLPC_ACTIVITY);
+  if (query == NULL)
+    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+
+  activities = tp_handle_set_new (room_repo);
+  for (activity = query->children; activity != NULL; activity = activity->next)
+    {
+      const gchar *jid;
+      LmMessageNode *properties_node;
+      GHashTable *properties;
+      TpHandle handle;
+
+      jid = lm_message_node_get_attribute (activity, "room");
+
+      handle = tp_handle_ensure (room_repo, jid, NULL, NULL);
+      if (handle == 0)
+        {
+          DEBUG ("Invalid jid: %s", jid);
+          tp_handle_set_destroy (activities);
+          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+        }
+
+      tp_handle_set_add (activities, handle);
+      tp_handle_unref (room_repo, handle);
+
+      properties_node = lm_message_node_get_child_with_namespace (activity,
+          "properties", NS_OLPC_ACTIVITY_PROPS);
+      properties = lm_message_node_extract_properties (properties_node,
+          "property");
+
+      gabble_svc_olpc_activity_properties_emit_activity_properties_changed (
+          conn, handle, properties);
+
+      g_hash_table_destroy (properties);
+    }
+
+  /* TODO: remove activities when needed */
+  gabble_olpc_activity_view_add_activities (view, activities);
+
+  tp_handle_set_destroy (activities);
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
+static void
+activity_view_closed_cb (GabbleOlpcBuddyView *view,
+                         GabbleConnection *conn)
+{
+  guint id;
+
+  g_object_get (view, "id", &id, NULL);
+  g_hash_table_remove (conn->olpc_activity_views, GUINT_TO_POINTER (id));
+}
+
+static GabbleOlpcActivityView *
+create_activity_view (GabbleConnection *conn)
+{
+  guint id;
+  GabbleOlpcActivityView *view;
+
+  /* Look for a free ID */
+  for (id = 0; id < G_MAXUINT &&
+      g_hash_table_lookup (conn->olpc_activity_views, GUINT_TO_POINTER (id))
+      != NULL; id++);
+
+  if (id == G_MAXUINT)
+    {
+      /* All the ID's are allocated */
+      return NULL;
+    }
+
+  view = gabble_olpc_activity_view_new (conn, id);
+  g_hash_table_insert (conn->olpc_activity_views, GUINT_TO_POINTER (id), view);
+
+  g_signal_connect (view, "closed", G_CALLBACK (activity_view_closed_cb), conn);
+
+  return view;
+}
+
+static void
+olpc_activity_request_random (GabbleSvcOLPCActivity *iface,
+                              guint max,
+                              DBusGMethodInvocation *context)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (iface);
+  LmMessage *query;
+  gchar *max_str, *id_str;
+  gchar *object_path;
+  guint id;
+  GabbleOlpcActivityView *view;
+
+  if (!check_gadget_activity (conn, context))
+    return;
+
+  if (max == 0)
+    {
+      GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+        "max have to be greater than 0" };
+
+      DEBUG ("%s", error.message);
+      dbus_g_method_return_error (context, &error);
+      return;
+    }
+
+  view = create_activity_view (conn);
+  if (view == NULL)
+    {
+      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+        "can't create view" };
+
+      DEBUG ("%s", error.message);
+      dbus_g_method_return_error (context, &error);
+      return;
+    }
+
+  g_object_get (view,
+      "id", &id,
+      "object-path", &object_path,
+      NULL);
+
+  max_str = g_strdup_printf ("%u", max);
+  id_str = g_strdup_printf ("%u", id);
+
+  query = lm_message_build_with_sub_type (conn->olpc_gadget_buddy,
+      LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET,
+      '(', "query", "",
+          '@', "xmlns", NS_OLPC_ACTIVITY,
+          '@', "id", id_str,
+          '(', "random", "",
+            '@', "max", max_str,
+          ')',
+      ')',
+      NULL);
+
+  g_free (max_str);
+  g_free (id_str);
+
+  if (!_gabble_connection_send_with_reply (conn, query,
+        activity_query_result_cb, G_OBJECT (view), NULL, NULL))
+    {
+      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+        "Failed to send activity search query to server" };
+
+      DEBUG ("%s", error.message);
+      dbus_g_method_return_error (context, &error);
+      lm_message_unref (query);
+      g_free (object_path);
+      return;
+    }
+
+  gabble_svc_olpc_activity_return_from_request_random (context, object_path);
+
+  g_free (object_path);
+  lm_message_unref (query);
+}
+
+void
+olpc_activity_iface_init (gpointer g_iface,
+                          gpointer iface_data)
+{
+  GabbleSvcOLPCActivityClass *klass = g_iface;
+
+#define IMPLEMENT(x) gabble_svc_olpc_activity_implement_##x (\
+    klass, olpc_activity_##x)
+  IMPLEMENT(request_random);
 #undef IMPLEMENT
 }

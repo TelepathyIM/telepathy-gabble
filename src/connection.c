@@ -104,6 +104,8 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
       olpc_activity_properties_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_OLPC_BUDDY,
       olpc_buddy_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_OLPC_ACTIVITY,
+      olpc_activity_iface_init);
     )
 
 /* properties */
@@ -755,6 +757,7 @@ gabble_connection_dispose (GObject *object)
   g_hash_table_destroy (self->olpc_pep_activities);
   g_hash_table_destroy (self->olpc_invited_activities);
   g_hash_table_destroy (self->olpc_buddy_views);
+  g_hash_table_destroy (self->olpc_activity_views);
 
   g_hash_table_destroy (self->avatar_requests);
 

@@ -64,7 +64,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
     </method>
 
     <method name="SearchByParticipants">
-      <arg direction="in" name="participants" type="a(u)">
+      <arg direction="in" name="participants" type="au">
          <tp:docstring>
           The handles of the participants
         </tp:docstring>

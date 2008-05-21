@@ -3154,6 +3154,78 @@ olpc_buddy_request_random (GabbleSvcOLPCBuddy *iface,
   lm_message_unref (query);
 }
 
+static void
+olpc_buddy_search_by_properties (GabbleSvcOLPCBuddy *iface,
+                                 GHashTable *properties,
+                                 DBusGMethodInvocation *context)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (iface);
+  LmMessage *query;
+  LmMessageNode *properties_node;
+  gchar *id_str;
+  gchar *object_path;
+  guint id;
+  GabbleOlpcBuddyView *view;
+
+  if (!check_gadget_buddy (conn, context))
+    return;
+
+  view = create_buddy_view (conn);
+  if (view == NULL)
+    {
+      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+        "can't create view" };
+
+      DEBUG ("%s", error.message);
+      dbus_g_method_return_error (context, &error);
+      return;
+    }
+
+  g_object_get (view,
+      "id", &id,
+      "object-path", &object_path,
+      NULL);
+
+  id_str = g_strdup_printf ("%u", id);
+
+  query = lm_message_build_with_sub_type (conn->olpc_gadget_buddy,
+      LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET,
+      '(', "query", "",
+          '@', "xmlns", NS_OLPC_BUDDY,
+          '@', "id", id_str,
+          '(', "buddy", "",
+            '(', "properties", "",
+              '*', &properties_node,
+              '@', "xmlns", NS_OLPC_BUDDY_PROPS,
+            ')',
+          ')',
+      ')',
+      NULL);
+
+  g_free (id_str);
+
+  lm_message_node_add_children_from_properties (properties_node, properties,
+      "property");
+
+  if (!_gabble_connection_send_with_reply (conn, query,
+        buddy_query_result_cb, G_OBJECT (view), NULL, NULL))
+    {
+      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+        "Failed to send buddy search query to server" };
+
+      DEBUG ("%s", error.message);
+      dbus_g_method_return_error (context, &error);
+      lm_message_unref (query);
+      g_free (object_path);
+      return;
+    }
+
+  gabble_svc_olpc_buddy_return_from_search_by_properties (context, object_path);
+
+  g_free (object_path);
+  lm_message_unref (query);
+}
+
 void
 olpc_buddy_iface_init (gpointer g_iface,
                        gpointer iface_data)
@@ -3163,6 +3235,6 @@ olpc_buddy_iface_init (gpointer g_iface,
 #define IMPLEMENT(x) gabble_svc_olpc_buddy_implement_##x (\
     klass, olpc_buddy_##x)
   IMPLEMENT(request_random);
-  /* TODO: implement SearchByProperties */
+  IMPLEMENT(search_by_properties);
 #undef IMPLEMENT
 }

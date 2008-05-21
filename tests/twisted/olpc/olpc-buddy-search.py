@@ -111,6 +111,9 @@ def test(q, bus, conn, stream):
 
     event = q.expect('stream-iq', to='gadget.localhost',
             query_ns=NS_OLPC_BUDDY)
+    query = event.stanza.firstChildElement()
+    assert query.name == 'query'
+    assert query['id'] == '0'
     random = xpath.queryForNodes('/iq/query/random', event.stanza)
     assert len(random) == 1
     assert random[0]['max'] == '3'
@@ -131,8 +134,8 @@ def test(q, bus, conn, stream):
 
     event = q.expect('dbus-return', method='RequestRandom')
     view_path = event.value[0]
-    view = bus.get_object(conn.bus_name, view_path)
-    view_iface = dbus.Interface(view, 'org.laptop.Telepathy.BuddyView')
+    view0 = bus.get_object(conn.bus_name, view_path)
+    view0_iface = dbus.Interface(view0, 'org.laptop.Telepathy.BuddyView')
 
     event = q.expect('dbus-signal', signal='PropertiesChanged')
     handle, props = event.args
@@ -146,13 +149,71 @@ def test(q, bus, conn, stream):
     handle = added[0]
     assert conn.InspectHandles(1, [handle])[0] == 'bob@localhost'
 
-    call_async(q, view_iface, 'Close')
-    event = q.expect('stream-message', to='gadget.localhost')
+    # buddy search
+    props = {'color': '#AABBCC,#001122'}
+    call_async(q, buddy_iface, 'SearchByProperties', props)
+
+    iq_event, return_event = q.expect_many(
+        EventPattern('stream-iq', to='gadget.localhost', query_ns=NS_OLPC_BUDDY),
+        EventPattern('dbus-return', method='SearchByProperties'))
+
+    properties = xpath.queryForNodes('/iq/query/buddy/properties/property', iq_event.stanza)
+    query = iq_event.stanza.firstChildElement()
+    assert query.name == 'query'
+    assert query['id'] == '1'
+    assert len(properties) == 1
+    property = properties[0]
+    assert property['type'] == 'str'
+    assert property['name'] == 'color'
+    assert property.children == ['#AABBCC,#001122']
+
+    # reply to request
+    reply = make_result_iq(stream, iq_event.stanza)
+    reply['from'] = 'gadget.localhost'
+    reply['to'] = 'alice@localhost'
+    query = xpath.queryForNodes('/iq/query', reply)[0]
+    buddy = query.addElement((None, "buddy"))
+    buddy['jid'] = 'charles@localhost'
+    properties = buddy.addElement((NS_OLPC_BUDDY_PROPS, "properties"))
+    property = properties.addElement((None, "property"))
+    property['type'] = 'str'
+    property['name'] = 'color'
+    property.addContent('#AABBCC,#001122')
+    stream.send(reply)
+
+    view_path = return_event.value[0]
+    view1 = bus.get_object(conn.bus_name, view_path)
+    view1_iface = dbus.Interface(view1, 'org.laptop.Telepathy.BuddyView')
+
+    event = q.expect('dbus-signal', signal='PropertiesChanged')
+    handle, props = event.args
+    assert conn.InspectHandles(1, [handle])[0] == 'charles@localhost'
+    assert props == {'color': '#AABBCC,#001122'}
+
+    event = q.expect('dbus-signal', signal='MembersChanged')
+    msg, added, removed, lp, rp, actor, reason = event.args
+    assert (removed, lp, rp) == ([], [], [])
+    assert len(added) == 1
+    handle = added[0]
+    assert conn.InspectHandles(1, [handle])[0] == 'charles@localhost'
+
+    # close view 0
+    call_async(q, view0_iface, 'Close')
+    event, _ = q.expect_many(
+        EventPattern('stream-message', to='gadget.localhost'),
+        EventPattern('dbus-return', method='Close'))
     close = xpath.queryForNodes('/message/close', event.stanza)
     assert len(close) == 1
     assert close[0]['id'] == '0'
 
-    event = q.expect('dbus-return', method='Close')
+    # close view 1
+    call_async(q, view1_iface, 'Close')
+    event, _ = q.expect_many(
+        EventPattern('stream-message', to='gadget.localhost'),
+        EventPattern('dbus-return', method='Close'))
+    close = xpath.queryForNodes('/message/close', event.stanza)
+    assert len(close) == 1
+    assert close[0]['id'] == '1'
 
 if __name__ == '__main__':
     exec_test(test)

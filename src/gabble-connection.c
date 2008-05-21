@@ -1501,7 +1501,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   caps_hash = caps_hash_compute_from_self_presence (self);
   DEBUG ("caps_hash='%s'", caps_hash);
 
-  if (NULL == node || bundle_found || g_str_equal (suffix, caps_hash))
+  if (NULL == node || bundle_found || !tp_strdiff (suffix, caps_hash))
     {
       if (NULL == node)
         DEBUG ("No requested node. Send all features.");

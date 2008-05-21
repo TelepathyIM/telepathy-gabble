@@ -17,7 +17,6 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
   </tp:license>
   <interface name="org.laptop.Telepathy.ActivityView">
-    <tp:requires interface="org.freedesktop.Telepathy.Channel.Interface.Group"/>
 
     <method name="Close">
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
@@ -33,8 +32,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
 
     <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
       <p>An object representing the result of an activity search.</p>
-      <p>Activities room handles are stored using the
-        <code>org.freedesktop.Telepathy.Channel.Interface.Group</code> interface.</p>
       <p>Activity properties changes are notified on the Connection object using the
         <code>org.laptop.Telepathy.ActivityProperties</code> interface while the view object
         is alive.</p>

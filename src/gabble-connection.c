@@ -1431,7 +1431,6 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   GSList *features;
   GSList *i;
   gchar *caps_hash;
-  gboolean bundle_found;
 
   if (lm_message_get_sub_type (message) != LM_MESSAGE_SUB_TYPE_GET)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
@@ -1486,22 +1485,12 @@ connection_iq_disco_cb (LmMessageHandler *handler,
    * legacy XEP-0115 version 1.3 or an hash as defined in XEP-0115 version
    * 1.5. */
 
-  bundle_found = FALSE;
-  for (i = features; NULL != i; i = i->next)
-    {
-      const Feature *feature = (const Feature *) i->data;
-
-      if (NULL != node && !tp_strdiff (suffix, feature->bundle))
-        {
-          bundle_found = TRUE;
-          DEBUG ("requested node '%s' is an existing bundle", suffix);
-        }
-    }
-
   caps_hash = caps_hash_compute_from_self_presence (self);
   DEBUG ("caps_hash='%s'", caps_hash);
 
-  if (NULL == node || bundle_found || !tp_strdiff (suffix, caps_hash))
+  if (NULL == node ||
+      !tp_strdiff (suffix, BUNDLE_VOICE_V1) ||
+      !tp_strdiff (suffix, caps_hash))
     {
       if (NULL == node)
         DEBUG ("No requested node. Send all features.");
@@ -1511,14 +1500,17 @@ connection_iq_disco_cb (LmMessageHandler *handler,
       for (i = features; NULL != i; i = i->next)
         {
           const Feature *feature = (const Feature *) i->data;
+          LmMessageNode *feature_node;
 
-          if (! bundle_found || g_str_equal (suffix, feature->bundle))
-            {
-              LmMessageNode *feature_node = lm_message_node_add_child
-                  (result_query, "feature", NULL);
+          /* When BUNDLE_VOICE_V1 is requested, only send the bundle */
+          if (!tp_strdiff (suffix, BUNDLE_VOICE_V1) &&
+              feature->feature_type != FEATURE_BUNDLE_COMPAT)
+            continue;
 
-              lm_message_node_set_attribute (feature_node, "var", feature->ns);
-            }
+          /* otherwise (no node or hash), put all features */
+          feature_node = lm_message_node_add_child (result_query, "feature",
+              NULL);
+          lm_message_node_set_attribute (feature_node, "var", feature->ns);
         }
 
       NODE_DEBUG (result_iq, "sending disco response");

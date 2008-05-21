@@ -28,28 +28,28 @@
 
 static const Feature self_advertised_features[] =
 {
-  { VERSION, NS_GOOGLE_FEAT_SESSION, 0},
-  { VERSION, NS_GOOGLE_TRANSPORT_P2P, PRESENCE_CAP_GOOGLE_TRANSPORT_P2P},
-  { VERSION, NS_JINGLE, PRESENCE_CAP_JINGLE},
-  { VERSION, NS_CHAT_STATES, PRESENCE_CAP_CHAT_STATES},
-  { VERSION, NS_NICK, 0},
-  { VERSION, NS_NICK "+notify", 0},
-  { VERSION, NS_SI, PRESENCE_CAP_SI},
-  { VERSION, NS_IBB, PRESENCE_CAP_IBB},
-  { VERSION, NS_TUBES, PRESENCE_CAP_SI_TUBES},
+  { FEATURE_FIXED, NS_GOOGLE_FEAT_SESSION, 0},
+  { FEATURE_FIXED, NS_GOOGLE_TRANSPORT_P2P, PRESENCE_CAP_GOOGLE_TRANSPORT_P2P},
+  { FEATURE_FIXED, NS_JINGLE, PRESENCE_CAP_JINGLE},
+  { FEATURE_FIXED, NS_CHAT_STATES, PRESENCE_CAP_CHAT_STATES},
+  { FEATURE_FIXED, NS_NICK, 0},
+  { FEATURE_FIXED, NS_NICK "+notify", 0},
+  { FEATURE_FIXED, NS_SI, PRESENCE_CAP_SI},
+  { FEATURE_FIXED, NS_IBB, PRESENCE_CAP_IBB},
+  { FEATURE_FIXED, NS_TUBES, PRESENCE_CAP_SI_TUBES},
 
-  { BUNDLE_VOICE_V1, NS_GOOGLE_FEAT_VOICE, PRESENCE_CAP_GOOGLE_VOICE},
-  { BUNDLE_JINGLE_AUDIO, NS_JINGLE_DESCRIPTION_AUDIO,
+  { FEATURE_BUNDLE_COMPAT, NS_GOOGLE_FEAT_VOICE, PRESENCE_CAP_GOOGLE_VOICE},
+  { FEATURE_OPTIONAL, NS_JINGLE_DESCRIPTION_AUDIO,
     PRESENCE_CAP_JINGLE_DESCRIPTION_AUDIO},
-  { BUNDLE_JINGLE_VIDEO, NS_JINGLE_DESCRIPTION_VIDEO,
+  { FEATURE_OPTIONAL, NS_JINGLE_DESCRIPTION_VIDEO,
     PRESENCE_CAP_JINGLE_DESCRIPTION_VIDEO},
 
-  { BUNDLE_OLPC_1, NS_OLPC_BUDDY_PROPS "+notify", PRESENCE_CAP_OLPC_1},
-  { BUNDLE_OLPC_1, NS_OLPC_ACTIVITIES "+notify", PRESENCE_CAP_OLPC_1},
-  { BUNDLE_OLPC_1, NS_OLPC_CURRENT_ACTIVITY "+notify", PRESENCE_CAP_OLPC_1},
-  { BUNDLE_OLPC_1, NS_OLPC_ACTIVITY_PROPS "+notify", PRESENCE_CAP_OLPC_1},
+  { FEATURE_OPTIONAL, NS_OLPC_BUDDY_PROPS "+notify", PRESENCE_CAP_OLPC_1},
+  { FEATURE_OPTIONAL, NS_OLPC_ACTIVITIES "+notify", PRESENCE_CAP_OLPC_1},
+  { FEATURE_OPTIONAL, NS_OLPC_CURRENT_ACTIVITY "+notify", PRESENCE_CAP_OLPC_1},
+  { FEATURE_OPTIONAL, NS_OLPC_ACTIVITY_PROPS "+notify", PRESENCE_CAP_OLPC_1},
 
-  { NULL, NULL, 0}
+  { 0, NULL, 0}
 };
 
 GSList *
@@ -68,19 +68,6 @@ capabilities_get_features (GabblePresenceCapabilities caps)
 void
 capabilities_fill_cache (GabblePresenceCache *cache)
 {
-  const Feature *feat;
-
-  /* We don't advertise bundles anymore, but we keep them in the cache. So if
-   * we speak to an old version of Gabble, we don't need to make discovery
-   * requests for theses bundles. */
-  for (feat = self_advertised_features; NULL != feat->ns; feat++)
-    {
-      gchar *node = g_strconcat (NS_GABBLE_CAPS "#", feat->bundle, NULL);
-      gabble_presence_cache_add_bundle_caps (cache,
-          node, feat->caps);
-      g_free (node);
-    }
-
   /* Cache this bundle from the Google Talk client as trusted. So Gabble will
    * not send any discovery request for this bundle.
    *
@@ -99,10 +86,8 @@ capabilities_get_initial_caps ()
 
   for (feat = self_advertised_features; NULL != feat->ns; feat++)
     {
-      if (g_str_equal (feat->bundle, VERSION))
+      if (feat->feature_type == FEATURE_FIXED)
         {
-          /* VERSION == bundle means a fixed feature, which we always
-           * advertise */
           ret |= feat->caps;
         }
     }

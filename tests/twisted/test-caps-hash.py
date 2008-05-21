@@ -26,9 +26,12 @@ import sys
 from twisted.words.xish import domish, xpath
 
 from gabbletest import exec_test, make_result_iq
+from servicetest import call_async
 
+gabble_service = 'org.freedesktop.Telepathy.ConnectionManager.gabble'
 text = 'org.freedesktop.Telepathy.Channel.Type.Text'
 sm = 'org.freedesktop.Telepathy.Channel.Type.StreamedMedia'
+conn_iface = 'org.freedesktop.Telepathy.Connection'
 caps_iface = 'org.freedesktop.Telepathy.Connection.Interface.Capabilities'
 
 caps_changed_flag = 0
@@ -60,6 +63,12 @@ def presence_add_caps(presence, ver, client, hash=None):
     if hash is not None:
         c['hash'] = hash
     return presence
+
+def dbus_sync(bus, q, conn):
+    # Dummy D-Bus method call
+    call_async(q, conn, "InspectHandles", 1, [])
+
+    event = q.expect('dbus-return', method='InspectHandles')
 
 def test_hash(q, bus, conn, stream, contact, contact_handle, client):
     global caps_changed_flag
@@ -124,10 +133,8 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
     feature['var'] = 'http://jabber.org/protocol/bogus-feature'
     stream.send(result)
 
-    # Dummy synchronous D-Bus method call
-    assert conn.InspectHandles(1, []) == []
-
     # don't receive any D-Bus signal
+    dbus_sync(bus, q, conn)
     assert caps_changed_flag == 0
 
     # send presence with empty caps
@@ -142,10 +149,8 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
     assert query_node.attributes['node'] == \
         client + '#' + '0.0'
 
-    # Dummy synchronous D-Bus method call
-    assert conn.InspectHandles(1, []) == []
-
     # still don't receive any D-Bus signal
+    dbus_sync(bus, q, conn)
     assert caps_changed_flag == 0
 
     # send good reply
@@ -166,16 +171,16 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
     c['hash'] = 'sha-1'
     stream.send(presence)
 
-    # Dummy synchronous D-Bus method call
-    assert conn.InspectHandles(1, []) == []
-    assert caps_changed_flag == 0
-
     # Gabble looks up our capabilities
     event = q.expect('stream-iq', to=contact,
         query_ns='http://jabber.org/protocol/disco#info')
     query_node = xpath.queryForNodes('/iq/query', event.stanza)[0]
     assert query_node.attributes['node'] == \
         client + '#' + c['ver']
+
+    # don't receive any D-Bus signal
+    dbus_sync(bus, q, conn)
+    assert caps_changed_flag == 0
 
     # send good reply
     result = make_result_iq(stream, event.stanza)
@@ -208,9 +213,6 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
 </x>
     """)
     stream.send(result)
-
-    # Dummy synchronous D-Bus method call
-    assert conn.InspectHandles(1, []) == []
 
     # we can now do audio calls
     event = q.expect('dbus-signal', signal='CapabilitiesChanged')
@@ -250,18 +252,16 @@ def test_two_clients(q, bus, conn, stream, contact1, contact2,
             hash='sha-1')
     stream.send(presence)
 
-    # Dummy synchronous D-Bus method call
-    assert conn.InspectHandles(1, []) == []
-
-    # don't receive any D-Bus signal
-    assert caps_changed_flag == 0
-
     # Gabble looks up our capabilities
     event = q.expect('stream-iq', to=contact1,
         query_ns='http://jabber.org/protocol/disco#info')
     query_node = xpath.queryForNodes('/iq/query', event.stanza)[0]
     assert query_node.attributes['node'] == \
         client + '#' + ver
+
+    # don't receive any D-Bus signal
+    dbus_sync(bus, q, conn)
+    assert caps_changed_flag == 0
 
     # send good reply
     result = make_result_iq(stream, event.stanza)
@@ -279,12 +279,6 @@ def test_two_clients(q, bus, conn, stream, contact1, contact2,
     stream.send(result)
 
     if broken_hash:
-        # Dummy synchronous D-Bus method call
-        assert conn.InspectHandles(1, []) == []
-
-        # don't receive any D-Bus signal
-        assert caps_changed_flag == 0
-        
         # Gabble looks up our capabilities again because the first contact
         # failed to provide a valid hash
         event = q.expect('stream-iq', to=contact2,
@@ -292,6 +286,10 @@ def test_two_clients(q, bus, conn, stream, contact1, contact2,
         query_node = xpath.queryForNodes('/iq/query', event.stanza)[0]
         assert query_node.attributes['node'] == \
             client + '#' + ver
+
+        # don't receive any D-Bus signal
+        dbus_sync(bus, q, conn)
+        assert caps_changed_flag == 0
 
         # send good reply
         result = make_result_iq(stream, event.stanza)
@@ -315,10 +313,8 @@ def test_two_clients(q, bus, conn, stream, contact1, contact2,
 
     caps_changed_flag = 0
 
-    # Dummy synchronous D-Bus method call
-    assert conn.InspectHandles(1, []) == []
-
     # don't receive any D-Bus signal
+    dbus_sync(bus, q, conn)
     assert caps_changed_flag == 0
 
 def test(q, bus, conn, stream):

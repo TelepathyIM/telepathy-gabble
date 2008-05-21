@@ -148,6 +148,44 @@ def test(q, bus, conn, stream):
     assert conn.InspectHandles(2, [handle])[0] == 'room2@conference.localhost'
     assert props == {'color': '#AABBCC,#001122'}
 
+    # activity search by participants
+    participants = conn.RequestHandles(1, ["alice@localhost", "bob@localhost"])
+    call_async(q, activity_iface, 'SearchByParticipants', participants)
+
+    iq_event, return_event = q.expect_many(
+        EventPattern('stream-iq', to='gadget.localhost', query_ns=NS_OLPC_ACTIVITY),
+        EventPattern('dbus-return', method='SearchByParticipants'))
+
+    buddies = xpath.queryForNodes('/iq/query/activity/buddy', iq_event.stanza)
+    query = iq_event.stanza.firstChildElement()
+    assert query.name == 'query'
+    assert query['id'] == '2'
+    assert len(buddies) == 2
+    assert (buddies[0]['jid'], buddies[1]['jid']) == ('alice@localhost', 'bob@localhost')
+
+    # reply to request
+    reply = make_result_iq(stream, iq_event.stanza)
+    reply['from'] = 'gadget.localhost'
+    reply['to'] = 'alice@localhost'
+    query = xpath.queryForNodes('/iq/query', reply)[0]
+    activity = query.addElement((None, "activity"))
+    activity['room'] = 'room2@conference.localhost'
+    properties = activity.addElement((NS_OLPC_ACTIVITY_PROPS, "properties"))
+    property = properties.addElement((None, "property"))
+    property['type'] = 'str'
+    property['name'] = 'color'
+    property.addContent('#AABBCC,#001122')
+    stream.send(reply)
+
+    view_path = return_event.value[0]
+    view2 = bus.get_object(conn.bus_name, view_path)
+    view2_iface = dbus.Interface(view2, 'org.laptop.Telepathy.ActivityView')
+
+    event = q.expect('dbus-signal', signal='ActivityPropertiesChanged')
+    handle, props = event.args
+    assert conn.InspectHandles(2, [handle])[0] == 'room2@conference.localhost'
+    assert props == {'color': '#AABBCC,#001122'}
+
     # close view 0
     call_async(q, view0_iface, 'Close')
     event, _ = q.expect_many(
@@ -165,6 +203,15 @@ def test(q, bus, conn, stream):
     close = xpath.queryForNodes('/message/close', event.stanza)
     assert len(close) == 1
     assert close[0]['id'] == '1'
+
+    # close view 2
+    call_async(q, view2_iface, 'Close')
+    event, _ = q.expect_many(
+        EventPattern('stream-message', to='gadget.localhost'),
+        EventPattern('dbus-return', method='Close'))
+    close = xpath.queryForNodes('/message/close', event.stanza)
+    assert len(close) == 1
+    assert close[0]['id'] == '2'
 
 
 if __name__ == '__main__':

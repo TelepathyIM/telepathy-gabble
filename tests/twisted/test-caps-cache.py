@@ -52,7 +52,6 @@ def _test_without_hash(q, bus, conn, stream, contact, contact_handle, client, di
     # send updated presence with Jingle caps info
     presence = make_presence(contact, None, 'hello')
     presence = presence_add_caps(presence, '0.1', client)
-    print str(presence)
     stream.send(presence)
 
     if disco:

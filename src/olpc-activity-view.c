@@ -112,7 +112,7 @@ gabble_olpc_activity_view_finalize (GObject *object)
       self);
 
   g_free (priv->object_path);
-  tp_handle_set_destroy(priv->activities);
+  tp_handle_set_destroy (priv->activities);
 
   G_OBJECT_CLASS (gabble_olpc_activity_view_parent_class)->finalize (object);
 }

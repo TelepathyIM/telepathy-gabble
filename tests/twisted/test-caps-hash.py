@@ -77,7 +77,6 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
     # send updated presence with Jingle caps info
     presence = make_presence(contact, None, 'hello')
     presence = presence_add_caps(presence, '0.1', client)
-    print str(presence)
     stream.send(presence)
 
     # Gabble looks up our capabilities
@@ -134,7 +133,6 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
     # send presence with empty caps
     presence = make_presence(contact, None, 'hello')
     presence = presence_add_caps(presence, '0.0', client)
-    print str(presence)
     stream.send(presence)
 
     # Gabble looks up our capabilities

@@ -3383,7 +3383,7 @@ olpc_activity_request_random (GabbleSvcOLPCActivity *iface,
   max_str = g_strdup_printf ("%u", max);
   id_str = g_strdup_printf ("%u", id);
 
-  query = lm_message_build_with_sub_type (conn->olpc_gadget_buddy,
+  query = lm_message_build_with_sub_type (conn->olpc_gadget_activity,
       LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET,
       '(', "query", "",
           '@', "xmlns", NS_OLPC_ACTIVITY,
@@ -3416,6 +3416,78 @@ olpc_activity_request_random (GabbleSvcOLPCActivity *iface,
   lm_message_unref (query);
 }
 
+static void
+olpc_activity_search_by_properties (GabbleSvcOLPCActivity *iface,
+                                    GHashTable *properties,
+                                    DBusGMethodInvocation *context)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (iface);
+  LmMessage *query;
+  LmMessageNode *properties_node;
+  gchar *id_str;
+  gchar *object_path;
+  guint id;
+  GabbleOlpcActivityView *view;
+
+  if (!check_gadget_activity (conn, context))
+    return;
+
+  view = create_activity_view (conn);
+  if (view == NULL)
+    {
+      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+        "can't create view" };
+
+      DEBUG ("%s", error.message);
+      dbus_g_method_return_error (context, &error);
+      return;
+    }
+
+  g_object_get (view,
+      "id", &id,
+      "object-path", &object_path,
+      NULL);
+
+  id_str = g_strdup_printf ("%u", id);
+
+  query = lm_message_build_with_sub_type (conn->olpc_gadget_activity,
+      LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET,
+      '(', "query", "",
+          '@', "xmlns", NS_OLPC_ACTIVITY,
+          '@', "id", id_str,
+          '(', "activity", "",
+            '(', "properties", "",
+              '*', &properties_node,
+              '@', "xmlns", NS_OLPC_ACTIVITY_PROPS,
+            ')',
+          ')',
+      ')',
+      NULL);
+
+  g_free (id_str);
+
+  lm_message_node_add_children_from_properties (properties_node, properties,
+      "property");
+
+  if (!_gabble_connection_send_with_reply (conn, query,
+        activity_query_result_cb, G_OBJECT (view), NULL, NULL))
+    {
+      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+        "Failed to send activity search query to server" };
+
+      DEBUG ("%s", error.message);
+      dbus_g_method_return_error (context, &error);
+      lm_message_unref (query);
+      g_free (object_path);
+      return;
+    }
+
+  gabble_svc_olpc_activity_return_from_search_by_properties (context, object_path);
+
+  g_free (object_path);
+  lm_message_unref (query);
+}
+
 void
 olpc_activity_iface_init (gpointer g_iface,
                           gpointer iface_data)
@@ -3425,5 +3497,6 @@ olpc_activity_iface_init (gpointer g_iface,
 #define IMPLEMENT(x) gabble_svc_olpc_activity_implement_##x (\
     klass, olpc_activity_##x)
   IMPLEMENT(request_random);
+  IMPLEMENT(search_by_properties);
 #undef IMPLEMENT
 }

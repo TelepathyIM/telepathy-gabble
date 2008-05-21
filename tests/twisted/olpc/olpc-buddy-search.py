@@ -109,17 +109,19 @@ def test(q, bus, conn, stream):
     # request 3 random buddies
     call_async(q, buddy_iface, 'RequestRandom', 3)
 
-    event = q.expect('stream-iq', to='gadget.localhost',
-            query_ns=NS_OLPC_BUDDY)
-    query = event.stanza.firstChildElement()
+    iq_event, return_event = q.expect_many(
+        EventPattern('stream-iq', to='gadget.localhost', query_ns=NS_OLPC_BUDDY),
+        EventPattern('dbus-return', method='RequestRandom'))
+
+    query = iq_event.stanza.firstChildElement()
     assert query.name == 'query'
     assert query['id'] == '0'
-    random = xpath.queryForNodes('/iq/query/random', event.stanza)
+    random = xpath.queryForNodes('/iq/query/random', iq_event.stanza)
     assert len(random) == 1
     assert random[0]['max'] == '3'
 
     # reply to random query
-    reply = make_result_iq(stream, event.stanza)
+    reply = make_result_iq(stream, iq_event.stanza)
     reply['from'] = 'gadget.localhost'
     reply['to'] = 'alice@localhost'
     query = xpath.queryForNodes('/iq/query', reply)[0]
@@ -132,8 +134,7 @@ def test(q, bus, conn, stream):
     property.addContent('#005FE4,#00A0FF')
     stream.send(reply)
 
-    event = q.expect('dbus-return', method='RequestRandom')
-    view_path = event.value[0]
+    view_path = return_event.value[0]
     view0 = bus.get_object(conn.bus_name, view_path)
     view0_iface = dbus.Interface(view0, 'org.laptop.Telepathy.BuddyView')
 

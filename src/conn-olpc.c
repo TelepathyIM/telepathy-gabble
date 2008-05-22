@@ -3544,7 +3544,6 @@ olpc_activity_search_by_participants (GabbleSvcOLPCActivity *iface,
 
       jid = tp_handle_inspect (contact_repo,
           g_array_index (participants, TpHandle, i));
-      g_print ("aaaaaaa %s\n", jid);
 
       buddy = lm_message_node_add_child (activity_node, "buddy", "");
       lm_message_node_set_attribute (buddy, "jid", jid);

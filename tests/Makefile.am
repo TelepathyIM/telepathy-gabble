@@ -49,7 +49,7 @@ check-valgrind:
 			--leak-check=full \
 			--show-reachable=no \
 			--error-exitcode=1" \
-		check
+		check-TESTS
 
 if HAVE_DBUS_TUBE
 dbus_test_sources = test-dtube-unique-names.c

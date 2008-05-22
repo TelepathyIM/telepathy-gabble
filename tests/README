@@ -4,19 +4,25 @@ To run all tests:
 
 == C tests ==
 
-To run all tests:
+To run all C tests:
 
-  make check
+  cd tests
+  make check-TESTS
 
 To run an individual test:
 
-  # FIXME: this does not work
-  make check TESTS=test-handles
+  cd tests
+  make check-TESTS TESTS=test-handles
 
 To run tests under Valgrind:
 
   cd tests
   make check-valgrind
+
+To run an individual test under Valgrind:
+
+  cd tests
+  make check-valgrind TESTS=test-handles
 
 == Twisted tests ==
 

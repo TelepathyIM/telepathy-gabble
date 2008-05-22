@@ -137,6 +137,7 @@ def test(q, bus, conn, stream):
     view_path = return_event.value[0]
     view0 = bus.get_object(conn.bus_name, view_path)
     view0_iface = dbus.Interface(view0, 'org.laptop.Telepathy.BuddyView')
+    view0_group_iface = dbus.Interface(view0, 'org.freedesktop.Telepathy.Channel.Interface.Group')
 
     event = q.expect('dbus-signal', signal='PropertiesChanged')
     handle, props = event.args
@@ -225,6 +226,10 @@ def test(q, bus, conn, stream):
     assert len(added) == 1
     handle = added[0]
     assert conn.InspectHandles(1, [handle])[0] == 'oscar@localhost'
+
+    members = view0_group_iface.GetMembers()
+    members = sorted(conn.InspectHandles(1, members))
+    assert members == ['bob@localhost', 'oscar@localhost']
 
     # close view 0
     call_async(q, view0_iface, 'Close')

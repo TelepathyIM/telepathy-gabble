@@ -2938,6 +2938,70 @@ buddy_added (GabbleConnection *conn,
   add_buddies_to_view_from_node (conn, view, added);
 }
 
+static gboolean
+remove_buddies_from_view_from_node (GabbleConnection *conn,
+                                    GabbleOlpcBuddyView *view,
+                                    LmMessageNode *node)
+{
+  TpHandleSet *buddies;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection*) conn, TP_HANDLE_TYPE_CONTACT);
+  LmMessageNode *buddy;
+
+  buddies = tp_handle_set_new (contact_repo);
+
+  for (buddy = node->children; buddy != NULL; buddy = buddy->next)
+    {
+
+      const gchar *jid;
+      TpHandle handle;
+
+      if (tp_strdiff (buddy->name, "buddy"))
+        continue;
+
+      jid = lm_message_node_get_attribute (buddy, "jid");
+
+      handle = tp_handle_ensure (contact_repo, jid, NULL, NULL);
+      if (handle == 0)
+        {
+          DEBUG ("Invalid jid: %s", jid);
+          tp_handle_set_destroy (buddies);
+          return FALSE;
+        }
+
+      tp_handle_set_add (buddies, handle);
+      tp_handle_unref (contact_repo, handle);
+    }
+
+  gabble_olpc_buddy_view_remove_buddies (view, buddies);
+  tp_handle_set_destroy (buddies);
+
+  return TRUE;
+}
+
+static void
+buddy_removed (GabbleConnection *conn,
+               LmMessageNode *removed)
+{
+  const gchar *id_str;
+  guint id;
+  GabbleOlpcBuddyView *view;
+
+  id_str = lm_message_node_get_attribute (removed, "id");
+  if (id_str == NULL)
+    return;
+
+  id = strtoul (id_str, NULL, 10);
+  view = g_hash_table_lookup (conn->olpc_buddy_views, GUINT_TO_POINTER (id));
+  if (view == NULL)
+    {
+      DEBUG ("no buddy view with ID %u", id);
+      return;
+    }
+
+  remove_buddies_from_view_from_node (conn, view, removed);
+}
+
 LmHandlerResult
 conn_olpc_msg_cb (LmMessageHandler *handler,
                   LmConnection *connection,
@@ -2988,6 +3052,11 @@ conn_olpc_msg_cb (LmMessageHandler *handler,
           !tp_strdiff (ns, NS_OLPC_BUDDY))
         {
           buddy_added (conn, node);
+        }
+      else if (!tp_strdiff (node->name, "removed") &&
+          !tp_strdiff (ns, NS_OLPC_BUDDY))
+        {
+          buddy_removed (conn, node);
         }
     }
 

@@ -199,7 +199,7 @@ def test(q, bus, conn, stream):
     handle = added[0]
     assert conn.InspectHandles(1, [handle])[0] == 'charles@localhost'
 
-    # add A buddy to view 0
+    # add a buddy to view 0
     message = domish.Element((None, 'message'))
     message['from'] = 'gadget.localhost'
     message['to'] = 'alice@localhost'
@@ -230,6 +230,33 @@ def test(q, bus, conn, stream):
     members = view0_group_iface.GetMembers()
     members = sorted(conn.InspectHandles(1, members))
     assert members == ['bob@localhost', 'oscar@localhost']
+
+    # remove a buddy from view 0
+    message = domish.Element((None, 'message'))
+    message['from'] = 'gadget.localhost'
+    message['to'] = 'alice@localhost'
+    message['type'] = 'notice'
+    added = message.addElement((NS_OLPC_BUDDY, 'removed'))
+    added['id'] = '0'
+    buddy = added.addElement((None, 'buddy'))
+    buddy['jid'] = 'bob@localhost'
+    amp = message.addElement((NS_AMP, 'amp'))
+    rule = amp.addElement((None, 'rule'))
+    rule['condition'] = 'deliver-at'
+    rule['value'] = 'stored'
+    rule['action'] ='error'
+    stream.send(message)
+
+    event = q.expect('dbus-signal', signal='MembersChanged')
+    msg, added, removed, lp, rp, actor, reason = event.args
+    assert (added, lp, rp) == ([], [], [])
+    assert len(removed) == 1
+    handle = removed[0]
+    assert conn.InspectHandles(1, [handle])[0] == 'bob@localhost'
+
+    members = view0_group_iface.GetMembers()
+    members = sorted(conn.InspectHandles(1, members))
+    assert members == ['oscar@localhost']
 
     # close view 0
     call_async(q, view0_iface, 'Close')

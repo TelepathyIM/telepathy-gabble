@@ -71,6 +71,10 @@ GabbleOlpcBuddyView * gabble_olpc_buddy_view_new (GabbleConnection *conn,
 void gabble_olpc_buddy_view_add_buddies (GabbleOlpcBuddyView *self,
     TpHandleSet *handles);
 
+
+void gabble_olpc_buddy_view_remove_buddies (GabbleOlpcBuddyView *self,
+    TpHandleSet *handles);
+
 G_END_DECLS
 
 #endif /* #ifndef __GABBLE_OLPC_BUDDY_VIEW_H__ */

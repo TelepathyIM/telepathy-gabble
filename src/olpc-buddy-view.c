@@ -335,6 +335,21 @@ gabble_olpc_buddy_view_add_buddies (GabbleOlpcBuddyView *self,
   tp_intset_destroy (empty);
 }
 
+void
+gabble_olpc_buddy_view_remove_buddies (GabbleOlpcBuddyView *self,
+                                       TpHandleSet *buddies)
+{
+  TpIntSet *empty;
+
+  empty = tp_intset_new ();
+
+  tp_group_mixin_change_members (G_OBJECT (self), "",
+      empty, tp_handle_set_peek (buddies), empty, empty,
+      0, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
+
+  tp_intset_destroy (empty);
+}
+
 static void
 buddy_view_iface_init (gpointer g_iface,
                        gpointer iface_data)

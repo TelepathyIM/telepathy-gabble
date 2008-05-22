@@ -2041,7 +2041,8 @@ connection_disco_cb (GabbleDisco *disco,
   if (conn->features && GABBLE_CONNECTION_FEATURES_PEP)
     {
       const gchar *ifaces[] = { GABBLE_IFACE_OLPC_BUDDY_INFO,
-          GABBLE_IFACE_OLPC_ACTIVITY_PROPERTIES, NULL };
+          GABBLE_IFACE_OLPC_ACTIVITY_PROPERTIES, GABBLE_IFACE_OLPC_BUDDY,
+          GABBLE_IFACE_OLPC_ACTIVITY, NULL };
 
       tp_base_connection_add_interfaces ((TpBaseConnection *) conn, ifaces);
     }

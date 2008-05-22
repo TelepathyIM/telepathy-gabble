@@ -198,6 +198,34 @@ def test(q, bus, conn, stream):
     handle = added[0]
     assert conn.InspectHandles(1, [handle])[0] == 'charles@localhost'
 
+    # add A buddy to view 0
+    message = domish.Element((None, 'message'))
+    message['from'] = 'gadget.localhost'
+    message['to'] = 'alice@localhost'
+    message['type'] = 'notice'
+    added = message.addElement((NS_OLPC_BUDDY, 'added'))
+    added['id'] = '0'
+    buddy = added.addElement((None, 'buddy'))
+    buddy['jid'] = 'oscar@localhost'
+    properties = buddy.addElement((NS_OLPC_BUDDY_PROPS, "properties"))
+    property = properties.addElement((None, "property"))
+    property['type'] = 'str'
+    property['name'] = 'color'
+    property.addContent('#000000,#AAAAAA')
+    amp = message.addElement((NS_AMP, 'amp'))
+    rule = amp.addElement((None, 'rule'))
+    rule['condition'] = 'deliver-at'
+    rule['value'] = 'stored'
+    rule['action'] ='error'
+    stream.send(message)
+
+    event = q.expect('dbus-signal', signal='MembersChanged')
+    msg, added, removed, lp, rp, actor, reason = event.args
+    assert (removed, lp, rp) == ([], [], [])
+    assert len(added) == 1
+    handle = added[0]
+    assert conn.InspectHandles(1, [handle])[0] == 'oscar@localhost'
+
     # close view 0
     call_async(q, view0_iface, 'Close')
     event, _ = q.expect_many(

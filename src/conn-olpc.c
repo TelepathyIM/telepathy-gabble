@@ -21,6 +21,7 @@
 #include "conn-olpc.h"
 
 #include <string.h>
+#include <stdlib.h>
 
 #include <telepathy-glib/util.h>
 
@@ -2859,6 +2860,84 @@ activity_changed (GabbleConnection *conn,
     }
 }
 
+static gboolean
+add_buddies_to_view_from_node (GabbleConnection *conn,
+                               GabbleOlpcBuddyView *view,
+                               LmMessageNode *node)
+{
+  TpHandleSet *buddies;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection*) conn, TP_HANDLE_TYPE_CONTACT);
+  LmMessageNode *buddy;
+
+  buddies = tp_handle_set_new (contact_repo);
+
+  for (buddy = node->children; buddy != NULL; buddy = buddy->next)
+    {
+
+      const gchar *jid;
+      LmMessageNode *properties_node;
+      GHashTable *properties;
+      TpHandle handle;
+
+      if (tp_strdiff (buddy->name, "buddy"))
+        continue;
+
+      jid = lm_message_node_get_attribute (buddy, "jid");
+
+      handle = tp_handle_ensure (contact_repo, jid, NULL, NULL);
+      if (handle == 0)
+        {
+          DEBUG ("Invalid jid: %s", jid);
+          tp_handle_set_destroy (buddies);
+          return FALSE;
+        }
+
+      tp_handle_set_add (buddies, handle);
+      tp_handle_unref (contact_repo, handle);
+
+      properties_node = lm_message_node_get_child_with_namespace (buddy,
+          "properties", NS_OLPC_BUDDY_PROPS);
+      properties = lm_message_node_extract_properties (properties_node,
+          "property");
+
+      /* FIXME: is it sane to fire this signal as the client doesn't know
+       * this buddy yet? */
+      gabble_svc_olpc_buddy_info_emit_properties_changed (conn, handle,
+          properties);
+
+      g_hash_table_destroy (properties);
+    }
+
+  gabble_olpc_buddy_view_add_buddies (view, buddies);
+  tp_handle_set_destroy (buddies);
+
+  return TRUE;
+}
+
+static void
+buddy_added (GabbleConnection *conn,
+             LmMessageNode *added)
+{
+  const gchar *id_str;
+  guint id;
+  GabbleOlpcBuddyView *view;
+
+  id_str = lm_message_node_get_attribute (added, "id");
+  if (id_str == NULL)
+    return;
+
+  id = strtoul (id_str, NULL, 10);
+  view = g_hash_table_lookup (conn->olpc_buddy_views, GUINT_TO_POINTER (id));
+  if (view == NULL)
+    {
+      DEBUG ("no buddy view with ID %u", id);
+      return;
+    }
+
+  add_buddies_to_view_from_node (conn, view, added);
+}
+
 LmHandlerResult
 conn_olpc_msg_cb (LmMessageHandler *handler,
                   LmConnection *connection,
@@ -2893,6 +2972,7 @@ conn_olpc_msg_cb (LmMessageHandler *handler,
       const gchar *ns;
 
       ns = lm_message_node_get_attribute (node, "xmlns");
+      g_print ("%s %s\n", node->name, ns);
 
       if (!tp_strdiff (node->name, "change") &&
         !tp_strdiff (ns, NS_OLPC_BUDDY))
@@ -2903,6 +2983,11 @@ conn_olpc_msg_cb (LmMessageHandler *handler,
           !tp_strdiff (ns, NS_OLPC_ACTIVITY))
         {
           activity_changed (conn, node);
+        }
+      else if (!tp_strdiff (node->name, "added") &&
+          !tp_strdiff (ns, NS_OLPC_BUDDY))
+        {
+          buddy_added (conn, node);
         }
     }
 
@@ -3035,10 +3120,7 @@ buddy_query_result_cb (GabbleConnection *conn,
                        GObject *_view,
                        gpointer user_data)
 {
-  LmMessageNode *query, *buddy;
-  TpHandleSet *buddies;
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection*) conn, TP_HANDLE_TYPE_CONTACT);
+  LmMessageNode *query;
   GabbleOlpcBuddyView *view = GABBLE_OLPC_BUDDY_VIEW (_view);
 
   query = lm_message_node_get_child_with_namespace (reply_msg->node, "query",
@@ -3046,42 +3128,8 @@ buddy_query_result_cb (GabbleConnection *conn,
   if (query == NULL)
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
-  buddies = tp_handle_set_new (contact_repo);
-  for (buddy = query->children; buddy != NULL; buddy = buddy->next)
-    {
-      const gchar *jid;
-      LmMessageNode *properties_node;
-      GHashTable *properties;
-      TpHandle handle;
+  add_buddies_to_view_from_node (conn, view, query);
 
-      jid = lm_message_node_get_attribute (buddy, "jid");
-
-      handle = tp_handle_ensure (contact_repo, jid, NULL, NULL);
-      if (handle == 0)
-        {
-          DEBUG ("Invalid jid: %s", jid);
-          tp_handle_set_destroy (buddies);
-          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-        }
-
-      tp_handle_set_add (buddies, handle);
-      tp_handle_unref (contact_repo, handle);
-
-      properties_node = lm_message_node_get_child_with_namespace (buddy,
-          "properties", NS_OLPC_BUDDY_PROPS);
-      properties = lm_message_node_extract_properties (properties_node,
-          "property");
-
-      gabble_svc_olpc_buddy_info_emit_properties_changed (conn, handle,
-          properties);
-
-      g_hash_table_destroy (properties);
-    }
-
-  /* TODO: remove buddies when needed */
-  gabble_olpc_buddy_view_add_buddies (view, buddies);
-
-  tp_handle_set_destroy (buddies);
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 

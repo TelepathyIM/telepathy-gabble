@@ -5,7 +5,7 @@ test OLPC search activity
 import dbus
 
 from servicetest import call_async, EventPattern
-from gabbletest import exec_test, make_result_iq, acknowledge_iq
+from gabbletest import exec_test, make_result_iq, acknowledge_iq, sync_stream
 
 from twisted.words.xish import domish, xpath
 from twisted.words.protocols.jabber.client import IQ
@@ -59,16 +59,7 @@ def test(q, bus, conn, stream):
     activity_prop_iface = dbus.Interface(conn, 'org.laptop.Telepathy.ActivityProperties')
     activity_iface = dbus.Interface(conn, 'org.laptop.Telepathy.Activity')
 
-    # FIXME: This is crack. We send this message so we can wait for the
-    # NewChannel signal and so be sure than Gabble handled the disco response.
-    message = domish.Element(('jabber:client', 'message'))
-    message['from'] = 'alice@localhost'
-    message['to'] = 'test@localhost'
-    message['type'] = 'chat'
-    body = message.addElement((None, 'body'))
-    body.addContent('hi!')
-    stream.send(message)
-    q.expect('dbus-signal', signal='NewChannel')
+    sync_stream(q, stream)
 
     # request 3 random activities
     call_async(q, activity_iface, 'RequestRandom', 3)

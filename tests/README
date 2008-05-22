@@ -1,3 +1,6 @@
+To run all tests:
+
+  make check-all
 
 == C tests ==
 
@@ -7,10 +10,12 @@ To run all tests:
 
 To run an individual test:
 
+  # FIXME: this does not work
   make check TESTS=test-handles
 
 To run tests under Valgrind:
 
+  cd tests
   make check-valgrind
 
 == Twisted tests ==
@@ -21,13 +26,25 @@ To run all Twisted tests:
 
 To run an individual Twisted test:
 
+  cd tests/twisted
   make check-twisted TWISTED_TESTS=test-connect.py
 
 or:
 
-  sh run-with-tmp-session-bus.sh python test-connect.py
+  cd tests/twisted
+  sh tools/with-session-bus.sh --config-file=tools/tmp-session-bus.conf \
+        -- python test-connect.py
 
 To run with debug information:
 
-  sh run-with-tmp-session-bus.sh python test-connect.py -v
+  cd tests/twisted
+  make check-twisted TWISTED_TESTS=test-connect.py CHECK_TWISTED_VERBOSE=1
+
+or:
+
+  cd tests/twisted
+  sh tools/with-session-bus.sh --config-file=tools/tmp-session-bus.conf \
+        -- python test-connect.py -v
+
+
 

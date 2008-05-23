@@ -113,10 +113,10 @@ def test(q, bus, conn, stream):
         EventPattern('stream-iq', to='gadget.localhost', query_ns=NS_OLPC_BUDDY),
         EventPattern('dbus-return', method='RequestRandomBuddies'))
 
-    query = iq_event.stanza.firstChildElement()
-    assert query.name == 'query'
-    assert query['id'] == '0'
-    random = xpath.queryForNodes('/iq/query/random', iq_event.stanza)
+    view = iq_event.stanza.firstChildElement()
+    assert view.name == 'view'
+    assert view['id'] == '0'
+    random = xpath.queryForNodes('/iq/view/random', iq_event.stanza)
     assert len(random) == 1
     assert random[0]['max'] == '3'
 
@@ -124,8 +124,8 @@ def test(q, bus, conn, stream):
     reply = make_result_iq(stream, iq_event.stanza)
     reply['from'] = 'gadget.localhost'
     reply['to'] = 'alice@localhost'
-    query = xpath.queryForNodes('/iq/query', reply)[0]
-    buddy = query.addElement((None, "buddy"))
+    view = xpath.queryForNodes('/iq/view', reply)[0]
+    buddy = view.addElement((None, "buddy"))
     buddy['jid'] = 'bob@localhost'
     properties = buddy.addElement((NS_OLPC_BUDDY_PROPS, "properties"))
     property = properties.addElement((None, "property"))
@@ -159,10 +159,10 @@ def test(q, bus, conn, stream):
         EventPattern('stream-iq', to='gadget.localhost', query_ns=NS_OLPC_BUDDY),
         EventPattern('dbus-return', method='SearchBuddiesByProperties'))
 
-    properties = xpath.queryForNodes('/iq/query/buddy/properties/property', iq_event.stanza)
-    query = iq_event.stanza.firstChildElement()
-    assert query.name == 'query'
-    assert query['id'] == '1'
+    properties = xpath.queryForNodes('/iq/view/buddy/properties/property', iq_event.stanza)
+    view = iq_event.stanza.firstChildElement()
+    assert view.name == 'view'
+    assert view['id'] == '1'
     assert len(properties) == 1
     property = properties[0]
     assert property['type'] == 'str'
@@ -173,8 +173,8 @@ def test(q, bus, conn, stream):
     reply = make_result_iq(stream, iq_event.stanza)
     reply['from'] = 'gadget.localhost'
     reply['to'] = 'alice@localhost'
-    query = xpath.queryForNodes('/iq/query', reply)[0]
-    buddy = query.addElement((None, "buddy"))
+    view = xpath.queryForNodes('/iq/view', reply)[0]
+    buddy = view.addElement((None, "buddy"))
     buddy['jid'] = 'charles@localhost'
     properties = buddy.addElement((NS_OLPC_BUDDY_PROPS, "properties"))
     property = properties.addElement((None, "property"))

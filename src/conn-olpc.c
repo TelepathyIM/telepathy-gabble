@@ -3189,15 +3189,15 @@ buddy_query_result_cb (GabbleConnection *conn,
                        GObject *_view,
                        gpointer user_data)
 {
-  LmMessageNode *query;
+  LmMessageNode *view_node;
   GabbleOlpcBuddyView *view = GABBLE_OLPC_BUDDY_VIEW (_view);
 
-  query = lm_message_node_get_child_with_namespace (reply_msg->node, "query",
+  view_node = lm_message_node_get_child_with_namespace (reply_msg->node, "view",
       NS_OLPC_BUDDY);
-  if (query == NULL)
+  if (view_node == NULL)
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
-  add_buddies_to_view_from_node (conn, view, query);
+  add_buddies_to_view_from_node (conn, view, view_node);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
@@ -3248,7 +3248,7 @@ olpc_gadget_request_random_buddies (GabbleSvcOLPCGadget *iface,
 
   query = lm_message_build_with_sub_type (conn->olpc_gadget_buddy,
       LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET,
-      '(', "query", "",
+      '(', "view", "",
           '@', "xmlns", NS_OLPC_BUDDY,
           '@', "id", id_str,
           '(', "random", "",
@@ -3316,7 +3316,7 @@ olpc_gadget_search_buddies_by_properties (GabbleSvcOLPCGadget *iface,
 
   query = lm_message_build_with_sub_type (conn->olpc_gadget_buddy,
       LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET,
-      '(', "query", "",
+      '(', "view", "",
           '@', "xmlns", NS_OLPC_BUDDY,
           '@', "id", id_str,
           '(', "buddy", "",

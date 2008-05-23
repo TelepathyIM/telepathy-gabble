@@ -68,10 +68,10 @@ def test(q, bus, conn, stream):
         EventPattern('stream-iq', to='gadget.localhost', query_ns=NS_OLPC_ACTIVITY),
         EventPattern('dbus-return', method='RequestRandomActivities'))
 
-    query = iq_event.stanza.firstChildElement()
-    assert query.name == 'query'
-    assert query['id'] == '0'
-    random = xpath.queryForNodes('/iq/query/random', iq_event.stanza)
+    view = iq_event.stanza.firstChildElement()
+    assert view.name == 'view'
+    assert view['id'] == '0'
+    random = xpath.queryForNodes('/iq/view/random', iq_event.stanza)
     assert len(random) == 1
     assert random[0]['max'] == '3'
 
@@ -79,8 +79,8 @@ def test(q, bus, conn, stream):
     reply = make_result_iq(stream, iq_event.stanza)
     reply['from'] = 'gadget.localhost'
     reply['to'] = 'alice@localhost'
-    query = xpath.queryForNodes('/iq/query', reply)[0]
-    activity = query.addElement((None, "activity"))
+    view = xpath.queryForNodes('/iq/view', reply)[0]
+    activity = view.addElement((None, "activity"))
     activity['room'] = 'room1@conference.localhost'
     properties = activity.addElement((NS_OLPC_ACTIVITY_PROPS, "properties"))
     property = properties.addElement((None, "property"))
@@ -106,10 +106,10 @@ def test(q, bus, conn, stream):
         EventPattern('stream-iq', to='gadget.localhost', query_ns=NS_OLPC_ACTIVITY),
         EventPattern('dbus-return', method='SearchActivitiesByProperties'))
 
-    properties = xpath.queryForNodes('/iq/query/activity/properties/property', iq_event.stanza)
-    query = iq_event.stanza.firstChildElement()
-    assert query.name == 'query'
-    assert query['id'] == '1'
+    properties = xpath.queryForNodes('/iq/view/activity/properties/property', iq_event.stanza)
+    view = iq_event.stanza.firstChildElement()
+    assert view.name == 'view'
+    assert view['id'] == '1'
     assert len(properties) == 1
     property = properties[0]
     assert property['type'] == 'str'
@@ -120,8 +120,8 @@ def test(q, bus, conn, stream):
     reply = make_result_iq(stream, iq_event.stanza)
     reply['from'] = 'gadget.localhost'
     reply['to'] = 'alice@localhost'
-    query = xpath.queryForNodes('/iq/query', reply)[0]
-    activity = query.addElement((None, "activity"))
+    view = xpath.queryForNodes('/iq/view', reply)[0]
+    activity = view.addElement((None, "activity"))
     activity['room'] = 'room2@conference.localhost'
     properties = activity.addElement((NS_OLPC_ACTIVITY_PROPS, "properties"))
     property = properties.addElement((None, "property"))
@@ -147,10 +147,10 @@ def test(q, bus, conn, stream):
         EventPattern('stream-iq', to='gadget.localhost', query_ns=NS_OLPC_ACTIVITY),
         EventPattern('dbus-return', method='SearchActivitiesByParticipants'))
 
-    buddies = xpath.queryForNodes('/iq/query/activity/buddy', iq_event.stanza)
-    query = iq_event.stanza.firstChildElement()
-    assert query.name == 'query'
-    assert query['id'] == '2'
+    buddies = xpath.queryForNodes('/iq/view/activity/buddy', iq_event.stanza)
+    view = iq_event.stanza.firstChildElement()
+    assert view.name == 'view'
+    assert view['id'] == '2'
     assert len(buddies) == 2
     assert (buddies[0]['jid'], buddies[1]['jid']) == ('alice@localhost', 'bob@localhost')
 
@@ -158,8 +158,8 @@ def test(q, bus, conn, stream):
     reply = make_result_iq(stream, iq_event.stanza)
     reply['from'] = 'gadget.localhost'
     reply['to'] = 'alice@localhost'
-    query = xpath.queryForNodes('/iq/query', reply)[0]
-    activity = query.addElement((None, "activity"))
+    view = xpath.queryForNodes('/iq/view', reply)[0]
+    activity = view.addElement((None, "activity"))
     activity['room'] = 'room2@conference.localhost'
     properties = activity.addElement((NS_OLPC_ACTIVITY_PROPS, "properties"))
     property = properties.addElement((None, "property"))

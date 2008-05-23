@@ -3360,19 +3360,20 @@ activity_query_result_cb (GabbleConnection *conn,
                           GObject *_view,
                           gpointer user_data)
 {
-  LmMessageNode *query, *activity;
+  LmMessageNode *view_node, *activity;
   TpHandleSet *activities;
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
       (TpBaseConnection*) conn, TP_HANDLE_TYPE_ROOM);
   GabbleOlpcActivityView *view = GABBLE_OLPC_ACTIVITY_VIEW (_view);
 
-  query = lm_message_node_get_child_with_namespace (reply_msg->node, "query",
+  view_node = lm_message_node_get_child_with_namespace (reply_msg->node, "view",
       NS_OLPC_ACTIVITY);
-  if (query == NULL)
+  if (view_node == NULL)
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
   activities = tp_handle_set_new (room_repo);
-  for (activity = query->children; activity != NULL; activity = activity->next)
+  for (activity = view_node->children; activity != NULL;
+      activity = activity->next)
     {
       const gchar *jid;
       LmMessageNode *properties_node;
@@ -3491,7 +3492,7 @@ olpc_gadget_request_random_activities (GabbleSvcOLPCGadget *iface,
 
   query = lm_message_build_with_sub_type (conn->olpc_gadget_activity,
       LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET,
-      '(', "query", "",
+      '(', "view", "",
           '@', "xmlns", NS_OLPC_ACTIVITY,
           '@', "id", id_str,
           '(', "random", "",
@@ -3559,7 +3560,7 @@ olpc_gadget_search_activities_by_properties (GabbleSvcOLPCGadget *iface,
 
   query = lm_message_build_with_sub_type (conn->olpc_gadget_activity,
       LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET,
-      '(', "query", "",
+      '(', "view", "",
           '@', "xmlns", NS_OLPC_ACTIVITY,
           '@', "id", id_str,
           '(', "activity", "",
@@ -3634,7 +3635,7 @@ olpc_gadget_search_activities_by_participants (GabbleSvcOLPCGadget *iface,
 
   query = lm_message_build_with_sub_type (conn->olpc_gadget_activity,
       LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET,
-      '(', "query", "",
+      '(', "view", "",
           '@', "xmlns", NS_OLPC_ACTIVITY,
           '@', "id", id_str,
           '(', "activity", "",

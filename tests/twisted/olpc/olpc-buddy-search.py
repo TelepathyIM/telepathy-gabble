@@ -57,7 +57,7 @@ def test(q, bus, conn, stream):
     stream.send(reply)
 
     buddy_info_iface = dbus.Interface(conn, 'org.laptop.Telepathy.BuddyInfo')
-    buddy_iface = dbus.Interface(conn, 'org.laptop.Telepathy.Buddy')
+    gadget_iface = dbus.Interface(conn, 'org.laptop.Telepathy.Gadget')
 
     call_async(q, conn, 'RequestHandles', 1, ['bob@localhost'])
 
@@ -107,11 +107,11 @@ def test(q, bus, conn, stream):
     assert props == {'color': '#005FE4,#00A0FF' }
 
     # request 3 random buddies
-    call_async(q, buddy_iface, 'RequestRandom', 3)
+    call_async(q, gadget_iface, 'RequestRandomBuddies', 3)
 
     iq_event, return_event = q.expect_many(
         EventPattern('stream-iq', to='gadget.localhost', query_ns=NS_OLPC_BUDDY),
-        EventPattern('dbus-return', method='RequestRandom'))
+        EventPattern('dbus-return', method='RequestRandomBuddies'))
 
     query = iq_event.stanza.firstChildElement()
     assert query.name == 'query'
@@ -153,11 +153,11 @@ def test(q, bus, conn, stream):
 
     # buddy search
     props = {'color': '#AABBCC,#001122'}
-    call_async(q, buddy_iface, 'SearchByProperties', props)
+    call_async(q, gadget_iface, 'SearchBuddiesByProperties', props)
 
     iq_event, return_event = q.expect_many(
         EventPattern('stream-iq', to='gadget.localhost', query_ns=NS_OLPC_BUDDY),
-        EventPattern('dbus-return', method='SearchByProperties'))
+        EventPattern('dbus-return', method='SearchBuddiesByProperties'))
 
     properties = xpath.queryForNodes('/iq/query/buddy/properties/property', iq_event.stanza)
     query = iq_event.stanza.firstChildElement()

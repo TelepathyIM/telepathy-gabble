@@ -3203,9 +3203,9 @@ buddy_query_result_cb (GabbleConnection *conn,
 }
 
 static void
-olpc_buddy_request_random (GabbleSvcOLPCBuddy *iface,
-                           guint max,
-                           DBusGMethodInvocation *context)
+olpc_gadget_request_random_buddies (GabbleSvcOLPCGadget *iface,
+                                    guint max,
+                                    DBusGMethodInvocation *context)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   LmMessage *query;
@@ -3273,16 +3273,17 @@ olpc_buddy_request_random (GabbleSvcOLPCBuddy *iface,
       return;
     }
 
-  gabble_svc_olpc_buddy_return_from_request_random (context, object_path);
+  gabble_svc_olpc_gadget_return_from_request_random_buddies (context,
+      object_path);
 
   g_free (object_path);
   lm_message_unref (query);
 }
 
 static void
-olpc_buddy_search_by_properties (GabbleSvcOLPCBuddy *iface,
-                                 GHashTable *properties,
-                                 DBusGMethodInvocation *context)
+olpc_gadget_search_buddies_by_properties (GabbleSvcOLPCGadget *iface,
+                                          GHashTable *properties,
+                                          DBusGMethodInvocation *context)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   LmMessage *query;
@@ -3345,23 +3346,11 @@ olpc_buddy_search_by_properties (GabbleSvcOLPCBuddy *iface,
       return;
     }
 
-  gabble_svc_olpc_buddy_return_from_search_by_properties (context, object_path);
+  gabble_svc_olpc_gadget_return_from_search_buddies_by_properties (context,
+      object_path);
 
   g_free (object_path);
   lm_message_unref (query);
-}
-
-void
-olpc_buddy_iface_init (gpointer g_iface,
-                       gpointer iface_data)
-{
-  GabbleSvcOLPCBuddyClass *klass = g_iface;
-
-#define IMPLEMENT(x) gabble_svc_olpc_buddy_implement_##x (\
-    klass, olpc_buddy_##x)
-  IMPLEMENT(request_random);
-  IMPLEMENT(search_by_properties);
-#undef IMPLEMENT
 }
 
 static LmHandlerResult
@@ -3457,9 +3446,9 @@ create_activity_view (GabbleConnection *conn)
 }
 
 static void
-olpc_activity_request_random (GabbleSvcOLPCActivity *iface,
-                              guint max,
-                              DBusGMethodInvocation *context)
+olpc_gadget_request_random_activities (GabbleSvcOLPCGadget *iface,
+                                       guint max,
+                                       DBusGMethodInvocation *context)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   LmMessage *query;
@@ -3527,16 +3516,17 @@ olpc_activity_request_random (GabbleSvcOLPCActivity *iface,
       return;
     }
 
-  gabble_svc_olpc_activity_return_from_request_random (context, object_path);
+  gabble_svc_olpc_gadget_return_from_request_random_activities (context,
+      object_path);
 
   g_free (object_path);
   lm_message_unref (query);
 }
 
 static void
-olpc_activity_search_by_properties (GabbleSvcOLPCActivity *iface,
-                                    GHashTable *properties,
-                                    DBusGMethodInvocation *context)
+olpc_gadget_search_activities_by_properties (GabbleSvcOLPCGadget *iface,
+                                             GHashTable *properties,
+                                             DBusGMethodInvocation *context)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   LmMessage *query;
@@ -3599,16 +3589,17 @@ olpc_activity_search_by_properties (GabbleSvcOLPCActivity *iface,
       return;
     }
 
-  gabble_svc_olpc_activity_return_from_search_by_properties (context, object_path);
+  gabble_svc_olpc_gadget_return_from_search_activities_by_properties (context,
+      object_path);
 
   g_free (object_path);
   lm_message_unref (query);
 }
 
 static void
-olpc_activity_search_by_participants (GabbleSvcOLPCActivity *iface,
-                                      const GArray *participants,
-                                      DBusGMethodInvocation *context)
+olpc_gadget_search_activities_by_participants (GabbleSvcOLPCGadget *iface,
+                                               const GArray *participants,
+                                               DBusGMethodInvocation *context)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   LmMessage *query;
@@ -3679,7 +3670,7 @@ olpc_activity_search_by_participants (GabbleSvcOLPCActivity *iface,
       return;
     }
 
-  gabble_svc_olpc_activity_return_from_search_by_participants (context,
+  gabble_svc_olpc_gadget_return_from_search_activities_by_participants (context,
       object_path);
 
   g_free (object_path);
@@ -3687,15 +3678,17 @@ olpc_activity_search_by_participants (GabbleSvcOLPCActivity *iface,
 }
 
 void
-olpc_activity_iface_init (gpointer g_iface,
-                          gpointer iface_data)
+olpc_gadget_iface_init (gpointer g_iface,
+                        gpointer iface_data)
 {
-  GabbleSvcOLPCActivityClass *klass = g_iface;
+  GabbleSvcOLPCGadgetClass *klass = g_iface;
 
-#define IMPLEMENT(x) gabble_svc_olpc_activity_implement_##x (\
-    klass, olpc_activity_##x)
-  IMPLEMENT(request_random);
-  IMPLEMENT(search_by_properties);
-  IMPLEMENT(search_by_participants);
+#define IMPLEMENT(x) gabble_svc_olpc_gadget_implement_##x (\
+    klass, olpc_gadget_##x)
+  IMPLEMENT(request_random_buddies);
+  IMPLEMENT(search_buddies_by_properties);
+  IMPLEMENT(request_random_activities);
+  IMPLEMENT(search_activities_by_properties);
+  IMPLEMENT(search_activities_by_participants);
 #undef IMPLEMENT
 }

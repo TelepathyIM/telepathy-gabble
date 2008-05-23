@@ -60,9 +60,7 @@ gboolean conn_olpc_process_activity_uninvite_message (GabbleConnection *conn,
 LmHandlerResult conn_olpc_msg_cb (LmMessageHandler *handler,
     LmConnection *connection, LmMessage *message, gpointer user_data);
 
-void olpc_buddy_iface_init (gpointer g_iface, gpointer iface_data);
-
-void olpc_activity_iface_init (gpointer g_iface, gpointer iface_data);
+void olpc_gadget_iface_init (gpointer g_iface, gpointer iface_data);
 
 #endif /* __CONN_OLPC_H__ */
 

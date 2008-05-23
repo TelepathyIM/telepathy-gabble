@@ -57,16 +57,16 @@ def test(q, bus, conn, stream):
     stream.send(reply)
 
     activity_prop_iface = dbus.Interface(conn, 'org.laptop.Telepathy.ActivityProperties')
-    activity_iface = dbus.Interface(conn, 'org.laptop.Telepathy.Activity')
+    gadget_iface = dbus.Interface(conn, 'org.laptop.Telepathy.Gadget')
 
     sync_stream(q, stream)
 
     # request 3 random activities
-    call_async(q, activity_iface, 'RequestRandom', 3)
+    call_async(q, gadget_iface, 'RequestRandomActivities', 3)
 
     iq_event, return_event = q.expect_many(
         EventPattern('stream-iq', to='gadget.localhost', query_ns=NS_OLPC_ACTIVITY),
-        EventPattern('dbus-return', method='RequestRandom'))
+        EventPattern('dbus-return', method='RequestRandomActivities'))
 
     query = iq_event.stanza.firstChildElement()
     assert query.name == 'query'
@@ -100,11 +100,11 @@ def test(q, bus, conn, stream):
 
     # activity search by properties
     props = {'color': '#AABBCC,#001122'}
-    call_async(q, activity_iface, 'SearchByProperties', props)
+    call_async(q, gadget_iface, 'SearchActivitiesByProperties', props)
 
     iq_event, return_event = q.expect_many(
         EventPattern('stream-iq', to='gadget.localhost', query_ns=NS_OLPC_ACTIVITY),
-        EventPattern('dbus-return', method='SearchByProperties'))
+        EventPattern('dbus-return', method='SearchActivitiesByProperties'))
 
     properties = xpath.queryForNodes('/iq/query/activity/properties/property', iq_event.stanza)
     query = iq_event.stanza.firstChildElement()
@@ -141,11 +141,11 @@ def test(q, bus, conn, stream):
 
     # activity search by participants
     participants = conn.RequestHandles(1, ["alice@localhost", "bob@localhost"])
-    call_async(q, activity_iface, 'SearchByParticipants', participants)
+    call_async(q, gadget_iface, 'SearchActivitiesByParticipants', participants)
 
     iq_event, return_event = q.expect_many(
         EventPattern('stream-iq', to='gadget.localhost', query_ns=NS_OLPC_ACTIVITY),
-        EventPattern('dbus-return', method='SearchByParticipants'))
+        EventPattern('dbus-return', method='SearchActivitiesByParticipants'))
 
     buddies = xpath.queryForNodes('/iq/query/activity/buddy', iq_event.stanza)
     query = iq_event.stanza.firstChildElement()

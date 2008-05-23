@@ -3678,6 +3678,15 @@ olpc_gadget_search_activities_by_participants (GabbleSvcOLPCGadget *iface,
   lm_message_unref (query);
 }
 
+static void
+olpc_gadget_publish (GabbleSvcOLPCGadget *iface,
+                     gboolean publish,
+                     DBusGMethodInvocation *context)
+{
+  /* TODO */
+  gabble_svc_olpc_gadget_return_from_publish (context);
+}
+
 void
 olpc_gadget_iface_init (gpointer g_iface,
                         gpointer iface_data)
@@ -3691,5 +3700,6 @@ olpc_gadget_iface_init (gpointer g_iface,
   IMPLEMENT(request_random_activities);
   IMPLEMENT(search_activities_by_properties);
   IMPLEMENT(search_activities_by_participants);
+  IMPLEMENT(publish);
 #undef IMPLEMENT
 }

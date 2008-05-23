@@ -128,6 +128,20 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
       </tp:possible-errors>
     </method>
 
+    <method name="Publish">
+      <arg direction="in" name="publish" type="b">
+         <tp:docstring>
+          A boolean indicating if we want to publish your informations to Gadget.
+        </tp:docstring>
+      </arg>
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+        <p>Publish your informations to Gadget so other users can search for you.</p>
+      </tp:docstring>
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.Disconnected"/>
+      </tp:possible-errors>
+    </method>
+
     <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
       <p>An interface on connections to interact with the Gadget component.</p>
     </tp:docstring>

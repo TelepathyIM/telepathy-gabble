@@ -151,6 +151,10 @@ def test(q, bus, conn, stream):
     handle = added[0]
     assert conn.InspectHandles(1, [handle])[0] == 'bob@localhost'
 
+    # we can now get bob's properties
+    props = buddy_info_iface.GetProperties(handle)
+    assert props == {'color': '#005FE4,#00A0FF'}
+
     # buddy search
     props = {'color': '#AABBCC,#001122'}
     call_async(q, gadget_iface, 'SearchBuddiesByProperties', props)

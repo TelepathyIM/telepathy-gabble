@@ -69,11 +69,17 @@ GabbleOlpcBuddyView * gabble_olpc_buddy_view_new (GabbleConnection *conn,
     guint id);
 
 void gabble_olpc_buddy_view_add_buddies (GabbleOlpcBuddyView *self,
-    TpHandleSet *handles);
+    TpHandleSet *handles, GPtrArray *buddies_properties);
 
 
 void gabble_olpc_buddy_view_remove_buddies (GabbleOlpcBuddyView *self,
     TpHandleSet *handles);
+
+gboolean gabble_olpc_buddy_view_set_properties (GabbleOlpcBuddyView *self,
+    TpHandle buddy, GHashTable *properties);
+
+GHashTable * gabble_olpc_buddy_view_get_properties (GabbleOlpcBuddyView *self,
+    TpHandle buddy);
 
 G_END_DECLS
 

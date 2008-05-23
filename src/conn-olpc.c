@@ -527,6 +527,31 @@ get_properties_reply_cb (GabbleConnection *conn,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
+static gboolean
+find_view_having_properties_for_buddy (gpointer id,
+                                       gpointer value,
+                                       gpointer buddy)
+{
+  GabbleOlpcBuddyView *view = GABBLE_OLPC_BUDDY_VIEW (value);
+  TpHandle handle = GPOINTER_TO_UINT (buddy);
+
+  return gabble_olpc_buddy_view_get_properties (view, handle) != NULL;
+}
+
+static GHashTable *
+find_buddy_properties_from_views (GabbleConnection *conn,
+                                  TpHandle buddy)
+{
+  GabbleOlpcBuddyView *view;
+
+  view = g_hash_table_find (conn->olpc_buddy_views,
+      find_view_having_properties_for_buddy, GUINT_TO_POINTER (buddy));
+  if (view == NULL)
+    return NULL;
+
+  return gabble_olpc_buddy_view_get_properties (view, buddy);
+}
+
 static void
 olpc_buddy_info_get_properties (GabbleSvcOLPCBuddyInfo *iface,
                                 guint contact,
@@ -535,6 +560,7 @@ olpc_buddy_info_get_properties (GabbleSvcOLPCBuddyInfo *iface,
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) conn;
   const gchar *jid;
+  GHashTable *properties;
 
   DEBUG ("called");
 
@@ -542,6 +568,16 @@ olpc_buddy_info_get_properties (GabbleSvcOLPCBuddyInfo *iface,
   if (!check_pep (conn, context))
     return;
 
+  /* First check if we can find properties in a buddy view */
+  properties = find_buddy_properties_from_views (conn, contact);
+  if (properties != NULL)
+    {
+      gabble_svc_olpc_buddy_info_return_from_get_properties (context,
+          properties);
+      return;
+    }
+
+  /* Then try to query the PEP node */
   jid = inspect_contact (base, context, contact);
   if (jid == NULL)
     return;
@@ -2869,8 +2905,10 @@ add_buddies_to_view_from_node (GabbleConnection *conn,
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection*) conn, TP_HANDLE_TYPE_CONTACT);
   LmMessageNode *buddy;
+  GPtrArray *buddies_properties;
 
   buddies = tp_handle_set_new (contact_repo);
+  buddies_properties = g_ptr_array_new ();
 
   for (buddy = node->children; buddy != NULL; buddy = buddy->next)
     {
@@ -2901,16 +2939,20 @@ add_buddies_to_view_from_node (GabbleConnection *conn,
       properties = lm_message_node_extract_properties (properties_node,
           "property");
 
+      g_ptr_array_add (buddies_properties, properties);
+
       /* FIXME: is it sane to fire this signal as the client doesn't know
        * this buddy yet? */
       gabble_svc_olpc_buddy_info_emit_properties_changed (conn, handle,
           properties);
-
-      g_hash_table_destroy (properties);
     }
 
-  gabble_olpc_buddy_view_add_buddies (view, buddies);
+  /* FIXME: we should update properties when needed */
+  gabble_olpc_buddy_view_add_buddies (view, buddies, buddies_properties);
+
   tp_handle_set_destroy (buddies);
+  g_ptr_array_foreach (buddies_properties, (GFunc) g_hash_table_unref, NULL);
+  g_ptr_array_free (buddies_properties, TRUE);
 
   return TRUE;
 }

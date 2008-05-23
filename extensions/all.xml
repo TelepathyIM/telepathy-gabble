@@ -27,9 +27,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
 <xi:include href="Connection_Interface_Requests.xml"/>
 <xi:include href="OLPC_Buddy_Info.xml"/>
 <xi:include href="OLPC_Activity_Properties.xml"/>
+<xi:include href="OLPC_Gadget.xml"/>
 <xi:include href="OLPC_Buddy_View.xml"/>
 <xi:include href="OLPC_Activity_View.xml"/>
-<xi:include href="OLPC_Gadget.xml"/>
 
 <tp:generic-types>
   <tp:external-type name="Contact_Handle" type="u"

@@ -1694,6 +1694,20 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
                     owner_jid);
             }
 
+          if (handle == mixin->self_handle &&
+              owner_handle != conn->self_handle)
+            {
+              DEBUG ("Overriding ownership of channel-specific handle %u "
+                  "from %u to %u because I know it's mine",
+                  mixin->self_handle, owner_handle, conn->self_handle);
+
+              if (owner_handle != 0)
+                tp_handle_unref (contact_handles, owner_handle);
+
+              tp_handle_ref (contact_handles, conn->self_handle);
+              owner_handle = conn->self_handle;
+            }
+
           if (priv->initial_state_aggregator == NULL)
             {
               /* we've already had the initial batch of presence stanzas */

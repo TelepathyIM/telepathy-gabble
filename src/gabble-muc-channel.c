@@ -1659,6 +1659,22 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
     {
       if (!tp_handle_set_is_member (mixin->members, handle))
         {
+          TpHandle owner_handle = 0;
+
+          if (owner_jid != NULL)
+            {
+              owner_handle = tp_handle_ensure (contact_handles, owner_jid,
+                  GUINT_TO_POINTER (GABBLE_JID_GLOBAL), NULL);
+
+              if (owner_handle == 0)
+                DEBUG ("Invalid owner handle '%s', treating as no owner",
+                    owner_jid);
+            }
+
+          /* FIXME: these signals should probably be aggregated too */
+          tp_group_mixin_add_handle_owner ((GObject *) chan, handle,
+              owner_handle);
+
           if (priv->initial_members_aggregator == NULL)
             {
               /* we've already had the initial batch of presence stanzas */
@@ -1685,31 +1701,17 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
                 }
             }
 
-          if (owner_jid != NULL)
+          if (owner_handle != 0)
             {
-              TpHandle owner_handle;
+              /* If at least one handle in the channel has an owner,
+               * the HANDLE_OWNERS_NOT_AVAILABLE flag should be removed.
+               */
+              tp_group_mixin_change_flags ((GObject *) chan, 0,
+                  TP_CHANNEL_GROUP_FLAG_HANDLE_OWNERS_NOT_AVAILABLE);
 
-              owner_handle = tp_handle_ensure (contact_handles, owner_jid,
-                  GUINT_TO_POINTER (GABBLE_JID_GLOBAL), NULL);
-              if (owner_handle == 0)
-                {
-                  DEBUG ("ignoring invalid owner JID %s in MUC presence",
-                      owner_jid);
-                }
-              else
-                {
-                  tp_group_mixin_add_handle_owner ((GObject *)chan, handle,
-                      owner_handle);
-                  tp_handle_unref (contact_handles, owner_handle);
+              g_signal_emit (chan, signals[CONTACT_JOIN], 0, owner_handle);
 
-                  /* If at least one handle in the channel has an owner,
-                   * the HANDLE_OWNERS_NOT_AVAILABLE flag should be removed.
-                   */
-                  tp_group_mixin_change_flags ((GObject *) chan, 0,
-                      TP_CHANNEL_GROUP_FLAG_HANDLE_OWNERS_NOT_AVAILABLE);
-
-                  g_signal_emit (chan, signals[CONTACT_JOIN], 0, owner_handle);
-                }
+              tp_handle_unref (contact_handles, owner_handle);
             }
 
           if (handle == mixin->self_handle)

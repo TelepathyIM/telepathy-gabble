@@ -98,6 +98,10 @@ def test(q, bus, conn, stream):
     assert conn.InspectHandles(2, [handle])[0] == 'room1@conference.localhost'
     assert props == {'color': '#005FE4,#00A0FF'}
 
+    # we can now get these properties
+    props = activity_prop_iface.GetProperties(handle)
+    assert props == {'color': '#005FE4,#00A0FF'}
+
     # activity search by properties
     props = {'color': '#AABBCC,#001122'}
     call_async(q, gadget_iface, 'SearchActivitiesByProperties', props)

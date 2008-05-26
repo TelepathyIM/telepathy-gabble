@@ -3159,6 +3159,9 @@ conn_olpc_activity_properties_init (GabbleConnection *conn)
   /* Active activities views
    *
    * view id guint => GabbleOlpcActivityView
+   *
+   * Each activity in the view represents a reference
+   * to an ActivityInfo
    */
   conn->olpc_activity_views = g_hash_table_new_full (g_direct_hash,
       g_direct_equal, NULL, (GDestroyNotify) g_object_unref);
@@ -3421,6 +3424,7 @@ activity_query_result_cb (GabbleConnection *conn,
       LmMessageNode *properties_node;
       GHashTable *properties;
       TpHandle handle;
+      ActivityInfo *info;
 
       jid = lm_message_node_get_attribute (activity, "room");
 
@@ -3443,10 +3447,23 @@ activity_query_result_cb (GabbleConnection *conn,
       gabble_svc_olpc_activity_properties_emit_activity_properties_changed (
           conn, handle, properties);
 
-      g_hash_table_destroy (properties);
+      /* ref the activity while it is in the view */
+      info = g_hash_table_lookup (conn->olpc_activities_info,
+          GUINT_TO_POINTER (handle));
+      if (info == NULL)
+        {
+          info = add_activity_info (conn, handle);
+        }
+      else
+        {
+          info->refcount++;
+        }
+
+      activity_info_set_properties (info, properties);
     }
 
   /* TODO: remove activities when needed */
+  /* TODO: unref ActivityInfo when removing */
   gabble_olpc_activity_view_add_activities (view, activities);
 
   tp_handle_set_destroy (activities);

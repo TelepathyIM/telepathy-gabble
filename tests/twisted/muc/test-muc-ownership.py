@@ -99,7 +99,7 @@ def test(q, bus, conn, stream):
     assert event.args == [0, 1024]
 
     event = q.expect('dbus-signal', signal='HandleOwnersChanged',
-        args=[{2: 0, 3: 0, 4: 0, 5: 6, 7: 8}, []])
+        args=[{2: 1, 3: 0, 4: 0, 5: 6, 7: 8}, []])
 
     event = q.expect('dbus-signal', signal='MembersChanged',
         args=[u'', [2, 3, 4, 5, 7], [], [], [], 0, 0])
@@ -137,7 +137,7 @@ def test(q, bus, conn, stream):
     assert all[u'Members'] == [2, 3, 4, 5, 7], all
     assert all[u'RemotePendingMembers'] == [], all
     assert all[u'SelfHandle'] == 2, all
-    assert all[u'HandleOwners'] == { 2: 0, 3: 0, 4: 0, 5: 6, 7: 8 }, all
+    assert all[u'HandleOwners'] == { 2: 1, 3: 0, 4: 0, 5: 6, 7: 8 }, all
     assert (all[u'GroupFlags'] & 2048) == 2048, all.get('GroupFlags')
 
     conn.Disconnect()

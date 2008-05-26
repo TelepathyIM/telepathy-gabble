@@ -434,6 +434,8 @@ do_invite (GabbleMucFactory *fac,
     {
       DEBUG ("ignoring invite to room \"%s\"; we're already there", room);
     }
+
+  tp_handle_unref (room_repo, room_handle);
 }
 
 struct DiscoInviteData {

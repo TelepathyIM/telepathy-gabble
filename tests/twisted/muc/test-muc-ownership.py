@@ -55,6 +55,15 @@ def test(q, bus, conn, stream):
     item['role'] = 'moderator'
     stream.send(presence)
 
+    # Send presence for anonymous other member of room (2)
+    presence = domish.Element((None, 'presence'))
+    presence['from'] = 'chat@conf.localhost/brian'
+    x = presence.addElement(('http://jabber.org/protocol/muc#user', 'x'))
+    item = x.addElement('item')
+    item['affiliation'] = 'owner'
+    item['role'] = 'moderator'
+    stream.send(presence)
+
     # Send presence for nonymous other member of room.
     presence = domish.Element((None, 'presence'))
     presence['from'] = 'chat@conf.localhost/che'
@@ -63,6 +72,16 @@ def test(q, bus, conn, stream):
     item['affiliation'] = 'none'
     item['role'] = 'participant'
     item['jid'] = 'che@foo.com'
+    stream.send(presence)
+
+    # Send presence for nonymous other member of room (2)
+    presence = domish.Element((None, 'presence'))
+    presence['from'] = 'chat@conf.localhost/chris'
+    x = presence.addElement(('http://jabber.org/protocol/muc#user', 'x'))
+    item = x.addElement('item')
+    item['affiliation'] = 'none'
+    item['role'] = 'participant'
+    item['jid'] = 'chris@foo.com'
     stream.send(presence)
 
     # Send presence for own membership of room.
@@ -79,14 +98,25 @@ def test(q, bus, conn, stream):
     # OWNERS_NOT_AVAILABLE flag should be removed.
     assert event.args == [0, 1024]
 
+    event = q.expect('dbus-signal', signal='HandleOwnersChanged',
+        args=[{2: 0, 3: 0, 4: 0, 5: 6, 7: 8}, []])
+
     event = q.expect('dbus-signal', signal='MembersChanged',
-        args=[u'', [2, 3, 4], [], [], [], 0, 0])
+        args=[u'', [2, 3, 4, 5, 7], [], [], [], 0, 0])
     assert conn.InspectHandles(1, [2]) == [
         'chat@conf.localhost/test']
     assert conn.InspectHandles(1, [3]) == [
         'chat@conf.localhost/bob']
     assert conn.InspectHandles(1, [4]) == [
+        'chat@conf.localhost/brian']
+    assert conn.InspectHandles(1, [5]) == [
         'chat@conf.localhost/che']
+    assert conn.InspectHandles(1, [6]) == [
+        'che@foo.com']
+    assert conn.InspectHandles(1, [7]) == [
+        'chat@conf.localhost/chris']
+    assert conn.InspectHandles(1, [8]) == [
+        'chris@foo.com']
 
     event = q.expect('dbus-return', method='RequestChannel')
     # Check that GetHandleOwners works.
@@ -95,8 +125,7 @@ def test(q, bus, conn, stream):
     chan = bus.get_object(conn._named_service, event.value[0])
     group = dbus.Interface(chan,
         'org.freedesktop.Telepathy.Channel.Interface.Group')
-    assert group.GetHandleOwners([4]) == [5]
-    assert conn.InspectHandles(1, [5]) == ['che@foo.com']
+    assert group.GetHandleOwners([5, 7]) == [6, 8]
 
     conn.Disconnect()
 

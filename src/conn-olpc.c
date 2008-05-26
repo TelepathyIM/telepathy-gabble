@@ -3462,8 +3462,7 @@ activity_query_result_cb (GabbleConnection *conn,
       activity_info_set_properties (info, properties);
     }
 
-  /* TODO: remove activities when needed */
-  /* TODO: unref ActivityInfo when removing */
+  /* TODO: remove activities when needed and unref ActivityInfo */
   gabble_olpc_activity_view_add_activities (view, activities);
 
   tp_handle_set_destroy (activities);
@@ -3471,10 +3470,17 @@ activity_query_result_cb (GabbleConnection *conn,
 }
 
 static void
-activity_view_closed_cb (GabbleOlpcBuddyView *view,
+activity_view_closed_cb (GabbleOlpcActivityView *view,
                          GabbleConnection *conn)
 {
   guint id;
+  TpHandleSet *activities;
+
+  /* decrement ActivityInfo */
+  activities = gabble_olpc_activity_view_get_activities (view);
+
+  tp_handle_set_foreach (activities,
+      decrement_contacts_activities_set_foreach, conn);
 
   g_object_get (view, "id", &id, NULL);
   g_hash_table_remove (conn->olpc_activity_views, GUINT_TO_POINTER (id));

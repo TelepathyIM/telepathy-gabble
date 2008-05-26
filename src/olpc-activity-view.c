@@ -319,6 +319,15 @@ gabble_olpc_activity_view_add_activities (GabbleOlpcActivityView *self,
   tp_intset_destroy (added);
 }
 
+TpHandleSet *
+gabble_olpc_activity_view_get_activities (GabbleOlpcActivityView *self)
+{
+  GabbleOlpcActivityViewPrivate *priv = GABBLE_OLPC_ACTIVITY_VIEW_GET_PRIVATE (
+      self);
+
+  return priv->activities;
+}
+
 static void
 activity_view_iface_init (gpointer g_iface,
                        gpointer iface_data)

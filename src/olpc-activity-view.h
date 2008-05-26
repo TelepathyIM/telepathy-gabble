@@ -66,6 +66,10 @@ GabbleOlpcActivityView * gabble_olpc_activity_view_new (GabbleConnection *conn,
 void gabble_olpc_activity_view_add_activities (GabbleOlpcActivityView *self,
     TpHandleSet *handles);
 
+
+TpHandleSet * gabble_olpc_activity_view_get_activities (
+    GabbleOlpcActivityView *self);
+
 G_END_DECLS
 
 #endif /* #ifndef __GABBLE_OLPC_ACTIVITY_VIEW_H__ */

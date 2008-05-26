@@ -2038,6 +2038,7 @@ _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
   set_members = tp_intset_new ();
   set_pending = tp_intset_new ();
 
+  /* This is not a channel-specific handle, so no need to add its owner */
   tp_intset_add (set_members, inviter);
 
   /* get our own identity in the room */

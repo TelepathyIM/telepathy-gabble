@@ -9,52 +9,41 @@ when presence is received that includes the MUC JID's owner JID.
 
 import dbus
 
-from twisted.words.xish import domish
+from twisted.words.xish import domish, xpath
 
-from gabbletest import go, make_result_iq
-from servicetest import call_async, lazy, match
+from gabbletest import go, make_result_iq, exec_test
+from servicetest import call_async, lazy, match, tp_name_prefix, EventPattern
 
-@match('dbus-signal', signal='StatusChanged', args=[0, 1])
-def expect_connected(event, data):
+def test(q, bus, conn, stream):
+    conn.Connect()
+
+    q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
+
     # Need to call this asynchronously as it involves Gabble sending us a
-    # query.
-    call_async(data['test'], data['conn_iface'], 'RequestHandles', 2,
-        ['chat@conf.localhost'])
-    return True
+    # query
+    call_async(q, conn, 'RequestHandles', 2, ['chat@conf.localhost'])
 
-@match('stream-iq', to='conf.localhost',
-    query_ns='http://jabber.org/protocol/disco#info')
-def expect_disco(event, data):
-    result = make_result_iq(data['stream'], event.stanza)
+    event = q.expect('stream-iq', to='conf.localhost',
+        query_ns='http://jabber.org/protocol/disco#info')
+    result = make_result_iq(stream, event.stanza)
     feature = result.firstChildElement().addElement('feature')
     feature['var'] = 'http://jabber.org/protocol/muc'
-    data['stream'].send(result)
-    return True
+    stream.send(result)
 
-@match('dbus-return', method='RequestHandles')
-def expect_request_handles_return(event, data):
-    handles = event.value[0]
+    event = q.expect('dbus-return', method='RequestHandles')
+    room_handle = event.value[0][0]
 
-    call_async(data['test'], data['conn_iface'], 'RequestChannel',
-        'org.freedesktop.Telepathy.Channel.Type.Text', 2, handles[0], True)
-    return True
+    call_async(q, conn, 'RequestChannel',
+        'org.freedesktop.Telepathy.Channel.Type.Text', 2, room_handle, True)
 
-@match('stream-presence', to='chat@conf.localhost/test')
-def expect_presence(event, data):
-    return True
+    gfc, _, _ = q.expect_many(
+        EventPattern('dbus-signal', signal='GroupFlagsChanged'),
+        EventPattern('dbus-signal', signal='MembersChanged',
+            args=[u'', [], [], [], [2], 0, 0]),
+        EventPattern('stream-presence', to='chat@conf.localhost/test'))
+    assert gfc.args[1] == 0
 
-@match('dbus-signal', signal='GroupFlagsChanged')
-def expect_group_flags_changed(event, data):
-    assert event.args[1] == 0
-    return True
-
-@match('dbus-signal', signal='MembersChanged',
-    args=[u'', [], [], [], [2], 0, 0])
-def expect_members_changed1(event, data):
-    return True
-
-@match('dbus-signal', signal='GroupFlagsChanged')
-def expect_group_flags_changed2(event, data):
+    event = q.expect('dbus-signal', signal='GroupFlagsChanged')
     assert event.args == [0, 1]
 
     # Send presence for anonymous other member of room.
@@ -64,7 +53,7 @@ def expect_group_flags_changed2(event, data):
     item = x.addElement('item')
     item['affiliation'] = 'owner'
     item['role'] = 'moderator'
-    data['stream'].send(presence)
+    stream.send(presence)
 
     # Send presence for nonymous other member of room.
     presence = domish.Element((None, 'presence'))
@@ -74,7 +63,7 @@ def expect_group_flags_changed2(event, data):
     item['affiliation'] = 'none'
     item['role'] = 'participant'
     item['jid'] = 'che@foo.com'
-    data['stream'].send(presence)
+    stream.send(presence)
 
     # Send presence for own membership of room.
     presence = domish.Element((None, 'presence'))
@@ -83,44 +72,36 @@ def expect_group_flags_changed2(event, data):
     item = x.addElement('item')
     item['affiliation'] = 'none'
     item['role'] = 'participant'
-    data['stream'].send(presence)
-    return True
+    stream.send(presence)
 
-@match('dbus-signal', signal='GroupFlagsChanged')
-def expect_group_flags_changed3(event, data):
+    event = q.expect('dbus-signal', signal='GroupFlagsChanged')
     # Since we received MUC presence that contains an owner JID, the
     # OWNERS_NOT_AVAILABLE flag should be removed.
     assert event.args == [0, 1024]
-    return True
 
-@match('dbus-signal', signal='MembersChanged',
-    args=[u'', [2, 3, 4], [], [], [], 0, 0])
-def expect_members_changed2(event, data):
-    assert data['conn_iface'].InspectHandles(1, [2]) == [
+    event = q.expect('dbus-signal', signal='MembersChanged',
+        args=[u'', [2, 3, 4], [], [], [], 0, 0])
+    assert conn.InspectHandles(1, [2]) == [
         'chat@conf.localhost/test']
-    assert data['conn_iface'].InspectHandles(1, [3]) == [
+    assert conn.InspectHandles(1, [3]) == [
         'chat@conf.localhost/bob']
-    assert data['conn_iface'].InspectHandles(1, [4]) == [
+    assert conn.InspectHandles(1, [4]) == [
         'chat@conf.localhost/che']
-    return True
 
-@match('dbus-return', method='RequestChannel')
-def expect_request_channel_return(event, data):
+    event = q.expect('dbus-return', method='RequestChannel')
     # Check that GetHandleOwners works.
-    bus = data['conn']._bus
-    chan = bus.get_object(data['conn']._named_service, event.value[0])
+    # FIXME: using non-API!
+    bus = conn._bus
+    chan = bus.get_object(conn._named_service, event.value[0])
     group = dbus.Interface(chan,
         'org.freedesktop.Telepathy.Channel.Interface.Group')
     assert group.GetHandleOwners([4]) == [5]
-    assert data['conn_iface'].InspectHandles(1, [5]) == ['che@foo.com']
+    assert conn.InspectHandles(1, [5]) == ['che@foo.com']
 
-    data['conn_iface'].Disconnect()
-    return True
+    conn.Disconnect()
 
-@match('dbus-signal', signal='StatusChanged', args=[2, 1])
-def expect_disconnected(event, data):
-    return True
+    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 if __name__ == '__main__':
-    go()
+    exec_test(test)
 

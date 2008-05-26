@@ -55,6 +55,8 @@ static void chat_state_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleMucChannel, gabble_muc_channel,
     G_TYPE_OBJECT,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
+      tp_dbus_properties_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL,
       channel_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_PROPERTIES_INTERFACE,
@@ -291,6 +293,7 @@ gabble_muc_channel_constructor (GType type, guint n_props,
 
   /* set initial group flags */
   tp_group_mixin_change_flags (obj,
+      TP_CHANNEL_GROUP_FLAG_PROPERTIES |
       TP_CHANNEL_GROUP_FLAG_CHANNEL_SPECIFIC_HANDLES |
       TP_CHANNEL_GROUP_FLAG_HANDLE_OWNERS_NOT_AVAILABLE |
       TP_CHANNEL_GROUP_FLAG_CAN_ADD,
@@ -798,6 +801,10 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_muc_channel_class);
   GParamSpec *param_spec;
+  static TpDBusPropertiesMixinIfaceImpl interfaces[] = {
+        { NULL /* initialized with tp_group_mixin_init_dbus_properties () */ },
+        { NULL }
+  };
 
   g_type_class_add_private (gabble_muc_channel_class,
       sizeof (GabbleMucChannelPrivate));
@@ -901,6 +908,11 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
 
   tp_text_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleMucChannelClass, text_class));
+
+  gabble_muc_channel_class->dbus_props_class.interfaces = interfaces;
+  tp_group_mixin_init_dbus_properties (interfaces + 0);
+  tp_dbus_properties_mixin_class_init (object_class,
+      G_STRUCT_OFFSET (GabbleMucChannelClass, dbus_props_class));
 }
 
 static void clear_join_timer (GabbleMucChannel *chan);

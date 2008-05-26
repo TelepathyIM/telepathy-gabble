@@ -1739,11 +1739,14 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
 
           if (owner_handle != 0)
             {
-              /* If at least one handle in the channel has an owner,
-               * the HANDLE_OWNERS_NOT_AVAILABLE flag should be removed.
-               */
-              tp_group_mixin_change_flags ((GObject *) chan, 0,
-                  TP_CHANNEL_GROUP_FLAG_HANDLE_OWNERS_NOT_AVAILABLE);
+              if (handle != mixin->self_handle)
+                {
+                  /* If at least one other handle in the channel has an owner,
+                   * the HANDLE_OWNERS_NOT_AVAILABLE flag should be removed.
+                   */
+                  tp_group_mixin_change_flags ((GObject *) chan, 0,
+                      TP_CHANNEL_GROUP_FLAG_HANDLE_OWNERS_NOT_AVAILABLE);
+                }
 
               g_signal_emit (chan, signals[CONTACT_JOIN], 0, owner_handle);
 

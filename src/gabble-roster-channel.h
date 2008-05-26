@@ -22,6 +22,7 @@
 #define __GABBLE_ROSTER_CHANNEL_H__
 
 #include <glib-object.h>
+#include <telepathy-glib/dbus-properties-mixin.h>
 #include <telepathy-glib/group-mixin.h>
 #include <telepathy-glib/intset.h>
 
@@ -35,6 +36,7 @@ struct _GabbleRosterChannelClass {
     GObjectClass parent_class;
 
     TpGroupMixinClass group_class;
+    TpDBusPropertiesMixinClass properties_class;
 };
 
 struct _GabbleRosterChannel {

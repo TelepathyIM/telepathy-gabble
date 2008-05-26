@@ -34,6 +34,7 @@
 #include <telepathy-glib/errors.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/channel-iface.h>
+#include <telepathy-glib/svc-generic.h>
 #include <telepathy-glib/svc-channel.h>
 #include "util.h"
 
@@ -45,6 +46,8 @@ G_DEFINE_TYPE_WITH_CODE (GabbleRosterChannel, gabble_roster_channel,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
       tp_group_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_CONTACT_LIST, NULL);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
+      tp_dbus_properties_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL));
 
 /* properties */
@@ -127,7 +130,8 @@ gabble_roster_channel_constructor (GType type, guint n_props,
     {
       tp_group_mixin_change_flags (obj,
           TP_CHANNEL_GROUP_FLAG_CAN_ADD |
-          TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
+          TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
+          TP_CHANNEL_GROUP_FLAG_PROPERTIES,
           0);
     }
   else if (handle_type != TP_HANDLE_TYPE_LIST)
@@ -140,7 +144,8 @@ gabble_roster_channel_constructor (GType type, guint n_props,
       tp_group_mixin_change_flags (obj,
           TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
           TP_CHANNEL_GROUP_FLAG_MESSAGE_ACCEPT |
-          TP_CHANNEL_GROUP_FLAG_MESSAGE_REMOVE,
+          TP_CHANNEL_GROUP_FLAG_MESSAGE_REMOVE |
+          TP_CHANNEL_GROUP_FLAG_PROPERTIES,
           0);
     }
   else if (GABBLE_LIST_HANDLE_SUBSCRIBE == priv->handle)
@@ -151,20 +156,23 @@ gabble_roster_channel_constructor (GType type, guint n_props,
           TP_CHANNEL_GROUP_FLAG_CAN_RESCIND |
           TP_CHANNEL_GROUP_FLAG_MESSAGE_ADD |
           TP_CHANNEL_GROUP_FLAG_MESSAGE_REMOVE |
-          TP_CHANNEL_GROUP_FLAG_MESSAGE_RESCIND,
+          TP_CHANNEL_GROUP_FLAG_MESSAGE_RESCIND |
+          TP_CHANNEL_GROUP_FLAG_PROPERTIES,
           0);
     }
   else if (GABBLE_LIST_HANDLE_KNOWN == priv->handle)
     {
       tp_group_mixin_change_flags (obj,
-          TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
+          TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
+          TP_CHANNEL_GROUP_FLAG_PROPERTIES,
           0);
     }
   else if (GABBLE_LIST_HANDLE_DENY == priv->handle)
     {
       tp_group_mixin_change_flags (obj,
           TP_CHANNEL_GROUP_FLAG_CAN_ADD |
-          TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
+          TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
+          TP_CHANNEL_GROUP_FLAG_PROPERTIES,
           0);
     }
   else
@@ -252,6 +260,10 @@ gabble_roster_channel_class_init (GabbleRosterChannelClass *gabble_roster_channe
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_roster_channel_class);
   GParamSpec *param_spec;
+  static TpDBusPropertiesMixinIfaceImpl interfaces[] = {
+        { NULL /* initialized with tp_group_mixin_init_dbus_properties () */ },
+        { NULL }
+  };
 
   g_type_class_add_private (gabble_roster_channel_class,
       sizeof (GabbleRosterChannelPrivate));
@@ -286,6 +298,11 @@ gabble_roster_channel_class_init (GabbleRosterChannelClass *gabble_roster_channe
       G_STRUCT_OFFSET (GabbleRosterChannelClass, group_class),
       _gabble_roster_channel_add_member_cb,
       _gabble_roster_channel_remove_member_cb);
+
+  gabble_roster_channel_class->properties_class.interfaces = interfaces;
+  tp_group_mixin_init_dbus_properties (interfaces + 0);
+  tp_dbus_properties_mixin_class_init (object_class,
+      G_STRUCT_OFFSET (GabbleRosterChannelClass, properties_class));
 }
 
 void

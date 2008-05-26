@@ -528,6 +528,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
       TP_IFACE_CONNECTION_INTERFACE_PRESENCE,
       TP_IFACE_CONNECTION_INTERFACE_AVATARS,
       TP_IFACE_CONNECTION_INTERFACE_CONTACTS,
+      GABBLE_IFACE_OLPC_GADGET,
       NULL };
 
   DEBUG("Initializing (GabbleConnectionClass *)%p", gabble_connection_class);
@@ -2039,8 +2040,7 @@ connection_disco_cb (GabbleDisco *disco,
   if (conn->features && GABBLE_CONNECTION_FEATURES_PEP)
     {
       const gchar *ifaces[] = { GABBLE_IFACE_OLPC_BUDDY_INFO,
-          GABBLE_IFACE_OLPC_ACTIVITY_PROPERTIES, GABBLE_IFACE_OLPC_GADGET,
-          NULL };
+          GABBLE_IFACE_OLPC_ACTIVITY_PROPERTIES, NULL };
 
       tp_base_connection_add_interfaces ((TpBaseConnection *) conn, ifaces);
     }

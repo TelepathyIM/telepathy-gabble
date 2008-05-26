@@ -104,9 +104,10 @@ def test(q, bus, conn, stream):
     # OK, now accept the invitation
     call_async(q, group_iface, 'AddMembers', [room_self_handle], 'Oh, OK then')
 
-    q.expect('stream-presence', to='chat@conf.localhost/test')
-
-    event = q.expect('dbus-signal', signal='MembersChanged')
+    _, event = q.expect_many(
+        EventPattern('stream-presence', to='chat@conf.localhost/test'),
+        EventPattern('dbus-signal', signal='MembersChanged')
+        )
 
     assert event.args == ['', [], [bob_handle], [],
             [room_self_handle], 0, room_self_handle]

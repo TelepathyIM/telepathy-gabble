@@ -2304,7 +2304,7 @@ gabble_muc_channel_add_member (GObject *obj,
   if (handle == mixin->self_handle)
     {
       TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
-      TpIntSet *set_empty, *set_members, *set_pending;
+      TpIntSet *set_remove_members, *set_remote_pending;
       GArray *arr_members;
 
       /* are we already a member or in remote pending? */
@@ -2319,30 +2319,29 @@ gabble_muc_channel_add_member (GObject *obj,
 
       /* add ourself to remote pending and remove the inviter's
        * main jid from the member list */
-      set_empty = tp_intset_new ();
-      set_members = tp_intset_new ();
-      set_pending = tp_intset_new ();
+      set_remove_members = tp_intset_new ();
+      set_remote_pending = tp_intset_new ();
 
       arr_members = tp_handle_set_to_array (mixin->members);
       if (arr_members->len > 0)
         {
-          tp_intset_add (set_members, g_array_index (arr_members, guint, 0));
+          tp_intset_add (set_remove_members,
+              g_array_index (arr_members, guint, 0));
         }
       g_array_free (arr_members, TRUE);
 
-      tp_intset_add (set_pending, handle);
+      tp_intset_add (set_remote_pending, handle);
 
       tp_group_mixin_add_handle_owner (obj, mixin->self_handle,
           conn->self_handle);
-      tp_group_mixin_change_members (obj, "", set_empty, set_members,
-          set_empty, set_pending, 0,
+      tp_group_mixin_change_members (obj, "", NULL, set_remove_members,
+          NULL, set_remote_pending, 0,
           priv->invite_self
             ? TP_CHANNEL_GROUP_CHANGE_REASON_NONE
             : TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
 
-      tp_intset_destroy (set_empty);
-      tp_intset_destroy (set_members);
-      tp_intset_destroy (set_pending);
+      tp_intset_destroy (set_remove_members);
+      tp_intset_destroy (set_remote_pending);
 
       /* seek to enter the room */
       result = send_join_request (GABBLE_MUC_CHANNEL (obj), NULL, error);

@@ -2303,6 +2303,7 @@ gabble_muc_channel_add_member (GObject *obj,
 
   if (handle == mixin->self_handle)
     {
+      TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
       TpIntSet *set_empty, *set_members, *set_pending;
       GArray *arr_members;
 
@@ -2331,6 +2332,8 @@ gabble_muc_channel_add_member (GObject *obj,
 
       tp_intset_add (set_pending, handle);
 
+      tp_group_mixin_add_handle_owner (obj, mixin->self_handle,
+          conn->self_handle);
       tp_group_mixin_change_members (obj, "", set_empty, set_members,
           set_empty, set_pending, 0,
           priv->invite_self

@@ -24,6 +24,7 @@
 
 #include <glib-object.h>
 
+#include <telepathy-glib/dbus-properties-mixin.h>
 #include <telepathy-glib/group-mixin.h>
 #include <telepathy-glib/properties-mixin.h>
 
@@ -48,6 +49,7 @@ struct _GabbleMucChannelClass {
     TpGroupMixinClass group_class;
     TpPropertiesMixinClass properties_class;
     GabbleTextMixinClass text_class;
+    TpDBusPropertiesMixinClass dbus_props_class;
 };
 
 struct _GabbleMucChannel {

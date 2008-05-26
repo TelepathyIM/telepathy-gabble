@@ -80,6 +80,8 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMediaChannel, gabble_media_channel,
       streamed_media_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_PROPERTIES_INTERFACE,
       tp_properties_mixin_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
+      tp_dbus_properties_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL));
 
 /* properties */
@@ -188,8 +190,9 @@ gabble_media_channel_constructor (GType type, guint n_props,
 
   tp_intset_destroy (set);
 
-  /* allow member adding */
-  tp_group_mixin_change_flags (obj, TP_CHANNEL_GROUP_FLAG_CAN_ADD, 0);
+  /* Allow member adding; also, we implement the 0.17.6 properties correctly */
+  tp_group_mixin_change_flags (obj,
+      TP_CHANNEL_GROUP_FLAG_CAN_ADD | TP_CHANNEL_GROUP_FLAG_PROPERTIES, 0);
 
   return obj;
 }
@@ -481,6 +484,10 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_media_channel_class);
   GParamSpec *param_spec;
+  static TpDBusPropertiesMixinIfaceImpl interfaces[] = {
+        { NULL /* initialized with tp_group_mixin_init_dbus_properties () */ },
+        { NULL }
+  };
 
   g_type_class_add_private (gabble_media_channel_class,
       sizeof (GabbleMediaChannelPrivate));
@@ -577,6 +584,11 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
   tp_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleMediaChannelClass, properties_class),
       channel_property_signatures, NUM_CHAN_PROPS, NULL);
+
+  gabble_media_channel_class->dbus_props_class.interfaces = interfaces;
+  tp_group_mixin_init_dbus_properties (interfaces + 0);
+  tp_dbus_properties_mixin_class_init (object_class,
+      G_STRUCT_OFFSET (GabbleMediaChannelClass, dbus_props_class));
 }
 
 void

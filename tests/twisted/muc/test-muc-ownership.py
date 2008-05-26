@@ -119,12 +119,26 @@ def test(q, bus, conn, stream):
         'chris@foo.com']
 
     event = q.expect('dbus-return', method='RequestChannel')
-    # Check that GetHandleOwners works.
+
     bus = dbus.SessionBus()
     chan = bus.get_object(conn.bus_name, event.value[0])
     group = dbus.Interface(chan,
         'org.freedesktop.Telepathy.Channel.Interface.Group')
+    props = dbus.Interface(chan,
+        'org.freedesktop.DBus.Properties')
+
+    # Exercise GetHandleOwners
     assert group.GetHandleOwners([5, 7]) == [6, 8]
+
+    # Exercise D-Bus properties
+    all = props.GetAll('org.freedesktop.Telepathy.Channel.Interface.Group')
+
+    assert all[u'LocalPendingMembers'] == [], all
+    assert all[u'Members'] == [2, 3, 4, 5, 7], all
+    assert all[u'RemotePendingMembers'] == [], all
+    assert all[u'SelfHandle'] == 2, all
+    assert all[u'HandleOwners'] == { 2: 0, 3: 0, 4: 0, 5: 6, 7: 8 }, all
+    assert (all[u'GroupFlags'] & 2048) == 2048, all.get('GroupFlags')
 
     conn.Disconnect()
 

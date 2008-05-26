@@ -120,9 +120,8 @@ def test(q, bus, conn, stream):
 
     event = q.expect('dbus-return', method='RequestChannel')
     # Check that GetHandleOwners works.
-    # FIXME: using non-API!
-    bus = conn._bus
-    chan = bus.get_object(conn._named_service, event.value[0])
+    bus = dbus.SessionBus()
+    chan = bus.get_object(conn.bus_name, event.value[0])
     group = dbus.Interface(chan,
         'org.freedesktop.Telepathy.Channel.Interface.Group')
     assert group.GetHandleOwners([5, 7]) == [6, 8]

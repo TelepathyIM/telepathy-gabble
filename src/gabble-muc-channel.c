@@ -190,6 +190,12 @@ const TpPropertySignature room_property_signatures[NUM_ROOM_PROPS] = {
 
 typedef struct _GabbleMucChannelPrivate GabbleMucChannelPrivate;
 
+typedef struct {
+    TpHandleSet *members;
+    TpHandleSet *owners;
+    GHashTable *owner_map;
+} InitialStateAggregator;
+
 struct _GabbleMucChannelPrivate
 {
   GabbleConnection *conn;
@@ -224,20 +230,32 @@ struct _GabbleMucChannelPrivate
   gboolean invite_self;
 
   /* Aggregate all presences when joining the chatroom */
-  TpHandleSet *initial_members_aggregator;
+  InitialStateAggregator *initial_state_aggregator;
 };
 
 #define GABBLE_MUC_CHANNEL_GET_PRIVATE(o) \
   (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_MUC_CHANNEL, \
                                 GabbleMucChannelPrivate))
 
+
+static void
+initial_state_aggregator_free (InitialStateAggregator *isa)
+{
+  g_hash_table_destroy (isa->owner_map);
+  tp_handle_set_destroy (isa->members);
+  tp_handle_set_destroy (isa->owners);
+  g_slice_free (InitialStateAggregator, isa);
+}
+
+
 static void
 gabble_muc_channel_init (GabbleMucChannel *obj)
 {
-  GabbleMucChannelPrivate *priv;
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
 
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
-  priv->initial_members_aggregator = NULL;
+  priv->initial_state_aggregator = g_slice_new0 (InitialStateAggregator);
+  priv->initial_state_aggregator->owner_map = g_hash_table_new (g_direct_hash,
+      g_direct_equal);
 }
 
 static void contact_handle_to_room_identity (GabbleMucChannel *, TpHandle,
@@ -276,7 +294,9 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   /* this causes us to have one ref to the self handle which is unreffed
    * at the end of this function */
 
-  priv->initial_members_aggregator = tp_handle_set_new (contact_handles);
+  priv->initial_state_aggregator->members = tp_handle_set_new (
+      contact_handles);
+  priv->initial_state_aggregator->owners = tp_handle_set_new (contact_handles);
 
   /* initialize our own role and affiliation */
   priv->self_role = ROLE_NONE;
@@ -952,10 +972,10 @@ gabble_muc_channel_finalize (GObject *object)
 
   DEBUG ("called");
 
-  if (priv->initial_members_aggregator != NULL)
+  if (priv->initial_state_aggregator != NULL)
     {
-      tp_handle_set_destroy (priv->initial_members_aggregator);
-      priv->initial_members_aggregator = NULL;
+      initial_state_aggregator_free (priv->initial_state_aggregator);
+      priv->initial_state_aggregator = NULL;
     }
 
   /* free any data held directly by the object here */
@@ -1674,33 +1694,46 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
                     owner_jid);
             }
 
-          /* FIXME: these signals should probably be aggregated too */
-          tp_group_mixin_add_handle_owner ((GObject *) chan, handle,
-              owner_handle);
-
-          if (priv->initial_members_aggregator == NULL)
+          if (priv->initial_state_aggregator == NULL)
             {
               /* we've already had the initial batch of presence stanzas */
+              tp_group_mixin_add_handle_owner ((GObject *) chan, handle,
+                  owner_handle);
               tp_group_mixin_change_members ((GObject *) chan, "", set, NULL,
                                               NULL, NULL, 0, 0);
             }
           else
             {
               /* aggregate this presence */
-              tp_handle_set_add (priv->initial_members_aggregator, handle);
+              tp_handle_set_add (priv->initial_state_aggregator->members,
+                  handle);
+
+              g_hash_table_insert (priv->initial_state_aggregator->owner_map,
+                  GUINT_TO_POINTER (handle), GUINT_TO_POINTER (owner_handle));
+
+              if (owner_handle != 0)
+                tp_handle_set_add (priv->initial_state_aggregator->owners,
+                    owner_handle);
 
               /* Do not emit one signal per presence. Instead, get all
-               * presences, and add them in priv->initial_members_aggregator.
+               * presences, and add them in priv->initial_state_aggregator.
                * When we get the last presence, emit the signal. The last
                * presence is ourselves. */
               if (handle == mixin->self_handle)
                 {
-                  /* Change all presences in only one operation */
+                  /* Add all handle owners in a single operation */
+                  tp_group_mixin_add_handle_owners ((GObject *) chan,
+                      priv->initial_state_aggregator->owner_map);
+
+                  /* Change all presences in a single operation */
                   tp_group_mixin_change_members ((GObject *) chan, "",
-                      tp_handle_set_peek (priv->initial_members_aggregator),
+                      tp_handle_set_peek (
+                          priv->initial_state_aggregator->members),
                       NULL, NULL, NULL, 0, 0);
-                  tp_handle_set_destroy (priv->initial_members_aggregator);
-                  priv->initial_members_aggregator = NULL;
+
+                  initial_state_aggregator_free (
+                      priv->initial_state_aggregator);
+                  priv->initial_state_aggregator = NULL;
                 }
             }
 

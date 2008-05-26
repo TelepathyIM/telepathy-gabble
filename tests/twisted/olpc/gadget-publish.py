@@ -56,6 +56,9 @@ def test(q, bus, conn, stream):
     feature['var'] = NS_OLPC_ACTIVITY
     stream.send(reply)
 
+    q.expect_many(EventPattern('dbus-signal', signal='BuddyGadgetDiscovered'),
+            EventPattern('dbus-signal', signal='ActivityGadgetDiscovered'))
+
     gadget_iface = dbus.Interface(conn, 'org.laptop.Telepathy.Gadget')
 
     sync_stream(q, stream)

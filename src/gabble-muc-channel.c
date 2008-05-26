@@ -2045,6 +2045,8 @@ _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
                                    &self_handle, &priv->self_jid);
   tp_intset_add (set_pending, self_handle);
 
+  tp_group_mixin_add_handle_owner ((GObject *) chan, self_handle,
+      conn->self_handle);
   tp_group_mixin_change_members ((GObject *)chan, message, set_members,
                                      NULL, set_pending, NULL, inviter,
                                      TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);

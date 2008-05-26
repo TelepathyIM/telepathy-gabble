@@ -273,8 +273,8 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   /* get our own identity in the room */
   contact_handle_to_room_identity (GABBLE_MUC_CHANNEL (obj),
       conn->self_handle, &self_handle, &priv->self_jid);
-
-  tp_handle_ref (contact_handles, self_handle);
+  /* this causes us to have one ref to the self handle which is unreffed
+   * at the end of this function */
 
   priv->initial_members_aggregator = tp_handle_set_new (contact_handles);
 
@@ -325,6 +325,9 @@ gabble_muc_channel_constructor (GType type, guint n_props,
       g_assert (error == NULL);
       g_array_free (members, TRUE);
     }
+
+  tp_handle_unref (contact_handles, self_handle);
+
   return obj;
 }
 

@@ -3078,7 +3078,6 @@ conn_olpc_msg_cb (LmMessageHandler *handler,
       const gchar *ns;
 
       ns = lm_message_node_get_attribute (node, "xmlns");
-      g_print ("%s %s\n", node->name, ns);
 
       if (!tp_strdiff (node->name, "change") &&
         !tp_strdiff (ns, NS_OLPC_BUDDY))

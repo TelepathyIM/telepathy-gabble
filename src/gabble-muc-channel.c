@@ -319,6 +319,7 @@ gabble_muc_channel_constructor (GType type, guint n_props,
       GError *error = NULL;
       GArray *members = g_array_sized_new (FALSE, FALSE, sizeof (TpHandle), 1);
       g_array_append_val (members, self_handle);
+      tp_group_mixin_add_handle_owner (obj, self_handle, conn->self_handle);
       tp_group_mixin_add_members (obj, members,
           "", &error);
       g_assert (error == NULL);

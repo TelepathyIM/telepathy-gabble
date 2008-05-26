@@ -586,7 +586,11 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
       channel_property_signatures, NUM_CHAN_PROPS, NULL);
 
   gabble_media_channel_class->dbus_props_class.interfaces = interfaces;
-  tp_group_mixin_init_dbus_properties (&(interfaces[0]));
+
+  /* only executed once */
+  if (interfaces[0].name == NULL)
+    tp_group_mixin_init_dbus_properties (&(interfaces[0]));
+
   tp_dbus_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleMediaChannelClass, dbus_props_class));
 }

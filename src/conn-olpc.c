@@ -3726,12 +3726,65 @@ olpc_gadget_search_activities_by_participants (GabbleSvcOLPCGadget *iface,
   lm_message_unref (query);
 }
 
+static gboolean
+send_presence_to_gadget (GabbleConnection *conn,
+                         LmMessageSubType sub_type,
+                         GError **error)
+{
+  LmMessage *message;
+  gboolean ret;
+
+  message = lm_message_new_with_sub_type (conn->olpc_gadget_buddy,
+      LM_MESSAGE_TYPE_PRESENCE, sub_type);
+
+  ret = _gabble_connection_send (conn, message, error);
+
+  lm_message_unref (message);
+
+  return ret;
+}
+
 static void
 olpc_gadget_publish (GabbleSvcOLPCGadget *iface,
                      gboolean publish,
                      DBusGMethodInvocation *context)
 {
-  /* TODO */
+  GabbleConnection *conn = GABBLE_CONNECTION (iface);
+
+  if (!check_gadget_buddy (conn, context))
+    return;
+
+  if (publish)
+    {
+      GError *error = NULL;
+
+      /* FIXME: we should check if we are already registered before */
+      /* FIXME: add to roster ? */
+      /* FIXME: this is ugly. We should use roster and/or
+       * gabble-roster-channel if possible */
+
+      if (!send_presence_to_gadget (conn, LM_MESSAGE_SUB_TYPE_SUBSCRIBE,
+            &error))
+        {
+          dbus_g_method_return_error (context, error);
+          g_error_free (error);
+          return;
+        }
+
+      if (!send_presence_to_gadget (conn, LM_MESSAGE_SUB_TYPE_SUBSCRIBED,
+            &error))
+        {
+          dbus_g_method_return_error (context, error);
+          g_error_free (error);
+          return;
+        }
+    }
+  else
+    {
+      /* TODO */
+      ;
+    }
+
   gabble_svc_olpc_gadget_return_from_publish (context);
 }
 

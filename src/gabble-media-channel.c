@@ -484,10 +484,7 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_media_channel_class);
   GParamSpec *param_spec;
-  static TpDBusPropertiesMixinIfaceImpl interfaces[] = {
-        { NULL /* initialized with tp_group_mixin_init_dbus_properties () */ },
-        { NULL }
-  };
+  static gboolean initialized = FALSE;
 
   g_type_class_add_private (gabble_media_channel_class,
       sizeof (GabbleMediaChannelPrivate));
@@ -499,10 +496,6 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
 
   object_class->dispose = gabble_media_channel_dispose;
   object_class->finalize = gabble_media_channel_finalize;
-
-  tp_group_mixin_class_init (object_class,
-      G_STRUCT_OFFSET (GabbleMediaChannelClass, group_class),
-      _gabble_media_channel_add_member, gabble_media_channel_remove_member);
 
   g_object_class_override_property (object_class, PROP_OBJECT_PATH,
       "object-path");
@@ -585,14 +578,19 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
       G_STRUCT_OFFSET (GabbleMediaChannelClass, properties_class),
       channel_property_signatures, NUM_CHAN_PROPS, NULL);
 
-  gabble_media_channel_class->dbus_props_class.interfaces = interfaces;
-
-  /* only executed once */
-  if (interfaces[0].name == NULL)
-    tp_group_mixin_init_dbus_properties (&(interfaces[0]));
-
   tp_dbus_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleMediaChannelClass, dbus_props_class));
+
+  if (!initialized)
+    {
+      initialized = TRUE;
+
+      tp_group_mixin_class_init (object_class,
+          G_STRUCT_OFFSET (GabbleMediaChannelClass, group_class),
+          _gabble_media_channel_add_member,
+          gabble_media_channel_remove_member);
+      tp_group_mixin_init_dbus_properties (object_class);
+    }
 }
 
 void

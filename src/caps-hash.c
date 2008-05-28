@@ -183,14 +183,10 @@ caps_hash_compute (
         }
     }
 
-  DEBUG ("caps string: '%s'", s->str);
-
   sha1_bin (s->str, s->len, (guchar *) sha1);
   g_string_free (s, TRUE);
 
   encoded = base64_encode (SHA1_HASH_SIZE, sha1, FALSE);
-
-  DEBUG ("caps hash (base64): '%s'", encoded);
 
   return encoded;
 }

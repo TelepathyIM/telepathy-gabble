@@ -196,6 +196,89 @@ caps_hash_compute (
 }
 
 /**
+ * parse a XEP-0128 dataform
+ *
+ * helper function for caps_hash_compute_from_lm_node
+ */
+static DataForm *
+_parse_dataform (LmMessageNode *node)
+{
+  LmMessageNode *field_node;
+  DataForm *form;
+
+  form = g_slice_new0 (DataForm);
+  form->form_type = NULL;
+  form->fields = g_ptr_array_new ();
+
+  for (field_node = node->children;
+       NULL != field_node;
+       field_node = field_node->next)
+    {
+      const gchar *var;
+      LmMessageNode *value_node;
+
+      if (! g_str_equal (field_node->name, "field"))
+        continue;
+
+      var = lm_message_node_get_attribute (field_node, "var");
+
+      if (NULL == var)
+        continue;
+
+      if (g_str_equal (var, "FORM_TYPE"))
+        {
+          for (value_node = field_node->children;
+               NULL != value_node;
+               value_node = value_node->next)
+            {
+              const gchar *content;
+
+              if (tp_strdiff (value_node->name, "value"))
+                continue;
+
+              content = lm_message_node_get_value (value_node);
+
+              /* If the stanza is correctly formed, there is only one
+               * FORM_TYPE and this check is useless. Otherwise, just
+               * use the first one */
+              if (form->form_type == NULL)
+                form->form_type = g_strdup (content);
+            }
+        }
+      else
+        {
+          DataFormField *field = NULL;
+
+          field = g_slice_new0 (DataFormField);
+          field->values = g_ptr_array_new ();
+          field->field_name = g_strdup (var);
+
+          for (value_node = field_node->children;
+               NULL != value_node;
+               value_node = value_node->next)
+            {
+              const gchar *content;
+
+              if (tp_strdiff (value_node->name, "value"))
+                continue;
+
+              content = lm_message_node_get_value (value_node);
+
+              g_ptr_array_add (field->values, g_strdup (content));
+            }
+
+            g_ptr_array_add (form->fields, (gpointer) field);
+        }
+    }
+
+  /* this should not happen if the stanza is correctly formed. */
+  if (form->form_type == NULL)
+    form->form_type = g_strdup ("");
+
+  return form;
+}
+
+/**
  * Compute the hash as defined by the XEP-0115 from a received LmMessageNode
  *
  * Returns: the hash. The called must free the returned hash with g_free().
@@ -249,8 +332,6 @@ caps_hash_compute_from_lm_node (LmMessageNode *node)
         {
           const gchar *xmlns;
           const gchar *type;
-          LmMessageNode *x_child;
-          DataForm *form;
 
           xmlns = lm_message_node_get_attribute (child, "xmlns");
           type = lm_message_node_get_attribute (child, "type");
@@ -261,76 +342,7 @@ caps_hash_compute_from_lm_node (LmMessageNode *node)
           if (tp_strdiff (type, "result"))
             continue;
 
-          form = g_slice_new0 (DataForm);
-          form->form_type = NULL;
-          form->fields = g_ptr_array_new ();
-
-          for (x_child = child->children;
-               NULL != x_child;
-               x_child = x_child->next)
-            {
-              const gchar *var;
-              LmMessageNode *value_child;
-
-              if (! g_str_equal (x_child->name, "field"))
-                continue;
-
-              var = lm_message_node_get_attribute (x_child, "var");
-
-              if (NULL == var)
-                continue;
-
-              if (g_str_equal (var, "FORM_TYPE"))
-                {
-                  for (value_child = x_child->children;
-                       NULL != value_child;
-                       value_child = value_child->next)
-                    {
-                      const gchar *content;
-
-                      if (tp_strdiff (value_child->name, "value"))
-                        continue;
-
-                      content = lm_message_node_get_value (value_child);
-
-                      /* If the stanza is correctly formed, there is only one
-                       * FORM_TYPE and this check is useless. Otherwise, just
-                       * use the first one */
-                      if (form->form_type == NULL)
-                        form->form_type = g_strdup (content);
-                    }
-                }
-              else
-                {
-                  DataFormField *field = NULL;
-
-                  field = g_slice_new0 (DataFormField);
-                  field->values = g_ptr_array_new ();
-                  field->field_name = g_strdup (var);
-
-                  for (value_child = x_child->children;
-                       NULL != value_child;
-                       value_child = value_child->next)
-                    {
-                      const gchar *content;
-
-                      if (tp_strdiff (value_child->name, "value"))
-                        continue;
-
-                      content = lm_message_node_get_value (value_child);
-
-                      g_ptr_array_add (field->values, g_strdup (content));
-                    }
-
-                    g_ptr_array_add (form->fields, (gpointer) field);
-                }
-            }
-
-          /* this should not happen if the stanza is correctly formed. */
-          if (form->form_type == NULL)
-            form->form_type = g_strdup ("");
-
-          g_ptr_array_add (dataforms, (gpointer) form);
+          g_ptr_array_add (dataforms, (gpointer) _parse_dataform (child));
         }
     }
 

@@ -825,9 +825,11 @@ _caps_disco_cb (GabbleDisco *disco,
       goto OUT;
     }
 
-  /* Only 'sha-1' is mandatory to implement by XEP-0115. If the received
-   * discovery response uses another hash algorithm, don't check the hash and
-   * fallback to the old method. */
+  /* Only 'sha-1' is mandatory to implement by XEP-0115. If the remote contact
+   * uses another hash algorithm, don't check the hash and fallback to the old
+   * method. The hash method is not included in the discovery request nor
+   * response but we saved it in disco_pending when we received the presence
+   * stanza. */
   if (!tp_strdiff (waiter_self->hash, "sha-1"))
     {
       const gchar *computed_hash;

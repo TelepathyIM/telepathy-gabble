@@ -1486,17 +1486,11 @@ connection_iq_disco_cb (LmMessageHandler *handler,
    * 1.5. */
 
   caps_hash = caps_hash_compute_from_self_presence (self);
-  DEBUG ("caps_hash='%s'", caps_hash);
 
   if (NULL == node ||
       !tp_strdiff (suffix, BUNDLE_VOICE_V1) ||
       !tp_strdiff (suffix, caps_hash))
     {
-      if (NULL == node)
-        DEBUG ("No requested node. Send all features.");
-      else
-        DEBUG ("requested node '%s' is an existing node", suffix);
-
       for (i = features; NULL != i; i = i->next)
         {
           const Feature *feature = (const Feature *) i->data;
@@ -2041,12 +2035,8 @@ _emit_capabilities_changed (GabbleConnection *conn,
   const CapabilityConversionData *ccd;
   guint i;
 
-  DEBUG ("Called.");
-
   if (old_caps == new_caps)
     return;
-
-  DEBUG ("caps changed.");
 
   caps_arr = g_ptr_array_new ();
 
@@ -2086,7 +2076,6 @@ _emit_capabilities_changed (GabbleConnection *conn,
         }
     }
 
-  DEBUG ("caps_arr->len=%d", caps_arr->len);
   if (caps_arr->len)
     tp_svc_connection_interface_capabilities_emit_capabilities_changed (
         conn, caps_arr);
@@ -2109,7 +2098,6 @@ connection_capabilities_update_cb (GabblePresenceCache *cache,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
 
-  DEBUG ("Called.");
   _emit_capabilities_changed (conn, handle, old_caps, new_caps);
 }
 

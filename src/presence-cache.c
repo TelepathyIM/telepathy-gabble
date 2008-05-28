@@ -958,9 +958,6 @@ _process_caps_uri (GabblePresenceCache *cache,
   GabblePresenceCachePrivate *priv;
   TpHandleRepoIface *contact_repo;
 
-  DEBUG ("Called with from='%s' uri='%s' hash='%s' ver='%s'",
-      from, uri, hash, ver);
-
   priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
   contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
@@ -1019,7 +1016,6 @@ _process_caps_uri (GabblePresenceCache *cache,
       waiters = (GSList *) value;
       waiter = disco_waiter_new (contact_repo, handle, resource,
           hash, ver, serial);
-      DEBUG ("New disco waiter %p: hash='%s' ver='%s'", waiter, hash, ver);
       waiters = g_slist_prepend (waiters, waiter);
       g_hash_table_insert (priv->disco_pending, key, waiters);
 
@@ -1062,7 +1058,6 @@ _process_caps (GabblePresenceCache *cache,
     resource++;
 
   uris = _parse_cap_bundles (lm_node, &hash, &ver);
-  DEBUG ("_parse_cap_bundles get hash='%s' ver='%s'", hash, ver);
 
   if (presence)
       old_caps = presence->caps;

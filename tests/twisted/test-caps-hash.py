@@ -26,7 +26,7 @@ import sys
 from twisted.words.xish import domish, xpath
 
 from gabbletest import exec_test, make_result_iq
-from servicetest import dbus_sync
+from servicetest import sync_dbus
 
 gabble_service = 'org.freedesktop.Telepathy.ConnectionManager.gabble'
 text = 'org.freedesktop.Telepathy.Channel.Type.Text'
@@ -128,7 +128,7 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
     stream.send(result)
 
     # don't receive any D-Bus signal
-    dbus_sync(bus, q, conn)
+    sync_dbus(bus, q, conn)
     assert caps_changed_flag == False
 
     # send presence with empty caps
@@ -144,7 +144,7 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
         client + '#' + '0.0'
 
     # still don't receive any D-Bus signal
-    dbus_sync(bus, q, conn)
+    sync_dbus(bus, q, conn)
     assert caps_changed_flag == False
 
     # send good reply
@@ -173,7 +173,7 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
         client + '#' + c['ver']
 
     # don't receive any D-Bus signal
-    dbus_sync(bus, q, conn)
+    sync_dbus(bus, q, conn)
     assert caps_changed_flag == False
 
     # send good reply
@@ -254,7 +254,7 @@ def test_two_clients(q, bus, conn, stream, contact1, contact2,
         client + '#' + ver
 
     # don't receive any D-Bus signal
-    dbus_sync(bus, q, conn)
+    sync_dbus(bus, q, conn)
     assert caps_changed_flag == False
 
     # send good reply
@@ -282,7 +282,7 @@ def test_two_clients(q, bus, conn, stream, contact1, contact2,
             client + '#' + ver
 
         # don't receive any D-Bus signal
-        dbus_sync(bus, q, conn)
+        sync_dbus(bus, q, conn)
         assert caps_changed_flag == False
 
         # send good reply
@@ -308,7 +308,7 @@ def test_two_clients(q, bus, conn, stream, contact1, contact2,
     caps_changed_flag = False
 
     # don't receive any D-Bus signal
-    dbus_sync(bus, q, conn)
+    sync_dbus(bus, q, conn)
     assert caps_changed_flag == False
 
 def test(q, bus, conn, stream):

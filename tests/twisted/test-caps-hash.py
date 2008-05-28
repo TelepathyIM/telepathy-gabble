@@ -26,7 +26,7 @@ import sys
 from twisted.words.xish import domish, xpath
 
 from gabbletest import exec_test, make_result_iq
-from servicetest import call_async
+from servicetest import dbus_sync
 
 gabble_service = 'org.freedesktop.Telepathy.ConnectionManager.gabble'
 text = 'org.freedesktop.Telepathy.Channel.Type.Text'
@@ -63,12 +63,6 @@ def presence_add_caps(presence, ver, client, hash=None):
     if hash is not None:
         c['hash'] = hash
     return presence
-
-def dbus_sync(bus, q, conn):
-    # Dummy D-Bus method call
-    call_async(q, conn, "InspectHandles", 1, [])
-
-    event = q.expect('dbus-return', method='InspectHandles')
 
 def test_hash(q, bus, conn, stream, contact, contact_handle, client):
     global caps_changed_flag

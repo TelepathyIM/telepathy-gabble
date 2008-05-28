@@ -79,7 +79,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
 
     <method name="SetActivities">
       <arg direction="in" name="activities" type="a(su)">
-        <tp:docstring>
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
           An array of structs containing:
           <ul>
             <li>the identifier of the activity</li>
@@ -103,7 +103,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
         </tp:docstring>
       </arg>
       <arg direction="out" name="activities" type="a(su)">
-        <tp:docstring>
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
           An array of structs containing:
           <ul>
             <li>the identifier of the activity</li>
@@ -127,7 +127,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
         </tp:docstring>
       </arg>
       <arg name="activities" type="a(su)">
-        <tp:docstring>
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
           An array of structs containing:
           <ul>
             <li>the identifier of the activity</li>

@@ -3750,14 +3750,13 @@ olpc_gadget_publish (GabbleSvcOLPCGadget *iface,
                      DBusGMethodInvocation *context)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
+  GError *error = NULL;
 
   if (!check_gadget_buddy (conn, context))
     return;
 
   if (publish)
     {
-      GError *error = NULL;
-
       /* FIXME: we should check if we are already registered before */
       /* FIXME: add to roster ? */
       /* FIXME: this is ugly. We should use roster and/or
@@ -3781,8 +3780,23 @@ olpc_gadget_publish (GabbleSvcOLPCGadget *iface,
     }
   else
     {
-      /* TODO */
-      ;
+      /* FIXME: this is ugly. We should use roster and/or
+       * gabble-roster-channel if possible */
+      if (!send_presence_to_gadget (conn, LM_MESSAGE_SUB_TYPE_SUBSCRIBE,
+            &error))
+        {
+          dbus_g_method_return_error (context, error);
+          g_error_free (error);
+          return;
+        }
+
+      if (!send_presence_to_gadget (conn, LM_MESSAGE_SUB_TYPE_SUBSCRIBED,
+            &error))
+        {
+          dbus_g_method_return_error (context, error);
+          g_error_free (error);
+          return;
+        }
     }
 
   gabble_svc_olpc_gadget_return_from_publish (context);

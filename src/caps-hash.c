@@ -255,10 +255,10 @@ caps_hash_compute_from_lm_node (LmMessageNode *node)
           xmlns = lm_message_node_get_attribute (child, "xmlns");
           type = lm_message_node_get_attribute (child, "type");
 
-          if (! g_str_equal (xmlns, "jabber:x:data"))
+          if (tp_strdiff (xmlns, "jabber:x:data"))
             continue;
 
-          if (! g_str_equal (type, "result"))
+          if (tp_strdiff (type, "result"))
             continue;
 
           form = g_slice_new0 (DataForm);
@@ -288,7 +288,7 @@ caps_hash_compute_from_lm_node (LmMessageNode *node)
                     {
                       const gchar *content;
 
-                      if (! g_str_equal (value_child->name, "value"))
+                      if (tp_strdiff (value_child->name, "value"))
                         continue;
 
                       content = lm_message_node_get_value (value_child);
@@ -314,7 +314,7 @@ caps_hash_compute_from_lm_node (LmMessageNode *node)
                     {
                       const gchar *content;
 
-                      if (! g_str_equal (value_child->name, "value"))
+                      if (tp_strdiff (value_child->name, "value"))
                         continue;
 
                       content = lm_message_node_get_value (value_child);

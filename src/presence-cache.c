@@ -633,7 +633,7 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
 }
 
 static GSList *
-_extract_cap_bundles (
+_parse_cap_bundles (
     LmMessageNode *lm_node,
     const gchar **hash,
     const gchar **ver)
@@ -1059,8 +1059,8 @@ _process_caps (GabblePresenceCache *cache,
   if (resource != NULL)
     resource++;
 
-  uris = _extract_cap_bundles (lm_node, &hash, &ver);
-  DEBUG ("_extract_cap_bundles get hash='%s' ver='%s'", hash, ver);
+  uris = _parse_cap_bundles (lm_node, &hash, &ver);
+  DEBUG ("_parse_cap_bundles get hash='%s' ver='%s'", hash, ver);
 
   if (presence)
       old_caps = presence->caps;

@@ -61,8 +61,6 @@ def test(q, bus, conn, stream):
 
     gadget_iface = dbus.Interface(conn, 'org.laptop.Telepathy.Gadget')
 
-    sync_stream(q, stream)
-
     call_async(q, gadget_iface, 'Publish', True)
 
     q.expect_many(

@@ -144,17 +144,25 @@ def test(q, bus, conn, stream):
 
     client = 'http://telepathy.freedesktop.org/fake-client'
 
-    _test_without_hash(q, bus, conn, stream, 'bob1@foo.com/Foo', 2L, client, 1)
-    _test_without_hash(q, bus, conn, stream, 'bob2@foo.com/Foo', 3L, client, 1)
-    _test_without_hash(q, bus, conn, stream, 'bob3@foo.com/Foo', 4L, client, 1)
-    _test_without_hash(q, bus, conn, stream, 'bob4@foo.com/Foo', 5L, client, 1)
-    _test_without_hash(q, bus, conn, stream, 'bob5@foo.com/Foo', 6L, client, 1)
+    _test_without_hash(q, bus, conn, stream, 'bob1@foo.com/Foo', 2L, client,
+        True)
+    _test_without_hash(q, bus, conn, stream, 'bob2@foo.com/Foo', 3L, client,
+        True)
+    _test_without_hash(q, bus, conn, stream, 'bob3@foo.com/Foo', 4L, client,
+        True)
+    _test_without_hash(q, bus, conn, stream, 'bob4@foo.com/Foo', 5L, client,
+        True)
+    _test_without_hash(q, bus, conn, stream, 'bob5@foo.com/Foo', 6L, client,
+        True)
     # we have 5 different contacts that confirm
-    _test_without_hash(q, bus, conn, stream, 'bob6@foo.com/Foo', 7L, client, 0)
+    _test_without_hash(q, bus, conn, stream, 'bob6@foo.com/Foo', 7L, client,
+        False)
 
-    _test_with_hash(q, bus, conn, stream, 'bilbo1@foo.com/Foo', 8L, client, 1)
+    _test_with_hash(q, bus, conn, stream, 'bilbo1@foo.com/Foo', 8L, client,
+        True)
     # 1 contact is enough with hash
-    _test_with_hash(q, bus, conn, stream, 'bilbo2@foo.com/Foo', 9L, client, 0)
+    _test_with_hash(q, bus, conn, stream, 'bilbo2@foo.com/Foo', 9L, client,
+        False)
 
     conn.Disconnect()
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])

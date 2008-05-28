@@ -34,13 +34,13 @@ sm = 'org.freedesktop.Telepathy.Channel.Type.StreamedMedia'
 conn_iface = 'org.freedesktop.Telepathy.Connection'
 caps_iface = 'org.freedesktop.Telepathy.Connection.Interface.Capabilities'
 
-caps_changed_flag = 0
+caps_changed_flag = False
 
 def caps_changed_cb(dummy):
     # Workaround to bug 9980: do not raise an error but use a flag
     # https://bugs.freedesktop.org/show_bug.cgi?id=9980
     global caps_changed_flag
-    caps_changed_flag = 1
+    caps_changed_flag = True
 
 def make_presence(from_jid, type, status):
     presence = domish.Element((None, 'presence'))
@@ -108,7 +108,7 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
 
     # we can now do audio calls
     event = q.expect('dbus-signal', signal='CapabilitiesChanged')
-    caps_changed_flag = 0
+    caps_changed_flag = False
 
     # send bogus presence
     presence = make_presence(contact, None, 'hello')
@@ -135,7 +135,7 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
 
     # don't receive any D-Bus signal
     dbus_sync(bus, q, conn)
-    assert caps_changed_flag == 0
+    assert caps_changed_flag == False
 
     # send presence with empty caps
     presence = make_presence(contact, None, 'hello')
@@ -151,7 +151,7 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
 
     # still don't receive any D-Bus signal
     dbus_sync(bus, q, conn)
-    assert caps_changed_flag == 0
+    assert caps_changed_flag == False
 
     # send good reply
     result = make_result_iq(stream, event.stanza)
@@ -160,8 +160,8 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
 
     # we can now do nothing
     event = q.expect('dbus-signal', signal='CapabilitiesChanged')
-    assert caps_changed_flag == 1
-    caps_changed_flag = 0
+    assert caps_changed_flag == True
+    caps_changed_flag = False
 
     # send correct presence
     presence = make_presence(contact, None, 'hello')
@@ -180,7 +180,7 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
 
     # don't receive any D-Bus signal
     dbus_sync(bus, q, conn)
-    assert caps_changed_flag == 0
+    assert caps_changed_flag == False
 
     # send good reply
     result = make_result_iq(stream, event.stanza)
@@ -216,8 +216,8 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
 
     # we can now do audio calls
     event = q.expect('dbus-signal', signal='CapabilitiesChanged')
-    assert caps_changed_flag == 1
-    caps_changed_flag = 0
+    assert caps_changed_flag == True
+    caps_changed_flag = False
 
 def test_two_clients(q, bus, conn, stream, contact1, contact2,
         contact_handle1, contact_handle2, client, broken_hash):
@@ -261,7 +261,7 @@ def test_two_clients(q, bus, conn, stream, contact1, contact2,
 
     # don't receive any D-Bus signal
     dbus_sync(bus, q, conn)
-    assert caps_changed_flag == 0
+    assert caps_changed_flag == False
 
     # send good reply
     result = make_result_iq(stream, event.stanza)
@@ -289,7 +289,7 @@ def test_two_clients(q, bus, conn, stream, contact1, contact2,
 
         # don't receive any D-Bus signal
         dbus_sync(bus, q, conn)
-        assert caps_changed_flag == 0
+        assert caps_changed_flag == False
 
         # send good reply
         result = make_result_iq(stream, event.stanza)
@@ -311,11 +311,11 @@ def test_two_clients(q, bus, conn, stream, contact1, contact2,
         event = q.expect('dbus-signal', signal='CapabilitiesChanged',
             args=[[(contact_handle1, sm, 0, 3, 0, 1)]])#  what are the good values?!
 
-    caps_changed_flag = 0
+    caps_changed_flag = False
 
     # don't receive any D-Bus signal
     dbus_sync(bus, q, conn)
-    assert caps_changed_flag == 0
+    assert caps_changed_flag == False
 
 def test(q, bus, conn, stream):
     conn.Connect()

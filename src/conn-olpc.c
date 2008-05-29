@@ -1781,6 +1781,18 @@ refresh_invitations (GabbleMucChannel *chan,
   return TRUE;
 }
 
+static gboolean
+invite_gadget (GabbleConnection *conn,
+               GabbleMucChannel *muc)
+{
+  if (!check_gadget_activity (conn, NULL))
+    return FALSE;
+
+  DEBUG ("Activity becomes public. Invite gadget to it");
+  return gabble_muc_channel_send_invite (muc, conn->olpc_gadget_activity,
+      "Share activity", NULL);
+}
+
 static void
 olpc_activity_properties_set_properties (GabbleSvcOLPCActivityProperties *iface,
                                          guint room,
@@ -1874,6 +1886,12 @@ olpc_activity_properties_set_properties (GabbleSvcOLPCActivityProperties *iface,
   ctx->context = context;
   ctx->visibility_changed = (was_visible != is_visible);
   ctx->info = info;
+
+  if (!was_visible && is_visible)
+    {
+      /* activity becomes visible. Invite gadget */
+      invite_gadget (conn, muc_channel);
+    }
 
   if (was_visible || is_visible)
     {

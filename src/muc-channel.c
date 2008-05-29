@@ -2490,6 +2490,44 @@ gabble_muc_channel_send (TpSvcChannelTypeText *iface,
   tp_svc_channel_type_text_return_from_send (context);
 }
 
+static gboolean
+gabble_muc_channel_send_invite (GabbleMucChannel *self,
+                                TpHandle handle,
+                                const gchar *message,
+                                GError **error)
+{
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
+  LmMessage *msg;
+  LmMessageNode *x_node, *invite_node;
+  const gchar *jid;
+  gboolean result;
+
+  g_signal_emit (self, signals[PRE_INVITE], 0, handle);
+
+  msg = lm_message_new (priv->jid, LM_MESSAGE_TYPE_MESSAGE);
+
+  x_node = lm_message_node_add_child (msg->node, "x", NULL);
+  lm_message_node_set_attribute (x_node, "xmlns", NS_MUC_USER);
+
+  invite_node = lm_message_node_add_child (x_node, "invite", NULL);
+
+  jid = tp_handle_inspect (TP_GROUP_MIXIN (self)->handle_repo, handle);
+
+  lm_message_node_set_attribute (invite_node, "to", jid);
+
+  if (*message != '\0')
+    {
+      lm_message_node_add_child (invite_node, "reason", message);
+    }
+
+  DEBUG ("sending MUC invitation for room %s to contact %u (%s) with reason "
+      "\"%s\"", priv->jid, handle, jid, message);
+
+  result = _gabble_connection_send (priv->conn, msg, error);
+  lm_message_unref (msg);
+
+  return result;
+}
 
 static gboolean
 gabble_muc_channel_add_member (GObject *obj,
@@ -2497,14 +2535,9 @@ gabble_muc_channel_add_member (GObject *obj,
                                const gchar *message,
                                GError **error)
 {
-  GabbleMucChannelPrivate *priv;
+  GabbleMucChannel *self = GABBLE_MUC_CHANNEL (obj);
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
   TpGroupMixin *mixin;
-  const gchar *jid;
-  LmMessage *msg;
-  LmMessageNode *x_node, *invite_node;
-  gboolean result;
-
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (GABBLE_MUC_CHANNEL (obj));
 
   mixin = TP_GROUP_MIXIN (obj);
 
@@ -2513,6 +2546,7 @@ gabble_muc_channel_add_member (GObject *obj,
       TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
       TpIntSet *set_remove_members, *set_remote_pending;
       GArray *arr_members;
+      gboolean result;
 
       /* are we already a member or in remote pending? */
       if (tp_handle_set_is_member (mixin->members, handle) ||
@@ -2551,7 +2585,7 @@ gabble_muc_channel_add_member (GObject *obj,
       tp_intset_destroy (set_remote_pending);
 
       /* seek to enter the room */
-      result = send_join_request (GABBLE_MUC_CHANNEL (obj), NULL, error);
+      result = send_join_request (self, NULL, error);
 
       g_object_set (obj, "state",
                     (result) ? MUC_STATE_INITIATED : MUC_STATE_ENDED,
@@ -2572,31 +2606,7 @@ gabble_muc_channel_add_member (GObject *obj,
       return FALSE;
     }
 
-  g_signal_emit (obj, signals[PRE_INVITE], 0, handle);
-
-  msg = lm_message_new (priv->jid, LM_MESSAGE_TYPE_MESSAGE);
-
-  x_node = lm_message_node_add_child (msg->node, "x", NULL);
-  lm_message_node_set_attribute (x_node, "xmlns", NS_MUC_USER);
-
-  invite_node = lm_message_node_add_child (x_node, "invite", NULL);
-
-  jid = tp_handle_inspect (TP_GROUP_MIXIN (obj)->handle_repo, handle);
-
-  lm_message_node_set_attribute (invite_node, "to", jid);
-
-  if (*message != '\0')
-    {
-      lm_message_node_add_child (invite_node, "reason", message);
-    }
-
-  DEBUG ("sending MUC invitation for room %s to contact %u (%s) with reason "
-      "\"%s\"", priv->jid, handle, jid, message);
-
-  result = _gabble_connection_send (priv->conn, msg, error);
-  lm_message_unref (msg);
-
-  return result;
+  return gabble_muc_channel_send_invite (self, handle, message, error);
 }
 
 static LmHandlerResult

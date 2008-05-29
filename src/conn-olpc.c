@@ -2609,7 +2609,7 @@ muc_channel_closed_cb (GabbleMucChannel *chan,
 
 static void
 muc_channel_pre_invite_cb (GabbleMucChannel *chan,
-                           TpHandle invitee,
+                           const gchar *jid,
                            ActivityInfo *info)
 {
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles
@@ -2619,8 +2619,7 @@ muc_channel_pre_invite_cb (GabbleMucChannel *chan,
   /* send them the properties */
   LmMessage *msg;
 
-  msg = lm_message_new (tp_handle_inspect (contact_repo, invitee),
-      LM_MESSAGE_TYPE_MESSAGE);
+  msg = lm_message_new (jid, LM_MESSAGE_TYPE_MESSAGE);
 
   if (activity_info_contribute_properties (info, msg->node, FALSE))
     {
@@ -2633,14 +2632,31 @@ muc_channel_pre_invite_cb (GabbleMucChannel *chan,
     }
   lm_message_unref (msg);
 
-  invitees = g_object_get_qdata ((GObject *) chan, quark);
-  if (invitees == NULL)
+  /* don't add gadget */
+  if (tp_strdiff (jid, info->conn->olpc_gadget_activity))
     {
-      invitees = tp_handle_set_new (contact_repo);
-      g_object_set_qdata_full ((GObject *) chan, quark, invitees,
-          (GDestroyNotify) tp_handle_set_destroy);
+      TpHandle handle;
+      GError *error = NULL;
+
+      handle = tp_handle_ensure (contact_repo, jid, NULL, &error);
+      if (handle == 0)
+        {
+          DEBUG ("can't add %s to invitees: %s", jid, error->message);
+          g_error_free (error);
+          return;
+        }
+
+      invitees = g_object_get_qdata ((GObject *) chan, quark);
+      if (invitees == NULL)
+        {
+          invitees = tp_handle_set_new (contact_repo);
+          g_object_set_qdata_full ((GObject *) chan, quark, invitees,
+              (GDestroyNotify) tp_handle_set_destroy);
+        }
+
+      tp_handle_set_add (invitees, handle);
+      tp_handle_unref (contact_repo, handle);
     }
-  tp_handle_set_add (invitees, invitee);
 }
 
 typedef struct

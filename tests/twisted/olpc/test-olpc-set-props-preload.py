@@ -16,13 +16,19 @@ def test(q, bus, conn, stream):
     conn.Connect()
     # q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
 
-    event = q.expect('stream-iq')
+    # buddy activities
+    event = q.expect('stream-iq', iq_type='set', query_name='pubsub')
+
+    # activity properties
+    event = q.expect('stream-iq', iq_type='set', query_name='pubsub')
+
+    # buddy properties
+    event = q.expect('stream-iq', iq_type='set', query_name='pubsub')
     iq = event.stanza
     nodes = xpath.queryForNodes(
         "/iq[@type='set']/pubsub[@xmlns='http://jabber.org/protocol/pubsub']"
         "/publish[@node='http://laptop.org/xmpp/buddy-properties']", iq)
-    if not nodes:
-        return False
+    assert nodes
 
     nodes = xpath.queryForNodes(
         "/publish/item"
@@ -38,7 +44,6 @@ def test(q, bus, conn, stream):
     iq['type'] = 'result'
     stream.send(iq)
     conn.Disconnect()
-    return True
 
 if __name__ == '__main__':
     exec_test(test)

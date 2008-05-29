@@ -55,8 +55,7 @@ def test(q, bus, conn, stream):
 
     event = q.expect('dbus-signal', signal='NewChannel')
 
-    if event.args[1] != 'org.freedesktop.Telepathy.Channel.Type.Text':
-        return False
+    assert event.args[1] == 'org.freedesktop.Telepathy.Channel.Type.Text'
 
     assert event.args[2] == 2   # handle type
     assert event.args[3] == 1   # handle
@@ -221,10 +220,8 @@ def test(q, bus, conn, stream):
     call_async(q, act_prop_iface, 'SetProperties',
             room_handle, {'title': 'I can set the properties too', 'private': True})
 
-    event = q.expect('stream-message')
+    event = q.expect('stream-message', to='chat@conf.localhost')
     message = event.stanza
-    if message['to'] != 'chat@conf.localhost':
-        return False
 
     properties = xpath.queryForNodes('/message/properties', message)
     assert (properties is not None and len(properties) == 1), repr(properties)
@@ -288,10 +285,8 @@ def test(q, bus, conn, stream):
         room_handle, {'title': 'I can set the properties too',
                               'private': False})
 
-    event = q.expect('stream-message')
+    event = q.expect('stream-message', to='chat@conf.localhost')
     message = event.stanza
-    if message['to'] != 'chat@conf.localhost':
-        return False
 
     properties = xpath.queryForNodes('/message/properties', message)
     assert (properties is not None and len(properties) == 1), repr(properties)

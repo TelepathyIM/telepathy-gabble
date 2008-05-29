@@ -1085,8 +1085,8 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  g_cclosure_marshal_VOID__UINT,
-                  G_TYPE_NONE, 1, G_TYPE_UINT);
+                  g_cclosure_marshal_VOID__STRING,
+                  G_TYPE_NONE, 1, G_TYPE_STRING);
 
   signals[CONTACT_JOIN] =
     g_signal_new ("contact-join",
@@ -2490,19 +2490,18 @@ gabble_muc_channel_send (TpSvcChannelTypeText *iface,
   tp_svc_channel_type_text_return_from_send (context);
 }
 
-static gboolean
+gboolean
 gabble_muc_channel_send_invite (GabbleMucChannel *self,
-                                TpHandle handle,
+                                const gchar *jid,
                                 const gchar *message,
                                 GError **error)
 {
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
   LmMessage *msg;
   LmMessageNode *x_node, *invite_node;
-  const gchar *jid;
   gboolean result;
 
-  g_signal_emit (self, signals[PRE_INVITE], 0, handle);
+  g_signal_emit (self, signals[PRE_INVITE], 0, jid);
 
   msg = lm_message_new (priv->jid, LM_MESSAGE_TYPE_MESSAGE);
 
@@ -2511,8 +2510,6 @@ gabble_muc_channel_send_invite (GabbleMucChannel *self,
 
   invite_node = lm_message_node_add_child (x_node, "invite", NULL);
 
-  jid = tp_handle_inspect (TP_GROUP_MIXIN (self)->handle_repo, handle);
-
   lm_message_node_set_attribute (invite_node, "to", jid);
 
   if (*message != '\0')
@@ -2520,8 +2517,8 @@ gabble_muc_channel_send_invite (GabbleMucChannel *self,
       lm_message_node_add_child (invite_node, "reason", message);
     }
 
-  DEBUG ("sending MUC invitation for room %s to contact %u (%s) with reason "
-      "\"%s\"", priv->jid, handle, jid, message);
+  DEBUG ("sending MUC invitation for room %s to contact %s with reason "
+      "\"%s\"", priv->jid, jid, message);
 
   result = _gabble_connection_send (priv->conn, msg, error);
   lm_message_unref (msg);
@@ -2538,6 +2535,7 @@ gabble_muc_channel_add_member (GObject *obj,
   GabbleMucChannel *self = GABBLE_MUC_CHANNEL (obj);
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
   TpGroupMixin *mixin;
+  const gchar *jid;
 
   mixin = TP_GROUP_MIXIN (obj);
 
@@ -2606,7 +2604,9 @@ gabble_muc_channel_add_member (GObject *obj,
       return FALSE;
     }
 
-  return gabble_muc_channel_send_invite (self, handle, message, error);
+  jid = tp_handle_inspect (TP_GROUP_MIXIN (self)->handle_repo, handle);
+
+  return gabble_muc_channel_send_invite (self, jid, message, error);
 }
 
 static LmHandlerResult

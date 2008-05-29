@@ -100,6 +100,9 @@ void _gabble_muc_channel_state_receive (GabbleMucChannel *chan,
 gboolean gabble_muc_channel_send_presence (GabbleMucChannel *chan,
     GError **error);
 
+gboolean gabble_muc_channel_send_invite (GabbleMucChannel *self,
+    const gchar *jid, const gchar *message, GError **error);
+
 G_END_DECLS
 
 #endif /* #ifndef __GABBLE_MUC_CHANNEL_H__*/

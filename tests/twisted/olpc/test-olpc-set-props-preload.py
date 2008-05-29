@@ -18,9 +18,16 @@ def test(q, bus, conn, stream):
 
     # buddy activities
     event = q.expect('stream-iq', iq_type='set', query_name='pubsub')
+    assert xpath.queryForNodes(
+        "/iq[@type='set']/pubsub[@xmlns='http://jabber.org/protocol/pubsub']"
+        "/publish[@node='http://laptop.org/xmpp/activities']", event.stanza)
 
     # activity properties
     event = q.expect('stream-iq', iq_type='set', query_name='pubsub')
+    assert xpath.queryForNodes(
+        "/iq[@type='set']/pubsub[@xmlns='http://jabber.org/protocol/pubsub']"
+        "/publish[@node='http://laptop.org/xmpp/activity-properties']",
+        event.stanza)
 
     # buddy properties
     event = q.expect('stream-iq', iq_type='set', query_name='pubsub')

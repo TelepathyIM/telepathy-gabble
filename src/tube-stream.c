@@ -499,7 +499,7 @@ new_connection_to_socket (GabbleTubeStream *self,
 
       addr.un.sun_family = PF_UNIX;
       strncpy (addr.un.sun_path, array->data, sizeof (addr.un.sun_path) - 1);
-      addr.un.sun_path[sizeof (addr.un.sun_path)] = '\0';
+      addr.un.sun_path[sizeof (addr.un.sun_path) - 1] = '\0';
       len = sizeof (addr.un);
 
       DEBUG ("Will try to connect to socket: %s", (const gchar *) array->data);

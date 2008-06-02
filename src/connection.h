@@ -209,6 +209,10 @@ gboolean _gabble_connection_signal_own_presence (GabbleConnection *,
 void gabble_connection_ensure_capabilities (GabbleConnection *conn,
     GabblePresenceCapabilities caps);
 
+gboolean gabble_connection_send_presence (GabbleConnection *conn,
+    LmMessageSubType sub_type, const gchar *contact, const gchar *status,
+    GError **error);
+
 /* extern only for the benefit of the unit tests */
 void _gabble_connection_create_handle_repos (TpBaseConnection *conn,
     TpHandleRepoIface *repos[NUM_TP_HANDLE_TYPES]);

@@ -457,7 +457,6 @@ gabble_roster_channel_finalize (GObject *object)
   G_OBJECT_CLASS (gabble_roster_channel_parent_class)->finalize (object);
 }
 
-
 static gboolean
 _gabble_roster_channel_send_presence (GabbleRosterChannel *chan,
                                       LmMessageSubType sub_type,
@@ -468,30 +467,15 @@ _gabble_roster_channel_send_presence (GabbleRosterChannel *chan,
   GabbleRosterChannelPrivate *priv;
   TpBaseConnection *conn;
   TpHandleRepoIface *repo;
-  const char *contact;
-  LmMessage *message;
-  gboolean result;
+  const gchar *contact;
 
   priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (chan);
   conn = (TpBaseConnection *) priv->conn;
   repo = tp_base_connection_get_handles (conn, TP_HANDLE_TYPE_CONTACT);
   contact = tp_handle_inspect (repo, handle);
 
-  message = lm_message_new_with_sub_type (contact,
-      LM_MESSAGE_TYPE_PRESENCE,
-      sub_type);
-
-  if (LM_MESSAGE_SUB_TYPE_SUBSCRIBE == sub_type)
-    lm_message_node_add_own_nick (message->node, priv->conn);
-
-  if (status != NULL && status[0] != '\0')
-    lm_message_node_add_child (message->node, "status", status);
-
-  result = _gabble_connection_send (priv->conn, message, error);
-
-  lm_message_unref (message);
-
-  return result;
+  return gabble_connection_send_presence (priv->conn, sub_type, contact, status,
+      error);
 }
 
 

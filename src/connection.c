@@ -2861,6 +2861,34 @@ gabble_connection_ensure_capabilities (GabbleConnection *self,
     }
 }
 
+gboolean
+gabble_connection_send_presence (GabbleConnection *conn,
+                                 LmMessageSubType sub_type,
+                                 const gchar *contact,
+                                 const gchar *status,
+                                 GError **error)
+{
+  LmMessage *message;
+  gboolean result;
+
+  message = lm_message_new_with_sub_type (contact,
+      LM_MESSAGE_TYPE_PRESENCE,
+      sub_type);
+
+  if (LM_MESSAGE_SUB_TYPE_SUBSCRIBE == sub_type)
+    lm_message_node_add_own_nick (message->node, conn);
+
+  if (status != NULL && status[0] != '\0')
+    lm_message_node_add_child (message->node, "status", status);
+
+  result = _gabble_connection_send (conn, message, error);
+
+  lm_message_unref (message);
+
+  return result;
+
+}
+
 /* We reimplement RequestHandles to be able to do async validation on
  * room handles */
 static void

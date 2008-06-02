@@ -3765,17 +3765,8 @@ send_presence_to_gadget (GabbleConnection *conn,
                          LmMessageSubType sub_type,
                          GError **error)
 {
-  LmMessage *message;
-  gboolean ret;
-
-  message = lm_message_new_with_sub_type (conn->olpc_gadget_buddy,
-      LM_MESSAGE_TYPE_PRESENCE, sub_type);
-
-  ret = _gabble_connection_send (conn, message, error);
-
-  lm_message_unref (message);
-
-  return ret;
+  return gabble_connection_send_presence (conn, sub_type,
+      conn->olpc_gadget_buddy, NULL, error);
 }
 
 static void
@@ -3793,9 +3784,6 @@ olpc_gadget_publish (GabbleSvcOLPCGadget *iface,
     {
       /* FIXME: we should check if we are already registered before */
       /* FIXME: add to roster ? */
-      /* FIXME: this is ugly. We should use roster and/or
-       * gabble-roster-channel if possible */
-
       if (!send_presence_to_gadget (conn, LM_MESSAGE_SUB_TYPE_SUBSCRIBE,
             &error))
         {
@@ -3814,8 +3802,6 @@ olpc_gadget_publish (GabbleSvcOLPCGadget *iface,
     }
   else
     {
-      /* FIXME: this is ugly. We should use roster and/or
-       * gabble-roster-channel if possible */
       if (!send_presence_to_gadget (conn, LM_MESSAGE_SUB_TYPE_SUBSCRIBE,
             &error))
         {

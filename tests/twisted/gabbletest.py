@@ -219,7 +219,7 @@ def make_connection(bus, event_func, params=None):
     return servicetest.make_connection(bus, event_func, 'gabble', 'jabber',
         default_params)
 
-def make_stream(event_func, authenticator=None, protocol=None):
+def make_stream(event_func, authenticator=None, protocol=None, port=4242):
     # set up Jabber server
 
     if authenticator is None:
@@ -231,7 +231,7 @@ def make_stream(event_func, authenticator=None, protocol=None):
     stream = protocol(event_func, authenticator)
     factory = twisted.internet.protocol.Factory()
     factory.protocol = lambda *args: stream
-    reactor.listenTCP(4242, factory)
+    reactor.listenTCP(port, factory)
     return stream
 
 def go(params=None, authenticator=None, protocol=None, start=None):

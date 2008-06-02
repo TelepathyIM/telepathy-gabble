@@ -45,6 +45,7 @@ TWISTED_TESTS = \
 	test-caps-hash.py \
 	test-connect-fail.py \
 	test-connect.py \
+	test-connect2.py \
 	test-disco.py \
 	test-disco-no-reply.py \
 	test-group-race.py \

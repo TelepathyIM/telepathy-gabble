@@ -19,6 +19,7 @@ import dbus
 
 NS_XMPP_SASL = 'urn:ietf:params:xml:ns:xmpp-sasl'
 NS_XMPP_BIND = 'urn:ietf:params:xml:ns:xmpp-bind'
+NS_XMPP_TLS = 'urn:ietf:params:xml:ns:xmpp-tls'
 
 def make_result_iq(stream, iq):
     result = IQ(stream, "result")
@@ -84,6 +85,40 @@ class JabberAuthenticator(xmlstream.Authenticator):
         result["id"] = iq["id"]
         self.xmlstream.send(result)
         self.xmlstream.dispatch(self.xmlstream, xmlstream.STREAM_AUTHD_EVENT)
+
+class TlsAuthenticator(xmlstream.Authenticator):
+    "Tls stream authenticator that blocks after the <proceed/>."
+
+    def __init__(self, username, password):
+        xmlstream.Authenticator.__init__(self)
+        self.username = username
+        self.password = password
+        self.authenticated = False
+
+    def streamStarted(self, root=None):
+        if root:
+            self.xmlstream.sid = root.getAttribute('id')
+
+        self.xmlstream.sendHeader()
+
+        features = domish.Element((xmlstream.NS_STREAMS, 'features'))
+        mechanisms = features.addElement((NS_XMPP_SASL, 'mechanisms'))
+        mechanism = mechanisms.addElement('mechanism', content='DIGEST-MD5')
+        starttls = features.addElement((NS_XMPP_TLS, 'starttls'))
+        starttls.addElement('required')
+        self.xmlstream.send(features)
+
+        self.xmlstream.addOnetimeObserver("/starttls", self.auth)
+
+    def auth(self, auth):
+        proceed = domish.Element((NS_XMPP_TLS, 'proceed'))
+        self.xmlstream.send(proceed)
+
+        return; # auth blocks
+
+        self.xmlstream.reset()
+        self.authenticated = True
+
 
 class XmppAuthenticator(xmlstream.Authenticator):
     def __init__(self, username, password):

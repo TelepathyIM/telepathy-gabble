@@ -43,9 +43,10 @@ TWISTED_TESTS = \
 	test-capabilities.py \
 	test-caps-cache.py \
 	test-caps-hash.py \
-	test-connect-fail.py \
-	test-connect.py \
-	test-connect-twice.py \
+	connect/test-fail.py \
+	connect/test-success.py \
+	connect/test-twice.py \
+	connect/test-nonblocking-tls.py \
 	test-disco.py \
 	test-disco-no-reply.py \
 	test-group-race.py \

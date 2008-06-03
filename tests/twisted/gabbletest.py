@@ -86,8 +86,10 @@ class JabberAuthenticator(xmlstream.Authenticator):
         self.xmlstream.send(result)
         self.xmlstream.dispatch(self.xmlstream, xmlstream.STREAM_AUTHD_EVENT)
 
-class TlsAuthenticator(xmlstream.Authenticator):
-    "Tls stream authenticator that blocks after the <proceed/>."
+class BlockForeverTlsAuthenticator(xmlstream.Authenticator):
+    """A TLS stream authenticator that is deliberately broken. It sends
+    <proceed/> to the client but then do nothing, so the TLS handshake will
+    not work. Useful for testing regression of bug #14341."""
 
     def __init__(self, username, password):
         xmlstream.Authenticator.__init__(self)

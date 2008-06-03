@@ -12,7 +12,7 @@ import servicetest
 import twisted
 
 from gabbletest import make_connection, make_stream, JabberAuthenticator, \
-                       XmppAuthenticator, TlsAuthenticator, \
+                       XmppAuthenticator, BlockForeverTlsAuthenticator, \
                        XmppXmlStream, JabberXmlStream
 
 def test(q, bus, conn1, conn2, stream1, stream2):
@@ -54,7 +54,7 @@ if __name__ == '__main__':
         'port': dbus.UInt32(4242),
         }
     conn1 = make_connection(bus, queue.append, params)
-    authenticator = TlsAuthenticator('test1', 'pass')
+    authenticator = BlockForeverTlsAuthenticator('test1', 'pass')
     stream1 = make_stream(queue.append, authenticator, protocol=XmppXmlStream,
                           port=4242)
 

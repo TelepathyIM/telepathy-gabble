@@ -20,6 +20,14 @@ from gabbletest import make_connection, make_stream, JabberAuthenticator, \
 NS_XMPP_TLS = 'urn:ietf:params:xml:ns:xmpp-tls'
 NS_XMPP_SASL = 'urn:ietf:params:xml:ns:xmpp-sasl'
 
+
+print "FIXME: test-connect-twice.py disabled due to a bug in Loudmouth:"
+print "       http://developer.imendio.com/issues/browse/LM-44"
+print "       https://bugs.freedesktop.org/show_bug.cgi?id=14341"
+# exiting 77 causes automake to consider the test to have been skipped
+raise SystemExit(77)
+
+
 class BlockForeverTlsAuthenticator(xmlstream.Authenticator):
     """A TLS stream authenticator that is deliberately broken. It sends
     <proceed/> to the client but then do nothing, so the TLS handshake will

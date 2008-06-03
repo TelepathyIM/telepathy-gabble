@@ -92,7 +92,10 @@ class XmppAuthenticator(xmlstream.Authenticator):
         self.password = password
         self.authenticated = False
 
-    def streamStarted(self):
+    def streamStarted(self, root=None):
+        if root:
+            self.xmlstream.sid = root.getAttribute('id')
+
         self.xmlstream.sendHeader()
 
         if self.authenticated:

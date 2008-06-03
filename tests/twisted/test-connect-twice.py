@@ -11,16 +11,18 @@ import servicetest
 
 import twisted
 
-from gabbletest import make_connection, make_stream, JabberAuthenticator
+from gabbletest import make_connection, make_stream, JabberAuthenticator, \
+                       XmppAuthenticator, TlsAuthenticator, \
+                       XmppXmlStream, JabberXmlStream
 
 def test(q, bus, conn1, conn2, stream1, stream2):
     # Connection 1
     conn1.Connect()
     q.expect('dbus-signal', signal='StatusChanged', args=[1, 1])
-    q.expect('stream-authenticated')
-    q.expect('dbus-signal', signal='PresenceUpdate',
-        args=[{1L: (0L, {u'available': {}})}])
-    q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
+
+    # Connection 1 blocks because the fake jabber server behind conn1 does not
+    # proceed to the tls handshake. The second connection is independant and
+    # should work.
 
     # Connection 2
     conn2.Connect()
@@ -29,13 +31,6 @@ def test(q, bus, conn1, conn2, stream1, stream2):
     q.expect('dbus-signal', signal='PresenceUpdate',
         args=[{1L: (0L, {u'available': {}})}])
     q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
-
-
-
-
-    # Disconnection 1
-    conn1.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
     # Disconnection 2
     conn2.Disconnect()
@@ -59,8 +54,9 @@ if __name__ == '__main__':
         'port': dbus.UInt32(4242),
         }
     conn1 = make_connection(bus, queue.append, params)
-    authenticator = JabberAuthenticator('test1', 'pass')
-    stream1 = make_stream(queue.append, authenticator, port=4242)
+    authenticator = TlsAuthenticator('test1', 'pass')
+    stream1 = make_stream(queue.append, authenticator, protocol=XmppXmlStream,
+                          port=4242)
 
     params = {
         'account': 'test2@localhost/Resource',
@@ -70,8 +66,9 @@ if __name__ == '__main__':
         'port': dbus.UInt32(4343),
         }
     conn2 = make_connection(bus, queue.append, params)
-    authenticator = JabberAuthenticator('test2', 'pass')
-    stream2 = make_stream(queue.append, authenticator, port=4343)
+    authenticator = XmppAuthenticator('test2', 'pass')
+    stream2 = make_stream(queue.append, authenticator, protocol=XmppXmlStream,
+                          port=4343)
 
     try:
         test(queue, bus, conn1, conn2, stream1, stream2)

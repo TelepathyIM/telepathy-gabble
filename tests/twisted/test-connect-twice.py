@@ -10,10 +10,51 @@ import dbus
 import servicetest
 
 import twisted
+from twisted.words.xish import domish, xpath
+from twisted.words.protocols.jabber import xmlstream
 
 from gabbletest import make_connection, make_stream, JabberAuthenticator, \
-                       XmppAuthenticator, BlockForeverTlsAuthenticator, \
+                       XmppAuthenticator, \
                        XmppXmlStream, JabberXmlStream
+
+NS_XMPP_TLS = 'urn:ietf:params:xml:ns:xmpp-tls'
+NS_XMPP_SASL = 'urn:ietf:params:xml:ns:xmpp-sasl'
+
+class BlockForeverTlsAuthenticator(xmlstream.Authenticator):
+    """A TLS stream authenticator that is deliberately broken. It sends
+    <proceed/> to the client but then do nothing, so the TLS handshake will
+    not work. Useful for testing regression of bug #14341."""
+
+    def __init__(self, username, password):
+        xmlstream.Authenticator.__init__(self)
+        self.username = username
+        self.password = password
+        self.authenticated = False
+
+    def streamStarted(self, root=None):
+        if root:
+            self.xmlstream.sid = root.getAttribute('id')
+
+        self.xmlstream.sendHeader()
+
+        features = domish.Element((xmlstream.NS_STREAMS, 'features'))
+        mechanisms = features.addElement((NS_XMPP_SASL, 'mechanisms'))
+        mechanism = mechanisms.addElement('mechanism', content='DIGEST-MD5')
+        starttls = features.addElement((NS_XMPP_TLS, 'starttls'))
+        starttls.addElement('required')
+        self.xmlstream.send(features)
+
+        self.xmlstream.addOnetimeObserver("/starttls", self.auth)
+
+    def auth(self, auth):
+        proceed = domish.Element((NS_XMPP_TLS, 'proceed'))
+        self.xmlstream.send(proceed)
+
+        return; # auth blocks
+
+        self.xmlstream.reset()
+        self.authenticated = True
+
 
 def test(q, bus, conn1, conn2, stream1, stream2):
     # Connection 1

@@ -126,6 +126,13 @@ def test(q, bus, conn, stream):
     reply['to'] = 'alice@localhost'
     view = xpath.queryForNodes('/iq/view', reply)[0]
     buddy = view.addElement((None, "buddy"))
+    buddy['jid'] = 'charles@localhost'
+    properties = buddy.addElement((NS_OLPC_BUDDY_PROPS, "properties"))
+    property = properties.addElement((None, "property"))
+    property['type'] = 'str'
+    property['name'] = 'color'
+    property.addContent('#AAAAAA,#BBBBBB')
+    buddy = view.addElement((None, "buddy"))
     buddy['jid'] = 'bob@localhost'
     properties = buddy.addElement((NS_OLPC_BUDDY_PROPS, "properties"))
     property = properties.addElement((None, "property"))
@@ -139,15 +146,10 @@ def test(q, bus, conn, stream):
     view0_iface = dbus.Interface(view0, 'org.laptop.Telepathy.BuddyView')
     view0_group_iface = dbus.Interface(view0, 'org.freedesktop.Telepathy.Channel.Interface.Group')
 
-    event = q.expect('dbus-signal', signal='PropertiesChanged')
-    handle, props = event.args
-    assert conn.InspectHandles(1, [handle])[0] == 'bob@localhost'
-    assert props == {'color': '#005FE4,#00A0FF'}
-
     event = q.expect('dbus-signal', signal='MembersChanged')
     msg, added, removed, lp, rp, actor, reason = event.args
     assert (removed, lp, rp) == ([], [], [])
-    assert len(added) == 1
+    assert len(added) == 2
     handle = added[0]
     assert conn.InspectHandles(1, [handle])[0] == 'bob@localhost'
 
@@ -229,11 +231,12 @@ def test(q, bus, conn, stream):
     assert (removed, lp, rp) == ([], [], [])
     assert len(added) == 1
     handle = added[0]
-    assert conn.InspectHandles(1, [handle])[0] == 'oscar@localhost'
+    assert conn.InspectHandles(1, added)[0] == 'oscar@localhost'
 
     members = view0_group_iface.GetMembers()
     members = sorted(conn.InspectHandles(1, members))
-    assert members == ['bob@localhost', 'oscar@localhost']
+    assert sorted(members) == ['bob@localhost', 'charles@localhost',
+            'oscar@localhost']
 
     # remove a buddy from view 0
     message = domish.Element((None, 'message'))
@@ -260,7 +263,7 @@ def test(q, bus, conn, stream):
 
     members = view0_group_iface.GetMembers()
     members = sorted(conn.InspectHandles(1, members))
-    assert members == ['oscar@localhost']
+    assert sorted(members) == ['charles@localhost', 'oscar@localhost']
 
     # close view 0
     call_async(q, view0_iface, 'Close')

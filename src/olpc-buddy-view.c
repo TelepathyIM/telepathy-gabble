@@ -334,30 +334,26 @@ olpc_buddy_view_close (GabbleSvcOLPCBuddyView *iface,
 
 void
 gabble_olpc_buddy_view_add_buddies (GabbleOlpcBuddyView *self,
-                                    TpHandleSet *buddies,
+                                    GArray *buddies,
                                     GPtrArray *buddies_properties)
 {
   GabbleOlpcBuddyViewPrivate *priv = GABBLE_OLPC_BUDDY_VIEW_GET_PRIVATE (self);
   TpIntSet *empty;
-  GArray *buddies_array;
   guint i;
+  TpIntSet *added;
 
   empty = tp_intset_new ();
-  buddies_array = tp_handle_set_to_array (buddies);
+  added = tp_intset_from_array (buddies);
 
-  g_assert (buddies_array->len == buddies_properties->len);
-
-  tp_group_mixin_change_members (G_OBJECT (self), "",
-      tp_handle_set_peek (buddies), empty, empty, empty,
-      0, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
+  g_assert (buddies->len == buddies_properties->len);
 
   /* store properties */
-  for (i = 0; i < buddies_array->len; i++)
+  for (i = 0; i < buddies->len; i++)
     {
       TpHandle handle;
       GHashTable *properties;
 
-      handle = g_array_index (buddies_array, TpHandle, i);
+      handle = g_array_index (buddies, TpHandle, i);
       properties = g_ptr_array_index (buddies_properties, i);
 
       g_hash_table_insert (priv->buddy_properties, GUINT_TO_POINTER (handle),
@@ -365,8 +361,12 @@ gabble_olpc_buddy_view_add_buddies (GabbleOlpcBuddyView *self,
       g_hash_table_ref (properties);
     }
 
+  tp_group_mixin_change_members (G_OBJECT (self), "",
+      added, empty, empty, empty,
+      0, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
+
   tp_intset_destroy (empty);
-  g_array_free (buddies_array, TRUE);
+  tp_intset_destroy (added);
 }
 
 static void

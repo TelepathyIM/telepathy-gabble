@@ -2935,13 +2935,14 @@ add_buddies_to_view_from_node (GabbleConnection *conn,
                                GabbleOlpcBuddyView *view,
                                LmMessageNode *node)
 {
-  TpHandleSet *buddies;
+  GArray *buddies;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection*) conn, TP_HANDLE_TYPE_CONTACT);
   LmMessageNode *buddy;
   GPtrArray *buddies_properties;
+  guint i;
 
-  buddies = tp_handle_set_new (contact_repo);
+  buddies = g_array_new (FALSE, FALSE, sizeof (TpHandle));
   buddies_properties = g_ptr_array_new ();
 
   for (buddy = node->children; buddy != NULL; buddy = buddy->next)
@@ -2961,12 +2962,16 @@ add_buddies_to_view_from_node (GabbleConnection *conn,
       if (handle == 0)
         {
           DEBUG ("Invalid jid: %s", jid);
-          tp_handle_set_destroy (buddies);
+
+          for (i = 0; i < buddies->len; i++)
+            tp_handle_unref (contact_repo, g_array_index (buddies, TpHandle,
+                  i));
+
+          g_array_free (buddies, TRUE);
           return FALSE;
         }
 
-      tp_handle_set_add (buddies, handle);
-      tp_handle_unref (contact_repo, handle);
+      g_array_append_val (buddies, handle);
 
       properties_node = lm_message_node_get_child_with_namespace (buddy,
           "properties", NS_OLPC_BUDDY_PROPS);
@@ -2984,7 +2989,10 @@ add_buddies_to_view_from_node (GabbleConnection *conn,
   /* FIXME: we should update properties when needed */
   gabble_olpc_buddy_view_add_buddies (view, buddies, buddies_properties);
 
-  tp_handle_set_destroy (buddies);
+  for (i = 0; i < buddies->len; i++)
+    tp_handle_unref (contact_repo, g_array_index (buddies, TpHandle, i));
+
+  g_array_free (buddies, TRUE);
   g_ptr_array_foreach (buddies_properties, (GFunc) g_hash_table_unref, NULL);
   g_ptr_array_free (buddies_properties, TRUE);
 

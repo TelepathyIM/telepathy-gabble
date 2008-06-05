@@ -18,6 +18,19 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
   </tp:license>
   <interface name="org.laptop.Telepathy.ActivityView">
 
+  <method name="GetActivities">
+    <arg direction="out" name="activities" type="au">
+      <tp:docstring>
+        An array of room handles
+      </tp:docstring>
+    </arg>
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+        <p>Return all the activities of this view</p>
+      </tp:docstring>
+      <tp:possible-errors>
+      </tp:possible-errors>
+    </method>
+
     <method name="Close">
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
         <p>Close the view so we won't receive notifications about its
@@ -26,14 +39,32 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
           the bus at any point.</p>
       </tp:docstring>
       <tp:possible-errors>
-        <tp:error name="org.freedesktop.Telepathy.Error.InvalidArgument"/>
       </tp:possible-errors>
     </method>
+
+    <signal name="Changed">
+      <arg name="added" type="au">
+        <tp:docstring>
+          Room handles of the added activities
+        </tp:docstring>
+      </arg>
+      <arg name="removed" type="au">
+        <tp:docstring>
+          Room handles of the removed activities
+        </tp:docstring>
+      </arg>
+      <tp:docstring>
+        Signal emitted when the activities in the view are changed.
+      </tp:docstring>
+    </signal>
 
     <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
       <p>An object representing the result of an activity search.</p>
       <p>Activity properties changes are notified on the Connection object using the
         <code>org.laptop.Telepathy.ActivityProperties</code> interface while the view object
+        is alive.</p>
+      <p>Members of the activities are notified on the Connection object using the
+        <code>org.laptop.Telepathy.BuddyInfo</code> properties while the view object
         is alive.</p>
     </tp:docstring>
   </interface>

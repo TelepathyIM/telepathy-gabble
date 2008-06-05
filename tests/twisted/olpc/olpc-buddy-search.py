@@ -143,17 +143,17 @@ def test(q, bus, conn, stream):
 
     view_path = return_event.value[0]
     view0 = bus.get_object(conn.bus_name, view_path)
-    view0_iface = dbus.Interface(view0, 'org.laptop.Telepathy.BuddyView')
-    view0_group_iface = dbus.Interface(view0, 'org.freedesktop.Telepathy.Channel.Interface.Group')
+    view0_iface = dbus.Interface(view0, 'org.laptop.Telepathy.View')
 
-    event = q.expect('dbus-signal', signal='MembersChanged')
-    msg, added, removed, lp, rp, actor, reason = event.args
-    assert (removed, lp, rp) == ([], [], [])
+    event = q.expect('dbus-signal', signal='BuddiesChanged')
+    added, removed = event.args
+    assert removed == []
     assert len(added) == 2
-    handle = added[0]
-    assert conn.InspectHandles(1, [handle])[0] == 'bob@localhost'
+    #assert conn.InspectHandles(1, [handle])[0] == 'bob@localhost'
+    assert sorted(conn.InspectHandles(1, added)) == ['bob@localhost', 'charles@localhost']
 
     # we can now get bob's properties
+    handle = conn.RequestHandles(1, ['bob@localhost'])[0]
     props = buddy_info_iface.GetProperties(handle)
     assert props == {'color': '#005FE4,#00A0FF'}
 
@@ -191,16 +191,16 @@ def test(q, bus, conn, stream):
 
     view_path = return_event.value[0]
     view1 = bus.get_object(conn.bus_name, view_path)
-    view1_iface = dbus.Interface(view1, 'org.laptop.Telepathy.BuddyView')
+    view1_iface = dbus.Interface(view1, 'org.laptop.Telepathy.View')
 
     event = q.expect('dbus-signal', signal='PropertiesChanged')
     handle, props = event.args
     assert conn.InspectHandles(1, [handle])[0] == 'charles@localhost'
     assert props == {'color': '#AABBCC,#001122'}
 
-    event = q.expect('dbus-signal', signal='MembersChanged')
-    msg, added, removed, lp, rp, actor, reason = event.args
-    assert (removed, lp, rp) == ([], [], [])
+    event = q.expect('dbus-signal', signal='BuddiesChanged')
+    added, removed = event.args
+    assert removed == []
     assert len(added) == 1
     handle = added[0]
     assert conn.InspectHandles(1, [handle])[0] == 'charles@localhost'
@@ -226,14 +226,14 @@ def test(q, bus, conn, stream):
     rule['action'] ='error'
     stream.send(message)
 
-    event = q.expect('dbus-signal', signal='MembersChanged')
-    msg, added, removed, lp, rp, actor, reason = event.args
-    assert (removed, lp, rp) == ([], [], [])
+    event = q.expect('dbus-signal', signal='BuddiesChanged')
+    added, removed = event.args
+    assert removed == []
     assert len(added) == 1
     handle = added[0]
     assert conn.InspectHandles(1, added)[0] == 'oscar@localhost'
 
-    members = view0_group_iface.GetMembers()
+    members = view0_iface.GetBuddies()
     members = sorted(conn.InspectHandles(1, members))
     assert sorted(members) == ['bob@localhost', 'charles@localhost',
             'oscar@localhost']
@@ -254,14 +254,14 @@ def test(q, bus, conn, stream):
     rule['action'] ='error'
     stream.send(message)
 
-    event = q.expect('dbus-signal', signal='MembersChanged')
-    msg, added, removed, lp, rp, actor, reason = event.args
-    assert (added, lp, rp) == ([], [], [])
+    event = q.expect('dbus-signal', signal='BuddiesChanged')
+    added, removed = event.args
+    assert added == []
     assert len(removed) == 1
     handle = removed[0]
     assert conn.InspectHandles(1, [handle])[0] == 'bob@localhost'
 
-    members = view0_group_iface.GetMembers()
+    members = view0_iface.GetBuddies()
     members = sorted(conn.InspectHandles(1, members))
     assert sorted(members) == ['charles@localhost', 'oscar@localhost']
 

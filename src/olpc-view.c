@@ -1,5 +1,5 @@
 /*
- * olpc-buddy-view.c - Source for GabbleOlpcBuddyView
+ * olpc-buddy-view.c - Source for GabbleOlpcView
  * Copyright (C) 2008 Collabora Ltd.
  *
  * This library is free software; you can redistribute it and/or
@@ -17,7 +17,7 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#include "olpc-buddy-view.h"
+#include "olpc-view.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -26,7 +26,6 @@
 
 #include <loudmouth/loudmouth.h>
 #include <telepathy-glib/dbus.h>
-#include <telepathy-glib/group-mixin.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_OLPC
 
@@ -50,42 +49,45 @@ static guint signals[LAST_SIGNAL] = {0};
 enum
 {
   PROP_CONNECTION = 1,
+  PROP_TYPE,
   PROP_OBJECT_PATH,
   PROP_ID,
   LAST_PROPERTY
 };
 
-typedef struct _GabbleOlpcBuddyViewPrivate GabbleOlpcBuddyViewPrivate;
-struct _GabbleOlpcBuddyViewPrivate
+typedef struct _GabbleOlpcViewPrivate GabbleOlpcViewPrivate;
+struct _GabbleOlpcViewPrivate
 {
   GabbleConnection *conn;
+  /* FIXME: subclass instead of using a type attribute ? */
+  GabbleOlpcViewType type;
   char *object_path;
   guint id;
 
-  /* TpHandle => GHashTable * */
+  TpHandleSet *buddies;
+
+  /* TpHandle (owned in priv->buddies) => GHashTable * */
   GHashTable *buddy_properties;
 
   gboolean dispose_has_run;
 };
 
-static void buddy_view_iface_init (gpointer, gpointer);
+static void view_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (
-    GabbleOlpcBuddyView, gabble_olpc_buddy_view, G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_OLPC_BUDDY_VIEW,
-      buddy_view_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
-      tp_group_mixin_iface_init));
+    GabbleOlpcView, gabble_olpc_view, G_TYPE_OBJECT,
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_OLPC_VIEW,
+      view_iface_init));
 
-#define GABBLE_OLPC_BUDDY_VIEW_GET_PRIVATE(obj) \
-    ((GabbleOlpcBuddyViewPrivate *) obj->priv)
+#define GABBLE_OLPC_VIEW_GET_PRIVATE(obj) \
+    ((GabbleOlpcViewPrivate *) obj->priv)
 
 
 static void
-gabble_olpc_buddy_view_init (GabbleOlpcBuddyView *self)
+gabble_olpc_view_init (GabbleOlpcView *self)
 {
-  GabbleOlpcBuddyViewPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
-      GABBLE_TYPE_OLPC_BUDDY_VIEW, GabbleOlpcBuddyViewPrivate);
+  GabbleOlpcViewPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
+      GABBLE_TYPE_OLPC_VIEW, GabbleOlpcViewPrivate);
 
   self->priv = priv;
 
@@ -96,13 +98,19 @@ gabble_olpc_buddy_view_init (GabbleOlpcBuddyView *self)
 }
 
 static void
-gabble_olpc_buddy_view_dispose (GObject *object)
+gabble_olpc_view_dispose (GObject *object)
 {
-  GabbleOlpcBuddyView *self = GABBLE_OLPC_BUDDY_VIEW (object);
-  GabbleOlpcBuddyViewPrivate *priv = GABBLE_OLPC_BUDDY_VIEW_GET_PRIVATE (self);
+  GabbleOlpcView *self = GABBLE_OLPC_VIEW (object);
+  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
 
   if (priv->dispose_has_run)
     return;
+
+  if (priv->buddies != NULL)
+    {
+      tp_handle_set_destroy (priv->buddies);
+      priv->buddies = NULL;
+    }
 
   if (priv->buddy_properties != NULL)
     {
@@ -112,36 +120,37 @@ gabble_olpc_buddy_view_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  if (G_OBJECT_CLASS (gabble_olpc_buddy_view_parent_class)->dispose)
-    G_OBJECT_CLASS (gabble_olpc_buddy_view_parent_class)->dispose (object);
+  if (G_OBJECT_CLASS (gabble_olpc_view_parent_class)->dispose)
+    G_OBJECT_CLASS (gabble_olpc_view_parent_class)->dispose (object);
 }
 
 static void
-gabble_olpc_buddy_view_finalize (GObject *object)
+gabble_olpc_view_finalize (GObject *object)
 {
-  GabbleOlpcBuddyView *self = GABBLE_OLPC_BUDDY_VIEW (object);
-  GabbleOlpcBuddyViewPrivate *priv = GABBLE_OLPC_BUDDY_VIEW_GET_PRIVATE (self);
+  GabbleOlpcView *self = GABBLE_OLPC_VIEW (object);
+  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
 
   g_free (priv->object_path);
 
-  tp_group_mixin_finalize (object);
-
-  G_OBJECT_CLASS (gabble_olpc_buddy_view_parent_class)->finalize (object);
+  G_OBJECT_CLASS (gabble_olpc_view_parent_class)->finalize (object);
 }
 
 static void
-gabble_olpc_buddy_view_get_property (GObject *object,
-                                     guint property_id,
-                                     GValue *value,
-                                     GParamSpec *pspec)
+gabble_olpc_view_get_property (GObject *object,
+                               guint property_id,
+                               GValue *value,
+                               GParamSpec *pspec)
 {
-  GabbleOlpcBuddyView *self = GABBLE_OLPC_BUDDY_VIEW (object);
-  GabbleOlpcBuddyViewPrivate *priv = GABBLE_OLPC_BUDDY_VIEW_GET_PRIVATE (self);
+  GabbleOlpcView *self = GABBLE_OLPC_VIEW (object);
+  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
 
   switch (property_id)
     {
       case PROP_CONNECTION:
         g_value_set_object (value, priv->conn);
+        break;
+      case PROP_TYPE:
+        g_value_set_uint (value, priv->type);
         break;
       case PROP_OBJECT_PATH:
         g_value_set_string (value, priv->object_path);
@@ -156,18 +165,21 @@ gabble_olpc_buddy_view_get_property (GObject *object,
 }
 
 static void
-gabble_olpc_buddy_view_set_property (GObject *object,
-                                     guint property_id,
-                                     const GValue *value,
-                                     GParamSpec *pspec)
+gabble_olpc_view_set_property (GObject *object,
+                               guint property_id,
+                               const GValue *value,
+                               GParamSpec *pspec)
 {
-  GabbleOlpcBuddyView *self = GABBLE_OLPC_BUDDY_VIEW (object);
-  GabbleOlpcBuddyViewPrivate *priv = GABBLE_OLPC_BUDDY_VIEW_GET_PRIVATE (self);
+  GabbleOlpcView *self = GABBLE_OLPC_VIEW (object);
+  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
 
   switch (property_id)
     {
       case PROP_CONNECTION:
         priv->conn = g_value_get_object (value);
+        break;
+      case PROP_TYPE:
+        priv->type = g_value_get_uint (value);
         break;
       case PROP_ID:
         priv->id = g_value_get_uint (value);
@@ -179,64 +191,50 @@ gabble_olpc_buddy_view_set_property (GObject *object,
 }
 
 static GObject *
-gabble_olpc_buddy_view_constructor (GType type,
-                                    guint n_props,
-                                    GObjectConstructParam *props)
+gabble_olpc_view_constructor (GType type,
+                              guint n_props,
+                              GObjectConstructParam *props)
 {
   GObject *obj;
-  GabbleOlpcBuddyViewPrivate *priv;
+  GabbleOlpcViewPrivate *priv;
   DBusGConnection *bus;
   TpBaseConnection *conn;
   TpHandleRepoIface *contact_handles;
 
-  obj = G_OBJECT_CLASS (gabble_olpc_buddy_view_parent_class)->
+  obj = G_OBJECT_CLASS (gabble_olpc_view_parent_class)->
            constructor (type, n_props, props);
 
-  priv = GABBLE_OLPC_BUDDY_VIEW_GET_PRIVATE (GABBLE_OLPC_BUDDY_VIEW (obj));
+  priv = GABBLE_OLPC_VIEW_GET_PRIVATE (GABBLE_OLPC_VIEW (obj));
   conn = (TpBaseConnection *)priv->conn;
 
-  priv->object_path = g_strdup_printf ("%s/OlpcBuddyView%u",
+  priv->object_path = g_strdup_printf ("%s/OlpcView%u",
       conn->object_path, priv->id);
   bus = tp_get_bus ();
   dbus_g_connection_register_g_object (bus, priv->object_path, obj);
 
   contact_handles = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
-  /* initialize group mixin */
-  tp_group_mixin_init (obj, G_STRUCT_OFFSET (GabbleOlpcBuddyView, group),
-      contact_handles, 0);
 
-  /* set initial group flags */
-  tp_group_mixin_change_flags (obj, 0, 0);
+  priv->buddies = tp_handle_set_new (contact_handles);
 
   return obj;
 }
 
-static gboolean
-view_add_member (GObject *obj,
-                 TpHandle handle,
-                 const gchar *message,
-                 GError **error)
-{
-  /* this function is never supposed to be called */
-  g_return_val_if_reached (TRUE);
-}
-
 static void
-gabble_olpc_buddy_view_class_init (GabbleOlpcBuddyViewClass *gabble_olpc_buddy_view_class)
+gabble_olpc_view_class_init (GabbleOlpcViewClass *gabble_olpc_view_class)
 {
-  GObjectClass *object_class = G_OBJECT_CLASS (gabble_olpc_buddy_view_class);
+  GObjectClass *object_class = G_OBJECT_CLASS (gabble_olpc_view_class);
   GParamSpec *param_spec;
 
-  object_class->get_property = gabble_olpc_buddy_view_get_property;
-  object_class->set_property = gabble_olpc_buddy_view_set_property;
-  object_class->constructor = gabble_olpc_buddy_view_constructor;
+  object_class->get_property = gabble_olpc_view_get_property;
+  object_class->set_property = gabble_olpc_view_set_property;
+  object_class->constructor = gabble_olpc_view_constructor;
 
-  g_type_class_add_private (gabble_olpc_buddy_view_class,
-      sizeof (GabbleOlpcBuddyViewPrivate));
+  g_type_class_add_private (gabble_olpc_view_class,
+      sizeof (GabbleOlpcViewPrivate));
 
-  object_class->dispose = gabble_olpc_buddy_view_dispose;
-  object_class->finalize = gabble_olpc_buddy_view_finalize;
+  object_class->dispose = gabble_olpc_view_dispose;
+  object_class->finalize = gabble_olpc_view_finalize;
 
    param_spec = g_param_spec_object (
       "connection",
@@ -249,6 +247,19 @@ gabble_olpc_buddy_view_class_init (GabbleOlpcBuddyViewClass *gabble_olpc_buddy_v
       G_PARAM_STATIC_NICK |
       G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
+
+  param_spec = g_param_spec_uint (
+      "type",
+      "view type",
+      "the type of query who creates this view object. A GabbleOlpcViewType",
+      GABBLE_OLPC_VIEW_TYPE_BUDDY, NUM_GABBLE_OLPC_VIEW_TYPE -1,
+      GABBLE_OLPC_VIEW_TYPE_BUDDY,
+      G_PARAM_CONSTRUCT_ONLY |
+      G_PARAM_READWRITE |
+      G_PARAM_STATIC_NAME |
+      G_PARAM_STATIC_NICK |
+      G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_TYPE, param_spec);
 
   param_spec = g_param_spec_string (
       "object-path",
@@ -275,34 +286,47 @@ gabble_olpc_buddy_view_class_init (GabbleOlpcBuddyViewClass *gabble_olpc_buddy_v
 
   signals[CLOSED] =
     g_signal_new ("closed",
-        G_OBJECT_CLASS_TYPE (gabble_olpc_buddy_view_class),
+        G_OBJECT_CLASS_TYPE (gabble_olpc_view_class),
         G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
         0,
         NULL, NULL,
         gabble_marshal_VOID__VOID,
         G_TYPE_NONE, 0);
-
-  tp_group_mixin_class_init (object_class,
-      G_STRUCT_OFFSET (GabbleOlpcBuddyViewClass, group_class),
-      view_add_member, NULL);
 }
 
-GabbleOlpcBuddyView *
-gabble_olpc_buddy_view_new (GabbleConnection *conn,
-                            guint id)
+GabbleOlpcView *
+gabble_olpc_view_new (GabbleConnection *conn,
+                      GabbleOlpcViewType type,
+                      guint id)
 {
-  return g_object_new (GABBLE_TYPE_OLPC_BUDDY_VIEW,
+  return g_object_new (GABBLE_TYPE_OLPC_VIEW,
       "connection", conn,
+      "type", type,
       "id", id,
       NULL);
 }
 
 static void
-olpc_buddy_view_close (GabbleSvcOLPCBuddyView *iface,
+olpc_view_get_buddies (GabbleSvcOLPCView *iface,
                        DBusGMethodInvocation *context)
 {
-  GabbleOlpcBuddyView *self = GABBLE_OLPC_BUDDY_VIEW (iface);
-  GabbleOlpcBuddyViewPrivate *priv = GABBLE_OLPC_BUDDY_VIEW_GET_PRIVATE (self);
+  GabbleOlpcView *self = GABBLE_OLPC_VIEW (iface);
+  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
+  GArray *buddies;
+
+  buddies = tp_handle_set_to_array (priv->buddies);
+
+  gabble_svc_olpc_view_return_from_get_buddies (context, buddies);
+
+  g_array_free (buddies, TRUE);
+}
+
+static void
+olpc_view_close (GabbleSvcOLPCView *iface,
+                 DBusGMethodInvocation *context)
+{
+  GabbleOlpcView *self = GABBLE_OLPC_VIEW (iface);
+  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
   LmMessage *msg;
   gchar *id_str;
   GError *error = NULL;
@@ -325,7 +349,7 @@ olpc_buddy_view_close (GabbleSvcOLPCBuddyView *iface,
       return;
     }
 
-  gabble_svc_olpc_buddy_view_return_from_close (context);
+  gabble_svc_olpc_view_return_from_close (context);
 
   lm_message_unref (msg);
 
@@ -333,19 +357,17 @@ olpc_buddy_view_close (GabbleSvcOLPCBuddyView *iface,
 }
 
 void
-gabble_olpc_buddy_view_add_buddies (GabbleOlpcBuddyView *self,
-                                    GArray *buddies,
-                                    GPtrArray *buddies_properties)
+gabble_olpc_view_add_buddies (GabbleOlpcView *self,
+                              GArray *buddies,
+                              GPtrArray *buddies_properties)
 {
-  GabbleOlpcBuddyViewPrivate *priv = GABBLE_OLPC_BUDDY_VIEW_GET_PRIVATE (self);
-  TpIntSet *empty;
+  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
   guint i;
-  TpIntSet *added;
-
-  empty = tp_intset_new ();
-  added = tp_intset_from_array (buddies);
+  GArray *empty;
 
   g_assert (buddies->len == buddies_properties->len);
+
+  empty = g_array_new (FALSE, FALSE, sizeof(TpHandle));
 
   /* store properties */
   for (i = 0; i < buddies->len; i++)
@@ -356,60 +378,60 @@ gabble_olpc_buddy_view_add_buddies (GabbleOlpcBuddyView *self,
       handle = g_array_index (buddies, TpHandle, i);
       properties = g_ptr_array_index (buddies_properties, i);
 
+      tp_handle_set_add (priv->buddies, handle);
       g_hash_table_insert (priv->buddy_properties, GUINT_TO_POINTER (handle),
           properties);
       g_hash_table_ref (properties);
     }
 
-  tp_group_mixin_change_members (G_OBJECT (self), "",
-      added, empty, empty, empty,
-      0, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
+  gabble_svc_olpc_view_emit_buddies_changed (self, buddies, empty);
 
-  tp_intset_destroy (empty);
-  tp_intset_destroy (added);
+  g_array_free (empty, TRUE);
 }
 
 static void
 remove_properties_foreach (TpHandleSet *buddies,
                            TpHandle handle,
-                           GabbleOlpcBuddyView *self)
+                           GabbleOlpcView *self)
 {
-  GabbleOlpcBuddyViewPrivate *priv = GABBLE_OLPC_BUDDY_VIEW_GET_PRIVATE (self);
+  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
 
+  tp_handle_set_remove (priv->buddies, handle);
   g_hash_table_remove (priv->buddy_properties, GUINT_TO_POINTER (handle));
 }
 
 void
-gabble_olpc_buddy_view_remove_buddies (GabbleOlpcBuddyView *self,
-                                       TpHandleSet *buddies)
+gabble_olpc_view_remove_buddies (GabbleOlpcView *self,
+                                 TpHandleSet *buddies)
 {
-  TpIntSet *empty;
-
-  empty = tp_intset_new ();
-
-  tp_group_mixin_change_members (G_OBJECT (self), "",
-      empty, tp_handle_set_peek (buddies), empty, empty,
-      0, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
+  GArray *removed, *empty;
 
   tp_handle_set_foreach (buddies,
       (TpHandleSetMemberFunc) remove_properties_foreach, self);
 
-  tp_intset_destroy (empty);
+  empty = g_array_new (FALSE, FALSE, sizeof(TpHandle));
+  removed = tp_handle_set_to_array (buddies);
+
+  gabble_svc_olpc_view_emit_buddies_changed (self, empty, removed);
+
+  g_array_free (empty, TRUE);
+  g_array_free (removed, TRUE);
 }
 
 gboolean
-gabble_olpc_buddy_view_set_properties (GabbleOlpcBuddyView *self,
+gabble_olpc_view_set_buddy_properties (GabbleOlpcView *self,
                                        TpHandle buddy,
                                        GHashTable *properties)
 {
-  GabbleOlpcBuddyViewPrivate *priv = GABBLE_OLPC_BUDDY_VIEW_GET_PRIVATE (self);
+  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
 
-  if (!tp_handle_set_is_member (self->group.members, buddy))
+  if (!tp_handle_set_is_member (priv->buddies, buddy))
     {
       DEBUG ("buddy %d is not member of this view", buddy);
       return FALSE;
     }
 
+  tp_handle_set_add (priv->buddies, buddy);
   g_hash_table_insert (priv->buddy_properties, GUINT_TO_POINTER (buddy),
       properties);
   g_hash_table_ref (properties);
@@ -418,22 +440,23 @@ gabble_olpc_buddy_view_set_properties (GabbleOlpcBuddyView *self,
 }
 
 GHashTable *
-gabble_olpc_buddy_view_get_properties (GabbleOlpcBuddyView *self,
+gabble_olpc_view_get_buddy_properties (GabbleOlpcView *self,
                                        TpHandle buddy)
 {
-  GabbleOlpcBuddyViewPrivate *priv = GABBLE_OLPC_BUDDY_VIEW_GET_PRIVATE (self);
+  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
 
   return g_hash_table_lookup (priv->buddy_properties, GUINT_TO_POINTER (buddy));
 }
 
 static void
-buddy_view_iface_init (gpointer g_iface,
-                       gpointer iface_data)
+view_iface_init (gpointer g_iface,
+                 gpointer iface_data)
 {
-  GabbleSvcOLPCBuddyViewClass *klass = g_iface;
+  GabbleSvcOLPCViewClass *klass = g_iface;
 
-#define IMPLEMENT(x) gabble_svc_olpc_buddy_view_implement_##x (\
-    klass, olpc_buddy_view_##x)
+#define IMPLEMENT(x) gabble_svc_olpc_view_implement_##x (\
+    klass, olpc_view_##x)
+  IMPLEMENT(get_buddies);
   IMPLEMENT(close);
 #undef IMPLEMENT
 }

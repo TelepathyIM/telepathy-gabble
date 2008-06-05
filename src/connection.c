@@ -755,8 +755,7 @@ gabble_connection_dispose (GObject *object)
   g_hash_table_destroy (self->olpc_activities_info);
   g_hash_table_destroy (self->olpc_pep_activities);
   g_hash_table_destroy (self->olpc_invited_activities);
-  g_hash_table_destroy (self->olpc_buddy_views);
-  g_hash_table_destroy (self->olpc_activity_views);
+  g_hash_table_destroy (self->olpc_views);
 
   g_hash_table_destroy (self->avatar_requests);
 

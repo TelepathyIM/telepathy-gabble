@@ -36,8 +36,7 @@
 #include "pubsub.h"
 #include "disco.h"
 #include "util.h"
-#include "olpc-buddy-view.h"
-#include "olpc-activity-view.h"
+#include "olpc-view.h"
 
 #define ACTIVITY_PAIR_TYPE \
     dbus_g_type_get_struct ("GValueArray", G_TYPE_STRING, G_TYPE_UINT, \
@@ -532,24 +531,24 @@ find_view_having_properties_for_buddy (gpointer id,
                                        gpointer value,
                                        gpointer buddy)
 {
-  GabbleOlpcBuddyView *view = GABBLE_OLPC_BUDDY_VIEW (value);
+  GabbleOlpcView *view = GABBLE_OLPC_VIEW (value);
   TpHandle handle = GPOINTER_TO_UINT (buddy);
 
-  return gabble_olpc_buddy_view_get_properties (view, handle) != NULL;
+  return gabble_olpc_view_get_buddy_properties (view, handle) != NULL;
 }
 
 static GHashTable *
 find_buddy_properties_from_views (GabbleConnection *conn,
                                   TpHandle buddy)
 {
-  GabbleOlpcBuddyView *view;
+  GabbleOlpcView *view;
 
-  view = g_hash_table_find (conn->olpc_buddy_views,
+  view = g_hash_table_find (conn->olpc_views,
       find_view_having_properties_for_buddy, GUINT_TO_POINTER (buddy));
   if (view == NULL)
     return NULL;
 
-  return gabble_olpc_buddy_view_get_properties (view, buddy);
+  return gabble_olpc_view_get_buddy_properties (view, buddy);
 }
 
 static void
@@ -2932,7 +2931,7 @@ activity_changed (GabbleConnection *conn,
 
 static gboolean
 add_buddies_to_view_from_node (GabbleConnection *conn,
-                               GabbleOlpcBuddyView *view,
+                               GabbleOlpcView *view,
                                LmMessageNode *node)
 {
   GArray *buddies;
@@ -2987,7 +2986,7 @@ add_buddies_to_view_from_node (GabbleConnection *conn,
     }
 
   /* FIXME: we should update properties when needed */
-  gabble_olpc_buddy_view_add_buddies (view, buddies, buddies_properties);
+  gabble_olpc_view_add_buddies (view, buddies, buddies_properties);
 
   for (i = 0; i < buddies->len; i++)
     tp_handle_unref (contact_repo, g_array_index (buddies, TpHandle, i));
@@ -3005,14 +3004,14 @@ buddy_added (GabbleConnection *conn,
 {
   const gchar *id_str;
   guint id;
-  GabbleOlpcBuddyView *view;
+  GabbleOlpcView *view;
 
   id_str = lm_message_node_get_attribute (added, "id");
   if (id_str == NULL)
     return;
 
   id = strtoul (id_str, NULL, 10);
-  view = g_hash_table_lookup (conn->olpc_buddy_views, GUINT_TO_POINTER (id));
+  view = g_hash_table_lookup (conn->olpc_views, GUINT_TO_POINTER (id));
   if (view == NULL)
     {
       DEBUG ("no buddy view with ID %u", id);
@@ -3024,7 +3023,7 @@ buddy_added (GabbleConnection *conn,
 
 static gboolean
 remove_buddies_from_view_from_node (GabbleConnection *conn,
-                                    GabbleOlpcBuddyView *view,
+                                    GabbleOlpcView *view,
                                     LmMessageNode *node)
 {
   TpHandleSet *buddies;
@@ -3057,7 +3056,7 @@ remove_buddies_from_view_from_node (GabbleConnection *conn,
       tp_handle_unref (contact_repo, handle);
     }
 
-  gabble_olpc_buddy_view_remove_buddies (view, buddies);
+  gabble_olpc_view_remove_buddies (view, buddies);
   tp_handle_set_destroy (buddies);
 
   return TRUE;
@@ -3069,14 +3068,14 @@ buddy_removed (GabbleConnection *conn,
 {
   const gchar *id_str;
   guint id;
-  GabbleOlpcBuddyView *view;
+  GabbleOlpcView *view;
 
   id_str = lm_message_node_get_attribute (removed, "id");
   if (id_str == NULL)
     return;
 
   id = strtoul (id_str, NULL, 10);
-  view = g_hash_table_lookup (conn->olpc_buddy_views, GUINT_TO_POINTER (id));
+  view = g_hash_table_lookup (conn->olpc_views, GUINT_TO_POINTER (id));
   if (view == NULL)
     {
       DEBUG ("no buddy view with ID %u", id);
@@ -3174,22 +3173,12 @@ conn_olpc_activity_properties_init (GabbleConnection *conn)
   conn->olpc_invited_activities = g_hash_table_new_full (g_direct_hash,
       g_direct_equal, NULL, (GDestroyNotify) tp_handle_set_destroy);
 
-  /* Active buddy views
+  /* Active views
    *
-   * view id guint => GabbleOlpcBuddyView
+   * view id guint => GabbleOlpcView
    */
-  conn->olpc_buddy_views = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+  conn->olpc_views = g_hash_table_new_full (g_direct_hash, g_direct_equal,
       NULL, (GDestroyNotify) g_object_unref);
-
-  /* Active activities views
-   *
-   * view id guint => GabbleOlpcActivityView
-   *
-   * Each activity in the view represents a reference
-   * to an ActivityInfo
-   */
-  conn->olpc_activity_views = g_hash_table_new_full (g_direct_hash,
-      g_direct_equal, NULL, (GDestroyNotify) g_object_unref);
 
   conn->olpc_gadget_buddy = NULL;
   conn->olpc_gadget_activity = NULL;
@@ -3218,24 +3207,24 @@ olpc_activity_properties_iface_init (gpointer g_iface,
 }
 
 static void
-buddy_view_closed_cb (GabbleOlpcBuddyView *view,
+buddy_view_closed_cb (GabbleOlpcView *view,
                       GabbleConnection *conn)
 {
   guint id;
 
   g_object_get (view, "id", &id, NULL);
-  g_hash_table_remove (conn->olpc_buddy_views, GUINT_TO_POINTER (id));
+  g_hash_table_remove (conn->olpc_views, GUINT_TO_POINTER (id));
 }
 
-static GabbleOlpcBuddyView *
+static GabbleOlpcView *
 create_buddy_view (GabbleConnection *conn)
 {
   guint id;
-  GabbleOlpcBuddyView *view;
+  GabbleOlpcView *view;
 
   /* Look for a free ID */
   for (id = 0; id < G_MAXUINT &&
-      g_hash_table_lookup (conn->olpc_buddy_views, GUINT_TO_POINTER (id))
+      g_hash_table_lookup (conn->olpc_views, GUINT_TO_POINTER (id))
       != NULL; id++);
 
   if (id == G_MAXUINT)
@@ -3244,8 +3233,8 @@ create_buddy_view (GabbleConnection *conn)
       return NULL;
     }
 
-  view = gabble_olpc_buddy_view_new (conn, id);
-  g_hash_table_insert (conn->olpc_buddy_views, GUINT_TO_POINTER (id), view);
+  view = gabble_olpc_view_new (conn, GABBLE_OLPC_VIEW_TYPE_BUDDY, id);
+  g_hash_table_insert (conn->olpc_views, GUINT_TO_POINTER (id), view);
 
   g_signal_connect (view, "closed", G_CALLBACK (buddy_view_closed_cb), conn);
 
@@ -3260,7 +3249,7 @@ buddy_query_result_cb (GabbleConnection *conn,
                        gpointer user_data)
 {
   LmMessageNode *view_node;
-  GabbleOlpcBuddyView *view = GABBLE_OLPC_BUDDY_VIEW (_view);
+  GabbleOlpcView *view = GABBLE_OLPC_VIEW (_view);
 
   view_node = lm_message_node_get_child_with_namespace (reply_msg->node, "view",
       NS_OLPC_BUDDY);
@@ -3282,7 +3271,7 @@ olpc_gadget_request_random_buddies (GabbleSvcOLPCGadget *iface,
   gchar *max_str, *id_str;
   gchar *object_path;
   guint id;
-  GabbleOlpcBuddyView *view;
+  GabbleOlpcView *view;
 
   if (!check_gadget_buddy (conn, context))
     return;
@@ -3361,7 +3350,7 @@ olpc_gadget_search_buddies_by_properties (GabbleSvcOLPCGadget *iface,
   gchar *id_str;
   gchar *object_path;
   guint id;
-  GabbleOlpcBuddyView *view;
+  GabbleOlpcView *view;
 
   if (!check_gadget_buddy (conn, context))
     return;
@@ -3423,6 +3412,7 @@ olpc_gadget_search_buddies_by_properties (GabbleSvcOLPCGadget *iface,
   lm_message_unref (query);
 }
 
+#if 0
 static LmHandlerResult
 activity_query_result_cb (GabbleConnection *conn,
                           LmMessage *sent_msg,
@@ -3767,6 +3757,7 @@ olpc_gadget_search_activities_by_participants (GabbleSvcOLPCGadget *iface,
   g_free (object_path);
   lm_message_unref (query);
 }
+#endif
 
 static gboolean
 send_presence_to_gadget (GabbleConnection *conn,
@@ -3840,9 +3831,9 @@ olpc_gadget_iface_init (gpointer g_iface,
     klass, olpc_gadget_##x)
   IMPLEMENT(request_random_buddies);
   IMPLEMENT(search_buddies_by_properties);
-  IMPLEMENT(request_random_activities);
-  IMPLEMENT(search_activities_by_properties);
-  IMPLEMENT(search_activities_by_participants);
+  //IMPLEMENT(request_random_activities);
+  //IMPLEMENT(search_activities_by_properties);
+  //IMPLEMENT(search_activities_by_participants);
   IMPLEMENT(publish);
 #undef IMPLEMENT
 }

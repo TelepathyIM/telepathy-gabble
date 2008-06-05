@@ -1,5 +1,5 @@
 <?xml version="1.0" ?>
-<node name="/OLPC_Activity_View" xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+<node name="/OLPC_View" xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <tp:copyright> Copyright (C) 2008 Collabora Limited </tp:copyright>
   <tp:license xmlns="http://www.w3.org/1999/xhtml">
     <p>This library is free software; you can redistribute it and/or
@@ -16,7 +16,7 @@ Lesser General Public License for more details.</p>
 License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
   </tp:license>
-  <interface name="org.laptop.Telepathy.ActivityView">
+  <interface name="org.laptop.Telepathy.View">
 
   <method name="GetActivities">
     <arg direction="out" name="activities" type="au">
@@ -26,6 +26,19 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
     </arg>
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
         <p>Return all the activities of this view</p>
+      </tp:docstring>
+      <tp:possible-errors>
+      </tp:possible-errors>
+    </method>
+
+  <method name="GetBuddies">
+    <arg direction="out" name="buddies" type="au">
+      <tp:docstring>
+        An array of buddies handles
+      </tp:docstring>
+    </arg>
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+        <p>Return all the buddies of this view</p>
       </tp:docstring>
       <tp:possible-errors>
       </tp:possible-errors>
@@ -42,7 +55,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
       </tp:possible-errors>
     </method>
 
-    <signal name="Changed">
+    <signal name="ActivitiesChanged">
       <arg name="added" type="au">
         <tp:docstring>
           Room handles of the added activities
@@ -58,12 +71,31 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
       </tp:docstring>
     </signal>
 
+    <signal name="BuddiesChanged">
+      <arg name="added" type="au">
+        <tp:docstring>
+          Handles of the added buddies
+        </tp:docstring>
+      </arg>
+      <arg name="removed" type="au">
+        <tp:docstring>
+          Handles of the removed buddies
+        </tp:docstring>
+      </arg>
+      <tp:docstring>
+        Signal emitted when the buddies in the view are changed.
+      </tp:docstring>
+    </signal>
+
     <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
-      <p>An object representing the result of an activity search.</p>
+      <p>An object representing the result of an search.</p>
+      <p>Buddy properties changes are notified on the Connection object using the
+        <code>org.laptop.Telepathy.BuddyInfo</code> interface while the view object
+        is alive.</p>
       <p>Activity properties changes are notified on the Connection object using the
         <code>org.laptop.Telepathy.ActivityProperties</code> interface while the view object
         is alive.</p>
-      <p>Members of the activities are notified on the Connection object using the
+      <p>Activities membership is notified on the Connection object using the
         <code>org.laptop.Telepathy.BuddyInfo</code> properties while the view object
         is alive.</p>
     </tp:docstring>

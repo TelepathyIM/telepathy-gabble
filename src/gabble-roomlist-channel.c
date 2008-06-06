@@ -58,6 +58,10 @@ G_DEFINE_TYPE_WITH_CODE (GabbleRoomlistChannel, gabble_roomlist_channel,
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL)
     );
 
+static const gchar *gabble_roomlist_channel_interfaces[] = {
+    NULL
+};
+
 /* properties */
 enum
 {
@@ -66,6 +70,7 @@ enum
   PROP_HANDLE_TYPE,
   PROP_HANDLE,
   PROP_CONNECTION,
+  PROP_INTERFACES,
   PROP_CONFERENCE_SERVER,
   LAST_PROPERTY
 };
@@ -153,6 +158,9 @@ gabble_roomlist_channel_get_property (GObject    *object,
       break;
     case PROP_CONNECTION:
       g_value_set_object (value, priv->conn);
+      break;
+    case PROP_INTERFACES:
+      g_value_set_boxed (value, gabble_roomlist_channel_interfaces);
       break;
     case PROP_CONFERENCE_SERVER:
       g_value_set_string (value, priv->conference_server);
@@ -266,6 +274,13 @@ gabble_roomlist_channel_class_init (GabbleRoomlistChannelClass *gabble_roomlist_
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_CONFERENCE_SERVER,
                                    param_spec);
+
+  param_spec = g_param_spec_boxed ("interfaces", "Extra D-Bus interfaces",
+      "Additional Channel.Interface.* interfaces",
+      G_TYPE_STRV,
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+  g_object_class_install_property (object_class, PROP_INTERFACES, param_spec);
 }
 
 static void stop_listing (GabbleRoomlistChannel *self);
@@ -595,9 +610,8 @@ static void
 gabble_roomlist_channel_get_interfaces (TpSvcChannel *iface,
                                         DBusGMethodInvocation *context)
 {
-  const char *interfaces[] = { NULL };
-
-  tp_svc_channel_return_from_get_interfaces (context, interfaces);
+  tp_svc_channel_return_from_get_interfaces (context,
+      gabble_roomlist_channel_interfaces);
 }
 
 

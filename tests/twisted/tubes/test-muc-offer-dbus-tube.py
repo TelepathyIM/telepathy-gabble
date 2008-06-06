@@ -90,8 +90,36 @@ def test(q, bus, conn, stream):
     tubes_iface = dbus.Interface(tubes_chan,
             tp_name_prefix + '.Channel.Type.Tubes')
 
+    # Exercise basic Channel Properties from spec 0.17.7
+    channel_props = tubes_chan.GetAll(
+            'org.freedesktop.Telepathy.Channel',
+            dbus_interface='org.freedesktop.DBus.Properties')
+    assert channel_props.get('TargetHandle') == handles[0],\
+            (channel_props.get('TargetHandle'), handles[0])
+    assert channel_props.get('TargetHandleType') == 2,\
+            channel_props.get('TargetHandleType')
+    assert channel_props.get('ChannelType') == \
+            'org.freedesktop.Telepathy.Channel.Type.Tubes',\
+            channel_props.get('ChannelType')
+    assert 'Interfaces' in channel_props, channel_props
+    assert 'org.freedesktop.Telepathy.Channel.Interface.Group' in \
+            channel_props['Interfaces'], \
+            channel_props['Interfaces']
+
+    # Exercise Group Properties from spec 0.17.6 (in a basic way)
+    group_props = tubes_chan.GetAll(
+            'org.freedesktop.Telepathy.Channel.Interface.Group',
+            dbus_interface='org.freedesktop.DBus.Properties')
+    assert 'SelfHandle' in group_props, group_props
+    assert 'HandleOwners' in group_props, group_props
+    assert 'Members' in group_props, group_props
+    assert 'LocalPendingMembers' in group_props, group_props
+    assert 'RemotePendingMembers' in group_props, group_props
+    assert 'GroupFlags' in group_props, group_props
+
     tubes_self_handle = tubes_chan.GetSelfHandle(
         dbus_interface=tp_name_prefix + '.Channel.Interface.Group')
+    assert group_props['SelfHandle'] == tubes_self_handle
 
     # Offer a D-Bus tube
     call_async(q, tubes_iface, 'OfferDBusTube',

@@ -25,16 +25,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define DEBUG_FLAG GABBLE_DEBUG_ROOMLIST
-
-#include "debug.h"
-#include "disco.h"
-#include "gabble-connection.h"
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/enums.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/channel-iface.h>
 #include <telepathy-glib/svc-channel.h>
+
+#define DEBUG_FLAG GABBLE_DEBUG_ROOMLIST
+#include "debug.h"
+#include "disco.h"
+#include "gabble-connection.h"
 #include "namespaces.h"
 #include "util.h"
 

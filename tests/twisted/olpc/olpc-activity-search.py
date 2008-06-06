@@ -57,6 +57,7 @@ def test(q, bus, conn, stream):
     stream.send(reply)
 
     activity_prop_iface = dbus.Interface(conn, 'org.laptop.Telepathy.ActivityProperties')
+    buddy_prop_iface = dbus.Interface(conn, 'org.laptop.Telepathy.BuddyInfo')
     gadget_iface = dbus.Interface(conn, 'org.laptop.Telepathy.Gadget')
 
     sync_stream(q, stream)
@@ -87,6 +88,13 @@ def test(q, bus, conn, stream):
     property['type'] = 'str'
     property['name'] = 'color'
     property.addContent('#005FE4,#00A0FF')
+    buddy = activity.addElement((None, 'buddy'))
+    buddy['jid'] = 'lucien@localhost'
+    properties = buddy.addElement((NS_OLPC_BUDDY_PROPS, "properties"))
+    property = properties.addElement((None, "property"))
+    property['type'] = 'str'
+    property['name'] = 'color'
+    property.addContent('#AABBCC,#CCBBAA')
     stream.send(reply)
 
     view_path = return_event.value[0]
@@ -98,6 +106,11 @@ def test(q, bus, conn, stream):
     assert conn.InspectHandles(2, [handle])[0] == 'room1@conference.localhost'
     assert props == {'color': '#005FE4,#00A0FF'}
 
+    # participants are added to view
+    event = q.expect('dbus-signal', signal='BuddiesChanged')
+    members_handles, removed = event.args
+    assert conn.InspectHandles(1, members_handles) == ['lucien@localhost']
+
     event = q.expect('dbus-signal', signal='ActivitiesChanged')
     added, removed = event.args
     assert removed == []
@@ -106,9 +119,13 @@ def test(q, bus, conn, stream):
     act = view0_iface.GetActivities()
     assert sorted(act) == sorted(added)
 
-    # we can now get these properties
+    # we can now get activity properties
     props = activity_prop_iface.GetProperties(handle)
     assert props == {'color': '#005FE4,#00A0FF'}
+
+    # and we can get participant's properties too
+    props = buddy_prop_iface.GetProperties(members_handles[0])
+    assert props == {'color': '#AABBCC,#CCBBAA'}
 
     # activity search by properties
     props = {'color': '#AABBCC,#001122'}

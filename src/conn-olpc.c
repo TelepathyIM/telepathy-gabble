@@ -3461,6 +3461,8 @@ activity_query_result_cb (GabbleConnection *conn,
       GHashTable *properties;
       TpHandle handle;
       ActivityInfo *info;
+      GArray *buddies;
+      GPtrArray *buddies_properties;
 
       jid = lm_message_node_get_attribute (activity, "room");
 
@@ -3496,6 +3498,22 @@ activity_query_result_cb (GabbleConnection *conn,
         }
 
       activity_info_set_properties (info, properties);
+
+      buddies = g_array_new (FALSE, FALSE, sizeof (TpHandle));
+      buddies_properties = g_ptr_array_new ();
+
+      if (!populate_buddies_from_nodes (conn, activity, buddies,
+            buddies_properties))
+        {
+          g_array_free (buddies, TRUE);
+          g_ptr_array_free (buddies_properties, TRUE);
+          continue;
+        }
+
+      gabble_olpc_view_add_buddies (view, buddies, buddies_properties);
+
+      g_array_free (buddies, TRUE);
+      g_ptr_array_free (buddies_properties, TRUE);
     }
 
   /* TODO: remove activities when needed and unref ActivityInfo */

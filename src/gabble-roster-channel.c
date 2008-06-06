@@ -267,6 +267,21 @@ static gboolean _gabble_roster_channel_remove_member_cb (GObject *obj,
 static void
 gabble_roster_channel_class_init (GabbleRosterChannelClass *gabble_roster_channel_class)
 {
+  static TpDBusPropertiesMixinPropImpl channel_props[] = {
+      { "TargetHandleType", "handle-type", NULL },
+      { "TargetHandle", "handle", NULL },
+      { "ChannelType", "channel-type", NULL },
+      { "Interfaces", "interfaces", NULL },
+      { NULL }
+  };
+  static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
+      { TP_IFACE_CHANNEL,
+        tp_dbus_properties_mixin_getter_gobject_properties,
+        NULL,
+        channel_props,
+      },
+      { NULL }
+  };
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_roster_channel_class);
   GParamSpec *param_spec;
 
@@ -303,6 +318,7 @@ gabble_roster_channel_class_init (GabbleRosterChannelClass *gabble_roster_channe
       "handle-type");
   g_object_class_override_property (object_class, PROP_HANDLE, "handle");
 
+  gabble_roster_channel_class->properties_class.interfaces = prop_interfaces;
   tp_dbus_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleRosterChannelClass, properties_class));
 

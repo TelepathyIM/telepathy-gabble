@@ -260,7 +260,6 @@ gabble_roster_channel_class_init (GabbleRosterChannelClass *gabble_roster_channe
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_roster_channel_class);
   GParamSpec *param_spec;
-  static gboolean initialized = FALSE;
 
   g_type_class_add_private (gabble_roster_channel_class,
       sizeof (GabbleRosterChannelPrivate));
@@ -294,16 +293,11 @@ gabble_roster_channel_class_init (GabbleRosterChannelClass *gabble_roster_channe
   tp_dbus_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleRosterChannelClass, properties_class));
 
-  if (!initialized)
-    {
-      initialized = TRUE;
-
-      tp_group_mixin_class_init (object_class,
-          G_STRUCT_OFFSET (GabbleRosterChannelClass, group_class),
-          _gabble_roster_channel_add_member_cb,
-          _gabble_roster_channel_remove_member_cb);
-      tp_group_mixin_init_dbus_properties (object_class);
-    }
+  tp_group_mixin_class_init (object_class,
+      G_STRUCT_OFFSET (GabbleRosterChannelClass, group_class),
+      _gabble_roster_channel_add_member_cb,
+      _gabble_roster_channel_remove_member_cb);
+  tp_group_mixin_init_dbus_properties (object_class);
 }
 
 void

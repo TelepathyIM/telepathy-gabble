@@ -2930,23 +2930,17 @@ activity_changed (GabbleConnection *conn,
 }
 
 static gboolean
-add_buddies_to_view_from_node (GabbleConnection *conn,
-                               GabbleOlpcView *view,
-                               LmMessageNode *node)
+populate_buddies_from_nodes (GabbleConnection *conn,
+                             LmMessageNode *node,
+                             GArray *buddies,
+                             GPtrArray *buddies_properties)
 {
-  GArray *buddies;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection*) conn, TP_HANDLE_TYPE_CONTACT);
   LmMessageNode *buddy;
-  GPtrArray *buddies_properties;
-  guint i;
-
-  buddies = g_array_new (FALSE, FALSE, sizeof (TpHandle));
-  buddies_properties = g_ptr_array_new ();
 
   for (buddy = node->children; buddy != NULL; buddy = buddy->next)
     {
-
       const gchar *jid;
       LmMessageNode *properties_node;
       GHashTable *properties;
@@ -2960,13 +2954,17 @@ add_buddies_to_view_from_node (GabbleConnection *conn,
       handle = tp_handle_ensure (contact_repo, jid, NULL, NULL);
       if (handle == 0)
         {
+          guint i;
+
           DEBUG ("Invalid jid: %s", jid);
 
           for (i = 0; i < buddies->len; i++)
             tp_handle_unref (contact_repo, g_array_index (buddies, TpHandle,
                   i));
 
-          g_array_free (buddies, TRUE);
+          g_ptr_array_foreach (buddies_properties, (GFunc) g_hash_table_unref,
+              NULL);
+
           return FALSE;
         }
 
@@ -2985,13 +2983,37 @@ add_buddies_to_view_from_node (GabbleConnection *conn,
           properties);
     }
 
+  return TRUE;
+}
+
+static gboolean
+add_buddies_to_view_from_node (GabbleConnection *conn,
+                               GabbleOlpcView *view,
+                               LmMessageNode *node)
+{
+  GArray *buddies;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection*) conn, TP_HANDLE_TYPE_CONTACT);
+  GPtrArray *buddies_properties;
+  guint i;
+
+  buddies = g_array_new (FALSE, FALSE, sizeof (TpHandle));
+  buddies_properties = g_ptr_array_new ();
+
+  if (!populate_buddies_from_nodes (conn, node, buddies, buddies_properties))
+    {
+      g_array_free (buddies, TRUE);
+      g_ptr_array_free (buddies_properties, TRUE);
+      return FALSE;
+    }
+
   /* FIXME: we should update properties when needed */
   gabble_olpc_view_add_buddies (view, buddies, buddies_properties);
 
   for (i = 0; i < buddies->len; i++)
     tp_handle_unref (contact_repo, g_array_index (buddies, TpHandle, i));
-
   g_array_free (buddies, TRUE);
+
   g_ptr_array_foreach (buddies_properties, (GFunc) g_hash_table_unref, NULL);
   g_ptr_array_free (buddies_properties, TRUE);
 

@@ -238,13 +238,10 @@ gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
   g_object_class_override_property (object_class, PROP_HANDLE, "handle");
 
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
-                                    "Gabble connection object that owns this "
-                                    "IM channel object.",
-                                    GABBLE_TYPE_CONNECTION,
-                                    G_PARAM_CONSTRUCT_ONLY |
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NICK |
-                                    G_PARAM_STATIC_BLURB);
+      "Gabble connection object that owns this IM channel object.",
+      GABBLE_TYPE_CONNECTION,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
+      G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 
   param_spec = g_param_spec_boxed ("interfaces", "Extra D-Bus interfaces",

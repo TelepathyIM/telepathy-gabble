@@ -78,6 +78,8 @@
 ^debian($|/)
 ^tags$
 ^telepathy-gabble-0
+^tests/twisted/gabbleconfig\.py$
+^tests/twisted/telepathy-gabble-debug$
 ^tests/twisted/tools/gabble-testing\.log$
 ^tests/twisted/tools/exec-with-log\.sh$
 ^tests/twisted/tools/.*\.service$

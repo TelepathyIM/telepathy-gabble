@@ -367,7 +367,7 @@ gabble_olpc_view_add_buddies (GabbleOlpcView *self,
 
   g_assert (buddies->len == buddies_properties->len);
 
-  empty = g_array_new (FALSE, FALSE, sizeof(TpHandle));
+  empty = g_array_new (FALSE, FALSE, sizeof (TpHandle));
 
   /* store properties */
   for (i = 0; i < buddies->len; i++)
@@ -409,7 +409,7 @@ gabble_olpc_view_remove_buddies (GabbleOlpcView *self,
   tp_handle_set_foreach (buddies,
       (TpHandleSetMemberFunc) remove_properties_foreach, self);
 
-  empty = g_array_new (FALSE, FALSE, sizeof(TpHandle));
+  empty = g_array_new (FALSE, FALSE, sizeof (TpHandle));
   removed = tp_handle_set_to_array (buddies);
 
   gabble_svc_olpc_view_emit_buddies_changed (self, empty, removed);

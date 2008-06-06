@@ -52,6 +52,11 @@ G_DEFINE_TYPE_WITH_CODE (GabbleIMChannel, gabble_im_channel, G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CHAT_STATE,
       chat_state_iface_init));
 
+static const gchar *gabble_im_channel_interfaces[] = {
+    TP_IFACE_CHANNEL_INTERFACE_CHAT_STATE,
+    NULL
+};
+
 
 /* properties */
 enum
@@ -61,6 +66,7 @@ enum
   PROP_HANDLE_TYPE,
   PROP_HANDLE,
   PROP_CONNECTION,
+  PROP_INTERFACES,
   LAST_PROPERTY
 };
 
@@ -160,6 +166,9 @@ gabble_im_channel_get_property (GObject    *object,
     case PROP_CONNECTION:
       g_value_set_object (value, priv->conn);
       break;
+    case PROP_INTERFACES:
+      g_value_set_boxed (value, gabble_im_channel_interfaces);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -237,6 +246,13 @@ gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
                                     G_PARAM_STATIC_NICK |
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
+
+  param_spec = g_param_spec_boxed ("interfaces", "Extra D-Bus interfaces",
+      "Additional Channel.Interface.* interfaces",
+      G_TYPE_STRV,
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+  g_object_class_install_property (object_class, PROP_INTERFACES, param_spec);
 
   tp_text_mixin_class_init (object_class, G_STRUCT_OFFSET (GabbleIMChannelClass, text_class));
 }
@@ -460,11 +476,8 @@ static void
 gabble_im_channel_get_interfaces (TpSvcChannel *iface,
                                   DBusGMethodInvocation *context)
 {
-  const char *interfaces[] = {
-      TP_IFACE_CHANNEL_INTERFACE_CHAT_STATE,
-      NULL };
-
-  tp_svc_channel_return_from_get_interfaces (context, interfaces);
+  tp_svc_channel_return_from_get_interfaces (context,
+      gabble_im_channel_interfaces);
 }
 
 

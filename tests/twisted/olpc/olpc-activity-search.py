@@ -91,12 +91,20 @@ def test(q, bus, conn, stream):
 
     view_path = return_event.value[0]
     view0 = bus.get_object(conn.bus_name, view_path)
-    view0_iface = dbus.Interface(view0, 'org.laptop.Telepathy.ActivityView')
+    view0_iface = dbus.Interface(view0, 'org.laptop.Telepathy.View')
 
     event = q.expect('dbus-signal', signal='ActivityPropertiesChanged')
     handle, props = event.args
     assert conn.InspectHandles(2, [handle])[0] == 'room1@conference.localhost'
     assert props == {'color': '#005FE4,#00A0FF'}
+
+    event = q.expect('dbus-signal', signal='ActivitiesChanged')
+    added, removed = event.args
+    assert removed == []
+    assert sorted(conn.InspectHandles(2, added)) == ['room1@conference.localhost']
+
+    act = view0_iface.GetActivities()
+    assert sorted(act) == sorted(added)
 
     # we can now get these properties
     props = activity_prop_iface.GetProperties(handle)
@@ -136,12 +144,20 @@ def test(q, bus, conn, stream):
 
     view_path = return_event.value[0]
     view1 = bus.get_object(conn.bus_name, view_path)
-    view1_iface = dbus.Interface(view1, 'org.laptop.Telepathy.ActivityView')
+    view1_iface = dbus.Interface(view1, 'org.laptop.Telepathy.View')
 
     event = q.expect('dbus-signal', signal='ActivityPropertiesChanged')
     handle, props = event.args
     assert conn.InspectHandles(2, [handle])[0] == 'room2@conference.localhost'
     assert props == {'color': '#AABBCC,#001122'}
+
+    event = q.expect('dbus-signal', signal='ActivitiesChanged')
+    added, removed = event.args
+    assert removed == []
+    assert sorted(conn.InspectHandles(2, added)) == ['room2@conference.localhost']
+
+    act = view1.GetActivities()
+    assert sorted(act) == sorted(added)
 
     # activity search by participants
     participants = conn.RequestHandles(1, ["alice@localhost", "bob@localhost"])
@@ -174,12 +190,20 @@ def test(q, bus, conn, stream):
 
     view_path = return_event.value[0]
     view2 = bus.get_object(conn.bus_name, view_path)
-    view2_iface = dbus.Interface(view2, 'org.laptop.Telepathy.ActivityView')
+    view2_iface = dbus.Interface(view2, 'org.laptop.Telepathy.View')
 
     event = q.expect('dbus-signal', signal='ActivityPropertiesChanged')
     handle, props = event.args
     assert conn.InspectHandles(2, [handle])[0] == 'room2@conference.localhost'
     assert props == {'color': '#AABBCC,#001122'}
+
+    event = q.expect('dbus-signal', signal='ActivitiesChanged')
+    added, removed = event.args
+    assert removed == []
+    assert sorted(conn.InspectHandles(2, added)) == ['room2@conference.localhost']
+
+    act = view2.GetActivities()
+    assert sorted(act) == sorted(added)
 
     # close view 0
     call_async(q, view0_iface, 'Close')

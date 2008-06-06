@@ -82,6 +82,11 @@ gboolean gabble_olpc_view_set_buddy_properties (GabbleOlpcView *self,
 GHashTable * gabble_olpc_view_get_buddy_properties (GabbleOlpcView *self,
     TpHandle buddy);
 
+void gabble_olpc_view_add_activities (GabbleOlpcView *self,
+    TpHandleSet *activities);
+
+TpHandleSet * gabble_olpc_view_get_activities (GabbleOlpcView *self);
+
 G_END_DECLS
 
 #endif /* #ifndef __GABBLE_OLPC_VIEW_H__ */

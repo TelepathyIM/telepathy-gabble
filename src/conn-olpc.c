@@ -3412,7 +3412,6 @@ olpc_gadget_search_buddies_by_properties (GabbleSvcOLPCGadget *iface,
   lm_message_unref (query);
 }
 
-#if 0
 static LmHandlerResult
 activity_query_result_cb (GabbleConnection *conn,
                           LmMessage *sent_msg,
@@ -3424,7 +3423,7 @@ activity_query_result_cb (GabbleConnection *conn,
   TpHandleSet *activities;
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
       (TpBaseConnection*) conn, TP_HANDLE_TYPE_ROOM);
-  GabbleOlpcActivityView *view = GABBLE_OLPC_ACTIVITY_VIEW (_view);
+  GabbleOlpcView *view = GABBLE_OLPC_VIEW (_view);
 
   view_node = lm_message_node_get_child_with_namespace (reply_msg->node, "view",
       NS_OLPC_ACTIVITY);
@@ -3478,38 +3477,38 @@ activity_query_result_cb (GabbleConnection *conn,
     }
 
   /* TODO: remove activities when needed and unref ActivityInfo */
-  gabble_olpc_activity_view_add_activities (view, activities);
+  gabble_olpc_view_add_activities (view, activities);
 
   tp_handle_set_destroy (activities);
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static void
-activity_view_closed_cb (GabbleOlpcActivityView *view,
+activity_view_closed_cb (GabbleOlpcView *view,
                          GabbleConnection *conn)
 {
   guint id;
   TpHandleSet *activities;
 
   /* decrement ActivityInfo */
-  activities = gabble_olpc_activity_view_get_activities (view);
+  activities = gabble_olpc_view_get_activities (view);
 
   tp_handle_set_foreach (activities,
       decrement_contacts_activities_set_foreach, conn);
 
   g_object_get (view, "id", &id, NULL);
-  g_hash_table_remove (conn->olpc_activity_views, GUINT_TO_POINTER (id));
+  g_hash_table_remove (conn->olpc_views, GUINT_TO_POINTER (id));
 }
 
-static GabbleOlpcActivityView *
+static GabbleOlpcView *
 create_activity_view (GabbleConnection *conn)
 {
   guint id;
-  GabbleOlpcActivityView *view;
+  GabbleOlpcView *view;
 
   /* Look for a free ID */
   for (id = 0; id < G_MAXUINT &&
-      g_hash_table_lookup (conn->olpc_activity_views, GUINT_TO_POINTER (id))
+      g_hash_table_lookup (conn->olpc_views, GUINT_TO_POINTER (id))
       != NULL; id++);
 
   if (id == G_MAXUINT)
@@ -3518,8 +3517,8 @@ create_activity_view (GabbleConnection *conn)
       return NULL;
     }
 
-  view = gabble_olpc_activity_view_new (conn, id);
-  g_hash_table_insert (conn->olpc_activity_views, GUINT_TO_POINTER (id), view);
+  view = gabble_olpc_view_new (conn, GABBLE_OLPC_VIEW_TYPE_ACTIVITY, id);
+  g_hash_table_insert (conn->olpc_views, GUINT_TO_POINTER (id), view);
 
   g_signal_connect (view, "closed", G_CALLBACK (activity_view_closed_cb), conn);
 
@@ -3536,7 +3535,7 @@ olpc_gadget_request_random_activities (GabbleSvcOLPCGadget *iface,
   gchar *max_str, *id_str;
   gchar *object_path;
   guint id;
-  GabbleOlpcActivityView *view;
+  GabbleOlpcView *view;
 
   if (!check_gadget_activity (conn, context))
     return;
@@ -3615,7 +3614,7 @@ olpc_gadget_search_activities_by_properties (GabbleSvcOLPCGadget *iface,
   gchar *id_str;
   gchar *object_path;
   guint id;
-  GabbleOlpcActivityView *view;
+  GabbleOlpcView *view;
 
   if (!check_gadget_activity (conn, context))
     return;
@@ -3688,7 +3687,7 @@ olpc_gadget_search_activities_by_participants (GabbleSvcOLPCGadget *iface,
   gchar *id_str;
   gchar *object_path;
   guint id, i;
-  GabbleOlpcActivityView *view;
+  GabbleOlpcView *view;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
 
@@ -3757,7 +3756,6 @@ olpc_gadget_search_activities_by_participants (GabbleSvcOLPCGadget *iface,
   g_free (object_path);
   lm_message_unref (query);
 }
-#endif
 
 static gboolean
 send_presence_to_gadget (GabbleConnection *conn,
@@ -3831,9 +3829,9 @@ olpc_gadget_iface_init (gpointer g_iface,
     klass, olpc_gadget_##x)
   IMPLEMENT(request_random_buddies);
   IMPLEMENT(search_buddies_by_properties);
-  //IMPLEMENT(request_random_activities);
-  //IMPLEMENT(search_activities_by_properties);
-  //IMPLEMENT(search_activities_by_participants);
+  IMPLEMENT(request_random_activities);
+  IMPLEMENT(search_activities_by_properties);
+  IMPLEMENT(search_activities_by_participants);
   IMPLEMENT(publish);
 #undef IMPLEMENT
 }

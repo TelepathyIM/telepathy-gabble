@@ -65,6 +65,7 @@ struct _GabbleOlpcViewPrivate
   guint id;
 
   TpHandleSet *buddies;
+  TpHandleSet *activities;
 
   /* TpHandle (owned in priv->buddies) => GHashTable * */
   GHashTable *buddy_properties;
@@ -112,6 +113,11 @@ gabble_olpc_view_dispose (GObject *object)
       priv->buddies = NULL;
     }
 
+  if (priv->activities != NULL)
+    {
+      tp_handle_set_destroy (priv->activities);
+      priv->activities = NULL;
+    }
   if (priv->buddy_properties != NULL)
     {
       g_hash_table_destroy (priv->buddy_properties);
@@ -199,7 +205,7 @@ gabble_olpc_view_constructor (GType type,
   GabbleOlpcViewPrivate *priv;
   DBusGConnection *bus;
   TpBaseConnection *conn;
-  TpHandleRepoIface *contact_handles;
+  TpHandleRepoIface *contact_handles, *room_handles;
 
   obj = G_OBJECT_CLASS (gabble_olpc_view_parent_class)->
            constructor (type, n_props, props);
@@ -214,8 +220,11 @@ gabble_olpc_view_constructor (GType type,
 
   contact_handles = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
+  room_handles = tp_base_connection_get_handles (conn,
+      TP_HANDLE_TYPE_ROOM);
 
   priv->buddies = tp_handle_set_new (contact_handles);
+  priv->activities = tp_handle_set_new (room_handles);
 
   return obj;
 }
@@ -322,6 +331,21 @@ olpc_view_get_buddies (GabbleSvcOLPCView *iface,
 }
 
 static void
+olpc_view_get_activities (GabbleSvcOLPCView *iface,
+                          DBusGMethodInvocation *context)
+{
+  GabbleOlpcView *self = GABBLE_OLPC_VIEW (iface);
+  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
+  GArray *activities;
+
+  activities = tp_handle_set_to_array (priv->activities);
+
+  gabble_svc_olpc_view_return_from_get_activities (context, activities);
+
+  g_array_free (activities, TRUE);
+}
+
+static void
 olpc_view_close (GabbleSvcOLPCView *iface,
                  DBusGMethodInvocation *context)
 {
@@ -333,12 +357,29 @@ olpc_view_close (GabbleSvcOLPCView *iface,
 
   id_str = g_strdup_printf ("%u", priv->id);
 
-  msg = lm_message_build (priv->conn->olpc_gadget_buddy,
-      LM_MESSAGE_TYPE_MESSAGE,
-      '(', "close", "",
-        '@', "xmlns", NS_OLPC_BUDDY,
-        '@', "id", id_str,
-      ')', NULL);
+  if (priv->type == GABBLE_OLPC_VIEW_TYPE_BUDDY)
+    {
+      msg = lm_message_build (priv->conn->olpc_gadget_buddy,
+          LM_MESSAGE_TYPE_MESSAGE,
+          '(', "close", "",
+            '@', "xmlns", NS_OLPC_BUDDY,
+            '@', "id", id_str,
+          ')', NULL);
+    }
+  else if (priv->type == GABBLE_OLPC_VIEW_TYPE_ACTIVITY)
+    {
+      msg = lm_message_build (priv->conn->olpc_gadget_activity,
+          LM_MESSAGE_TYPE_MESSAGE,
+          '(', "close", "",
+            '@', "xmlns", NS_OLPC_ACTIVITY,
+            '@', "id", id_str,
+          ')', NULL);
+    }
+  else
+    {
+      g_assert_not_reached ();
+    }
+
   g_free (id_str);
 
   if (!_gabble_connection_send (priv->conn, msg, &error))
@@ -448,6 +489,32 @@ gabble_olpc_view_get_buddy_properties (GabbleOlpcView *self,
   return g_hash_table_lookup (priv->buddy_properties, GUINT_TO_POINTER (buddy));
 }
 
+void
+gabble_olpc_view_add_activities (GabbleOlpcView *self,
+                                 TpHandleSet *activities)
+{
+  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
+  GArray *added, *empty;
+
+  tp_handle_set_update (priv->activities, tp_handle_set_peek (activities));
+
+  added = tp_handle_set_to_array (activities);
+  empty = g_array_new (FALSE, FALSE, sizeof (TpHandle));
+
+  gabble_svc_olpc_view_emit_activities_changed (self, added, empty);
+
+  g_array_free (added, TRUE);
+  g_array_free (empty, TRUE);
+}
+
+TpHandleSet *
+gabble_olpc_view_get_activities (GabbleOlpcView *self)
+{
+  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
+
+  return priv->activities;
+}
+
 static void
 view_iface_init (gpointer g_iface,
                  gpointer iface_data)
@@ -457,6 +524,7 @@ view_iface_init (gpointer g_iface,
 #define IMPLEMENT(x) gabble_svc_olpc_view_implement_##x (\
     klass, olpc_view_##x)
   IMPLEMENT(get_buddies);
+  IMPLEMENT(get_activities);
   IMPLEMENT(close);
 #undef IMPLEMENT
 }

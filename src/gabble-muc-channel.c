@@ -835,6 +835,21 @@ static gboolean gabble_muc_channel_do_set_properties (GObject *obj,
 static void
 gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
 {
+  static TpDBusPropertiesMixinPropImpl channel_props[] = {
+      { "TargetHandleType", "handle-type", NULL },
+      { "TargetHandle", "handle", NULL },
+      { "ChannelType", "channel-type", NULL },
+      { "Interfaces", "interfaces", NULL },
+      { NULL }
+  };
+  static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
+      { TP_IFACE_CHANNEL,
+        tp_dbus_properties_mixin_getter_gobject_properties,
+        NULL,
+        channel_props,
+      },
+      { NULL }
+  };
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_muc_channel_class);
   GParamSpec *param_spec;
 
@@ -944,6 +959,7 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
   tp_text_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleMucChannelClass, text_class));
 
+  gabble_muc_channel_class->dbus_props_class.interfaces = prop_interfaces;
   tp_dbus_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleMucChannelClass, dbus_props_class));
 

@@ -254,26 +254,20 @@ gabble_roomlist_channel_class_init (GabbleRoomlistChannelClass *gabble_roomlist_
       "handle");
 
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
-                                    "Gabble connection object that owns this "
-                                    "room list channel object.",
-                                    GABBLE_TYPE_CONNECTION,
-                                    G_PARAM_CONSTRUCT_ONLY |
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NICK |
-                                    G_PARAM_STATIC_BLURB);
+      "Gabble connection object that owns this room list channel object.",
+      GABBLE_TYPE_CONNECTION,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
+      G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 
   param_spec = g_param_spec_string ("conference-server",
-                                    "Name of conference server to use",
-                                    "Name of the XMPP conference server "
-                                    "on which to list rooms",
-                                    "",
-                                    G_PARAM_CONSTRUCT_ONLY |
-                                    G_PARAM_WRITABLE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_BLURB);
+      "Name of conference server to use",
+      "Name of the XMPP conference server on which to list rooms",
+      "",
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_WRITABLE |
+      G_PARAM_STATIC_NAME | G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_CONFERENCE_SERVER,
-                                   param_spec);
+      param_spec);
 
   param_spec = g_param_spec_boxed ("interfaces", "Extra D-Bus interfaces",
       "Additional Channel.Interface.* interfaces",

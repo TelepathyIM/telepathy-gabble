@@ -36,6 +36,7 @@ struct _GabbleIMChannelClass {
     GObjectClass parent_class;
 
     GabbleTextMixinClass text_class;
+    TpDBusPropertiesMixinClass dbus_props_class;
 };
 
 struct _GabbleIMChannel {

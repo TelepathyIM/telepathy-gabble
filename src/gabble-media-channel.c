@@ -521,32 +521,24 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
   g_object_class_override_property (object_class, PROP_HANDLE, "handle");
 
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
-                                    "Gabble connection object that owns this "
-                                    "media channel object.",
-                                    GABBLE_TYPE_CONNECTION,
-                                    G_PARAM_CONSTRUCT_ONLY |
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NICK |
-                                    G_PARAM_STATIC_BLURB);
+      "Gabble connection object that owns this media channel object.",
+      GABBLE_TYPE_CONNECTION,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
+      G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 
   param_spec = g_param_spec_uint ("creator", "Channel creator",
-                                  "The TpHandle representing the contact "
-                                  "who created the channel.",
-                                  0, G_MAXUINT32, 0,
-                                  G_PARAM_CONSTRUCT_ONLY |
-                                  G_PARAM_READWRITE |
-                                  G_PARAM_STATIC_NAME |
-                                  G_PARAM_STATIC_BLURB);
+      "The TpHandle representing the contact who created the channel.",
+      0, G_MAXUINT32, 0,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
+      G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_CREATOR, param_spec);
 
   param_spec = g_param_spec_object ("factory", "GabbleMediaFactory object",
-                                    "The factory that created this object.",
-                                    GABBLE_TYPE_MEDIA_FACTORY,
-                                    G_PARAM_CONSTRUCT_ONLY |
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NICK |
-                                    G_PARAM_STATIC_BLURB);
+      "The factory that created this object.",
+      GABBLE_TYPE_MEDIA_FACTORY,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
+      G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_FACTORY, param_spec);
 
   param_spec = g_param_spec_boxed ("interfaces", "Extra D-Bus interfaces",
@@ -556,43 +548,34 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
       G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
   g_object_class_install_property (object_class, PROP_INTERFACES, param_spec);
 
-  param_spec = g_param_spec_string ("nat-traversal",
-                                    "NAT traversal",
-                                    "NAT traversal mechanism.",
-                                    "gtalk-p2p",
-                                    G_PARAM_CONSTRUCT |
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_BLURB);
+  param_spec = g_param_spec_string ("nat-traversal", "NAT traversal",
+      "NAT traversal mechanism.",
+      "gtalk-p2p",
+      G_PARAM_CONSTRUCT | G_PARAM_READWRITE |
+      G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_NAT_TRAVERSAL,
       param_spec);
 
-  param_spec = g_param_spec_string ("stun-server",
-                                    "STUN server",
-                                    "IP or address of STUN server.",
-                                    NULL,
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_BLURB);
+  param_spec = g_param_spec_string ("stun-server", "STUN server",
+      "IP or address of STUN server.",
+      NULL,
+      G_PARAM_READWRITE |
+      G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_STUN_SERVER, param_spec);
 
-  param_spec = g_param_spec_uint ("stun-port",
-                                  "STUN port",
-                                  "UDP port of STUN server.",
-                                  0, G_MAXUINT16, 0,
-                                  G_PARAM_READWRITE |
-                                  G_PARAM_STATIC_NAME |
-                                  G_PARAM_STATIC_BLURB);
+  param_spec = g_param_spec_uint ("stun-port", "STUN port",
+      "UDP port of STUN server.",
+      0, G_MAXUINT16, 0,
+      G_PARAM_READWRITE |
+      G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_STUN_PORT, param_spec);
 
   param_spec = g_param_spec_string ("gtalk-p2p-relay-token",
-                                    "GTalk P2P Relay Token",
-                                    "Magic token to authenticate with the "
-                                    "Google Talk relay server.",
-                                    NULL,
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_BLURB);
+      "GTalk P2P Relay Token",
+      "Magic token to authenticate with the Google Talk relay server.",
+      NULL,
+      G_PARAM_READWRITE |
+      G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_GTALK_P2P_RELAY_TOKEN,
       param_spec);
 

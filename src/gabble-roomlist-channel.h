@@ -32,6 +32,8 @@ typedef struct _GabbleRoomlistChannelClass GabbleRoomlistChannelClass;
 
 struct _GabbleRoomlistChannelClass {
     GObjectClass parent_class;
+
+    TpDBusPropertiesMixinClass dbus_props_class;
 };
 
 struct _GabbleRoomlistChannel {

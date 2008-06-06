@@ -30,6 +30,7 @@
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/channel-iface.h>
 #include <telepathy-glib/svc-channel.h>
+#include <telepathy-glib/svc-generic.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_ROOMLIST
 #include "debug.h"
@@ -230,6 +231,21 @@ static void gabble_roomlist_channel_finalize (GObject *object);
 static void
 gabble_roomlist_channel_class_init (GabbleRoomlistChannelClass *gabble_roomlist_channel_class)
 {
+  static TpDBusPropertiesMixinPropImpl channel_props[] = {
+      { "TargetHandleType", "handle-type", NULL },
+      { "TargetHandle", "handle", NULL },
+      { "ChannelType", "channel-type", NULL },
+      { "Interfaces", "interfaces", NULL },
+      { NULL }
+  };
+  static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
+      { TP_IFACE_CHANNEL,
+        tp_dbus_properties_mixin_getter_gobject_properties,
+        NULL,
+        channel_props,
+      },
+      { NULL }
+  };
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_roomlist_channel_class);
   GParamSpec *param_spec;
 
@@ -275,6 +291,10 @@ gabble_roomlist_channel_class_init (GabbleRoomlistChannelClass *gabble_roomlist_
       G_PARAM_READABLE |
       G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
   g_object_class_install_property (object_class, PROP_INTERFACES, param_spec);
+
+  gabble_roomlist_channel_class->dbus_props_class.interfaces = prop_interfaces;
+  tp_dbus_properties_mixin_class_init (object_class,
+      G_STRUCT_OFFSET (GabbleRoomlistChannelClass, dbus_props_class));
 }
 
 static void stop_listing (GabbleRoomlistChannel *self);

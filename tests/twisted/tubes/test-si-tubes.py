@@ -93,6 +93,22 @@ def test(q, bus, conn, stream):
     tubes_iface = dbus.Interface(tubes_chan,
         tp_name_prefix + '.Channel.Type.Tubes')
 
+    # Exercise basic Channel Properties from spec 0.17.7
+    channel_props = tubes_chan.GetAll(
+            'org.freedesktop.Telepathy.Channel',
+            dbus_interface='org.freedesktop.DBus.Properties')
+    assert channel_props.get('TargetHandle') == bob_handle,\
+            (channel_props.get('TargetHandle'), bob_handle)
+    assert channel_props.get('TargetHandleType') == 1,\
+            channel_props.get('TargetHandleType')
+    assert channel_props.get('ChannelType') == \
+            'org.freedesktop.Telepathy.Channel.Type.Tubes',\
+            channel_props.get('ChannelType')
+    assert 'Interfaces' in channel_props, channel_props
+    assert 'org.freedesktop.Telepathy.Channel.Interface.Group' not in \
+            channel_props['Interfaces'], \
+            channel_props['Interfaces']
+
     self_handle = conn.GetSelfHandle()
 
     # Unix socket

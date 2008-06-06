@@ -80,6 +80,15 @@ G_DEFINE_TYPE_WITH_CODE (GabbleTubesChannel, gabble_tubes_channel,
         tp_external_group_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL));
 
+static const gchar *gabble_tubes_channel_interfaces[] = {
+    TP_IFACE_CHANNEL_INTERFACE_GROUP,
+    /* If more interfaces are added, either keep Group as the first, or change
+     * the implementations of gabble_tubes_channel_get_interfaces () and
+     * gabble_tubes_channel_get_property () too */
+    NULL
+};
+
+
 enum
 {
   PROP_OBJECT_PATH = 1,
@@ -87,6 +96,7 @@ enum
   PROP_HANDLE_TYPE,
   PROP_HANDLE,
   PROP_CONNECTION,
+  PROP_INTERFACES,
   PROP_MUC,
   LAST_PROPERTY,
 };
@@ -204,6 +214,18 @@ gabble_tubes_channel_get_property (GObject *object,
         break;
       case PROP_CONNECTION:
         g_value_set_object (value, priv->conn);
+        break;
+      case PROP_INTERFACES:
+        if (chan->muc)
+          {
+            /* MUC tubes */
+            g_value_set_boxed (value, gabble_tubes_channel_interfaces);
+          }
+        else
+          {
+            /* 1-1 tubes - omit the Group interface */
+            g_value_set_boxed (value, gabble_tubes_channel_interfaces + 1);
+          }
         break;
       case PROP_MUC:
         g_value_set_object (value, chan->muc);
@@ -2350,19 +2372,18 @@ static void
 gabble_tubes_channel_get_interfaces (TpSvcChannel *iface,
                                      DBusGMethodInvocation *context)
 {
-  const char *interfaces[] = {
-      TP_IFACE_CHANNEL_INTERFACE_GROUP,
-      NULL };
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (iface);
 
   if (self->muc)
     {
-      tp_svc_channel_return_from_get_interfaces (context, interfaces);
+      tp_svc_channel_return_from_get_interfaces (context,
+          gabble_tubes_channel_interfaces);
     }
   else
     {
-      /* only show the NULL */
-      tp_svc_channel_return_from_get_interfaces (context, interfaces + 1);
+      /* omit the Group interface */
+      tp_svc_channel_return_from_get_interfaces (context,
+          gabble_tubes_channel_interfaces + 1);
     }
 }
 
@@ -2406,6 +2427,13 @@ gabble_tubes_channel_class_init (
       G_PARAM_STATIC_NICK |
       G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
+
+  param_spec = g_param_spec_boxed ("interfaces", "Extra D-Bus interfaces",
+      "Additional Channel.Interface.* interfaces",
+      G_TYPE_STRV,
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+  g_object_class_install_property (object_class, PROP_INTERFACES, param_spec);
 
   param_spec = g_param_spec_object (
       "muc",

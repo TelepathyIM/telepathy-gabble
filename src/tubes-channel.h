@@ -35,6 +35,8 @@ typedef struct _GabbleTubesChannelClass GabbleTubesChannelClass;
 
 struct _GabbleTubesChannelClass {
     GObjectClass parent_class;
+
+    TpDBusPropertiesMixinClass dbus_props_class;
 };
 
 struct _GabbleTubesChannel {

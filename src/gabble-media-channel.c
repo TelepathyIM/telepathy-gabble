@@ -84,6 +84,18 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMediaChannel, gabble_media_channel,
       tp_dbus_properties_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL));
 
+static const gchar *gabble_media_channel_interfaces[] = {
+    /* FIXME: our implementation of CallState is a stub, so it doesn't
+    appear in GetInterfaces' output to avoid confusing clients
+    TP_IFACE_CHANNEL_INTERFACE_CALL_STATE,
+    */
+    TP_IFACE_CHANNEL_INTERFACE_GROUP,
+    TP_IFACE_CHANNEL_INTERFACE_HOLD,
+    TP_IFACE_CHANNEL_INTERFACE_MEDIA_SIGNALLING,
+    TP_IFACE_PROPERTIES_INTERFACE,
+    NULL
+};
+
 /* properties */
 enum
 {
@@ -94,6 +106,7 @@ enum
   PROP_CONNECTION,
   PROP_CREATOR,
   PROP_FACTORY,
+  PROP_INTERFACES,
   /* TP properties (see also below) */
   PROP_NAT_TRAVERSAL,
   PROP_STUN_SERVER,
@@ -402,6 +415,9 @@ gabble_media_channel_get_property (GObject    *object,
     case PROP_FACTORY:
       g_value_set_object (value, priv->factory);
       break;
+    case PROP_INTERFACES:
+      g_value_set_boxed (value, gabble_media_channel_interfaces);
+      break;
     default:
       param_name = g_param_spec_get_name (pspec);
 
@@ -532,6 +548,13 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
                                     G_PARAM_STATIC_NICK |
                                     G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_FACTORY, param_spec);
+
+  param_spec = g_param_spec_boxed ("interfaces", "Extra D-Bus interfaces",
+      "Additional Channel.Interface.* interfaces",
+      G_TYPE_STRV,
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+  g_object_class_install_property (object_class, PROP_INTERFACES, param_spec);
 
   param_spec = g_param_spec_string ("nat-traversal",
                                     "NAT traversal",
@@ -711,19 +734,8 @@ static void
 gabble_media_channel_get_interfaces (TpSvcChannel *iface,
                                      DBusGMethodInvocation *context)
 {
-  const gchar *interfaces[] = {
-      /* FIXME: our implementation of CallState is a stub, so it doesn't
-      appear in GetInterfaces' output to avoid confusing clients
-      TP_IFACE_CHANNEL_INTERFACE_CALL_STATE,
-      */
-      TP_IFACE_CHANNEL_INTERFACE_GROUP,
-      TP_IFACE_CHANNEL_INTERFACE_HOLD,
-      TP_IFACE_CHANNEL_INTERFACE_MEDIA_SIGNALLING,
-      TP_IFACE_PROPERTIES_INTERFACE,
-      NULL
-  };
-
-  tp_svc_channel_return_from_get_interfaces (context, interfaces);
+  tp_svc_channel_return_from_get_interfaces (context,
+      gabble_media_channel_interfaces);
 }
 
 

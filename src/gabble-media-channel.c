@@ -484,7 +484,6 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_media_channel_class);
   GParamSpec *param_spec;
-  static gboolean initialized = FALSE;
 
   g_type_class_add_private (gabble_media_channel_class,
       sizeof (GabbleMediaChannelPrivate));
@@ -581,16 +580,11 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
   tp_dbus_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleMediaChannelClass, dbus_props_class));
 
-  if (!initialized)
-    {
-      initialized = TRUE;
-
-      tp_group_mixin_class_init (object_class,
-          G_STRUCT_OFFSET (GabbleMediaChannelClass, group_class),
-          _gabble_media_channel_add_member,
-          gabble_media_channel_remove_member);
-      tp_group_mixin_init_dbus_properties (object_class);
-    }
+  tp_group_mixin_class_init (object_class,
+      G_STRUCT_OFFSET (GabbleMediaChannelClass, group_class),
+      _gabble_media_channel_add_member,
+      gabble_media_channel_remove_member);
+  tp_group_mixin_init_dbus_properties (object_class);
 }
 
 void

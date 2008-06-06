@@ -72,6 +72,14 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMucChannel, gabble_muc_channel,
       chat_state_iface_init)
     )
 
+static const gchar *gabble_muc_channel_interfaces[] = {
+    TP_IFACE_CHANNEL_INTERFACE_GROUP,
+    TP_IFACE_CHANNEL_INTERFACE_PASSWORD,
+    TP_IFACE_PROPERTIES_INTERFACE,
+    TP_IFACE_CHANNEL_INTERFACE_CHAT_STATE,
+    NULL
+};
+
 /* signal enum */
 enum
 {
@@ -95,6 +103,7 @@ enum
   PROP_CONNECTION,
   PROP_STATE,
   PROP_INVITE_SELF,
+  PROP_INTERFACES,
   LAST_PROPERTY
 };
 
@@ -758,6 +767,9 @@ gabble_muc_channel_get_property (GObject    *object,
     case PROP_STATE:
       g_value_set_uint (value, priv->state);
       break;
+    case PROP_INTERFACES:
+      g_value_set_boxed (value, gabble_muc_channel_interfaces);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -868,6 +880,13 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_WRITABLE | G_PARAM_STATIC_NAME |
       G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_INVITE_SELF, param_spec);
+
+  param_spec = g_param_spec_boxed ("interfaces", "Extra D-Bus interfaces",
+      "Additional Channel.Interface.* interfaces",
+      G_TYPE_STRV,
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+  g_object_class_install_property (object_class, PROP_INTERFACES, param_spec);
 
   signals[READY] =
     g_signal_new ("ready",
@@ -2232,15 +2251,8 @@ static void
 gabble_muc_channel_get_interfaces (TpSvcChannel *iface,
                                    DBusGMethodInvocation *context)
 {
-  const gchar *interfaces[] = {
-      TP_IFACE_CHANNEL_INTERFACE_GROUP,
-      TP_IFACE_CHANNEL_INTERFACE_PASSWORD,
-      TP_IFACE_PROPERTIES_INTERFACE,
-      TP_IFACE_CHANNEL_INTERFACE_CHAT_STATE,
-      NULL
-  };
-
-  tp_svc_channel_return_from_get_interfaces (context, interfaces);
+  tp_svc_channel_return_from_get_interfaces (context,
+      gabble_muc_channel_interfaces);
 }
 
 

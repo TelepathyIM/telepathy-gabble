@@ -825,7 +825,6 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_muc_channel_class);
   GParamSpec *param_spec;
-  static gboolean initialized = FALSE;
 
   g_type_class_add_private (gabble_muc_channel_class,
       sizeof (GabbleMucChannelPrivate));
@@ -927,15 +926,11 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
   tp_dbus_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleMucChannelClass, dbus_props_class));
 
-  if (!initialized)
-    {
-      initialized = TRUE;
-      tp_group_mixin_class_init (object_class,
-          G_STRUCT_OFFSET (GabbleMucChannelClass, group_class),
-          gabble_muc_channel_add_member,
-          gabble_muc_channel_remove_member);
-      tp_group_mixin_init_dbus_properties (object_class);
-    }
+  tp_group_mixin_class_init (object_class,
+      G_STRUCT_OFFSET (GabbleMucChannelClass, group_class),
+      gabble_muc_channel_add_member,
+      gabble_muc_channel_remove_member);
+  tp_group_mixin_init_dbus_properties (object_class);
 }
 
 static void clear_join_timer (GabbleMucChannel *chan);

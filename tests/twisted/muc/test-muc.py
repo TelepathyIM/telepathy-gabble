@@ -30,6 +30,7 @@ def expect_disco(event, data):
 @match('dbus-return', method='RequestHandles')
 def expect_request_handles_return(event, data):
     handles = event.value[0]
+    data['room_handle'] = handles[0]
 
     call_async(data['test'], data['conn_iface'], 'RequestChannel',
         'org.freedesktop.Telepathy.Channel.Type.Text', 2, handles[0], True)
@@ -77,6 +78,40 @@ def expect_request_channel_return(event, data):
     bus = data['conn']._bus
     data['text_chan'] = bus.get_object(
         data['conn']._named_service, event.value[0])
+
+    # Exercise basic Channel Properties from spec 0.17.7
+    channel_props = data['text_chan'].GetAll(
+            'org.freedesktop.Telepathy.Channel',
+            dbus_interface='org.freedesktop.DBus.Properties')
+    assert channel_props.get('TargetHandle') == data['room_handle'],\
+            (channel_props.get('TargetHandle'), data['room_handle'])
+    assert channel_props.get('TargetHandleType') == 2,\
+            channel_props.get('TargetHandleType')
+    assert channel_props.get('ChannelType') == \
+            'org.freedesktop.Telepathy.Channel.Type.Text',\
+            channel_props.get('ChannelType')
+    assert 'org.freedesktop.Telepathy.Channel.Interface.Group' in \
+            channel_props.get('Interfaces', ()), \
+            channel_props.get('Interfaces')
+    assert 'org.freedesktop.Telepathy.Channel.Interface.Password' in \
+            channel_props.get('Interfaces', ()), \
+            channel_props.get('Interfaces')
+    assert 'org.freedesktop.Telepathy.Properties' in \
+            channel_props.get('Interfaces', ()), \
+            channel_props.get('Interfaces')
+    assert 'org.freedesktop.Telepathy.Channel.Interface.ChatState' in \
+            channel_props.get('Interfaces', ()), \
+            channel_props.get('Interfaces')
+
+    # Exercise Group Properties from spec 0.17.6 (in a basic way)
+    group_props = data['text_chan'].GetAll(
+            'org.freedesktop.Telepathy.Channel.Interface.Group',
+            dbus_interface='org.freedesktop.DBus.Properties')
+    assert 'HandleOwners' in group_props, group_props
+    assert 'Members' in group_props, group_props
+    assert 'LocalPendingMembers' in group_props, group_props
+    assert 'RemotePendingMembers' in group_props, group_props
+    assert 'GroupFlags' in group_props, group_props
 
     message = domish.Element((None, 'message'))
     message['from'] = 'chat@conf.localhost/bob'

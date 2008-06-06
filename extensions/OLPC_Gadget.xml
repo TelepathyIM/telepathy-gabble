@@ -35,8 +35,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
       </arg>
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
         <p>Search for buddies having the given properties.</p>
-        <p>Returns a <code>org.laptop.Telepathy.BuddyView</code> object representing the
-           result of the search.</p>
+        <p>Returns a <code>org.laptop.Telepathy.View</code> object containing
+           the buddies found (FIXME: and their activities?)</p>
       </tp:docstring>
       <tp:possible-errors>
         <tp:error name="org.freedesktop.Telepathy.Error.InvalidArgument"/>
@@ -56,8 +56,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
       </arg>
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
         <p>Request random buddies.</p>
-        <p>Returns a <code>org.laptop.Telepathy.BuddyView</code> object representing the
-           random buddies returned.</p>
+        <p>Returns a <code>org.laptop.Telepathy.View</code> object containing the
+           random buddies returned (FIXME: and their activities?).</p>
       </tp:docstring>
       <tp:possible-errors>
         <tp:error name="org.freedesktop.Telepathy.Error.InvalidArgument"/>
@@ -78,8 +78,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
       </arg>
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
         <p>Search for activities having the given properties.</p>
-        <p>Returns a <code>org.laptop.Telepathy.ActivityView</code> object representing the
-           result of the search.</p>
+        <p>Returns a <code>org.laptop.Telepathy.View</code> object containing
+           the activities found and their participants</p>
       </tp:docstring>
       <tp:possible-errors>
         <tp:error name="org.freedesktop.Telepathy.Error.InvalidArgument"/>
@@ -99,8 +99,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
       </arg>
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
         <p>Request random activities.</p>
-        <p>Returns a <code>org.laptop.Telepathy.ActivityView</code> object representing the
-           random activities returned.</p>
+        <p>Returns a <code>org.laptop.Telepathy.View</code> object representing the
+           random activities returned and their participants.</p>
       </tp:docstring>
       <tp:possible-errors>
         <tp:error name="org.freedesktop.Telepathy.Error.InvalidArgument"/>
@@ -120,8 +120,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
       </arg>
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
         <p>Search for activities having the given participants.</p>
-        <p>Returns a <code>org.laptop.Telepathy.ActivityView</code> object representing the
-           result of the search.</p>
+        <p>Returns a <code>org.laptop.Telepathy.View</code> object containing
+           the activities found and their participants</p>
       </tp:docstring>
       <tp:possible-errors>
         <tp:error name="org.freedesktop.Telepathy.Error.InvalidArgument"/>

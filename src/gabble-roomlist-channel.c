@@ -238,11 +238,20 @@ gabble_roomlist_channel_class_init (GabbleRoomlistChannelClass *gabble_roomlist_
       { "Interfaces", "interfaces", NULL },
       { NULL }
   };
+  static TpDBusPropertiesMixinPropImpl roomlist_props[] = {
+      { "Server", "conference-server", NULL },
+      { NULL }
+  };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
       { TP_IFACE_CHANNEL,
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         channel_props,
+      },
+      { TP_IFACE_CHANNEL_TYPE_ROOM_LIST,
+        tp_dbus_properties_mixin_getter_gobject_properties,
+        NULL,
+        roomlist_props,
       },
       { NULL }
   };

@@ -10,12 +10,42 @@ from gabbletest import exec_test
 def _expect_contact_list_channel(q, bus, conn, name, contacts):
     event = q.expect('dbus-signal', signal='NewChannel')
     path, type, handle_type, handle, suppress_handler = event.args
+
     assert type == u'org.freedesktop.Telepathy.Channel.Type.ContactList'
     assert conn.InspectHandles(handle_type, [handle])[0] == name
     chan = bus.get_object(conn._named_service, path)
     group_iface = dbus.Interface(chan,
         u'org.freedesktop.Telepathy.Channel.Interface.Group')
-    assert conn.InspectHandles(1, group_iface.GetMembers()) == contacts
+    members = group_iface.GetMembers()
+    assert conn.InspectHandles(1, members) == contacts
+
+    # Exercise basic Channel Properties from spec 0.17.7
+    channel_props = chan.GetAll(
+            'org.freedesktop.Telepathy.Channel',
+            dbus_interface='org.freedesktop.DBus.Properties')
+    assert channel_props.get('TargetHandle') == handle,\
+            (channel_props.get('TargetHandle'), handle)
+    assert channel_props.get('TargetHandleType') == 3,\
+            channel_props.get('TargetHandleType')
+    assert channel_props.get('ChannelType') == \
+            'org.freedesktop.Telepathy.Channel.Type.ContactList',\
+            channel_props.get('ChannelType')
+    assert 'org.freedesktop.Telepathy.Channel.Interface.Group' in \
+            channel_props.get('Interfaces', ()), \
+            channel_props.get('Interfaces')
+
+    # Exercise Group Properties from spec 0.17.6 (in a basic way)
+    group_props = chan.GetAll(
+            'org.freedesktop.Telepathy.Channel.Interface.Group',
+            dbus_interface='org.freedesktop.DBus.Properties')
+    assert 'HandleOwners' in group_props, group_props
+    assert 'Members' in group_props, group_props
+    assert group_props['Members'] == members, group_props['Members']
+    assert 'LocalPendingMembers' in group_props, group_props
+    assert group_props['LocalPendingMembers'] == []
+    assert 'RemotePendingMembers' in group_props, group_props
+    assert group_props['RemotePendingMembers'] == []
+    assert 'GroupFlags' in group_props, group_props
 
 def test(q, bus, conn, stream):
     conn.Connect()

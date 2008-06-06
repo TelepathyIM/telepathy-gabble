@@ -28,6 +28,21 @@ def test(q, bus, conn, stream):
     jid = conn.InspectHandles(1, [event.args[3]])[0]
     assert jid == 'foo@bar.com'
 
+    # Exercise basic Channel Properties from spec 0.17.7
+    channel_props = text_chan.GetAll(
+            'org.freedesktop.Telepathy.Channel',
+            dbus_interface='org.freedesktop.DBus.Properties')
+    assert channel_props.get('TargetHandle') == event.args[3],\
+            (channel_props.get('TargetHandle'), event.args[3])
+    assert channel_props.get('TargetHandleType') == 1,\
+            channel_props.get('TargetHandleType')
+    assert channel_props.get('ChannelType') == \
+            'org.freedesktop.Telepathy.Channel.Type.Text',\
+            channel_props.get('ChannelType')
+    assert 'org.freedesktop.Telepathy.Channel.Interface.ChatState' in \
+            channel_props.get('Interfaces', ()), \
+            channel_props.get('Interfaces')
+
     event = q.expect('dbus-signal', signal='Received')
 
     # message type: normal

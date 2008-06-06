@@ -1691,6 +1691,19 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
           if (handle == mixin->self_handle &&
               owner_handle != conn->self_handle)
             {
+              /* We know that in XEP-0045 compliant MUCs, nobody else can have
+               * the nick we tried to use - the service MUST reject us
+               * with code 409/"conflict" in this case. So, if someone in the
+               * room has the nick we want, it's us.
+               *
+               * If the MUC service fails to comply with this requirement,
+               * we get hopelessly confused, but this isn't a regression
+               * (we always would have done).
+               *
+               * FIXME: we ought to respect the 110 and 210 status codes
+               * too, so we can detect MUCs renaming us - otherwise the
+               * presence aggregator will never stop
+               */
               DEBUG ("Overriding ownership of channel-specific handle %u "
                   "from %u to %u because I know it's mine",
                   mixin->self_handle, owner_handle, conn->self_handle);

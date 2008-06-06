@@ -7,43 +7,38 @@ import dbus
 
 from twisted.words.xish import domish
 
-from gabbletest import go, make_result_iq
-from servicetest import call_async, lazy, match
+from gabbletest import go, make_result_iq, exec_test
+from servicetest import call_async, lazy, match, EventPattern
 
-@match('dbus-signal', signal='StatusChanged', args=[0, 1])
-def expect_connected(event, data):
+def test(q, bus, conn, stream):
+    conn.Connect()
+
+    q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
+
     # Need to call this asynchronously as it involves Gabble sending us a
     # query.
-    call_async(data['test'], data['conn_iface'], 'RequestHandles', 2,
-        ['chat@conf.localhost'])
-    return True
+    call_async(q, conn, 'RequestHandles', 2, ['chat@conf.localhost'])
 
-@match('stream-iq', to='conf.localhost',
-    query_ns='http://jabber.org/protocol/disco#info')
-def expect_disco(event, data):
-    result = make_result_iq(data['stream'], event.stanza)
+    event = q.expect('stream-iq', to='conf.localhost',
+        query_ns='http://jabber.org/protocol/disco#info')
+    result = make_result_iq(stream, event.stanza)
     feature = result.firstChildElement().addElement('feature')
     feature['var'] = 'http://jabber.org/protocol/muc'
-    data['stream'].send(result)
-    return True
+    stream.send(result)
 
-@match('dbus-return', method='RequestHandles')
-def expect_request_handles_return(event, data):
-    handles = event.value[0]
-    data['room_handle'] = handles[0]
+    event = q.expect('dbus-return', method='RequestHandles')
+    room_handle = event.value[0][0]
 
-    call_async(data['test'], data['conn_iface'], 'RequestChannel',
-        'org.freedesktop.Telepathy.Channel.Type.Text', 2, handles[0], True)
-    return True
+    call_async(q, conn, 'RequestChannel',
+        'org.freedesktop.Telepathy.Channel.Type.Text', 2, room_handle, True)
 
-@lazy
-@match('dbus-signal', signal='MembersChanged',
-    args=[u'', [], [], [], [2], 0, 0])
-def expect_members_changed1(event, data):
-    return True
+    gfc, _, _ = q.expect_many(
+        EventPattern('dbus-signal', signal='GroupFlagsChanged'),
+        EventPattern('dbus-signal', signal='MembersChanged',
+            args=[u'', [], [], [], [2], 0, 0]),
+        EventPattern('stream-presence', to='chat@conf.localhost/test'))
+    assert gfc.args[1] == 0
 
-@match('stream-presence', to='chat@conf.localhost/test')
-def expect_presence(event, data):
     # Send presence for other member of room.
     presence = domish.Element((None, 'presence'))
     presence['from'] = 'chat@conf.localhost/bob'
@@ -51,7 +46,7 @@ def expect_presence(event, data):
     item = x.addElement('item')
     item['affiliation'] = 'owner'
     item['role'] = 'moderator'
-    data['stream'].send(presence)
+    stream.send(presence)
 
     # Send presence for own membership of room.
     presence = domish.Element((None, 'presence'))
@@ -60,31 +55,26 @@ def expect_presence(event, data):
     item = x.addElement('item')
     item['affiliation'] = 'none'
     item['role'] = 'participant'
-    data['stream'].send(presence)
-    return True
+    stream.send(presence)
 
-@match('dbus-signal', signal='MembersChanged',
-    args=[u'', [2, 3], [], [], [], 0, 0])
-def expect_members_changed2(event, data):
-    assert data['conn_iface'].InspectHandles(1, [2]) == [
+    event = q.expect('dbus-signal', signal='MembersChanged',
+        args=[u'', [2, 3], [], [], [], 0, 0])
+    assert conn.InspectHandles(1, [2]) == [
         'chat@conf.localhost/test']
-    assert data['conn_iface'].InspectHandles(1, [3]) == [
+    assert conn.InspectHandles(1, [3]) == [
         'chat@conf.localhost/bob']
 
-    return True
+    event = q.expect('dbus-return', method='RequestChannel')
 
-@match('dbus-return', method='RequestChannel')
-def expect_request_channel_return(event, data):
-    bus = data['conn']._bus
-    data['text_chan'] = bus.get_object(
-        data['conn']._named_service, event.value[0])
+    bus = dbus.SessionBus()
+    text_chan = bus.get_object(conn.bus_name, event.value[0])
 
     # Exercise basic Channel Properties from spec 0.17.7
-    channel_props = data['text_chan'].GetAll(
+    channel_props = text_chan.GetAll(
             'org.freedesktop.Telepathy.Channel',
             dbus_interface='org.freedesktop.DBus.Properties')
-    assert channel_props.get('TargetHandle') == data['room_handle'],\
-            (channel_props.get('TargetHandle'), data['room_handle'])
+    assert channel_props.get('TargetHandle') == room_handle,\
+            (channel_props.get('TargetHandle'), room_handle)
     assert channel_props.get('TargetHandleType') == 2,\
             channel_props.get('TargetHandleType')
     assert channel_props.get('ChannelType') == \
@@ -104,7 +94,7 @@ def expect_request_channel_return(event, data):
             channel_props.get('Interfaces')
 
     # Exercise Group Properties from spec 0.17.6 (in a basic way)
-    group_props = data['text_chan'].GetAll(
+    group_props = text_chan.GetAll(
             'org.freedesktop.Telepathy.Channel.Interface.Group',
             dbus_interface='org.freedesktop.DBus.Properties')
     assert 'HandleOwners' in group_props, group_props
@@ -117,11 +107,9 @@ def expect_request_channel_return(event, data):
     message['from'] = 'chat@conf.localhost/bob'
     message['type'] = 'groupchat'
     body = message.addElement('body', content='hello')
-    data['stream'].send(message)
-    return True
+    stream.send(message)
 
-@match('dbus-signal', signal='Received')
-def expect_received(event, data):
+    event = q.expect('dbus-signal', signal='Received')
     # sender: bob
     assert event.args[2] == 3
     # message type: normal
@@ -131,12 +119,11 @@ def expect_received(event, data):
     # body
     assert event.args[5] == 'hello'
 
-    dbus.Interface(data['text_chan'],
-        u'org.freedesktop.Telepathy.Channel.Type.Text').Send(0, 'goodbye')
+    dbus.Interface(text_chan,
+            'org.freedesktop.Telepathy.Channel.Type.Text').Send(0, 'goodbye')
     return True
 
-@match('stream-message')
-def expect_message(event, data):
+    event = q.expect('stream-message')
     elem = event.stanza
     assert elem.name == 'message'
     assert elem['type'] == 'groupchat'
@@ -144,13 +131,10 @@ def expect_message(event, data):
     assert body.name == 'body'
     assert body.children[0] == u'goodbye'
 
-    data['conn_iface'].Disconnect()
-    return True
+    conn.Disconnect()
 
-@match('dbus-signal', signal='StatusChanged', args=[2, 1])
-def expect_disconnected(event, data):
-    return True
+    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 if __name__ == '__main__':
-    go()
+    exec_test(test)
 

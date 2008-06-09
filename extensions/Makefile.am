@@ -8,6 +8,7 @@ EXTRA_DIST = \
 noinst_LTLIBRARIES = libgabble-extensions.la
 
 libgabble_extensions_la_SOURCES = \
+    extensions.c \
     extensions.h
 
 nodist_libgabble_extensions_la_SOURCES = \
@@ -15,7 +16,9 @@ nodist_libgabble_extensions_la_SOURCES = \
     _gen/signals-marshal.h \
     _gen/signals-marshal.list \
     _gen/enums.h \
+    _gen/gtypes.h \
     _gen/interfaces.h \
+    _gen/interfaces-body.h \
     _gen/svc.h \
     _gen/svc.c
 
@@ -73,9 +76,21 @@ _gen/enums.h: _gen/all.xml $(tools_dir)/c-constants-generator.xsl \
 		$(tools_dir)/c-constants-generator.xsl \
 		$< > $@
 
-_gen/interfaces.h: _gen/all.xml $(tools_dir)/c-interfaces-generator.xsl \
+_gen/interfaces.h: _gen/all.xml $(tools_dir)/glib-interfaces-generator.xsl \
 	Makefile.am
 	$(XSLTPROC) $(XSLTPROCFLAGS) \
 		--stringparam mixed-case-prefix Gabble \
-		$(tools_dir)/c-interfaces-generator.xsl \
+		$(tools_dir)/glib-interfaces-generator.xsl \
 		$< > $@
+
+_gen/interfaces-body.h: _gen/all.xml \
+	$(tools_dir)/glib-interfaces-body-generator.xsl Makefile.am
+	$(XSLTPROC) $(XSLTPROCFLAGS) \
+		--stringparam mixed-case-prefix Gabble \
+		$(tools_dir)/glib-interfaces-body-generator.xsl \
+		$< > $@
+
+_gen/gtypes.h _gen/gtypes-body.h: _gen/all.xml \
+	$(tools_dir)/glib-gtypes-generator.py Makefile.am
+	$(PYTHON) $(tools_dir)/glib-gtypes-generator.py \
+		$< _gen/gtypes Gabble

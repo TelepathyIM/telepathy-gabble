@@ -8,6 +8,8 @@ EXTRA_DIST = \
     doc-generator.xsl \
     glib-ginterface-gen.py \
     glib-gtypes-generator.py \
+    glib-interfaces-generator.xsl \
+    glib-interfaces-body-generator.xsl \
     glib-signals-marshal-gen.py \
     identity.xsl \
     libglibcodegen.py \
@@ -18,8 +20,12 @@ libglibcodegen.py: libtpcodegen.py
 	test -e $@
 	touch $@
 
+glib-interfaces-generator.xsl glib-interfaces-body-generator.xsl: %: c-interfaces-generator.xsl
+	test -e $@
+	touch $@
+
 glib-ginterface-gen.py glib-gtypes-generator.py glib-signals-marshal-gen.py: \
-		libglibcodegen.py
+		%: libglibcodegen.py
 	test -e $@
 	touch $@
 

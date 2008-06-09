@@ -4,7 +4,7 @@ The master copy of this library is in the telepathy-glib repository -
 please make any changes there.
 """
 
-# Copyright (C) 2006, 2007 Collabora Limited
+# Copyright (C) 2006-2008 Collabora Limited
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -21,44 +21,15 @@ please make any changes there.
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from string import ascii_letters, digits
-
-
-NS_TP = "http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0"
-
-_ASCII_ALNUM = ascii_letters + digits
-
-
-def camelcase_to_lower(s):
-    out ="";
-    out += s[0].lower()
-    last_upper=False
-    if s[0].isupper():
-        last_upper=True
-    for i in range(1,len(s)):
-        if s[i].isupper():
-            if last_upper:
-                if (i+1) < len(s) and  s[i+1].islower():
-                    out += "_" + s[i].lower()
-                else:
-                    out += s[i].lower()
-            else:
-                out += "_" + s[i].lower()
-            last_upper=True
-        else:
-            out += s[i]
-            last_upper=False
-    return out
-
-
-def camelcase_to_upper(s):
-    return camelcase_to_lower(s).upper()
-
-
-def cmp_by_name(node1, node2):
-    return cmp(node1.getAttributeNode("name").nodeValue,
-               node2.getAttributeNode("name").nodeValue)
-
+from libtpcodegen import NS_TP, \
+                         Signature, \
+                         camelcase_to_lower, \
+                         camelcase_to_upper, \
+                         cmp_by_name, \
+                         escape_as_identifier, \
+                         get_descendant_text, \
+                         get_docstring, \
+                         xml_escape
 
 def dbus_gutils_wincaps_to_uscore(s):
     """Bug-for-bug compatible Python port of _dbus_gutils_wincaps_to_uscore
@@ -75,60 +46,6 @@ def dbus_gutils_wincaps_to_uscore(s):
         else:
             ret += c
     return ret
-
-
-def escape_as_identifier(identifier):
-    """Escape the given string to be a valid D-Bus object path or service
-    name component, using a reversible encoding to ensure uniqueness.
-
-    The reversible encoding is as follows:
-
-    * The empty string becomes '_'
-    * Otherwise, each non-alphanumeric character is replaced by '_' plus
-      two lower-case hex digits; the same replacement is carried out on
-      the first character, if it's a digit
-    """
-    # '' -> '_'
-    if not identifier:
-        return '_'
-
-    # A bit of a fast path for strings which are already OK.
-    # We deliberately omit '_' because, for reversibility, that must also
-    # be escaped.
-    if (identifier.strip(_ASCII_ALNUM) == '' and
-        identifier[0] in ascii_letters):
-        return identifier
-
-    # The first character may not be a digit
-    if identifier[0] not in ascii_letters:
-        ret = ['_%02x' % ord(identifier[0])]
-    else:
-        ret = [identifier[0]]
-
-    # Subsequent characters may be digits or ASCII letters
-    for c in identifier[1:]:
-        if c in _ASCII_ALNUM:
-            ret.append(c)
-        else:
-            ret.append('_%02x' % ord(c))
-
-    return ''.join(ret)
-
-
-def get_docstring(element):
-    docstring = None
-    for x in element.childNodes:
-        if x.namespaceURI == NS_TP and x.localName == 'docstring':
-            docstring = x
-    if docstring is not None:
-        docstring = docstring.toxml().replace('\n', ' ').strip()
-        if docstring.startswith('<tp:docstring>'):
-            docstring = docstring[14:].lstrip()
-        if docstring.endswith('</tp:docstring>'):
-            docstring = docstring[:-15].rstrip()
-        if docstring in ('<tp:docstring/>', ''):
-            docstring = ''
-    return docstring
 
 
 def signal_to_marshal_type(signal):
@@ -181,69 +98,6 @@ def method_to_glue_marshal_name(method, prefix):
         return 'g_cclosure_marshal_VOID__' + name
     else:
         return prefix + '_marshal_VOID__' + name
-
-
-class _SignatureIter:
-    """Iterator over a D-Bus signature. Copied from dbus-python 0.71 so we
-    can run genginterface in a limited environment with only Python
-    (like Scratchbox).
-    """
-    def __init__(self, string):
-        self.remaining = string
-
-    def next(self):
-        if self.remaining == '':
-            raise StopIteration
-
-        signature = self.remaining
-        block_depth = 0
-        block_type = None
-        end = len(signature)
-
-        for marker in range(0, end):
-            cur_sig = signature[marker]
-
-            if cur_sig == 'a':
-                pass
-            elif cur_sig == '{' or cur_sig == '(':
-                if block_type == None:
-                    block_type = cur_sig
-
-                if block_type == cur_sig:
-                    block_depth = block_depth + 1
-
-            elif cur_sig == '}':
-                if block_type == '{':
-                    block_depth = block_depth - 1
-
-                if block_depth == 0:
-                    end = marker
-                    break
-
-            elif cur_sig == ')':
-                if block_type == '(':
-                    block_depth = block_depth - 1
-
-                if block_depth == 0:
-                    end = marker
-                    break
-
-            else:
-                if block_depth == 0:
-                    end = marker
-                    break
-
-        end = end + 1
-        self.remaining = signature[end:]
-        return Signature(signature[0:end])
-
-
-class Signature(str):
-    """A string, iteration over which is by D-Bus single complete types
-    rather than characters.
-    """
-    def __iter__(self):
-        return _SignatureIter(self)
 
 
 def type_to_gtype(s):
@@ -313,8 +167,3 @@ def type_to_gtype(s):
 
     # we just don't know ..
     raise Exception, "don't know the GType for " + s
-
-
-def xml_escape(s):
-    s = s.replace('&', '&amp;').replace("'", '&apos;').replace('"', '&quot;')
-    return s.replace('<', '&lt;').replace('>', '&gt;')

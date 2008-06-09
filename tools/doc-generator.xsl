@@ -27,10 +27,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
   don't work ideally in the presence of two things that want to use the
   absence of a prefix, sadly. -->
 
-  <xsl:template match="html:*" mode="html">
+  <xsl:template match="html:* | @*" mode="html">
     <xsl:copy>
       <xsl:apply-templates mode="html"/>
     </xsl:copy>
+  </xsl:template>
+
+  <xsl:template match="tp:type" mode="html">
+    <xsl:call-template name="tp-type">
+      <xsl:with-param name="tp-type" select="string(.)"/>
+    </xsl:call-template>
   </xsl:template>
 
   <xsl:template match="*" mode="identity">
@@ -41,6 +47,30 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
   <xsl:template match="tp:docstring">
     <xsl:apply-templates select="text() | html:* | tp:rationale" mode="html"/>
+  </xsl:template>
+
+  <xsl:template match="tp:added">
+    <p class="added">Added in version <xsl:value-of select="@version"/>.
+      <xsl:apply-templates select="node()" mode="html"/></p>
+  </xsl:template>
+
+  <xsl:template match="tp:changed">
+    <xsl:choose>
+      <xsl:when test="node()">
+        <p class="changed">Changed in version <xsl:value-of select="@version"/>:
+          <xsl:apply-templates select="node()" mode="html"/></p>
+      </xsl:when>
+      <xsl:otherwise>
+        <p class="changed">Changed in version
+          <xsl:value-of select="@version"/></p>
+      </xsl:otherwise>
+    </xsl:choose>
+  </xsl:template>
+
+  <xsl:template match="tp:deprecated">
+    <p class="deprecated">Deprecated since version
+      <xsl:value-of select="@version"/>.
+      <xsl:apply-templates select="node()" mode="html"/></p>
   </xsl:template>
 
   <xsl:template match="tp:rationale" mode="html">
@@ -94,6 +124,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
   <xsl:template match="tp:error">
     <h2 xmlns="http://www.w3.org/1999/xhtml"><a name="{concat(../@namespace, '.', translate(@name, ' ', ''))}"></a><xsl:value-of select="concat(../@namespace, '.', translate(@name, ' ', ''))"/></h2>
     <xsl:apply-templates select="tp:docstring"/>
+    <xsl:apply-templates select="tp:added"/>
+    <xsl:apply-templates select="tp:changed"/>
+    <xsl:apply-templates select="tp:deprecated"/>
   </xsl:template>
 
   <xsl:template match="/tp:spec/tp:copyright">
@@ -131,6 +164,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
     </xsl:if>
 
     <xsl:apply-templates select="tp:docstring" />
+    <xsl:apply-templates select="tp:added"/>
+    <xsl:apply-templates select="tp:changed"/>
+    <xsl:apply-templates select="tp:deprecated"/>
 
     <xsl:choose>
       <xsl:when test="method">
@@ -194,6 +230,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
       </a>
     </h3>
     <xsl:apply-templates select="tp:docstring" />
+    <xsl:apply-templates select="tp:added"/>
+    <xsl:apply-templates select="tp:changed"/>
+    <xsl:apply-templates select="tp:deprecated"/>
     <dl xmlns="http://www.w3.org/1999/xhtml">
         <xsl:variable name="value-prefix">
           <xsl:choose>
@@ -209,7 +248,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
         <dt xmlns="http://www.w3.org/1999/xhtml"><code><xsl:value-of select="concat($value-prefix, '_', @suffix)"/> = <xsl:value-of select="@value"/></code></dt>
         <xsl:choose>
           <xsl:when test="tp:docstring">
-            <dd xmlns="http://www.w3.org/1999/xhtml"><xsl:apply-templates select="tp:docstring" /></dd>
+            <dd xmlns="http://www.w3.org/1999/xhtml">
+              <xsl:apply-templates select="tp:docstring" />
+              <xsl:apply-templates select="tp:added"/>
+              <xsl:apply-templates select="tp:changed"/>
+              <xsl:apply-templates select="tp:deprecated"/>
+            </dd>
           </xsl:when>
           <xsl:otherwise>
             <dd xmlns="http://www.w3.org/1999/xhtml">(Undocumented)</dd>
@@ -226,6 +270,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
       </a>
     </h3>
     <xsl:apply-templates select="tp:docstring" />
+    <xsl:apply-templates select="tp:added"/>
+    <xsl:apply-templates select="tp:changed"/>
+    <xsl:apply-templates select="tp:deprecated"/>
     <dl xmlns="http://www.w3.org/1999/xhtml">
         <xsl:variable name="value-prefix">
           <xsl:choose>
@@ -241,7 +288,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
         <dt xmlns="http://www.w3.org/1999/xhtml"><code><xsl:value-of select="concat($value-prefix, '_', @suffix)"/> = <xsl:value-of select="@value"/></code></dt>
         <xsl:choose>
           <xsl:when test="tp:docstring">
-            <dd xmlns="http://www.w3.org/1999/xhtml"><xsl:apply-templates select="tp:docstring" /></dd>
+            <dd xmlns="http://www.w3.org/1999/xhtml">
+              <xsl:apply-templates select="tp:docstring" />
+              <xsl:apply-templates select="tp:added"/>
+              <xsl:apply-templates select="tp:changed"/>
+              <xsl:apply-templates select="tp:deprecated"/>
+            </dd>
           </xsl:when>
           <xsl:otherwise>
             <dd xmlns="http://www.w3.org/1999/xhtml">(Undocumented)</dd>
@@ -278,6 +330,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
     </dt>
     <dd xmlns="http://www.w3.org/1999/xhtml">
       <xsl:apply-templates select="tp:docstring"/>
+      <xsl:apply-templates select="tp:added"/>
+      <xsl:apply-templates select="tp:changed"/>
+      <xsl:apply-templates select="tp:deprecated"/>
     </dd>
   </xsl:template>
 
@@ -290,6 +345,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
     </dt>
     <dd xmlns="http://www.w3.org/1999/xhtml">
       <xsl:apply-templates select="tp:docstring"/>
+      <xsl:apply-templates select="tp:added"/>
+      <xsl:apply-templates select="tp:changed"/>
+      <xsl:apply-templates select="tp:deprecated"/>
     </dd>
   </xsl:template>
 
@@ -340,6 +398,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
       </h3>
       <div class="docstring">
         <xsl:apply-templates select="tp:docstring"/>
+        <xsl:apply-templates select="tp:added"/>
+        <xsl:apply-templates select="tp:changed"/>
+        <xsl:apply-templates select="tp:deprecated"/>
       </div>
     </div>
   </xsl:template>
@@ -385,6 +446,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
       </h3>
       <div class="docstring">
         <xsl:apply-templates select="tp:docstring"/>
+        <xsl:apply-templates select="tp:added"/>
+        <xsl:apply-templates select="tp:changed"/>
+        <xsl:apply-templates select="tp:deprecated"/>
       </div>
       <xsl:choose>
         <xsl:when test="string(@array-name) != ''">
@@ -429,6 +493,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
       </h3>
       <div xmlns="http://www.w3.org/1999/xhtml" class="docstring">
         <xsl:apply-templates select="tp:docstring" />
+        <xsl:apply-templates select="tp:added"/>
+        <xsl:apply-templates select="tp:changed"/>
+        <xsl:apply-templates select="tp:deprecated"/>
       </div>
 
       <xsl:if test="arg[@direction='in']">
@@ -463,41 +530,46 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
     </div>
   </xsl:template>
 
-  <xsl:template name="parenthesized-tp-type">
-    <xsl:if test="@tp:type">
-      <xsl:variable name="tp-type" select="@tp:type"/>
-      <xsl:variable name="single-type">
-        <xsl:choose>
-          <xsl:when test="contains($tp-type, '[]')">
-            <xsl:value-of select="substring-before($tp-type, '[]')"/>
-          </xsl:when>
-          <xsl:otherwise>
-            <xsl:value-of select="$tp-type"/>
-          </xsl:otherwise>
-        </xsl:choose>
-      </xsl:variable>
+  <xsl:template name="tp-type">
+    <xsl:param name="tp-type"/>
+
+    <xsl:variable name="single-type">
       <xsl:choose>
-        <xsl:when test="//tp:simple-type[@name=$tp-type]" />
-        <xsl:when test="//tp:simple-type[concat(@name, '[]')=$tp-type]" />
-        <xsl:when test="//tp:struct[concat(@name, '[]')=$tp-type][string(@array-name) != '']" />
-        <xsl:when test="//tp:mapping[concat(@name, '[]')=$tp-type][string(@array-name) != '']" />
-        <xsl:when test="//tp:struct[@name=$tp-type]" />
-        <xsl:when test="//tp:enum[@name=$tp-type]" />
-        <xsl:when test="//tp:enum[concat(@name, '[]')=$tp-type]" />
-        <xsl:when test="//tp:flags[@name=$tp-type]" />
-        <xsl:when test="//tp:flags[concat(@name, '[]')=$tp-type]" />
-        <xsl:when test="//tp:mapping[@name=$tp-type]" />
-        <xsl:when test="//tp:external-type[concat(@name, '[]')=$tp-type]" />
-        <xsl:when test="//tp:external-type[@name=$tp-type]" />
+        <xsl:when test="contains($tp-type, '[]')">
+          <xsl:value-of select="substring-before($tp-type, '[]')"/>
+        </xsl:when>
         <xsl:otherwise>
-          <xsl:message terminate="yes">
-            <xsl:text>ERR: Unable to find type '</xsl:text>
-            <xsl:value-of select="$tp-type"/>
-            <xsl:text>'&#10;</xsl:text>
-          </xsl:message>
+          <xsl:value-of select="$tp-type"/>
         </xsl:otherwise>
       </xsl:choose>
-      (<a href="#type-{$single-type}"><xsl:value-of select="$tp-type"/></a>)
+    </xsl:variable>
+
+    <xsl:choose>
+      <xsl:when test="//tp:simple-type[@name=$single-type]" />
+      <xsl:when test="//tp:struct[@name=$single-type]" />
+      <xsl:when test="//tp:enum[@name=$single-type]" />
+      <xsl:when test="//tp:flags[@name=$single-type]" />
+      <xsl:when test="//tp:mapping[@name=$single-type]" />
+      <xsl:when test="//tp:external-type[@name=$single-type]" />
+      <xsl:otherwise>
+        <xsl:message terminate="yes">
+          <xsl:text>ERR: Unable to find type '</xsl:text>
+          <xsl:value-of select="$tp-type"/>
+          <xsl:text>'&#10;</xsl:text>
+        </xsl:message>
+      </xsl:otherwise>
+    </xsl:choose>
+    <a href="#type-{$single-type}"><xsl:value-of select="$tp-type"/></a>
+
+  </xsl:template>
+
+  <xsl:template name="parenthesized-tp-type">
+    <xsl:if test="@tp:type">
+      <xsl:text>(</xsl:text>
+      <xsl:call-template name="tp-type">
+        <xsl:with-param name="tp-type" select="@tp:type"/>
+      </xsl:call-template>
+      <xsl:text>)</xsl:text>
     </xsl:if>
   </xsl:template>
 
@@ -574,8 +646,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
           <xsl:if test="position() != last()">, </xsl:if>
         </xsl:for-each>
         )</h3>
+
       <div xmlns="http://www.w3.org/1999/xhtml" class="docstring">
         <xsl:apply-templates select="tp:docstring"/>
+        <xsl:apply-templates select="tp:added"/>
+        <xsl:apply-templates select="tp:changed"/>
+        <xsl:apply-templates select="tp:deprecated"/>
       </div>
 
       <xsl:if test="arg">
@@ -702,6 +778,15 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
             font-style: italic;
             border-left: 0.25em solid #808080;
             padding-left: 0.5em;
+          }
+
+          .added {
+            color: #006600;
+            background: #ffffff;
+          }
+          .deprecated {
+            color: #ff0000;
+            background: #ffffff;
           }
 
         </style>

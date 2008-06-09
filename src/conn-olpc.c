@@ -38,10 +38,6 @@
 #include "util.h"
 #include "olpc-view.h"
 
-#define ACTIVITY_PAIR_TYPE \
-    dbus_g_type_get_struct ("GValueArray", G_TYPE_STRING, G_TYPE_UINT, \
-        G_TYPE_INVALID)
-
 static gboolean
 update_activities_properties (GabbleConnection *conn, const gchar *contact,
     LmMessage *msg);
@@ -843,9 +839,9 @@ get_buddy_activities (GabbleConnection *conn,
               continue;
             }
 
-          g_value_init (&gvalue, ACTIVITY_PAIR_TYPE);
+          g_value_init (&gvalue, GABBLE_STRUCT_TYPE_ACTIVITY);
           g_value_take_boxed (&gvalue, dbus_g_type_specialized_construct
-              (ACTIVITY_PAIR_TYPE));
+              (GABBLE_STRUCT_TYPE_ACTIVITY));
           dbus_g_type_struct_set (&gvalue,
               0, info->id,
               1, info->handle,
@@ -966,7 +962,7 @@ free_activities (GPtrArray *activities)
   guint i;
 
   for (i = 0; i < activities->len; i++)
-    g_boxed_free (ACTIVITY_PAIR_TYPE, activities->pdata[i]);
+    g_boxed_free (GABBLE_STRUCT_TYPE_ACTIVITY, activities->pdata[i]);
 
   g_ptr_array_free (activities, TRUE);
 }
@@ -994,7 +990,7 @@ check_activity_properties (GabbleConnection *conn,
       guint channel;
       ActivityInfo *info;
 
-      g_value_init (&pair, ACTIVITY_PAIR_TYPE);
+      g_value_init (&pair, GABBLE_STRUCT_TYPE_ACTIVITY);
       g_value_set_static_boxed (&pair, g_ptr_array_index (activities, i));
       dbus_g_type_struct_get (&pair,
           0, &activity,
@@ -1198,7 +1194,7 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
       ActivityInfo *info;
       GError *error = NULL;
 
-      g_value_init (&pair, ACTIVITY_PAIR_TYPE);
+      g_value_init (&pair, GABBLE_STRUCT_TYPE_ACTIVITY);
       g_value_set_static_boxed (&pair, g_ptr_array_index (activities, i));
       dbus_g_type_struct_get (&pair,
           0, &activity,

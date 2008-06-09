@@ -7,10 +7,21 @@ EXTRA_DIST = \
     check-whitespace.sh \
     doc-generator.xsl \
     glib-ginterface-gen.py \
+    glib-gtypes-generator.py \
     glib-signals-marshal-gen.py \
     identity.xsl \
     libglibcodegen.py \
+    libtpcodegen.py \
     xep.xsl
+
+libglibcodegen.py: libtpcodegen.py
+	test -e $@
+	touch $@
+
+glib-ginterface-gen.py glib-gtypes-generator.py glib-signals-marshal-gen.py: \
+		libglibcodegen.py
+	test -e $@
+	touch $@
 
 maintainer-update-from-xmpp.org:
 	set -e; \

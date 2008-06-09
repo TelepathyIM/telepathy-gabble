@@ -3452,7 +3452,7 @@ activity_query_result_cb (GabbleConnection *conn,
   for (activity = view_node->children; activity != NULL;
       activity = activity->next)
     {
-      const gchar *jid;
+      const gchar *jid, *act_id;
       LmMessageNode *properties_node;
       GHashTable *properties;
       TpHandle handle;
@@ -3461,6 +3461,18 @@ activity_query_result_cb (GabbleConnection *conn,
       GPtrArray *buddies_properties;
 
       jid = lm_message_node_get_attribute (activity, "room");
+      if (jid == NULL)
+        {
+          NODE_DEBUG (activity, "No room attribute, skipping");
+          continue;
+        }
+
+      act_id = lm_message_node_get_attribute (activity, "activity");
+      if (act_id == NULL)
+        {
+          NODE_DEBUG (activity, "No activity ID, skipping");
+          continue;
+        }
 
       handle = tp_handle_ensure (room_repo, jid, NULL, NULL);
       if (handle == 0)
@@ -3491,6 +3503,14 @@ activity_query_result_cb (GabbleConnection *conn,
       else
         {
           info->refcount++;
+        }
+
+      if (tp_strdiff (info->id, act_id))
+        {
+          DEBUG ("Assigning new ID <%s> to room #%u", act_id, handle);
+
+          g_free (info->id);
+          info->id = g_strdup (act_id);
         }
 
       activity_info_set_properties (info, properties);

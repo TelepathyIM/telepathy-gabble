@@ -83,6 +83,7 @@ def test(q, bus, conn, stream):
     view = xpath.queryForNodes('/iq/view', reply)[0]
     activity = view.addElement((None, "activity"))
     activity['room'] = 'room1@conference.localhost'
+    activity['activity'] = 'activity1'
     properties = activity.addElement((NS_OLPC_ACTIVITY_PROPS, "properties"))
     property = properties.addElement((None, "property"))
     property['type'] = 'str'
@@ -152,6 +153,7 @@ def test(q, bus, conn, stream):
     view = xpath.queryForNodes('/iq/view', reply)[0]
     activity = view.addElement((None, "activity"))
     activity['room'] = 'room2@conference.localhost'
+    activity['activity'] = 'activity2'
     properties = activity.addElement((NS_OLPC_ACTIVITY_PROPS, "properties"))
     property = properties.addElement((None, "property"))
     property['type'] = 'str'
@@ -198,6 +200,7 @@ def test(q, bus, conn, stream):
     view = xpath.queryForNodes('/iq/view', reply)[0]
     activity = view.addElement((None, "activity"))
     activity['room'] = 'room2@conference.localhost'
+    activity['activity'] = 'activity2'
     properties = activity.addElement((NS_OLPC_ACTIVITY_PROPS, "properties"))
     property = properties.addElement((None, "property"))
     property['type'] = 'str'

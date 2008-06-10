@@ -37,6 +37,7 @@
 #include "disco.h"
 #include "util.h"
 #include "olpc-view.h"
+#include "olpc-activity.h"
 
 static gboolean
 update_activities_properties (GabbleConnection *conn, const gchar *contact,
@@ -53,19 +54,19 @@ typedef struct
   guint refcount;
 } ActivityInfo;
 
-static const gchar *
+static const gchar*
 activity_info_get_room (ActivityInfo *info)
 {
   return tp_handle_inspect (info->room_repo, info->handle);
 }
 
-static ActivityInfo *
+static ActivityInfo*
 activity_info_new (GabbleConnection *conn,
                    TpHandle handle)
 {
   ActivityInfo *info;
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) conn, TP_HANDLE_TYPE_ROOM);
+      (TpBaseConnection*) conn, TP_HANDLE_TYPE_ROOM);
 
   g_assert (tp_handle_is_valid (room_repo, handle, NULL));
 
@@ -154,27 +155,27 @@ activity_info_is_visible (ActivityInfo *info)
 /* Returns TRUE if it actually contributed something, else FALSE.
  */
 static gboolean
-activity_info_contribute_properties (ActivityInfo *info,
+activity_info_contribute_properties (GabbleOlpcActivity *activity,
                                      LmMessageNode *parent,
                                      gboolean only_public)
 {
   LmMessageNode *props_node;
 
-  if (info->id == NULL || info->properties == NULL)
+  if (activity->id == NULL || activity->properties == NULL)
     return FALSE;
 
-  if (only_public && !activity_info_is_visible (info))
+  if (only_public && !gabble_olpc_activity_is_visible (activity))
     return FALSE;
 
   props_node = lm_message_node_add_child (parent,
       "properties", "");
   lm_message_node_set_attributes (props_node,
       "xmlns", NS_OLPC_ACTIVITY_PROPS,
-      "room", activity_info_get_room (info),
-      "activity", info->id,
+      "room", gabble_olpc_activity_get_room (activity),
+      "activity", activity->id,
       NULL);
-  lm_message_node_add_children_from_properties (props_node, info->properties,
-      "property");
+  lm_message_node_add_children_from_properties (props_node,
+      activity->properties, "property");
   return TRUE;
 }
 
@@ -184,10 +185,10 @@ decrement_contacts_activities_set_foreach (TpHandleSet *set,
                                            gpointer data)
 {
   GabbleConnection *conn = data;
-  ActivityInfo *info = g_hash_table_lookup (conn->olpc_activities_info,
-      GUINT_TO_POINTER (handle));
+  GabbleOlpcActivity *activity = g_hash_table_lookup (
+      conn->olpc_activities_info, GUINT_TO_POINTER (handle));
 
-  activity_info_unref (info);
+  g_object_unref (activity);
 }
 
 /* context may be NULL. */
@@ -769,18 +770,19 @@ get_activity_properties_reply_cb (GabbleConnection *conn,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
-static ActivityInfo *
+static ActivityInfo*
 add_activity_info (GabbleConnection *conn,
                    TpHandle handle)
 {
-  ActivityInfo *info;
+  GabbleOlpcActivity *activity;
 
-  info = activity_info_new (conn, handle);
+  activity = gabble_olpc_activity_new (conn, handle);
 
   g_hash_table_insert (conn->olpc_activities_info,
-      GUINT_TO_POINTER (handle), info);
+      GUINT_TO_POINTER (handle), activity);
+  g_object_weak_ref (G_OBJECT (activity), activity_disposed_cb, conn);
 
-  return info;
+  return activity;
 }
 
 static GPtrArray *
@@ -828,12 +830,12 @@ get_buddy_activities (GabbleConnection *conn,
 
       while (tp_intset_iter_next (&iter))
         {
-          ActivityInfo *info = g_hash_table_lookup (
+          GabbleOlpcActivity *activity = g_hash_table_lookup (
               conn->olpc_activities_info, GUINT_TO_POINTER (iter.element));
           GValue gvalue = { 0 };
 
-          g_assert (info != NULL);
-          if (info->id == NULL)
+          g_assert (activity != NULL);
+          if (activity->id == NULL)
             {
               DEBUG ("... activity #%u has no ID, skipping", iter.element);
               continue;
@@ -843,11 +845,11 @@ get_buddy_activities (GabbleConnection *conn,
           g_value_take_boxed (&gvalue, dbus_g_type_specialized_construct
               (GABBLE_STRUCT_TYPE_ACTIVITY));
           dbus_g_type_struct_set (&gvalue,
-              0, info->id,
-              1, info->handle,
+              0, activity->id,
+              1, activity->room,
               G_MAXUINT);
           DEBUG ("... activity #%u (ID %s)",
-              info->handle, info->id);
+              activity->room, activity->id);
           g_ptr_array_add (activities, g_value_get_boxed (&gvalue));
         }
     }
@@ -878,7 +880,7 @@ extract_activities (GabbleConnection *conn,
     {
       const gchar *act_id;
       const gchar *room;
-      ActivityInfo *info;
+      GabbleOlpcActivity *activity;
       TpHandle room_handle;
 
       if (tp_strdiff (node->name, "activity"))
@@ -905,12 +907,12 @@ extract_activities (GabbleConnection *conn,
           continue;
         }
 
-      info = g_hash_table_lookup (conn->olpc_activities_info,
+      activity = g_hash_table_lookup (conn->olpc_activities_info,
           GUINT_TO_POINTER (room_handle));
 
-      if (info == NULL)
+      if (activity == NULL)
         {
-          info = add_activity_info (conn, room_handle);
+          activity = add_activity_info (conn, room_handle);
           g_assert (!tp_handle_set_is_member (activities_set, room_handle));
         }
       else
@@ -921,22 +923,22 @@ extract_activities (GabbleConnection *conn,
               tp_handle_unref (room_repo, room_handle);
               continue;
             }
-          info->refcount++;
+
+          g_object_ref (activity);
 
           DEBUG ("ref: %s (%d) refcount: %d\n",
-              activity_info_get_room (info),
-              info->handle, info->refcount);
+              gabble_olpc_activity_get_room (activity),
+              activity->room, G_OBJECT (activity)->ref_count);
         }
       /* pass ownership to the activities_set */
       tp_handle_set_add (activities_set, room_handle);
       tp_handle_unref (room_repo, room_handle);
 
-      if (tp_strdiff (info->id, act_id))
+      if (tp_strdiff (activity->id, act_id))
         {
           DEBUG ("Assigning new ID <%s> to room #%u <%s>", act_id, room_handle,
               room);
-          g_free (info->id);
-          info->id = g_strdup (act_id);
+          g_object_set (activity, "id", act_id, NULL);
         }
     }
 
@@ -986,25 +988,21 @@ check_activity_properties (GabbleConnection *conn,
   for (i = 0; i < activities->len && !query_needed; i++)
     {
       GValue pair = {0,};
-      gchar *activity;
       guint channel;
-      ActivityInfo *info;
+      GabbleOlpcActivity *activity;
 
       g_value_init (&pair, GABBLE_STRUCT_TYPE_ACTIVITY);
       g_value_set_static_boxed (&pair, g_ptr_array_index (activities, i));
       dbus_g_type_struct_get (&pair,
-          0, &activity,
           1, &channel,
           G_MAXUINT);
 
-      info = g_hash_table_lookup (conn->olpc_activities_info,
+      activity = g_hash_table_lookup (conn->olpc_activities_info,
           GUINT_TO_POINTER (channel));
-      if (info == NULL || info->properties == NULL)
+      if (activity == NULL || activity->properties == NULL)
         {
           query_needed = TRUE;
         }
-
-      g_free (activity);
     }
 
   if (query_needed)
@@ -1116,19 +1114,19 @@ upload_activities_pep (GabbleConnection *conn,
 
       while (tp_intset_iter_next (&iter))
         {
-          ActivityInfo *info = g_hash_table_lookup (conn->olpc_activities_info,
-              GUINT_TO_POINTER (iter.element));
+          GabbleOlpcActivity *activity = g_hash_table_lookup (
+              conn->olpc_activities_info, GUINT_TO_POINTER (iter.element));
           LmMessageNode *activity_node;
 
-          g_assert (info != NULL);
-          if (!activity_info_is_visible (info))
+          g_assert (activity != NULL);
+          if (!gabble_olpc_activity_is_visible (activity))
             continue;
 
           activity_node = lm_message_node_add_child (publish,
               "activity", "");
           lm_message_node_set_attributes (activity_node,
-              "type", info->id,
-              "room", activity_info_get_room (info),
+              "type", activity->id,
+              "room", gabble_olpc_activity_get_room (activity),
               NULL);
         }
     }
@@ -1188,16 +1186,16 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
   for (i = 0; i < activities->len; i++)
     {
       GValue pair = {0,};
-      gchar *activity;
+      gchar *id;
       guint channel;
       const gchar *room = NULL;
-      ActivityInfo *info;
+      GabbleOlpcActivity *activity;
       GError *error = NULL;
 
       g_value_init (&pair, GABBLE_STRUCT_TYPE_ACTIVITY);
       g_value_set_static_boxed (&pair, g_ptr_array_index (activities, i));
       dbus_g_type_struct_get (&pair,
-          0, &activity,
+          0, &id,
           1, &channel,
           G_MAXUINT);
 
@@ -1216,18 +1214,18 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
 
           tp_handle_set_destroy (activities_set);
           g_error_free (error);
-          g_free (activity);
+          g_free (id);
           return;
         }
 
       room = tp_handle_inspect (room_repo, channel);
 
-      info = g_hash_table_lookup (conn->olpc_activities_info,
+      activity = g_hash_table_lookup (conn->olpc_activities_info,
           GUINT_TO_POINTER (channel));
 
-      if (info == NULL)
+      if (activity == NULL)
         {
-          info = add_activity_info (conn, channel);
+          activity = add_activity_info (conn, channel);
         }
       else
         {
@@ -1254,14 +1252,14 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
               return;
             }
 
-          info->refcount++;
+          g_object_ref (activity);
 
           DEBUG ("ref: %s (%d) refcount: %d\n",
-              activity_info_get_room (info),
-              info->handle, info->refcount);
+              gabble_olpc_activity_get_room (activity),
+              activity->room, G_OBJECT (activity)->ref_count);
         }
-      g_free (info->id);
-      info->id = activity;
+
+      g_object_set (activity, "id", id, NULL);
 
       tp_handle_set_add (activities_set, channel);
     }
@@ -1315,13 +1313,13 @@ olpc_buddy_info_activities_event_handler (GabbleConnection *conn,
   return TRUE;
 }
 
-static ActivityInfo *
+static ActivityInfo*
 add_activity_info_in_set (GabbleConnection *conn,
                           TpHandle room_handle,
                           const gchar *from,
                           GHashTable *table)
 {
-  ActivityInfo *info;
+  GabbleOlpcActivity *activity;
   TpHandle from_handle;
   TpHandleSet *activities_set;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
@@ -1337,7 +1335,7 @@ add_activity_info_in_set (GabbleConnection *conn,
       return NULL;
     }
 
-  info = add_activity_info (conn, room_handle);
+  activity = add_activity_info (conn, room_handle);
 
   /* Add activity information in the list of the contact */
   activities_set = g_hash_table_lookup (table, GUINT_TO_POINTER (
@@ -1355,18 +1353,18 @@ add_activity_info_in_set (GabbleConnection *conn,
 
   tp_handle_set_add (activities_set, room_handle);
 
-  return info;
+  return activity;
 }
 
 static gboolean
 extract_current_activity (GabbleConnection *conn,
                           LmMessageNode *node,
                           const gchar *contact,
-                          const gchar **activity,
+                          const gchar **id,
                           guint *handle)
 {
   const gchar *room;
-  ActivityInfo *info;
+  GabbleOlpcActivity *activity;
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_ROOM);
   TpHandle room_handle;
@@ -1374,7 +1372,7 @@ extract_current_activity (GabbleConnection *conn,
   if (node == NULL)
     return FALSE;
 
-  *activity = lm_message_node_get_attribute (node, "type");
+  *id = lm_message_node_get_attribute (node, "type");
 
   room = lm_message_node_get_attribute (node, "room");
   if (room == NULL || room[0] == '\0')
@@ -1384,10 +1382,10 @@ extract_current_activity (GabbleConnection *conn,
   if (room_handle == 0)
     return FALSE;
 
-  info = g_hash_table_lookup (conn->olpc_activities_info,
+  activity = g_hash_table_lookup (conn->olpc_activities_info,
       GUINT_TO_POINTER (room_handle));
 
-  if (info == NULL)
+  if (activity == NULL)
     {
       /* Humm we received as current activity an activity we don't know yet.
        * If the remote user doesn't announce this activity
@@ -1396,16 +1394,16 @@ extract_current_activity (GabbleConnection *conn,
 
       DEBUG ("unknown current activity %s", room);
 
-      info = add_activity_info_in_set (conn, room_handle, contact,
+      activity = add_activity_info_in_set (conn, room_handle, contact,
           conn->olpc_pep_activities);
     }
 
   tp_handle_unref (room_repo, room_handle);
 
-  if (info == NULL)
+  if (activity == NULL)
     return FALSE;
 
-  *handle = info->handle;
+  *handle = activity->room;
 
   return TRUE;
 }
@@ -1500,7 +1498,7 @@ activity_in_own_set (GabbleConnection *conn,
   room_handle = tp_handle_lookup (room_repo, room, NULL, NULL);
   if (room_handle == 0)
     /* If activity's information was in the list, we would
-     * have found the handle as ActivityInfo keep a ref on it */
+     * have found the handle as Activity keep a ref on it */
     return FALSE;
 
   activities_set = g_hash_table_lookup (conn->olpc_pep_activities,
@@ -1641,10 +1639,10 @@ upload_activity_properties_pep (GabbleConnection *conn,
 
       while (tp_intset_iter_next (&iter))
         {
-          ActivityInfo *info = g_hash_table_lookup (conn->olpc_activities_info,
-              GUINT_TO_POINTER (iter.element));
+          GabbleOlpcActivity *activity = g_hash_table_lookup (
+              conn->olpc_activities_info, GUINT_TO_POINTER (iter.element));
 
-          activity_info_contribute_properties (info, publish, TRUE);
+          activity_info_contribute_properties (activity, publish, TRUE);
         }
     }
 
@@ -1665,7 +1663,7 @@ upload_activity_properties_pep (GabbleConnection *conn,
 typedef struct {
     DBusGMethodInvocation *context;
     gboolean visibility_changed;
-    ActivityInfo *info;
+    GabbleOlpcActivity *activity;
 } set_properties_ctx;
 
 static LmHandlerResult
@@ -1688,7 +1686,7 @@ set_activity_properties_activities_reply_cb (GabbleConnection *conn,
     }
 
   gabble_svc_olpc_activity_properties_emit_activity_properties_changed (
-      conn, context->info->handle, context->info->properties);
+      conn, context->activity->room, context->activity->properties);
 
   gabble_svc_olpc_activity_properties_return_from_set_properties (
       context->context);
@@ -1739,12 +1737,13 @@ set_activity_properties_reply_cb (GabbleConnection *conn,
 }
 
 static gboolean
-refresh_invitations (GabbleMucChannel *chan,
-                     ActivityInfo *info,
+refresh_invitations (GabbleConnection *conn,
+                     GabbleMucChannel *chan,
+                     GabbleOlpcActivity *activity,
                      GError **error)
 {
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) info->conn, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
   TpHandleSet *invitees = g_object_get_qdata ((GObject *) chan,
       invitees_quark ());
 
@@ -1754,14 +1753,14 @@ refresh_invitations (GabbleMucChannel *chan,
       TpIntSetIter iter = TP_INTSET_ITER_INIT (tp_handle_set_peek
           (invitees));
 
-      activity_info_contribute_properties (info, msg->node, FALSE);
+      activity_info_contribute_properties (activity, msg->node, FALSE);
 
       while (tp_intset_iter_next (&iter))
         {
           const gchar *to = tp_handle_inspect (contact_repo, iter.element);
 
           lm_message_node_set_attribute (msg->node, "to", to);
-          if (!_gabble_connection_send (info->conn, msg, error))
+          if (!_gabble_connection_send (conn, msg, error))
             {
               DEBUG ("Unable to re-send activity properties to invitee %s",
                   to);
@@ -1799,7 +1798,7 @@ olpc_activity_properties_set_properties (GabbleSvcOLPCActivityProperties *iface,
   LmMessage *msg;
   const gchar *jid;
   GHashTable *properties_copied;
-  ActivityInfo *info;
+  GabbleOlpcActivity *activity;
   GabbleMucChannel *muc_channel;
   guint state;
   gboolean was_visible, is_visible;
@@ -1847,19 +1846,19 @@ olpc_activity_properties_set_properties (GabbleSvcOLPCActivityProperties *iface,
   tp_g_hash_table_update (properties_copied, properties,
       (GBoxedCopyFunc) g_strdup, (GBoxedCopyFunc) tp_g_value_slice_dup);
 
-  info = g_hash_table_lookup (conn->olpc_activities_info,
+  activity = g_hash_table_lookup (conn->olpc_activities_info,
       GUINT_TO_POINTER (room));
 
-  was_visible = activity_info_is_visible (info);
+  was_visible = gabble_olpc_activity_is_visible (activity);
 
-  activity_info_set_properties (info, properties_copied);
+  g_object_set (activity, "properties", properties_copied, NULL);
 
-  is_visible = activity_info_is_visible (info);
+  is_visible = gabble_olpc_activity_is_visible (activity);
 
   msg = lm_message_new (jid, LM_MESSAGE_TYPE_MESSAGE);
   lm_message_node_set_attribute (msg->node, "type", "groupchat");
-  activity_info_contribute_properties (info, msg->node, FALSE);
-  if (!_gabble_connection_send (info->conn, msg, NULL))
+  activity_info_contribute_properties (activity, msg->node, FALSE);
+  if (!_gabble_connection_send (conn, msg, NULL))
     {
       GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
         "Failed to send property change notification to chatroom" };
@@ -1870,7 +1869,7 @@ olpc_activity_properties_set_properties (GabbleSvcOLPCActivityProperties *iface,
     }
   lm_message_unref (msg);
 
-  if (!refresh_invitations (muc_channel, info, &err))
+  if (!refresh_invitations (conn, muc_channel, activity, &err))
     {
       dbus_g_method_return_error (context, err);
       g_error_free (err);
@@ -1880,7 +1879,7 @@ olpc_activity_properties_set_properties (GabbleSvcOLPCActivityProperties *iface,
   ctx = g_slice_new (set_properties_ctx);
   ctx->context = context;
   ctx->visibility_changed = (was_visible != is_visible);
-  ctx->info = info;
+  ctx->activity = activity;
 
   if (!was_visible && is_visible)
     {
@@ -1915,7 +1914,7 @@ olpc_activity_properties_get_properties (GabbleSvcOLPCActivityProperties *iface,
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   gboolean not_prop = FALSE;
   GHashTable *properties;
-  ActivityInfo *info;
+  GabbleOlpcActivity *activity;
 
   DEBUG ("called");
 
@@ -1923,10 +1922,10 @@ olpc_activity_properties_get_properties (GabbleSvcOLPCActivityProperties *iface,
   if (!check_pep (conn, context))
     return;
 
-  info = g_hash_table_lookup (conn->olpc_activities_info,
+  activity = g_hash_table_lookup (conn->olpc_activities_info,
       GUINT_TO_POINTER (room));
 
-  if (info == NULL || info->properties == NULL)
+  if (activity == NULL || activity->properties == NULL)
     {
       /* no properties */
       properties = g_hash_table_new (g_str_hash, g_str_equal);
@@ -1934,7 +1933,7 @@ olpc_activity_properties_get_properties (GabbleSvcOLPCActivityProperties *iface,
     }
   else
     {
-      properties = info->properties;
+      properties = activity->properties;
     }
 
   gabble_svc_olpc_activity_properties_return_from_get_properties (context,
@@ -2031,17 +2030,17 @@ update_activity_properties (GabbleConnection *conn,
 {
   GHashTable *new_properties, *old_properties;
   gboolean new_infos = FALSE;
-  ActivityInfo *info;
+  GabbleOlpcActivity *activity;
   TpHandle room_handle;
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_ROOM);
 
   room_handle = tp_handle_ensure (room_repo, room, NULL, NULL);
 
-  info = g_hash_table_lookup (conn->olpc_activities_info,
+  activity = g_hash_table_lookup (conn->olpc_activities_info,
       GUINT_TO_POINTER (room_handle));
 
-  if (info == NULL)
+  if (activity == NULL)
     {
       DEBUG ("unknown activity: %s", room);
       if (contact != NULL)
@@ -2051,21 +2050,21 @@ update_activity_properties (GabbleConnection *conn,
            * If the remote user doesn't announce this activity
            * in his next activities list, information about
            * it will be freed */
-          info = add_activity_info_in_set (conn, room_handle, contact,
+          activity = add_activity_info_in_set (conn, room_handle, contact,
               conn->olpc_pep_activities);
         }
       else
         {
-          info = add_activity_info (conn, room_handle);
+          activity = add_activity_info (conn, room_handle);
         }
     }
 
   tp_handle_unref (room_repo, room_handle);
 
-  if (info == NULL)
+  if (activity == NULL)
     return;
 
-  old_properties = info->properties;
+  old_properties = activity->properties;
 
   new_properties = lm_message_node_extract_properties (properties_node,
       "property");
@@ -2083,14 +2082,14 @@ update_activity_properties (GabbleConnection *conn,
       new_infos = TRUE;
     }
 
-  activity_info_set_properties (info, new_properties);
+  g_object_set (activity, "properties", new_properties, NULL);
 
   if (new_infos)
     {
       /* Only emit the signal if we add new values */
 
       gabble_svc_olpc_activity_properties_emit_activity_properties_changed (
-          conn, info->handle, new_properties);
+          conn, activity->room, new_properties);
     }
 }
 
@@ -2193,7 +2192,7 @@ conn_olpc_process_activity_properties_message (GabbleConnection *conn,
       "properties", NS_OLPC_ACTIVITY_PROPS);
   const gchar *id;
   TpHandle room_handle, contact_handle = 0;
-  ActivityInfo *info;
+  GabbleOlpcActivity *activity;
   TpHandleSet *their_invites, *our_activities;
   GHashTable *old_properties, *new_properties;
   gboolean properties_changed, pep_properties_changed, activities_changed;
@@ -2283,7 +2282,7 @@ conn_olpc_process_activity_properties_message (GabbleConnection *conn,
         }
     }
 
-  info = g_hash_table_lookup (conn->olpc_activities_info,
+  activity = g_hash_table_lookup (conn->olpc_activities_info,
       GUINT_TO_POINTER (room_handle));
 
   if (contact_handle != 0)
@@ -2303,17 +2302,17 @@ conn_olpc_process_activity_properties_message (GabbleConnection *conn,
               room_handle);
         }
 
-      if (info == NULL)
+      if (activity == NULL)
         {
-          DEBUG ("... creating new ActivityInfo");
-          info = add_activity_info (conn, room_handle);
+          DEBUG ("... creating new Activity");
+          activity = add_activity_info (conn, room_handle);
           tp_handle_set_add (their_invites, room_handle);
         }
       else if (!tp_handle_set_is_member (their_invites, room_handle))
         {
           DEBUG ("... it's the first time that contact invited me, "
-              "referencing ActivityInfo on their behalf");
-          info->refcount++;
+              "referencing Activity on their behalf");
+          g_object_ref (activity);
           tp_handle_set_add (their_invites, room_handle);
         }
       tp_handle_unref (room_repo, room_handle);
@@ -2321,8 +2320,8 @@ conn_olpc_process_activity_properties_message (GabbleConnection *conn,
   else
     {
       activities_changed = FALSE;
-      /* we're in the room, so it ought to have an ActivityInfo ref'd */
-      g_assert (info != NULL);
+      /* we're in the room, so it ought to have an Activity ref'd */
+      g_assert (activity != NULL);
     }
 
   new_properties = lm_message_node_extract_properties (node,
@@ -2332,27 +2331,26 @@ conn_olpc_process_activity_properties_message (GabbleConnection *conn,
   /* before applying the changes, gather enough information to work out
    * whether anything changed */
 
-  old_properties = info->properties;
+  old_properties = activity->properties;
 
-  was_visible = activity_info_is_visible (info);
+  was_visible = gabble_olpc_activity_is_visible (activity);
 
   properties_changed = old_properties == NULL
     || properties_contains_new_infos (old_properties, new_properties);
 
   /* apply the info we found */
 
-  if (tp_strdiff (info->id, id))
+  if (tp_strdiff (activity->id, id))
     {
       DEBUG ("... recording new activity ID %s", id);
-      g_free (info->id);
-      info->id = g_strdup (id);
+      g_object_set (activity, "id", id, NULL);
     }
 
-  activity_info_set_properties (info, new_properties);
+  g_object_set (activity, "properties", new_properties, NULL);
 
   /* emit signals and amend our PEP nodes, if necessary */
 
-  is_visible = activity_info_is_visible (info);
+  is_visible = gabble_olpc_activity_is_visible (activity);
 
   if (is_visible)
     {
@@ -2379,7 +2377,7 @@ conn_olpc_process_activity_properties_message (GabbleConnection *conn,
     }
 
   if (properties_changed && muc_channel != NULL)
-    refresh_invitations (muc_channel, info, NULL);
+    refresh_invitations (conn, muc_channel, activity, NULL);
 
   /* If we're announcing this activity, we might need to change our PEP node */
   if (pep_properties_changed)
@@ -2434,12 +2432,13 @@ closed_pep_reply_cb (GabbleConnection *conn,
 }
 
 static gboolean
-revoke_invitations (GabbleMucChannel *chan,
-                    ActivityInfo *info,
+revoke_invitations (GabbleConnection *conn,
+                    GabbleMucChannel *chan,
+                    GabbleOlpcActivity *activity,
                     GError **error)
 {
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) info->conn, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
   TpHandleSet *invitees = g_object_get_qdata ((GObject *) chan,
       invitees_quark ());
 
@@ -2454,17 +2453,17 @@ revoke_invitations (GabbleMucChannel *chan,
       lm_message_node_set_attribute (uninvite_node, "xmlns",
           NS_OLPC_ACTIVITY_PROPS);
       lm_message_node_set_attribute (uninvite_node, "room",
-          activity_info_get_room (info));
+          gabble_olpc_activity_get_room (activity));
       lm_message_node_set_attribute (uninvite_node, "id",
-          info->id);
+          activity->id);
 
-      DEBUG ("revoke invitations for activity %s", info->id);
+      DEBUG ("revoke invitations for activity %s", activity->id);
       while (tp_intset_iter_next (&iter))
         {
           const gchar *to = tp_handle_inspect (contact_repo, iter.element);
 
           lm_message_node_set_attribute (msg->node, "to", to);
-          if (!_gabble_connection_send (info->conn, msg, error))
+          if (!_gabble_connection_send (conn, msg, error))
             {
               DEBUG ("Unable to send activity invitee revocation %s",
                   to);
@@ -2539,27 +2538,27 @@ conn_olpc_process_activity_uninvite_message (GabbleConnection *conn,
 
   if (tp_handle_set_remove (rooms, room_handle))
     {
-      ActivityInfo *info;
+      GabbleOlpcActivity *activity;
       GPtrArray *activities;
 
-      info = g_hash_table_lookup (conn->olpc_activities_info,
+      activity = g_hash_table_lookup (conn->olpc_activities_info,
           GUINT_TO_POINTER (room_handle));
 
-      if (info == NULL)
+      if (activity == NULL)
         {
           DEBUG ("No info about activity associated with room %s", room);
           return TRUE;
         }
 
-      if (tp_strdiff (id, info->id))
+      if (tp_strdiff (id, activity->id))
         {
           DEBUG ("Uninvite's activity id (%s) doesn't match our "
-              "activity id (%s)", id, info->id);
+              "activity id (%s)", id, activity->id);
           return TRUE;
         }
 
       DEBUG ("remove invite from %s", from);
-      activity_info_unref (info);
+      g_object_unref (activity);
 
       /* Emit BuddyInfo::ActivitiesChanged */
       activities = get_buddy_activities (conn, from_handle);
@@ -2578,31 +2577,32 @@ conn_olpc_process_activity_uninvite_message (GabbleConnection *conn,
 
 static void
 muc_channel_closed_cb (GabbleMucChannel *chan,
-                       ActivityInfo *info)
+                       GabbleOlpcActivity *activity)
 {
-  GabbleConnection *conn = info->conn;
-  TpBaseConnection *base = (TpBaseConnection *) info->conn;
+  GabbleConnection *conn;
   TpHandleSet *my_activities;
   gboolean was_in_our_pep = FALSE;
 
+  g_object_get (activity, "connection", &conn, NULL);
+
   /* Revoke invitations we sent for this activity */
-  revoke_invitations (chan, info, NULL);
+  revoke_invitations (conn, chan, activity, NULL);
 
   /* remove it from our advertised activities list, unreffing it in the
    * process if it was in fact advertised */
   my_activities = g_hash_table_lookup (conn->olpc_pep_activities,
-      GUINT_TO_POINTER (base->self_handle));
+      GUINT_TO_POINTER (TP_BASE_CONNECTION (conn)->self_handle));
   if (my_activities != NULL)
     {
-      if (tp_handle_set_remove (my_activities, info->handle))
+      if (tp_handle_set_remove (my_activities, activity->room))
         {
-          was_in_our_pep = activity_info_is_visible (info);
-          activity_info_unref (info);
+          was_in_our_pep = gabble_olpc_activity_is_visible (activity);
+          g_object_unref (activity);
         }
     }
 
   /* unref it again (it was referenced on behalf of the channel) */
-  activity_info_unref (info);
+  g_object_unref (activity);
 
   if (was_in_our_pep)
     {
@@ -2618,27 +2618,33 @@ muc_channel_closed_cb (GabbleMucChannel *chan,
               "channel close");
         }
     }
+
+  g_object_unref (conn);
 }
 
 static void
 muc_channel_pre_invite_cb (GabbleMucChannel *chan,
                            const gchar *jid,
-                           ActivityInfo *info)
+                           GabbleOlpcActivity *activity)
 {
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles
-      ((TpBaseConnection *) info->conn, TP_HANDLE_TYPE_CONTACT);
+  GabbleConnection *conn;
+  TpHandleRepoIface *contact_repo;
   GQuark quark = invitees_quark ();
   TpHandleSet *invitees;
   /* send them the properties */
   LmMessage *msg;
 
+  g_object_get (activity, "connection", &conn, NULL);
+  contact_repo = tp_base_connection_get_handles
+      ((TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
+
   msg = lm_message_new (jid, LM_MESSAGE_TYPE_MESSAGE);
 
-  if (activity_info_contribute_properties (info, msg->node, FALSE))
+  if (activity_info_contribute_properties (activity, msg->node, FALSE))
     {
       /* not much we can do about errors - but if this fails, the invitation
        * will too, unless something extremely strange is going on */
-      if (!_gabble_connection_send (info->conn, msg, NULL))
+      if (!_gabble_connection_send (conn, msg, NULL))
         {
           DEBUG ("Unable to send activity properties to invitee");
         }
@@ -2646,7 +2652,7 @@ muc_channel_pre_invite_cb (GabbleMucChannel *chan,
   lm_message_unref (msg);
 
   /* don't add gadget */
-  if (tp_strdiff (jid, info->conn->olpc_gadget_activity))
+  if (tp_strdiff (jid, conn->olpc_gadget_activity))
     {
       TpHandle handle;
       GError *error = NULL;
@@ -2656,6 +2662,7 @@ muc_channel_pre_invite_cb (GabbleMucChannel *chan,
         {
           DEBUG ("can't add %s to invitees: %s", jid, error->message);
           g_error_free (error);
+          g_object_unref (conn);
           return;
         }
 
@@ -2670,6 +2677,8 @@ muc_channel_pre_invite_cb (GabbleMucChannel *chan,
       tp_handle_set_add (invitees, handle);
       tp_handle_unref (contact_repo, handle);
     }
+
+  g_object_unref (conn);
 }
 
 typedef struct
@@ -2692,10 +2701,10 @@ remove_invite_foreach (gpointer key,
    * should be done by CM's */
   if (tp_handle_set_remove (rooms, ctx->room_handle))
     {
-      ActivityInfo *info;
+      GabbleOlpcActivity *activity;
       GPtrArray *activities;
 
-      info = g_hash_table_lookup (ctx->conn->olpc_activities_info,
+      activity = g_hash_table_lookup (ctx->conn->olpc_activities_info,
           GUINT_TO_POINTER (ctx->room_handle));
 
       activities = get_buddy_activities (ctx->conn, inviter);
@@ -2703,10 +2712,10 @@ remove_invite_foreach (gpointer key,
           activities);
       free_activities (activities);
 
-      g_assert (info != NULL);
-      DEBUG ("forget invite for activity %s from contact %d", info->id,
+      g_assert (activity != NULL);
+      DEBUG ("forget invite for activity %s from contact %d", activity->id,
           inviter);
-      activity_info_unref (info);
+      g_object_unref (activity);
     }
 }
 
@@ -2725,15 +2734,17 @@ forget_activity_invites (GabbleConnection *conn,
 static void
 muc_channel_contact_join_cb (GabbleMucChannel *chan,
                              TpHandle contact,
-                             ActivityInfo *info)
+                             GabbleOlpcActivity *activity)
 {
-  TpBaseConnection *base = (TpBaseConnection *) info->conn;
+  GabbleConnection *conn;
 
-  if (contact == base->self_handle)
+  g_object_get (activity, "connection", &conn, NULL);
+
+  if (contact == TP_BASE_CONNECTION (conn)->self_handle)
     {
       /* We join the channel, forget about all invites we received about
        * this activity */
-      forget_activity_invites (info->conn, info->handle);
+      forget_activity_invites (conn, activity->room);
     }
   else
     {
@@ -2748,6 +2759,8 @@ muc_channel_contact_join_cb (GabbleMucChannel *chan,
           tp_handle_set_remove (invitees, contact);
         }
     }
+
+  g_object_unref (conn);
 }
 
 static void
@@ -2757,7 +2770,7 @@ muc_factory_new_channel_cb (gpointer key,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (data);
   GabbleExportableChannel *chan = GABBLE_EXPORTABLE_CHANNEL (key);
-  ActivityInfo *info;
+  GabbleOlpcActivity *activity;
   TpHandle room_handle;
 
   if (!GABBLE_IS_MUC_CHANNEL (chan))
@@ -2767,26 +2780,26 @@ muc_factory_new_channel_cb (gpointer key,
       "handle", &room_handle,
       NULL);
 
-  /* ref the activity info for as long as we have a channel open */
+  /* ref the activity as long as we have a channel open */
 
-  info = g_hash_table_lookup (conn->olpc_activities_info,
+  activity = g_hash_table_lookup (conn->olpc_activities_info,
       GUINT_TO_POINTER (room_handle));
 
-  if (info == NULL)
+  if (activity == NULL)
     {
-      info = add_activity_info (conn, room_handle);
+      activity = add_activity_info (conn, room_handle);
     }
   else
     {
-      info->refcount++;
+      g_object_ref (activity);
     }
 
   g_signal_connect (chan, "closed", G_CALLBACK (muc_channel_closed_cb),
-      info);
+      activity);
   g_signal_connect (chan, "pre-invite", G_CALLBACK (muc_channel_pre_invite_cb),
-      info);
+      activity);
   g_signal_connect (chan, "contact-join",
-      G_CALLBACK (muc_channel_contact_join_cb), info);
+      G_CALLBACK (muc_channel_contact_join_cb), activity);
 }
 
 static void
@@ -3166,14 +3179,14 @@ conn_olpc_msg_cb (LmMessageHandler *handler,
 void
 conn_olpc_activity_properties_init (GabbleConnection *conn)
 {
-  /* room TpHandle => borrowed ActivityInfo */
+  /* room TpHandle => borrowed Activity */
   conn->olpc_activities_info = g_hash_table_new_full (g_direct_hash,
-      g_direct_equal, NULL, (GDestroyNotify) activity_info_free);
+      g_direct_equal, NULL, NULL);
 
-  /* Activity info from PEP
+  /* Activity from PEP
    *
    * contact TpHandle => TpHandleSet of room handles,
-   *    each representing a reference to an ActivityInfo
+   *    each representing a reference to an Activity
    *
    * Special case: the entry for self_handle is the complete list of
    * activities, not just those from PEP
@@ -3181,10 +3194,10 @@ conn_olpc_activity_properties_init (GabbleConnection *conn)
   conn->olpc_pep_activities = g_hash_table_new_full (g_direct_hash,
       g_direct_equal, NULL, (GDestroyNotify) tp_handle_set_destroy);
 
-  /* Activity info from pseudo-invitations
+  /* Activity from pseudo-invitations
    *
    * contact TpHandle => TpHandleSet of room handles,
-   *    each representing a reference to an ActivityInfo
+   *    each representing a reference to an Activity
    *
    * Special case: there is never an entry for self_handle
    */
@@ -3437,7 +3450,7 @@ activity_query_result_cb (GabbleConnection *conn,
                           GObject *_view,
                           gpointer user_data)
 {
-  LmMessageNode *view_node, *activity;
+  LmMessageNode *view_node, *activity_node;
   TpHandleSet *activities;
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
       (TpBaseConnection*) conn, TP_HANDLE_TYPE_ROOM);
@@ -3449,28 +3462,28 @@ activity_query_result_cb (GabbleConnection *conn,
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
   activities = tp_handle_set_new (room_repo);
-  for (activity = view_node->children; activity != NULL;
-      activity = activity->next)
+  for (activity_node = view_node->children; activity_node != NULL;
+      activity_node = activity_node->next)
     {
       const gchar *jid, *act_id;
       LmMessageNode *properties_node;
       GHashTable *properties;
       TpHandle handle;
-      ActivityInfo *info;
+      GabbleOlpcActivity *activity;
       GArray *buddies;
       GPtrArray *buddies_properties;
 
-      jid = lm_message_node_get_attribute (activity, "room");
+      jid = lm_message_node_get_attribute (activity_node, "room");
       if (jid == NULL)
         {
-          NODE_DEBUG (activity, "No room attribute, skipping");
+          NODE_DEBUG (activity_node, "No room attribute, skipping");
           continue;
         }
 
-      act_id = lm_message_node_get_attribute (activity, "activity");
+      act_id = lm_message_node_get_attribute (activity_node, "activity");
       if (act_id == NULL)
         {
-          NODE_DEBUG (activity, "No activity ID, skipping");
+          NODE_DEBUG (activity_node, "No activity ID, skipping");
           continue;
         }
 
@@ -3485,7 +3498,7 @@ activity_query_result_cb (GabbleConnection *conn,
       tp_handle_set_add (activities, handle);
       tp_handle_unref (room_repo, handle);
 
-      properties_node = lm_message_node_get_child_with_namespace (activity,
+      properties_node = lm_message_node_get_child_with_namespace (activity_node,
           "properties", NS_OLPC_ACTIVITY_PROPS);
       properties = lm_message_node_extract_properties (properties_node,
           "property");
@@ -3494,31 +3507,30 @@ activity_query_result_cb (GabbleConnection *conn,
           conn, handle, properties);
 
       /* ref the activity while it is in the view */
-      info = g_hash_table_lookup (conn->olpc_activities_info,
+      activity = g_hash_table_lookup (conn->olpc_activities_info,
           GUINT_TO_POINTER (handle));
-      if (info == NULL)
+      if (activity == NULL)
         {
-          info = add_activity_info (conn, handle);
+          activity = add_activity_info (conn, handle);
         }
       else
         {
-          info->refcount++;
+          g_object_ref (activity);
         }
 
-      if (tp_strdiff (info->id, act_id))
+      if (tp_strdiff (activity->id, act_id))
         {
           DEBUG ("Assigning new ID <%s> to room #%u", act_id, handle);
 
-          g_free (info->id);
-          info->id = g_strdup (act_id);
+          g_object_set (activity, "id", act_id, NULL);
         }
 
-      activity_info_set_properties (info, properties);
+      g_object_set (activity, "properties", properties, NULL);
 
       buddies = g_array_new (FALSE, FALSE, sizeof (TpHandle));
       buddies_properties = g_ptr_array_new ();
 
-      if (!populate_buddies_from_nodes (conn, activity, buddies,
+      if (!populate_buddies_from_nodes (conn, activity_node, buddies,
             buddies_properties))
         {
           g_array_free (buddies, TRUE);
@@ -3532,7 +3544,7 @@ activity_query_result_cb (GabbleConnection *conn,
       g_ptr_array_free (buddies_properties, TRUE);
     }
 
-  /* TODO: remove activities when needed and unref ActivityInfo */
+  /* TODO: remove activities when needed and unref Activity */
   gabble_olpc_view_add_activities (view, activities);
 
   tp_handle_set_destroy (activities);
@@ -3546,7 +3558,7 @@ activity_view_closed_cb (GabbleOlpcView *view,
   guint id;
   TpHandleSet *activities;
 
-  /* decrement ActivityInfo */
+  /* decrement Activity */
   activities = gabble_olpc_view_get_activities (view);
 
   tp_handle_set_foreach (activities,

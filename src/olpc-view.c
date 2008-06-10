@@ -335,11 +335,32 @@ olpc_view_get_buddies (GabbleSvcOLPCView *iface,
 }
 
 static void
-add_handle_to_array (TpHandle handle,
-                     GabbleOlpcActivity *activity,
-                     GArray *array)
+add_activity_to_array (TpHandle handle,
+                       GabbleOlpcActivity *activity,
+                       GPtrArray *array)
 {
-  g_array_append_val (array, handle);
+  GValue gvalue = { 0 };
+
+  g_value_init (&gvalue, GABBLE_STRUCT_TYPE_ACTIVITY);
+  g_value_take_boxed (&gvalue, dbus_g_type_specialized_construct
+      (GABBLE_STRUCT_TYPE_ACTIVITY));
+  dbus_g_type_struct_set (&gvalue,
+      0, activity->id,
+      1, activity->room,
+      G_MAXUINT);
+
+  g_ptr_array_add (array, g_value_get_boxed (&gvalue));
+}
+
+static void
+free_activities_array (GPtrArray *activities)
+{
+  guint i;
+
+  for (i = 0; i < activities->len; i++)
+    g_boxed_free (GABBLE_STRUCT_TYPE_ACTIVITY, activities->pdata[i]);
+
+  g_ptr_array_free (activities, TRUE);
 }
 
 static void
@@ -348,15 +369,16 @@ olpc_view_get_activities (GabbleSvcOLPCView *iface,
 {
   GabbleOlpcView *self = GABBLE_OLPC_VIEW (iface);
   GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
-  GArray *activities;
+  GPtrArray *activities;
 
-  activities = g_array_new (FALSE, FALSE, sizeof (TpHandle));
-  g_hash_table_foreach (priv->activities, (GHFunc) add_handle_to_array,
+  activities = g_ptr_array_new ();
+
+  g_hash_table_foreach (priv->activities, (GHFunc) add_activity_to_array,
       activities);
 
   gabble_svc_olpc_view_return_from_get_activities (context, activities);
 
-  g_array_free (activities, TRUE);
+  free_activities_array (activities);
 }
 
 static void
@@ -508,19 +530,19 @@ gabble_olpc_view_add_activities (GabbleOlpcView *self,
                                  GHashTable *activities)
 {
   GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
-  GArray *added, *empty;
+  GPtrArray *added, *empty;
 
   tp_g_hash_table_update (priv->activities, activities, NULL, g_object_ref);
 
-  added = g_array_new (FALSE, FALSE, sizeof (TpHandle));
-  g_hash_table_foreach (activities, (GHFunc) add_handle_to_array, added);
+  added = g_ptr_array_new ();
+  g_hash_table_foreach (activities, (GHFunc) add_activity_to_array, added);
 
-  empty = g_array_new (FALSE, FALSE, sizeof (TpHandle));
+  empty = g_ptr_array_new ();
 
   gabble_svc_olpc_view_emit_activities_changed (self, added, empty);
 
-  g_array_free (added, TRUE);
-  g_array_free (empty, TRUE);
+  free_activities_array (added);
+  g_ptr_array_free (empty, TRUE);
 }
 
 static void

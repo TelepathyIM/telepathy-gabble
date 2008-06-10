@@ -114,8 +114,10 @@ def test(q, bus, conn, stream):
 
     event = q.expect('dbus-signal', signal='ActivitiesChanged')
     added, removed = event.args
-    assert removed == []
-    assert sorted(conn.InspectHandles(2, added)) == ['room1@conference.localhost']
+    assert len(added) == 1
+    id, handle = added[0]
+    assert id == 'activity1'
+    assert sorted(conn.InspectHandles(2, [handle])) == ['room1@conference.localhost']
 
     act = view0_iface.GetActivities()
     assert sorted(act) == sorted(added)
@@ -173,7 +175,10 @@ def test(q, bus, conn, stream):
     event = q.expect('dbus-signal', signal='ActivitiesChanged')
     added, removed = event.args
     assert removed == []
-    assert sorted(conn.InspectHandles(2, added)) == ['room2@conference.localhost']
+    assert len(added) == 1
+    id, handle = added[0]
+    assert id == 'activity2'
+    assert sorted(conn.InspectHandles(2, [handle])) == ['room2@conference.localhost']
 
     act = view1.GetActivities()
     assert sorted(act) == sorted(added)
@@ -220,7 +225,10 @@ def test(q, bus, conn, stream):
     event = q.expect('dbus-signal', signal='ActivitiesChanged')
     added, removed = event.args
     assert removed == []
-    assert sorted(conn.InspectHandles(2, added)) == ['room2@conference.localhost']
+    assert len(added) == 1
+    id, handle = added[0]
+    assert id == 'activity2'
+    assert sorted(conn.InspectHandles(2, [handle])) == ['room2@conference.localhost']
 
     act = view2.GetActivities()
     assert sorted(act) == sorted(added)

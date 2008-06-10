@@ -19,10 +19,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
   <interface name="org.laptop.Telepathy.View">
 
   <method name="GetActivities">
-    <arg direction="out" name="activities" type="au">
-      <tp:docstring>
-        An array of room handles
-      </tp:docstring>
+    <arg direction="out" name="activities" type="a(su)" tp:type="Activity[]">
+       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          An array of structs containing:
+          <ul>
+            <li>the identifier of the activity</li>
+            <li>the room handle of the activity channel</li>
+          </ul>
+       </tp:docstring>
     </arg>
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
         <p>Return all the activities of this view</p>
@@ -56,12 +60,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
     </method>
 
     <signal name="ActivitiesChanged">
-      <arg name="added" type="au">
+      <arg name="added" type="a(su)" tp:type="Activity[]">
         <tp:docstring>
           Room handles of the added activities
         </tp:docstring>
       </arg>
-      <arg name="removed" type="au">
+      <arg name="removed" type="a(su)" tp:type="Activity[]">
         <tp:docstring>
           Room handles of the removed activities
         </tp:docstring>

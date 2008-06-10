@@ -3451,7 +3451,7 @@ activity_query_result_cb (GabbleConnection *conn,
                           gpointer user_data)
 {
   LmMessageNode *view_node, *activity_node;
-  TpHandleSet *activities;
+  GHashTable *activities;
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
       (TpBaseConnection*) conn, TP_HANDLE_TYPE_ROOM);
   GabbleOlpcView *view = GABBLE_OLPC_VIEW (_view);
@@ -3461,7 +3461,9 @@ activity_query_result_cb (GabbleConnection *conn,
   if (view_node == NULL)
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
-  activities = tp_handle_set_new (room_repo);
+  activities = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
+      g_object_unref );
+
   for (activity_node = view_node->children; activity_node != NULL;
       activity_node = activity_node->next)
     {
@@ -3491,12 +3493,9 @@ activity_query_result_cb (GabbleConnection *conn,
       if (handle == 0)
         {
           DEBUG ("Invalid jid: %s", jid);
-          tp_handle_set_destroy (activities);
+          g_hash_table_destroy (activities);
           return LM_HANDLER_RESULT_REMOVE_MESSAGE;
         }
-
-      tp_handle_set_add (activities, handle);
-      tp_handle_unref (room_repo, handle);
 
       properties_node = lm_message_node_get_child_with_namespace (activity_node,
           "properties", NS_OLPC_ACTIVITY_PROPS);
@@ -3517,6 +3516,9 @@ activity_query_result_cb (GabbleConnection *conn,
         {
           g_object_ref (activity);
         }
+
+      g_hash_table_insert (activities, GUINT_TO_POINTER (handle), activity);
+      tp_handle_unref (room_repo, handle);
 
       if (tp_strdiff (activity->id, act_id))
         {
@@ -3544,10 +3546,10 @@ activity_query_result_cb (GabbleConnection *conn,
       g_ptr_array_free (buddies_properties, TRUE);
     }
 
-  /* TODO: remove activities when needed and unref Activity */
+  /* TODO: remove activities when needed */
   gabble_olpc_view_add_activities (view, activities);
 
-  tp_handle_set_destroy (activities);
+  g_hash_table_destroy (activities);
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
@@ -3556,13 +3558,6 @@ activity_view_closed_cb (GabbleOlpcView *view,
                          GabbleConnection *conn)
 {
   guint id;
-  TpHandleSet *activities;
-
-  /* decrement Activity */
-  activities = gabble_olpc_view_get_activities (view);
-
-  tp_handle_set_foreach (activities,
-      decrement_contacts_activities_set_foreach, conn);
 
   g_object_get (view, "id", &id, NULL);
   g_hash_table_remove (conn->olpc_views, GUINT_TO_POINTER (id));

@@ -33,6 +33,7 @@
 #include "extensions/extensions.h"
 #include "gabble-connection.h"
 #include "gabble-signals-marshal.h"
+#include "olpc-activity.h"
 #include "namespaces.h"
 #include "util.h"
 
@@ -65,7 +66,8 @@ struct _GabbleOlpcViewPrivate
   guint id;
 
   TpHandleSet *buddies;
-  TpHandleSet *activities;
+  /* TpHandle => GabbleOlpcActivity * */
+  GHashTable *activities;
 
   /* TpHandle (owned in priv->buddies) => GHashTable * */
   GHashTable *buddy_properties;
@@ -115,9 +117,10 @@ gabble_olpc_view_dispose (GObject *object)
 
   if (priv->activities != NULL)
     {
-      tp_handle_set_destroy (priv->activities);
+      g_hash_table_destroy (priv->activities);
       priv->activities = NULL;
     }
+
   if (priv->buddy_properties != NULL)
     {
       g_hash_table_destroy (priv->buddy_properties);
@@ -224,7 +227,8 @@ gabble_olpc_view_constructor (GType type,
       TP_HANDLE_TYPE_ROOM);
 
   priv->buddies = tp_handle_set_new (contact_handles);
-  priv->activities = tp_handle_set_new (room_handles);
+  priv->activities = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
+      g_object_unref );
 
   return obj;
 }
@@ -331,6 +335,14 @@ olpc_view_get_buddies (GabbleSvcOLPCView *iface,
 }
 
 static void
+add_handle_to_array (TpHandle handle,
+                     GabbleOlpcActivity *activity,
+                     GArray *array)
+{
+  g_array_append_val (array, handle);
+}
+
+static void
 olpc_view_get_activities (GabbleSvcOLPCView *iface,
                           DBusGMethodInvocation *context)
 {
@@ -338,7 +350,9 @@ olpc_view_get_activities (GabbleSvcOLPCView *iface,
   GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
   GArray *activities;
 
-  activities = tp_handle_set_to_array (priv->activities);
+  activities = g_array_new (FALSE, FALSE, sizeof (TpHandle));
+  g_hash_table_foreach (priv->activities, (GHFunc) add_handle_to_array,
+      activities);
 
   gabble_svc_olpc_view_return_from_get_activities (context, activities);
 
@@ -491,28 +505,22 @@ gabble_olpc_view_get_buddy_properties (GabbleOlpcView *self,
 
 void
 gabble_olpc_view_add_activities (GabbleOlpcView *self,
-                                 TpHandleSet *activities)
+                                 GHashTable *activities)
 {
   GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
   GArray *added, *empty;
 
-  tp_handle_set_update (priv->activities, tp_handle_set_peek (activities));
+  tp_g_hash_table_update (priv->activities, activities, NULL, g_object_ref);
 
-  added = tp_handle_set_to_array (activities);
+  added = g_array_new (FALSE, FALSE, sizeof (TpHandle));
+  g_hash_table_foreach (activities, (GHFunc) add_handle_to_array, added);
+
   empty = g_array_new (FALSE, FALSE, sizeof (TpHandle));
 
   gabble_svc_olpc_view_emit_activities_changed (self, added, empty);
 
   g_array_free (added, TRUE);
   g_array_free (empty, TRUE);
-}
-
-TpHandleSet *
-gabble_olpc_view_get_activities (GabbleOlpcView *self)
-{
-  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
-
-  return priv->activities;
 }
 
 static void

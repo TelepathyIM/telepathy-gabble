@@ -3482,7 +3482,7 @@ activity_query_result_cb (GabbleConnection *conn,
           continue;
         }
 
-      act_id = lm_message_node_get_attribute (activity_node, "activity");
+      act_id = lm_message_node_get_attribute (activity_node, "id");
       if (act_id == NULL)
         {
           NODE_DEBUG (activity_node, "No activity ID, skipping");

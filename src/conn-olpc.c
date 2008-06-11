@@ -2985,11 +2985,6 @@ populate_buddies_from_nodes (GabbleConnection *conn,
           "property");
 
       g_ptr_array_add (buddies_properties, properties);
-
-      /* FIXME: is it sane to fire this signal as the client doesn't know
-       * this buddy yet? */
-      gabble_svc_olpc_buddy_info_emit_properties_changed (conn, handle,
-          properties);
     }
 
   return TRUE;
@@ -3020,10 +3015,22 @@ add_buddies_to_view_from_node (GabbleConnection *conn,
   gabble_olpc_view_add_buddies (view, buddies, buddies_properties);
 
   for (i = 0; i < buddies->len; i++)
-    tp_handle_unref (contact_repo, g_array_index (buddies, TpHandle, i));
-  g_array_free (buddies, TRUE);
+    {
+      TpHandle handle;
+      GHashTable *properties;
 
-  g_ptr_array_foreach (buddies_properties, (GFunc) g_hash_table_unref, NULL);
+      handle = g_array_index (buddies, TpHandle, i);
+      properties = g_ptr_array_index (buddies_properties, i);
+
+      gabble_svc_olpc_buddy_info_emit_properties_changed (conn, handle,
+          properties);
+
+      /* Free the ressource allocated in populate_buddies_from_nodes */
+      tp_handle_unref (contact_repo, handle);
+      g_hash_table_unref (properties);
+    }
+
+  g_array_free (buddies, TRUE);
   g_ptr_array_free (buddies_properties, TRUE);
 
   return TRUE;

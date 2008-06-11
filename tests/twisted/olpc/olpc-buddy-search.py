@@ -193,17 +193,17 @@ def test(q, bus, conn, stream):
     view1 = bus.get_object(conn.bus_name, view_path)
     view1_iface = dbus.Interface(view1, 'org.laptop.Telepathy.View')
 
-    event = q.expect('dbus-signal', signal='PropertiesChanged')
-    handle, props = event.args
-    assert conn.InspectHandles(1, [handle])[0] == 'charles@localhost'
-    assert props == {'color': '#AABBCC,#001122'}
-
     event = q.expect('dbus-signal', signal='BuddiesChanged')
     added, removed = event.args
     assert removed == []
     assert len(added) == 1
     handle = added[0]
     assert conn.InspectHandles(1, [handle])[0] == 'charles@localhost'
+
+    event = q.expect('dbus-signal', signal='PropertiesChanged')
+    handle, props = event.args
+    assert conn.InspectHandles(1, [handle])[0] == 'charles@localhost'
+    assert props == {'color': '#AABBCC,#001122'}
 
     # add a buddy to view 0
     message = domish.Element((None, 'message'))

@@ -3245,8 +3245,8 @@ olpc_activity_properties_iface_init (gpointer g_iface,
 }
 
 static void
-buddy_view_closed_cb (GabbleOlpcView *view,
-                      GabbleConnection *conn)
+view_closed_cb (GabbleOlpcView *view,
+                GabbleConnection *conn)
 {
   guint id;
 
@@ -3274,7 +3274,7 @@ create_buddy_view (GabbleConnection *conn)
   view = gabble_olpc_view_new (conn, GABBLE_OLPC_VIEW_TYPE_BUDDY, id);
   g_hash_table_insert (conn->olpc_views, GUINT_TO_POINTER (id), view);
 
-  g_signal_connect (view, "closed", G_CALLBACK (buddy_view_closed_cb), conn);
+  g_signal_connect (view, "closed", G_CALLBACK (view_closed_cb), conn);
 
   return view;
 }
@@ -3560,16 +3560,6 @@ activity_query_result_cb (GabbleConnection *conn,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
-static void
-activity_view_closed_cb (GabbleOlpcView *view,
-                         GabbleConnection *conn)
-{
-  guint id;
-
-  g_object_get (view, "id", &id, NULL);
-  g_hash_table_remove (conn->olpc_views, GUINT_TO_POINTER (id));
-}
-
 static GabbleOlpcView *
 create_activity_view (GabbleConnection *conn)
 {
@@ -3590,7 +3580,7 @@ create_activity_view (GabbleConnection *conn)
   view = gabble_olpc_view_new (conn, GABBLE_OLPC_VIEW_TYPE_ACTIVITY, id);
   g_hash_table_insert (conn->olpc_views, GUINT_TO_POINTER (id), view);
 
-  g_signal_connect (view, "closed", G_CALLBACK (activity_view_closed_cb), conn);
+  g_signal_connect (view, "closed", G_CALLBACK (view_closed_cb), conn);
 
   return view;
 }

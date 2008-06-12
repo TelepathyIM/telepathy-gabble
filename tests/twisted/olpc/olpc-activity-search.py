@@ -117,9 +117,9 @@ def test(q, bus, conn, stream):
     event = q.expect('dbus-signal', signal='ActivitiesChanged')
     added, removed = event.args
     assert len(added) == 1
-    id, handle = added[0]
+    id, room1_handle = added[0]
     assert id == 'activity1'
-    assert sorted(conn.InspectHandles(2, [handle])) == \
+    assert sorted(conn.InspectHandles(2, [room1_handle])) == \
             ['room1@conference.localhost']
 
     act = view0_iface.GetActivities()
@@ -271,11 +271,12 @@ def test(q, bus, conn, stream):
     rule['action'] ='error'
     stream.send(message)
 
-   # participants are added to view
+    # participants are added to view
     event = q.expect('dbus-signal', signal='BuddiesChanged')
     members_handles, removed = event.args
     assert conn.InspectHandles(1, members_handles) == ['fernand@localhost']
 
+    # activity is added too
     event = q.expect('dbus-signal', signal='ActivitiesChanged')
     added, removed = event.args
     assert len(added) == 1
@@ -283,6 +284,38 @@ def test(q, bus, conn, stream):
     assert id == 'activity4'
     assert sorted(conn.InspectHandles(2, [handle])) == \
             ['room4@conference.localhost']
+
+    # remove one activity from view 0
+    message = domish.Element((None, 'message'))
+    message['from'] = 'gadget.localhost'
+    message['to'] = 'alice@localhost'
+    message['type'] = 'notice'
+    removed = message.addElement((NS_OLPC_ACTIVITY, 'removed'))
+    removed['id'] = '0'
+    activity = removed.addElement((None, 'activity'))
+    activity['id'] = 'activity1'
+    activity['room'] = 'room1@conference.localhost'
+    amp = message.addElement((NS_AMP, 'amp'))
+    rule = amp.addElement((None, 'rule'))
+    rule['condition'] = 'deliver-at'
+    rule['value'] = 'stored'
+    rule['action'] ='error'
+    stream.send(message)
+
+    # participants are removed from the view
+    # FIXME
+    #event = q.expect('dbus-signal', signal='BuddiesChanged')
+    #members_handles, removed = event.args
+    #assert conn.InspectHandles(1, members_handles) == ['fernand@localhost']
+
+    # activity is removed
+    event = q.expect('dbus-signal', signal='ActivitiesChanged')
+    added, removed = event.args
+    assert added == []
+    assert len(removed) == 1
+    id, handle = removed[0]
+    assert id == 'activity1'
+    assert handle == room1_handle
 
     # close view 0
     call_async(q, view0_iface, 'Close')

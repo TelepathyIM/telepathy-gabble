@@ -85,6 +85,9 @@ GHashTable * gabble_olpc_view_get_buddy_properties (GabbleOlpcView *self,
 void gabble_olpc_view_add_activities (GabbleOlpcView *self,
     GHashTable *activities);
 
+void gabble_olpc_view_remove_activities (GabbleOlpcView *self,
+    TpHandleSet *rooms);
+
 G_END_DECLS
 
 #endif /* #ifndef __GABBLE_OLPC_VIEW_H__ */

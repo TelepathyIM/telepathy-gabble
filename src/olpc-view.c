@@ -545,6 +545,44 @@ gabble_olpc_view_add_activities (GabbleOlpcView *self,
   g_ptr_array_free (empty, TRUE);
 }
 
+void
+gabble_olpc_view_remove_activities (GabbleOlpcView *self,
+                                    TpHandleSet *rooms)
+{
+  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
+  GPtrArray *removed, *empty;
+  GArray *array;
+  guint i;
+
+  /* for easier iteration */
+  array = tp_handle_set_to_array (rooms);
+
+  removed = g_ptr_array_new ();
+  empty = g_ptr_array_new ();
+
+  for (i = 0; i < array->len; i++)
+    {
+      TpHandle handle;
+      GabbleOlpcActivity *activity;
+
+      handle = g_array_index (array, TpHandle, i);
+
+      activity = g_hash_table_lookup (priv->activities,
+          GUINT_TO_POINTER (handle));
+      if (activity == NULL)
+        continue;
+
+      add_activity_to_array (handle, activity, removed);
+      g_hash_table_remove (priv->activities, GUINT_TO_POINTER (handle));
+    }
+
+  gabble_svc_olpc_view_emit_activities_changed (self, empty, removed);
+
+  free_activities_array (removed);
+  g_ptr_array_free (empty, TRUE);
+  g_array_free (array, TRUE);
+}
+
 static void
 view_iface_init (gpointer g_iface,
                  gpointer iface_data)

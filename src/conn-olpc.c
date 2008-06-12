@@ -3242,11 +3242,74 @@ buddy_removed (GabbleConnection *conn,
   view = g_hash_table_lookup (conn->olpc_views, GUINT_TO_POINTER (id));
   if (view == NULL)
     {
-      DEBUG ("no buddy view with ID %u", id);
+      DEBUG ("no view with ID %u", id);
       return;
     }
 
   remove_buddies_from_view_from_node (conn, view, removed);
+}
+
+static gboolean
+remove_activities_from_view_from_node (GabbleConnection *conn,
+                                       GabbleOlpcView *view,
+                                       LmMessageNode *node)
+{
+  TpHandleSet *rooms;
+  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
+      (TpBaseConnection*) conn, TP_HANDLE_TYPE_ROOM);
+  LmMessageNode *activity;
+
+  rooms = tp_handle_set_new (room_repo);
+
+  for (activity = node->children; activity != NULL; activity = activity->next)
+    {
+      const gchar *room;
+      TpHandle handle;
+
+      if (tp_strdiff (activity->name, "activity"))
+        continue;
+
+      room = lm_message_node_get_attribute (activity, "room");
+
+      handle = tp_handle_ensure (room_repo, room, NULL, NULL);
+      if (handle == 0)
+        {
+          DEBUG ("Invalid room: %s", room);
+          tp_handle_set_destroy (rooms);
+          return FALSE;
+        }
+
+      tp_handle_set_add (rooms, handle);
+      tp_handle_unref (room_repo, handle);
+    }
+
+  gabble_olpc_view_remove_activities (view, rooms);
+  tp_handle_set_destroy (rooms);
+
+  return TRUE;
+}
+
+static void
+activity_removed (GabbleConnection *conn,
+                  LmMessageNode *removed)
+{
+  const gchar *id_str;
+  guint id;
+  GabbleOlpcView *view;
+
+  id_str = lm_message_node_get_attribute (removed, "id");
+  if (id_str == NULL)
+    return;
+
+  id = strtoul (id_str, NULL, 10);
+  view = g_hash_table_lookup (conn->olpc_views, GUINT_TO_POINTER (id));
+  if (view == NULL)
+    {
+      DEBUG ("no view with ID %u", id);
+      return;
+    }
+
+  remove_activities_from_view_from_node (conn, view, removed);
 }
 
 LmHandlerResult
@@ -3308,6 +3371,11 @@ conn_olpc_msg_cb (LmMessageHandler *handler,
           !tp_strdiff (ns, NS_OLPC_ACTIVITY))
         {
           activity_added (conn, node);
+        }
+      else if (!tp_strdiff (node->name, "removed") &&
+          !tp_strdiff (ns, NS_OLPC_ACTIVITY))
+        {
+          activity_removed (conn, node);
         }
     }
 

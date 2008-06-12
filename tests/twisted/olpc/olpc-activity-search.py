@@ -133,6 +133,12 @@ def test(q, bus, conn, stream):
     props = buddy_prop_iface.GetProperties(members_handles[0])
     assert props == {'color': '#AABBCC,#CCBBAA'}
 
+    # and their activities
+    # FIXME
+    #activities = buddy_prop_iface.GetActivities(members_handles[0])
+    #assert len(activities) == 1
+    #assert activities[0] == 'activity1', room1_handle
+
     # activity search by properties (view 1)
     props = {'color': '#AABBCC,#001122'}
     call_async(q, gadget_iface, 'SearchActivitiesByProperties', props)

@@ -3376,6 +3376,7 @@ conn_olpc_msg_cb (LmMessageHandler *handler,
         {
           activity_removed (conn, node);
         }
+      /* TODO: join, left and closed announcements */
     }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;

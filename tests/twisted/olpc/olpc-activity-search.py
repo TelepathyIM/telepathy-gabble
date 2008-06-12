@@ -56,7 +56,8 @@ def test(q, bus, conn, stream):
     feature['var'] = NS_OLPC_ACTIVITY
     stream.send(reply)
 
-    activity_prop_iface = dbus.Interface(conn, 'org.laptop.Telepathy.ActivityProperties')
+    activity_prop_iface = dbus.Interface(conn,
+            'org.laptop.Telepathy.ActivityProperties')
     buddy_prop_iface = dbus.Interface(conn, 'org.laptop.Telepathy.BuddyInfo')
     gadget_iface = dbus.Interface(conn, 'org.laptop.Telepathy.Gadget')
 
@@ -66,7 +67,8 @@ def test(q, bus, conn, stream):
     call_async(q, gadget_iface, 'RequestRandomActivities', 3)
 
     iq_event, return_event = q.expect_many(
-        EventPattern('stream-iq', to='gadget.localhost', query_ns=NS_OLPC_ACTIVITY),
+        EventPattern('stream-iq', to='gadget.localhost',
+            query_ns=NS_OLPC_ACTIVITY),
         EventPattern('dbus-return', method='RequestRandomActivities'))
 
     view = iq_event.stanza.firstChildElement()
@@ -117,7 +119,8 @@ def test(q, bus, conn, stream):
     assert len(added) == 1
     id, handle = added[0]
     assert id == 'activity1'
-    assert sorted(conn.InspectHandles(2, [handle])) == ['room1@conference.localhost']
+    assert sorted(conn.InspectHandles(2, [handle])) == \
+            ['room1@conference.localhost']
 
     act = view0_iface.GetActivities()
     assert sorted(act) == sorted(added)
@@ -135,10 +138,12 @@ def test(q, bus, conn, stream):
     call_async(q, gadget_iface, 'SearchActivitiesByProperties', props)
 
     iq_event, return_event = q.expect_many(
-        EventPattern('stream-iq', to='gadget.localhost', query_ns=NS_OLPC_ACTIVITY),
+        EventPattern('stream-iq', to='gadget.localhost',
+            query_ns=NS_OLPC_ACTIVITY),
         EventPattern('dbus-return', method='SearchActivitiesByProperties'))
 
-    properties = xpath.queryForNodes('/iq/view/activity/properties/property', iq_event.stanza)
+    properties = xpath.queryForNodes('/iq/view/activity/properties/property',
+            iq_event.stanza)
     view = iq_event.stanza.firstChildElement()
     assert view.name == 'view'
     assert view['id'] == '1'
@@ -178,7 +183,8 @@ def test(q, bus, conn, stream):
     assert len(added) == 1
     id, handle = added[0]
     assert id == 'activity2'
-    assert sorted(conn.InspectHandles(2, [handle])) == ['room2@conference.localhost']
+    assert sorted(conn.InspectHandles(2, [handle])) == \
+            ['room2@conference.localhost']
 
     act = view1.GetActivities()
     assert sorted(act) == sorted(added)
@@ -188,7 +194,8 @@ def test(q, bus, conn, stream):
     call_async(q, gadget_iface, 'SearchActivitiesByParticipants', participants)
 
     iq_event, return_event = q.expect_many(
-        EventPattern('stream-iq', to='gadget.localhost', query_ns=NS_OLPC_ACTIVITY),
+        EventPattern('stream-iq', to='gadget.localhost',
+            query_ns=NS_OLPC_ACTIVITY),
         EventPattern('dbus-return', method='SearchActivitiesByParticipants'))
 
     buddies = xpath.queryForNodes('/iq/view/activity/buddy', iq_event.stanza)
@@ -196,7 +203,8 @@ def test(q, bus, conn, stream):
     assert view.name == 'view'
     assert view['id'] == '2'
     assert len(buddies) == 2
-    assert (buddies[0]['jid'], buddies[1]['jid']) == ('alice@localhost', 'bob@localhost')
+    assert (buddies[0]['jid'], buddies[1]['jid']) == ('alice@localhost',
+            'bob@localhost')
 
     # reply to request
     reply = make_result_iq(stream, iq_event.stanza)
@@ -228,7 +236,8 @@ def test(q, bus, conn, stream):
     assert len(added) == 1
     id, handle = added[0]
     assert id == 'activity2'
-    assert sorted(conn.InspectHandles(2, [handle])) == ['room2@conference.localhost']
+    assert sorted(conn.InspectHandles(2, [handle])) == \
+            ['room2@conference.localhost']
 
     act = view2.GetActivities()
     assert sorted(act) == sorted(added)

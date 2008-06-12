@@ -110,7 +110,8 @@ def test(q, bus, conn, stream):
     call_async(q, gadget_iface, 'RequestRandomBuddies', 3)
 
     iq_event, return_event = q.expect_many(
-        EventPattern('stream-iq', to='gadget.localhost', query_ns=NS_OLPC_BUDDY),
+        EventPattern('stream-iq', to='gadget.localhost',
+            query_ns=NS_OLPC_BUDDY),
         EventPattern('dbus-return', method='RequestRandomBuddies'))
 
     view = iq_event.stanza.firstChildElement()
@@ -149,8 +150,8 @@ def test(q, bus, conn, stream):
     added, removed = event.args
     assert removed == []
     assert len(added) == 2
-    #assert conn.InspectHandles(1, [handle])[0] == 'bob@localhost'
-    assert sorted(conn.InspectHandles(1, added)) == ['bob@localhost', 'charles@localhost']
+    assert sorted(conn.InspectHandles(1, added)) == ['bob@localhost',
+            'charles@localhost']
 
     # we can now get bob's properties
     handle = conn.RequestHandles(1, ['bob@localhost'])[0]
@@ -165,7 +166,8 @@ def test(q, bus, conn, stream):
         EventPattern('stream-iq', to='gadget.localhost', query_ns=NS_OLPC_BUDDY),
         EventPattern('dbus-return', method='SearchBuddiesByProperties'))
 
-    properties = xpath.queryForNodes('/iq/view/buddy/properties/property', iq_event.stanza)
+    properties = xpath.queryForNodes('/iq/view/buddy/properties/property',
+            iq_event.stanza)
     view = iq_event.stanza.firstChildElement()
     assert view.name == 'view'
     assert view['id'] == '1'

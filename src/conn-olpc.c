@@ -2912,6 +2912,8 @@ buddy_changed (GabbleConnection *conn,
       gabble_svc_olpc_buddy_info_emit_current_activity_changed (conn, handle,
           activity, room_handle);
     }
+
+  /* FIXME: update properties stored in views */
 }
 
 static void

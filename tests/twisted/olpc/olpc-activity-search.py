@@ -63,7 +63,7 @@ def test(q, bus, conn, stream):
 
     sync_stream(q, stream)
 
-    # request 3 random activities
+    # request 3 random activities (view 0)
     call_async(q, gadget_iface, 'RequestRandomActivities', 3)
 
     iq_event, return_event = q.expect_many(
@@ -133,7 +133,7 @@ def test(q, bus, conn, stream):
     props = buddy_prop_iface.GetProperties(members_handles[0])
     assert props == {'color': '#AABBCC,#CCBBAA'}
 
-    # activity search by properties
+    # activity search by properties (view 1)
     props = {'color': '#AABBCC,#001122'}
     call_async(q, gadget_iface, 'SearchActivitiesByProperties', props)
 
@@ -189,7 +189,7 @@ def test(q, bus, conn, stream):
     act = view1.GetActivities()
     assert sorted(act) == sorted(added)
 
-    # activity search by participants
+    # activity search by participants (view 2)
     participants = conn.RequestHandles(1, ["alice@localhost", "bob@localhost"])
     call_async(q, gadget_iface, 'SearchActivitiesByParticipants', participants)
 
@@ -242,7 +242,7 @@ def test(q, bus, conn, stream):
     act = view2.GetActivities()
     assert sorted(act) == sorted(added)
 
-    # add one activity to view0
+    # add one activity to view 0
     message = domish.Element((None, 'message'))
     message['from'] = 'gadget.localhost'
     message['to'] = 'alice@localhost'
@@ -284,6 +284,7 @@ def test(q, bus, conn, stream):
     assert sorted(conn.InspectHandles(2, [handle])) == \
             ['room3@conference.localhost']
 
+    # close view 0
     call_async(q, view0_iface, 'Close')
     event, _ = q.expect_many(
         EventPattern('stream-message', to='gadget.localhost'),

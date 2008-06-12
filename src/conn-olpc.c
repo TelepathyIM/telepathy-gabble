@@ -2991,6 +2991,132 @@ populate_buddies_from_nodes (GabbleConnection *conn,
 }
 
 static gboolean
+add_activities_to_view_from_node (GabbleConnection *conn,
+                                  GabbleOlpcView *view,
+                                  LmMessageNode *node)
+{
+  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
+      (TpBaseConnection*) conn, TP_HANDLE_TYPE_ROOM);
+  GHashTable *activities;
+  LmMessageNode *activity_node;
+
+  activities = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
+      g_object_unref );
+
+  for (activity_node = node->children; activity_node != NULL;
+      activity_node = activity_node->next)
+    {
+      const gchar *jid, *act_id;
+      LmMessageNode *properties_node;
+      GHashTable *properties;
+      TpHandle handle;
+      GabbleOlpcActivity *activity;
+      GArray *buddies;
+      GPtrArray *buddies_properties;
+
+      jid = lm_message_node_get_attribute (activity_node, "room");
+      if (jid == NULL)
+        {
+          NODE_DEBUG (activity_node, "No room attribute, skipping");
+          continue;
+        }
+
+      act_id = lm_message_node_get_attribute (activity_node, "id");
+      if (act_id == NULL)
+        {
+          NODE_DEBUG (activity_node, "No activity ID, skipping");
+          continue;
+        }
+
+      handle = tp_handle_ensure (room_repo, jid, NULL, NULL);
+      if (handle == 0)
+        {
+          DEBUG ("Invalid jid: %s", jid);
+          g_hash_table_destroy (activities);
+          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+        }
+
+      properties_node = lm_message_node_get_child_with_namespace (activity_node,
+          "properties", NS_OLPC_ACTIVITY_PROPS);
+      properties = lm_message_node_extract_properties (properties_node,
+          "property");
+
+      gabble_svc_olpc_activity_properties_emit_activity_properties_changed (
+          conn, handle, properties);
+
+      /* ref the activity while it is in the view */
+      activity = g_hash_table_lookup (conn->olpc_activities_info,
+          GUINT_TO_POINTER (handle));
+      if (activity == NULL)
+        {
+          activity = add_activity_info (conn, handle);
+        }
+      else
+        {
+          g_object_ref (activity);
+        }
+
+      g_hash_table_insert (activities, GUINT_TO_POINTER (handle), activity);
+      tp_handle_unref (room_repo, handle);
+
+      if (tp_strdiff (activity->id, act_id))
+        {
+          DEBUG ("Assigning new ID <%s> to room #%u", act_id, handle);
+
+          g_object_set (activity, "id", act_id, NULL);
+        }
+
+      g_object_set (activity, "properties", properties, NULL);
+
+      buddies = g_array_new (FALSE, FALSE, sizeof (TpHandle));
+      buddies_properties = g_ptr_array_new ();
+
+      if (!populate_buddies_from_nodes (conn, activity_node, buddies,
+            buddies_properties))
+        {
+          g_array_free (buddies, TRUE);
+          g_ptr_array_free (buddies_properties, TRUE);
+          continue;
+        }
+
+      gabble_olpc_view_add_buddies (view, buddies, buddies_properties);
+
+      g_array_free (buddies, TRUE);
+      g_ptr_array_free (buddies_properties, TRUE);
+    }
+
+  /* TODO: remove activities when needed */
+  gabble_olpc_view_add_activities (view, activities);
+
+  g_hash_table_destroy (activities);
+
+  return TRUE;
+}
+
+static void
+activity_added (GabbleConnection *conn,
+                LmMessageNode *added)
+{
+  const gchar *id_str;
+  guint id;
+  GabbleOlpcView *view;
+
+  id_str = lm_message_node_get_attribute (added, "id");
+  if (id_str == NULL)
+    return;
+
+  id = strtoul (id_str, NULL, 10);
+  view = g_hash_table_lookup (conn->olpc_views, GUINT_TO_POINTER (id));
+  if (view == NULL)
+    {
+      DEBUG ("no view with ID %u", id);
+      return;
+    }
+
+  add_activities_to_view_from_node (conn, view, added);
+}
+
+static gboolean
 add_buddies_to_view_from_node (GabbleConnection *conn,
                                GabbleOlpcView *view,
                                LmMessageNode *node)
@@ -3052,7 +3178,7 @@ buddy_added (GabbleConnection *conn,
   view = g_hash_table_lookup (conn->olpc_views, GUINT_TO_POINTER (id));
   if (view == NULL)
     {
-      DEBUG ("no buddy view with ID %u", id);
+      DEBUG ("no view with ID %u", id);
       return;
     }
 
@@ -3177,6 +3303,11 @@ conn_olpc_msg_cb (LmMessageHandler *handler,
           !tp_strdiff (ns, NS_OLPC_BUDDY))
         {
           buddy_removed (conn, node);
+        }
+      else if (!tp_strdiff (node->name, "added") &&
+          !tp_strdiff (ns, NS_OLPC_ACTIVITY))
+        {
+          activity_added (conn, node);
         }
     }
 
@@ -3458,10 +3589,7 @@ activity_query_result_cb (GabbleConnection *conn,
                           GObject *_view,
                           gpointer user_data)
 {
-  LmMessageNode *view_node, *activity_node;
-  GHashTable *activities;
-  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
-      (TpBaseConnection*) conn, TP_HANDLE_TYPE_ROOM);
+  LmMessageNode *view_node;
   GabbleOlpcView *view = GABBLE_OLPC_VIEW (_view);
 
   view_node = lm_message_node_get_child_with_namespace (reply_msg->node, "view",
@@ -3469,95 +3597,8 @@ activity_query_result_cb (GabbleConnection *conn,
   if (view_node == NULL)
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
-  activities = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
-      g_object_unref );
+  add_activities_to_view_from_node (conn, view, view_node);
 
-  for (activity_node = view_node->children; activity_node != NULL;
-      activity_node = activity_node->next)
-    {
-      const gchar *jid, *act_id;
-      LmMessageNode *properties_node;
-      GHashTable *properties;
-      TpHandle handle;
-      GabbleOlpcActivity *activity;
-      GArray *buddies;
-      GPtrArray *buddies_properties;
-
-      jid = lm_message_node_get_attribute (activity_node, "room");
-      if (jid == NULL)
-        {
-          NODE_DEBUG (activity_node, "No room attribute, skipping");
-          continue;
-        }
-
-      act_id = lm_message_node_get_attribute (activity_node, "id");
-      if (act_id == NULL)
-        {
-          NODE_DEBUG (activity_node, "No activity ID, skipping");
-          continue;
-        }
-
-      handle = tp_handle_ensure (room_repo, jid, NULL, NULL);
-      if (handle == 0)
-        {
-          DEBUG ("Invalid jid: %s", jid);
-          g_hash_table_destroy (activities);
-          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-        }
-
-      properties_node = lm_message_node_get_child_with_namespace (activity_node,
-          "properties", NS_OLPC_ACTIVITY_PROPS);
-      properties = lm_message_node_extract_properties (properties_node,
-          "property");
-
-      gabble_svc_olpc_activity_properties_emit_activity_properties_changed (
-          conn, handle, properties);
-
-      /* ref the activity while it is in the view */
-      activity = g_hash_table_lookup (conn->olpc_activities_info,
-          GUINT_TO_POINTER (handle));
-      if (activity == NULL)
-        {
-          activity = add_activity_info (conn, handle);
-        }
-      else
-        {
-          g_object_ref (activity);
-        }
-
-      g_hash_table_insert (activities, GUINT_TO_POINTER (handle), activity);
-      tp_handle_unref (room_repo, handle);
-
-      if (tp_strdiff (activity->id, act_id))
-        {
-          DEBUG ("Assigning new ID <%s> to room #%u", act_id, handle);
-
-          g_object_set (activity, "id", act_id, NULL);
-        }
-
-      g_object_set (activity, "properties", properties, NULL);
-
-      buddies = g_array_new (FALSE, FALSE, sizeof (TpHandle));
-      buddies_properties = g_ptr_array_new ();
-
-      if (!populate_buddies_from_nodes (conn, activity_node, buddies,
-            buddies_properties))
-        {
-          g_array_free (buddies, TRUE);
-          g_ptr_array_free (buddies_properties, TRUE);
-          continue;
-        }
-
-      gabble_olpc_view_add_buddies (view, buddies, buddies_properties);
-
-      g_array_free (buddies, TRUE);
-      g_ptr_array_free (buddies_properties, TRUE);
-    }
-
-  /* TODO: remove activities when needed */
-  gabble_olpc_view_add_activities (view, activities);
-
-  g_hash_table_destroy (activities);
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 

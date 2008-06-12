@@ -242,7 +242,48 @@ def test(q, bus, conn, stream):
     act = view2.GetActivities()
     assert sorted(act) == sorted(added)
 
-    # close view 0
+    # add one activity to view0
+    message = domish.Element((None, 'message'))
+    message['from'] = 'gadget.localhost'
+    message['to'] = 'alice@localhost'
+    message['type'] = 'notice'
+    added = message.addElement((NS_OLPC_ACTIVITY, 'added'))
+    added['id'] = '0'
+    activity = added.addElement((None, 'activity'))
+    activity['id'] = 'activity3'
+    activity['room'] = 'room3@conference.localhost'
+    properties = activity.addElement((NS_OLPC_ACTIVITY_PROPS, "properties"))
+    property = properties.addElement((None, "property"))
+    property['type'] = 'str'
+    property['name'] = 'color'
+    property.addContent('#DDEEDD,#EEDDEE')
+    buddy = activity.addElement((None, 'buddy'))
+    buddy['jid'] = 'fernand@localhost'
+    properties = buddy.addElement((NS_OLPC_BUDDY_PROPS, "properties"))
+    property = properties.addElement((None, "property"))
+    property['type'] = 'str'
+    property['name'] = 'color'
+    property.addContent('#AABBAA,#BBAABB')
+    amp = message.addElement((NS_AMP, 'amp'))
+    rule = amp.addElement((None, 'rule'))
+    rule['condition'] = 'deliver-at'
+    rule['value'] = 'stored'
+    rule['action'] ='error'
+    stream.send(message)
+
+   # participants are added to view
+    event = q.expect('dbus-signal', signal='BuddiesChanged')
+    members_handles, removed = event.args
+    assert conn.InspectHandles(1, members_handles) == ['fernand@localhost']
+
+    event = q.expect('dbus-signal', signal='ActivitiesChanged')
+    added, removed = event.args
+    assert len(added) == 1
+    id, handle = added[0]
+    assert id == 'activity3'
+    assert sorted(conn.InspectHandles(2, [handle])) == \
+            ['room3@conference.localhost']
+
     call_async(q, view0_iface, 'Close')
     event, _ = q.expect_many(
         EventPattern('stream-message', to='gadget.localhost'),

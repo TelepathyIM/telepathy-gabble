@@ -212,8 +212,8 @@ def test(q, bus, conn, stream):
     reply['to'] = 'alice@localhost'
     view = xpath.queryForNodes('/iq/view', reply)[0]
     activity = view.addElement((None, "activity"))
-    activity['room'] = 'room2@conference.localhost'
-    activity['id'] = 'activity2'
+    activity['room'] = 'room3@conference.localhost'
+    activity['id'] = 'activity3'
     properties = activity.addElement((NS_OLPC_ACTIVITY_PROPS, "properties"))
     property = properties.addElement((None, "property"))
     property['type'] = 'str'
@@ -227,7 +227,7 @@ def test(q, bus, conn, stream):
 
     event = q.expect('dbus-signal', signal='ActivityPropertiesChanged')
     handle, props = event.args
-    assert conn.InspectHandles(2, [handle])[0] == 'room2@conference.localhost'
+    assert conn.InspectHandles(2, [handle])[0] == 'room3@conference.localhost'
     assert props == {'color': '#AABBCC,#001122'}
 
     event = q.expect('dbus-signal', signal='ActivitiesChanged')
@@ -235,9 +235,9 @@ def test(q, bus, conn, stream):
     assert removed == []
     assert len(added) == 1
     id, handle = added[0]
-    assert id == 'activity2'
+    assert id == 'activity3'
     assert sorted(conn.InspectHandles(2, [handle])) == \
-            ['room2@conference.localhost']
+            ['room3@conference.localhost']
 
     act = view2.GetActivities()
     assert sorted(act) == sorted(added)

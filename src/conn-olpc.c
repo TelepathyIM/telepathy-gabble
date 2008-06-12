@@ -3255,7 +3255,8 @@ view_closed_cb (GabbleOlpcView *view,
 }
 
 static GabbleOlpcView *
-create_buddy_view (GabbleConnection *conn)
+create_view (GabbleConnection *conn,
+             GabbleOlpcViewType type)
 {
   guint id;
   GabbleOlpcView *view;
@@ -3271,7 +3272,7 @@ create_buddy_view (GabbleConnection *conn)
       return NULL;
     }
 
-  view = gabble_olpc_view_new (conn, GABBLE_OLPC_VIEW_TYPE_BUDDY, id);
+  view = gabble_olpc_view_new (conn, type, id);
   g_hash_table_insert (conn->olpc_views, GUINT_TO_POINTER (id), view);
 
   g_signal_connect (view, "closed", G_CALLBACK (view_closed_cb), conn);
@@ -3324,7 +3325,7 @@ olpc_gadget_request_random_buddies (GabbleSvcOLPCGadget *iface,
       return;
     }
 
-  view = create_buddy_view (conn);
+  view = create_view (conn, GABBLE_OLPC_VIEW_TYPE_BUDDY);
   if (view == NULL)
     {
       GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
@@ -3393,7 +3394,7 @@ olpc_gadget_search_buddies_by_properties (GabbleSvcOLPCGadget *iface,
   if (!check_gadget_buddy (conn, context))
     return;
 
-  view = create_buddy_view (conn);
+  view = create_view (conn, GABBLE_OLPC_VIEW_TYPE_BUDDY);
   if (view == NULL)
     {
       GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
@@ -3560,31 +3561,6 @@ activity_query_result_cb (GabbleConnection *conn,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
-static GabbleOlpcView *
-create_activity_view (GabbleConnection *conn)
-{
-  guint id;
-  GabbleOlpcView *view;
-
-  /* Look for a free ID */
-  for (id = 0; id < G_MAXUINT &&
-      g_hash_table_lookup (conn->olpc_views, GUINT_TO_POINTER (id))
-      != NULL; id++);
-
-  if (id == G_MAXUINT)
-    {
-      /* All the ID's are allocated */
-      return NULL;
-    }
-
-  view = gabble_olpc_view_new (conn, GABBLE_OLPC_VIEW_TYPE_ACTIVITY, id);
-  g_hash_table_insert (conn->olpc_views, GUINT_TO_POINTER (id), view);
-
-  g_signal_connect (view, "closed", G_CALLBACK (view_closed_cb), conn);
-
-  return view;
-}
-
 static void
 olpc_gadget_request_random_activities (GabbleSvcOLPCGadget *iface,
                                        guint max,
@@ -3610,7 +3586,7 @@ olpc_gadget_request_random_activities (GabbleSvcOLPCGadget *iface,
       return;
     }
 
-  view = create_activity_view (conn);
+  view = create_view (conn, GABBLE_OLPC_VIEW_TYPE_ACTIVITY);
   if (view == NULL)
     {
       GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
@@ -3679,7 +3655,7 @@ olpc_gadget_search_activities_by_properties (GabbleSvcOLPCGadget *iface,
   if (!check_gadget_activity (conn, context))
     return;
 
-  view = create_activity_view (conn);
+  view = create_view (conn, GABBLE_OLPC_VIEW_TYPE_ACTIVITY);
   if (view == NULL)
     {
       GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
@@ -3754,7 +3730,7 @@ olpc_gadget_search_activities_by_participants (GabbleSvcOLPCGadget *iface,
   if (!check_gadget_activity (conn, context))
     return;
 
-  view = create_activity_view (conn);
+  view = create_view (conn, GABBLE_OLPC_VIEW_TYPE_ACTIVITY);
   if (view == NULL)
     {
       GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,

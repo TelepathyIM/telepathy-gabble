@@ -250,8 +250,8 @@ def test(q, bus, conn, stream):
     added = message.addElement((NS_OLPC_ACTIVITY, 'added'))
     added['id'] = '0'
     activity = added.addElement((None, 'activity'))
-    activity['id'] = 'activity3'
-    activity['room'] = 'room3@conference.localhost'
+    activity['id'] = 'activity4'
+    activity['room'] = 'room4@conference.localhost'
     properties = activity.addElement((NS_OLPC_ACTIVITY_PROPS, "properties"))
     property = properties.addElement((None, "property"))
     property['type'] = 'str'
@@ -280,9 +280,9 @@ def test(q, bus, conn, stream):
     added, removed = event.args
     assert len(added) == 1
     id, handle = added[0]
-    assert id == 'activity3'
+    assert id == 'activity4'
     assert sorted(conn.InspectHandles(2, [handle])) == \
-            ['room3@conference.localhost']
+            ['room4@conference.localhost']
 
     # close view 0
     call_async(q, view0_iface, 'Close')

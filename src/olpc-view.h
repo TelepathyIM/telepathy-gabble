@@ -71,7 +71,7 @@ GabbleOlpcView * gabble_olpc_view_new (GabbleConnection *conn,
     GabbleOlpcViewType type, guint id);
 
 void gabble_olpc_view_add_buddies (GabbleOlpcView *self,
-    GArray *handles, GPtrArray *buddies_properties);
+    GArray *handles, GPtrArray *buddies_properties, TpHandle room);
 
 void gabble_olpc_view_remove_buddies (GabbleOlpcView *self,
     TpHandleSet *handles);

@@ -303,10 +303,9 @@ def test(q, bus, conn, stream):
     stream.send(message)
 
     # participants are removed from the view
-    # FIXME
-    #event = q.expect('dbus-signal', signal='BuddiesChanged')
-    #members_handles, removed = event.args
-    #assert conn.InspectHandles(1, members_handles) == ['fernand@localhost']
+    event = q.expect('dbus-signal', signal='BuddiesChanged')
+    added, removed = event.args
+    assert conn.InspectHandles(1, removed) == ['lucien@localhost']
 
     # activity is removed
     event = q.expect('dbus-signal', signal='ActivitiesChanged')

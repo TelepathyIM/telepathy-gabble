@@ -71,6 +71,8 @@ struct _GabbleOlpcViewPrivate
 
   /* TpHandle (owned in priv->buddies) => GHashTable * */
   GHashTable *buddy_properties;
+  /* TpHandle (owned in priv->buddies) => TpHandleSet of activity rooms */
+  GHashTable *buddy_rooms;
 
   gboolean dispose_has_run;
 };
@@ -96,6 +98,8 @@ gabble_olpc_view_init (GabbleOlpcView *self)
 
   priv->buddy_properties = g_hash_table_new_full (g_direct_hash, g_direct_equal,
       NULL, (GDestroyNotify) g_hash_table_unref);
+  priv->buddy_rooms = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+      NULL, (GDestroyNotify) tp_handle_set_destroy);
 
   priv->dispose_has_run = FALSE;
 }
@@ -125,6 +129,12 @@ gabble_olpc_view_dispose (GObject *object)
     {
       g_hash_table_destroy (priv->buddy_properties);
       priv->buddy_properties = NULL;
+    }
+
+  if (priv->buddy_rooms != NULL)
+    {
+      g_hash_table_destroy (priv->buddy_rooms);
+      priv->buddy_rooms = NULL;
     }
 
   priv->dispose_has_run = TRUE;
@@ -208,7 +218,7 @@ gabble_olpc_view_constructor (GType type,
   GabbleOlpcViewPrivate *priv;
   DBusGConnection *bus;
   TpBaseConnection *conn;
-  TpHandleRepoIface *contact_handles, *room_handles;
+  TpHandleRepoIface *contact_handles;
 
   obj = G_OBJECT_CLASS (gabble_olpc_view_parent_class)->
            constructor (type, n_props, props);
@@ -223,8 +233,6 @@ gabble_olpc_view_constructor (GType type,
 
   contact_handles = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
-  room_handles = tp_base_connection_get_handles (conn,
-      TP_HANDLE_TYPE_ROOM);
 
   priv->buddies = tp_handle_set_new (contact_handles);
   priv->activities = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
@@ -433,14 +441,22 @@ olpc_view_close (GabbleSvcOLPCView *iface,
   g_signal_emit (G_OBJECT (self), signals[CLOSED], 0);
 }
 
+/* If room is not zero, these buddies are associated with the activity
+ * of this room. They'll leave the view if the activity is removed.
+ */
 void
 gabble_olpc_view_add_buddies (GabbleOlpcView *self,
                               GArray *buddies,
-                              GPtrArray *buddies_properties)
+                              GPtrArray *buddies_properties,
+                              TpHandle room)
 {
   GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
   guint i;
   GArray *empty;
+  TpHandleRepoIface *room_repo;
+
+  room_repo = tp_base_connection_get_handles ((TpBaseConnection *) priv->conn,
+      TP_HANDLE_TYPE_ROOM);
 
   g_assert (buddies->len == buddies_properties->len);
 
@@ -459,6 +475,25 @@ gabble_olpc_view_add_buddies (GabbleOlpcView *self,
       g_hash_table_insert (priv->buddy_properties, GUINT_TO_POINTER (handle),
           properties);
       g_hash_table_ref (properties);
+
+      if (room != 0)
+        {
+          /* buddies are in an activity */
+          TpHandleSet *set;
+
+          set = g_hash_table_lookup (priv->buddy_rooms, GUINT_TO_POINTER (
+                handle));
+
+          if (set == NULL)
+            {
+              set = tp_handle_set_new (room_repo);
+
+              g_hash_table_insert (priv->buddy_rooms, GUINT_TO_POINTER (
+                    handle), set);
+            }
+
+          tp_handle_set_add (set, room);
+        }
     }
 
   gabble_svc_olpc_view_emit_buddies_changed (self, buddies, empty);
@@ -467,14 +502,15 @@ gabble_olpc_view_add_buddies (GabbleOlpcView *self,
 }
 
 static void
-remove_properties_foreach (TpHandleSet *buddies,
-                           TpHandle handle,
-                           GabbleOlpcView *self)
+remove_buddy_foreach (TpHandleSet *buddies,
+                      TpHandle handle,
+                      GabbleOlpcView *self)
 {
   GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
 
   tp_handle_set_remove (priv->buddies, handle);
   g_hash_table_remove (priv->buddy_properties, GUINT_TO_POINTER (handle));
+  g_hash_table_remove (priv->buddy_rooms, GUINT_TO_POINTER (handle));
 }
 
 void
@@ -484,7 +520,7 @@ gabble_olpc_view_remove_buddies (GabbleOlpcView *self,
   GArray *removed, *empty;
 
   tp_handle_set_foreach (buddies,
-      (TpHandleSetMemberFunc) remove_properties_foreach, self);
+      (TpHandleSetMemberFunc) remove_buddy_foreach, self);
 
   empty = g_array_new (FALSE, FALSE, sizeof (TpHandle));
   removed = tp_handle_set_to_array (buddies);
@@ -545,6 +581,32 @@ gabble_olpc_view_add_activities (GabbleOlpcView *self,
   g_ptr_array_free (empty, TRUE);
 }
 
+struct remove_activity_foreach_buddy_ctx
+{
+  GabbleOlpcView *view;
+  TpHandle room;
+  /* buddies who have to be removed */
+  TpHandleSet *removed;
+};
+
+static void
+remove_activity_foreach_buddy (TpHandle buddy,
+                               TpHandleSet *set,
+                               struct remove_activity_foreach_buddy_ctx *ctx)
+{
+  if (set == NULL)
+    return;
+
+  if (tp_handle_set_remove (set, ctx->room))
+    {
+      if (tp_handle_set_size (set) == 0)
+        {
+          /* No more activity for this buddy. Remove it */
+          tp_handle_set_add (ctx->removed, buddy);
+        }
+    }
+}
+
 void
 gabble_olpc_view_remove_activities (GabbleOlpcView *self,
                                     TpHandleSet *rooms)
@@ -553,6 +615,10 @@ gabble_olpc_view_remove_activities (GabbleOlpcView *self,
   GPtrArray *removed, *empty;
   GArray *array;
   guint i;
+  TpHandleRepoIface *contact_repo;
+
+  contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 
   /* for easier iteration */
   array = tp_handle_set_to_array (rooms);
@@ -562,18 +628,31 @@ gabble_olpc_view_remove_activities (GabbleOlpcView *self,
 
   for (i = 0; i < array->len; i++)
     {
-      TpHandle handle;
+      TpHandle room;
       GabbleOlpcActivity *activity;
+      struct remove_activity_foreach_buddy_ctx ctx;
 
-      handle = g_array_index (array, TpHandle, i);
+      room = g_array_index (array, TpHandle, i);
 
       activity = g_hash_table_lookup (priv->activities,
-          GUINT_TO_POINTER (handle));
+          GUINT_TO_POINTER (room));
       if (activity == NULL)
         continue;
 
-      add_activity_to_array (handle, activity, removed);
-      g_hash_table_remove (priv->activities, GUINT_TO_POINTER (handle));
+      add_activity_to_array (room, activity, removed);
+      g_hash_table_remove (priv->activities, GUINT_TO_POINTER (room));
+
+      /* remove the activity from all rooms set */
+      ctx.view = self;
+      ctx.room = room;
+      ctx.removed = tp_handle_set_new (contact_repo);
+
+      g_hash_table_foreach (priv->buddy_rooms,
+          (GHFunc) remove_activity_foreach_buddy, &ctx);
+
+      gabble_olpc_view_remove_buddies (self, ctx.removed);
+
+      tp_handle_set_destroy (ctx.removed);
     }
 
   gabble_svc_olpc_view_emit_activities_changed (self, empty, removed);

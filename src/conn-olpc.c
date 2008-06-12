@@ -3079,13 +3079,12 @@ add_activities_to_view_from_node (GabbleConnection *conn,
           continue;
         }
 
-      gabble_olpc_view_add_buddies (view, buddies, buddies_properties);
+      gabble_olpc_view_add_buddies (view, buddies, buddies_properties, handle);
 
       g_array_free (buddies, TRUE);
       g_ptr_array_free (buddies_properties, TRUE);
     }
 
-  /* TODO: remove activities when needed */
   gabble_olpc_view_add_activities (view, activities);
 
   g_hash_table_destroy (activities);
@@ -3138,7 +3137,7 @@ add_buddies_to_view_from_node (GabbleConnection *conn,
     }
 
   /* FIXME: we should update properties when needed */
-  gabble_olpc_view_add_buddies (view, buddies, buddies_properties);
+  gabble_olpc_view_add_buddies (view, buddies, buddies_properties, 0);
 
   for (i = 0; i < buddies->len; i++)
     {

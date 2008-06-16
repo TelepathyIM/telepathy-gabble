@@ -281,6 +281,10 @@ static gboolean
 status_available_cb (GObject *obj, guint status)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (obj);
+  TpBaseConnection *base = (TpBaseConnection *) conn;
+
+  if (base->status =!= TP_CONNECTION_STATUS_CONNECTED)
+    return FALSE;
 
   if (gabble_statuses[status].presence_type == TP_CONNECTION_PRESENCE_TYPE_HIDDEN &&
       (conn->features & GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE) == 0)
@@ -297,6 +301,8 @@ conn_presence_class_init (GabbleConnectionClass *klass)
       G_STRUCT_OFFSET (GabbleConnectionClass, presence_class),
       status_available_cb, construct_contact_statuses_cb,
       set_own_status_cb, gabble_statuses);
+
+  tp_presence_mixin_simple_init_dbus_properties ((GObjectClass *) klass);
 }
 
 

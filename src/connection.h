@@ -26,6 +26,7 @@
 #include <loudmouth/loudmouth.h>
 #include <telepathy-glib/base-connection.h>
 #include <telepathy-glib/presence-mixin.h>
+#include <telepathy-glib/dbus-properties-mixin.h>
 
 #include "types.h"
 #include "error.h"
@@ -96,6 +97,7 @@ typedef enum {
 
 struct _GabbleConnectionClass {
     TpBaseConnectionClass parent_class;
+    TpDBusPropertiesMixinClass properties_class;
     TpPresenceMixinClass presence_class;
 };
 

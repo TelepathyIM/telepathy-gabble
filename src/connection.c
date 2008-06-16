@@ -39,6 +39,7 @@
 #include <telepathy-glib/handle-repo-static.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/svc-connection.h>
+#include <telepathy-glib/svc-generic.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
 
@@ -83,6 +84,10 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
       conn_avatars_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CAPABILITIES,
       capabilities_service_iface_init);
+    G_IMPLEMENT_INTERFACE(TP_TYPE_SVC_DBUS_PROPERTIES,
+       tp_dbus_properties_mixin_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_SIMPLE_PRESENCE,
+      tp_presence_mixin_simple_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_PRESENCE,
       conn_presence_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_OLPC_BUDDY_INFO,
@@ -472,6 +477,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
   static const gchar *interfaces_always_present[] = {
       TP_IFACE_CONNECTION_INTERFACE_ALIASING,
       TP_IFACE_CONNECTION_INTERFACE_CAPABILITIES,
+      TP_IFACE_CONNECTION_INTERFACE_SIMPLE_PRESENCE,
       TP_IFACE_CONNECTION_INTERFACE_PRESENCE,
       TP_IFACE_CONNECTION_INTERFACE_AVATARS,
       NULL };
@@ -634,7 +640,11 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
           NULL,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
+  tp_dbus_properties_mixin_class_init (object_class,
+      G_STRUCT_OFFSET (GabbleConnectionClass, properties_class));
+
   conn_presence_class_init (gabble_connection_class);
+
 }
 
 static gboolean

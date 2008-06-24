@@ -35,7 +35,7 @@ def test(q, bus, conn, stream):
         ['amy@foo.com', 'bob@foo.com'])
     expect_list_channel(q, bus, conn, 'subscribe',
         ['amy@foo.com', 'che@foo.com'])
-    expect_list_channel(q, bus, conn, 'known',
+    expect_list_channel(q, bus, conn, 'stored',
         ['amy@foo.com', 'bob@foo.com', 'che@foo.com'])
 
     conn.Disconnect()

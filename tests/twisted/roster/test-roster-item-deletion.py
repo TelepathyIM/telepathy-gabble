@@ -36,9 +36,9 @@ def test(q, bus, conn, stream):
     # significant
     publish = expect_list_channel(q, bus, conn, 'publish', [])
     subscribe = expect_list_channel(q, bus, conn, 'subscribe', [])
-    known = expect_list_channel(q, bus, conn, 'known', ['quux@foo.com'])
+    stored = expect_list_channel(q, bus, conn, 'stored', ['quux@foo.com'])
 
-    known.Group.RemoveMembers([dbus.UInt32(2)], '')
+    stored.Group.RemoveMembers([dbus.UInt32(2)], '')
     send_roster_iq(stream, 'quux@foo.com', 'remove')
 
     acknowledge_iq(stream, q.expect('stream-iq').stanza)

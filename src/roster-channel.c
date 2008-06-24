@@ -169,7 +169,7 @@ gabble_roster_channel_constructor (GType type, guint n_props,
           TP_CHANNEL_GROUP_FLAG_PROPERTIES,
           0);
     }
-  else if (GABBLE_LIST_HANDLE_KNOWN == priv->handle)
+  else if (GABBLE_LIST_HANDLE_STORED == priv->handle)
     {
       tp_group_mixin_change_flags (obj,
           TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
@@ -588,8 +588,8 @@ _gabble_roster_channel_remove_member_cb (GObject *obj,
       ret = gabble_connection_send_presence (priv->conn,
           LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE, contact_id, message, error);
     }
-  /* known list */
-  else if (GABBLE_LIST_HANDLE_KNOWN == priv->handle)
+  /* stored list */
+  else if (GABBLE_LIST_HANDLE_STORED == priv->handle)
     {
       /* send roster subscription=remove IQ */
       ret = gabble_roster_handle_remove (priv->conn->roster, handle, error);

@@ -108,7 +108,7 @@ def test(q, bus, conn, stream):
 
     event = q.expect('dbus-signal', signal='MembersChanged',
         args=['', [2], [], [], [], 0, 0])
-    assert(event.path.endswith('/known'))
+    assert(event.path.endswith('/stored'))
 
     event = q.expect('dbus-signal', signal='MembersChanged',
         args=['', [], [], [], [2], 0, 0])

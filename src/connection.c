@@ -539,7 +539,7 @@ static const char *list_handle_strings[] =
 {
     "publish",      /* GABBLE_LIST_HANDLE_PUBLISH */
     "subscribe",    /* GABBLE_LIST_HANDLE_SUBSCRIBE */
-    "known",        /* GABBLE_LIST_HANDLE_KNOWN */
+    "stored",       /* GABBLE_LIST_HANDLE_STORED */
     "deny",         /* GABBLE_LIST_HANDLE_DENY */
     NULL
 };

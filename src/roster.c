@@ -1166,7 +1166,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
       LmMessageNode *item_node;
       TpIntSet *pub_add, *pub_rem,
                *sub_add, *sub_rem, *sub_rp,
-               *known_add, *known_rem,
+               *stored_add, *stored_rem,
                *deny_add, *deny_rem;
       TpHandleSet *referenced_handles;
       GArray *removed;
@@ -1184,8 +1184,8 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
       sub_add = tp_intset_new ();
       sub_rem = tp_intset_new ();
       sub_rp = tp_intset_new ();
-      known_add = tp_intset_new ();
-      known_rem = tp_intset_new ();
+      stored_add = tp_intset_new ();
+      stored_rem = tp_intset_new ();
       group_update_table = g_hash_table_new_full (NULL, NULL, NULL,
           (GDestroyNotify)_group_mem_update_destroy);
       removed = g_array_new (FALSE, FALSE, sizeof (TpHandle));
@@ -1326,7 +1326,7 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
               g_assert_not_reached ();
             }
 
-          /* handle known list changes */
+          /* handle stored list changes */
           switch (item->subscription)
             {
             case GABBLE_ROSTER_SUBSCRIPTION_NONE:
@@ -1334,15 +1334,15 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
             case GABBLE_ROSTER_SUBSCRIPTION_FROM:
             case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
               if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN)
-                  tp_intset_add (known_rem, handle);
+                  tp_intset_add (stored_rem, handle);
               else
-                  tp_intset_add (known_add, handle);
+                  tp_intset_add (stored_add, handle);
               break;
             case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
               if (!tp_handle_set_is_member (sub_chan->group.remote_pending,
                     handle))
                 {
-                  tp_intset_add (known_rem, handle);
+                  tp_intset_add (stored_rem, handle);
                 }
               break;
             default:
@@ -1387,13 +1387,13 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
       tp_group_mixin_change_members ((GObject *) sub_chan,
             "", sub_add, sub_rem, NULL, sub_rp, 0, 0);
 
-      handle = GABBLE_LIST_HANDLE_KNOWN;
+      handle = GABBLE_LIST_HANDLE_STORED;
       chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle,
           NULL, NULL);
 
-      DEBUG ("calling change members on known channel");
+      DEBUG ("calling change members on stored channel");
       tp_group_mixin_change_members ((GObject *) chan,
-            "", known_add, known_rem, NULL, NULL, 0, 0);
+            "", stored_add, stored_rem, NULL, NULL, 0, 0);
 
       DEBUG ("calling change members on any group channels");
       g_hash_table_foreach_remove (group_update_table, _update_group, roster);
@@ -1421,8 +1421,8 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
       tp_intset_destroy (sub_add);
       tp_intset_destroy (sub_rem);
       tp_intset_destroy (sub_rp);
-      tp_intset_destroy (known_add);
-      tp_intset_destroy (known_rem);
+      tp_intset_destroy (stored_add);
+      tp_intset_destroy (stored_rem);
       g_array_free (removed, TRUE);
       g_hash_table_destroy (group_update_table);
       tp_handle_set_destroy (referenced_handles);

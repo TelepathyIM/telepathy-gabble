@@ -201,7 +201,8 @@ gabble_olpc_activity_constructor (GType type,
 }
 
 static void
-gabble_olpc_activity_class_init (GabbleOlpcActivityClass *gabble_olpc_activity_class)
+gabble_olpc_activity_class_init (
+    GabbleOlpcActivityClass *gabble_olpc_activity_class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_olpc_activity_class);
   GParamSpec *param_spec;
@@ -263,7 +264,6 @@ gabble_olpc_activity_class_init (GabbleOlpcActivityClass *gabble_olpc_activity_c
       G_PARAM_STATIC_NICK |
       G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_PROPERTIES, param_spec);
-
 }
 
 GabbleOlpcActivity *

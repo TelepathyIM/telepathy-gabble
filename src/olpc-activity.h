@@ -52,7 +52,8 @@ GType gabble_olpc_activity_get_type (void);
 #define GABBLE_TYPE_OLPC_ACTIVITY \
   (gabble_olpc_activity_get_type ())
 #define GABBLE_OLPC_ACTIVITY(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_OLPC_ACTIVITY, GabbleOlpcActivity))
+  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_OLPC_ACTIVITY,\
+                              GabbleOlpcActivity))
 #define GABBLE_OLPC_ACTIVITY_CLASS(klass) \
   (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_OLPC_ACTIVITY,\
                            GabbleOlpcActivityClass))

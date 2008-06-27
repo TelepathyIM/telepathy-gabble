@@ -565,6 +565,8 @@ olpc_buddy_info_get_properties (GabbleSvcOLPCBuddyInfo *iface,
     return;
 
   /* First check if we can find properties in a buddy view */
+  /* FIXME: Maybe we should first try the PEP node as we do for buddy
+   * activities ? */
   properties = find_buddy_properties_from_views (conn, contact);
   if (properties != NULL)
     {
@@ -2953,15 +2955,32 @@ buddy_changed (GabbleConnection *conn,
                LmMessageNode *change)
 {
   LmMessageNode *node;
-  const gchar *jid;
+  const gchar *jid, *id_str;
+  guint id;
   TpHandle handle;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
     (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
+  GabbleOlpcView *view;
 
   jid = lm_message_node_get_attribute (change, "jid");
   if (jid == NULL)
     {
       DEBUG ("No jid attribute in change message. Discard");
+      return;
+    }
+
+  id_str = lm_message_node_get_attribute (change, "id");
+  if (id_str == NULL)
+    {
+      DEBUG ("No view ID attribute in change message. Discard");
+      return;
+    }
+
+  id = strtoul (id_str, NULL, 10);
+  view = g_hash_table_lookup (conn->olpc_views, GUINT_TO_POINTER (id));
+  if (view == NULL)
+    {
+      DEBUG ("No active view with ID %u", id);
       return;
     }
 
@@ -2984,10 +3003,16 @@ buddy_changed (GabbleConnection *conn,
 
       properties = lm_message_node_extract_properties (node,
           "property");
+
+      if (view != NULL)
+        {
+          gabble_olpc_view_set_buddy_properties (view, handle, properties);
+        }
+
       gabble_svc_olpc_buddy_info_emit_properties_changed (conn, handle,
           properties);
 
-      g_hash_table_destroy (properties);
+      g_hash_table_unref (properties);
     }
 
   node = lm_message_node_get_child_with_namespace (change,

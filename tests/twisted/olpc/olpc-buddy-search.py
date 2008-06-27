@@ -153,10 +153,41 @@ def test(q, bus, conn, stream):
     assert sorted(conn.InspectHandles(1, added)) == ['bob@localhost',
             'charles@localhost']
 
+    event = q.expect('dbus-signal', signal='PropertiesChanged')
+    event = q.expect('dbus-signal', signal='PropertiesChanged')
+
     # we can now get bob's properties
-    handle = conn.RequestHandles(1, ['bob@localhost'])[0]
-    props = buddy_info_iface.GetProperties(handle)
+    bob_handle = conn.RequestHandles(1, ['bob@localhost'])[0]
+    props = buddy_info_iface.GetProperties(bob_handle)
     assert props == {'color': '#005FE4,#00A0FF'}
+
+    # Bob changed his properties
+    message = domish.Element(('jabber:client', 'message'))
+    message['from'] = 'gadget.localhost'
+    message['to'] = 'test@localhost'
+    message['type'] = 'notice'
+
+    change = message.addElement((NS_OLPC_BUDDY, 'change'))
+    change['jid'] = 'bob@localhost'
+    change['id'] = '0'
+    properties = change.addElement((NS_OLPC_BUDDY_PROPS, 'properties'))
+    property = properties.addElement((None, 'property'))
+    property['type'] = 'str'
+    property['name'] = 'color'
+    property.addContent('#FFFFFF,#AAAAAA')
+    amp = message.addElement((NS_AMP, 'amp'))
+    rule = amp.addElement((None, 'rule'))
+    rule['condition'] = 'deliver-at'
+    rule['value'] = 'stored'
+    rule['action'] ='error'
+    stream.send(message)
+
+    event = q.expect('dbus-signal', signal='PropertiesChanged',
+            args=[bob_handle, {'color': '#FFFFFF,#AAAAAA'}])
+
+    # we now get the new properties
+    props = buddy_info_iface.GetProperties(bob_handle)
+    assert props == {'color': '#FFFFFF,#AAAAAA'}
 
     # buddy search
     props = {'color': '#AABBCC,#001122'}
@@ -266,6 +297,8 @@ def test(q, bus, conn, stream):
     members = view0_iface.GetBuddies()
     members = sorted(conn.InspectHandles(1, members))
     assert sorted(members) == ['charles@localhost', 'oscar@localhost']
+
+    # FIXME: test current-activity change from gadget
 
     # close view 0
     call_async(q, view0_iface, 'Close')

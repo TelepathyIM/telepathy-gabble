@@ -662,6 +662,49 @@ gabble_olpc_view_remove_activities (GabbleOlpcView *self,
   g_array_free (array, TRUE);
 }
 
+GPtrArray *
+gabble_olpc_view_get_buddy_activities (GabbleOlpcView *self,
+                                       TpHandle buddy)
+{
+  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
+  GPtrArray *activities;
+  TpHandleSet *rooms_set;
+  GArray *rooms;
+  guint i;
+
+  activities = g_ptr_array_new ();
+
+  rooms_set = g_hash_table_lookup (priv->buddy_rooms, GUINT_TO_POINTER (buddy));
+  if (rooms_set == NULL || tp_handle_set_size (rooms_set) == 0)
+    return activities;
+
+  /* Convert to an array for easier iteration */
+  rooms = tp_handle_set_to_array (rooms_set);
+  for (i = 0; i < rooms->len; i++)
+    {
+      TpHandle room;
+      GabbleOlpcActivity *activity;
+
+      room = g_array_index (rooms, TpHandle, i);
+
+      activity = g_hash_table_lookup (priv->activities,
+          GUINT_TO_POINTER (room));
+      if (activity == NULL)
+        {
+          /* FIXME: When this could happen ? */
+          DEBUG ("Buddy %d is supposed to be in activity %d but view doesn't"
+              " contain its info", buddy, room);
+          continue;
+        }
+
+      g_ptr_array_add (activities, activity);
+    }
+
+  g_array_free (rooms, TRUE);
+
+  return activities;
+}
+
 static void
 view_iface_init (gpointer g_iface,
                  gpointer iface_data)

@@ -76,34 +76,6 @@ def test(q, bus, conn, stream):
 
     assert props == {'color' : '#005FE4,#00A0FF'}
 
-    # The indexer informs us about a buddy properties change.
-    message = domish.Element(('jabber:client', 'message'))
-    message['from'] = 'gadget.localhost'
-    message['to'] = 'test@localhost'
-    message['type'] = 'notice'
-
-    change = message.addElement((NS_OLPC_BUDDY, 'change'))
-    change['jid'] = 'bob@localhost'
-    properties = change.addElement((NS_OLPC_BUDDY_PROPS, 'properties'))
-    property = properties.addElement((None, 'property'))
-    property['type'] = 'str'
-    property['name'] = 'color'
-    property.addContent('#FFFFFF,#AAAAAA')
-
-    amp = message.addElement((NS_AMP, 'amp'))
-    rule = amp.addElement((None, 'rule'))
-    rule['condition'] = 'deliver-at'
-    rule['value'] = 'stored'
-    rule['action'] ='error'
-
-    stream.send(message)
-
-    event = q.expect('dbus-signal', signal='PropertiesChanged')
-    contact = event.args[0]
-    props = event.args[1]
-
-    assert props == {'color' : '#FFFFFF,#AAAAAA'}
-
     # Alice changes now her current-activity
     message = domish.Element(('jabber:client', 'message'))
     message['from'] = 'alice@localhost'
@@ -129,62 +101,6 @@ def test(q, bus, conn, stream):
 
     assert activity == 'testactivity'
     assert room_id == 'testroom@conference.localhost'
-
-    # The indexer informs us about a buddy current-activity change.
-    message = domish.Element(('jabber:client', 'message'))
-    message['from'] = 'gadget.localhost'
-    message['to'] = 'test@localhost'
-    message['type'] = 'notice'
-
-    change = message.addElement((NS_OLPC_BUDDY, 'change'))
-    change['jid'] = 'bob@localhost'
-    activity = change.addElement((NS_OLPC_CURRENT_ACTIVITY, 'activity'))
-    activity['type'] = 'testactivity2'
-    activity['room'] = 'testroom2@conference.localhost'
-
-    amp = message.addElement((NS_AMP, 'amp'))
-    rule = amp.addElement((None, 'rule'))
-    rule['condition'] = 'deliver-at'
-    rule['value'] = 'stored'
-    rule['action'] ='error'
-    stream.send(message)
-
-    event = q.expect('dbus-signal', signal='CurrentActivityChanged')
-    contact = event.args[0]
-    activity = event.args[1]
-    room = event.args[2]
-    room_id = conn.InspectHandles(2, [room])[0]
-
-    assert activity == 'testactivity2'
-    assert room_id == 'testroom2@conference.localhost'
-
-    # The indexer informs us about an activity properties change
-    message = domish.Element(('jabber:client', 'message'))
-    message['from'] = 'gadget.localhost'
-    message['to'] = 'test@localhost'
-    message['type'] = 'notice'
-
-    change = message.addElement((NS_OLPC_ACTIVITY, 'change'))
-    change['activity'] = 'testactivity'
-    change['room'] = 'testactivity@conference.localhost'
-    properties = change.addElement((NS_OLPC_ACTIVITY_PROPS, 'properties'))
-    property = properties.addElement((None, 'property'))
-    property['type'] = 'str'
-    property['name'] = 'tags'
-    property.addContent('game')
-
-    amp = message.addElement((NS_AMP, 'amp'))
-    rule = amp.addElement((None, 'rule'))
-    rule['condition'] = 'deliver-at'
-    rule['value'] = 'stored'
-    rule['action'] ='error'
-    stream.send(message)
-
-    event = q.expect('dbus-signal', signal='ActivityPropertiesChanged')
-    room = event.args[0]
-    properties = event.args[1]
-
-    assert properties == {'tags': 'game'}
 
 if __name__ == '__main__':
     exec_test(test)

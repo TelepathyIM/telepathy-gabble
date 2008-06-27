@@ -340,6 +340,8 @@ def test(q, bus, conn, stream):
     assert id == 'activity1'
     assert handle == room1_handle
 
+    # FIXME: test activity properties change from gadget
+
     # close view 0
     call_async(q, view0_iface, 'Close')
     event, _ = q.expect_many(

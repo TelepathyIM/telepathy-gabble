@@ -1012,6 +1012,97 @@ check_activity_properties (GabbleConnection *conn,
     }
 }
 
+struct find_activities_of_buddy_ctx
+{
+  TpHandle buddy;
+  GHashTable *activities;
+};
+
+static void
+find_activities_of_buddy (TpHandle contact,
+                          GabbleOlpcView *view,
+                          struct find_activities_of_buddy_ctx *ctx)
+{
+  GPtrArray *act;
+  guint i;
+
+  act = gabble_olpc_view_get_buddy_activities (view, ctx->buddy);
+
+  for (i = 0; i < act->len; i++)
+    {
+      GabbleOlpcActivity *activity;
+
+      activity = g_ptr_array_index (act, i);
+      g_hash_table_insert (ctx->activities, GUINT_TO_POINTER (activity->room),
+          activity);
+    }
+
+  g_ptr_array_free (act, TRUE);
+}
+
+static void
+copy_activity_to_array (TpHandle room,
+                        GabbleOlpcActivity *activity,
+                        GPtrArray *activities)
+{
+  GValue gvalue = { 0 };
+
+  if (activity->id == NULL)
+  {
+    DEBUG ("... activity #%u has no ID, skipping", room);
+    return;
+  }
+
+  g_value_init (&gvalue, GABBLE_STRUCT_TYPE_ACTIVITY);
+  g_value_take_boxed (&gvalue, dbus_g_type_specialized_construct
+      (GABBLE_STRUCT_TYPE_ACTIVITY));
+  dbus_g_type_struct_set (&gvalue,
+      0, activity->id,
+      1, activity->room,
+      G_MAXUINT);
+  DEBUG ("... activity #%u (ID %s)",
+      activity->room, activity->id);
+  g_ptr_array_add (activities, g_value_get_boxed (&gvalue));
+}
+
+static GPtrArray *
+find_buddy_activities_from_views (GabbleConnection *conn,
+                                  TpHandle contact)
+{
+  GPtrArray *result;
+  struct find_activities_of_buddy_ctx ctx;
+
+  result = g_ptr_array_new ();
+
+  /* We use a hash table first so we won't add twice the same activity */
+  ctx.activities = g_hash_table_new (g_direct_hash, g_direct_equal);
+  ctx.buddy = contact;
+
+  g_hash_table_foreach (conn->olpc_views, (GHFunc) find_activities_of_buddy,
+      &ctx);
+
+  /* Now compute the result array using the hash table */
+  g_hash_table_foreach (ctx.activities, (GHFunc) copy_activity_to_array,
+      result);
+
+  g_hash_table_destroy (ctx.activities);
+
+  return result;
+}
+
+static void
+return_buddy_activities_from_views (GabbleConnection *conn,
+                                    TpHandle contact,
+                                    DBusGMethodInvocation *context)
+{
+  GPtrArray *activities;
+
+  activities = find_buddy_activities_from_views (conn, contact);
+  gabble_svc_olpc_buddy_info_return_from_get_activities (context, activities);
+
+  free_activities (activities);
+}
+
 static LmHandlerResult
 get_activities_reply_cb (GabbleConnection *conn,
                          LmMessage *sent_msg,
@@ -1025,9 +1116,6 @@ get_activities_reply_cb (GabbleConnection *conn,
   TpHandle from_handle;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
-
-  if (!check_query_reply_msg (reply_msg, context))
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
   from = lm_message_node_get_attribute (reply_msg->node, "from");
   if (from == NULL)
@@ -1046,6 +1134,13 @@ get_activities_reply_cb (GabbleConnection *conn,
         "Error in pubsub reply: unknown sender" };
 
       dbus_g_method_return_error (context, &error);
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    }
+
+  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
+    {
+      DEBUG ("Failed to query PEP node. Compute activities list using views");
+      return_buddy_activities_from_views (conn, from_handle, context);
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 

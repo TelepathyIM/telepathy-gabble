@@ -21,8 +21,8 @@ NS_PUBSUB = "http://jabber.org/protocol/pubsub"
 NS_DISCO_INFO = "http://jabber.org/protocol/disco#info"
 NS_DISCO_ITEMS = "http://jabber.org/protocol/disco#items"
 
-
 NS_AMP = "http://jabber.org/protocol/amp"
+NS_STANZA = "urn:ietf:params:xml:ns:xmpp-stanzas"
 
 def test(q, bus, conn, stream):
     conn.Connect()
@@ -134,10 +134,28 @@ def test(q, bus, conn, stream):
     assert props == {'color': '#AABBCC,#CCBBAA'}
 
     # and their activities
-    # FIXME
-    #activities = buddy_prop_iface.GetActivities(members_handles[0])
-    #assert len(activities) == 1
-    #assert activities[0] == 'activity1', room1_handle
+    call_async (q, buddy_prop_iface, 'GetActivities', members_handles[0])
+
+    event = q.expect('stream-iq', to='lucien@localhost', query_name='pubsub',
+            query_ns=NS_PUBSUB)
+    iq = event.stanza
+    # return an error, we can't query pubsub node
+    reply = IQ(stream, "error")
+    reply['id'] = iq['id']
+    reply['from'] = iq['to']
+    pubsub = reply.addElement((NS_PUBSUB, 'pubsub'))
+    items = pubsub.addElement((None, 'items'))
+    items['node'] = 'http://laptop.org/xmpp/activities'
+    error = reply.addElement((None, 'error'))
+    error['type'] = 'auth'
+    error.addElement((NS_STANZA, 'not-authorized'))
+    error.addElement(("%s#errors" % NS_PUBSUB, 'presence-subscription-required'))
+    stream.send(reply)
+
+    event = q.expect('dbus-return', method='GetActivities')
+    activities = event.value[0]
+    assert len(activities) == 1
+    assert activities[0] == ('activity1', room1_handle)
 
     # activity search by properties (view 1)
     props = {'color': '#AABBCC,#001122'}

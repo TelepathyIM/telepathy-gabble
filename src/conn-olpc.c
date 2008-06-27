@@ -3032,8 +3032,6 @@ buddy_changed (GabbleConnection *conn,
       gabble_svc_olpc_buddy_info_emit_current_activity_changed (conn, handle,
           activity, room_handle);
     }
-
-  /* FIXME: update properties stored in views */
 }
 
 static void
@@ -3258,7 +3256,6 @@ add_buddies_to_view_from_node (GabbleConnection *conn,
       return FALSE;
     }
 
-  /* FIXME: we should update properties when needed */
   gabble_olpc_view_add_buddies (view, buddies, buddies_properties, 0);
 
   for (i = 0; i < buddies->len; i++)

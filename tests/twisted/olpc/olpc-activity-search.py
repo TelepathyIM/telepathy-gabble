@@ -346,6 +346,38 @@ def test(q, bus, conn, stream):
     props = activity_prop_iface.GetProperties(room)
     assert props == {'tags': 'game', 'color': '#AABBAA,#BBAABB'}
 
+    # a new buddy joins the activity
+    message = domish.Element(('jabber:client', 'message'))
+    message['from'] = 'gadget.localhost'
+    message['to'] = 'alice@localhost'
+    message['type'] = 'notice'
+
+    activity = message.addElement((NS_OLPC_ACTIVITY, 'activity'))
+    activity['room'] = 'testactivity@conference.localhost'
+    activity['id'] = '0'
+    joined = activity.addElement((None, 'joined'))
+    joined['jid'] = 'marcel@localhost'
+    properties = joined.addElement((NS_OLPC_BUDDY_PROPS, "properties"))
+    property = properties.addElement((None, "property"))
+    property['type'] = 'str'
+    property['name'] = 'color'
+    property.addContent('#CCCCCC,#DDDDDD')
+
+    amp = message.addElement((NS_AMP, 'amp'))
+    rule = amp.addElement((None, 'rule'))
+    rule['condition'] = 'deliver-at'
+    rule['value'] = 'stored'
+    rule['action'] ='error'
+    print "-------------------------"
+    stream.send(message)
+
+    # FIXME: BuddyInfo.PropertiesChanged
+    # FIXME: BuddyInfo.ActivitiesChanged
+
+    event = q.expect('dbus-signal', signal='BuddiesChanged')
+    added, removed = event.args
+    assert conn.InspectHandles(1, added) == ['marcel@localhost']
+
     # remove one activity from view 0
     message = domish.Element((None, 'message'))
     message['from'] = 'gadget.localhost'

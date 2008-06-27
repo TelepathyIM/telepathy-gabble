@@ -342,6 +342,10 @@ def test(q, bus, conn, stream):
 
     assert properties == {'tags': 'game', 'color': '#AABBAA,#BBAABB'}
 
+    # we now get the new activity properties
+    props = activity_prop_iface.GetProperties(room)
+    assert props == {'tags': 'game', 'color': '#AABBAA,#BBAABB'}
+
     # remove one activity from view 0
     message = domish.Element((None, 'message'))
     message['from'] = 'gadget.localhost'

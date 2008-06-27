@@ -309,6 +309,39 @@ def test(q, bus, conn, stream):
     assert sorted(conn.InspectHandles(2, [handle])) == \
             ['room4@conference.localhost']
 
+    # Gadget informs us about an activity properties change
+    message = domish.Element(('jabber:client', 'message'))
+    message['from'] = 'gadget.localhost'
+    message['to'] = 'alice@localhost'
+    message['type'] = 'notice'
+
+    change = message.addElement((NS_OLPC_ACTIVITY, 'change'))
+    change['activity'] = 'testactivity'
+    change['room'] = 'testactivity@conference.localhost'
+    change['id'] = '0'
+    properties = change.addElement((NS_OLPC_ACTIVITY_PROPS, 'properties'))
+    property = properties.addElement((None, 'property'))
+    property['type'] = 'str'
+    property['name'] = 'tags'
+    property.addContent('game')
+    property = properties.addElement((None, "property"))
+    property['type'] = 'str'
+    property['name'] = 'color'
+    property.addContent('#AABBAA,#BBAABB')
+
+    amp = message.addElement((NS_AMP, 'amp'))
+    rule = amp.addElement((None, 'rule'))
+    rule['condition'] = 'deliver-at'
+    rule['value'] = 'stored'
+    rule['action'] ='error'
+    stream.send(message)
+
+    event = q.expect('dbus-signal', signal='ActivityPropertiesChanged')
+    room = event.args[0]
+    properties = event.args[1]
+
+    assert properties == {'tags': 'game', 'color': '#AABBAA,#BBAABB'}
+
     # remove one activity from view 0
     message = domish.Element((None, 'message'))
     message['from'] = 'gadget.localhost'

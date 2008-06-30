@@ -91,6 +91,9 @@ void gabble_olpc_view_remove_activities (GabbleOlpcView *self,
 GPtrArray * gabble_olpc_view_get_buddy_activities (GabbleOlpcView *self,
     TpHandle buddy);
 
+void gabble_olpc_view_buddies_left_activity (GabbleOlpcView *self,
+    GArray *buddies, TpHandle room);
+
 G_END_DECLS
 
 #endif /* #ifndef __GABBLE_OLPC_VIEW_H__ */

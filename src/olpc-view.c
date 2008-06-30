@@ -705,6 +705,49 @@ gabble_olpc_view_get_buddy_activities (GabbleOlpcView *self,
   return activities;
 }
 
+void
+gabble_olpc_view_buddies_left_activity (GabbleOlpcView *self,
+                                        GArray *buddies,
+                                        TpHandle room)
+{
+  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
+  guint i;
+  TpHandleRepoIface *contact_repo;
+  TpHandleSet *removed;
+
+  contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+
+  removed = tp_handle_set_new (contact_repo);
+
+  for (i = 0; i < buddies->len; i++)
+    {
+      TpHandleSet *set;
+      TpHandle buddy;
+
+      buddy = g_array_index (buddies, TpHandle, i);
+      set = g_hash_table_lookup (priv->buddy_rooms, GUINT_TO_POINTER (buddy));
+      if (set == NULL)
+        continue;
+
+      if (tp_handle_set_remove (set, room))
+        {
+          if (tp_handle_set_size (set) == 0)
+            {
+              /* Remove from the view */
+              tp_handle_set_add (removed, buddy);
+            }
+        }
+    }
+
+  if (tp_handle_set_size (removed) > 0)
+    {
+      gabble_olpc_view_remove_buddies (self, removed);
+    }
+
+  tp_handle_set_destroy (removed);
+}
+
 static void
 view_iface_init (gpointer g_iface,
                  gpointer iface_data)

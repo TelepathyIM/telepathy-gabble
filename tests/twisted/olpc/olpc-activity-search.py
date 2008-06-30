@@ -382,6 +382,29 @@ def test(q, bus, conn, stream):
     assert contact == added[0]
     assert properties == {'color': '#CCCCCC,#DDDDDD'}
 
+    # Marcel left the activity
+    message = domish.Element(('jabber:client', 'message'))
+    message['from'] = 'gadget.localhost'
+    message['to'] = 'alice@localhost'
+    message['type'] = 'notice'
+
+    activity = message.addElement((NS_OLPC_ACTIVITY, 'activity'))
+    activity['room'] = 'testactivity@conference.localhost'
+    activity['id'] = '0'
+    left = activity.addElement((None, 'left'))
+    left['jid'] = 'marcel@localhost'
+
+    amp = message.addElement((NS_AMP, 'amp'))
+    rule = amp.addElement((None, 'rule'))
+    rule['condition'] = 'deliver-at'
+    rule['value'] = 'stored'
+    rule['action'] ='error'
+    stream.send(message)
+
+    # FIXME: BuddyInfo.ActivitiesChanged
+    view_event = q.expect_many(
+            EventPattern('dbus-signal', signal='BuddiesChanged'))
+
     # remove one activity from view 0
     message = domish.Element((None, 'message'))
     message['from'] = 'gadget.localhost'

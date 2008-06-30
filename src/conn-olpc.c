@@ -3092,8 +3092,11 @@ populate_buddies_from_nodes (GabbleConnection *conn,
             tp_handle_unref (contact_repo, g_array_index (buddies, TpHandle,
                   i));
 
-          g_ptr_array_foreach (buddies_properties, (GFunc) g_hash_table_unref,
-              NULL);
+          if (buddies_properties != NULL)
+            {
+              g_ptr_array_foreach (buddies_properties,
+                  (GFunc) g_hash_table_unref, NULL);
+            }
 
           return FALSE;
         }
@@ -3105,7 +3108,10 @@ populate_buddies_from_nodes (GabbleConnection *conn,
       properties = lm_message_node_extract_properties (properties_node,
           "property");
 
-      g_ptr_array_add (buddies_properties, properties);
+      if (buddies_properties != NULL)
+        {
+          g_ptr_array_add (buddies_properties, properties);
+        }
     }
 
   return TRUE;
@@ -3447,6 +3453,30 @@ activity_removed (GabbleConnection *conn,
   remove_activities_from_view_from_node (conn, view, removed);
 }
 
+static gboolean
+remove_buddies_from_activity_view (GabbleConnection *conn,
+                                   GabbleOlpcView *view,
+                                   LmMessageNode *node,
+                                   const gchar *node_name,
+                                   TpHandle room)
+{
+  GArray *buddies;
+
+  buddies = g_array_new (FALSE, FALSE, sizeof (TpHandle));
+
+  if (!populate_buddies_from_nodes (conn, node, node_name, buddies,
+        NULL))
+    {
+      g_array_free (buddies, TRUE);
+      return FALSE;
+    }
+
+  gabble_olpc_view_buddies_left_activity (view, buddies, room);
+
+  g_array_free (buddies, TRUE);
+  return TRUE;
+}
+
 static void
 activity_membership_change (GabbleConnection *conn,
                             LmMessageNode *activity_node)
@@ -3487,6 +3517,10 @@ activity_membership_change (GabbleConnection *conn,
 
   /* joined buddies */
   add_buddies_to_view_from_node (conn, view, activity_node, "joined", handle);
+
+  /* left buddies */
+  remove_buddies_from_activity_view (conn, view, activity_node, "left",
+      handle);
 
   /* TODO: left and closed */
 

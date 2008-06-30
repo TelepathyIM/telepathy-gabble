@@ -3261,6 +3261,13 @@ add_buddies_to_view_from_node (GabbleConnection *conn,
       return FALSE;
     }
 
+  if (buddies->len == 0)
+    {
+      g_array_free (buddies, TRUE);
+      g_ptr_array_free (buddies_properties, TRUE);
+      return TRUE;
+    }
+
   gabble_olpc_view_add_buddies (view, buddies, buddies_properties, 0);
 
   for (i = 0; i < buddies->len; i++)
@@ -3553,7 +3560,6 @@ conn_olpc_msg_cb (LmMessageHandler *handler,
         {
           activity_membership_change (conn, node);
         }
-      /* TODO: join, left and closed announcements */
     }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;

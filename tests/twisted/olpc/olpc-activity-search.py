@@ -108,8 +108,8 @@ def test(q, bus, conn, stream):
     view0_iface = dbus.Interface(view0, 'org.laptop.Telepathy.View')
 
     event = q.expect('dbus-signal', signal='ActivityPropertiesChanged')
-    handle, props = event.args
-    assert conn.InspectHandles(2, [handle])[0] == 'room1@conference.localhost'
+    room1_handle, props = event.args
+    assert conn.InspectHandles(2, [room1_handle])[0] == 'room1@conference.localhost'
     assert props == {'color': '#005FE4,#00A0FF'}
 
     # participants are added to view
@@ -125,11 +125,15 @@ def test(q, bus, conn, stream):
     assert sorted(conn.InspectHandles(2, [room1_handle])) == \
             ['room1@conference.localhost']
 
+    # check activities and buddies in view
     act = view0_iface.GetActivities()
     assert sorted(act) == sorted(added)
 
+    handles = view0_iface.GetBuddies()
+    assert sorted(conn.InspectHandles(1, handles)) == ['lucien@localhost']
+
     # we can now get activity properties
-    props = activity_prop_iface.GetProperties(handle)
+    props = activity_prop_iface.GetProperties(room1_handle)
     assert props == {'color': '#005FE4,#00A0FF'}
 
     # and we can get participant's properties too
@@ -157,8 +161,7 @@ def test(q, bus, conn, stream):
 
     event = q.expect('dbus-return', method='GetActivities')
     activities = event.value[0]
-    assert len(activities) == 1
-    assert activities[0] == ('activity1', room1_handle)
+    assert activities == [('activity1', room1_handle)]
 
     # activity search by properties (view 1)
     props = {'color': '#AABBCC,#001122'}
@@ -204,21 +207,19 @@ def test(q, bus, conn, stream):
     view1_iface = dbus.Interface(view1, 'org.laptop.Telepathy.View')
 
     event = q.expect('dbus-signal', signal='ActivityPropertiesChanged')
-    handle, props = event.args
-    assert conn.InspectHandles(2, [handle])[0] == 'room2@conference.localhost'
+    room2_handle, props = event.args
+    assert conn.InspectHandles(2, [room2_handle])[0] == 'room2@conference.localhost'
     assert props == {'color': '#AABBCC,#001122'}
 
     event = q.expect('dbus-signal', signal='ActivitiesChanged')
     added, removed = event.args
     assert removed == []
-    assert len(added) == 1
-    id, handle = added[0]
-    assert id == 'activity2'
-    assert sorted(conn.InspectHandles(2, [handle])) == \
-            ['room2@conference.localhost']
+    assert added == [('activity2', room2_handle)]
 
     act = view1.GetActivities()
     assert sorted(act) == sorted(added)
+
+    assert view1_iface.GetBuddies() == []
 
     # activity search by participants (view 2)
     participants = conn.RequestHandles(1, ["alice@localhost", "bob@localhost"])
@@ -262,18 +263,14 @@ def test(q, bus, conn, stream):
     view2_iface = dbus.Interface(view2, 'org.laptop.Telepathy.View')
 
     event = q.expect('dbus-signal', signal='ActivityPropertiesChanged')
-    handle, props = event.args
-    assert conn.InspectHandles(2, [handle])[0] == 'room3@conference.localhost'
+    room3_handle, props = event.args
+    assert conn.InspectHandles(2, [room3_handle])[0] == 'room3@conference.localhost'
     assert props == {'color': '#AABBCC,#001122'}
 
     event = q.expect('dbus-signal', signal='ActivitiesChanged')
     added, removed = event.args
     assert removed == []
-    assert len(added) == 1
-    id, handle = added[0]
-    assert id == 'activity3'
-    assert sorted(conn.InspectHandles(2, [handle])) == \
-            ['room3@conference.localhost']
+    assert added == [('activity3', room3_handle)]
 
     act = view2.GetActivities()
     assert sorted(act) == sorted(added)
@@ -321,10 +318,19 @@ def test(q, bus, conn, stream):
     event = q.expect('dbus-signal', signal='ActivitiesChanged')
     added, removed = event.args
     assert len(added) == 1
-    id, handle = added[0]
+    id, room4_handle = added[0]
     assert id == 'activity4'
-    assert sorted(conn.InspectHandles(2, [handle])) == \
+    assert sorted(conn.InspectHandles(2, [room4_handle])) == \
             ['room4@conference.localhost']
+
+    # check activities and buddies in view
+    act = view0_iface.GetActivities()
+    assert sorted(act) == [('activity1', room1_handle),
+            ('activity4', room4_handle)]
+
+    handles = view0_iface.GetBuddies()
+    assert sorted(conn.InspectHandles(1, handles)) == [
+            'fernand@localhost', 'lucien@localhost']
 
     # Gadget informs us about an activity properties change
     message = domish.Element(('jabber:client', 'message'))
@@ -404,6 +410,15 @@ def test(q, bus, conn, stream):
     assert contact == added[0]
     assert properties == {'color': '#CCCCCC,#DDDDDD'}
 
+    # check activities and buddies in view
+    act = view0_iface.GetActivities()
+    assert sorted(act) == [('activity1', room1_handle),
+            ('activity4', room4_handle)]
+
+    handles = view0_iface.GetBuddies()
+    assert sorted(conn.InspectHandles(1, handles)) == [
+            'fernand@localhost', 'lucien@localhost', 'marcel@localhost']
+
     # Marcel left activity 1
     message = domish.Element(('jabber:client', 'message'))
     message['from'] = 'gadget.localhost'
@@ -431,6 +446,15 @@ def test(q, bus, conn, stream):
     # FIXME: BuddyInfo.ActivitiesChanged
     view_event = q.expect_many(
             EventPattern('dbus-signal', signal='BuddiesChanged'))
+
+    # check activities and buddies in view
+    act = view0_iface.GetActivities()
+    assert sorted(act) == [('activity1', room1_handle),
+            ('activity4', room4_handle)]
+
+    handles = view0_iface.GetBuddies()
+    assert sorted(conn.InspectHandles(1, handles)) == [
+            'fernand@localhost', 'lucien@localhost']
 
     # remove activity 1 from view 0
     message = domish.Element((None, 'message'))
@@ -464,12 +488,16 @@ def test(q, bus, conn, stream):
     event = q.expect('dbus-signal', signal='ActivitiesChanged')
     added, removed = event.args
     assert added == []
-    assert len(removed) == 1
-    id, handle = removed[0]
-    assert id == 'activity1'
-    assert handle == room1_handle
+    assert removed == [('activity1', room1_handle)]
 
     # FIXME: test activity properties change from gadget
+
+    # check activities and buddies in view
+    act = view0_iface.GetActivities()
+    assert sorted(act) == [('activity4', room4_handle)]
+
+    handles = view0_iface.GetBuddies()
+    assert sorted(conn.InspectHandles(1, handles)) == ['fernand@localhost']
 
     # close view 0
     call_async(q, view0_iface, 'Close')

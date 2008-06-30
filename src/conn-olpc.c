@@ -3238,11 +3238,14 @@ activity_added (GabbleConnection *conn,
   add_activities_to_view_from_node (conn, view, added);
 }
 
+/* if activity is not zero, buddies are associated with the passed
+ * activity room */
 static gboolean
 add_buddies_to_view_from_node (GabbleConnection *conn,
                                GabbleOlpcView *view,
                                LmMessageNode *node,
-                               const gchar *node_name)
+                               const gchar *node_name,
+                               TpHandle activity)
 {
   GArray *buddies;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
@@ -3268,7 +3271,7 @@ add_buddies_to_view_from_node (GabbleConnection *conn,
       return TRUE;
     }
 
-  gabble_olpc_view_add_buddies (view, buddies, buddies_properties, 0);
+  gabble_olpc_view_add_buddies (view, buddies, buddies_properties, activity);
 
   for (i = 0; i < buddies->len; i++)
     {
@@ -3312,7 +3315,7 @@ buddy_added (GabbleConnection *conn,
       return;
     }
 
-  add_buddies_to_view_from_node (conn, view, added, "buddy");
+  add_buddies_to_view_from_node (conn, view, added, "buddy", 0);
 }
 
 static gboolean
@@ -3483,7 +3486,7 @@ activity_membership_change (GabbleConnection *conn,
     }
 
   /* joined buddies */
-  add_buddies_to_view_from_node (conn, view, activity_node, "joined");
+  add_buddies_to_view_from_node (conn, view, activity_node, "joined", handle);
 
   /* TODO: left and closed */
 
@@ -3677,7 +3680,7 @@ buddy_query_result_cb (GabbleConnection *conn,
   if (view_node == NULL)
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
-  add_buddies_to_view_from_node (conn, view, view_node, "buddy");
+  add_buddies_to_view_from_node (conn, view, view_node, "buddy", 0);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }

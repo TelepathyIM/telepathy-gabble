@@ -303,6 +303,8 @@ def test(q, bus, conn, stream):
     property = properties.addElement((None, "property"))
     property['type'] = 'str'
     property['name'] = 'color'
+    buddy = activity.addElement((None, 'buddy'))
+    buddy['jid'] = 'jean@localhost'
     property.addContent('#AABBAA,#BBAABB')
     amp = message.addElement((NS_AMP, 'amp'))
     rule = amp.addElement((None, 'rule'))
@@ -312,14 +314,15 @@ def test(q, bus, conn, stream):
     stream.send(message)
 
     ## Current views ##
-    # view 0: activity 1 (with: Lucien, Jean), activity 4 (with Fernand)
+    # view 0: activity 1 (with: Lucien, Jean), activity 4 (with: Fernand, Jean)
     # view 1: activity 2
     # view 2: activity 3
     # participants are added to view
 
     event = q.expect('dbus-signal', signal='BuddiesChanged')
     members_handles, removed = event.args
-    assert conn.InspectHandles(1, members_handles) == ['fernand@localhost']
+    assert sorted(conn.InspectHandles(1, members_handles)) == \
+            sorted(['fernand@localhost', 'jean@localhost'])
 
     # activity is added too
     event = q.expect('dbus-signal', signal='ActivitiesChanged')
@@ -397,7 +400,8 @@ def test(q, bus, conn, stream):
     stream.send(message)
 
     ## Current views ##
-    # view 0: activity 1 (with: Lucien, Jean, Marcel), activity 4 (with Fernand)
+    # view 0: activity 1 (with: Lucien, Jean, Marcel), activity 4 (with
+    # Fernand, Jean)
     # view 1: activity 2
     # view 2: activity 3
 
@@ -439,7 +443,7 @@ def test(q, bus, conn, stream):
     stream.send(message)
 
     ## Current views ##
-    # view 0: activity 1 (with: Lucien, Jean), activity 4 (with Fernand)
+    # view 0: activity 1 (with: Lucien, Jean), activity 4 (with Fernand, Jean)
     # view 1: activity 2
     # view 2: activity 3
 
@@ -477,8 +481,8 @@ def test(q, bus, conn, stream):
     # participants are removed from the view
     event = q.expect('dbus-signal', signal='BuddiesChanged')
     added, removed = event.args
-    assert conn.InspectHandles(1, removed) == ['lucien@localhost',
-            'jean@localhost']
+    assert sorted(conn.InspectHandles(1, removed)) == \
+            sorted(['lucien@localhost'])
     # FIXME: BuddyInfo.ActivitiesChanged
 
     # activity is removed
@@ -492,7 +496,7 @@ def test(q, bus, conn, stream):
     # check activities and buddies in view
     check_view(view0_iface, conn, [
         ('activity4', room4_handle)],
-        ['fernand@localhost'])
+        ['fernand@localhost', 'jean@localhost'])
 
     # close view 0
     call_async(q, view0_iface, 'Close')

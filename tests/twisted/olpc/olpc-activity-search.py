@@ -100,6 +100,9 @@ def test(q, bus, conn, stream):
     property.addContent('#AABBCC,#CCBBAA')
     stream.send(reply)
 
+    ## Current views ##
+    # view 0: activity 1 (with Lucien)
+
     view_path = return_event.value[0]
     view0 = bus.get_object(conn.bus_name, view_path)
     view0_iface = dbus.Interface(view0, 'org.laptop.Telepathy.View')
@@ -192,6 +195,10 @@ def test(q, bus, conn, stream):
     property.addContent('#AABBCC,#001122')
     stream.send(reply)
 
+    ## Current views ##
+    # view 0: activity 1 (with Lucien)
+    # view 1: activity 2
+
     view_path = return_event.value[0]
     view1 = bus.get_object(conn.bus_name, view_path)
     view1_iface = dbus.Interface(view1, 'org.laptop.Telepathy.View')
@@ -245,6 +252,11 @@ def test(q, bus, conn, stream):
     property.addContent('#AABBCC,#001122')
     stream.send(reply)
 
+    ## Current views ##
+    # view 0: activity 1 (with Lucien)
+    # view 1: activity 2
+    # view 2: activity 3
+
     view_path = return_event.value[0]
     view2 = bus.get_object(conn.bus_name, view_path)
     view2_iface = dbus.Interface(view2, 'org.laptop.Telepathy.View')
@@ -266,7 +278,7 @@ def test(q, bus, conn, stream):
     act = view2.GetActivities()
     assert sorted(act) == sorted(added)
 
-    # add one activity to view 0
+    # add activity 4 to view 0
     message = domish.Element((None, 'message'))
     message['from'] = 'gadget.localhost'
     message['to'] = 'alice@localhost'
@@ -295,7 +307,12 @@ def test(q, bus, conn, stream):
     rule['action'] ='error'
     stream.send(message)
 
+    ## Current views ##
+    # view 0: activity 1 (with Lucien), activity 4 (with Fernand)
+    # view 1: activity 2
+    # view 2: activity 3
     # participants are added to view
+
     event = q.expect('dbus-signal', signal='BuddiesChanged')
     members_handles, removed = event.args
     assert conn.InspectHandles(1, members_handles) == ['fernand@localhost']
@@ -316,8 +333,8 @@ def test(q, bus, conn, stream):
     message['type'] = 'notice'
 
     change = message.addElement((NS_OLPC_ACTIVITY, 'change'))
-    change['activity'] = 'testactivity'
-    change['room'] = 'testactivity@conference.localhost'
+    change['activity'] = 'activity1'
+    change['room'] = 'room1@conference.localhost'
     change['id'] = '0'
     properties = change.addElement((NS_OLPC_ACTIVITY_PROPS, 'properties'))
     property = properties.addElement((None, 'property'))
@@ -346,14 +363,14 @@ def test(q, bus, conn, stream):
     props = activity_prop_iface.GetProperties(room)
     assert props == {'tags': 'game', 'color': '#AABBAA,#BBAABB'}
 
-    # a new buddy joins the activity
+    # Marcel joined activity 1
     message = domish.Element(('jabber:client', 'message'))
     message['from'] = 'gadget.localhost'
     message['to'] = 'alice@localhost'
     message['type'] = 'notice'
 
     activity = message.addElement((NS_OLPC_ACTIVITY, 'activity'))
-    activity['room'] = 'testactivity@conference.localhost'
+    activity['room'] = 'room1@conference.localhost'
     activity['id'] = '0'
     joined = activity.addElement((None, 'joined'))
     joined['jid'] = 'marcel@localhost'
@@ -370,6 +387,11 @@ def test(q, bus, conn, stream):
     rule['action'] ='error'
     stream.send(message)
 
+    ## Current views ##
+    # view 0: activity 1 (with: Lucien, Marcel), activity 4 (with Fernand)
+    # view 1: activity 2
+    # view 2: activity 3
+
     # FIXME: BuddyInfo.ActivitiesChanged
     view_event, buddy_info_event = q.expect_many(
             EventPattern('dbus-signal', signal='BuddiesChanged'),
@@ -382,14 +404,14 @@ def test(q, bus, conn, stream):
     assert contact == added[0]
     assert properties == {'color': '#CCCCCC,#DDDDDD'}
 
-    # Marcel left the activity
+    # Marcel left activity 1
     message = domish.Element(('jabber:client', 'message'))
     message['from'] = 'gadget.localhost'
     message['to'] = 'alice@localhost'
     message['type'] = 'notice'
 
     activity = message.addElement((NS_OLPC_ACTIVITY, 'activity'))
-    activity['room'] = 'testactivity@conference.localhost'
+    activity['room'] = 'room1@conference.localhost'
     activity['id'] = '0'
     left = activity.addElement((None, 'left'))
     left['jid'] = 'marcel@localhost'
@@ -401,11 +423,16 @@ def test(q, bus, conn, stream):
     rule['action'] ='error'
     stream.send(message)
 
+    ## Current views ##
+    # view 0: activity 1 (with: Lucien), activity 4 (with Fernand)
+    # view 1: activity 2
+    # view 2: activity 3
+
     # FIXME: BuddyInfo.ActivitiesChanged
     view_event = q.expect_many(
             EventPattern('dbus-signal', signal='BuddiesChanged'))
 
-    # remove one activity from view 0
+    # remove activity 1 from view 0
     message = domish.Element((None, 'message'))
     message['from'] = 'gadget.localhost'
     message['to'] = 'alice@localhost'
@@ -422,10 +449,16 @@ def test(q, bus, conn, stream):
     rule['action'] ='error'
     stream.send(message)
 
+    ## Current views ##
+    # view 0: activity 4 (with Fernand)
+    # view 1: activity 2
+    # view 2: activity 3
+
     # participants are removed from the view
     event = q.expect('dbus-signal', signal='BuddiesChanged')
     added, removed = event.args
     assert conn.InspectHandles(1, removed) == ['lucien@localhost']
+    # FIXME: BuddyInfo.ActivitiesChanged
 
     # activity is removed
     event = q.expect('dbus-signal', signal='ActivitiesChanged')

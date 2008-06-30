@@ -24,6 +24,13 @@ NS_DISCO_ITEMS = "http://jabber.org/protocol/disco#items"
 NS_AMP = "http://jabber.org/protocol/amp"
 NS_STANZA = "urn:ietf:params:xml:ns:xmpp-stanzas"
 
+def check_view(view, conn, activities, buddies):
+    act = view.GetActivities()
+    assert sorted(act) == sorted(activities)
+
+    handles = view.GetBuddies()
+    assert sorted(conn.InspectHandles(1, handles)) == sorted(buddies)
+
 def test(q, bus, conn, stream):
     conn.Connect()
 
@@ -126,11 +133,7 @@ def test(q, bus, conn, stream):
             ['room1@conference.localhost']
 
     # check activities and buddies in view
-    act = view0_iface.GetActivities()
-    assert sorted(act) == sorted(added)
-
-    handles = view0_iface.GetBuddies()
-    assert sorted(conn.InspectHandles(1, handles)) == ['lucien@localhost']
+    check_view(view0_iface, conn, added, ['lucien@localhost'])
 
     # we can now get activity properties
     props = activity_prop_iface.GetProperties(room1_handle)
@@ -324,13 +327,9 @@ def test(q, bus, conn, stream):
             ['room4@conference.localhost']
 
     # check activities and buddies in view
-    act = view0_iface.GetActivities()
-    assert sorted(act) == [('activity1', room1_handle),
-            ('activity4', room4_handle)]
-
-    handles = view0_iface.GetBuddies()
-    assert sorted(conn.InspectHandles(1, handles)) == [
-            'fernand@localhost', 'lucien@localhost']
+    check_view(view0_iface, conn, [
+        ('activity1', room1_handle),('activity4', room4_handle)],
+        ['fernand@localhost', 'lucien@localhost'])
 
     # Gadget informs us about an activity properties change
     message = domish.Element(('jabber:client', 'message'))
@@ -411,13 +410,9 @@ def test(q, bus, conn, stream):
     assert properties == {'color': '#CCCCCC,#DDDDDD'}
 
     # check activities and buddies in view
-    act = view0_iface.GetActivities()
-    assert sorted(act) == [('activity1', room1_handle),
-            ('activity4', room4_handle)]
-
-    handles = view0_iface.GetBuddies()
-    assert sorted(conn.InspectHandles(1, handles)) == [
-            'fernand@localhost', 'lucien@localhost', 'marcel@localhost']
+    check_view(view0_iface, conn, [
+        ('activity1', room1_handle),('activity4', room4_handle)],
+        ['fernand@localhost', 'lucien@localhost', 'marcel@localhost'])
 
     # Marcel left activity 1
     message = domish.Element(('jabber:client', 'message'))
@@ -448,13 +443,9 @@ def test(q, bus, conn, stream):
             EventPattern('dbus-signal', signal='BuddiesChanged'))
 
     # check activities and buddies in view
-    act = view0_iface.GetActivities()
-    assert sorted(act) == [('activity1', room1_handle),
-            ('activity4', room4_handle)]
-
-    handles = view0_iface.GetBuddies()
-    assert sorted(conn.InspectHandles(1, handles)) == [
-            'fernand@localhost', 'lucien@localhost']
+    check_view(view0_iface, conn, [
+        ('activity1', room1_handle),('activity4', room4_handle)],
+        ['fernand@localhost', 'lucien@localhost'])
 
     # remove activity 1 from view 0
     message = domish.Element((None, 'message'))
@@ -493,11 +484,9 @@ def test(q, bus, conn, stream):
     # FIXME: test activity properties change from gadget
 
     # check activities and buddies in view
-    act = view0_iface.GetActivities()
-    assert sorted(act) == [('activity4', room4_handle)]
-
-    handles = view0_iface.GetBuddies()
-    assert sorted(conn.InspectHandles(1, handles)) == ['fernand@localhost']
+    check_view(view0_iface, conn, [
+        ('activity4', room4_handle)],
+        ['fernand@localhost'])
 
     # close view 0
     call_async(q, view0_iface, 'Close')

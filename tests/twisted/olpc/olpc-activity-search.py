@@ -370,12 +370,17 @@ def test(q, bus, conn, stream):
     rule['action'] ='error'
     stream.send(message)
 
-    # FIXME: BuddyInfo.PropertiesChanged
     # FIXME: BuddyInfo.ActivitiesChanged
+    view_event, buddy_info_event = q.expect_many(
+            EventPattern('dbus-signal', signal='BuddiesChanged'),
+            EventPattern('dbus-signal', signal='PropertiesChanged'))
 
-    event = q.expect('dbus-signal', signal='BuddiesChanged')
-    added, removed = event.args
+    added, removed = view_event.args
     assert conn.InspectHandles(1, added) == ['marcel@localhost']
+
+    contact, properties = buddy_info_event.args
+    assert contact == added[0]
+    assert properties == {'color': '#CCCCCC,#DDDDDD'}
 
     # remove one activity from view 0
     message = domish.Element((None, 'message'))

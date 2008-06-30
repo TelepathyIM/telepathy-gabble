@@ -105,10 +105,12 @@ def test(q, bus, conn, stream):
     property['type'] = 'str'
     property['name'] = 'color'
     property.addContent('#AABBCC,#CCBBAA')
+    buddy = activity.addElement((None, 'buddy'))
+    buddy['jid'] = 'jean@localhost'
     stream.send(reply)
 
     ## Current views ##
-    # view 0: activity 1 (with Lucien)
+    # view 0: activity 1 (with: Lucien, Jean)
 
     view_path = return_event.value[0]
     view0 = bus.get_object(conn.bus_name, view_path)
@@ -122,7 +124,8 @@ def test(q, bus, conn, stream):
     # participants are added to view
     event = q.expect('dbus-signal', signal='BuddiesChanged')
     members_handles, removed = event.args
-    assert conn.InspectHandles(1, members_handles) == ['lucien@localhost']
+    assert sorted(conn.InspectHandles(1, members_handles)) == \
+            sorted(['lucien@localhost', 'jean@localhost'])
 
     event = q.expect('dbus-signal', signal='ActivitiesChanged')
     added, removed = event.args
@@ -133,7 +136,8 @@ def test(q, bus, conn, stream):
             ['room1@conference.localhost']
 
     # check activities and buddies in view
-    check_view(view0_iface, conn, added, ['lucien@localhost'])
+    check_view(view0_iface, conn, added, ['lucien@localhost',
+        'jean@localhost'])
 
     # we can now get activity properties
     props = activity_prop_iface.GetProperties(room1_handle)
@@ -202,7 +206,7 @@ def test(q, bus, conn, stream):
     stream.send(reply)
 
     ## Current views ##
-    # view 0: activity 1 (with Lucien)
+    # view 0: activity 1 (with: Lucien, Jean)
     # view 1: activity 2
 
     view_path = return_event.value[0]
@@ -257,7 +261,7 @@ def test(q, bus, conn, stream):
     stream.send(reply)
 
     ## Current views ##
-    # view 0: activity 1 (with Lucien)
+    # view 0: activity 1 (with: Lucien, Jean)
     # view 1: activity 2
     # view 2: activity 3
 
@@ -308,7 +312,7 @@ def test(q, bus, conn, stream):
     stream.send(message)
 
     ## Current views ##
-    # view 0: activity 1 (with Lucien), activity 4 (with Fernand)
+    # view 0: activity 1 (with: Lucien, Jean), activity 4 (with Fernand)
     # view 1: activity 2
     # view 2: activity 3
     # participants are added to view
@@ -329,7 +333,7 @@ def test(q, bus, conn, stream):
     # check activities and buddies in view
     check_view(view0_iface, conn, [
         ('activity1', room1_handle),('activity4', room4_handle)],
-        ['fernand@localhost', 'lucien@localhost'])
+        ['fernand@localhost', 'lucien@localhost', 'jean@localhost'])
 
     # Gadget informs us about an activity properties change
     message = domish.Element(('jabber:client', 'message'))
@@ -393,7 +397,7 @@ def test(q, bus, conn, stream):
     stream.send(message)
 
     ## Current views ##
-    # view 0: activity 1 (with: Lucien, Marcel), activity 4 (with Fernand)
+    # view 0: activity 1 (with: Lucien, Jean, Marcel), activity 4 (with Fernand)
     # view 1: activity 2
     # view 2: activity 3
 
@@ -412,7 +416,8 @@ def test(q, bus, conn, stream):
     # check activities and buddies in view
     check_view(view0_iface, conn, [
         ('activity1', room1_handle),('activity4', room4_handle)],
-        ['fernand@localhost', 'lucien@localhost', 'marcel@localhost'])
+        ['fernand@localhost', 'lucien@localhost', 'jean@localhost',
+            'marcel@localhost'])
 
     # Marcel left activity 1
     message = domish.Element(('jabber:client', 'message'))
@@ -434,7 +439,7 @@ def test(q, bus, conn, stream):
     stream.send(message)
 
     ## Current views ##
-    # view 0: activity 1 (with: Lucien), activity 4 (with Fernand)
+    # view 0: activity 1 (with: Lucien, Jean), activity 4 (with Fernand)
     # view 1: activity 2
     # view 2: activity 3
 
@@ -445,7 +450,7 @@ def test(q, bus, conn, stream):
     # check activities and buddies in view
     check_view(view0_iface, conn, [
         ('activity1', room1_handle),('activity4', room4_handle)],
-        ['fernand@localhost', 'lucien@localhost'])
+        ['fernand@localhost', 'lucien@localhost', 'jean@localhost'])
 
     # remove activity 1 from view 0
     message = domish.Element((None, 'message'))
@@ -465,14 +470,15 @@ def test(q, bus, conn, stream):
     stream.send(message)
 
     ## Current views ##
-    # view 0: activity 4 (with Fernand)
+    # view 0: activity 4 (with Jean, Fernand)
     # view 1: activity 2
     # view 2: activity 3
 
     # participants are removed from the view
     event = q.expect('dbus-signal', signal='BuddiesChanged')
     added, removed = event.args
-    assert conn.InspectHandles(1, removed) == ['lucien@localhost']
+    assert conn.InspectHandles(1, removed) == ['lucien@localhost',
+            'jean@localhost']
     # FIXME: BuddyInfo.ActivitiesChanged
 
     # activity is removed

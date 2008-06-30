@@ -368,7 +368,6 @@ def test(q, bus, conn, stream):
     rule['condition'] = 'deliver-at'
     rule['value'] = 'stored'
     rule['action'] ='error'
-    print "-------------------------"
     stream.send(message)
 
     # FIXME: BuddyInfo.PropertiesChanged

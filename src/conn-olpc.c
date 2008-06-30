@@ -3239,7 +3239,8 @@ activity_added (GabbleConnection *conn,
 static gboolean
 add_buddies_to_view_from_node (GabbleConnection *conn,
                                GabbleOlpcView *view,
-                               LmMessageNode *node)
+                               LmMessageNode *node,
+                               const gchar *node_name)
 {
   GArray *buddies;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
@@ -3250,7 +3251,7 @@ add_buddies_to_view_from_node (GabbleConnection *conn,
   buddies = g_array_new (FALSE, FALSE, sizeof (TpHandle));
   buddies_properties = g_ptr_array_new ();
 
-  if (!populate_buddies_from_nodes (conn, node, "buddy", buddies,
+  if (!populate_buddies_from_nodes (conn, node, node_name, buddies,
         buddies_properties))
     {
       g_array_free (buddies, TRUE);
@@ -3302,7 +3303,7 @@ buddy_added (GabbleConnection *conn,
       return;
     }
 
-  add_buddies_to_view_from_node (conn, view, added);
+  add_buddies_to_view_from_node (conn, view, added, "buddy");
 }
 
 static gboolean
@@ -3439,8 +3440,6 @@ activity_membership_change (GabbleConnection *conn,
   const gchar *id_str;
   guint id;
   GabbleOlpcView *view;
-  GArray *buddies;
-  GPtrArray *buddies_properties;
   TpHandle handle;
   const gchar *room;
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
@@ -3473,21 +3472,7 @@ activity_membership_change (GabbleConnection *conn,
     }
 
   /* joined buddies */
-  buddies = g_array_new (FALSE, FALSE, sizeof (TpHandle));
-  buddies_properties = g_ptr_array_new ();
-
-  if (!populate_buddies_from_nodes (conn, activity_node, "joined", buddies,
-        buddies_properties))
-    {
-      g_array_free (buddies, TRUE);
-      g_ptr_array_free (buddies_properties, TRUE);
-      tp_handle_unref (room_repo, handle);
-      return;
-    }
-
-  /* FIXME: use add_buddies_to_view_from_node instead? */
-  /* FIXME: free ressources allocated in populate_buddies_from_nodes */
-  gabble_olpc_view_add_buddies (view, buddies, buddies_properties, handle);
+  add_buddies_to_view_from_node (conn, view, activity_node, "joined");
 
   /* TODO: left and closed */
 
@@ -3682,7 +3667,7 @@ buddy_query_result_cb (GabbleConnection *conn,
   if (view_node == NULL)
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
-  add_buddies_to_view_from_node (conn, view, view_node);
+  add_buddies_to_view_from_node (conn, view, view_node, "buddy");
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }

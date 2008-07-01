@@ -64,7 +64,6 @@ def test(q, bus, conn, stream):
 
     event = q.expect('dbus-return', method='RequestChannel')
 
-    bus = dbus.SessionBus()
     text_chan = bus.get_object(conn.bus_name, event.value[0])
 
     # Exercise basic Channel Properties from spec 0.17.7

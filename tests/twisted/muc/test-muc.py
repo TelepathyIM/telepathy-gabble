@@ -59,10 +59,8 @@ def test(q, bus, conn, stream):
 
     event = q.expect('dbus-signal', signal='MembersChanged',
         args=[u'', [2, 3], [], [], [], 0, 0])
-    assert conn.InspectHandles(1, [2]) == [
-        'chat@conf.localhost/test']
-    assert conn.InspectHandles(1, [3]) == [
-        'chat@conf.localhost/bob']
+    assert conn.InspectHandles(1, [2]) == ['chat@conf.localhost/test']
+    assert conn.InspectHandles(1, [3]) == ['chat@conf.localhost/bob']
 
     event = q.expect('dbus-return', method='RequestChannel')
 

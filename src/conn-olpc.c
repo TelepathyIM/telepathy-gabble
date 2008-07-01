@@ -1453,23 +1453,21 @@ add_activity_info_in_set (GabbleConnection *conn,
   return activity;
 }
 
-static gboolean
+static GabbleOlpcActivity *
 extract_current_activity (GabbleConnection *conn,
                           LmMessageNode *node,
-                          const gchar *contact,
-                          const gchar **id,
-                          guint *handle)
+                          const gchar *contact)
 {
-  const gchar *room;
+  const gchar *room, *id;
   GabbleOlpcActivity *activity;
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_ROOM);
   TpHandle room_handle;
 
   if (node == NULL)
-    return FALSE;
+    return NULL;
 
-  *id = lm_message_node_get_attribute (node, "type");
+  id = lm_message_node_get_attribute (node, "type");
 
   room = lm_message_node_get_attribute (node, "room");
   if (room == NULL || room[0] == '\0')
@@ -1477,7 +1475,7 @@ extract_current_activity (GabbleConnection *conn,
 
   room_handle = tp_handle_ensure (room_repo, room, NULL, NULL);
   if (room_handle == 0)
-    return FALSE;
+    return NULL;
 
   activity = g_hash_table_lookup (conn->olpc_activities_info,
       GUINT_TO_POINTER (room_handle));
@@ -1493,16 +1491,12 @@ extract_current_activity (GabbleConnection *conn,
 
       activity = add_activity_info_in_set (conn, room_handle, contact,
           conn->olpc_pep_activities);
+      g_object_set (activity, "id", id, NULL);
     }
 
   tp_handle_unref (room_repo, room_handle);
 
-  if (activity == NULL)
-    return FALSE;
-
-  *handle = activity->room;
-
-  return TRUE;
+  return activity;
 }
 
 static LmHandlerResult
@@ -1513,26 +1507,32 @@ get_current_activity_reply_cb (GabbleConnection *conn,
                                gpointer user_data)
 {
   DBusGMethodInvocation *context = user_data;
-  guint room_handle;
-  const gchar *activity;
   LmMessageNode *node;
   const gchar *from;
+  GabbleOlpcActivity *activity;
 
   if (!check_query_reply_msg (reply_msg, context))
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
   from = lm_message_node_get_attribute (reply_msg->node, "from");
   node = lm_message_node_find_child (reply_msg->node, "activity");
-  if (!extract_current_activity (conn, node, from, &activity, &room_handle))
+  activity = extract_current_activity (conn, node, from);
+  if (activity == NULL)
     {
-      activity = "";
-      room_handle = 0;
+      DEBUG ("GetCurrentActivity returns no activity");
+
+      gabble_svc_olpc_buddy_info_return_from_get_current_activity (context,
+          "", 0);
+    }
+  else
+    {
+      DEBUG ("GetCurrentActivity returns (\"%s\", room#%u)", activity->id,
+          activity->room);
+
+      gabble_svc_olpc_buddy_info_return_from_get_current_activity (context,
+          activity->id, activity->room);
     }
 
-  DEBUG ("GetCurrentActivity returns (\"%s\", room#%u)", activity,
-      room_handle);
-  gabble_svc_olpc_buddy_info_return_from_get_current_activity (context,
-      activity, room_handle);
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
@@ -1678,12 +1678,14 @@ olpc_buddy_info_current_activity_event_handler (GabbleConnection *conn,
 
   from = lm_message_node_get_attribute (msg->node, "from");
   node = lm_message_node_find_child (msg->node, "activity");
-  if (extract_current_activity (conn, node, from, &activity, &room_handle))
+
+  activity = extract_current_activity (conn, node, from);
+  if (activity != NULL)
     {
       DEBUG ("emitting CurrentActivityChanged(contact#%u, ID \"%s\", room#%u)",
-             handle, activity, room_handle);
+             handle, activity->id, activity->room);
       gabble_svc_olpc_buddy_info_emit_current_activity_changed (conn, handle,
-          activity, room_handle);
+          activity->id, activity->room);
     }
   else
     {
@@ -3020,17 +3022,19 @@ buddy_changed (GabbleConnection *conn,
   if (node != NULL)
     {
       /* Buddy current activity change */
-      const gchar *activity;
-      TpHandle room_handle;
+      GabbleOlpcActivity *activity;
 
-      if (!extract_current_activity (conn, node, jid, &activity, &room_handle))
+      activity = extract_current_activity (conn, node, jid);
+      if (activity == NULL)
         {
-          activity = "";
-          room_handle = 0;
+          gabble_svc_olpc_buddy_info_emit_current_activity_changed (conn,
+              handle, "", 0);
         }
-
-      gabble_svc_olpc_buddy_info_emit_current_activity_changed (conn, handle,
-          activity, room_handle);
+      else
+        {
+          gabble_svc_olpc_buddy_info_emit_current_activity_changed (conn,
+              handle, activity->id, activity->room);
+        }
     }
 }
 

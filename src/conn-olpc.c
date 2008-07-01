@@ -3208,8 +3208,6 @@ add_activities_to_view_from_node (GabbleConnection *conn,
 
       gabble_olpc_view_add_buddies (view, buddies, buddies_properties, handle);
 
-      /* FIXME: we should fire BuddyInfo.ActivitiesChanged */
-
       g_array_free (buddies, TRUE);
       g_ptr_array_free (buddies_properties, TRUE);
     }
@@ -3424,8 +3422,6 @@ remove_activities_from_view_from_node (GabbleConnection *conn,
 
   gabble_olpc_view_remove_activities (view, rooms);
   tp_handle_set_destroy (rooms);
-
-  /* FIXME: should fire BuddyInfo.ActivitiesChanged signal */
 
   return TRUE;
 }

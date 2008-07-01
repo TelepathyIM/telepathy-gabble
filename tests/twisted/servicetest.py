@@ -406,12 +406,14 @@ def make_connection(bus, event_func, name, proto, params):
             event_func(
                 Event('dbus-signal',
                     path=unwrap(kw['path'])[len(tp_path_prefix):],
-                    signal=kw['member'], args=map(unwrap, args))),
+                    signal=kw['member'], args=map(unwrap, args),
+                    interface=kw['interface'])),
         None,       # signal name
         None,       # interface
         cm._named_service,
         path_keyword='path',
         member_keyword='member',
+        interface_keyword='interface',
         byte_arrays=True
         )
 

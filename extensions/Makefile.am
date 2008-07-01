@@ -17,6 +17,7 @@ nodist_libgabble_extensions_la_SOURCES = \
     _gen/signals-marshal.list \
     _gen/enums.h \
     _gen/gtypes.h \
+    _gen/gtypes-body.h \
     _gen/interfaces.h \
     _gen/interfaces-body.h \
     _gen/svc.h \

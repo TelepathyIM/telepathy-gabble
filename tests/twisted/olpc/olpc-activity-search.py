@@ -520,8 +520,6 @@ def test(q, bus, conn, stream):
     assert added == []
     assert removed == [('activity1', room1_handle)]
 
-    # FIXME: test activity properties change from gadget
-
     # check activities and buddies in view
     check_view(view0_iface, conn, [
         ('activity4', room4_handle)],

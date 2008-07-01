@@ -3673,6 +3673,23 @@ view_closed_cb (GabbleOlpcView *view,
   g_hash_table_remove (conn->olpc_views, GUINT_TO_POINTER (id));
 }
 
+static void
+buddy_activities_changed_cb (GabbleOlpcView *view,
+                             TpHandle contact,
+                             GabbleConnection *conn)
+{
+  GPtrArray *activities;
+
+  /* FIXME: this is not optimal as we completely ignore PEP-announced
+   * activities. Ideally we should cache PEP activities. */
+  activities = find_buddy_activities_from_views (conn, contact);
+
+  gabble_svc_olpc_buddy_info_emit_activities_changed (conn, contact,
+      activities);
+
+  free_activities (activities);
+}
+
 static GabbleOlpcView *
 create_view (GabbleConnection *conn,
              GabbleOlpcViewType type)
@@ -3695,6 +3712,9 @@ create_view (GabbleConnection *conn,
   g_hash_table_insert (conn->olpc_views, GUINT_TO_POINTER (id), view);
 
   g_signal_connect (view, "closed", G_CALLBACK (view_closed_cb), conn);
+
+  g_signal_connect (view, "buddy-activities-changed",
+      G_CALLBACK (buddy_activities_changed_cb), conn);
 
   return view;
 }

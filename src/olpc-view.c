@@ -41,6 +41,7 @@
 enum
 {
   CLOSED,
+  BUDDY_ACTIVITIES_CHANGED,
   LAST_SIGNAL
 };
 
@@ -313,6 +314,15 @@ gabble_olpc_view_class_init (GabbleOlpcViewClass *gabble_olpc_view_class)
         NULL, NULL,
         gabble_marshal_VOID__VOID,
         G_TYPE_NONE, 0);
+
+  signals[BUDDY_ACTIVITIES_CHANGED] =
+    g_signal_new ("buddy-activities-changed",
+        G_OBJECT_CLASS_TYPE (gabble_olpc_view_class),
+        G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+        0,
+        NULL, NULL,
+        gabble_marshal_VOID__UINT,
+        G_TYPE_NONE, 1, G_TYPE_UINT);
 }
 
 GabbleOlpcView *
@@ -492,7 +502,13 @@ gabble_olpc_view_add_buddies (GabbleOlpcView *self,
                     handle), set);
             }
 
-          tp_handle_set_add (set, room);
+          if (!tp_handle_set_is_member (set, room))
+            {
+              tp_handle_set_add (set, room);
+
+              g_signal_emit (G_OBJECT (self),
+                  signals[BUDDY_ACTIVITIES_CHANGED], 0, handle);
+            }
         }
     }
 
@@ -604,6 +620,9 @@ remove_activity_foreach_buddy (TpHandle buddy,
           /* No more activity for this buddy. Remove it */
           tp_handle_set_add (ctx->removed, buddy);
         }
+
+      g_signal_emit (G_OBJECT (ctx->view), signals[BUDDY_ACTIVITIES_CHANGED],
+          0, buddy);
     }
 }
 
@@ -737,6 +756,9 @@ gabble_olpc_view_buddies_left_activity (GabbleOlpcView *self,
               /* Remove from the view */
               tp_handle_set_add (removed, buddy);
             }
+
+          g_signal_emit (G_OBJECT (self), signals[BUDDY_ACTIVITIES_CHANGED],
+              0, buddy);
         }
     }
 

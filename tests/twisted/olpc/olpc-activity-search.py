@@ -34,6 +34,8 @@ def check_view(view, conn, activities, buddies):
 def test(q, bus, conn, stream):
     conn.Connect()
 
+    handles = {}
+
     _, iq_event, disco_event = q.expect_many(
         EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
         EventPattern('stream-iq', to=None, query_ns='vcard-temp',
@@ -112,43 +114,40 @@ def test(q, bus, conn, stream):
     ## Current views ##
     # view 0: activity 1 (with: Lucien, Jean)
 
+    handles['lucien'], handles['jean'] = \
+            conn.RequestHandles(1, ['lucien@localhost', 'jean@localhost'])
+
     view_path = return_event.value[0]
     view0 = bus.get_object(conn.bus_name, view_path)
     view0_iface = dbus.Interface(view0, 'org.laptop.Telepathy.View')
 
     event = q.expect('dbus-signal', signal='ActivityPropertiesChanged')
-    room1_handle, props = event.args
-    assert conn.InspectHandles(2, [room1_handle])[0] == 'room1@conference.localhost'
+    handles['room1'], props = event.args
+    assert conn.InspectHandles(2, [handles['room1']])[0] == 'room1@conference.localhost'
     assert props == {'color': '#005FE4,#00A0FF'}
 
     # participants are added to view
-    event = q.expect('dbus-signal', signal='BuddiesChanged')
-    members_handles, removed = event.args
-    assert sorted(conn.InspectHandles(1, members_handles)) == \
-            sorted(['lucien@localhost', 'jean@localhost'])
+    q.expect('dbus-signal', signal='BuddiesChanged',
+            args=[[handles['lucien'], handles['jean']], []])
 
-    event = q.expect('dbus-signal', signal='ActivitiesChanged')
-    added, removed = event.args
-    assert len(added) == 1
-    id, room1_handle = added[0]
-    assert id == 'activity1'
-    assert sorted(conn.InspectHandles(2, [room1_handle])) == \
-            ['room1@conference.localhost']
+    q.expect('dbus-signal', signal='ActivitiesChanged',
+            interface='org.laptop.Telepathy.View',
+            args=[[('activity1', handles['room1'])], []])
 
     # check activities and buddies in view
-    check_view(view0_iface, conn, added, ['lucien@localhost',
-        'jean@localhost'])
+    check_view(view0_iface, conn, [('activity1', handles['room1'])],
+            ['lucien@localhost', 'jean@localhost'])
 
     # we can now get activity properties
-    props = activity_prop_iface.GetProperties(room1_handle)
+    props = activity_prop_iface.GetProperties(handles['room1'])
     assert props == {'color': '#005FE4,#00A0FF'}
 
     # and we can get participant's properties too
-    props = buddy_prop_iface.GetProperties(members_handles[0])
+    props = buddy_prop_iface.GetProperties(handles['lucien'])
     assert props == {'color': '#AABBCC,#CCBBAA'}
 
     # and their activities
-    call_async (q, buddy_prop_iface, 'GetActivities', members_handles[0])
+    call_async (q, buddy_prop_iface, 'GetActivities', handles['lucien'])
 
     event = q.expect('stream-iq', to='lucien@localhost', query_name='pubsub',
             query_ns=NS_PUBSUB)
@@ -166,9 +165,8 @@ def test(q, bus, conn, stream):
     error.addElement(("%s#errors" % NS_PUBSUB, 'presence-subscription-required'))
     stream.send(reply)
 
-    event = q.expect('dbus-return', method='GetActivities')
-    activities = event.value[0]
-    assert activities == [('activity1', room1_handle)]
+    q.expect('dbus-return', method='GetActivities',
+            value=([('activity1', handles['room1'])],))
 
     # activity search by properties (view 1)
     props = {'color': '#AABBCC,#001122'}
@@ -214,17 +212,16 @@ def test(q, bus, conn, stream):
     view1_iface = dbus.Interface(view1, 'org.laptop.Telepathy.View')
 
     event = q.expect('dbus-signal', signal='ActivityPropertiesChanged')
-    room2_handle, props = event.args
-    assert conn.InspectHandles(2, [room2_handle])[0] == 'room2@conference.localhost'
+    handles['room2'], props = event.args
+    assert conn.InspectHandles(2, [handles['room2']])[0] == 'room2@conference.localhost'
     assert props == {'color': '#AABBCC,#001122'}
 
-    event = q.expect('dbus-signal', signal='ActivitiesChanged')
-    added, removed = event.args
-    assert removed == []
-    assert added == [('activity2', room2_handle)]
+    q.expect('dbus-signal', signal='ActivitiesChanged',
+            interface='org.laptop.Telepathy.View',
+            args=[[('activity2', handles['room2'])], []])
 
     act = view1.GetActivities()
-    assert sorted(act) == sorted(added)
+    assert sorted(act) == [('activity2', handles['room2'])]
 
     assert view1_iface.GetBuddies() == []
 
@@ -270,17 +267,16 @@ def test(q, bus, conn, stream):
     view2_iface = dbus.Interface(view2, 'org.laptop.Telepathy.View')
 
     event = q.expect('dbus-signal', signal='ActivityPropertiesChanged')
-    room3_handle, props = event.args
-    assert conn.InspectHandles(2, [room3_handle])[0] == 'room3@conference.localhost'
+    handles['room3'], props = event.args
+    assert conn.InspectHandles(2, [handles['room3']])[0] == 'room3@conference.localhost'
     assert props == {'color': '#AABBCC,#001122'}
 
-    event = q.expect('dbus-signal', signal='ActivitiesChanged')
-    added, removed = event.args
-    assert removed == []
-    assert added == [('activity3', room3_handle)]
+    q.expect('dbus-signal', signal='ActivitiesChanged',
+            interface='org.laptop.Telepathy.View',
+            args=[[('activity3', handles['room3'])], []])
 
     act = view2.GetActivities()
-    assert sorted(act) == sorted(added)
+    assert sorted(act) == [('activity3', handles['room3'])]
 
     # add activity 4 to view 0
     message = domish.Element((None, 'message'))
@@ -319,23 +315,24 @@ def test(q, bus, conn, stream):
     # view 2: activity 3
     # participants are added to view
 
-    event = q.expect('dbus-signal', signal='BuddiesChanged')
-    members_handles, removed = event.args
-    assert sorted(conn.InspectHandles(1, members_handles)) == \
-            sorted(['fernand@localhost', 'jean@localhost'])
+    handles['fernand'] = conn.RequestHandles(1, ['fernand@localhost',])[0]
+
+    q.expect('dbus-signal', signal='BuddiesChanged',
+            args=[[handles['fernand'], handles['jean']], []])
 
     # activity is added too
-    event = q.expect('dbus-signal', signal='ActivitiesChanged')
+    event = q.expect('dbus-signal', signal='ActivitiesChanged',
+            interface='org.laptop.Telepathy.View')
     added, removed = event.args
     assert len(added) == 1
-    id, room4_handle = added[0]
+    id, handles['room4'] = added[0]
     assert id == 'activity4'
-    assert sorted(conn.InspectHandles(2, [room4_handle])) == \
+    assert sorted(conn.InspectHandles(2, [handles['room4']])) == \
             ['room4@conference.localhost']
 
     # check activities and buddies in view
     check_view(view0_iface, conn, [
-        ('activity1', room1_handle),('activity4', room4_handle)],
+        ('activity1', handles['room1']), ('activity4', handles['room4'])],
         ['fernand@localhost', 'lucien@localhost', 'jean@localhost'])
 
     # Gadget informs us about an activity properties change
@@ -365,14 +362,11 @@ def test(q, bus, conn, stream):
     rule['action'] ='error'
     stream.send(message)
 
-    event = q.expect('dbus-signal', signal='ActivityPropertiesChanged')
-    room = event.args[0]
-    properties = event.args[1]
-
-    assert properties == {'tags': 'game', 'color': '#AABBAA,#BBAABB'}
+    q.expect('dbus-signal', signal='ActivityPropertiesChanged',
+            args=[handles['room1'], {'tags': 'game', 'color': '#AABBAA,#BBAABB'}])
 
     # we now get the new activity properties
-    props = activity_prop_iface.GetProperties(room)
+    props = activity_prop_iface.GetProperties(handles['room1'])
     assert props == {'tags': 'game', 'color': '#AABBAA,#BBAABB'}
 
     # Marcel joined activity 1
@@ -405,27 +399,22 @@ def test(q, bus, conn, stream):
     # view 1: activity 2
     # view 2: activity 3
 
-    view_event, buddy_info_event, activities_changed_event = q.expect_many(
-            EventPattern('dbus-signal', signal='BuddiesChanged'),
-            EventPattern('dbus-signal', signal='PropertiesChanged'),
-            EventPattern('dbus-signal', signal='ActivitiesChanged'))
+    handles['marcel'] = conn.RequestHandles(1, ['marcel@localhost',])[0]
 
-    added, removed = view_event.args
-    assert conn.InspectHandles(1, added) == ['marcel@localhost']
-
-    contact, properties = buddy_info_event.args
-    assert contact == added[0]
-    assert properties == {'color': '#CCCCCC,#DDDDDD'}
+    q.expect_many(
+            EventPattern('dbus-signal', signal='BuddiesChanged',
+                args=[[handles['marcel']], []]),
+            EventPattern('dbus-signal', signal='PropertiesChanged',
+                args=[handles['marcel'], {'color': '#CCCCCC,#DDDDDD'}]),
+            EventPattern('dbus-signal', signal='ActivitiesChanged',
+                interface='org.laptop.Telepathy.BuddyInfo',
+                args=[handles['marcel'], [('activity1', handles['room1'])]]))
 
     # check activities and buddies in view
     check_view(view0_iface, conn, [
-        ('activity1', room1_handle),('activity4', room4_handle)],
+        ('activity1', handles['room1']),('activity4', handles['room4'])],
         ['fernand@localhost', 'lucien@localhost', 'jean@localhost',
             'marcel@localhost'])
-
-    contact, activities = activities_changed_event.args
-    assert contact == added[0]
-    assert activities == [('activity1', room1_handle)]
 
     # Marcel left activity 1
     message = domish.Element(('jabber:client', 'message'))
@@ -451,18 +440,17 @@ def test(q, bus, conn, stream):
     # view 1: activity 2
     # view 2: activity 3
 
-    view_event, activities_changed_event = q.expect_many(
-            EventPattern('dbus-signal', signal='BuddiesChanged'),
-            EventPattern('dbus-signal', signal='ActivitiesChanged'))
+    q.expect_many(
+            EventPattern('dbus-signal', signal='BuddiesChanged',
+                args=[[], [handles['marcel']]]),
+            EventPattern('dbus-signal', signal='ActivitiesChanged',
+                interface='org.laptop.Telepathy.BuddyInfo',
+                args=[handles['marcel'], []]))
 
     # check activities and buddies in view
     check_view(view0_iface, conn, [
-        ('activity1', room1_handle),('activity4', room4_handle)],
+        ('activity1', handles['room1']),('activity4', handles['room4'])],
         ['fernand@localhost', 'lucien@localhost', 'jean@localhost'])
-
-    contact, activities = activities_changed_event.args
-    assert conn.InspectHandles(1, [contact]) == ['marcel@localhost']
-    assert activities == []
 
     # Jean left activity 1
     message = domish.Element(('jabber:client', 'message'))
@@ -488,14 +476,13 @@ def test(q, bus, conn, stream):
     # view 1: activity 2
     # view 2: activity 3
 
-    activities_changed_event = q.expect('dbus-signal',
-            signal='ActivitiesChanged')
-    contact, activities = activities_changed_event.args
-    assert conn.InspectHandles(1, [contact]) == ['jean@localhost']
+    q.expect('dbus-signal', signal='ActivitiesChanged',
+            interface='org.laptop.Telepathy.BuddyInfo',
+            args=[handles['jean'], [('activity4', handles['room4'])]])
 
     # Jean wasn't removed from the view as he is still in activity 4
     check_view(view0_iface, conn, [
-        ('activity1', room1_handle),('activity4', room4_handle)],
+        ('activity1', handles['room1']),('activity4', handles['room4'])],
         ['fernand@localhost', 'lucien@localhost', 'jean@localhost'])
 
     # remove activity 1 from view 0
@@ -520,28 +507,21 @@ def test(q, bus, conn, stream):
     # view 1: activity 2
     # view 2: activity 3
 
-    buddies_changed_event, _, buddies_activities_changed_event = \
-            q.expect_many(
-            EventPattern('dbus-signal', signal='BuddiesChanged'),
+    q.expect_many(
+    # participants are removed from the view
+            EventPattern('dbus-signal', signal='BuddiesChanged',
+                args=[[], [handles['lucien']]]),
     # activity is removed from the view
             EventPattern('dbus-signal', signal='ActivitiesChanged',
                 interface='org.laptop.Telepathy.View',
-                args=[[], [('activity1', room1_handle)]]),
+                args=[[], [('activity1', handles['room1'])]]),
             EventPattern('dbus-signal', signal='ActivitiesChanged',
-                interface='org.laptop.Telepathy.BuddyInfo'))
-
-    # participants are removed from the view
-    added, removed = buddies_changed_event.args
-    assert sorted(conn.InspectHandles(1, removed)) == \
-            sorted(['lucien@localhost'])
-
-    contact, activities = buddies_activities_changed_event.args
-    assert contact == removed[0]
-    assert activities == []
+                interface='org.laptop.Telepathy.BuddyInfo',
+                args=[handles['lucien'], []]))
 
     # check activities and buddies in view
     check_view(view0_iface, conn, [
-        ('activity4', room4_handle)],
+        ('activity4', handles['room4'])],
         ['fernand@localhost', 'jean@localhost'])
 
     # close view 0
@@ -570,7 +550,6 @@ def test(q, bus, conn, stream):
     close = xpath.queryForNodes('/message/close', event.stanza)
     assert len(close) == 1
     assert close[0]['id'] == '2'
-
 
 if __name__ == '__main__':
     exec_test(test)

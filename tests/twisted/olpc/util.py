@@ -10,6 +10,7 @@ NS_OLPC_ACTIVITY = "http://laptop.org/xmpp/activity"
 
 NS_DISCO_INFO = "http://jabber.org/protocol/disco#info"
 NS_DISCO_ITEMS = "http://jabber.org/protocol/disco#items"
+NS_PUBSUB = 'http://jabber.org/protocol/pubsub'
 NS_AMP = "http://jabber.org/protocol/amp"
 
 def parse_properties(elems):
@@ -68,3 +69,19 @@ def announce_gadget(q, stream, disco_stanza):
             elem('feature', var=NS_OLPC_ACTIVITY)()))
 
     stream.send(reply)
+
+def send_buddy_changed_properties_msg(stream, from_, props):
+    message = domish.Element(('jabber:client', 'message'))
+    message['from'] = from_
+    message['to'] = 'test@localhost'
+    event = message.addElement(("%s#event" % NS_PUBSUB, 'event'))
+
+    items = event.addElement((None, 'items'))
+    items['node'] = NS_OLPC_BUDDY_PROPS
+    item = items.addElement((None, 'item'))
+    properties = item.addElement((NS_OLPC_BUDDY_PROPS, 'properties'))
+
+    for child in properties_to_xml(props):
+        properties.addChild(child)
+
+    stream.send(message)

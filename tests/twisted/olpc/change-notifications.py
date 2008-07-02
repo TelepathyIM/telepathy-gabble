@@ -10,7 +10,7 @@ from gabbletest import exec_test, make_result_iq, acknowledge_iq
 
 from twisted.words.xish import domish, xpath
 
-from util import announce_gadget
+from util import announce_gadget, send_buddy_changed_properties_msg
 
 NS_OLPC_BUDDY_PROPS = "http://laptop.org/xmpp/buddy-properties"
 NS_OLPC_ACTIVITIES = "http://laptop.org/xmpp/activities"
@@ -36,22 +36,8 @@ def test(q, bus, conn, stream):
     announce_gadget(q, stream, disco_event.stanza)
 
     # Alice, one our friends changed her properties
-    message = domish.Element(('jabber:client', 'message'))
-    message['from'] = 'alice@localhost'
-    message['to'] = 'test@localhost'
-    event = message.addElement(('http://jabber.org/protocol/pubsub#event',
-        'event'))
-
-    items = event.addElement((None, 'items'))
-    items['node'] = NS_OLPC_BUDDY_PROPS
-    item = items.addElement((None, 'item'))
-    properties = item.addElement((NS_OLPC_BUDDY_PROPS, 'properties'))
-
-    property = properties.addElement((None, 'property'))
-    property['type'] = 'str'
-    property['name'] = 'color'
-    property.addContent('#005FE4,#00A0FF')
-    stream.send(message)
+    send_buddy_changed_properties_msg(stream, 'alice@localhost',
+            {'color': ('str', '#005FE4,#00A0FF')})
 
     event = q.expect('dbus-signal', signal='PropertiesChanged')
     contact = event.args[0]

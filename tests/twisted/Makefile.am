@@ -6,6 +6,7 @@ TWISTED_TESTS = \
 	muc/test-muc-properties.py \
 	muc/test-muc.py \
 	olpc/olpc-activity-search.py \
+	olpc/current-activity.py \
 	olpc/olpc-muc-invitation.py \
 	olpc/olpc-muc-prop-change.py \
 	olpc/test-olpc-bundle.py \

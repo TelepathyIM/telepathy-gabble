@@ -1456,13 +1456,16 @@ add_activity_info_in_set (GabbleConnection *conn,
 static GabbleOlpcActivity *
 extract_current_activity (GabbleConnection *conn,
                           LmMessageNode *node,
-                          const gchar *contact)
+                          const gchar *contact,
+                          gboolean create_activity)
 {
   const gchar *room, *id;
   GabbleOlpcActivity *activity;
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_ROOM);
-  TpHandle room_handle;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
+  TpHandle room_handle, contact_handle;
 
   if (node == NULL)
     return NULL;
@@ -1471,16 +1474,20 @@ extract_current_activity (GabbleConnection *conn,
 
   room = lm_message_node_get_attribute (node, "room");
   if (room == NULL || room[0] == '\0')
-    return FALSE;
+    return NULL;
 
   room_handle = tp_handle_ensure (room_repo, room, NULL, NULL);
   if (room_handle == 0)
     return NULL;
 
+  contact_handle = tp_handle_lookup (contact_repo, contact, NULL, NULL);
+  if (contact_handle == 0)
+    return NULL;
+
   activity = g_hash_table_lookup (conn->olpc_activities_info,
       GUINT_TO_POINTER (room_handle));
 
-  if (activity == NULL)
+  if (activity == NULL && create_activity)
     {
       /* Humm we received as current activity an activity we don't know yet.
        * If the remote user doesn't announce this activity
@@ -1495,6 +1502,20 @@ extract_current_activity (GabbleConnection *conn,
     }
 
   tp_handle_unref (room_repo, room_handle);
+
+  /* update current-activity cache */
+  if (activity != NULL)
+    {
+      g_hash_table_insert (conn->olpc_current_act,
+          GUINT_TO_POINTER (contact_handle), activity);
+
+      g_object_ref (activity);
+    }
+  else
+    {
+      g_hash_table_remove (conn->olpc_current_act,
+          GUINT_TO_POINTER (contact_handle));
+    }
 
   return activity;
 }
@@ -1511,12 +1532,19 @@ get_current_activity_reply_cb (GabbleConnection *conn,
   const gchar *from;
   GabbleOlpcActivity *activity;
 
-  if (!check_query_reply_msg (reply_msg, context))
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
+    {
+      DEBUG ("Failed to query PEP node. No current activity");
+
+      gabble_svc_olpc_buddy_info_return_from_get_current_activity (context,
+          "", 0);
+
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    }
 
   from = lm_message_node_get_attribute (reply_msg->node, "from");
   node = lm_message_node_find_child (reply_msg->node, "activity");
-  activity = extract_current_activity (conn, node, from);
+  activity = extract_current_activity (conn, node, from, TRUE);
   if (activity == NULL)
     {
       DEBUG ("GetCurrentActivity returns no activity");
@@ -1544,6 +1572,7 @@ olpc_buddy_info_get_current_activity (GabbleSvcOLPCBuddyInfo *iface,
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) conn;
   const gchar *jid;
+  GabbleOlpcActivity *activity;
 
   DEBUG ("called for contact#%u", contact);
 
@@ -1555,7 +1584,21 @@ olpc_buddy_info_get_current_activity (GabbleSvcOLPCBuddyInfo *iface,
   if (jid == NULL)
     return;
 
-  if (!pubsub_query (conn, jid, NS_OLPC_CURRENT_ACTIVITY,
+  activity = g_hash_table_lookup (conn->olpc_current_act,
+      GUINT_TO_POINTER (contact));
+  if (activity != NULL)
+    {
+      DEBUG ("found current activity in cache: %s (%u)", activity->id,
+          activity->room);
+
+      gabble_svc_olpc_buddy_info_return_from_get_current_activity (context,
+          activity->id, activity->room);
+      return;
+    }
+
+    DEBUG ("current activity not in cache, query PEP node");
+
+    if (!pubsub_query (conn, jid, NS_OLPC_CURRENT_ACTIVITY,
         get_current_activity_reply_cb, context))
     {
       GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
@@ -1679,7 +1722,7 @@ olpc_buddy_info_current_activity_event_handler (GabbleConnection *conn,
   from = lm_message_node_get_attribute (msg->node, "from");
   node = lm_message_node_find_child (msg->node, "activity");
 
-  activity = extract_current_activity (conn, node, from);
+  activity = extract_current_activity (conn, node, from, TRUE);
   if (activity != NULL)
     {
       DEBUG ("emitting CurrentActivityChanged(contact#%u, ID \"%s\", room#%u)",
@@ -3024,7 +3067,10 @@ buddy_changed (GabbleConnection *conn,
       /* Buddy current activity change */
       GabbleOlpcActivity *activity;
 
-      activity = extract_current_activity (conn, node, jid);
+      /* extract_current_activity won't create the activity if we don't
+       * know it yet as we'll have no way to find activity's info if
+       * the activity is not in a view */
+      activity = extract_current_activity (conn, node, jid, FALSE);
       if (activity == NULL)
         {
           gabble_svc_olpc_buddy_info_emit_current_activity_changed (conn,
@@ -3636,6 +3682,13 @@ conn_olpc_activity_properties_init (GabbleConnection *conn)
    */
   conn->olpc_views = g_hash_table_new_full (g_direct_hash, g_direct_equal,
       NULL, (GDestroyNotify) g_object_unref);
+
+  /* Current activity
+   *
+   * contact TpHandle => reffed GabbleOlpcActivity
+   */
+  conn->olpc_current_act = g_hash_table_new_full (g_direct_hash,
+      g_direct_equal, NULL, (GDestroyNotify) g_object_unref);
 
   conn->olpc_gadget_buddy = NULL;
   conn->olpc_gadget_activity = NULL;

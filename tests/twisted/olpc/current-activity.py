@@ -10,7 +10,8 @@ from twisted.words.protocols.jabber.client import IQ
 
 from twisted.words.xish import domish, xpath
 
-from util import announce_gadget, send_buddy_changed_current_act_msg
+from util import announce_gadget, send_buddy_changed_current_act_msg,\
+    answer_to_current_act_pubsub_request
 
 NS_OLPC_BUDDY_PROPS = "http://laptop.org/xmpp/buddy-properties"
 NS_OLPC_ACTIVITIES = "http://laptop.org/xmpp/activities"
@@ -50,17 +51,8 @@ def test(q, bus, conn, stream):
 
     # Alice's current-activity is not in the cache so Gabble sends a PEP query
     event = q.expect('stream-iq', iq_type='get', query_name='pubsub')
-    reply = make_result_iq(stream, event.stanza)
-    reply['from'] = 'alice@localhost'
-    pubsub = reply.firstChildElement()
-    items = pubsub.addElement((None, 'items'))
-    items['node'] = NS_OLPC_CURRENT_ACTIVITY
-    item = items.addElement((None, 'item'))
-    item['id'] = 'itemID'
-    activity = item.addElement((NS_OLPC_CURRENT_ACTIVITY, 'activity'))
-    activity['room'] = 'room1@conference.localhost'
-    activity['type'] = 'activity1'
-    reply.send()
+    answer_to_current_act_pubsub_request(stream, event.stanza, 'activity1',
+        'room1@conference.localhost')
 
     event = q.expect('dbus-return', method='GetCurrentActivity')
     id, handles['room1'] = event.value

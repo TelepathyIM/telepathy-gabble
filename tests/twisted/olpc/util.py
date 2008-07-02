@@ -104,3 +104,18 @@ def send_buddy_changed_current_act_msg(stream, from_, id, room):
     activity['type'] = id
 
     stream.send(message)
+
+def answer_to_current_act_pubsub_request(stream, request, id, room):
+    # TODO: check request structure
+    reply = make_result_iq(stream, request)
+    reply['from'] = request['to']
+    pubsub = reply.firstChildElement()
+    items = pubsub.addElement((None, 'items'))
+    items['node'] = NS_OLPC_CURRENT_ACTIVITY
+    item = items.addElement((None, 'item'))
+    item['id'] = 'itemID'
+    activity = item.addElement((NS_OLPC_CURRENT_ACTIVITY, 'activity'))
+    activity['room'] = room
+    activity['type'] = id
+    reply.send()
+

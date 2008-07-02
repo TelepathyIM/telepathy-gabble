@@ -1,4 +1,4 @@
-from gabbletest import make_result_iq, acknowledge_iq
+from gabbletest import make_result_iq, acknowledge_iq, elem, elem_iq
 from twisted.words.xish import domish, xpath
 
 NS_OLPC_BUDDY_PROPS = "http://laptop.org/xmpp/buddy-properties"
@@ -22,14 +22,11 @@ def announce_gadget(q, stream, disco_stanza):
 
     # wait for Gadget disco#info query
     event = q.expect('stream-iq', to='gadget.localhost', query_ns=NS_DISCO_INFO)
-    reply = make_result_iq(stream, event.stanza)
-    query = xpath.queryForNodes('/iq/query', reply)[0]
-    identity = query.addElement((None, 'identity'))
-    identity['category'] = 'collaboration'
-    identity['type'] = 'gadget'
-    identity['name'] = 'OLPC Gadget'
-    feature = query.addElement((None, 'feature'))
-    feature['var'] = NS_OLPC_BUDDY
-    feature = query.addElement((None, 'feature'))
-    feature['var'] = NS_OLPC_ACTIVITY
+
+    reply = elem_iq(stream, 'result', id=event.stanza['id'])(
+        elem(NS_DISCO_INFO, 'query')(
+            elem('identity', category='collaboration', type='gadget', name='OLPC Gadget')(),
+            elem('feature', var=NS_OLPC_BUDDY)(),
+            elem('feature', var=NS_OLPC_ACTIVITY)()))
+
     stream.send(reply)

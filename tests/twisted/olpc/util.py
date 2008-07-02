@@ -71,6 +71,8 @@ def announce_gadget(q, stream, disco_stanza):
     stream.send(reply)
 
 def send_buddy_changed_properties_msg(stream, from_, props):
+    # TODO: Would be cool to use elem() but there is no API
+    # to get a pointer on the properties node...
     message = domish.Element(('jabber:client', 'message'))
     message['from'] = from_
     message['to'] = 'test@localhost'

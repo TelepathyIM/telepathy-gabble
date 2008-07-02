@@ -35,15 +35,16 @@ def test(q, bus, conn, stream):
     acknowledge_iq(stream, iq_event.stanza)
     announce_gadget(q, stream, disco_event.stanza)
 
+    handles = {}
+
+    handles['alice'] = conn.RequestHandles(1, ['alice@localhost'])[0]
+
     # Alice, one our friends changed her properties
     send_buddy_changed_properties_msg(stream, 'alice@localhost',
             {'color': ('str', '#005FE4,#00A0FF')})
 
-    event = q.expect('dbus-signal', signal='PropertiesChanged')
-    contact = event.args[0]
-    props = event.args[1]
-
-    assert props == {'color' : '#005FE4,#00A0FF'}
+    event = q.expect('dbus-signal', signal='PropertiesChanged',
+            args=[handles['alice'], {'color' : '#005FE4,#00A0FF'}])
 
 if __name__ == '__main__':
     exec_test(test)

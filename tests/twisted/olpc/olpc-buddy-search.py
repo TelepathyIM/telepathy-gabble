@@ -10,7 +10,7 @@ from gabbletest import exec_test, make_result_iq, acknowledge_iq
 from twisted.words.xish import domish, xpath
 from twisted.words.protocols.jabber.client import IQ
 
-from olpc_test_helper import announce_gadget
+from util import announce_gadget
 
 NS_OLPC_BUDDY_PROPS = "http://laptop.org/xmpp/buddy-properties"
 NS_OLPC_ACTIVITIES = "http://laptop.org/xmpp/activities"

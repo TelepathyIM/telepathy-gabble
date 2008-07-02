@@ -9,7 +9,8 @@ from servicetest import call_async, EventPattern
 from gabbletest import exec_test, make_result_iq, acknowledge_iq
 
 from twisted.words.xish import domish, xpath
-from olpc_test_helper import announce_gadget
+
+from util import announce_gadget
 
 NS_OLPC_BUDDY_PROPS = "http://laptop.org/xmpp/buddy-properties"
 NS_OLPC_ACTIVITIES = "http://laptop.org/xmpp/activities"
@@ -32,7 +33,6 @@ def test(q, bus, conn, stream):
         EventPattern('stream-iq', to='localhost', query_ns=NS_DISCO_ITEMS))
 
     acknowledge_iq(stream, iq_event.stanza)
-
     announce_gadget(q, stream, disco_event.stanza)
 
     # Alice, one our friends changed her properties

@@ -1,6 +1,7 @@
 """
 test OLPC Buddy properties change notifications
 """
+# FIXME: merge this file to other tests ?
 
 import dbus
 
@@ -75,32 +76,6 @@ def test(q, bus, conn, stream):
     props = event.args[1]
 
     assert props == {'color' : '#005FE4,#00A0FF'}
-
-    # Alice changes now her current-activity
-    message = domish.Element(('jabber:client', 'message'))
-    message['from'] = 'alice@localhost'
-    message['to'] = 'test@localhost'
-    event = message.addElement(('http://jabber.org/protocol/pubsub#event',
-        'event'))
-
-    items = event.addElement((None, 'items'))
-    items['node'] = NS_OLPC_CURRENT_ACTIVITY
-    item = items.addElement((None, 'item'))
-
-    activity = item.addElement((NS_OLPC_CURRENT_ACTIVITY, 'activity'))
-    activity['room'] = 'testroom@conference.localhost'
-    activity['type'] = 'testactivity'
-
-    stream.send(message)
-
-    event = q.expect('dbus-signal', signal='CurrentActivityChanged')
-    contact = event.args[0]
-    activity = event.args[1]
-    room = event.args[2]
-    room_id = conn.InspectHandles(2, [room])[0]
-
-    assert activity == 'testactivity'
-    assert room_id == 'testroom@conference.localhost'
 
 if __name__ == '__main__':
     exec_test(test)

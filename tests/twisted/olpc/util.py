@@ -12,6 +12,44 @@ NS_DISCO_INFO = "http://jabber.org/protocol/disco#info"
 NS_DISCO_ITEMS = "http://jabber.org/protocol/disco#items"
 NS_AMP = "http://jabber.org/protocol/amp"
 
+def parse_properties(elems):
+    properties = {}
+
+    for elem in xpath_query('/*/property', elems):
+        type = elem.getAttribute('type')
+        name = elem.getAttribute('name')
+        value = None
+
+        for child in elem.children:
+            if isinstance(child, unicode) or isinstance(child, str):
+                value = child
+                break
+
+        if type is None or name is None or value is None:
+            continue
+
+        if type not in valid_types:
+            raise PropertyTypeError(type, elems.uri)
+
+        if type == 'bool' and value not in ['1', '0', 'true', 'false']:
+            raise PropertyTypeError(type, elems.uri)
+
+        properties[name] = (type, value)
+
+    return properties
+
+def properties_to_xml(properties):
+    result = []
+
+    for key, (type, value) in properties.iteritems():
+        property = domish.Element((None, 'property'))
+        property['type'] = type
+        property['name'] = key
+        property.addContent(value)
+        result.append(property)
+
+    return result
+
 def announce_gadget(q, stream, disco_stanza):
     # announce Gadget service
     reply = make_result_iq(stream, disco_stanza)

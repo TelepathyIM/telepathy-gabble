@@ -10,7 +10,7 @@ from twisted.words.protocols.jabber.client import IQ
 
 from twisted.words.xish import domish, xpath
 
-from util import announce_gadget
+from util import announce_gadget, send_buddy_changed_current_act_msg
 
 NS_OLPC_BUDDY_PROPS = "http://laptop.org/xmpp/buddy-properties"
 NS_OLPC_ACTIVITIES = "http://laptop.org/xmpp/activities"
@@ -75,21 +75,8 @@ def test(q, bus, conn, stream):
             ('activity1', handles['room1'])
 
     # Alice changed her current-activity
-    message = domish.Element(('jabber:client', 'message'))
-    message['from'] = 'alice@localhost'
-    message['to'] = 'test@localhost'
-    event = message.addElement(('http://jabber.org/protocol/pubsub#event',
-        'event'))
-
-    items = event.addElement((None, 'items'))
-    items['node'] = NS_OLPC_CURRENT_ACTIVITY
-    item = items.addElement((None, 'item'))
-
-    activity = item.addElement((NS_OLPC_CURRENT_ACTIVITY, 'activity'))
-    activity['room'] = 'room2@conference.localhost'
-    activity['type'] = 'activity2'
-
-    stream.send(message)
+    send_buddy_changed_current_act_msg(stream, 'alice@localhost', 'activity2',
+            'room2@conference.localhost')
 
     event = q.expect('dbus-signal', signal='CurrentActivityChanged')
     contact, id, handles['room2'] = event.args

@@ -70,20 +70,37 @@ def announce_gadget(q, stream, disco_stanza):
 
     stream.send(reply)
 
-def send_buddy_changed_properties_msg(stream, from_, props):
+def _make_pubsub_event_msg(from_, node):
     # TODO: Would be cool to use elem() but there is no API
-    # to get a pointer on the properties node...
+    # to get a pointer on the item node...
     message = domish.Element(('jabber:client', 'message'))
     message['from'] = from_
     message['to'] = 'test@localhost'
     event = message.addElement(("%s#event" % NS_PUBSUB, 'event'))
 
     items = event.addElement((None, 'items'))
-    items['node'] = NS_OLPC_BUDDY_PROPS
+    items['node'] = node
     item = items.addElement((None, 'item'))
+
+    return message, item
+
+def send_buddy_changed_properties_msg(stream, from_, props):
+    message, item = _make_pubsub_event_msg(from_,
+        NS_OLPC_BUDDY_PROPS)
+
     properties = item.addElement((NS_OLPC_BUDDY_PROPS, 'properties'))
 
     for child in properties_to_xml(props):
         properties.addChild(child)
+
+    stream.send(message)
+
+def send_buddy_changed_current_act_msg(stream, from_, id, room):
+    message, item = _make_pubsub_event_msg(from_,
+        NS_OLPC_CURRENT_ACTIVITY)
+
+    activity = item.addElement((NS_OLPC_CURRENT_ACTIVITY, 'activity'))
+    activity['room'] = room
+    activity['type'] = id
 
     stream.send(message)

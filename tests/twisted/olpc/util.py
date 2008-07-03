@@ -77,16 +77,12 @@ def announce_gadget(q, stream, disco_stanza):
     stream.send(reply)
 
 def _make_pubsub_event_msg(from_, node):
-    # TODO: Would be cool to use elem() but there is no API
-    # to get a pointer on the item node...
-    message = domish.Element(('jabber:client', 'message'))
-    message['from'] = from_
-    message['to'] = 'test@localhost'
-    event = message.addElement(("%s#event" % NS_PUBSUB, 'event'))
+    # manually create the item node as we need a ref on it
+    item = domish.Element((None, 'item'))
 
-    items = event.addElement((None, 'items'))
-    items['node'] = node
-    item = items.addElement((None, 'item'))
+    message = elem('message', from_=from_, to='test@localhost')(
+        elem("%s#event" % NS_PUBSUB, 'event')(
+            elem('items')(item)))
 
     return message, item
 

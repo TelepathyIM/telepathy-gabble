@@ -1,3 +1,6 @@
+import dbus
+
+from servicetest import call_async, EventPattern
 from gabbletest import make_result_iq, acknowledge_iq, elem, elem_iq
 from twisted.words.xish import domish, xpath
 from twisted.words.protocols.jabber.client import IQ
@@ -148,3 +151,37 @@ def send_gadget_current_activity_changed_msg(stream, buddy, view_id, id, room):
                     action='error')))
 
     stream.send(message)
+
+def request_random_activity_view(q, stream, conn, max, id, activities):
+    gadget_iface = dbus.Interface(conn, 'org.laptop.Telepathy.Gadget')
+
+    call_async(q, gadget_iface, 'RequestRandomActivities', max)
+
+    iq_event, return_event = q.expect_many(
+    EventPattern('stream-iq', to='gadget.localhost',
+        query_ns=NS_OLPC_ACTIVITY),
+    EventPattern('dbus-return', method='RequestRandomActivities'))
+
+    view = iq_event.stanza.firstChildElement()
+    assert view.name == 'view'
+    assert view['id'] == id
+    random = xpath.queryForNodes('/iq/view/random', iq_event.stanza)
+    assert len(random) == 1
+    assert random[0]['max'] == str(max)
+
+    # reply to random query
+    reply = make_result_iq(stream, iq_event.stanza)
+    reply['from'] = 'gadget.localhost'
+    reply['to'] = 'test@localhost'
+    view = xpath.queryForNodes('/iq/view', reply)[0]
+    for id, room, props, buddies in activities:
+        activity = view.addElement((None, "activity"))
+        activity['room'] = room
+        activity['id'] = id
+        # TODO: activity props
+        for jid, props in buddies:
+            # TODO: buddy props
+            buddy = activity.addElement((None, 'buddy'))
+            buddy['jid'] = jid
+
+    stream.send(reply)

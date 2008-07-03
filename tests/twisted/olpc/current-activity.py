@@ -12,7 +12,7 @@ from twisted.words.xish import domish, xpath
 
 from util import announce_gadget, send_buddy_changed_current_act_msg,\
     answer_to_current_act_pubsub_request, answer_error_to_pubsub_request,\
-    send_gadget_current_activity_changed_msg
+    send_gadget_current_activity_changed_msg, request_random_activity_view
 
 NS_OLPC_BUDDY_PROPS = "http://laptop.org/xmpp/buddy-properties"
 NS_OLPC_ACTIVITIES = "http://laptop.org/xmpp/activities"
@@ -84,32 +84,9 @@ def test(q, bus, conn, stream):
 
     # request a activity view containing only Bob and one
     # activity in it.
-    call_async(q, gadget_iface, 'RequestRandomActivities', 1)
-
-    # TODO: would be cool to have to view test helper code
-    iq_event, return_event = q.expect_many(
-    EventPattern('stream-iq', to='gadget.localhost',
-        query_ns=NS_OLPC_ACTIVITY),
-    EventPattern('dbus-return', method='RequestRandomActivities'))
-
-    view = iq_event.stanza.firstChildElement()
-    assert view.name == 'view'
-    assert view['id'] == '0'
-    random = xpath.queryForNodes('/iq/view/random', iq_event.stanza)
-    assert len(random) == 1
-    assert random[0]['max'] == '1'
-
-    # reply to random query
-    reply = make_result_iq(stream, iq_event.stanza)
-    reply['from'] = 'gadget.localhost'
-    reply['to'] = 'test@localhost'
-    view = xpath.queryForNodes('/iq/view', reply)[0]
-    activity = view.addElement((None, "activity"))
-    activity['room'] = 'room3@conference.localhost'
-    activity['id'] = 'activity3'
-    buddy = activity.addElement((None, 'buddy'))
-    buddy['jid'] = 'bob@localhost'
-    stream.send(reply)
+    request_random_activity_view(q, stream, conn, 1, '0',
+        [('activity3', 'room3@conference.localhost', {},
+            [('bob@localhost', {}),]),])
 
     # Gadget sends us a current-activity change concerning a
     # known activity

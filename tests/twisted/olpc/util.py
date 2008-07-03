@@ -135,3 +135,16 @@ def answer_error_to_pubsub_request(stream, request, node):
     error.addElement((NS_STANZA, 'not-authorized'))
     error.addElement(("%s#errors" % NS_PUBSUB, 'presence-subscription-required'))
     stream.send(reply)
+
+def send_gadget_current_activity_changed_msg(stream, buddy, view_id, id, room):
+    # FIXME: should be id and not type !
+    message = elem('message', from_='gadget.localhost',
+        to='test@localhost', type='notice')(
+            elem(NS_OLPC_BUDDY, 'change', jid=buddy, id=view_id)(
+                elem(NS_OLPC_CURRENT_ACTIVITY, 'activity', type=id, room=room)()
+                ),
+            elem(NS_AMP, 'amp')(
+                elem('rule', condition='deliver-at', value='stored',
+                    action='error')))
+
+    stream.send(message)

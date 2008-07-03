@@ -11,7 +11,8 @@ from twisted.words.protocols.jabber.client import IQ
 from twisted.words.xish import domish, xpath
 
 from util import announce_gadget, send_buddy_changed_current_act_msg,\
-    answer_to_current_act_pubsub_request, answer_error_to_pubsub_request
+    answer_to_current_act_pubsub_request, answer_error_to_pubsub_request,\
+    send_gadget_current_activity_changed_msg
 
 NS_OLPC_BUDDY_PROPS = "http://laptop.org/xmpp/buddy-properties"
 NS_OLPC_ACTIVITIES = "http://laptop.org/xmpp/activities"
@@ -112,24 +113,8 @@ def test(q, bus, conn, stream):
 
     # Gadget sends us a current-activity change concerning a
     # known activity
-    message = domish.Element(('jabber:client', 'message'))
-    message['from'] = 'gadget.localhost'
-    message['to'] = 'alice@localhost'
-    message['type'] = 'notice'
-
-    change = message.addElement((NS_OLPC_BUDDY, 'change'))
-    change['jid'] = 'bob@localhost'
-    change['id'] = '0'
-    activity = change.addElement((NS_OLPC_CURRENT_ACTIVITY, 'activity'))
-    activity['type'] = 'activity3'
-    activity['room'] = 'room3@conference.localhost'
-
-    amp = message.addElement((NS_AMP, 'amp'))
-    rule = amp.addElement((None, 'rule'))
-    rule['condition'] = 'deliver-at'
-    rule['value'] = 'stored'
-    rule['action'] ='error'
-    stream.send(message)
+    send_gadget_current_activity_changed_msg(stream, 'bob@localhost', '0',
+        'activity3', 'room3@conference.localhost')
 
     # Gadget notifies us about the change
     event = q.expect('dbus-signal', signal='CurrentActivityChanged')
@@ -146,24 +131,8 @@ def test(q, bus, conn, stream):
 
     # Gadget sends us a current-activity change concerning an
     # unknown activity
-    message = domish.Element(('jabber:client', 'message'))
-    message['from'] = 'gadget.localhost'
-    message['to'] = 'alice@localhost'
-    message['type'] = 'notice'
-
-    change = message.addElement((NS_OLPC_BUDDY, 'change'))
-    change['jid'] = 'bob@localhost'
-    change['id'] = '0'
-    activity = change.addElement((NS_OLPC_CURRENT_ACTIVITY, 'activity'))
-    activity['type'] = 'activity4'
-    activity['room'] = 'room4@conference.localhost'
-
-    amp = message.addElement((NS_AMP, 'amp'))
-    rule = amp.addElement((None, 'rule'))
-    rule['condition'] = 'deliver-at'
-    rule['value'] = 'stored'
-    rule['action'] ='error'
-    stream.send(message)
+    send_gadget_current_activity_changed_msg(stream, 'bob@localhost', '0',
+        'activity4', 'room4@conference.localhost')
 
     # Gadget changed Alice's current-activity to none as it doesn't
     # know the activity

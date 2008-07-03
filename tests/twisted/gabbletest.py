@@ -417,7 +417,10 @@ def elem(a, b=None, **kw):
         elem = _elem((None, a))
 
     for k, v in kw.iteritems():
-        elem[k] = v
+        if k == 'from_':
+            elem['from'] = v
+        else:
+            elem[k] = v
 
     return elem
 

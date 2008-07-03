@@ -9,7 +9,8 @@ from gabbletest import exec_test, make_result_iq, acknowledge_iq, sync_stream
 
 from twisted.words.xish import domish, xpath
 from twisted.words.protocols.jabber.client import IQ
-from util import announce_gadget, request_random_activity_view
+from util import announce_gadget, request_random_activity_view,\
+    answer_error_to_pubsub_request
 
 NS_OLPC_BUDDY_PROPS = "http://laptop.org/xmpp/buddy-properties"
 NS_OLPC_ACTIVITIES = "http://laptop.org/xmpp/activities"
@@ -60,7 +61,6 @@ def test(q, bus, conn, stream):
                 [('lucien@localhost', {'color': ('str', '#AABBCC,#CCBBAA')}),
                  ('jean@localhost', {})]),])
 
-
     view0 = bus.get_object(conn.bus_name, view_path)
     view0_iface = dbus.Interface(view0, 'org.laptop.Telepathy.View')
 
@@ -101,19 +101,8 @@ def test(q, bus, conn, stream):
 
     event = q.expect('stream-iq', to='lucien@localhost', query_name='pubsub',
             query_ns=NS_PUBSUB)
-    iq = event.stanza
     # return an error, we can't query pubsub node
-    reply = IQ(stream, "error")
-    reply['id'] = iq['id']
-    reply['from'] = iq['to']
-    pubsub = reply.addElement((NS_PUBSUB, 'pubsub'))
-    items = pubsub.addElement((None, 'items'))
-    items['node'] = 'http://laptop.org/xmpp/activities'
-    error = reply.addElement((None, 'error'))
-    error['type'] = 'auth'
-    error.addElement((NS_STANZA, 'not-authorized'))
-    error.addElement(("%s#errors" % NS_PUBSUB, 'presence-subscription-required'))
-    stream.send(reply)
+    answer_error_to_pubsub_request(stream, event.stanza, NS_OLPC_ACTIVITIES)
 
     q.expect('dbus-return', method='GetActivities',
             value=([('activity1', handles['room1'])],))

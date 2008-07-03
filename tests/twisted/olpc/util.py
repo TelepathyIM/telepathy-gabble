@@ -152,25 +152,8 @@ def send_gadget_current_activity_changed_msg(stream, buddy, view_id, id, room):
 
     stream.send(message)
 
-def request_random_activity_view(q, stream, conn, max, id, activities):
-    gadget_iface = dbus.Interface(conn, 'org.laptop.Telepathy.Gadget')
-
-    call_async(q, gadget_iface, 'RequestRandomActivities', max)
-
-    iq_event, return_event = q.expect_many(
-    EventPattern('stream-iq', to='gadget.localhost',
-        query_ns=NS_OLPC_ACTIVITY),
-    EventPattern('dbus-return', method='RequestRandomActivities'))
-
-    view = iq_event.stanza.firstChildElement()
-    assert view.name == 'view'
-    assert view['id'] == id
-    random = xpath.queryForNodes('/iq/view/random', iq_event.stanza)
-    assert len(random) == 1
-    assert random[0]['max'] == str(max)
-
-    # reply to random query
-    reply = make_result_iq(stream, iq_event.stanza)
+def send_reply_to_activity_view_request(stream, stanza, activities):
+    reply = make_result_iq(stream, stanza)
     reply['from'] = 'gadget.localhost'
     reply['to'] = 'test@localhost'
     view = xpath.queryForNodes('/iq/view', reply)[0]
@@ -194,5 +177,24 @@ def request_random_activity_view(q, stream, conn, max, id, activities):
                     properties.addChild(child)
 
     stream.send(reply)
+
+def request_random_activity_view(q, stream, conn, max, id, activities):
+    gadget_iface = dbus.Interface(conn, 'org.laptop.Telepathy.Gadget')
+
+    call_async(q, gadget_iface, 'RequestRandomActivities', max)
+
+    iq_event, return_event = q.expect_many(
+    EventPattern('stream-iq', to='gadget.localhost',
+        query_ns=NS_OLPC_ACTIVITY),
+    EventPattern('dbus-return', method='RequestRandomActivities'))
+
+    view = iq_event.stanza.firstChildElement()
+    assert view.name == 'view'
+    assert view['id'] == id
+    random = xpath.queryForNodes('/iq/view/random', iq_event.stanza)
+    assert len(random) == 1
+    assert random[0]['max'] == str(max)
+
+    send_reply_to_activity_view_request(stream, iq_event.stanza, activities)
 
     return return_event.value[0]

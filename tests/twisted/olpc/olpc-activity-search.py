@@ -10,7 +10,7 @@ from gabbletest import exec_test, make_result_iq, acknowledge_iq, sync_stream
 from twisted.words.xish import domish, xpath
 from twisted.words.protocols.jabber.client import IQ
 from util import announce_gadget, request_random_activity_view,\
-    answer_error_to_pubsub_request
+    answer_error_to_pubsub_request, send_reply_to_activity_view_request
 
 NS_OLPC_BUDDY_PROPS = "http://laptop.org/xmpp/buddy-properties"
 NS_OLPC_ACTIVITIES = "http://laptop.org/xmpp/activities"
@@ -127,20 +127,9 @@ def test(q, bus, conn, stream):
     assert property['name'] == 'color'
     assert property.children == ['#AABBCC,#001122']
 
-    # reply to request
-    reply = make_result_iq(stream, iq_event.stanza)
-    reply['from'] = 'gadget.localhost'
-    reply['to'] = 'alice@localhost'
-    view = xpath.queryForNodes('/iq/view', reply)[0]
-    activity = view.addElement((None, "activity"))
-    activity['room'] = 'room2@conference.localhost'
-    activity['id'] = 'activity2'
-    properties = activity.addElement((NS_OLPC_ACTIVITY_PROPS, "properties"))
-    property = properties.addElement((None, "property"))
-    property['type'] = 'str'
-    property['name'] = 'color'
-    property.addContent('#AABBCC,#001122')
-    stream.send(reply)
+    send_reply_to_activity_view_request(stream, iq_event.stanza,
+            [('activity2', 'room2@conference.localhost',
+                {'color': ('str', '#AABBCC,#001122')}, [])])
 
     ## Current views ##
     # view 0: activity 1 (with: Lucien, Jean)
@@ -181,20 +170,9 @@ def test(q, bus, conn, stream):
     assert (buddies[0]['jid'], buddies[1]['jid']) == ('alice@localhost',
             'bob@localhost')
 
-    # reply to request
-    reply = make_result_iq(stream, iq_event.stanza)
-    reply['from'] = 'gadget.localhost'
-    reply['to'] = 'alice@localhost'
-    view = xpath.queryForNodes('/iq/view', reply)[0]
-    activity = view.addElement((None, "activity"))
-    activity['room'] = 'room3@conference.localhost'
-    activity['id'] = 'activity3'
-    properties = activity.addElement((NS_OLPC_ACTIVITY_PROPS, "properties"))
-    property = properties.addElement((None, "property"))
-    property['type'] = 'str'
-    property['name'] = 'color'
-    property.addContent('#AABBCC,#001122')
-    stream.send(reply)
+    send_reply_to_activity_view_request(stream, iq_event.stanza,
+            [('activity3', 'room3@conference.localhost',
+                {'color': ('str', '#AABBCC,#001122')}, [])])
 
     ## Current views ##
     # view 0: activity 1 (with: Lucien, Jean)

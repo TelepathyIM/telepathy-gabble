@@ -178,10 +178,21 @@ def request_random_activity_view(q, stream, conn, max, id, activities):
         activity = view.addElement((None, "activity"))
         activity['room'] = room
         activity['id'] = id
-        # TODO: activity props
+        if props:
+            properties = activity.addElement((NS_OLPC_ACTIVITY_PROPS,
+                "properties"))
+            for child in properties_to_xml(props):
+                properties.addChild(child)
+
         for jid, props in buddies:
-            # TODO: buddy props
             buddy = activity.addElement((None, 'buddy'))
             buddy['jid'] = jid
+            if props:
+                properties = buddy.addElement((NS_OLPC_BUDDY_PROPS,
+                    "properties"))
+                for child in properties_to_xml(props):
+                    properties.addChild(child)
 
     stream.send(reply)
+
+    return return_event.value[0]

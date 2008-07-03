@@ -9,7 +9,7 @@ from gabbletest import exec_test, make_result_iq, acknowledge_iq, sync_stream
 
 from twisted.words.xish import domish, xpath
 from twisted.words.protocols.jabber.client import IQ
-from util import announce_gadget
+from util import announce_gadget, request_random_activity_view
 
 NS_OLPC_BUDDY_PROPS = "http://laptop.org/xmpp/buddy-properties"
 NS_OLPC_ACTIVITIES = "http://laptop.org/xmpp/activities"
@@ -54,43 +54,15 @@ def test(q, bus, conn, stream):
     sync_stream(q, stream)
 
     # request 3 random activities (view 0)
-    call_async(q, gadget_iface, 'RequestRandomActivities', 3)
+    view_path = request_random_activity_view(q, stream, conn, 3, '0',
+            [('activity1', 'room1@conference.localhost',
+                {'color': ('str', '#005FE4,#00A0FF')},
+                [('lucien@localhost', {'color': ('str', '#AABBCC,#CCBBAA')}),
+                 ('jean@localhost', {})]),])
 
-    iq_event, return_event = q.expect_many(
-        EventPattern('stream-iq', to='gadget.localhost',
-            query_ns=NS_OLPC_ACTIVITY),
-        EventPattern('dbus-return', method='RequestRandomActivities'))
 
-    view = iq_event.stanza.firstChildElement()
-    assert view.name == 'view'
-    assert view['id'] == '0'
-    random = xpath.queryForNodes('/iq/view/random', iq_event.stanza)
-    assert len(random) == 1
-    assert random[0]['max'] == '3'
-
-    # reply to random query
-    reply = make_result_iq(stream, iq_event.stanza)
-    reply['from'] = 'gadget.localhost'
-    reply['to'] = 'alice@localhost'
-    view = xpath.queryForNodes('/iq/view', reply)[0]
-    activity = view.addElement((None, "activity"))
-    activity['room'] = 'room1@conference.localhost'
-    activity['id'] = 'activity1'
-    properties = activity.addElement((NS_OLPC_ACTIVITY_PROPS, "properties"))
-    property = properties.addElement((None, "property"))
-    property['type'] = 'str'
-    property['name'] = 'color'
-    property.addContent('#005FE4,#00A0FF')
-    buddy = activity.addElement((None, 'buddy'))
-    buddy['jid'] = 'lucien@localhost'
-    properties = buddy.addElement((NS_OLPC_BUDDY_PROPS, "properties"))
-    property = properties.addElement((None, "property"))
-    property['type'] = 'str'
-    property['name'] = 'color'
-    property.addContent('#AABBCC,#CCBBAA')
-    buddy = activity.addElement((None, 'buddy'))
-    buddy['jid'] = 'jean@localhost'
-    stream.send(reply)
+    view0 = bus.get_object(conn.bus_name, view_path)
+    view0_iface = dbus.Interface(view0, 'org.laptop.Telepathy.View')
 
     ## Current views ##
     # view 0: activity 1 (with: Lucien, Jean)
@@ -98,13 +70,10 @@ def test(q, bus, conn, stream):
     handles['lucien'], handles['jean'] = \
             conn.RequestHandles(1, ['lucien@localhost', 'jean@localhost'])
 
-    view_path = return_event.value[0]
-    view0 = bus.get_object(conn.bus_name, view_path)
-    view0_iface = dbus.Interface(view0, 'org.laptop.Telepathy.View')
-
     event = q.expect('dbus-signal', signal='ActivityPropertiesChanged')
     handles['room1'], props = event.args
-    assert conn.InspectHandles(2, [handles['room1']])[0] == 'room1@conference.localhost'
+    assert conn.InspectHandles(2, [handles['room1']])[0] == \
+            'room1@conference.localhost'
     assert props == {'color': '#005FE4,#00A0FF'}
 
     # participants are added to view

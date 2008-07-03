@@ -112,7 +112,12 @@ def send_buddy_changed_current_act_msg(stream, from_, id, room):
     stream.send(message)
 
 def answer_to_current_act_pubsub_request(stream, request, id, room):
-    # TODO: check request structure
+    # check request structure
+    assert request['type'] == 'get'
+    items = xpath.queryForNodes(
+        '/iq/pubsub[@xmlns="%s"]/items' % NS_PUBSUB, request)[0]
+    assert items['node'] == NS_OLPC_CURRENT_ACTIVITY
+
     reply = make_result_iq(stream, request)
     reply['from'] = request['to']
     pubsub = reply.firstChildElement()

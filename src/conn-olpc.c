@@ -1471,6 +1471,12 @@ extract_current_activity (GabbleConnection *conn,
     return NULL;
 
   id = lm_message_node_get_attribute (node, "type");
+  if (id == NULL)
+    {
+      /* This attribute should be called "id" and not "type". Gadget uses the
+       * right name. */
+      id = lm_message_node_get_attribute (node, "id");
+    }
 
   room = lm_message_node_get_attribute (node, "room");
   if (room == NULL || room[0] == '\0')

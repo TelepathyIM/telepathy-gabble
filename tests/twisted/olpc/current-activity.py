@@ -124,7 +124,7 @@ def test(q, bus, conn, stream):
     iq = event.stanza
 
     # Alice is not Bob's friend so she can't query his PEP node
-    answer_error_to_pubsub_request(stream, iq, NS_OLPC_CURRENT_ACTIVITY)
+    answer_error_to_pubsub_request(stream, iq)
 
     # so Bob is considererd without current activity
     q.expect('dbus-return', method='GetCurrentActivity',

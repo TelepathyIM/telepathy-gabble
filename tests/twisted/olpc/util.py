@@ -125,8 +125,11 @@ def answer_to_current_act_pubsub_request(stream, request, id, room):
     activity['type'] = id
     reply.send()
 
-def answer_error_to_pubsub_request(stream, request, node):
-    # FIXME: we could find the node from the request
+def answer_error_to_pubsub_request(stream, request):
+    # look for node's name in the request
+    items = xpath.queryForNodes('/iq/pubsub/items', request)[0]
+    node = items['node']
+
     reply = IQ(stream, "error")
     reply['id'] = request['id']
     reply['from'] = request['to']

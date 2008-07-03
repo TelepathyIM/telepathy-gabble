@@ -111,7 +111,7 @@ def test(q, bus, conn, stream):
     event = q.expect('stream-iq', to='lucien@localhost', query_name='pubsub',
             query_ns=NS_PUBSUB)
     # return an error, we can't query pubsub node
-    answer_error_to_pubsub_request(stream, event.stanza, NS_OLPC_ACTIVITIES)
+    answer_error_to_pubsub_request(stream, event.stanza)
 
     q.expect('dbus-return', method='GetActivities',
             value=([('activity1', handles['room1'])],))

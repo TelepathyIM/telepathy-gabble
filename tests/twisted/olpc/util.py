@@ -1,5 +1,6 @@
 from gabbletest import make_result_iq, acknowledge_iq, elem, elem_iq
 from twisted.words.xish import domish, xpath
+from twisted.words.protocols.jabber.client import IQ
 
 NS_OLPC_BUDDY_PROPS = "http://laptop.org/xmpp/buddy-properties"
 NS_OLPC_ACTIVITIES = "http://laptop.org/xmpp/activities"
@@ -12,7 +13,9 @@ NS_DISCO_INFO = "http://jabber.org/protocol/disco#info"
 NS_DISCO_ITEMS = "http://jabber.org/protocol/disco#items"
 NS_PUBSUB = 'http://jabber.org/protocol/pubsub'
 NS_AMP = "http://jabber.org/protocol/amp"
+NS_STANZA = "urn:ietf:params:xml:ns:xmpp-stanzas"
 
+# Copied from Gadget
 def parse_properties(elems):
     properties = {}
 
@@ -119,3 +122,16 @@ def answer_to_current_act_pubsub_request(stream, request, id, room):
     activity['type'] = id
     reply.send()
 
+def answer_error_to_pubsub_request(stream, request, node):
+    # FIXME: we could find the node from the request
+    reply = IQ(stream, "error")
+    reply['id'] = request['id']
+    reply['from'] = request['to']
+    pubsub = reply.addElement((NS_PUBSUB, 'pubsub'))
+    items = pubsub.addElement((None, 'items'))
+    items['node'] = node
+    error = reply.addElement((None, 'error'))
+    error['type'] = 'auth'
+    error.addElement((NS_STANZA, 'not-authorized'))
+    error.addElement(("%s#errors" % NS_PUBSUB, 'presence-subscription-required'))
+    stream.send(reply)

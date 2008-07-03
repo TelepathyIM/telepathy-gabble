@@ -11,7 +11,7 @@ from twisted.words.protocols.jabber.client import IQ
 from twisted.words.xish import domish, xpath
 
 from util import announce_gadget, send_buddy_changed_current_act_msg,\
-    answer_to_current_act_pubsub_request
+    answer_to_current_act_pubsub_request, answer_error_to_pubsub_request
 
 NS_OLPC_BUDDY_PROPS = "http://laptop.org/xmpp/buddy-properties"
 NS_OLPC_ACTIVITIES = "http://laptop.org/xmpp/activities"
@@ -178,17 +178,7 @@ def test(q, bus, conn, stream):
     iq = event.stanza
 
     # Alice is not Bob's friend so she can't query his PEP node
-    reply = IQ(stream, "error")
-    reply['id'] = iq['id']
-    reply['from'] = iq['to']
-    pubsub = reply.addElement((NS_PUBSUB, 'pubsub'))
-    items = pubsub.addElement((None, 'items'))
-    items['node'] = NS_OLPC_CURRENT_ACTIVITY
-    error = reply.addElement((None, 'error'))
-    error['type'] = 'auth'
-    error.addElement((NS_STANZA, 'not-authorized'))
-    error.addElement(("%s#errors" % NS_PUBSUB, 'presence-subscription-required'))
-    stream.send(reply)
+    answer_error_to_pubsub_request(stream, iq, NS_OLPC_CURRENT_ACTIVITY)
 
     # so Bob is considererd without current activity
     q.expect('dbus-return', method='GetCurrentActivity',

@@ -82,7 +82,7 @@ def _make_pubsub_event_msg(from_, node):
 
     message = elem('message', from_=from_, to='test@localhost')(
         elem("%s#event" % NS_PUBSUB, 'event')(
-            elem('items')(item)))
+            elem('items', node=node)(item)))
 
     return message, item
 

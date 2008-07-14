@@ -71,7 +71,7 @@ typedef LmHandlerResult (*GabbleConnectionMsgReplyFunc) (GabbleConnection *conn,
                                                          gpointer user_data);
 
 /* must be in the same order as the list_handle_strings in
- * gabble-connection.c */
+ * connection.c */
 typedef enum
 {
   GABBLE_LIST_HANDLE_PUBLISH = 1,

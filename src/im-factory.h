@@ -22,7 +22,7 @@
 
 #include <glib-object.h>
 
-#include "gabble-im-channel.h"
+#include "im-channel.h"
 
 G_BEGIN_DECLS
 

@@ -1,7 +1,7 @@
 # Boring file regexps:
 \.hi$
 \.o$
-\.lo$
+\.loT?$
 \.o\.cmd$
 \.ko$
 \.ko\.cmd$

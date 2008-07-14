@@ -53,7 +53,7 @@
 #include "conn-olpc.h"
 #include "debug.h"
 #include "disco.h"
-#include "gabble-media-channel.h"
+#include "media-channel.h"
 #include "gabble-register.h"
 #include "gabble-roomlist-channel.h"
 #include "im-factory.h"

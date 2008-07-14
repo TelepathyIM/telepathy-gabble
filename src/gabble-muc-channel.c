@@ -37,7 +37,7 @@
 
 #include "debug.h"
 #include "disco.h"
-#include "gabble-connection.h"
+#include "connection.h"
 #include "gabble-error.h"
 #include "namespaces.h"
 #include "util.h"

@@ -24,7 +24,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_PIPELINE
 #include "debug.h"
-#include "gabble-connection.h"
+#include "connection.h"
 
 #define DEFAULT_REQUEST_TIMEOUT 20000
 #define REQUEST_PIPELINE_SIZE 5

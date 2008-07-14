@@ -22,7 +22,7 @@
 
 #include <extensions/extensions.h>
 
-#include "gabble-connection.h"
+#include "connection.h"
 
 void
 olpc_buddy_info_iface_init (gpointer g_iface, gpointer iface_data);

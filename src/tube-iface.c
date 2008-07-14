@@ -18,7 +18,7 @@
  */
 
 #include "tube-iface.h"
-#include "gabble-connection.h"
+#include "connection.h"
 #include "extensions/extensions.h"
 
 #include <glib.h>

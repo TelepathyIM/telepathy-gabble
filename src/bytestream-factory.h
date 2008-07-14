@@ -28,7 +28,7 @@
 #include "bytestream-iface.h"
 #include "bytestream-ibb.h"
 #include "bytestream-muc.h"
-#include "gabble-connection.h"
+#include "connection.h"
 
 G_BEGIN_DECLS
 

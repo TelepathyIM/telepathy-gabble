@@ -20,7 +20,7 @@
 
 #include "config.h"
 
-#include "gabble-connection.h"
+#include "connection.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -439,7 +439,7 @@ gabble_connection_get_unique_name (TpBaseConnection *self)
                           priv->resource);
 }
 
-/* must be in the same order as GabbleListHandle in gabble-connection.h */
+/* must be in the same order as GabbleListHandle in connection.h */
 static const char *list_handle_strings[] =
 {
     "publish",      /* GABBLE_LIST_HANDLE_PUBLISH */

@@ -28,7 +28,7 @@
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
 #include "debug.h"
-#include "gabble-connection.h"
+#include "connection.h"
 #include "gabble-media-session.h"
 #include "presence.h"
 #include "presence-cache.h"

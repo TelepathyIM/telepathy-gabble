@@ -29,7 +29,7 @@
 
 #include "base64.h"
 #include "conn-aliasing.h"
-#include "gabble-connection.h"
+#include "connection.h"
 #include "namespaces.h"
 #include "request-pipeline.h"
 #include "util.h"

@@ -33,7 +33,7 @@
 #define DEBUG_FLAG GABBLE_DEBUG_DISCO
 
 #include "debug.h"
-#include "gabble-connection.h"
+#include "connection.h"
 #include "gabble-error.h"
 #include "namespaces.h"
 #include <telepathy-glib/dbus.h>

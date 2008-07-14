@@ -39,7 +39,7 @@
 #include "bytestream-factory.h"
 #include "debug.h"
 #include "disco.h"
-#include "gabble-connection.h"
+#include "connection.h"
 #include "gabble-signals-marshal.h"
 #include "namespaces.h"
 #include "util.h"

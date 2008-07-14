@@ -30,7 +30,7 @@
 
 #include "debug.h"
 #include "disco.h"
-#include "gabble-connection.h"
+#include "connection.h"
 #include "presence.h"
 #include "presence-cache.h"
 #include "roster.h"

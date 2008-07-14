@@ -26,7 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "gabble-connection.h"
+#include "connection.h"
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/errors.h>
 

@@ -34,7 +34,7 @@
 
 #include "debug.h"
 #include "extensions/extensions.h"
-#include "gabble-connection.h"
+#include "connection.h"
 #include "tubes-channel.h"
 #include "namespaces.h"
 #include "util.h"

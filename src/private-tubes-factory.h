@@ -24,7 +24,7 @@
 #include <loudmouth/loudmouth.h>
 
 #include <telepathy-glib/base-connection.h>
-#include "gabble-connection.h"
+#include "connection.h"
 #include "bytestream-iface.h"
 #include "tubes-channel.h"
 

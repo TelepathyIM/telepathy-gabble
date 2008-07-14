@@ -38,7 +38,7 @@
 #include <telepathy-glib/errors.h>
 #include <telepathy-glib/svc-media-interfaces.h>
 
-#include "gabble-connection.h"
+#include "connection.h"
 #include "gabble-media-channel.h"
 #include "gabble-media-stream.h"
 #include "presence-cache.h"

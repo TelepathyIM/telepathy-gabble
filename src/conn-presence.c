@@ -26,7 +26,7 @@
 #include <telepathy-glib/svc-connection.h>
 #include <telepathy-glib/util.h>
 
-#include "gabble-connection.h"
+#include "connection.h"
 #include "presence.h"
 #include "presence-cache.h"
 
@@ -42,7 +42,7 @@ static const TpPresenceStatusOptionalArgumentSpec gabble_status_arguments[] = {
 };
 
 
-/* order must match PresenceId enum in gabble-connection.h */
+/* order must match PresenceId enum in connection.h */
 /* in increasing order of presence */
 static const TpPresenceStatusSpec gabble_statuses[] = {
   { "offline", TP_CONNECTION_PRESENCE_TYPE_OFFLINE, TRUE,

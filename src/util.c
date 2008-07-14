@@ -34,7 +34,7 @@
 #include "conn-aliasing.h"
 #include "sha1/sha1.h"
 #include "namespaces.h"
-#include "gabble-connection.h"
+#include "connection.h"
 #include "base64.h"
 
 #define DEBUG_FLAG GABBLE_DEBUG_JID

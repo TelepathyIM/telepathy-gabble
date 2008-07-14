@@ -32,7 +32,7 @@
 #include "debug.h"
 #include "namespaces.h"
 
-#include "gabble-connection.h"
+#include "connection.h"
 #include "gabble-media-channel.h"
 #include "gabble-media-session.h"
 #include "gabble-media-session-enumtypes.h"

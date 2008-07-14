@@ -22,7 +22,7 @@
 
 #include <telepathy-glib/svc-connection.h>
 
-#include "gabble-connection.h"
+#include "connection.h"
 #include "namespaces.h"
 #include "presence-cache.h"
 #include "pubsub.h"

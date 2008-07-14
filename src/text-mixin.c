@@ -37,7 +37,7 @@
 #define DEBUG_FLAG GABBLE_DEBUG_IM
 
 #include "debug.h"
-#include "gabble-connection.h"
+#include "connection.h"
 #include "namespaces.h"
 #include "roster.h"
 #include "util.h"

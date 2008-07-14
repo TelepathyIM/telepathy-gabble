@@ -33,7 +33,7 @@
 #include "namespaces.h"
 
 #include "connection.h"
-#include "gabble-media-channel.h"
+#include "media-channel.h"
 #include "gabble-media-session.h"
 #include "gabble-media-session-enumtypes.h"
 

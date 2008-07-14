@@ -36,7 +36,7 @@
 
 #include "debug.h"
 #include "connection.h"
-#include "gabble-media-channel.h"
+#include "media-channel.h"
 #include "namespaces.h"
 #include <telepathy-glib/interfaces.h>
 #include "text-mixin.h"

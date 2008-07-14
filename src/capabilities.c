@@ -24,7 +24,7 @@
 #include "config.h"
 #include "presence-cache.h"
 #include <telepathy-glib/interfaces.h>
-#include "gabble-media-channel.h"
+#include "media-channel.h"
 
 static const Feature self_advertised_features[] =
 {

@@ -15,6 +15,6 @@ org.freedesktop.Telepathy.ConnectionManager.gabble.service: gabble.service.in \
 
 CLEANFILES = $(service_DATA) $(manager_DATA)
 
-$(manager_DATA): ../src/gabble-connection-manager.c ../src/write-mgr-file.c
+$(manager_DATA): ../src/connection-manager.c ../src/write-mgr-file.c
 	$(MAKE) -C ../src write-mgr-file
 	../src/write-mgr-file > $@

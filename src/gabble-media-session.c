@@ -2546,7 +2546,7 @@ _gabble_media_session_request_streams (GabbleMediaSession *session,
 {
   /* if you change the caps in this function, you almost certainly also need
    * to change _gabble_media_channel_typeflags_to_caps and
-   * _gabble_media_channel_caps_to_typeflags in gabble-media-channel.c */
+   * _gabble_media_channel_caps_to_typeflags in media-channel.c */
   static GabblePresenceCapabilities google_audio_caps =
     PRESENCE_CAP_GOOGLE_VOICE;
   static GabblePresenceCapabilities jingle_audio_caps =

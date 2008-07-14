@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <base64.h>
+#include "src/base64.h"
 
 struct test {
   gchar *str;

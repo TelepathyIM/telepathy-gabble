@@ -29,7 +29,7 @@
 
 #include "debug.h"
 #include "connection.h"
-#include "gabble-media-session.h"
+#include "media-session.h"
 #include "presence.h"
 #include "presence-cache.h"
 
@@ -40,7 +40,7 @@
 #include <telepathy-glib/svc-channel.h>
 #include <telepathy-glib/svc-properties-interface.h>
 
-#include "gabble-media-session.h"
+#include "media-session.h"
 #include "gabble-media-stream.h"
 
 #include "media-factory.h"

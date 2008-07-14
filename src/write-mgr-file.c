@@ -24,7 +24,7 @@
 #include <dbus/dbus-protocol.h>
 
 #include <telepathy-glib/enums.h>
-#include "gabble-connection-manager.h"
+#include "connection-manager.h"
 
 static gchar *
 mgr_file_contents (const char *busname,

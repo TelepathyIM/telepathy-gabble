@@ -47,7 +47,7 @@ libgabble_convenience_la_our_sources = \
     disco.c \
     gabble.c \
     gabble.h \
-    gabble-error.c \
+    error.c \
     error.h \
     connection-manager.h \
     connection-manager.c \

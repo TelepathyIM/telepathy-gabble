@@ -24,7 +24,7 @@
 
 #include <glib-object.h>
 
-#include "gabble-types.h"
+#include "types.h"
 
 G_BEGIN_DECLS
 

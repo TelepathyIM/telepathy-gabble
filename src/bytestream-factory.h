@@ -24,7 +24,7 @@
 #include <loudmouth/loudmouth.h>
 
 #include <telepathy-glib/base-connection.h>
-#include "gabble-types.h"
+#include "types.h"
 #include "bytestream-iface.h"
 #include "bytestream-ibb.h"
 #include "bytestream-muc.h"

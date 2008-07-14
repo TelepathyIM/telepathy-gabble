@@ -27,7 +27,7 @@
 #include <telepathy-glib/base-connection.h>
 #include <telepathy-glib/presence-mixin.h>
 
-#include "gabble-types.h"
+#include "types.h"
 #include "error.h"
 #include "muc-factory.h"
 

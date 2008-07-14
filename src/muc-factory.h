@@ -23,7 +23,7 @@
 #include <glib-object.h>
 
 #include "bytestream-iface.h"
-#include "gabble-types.h"
+#include "types.h"
 
 G_BEGIN_DECLS
 

@@ -34,7 +34,7 @@
 
 #include <telepathy-glib/interfaces.h>
 #include "debug.h"
-#include "gabble-connection.h"
+#include "connection.h"
 #include "bytestream-iface.h"
 #include "bytestream-ibb.h"
 #include "bytestream-muc.h"

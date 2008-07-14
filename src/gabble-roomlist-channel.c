@@ -35,7 +35,7 @@
 #define DEBUG_FLAG GABBLE_DEBUG_ROOMLIST
 #include "debug.h"
 #include "disco.h"
-#include "gabble-connection.h"
+#include "connection.h"
 #include "namespaces.h"
 #include "util.h"
 

@@ -43,7 +43,7 @@
 #define DEBUG_FLAG GABBLE_DEBUG_TUBES
 
 #include "debug.h"
-#include "gabble-connection.h"
+#include "connection.h"
 #include "presence.h"
 #include "presence-cache.h"
 #include "namespaces.h"

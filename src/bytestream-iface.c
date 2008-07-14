@@ -21,7 +21,7 @@
 
 #include <glib.h>
 
-#include "gabble-connection.h"
+#include "connection.h"
 
 gboolean
 gabble_bytestream_iface_initiate (GabbleBytestreamIface *self)

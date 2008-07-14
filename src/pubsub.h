@@ -20,7 +20,7 @@
 #ifndef __PUBSUB_H__
 #define __PUBSUB_H__
 
-#include "gabble-connection.h"
+#include "connection.h"
 
 G_BEGIN_DECLS
 

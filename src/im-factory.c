@@ -36,7 +36,7 @@
 
 #include "debug.h"
 #include "disco.h"
-#include "gabble-connection.h"
+#include "connection.h"
 #include "gabble-im-channel.h"
 #include <telepathy-glib/interfaces.h>
 #include "text-mixin.h"

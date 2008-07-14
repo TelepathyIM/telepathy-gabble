@@ -18,7 +18,7 @@
  */
 
 #include "gabble.h"
-#include "gabble-connection.h"
+#include "connection.h"
 
 int
 main (int argc,

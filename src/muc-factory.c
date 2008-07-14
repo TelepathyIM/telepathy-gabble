@@ -37,7 +37,7 @@
 #include "debug.h"
 #include "disco.h"
 #include "extensions/extensions.h"
-#include "gabble-connection.h"
+#include "connection.h"
 #include "gabble-muc-channel.h"
 #include "gabble-roomlist-channel.h"
 #include "namespaces.h"

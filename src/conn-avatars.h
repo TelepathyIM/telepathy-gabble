@@ -21,7 +21,7 @@
 #ifndef __CONN_AVATARS_H__
 #define __CONN_AVATARS_H__
 
-#include "gabble-connection.h"
+#include "connection.h"
 
 G_BEGIN_DECLS
 

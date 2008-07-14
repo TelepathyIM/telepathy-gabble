@@ -27,7 +27,7 @@
 #define DEBUG_FLAG GABBLE_DEBUG_ROSTER
 
 #include "debug.h"
-#include "gabble-connection.h"
+#include "connection.h"
 #include <telepathy-glib/group-mixin.h>
 #include "roster.h"
 #include <telepathy-glib/dbus.h>

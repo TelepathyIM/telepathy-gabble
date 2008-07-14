@@ -34,7 +34,7 @@
 
 #include "connection.h"
 #include "media-channel.h"
-#include "gabble-media-session.h"
+#include "media-session.h"
 #include "gabble-media-session-enumtypes.h"
 
 #include <telepathy-glib/dbus.h>

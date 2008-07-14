@@ -41,7 +41,7 @@
 #include <telepathy-glib/svc-properties-interface.h>
 
 #include "media-session.h"
-#include "gabble-media-stream.h"
+#include "media-stream.h"
 
 #include "media-factory.h"
 

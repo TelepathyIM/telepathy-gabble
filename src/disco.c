@@ -34,7 +34,7 @@
 
 #include "debug.h"
 #include "connection.h"
-#include "gabble-error.h"
+#include "error.h"
 #include "namespaces.h"
 #include <telepathy-glib/dbus.h>
 #include "util.h"

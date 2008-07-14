@@ -35,7 +35,7 @@
 #include <telepathy-glib/errors.h>
 
 #include "connection.h"
-#include "gabble-error.h"
+#include "error.h"
 #include "gabble-signals-marshal.h"
 #include "namespaces.h"
 #include "util.h"

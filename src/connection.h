@@ -28,7 +28,7 @@
 #include <telepathy-glib/presence-mixin.h>
 
 #include "gabble-types.h"
-#include "gabble-error.h"
+#include "error.h"
 #include "muc-factory.h"
 
 G_BEGIN_DECLS

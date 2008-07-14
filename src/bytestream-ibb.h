@@ -25,7 +25,7 @@
 
 #include <telepathy-glib/base-connection.h>
 
-#include "gabble-error.h"
+#include "error.h"
 
 G_BEGIN_DECLS
 

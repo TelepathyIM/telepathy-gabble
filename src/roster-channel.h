@@ -26,7 +26,7 @@
 #include <telepathy-glib/group-mixin.h>
 #include <telepathy-glib/intset.h>
 
-#include "gabble-types.h"
+#include "types.h"
 
 G_BEGIN_DECLS
 

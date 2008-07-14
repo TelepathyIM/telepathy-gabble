@@ -24,7 +24,7 @@
 #include <glib-object.h>
 #include <loudmouth/loudmouth.h>
 
-#include "gabble-types.h"
+#include "types.h"
 #include "media-stream.h"
 #include <telepathy-glib/enums.h>
 

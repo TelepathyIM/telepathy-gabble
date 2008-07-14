@@ -28,7 +28,7 @@
 #include <telepathy-glib/group-mixin.h>
 #include <telepathy-glib/properties-mixin.h>
 
-#include "gabble-types.h"
+#include "types.h"
 #include "text-mixin.h"
 
 G_BEGIN_DECLS

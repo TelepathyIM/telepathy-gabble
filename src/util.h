@@ -29,7 +29,7 @@
 #include <telepathy-glib/util.h>
 #include <loudmouth/loudmouth.h>
 
-#include "gabble-types.h"
+#include "types.h"
 #include "sha1/sha1.h"
 
 gchar *sha1_hex (const gchar *bytes, guint len);

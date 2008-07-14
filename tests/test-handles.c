@@ -1,10 +1,11 @@
 #include <string.h>
 #include <glib.h>
 #include <glib-object.h>
-#include <connection.h>
 #include <telepathy-glib/enums.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/errors.h>
+
+#include "src/connection.h"
 
 static void
 test_handles (guint handle_type)

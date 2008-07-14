@@ -1,7 +1,7 @@
 
 #include <string.h>
 
-#include "util.h"
+#include "src/util.h"
 
 static gboolean
 test1 (void)

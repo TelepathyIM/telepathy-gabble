@@ -1,7 +1,7 @@
 
 #include <string.h>
 
-#include "text-mixin.h"
+#include "src/text-mixin.h"
 
 /* Test the most basic <message> possible. */
 static gboolean

@@ -3,7 +3,8 @@
 #include <unistd.h>
 
 #include <glib.h>
-#include <presence.h>
+
+#include "src/presence.h"
 
 int main (int argc, char **argv)
 {

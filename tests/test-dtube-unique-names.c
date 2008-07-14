@@ -2,7 +2,8 @@
 #include <unistd.h>
 
 #include <glib.h>
-#include <tube-dbus.h>
+
+#include "src/tube-dbus.h"
 
 int
 main (int argc, char **argv)

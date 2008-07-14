@@ -34,7 +34,7 @@
 #include "conn-aliasing.h"
 #include "debug.h"
 #include "connection.h"
-#include "gabble-roster-channel.h"
+#include "roster-channel.h"
 #include "namespaces.h"
 #include "util.h"
 

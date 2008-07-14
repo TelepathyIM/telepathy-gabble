@@ -25,7 +25,7 @@
 #include <loudmouth/loudmouth.h>
 
 #include "gabble-types.h"
-#include "gabble-media-stream.h"
+#include "media-stream.h"
 #include <telepathy-glib/enums.h>
 
 G_BEGIN_DECLS

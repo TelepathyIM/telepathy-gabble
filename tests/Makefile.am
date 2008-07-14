@@ -9,13 +9,13 @@ SUBDIRS = $(CHECKTWISTED)
 
 noinst_PROGRAMS = \
 	$(dbus_test_programs) \
-	test-gabble-presence \
 	test-base64 \
 	test-handles \
 	test-jid-decode \
-	test-parse-message
+	test-parse-message \
+	test-presence
 
-test_gabble_presence_LDADD = \
+test_presence_LDADD = \
     $(top_builddir)/src/libgabble-convenience.la $(ALL_LIBS)
 
 test_base64_LDADD = \
@@ -58,7 +58,7 @@ endif
 check_c_sources = \
 	$(dbus_test_sources) \
 	test-base64.c \
-	test-gabble-presence.c \
+	test-presence.c \
 	test-jid-decode.c \
 	test-handles.c \
 	test-parse-message.c

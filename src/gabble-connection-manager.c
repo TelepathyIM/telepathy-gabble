@@ -18,7 +18,7 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#include "gabble-connection-manager.h"
+#include "connection-manager.h"
 
 #include <dbus/dbus-protocol.h>
 #include <dbus/dbus-glib.h>

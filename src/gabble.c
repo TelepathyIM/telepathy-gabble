@@ -26,7 +26,7 @@
 #include <telepathy-glib/debug.h>
 #include <telepathy-glib/run.h>
 #include "debug.h"
-#include "gabble-connection-manager.h"
+#include "connection-manager.h"
 #include "gabble.h"
 
 static TpBaseConnectionManager *

@@ -39,7 +39,7 @@
 #include "namespaces.h"
 #include "util.h"
 #include "muc-factory.h"
-#include "gabble-muc-channel.h"
+#include "muc-channel.h"
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/channel-factory-iface.h>
 

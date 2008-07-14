@@ -25,7 +25,7 @@
 
 #include <telepathy-glib/base-connection.h>
 
-#include "gabble-muc-channel.h"
+#include "muc-channel.h"
 #include "bytestream-iface.h"
 
 G_BEGIN_DECLS

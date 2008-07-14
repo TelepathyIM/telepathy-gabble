@@ -39,7 +39,7 @@
 #include "extensions/extensions.h"
 #include "connection.h"
 #include "muc-channel.h"
-#include "gabble-roomlist-channel.h"
+#include "roomlist-channel.h"
 #include "namespaces.h"
 #include "presence-cache.h"
 #include "text-mixin.h"

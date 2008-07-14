@@ -67,7 +67,7 @@ libgabble_convenience_la_our_sources = \
     register.h \
     gabble-roster-channel.h \
     gabble-roster-channel.c \
-    gabble-roomlist-channel.h \
+    roomlist-channel.h \
     gabble-roomlist-channel.c \
     gabble-types.h \
     im-factory.h \

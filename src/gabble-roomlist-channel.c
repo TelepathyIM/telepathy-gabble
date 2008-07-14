@@ -18,7 +18,7 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#include "gabble-roomlist-channel.h"
+#include "roomlist-channel.h"
 
 #include <dbus/dbus-glib.h>
 #include <stdio.h>

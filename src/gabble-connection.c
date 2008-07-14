@@ -55,7 +55,7 @@
 #include "disco.h"
 #include "media-channel.h"
 #include "register.h"
-#include "gabble-roomlist-channel.h"
+#include "roomlist-channel.h"
 #include "im-factory.h"
 #include "media-factory.h"
 #include "muc-factory.h"

@@ -54,7 +54,7 @@
 #include "debug.h"
 #include "disco.h"
 #include "media-channel.h"
-#include "gabble-register.h"
+#include "register.h"
 #include "gabble-roomlist-channel.h"
 #include "im-factory.h"
 #include "media-factory.h"

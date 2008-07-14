@@ -50,7 +50,7 @@ libgabble_convenience_la_our_sources = \
     gabble-error.c \
     error.h \
     connection-manager.h \
-    gabble-connection-manager.c \
+    connection-manager.c \
     connection.h \
     connection.c \
     im-channel.h \

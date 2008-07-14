@@ -62,7 +62,7 @@ libgabble_convenience_la_our_sources = \
     media-session.h \
     media-session.c \
     media-stream.h \
-    gabble-media-stream.c \
+    media-stream.c \
     gabble-register.c \
     register.h \
     roster-channel.h \

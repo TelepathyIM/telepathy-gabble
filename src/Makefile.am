@@ -1,9 +1,9 @@
 BUILT_SOURCES = \
-    media-session-enumtypes.h \
-    media-session-enumtypes.c \
     gabble-signals-marshal.h \
     gabble-signals-marshal.c \
-    gabble-signals-marshal.list
+    gabble-signals-marshal.list \
+    media-session-enumtypes.h \
+    media-session-enumtypes.c
 
 CLEANFILES = $(BUILT_SOURCES)
 
@@ -21,10 +21,6 @@ libgabble_convenience_la_our_sources = \
     $(dbus_tube_sources) \
     base64.h \
     base64.c \
-    capabilities.h \
-    capabilities.c \
-    caps-hash.h \
-    caps-hash.c \
     bytestream-factory.h \
     bytestream-factory.c \
     bytestream-ibb.h \
@@ -33,6 +29,10 @@ libgabble_convenience_la_our_sources = \
     bytestream-iface.c \
     bytestream-muc.h \
     bytestream-muc.c \
+    capabilities.h \
+    capabilities.c \
+    caps-hash.h \
+    caps-hash.c \
     conn-aliasing.h \
     conn-aliasing.c \
     conn-avatars.h \
@@ -41,39 +41,32 @@ libgabble_convenience_la_our_sources = \
     conn-olpc.c \
     conn-presence.h \
     conn-presence.c \
+    connection.h \
+    connection.c \
+    connection-manager.h \
+    connection-manager.c \
     debug.h \
     debug.c \
     disco.h \
     disco.c \
-    gabble.c \
-    gabble.h \
     error.c \
     error.h \
-    connection-manager.h \
-    connection-manager.c \
-    connection.h \
-    connection.c \
+    gabble.c \
+    gabble.h \
     im-channel.h \
     im-channel.c \
-    muc-channel.h \
-    muc-channel.c \
+    im-factory.h \
+    im-factory.c \
     media-channel.h \
     media-channel.c \
     media-session.h \
     media-session.c \
     media-stream.h \
     media-stream.c \
-    register.c \
-    register.h \
-    roster-channel.h \
-    roster-channel.c \
-    roomlist-channel.h \
-    roomlist-channel.c \
-    types.h \
-    im-factory.h \
-    im-factory.c \
     media-factory.h \
     media-factory.c \
+    muc-channel.h \
+    muc-channel.c \
     muc-factory.h \
     muc-factory.c \
     namespaces.h \
@@ -83,20 +76,27 @@ libgabble_convenience_la_our_sources = \
     presence.c \
     presence-cache.h \
     presence-cache.c \
+    private-tubes-factory.h \
+    private-tubes-factory.c \
+    register.c \
+    register.h \
     request-pipeline.h \
     request-pipeline.c \
     roster.h \
     roster.c \
+    roster-channel.h \
+    roster-channel.c \
+    roomlist-channel.h \
+    roomlist-channel.c \
     text-mixin.h \
     text-mixin.c \
     tube-iface.h \
     tube-iface.c \
     tubes-channel.h \
     tubes-channel.c \
-    private-tubes-factory.h \
-    private-tubes-factory.c \
     tube-stream.h \
     tube-stream.c \
+    types.h \
     util.h \
     util.c \
     vcard-manager.h \

@@ -29,7 +29,7 @@
 
 #include "debug.h"
 #include "connection.h"
-#include "gabble-muc-channel.h"
+#include "muc-channel.h"
 #include "presence-cache.h"
 #include "namespaces.h"
 #include "pubsub.h"

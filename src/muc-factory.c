@@ -38,7 +38,7 @@
 #include "disco.h"
 #include "extensions/extensions.h"
 #include "connection.h"
-#include "gabble-muc-channel.h"
+#include "muc-channel.h"
 #include "gabble-roomlist-channel.h"
 #include "namespaces.h"
 #include "presence-cache.h"

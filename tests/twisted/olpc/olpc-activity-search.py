@@ -453,6 +453,15 @@ def test(q, bus, conn, stream):
     # close view 0
     close_view(q, view0_iface, '0')
 
+    # Jean and Fernand left activity4
+    q.expect_many(
+            EventPattern('dbus-signal', signal='ActivitiesChanged',
+                interface='org.laptop.Telepathy.BuddyInfo',
+                args=[handles['jean'], []]),
+            EventPattern('dbus-signal', signal='ActivitiesChanged',
+                interface='org.laptop.Telepathy.BuddyInfo',
+                args=[handles['fernand'], []]))
+
     # close view 1
     close_view(q, view1_iface, '1')
 

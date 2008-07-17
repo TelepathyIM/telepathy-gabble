@@ -400,6 +400,21 @@ olpc_view_get_activities (GabbleSvcOLPCView *iface,
 }
 
 static void
+buddy_left_activities_foreach (TpHandleSet *set,
+                               TpHandle buddy,
+                               GabbleOlpcView *self)
+{
+  GabbleOlpcViewPrivate *priv = GABBLE_OLPC_VIEW_GET_PRIVATE (self);
+
+  /* Remove all the activity of this buddy */
+  if (!g_hash_table_remove (priv->buddy_rooms, GUINT_TO_POINTER (buddy)))
+    return;
+
+  g_signal_emit (G_OBJECT (self), signals[BUDDY_ACTIVITIES_CHANGED],
+      0, buddy);
+}
+
+static void
 olpc_view_close (GabbleSvcOLPCView *iface,
                  DBusGMethodInvocation *context)
 {
@@ -447,6 +462,10 @@ olpc_view_close (GabbleSvcOLPCView *iface,
   gabble_svc_olpc_view_return_from_close (context);
 
   lm_message_unref (msg);
+
+  /* Claim that all the buddies left their activities */
+  tp_handle_set_foreach (priv->buddies,
+      (TpHandleSetMemberFunc) buddy_left_activities_foreach, self);
 
   g_signal_emit (G_OBJECT (self), signals[CLOSED], 0);
 }

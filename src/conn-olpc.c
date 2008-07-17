@@ -3574,8 +3574,6 @@ activity_membership_change (GabbleConnection *conn,
   remove_buddies_from_activity_view (conn, view, activity_node, "left",
       handle);
 
-  /* TODO: left and closed */
-
   tp_handle_unref (room_repo, handle);
 }
 

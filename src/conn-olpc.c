@@ -3541,7 +3541,7 @@ activity_membership_change (GabbleConnection *conn,
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_ROOM);
 
-  id_str = lm_message_node_get_attribute (activity_node, "id");
+  id_str = lm_message_node_get_attribute (activity_node, "view");
   if (id_str == NULL)
     return;
 

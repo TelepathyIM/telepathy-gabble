@@ -303,7 +303,7 @@ def test(q, bus, conn, stream):
 
     activity = message.addElement((NS_OLPC_ACTIVITY, 'activity'))
     activity['room'] = 'room1@conference.localhost'
-    activity['id'] = '0'
+    activity['view'] = '0'
     joined = activity.addElement((None, 'joined'))
     joined['jid'] = 'marcel@localhost'
     properties = joined.addElement((NS_OLPC_BUDDY_PROPS, "properties"))
@@ -350,7 +350,7 @@ def test(q, bus, conn, stream):
 
     activity = message.addElement((NS_OLPC_ACTIVITY, 'activity'))
     activity['room'] = 'room1@conference.localhost'
-    activity['id'] = '0'
+    activity['view'] = '0'
     left = activity.addElement((None, 'left'))
     left['jid'] = 'marcel@localhost'
 
@@ -386,7 +386,7 @@ def test(q, bus, conn, stream):
 
     activity = message.addElement((NS_OLPC_ACTIVITY, 'activity'))
     activity['room'] = 'room1@conference.localhost'
-    activity['id'] = '0'
+    activity['view'] = '0'
     left = activity.addElement((None, 'left'))
     left['jid'] = 'jean@localhost'
 

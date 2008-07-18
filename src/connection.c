@@ -482,7 +482,6 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_connection_class);
   TpBaseConnectionClass *parent_class = TP_BASE_CONNECTION_CLASS (
       gabble_connection_class);
-  GParamSpec *param_spec;
   static const gchar *interfaces_always_present[] = {
       TP_IFACE_CONNECTION_INTERFACE_ALIASING,
       TP_IFACE_CONNECTION_INTERFACE_CAPABILITIES,
@@ -513,164 +512,140 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
   object_class->dispose = gabble_connection_dispose;
   object_class->finalize = gabble_connection_finalize;
 
-  param_spec = g_param_spec_string ("connect-server", "Hostname or IP of Jabber server",
-                                    "The server used when establishing a connection.",
-                                    NULL,
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_CONNECT_SERVER, param_spec);
+  g_object_class_install_property (object_class, PROP_CONNECT_SERVER,
+      g_param_spec_string (
+          "connect-server", "Hostname or IP of Jabber server",
+          "The server used when establishing a connection.",
+          NULL,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  param_spec = g_param_spec_uint ("port", "Jabber server port",
-                                  "The port used when establishing a connection.",
-                                  0, G_MAXUINT16, 0,
-                                  G_PARAM_CONSTRUCT |
-                                  G_PARAM_READWRITE |
-                                  G_PARAM_STATIC_NAME |
-                                  G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_PORT, param_spec);
+  g_object_class_install_property (object_class, PROP_PORT,
+      g_param_spec_uint (
+          "port", "Jabber server port",
+          "The port used when establishing a connection.",
+          0, G_MAXUINT16, 0,
+          G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  param_spec = g_param_spec_boolean ("old-ssl", "Old-style SSL tunneled connection",
-                                     "Establish the entire connection to the server "
-                                     "within an SSL-encrypted tunnel. Note that this "
-                                     "is not the same as connecting with TLS, which "
-                                     "is not yet supported.", FALSE,
-                                     G_PARAM_READWRITE |
-                                     G_PARAM_STATIC_NAME |
-                                     G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_OLD_SSL, param_spec);
+  g_object_class_install_property (object_class, PROP_OLD_SSL,
+      g_param_spec_boolean (
+          "old-ssl", "Old-style SSL tunneled connection",
+          "Establish the entire connection to the server within an "
+          "SSL-encrypted tunnel. Note that this is not the same as connecting "
+          "with TLS, which is not yet supported.",
+          FALSE,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  param_spec = g_param_spec_boolean ("require-encryption", "Require encryption",
-                                     "Require the connection to be encrypted, either "
-                                     "via old-style SSL, or StartTLS mechanisms.", FALSE,
-                                     G_PARAM_READWRITE |
-                                     G_PARAM_STATIC_NAME |
-                                     G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_REQUIRE_ENCRYPTION, param_spec);
+  g_object_class_install_property (
+      object_class, PROP_REQUIRE_ENCRYPTION,
+      g_param_spec_boolean (
+          "require-encryption", "Require encryption",
+          "Require the connection to be encrypted, either via old-style SSL, "
+          "or StartTLS mechanisms.",
+          FALSE,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  param_spec = g_param_spec_boolean ("register", "Register account on server",
-                                     "Register a new account on server.", FALSE,
-                                     G_PARAM_READWRITE |
-                                     G_PARAM_STATIC_NAME |
-                                     G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_REGISTER, param_spec);
+  g_object_class_install_property (object_class, PROP_REGISTER,
+      g_param_spec_boolean (
+          "register", "Register account on server",
+          "Register a new account on server.",
+          FALSE,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  param_spec = g_param_spec_boolean ("low-bandwidth", "Low bandwidth mode",
-                                     "Determines whether we are in low "
-                                     "bandwidth mode. This influences "
-                                     "polling behaviour.", FALSE,
-                                     G_PARAM_READWRITE |
-                                     G_PARAM_STATIC_NAME |
-                                     G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_LOW_BANDWIDTH, param_spec);
+  g_object_class_install_property (object_class, PROP_LOW_BANDWIDTH,
+      g_param_spec_boolean (
+          "low-bandwidth", "Low bandwidth mode",
+          "Determines whether we are in low bandwidth mode. This influences "
+          "polling behaviour.",
+          FALSE,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  param_spec = g_param_spec_string ("stream-server", "The server name used to initialise the stream.",
-                                    "The server name used when initialising the stream, "
-                                    "which is usually the part after the @ in the user's JID.",
-                                    NULL,
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_STREAM_SERVER, param_spec);
+  g_object_class_install_property (object_class, PROP_STREAM_SERVER,
+      g_param_spec_string (
+          "stream-server", "The server name used to initialise the stream.",
+          "The server name used when initialising the stream, which is "
+          "usually the part after the @ in the user's JID.",
+          NULL,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  param_spec = g_param_spec_string ("username", "Jabber username",
-                                    "The username used when authenticating.",
-                                    NULL,
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_USERNAME, param_spec);
+  g_object_class_install_property (object_class, PROP_USERNAME,
+      g_param_spec_string (
+          "username", "Jabber username",
+          "The username used when authenticating.",
+          NULL,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  param_spec = g_param_spec_string ("password", "Jabber password",
-                                    "The password used when authenticating.",
-                                    NULL,
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_PASSWORD, param_spec);
+  g_object_class_install_property (object_class, PROP_PASSWORD,
+      g_param_spec_string (
+          "password", "Jabber password",
+          "The password used when authenticating.",
+          NULL,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  param_spec = g_param_spec_string ("resource", "Jabber resource",
-                                    "The Jabber resource used when authenticating.",
-                                    "Telepathy",
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_RESOURCE, param_spec);
+  g_object_class_install_property (object_class, PROP_RESOURCE,
+      g_param_spec_string (
+          "resource", "Jabber resource",
+          "The Jabber resource used when authenticating.",
+          "Telepathy",
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  param_spec = g_param_spec_char ("priority", "Jabber presence priority",
-                                  "The default priority used when reporting our presence.",
-                                  G_MININT8, G_MAXINT8, 0,
-                                  G_PARAM_READWRITE |
-                                  G_PARAM_STATIC_NAME |
-                                  G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_PRIORITY, param_spec);
+  g_object_class_install_property (object_class, PROP_PRIORITY,
+      g_param_spec_char (
+          "priority", "Jabber presence priority",
+          "The default priority used when reporting our presence.",
+          G_MININT8, G_MAXINT8, 0,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  param_spec = g_param_spec_string ("https-proxy-server", "The server name "
-                                    "used as an HTTPS proxy server",
-                                    "The server name used as an HTTPS proxy "
-                                    "server.",
-                                    NULL,
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_HTTPS_PROXY_SERVER, param_spec);
+  g_object_class_install_property (object_class, PROP_HTTPS_PROXY_SERVER,
+      g_param_spec_string (
+          "https-proxy-server",
+          "The server name used as an HTTPS proxy server",
+          "The server name used as an HTTPS proxy server.",
+          NULL,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  param_spec = g_param_spec_uint ("https-proxy-port", "The HTTP proxy server "
-                                  "port", "The HTTP proxy server port.",
-                                  0, G_MAXUINT16, GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_PORT,
-                                  G_PARAM_CONSTRUCT |
-                                  G_PARAM_READWRITE |
-                                  G_PARAM_STATIC_NAME |
-                                  G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_HTTPS_PROXY_PORT, param_spec);
+  g_object_class_install_property (object_class, PROP_HTTPS_PROXY_PORT,
+      g_param_spec_uint (
+          "https-proxy-port", "The HTTP proxy server port",
+          "The HTTP proxy server port.",
+          0, G_MAXUINT16, GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_PORT,
+          G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  param_spec = g_param_spec_string ("fallback-conference-server",
-                                    "The conference server used as fallback",
-                                    "The conference server used as fallback when "
-                                    "everything else fails.",
-                                    NULL,
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_FALLBACK_CONFERENCE_SERVER,
-                                   param_spec);
+  g_object_class_install_property (object_class,
+      PROP_FALLBACK_CONFERENCE_SERVER, g_param_spec_string (
+          "fallback-conference-server",
+          "The conference server used as fallback",
+          "The conference server used as fallback when everything else fails.",
+          NULL,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  param_spec = g_param_spec_string ("stun-server",
-                                    "STUN server",
-                                    "STUN server.",
-                                    NULL,
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_STUN_SERVER, param_spec);
+  g_object_class_install_property (object_class, PROP_STUN_SERVER,
+      g_param_spec_string (
+          "stun-server", "STUN server",
+          "STUN server.",
+          NULL,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  param_spec = g_param_spec_uint ("stun-port",
-                                  "STUN port",
-                                  "STUN port.",
-                                  0, G_MAXUINT16, GABBLE_PARAMS_DEFAULT_STUN_PORT,
-                                  G_PARAM_CONSTRUCT |
-                                  G_PARAM_READWRITE |
-                                  G_PARAM_STATIC_NAME |
-                                  G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_STUN_PORT, param_spec);
+  g_object_class_install_property (object_class, PROP_STUN_PORT,
+      g_param_spec_uint (
+          "stun-port", "STUN port",
+          "STUN port.",
+          0, G_MAXUINT16, GABBLE_PARAMS_DEFAULT_STUN_PORT,
+          G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  param_spec = g_param_spec_boolean ("ignore-ssl-errors", "Ignore SSL errors",
-                                     "Continue connecting even if the server's "
-                                     "SSL certificate is invalid or missing.",
-                                     FALSE,
-                                     G_PARAM_READWRITE |
-                                     G_PARAM_STATIC_NAME |
-                                     G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_IGNORE_SSL_ERRORS, param_spec);
+  g_object_class_install_property (object_class, PROP_IGNORE_SSL_ERRORS,
+      g_param_spec_boolean (
+          "ignore-ssl-errors", "Ignore SSL errors",
+          "Continue connecting even if the server's "
+          "SSL certificate is invalid or missing.",
+          FALSE,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  param_spec = g_param_spec_string ("alias",
-                                    "Alias/nick for local user",
-                                    "Alias/nick for local user",
-                                    NULL,
-                                    G_PARAM_READWRITE |
-                                    G_PARAM_STATIC_NAME |
-                                    G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_ALIAS, param_spec);
+  g_object_class_install_property (object_class, PROP_ALIAS,
+      g_param_spec_string (
+          "alias", "Alias/nick for local user",
+          "Alias/nick for local user",
+          NULL,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   conn_presence_class_init (gabble_connection_class);
 }

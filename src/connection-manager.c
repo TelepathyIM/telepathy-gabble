@@ -49,7 +49,7 @@ static void
 gabble_connection_manager_class_init (GabbleConnectionManagerClass *klass)
 {
   TpBaseConnectionManagerClass *base_class =
-    (TpBaseConnectionManagerClass *)klass;
+    (TpBaseConnectionManagerClass *) klass;
 
   base_class->new_connection = _gabble_connection_manager_new_connection;
   base_class->cm_dbus_name = "gabble";
@@ -193,7 +193,7 @@ alloc_params (void)
 static void
 free_params (void *p)
 {
-  GabbleParams *params = (GabbleParams *)p;
+  GabbleParams *params = (GabbleParams *) p;
 
   g_free (params->account);
   g_free (params->password);
@@ -226,7 +226,7 @@ _gabble_connection_manager_new_connection (TpBaseConnectionManager *self,
                                            GError **error)
 {
   GabbleConnection *conn;
-  GabbleParams *params = (GabbleParams *)parsed_params;
+  GabbleParams *params = (GabbleParams *) parsed_params;
 
   g_assert (GABBLE_IS_CONNECTION_MANAGER (self));
 
@@ -275,5 +275,5 @@ _gabble_connection_manager_new_connection (TpBaseConnectionManager *self,
       conn = NULL;
     }
 
-  return (TpBaseConnection *)conn;
+  return (TpBaseConnection *) conn;
 }

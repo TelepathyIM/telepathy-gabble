@@ -82,7 +82,7 @@ struct _GabbleRosterChannelPrivate
 };
 
 #define GABBLE_ROSTER_CHANNEL_GET_PRIVATE(obj) \
-    ((GabbleRosterChannelPrivate *)obj->priv)
+    ((GabbleRosterChannelPrivate *) obj->priv)
 
 static void
 gabble_roster_channel_init (GabbleRosterChannel *self)
@@ -110,7 +110,7 @@ gabble_roster_channel_constructor (GType type, guint n_props,
   obj = G_OBJECT_CLASS (gabble_roster_channel_parent_class)->
            constructor (type, n_props, props);
   priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (GABBLE_ROSTER_CHANNEL (obj));
-  conn = (TpBaseConnection *)priv->conn;
+  conn = (TpBaseConnection *) priv->conn;
   handle_type = priv->handle_type;
   handle_repo = tp_base_connection_get_handles (conn, handle_type);
   contact_repo = tp_base_connection_get_handles (conn, TP_HANDLE_TYPE_CONTACT);
@@ -341,7 +341,7 @@ gabble_roster_channel_dispose (GObject *object)
   priv->dispose_has_run = TRUE;
 
   if (!priv->closed)
-    tp_svc_channel_emit_closed ((TpSvcChannel *)object);
+    tp_svc_channel_emit_closed ((TpSvcChannel *) object);
 
   /* release any references held by the object here */
 
@@ -354,7 +354,7 @@ gabble_roster_channel_finalize (GObject *object)
 {
   GabbleRosterChannel *self = GABBLE_ROSTER_CHANNEL (object);
   GabbleRosterChannelPrivate *priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (self);
-  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   TpHandleRepoIface *handle_repo = tp_base_connection_get_handles (conn,
       priv->handle_type);
 
@@ -385,7 +385,7 @@ _gabble_roster_channel_send_presence (GabbleRosterChannel *chan,
   gboolean result;
 
   priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (chan);
-  conn = (TpBaseConnection *)priv->conn;
+  conn = (TpBaseConnection *) priv->conn;
   repo = tp_base_connection_get_handles (conn, TP_HANDLE_TYPE_CONTACT);
   contact = tp_handle_inspect (repo, handle);
 
@@ -426,10 +426,10 @@ _gabble_roster_channel_add_member_cb (GObject *obj,
 
   priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (GABBLE_ROSTER_CHANNEL (obj));
 #ifdef ENABLE_DEBUG
-  handle_repo = tp_base_connection_get_handles ((TpBaseConnection *)priv->conn,
+  handle_repo = tp_base_connection_get_handles ((TpBaseConnection *) priv->conn,
       priv->handle_type);
   contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 #endif
 
   DEBUG ("called on %s with handle %u (%s) \"%s\"",
@@ -500,7 +500,7 @@ _gabble_roster_channel_remove_member_cb (GObject *obj,
 
   priv = GABBLE_ROSTER_CHANNEL_GET_PRIVATE (GABBLE_ROSTER_CHANNEL (obj));
 #ifdef ENABLE_DEBUG
-  conn = (TpBaseConnection *)priv->conn;
+  conn = (TpBaseConnection *) priv->conn;
   handle_repo = tp_base_connection_get_handles (conn, priv->handle_type);
   contact_repo = tp_base_connection_get_handles (conn, TP_HANDLE_TYPE_CONTACT);
 #endif
@@ -602,7 +602,7 @@ gabble_roster_channel_close (TpSvcChannel *iface,
            * so just close the channel */
 
           priv->closed = TRUE;
-          tp_svc_channel_emit_closed ((TpSvcChannel *)self);
+          tp_svc_channel_emit_closed ((TpSvcChannel *) self);
           tp_svc_channel_return_from_close (context);
           return;
         }
@@ -673,7 +673,7 @@ gabble_roster_channel_get_interfaces (TpSvcChannel *self,
 static void
 channel_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  TpSvcChannelClass *klass = (TpSvcChannelClass *)g_iface;
+  TpSvcChannelClass *klass = (TpSvcChannelClass *) g_iface;
 
 #define IMPLEMENT(x) tp_svc_channel_implement_##x (\
     klass, gabble_roster_channel_##x)

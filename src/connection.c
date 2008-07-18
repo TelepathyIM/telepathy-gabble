@@ -177,7 +177,7 @@ struct _GabbleConnectionPrivate
 };
 
 #define GABBLE_CONNECTION_GET_PRIVATE(obj) \
-    ((GabbleConnectionPrivate *)obj->priv)
+    ((GabbleConnectionPrivate *) obj->priv)
 
 static void connection_capabilities_update_cb (GabblePresenceCache *,
     TpHandle, GabblePresenceCapabilities, GabblePresenceCapabilities,
@@ -250,7 +250,7 @@ gabble_connection_constructor (GType type,
 
   self->avatar_requests = g_hash_table_new (NULL, NULL);
 
-  return (GObject *)self;
+  return (GObject *) self;
 }
 
 static void
@@ -688,7 +688,7 @@ static void
 gabble_connection_dispose (GObject *object)
 {
   GabbleConnection *self = GABBLE_CONNECTION (object);
-  TpBaseConnection *base = (TpBaseConnection *)self;
+  TpBaseConnection *base = (TpBaseConnection *) self;
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (self);
 
   if (priv->dispose_has_run)
@@ -1212,7 +1212,7 @@ connection_disconnected_cb (LmConnection *lmconn,
                             gpointer user_data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
-  TpBaseConnection *base = (TpBaseConnection *)user_data;
+  TpBaseConnection *base = (TpBaseConnection *) user_data;
 
   g_assert (conn->lmconn == lmconn);
 
@@ -1225,12 +1225,12 @@ connection_disconnected_cb (LmConnection *lmconn,
   if (base->status == TP_CONNECTION_STATUS_DISCONNECTED)
     {
       DEBUG ("expected; emitting DISCONNECTED");
-      tp_base_connection_finish_shutdown ((TpBaseConnection *)conn);
+      tp_base_connection_finish_shutdown ((TpBaseConnection *) conn);
     }
   else
     {
       DEBUG ("unexpected; calling tp_base_connection_change_status");
-      tp_base_connection_change_status ((TpBaseConnection *)conn,
+      tp_base_connection_change_status ((TpBaseConnection *) conn,
           TP_CONNECTION_STATUS_DISCONNECTED,
           TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
     }
@@ -1591,7 +1591,7 @@ connection_stream_error_cb (LmMessageHandler *handler,
 
       /* Another client with the same resource just
        * appeared, we're going down. */
-        tp_base_connection_change_status ((TpBaseConnection *)conn,
+        tp_base_connection_change_status ((TpBaseConnection *) conn,
             TP_CONNECTION_STATUS_DISCONNECTED,
             TP_CONNECTION_STATUS_REASON_NAME_IN_USE);
         return LM_HANDLER_RESULT_REMOVE_MESSAGE;
@@ -1683,7 +1683,7 @@ do_auth (GabbleConnection *conn)
 
       /* the reason this function can fail is through network errors,
        * authentication failures are reported to our auth_cb */
-      tp_base_connection_change_status ((TpBaseConnection *)conn,
+      tp_base_connection_change_status ((TpBaseConnection *) conn,
           TP_CONNECTION_STATUS_DISCONNECTED,
           TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
     }
@@ -1697,7 +1697,7 @@ registration_finished_cb (GabbleRegister *reg,
                           gpointer user_data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
-  TpBaseConnection *base = (TpBaseConnection *)conn;
+  TpBaseConnection *base = (TpBaseConnection *) conn;
 
   if (base->status != TP_CONNECTION_STATUS_CONNECTING)
     {
@@ -1718,7 +1718,7 @@ registration_finished_cb (GabbleRegister *reg,
       DEBUG ("err_code = %d, err_msg = '%s'",
                err_code, err_msg);
 
-      tp_base_connection_change_status ((TpBaseConnection *)conn,
+      tp_base_connection_change_status ((TpBaseConnection *) conn,
           TP_CONNECTION_STATUS_DISCONNECTED,
           (err_code == TP_ERROR_INVALID_ARGUMENT) ?
             TP_CONNECTION_STATUS_REASON_NAME_IN_USE :
@@ -1754,7 +1754,7 @@ connection_open_cb (LmConnection *lmconn,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (data);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
-  TpBaseConnection *base = (TpBaseConnection *)conn;
+  TpBaseConnection *base = (TpBaseConnection *) conn;
 
   if ((base->status != TP_CONNECTION_STATUS_CONNECTING) &&
       (base->status != TP_INTERNAL_CONNECTION_STATUS_NEW))
@@ -1786,13 +1786,13 @@ connection_open_cb (LmConnection *lmconn,
 
       if (priv->ssl_error)
         {
-          tp_base_connection_change_status ((TpBaseConnection *)conn,
+          tp_base_connection_change_status ((TpBaseConnection *) conn,
             TP_CONNECTION_STATUS_DISCONNECTED,
             priv->ssl_error);
         }
       else
         {
-          tp_base_connection_change_status ((TpBaseConnection *)conn,
+          tp_base_connection_change_status ((TpBaseConnection *) conn,
               TP_CONNECTION_STATUS_DISCONNECTED,
               TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
         }
@@ -1819,7 +1819,7 @@ connection_auth_cb (LmConnection *lmconn,
                     gpointer      data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (data);
-  TpBaseConnection *base = (TpBaseConnection *)conn;
+  TpBaseConnection *base = (TpBaseConnection *) conn;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
       TP_HANDLE_TYPE_CONTACT);
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION_GET_PRIVATE (conn);
@@ -1839,7 +1839,7 @@ connection_auth_cb (LmConnection *lmconn,
     {
       DEBUG ("failed");
 
-      tp_base_connection_change_status ((TpBaseConnection *)conn,
+      tp_base_connection_change_status ((TpBaseConnection *) conn,
           TP_CONNECTION_STATUS_DISCONNECTED,
           TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED);
 
@@ -1857,7 +1857,7 @@ connection_auth_cb (LmConnection *lmconn,
 
       g_error_free (error);
 
-      tp_base_connection_change_status ((TpBaseConnection *)conn,
+      tp_base_connection_change_status ((TpBaseConnection *) conn,
           TP_CONNECTION_STATUS_DISCONNECTED,
           TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
 
@@ -1871,7 +1871,7 @@ connection_auth_cb (LmConnection *lmconn,
 
       g_error_free (error);
 
-      tp_base_connection_change_status ((TpBaseConnection *)conn,
+      tp_base_connection_change_status ((TpBaseConnection *) conn,
           TP_CONNECTION_STATUS_DISCONNECTED,
           TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
 
@@ -1900,7 +1900,7 @@ connection_auth_cb (LmConnection *lmconn,
 
       g_error_free (error);
 
-      tp_base_connection_change_status ((TpBaseConnection *)conn,
+      tp_base_connection_change_status ((TpBaseConnection *) conn,
           TP_CONNECTION_STATUS_DISCONNECTED,
           TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
     }
@@ -1924,7 +1924,7 @@ connection_disco_cb (GabbleDisco *disco,
                      gpointer user_data)
 {
   GabbleConnection *conn = user_data;
-  TpBaseConnection *base = (TpBaseConnection *)conn;
+  TpBaseConnection *base = (TpBaseConnection *) conn;
   GabbleConnectionPrivate *priv;
   GError *error = NULL;
 
@@ -2120,7 +2120,7 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
                                           DBusGMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
-  TpBaseConnection *base = (TpBaseConnection *)self;
+  TpBaseConnection *base = (TpBaseConnection *) self;
   guint i;
   GabblePresence *pres = self->self_presence;
   GabblePresenceCapabilities add_caps = 0, remove_caps = 0, caps, save_caps;
@@ -2241,7 +2241,7 @@ gabble_connection_get_capabilities (TpSvcConnectionInterfaceCapabilities *iface,
                                     DBusGMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
-  TpBaseConnection *base = (TpBaseConnection *)self;
+  TpBaseConnection *base = (TpBaseConnection *) self;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
       TP_HANDLE_TYPE_CONTACT);
   guint i;
@@ -2449,7 +2449,7 @@ room_verify_batch_new (GabbleConnection *conn,
                        guint count,
                        const gchar **jids)
 {
-  TpBaseConnection *base = (TpBaseConnection *)conn;
+  TpBaseConnection *base = (TpBaseConnection *) conn;
   TpHandleRepoIface *room_handles = tp_base_connection_get_handles (base,
       TP_HANDLE_TYPE_ROOM);
   RoomVerifyBatch *batch = g_slice_new (RoomVerifyBatch);
@@ -2502,7 +2502,7 @@ room_verify_batch_try_return (RoomVerifyBatch *batch)
 {
   guint i;
   TpHandleRepoIface *room_handles = tp_base_connection_get_handles (
-      (TpBaseConnection *)batch->conn, TP_HANDLE_TYPE_ROOM);
+      (TpBaseConnection *) batch->conn, TP_HANDLE_TYPE_ROOM);
   gchar *sender;
   GError *error = NULL;
 
@@ -2549,7 +2549,7 @@ room_jid_disco_cb (GabbleDisco *disco,
   RoomVerifyContext *rvctx = user_data;
   RoomVerifyBatch *batch = rvctx->batch;
   TpHandleRepoIface *room_handles = tp_base_connection_get_handles (
-      (TpBaseConnection *)batch->conn, TP_HANDLE_TYPE_ROOM);
+      (TpBaseConnection *) batch->conn, TP_HANDLE_TYPE_ROOM);
   LmMessageNode *lm_node;
   gboolean found = FALSE;
   TpHandle handle;
@@ -2686,7 +2686,7 @@ gabble_connection_request_handles (TpSvcConnection *iface,
                                    DBusGMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
-  TpBaseConnection *base = (TpBaseConnection *)self;
+  TpBaseConnection *base = (TpBaseConnection *) self;
 
   g_assert (GABBLE_IS_CONNECTION (self));
 
@@ -2764,7 +2764,7 @@ gabble_connection_ensure_capabilities (GabbleConnection *self,
 static void
 conn_service_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  TpSvcConnectionClass *klass = (TpSvcConnectionClass *)g_iface;
+  TpSvcConnectionClass *klass = (TpSvcConnectionClass *) g_iface;
 
 #define IMPLEMENT(x) tp_svc_connection_implement_##x (klass, \
     gabble_connection_##x)
@@ -2776,7 +2776,7 @@ static void
 capabilities_service_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcConnectionInterfaceCapabilitiesClass *klass =
-    (TpSvcConnectionInterfaceCapabilitiesClass *)g_iface;
+    (TpSvcConnectionInterfaceCapabilitiesClass *) g_iface;
 
 #define IMPLEMENT(x) tp_svc_connection_interface_capabilities_implement_##x (\
     klass, gabble_connection_##x)

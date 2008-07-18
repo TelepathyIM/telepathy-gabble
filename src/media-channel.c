@@ -184,7 +184,7 @@ gabble_media_channel_constructor (GType type, guint n_props,
            constructor (type, n_props, props);
 
   priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (GABBLE_MEDIA_CHANNEL (obj));
-  conn = (TpBaseConnection *)priv->conn;
+  conn = (TpBaseConnection *) priv->conn;
   contact_handles = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
 
@@ -352,13 +352,13 @@ _gabble_media_channel_dispatch_session_action (GabbleMediaChannel *chan,
       set = tp_intset_new ();
       tp_intset_add (set, mixin->self_handle);
 
-      tp_group_mixin_change_members ((GObject *)chan,
+      tp_group_mixin_change_members ((GObject *) chan,
           "", NULL, NULL, set, NULL, peer, 0);
 
       tp_intset_destroy (set);
 
       /* and update flags accordingly */
-      tp_group_mixin_change_flags ((GObject *)chan,
+      tp_group_mixin_change_flags ((GObject *) chan,
           TP_CHANNEL_GROUP_FLAG_CAN_ADD | TP_CHANNEL_GROUP_FLAG_CAN_REMOVE,
           0);
     }
@@ -1055,7 +1055,7 @@ gabble_media_channel_request_streams (TpSvcChannelTypeStreamedMedia *iface,
   /* FIXME: disallow this if we've put the other guy on hold? */
 
   priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
-  conn = (TpBaseConnection *)priv->conn;
+  conn = (TpBaseConnection *) priv->conn;
   contact_handles = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
 
@@ -1274,11 +1274,11 @@ session_terminated_cb (GabbleMediaSession *session,
   tp_intset_add (set, mixin->self_handle);
   tp_intset_add (set, peer);
 
-  tp_group_mixin_change_members ((GObject *)channel,
+  tp_group_mixin_change_members ((GObject *) channel,
       "", NULL, set, NULL, NULL, terminator, reason);
 
   /* update flags accordingly -- allow adding, deny removal */
-  tp_group_mixin_change_flags ((GObject *)channel,
+  tp_group_mixin_change_flags ((GObject *) channel,
       TP_CHANNEL_GROUP_FLAG_CAN_ADD,
       TP_CHANNEL_GROUP_FLAG_CAN_REMOVE);
 
@@ -1347,7 +1347,7 @@ session_state_changed_cb (GabbleMediaSession *session,
       priv->creator == mixin->self_handle)
     {
       /* add the peer to the member list */
-      tp_group_mixin_change_members ((GObject *)channel,
+      tp_group_mixin_change_members ((GObject *) channel,
           "", set, NULL, NULL, NULL, 0, 0);
 
       /* update flags accordingly -- allow removal, deny adding and
@@ -1810,7 +1810,7 @@ gabble_media_channel_request_hold (TpSvcChannelInterfaceHold *iface,
 static void
 channel_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  TpSvcChannelClass *klass = (TpSvcChannelClass *)g_iface;
+  TpSvcChannelClass *klass = (TpSvcChannelClass *) g_iface;
 
 #define IMPLEMENT(x, suffix) tp_svc_channel_implement_##x (\
     klass, gabble_media_channel_##x##suffix)
@@ -1825,7 +1825,7 @@ static void
 streamed_media_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcChannelTypeStreamedMediaClass *klass =
-    (TpSvcChannelTypeStreamedMediaClass *)g_iface;
+    (TpSvcChannelTypeStreamedMediaClass *) g_iface;
 
 #define IMPLEMENT(x) tp_svc_channel_type_streamed_media_implement_##x (\
     klass, gabble_media_channel_##x)
@@ -1840,7 +1840,7 @@ static void
 media_signalling_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcChannelInterfaceMediaSignallingClass *klass =
-    (TpSvcChannelInterfaceMediaSignallingClass *)g_iface;
+    (TpSvcChannelInterfaceMediaSignallingClass *) g_iface;
 
 #define IMPLEMENT(x) tp_svc_channel_interface_media_signalling_implement_##x (\
     klass, gabble_media_channel_##x)

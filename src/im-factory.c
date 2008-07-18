@@ -204,7 +204,7 @@ im_factory_message_cb (LmMessageHandler *handler,
 {
   GabbleImFactory *fac = GABBLE_IM_FACTORY (user_data);
   GabbleImFactoryPrivate *priv = GABBLE_IM_FACTORY_GET_PRIVATE (fac);
-  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
   const gchar *from, *body;
@@ -273,7 +273,7 @@ im_factory_message_cb (LmMessageHandler *handler,
       DEBUG ("got error sending to %s (handle %u), msgtype %u, body:\n%s",
          from, handle, msgtype, body);
 
-      tp_svc_channel_type_text_emit_send_error ((TpSvcChannelTypeText *)chan,
+      tp_svc_channel_type_text_emit_send_error ((TpSvcChannelTypeText *) chan,
           send_error, stamp, msgtype, body);
 
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
@@ -325,7 +325,7 @@ new_im_channel (GabbleImFactory *fac, TpHandle handle)
   g_assert (GABBLE_IS_IM_FACTORY (fac));
 
   priv = GABBLE_IM_FACTORY_GET_PRIVATE (fac);
-  conn = (TpBaseConnection *)priv->conn;
+  conn = (TpBaseConnection *) priv->conn;
 
   object_path = g_strdup_printf ("%s/ImChannel%u",
       conn->object_path, handle);
@@ -342,7 +342,7 @@ new_im_channel (GabbleImFactory *fac, TpHandle handle)
 
   g_hash_table_insert (priv->channels, GINT_TO_POINTER (handle), chan);
 
-  tp_channel_factory_iface_emit_new_channel (fac, (TpChannelIface *)chan,
+  tp_channel_factory_iface_emit_new_channel (fac, (TpChannelIface *) chan,
       NULL);
 
   g_free (object_path);
@@ -448,7 +448,7 @@ gabble_im_factory_iface_request (TpChannelFactoryIface *iface,
   GabbleImFactory *fac = GABBLE_IM_FACTORY (iface);
   GabbleImFactoryPrivate *priv = GABBLE_IM_FACTORY_GET_PRIVATE (fac);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   GabbleIMChannel *chan;
   TpChannelFactoryRequestStatus status;
 

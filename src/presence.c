@@ -34,7 +34,7 @@
 
 G_DEFINE_TYPE (GabblePresence, gabble_presence, G_TYPE_OBJECT);
 
-#define GABBLE_PRESENCE_PRIV(account) ((GabblePresencePrivate *)account->priv)
+#define GABBLE_PRESENCE_PRIV(account) ((GabblePresencePrivate *) account->priv)
 
 typedef struct _Resource Resource;
 
@@ -107,7 +107,7 @@ gabble_presence_init (GabblePresence *self)
 {
   self->priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
       GABBLE_TYPE_PRESENCE, GabblePresencePrivate);
-  ((GabblePresencePrivate *)self->priv)->resources = NULL;
+  ((GabblePresencePrivate *) self->priv)->resources = NULL;
 }
 
 GabblePresence*

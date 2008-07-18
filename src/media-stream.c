@@ -119,7 +119,7 @@ struct _GabbleMediaStreamPrivate
 };
 
 #define GABBLE_MEDIA_STREAM_GET_PRIVATE(obj) \
-    ((GabbleMediaStreamPrivate *)obj->priv)
+    ((GabbleMediaStreamPrivate *) obj->priv)
 
 #ifdef ENABLE_DEBUG
 #if _GMS_DEBUG_LEVEL > 1
@@ -1824,7 +1824,7 @@ static void
 stream_handler_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcMediaStreamHandlerClass *klass =
-    (TpSvcMediaStreamHandlerClass *)g_iface;
+    (TpSvcMediaStreamHandlerClass *) g_iface;
 
 #define IMPLEMENT(x,suffix) tp_svc_media_stream_handler_implement_##x (\
     klass, gabble_media_stream_##x##suffix)

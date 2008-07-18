@@ -397,7 +397,7 @@ gabble_private_tubes_factory_iface_request (TpChannelFactoryIface *iface,
     {
       status = TP_CHANNEL_FACTORY_REQUEST_STATUS_CREATED;
       chan = new_tubes_channel (fac, handle);
-      tp_channel_factory_iface_emit_new_channel (fac, (TpChannelIface *)chan,
+      tp_channel_factory_iface_emit_new_channel (fac, (TpChannelIface *) chan,
           request);
     }
 

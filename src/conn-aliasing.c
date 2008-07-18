@@ -291,7 +291,7 @@ gabble_connection_request_aliases (TpSvcConnectionInterfaceAliasing *iface,
                                    DBusGMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
-  TpBaseConnection *base = (TpBaseConnection *)self;
+  TpBaseConnection *base = (TpBaseConnection *) self;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
       TP_HANDLE_TYPE_CONTACT);
   guint i;
@@ -422,7 +422,7 @@ setaliases_foreach (gpointer key, gpointer value, gpointer user_data)
   TpHandle handle = GPOINTER_TO_INT (key);
   gchar *alias = (gchar *) value;
   GError *error = NULL;
-  TpBaseConnection *base = (TpBaseConnection *)data->conn;
+  TpBaseConnection *base = (TpBaseConnection *) data->conn;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
       TP_HANDLE_TYPE_CONTACT);
 
@@ -500,7 +500,7 @@ gabble_connection_set_aliases (TpSvcConnectionInterfaceAliasing *iface,
                                DBusGMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
-  TpBaseConnection *base = (TpBaseConnection *)self;
+  TpBaseConnection *base = (TpBaseConnection *) self;
   GError *error = NULL;
   struct _i_hate_g_hash_table_foreach data = { NULL, NULL, TRUE };
 
@@ -726,7 +726,7 @@ _gabble_connection_get_cached_alias (GabbleConnection *conn,
                                      TpHandle handle,
                                      gchar **alias)
 {
-  TpBaseConnection *base = (TpBaseConnection *)conn;
+  TpBaseConnection *base = (TpBaseConnection *) conn;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
       TP_HANDLE_TYPE_CONTACT);
   GabbleConnectionAliasSource ret = GABBLE_CONNECTION_ALIAS_NONE;

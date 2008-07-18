@@ -115,7 +115,7 @@ struct _GabbleMediaSessionPrivate
 };
 
 #define GABBLE_MEDIA_SESSION_GET_PRIVATE(obj) \
-    ((GabbleMediaSessionPrivate *)obj->priv)
+    ((GabbleMediaSessionPrivate *) obj->priv)
 
 typedef struct {
     gchar *name;
@@ -2092,7 +2092,7 @@ get_jid_for_contact (GabbleMediaSession *session,
   g_assert (GABBLE_IS_MEDIA_SESSION (session));
 
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
-  conn = (TpBaseConnection *)priv->conn;
+  conn = (TpBaseConnection *) priv->conn;
   contact_handles = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
   self = conn->self_handle;
@@ -2132,7 +2132,7 @@ _gabble_media_session_message_new (GabbleMediaSession *session,
   g_assert (GABBLE_IS_MEDIA_SESSION (session));
 
   priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
-  conn = (TpBaseConnection *)priv->conn;
+  conn = (TpBaseConnection *) priv->conn;
 
   peer_jid = get_jid_for_contact (session, priv->peer);
 
@@ -2396,7 +2396,7 @@ _gabble_media_session_terminate (GabbleMediaSession *session,
                                  TpChannelGroupChangeReason why)
 {
   GabbleMediaSessionPrivate *priv = GABBLE_MEDIA_SESSION_GET_PRIVATE (session);
-  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   TpHandle actor;
 
   if (priv->state == JS_STATE_ENDED)
@@ -2928,7 +2928,7 @@ static void
 session_handler_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcMediaSessionHandlerClass *klass =
-    (TpSvcMediaSessionHandlerClass *)g_iface;
+    (TpSvcMediaSessionHandlerClass *) g_iface;
 
 #define IMPLEMENT(x) tp_svc_media_session_handler_implement_##x (\
     klass, gabble_media_session_##x)

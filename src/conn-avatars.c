@@ -47,7 +47,7 @@ update_own_avatar_sha1 (GabbleConnection *conn,
                         const gchar *sha1,
                         GError **out_error)
 {
-  TpBaseConnection *base = (TpBaseConnection *)conn;
+  TpBaseConnection *base = (TpBaseConnection *) conn;
   GError *error = NULL;
 
   if (!tp_strdiff (sha1, conn->self_presence->avatar_sha1))
@@ -79,7 +79,7 @@ connection_avatar_update_cb (GabblePresenceCache *cache,
                              gpointer user_data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
-  TpBaseConnection *base = (TpBaseConnection *)conn;
+  TpBaseConnection *base = (TpBaseConnection *) conn;
   GabblePresence *presence;
 
   presence = gabble_presence_cache_get (conn->presence_cache, handle);
@@ -184,7 +184,7 @@ gabble_connection_get_avatar_tokens (TpSvcConnectionInterfaceAvatars *iface,
                                      DBusGMethodInvocation *invocation)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
-  TpBaseConnection *base = (TpBaseConnection *)self;
+  TpBaseConnection *base = (TpBaseConnection *) self;
   gboolean wait_for_self_avatar = FALSE;
   gboolean have_self_avatar;
   guint i, my_index = 0;
@@ -312,7 +312,7 @@ gabble_connection_get_known_avatar_tokens (TpSvcConnectionInterfaceAvatars *ifac
                                            DBusGMethodInvocation *invocation)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
-  TpBaseConnection *base = (TpBaseConnection *)self;
+  TpBaseConnection *base = (TpBaseConnection *) self;
   gboolean wait_for_self_avatar = FALSE;
   gboolean have_self_avatar;
   guint i;
@@ -564,7 +564,7 @@ gabble_connection_request_avatar (TpSvcConnectionInterfaceAvatars *iface,
                                   DBusGMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
-  TpBaseConnection *base = (TpBaseConnection *)self;
+  TpBaseConnection *base = (TpBaseConnection *) self;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
       TP_HANDLE_TYPE_CONTACT);
   GError *err = NULL;
@@ -721,7 +721,7 @@ _set_avatar_cb2 (GabbleVCardManager *manager,
                  gpointer user_data)
 {
   struct _set_avatar_ctx *ctx = (struct _set_avatar_ctx *) user_data;
-  TpBaseConnection *base = (TpBaseConnection *)ctx->conn;
+  TpBaseConnection *base = (TpBaseConnection *) ctx->conn;
 
   if (NULL == vcard)
     {
@@ -777,7 +777,7 @@ gabble_connection_set_avatar (TpSvcConnectionInterfaceAvatars *iface,
                               DBusGMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
-  TpBaseConnection *base = (TpBaseConnection *)self;
+  TpBaseConnection *base = (TpBaseConnection *) self;
   struct _set_avatar_ctx *ctx;
   gchar *value = NULL;
   gchar *base64;

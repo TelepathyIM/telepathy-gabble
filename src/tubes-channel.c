@@ -2518,7 +2518,7 @@ static void
 tubes_iface_init (gpointer g_iface,
                   gpointer iface_data)
 {
-  TpSvcChannelTypeTubesClass *klass = (TpSvcChannelTypeTubesClass *)g_iface;
+  TpSvcChannelTypeTubesClass *klass = (TpSvcChannelTypeTubesClass *) g_iface;
 
 #define IMPLEMENT(x) tp_svc_channel_type_tubes_implement_##x (\
     klass, gabble_tubes_channel_##x)
@@ -2540,7 +2540,7 @@ static void
 channel_iface_init (gpointer g_iface,
                     gpointer iface_data)
 {
-  TpSvcChannelClass *klass = (TpSvcChannelClass *)g_iface;
+  TpSvcChannelClass *klass = (TpSvcChannelClass *) g_iface;
 
 #define IMPLEMENT(x, suffix) tp_svc_channel_implement_##x (\
     klass, gabble_tubes_channel_##x##suffix)

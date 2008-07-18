@@ -141,7 +141,7 @@ pubsub_msg_event_cb (LmMessageHandler *handler,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *)conn, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
   LmMessageNode *node;
   TpHandle handle;
   const gchar *event_ns, *from;

@@ -69,7 +69,7 @@ construct_contact_statuses_cb (GObject *obj,
                                GError **error)
 {
   GabbleConnection *self = GABBLE_CONNECTION (obj);
-  TpBaseConnection *base = (TpBaseConnection *)self;
+  TpBaseConnection *base = (TpBaseConnection *) self;
   guint i;
   TpHandle handle;
   GHashTable *contact_statuses, *parameters;

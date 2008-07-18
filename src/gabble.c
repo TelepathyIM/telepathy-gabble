@@ -32,7 +32,7 @@
 static TpBaseConnectionManager *
 construct_cm (void)
 {
-  return (TpBaseConnectionManager *)g_object_new (
+  return (TpBaseConnectionManager *) g_object_new (
       GABBLE_TYPE_CONNECTION_MANAGER, NULL);
 }
 

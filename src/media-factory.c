@@ -222,7 +222,7 @@ media_factory_jingle_cb (LmMessageHandler *handler,
   GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (user_data);
   GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   LmMessageNode *iq_node, *session_node;
   const gchar *from, *id, *action, *sid, *resource;
   TpHandle handle = 0;
@@ -336,7 +336,7 @@ media_factory_jingle_cb (LmMessageHandler *handler,
     {
       if (chan_is_new)
         tp_channel_factory_iface_emit_new_channel (fac,
-            (TpChannelIface *)chan, NULL);
+            (TpChannelIface *) chan, NULL);
     }
   else
     {
@@ -484,7 +484,7 @@ new_media_channel (GabbleMediaFactory *fac, TpHandle creator)
   g_assert (GABBLE_IS_MEDIA_FACTORY (fac));
 
   priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
-  conn = (TpBaseConnection *)priv->conn;
+  conn = (TpBaseConnection *) priv->conn;
 
   object_path = g_strdup_printf ("%s/MediaChannel%u",
       conn->object_path, priv->channel_index);
@@ -805,7 +805,7 @@ gabble_media_factory_iface_request (TpChannelFactoryIface *iface,
 {
   GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (iface);
   GabbleMediaFactoryPrivate *priv = GABBLE_MEDIA_FACTORY_GET_PRIVATE (fac);
-  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   GabbleMediaChannel *chan = NULL;
 
   if (strcmp (chan_type, TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA))
@@ -820,7 +820,7 @@ gabble_media_factory_iface_request (TpChannelFactoryIface *iface,
     {
       chan = new_media_channel (fac, conn->self_handle);
 
-      if (!_gabble_media_channel_add_member ((GObject *)chan, handle, "",
+      if (!_gabble_media_channel_add_member ((GObject *) chan, handle, "",
             error))
         {
           gabble_media_channel_close (chan);
@@ -834,7 +834,7 @@ gabble_media_factory_iface_request (TpChannelFactoryIface *iface,
     }
 
   g_assert (chan != NULL);
-  tp_channel_factory_iface_emit_new_channel (fac, (TpChannelIface *)chan,
+  tp_channel_factory_iface_emit_new_channel (fac, (TpChannelIface *) chan,
       request);
 
   *ret = TP_CHANNEL_IFACE (chan);

@@ -285,7 +285,7 @@ gabble_muc_channel_constructor (GType type, guint n_props,
            constructor (type, n_props, props);
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
-  conn = (TpBaseConnection *)priv->conn;
+  conn = (TpBaseConnection *) priv->conn;
 
   room_handles = tp_base_connection_get_handles (conn, TP_HANDLE_TYPE_ROOM);
   contact_handles = tp_base_connection_get_handles (conn,
@@ -612,7 +612,7 @@ contact_handle_to_room_identity (GabbleMucChannel *chan, TpHandle main_handle,
   gchar *username, *jid;
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
-  conn = (TpBaseConnection *)priv->conn;
+  conn = (TpBaseConnection *) priv->conn;
   contact_repo = tp_base_connection_get_handles (conn, TP_HANDLE_TYPE_CONTACT);
 
   main_jid = tp_handle_inspect (contact_repo, main_handle);
@@ -999,7 +999,7 @@ gabble_muc_channel_finalize (GObject *object)
   GabbleMucChannel *self = GABBLE_MUC_CHANNEL (object);
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
   TpHandleRepoIface *room_handles = tp_base_connection_get_handles (
-      (TpBaseConnection *)priv->conn, TP_HANDLE_TYPE_ROOM);
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
 
   DEBUG ("called");
 
@@ -1203,7 +1203,7 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
   set = tp_intset_new ();
   tp_intset_add (set, TP_GROUP_MIXIN (chan)->self_handle);
 
-  tp_group_mixin_change_members ((GObject *)chan,
+  tp_group_mixin_change_members ((GObject *) chan,
                                      (reason != NULL) ? reason : "",
                                      NULL, set, NULL, NULL, actor,
                                      reason_code);
@@ -1678,7 +1678,7 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
   g_assert (handle != 0);
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
-  conn = (TpBaseConnection *)priv->conn;
+  conn = (TpBaseConnection *) priv->conn;
   contact_handles = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
 
@@ -1925,7 +1925,7 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
 
       if (handle != mixin->self_handle)
         {
-          tp_group_mixin_change_members ((GObject *)chan, reason,
+          tp_group_mixin_change_members ((GObject *) chan, reason,
                                              NULL, set, NULL, NULL,
                                              actor, reason_code);
         }
@@ -2127,7 +2127,7 @@ _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
   priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
-  conn = (TpBaseConnection *)priv->conn;
+  conn = (TpBaseConnection *) priv->conn;
   contact_handles = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
 
@@ -2145,7 +2145,7 @@ _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
 
   tp_group_mixin_add_handle_owner ((GObject *) chan, self_handle,
       conn->self_handle);
-  tp_group_mixin_change_members ((GObject *)chan, message, set_members,
+  tp_group_mixin_change_members ((GObject *) chan, message, set_members,
                                      NULL, set_pending, NULL, inviter,
                                      TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
 
@@ -3009,7 +3009,7 @@ gabble_muc_channel_send_presence (GabbleMucChannel *self,
 static void
 channel_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  TpSvcChannelClass *klass = (TpSvcChannelClass *)g_iface;
+  TpSvcChannelClass *klass = (TpSvcChannelClass *) g_iface;
 
 #define IMPLEMENT(x) tp_svc_channel_implement_##x (\
     klass, gabble_muc_channel_##x)
@@ -3023,7 +3023,7 @@ channel_iface_init (gpointer g_iface, gpointer iface_data)
 static void
 text_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  TpSvcChannelTypeTextClass *klass = (TpSvcChannelTypeTextClass *)g_iface;
+  TpSvcChannelTypeTextClass *klass = (TpSvcChannelTypeTextClass *) g_iface;
 
   tp_text_mixin_iface_init (g_iface, iface_data);
 #define IMPLEMENT(x) tp_svc_channel_type_text_implement_##x (\
@@ -3036,7 +3036,7 @@ static void
 password_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcChannelInterfacePasswordClass *klass =
-    (TpSvcChannelInterfacePasswordClass *)g_iface;
+    (TpSvcChannelInterfacePasswordClass *) g_iface;
 
 #define IMPLEMENT(x) tp_svc_channel_interface_password_implement_##x (\
     klass, gabble_muc_channel_##x)
@@ -3049,7 +3049,7 @@ static void
 chat_state_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcChannelInterfaceChatStateClass *klass =
-    (TpSvcChannelInterfaceChatStateClass *)g_iface;
+    (TpSvcChannelInterfaceChatStateClass *) g_iface;
 
 #define IMPLEMENT(x) tp_svc_channel_interface_chat_state_implement_##x (\
     klass, gabble_muc_channel_##x)

@@ -89,7 +89,7 @@ struct _GabbleIMChannelPrivate
 };
 
 #define GABBLE_IM_CHANNEL_GET_PRIVATE(obj) \
-    ((GabbleIMChannelPrivate *)obj->priv)
+    ((GabbleIMChannelPrivate *) obj->priv)
 
 static void
 gabble_im_channel_init (GabbleIMChannel *self)
@@ -114,7 +114,7 @@ gabble_im_channel_constructor (GType type, guint n_props,
   obj = G_OBJECT_CLASS (gabble_im_channel_parent_class)->
            constructor (type, n_props, props);
   priv = GABBLE_IM_CHANNEL_GET_PRIVATE (GABBLE_IM_CHANNEL (obj));
-  conn = (TpBaseConnection *)priv->conn;
+  conn = (TpBaseConnection *) priv->conn;
   contact_handles = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
 
@@ -335,7 +335,7 @@ gabble_im_channel_finalize (GObject *object)
 {
   GabbleIMChannel *self = GABBLE_IM_CHANNEL (object);
   GabbleIMChannelPrivate *priv = GABBLE_IM_CHANNEL_GET_PRIVATE (self);
-  TpBaseConnection *conn = (TpBaseConnection *)priv->conn;
+  TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
 
@@ -604,7 +604,7 @@ gabble_im_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
 static void
 channel_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  TpSvcChannelClass *klass = (TpSvcChannelClass *)g_iface;
+  TpSvcChannelClass *klass = (TpSvcChannelClass *) g_iface;
 
 #define IMPLEMENT(x) tp_svc_channel_implement_##x (\
     klass, gabble_im_channel_##x)
@@ -618,7 +618,7 @@ channel_iface_init (gpointer g_iface, gpointer iface_data)
 static void
 text_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  TpSvcChannelTypeTextClass *klass = (TpSvcChannelTypeTextClass *)g_iface;
+  TpSvcChannelTypeTextClass *klass = (TpSvcChannelTypeTextClass *) g_iface;
 
   tp_text_mixin_iface_init (g_iface, iface_data);
 #define IMPLEMENT(x) tp_svc_channel_type_text_implement_##x (\
@@ -631,7 +631,7 @@ static void
 chat_state_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcChannelInterfaceChatStateClass *klass =
-    (TpSvcChannelInterfaceChatStateClass *)g_iface;
+    (TpSvcChannelInterfaceChatStateClass *) g_iface;
 #define IMPLEMENT(x) tp_svc_channel_interface_chat_state_implement_##x (\
     klass, gabble_im_channel_##x)
   IMPLEMENT(set_chat_state);

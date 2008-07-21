@@ -23,7 +23,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
   xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0"
   xmlns:html="http://www.w3.org/1999/xhtml"
   exclude-result-prefixes="tp html">
-  <!--Don't move the declaration of the HTML namespace up here - XMLNSs
+  <!--Don't move the declaration of the HTML namespace up here — XMLNSs
   don't work ideally in the presence of two things that want to use the
   absence of a prefix, sadly. -->
 
@@ -39,6 +39,75 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
     </xsl:call-template>
   </xsl:template>
 
+  <!-- tp:dbus-ref: reference a D-Bus interface, signal, method or property -->
+  <xsl:template match="tp:dbus-ref" mode="html">
+    <xsl:variable name="name">
+      <xsl:choose>
+        <xsl:when test="@namespace">
+          <xsl:value-of select="@namespace"/>
+          <xsl:text>.</xsl:text>
+        </xsl:when>
+      </xsl:choose>
+      <xsl:value-of select="string(.)"/>
+    </xsl:variable>
+
+    <xsl:choose>
+      <xsl:when test="//interface[@name=$name]"/>
+      <xsl:when test="//interface/method[concat(../@name, '.', @name)=$name]"/>
+      <xsl:when test="//interface/signal[concat(../@name, '.', @name)=$name]"/>
+      <xsl:when test="//interface/property[concat(../@name, '.', @name)=$name]"/>
+      <xsl:when test="//interface[@name=concat($name, '.DRAFT')]"/>
+      <xsl:when test="//interface/method[concat(../@name, '.', @name)=concat($name, '.DRAFT')]"/>
+      <xsl:when test="//interface/signal[concat(../@name, '.', @name)=concat($name, '.DRAFT')]"/>
+      <xsl:when test="//interface/property[concat(../@name, '.', @name)=concat($name, '.DRAFT')]"/>
+      <xsl:otherwise>
+        <xsl:message terminate="yes">
+          <xsl:text>ERR: cannot find D-Bus interface, method, signal</xsl:text>
+          <xsl:text> or property called '</xsl:text>
+          <xsl:value-of select="$name"/>
+          <xsl:text>'&#10;</xsl:text>
+        </xsl:message>
+      </xsl:otherwise>
+    </xsl:choose>
+
+    <a xmlns="http://www.w3.org/1999/xhtml" href="#{$name}">
+      <xsl:value-of select="string(.)"/>
+    </a>
+  </xsl:template>
+
+  <!-- tp:member-ref: reference a property of the current interface -->
+  <xsl:template match="tp:member-ref" mode="html">
+    <xsl:variable name="prefix" select="concat(ancestor::interface/@name,
+      '.')"/>
+    <xsl:variable name="name" select="string(.)"/>
+
+    <xsl:if test="not(ancestor::interface)">
+      <xsl:message terminate="yes">
+        <xsl:text>ERR: Cannot use tp:member-ref when not in an</xsl:text>
+        <xsl:text> &lt;interface&gt;&#10;</xsl:text>
+      </xsl:message>
+    </xsl:if>
+
+    <xsl:choose>
+      <xsl:when test="ancestor::interface/signal[@name=$name]"/>
+      <xsl:when test="ancestor::interface/method[@name=$name]"/>
+      <xsl:when test="ancestor::interface/property[@name=$name]"/>
+      <xsl:otherwise>
+        <xsl:message terminate="yes">
+          <xsl:text>ERR: interface </xsl:text>
+          <xsl:value-of select="ancestor::interface/@name"/>
+          <xsl:text> has no signal/method/property called </xsl:text>
+          <xsl:value-of select="$name"/>
+          <xsl:text>&#10;</xsl:text>
+        </xsl:message>
+      </xsl:otherwise>
+    </xsl:choose>
+
+    <a xmlns="http://www.w3.org/1999/xhtml" href="#{$prefix}{$name}">
+      <xsl:value-of select="$name"/>
+    </a>
+  </xsl:template>
+
   <xsl:template match="*" mode="identity">
     <xsl:copy>
       <xsl:apply-templates mode="identity"/>
@@ -46,18 +115,20 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
   </xsl:template>
 
   <xsl:template match="tp:docstring">
-    <xsl:apply-templates select="text() | html:* | tp:rationale" mode="html"/>
+    <xsl:apply-templates mode="html"/>
   </xsl:template>
 
   <xsl:template match="tp:added">
-    <p class="added">Added in version <xsl:value-of select="@version"/>.
+    <p class="added" xmlns="http://www.w3.org/1999/xhtml">Added in
+      version <xsl:value-of select="@version"/>.
       <xsl:apply-templates select="node()" mode="html"/></p>
   </xsl:template>
 
   <xsl:template match="tp:changed">
     <xsl:choose>
       <xsl:when test="node()">
-        <p class="changed">Changed in version <xsl:value-of select="@version"/>:
+        <p class="changed" xmlns="http://www.w3.org/1999/xhtml">Changed in
+          version <xsl:value-of select="@version"/>:
           <xsl:apply-templates select="node()" mode="html"/></p>
       </xsl:when>
       <xsl:otherwise>
@@ -68,8 +139,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
   </xsl:template>
 
   <xsl:template match="tp:deprecated">
-    <p class="deprecated">Deprecated since version
-      <xsl:value-of select="@version"/>.
+    <p class="deprecated" xmlns="http://www.w3.org/1999/xhtml">Deprecated
+      since version <xsl:value-of select="@version"/>.
       <xsl:apply-templates select="node()" mode="html"/></p>
   </xsl:template>
 
@@ -131,7 +202,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
   <xsl:template match="/tp:spec/tp:copyright">
     <div xmlns="http://www.w3.org/1999/xhtml">
-      <xsl:apply-templates/>
+      <xsl:apply-templates mode="text"/>
     </div>
   </xsl:template>
   <xsl:template match="/tp:spec/tp:license">
@@ -224,6 +295,21 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
   </xsl:template>
 
   <xsl:template match="tp:flags">
+
+    <xsl:if test="not(@name) or @name = ''">
+      <xsl:message terminate="yes">
+        <xsl:text>ERR: missing @name on a tp:flags type&#10;</xsl:text>
+      </xsl:message>
+    </xsl:if>
+
+    <xsl:if test="not(@type) or @type = ''">
+      <xsl:message terminate="yes">
+        <xsl:text>ERR: missing @type on tp:flags type</xsl:text>
+        <xsl:value-of select="@name"/>
+        <xsl:text>&#10;</xsl:text>
+      </xsl:message>
+    </xsl:if>
+
     <h3>
       <a name="type-{@name}">
         <xsl:value-of select="@name"/>
@@ -264,6 +350,21 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
   </xsl:template>
 
   <xsl:template match="tp:enum">
+
+    <xsl:if test="not(@name) or @name = ''">
+      <xsl:message terminate="yes">
+        <xsl:text>ERR: missing @name on a tp:enum type&#10;</xsl:text>
+      </xsl:message>
+    </xsl:if>
+
+    <xsl:if test="not(@type) or @type = ''">
+      <xsl:message terminate="yes">
+        <xsl:text>ERR: missing @type on tp:enum type</xsl:text>
+        <xsl:value-of select="@name"/>
+        <xsl:text>&#10;</xsl:text>
+      </xsl:message>
+    </xsl:if>
+
     <h3 xmlns="http://www.w3.org/1999/xhtml">
       <a name="type-{@name}">
         <xsl:value-of select="@name"/>
@@ -304,11 +405,38 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
   </xsl:template>
 
   <xsl:template match="property">
+
+    <xsl:if test="not(parent::interface)">
+      <xsl:message terminate="yes">
+        <xsl:text>ERR: property </xsl:text>
+        <xsl:value-of select="@name"/>
+        <xsl:text> does not have an interface as parent&#10;</xsl:text>
+      </xsl:message>
+    </xsl:if>
+
+    <xsl:if test="not(@name) or @name = ''">
+      <xsl:message terminate="yes">
+        <xsl:text>ERR: missing @name on a property of </xsl:text>
+        <xsl:value-of select="../@name"/>
+        <xsl:text>&#10;</xsl:text>
+      </xsl:message>
+    </xsl:if>
+
+    <xsl:if test="not(@type) or @type = ''">
+      <xsl:message terminate="yes">
+        <xsl:text>ERR: missing @type on property </xsl:text>
+        <xsl:value-of select="concat(../@name, '.', @name)"/>
+        <xsl:text>: '</xsl:text>
+        <xsl:value-of select="@access"/>
+        <xsl:text>'&#10;</xsl:text>
+      </xsl:message>
+    </xsl:if>
+
     <dt xmlns="http://www.w3.org/1999/xhtml">
       <a name="{concat(../@name, '.', @name)}">
         <code><xsl:value-of select="@name"/></code>
       </a>
-      <xsl:text> - </xsl:text>
+      <xsl:text> − </xsl:text>
       <code><xsl:value-of select="@type"/></code>
       <xsl:call-template name="parenthesized-tp-type"/>
       <xsl:text>, </xsl:text>
@@ -323,8 +451,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
           <xsl:text>read/write</xsl:text>
         </xsl:when>
         <xsl:otherwise>
-          <xsl:text>access: </xsl:text>
-          <code><xsl:value-of select="@access"/></code>
+          <xsl:message terminate="yes">
+            <xsl:text>ERR: unknown or missing value for </xsl:text>
+            <xsl:text>@access on property </xsl:text>
+            <xsl:value-of select="concat(../@name, '.', @name)"/>
+            <xsl:text>: '</xsl:text>
+            <xsl:value-of select="@access"/>
+            <xsl:text>'&#10;</xsl:text>
+          </xsl:message>
         </xsl:otherwise>
       </xsl:choose>
     </dt>
@@ -339,7 +473,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
   <xsl:template match="tp:property">
     <dt xmlns="http://www.w3.org/1999/xhtml">
       <xsl:if test="@name">
-        <code><xsl:value-of select="@name"/></code> -
+        <code><xsl:value-of select="@name"/></code> −
       </xsl:if>
       <code><xsl:value-of select="@type"/></code>
     </dt>
@@ -356,7 +490,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
       <h3>
         <a name="type-{@name}">
           <xsl:value-of select="@name"/>
-        </a> - a{
+        </a> − a{
         <xsl:for-each select="tp:member">
           <xsl:value-of select="@type"/>
           <xsl:text>: </xsl:text>
@@ -386,15 +520,30 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
   <xsl:template match="tp:simple-type | tp:enum | tp:flags | tp:external-type"
     mode="in-index">
-    - <xsl:value-of select="@type"/>
+    − <xsl:value-of select="@type"/>
   </xsl:template>
 
   <xsl:template match="tp:simple-type">
+
+    <xsl:if test="not(@name) or @name = ''">
+      <xsl:message terminate="yes">
+        <xsl:text>ERR: missing @name on a tp:simple-type&#10;</xsl:text>
+      </xsl:message>
+    </xsl:if>
+
+    <xsl:if test="not(@type) or @type = ''">
+      <xsl:message terminate="yes">
+        <xsl:text>ERR: missing @type on tp:simple-type</xsl:text>
+        <xsl:value-of select="@name"/>
+        <xsl:text>&#10;</xsl:text>
+      </xsl:message>
+    </xsl:if>
+
     <div xmlns="http://www.w3.org/1999/xhtml" class="simple-type">
       <h3>
         <a name="type-{@name}">
           <xsl:value-of select="@name"/>
-        </a> - <xsl:value-of select="@type"/>
+        </a> − <xsl:value-of select="@type"/>
       </h3>
       <div class="docstring">
         <xsl:apply-templates select="tp:docstring"/>
@@ -406,25 +555,40 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
   </xsl:template>
 
   <xsl:template match="tp:external-type">
+
+    <xsl:if test="not(@name) or @name = ''">
+      <xsl:message terminate="yes">
+        <xsl:text>ERR: missing @name on a tp:external-type&#10;</xsl:text>
+      </xsl:message>
+    </xsl:if>
+
+    <xsl:if test="not(@type) or @type = ''">
+      <xsl:message terminate="yes">
+        <xsl:text>ERR: missing @type on tp:external-type</xsl:text>
+        <xsl:value-of select="@name"/>
+        <xsl:text>&#10;</xsl:text>
+      </xsl:message>
+    </xsl:if>
+
     <div xmlns="http://www.w3.org/1999/xhtml" class="external-type">
       <dt>
         <a name="type-{@name}">
           <xsl:value-of select="@name"/>
-        </a> - <xsl:value-of select="@type"/>
+        </a> − <xsl:value-of select="@type"/>
       </dt>
       <dd>Defined by: <xsl:value-of select="@from"/></dd>
     </div>
   </xsl:template>
 
   <xsl:template match="tp:struct" mode="in-index">
-    - ( <xsl:for-each select="tp:member">
+    − ( <xsl:for-each select="tp:member">
           <xsl:value-of select="@type"/>
           <xsl:if test="position() != last()">, </xsl:if>
         </xsl:for-each> )
   </xsl:template>
 
   <xsl:template match="tp:mapping" mode="in-index">
-    - a{ <xsl:for-each select="tp:member">
+    − a{ <xsl:for-each select="tp:member">
           <xsl:value-of select="@type"/>
           <xsl:if test="position() != last()"> &#x2192; </xsl:if>
         </xsl:for-each> }
@@ -435,7 +599,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
       <h3>
         <a name="type-{@name}">
           <xsl:value-of select="@name"/>
-        </a> - (
+        </a> − (
         <xsl:for-each select="tp:member">
           <xsl:value-of select="@type"/>
           <xsl:text>: </xsl:text>
@@ -471,6 +635,64 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
   </xsl:template>
 
   <xsl:template match="method">
+
+    <xsl:if test="not(parent::interface)">
+      <xsl:message terminate="yes">
+        <xsl:text>ERR: method </xsl:text>
+        <xsl:value-of select="@name"/>
+        <xsl:text> does not have an interface as parent&#10;</xsl:text>
+      </xsl:message>
+    </xsl:if>
+
+    <xsl:if test="not(@name) or @name = ''">
+      <xsl:message terminate="yes">
+        <xsl:text>ERR: missing @name on a method of </xsl:text>
+        <xsl:value-of select="../@name"/>
+        <xsl:text>&#10;</xsl:text>
+      </xsl:message>
+    </xsl:if>
+
+    <xsl:for-each select="arg">
+      <xsl:if test="not(@type) or @type = ''">
+        <xsl:message terminate="yes">
+          <xsl:text>ERR: an arg of method </xsl:text>
+          <xsl:value-of select="concat(../../@name, '.', ../@name)"/>
+          <xsl:text> has no type</xsl:text>
+        </xsl:message>
+      </xsl:if>
+      <xsl:choose>
+        <xsl:when test="@direction='in'">
+          <xsl:if test="not(@name) or @name = ''">
+            <xsl:message terminate="yes">
+              <xsl:text>ERR: an 'in' arg of method </xsl:text>
+              <xsl:value-of select="concat(../../@name, '.', ../@name)"/>
+              <xsl:text> has no name</xsl:text>
+            </xsl:message>
+          </xsl:if>
+        </xsl:when>
+        <xsl:when test="@direction='out'">
+          <!-- FIXME: This is commented out until someone with a lot of time
+          on their hands goes through the spec adding names to all the "out"
+          arguments
+
+          <xsl:if test="not(@name) or @name = ''">
+            <xsl:message terminate="no">
+              <xsl:text>INFO: an 'out' arg of method </xsl:text>
+              <xsl:value-of select="concat(../../@name, '.', ../@name)"/>
+              <xsl:text> has no name</xsl:text>
+            </xsl:message>
+          </xsl:if>-->
+        </xsl:when>
+        <xsl:otherwise>
+          <xsl:message terminate="yes">
+            <xsl:text>ERR: an arg of method </xsl:text>
+            <xsl:value-of select="concat(../../@name, '.', ../@name)"/>
+            <xsl:text> has direction neither 'in' nor 'out'</xsl:text>
+          </xsl:message>
+        </xsl:otherwise>
+      </xsl:choose>
+    </xsl:for-each>
+
     <div xmlns="http://www.w3.org/1999/xhtml" class="method">
       <h3 xmlns="http://www.w3.org/1999/xhtml">
         <a name="{concat(../@name, concat('.', @name))}">
@@ -532,6 +754,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
   <xsl:template name="tp-type">
     <xsl:param name="tp-type"/>
+    <xsl:param name="type"/>
 
     <xsl:variable name="single-type">
       <xsl:choose>
@@ -544,30 +767,73 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
       </xsl:choose>
     </xsl:variable>
 
-    <xsl:choose>
-      <xsl:when test="//tp:simple-type[@name=$single-type]" />
-      <xsl:when test="//tp:struct[@name=$single-type]" />
-      <xsl:when test="//tp:enum[@name=$single-type]" />
-      <xsl:when test="//tp:flags[@name=$single-type]" />
-      <xsl:when test="//tp:mapping[@name=$single-type]" />
-      <xsl:when test="//tp:external-type[@name=$single-type]" />
-      <xsl:otherwise>
-        <xsl:message terminate="yes">
-          <xsl:text>ERR: Unable to find type '</xsl:text>
-          <xsl:value-of select="$tp-type"/>
-          <xsl:text>'&#10;</xsl:text>
-        </xsl:message>
-      </xsl:otherwise>
-    </xsl:choose>
+    <xsl:variable name="type-of-tp-type">
+      <xsl:if test="contains($tp-type, '[]')">
+        <!-- one 'a', plus one for each [ after the [], and delete all ] -->
+        <xsl:value-of select="concat('a',
+          translate(substring-after($tp-type, '[]'), '[]', 'a'))"/>
+      </xsl:if>
+
+      <xsl:choose>
+        <xsl:when test="//tp:simple-type[@name=$single-type]">
+          <xsl:value-of select="string(//tp:simple-type[@name=$single-type]/@type)"/>
+        </xsl:when>
+        <xsl:when test="//tp:struct[@name=$single-type]">
+          <xsl:text>(</xsl:text>
+          <xsl:for-each select="//tp:struct[@name=$single-type]/tp:member">
+            <xsl:value-of select="@type"/>
+          </xsl:for-each>
+          <xsl:text>)</xsl:text>
+        </xsl:when>
+        <xsl:when test="//tp:enum[@name=$single-type]">
+          <xsl:value-of select="string(//tp:enum[@name=$single-type]/@type)"/>
+        </xsl:when>
+        <xsl:when test="//tp:flags[@name=$single-type]">
+          <xsl:value-of select="string(//tp:flags[@name=$single-type]/@type)"/>
+        </xsl:when>
+        <xsl:when test="//tp:mapping[@name=$single-type]">
+          <xsl:text>a{</xsl:text>
+          <xsl:for-each select="//tp:mapping[@name=$single-type]/tp:member">
+            <xsl:value-of select="@type"/>
+          </xsl:for-each>
+          <xsl:text>}</xsl:text>
+        </xsl:when>
+        <xsl:when test="//tp:external-type[@name=$single-type]">
+          <xsl:value-of select="string(//tp:external-type[@name=$single-type]/@type)"/>
+        </xsl:when>
+        <xsl:otherwise>
+          <xsl:message terminate="yes">
+            <xsl:text>ERR: Unable to find type '</xsl:text>
+            <xsl:value-of select="$tp-type"/>
+            <xsl:text>'&#10;</xsl:text>
+          </xsl:message>
+        </xsl:otherwise>
+      </xsl:choose>
+    </xsl:variable>
+
+    <xsl:if test="string($type) != '' and
+      string($type-of-tp-type) != string($type)">
+      <xsl:message terminate="yes">
+        <xsl:text>ERR: tp:type '</xsl:text>
+        <xsl:value-of select="$tp-type"/>
+        <xsl:text>' has D-Bus type '</xsl:text>
+        <xsl:value-of select="$type-of-tp-type"/>
+        <xsl:text>' but has been used with type='</xsl:text>
+        <xsl:value-of select="$type"/>
+        <xsl:text>'&#10;</xsl:text>
+      </xsl:message>
+    </xsl:if>
+
     <a href="#type-{$single-type}"><xsl:value-of select="$tp-type"/></a>
 
   </xsl:template>
 
   <xsl:template name="parenthesized-tp-type">
     <xsl:if test="@tp:type">
-      <xsl:text>(</xsl:text>
+      <xsl:text> (</xsl:text>
       <xsl:call-template name="tp-type">
         <xsl:with-param name="tp-type" select="@tp:type"/>
+        <xsl:with-param name="type" select="@type"/>
       </xsl:call-template>
       <xsl:text>)</xsl:text>
     </xsl:if>
@@ -575,7 +841,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
   <xsl:template match="tp:member" mode="members-in-docstring">
     <dt xmlns="http://www.w3.org/1999/xhtml">
-      <code><xsl:value-of select="@name"/></code> -
+      <code><xsl:value-of select="@name"/></code> −
       <code><xsl:value-of select="@type"/></code>
       <xsl:call-template name="parenthesized-tp-type"/>
     </dt>
@@ -593,7 +859,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
   <xsl:template match="arg" mode="parameters-in-docstring">
     <dt xmlns="http://www.w3.org/1999/xhtml">
-      <code><xsl:value-of select="@name"/></code> -
+      <code><xsl:value-of select="@name"/></code> −
       <code><xsl:value-of select="@type"/></code>
       <xsl:call-template name="parenthesized-tp-type"/>
     </dt>
@@ -605,7 +871,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
   <xsl:template match="arg" mode="returns-in-docstring">
     <dt xmlns="http://www.w3.org/1999/xhtml">
       <xsl:if test="@name">
-        <code><xsl:value-of select="@name"/></code> -
+        <code><xsl:value-of select="@name"/></code> −
       </xsl:if>
       <code><xsl:value-of select="@type"/></code>
       <xsl:call-template name="parenthesized-tp-type"/>
@@ -636,6 +902,57 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
   </xsl:template>
 
   <xsl:template match="signal">
+
+    <xsl:if test="not(parent::interface)">
+      <xsl:message terminate="yes">
+        <xsl:text>ERR: signal </xsl:text>
+        <xsl:value-of select="@name"/>
+        <xsl:text> does not have an interface as parent&#10;</xsl:text>
+      </xsl:message>
+    </xsl:if>
+
+    <xsl:if test="not(@name) or @name = ''">
+      <xsl:message terminate="yes">
+        <xsl:text>ERR: missing @name on a signal of </xsl:text>
+        <xsl:value-of select="../@name"/>
+        <xsl:text>&#10;</xsl:text>
+      </xsl:message>
+    </xsl:if>
+
+    <xsl:for-each select="arg">
+      <xsl:if test="not(@type) or @type = ''">
+        <xsl:message terminate="yes">
+          <xsl:text>ERR: an arg of signal </xsl:text>
+          <xsl:value-of select="concat(../../@name, '.', ../@name)"/>
+          <xsl:text> has no type</xsl:text>
+        </xsl:message>
+      </xsl:if>
+      <xsl:if test="not(@name) or @name = ''">
+        <xsl:message terminate="yes">
+          <xsl:text>ERR: an arg of signal </xsl:text>
+          <xsl:value-of select="concat(../../@name, '.', ../@name)"/>
+          <xsl:text> has no name</xsl:text>
+        </xsl:message>
+      </xsl:if>
+      <xsl:choose>
+        <xsl:when test="not(@direction)"/>
+        <xsl:when test="@direction='in'">
+          <xsl:message terminate="no">
+            <xsl:text>INFO: an arg of signal </xsl:text>
+            <xsl:value-of select="concat(../../@name, '.', ../@name)"/>
+            <xsl:text> has unnecessary direction 'in'</xsl:text>
+          </xsl:message>
+        </xsl:when>
+        <xsl:otherwise>
+          <xsl:message terminate="yes">
+            <xsl:text>ERR: an arg of signal </xsl:text>
+            <xsl:value-of select="concat(../../@name, '.', ../@name)"/>
+            <xsl:text> has direction other than 'in'</xsl:text>
+          </xsl:message>
+        </xsl:otherwise>
+      </xsl:choose>
+    </xsl:for-each>
+
     <div xmlns="http://www.w3.org/1999/xhtml" class="signal">
       <h3 xmlns="http://www.w3.org/1999/xhtml">
         <a name="{concat(../@name, concat('.', @name))}">
@@ -788,6 +1105,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
             color: #ff0000;
             background: #ffffff;
           }
+          table, tr, td, th {
+            border: 1px solid #666;
+          }
 
         </style>
       </head>
@@ -796,7 +1116,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
           <xsl:value-of select="tp:title" />
         </h1>
         <xsl:if test="tp:version">
-          <h2>Version <xsl:apply-templates select="tp:version"/></h2>
+          <h2>Version <xsl:value-of select="string(tp:version)"/></h2>
         </xsl:if>
         <xsl:apply-templates select="tp:copyright"/>
         <xsl:apply-templates select="tp:license"/>
@@ -838,6 +1158,29 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
     </html>
   </xsl:template>
 
+  <xsl:template match="node">
+      <xsl:apply-templates />
+  </xsl:template>
+
+  <xsl:template match="text()">
+    <xsl:if test="normalize-space(.) != ''">
+      <xsl:message terminate="yes">
+        <xsl:text>Stray text: {{{</xsl:text>
+        <xsl:value-of select="." />
+        <xsl:text>}}}&#10;</xsl:text>
+      </xsl:message>
+    </xsl:if>
+  </xsl:template>
+
+  <xsl:template match="*">
+      <xsl:message terminate="yes">
+         <xsl:text>Unrecognised element: {</xsl:text>
+         <xsl:value-of select="namespace-uri(.)" />
+         <xsl:text>}</xsl:text>
+         <xsl:value-of select="local-name(.)" />
+         <xsl:text>&#10;</xsl:text>
+      </xsl:message>
+  </xsl:template>
 </xsl:stylesheet>
 
 <!-- vim:set sw=2 sts=2 et: -->

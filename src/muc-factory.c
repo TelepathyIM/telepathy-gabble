@@ -363,6 +363,7 @@ new_muc_channel (GabbleMucFactory *fac,
        "handle", handle,
        "invite-self", invite_self,
        "initiator-handle", inviter,
+       "invitation-message", message,
        NULL);
 
   g_signal_connect (chan, "closed", (GCallback) muc_channel_closed_cb, fac);
@@ -371,12 +372,23 @@ new_muc_channel (GabbleMucFactory *fac,
 
   g_free (object_path);
 
-  g_signal_connect (chan, "ready", G_CALLBACK (muc_ready_cb), fac);
+  if (invite_self)
+    {
+      g_assert (!_gabble_muc_channel_is_ready (chan));
+
+      g_signal_connect (chan, "ready", G_CALLBACK (muc_ready_cb), fac);
+    }
+  else
+    {
+      /* if we've been invited by someone else, then it's considered to be
+       * ready immediately - but we're too late to get the signal since
+       * g_object_new emitted it */
+      g_assert (_gabble_muc_channel_is_ready (chan));
+      muc_ready_cb (chan, fac);
+    }
+
   g_signal_connect (chan, "join-error", G_CALLBACK (muc_join_error_cb),
                     fac);
-
-  if (!invite_self)
-    _gabble_muc_channel_handle_invited (chan, inviter, message);
 
   return chan;
 }

@@ -106,6 +106,7 @@ enum
   PROP_CONNECTION,
   PROP_STATE,
   PROP_INVITE_SELF,
+  PROP_INVITATION_MESSAGE,
   PROP_INTERFACES,
   PROP_INITIATOR_HANDLE,
   PROP_INITIATOR_ID,
@@ -242,6 +243,7 @@ struct _GabbleMucChannelPrivate
   gboolean dispose_has_run;
 
   gboolean invite_self;
+  gchar *invitation_message;
 
   /* Aggregate all presences when joining the chatroom */
   InitialStateAggregator *initial_state_aggregator;
@@ -272,14 +274,20 @@ gabble_muc_channel_init (GabbleMucChannel *obj)
       g_direct_equal);
 }
 
+
 static void contact_handle_to_room_identity (GabbleMucChannel *, TpHandle,
     TpHandle *, GString **);
+
+static void _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
+    TpHandle inviter, const gchar *message);
+
 
 static GObject *
 gabble_muc_channel_constructor (GType type, guint n_props,
                                 GObjectConstructParam *props)
 {
   GObject *obj;
+  GabbleMucChannel *self;
   GabbleMucChannelPrivate *priv;
   TpBaseConnection *conn;
   DBusGConnection *bus;
@@ -288,8 +296,9 @@ gabble_muc_channel_constructor (GType type, guint n_props,
 
   obj = G_OBJECT_CLASS (gabble_muc_channel_parent_class)->
            constructor (type, n_props, props);
+  self = GABBLE_MUC_CHANNEL (obj);
 
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (obj);
+  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
   conn = (TpBaseConnection *) priv->conn;
 
   room_handles = tp_base_connection_get_handles (conn, TP_HANDLE_TYPE_ROOM);
@@ -302,8 +311,8 @@ gabble_muc_channel_constructor (GType type, guint n_props,
   /* get the room's jid */
   priv->jid = tp_handle_inspect (room_handles, priv->handle);
 
-  if (priv->initiator != 0)
-    tp_handle_ref (contact_handles, priv->initiator);
+  g_assert (priv->initiator != 0);
+  tp_handle_ref (contact_handles, priv->initiator);
 
   /* get our own identity in the room */
   contact_handle_to_room_identity (GABBLE_MUC_CHANNEL (obj),
@@ -355,12 +364,29 @@ gabble_muc_channel_constructor (GType type, guint n_props,
     {
       GError *error = NULL;
       GArray *members = g_array_sized_new (FALSE, FALSE, sizeof (TpHandle), 1);
+
+      g_assert (priv->initiator == conn->self_handle);
+      g_assert (priv->invitation_message == NULL);
+
       g_array_append_val (members, self_handle);
       tp_group_mixin_add_handle_owner (obj, self_handle, conn->self_handle);
       tp_group_mixin_add_members (obj, members,
           "", &error);
       g_assert (error == NULL);
       g_array_free (members, TRUE);
+    }
+  else
+    {
+      g_assert (priv->initiator != 0);
+      g_assert (priv->invitation_message != NULL);
+
+      _gabble_muc_channel_handle_invited (self, priv->initiator,
+          priv->invitation_message);
+
+      /* we've dealt with it (and copied it elsewhere), so there's no point
+       * in keeping it */
+      g_free (priv->invitation_message);
+      priv->invitation_message = NULL;
     }
 
   tp_handle_unref (contact_handles, self_handle);
@@ -844,6 +870,10 @@ gabble_muc_channel_set_property (GObject     *object,
     case PROP_INITIATOR_HANDLE:
       priv->initiator = g_value_get_uint (value);
       break;
+    case PROP_INVITATION_MESSAGE:
+      g_assert (priv->invitation_message == NULL);
+      priv->invitation_message = g_value_dup_string (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -964,6 +994,16 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
       G_PARAM_READABLE |
       G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
   g_object_class_install_property (object_class, PROP_INITIATOR_ID,
+      param_spec);
+
+  param_spec = g_param_spec_string ("invitation-message",
+      "Invitation message",
+      "The message we were sent when invited; NULL if not invited or if "
+      "already processed",
+      NULL,
+      G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY |
+      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+  g_object_class_install_property (object_class, PROP_INVITATION_MESSAGE,
       param_spec);
 
   signals[READY] =
@@ -2179,7 +2219,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
       timestamp, text);
 }
 
-void
+static void
 _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
                                     TpHandle inviter,
                                     const gchar *message)

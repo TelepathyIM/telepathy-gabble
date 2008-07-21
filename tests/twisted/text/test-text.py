@@ -27,6 +27,7 @@ def test(q, bus, conn, stream):
     assert event.args[2] == 1
     jid = conn.InspectHandles(1, [event.args[3]])[0]
     assert jid == 'foo@bar.com'
+    assert event.args[4] == False   # suppress handler
 
     # Exercise basic Channel Properties from spec 0.17.7
     channel_props = text_chan.GetAll(

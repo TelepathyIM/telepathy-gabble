@@ -21,6 +21,7 @@
  * -- LET'S DISCO!!!  \o/ \o_ _o/ /\o/\ _/o/- -\o\_ --
  */
 
+#include "config.h"
 #include "disco.h"
 
 #define DBUS_API_SUBJECT_TO_CHANGE

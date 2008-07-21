@@ -337,6 +337,7 @@ new_im_channel (GabbleImFactory *fac,
                        "connection", priv->conn,
                        "object-path", object_path,
                        "handle", handle,
+                       "initiator-handle", initiator,
                        NULL);
 
   DEBUG ("object path %s", object_path);

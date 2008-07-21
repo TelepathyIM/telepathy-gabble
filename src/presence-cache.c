@@ -34,6 +34,7 @@
 #include "gabble-signals-marshal.h"
 #include "namespaces.h"
 #include "util.h"
+#include "roster.h"
 
 /* When five DIFFERENT guys report the same caps for a given bundle, it'll
  * be enough. But if only ONE guy use the verification string (XEP-0115 v1.5),
@@ -1095,6 +1096,7 @@ _parse_presence_message (GabblePresenceCache *cache,
                          const gchar *from,
                          LmMessage *message)
 {
+  GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
   gint8 priority = 0;
   const gchar *resource, *status_message = NULL;
   LmMessageNode *presence_node, *child_node;
@@ -1150,12 +1152,22 @@ _parse_presence_message (GabblePresenceCache *cache,
       break;
 
     case LM_MESSAGE_SUB_TYPE_ERROR:
-      NODE_DEBUG (presence_node, "setting contact offline due to error");
-      /* fall through */
+      NODE_DEBUG (presence_node, "setting contact error due to error");
+      gabble_presence_cache_update (cache, handle, resource,
+          GABBLE_PRESENCE_ERROR, status_message, priority);
+
+      ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      break;
 
     case LM_MESSAGE_SUB_TYPE_UNAVAILABLE:
+      if (gabble_roster_handle_get_subscription (priv->conn->roster, handle)
+        & GABBLE_ROSTER_SUBSCRIPTION_FROM)
+        presence_id = GABBLE_PRESENCE_OFFLINE;
+      else
+        presence_id = GABBLE_PRESENCE_UNKNOWN;
+
       gabble_presence_cache_update (cache, handle, resource,
-          GABBLE_PRESENCE_OFFLINE, status_message, priority);
+          presence_id, status_message, priority);
 
       ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
       break;

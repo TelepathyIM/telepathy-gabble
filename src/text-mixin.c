@@ -23,6 +23,7 @@
 
 #define _GNU_SOURCE /* Needed for strptime (_XOPEN_SOURCE can also be used). */
 
+#include "config.h"
 #include "text-mixin.h"
 
 #include <loudmouth/loudmouth.h>

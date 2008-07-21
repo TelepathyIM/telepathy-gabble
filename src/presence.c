@@ -18,6 +18,7 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include "config.h"
 #include "presence.h"
 
 #include <string.h>
@@ -28,7 +29,6 @@
 #include "namespaces.h"
 #include "util.h"
 
-#include "config.h"
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 #include "debug.h"
 

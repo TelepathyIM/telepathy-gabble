@@ -24,6 +24,7 @@
  * according to XEP-0115.
  */
 
+#include "config.h"
 #include "caps-hash.h"
 
 #include <string.h>

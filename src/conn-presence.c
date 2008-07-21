@@ -265,14 +265,14 @@ OUT:
 
 
 static void
-connection_presence_update_cb (
+connection_presences_updated_cb (
     GabblePresenceCache *cache,
-    TpHandle handle,
+    const GArray *handles,
     gpointer user_data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
 
-  emit_one_presence_update (conn, handle);
+  emit_presence_update (conn, handles);
 }
 
 
@@ -322,8 +322,8 @@ conn_presence_class_init (GabbleConnectionClass *klass)
 void
 conn_presence_init (GabbleConnection *conn)
 {
-  g_signal_connect (conn->presence_cache, "presence-update",
-      G_CALLBACK (connection_presence_update_cb), conn);
+  g_signal_connect (conn->presence_cache, "presences-updated",
+      G_CALLBACK (connection_presences_updated_cb), conn);
   g_signal_connect (conn, "status-changed",
       G_CALLBACK (connection_status_changed_cb), conn);
 

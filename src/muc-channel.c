@@ -44,6 +44,7 @@
 #include "presence.h"
 #include "namespaces.h"
 #include "util.h"
+#include "presence-cache.h"
 
 #define DEFAULT_JOIN_TIMEOUT (180 * 1000)
 #define MAX_NICK_RETRIES 3
@@ -1326,6 +1327,7 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
 {
   GabbleMucChannelPrivate *priv;
   TpIntSet *set;
+  GArray *handles;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
@@ -1352,6 +1354,13 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
     {
       send_leave_message (chan, reason);
     }
+
+  handles = tp_handle_set_to_array (chan->group.members);
+
+  gabble_presence_cache_update_many (priv->conn->presence_cache, handles,
+    NULL, GABBLE_PRESENCE_UNKNOWN, NULL, 0);
+
+  g_array_free (handles, TRUE);
 
   /* Update state and emit Closed signal */
   g_object_set (chan, "state", MUC_STATE_ENDED, NULL);

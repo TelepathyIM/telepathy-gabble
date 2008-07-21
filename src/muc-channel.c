@@ -22,10 +22,10 @@
 #include "config.h"
 #include "muc-channel.h"
 
-#include <dbus/dbus-glib.h>
 #include <stdio.h>
 #include <string.h>
 
+#include <dbus/dbus-glib.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/debug-ansi.h>
 #include <telepathy-glib/errors.h>
@@ -35,9 +35,10 @@
 
 #include "extensions/extensions.h"
 
+#define DEBUG_FLAG GABBLE_DEBUG_MUC
+#include "connection.h"
 #include "debug.h"
 #include "disco.h"
-#include "connection.h"
 #include "error.h"
 #include "namespaces.h"
 #include "util.h"

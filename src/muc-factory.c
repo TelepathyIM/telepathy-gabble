@@ -362,6 +362,7 @@ new_muc_channel (GabbleMucFactory *fac,
        "object-path", object_path,
        "handle", handle,
        "invite-self", invite_self,
+       "initiator-handle", inviter,
        NULL);
 
   g_signal_connect (chan, "closed", (GCallback) muc_channel_closed_cb, fac);

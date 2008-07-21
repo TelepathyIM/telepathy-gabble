@@ -68,6 +68,21 @@ def test(q, bus, conn, stream):
 
     media_chan = make_channel_proxy(conn, tp_path_prefix + e.path, 'Channel.Interface.Group')
 
+    # Exercise channel properties
+    future_props = media_chan.GetAll(
+            'org.freedesktop.Telepathy.Channel',
+            dbus_interface='org.freedesktop.DBus.Properties')
+    assert future_props['TargetHandle'] == 0
+    assert future_props['TargetHandleType'] == 0
+
+    # Exercise FUTURE properties
+    future_props = media_chan.GetAll(
+            'org.freedesktop.Telepathy.Channel.FUTURE',
+            dbus_interface='org.freedesktop.DBus.Properties')
+    assert future_props['TargetID'] == ''
+    assert future_props['InitiatorID'] == 'foo@bar.com'
+    assert future_props['InitiatorHandle'] == remote_handle
+
     media_chan.RemoveMembers([dbus.UInt32(1)], 'rejected')
 
     e = q.expect('stream-iq')

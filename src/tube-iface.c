@@ -21,7 +21,6 @@
 #include "tube-iface.h"
 
 #include "connection.h"
-#include "extensions/extensions.h"
 
 gboolean
 gabble_tube_iface_accept (GabbleTubeIface *self,

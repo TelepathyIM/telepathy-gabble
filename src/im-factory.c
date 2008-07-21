@@ -22,11 +22,8 @@
 
 #define DBUS_API_SUBJECT_TO_CHANGE
 
-#include <stdlib.h>
 #include <string.h>
-#include <time.h>
 
-#include <glib.h>
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
 #include <loudmouth/loudmouth.h>

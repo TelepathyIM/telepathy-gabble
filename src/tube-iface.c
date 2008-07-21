@@ -23,8 +23,6 @@
 #include "connection.h"
 #include "extensions/extensions.h"
 
-#include <glib.h>
-
 gboolean
 gabble_tube_iface_accept (GabbleTubeIface *self,
                           GError **error)

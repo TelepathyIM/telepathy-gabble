@@ -23,7 +23,6 @@
 #include "vcard-manager.h"
 
 #include <string.h>
-#include <time.h>
 
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/heap.h>

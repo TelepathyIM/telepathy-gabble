@@ -23,9 +23,7 @@
 #include "muc-channel.h"
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <time.h>
 
 #include <dbus/dbus-glib.h>
 #include <telepathy-glib/dbus.h>

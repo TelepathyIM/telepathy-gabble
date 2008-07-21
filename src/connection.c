@@ -21,8 +21,6 @@
 #include "config.h"
 #include "connection.h"
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #define DBUS_API_SUBJECT_TO_CHANGE

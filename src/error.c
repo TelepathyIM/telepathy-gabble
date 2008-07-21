@@ -21,8 +21,8 @@
 #include "config.h"
 #include "error.h"
 
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "namespaces.h"
 #include "util.h"

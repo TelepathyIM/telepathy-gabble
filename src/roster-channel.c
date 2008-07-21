@@ -21,9 +21,6 @@
 #include "config.h"
 #include "roster-channel.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-
 #include <dbus/dbus-glib.h>
 #include <telepathy-glib/group-mixin.h>
 #include <telepathy-glib/dbus.h>

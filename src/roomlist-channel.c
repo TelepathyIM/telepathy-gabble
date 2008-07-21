@@ -21,8 +21,6 @@
 #include "config.h"
 #include "roomlist-channel.h"
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include <dbus/dbus-glib.h>

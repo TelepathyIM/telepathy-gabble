@@ -21,8 +21,6 @@
 #include "config.h"
 #include "connection-manager.h"
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include <dbus/dbus-protocol.h>

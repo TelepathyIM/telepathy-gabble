@@ -27,7 +27,6 @@
 #include "text-mixin.h"
 
 #include <string.h>
-#include <time.h>
 
 #include <dbus/dbus-glib.h>
 #include <loudmouth/loudmouth.h>

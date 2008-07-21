@@ -52,6 +52,10 @@ def test(q, bus, conn, stream):
             dbus_interface='org.freedesktop.DBus.Properties')
     assert future_props['TargetID'] == jid,\
             (future_props['TargetID'], jid)
+    assert future_props['InitiatorHandle'] == event.args[3],\
+            (future_props['InitiatorHandle'], event.args[3])
+    assert future_props['InitiatorID'] == jid,\
+            (future_props['InitiatorID'], jid)
 
     event = q.expect('dbus-signal', signal='Received')
 

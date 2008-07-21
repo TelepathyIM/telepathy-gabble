@@ -15,7 +15,7 @@ def test(q, bus, conn, stream):
 
     # <message type="chat"><body>hello</body</message>
     m = domish.Element(('', 'message'))
-    m['from'] = 'foo@bar.com'
+    m['from'] = 'foo@bar.com/Pidgin'
     m['type'] = 'chat'
     m.addElement('body', content='hello')
     stream.send(m)

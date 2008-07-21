@@ -1207,7 +1207,7 @@ gabble_muc_factory_handle_si_stream_request (GabbleMucFactory *self,
 {
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
-     (TpBaseConnection*) priv->conn, TP_HANDLE_TYPE_ROOM);
+     (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
   GabbleTubesChannel *chan;
 
   g_return_if_fail (tp_handle_is_valid (room_repo, room_handle, NULL));

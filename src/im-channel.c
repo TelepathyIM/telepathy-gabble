@@ -401,7 +401,7 @@ _gabble_im_channel_state_receive (GabbleIMChannel *chan,
   priv = GABBLE_IM_CHANNEL_GET_PRIVATE (chan);
 
   tp_svc_channel_interface_chat_state_emit_chat_state_changed (
-      (TpSvcChannelInterfaceChatState*)chan,
+      (TpSvcChannelInterfaceChatState *) chan,
       priv->handle, state);
 }
 

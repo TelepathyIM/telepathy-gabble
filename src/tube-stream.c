@@ -325,7 +325,7 @@ start_stream_initiation (GabbleTubeStream *self,
   priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
 
   contact_repo = tp_base_connection_get_handles (
-     (TpBaseConnection*) priv->conn, TP_HANDLE_TYPE_CONTACT);
+     (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 
   jid = tp_handle_inspect (contact_repo, priv->initiator);
 
@@ -1330,7 +1330,7 @@ gabble_tube_stream_close (GabbleTubeIface *tube)
       LmMessage *msg;
       const gchar *jid;
       TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-          (TpBaseConnection*) priv->conn, TP_HANDLE_TYPE_CONTACT);
+          (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
       gchar *id_str;
 
       jid = tp_handle_inspect (contact_repo, priv->handle);

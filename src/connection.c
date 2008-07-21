@@ -2407,7 +2407,7 @@ struct _RoomVerifyContext {
 static void
 room_verify_batch_free (RoomVerifyBatch *batch)
 {
-  TpBaseConnection *base = (TpBaseConnection *)(batch->conn);
+  TpBaseConnection *base = (TpBaseConnection *) (batch->conn);
   TpHandleRepoIface *room_handles = tp_base_connection_get_handles (base,
       TP_HANDLE_TYPE_ROOM);
   guint i;

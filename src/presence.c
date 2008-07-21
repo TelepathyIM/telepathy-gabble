@@ -22,8 +22,6 @@
 #include "presence.h"
 
 #include <string.h>
-#include <glib.h>
-#include <time.h>
 
 #include "presence-cache.h"
 #include "namespaces.h"

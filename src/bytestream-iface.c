@@ -20,8 +20,6 @@
 #include "config.h"
 #include "bytestream-iface.h"
 
-#include <glib.h>
-
 #include "connection.h"
 
 gboolean

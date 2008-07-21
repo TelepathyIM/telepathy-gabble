@@ -21,7 +21,6 @@
 #include "config.h"
 #include "gabble.h"
 
-#include <time.h>
 #include <unistd.h>
 
 #include <telepathy-glib/debug.h>

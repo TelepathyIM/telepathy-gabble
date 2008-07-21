@@ -20,9 +20,7 @@
 #include "config.h"
 #include "tube-stream.h"
 
-#include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -31,7 +29,6 @@
 #include <errno.h>
 #include <netdb.h>
 
-#include <glib.h>
 #include <glib/gstdio.h>
 #include <loudmouth/loudmouth.h>
 

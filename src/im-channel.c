@@ -21,9 +21,7 @@
 #include "config.h"
 #include "im-channel.h"
 
-#include <stdio.h>
 #include <string.h>
-#include <time.h>
 
 #include <dbus/dbus-glib.h>
 #include <loudmouth/loudmouth.h>

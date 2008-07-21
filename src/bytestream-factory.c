@@ -20,11 +20,8 @@
 #include "config.h"
 #include "bytestream-factory.h"
 
-#include <stdlib.h>
 #include <string.h>
-#include <time.h>
-
-#include <glib.h>
+#include <stdlib.h>
 
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>

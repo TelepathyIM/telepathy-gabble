@@ -28,9 +28,6 @@
 #include "caps-hash.h"
 
 #include <string.h>
-#include <time.h>
-
-#include <glib.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 

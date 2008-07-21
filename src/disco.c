@@ -24,7 +24,6 @@
 #include "config.h"
 #include "disco.h"
 
-#include <stdlib.h>
 #include <string.h>
 
 #define DBUS_API_SUBJECT_TO_CHANGE

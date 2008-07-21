@@ -298,7 +298,8 @@ gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
       G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
   g_object_class_install_property (object_class, PROP_TARGET_ID, param_spec);
 
-  tp_text_mixin_class_init (object_class, G_STRUCT_OFFSET (GabbleIMChannelClass, text_class));
+  tp_text_mixin_class_init (object_class,
+      G_STRUCT_OFFSET (GabbleIMChannelClass, text_class));
 
   gabble_im_channel_class->dbus_props_class.interfaces = prop_interfaces;
   tp_dbus_properties_mixin_class_init (object_class,

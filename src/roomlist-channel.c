@@ -32,6 +32,8 @@
 #include <telepathy-glib/svc-channel.h>
 #include <telepathy-glib/svc-generic.h>
 
+#include "extensions/extensions.h"
+
 #define DEBUG_FLAG GABBLE_DEBUG_ROOMLIST
 
 #include "connection.h"
@@ -48,12 +50,14 @@ G_DEFINE_TYPE_WITH_CODE (GabbleRoomlistChannel, gabble_roomlist_channel,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
       tp_dbus_properties_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_FUTURE, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_ROOM_LIST,
       roomlist_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL)
     );
 
 static const gchar *gabble_roomlist_channel_interfaces[] = {
+    GABBLE_IFACE_CHANNEL_FUTURE,
     NULL
 };
 
@@ -64,6 +68,9 @@ enum
   PROP_CHANNEL_TYPE,
   PROP_HANDLE_TYPE,
   PROP_HANDLE,
+  PROP_TARGET_ID,
+  PROP_INITIATOR_HANDLE,
+  PROP_INITIATOR_ID,
   PROP_CONNECTION,
   PROP_INTERFACES,
   PROP_CONFERENCE_SERVER,
@@ -135,6 +142,7 @@ gabble_roomlist_channel_get_property (GObject    *object,
   GabbleRoomlistChannel *chan = GABBLE_ROOMLIST_CHANNEL (object);
   GabbleRoomlistChannelPrivate *priv =
     GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (chan);
+  TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
 
   switch (property_id) {
     case PROP_OBJECT_PATH:
@@ -149,6 +157,9 @@ gabble_roomlist_channel_get_property (GObject    *object,
     case PROP_HANDLE:
       g_value_set_uint (value, 0);
       break;
+    case PROP_TARGET_ID:
+      g_value_set_static_string (value, "");
+      break;
     case PROP_CONNECTION:
       g_value_set_object (value, priv->conn);
       break;
@@ -157,6 +168,19 @@ gabble_roomlist_channel_get_property (GObject    *object,
       break;
     case PROP_CONFERENCE_SERVER:
       g_value_set_string (value, priv->conference_server);
+      break;
+    case PROP_INITIATOR_HANDLE:
+      /* Room listing is always initiated by the local user */
+      g_value_set_uint (value, conn->self_handle);
+      break;
+    case PROP_INITIATOR_ID:
+        {
+          TpHandleRepoIface *repo = tp_base_connection_get_handles (conn,
+              TP_HANDLE_TYPE_CONTACT);
+
+          g_value_set_string (value,
+              tp_handle_inspect (repo, conn->self_handle));
+        }
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -234,6 +258,12 @@ gabble_roomlist_channel_class_init (GabbleRoomlistChannelClass *gabble_roomlist_
       { "Server", "conference-server", NULL },
       { NULL }
   };
+  static TpDBusPropertiesMixinPropImpl future_props[] = {
+      { "TargetID", "target-id", NULL },
+      { "InitiatorHandle", "initiator-handle", NULL },
+      { "InitiatorID", "initiator-id", NULL },
+      { NULL }
+  };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
       { TP_IFACE_CHANNEL,
         tp_dbus_properties_mixin_getter_gobject_properties,
@@ -244,6 +274,11 @@ gabble_roomlist_channel_class_init (GabbleRoomlistChannelClass *gabble_roomlist_
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         roomlist_props,
+      },
+      { GABBLE_IFACE_CHANNEL_FUTURE,
+        tp_dbus_properties_mixin_getter_gobject_properties,
+        NULL,
+        future_props,
       },
       { NULL }
   };
@@ -269,6 +304,29 @@ gabble_roomlist_channel_class_init (GabbleRoomlistChannelClass *gabble_roomlist_
       "handle-type");
   g_object_class_override_property (object_class, PROP_HANDLE,
       "handle");
+
+  param_spec = g_param_spec_string ("target-id", "Target JID",
+      "Currently empty, because this channel always has handle 0.",
+      NULL,
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_TARGET_ID, param_spec);
+
+  param_spec = g_param_spec_uint ("initiator-handle", "Initiator's handle",
+      "The contact who initiated the channel",
+      0, G_MAXUINT32, 0,
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+  g_object_class_install_property (object_class, PROP_INITIATOR_HANDLE,
+      param_spec);
+
+  param_spec = g_param_spec_string ("initiator-id", "Initiator's bare JID",
+      "The string obtained by inspecting the initiator-handle",
+      NULL,
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+  g_object_class_install_property (object_class, PROP_INITIATOR_ID,
+      param_spec);
 
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
       "Gabble connection object that owns this room list channel object.",

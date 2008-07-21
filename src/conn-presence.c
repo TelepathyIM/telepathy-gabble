@@ -27,6 +27,10 @@
 #include <telepathy-glib/svc-connection.h>
 #include <telepathy-glib/util.h>
 
+#include "connection.h"
+#include "presence.h"
+#include "presence-cache.h"
+
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
 
 #include "connection.h"
@@ -106,8 +110,13 @@ construct_contact_statuses_cb (GObject *obj,
         }
       else
         {
-          status = GABBLE_PRESENCE_OFFLINE;
-          status_message = NULL;
+         if (gabble_roster_handle_get_subscription(self->roster, handle)
+           & GABBLE_ROSTER_SUBSCRIPTION_FROM)
+           status = GABBLE_PRESENCE_OFFLINE;
+         else
+           status = GABBLE_PRESENCE_UNKNOWN;
+
+         status_message = NULL;
         }
 
       parameters = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,

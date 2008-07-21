@@ -54,7 +54,7 @@ enum
 /* signal enum */
 enum
 {
-  PRESENCE_UPDATE,
+  PRESENCES_UPDATED,
   NICKNAME_UPDATE,
   CAPABILITIES_UPDATE,
   AVATAR_UPDATE,
@@ -283,13 +283,13 @@ gabble_presence_cache_class_init (GabblePresenceCacheClass *klass)
                                    PROP_CONNECTION,
                                    param_spec);
 
-  signals[PRESENCE_UPDATE] = g_signal_new (
-    "presence-update",
+  signals[PRESENCES_UPDATED] = g_signal_new (
+    "presences-updated",
     G_TYPE_FROM_CLASS (klass),
     G_SIGNAL_RUN_LAST,
     0,
     NULL, NULL,
-    g_cclosure_marshal_VOID__UINT, G_TYPE_NONE, 1, G_TYPE_UINT);
+    g_cclosure_marshal_VOID__POINTER, G_TYPE_NONE, 1, G_TYPE_POINTER);
   signals[NICKNAME_UPDATE] = g_signal_new (
     "nickname-update",
     G_TYPE_FROM_CLASS (klass),
@@ -1336,8 +1336,8 @@ _cache_insert (
   return presence;
 }
 
-void
-gabble_presence_cache_update (
+static gboolean
+gabble_presence_cache_do_update (
     GabblePresenceCache *cache,
     TpHandle handle,
     const gchar *resource,
@@ -1351,6 +1351,7 @@ gabble_presence_cache_update (
   const gchar *jid;
   GabblePresence *presence;
   GabblePresenceCapabilities caps_before;
+  gboolean ret = FALSE;
 
   jid = tp_handle_inspect (contact_repo, handle);
   DEBUG ("%s (%d) resource %s prio %d presence %d message \"%s\"",
@@ -1363,15 +1364,78 @@ gabble_presence_cache_update (
 
   caps_before = presence->caps;
 
-  if (gabble_presence_update (presence, resource, presence_id, status_message,
-        priority))
-    g_signal_emit (cache, signals[PRESENCE_UPDATE], 0, handle);
+  ret = gabble_presence_update (presence, resource, presence_id,
+      status_message, priority);
 
   if (caps_before != presence->caps)
     g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0, handle,
         caps_before, presence->caps);
 
+  return ret;
+}
+
+void
+gabble_presence_cache_update (
+    GabblePresenceCache *cache,
+    TpHandle handle,
+    const gchar *resource,
+    GabblePresenceId presence_id,
+    const gchar *status_message,
+    gint8 priority)
+{
+  if (gabble_presence_cache_do_update (cache, handle, resource, presence_id,
+      status_message, priority))
+    {
+      GArray *handles;
+
+      handles = g_array_sized_new (FALSE, FALSE, sizeof (TpHandle), 1);
+
+      g_array_append_val (handles, handle);
+      g_signal_emit (cache, signals[PRESENCES_UPDATED], 0, handles);
+      g_array_free (handles, TRUE);
+    }
+
   gabble_presence_cache_maybe_remove (cache, handle);
+}
+
+void
+gabble_presence_cache_update_many (
+    GabblePresenceCache *cache,
+    const GArray *contact_handles,
+    const gchar *resource,
+    GabblePresenceId presence_id,
+    const gchar *status_message,
+    gint8 priority)
+{
+  GArray *updated;
+  guint i;
+
+  updated = g_array_sized_new (FALSE, FALSE, sizeof (TpHandle),
+      contact_handles->len);
+
+  for (i = 0 ; i < contact_handles->len ; i++)
+    {
+      TpHandle handle;
+
+      handle = g_array_index (contact_handles, TpHandle, i);
+      if (gabble_presence_cache_do_update (cache, handle, resource,
+          presence_id, status_message, priority))
+        {
+          g_array_append_val (updated, handle);
+        }
+    }
+
+  g_signal_emit (cache, signals[PRESENCES_UPDATED], 0, updated);
+
+  for (i = 0 ; i < contact_handles->len ; i++)
+    {
+      TpHandle handle;
+
+      handle = g_array_index (contact_handles, TpHandle, i);
+      gabble_presence_cache_maybe_remove (cache, handle);
+    }
+
+  g_array_free (updated, TRUE);
 }
 
 void gabble_presence_cache_add_bundle_caps (GabblePresenceCache *cache,

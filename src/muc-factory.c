@@ -327,7 +327,11 @@ muc_join_error_cb (GabbleMucChannel *chan,
  * new_muc_channel
  */
 static GabbleMucChannel *
-new_muc_channel (GabbleMucFactory *fac, TpHandle handle, gboolean invite_self)
+new_muc_channel (GabbleMucFactory *fac,
+                 TpHandle handle,
+                 gboolean invite_self,
+                 TpHandle inviter,
+                 const gchar *message)
 {
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
@@ -336,6 +340,17 @@ new_muc_channel (GabbleMucFactory *fac, TpHandle handle, gboolean invite_self)
 
   g_assert (g_hash_table_lookup (priv->text_channels,
         GINT_TO_POINTER (handle)) == NULL);
+
+  if (invite_self)
+    {
+      g_assert (inviter == conn->self_handle);
+      g_assert (message == NULL);
+    }
+  else
+    {
+      g_assert (inviter != 0);
+      g_assert (message != NULL);
+    }
 
   object_path = g_strdup_printf ("%s/MucChannel%u",
       conn->object_path, handle);
@@ -358,6 +373,9 @@ new_muc_channel (GabbleMucFactory *fac, TpHandle handle, gboolean invite_self)
   g_signal_connect (chan, "ready", G_CALLBACK (muc_ready_cb), fac);
   g_signal_connect (chan, "join-error", G_CALLBACK (muc_join_error_cb),
                     fac);
+
+  if (!invite_self)
+    _gabble_muc_channel_handle_invited (chan, inviter, message);
 
   return chan;
 }
@@ -425,8 +443,7 @@ do_invite (GabbleMucFactory *fac,
   if (g_hash_table_lookup (priv->text_channels,
         GUINT_TO_POINTER (room_handle)) == NULL)
     {
-      GabbleMucChannel *chan = new_muc_channel (fac, room_handle, FALSE);
-      _gabble_muc_channel_handle_invited (chan, inviter_handle, reason);
+      new_muc_channel (fac, room_handle, FALSE, inviter_handle, reason);
     }
   else
     {
@@ -1090,7 +1107,9 @@ gabble_muc_factory_iface_foreach (TpChannelFactoryIface *iface,
 /**
  * ensure_muc_channel:
  *
- * Create a MUC channel. Return TRUE if it already existed, or return FALSE
+ * Create a MUC channel in response to RequestChannel.
+ *
+ * Return TRUE if it already existed, or return FALSE
  * if it needed to be created (so isn't ready yet).
  */
 static gboolean
@@ -1099,12 +1118,16 @@ ensure_muc_channel (GabbleMucFactory *fac,
                     TpHandle handle,
                     GabbleMucChannel **ret)
 {
+  TpBaseConnection *base_conn = (TpBaseConnection *) priv->conn;
+
   *ret = g_hash_table_lookup (priv->text_channels, GINT_TO_POINTER (handle));
-  if (!*ret)
+
+  if (*ret == NULL)
     {
-      *ret = new_muc_channel (fac, handle, TRUE);
+      *ret = new_muc_channel (fac, handle, TRUE, base_conn->self_handle, NULL);
       return FALSE;
     }
+
   if (_gabble_muc_channel_is_ready (*ret))
     return TRUE;
   else

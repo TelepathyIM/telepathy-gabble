@@ -1,4 +1,6 @@
 
+#include "config.h"
+
 #include <string.h>
 
 #include "src/text-mixin.h"

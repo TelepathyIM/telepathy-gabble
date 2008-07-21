@@ -22,7 +22,7 @@
 #ifndef __GABBLE_TYPES_H__
 #define __GABBLE_TYPES_H__
 
-#include <config.h>
+#include "config.h"
 
 #include <telepathy-glib/handle.h>
 

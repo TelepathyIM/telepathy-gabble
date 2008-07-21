@@ -101,11 +101,8 @@ int main (int argc, char **argv)
 {
   g_type_init ();
 
-  g_debug ("Testing contact handles");
   test_handles (TP_HANDLE_TYPE_CONTACT);
-  g_debug ("Testing room handles");
   test_handles (TP_HANDLE_TYPE_ROOM);
-  g_debug ("Testing list handles");
   test_handles (TP_HANDLE_TYPE_LIST);
   return 0;
 }

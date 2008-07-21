@@ -186,7 +186,8 @@ gabble_im_factory_class_init (GabbleImFactoryClass *gabble_im_factory_class)
 
 }
 
-static GabbleIMChannel *new_im_channel (GabbleImFactory *fac, TpHandle handle);
+static GabbleIMChannel *new_im_channel (GabbleImFactory *fac,
+    TpHandle handle, TpHandle initiator);
 
 static void im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data);
 
@@ -252,7 +253,7 @@ im_factory_message_cb (LmMessageHandler *handler,
 
       DEBUG ("found no IM channel, creating one");
 
-      chan = new_im_channel (fac, handle);
+      chan = new_im_channel (fac, handle, handle);
     }
 
   g_assert (chan != NULL);
@@ -315,7 +316,9 @@ im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
  * new_im_channel
  */
 static GabbleIMChannel *
-new_im_channel (GabbleImFactory *fac, TpHandle handle)
+new_im_channel (GabbleImFactory *fac,
+                TpHandle handle,
+                TpHandle initiator)
 {
   GabbleImFactoryPrivate *priv;
   TpBaseConnection *conn;
@@ -447,8 +450,9 @@ gabble_im_factory_iface_request (TpChannelFactoryIface *iface,
 {
   GabbleImFactory *fac = GABBLE_IM_FACTORY (iface);
   GabbleImFactoryPrivate *priv = GABBLE_IM_FACTORY_GET_PRIVATE (fac);
+  TpBaseConnection *base_conn = (TpBaseConnection *) priv->conn;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+      base_conn, TP_HANDLE_TYPE_CONTACT);
   GabbleIMChannel *chan;
   TpChannelFactoryRequestStatus status;
 
@@ -467,7 +471,7 @@ gabble_im_factory_iface_request (TpChannelFactoryIface *iface,
   if (!chan)
     {
       status = TP_CHANNEL_FACTORY_REQUEST_STATUS_CREATED;
-      chan = new_im_channel (fac, handle);
+      chan = new_im_channel (fac, handle, base_conn->self_handle);
     }
 
   g_assert (chan);

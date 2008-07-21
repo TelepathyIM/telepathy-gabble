@@ -26,6 +26,7 @@
 #include <dbus/dbus-glib.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/enums.h>
+#include <telepathy-glib/gtypes.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/channel-iface.h>
 #include <telepathy-glib/svc-channel.h>
@@ -38,15 +39,6 @@
 #include "disco.h"
 #include "namespaces.h"
 #include "util.h"
-
-#define GABBLE_TP_TYPE_ROOM_STRUCT (dbus_g_type_get_struct ("GValueArray", \
-      G_TYPE_UINT, \
-      G_TYPE_STRING, \
-      dbus_g_type_get_map ("GHashTable", G_TYPE_STRING, G_TYPE_VALUE), \
-      G_TYPE_INVALID))
-
-#define GABBLE_TP_TYPE_ROOM_LIST (dbus_g_type_get_collection ("GPtrArray", \
-      GABBLE_TP_TYPE_ROOM_STRUCT))
 
 static void channel_iface_init (gpointer, gpointer);
 static void roomlist_iface_init (gpointer, gpointer);
@@ -379,6 +371,7 @@ emit_room_signal (gpointer data)
   GabbleRoomlistChannel *chan = data;
   GabbleRoomlistChannelPrivate *priv =
     GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE (chan);
+  GType room_info_type = TP_STRUCT_TYPE_ROOM_INFO;
 
   if (!priv->listing)
       return FALSE;
@@ -392,7 +385,7 @@ emit_room_signal (gpointer data)
   while (priv->pending_room_signals->len != 0)
     {
       gpointer boxed = g_ptr_array_index (priv->pending_room_signals, 0);
-      g_boxed_free (GABBLE_TP_TYPE_ROOM_STRUCT, boxed);
+      g_boxed_free (room_info_type, boxed);
       g_ptr_array_remove_index_fast (priv->pending_room_signals, 0);
     }
 
@@ -411,6 +404,7 @@ room_info_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
   GValue room = {0,};
   GValue *tmp;
   gpointer k, v;
+  GType room_info_type = TP_STRUCT_TYPE_ROOM_INFO;
 
   #define INSERT_KEY(hash, name, type, type2, value) \
     do {\
@@ -511,9 +505,9 @@ room_info_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
   tp_handle_set_add (priv->signalled_rooms, handle);
   tp_handle_unref (room_handles, handle);
 
-  g_value_init (&room, GABBLE_TP_TYPE_ROOM_STRUCT);
+  g_value_init (&room, room_info_type);
   g_value_take_boxed (&room,
-      dbus_g_type_specialized_construct (GABBLE_TP_TYPE_ROOM_STRUCT));
+      dbus_g_type_specialized_construct (room_info_type));
 
   dbus_g_type_struct_set (&room,
       0, handle,

@@ -114,19 +114,19 @@ int main (int argc, char **argv)
   dump = gabble_presence_dump (presence);
   g_assert (0 == strcmp (dump,
     "nickname: (null)\n"
-    "accumulated status: 6\n"
+    "accumulated status: 8\n"
     "accumulated status msg: status message\n"
     "accumulated capabilities: 2\n"
     "kept while unavailable: 0\n"
     "resources:\n"
     "  foo\n"
     "    capabilities: 0\n"
-    "    status: 6\n"
+    "    status: 8\n"
     "    status msg: status message\n"
     "    priority: 0\n"
     "  bar\n"
     "    capabilities: 2\n"
-    "    status: 5\n"
+    "    status: 7\n"
     "    status msg: dingoes\n"
     "    priority: -1\n"));
   g_free (dump);

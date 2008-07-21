@@ -24,6 +24,26 @@ then
   fail=1
 fi
 
+if grep -En '[(][[:alnum:]_]+ ?\*[)][(]?[[:alpha:]_]' "$@"; then
+  echo "^^^ Our coding style is to have a space between a cast and the "
+  echo "    thing being cast"
+  fail=1
+fi
+
+# this only spots casts
+if grep -En '[(][[:alnum:]_]+\*+[)]' "$@"; then
+  echo "^^^ Our coding style is to have a space before the * of pointer types"
+  echo "    (regex 1)"
+  fail=1
+fi
+# ... and this only spots variable declarations and function return types
+if grep -En '^ *(static |const |)* *[[:alnum:]_]+\*+([[:alnum:]_]|;|$)' \
+	"$@"; then
+  echo "^^^ Our coding style is to have a space before the * of pointer types"
+  echo "    (regex 2)"
+  fail=1
+fi
+
 if test -n "$CHECK_FOR_LONG_LINES"
 then
   if egrep -n '.{80,}' "$@"

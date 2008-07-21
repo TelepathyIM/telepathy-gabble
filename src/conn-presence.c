@@ -46,6 +46,10 @@ static const TpPresenceStatusOptionalArgumentSpec gabble_status_arguments[] = {
 static const TpPresenceStatusSpec gabble_statuses[] = {
   { "offline", TP_CONNECTION_PRESENCE_TYPE_OFFLINE, TRUE,
     gabble_status_arguments, NULL, NULL },
+  { "unknown", TP_CONNECTION_PRESENCE_TYPE_UNKNOWN, FALSE,
+    gabble_status_arguments, NULL, NULL },
+  { "error", TP_CONNECTION_PRESENCE_TYPE_ERROR, FALSE,
+    gabble_status_arguments, NULL, NULL },
   { "hidden", TP_CONNECTION_PRESENCE_TYPE_HIDDEN, TRUE, gabble_status_arguments,
     NULL, NULL },
   { "xa", TP_CONNECTION_PRESENCE_TYPE_EXTENDED_AWAY, TRUE,

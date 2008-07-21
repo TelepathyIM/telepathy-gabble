@@ -32,6 +32,12 @@
 #include "types.h"
 #include "sha1/sha1.h"
 
+/* In case we're building with GLib < 2.13. */
+#ifndef G_PARAM_STATIC_STRINGS
+#define G_PARAM_STATIC_STRINGS \
+    (G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB)
+#endif
+
 gchar *sha1_hex (const gchar *bytes, guint len);
 void sha1_bin (const gchar *bytes, guint len, guchar out[SHA1_HASH_SIZE]);
 void lm_message_node_add_own_nick (LmMessageNode *node,

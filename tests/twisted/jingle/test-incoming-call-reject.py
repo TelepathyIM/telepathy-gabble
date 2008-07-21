@@ -1,10 +1,6 @@
 """
-Test incoming call handling.
+Test incoming call handling - reject a call
 """
-
-print "FIXME: jingle/test-incoming-call.py disabled due to race condition"
-# exiting 77 causes automake to consider the test to have been skipped
-raise SystemExit(77)
 
 from gabbletest import exec_test, make_result_iq, sync_stream
 from servicetest import make_channel_proxy, unwrap, tp_path_prefix, \
@@ -13,7 +9,6 @@ import jingletest
 import gabbletest
 import dbus
 import time
-
 
 def test(q, bus, conn, stream):
     jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
@@ -81,45 +76,11 @@ def test(q, bus, conn, stream):
     assert future_props['InitiatorID'] == 'foo@bar.com'
     assert future_props['InitiatorHandle'] == remote_handle
 
-    media_chan.AddMembers([dbus.UInt32(1)], 'accepted')
+    media_chan.RemoveMembers([dbus.UInt32(1)], 'rejected')
 
-    # S-E gets notified about a newly-created stream
-    e = q.expect('dbus-signal', signal='NewStreamHandler')
-
-    stream_handler = make_channel_proxy(conn, e.args[0], 'Media.StreamHandler')
-
-    # We are now in members too
-    e = q.expect('dbus-signal', signal='MembersChanged',
-             args=[u'', [1L], [], [], [], 0, 0])
-
-    # we are now both in members
-    members = media_chan.GetMembers()
-    assert set(members) == set([1L, remote_handle]), members
-
-    stream_handler.NewNativeCandidate("fake", jt.get_remote_transports_dbus())
-    stream_handler.Ready(jt.get_audio_codecs_dbus())
-    stream_handler.StreamState(2)
-
-    # First one is transport-info
     e = q.expect('stream-iq')
     assert e.query.name == 'jingle'
-    assert e.query['action'] == 'transport-info'
-    assert e.query['initiator'] == 'foo@bar.com/Foo'
-
-    stream.send(gabbletest.make_result_iq(stream, e.stanza))
-
-    # Second one is session-accept
-    e = q.expect('stream-iq')
-    assert e.query.name == 'jingle'
-    assert e.query['action'] == 'session-accept'
-
-    stream.send(gabbletest.make_result_iq(stream, e.stanza))
-
-    # Connected! Blah, blah, ...
-
-    # 'Nuff said
-    jt.remote_terminate()
-
+    assert e.query['action'] == 'session-terminate'
 
     # Tests completed, close the connection
 

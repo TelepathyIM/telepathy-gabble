@@ -22,28 +22,27 @@
 #include "config.h"
 #include "media-stream.h"
 
-#include <dbus/dbus-glib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#define DEBUG_FLAG GABBLE_DEBUG_MEDIA
-
+#include <dbus/dbus-glib.h>
 #include <telepathy-glib/debug-ansi.h>
-#include "debug.h"
-#include "namespaces.h"
-
-#include "connection.h"
-#include "media-channel.h"
-#include "media-session.h"
-#include "media-session-enumtypes.h"
 
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/enums.h>
 #include <telepathy-glib/errors.h>
 #include <telepathy-glib/svc-media-interfaces.h>
 
+#define DEBUG_FLAG GABBLE_DEBUG_MEDIA
+
+#include "connection.h"
+#include "debug.h"
 #include "gabble-signals-marshal.h"
+#include "media-channel.h"
+#include "media-session-enumtypes.h"
+#include "media-session.h"
+#include "namespaces.h"
 
 static void stream_handler_iface_init (gpointer, gpointer);
 

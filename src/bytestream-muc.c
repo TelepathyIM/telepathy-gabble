@@ -25,22 +25,19 @@
 #include <time.h>
 
 #include <glib.h>
-
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
-
 #include <loudmouth/loudmouth.h>
-
 #include <telepathy-glib/interfaces.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_BYTESTREAM
 
-#include "bytestream-iface.h"
 #include "base64.h"
 #include "bytestream-factory.h"
+#include "bytestream-iface.h"
+#include "connection.h"
 #include "debug.h"
 #include "disco.h"
-#include "connection.h"
 #include "gabble-signals-marshal.h"
 #include "namespaces.h"
 #include "util.h"

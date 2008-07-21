@@ -25,24 +25,22 @@
 #include <time.h>
 
 #include <glib.h>
-
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
-
 #include <loudmouth/loudmouth.h>
+#include <telepathy-glib/channel-factory-iface.h>
+#include <telepathy-glib/interfaces.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_TUBES
 
+#include "connection.h"
 #include "debug.h"
 #include "extensions/extensions.h"
-#include "connection.h"
-#include "tubes-channel.h"
-#include "namespaces.h"
-#include "util.h"
-#include "muc-factory.h"
 #include "muc-channel.h"
-#include <telepathy-glib/interfaces.h>
-#include <telepathy-glib/channel-factory-iface.h>
+#include "muc-factory.h"
+#include "namespaces.h"
+#include "tubes-channel.h"
+#include "util.h"
 
 static GabbleTubesChannel *new_tubes_channel (GabblePrivateTubesFactory *fac,
     TpHandle handle);

@@ -19,15 +19,16 @@
  */
 
 #include "config.h"
+#include "gabble.h"
 
 #include <time.h>
 #include <unistd.h>
 
 #include <telepathy-glib/debug.h>
 #include <telepathy-glib/run.h>
+
 #include "debug.h"
 #include "connection-manager.h"
-#include "gabble.h"
 
 static TpBaseConnectionManager *
 construct_cm (void)

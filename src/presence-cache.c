@@ -24,22 +24,22 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <telepathy-glib/intset.h>
+
+#define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
+
+#include "caps-hash.h"
+#include "debug.h"
+#include "disco.h"
+#include "gabble-signals-marshal.h"
+#include "namespaces.h"
+#include "util.h"
+
 /* When five DIFFERENT guys report the same caps for a given bundle, it'll
  * be enough. But if only ONE guy use the verification string (XEP-0115 v1.5),
  * it'll be enough too.
  */
 #define CAPABILITY_BUNDLE_ENOUGH_TRUST 5
-#define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
-
-#include <telepathy-glib/intset.h>
-
-#include "caps-hash.h"
-#include "debug.h"
-#include "disco.h" /* \o\ \o/ /o/ */
-#include "namespaces.h"
-#include "util.h"
-
-#include "gabble-signals-marshal.h"
 
 G_DEFINE_TYPE (GabblePresenceCache, gabble_presence_cache, G_TYPE_OBJECT);
 

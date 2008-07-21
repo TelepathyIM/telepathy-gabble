@@ -28,22 +28,20 @@
 
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
-
 #include <loudmouth/loudmouth.h>
+#include <telepathy-glib/interfaces.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_BYTESTREAM
 
-#include <telepathy-glib/interfaces.h>
-#include "debug.h"
-#include "connection.h"
-#include "bytestream-iface.h"
 #include "bytestream-ibb.h"
+#include "bytestream-iface.h"
 #include "bytestream-muc.h"
+#include "connection.h"
+#include "debug.h"
 #include "namespaces.h"
-#include "util.h"
 #include "presence-cache.h"
-
 #include "private-tubes-factory.h"
+#include "util.h"
 
 G_DEFINE_TYPE (GabbleBytestreamFactory, gabble_bytestream_factory,
     G_TYPE_OBJECT);

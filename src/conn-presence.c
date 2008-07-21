@@ -27,14 +27,12 @@
 #include <telepathy-glib/svc-connection.h>
 #include <telepathy-glib/util.h>
 
-#include "connection.h"
-#include "presence.h"
-#include "presence-cache.h"
-
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
 
+#include "connection.h"
 #include "debug.h"
-
+#include "presence-cache.h"
+#include "presence.h"
 
 static const TpPresenceStatusOptionalArgumentSpec gabble_status_arguments[] = {
   { "message",  "s", NULL, NULL },

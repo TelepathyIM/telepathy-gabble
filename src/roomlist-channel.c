@@ -21,11 +21,11 @@
 #include "config.h"
 #include "roomlist-channel.h"
 
-#include <dbus/dbus-glib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include <dbus/dbus-glib.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/enums.h>
 #include <telepathy-glib/interfaces.h>
@@ -34,9 +34,10 @@
 #include <telepathy-glib/svc-generic.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_ROOMLIST
+
+#include "connection.h"
 #include "debug.h"
 #include "disco.h"
-#include "connection.h"
 #include "namespaces.h"
 #include "util.h"
 

@@ -21,15 +21,16 @@
 #include "config.h"
 #include "connection-manager.h"
 
-#include <dbus/dbus-protocol.h>
-#include <dbus/dbus-glib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "connection.h"
+#include <dbus/dbus-protocol.h>
+#include <dbus/dbus-glib.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/errors.h>
+
+#include "connection.h"
 
 G_DEFINE_TYPE(GabbleConnectionManager,
     gabble_connection_manager,

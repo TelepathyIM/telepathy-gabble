@@ -21,22 +21,23 @@
 #include "config.h"
 #include "roster-channel.h"
 
-#include <dbus/dbus-glib.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-#define DEBUG_FLAG GABBLE_DEBUG_ROSTER
-
-#include "debug.h"
-#include "connection.h"
+#include <dbus/dbus-glib.h>
 #include <telepathy-glib/group-mixin.h>
-#include "roster.h"
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/errors.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/channel-iface.h>
 #include <telepathy-glib/svc-generic.h>
 #include <telepathy-glib/svc-channel.h>
+
+#define DEBUG_FLAG GABBLE_DEBUG_ROSTER
+
+#include "connection.h"
+#include "debug.h"
+#include "roster.h"
 #include "util.h"
 
 static void channel_iface_init (gpointer, gpointer);

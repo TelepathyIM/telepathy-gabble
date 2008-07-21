@@ -34,15 +34,16 @@
 #include <telepathy-glib/interfaces.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_MUC
+
+#include "connection.h"
 #include "conn-olpc.h"
 #include "debug.h"
 #include "disco.h"
 #include "extensions/extensions.h"
-#include "connection.h"
 #include "muc-channel.h"
-#include "roomlist-channel.h"
 #include "namespaces.h"
 #include "presence-cache.h"
+#include "roomlist-channel.h"
 #include "text-mixin.h"
 #include "tubes-channel.h"
 #include "util.h"

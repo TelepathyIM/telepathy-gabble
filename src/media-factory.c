@@ -27,21 +27,19 @@
 #include <time.h>
 
 #include <glib.h>
-
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
-
 #include <loudmouth/loudmouth.h>
+#include <telepathy-glib/interfaces.h>
+#include <telepathy-glib/channel-factory-iface.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
-#include "debug.h"
 #include "connection.h"
+#include "debug.h"
 #include "media-channel.h"
 #include "namespaces.h"
-#include <telepathy-glib/interfaces.h>
 #include "text-mixin.h"
-#include <telepathy-glib/channel-factory-iface.h>
 #include "util.h"
 
 static void gabble_media_factory_iface_init (gpointer g_iface,

@@ -33,23 +33,22 @@
 
 #include <glib.h>
 #include <glib/gstdio.h>
-
 #include <loudmouth/loudmouth.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_TUBES
 
+#include "bytestream-factory.h"
+#include "bytestream-iface.h"
+#include "connection.h"
 #include "debug.h"
 #include "disco.h"
 #include "extensions/extensions.h"
-#include "connection.h"
-#include "presence.h"
-#include "presence-cache.h"
-#include "namespaces.h"
-#include "util.h"
-#include "tube-iface.h"
-#include "bytestream-factory.h"
-#include "bytestream-iface.h"
 #include "gabble-signals-marshal.h"
+#include "namespaces.h"
+#include "presence-cache.h"
+#include "presence.h"
+#include "tube-iface.h"
+#include "util.h"
 
 static void
 tube_iface_init (gpointer g_iface, gpointer iface_data);

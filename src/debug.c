@@ -1,4 +1,6 @@
+
 #include "config.h"
+#include "debug.h"
 
 #include <stdarg.h>
 #include <unistd.h>
@@ -9,10 +11,7 @@
 
 #include <glib.h>
 #include <glib/gstdio.h>
-
 #include <telepathy-glib/debug.h>
-
-#include "debug.h"
 
 void
 gabble_debug_set_log_file_from_env (void)

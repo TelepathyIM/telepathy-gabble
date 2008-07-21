@@ -23,7 +23,10 @@
 
 #include <telepathy-glib/svc-connection.h>
 
+#define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
+
 #include "connection.h"
+#include "debug.h"
 #include "namespaces.h"
 #include "presence-cache.h"
 #include "pubsub.h"
@@ -31,10 +34,6 @@
 #include "roster.h"
 #include "util.h"
 #include "vcard-manager.h"
-
-#define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
-
-#include "debug.h"
 
 #define GABBLE_TP_ALIAS_PAIR_TYPE (dbus_g_type_get_struct ("GValueArray", \
       G_TYPE_UINT, G_TYPE_STRING, G_TYPE_INVALID))

@@ -28,20 +28,20 @@
 #include "caps-hash.h"
 
 #include <string.h>
-#include <glib.h>
 #include <time.h>
+
+#include <glib.h>
+
+#define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 
 #include "base64.h"
 #include "capabilities.h"
-#include "presence.h"
-#include "presence-cache.h"
+#include "debug.h"
 #include "namespaces.h"
+#include "presence-cache.h"
+#include "presence.h"
 #include "sha1/sha1.h"
 #include "util.h"
-
-#include "config.h"
-#define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
-#include "debug.h"
 
 typedef struct _DataFormField DataFormField;
 

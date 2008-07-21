@@ -2533,7 +2533,7 @@ muc_factory_new_channel_cb (GabbleMucFactory *fac,
 }
 
 static void
-connection_presence_update_cb (GabblePresenceCache *cache,
+connection_presence_do_update (GabblePresenceCache *cache,
                                TpHandle handle,
                                GabbleConnection *conn)
 {
@@ -2575,6 +2575,22 @@ connection_presence_update_cb (GabblePresenceCache *cache,
     }
 }
 
+static void
+connection_presences_updated_cb (GabblePresenceCache *cache,
+                                 GArray *handles,
+                                 GabbleConnection *conn)
+{
+  guint i;
+
+  for (i = 0; i < handles->len ; i++)
+    {
+      TpHandle handle;
+
+      handle = g_array_index (handles, TpHandle, i);
+      connection_presence_do_update (cache, handle, conn);
+    }
+}
+
 void
 conn_olpc_activity_properties_init (GabbleConnection *conn)
 {
@@ -2609,8 +2625,8 @@ conn_olpc_activity_properties_init (GabbleConnection *conn)
   g_signal_connect (conn->muc_factory, "new-channel",
       G_CALLBACK (muc_factory_new_channel_cb), conn);
 
-  g_signal_connect (conn->presence_cache, "presence-update",
-      G_CALLBACK (connection_presence_update_cb), conn);
+  g_signal_connect (conn->presence_cache, "presences-updated",
+      G_CALLBACK (connection_presences_updated_cb), conn);
 }
 
 void

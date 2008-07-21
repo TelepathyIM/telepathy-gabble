@@ -32,6 +32,7 @@
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/enums.h>
 #include <telepathy-glib/errors.h>
+#include <telepathy-glib/gtypes.h>
 #include <telepathy-glib/svc-media-interfaces.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
@@ -147,24 +148,28 @@ gabble_media_stream_init (GabbleMediaStream *self)
 {
   GabbleMediaStreamPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
       GABBLE_TYPE_MEDIA_STREAM, GabbleMediaStreamPrivate);
+  GType candidate_list_type =
+      TP_ARRAY_TYPE_MEDIA_STREAM_HANDLER_CANDIDATE_LIST;
+  GType codec_list_type =
+      TP_ARRAY_TYPE_MEDIA_STREAM_HANDLER_CODEC_LIST;
 
   self->priv = priv;
 
-  g_value_init (&priv->native_codecs, GABBLE_TP_TYPE_CODEC_LIST);
+  g_value_init (&priv->native_codecs, codec_list_type);
   g_value_take_boxed (&priv->native_codecs,
-      dbus_g_type_specialized_construct (GABBLE_TP_TYPE_CODEC_LIST));
+      dbus_g_type_specialized_construct (codec_list_type));
 
-  g_value_init (&priv->native_candidates, GABBLE_TP_TYPE_CANDIDATE_LIST);
+  g_value_init (&priv->native_candidates, candidate_list_type);
   g_value_take_boxed (&priv->native_candidates,
-      dbus_g_type_specialized_construct (GABBLE_TP_TYPE_CANDIDATE_LIST));
+      dbus_g_type_specialized_construct (candidate_list_type));
 
-  g_value_init (&priv->remote_codecs, GABBLE_TP_TYPE_CODEC_LIST);
+  g_value_init (&priv->remote_codecs, codec_list_type);
   g_value_take_boxed (&priv->remote_codecs,
-      dbus_g_type_specialized_construct (GABBLE_TP_TYPE_CODEC_LIST));
+      dbus_g_type_specialized_construct (codec_list_type));
 
-  g_value_init (&priv->remote_candidates, GABBLE_TP_TYPE_CANDIDATE_LIST);
+  g_value_init (&priv->remote_candidates, candidate_list_type);
   g_value_take_boxed (&priv->remote_candidates,
-      dbus_g_type_specialized_construct (GABBLE_TP_TYPE_CANDIDATE_LIST));
+      dbus_g_type_specialized_construct (candidate_list_type));
 }
 
 static GObject *
@@ -330,6 +335,10 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_media_stream_class);
   GParamSpec *param_spec;
+  GType transport_list_type =
+      TP_ARRAY_TYPE_MEDIA_STREAM_HANDLER_TRANSPORT_LIST;
+  GType codec_list_type =
+      TP_ARRAY_TYPE_MEDIA_STREAM_HANDLER_CODEC_LIST;
 
   g_type_class_add_private (gabble_media_stream_class,
       sizeof (GabbleMediaStreamPrivate));
@@ -523,7 +532,7 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                   0,
                   NULL, NULL,
                   gabble_marshal_VOID__STRING_BOXED,
-                  G_TYPE_NONE, 2, G_TYPE_STRING, GABBLE_TP_TYPE_TRANSPORT_LIST);
+                  G_TYPE_NONE, 2, G_TYPE_STRING, transport_list_type);
 
   signals[SUPPORTED_CODECS] =
     g_signal_new ("supported-codecs",
@@ -532,7 +541,7 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
                   0,
                   NULL, NULL,
                   g_cclosure_marshal_VOID__BOXED,
-                  G_TYPE_NONE, 1, GABBLE_TP_TYPE_CODEC_LIST);
+                  G_TYPE_NONE, 1, codec_list_type);
 
   signals[ERROR] =
     g_signal_new ("error",
@@ -787,6 +796,7 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
   GValueArray *transport;
   guint component_id;
   const gchar *addr;
+  GType candidate_struct_type = TP_STRUCT_TYPE_MEDIA_STREAM_HANDLER_CANDIDATE;
 
   g_assert (GABBLE_IS_MEDIA_STREAM (self));
 
@@ -805,9 +815,9 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
 
   candidates = g_value_get_boxed (&priv->native_candidates);
 
-  g_value_init (&candidate, GABBLE_TP_TYPE_CANDIDATE_STRUCT);
+  g_value_init (&candidate, candidate_struct_type);
   g_value_take_boxed (&candidate,
-      dbus_g_type_specialized_construct (GABBLE_TP_TYPE_CANDIDATE_STRUCT));
+      dbus_g_type_specialized_construct (candidate_struct_type));
 
   dbus_g_type_struct_set (&candidate,
       0, candidate_id,
@@ -1015,7 +1025,7 @@ _add_rtp_candidate_node (GabbleMediaSession *session, LmMessageNode *parent,
   /* jingle audio only supports the concept of one transport per candidate */
   g_assert (transports->len == 1);
 
-  g_value_init (&transport, GABBLE_TP_TYPE_TRANSPORT_STRUCT);
+  g_value_init (&transport, TP_STRUCT_TYPE_MEDIA_STREAM_HANDLER_TRANSPORT);
   g_value_set_static_boxed (&transport, g_ptr_array_index (transports, 0));
 
   dbus_g_type_struct_get (&transport,
@@ -1157,6 +1167,8 @@ push_native_candidates (GabbleMediaStream *stream)
   GabbleMediaStreamPrivate *priv;
   GPtrArray *candidates;
   guint i;
+  GType candidate_list_type =
+      TP_ARRAY_TYPE_MEDIA_STREAM_HANDLER_CANDIDATE_LIST;
 
   g_assert (GABBLE_IS_MEDIA_STREAM (stream));
 
@@ -1172,7 +1184,7 @@ push_native_candidates (GabbleMediaStream *stream)
     push_candidate (stream, g_ptr_array_index (candidates, i));
 
   g_value_take_boxed (&priv->native_candidates,
-    dbus_g_type_specialized_construct (GABBLE_TP_TYPE_CANDIDATE_LIST));
+    dbus_g_type_specialized_construct (candidate_list_type));
 }
 
 void
@@ -1200,6 +1212,7 @@ _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream,
   GabbleMediaStreamPrivate *priv;
   LmMessageNode *node;
   GPtrArray *codecs;
+  GType codec_struct_type = TP_STRUCT_TYPE_MEDIA_STREAM_HANDLER_CODEC;
 
   g_assert (GABBLE_IS_MEDIA_STREAM (stream));
 
@@ -1272,9 +1285,9 @@ _gabble_media_stream_post_remote_codecs (GabbleMediaStream *stream,
           g_hash_table_insert (params, "bitrate", g_strdup (str));
         }
 
-      g_value_init (&codec, GABBLE_TP_TYPE_CODEC_STRUCT);
+      g_value_init (&codec, codec_struct_type);
       g_value_take_boxed (&codec,
-          dbus_g_type_specialized_construct (GABBLE_TP_TYPE_CODEC_STRUCT));
+          dbus_g_type_specialized_construct (codec_struct_type));
 
       dbus_g_type_struct_set (&codec,
           0, id,
@@ -1301,6 +1314,8 @@ push_remote_codecs (GabbleMediaStream *stream)
 {
   GabbleMediaStreamPrivate *priv;
   GPtrArray *codecs;
+  GType codec_list_type =
+      TP_ARRAY_TYPE_MEDIA_STREAM_HANDLER_CODEC_LIST;
 
   g_assert (GABBLE_IS_MEDIA_STREAM (stream));
 
@@ -1319,7 +1334,7 @@ push_remote_codecs (GabbleMediaStream *stream)
   tp_svc_media_stream_handler_emit_set_remote_codecs (stream, codecs);
 
   g_value_take_boxed (&priv->remote_codecs,
-      dbus_g_type_specialized_construct (GABBLE_TP_TYPE_CODEC_LIST));
+      dbus_g_type_specialized_construct (codec_list_type));
 }
 
 gboolean
@@ -1332,6 +1347,8 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
   LmMessageNode *node;
   const gchar *str;
   GPtrArray *candidates;
+  GType transport_struct_type = TP_STRUCT_TYPE_MEDIA_STREAM_HANDLER_TRANSPORT;
+  GType candidate_struct_type = TP_STRUCT_TYPE_MEDIA_STREAM_HANDLER_CANDIDATE;
 
   g_assert (GABBLE_IS_MEDIA_STREAM (stream));
 
@@ -1467,9 +1484,9 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
       gen = atoi (str);
 
 
-      g_value_init (&transport, GABBLE_TP_TYPE_TRANSPORT_STRUCT);
+      g_value_init (&transport, transport_struct_type);
       g_value_take_boxed (&transport,
-          dbus_g_type_specialized_construct (GABBLE_TP_TYPE_TRANSPORT_STRUCT));
+          dbus_g_type_specialized_construct (transport_struct_type));
 
       dbus_g_type_struct_set (&transport,
           0, 1,         /* component number */
@@ -1488,9 +1505,9 @@ _gabble_media_stream_post_remote_candidates (GabbleMediaStream *stream,
       g_ptr_array_add (transports, g_value_get_boxed (&transport));
 
 
-      g_value_init (&candidate, GABBLE_TP_TYPE_CANDIDATE_STRUCT);
+      g_value_init (&candidate, candidate_struct_type);
       g_value_take_boxed (&candidate,
-          dbus_g_type_specialized_construct (GABBLE_TP_TYPE_CANDIDATE_STRUCT));
+          dbus_g_type_specialized_construct (candidate_struct_type));
 
       /* FIXME: is this naming scheme sensible? */
       candidate_id = g_strdup_printf ("R%d", ++priv->remote_candidate_count);
@@ -1537,6 +1554,8 @@ push_remote_candidates (GabbleMediaStream *stream)
   GabbleMediaStreamPrivate *priv;
   GPtrArray *candidates;
   guint i;
+  GType candidate_list_type =
+      TP_ARRAY_TYPE_MEDIA_STREAM_HANDLER_CANDIDATE_LIST;
 
   g_assert (GABBLE_IS_MEDIA_STREAM (stream));
 
@@ -1567,7 +1586,7 @@ push_remote_candidates (GabbleMediaStream *stream)
     }
 
   g_value_take_boxed (&priv->remote_candidates,
-      dbus_g_type_specialized_construct (GABBLE_TP_TYPE_CANDIDATE_LIST));
+      dbus_g_type_specialized_construct (candidate_list_type));
 }
 
 static void
@@ -1697,6 +1716,7 @@ _gabble_media_stream_content_node_add_description (GabbleMediaStream *stream,
   LmMessageNode *desc_node;
   guint i;
   const gchar *xmlns;
+  GType codec_struct_type = TP_STRUCT_TYPE_MEDIA_STREAM_HANDLER_CODEC;
 
   g_assert (GABBLE_IS_MEDIA_STREAM (stream));
 
@@ -1724,7 +1744,7 @@ _gabble_media_stream_content_node_add_description (GabbleMediaStream *stream,
       LmMessageNode *pt_node;
       CodecParamsFromTpContext ctx;
 
-      g_value_init (&codec, GABBLE_TP_TYPE_CODEC_STRUCT);
+      g_value_init (&codec, codec_struct_type);
       g_value_set_static_boxed (&codec, g_ptr_array_index (codecs, i));
 
       dbus_g_type_struct_get (&codec,

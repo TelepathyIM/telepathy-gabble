@@ -98,6 +98,39 @@ def escape_as_identifier(identifier):
     return ''.join(ret)
 
 
+def get_by_path(element, path):
+    branches = path.split('/')
+    branch = branches[0]
+
+    # Is the current branch an attribute, if so, return the attribute value
+    if branch[0] == '@':
+        return element.getAttribute(branch[1:])
+
+    # Find matching children for the branch
+    children = []
+    if branch == '..':
+        children.append(element.parentNode)
+    else:
+        for x in element.childNodes:
+            if x.localName == branch:
+                children.append(x)
+
+    ret = []
+    # If this is not the last path element, recursively gather results from
+    # children
+    if len(branches) > 1:
+        for x in children:
+            add = get_by_path(x, '/'.join(branches[1:]))
+            if isinstance(add, list):
+                ret += add
+            else:
+                return add
+    else:
+        ret = children
+
+    return ret
+
+
 def get_docstring(element):
     docstring = None
     for x in element.childNodes:
@@ -114,9 +147,13 @@ def get_docstring(element):
     return docstring
 
 
-def get_descendant_text(element):
+def get_descendant_text(element_or_elements):
+    if not element_or_elements:
+        return ''
+    if isinstance(element_or_elements, list):
+        return ''.join(map(get_descendant_text, element_or_elements))
     parts = []
-    for x in element.childNodes:
+    for x in element_or_elements.childNodes:
         if x.nodeType == x.TEXT_NODE:
             parts.append(x.nodeValue)
         elif x.nodeType == x.ELEMENT_NODE:

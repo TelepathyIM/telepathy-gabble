@@ -1,6 +1,5 @@
 EXTRA_DIST = \
-    c-constants-generator.xsl \
-    c-interfaces-generator.xsl \
+    c-constants-gen.py \
     check-coding-style.mk \
     check-c-style.sh \
     check-misc.sh \
@@ -8,24 +7,23 @@ EXTRA_DIST = \
     doc-generator.xsl \
     glib-ginterface-gen.py \
     glib-gtypes-generator.py \
-    glib-interfaces-generator.xsl \
-    glib-interfaces-body-generator.xsl \
+    glib-interfaces-gen.py \
     glib-signals-marshal-gen.py \
     identity.xsl \
     libglibcodegen.py \
     libtpcodegen.py \
     xep.xsl
 
+CLEANFILES = *.pyc *.pyo
+
+all: $(EXTRA_DIST)
+
 libglibcodegen.py: libtpcodegen.py
 	test -e $@
 	touch $@
 
-glib-interfaces-generator.xsl glib-interfaces-body-generator.xsl: %: c-interfaces-generator.xsl
-	test -e $@
-	touch $@
-
-glib-ginterface-gen.py glib-gtypes-generator.py glib-signals-marshal-gen.py: \
-		%: libglibcodegen.py
+glib-ginterface-gen.py glib-gtypes-generator.py glib-interfaces-gen.py \
+glib-signals-marshal-gen.py c-constants-gen.py: %: libglibcodegen.py
 	test -e $@
 	touch $@
 

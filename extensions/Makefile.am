@@ -70,26 +70,15 @@ _gen/signals-marshal.c: _gen/signals-marshal.list Makefile.am
 	{ echo '#include "_gen/signals-marshal.h"' && \
 	$(GLIB_GENMARSHAL) --body --prefix=_gabble_ext_marshal $< ; } > $@
 
-_gen/enums.h: _gen/all.xml $(tools_dir)/c-constants-generator.xsl \
+_gen/enums.h: _gen/all.xml $(tools_dir)/c-constants-gen.py \
 	Makefile.am
-	$(XSLTPROC) $(XSLTPROCFLAGS) \
-		--stringparam mixed-case-prefix Gabble \
-		$(tools_dir)/c-constants-generator.xsl \
-		$< > $@
+	$(PYTHON) $(tools_dir)/c-constants-gen.py Gabble $< > $@
 
-_gen/interfaces.h: _gen/all.xml $(tools_dir)/glib-interfaces-generator.xsl \
+_gen/interfaces.h _gen/interfaces-body.h: _gen/all.xml \
+	$(tools_dir)/glib-interfaces-gen.py \
 	Makefile.am
-	$(XSLTPROC) $(XSLTPROCFLAGS) \
-		--stringparam mixed-case-prefix Gabble \
-		$(tools_dir)/glib-interfaces-generator.xsl \
-		$< > $@
-
-_gen/interfaces-body.h: _gen/all.xml \
-	$(tools_dir)/glib-interfaces-body-generator.xsl Makefile.am
-	$(XSLTPROC) $(XSLTPROCFLAGS) \
-		--stringparam mixed-case-prefix Gabble \
-		$(tools_dir)/glib-interfaces-body-generator.xsl \
-		$< > $@
+	$(PYTHON) $(tools_dir)/glib-interfaces-gen.py \
+		Gabble _gen/interfaces-body.h _gen/interfaces.h $<
 
 _gen/gtypes.h _gen/gtypes-body.h: _gen/all.xml \
 	$(tools_dir)/glib-gtypes-generator.py Makefile.am

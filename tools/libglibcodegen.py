@@ -27,6 +27,7 @@ from libtpcodegen import NS_TP, \
                          camelcase_to_upper, \
                          cmp_by_name, \
                          escape_as_identifier, \
+                         get_by_path, \
                          get_descendant_text, \
                          get_docstring, \
                          xml_escape
@@ -146,7 +147,10 @@ def type_to_gtype(s):
     elif s == 'ab': #boolean array
         return ("GArray *", "DBUS_TYPE_G_BOOLEAN_ARRAY", "BOXED", True)
     elif s == 'ao': #object path array
-        return ("GPtrArray *", "DBUS_TYPE_G_OBJECT_ARRAY", "BOXED", True)
+        return ("GPtrArray *",
+                'dbus_g_type_get_collection ("GPtrArray",'
+                ' DBUS_TYPE_G_OBJECT_PATH)',
+                "BOXED", True)
     elif s == 'a{ss}': #hash table of string to string
         return ("GHashTable *", "DBUS_TYPE_G_STRING_STRING_HASHTABLE", "BOXED", False)
     elif s[:2] == 'a{':  #some arbitrary hash tables

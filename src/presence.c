@@ -110,7 +110,7 @@ gabble_presence_init (GabblePresence *self)
   ((GabblePresencePrivate *) self->priv)->resources = NULL;
 }
 
-GabblePresence*
+GabblePresence *
 gabble_presence_new (void)
 {
   return g_object_new (GABBLE_TYPE_PRESENCE, NULL);

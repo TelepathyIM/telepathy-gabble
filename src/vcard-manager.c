@@ -173,7 +173,7 @@ gabble_vcard_manager_cache_quark (void)
 }
 
 #define GABBLE_VCARD_MANAGER_GET_PRIVATE(o)\
-  ((GabbleVCardManagerPrivate*)((o)->priv))
+  ((GabbleVCardManagerPrivate *) ((o)->priv))
 
 static void cache_entry_free (void *data);
 static gint cache_entry_compare (gconstpointer a, gconstpointer b);
@@ -708,7 +708,7 @@ delete_request (GabbleVCardManagerRequest *request)
 static gboolean
 timeout_request (gpointer data)
 {
-  GabbleVCardManagerRequest *request = (GabbleVCardManagerRequest*) data;
+  GabbleVCardManagerRequest *request = (GabbleVCardManagerRequest *) data;
   GError err = { GABBLE_VCARD_MANAGER_ERROR,
       GABBLE_VCARD_MANAGER_ERROR_TIMEOUT, "Request timed out" };
 

@@ -82,7 +82,7 @@ gabble_disco_error_quark (void)
   return quark;
 }
 
-#define GABBLE_DISCO_GET_PRIVATE(o)     ((GabbleDiscoPrivate*)((o)->priv))
+#define GABBLE_DISCO_GET_PRIVATE(o) ((GabbleDiscoPrivate *) ((o)->priv))
 
 static void
 gabble_disco_init (GabbleDisco *obj)
@@ -292,7 +292,7 @@ delete_request (GabbleDiscoRequest *request)
 static gboolean
 timeout_request (gpointer data)
 {
-  GabbleDiscoRequest *request = (GabbleDiscoRequest*) data;
+  GabbleDiscoRequest *request = (GabbleDiscoRequest *) data;
   GabbleDisco *disco;
   GError *err /* doesn't need initializing */;
   g_return_val_if_fail (data != NULL, FALSE);
@@ -364,7 +364,7 @@ static LmHandlerResult
 request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
                   LmMessage *reply_msg, GObject *object, gpointer user_data)
 {
-  GabbleDiscoRequest *request = (GabbleDiscoRequest*) user_data;
+  GabbleDiscoRequest *request = (GabbleDiscoRequest *) user_data;
   GabbleDisco *disco = GABBLE_DISCO (object);
   GabbleDiscoPrivate *priv = GABBLE_DISCO_GET_PRIVATE (disco);
   LmMessageNode *query_node;

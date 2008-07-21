@@ -383,7 +383,7 @@ gabble_private_tubes_factory_iface_request (TpChannelFactoryIface *iface,
     return TP_CHANNEL_FACTORY_REQUEST_STATUS_INVALID_HANDLE;
 
   /* Don't support opening a channel to our self handle */
-  if (handle == ((TpBaseConnection*) priv->conn)->self_handle)
+  if (handle == ((TpBaseConnection *) priv->conn)->self_handle)
     {
      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
          "Can't open a channel to your self handle");

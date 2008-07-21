@@ -34,6 +34,8 @@
 #include <telepathy-glib/svc-channel.h>
 #include <telepathy-glib/svc-generic.h>
 
+#include "extensions/extensions.h"
+
 #define DEBUG_FLAG GABBLE_DEBUG_IM
 #include "connection.h"
 #include "debug.h"
@@ -47,6 +49,7 @@ static void text_iface_init (gpointer, gpointer);
 static void chat_state_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleIMChannel, gabble_im_channel, G_TYPE_OBJECT,
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_FUTURE, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
       tp_dbus_properties_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
@@ -57,6 +60,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleIMChannel, gabble_im_channel, G_TYPE_OBJECT,
 
 static const gchar *gabble_im_channel_interfaces[] = {
     TP_IFACE_CHANNEL_INTERFACE_CHAT_STATE,
+    GABBLE_IFACE_CHANNEL_FUTURE,
     NULL
 };
 
@@ -68,6 +72,7 @@ enum
   PROP_CHANNEL_TYPE,
   PROP_HANDLE_TYPE,
   PROP_HANDLE,
+  PROP_TARGET_ID,
   PROP_CONNECTION,
   PROP_INTERFACES,
   LAST_PROPERTY
@@ -166,6 +171,14 @@ gabble_im_channel_get_property (GObject    *object,
     case PROP_HANDLE:
       g_value_set_uint (value, priv->handle);
       break;
+    case PROP_TARGET_ID:
+        {
+          TpHandleRepoIface *repo = tp_base_connection_get_handles (
+              (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+
+          g_value_set_string (value, tp_handle_inspect (repo, priv->handle));
+        }
+      break;
     case PROP_CONNECTION:
       g_value_set_object (value, priv->conn);
       break;
@@ -225,11 +238,20 @@ gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
       { "Interfaces", "interfaces", NULL },
       { NULL }
   };
+  static TpDBusPropertiesMixinPropImpl future_props[] = {
+      { "TargetID", "target-id", NULL },
+      { NULL }
+  };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
       { TP_IFACE_CHANNEL,
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         channel_props,
+      },
+      { GABBLE_IFACE_CHANNEL_FUTURE,
+        tp_dbus_properties_mixin_getter_gobject_properties,
+        NULL,
+        future_props,
       },
       { NULL }
   };
@@ -268,6 +290,13 @@ gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
       G_PARAM_READABLE |
       G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
   g_object_class_install_property (object_class, PROP_INTERFACES, param_spec);
+
+  param_spec = g_param_spec_string ("target-id", "Peer's bare JID",
+      "The string obtained by inspecting the peer handle (never the full JID)",
+      NULL,
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+  g_object_class_install_property (object_class, PROP_TARGET_ID, param_spec);
 
   tp_text_mixin_class_init (object_class, G_STRUCT_OFFSET (GabbleIMChannelClass, text_class));
 

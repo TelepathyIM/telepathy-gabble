@@ -75,6 +75,9 @@ GabblePresence *gabble_presence_cache_get (GabblePresenceCache *cache,
 void gabble_presence_cache_update (GabblePresenceCache *cache,
     TpHandle handle, const gchar *resource, GabblePresenceId presence_id,
     const gchar *status_message, gint8 priority);
+void gabble_presence_cache_update_many (GabblePresenceCache *cache,
+    const GArray *contact_handles, const gchar *resource,
+    GabblePresenceId presence_id, const gchar *status_message, gint8 priority);
 void gabble_presence_cache_maybe_remove (GabblePresenceCache *cache,
     TpHandle handle);
 void gabble_presence_cache_add_bundle_caps (GabblePresenceCache *cache,

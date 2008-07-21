@@ -283,8 +283,7 @@ gabble_presence_update (GabblePresence *presence,
   res = _find_resource (presence, resource);
 
   /* remove, create or update a Resource as appropriate */
-  if (GABBLE_PRESENCE_OFFLINE == status &&
-      NULL == status_message)
+  if (GABBLE_PRESENCE_OFFLINE >= status  && status <= GABBLE_PRESENCE_ERROR)
     {
       if (NULL != res)
         {

@@ -42,20 +42,6 @@
 #include "presence-cache.h"
 #include "presence.h"
 
-#define GABBLE_TP_SESSION_HANDLER_SET_TYPE (dbus_g_type_get_struct ("GValueArray", \
-      DBUS_TYPE_G_OBJECT_PATH, \
-      G_TYPE_STRING, \
-      G_TYPE_INVALID))
-
-#define GABBLE_TP_CHANNEL_STREAM_TYPE (dbus_g_type_get_struct ("GValueArray", \
-      G_TYPE_UINT, \
-      G_TYPE_UINT, \
-      G_TYPE_UINT, \
-      G_TYPE_UINT, \
-      G_TYPE_UINT, \
-      G_TYPE_UINT, \
-      G_TYPE_INVALID))
-
 static void call_state_iface_init (gpointer, gpointer);
 static void channel_iface_init (gpointer, gpointer);
 static void hold_iface_init (gpointer, gpointer);
@@ -748,6 +734,7 @@ gabble_media_channel_get_session_handlers (TpSvcChannelInterfaceMediaSignalling 
   GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
   GabbleMediaChannelPrivate *priv;
   GPtrArray *ret;
+  GType info_type = TP_STRUCT_TYPE_MEDIA_SESSION_HANDLER_INFO;
 
   g_assert (GABBLE_IS_MEDIA_CHANNEL (self));
 
@@ -759,9 +746,9 @@ gabble_media_channel_get_session_handlers (TpSvcChannelInterfaceMediaSignalling 
       TpHandle member;
       gchar *path;
 
-      g_value_init (&handler, GABBLE_TP_SESSION_HANDLER_SET_TYPE);
+      g_value_init (&handler, info_type);
       g_value_take_boxed (&handler,
-          dbus_g_type_specialized_construct (GABBLE_TP_SESSION_HANDLER_SET_TYPE));
+          dbus_g_type_specialized_construct (info_type));
 
       g_object_get (priv->session,
                     "peer", &member,
@@ -796,6 +783,7 @@ make_stream_list (GabbleMediaChannel *self,
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
   GPtrArray *ret;
   guint i;
+  GType info_type = TP_STRUCT_TYPE_MEDIA_STREAM_INFO;
 
   ret = g_ptr_array_sized_new (streams->len);
 
@@ -818,9 +806,9 @@ make_stream_list (GabbleMediaChannel *self,
 
       g_object_get (priv->session, "peer", &peer, NULL);
 
-      g_value_init (&entry, GABBLE_TP_CHANNEL_STREAM_TYPE);
+      g_value_init (&entry, info_type);
       g_value_take_boxed (&entry,
-          dbus_g_type_specialized_construct (GABBLE_TP_CHANNEL_STREAM_TYPE));
+          dbus_g_type_specialized_construct (info_type));
 
       dbus_g_type_struct_set (&entry,
           0, id,

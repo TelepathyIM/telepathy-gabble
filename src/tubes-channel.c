@@ -1341,7 +1341,7 @@ start_stream_initiation (GabbleTubesChannel *self,
   priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
 
   contact_repo = tp_base_connection_get_handles (
-     (TpBaseConnection*) priv->conn, TP_HANDLE_TYPE_CONTACT);
+     (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 
   jid = tp_handle_inspect (contact_repo, priv->handle);
 
@@ -1423,7 +1423,7 @@ send_new_stream_tube_msg (GabbleTubesChannel *self,
   priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
 
   contact_repo = tp_base_connection_get_handles (
-     (TpBaseConnection*) priv->conn, TP_HANDLE_TYPE_CONTACT);
+     (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 
   jid = tp_handle_inspect (contact_repo, priv->handle);
 
@@ -1465,7 +1465,7 @@ send_tube_close_msg (GabbleTubesChannel *self,
   LmMessage *msg;
   const gchar *jid;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection*) priv->conn, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   gchar *id_str;
 
   jid = tp_handle_inspect (contact_repo, priv->handle);
@@ -1655,7 +1655,7 @@ gabble_tubes_channel_offer_d_bus_tube (TpSvcChannelTypeTubes *iface,
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
 
   priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
-  base = (TpBaseConnection*) priv->conn;
+  base = (TpBaseConnection *) priv->conn;
 
   parameters_copied = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
       (GDestroyNotify) tp_g_value_slice_free);
@@ -1743,7 +1743,7 @@ gabble_tubes_channel_offer_stream_tube (TpSvcChannelTypeTubes *iface,
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
 
   priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
-  base = (TpBaseConnection*) priv->conn;
+  base = (TpBaseConnection *) priv->conn;
 
   if (!gabble_tube_stream_check_params (address_type, address,
         access_control, access_control_param, &error))
@@ -2282,7 +2282,7 @@ emit_tube_closed_signal (gpointer key,
                          gpointer user_data)
 {
   guint id = GPOINTER_TO_UINT (key);
-  GabbleTubesChannel *self = (GabbleTubesChannel*) user_data;
+  GabbleTubesChannel *self = (GabbleTubesChannel *) user_data;
 
   tp_svc_channel_type_tubes_emit_tube_closed (self, id);
 }

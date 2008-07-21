@@ -4,6 +4,8 @@
 
 #include "config.h"
 
+#include <glib.h>
+
 G_BEGIN_DECLS
 
 void gabble_debug_set_log_file_from_env (void);
@@ -11,8 +13,6 @@ void gabble_debug_set_log_file_from_env (void);
 G_END_DECLS
 
 #ifdef ENABLE_DEBUG
-
-#include <glib.h>
 
 G_BEGIN_DECLS
 

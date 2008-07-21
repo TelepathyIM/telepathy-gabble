@@ -36,7 +36,6 @@
 #include "conn-olpc.h"
 #include "debug.h"
 #include "disco.h"
-#include "extensions/extensions.h"
 #include "muc-channel.h"
 #include "namespaces.h"
 #include "presence-cache.h"

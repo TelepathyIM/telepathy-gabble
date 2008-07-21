@@ -39,7 +39,6 @@
 #include "connection.h"
 #include "debug.h"
 #include "disco.h"
-#include "extensions/extensions.h"
 #include "gabble-signals-marshal.h"
 #include "namespaces.h"
 #include "presence-cache.h"

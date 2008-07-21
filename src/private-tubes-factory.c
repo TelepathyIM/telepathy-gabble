@@ -32,7 +32,6 @@
 
 #include "connection.h"
 #include "debug.h"
-#include "extensions/extensions.h"
 #include "muc-channel.h"
 #include "muc-factory.h"
 #include "namespaces.h"

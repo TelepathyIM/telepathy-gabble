@@ -49,6 +49,14 @@ def test(q, bus, conn, stream):
     media_iface = make_channel_proxy(conn, path, 'Channel.Type.StreamedMedia')
     group_iface = make_channel_proxy(conn, path, 'Channel.Interface.Group')
 
+    # Exercise FUTURE properties
+    future_props = group_iface.GetAll(
+            'org.freedesktop.Telepathy.Channel.FUTURE',
+            dbus_interface='org.freedesktop.DBus.Properties')
+    assert future_props['TargetID'] == ''
+    assert future_props['InitiatorID'] == 'test@localhost'
+    assert future_props['InitiatorHandle'] == conn.GetSelfHandle()
+
     # S-E gets notified about new session handler, and calls Ready on it
     e = q.expect('dbus-signal', signal='NewSessionHandler')
     assert e.args[1] == 'rtp'

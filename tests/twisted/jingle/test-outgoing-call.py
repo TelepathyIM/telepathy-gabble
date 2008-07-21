@@ -74,6 +74,14 @@ def test(q, bus, conn, stream):
             channel_props.get('Interfaces', ()), \
             channel_props.get('Interfaces')
 
+    # Exercise FUTURE properties
+    future_props = group_iface.GetAll(
+            'org.freedesktop.Telepathy.Channel.FUTURE',
+            dbus_interface='org.freedesktop.DBus.Properties')
+    assert future_props['TargetID'] == ''
+    assert future_props['InitiatorID'] == 'test@localhost'
+    assert future_props['InitiatorHandle'] == conn.GetSelfHandle()
+
     # Exercise Group Properties from spec 0.17.6 (in a basic way)
     group_props = group_iface.GetAll(
             'org.freedesktop.Telepathy.Channel.Interface.Group',

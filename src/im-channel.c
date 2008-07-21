@@ -72,6 +72,8 @@ enum
   PROP_CHANNEL_TYPE,
   PROP_HANDLE_TYPE,
   PROP_HANDLE,
+  PROP_INITIATOR_HANDLE,
+  PROP_INITIATOR_ID,
   PROP_TARGET_ID,
   PROP_CONNECTION,
   PROP_INTERFACES,
@@ -86,6 +88,7 @@ struct _GabbleIMChannelPrivate
   GabbleConnection *conn;
   char *object_path;
   TpHandle handle;
+  TpHandle initiator;
 
   gchar *peer_jid;
 
@@ -124,6 +127,9 @@ gabble_im_channel_constructor (GType type, guint n_props,
       TP_HANDLE_TYPE_CONTACT);
 
   tp_handle_ref (contact_handles, priv->handle);
+
+  if (priv->initiator != 0)
+    tp_handle_ref (contact_handles, priv->initiator);
 
   priv->peer_jid = g_strdup (tp_handle_inspect (contact_handles,
         priv->handle));
@@ -171,6 +177,18 @@ gabble_im_channel_get_property (GObject    *object,
     case PROP_HANDLE:
       g_value_set_uint (value, priv->handle);
       break;
+    case PROP_INITIATOR_HANDLE:
+      g_value_set_uint (value, priv->initiator);
+      break;
+    case PROP_INITIATOR_ID:
+        {
+          TpHandleRepoIface *repo = tp_base_connection_get_handles (
+              (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+
+          g_value_set_string (value,
+              tp_handle_inspect (repo, priv->initiator));
+        }
+      break;
     case PROP_TARGET_ID:
         {
           TpHandleRepoIface *repo = tp_base_connection_get_handles (
@@ -211,6 +229,10 @@ gabble_im_channel_set_property (GObject     *object,
        */
       priv->handle = g_value_get_uint (value);
       break;
+    case PROP_INITIATOR_HANDLE:
+      /* similarly we can't ref this yet */
+      priv->initiator = g_value_get_uint (value);
+      break;
     case PROP_HANDLE_TYPE:
     case PROP_CHANNEL_TYPE:
       /* these properties are writable in the interface, but not actually
@@ -240,6 +262,8 @@ gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
   };
   static TpDBusPropertiesMixinPropImpl future_props[] = {
       { "TargetID", "target-id", NULL },
+      { "InitiatorHandle", "initiator-handle", NULL },
+      { "InitiatorID", "initiator-id", NULL },
       { NULL }
   };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
@@ -297,6 +321,22 @@ gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
       G_PARAM_READABLE |
       G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
   g_object_class_install_property (object_class, PROP_TARGET_ID, param_spec);
+
+  param_spec = g_param_spec_uint ("initiator-handle", "Initiator's handle",
+      "The contact who initiated the channel",
+      0, G_MAXUINT32, 0,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
+      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+  g_object_class_install_property (object_class, PROP_INITIATOR_HANDLE,
+      param_spec);
+
+  param_spec = g_param_spec_string ("initiator-id", "Initiator's bare JID",
+      "The string obtained by inspecting the initiator-handle",
+      NULL,
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+  g_object_class_install_property (object_class, PROP_INITIATOR_ID,
+      param_spec);
 
   tp_text_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleIMChannelClass, text_class));
@@ -374,6 +414,9 @@ gabble_im_channel_finalize (GObject *object)
   DEBUG ("%p", object);
 
   tp_handle_unref (contact_handles, priv->handle);
+
+  if (priv->initiator != 0)
+    tp_handle_unref (contact_handles, priv->initiator);
 
   g_free (priv->object_path);
   g_free (priv->peer_jid);

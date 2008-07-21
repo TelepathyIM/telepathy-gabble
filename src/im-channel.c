@@ -20,20 +20,12 @@
 
 #include "im-channel.h"
 
-#include <dbus/dbus-glib.h>
-#include <loudmouth/loudmouth.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
 
-#define DEBUG_FLAG GABBLE_DEBUG_IM
-
-#include "debug.h"
-#include "disco.h"
-#include "connection.h"
-#include "presence.h"
-#include "presence-cache.h"
-#include "roster.h"
+#include <dbus/dbus-glib.h>
+#include <loudmouth/loudmouth.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/enums.h>
 #include <telepathy-glib/errors.h>
@@ -41,6 +33,14 @@
 #include <telepathy-glib/channel-iface.h>
 #include <telepathy-glib/svc-channel.h>
 #include <telepathy-glib/svc-generic.h>
+
+#define DEBUG_FLAG GABBLE_DEBUG_IM
+#include "connection.h"
+#include "debug.h"
+#include "disco.h"
+#include "presence.h"
+#include "presence-cache.h"
+#include "roster.h"
 
 static void channel_iface_init (gpointer, gpointer);
 static void text_iface_init (gpointer, gpointer);

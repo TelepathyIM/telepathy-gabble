@@ -24,8 +24,9 @@
 #include <telepathy-glib/dbus.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_PIPELINE
-#include "debug.h"
+
 #include "connection.h"
+#include "debug.h"
 
 #define DEFAULT_REQUEST_TIMEOUT 20000
 #define REQUEST_PIPELINE_SIZE 5

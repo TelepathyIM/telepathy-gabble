@@ -22,18 +22,10 @@
 #include "config.h"
 #include "media-channel.h"
 
-#include <dbus/dbus-glib.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-#define DEBUG_FLAG GABBLE_DEBUG_MEDIA
-
-#include "debug.h"
-#include "connection.h"
-#include "media-session.h"
-#include "presence.h"
-#include "presence-cache.h"
-
+#include <dbus/dbus-glib.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/errors.h>
 #include <telepathy-glib/interfaces.h>
@@ -41,10 +33,16 @@
 #include <telepathy-glib/svc-channel.h>
 #include <telepathy-glib/svc-properties-interface.h>
 
+#define DEBUG_FLAG GABBLE_DEBUG_MEDIA
+
+#include "connection.h"
+#include "debug.h"
+#include "media-factory.h"
+#include "media-session.h"
 #include "media-session.h"
 #include "media-stream.h"
-
-#include "media-factory.h"
+#include "presence-cache.h"
+#include "presence.h"
 
 #define GABBLE_TP_SESSION_HANDLER_SET_TYPE (dbus_g_type_get_struct ("GValueArray", \
       DBUS_TYPE_G_OBJECT_PATH, \

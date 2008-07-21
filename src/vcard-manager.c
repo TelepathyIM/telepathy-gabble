@@ -28,15 +28,15 @@
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/heap.h>
 
+#define DEBUG_FLAG GABBLE_DEBUG_VCARD
+
 #include "base64.h"
 #include "conn-aliasing.h"
 #include "connection.h"
+#include "debug.h"
 #include "namespaces.h"
 #include "request-pipeline.h"
 #include "util.h"
-
-#define DEBUG_FLAG GABBLE_DEBUG_VCARD
-#include "debug.h"
 
 #define DEFAULT_REQUEST_TIMEOUT 60000
 #define VCARD_CACHE_ENTRY_TTL 60

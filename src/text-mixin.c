@@ -26,19 +26,19 @@
 #include "config.h"
 #include "text-mixin.h"
 
-#include <loudmouth/loudmouth.h>
-#include <dbus/dbus-glib.h>
 #include <string.h>
 #include <time.h>
 
+#include <dbus/dbus-glib.h>
+#include <loudmouth/loudmouth.h>
 #include <telepathy-glib/text-mixin.h>
 #include <telepathy-glib/enums.h>
 #include <telepathy-glib/errors.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_IM
 
-#include "debug.h"
 #include "connection.h"
+#include "debug.h"
 #include "namespaces.h"
 #include "roster.h"
 #include "util.h"

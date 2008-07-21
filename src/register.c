@@ -25,13 +25,13 @@
 
 #define DBUS_API_SUBJECT_TO_CHANGE
 
-#include <dbus/dbus-glib.h>
-#include <dbus/dbus-glib-lowlevel.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 
+#include <dbus/dbus-glib.h>
+#include <dbus/dbus-glib-lowlevel.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/errors.h>
 

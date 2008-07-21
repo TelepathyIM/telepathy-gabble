@@ -21,24 +21,23 @@
  */
 
 #include "config.h"
-
 #include "util.h"
 
-#include <glib.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
+#include <glib.h>
 #include <telepathy-glib/handle-repo-dynamic.h>
 
-#include "conn-aliasing.h"
-#include "sha1/sha1.h"
-#include "namespaces.h"
-#include "connection.h"
-#include "base64.h"
-
 #define DEBUG_FLAG GABBLE_DEBUG_JID
+
+#include "base64.h"
+#include "conn-aliasing.h"
+#include "connection.h"
 #include "debug.h"
+#include "namespaces.h"
+#include "sha1/sha1.h"
 
 gchar *
 sha1_hex (const gchar *bytes, guint len)

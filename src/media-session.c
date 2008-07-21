@@ -22,30 +22,28 @@
 #include "config.h"
 #include "media-session.h"
 
-#include <dbus/dbus-glib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
-#define DEBUG_FLAG GABBLE_DEBUG_MEDIA
-
+#include <dbus/dbus-glib.h>
 #include <telepathy-glib/debug-ansi.h>
-#include "debug.h"
-#include "namespaces.h"
-#include "util.h"
-
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/errors.h>
 #include <telepathy-glib/svc-media-interfaces.h>
 
+#define DEBUG_FLAG GABBLE_DEBUG_MEDIA
+
 #include "connection.h"
+#include "debug.h"
+#include "gabble-signals-marshal.h"
 #include "media-channel.h"
 #include "media-stream.h"
+#include "namespaces.h"
 #include "presence-cache.h"
 #include "presence.h"
-
-#include "gabble-signals-marshal.h"
+#include "util.h"
 
 static void session_handler_iface_init (gpointer, gpointer);
 

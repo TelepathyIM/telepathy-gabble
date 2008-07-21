@@ -24,20 +24,21 @@
 #include "config.h"
 #include "disco.h"
 
+#include <stdlib.h>
+#include <string.h>
+
 #define DBUS_API_SUBJECT_TO_CHANGE
 
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
-#include <stdlib.h>
-#include <string.h>
+#include <telepathy-glib/dbus.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_DISCO
 
-#include "debug.h"
 #include "connection.h"
+#include "debug.h"
 #include "error.h"
 #include "namespaces.h"
-#include <telepathy-glib/dbus.h>
 #include "util.h"
 
 #define DEFAULT_REQUEST_TIMEOUT 20000

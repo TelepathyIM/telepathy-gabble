@@ -30,6 +30,7 @@
 #include "util.h"
 
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
+
 #include "debug.h"
 
 G_DEFINE_TYPE (GabblePresence, gabble_presence, G_TYPE_OBJECT);

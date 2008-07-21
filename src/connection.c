@@ -19,7 +19,6 @@
  */
 
 #include "config.h"
-
 #include "connection.h"
 
 #include <stdio.h>
@@ -27,11 +26,11 @@
 #include <string.h>
 
 #define DBUS_API_SUBJECT_TO_CHANGE
+
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
 #include <glib-object.h>
 #include <loudmouth/loudmouth.h>
-
 #include <telepathy-glib/channel-iface.h>
 #include <telepathy-glib/channel-factory-iface.h>
 #include <telepathy-glib/dbus.h>

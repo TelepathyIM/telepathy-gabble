@@ -20,7 +20,6 @@
 #include "config.h"
 #include "tubes-channel.h"
 
-#include <dbus/dbus-glib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,7 +30,7 @@
 
 #include <glib.h>
 #include <glib/gstdio.h>
-
+#include <dbus/dbus-glib.h>
 #include <telepathy-glib/channel-iface.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/enums.h>
@@ -43,15 +42,15 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_TUBES
 
-#include "debug.h"
+#include "bytestream-factory.h"
 #include "connection.h"
-#include "presence.h"
-#include "presence-cache.h"
+#include "debug.h"
 #include "namespaces.h"
-#include "util.h"
+#include "presence-cache.h"
+#include "presence.h"
 #include "tube-iface.h"
 #include "tube-stream.h"
-#include "bytestream-factory.h"
+#include "util.h"
 
 #ifdef HAVE_DBUS_TUBE
 #include "tube-dbus.h"

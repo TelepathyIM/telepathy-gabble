@@ -27,26 +27,24 @@
 
 #include <glib.h>
 #include <glib/gstdio.h>
-
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
-
 #include <loudmouth/loudmouth.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_TUBES
 
+#include "base64.h"
+#include "bytestream-factory.h"
+#include "bytestream-ibb.h"
+#include "bytestream-iface.h"
+#include "connection.h"
 #include "debug.h"
 #include "disco.h"
 #include "extensions/extensions.h"
-#include "connection.h"
-#include "namespaces.h"
-#include "util.h"
-#include "base64.h"
-#include "tube-iface.h"
-#include "bytestream-iface.h"
-#include "bytestream-ibb.h"
-#include "bytestream-factory.h"
 #include "gabble-signals-marshal.h"
+#include "namespaces.h"
+#include "tube-iface.h"
+#include "util.h"
 
 /* When we receive D-Bus messages to be delivered to the application and the
  * application is not yet connected to the D-Bus tube, theses D-Bus messages

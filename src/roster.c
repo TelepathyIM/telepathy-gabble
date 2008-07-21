@@ -24,22 +24,21 @@
 
 #define DBUS_API_SUBJECT_TO_CHANGE
 
-#include <dbus/dbus-glib.h>
 #include <string.h>
 
+#include <dbus/dbus-glib.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/channel-factory-iface.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_ROSTER
 
 #include "conn-aliasing.h"
-#include "debug.h"
 #include "connection.h"
-#include "roster-channel.h"
+#include "debug.h"
 #include "namespaces.h"
-#include "util.h"
-
 #include "presence-cache.h"
+#include "roster-channel.h"
+#include "util.h"
 
 #define GOOGLE_ROSTER_VERSION "2"
 

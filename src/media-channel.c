@@ -31,6 +31,8 @@
 #include <telepathy-glib/svc-channel.h>
 #include <telepathy-glib/svc-properties-interface.h>
 
+#include "extensions/extensions.h"
+
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
 #include "connection.h"
@@ -51,6 +53,7 @@ static void streamed_media_iface_init (gpointer, gpointer);
 G_DEFINE_TYPE_WITH_CODE (GabbleMediaChannel, gabble_media_channel,
     G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_FUTURE, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CALL_STATE,
       call_state_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
@@ -72,6 +75,7 @@ static const gchar *gabble_media_channel_interfaces[] = {
     appear in GetInterfaces' output to avoid confusing clients
     TP_IFACE_CHANNEL_INTERFACE_CALL_STATE,
     */
+    GABBLE_IFACE_CHANNEL_FUTURE,
     TP_IFACE_CHANNEL_INTERFACE_GROUP,
     TP_IFACE_CHANNEL_INTERFACE_HOLD,
     TP_IFACE_CHANNEL_INTERFACE_MEDIA_SIGNALLING,
@@ -86,8 +90,10 @@ enum
   PROP_CHANNEL_TYPE,
   PROP_HANDLE_TYPE,
   PROP_HANDLE,
+  PROP_TARGET_ID,
   PROP_CONNECTION,
   PROP_CREATOR,
+  PROP_CREATOR_ID,
   PROP_FACTORY,
   PROP_INTERFACES,
   /* TP properties (see also below) */
@@ -389,11 +395,22 @@ gabble_media_channel_get_property (GObject    *object,
     case PROP_HANDLE:
       g_value_set_uint (value, 0);
       break;
+    case PROP_TARGET_ID:
+      g_value_set_static_string (value, "");
+      break;
     case PROP_CONNECTION:
       g_value_set_object (value, priv->conn);
       break;
     case PROP_CREATOR:
       g_value_set_uint (value, priv->creator);
+      break;
+    case PROP_CREATOR_ID:
+        {
+          TpHandleRepoIface *repo = tp_base_connection_get_handles (
+              (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+
+          g_value_set_string (value, tp_handle_inspect (repo, priv->creator));
+        }
       break;
     case PROP_FACTORY:
       g_value_set_object (value, priv->factory);
@@ -488,11 +505,22 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
       { "Interfaces", "interfaces", NULL },
       { NULL }
   };
+  static TpDBusPropertiesMixinPropImpl future_props[] = {
+      { "TargetID", "target-id", NULL },
+      { "InitiatorHandle", "creator", NULL },
+      { "InitiatorID", "creator-id", NULL },
+      { NULL }
+  };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
       { TP_IFACE_CHANNEL,
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         channel_props,
+      },
+      { GABBLE_IFACE_CHANNEL_FUTURE,
+        tp_dbus_properties_mixin_getter_gobject_properties,
+        NULL,
+        future_props,
       },
       { NULL }
   };
@@ -518,6 +546,13 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
       "handle-type");
   g_object_class_override_property (object_class, PROP_HANDLE, "handle");
 
+  param_spec = g_param_spec_string ("target-id", "Target JID",
+      "Currently empty, because this channel always has handle 0.",
+      NULL,
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_TARGET_ID, param_spec);
+
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
       "Gabble connection object that owns this media channel object.",
       GABBLE_TYPE_CONNECTION,
@@ -531,6 +566,13 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
       G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_CREATOR, param_spec);
+
+  param_spec = g_param_spec_string ("creator-id", "Creator bare JID",
+      "The bare JID obtained by inspecting the creator handle.",
+      NULL,
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
+  g_object_class_install_property (object_class, PROP_CREATOR_ID, param_spec);
 
   param_spec = g_param_spec_object ("factory", "GabbleMediaFactory object",
       "The factory that created this object.",

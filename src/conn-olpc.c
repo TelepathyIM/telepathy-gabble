@@ -53,19 +53,19 @@ typedef struct
   guint refcount;
 } ActivityInfo;
 
-static const gchar*
+static const gchar *
 activity_info_get_room (ActivityInfo *info)
 {
   return tp_handle_inspect (info->room_repo, info->handle);
 }
 
-static ActivityInfo*
+static ActivityInfo *
 activity_info_new (GabbleConnection *conn,
                    TpHandle handle)
 {
   ActivityInfo *info;
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
-      (TpBaseConnection*) conn, TP_HANDLE_TYPE_ROOM);
+      (TpBaseConnection *) conn, TP_HANDLE_TYPE_ROOM);
 
   g_assert (tp_handle_is_valid (room_repo, handle, NULL));
 
@@ -537,7 +537,7 @@ olpc_buddy_info_properties_event_handler (GabbleConnection *conn,
 {
   GHashTable *properties;
   LmMessageNode *node;
-  TpBaseConnection *base = (TpBaseConnection*) conn;
+  TpBaseConnection *base = (TpBaseConnection *) conn;
 
   if (handle == base->self_handle)
     /* Ignore echoed pubsub notifications */
@@ -562,7 +562,7 @@ get_activity_properties_reply_cb (GabbleConnection *conn,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
-static ActivityInfo*
+static ActivityInfo *
 add_activity_info (GabbleConnection *conn,
                    TpHandle handle)
 {
@@ -964,7 +964,7 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
                                 DBusGMethodInvocation *context)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
-  TpBaseConnection *base = (TpBaseConnection*) conn;
+  TpBaseConnection *base = (TpBaseConnection *) conn;
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
       base, TP_HANDLE_TYPE_ROOM);
   guint i;
@@ -1094,7 +1094,7 @@ olpc_buddy_info_activities_event_handler (GabbleConnection *conn,
                                           TpHandle handle)
 {
   GPtrArray *activities;
-  TpBaseConnection *base = (TpBaseConnection*) conn;
+  TpBaseConnection *base = (TpBaseConnection *) conn;
 
   if (handle == base->self_handle)
     /* Ignore echoed pubsub notifications */
@@ -1108,7 +1108,7 @@ olpc_buddy_info_activities_event_handler (GabbleConnection *conn,
   return TRUE;
 }
 
-static ActivityInfo*
+static ActivityInfo *
 add_activity_info_in_set (GabbleConnection *conn,
                           TpHandle room_handle,
                           const gchar *from,
@@ -1118,9 +1118,9 @@ add_activity_info_in_set (GabbleConnection *conn,
   TpHandle from_handle;
   TpHandleSet *activities_set;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection*) conn, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
-      (TpBaseConnection*) conn, TP_HANDLE_TYPE_ROOM);
+      (TpBaseConnection *) conn, TP_HANDLE_TYPE_ROOM);
 
   from_handle = tp_handle_lookup (contact_repo, from, NULL, NULL);
 
@@ -1285,7 +1285,7 @@ static gboolean
 activity_in_own_set (GabbleConnection *conn,
                      const gchar *room)
 {
-  TpBaseConnection *base = (TpBaseConnection*) conn;
+  TpBaseConnection *base = (TpBaseConnection *) conn;
   TpHandleSet *activities_set;
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_ROOM);
@@ -1369,7 +1369,7 @@ olpc_buddy_info_current_activity_event_handler (GabbleConnection *conn,
 {
   guint room_handle;
   const gchar *activity;
-  TpBaseConnection *base = (TpBaseConnection*) conn;
+  TpBaseConnection *base = (TpBaseConnection *) conn;
 
   if (handle == base->self_handle)
     /* Ignore echoed pubsub notifications */
@@ -1804,7 +1804,7 @@ update_activities_properties (GabbleConnection *conn,
   const gchar *room;
   LmMessageNode *node, *properties_node;
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
-      (TpBaseConnection*) conn, TP_HANDLE_TYPE_ROOM);
+      (TpBaseConnection *) conn, TP_HANDLE_TYPE_ROOM);
 
   node = lm_message_node_find_child (msg->node, "activities");
   if (node == NULL)
@@ -1889,7 +1889,7 @@ olpc_activities_properties_event_handler (GabbleConnection *conn,
                                           LmMessage *msg,
                                           TpHandle handle)
 {
-  TpBaseConnection *base = (TpBaseConnection*) conn;
+  TpBaseConnection *base = (TpBaseConnection *) conn;
 
   if (handle == base->self_handle)
     /* Ignore echoed pubsub notifications */

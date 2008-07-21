@@ -42,10 +42,10 @@ def test(q, bus, conn, stream):
     event = q.expect('dbus-return', method='RequestChannel')
 
     bus = dbus.SessionBus()
-    text_chan = bus.get_object(conn.bus_name, event.value[0])
+    chan = bus.get_object(conn.bus_name, event.value[0])
 
     # Exercise basic Channel Properties from spec 0.17.7
-    channel_props = text_chan.GetAll(
+    channel_props = chan.GetAll(
             'org.freedesktop.Telepathy.Channel',
             dbus_interface='org.freedesktop.DBus.Properties')
     assert channel_props.get('TargetHandle') == 0,\
@@ -56,7 +56,16 @@ def test(q, bus, conn, stream):
             'org.freedesktop.Telepathy.Channel.Type.RoomList',\
             channel_props.get('ChannelType')
     assert 'Interfaces' in channel_props
-    assert channel_props['Interfaces'] == []
+    assert 'org.freedesktop.Telepathy.Channel.FUTURE' in \
+            channel_props['Interfaces']
+
+    # Exercise FUTURE properties
+    future_props = chan.GetAll(
+            'org.freedesktop.Telepathy.Channel.FUTURE',
+            dbus_interface='org.freedesktop.DBus.Properties')
+    assert future_props['TargetID'] == ''
+    assert future_props['InitiatorID'] == 'test@localhost'
+    assert future_props['InitiatorHandle'] == conn.GetSelfHandle()
 
     # FIXME: actually list the rooms!
 

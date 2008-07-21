@@ -38,7 +38,7 @@ if grep -En '[(][[:alnum:]_]+\*+[)]' "$@"; then
 fi
 # ... and this only spots variable declarations and function return types
 if grep -En '^ *(static |const |)* *[[:alnum:]_]+\*+([[:alnum:]_]|;|$)' \
-	"$@"; then
+    "$@"; then
   echo "^^^ Our coding style is to have a space before the * of pointer types"
   echo "    (regex 2)"
   fail=1

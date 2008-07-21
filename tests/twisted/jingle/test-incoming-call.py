@@ -1,4 +1,3 @@
-
 """
 Test incoming call handling.
 """
@@ -8,7 +7,8 @@ print "FIXME: jingle/test-incoming-call.py disabled due to race condition"
 raise SystemExit(77)
 
 from gabbletest import exec_test, make_result_iq, sync_stream
-from servicetest import make_channel_proxy, unwrap, tp_path_prefix
+from servicetest import make_channel_proxy, unwrap, tp_path_prefix, \
+        EventPattern
 import jingletest
 import gabbletest
 import dbus
@@ -24,11 +24,13 @@ def test(q, bus, conn, stream):
     # Connecting
     conn.Connect()
 
-    q.expect('dbus-signal', signal='StatusChanged', args=[1, 1])
-    q.expect('stream-authenticated')
-    q.expect('dbus-signal', signal='PresenceUpdate',
-        args=[{1L: (0L, {u'available': {}})}])
-    q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])
+    q.expect_many(
+            EventPattern('dbus-signal', signal='StatusChanged', args=[1, 1]),
+            EventPattern('stream-authenticated'),
+            EventPattern('dbus-signal', signal='PresenceUpdate',
+                args=[{1L: (0L, {u'available': {}})}]),
+            EventPattern('dbus-signal', signal='StatusChanged', args=[0, 1]),
+            )
 
     # We need remote end's presence for capabilities
     jt.send_remote_presence()

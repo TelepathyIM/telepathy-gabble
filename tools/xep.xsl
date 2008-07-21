@@ -34,7 +34,7 @@ THE SOFTWARE.
     <html>
       <head>
         <title>XEP-<xsl:value-of select='/xep/header/number'/>:<xsl:text> </xsl:text><xsl:value-of select='/xep/header/title' /></title>
-        <link rel='stylesheet' type='text/css' href='/xmpp.css' />
+        <link rel='stylesheet' type='text/css' href='../xmpp.css' />
         <link rel='shortcut icon' type='image/x-icon' href='/favicon.ico' />
         <!-- BEGIN META TAGS FOR DUBLIN CORE -->
         <meta>
@@ -696,6 +696,10 @@ THE SOFTWARE.
     </p>
   </xsl:template>
 
+  <xsl:template match='br'>
+    <br />
+  </xsl:template>
+
   <xsl:template match='ul'>
     <ul>
       <xsl:variable name='class.count' select='count(@class)'/>
@@ -773,10 +777,12 @@ THE SOFTWARE.
   </xsl:template>
 
   <xsl:template match='table'>
-    <p class='caption'><a><xsl:attribute name='name'><xsl:text>table-</xsl:text><xsl:number level='any' count='table'/></xsl:attribute></a>Table <xsl:number level='any' count='table'/>:<xsl:text> </xsl:text><xsl:value-of select='@caption'/></p>
-    <table border='1' cellpadding='3' cellspacing='0'>
-      <xsl:apply-templates/>
-    </table>
+    <div class='indent'>
+      <p class='caption'><a><xsl:attribute name='name'><xsl:text>table-</xsl:text><xsl:number level='any' count='table'/></xsl:attribute></a>Table <xsl:number level='any' count='table'/>:<xsl:text> </xsl:text><xsl:value-of select='@caption'/></p>
+      <table border='1' cellpadding='3' cellspacing='0'>
+        <xsl:apply-templates/>
+      </table>
+    </div>
   </xsl:template>
 
   <xsl:template match='tr'>

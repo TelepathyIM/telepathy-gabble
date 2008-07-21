@@ -78,13 +78,14 @@ def test(q, bus, conn, stream):
 
     media_chan.RemoveMembers([dbus.UInt32(1)], 'rejected')
 
-    e = q.expect('stream-iq')
-    assert e.query.name == 'jingle'
-    assert e.query['action'] == 'session-terminate'
+    iq, signal = q.expect_many(
+            EventPattern('stream-iq'),
+            EventPattern('dbus-signal', signal='Closed'),
+            )
+    assert iq.query.name == 'jingle'
+    assert iq.query['action'] == 'session-terminate'
 
     # Tests completed, close the connection
-
-    e = q.expect('dbus-signal', signal='Close') #XXX - match against the path
 
     conn.Disconnect()
     q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])

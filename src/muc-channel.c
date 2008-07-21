@@ -33,7 +33,7 @@
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/channel-iface.h>
 
-#define DEBUG_FLAG GABBLE_DEBUG_MUC
+#include "extensions/extensions.h"
 
 #include "debug.h"
 #include "disco.h"
@@ -59,6 +59,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMucChannel, gabble_muc_channel,
       tp_dbus_properties_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL,
       channel_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_FUTURE, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_PROPERTIES_INTERFACE,
       tp_properties_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
@@ -73,6 +74,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMucChannel, gabble_muc_channel,
     )
 
 static const gchar *gabble_muc_channel_interfaces[] = {
+    GABBLE_IFACE_CHANNEL_FUTURE,
     TP_IFACE_CHANNEL_INTERFACE_GROUP,
     TP_IFACE_CHANNEL_INTERFACE_PASSWORD,
     TP_IFACE_PROPERTIES_INTERFACE,
@@ -100,10 +102,13 @@ enum
   PROP_CHANNEL_TYPE,
   PROP_HANDLE_TYPE,
   PROP_HANDLE,
+  PROP_TARGET_ID,
   PROP_CONNECTION,
   PROP_STATE,
   PROP_INVITE_SELF,
   PROP_INTERFACES,
+  PROP_INITIATOR_HANDLE,
+  PROP_INITIATOR_ID,
   LAST_PROPERTY
 };
 
@@ -208,6 +213,8 @@ struct _GabbleMucChannelPrivate
   GabbleConnection *conn;
   gchar *object_path;
 
+  TpHandle initiator;
+
   GabbleMucState state;
 
   guint join_timer_id;
@@ -294,6 +301,9 @@ gabble_muc_channel_constructor (GType type, guint n_props,
 
   /* get the room's jid */
   priv->jid = tp_handle_inspect (room_handles, priv->handle);
+
+  if (priv->initiator != 0)
+    tp_handle_ref (contact_handles, priv->initiator);
 
   /* get our own identity in the room */
   contact_handle_to_room_identity (GABBLE_MUC_CHANNEL (obj),
@@ -759,6 +769,10 @@ gabble_muc_channel_get_property (GObject    *object,
     case PROP_HANDLE:
       g_value_set_uint (value, priv->handle);
       break;
+    case PROP_TARGET_ID:
+      g_assert (priv->jid != NULL && strchr (priv->jid, '/') == NULL);
+      g_value_set_string (value, priv->jid);
+      break;
     case PROP_CONNECTION:
       g_value_set_object (value, priv->conn);
       break;
@@ -767,6 +781,18 @@ gabble_muc_channel_get_property (GObject    *object,
       break;
     case PROP_INTERFACES:
       g_value_set_boxed (value, gabble_muc_channel_interfaces);
+      break;
+    case PROP_INITIATOR_HANDLE:
+      g_value_set_uint (value, priv->initiator);
+      break;
+    case PROP_INITIATOR_ID:
+        {
+          TpHandleRepoIface *repo = tp_base_connection_get_handles (
+              (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+
+          g_value_set_string (value,
+              tp_handle_inspect (repo, priv->initiator));
+        }
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -815,6 +841,9 @@ gabble_muc_channel_set_property (GObject     *object,
     case PROP_INVITE_SELF:
       priv->invite_self = g_value_get_boolean (value);
       break;
+    case PROP_INITIATOR_HANDLE:
+      priv->initiator = g_value_get_uint (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -840,11 +869,22 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
       { "Interfaces", "interfaces", NULL },
       { NULL }
   };
+  static TpDBusPropertiesMixinPropImpl future_props[] = {
+      { "TargetID", "target-id", NULL },
+      { "InitiatorHandle", "initiator-handle", NULL },
+      { "InitiatorID", "initiator-id", NULL },
+      { NULL }
+  };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
       { TP_IFACE_CHANNEL,
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         channel_props,
+      },
+      { GABBLE_IFACE_CHANNEL_FUTURE,
+        tp_dbus_properties_mixin_getter_gobject_properties,
+        NULL,
+        future_props,
       },
       { NULL }
   };
@@ -902,6 +942,29 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
       G_PARAM_READABLE |
       G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
   g_object_class_install_property (object_class, PROP_INTERFACES, param_spec);
+
+  param_spec = g_param_spec_string ("target-id", "MUC's JID",
+      "The string obtained by inspecting the MUC's handle",
+      NULL,
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+  g_object_class_install_property (object_class, PROP_TARGET_ID, param_spec);
+
+  param_spec = g_param_spec_uint ("initiator-handle", "Initiator's handle",
+      "The contact who initiated the channel",
+      0, G_MAXUINT32, 0,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
+      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+  g_object_class_install_property (object_class, PROP_INITIATOR_HANDLE,
+      param_spec);
+
+  param_spec = g_param_spec_string ("initiator-id", "Initiator's bare JID",
+      "The string obtained by inspecting the initiator-handle",
+      NULL,
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+  g_object_class_install_property (object_class, PROP_INITIATOR_ID,
+      param_spec);
 
   signals[READY] =
     g_signal_new ("ready",
@@ -996,6 +1059,8 @@ gabble_muc_channel_finalize (GObject *object)
 {
   GabbleMucChannel *self = GABBLE_MUC_CHANNEL (object);
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   TpHandleRepoIface *room_handles = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
 
@@ -1009,6 +1074,9 @@ gabble_muc_channel_finalize (GObject *object)
 
   /* free any data held directly by the object here */
   tp_handle_unref (room_handles, priv->handle);
+
+  if (priv->initiator != 0)
+    tp_handle_unref (contact_handles, priv->initiator);
 
   g_free (priv->object_path);
 
@@ -2128,6 +2196,12 @@ _gabble_muc_channel_handle_invited (GabbleMucChannel *chan,
   conn = (TpBaseConnection *) priv->conn;
   contact_handles = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
+
+  if (priv->initiator == 0)
+    {
+      tp_handle_ref (contact_handles, inviter);
+      priv->initiator = inviter;
+    }
 
   /* add ourself to local pending and the inviter to members */
   set_members = tp_intset_new ();

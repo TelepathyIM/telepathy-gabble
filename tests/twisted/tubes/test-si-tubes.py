@@ -111,6 +111,14 @@ def test(q, bus, conn, stream):
 
     self_handle = conn.GetSelfHandle()
 
+    # Exercise FUTURE properties
+    future_props = tubes_chan.GetAll(
+            'org.freedesktop.Telepathy.Channel.FUTURE',
+            dbus_interface='org.freedesktop.DBus.Properties')
+    assert future_props['TargetID'] == 'bob@localhost'
+    assert future_props['InitiatorID'] == 'test@localhost'
+    assert future_props['InitiatorHandle'] == self_handle
+
     # Unix socket
     path = os.getcwd() + '/stream'
     call_async(q, tubes_iface, 'OfferStreamTube',

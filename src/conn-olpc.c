@@ -1626,7 +1626,7 @@ olpc_buddy_info_current_activity_event_handler (GabbleConnection *conn,
                                                 LmMessage *msg,
                                                 TpHandle handle)
 {
-  TpBaseConnection *base = (TpBaseConnection*) conn;
+  TpBaseConnection *base = (TpBaseConnection *) conn;
   LmMessageNode *node;
   const gchar *from;
   GabbleOlpcActivity *activity;
@@ -3033,7 +3033,7 @@ populate_buddies_from_nodes (GabbleConnection *conn,
                              GPtrArray *buddies_properties)
 {
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection*) conn, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
   LmMessageNode *buddy;
 
   for (buddy = node->children; buddy != NULL; buddy = buddy->next)
@@ -3090,7 +3090,7 @@ add_activities_to_view_from_node (GabbleConnection *conn,
                                   LmMessageNode *node)
 {
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
-      (TpBaseConnection*) conn, TP_HANDLE_TYPE_ROOM);
+      (TpBaseConnection *) conn, TP_HANDLE_TYPE_ROOM);
   GHashTable *activities;
   LmMessageNode *activity_node;
 
@@ -3220,7 +3220,7 @@ add_buddies_to_view_from_node (GabbleConnection *conn,
 {
   GArray *buddies;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection*) conn, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
   GPtrArray *buddies_properties;
   guint i;
 
@@ -3296,7 +3296,7 @@ remove_buddies_from_view_from_node (GabbleConnection *conn,
 {
   TpHandleSet *buddies;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection*) conn, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
   LmMessageNode *buddy;
 
   buddies = tp_handle_set_new (contact_repo);
@@ -3360,7 +3360,7 @@ remove_activities_from_view_from_node (GabbleConnection *conn,
 {
   TpHandleSet *rooms;
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
-      (TpBaseConnection*) conn, TP_HANDLE_TYPE_ROOM);
+      (TpBaseConnection *) conn, TP_HANDLE_TYPE_ROOM);
   LmMessageNode *activity;
 
   rooms = tp_handle_set_new (room_repo);

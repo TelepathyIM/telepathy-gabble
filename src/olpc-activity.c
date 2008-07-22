@@ -77,7 +77,7 @@ gabble_olpc_activity_dispose (GObject *object)
     return;
 
   room_repo = tp_base_connection_get_handles (
-      (TpBaseConnection*) priv->conn,
+      (TpBaseConnection *) priv->conn,
       TP_HANDLE_TYPE_ROOM);
   tp_handle_unref (room_repo, self->room);
 
@@ -186,7 +186,7 @@ gabble_olpc_activity_constructor (GType type,
   priv = GABBLE_OLPC_ACTIVITY_GET_PRIVATE (self);
 
   room_repo = tp_base_connection_get_handles (
-      (TpBaseConnection*) priv->conn,
+      (TpBaseConnection *) priv->conn,
       TP_HANDLE_TYPE_ROOM);
 
   g_assert (self->room != 0);
@@ -280,7 +280,7 @@ gabble_olpc_activity_get_room (GabbleOlpcActivity *self)
 {
   GabbleOlpcActivityPrivate *priv = GABBLE_OLPC_ACTIVITY_GET_PRIVATE (self);
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
-      (TpBaseConnection*) priv->conn,
+      (TpBaseConnection *) priv->conn,
       TP_HANDLE_TYPE_ROOM);
 
   return tp_handle_inspect (room_repo, self->room);

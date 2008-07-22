@@ -224,7 +224,7 @@ gabble_olpc_view_constructor (GType type,
            constructor (type, n_props, props);
 
   priv = GABBLE_OLPC_VIEW_GET_PRIVATE (GABBLE_OLPC_VIEW (obj));
-  conn = (TpBaseConnection *)priv->conn;
+  conn = (TpBaseConnection *) priv->conn;
 
   priv->object_path = g_strdup_printf ("%s/OlpcView%u",
       conn->object_path, priv->id);

@@ -28,7 +28,6 @@
 
 #include "debug.h"
 #include "extensions/extensions.h"
-#include "gabble-connection.h"
 #include "gabble-signals-marshal.h"
 #include "namespaces.h"
 #include "util.h"

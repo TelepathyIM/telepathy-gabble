@@ -25,7 +25,7 @@
 #include <telepathy-glib/enums.h>
 #include <telepathy-glib/handle-repo.h>
 
-#include "gabble-connection.h"
+#include "connection.h"
 
 G_BEGIN_DECLS
 

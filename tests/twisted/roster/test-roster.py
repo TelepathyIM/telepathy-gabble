@@ -38,6 +38,7 @@ def _expect_contact_list_channel(q, bus, conn, name, contacts):
     future_props = chan.GetAll(
             'org.freedesktop.Telepathy.Channel.FUTURE',
             dbus_interface='org.freedesktop.DBus.Properties')
+    assert future_props['Requested'] == False
     assert future_props['TargetID'] == name
     assert future_props['InitiatorID'] == ''
     assert future_props['InitiatorHandle'] == 0

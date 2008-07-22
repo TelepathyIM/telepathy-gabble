@@ -62,6 +62,7 @@ typedef enum
   GABBLE_CONNECTION_FEATURES_PEP = 1 << 4,
 } GabbleConnectionFeatures;
 
+typedef struct _GabbleConnectionPrivate GabbleConnectionPrivate;
 typedef struct _GabbleConnectionClass GabbleConnectionClass;
 
 typedef LmHandlerResult (*GabbleConnectionMsgReplyFunc) (GabbleConnection *conn,
@@ -138,7 +139,7 @@ struct _GabbleConnection {
     /* outstanding avatar requests */
     GHashTable *avatar_requests;
 
-    gpointer priv;
+    GabbleConnectionPrivate *priv;
 };
 
 typedef enum {

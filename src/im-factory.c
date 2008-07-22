@@ -321,7 +321,9 @@ new_im_channel (GabbleImFactory *fac,
   GabbleIMChannel *chan;
   char *object_path;
 
-  g_assert (GABBLE_IS_IM_FACTORY (fac));
+  g_return_val_if_fail (GABBLE_IS_IM_FACTORY (fac), NULL);
+  g_return_val_if_fail (handle != 0, NULL);
+  g_return_val_if_fail (initiator != 0, NULL);
 
   priv = GABBLE_IM_FACTORY_GET_PRIVATE (fac);
   conn = (TpBaseConnection *) priv->conn;

@@ -27,6 +27,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
   don't work ideally in the presence of two things that want to use the
   absence of a prefix, sadly. -->
 
+  <xsl:param name="allow-undefined-interfaces" select="false()"/>
+
   <xsl:template match="html:* | @*" mode="html">
     <xsl:copy>
       <xsl:apply-templates mode="html"/>
@@ -52,27 +54,38 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
     </xsl:variable>
 
     <xsl:choose>
-      <xsl:when test="//interface[@name=$name]"/>
-      <xsl:when test="//interface/method[concat(../@name, '.', @name)=$name]"/>
-      <xsl:when test="//interface/signal[concat(../@name, '.', @name)=$name]"/>
-      <xsl:when test="//interface/property[concat(../@name, '.', @name)=$name]"/>
-      <xsl:when test="//interface[@name=concat($name, '.DRAFT')]"/>
-      <xsl:when test="//interface/method[concat(../@name, '.', @name)=concat($name, '.DRAFT')]"/>
-      <xsl:when test="//interface/signal[concat(../@name, '.', @name)=concat($name, '.DRAFT')]"/>
-      <xsl:when test="//interface/property[concat(../@name, '.', @name)=concat($name, '.DRAFT')]"/>
+      <xsl:when test="//interface[@name=$name]
+        or //interface/method[concat(../@name, '.', @name)=$name]
+        or //interface/signal[concat(../@name, '.', @name)=$name]
+        or //interface/property[concat(../@name, '.', @name)=$name]
+        or //interface[@name=concat($name, '.DRAFT')]
+        or //interface/method[
+          concat(../@name, '.', @name)=concat($name, '.DRAFT')]
+        or //interface/signal[
+          concat(../@name, '.', @name)=concat($name, '.DRAFT')]
+        or //interface/property[
+          concat(../@name, '.', @name)=concat($name, '.DRAFT')]
+        ">
+        <a xmlns="http://www.w3.org/1999/xhtml" href="#{$name}">
+          <xsl:value-of select="string(.)"/>
+        </a>
+      </xsl:when>
+
+      <xsl:when test="$allow-undefined-interfaces">
+        <span xmlns="http://www.w3.org/1999/xhtml" title="defined elsewhere">
+          <xsl:value-of select="string(.)"/>
+        </span>
+      </xsl:when>
+
       <xsl:otherwise>
         <xsl:message terminate="yes">
-          <xsl:text>ERR: cannot find D-Bus interface, method, signal</xsl:text>
-          <xsl:text> or property called '</xsl:text>
+          <xsl:text>ERR: cannot find D-Bus interface, method, </xsl:text>
+          <xsl:text>signal or property called '</xsl:text>
           <xsl:value-of select="$name"/>
           <xsl:text>'&#10;</xsl:text>
         </xsl:message>
       </xsl:otherwise>
     </xsl:choose>
-
-    <a xmlns="http://www.w3.org/1999/xhtml" href="#{$name}">
-      <xsl:value-of select="string(.)"/>
-    </a>
   </xsl:template>
 
   <!-- tp:member-ref: reference a property of the current interface -->

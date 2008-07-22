@@ -46,6 +46,7 @@ _gen/all.xml: all.xml $(wildcard *.xml) Makefile.am
 
 extensions.html: _gen/all.xml $(tools_dir)/doc-generator.xsl Makefile.am
 	$(XSLTPROC) $(XSLTPROCFLAGS) \
+		--param "allow-undefined-interfaces" "true()" \
 		$(tools_dir)/doc-generator.xsl \
 		$< > $@
 

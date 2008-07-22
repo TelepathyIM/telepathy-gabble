@@ -30,6 +30,7 @@
 
 G_BEGIN_DECLS
 
+typedef struct _GabbleRosterChannelPrivate GabbleRosterChannelPrivate;
 typedef struct _GabbleRosterChannelClass GabbleRosterChannelClass;
 
 struct _GabbleRosterChannelClass {
@@ -44,7 +45,7 @@ struct _GabbleRosterChannel {
 
     TpGroupMixin group;
 
-    gpointer priv;
+    GabbleRosterChannelPrivate *priv;
 };
 
 GType gabble_roster_channel_get_type (void);

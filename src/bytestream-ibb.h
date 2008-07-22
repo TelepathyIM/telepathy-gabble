@@ -31,6 +31,7 @@ G_BEGIN_DECLS
 
 typedef struct _GabbleBytestreamIBB GabbleBytestreamIBB;
 typedef struct _GabbleBytestreamIBBClass GabbleBytestreamIBBClass;
+typedef struct _GabbleBytestreamIBBPrivate GabbleBytestreamIBBPrivate;
 
 struct _GabbleBytestreamIBBClass {
   GObjectClass parent_class;
@@ -39,7 +40,7 @@ struct _GabbleBytestreamIBBClass {
 struct _GabbleBytestreamIBB {
   GObject parent;
 
-  gpointer priv;
+  GabbleBytestreamIBBPrivate *priv;
 };
 
 GType gabble_bytestream_ibb_get_type (void);

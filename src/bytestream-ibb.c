@@ -73,7 +73,6 @@ enum
   LAST_PROPERTY
 };
 
-typedef struct _GabbleBytestreamIBBPrivate GabbleBytestreamIBBPrivate;
 struct _GabbleBytestreamIBBPrivate
 {
   GabbleConnection *conn;
@@ -90,8 +89,7 @@ struct _GabbleBytestreamIBBPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_BYTESTREAM_IBB_GET_PRIVATE(obj) \
-    ((GabbleBytestreamIBBPrivate *) obj->priv)
+#define GABBLE_BYTESTREAM_IBB_GET_PRIVATE(obj) ((obj)->priv)
 
 static void
 gabble_bytestream_ibb_init (GabbleBytestreamIBB *self)

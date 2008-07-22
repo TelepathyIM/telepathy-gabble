@@ -21,6 +21,7 @@
 #include "config.h"
 #include "conn-aliasing.h"
 
+#include <telepathy-glib/gtypes.h>
 #include <telepathy-glib/svc-connection.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
@@ -34,9 +35,6 @@
 #include "roster.h"
 #include "util.h"
 #include "vcard-manager.h"
-
-#define GABBLE_TP_ALIAS_PAIR_TYPE (dbus_g_type_get_struct ("GValueArray", \
-      G_TYPE_UINT, G_TYPE_STRING, G_TYPE_INVALID))
 
 static void gabble_conn_aliasing_pep_nick_reply_handler (
     GabbleConnection *conn, LmMessage *msg, TpHandle handle);
@@ -698,9 +696,9 @@ gabble_conn_aliasing_nickname_updated (GObject *object,
       goto OUT;
     }
 
-  g_value_init (&entry, GABBLE_TP_ALIAS_PAIR_TYPE);
+  g_value_init (&entry, TP_STRUCT_TYPE_ALIAS_PAIR);
   g_value_take_boxed (&entry, dbus_g_type_specialized_construct
-      (GABBLE_TP_ALIAS_PAIR_TYPE));
+      (TP_STRUCT_TYPE_ALIAS_PAIR));
 
   dbus_g_type_struct_set (&entry,
       0, handle,

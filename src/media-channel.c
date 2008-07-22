@@ -91,6 +91,7 @@ enum
   PROP_HANDLE_TYPE,
   PROP_HANDLE,
   PROP_TARGET_ID,
+  PROP_REQUESTED,
   PROP_CONNECTION,
   PROP_CREATOR,
   PROP_CREATOR_ID,
@@ -383,6 +384,7 @@ gabble_media_channel_get_property (GObject    *object,
 {
   GabbleMediaChannel *chan = GABBLE_MEDIA_CHANNEL (object);
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (chan);
+  TpBaseConnection *base_conn = (TpBaseConnection *) priv->conn;
   const gchar *param_name;
   guint tp_property_id;
 
@@ -411,10 +413,13 @@ gabble_media_channel_get_property (GObject    *object,
     case PROP_CREATOR_ID:
         {
           TpHandleRepoIface *repo = tp_base_connection_get_handles (
-              (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+              base_conn, TP_HANDLE_TYPE_CONTACT);
 
           g_value_set_string (value, tp_handle_inspect (repo, priv->creator));
         }
+      break;
+    case PROP_REQUESTED:
+      g_value_set_boolean (value, (priv->creator == base_conn->self_handle));
       break;
     case PROP_FACTORY:
       g_value_set_object (value, priv->factory);
@@ -510,6 +515,7 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
       { NULL }
   };
   static TpDBusPropertiesMixinPropImpl future_props[] = {
+      { "Requested", "requested", NULL },
       { "TargetID", "target-id", NULL },
       { "InitiatorHandle", "creator", NULL },
       { "InitiatorID", "creator-id", NULL },
@@ -577,6 +583,13 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
       G_PARAM_READABLE |
       G_PARAM_STATIC_NAME | G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_CREATOR_ID, param_spec);
+
+  param_spec = g_param_spec_boolean ("requested", "Requested?",
+      "True if this channel was requested by the local user",
+      FALSE,
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+  g_object_class_install_property (object_class, PROP_REQUESTED, param_spec);
 
   param_spec = g_param_spec_object ("factory", "GabbleMediaFactory object",
       "The factory that created this object.",

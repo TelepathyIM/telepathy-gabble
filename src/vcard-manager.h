@@ -29,6 +29,7 @@
 
 G_BEGIN_DECLS
 
+typedef struct _GabbleVCardManagerPrivate GabbleVCardManagerPrivate;
 typedef struct _GabbleVCardManagerClass GabbleVCardManagerClass;
 typedef struct _GabbleVCardManagerRequest GabbleVCardManagerRequest;
 typedef struct _GabbleVCardManagerEditRequest GabbleVCardManagerEditRequest;
@@ -74,7 +75,7 @@ struct _GabbleVCardManagerClass {
 
 struct _GabbleVCardManager {
     GObject parent;
-    gpointer priv;
+    GabbleVCardManagerPrivate *priv;
 };
 
 typedef void (*GabbleVCardManagerCb)(GabbleVCardManager *self,

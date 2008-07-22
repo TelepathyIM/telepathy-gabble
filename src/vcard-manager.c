@@ -63,7 +63,6 @@ enum
 G_DEFINE_TYPE(GabbleVCardManager, gabble_vcard_manager, G_TYPE_OBJECT);
 
 typedef struct _GabbleVCardCacheEntry GabbleVCardCacheEntry;
-typedef struct _GabbleVCardManagerPrivate GabbleVCardManagerPrivate;
 struct _GabbleVCardManagerPrivate
 {
   gboolean dispose_has_run;
@@ -172,8 +171,7 @@ gabble_vcard_manager_cache_quark (void)
   return quark;
 }
 
-#define GABBLE_VCARD_MANAGER_GET_PRIVATE(o)\
-  ((GabbleVCardManagerPrivate *) ((o)->priv))
+#define GABBLE_VCARD_MANAGER_GET_PRIVATE(o) ((o)->priv)
 
 static void cache_entry_free (void *data);
 static gint cache_entry_compare (gconstpointer a, gconstpointer b);

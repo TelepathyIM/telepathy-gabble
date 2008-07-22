@@ -31,6 +31,7 @@ G_BEGIN_DECLS
 
 typedef struct _GabbleIMChannel GabbleIMChannel;
 typedef struct _GabbleIMChannelClass GabbleIMChannelClass;
+typedef struct _GabbleIMChannelPrivate GabbleIMChannelPrivate;
 
 struct _GabbleIMChannelClass {
     GObjectClass parent_class;
@@ -44,7 +45,7 @@ struct _GabbleIMChannel {
 
     GabbleTextMixin text;
 
-    gpointer priv;
+    GabbleIMChannelPrivate *priv;
 };
 
 GType gabble_im_channel_get_type (void);

@@ -34,6 +34,7 @@
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/enums.h>
 #include <telepathy-glib/errors.h>
+#include <telepathy-glib/gtypes.h>
 #include <telepathy-glib/handle-repo-dynamic.h>
 #include <telepathy-glib/handle-repo-static.h>
 #include <telepathy-glib/interfaces.h>
@@ -67,15 +68,6 @@
 #include "vcard-manager.h"
 
 static guint disco_reply_timeout = 5000;
-
-#define GABBLE_TP_CAPABILITY_PAIR_TYPE (dbus_g_type_get_struct ("GValueArray", \
-      G_TYPE_STRING, G_TYPE_UINT, G_TYPE_INVALID))
-#define GABBLE_TP_CAPABILITIES_CHANGED_MONSTER_TYPE (dbus_g_type_get_struct \
-    ("GValueArray", G_TYPE_UINT, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT, \
-                    G_TYPE_UINT, G_TYPE_UINT, G_TYPE_INVALID))
-#define GABBLE_TP_GET_CAPABILITIES_MONSTER_TYPE (dbus_g_type_get_struct \
-    ("GValueArray", G_TYPE_UINT, G_TYPE_STRING, G_TYPE_UINT, G_TYPE_UINT, \
-                    G_TYPE_INVALID))
 
 static void conn_service_iface_init (gpointer, gpointer);
 static void capabilities_service_iface_init (gpointer, gpointer);
@@ -2030,10 +2022,10 @@ _emit_capabilities_changed (GabbleConnection *conn,
             continue;
 
           g_value_init (&caps_monster_struct,
-              GABBLE_TP_CAPABILITIES_CHANGED_MONSTER_TYPE);
+              TP_STRUCT_TYPE_CAPABILITY_CHANGE);
           g_value_take_boxed (&caps_monster_struct,
               dbus_g_type_specialized_construct
-                (GABBLE_TP_CAPABILITIES_CHANGED_MONSTER_TYPE));
+                (TP_STRUCT_TYPE_CAPABILITY_CHANGE));
 
           dbus_g_type_struct_set (&caps_monster_struct,
               0, handle,
@@ -2055,7 +2047,7 @@ _emit_capabilities_changed (GabbleConnection *conn,
 
   for (i = 0; i < caps_arr->len; i++)
     {
-      g_boxed_free (GABBLE_TP_CAPABILITIES_CHANGED_MONSTER_TYPE,
+      g_boxed_free (TP_STRUCT_TYPE_CAPABILITY_CHANGE,
           g_ptr_array_index (caps_arr, i));
     }
   g_ptr_array_free (caps_arr, TRUE);
@@ -2111,7 +2103,7 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
       gchar *channel_type;
       guint flags;
 
-      g_value_init (&iface_flags_pair, GABBLE_TP_CAPABILITY_PAIR_TYPE);
+      g_value_init (&iface_flags_pair, TP_STRUCT_TYPE_CAPABILITY_PAIR);
       g_value_set_static_boxed (&iface_flags_pair, g_ptr_array_index (add, i));
 
       dbus_g_type_struct_get (&iface_flags_pair,
@@ -2158,9 +2150,10 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
         {
           GValue iface_flags_pair = {0, };
 
-          g_value_init (&iface_flags_pair, GABBLE_TP_CAPABILITY_PAIR_TYPE);
+          g_value_init (&iface_flags_pair, TP_STRUCT_TYPE_CAPABILITY_PAIR);
           g_value_take_boxed (&iface_flags_pair,
-              dbus_g_type_specialized_construct (GABBLE_TP_CAPABILITY_PAIR_TYPE));
+              dbus_g_type_specialized_construct (
+                  TP_STRUCT_TYPE_CAPABILITY_PAIR));
 
           dbus_g_type_struct_set (&iface_flags_pair,
                                   0, ccd->iface,
@@ -2260,10 +2253,10 @@ gabble_connection_get_capabilities (TpSvcConnectionInterfaceCapabilities *iface,
               {
                 GValue monster = {0, };
 
-                g_value_init (&monster, GABBLE_TP_GET_CAPABILITIES_MONSTER_TYPE);
+                g_value_init (&monster, TP_STRUCT_TYPE_CONTACT_CAPABILITY);
                 g_value_take_boxed (&monster,
                     dbus_g_type_specialized_construct (
-                      GABBLE_TP_GET_CAPABILITIES_MONSTER_TYPE));
+                      TP_STRUCT_TYPE_CONTACT_CAPABILITY));
 
                 dbus_g_type_struct_set (&monster,
                     0, handle,
@@ -2281,9 +2274,10 @@ gabble_connection_get_capabilities (TpSvcConnectionInterfaceCapabilities *iface,
         {
           GValue monster = {0, };
 
-          g_value_init (&monster, GABBLE_TP_GET_CAPABILITIES_MONSTER_TYPE);
+          g_value_init (&monster, TP_STRUCT_TYPE_CONTACT_CAPABILITY);
           g_value_take_boxed (&monster,
-              dbus_g_type_specialized_construct (GABBLE_TP_GET_CAPABILITIES_MONSTER_TYPE));
+              dbus_g_type_specialized_construct (
+                  TP_STRUCT_TYPE_CONTACT_CAPABILITY));
 
           dbus_g_type_struct_set (&monster,
               0, handle,
@@ -2304,7 +2298,7 @@ gabble_connection_get_capabilities (TpSvcConnectionInterfaceCapabilities *iface,
     {
       GValue monster = {0, };
 
-      g_value_init (&monster, GABBLE_TP_GET_CAPABILITIES_MONSTER_TYPE);
+      g_value_init (&monster, TP_STRUCT_TYPE_CONTACT_CAPABILITY);
       g_value_take_boxed (&monster, g_ptr_array_index (ret, i));
       g_value_unset (&monster);
     }

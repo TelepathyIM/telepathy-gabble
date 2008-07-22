@@ -117,6 +117,14 @@ def test(q, bus, conn, stream):
     assert 'RemotePendingMembers' in group_props, group_props
     assert 'GroupFlags' in group_props, group_props
 
+    # Exercise FUTURE properties
+    future_props = tubes_chan.GetAll(
+            'org.freedesktop.Telepathy.Channel.FUTURE',
+            dbus_interface='org.freedesktop.DBus.Properties')
+    assert future_props['TargetID'] == 'chat@conf.localhost'
+    assert future_props['InitiatorID'] == 'test@localhost'
+    assert future_props['InitiatorHandle'] == conn.GetSelfHandle()
+
     tubes_self_handle = tubes_chan.GetSelfHandle(
         dbus_interface=tp_name_prefix + '.Channel.Interface.Group')
     assert group_props['SelfHandle'] == tubes_self_handle

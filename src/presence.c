@@ -33,7 +33,7 @@
 
 G_DEFINE_TYPE (GabblePresence, gabble_presence, G_TYPE_OBJECT);
 
-#define GABBLE_PRESENCE_PRIV(account) ((GabblePresencePrivate *) account->priv)
+#define GABBLE_PRESENCE_PRIV(account) ((account)->priv)
 
 typedef struct _Resource Resource;
 
@@ -46,8 +46,6 @@ struct _Resource {
     gint8 priority;
     time_t last_activity;
 };
-
-typedef struct _GabblePresencePrivate GabblePresencePrivate;
 
 struct _GabblePresencePrivate {
     gchar *no_resource_status_message;

@@ -51,6 +51,8 @@ G_BEGIN_DECLS
     (G_TYPE_INSTANCE_GET_CLASS ((obj), \
                                   GABBLE_TYPE_PRESENCE, GabblePresenceClass))
 
+typedef struct _GabblePresencePrivate GabblePresencePrivate;
+
 struct _GabblePresence {
     GObject parent;
     GabblePresenceCapabilities caps;
@@ -59,7 +61,7 @@ struct _GabblePresence {
     gchar *nickname;
     gchar *avatar_sha1;
     gboolean keep_unavailable;
-    gpointer priv;
+    GabblePresencePrivate *priv;
 };
 
 typedef struct _GabblePresenceClass GabblePresenceClass;

@@ -71,7 +71,6 @@ enum
 };
 
 /* private structure */
-typedef struct _GabbleRoomlistChannelPrivate GabbleRoomlistChannelPrivate;
 
 struct _GabbleRoomlistChannelPrivate
 {
@@ -91,8 +90,7 @@ struct _GabbleRoomlistChannelPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE(obj) \
-    ((GabbleRoomlistChannelPrivate *) obj->priv)
+#define GABBLE_ROOMLIST_CHANNEL_GET_PRIVATE(obj) ((obj)->priv)
 
 #define ROOM_SIGNAL_INTERVAL 300
 

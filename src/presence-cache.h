@@ -54,9 +54,11 @@ G_BEGIN_DECLS
 #define JABBER_PRESENCE_SHOW_DND "dnd"
 #define JABBER_PRESENCE_SHOW_XA "xa"
 
+typedef struct _GabblePresenceCachePrivate GabblePresenceCachePrivate;
+
 struct _GabblePresenceCache {
     GObject parent;
-    gpointer priv;
+    GabblePresenceCachePrivate *priv;
 };
 
 typedef struct _GabblePresenceCacheClass GabblePresenceCacheClass;

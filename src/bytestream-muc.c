@@ -74,7 +74,6 @@ enum
   LAST_PROPERTY
 };
 
-typedef struct _GabbleBytestreamMucPrivate GabbleBytestreamMucPrivate;
 struct _GabbleBytestreamMucPrivate
 {
   GabbleConnection *conn;
@@ -89,8 +88,7 @@ struct _GabbleBytestreamMucPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_BYTESTREAM_MUC_GET_PRIVATE(obj) \
-    ((GabbleBytestreamMucPrivate *) obj->priv)
+#define GABBLE_BYTESTREAM_MUC_GET_PRIVATE(obj) ((obj)->priv)
 
 static void
 free_buffer (GString *buffer)

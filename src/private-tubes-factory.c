@@ -64,8 +64,6 @@ enum
   LAST_PROPERTY
 };
 
-typedef struct _GabblePrivateTubesFactoryPrivate \
-          GabblePrivateTubesFactoryPrivate;
 struct _GabblePrivateTubesFactoryPrivate
 {
   GabbleConnection *conn;
@@ -76,8 +74,7 @@ struct _GabblePrivateTubesFactoryPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE(obj) \
-    ((GabblePrivateTubesFactoryPrivate *) obj->priv)
+#define GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE(obj) ((obj)->priv)
 
 static void
 gabble_private_tubes_factory_init (GabblePrivateTubesFactory *self)

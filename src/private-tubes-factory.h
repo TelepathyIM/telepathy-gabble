@@ -31,6 +31,8 @@
 G_BEGIN_DECLS
 
 typedef struct _GabblePrivateTubesFactoryClass GabblePrivateTubesFactoryClass;
+typedef struct _GabblePrivateTubesFactoryPrivate
+    GabblePrivateTubesFactoryPrivate;
 
 struct _GabblePrivateTubesFactoryClass {
   GObjectClass parent_class;
@@ -39,7 +41,7 @@ struct _GabblePrivateTubesFactoryClass {
 struct _GabblePrivateTubesFactory {
   GObject parent;
 
-  gpointer priv;
+  GabblePrivateTubesFactoryPrivate *priv;
 };
 
 GType gabble_private_tubes_factory_get_type (void);

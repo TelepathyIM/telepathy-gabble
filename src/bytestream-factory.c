@@ -103,7 +103,6 @@ bytestream_id_free (gpointer v)
   g_slice_free (BytestreamIdentifier, bsid);
 }
 
-typedef struct _GabbleBytestreamFactoryPrivate GabbleBytestreamFactoryPrivate;
 struct _GabbleBytestreamFactoryPrivate
 {
   GabbleConnection *conn;
@@ -125,8 +124,7 @@ struct _GabbleBytestreamFactoryPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE(obj) \
-    ((GabbleBytestreamFactoryPrivate *) obj->priv)
+#define GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE(obj) ((obj)->priv)
 
 static LmHandlerResult
 bytestream_factory_msg_data_cb (LmMessageHandler *handler,

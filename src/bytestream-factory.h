@@ -33,6 +33,7 @@
 G_BEGIN_DECLS
 
 typedef struct _GabbleBytestreamFactoryClass GabbleBytestreamFactoryClass;
+typedef struct _GabbleBytestreamFactoryPrivate GabbleBytestreamFactoryPrivate;
 
 struct _GabbleBytestreamFactoryClass {
   GObjectClass parent_class;
@@ -41,7 +42,7 @@ struct _GabbleBytestreamFactoryClass {
 struct _GabbleBytestreamFactory {
   GObject parent;
 
-  gpointer priv;
+  GabbleBytestreamFactoryPrivate *priv;
 };
 
 GType gabble_bytestream_factory_get_type (void);

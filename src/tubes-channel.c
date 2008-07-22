@@ -34,6 +34,7 @@
 #include <telepathy-glib/enums.h>
 #include <telepathy-glib/errors.h>
 #include <telepathy-glib/group-mixin.h>
+#include <telepathy-glib/gtypes.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/svc-channel.h>
 #include <telepathy-glib/svc-generic.h>
@@ -53,20 +54,6 @@
 #ifdef HAVE_DBUS_TUBE
 #include "tube-dbus.h"
 #endif
-
-#define GABBLE_CHANNEL_TUBE_TYPE \
-    (dbus_g_type_get_struct ("GValueArray", \
-        G_TYPE_UINT, \
-        G_TYPE_UINT, \
-        G_TYPE_UINT, \
-        G_TYPE_STRING, \
-        dbus_g_type_get_map ("GHashTable", G_TYPE_STRING, G_TYPE_VALUE), \
-        G_TYPE_UINT, \
-        G_TYPE_INVALID))
-
-#define DBUS_NAME_PAIR_TYPE \
-    (dbus_g_type_get_struct ("GValueArray", \
-      G_TYPE_UINT, G_TYPE_STRING, G_TYPE_INVALID))
 
 static void channel_iface_init (gpointer, gpointer);
 static void tubes_iface_init (gpointer, gpointer);
@@ -287,9 +274,9 @@ d_bus_names_changed_added (GabbleTubesChannel *self,
   GValue tmp = {0,};
   guint i;
 
-  g_value_init (&tmp, DBUS_NAME_PAIR_TYPE);
+  g_value_init (&tmp, TP_STRUCT_TYPE_DBUS_TUBE_MEMBER);
   g_value_take_boxed (&tmp,
-      dbus_g_type_specialized_construct (DBUS_NAME_PAIR_TYPE));
+      dbus_g_type_specialized_construct (TP_STRUCT_TYPE_DBUS_TUBE_MEMBER));
   dbus_g_type_struct_set (&tmp,
       0, contact,
       1, new_name,
@@ -300,7 +287,7 @@ d_bus_names_changed_added (GabbleTubesChannel *self,
       tube_id, added, removed);
 
   for (i = 0; i < added->len; i++)
-    g_boxed_free (DBUS_NAME_PAIR_TYPE, added->pdata[i]);
+    g_boxed_free (TP_STRUCT_TYPE_DBUS_TUBE_MEMBER, added->pdata[i]);
   g_ptr_array_free (added, TRUE);
   g_array_free (removed, TRUE);
 }
@@ -858,9 +845,9 @@ copy_tube_in_ptr_array (gpointer key,
                 "state", &state,
                 NULL);
 
-  g_value_init (&entry, GABBLE_CHANNEL_TUBE_TYPE);
+  g_value_init (&entry, TP_STRUCT_TYPE_TUBE_INFO);
   g_value_take_boxed (&entry,
-          dbus_g_type_specialized_construct (GABBLE_CHANNEL_TUBE_TYPE));
+          dbus_g_type_specialized_construct (TP_STRUCT_TYPE_TUBE_INFO));
   dbus_g_type_struct_set (&entry,
           0, tube_id,
           1, initiator,
@@ -941,7 +928,7 @@ gabble_tubes_channel_list_tubes (TpSvcChannelTypeTubes *iface,
   tp_svc_channel_type_tubes_return_from_list_tubes (context, ret);
 
   for (i = 0; i < ret->len; i++)
-    g_boxed_free (GABBLE_CHANNEL_TUBE_TYPE, ret->pdata[i]);
+    g_boxed_free (TP_STRUCT_TYPE_TUBE_INFO, ret->pdata[i]);
 
   g_ptr_array_free (ret, TRUE);
 }
@@ -2076,9 +2063,9 @@ get_d_bus_names_foreach (gpointer key,
   GPtrArray *ret = user_data;
   GValue tmp = {0,};
 
-  g_value_init (&tmp, DBUS_NAME_PAIR_TYPE);
+  g_value_init (&tmp, TP_STRUCT_TYPE_DBUS_TUBE_MEMBER);
   g_value_take_boxed (&tmp,
-      dbus_g_type_specialized_construct (DBUS_NAME_PAIR_TYPE));
+      dbus_g_type_specialized_construct (TP_STRUCT_TYPE_DBUS_TUBE_MEMBER));
   dbus_g_type_struct_set (&tmp,
       0, key,
       1, value,
@@ -2153,7 +2140,7 @@ gabble_tubes_channel_get_d_bus_names (TpSvcChannelTypeTubes *iface,
   tp_svc_channel_type_tubes_return_from_get_d_bus_names (context, ret);
 
   for (i = 0; i < ret->len; i++)
-    g_boxed_free (DBUS_NAME_PAIR_TYPE, ret->pdata[i]);
+    g_boxed_free (TP_STRUCT_TYPE_DBUS_TUBE_MEMBER, ret->pdata[i]);
   g_hash_table_unref (names);
   g_ptr_array_free (ret, TRUE);
 

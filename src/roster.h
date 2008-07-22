@@ -28,6 +28,7 @@
 
 G_BEGIN_DECLS
 
+typedef struct _GabbleRosterPrivate GabbleRosterPrivate;
 typedef struct _GabbleRosterClass GabbleRosterClass;
 
 GType gabble_roster_get_type (void);
@@ -52,7 +53,7 @@ struct _GabbleRosterClass {
 
 struct _GabbleRoster {
     GObject parent;
-    gpointer priv;
+    GabbleRosterPrivate *priv;
 };
 
 typedef enum

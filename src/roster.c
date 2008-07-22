@@ -58,7 +58,6 @@ enum
 
 static guint signals[LAST_SIGNAL] = { 0 };
 
-typedef struct _GabbleRosterPrivate GabbleRosterPrivate;
 struct _GabbleRosterPrivate
 {
   GabbleConnection *conn;
@@ -129,7 +128,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleRoster, gabble_roster, G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_FACTORY_IFACE,
       gabble_roster_factory_iface_init));
 
-#define GABBLE_ROSTER_GET_PRIVATE(o) ((GabbleRosterPrivate *) ((o)->priv))
+#define GABBLE_ROSTER_GET_PRIVATE(o) ((o)->priv)
 
 static void
 gabble_roster_class_init (GabbleRosterClass *gabble_roster_class)

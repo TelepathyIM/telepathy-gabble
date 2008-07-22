@@ -85,7 +85,6 @@ enum
 };
 
 /* private structure */
-typedef struct _GabbleMediaSessionPrivate GabbleMediaSessionPrivate;
 
 struct _GabbleMediaSessionPrivate
 {
@@ -111,8 +110,7 @@ struct _GabbleMediaSessionPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_MEDIA_SESSION_GET_PRIVATE(obj) \
-    ((GabbleMediaSessionPrivate *) obj->priv)
+#define GABBLE_MEDIA_SESSION_GET_PRIVATE(obj) ((obj)->priv)
 
 typedef struct {
     gchar *name;

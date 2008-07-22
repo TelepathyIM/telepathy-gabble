@@ -810,6 +810,7 @@ gabble_muc_channel_get_property (GObject    *object,
       g_value_set_boxed (value, gabble_muc_channel_interfaces);
       break;
     case PROP_INITIATOR_HANDLE:
+      g_assert (priv->initiator != 0);
       g_value_set_uint (value, priv->initiator);
       break;
     case PROP_INITIATOR_ID:
@@ -817,6 +818,7 @@ gabble_muc_channel_get_property (GObject    *object,
           TpHandleRepoIface *repo = tp_base_connection_get_handles (
               (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 
+          g_assert (priv->initiator != 0);
           g_value_set_string (value,
               tp_handle_inspect (repo, priv->initiator));
         }
@@ -870,6 +872,7 @@ gabble_muc_channel_set_property (GObject     *object,
       break;
     case PROP_INITIATOR_HANDLE:
       priv->initiator = g_value_get_uint (value);
+      g_assert (priv->initiator != 0);
       break;
     case PROP_INVITATION_MESSAGE:
       g_assert (priv->invitation_message == NULL);

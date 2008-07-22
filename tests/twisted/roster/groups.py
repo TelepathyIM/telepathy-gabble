@@ -37,6 +37,13 @@ def _expect_group_channel(q, bus, conn, name, contacts):
     inspected = conn.InspectHandles(1, group_iface.GetMembers())
     assert inspected == contacts, (inspected, contacts)
 
+    future_props = chan.GetAll(
+            'org.freedesktop.Telepathy.Channel.FUTURE',
+            dbus_interface='org.freedesktop.DBus.Properties')
+    assert future_props['TargetID'] == name
+    assert future_props['InitiatorID'] == ''
+    assert future_props['InitiatorHandle'] == 0
+
 def test(q, bus, conn, stream):
     conn.Connect()
     # q.expect('dbus-signal', signal='StatusChanged', args=[0, 1])

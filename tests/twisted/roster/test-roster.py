@@ -13,7 +13,7 @@ def _expect_contact_list_channel(q, bus, conn, name, contacts):
 
     assert type == u'org.freedesktop.Telepathy.Channel.Type.ContactList'
     assert conn.InspectHandles(handle_type, [handle])[0] == name
-    chan = bus.get_object(conn._named_service, path)
+    chan = bus.get_object(conn.bus_name, path)
     group_iface = dbus.Interface(chan,
         u'org.freedesktop.Telepathy.Channel.Interface.Group')
     members = group_iface.GetMembers()

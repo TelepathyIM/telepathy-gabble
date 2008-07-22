@@ -21,7 +21,7 @@ def test(q, bus, conn, stream):
     stream.send(m)
 
     event = q.expect('dbus-signal', signal='NewChannel')
-    text_chan = bus.get_object(conn._named_service, event.args[0])
+    text_chan = bus.get_object(conn.bus_name, event.args[0])
     assert event.args[1] == u'org.freedesktop.Telepathy.Channel.Type.Text'
     # check that handle type == contact handle
     assert event.args[2] == 1

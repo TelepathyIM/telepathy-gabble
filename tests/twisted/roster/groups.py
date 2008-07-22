@@ -18,7 +18,7 @@ def _expect_contact_list_channel(q, bus, conn, name, contacts):
     assert handle_type == HT_CONTACT_LIST, handle_type
     inspected = conn.InspectHandles(handle_type, [handle])[0]
     assert inspected == name, (inspected, name)
-    chan = bus.get_object(conn._named_service, path)
+    chan = bus.get_object(conn.bus_name, path)
     group_iface = dbus.Interface(chan,
         u'org.freedesktop.Telepathy.Channel.Interface.Group')
     inspected = conn.InspectHandles(1, group_iface.GetMembers())
@@ -31,7 +31,7 @@ def _expect_group_channel(q, bus, conn, name, contacts):
     assert handle_type == HT_GROUP, handle_type
     inspected = conn.InspectHandles(handle_type, [handle])[0]
     assert inspected == name, (inspected, name)
-    chan = bus.get_object(conn._named_service, path)
+    chan = bus.get_object(conn.bus_name, path)
     group_iface = dbus.Interface(chan,
         u'org.freedesktop.Telepathy.Channel.Interface.Group')
     inspected = conn.InspectHandles(1, group_iface.GetMembers())

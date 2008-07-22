@@ -44,7 +44,7 @@ def expect_new_channel(event, data):
         return False
 
     # request subscription
-    chan = data['conn']._bus.get_object(data['conn']._named_service, path)
+    chan = data['conn']._bus.get_object(data['conn'].bus_name, path)
     group_iface = dbus.Interface(chan,
         u'org.freedesktop.Telepathy.Channel.Interface.Group')
     assert group_iface.GetMembers() == []

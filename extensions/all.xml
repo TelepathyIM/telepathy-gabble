@@ -23,11 +23,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
 </tp:license>
 
 <xi:include href="Channel_Future.xml"/>
+<xi:include href="Connection_Interface_Requests.xml"/>
 <xi:include href="OLPC_Buddy_Info.xml"/>
 <xi:include href="OLPC_Activity_Properties.xml"/>
 
 <tp:generic-types>
   <tp:external-type name="Contact_Handle" type="u"
+    from="Telepathy specification"/>
+  <tp:external-type name="DBus_Qualified_Member" type="s"
+    from="Telepathy specification"/>
+  <tp:external-type name="Qualified_Property_Value_Map" type="a{sv}"
     from="Telepathy specification"/>
 </tp:generic-types>
 

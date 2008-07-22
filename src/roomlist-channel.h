@@ -28,6 +28,7 @@
 G_BEGIN_DECLS
 
 typedef struct _GabbleRoomlistChannel GabbleRoomlistChannel;
+typedef struct _GabbleRoomlistChannelPrivate GabbleRoomlistChannelPrivate;
 typedef struct _GabbleRoomlistChannelClass GabbleRoomlistChannelClass;
 
 struct _GabbleRoomlistChannelClass {
@@ -39,7 +40,7 @@ struct _GabbleRoomlistChannelClass {
 struct _GabbleRoomlistChannel {
     GObject parent;
 
-    gpointer priv;
+    GabbleRoomlistChannelPrivate *priv;
 };
 
 GType gabble_roomlist_channel_get_type (void);

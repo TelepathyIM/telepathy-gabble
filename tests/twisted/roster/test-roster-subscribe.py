@@ -7,71 +7,63 @@ import dbus
 
 from twisted.words.xish import domish
 
-from servicetest import lazy, match
-from gabbletest import go, acknowledge_iq
+from servicetest import EventPattern
+from gabbletest import acknowledge_iq, exec_test
 
-@match('stream-iq', query_ns='jabber:iq:roster')
-def expect_roster_iq(event, data):
+def test(q, bus, conn, stream):
+    conn.Connect()
+
+    event = q.expect('stream-iq', query_ns='jabber:iq:roster')
     # send back empty roster
     event.stanza['type'] = 'result'
-    data['stream'].send(event.stanza)
-    return True
+    stream.send(event.stanza)
 
-@match('dbus-signal', signal='NewChannel')
-def expect_new_channel(event, data):
-    path, type, handle_type, handle, suppress_handler = event.args
+    while 1:
+        event = q.expect('dbus-signal', signal='NewChannel')
+        path, type, handle_type, handle, suppress_handler = event.args
 
-    if type != u'org.freedesktop.Telepathy.Channel.Type.ContactList':
-        return False
+        if type != u'org.freedesktop.Telepathy.Channel.Type.ContactList':
+            continue
 
-    chan_name = data['conn_iface'].InspectHandles(handle_type, [handle])[0]
+        chan_name = conn.InspectHandles(handle_type, [handle])[0]
 
-    if chan_name != 'subscribe':
-        return False
+        if chan_name == 'subscribe':
+            break
 
     # request subscription
-    chan = data['conn']._bus.get_object(data['conn'].bus_name, path)
+    chan = bus.get_object(conn.bus_name, path)
     group_iface = dbus.Interface(chan,
         u'org.freedesktop.Telepathy.Channel.Interface.Group')
     assert group_iface.GetMembers() == []
-    handle = data['conn_iface'].RequestHandles(1, ['bob@foo.com'])[0]
+    handle = conn.RequestHandles(1, ['bob@foo.com'])[0]
     group_iface.AddMembers([handle], '')
-    return True
 
-@match('stream-iq', iq_type='set', query_ns='jabber:iq:roster')
-def expect_roster_set_iq(event, data):
+    event = q.expect('stream-iq', iq_type='set', query_ns='jabber:iq:roster')
     item = event.query.firstChildElement()
     assert item["jid"] == 'bob@foo.com'
 
-    acknowledge_iq(data['stream'], event.stanza)
-    return True
+    acknowledge_iq(stream, event.stanza)
 
-@match('stream-presence')
-def expect_presence(event, data):
-    if event.stanza['type'] != 'subscribe':
-        return False
+    while 1:
+        event = q.expect('stream-presence')
+        if event.stanza['type'] == 'subscribe':
+            break
 
     presence = domish.Element(('jabber:client', 'presence'))
     presence['from'] = 'bob@foo.com'
     presence['type'] = 'subscribed'
-    data['stream'].send(presence)
-    return True
+    stream.send(presence)
 
-@lazy
-@match('dbus-signal', signal='MembersChanged',
-    args=['', [2], [], [], [], 0, 0])
-def expect_members_changed(event, data):
-    return True
+    q.expect_many(
+            EventPattern('dbus-signal', signal='MembersChanged',
+                args=['', [2], [], [], [], 0, 0]),
+            EventPattern('stream-presence'),
+            )
 
-@match('stream-presence')
-def expect_presence_ack(event, data):
-    data['conn_iface'].Disconnect()
-    return True
+    conn.Disconnect()
 
-@match('dbus-signal', signal='StatusChanged', args=[2, 1])
-def expect_disconnected(event, data):
-    return True
+    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
 
 if __name__ == '__main__':
-    go()
+    exec_test(test)
 

@@ -117,7 +117,6 @@ enum
 };
 
 /* private structure */
-typedef struct _GabbleConnectionPrivate GabbleConnectionPrivate;
 
 struct _GabbleConnectionPrivate
 {
@@ -165,8 +164,7 @@ struct _GabbleConnectionPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_CONNECTION_GET_PRIVATE(obj) \
-    ((GabbleConnectionPrivate *) obj->priv)
+#define GABBLE_CONNECTION_GET_PRIVATE(obj) ((obj)->priv)
 
 static void connection_capabilities_update_cb (GabblePresenceCache *,
     TpHandle, GabblePresenceCapabilities, GabblePresenceCapabilities,

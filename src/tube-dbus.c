@@ -88,7 +88,6 @@ enum
   LAST_PROPERTY
 };
 
-typedef struct _GabbleTubeDBusPrivate GabbleTubeDBusPrivate;
 struct _GabbleTubeDBusPrivate
 {
   GabbleConnection *conn;
@@ -130,8 +129,7 @@ struct _GabbleTubeDBusPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_TUBE_DBUS_GET_PRIVATE(obj) \
-    ((GabbleTubeDBusPrivate *) obj->priv)
+#define GABBLE_TUBE_DBUS_GET_PRIVATE(obj) ((obj)->priv)
 
 static void data_received_cb (GabbleBytestreamIface *stream, TpHandle sender,
     GString *data, gpointer user_data);

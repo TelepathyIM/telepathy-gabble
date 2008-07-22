@@ -28,6 +28,7 @@ G_BEGIN_DECLS
 
 typedef struct _GabbleConnectionManager GabbleConnectionManager;
 typedef struct _GabbleConnectionManagerClass GabbleConnectionManagerClass;
+typedef struct _GabbleConnectionManagerPrivate GabbleConnectionManagerPrivate;
 
 struct _GabbleConnectionManagerClass {
     TpBaseConnectionManagerClass parent_class;
@@ -36,7 +37,7 @@ struct _GabbleConnectionManagerClass {
 struct _GabbleConnectionManager {
     TpBaseConnectionManager parent;
 
-    gpointer priv;
+    GabbleConnectionManagerPrivate *priv;
 };
 
 extern const TpCMProtocolSpec gabble_protocols[];

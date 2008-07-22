@@ -29,6 +29,7 @@
 G_BEGIN_DECLS
 
 typedef struct _GabbleTubeStream GabbleTubeStream;
+typedef struct _GabbleTubeStreamPrivate GabbleTubeStreamPrivate;
 typedef struct _GabbleTubeStreamClass GabbleTubeStreamClass;
 
 struct _GabbleTubeStreamClass {
@@ -38,7 +39,7 @@ struct _GabbleTubeStreamClass {
 struct _GabbleTubeStream {
   GObject parent;
 
-  gpointer priv;
+  GabbleTubeStreamPrivate *priv;
 };
 
 GType gabble_tube_stream_get_type (void);

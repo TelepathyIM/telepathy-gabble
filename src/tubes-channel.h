@@ -31,6 +31,7 @@
 G_BEGIN_DECLS
 
 typedef struct _GabbleTubesChannel GabbleTubesChannel;
+typedef struct _GabbleTubesChannelPrivate GabbleTubesChannelPrivate;
 typedef struct _GabbleTubesChannelClass GabbleTubesChannelClass;
 
 struct _GabbleTubesChannelClass {
@@ -44,7 +45,7 @@ struct _GabbleTubesChannel {
 
     GabbleMucChannel *muc;
 
-    gpointer priv;
+    GabbleTubesChannelPrivate *priv;
 };
 
 GType gabble_tubes_channel_get_type (void);

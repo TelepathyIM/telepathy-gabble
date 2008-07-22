@@ -90,7 +90,6 @@ enum
 };
 
 /* private structure */
-typedef struct _GabbleTubesChannelPrivate GabbleTubesChannelPrivate;
 
 struct _GabbleTubesChannelPrivate
 {
@@ -107,8 +106,7 @@ struct _GabbleTubesChannelPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_TUBES_CHANNEL_GET_PRIVATE(obj) \
-    ((GabbleTubesChannelPrivate *) obj->priv)
+#define GABBLE_TUBES_CHANNEL_GET_PRIVATE(obj) ((obj)->priv)
 
 static gboolean update_tubes_presence (GabbleTubesChannel *self);
 

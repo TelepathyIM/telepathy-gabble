@@ -391,7 +391,8 @@ new_muc_channel (GabbleMucFactory *fac,
 static GabbleTubesChannel *
 new_tubes_channel (GabbleMucFactory *fac,
                    TpHandle room,
-                   GabbleMucChannel *muc)
+                   GabbleMucChannel *muc,
+                   TpHandle initiator)
 {
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
@@ -412,6 +413,7 @@ new_tubes_channel (GabbleMucFactory *fac,
       "handle", room,
       "handle-type", TP_HANDLE_TYPE_ROOM,
       "muc", muc,
+      "initiator-handle", initiator,
       NULL);
 
   g_signal_connect (chan, "closed", (GCallback) tubes_channel_closed_cb, fac);
@@ -915,7 +917,10 @@ muc_factory_presence_cb (LmMessageHandler *handler,
              * to create a tubes channel */
             return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
-          tubes_chan = new_tubes_channel (fac, room_handle, muc_chan);
+          /* MUC Tubes channels (as opposed to the individual tubes) don't
+           * have a well-defined initiator (they're a consensus) so use 0 */
+          tubes_chan = new_tubes_channel (fac, room_handle, muc_chan,
+              0);
           tp_channel_factory_iface_emit_new_channel (fac,
               (TpChannelIface *) tubes_chan, NULL);
         }
@@ -1148,8 +1153,9 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (iface);
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
-  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
+  TpBaseConnection *base_conn = (TpBaseConnection *) priv->conn;
+  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (base_conn,
+      TP_HANDLE_TYPE_ROOM);
   GabbleMucChannel *text_chan;
   GabbleTubesChannel *tubes_chan;
 
@@ -1202,14 +1208,16 @@ gabble_muc_factory_iface_request (TpChannelFactoryIface *iface,
         {
           if (ensure_muc_channel (fac, priv, handle, &text_chan))
             {
-              tubes_chan = new_tubes_channel (fac, handle, text_chan);
+              tubes_chan = new_tubes_channel (fac, handle, text_chan,
+                  base_conn->self_handle);
               *ret = TP_CHANNEL_IFACE (tubes_chan);
               tp_channel_factory_iface_emit_new_channel (fac, *ret, NULL);
               return TP_CHANNEL_FACTORY_REQUEST_STATUS_CREATED;
             }
           else
             {
-              tubes_chan = new_tubes_channel (fac, handle, text_chan);
+              tubes_chan = new_tubes_channel (fac, handle, text_chan,
+                  base_conn->self_handle);
               g_hash_table_insert (priv->text_needed_for_tubes,
                   text_chan, tubes_chan);
               return TP_CHANNEL_FACTORY_REQUEST_STATUS_QUEUED;

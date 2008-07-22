@@ -39,7 +39,7 @@
 #include "util.h"
 
 static GabbleTubesChannel *new_tubes_channel (GabblePrivateTubesFactory *fac,
-    TpHandle handle);
+    TpHandle handle, TpHandle initiator);
 
 static void tubes_channel_closed_cb (GabbleTubesChannel *chan,
     gpointer user_data);
@@ -246,14 +246,17 @@ tubes_channel_closed_cb (GabbleTubesChannel *chan,
  */
 static GabbleTubesChannel *
 new_tubes_channel (GabblePrivateTubesFactory *fac,
-                   TpHandle handle)
+                   TpHandle handle,
+                   TpHandle initiator)
 {
   GabblePrivateTubesFactoryPrivate *priv;
   TpBaseConnection *conn;
   GabbleTubesChannel *chan;
   char *object_path;
 
-  g_assert (GABBLE_IS_PRIVATE_TUBES_FACTORY (fac));
+  g_return_val_if_fail (GABBLE_IS_PRIVATE_TUBES_FACTORY (fac), NULL);
+  g_return_val_if_fail (handle != 0, NULL);
+  g_return_val_if_fail (initiator != 0, NULL);
 
   priv = GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (fac);
   conn = (TpBaseConnection *) priv->conn;
@@ -266,6 +269,7 @@ new_tubes_channel (GabblePrivateTubesFactory *fac,
                        "object-path", object_path,
                        "handle", handle,
                        "handle-type", TP_HANDLE_TYPE_CONTACT,
+                       "initiator-handle", initiator,
                        NULL);
 
   DEBUG ("object path %s", object_path);
@@ -360,8 +364,9 @@ gabble_private_tubes_factory_iface_request (TpChannelFactoryIface *iface,
   GabblePrivateTubesFactory *fac = GABBLE_PRIVATE_TUBES_FACTORY (iface);
   GabblePrivateTubesFactoryPrivate *priv =
     GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (fac);
+  TpBaseConnection *base_conn = (TpBaseConnection *) priv->conn;
   TpHandleRepoIface *contacts_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+      base_conn, TP_HANDLE_TYPE_CONTACT);
   GabbleTubesChannel *chan;
   TpChannelFactoryRequestStatus status;
 
@@ -388,7 +393,7 @@ gabble_private_tubes_factory_iface_request (TpChannelFactoryIface *iface,
   if (chan == NULL)
     {
       status = TP_CHANNEL_FACTORY_REQUEST_STATUS_CREATED;
-      chan = new_tubes_channel (fac, handle);
+      chan = new_tubes_channel (fac, handle, base_conn->self_handle);
       tp_channel_factory_iface_emit_new_channel (fac, (TpChannelIface *) chan,
           request);
     }
@@ -418,7 +423,7 @@ gabble_private_tubes_factory_handle_si_tube_request (
   chan = g_hash_table_lookup (priv->channels, GUINT_TO_POINTER (handle));
   if (chan == NULL)
     {
-      chan = new_tubes_channel (self, handle);
+      chan = new_tubes_channel (self, handle, handle);
       tp_channel_factory_iface_emit_new_channel (self,
           (TpChannelIface *) chan, NULL);
 
@@ -507,7 +512,7 @@ private_tubes_factory_msg_tube_cb (LmMessageHandler *handler,
         {
           /* We create the tubes channel only if the message is a new tube
            * offer */
-          chan = new_tubes_channel (self, handle);
+          chan = new_tubes_channel (self, handle, handle);
           tp_channel_factory_iface_emit_new_channel (self,
               (TpChannelIface *) chan, NULL);
         }

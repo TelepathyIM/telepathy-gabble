@@ -63,10 +63,7 @@ def test(q, bus, conn, stream):
             item["jid"], "none", False)
     stream.send(iq)
 
-    while 1:
-        event = q.expect('stream-presence')
-        if event.stanza['type'] == 'subscribe':
-            break
+    event = q.expect('stream-presence', presence_type='subscribe')
 
     # send pending roster item
     iq = make_set_roster_iq(stream, 'test@localhost/Resource', event.to,

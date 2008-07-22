@@ -4,7 +4,7 @@ test gadget invitation when an activity becomes public
 
 import dbus
 
-from servicetest import call_async, EventPattern
+from servicetest import call_async, EventPattern, sync_dbus
 from gabbletest import exec_test, make_result_iq, acknowledge_iq, sync_stream
 
 from twisted.words.xish import domish, xpath
@@ -117,8 +117,24 @@ def test(q, bus, conn, stream):
     event = q.expect('stream-iq')
     acknowledge_iq(stream, event.stanza)
 
-
     event = q.expect('dbus-return', method='SetProperties')
+
+    # Gadget joins the room
+    presence = domish.Element((None, 'presence'))
+    presence['from'] = 'myroom@conference.localhost/inspector'
+    x = presence.addElement(('http://jabber.org/protocol/muc#user', 'x'))
+    item = x.addElement('item')
+    item['jid'] = 'gadget.localhost'
+    item['affiliation'] = 'none'
+    item['role'] = 'participant'
+    stream.send(presence)
+
+    muc = bus.get_object(conn.bus_name, room_path)
+    muc_group = dbus.Interface(muc, "org.freedesktop.Telepathy.Channel.Interface.Group")
+
+    sync_stream(q, stream)
+    members = muc_group.GetMembers()
+    assert conn.InspectHandles(1, members) == ['myroom@conference.localhost/test']
 
 if __name__ == '__main__':
     exec_test(test)

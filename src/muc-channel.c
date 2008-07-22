@@ -1874,6 +1874,15 @@ _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
   affil = lm_message_node_get_attribute (item_node, "affiliation");
   owner_jid = lm_message_node_get_attribute (item_node, "jid");
 
+  /* We special case OLPC Gadget as activities doesn't have to see it as
+   * a member of the room. */
+  if (owner_jid != NULL &&
+      !tp_strdiff (owner_jid, priv->conn->olpc_gadget_activity))
+    {
+      DEBUG ("Don't add Gadget's inspector as member");
+      return;
+    }
+
   /* update channel members according to presence */
   set = tp_intset_new ();
   tp_intset_add (set, handle);

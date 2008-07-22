@@ -74,6 +74,7 @@ enum
   PROP_INITIATOR_HANDLE,
   PROP_INITIATOR_ID,
   PROP_TARGET_ID,
+  PROP_REQUESTED,
   PROP_CONNECTION,
   PROP_INTERFACES,
   LAST_PROPERTY
@@ -160,6 +161,7 @@ gabble_im_channel_get_property (GObject    *object,
 {
   GabbleIMChannel *chan = GABBLE_IM_CHANNEL (object);
   GabbleIMChannelPrivate *priv = GABBLE_IM_CHANNEL_GET_PRIVATE (chan);
+  TpBaseConnection *base_conn = (TpBaseConnection *) priv->conn;
 
   switch (property_id) {
     case PROP_OBJECT_PATH:
@@ -180,7 +182,7 @@ gabble_im_channel_get_property (GObject    *object,
     case PROP_INITIATOR_ID:
         {
           TpHandleRepoIface *repo = tp_base_connection_get_handles (
-              (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+              base_conn, TP_HANDLE_TYPE_CONTACT);
 
           g_assert (priv->initiator != 0);
           g_value_set_string (value,
@@ -190,10 +192,13 @@ gabble_im_channel_get_property (GObject    *object,
     case PROP_TARGET_ID:
         {
           TpHandleRepoIface *repo = tp_base_connection_get_handles (
-              (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+              base_conn, TP_HANDLE_TYPE_CONTACT);
 
           g_value_set_string (value, tp_handle_inspect (repo, priv->handle));
         }
+      break;
+    case PROP_REQUESTED:
+      g_value_set_boolean (value, (priv->initiator == base_conn->self_handle));
       break;
     case PROP_CONNECTION:
       g_value_set_object (value, priv->conn);
@@ -260,6 +265,7 @@ gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
       { NULL }
   };
   static TpDBusPropertiesMixinPropImpl future_props[] = {
+      { "Requested", "requested", NULL },
       { "TargetID", "target-id", NULL },
       { "InitiatorHandle", "initiator-handle", NULL },
       { "InitiatorID", "initiator-id", NULL },
@@ -320,6 +326,13 @@ gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
       G_PARAM_READABLE |
       G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
   g_object_class_install_property (object_class, PROP_TARGET_ID, param_spec);
+
+  param_spec = g_param_spec_boolean ("requested", "Requested?",
+      "True if this channel was requested by the local user",
+      FALSE,
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+  g_object_class_install_property (object_class, PROP_REQUESTED, param_spec);
 
   param_spec = g_param_spec_uint ("initiator-handle", "Initiator's handle",
       "The contact who initiated the channel",

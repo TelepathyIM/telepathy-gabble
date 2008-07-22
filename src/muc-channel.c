@@ -104,6 +104,7 @@ enum
   PROP_HANDLE_TYPE,
   PROP_HANDLE,
   PROP_TARGET_ID,
+  PROP_REQUESTED,
   PROP_CONNECTION,
   PROP_STATE,
   PROP_INVITE_SELF,
@@ -782,6 +783,7 @@ gabble_muc_channel_get_property (GObject    *object,
 {
   GabbleMucChannel *chan = GABBLE_MUC_CHANNEL (object);
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  TpBaseConnection *base_conn = (TpBaseConnection *) priv->conn;
 
   switch (property_id) {
     case PROP_OBJECT_PATH:
@@ -816,12 +818,15 @@ gabble_muc_channel_get_property (GObject    *object,
     case PROP_INITIATOR_ID:
         {
           TpHandleRepoIface *repo = tp_base_connection_get_handles (
-              (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+              base_conn, TP_HANDLE_TYPE_CONTACT);
 
           g_assert (priv->initiator != 0);
           g_value_set_string (value,
               tp_handle_inspect (repo, priv->initiator));
         }
+      break;
+    case PROP_REQUESTED:
+      g_value_set_boolean (value, (priv->initiator == base_conn->self_handle));
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -904,6 +909,7 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
       { NULL }
   };
   static TpDBusPropertiesMixinPropImpl future_props[] = {
+      { "Requested", "requested", NULL },
       { "TargetID", "target-id", NULL },
       { "InitiatorHandle", "initiator-handle", NULL },
       { "InitiatorID", "initiator-id", NULL },
@@ -999,6 +1005,13 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
       G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
   g_object_class_install_property (object_class, PROP_INITIATOR_ID,
       param_spec);
+
+  param_spec = g_param_spec_boolean ("requested", "Requested?",
+      "True if this channel was requested by the local user",
+      FALSE,
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+  g_object_class_install_property (object_class, PROP_REQUESTED, param_spec);
 
   param_spec = g_param_spec_string ("invitation-message",
       "Invitation message",

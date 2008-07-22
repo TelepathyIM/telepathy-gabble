@@ -39,6 +39,8 @@
 #include <telepathy-glib/svc-channel.h>
 #include <telepathy-glib/svc-generic.h>
 
+#include "extensions/extensions.h"
+
 #define DEBUG_FLAG GABBLE_DEBUG_TUBES
 
 #include "bytestream-factory.h"
@@ -63,6 +65,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleTubesChannel, gabble_tubes_channel,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
       tp_dbus_properties_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_FUTURE, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_TUBES, tubes_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
         tp_external_group_mixin_iface_init);
@@ -73,6 +76,7 @@ static const gchar *gabble_tubes_channel_interfaces[] = {
     /* If more interfaces are added, either keep Group as the first, or change
      * the implementations of gabble_tubes_channel_get_interfaces () and
      * gabble_tubes_channel_get_property () too */
+    GABBLE_IFACE_CHANNEL_FUTURE,
     NULL
 };
 
@@ -83,9 +87,12 @@ enum
   PROP_CHANNEL_TYPE,
   PROP_HANDLE_TYPE,
   PROP_HANDLE,
+  PROP_TARGET_ID,
   PROP_CONNECTION,
   PROP_INTERFACES,
   PROP_MUC,
+  PROP_INITIATOR_HANDLE,
+  PROP_INITIATOR_ID,
   LAST_PROPERTY,
 };
 
@@ -98,6 +105,7 @@ struct _GabbleTubesChannelPrivate
   TpHandle handle;
   TpHandleType handle_type;
   TpHandle self_handle;
+  TpHandle initiator;
 
   GHashTable *tubes;
 
@@ -134,7 +142,7 @@ gabble_tubes_channel_constructor (GType type,
   GabbleTubesChannel *self;
   GabbleTubesChannelPrivate *priv;
   DBusGConnection *bus;
-  TpHandleRepoIface *handle_repo;
+  TpHandleRepoIface *handle_repo, *contact_repo;
 
   DEBUG ("Called");
 
@@ -143,15 +151,21 @@ gabble_tubes_channel_constructor (GType type,
 
   self = GABBLE_TUBES_CHANNEL (obj);
   priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   handle_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, priv->handle_type);
 
   tp_handle_ref (handle_repo, priv->handle);
 
+  if (priv->initiator != 0)
+    tp_handle_ref (contact_repo, priv->initiator);
+
   switch (priv->handle_type)
     {
     case TP_HANDLE_TYPE_CONTACT:
       g_assert (self->muc == NULL);
+      g_assert (priv->initiator != 0);
       priv->self_handle = ((TpBaseConnection *) (priv->conn))->self_handle;
       break;
     case TP_HANDLE_TYPE_ROOM:
@@ -198,6 +212,15 @@ gabble_tubes_channel_get_property (GObject *object,
       case PROP_HANDLE:
         g_value_set_uint (value, priv->handle);
         break;
+      case PROP_TARGET_ID:
+          {
+            TpHandleRepoIface *repo = tp_base_connection_get_handles (
+                (TpBaseConnection *) priv->conn, priv->handle_type);
+
+            g_value_set_string (value,
+                tp_handle_inspect (repo, priv->handle));
+          }
+        break;
       case PROP_CONNECTION:
         g_value_set_object (value, priv->conn);
         break;
@@ -215,6 +238,23 @@ gabble_tubes_channel_get_property (GObject *object,
         break;
       case PROP_MUC:
         g_value_set_object (value, chan->muc);
+        break;
+      case PROP_INITIATOR_HANDLE:
+        g_value_set_uint (value, priv->initiator);
+        break;
+      case PROP_INITIATOR_ID:
+        if (priv->initiator == 0)
+          {
+            g_value_set_static_string (value, "");
+          }
+        else
+          {
+            TpHandleRepoIface *repo = tp_base_connection_get_handles (
+                (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+
+            g_value_set_string (value,
+                tp_handle_inspect (repo, priv->initiator));
+          }
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -253,6 +293,9 @@ gabble_tubes_channel_set_property (GObject *object,
         break;
       case PROP_MUC:
         chan->muc = g_value_get_object (value);
+        break;
+      case PROP_INITIATOR_HANDLE:
+        priv->initiator = g_value_get_uint (value);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -2387,11 +2430,22 @@ gabble_tubes_channel_class_init (
       { "Interfaces", "interfaces", NULL },
       { NULL }
   };
+  static TpDBusPropertiesMixinPropImpl future_props[] = {
+      { "TargetID", "target-id", NULL },
+      { "InitiatorHandle", "initiator-handle", NULL },
+      { "InitiatorID", "initiator-id", NULL },
+      { NULL }
+  };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
       { TP_IFACE_CHANNEL,
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         channel_props,
+      },
+      { GABBLE_IFACE_CHANNEL_FUTURE,
+        tp_dbus_properties_mixin_getter_gobject_properties,
+        NULL,
+        future_props,
       },
       { NULL }
   };
@@ -2449,6 +2503,29 @@ gabble_tubes_channel_class_init (
       G_PARAM_STATIC_BLURB);
   g_object_class_install_property (object_class, PROP_MUC, param_spec);
 
+  param_spec = g_param_spec_string ("target-id", "Target JID",
+      "The string obtained by inspecting the target handle",
+      NULL,
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+  g_object_class_install_property (object_class, PROP_TARGET_ID, param_spec);
+
+  param_spec = g_param_spec_uint ("initiator-handle", "Initiator's handle",
+      "The contact who initiated the channel",
+      0, G_MAXUINT32, 0,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE |
+      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+  g_object_class_install_property (object_class, PROP_INITIATOR_HANDLE,
+      param_spec);
+
+  param_spec = g_param_spec_string ("initiator-id", "Initiator's bare JID",
+      "The string obtained by inspecting the initiator-handle",
+      NULL,
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+  g_object_class_install_property (object_class, PROP_INITIATOR_ID,
+      param_spec);
+
   gabble_tubes_channel_class->dbus_props_class.interfaces = prop_interfaces;
   tp_dbus_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleTubesChannelClass, dbus_props_class));
@@ -2491,8 +2568,13 @@ gabble_tubes_channel_finalize (GObject *object)
 {
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (object);
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 
   g_free (priv->object_path);
+
+  if (priv->initiator != 0)
+    tp_handle_unref (contact_handles, priv->initiator);
 
   G_OBJECT_CLASS (gabble_tubes_channel_parent_class)->finalize (object);
 }

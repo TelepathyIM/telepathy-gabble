@@ -121,6 +121,7 @@ def test(q, bus, conn, stream):
     future_props = tubes_chan.GetAll(
             'org.freedesktop.Telepathy.Channel.FUTURE',
             dbus_interface='org.freedesktop.DBus.Properties')
+    assert future_props['Requested'] == True
     assert future_props['TargetID'] == 'chat@conf.localhost'
     assert future_props['InitiatorID'] == 'test@localhost'
     assert future_props['InitiatorHandle'] == conn.GetSelfHandle()

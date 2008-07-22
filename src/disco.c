@@ -52,7 +52,6 @@ enum
 
 G_DEFINE_TYPE(GabbleDisco, gabble_disco, G_TYPE_OBJECT);
 
-typedef struct _GabbleDiscoPrivate GabbleDiscoPrivate;
 struct _GabbleDiscoPrivate
 {
   GabbleConnection *connection;
@@ -83,7 +82,7 @@ gabble_disco_error_quark (void)
   return quark;
 }
 
-#define GABBLE_DISCO_GET_PRIVATE(o) ((GabbleDiscoPrivate *) ((o)->priv))
+#define GABBLE_DISCO_GET_PRIVATE(o) ((o)->priv)
 
 static void
 gabble_disco_init (GabbleDisco *obj)

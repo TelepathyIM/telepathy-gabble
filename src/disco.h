@@ -38,6 +38,7 @@ typedef enum
 } GabbleDiscoType;
 
 typedef struct _GabbleDiscoClass GabbleDiscoClass;
+typedef struct _GabbleDiscoPrivate GabbleDiscoPrivate;
 typedef struct _GabbleDiscoRequest GabbleDiscoRequest;
 
 /**
@@ -78,7 +79,7 @@ struct _GabbleDiscoClass {
 
 struct _GabbleDisco {
     GObject parent;
-    gpointer priv;
+    GabbleDiscoPrivate *priv;
 };
 
 typedef void (*GabbleDiscoCb)(GabbleDisco *self, GabbleDiscoRequest *request,

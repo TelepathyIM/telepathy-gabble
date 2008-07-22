@@ -31,7 +31,6 @@
 
 #include "debug.h"
 #include "extensions/extensions.h"
-#include "gabble-connection.h"
 #include "gabble-signals-marshal.h"
 #include "olpc-activity.h"
 #include "namespaces.h"

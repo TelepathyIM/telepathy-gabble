@@ -18,7 +18,7 @@ def test(q, bus, conn, stream):
     event.stanza['type'] = 'result'
     stream.send(event.stanza)
 
-    while 1:
+    while True:
         event = q.expect('dbus-signal', signal='NewChannel')
         path, type, handle_type, handle, suppress_handler = event.args
 

@@ -184,7 +184,11 @@ gabble_media_channel_constructor (GType type, guint n_props,
   tp_group_mixin_init (obj, G_STRUCT_OFFSET (GabbleMediaChannel, group),
       contact_handles, conn->self_handle);
 
-  /* automatically add creator to channel */
+  /* automatically add creator to channel, but also ref them again (because
+   * priv->creator is the InitiatorHandle) */
+  g_assert (priv->creator != 0);
+  tp_handle_ref (contact_handles, priv->creator);
+
   set = tp_intset_new ();
   tp_intset_add (set, priv->creator);
 
@@ -639,11 +643,19 @@ gabble_media_channel_dispose (GObject *object)
 {
   GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (object);
   GabbleMediaChannelPrivate *priv = GABBLE_MEDIA_CHANNEL_GET_PRIVATE (self);
+  TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (
+      conn, TP_HANDLE_TYPE_CONTACT);
 
   if (priv->dispose_has_run)
     return;
 
   priv->dispose_has_run = TRUE;
+
+  if (priv->creator != 0)
+    tp_handle_unref (contact_handles, priv->creator);
+
+  priv->creator = 0;
 
   /** In this we set the state to ENDED, then the callback unrefs
    * the session

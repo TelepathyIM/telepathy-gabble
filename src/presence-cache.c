@@ -62,10 +62,7 @@ enum
 
 static guint signals[LAST_SIGNAL] = { 0 };
 
-#define GABBLE_PRESENCE_CACHE_PRIV(account) \
-  ((GabblePresenceCachePrivate *) account->priv)
-
-typedef struct _GabblePresenceCachePrivate GabblePresenceCachePrivate;
+#define GABBLE_PRESENCE_CACHE_PRIV(account) ((account)->priv)
 
 struct _GabblePresenceCachePrivate
 {

@@ -28,6 +28,7 @@
 G_BEGIN_DECLS
 
 typedef struct _GabbleTubeDBus GabbleTubeDBus;
+typedef struct _GabbleTubeDBusPrivate GabbleTubeDBusPrivate;
 typedef struct _GabbleTubeDBusClass GabbleTubeDBusClass;
 
 struct _GabbleTubeDBusClass {
@@ -37,7 +38,7 @@ struct _GabbleTubeDBusClass {
 struct _GabbleTubeDBus {
   GObject parent;
 
-  gpointer priv;
+  GabbleTubeDBusPrivate *priv;
 };
 
 GType gabble_tube_dbus_get_type (void);

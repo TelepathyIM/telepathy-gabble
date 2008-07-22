@@ -66,6 +66,7 @@ enum
   PROP_HANDLE_TYPE,
   PROP_HANDLE,
   PROP_TARGET_ID,
+  PROP_REQUESTED,
   PROP_INITIATOR_HANDLE,
   PROP_INITIATOR_ID,
   PROP_CONNECTION,
@@ -230,11 +231,19 @@ gabble_roster_channel_get_property (GObject    *object,
       g_value_set_boxed (value, gabble_roster_channel_interfaces);
       break;
     case PROP_INITIATOR_HANDLE:
-      /* For now we act as though contact lists just sprang into existence */
+      /* FIXME: should be self-handle if we asked for it before it sprang into
+       * existence? */
       g_value_set_uint (value, 0);
       break;
     case PROP_INITIATOR_ID:
+      /* FIXME: should be self-JID if we asked for it before it sprang into
+       * existence? */
       g_value_set_static_string (value, "");
+      break;
+    case PROP_REQUESTED:
+      /* FIXME: should be TRUE if we asked for it before it sprang into
+       * existence? */
+      g_value_set_boolean (value, FALSE);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -294,6 +303,7 @@ gabble_roster_channel_class_init (GabbleRosterChannelClass *gabble_roster_channe
       { NULL }
   };
   static TpDBusPropertiesMixinPropImpl future_props[] = {
+      { "Requested", "requested", NULL },
       { "TargetID", "target-id", NULL },
       { "InitiatorHandle", "initiator-handle", NULL },
       { "InitiatorID", "initiator-id", NULL },
@@ -362,6 +372,13 @@ gabble_roster_channel_class_init (GabbleRosterChannelClass *gabble_roster_channe
       G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
   g_object_class_install_property (object_class, PROP_INITIATOR_ID,
       param_spec);
+
+  param_spec = g_param_spec_boolean ("requested", "Requested?",
+      "True if this channel was requested by the local user",
+      FALSE,
+      G_PARAM_READABLE |
+      G_PARAM_STATIC_NICK | G_PARAM_STATIC_BLURB | G_PARAM_STATIC_NAME);
+  g_object_class_install_property (object_class, PROP_REQUESTED, param_spec);
 
   g_object_class_override_property (object_class, PROP_OBJECT_PATH,
       "object-path");

@@ -56,6 +56,7 @@ typedef enum {
 
 typedef struct _GabbleMediaSession GabbleMediaSession;
 typedef struct _GabbleMediaSessionClass GabbleMediaSessionClass;
+typedef struct _GabbleMediaSessionPrivate GabbleMediaSessionPrivate;
 
 struct _GabbleMediaSessionClass {
     GObjectClass parent_class;
@@ -66,7 +67,7 @@ struct _GabbleMediaSession {
 
     JingleInitiator initiator;
 
-    gpointer priv;
+    GabbleMediaSessionPrivate *priv;
 };
 
 GType gabble_media_session_get_type (void);

@@ -72,6 +72,7 @@ def test(q, bus, conn, stream):
     future_props = media_chan.GetAll(
             'org.freedesktop.Telepathy.Channel.FUTURE',
             dbus_interface='org.freedesktop.DBus.Properties')
+    assert future_props['Requested'] == False
     assert future_props['TargetID'] == ''
     assert future_props['InitiatorID'] == 'foo@bar.com'
     assert future_props['InitiatorHandle'] == remote_handle
